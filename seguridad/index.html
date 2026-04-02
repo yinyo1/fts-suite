@@ -691,9 +691,8 @@ window.addEventListener('load', async function(){
   // ── 0. Iniciar reloj del statusbar ──
   initStatusBar();
 
-  // ── 1. Verificar versión y estado desde GitHub ──
-  const versionOk = await checkVersion();
-  if (!versionOk) return; // App bloqueada
+  // ── 1. Verificar versión y estado desde GitHub (no bloquea UI) ──
+  await checkVersion();
 
   // ── 2. Arrancar heartbeat desde el primer segundo ──
   startHeartbeat();
@@ -1019,8 +1018,7 @@ function startHeartbeat() {
       if (_noConnCount >= MAX_NO_CONN) {
         updateStatusBar('error', _noConnCount);
         stopHeartbeat();
-        showBlockScreen('📡 Sin conexión a internet',
-          'No se pudo verificar con el servidor FTS después de ' + MAX_NO_CONN + ' intentos (' + Math.round((MAX_NO_CONN * HEARTBEAT_MS) / 60000) + ' min).\n\nConéctate a internet y presiona Sincronizar para continuar.');
+        toast('📡 Sin conexión — reintenta con Sincronizar');
       } else {
         updateStatusBar('error', _noConnCount);
       }
@@ -1033,21 +1031,16 @@ function startHeartbeat() {
       _noConnCount = 0;
     }
 
-    // ── GitHub responde offline ── sacar inmediatamente sin importar el contador
+    // ── GitHub responde offline ── solo actualizar statusbar
     if (data.status !== 'online') {
       updateStatusBar('offline');
-      stopHeartbeat();
-      showBlockScreen('🔒 Sistema desactivado',
-        'GitHub reporta: status = "' + data.status + '"\n\n' + (data.mensaje || 'Contacta al administrador para reactivar el acceso.'));
+      console.warn('Heartbeat: status=' + data.status);
       return;
     }
 
     if (data.force_update && data.version !== APP_VERSION) {
       updateStatusBar('offline');
-      stopHeartbeat();
-      showBlockScreen('⬆️ Actualización requerida',
-        (data.mensaje || 'Esta versión ya no está disponible.') +
-        '\n\nVersión requerida: ' + data.version + ' · Tu versión: ' + APP_VERSION);
+      toast('⬆️ Actualización disponible: v' + data.version);
       return;
     }
 
@@ -1126,9 +1119,8 @@ async function reconnectNow() {
 
   if (data.status !== 'online') {
     updateStatusBar('offline');
-    stopHeartbeat();
-    showBlockScreen('🔒 Sistema desactivado',
-      'GitHub reporta: status = "' + data.status + '"\n\n' + (data.mensaje || 'Contacta al administrador.'));
+    toast('⚠️ Sistema reporta: ' + (data.status || 'desconocido'));
+    startHeartbeat();
     return;
   }
 
@@ -1227,31 +1219,32 @@ async function syncServer() {
   }
 
   if (data.status !== 'online') {
-    showBlockScreen('🔒 Sistema desactivado',
-      'GitHub reporta: status = "' + data.status + '"\n\n' + (data.mensaje || 'Contacta al administrador.'));
+    updateStatusBar('offline');
+    if (lbl) { lbl.textContent = '⚠️ Status: ' + (data.status || 'desconocido'); lbl.style.color = 'var(--red)'; }
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+    toast('⚠️ Servidor reporta: ' + (data.status || 'desconocido'));
     return;
   }
 
   if (data.force_update && data.version !== APP_VERSION) {
-    showBlockScreen('⬆️ Actualización requerida',
-      (data.mensaje || 'Esta versión ya no está disponible.') +
-      '\n\nGitHub requiere: v' + data.version + ' · Esta copia: v' + APP_VERSION);
+    updateStatusBar('offline');
+    if (lbl) { lbl.textContent = '⬆️ Actualización: v' + data.version; lbl.style.color = 'var(--red)'; }
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+    toast('⬆️ Actualización disponible: v' + data.version);
     return;
   }
 
   // ✅ Todo OK
   updateStatusBar('ok');
-  _noConnCount = 0; // resetear contador de fallos
+  _noConnCount = 0;
   if (lbl) { lbl.textContent = '✅ Conectado'; lbl.style.color = 'var(--green)'; }
   toast('✅ Conexión verificada con GitHub');
-  setTimeout(() => {
-    hideBlockScreen();
-    go('s-home');
-    startHeartbeat();
-  }, 800);
+  hideBlockScreen();
+  startHeartbeat();
 }
 
 // ═══ VERSION CHECK — GitHub API (tiempo real) + fallback CDN ═══
+// NOTA: nunca bloquea la UI. Solo actualiza el statusbar.
 async function checkVersion() {
   updateStatusBar('checking');
   let data = null;
@@ -1283,24 +1276,20 @@ async function checkVersion() {
 
   if (!data) {
     updateStatusBar('error', 0);
-    showBlockScreen('📡 Sin conexión al servidor',
-      'No se pudo obtener version.json de GitHub.\n\nVerifica tu conexión a internet y presiona Sincronizar.\n\n🔎 ' + VERSION_API);
-    return false;
+    console.warn('checkVersion: sin respuesta de GitHub — app continúa offline');
+    return true;
   }
 
   if (data.status !== 'online') {
     updateStatusBar('offline');
-    showBlockScreen('🔒 Sistema desactivado',
-      'GitHub reporta: status = "' + data.status + '"\n\n' + (data.mensaje || 'Contacta al administrador para reactivar el acceso.'));
-    return false;
+    console.warn('checkVersion: status=' + data.status + ' — app continúa con advertencia');
+    return true;
   }
 
   if (data.force_update && data.version !== APP_VERSION) {
     updateStatusBar('offline');
-    showBlockScreen('⬆️ Actualización requerida',
-      (data.mensaje || 'Esta versión ya no está disponible.') +
-      '\n\nGitHub requiere: v' + data.version + '\nEsta copia: v' + APP_VERSION);
-    return false;
+    toast('⬆️ Actualización disponible: v' + data.version);
+    return true;
   }
 
   updateStatusBar('ok');
