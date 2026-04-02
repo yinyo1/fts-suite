@@ -1,0 +1,342 @@
+{
+  "cursos": [
+    {
+      "id": "v001",
+      "titulo": "Seguridad en Alturas",
+      "descripcion": "NOM-009-STPS-2011 · Prevención de caídas, uso de arnés y EPP en trabajos en altura.",
+      "url": "https://TUEMPRESA.sharepoint.com/sites/FTS/Videos/seguridad-alturas.mp4",
+      "duracion_min": 30,
+      "obligatorio": true,
+      "activo": true,
+      "orden_sugerido": 1,
+      "examen": [
+        {
+          "pregunta": "¿Cuál es el EPP obligatorio para trabajo en alturas mayores a 1.8 m?",
+          "opciones": ["Casco solamente", "Arnés de seguridad y línea de vida", "Guantes de trabajo", "Lentes de seguridad"],
+          "correcta": 1
+        },
+        {
+          "pregunta": "¿Con qué frecuencia debe inspeccionarse el arnés antes de usarlo?",
+          "opciones": ["Una vez al mes", "Cada 6 meses", "Antes de cada uso", "Solo cuando esté dañado"],
+          "correcta": 2
+        },
+        {
+          "pregunta": "¿Cuál es la altura mínima a partir de la cual se requiere protección contra caídas según NOM-009?",
+          "opciones": ["1.0 metro", "1.5 metros", "1.8 metros", "2.0 metros"],
+          "correcta": 2
+        },
+        {
+          "pregunta": "¿Qué se debe verificar antes de usar una escalera portátil?",
+          "opciones": ["Que esté pintada", "Que los peldaños y largueros no estén dañados", "Que sea de metal", "Que sea nueva"],
+          "correcta": 1
+        },
+        {
+          "pregunta": "El punto de anclaje para el arnés debe soportar al menos:",
+          "opciones": ["500 kg", "1,000 kg", "2,268 kg (5,000 lbs)", "500 lbs"],
+          "correcta": 2
+        }
+      ]
+    },
+    {
+      "id": "v002",
+      "titulo": "Riesgos Eléctricos",
+      "descripcion": "NOM-029-STPS-2011 · Mantenimiento de instalaciones eléctricas y protección contra choques eléctricos.",
+      "url": "https://TUEMPRESA.sharepoint.com/sites/FTS/Videos/riesgos-electricos.mp4",
+      "duracion_min": 25,
+      "obligatorio": true,
+      "activo": true,
+      "orden_sugerido": 2,
+      "examen": [
+        {
+          "pregunta": "¿Qué significa el acrónimo LOTO?",
+          "opciones": ["Bloqueo y Etiquetado de energías peligrosas", "Lista de Operaciones de Trabajo", "Límite de Operación Total", "Logística de Operación Técnica"],
+          "correcta": 0
+        },
+        {
+          "pregunta": "¿Cuál es el voltaje considerado de alto riesgo en instalaciones industriales?",
+          "opciones": ["Mayor a 24V", "Mayor a 50V", "Mayor a 110V", "Mayor a 220V"],
+          "correcta": 1
+        },
+        {
+          "pregunta": "Antes de realizar cualquier trabajo eléctrico se debe verificar:",
+          "opciones": ["Que haya luz suficiente", "Que el equipo esté apagado visualmente", "Ausencia de energía con multímetro o detector", "Que el supervisor esté presente"],
+          "correcta": 2
+        },
+        {
+          "pregunta": "¿Cuántos candados se colocan en un dispositivo de bloqueo cuando intervienen varios trabajadores?",
+          "opciones": ["Solo uno del supervisor", "Uno por cada trabajador involucrado", "Dos como máximo", "Solo cuando hay más de 5 personas"],
+          "correcta": 1
+        },
+        {
+          "pregunta": "¿Qué color identifica los conductores de tierra física en México?",
+          "opciones": ["Rojo", "Negro", "Verde o verde con franja amarilla", "Blanco"],
+          "correcta": 2
+        }
+      ]
+    },
+    {
+      "id": "v003",
+      "titulo": "Equipo de Protección Personal (EPP)",
+      "descripcion": "NOM-017-STPS-2008 · Selección, uso, mantenimiento y disposición del EPP en el área de trabajo.",
+      "url": "https://TUEMPRESA.sharepoint.com/sites/FTS/Videos/epp.mp4",
+      "duracion_min": 20,
+      "obligatorio": true,
+      "activo": true,
+      "orden_sugerido": 3,
+      "examen": [
+        {
+          "pregunta": "¿Quién es responsable de proporcionar el EPP al trabajador?",
+          "opciones": ["El propio trabajador", "El patrón / empresa", "El sindicato", "La STPS"],
+          "correcta": 1
+        },
+        {
+          "pregunta": "¿Cuándo debe reemplazarse un casco de seguridad?",
+          "opciones": ["Cada 10 años", "Solo si tiene grietas visibles", "Cada 5 años o después de cualquier impacto", "Nunca si está limpio"],
+          "correcta": 2
+        },
+        {
+          "pregunta": "¿Cuál es la función principal del calzado dieléctrico?",
+          "opciones": ["Proteger contra caídas de objetos", "Aislar al trabajador de corriente eléctrica", "Proteger contra aplastamiento", "Dar comodidad al caminar"],
+          "correcta": 1
+        },
+        {
+          "pregunta": "Los lentes de seguridad con protección lateral son obligatorios cuando:",
+          "opciones": ["Solo en trabajo nocturno", "Existe riesgo de proyección de partículas o salpicaduras", "Solo en trabajo con químicos", "Siempre que haya más de 5 personas"],
+          "correcta": 1
+        },
+        {
+          "pregunta": "¿Qué tipo de guante se usa para trabajo con químicos corrosivos?",
+          "opciones": ["Guante de algodón", "Guante de cuero", "Guante de nitrilo o neopreno resistente a químicos", "Guante de tela con puntos antideslizantes"],
+          "correcta": 2
+        }
+      ]
+    },
+    {
+      "id": "v004",
+      "titulo": "Manejo de Materiales Peligrosos",
+      "descripcion": "NOM-005-STPS-1998 · Identificación, manejo, transporte y almacenamiento de sustancias químicas peligrosas.",
+      "url": "https://TUEMPRESA.sharepoint.com/sites/FTS/Videos/materiales-peligrosos.mp4",
+      "duracion_min": 35,
+      "obligatorio": true,
+      "activo": true,
+      "orden_sugerido": 4,
+      "examen": [
+        {
+          "pregunta": "¿Qué documento describe los peligros, propiedades y medidas de seguridad de una sustancia química?",
+          "opciones": ["Hoja de trabajo", "Hoja de Datos de Seguridad (HDS / SDS)", "Etiqueta de transporte", "Permiso de uso"],
+          "correcta": 1
+        },
+        {
+          "pregunta": "El sistema GHS utiliza rombos de colores para identificar peligros. ¿Qué indica el rombo ROJO?",
+          "opciones": ["Peligro para la salud", "Inflamabilidad", "Reactividad", "Peligro específico"],
+          "correcta": 1
+        },
+        {
+          "pregunta": "En caso de derrame de un químico desconocido, lo primero es:",
+          "opciones": ["Limpiarlo con agua inmediatamente", "Evacuar el área y dar aviso al supervisor", "Cubrir con arena y continuar", "Inhalar para identificarlo"],
+          "correcta": 1
+        },
+        {
+          "pregunta": "¿Cuál es la temperatura de inflamación que clasifica un líquido como inflamable?",
+          "opciones": ["Mayor a 93°C", "Menor a 93°C (200°F)", "Exactamente 100°C", "Menor a 200°C"],
+          "correcta": 1
+        },
+        {
+          "pregunta": "Los recipientes de sustancias peligrosas deben estar etiquetados con:",
+          "opciones": ["Solo el nombre del producto", "Nombre, pictogramas de peligro, indicaciones de precaución e información del fabricante", "Solo el número de lote", "Solo la fecha de caducidad"],
+          "correcta": 1
+        }
+      ]
+    },
+    {
+      "id": "v005",
+      "titulo": "Prevención y Combate de Incendios",
+      "descripcion": "NOM-002-STPS-2010 · Condiciones de seguridad para la prevención y protección contra incendios en centros de trabajo.",
+      "url": "https://TUEMPRESA.sharepoint.com/sites/FTS/Videos/incendios.mp4",
+      "duracion_min": 25,
+      "obligatorio": true,
+      "activo": true,
+      "orden_sugerido": 5,
+      "examen": [
+        {
+          "pregunta": "¿Cuáles son los tres elementos del triángulo del fuego?",
+          "opciones": ["Agua, oxígeno y calor", "Combustible, oxígeno y calor (o fuente de ignición)", "Grasa, aire y chispa", "Madera, papel y plástico"],
+          "correcta": 1
+        },
+        {
+          "pregunta": "¿Qué tipo de extintor se usa para fuegos clase C (eléctricos)?",
+          "opciones": ["Agua", "Espuma AFFF", "CO₂ o polvo químico seco ABC", "Solo agua nebulizada"],
+          "correcta": 2
+        },
+        {
+          "pregunta": "La técnica correcta para usar un extintor se resume en el acrónimo:",
+          "opciones": ["STOP", "PASS (Jalar, Apuntar, Apretar, Barrer)", "RACE", "ABC"],
+          "correcta": 1
+        },
+        {
+          "pregunta": "¿Con qué frecuencia mínima deben revisarse los extintores portátiles?",
+          "opciones": ["Cada 5 años", "Solo cuando se usan", "Mensualmente (inspección visual) y anualmente (revisión técnica)", "Cada 2 años"],
+          "correcta": 2
+        },
+        {
+          "pregunta": "Al evacuar un edificio en llamas debes:",
+          "opciones": ["Usar el elevador para bajar más rápido", "Abrir puertas sin tocarlas primero", "Desplazarte agachado si hay humo y no usar el elevador", "Regresar por tus pertenencias"],
+          "correcta": 2
+        }
+      ]
+    },
+    {
+      "id": "v006",
+      "titulo": "Primeros Auxilios Básicos",
+      "descripcion": "Atención inicial de emergencias médicas: RCP, control de hemorragias, quemaduras y fracturas en el área de trabajo.",
+      "url": "https://TUEMPRESA.sharepoint.com/sites/FTS/Videos/primeros-auxilios.mp4",
+      "duracion_min": 40,
+      "obligatorio": true,
+      "activo": true,
+      "orden_sugerido": 6,
+      "examen": [
+        {
+          "pregunta": "Al encontrar a una persona inconsciente, lo primero es:",
+          "opciones": ["Darle agua", "Verificar respuesta, pedir ayuda y revisar respiración", "Moverla inmediatamente", "Aplicar RCP sin verificar"],
+          "correcta": 1
+        },
+        {
+          "pregunta": "¿Cuántas compresiones por minuto se realizan en RCP para adultos?",
+          "opciones": ["40-60 por minuto", "60-80 por minuto", "100-120 por minuto", "150 por minuto"],
+          "correcta": 2
+        },
+        {
+          "pregunta": "Para controlar una hemorragia externa severa se debe:",
+          "opciones": ["Lavar con agua y aplicar alcohol", "Aplicar presión directa con tela limpia sobre la herida", "Retirar el objeto incrustado", "Elevar la extremidad sin aplicar presión"],
+          "correcta": 1
+        },
+        {
+          "pregunta": "¿Cómo se debe tratar una quemadura de primer grado?",
+          "opciones": ["Aplicar mantequilla o aceite", "Reventar las ampollas", "Enfriar con agua limpia corriente por 10-20 minutos", "Cubrir con un trapo húmedo con alcohol"],
+          "correcta": 2
+        },
+        {
+          "pregunta": "Ante la sospecha de fractura en una extremidad se debe:",
+          "opciones": ["Intentar alinear el hueso manualmente", "Inmovilizar la extremidad tal como está y esperar ayuda médica", "Masajear la zona afectada", "Pedir al trabajador que camine para verificar"],
+          "correcta": 1
+        }
+      ]
+    },
+    {
+      "id": "v007",
+      "titulo": "Orden y Limpieza — Metodología 5S",
+      "descripcion": "Implementación de las 5S: Seiri, Seiton, Seiso, Seiketsu y Shitsuke para mantener un ambiente de trabajo seguro y eficiente.",
+      "url": "https://TUEMPRESA.sharepoint.com/sites/FTS/Videos/5s.mp4",
+      "duracion_min": 20,
+      "obligatorio": false,
+      "activo": true,
+      "orden_sugerido": 7,
+      "examen": [
+        {
+          "pregunta": "¿Qué significa la primera 'S' (Seiri) de la metodología 5S?",
+          "opciones": ["Limpiar el área de trabajo", "Clasificar y eliminar lo innecesario", "Organizar lo que queda", "Crear hábitos"],
+          "correcta": 1
+        },
+        {
+          "pregunta": "Un área de trabajo desordenada y sucia aumenta el riesgo de:",
+          "opciones": ["Mayor productividad", "Tropiezos, caídas y accidentes", "Mejor comunicación", "Menores costos"],
+          "correcta": 1
+        },
+        {
+          "pregunta": "¿Qué representa la quinta 'S' (Shitsuke)?",
+          "opciones": ["Limpiar", "Estandarizar procedimientos", "Disciplina y creación de hábitos", "Clasificar materiales"],
+          "correcta": 2
+        },
+        {
+          "pregunta": "Las señalizaciones en el piso (líneas amarillas, rojas) sirven para:",
+          "opciones": ["Decoración del área", "Delimitar zonas de trabajo, tránsito y peligro", "Indicar pasillos de emergencia únicamente", "Marcar áreas de descanso"],
+          "correcta": 1
+        }
+      ]
+    },
+    {
+      "id": "v008",
+      "titulo": "Trabajo en Espacios Confinados",
+      "descripcion": "NOM-033-STPS-2015 · Condiciones de seguridad para realizar trabajos en espacios confinados.",
+      "url": "https://TUEMPRESA.sharepoint.com/sites/FTS/Videos/espacios-confinados.mp4",
+      "duracion_min": 35,
+      "obligatorio": false,
+      "activo": true,
+      "orden_sugerido": 8,
+      "examen": [
+        {
+          "pregunta": "Un espacio confinado se caracteriza por:",
+          "opciones": ["Tener paredes de concreto", "Tener aberturas limitadas de entrada/salida y no estar diseñado para ocupación continua", "Ser un área pequeña de almacén", "Ser cualquier área cerrada con llave"],
+          "correcta": 1
+        },
+        {
+          "pregunta": "Antes de entrar a un espacio confinado con riesgo, es obligatorio contar con:",
+          "opciones": ["Solo el permiso del supervisor inmediato", "Permiso de trabajo escrito, monitoreo de atmósfera y vigía externo", "Casco y guantes únicamente", "Solo el detector de gas"],
+          "correcta": 1
+        },
+        {
+          "pregunta": "¿Cuál es el nivel mínimo de oxígeno seguro para trabajar en un espacio confinado?",
+          "opciones": ["15%", "16.5%", "19.5%", "25%"],
+          "correcta": 2
+        },
+        {
+          "pregunta": "La función del vigía (persona que permanece fuera del espacio confinado) es:",
+          "opciones": ["Ayudar a cargar materiales", "Monitorear al trabajador, mantener comunicación y coordinar rescate si es necesario", "Supervisar la calidad del trabajo", "Llevar el registro de horas trabajadas"],
+          "correcta": 1
+        }
+      ]
+    },
+    {
+      "id": "v009",
+      "titulo": "Inducción de Seguridad — Bienvenida FTS",
+      "descripcion": "Reglas generales de seguridad, política de cero accidentes, señalizaciones, rutas de evacuación y contactos de emergencia de SERVICIOS FTS SA DE CV.",
+      "url": "https://TUEMPRESA.sharepoint.com/sites/FTS/Videos/induccion-fts.mp4",
+      "duracion_min": 15,
+      "obligatorio": true,
+      "activo": true,
+      "orden_sugerido": 0,
+      "examen": [
+        {
+          "pregunta": "¿Cuál es la política de seguridad de FTS?",
+          "opciones": ["Producción primero, seguridad después", "Cero accidentes — ningún trabajo vale una lesión", "Reportar accidentes solo si son graves", "La seguridad es responsabilidad solo del área HSE"],
+          "correcta": 1
+        },
+        {
+          "pregunta": "Al identificar una condición insegura en tu área de trabajo, debes:",
+          "opciones": ["Ignorarla si no te afecta directamente", "Corregirla tú mismo sin avisar", "Reportarla de inmediato a tu supervisor o al área de seguridad", "Esperar a la reunión mensual para mencionarla"],
+          "correcta": 2
+        },
+        {
+          "pregunta": "¿Qué debes hacer si presencias un accidente de trabajo?",
+          "opciones": ["Tomar fotos y publicarlas en redes sociales", "Brindar primeros auxilios básicos, activar plan de emergencia y reportar", "Continuar trabajando para no perder tiempo", "Esperar a que llegue el médico sin hacer nada"],
+          "correcta": 1
+        },
+        {
+          "pregunta": "Las rutas de evacuación deben estar:",
+          "opciones": ["Bloqueadas con material de trabajo cuando no se usan", "Señalizadas, libres de obstáculos y conocidas por todos", "Solo visibles en el reglamento interno", "Abiertas solo durante simulacros"],
+          "correcta": 1
+        }
+      ]
+    }
+  ],
+  "paquetes": [
+    {
+      "id": "onboarding",
+      "nombre": "Onboarding General",
+      "descripcion": "Cursos obligatorios para todos los trabajadores nuevos de FTS",
+      "cursos": ["v009", "v001", "v002", "v003", "v005", "v006"]
+    },
+    {
+      "id": "campo",
+      "nombre": "Técnico de Campo",
+      "descripcion": "Cursos para técnicos que trabajan en instalaciones industriales y plantas",
+      "cursos": ["v001", "v002", "v003", "v004", "v005", "v006", "v008"]
+    },
+    {
+      "id": "basico",
+      "nombre": "Seguridad Básica",
+      "descripcion": "Cursos mínimos de seguridad para cualquier trabajador",
+      "cursos": ["v009", "v003", "v005", "v006"]
+    }
+  ]
+}

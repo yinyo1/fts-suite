@@ -1,0 +1,46 @@
+{
+  "users": [
+    {
+      "user": "admin",
+      "pass": "FTS2024",
+      "expira": "2026-03-18",
+      "acceso": "ambos"
+    },
+    {
+      "user": "esteban",
+      "pass": "5",
+      "expira": "2026-03-18",
+      "acceso": "instructor"
+    },
+    {
+      "user": "tecnicos",
+      "pass": "FTS2026",
+      "expira": "2026-03-12",
+      "acceso": "empleado"
+    },
+    {
+      "user": "tecnicos2",
+      "pass": "FTS2026",
+      "expira": "2026-03-17",
+      "acceso": "ambos"
+    },
+    {
+      "user": "felipe",
+      "pass": "perezfts2026",
+      "expira": "2026-04-10",
+      "acceso": "ambos"
+    },
+    {
+      "user": "stephany",
+      "pass": "HSES",
+      "expira": "2026-04-23",
+      "acceso": "empleado"
+    },
+    {
+      "user": "german",
+      "pass": "HSEG",
+      "expira": "2026-04-22",
+      "acceso": "empleado"
+    }
+  ]
+}
