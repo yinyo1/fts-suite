@@ -720,6 +720,9 @@ window.addEventListener('load', async function(){
   }
 });
 function fmtDT(d) {
+  return d.toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}) + ' ' +
+         d.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+}
 // ═══════════════════════════════════════════════════
 // USER MANAGEMENT PANEL — solo sesión master
 // ═══════════════════════════════════════════════════
