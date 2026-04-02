@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>FTS Suite</title>
+<link rel="stylesheet" href="shared/fts-styles.css">
+<style>
+  .launcher{min-height:100vh;display:flex;flex-direction:column;max-width:520px;margin:0 auto;padding-bottom:28px}
+  .launcher-header{text-align:center;padding:32px 16px 8px}
+  .launcher-logo{width:160px;height:54px;background:var(--logo) center/contain no-repeat;margin:0 auto 12px}
+  .launcher-title{font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px}
+  .launcher-sub{font-size:12px;color:var(--muted2)}
+
+  .mod-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:24px 16px;flex:1}
+
+  .mod-card{background:var(--d2);border:1px solid var(--border);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 12px;text-decoration:none;color:var(--text);transition:all .15s;position:relative;box-shadow:0 1px 3px rgba(0,0,0,.06);min-height:140px}
+  .mod-card:active{transform:scale(.97)}
+  .mod-card.active{border-color:var(--o);box-shadow:0 2px 12px rgba(216,59,1,.15)}
+  .mod-card.disabled{opacity:.5;pointer-events:none;cursor:default}
+
+  .mod-icon{font-size:36px;margin-bottom:10px;line-height:1}
+  .mod-name{font-size:14px;font-weight:700;letter-spacing:.3px}
+  .mod-badge{position:absolute;top:8px;right:8px;background:var(--d4);color:var(--muted2);font-size:9px;font-weight:700;padding:3px 8px;border-radius:10px;letter-spacing:.3px}
+
+  @media(min-width:600px){
+    .launcher{border-left:1px solid var(--border);border-right:1px solid var(--border);box-shadow:0 0 20px rgba(0,0,0,.06)}
+  }
+</style>
+</head>
+<body>
+
+<div class="launcher">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="tb-logo"></div>
+    <div class="tb-info">
+      <strong>FTS Suite</strong>
+      <span>Suite Industrial</span>
+    </div>
+    <div class="tb-badge">v1.0</div>
+  </div>
+
+  <!-- Header -->
+  <div class="launcher-header">
+    <div class="launcher-logo"></div>
+    <div class="launcher-title">Suite Industrial</div>
+    <div class="launcher-sub">SERVICIOS FTS SA DE CV</div>
+  </div>
+
+  <!-- Grid de módulos -->
+  <div class="mod-grid">
+    <a href="seguridad/index.html" class="mod-card active">
+      <div class="mod-icon">🛡️</div>
+      <div class="mod-name">SEGURIDAD</div>
+    </a>
+    <div class="mod-card disabled">
+      <div class="mod-badge">Próximamente</div>
+      <div class="mod-icon">👥</div>
+      <div class="mod-name">RH</div>
+    </div>
+    <div class="mod-card disabled">
+      <div class="mod-badge">Próximamente</div>
+      <div class="mod-icon">📋</div>
+      <div class="mod-name">COMERCIAL</div>
+    </div>
+    <div class="mod-card disabled">
+      <div class="mod-badge">Próximamente</div>
+      <div class="mod-icon">⚙️</div>
+      <div class="mod-name">ODOO</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Statusbar -->
+<div id="fts-statusbar">
+  <div class="sb-left">
+    <span id="sb-dot"></span>
+    <span id="sb-status">Conectando…</span>
+  </div>
+  <div class="sb-right">
+    <span id="sb-clock">--:--</span>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ── Reloj ── */
+  function updateClock(){
+    var now=new Date();
+    var h=String(now.getHours()).padStart(2,'0');
+    var m=String(now.getMinutes()).padStart(2,'0');
+    var s=String(now.getSeconds()).padStart(2,'0');
+    document.getElementById('sb-clock').textContent=h+':'+m+':'+s;
+  }
+  updateClock();
+  setInterval(updateClock,1000);
+
+  /* ── Heartbeat (version.json) ── */
+  var dot=document.getElementById('sb-dot');
+  var status=document.getElementById('sb-status');
+
+  function heartbeat(){
+    fetch('version.json?_='+Date.now(),{cache:'no-store'})
+      .then(function(r){
+        if(!r.ok) throw new Error(r.status);
+        return r.json();
+      })
+      .then(function(d){
+        dot.className='ok';
+        status.textContent='v'+d.version;
+      })
+      .catch(function(){
+        dot.className='error';
+        status.textContent='Sin conexión';
+      });
+  }
+  heartbeat();
+  setInterval(heartbeat,30000);
+
+})();
+</script>
+
+</body>
+</html>
