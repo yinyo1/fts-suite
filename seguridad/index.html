@@ -1760,22 +1760,26 @@ async function ipercAccessLogin(){
     if(user===MASTER_USER && pass===MASTER_PASS){
       const session={user:MASTER_USER,acceso:'master',esMaster:true};
       sessionStorage.setItem('fts_iperc_session',JSON.stringify(session));
-      window.location.href='iperc.html';return;
+      err.textContent='';
+      toast('🔑 Sesión IPERC Master — herramienta pendiente de migración');
+      go('s-home');return;
     }
     const users=await fetchAuthUsers();
     if(!users||!users.length){err.textContent='No se pudo conectar al servidor.';return;}
-    const found=users.find(u=>(u.user||'').toLowerCase()===user);
+    const found=users.find(u=>u.usuario===user);
     if(!found){err.textContent='Usuario no encontrado.';return;}
-    if(found.pass!==pass){err.textContent='Contraseña incorrecta.';return;}
-    if(found.expira){
+    if(found.contraseña!==pass){err.textContent='Contraseña incorrecta.';return;}
+    if(found.fecha_expira){
       const hoy=new Date().toISOString().split('T')[0];
-      if(found.expira<hoy){err.textContent='Tu acceso ha expirado.';return;}
+      if(found.fecha_expira<hoy){err.textContent='Tu acceso ha expirado.';return;}
     }
     const acceso=(found.acceso||'ambos').toLowerCase();
     if(acceso==='empleado'){err.textContent='Tu perfil es solo "Empleado". Solicita acceso segurista al administrador.';return;}
-    const session={user:found.user,acceso,esMaster:false,nombre:found.nombre||found.user};
+    const session={user:found.usuario,acceso,esMaster:false,nombre:found.usuario};
     sessionStorage.setItem('fts_iperc_session',JSON.stringify(session));
-    window.location.href='iperc.html';
+    err.textContent='';
+    toast('✅ Acceso IPERC verificado — herramienta pendiente de migración');
+    go('s-home');
   }catch(e){err.textContent='Error de conexión. Verifica tu internet.';}
 }
 
