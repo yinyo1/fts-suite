@@ -3,6 +3,51 @@
 // Verificar: window.FTS_AI_BUILD en consola del browser
 // ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
 window.FTS_AI_BUILD = 'iperc-ai-R6-20260313';
+
+// ═══════════════════════════════════════════════════════
+// REPARACIÓN DE JSON TRUNCADO (compartida: riesgos + actividades)
+// ═══════════════════════════════════════════════════════
+function repairJSON(str) {
+  // 1. Parse directo
+  try { return JSON.parse(str); } catch(e) {}
+
+  // 2. Buscar estructura conocida truncada y cerrar brackets
+  var arrayMatch = str.match(/\{[\s\S]*?\[\s*\{[\s\S]*/);
+  if (arrayMatch) {
+    var candidate = arrayMatch[0];
+    // Eliminar último objeto incompleto
+    candidate = candidate.replace(/,\s*\{[^}]*$/, '');
+    // Cerrar arrays y objetos abiertos
+    var openB = (candidate.match(/\[/g)||[]).length;
+    var closeB = (candidate.match(/\]/g)||[]).length;
+    for (var i = 0; i < openB - closeB; i++) candidate += ']';
+    var openC = (candidate.match(/\{/g)||[]).length;
+    var closeC = (candidate.match(/\}/g)||[]).length;
+    for (var i = 0; i < openC - closeC; i++) candidate += '}';
+    try {
+      var parsed = JSON.parse(candidate);
+      console.log('[IPERC-AI] JSON reparado — objetos truncados removidos');
+      return parsed;
+    } catch(e) {}
+  }
+
+  // 3. Extraer objetos individuales con campos conocidos
+  var items = [];
+  var regex = /\{[^{}]*"(?:riesgo|nombre)"[^{}]*\}/g;
+  var m;
+  while ((m = regex.exec(str)) !== null) {
+    try { items.push(JSON.parse(m[0])); } catch(e) {}
+  }
+  if (items.length) {
+    console.log('[IPERC-AI] JSON reconstruido — ' + items.length + ' objetos extraídos individualmente');
+    // Detectar tipo por campos presentes
+    if (items[0].riesgo) return { riesgos: items };
+    if (items[0].nombre) return { actividades: items };
+    return items;
+  }
+
+  throw new Error('JSON irreparable — respuesta de IA no es JSON válido');
+}
 let _chatDrawerOpen = false;
 let _forcedMode = null; // null | 'mobile' | 'pc'
 
@@ -519,7 +564,7 @@ kbDetectedCtx+
           '\nCONTENIDO EXTRAÍDO DE ARCHIVOS ADJUNTOS:\n'+docText+'\n\nRESPONDE SOLO con JSON válido'
         );
         try{
-          result = await callGroq(groqPrompt, 5000, spinnerTxt, 0, 0);
+          result = await callGroq(groqPrompt, 6000, spinnerTxt, 0, 0);
         } catch(groqFilesErr){
           const isRateErr = /RATE_AGOTADO|rate.limit|429|Límite/i.test(groqFilesErr.message||String(groqFilesErr));
           const isKeyErr  = /GROQ_KEY_INVALIDA|GROQ_SIN_KEY|401|invalid/i.test(groqFilesErr.message||String(groqFilesErr));
@@ -530,11 +575,11 @@ kbDetectedCtx+
             showToast('⚡ Groq en ' + reason + ', usando Gemini para el plan', 3000);
             parts.push({text:prompt});
             try{
-              result = await callGemini(parts, 5000, spinnerTxt);
+              result = await callGemini(parts, 6000, spinnerTxt);
             } catch(gemFallErr){
               if(OPENROUTER_KEY){
                 if(spinnerTxt) spinnerTxt.textContent = '⚡ OpenRouter como respaldo…';
-                result = await callOpenRouter(prompt, 5000, spinnerTxt);
+                result = await callOpenRouter(prompt, 6000, spinnerTxt);
               } else { throw gemFallErr; }
             }
           } else {
@@ -547,7 +592,7 @@ kbDetectedCtx+
         if(spinnerTxt) spinnerTxt.textContent = '🧠 Groq generando plan de ejecución…';
         parts.push({text:prompt});
         try{
-          result = await callGroq(prompt, 5000, spinnerTxt, 0, 0);
+          result = await callGroq(prompt, 6000, spinnerTxt, 0, 0);
         } catch(groqSimErr){
           const isRateErr = /RATE_AGOTADO|rate.limit|429|Límite/i.test(groqSimErr.message||String(groqSimErr));
           const isKeyErr  = /GROQ_KEY_INVALIDA|GROQ_SIN_KEY|401|invalid/i.test(groqSimErr.message||String(groqSimErr));
@@ -557,17 +602,17 @@ kbDetectedCtx+
             if(spinnerTxt) spinnerTxt.textContent = '⚡ Gemini generando el plan…';
             showToast('⚡ Groq en ' + reason + ', usando Gemini', 3000);
             try{
-              result = await callGemini(parts, 5000, spinnerTxt);
+              result = await callGemini(parts, 6000, spinnerTxt);
             } catch(gemFallErr2){
               if(OPENROUTER_KEY){
                 if(spinnerTxt) spinnerTxt.textContent = '⚡ OpenRouter como respaldo…';
-                result = await callOpenRouter(prompt, 5000, spinnerTxt);
+                result = await callOpenRouter(prompt, 6000, spinnerTxt);
               } else { throw gemFallErr2; }
             }
           } else if((isRateErr || isKeyErr) && OPENROUTER_KEY){
             window._stopCountdown = true;
             if(spinnerTxt) spinnerTxt.textContent = '⚡ OpenRouter como respaldo…';
-            result = await callOpenRouter(prompt, 5000, spinnerTxt);
+            result = await callOpenRouter(prompt, 6000, spinnerTxt);
           } else {
             throw groqSimErr;
           }
@@ -577,26 +622,28 @@ kbDetectedCtx+
         // Sin Groq key: Gemini (con fallback OpenRouter)
         parts.push({text:prompt});
         try{
-          result = await callGemini(parts, 5000, spinnerTxt);
+          result = await callGemini(parts, 6000, spinnerTxt);
         } catch(gemOnlyErr){
           if(OPENROUTER_KEY){
             if(spinnerTxt) spinnerTxt.textContent = '⚡ OpenRouter como respaldo…';
-            result = await callOpenRouter(prompt, 5000, spinnerTxt);
+            result = await callOpenRouter(prompt, 6000, spinnerTxt);
           } else { throw gemOnlyErr; }
         }
       } else if(OPENROUTER_KEY){
         // Solo OpenRouter disponible
         parts.push({text:prompt});
         if(spinnerTxt) spinnerTxt.textContent = '⚡ OpenRouter generando plan…';
-        result = await callOpenRouter(prompt, 5000, spinnerTxt);
+        result = await callOpenRouter(prompt, 6000, spinnerTxt);
       } else {
         throw new Error('Sin API keys. Configura Groq, Gemini u OpenRouter en ⚙️');
       }
       try{
+        console.log('[IPERC-AI] Plan raw length:', result.length);
+        console.log('[IPERC-AI] Plan raw preview:', result.substring(0,500));
         const raw=result.replace(/```json[\s\S]*?```|```[\s\S]*?```/g,function(m){
           return m.replace(/```json|```/g,'');
         }).trim();
-        const parsed=JSON.parse(raw);
+        const parsed=repairJSON(raw);
         const acts=parsed.actividades||parsed;
         if(Array.isArray(acts)){
           window._ipercCode = window._ipercCode || generateIPERCCode(clienteId, workFullText);
@@ -696,34 +743,19 @@ kbDetectedCtx+
           parsed.forEach(function(a){const s=typeof a==='string'?a:(a.nombre||'');if(s&&!found.includes(s))found.push(s);});
         }
       }catch(e){
-        console.warn('JSON parse failed:',e.message,result.substring(0,300));
-        // ── Intentar reparar JSON truncado: extraer actividades completas ──
+        console.warn('[IPERC-AI] Plan JSON parse failed:', e.message);
+        // repairJSON ya se intentó arriba — este catch es por si repairJSON lanzó error
+        // Intentar extracción de emergencia directa del raw
         var recovered = [];
         try{
-          // Estrategia 1: extraer cada objeto actividad completo con regex
-          var actMatches = raw.match(/\{[^{}]*"nombre"[^{}]*"subpasos"[\s\S]*?\]\s*\}/g);
-          if(actMatches && actMatches.length){
-            actMatches.forEach(function(m){
-              try{ var a=JSON.parse(m); if(a.nombre) recovered.push(a); }catch(e2){}
-            });
-          }
-          // Estrategia 2: cortar el JSON en el último objeto completo y cerrar el array
-          if(!recovered.length){
-            var lastBrace = raw.lastIndexOf('},');
-            if(lastBrace > 0){
-              var truncFixed = raw.substring(0, lastBrace+1) + ']}';
-              // Ajustar prefijo según estructura
-              if(truncFixed.trim()[0]!='{'){ truncFixed = '{"actividades":[' + truncFixed; }
-              var p2 = JSON.parse(truncFixed);
-              recovered = p2.actividades || p2;
-            }
-          }
-        }catch(e3){ recovered=[]; }
+          var repaired = repairJSON(result.replace(/```json|```/g,'').trim());
+          recovered = repaired.actividades || repaired;
+          if(!Array.isArray(recovered)) recovered = [];
+        }catch(e2){ recovered = []; }
 
-        if(recovered.length >= 2){
-          // Tenemos actividades parciales — usarlas y avisar
-          console.warn('JSON reparado — '+recovered.length+' actividades recuperadas de respuesta truncada');
-          showToast('⚠️ Respuesta truncada por cuota — recuperadas '+recovered.length+' actividades. Puedes re-simular para obtener el plan completo.', 6000);
+        if(recovered.length >= 1){
+          console.warn('[IPERC-AI] Plan recuperado — '+recovered.length+' actividades de respuesta truncada');
+          showToast('⚠️ Respuesta truncada — recuperadas '+recovered.length+' actividades. Puedes re-simular para el plan completo.', 6000);
           window._ipercCode = window._ipercCode || generateIPERCCode(clienteId, workFullText);
           window._rawActividades = recovered;
           var recoveredActs = recovered.map(function(a){ return {name:a.nombre||a.name,on:true,src:'ai'}; });
@@ -731,7 +763,7 @@ kbDetectedCtx+
           renderActivityCards();
           goToStep(3);
         } else {
-          showToast('⚠️ La IA no generó un plan válido. Intenta simplificar la descripción del trabajo.', 5000);
+          showToast('⚠️ ' + e.message, 5000);
         }
       }
     }catch(e){
