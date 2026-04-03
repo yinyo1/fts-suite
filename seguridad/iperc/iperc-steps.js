@@ -858,7 +858,7 @@ async function sendChat(){
     // Chat: Groq si no hay imagen adjunta, Gemini si hay imagen (multimodal)
     const reply = (GROQ_KEY && !_attachedImage)
       ? await callGroq(parts.find(p=>p.text)?.text||msg, 1500)
-      : await callGemini(parts, 1200);
+      : await callGemini(parts, 1000);
     typing.remove();
     const finalReply=reply||'Error al conectar.';
     const msgEl=addMsg(finalReply,'ai');
