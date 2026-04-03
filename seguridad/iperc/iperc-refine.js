@@ -139,11 +139,11 @@ Responde SOLO con JSON válido sin markdown:
     // Groq para refinamiento individual — texto puro
     var result;
     try{
-      result = GROQ_KEY ? await callGroq(prompt, 2000) : GEMINI_KEY ? await callGemini([{text: prompt}], 2000) : null;
-      if(!result && OPENROUTER_KEY) result = await callOpenRouter(prompt, 2000);
+      result = GROQ_KEY ? await callGroq(prompt, 4000) : GEMINI_KEY ? await callGemini([{text: prompt}], 4000) : null;
+      if(!result && OPENROUTER_KEY) result = await callOpenRouter(prompt, 4000);
       if(!result) throw new Error('Sin API keys');
     } catch(aiErr){
-      if(OPENROUTER_KEY){ result = await callOpenRouter(prompt, 2000); }
+      if(OPENROUTER_KEY){ result = await callOpenRouter(prompt, 4000); }
       else throw aiErr;
     }
     var clean = result.replace(/```json[\s\S]*?```|```[\s\S]*?```/g, function(m){
@@ -357,11 +357,11 @@ ${knowledgeCtxRefine ? knowledgeCtxRefine + '\n\n' : ''}RESPONDE SOLO con JSON v
     // Groq → Gemini → OpenRouter para refinamiento
     let result;
     try{
-      result = GROQ_KEY ? await callGroq(prompt, 2000, statusLbl) : GEMINI_KEY ? await callGemini([{text:prompt}], 2000, statusLbl) : null;
-      if(!result && OPENROUTER_KEY) result = await callOpenRouter(prompt, 2000, statusLbl);
+      result = GROQ_KEY ? await callGroq(prompt, 4000, statusLbl) : GEMINI_KEY ? await callGemini([{text:prompt}], 4000, statusLbl) : null;
+      if(!result && OPENROUTER_KEY) result = await callOpenRouter(prompt, 4000, statusLbl);
       if(!result) throw new Error('Sin API keys');
     } catch(aiErr){
-      if(OPENROUTER_KEY){ result = await callOpenRouter(prompt, 2000, statusLbl); }
+      if(OPENROUTER_KEY){ result = await callOpenRouter(prompt, 4000, statusLbl); }
       else throw aiErr;
     }
     const raw=result.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
@@ -586,11 +586,11 @@ INSTRUCCIONES DE RESPUESTA:
     // Groq → Gemini → OpenRouter para análisis NOM/OSHA
     let result;
     try{
-      result = GROQ_KEY ? await callGroq(prompt, 2000) : GEMINI_KEY ? await callGemini([{text:prompt}], 2000) : null;
-      if(!result && OPENROUTER_KEY) result = await callOpenRouter(prompt, 2000);
+      result = GROQ_KEY ? await callGroq(prompt, 4000) : GEMINI_KEY ? await callGemini([{text:prompt}], 4000) : null;
+      if(!result && OPENROUTER_KEY) result = await callOpenRouter(prompt, 4000);
       if(!result) throw new Error('Sin API keys');
     } catch(aiErr){
-      if(OPENROUTER_KEY){ result = await callOpenRouter(prompt, 2000); }
+      if(OPENROUTER_KEY){ result = await callOpenRouter(prompt, 4000); }
       else throw aiErr;
     }
     resp.textContent=result;
