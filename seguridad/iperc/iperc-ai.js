@@ -274,6 +274,42 @@ async function callGemini(parts, maxTokens=1000, _statusEl=null, _attempt=0){
   return text;
 }
 
+// ── OpenRouter — tercer fallback con modelo gratuito ──
+let OPENROUTER_KEY = localStorage.getItem('fts_openrouter_key') || '';
+
+async function callOpenRouter(promptText, maxTokens=4500, _statusEl=null){
+  if(!OPENROUTER_KEY) throw new Error('Sin OpenRouter key');
+  if(window._geminiCancelled) throw new Error('CANCELADO');
+  _setApiStatus('gemini','warn','Fallback…','Usando OpenRouter como respaldo.');
+
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + OPENROUTER_KEY,
+      'HTTP-Referer': 'https://yinyo1.github.io/fts-suite/',
+      'X-Title': 'FTS Suite IPERC'
+    },
+    body: JSON.stringify({
+      model: 'mistralai/mistral-7b-instruct:free',
+      max_tokens: maxTokens,
+      messages: [
+        { role: 'user', content: promptText }
+      ]
+    })
+  });
+
+  if(!res.ok){
+    const err = await res.json().catch(()=>({}));
+    throw new Error('OpenRouter error: ' + (err.error?.message || res.status));
+  }
+
+  const data = await res.json();
+  const text = data.choices?.[0]?.message?.content || '';
+  if(!text) throw new Error('OpenRouter sin respuesta');
+  return text;
+}
+
 // ════════════════════════════════════════════════════
 // WIZARD
 // ════════════════════════════════════════════════════
@@ -464,12 +500,18 @@ kbDetectedCtx+
           const isKeyErr  = /GROQ_KEY_INVALIDA|GROQ_SIN_KEY|401|invalid/i.test(groqFilesErr.message||String(groqFilesErr));
           if(isRateErr || isKeyErr){
             const reason = isRateErr ? 'límite alcanzado' : 'key inválida';
-            window._stopCountdown = true; // detener countdown inmediatamente
+            window._stopCountdown = true;
             if(spinnerTxt) spinnerTxt.textContent = '⚡ Gemini generando el plan completo…';
             showToast('⚡ Groq en ' + reason + ', usando Gemini para el plan', 3000);
-            // Gemini recibe tanto los archivos como el prompt completo
             parts.push({text:prompt});
-            result = await callGemini(parts, 5000, spinnerTxt);
+            try{
+              result = await callGemini(parts, 5000, spinnerTxt);
+            } catch(gemFallErr){
+              if(OPENROUTER_KEY){
+                if(spinnerTxt) spinnerTxt.textContent = '⚡ OpenRouter como respaldo…';
+                result = await callOpenRouter(prompt, 5000, spinnerTxt);
+              } else { throw gemFallErr; }
+            }
           } else {
             throw groqFilesErr;
           }
@@ -486,19 +528,44 @@ kbDetectedCtx+
           const isKeyErr  = /GROQ_KEY_INVALIDA|GROQ_SIN_KEY|401|invalid/i.test(groqSimErr.message||String(groqSimErr));
           if((isRateErr || isKeyErr) && GEMINI_KEY){
             const reason = isRateErr ? 'límite alcanzado' : 'key inválida';
-            window._stopCountdown = true; // detener countdown inmediatamente
+            window._stopCountdown = true;
             if(spinnerTxt) spinnerTxt.textContent = '⚡ Gemini generando el plan…';
-            showToast('⚡ Groq en ' + reason + ', usando Gemini automáticamente', 3000);
-            result = await callGemini(parts, 5000, spinnerTxt);
+            showToast('⚡ Groq en ' + reason + ', usando Gemini', 3000);
+            try{
+              result = await callGemini(parts, 5000, spinnerTxt);
+            } catch(gemFallErr2){
+              if(OPENROUTER_KEY){
+                if(spinnerTxt) spinnerTxt.textContent = '⚡ OpenRouter como respaldo…';
+                result = await callOpenRouter(prompt, 5000, spinnerTxt);
+              } else { throw gemFallErr2; }
+            }
+          } else if((isRateErr || isKeyErr) && OPENROUTER_KEY){
+            window._stopCountdown = true;
+            if(spinnerTxt) spinnerTxt.textContent = '⚡ OpenRouter como respaldo…';
+            result = await callOpenRouter(prompt, 5000, spinnerTxt);
           } else {
             throw groqSimErr;
           }
         }
 
-      } else {
-        // Sin Groq key: Gemini todo (modo legacy)
+      } else if(GEMINI_KEY){
+        // Sin Groq key: Gemini (con fallback OpenRouter)
         parts.push({text:prompt});
-        result = await callGemini(parts, 5000, spinnerTxt);
+        try{
+          result = await callGemini(parts, 5000, spinnerTxt);
+        } catch(gemOnlyErr){
+          if(OPENROUTER_KEY){
+            if(spinnerTxt) spinnerTxt.textContent = '⚡ OpenRouter como respaldo…';
+            result = await callOpenRouter(prompt, 5000, spinnerTxt);
+          } else { throw gemOnlyErr; }
+        }
+      } else if(OPENROUTER_KEY){
+        // Solo OpenRouter disponible
+        parts.push({text:prompt});
+        if(spinnerTxt) spinnerTxt.textContent = '⚡ OpenRouter generando plan…';
+        result = await callOpenRouter(prompt, 5000, spinnerTxt);
+      } else {
+        throw new Error('Sin API keys. Configura Groq, Gemini u OpenRouter en ⚙️');
       }
       try{
         const raw=result.replace(/```json[\s\S]*?```|```[\s\S]*?```/g,function(m){

@@ -137,9 +137,15 @@ Responde SOLO con JSON válido sin markdown:
   try {
     log.textContent = 'Gemini analizando...';
     // Groq para refinamiento individual — texto puro
-    var result = GROQ_KEY
-      ? await callGroq(prompt, 2000)
-      : await callGemini([{text: prompt}], 2000);
+    var result;
+    try{
+      result = GROQ_KEY ? await callGroq(prompt, 2000) : GEMINI_KEY ? await callGemini([{text: prompt}], 2000) : null;
+      if(!result && OPENROUTER_KEY) result = await callOpenRouter(prompt, 2000);
+      if(!result) throw new Error('Sin API keys');
+    } catch(aiErr){
+      if(OPENROUTER_KEY){ result = await callOpenRouter(prompt, 2000); }
+      else throw aiErr;
+    }
     var clean = result.replace(/```json[\s\S]*?```|```[\s\S]*?```/g, function(m){
       return m.replace(/```json|```/g,'');
     }).trim();
@@ -348,10 +354,16 @@ REGLAS:
 ${knowledgeCtxRefine ? knowledgeCtxRefine + '\n\n' : ''}RESPONDE SOLO con JSON valido (sin markdown, sin texto extra):
 {"actividades":[{"paso":"1","nombre":"NOMBRE","descripcion":"...","consideraciones":"...","subpasos":[{"paso":"1.1","descripcion":"..."}]}]}`;
 
-    // Groq para refinamiento — puro texto, sin archivos
-    const result = GROQ_KEY
-      ? await callGroq(prompt, 2000, statusLbl)
-      : await callGemini([{text:prompt}], 2000, statusLbl);
+    // Groq → Gemini → OpenRouter para refinamiento
+    let result;
+    try{
+      result = GROQ_KEY ? await callGroq(prompt, 2000, statusLbl) : GEMINI_KEY ? await callGemini([{text:prompt}], 2000, statusLbl) : null;
+      if(!result && OPENROUTER_KEY) result = await callOpenRouter(prompt, 2000, statusLbl);
+      if(!result) throw new Error('Sin API keys');
+    } catch(aiErr){
+      if(OPENROUTER_KEY){ result = await callOpenRouter(prompt, 2000, statusLbl); }
+      else throw aiErr;
+    }
     const raw=result.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
     const parsed=JSON.parse(raw);
     const acts=parsed.actividades||parsed;
@@ -571,10 +583,16 @@ INSTRUCCIONES DE RESPUESTA:
 - Máximo 250 palabras. Usa viñetas para listar hallazgos.`;
 
   try{
-    // Groq para análisis NOM/OSHA — texto puro, ideal para Groq
-    const result = GROQ_KEY
-      ? await callGroq(prompt, 2000)
-      : await callGemini([{text:prompt}], 2000);
+    // Groq → Gemini → OpenRouter para análisis NOM/OSHA
+    let result;
+    try{
+      result = GROQ_KEY ? await callGroq(prompt, 2000) : GEMINI_KEY ? await callGemini([{text:prompt}], 2000) : null;
+      if(!result && OPENROUTER_KEY) result = await callOpenRouter(prompt, 2000);
+      if(!result) throw new Error('Sin API keys');
+    } catch(aiErr){
+      if(OPENROUTER_KEY){ result = await callOpenRouter(prompt, 2000); }
+      else throw aiErr;
+    }
     resp.textContent=result;
     resp.style.display='block';
   }catch(e){
