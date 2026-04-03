@@ -1761,8 +1761,7 @@ async function ipercAccessLogin(){
       const session={user:MASTER_USER,acceso:'master',esMaster:true};
       sessionStorage.setItem('fts_iperc_session',JSON.stringify(session));
       err.textContent='';
-      toast('🔑 Sesión IPERC Master — herramienta pendiente de migración');
-      go('s-home');return;
+      window.location.href='iperc/index.html';return;
     }
     const users=await fetchAuthUsers();
     if(!users||!users.length){err.textContent='No se pudo conectar al servidor.';return;}
@@ -1778,8 +1777,7 @@ async function ipercAccessLogin(){
     const session={user:found.usuario,acceso,esMaster:false,nombre:found.usuario};
     sessionStorage.setItem('fts_iperc_session',JSON.stringify(session));
     err.textContent='';
-    toast('✅ Acceso IPERC verificado — herramienta pendiente de migración');
-    go('s-home');
+    window.location.href='iperc/index.html';
   }catch(e){err.textContent='Error de conexión. Verifica tu internet.';}
 }
 
