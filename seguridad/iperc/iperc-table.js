@@ -57,7 +57,21 @@ async function autoEvaluateRisks(forceReeval){
   const clienteNombre = (_selectedClient && _selectedClient.nombre) ? _selectedClient.nombre : 'Cliente industrial';
   const workDesc = (document.getElementById('scope-text') ? document.getElementById('scope-text').value : '') || '';
 
-  const prompt = 'Eres experto en seguridad industrial mexicana. Aplica método FINE con escala original de William T. Fine: C(1-100), E(0.5-10), P(0.1-10). GR=C×E×P. Normativa aplicable: NOM-STPS y OSHA. Responde siempre en español con JSON válido según el schema indicado.\n\n'
+  const prompt = 'Eres experto certificado en seguridad industrial. Realizas JSA (Job Safety Analysis) e IPERC bajo normativa NOM-STPS y OSHA.\n\n'
+    + 'NORMATIVA APLICABLE:\n'
+    + 'NOM: 001(edificios), 004(LOTO), 005(quimicos), 006(andamios), 009(altura), 011(ruido), '
+    + '017(EPP), 020(presion), 022(estatica), 026(senales), 027(soldadura), 029(electricidad-mant), '
+    + '031(construccion), 033(espacios-confinados), 036(ergonomia)\n'
+    + 'OSHA: 1910.132(EPP), 1910.147(LOTO), 1910.178(montacargas), 1910.269(alta-tension), '
+    + '1910.332(seg-electrica), 1926.451(andamios), 1926.502(caidas), 1926.550(gruas)\n'
+    + 'NFPA 70E: Arc Flash — categorias PPE 0-4, distancias seguridad\n\n'
+    + 'METODO FINE: GR = C x E x P\n'
+    + 'C: 100=catastrofe/muertes, 40=varias-muertes, 25=muerte, 15=lesion-grave, 5=lesion-leve, 1=daño-leve\n'
+    + 'E: 10=continua, 6=frecuente/diaria, 3=ocasional/semanal, 2=irregular/mensual, 1=raramente, 0.5=excepcionalmente\n'
+    + 'P: 10=muy-probable, 6=probable, 3=posible, 1=poco-probable, 0.5=concebible, 0.1=casi-imposible\n'
+    + 'GR>400:INMINENTE | 200-400:ALTO | 70-200:NOTABLE | 20-70:MODERADO | <20:ACEPTABLE\n\n'
+    + 'JERARQUIA CONTROLES OSHA (en orden):\n'
+    + '1.Eliminacion 2.Sustitucion 3.Ingenieria 4.Administrativos 5.EPP\n\n'
     + 'PROYECTO:\nCliente: ' + clienteNombre + '\nTrabajo: ' + workDesc + '\n\n'
     + 'PLAN DE EJECUCION (JSA):\n' + jsaContext + '\n\n'
     + 'INSTRUCCIONES:\n'
@@ -72,8 +86,7 @@ async function autoEvaluateRisks(forceReeval){
     + '{"riesgos":[{"activity":"nombre actividad","tipo":"Mecanico|Electrico|Locativo|Fisico|Quimico|Ergonomico|Biologico",'
     + '"riesgo":"descripcion especifica","consec":"consecuencia","nom":"NOM-XXX / OSHA XXXX",'
     + '"c":25,"e":6,"p":3,"admin":"controles administrativos","epp":"EPP con norma y clase",'
-    + '"c2":5,"e2":3,"p2":1}]}\n\n'
-    + 'IMPORTANTE: Tu respuesta debe comenzar con { y terminar con }. Sin texto antes ni después. Sin markdown. Solo JSON puro.';
+    + '"c2":5,"e2":3,"p2":1}]}';
 
   // Helper: actualizar indicador de IA activa
   function _showActiveAI(name, model, color){
@@ -96,7 +109,7 @@ async function autoEvaluateRisks(forceReeval){
       if(GEMINI_KEY) _setEvalPill('gemini','⚫','En espera','#6b7280');
       try{
         console.log('[IPERC-AI] Intentando Groq...');
-        result = await callGroq(prompt, 4500, spinTxt, 0, 0);
+        result = await callGroq(prompt, 8000, spinTxt, 0, 0);
         _setEvalPill('groq','✅','OK','#16a34a');
       } catch(groqErr){
         console.log('[IPERC-AI] Groq falló:', groqErr.message, '→ intentando siguiente IA...');
@@ -109,7 +122,7 @@ async function autoEvaluateRisks(forceReeval){
           if(spinTxt) spinTxt.textContent = '⚡ Gemini tomando el análisis…';
           try{
             console.log('[IPERC-AI] Intentando Gemini...');
-            result = await callGemini([{text:prompt}], 4500, spinTxt);
+            result = await callGemini([{text:prompt}], 6000, spinTxt);
             _setEvalPill('gemini','✅','OK','#16a34a');
           } catch(geminiErr2){
             console.log('[IPERC-AI] Gemini falló:', geminiErr2.message, '→ intentando OpenRouter...');
@@ -118,7 +131,7 @@ async function autoEvaluateRisks(forceReeval){
               _showFallbackNotice('Gemini falló — usando OpenRouter');
               if(spinTxt) spinTxt.textContent = '⚡ OpenRouter como respaldo…';
               console.log('[IPERC-AI] Intentando OpenRouter...');
-              result = await callOpenRouter(prompt, 4500, spinTxt);
+              result = await callOpenRouter(prompt, 6000, spinTxt);
             } else {
               throw new Error('IA no disponible (Groq y Gemini fallaron). Configura OpenRouter como respaldo.');
             }
@@ -126,7 +139,7 @@ async function autoEvaluateRisks(forceReeval){
         } else if(OPENROUTER_KEY){
           _showFallbackNotice('Groq falló — usando OpenRouter');
           if(spinTxt) spinTxt.textContent = '⚡ OpenRouter como respaldo…';
-          result = await callOpenRouter(prompt, 4500, spinTxt);
+          result = await callOpenRouter(prompt, 6000, spinTxt);
         } else {
           throw groqErr;
         }
@@ -137,7 +150,7 @@ async function autoEvaluateRisks(forceReeval){
       _showActiveAI('Gemini', GEMINI_MODEL.replace('gemini-',''), '#1d4ed8');
       _setEvalPill('gemini','🔄','Analizando…','#1d4ed8');
       try{
-        result = await callGemini([{text:prompt}], 4500, spinTxt);
+        result = await callGemini([{text:prompt}], 6000, spinTxt);
         _setEvalPill('gemini','✅','OK','#16a34a');
       } catch(geminiErr){
         console.log('[IPERC-AI] Gemini falló:', geminiErr.message, '→ intentando OpenRouter...');
@@ -146,7 +159,7 @@ async function autoEvaluateRisks(forceReeval){
           _showFallbackNotice('Gemini falló — usando OpenRouter');
           if(spinTxt) spinTxt.textContent = '⚡ OpenRouter como respaldo…';
           console.log('[IPERC-AI] Intentando OpenRouter...');
-          result = await callOpenRouter(prompt, 4500, spinTxt);
+          result = await callOpenRouter(prompt, 6000, spinTxt);
         } else {
           throw geminiErr;
         }
@@ -155,7 +168,7 @@ async function autoEvaluateRisks(forceReeval){
       // ── Solo OpenRouter disponible ──
       console.log('[IPERC-AI] Intentando OpenRouter (sin Groq/Gemini)...');
       if(spinTxt) spinTxt.textContent = '⚡ OpenRouter analizando…';
-      result = await callOpenRouter(prompt, 4500, spinTxt);
+      result = await callOpenRouter(prompt, 6000, spinTxt);
     } else {
       throw new Error('Sin API keys configuradas. Abre ⚙️ Configuración y agrega Groq, Gemini u OpenRouter.');
     }
