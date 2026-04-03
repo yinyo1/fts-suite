@@ -421,6 +421,19 @@ function renderClientCards(){
     groqPill.onclick = () => { document.getElementById('apikey-modal')?.remove(); openApiKeySetup(); };
     apiBar.appendChild(groqPill);
 
+    // OpenRouter pill
+    const orKey = localStorage.getItem('fts_openrouter_key');
+    const oDot  = orKey ? '🟢' : '⚪';
+    const oClr  = orKey ? '#15803d' : '#6b7280';
+    const oBg   = orKey ? '#dcfce7' : '#f3f4f6';
+    const oBdr  = orKey ? '#86efac' : '#d1d5db';
+    const orPill = document.createElement('span');
+    orPill.style.cssText = `display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid ${oBdr};background:${oBg};color:${oClr}`;
+    orPill.title = 'OpenRouter · Fallback LLaMA 70B gratis';
+    orPill.innerHTML = oDot + ' OpenRouter';
+    orPill.onclick = () => { document.getElementById('apikey-modal')?.remove(); openApiKeySetup(); };
+    apiBar.appendChild(orPill);
+
     // Botón configurar
     const cfgBtn = document.createElement('span');
     cfgBtn.style.cssText = 'font-size:11px;color:var(--muted);cursor:pointer;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--d3)';

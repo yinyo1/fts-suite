@@ -782,7 +782,8 @@ kbDetectedCtx+
           renderActivityCards();
           goToStep(3);
         } else {
-          showToast('⚠️ La IA devolvió respuesta incompleta (cuota agotada) — espera unos minutos y reintenta', 5000);
+          console.error('[IPERC-AI] Plan irrecuperable. Raw:', result.substring(0,500));
+          showToast('⚠️ IA devolvió respuesta no válida (' + result.length + ' chars). Intenta de nuevo.', 8000);
         }
       }
     }catch(e){
