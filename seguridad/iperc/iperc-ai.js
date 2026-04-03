@@ -713,7 +713,7 @@ kbDetectedCtx+
         const acts=parsed.actividades||parsed;
         console.log('[IPERC-AI] Actividades detectadas:', Array.isArray(acts) ? acts.length : 0);
         console.log('[IPERC-AI] Plan completo:', JSON.stringify(acts).substring(0, 2000));
-        showToast('Plan generado: ' + (Array.isArray(acts) ? acts.length : 0) + ' actividades. Raw length: ' + result.length + ' chars.', 6000);
+        showToast('RAW: ' + result.substring(0,400), 10000);
         if(Array.isArray(acts)){
           window._ipercCode = window._ipercCode || generateIPERCCode(clienteId, workFullText);
           window._rawActividades=acts;
