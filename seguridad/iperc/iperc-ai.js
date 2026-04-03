@@ -531,6 +531,7 @@ clienteCtx+areaCtx+trabajoCtx+
 clienteReglasCtx+
 kbDetectedCtx+
 'TU MISIÓN:\n'+
+'Genera EXACTAMENTE entre 4 y 8 actividades principales (fases del trabajo). No menos de 4. Cada actividad con mínimo 7 subpasos detallados.\n\n'+
 '⚠️ ANTES DE GENERAR EL PLAN — LEE ESTO:\n'+
 'Tu trabajo es DESCRIBIR EXACTAMENTE el trabajo que se te indicó. NO inventes disciplinas, sistemas o tareas que no se mencionaron. Si el trabajo es tubería mecánica, NO incluyas cableado eléctrico. Si no se mencionó PLC ni automatización, NO los incluyas. Si no hay trabajo eléctrico, NO incluyas LOTO eléctrico. El plan SOLO debe contener lo que realmente se va a hacer según la descripción del trabajo.\n\n'+
 'Eres el Supervisor de FTS. Estás explicando el plan de trabajo al Supervisor EHS del cliente. Hablas en PRIMERA PERSONA del plural — como si dijeras verbalmente qué va a hacer tu cuadrilla: "Primero vamos a delimitar el área...", "El técnico electromecánico instalará los soportes...", "Subiremos con andamio multidireccional a 3.5 m...", "Una vez que tengamos el LOTO aplicado, procederemos a...". El texto debe sonar como una explicación oral profesional de supervisor a supervisor, no como un manual técnico. Incluye quién hace qué, con qué equipo, en qué secuencia, y qué se coordina con el cliente.\n\n'+
@@ -710,6 +711,8 @@ kbDetectedCtx+
         }).trim();
         const parsed=repairJSON(raw);
         const acts=parsed.actividades||parsed;
+        console.log('[IPERC-AI] Actividades detectadas:', Array.isArray(acts) ? acts.length : 0);
+        console.log('[IPERC-AI] Plan completo:', JSON.stringify(acts).substring(0, 2000));
         if(Array.isArray(acts)){
           window._ipercCode = window._ipercCode || generateIPERCCode(clienteId, workFullText);
           window._rawActividades=acts;
