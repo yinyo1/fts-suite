@@ -138,8 +138,8 @@ Responde SOLO con JSON válido sin markdown:
     log.textContent = 'Gemini analizando...';
     // Groq para refinamiento individual — texto puro
     var result = GROQ_KEY
-      ? await callGroq(prompt, 3000)
-      : await callGemini([{text: prompt}], 3000);
+      ? await callGroq(prompt, 2000)
+      : await callGemini([{text: prompt}], 2000);
     var clean = result.replace(/```json[\s\S]*?```|```[\s\S]*?```/g, function(m){
       return m.replace(/```json|```/g,'');
     }).trim();
@@ -350,8 +350,8 @@ ${knowledgeCtxRefine ? knowledgeCtxRefine + '\n\n' : ''}RESPONDE SOLO con JSON v
 
     // Groq para refinamiento — puro texto, sin archivos
     const result = GROQ_KEY
-      ? await callGroq(prompt, 5000, statusLbl)
-      : await callGemini([{text:prompt}], 4000, statusLbl);
+      ? await callGroq(prompt, 2000, statusLbl)
+      : await callGemini([{text:prompt}], 2000, statusLbl);
     const raw=result.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
     const parsed=JSON.parse(raw);
     const acts=parsed.actividades||parsed;
@@ -573,8 +573,8 @@ INSTRUCCIONES DE RESPUESTA:
   try{
     // Groq para análisis NOM/OSHA — texto puro, ideal para Groq
     const result = GROQ_KEY
-      ? await callGroq(prompt, 3000)
-      : await callGemini([{text:prompt}], 3000);
+      ? await callGroq(prompt, 2000)
+      : await callGemini([{text:prompt}], 2000);
     resp.textContent=result;
     resp.style.display='block';
   }catch(e){
