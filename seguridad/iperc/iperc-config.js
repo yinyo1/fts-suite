@@ -18,14 +18,13 @@ const FTS_BUILD        = 'FTS-IPERC-v1.5-20260313-A7F3';
 // ════════════════════════════════════════════════════
 const MASTER_USER = 'ftsmaster';
 const MASTER_PASS = 'FTS#DC3!2026';
-const BASE_RAW    = 'https://raw.githubusercontent.com/yinyo1/fts-suite/main/';
-const USERS_URL   = BASE_RAW + 'seguridad/data/users.json';
+const USERS_URL   = 'https://raw.githubusercontent.com/yinyo1/fts-suite/main/seguridad/data/users.json';
 const USERS_API   = 'https://api.github.com/repos/yinyo1/fts-suite/contents/seguridad/data/users.json';
-const KNOWLEDGE_URL = BASE_RAW + 'seguridad/iperc/data/knowledge.json';
+const KNOWLEDGE_URL = 'https://raw.githubusercontent.com/yinyo1/fts-suite/main/seguridad/iperc/data/knowledge.json';
 const KNOWLEDGE_API = 'https://api.github.com/repos/yinyo1/fts-suite/contents/seguridad/iperc/data/knowledge.json';
-const EMPLOYEES_URL = BASE_RAW + 'seguridad/iperc/data/employees.json';
+const EMPLOYEES_URL = 'https://raw.githubusercontent.com/yinyo1/fts-suite/main/seguridad/iperc/data/employees.json';
 const EMPLOYEES_API = 'https://api.github.com/repos/yinyo1/fts-suite/contents/seguridad/iperc/data/employees.json';
-const REFINEMENTS_URL = BASE_RAW + 'seguridad/iperc/data/refinements.json';
+const REFINEMENTS_URL = 'https://raw.githubusercontent.com/yinyo1/fts-suite/main/seguridad/iperc/data/refinements.json';
 const REFINEMENTS_API = 'https://api.github.com/repos/yinyo1/fts-suite/contents/seguridad/iperc/data/refinements.json';
 
 // ══════════════════════════════════════════════════
@@ -421,18 +420,6 @@ function renderClientCards(){
     groqPill.innerHTML = rDot + ' Groq';
     groqPill.onclick = () => { document.getElementById('apikey-modal')?.remove(); openApiKeySetup(); };
     apiBar.appendChild(groqPill);
-
-    // OpenRouter pill
-    const oDot  = OPENROUTER_KEY ? '🟢' : '⚪';
-    const oClr  = OPENROUTER_KEY ? '#15803d' : '#6b7280';
-    const oBg   = OPENROUTER_KEY ? '#dcfce7' : '#f3f4f6';
-    const oBdr  = OPENROUTER_KEY ? '#86efac' : '#d1d5db';
-    const orPill = document.createElement('span');
-    orPill.style.cssText = `display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid ${oBdr};background:${oBg};color:${oClr}`;
-    orPill.title = 'OpenRouter · Fallback con modelos gratis';
-    orPill.innerHTML = oDot + ' OpenRouter';
-    orPill.onclick = () => { document.getElementById('apikey-modal')?.remove(); openApiKeySetup(); };
-    apiBar.appendChild(orPill);
 
     // Botón configurar
     const cfgBtn = document.createElement('span');
