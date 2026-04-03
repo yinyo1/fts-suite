@@ -406,22 +406,6 @@ function openApiKeySetup(){
             <div id="groqkey-test-result" style="font-size:11px;margin-top:6px;display:none;padding:6px 8px;border-radius:6px"></div>
           </div>
         </div>
-        <div style="border:1.5px solid #d1d5db;border-radius:10px;overflow:hidden">
-          <div style="background:#f9fafb;padding:8px 12px;border-bottom:1px solid #d1d5db;display:flex;align-items:center;gap:8px">
-            <span style="font-size:15px">🟩</span>
-            <div style="flex:1"><strong style="font-size:12px">OpenRouter · Fallback</strong> <span style="font-size:10px;color:#666">Respaldo si Groq y Gemini fallan · Modelos gratis</span></div>
-            <span style="font-size:10px;font-weight:700;color:${OPENROUTER_KEY?'#16a34a':'#6b7280'}">${OPENROUTER_KEY?'✅ Activa':'⬚ Opcional'}</span>
-          </div>
-          <div style="padding:10px 12px">
-            <div style="font-size:10px;color:#555;margin-bottom:5px">Obtén tu key gratis en <a href="https://openrouter.ai/keys" target="_blank" style="color:#1d4ed8">openrouter.ai/keys</a> · Empieza con <strong>sk-or-...</strong></div>
-            <input id="orkey-input" type="text" value="${OPENROUTER_KEY||''}" placeholder="sk-or-..." style="width:100%;padding:8px 10px;border:1.5px solid #e0e0e0;border-radius:7px;font-size:12px;font-family:Inter,sans-serif;box-sizing:border-box;margin-bottom:6px">
-            <div style="display:flex;gap:6px">
-              <button onclick="testOpenRouterKey()" style="flex:1;background:#f9fafb;border:1.5px solid #6b7280;color:#374151;border-radius:7px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif">⚡ Probar</button>
-              <button onclick="saveOpenRouterKey(false)" style="flex:1;background:#374151;color:#fff;border:none;border-radius:7px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif">💾 Guardar</button>
-            </div>
-            <div id="orkey-test-result" style="font-size:11px;margin-top:6px;display:none;padding:6px 8px;border-radius:6px"></div>
-          </div>
-        </div>
         <button onclick="saveAllKeys()" style="width:100%;background:#D83B01;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif">💾 Guardar todo y cerrar</button>
       </div>
     </div>`;
@@ -550,55 +534,13 @@ function saveGroqKey(closeModal=true){
   showToast(key?'✅ Groq Key guardada':'⚠️ Groq Key eliminada',2500);
 }
 
-function saveOpenRouterKey(closeModal=true){
-  const key=(document.getElementById('orkey-input')?.value||'').trim();
-  OPENROUTER_KEY=key;
-  localStorage.setItem('fts_openrouter_key',key);
-  if(closeModal) document.getElementById('apikey-modal')?.remove();
-  showToast(key?'✅ OpenRouter Key guardada':'⚠️ OpenRouter Key eliminada',2500);
-}
-
-async function testOpenRouterKey(){
-  const key=(document.getElementById('orkey-input')?.value||'').trim();
-  const result=document.getElementById('orkey-test-result');
-  if(!key){
-    result.style.cssText='display:block;background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;padding:6px 8px;border-radius:6px';
-    result.textContent='⚠️ Ingresa una key primero.'; return;
-  }
-  result.style.cssText='display:block;background:#f8f9fa;border:1px solid #e0e0e0;color:#666;padding:6px 8px;border-radius:6px';
-  result.textContent='⏳ Detectando mejor modelo gratuito…';
-  try{
-    _orModel = null; // reset cache para re-detectar
-    const model = await getOpenRouterFreeModel(key);
-    result.textContent='⏳ Probando ' + model + '…';
-    const res=await fetch('https://openrouter.ai/api/v1/chat/completions',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key,'HTTP-Referer':'https://yinyo1.github.io/fts-suite/','X-Title':'FTS Suite IPERC'},
-      body:JSON.stringify({model:model,max_tokens:5,messages:[{role:'user',content:'Di solo: OK'}]})
-    });
-    const d=await res.json();
-    if(d.error){
-      result.style.cssText='display:block;background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;padding:6px 8px;border-radius:6px';
-      result.textContent='❌ Error: '+(d.error.message||'Key inválida'); return;
-    }
-    const txt=d.choices?.[0]?.message?.content||'';
-    result.style.cssText='display:block;background:#f0fdf4;border:1px solid #86efac;color:#16a34a;padding:6px 8px;border-radius:6px;font-weight:500';
-    result.innerHTML='✅ OpenRouter OK · <strong>'+model+'</strong><br><span style="font-size:10px;color:#059669">Respondió: "'+txt.trim()+'" — modelo guardado</span>';
-  }catch(e){
-    result.style.cssText='display:block;background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;padding:6px 8px;border-radius:6px';
-    result.textContent='❌ Error de red: '+e.message;
-  }
-}
-
 function saveAllKeys(){
   const gKey=(document.getElementById('apikey-input')?.value||'').trim();
   const grKey=(document.getElementById('groqkey-input')?.value||'').trim();
-  const orKey=(document.getElementById('orkey-input')?.value||'').trim();
   if(gKey){ GEMINI_KEY=gKey; localStorage.setItem('fts_gemini_key',gKey); }
   if(grKey){ GROQ_KEY=grKey; localStorage.setItem('fts_groq_key',grKey); }
-  if(orKey){ OPENROUTER_KEY=orKey; localStorage.setItem('fts_openrouter_key',orKey); }
   document.getElementById('apikey-modal')?.remove();
-  showToast('✅ Keys guardadas — '+(gKey?'Gemini ✓ ':'')+(grKey?'Groq ✓ ':'')+(orKey?'OpenRouter ✓':''),3000);
+  showToast('✅ Keys guardadas — '+( gKey?'Gemini ✓ ':'')+( grKey?'Groq ✓':''),3000);
   renderClientCards();
 }
 
@@ -916,7 +858,7 @@ async function sendChat(){
     // Chat: Groq si no hay imagen adjunta, Gemini si hay imagen (multimodal)
     const reply = (GROQ_KEY && !_attachedImage)
       ? await callGroq(parts.find(p=>p.text)?.text||msg, 1500)
-      : await callGemini(parts, 1000);
+      : await callGemini(parts, 1200);
     typing.remove();
     const finalReply=reply||'Error al conectar.';
     const msgEl=addMsg(finalReply,'ai');
