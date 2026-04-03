@@ -18,14 +18,15 @@ const FTS_BUILD        = 'FTS-IPERC-v1.5-20260313-A7F3';
 // ════════════════════════════════════════════════════
 const MASTER_USER = 'ftsmaster';
 const MASTER_PASS = 'FTS#DC3!2026';
-const USERS_URL   = 'https://raw.githubusercontent.com/yinyo1/FTS_DC3/main/users.json';
-const USERS_API   = 'https://api.github.com/repos/yinyo1/FTS_DC3/contents/users.json';
-const KNOWLEDGE_URL = 'https://raw.githubusercontent.com/yinyo1/FTS_DC3/main/knowledge.json';
-const KNOWLEDGE_API = 'https://api.github.com/repos/yinyo1/FTS_DC3/contents/knowledge.json';
-const EMPLOYEES_URL = 'https://raw.githubusercontent.com/yinyo1/FTS_DC3/main/employees.json';
-const EMPLOYEES_API = 'https://api.github.com/repos/yinyo1/FTS_DC3/contents/employees.json';
-const REFINEMENTS_URL = 'https://raw.githubusercontent.com/yinyo1/FTS_DC3/main/refinements.json';
-const REFINEMENTS_API = 'https://api.github.com/repos/yinyo1/FTS_DC3/contents/refinements.json';
+const BASE_RAW    = 'https://raw.githubusercontent.com/yinyo1/fts-suite/main/';
+const USERS_URL   = BASE_RAW + 'seguridad/data/users.json';
+const USERS_API   = 'https://api.github.com/repos/yinyo1/fts-suite/contents/seguridad/data/users.json';
+const KNOWLEDGE_URL = BASE_RAW + 'seguridad/iperc/data/knowledge.json';
+const KNOWLEDGE_API = 'https://api.github.com/repos/yinyo1/fts-suite/contents/seguridad/iperc/data/knowledge.json';
+const EMPLOYEES_URL = BASE_RAW + 'seguridad/iperc/data/employees.json';
+const EMPLOYEES_API = 'https://api.github.com/repos/yinyo1/fts-suite/contents/seguridad/iperc/data/employees.json';
+const REFINEMENTS_URL = BASE_RAW + 'seguridad/iperc/data/refinements.json';
+const REFINEMENTS_API = 'https://api.github.com/repos/yinyo1/fts-suite/contents/seguridad/iperc/data/refinements.json';
 
 // ══════════════════════════════════════════════════
 // KNOWLEDGE BLOCKS — Contexto normativo por tipo de trabajo
@@ -366,7 +367,7 @@ function startSession(userData){
 function ipercLogout(){
   sessionStorage.removeItem('fts_iperc_session');
   sessionStorage.removeItem('fts_iperc_client');
-  window.location.href='index.html';
+  window.location.href='../index.html';
 }
 
 function showClientSelector(){
