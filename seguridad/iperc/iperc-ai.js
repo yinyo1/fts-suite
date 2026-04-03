@@ -172,7 +172,8 @@ async function callGroq(promptText, maxTokens=4000, _statusEl=null, _attempt=0, 
     model: GROQ_MODEL,
     messages:[{role:'user', content: promptText}],
     max_tokens: maxTokens,
-    temperature: 0.3
+    temperature: 0.3,
+    response_format: { type: 'json_object' }
   };
   const res=await fetch(url,{
     method:'POST',
@@ -537,7 +538,8 @@ kbDetectedCtx+
 '- NO escribas normas NOM/OSHA en el texto, solo aplica el conocimiento.\n\n'+
 '- NO incluyas puntuaciones FINE en este paso. Solo describe la ejecución.\n\n'+
 (knowledgeCtx ? knowledgeCtx + '\n\n' : '')+(fewShotCtx ? fewShotCtx + '\n\n' : '')+
-'{"actividades":[{"paso":"1","nombre":"NOMBRE FASE","descripcion":"Descripción ejecutiva","consideraciones":"Vamos a verificar [checklist]","nota":"CONDICIÓN CRÍTICA si aplica","subpasos":[{"paso":"1.1","descripcion":"[enlace narrativo] vamos a [acción] usando [herramienta]. [Quién] va a [qué].","personal":"Rol (ej: Soldador TIG, Supervisor FTS, Técnico electromecánico)"}]}]}';
+'{"actividades":[{"paso":"1","nombre":"NOMBRE FASE","descripcion":"Descripción ejecutiva","consideraciones":"Vamos a verificar [checklist]","nota":"CONDICIÓN CRÍTICA si aplica","subpasos":[{"paso":"1.1","descripcion":"[enlace narrativo] vamos a [acción] usando [herramienta]. [Quién] va a [qué].","personal":"Rol (ej: Soldador TIG, Supervisor FTS, Técnico electromecánico)"}]}]}\n\n'+
+'IMPORTANTE: Tu respuesta debe comenzar con { y terminar con }. Sin texto antes ni después. Sin markdown. Solo JSON puro.';
 
       // ══════════════════════════════════════════════
       // ARQUITECTURA DUAL: Gemini (OCR) → Groq (plan)
@@ -763,7 +765,8 @@ kbDetectedCtx+
           renderActivityCards();
           goToStep(3);
         } else {
-          showToast('⚠️ ' + e.message, 5000);
+          console.error('[IPERC-AI] Plan irrecuperable. Raw:', result);
+          showToast('⚠️ IA devolvió: ' + (result||'').substring(0,200), 10000);
         }
       }
     }catch(e){
