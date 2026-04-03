@@ -98,18 +98,36 @@ async function autoEvaluateRisks(forceReeval){
         const isRateErr = /RATE_AGOTADO|rate.limit|429|Límite/i.test(groqErr.message||String(groqErr));
         const isKeyErr  = /GROQ_KEY_INVALIDA|GROQ_SIN_KEY|401|invalid/i.test(groqErr.message||String(groqErr));
         if((isRateErr || isKeyErr) && GEMINI_KEY){
-          // ── Fallback automático: Gemini ──
+          // ── Fallback 1: Gemini ──
           const reason = isRateErr ? 'límite de requests' : 'key inválida';
-          window._stopCountdown = true; // detener countdown inmediatamente
+          window._stopCountdown = true;
           _setEvalPill('groq','⏱️',isRateErr?'Límite':'Key err','#dc2626');
-          _showFallbackNotice('Groq en ' + reason + ' — usando Gemini automáticamente');
+          _showFallbackNotice('Groq en ' + reason + ' — usando Gemini');
           _showActiveAI('Gemini', GEMINI_MODEL.replace('gemini-',''), '#1d4ed8');
           _setEvalPill('gemini','🔄','Analizando…','#1d4ed8');
           if(spinTxt) spinTxt.textContent = '⚡ Gemini tomando el análisis…';
-          result = await callGemini([{text:prompt}], 4500, spinTxt);
-          _setEvalPill('gemini','✅','OK','#16a34a');
+          try{
+            result = await callGemini([{text:prompt}], 4500, spinTxt);
+            _setEvalPill('gemini','✅','OK','#16a34a');
+          } catch(geminiErr2){
+            _setEvalPill('gemini','❌','Error','#dc2626');
+            // ── Fallback 2: OpenRouter ──
+            if(OPENROUTER_KEY){
+              _showFallbackNotice('Gemini falló — usando OpenRouter');
+              if(spinTxt) spinTxt.textContent = '⚡ OpenRouter como respaldo…';
+              result = await callOpenRouter(prompt, 4500, spinTxt);
+            } else {
+              throw new Error('IA no disponible (Groq/Gemini agotados). Espera unos minutos o configura OpenRouter.');
+            }
+          }
+        } else if((isRateErr || isKeyErr) && OPENROUTER_KEY){
+          // ── Sin Gemini, Fallback directo: OpenRouter ──
+          _setEvalPill('groq','⏱️',isRateErr?'Límite':'Key err','#dc2626');
+          _showFallbackNotice('Groq falló — usando OpenRouter');
+          if(spinTxt) spinTxt.textContent = '⚡ OpenRouter como respaldo…';
+          result = await callOpenRouter(prompt, 4500, spinTxt);
         } else {
-          throw groqErr; // error no recuperable
+          throw groqErr;
         }
       }
     } else if(GEMINI_KEY){
@@ -120,12 +138,21 @@ async function autoEvaluateRisks(forceReeval){
         result = await callGemini([{text:prompt}], 4500, spinTxt);
         _setEvalPill('gemini','✅','OK','#16a34a');
       } catch(geminiErr){
-        const isRateErr = /RATE_AGOTADO|429|Límite/i.test(geminiErr.message||String(geminiErr));
-        _setEvalPill('gemini','❌',isRateErr?'Límite':'Error','#dc2626');
-        throw geminiErr;
+        _setEvalPill('gemini','❌','Error','#dc2626');
+        if(OPENROUTER_KEY){
+          _showFallbackNotice('Gemini falló — usando OpenRouter');
+          if(spinTxt) spinTxt.textContent = '⚡ OpenRouter como respaldo…';
+          result = await callOpenRouter(prompt, 4500, spinTxt);
+        } else {
+          throw geminiErr;
+        }
       }
+    } else if(OPENROUTER_KEY){
+      // ── Solo OpenRouter disponible ──
+      if(spinTxt) spinTxt.textContent = '⚡ OpenRouter analizando…';
+      result = await callOpenRouter(prompt, 4500, spinTxt);
     } else {
-      throw new Error('Sin API keys configuradas. Abre ⚙️ Configuración y agrega Groq o Gemini.');
+      throw new Error('Sin API keys configuradas. Abre ⚙️ Configuración y agrega Groq, Gemini u OpenRouter.');
     }
 
     clearInterval(msgTimer);
