@@ -92,7 +92,7 @@ async function autoEvaluateRisks(forceReeval){
       _setEvalPill('groq','🔄','Analizando…','#8b5cf6');
       if(GEMINI_KEY) _setEvalPill('gemini','⚫','En espera','#6b7280');
       try{
-        result = await callGroq(prompt, 3000, spinTxt, 0, 0);
+        result = await callGroq(prompt, 4500, spinTxt, 0, 0);
         _setEvalPill('groq','✅','OK','#16a34a');
       } catch(groqErr){
         const isRateErr = /RATE_AGOTADO|rate.limit|429|Límite/i.test(groqErr.message||String(groqErr));
@@ -106,7 +106,7 @@ async function autoEvaluateRisks(forceReeval){
           _showActiveAI('Gemini', GEMINI_MODEL.replace('gemini-',''), '#1d4ed8');
           _setEvalPill('gemini','🔄','Analizando…','#1d4ed8');
           if(spinTxt) spinTxt.textContent = '⚡ Gemini tomando el análisis…';
-          result = await callGemini([{text:prompt}], 3000, spinTxt);
+          result = await callGemini([{text:prompt}], 4500, spinTxt);
           _setEvalPill('gemini','✅','OK','#16a34a');
         } else {
           throw groqErr; // error no recuperable
@@ -117,7 +117,7 @@ async function autoEvaluateRisks(forceReeval){
       _showActiveAI('Gemini', GEMINI_MODEL.replace('gemini-',''), '#1d4ed8');
       _setEvalPill('gemini','🔄','Analizando…','#1d4ed8');
       try{
-        result = await callGemini([{text:prompt}], 3000, spinTxt);
+        result = await callGemini([{text:prompt}], 4500, spinTxt);
         _setEvalPill('gemini','✅','OK','#16a34a');
       } catch(geminiErr){
         const isRateErr = /RATE_AGOTADO|429|Límite/i.test(geminiErr.message||String(geminiErr));
@@ -132,6 +132,8 @@ async function autoEvaluateRisks(forceReeval){
     if(window._geminiCancelled) throw new Error('CANCELADO');
 
     // Parsear JSON — quitar bloques markdown si los hay
+    console.log('[IPERC-AI] Raw response length:', result.length);
+    console.log('[IPERC-AI] Raw response preview:', result.substring(0,500));
     const clean = result.replace(/```json|```/g,'').trim();
     const parsed = JSON.parse(clean);
     const risks = parsed.riesgos || parsed;
@@ -190,8 +192,13 @@ async function autoEvaluateRisks(forceReeval){
   }catch(e){
     clearInterval(msgTimer);
     const msg = e.message || String(e);
+    console.error('[IPERC-AI] Error:', msg);
     if(!/CANCELADO/i.test(msg)){
-      showToast('⚠️ ' + msg.substring(0,120), 5000);
+      if(msg.includes('Sin riesgos') || msg.includes('JSON')){
+        showToast('⚠️ La IA no generó riesgos válidos. Verifica tu plan de actividades e intenta de nuevo.', 6000);
+      } else {
+        showToast('⚠️ ' + msg.substring(0,120), 5000);
+      }
       if(GROQ_KEY) _setEvalPill('groq','🔴','Error','#dc2626');
     }
   }finally{
