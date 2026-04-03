@@ -268,7 +268,6 @@ async function autoEvaluateRisks(forceReeval){
       showToast('⚠️ ' + msg, 8000);
       if(GROQ_KEY) _setEvalPill('groq','🔴','Error','#dc2626');
     }
-    }
   }finally{
     if(spinner) spinner.style.display = 'none';
     if(evalApiBar) evalApiBar.style.display = 'none';
