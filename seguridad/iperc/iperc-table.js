@@ -134,11 +134,11 @@ async function autoEvaluateRisks(forceReeval){
       _setEvalPill('groq','🔄','Analizando…','#8b5cf6');
       if(GEMINI_KEY) _setEvalPill('gemini','⚫','En espera','#6b7280');
       try{
+        console.log('[IPERC-AI] Intentando Groq...');
         result = await callGroq(prompt, 4500, spinTxt, 0, 0);
         _setEvalPill('groq','✅','OK','#16a34a');
       } catch(groqErr){
-        // ── Fallback automático: cualquier error de Groq → Gemini → OpenRouter ──
-        console.warn('[IPERC-AI] Groq falló:', groqErr.message);
+        console.log('[IPERC-AI] Groq falló:', groqErr.message, '→ intentando siguiente IA...');
         window._stopCountdown = true;
         _setEvalPill('groq','⏱️','Error','#dc2626');
         _showFallbackNotice('Groq falló — probando siguiente IA');
@@ -147,14 +147,16 @@ async function autoEvaluateRisks(forceReeval){
           _setEvalPill('gemini','🔄','Analizando…','#1d4ed8');
           if(spinTxt) spinTxt.textContent = '⚡ Gemini tomando el análisis…';
           try{
+            console.log('[IPERC-AI] Intentando Gemini...');
             result = await callGemini([{text:prompt}], 4500, spinTxt);
             _setEvalPill('gemini','✅','OK','#16a34a');
           } catch(geminiErr2){
-            console.warn('[IPERC-AI] Gemini falló:', geminiErr2.message);
+            console.log('[IPERC-AI] Gemini falló:', geminiErr2.message, '→ intentando OpenRouter...');
             _setEvalPill('gemini','❌','Error','#dc2626');
             if(OPENROUTER_KEY){
               _showFallbackNotice('Gemini falló — usando OpenRouter');
               if(spinTxt) spinTxt.textContent = '⚡ OpenRouter como respaldo…';
+              console.log('[IPERC-AI] Intentando OpenRouter...');
               result = await callOpenRouter(prompt, 4500, spinTxt);
             } else {
               throw new Error('IA no disponible (Groq y Gemini fallaron). Configura OpenRouter como respaldo.');
@@ -170,16 +172,19 @@ async function autoEvaluateRisks(forceReeval){
       }
     } else if(GEMINI_KEY){
       // ── Solo Gemini disponible ──
+      console.log('[IPERC-AI] Intentando Gemini (sin Groq)...');
       _showActiveAI('Gemini', GEMINI_MODEL.replace('gemini-',''), '#1d4ed8');
       _setEvalPill('gemini','🔄','Analizando…','#1d4ed8');
       try{
         result = await callGemini([{text:prompt}], 4500, spinTxt);
         _setEvalPill('gemini','✅','OK','#16a34a');
       } catch(geminiErr){
+        console.log('[IPERC-AI] Gemini falló:', geminiErr.message, '→ intentando OpenRouter...');
         _setEvalPill('gemini','❌','Error','#dc2626');
         if(OPENROUTER_KEY){
           _showFallbackNotice('Gemini falló — usando OpenRouter');
           if(spinTxt) spinTxt.textContent = '⚡ OpenRouter como respaldo…';
+          console.log('[IPERC-AI] Intentando OpenRouter...');
           result = await callOpenRouter(prompt, 4500, spinTxt);
         } else {
           throw geminiErr;
@@ -187,6 +192,7 @@ async function autoEvaluateRisks(forceReeval){
       }
     } else if(OPENROUTER_KEY){
       // ── Solo OpenRouter disponible ──
+      console.log('[IPERC-AI] Intentando OpenRouter (sin Groq/Gemini)...');
       if(spinTxt) spinTxt.textContent = '⚡ OpenRouter analizando…';
       result = await callOpenRouter(prompt, 4500, spinTxt);
     } else {
@@ -257,14 +263,11 @@ async function autoEvaluateRisks(forceReeval){
   }catch(e){
     clearInterval(msgTimer);
     const msg = e.message || String(e);
-    console.error('[IPERC-AI] Error:', msg);
+    console.error('[IPERC-AI] Error final:', msg);
     if(!/CANCELADO/i.test(msg)){
-      if(msg.includes('Sin riesgos') || msg.includes('JSON')){
-        showToast('⚠️ La IA no generó riesgos válidos. Verifica tu plan de actividades e intenta de nuevo.', 6000);
-      } else {
-        showToast('⚠️ ' + msg.substring(0,120), 5000);
-      }
+      showToast('⚠️ ' + msg, 8000);
       if(GROQ_KEY) _setEvalPill('groq','🔴','Error','#dc2626');
+    }
     }
   }finally{
     if(spinner) spinner.style.display = 'none';
