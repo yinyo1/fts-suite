@@ -1,8 +1,6 @@
 // ════════════════════════════════════════════════════
 // RISK STEP
 // ════════════════════════════════════════════════════
-// repairJSON() definida en iperc-ai.js (carga antes)
-
 // ═══════════════════════════════════════════════════════
 // AUTO-EVALUACIÓN JSA + NOM + OSHA CON GROQ
 // ═══════════════════════════════════════════════════════
@@ -108,79 +106,48 @@ async function autoEvaluateRisks(forceReeval){
       _setEvalPill('groq','🔄','Analizando…','#8b5cf6');
       if(GEMINI_KEY) _setEvalPill('gemini','⚫','En espera','#6b7280');
       try{
-        console.log('[IPERC-AI] Intentando Groq...');
         result = await callGroq(prompt, 8000, spinTxt, 0, 0);
         _setEvalPill('groq','✅','OK','#16a34a');
       } catch(groqErr){
-        console.log('[IPERC-AI] Groq falló:', groqErr.message, '→ intentando siguiente IA...');
-        window._stopCountdown = true;
-        _setEvalPill('groq','⏱️','Error','#dc2626');
-        _showFallbackNotice('Groq falló — probando siguiente IA');
-        if(GEMINI_KEY){
+        const isRateErr = /RATE_AGOTADO|rate.limit|429|Límite/i.test(groqErr.message||String(groqErr));
+        const isKeyErr  = /GROQ_KEY_INVALIDA|GROQ_SIN_KEY|401|invalid/i.test(groqErr.message||String(groqErr));
+        if((isRateErr || isKeyErr) && GEMINI_KEY){
+          // ── Fallback automático: Gemini ──
+          const reason = isRateErr ? 'límite de requests' : 'key inválida';
+          window._stopCountdown = true; // detener countdown inmediatamente
+          _setEvalPill('groq','⏱️',isRateErr?'Límite':'Key err','#dc2626');
+          _showFallbackNotice('Groq en ' + reason + ' — usando Gemini automáticamente');
           _showActiveAI('Gemini', GEMINI_MODEL.replace('gemini-',''), '#1d4ed8');
           _setEvalPill('gemini','🔄','Analizando…','#1d4ed8');
           if(spinTxt) spinTxt.textContent = '⚡ Gemini tomando el análisis…';
-          try{
-            console.log('[IPERC-AI] Intentando Gemini...');
-            result = await callGemini([{text:prompt}], 6000, spinTxt);
-            _setEvalPill('gemini','✅','OK','#16a34a');
-          } catch(geminiErr2){
-            console.log('[IPERC-AI] Gemini falló:', geminiErr2.message, '→ intentando OpenRouter...');
-            _setEvalPill('gemini','❌','Error','#dc2626');
-            if(OPENROUTER_KEY){
-              _showFallbackNotice('Gemini falló — usando OpenRouter');
-              if(spinTxt) spinTxt.textContent = '⚡ OpenRouter como respaldo…';
-              console.log('[IPERC-AI] Intentando OpenRouter...');
-              result = await callOpenRouter(prompt, 6000, spinTxt);
-            } else {
-              throw new Error('IA no disponible (Groq y Gemini fallaron). Configura OpenRouter como respaldo.');
-            }
-          }
-        } else if(OPENROUTER_KEY){
-          _showFallbackNotice('Groq falló — usando OpenRouter');
-          if(spinTxt) spinTxt.textContent = '⚡ OpenRouter como respaldo…';
-          result = await callOpenRouter(prompt, 6000, spinTxt);
+          result = await callGemini([{text:prompt}], 6000, spinTxt);
+          _setEvalPill('gemini','✅','OK','#16a34a');
         } else {
-          throw groqErr;
+          throw groqErr; // error no recuperable
         }
       }
     } else if(GEMINI_KEY){
       // ── Solo Gemini disponible ──
-      console.log('[IPERC-AI] Intentando Gemini (sin Groq)...');
       _showActiveAI('Gemini', GEMINI_MODEL.replace('gemini-',''), '#1d4ed8');
       _setEvalPill('gemini','🔄','Analizando…','#1d4ed8');
       try{
         result = await callGemini([{text:prompt}], 6000, spinTxt);
         _setEvalPill('gemini','✅','OK','#16a34a');
       } catch(geminiErr){
-        console.log('[IPERC-AI] Gemini falló:', geminiErr.message, '→ intentando OpenRouter...');
-        _setEvalPill('gemini','❌','Error','#dc2626');
-        if(OPENROUTER_KEY){
-          _showFallbackNotice('Gemini falló — usando OpenRouter');
-          if(spinTxt) spinTxt.textContent = '⚡ OpenRouter como respaldo…';
-          console.log('[IPERC-AI] Intentando OpenRouter...');
-          result = await callOpenRouter(prompt, 6000, spinTxt);
-        } else {
-          throw geminiErr;
-        }
+        const isRateErr = /RATE_AGOTADO|429|Límite/i.test(geminiErr.message||String(geminiErr));
+        _setEvalPill('gemini','❌',isRateErr?'Límite':'Error','#dc2626');
+        throw geminiErr;
       }
-    } else if(OPENROUTER_KEY){
-      // ── Solo OpenRouter disponible ──
-      console.log('[IPERC-AI] Intentando OpenRouter (sin Groq/Gemini)...');
-      if(spinTxt) spinTxt.textContent = '⚡ OpenRouter analizando…';
-      result = await callOpenRouter(prompt, 6000, spinTxt);
     } else {
-      throw new Error('Sin API keys configuradas. Abre ⚙️ Configuración y agrega Groq, Gemini u OpenRouter.');
+      throw new Error('Sin API keys configuradas. Abre ⚙️ Configuración y agrega Groq o Gemini.');
     }
 
     clearInterval(msgTimer);
     if(window._geminiCancelled) throw new Error('CANCELADO');
 
-    // Parsear JSON — reparar si está truncado
-    console.log('[IPERC-AI] Raw response length:', result.length);
-    console.log('[IPERC-AI] Raw response preview:', result.substring(0,500));
+    // Parsear JSON — quitar bloques markdown si los hay
     const clean = result.replace(/```json|```/g,'').trim();
-    const parsed = repairJSON(clean);
+    const parsed = JSON.parse(clean);
     const risks = parsed.riesgos || parsed;
     if(!Array.isArray(risks) || !risks.length) throw new Error('Sin riesgos en respuesta');
 
@@ -237,13 +204,8 @@ async function autoEvaluateRisks(forceReeval){
   }catch(e){
     clearInterval(msgTimer);
     const msg = e.message || String(e);
-    console.error('[IPERC-AI] Error final:', msg);
-    if(result) console.error('[IPERC-AI] Raw completo:', result);
     if(!/CANCELADO/i.test(msg)){
-      var toastMsg = /irreparable/i.test(msg) && result
-        ? '⚠️ IA devolvió: ' + result.substring(0,200)
-        : '⚠️ ' + msg;
-      showToast(toastMsg, 10000);
+      showToast('⚠️ ' + msg.substring(0,120), 5000);
       if(GROQ_KEY) _setEvalPill('groq','🔴','Error','#dc2626');
     }
   }finally{

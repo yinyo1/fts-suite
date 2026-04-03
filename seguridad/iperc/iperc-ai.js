@@ -3,51 +3,6 @@
 // Verificar: window.FTS_AI_BUILD en consola del browser
 // ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
 window.FTS_AI_BUILD = 'iperc-ai-R6-20260313';
-
-// ═══════════════════════════════════════════════════════
-// REPARACIÓN DE JSON TRUNCADO (compartida: riesgos + actividades)
-// ═══════════════════════════════════════════════════════
-function repairJSON(str) {
-  // 1. Parse directo
-  try { return JSON.parse(str); } catch(e) {}
-
-  // 2. Buscar estructura conocida truncada y cerrar brackets
-  var arrayMatch = str.match(/\{[\s\S]*?\[\s*\{[\s\S]*/);
-  if (arrayMatch) {
-    var candidate = arrayMatch[0];
-    // Eliminar último objeto incompleto
-    candidate = candidate.replace(/,\s*\{[^}]*$/, '');
-    // Cerrar arrays y objetos abiertos
-    var openB = (candidate.match(/\[/g)||[]).length;
-    var closeB = (candidate.match(/\]/g)||[]).length;
-    for (var i = 0; i < openB - closeB; i++) candidate += ']';
-    var openC = (candidate.match(/\{/g)||[]).length;
-    var closeC = (candidate.match(/\}/g)||[]).length;
-    for (var i = 0; i < openC - closeC; i++) candidate += '}';
-    try {
-      var parsed = JSON.parse(candidate);
-      console.log('[IPERC-AI] JSON reparado — objetos truncados removidos');
-      return parsed;
-    } catch(e) {}
-  }
-
-  // 3. Extraer objetos individuales con campos conocidos
-  var items = [];
-  var regex = /\{[^{}]*"(?:riesgo|nombre)"[^{}]*\}/g;
-  var m;
-  while ((m = regex.exec(str)) !== null) {
-    try { items.push(JSON.parse(m[0])); } catch(e) {}
-  }
-  if (items.length) {
-    console.log('[IPERC-AI] JSON reconstruido — ' + items.length + ' objetos extraídos individualmente');
-    // Detectar tipo por campos presentes
-    if (items[0].riesgo) return { riesgos: items };
-    if (items[0].nombre) return { actividades: items };
-    return items;
-  }
-
-  throw new Error('JSON irreparable — respuesta de IA no es JSON válido');
-}
 let _chatDrawerOpen = false;
 let _forcedMode = null; // null | 'mobile' | 'pc'
 
@@ -162,7 +117,7 @@ function _showRateLimitCountdown(secsTotal, labelEl){
 // GROQ API — razonamiento de texto (sin archivos)
 // Compatible con OpenAI, mucho más generoso en cuota
 // ══════════════════════════════════════════════════════
-async function callGroq(promptText, maxTokens=4000, _statusEl=null, _attempt=0, _maxRetries=1){
+async function callGroq(promptText, maxTokens=4000, _statusEl=null, _attempt=0, _maxRetries=3){
   if(!GROQ_KEY) throw new Error('GROQ_SIN_KEY: No hay API Key de Groq configurada.');
   if(window._geminiCancelled) throw new Error('CANCELADO: Operación cancelada.');
   if(_attempt===0) _setApiStatus('groq','busy','Pensando…','Llamada en curso a Groq LLaMA 70B.');
@@ -172,8 +127,7 @@ async function callGroq(promptText, maxTokens=4000, _statusEl=null, _attempt=0, 
     model: GROQ_MODEL,
     messages:[{role:'user', content: promptText}],
     max_tokens: maxTokens,
-    temperature: 0.3,
-    response_format: { type: 'json_object' }
+    temperature: 0.3
   };
   const res=await fetch(url,{
     method:'POST',
@@ -273,8 +227,8 @@ async function callGemini(parts, maxTokens=1000, _statusEl=null, _attempt=0){
         throw new Error('CUOTA_DIARIA: '+errMsg);
       }
       // Cuota POR MINUTO: tiene "retry in Xs" → reintentar (max 3)
-      if(!window._geminiCancelled && _attempt<1){
-        _setApiStatus('gemini','warn','Límite/min','Cuota por minuto alcanzada. Reintentando 1 vez…');
+      if(!window._geminiCancelled && _attempt<3){
+        _setApiStatus('gemini','warn','Límite/min','Cuota por minuto alcanzada (15 req/min). Reintentando automáticamente…');
         const m=errMsg.match(/retry in ([0-9.]+)s/i);
         const waitSecs=m ? parseFloat(m[1]) : (20+_attempt*10);
         console.warn(`Rate limit — esperando ${waitSecs}s (intento ${_attempt+1}/3)`);
@@ -284,7 +238,7 @@ async function callGemini(parts, maxTokens=1000, _statusEl=null, _attempt=0){
         return callGemini(parts, maxTokens, _statusEl, _attempt+1);
       }
       if(window._geminiCancelled) throw new Error('CANCELADO: Operación cancelada por el usuario.');
-      throw new Error('RATE_AGOTADO: Error de IA. Intenta de nuevo o reduce el número de actividades.');
+      throw new Error('RATE_AGOTADO: 3 reintentos fallidos. La cuota por minuto puede haberse convertido en cuota diaria. Resetea a las 2am hora MX.');
     }
     // Key revocada o inválida
     // Modelo deprecado o no encontrado → probar el siguiente
@@ -317,67 +271,6 @@ async function callGemini(parts, maxTokens=1000, _statusEl=null, _attempt=0){
     throw new Error('Gemini sin respuesta: '+detail);
   }
   _setApiStatus('gemini','ok','Activa','Última respuesta exitosa.');
-  return text;
-}
-
-// ── OpenRouter — tercer fallback con modelo gratuito ──
-let OPENROUTER_KEY = localStorage.getItem('fts_openrouter_key') || '';
-let _orModel = null;
-
-async function getOpenRouterFreeModel(key) {
-  if (_orModel) return _orModel;
-  try {
-    const response = await fetch('https://openrouter.ai/api/v1/models', {
-      headers: { 'Authorization': 'Bearer ' + key }
-    });
-    const data = await response.json();
-    const freeModels = (data.data||[])
-      .filter(m => m.id.endsWith(':free') && m.context_length >= 8000)
-      .sort((a,b) => b.context_length - a.context_length);
-    if (!freeModels.length) throw new Error('Sin modelos gratuitos');
-    _orModel = freeModels[0].id;
-    console.log('[OpenRouter] Modelo seleccionado:', _orModel, '(ctx:', freeModels[0].context_length + ')');
-    return _orModel;
-  } catch(e) {
-    _orModel = 'mistralai/mistral-small-3.1-24b-instruct:free';
-    console.warn('[OpenRouter] Fallback modelo:', _orModel, e.message);
-    return _orModel;
-  }
-}
-
-async function callOpenRouter(promptText, maxTokens=4500, _statusEl=null){
-  if(!OPENROUTER_KEY) throw new Error('Sin OpenRouter key');
-  if(window._geminiCancelled) throw new Error('CANCELADO');
-  _setApiStatus('gemini','warn','Fallback…','Usando OpenRouter como respaldo.');
-
-  const model = await getOpenRouterFreeModel(OPENROUTER_KEY);
-  if(_statusEl && _statusEl.textContent) _statusEl.textContent = '⚡ OpenRouter · ' + model.split('/').pop().replace(':free','');
-
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + OPENROUTER_KEY,
-      'HTTP-Referer': 'https://yinyo1.github.io/fts-suite/',
-      'X-Title': 'FTS Suite IPERC'
-    },
-    body: JSON.stringify({
-      model: model,
-      max_tokens: maxTokens,
-      messages: [
-        { role: 'user', content: promptText }
-      ]
-    })
-  });
-
-  if(!res.ok){
-    const err = await res.json().catch(()=>({}));
-    throw new Error('OpenRouter error: ' + (err.error?.message || res.status));
-  }
-
-  const data = await res.json();
-  const text = data.choices?.[0]?.message?.content || '';
-  if(!text) throw new Error('OpenRouter sin respuesta');
   return text;
 }
 
@@ -521,33 +414,95 @@ async function detectActivities(manual=false){
         : '';
 
       const prompt=
-'Eres supervisor senior de instalaciones industriales en México con 25 años de experiencia en eléctrico, mecánico, HVAC, automatización, altura, espacios confinados, soldadura y LOTO. Generas planes JSA detallados y realistas.\n\n'+
+'Eres un Supervisor Senior de Instalaciones Industriales con 25 años de experiencia en plantas activas en México y Latinoamérica.\n'+
+'Tu expertise abarca: instalaciones ELÉCTRICAS (BT/MT/AT, tableros, subestaciones, LOTO, arc flash), MECÁNICAS (tuberías, soportería, maquinaria, alineación), HIDRÁULICAS Y NEUMÁTICAS (sistemas de presión, válvulas, instrumentación de campo), OBRA CIVIL (estructuras, anclajes, cimentaciones, colados), HVAC Y REFRIGERACIÓN (chillers, manejadoras, ductos, refrigerantes), TRATAMIENTO DE AGUAS (WWTP, reactores, bombas, química), INSTRUMENTACIÓN (transmisores, sensores, actuadores, loops), CONTROL Y AUTOMATIZACIÓN (PLC, HMI, SCADA, variadores, redes industriales).\n'+
+'Trabajas bajo normativa NOM-STPS, OSHA 1910/1926, NFPA 70E y estándares internacionales.\n\n'+
 'CONTEXTO DEL PROYECTO:\n'+
 clienteCtx+areaCtx+trabajoCtx+
 (ctx||'')+
 '\nAnaliza todo documento, plano o imagen adjunta.\n\n'+
 clienteReglasCtx+
 kbDetectedCtx+
-'REGLAS OBLIGATORIAS:\n'+
-'1. Genera EXACTAMENTE entre 4 y 6 actividades principales. No menos de 4.\n'+
-'2. Cada actividad debe tener entre 7 y 9 subpasos detallados.\n'+
-'3. Secuencia lógica obligatoria:\n'+
-'   - Actividad 1: Preparación, permisos y verificación de equipo\n'+
-'   - Actividad 2: Montaje/instalación de equipo de protección (andamio/plataforma/LOTO)\n'+
-'   - Actividades 3-4: Trabajo específico de la disciplina\n'+
-'   - Actividad final: Pruebas, limpieza y cierre\n'+
-'4. Cada subpaso inicia con enlace narrativo: "Primeramente", "Posterior a eso", "Luego", "A continuación", "Finalmente".\n'+
-'5. Cada subpaso incluye: quién (rol específico), con qué herramienta, medida de seguridad.\n'+
-'6. Consideraciones inician con: "Vamos a verificar..."\n'+
-'7. Si hay trabajo eléctrico: incluir LOTO completo (L1-L8) como actividad separada.\n'+
-'8. Si hay altura >1.8m: incluir inspección de plataforma/andamio como actividad separada.\n'+
-'9. NO inventes disciplinas que no se mencionaron en la descripción del trabajo.\n'+
-'10. Habla en primera persona plural como supervisor de campo explicando al EHS del cliente.\n'+
-'11. NO escribas normas NOM/OSHA literalmente en el texto — aplica el conocimiento sin citarlas.\n'+
-'12. NO incluyas puntuaciones FINE en este paso.\n\n'+
+'TU MISIÓN:\n'+
+'⚠️ ANTES DE GENERAR EL PLAN — LEE ESTO:\n'+
+'Tu trabajo es DESCRIBIR EXACTAMENTE el trabajo que se te indicó. NO inventes disciplinas, sistemas o tareas que no se mencionaron. Si el trabajo es tubería mecánica, NO incluyas cableado eléctrico. Si no se mencionó PLC ni automatización, NO los incluyas. Si no hay trabajo eléctrico, NO incluyas LOTO eléctrico. El plan SOLO debe contener lo que realmente se va a hacer según la descripción del trabajo.\n\n'+
+'Eres el Supervisor de FTS. Estás explicando el plan de trabajo al Supervisor EHS del cliente. Hablas en PRIMERA PERSONA del plural — como si dijeras verbalmente qué va a hacer tu cuadrilla: "Primero vamos a delimitar el área...", "El técnico electromecánico instalará los soportes...", "Subiremos con andamio multidireccional a 3.5 m...", "Una vez que tengamos el LOTO aplicado, procederemos a...". El texto debe sonar como una explicación oral profesional de supervisor a supervisor, no como un manual técnico. Incluye quién hace qué, con qué equipo, en qué secuencia, y qué se coordina con el cliente.\n\n'+
+'REGLAS DEL PLAN DE EJECUCIÓN — SUPERVISOR DE CAMPO PROFESIONAL:\n\n'+
+
+'══ REGLA 1 · SECUENCIA LÓGICA REAL DE EJECUCIÓN ══\n'+
+'Como supervisor con 25 años en campo, PIENSA antes de ordenar las fases: ¿qué debe existir o estar listo para que el siguiente paso sea seguro y posible?\n'+
+'DEPENDENCIAS TÉCNICAS OBLIGATORIAS (estas reglas son no-negociables):\n'+
+'  A) PREPARACIÓN Y MOVILIZACIÓN siempre es la FASE 1. Nada arranca sin permisos firmados y charla de seguridad documentada.\n'+
+'  B) ARMADO DE ANDAMIO va ANTES de cualquier trabajo en altura. No se puede empezar a instalar a 4 m si el andamio no está montado, inspeccionado y con tarjeta verde.\n'+
+'  C) LOTO va ANTES de cualquier intervención eléctrica o mecánica en sistemas energizados. Jamás se toca un cable, tablero o equipo sin LOTO documentado y candado puesto.\n'+
+'  D) CONDUIT/SOPORTERÍA va ANTES del tendido de cable. No se puede jalar cable si no hay tubería o charola instalada donde jalarlo.\n'+
+'  E) TENDIDO DE CABLE va DESPUÉS de conduit/soportería y MIENTRAS el LOTO está activo.\n'+
+'  F) CONEXIONES ELÉCTRICAS van DESPUÉS del tendido. Se conecta cuando el cable ya está en su lugar.\n'+
+'  G) LIBERACIÓN DE LOTO / PRUEBAS va DESPUÉS de todas las conexiones. Primero se verifica, luego se energiza.\n'+
+'  H) CIERRE Y ENTREGA siempre es la ÚLTIMA FASE. Limpieza, retiro de andamio, acta firmada.\n'+
+'EJEMPLO CORRECTO para instalación eléctrica en conduit a 4m con andamio:\n'+
+'  Paso 1: PREPARACIÓN Y MOVILIZACIÓN (permisos, charla seguridad, descarga material)\n'+
+'  Paso 2: Armado y Uso de Andamio (montar, nivelar, tarjeta verde — ANTES de subir a trabajar)\n'+
+'  Paso 3: Trabajo Eléctrico / LOTO (aplicar LOTO completo L1-L8 — ANTES de tocar cables)\n'+
+'  Paso 4: FABRICACIÓN E INSTALACIÓN DE SOPORTERÍA (soldar soportes al carbón, anclar a estructura)\n'+
+'  Paso 5: Tendido de Cableado y Conduit (instalar tubería conduit pared gruesa, jalar cable 480V)\n'+
+'  Paso 6: CONEXIONES Y TERMINACIONES ELÉCTRICAS (conectar en tablero y en equipo)\n'+
+'  Paso 7: LIBERACIÓN LOTO Y PRUEBAS (verificar aislamiento, energizar, prueba funcional)\n'+
+'  Paso 8: CIERRE Y ENTREGA (desmontar andamio, limpieza, acta firmada)\n\n'+
+
+'══ REGLA 2 · ACTIVIDADES DETECTADAS — FILTRAR POR RELEVANCIA ══\n'+
+'Si en la sección ACTIVIDADES TÉCNICAS DETECTADAS se listaron actividades, EVALÚA cada una:\n'+
+'  ✅ INCLUIR si el trabajo real la requiere (ej: hay trabajo eléctrico → incluir LOTO, hay altura → incluir andamio).\n'+
+'  ❌ EXCLUIR si el trabajo real NO la requiere (ej: solo tubería mecánica → NO incluir "Tendido de Cableado"; no hay PLC → NO incluir "Montaje de Automatización").\n'+
+'  - Las actividades que SÍ apliquen, inclúyelas con el MISMO NOMBRE EXACTO y con 7-8 subpasos completos.\n'+
+'  - Las que NO apliquen, ignóralas completamente — no las menciones en el plan.\n'+
+'  EJEMPLO: Si el trabajo es instalar tubería de acero inox en rack exterior, las actividades de "Tendido de Cableado y Conduit" y "Montaje de PLC" NO aplican aunque hayan sido detectadas.\n\n'+
+
+'══ REGLA 3 · PRIMERA PERSONA OBLIGATORIA — RELATO DE CAMPO ══\n'+
+'Escribe TODO como supervisor FTS explicando en voz alta al supervisor EHS del cliente, como si fuera un RELATO ORAL CONTINUO.\n'+
+'OBLIGATORIO: usa palabras de enlace narrativo entre subpasos para que suene a historia, no a lista:  "Primeramente vamos a...", "Posterior a eso vamos a...", "Luego vamos a...", "Una vez hecho eso, vamos a...", "A continuación vamos a...", "Después de eso, el técnico va a...", "Finalmente vamos a...".\n'+
+'EJEMPLO MAL (lista seca): "1.1. Vamos a delimitar el área. 1.2. Vamos a verificar EPP. 1.3. Vamos a realizar charla."\n'+
+'EJEMPLO BIEN (relato): "1.1. Primeramente vamos a delimitar el área de trabajo con cinta roja y conos para evitar el paso de personal no autorizado. 1.2. Posterior a eso, vamos a verificar que cada trabajador tenga el EPP completo — casco, arnés, guantes y botas con casquillo. 1.3. Una vez que tengamos el área asegurada y el EPP revisado, vamos a realizar la charla de seguridad documentada con todo el equipo..."\n'+
+'CADA subpaso DEBE iniciar con una palabra de enlace: Primeramente / Posterior a eso / Luego / A continuación / Una vez hecho eso / Después de eso / Finalmente.\n'+
+'NUNCA: "Se realizará", "Se procederá", "El personal deberá", "Se llevará a cabo".\n'+
+'Numeración: paso principal "N." — subpaso "N.M."\n\n'+
+'⛔ REGLA 1B · SIN NORMAS EN EL TEXTO ══\n'+
+'Las normas NOM y OSHA son tu base de conocimiento para diseñar el plan de forma segura, '+
+'PERO NO las escribas literalmente en los subpasos. En lugar de "según NOM-009" escribe la '+
+'acción concreta: "verificar el anclaje del arnés y la línea de vida antes de subir". '+
+'En lugar de "aplicar NOM-004 LOTO" escribe: "colocar candado personal y tarjeta de bloqueo '+
+'en el interruptor principal, verificar ausencia de voltaje con multímetro". '+
+'TAMPOCO menciones marcas comerciales: en vez de "Genie", "JLG", "Layher" escribe '+
+'"plataforma de elevación tijera", "plataforma articulada", "andamio multidireccional".\n\n'+
+
+'══ REGLA 4 · DETALLE OPERACIONAL DE CAMPO ══\n'+
+'Cada subpaso DEBE incluir:\n'+
+'  • QUIÉN: rol específico ("Electricista certificado NOM-029", "Armador de andamio NOM-009", "Ayudante general", "Soldador TIG", "Supervisor de campo FTS", "Técnico electromecánico", etc.)\n'+
+'  • El campo "personal" del subpaso DEBE estar siempre lleno con el rol específico. NUNCA dejes personal vacío.\n'+
+'  • CON QUÉ: herramienta + especificación ("rompedora de concreto Bosch", "taladro rotomartillo 1-1/2\"", "multímetro Fluke con CAT III")\n'+
+'  • MEDIDAS: dimensiones, voltajes, pesos cuando apliquen ("conduit EMT 1\" × 4m pared gruesa", "cable THHW 3/0 AWG 600V", "soportes de acero al carbón 3/16\"")\n'+
+'  • CONDICIÓN del área si es relevante (planta activa, tráfico, espacio confinado)\n\n'+
+
+'══ REGLA 5 · MÍNIMO 7-8 SUBPASOS POR FASE — OBLIGATORIO ══\n'+
+'El supervisor del cliente necesita ver CADA acción individual. Desglose esperado por tipo:\n'+
+'  ARMADO DE ANDAMIO / PLATAFORMA DE ELEVACIÓN: inspección estructural, posicionamiento base-placas, montaje standards verticales, colocación ledgers/crucetas, instalación plataformas, rodapiés, barandales, tarjeta de habilitación verde, verificación con cargador antes de subir personal. Para plataforma de elevación: inspección de niveles hidráulicos, revisión de controles, prueba en vacío antes de subir personal.\n'+
+'  SOLDADURA TIG / CORTE SANITARIO: corte de tubería con sierra cinta o cortadora de disco, rectificación de cortes con block scala, corte de bisel/chaflán para penetración de aporte, punteado TIG, inicio proceso TIG con camareado (preparación de penetración previa a soldadura), revisión de cordón sin porosidades, limpieza con decapante TIG, inspección visual de porosidades/grietas/mala aplicación, prueba de hermeticidad (aire o agua), verificar acabado sanitario antes de instalar.\n'+
+'  LOTO ELÉCTRICO (L1-L8): L1=Identificar todas las fuentes de energía, L2=Notificar al operador, L3=Apagar equipo desde panel de control, L4=Operar el dispositivo de aislamiento, L5=Aplicar candado personal + tarjeta, L6=Liberar/bloquear energía residual (descargar capacitores, sangrar presión), L7=Verificar ausencia de voltaje con multímetro, L8=Permiso firmado por supervisor EHS del cliente.\n'+
+'  TENDIDO CONDUIT: marcaje del recorrido, taladrado de anclas/silletas, instalación de silletas o abrazaderas, corte conduit a medida, roscado/curvado según diseño, tendido tramo por tramo, verificación de continuidad mecánica, tapones en bocas mientras se tiende cable.\n'+
+'  TENDIDO DE CABLE: revisión del recorrido con LOTO activo, peinado y marcaje de conductores, jalado con grasa dieléctrica, verificación de continuidad, prueba de aislamiento con megger.\n\n'+
+
+'══ REGLA 6 · CONSIDERACIONES Y NOTAS ══\n'+
+'  • "consideraciones": inicia SIEMPRE con "Vamos a verificar" — lista de checklist que el supervisor firma ANTES de iniciar. NUNCA empieces con "Verificar" solo. Ejemplo: "Vamos a verificar permiso de trabajo en caliente, extintor disponible y EPP completo."\n'+
+'  • "nota": CONDICIÓN CRÍTICA EN MAYÚSCULAS solo si hay riesgo mayor ("LOTO OBLIGATORIO ANTES DE INICIAR", "TRABAJO EN PLANTA ACTIVA", "ZONA DE TRÁFICO")\n\n'+
+
+'══ REGLA 7 · EJEMPLO MAL vs BIEN ══\n'+
+'MAL: "Se instalará la tubería conduit." (pasivo, sin detalle)\n'+
+'BIEN: "Vamos a instalar la tubería conduit EMT 1\" pared gruesa en el recorrido marcado. El ayudante va a taladrar con rotomartillo las silletas cada 1.5 m sobre la soportería de acero al carbón que ya fabricamos. El electricista NOM-029 va a cortar los tramos de conduit a medida con segueta y roscarlos en los extremos. Una vez instalada la tubería, vamos a verificar que no haya tramos sueltos antes de jalar el cable — esto es importante porque estamos a 4 m de altura y no podemos estar bajando y subiendo del andamio por correcciones."\n\n'+
 (knowledgeCtx ? knowledgeCtx + '\n\n' : '')+(fewShotCtx ? fewShotCtx + '\n\n' : '')+
-'RESPONDE SOLO con JSON válido (sin markdown, sin texto extra). Genera las 4-6 actividades completas sin abreviar:\n'+
-'{"actividades":[{"paso":"1","nombre":"NOMBRE FASE EN MAYÚSCULAS","descripcion":"Descripción ejecutiva de la fase","consideraciones":"Vamos a verificar [checklist ANTES de iniciar]","nota":"CONDICIÓN CRÍTICA EN MAYÚSCULAS si aplica","subpasos":[{"paso":"1.1","descripcion":"[Primeramente/Posterior a eso/Luego/A continuación/Finalmente] vamos a [acción] usando [herramienta/equipo]. [Quién] va a [qué hace exactamente].","personal":"Rol específico (ej: Técnico electromecánico FTS, Supervisor de campo, Armador de andamio)"}]}]}';
+'IMPORTANTE: Este paso es de SIMULACIÓN Y PLANIFICACIÓN — NO incluyas puntuaciones FINE (C, E, P) ni niveles de riesgo numéricos. Solo describe cómo se ejecuta el trabajo y qué alertas de seguridad aplican por tipo de actividad. Los riesgos se analizarán numéricamente en el siguiente paso.\n\n'+
+'🔴 REVISIÓN FINAL ANTES DE RESPONDER: Antes de generar el JSON, verifica cada actividad del plan contra la descripción del trabajo. Elimina cualquier actividad que NO haya sido mencionada en la descripción del trabajo. Si ves "Tendido de Cableado", "Montaje de PLC", "Automatización", "HVAC", "Obra Civil" u otras disciplinas que NO están en la descripción, quítalas. El plan solo debe reflejar lo que el cliente pidió.\n\n'+
+'RESPONDE SOLO con JSON válido (sin markdown, sin texto extra):\n'+
+'{"actividades":[{"paso":"1","nombre":"NOMBRE FASE EN MAYÚSCULAS","descripcion":"Descripción ejecutiva de la fase","consideraciones":"Vamos a verificar [checklist ANTES de iniciar]","nota":"CONDICIÓN CRÍTICA EN MAYÚSCULAS si aplica","subpasos":[{"paso":"1.1","descripcion":"[Primeramente/Posterior a eso/Luego/A continuación/Finalmente] vamos a [acción] usando [herramienta/equipo]. [Quién] va a [qué hace exactamente].","personal":"Rol obligatorio (ej: Soldador TIG, Supervisor de campo FTS, Técnico electromecánico, Armador de andamio, Ayudante general)"}]}]}';
 
       // ══════════════════════════════════════════════
       // ARQUITECTURA DUAL: Gemini (OCR) → Groq (plan)
@@ -566,7 +521,7 @@ kbDetectedCtx+
           'Incluye: descripción del trabajo, equipos mencionados, áreas, voltajes, dimensiones, materiales, fechas, condiciones especiales.\n'+
           'Sé exhaustivo pero conciso. Solo texto plano, sin formato markdown.'
         });
-        const docText = await callGemini(extractParts, 1500, spinnerTxt); // solo OCR
+        const docText = await callGemini(extractParts, 2000, spinnerTxt); // solo OCR, 2000 tokens
         if(spinnerTxt) spinnerTxt.textContent = '🧠 Groq generando plan de ejecución…';
         // PASO 2: Groq genera el plan completo con ese texto
         const groqPrompt = prompt.replace(
@@ -574,24 +529,18 @@ kbDetectedCtx+
           '\nCONTENIDO EXTRAÍDO DE ARCHIVOS ADJUNTOS:\n'+docText+'\n\nRESPONDE SOLO con JSON válido'
         );
         try{
-          result = await callGroq(groqPrompt, 8000, spinnerTxt, 0, 0);
+          result = await callGroq(groqPrompt, 14000, spinnerTxt, 0, 0);
         } catch(groqFilesErr){
           const isRateErr = /RATE_AGOTADO|rate.limit|429|Límite/i.test(groqFilesErr.message||String(groqFilesErr));
           const isKeyErr  = /GROQ_KEY_INVALIDA|GROQ_SIN_KEY|401|invalid/i.test(groqFilesErr.message||String(groqFilesErr));
           if(isRateErr || isKeyErr){
             const reason = isRateErr ? 'límite alcanzado' : 'key inválida';
-            window._stopCountdown = true;
+            window._stopCountdown = true; // detener countdown inmediatamente
             if(spinnerTxt) spinnerTxt.textContent = '⚡ Gemini generando el plan completo…';
             showToast('⚡ Groq en ' + reason + ', usando Gemini para el plan', 3000);
+            // Gemini recibe tanto los archivos como el prompt completo
             parts.push({text:prompt});
-            try{
-              result = await callGemini(parts, 8000, spinnerTxt);
-            } catch(gemFallErr){
-              if(OPENROUTER_KEY){
-                if(spinnerTxt) spinnerTxt.textContent = '⚡ OpenRouter como respaldo…';
-                result = await callOpenRouter(prompt, 6000, spinnerTxt);
-              } else { throw gemFallErr; }
-            }
+            result = await callGemini(parts, 14000, spinnerTxt);
           } else {
             throw groqFilesErr;
           }
@@ -602,61 +551,32 @@ kbDetectedCtx+
         if(spinnerTxt) spinnerTxt.textContent = '🧠 Groq generando plan de ejecución…';
         parts.push({text:prompt});
         try{
-          result = await callGroq(prompt, 8000, spinnerTxt, 0, 0);
+          result = await callGroq(prompt, 14000, spinnerTxt, 0, 0);
         } catch(groqSimErr){
           const isRateErr = /RATE_AGOTADO|rate.limit|429|Límite/i.test(groqSimErr.message||String(groqSimErr));
           const isKeyErr  = /GROQ_KEY_INVALIDA|GROQ_SIN_KEY|401|invalid/i.test(groqSimErr.message||String(groqSimErr));
           if((isRateErr || isKeyErr) && GEMINI_KEY){
             const reason = isRateErr ? 'límite alcanzado' : 'key inválida';
-            window._stopCountdown = true;
+            window._stopCountdown = true; // detener countdown inmediatamente
             if(spinnerTxt) spinnerTxt.textContent = '⚡ Gemini generando el plan…';
-            showToast('⚡ Groq en ' + reason + ', usando Gemini', 3000);
-            try{
-              result = await callGemini(parts, 8000, spinnerTxt);
-            } catch(gemFallErr2){
-              if(OPENROUTER_KEY){
-                if(spinnerTxt) spinnerTxt.textContent = '⚡ OpenRouter como respaldo…';
-                result = await callOpenRouter(prompt, 6000, spinnerTxt);
-              } else { throw gemFallErr2; }
-            }
-          } else if((isRateErr || isKeyErr) && OPENROUTER_KEY){
-            window._stopCountdown = true;
-            if(spinnerTxt) spinnerTxt.textContent = '⚡ OpenRouter como respaldo…';
-            result = await callOpenRouter(prompt, 6000, spinnerTxt);
+            showToast('⚡ Groq en ' + reason + ', usando Gemini automáticamente', 3000);
+            result = await callGemini(parts, 14000, spinnerTxt);
           } else {
             throw groqSimErr;
           }
         }
 
-      } else if(GEMINI_KEY){
-        // Sin Groq key: Gemini (con fallback OpenRouter)
-        parts.push({text:prompt});
-        try{
-          result = await callGemini(parts, 8000, spinnerTxt);
-        } catch(gemOnlyErr){
-          if(OPENROUTER_KEY){
-            if(spinnerTxt) spinnerTxt.textContent = '⚡ OpenRouter como respaldo…';
-            result = await callOpenRouter(prompt, 6000, spinnerTxt);
-          } else { throw gemOnlyErr; }
-        }
-      } else if(OPENROUTER_KEY){
-        // Solo OpenRouter disponible
-        parts.push({text:prompt});
-        if(spinnerTxt) spinnerTxt.textContent = '⚡ OpenRouter generando plan…';
-        result = await callOpenRouter(prompt, 6000, spinnerTxt);
       } else {
-        throw new Error('Sin API keys. Configura Groq, Gemini u OpenRouter en ⚙️');
+        // Sin Groq key: Gemini todo (modo legacy)
+        parts.push({text:prompt});
+        result = await callGemini(parts, 14000, spinnerTxt);
       }
       try{
-        console.log('[IPERC-AI] Plan raw length:', result.length);
-        console.log('[IPERC-AI] Plan raw preview:', result.substring(0,500));
         const raw=result.replace(/```json[\s\S]*?```|```[\s\S]*?```/g,function(m){
           return m.replace(/```json|```/g,'');
         }).trim();
-        const parsed=repairJSON(raw);
+        const parsed=JSON.parse(raw);
         const acts=parsed.actividades||parsed;
-        console.log('[IPERC-AI] Actividades detectadas:', Array.isArray(acts) ? acts.length : 0);
-        console.log('[IPERC-AI] Plan completo:', JSON.stringify(acts).substring(0, 2000));
         if(Array.isArray(acts)){
           window._ipercCode = window._ipercCode || generateIPERCCode(clienteId, workFullText);
           window._rawActividades=acts;
@@ -755,19 +675,34 @@ kbDetectedCtx+
           parsed.forEach(function(a){const s=typeof a==='string'?a:(a.nombre||'');if(s&&!found.includes(s))found.push(s);});
         }
       }catch(e){
-        console.warn('[IPERC-AI] Plan JSON parse failed:', e.message);
-        // repairJSON ya se intentó arriba — este catch es por si repairJSON lanzó error
-        // Intentar extracción de emergencia directa del raw
+        console.warn('JSON parse failed:',e.message,result.substring(0,300));
+        // ── Intentar reparar JSON truncado: extraer actividades completas ──
         var recovered = [];
         try{
-          var repaired = repairJSON(result.replace(/```json|```/g,'').trim());
-          recovered = repaired.actividades || repaired;
-          if(!Array.isArray(recovered)) recovered = [];
-        }catch(e2){ recovered = []; }
+          // Estrategia 1: extraer cada objeto actividad completo con regex
+          var actMatches = raw.match(/\{[^{}]*"nombre"[^{}]*"subpasos"[\s\S]*?\]\s*\}/g);
+          if(actMatches && actMatches.length){
+            actMatches.forEach(function(m){
+              try{ var a=JSON.parse(m); if(a.nombre) recovered.push(a); }catch(e2){}
+            });
+          }
+          // Estrategia 2: cortar el JSON en el último objeto completo y cerrar el array
+          if(!recovered.length){
+            var lastBrace = raw.lastIndexOf('},');
+            if(lastBrace > 0){
+              var truncFixed = raw.substring(0, lastBrace+1) + ']}';
+              // Ajustar prefijo según estructura
+              if(truncFixed.trim()[0]!='{'){ truncFixed = '{"actividades":[' + truncFixed; }
+              var p2 = JSON.parse(truncFixed);
+              recovered = p2.actividades || p2;
+            }
+          }
+        }catch(e3){ recovered=[]; }
 
-        if(recovered.length >= 1){
-          console.warn('[IPERC-AI] Plan recuperado — '+recovered.length+' actividades de respuesta truncada');
-          showToast('⚠️ Respuesta truncada — recuperadas '+recovered.length+' actividades. Puedes re-simular para el plan completo.', 6000);
+        if(recovered.length >= 2){
+          // Tenemos actividades parciales — usarlas y avisar
+          console.warn('JSON reparado — '+recovered.length+' actividades recuperadas de respuesta truncada');
+          showToast('⚠️ Respuesta truncada por cuota — recuperadas '+recovered.length+' actividades. Puedes re-simular para obtener el plan completo.', 6000);
           window._ipercCode = window._ipercCode || generateIPERCCode(clienteId, workFullText);
           window._rawActividades = recovered;
           var recoveredActs = recovered.map(function(a){ return {name:a.nombre||a.name,on:true,src:'ai'}; });
@@ -775,8 +710,7 @@ kbDetectedCtx+
           renderActivityCards();
           goToStep(3);
         } else {
-          console.error('[IPERC-AI] Plan irrecuperable. Raw:', result);
-          showToast('⚠️ IA devolvió: ' + (result||'').substring(0,200), 10000);
+          showToast('⚠️ La IA devolvió respuesta incompleta (cuota agotada) — espera unos minutos y reintenta', 5000);
         }
       }
     }catch(e){
