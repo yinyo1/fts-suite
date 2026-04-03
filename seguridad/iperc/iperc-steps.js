@@ -415,7 +415,11 @@ function openApiKeySetup(){
           <div style="padding:10px 12px">
             <div style="font-size:10px;color:#555;margin-bottom:5px">Obtén tu key gratis en <a href="https://openrouter.ai/keys" target="_blank" style="color:#1d4ed8">openrouter.ai/keys</a> · Empieza con <strong>sk-or-...</strong></div>
             <input id="orkey-input" type="text" value="${OPENROUTER_KEY||''}" placeholder="sk-or-..." style="width:100%;padding:8px 10px;border:1.5px solid #e0e0e0;border-radius:7px;font-size:12px;font-family:Inter,sans-serif;box-sizing:border-box;margin-bottom:6px">
-            <button onclick="saveOpenRouterKey(false)" style="width:100%;background:#374151;color:#fff;border:none;border-radius:7px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif">💾 Guardar</button>
+            <div style="display:flex;gap:6px">
+              <button onclick="testOpenRouterKey()" style="flex:1;background:#f9fafb;border:1.5px solid #6b7280;color:#374151;border-radius:7px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif">⚡ Probar</button>
+              <button onclick="saveOpenRouterKey(false)" style="flex:1;background:#374151;color:#fff;border:none;border-radius:7px;padding:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif">💾 Guardar</button>
+            </div>
+            <div id="orkey-test-result" style="font-size:11px;margin-top:6px;display:none;padding:6px 8px;border-radius:6px"></div>
           </div>
         </div>
         <button onclick="saveAllKeys()" style="width:100%;background:#D83B01;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif">💾 Guardar todo y cerrar</button>
@@ -552,6 +556,35 @@ function saveOpenRouterKey(closeModal=true){
   localStorage.setItem('fts_openrouter_key',key);
   if(closeModal) document.getElementById('apikey-modal')?.remove();
   showToast(key?'✅ OpenRouter Key guardada':'⚠️ OpenRouter Key eliminada',2500);
+}
+
+async function testOpenRouterKey(){
+  const key=(document.getElementById('orkey-input')?.value||'').trim();
+  const result=document.getElementById('orkey-test-result');
+  if(!key){
+    result.style.cssText='display:block;background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;padding:6px 8px;border-radius:6px';
+    result.textContent='⚠️ Ingresa una key primero.'; return;
+  }
+  result.style.cssText='display:block;background:#f8f9fa;border:1px solid #e0e0e0;color:#666;padding:6px 8px;border-radius:6px';
+  result.textContent='⏳ Probando OpenRouter…';
+  try{
+    const res=await fetch('https://openrouter.ai/api/v1/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key,'HTTP-Referer':'https://yinyo1.github.io/fts-suite/','X-Title':'FTS Suite IPERC'},
+      body:JSON.stringify({model:'mistralai/mistral-7b-instruct:free',max_tokens:5,messages:[{role:'user',content:'Di solo: OK'}]})
+    });
+    const d=await res.json();
+    if(d.error){
+      result.style.cssText='display:block;background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;padding:6px 8px;border-radius:6px';
+      result.textContent='❌ Error: '+(d.error.message||'Key inválida'); return;
+    }
+    const txt=d.choices?.[0]?.message?.content||'';
+    result.style.cssText='display:block;background:#f0fdf4;border:1px solid #86efac;color:#16a34a;padding:6px 8px;border-radius:6px;font-weight:500';
+    result.innerHTML='✅ OpenRouter OK · <strong>mistral-7b-instruct:free</strong><br><span style="font-size:10px;color:#059669">Respondió: "'+txt.trim()+'"</span>';
+  }catch(e){
+    result.style.cssText='display:block;background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;padding:6px 8px;border-radius:6px';
+    result.textContent='❌ Error de red: '+e.message;
+  }
 }
 
 function saveAllKeys(){
