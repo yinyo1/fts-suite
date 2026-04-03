@@ -731,7 +731,7 @@ kbDetectedCtx+
           renderActivityCards();
           goToStep(3);
         } else {
-          showToast('⚠️ La IA devolvió respuesta incompleta (cuota agotada) — espera unos minutos y reintenta', 5000);
+          showToast('⚠️ La IA no generó un plan válido. Intenta simplificar la descripción del trabajo.', 5000);
         }
       }
     }catch(e){
