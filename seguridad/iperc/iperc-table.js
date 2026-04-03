@@ -1,47 +1,7 @@
 // ════════════════════════════════════════════════════
 // RISK STEP
 // ════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════
-// REPARACIÓN DE JSON TRUNCADO
-// ═══════════════════════════════════════════════════════
-function repairJSON(str) {
-  // 1. Parse directo
-  try { return JSON.parse(str); } catch(e) {}
-
-  // 2. Buscar el array de riesgos y cerrar si está truncado
-  const match = str.match(/\{"riesgos"\s*:\s*\[[\s\S]*/);
-  if (match) {
-    let candidate = match[0];
-    // Eliminar último objeto incompleto (sin cierre })
-    candidate = candidate.replace(/,\s*\{[^}]*$/, '');
-    // Cerrar arrays y objetos abiertos
-    const openBrackets = (candidate.match(/\[/g)||[]).length;
-    const closeBrackets = (candidate.match(/\]/g)||[]).length;
-    for (let i = 0; i < openBrackets - closeBrackets; i++) candidate += ']';
-    const openBraces = (candidate.match(/\{/g)||[]).length;
-    const closeBraces = (candidate.match(/\}/g)||[]).length;
-    for (let i = 0; i < openBraces - closeBraces; i++) candidate += '}';
-    try {
-      const parsed = JSON.parse(candidate);
-      console.log('[IPERC-AI] JSON reparado — objetos truncados removidos');
-      return parsed;
-    } catch(e) {}
-  }
-
-  // 3. Extraer riesgos individuales completos como último recurso
-  const items = [];
-  const regex = /\{[^{}]*"riesgo"[^{}]*\}/g;
-  let m;
-  while ((m = regex.exec(str)) !== null) {
-    try { items.push(JSON.parse(m[0])); } catch(e) {}
-  }
-  if (items.length) {
-    console.log('[IPERC-AI] JSON reconstruido — ' + items.length + ' riesgos extraídos individualmente');
-    return { riesgos: items };
-  }
-
-  throw new Error('JSON irreparable — respuesta de IA no es JSON válido');
-}
+// repairJSON() definida en iperc-ai.js (carga antes)
 
 // ═══════════════════════════════════════════════════════
 // AUTO-EVALUACIÓN JSA + NOM + OSHA CON GROQ
