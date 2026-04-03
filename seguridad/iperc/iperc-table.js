@@ -2,6 +2,48 @@
 // RISK STEP
 // ════════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════
+// REPARACIÓN DE JSON TRUNCADO
+// ═══════════════════════════════════════════════════════
+function repairJSON(str) {
+  // 1. Parse directo
+  try { return JSON.parse(str); } catch(e) {}
+
+  // 2. Buscar el array de riesgos y cerrar si está truncado
+  const match = str.match(/\{"riesgos"\s*:\s*\[[\s\S]*/);
+  if (match) {
+    let candidate = match[0];
+    // Eliminar último objeto incompleto (sin cierre })
+    candidate = candidate.replace(/,\s*\{[^}]*$/, '');
+    // Cerrar arrays y objetos abiertos
+    const openBrackets = (candidate.match(/\[/g)||[]).length;
+    const closeBrackets = (candidate.match(/\]/g)||[]).length;
+    for (let i = 0; i < openBrackets - closeBrackets; i++) candidate += ']';
+    const openBraces = (candidate.match(/\{/g)||[]).length;
+    const closeBraces = (candidate.match(/\}/g)||[]).length;
+    for (let i = 0; i < openBraces - closeBraces; i++) candidate += '}';
+    try {
+      const parsed = JSON.parse(candidate);
+      console.log('[IPERC-AI] JSON reparado — objetos truncados removidos');
+      return parsed;
+    } catch(e) {}
+  }
+
+  // 3. Extraer riesgos individuales completos como último recurso
+  const items = [];
+  const regex = /\{[^{}]*"riesgo"[^{}]*\}/g;
+  let m;
+  while ((m = regex.exec(str)) !== null) {
+    try { items.push(JSON.parse(m[0])); } catch(e) {}
+  }
+  if (items.length) {
+    console.log('[IPERC-AI] JSON reconstruido — ' + items.length + ' riesgos extraídos individualmente');
+    return { riesgos: items };
+  }
+
+  throw new Error('JSON irreparable — respuesta de IA no es JSON válido');
+}
+
+// ═══════════════════════════════════════════════════════
 // AUTO-EVALUACIÓN JSA + NOM + OSHA CON GROQ
 // ═══════════════════════════════════════════════════════
 async function autoEvaluateRisks(forceReeval){
@@ -95,14 +137,12 @@ async function autoEvaluateRisks(forceReeval){
         result = await callGroq(prompt, 4500, spinTxt, 0, 0);
         _setEvalPill('groq','✅','OK','#16a34a');
       } catch(groqErr){
-        const isRateErr = /RATE_AGOTADO|rate.limit|429|Límite/i.test(groqErr.message||String(groqErr));
-        const isKeyErr  = /GROQ_KEY_INVALIDA|GROQ_SIN_KEY|401|invalid/i.test(groqErr.message||String(groqErr));
-        if((isRateErr || isKeyErr) && GEMINI_KEY){
-          // ── Fallback 1: Gemini ──
-          const reason = isRateErr ? 'límite de requests' : 'key inválida';
-          window._stopCountdown = true;
-          _setEvalPill('groq','⏱️',isRateErr?'Límite':'Key err','#dc2626');
-          _showFallbackNotice('Groq en ' + reason + ' — usando Gemini');
+        // ── Fallback automático: cualquier error de Groq → Gemini → OpenRouter ──
+        console.warn('[IPERC-AI] Groq falló:', groqErr.message);
+        window._stopCountdown = true;
+        _setEvalPill('groq','⏱️','Error','#dc2626');
+        _showFallbackNotice('Groq falló — probando siguiente IA');
+        if(GEMINI_KEY){
           _showActiveAI('Gemini', GEMINI_MODEL.replace('gemini-',''), '#1d4ed8');
           _setEvalPill('gemini','🔄','Analizando…','#1d4ed8');
           if(spinTxt) spinTxt.textContent = '⚡ Gemini tomando el análisis…';
@@ -110,19 +150,17 @@ async function autoEvaluateRisks(forceReeval){
             result = await callGemini([{text:prompt}], 4500, spinTxt);
             _setEvalPill('gemini','✅','OK','#16a34a');
           } catch(geminiErr2){
+            console.warn('[IPERC-AI] Gemini falló:', geminiErr2.message);
             _setEvalPill('gemini','❌','Error','#dc2626');
-            // ── Fallback 2: OpenRouter ──
             if(OPENROUTER_KEY){
               _showFallbackNotice('Gemini falló — usando OpenRouter');
               if(spinTxt) spinTxt.textContent = '⚡ OpenRouter como respaldo…';
               result = await callOpenRouter(prompt, 4500, spinTxt);
             } else {
-              throw new Error('IA no disponible (Groq/Gemini agotados). Espera unos minutos o configura OpenRouter.');
+              throw new Error('IA no disponible (Groq y Gemini fallaron). Configura OpenRouter como respaldo.');
             }
           }
-        } else if((isRateErr || isKeyErr) && OPENROUTER_KEY){
-          // ── Sin Gemini, Fallback directo: OpenRouter ──
-          _setEvalPill('groq','⏱️',isRateErr?'Límite':'Key err','#dc2626');
+        } else if(OPENROUTER_KEY){
           _showFallbackNotice('Groq falló — usando OpenRouter');
           if(spinTxt) spinTxt.textContent = '⚡ OpenRouter como respaldo…';
           result = await callOpenRouter(prompt, 4500, spinTxt);
@@ -158,11 +196,11 @@ async function autoEvaluateRisks(forceReeval){
     clearInterval(msgTimer);
     if(window._geminiCancelled) throw new Error('CANCELADO');
 
-    // Parsear JSON — quitar bloques markdown si los hay
+    // Parsear JSON — reparar si está truncado
     console.log('[IPERC-AI] Raw response length:', result.length);
     console.log('[IPERC-AI] Raw response preview:', result.substring(0,500));
     const clean = result.replace(/```json|```/g,'').trim();
-    const parsed = JSON.parse(clean);
+    const parsed = repairJSON(clean);
     const risks = parsed.riesgos || parsed;
     if(!Array.isArray(risks) || !risks.length) throw new Error('Sin riesgos en respuesta');
 
