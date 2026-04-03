@@ -72,7 +72,8 @@ async function autoEvaluateRisks(forceReeval){
     + '{"riesgos":[{"activity":"nombre actividad","tipo":"Mecanico|Electrico|Locativo|Fisico|Quimico|Ergonomico|Biologico",'
     + '"riesgo":"descripcion especifica","consec":"consecuencia","nom":"NOM-XXX / OSHA XXXX",'
     + '"c":25,"e":6,"p":3,"admin":"controles administrativos","epp":"EPP con norma y clase",'
-    + '"c2":5,"e2":3,"p2":1}]}';
+    + '"c2":5,"e2":3,"p2":1}]}\n\n'
+    + 'IMPORTANTE: Tu respuesta debe comenzar con { y terminar con }. Sin texto antes ni después. Sin markdown. Solo JSON puro.';
 
   // Helper: actualizar indicador de IA activa
   function _showActiveAI(name, model, color){
@@ -224,8 +225,12 @@ async function autoEvaluateRisks(forceReeval){
     clearInterval(msgTimer);
     const msg = e.message || String(e);
     console.error('[IPERC-AI] Error final:', msg);
+    if(result) console.error('[IPERC-AI] Raw completo:', result);
     if(!/CANCELADO/i.test(msg)){
-      showToast('⚠️ ' + msg, 8000);
+      var toastMsg = /irreparable/i.test(msg) && result
+        ? '⚠️ IA devolvió: ' + result.substring(0,200)
+        : '⚠️ ' + msg;
+      showToast(toastMsg, 10000);
       if(GROQ_KEY) _setEvalPill('groq','🔴','Error','#dc2626');
     }
   }finally{
