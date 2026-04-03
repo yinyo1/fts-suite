@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>FTS · IPERC — Análisis de Riesgos</title>
+<!-- Librerías externas -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- Estilos FTS -->
+<link rel="stylesheet" href="iperc.css">
+</head>
+<body>
+
+<!-- ════════ AUTH OVERLAY ════════ -->
+<div id="auth-overlay">
+  <div class="auth-box">
+    <div class="logo-mark">FTS</div>
+    <h2>Análisis de Riesgos</h2>
+    <p>Acceso Segurista · IPERC · Método FINE</p>
+    <div class="auth-field">
+      <label>Usuario</label>
+      <input type="text" id="iperc-user" placeholder="Tu usuario" autocomplete="username" onkeydown="if(event.key==='Enter')ipercLogin()">
+    </div>
+    <div class="auth-field">
+      <label>Contraseña</label>
+      <input type="password" id="iperc-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')ipercLogin()">
+    </div>
+    <div class="auth-err" id="iperc-err"></div>
+    <button class="btn btn-p" style="width:100%;justify-content:center;padding:13px" onclick="ipercLogin()">Ingresar →</button>
+    <div style="margin-top:12px">
+      <a href="index.html" style="font-size:12px;color:var(--muted2);text-decoration:none">← Volver al inicio</a>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ CLIENT SELECTOR OVERLAY ════════ -->
+<div id="client-overlay" style="display:none;position:fixed;inset:0;background:#fafafa;z-index:9998;overflow-y:auto">
+  <div style="max-width:520px;margin:0 auto;padding:24px 20px 40px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+      <button onclick="ipercLogout()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#999;padding:0;line-height:1">←</button>
+      <div style="width:80px;height:30px;background:#D83B01;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:800;letter-spacing:1px">FTS</div>
+    </div>
+    <div style="margin:20px 0 6px">
+      <h2 style="font-size:22px;font-weight:800;line-height:1.2">Herramienta de<br><span style="color:#D83B01">Análisis de Riesgos</span></h2>
+      <p style="font-size:12px;color:#666;margin-top:6px">IPERC · SAP · Método FINE · NOM-STPS</p>
+    </div>
+    <div id="client-user-badge" style="display:inline-flex;align-items:center;gap:6px;background:#f5f5f5;border:1px solid #e0e0e0;border-radius:14px;padding:4px 12px;font-size:11px;color:#666;margin-bottom:24px">
+      <span>👤</span><span id="csel-username">—</span>
+    </div>
+    <div style="font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:#999;margin-bottom:12px">Selecciona el cliente</div>
+    <div id="client-cards" style="display:flex;flex-direction:column;gap:10px"></div>
+    <div style="margin-top:28px;padding-top:20px;border-top:1px solid #e0e0e0;font-size:11px;color:#aaa;text-align:center">
+      Método FINE · NOM-004-STPS · OSHA 1910/1926 · Base de Conocimiento FTS
+    </div>
+  </div>
+</div>
+
+<!-- ════════ MODAL KB CLIENTE (solo ftsmaster) ════════ -->
+<div id="kb-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;overflow-y:auto;padding:20px">
+  <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.2)">
+    <div id="kb-modal-header" style="padding:18px 20px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #eee">
+      <span id="kb-modal-icon" style="font-size:22px"></span>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:700" id="kb-modal-title">Knowledge Base</div>
+        <div style="font-size:11px;color:#666" id="kb-modal-sub">Administración · Solo ftsmaster</div>
+      </div>
+      <button onclick="closeKbModal()" style="background:none;border:1px solid #e0e0e0;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:13px;color:#666">✕</button>
+    </div>
+    <div style="padding:16px 20px">
+      <!-- Stats -->
+      <div id="kb-modal-stats" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap"></div>
+      <!-- Existing risks list -->
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#999;margin-bottom:8px">Riesgos en base de conocimiento</div>
+      <div id="kb-modal-list" style="max-height:200px;overflow-y:auto;border:1px solid #eee;border-radius:8px;font-size:11px"></div>
+      <!-- Add new KB entry -->
+      <div style="margin-top:14px;background:#f8f9fa;border-radius:10px;padding:12px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#999;margin-bottom:8px">Agregar riesgo al knowledge base</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <input id="kb-new-act" placeholder="Actividad" style="padding:7px 10px;border:1px solid #ddd;border-radius:7px;font-size:12px;font-family:Inter,sans-serif">
+          <input id="kb-new-riesgo" placeholder="Riesgo / Peligro" style="padding:7px 10px;border:1px solid #ddd;border-radius:7px;font-size:12px;font-family:Inter,sans-serif">
+          <input id="kb-new-ctrl" placeholder="Controles" style="padding:7px 10px;border:1px solid #ddd;border-radius:7px;font-size:12px;font-family:Inter,sans-serif">
+          <input id="kb-new-epp" placeholder="EPP" style="padding:7px 10px;border:1px solid #ddd;border-radius:7px;font-size:12px;font-family:Inter,sans-serif">
+        </div>
+        <button onclick="addToKbModal()" style="background:#D83B01;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif">+ Agregar al KB</button>
+      </div>
+      <!-- Generate JSON -->
+      <div style="margin-top:14px;border-top:1px solid #eee;padding-top:14px">
+        <div style="font-size:11px;color:#666;margin-bottom:8px">⚡ Genera el JSON completo actualizado y pégalo en <strong>GitHub › knowledge.json</strong></div>
+        <button onclick="generateKbJson()" style="width:100%;background:#1e3a5f;color:#fff;border:none;border-radius:8px;padding:10px;font-size:12px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif">📋 Copiar JSON completo para GitHub</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ MODAL EMPLEADOS (solo ftsmaster) ════════ -->
+<div id="emp-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;overflow-y:auto;padding:20px">
+  <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.2)">
+    <div style="padding:18px 20px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #eee;background:#1e3a5f">
+      <span style="font-size:20px">👷</span>
+      <div style="flex:1"><div style="font-size:14px;font-weight:700;color:#fff">Plantilla de Empleados</div><div style="font-size:11px;color:rgba(255,255,255,.6)">Solo ftsmaster puede editar · Se guarda en GitHub › employees.json</div></div>
+      <button onclick="closeEmpModal()" style="background:rgba(255,255,255,.15);border:none;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:13px;color:#fff">✕</button>
+    </div>
+    <div style="padding:16px 20px">
+      <div id="emp-modal-list" style="max-height:220px;overflow-y:auto;margin-bottom:12px"></div>
+      <!-- Add employee -->
+      <div style="background:#f8f9fa;border-radius:10px;padding:12px;margin-bottom:12px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#999;margin-bottom:8px">Agregar empleado</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <input id="emp-new-nombre" placeholder="Nombre completo" style="padding:8px 10px;border:1px solid #ddd;border-radius:7px;font-size:12px;font-family:Inter,sans-serif">
+          <input id="emp-new-puesto" placeholder="Puesto / Especialidad" style="padding:8px 10px;border:1px solid #ddd;border-radius:7px;font-size:12px;font-family:Inter,sans-serif">
+        </div>
+        <button onclick="addEmployee()" style="margin-top:8px;background:#1e3a5f;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif">+ Agregar</button>
+      </div>
+      <div style="font-size:11px;color:#666;margin-bottom:8px">Genera el JSON y pégalo en <strong>GitHub › employees.json</strong></div>
+      <button onclick="generateEmpJson()" style="width:100%;background:#1e3a5f;color:#fff;border:none;border-radius:8px;padding:10px;font-size:12px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif">📋 Copiar JSON para GitHub</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ APP ════════ -->
+<div id="app-container">
+<!-- MOBILE: Chat FAB -->
+<button id="chat-fab" onclick="toggleChatDrawer()" title="Asistente IA">
+  🤖<span class="fab-badge" id="fab-badge"></span>
+</button>
+<!-- MOBILE: Chat drawer backdrop -->
+<div id="chat-drawer-bg" onclick="closeChatDrawer()"></div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <button class="tb-back" onclick="window.location.href='index.html'" title="Inicio">←</button>
+  <div class="tb-sep"></div>
+  <div class="tb-logo">FTS</div>
+  <div class="tb-sep"></div>
+  <span class="tb-module">ANÁLISIS DE RIESGOS</span>
+  <div class="tb-badge">IPERC · MÉTODO FINE</div>
+  <div class="tb-right">
+    <button id="mode-toggle" onclick="toggleMode()" title="Cambiar vista">💻 PC</button>
+    <span class="tb-user" id="tb-user-badge">—</span>
+    <button class="btn btn-s btn-sm" onclick="newAnalysis()">🔄 Nuevo</button>
+    <button class="btn btn-s btn-sm" onclick="ipercLogout()" style="color:var(--red)">Salir</button>
+  </div>
+</div>
+
+<!-- MAIN AREA -->
+<div class="main-area" id="main-area">
+  <!-- WIZARD -->
+  <div class="wizard">
+    <div class="wstep active" id="ws2"><div class="wnum">1</div><span class="wlabel">Simulación</span></div>
+    <div class="wline"></div>
+    <div class="wstep" id="ws3"><div class="wnum">2</div><span class="wlabel">Análisis IPERC</span></div>
+    <div class="wline"></div>
+    <div class="wstep" id="ws4"><div class="wnum">3</div><span class="wlabel">Imprimir</span></div>
+  </div>
+
+  <!-- STEP 1: PROYECTO -->
+  <!-- STEP 1: vacío — formulario movido al Step 4 -->
+  <div class="step-panel" id="step1" style="display:none!important">
+    <!-- IDs de inputs del proyecto se mantienen aquí para compatibilidad pero están en step4 -->
+  </div>
+
+  <!-- STEP 1: SIMULACIÓN DEL PLAN DE EJECUCIÓN -->
+  <div class="step-panel on" id="step2">
+    <div class="card">
+      <div class="card-hd">
+        <div class="card-icon b">🏗️</div>
+        <div>
+          <div class="card-title">Describe el trabajo</div>
+          <div class="card-sub">El supervisor simulará mentalmente el plan de ejecución completo</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <!-- VOICE / TEXTO INPUT -->
+        <div style="background:var(--d3);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px">
+          <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">¿Qué trabajo se va a realizar?</div>
+          <div style="display:flex;gap:8px;align-items:flex-start">
+            <textarea id="scope-text" rows="4"
+              placeholder="Describe brevemente: tipo de trabajo, área, equipos que se usarán, condiciones especiales&#10;&#10;Ej: Instalación eléctrica tablero 440V trifásico en sala de motores, tendido conduit EMT 1&quot; por charola a 4.5m, armado andamio multidireccional 6m, planta activa 24/7"
+              style="flex:1;background:var(--d2);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:8px;font-family:Inter,sans-serif;font-size:12px;resize:vertical"></textarea>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <button id="voice-scope-btn" onclick="toggleScopeVoice()" title="Nota de voz"
+                style="width:44px;height:44px;border-radius:10px;border:1.5px solid var(--border);background:var(--d2);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0">🎤</button>
+              <label title="Agregar PDFs, imágenes, audio" style="width:44px;height:44px;border-radius:10px;border:1.5px dashed var(--border);background:var(--d2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0"
+                onclick="document.getElementById('scope-files-input').click()">📎</label>
+              <input type="file" id="scope-files-input" accept=".pdf,.png,.jpg,.jpeg,.mp3,.m4a,.wav,.webm" multiple style="display:none" onchange="handleScopeFiles(event)">
+            </div>
+          </div>
+          <div id="scope-voice-status" style="display:none;font-size:11px;color:#dc2626;padding:4px 0 0;display:flex;align-items:center;gap:5px">
+            <span style="width:7px;height:7px;border-radius:50%;background:#dc2626;display:inline-block;animation:pulse 1s infinite"></span>
+            Grabando… toca el micrófono para detener
+          </div>
+          <div id="scope-files-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
+        </div>
+
+        <!-- BOTÓN SIMULAR -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-p" id="detect-btn" onclick="detectActivities()">🏗️ Simular Plan con IA</button>
+          <button class="btn btn-s btn-sm" onclick="detectActivities(true)" style="font-size:11px">Agregar manual</button>
+          <div id="detect-spinner" style="display:none;align-items:center;gap:8px;font-size:12px;color:var(--muted2)">
+            <svg width="18" height="18" viewBox="0 0 24 24" style="animation:spin 1s linear infinite;flex-shrink:0" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-linecap="round"/>
+            </svg>
+            <span id="detect-spinner-txt">Simulando plan de ejecución…</span>
+            <button id="detect-cancel-btn" onclick="cancelGemini()" title="Cancelar" style="margin-left:4px;background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;font-family:Inter,sans-serif;font-weight:600">✕ Cancelar</button>
+          </div>
+        </div>
+
+        <!-- BARRA STATUS APIs -->
+        <div class="api-status-bar" id="api-status-bar">
+          <span class="api-pill api-pill-off" id="pill-groq" onclick="showApiDetail('groq')" title="Ver detalle Groq">⚫ Groq</span>
+          <span class="api-pill api-pill-off" id="pill-gemini" onclick="showApiDetail('gemini')" title="Ver detalle Gemini">⚫ Gemini</span>
+          <span style="font-size:10px;color:var(--muted2);margin-left:2px">— toca para detalles</span>
+        </div>
+
+        <!-- RESULTADO: PLAN SIMULADO -->
+        <div id="detect-result" style="display:none;margin-top:16px">
+          <div id="detect-banner" class="alert alert-ok"></div>
+
+          <!-- Cards del plan generado -->
+          <div id="activities-preview" style="display:none;margin-top:12px">
+            <div class="sec-title">
+              Plan de Ejecución Simulado
+              <button onclick="document.getElementById('activities-preview').style.display='none'"
+                style="font-size:10px;padding:2px 8px;border-radius:6px;border:1px solid var(--border);background:var(--d3);cursor:pointer;color:var(--muted2);font-family:Inter,sans-serif;margin-left:auto">Ocultar ↑</button>
+            </div>
+            <div id="act-preview-list" style="display:flex;flex-direction:column;gap:8px;max-height:480px;overflow-y:auto;padding-right:4px"></div>
+          </div>
+
+          <!-- Tags activa/desactiva -->
+          <div class="sec-title" style="margin-top:14px">Fases del trabajo — activa/desactiva</div>
+          <div id="activity-tags" class="tags-area"></div>
+
+          <!-- Agregar manual -->
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+            <select id="cat-select" style="background:var(--d3);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-size:12px;flex:1;min-width:160px">
+              <option value="">-- Catálogo de actividades --</option></select>
+            <button class="btn btn-s btn-sm" onclick="addFromCatalog()">+ Agregar</button>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <input type="text" id="custom-act" placeholder="Actividad personalizada..."
+              style="background:var(--d3);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-size:12px;flex:1">
+            <button class="btn btn-s btn-sm" onclick="addCustomAct()">+ Agregar</button>
+          </div>
+
+          <!-- REFINAMIENTO INLINE POR VOZ -->
+          <div class="card" style="margin-top:16px;border-color:rgba(79,70,229,.3);background:rgba(79,70,229,.03)">
+            <div class="card-hd">
+              <div class="card-icon p">🎤</div>
+              <div>
+                <div class="card-title" style="color:#4f46e5">Refinar plan con voz</div>
+                <div class="card-sub" id="refine-status-lbl">Dile al supervisor de IA qué ajustar: equipos, métodos, secuencias</div>
+              </div>
+              <button id="refine-voice-plan-btn" onclick="toggleRefinePlanVoice()" title="Hablar para refinar"
+                style="margin-left:auto;width:42px;height:42px;border-radius:10px;border:1.5px solid rgba(79,70,229,.4);background:rgba(79,70,229,.08);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">🎤</button>
+            </div>
+            <div id="refine-voice-plan-status" style="display:none;padding:6px 16px;background:rgba(220,38,38,.06);border-bottom:1px solid rgba(220,38,38,.15);font-size:11px;color:#dc2626;align-items:center;gap:6px">
+              <span style="width:7px;height:7px;border-radius:50%;background:#dc2626;display:inline-block;animation:pulse 1s infinite"></span>
+              Grabando… toca el micrófono para detener y procesar
+            </div>
+            <div class="card-body">
+              <div style="display:flex;gap:8px;align-items:flex-start">
+                <textarea id="refine-plan-text" rows="2"
+                  placeholder="Ej: Vamos a usar andamio multidireccional de 6m en la fase de altura. El tablero es de 440V trifásico Schneider. Agrega subpaso de prueba de aislamiento antes del LOTO."
+                  style="flex:1;background:var(--d2);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:8px;font-family:Inter,sans-serif;font-size:12px;resize:vertical"></textarea>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center">
+                <button class="btn btn-p btn-sm" id="btn-do-refine" onclick="doRefinePlan()" style="background:#4f46e5">🔄 Aplicar refinamiento</button>
+                <div id="refine-plan-spinner" style="display:none;font-size:12px;color:var(--muted2);align-items:center;gap:6px">
+                  <span style="animation:spin 1s linear infinite;display:inline-block">⏳</span>
+                  <span id="refine-spinner-txt">Procesando…</span>
+                  <button onclick="cancelGemini()" title="Cancelar" style="margin-left:4px;background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;font-family:Inter,sans-serif;font-weight:600">✕ Cancelar</button>
+                </div>
+              </div>
+              <div id="refine-history" style="margin-top:8px;font-size:11px;color:var(--muted2);max-height:70px;overflow-y:auto"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-footer">
+      <div></div>
+      <button class="btn btn-p" id="btn-to-refine" onclick="goStep(3)" style="display:none">Analizar Riesgos →</button>
+    </div>
+  </div>
+
+  <!-- STEP 3: ANÁLISIS DE RIESGOS + PREVIEW IPERC -->
+  <div class="step-panel" id="step3">
+
+    <!-- Header: stats + botón evaluar IA -->
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <div class="stats-row" id="summary-stats" style="flex:1;margin:0"></div>
+      <button id="btn-eval-risks" onclick="autoEvaluateRisks()"
+        style="display:flex;align-items:center;gap:6px;padding:10px 18px;background:var(--orange,#D83B01);color:#fff;border:none;border-radius:10px;font-family:Inter,sans-serif;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0">
+        🤖 Evaluar Riesgos con IA
+      </button>
+    </div>
+
+    <!-- Spinner evaluación -->
+    <div id="eval-spinner" style="display:none;align-items:center;gap:10px;padding:12px 16px;background:rgba(217,59,1,.06);border:1px solid rgba(217,59,1,.2);border-radius:10px;margin-bottom:12px">
+      <svg width="20" height="20" viewBox="0 0 24 24" style="animation:spin 1s linear infinite;flex-shrink:0" fill="none" stroke="#D83B01" stroke-width="2.5">
+        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-linecap="round"/>
+      </svg>
+      <span id="eval-spinner-txt" style="font-size:12px;color:var(--muted2);flex:1">Analizando con Groq…</span>
+      <button onclick="cancelGemini()" style="background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;padding:2px 10px;font-size:11px;cursor:pointer;font-family:Inter,sans-serif;font-weight:600">✕ Cancelar</button>
+    </div>
+    <!-- Pills de status API visibles durante análisis -->
+    <div id="eval-api-bar" style="display:none;gap:8px;align-items:center;padding:8px 12px;background:var(--d2);border:1px solid var(--border);border-radius:8px;margin-bottom:10px;flex-wrap:wrap">
+      <span style="font-size:10px;color:var(--muted2);font-weight:600;text-transform:uppercase;letter-spacing:.6px">IA Evaluación:</span>
+      <!-- Indicador de IA activa -->
+      <span id="eval-active-ai" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;background:#f0fdf4;color:#16a34a;display:none">⚡ —</span>
+      <span id="eval-pill-groq" style="font-size:11px;padding:2px 8px;border-radius:12px;background:var(--d3);color:var(--muted2)">⚫ Groq</span>
+      <span style="font-size:10px;color:var(--muted2)">·</span>
+      <span id="eval-pill-gemini" style="font-size:11px;padding:2px 8px;border-radius:12px;background:var(--d3);color:var(--muted2)">⚫ Gemini</span>
+      <span id="eval-fallback-notice" style="display:none;font-size:10px;color:#b45309;font-style:italic;margin-left:4px"></span>
+    </div>
+
+    <!-- Vista previa IPERC — sin encabezado, directo al contenido -->
+    <div id="iperc-fingerprint-bar" style="display:none;margin-bottom:8px"></div>
+    <div id="iperc-empty-hint" style="padding:20px 16px;text-align:center;color:var(--muted2);font-size:12px;line-height:1.8;background:var(--d2);border:1px solid var(--border);border-radius:12px">
+      Presiona <strong>🤖 Evaluar Riesgos con IA</strong> para generar el análisis.<br>
+      O usa <strong>✏️ Ajuste del Supervisor</strong> para agregar riesgos manualmente.
+    </div>
+    <div id="iperc-preview-wrap" style="display:none">
+      <div id="iperc-preview"></div>
+      <div class="sig-row" id="sig-block"></div>
+    </div>
+
+    <!-- Panel ajuste supervisor -->
+    <div class="card" style="margin-top:10px">
+      <div class="card-hd" style="cursor:pointer" onclick="toggleAjustePanel()">
+        <div class="card-icon y">✏️</div>
+        <div>
+          <div class="card-title">Ajuste del Supervisor</div>
+          <div class="card-sub">Agrega, quita o corrige riesgos con tu experiencia de campo</div>
+        </div>
+        <span id="ajuste-arrow" style="margin-left:auto;color:var(--muted);font-size:13px;transition:transform .2s">▼</span>
+      </div>
+      <div id="ajuste-body" style="display:none">
+        <div class="card-body">
+
+          <!-- Corrección con IA -->
+          <div style="margin-bottom:16px">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px">🤖 Corrección con IA (voz o texto)</div>
+            <div style="display:flex;gap:8px;align-items:flex-start">
+              <textarea id="risk-advisor-text" rows="2"
+                placeholder="Ej: El arco eléctrico en tablero 440V debe ser GR Inminente · Falta riesgo de atrapamiento en banda · Quita el riesgo de ruido"
+                style="flex:1;background:var(--d2);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:8px;font-family:Inter,sans-serif;font-size:12px;resize:vertical"></textarea>
+              <button id="risk-advisor-voice" onclick="toggleRiskAdvisorVoice()" title="Nota de voz"
+                style="width:40px;height:40px;border-radius:10px;border:1.5px solid var(--border);background:var(--d2);font-size:18px;cursor:pointer;flex-shrink:0">🎤</button>
+            </div>
+            <div id="risk-advisor-voice-status" style="display:none;font-size:11px;color:#dc2626;padding:4px 0;align-items:center;gap:5px">
+              <span style="width:6px;height:6px;border-radius:50%;background:#dc2626;display:inline-block;animation:pulse 1s infinite"></span>Grabando…
+            </div>
+            <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+              <button class="btn btn-s btn-sm" id="btn-risk-advisor" onclick="askRiskAdvisor()">💡 Aplicar corrección</button>
+              <button class="btn btn-s btn-sm" onclick="autoEvaluateRisks(true)">🔄 Re-evaluar todo</button>
+            </div>
+            <div id="risk-advisor-response" style="display:none;margin-top:10px;background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:10px;padding:12px;font-size:12px;color:var(--text);line-height:1.6;white-space:pre-wrap"></div>
+          </div>
+
+          <!-- Lista editable de riesgos -->
+          <div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px">📋 Riesgos generados — activa / desactiva / edita</div>
+            <div id="risk-edit-list" style="display:flex;flex-direction:column;gap:6px"></div>
+          </div>
+
+          <!-- Agregar riesgo manual -->
+          <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px">➕ Agregar riesgo manual</div>
+            <div class="form-grid">
+              <div class="field"><label>Actividad</label>
+                <select id="cr-act" style="background:var(--d2);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:8px;font-family:Inter,sans-serif;font-size:12px;width:100%"></select>
+              </div>
+              <div class="field"><label>Tipo de peligro</label>
+                <select id="cr-tipo" style="background:var(--d2);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:8px;font-family:Inter,sans-serif;font-size:12px;width:100%">
+                  <option>Mecánico</option><option>Eléctrico</option><option>Locativo</option>
+                  <option>Físico</option><option>Químico</option><option>Ergonómico</option><option>Biológico</option>
+                </select>
+              </div>
+            </div>
+            <div class="field" style="margin-top:6px"><label>Peligro / Riesgo</label>
+              <input type="text" id="cr-riesgo" placeholder="Ej. Contacto con partes energizadas tablero 440V"
+                style="background:var(--d2);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:8px;font-family:Inter,sans-serif;font-size:12px;width:100%;box-sizing:border-box">
+            </div>
+            <div class="field" style="margin-top:6px"><label>Consecuencia</label>
+              <input type="text" id="cr-consec" placeholder="Ej. Electrocución, muerte"
+                style="background:var(--d2);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:8px;font-family:Inter,sans-serif;font-size:12px;width:100%;box-sizing:border-box">
+            </div>
+            <div class="form-grid three" style="margin-top:6px;gap:6px">
+              <div class="field"><label>C (consecuencia)</label>
+                <input type="number" id="cr-c" value="25" min="1" max="100" style="background:var(--d2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;font-size:12px;width:100%;box-sizing:border-box">
+              </div>
+              <div class="field"><label>E (exposición)</label>
+                <input type="number" id="cr-e" value="6" min="0.5" max="10" step="0.5" style="background:var(--d2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;font-size:12px;width:100%;box-sizing:border-box">
+              </div>
+              <div class="field"><label>P (probabilidad)</label>
+                <input type="number" id="cr-p" value="3" min="0.1" max="10" step="0.1" style="background:var(--d2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;font-size:12px;width:100%;box-sizing:border-box">
+              </div>
+            </div>
+            <div class="field" style="margin-top:6px"><label>Controles administrativos</label>
+              <input type="text" id="cr-ctrl-adm" placeholder="Ej. LOTO NOM-004, PTR, señalización, charla previa"
+                style="background:var(--d2);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:8px;font-family:Inter,sans-serif;font-size:12px;width:100%;box-sizing:border-box">
+            </div>
+            <div class="field" style="margin-top:6px"><label>EPP requerido</label>
+              <input type="text" id="cr-epp" placeholder="Ej. Guantes dieléctricos Clase E, casco Clase E, lentes"
+                style="background:var(--d2);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:8px;font-family:Inter,sans-serif;font-size:12px;width:100%;box-sizing:border-box">
+            </div>
+            <button class="btn btn-s" style="margin-top:10px;width:100%" onclick="addCustomRisk()">➕ Agregar a la tabla</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-footer">
+      <button class="btn btn-s" onclick="goStep(2)">‹ Regresar al plan</button>
+      <button class="btn btn-p" id="btn-to-print" onclick="goStep(4)" style="display:none">Aprobar y continuar → 📄</button>
+    </div>
+  </div>
+  <div class="step-panel" id="step4">
+
+    <!-- Datos del Proyecto — capturar antes de imprimir -->
+    <div class="card" id="card-proyecto" style="margin-top:10px">
+      <div class="card-hd" style="cursor:pointer" onclick="toggleProyectoCard()">
+        <div class="card-icon">📋</div>
+        <div><div class="card-title">Datos del Proyecto</div><div class="card-sub" id="proyecto-card-sub">Cliente · Lugar · Firmas · Personal</div></div>
+        <div style="margin-left:auto;display:flex;gap:10px;align-items:center">
+          <button title="Base de Conocimiento" onclick="event.stopPropagation();toggleKbPanel()" style="width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--d3);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted2)">⚙️</button>
+          <span id="proyecto-arrow" style="color:var(--muted);font-size:13px;transition:transform .2s">▼</span>
+        </div>
+      </div>
+      <div id="kb-panel" style="display:none;padding:12px 16px;border-bottom:1px solid var(--border);background:rgba(124,58,237,.04)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <span style="font-size:13px;font-weight:600;color:var(--purple)">🧠 Base de Conocimiento</span>
+          <span id="kb-status-dot" style="width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block"></span>
+          <span id="kb-status-lbl" style="font-size:11px;color:var(--muted)">—</span>
+          <span id="kb-sub" style="font-size:11px;color:var(--muted2);margin-left:4px"></span>
+        </div>
+        <div class="upload-zone" id="learn-zone" onclick="document.getElementById('learn-file').click()" style="padding:10px;margin-bottom:8px">
+          <div style="font-size:20px">📂</div>
+          <p style="font-size:11px;margin:2px 0">Clic para cargar IPERCs anteriores (.xlsx)</p>
+          <input type="file" id="learn-file" accept=".xlsx,.xls" style="display:none" multiple>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span id="learned-status" style="font-size:11px;color:var(--muted2)">Sin riesgos aprendidos aún</span>
+          <button class="btn btn-s btn-sm" onclick="clearLearned()">🗑 Limpiar</button>
+        </div>
+        <div class="knowledge-panel" id="knowledge-manager" style="margin-top:10px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+            <span style="font-size:11px;font-weight:600;color:var(--purple)">🔑 Master</span>
+            <button class="btn btn-purple btn-sm" onclick="generateKnowledgeJSON()">⚡ Generar JSON</button>
+            <button class="btn btn-s btn-sm" onclick="loadGitHubKnowledge(true)">🔄 Recargar</button>
+            <button class="btn btn-s btn-sm" onclick="clearAllKnowledge()" style="color:var(--red)">🗑 Limpiar todo</button>
+          </div>
+          <div class="kb-stat" id="kb-stats-grid">
+            <div class="kb-stat-item"><strong id="kb-total">0</strong><span>Total</span></div>
+            <div class="kb-stat-item"><strong id="kb-github-count" style="color:var(--blue)">0</strong><span>GitHub</span></div>
+            <div class="kb-stat-item"><strong id="kb-local-count" style="color:var(--yellow)">0</strong><span>Locales</span></div>
+          </div>
+          <div id="kb-json-section" style="display:none;margin-top:8px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+              <span style="font-size:10px;color:var(--muted2)">JSON → GitHub knowledge.json</span>
+              <button class="btn btn-s btn-sm" onclick="copyKnowledgeJSON()">📋 Copiar</button>
+            </div>
+            <textarea class="json-out" id="knowledge-json-out" rows="5" readonly></textarea>
+            <p id="kb-copy-msg" style="font-size:11px;color:var(--green);min-height:14px;margin-top:2px"></p>
+          </div>
+          <div id="kb-risks-list" style="margin-top:8px;max-height:150px;overflow-y:auto;font-size:10px;color:var(--muted2)"></div>
+        </div>
+      </div>
+      <div id="proyecto-card-body">
+        <div class="card-body">
+          <div class="form-grid" style="margin-bottom:12px">
+            <div class="field"><label>Cliente</label><input type="text" id="p_cliente" placeholder="Ej. Arca Continental · Coca-Cola"></div>
+            <div class="field"><label>Descripción del trabajo</label><input type="text" id="p_trabajo" placeholder="Ej. Instalación eléctrica y armado de andamio"></div>
+            <div class="field"><label>Área de Trabajo</label><input type="text" id="p_area" placeholder="Ej. Ecología / Tratamiento de aguas"></div>
+            <div class="field"><label>Lugar / Planta</label><input type="text" id="p_lugar" placeholder="Ej. Planta Topo Chico, MTY"></div>
+          </div>
+          <div class="form-grid three" style="margin-bottom:12px">
+            <div class="field"><label>Elaboró (Segurista)</label><input type="text" id="p_elaboro" placeholder="Nombre completo"></div>
+            <div class="field"><label>Revisó (Supervisor)</label><input type="text" id="p_reviso" placeholder="Supervisor FTS"></div>
+            <div class="field"><label>Aprobó (Cliente EHS)</label><input type="text" id="p_aprobo" placeholder="Rep. seguridad cliente"></div>
+          </div>
+          <div class="form-grid three">
+            <div class="field"><label>Fecha</label><input type="date" id="p_fecha"></div>
+            <div class="field"><label>Vigencia AL</label><input type="date" id="p_vigencia"></div>
+            <div class="field"><label>Código IPERC / OT</label><input type="text" id="p_codigo" placeholder="Ej. MX-TCH-CHU-SI-F-022"></div>
+          </div>
+          <div style="margin-top:12px" class="field">
+            <label style="display:flex;align-items:center;justify-content:space-between">
+              Personal que realizará la actividad
+              <span id="btn-open-emp-modal" onclick="openEmpModal()" style="display:none;font-size:11px;color:var(--o);cursor:pointer;font-weight:600">⚙️ Gestionar plantilla</span>
+            </label>
+            <div id="emp-selector-wrap" style="display:none">
+              <div id="emp-dropdown-btn" onclick="toggleEmpDropdown()" style="background:var(--d3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--muted2)">
+                <span id="emp-selection-label">Seleccionar personal del equipo...</span>
+                <span style="color:var(--muted)">▾</span>
+              </div>
+              <div id="emp-dropdown-list" style="display:none;background:var(--d2);border:1px solid var(--border);border-radius:8px;margin-top:4px;max-height:180px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.15)"></div>
+              <div id="emp-selected-chips" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px"></div>
+            </div>
+            <input type="text" id="p_personal" placeholder="Supervisor, segurista, electromecánico, ayudante..." style="display:block">
+          </div>
+          <div style="margin-top:8px" class="field"><label>Puesto(s)</label><input type="text" id="p_puesto" placeholder="Ej. Supervisor, soldador, electromecánico"></div>
+        </div>
+      </div>
+    </div>
+
+
+    <div class="card">
+      <div class="card-hd">
+        <div class="card-icon g">✅</div>
+        <div>
+          <div class="card-title">IPERC listo para imprimir</div>
+          <div class="card-sub">El análisis fue revisado y aprobado</div>
+        </div>
+      </div>
+      <div id="pdf-hint" style="display:none;padding:10px 16px;background:rgba(16,124,16,.05);border-bottom:1px solid rgba(16,124,16,.15)">
+        <span style="font-size:11px;color:var(--green)">✅ PDF listo — formato horizontal A4 · con membrete de cliente</span>
+      </div>
+      <div class="card-body" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;padding:16px">
+        <button class="btn btn-p" onclick="generatePDF()" id="btn-gen-pdf" style="font-size:14px;padding:12px 24px">
+          <span>📄</span> Generar PDF
+        </button>
+        <button class="btn btn-s" onclick="generateExcel()" id="btn-gen-xlsx" style="padding:12px 18px;background:#1d6f42;color:#fff;border:none">
+          <span>📊</span> Exportar Excel
+        </button>
+        <button class="btn btn-s" onclick="printIPERC()" style="padding:12px 18px">🖨 Imprimir</button>
+        <button class="btn btn-s" onclick="saveKnowledge()">💾 Guardar en base</button>
+      </div>
+    </div>
+    <!-- Constancia de Difusión colapsable -->
+    <div class="card" style="margin-top:10px">
+      <div class="card-hd" style="cursor:pointer" onclick="toggleDiffCard()">
+        <div class="card-icon p">📢</div>
+        <div><div class="card-title">Constancia de Difusión</div><div class="card-sub">Lista de asistencia + firmas — opcional</div></div>
+        <span id="diff-arrow" style="margin-left:auto;color:var(--muted);font-size:13px;transition:transform .2s">▼</span>
+      </div>
+      <div id="diff-card-body" style="display:none">
+        <div class="card-body">
+          <div class="alert alert-info"><span>ℹ️</span><div>Genera una constancia imprimible con lista de riesgos difundidos y firma de asistencia.</div></div>
+          <button class="btn btn-s" onclick="generateDiffusionPDF()">📄 Generar PDF de Constancia</button>
+        </div>
+      </div>
+    </div>
+    <div class="nav-footer">
+      <button class="btn btn-s" onclick="goStep(3)">‹ Volver al análisis</button>
+      <button class="btn btn-s" onclick="newAnalysis()">🔄 Nuevo análisis</button>
+    </div>
+  </div>
+
+<!-- CHAT PANEL -->
+<div class="chat-panel">
+  <div class="chat-hd">
+    <div class="chat-hd-icon">🤖</div>
+    <div class="chat-hd-text"><strong>Asistente IPERC</strong><span id="chat-hd-sub">Claude · Voz · Imágenes · FTS Safety AI</span></div>
+  </div>
+  <div class="chat-msgs" id="chat-msgs">
+    <div class="msg msg-ai">¡Hola! Soy tu asistente de análisis de riesgos.<br><br>Puedo ayudarte a:<br>• Identificar riesgos específicos<br>• Calcular el Método FINE (C×E×P)<br>• Analizar <strong>fotos reales de la planta</strong> 📸<br>• Escuchar por <strong>nota de voz</strong> 🎤<br><br>¿En qué tipo de trabajo estás trabajando hoy?</div>
+  </div>
+  <div class="chat-quick" id="chat-quick">
+    <button class="qbtn" onclick="quickChat('¿Qué riesgos hay en trabajos en altura con andamio?')">Altura / andamio</button>
+    <button class="qbtn" onclick="quickChat('¿Qué controles LOTO aplican para trabajos eléctricos?')">LOTO eléctrico</button>
+    <button class="qbtn" onclick="quickChat('¿Qué EPP necesito para soldadura TIG?')">Soldadura</button>
+    <button class="qbtn" onclick="quickChat('Explícame el Método FINE y cómo calcular el GR')">Método FINE</button>
+    <button class="qbtn" onclick="quickChat('¿Cuáles son las Reglas que Salvan Vidas de Arca Continental?')">Reglas Arca</button>
+  </div>
+  <!-- Image preview row -->
+  <div id="img-preview-row" style="display:none;padding:0 10px 6px;background:var(--d2)">
+    <div class="img-preview" id="img-preview-box">
+      <img id="img-preview-thumb" src="" alt="preview">
+      <button class="remove-img" onclick="clearImageAttach()">×</button>
+    </div>
+  </div>
+  <!-- Input area -->
+  <div class="chat-input-area">
+    <div class="chat-media-row">
+      <button class="chat-media-btn" id="voice-btn" onclick="toggleVoice()" title="Nota de voz — habla en español">
+        <span>🎤</span><span id="voice-btn-lbl">Nota de voz</span>
+      </button>
+      <button class="chat-media-btn" onclick="document.getElementById('img-attach').click()" title="Analizar foto de la situación">
+        <span>📸</span><span>Foto de planta</span>
+      </button>
+      <input type="file" id="img-attach" accept="image/*" capture="environment" style="display:none" onchange="handleImageAttach(this)">
+    </div>
+    <div id="chat-status" class="chat-status"></div>
+    <div class="chat-input-row">
+      <textarea class="chat-input" id="chat-input" placeholder="Escribe o usa el micrófono..." rows="1" onkeydown="chatKeydown(event)"></textarea>
+      <button class="chat-send" id="chat-send" onclick="sendChat()">➤</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /app-container -->
+
+<!-- SUGGEST MODAL -->
+<div id="suggest-modal">
+  <div class="suggest-box">
+    <div class="suggest-box-hd">
+      <span style="font-size:18px">🛡️</span>
+      <h3>Agregar riesgos sugeridos al IPERC</h3>
+      <button onclick="closeSuggestModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted2)">×</button>
+    </div>
+    <div id="suggest-list"></div>
+    <div class="suggest-footer">
+      <button class="btn btn-s btn-sm" onclick="closeSuggestModal()">Cancelar</button>
+      <button class="btn btn-g btn-sm" onclick="confirmAddSuggestions()">✅ Agregar seleccionados al IPERC</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- MODAL REFINAMIENTO IPERC -->
+<div class="rfn-overlay" id="rfn-overlay" style="display:none" onclick="if(event.target===this)closeRefineModal()">
+  <div class="rfn-modal">
+    <div class="rfn-header">
+      <div style="font-size:22px">✏️</div>
+      <div style="flex:1">
+        <h2>Refinamiento de IPERC</h2>
+        <div style="font-size:12px;opacity:.75;margin-top:2px">Edita las actividades generadas por IA. El supervisor valida y guarda el plan final.</div>
+      </div>
+      <div class="rfn-code-badge" id="rfn-code-display">—</div>
+      <button onclick="closeRefineModal()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:4px 8px">✕</button>
+    </div>
+    <div class="rfn-body" id="rfn-body">
+      <div style="color:#6b7280;font-size:13px;text-align:center;padding:30px">Cargando actividades...</div>
+    </div>
+    <div class="rfn-footer">
+      <div>
+        <div style="font-size:11px;color:#6b7280;margin-bottom:3px">Supervisor que refina:</div>
+        <input id="rfn-supervisor" type="text" placeholder="Ej. Mateo Salazar"
+          style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:13px;width:200px;outline:none">
+      </div>
+      <div class="rfn-status" id="rfn-status"></div>
+      <button class="btn btn-p btn-sm" onclick="saveCurrentRefinement()">💾 Guardar refinamiento</button>
+      <button class="btn btn-s btn-sm" onclick="applyRefinementToIPERC()">✅ Aplicar al IPERC</button>
+      <button class="btn btn-s btn-sm" onclick="closeRefineModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+<!-- Módulos JavaScript FTS IPERC -->
+<script src="iperc-config.js"></script>
+<script src="iperc-ai.js"></script>
+<script src="iperc-table.js"></script>
+<script src="iperc-export.js"></script>
+<script src="iperc-steps.js"></script>
+<script src="iperc-refine.js"></script>
+</body>
+</html>
