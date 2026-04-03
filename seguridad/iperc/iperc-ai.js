@@ -276,11 +276,36 @@ async function callGemini(parts, maxTokens=1000, _statusEl=null, _attempt=0){
 
 // ── OpenRouter — tercer fallback con modelo gratuito ──
 let OPENROUTER_KEY = localStorage.getItem('fts_openrouter_key') || '';
+let _orModel = null;
+
+async function getOpenRouterFreeModel(key) {
+  if (_orModel) return _orModel;
+  try {
+    const response = await fetch('https://openrouter.ai/api/v1/models', {
+      headers: { 'Authorization': 'Bearer ' + key }
+    });
+    const data = await response.json();
+    const freeModels = (data.data||[])
+      .filter(m => m.id.endsWith(':free') && m.context_length >= 8000)
+      .sort((a,b) => b.context_length - a.context_length);
+    if (!freeModels.length) throw new Error('Sin modelos gratuitos');
+    _orModel = freeModels[0].id;
+    console.log('[OpenRouter] Modelo seleccionado:', _orModel, '(ctx:', freeModels[0].context_length + ')');
+    return _orModel;
+  } catch(e) {
+    _orModel = 'mistralai/mistral-small-3.1-24b-instruct:free';
+    console.warn('[OpenRouter] Fallback modelo:', _orModel, e.message);
+    return _orModel;
+  }
+}
 
 async function callOpenRouter(promptText, maxTokens=4500, _statusEl=null){
   if(!OPENROUTER_KEY) throw new Error('Sin OpenRouter key');
   if(window._geminiCancelled) throw new Error('CANCELADO');
   _setApiStatus('gemini','warn','Fallback…','Usando OpenRouter como respaldo.');
+
+  const model = await getOpenRouterFreeModel(OPENROUTER_KEY);
+  if(_statusEl && _statusEl.textContent) _statusEl.textContent = '⚡ OpenRouter · ' + model.split('/').pop().replace(':free','');
 
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
@@ -291,7 +316,7 @@ async function callOpenRouter(promptText, maxTokens=4500, _statusEl=null){
       'X-Title': 'FTS Suite IPERC'
     },
     body: JSON.stringify({
-      model: 'mistralai/mistral-7b-instruct:free',
+      model: model,
       max_tokens: maxTokens,
       messages: [
         { role: 'user', content: promptText }

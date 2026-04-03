@@ -566,12 +566,15 @@ async function testOpenRouterKey(){
     result.textContent='⚠️ Ingresa una key primero.'; return;
   }
   result.style.cssText='display:block;background:#f8f9fa;border:1px solid #e0e0e0;color:#666;padding:6px 8px;border-radius:6px';
-  result.textContent='⏳ Probando OpenRouter…';
+  result.textContent='⏳ Detectando mejor modelo gratuito…';
   try{
+    _orModel = null; // reset cache para re-detectar
+    const model = await getOpenRouterFreeModel(key);
+    result.textContent='⏳ Probando ' + model + '…';
     const res=await fetch('https://openrouter.ai/api/v1/chat/completions',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+key,'HTTP-Referer':'https://yinyo1.github.io/fts-suite/','X-Title':'FTS Suite IPERC'},
-      body:JSON.stringify({model:'mistralai/mistral-7b-instruct:free',max_tokens:5,messages:[{role:'user',content:'Di solo: OK'}]})
+      body:JSON.stringify({model:model,max_tokens:5,messages:[{role:'user',content:'Di solo: OK'}]})
     });
     const d=await res.json();
     if(d.error){
@@ -580,7 +583,7 @@ async function testOpenRouterKey(){
     }
     const txt=d.choices?.[0]?.message?.content||'';
     result.style.cssText='display:block;background:#f0fdf4;border:1px solid #86efac;color:#16a34a;padding:6px 8px;border-radius:6px;font-weight:500';
-    result.innerHTML='✅ OpenRouter OK · <strong>mistral-7b-instruct:free</strong><br><span style="font-size:10px;color:#059669">Respondió: "'+txt.trim()+'"</span>';
+    result.innerHTML='✅ OpenRouter OK · <strong>'+model+'</strong><br><span style="font-size:10px;color:#059669">Respondió: "'+txt.trim()+'" — modelo guardado</span>';
   }catch(e){
     result.style.cssText='display:block;background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;padding:6px 8px;border-radius:6px';
     result.textContent='❌ Error de red: '+e.message;
