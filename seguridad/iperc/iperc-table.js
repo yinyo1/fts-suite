@@ -99,53 +99,89 @@ async function autoEvaluateRisks(forceReeval){
   try{
     if(window._geminiCancelled) throw new Error('CANCELADO');
     let result;
+    const hasOR = !!localStorage.getItem('fts_openrouter_key');
+    const gemPrompt = prompt + '\n\nIMPORTANTE: Responde SOLO con JSON válido. Sin explicaciones. Sin markdown. Empieza con { directamente.';
 
     if(GROQ_KEY){
       // ── Intento 1: Groq ──
       _showActiveAI('Groq', GROQ_MODEL.replace('llama-','Llama-').replace('-versatile',''), '#8b5cf6');
       _setEvalPill('groq','🔄','Analizando…','#8b5cf6');
-      if(GEMINI_KEY) _setEvalPill('gemini','⚫','En espera','#6b7280');
+      console.log('[IPERC-AI] [1/3] Intentando Groq (riesgos)...');
       try{
-        result = await callGroq(prompt, 8000, spinTxt, 0, 0);
+        result = await callGroq(prompt, 4000, spinTxt, 0, 0);
+        console.log('[IPERC-AI] Groq OK — chars:', result.length);
         _setEvalPill('groq','✅','OK','#16a34a');
       } catch(groqErr){
-        const isRateErr = /RATE_AGOTADO|rate.limit|429|Límite/i.test(groqErr.message||String(groqErr));
-        const isKeyErr  = /GROQ_KEY_INVALIDA|GROQ_SIN_KEY|401|invalid/i.test(groqErr.message||String(groqErr));
-        if((isRateErr || isKeyErr) && GEMINI_KEY){
-          // ── Fallback automático: Gemini ──
-          const reason = isRateErr ? 'límite de requests' : 'key inválida';
-          window._stopCountdown = true; // detener countdown inmediatamente
-          _setEvalPill('groq','⏱️',isRateErr?'Límite':'Key err','#dc2626');
-          _showFallbackNotice('Groq en ' + reason + ' — usando Gemini automáticamente');
+        console.warn('[IPERC-AI] Groq falló:', groqErr.message);
+        _setEvalPill('groq','⏱️','Error','#dc2626');
+        window._stopCountdown = true;
+        if(hasOR){
+          console.log('[IPERC-AI] [2/3] Intentando OpenRouter (riesgos)...');
+          _showFallbackNotice('Groq falló — usando OpenRouter');
+          if(spinTxt) spinTxt.textContent = '⚡ OpenRouter evaluando riesgos…';
+          try{
+            result = await callOpenRouter([{text:prompt}], 4000);
+            console.log('[IPERC-AI] OpenRouter OK — chars:', result.length);
+          } catch(orErr){
+            console.warn('[IPERC-AI] OpenRouter falló:', orErr.message);
+            if(GEMINI_KEY){
+              console.log('[IPERC-AI] [3/3] Intentando Gemini (riesgos)...');
+              _showFallbackNotice('OpenRouter falló — usando Gemini');
+              _showActiveAI('Gemini', GEMINI_MODEL.replace('gemini-',''), '#1d4ed8');
+              _setEvalPill('gemini','🔄','Analizando…','#1d4ed8');
+              if(spinTxt) spinTxt.textContent = '⚡ Gemini evaluando riesgos…';
+              result = await callGemini([{text:gemPrompt}], 6000, spinTxt);
+              console.log('[IPERC-AI] Gemini OK — chars:', result.length);
+              _setEvalPill('gemini','✅','OK','#16a34a');
+            } else { throw orErr; }
+          }
+        } else if(GEMINI_KEY){
+          console.log('[IPERC-AI] [2/3] Intentando Gemini (riesgos)...');
+          _showFallbackNotice('Groq falló — usando Gemini');
           _showActiveAI('Gemini', GEMINI_MODEL.replace('gemini-',''), '#1d4ed8');
           _setEvalPill('gemini','🔄','Analizando…','#1d4ed8');
-          if(spinTxt) spinTxt.textContent = '⚡ Gemini tomando el análisis…';
-          result = await callGemini([{text:prompt}], 6000, spinTxt);
+          if(spinTxt) spinTxt.textContent = '⚡ Gemini evaluando riesgos…';
+          result = await callGemini([{text:gemPrompt}], 6000, spinTxt);
+          console.log('[IPERC-AI] Gemini OK — chars:', result.length);
           _setEvalPill('gemini','✅','OK','#16a34a');
-        } else {
-          throw groqErr; // error no recuperable
-        }
+        } else { throw groqErr; }
+      }
+    } else if(hasOR){
+      console.log('[IPERC-AI] [1/2] Intentando OpenRouter (riesgos, sin Groq)...');
+      if(spinTxt) spinTxt.textContent = '⚡ OpenRouter evaluando riesgos…';
+      try{
+        result = await callOpenRouter([{text:prompt}], 4000);
+        console.log('[IPERC-AI] OpenRouter OK — chars:', result.length);
+      } catch(orErr2){
+        console.warn('[IPERC-AI] OpenRouter falló:', orErr2.message);
+        if(GEMINI_KEY){
+          console.log('[IPERC-AI] [2/2] Intentando Gemini (riesgos)...');
+          _showActiveAI('Gemini', GEMINI_MODEL.replace('gemini-',''), '#1d4ed8');
+          _setEvalPill('gemini','🔄','Analizando…','#1d4ed8');
+          if(spinTxt) spinTxt.textContent = '⚡ Gemini evaluando riesgos…';
+          result = await callGemini([{text:gemPrompt}], 6000, spinTxt);
+          console.log('[IPERC-AI] Gemini OK — chars:', result.length);
+          _setEvalPill('gemini','✅','OK','#16a34a');
+        } else { throw orErr2; }
       }
     } else if(GEMINI_KEY){
-      // ── Solo Gemini disponible ──
       _showActiveAI('Gemini', GEMINI_MODEL.replace('gemini-',''), '#1d4ed8');
       _setEvalPill('gemini','🔄','Analizando…','#1d4ed8');
-      try{
-        result = await callGemini([{text:prompt}], 6000, spinTxt);
-        _setEvalPill('gemini','✅','OK','#16a34a');
-      } catch(geminiErr){
-        const isRateErr = /RATE_AGOTADO|429|Límite/i.test(geminiErr.message||String(geminiErr));
-        _setEvalPill('gemini','❌',isRateErr?'Límite':'Error','#dc2626');
-        throw geminiErr;
-      }
+      console.log('[IPERC-AI] [1/1] Solo Gemini (riesgos)...');
+      if(spinTxt) spinTxt.textContent = '⚡ Gemini evaluando riesgos…';
+      result = await callGemini([{text:gemPrompt}], 6000, spinTxt);
+      console.log('[IPERC-AI] Gemini OK — chars:', result.length);
+      _setEvalPill('gemini','✅','OK','#16a34a');
     } else {
-      throw new Error('Sin API keys configuradas. Abre ⚙️ Configuración y agrega Groq o Gemini.');
+      throw new Error('Sin API keys configuradas. Abre ⚙️ y agrega Groq, OpenRouter o Gemini.');
     }
 
     clearInterval(msgTimer);
     if(window._geminiCancelled) throw new Error('CANCELADO');
 
     // Parsear JSON — quitar bloques markdown si los hay
+    console.log('[IPERC-AI] Raw length:', result.length);
+    console.log('[IPERC-AI] Raw preview:', result.substring(0,300));
     const clean = result.replace(/```json|```/g,'').trim();
     const parsed = JSON.parse(clean);
     const risks = parsed.riesgos || parsed;

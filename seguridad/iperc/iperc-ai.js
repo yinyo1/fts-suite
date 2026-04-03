@@ -274,6 +274,40 @@ async function callGemini(parts, maxTokens=1000, _statusEl=null, _attempt=0){
   return text;
 }
 
+// ── OpenRouter — fallback con modelo gratuito ──
+async function callOpenRouter(parts, maxTokens=6000) {
+  const key = localStorage.getItem('fts_openrouter_key');
+  if (!key) throw new Error('Sin OpenRouter key');
+  var text = '';
+  if (Array.isArray(parts)) {
+    text = parts.map(function(p){ return p.text||''; }).join('\n');
+  } else {
+    text = String(parts);
+  }
+  var response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + key,
+      'HTTP-Referer': 'https://yinyo1.github.io/fts-suite/',
+      'X-Title': 'FTS Suite IPERC'
+    },
+    body: JSON.stringify({
+      model: 'meta-llama/llama-3.3-70b-instruct:free',
+      max_tokens: maxTokens,
+      messages: [{ role: 'user', content: text }]
+    })
+  });
+  if (!response.ok) {
+    var err = await response.json().catch(function(){ return {}; });
+    throw new Error('OpenRouter: ' + ((err.error && err.error.message) || response.status));
+  }
+  var data = await response.json();
+  var result = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+  if (!result) throw new Error('OpenRouter sin respuesta');
+  return result;
+}
+
 // ════════════════════════════════════════════════════
 // WIZARD
 // ════════════════════════════════════════════════════
@@ -508,69 +542,107 @@ kbDetectedCtx+
       // ARQUITECTURA DUAL: Gemini (OCR) → Groq (plan)
       // ══════════════════════════════════════════════
       let result;
-      const hasFiles = _scopeFiles.length > 0;
+      const hasImage = parts.some(function(p){ return p.inline_data || p.fileData; });
       const hasGroq  = !!GROQ_KEY;
+      const hasOR    = !!localStorage.getItem('fts_openrouter_key');
+      console.log('[IPERC-AI] Modo:', hasImage ? 'IMAGEN+TEXTO' : 'SOLO TEXTO', '| Groq:', hasGroq, '| OpenRouter:', hasOR, '| Gemini:', !!GEMINI_KEY);
 
-      if(hasFiles && hasGroq){
-        // PASO 1: Gemini extrae texto de los archivos (1 sola request)
-        if(spinnerTxt) spinnerTxt.textContent = '📄 Gemini leyendo archivos adjuntos…';
-        const extractParts = [...parts.filter(p=>p.inline_data)]; // solo archivos
-        extractParts.push({text:
-          'Eres un asistente de documentos técnicos industriales.\n'+
-          'TAREA: Extrae y resume en texto plano todo el contenido relevante de estos archivos.\n'+
-          'Incluye: descripción del trabajo, equipos mencionados, áreas, voltajes, dimensiones, materiales, fechas, condiciones especiales.\n'+
-          'Sé exhaustivo pero conciso. Solo texto plano, sin formato markdown.'
-        });
-        const docText = await callGemini(extractParts, 2000, spinnerTxt); // solo OCR, 2000 tokens
-        if(spinnerTxt) spinnerTxt.textContent = '🧠 Groq generando plan de ejecución…';
-        // PASO 2: Groq genera el plan completo con ese texto
-        const groqPrompt = prompt.replace(
-          'RESPONDE SOLO con JSON válido',
-          '\nCONTENIDO EXTRAÍDO DE ARCHIVOS ADJUNTOS:\n'+docText+'\n\nRESPONDE SOLO con JSON válido'
-        );
-        try{
-          result = await callGroq(groqPrompt, 14000, spinnerTxt, 0, 0);
-        } catch(groqFilesErr){
-          const isRateErr = /RATE_AGOTADO|rate.limit|429|Límite/i.test(groqFilesErr.message||String(groqFilesErr));
-          const isKeyErr  = /GROQ_KEY_INVALIDA|GROQ_SIN_KEY|401|invalid/i.test(groqFilesErr.message||String(groqFilesErr));
-          if(isRateErr || isKeyErr){
-            const reason = isRateErr ? 'límite alcanzado' : 'key inválida';
-            window._stopCountdown = true; // detener countdown inmediatamente
-            if(spinnerTxt) spinnerTxt.textContent = '⚡ Gemini generando el plan completo…';
-            showToast('⚡ Groq en ' + reason + ', usando Gemini para el plan', 3000);
-            // Gemini recibe tanto los archivos como el prompt completo
-            parts.push({text:prompt});
-            result = await callGemini(parts, 14000, spinnerTxt);
-          } else {
-            throw groqFilesErr;
-          }
-        }
-
-      } else if(hasGroq){
-        // Sin archivos: Groq directo — con fallback a Gemini si hay rate limit
-        if(spinnerTxt) spinnerTxt.textContent = '🧠 Groq generando plan de ejecución…';
+      if(hasImage){
+        // ── IMAGEN: Gemini primero (único que procesa imágenes) ──
+        console.log('[IPERC-AI] Imagen detectada → Gemini primero');
         parts.push({text:prompt});
+        if(spinnerTxt) spinnerTxt.textContent = '📄 Gemini analizando imagen + generando plan…';
         try{
-          result = await callGroq(prompt, 14000, spinnerTxt, 0, 0);
-        } catch(groqSimErr){
-          const isRateErr = /RATE_AGOTADO|rate.limit|429|Límite/i.test(groqSimErr.message||String(groqSimErr));
-          const isKeyErr  = /GROQ_KEY_INVALIDA|GROQ_SIN_KEY|401|invalid/i.test(groqSimErr.message||String(groqSimErr));
-          if((isRateErr || isKeyErr) && GEMINI_KEY){
-            const reason = isRateErr ? 'límite alcanzado' : 'key inválida';
-            window._stopCountdown = true; // detener countdown inmediatamente
-            if(spinnerTxt) spinnerTxt.textContent = '⚡ Gemini generando el plan…';
-            showToast('⚡ Groq en ' + reason + ', usando Gemini automáticamente', 3000);
-            result = await callGemini(parts, 14000, spinnerTxt);
-          } else {
-            throw groqSimErr;
-          }
+          console.log('[IPERC-AI] [1/3] Intentando Gemini (imagen)...');
+          result = await callGemini(parts, 8000, spinnerTxt);
+          console.log('[IPERC-AI] Gemini OK — chars:', result.length);
+        } catch(gemImgErr){
+          console.warn('[IPERC-AI] Gemini falló:', gemImgErr.message);
+          // Extraer texto de la imagen con Gemini OCR, luego texto a Groq/OpenRouter
+          var docText = '';
+          try{
+            var extractParts = parts.filter(function(p){ return p.inline_data; });
+            extractParts.push({text:'Extrae y resume en texto plano todo el contenido técnico de estos archivos. Solo texto, sin markdown.'});
+            docText = await callGemini(extractParts, 2000, spinnerTxt);
+          }catch(e){}
+          var textPrompt = prompt + (docText ? '\n\nCONTENIDO EXTRAÍDO DE ARCHIVOS:\n' + docText : '');
+          if(hasGroq){
+            console.log('[IPERC-AI] [2/3] Intentando Groq (texto extraído)...');
+            try{ result = await callGroq(textPrompt, 6000, spinnerTxt, 0, 0); console.log('[IPERC-AI] Groq OK — chars:', result.length); }
+            catch(e2){
+              console.warn('[IPERC-AI] Groq falló:', e2.message);
+              if(hasOR){ console.log('[IPERC-AI] [3/3] Intentando OpenRouter...'); result = await callOpenRouter([{text:textPrompt}], 6000); console.log('[IPERC-AI] OpenRouter OK — chars:', result.length); }
+              else throw e2;
+            }
+          } else if(hasOR){
+            console.log('[IPERC-AI] [2/3] Intentando OpenRouter (texto extraído)...');
+            result = await callOpenRouter([{text:textPrompt}], 6000);
+            console.log('[IPERC-AI] OpenRouter OK — chars:', result.length);
+          } else { throw gemImgErr; }
         }
 
       } else {
-        // Sin Groq key: Gemini todo (modo legacy)
+        // ── SOLO TEXTO: Groq → OpenRouter → Gemini ──
         parts.push({text:prompt});
-        result = await callGemini(parts, 14000, spinnerTxt);
+        var geminiPrompt = prompt + '\n\nIMPORTANTE: Responde SOLO con JSON válido. Sin explicaciones. Sin markdown. Empieza con { directamente.';
+        if(hasGroq){
+          if(spinnerTxt) spinnerTxt.textContent = '🧠 Groq generando plan de ejecución…';
+          console.log('[IPERC-AI] [1/3] Intentando Groq...');
+          try{
+            result = await callGroq(prompt, 6000, spinnerTxt, 0, 0);
+            console.log('[IPERC-AI] Groq OK — chars:', result.length);
+          } catch(groqErr){
+            console.warn('[IPERC-AI] Groq falló:', groqErr.message);
+            window._stopCountdown = true;
+            if(hasOR){
+              console.log('[IPERC-AI] [2/3] Intentando OpenRouter...');
+              if(spinnerTxt) spinnerTxt.textContent = '⚡ OpenRouter generando plan…';
+              try{
+                result = await callOpenRouter([{text:prompt}], 6000);
+                console.log('[IPERC-AI] OpenRouter OK — chars:', result.length);
+              } catch(orErr){
+                console.warn('[IPERC-AI] OpenRouter falló:', orErr.message);
+                if(GEMINI_KEY){
+                  console.log('[IPERC-AI] [3/3] Intentando Gemini...');
+                  if(spinnerTxt) spinnerTxt.textContent = '⚡ Gemini generando plan…';
+                  result = await callGemini([{text:geminiPrompt}], 8000, spinnerTxt);
+                  console.log('[IPERC-AI] Gemini OK — chars:', result.length);
+                } else { throw orErr; }
+              }
+            } else if(GEMINI_KEY){
+              console.log('[IPERC-AI] [2/3] Intentando Gemini...');
+              if(spinnerTxt) spinnerTxt.textContent = '⚡ Gemini generando plan…';
+              showToast('⚡ Groq falló, usando Gemini', 3000);
+              result = await callGemini([{text:geminiPrompt}], 8000, spinnerTxt);
+              console.log('[IPERC-AI] Gemini OK — chars:', result.length);
+            } else { throw groqErr; }
+          }
+        } else if(hasOR){
+          if(spinnerTxt) spinnerTxt.textContent = '⚡ OpenRouter generando plan…';
+          console.log('[IPERC-AI] [1/2] Intentando OpenRouter (sin Groq)...');
+          try{
+            result = await callOpenRouter([{text:prompt}], 6000);
+            console.log('[IPERC-AI] OpenRouter OK — chars:', result.length);
+          } catch(orErr2){
+            console.warn('[IPERC-AI] OpenRouter falló:', orErr2.message);
+            if(GEMINI_KEY){
+              console.log('[IPERC-AI] [2/2] Intentando Gemini...');
+              if(spinnerTxt) spinnerTxt.textContent = '⚡ Gemini generando plan…';
+              result = await callGemini([{text:geminiPrompt}], 8000, spinnerTxt);
+              console.log('[IPERC-AI] Gemini OK — chars:', result.length);
+            } else { throw orErr2; }
+          }
+        } else if(GEMINI_KEY){
+          if(spinnerTxt) spinnerTxt.textContent = '⚡ Gemini generando plan…';
+          console.log('[IPERC-AI] [1/1] Solo Gemini disponible...');
+          result = await callGemini([{text:geminiPrompt}], 8000, spinnerTxt);
+          console.log('[IPERC-AI] Gemini OK — chars:', result.length);
+        } else {
+          throw new Error('Sin API keys configuradas. Abre ⚙️ y agrega Groq, OpenRouter o Gemini.');
+        }
       }
+      console.log('[IPERC-AI] Raw length:', result.length);
+      console.log('[IPERC-AI] Raw preview:', result.substring(0,300));
       try{
         const raw=result.replace(/```json[\s\S]*?```|```[\s\S]*?```/g,function(m){
           return m.replace(/```json|```/g,'');
