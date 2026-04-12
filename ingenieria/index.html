@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>FTS · Ingeniería</title>
+<link rel="stylesheet" href="../shared/fts-styles.css">
+<style>
+  .ing-hero{padding:28px 20px 12px;text-align:center}
+  .ing-hero h1{font-size:22px;font-weight:800;margin-bottom:4px}
+  .ing-hero h1 span{color:var(--blue)}
+  .ing-hero p{font-size:12px;color:var(--muted2)}
+  .ing-list{padding:0 16px 40px;display:flex;flex-direction:column;gap:12px}
+  .ing-card{background:var(--d2);border:1px solid var(--border);border-radius:12px;padding:18px 16px;display:flex;align-items:center;gap:14px;text-decoration:none;color:var(--text);transition:all .15s}
+  .ing-card:active{transform:scale(.98);border-color:var(--blue);box-shadow:0 0 0 2px rgba(0,120,212,.15)}
+  .ing-card.disabled{opacity:.5;pointer-events:none}
+  .ing-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;background:rgba(0,120,212,.08);border:1px solid rgba(0,120,212,.2)}
+  .ing-info strong{font-size:14px;font-weight:700;display:block;margin-bottom:2px}
+  .ing-info span{font-size:12px;color:var(--muted2)}
+  .ing-badge{margin-left:auto;font-size:10px;font-weight:700;padding:3px 8px;border-radius:5px;background:var(--d3);color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="scr on" style="padding-bottom:28px">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="tb-logo"></div>
+    <div class="tb-info">
+      <strong>Ingeniería</strong>
+      <span>SERVICIOS FTS SA DE CV</span>
+    </div>
+    <a href="../index.html" style="text-decoration:none;background:var(--blue);color:#fff;font-size:10px;font-weight:700;padding:4px 10px;border-radius:6px;flex-shrink:0">← Suite</a>
+  </div>
+
+  <!-- Hero -->
+  <div class="ing-hero">
+    <h1>Módulo <span>Ingeniería</span></h1>
+    <p>Herramientas de cálculo y diseño estructural</p>
+  </div>
+
+  <!-- Lista de submódulos -->
+  <div class="ing-list">
+    <a href="analisis-estructural/index.html" class="ing-card">
+      <div class="ing-icon">🔩</div>
+      <div class="ing-info">
+        <strong>Análisis Estructural</strong>
+        <span>Memorias de cálculo con IA</span>
+      </div>
+    </a>
+    <div class="ing-card disabled">
+      <div class="ing-icon">📐</div>
+      <div class="ing-info">
+        <strong>Planos</strong>
+        <span>Generación y revisión</span>
+      </div>
+      <span class="ing-badge">Próximamente</span>
+    </div>
+    <div class="ing-card disabled">
+      <div class="ing-icon">🔌</div>
+      <div class="ing-info">
+        <strong>Cálculo Eléctrico</strong>
+        <span>Dimensionamiento y protecciones</span>
+      </div>
+      <span class="ing-badge">Próximamente</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- Statusbar -->
+<div id="fts-statusbar">
+  <div class="sb-left">
+    <div id="sb-dot"></div>
+    <span id="sb-status">FTS Ingeniería</span>
+  </div>
+  <div class="sb-right">
+    <span id="sb-clock">--:--:--</span>
+  </div>
+</div>
+
+<script>
+(function(){
+  function tick(){
+    var n=new Date();
+    var el=document.getElementById('sb-clock');
+    if(el) el.textContent=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')+':'+String(n.getSeconds()).padStart(2,'0');
+  }
+  tick(); setInterval(tick,1000);
+  var dot=document.getElementById('sb-dot');
+  if(dot) dot.classList.add('ok');
+})();
+</script>
+</body>
+</html>
