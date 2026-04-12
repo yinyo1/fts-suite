@@ -282,7 +282,6 @@
 <!-- ════════════ INSTRUCTOR DASHBOARD ════════════ -->
 <div id="s-inst" class="scr">
   <div class="topbar">
-    <a href="../index.html" style="text-decoration:none;background:var(--o);color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;flex-shrink:0">← Suite</a>
     <div class="tb-logo"></div>
     <div class="tb-info"><strong>Panel del Instructor</strong><span>SERVICIOS FTS SA DE CV</span></div>
     <button id="btn-settings" style="display:none;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:16px;cursor:pointer;color:var(--muted2)" onclick="toggleSettings()">⚙️</button>
@@ -454,7 +453,6 @@
 <!-- ════════════ EMPLOYEE: DASHBOARD ════════════ -->
 <div id="s-edash" class="scr">
   <div class="topbar">
-    <a href="../index.html" style="text-decoration:none;background:var(--o);color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;flex-shrink:0">← Suite</a>
     <div class="tb-logo"></div>
     <div class="tb-info"><strong id="tb-nombre">—</strong><span id="tb-curp">—</span></div>
     <div class="tb-badge" id="tb-prog" style="color:var(--green)">0/11</div>
@@ -2288,7 +2286,6 @@ function addCursoPersonalizado(){
 <!-- ════════════ USER MANAGEMENT (solo master) ════════════ -->
 <div id="s-users" class="scr">
   <div class="topbar">
-    <a href="../index.html" style="text-decoration:none;background:var(--o);color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;flex-shrink:0">← Suite</a>
     <button class="tb-back" onclick="go('s-inst')">‹</button>
     <div class="tb-info"><strong>Gestión de Usuarios</strong><span>Control de acceso · FTS Master</span></div>
     <button onclick="loadUserPanel()" style="background:none;border:none;cursor:pointer;font-size:18px;padding:4px 8px" title="Recargar desde GitHub">🔄</button>
@@ -2333,6 +2330,9 @@ function addCursoPersonalizado(){
 
   </div>
 </div>
+
+<!-- ════════════ BOTÓN SUITE GLOBAL (todas las pantallas) ════════════ -->
+<a href="../index.html" id="btn-suite-global" style="position:fixed;top:10px;left:10px;z-index:9980;text-decoration:none;background:var(--o);color:#fff;font-size:11px;font-weight:700;padding:6px 12px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.15);display:flex;align-items:center;gap:4px">← Suite</a>
 
 <!-- ════════════ STATUS BAR (todas las pantallas) ════════════ -->
 <div id="fts-statusbar">
