@@ -1,13 +1,13 @@
 // ═══ Raw mode — procesamiento libre ═══
 
-export function startRaw(){if(!getKey()){alert('Configura tu API Key en ⚙️ Configuración');toggleConfig();return}showScreen('scr-raw');updateRawCounter()}
+function startRaw(){if(!getKey()){alert('Configura tu API Key en ⚙️ Configuración');toggleConfig();return}showScreen('scr-raw');updateRawCounter()}
 
-export function updateRawCounter(){
+function updateRawCounter(){
   const t=document.getElementById('rawText').value;
   document.getElementById('rawCounter').textContent=t.length+' caracteres'+(rawUploadedFiles.length>0?' · '+rawUploadedFiles.length+' archivos':'');
 }
 
-export function handleRawFiles(inp){
+function handleRawFiles(inp){
   [...inp.files].forEach(f=>{
     const reader=new FileReader();
     reader.onload=e=>{ rawUploadedFiles.push({name:f.name,size:f.size,type:f.type,data:e.target.result}); renderRawFiles(); updateRawCounter(); };
@@ -16,9 +16,9 @@ export function handleRawFiles(inp){
   inp.value='';
 }
 
-export function removeRawFile(i){rawUploadedFiles.splice(i,1);renderRawFiles();updateRawCounter()}
+function removeRawFile(i){rawUploadedFiles.splice(i,1);renderRawFiles();updateRawCounter()}
 
-export function renderRawFiles(){
+function renderRawFiles(){
   const c=document.getElementById('rawFilesList');
   c.innerHTML=rawUploadedFiles.map((f,i)=>{
     const isImg=f.type.startsWith('image/');
@@ -26,7 +26,7 @@ export function renderRawFiles(){
   }).join('');
 }
 
-export async function processRaw(){
+async function processRaw(){
   const text=document.getElementById('rawText').value.trim();
   if(!text&&rawUploadedFiles.length===0){alert('Ingresa texto o archivos');return}
   const key=getKey();if(!key){alert('Configura tu API Key en ⚙️ Configuración');toggleConfig();return}
@@ -215,13 +215,7 @@ export async function processRaw(){
   titleEl.style.color='';
 }
 
-export function rlog(msg,color){
-    const ts=new Date().toLocaleTimeString();
-    logEl.innerHTML+=`<div style="color:${color||'rgba(255,255,255,.6)'}"><span style="color:rgba(255,255,255,.25)">[${ts}]</span> ${msg}</div>`;
-    logEl.scrollTop=logEl.scrollHeight;
-  }
-
-export function showResults(parsed,summary){
+function showResults(parsed,summary){
   const fields=Object.entries(parsed).filter(([k])=>k in D);
   document.getElementById('resFieldCount').textContent=fields.length+' CAMPOS DETECTADOS';
   document.getElementById('resSummary').innerHTML='<div style="font-size:13px;font-weight:600;color:#1e8449;margin-bottom:4px">✅ '+esc(summary)+'</div><div style="font-size:12px;color:#27ae60">Copia el JSON directo o continúa al Wizard.</div>';
@@ -230,7 +224,7 @@ export function showResults(parsed,summary){
   showScreen('scr-results');
 }
 
-export function copyResJson(){
+function copyResJson(){
   const j=JSON.stringify(rawParsedData,null,2);
   navigator.clipboard.writeText(j).then(()=>{
     const b=event.target;b.textContent='✓ Copiado';b.classList.remove('btn-s');b.classList.add('btn-ok');
@@ -238,20 +232,20 @@ export function copyResJson(){
   }).catch(()=>toggleResJson());
 }
 
-export function downloadResJson(){
+function downloadResJson(){
   const j=JSON.stringify(rawParsedData,null,2);
   const a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(j);a.download='FTS-raw-datos.json';a.click();
 }
 
-export function toggleResJson(){const p=document.getElementById('resJsonPanel');p.style.display=p.style.display==='none'?'block':'none'}
+function toggleResJson(){const p=document.getElementById('resJsonPanel');p.style.display=p.style.display==='none'?'block':'none'}
 
-export function applyRawToWizard(){
+function applyRawToWizard(){
   if(!rawParsedData)return;
   Object.entries(rawParsedData).forEach(([k,v])=>{if(k in D)D[k]=typeof v==='boolean'?v:String(v)});
   currentStep=0;showScreen('scr-wizard');render();
 }
 
-export function applyRawAndAnalyze(){
+function applyRawAndAnalyze(){
   if(!rawParsedData)return;
   Object.entries(rawParsedData).forEach(([k,v])=>{if(k in D)D[k]=typeof v==='boolean'?v:String(v)});
   goToAnalysis();
