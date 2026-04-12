@@ -307,19 +307,118 @@
 <!-- Statusbar FTS -->
 <div id="fts-statusbar">
   <div class="sb-left">
-    <div id="sb-dot" class="ok"></div>
-    <span id="sb-status">FTS Ingeniería</span>
+    <div id="sb-dot"></div>
+    <span id="sb-status">Verificando…</span>
+    <span id="sb-lastval"></span>
+    <button id="sb-reconnect" onclick="reconnectNow()" style="display:none;margin-left:6px;background:#f59e0b;color:#000;border:none;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">🔄 Reconectar</button>
   </div>
   <div class="sb-right">
     <span id="sb-clock">--:--:--</span>
+    <span style="opacity:.3">·</span>
+    <span id="sb-tz" style="color:rgba(255,255,255,.3)"></span>
   </div>
 </div>
 
 <script type="module" src="js/app.js"></script>
 <script>
 (function(){
-  function tick(){var n=new Date();var el=document.getElementById('sb-clock');if(el) el.textContent=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')+':'+String(n.getSeconds()).padStart(2,'0');}
-  tick(); setInterval(tick,1000);
+  // ═══ Statusbar FTS — reloj + heartbeat + reconectar ═══
+  const VERSION_URL = 'https://raw.githubusercontent.com/yinyo1/fts-suite/main/ingenieria/analisis-estructural/version.json';
+  const HEARTBEAT_MS = 30000;
+  let _clockTimer = null;
+  let _hbTimer = null;
+  let _noConnCount = 0;
+
+  function initStatusBar(){
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const sbTz = document.getElementById('sb-tz');
+    if(sbTz) sbTz.textContent = tz;
+    function tickClock(){
+      const n = new Date();
+      const h = String(n.getHours()).padStart(2,'0');
+      const m = String(n.getMinutes()).padStart(2,'0');
+      const s = String(n.getSeconds()).padStart(2,'0');
+      const el = document.getElementById('sb-clock');
+      if(el) el.textContent = h+':'+m+':'+s;
+    }
+    tickClock();
+    if(_clockTimer) clearInterval(_clockTimer);
+    _clockTimer = setInterval(tickClock, 1000);
+  }
+
+  function updateStatusBar(status){
+    const dot = document.getElementById('sb-dot');
+    const lbl = document.getElementById('sb-status');
+    const last = document.getElementById('sb-lastval');
+    const rbtn = document.getElementById('sb-reconnect');
+    if(!dot || !lbl) return;
+    const n = new Date();
+    const ts = String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')+':'+String(n.getSeconds()).padStart(2,'0');
+    dot.className = '';
+    if(status === 'ok'){
+      dot.classList.add('ok');
+      lbl.textContent = 'FTS · Conectado';
+      if(last) last.textContent = 'Última validación: '+ts;
+      if(rbtn) rbtn.style.display = 'none';
+    } else if(status === 'error'){
+      dot.classList.add('error');
+      lbl.textContent = 'Sin conexión';
+      if(last) last.textContent = 'Error: '+ts;
+      if(rbtn) rbtn.style.display = 'inline-block';
+    } else if(status === 'offline'){
+      dot.classList.add('warn');
+      lbl.textContent = 'Modo offline';
+      if(last) last.textContent = ts;
+    } else {
+      lbl.textContent = 'Verificando…';
+    }
+  }
+
+  async function checkHeartbeat(){
+    try{
+      const bust = Date.now()+'_'+Math.random().toString(36).slice(2);
+      const res = await fetch(VERSION_URL+'?nocache='+bust, {cache:'no-store', headers:{'Pragma':'no-cache'}});
+      if(res.ok){
+        const data = await res.json();
+        if(data.status === 'online'){
+          _noConnCount = 0;
+          updateStatusBar('ok');
+          return true;
+        } else {
+          updateStatusBar('offline');
+          return true;
+        }
+      }
+      throw new Error('HTTP '+res.status);
+    } catch(e){
+      _noConnCount++;
+      updateStatusBar('error');
+      console.warn('[statusbar] heartbeat failed:', e.message);
+      return false;
+    }
+  }
+
+  function startHeartbeat(){
+    stopHeartbeat();
+    checkHeartbeat();
+    _hbTimer = setInterval(checkHeartbeat, HEARTBEAT_MS);
+  }
+  function stopHeartbeat(){
+    if(_hbTimer){ clearInterval(_hbTimer); _hbTimer = null; }
+  }
+
+  window.reconnectNow = async function(){
+    const rbtn = document.getElementById('sb-reconnect');
+    if(rbtn){ rbtn.disabled = true; rbtn.textContent = '⏳ Verificando…'; }
+    updateStatusBar('checking');
+    await checkHeartbeat();
+    if(rbtn){ rbtn.disabled = false; rbtn.textContent = '🔄 Reconectar'; }
+    startHeartbeat();
+  };
+
+  // Init
+  initStatusBar();
+  startHeartbeat();
 })();
 </script>
 </body>
