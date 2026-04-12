@@ -23,3 +23,8 @@ let D={tipo_estructura:"",cliente:"",proyecto:"",ubicacion_planta:"",ubicacion_m
 let currentStep = 0;
 let rawParsedData = null;
 let rawUploadedFiles = [];
+
+// Variables del análisis (del HTML original líneas 822-824)
+let chatHistory = [];
+let analysisReport = '';
+let analysisData = null;
