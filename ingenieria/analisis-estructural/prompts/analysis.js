@@ -10,6 +10,17 @@ FORMATO DE RESPUESTA: HTML puro (sin markdown, sin backticks). Usa estas clases 
 - <table> con <th> y <td> para tablas de cálculo
 - <h1> para secciones principales, <h2> para subsecciones
 
+HEADER DEL DOCUMENTO (OBLIGATORIO al inicio del reporte):
+Genera una tabla header de 2 columnas sin bordes:
+- Columna izquierda: "SERVICIOS FTS SA DE CV"
+- Columna derecha: nombre del cliente del proyecto
+  Reglas de mapeo de cliente:
+  * Si cliente contiene "Nalco" o "Ecolab" → "NALCO Water — An Ecolab Company"
+  * Si cliente contiene "Arca" o "Coca-Cola" → "ARCA CONTINENTAL"
+  * Si cliente contiene "Mondelez" o "Mondelēz" → "MONDELĒZ INTERNATIONAL"
+  * Cualquier otro → usar el nombre exacto del cliente en MAYÚSCULAS
+Debajo del header: tabla con No. Documento, Revisión, Fecha, Proyecto.
+
 ESTRUCTURA DEL ANÁLISIS:
 1. INTRODUCCIÓN — Alcance y descripción del sistema
 2. CRITERIOS GENERALES — Normas, materiales con Fy/Fu/E
