@@ -43,7 +43,14 @@ async function testApiKey(){
   }
 }
 
-function getSystemPrompt(){return document.getElementById('cfgSystemPrompt')?.value||DEFAULT_SYSTEM}
+function getSystemPrompt(){
+  // Si el usuario editó el prompt en config, usarlo tal cual
+  const custom = document.getElementById('cfgSystemPrompt')?.value;
+  if(custom && custom.trim()) return custom;
+  // Si no, construir el prompt según el tipo de estructura actual
+  const tipo = (typeof D !== 'undefined' && D.tipo_estructura) || 'general';
+  return buildPrompt(tipo);
+}
 
 function getModel(){return document.getElementById('cfgModel')?.value||'claude-sonnet-4-6'}
 
@@ -51,7 +58,12 @@ function getMaxTokens(){return parseInt(document.getElementById('cfgTokens')?.va
 
 function getTemp(){return (parseInt(document.getElementById('cfgTemp')?.value)||30)/100}
 
-function resetSystemPrompt(){document.getElementById('cfgSystemPrompt').value=DEFAULT_SYSTEM;localStorage.removeItem('fts_system_prompt')}
+function resetSystemPrompt(){
+  // Al restaurar, mostrar el prompt del tipo actual (o polipasto como default)
+  const tipo = (typeof D !== 'undefined' && D.tipo_estructura) || 'polipasto';
+  document.getElementById('cfgSystemPrompt').value = buildPrompt(tipo);
+  localStorage.removeItem('fts_system_prompt');
+}
 
 function toggleConfig(){const p=document.getElementById('configOverlay');p.style.display=p.style.display==='none'?'flex':'none'}
 
