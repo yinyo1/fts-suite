@@ -159,7 +159,6 @@
       <div id="tokenBadge" style="display:none;font-size:10px;color:var(--accent);background:rgba(26,188,156,.15);padding:3px 8px;border-radius:10px;font-weight:600">0 tokens</div>
       <button class="btn btn-g" style="font-size:11px" onclick="toggleConfig()">⚙️ Config</button>
       <button class="btn btn-g" style="font-size:11px" onclick="showScreen('scr-wizard')">← Wizard</button>
-      <button class="btn btn-g" style="font-size:11px" onclick="window.print()">🖨️ PDF</button>
     </div>
   </div>
   <div class="content" style="padding-bottom:160px">
@@ -210,12 +209,9 @@
       </div>
     </div>
   </div>
-  <div class="footer no-print" id="analysisFooter" style="display:none">
-    <button class="btn btn-g" onclick="showScreen('scr-wizard')">← Wizard</button>
-    <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button class="btn btn-s" style="font-size:11px" onclick="regenerateAnalysis()">🔄 Regenerar</button>
-      <button class="btn btn-p" style="font-size:11px" onclick="window.print()">🖨️ Imprimir / PDF</button>
-    </div>
+  <div class="footer no-print" id="analysisFooter" style="display:none;justify-content:center;align-items:center;gap:12px;padding:20px">
+    <button class="btn btn-g" onclick="regenerateAnalysis()" style="font-size:13px;padding:10px 18px">🔄 Regenerar</button>
+    <button onclick="window.print()" style="background:#0078D4;color:#fff;border:none;padding:14px 40px;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;box-shadow:0 2px 8px rgba(0,120,212,.25)">📄 Descargar PDF</button>
   </div>
 </div>
 
