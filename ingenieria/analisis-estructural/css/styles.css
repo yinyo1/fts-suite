@@ -104,8 +104,15 @@ p.s{font-size:12px;color:#666;margin-bottom:16px}
 .report-container .ok-box{background:rgba(16,124,16,.08);border:1px solid var(--green);padding:6px 12px;border-radius:4px;margin:8px 0;font-weight:700;color:var(--green);font-size:12px}
 .report-container .warn-box{background:#FFF2CC;border:1px solid #BF8F00;padding:6px 12px;border-radius:4px;margin:8px 0;font-weight:700;color:#BF8F00;font-size:12px}
 .report-container pre{background:#f5f5f5;border:1px solid #e0e0e0;padding:8px;border-radius:4px;font-size:11px;overflow-x:auto}
+/* Figuras SVG */
+.figura{margin:24px 0;text-align:center}
+.figura svg{max-width:100%;border:1px solid #e0e0e0;border-radius:8px;background:#fff}
+.caption{font-size:13px;color:#555;font-style:italic;margin-top:8px;text-align:center}
+
 /* Print */
 @media print{
+  .figura{page-break-inside:avoid}
+  .figura svg{max-width:100%;border:1px solid #ccc}
   body{background:#fff!important}
   .screen{display:none!important}
   #scr-analysis{display:flex!important}
