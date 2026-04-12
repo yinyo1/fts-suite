@@ -1,6 +1,5 @@
 // ═══ Analysis — generación y chat ═══
 
-
 export function goToAnalysis(){
   if(!getKey()){alert('Configura tu API Key en ⚙️ Configuración');toggleConfig();return}
   document.getElementById('analysisDocNum').textContent=D.num_documento||'Sin número';
@@ -106,3 +105,4 @@ export function regenerateAnalysis(){
   document.getElementById('analysisFooter').style.display='none';
   generateAnalysis();
 }
+
