@@ -1,5 +1,8 @@
 // ═══ API — Claude streaming + config ═══
 
+// Contadores globales de sesión (del HTML original línea 825)
+let totalInputTokens=0, totalOutputTokens=0, totalCalls=0;
+
 function getKey(){return document.getElementById('apiKey').value.trim()}
 
 function checkApiKey(){
