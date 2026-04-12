@@ -1,9 +1,29 @@
 // ═══ Wizard — pasos y renderizadores ═══
-import { TYPES, MATS, PERFS, FLUIDS, PISOS, PATAS, TAQUETES, ZONAS, EXPOS, D, currentStep } from './data.js';
+import { TYPES, MATS, PERFS, FLUIDS, PISOS, PATAS, TAQUETES, ZONAS, EXPOS, D, currentStep, setCurrentStep } from './data.js';
 import { esc, sel, inp, tog, field, hintBox, notes } from './utils.js';
 
-
 export function getSteps(){
+  const t=D.tipo_estructura;
+  const b=[{id:'tipo',label:'Tipo',icon:'🏛️'},{id:'proyecto',label:'Proyecto',icon:'📋'},{id:'estructura',label:'Estructura',icon:'🏗️'},{id:'cargas',label:'Cargas',icon:'⚖️'}];
+  if(t==='tuberia')b.push({id:'tuberia',label:'Tubería',icon:'🔧'},{id:'ariete',label:'Ariete',icon:'💥'});
+  if(t==='mezz_equipos'||t==='tanque')b.push({id:'equipos',label:'Equipos',icon:'⚙️'});
+  if(t==='polipasto')b.push({id:'izaje',label:'Izaje',icon:'🏗️'});
+  if(t==='mezz_personas')b.push({id:'acceso',label:'Acceso',icon:'🚶'});
+  b.push({id:'sismo',label:'Sismo/Viento',icon:'🌪️'},{id:'ciment',label:'Cimentación',icon:'🧱'},{id:'fea',label:'FEA',icon:'🔬'},{id:'archivos',label:'Archivos',icon:'📎'},{id:'firmas',label:'Firmas',icon:'✍️'},{id:'resumen',label:'Resumen',icon:'✅'});
+  return b;
+}
+
+export function upd(k,v){D[k]=v;render()}
+
+export function toggl(k){D[k]=!D[k];render()}
+
+export function selectType(id){D.tipo_estructura=id;setCurrentStep(0);render()}
+
+export function goStep(i){const steps=getSteps();if(i<=currentStep+1&&i<steps.length){setCurrentStep(i);render()}}
+
+export function nextStep(){const steps=getSteps();if(currentStep<steps.length-1){setCurrentStep(currentStep+1);render()}}
+
+export function prevStep(){if(currentStep>0){setCurrentStep(currentStep-1);render()}}
 
 export function renderTipo(){return`<h3 class="t">¿Qué tipo de estructura?</h3><p class="s">Ajusta campos y análisis.</p><div class="type-grid">${TYPES.map(t=>`<div class="tc${D.tipo_estructura===t.id?' sel':''}" onclick="selectType('${t.id}')"><div style="font-size:26px;margin-bottom:4px">${t.icon}</div><div style="font-size:14px;font-weight:700;color:#1a2a3a">${t.label}</div><div style="font-size:11px;color:#7f8c8d;margin-top:2px">${t.desc}</div></div>`).join('')}</div>`}
 
@@ -34,25 +54,34 @@ export function renderArchivos(){const common=[{k:"archivo_planos",l:"Planos con
 export function renderFirmas(){return`<h3 class="t">Firmas y Revisión</h3><p class="s">Tabla de revisiones.</p><div class="g3">${field("Elaboró",inp(D.elaboro,"elaboro","Ing. Mateo Salazar"),1)}${field("Revisó",inp(D.reviso,"reviso","Ing. Felipe Pérez"),1)}${field("Aprobó",inp(D.aprobo,"aprobo","Ing. Esteban De La Cruz"),1)}</div><div style="display:grid;grid-template-columns:70px 1fr 1fr;gap:0 16px">${field("Rev.",inp(D.rev_numero,"rev_numero"))}${field("Fecha",inp(D.rev_fecha,"rev_fecha","","date"))}${field("Descripción",inp(D.rev_descripcion,"rev_descripcion"))}</div>${field("Notas",`<textarea rows="3" onchange="upd('notas_adicionales',this.value)" placeholder="Condiciones especiales...">${esc(D.notas_adicionales)}</textarea>`)}`}
 
 export function renderResumen(){const tl=TYPES.find(t=>t.id===D.tipo_estructura)?.label||'—';const loc=[D.ubicacion_planta,D.ubicacion_municipio,D.ubicacion_estado].filter(Boolean).join(', ');function row(k,v){const m=!v||String(v).includes('—');return`<div class="sum-row"><span style="color:#7f8c8d">${k}</span><span style="font-weight:600;color:${m?'#e74c3c':'#2c3e50'}">${v||'⚠️'}</span></div>`}function sec(t,rows){return`<div class="sum-sec"><div class="ss-t">${t}</div><div style="background:#f8fafc;border-radius:6px;padding:4px 12px">${rows}</div></div>`}let h=`<h3 class="t">Resumen</h3><p class="s">Verifica antes de exportar.</p>`;h+=sec('General',row('Tipo',tl)+row('Cliente',D.cliente)+row('Proyecto',D.proyecto)+row('Doc',D.num_documento)+row('Ubicación',loc));h+=sec('Estructura',row('Columnas',(D.num_columnas||'—')+'x '+(D.perfil_columnas||'—'))+row('Material',D.material_columnas)+row('Vigas',D.perfil_vigas||'—')+row('Altura',(D.altura_columna_mm||'—')+' mm')+row('Dim.',(D.longitud_total_mm||'—')+' x '+(D.ancho_total_mm||'—')+' mm'));h+=sec('Cargas',row('CV',(D.carga_viva_kg_m2||'—')+' kg/m²')+row('Carga/Col',(D.carga_por_columna_kg||'—')+' kg'));if(D.tipo_estructura==='polipasto')h+=sec('Izaje',row('Polipasto',D.marca_modelo_polipasto||'—')+row('Capacidad',(D.capacidad_polipasto_kg||'—')+' kg')+row('Clase CMAA',D.clase_servicio_cmaa||'—')+row('Monorriel',D.tipo_monorriel||'—')+row('Claro',(D.claro_monorriel_mm||'—')+' mm')+row('Factor Dinámico',D.carga_dinamica_factor||'—'));if(D.software_fea)h+=sec('FEA',row('Software',D.software_fea)+row('Von Mises Máx',(D.esfuerzo_von_mises_max_mpa||'—')+' MPa')+row('Ubicación',D.ubicacion_von_mises||'—'));h+=sec('Firmas',row('Elaboró',D.elaboro)+row('Revisó',D.reviso)+row('Aprobó',D.aprobo));
+const nk=['notas_proyecto','notas_estructura','notas_cargas','notas_tuberia','notas_ariete','notas_equipos','notas_izaje','notas_acceso','notas_sismo_viento','notas_cimentacion','notas_fea','notas_adicionales'];const nn=nk.filter(k=>D[k]);if(nn.length)h+=`<div class="sum-sec"><div class="ss-t" style="color:#b7950b">💬 Comentarios (${nn.length})</div><div style="background:#fefef6;border-radius:6px;padding:8px 12px">${nn.map(k=>`<div style="padding:4px 0;border-bottom:1px solid #f0e9c8;font-size:12px"><span style="color:#b7950b;font-weight:600">${k.replace('notas_','').replace('_',' ')}: </span><span style="color:#2c3e50">${esc(D[k])}</span></div>`).join('')}</div></div>`;return h}
 
 export function getCleanData(){return Object.fromEntries(Object.entries(D).filter(([k,v])=>v!==''&&v!==false))}
 
 export function render(){
-
-export function selectType(id){D.tipo_estructura=id;currentStep=0;render()}
-
-export function goStep(i){const steps=getSteps();if(i<=currentStep+1&&i<steps.length){currentStep=i;render()}}
-
-export function nextStep(){const steps=getSteps();if(currentStep<steps.length-1){currentStep++;render()}}
-
-export function prevStep(){if(currentStep>0){currentStep--;render()}}
-
-export function upd(k,v){D[k]=v;render()}
-
-export function toggl(k){D[k]=!D[k];render()}
+  const steps=getSteps();const ss=Math.min(currentStep,steps.length-1);currentStep=ss;const cid=steps[ss].id;
+  document.getElementById('headerType').textContent=TYPES.find(t=>t.id===D.tipo_estructura)?.label||'';
+  document.getElementById('progressBar').innerHTML=steps.map((s,i)=>`<div class="pill${i===ss?' active':i<ss?' done':''}" onclick="goStep(${i})"><div class="pi">${s.icon}</div><div class="pl">${s.label}</div></div>`).join('');
+  document.getElementById('stepContent').innerHTML=RENDERERS[cid]();
+  document.getElementById('stepCounter').textContent=`${ss+1}/${steps.length}`;
+  document.getElementById('btnPrev').disabled=ss===0;
+  const fr=document.getElementById('footerRight');
+  if(cid==='resumen'){
+    fr.innerHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-s" style="font-size:11px" onclick="goToAnalysis()">🏗️ Generar Análisis</button><button class="btn btn-p" style="font-size:11px" onclick="copyJson()">📋 Copiar</button><button class="btn btn-g" style="font-size:11px" onclick="dlJson()">💾</button><button class="btn btn-g" style="font-size:11px" onclick="toggleJson()">{}</button></div>`;
+  }else{
+    const canGo=cid==='tipo'?!!D.tipo_estructura:true;
+    fr.innerHTML=`<button class="btn btn-p" ${canGo?'':'disabled'} onclick="nextStep()">Siguiente →</button>`;
+  }
+  document.getElementById('jsonArea').value=JSON.stringify(getCleanData(),null,2);
+}
 
 export function copyJson(){
+  navigator.clipboard.writeText(JSON.stringify(getCleanData(),null,2)).then(()=>{
+    const b=event.target;b.textContent='✓';b.classList.add('btn-ok');b.classList.remove('btn-p');setTimeout(()=>{b.textContent='📋 Copiar';b.classList.remove('btn-ok');b.classList.add('btn-p')},2500);
+  }).catch(()=>toggleJson());
+}
 
 export function dlJson(){const j=JSON.stringify(getCleanData(),null,2);const a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(j);a.download=(D.num_documento||'FTS-MC')+'.json';a.click()}
 
 export function toggleJson(){const p=document.getElementById('jsonPanel');p.style.display=p.style.display==='none'?'block':'none'}
+
