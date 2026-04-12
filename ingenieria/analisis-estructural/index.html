@@ -9,21 +9,20 @@
 <body>
 <!-- ═══════ SCREEN: MODE SELECT ═══════ -->
 <div class="screen active" id="scr-mode">
-  <div class="header" style="justify-content:center">
-    <div style="display:flex;align-items:center;gap:10px">
-      <div class="logo">F</div>
-      <div><div style="font-size:15px;font-weight:700;color:#fff;letter-spacing:1.5px">FTS STRUCTURAL</div><div style="font-size:10px;color:rgba(255,255,255,.45);letter-spacing:2px">MEMORIA DE CÁLCULO v2</div></div>
-    </div>
+  <div class="header">
+    <button onclick="window.location.href='../index.html'" style="background:none;border:none;color:var(--accent);font-weight:700;cursor:pointer;font-size:14px;font-family:inherit">← Ingeniería</button>
+    <span style="font-weight:700;font-size:15px;color:#1a1a1a">Análisis Estructural</span>
+    <span style="width:80px"></span>
   </div>
   <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:20px">
     <div style="max-width:600px;width:100%">
       <!-- Config + API Status -->
-      <div onclick="toggleConfig()" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:14px 18px;margin-bottom:24px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:border-color .2s" onmouseover="this.style.borderColor='#e67e22'" onmouseout="this.style.borderColor='rgba(255,255,255,.1)'">
+      <div onclick="toggleConfig()" style="background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:14px 18px;margin-bottom:24px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:border-color .2s" onmouseover="this.style.borderColor='#e67e22'" onmouseout="this.style.borderColor='#e0e0e0'">
         <div style="display:flex;align-items:center;gap:10px">
           <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#e67e22,#d35400);display:flex;align-items:center;justify-content:center;font-size:16px">⚙</div>
           <div>
-            <div style="font-size:13px;font-weight:700;color:#fff">Configuración de IA</div>
-            <div style="font-size:11px;color:rgba(255,255,255,.4)">API Key, modelo, tokens, prompt</div>
+            <div style="font-size:13px;font-weight:700;color:#1a1a1a">Configuración de IA</div>
+            <div style="font-size:11px;color:#666">API Key, modelo, tokens, prompt</div>
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
@@ -31,22 +30,22 @@
           <span id="apiStatusMain" style="font-size:11px;color:#e74c3c">Sin API Key</span>
         </div>
       </div>
-      <h2 style="color:#fff;font-size:22px;font-weight:800;text-align:center;margin-bottom:4px">¿Cómo quieres ingresar los datos?</h2>
-      <p style="color:rgba(255,255,255,.45);font-size:13px;text-align:center;margin-bottom:24px">Elige el modo según la información que tengas.</p>
+      <h2 style="color:#1a1a1a;font-size:22px;font-weight:800;text-align:center;margin-bottom:4px">¿Cómo quieres ingresar los datos?</h2>
+      <p style="color:#666;font-size:13px;text-align:center;margin-bottom:24px">Elige el modo según la información que tengas.</p>
       <div style="display:grid;gap:16px">
-        <div class="mode-card" onclick="startRaw()" onmouseover="this.style.borderColor='#1abc9c'" onmouseout="this.style.borderColor='rgba(255,255,255,.1)'">
+        <div class="mode-card" onclick="startRaw()" onmouseover="this.style.borderColor='#1abc9c'" onmouseout="this.style.borderColor='#e0e0e0'">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-            <div style="width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,#1abc9c,#16a085);display:flex;align-items:center;justify-content:center;font-size:24px">🤖</div>
-            <div><div style="font-size:17px;font-weight:700;color:#fff">Modo Inteligente</div><div style="font-size:12px;color:#1abc9c;font-weight:600">RECOMENDADO</div></div>
+            <div style="width:48px;height:48px;border-radius:10px;background:var(--green);display:flex;align-items:center;justify-content:center;font-size:24px">🤖</div>
+            <div><div style="font-size:17px;font-weight:700;color:#1a1a1a">Modo Inteligente</div><div style="font-size:12px;color:var(--accent);font-weight:600">RECOMENDADO</div></div>
           </div>
-          <p style="font-size:13px;color:rgba(255,255,255,.55);line-height:1.5">Pega texto + sube archivos — la IA organiza todo automáticamente.</p>
+          <p style="font-size:13px;color:#666;line-height:1.5">Pega texto + sube archivos — la IA organiza todo automáticamente.</p>
         </div>
-        <div class="mode-card" onclick="startGuided()" onmouseover="this.style.borderColor='#2980b9'" onmouseout="this.style.borderColor='rgba(255,255,255,.1)'">
+        <div class="mode-card" onclick="startGuided()" onmouseover="this.style.borderColor='#2980b9'" onmouseout="this.style.borderColor='#e0e0e0'">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
             <div style="width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,#2980b9,#2471a3);display:flex;align-items:center;justify-content:center;font-size:24px">📋</div>
-            <div style="font-size:17px;font-weight:700;color:#fff">Modo Detallado</div>
+            <div style="font-size:17px;font-weight:700;color:#1a1a1a">Modo Detallado</div>
           </div>
-          <p style="font-size:13px;color:rgba(255,255,255,.5);line-height:1.5">Campo por campo con el wizard paso a paso.</p>
+          <p style="font-size:13px;color:#666;line-height:1.5">Campo por campo con el wizard paso a paso.</p>
         </div>
       </div>
     </div>
@@ -56,7 +55,7 @@
 <!-- ═══════ SCREEN: RAW INPUT ═══════ -->
 <div class="screen" id="scr-raw">
   <div class="header">
-    <div style="display:flex;align-items:center;gap:10px"><div class="logo">F</div><div><div style="font-size:15px;font-weight:700;color:#fff;letter-spacing:1.5px">FTS STRUCTURAL</div><div style="font-size:10px;color:rgba(255,255,255,.45);letter-spacing:2px">MODO INTELIGENTE</div></div></div>
+    <button onclick="goMode()" style="background:none;border:none;color:var(--accent);font-weight:700;cursor:pointer;font-size:14px;font-family:inherit">← Volver</button><span style="font-weight:700;font-size:15px">Modo Inteligente</span><span style="width:60px"></span>
     <button class="btn btn-g" style="font-size:11px" onclick="goMode()">← Cambiar modo</button>
   </div>
   <div class="content">
@@ -72,21 +71,21 @@
         <h3 style="font-size:16px;font-weight:700;color:#1a5276;margin:0 0 4px">📎 Archivos del Proyecto</h3>
         <p style="font-size:12px;color:#7f8c8d;margin:0 0 12px">Planos, diagramas, datasheets, capturas de Fusion 360. La IA analiza las imágenes.</p>
         <div id="rawFilesList"></div>
-        <input type="file" id="rawFileInput" accept="image/*,.pdf" multiple onchange="handleRawFiles(this)" style="display:block;width:100%;padding:12px;border:2px dashed #1abc9c;border-radius:8px;background:rgba(26,188,156,.05);color:#1abc9c;font-size:13px;cursor:pointer">
+        <input type="file" id="rawFileInput" accept="image/*,.pdf" multiple onchange="handleRawFiles(this)" style="display:block;width:100%;padding:12px;border:2px dashed #1abc9c;border-radius:8px;background:rgba(26,188,156,.05);color:var(--accent);font-size:13px;cursor:pointer">
       </div>
       <div id="rawProgress" style="display:none">
-        <div style="background:#0d1117;border:1px solid #30363d;border-radius:12px;overflow:hidden">
-          <div style="padding:10px 16px;background:rgba(26,188,156,.1);border-bottom:1px solid #30363d;display:flex;justify-content:space-between;align-items:center">
+        <div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;overflow:hidden">
+          <div style="padding:10px 16px;background:rgba(0,120,212,.06);border-bottom:1px solid #e0e0e0;display:flex;justify-content:space-between;align-items:center">
             <div style="display:flex;align-items:center;gap:8px">
               <div id="rawSpinner" class="spinner" style="width:14px;height:14px;border-width:2px"></div>
-              <span id="rawStatusTitle" style="font-size:12px;font-weight:700;color:#1abc9c">Inicializando...</span>
+              <span id="rawStatusTitle" style="font-size:12px;font-weight:700;color:var(--accent)">Inicializando...</span>
             </div>
-            <span id="rawTokenInfo" style="font-size:11px;color:rgba(255,255,255,.35)"></span>
+            <span id="rawTokenInfo" style="font-size:11px;color:#999"></span>
           </div>
-          <div id="rawLog" style="padding:12px 16px;max-height:350px;overflow-y:auto;font-family:'SF Mono',Consolas,monospace;font-size:11px;line-height:1.7;color:rgba(255,255,255,.6)"></div>
-          <div id="rawStreamPreview" style="display:none;padding:12px 16px;border-top:1px solid #30363d;max-height:200px;overflow-y:auto">
-            <div style="font-size:10px;color:rgba(255,255,255,.3);margin-bottom:4px">RESPUESTA EN VIVO:</div>
-            <div id="rawStreamText" style="font-size:11px;color:#e6edf3;font-family:'SF Mono',Consolas,monospace;white-space:pre-wrap;word-break:break-all"></div>
+          <div id="rawLog" style="padding:12px 16px;max-height:350px;overflow-y:auto;font-family:'SF Mono',Consolas,monospace;font-size:11px;line-height:1.7;color:#666"></div>
+          <div id="rawStreamPreview" style="display:none;padding:12px 16px;border-top:1px solid #e0e0e0;max-height:200px;overflow-y:auto">
+            <div style="font-size:10px;color:#999;margin-bottom:4px">RESPUESTA EN VIVO:</div>
+            <div id="rawStreamText" style="font-size:11px;color:#1a1a1a;font-family:'SF Mono',Consolas,monospace;white-space:pre-wrap;word-break:break-all"></div>
           </div>
         </div>
       </div>
@@ -94,7 +93,7 @@
   </div>
   <div class="footer">
     <button class="btn btn-g" onclick="goMode()">← Atrás</button>
-    <span id="rawCounter" style="font-size:11px;color:rgba(255,255,255,.35)">0 caracteres</span>
+    <span id="rawCounter" style="font-size:11px;color:#999">0 caracteres</span>
     <button class="btn btn-s" id="btnProcess" onclick="processRaw()">🤖 Procesar con IA</button>
   </div>
 </div>
@@ -102,14 +101,14 @@
 <!-- ═══════ SCREEN: RAW RESULTS ═══════ -->
 <div class="screen" id="scr-results">
   <div class="header">
-    <div style="display:flex;align-items:center;gap:10px"><div class="logo" style="background:linear-gradient(135deg,#1abc9c,#16a085)">✓</div><div><div style="font-size:15px;font-weight:700;color:#fff;letter-spacing:1.5px">DATOS EXTRAÍDOS</div><div id="resFieldCount" style="font-size:10px;color:rgba(255,255,255,.45);letter-spacing:2px"></div></div></div>
+    <div style="display:flex;align-items:center;gap:10px"><div class="logo" style="background:var(--green)">✓</div><div><div style="font-size:15px;font-weight:700;color:#1a1a1a;letter-spacing:1.5px">DATOS EXTRAÍDOS</div><div id="resFieldCount" style="font-size:10px;color:#666;letter-spacing:2px"></div></div></div>
   </div>
   <div class="content">
     <div style="max-width:740px;margin:0 auto">
       <div id="resSummary" style="background:#d5f5e3;border-radius:12px;padding:16px;margin-bottom:16px"></div>
       <div class="card"><h3 style="font-size:16px;font-weight:700;color:#1a5276;margin:0 0 12px">Datos Detectados</h3><div id="resFields"></div></div>
       <div id="resJsonPanel" style="display:none;background:#1a1a2e;border-radius:12px;padding:16px;margin-top:12px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:12px;font-weight:700;color:#1abc9c">JSON — Selecciona y copia</span><button class="btn btn-g" style="font-size:14px;padding:4px 8px" onclick="toggleResJson()">✕</button></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:12px;font-weight:700;color:var(--accent)">JSON — Selecciona y copia</span><button class="btn btn-g" style="font-size:14px;padding:4px 8px" onclick="toggleResJson()">✕</button></div>
         <textarea id="resJsonArea" readonly style="width:100%;min-height:250px;background:#0d1117;color:#e6edf3;border:1px solid #30363d;border-radius:8px;padding:12px;font-size:11px;font-family:monospace" onfocus="this.select()"></textarea>
       </div>
     </div>
@@ -129,22 +128,22 @@
 <!-- ═══════ SCREEN: GUIDED WIZARD ═══════ -->
 <div class="screen" id="scr-wizard">
   <div class="header">
-    <div style="display:flex;align-items:center;gap:10px"><div class="logo">F</div><div><div style="font-size:15px;font-weight:700;color:#fff;letter-spacing:1.5px">FTS STRUCTURAL</div><div style="font-size:10px;color:rgba(255,255,255,.45);letter-spacing:2px">MEMORIA DE CÁLCULO</div></div></div>
+    <div style="display:flex;align-items:center;gap:10px"><div class="logo">F</div><div><div style="font-size:15px;font-weight:700;color:#1a1a1a;letter-spacing:1.5px">FTS STRUCTURAL</div><div style="font-size:10px;color:#666;letter-spacing:2px">MEMORIA DE CÁLCULO</div></div></div>
     <div style="display:flex;align-items:center;gap:10px">
-      <div style="font-size:11px;color:rgba(255,255,255,.35);text-align:right"><div>Formato Nalco / Ecolab</div><div id="headerType" style="color:#1abc9c;font-weight:600;margin-top:2px"></div></div>
+      <div style="font-size:11px;color:#999;text-align:right"><div>Formato Nalco / Ecolab</div><div id="headerType" style="color:var(--accent);font-weight:600;margin-top:2px"></div></div>
       <button class="btn btn-g" style="font-size:10px;padding:4px 8px" onclick="goMode()" title="Cambiar modo">⟲</button>
     </div>
   </div>
   <div class="progress" id="progressBar"></div>
   <div class="content"><div class="card" id="stepContent"></div>
     <div id="jsonPanel" style="display:none;max-width:740px;margin:12px auto 0;background:#1a1a2e;border-radius:12px;padding:16px;box-shadow:0 8px 40px rgba(0,0,0,.35)">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:12px;font-weight:700;color:#1abc9c">JSON</span><button class="btn btn-g" style="font-size:14px;padding:4px 8px" onclick="toggleJson()">✕</button></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:12px;font-weight:700;color:var(--accent)">JSON</span><button class="btn btn-g" style="font-size:14px;padding:4px 8px" onclick="toggleJson()">✕</button></div>
       <textarea id="jsonArea" readonly style="width:100%;min-height:300px;background:#0d1117;color:#e6edf3;border:1px solid #30363d;border-radius:8px;padding:12px;font-size:11px;font-family:monospace" onfocus="this.select()"></textarea>
     </div>
   </div>
   <div class="footer">
     <button class="btn btn-g" id="btnPrev" onclick="prevStep()">← Anterior</button>
-    <span id="stepCounter" style="font-size:11px;color:rgba(255,255,255,.35)"></span>
+    <span id="stepCounter" style="font-size:11px;color:#999"></span>
     <div id="footerRight"></div>
   </div>
 </div>
@@ -154,10 +153,10 @@
   <div class="header no-print">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="logo" style="background:linear-gradient(135deg,#e67e22,#d35400)">⚙</div>
-      <div><div style="font-size:15px;font-weight:700;color:#fff;letter-spacing:1.5px">ANÁLISIS ESTRUCTURAL</div><div id="analysisDocNum" style="font-size:10px;color:rgba(255,255,255,.45);letter-spacing:2px"></div></div>
+      <div><div style="font-size:15px;font-weight:700;color:#1a1a1a;letter-spacing:1.5px">ANÁLISIS ESTRUCTURAL</div><div id="analysisDocNum" style="font-size:10px;color:#666;letter-spacing:2px"></div></div>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
-      <div id="tokenBadge" style="display:none;font-size:10px;color:#1abc9c;background:rgba(26,188,156,.15);padding:3px 8px;border-radius:10px;font-weight:600">0 tokens</div>
+      <div id="tokenBadge" style="display:none;font-size:10px;color:var(--accent);background:rgba(26,188,156,.15);padding:3px 8px;border-radius:10px;font-weight:600">0 tokens</div>
       <button class="btn btn-g" style="font-size:11px" onclick="toggleConfig()">⚙️ Config</button>
       <button class="btn btn-g" style="font-size:11px" onclick="showScreen('scr-wizard')">← Wizard</button>
       <button class="btn btn-g" style="font-size:11px" onclick="window.print()">🖨️ PDF</button>
@@ -169,20 +168,20 @@
       <div style="background:rgba(26,188,156,.08);border:1px solid rgba(26,188,156,.2);border-radius:10px;padding:12px 16px">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
           <div class="spinner" style="width:16px;height:16px;border-width:2px"></div>
-          <span id="streamStatus" style="font-size:12px;font-weight:600;color:#1abc9c">Conectando con Claude...</span>
-          <span id="streamTokenCount" style="font-size:11px;color:rgba(255,255,255,.35);margin-left:auto">0 tokens</span>
+          <span id="streamStatus" style="font-size:12px;font-weight:600;color:var(--accent)">Conectando con Claude...</span>
+          <span id="streamTokenCount" style="font-size:11px;color:#999;margin-left:auto">0 tokens</span>
         </div>
-        <div style="width:100%;height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden">
+        <div style="width:100%;height:3px;background:#f0f0f0;border-radius:2px;overflow:hidden">
           <div id="streamBar" style="width:0%;height:100%;background:linear-gradient(90deg,#1abc9c,#2980b9);border-radius:2px;transition:width 0.3s"></div>
         </div>
       </div>
     </div>
     <!-- Report -->
     <div id="statusBar" style="display:none;max-width:740px;margin:0 auto 12px">
-      <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px 16px;font-size:11px;font-family:monospace;color:rgba(255,255,255,.5)">
+      <div style="background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:10px 16px;font-size:11px;font-family:monospace;color:#666">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-          <span style="font-weight:700;color:rgba(255,255,255,.6)">📊 Status</span>
-          <span id="statusTokens" style="color:#1abc9c"></span>
+          <span style="font-weight:700;color:#666">📊 Status</span>
+          <span id="statusTokens" style="color:var(--accent)"></span>
         </div>
         <div id="statusLog" style="max-height:100px;overflow-y:auto;line-height:1.6"></div>
       </div>
@@ -190,18 +189,18 @@
     <div id="reportArea" style="margin-bottom:20px">
       <div style="max-width:740px;margin:0 auto;text-align:center;padding:60px 20px">
         <div style="font-size:48px;margin-bottom:16px">🏗️</div>
-        <h3 style="color:#fff;font-size:18px;margin-bottom:8px">Listo para generar el análisis</h3>
-        <p style="color:rgba(255,255,255,.5);font-size:13px;margin-bottom:24px">Claude analizará todos los datos y generará la Memoria de Cálculo completa con streaming en tiempo real.</p>
+        <h3 style="color:#1a1a1a;font-size:18px;margin-bottom:8px">Listo para generar el análisis</h3>
+        <p style="color:#666;font-size:13px;margin-bottom:24px">Claude analizará todos los datos y generará la Memoria de Cálculo completa con streaming en tiempo real.</p>
         <button class="btn btn-s" style="font-size:15px;padding:14px 32px" onclick="generateAnalysis()">🤖 Generar Memoria de Cálculo</button>
       </div>
     </div>
     <!-- Chat -->
     <div class="chat-area no-print" id="chatArea" style="display:none">
-      <div style="border-top:1px solid rgba(255,255,255,.1);padding-top:16px;margin-top:8px">
+      <div style="border-top:1px solid #e0e0e0;padding-top:16px;margin-top:8px">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
           <span style="font-size:16px">💬</span>
-          <span style="font-size:14px;font-weight:700;color:#fff">Chat con el Ingeniero IA</span>
-          <span style="font-size:11px;color:rgba(255,255,255,.35)">— Pide ajustes, cambios de perfil, re-análisis</span>
+          <span style="font-size:14px;font-weight:700;color:#1a1a1a">Chat con el Ingeniero IA</span>
+          <span style="font-size:11px;color:#999">— Pide ajustes, cambios de perfil, re-análisis</span>
         </div>
         <div class="chat-msgs" id="chatMsgs"></div>
         <div class="chat-input-row">
@@ -221,20 +220,20 @@
 </div>
 
 <!-- ═══════ GLOBAL CONFIG MODAL ═══════ -->
-<div id="configOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;backdrop-filter:blur(4px);overflow-y:auto;padding:20px" onclick="if(event.target===this)toggleConfig()">
-  <div style="max-width:640px;margin:40px auto;background:linear-gradient(160deg,#0f1d30,#1a3050);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+<div id="configOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;backdrop-filter:blur(4px);overflow-y:auto;padding:20px" onclick="if(event.target===this)toggleConfig()">
+  <div style="max-width:640px;margin:40px auto;background:#fff;border:1px solid #e0e0e0;border-radius:16px;padding:24px;box-shadow:0 8px 40px rgba(0,0,0,.2)">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
       <div style="display:flex;align-items:center;gap:10px">
         <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#e67e22,#d35400);display:flex;align-items:center;justify-content:center;font-size:18px">⚙</div>
-        <div><div style="font-size:16px;font-weight:700;color:#fff">Configuración de IA</div><div style="font-size:11px;color:rgba(255,255,255,.4)">Modelo, tokens, prompt y diagnóstico</div></div>
+        <div><div style="font-size:16px;font-weight:700;color:#1a1a1a">Configuración de IA</div><div style="font-size:11px;color:#666">Modelo, tokens, prompt y diagnóstico</div></div>
       </div>
-      <button onclick="toggleConfig()" style="background:none;border:none;font-size:22px;color:rgba(255,255,255,.5);cursor:pointer">✕</button>
+      <button onclick="toggleConfig()" style="background:none;border:none;font-size:22px;color:#666;cursor:pointer">✕</button>
     </div>
     <!-- API KEY -->
-    <div style="background:rgba(0,0,0,.3);border-radius:10px;padding:14px;margin-bottom:16px;border:1px solid rgba(255,255,255,.08)">
+    <div style="background:#f5f5f5;border-radius:10px;padding:14px;margin-bottom:16px;border:1px solid #e0e0e0">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         <span style="font-size:14px">🔑</span>
-        <span style="font-size:13px;font-weight:700;color:#fff">Claude API Key</span>
+        <span style="font-size:13px;font-weight:700;color:#1a1a1a">Claude API Key</span>
         <span class="dot" id="apiDot" style="background:#e74c3c"></span>
         <span id="apiStatus" style="font-size:11px;color:#e74c3c">No configurada</span>
       </div>
@@ -243,63 +242,63 @@
         <button class="btn btn-g" style="font-size:11px;padding:6px 10px" onclick="toggleKeyVis()">👁️</button>
         <button class="btn btn-s" style="font-size:11px;padding:6px 10px" onclick="testApiKey()">Test</button>
       </div>
-      <div style="font-size:10px;color:rgba(255,255,255,.3);margin-top:4px">Se guarda en tu navegador (localStorage). Nunca se envía a terceros.</div>
+      <div style="font-size:10px;color:#999;margin-top:4px">Se guarda en tu navegador (localStorage). Nunca se envía a terceros.</div>
     </div>
     <!-- Model + Tokens -->
     <div class="g2" style="gap:12px 16px;margin-bottom:14px">
-      <div class="fld"><label style="color:rgba(255,255,255,.7)">Modelo</label>
-        <select id="cfgModel" style="background:#0d1117;color:#e6edf3;border-color:#30363d">
+      <div class="fld"><label style="color:#1a1a1a">Modelo</label>
+        <select id="cfgModel" style="background:#f5f5f5;color:#1a1a1a;border-color:#e0e0e0">
           <option value="claude-sonnet-4-6">Claude Sonnet 4.6 (rápido)</option>
           <option value="claude-opus-4-6">Claude Opus 4.6 (máx calidad)</option>
         </select>
       </div>
-      <div class="fld"><label style="color:rgba(255,255,255,.7)">Max Tokens de Respuesta</label>
-        <input type="number" id="cfgTokens" value="16000" min="1000" max="64000" step="1000" style="background:#0d1117;color:#e6edf3;border-color:#30363d">
+      <div class="fld"><label style="color:#1a1a1a">Max Tokens de Respuesta</label>
+        <input type="number" id="cfgTokens" value="16000" min="1000" max="64000" step="1000" style="background:#f5f5f5;color:#1a1a1a;border-color:#e0e0e0">
       </div>
     </div>
     <!-- Temperature -->
     <div class="fld" style="margin-bottom:14px">
-      <label style="color:rgba(255,255,255,.7)">Temperatura: <span id="cfgTempVal" style="color:#1abc9c;font-weight:700">0.3</span></label>
+      <label style="color:#1a1a1a">Temperatura: <span id="cfgTempVal" style="color:var(--accent);font-weight:700">0.3</span></label>
       <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:10px;color:rgba(255,255,255,.3)">Preciso</span>
+        <span style="font-size:10px;color:#999">Preciso</span>
         <input type="range" id="cfgTemp" min="0" max="100" value="30" style="flex:1" oninput="document.getElementById('cfgTempVal').textContent=(this.value/100).toFixed(1)">
-        <span style="font-size:10px;color:rgba(255,255,255,.3)">Creativo</span>
+        <span style="font-size:10px;color:#999">Creativo</span>
       </div>
     </div>
     <!-- System Prompt -->
     <div class="fld" style="margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-        <label style="color:rgba(255,255,255,.7)">System Prompt (Master Prompt del Ingeniero)</label>
+        <label style="color:#1a1a1a">System Prompt (Master Prompt del Ingeniero)</label>
         <button class="btn btn-g" style="font-size:10px;padding:3px 10px" onclick="resetSystemPrompt()">↺ Restaurar default</button>
       </div>
-      <textarea id="cfgSystemPrompt" rows="10" style="background:#0d1117;color:#e6edf3;border-color:#30363d;font-size:11px;font-family:monospace;line-height:1.5"></textarea>
+      <textarea id="cfgSystemPrompt" rows="10" style="background:#f5f5f5;color:#1a1a1a;border:1px solid #e0e0e0;font-size:11px;font-family:monospace;line-height:1.5"></textarea>
     </div>
     <!-- Token Usage Stats -->
-    <div style="padding:12px;background:rgba(0,0,0,.3);border-radius:10px;margin-bottom:14px">
-      <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.5);margin-bottom:8px">📊 Uso de Tokens (sesión actual)</div>
+    <div style="padding:12px;background:#f5f5f5;border-radius:10px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:700;color:#666;margin-bottom:8px">📊 Uso de Tokens (sesión actual)</div>
       <div class="g3" style="gap:8px">
         <div style="text-align:center;background:rgba(41,128,185,.1);border-radius:8px;padding:8px">
           <div id="statInput" style="font-size:22px;font-weight:800;color:#2980b9">0</div>
-          <div style="font-size:10px;color:rgba(255,255,255,.35)">Input Tokens</div>
+          <div style="font-size:10px;color:#999">Input Tokens</div>
         </div>
         <div style="text-align:center;background:rgba(26,188,156,.1);border-radius:8px;padding:8px">
-          <div id="statOutput" style="font-size:22px;font-weight:800;color:#1abc9c">0</div>
-          <div style="font-size:10px;color:rgba(255,255,255,.35)">Output Tokens</div>
+          <div id="statOutput" style="font-size:22px;font-weight:800;color:var(--accent)">0</div>
+          <div style="font-size:10px;color:#999">Output Tokens</div>
         </div>
         <div style="text-align:center;background:rgba(230,126,34,.1);border-radius:8px;padding:8px">
           <div id="statCalls" style="font-size:22px;font-weight:800;color:#e67e22">0</div>
-          <div style="font-size:10px;color:rgba(255,255,255,.35)">API Calls</div>
+          <div style="font-size:10px;color:#999">API Calls</div>
         </div>
       </div>
     </div>
     <!-- Error Log -->
     <div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <span style="font-size:12px;font-weight:700;color:rgba(255,255,255,.5)">🪵 Log de Errores</span>
+        <span style="font-size:12px;font-weight:700;color:#666">🪵 Log de Errores</span>
         <button class="btn btn-g" style="font-size:10px;padding:3px 10px" onclick="clearErrorLog()">Limpiar</button>
       </div>
-      <div id="errorLog" style="max-height:150px;overflow-y:auto;font-size:11px;font-family:monospace;color:#e74c3c;background:rgba(0,0,0,.4);border-radius:8px;padding:10px;min-height:36px;border:1px solid rgba(255,255,255,.05)">
-        <span style="color:rgba(255,255,255,.2)">Sin errores</span>
+      <div id="errorLog" style="max-height:150px;overflow-y:auto;font-size:11px;font-family:monospace;color:#e74c3c;background:#1a1a2e;border-radius:8px;padding:10px;min-height:36px;border:1px solid #333">
+        <span style="color:#999">Sin errores</span>
       </div>
     </div>
   </div>
