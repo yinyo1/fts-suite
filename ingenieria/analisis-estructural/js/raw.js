@@ -1,15 +1,30 @@
 // ═══ Raw mode — procesamiento libre ═══
 
-
 export function startRaw(){if(!getKey()){alert('Configura tu API Key en ⚙️ Configuración');toggleConfig();return}showScreen('scr-raw');updateRawCounter()}
 
 export function updateRawCounter(){
+  const t=document.getElementById('rawText').value;
+  document.getElementById('rawCounter').textContent=t.length+' caracteres'+(rawUploadedFiles.length>0?' · '+rawUploadedFiles.length+' archivos':'');
+}
 
 export function handleRawFiles(inp){
+  [...inp.files].forEach(f=>{
+    const reader=new FileReader();
+    reader.onload=e=>{ rawUploadedFiles.push({name:f.name,size:f.size,type:f.type,data:e.target.result}); renderRawFiles(); updateRawCounter(); };
+    reader.readAsDataURL(f);
+  });
+  inp.value='';
+}
 
 export function removeRawFile(i){rawUploadedFiles.splice(i,1);renderRawFiles();updateRawCounter()}
 
 export function renderRawFiles(){
+  const c=document.getElementById('rawFilesList');
+  c.innerHTML=rawUploadedFiles.map((f,i)=>{
+    const isImg=f.type.startsWith('image/');
+    return`<div class="file-item">${isImg?`<img src="${f.data}">`:`<div class="fi-icon">📄</div>`}<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:#2c3e50;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f.name)}</div><div style="font-size:11px;color:#7f8c8d">${(f.size/1024).toFixed(0)} KB</div></div><button onclick="removeRawFile(${i})" style="background:none;border:none;font-size:18px;cursor:pointer;color:#e74c3c">✕</button></div>`;
+  }).join('');
+}
 
 export async function processRaw(){
   const text=document.getElementById('rawText').value.trim();
@@ -182,16 +197,63 @@ export async function processRaw(){
     rawParsedData=parsed;
     
     setTimeout(()=>showResults(parsed,sum),800);
+  }catch(err){
+    spinEl.style.display='none';
+    titleEl.textContent='❌ Error';
+    titleEl.style.color='#e74c3c';
+    rlog(`❌ FALLO: ${esc(err.message)}`,'#e74c3c');
+    rlog('','');
+    rlog('💡 Posibles soluciones:','#f39c12');
+    rlog('  1. Verifica tu API Key en ⚙️ Configuración','#f39c12');
+    rlog('  2. Reduce el número/tamaño de archivos','#f39c12');
+    rlog('  3. Si usas imágenes grandes, redúcelas a <2MB cada una','#f39c12');
+    rlog('  4. Verifica tu conexión a internet','#f39c12');
+    rlog('  5. Si el error persiste, prueba con otro modelo','#f39c12');
+    logError('processRaw: '+err.message);
+  }
+  btn.disabled=false;btn.textContent='🤖 Procesar con IA';
+  titleEl.style.color='';
+}
+
+export function rlog(msg,color){
+    const ts=new Date().toLocaleTimeString();
+    logEl.innerHTML+=`<div style="color:${color||'rgba(255,255,255,.6)'}"><span style="color:rgba(255,255,255,.25)">[${ts}]</span> ${msg}</div>`;
+    logEl.scrollTop=logEl.scrollHeight;
   }
 
 export function showResults(parsed,summary){
+  const fields=Object.entries(parsed).filter(([k])=>k in D);
+  document.getElementById('resFieldCount').textContent=fields.length+' CAMPOS DETECTADOS';
+  document.getElementById('resSummary').innerHTML='<div style="font-size:13px;font-weight:600;color:#1e8449;margin-bottom:4px">✅ '+esc(summary)+'</div><div style="font-size:12px;color:#27ae60">Copia el JSON directo o continúa al Wizard.</div>';
+  document.getElementById('resFields').innerHTML=fields.map(([k,v])=>'<div class="sum-row"><span style="color:#7f8c8d;min-width:160px">'+k.replace(/_/g,' ')+'</span><span style="font-weight:600;color:#2c3e50;text-align:right;flex:1">'+(typeof v==='boolean'?(v?'Sí':'No'):esc(String(v)))+'</span></div>').join('');
+  document.getElementById('resJsonArea').value=JSON.stringify(parsed,null,2);
+  showScreen('scr-results');
+}
 
 export function copyResJson(){
+  const j=JSON.stringify(rawParsedData,null,2);
+  navigator.clipboard.writeText(j).then(()=>{
+    const b=event.target;b.textContent='✓ Copiado';b.classList.remove('btn-s');b.classList.add('btn-ok');
+    setTimeout(()=>{b.textContent='📋 Copiar JSON';b.classList.remove('btn-ok');b.classList.add('btn-s')},2500);
+  }).catch(()=>toggleResJson());
+}
 
 export function downloadResJson(){
+  const j=JSON.stringify(rawParsedData,null,2);
+  const a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(j);a.download='FTS-raw-datos.json';a.click();
+}
 
 export function toggleResJson(){const p=document.getElementById('resJsonPanel');p.style.display=p.style.display==='none'?'block':'none'}
 
 export function applyRawToWizard(){
+  if(!rawParsedData)return;
+  Object.entries(rawParsedData).forEach(([k,v])=>{if(k in D)D[k]=typeof v==='boolean'?v:String(v)});
+  currentStep=0;showScreen('scr-wizard');render();
+}
 
 export function applyRawAndAnalyze(){
+  if(!rawParsedData)return;
+  Object.entries(rawParsedData).forEach(([k,v])=>{if(k in D)D[k]=typeof v==='boolean'?v:String(v)});
+  goToAnalysis();
+}
+
