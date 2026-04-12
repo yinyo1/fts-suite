@@ -1,6 +1,6 @@
 // ═══ Analysis — generación y chat ═══
 
-export function goToAnalysis(){
+function goToAnalysis(){
   if(!getKey()){alert('Configura tu API Key en ⚙️ Configuración');toggleConfig();return}
   document.getElementById('analysisDocNum').textContent=D.num_documento||'Sin número';
   analysisData=getCleanData();
@@ -8,7 +8,7 @@ export function goToAnalysis(){
   showScreen('scr-analysis');
 }
 
-export async function generateAnalysis(){
+async function generateAnalysis(){
   const key=getKey();
   if(!key){alert('Configura tu API Key en ⚙️ Configuración');toggleConfig();return}
   analysisData=getCleanData();
@@ -48,7 +48,7 @@ export async function generateAnalysis(){
   );
 }
 
-export async function sendChat(){
+async function sendChat(){
   const input=document.getElementById('chatInput');
   const msg=input.value.trim();
   if(!msg)return;
@@ -98,7 +98,7 @@ export async function sendChat(){
   );
 }
 
-export function regenerateAnalysis(){
+function regenerateAnalysis(){
   chatHistory=[];
   document.getElementById('chatMsgs').innerHTML='';
   document.getElementById('chatArea').style.display='none';
