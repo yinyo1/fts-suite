@@ -69,6 +69,43 @@ const CHECKLIST = {
   ]
 };
 
+// Verifica completitud del HTML generado por Claude
+function checkCompletitud(html, tipo){
+  const div = document.createElement('div');
+  div.innerHTML = html;
+
+  // Verificar firma de cierre
+  const completo = div.querySelector('#reporte-completo');
+  const incompleto = div.querySelector('#reporte-incompleto');
+
+  // Detectar secciones presentes por h1/h2
+  const headings = Array.from(div.querySelectorAll('h1, h2'))
+    .map(function(h){ return h.textContent.trim(); });
+
+  const checklist = CHECKLIST[tipo] || CHECKLIST['general'];
+  const resultados = checklist.map(function(seccion){
+    const key = seccion.toLowerCase().substring(0,8);
+    const encontrado = headings.some(function(h){
+      return h.toLowerCase().includes(key);
+    });
+    return { seccion: seccion, encontrado: encontrado };
+  });
+
+  const completadas = resultados.filter(function(r){ return r.encontrado; }).length;
+  const total = resultados.length;
+  const porcentaje = Math.round(completadas / total * 100);
+
+  return {
+    firmado: !!completo,
+    truncado: !!incompleto,
+    ultimaSeccion: (incompleto && incompleto.dataset && incompleto.dataset.ultimaSeccion) || null,
+    completadas: completadas,
+    total: total,
+    porcentaje: porcentaje,
+    resultados: resultados
+  };
+}
+
 function goToAnalysis(){
   if(!getKey()){alert('Configura tu API Key en ⚙️ Configuración');toggleConfig();return}
   document.getElementById('analysisDocNum').textContent=D.num_documento||'Sin número';
