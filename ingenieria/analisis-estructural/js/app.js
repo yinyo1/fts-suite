@@ -24,3 +24,53 @@ window.addEventListener('DOMContentLoaded', function(){
     if(el) el.value = sysp;
   }
 });
+
+// ═══ Guías WhatsApp ═══
+function copyGuide() {
+  const type = document.getElementById('guideType').value;
+  if (!type || !window.GUIDES || !window.GUIDES[type]) return;
+  const text = window.GUIDES[type];
+  navigator.clipboard.writeText(text)
+    .then(() => showCopied())
+    .catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showCopied();
+    });
+}
+
+function showCopied() {
+  const el = document.getElementById('guideCopied');
+  const btn = document.getElementById('btnCopyGuide');
+  if (el) {
+    el.style.display = 'block';
+    setTimeout(() => el.style.display = 'none', 3000);
+  }
+  if (btn) {
+    btn.textContent = '✅ ¡Copiado!';
+    btn.style.background = '#107C10';
+    setTimeout(() => {
+      btn.textContent = '📋 Copiar guía para WhatsApp';
+      btn.style.background = '#0078D4';
+    }, 3000);
+  }
+}
+
+window.copyGuide = copyGuide;
+
+// Habilitar botón al seleccionar tipo
+document.addEventListener('DOMContentLoaded', () => {
+  const sel = document.getElementById('guideType');
+  const btn = document.getElementById('btnCopyGuide');
+  if (sel && btn) {
+    sel.addEventListener('change', () => {
+      btn.disabled = !sel.value;
+      btn.style.opacity = sel.value ? '1' : '0.5';
+      btn.style.cursor = sel.value ? 'pointer' : 'default';
+    });
+  }
+});
