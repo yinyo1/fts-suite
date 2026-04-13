@@ -133,6 +133,47 @@
     color:#D83B01;font-size:12px;margin-top:10px;display:none;
   }
   .auth-box .auth-err.show{display:block}
+
+  /* Form fields */
+  .cfg-label{
+    display:block;font-size:13px;font-weight:600;
+    color:#555;margin:12px 0 4px;
+  }
+  .cfg-input{
+    width:100%;padding:10px;border-radius:8px;
+    border:1px solid #e0e0e0;font-size:14px;
+    box-sizing:border-box;background:#fff;
+    color:#1a1a1a;margin-bottom:4px;
+    font-family:inherit;outline:none;
+    transition:border-color .15s;
+  }
+  .cfg-input:focus{border-color:#107C10}
+
+  /* Toggle switch */
+  .cfg-toggle{
+    position:relative;display:inline-block;
+    width:44px;height:24px;flex-shrink:0;
+  }
+  .cfg-toggle input{opacity:0;width:0;height:0}
+  .cfg-toggle-slider{
+    position:absolute;inset:0;background:#e0e0e0;
+    border-radius:24px;cursor:pointer;transition:.2s;
+  }
+  .cfg-toggle input:checked + .cfg-toggle-slider{background:#107C10}
+  .cfg-toggle-slider:before{
+    content:'';position:absolute;
+    width:18px;height:18px;left:3px;top:3px;
+    background:#fff;border-radius:50%;
+    transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);
+  }
+  .cfg-toggle input:checked + .cfg-toggle-slider:before{
+    transform:translateX(20px);
+  }
+
+  .cfg-card h3{
+    margin:0 0 16px;color:#1a1a1a;
+    font-size:15px;font-weight:700;
+  }
 </style>
 </head>
 <body>
@@ -166,10 +207,35 @@
 
   <div class="cfg-pane active" id="pane-general">
     <div class="cfg-card">
-      <div class="cfg-placeholder">
-        <div class="emoji">🌐</div>
-        <div>Sección General — pendiente</div>
+      <h3>🔗 Conexión Odoo / n8n</h3>
+
+      <label class="cfg-label">URL de n8n</label>
+      <input id="ops_n8n_url" type="url" placeholder="https://primary-xxx.up.railway.app" class="cfg-input">
+
+      <label class="cfg-label">URL de Odoo</label>
+      <input id="ops_odoo_url" type="url" placeholder="https://serviciosfts.odoo.com" class="cfg-input">
+
+      <label class="cfg-label">API Key de Odoo</label>
+      <input id="ops_api_key" type="password" placeholder="••••••••••••••••" class="cfg-input">
+
+      <button onclick="probarConexion()" style="background:#0078D4;color:#fff;border:none;padding:10px 20px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin-top:12px;font-family:inherit">🔗 Probar conexión</button>
+      <span id="conn-result" style="font-size:13px;margin-left:12px;font-weight:600"></span>
+    </div>
+
+    <div class="cfg-card" style="margin-top:16px">
+      <h3>🧪 Modo Demo</h3>
+
+      <div style="display:flex;align-items:center;gap:12px">
+        <label class="cfg-toggle">
+          <input type="checkbox" id="ops_demo_mode">
+          <span class="cfg-toggle-slider"></span>
+        </label>
+        <span style="font-size:14px">Usar datos de prueba sin Odoo</span>
       </div>
+      <p style="font-size:12px;color:#999;margin:8px 0 0">
+        Activo: kiosk, dashboard y planeación usan datos ficticios. Desactiva cuando n8n/Odoo estén configurados.
+      </p>
+      <div id="demo-badge" style="display:inline-block;margin-top:12px;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700"></div>
     </div>
   </div>
 
@@ -242,9 +308,102 @@ function showTab(id){
   document.getElementById('pane-'+id).classList.add('active');
 }
 
-// ═══ Guardar (placeholder) ═══
+// ═══ Migración de keys antiguas kiosk_* → ops_* ═══
+function migrarKeysAntiguas(){
+  if(localStorage.getItem('ops_migrated')) return;
+  const mapa = {
+    'kiosk_n8n_url':              'ops_n8n_url',
+    'kiosk_api_key':               'ops_api_key',
+    'kiosk_demo_mode':             'ops_demo_mode',
+    'kiosk_face_enabled':          'ops_kiosk_face_enabled',
+    'kiosk_face_threshold':        'ops_kiosk_face_threshold',
+    'kiosk_geolocations':          'ops_kiosk_geolocations',
+    'kiosk_master_pin':            'ops_kiosk_master_pin',
+    'kiosk_stages_visible':        'ops_kiosk_stages',
+    'kiosk_notify_wa':             'ops_kiosk_notify_wa',
+    'kiosk_notify_wa_webhook':     'ops_kiosk_notify_wa_webhook',
+    'kiosk_notify_email':          'ops_kiosk_notify_email',
+    'kiosk_notify_email_fallback': 'ops_kiosk_notify_email_fallback',
+    'kiosk_field_pin':             'ops_kiosk_field_pin',
+    'kiosk_field_photo':           'ops_kiosk_field_photo',
+    'kiosk_field_manager':         'ops_kiosk_field_manager',
+    'kiosk_field_supervisor_email':'ops_kiosk_field_supervisor_email',
+    'kiosk_field_supervisor_wa':   'ops_kiosk_field_supervisor_wa',
+  };
+  Object.entries(mapa).forEach(function(entry){
+    const vieja = entry[0], nueva = entry[1];
+    const val = localStorage.getItem(vieja);
+    if(val !== null && localStorage.getItem(nueva) === null){
+      localStorage.setItem(nueva, val);
+    }
+  });
+  localStorage.setItem('ops_migrated', '1');
+}
+
+// ═══ Sección General ═══
+async function probarConexion(){
+  const url = document.getElementById('ops_n8n_url').value.trim();
+  const res = document.getElementById('conn-result');
+  if(!url){
+    res.textContent = '⚠️ Ingresa la URL de n8n';
+    res.style.color = '#BF8F00';
+    return;
+  }
+  res.textContent = '🔄 Probando…';
+  res.style.color = '#0078D4';
+  try{
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 5000);
+    const r = await fetch(url.replace(/\/$/,'') + '/healthz', { method:'GET', signal: controller.signal });
+    clearTimeout(t);
+    if(r.ok){
+      res.textContent = '✅ Conectado';
+      res.style.color = '#107C10';
+    } else {
+      res.textContent = '⚠️ Error ' + r.status;
+      res.style.color = '#BF8F00';
+    }
+  } catch(e){
+    res.textContent = '❌ Sin conexión';
+    res.style.color = '#D83B01';
+  }
+}
+
+function updateDemoBadge(){
+  const on = document.getElementById('ops_demo_mode').checked;
+  const badge = document.getElementById('demo-badge');
+  if(!badge) return;
+  badge.textContent = on ? '🟠 MODO DEMO ACTIVO' : '🟢 CONECTADO A ODOO';
+  badge.style.background = on ? '#FFF2CC' : '#E2EFDA';
+  badge.style.color      = on ? '#BF8F00' : '#107C10';
+  badge.style.border     = on ? '1px solid #BF8F00' : '1px solid #107C10';
+}
+
+function loadGeneralConfig(){
+  const fields = ['ops_n8n_url','ops_odoo_url','ops_api_key'];
+  fields.forEach(function(id){
+    const el = document.getElementById(id);
+    if(el) el.value = localStorage.getItem(id) || '';
+  });
+  const demo = document.getElementById('ops_demo_mode');
+  // default true (null) y '1' → on; '0' → off
+  demo.checked = localStorage.getItem('ops_demo_mode') !== '0';
+  updateDemoBadge();
+}
+
+function saveGeneralConfig(){
+  ['ops_n8n_url','ops_odoo_url','ops_api_key'].forEach(function(id){
+    const el = document.getElementById(id);
+    if(el) localStorage.setItem(id, el.value.trim());
+  });
+  const demo = document.getElementById('ops_demo_mode');
+  localStorage.setItem('ops_demo_mode', demo.checked ? '1' : '0');
+}
+
+// ═══ Guardar todo ═══
 function saveConfig(){
-  // TODO: implementar guardado por sección en Config-A2
+  saveGeneralConfig();
+  // TODO: saveKioskConfig(), savePlaneacionConfig(), saveDashboardConfig()
   showToast('✅ Configuración guardada');
 }
 
@@ -255,6 +414,11 @@ function showToast(text){
   el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), 3000);
 }
+
+// ═══ Init al cargar página ═══
+migrarKeysAntiguas();
+loadGeneralConfig();
+document.getElementById('ops_demo_mode').addEventListener('change', updateDemoBadge);
 </script>
 </body>
 </html>
