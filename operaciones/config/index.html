@@ -241,10 +241,98 @@
 
   <div class="cfg-pane" id="pane-kiosk">
     <div class="cfg-card">
-      <div class="cfg-placeholder">
-        <div class="emoji">🖥️</div>
-        <div>Sección Kiosk — pendiente</div>
+      <h3>🗺️ Campos técnicos Odoo</h3>
+      <p style="font-size:12px;color:#999;margin:0 0 12px">Define qué campo de Odoo usar para cada dato</p>
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="background:#f5f5f5">
+            <th style="padding:8px;text-align:left;border:1px solid #e0e0e0;color:#555">Dato</th>
+            <th style="padding:8px;text-align:left;border:1px solid #e0e0e0;color:#555">Modelo</th>
+            <th style="padding:8px;text-align:left;border:1px solid #e0e0e0;color:#555">Campo</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding:8px;border:1px solid #e0e0e0">PIN</td>
+            <td style="padding:8px;border:1px solid #e0e0e0;color:#666">hr.employee</td>
+            <td style="padding:4px;border:1px solid #e0e0e0"><input class="cfg-input" style="margin:0" id="ops_kiosk_field_pin" placeholder="pin"></td>
+          </tr>
+          <tr>
+            <td style="padding:8px;border:1px solid #e0e0e0">Foto</td>
+            <td style="padding:8px;border:1px solid #e0e0e0;color:#666">hr.employee</td>
+            <td style="padding:4px;border:1px solid #e0e0e0"><input class="cfg-input" style="margin:0" id="ops_kiosk_field_photo" placeholder="image_128"></td>
+          </tr>
+          <tr>
+            <td style="padding:8px;border:1px solid #e0e0e0">Manager</td>
+            <td style="padding:8px;border:1px solid #e0e0e0;color:#666">hr.employee</td>
+            <td style="padding:4px;border:1px solid #e0e0e0"><input class="cfg-input" style="margin:0" id="ops_kiosk_field_manager" placeholder="parent_id"></td>
+          </tr>
+          <tr>
+            <td style="padding:8px;border:1px solid #e0e0e0">Email supervisor</td>
+            <td style="padding:8px;border:1px solid #e0e0e0;color:#666">hr.employee</td>
+            <td style="padding:4px;border:1px solid #e0e0e0"><input class="cfg-input" style="margin:0" id="ops_kiosk_field_supervisor_email" placeholder="work_email"></td>
+          </tr>
+          <tr>
+            <td style="padding:8px;border:1px solid #e0e0e0">WhatsApp supervisor</td>
+            <td style="padding:8px;border:1px solid #e0e0e0;color:#666">hr.employee</td>
+            <td style="padding:4px;border:1px solid #e0e0e0"><input class="cfg-input" style="margin:0" id="ops_kiosk_field_supervisor_wa" placeholder="mobile_phone"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="cfg-card" style="margin-top:16px">
+      <h3>📋 Stages visibles en Kiosk</h3>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer">
+          <input type="checkbox" id="stage_todo" value="To Do"> To Do
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer">
+          <input type="checkbox" id="stage_progress" value="In Progress"> In Progress
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer">
+          <input type="checkbox" id="stage_hold" value="Hold"> Hold
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer">
+          <input type="checkbox" id="stage_done" value="Done"> Done
+        </label>
       </div>
+    </div>
+
+    <div class="cfg-card" style="margin-top:16px">
+      <h3>📍 Geolocalizaciones autorizadas</h3>
+      <p style="font-size:12px;color:#999;margin:0 0 12px">Check-in fuera del radio requiere aprobación supervisor</p>
+      <div id="geo-lista"></div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button onclick="addGeoSitio()" style="background:#107C10;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:700">+ Agregar sitio</button>
+        <button onclick="usarUbicacionActual()" style="background:#fff;border:1px solid #e0e0e0;padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:700;color:#1a1a1a">📍 Mi ubicación</button>
+      </div>
+    </div>
+
+    <div class="cfg-card" style="margin-top:16px">
+      <h3>🔬 Verificación Facial</h3>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <label class="cfg-toggle">
+          <input type="checkbox" id="ops_kiosk_face_enabled">
+          <span class="cfg-toggle-slider"></span>
+        </label>
+        <span style="font-size:14px">Habilitar verificación facial</span>
+      </div>
+      <label class="cfg-label">Umbral de similitud: <span id="face-threshold-label">50%</span></label>
+      <input type="range" id="ops_kiosk_face_threshold" min="40" max="80" step="5" value="50" style="width:100%" oninput="document.getElementById('face-threshold-label').textContent=this.value+'%'">
+      <p style="font-size:12px;color:#999;margin:4px 0 0">Mayor % = más estricto. Recomendado: 50%</p>
+    </div>
+
+    <div class="cfg-card" style="margin-top:16px">
+      <h3>🔑 PIN master del Kiosk</h3>
+      <label class="cfg-label">PIN actual</label>
+      <input type="password" id="kiosk_pin_actual" maxlength="4" class="cfg-input" placeholder="••••">
+      <label class="cfg-label">Nuevo PIN (4 dígitos)</label>
+      <input type="password" id="kiosk_pin_nuevo" maxlength="4" class="cfg-input" placeholder="••••">
+      <label class="cfg-label">Confirmar PIN</label>
+      <input type="password" id="kiosk_pin_confirmar" maxlength="4" class="cfg-input" placeholder="••••">
+      <button onclick="cambiarPinKiosk()" style="background:#0078D4;color:#fff;border:none;padding:10px 20px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin-top:12px;font-family:inherit">Cambiar PIN Kiosk</button>
+      <p id="pin-kiosk-msg" style="font-size:13px;margin:8px 0 0;font-weight:600"></p>
     </div>
   </div>
 
@@ -400,10 +488,167 @@ function saveGeneralConfig(){
   localStorage.setItem('ops_demo_mode', demo.checked ? '1' : '0');
 }
 
+// ═══ Sección Kiosk ═══
+const KIOSK_FIELD_DEFAULTS = {
+  ops_kiosk_field_pin:              'pin',
+  ops_kiosk_field_photo:            'image_128',
+  ops_kiosk_field_manager:          'parent_id',
+  ops_kiosk_field_supervisor_email: 'work_email',
+  ops_kiosk_field_supervisor_wa:    'mobile_phone',
+};
+
+function loadKioskConfig(){
+  Object.keys(KIOSK_FIELD_DEFAULTS).forEach(function(key){
+    const el = document.getElementById(key);
+    if(el) el.value = localStorage.getItem(key) || KIOSK_FIELD_DEFAULTS[key] || '';
+  });
+
+  // Stages
+  let stages;
+  try{ stages = JSON.parse(localStorage.getItem('ops_kiosk_stages') || 'null'); }
+  catch(e){ stages = null; }
+  if(!Array.isArray(stages)) stages = ['To Do','In Progress','Hold'];
+  ['stage_todo','stage_progress','stage_hold','stage_done'].forEach(function(id){
+    const el = document.getElementById(id);
+    if(el) el.checked = stages.indexOf(el.value) !== -1;
+  });
+
+  // Facial
+  const faceEl = document.getElementById('ops_kiosk_face_enabled');
+  if(faceEl) faceEl.checked = localStorage.getItem('ops_kiosk_face_enabled') !== '0';
+  const thresh = localStorage.getItem('ops_kiosk_face_threshold') || '0.5';
+  const threshEl = document.getElementById('ops_kiosk_face_threshold');
+  if(threshEl){
+    const pct = Math.round(parseFloat(thresh) * 100);
+    threshEl.value = pct;
+    const lbl = document.getElementById('face-threshold-label');
+    if(lbl) lbl.textContent = pct + '%';
+  }
+
+  renderGeoLista();
+}
+
+function saveKioskConfig(){
+  Object.keys(KIOSK_FIELD_DEFAULTS).forEach(function(key){
+    const el = document.getElementById(key);
+    if(el) localStorage.setItem(key, el.value.trim());
+  });
+  const stages = ['stage_todo','stage_progress','stage_hold','stage_done']
+    .filter(function(id){ const el = document.getElementById(id); return el && el.checked; })
+    .map(function(id){ return document.getElementById(id).value; });
+  localStorage.setItem('ops_kiosk_stages', JSON.stringify(stages));
+
+  const faceEl = document.getElementById('ops_kiosk_face_enabled');
+  if(faceEl) localStorage.setItem('ops_kiosk_face_enabled', faceEl.checked ? '1' : '0');
+  const threshEl = document.getElementById('ops_kiosk_face_threshold');
+  if(threshEl) localStorage.setItem('ops_kiosk_face_threshold', (parseInt(threshEl.value, 10) / 100).toString());
+  // Las geolocalizaciones ya se persisten en vivo con update/add/remove
+}
+
+// ─ Geolocalizaciones ─
+let _geos = [];
+
+function readGeosFromStorage(){
+  try{ _geos = JSON.parse(localStorage.getItem('ops_kiosk_geolocations') || '[]'); }
+  catch(e){ _geos = []; }
+  if(!Array.isArray(_geos)) _geos = [];
+}
+
+function writeGeosToStorage(){
+  localStorage.setItem('ops_kiosk_geolocations', JSON.stringify(_geos));
+}
+
+function renderGeoLista(){
+  readGeosFromStorage();
+  const lista = document.getElementById('geo-lista');
+  if(!lista) return;
+  if(!_geos.length){
+    lista.innerHTML = '<p style="color:#999;font-size:13px;margin:0">Sin sitios configurados</p>';
+    return;
+  }
+  lista.innerHTML = _geos.map(function(g, i){
+    return '<div style="display:grid;grid-template-columns:1fr 110px 110px 90px 36px;gap:6px;margin-bottom:8px;align-items:center">'+
+      '<input class="cfg-input" style="margin:0" value="'+(g.nombre||'').replace(/"/g,'&quot;')+'" placeholder="Nombre" onchange="updateGeo('+i+',\'nombre\',this.value)">'+
+      '<input class="cfg-input" style="margin:0" value="'+(g.lat||'')+'" placeholder="Lat" type="number" step="0.000001" onchange="updateGeo('+i+',\'lat\',this.value)">'+
+      '<input class="cfg-input" style="margin:0" value="'+(g.lng||'')+'" placeholder="Lng" type="number" step="0.000001" onchange="updateGeo('+i+',\'lng\',this.value)">'+
+      '<input class="cfg-input" style="margin:0" value="'+(g.radio||200)+'" placeholder="Radio m" type="number" onchange="updateGeo('+i+',\'radio\',this.value)">'+
+      '<button onclick="removeGeo('+i+')" style="background:#fff;border:1px solid #e0e0e0;border-radius:6px;cursor:pointer;font-size:14px;padding:4px;height:40px">🗑️</button>'+
+    '</div>';
+  }).join('');
+}
+
+function addGeoSitio(){
+  readGeosFromStorage();
+  _geos.push({ nombre:'', lat:'', lng:'', radio:200 });
+  writeGeosToStorage();
+  renderGeoLista();
+}
+
+function removeGeo(i){
+  readGeosFromStorage();
+  _geos.splice(i, 1);
+  writeGeosToStorage();
+  renderGeoLista();
+}
+
+function updateGeo(i, field, val){
+  readGeosFromStorage();
+  if(_geos[i]) _geos[i][field] = val;
+  writeGeosToStorage();
+}
+
+function usarUbicacionActual(){
+  if(!navigator.geolocation){
+    showToast('⚠️ Geolocalización no disponible');
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(function(pos){
+    readGeosFromStorage();
+    const lat = pos.coords.latitude.toFixed(6);
+    const lng = pos.coords.longitude.toFixed(6);
+    if(_geos.length){
+      _geos[_geos.length - 1].lat = lat;
+      _geos[_geos.length - 1].lng = lng;
+    } else {
+      _geos.push({ nombre:'Mi ubicación', lat, lng, radio:200 });
+    }
+    writeGeosToStorage();
+    renderGeoLista();
+    showToast('✅ Ubicación rellenada');
+  }, function(){
+    showToast('❌ No se pudo obtener ubicación');
+  }, { timeout:8000, enableHighAccuracy:true });
+}
+
+// ─ PIN master kiosk ─
+function cambiarPinKiosk(){
+  const actual    = document.getElementById('kiosk_pin_actual').value;
+  const nuevo     = document.getElementById('kiosk_pin_nuevo').value;
+  const confirmar = document.getElementById('kiosk_pin_confirmar').value;
+  const msg = document.getElementById('pin-kiosk-msg');
+  const stored = localStorage.getItem('ops_kiosk_master_pin') || '1234';
+
+  function err(t){ msg.textContent = t; msg.style.color = '#D83B01'; }
+  function ok(t){ msg.textContent = t; msg.style.color = '#107C10'; }
+
+  if(actual !== stored){ err('❌ PIN actual incorrecto'); return; }
+  if(!/^\d{4}$/.test(nuevo)){ err('❌ El PIN debe ser 4 dígitos numéricos'); return; }
+  if(nuevo !== confirmar){ err('❌ Los PINes no coinciden'); return; }
+
+  localStorage.setItem('ops_kiosk_master_pin', nuevo);
+  ok('✅ PIN actualizado');
+  ['kiosk_pin_actual','kiosk_pin_nuevo','kiosk_pin_confirmar'].forEach(function(id){
+    const el = document.getElementById(id);
+    if(el) el.value = '';
+  });
+  setTimeout(function(){ msg.textContent = ''; }, 4000);
+}
+
 // ═══ Guardar todo ═══
 function saveConfig(){
   saveGeneralConfig();
-  // TODO: saveKioskConfig(), savePlaneacionConfig(), saveDashboardConfig()
+  saveKioskConfig();
+  // TODO: savePlaneacionConfig(), saveDashboardConfig()
   showToast('✅ Configuración guardada');
 }
 
@@ -418,6 +663,7 @@ function showToast(text){
 // ═══ Init al cargar página ═══
 migrarKeysAntiguas();
 loadGeneralConfig();
+loadKioskConfig();
 document.getElementById('ops_demo_mode').addEventListener('change', updateDemoBadge);
 </script>
 </body>
