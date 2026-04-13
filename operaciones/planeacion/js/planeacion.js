@@ -205,6 +205,102 @@ async function guardarPlan(){
 }
 window.guardarPlan = guardarPlan;
 
+// ═══ Consultar plan (local + Odoo) ═══
+async function consultarPlan(){
+  const fecha = P.fechaDiario;
+  const statusEl = document.getElementById('plan-status');
+  function setStatus(text, color, auto){
+    if(!statusEl) return;
+    statusEl.textContent = text;
+    statusEl.style.color = color;
+    if(auto) setTimeout(() => { statusEl.textContent = ''; }, 3000);
+  }
+
+  setStatus('🔄 Consultando…', '#0078D4', false);
+
+  // Primero intentar localStorage
+  const local = cargarPlanDeStorage(fecha);
+  if(local){
+    P.planDiario = local;
+    P.comentarios = cargarComentariosDiario(fecha);
+    const el = document.getElementById('plan-comentarios-diario');
+    if(el) el.value = P.comentarios;
+    renderPlanDiario();
+    setStatus('✅ Plan cargado (local)', '#107C10', true);
+    return;
+  }
+
+  // Si no hay local y hay Odoo → consultar n8n
+  if(!P.config.demoMode && P.config.n8nUrl){
+    try{
+      const url = P.config.n8nUrl.replace(/\/$/, '') + '/planeacion/consultar';
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', 'x-api-key':P.config.apiKey },
+        body: JSON.stringify({ fecha })
+      });
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const data = await res.json();
+      P.planDiario = (data && data.plan) || [];
+      if(data && data.comentarios){
+        P.comentarios = data.comentarios;
+        const el = document.getElementById('plan-comentarios-diario');
+        if(el) el.value = P.comentarios;
+      }
+      renderPlanDiario();
+      setStatus('✅ Plan cargado desde Odoo', '#107C10', true);
+    } catch(e){
+      console.warn('Fallo consultar Odoo:', e);
+      setStatus('⚠️ Sin plan para esta fecha', '#BF8F00', false);
+    }
+  } else {
+    // Demo sin plan → cargar demo
+    P.planDiario = loadDemoplan(fecha);
+    renderPlanDiario();
+    setStatus('🧪 Plan demo cargado', '#BF8F00', true);
+  }
+}
+window.consultarPlan = consultarPlan;
+
+// ═══ Guardar plan en Odoo ═══
+async function guardarPlanOdoo(){
+  const saveEl = document.getElementById('save-status');
+  function setSave(text, color, auto){
+    if(!saveEl) return;
+    saveEl.textContent = text;
+    saveEl.style.color = color;
+    if(auto) setTimeout(() => { saveEl.textContent = ''; }, 4000);
+  }
+
+  setSave('🔄 Guardando…', '#0078D4', false);
+
+  // Siempre guardar en localStorage primero
+  guardarPlanEnStorage(P.fechaDiario, P.planDiario);
+
+  if(!P.config.demoMode && P.config.n8nUrl){
+    try{
+      const url = P.config.n8nUrl.replace(/\/$/, '') + '/planeacion/guardar';
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', 'x-api-key':P.config.apiKey },
+        body: JSON.stringify({
+          fecha:       P.fechaDiario,
+          plan:        P.planDiario,
+          comentarios: cargarComentariosDiario(P.fechaDiario)
+        })
+      });
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      setSave('✅ Guardado en Odoo', '#107C10', true);
+    } catch(e){
+      console.warn('Fallo guardar en Odoo:', e);
+      setSave('⚠️ Guardado local (Odoo no disponible)', '#BF8F00', true);
+    }
+  } else {
+    setSave('✅ Guardado localmente', '#107C10', true);
+  }
+}
+window.guardarPlanOdoo = guardarPlanOdoo;
+
 // ═══ Plan Semanal ═══
 function onFechaSemanalChange(){
   const fecha = document.getElementById('fechaSemanal').value;
