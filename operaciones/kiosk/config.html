@@ -4,46 +4,164 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FTS Kiosk · Configuración</title>
-<link rel="stylesheet" href="../../shared/fts-styles.css">
+<link rel="stylesheet" href="css/kiosk.css">
 <style>
-  body{background:#fafafa;font-family:'Inter',sans-serif;color:#1a1a1a;margin:0;padding:0}
-  .cfg-wrap{max-width:760px;margin:0 auto;padding:20px 20px 80px}
-  .cfg-header{display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid #e0e0e0;margin-bottom:24px}
-  .cfg-header h1{font-size:20px;font-weight:800;color:#1a1a1a}
-  .cfg-back{background:#107C10;color:#fff;padding:8px 16px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:700}
-  .cfg-section{background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:20px;margin-bottom:16px}
-  .cfg-section h2{font-size:16px;font-weight:700;margin-bottom:6px;color:#107C10}
-  .cfg-section .hint{font-size:12px;color:#666;margin-bottom:16px}
+  /* ═══ Config page — dark mode con scroll ═══ */
+  html,body{overflow-y:auto;height:auto;min-height:100%}
+  body{padding-bottom:100px}
+
+  .cfg-topbar{
+    position:sticky;top:0;z-index:50;
+    background:#0a0a0a;border-bottom:1px solid #222;
+    padding:16px 20px;display:flex;align-items:center;
+    justify-content:space-between;gap:12px;
+  }
+  .cfg-topbar h1{font-size:18px;font-weight:800;color:#fff;margin:0}
+  .cfg-topbar .back{
+    background:#1a1a1a;color:#fff;border:2px solid #333;
+    padding:8px 14px;font-size:13px;font-weight:700;
+    border-radius:8px;cursor:pointer;text-decoration:none;
+    font-family:inherit;
+  }
+  .cfg-topbar .back:hover{border-color:#107C10}
+
+  .cfg-wrap{max-width:760px;margin:0 auto;padding:24px 20px 40px}
+
+  .cfg-section{
+    background:#111;border:1px solid #222;
+    border-radius:14px;padding:22px;margin-bottom:18px;
+  }
+  .cfg-section h2{
+    font-size:16px;font-weight:700;color:#107C10;
+    margin:0 0 4px;
+  }
+  .cfg-section .hint{font-size:12px;color:#888;margin-bottom:16px}
+
   .cfg-field{margin-bottom:14px}
-  .cfg-field label{display:block;font-size:13px;font-weight:600;margin-bottom:4px;color:#1a1a1a}
-  .cfg-field input[type="text"],.cfg-field input[type="password"],.cfg-field input[type="number"],.cfg-field select{width:100%;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;font-family:inherit;background:#fff;box-sizing:border-box}
-  .cfg-field input:focus{outline:none;border-color:#107C10}
-  .cfg-row{display:flex;gap:12px;align-items:center}
-  .cfg-row input{flex:1}
-  .cfg-toggle{display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none;margin-bottom:10px}
-  .cfg-toggle-t{width:44px;height:24px;border-radius:12px;position:relative;transition:.2s;background:#ccc}
-  .cfg-toggle-t.on{background:#107C10}
-  .cfg-toggle-th{width:18px;height:18px;border-radius:9px;background:#fff;position:absolute;top:3px;left:3px;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
-  .cfg-toggle-t.on .cfg-toggle-th{left:23px}
-  .cfg-btn{background:#107C10;color:#fff;border:none;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
-  .cfg-btn.secondary{background:#0078D4}
-  .cfg-btn.danger{background:#D83B01}
+  .cfg-field label{
+    display:block;font-size:13px;font-weight:600;
+    margin-bottom:6px;color:#ccc;
+  }
+  .cfg-field input[type="text"],
+  .cfg-field input[type="password"],
+  .cfg-field input[type="number"]{
+    width:100%;padding:11px 14px;
+    border:1.5px solid #222;border-radius:8px;
+    font-size:14px;font-family:inherit;
+    background:#1a1a1a;color:#fff;
+    outline:none;box-sizing:border-box;
+    transition:border-color .15s;
+  }
+  .cfg-field input:focus{border-color:#107C10}
+
+  .cfg-btn{
+    background:#107C10;color:#fff;border:none;
+    padding:11px 20px;font-size:13px;font-weight:700;
+    border-radius:8px;cursor:pointer;font-family:inherit;
+    transition:opacity .15s;
+  }
   .cfg-btn:hover{opacity:0.9}
-  .cfg-result{margin-top:10px;padding:10px 12px;border-radius:8px;font-size:13px;display:none}
-  .cfg-result.ok{display:block;background:rgba(16,124,16,0.1);color:#107C10;border:1px solid rgba(16,124,16,0.3)}
-  .cfg-result.err{display:block;background:rgba(216,59,1,0.1);color:#D83B01;border:1px solid rgba(216,59,1,0.3)}
-  .cfg-slider{width:100%}
-  .cfg-slider-val{font-weight:700;color:#107C10;font-size:14px}
-  .pin-row{display:grid;grid-template-columns:1fr 120px;gap:8px;padding:8px 0;border-bottom:1px solid #f0f0f0;align-items:center}
-  .pin-row:last-child{border-bottom:none}
-  .pin-row input{padding:6px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;font-family:monospace;text-align:center}
-  .save-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e0e0e0;padding:12px 20px;text-align:center;z-index:100}
-  .save-bar .cfg-btn{padding:12px 32px;font-size:14px}
-  .auth-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:9999}
-  .auth-box{background:#fff;border-radius:16px;padding:32px;max-width:380px;width:90%;text-align:center}
-  .auth-box h2{font-size:18px;margin-bottom:8px}
-  .auth-box p{font-size:13px;color:#666;margin-bottom:16px}
-  .auth-box input{width:100%;padding:12px;border:2px solid #e0e0e0;border-radius:8px;font-size:18px;text-align:center;letter-spacing:8px;font-family:monospace}
+  .cfg-btn:active{transform:scale(0.97)}
+  .cfg-btn.secondary{background:#0078D4}
+  .cfg-btn.ghost{background:#1a1a1a;border:2px solid #333;color:#fff}
+  .cfg-btn.ghost:hover{border-color:#107C10}
+  .cfg-btn.danger{background:#D83B01}
+
+  .cfg-result{
+    margin-top:10px;padding:10px 14px;border-radius:8px;
+    font-size:13px;display:none;
+  }
+  .cfg-result.ok{
+    display:block;background:rgba(16,124,16,0.15);
+    color:#4cdb4c;border:1px solid rgba(16,124,16,0.4);
+  }
+  .cfg-result.err{
+    display:block;background:rgba(216,59,1,0.15);
+    color:#ff7a47;border:1px solid rgba(216,59,1,0.4);
+  }
+  .cfg-result.pending{
+    display:block;background:rgba(0,120,212,0.15);
+    color:#4ba7e8;border:1px solid rgba(0,120,212,0.4);
+  }
+
+  /* Tabla de mapeo de campos */
+  .cfg-table{
+    width:100%;border-collapse:collapse;margin-top:8px;
+  }
+  .cfg-table th{
+    background:#1a1a1a;color:#107C10;font-size:11px;
+    text-transform:uppercase;letter-spacing:1px;
+    text-align:left;padding:10px 12px;border-bottom:2px solid #222;
+    font-weight:700;
+  }
+  .cfg-table td{
+    padding:8px 12px;border-bottom:1px solid #1a1a1a;
+    vertical-align:middle;
+  }
+  .cfg-table td:first-child{
+    font-size:13px;font-weight:600;color:#fff;width:40%;
+  }
+  .cfg-table td:nth-child(2){
+    font-size:12px;color:#888;font-family:monospace;width:22%;
+  }
+  .cfg-table td:last-child{width:38%}
+  .cfg-table input{
+    width:100%;padding:7px 10px;
+    border:1.5px solid #222;border-radius:6px;
+    font-size:12px;font-family:monospace;
+    background:#1a1a1a;color:#4cdb4c;
+    outline:none;box-sizing:border-box;
+  }
+  .cfg-table input:focus{border-color:#107C10}
+  .cfg-table-note{
+    font-size:11px;color:#666;margin-top:12px;
+    padding:10px 14px;background:#0a0a0a;border-radius:6px;
+    border-left:3px solid #107C10;
+  }
+
+  .save-bar{
+    position:fixed;bottom:0;left:0;right:0;
+    background:#0a0a0a;border-top:1px solid #222;
+    padding:14px 20px;text-align:center;z-index:100;
+    backdrop-filter:blur(8px);
+  }
+  .save-bar .cfg-btn{padding:13px 40px;font-size:14px}
+  .save-bar .save-msg{
+    margin-left:16px;color:#4cdb4c;font-size:13px;
+    font-weight:700;display:none;
+  }
+  .save-bar .save-msg.show{display:inline}
+
+  /* Auth overlay */
+  .auth-overlay{
+    position:fixed;inset:0;background:#0a0a0a;
+    display:flex;align-items:center;justify-content:center;
+    z-index:9999;
+  }
+  .auth-box{
+    background:#111;border:1px solid #222;border-radius:16px;
+    padding:36px 32px;max-width:400px;width:90%;
+    text-align:center;
+  }
+  .auth-box h2{
+    font-size:20px;margin-bottom:6px;color:#fff;font-weight:700;
+  }
+  .auth-box p{
+    font-size:13px;color:#888;margin-bottom:20px;
+  }
+  .auth-box input{
+    width:100%;padding:14px;border:2px solid #222;
+    border-radius:10px;font-size:22px;text-align:center;
+    letter-spacing:10px;font-family:monospace;
+    background:#1a1a1a;color:#fff;outline:none;
+    box-sizing:border-box;
+  }
+  .auth-box input:focus{border-color:#107C10}
+  .auth-box .auth-err{
+    color:#ff7a47;font-size:12px;margin-top:10px;
+    display:none;
+  }
+  .auth-box .auth-err.show{display:block}
 </style>
 </head>
 <body>
@@ -51,239 +169,203 @@
 <!-- Auth overlay -->
 <div class="auth-overlay" id="authOverlay">
   <div class="auth-box">
-    <div style="font-size:40px;margin-bottom:8px">🔒</div>
+    <div class="kiosk-logo" style="margin:0 auto 14px">F</div>
     <h2>Configuración Kiosk</h2>
     <p>Ingresa el PIN maestro para continuar</p>
     <input type="password" id="masterPin" maxlength="6" placeholder="••••••" autocomplete="off">
-    <div id="authError" style="color:#D83B01;font-size:12px;margin-top:8px;display:none">PIN incorrecto</div>
-    <button class="cfg-btn" style="width:100%;margin-top:14px;padding:12px" onclick="tryAuth()">Desbloquear</button>
+    <div class="auth-err" id="authError">PIN incorrecto</div>
+    <button class="cfg-btn" style="width:100%;margin-top:16px;padding:14px" onclick="tryAuth()">Desbloquear</button>
   </div>
+</div>
+
+<!-- Topbar -->
+<div class="cfg-topbar" id="cfgTopbar" style="display:none">
+  <h1>⚙️ Configuración Kiosk</h1>
+  <a href="index.html" class="back">← Kiosk</a>
 </div>
 
 <div class="cfg-wrap" id="cfgMain" style="display:none">
 
-  <div class="cfg-header">
-    <h1>⚙️ Configuración Kiosk</h1>
-    <a href="../index.html" class="cfg-back">← Operaciones</a>
-  </div>
-
-  <!-- 1. Conexión Odoo/n8n -->
+  <!-- ═══ SECCIÓN 1 — Conexión Odoo/n8n ═══ -->
   <div class="cfg-section">
     <h2>1. Conexión Odoo / n8n</h2>
     <p class="hint">URL base de n8n que expone los webhooks del kiosk.</p>
     <div class="cfg-field">
-      <label>URL base de n8n</label>
-      <input type="text" id="n8nUrl" placeholder="https://primary-xxx.railway.app">
+      <label>URL de n8n</label>
+      <input type="text" id="n8nUrl" placeholder="https://primary-xxx.up.railway.app">
     </div>
     <div class="cfg-field">
-      <label>API Key</label>
+      <label>API Key de n8n</label>
       <input type="password" id="apiKey" placeholder="••••••••••">
     </div>
-    <button class="cfg-btn secondary" onclick="testConnection()">Probar conexión</button>
+    <button class="cfg-btn secondary" onclick="testConnection()">🔗 Probar conexión</button>
     <div class="cfg-result" id="connResult"></div>
   </div>
 
-  <!-- 2. Verificación facial -->
+  <!-- ═══ SECCIÓN 2 — Mapeo de campos Odoo ═══ -->
   <div class="cfg-section">
-    <h2>2. Verificación facial</h2>
-    <p class="hint">Compara el rostro en vivo con la foto del empleado en Odoo.</p>
-    <div class="cfg-toggle" onclick="toggleFace()">
-      <div class="cfg-toggle-t" id="faceTog"><div class="cfg-toggle-th"></div></div>
-      <span id="faceTogLabel">Habilitado</span>
+    <h2>2. Mapeo de campos Odoo</h2>
+    <p class="hint">Define exactamente qué campo usar en cada modelo.</p>
+    <table class="cfg-table">
+      <thead>
+        <tr>
+          <th>Dato</th>
+          <th>Modelo Odoo</th>
+          <th>Campo técnico</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Empleados</td>
+          <td>hr.employee</td>
+          <td><input type="text" id="fld_employee_name" data-key="kiosk_field_employee_name" data-default="name"></td>
+        </tr>
+        <tr>
+          <td>PIN del empleado</td>
+          <td>hr.employee</td>
+          <td><input type="text" id="fld_pin" data-key="kiosk_field_pin" data-default="pin"></td>
+        </tr>
+        <tr>
+          <td>Foto empleado</td>
+          <td>hr.employee</td>
+          <td><input type="text" id="fld_photo" data-key="kiosk_field_photo" data-default="image_128"></td>
+        </tr>
+        <tr>
+          <td>Manager / Supervisor</td>
+          <td>hr.employee</td>
+          <td><input type="text" id="fld_manager" data-key="kiosk_field_manager" data-default="parent_id"></td>
+        </tr>
+        <tr>
+          <td>Proyectos activos</td>
+          <td>project.project</td>
+          <td><input type="text" id="fld_project_name" data-key="kiosk_field_project_name" data-default="name"></td>
+        </tr>
+        <tr>
+          <td>Stage proyecto</td>
+          <td>project.project</td>
+          <td><input type="text" id="fld_stage" data-key="kiosk_field_stage" data-default="last_stage_id"></td>
+        </tr>
+        <tr>
+          <td>Stages visibles</td>
+          <td>—</td>
+          <td><input type="text" id="fld_stages_visible" data-key="kiosk_stages_visible" data-default="To Do,In Progress,Hold"></td>
+        </tr>
+        <tr>
+          <td>Email supervisor</td>
+          <td>hr.employee</td>
+          <td><input type="text" id="fld_supervisor_email" data-key="kiosk_field_supervisor_email" data-default="work_email"></td>
+        </tr>
+        <tr>
+          <td>WhatsApp supervisor</td>
+          <td>hr.employee</td>
+          <td><input type="text" id="fld_supervisor_wa" data-key="kiosk_field_supervisor_wa" data-default="mobile_phone"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="cfg-table-note">
+      Estos valores se usan para construir las consultas a Odoo via n8n.
     </div>
-    <div class="cfg-field">
-      <label>Umbral de similitud: <span class="cfg-slider-val" id="thresholdVal">50%</span></label>
-      <input type="range" min="40" max="80" value="50" class="cfg-slider" id="thresholdSlider" oninput="updateThreshold(this.value)">
-      <p class="hint" style="margin-top:4px">Mayor % = más estricto (más rechazos).</p>
-    </div>
-  </div>
-
-  <!-- 3. Geolocalización -->
-  <div class="cfg-section">
-    <h2>3. Geolocalización</h2>
-    <p class="hint">Registra ubicación GPS con cada check-in/out.</p>
-    <div class="cfg-toggle" onclick="toggleGeo()">
-      <div class="cfg-toggle-t" id="geoTog"><div class="cfg-toggle-th"></div></div>
-      <span id="geoTogLabel">Habilitado</span>
-    </div>
-    <div class="cfg-field">
-      <label>Radio máximo permitido (metros)</label>
-      <input type="number" id="geoRadius" placeholder="500" min="50" max="10000">
-    </div>
-  </div>
-
-  <!-- 4. PINes de empleados -->
-  <div class="cfg-section">
-    <h2>4. PINes de empleados (demo)</h2>
-    <p class="hint">PINes temporales en localStorage. En producción vienen de Odoo.</p>
-    <div id="pinesList">
-      <div style="color:#666;font-size:13px">Cargando empleados demo…</div>
-    </div>
-  </div>
-
-  <!-- 5. Modo demo -->
-  <div class="cfg-section">
-    <h2>5. Modo demo</h2>
-    <p class="hint">Usa empleados y SOs precargados sin conectar a Odoo.</p>
-    <div class="cfg-toggle" onclick="toggleDemo()">
-      <div class="cfg-toggle-t" id="demoTog"><div class="cfg-toggle-th"></div></div>
-      <span id="demoTogLabel">Deshabilitado</span>
-    </div>
-  </div>
-
-  <!-- Acciones peligrosas -->
-  <div class="cfg-section">
-    <h2 style="color:#D83B01">⚠️ Zona de riesgo</h2>
-    <button class="cfg-btn danger" onclick="clearConfig()">Borrar toda la configuración</button>
   </div>
 
 </div>
 
+<!-- Save bar sticky -->
 <div class="save-bar" id="saveBar" style="display:none">
   <button class="cfg-btn" onclick="saveConfig()">💾 Guardar configuración</button>
-  <span id="saveMsg" style="margin-left:16px;color:#107C10;font-size:13px;display:none">✅ Guardado</span>
+  <span class="save-msg" id="saveMsg">✅ Configuración guardada</span>
 </div>
 
 <script>
-const MASTER_PIN = '1234'; // TODO: mover a auth real
-
-const DEMO_EMPLEADOS = [
-  { id:1, nombre:'Mateo Salazar'      },
-  { id:2, nombre:'Felipe Pérez'       },
-  { id:3, nombre:'Esteban De La Cruz' },
-  { id:4, nombre:'Ana Ramírez'        },
-  { id:5, nombre:'Carlos Hernández'   },
-];
+// ═══ PIN master auth ═══
+function getMasterPin(){
+  return localStorage.getItem('kiosk_master_pin') || '1234';
+}
 
 function tryAuth(){
   const pin = document.getElementById('masterPin').value;
-  if(pin === MASTER_PIN){
+  if(pin === getMasterPin()){
     document.getElementById('authOverlay').style.display = 'none';
+    document.getElementById('cfgTopbar').style.display = 'flex';
     document.getElementById('cfgMain').style.display = 'block';
     document.getElementById('saveBar').style.display = 'block';
     loadConfig();
   } else {
-    document.getElementById('authError').style.display = 'block';
+    document.getElementById('authError').classList.add('show');
     document.getElementById('masterPin').value = '';
+    document.getElementById('masterPin').focus();
   }
 }
-document.getElementById('masterPin').addEventListener('keyup', e => { if(e.key==='Enter') tryAuth(); });
 
+document.getElementById('masterPin').addEventListener('keyup', function(e){
+  if(e.key === 'Enter') tryAuth();
+});
+document.getElementById('masterPin').focus();
+
+// ═══ Config load/save ═══
 function loadConfig(){
+  // Sección 1
   document.getElementById('n8nUrl').value = localStorage.getItem('kiosk_n8n_url') || '';
   document.getElementById('apiKey').value = localStorage.getItem('kiosk_api_key') || '';
 
-  const faceEnable = localStorage.getItem('kiosk_face_enable') !== '0';
-  setToggle('faceTog','faceTogLabel',faceEnable);
-
-  const threshold = parseInt((parseFloat(localStorage.getItem('kiosk_face_threshold') || '0.5')) * 100, 10);
-  document.getElementById('thresholdSlider').value = threshold;
-  updateThreshold(threshold);
-
-  const geoEnable = localStorage.getItem('kiosk_geo_enable') !== '0';
-  setToggle('geoTog','geoTogLabel',geoEnable);
-  document.getElementById('geoRadius').value = localStorage.getItem('kiosk_geo_radius') || '500';
-
-  const demo = localStorage.getItem('kiosk_demo_mode') === '1';
-  setToggle('demoTog','demoTogLabel',demo);
-  document.getElementById('demoTogLabel').textContent = demo ? 'Habilitado' : 'Deshabilitado';
-
-  renderPines();
+  // Sección 2 — campos de Odoo (usan data-key y data-default)
+  document.querySelectorAll('.cfg-table input[data-key]').forEach(function(inp){
+    const key = inp.dataset.key;
+    const def = inp.dataset.default || '';
+    inp.value = localStorage.getItem(key) || def;
+  });
 }
 
-function setToggle(togId, lblId, on){
-  const t = document.getElementById(togId);
-  const l = document.getElementById(lblId);
-  if(on) t.classList.add('on'); else t.classList.remove('on');
-  if(lblId !== 'demoTogLabel') l.textContent = on ? 'Habilitado' : 'Deshabilitado';
+function saveConfig(){
+  // Sección 1
+  localStorage.setItem('kiosk_n8n_url', document.getElementById('n8nUrl').value.trim());
+  localStorage.setItem('kiosk_api_key', document.getElementById('apiKey').value.trim());
+
+  // Sección 2
+  document.querySelectorAll('.cfg-table input[data-key]').forEach(function(inp){
+    localStorage.setItem(inp.dataset.key, inp.value.trim());
+  });
+
+  const msg = document.getElementById('saveMsg');
+  msg.classList.add('show');
+  setTimeout(function(){ msg.classList.remove('show'); }, 3000);
 }
 
-function toggleFace(){
-  const on = !document.getElementById('faceTog').classList.contains('on');
-  setToggle('faceTog','faceTogLabel',on);
-}
-function toggleGeo(){
-  const on = !document.getElementById('geoTog').classList.contains('on');
-  setToggle('geoTog','geoTogLabel',on);
-}
-function toggleDemo(){
-  const on = !document.getElementById('demoTog').classList.contains('on');
-  setToggle('demoTog','demoTogLabel',on);
-  document.getElementById('demoTogLabel').textContent = on ? 'Habilitado' : 'Deshabilitado';
-}
-
-function updateThreshold(val){
-  document.getElementById('thresholdVal').textContent = val + '%';
-}
-
-function renderPines(){
-  const pines = JSON.parse(localStorage.getItem('kiosk_pines') || '{}');
-  const html = DEMO_EMPLEADOS.map(e =>
-    '<div class="pin-row">'+
-      '<div>'+e.nombre+'</div>'+
-      '<input type="text" maxlength="4" data-emp="'+e.id+'" value="'+(pines[e.id]||'')+'" placeholder="----">'+
-    '</div>'
-  ).join('');
-  document.getElementById('pinesList').innerHTML = html;
-}
-
+// ═══ Probar conexión n8n ═══
 async function testConnection(){
   const url = document.getElementById('n8nUrl').value.trim();
   const key = document.getElementById('apiKey').value.trim();
   const res = document.getElementById('connResult');
-  res.className = 'cfg-result';
-  res.textContent = '⏳ Probando conexión…';
-  res.style.display = 'block';
+
   if(!url){
     res.className = 'cfg-result err';
-    res.textContent = '❌ Ingresa la URL de n8n';
+    res.textContent = '❌ Ingresa la URL de n8n primero';
     return;
   }
+
+  res.className = 'cfg-result pending';
+  res.textContent = '⏳ Probando conexión…';
+
   try{
-    const r = await fetch(url.replace(/\/$/,'') + '/kiosk/ping', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json','x-api-key':key },
-      body:'{}'
+    const endpoint = url.replace(/\/$/, '') + '/kiosk/ping';
+    const r = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key
+      },
+      body: '{}'
     });
     if(r.ok){
       res.className = 'cfg-result ok';
-      res.textContent = '✅ Conexión OK ('+r.status+')';
+      res.textContent = '✅ Conexión OK (' + r.status + ')';
     } else {
       res.className = 'cfg-result err';
-      res.textContent = '❌ Error '+r.status+' '+r.statusText;
+      res.textContent = '❌ Error ' + r.status + ' ' + r.statusText;
     }
   } catch(e){
     res.className = 'cfg-result err';
-    res.textContent = '❌ '+e.message;
+    res.textContent = '❌ ' + e.message;
   }
-}
-
-function saveConfig(){
-  localStorage.setItem('kiosk_n8n_url', document.getElementById('n8nUrl').value.trim());
-  localStorage.setItem('kiosk_api_key', document.getElementById('apiKey').value.trim());
-  localStorage.setItem('kiosk_face_enable', document.getElementById('faceTog').classList.contains('on') ? '1' : '0');
-  localStorage.setItem('kiosk_face_threshold', (parseInt(document.getElementById('thresholdSlider').value,10)/100).toString());
-  localStorage.setItem('kiosk_geo_enable', document.getElementById('geoTog').classList.contains('on') ? '1' : '0');
-  localStorage.setItem('kiosk_geo_radius', document.getElementById('geoRadius').value || '500');
-  localStorage.setItem('kiosk_demo_mode', document.getElementById('demoTog').classList.contains('on') ? '1' : '0');
-
-  const pines = {};
-  document.querySelectorAll('#pinesList input').forEach(inp => {
-    const id = parseInt(inp.dataset.emp, 10);
-    if(inp.value.trim()) pines[id] = inp.value.trim();
-  });
-  localStorage.setItem('kiosk_pines', JSON.stringify(pines));
-
-  const msg = document.getElementById('saveMsg');
-  msg.style.display = 'inline';
-  setTimeout(() => msg.style.display = 'none', 3000);
-}
-
-function clearConfig(){
-  if(!confirm('¿Borrar TODA la configuración del kiosk? Esta acción no se puede deshacer.')) return;
-  ['kiosk_n8n_url','kiosk_api_key','kiosk_face_enable','kiosk_face_threshold','kiosk_geo_enable','kiosk_geo_radius','kiosk_demo_mode','kiosk_pines'].forEach(k => localStorage.removeItem(k));
-  loadConfig();
-  alert('Configuración borrada');
 }
 </script>
 </body>
