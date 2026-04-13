@@ -116,7 +116,12 @@ function confirmarGeo(){
   K.geoAutorizada = false;
   const m = document.getElementById('geoModal');
   if(m) m.remove();
-  showScreen('ks-project');
+  if(K.tipo === 'salida'){
+    showScreen('ks-project');
+  } else {
+    K.soSeleccionada = null;
+    registrarAsistencia();
+  }
 }
 
 // ═══ Reloj ═══
@@ -425,8 +430,13 @@ async function afterVerifyContinue(){
   K.geoDistancia = geoResult.distancia || 0;
   if(!geoResult.autorizado){
     mostrarModalGeo(geoResult);
-  } else {
+  } else if(K.tipo === 'salida'){
+    // Solo en salida pedir proyecto
     showScreen('ks-project');
+  } else {
+    // Entrada, salida_comida, regreso_comida → registrar directo
+    K.soSeleccionada = null;
+    registrarAsistencia();
   }
 }
 
