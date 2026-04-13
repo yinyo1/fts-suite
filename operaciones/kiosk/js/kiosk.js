@@ -33,19 +33,89 @@ function loadKioskConfig(){
   };
 }
 
-// ═══ Carga de configuración ═══
-function loadConfig(){
-  K.config = {
-    n8nUrl:     localStorage.getItem('kiosk_n8n_url') || '',
-    apiKey:     localStorage.getItem('kiosk_api_key') || '',
-    faceEnable: localStorage.getItem('kiosk_face_enable') !== '0',
-    faceThresh: parseFloat(localStorage.getItem('kiosk_face_threshold') || '0.5'),
-    geoEnable:  localStorage.getItem('kiosk_geo_enable') !== '0',
-    geoRadius:  parseInt(localStorage.getItem('kiosk_geo_radius') || '500', 10),
-    demo:       localStorage.getItem('kiosk_demo_mode') === '1',
-    pines:      JSON.parse(localStorage.getItem('kiosk_pines') || '{}'),
+// ═══ Geo: distancia y validación contra sitios autorizados ═══
+function calcularDistancia(lat1, lng1, lat2, lng2){
+  const R = 6371000;
+  const dLat = (lat2-lat1) * Math.PI/180;
+  const dLng = (lng2-lng1) * Math.PI/180;
+  const a = Math.sin(dLat/2)**2 +
+    Math.cos(lat1*Math.PI/180) *
+    Math.cos(lat2*Math.PI/180) *
+    Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function validarGeolocacion(lat, lng){
+  const geos = K.config.geolocations;
+  if(!geos || !geos.length) return {
+    autorizado: true, sitio: 'Sin restricción geo'
   };
-  K.demoMode = K.config.demo || !K.config.n8nUrl;
+  if(lat == null || lng == null) return {
+    autorizado: false,
+    sitioMasCercano: (geos[0] && geos[0].nombre) || 'Desconocido',
+    distancia: 0
+  };
+  let minDist = Infinity;
+  let sitioMasCercano = geos[0];
+  for(const sitio of geos){
+    if(sitio.lat == null || sitio.lng == null) continue;
+    const dist = calcularDistancia(
+      lat, lng,
+      parseFloat(sitio.lat), parseFloat(sitio.lng)
+    );
+    if(dist <= parseFloat(sitio.radio || 200)){
+      return { autorizado: true, sitio: sitio.nombre, dist };
+    }
+    if(dist < minDist){ minDist = dist; sitioMasCercano = sitio; }
+  }
+  return {
+    autorizado: false,
+    sitioMasCercano: sitioMasCercano.nombre,
+    distancia: Math.round(minDist)
+  };
+}
+
+// ═══ Modal "fuera de zona" ═══
+function mostrarModalGeo(geoResult){
+  const modal = document.createElement('div');
+  modal.id = 'geoModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:9999;padding:24px;box-sizing:border-box';
+  modal.innerHTML =
+    '<div style="background:#1a1a1a;border:2px solid #D83B01;border-radius:16px;padding:24px;max-width:440px;width:100%;text-align:center">'+
+      '<div style="font-size:48px;margin-bottom:12px">⚠️</div>'+
+      '<h2 style="color:#D83B01;margin:0 0 8px">Fuera de zona autorizada</h2>'+
+      '<p style="color:#999;font-size:14px;margin:0 0 16px">'+
+        'Estás a '+geoResult.distancia+'m de "<strong>'+geoResult.sitioMasCercano+'</strong>".<br>'+
+        'Tu check-in requerirá aprobación del supervisor.'+
+      '</p>'+
+      '<textarea id="geoMotivo" placeholder="Motivo del check-in fuera de zona (obligatorio)..." style="width:100%;height:80px;background:#0a0a0a;color:#fff;border:1px solid #555;border-radius:8px;padding:10px;font-size:14px;box-sizing:border-box;resize:none;margin-bottom:16px;font-family:inherit"></textarea>'+
+      '<div style="display:flex;gap:12px">'+
+        '<button onclick="cancelarGeo()" style="flex:1;background:#333;color:#fff;border:none;padding:14px;border-radius:8px;font-size:16px;cursor:pointer;font-family:inherit">✕ Cancelar</button>'+
+        '<button onclick="confirmarGeo()" style="flex:1;background:#D83B01;color:#fff;border:none;padding:14px;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit">Enviar para aprobación</button>'+
+      '</div>'+
+    '</div>';
+  document.body.appendChild(modal);
+}
+
+function cancelarGeo(){
+  const m = document.getElementById('geoModal');
+  if(m) m.remove();
+  K.geoMotivo = null;
+  goHome();
+}
+
+function confirmarGeo(){
+  const ta = document.getElementById('geoMotivo');
+  const motivo = ta ? ta.value.trim() : '';
+  if(!motivo){
+    if(ta) ta.style.borderColor = '#D83B01';
+    return;
+  }
+  K.geoMotivo = motivo;
+  K.geoAutorizada = false;
+  const m = document.getElementById('geoModal');
+  if(m) m.remove();
+  showScreen('ks-project');
 }
 
 // ═══ Reloj ═══
@@ -210,10 +280,10 @@ function verifyPin(){
     return;
   }
   setFaceStatus('✅ PIN correcto — verificando rostro…');
-  if(K.config.faceEnable){
+  if(K.config.faceEnabled){
     doFaceVerify();
   } else {
-    showScreen('ks-project');
+    afterVerifyContinue();
   }
 }
 
@@ -254,7 +324,7 @@ async function doFaceVerify(){
   const video = document.getElementById('ksCamera');
   if(!video || !K.faceReady){
     setFaceStatus('⚠️ Verificación facial no lista — continuando');
-    setTimeout(() => showScreen('ks-project'), 800);
+    setTimeout(afterVerifyContinue, 800);
     return;
   }
   try{
@@ -262,7 +332,7 @@ async function doFaceVerify(){
     const result = await window.FaceVerify.compareFaces(K.seleccionado.foto, video);
     if(result.match){
       setFaceStatus('✅ Rostro verificado ('+result.similarity+'%)');
-      setTimeout(() => showScreen('ks-project'), 600);
+      setTimeout(afterVerifyContinue, 600);
     } else {
       setFaceStatus('❌ Rostro no coincide ('+result.similarity+'%) — '+(result.reason||''));
       shakeVerify();
@@ -271,7 +341,27 @@ async function doFaceVerify(){
   } catch(e){
     console.warn('Face verify error:', e);
     setFaceStatus('⚠️ Error en verificación — continuando');
-    setTimeout(() => showScreen('ks-project'), 1000);
+    setTimeout(afterVerifyContinue, 1000);
+  }
+}
+
+// ═══ Continuación tras PIN+facial OK: captura geo y valida zona ═══
+async function afterVerifyContinue(){
+  setFaceStatus('📍 Obteniendo ubicación…');
+  K.geoMotivo = null;
+  const geo = await window.getGeolocacion();
+  K.geo = geo;
+  const geoResult = validarGeolocacion(
+    geo && geo.lat != null ? geo.lat : null,
+    geo && geo.lng != null ? geo.lng : null
+  );
+  K.geoAutorizada = geoResult.autorizado;
+  K.geoSitio = geoResult.sitio || geoResult.sitioMasCercano;
+  K.geoDistancia = geoResult.distancia || 0;
+  if(!geoResult.autorizado){
+    mostrarModalGeo(geoResult);
+  } else {
+    showScreen('ks-project');
   }
 }
 
@@ -413,5 +503,7 @@ window.clearPin = clearPin;
 window.backPin = backPin;
 window.searchSOs = searchSOs;
 window.selectSO = selectSO;
+window.cancelarGeo = cancelarGeo;
+window.confirmarGeo = confirmarGeo;
 
 document.addEventListener('DOMContentLoaded', initKiosk);
