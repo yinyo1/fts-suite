@@ -43,6 +43,37 @@ Paleta de colores:
 - YELLOW_WARN = "#f39c12" (advertencia)
 - GRAY_DIM    = "#999" (cotas / auxiliares)
 
+⚠️ REGLA CRÍTICA DE DIAGRAMAS:
+Cuando el prompt diga "genera un diagrama SVG", debes responder con código SVG LITERAL válido.
+NUNCA con texto que describa el diagrama. NUNCA con pseudo-ASCII art.
+
+✅ EJEMPLO CORRECTO (así DEBES responder):
+<div class="figura">
+<svg viewBox="0 0 700 200" width="100%">
+  <defs>
+    <marker id="arr" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#e74c3c"/>
+    </marker>
+  </defs>
+  <rect x="100" y="80" width="500" height="15" fill="#2E75B6" rx="2"/>
+  <polygon points="100,100 85,125 115,125" fill="#333"/>
+  <polygon points="600,100 585,125 615,125" fill="#333"/>
+  <line x1="350" y1="20" x2="350" y2="78" stroke="#e74c3c" stroke-width="3" marker-end="url(#arr)"/>
+  <text x="350" y="15" text-anchor="middle" font-size="12" font-weight="bold" fill="#e74c3c">P = 23.3 kN</text>
+  <text x="350" y="145" text-anchor="middle" font-size="11" fill="#555">L = 5,528 mm</text>
+</svg>
+<p class="caption">Figura 2 — Esquema de carga del monorriel</p>
+</div>
+
+❌ EJEMPLO INCORRECTO (NUNCA hagas esto):
+ZONA 1 — ESQUEMA DE CARGA P_din = 23.26 kN
+R = 12.28 kN  ═══════════ R = 12.28 kN
+              ▲         ▲
+              L = 5,528 mm
+
+Siempre responde con elementos SVG reales (<rect>, <line>, <polygon>, <text>, <path>, <circle>, <marker>).
+El HTML del reporte debe renderizar gráficos vectoriales reales, no texto ASCII.
+
 DIAGRAMA COMÚN — FACTORES DE SEGURIDAD (en sección CONCLUSIONES, OBLIGATORIO para todos los tipos):
 SVG 700×320. Barras verticales.
 - Una barra por elemento verificado

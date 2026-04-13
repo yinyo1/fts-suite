@@ -61,22 +61,51 @@ SVG 700×450. Fondo #f8f9fa. Sin ejes.
 - Leyenda arriba-derecha con rectángulos de color + texto
 
 DIAGRAMA 2 — CARGAS MONORRIEL + BMD + SFD (después de sección 6):
-SVG 700×600. 3 zonas verticales de 200px cada una.
-Zona 1 — Esquema viga:
-  - Viga: rectángulo #2E75B6 horizontal centrado
-  - Apoyos: triángulos en extremos
-  - Flecha #e74c3c hacia abajo al centro: "P = X kN"
-  - Flechas #27ae60 hacia arriba en apoyos: "R = X kN"
-  - Cota con valor del claro en mm
-Zona 2 — BMD (Momento Flector):
-  - Área triangular #2E75B6 rellena (máximo al centro)
-  - Línea de contorno #1F4E79
-  - Etiqueta "M_max = X kN·m"
-  - Eje Y: "Momento (kN·m)"
-Zona 3 — SFD (Fuerza Cortante):
-  - Rectángulos #e74c3c: +V primera mitad, −V segunda mitad
-  - Etiqueta "V_max = ±X kN"
-  - Eje Y: "Cortante (kN)", Eje X: "Posición (mm)"
+Genera este SVG adaptando los valores calculados. Sustituye [P_din], [Pu], [R], [L_mm], [L_HALF], [M_max], [V_max] con los valores reales. Las coordenadas numéricas del BMD/SFD se calculan proporcionalmente: BMD_TOP = 380 - (M_max/M_ref)*160, SFD_TOP = 490 - (V_max/V_ref)*80. Devuelve SVG literal, NO descripción en texto.
+
+<div class="figura">
+<svg viewBox="0 0 700 600" width="100%">
+  <defs>
+    <marker id="arr" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#e74c3c"/>
+    </marker>
+    <marker id="arrG" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#27ae60"/>
+    </marker>
+  </defs>
+  <!-- ZONA 1: Esquema viga -->
+  <text x="350" y="25" text-anchor="middle" font-size="13" font-weight="bold" fill="#1F4E79">DIAGRAMA DE CARGAS — MONORRIEL</text>
+  <rect x="80" y="80" width="540" height="18" fill="#2E75B6" rx="2"/>
+  <polygon points="80,98 60,130 100,130" fill="#333"/>
+  <polygon points="620,98 600,130 640,130" fill="#333"/>
+  <line x1="350" y1="20" x2="350" y2="79" stroke="#e74c3c" stroke-width="3" marker-end="url(#arr)"/>
+  <text x="350" y="15" text-anchor="middle" font-size="11" font-weight="bold" fill="#e74c3c">P = [P_din] kN (Pu=[Pu] kN)</text>
+  <line x1="80" y1="160" x2="80" y2="100" stroke="#27ae60" stroke-width="2.5" marker-end="url(#arrG)"/>
+  <text x="80" y="175" text-anchor="middle" font-size="10" fill="#27ae60" font-weight="bold">R=[R] kN</text>
+  <line x1="620" y1="160" x2="620" y2="100" stroke="#27ae60" stroke-width="2.5" marker-end="url(#arrG)"/>
+  <text x="620" y="175" text-anchor="middle" font-size="10" fill="#27ae60" font-weight="bold">R=[R] kN</text>
+  <line x1="80" y1="145" x2="620" y2="145" stroke="#999" stroke-width="1"/>
+  <text x="350" y="160" text-anchor="middle" font-size="10" fill="#555">L = [L_mm] mm</text>
+  <!-- ZONA 2: BMD -->
+  <text x="350" y="210" text-anchor="middle" font-size="12" font-weight="bold" fill="#1F4E79">Diagrama de Momento Flector (BMD)</text>
+  <line x1="80" y1="380" x2="620" y2="380" stroke="#333" stroke-width="1"/>
+  <polygon points="80,380 350,[BMD_TOP] 620,380" fill="#2E75B6" fill-opacity="0.25" stroke="#2E75B6" stroke-width="2"/>
+  <text x="360" y="[BMD_LABEL_Y]" font-size="11" font-weight="bold" fill="#1F4E79">M_max = [M_max] kN·m</text>
+  <text x="20" y="295" font-size="10" fill="#555" transform="rotate(-90,20,295)">Momento (kN·m)</text>
+  <!-- ZONA 3: SFD -->
+  <text x="350" y="415" text-anchor="middle" font-size="12" font-weight="bold" fill="#1F4E79">Diagrama de Fuerza Cortante (SFD)</text>
+  <line x1="80" y1="490" x2="620" y2="490" stroke="#333" stroke-width="1"/>
+  <rect x="80" y="[SFD_TOP]" width="270" height="[SFD_H]" fill="#e74c3c" fill-opacity="0.25" stroke="#e74c3c" stroke-width="1.5"/>
+  <rect x="350" y="490" width="270" height="[SFD_H]" fill="#e74c3c" fill-opacity="0.25" stroke="#e74c3c" stroke-width="1.5"/>
+  <text x="200" y="[SFD_POS_LABEL]" text-anchor="middle" font-size="10" font-weight="bold" fill="#c0392b">+[V_max] kN</text>
+  <text x="490" y="[SFD_NEG_LABEL]" text-anchor="middle" font-size="10" font-weight="bold" fill="#c0392b">-[V_max] kN</text>
+  <text x="80" y="570" font-size="9" fill="#555">0 mm</text>
+  <text x="330" y="570" font-size="9" fill="#555">[L_HALF] mm</text>
+  <text x="590" y="570" font-size="9" fill="#555">[L_mm] mm</text>
+  <text x="350" y="585" text-anchor="middle" font-size="10" fill="#555">Posición (mm)</text>
+</svg>
+<p class="caption">Figura 2 — Diagrama de cargas, momento flector (BMD) y fuerza cortante (SFD) del monorriel. P_din = [P_din] kN, M_max = [M_max] kN·m, V_max = ±[V_max] kN.</p>
+</div>
 
 DIAGRAMA 3 — DEFLEXIÓN COMPARATIVA (después de sección 6):
 SVG 700×220. Barras horizontales.
