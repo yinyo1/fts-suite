@@ -609,6 +609,16 @@ async function mostrarHistorial(empId){
   const emp = K.empleados.find(e => e.id === empId);
   if(!emp) return;
 
+  K.histEmpleadoId = empId;
+
+  // Reset rango UI a "hoy"
+  const rangoDiv = document.getElementById('hist-rango');
+  if(rangoDiv) rangoDiv.style.display = 'none';
+  const btnHoy = document.getElementById('btn-hoy');
+  const btnCustom = document.getElementById('btn-custom');
+  if(btnHoy){ btnHoy.style.background='#0078D4'; btnHoy.style.color='#fff'; btnHoy.style.borderColor='#0078D4'; }
+  if(btnCustom){ btnCustom.style.background='#fff'; btnCustom.style.color='#666'; btnCustom.style.borderColor='#e0e0e0'; }
+
   document.getElementById('hist-empleados').style.display = 'none';
   document.getElementById('hist-search').style.display = 'none';
   document.getElementById('hist-content').style.display = 'block';
@@ -715,17 +725,130 @@ function renderEventoHistorial(ev){
     salida:         '🔴 Salida'
   };
   const color = colores[ev.tipo] || '#666';
-  return '<div style="background:#fff;border:1px solid #e0e0e0;border-left:4px solid ' + color + ';border-radius:10px;padding:12px 14px">' +
-    '<div style="display:flex;justify-content:space-between;align-items:center">' +
-      '<span style="font-weight:600;font-size:14px">' + (labels[ev.tipo] || ev.tipo) + '</span>' +
-      '<span style="font-weight:700;font-size:16px;color:' + color + '">' + (ev.hora || '—') + '</span>' +
-    '</div>' +
-    '<div style="font-size:12px;color:#999;margin-top:4px">' +
-      '📍 ' + (ev.geo || '—') +
-      (ev.proyecto ? '&nbsp;·&nbsp;📋 ' + ev.proyecto : '') +
-      (ev.status === 'pendiente_aprobacion' ? '&nbsp;·&nbsp;<span style="color:#BF8F00">⚠️ Pendiente aprobación</span>' : '') +
-    '</div>' +
+
+  // Badge geo
+  let geoBadge = '';
+  if(ev.geo_autorizada === false){
+    geoBadge = '<span style="background:#FFF2CC;color:#BF8F00;border-radius:4px;padding:2px 6px;font-size:11px">⚠️ Geo fuera de zona</span>';
+  } else if(ev.geo_autorizada === true){
+    geoBadge = '<span style="background:#E2EFDA;color:#107C10;border-radius:4px;padding:2px 6px;font-size:11px">✅ Geo OK</span>';
+  }
+
+  // Badge aprobación supervisor
+  let aprobBadge = '';
+  if(ev.requiere_aprobacion){
+    if(ev.aprobado){
+      aprobBadge = '<span style="background:#E2EFDA;color:#107C10;border-radius:4px;padding:2px 6px;font-size:11px">✅ Aprobado</span>';
+    } else {
+      aprobBadge = '<span style="background:#FFE8E8;color:#D83B01;border-radius:4px;padding:2px 6px;font-size:11px">⏳ Pendiente supervisor</span>';
+    }
+  }
+
+  // Fecha si es rango (no solo hoy)
+  const hoyStr = new Date().toLocaleDateString('es-MX');
+  const fechaStr = (ev.fecha && ev.fecha !== hoyStr)
+    ? '<span style="color:#999;font-size:11px;margin-right:6px">'+ev.fecha+'</span>'
+    : '';
+
+  const badgesRow = (geoBadge || aprobBadge)
+    ? '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">'+geoBadge+aprobBadge+'</div>'
+    : '';
+
+  return '<div style="background:#fff;border:1px solid #e0e0e0;border-left:4px solid '+color+';border-radius:10px;padding:12px 14px;margin-bottom:4px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
+      '<span style="font-weight:600;font-size:14px">'+(labels[ev.tipo]||ev.tipo)+'</span>'+
+      '<span style="font-weight:700;font-size:16px;color:'+color+'">'+fechaStr+(ev.hora||'--:--')+'</span>'+
+    '</div>'+
+    '<div style="font-size:12px;color:#666;line-height:1.8">'+
+      '📍 '+(ev.geo||ev.sitio||'—')+
+      (ev.proyecto ? '<br>📋 '+ev.proyecto : '')+
+      (ev.motivo   ? '<br>📝 Motivo: '+ev.motivo : '')+
+    '</div>'+
+    badgesRow+
   '</div>';
+}
+
+// ═══ Rango de fechas en historial ═══
+function setRangoHoy(){
+  const rangoDiv = document.getElementById('hist-rango');
+  if(rangoDiv) rangoDiv.style.display = 'none';
+  const btnHoy = document.getElementById('btn-hoy');
+  const btnCustom = document.getElementById('btn-custom');
+  if(btnHoy){ btnHoy.style.background='#0078D4'; btnHoy.style.color='#fff'; btnHoy.style.borderColor='#0078D4'; }
+  if(btnCustom){ btnCustom.style.background='#fff'; btnCustom.style.color='#666'; btnCustom.style.borderColor='#e0e0e0'; }
+  if(K.histEmpleadoId){
+    mostrarHistorial(K.histEmpleadoId);
+  }
+}
+
+function setRangoCustom(){
+  const rango = document.getElementById('hist-rango');
+  rango.style.display = 'block';
+
+  const hoy = new Date();
+  const hace7 = new Date();
+  hace7.setDate(hoy.getDate() - 7);
+
+  document.getElementById('hist-hasta').value = hoy.toISOString().split('T')[0];
+  document.getElementById('hist-desde').value = hace7.toISOString().split('T')[0];
+
+  const btnCustom = document.getElementById('btn-custom');
+  const btnHoy = document.getElementById('btn-hoy');
+  if(btnCustom){ btnCustom.style.background='#0078D4'; btnCustom.style.color='#fff'; btnCustom.style.borderColor='#0078D4'; }
+  if(btnHoy){ btnHoy.style.background='#fff'; btnHoy.style.color='#666'; btnHoy.style.borderColor='#e0e0e0'; }
+}
+
+async function buscarRango(){
+  const desde = document.getElementById('hist-desde').value;
+  const hasta = document.getElementById('hist-hasta').value;
+  if(!desde || !hasta) return;
+
+  document.getElementById('hist-horas').textContent = 'Cargando…';
+  document.getElementById('hist-eventos').innerHTML = '';
+
+  let eventos = [];
+  let esDemo = false;
+
+  if(!K.config.demoMode && K.config.n8nUrl){
+    try{
+      const res = await window.OdooKiosk.getAsistenciaRango(K.histEmpleadoId, desde, hasta);
+      eventos = (res && res.eventos) || [];
+    } catch(e){
+      console.warn('Odoo no disponible (rango), usando demo:', e);
+      esDemo = true;
+      eventos = generarEventosDemoRango(desde, hasta);
+    }
+  } else {
+    esDemo = true;
+    eventos = generarEventosDemoRango(desde, hasta);
+  }
+
+  const avisoDemo = document.getElementById('hist-demo-aviso');
+  if(avisoDemo) avisoDemo.style.display = esDemo ? 'block' : 'none';
+
+  document.getElementById('hist-horas').innerHTML =
+    '<b>'+eventos.length+'</b> registros del '+desde+' al '+hasta;
+
+  document.getElementById('hist-eventos').innerHTML = eventos.length
+    ? eventos.map(renderEventoHistorial).join('')
+    : '<p style="color:#999;text-align:center;padding:12px">Sin registros en este período</p>';
+}
+
+function generarEventosDemoRango(desde, hasta){
+  const eventos = [];
+  const d = new Date(desde);
+  const h = new Date(hasta);
+  while(d <= h){
+    const fecha = d.toLocaleDateString('es-MX', { day:'2-digit', month:'2-digit', year:'numeric' });
+    eventos.push(
+      { tipo:'entrada',        hora:'07:05', fecha, geo:'FTS Monterrey', geo_autorizada:true },
+      { tipo:'salida_comida',  hora:'12:00', fecha, geo:'FTS Monterrey', geo_autorizada:true },
+      { tipo:'regreso_comida', hora:'12:32', fecha, geo:'FTS Monterrey', geo_autorizada:true },
+      { tipo:'salida',         hora:'17:10', fecha, geo:'FTS Monterrey', geo_autorizada:true, proyecto:'SO-11547 Nalco' }
+    );
+    d.setDate(d.getDate() + 1);
+  }
+  return eventos;
 }
 
 function autoReturn(){
@@ -788,5 +911,8 @@ window.cancelarGeo = cancelarGeo;
 window.confirmarGeo = confirmarGeo;
 window.searchHistorial = searchHistorial;
 window.mostrarHistorial = mostrarHistorial;
+window.setRangoHoy = setRangoHoy;
+window.setRangoCustom = setRangoCustom;
+window.buscarRango = buscarRango;
 
 document.addEventListener('DOMContentLoaded', initKiosk);

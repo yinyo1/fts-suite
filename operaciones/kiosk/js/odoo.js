@@ -41,6 +41,14 @@ async function getAsistenciaHoy(empleadoId){
   return odooFetch('/kiosk/asistencia', { empleado_id: empleadoId });
 }
 
+async function getAsistenciaRango(empleadoId, desde, hasta){
+  return odooFetch('/kiosk/asistencia-rango', {
+    empleado_id: empleadoId,
+    fecha_desde: desde,
+    fecha_hasta: hasta
+  });
+}
+
 async function testConnection(){
   try{
     const res = await odooFetch('/kiosk/ping', {});
@@ -50,4 +58,4 @@ async function testConnection(){
   }
 }
 
-window.OdooKiosk = { getEmpleados, getSOs, registrarCheckin, getAsistenciaHoy, testConnection };
+window.OdooKiosk = { getEmpleados, getSOs, registrarCheckin, getAsistenciaHoy, getAsistenciaRango, testConnection };
