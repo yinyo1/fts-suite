@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FTS Operaciones · Planeación</title>
+<link rel="stylesheet" href="../../shared/fts-styles.css">
+<style>
+  *{box-sizing:border-box}
+  html{height:auto;min-height:100%}
+  body{
+    min-height:100vh;height:auto;
+    overflow-y:auto;overflow-x:hidden;
+    margin:0;padding:0 0 80px;
+    background:#fafafa;color:#1a1a1a;
+    font-family:'Inter',-apple-system,sans-serif;
+  }
+
+  .pl-topbar{
+    position:sticky;top:0;z-index:50;
+    background:#fff;border-bottom:1px solid #e0e0e0;
+    padding:14px 20px;display:flex;align-items:center;
+    justify-content:space-between;gap:12px;
+  }
+  .pl-topbar h1{font-size:18px;font-weight:800;margin:0;color:#1a1a1a}
+  .pl-topbar .back{
+    background:#107C10;color:#fff;border:none;
+    padding:8px 14px;font-size:13px;font-weight:700;
+    border-radius:8px;cursor:pointer;text-decoration:none;
+    font-family:inherit;
+  }
+  .pl-topbar .back:hover{background:#0d6b0d}
+
+  .pl-wrap{max-width:1100px;margin:0 auto;padding:20px}
+
+  /* Tabs */
+  .pl-tabs{
+    display:flex;gap:4px;background:#fff;
+    border:1px solid #e0e0e0;border-radius:10px;
+    padding:4px;margin-bottom:20px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.04);
+    max-width:420px;
+  }
+  .pl-tab{
+    flex:1;padding:10px 16px;border:none;
+    background:transparent;cursor:pointer;
+    font-size:13px;font-weight:700;color:#666;
+    border-radius:7px;font-family:inherit;
+    transition:all .15s;
+  }
+  .pl-tab:hover{color:#1a1a1a}
+  .pl-tab.active{background:#107C10;color:#fff}
+
+  .pl-pane{display:none}
+  .pl-pane.active{display:block}
+
+  .pl-card{
+    background:#fff;border:1px solid #e0e0e0;
+    border-radius:12px;padding:20px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.04);
+    margin-bottom:16px;
+  }
+
+  .pl-toolbar{
+    display:flex;gap:12px;align-items:center;
+    flex-wrap:wrap;margin-bottom:16px;
+  }
+  .pl-toolbar label{font-size:12px;color:#666;font-weight:600;display:block;margin-bottom:4px}
+  .pl-toolbar input[type="date"],
+  .pl-toolbar input[type="week"]{
+    padding:8px 12px;border:1.5px solid #e0e0e0;
+    border-radius:8px;font-size:13px;
+    background:#fff;color:#1a1a1a;font-family:inherit;
+    outline:none;
+  }
+  .pl-toolbar input:focus{border-color:#107C10}
+
+  .pl-btn{
+    padding:9px 16px;border-radius:8px;border:none;
+    font-size:13px;font-weight:700;cursor:pointer;
+    font-family:inherit;transition:opacity .15s;
+  }
+  .pl-btn:hover{opacity:0.9}
+  .pl-btn:active{transform:scale(0.97)}
+  .pl-btn.primary{background:#107C10;color:#fff}
+  .pl-btn.secondary{background:#0078D4;color:#fff}
+  .pl-btn.ghost{background:#fff;border:1.5px solid #e0e0e0;color:#1a1a1a}
+  .pl-btn.ghost:hover{border-color:#107C10;background:#f0faf0}
+  .pl-btn.danger{background:#fff;color:#D83B01;border:1.5px solid #e0e0e0}
+  .pl-btn.danger:hover{background:#D83B01;color:#fff;border-color:#D83B01}
+  .pl-btn.wa{background:#25D366;color:#fff}
+
+  /* Tabla plan diario */
+  .pl-table{
+    width:100%;border-collapse:collapse;
+    background:#fff;
+  }
+  .pl-table th{
+    background:#f5f5f5;color:#666;
+    font-size:11px;font-weight:800;
+    text-transform:uppercase;letter-spacing:0.5px;
+    text-align:left;padding:10px 12px;
+    border-bottom:2px solid #e0e0e0;
+  }
+  .pl-table td{
+    padding:10px 12px;border-bottom:1px solid #f0f0f0;
+    vertical-align:middle;
+  }
+  .pl-table select,
+  .pl-table input[type="text"],
+  .pl-table input[type="time"]{
+    width:100%;padding:8px 10px;
+    border:1.5px solid #e0e0e0;border-radius:6px;
+    font-size:13px;background:#fff;color:#1a1a1a;
+    font-family:inherit;outline:none;
+    box-sizing:border-box;
+  }
+  .pl-table select:focus,
+  .pl-table input:focus{border-color:#107C10}
+
+  .pl-del{
+    background:#fff;border:1.5px solid #e0e0e0;
+    color:#D83B01;padding:8px 12px;
+    border-radius:6px;cursor:pointer;
+    font-size:14px;transition:all .15s;
+  }
+  .pl-del:hover{background:#D83B01;color:#fff;border-color:#D83B01}
+
+  .pl-empty{
+    text-align:center;color:#999;padding:28px;font-size:13px;
+  }
+
+  /* Tabla semanal */
+  .pl-week-table{
+    width:100%;border-collapse:collapse;
+    background:#fff;font-size:13px;
+  }
+  .pl-week-table th{
+    background:#f5f5f5;color:#666;
+    font-size:11px;font-weight:800;
+    text-transform:uppercase;letter-spacing:0.5px;
+    text-align:center;padding:10px 8px;
+    border-bottom:2px solid #e0e0e0;
+  }
+  .pl-week-table th:first-child{text-align:left;padding-left:14px}
+  .pl-week-table td{
+    padding:10px 8px;border-bottom:1px solid #f0f0f0;
+    text-align:center;color:#1a1a1a;
+  }
+  .pl-week-table td:first-child{text-align:left;font-weight:700;padding-left:14px}
+  .pl-week-table .has-plan{
+    background:rgba(16,124,16,0.08);
+    color:#107C10;font-weight:600;
+  }
+  .pl-week-table .no-plan{color:#ccc}
+
+  .pl-actions{
+    display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;
+  }
+
+  .pl-toast{
+    position:fixed;bottom:24px;left:50%;
+    transform:translateX(-50%);background:#107C10;
+    color:#fff;padding:12px 20px;border-radius:10px;
+    font-size:13px;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,0.2);
+    z-index:200;opacity:0;pointer-events:none;
+    transition:opacity .2s;
+  }
+  .pl-toast.show{opacity:1}
+
+  @media(max-width:700px){
+    .pl-table th:nth-child(3),
+    .pl-table th:nth-child(4),
+    .pl-table td:nth-child(3),
+    .pl-table td:nth-child(4){display:none}
+    .pl-week-table{font-size:11px}
+  }
+</style>
+</head>
+<body>
+
+<div class="pl-topbar">
+  <h1>📋 Planeación</h1>
+  <a href="../index.html" class="back">← Operaciones</a>
+</div>
+
+<div class="pl-wrap">
+
+  <!-- Tabs -->
+  <div class="pl-tabs">
+    <button class="pl-tab active" id="tab-diario" onclick="showVista('diario')">📅 Plan Diario</button>
+    <button class="pl-tab" id="tab-semanal" onclick="showVista('semanal')">📆 Semana</button>
+  </div>
+
+  <!-- TAB 1 — Plan Diario -->
+  <div class="pl-pane active" id="pane-diario">
+    <div class="pl-card">
+      <div class="pl-toolbar">
+        <div>
+          <label>Fecha del plan</label>
+          <input type="date" id="fechaDiario" onchange="onFechaDiarioChange()">
+        </div>
+        <div style="flex:1"></div>
+        <button class="pl-btn ghost" onclick="addTecnico()">+ Agregar técnico</button>
+      </div>
+
+      <table class="pl-table">
+        <thead>
+          <tr>
+            <th>Técnico</th>
+            <th>Planta / Proyecto</th>
+            <th>Entrada</th>
+            <th>Salida</th>
+            <th style="width:50px"></th>
+          </tr>
+        </thead>
+        <tbody id="planDiarioBody">
+          <tr><td colspan="5" class="pl-empty">Cargando…</td></tr>
+        </tbody>
+      </table>
+
+      <div class="pl-actions">
+        <button class="pl-btn primary" onclick="guardarPlan()">💾 Guardar</button>
+        <button class="pl-btn wa" onclick="enviarWhatsApp('diario')">📤 Enviar por WhatsApp</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2 — Semana -->
+  <div class="pl-pane" id="pane-semanal">
+    <div class="pl-card">
+      <div class="pl-toolbar">
+        <div>
+          <label>Semana (lunes a viernes)</label>
+          <input type="date" id="fechaSemanal" onchange="onFechaSemanalChange()">
+        </div>
+        <div id="semanaLabel" style="font-size:12px;color:#666;font-weight:600;align-self:flex-end;padding-bottom:4px"></div>
+      </div>
+
+      <div style="overflow-x:auto">
+        <table class="pl-week-table">
+          <thead id="planSemanalHead">
+            <tr>
+              <th>Técnico</th>
+              <th>Lun</th>
+              <th>Mar</th>
+              <th>Mié</th>
+              <th>Jue</th>
+              <th>Vie</th>
+            </tr>
+          </thead>
+          <tbody id="planSemanalBody">
+            <tr><td colspan="6" class="pl-empty">Cargando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pl-actions">
+        <button class="pl-btn wa" onclick="enviarWhatsApp('semanal')">📤 Enviar plan semanal por WhatsApp</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="pl-toast" id="plToast">✅ Guardado</div>
+
+<script src="js/planeacion.js"></script>
+</body>
+</html>
