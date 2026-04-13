@@ -1,34 +1,38 @@
-/* ═══ FTS Kiosk — Design System Tablet Dark Mode ═══ */
+/* ═══ FTS Kiosk — Design System Light Mode (tablet) ═══ */
+@import url('../../../shared/fts-styles.css');
+
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-serif;background:#0a0a0a;color:#fff;user-select:none;-webkit-user-select:none}
+html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-serif;background:#fafafa;color:#1a1a1a;user-select:none;-webkit-user-select:none}
 
 .kiosk-screen{
   position:fixed;inset:0;
-  background:#0a0a0a;color:#fff;
+  background:#fafafa;color:#1a1a1a;
   display:none;flex-direction:column;
   align-items:center;justify-content:center;
   padding:24px;box-sizing:border-box;
 }
 .kiosk-screen.active{display:flex}
 
-.kiosk-logo{width:72px;height:72px;border-radius:14px;background:#107C10;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:800;color:#fff;margin-bottom:16px}
+.kiosk-logo{width:72px;height:72px;border-radius:14px;background:#107C10;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:800;color:#fff;margin-bottom:16px;box-shadow:0 4px 16px rgba(16,124,16,0.2)}
 .kiosk-logo-sm{width:40px;height:40px;border-radius:8px;background:#107C10;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff}
 
-.kiosk-time{font-size:96px;font-weight:200;font-variant-numeric:tabular-nums;letter-spacing:-2px;line-height:1}
-.kiosk-date{font-size:20px;color:#999;margin-top:8px;text-transform:capitalize}
+.kiosk-time{font-size:96px;font-weight:200;font-variant-numeric:tabular-nums;letter-spacing:-2px;line-height:1;color:#1a1a1a}
+.kiosk-date{font-size:20px;color:#666;margin-top:8px;text-transform:capitalize}
 .kiosk-hint{font-size:18px;color:#107C10;margin-top:40px;font-weight:600}
 
-.kiosk-title{font-size:26px;font-weight:700;margin-bottom:20px;text-align:center}
-.kiosk-subtitle{font-size:16px;color:#999;margin-bottom:24px;text-align:center}
+.kiosk-title{font-size:26px;font-weight:700;margin-bottom:20px;text-align:center;color:#1a1a1a}
+.kiosk-subtitle{font-size:16px;color:#666;margin-bottom:24px;text-align:center}
 
 .kiosk-search{
   width:100%;max-width:500px;
   padding:18px 20px;font-size:20px;
-  border-radius:12px;border:2px solid #107C10;
-  background:#1a1a1a;color:#fff;
+  border-radius:12px;border:2px solid #0078D4;
+  background:#fff;color:#1a1a1a;
   outline:none;font-family:inherit;
+  box-shadow:0 2px 8px rgba(0,120,212,0.08);
 }
-.kiosk-search::placeholder{color:#666}
+.kiosk-search::placeholder{color:#999}
+.kiosk-search:focus{border-color:#107C10;box-shadow:0 2px 12px rgba(16,124,16,0.15)}
 
 .kiosk-list{
   width:100%;max-width:500px;
@@ -36,50 +40,56 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-ser
   margin-top:16px;padding:4px;
 }
 .kiosk-list::-webkit-scrollbar{width:8px}
-.kiosk-list::-webkit-scrollbar-thumb{background:#333;border-radius:4px}
+.kiosk-list::-webkit-scrollbar-thumb{background:#e0e0e0;border-radius:4px}
 
 .kiosk-employee-card{
   display:flex;align-items:center;gap:16px;
-  background:#1a1a1a;border-radius:12px;
+  background:#fff;border-radius:12px;
   padding:16px;margin:8px 0;width:100%;
   cursor:pointer;
-  border:2px solid transparent;
+  border:1px solid #e0e0e0;
+  color:#1a1a1a;
   transition:all 0.2s;
+  box-shadow:0 1px 3px rgba(0,0,0,0.04);
 }
-.kiosk-employee-card:hover,.kiosk-employee-card:active{border-color:#107C10;background:#1f1f1f}
+.kiosk-employee-card:hover,.kiosk-employee-card:active{border-color:#107C10;background:#f0faf0}
 .kiosk-employee-photo{
   width:64px;height:64px;border-radius:50%;
-  object-fit:cover;background:#333;
+  object-fit:cover;background:#f5f5f5;
   display:flex;align-items:center;justify-content:center;
-  font-size:24px;font-weight:700;color:#666;flex-shrink:0;
+  font-size:24px;font-weight:700;color:#999;flex-shrink:0;
+  border:1px solid #e0e0e0;
 }
-.kiosk-employee-name{font-size:18px;font-weight:700}
-.kiosk-employee-sub{font-size:13px;color:#999;margin-top:2px}
+.kiosk-employee-name{font-size:18px;font-weight:700;color:#1a1a1a}
+.kiosk-employee-sub{font-size:13px;color:#666;margin-top:2px}
 
 .kiosk-so-card{
-  background:#1a1a1a;border-radius:12px;
+  background:#fff;border-radius:12px;
   padding:18px 20px;margin:8px 0;width:100%;
-  cursor:pointer;border:2px solid transparent;
+  cursor:pointer;border:1px solid #e0e0e0;
+  color:#1a1a1a;
   transition:all 0.2s;
+  box-shadow:0 1px 3px rgba(0,0,0,0.04);
 }
-.kiosk-so-card:hover,.kiosk-so-card:active{border-color:#107C10;background:#1f1f1f}
+.kiosk-so-card:hover,.kiosk-so-card:active{border-color:#107C10;background:#f0faf0}
 .kiosk-so-num{font-size:13px;color:#107C10;font-weight:700;letter-spacing:1px}
-.kiosk-so-name{font-size:18px;font-weight:700;margin-top:4px}
+.kiosk-so-name{font-size:18px;font-weight:700;margin-top:4px;color:#1a1a1a}
 
 .kiosk-pin-pad{
   display:grid;grid-template-columns:repeat(3,1fr);
   gap:12px;max-width:300px;width:100%;
 }
 .kiosk-pin-btn{
-  background:#1a1a1a;color:#fff;border:none;
+  background:#fff;color:#1a1a1a;
   padding:24px;font-size:28px;font-weight:700;
   border-radius:12px;cursor:pointer;
-  border:2px solid #333;
+  border:2px solid #e0e0e0;
   font-family:inherit;min-height:80px;
   transition:all 0.1s;
+  box-shadow:0 1px 3px rgba(0,0,0,0.04);
 }
-.kiosk-pin-btn:hover{border-color:#107C10}
-.kiosk-pin-btn:active{background:#107C10;transform:scale(0.96)}
+.kiosk-pin-btn:hover{border-color:#0078D4;background:#f0f7ff}
+.kiosk-pin-btn:active{background:#107C10;color:#fff;border-color:#107C10;transform:scale(0.96)}
 .kiosk-pin-btn.del{color:#D83B01}
 .kiosk-pin-dots{
   display:flex;gap:16px;margin:20px 0;
@@ -87,8 +97,8 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-ser
 }
 .kiosk-pin-dot{
   width:18px;height:18px;border-radius:50%;
-  background:#333;transition:background 0.2s;
-  border:2px solid #444;
+  background:#e0e0e0;transition:background 0.2s;
+  border:2px solid #ccc;
 }
 .kiosk-pin-dot.filled{background:#107C10;border-color:#107C10}
 .kiosk-pin-dot.error{background:#D83B01;border-color:#D83B01}
@@ -100,7 +110,8 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-ser
 .kiosk-verify-photo,.kiosk-camera-preview{
   width:220px;height:220px;border-radius:50%;
   object-fit:cover;border:4px solid #107C10;
-  background:#1a1a1a;
+  background:#f5f5f5;
+  box-shadow:0 4px 16px rgba(16,124,16,0.15);
 }
 .kiosk-camera-preview{transform:scaleX(-1)}
 
@@ -109,14 +120,15 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-ser
 .kiosk-big-name{
   font-size:32px;font-weight:700;
   text-align:center;margin:16px 0 8px;
+  color:#1a1a1a;
 }
 .kiosk-big-type{
   font-size:18px;font-weight:700;
   padding:6px 18px;border-radius:8px;
   display:inline-block;margin:8px 0;
 }
-.kiosk-big-type.in{background:rgba(16,124,16,0.2);color:#107C10;border:1px solid #107C10}
-.kiosk-big-type.out{background:rgba(216,59,1,0.2);color:#D83B01;border:1px solid #D83B01}
+.kiosk-big-type.in{background:rgba(16,124,16,0.1);color:#107C10;border:1px solid #107C10}
+.kiosk-big-type.out{background:rgba(216,59,1,0.1);color:#D83B01;border:1px solid #D83B01}
 
 .kiosk-btn{
   background:#107C10;color:#fff;border:none;
@@ -124,30 +136,32 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-ser
   border-radius:12px;cursor:pointer;
   font-family:inherit;min-height:72px;
   transition:all 0.1s;
+  box-shadow:0 2px 8px rgba(16,124,16,0.2);
 }
 .kiosk-btn:hover{background:#0d6b0d}
 .kiosk-btn:active{transform:scale(0.97)}
-.kiosk-btn.secondary{background:#1a1a1a;border:2px solid #333}
-.kiosk-btn.secondary:hover{border-color:#107C10;background:#1f1f1f}
+.kiosk-btn.secondary{background:#fff;border:2px solid #e0e0e0;color:#1a1a1a;box-shadow:none}
+.kiosk-btn.secondary:hover{border-color:#107C10;background:#f0faf0}
 .kiosk-btn.danger{background:#D83B01}
 
 .kiosk-back{
   position:absolute;top:24px;left:24px;
-  background:#1a1a1a;color:#fff;border:2px solid #333;
+  background:#fff;color:#1a1a1a;border:2px solid #e0e0e0;
   padding:12px 20px;font-size:16px;font-weight:700;
   border-radius:10px;cursor:pointer;
   font-family:inherit;
+  box-shadow:0 1px 3px rgba(0,0,0,0.04);
 }
-.kiosk-back:hover{border-color:#107C10}
+.kiosk-back:hover{border-color:#107C10;background:#f0faf0}
 
 .kiosk-footer-info{
   position:absolute;bottom:24px;left:0;right:0;
-  text-align:center;font-size:12px;color:#555;
+  text-align:center;font-size:12px;color:#999;
 }
 
 .kiosk-loading{
   display:inline-block;width:24px;height:24px;
-  border:3px solid #333;border-top-color:#107C10;
+  border:3px solid #e0e0e0;border-top-color:#107C10;
   border-radius:50%;animation:spin 1s linear infinite;
 }
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -163,10 +177,10 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-ser
   display:flex;justify-content:space-between;
   width:100%;max-width:420px;
   padding:8px 0;font-size:16px;
-  border-bottom:1px solid #222;
+  border-bottom:1px solid #e0e0e0;
 }
-.kiosk-confirm-row .lbl{color:#999}
-.kiosk-confirm-row .val{font-weight:700}
+.kiosk-confirm-row .lbl{color:#666}
+.kiosk-confirm-row .val{font-weight:700;color:#1a1a1a}
 
 .kiosk-geo-dot{
   display:inline-block;width:8px;height:8px;
