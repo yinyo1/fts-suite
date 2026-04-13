@@ -388,3 +388,54 @@ function regenerateAnalysis(){
   generateAnalysis();
 }
 
+// Descarga el reporte como archivo Word (.docx) usando html-docx-js
+function downloadWord(){
+  const reportContent = document.getElementById('reportContent');
+  if(!reportContent || !reportContent.innerHTML.trim()){
+    if(typeof showToast==='function') showToast('⚠️ No hay reporte para descargar', 3000);
+    return;
+  }
+
+  // HTML completo con estilos básicos para Word
+  const wordHTML =
+    '<!DOCTYPE html><html><head><meta charset="utf-8"><style>'+
+    'body{font-family:Arial,sans-serif;font-size:11pt;color:#1a1a1a}'+
+    'table{border-collapse:collapse;width:100%;margin-bottom:12pt}'+
+    'th{background:#1F4E79;color:#fff;padding:6pt;border:1pt solid #1F4E79;font-size:9pt;text-align:left}'+
+    'td{padding:5pt;border:1pt solid #ccc;font-size:9pt}'+
+    'h1{color:#1F4E79;font-size:14pt;border-bottom:2pt solid #1F4E79;padding-bottom:4pt;margin-top:18pt}'+
+    'h2{color:#2E75B6;font-size:12pt;margin-top:12pt}'+
+    'h3{color:#1a1a1a;font-size:11pt;margin-top:10pt}'+
+    '.ok-box{background:#E2EFDA;border:1pt solid #107C10;padding:8pt;margin:8pt 0;color:#1F6B35}'+
+    '.warn-box{background:#FFF2CC;border:1pt solid #BF8F00;padding:8pt;margin:8pt 0;color:#BF8F00}'+
+    '.page-header{display:none}'+
+    '.caption{font-size:9pt;color:#555;font-style:italic;text-align:center;margin-top:4pt}'+
+    '.figura{margin:12pt 0;text-align:center;page-break-inside:avoid}'+
+    'img{max-width:500pt}'+
+    '</style></head><body>'+
+    reportContent.innerHTML+
+    '</body></html>';
+
+  try{
+    if(typeof htmlDocx === 'undefined'){
+      if(typeof showToast==='function') showToast('⚠️ Librería html-docx-js no cargada', 5000);
+      return;
+    }
+    const blob = htmlDocx.asBlob(wordHTML);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const docNum = (analysisData && analysisData.num_documento) || 'FTS-MC';
+    a.href = url;
+    a.download = docNum + '-Memoria-Calculo.docx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    if(typeof showToast==='function') showToast('✅ Archivo Word descargado', 3000);
+  } catch(e){
+    console.error('downloadWord error:', e);
+    if(typeof showToast==='function') showToast('⚠️ Error al generar Word: '+e.message, 5000);
+  }
+}
+window.downloadWord = downloadWord;
+
