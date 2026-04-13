@@ -338,6 +338,275 @@ function enviarWhatsApp(tipo){
 }
 window.enviarWhatsApp = enviarWhatsApp;
 
+// ═══ Generar imagen PNG con Canvas ═══
+function getViernes(lunes){
+  const d = new Date(lunes + 'T00:00:00');
+  d.setDate(d.getDate() + 4);
+  return isoDate(d);
+}
+
+function wrapText(ctx, text, maxWidth){
+  const words = text.split(/\s+/);
+  const lines = [];
+  let cur = '';
+  words.forEach(w => {
+    const test = cur ? cur + ' ' + w : w;
+    if(ctx.measureText(test).width > maxWidth && cur){
+      lines.push(cur);
+      cur = w;
+    } else {
+      cur = test;
+    }
+  });
+  if(cur) lines.push(cur);
+  return lines;
+}
+
+function generarImagen(tipo){
+  if(tipo === 'diario'){
+    generarImagenDiario();
+  } else {
+    generarImagenSemanal();
+  }
+}
+window.generarImagen = generarImagen;
+
+function generarImagenDiario(){
+  const canvas = document.createElement('canvas');
+  const filas = P.planDiario.length || 1;
+  const altoFila = 44;
+  const headerH = 80;
+  const colH = 32;
+  const comentarios = (P.comentarios || '').trim();
+  const comentH = comentarios ? 70 : 0;
+  const footerH = 40;
+  canvas.width = 780;
+  canvas.height = headerH + colH + (filas * altoFila) + comentH + footerH + 20;
+
+  const ctx = canvas.getContext('2d');
+
+  // Fondo blanco
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Header verde FTS
+  ctx.fillStyle = '#107C10';
+  ctx.fillRect(0, 0, canvas.width, headerH);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 20px Arial';
+  ctx.fillText('📋 PLAN DE TRABAJO — FTS', 20, 32);
+  ctx.font = '14px Arial';
+  ctx.fillText(fmtFecha(P.fechaDiario), 20, 58);
+
+  // Encabezados de columna
+  ctx.fillStyle = '#f5f5f5';
+  ctx.fillRect(0, headerH, canvas.width, colH);
+  ctx.fillStyle = '#666666';
+  ctx.font = 'bold 12px Arial';
+  ctx.fillText('TÉCNICO', 16, headerH + 20);
+  ctx.fillText('PLANTA', 220, headerH + 20);
+  ctx.fillText('ORIGEN', 430, headerH + 20);
+  ctx.fillText('HORARIO', 620, headerH + 20);
+
+  // Filas
+  if(P.planDiario.length){
+    P.planDiario.forEach((t, i) => {
+      const y = headerH + colH + (i * altoFila);
+      ctx.fillStyle = i % 2 === 0 ? '#ffffff' : '#fafafa';
+      ctx.fillRect(0, y, canvas.width, altoFila);
+      ctx.strokeStyle = '#e0e0e0';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, y + altoFila);
+      ctx.lineTo(canvas.width, y + altoFila);
+      ctx.stroke();
+      ctx.fillStyle = '#1a1a1a';
+      ctx.font = '13px Arial';
+      ctx.fillText('👷 ' + (t.empleado || '—'), 16, y + 27);
+      ctx.fillText(t.planta || '—', 220, y + 27);
+      const origenLabel = t.origen === 'directo' ? '📍 Directo' : '🏢 Sale FTS';
+      ctx.fillText(origenLabel, 430, y + 27);
+      ctx.fillText((t.entrada || '--:--') + ' - ' + (t.salida || '--:--'), 620, y + 27);
+    });
+  } else {
+    const y = headerH + colH;
+    ctx.fillStyle = '#999';
+    ctx.font = 'italic 13px Arial';
+    ctx.fillText('Sin técnicos asignados', 20, y + 27);
+  }
+
+  // Comentarios
+  if(comentarios){
+    const yComent = headerH + colH + (filas * altoFila) + 10;
+    ctx.fillStyle = '#FFF9E6';
+    ctx.fillRect(0, yComent, canvas.width, comentH - 10);
+    ctx.fillStyle = '#BF8F00';
+    ctx.font = 'bold 12px Arial';
+    ctx.fillText('💬 Comentarios:', 16, yComent + 20);
+    ctx.fillStyle = '#1a1a1a';
+    ctx.font = '12px Arial';
+    const lines = wrapText(ctx, comentarios, canvas.width - 32);
+    lines.slice(0, 2).forEach((line, i) => {
+      ctx.fillText(line, 16, yComent + 40 + (i * 16));
+    });
+  }
+
+  // Footer
+  const yFoot = canvas.height - footerH;
+  ctx.fillStyle = '#f5f5f5';
+  ctx.fillRect(0, yFoot, canvas.width, footerH);
+  ctx.fillStyle = '#999';
+  ctx.font = '11px Arial';
+  ctx.fillText('FTS Full Technology Systems — fts-suite', 16, yFoot + 24);
+
+  // Descargar
+  const link = document.createElement('a');
+  link.download = 'plan-fts-' + P.fechaDiario + '.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+
+  showToast('✅ Imagen descargada');
+}
+
+function generarImagenSemanal(){
+  // Calcular fechas de la semana
+  const fechas = [];
+  const d = new Date(P.semanaInicio + 'T00:00:00');
+  for(let i = 0; i < 5; i++){
+    fechas.push(isoDate(d));
+    d.setDate(d.getDate() + 1);
+  }
+
+  // Recolectar técnicos únicos
+  const tecnicosSet = new Set();
+  fechas.forEach(f => (P.planSemanal[f] || []).forEach(r => {
+    if(r.empleado) tecnicosSet.add(r.empleado);
+  }));
+  const tecnicos = Array.from(tecnicosSet).sort();
+
+  const headerH = 80;
+  const colH = 44;
+  const altoFila = 44;
+  const filas = tecnicos.length || 1;
+  const comentarios = (P.comentariosSemanal || '').trim();
+  const comentH = comentarios ? 70 : 0;
+  const footerH = 40;
+
+  const colTecnicoW = 180;
+  const colDiaW = 140;
+  const canvasW = colTecnicoW + colDiaW * 5;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = canvasW;
+  canvas.height = headerH + colH + (filas * altoFila) + comentH + footerH + 20;
+
+  const ctx = canvas.getContext('2d');
+
+  // Fondo
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Header verde
+  ctx.fillStyle = '#107C10';
+  ctx.fillRect(0, 0, canvas.width, headerH);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 20px Arial';
+  ctx.fillText('📆 PLAN SEMANAL — FTS', 20, 32);
+  ctx.font = '14px Arial';
+  ctx.fillText('Semana del ' + fmtFechaCorta(fechas[0]) + ' al ' + fmtFechaCorta(fechas[4]), 20, 58);
+
+  // Encabezados de días
+  ctx.fillStyle = '#f5f5f5';
+  ctx.fillRect(0, headerH, canvas.width, colH);
+  ctx.fillStyle = '#666666';
+  ctx.font = 'bold 12px Arial';
+  ctx.fillText('TÉCNICO', 16, headerH + 26);
+  const diasNombres = ['LUN','MAR','MIÉ','JUE','VIE'];
+  fechas.forEach((f, i) => {
+    const x = colTecnicoW + i * colDiaW;
+    ctx.fillStyle = '#666666';
+    ctx.font = 'bold 12px Arial';
+    ctx.fillText(diasNombres[i], x + 12, headerH + 20);
+    ctx.fillStyle = '#999';
+    ctx.font = '10px Arial';
+    ctx.fillText(fmtFechaCorta(f), x + 12, headerH + 36);
+  });
+
+  // Filas
+  if(tecnicos.length){
+    tecnicos.forEach((emp, i) => {
+      const y = headerH + colH + (i * altoFila);
+      ctx.fillStyle = i % 2 === 0 ? '#ffffff' : '#fafafa';
+      ctx.fillRect(0, y, canvas.width, altoFila);
+      ctx.strokeStyle = '#e0e0e0';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, y + altoFila);
+      ctx.lineTo(canvas.width, y + altoFila);
+      ctx.stroke();
+
+      ctx.fillStyle = '#1a1a1a';
+      ctx.font = 'bold 13px Arial';
+      ctx.fillText('👷 ' + emp, 16, y + 27);
+
+      fechas.forEach((f, j) => {
+        const x = colTecnicoW + j * colDiaW;
+        const plan = P.planSemanal[f] || [];
+        const row = plan.find(r => r.empleado === emp);
+        if(row && row.planta){
+          ctx.fillStyle = 'rgba(16,124,16,0.08)';
+          ctx.fillRect(x + 4, y + 6, colDiaW - 8, altoFila - 12);
+          ctx.fillStyle = '#107C10';
+          ctx.font = '12px Arial';
+          const texto = row.planta.length > 18 ? row.planta.slice(0,16) + '…' : row.planta;
+          ctx.fillText(texto, x + 12, y + 27);
+        } else {
+          ctx.fillStyle = '#ccc';
+          ctx.font = '12px Arial';
+          ctx.fillText('—', x + 12, y + 27);
+        }
+      });
+    });
+  } else {
+    const y = headerH + colH;
+    ctx.fillStyle = '#999';
+    ctx.font = 'italic 13px Arial';
+    ctx.fillText('Sin planes guardados en esta semana', 20, y + 27);
+  }
+
+  // Comentarios
+  if(comentarios){
+    const yComent = headerH + colH + (filas * altoFila) + 10;
+    ctx.fillStyle = '#FFF9E6';
+    ctx.fillRect(0, yComent, canvas.width, comentH - 10);
+    ctx.fillStyle = '#BF8F00';
+    ctx.font = 'bold 12px Arial';
+    ctx.fillText('💬 Comentarios:', 16, yComent + 20);
+    ctx.fillStyle = '#1a1a1a';
+    ctx.font = '12px Arial';
+    const lines = wrapText(ctx, comentarios, canvas.width - 32);
+    lines.slice(0, 2).forEach((line, i) => {
+      ctx.fillText(line, 16, yComent + 40 + (i * 16));
+    });
+  }
+
+  // Footer
+  const yFoot = canvas.height - footerH;
+  ctx.fillStyle = '#f5f5f5';
+  ctx.fillRect(0, yFoot, canvas.width, footerH);
+  ctx.fillStyle = '#999';
+  ctx.font = '11px Arial';
+  ctx.fillText('FTS Full Technology Systems — fts-suite', 16, yFoot + 24);
+
+  const link = document.createElement('a');
+  link.download = 'plan-fts-semana-' + P.semanaInicio + '.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+
+  showToast('✅ Imagen descargada');
+}
+
 function fallbackCopy(text){
   const ta = document.createElement('textarea');
   ta.value = text;
