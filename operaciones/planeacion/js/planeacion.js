@@ -6,6 +6,8 @@ const P = {
   semanaInicio: '',
   planDiario: [],
   planSemanal: {},
+  comentarios: '',          // comentarios del día activo
+  comentariosSemanal: '',   // comentarios de la semana activa
   empleados: [],
   config: {},
 };
@@ -68,6 +70,8 @@ function loadDemoplan(fecha){
 
 // ═══ Storage ═══
 function storageKey(fecha){ return 'plan_' + fecha; }
+function comentariosKey(fecha){ return 'plan_comentarios_' + fecha; }
+function comentariosSemanalKey(lunes){ return 'plan_comentarios_semanal_' + lunes; }
 
 function cargarPlanDeStorage(fecha){
   try{
@@ -80,6 +84,26 @@ function cargarPlanDeStorage(fecha){
 function guardarPlanEnStorage(fecha, plan){
   localStorage.setItem(storageKey(fecha), JSON.stringify(plan));
 }
+
+function cargarComentariosDiario(fecha){
+  return localStorage.getItem(comentariosKey(fecha)) || '';
+}
+
+function cargarComentariosSemanal(lunes){
+  return localStorage.getItem(comentariosSemanalKey(lunes)) || '';
+}
+
+function updateComentariosDiario(valor){
+  P.comentarios = valor;
+  if(P.fechaDiario) localStorage.setItem(comentariosKey(P.fechaDiario), valor);
+}
+window.updateComentariosDiario = updateComentariosDiario;
+
+function updateComentariosSemanal(valor){
+  P.comentariosSemanal = valor;
+  if(P.semanaInicio) localStorage.setItem(comentariosSemanalKey(P.semanaInicio), valor);
+}
+window.updateComentariosSemanal = updateComentariosSemanal;
 
 // ═══ Tabs ═══
 function showVista(vista){
@@ -97,6 +121,9 @@ function onFechaDiarioChange(){
   P.fechaDiario = document.getElementById('fechaDiario').value;
   const saved = cargarPlanDeStorage(P.fechaDiario);
   P.planDiario = saved || (P.config.demoMode ? loadDemoplan(P.fechaDiario) : []);
+  P.comentarios = cargarComentariosDiario(P.fechaDiario);
+  const ta = document.getElementById('plan-comentarios-diario');
+  if(ta) ta.value = P.comentarios;
   renderPlanDiario();
 }
 window.onFechaDiarioChange = onFechaDiarioChange;
@@ -174,6 +201,9 @@ function onFechaSemanalChange(){
   const fecha = document.getElementById('fechaSemanal').value;
   P.semanaInicio = getLunes(fecha);
   cargarSemanaDeStorage();
+  P.comentariosSemanal = cargarComentariosSemanal(P.semanaInicio);
+  const ta = document.getElementById('plan-comentarios-semanal');
+  if(ta) ta.value = P.comentariosSemanal;
   renderPlanSemanal();
 }
 window.onFechaSemanalChange = onFechaSemanalChange;
@@ -330,9 +360,15 @@ function initPlaneacion(){
   // Cargar plan del día inicial
   const saved = cargarPlanDeStorage(P.fechaDiario);
   P.planDiario = saved || (P.config.demoMode ? loadDemoplan(P.fechaDiario) : []);
+  P.comentarios = cargarComentariosDiario(P.fechaDiario);
+  const taD = document.getElementById('plan-comentarios-diario');
+  if(taD) taD.value = P.comentarios;
   renderPlanDiario();
 
   cargarSemanaDeStorage();
+  P.comentariosSemanal = cargarComentariosSemanal(P.semanaInicio);
+  const taS = document.getElementById('plan-comentarios-semanal');
+  if(taS) taS.value = P.comentariosSemanal;
 }
 
 document.addEventListener('DOMContentLoaded', initPlaneacion);
