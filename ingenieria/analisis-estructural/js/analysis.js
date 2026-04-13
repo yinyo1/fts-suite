@@ -188,11 +188,73 @@ async function generateAnalysis(){
       reportContent.innerHTML=clean;
       // Mostrar reporte
       reportArea.style.display='block';
+
+      // ═══ Verificar completitud del análisis ═══
+      const tipo = (analysisData && analysisData.tipo_estructura) || 'general';
+      const status = checkCompletitud(clean, tipo);
+
+      // Badge de status en el chat
+      let statusHTML = '';
+      if (status.firmado){
+        statusHTML =
+          '<div style="background:#E2EFDA;border:1px solid #107C10;border-radius:8px;padding:12px;margin:8px 0;">'+
+          '<strong style="color:#107C10">✅ Análisis completo</strong>'+
+          '<span style="color:#555;font-size:13px;margin-left:8px;">'+
+          status.completadas+'/'+status.total+' secciones ('+status.porcentaje+'%)</span>'+
+          '</div>';
+      } else if (status.truncado){
+        statusHTML =
+          '<div style="background:#FFF2CC;border:1px solid #BF8F00;border-radius:8px;padding:12px;margin:8px 0;">'+
+          '<strong style="color:#BF8F00">⚠️ Análisis incompleto</strong>'+
+          '<span style="color:#555;font-size:13px;margin-left:8px;">Última sección: '+(status.ultimaSeccion||'desconocida')+'</span>'+
+          '<div style="margin-top:8px;font-size:12px;color:#666;">'+
+          status.resultados.map(function(r){ return (r.encontrado?'✓':'✗')+' '+r.seccion; }).join(' &nbsp;|&nbsp; ')+
+          '</div>'+
+          '<div style="margin-top:8px;font-size:12px;color:#BF8F00;">💡 Aumenta max_tokens en Configuración IA o simplifica los datos de entrada.</div>'+
+          '</div>';
+      } else {
+        statusHTML =
+          '<div style="background:#FFF2CC;border:1px solid #BF8F00;border-radius:8px;padding:12px;margin:8px 0;">'+
+          '<strong style="color:#BF8F00">⚠️ Posiblemente incompleto</strong>'+
+          '<span style="color:#555;font-size:13px;margin-left:8px;">El análisis no tiene firma de cierre — puede haberse cortado por límite de tokens.</span>'+
+          '<div style="margin-top:8px;font-size:12px;color:#666;">Secciones detectadas: '+status.completadas+'/'+status.total+' ('+status.porcentaje+'%)<br>'+
+          status.resultados.map(function(r){ return (r.encontrado?'✓':'✗')+' '+r.seccion; }).join(' | ')+
+          '</div></div>';
+      }
+
       // Reemplazar burbuja de log por mensaje de éxito
       const bubble=document.getElementById('genLogContent');
-      if(bubble) bubble.innerHTML='✅ <strong>Análisis completado</strong> — revisa el reporte arriba. Puedes pedir ajustes en el chat o descargar el PDF.';
-      // Mostrar footer con botón PDF
+      if(bubble){
+        if(status.firmado){
+          bubble.innerHTML='✅ <strong>Análisis completado</strong> — revisa el reporte arriba. Puedes pedir ajustes en el chat o descargar el PDF.';
+        } else {
+          bubble.innerHTML='⚠️ <strong>Análisis generado con advertencias</strong> — revisa el status abajo.';
+        }
+      }
+
+      // Insertar status badge en el chat
+      const chatMsgs = document.getElementById('chatMsgs');
+      if (chatMsgs) {
+        chatMsgs.insertAdjacentHTML('beforeend', statusHTML);
+        chatMsgs.scrollTop = chatMsgs.scrollHeight;
+      }
+
+      // Mostrar footer con botón PDF + ajustar según completitud
       document.getElementById('analysisFooter').style.display='flex';
+      const btnPDF = document.getElementById('btnPDF');
+      if (btnPDF){
+        if (status.firmado){
+          btnPDF.style.background = '#0078D4';
+          btnPDF.textContent = '📄 Descargar PDF';
+        } else if (status.truncado){
+          btnPDF.style.background = '#BF8F00';
+          btnPDF.textContent = '⚠️ Descargar PDF (incompleto)';
+        } else {
+          btnPDF.style.background = '#BF8F00';
+          btnPDF.textContent = '⚠️ Descargar PDF (posiblemente incompleto)';
+        }
+      }
+
       // Scroll al reporte
       reportArea.scrollIntoView({behavior:'smooth',block:'start'});
     },
