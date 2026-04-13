@@ -33,7 +33,32 @@ async function generateAnalysis(){
   document.getElementById('analysisFooter').style.display='none';
 
   let lastReportedTokens=0;
-  chatHistory=[{role:'user',content:'Genera el análisis estructural completo para el siguiente proyecto. Responde SOLO en HTML (sin markdown, sin backticks). Datos del proyecto:\n\n'+JSON.stringify(analysisData,null,2)}];
+
+  // Construir content array con imágenes FEA + texto
+  const content = [];
+  // Filtrar imágenes relevantes (FEA, planos, renders 3D)
+  const feaImgs = (typeof rawUploadedFiles !== 'undefined' && rawUploadedFiles) ? rawUploadedFiles.filter(function(f){
+    if(!f || !f.name || !f.type || !f.type.startsWith('image/')) return false;
+    const n = f.name.toLowerCase();
+    return n.includes('fea') || n.includes('fusion') || n.includes('plano') ||
+           n.includes('render') || n.includes('3d') || n.includes('von') ||
+           n.includes('mises') || n.includes('stress') || n.includes('ansys');
+  }) : [];
+  // Máximo 4 imágenes para no exceder tokens
+  feaImgs.slice(0,4).forEach(function(f){
+    const mediaType = f.type || 'image/jpeg';
+    const base64 = (f.data||'').split(',')[1] || f.data || '';
+    if(base64){
+      content.push({type:'image', source:{type:'base64', media_type:mediaType, data:base64}});
+    }
+  });
+  if(feaImgs.length>0){
+    statusLog('Incluyendo '+Math.min(feaImgs.length,4)+' imagen(es) FEA/planos en el análisis','#1abc9c');
+  }
+  // Texto al final con los datos del proyecto
+  content.push({type:'text', text:'Genera el análisis estructural completo para el siguiente proyecto. Responde SOLO en HTML (sin markdown, sin backticks). Datos del proyecto:\n\n'+JSON.stringify(analysisData,null,2)});
+
+  chatHistory=[{role:'user', content:content}];
 
   await streamFromClaude(chatHistory,
     // onDelta — renderizar en reportContent (invisible) + log al chat cada 500 tokens

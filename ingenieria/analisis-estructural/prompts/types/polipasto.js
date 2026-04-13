@@ -19,6 +19,17 @@ ESTRUCTURA DEL ANÁLISIS:
 11. VALIDACIÓN FEA — Si hay datos, tabla resumen con FS = Fy/σ_max
 12. CONCLUSIONES — Tabla resumen: Elemento|Actuante|Admisible|FS|Estado
 
+IMÁGENES FEA (OBLIGATORIO si el usuario envía imágenes):
+Si en el mensaje del usuario recibes imágenes (vistas Von Mises, Fusion 360, ANSYS, planos, renders 3D),
+inclúyelas OBLIGATORIAMENTE en la sección 11 VALIDACIÓN FEA como figuras.
+Usa el formato exacto:
+<div class="figura">
+<img src="data:image/jpeg;base64,[base64_de_la_imagen_recibida]" style="max-width:100%;border-radius:8px;border:1px solid #e0e0e0">
+<p class="caption">Figura N — Análisis FEA: [descripción de lo que se observa en la imagen]</p>
+</div>
+Si hay múltiples vistas FEA (frontal, lateral, 3D), inclúyelas todas con captions descriptivos.
+IMPORTANTE: El src="data:image/..." debe reproducir el base64 EXACTO de la imagen que recibiste — no inventes uno.
+
 CÁLCULOS OBLIGATORIOS:
 - Factor impacto CMAA: A=1.10, B=1.25, C=1.35, D=1.50, E=1.60, F=1.70
 - Peso total a izar: P_total = Peso_recipiente_vacio + Contenido_volumen × Densidad × %Llenado + Accesorios
