@@ -394,58 +394,106 @@ function selectSO(id){
   registrarAsistencia();
 }
 
+// ═══ Captura de frame del webcam ═══
+function captureFrame(videoEl){
+  if(!videoEl || !videoEl.srcObject) return null;
+  try{
+    const canvas = document.createElement('canvas');
+    canvas.width  = videoEl.videoWidth  || 320;
+    canvas.height = videoEl.videoHeight || 240;
+    canvas.getContext('2d').drawImage(videoEl, 0, 0);
+    return canvas.toDataURL('image/jpeg', 0.7).split(',')[1];
+  } catch(e){
+    console.warn('captureFrame error:', e);
+    return null;
+  }
+}
+
 // ═══ Registro de asistencia ═══
 async function registrarAsistencia(){
-  const now = new Date();
-  const hh = String(now.getHours()).padStart(2,'0');
-  const mm = String(now.getMinutes()).padStart(2,'0');
-  // Tipo de movimiento — simple: alterna por hora (demo). Real: lo decide Odoo.
-  const tipo = (now.getHours() < 14) ? 'CHECK-IN' : 'CHECK-OUT';
+  const videoEl = document.getElementById('ksCamera');
+  const fotoB64 = captureFrame(videoEl);
 
-  // Pre-mostrar pantalla confirm
-  document.getElementById('ksConfirmName').textContent = K.seleccionado.nombre;
-  document.getElementById('ksConfirmSO').textContent = K.soSeleccionada.num;
-  document.getElementById('ksConfirmTime').textContent = hh+':'+mm;
-  const typeEl = document.getElementById('ksConfirmType');
-  typeEl.textContent = tipo;
-  typeEl.className = 'kiosk-big-type ' + (tipo==='CHECK-IN' ? 'in' : 'out');
-  document.getElementById('ksConfirmIcon').textContent = '✓';
-  document.getElementById('ksConfirmIcon').className = 'kiosk-status-ok';
+  // Determinar tipo: check_in o check_out
+  const now = new Date();
+  const hora = now.getHours();
+  const tipo = hora < 14 ? 'check_in' : 'check_out';
+
+  // Construir payload completo
+  const payload = {
+    empleado_id:        (K.seleccionado && K.seleccionado.id) || null,
+    empleado_nombre:    (K.seleccionado && (K.seleccionado.name || K.seleccionado.nombre)) || '',
+    so_id:              (K.soSeleccionada && K.soSeleccionada.id) || null,
+    so_nombre:          (K.soSeleccionada && (K.soSeleccionada.name || K.soSeleccionada.nombre)) || '',
+    tipo:               tipo,
+    timestamp:          now.toISOString(),
+    foto_b64:           fotoB64,
+    lat:                (K.geo && K.geo.lat != null) ? K.geo.lat : null,
+    lng:                (K.geo && K.geo.lng != null) ? K.geo.lng : null,
+    geo_autorizada:     K.geoAutorizada !== false,
+    geo_sitio:          K.geoSitio || null,
+    geo_distancia:      K.geoDistancia || 0,
+    geo_motivo:         K.geoMotivo || null,
+    geo_status:         K.geoAutorizada !== false ? 'autorizado' : 'pendiente_aprobacion',
+    supervisor_id:      (K.seleccionado && K.seleccionado.manager_id)   || null,
+    supervisor_nombre:  (K.seleccionado && K.seleccionado.manager_name) || null,
+  };
+
+  // Mostrar pantalla de confirmación inmediatamente
   showScreen('ks-confirm');
 
-  // Geolocalización
-  let geo = { lat:null, lng:null };
-  if(K.config.geoEnable){
-    geo = await window.getGeolocacion();
-    const geoEl = document.getElementById('ksConfirmGeo');
-    if(geo.lat && geo.lng){
-      geoEl.innerHTML = '<span class="kiosk-geo-dot ok"></span>'+geo.lat.toFixed(5)+', '+geo.lng.toFixed(5);
-    } else {
-      geoEl.innerHTML = '<span class="kiosk-geo-dot err"></span>No disponible';
+  const confirmTipo   = document.getElementById('confirm-tipo');
+  const confirmNombre = document.getElementById('confirm-nombre');
+  const confirmSO     = document.getElementById('confirm-so');
+  const confirmHora   = document.getElementById('confirm-hora');
+  const confirmGeo    = document.getElementById('confirm-geo');
+  const confirmIcon   = document.getElementById('confirm-icon');
+
+  if(confirmTipo){
+    confirmTipo.textContent = tipo === 'check_in' ? 'CHECK-IN' : 'CHECK-OUT';
+    confirmTipo.className = 'kiosk-big-type ' + (tipo === 'check_in' ? 'in' : 'out');
+  }
+  if(confirmNombre) confirmNombre.textContent = payload.empleado_nombre || '—';
+  if(confirmSO)     confirmSO.textContent     = payload.so_nombre || '—';
+  if(confirmHora)   confirmHora.textContent   = now.toLocaleTimeString('es-MX');
+  if(confirmGeo){
+    confirmGeo.innerHTML = payload.geo_autorizada
+      ? '<span class="kiosk-geo-dot ok"></span>📍 ' + (payload.geo_sitio || 'Ubicación autorizada')
+      : '<span class="kiosk-geo-dot warn"></span>⚠️ Pendiente aprobación supervisor';
+  }
+  if(confirmIcon){
+    confirmIcon.textContent = payload.geo_autorizada ? '✓' : '⚠';
+    confirmIcon.className   = payload.geo_autorizada ? 'kiosk-status-ok' : 'kiosk-status-err';
+  }
+
+  // Enviar a n8n (o solo log en demo)
+  if(!K.config.demoMode && K.config.n8nUrl){
+    try{
+      await window.OdooKiosk.registrarCheckin(payload);
+    } catch(e){
+      console.warn('Error enviando a n8n:', e);
     }
   } else {
-    document.getElementById('ksConfirmGeo').innerHTML = '<span class="kiosk-geo-dot warn"></span>Deshabilitada';
+    console.log('[DEMO] Payload kiosk:', payload);
   }
 
-  // Registrar en Odoo
-  if(!K.demoMode){
-    try{
-      await window.OdooKiosk.registrarCheckin({
-        empleado_id: K.seleccionado.id,
-        so_id:       K.soSeleccionada.id,
-        tipo:        tipo,
-        lat:         geo.lat,
-        lng:         geo.lng,
-        timestamp:   now.toISOString(),
-      });
-    } catch(e){
-      console.warn('Fallo registrar en Odoo:', e);
-      document.getElementById('ksConfirmIcon').textContent = '⚠';
-      document.getElementById('ksConfirmIcon').className = 'kiosk-status-err';
+  // Reset estado y volver a home
+  setTimeout(() => {
+    K.seleccionado = null;
+    K.soSeleccionada = null;
+    K.geo = null;
+    K.geoAutorizada = null;
+    K.geoMotivo = null;
+    K.geoSitio = null;
+    K.geoDistancia = 0;
+    K.pin = '';
+    updatePinDots();
+    if(K.stream){
+      K.stream.getTracks().forEach(t => t.stop());
+      K.stream = null;
     }
-  }
-
-  autoReturn();
+    showScreen('ks-home');
+  }, 4000);
 }
 
 function autoReturn(){
