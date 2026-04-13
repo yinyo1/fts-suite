@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>FTS · Kiosk Checador</title>
+<link rel="stylesheet" href="css/kiosk.css">
+<!-- face-api.js para verificación facial -->
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+</head>
+<body>
+
+<!-- ═══════ PANTALLA 1 — HOME ═══════ -->
+<div class="kiosk-screen active" id="ks-home" onclick="showScreen('ks-search')">
+  <div class="kiosk-logo">F</div>
+  <div class="kiosk-time" id="ksClock">--:--:--</div>
+  <div class="kiosk-date" id="ksDate">—</div>
+  <div class="kiosk-hint">👆 Toca para registrar tu asistencia</div>
+  <div class="kiosk-footer-info">FTS Kiosk Checador · <span id="ksConnStatus">verificando…</span></div>
+</div>
+
+<!-- ═══════ PANTALLA 2 — BUSCAR EMPLEADO ═══════ -->
+<div class="kiosk-screen" id="ks-search">
+  <button class="kiosk-back" onclick="goHome()">← Volver</button>
+  <div class="kiosk-logo-sm" style="margin-bottom:16px">F</div>
+  <div class="kiosk-title">¿Quién eres?</div>
+  <input type="text" id="ksSearch" class="kiosk-search" placeholder="Busca tu nombre…" oninput="searchEmpleados(this.value)" autocomplete="off">
+  <div class="kiosk-list" id="ksEmpleadosList">
+    <div style="text-align:center;color:#666;padding:24px">Cargando empleados…</div>
+  </div>
+</div>
+
+<!-- ═══════ PANTALLA 3 — VERIFICACIÓN ═══════ -->
+<div class="kiosk-screen" id="ks-verify">
+  <button class="kiosk-back" onclick="showScreen('ks-search')">← Volver</button>
+  <div class="kiosk-verify-row">
+    <div style="text-align:center">
+      <img id="ksEmpPhoto" class="kiosk-verify-photo" alt="">
+      <div class="kiosk-big-name" id="ksEmpName">—</div>
+    </div>
+    <div style="text-align:center">
+      <video id="ksCamera" class="kiosk-camera-preview" autoplay playsinline muted></video>
+      <div style="font-size:13px;color:#999;margin-top:8px" id="ksFaceStatus">Esperando PIN…</div>
+    </div>
+  </div>
+  <div class="kiosk-subtitle">Ingresa tu PIN de 4 dígitos</div>
+  <div class="kiosk-pin-dots" id="ksPinDots">
+    <div class="kiosk-pin-dot"></div>
+    <div class="kiosk-pin-dot"></div>
+    <div class="kiosk-pin-dot"></div>
+    <div class="kiosk-pin-dot"></div>
+  </div>
+  <div class="kiosk-pin-pad">
+    <button class="kiosk-pin-btn" onclick="addPin('1')">1</button>
+    <button class="kiosk-pin-btn" onclick="addPin('2')">2</button>
+    <button class="kiosk-pin-btn" onclick="addPin('3')">3</button>
+    <button class="kiosk-pin-btn" onclick="addPin('4')">4</button>
+    <button class="kiosk-pin-btn" onclick="addPin('5')">5</button>
+    <button class="kiosk-pin-btn" onclick="addPin('6')">6</button>
+    <button class="kiosk-pin-btn" onclick="addPin('7')">7</button>
+    <button class="kiosk-pin-btn" onclick="addPin('8')">8</button>
+    <button class="kiosk-pin-btn" onclick="addPin('9')">9</button>
+    <button class="kiosk-pin-btn del" onclick="clearPin()">C</button>
+    <button class="kiosk-pin-btn" onclick="addPin('0')">0</button>
+    <button class="kiosk-pin-btn del" onclick="backPin()">←</button>
+  </div>
+</div>
+
+<!-- ═══════ PANTALLA 4 — SELECCIONAR SO ═══════ -->
+<div class="kiosk-screen" id="ks-project">
+  <button class="kiosk-back" onclick="showScreen('ks-verify')">← Volver</button>
+  <div class="kiosk-title">¿En qué proyecto trabajas hoy?</div>
+  <input type="text" id="ksSoSearch" class="kiosk-search" placeholder="Busca la SO o proyecto…" oninput="searchSOs(this.value)" autocomplete="off">
+  <div class="kiosk-list" id="ksSOsList">
+    <div style="text-align:center;color:#666;padding:24px">Cargando proyectos…</div>
+  </div>
+</div>
+
+<!-- ═══════ PANTALLA 5 — CONFIRMACIÓN ═══════ -->
+<div class="kiosk-screen" id="ks-confirm">
+  <div id="ksConfirmIcon" class="kiosk-status-ok">✓</div>
+  <div class="kiosk-big-name" id="ksConfirmName">—</div>
+  <div id="ksConfirmType" class="kiosk-big-type in">CHECK-IN</div>
+  <div style="margin-top:20px;width:100%;max-width:420px">
+    <div class="kiosk-confirm-row"><span class="lbl">Proyecto</span><span class="val" id="ksConfirmSO">—</span></div>
+    <div class="kiosk-confirm-row"><span class="lbl">Hora</span><span class="val" id="ksConfirmTime">—</span></div>
+    <div class="kiosk-confirm-row"><span class="lbl">Ubicación</span><span class="val" id="ksConfirmGeo"><span class="kiosk-geo-dot warn"></span>Registrando…</span></div>
+  </div>
+  <div style="font-size:13px;color:#666;margin-top:32px" id="ksReturnCounter">Regresando en 4…</div>
+</div>
+
+<script src="js/geo.js"></script>
+<script src="js/face.js"></script>
+<script src="js/odoo.js"></script>
+<script src="js/kiosk.js"></script>
+</body>
+</html>
