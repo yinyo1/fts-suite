@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>FTS · Operaciones</title>
+<link rel="stylesheet" href="../shared/fts-styles.css">
+<style>
+  .op-hero{padding:28px 20px 12px;text-align:center}
+  .op-hero h1{font-size:22px;font-weight:800;margin-bottom:4px}
+  .op-hero h1 span{color:var(--green)}
+  .op-hero p{font-size:12px;color:var(--muted2)}
+  .op-list{padding:0 16px 40px;display:flex;flex-direction:column;gap:12px}
+  .op-card{background:var(--d2);border:1px solid var(--border);border-radius:12px;padding:18px 16px;display:flex;align-items:center;gap:14px;text-decoration:none;color:var(--text);transition:all .15s}
+  .op-card:active{transform:scale(.98);border-color:var(--green);box-shadow:0 0 0 2px rgba(16,124,16,.15)}
+  .op-card.disabled{opacity:.5;pointer-events:none}
+  .op-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;background:rgba(16,124,16,.08);border:1px solid rgba(16,124,16,.2)}
+  .op-info strong{font-size:14px;font-weight:700;display:block;margin-bottom:2px}
+  .op-info span{font-size:12px;color:var(--muted2)}
+  .op-badge{margin-left:auto;font-size:10px;font-weight:700;padding:3px 8px;border-radius:5px;background:var(--d3);color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="scr on" style="padding-bottom:28px">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="tb-logo"></div>
+    <div class="tb-info">
+      <strong>Operaciones</strong>
+      <span>SERVICIOS FTS SA DE CV</span>
+    </div>
+    <a href="../index.html" style="text-decoration:none;background:var(--green);color:#fff;font-size:10px;font-weight:700;padding:4px 10px;border-radius:6px;flex-shrink:0">← Suite</a>
+  </div>
+
+  <!-- Hero -->
+  <div class="op-hero">
+    <h1>Módulo <span>Operaciones</span></h1>
+    <p>Control operativo y asistencia en planta</p>
+  </div>
+
+  <!-- Lista de submódulos -->
+  <div class="op-list">
+    <a href="kiosk/index.html" class="op-card">
+      <div class="op-icon">🖥️</div>
+      <div class="op-info">
+        <strong>Kiosk — Checador</strong>
+        <span>Registro de entrada y salida</span>
+      </div>
+    </a>
+    <div class="op-card disabled">
+      <div class="op-icon">📊</div>
+      <div class="op-info">
+        <strong>Dashboard</strong>
+        <span>Centro de comando en tiempo real</span>
+      </div>
+      <span class="op-badge">Próximamente</span>
+    </div>
+    <div class="op-card disabled">
+      <div class="op-icon">👷</div>
+      <div class="op-info">
+        <strong>Asistencia</strong>
+        <span>Historial y control de asistencia</span>
+      </div>
+      <span class="op-badge">Próximamente</span>
+    </div>
+    <div class="op-card disabled">
+      <div class="op-icon">📋</div>
+      <div class="op-info">
+        <strong>Proyectos / SOs</strong>
+        <span>Costos reales vs presupuesto</span>
+      </div>
+      <span class="op-badge">Próximamente</span>
+    </div>
+    <div class="op-card disabled">
+      <div class="op-icon">📝</div>
+      <div class="op-info">
+        <strong>Incidencias</strong>
+        <span>Tiempo extra y permisos</span>
+      </div>
+      <span class="op-badge">Próximamente</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- Statusbar -->
+<div id="fts-statusbar">
+  <div class="sb-left">
+    <div id="sb-dot"></div>
+    <span id="sb-status">FTS Operaciones</span>
+  </div>
+  <div class="sb-right">
+    <span id="sb-clock">--:--:--</span>
+  </div>
+</div>
+
+<script>
+(function(){
+  function tick(){
+    var n=new Date();
+    var el=document.getElementById('sb-clock');
+    if(el) el.textContent=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')+':'+String(n.getSeconds()).padStart(2,'0');
+  }
+  tick(); setInterval(tick,1000);
+
+  var dot=document.getElementById('sb-dot');
+  var status=document.getElementById('sb-status');
+
+  function heartbeat(){
+    fetch('version.json?_='+Date.now(),{cache:'no-store'})
+      .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function(d){
+        if(dot) dot.className='ok';
+        if(status) status.textContent='v'+d.version+' · Operaciones';
+      })
+      .catch(function(){
+        if(dot) dot.className='error';
+        if(status) status.textContent='Sin conexión';
+      });
+  }
+  heartbeat();
+  setInterval(heartbeat,30000);
+})();
+</script>
+</body>
+</html>
