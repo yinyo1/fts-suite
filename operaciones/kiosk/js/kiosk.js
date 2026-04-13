@@ -14,6 +14,25 @@ const K = {
   demoMode: false,
 };
 
+// ═══ Carga de configuración (nuevo schema) ═══
+function loadKioskConfig(){
+  return {
+    n8nUrl: localStorage.getItem('kiosk_n8n_url') || '',
+    demoMode: localStorage.getItem('kiosk_demo_mode') !== 'false',
+    faceEnabled: localStorage.getItem('kiosk_face_enabled') !== 'false',
+    faceThreshold: parseFloat(localStorage.getItem('kiosk_face_threshold') || '0.5'),
+    geolocations: JSON.parse(localStorage.getItem('kiosk_geolocations') || '[]'),
+    stages: JSON.parse(localStorage.getItem('kiosk_stages_visible') || '["To Do","In Progress","Hold"]'),
+    fields: {
+      pin:             localStorage.getItem('kiosk_field_pin')              || 'pin',
+      photo:           localStorage.getItem('kiosk_field_photo')            || 'image_128',
+      manager:         localStorage.getItem('kiosk_field_manager')          || 'parent_id',
+      supervisorEmail: localStorage.getItem('kiosk_field_supervisor_email') || 'work_email',
+      supervisorWa:    localStorage.getItem('kiosk_field_supervisor_wa')    || 'mobile_phone',
+    }
+  };
+}
+
 // ═══ Carga de configuración ═══
 function loadConfig(){
   K.config = {
@@ -88,7 +107,7 @@ const DEMO_SOS = [
 ];
 
 async function loadEmpleados(){
-  if(K.demoMode){
+  if(K.config.demoMode || !K.config.n8nUrl){
     K.empleados = DEMO_EMPLEADOS.slice();
     return;
   }
@@ -96,14 +115,14 @@ async function loadEmpleados(){
     const data = await window.OdooKiosk.getEmpleados();
     K.empleados = Array.isArray(data) ? data : (data.empleados || []);
   } catch(e){
-    console.warn('Fallo cargar empleados, usando demo:', e);
+    console.warn('Odoo no disponible, usando demo:', e);
     K.empleados = DEMO_EMPLEADOS.slice();
     K.demoMode = true;
   }
 }
 
 async function loadSOs(){
-  if(K.demoMode){
+  if(K.config.demoMode || !K.config.n8nUrl){
     K.sos = DEMO_SOS.slice();
     return;
   }
@@ -111,7 +130,7 @@ async function loadSOs(){
     const data = await window.OdooKiosk.getSOs();
     K.sos = Array.isArray(data) ? data : (data.sos || []);
   } catch(e){
-    console.warn('Fallo cargar SOs, usando demo:', e);
+    console.warn('Odoo no disponible, usando demo:', e);
     K.sos = DEMO_SOS.slice();
   }
 }
@@ -358,13 +377,13 @@ function autoReturn(){
 function updateConnStatus(){
   const el = document.getElementById('ksConnStatus');
   if(!el) return;
-  if(K.demoMode) el.textContent = 'MODO DEMO';
+  if(K.config.demoMode || !K.config.n8nUrl) el.textContent = 'MODO DEMO';
   else el.textContent = 'conectado';
 }
 
 // ═══ Init ═══
 async function initKiosk(){
-  loadConfig();
+  K.config = loadKioskConfig();
   tick(); setInterval(tick, 1000);
   updateConnStatus();
 
@@ -372,7 +391,7 @@ async function initKiosk(){
   await loadSOs();
 
   // Cargar modelos de face-api en background
-  if(K.config.faceEnable && window.FaceVerify){
+  if(K.config.faceEnabled && window.FaceVerify){
     try{
       await window.FaceVerify.loadFaceModels();
       K.faceReady = true;
