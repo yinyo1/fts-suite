@@ -338,18 +338,85 @@
 
   <div class="cfg-pane" id="pane-planeacion">
     <div class="cfg-card">
-      <div class="cfg-placeholder">
-        <div class="emoji">📋</div>
-        <div>Sección Planeación — pendiente</div>
+      <h3>⏰ Horarios por defecto</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <label class="cfg-label">Hora entrada default</label>
+          <input type="time" id="ops_plan_hora_entrada" class="cfg-input" value="07:00">
+        </div>
+        <div>
+          <label class="cfg-label">Hora salida default</label>
+          <input type="time" id="ops_plan_hora_salida" class="cfg-input" value="17:00">
+        </div>
       </div>
+    </div>
+
+    <div class="cfg-card" style="margin-top:16px">
+      <h3>📅 Plan semanal</h3>
+      <label class="cfg-label">Día de envío del plan semanal</label>
+      <select id="ops_plan_dia_semanal" class="cfg-input">
+        <option value="viernes">Viernes (para la semana siguiente)</option>
+        <option value="sabado">Sábado</option>
+        <option value="domingo">Domingo</option>
+        <option value="lunes">Lunes (inicio de semana)</option>
+      </select>
+
+      <label class="cfg-label">Hora límite para enviar el plan</label>
+      <input type="time" id="ops_plan_hora_limite" class="cfg-input" value="18:00">
+
+      <div style="display:flex;align-items:center;gap:12px;margin-top:12px">
+        <label class="cfg-toggle">
+          <input type="checkbox" id="ops_plan_recordatorio">
+          <span class="cfg-toggle-slider"></span>
+        </label>
+        <span style="font-size:14px">Recordatorio por WhatsApp si no se ha enviado el plan a tiempo</span>
+      </div>
+      <p style="font-size:12px;color:#999;margin:6px 0 0">
+        Si el plan no está guardado antes de la hora límite, el sistema enviará un recordatorio al supervisor.
+      </p>
+    </div>
+
+    <div class="cfg-card" style="margin-top:16px">
+      <h3>📱 Notificaciones WhatsApp</h3>
+      <label class="cfg-label">Webhook n8n para notificar plan</label>
+      <input id="ops_plan_wa_webhook" type="url" class="cfg-input" placeholder="https://n8n.../webhook/plan-diario">
+      <p style="font-size:12px;color:#999;margin:4px 0 0">
+        Se usará para enviar el plan diario y semanal al equipo por WhatsApp
+      </p>
     </div>
   </div>
 
   <div class="cfg-pane" id="pane-dashboard">
     <div class="cfg-card">
-      <div class="cfg-placeholder">
-        <div class="emoji">📊</div>
-        <div>Sección Dashboard — pendiente</div>
+      <h3>🔄 Actualización automática</h3>
+      <label class="cfg-label">Intervalo de refresh: <span id="dash-refresh-label">5</span> minutos</label>
+      <input type="range" id="ops_dash_refresh" min="1" max="30" step="1" value="5" style="width:100%" oninput="document.getElementById('dash-refresh-label').textContent=this.value">
+    </div>
+
+    <div class="cfg-card" style="margin-top:16px">
+      <h3>🔔 Alertas activas</h3>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:12px;font-size:14px">
+          <label class="cfg-toggle">
+            <input type="checkbox" id="ops_dash_alerta_sin_checar" checked>
+            <span class="cfg-toggle-slider"></span>
+          </label>
+          <span>⚠️ Técnicos sin check-in (programados)</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;font-size:14px">
+          <label class="cfg-toggle">
+            <input type="checkbox" id="ops_dash_alerta_fuera_zona" checked>
+            <span class="cfg-toggle-slider"></span>
+          </label>
+          <span>📍 Check-ins fuera de zona pendientes</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;font-size:14px">
+          <label class="cfg-toggle">
+            <input type="checkbox" id="ops_dash_alerta_extra" checked>
+            <span class="cfg-toggle-slider"></span>
+          </label>
+          <span>⚡ Técnicos con horas extra acumuladas</span>
+        </div>
       </div>
     </div>
   </div>
@@ -644,11 +711,63 @@ function cambiarPinKiosk(){
   setTimeout(function(){ msg.textContent = ''; }, 4000);
 }
 
+// ═══ Sección Planeación ═══
+function loadPlaneacionConfig(){
+  const fields = {
+    ops_plan_hora_entrada: '07:00',
+    ops_plan_hora_salida:  '17:00',
+    ops_plan_hora_limite:  '18:00',
+    ops_plan_wa_webhook:   '',
+  };
+  Object.keys(fields).forEach(function(id){
+    const el = document.getElementById(id);
+    if(el) el.value = localStorage.getItem(id) || fields[id];
+  });
+  const dia = document.getElementById('ops_plan_dia_semanal');
+  if(dia) dia.value = localStorage.getItem('ops_plan_dia_semanal') || 'viernes';
+  const rec = document.getElementById('ops_plan_recordatorio');
+  if(rec) rec.checked = localStorage.getItem('ops_plan_recordatorio') === '1';
+}
+
+function savePlaneacionConfig(){
+  ['ops_plan_hora_entrada','ops_plan_hora_salida','ops_plan_hora_limite','ops_plan_wa_webhook','ops_plan_dia_semanal'].forEach(function(id){
+    const el = document.getElementById(id);
+    if(el) localStorage.setItem(id, el.value);
+  });
+  const rec = document.getElementById('ops_plan_recordatorio');
+  if(rec) localStorage.setItem('ops_plan_recordatorio', rec.checked ? '1' : '0');
+}
+
+// ═══ Sección Dashboard ═══
+function loadDashboardConfig(){
+  const refresh = localStorage.getItem('ops_dash_refresh') || '5';
+  const el = document.getElementById('ops_dash_refresh');
+  if(el){
+    el.value = refresh;
+    const lbl = document.getElementById('dash-refresh-label');
+    if(lbl) lbl.textContent = refresh;
+  }
+  ['ops_dash_alerta_sin_checar','ops_dash_alerta_fuera_zona','ops_dash_alerta_extra'].forEach(function(id){
+    const chk = document.getElementById(id);
+    if(chk) chk.checked = localStorage.getItem(id) !== '0';
+  });
+}
+
+function saveDashboardConfig(){
+  const el = document.getElementById('ops_dash_refresh');
+  if(el) localStorage.setItem('ops_dash_refresh', el.value);
+  ['ops_dash_alerta_sin_checar','ops_dash_alerta_fuera_zona','ops_dash_alerta_extra'].forEach(function(id){
+    const chk = document.getElementById(id);
+    if(chk) localStorage.setItem(id, chk.checked ? '1' : '0');
+  });
+}
+
 // ═══ Guardar todo ═══
 function saveConfig(){
   saveGeneralConfig();
   saveKioskConfig();
-  // TODO: savePlaneacionConfig(), saveDashboardConfig()
+  savePlaneacionConfig();
+  saveDashboardConfig();
   showToast('✅ Configuración guardada');
 }
 
@@ -664,6 +783,8 @@ function showToast(text){
 migrarKeysAntiguas();
 loadGeneralConfig();
 loadKioskConfig();
+loadPlaneacionConfig();
+loadDashboardConfig();
 document.getElementById('ops_demo_mode').addEventListener('change', updateDemoBadge);
 </script>
 </body>
