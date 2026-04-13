@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FTS Operaciones · Dashboard</title>
+<link rel="stylesheet" href="../../shared/fts-styles.css">
+<style>
+  *{box-sizing:border-box}
+  html{height:auto;min-height:100%}
+  body{
+    min-height:100vh;height:auto;
+    overflow-y:auto;overflow-x:hidden;
+    margin:0;padding:0;
+    background:#fafafa;color:#1a1a1a;
+    font-family:'Inter',-apple-system,sans-serif;
+  }
+
+  /* Topbar */
+  .dash-topbar{
+    position:sticky;top:0;z-index:50;
+    background:#fff;border-bottom:1px solid #e0e0e0;
+    padding:14px 20px;display:flex;
+    align-items:center;justify-content:space-between;
+    gap:12px;
+  }
+  .dash-topbar h1{font-size:18px;font-weight:800;margin:0;color:#1a1a1a}
+  .dash-topbar .back{
+    background:#107C10;color:#fff;border:none;
+    padding:8px 14px;font-size:13px;font-weight:700;
+    border-radius:8px;cursor:pointer;text-decoration:none;
+    font-family:inherit;
+  }
+  .dash-topbar .back:hover{background:#0d6b0d}
+  .dash-topbar .meta{
+    font-size:11px;color:#888;font-weight:600;
+  }
+  .dash-topbar .meta span{color:#107C10}
+
+  .dash-wrap{max-width:1200px;margin:0 auto;padding:24px 20px 60px}
+
+  .dash-section{margin-bottom:28px}
+  .dash-section-title{
+    font-size:12px;font-weight:800;color:#888;
+    text-transform:uppercase;letter-spacing:1px;
+    margin-bottom:12px;
+  }
+
+  /* Métricas */
+  .metric-grid{
+    display:grid;grid-template-columns:repeat(4,1fr);
+    gap:14px;
+  }
+  .metric-card{
+    background:#fff;border:1px solid #e0e0e0;
+    border-radius:12px;padding:18px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.04);
+    display:flex;flex-direction:column;gap:6px;
+    position:relative;overflow:hidden;
+  }
+  .metric-card::before{
+    content:'';position:absolute;top:0;left:0;right:0;
+    height:3px;background:currentColor;
+  }
+  .metric-card.activo{color:#107C10}
+  .metric-card.completado{color:#0078D4}
+  .metric-card.sinchecar{color:#D83B01}
+  .metric-card.extra{color:#f39c12}
+  .metric-icon{font-size:24px;line-height:1}
+  .metric-value{font-size:34px;font-weight:800;color:#1a1a1a;line-height:1;margin-top:2px}
+  .metric-label{font-size:12px;color:#666;font-weight:600;margin-top:2px}
+
+  /* Tabla de técnicos */
+  .tech-table{
+    background:#fff;border:1px solid #e0e0e0;
+    border-radius:12px;overflow:hidden;
+    box-shadow:0 1px 3px rgba(0,0,0,0.04);
+  }
+  .tech-row{
+    display:grid;
+    grid-template-columns:1.6fr 0.9fr 2fr 0.8fr 1.4fr 0.6fr;
+    gap:10px;align-items:center;
+    padding:12px 16px;
+    border-bottom:1px solid #f0f0f0;
+    font-size:13px;
+  }
+  .tech-row:last-child{border-bottom:none}
+  .tech-row.header{
+    background:#f9f9f9;font-size:11px;
+    font-weight:800;color:#666;
+    text-transform:uppercase;letter-spacing:0.5px;
+    padding:10px 16px;
+  }
+  .tech-name-cell{display:flex;align-items:center;gap:10px}
+  .tech-photo{
+    width:36px;height:36px;border-radius:50%;
+    object-fit:cover;background:#f0f0f0;
+    flex-shrink:0;border:1px solid #e0e0e0;
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:700;color:#999;
+  }
+  .tech-name{font-weight:700;color:#1a1a1a;font-size:13px}
+  .tech-id{font-size:11px;color:#999}
+
+  .tech-status{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:4px 10px;border-radius:20px;
+    font-size:11px;font-weight:700;
+    white-space:nowrap;
+  }
+  .tech-status.activo{background:rgba(16,124,16,0.1);color:#107C10}
+  .tech-status.comida{background:rgba(243,156,18,0.1);color:#f39c12}
+  .tech-status.sin_checar{background:rgba(216,59,1,0.1);color:#D83B01}
+  .tech-status.completado{background:rgba(0,120,212,0.1);color:#0078D4}
+  .tech-status.fuera_zona{background:rgba(191,143,0,0.12);color:#BF8F00}
+
+  .tech-horarios{
+    display:flex;gap:8px;font-size:11px;
+    font-family:monospace;color:#666;
+    flex-wrap:wrap;
+  }
+  .tech-horarios .h{
+    display:inline-flex;align-items:center;gap:3px;
+    padding:2px 6px;background:#f5f5f5;
+    border-radius:4px;font-weight:600;color:#1a1a1a;
+  }
+  .tech-horarios .h.empty{color:#ccc;background:transparent}
+
+  .tech-horas{font-weight:700;color:#107C10;font-size:13px;font-variant-numeric:tabular-nums}
+  .tech-so{font-size:12px;color:#666}
+  .tech-so.empty{color:#ccc;font-style:italic}
+  .tech-geo{font-size:16px;text-align:center}
+  .tech-geo.ok{color:#107C10}
+  .tech-geo.err{color:#D83B01}
+  .tech-geo.na{color:#ccc}
+
+  /* Alertas */
+  .alert-list{display:flex;flex-direction:column;gap:10px}
+  .alert-card{
+    background:#fff;border:1px solid #e0e0e0;
+    border-radius:10px;padding:14px 16px;
+    display:flex;align-items:flex-start;gap:12px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.04);
+  }
+  .alert-card.warn{border-left:4px solid #f39c12}
+  .alert-card.err{border-left:4px solid #D83B01}
+  .alert-card.info{border-left:4px solid #0078D4}
+  .alert-icon{font-size:22px;line-height:1;flex-shrink:0}
+  .alert-body{flex:1;min-width:0}
+  .alert-title{font-weight:700;font-size:13px;color:#1a1a1a;margin-bottom:3px}
+  .alert-msg{font-size:12px;color:#666;line-height:1.5}
+  .alert-empty{text-align:center;color:#999;padding:20px;font-size:13px}
+
+  /* Demo badge */
+  .demo-badge{
+    display:inline-flex;align-items:center;gap:6px;
+    background:rgba(230,126,34,0.1);color:#e67e22;
+    border:1px solid rgba(230,126,34,0.4);
+    padding:6px 12px;border-radius:6px;
+    font-size:11px;font-weight:700;margin-left:10px;
+  }
+  .demo-badge .dot{
+    width:6px;height:6px;border-radius:50%;
+    background:currentColor;animation:pulse 2s infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+  @media(max-width:900px){
+    .metric-grid{grid-template-columns:repeat(2,1fr)}
+    .tech-row{
+      grid-template-columns:1.4fr 1fr;
+      grid-template-rows:auto auto auto;
+      gap:6px 10px;
+    }
+    .tech-row.header{display:none}
+    .tech-horarios{grid-column:span 2}
+    .tech-horas{grid-column:1}
+    .tech-so{grid-column:2}
+    .tech-geo{grid-column:span 2;text-align:left}
+  }
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="dash-topbar">
+  <h1>📊 Dashboard Operaciones</h1>
+  <div style="display:flex;align-items:center;gap:12px">
+    <div class="meta">Última actualización: <span id="lastUpdate">—</span></div>
+    <a href="../index.html" class="back">← Operaciones</a>
+  </div>
+</div>
+
+<div class="dash-wrap">
+
+  <!-- Demo badge -->
+  <div id="demoBadge" class="demo-badge" style="display:none">
+    <span class="dot"></span>
+    <span>MODO DEMO — datos ficticios</span>
+  </div>
+
+  <!-- SECCIÓN 1 — Métricas -->
+  <div class="dash-section">
+    <div class="dash-section-title">Resumen del día</div>
+    <div class="metric-grid">
+      <div class="metric-card activo">
+        <div class="metric-icon">👷</div>
+        <div class="metric-value" id="mActivos">—</div>
+        <div class="metric-label">Activos hoy</div>
+      </div>
+      <div class="metric-card completado">
+        <div class="metric-icon">✅</div>
+        <div class="metric-value" id="mCompletados">—</div>
+        <div class="metric-label">Completados</div>
+      </div>
+      <div class="metric-card sinchecar">
+        <div class="metric-icon">⚠️</div>
+        <div class="metric-value" id="mSinChecar">—</div>
+        <div class="metric-label">Sin checar</div>
+      </div>
+      <div class="metric-card extra">
+        <div class="metric-icon">⚡</div>
+        <div class="metric-value" id="mExtra">—</div>
+        <div class="metric-label">Con horas extra</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN 2 — Técnicos del día -->
+  <div class="dash-section">
+    <div class="dash-section-title">Técnicos del día</div>
+    <div class="tech-table">
+      <div class="tech-row header">
+        <div>Técnico</div>
+        <div>Status</div>
+        <div>Horarios</div>
+        <div>Efectivas</div>
+        <div>Proyecto</div>
+        <div style="text-align:center">Geo</div>
+      </div>
+      <div id="tecnicosList">
+        <div style="padding:24px;text-align:center;color:#999;font-size:13px">Cargando…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN 3 — Alertas -->
+  <div class="dash-section">
+    <div class="dash-section-title">Alertas del día</div>
+    <div class="alert-list" id="alertList">
+      <div class="alert-empty">Cargando…</div>
+    </div>
+  </div>
+
+</div>
+
+<script src="js/dashboard.js"></script>
+</body>
+</html>
