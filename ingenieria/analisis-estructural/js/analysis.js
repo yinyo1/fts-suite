@@ -70,6 +70,23 @@ const CHECKLIST = {
 };
 
 // Verifica completitud del HTML generado por Claude
+// Reemplaza marcadores <img data-fea-idx="N"> por las imágenes reales en base64
+function replaceFEAMarkers(html){
+  if(!window._feaImages || !window._feaImages.length) return html;
+  return html.replace(
+    /<img[^>]*data-fea-idx=["'](\d+)["'][^>]*>/g,
+    function(match, idxStr){
+      const idx = parseInt(idxStr);
+      const img = window._feaImages[idx];
+      if(!img || !img.data) return match;
+      // Extraer alt si existe
+      const altMatch = match.match(/alt=["']([^"']*)["']/);
+      const alt = altMatch ? altMatch[1] : ('Imagen FEA '+(idx+1));
+      return '<img src="'+img.data+'" alt="'+alt+'" style="max-width:100%;border-radius:8px;border:1px solid #e0e0e0;margin:8px 0">';
+    }
+  );
+}
+
 function checkCompletitud(html, tipo){
   const div = document.createElement('div');
   div.innerHTML = html;
@@ -140,18 +157,20 @@ async function generateAnalysis(){
 
   let lastReportedTokens=0;
 
-  // Construir content array con imágenes FEA + texto
+  // Construir content array con imágenes + texto
   const content = [];
-  // Filtrar imágenes relevantes (FEA, planos, renders 3D)
-  const feaImgs = (typeof rawUploadedFiles !== 'undefined' && rawUploadedFiles) ? rawUploadedFiles.filter(function(f){
-    if(!f || !f.name || !f.type || !f.type.startsWith('image/')) return false;
-    const n = f.name.toLowerCase();
-    return n.includes('fea') || n.includes('fusion') || n.includes('plano') ||
-           n.includes('render') || n.includes('3d') || n.includes('von') ||
-           n.includes('mises') || n.includes('stress') || n.includes('ansys');
-  }) : [];
-  // Máximo 4 imágenes para no exceder tokens
-  feaImgs.slice(0,4).forEach(function(f){
+  // Tomar TODAS las imágenes subidas (máximo 6 para no exceder tokens)
+  const allImgs = (typeof rawUploadedFiles !== 'undefined' && rawUploadedFiles)
+    ? rawUploadedFiles.filter(function(f){ return f && f.type && f.type.startsWith('image/'); })
+    : [];
+  const feaImgs = allImgs.slice(0, 6);
+
+  // Mapa global de imágenes para reemplazo de marcadores en post-proceso
+  window._feaImages = feaImgs.map(function(f, i){
+    return { idx: i, data: f.data, type: f.type || 'image/jpeg', name: f.name || '' };
+  });
+
+  feaImgs.forEach(function(f){
     const mediaType = f.type || 'image/jpeg';
     const base64 = (f.data||'').split(',')[1] || f.data || '';
     if(base64){
@@ -159,10 +178,13 @@ async function generateAnalysis(){
     }
   });
   if(feaImgs.length>0){
-    statusLog('Incluyendo '+Math.min(feaImgs.length,4)+' imagen(es) FEA/planos en el análisis','#1abc9c');
+    statusLog('Incluyendo '+feaImgs.length+' imagen(es) en el análisis (marcadores data-fea-idx 0-'+(feaImgs.length-1)+')','#1abc9c');
   }
   // Texto al final con los datos del proyecto
-  content.push({type:'text', text:'Genera el análisis estructural completo para el siguiente proyecto. Responde SOLO en HTML (sin markdown, sin backticks). Datos del proyecto:\n\n'+JSON.stringify(analysisData,null,2)});
+  const imgHint = feaImgs.length>0
+    ? '\n\nIMÁGENES DISPONIBLES: Recibes '+feaImgs.length+' imagen(es) numeradas desde idx=0 hasta idx='+(feaImgs.length-1)+'. Úsalas con <img data-fea-idx="N" alt="..."> en la sección 11 VALIDACIÓN FEA. El sistema reemplazará los marcadores con las imágenes reales automáticamente.'
+    : '';
+  content.push({type:'text', text:'Genera el análisis estructural completo para el siguiente proyecto. Responde SOLO en HTML (sin markdown, sin backticks). Datos del proyecto:\n\n'+JSON.stringify(analysisData,null,2)+imgHint});
 
   chatHistory=[{role:'user', content:content}];
 
@@ -170,6 +192,7 @@ async function generateAnalysis(){
     // onDelta — renderizar en reportContent (invisible) + log al chat cada 500 tokens
     (delta,fullText)=>{
       let clean=fullText.replace(/```html|```/g,'').trim();
+      clean=replaceFEAMarkers(clean);
       reportContent.innerHTML=clean;
       const approxTok=Math.floor(fullText.length/4);
       if(approxTok-lastReportedTokens>=500){
@@ -183,6 +206,8 @@ async function generateAnalysis(){
     // onDone
     (finalText)=>{
       let clean=finalText.replace(/```html|```/g,'').trim();
+      // Reemplazar marcadores <img data-fea-idx="N"> por imágenes reales
+      clean = replaceFEAMarkers(clean);
       analysisReport=clean;
       chatHistory.push({role:'assistant',content:clean});
       reportContent.innerHTML=clean;
