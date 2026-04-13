@@ -162,6 +162,81 @@
     display:none;
   }
   .auth-box .auth-err.show{display:block}
+
+  /* ── Checkboxes de stages ── */
+  .stage-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+  .stage-chk{
+    display:flex;align-items:center;gap:10px;
+    background:#1a1a1a;border:1.5px solid #222;
+    border-radius:8px;padding:12px 14px;cursor:pointer;
+    user-select:none;transition:all .15s;
+  }
+  .stage-chk:hover{border-color:#107C10}
+  .stage-chk input{
+    appearance:none;-webkit-appearance:none;
+    width:20px;height:20px;border-radius:5px;
+    border:2px solid #444;background:#0a0a0a;
+    cursor:pointer;position:relative;flex-shrink:0;
+    margin:0;
+  }
+  .stage-chk input:checked{background:#107C10;border-color:#107C10}
+  .stage-chk input:checked::after{
+    content:'✓';position:absolute;top:-2px;left:2px;
+    color:#fff;font-size:16px;font-weight:700;
+  }
+  .stage-chk span{font-size:13px;color:#fff;font-weight:600}
+
+  /* ── Geo sites ── */
+  .geo-site{
+    background:#0a0a0a;border:1px solid #222;
+    border-radius:10px;padding:14px;margin-bottom:10px;
+    display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;
+    gap:8px;align-items:end;
+  }
+  .geo-site .fld{display:flex;flex-direction:column;gap:4px}
+  .geo-site label{font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px}
+  .geo-site input{
+    padding:8px 10px;border:1.5px solid #222;border-radius:6px;
+    background:#1a1a1a;color:#fff;font-size:12px;font-family:inherit;
+    outline:none;box-sizing:border-box;min-width:0;
+  }
+  .geo-site input:focus{border-color:#107C10}
+  .geo-site .del-btn{
+    background:#1a1a1a;border:1.5px solid #333;color:#D83B01;
+    padding:8px 12px;border-radius:6px;cursor:pointer;
+    font-size:16px;height:34px;transition:all .15s;
+  }
+  .geo-site .del-btn:hover{background:#D83B01;color:#fff;border-color:#D83B01}
+  .geo-actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+  @media(max-width:600px){
+    .geo-site{grid-template-columns:1fr 1fr;}
+    .geo-site .del-btn{grid-column:span 2}
+  }
+
+  /* ── Toggles ── */
+  .cfg-toggle{
+    display:flex;align-items:center;gap:12px;cursor:pointer;
+    user-select:none;margin-bottom:10px;
+  }
+  .cfg-toggle.locked{cursor:default;opacity:0.8}
+  .cfg-toggle-t{
+    width:44px;height:24px;border-radius:12px;
+    position:relative;transition:.2s;background:#333;flex-shrink:0;
+  }
+  .cfg-toggle-t.on{background:#107C10}
+  .cfg-toggle-th{
+    width:18px;height:18px;border-radius:9px;background:#fff;
+    position:absolute;top:3px;left:3px;transition:.2s;
+    box-shadow:0 1px 3px rgba(0,0,0,.4);
+  }
+  .cfg-toggle-t.on .cfg-toggle-th{left:23px}
+  .cfg-toggle span{font-size:13px;color:#fff;font-weight:600}
+  .cfg-toggle-desc{font-size:11px;color:#888;margin-left:56px;margin-top:-6px;margin-bottom:10px}
+  .cfg-conditional{
+    margin:10px 0 8px 56px;padding-left:12px;
+    border-left:2px solid #222;display:none;
+  }
+  .cfg-conditional.show{display:block}
 </style>
 </head>
 <body>
@@ -267,6 +342,65 @@
     </div>
   </div>
 
+  <!-- ═══ SECCIÓN 3 — Proyectos / Stages visibles ═══ -->
+  <div class="cfg-section">
+    <h2>📋 3. Proyectos — Stages visibles</h2>
+    <p class="hint">Solo se mostrarán proyectos cuyo stage esté marcado aquí.</p>
+    <div class="stage-grid">
+      <label class="stage-chk"><input type="checkbox" data-stage="To Do" checked><span>To Do</span></label>
+      <label class="stage-chk"><input type="checkbox" data-stage="In Progress" checked><span>In Progress</span></label>
+      <label class="stage-chk"><input type="checkbox" data-stage="Hold" checked><span>Hold</span></label>
+      <label class="stage-chk"><input type="checkbox" data-stage="Done"><span>Done</span></label>
+      <label class="stage-chk"><input type="checkbox" data-stage="Cancelled"><span>Cancelled</span></label>
+    </div>
+  </div>
+
+  <!-- ═══ SECCIÓN 4 — Geolocalizaciones autorizadas ═══ -->
+  <div class="cfg-section">
+    <h2>📍 4. Sitios autorizados para check-in</h2>
+    <p class="hint">Si el técnico checa fuera del radio, se requiere motivo y aprobación del supervisor.</p>
+    <div id="geoSitesList"></div>
+    <div class="geo-actions">
+      <button class="cfg-btn ghost" onclick="addGeoSite()">+ Agregar sitio</button>
+      <button class="cfg-btn secondary" onclick="useCurrentLocation()">📍 Mi ubicación actual</button>
+    </div>
+    <div class="cfg-result" id="geoResult"></div>
+  </div>
+
+  <!-- ═══ SECCIÓN 5 — Notificaciones al supervisor ═══ -->
+  <div class="cfg-section">
+    <h2>🔔 5. Notificaciones al supervisor</h2>
+    <p class="hint">El supervisor se obtiene del campo Manager de Odoo.</p>
+
+    <div class="cfg-toggle" onclick="toggleNotify('wa')">
+      <div class="cfg-toggle-t" id="notifyWaTog"><div class="cfg-toggle-th"></div></div>
+      <span>📱 Notificar por WhatsApp</span>
+    </div>
+    <div class="cfg-conditional" id="notifyWaCond">
+      <div class="cfg-field" style="margin-bottom:0">
+        <label>URL webhook n8n para WhatsApp</label>
+        <input type="text" id="notifyWaWebhook" placeholder="https://primary-xxx.up.railway.app/webhook/wa-send">
+      </div>
+    </div>
+
+    <div class="cfg-toggle" onclick="toggleNotify('email')">
+      <div class="cfg-toggle-t" id="notifyEmailTog"><div class="cfg-toggle-th"></div></div>
+      <span>📧 Notificar por Email</span>
+    </div>
+    <div class="cfg-conditional" id="notifyEmailCond">
+      <div class="cfg-field" style="margin-bottom:0">
+        <label>Email de respaldo (si Odoo no tiene)</label>
+        <input type="text" id="notifyEmailFallback" placeholder="supervisor@fts.com.mx">
+      </div>
+    </div>
+
+    <div class="cfg-toggle locked">
+      <div class="cfg-toggle-t on"><div class="cfg-toggle-th"></div></div>
+      <span>📊 Siempre visible en Dashboard</span>
+    </div>
+    <div class="cfg-toggle-desc">Todos los eventos se registran en el Dashboard (no se puede desactivar).</div>
+  </div>
+
 </div>
 
 <!-- Save bar sticky -->
@@ -302,6 +436,8 @@ document.getElementById('masterPin').addEventListener('keyup', function(e){
 document.getElementById('masterPin').focus();
 
 // ═══ Config load/save ═══
+const DEFAULT_STAGES = ['To Do','In Progress','Hold'];
+
 function loadConfig(){
   // Sección 1
   document.getElementById('n8nUrl').value = localStorage.getItem('kiosk_n8n_url') || '';
@@ -313,6 +449,33 @@ function loadConfig(){
     const def = inp.dataset.default || '';
     inp.value = localStorage.getItem(key) || def;
   });
+
+  // Sección 3 — stages visibles
+  let savedStages;
+  try{
+    savedStages = JSON.parse(localStorage.getItem('kiosk_stages_visible') || 'null');
+  } catch(e){ savedStages = null; }
+  if(!Array.isArray(savedStages)) savedStages = DEFAULT_STAGES;
+  document.querySelectorAll('input[data-stage]').forEach(function(chk){
+    chk.checked = savedStages.indexOf(chk.dataset.stage) !== -1;
+  });
+
+  // Sección 4 — geolocalizaciones
+  let sites;
+  try{
+    sites = JSON.parse(localStorage.getItem('kiosk_geolocations') || '[]');
+  } catch(e){ sites = []; }
+  renderGeoSites(Array.isArray(sites) ? sites : []);
+
+  // Sección 5 — notificaciones
+  const notifyWa = localStorage.getItem('kiosk_notify_wa') === '1';
+  const notifyEmail = localStorage.getItem('kiosk_notify_email') === '1';
+  setToggle('notifyWaTog', notifyWa);
+  setToggle('notifyEmailTog', notifyEmail);
+  document.getElementById('notifyWaCond').classList.toggle('show', notifyWa);
+  document.getElementById('notifyEmailCond').classList.toggle('show', notifyEmail);
+  document.getElementById('notifyWaWebhook').value = localStorage.getItem('kiosk_notify_wa_webhook') || '';
+  document.getElementById('notifyEmailFallback').value = localStorage.getItem('kiosk_notify_email_fallback') || '';
 }
 
 function saveConfig(){
@@ -325,9 +488,115 @@ function saveConfig(){
     localStorage.setItem(inp.dataset.key, inp.value.trim());
   });
 
+  // Sección 3 — stages
+  const stages = [];
+  document.querySelectorAll('input[data-stage]').forEach(function(chk){
+    if(chk.checked) stages.push(chk.dataset.stage);
+  });
+  localStorage.setItem('kiosk_stages_visible', JSON.stringify(stages));
+
+  // Sección 4 — geolocalizaciones
+  const sites = [];
+  document.querySelectorAll('.geo-site').forEach(function(row){
+    const nombre = row.querySelector('[data-f="nombre"]').value.trim();
+    const lat = parseFloat(row.querySelector('[data-f="lat"]').value);
+    const lng = parseFloat(row.querySelector('[data-f="lng"]').value);
+    const radio = parseInt(row.querySelector('[data-f="radio"]').value, 10) || 200;
+    if(nombre || !isNaN(lat) || !isNaN(lng)){
+      sites.push({
+        nombre: nombre,
+        lat: isNaN(lat) ? null : lat,
+        lng: isNaN(lng) ? null : lng,
+        radio: radio
+      });
+    }
+  });
+  localStorage.setItem('kiosk_geolocations', JSON.stringify(sites));
+
+  // Sección 5 — notificaciones
+  const notifyWa = document.getElementById('notifyWaTog').classList.contains('on');
+  const notifyEmail = document.getElementById('notifyEmailTog').classList.contains('on');
+  localStorage.setItem('kiosk_notify_wa', notifyWa ? '1' : '0');
+  localStorage.setItem('kiosk_notify_email', notifyEmail ? '1' : '0');
+  localStorage.setItem('kiosk_notify_wa_webhook', document.getElementById('notifyWaWebhook').value.trim());
+  localStorage.setItem('kiosk_notify_email_fallback', document.getElementById('notifyEmailFallback').value.trim());
+
   const msg = document.getElementById('saveMsg');
   msg.classList.add('show');
   setTimeout(function(){ msg.classList.remove('show'); }, 3000);
+}
+
+// ═══ Sección 4 — Geolocalizaciones ═══
+function renderGeoSites(sites){
+  const list = document.getElementById('geoSitesList');
+  list.innerHTML = '';
+  if(!sites.length){
+    addGeoSite();
+    return;
+  }
+  sites.forEach(function(s){ addGeoSite(s); });
+}
+
+function addGeoSite(site){
+  site = site || { nombre:'', lat:'', lng:'', radio:200 };
+  const div = document.createElement('div');
+  div.className = 'geo-site';
+  div.innerHTML =
+    '<div class="fld"><label>Nombre</label><input type="text" data-f="nombre" placeholder="Planta Monterrey" value="'+(site.nombre||'')+'"></div>'+
+    '<div class="fld"><label>Latitud</label><input type="number" step="0.000001" data-f="lat" placeholder="25.672" value="'+(site.lat!=null?site.lat:'')+'"></div>'+
+    '<div class="fld"><label>Longitud</label><input type="number" step="0.000001" data-f="lng" placeholder="-100.297" value="'+(site.lng!=null?site.lng:'')+'"></div>'+
+    '<div class="fld"><label>Radio (m)</label><input type="number" min="10" max="10000" data-f="radio" placeholder="200" value="'+(site.radio||200)+'"></div>'+
+    '<button class="del-btn" type="button" title="Eliminar sitio">🗑️</button>';
+  div.querySelector('.del-btn').addEventListener('click', function(){
+    div.remove();
+    if(document.querySelectorAll('.geo-site').length === 0) addGeoSite();
+  });
+  document.getElementById('geoSitesList').appendChild(div);
+}
+
+function useCurrentLocation(){
+  const res = document.getElementById('geoResult');
+  if(!navigator.geolocation){
+    res.className = 'cfg-result err';
+    res.textContent = '❌ Geolocalización no disponible en este navegador';
+    return;
+  }
+  res.className = 'cfg-result pending';
+  res.textContent = '⏳ Obteniendo ubicación…';
+  navigator.geolocation.getCurrentPosition(
+    function(pos){
+      const sites = document.querySelectorAll('.geo-site');
+      const last = sites[sites.length - 1];
+      if(last){
+        last.querySelector('[data-f="lat"]').value = pos.coords.latitude.toFixed(6);
+        last.querySelector('[data-f="lng"]').value = pos.coords.longitude.toFixed(6);
+      }
+      res.className = 'cfg-result ok';
+      res.textContent = '✅ Ubicación rellenada en el último sitio ('+pos.coords.latitude.toFixed(5)+', '+pos.coords.longitude.toFixed(5)+')';
+    },
+    function(err){
+      res.className = 'cfg-result err';
+      res.textContent = '❌ '+err.message;
+    },
+    { timeout:8000, enableHighAccuracy:true }
+  );
+}
+
+// ═══ Sección 5 — Toggles de notificaciones ═══
+function setToggle(id, on){
+  const t = document.getElementById(id);
+  if(!t) return;
+  if(on) t.classList.add('on');
+  else t.classList.remove('on');
+}
+
+function toggleNotify(which){
+  const togId = which === 'wa' ? 'notifyWaTog' : 'notifyEmailTog';
+  const condId = which === 'wa' ? 'notifyWaCond' : 'notifyEmailCond';
+  const t = document.getElementById(togId);
+  const on = !t.classList.contains('on');
+  setToggle(togId, on);
+  document.getElementById(condId).classList.toggle('show', on);
 }
 
 // ═══ Probar conexión n8n ═══
