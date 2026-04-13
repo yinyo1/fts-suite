@@ -32,7 +32,24 @@
   </div>
 </div>
 
-<!-- ═══════ PANTALLA 3 — VERIFICACIÓN ═══════ -->
+<!-- ═══════ PANTALLA 3 — TIPO DE EVENTO ═══════ -->
+<div class="kiosk-screen" id="ks-tipo">
+  <div class="kiosk-topbar">
+    <button onclick="showScreen('ks-search')" class="kiosk-back">←</button>
+    <span id="ks-tipo-nombre" style="font-weight:700;font-size:18px"></span>
+    <span></span>
+  </div>
+  <p style="color:#666;font-size:14px;margin:0 0 24px;text-align:center">¿Qué deseas registrar?</p>
+  <div style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:400px">
+    <button onclick="selectTipo('entrada')" class="kiosk-tipo-btn tipo-entrada">🟢 Entrada — Inicio del día</button>
+    <button onclick="selectTipo('salida_comida')" class="kiosk-tipo-btn tipo-comida">🍽️ Salida a comer</button>
+    <button onclick="selectTipo('regreso_comida')" class="kiosk-tipo-btn tipo-regreso">🔄 Regreso de comida</button>
+    <button onclick="selectTipo('salida')" class="kiosk-tipo-btn tipo-salida">🔴 Salida — Fin del día</button>
+  </div>
+  <p id="ks-tipo-sugerencia" style="color:#0078D4;font-size:13px;margin-top:20px;text-align:center;font-style:italic"></p>
+</div>
+
+<!-- ═══════ PANTALLA 4 — VERIFICACIÓN ═══════ -->
 <div class="kiosk-screen" id="ks-verify">
   <button class="kiosk-back" onclick="showScreen('ks-search')">← Volver</button>
   <div class="kiosk-verify-row">

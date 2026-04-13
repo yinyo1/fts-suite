@@ -189,3 +189,36 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-ser
 .kiosk-geo-dot.ok{background:#107C10}
 .kiosk-geo-dot.err{background:#D83B01}
 .kiosk-geo-dot.warn{background:#e67e22}
+
+/* ─── Topbar interno de pantallas (ks-tipo) ─── */
+.kiosk-topbar{
+  position:absolute;top:0;left:0;right:0;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:20px 24px;background:transparent;
+  gap:12px;color:#1a1a1a;
+}
+.kiosk-topbar .kiosk-back{
+  position:static;padding:8px 14px;font-size:18px;
+  min-width:44px;
+}
+
+/* ─── Botones de tipo de evento ─── */
+.kiosk-tipo-btn{
+  width:100%;padding:18px 20px;
+  border-radius:12px;border:2px solid #e0e0e0;
+  background:#fff;font-size:16px;font-weight:600;
+  cursor:pointer;text-align:left;
+  transition:all 0.2s;color:#1a1a1a;
+  font-family:inherit;
+  box-shadow:0 1px 3px rgba(0,0,0,0.04);
+}
+.kiosk-tipo-btn:hover{border-color:#0078D4;background:#f0f7ff}
+.kiosk-tipo-btn:active{transform:scale(0.98)}
+.tipo-entrada{border-left:4px solid #107C10}
+.tipo-comida{border-left:4px solid #f39c12}
+.tipo-regreso{border-left:4px solid #0078D4}
+.tipo-salida{border-left:4px solid #D83B01}
+.tipo-entrada:hover{border-color:#107C10;background:#f0faf0}
+.tipo-comida:hover{border-color:#f39c12;background:#fffbf0}
+.tipo-regreso:hover{border-color:#0078D4;background:#f0f7ff}
+.tipo-salida:hover{border-color:#D83B01;background:#fff5f0}
