@@ -109,6 +109,9 @@ p.s{font-size:12px;color:#666;margin-bottom:16px}
 .figura svg{max-width:100%;border:1px solid #e0e0e0;border-radius:8px;background:#fff}
 .caption{font-size:13px;color:#555;font-style:italic;margin-top:8px;text-align:center}
 
+/* Page-header — oculto en pantalla, visible al imprimir */
+.page-header{display:none}
+
 /* Print */
 @page {
   size: letter;
@@ -139,4 +142,17 @@ p.s{font-size:12px;color:#666;margin-bottom:16px}
   .report-container table{page-break-inside:avoid}
   .portada{page-break-after:always}
   .indice{page-break-after:always}
+  /* Page-header visible al imprimir (aparece al inicio de cada sección) */
+  .page-header{
+    display:table!important;
+    width:100%;
+    border-collapse:collapse;
+    border-bottom:2px solid #1F4E79;
+    margin-bottom:12px;
+    font-size:9px;
+    page-break-inside:avoid;
+    page-break-after:avoid;
+  }
+  .page-header table{width:100%;border:none}
+  .page-header td,.page-header th{border:none!important;padding:4px}
 }
