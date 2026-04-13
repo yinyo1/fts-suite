@@ -169,10 +169,10 @@
   .pl-toast.show{opacity:1}
 
   @media(max-width:700px){
-    .pl-table th:nth-child(3),
     .pl-table th:nth-child(4),
-    .pl-table td:nth-child(3),
-    .pl-table td:nth-child(4){display:none}
+    .pl-table th:nth-child(5),
+    .pl-table td:nth-child(4),
+    .pl-table td:nth-child(5){display:none}
     .pl-week-table{font-size:11px}
   }
 </style>
@@ -208,6 +208,7 @@
         <thead>
           <tr>
             <th>Técnico</th>
+            <th>Origen</th>
             <th>Planta / Proyecto</th>
             <th>Entrada</th>
             <th>Salida</th>
@@ -215,7 +216,7 @@
           </tr>
         </thead>
         <tbody id="planDiarioBody">
-          <tr><td colspan="5" class="pl-empty">Cargando…</td></tr>
+          <tr><td colspan="6" class="pl-empty">Cargando…</td></tr>
         </tbody>
       </table>
 

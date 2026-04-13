@@ -60,9 +60,9 @@ const DEMO_EMPLEADOS = [
 
 function loadDemoplan(fecha){
   return [
-    { empleado:'Mateo Salazar',   planta:'Arca Monterrey', entrada:'07:00', salida:'17:00' },
-    { empleado:'Carlos Mendoza',  planta:'Ecolab MTY',     entrada:'07:00', salida:'17:00' },
-    { empleado:'Roberto García',  planta:'Arca Monterrey', entrada:'08:00', salida:'17:00' },
+    { empleado:'Mateo Salazar',   origen:'fts',     planta:'Arca Monterrey', entrada:'07:00', salida:'17:00' },
+    { empleado:'Carlos Mendoza',  origen:'directo', planta:'Ecolab MTY',     entrada:'07:00', salida:'17:00' },
+    { empleado:'Roberto García',  origen:'fts',     planta:'Arca Monterrey', entrada:'08:00', salida:'17:00' },
   ];
 }
 
@@ -102,7 +102,7 @@ function onFechaDiarioChange(){
 window.onFechaDiarioChange = onFechaDiarioChange;
 
 function addTecnico(){
-  P.planDiario.push({ empleado:'', planta:'', entrada:'07:00', salida:'17:00' });
+  P.planDiario.push({ empleado:'', origen:'fts', planta:'', entrada:'07:00', salida:'17:00' });
   renderPlanDiario();
 }
 window.addTecnico = addTecnico;
@@ -122,16 +122,21 @@ function renderPlanDiario(){
   const tbody = document.getElementById('planDiarioBody');
   if(!tbody) return;
   if(!P.planDiario.length){
-    tbody.innerHTML = '<tr><td colspan="5" class="pl-empty">Sin técnicos asignados — toca "+ Agregar técnico"</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="pl-empty">Sin técnicos asignados — toca "+ Agregar técnico"</td></tr>';
     return;
   }
   tbody.innerHTML = P.planDiario.map((row, idx) => {
     const opts = P.empleados.map(e =>
       '<option value="'+e+'"'+(e===row.empleado?' selected':'')+'>'+e+'</option>'
     ).join('');
+    const origen = row.origen || 'fts';
     return '<tr>'+
       '<td><select onchange="updatePlanField('+idx+',\'empleado\',this.value)">'+
         '<option value="">— Selecciona —</option>'+opts+
+      '</select></td>'+
+      '<td><select onchange="updatePlanField('+idx+',\'origen\',this.value)">'+
+        '<option value="fts"'+(origen==='fts'?' selected':'')+'>🏢 Sale de FTS</option>'+
+        '<option value="directo"'+(origen==='directo'?' selected':'')+'>📍 Va directo a planta</option>'+
       '</select></td>'+
       '<td><input type="text" placeholder="Arca Monterrey, Ecolab MTY…" value="'+(row.planta||'').replace(/"/g,'&quot;')+'" oninput="updatePlanField('+idx+',\'planta\',this.value)"></td>'+
       '<td><input type="time" value="'+(row.entrada||'07:00')+'" onchange="updatePlanField('+idx+',\'entrada\',this.value)"></td>'+
