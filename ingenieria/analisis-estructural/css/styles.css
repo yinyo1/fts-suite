@@ -117,6 +117,13 @@ p.s{font-size:12px;color:#666;margin-bottom:16px}
   .screen{display:none!important}
   #scr-analysis{display:flex!important}
   .header,.footer,.progress,.chat-area,.no-print,#configOverlay,#fts-statusbar{display:none!important}
+  #fts-statusbar{
+    display:none!important;
+    visibility:hidden!important;
+    position:static!important;
+    height:0!important;
+    overflow:hidden!important;
+  }
   .report-container{box-shadow:none;margin:0;padding:15px;max-width:100%;border-radius:0;border:none}
   .report-container h1{page-break-after:avoid}
   .report-container table{page-break-inside:avoid}
