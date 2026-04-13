@@ -6,6 +6,7 @@ const K = {
   sos: [],
   seleccionado: null,
   soSeleccionada: null,
+  tipo: null,
   pin: '',
   stream: null,
   config: {},
@@ -155,6 +156,7 @@ function showScreen(id){
 function goHome(){
   K.seleccionado = null;
   K.soSeleccionada = null;
+  K.tipo = null;
   K.pin = '';
   updatePinDots();
   if(K.returnTimer){ clearTimeout(K.returnTimer); K.returnTimer = null; }
@@ -236,10 +238,48 @@ function selectEmpleado(id){
   K.seleccionado = emp;
   K.pin = '';
   updatePinDots();
+
+  const displayName = emp.name || emp.nombre || '';
+
+  // Preparar ks-verify (se usará después del selectTipo)
   const photoEl = document.getElementById('ksEmpPhoto');
-  const nameEl = document.getElementById('ksEmpName');
-  if(photoEl) photoEl.src = emp.foto || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220"><rect width="220" height="220" fill="%23333"/><text x="50%" y="55%" text-anchor="middle" font-size="80" font-family="Inter,sans-serif" font-weight="700" fill="%23666">'+(emp.nombre||'?').charAt(0)+'</text></svg>';
-  if(nameEl) nameEl.textContent = emp.nombre;
+  const nameEl  = document.getElementById('ksEmpName');
+  if(photoEl) photoEl.src = emp.foto || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220"><rect width="220" height="220" fill="%23f5f5f5"/><text x="50%" y="55%" text-anchor="middle" font-size="80" font-family="Inter,sans-serif" font-weight="700" fill="%23999">'+(displayName||'?').charAt(0)+'</text></svg>';
+  if(nameEl) nameEl.textContent = displayName;
+
+  // Llenar pantalla ks-tipo
+  const tipoNombre = document.getElementById('ks-tipo-nombre');
+  if(tipoNombre) tipoNombre.textContent = displayName;
+
+  // Sugerencia de tipo según hora
+  const sug = document.getElementById('ks-tipo-sugerencia');
+  if(sug) sug.textContent = getSugerenciaTipo();
+
+  showScreen('ks-tipo');
+}
+
+function getSugerenciaTipo(){
+  const h = new Date().getHours();
+  if(h >= 6  && h < 11) return '💡 Sugerido: Entrada — Inicio del día';
+  if(h >= 11 && h < 13) return '💡 Sugerido: Salida a comer';
+  if(h >= 13 && h < 15) return '💡 Sugerido: Regreso de comida';
+  if(h >= 15)           return '💡 Sugerido: Salida — Fin del día';
+  return '';
+}
+
+function selectTipo(tipo){
+  K.tipo = tipo;
+
+  const labels = {
+    entrada:         '🟢 Entrada',
+    salida_comida:   '🍽️ Salida a comer',
+    regreso_comida:  '🔄 Regreso de comida',
+    salida:          '🔴 Salida'
+  };
+
+  const tipoLabel = document.getElementById('ks-verify-tipo');
+  if(tipoLabel) tipoLabel.textContent = labels[tipo] || tipo;
+
   showScreen('ks-verify');
   startCamera();
 }
@@ -439,10 +479,9 @@ async function registrarAsistencia(){
   const videoEl = document.getElementById('ksCamera');
   const fotoB64 = captureFrame(videoEl);
 
-  // Determinar tipo: check_in o check_out
+  // Determinar tipo — viene de ks-tipo (K.tipo)
   const now = new Date();
-  const hora = now.getHours();
-  const tipo = hora < 14 ? 'check_in' : 'check_out';
+  const tipo = K.tipo || 'entrada';
 
   // Construir payload completo
   const payload = {
@@ -475,8 +514,15 @@ async function registrarAsistencia(){
   const confirmIcon   = document.getElementById('confirm-icon');
 
   if(confirmTipo){
-    confirmTipo.textContent = tipo === 'check_in' ? 'CHECK-IN' : 'CHECK-OUT';
-    confirmTipo.className = 'kiosk-big-type ' + (tipo === 'check_in' ? 'in' : 'out');
+    const confirmLabels = {
+      entrada:        '🟢 ENTRADA',
+      salida_comida:  '🍽️ SALIDA A COMER',
+      regreso_comida: '🔄 REGRESO DE COMIDA',
+      salida:         '🔴 SALIDA',
+    };
+    const entradaLike = (tipo === 'entrada' || tipo === 'regreso_comida');
+    confirmTipo.textContent = confirmLabels[tipo] || tipo.toUpperCase();
+    confirmTipo.className = 'kiosk-big-type ' + (entradaLike ? 'in' : 'out');
   }
   if(confirmNombre) confirmNombre.textContent = payload.empleado_nombre || '—';
   if(confirmSO)     confirmSO.textContent     = payload.so_nombre || '—';
@@ -506,6 +552,7 @@ async function registrarAsistencia(){
   setTimeout(() => {
     K.seleccionado = null;
     K.soSeleccionada = null;
+    K.tipo = null;
     K.geo = null;
     K.geoAutorizada = null;
     K.geoMotivo = null;
@@ -576,6 +623,7 @@ window.clearPin = clearPin;
 window.backPin = backPin;
 window.searchSOs = searchSOs;
 window.selectSO = selectSO;
+window.selectTipo = selectTipo;
 window.cancelarGeo = cancelarGeo;
 window.confirmarGeo = confirmarGeo;
 
