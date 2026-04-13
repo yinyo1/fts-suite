@@ -122,32 +122,52 @@ ESTRUCTURA DEL ANÁLISIS:
 11. VALIDACIÓN FEA — Si hay datos, tabla resumen con FS = Fy/σ_max
 12. CONCLUSIONES — Tabla resumen: Elemento|Actuante|Admisible|FS|Estado
 
-IMÁGENES FEA — INSTRUCCIÓN CRÍTICA (sistema de marcadores):
-Las imágenes FEA/planos se reciben numeradas desde idx=0.
-Para incluirlas en el reporte usar EXACTAMENTE este formato de marcador:
-<img data-fea-idx="0" alt="FEA Vista frontal">
-<img data-fea-idx="1" alt="FEA Vista lateral">
-<img data-fea-idx="2" alt="FEA Vista isométrica">
+IMÁGENES — SISTEMA DE MARCADORES (CRÍTICO):
+Las imágenes se reciben numeradas desde idx=0 con categoría en el hint del usuario.
+Hay DOS tipos de marcadores según dónde debe aparecer la imagen:
 
-❌ NO intentes reproducir el base64 en el src. NO uses src="data:image/...".
-✅ Solo usa el marcador data-fea-idx="N". El sistema reemplazará automáticamente
-los marcadores con las imágenes reales después del stream.
+1. data-sys-idx="N" → sección 3 DESCRIPCIÓN DEL SISTEMA
+   Para: planos CAD, renders 3D, isométricos, fotos del equipo, layout
+   Categorías del hint: [sistema] o [unknown] con contenido de plano/render
 
-En sección 11 VALIDACIÓN FEA:
-- Si hay 1 imagen: figura centrada con caption descriptivo
-- Si hay 2+ imágenes: figuras en pares lado a lado con grid:
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+2. data-fea-idx="N" → sección 11 VALIDACIÓN FEA
+   Para: mapas Von Mises, resultados de simulación, escalas de estrés
+   Categorías del hint: [fea] o [unknown] con colores de estrés/MPa
+
+❌ NUNCA uses src="data:image/..." — el base64 es inaccesible.
+✅ Solo usa data-sys-idx="N" o data-fea-idx="N". El frontend reemplaza automáticamente.
+
+SECCIÓN 3 — Imágenes de sistema:
+Si hay imágenes clasificadas como [sistema] o [unknown] con contenido CAD/render,
+incluirlas en pares con grid 2×1:
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0">
   <div class="figura">
-    <img data-fea-idx="0" alt="FEA Vista 1">
-    <p class="caption">Figura N — Von Mises vista frontal</p>
+    <img data-sys-idx="0" alt="Vista sistema">
+    <p class="caption">Figura N — Vista isométrica del sistema</p>
   </div>
   <div class="figura">
-    <img data-fea-idx="1" alt="FEA Vista 2">
-    <p class="caption">Figura N+1 — Von Mises vista lateral</p>
+    <img data-sys-idx="1" alt="Plano general">
+    <p class="caption">Figura N+1 — Plano general con cotas</p>
   </div>
 </div>
 
-Usa todos los idx disponibles (0, 1, 2, ... hasta el máximo que recibiste en el hint del usuario).
+SECCIÓN 11 — Imágenes FEA:
+- Si hay 1 imagen FEA: figura centrada con caption descriptivo
+- Si hay 2+ imágenes FEA: grid 2×1 lado a lado
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+  <div class="figura">
+    <img data-fea-idx="2" alt="Von Mises frontal">
+    <p class="caption">Figura N — Análisis FEA: Von Mises vista frontal</p>
+  </div>
+  <div class="figura">
+    <img data-fea-idx="3" alt="Von Mises lateral">
+    <p class="caption">Figura N+1 — Análisis FEA: Von Mises vista lateral</p>
+  </div>
+</div>
+
+IMPORTANTE: Los idx de data-sys-idx y data-fea-idx comparten el mismo espacio de numeración.
+Si recibiste 4 imágenes (idx 0,1,2,3) usa el idx correcto según la categoría y posición en el hint.
+Usa todos los idx disponibles. No repitas el mismo idx.
 
 CÁLCULOS OBLIGATORIOS:
 - Factor impacto CMAA: A=1.10, B=1.25, C=1.35, D=1.50, E=1.60, F=1.70
