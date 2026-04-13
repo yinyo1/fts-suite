@@ -18,18 +18,19 @@ const K = {
 // ═══ Carga de configuración (nuevo schema) ═══
 function loadKioskConfig(){
   return {
-    n8nUrl: localStorage.getItem('kiosk_n8n_url') || '',
-    demoMode: localStorage.getItem('kiosk_demo_mode') !== 'false',
-    faceEnabled: localStorage.getItem('kiosk_face_enabled') !== 'false',
-    faceThreshold: parseFloat(localStorage.getItem('kiosk_face_threshold') || '0.5'),
-    geolocations: JSON.parse(localStorage.getItem('kiosk_geolocations') || '[]'),
-    stages: JSON.parse(localStorage.getItem('kiosk_stages_visible') || '["To Do","In Progress","Hold"]'),
+    n8nUrl:        localStorage.getItem('ops_n8n_url') || '',
+    apiKey:        localStorage.getItem('ops_api_key') || '',
+    demoMode:      localStorage.getItem('ops_demo_mode') !== '0',
+    faceEnabled:   localStorage.getItem('ops_kiosk_face_enabled') !== '0',
+    faceThreshold: parseFloat(localStorage.getItem('ops_kiosk_face_threshold') || '0.5'),
+    geolocations:  JSON.parse(localStorage.getItem('ops_kiosk_geolocations') || '[]'),
+    stages:        JSON.parse(localStorage.getItem('ops_kiosk_stages') || '["To Do","In Progress","Hold"]'),
     fields: {
-      pin:             localStorage.getItem('kiosk_field_pin')              || 'pin',
-      photo:           localStorage.getItem('kiosk_field_photo')            || 'image_128',
-      manager:         localStorage.getItem('kiosk_field_manager')          || 'parent_id',
-      supervisorEmail: localStorage.getItem('kiosk_field_supervisor_email') || 'work_email',
-      supervisorWa:    localStorage.getItem('kiosk_field_supervisor_wa')    || 'mobile_phone',
+      pin:             localStorage.getItem('ops_kiosk_field_pin')              || 'pin',
+      photo:           localStorage.getItem('ops_kiosk_field_photo')            || 'image_128',
+      manager:         localStorage.getItem('ops_kiosk_field_manager')          || 'parent_id',
+      supervisorEmail: localStorage.getItem('ops_kiosk_field_supervisor_email') || 'work_email',
+      supervisorWa:    localStorage.getItem('ops_kiosk_field_supervisor_wa')    || 'mobile_phone',
     }
   };
 }

@@ -1,6 +1,6 @@
 // ═══ FTS Kiosk — Verificación facial con face-api.js ═══
 
-const FACE_THRESHOLD = parseFloat(localStorage.getItem('kiosk_face_threshold') || '0.5');
+const FACE_THRESHOLD = parseFloat(localStorage.getItem('ops_kiosk_face_threshold') || '0.5');
 const FACE_MODELS_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights';
 
 let faceModelsLoaded = false;
@@ -44,7 +44,7 @@ async function compareFaces(referenceImg, videoEl){
     }
 
     const distance = faceapi.euclideanDistance(refDescriptor, liveDescriptor);
-    const threshold = parseFloat(localStorage.getItem('kiosk_face_threshold') || '0.5');
+    const threshold = parseFloat(localStorage.getItem('ops_kiosk_face_threshold') || '0.5');
     const match = distance < threshold;
     const similarity = Math.max(0, Math.round((1 - distance) * 100));
 
