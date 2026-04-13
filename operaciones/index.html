@@ -11,7 +11,7 @@
   .op-hero h1 span{color:var(--green)}
   .op-hero p{font-size:12px;color:var(--muted2)}
   .op-list{padding:0 16px 40px;display:flex;flex-direction:column;gap:12px}
-  .op-card{background:var(--d2);border:1px solid var(--border);border-radius:12px;padding:18px 16px;display:flex;align-items:center;gap:14px;text-decoration:none;color:var(--text);transition:all .15s}
+  .op-card{background:var(--d2);border:1px solid var(--border);border-radius:12px;padding:18px 16px;display:flex;align-items:center;gap:14px;text-decoration:none;color:var(--text);transition:all .15s;position:relative}
   .op-card:active{transform:scale(.98);border-color:var(--green);box-shadow:0 0 0 2px rgba(16,124,16,.15)}
   .op-card.disabled{opacity:.5;pointer-events:none}
   .op-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;background:rgba(16,124,16,.08);border:1px solid rgba(16,124,16,.2)}
@@ -47,6 +47,7 @@
         <strong>Kiosk — Checador</strong>
         <span>Registro de entrada y salida</span>
       </div>
+      <span onclick="event.stopPropagation();event.preventDefault();window.location.href='kiosk/config.html'" style="position:absolute;top:12px;right:12px;color:#999;font-size:20px;text-decoration:none;padding:4px 8px;border-radius:6px;background:rgba(0,0,0,0.05);cursor:pointer" title="Configuración Kiosk">⚙️</span>
     </a>
     <div class="op-card disabled">
       <div class="op-icon">📊</div>
