@@ -274,6 +274,10 @@ function renderPlanSemanal(){
 }
 
 // ═══ WhatsApp ═══
+function origenEmoji(origen){
+  return origen === 'directo' ? '📍' : '🏢';
+}
+
 function generarMensajeWhatsApp(tipo){
   if(tipo === 'diario'){
     const fechaLabel = fmtFecha(P.fechaDiario);
@@ -284,8 +288,11 @@ function generarMensajeWhatsApp(tipo){
       msg += '_Sin técnicos asignados_\n';
     } else {
       filas.forEach(r => {
-        msg += '👷 ' + r.empleado + ' → ' + r.planta + ' (' + r.entrada + '-' + r.salida + ')\n';
+        msg += '👷 ' + r.empleado + ' → ' + r.planta + ' (' + r.entrada + '-' + r.salida + ') ' + origenEmoji(r.origen) + '\n';
       });
+    }
+    if(P.comentarios && P.comentarios.trim()){
+      msg += '\n💬 ' + P.comentarios.trim() + '\n';
     }
     msg += '\n_Enviado desde FTS Suite_';
     return msg;
@@ -306,11 +313,14 @@ function generarMensajeWhatsApp(tipo){
     if(filas.length){
       msg += '*' + diasNombres[i] + ' ' + fmtFechaCorta(fecha) + ':*\n';
       filas.forEach(r => {
-        msg += '👷 ' + r.empleado + ' → ' + r.planta + '\n';
+        msg += '👷 ' + r.empleado + ' → ' + r.planta + ' ' + origenEmoji(r.origen) + '\n';
       });
       msg += '\n';
     }
     d.setDate(d.getDate() + 1);
+  }
+  if(P.comentariosSemanal && P.comentariosSemanal.trim()){
+    msg += '💬 *Comentarios:* ' + P.comentariosSemanal.trim() + '\n\n';
   }
   msg += '_Enviado desde FTS Suite_';
   return msg;
