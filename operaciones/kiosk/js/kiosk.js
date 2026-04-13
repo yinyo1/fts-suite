@@ -266,25 +266,50 @@ function updatePinDots(){
 
 function verifyPin(){
   if(!K.seleccionado) return;
-  const expected = K.config.pines[K.seleccionado.id] || K.seleccionado.pin;
-  if(!expected){
-    setFaceStatus('⚠️ Empleado sin PIN configurado');
+  const pinStatus = document.getElementById('pin-status');
+  const expected = K.seleccionado.pin;
+
+  console.log('[KIOSK PIN] Ingresado:', K.pin,
+    'Esperado:', expected,
+    'Empleado:', K.seleccionado.name || K.seleccionado.nombre,
+    K.seleccionado);
+
+  function failPin(msg){
+    setFaceStatus('❌ ' + msg);
+    if(pinStatus) pinStatus.textContent = msg;
     shakeVerify();
+    flashPinDotsError();
     clearPin();
+    setTimeout(() => {
+      const ps = document.getElementById('pin-status');
+      if(ps) ps.textContent = '';
+    }, 2000);
+  }
+
+  if(!expected){
+    failPin('Empleado sin PIN configurado');
     return;
   }
   if(K.pin !== expected){
-    setFaceStatus('❌ PIN incorrecto');
-    shakeVerify();
-    clearPin();
+    failPin('PIN incorrecto — intenta de nuevo');
     return;
   }
+  // PIN correcto
+  if(pinStatus) pinStatus.textContent = '';
   setFaceStatus('✅ PIN correcto — verificando rostro…');
   if(K.config.faceEnabled){
     doFaceVerify();
   } else {
     afterVerifyContinue();
   }
+}
+
+function flashPinDotsError(){
+  const dots = document.querySelectorAll('#ksPinDots .kiosk-pin-dot');
+  dots.forEach(d => d.classList.add('error'));
+  setTimeout(() => {
+    dots.forEach(d => d.classList.remove('error'));
+  }, 1000);
 }
 
 function shakeVerify(){

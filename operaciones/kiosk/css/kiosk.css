@@ -91,6 +91,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-ser
   border:2px solid #444;
 }
 .kiosk-pin-dot.filled{background:#107C10;border-color:#107C10}
+.kiosk-pin-dot.error{background:#D83B01;border-color:#D83B01}
 
 .kiosk-verify-row{
   display:flex;gap:32px;align-items:center;
