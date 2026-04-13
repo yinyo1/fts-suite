@@ -157,34 +157,66 @@ async function generateAnalysis(){
 
   let lastReportedTokens=0;
 
-  // Construir content array con imágenes + texto
+  // Construir content array con imágenes clasificadas + texto
   const content = [];
-  // Tomar TODAS las imágenes subidas (máximo 6 para no exceder tokens)
   const allImgs = (typeof rawUploadedFiles !== 'undefined' && rawUploadedFiles)
     ? rawUploadedFiles.filter(function(f){ return f && f.type && f.type.startsWith('image/'); })
     : [];
-  const feaImgs = allImgs.slice(0, 6);
 
-  // Mapa global de imágenes para reemplazo de marcadores en post-proceso
-  window._feaImages = feaImgs.map(function(f, i){
-    return { idx: i, data: f.data, type: f.type || 'image/jpeg', name: f.name || '' };
+  // Clasificador de imágenes por keywords en el nombre
+  const FEA_KEYWORDS = ['fea','fusion','mises','stress','ansys','staad','sap','von','esfuerzo','tension','deform','modal','analisis','simulation','simulacion'];
+  const SYS_KEYWORDS = ['plano','render','3d','cad','isometrico','elevacion','planta','modelo','foto','estructura','sistema','real','obra','layout','drawing'];
+
+  function classifyImage(f){
+    const name = (f.name || '').toLowerCase();
+    const hasFEA = FEA_KEYWORDS.some(function(k){ return name.includes(k); });
+    const hasSys = SYS_KEYWORDS.some(function(k){ return name.includes(k); });
+    if(hasFEA) return 'fea';
+    if(hasSys) return 'sistema';
+    return 'unknown';
+  }
+
+  // Máximo 8 imágenes total para no exceder tokens
+  const classified = allImgs.slice(0, 8).map(function(f, i){
+    return {
+      idx: i,
+      data: f.data,
+      type: f.type || 'image/jpeg',
+      name: f.name || '',
+      category: classifyImage(f)
+    };
   });
+  window._feaImages = classified;  // nombre legacy — contiene TODAS las imágenes
 
-  feaImgs.forEach(function(f){
-    const mediaType = f.type || 'image/jpeg';
+  // Enviar imágenes como content blocks
+  classified.forEach(function(f){
     const base64 = (f.data||'').split(',')[1] || f.data || '';
     if(base64){
-      content.push({type:'image', source:{type:'base64', media_type:mediaType, data:base64}});
+      content.push({type:'image', source:{type:'base64', media_type:f.type, data:base64}});
     }
   });
-  if(feaImgs.length>0){
-    statusLog('Incluyendo '+feaImgs.length+' imagen(es) en el análisis (marcadores data-fea-idx 0-'+(feaImgs.length-1)+')','#1abc9c');
+
+  if(classified.length>0){
+    const counts = classified.reduce(function(acc,f){ acc[f.category]=(acc[f.category]||0)+1; return acc; }, {});
+    statusLog('Incluyendo '+classified.length+' imagen(es): '+JSON.stringify(counts),'#1abc9c');
   }
-  // Texto al final con los datos del proyecto
-  const imgHint = feaImgs.length>0
-    ? '\n\nIMÁGENES DISPONIBLES: Recibes '+feaImgs.length+' imagen(es) numeradas desde idx=0 hasta idx='+(feaImgs.length-1)+'. Úsalas con <img data-fea-idx="N" alt="..."> en la sección 11 VALIDACIÓN FEA. El sistema reemplazará los marcadores con las imágenes reales automáticamente.'
+
+  // Hint detallado con categorías para Claude
+  const imgListHint = classified.map(function(f){
+    return '  - Imagen idx='+f.idx+': "'+f.name+'" ['+f.category+']';
+  }).join('\n');
+
+  const imageContext = classified.length > 0
+    ? '\n\nIMÁGENES DISPONIBLES ('+classified.length+' total):\n'+imgListHint+'\n\n'+
+      'REGLAS DE UBICACIÓN DE IMÁGENES:\n'+
+      '- Imágenes [fea] o [unknown] que muestren colores de estrés / mapas Von Mises / resultados de simulación → usar <img data-fea-idx="N" alt="..."> en sección 11 VALIDACIÓN FEA\n'+
+      '- Imágenes [sistema] o [unknown] que muestren planos CAD / renders 3D / fotos del equipo / isométricos → usar <img data-sys-idx="N" alt="..."> en sección 3 DESCRIPCIÓN DEL SISTEMA\n'+
+      '- Si una imagen claramente es solo una tabla/datos/texto → NO incluirla\n'+
+      '- El idx es el mismo en ambos marcadores — usa el número de la imagen que corresponda\n'+
+      '- El sistema reemplazará automáticamente ambos marcadores (data-fea-idx y data-sys-idx) con las imágenes reales'
     : '';
-  content.push({type:'text', text:'Genera el análisis estructural completo para el siguiente proyecto. Responde SOLO en HTML (sin markdown, sin backticks). Datos del proyecto:\n\n'+JSON.stringify(analysisData,null,2)+imgHint});
+
+  content.push({type:'text', text:'Genera el análisis estructural completo para el siguiente proyecto. Responde SOLO en HTML (sin markdown, sin backticks). Datos del proyecto:\n\n'+JSON.stringify(analysisData,null,2)+imageContext});
 
   chatHistory=[{role:'user', content:content}];
 
