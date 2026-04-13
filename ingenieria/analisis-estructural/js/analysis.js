@@ -1,5 +1,74 @@
 // ═══ Analysis — generación y chat ═══
 
+// Checklist de secciones esperadas por tipo de estructura
+const CHECKLIST = {
+  polipasto: [
+    'Introducción',
+    'Criterios Generales',
+    'Descripción del Sistema',
+    'Propiedades de Secciones',
+    'Cargas y Combinaciones',
+    'Diseño del Monorriel',
+    'Diseño de Vigas Principales',
+    'Diseño de Columnas',
+    'Diseño de Placa Base',
+    'Diseño de Taquetes',
+    'Validación FEA',
+    'Conclusiones'
+  ],
+  tuberia: [
+    'Introducción',
+    'Criterios Generales',
+    'Descripción del Sistema',
+    'Propiedades de Secciones',
+    'Cargas y Combinaciones',
+    'Análisis de Golpe de Ariete',
+    'Diseño de Soportes',
+    'Diseño de Taquetes',
+    'Conclusiones'
+  ],
+  mezz_personas: [
+    'Introducción',
+    'Criterios Generales',
+    'Descripción del Sistema',
+    'Cargas y Combinaciones',
+    'Diseño de Vigas de Piso',
+    'Diseño de Vigas Principales',
+    'Diseño de Columnas',
+    'Diseño de Taquetes',
+    'Conclusiones'
+  ],
+  mezz_equipos: [
+    'Introducción',
+    'Criterios Generales',
+    'Descripción del Sistema',
+    'Cargas y Combinaciones',
+    'Diseño de Vigas',
+    'Diseño de Columnas',
+    'Análisis de Vibración',
+    'Diseño de Taquetes',
+    'Conclusiones'
+  ],
+  tanque: [
+    'Introducción',
+    'Criterios Generales',
+    'Descripción del Sistema',
+    'Cargas y Combinaciones',
+    'Análisis de Vuelco',
+    'Diseño de Soportes',
+    'Diseño de Taquetes',
+    'Conclusiones'
+  ],
+  general: [
+    'Introducción',
+    'Criterios Generales',
+    'Descripción del Sistema',
+    'Cargas y Combinaciones',
+    'Análisis Estructural',
+    'Conclusiones'
+  ]
+};
+
 function goToAnalysis(){
   if(!getKey()){alert('Configura tu API Key en ⚙️ Configuración');toggleConfig();return}
   document.getElementById('analysisDocNum').textContent=D.num_documento||'Sin número';
