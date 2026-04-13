@@ -90,6 +90,15 @@ REGLAS GENERALES:
 - Tabla final de conclusiones con TODAS las verificaciones
 - NO uses markdown — SOLO HTML
 - Usa los valores exactos de los datos del proyecto proporcionados
+
+FIRMA DE CIERRE OBLIGATORIA:
+Al terminar TODO el análisis, como ÚLTIMO elemento del HTML, agregar exactamente esto:
+<div id="reporte-completo" data-status="ok" data-tipo="[tipo_estructura]" data-secciones="[lista de secciones generadas separadas por coma]" style="display:none"></div>
+
+Si no puedes completar el análisis por límite de tokens, agregar en su lugar:
+<div id="reporte-incompleto" data-status="truncado" data-ultima-seccion="[nombre de la última sección completada]" style="display:none"></div>
+
+NUNCA termines el HTML sin una de estas dos firmas.
 `;
 
 // Registro global de prompts específicos por tipo
