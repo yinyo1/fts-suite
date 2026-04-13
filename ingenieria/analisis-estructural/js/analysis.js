@@ -70,22 +70,27 @@ const CHECKLIST = {
 };
 
 // Verifica completitud del HTML generado por Claude
-// Reemplaza marcadores <img data-fea-idx="N"> por las imágenes reales en base64
-function replaceFEAMarkers(html){
+// Reemplaza marcadores <img data-fea-idx="N"> y <img data-sys-idx="N"> por imágenes reales
+function replaceImageMarkers(html){
   if(!window._feaImages || !window._feaImages.length) return html;
-  return html.replace(
+  function buildImg(idx, kind){
+    const img = window._feaImages[idx];
+    if(!img || !img.data) return '';
+    return '<img src="'+img.data+'" alt="'+kind+' '+(idx+1)+'" style="max-width:100%;border-radius:4px;border:1px solid #e0e0e0;margin:8px 0">';
+  }
+  let result = html.replace(
     /<img[^>]*data-fea-idx=["'](\d+)["'][^>]*>/g,
-    function(match, idxStr){
-      const idx = parseInt(idxStr);
-      const img = window._feaImages[idx];
-      if(!img || !img.data) return match;
-      // Extraer alt si existe
-      const altMatch = match.match(/alt=["']([^"']*)["']/);
-      const alt = altMatch ? altMatch[1] : ('Imagen FEA '+(idx+1));
-      return '<img src="'+img.data+'" alt="'+alt+'" style="max-width:100%;border-radius:8px;border:1px solid #e0e0e0;margin:8px 0">';
-    }
+    function(match, idxStr){ return buildImg(parseInt(idxStr), 'Imagen FEA') || match; }
   );
+  result = result.replace(
+    /<img[^>]*data-sys-idx=["'](\d+)["'][^>]*>/g,
+    function(match, idxStr){ return buildImg(parseInt(idxStr), 'Imagen sistema') || match; }
+  );
+  return result;
 }
+
+// Alias legacy para compatibilidad con llamadas previas
+const replaceFEAMarkers = replaceImageMarkers;
 
 function checkCompletitud(html, tipo){
   const div = document.createElement('div');
