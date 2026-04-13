@@ -5,11 +5,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FTS Kiosk · Configuración</title>
 <link rel="stylesheet" href="../../shared/fts-styles.css">
-<link rel="stylesheet" href="css/kiosk.css">
 <style>
   /* ═══ Config page — light mode con scroll ═══ */
-  html,body{overflow-y:auto;height:auto;min-height:100%;background:#fafafa;color:#1a1a1a}
-  body{padding-bottom:100px;font-family:'Inter',-apple-system,sans-serif}
+  *{box-sizing:border-box}
+  html{height:auto;overflow-y:auto}
+  body{
+    min-height:100vh;height:auto;
+    overflow-y:auto;overflow-x:hidden;
+    padding-bottom:80px;
+    margin:0;
+    background:#fafafa;color:#1a1a1a;
+    font-family:'Inter',-apple-system,sans-serif;
+  }
+
+  /* Logo local (replica de .kiosk-logo para el auth box) */
+  .kiosk-logo{
+    width:72px;height:72px;border-radius:14px;background:#107C10;
+    display:flex;align-items:center;justify-content:center;
+    font-size:32px;font-weight:800;color:#fff;
+    box-shadow:0 4px 16px rgba(16,124,16,0.2);
+  }
 
   .cfg-topbar{
     position:sticky;top:0;z-index:50;
