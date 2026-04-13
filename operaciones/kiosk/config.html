@@ -8,14 +8,17 @@
 <style>
   /* ═══ Config page — light mode con scroll ═══ */
   *{box-sizing:border-box}
-  html{height:auto;overflow-y:auto}
+  html{height:auto !important;min-height:100vh}
   body{
-    min-height:100vh;height:auto;
-    overflow-y:auto;overflow-x:hidden;
-    padding-bottom:80px;
+    min-height:100vh;
+    height:auto;
+    overflow-y:auto !important;
+    overflow-x:hidden;
+    padding-bottom:100px;
+    background:#fafafa;
+    color:#1a1a1a;
+    font-family:'Inter',sans-serif;
     margin:0;
-    background:#fafafa;color:#1a1a1a;
-    font-family:'Inter',-apple-system,sans-serif;
   }
 
   /* Logo local (replica de .kiosk-logo para el auth box) */
