@@ -220,6 +220,11 @@
         </tbody>
       </table>
 
+      <div style="margin-top:16px">
+        <label style="font-weight:600;font-size:14px;color:#1a1a1a;display:block;margin-bottom:6px">💬 Comentarios generales</label>
+        <textarea id="plan-comentarios-diario" oninput="updateComentariosDiario(this.value)" placeholder="Indicaciones generales para el equipo, herramientas especiales, EPP requerido, etc..." style="width:100%;height:80px;padding:10px;border:1px solid #e0e0e0;border-radius:8px;font-size:14px;font-family:Inter,sans-serif;resize:vertical;box-sizing:border-box;outline:none"></textarea>
+      </div>
+
       <div class="pl-actions">
         <button class="pl-btn primary" onclick="guardarPlan()">💾 Guardar</button>
         <button class="pl-btn wa" onclick="enviarWhatsApp('diario')">📤 Enviar por WhatsApp</button>
@@ -254,6 +259,11 @@
             <tr><td colspan="6" class="pl-empty">Cargando…</td></tr>
           </tbody>
         </table>
+      </div>
+
+      <div style="margin-top:16px">
+        <label style="font-weight:600;font-size:14px;color:#1a1a1a;display:block;margin-bottom:6px">💬 Comentarios generales de la semana</label>
+        <textarea id="plan-comentarios-semanal" oninput="updateComentariosSemanal(this.value)" placeholder="Indicaciones generales para la semana, equipos especiales, juntas, etc..." style="width:100%;height:80px;padding:10px;border:1px solid #e0e0e0;border-radius:8px;font-size:14px;font-family:Inter,sans-serif;resize:vertical;box-sizing:border-box;outline:none"></textarea>
       </div>
 
       <div class="pl-actions">
