@@ -389,53 +389,74 @@ function regenerateAnalysis(){
 }
 
 // Descarga el reporte como archivo Word (.docx) usando html-docx-js
+// Con fallback a .doc (HTML) si la librería no está disponible
 function downloadWord(){
   const reportContent = document.getElementById('reportContent');
   if(!reportContent || !reportContent.innerHTML.trim()){
-    if(typeof showToast==='function') showToast('⚠️ No hay reporte para descargar', 3000);
+    if(typeof showToast==='function') showToast('⚠️ No hay análisis generado', 3000);
     return;
   }
 
-  // HTML completo con estilos básicos para Word
-  const wordHTML =
-    '<!DOCTYPE html><html><head><meta charset="utf-8"><style>'+
-    'body{font-family:Arial,sans-serif;font-size:11pt;color:#1a1a1a}'+
-    'table{border-collapse:collapse;width:100%;margin-bottom:12pt}'+
-    'th{background:#1F4E79;color:#fff;padding:6pt;border:1pt solid #1F4E79;font-size:9pt;text-align:left}'+
-    'td{padding:5pt;border:1pt solid #ccc;font-size:9pt}'+
-    'h1{color:#1F4E79;font-size:14pt;border-bottom:2pt solid #1F4E79;padding-bottom:4pt;margin-top:18pt}'+
-    'h2{color:#2E75B6;font-size:12pt;margin-top:12pt}'+
-    'h3{color:#1a1a1a;font-size:11pt;margin-top:10pt}'+
-    '.ok-box{background:#E2EFDA;border:1pt solid #107C10;padding:8pt;margin:8pt 0;color:#1F6B35}'+
-    '.warn-box{background:#FFF2CC;border:1pt solid #BF8F00;padding:8pt;margin:8pt 0;color:#BF8F00}'+
-    '.page-header{display:none}'+
-    '.caption{font-size:9pt;color:#555;font-style:italic;text-align:center;margin-top:4pt}'+
-    '.figura{margin:12pt 0;text-align:center;page-break-inside:avoid}'+
-    'img{max-width:500pt}'+
-    '</style></head><body>'+
-    reportContent.innerHTML+
-    '</body></html>';
+  const docNum = (analysisData && analysisData.num_documento) || 'FTS-MC';
 
-  try{
-    if(typeof htmlDocx === 'undefined'){
-      if(typeof showToast==='function') showToast('⚠️ Librería html-docx-js no cargada', 5000);
+  // Método 1: intentar con html-docx-js si está disponible
+  if(typeof htmlDocx !== 'undefined'){
+    try{
+      const wordHTML = buildWordHTML(reportContent.innerHTML);
+      const blob = htmlDocx.asBlob(wordHTML);
+      triggerDownload(blob, docNum + '.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      if(typeof showToast==='function') showToast('✅ Archivo Word descargado', 3000);
       return;
+    } catch(e){
+      console.warn('html-docx falló:', e);
     }
-    const blob = htmlDocx.asBlob(wordHTML);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    const docNum = (analysisData && analysisData.num_documento) || 'FTS-MC';
-    a.href = url;
-    a.download = docNum + '-Memoria-Calculo.docx';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    if(typeof showToast==='function') showToast('✅ Archivo Word descargado', 3000);
-  } catch(e){
-    console.error('downloadWord error:', e);
-    if(typeof showToast==='function') showToast('⚠️ Error al generar Word: '+e.message, 5000);
   }
+
+  // Método 2: fallback — descargar como HTML con extensión .doc
+  // Word puede abrir HTML directamente
+  const wordHTML = buildWordHTML(reportContent.innerHTML);
+  const blob = new Blob([wordHTML], {type: 'text/html'});
+  triggerDownload(blob, docNum + '.doc', 'text/html');
+  if(typeof showToast==='function') showToast('✅ Archivo descargado (abrir con Word)', 3000);
 }
+
+function buildWordHTML(content){
+  return '<!DOCTYPE html>\n'+
+    '<html xmlns:o="urn:schemas-microsoft-com:office:office" '+
+    'xmlns:w="urn:schemas-microsoft-com:office:word" '+
+    'xmlns="http://www.w3.org/TR/REC-html40">\n'+
+    '<head>\n'+
+    '<meta charset="utf-8">\n'+
+    '<meta name=ProgId content=Word.Document>\n'+
+    '<meta name=Generator content="Microsoft Word 15">\n'+
+    '<style>\n'+
+    '  body { font-family: Arial, sans-serif; font-size: 11pt; margin: 2cm; }\n'+
+    '  table { border-collapse: collapse; width: 100%; margin-bottom: 12pt; }\n'+
+    '  th { background: #1F4E79; color: white; padding: 6pt; border: 1pt solid #1F4E79; font-size: 9pt; }\n'+
+    '  td { padding: 5pt; border: 1pt solid #ccc; font-size: 9pt; }\n'+
+    '  h1 { color: #1F4E79; font-size: 14pt; border-bottom: 2pt solid #1F4E79; page-break-before: always; }\n'+
+    '  h1:first-of-type { page-break-before: auto; }\n'+
+    '  h2 { color: #2E75B6; font-size: 12pt; }\n'+
+    '  .ok-box { background: #E2EFDA; border: 1pt solid #107C10; padding: 6pt; margin: 6pt 0; }\n'+
+    '  .warn-box { background: #FFF2CC; border: 1pt solid #BF8F00; padding: 6pt; margin: 6pt 0; }\n'+
+    '  .page-header { border-bottom: 2pt solid #1F4E79; margin-bottom: 12pt; font-size: 9pt; }\n'+
+    '  svg { display: none; }\n'+
+    '</style>\n'+
+    '</head>\n'+
+    '<body>'+content+'</body>\n'+
+    '</html>';
+}
+
+function triggerDownload(blob, filename, type){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 window.downloadWord = downloadWord;
 
