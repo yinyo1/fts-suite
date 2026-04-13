@@ -156,6 +156,15 @@ function showScreen(id){
     if(input){ input.value=''; input.focus(); }
     renderSOs(K.sos);
   }
+  if(id === 'ks-historial'){
+    const input = document.getElementById('hist-search');
+    if(input){ input.value=''; input.style.display=''; input.focus(); }
+    const content = document.getElementById('hist-content');
+    if(content) content.style.display = 'none';
+    const list = document.getElementById('hist-empleados');
+    if(list){ list.style.display=''; }
+    searchHistorial('');
+  }
 }
 
 function goHome(){
@@ -578,6 +587,147 @@ async function registrarAsistencia(){
   }, 4000);
 }
 
+// ═══════ HISTORIAL ═══════
+function searchHistorial(q){
+  const lista = document.getElementById('hist-empleados');
+  if(!lista) return;
+  const nq = normalize(q||'');
+  const filtrados = !nq ? K.empleados : K.empleados.filter(e => normalize(e.name||e.nombre||'').includes(nq));
+  lista.innerHTML = filtrados.slice(0, 5).map(e => {
+    const nombre = e.name || e.nombre || '';
+    const cargo  = e.cargo || e.job_title || e.puesto || 'Técnico';
+    const foto = e.foto || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="%23f5f5f5"/><text x="50%" y="58%" text-anchor="middle" font-size="28" font-family="Inter,sans-serif" font-weight="700" fill="%23999">'+(nombre||'?').charAt(0)+'</text></svg>';
+    return '<div class="kiosk-employee-card" onclick="mostrarHistorial('+e.id+')">'+
+      '<img class="kiosk-employee-photo" src="'+foto+'" alt="">'+
+      '<div><div class="kiosk-employee-name">'+nombre+'</div>'+
+      '<div class="kiosk-employee-sub">'+cargo+'</div></div>'+
+    '</div>';
+  }).join('');
+}
+
+async function mostrarHistorial(empId){
+  const emp = K.empleados.find(e => e.id === empId);
+  if(!emp) return;
+
+  document.getElementById('hist-empleados').style.display = 'none';
+  document.getElementById('hist-search').style.display = 'none';
+  document.getElementById('hist-content').style.display = 'block';
+  document.getElementById('hist-foto').src = emp.foto || '';
+  document.getElementById('hist-nombre').textContent = emp.name || emp.nombre || '';
+  document.getElementById('hist-fecha').textContent = new Date().toLocaleDateString('es-MX', {
+    weekday:'long', day:'numeric', month:'long', year:'numeric'
+  });
+  document.getElementById('hist-horas').textContent = 'Cargando…';
+  document.getElementById('hist-eventos').innerHTML = '';
+
+  let eventos = [];
+  let esDemo = false;
+
+  if(!K.config.demoMode && K.config.n8nUrl){
+    try{
+      const res = await window.OdooKiosk.getAsistenciaHoy(empId);
+      eventos = (res && res.eventos) || [];
+    } catch(e){
+      console.warn('Odoo no disponible, usando demo:', e);
+      esDemo = true;
+      eventos = generarEventosDemo(new Date());
+    }
+  } else {
+    esDemo = true;
+    eventos = generarEventosDemo(new Date());
+  }
+
+  const avisoDemo = document.getElementById('hist-demo-aviso');
+  if(avisoDemo) avisoDemo.style.display = esDemo ? 'block' : 'none';
+
+  document.getElementById('hist-horas').innerHTML = calcularResumen(eventos, new Date());
+  document.getElementById('hist-eventos').innerHTML = eventos.map(renderEventoHistorial).join('') ||
+    '<div style="text-align:center;color:#999;font-size:13px;padding:12px">Sin registros hoy</div>';
+}
+
+function generarEventosDemo(ahora){
+  const h = ahora.getHours();
+  const eventos = [];
+  if(h >= 7)  eventos.push({ tipo:'entrada',         hora:'07:05', geo:'FTS Monterrey', status:'ok' });
+  if(h >= 12) eventos.push({ tipo:'salida_comida',   hora:'12:02', geo:'FTS Monterrey', status:'ok' });
+  if(h >= 12) eventos.push({ tipo:'regreso_comida',  hora:'12:38', geo:'FTS Monterrey', status:'ok' });
+  if(h >= 17) eventos.push({ tipo:'salida',          hora:'17:10', geo:'FTS Monterrey', proyecto:'SO-11547 Nalco', status:'ok' });
+  return eventos;
+}
+
+function calcularResumen(eventos, ahora){
+  const entrada   = eventos.find(e => e.tipo === 'entrada');
+  const salComida = eventos.find(e => e.tipo === 'salida_comida');
+  const regComida = eventos.find(e => e.tipo === 'regreso_comida');
+  const salida    = eventos.find(e => e.tipo === 'salida');
+
+  if(!entrada) return '⏳ Sin registros hoy';
+
+  const toMin = h => {
+    const parts = h.split(':').map(Number);
+    return parts[0] * 60 + parts[1];
+  };
+  const fmt = min => {
+    const h = Math.floor(Math.abs(min) / 60);
+    const m = Math.abs(min) % 60;
+    return h + 'h ' + m + 'min';
+  };
+
+  const ahoraMin = ahora.getHours() * 60 + ahora.getMinutes();
+  const entMin = toMin(entrada.hora);
+  const scMin  = salComida ? toMin(salComida.hora) : null;
+  const rcMin  = regComida ? toMin(regComida.hora) : null;
+  const saMin  = salida    ? toMin(salida.hora)    : ahoraMin;
+
+  let efectivas = 0;
+  if(scMin && rcMin){
+    efectivas = (scMin - entMin) + (saMin - rcMin);
+  } else if(scMin){
+    efectivas = scMin - entMin;
+  } else {
+    efectivas = saMin - entMin;
+  }
+
+  const comida = (scMin && rcMin) ? (rcMin - scMin) : 0;
+  const LIMITE = 576; // 9.6 hrs en minutos
+  const extra = Math.max(0, efectivas - LIMITE);
+  const faltan = Math.max(0, LIMITE - efectivas);
+
+  return '⏱ <b>Efectivas:</b> ' + fmt(efectivas) + '<br>' +
+    '🍽️ <b>Comida:</b> ' + fmt(comida) + '<br>' +
+    '⚡ <b>Extra:</b> ' + (extra > 0
+      ? '<span style="color:#107C10">' + fmt(extra) + '</span>'
+      : '0h 0min <span style="color:#999;font-size:11px">(faltan ' + fmt(faltan) + ')</span>') +
+    (!salida ? '<br>🔄 <span style="color:#0078D4">Turno en curso</span>' : '');
+}
+
+function renderEventoHistorial(ev){
+  const colores = {
+    entrada:        '#107C10',
+    salida_comida:  '#f39c12',
+    regreso_comida: '#0078D4',
+    salida:         '#D83B01'
+  };
+  const labels = {
+    entrada:        '🟢 Entrada',
+    salida_comida:  '🍽️ Salida a comer',
+    regreso_comida: '🔄 Regreso de comida',
+    salida:         '🔴 Salida'
+  };
+  const color = colores[ev.tipo] || '#666';
+  return '<div style="background:#fff;border:1px solid #e0e0e0;border-left:4px solid ' + color + ';border-radius:10px;padding:12px 14px">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center">' +
+      '<span style="font-weight:600;font-size:14px">' + (labels[ev.tipo] || ev.tipo) + '</span>' +
+      '<span style="font-weight:700;font-size:16px;color:' + color + '">' + (ev.hora || '—') + '</span>' +
+    '</div>' +
+    '<div style="font-size:12px;color:#999;margin-top:4px">' +
+      '📍 ' + (ev.geo || '—') +
+      (ev.proyecto ? '&nbsp;·&nbsp;📋 ' + ev.proyecto : '') +
+      (ev.status === 'pendiente_aprobacion' ? '&nbsp;·&nbsp;<span style="color:#BF8F00">⚠️ Pendiente aprobación</span>' : '') +
+    '</div>' +
+  '</div>';
+}
+
 function autoReturn(){
   let remaining = 4;
   const el = document.getElementById('ksReturnCounter');
@@ -636,5 +786,7 @@ window.selectSO = selectSO;
 window.selectTipo = selectTipo;
 window.cancelarGeo = cancelarGeo;
 window.confirmarGeo = confirmarGeo;
+window.searchHistorial = searchHistorial;
+window.mostrarHistorial = mostrarHistorial;
 
 document.addEventListener('DOMContentLoaded', initKiosk);
