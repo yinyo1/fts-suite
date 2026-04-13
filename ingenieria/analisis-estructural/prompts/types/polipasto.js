@@ -2,8 +2,77 @@
 
 TYPE_PROMPTS['polipasto'] = `TIPO DE ANÁLISIS: POLIPASTO / GRÚA INDUSTRIAL
 
-IMPORTANTE — EVITAR REDUNDANCIA CON EL HEADER:
-El header del documento ya incluye cliente, proyecto, número de documento, revisión y fecha.
+ESTRUCTURA OBLIGATORIA DEL DOCUMENTO:
+
+PÁGINA 1 — PORTADA (antes de cualquier sección, obligatoria):
+<div class="portada" style="page-break-after:always;padding:40px 20px">
+  <h1 style="text-align:center;font-size:24px;margin-bottom:8px">MEMORIA DE CÁLCULO</h1>
+  <p style="text-align:center;font-size:14px;color:#555;margin-bottom:40px">Análisis Estructural · Polipasto / Grúa Industrial</p>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:30px">
+    <tr><th style="background:#1F4E79;color:#fff;padding:8px;text-align:left;width:30%">CLIENTE</th><td style="border:1px solid #ccc;padding:8px">[cliente] — [ubicacion_planta]</td></tr>
+    <tr><th style="background:#1F4E79;color:#fff;padding:8px;text-align:left">UBICACIÓN</th><td style="border:1px solid #ccc;padding:8px">[ubicacion_municipio], [ubicacion_estado]</td></tr>
+    <tr><th style="background:#1F4E79;color:#fff;padding:8px;text-align:left">PROYECTO</th><td style="border:1px solid #ccc;padding:8px">[proyecto]</td></tr>
+    <tr><th style="background:#1F4E79;color:#fff;padding:8px;text-align:left">No. DOC.</th><td style="border:1px solid #ccc;padding:8px">[num_documento]</td></tr>
+    <tr><th style="background:#1F4E79;color:#fff;padding:8px;text-align:left">DOCUMENTO</th><td style="border:1px solid #ccc;padding:8px">[nombre_documento]</td></tr>
+  </table>
+  <h2 style="font-size:14px;margin-top:30px">Tabla de Revisiones</h2>
+  <table style="width:100%;border-collapse:collapse">
+    <thead><tr>
+      <th style="background:#1F4E79;color:#fff;padding:6px">Rev.</th>
+      <th style="background:#1F4E79;color:#fff;padding:6px">Fecha</th>
+      <th style="background:#1F4E79;color:#fff;padding:6px">Descripción</th>
+      <th style="background:#1F4E79;color:#fff;padding:6px">Elaboró</th>
+      <th style="background:#1F4E79;color:#fff;padding:6px">Revisó</th>
+      <th style="background:#1F4E79;color:#fff;padding:6px">Aprobó</th>
+    </tr></thead>
+    <tbody><tr>
+      <td style="border:1px solid #ccc;padding:6px;text-align:center">[rev_numero]</td>
+      <td style="border:1px solid #ccc;padding:6px;text-align:center">[rev_fecha]</td>
+      <td style="border:1px solid #ccc;padding:6px">[rev_descripcion]</td>
+      <td style="border:1px solid #ccc;padding:6px">[elaboro]</td>
+      <td style="border:1px solid #ccc;padding:6px">[reviso]</td>
+      <td style="border:1px solid #ccc;padding:6px">[aprobo]</td>
+    </tr></tbody>
+  </table>
+</div>
+
+PÁGINA 2 — ÍNDICE (antes de sección 1, obligatoria):
+<div class="indice" style="page-break-after:always;padding:20px">
+  <h1>ÍNDICE</h1>
+  <ol style="font-size:13px;line-height:2">
+    <li>Introducción</li>
+    <li>Criterios Generales</li>
+    <li>Descripción del Sistema</li>
+    <li>Propiedades de Secciones</li>
+    <li>Cargas y Combinaciones</li>
+    <li>Diseño del Monorriel</li>
+    <li>Diseño de Vigas Principales</li>
+    <li>Diseño de Columnas</li>
+    <li>Diseño de Placa Base</li>
+    <li>Diseño de Taquetes</li>
+    <li>Validación FEA</li>
+    <li>Conclusiones</li>
+  </ol>
+</div>
+
+PAGE-HEADER EN CADA <h1>:
+Antes de CADA <h1> de sección numerada, insertar este header que aparecerá al inicio de cada página nueva:
+<div class="page-header">
+  <table style="width:100%;border:none;border-bottom:2px solid #1F4E79;margin-bottom:12px;font-size:9px">
+    <tr>
+      <td style="width:30%;font-weight:bold;padding:4px">MEMORIA DE CÁLCULO</td>
+      <td style="text-align:center;padding:4px">No.: [num_documento] | Fecha: [rev_fecha]</td>
+      <td style="width:20%;text-align:right;padding:4px">Rev.: [rev_numero]</td>
+    </tr>
+    <tr>
+      <td style="padding:4px">[nombre_documento]</td>
+      <td style="text-align:center;color:#1F4E79;font-weight:bold;padding:4px">[nombre_cliente_mapeado]</td>
+      <td></td>
+    </tr>
+  </table>
+</div>
+
+IMPORTANTE — EVITAR REDUNDANCIA:
 - En la sección 1 INTRODUCCIÓN: NO repitas cliente, proyecto ni ubicación como lista o párrafo.
   Solo escribe el ALCANCE TÉCNICO: qué se calcula, qué normas aplican, qué elementos se verifican.
   Máximo 2 párrafos cortos.
@@ -27,16 +96,32 @@ ESTRUCTURA DEL ANÁLISIS:
 11. VALIDACIÓN FEA — Si hay datos, tabla resumen con FS = Fy/σ_max
 12. CONCLUSIONES — Tabla resumen: Elemento|Actuante|Admisible|FS|Estado
 
-IMÁGENES FEA (OBLIGATORIO si el usuario envía imágenes):
-Si en el mensaje del usuario recibes imágenes (vistas Von Mises, Fusion 360, ANSYS, planos, renders 3D),
-inclúyelas OBLIGATORIAMENTE en la sección 11 VALIDACIÓN FEA como figuras.
-Usa el formato exacto:
-<div class="figura">
-<img src="data:image/jpeg;base64,[base64_de_la_imagen_recibida]" style="max-width:100%;border-radius:8px;border:1px solid #e0e0e0">
-<p class="caption">Figura N — Análisis FEA: [descripción de lo que se observa en la imagen]</p>
+IMÁGENES FEA — INSTRUCCIÓN CRÍTICA (sistema de marcadores):
+Las imágenes FEA/planos se reciben numeradas desde idx=0.
+Para incluirlas en el reporte usar EXACTAMENTE este formato de marcador:
+<img data-fea-idx="0" alt="FEA Vista frontal">
+<img data-fea-idx="1" alt="FEA Vista lateral">
+<img data-fea-idx="2" alt="FEA Vista isométrica">
+
+❌ NO intentes reproducir el base64 en el src. NO uses src="data:image/...".
+✅ Solo usa el marcador data-fea-idx="N". El sistema reemplazará automáticamente
+los marcadores con las imágenes reales después del stream.
+
+En sección 11 VALIDACIÓN FEA:
+- Si hay 1 imagen: figura centrada con caption descriptivo
+- Si hay 2+ imágenes: figuras en pares lado a lado con grid:
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+  <div class="figura">
+    <img data-fea-idx="0" alt="FEA Vista 1">
+    <p class="caption">Figura N — Von Mises vista frontal</p>
+  </div>
+  <div class="figura">
+    <img data-fea-idx="1" alt="FEA Vista 2">
+    <p class="caption">Figura N+1 — Von Mises vista lateral</p>
+  </div>
 </div>
-Si hay múltiples vistas FEA (frontal, lateral, 3D), inclúyelas todas con captions descriptivos.
-IMPORTANTE: El src="data:image/..." debe reproducir el base64 EXACTO de la imagen que recibiste — no inventes uno.
+
+Usa todos los idx disponibles (0, 1, 2, ... hasta el máximo que recibiste en el hint del usuario).
 
 CÁLCULOS OBLIGATORIOS:
 - Factor impacto CMAA: A=1.10, B=1.25, C=1.35, D=1.50, E=1.60, F=1.70
