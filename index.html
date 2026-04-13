@@ -19,6 +19,7 @@
   .mod-card{background:var(--d2);border:1px solid var(--border);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 12px;text-decoration:none;color:var(--text);transition:all .15s;position:relative;box-shadow:0 1px 3px rgba(0,0,0,.06);min-height:140px}
   .mod-card:active{transform:scale(.97)}
   .mod-card.active{border-color:var(--o);box-shadow:0 2px 12px rgba(216,59,1,.15)}
+  .mod-card.active-green{border-color:var(--green);box-shadow:0 2px 12px rgba(16,124,16,.15)}
   .mod-card.disabled{opacity:.5;pointer-events:none;cursor:default}
 
   .mod-icon{font-size:36px;margin-bottom:10px;line-height:1}
@@ -60,6 +61,10 @@
     <a href="ingenieria/index.html" class="mod-card active">
       <div class="mod-icon">🏗️</div>
       <div class="mod-name">INGENIERÍA</div>
+    </a>
+    <a href="operaciones/index.html" class="mod-card active-green">
+      <div class="mod-icon">⚙️</div>
+      <div class="mod-name">OPERACIONES</div>
     </a>
     <div class="mod-card disabled">
       <div class="mod-badge">Próximamente</div>
