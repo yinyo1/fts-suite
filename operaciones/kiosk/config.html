@@ -237,6 +237,66 @@
     border-left:2px solid #222;display:none;
   }
   .cfg-conditional.show{display:block}
+
+  /* ── Slider ── */
+  .cfg-slider-wrap{margin-top:6px}
+  .cfg-slider-label{
+    display:flex;justify-content:space-between;
+    align-items:baseline;margin-bottom:8px;
+  }
+  .cfg-slider-label span:first-child{font-size:13px;color:#ccc;font-weight:600}
+  .cfg-slider-label span:last-child{font-size:16px;color:#107C10;font-weight:700;font-family:monospace}
+  .cfg-slider{
+    -webkit-appearance:none;appearance:none;
+    width:100%;height:6px;border-radius:3px;
+    background:#222;outline:none;
+  }
+  .cfg-slider::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;
+    width:22px;height:22px;border-radius:50%;
+    background:#107C10;cursor:pointer;
+    border:3px solid #0a0a0a;box-shadow:0 0 0 1px #107C10;
+  }
+  .cfg-slider::-moz-range-thumb{
+    width:22px;height:22px;border-radius:50%;
+    background:#107C10;cursor:pointer;
+    border:3px solid #0a0a0a;box-shadow:0 0 0 1px #107C10;
+  }
+  .cfg-slider-help{font-size:11px;color:#666;margin-top:8px}
+
+  /* ── PIN master inputs ── */
+  .pin-form{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+  .pin-form input{
+    padding:11px 14px;border:1.5px solid #222;border-radius:8px;
+    background:#1a1a1a;color:#fff;font-size:18px;font-family:monospace;
+    letter-spacing:6px;text-align:center;outline:none;box-sizing:border-box;
+  }
+  .pin-form input:focus{border-color:#107C10}
+
+  /* ── Badges ── */
+  .cfg-badge{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:10px 16px;border-radius:8px;
+    font-size:13px;font-weight:700;
+    letter-spacing:0.5px;margin-top:12px;
+  }
+  .cfg-badge.demo{
+    background:rgba(230,126,34,0.12);
+    color:#e67e22;border:1px solid rgba(230,126,34,0.4);
+  }
+  .cfg-badge.live{
+    background:rgba(16,124,16,0.12);
+    color:#4cdb4c;border:1px solid rgba(16,124,16,0.4);
+  }
+  .cfg-badge .dot{
+    width:8px;height:8px;border-radius:50%;
+    background:currentColor;
+    animation:pulse 2s infinite;
+  }
+  @keyframes pulse{
+    0%,100%{opacity:1}
+    50%{opacity:0.4}
+  }
 </style>
 </head>
 <body>
@@ -401,6 +461,58 @@
     <div class="cfg-toggle-desc">Todos los eventos se registran en el Dashboard (no se puede desactivar).</div>
   </div>
 
+  <!-- ═══ SECCIÓN 6 — Verificación facial ═══ -->
+  <div class="cfg-section">
+    <h2>🔬 6. Verificación Facial</h2>
+    <p class="hint">Compara el rostro en vivo con la foto del empleado en Odoo.</p>
+
+    <div class="cfg-toggle" onclick="toggleFace()">
+      <div class="cfg-toggle-t" id="faceTog"><div class="cfg-toggle-th"></div></div>
+      <span>Habilitar verificación facial</span>
+    </div>
+
+    <div class="cfg-conditional" id="faceCond">
+      <div class="cfg-slider-wrap">
+        <div class="cfg-slider-label">
+          <span>Umbral de similitud</span>
+          <span id="thresholdVal">50% — Equilibrado</span>
+        </div>
+        <input type="range" min="40" max="80" step="5" value="50" class="cfg-slider" id="thresholdSlider" oninput="updateThreshold(this.value)">
+        <p class="cfg-slider-help">Mayor % = más estricto. Recomendado: 50% para uso industrial.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SECCIÓN 7 — PIN Master ═══ -->
+  <div class="cfg-section">
+    <h2>🔑 7. PIN Master</h2>
+    <p class="hint">Este PIN protege el acceso a esta configuración.</p>
+
+    <div class="pin-form">
+      <input type="password" id="pinCurrent" maxlength="6" placeholder="PIN actual" autocomplete="off">
+      <input type="password" id="pinNew" maxlength="4" placeholder="Nuevo PIN (4 dígitos)" autocomplete="off">
+      <input type="password" id="pinConfirm" maxlength="4" placeholder="Confirmar nuevo PIN" autocomplete="off">
+      <button class="cfg-btn" onclick="changeMasterPin()">Cambiar PIN master</button>
+    </div>
+    <div class="cfg-result" id="pinResult"></div>
+  </div>
+
+  <!-- ═══ SECCIÓN 8 — Modo Demo ═══ -->
+  <div class="cfg-section">
+    <h2>🧪 8. Modo Demo</h2>
+    <p class="hint">Activo: el kiosk usa empleados y proyectos ficticios. Desactiva esto cuando n8n/Odoo estén configurados.</p>
+
+    <div class="cfg-toggle" onclick="toggleDemo()">
+      <div class="cfg-toggle-t" id="demoTog"><div class="cfg-toggle-th"></div></div>
+      <span>Usar datos de prueba sin Odoo</span>
+    </div>
+
+    <div id="demoBadge" class="cfg-badge demo">
+      <span class="dot"></span>
+      <span id="demoBadgeText">MODO DEMO ACTIVO</span>
+    </div>
+  </div>
+
 </div>
 
 <!-- Save bar sticky -->
@@ -476,6 +588,21 @@ function loadConfig(){
   document.getElementById('notifyEmailCond').classList.toggle('show', notifyEmail);
   document.getElementById('notifyWaWebhook').value = localStorage.getItem('kiosk_notify_wa_webhook') || '';
   document.getElementById('notifyEmailFallback').value = localStorage.getItem('kiosk_notify_email_fallback') || '';
+
+  // Sección 6 — verificación facial
+  const faceEnabled = localStorage.getItem('kiosk_face_enabled') !== '0';
+  setToggle('faceTog', faceEnabled);
+  document.getElementById('faceCond').classList.toggle('show', faceEnabled);
+  const savedThresh = parseFloat(localStorage.getItem('kiosk_face_threshold') || '0.5');
+  const thresholdPct = Math.round(savedThresh * 100);
+  document.getElementById('thresholdSlider').value = thresholdPct;
+  updateThreshold(thresholdPct);
+
+  // Sección 8 — modo demo
+  const demoMode = localStorage.getItem('kiosk_demo_mode');
+  const demoOn = demoMode === null ? true : demoMode === '1';
+  setToggle('demoTog', demoOn);
+  updateDemoBadge(demoOn);
 }
 
 function saveConfig(){
@@ -520,6 +647,16 @@ function saveConfig(){
   localStorage.setItem('kiosk_notify_email', notifyEmail ? '1' : '0');
   localStorage.setItem('kiosk_notify_wa_webhook', document.getElementById('notifyWaWebhook').value.trim());
   localStorage.setItem('kiosk_notify_email_fallback', document.getElementById('notifyEmailFallback').value.trim());
+
+  // Sección 6 — facial
+  const faceOn = document.getElementById('faceTog').classList.contains('on');
+  localStorage.setItem('kiosk_face_enabled', faceOn ? '1' : '0');
+  const threshPct = parseInt(document.getElementById('thresholdSlider').value, 10);
+  localStorage.setItem('kiosk_face_threshold', (threshPct / 100).toString());
+
+  // Sección 8 — demo
+  const demoOn = document.getElementById('demoTog').classList.contains('on');
+  localStorage.setItem('kiosk_demo_mode', demoOn ? '1' : '0');
 
   const msg = document.getElementById('saveMsg');
   msg.classList.add('show');
@@ -597,6 +734,77 @@ function toggleNotify(which){
   const on = !t.classList.contains('on');
   setToggle(togId, on);
   document.getElementById(condId).classList.toggle('show', on);
+}
+
+// ═══ Sección 6 — Verificación facial ═══
+function toggleFace(){
+  const t = document.getElementById('faceTog');
+  const on = !t.classList.contains('on');
+  setToggle('faceTog', on);
+  document.getElementById('faceCond').classList.toggle('show', on);
+}
+
+function updateThreshold(val){
+  const pct = parseInt(val, 10);
+  let label;
+  if(pct <= 45)      label = pct + '% — Permisivo';
+  else if(pct <= 55) label = pct + '% — Equilibrado';
+  else if(pct <= 65) label = pct + '% — Estricto';
+  else               label = pct + '% — Muy estricto';
+  const el = document.getElementById('thresholdVal');
+  if(el) el.textContent = label;
+}
+
+// ═══ Sección 7 — PIN Master ═══
+function changeMasterPin(){
+  const current = document.getElementById('pinCurrent').value;
+  const nu      = document.getElementById('pinNew').value;
+  const conf    = document.getElementById('pinConfirm').value;
+  const res     = document.getElementById('pinResult');
+
+  function show(cls, text){
+    res.className = 'cfg-result ' + cls;
+    res.textContent = text;
+  }
+
+  if(current !== getMasterPin()){
+    show('err', '❌ PIN actual incorrecto');
+    return;
+  }
+  if(!/^\d{4}$/.test(nu)){
+    show('err', '❌ El nuevo PIN debe ser exactamente 4 dígitos numéricos');
+    return;
+  }
+  if(nu !== conf){
+    show('err', '❌ Los PINes nuevos no coinciden');
+    return;
+  }
+  localStorage.setItem('kiosk_master_pin', nu);
+  document.getElementById('pinCurrent').value = '';
+  document.getElementById('pinNew').value = '';
+  document.getElementById('pinConfirm').value = '';
+  show('ok', '✅ PIN actualizado correctamente');
+  setTimeout(function(){ res.className = 'cfg-result'; res.textContent = ''; }, 4000);
+}
+
+// ═══ Sección 8 — Modo Demo ═══
+function toggleDemo(){
+  const t = document.getElementById('demoTog');
+  const on = !t.classList.contains('on');
+  setToggle('demoTog', on);
+  updateDemoBadge(on);
+}
+
+function updateDemoBadge(on){
+  const badge = document.getElementById('demoBadge');
+  const text = document.getElementById('demoBadgeText');
+  if(on){
+    badge.className = 'cfg-badge demo';
+    text.textContent = 'MODO DEMO ACTIVO';
+  } else {
+    badge.className = 'cfg-badge live';
+    text.textContent = 'CONECTADO A ODOO';
+  }
 }
 
 // ═══ Probar conexión n8n ═══
