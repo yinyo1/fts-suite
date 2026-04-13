@@ -4,35 +4,58 @@ TYPE_PROMPTS['polipasto'] = `TIPO DE ANÁLISIS: POLIPASTO / GRÚA INDUSTRIAL
 
 ESTRUCTURA OBLIGATORIA DEL DOCUMENTO:
 
-PÁGINA 1 — PORTADA (antes de cualquier sección, obligatoria):
-<div class="portada" style="page-break-after:always;padding:40px 20px">
-  <h1 style="text-align:center;font-size:24px;margin-bottom:8px">MEMORIA DE CÁLCULO</h1>
-  <p style="text-align:center;font-size:14px;color:#555;margin-bottom:40px">Análisis Estructural · Polipasto / Grúa Industrial</p>
+PÁGINA 1 — PORTADA (antes de cualquier sección, obligatoria, estilo MC-HOI-001-2026):
+<div class="portada" style="page-break-after:always;padding:20px">
+  <h1 style="text-align:center;font-size:22px;margin:40px 0 8px;color:#1F4E79">MEMORIA DE CÁLCULO</h1>
+  <p style="text-align:center;font-size:13px;color:#555;margin-bottom:40px">Análisis Estructural · Polipasto / Grúa Industrial</p>
+
+  <!-- Tabla de datos del proyecto (labels fondo azul oscuro) -->
   <table style="width:100%;border-collapse:collapse;margin-bottom:30px">
-    <tr><th style="background:#1F4E79;color:#fff;padding:8px;text-align:left;width:30%">CLIENTE</th><td style="border:1px solid #ccc;padding:8px">[cliente] — [ubicacion_planta]</td></tr>
-    <tr><th style="background:#1F4E79;color:#fff;padding:8px;text-align:left">UBICACIÓN</th><td style="border:1px solid #ccc;padding:8px">[ubicacion_municipio], [ubicacion_estado]</td></tr>
-    <tr><th style="background:#1F4E79;color:#fff;padding:8px;text-align:left">PROYECTO</th><td style="border:1px solid #ccc;padding:8px">[proyecto]</td></tr>
-    <tr><th style="background:#1F4E79;color:#fff;padding:8px;text-align:left">No. DOC.</th><td style="border:1px solid #ccc;padding:8px">[num_documento]</td></tr>
-    <tr><th style="background:#1F4E79;color:#fff;padding:8px;text-align:left">DOCUMENTO</th><td style="border:1px solid #ccc;padding:8px">[nombre_documento]</td></tr>
+    <tr>
+      <td style="background:#1F4E79;color:#fff;padding:6px 10px;width:35%;border:1px solid #1F4E79;font-weight:bold">CLIENTE</td>
+      <td style="padding:6px 10px;border:1px solid #ccc">[cliente] / [ubicacion_planta]</td>
+    </tr>
+    <tr>
+      <td style="background:#1F4E79;color:#fff;padding:6px 10px;border:1px solid #1F4E79;font-weight:bold">UBICACIÓN</td>
+      <td style="padding:6px 10px;border:1px solid #ccc">[ubicacion_municipio], [ubicacion_estado]</td>
+    </tr>
+    <tr>
+      <td style="background:#1F4E79;color:#fff;padding:6px 10px;border:1px solid #1F4E79;font-weight:bold">PROYECTO</td>
+      <td style="padding:6px 10px;border:1px solid #ccc">[proyecto]</td>
+    </tr>
+    <tr>
+      <td style="background:#1F4E79;color:#fff;padding:6px 10px;border:1px solid #1F4E79;font-weight:bold">No. DOC.</td>
+      <td style="padding:6px 10px;border:1px solid #ccc">[num_documento]</td>
+    </tr>
+    <tr>
+      <td style="background:#1F4E79;color:#fff;padding:6px 10px;border:1px solid #1F4E79;font-weight:bold">DOCUMENTO</td>
+      <td style="padding:6px 10px;border:1px solid #ccc">[nombre_documento]</td>
+    </tr>
+    <tr>
+      <td style="background:#1F4E79;color:#fff;padding:6px 10px;border:1px solid #1F4E79;font-weight:bold">REF.</td>
+      <td style="padding:6px 10px;border:1px solid #ccc">[referencia o número de plano si existe, si no: —]</td>
+    </tr>
   </table>
-  <h2 style="font-size:14px;margin-top:30px">Tabla de Revisiones</h2>
-  <table style="width:100%;border-collapse:collapse">
-    <thead><tr>
-      <th style="background:#1F4E79;color:#fff;padding:6px">Rev.</th>
-      <th style="background:#1F4E79;color:#fff;padding:6px">Fecha</th>
-      <th style="background:#1F4E79;color:#fff;padding:6px">Descripción</th>
-      <th style="background:#1F4E79;color:#fff;padding:6px">Elaboró</th>
-      <th style="background:#1F4E79;color:#fff;padding:6px">Revisó</th>
-      <th style="background:#1F4E79;color:#fff;padding:6px">Aprobó</th>
-    </tr></thead>
-    <tbody><tr>
-      <td style="border:1px solid #ccc;padding:6px;text-align:center">[rev_numero]</td>
-      <td style="border:1px solid #ccc;padding:6px;text-align:center">[rev_fecha]</td>
-      <td style="border:1px solid #ccc;padding:6px">[rev_descripcion]</td>
-      <td style="border:1px solid #ccc;padding:6px">[elaboro]</td>
-      <td style="border:1px solid #ccc;padding:6px">[reviso]</td>
-      <td style="border:1px solid #ccc;padding:6px">[aprobo]</td>
-    </tr></tbody>
+
+  <!-- Tabla de revisiones -->
+  <h2 style="font-size:12px;margin:20px 0 8px;color:#1F4E79">TABLA DE REVISIONES</h2>
+  <table style="width:100%;border-collapse:collapse;font-size:11px">
+    <tr style="background:#1F4E79;color:#fff">
+      <th style="padding:6px;border:1px solid #1F4E79;text-align:center;width:8%">Rev.</th>
+      <th style="padding:6px;border:1px solid #1F4E79;width:15%">Fecha</th>
+      <th style="padding:6px;border:1px solid #1F4E79">Descripción</th>
+      <th style="padding:6px;border:1px solid #1F4E79;width:15%">Elaboró</th>
+      <th style="padding:6px;border:1px solid #1F4E79;width:15%">Revisó</th>
+      <th style="padding:6px;border:1px solid #1F4E79;width:15%">Aprobó</th>
+    </tr>
+    <tr>
+      <td style="padding:6px;border:1px solid #ccc;text-align:center">[rev_numero]</td>
+      <td style="padding:6px;border:1px solid #ccc">[rev_fecha]</td>
+      <td style="padding:6px;border:1px solid #ccc">[rev_descripcion]</td>
+      <td style="padding:6px;border:1px solid #ccc">[elaboro]</td>
+      <td style="padding:6px;border:1px solid #ccc">[reviso]</td>
+      <td style="padding:6px;border:1px solid #ccc">[aprobo]</td>
+    </tr>
   </table>
 </div>
 
