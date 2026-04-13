@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FTS Operaciones · Configuración</title>
+<link rel="stylesheet" href="../../shared/fts-styles.css">
+<style>
+  *{box-sizing:border-box}
+  html{height:auto;min-height:100%}
+  body{
+    min-height:100vh;height:auto;
+    overflow-y:auto;overflow-x:hidden;
+    margin:0;padding:0 0 90px;
+    background:#fafafa;color:#1a1a1a;
+    font-family:'Inter',-apple-system,sans-serif;
+  }
+
+  /* Topbar */
+  .cfg-topbar{
+    position:sticky;top:0;z-index:50;
+    background:#fff;border-bottom:1px solid #e0e0e0;
+    padding:14px 20px;display:flex;align-items:center;
+    justify-content:space-between;gap:12px;
+  }
+  .cfg-topbar h1{font-size:18px;font-weight:800;margin:0;color:#1a1a1a}
+  .cfg-topbar .back{
+    background:#107C10;color:#fff;border:none;
+    padding:8px 14px;font-size:13px;font-weight:700;
+    border-radius:8px;cursor:pointer;text-decoration:none;
+    font-family:inherit;
+  }
+  .cfg-topbar .back:hover{background:#0d6b0d}
+
+  .cfg-wrap{max-width:900px;margin:0 auto;padding:20px}
+
+  /* Tabs */
+  .cfg-tabs{
+    display:flex;gap:4px;background:#fff;
+    border:1px solid #e0e0e0;border-radius:10px;
+    padding:4px;margin-bottom:20px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.04);
+    overflow-x:auto;
+  }
+  .cfg-tab{
+    flex:1;min-width:110px;padding:10px 16px;
+    border:none;background:transparent;cursor:pointer;
+    font-size:13px;font-weight:700;color:#666;
+    border-radius:7px;font-family:inherit;
+    white-space:nowrap;transition:all .15s;
+  }
+  .cfg-tab:hover{color:#1a1a1a}
+  .cfg-tab.active{background:#107C10;color:#fff}
+
+  .cfg-pane{display:none}
+  .cfg-pane.active{display:block}
+
+  .cfg-card{
+    background:#fff;border:1px solid #e0e0e0;
+    border-radius:12px;padding:24px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.04);
+    min-height:200px;
+  }
+  .cfg-placeholder{
+    text-align:center;padding:40px 20px;color:#999;
+    font-size:14px;
+  }
+  .cfg-placeholder .emoji{font-size:40px;margin-bottom:12px}
+
+  /* Save bar sticky */
+  .save-bar{
+    position:fixed;bottom:0;left:0;right:0;
+    background:#fff;border-top:1px solid #e0e0e0;
+    padding:14px 20px;text-align:center;z-index:100;
+    box-shadow:0 -2px 8px rgba(0,0,0,0.04);
+  }
+  .save-bar button{
+    background:#107C10;color:#fff;border:none;
+    padding:13px 40px;font-size:14px;font-weight:700;
+    border-radius:8px;cursor:pointer;font-family:inherit;
+  }
+  .save-bar button:hover{background:#0d6b0d}
+  .save-bar button:active{transform:scale(0.98)}
+
+  /* Toast */
+  .toast{
+    position:fixed;bottom:80px;left:50%;
+    transform:translateX(-50%);background:#107C10;
+    color:#fff;padding:12px 24px;border-radius:10px;
+    font-size:13px;font-weight:700;
+    box-shadow:0 4px 16px rgba(0,0,0,0.2);
+    z-index:200;opacity:0;pointer-events:none;
+    transition:opacity .2s;
+  }
+  .toast.show{opacity:1}
+
+  /* Auth overlay */
+  .auth-overlay{
+    position:fixed;inset:0;background:#fafafa;
+    display:flex;align-items:center;justify-content:center;
+    z-index:9999;
+  }
+  .auth-box{
+    background:#fff;border:1px solid #e0e0e0;border-radius:16px;
+    padding:36px 32px;max-width:400px;width:90%;
+    text-align:center;
+    box-shadow:0 4px 20px rgba(0,0,0,0.08);
+  }
+  .auth-logo{
+    width:72px;height:72px;border-radius:14px;background:#107C10;
+    display:flex;align-items:center;justify-content:center;
+    font-size:32px;font-weight:800;color:#fff;
+    margin:0 auto 14px;
+    box-shadow:0 4px 16px rgba(16,124,16,0.2);
+  }
+  .auth-box h2{font-size:20px;margin-bottom:6px;color:#1a1a1a;font-weight:700}
+  .auth-box p{font-size:13px;color:#666;margin-bottom:20px}
+  .auth-box input{
+    width:100%;padding:14px;border:2px solid #e0e0e0;
+    border-radius:10px;font-size:22px;text-align:center;
+    letter-spacing:10px;font-family:monospace;
+    background:#fff;color:#1a1a1a;outline:none;
+    box-sizing:border-box;
+  }
+  .auth-box input:focus{border-color:#107C10}
+  .auth-box button{
+    width:100%;margin-top:16px;padding:14px;
+    background:#107C10;color:#fff;border:none;
+    border-radius:10px;font-size:14px;font-weight:700;
+    cursor:pointer;font-family:inherit;
+  }
+  .auth-box .auth-err{
+    color:#D83B01;font-size:12px;margin-top:10px;display:none;
+  }
+  .auth-box .auth-err.show{display:block}
+</style>
+</head>
+<body>
+
+<!-- Auth overlay -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-box">
+    <div class="auth-logo">F</div>
+    <h2>Configuración Operaciones</h2>
+    <p>Ingresa el PIN maestro para continuar</p>
+    <input type="password" id="masterPin" maxlength="6" placeholder="••••••" autocomplete="off">
+    <div class="auth-err" id="authError">PIN incorrecto</div>
+    <button onclick="tryAuth()">Desbloquear</button>
+  </div>
+</div>
+
+<!-- Topbar -->
+<div class="cfg-topbar" id="cfgTopbar" style="display:none">
+  <h1>⚙️ Configuración Operaciones</h1>
+  <a href="../index.html" class="back">← Operaciones</a>
+</div>
+
+<div class="cfg-wrap" id="cfgMain" style="display:none">
+
+  <div class="cfg-tabs">
+    <button class="cfg-tab active" data-tab="general"   onclick="showTab('general')">🌐 General</button>
+    <button class="cfg-tab"        data-tab="kiosk"     onclick="showTab('kiosk')">🖥️ Kiosk</button>
+    <button class="cfg-tab"        data-tab="planeacion" onclick="showTab('planeacion')">📋 Planeación</button>
+    <button class="cfg-tab"        data-tab="dashboard" onclick="showTab('dashboard')">📊 Dashboard</button>
+  </div>
+
+  <div class="cfg-pane active" id="pane-general">
+    <div class="cfg-card">
+      <div class="cfg-placeholder">
+        <div class="emoji">🌐</div>
+        <div>Sección General — pendiente</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cfg-pane" id="pane-kiosk">
+    <div class="cfg-card">
+      <div class="cfg-placeholder">
+        <div class="emoji">🖥️</div>
+        <div>Sección Kiosk — pendiente</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cfg-pane" id="pane-planeacion">
+    <div class="cfg-card">
+      <div class="cfg-placeholder">
+        <div class="emoji">📋</div>
+        <div>Sección Planeación — pendiente</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cfg-pane" id="pane-dashboard">
+    <div class="cfg-card">
+      <div class="cfg-placeholder">
+        <div class="emoji">📊</div>
+        <div>Sección Dashboard — pendiente</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Save bar sticky -->
+<div class="save-bar" id="saveBar" style="display:none">
+  <button onclick="saveConfig()">💾 Guardar configuración</button>
+</div>
+
+<div class="toast" id="toast">✅ Configuración guardada</div>
+
+<script>
+// ═══ PIN master ═══
+function getMasterPin(){
+  return localStorage.getItem('ops_master_pin') || '1234';
+}
+
+function tryAuth(){
+  const pin = document.getElementById('masterPin').value;
+  if(pin === getMasterPin()){
+    document.getElementById('authOverlay').style.display = 'none';
+    document.getElementById('cfgTopbar').style.display = 'flex';
+    document.getElementById('cfgMain').style.display = 'block';
+    document.getElementById('saveBar').style.display = 'block';
+  } else {
+    document.getElementById('authError').classList.add('show');
+    document.getElementById('masterPin').value = '';
+    document.getElementById('masterPin').focus();
+  }
+}
+
+document.getElementById('masterPin').addEventListener('keyup', function(e){
+  if(e.key === 'Enter') tryAuth();
+});
+document.getElementById('masterPin').focus();
+
+// ═══ Tabs ═══
+function showTab(id){
+  document.querySelectorAll('.cfg-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.cfg-pane').forEach(p => p.classList.remove('active'));
+  document.querySelector('.cfg-tab[data-tab="'+id+'"]').classList.add('active');
+  document.getElementById('pane-'+id).classList.add('active');
+}
+
+// ═══ Guardar (placeholder) ═══
+function saveConfig(){
+  // TODO: implementar guardado por sección en Config-A2
+  showToast('✅ Configuración guardada');
+}
+
+function showToast(text){
+  const el = document.getElementById('toast');
+  if(!el) return;
+  el.textContent = text;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
