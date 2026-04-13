@@ -55,21 +55,24 @@ PÁGINA 2 — ÍNDICE (antes de sección 1, obligatoria):
   </ol>
 </div>
 
-PAGE-HEADER EN CADA <h1>:
-Antes de CADA <h1> de sección numerada, insertar este header que aparecerá al inicio de cada página nueva:
+PAGE-HEADER EN CADA <h1> (excepto portada e índice):
+Antes de CADA <h1> de sección numerada, insertar este header con la estructura del PDF de referencia MC-HOI-001-2026:
+
 <div class="page-header">
-  <table style="width:100%;border:none;border-bottom:2px solid #1F4E79;margin-bottom:12px;font-size:9px">
-    <tr>
-      <td style="width:30%;font-weight:bold;padding:4px">MEMORIA DE CÁLCULO</td>
-      <td style="text-align:center;padding:4px">No.: [num_documento] | Fecha: [rev_fecha]</td>
-      <td style="width:20%;text-align:right;padding:4px">Rev.: [rev_numero]</td>
-    </tr>
-    <tr>
-      <td style="padding:4px">[nombre_documento]</td>
-      <td style="text-align:center;color:#1F4E79;font-weight:bold;padding:4px">[nombre_cliente_mapeado]</td>
-      <td></td>
-    </tr>
-  </table>
+<table style="width:100%;border-collapse:collapse;border:1px solid #1F4E79;font-size:9px">
+  <tr>
+    <td rowspan="2" style="width:28%;border:1px solid #1F4E79;padding:4px;font-weight:bold;vertical-align:middle;text-align:center">
+      MEMORIA DE CÁLCULO
+    </td>
+    <td style="border:1px solid #1F4E79;padding:4px">No.: [num_documento]</td>
+    <td style="border:1px solid #1F4E79;padding:4px">Fecha: [rev_fecha]</td>
+    <td style="border:1px solid #1F4E79;padding:4px;color:#1F4E79;font-weight:bold">Rev.: [rev_numero]</td>
+  </tr>
+  <tr>
+    <td colspan="2" style="border:1px solid #1F4E79;padding:4px">[nombre_documento]</td>
+    <td style="border:1px solid #1F4E79;padding:4px;color:#1F4E79;font-weight:bold;text-align:center">NALCO Water<br>An Ecolab Company</td>
+  </tr>
+</table>
 </div>
 
 IMPORTANTE — EVITAR REDUNDANCIA:
