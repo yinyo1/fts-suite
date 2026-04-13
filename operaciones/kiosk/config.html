@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FTS Kiosk · Configuración</title>
+<link rel="stylesheet" href="../../shared/fts-styles.css">
+<style>
+  body{background:#fafafa;font-family:'Inter',sans-serif;color:#1a1a1a;margin:0;padding:0}
+  .cfg-wrap{max-width:760px;margin:0 auto;padding:20px 20px 80px}
+  .cfg-header{display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid #e0e0e0;margin-bottom:24px}
+  .cfg-header h1{font-size:20px;font-weight:800;color:#1a1a1a}
+  .cfg-back{background:#107C10;color:#fff;padding:8px 16px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:700}
+  .cfg-section{background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:20px;margin-bottom:16px}
+  .cfg-section h2{font-size:16px;font-weight:700;margin-bottom:6px;color:#107C10}
+  .cfg-section .hint{font-size:12px;color:#666;margin-bottom:16px}
+  .cfg-field{margin-bottom:14px}
+  .cfg-field label{display:block;font-size:13px;font-weight:600;margin-bottom:4px;color:#1a1a1a}
+  .cfg-field input[type="text"],.cfg-field input[type="password"],.cfg-field input[type="number"],.cfg-field select{width:100%;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;font-family:inherit;background:#fff;box-sizing:border-box}
+  .cfg-field input:focus{outline:none;border-color:#107C10}
+  .cfg-row{display:flex;gap:12px;align-items:center}
+  .cfg-row input{flex:1}
+  .cfg-toggle{display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none;margin-bottom:10px}
+  .cfg-toggle-t{width:44px;height:24px;border-radius:12px;position:relative;transition:.2s;background:#ccc}
+  .cfg-toggle-t.on{background:#107C10}
+  .cfg-toggle-th{width:18px;height:18px;border-radius:9px;background:#fff;position:absolute;top:3px;left:3px;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+  .cfg-toggle-t.on .cfg-toggle-th{left:23px}
+  .cfg-btn{background:#107C10;color:#fff;border:none;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+  .cfg-btn.secondary{background:#0078D4}
+  .cfg-btn.danger{background:#D83B01}
+  .cfg-btn:hover{opacity:0.9}
+  .cfg-result{margin-top:10px;padding:10px 12px;border-radius:8px;font-size:13px;display:none}
+  .cfg-result.ok{display:block;background:rgba(16,124,16,0.1);color:#107C10;border:1px solid rgba(16,124,16,0.3)}
+  .cfg-result.err{display:block;background:rgba(216,59,1,0.1);color:#D83B01;border:1px solid rgba(216,59,1,0.3)}
+  .cfg-slider{width:100%}
+  .cfg-slider-val{font-weight:700;color:#107C10;font-size:14px}
+  .pin-row{display:grid;grid-template-columns:1fr 120px;gap:8px;padding:8px 0;border-bottom:1px solid #f0f0f0;align-items:center}
+  .pin-row:last-child{border-bottom:none}
+  .pin-row input{padding:6px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;font-family:monospace;text-align:center}
+  .save-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e0e0e0;padding:12px 20px;text-align:center;z-index:100}
+  .save-bar .cfg-btn{padding:12px 32px;font-size:14px}
+  .auth-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:9999}
+  .auth-box{background:#fff;border-radius:16px;padding:32px;max-width:380px;width:90%;text-align:center}
+  .auth-box h2{font-size:18px;margin-bottom:8px}
+  .auth-box p{font-size:13px;color:#666;margin-bottom:16px}
+  .auth-box input{width:100%;padding:12px;border:2px solid #e0e0e0;border-radius:8px;font-size:18px;text-align:center;letter-spacing:8px;font-family:monospace}
+</style>
+</head>
+<body>
+
+<!-- Auth overlay -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-box">
+    <div style="font-size:40px;margin-bottom:8px">🔒</div>
+    <h2>Configuración Kiosk</h2>
+    <p>Ingresa el PIN maestro para continuar</p>
+    <input type="password" id="masterPin" maxlength="6" placeholder="••••••" autocomplete="off">
+    <div id="authError" style="color:#D83B01;font-size:12px;margin-top:8px;display:none">PIN incorrecto</div>
+    <button class="cfg-btn" style="width:100%;margin-top:14px;padding:12px" onclick="tryAuth()">Desbloquear</button>
+  </div>
+</div>
+
+<div class="cfg-wrap" id="cfgMain" style="display:none">
+
+  <div class="cfg-header">
+    <h1>⚙️ Configuración Kiosk</h1>
+    <a href="../index.html" class="cfg-back">← Operaciones</a>
+  </div>
+
+  <!-- 1. Conexión Odoo/n8n -->
+  <div class="cfg-section">
+    <h2>1. Conexión Odoo / n8n</h2>
+    <p class="hint">URL base de n8n que expone los webhooks del kiosk.</p>
+    <div class="cfg-field">
+      <label>URL base de n8n</label>
+      <input type="text" id="n8nUrl" placeholder="https://primary-xxx.railway.app">
+    </div>
+    <div class="cfg-field">
+      <label>API Key</label>
+      <input type="password" id="apiKey" placeholder="••••••••••">
+    </div>
+    <button class="cfg-btn secondary" onclick="testConnection()">Probar conexión</button>
+    <div class="cfg-result" id="connResult"></div>
+  </div>
+
+  <!-- 2. Verificación facial -->
+  <div class="cfg-section">
+    <h2>2. Verificación facial</h2>
+    <p class="hint">Compara el rostro en vivo con la foto del empleado en Odoo.</p>
+    <div class="cfg-toggle" onclick="toggleFace()">
+      <div class="cfg-toggle-t" id="faceTog"><div class="cfg-toggle-th"></div></div>
+      <span id="faceTogLabel">Habilitado</span>
+    </div>
+    <div class="cfg-field">
+      <label>Umbral de similitud: <span class="cfg-slider-val" id="thresholdVal">50%</span></label>
+      <input type="range" min="40" max="80" value="50" class="cfg-slider" id="thresholdSlider" oninput="updateThreshold(this.value)">
+      <p class="hint" style="margin-top:4px">Mayor % = más estricto (más rechazos).</p>
+    </div>
+  </div>
+
+  <!-- 3. Geolocalización -->
+  <div class="cfg-section">
+    <h2>3. Geolocalización</h2>
+    <p class="hint">Registra ubicación GPS con cada check-in/out.</p>
+    <div class="cfg-toggle" onclick="toggleGeo()">
+      <div class="cfg-toggle-t" id="geoTog"><div class="cfg-toggle-th"></div></div>
+      <span id="geoTogLabel">Habilitado</span>
+    </div>
+    <div class="cfg-field">
+      <label>Radio máximo permitido (metros)</label>
+      <input type="number" id="geoRadius" placeholder="500" min="50" max="10000">
+    </div>
+  </div>
+
+  <!-- 4. PINes de empleados -->
+  <div class="cfg-section">
+    <h2>4. PINes de empleados (demo)</h2>
+    <p class="hint">PINes temporales en localStorage. En producción vienen de Odoo.</p>
+    <div id="pinesList">
+      <div style="color:#666;font-size:13px">Cargando empleados demo…</div>
+    </div>
+  </div>
+
+  <!-- 5. Modo demo -->
+  <div class="cfg-section">
+    <h2>5. Modo demo</h2>
+    <p class="hint">Usa empleados y SOs precargados sin conectar a Odoo.</p>
+    <div class="cfg-toggle" onclick="toggleDemo()">
+      <div class="cfg-toggle-t" id="demoTog"><div class="cfg-toggle-th"></div></div>
+      <span id="demoTogLabel">Deshabilitado</span>
+    </div>
+  </div>
+
+  <!-- Acciones peligrosas -->
+  <div class="cfg-section">
+    <h2 style="color:#D83B01">⚠️ Zona de riesgo</h2>
+    <button class="cfg-btn danger" onclick="clearConfig()">Borrar toda la configuración</button>
+  </div>
+
+</div>
+
+<div class="save-bar" id="saveBar" style="display:none">
+  <button class="cfg-btn" onclick="saveConfig()">💾 Guardar configuración</button>
+  <span id="saveMsg" style="margin-left:16px;color:#107C10;font-size:13px;display:none">✅ Guardado</span>
+</div>
+
+<script>
+const MASTER_PIN = '1234'; // TODO: mover a auth real
+
+const DEMO_EMPLEADOS = [
+  { id:1, nombre:'Mateo Salazar'      },
+  { id:2, nombre:'Felipe Pérez'       },
+  { id:3, nombre:'Esteban De La Cruz' },
+  { id:4, nombre:'Ana Ramírez'        },
+  { id:5, nombre:'Carlos Hernández'   },
+];
+
+function tryAuth(){
+  const pin = document.getElementById('masterPin').value;
+  if(pin === MASTER_PIN){
+    document.getElementById('authOverlay').style.display = 'none';
+    document.getElementById('cfgMain').style.display = 'block';
+    document.getElementById('saveBar').style.display = 'block';
+    loadConfig();
+  } else {
+    document.getElementById('authError').style.display = 'block';
+    document.getElementById('masterPin').value = '';
+  }
+}
+document.getElementById('masterPin').addEventListener('keyup', e => { if(e.key==='Enter') tryAuth(); });
+
+function loadConfig(){
+  document.getElementById('n8nUrl').value = localStorage.getItem('kiosk_n8n_url') || '';
+  document.getElementById('apiKey').value = localStorage.getItem('kiosk_api_key') || '';
+
+  const faceEnable = localStorage.getItem('kiosk_face_enable') !== '0';
+  setToggle('faceTog','faceTogLabel',faceEnable);
+
+  const threshold = parseInt((parseFloat(localStorage.getItem('kiosk_face_threshold') || '0.5')) * 100, 10);
+  document.getElementById('thresholdSlider').value = threshold;
+  updateThreshold(threshold);
+
+  const geoEnable = localStorage.getItem('kiosk_geo_enable') !== '0';
+  setToggle('geoTog','geoTogLabel',geoEnable);
+  document.getElementById('geoRadius').value = localStorage.getItem('kiosk_geo_radius') || '500';
+
+  const demo = localStorage.getItem('kiosk_demo_mode') === '1';
+  setToggle('demoTog','demoTogLabel',demo);
+  document.getElementById('demoTogLabel').textContent = demo ? 'Habilitado' : 'Deshabilitado';
+
+  renderPines();
+}
+
+function setToggle(togId, lblId, on){
+  const t = document.getElementById(togId);
+  const l = document.getElementById(lblId);
+  if(on) t.classList.add('on'); else t.classList.remove('on');
+  if(lblId !== 'demoTogLabel') l.textContent = on ? 'Habilitado' : 'Deshabilitado';
+}
+
+function toggleFace(){
+  const on = !document.getElementById('faceTog').classList.contains('on');
+  setToggle('faceTog','faceTogLabel',on);
+}
+function toggleGeo(){
+  const on = !document.getElementById('geoTog').classList.contains('on');
+  setToggle('geoTog','geoTogLabel',on);
+}
+function toggleDemo(){
+  const on = !document.getElementById('demoTog').classList.contains('on');
+  setToggle('demoTog','demoTogLabel',on);
+  document.getElementById('demoTogLabel').textContent = on ? 'Habilitado' : 'Deshabilitado';
+}
+
+function updateThreshold(val){
+  document.getElementById('thresholdVal').textContent = val + '%';
+}
+
+function renderPines(){
+  const pines = JSON.parse(localStorage.getItem('kiosk_pines') || '{}');
+  const html = DEMO_EMPLEADOS.map(e =>
+    '<div class="pin-row">'+
+      '<div>'+e.nombre+'</div>'+
+      '<input type="text" maxlength="4" data-emp="'+e.id+'" value="'+(pines[e.id]||'')+'" placeholder="----">'+
+    '</div>'
+  ).join('');
+  document.getElementById('pinesList').innerHTML = html;
+}
+
+async function testConnection(){
+  const url = document.getElementById('n8nUrl').value.trim();
+  const key = document.getElementById('apiKey').value.trim();
+  const res = document.getElementById('connResult');
+  res.className = 'cfg-result';
+  res.textContent = '⏳ Probando conexión…';
+  res.style.display = 'block';
+  if(!url){
+    res.className = 'cfg-result err';
+    res.textContent = '❌ Ingresa la URL de n8n';
+    return;
+  }
+  try{
+    const r = await fetch(url.replace(/\/$/,'') + '/kiosk/ping', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json','x-api-key':key },
+      body:'{}'
+    });
+    if(r.ok){
+      res.className = 'cfg-result ok';
+      res.textContent = '✅ Conexión OK ('+r.status+')';
+    } else {
+      res.className = 'cfg-result err';
+      res.textContent = '❌ Error '+r.status+' '+r.statusText;
+    }
+  } catch(e){
+    res.className = 'cfg-result err';
+    res.textContent = '❌ '+e.message;
+  }
+}
+
+function saveConfig(){
+  localStorage.setItem('kiosk_n8n_url', document.getElementById('n8nUrl').value.trim());
+  localStorage.setItem('kiosk_api_key', document.getElementById('apiKey').value.trim());
+  localStorage.setItem('kiosk_face_enable', document.getElementById('faceTog').classList.contains('on') ? '1' : '0');
+  localStorage.setItem('kiosk_face_threshold', (parseInt(document.getElementById('thresholdSlider').value,10)/100).toString());
+  localStorage.setItem('kiosk_geo_enable', document.getElementById('geoTog').classList.contains('on') ? '1' : '0');
+  localStorage.setItem('kiosk_geo_radius', document.getElementById('geoRadius').value || '500');
+  localStorage.setItem('kiosk_demo_mode', document.getElementById('demoTog').classList.contains('on') ? '1' : '0');
+
+  const pines = {};
+  document.querySelectorAll('#pinesList input').forEach(inp => {
+    const id = parseInt(inp.dataset.emp, 10);
+    if(inp.value.trim()) pines[id] = inp.value.trim();
+  });
+  localStorage.setItem('kiosk_pines', JSON.stringify(pines));
+
+  const msg = document.getElementById('saveMsg');
+  msg.style.display = 'inline';
+  setTimeout(() => msg.style.display = 'none', 3000);
+}
+
+function clearConfig(){
+  if(!confirm('¿Borrar TODA la configuración del kiosk? Esta acción no se puede deshacer.')) return;
+  ['kiosk_n8n_url','kiosk_api_key','kiosk_face_enable','kiosk_face_threshold','kiosk_geo_enable','kiosk_geo_radius','kiosk_demo_mode','kiosk_pines'].forEach(k => localStorage.removeItem(k));
+  loadConfig();
+  alert('Configuración borrada');
+}
+</script>
+</body>
+</html>
