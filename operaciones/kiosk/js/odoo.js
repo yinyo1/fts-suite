@@ -2,8 +2,8 @@
 // Todas las llamadas pasan por n8n como proxy seguro
 
 const ODOO_CFG = () => ({
-  n8nUrl: localStorage.getItem('kiosk_n8n_url') || '',
-  apiKey: localStorage.getItem('kiosk_api_key') || ''
+  n8nUrl: localStorage.getItem('ops_n8n_url') || '',
+  apiKey: localStorage.getItem('ops_api_key') || ''
 });
 
 async function odooFetch(endpoint, body){

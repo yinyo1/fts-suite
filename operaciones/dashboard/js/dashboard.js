@@ -8,13 +8,17 @@ const D = {
   refreshTimer: null,
 };
 
-const REFRESH_MS = 5 * 60 * 1000; // 5 minutos
-
 // ═══ Configuración ═══
 function loadConfig(){
+  const refreshMin = parseInt(localStorage.getItem('ops_dash_refresh') || '5', 10);
   return {
-    n8nUrl:   localStorage.getItem('kiosk_n8n_url') || '',
-    demoMode: localStorage.getItem('kiosk_demo_mode') !== 'false',
+    n8nUrl:         localStorage.getItem('ops_n8n_url') || '',
+    apiKey:         localStorage.getItem('ops_api_key') || '',
+    demoMode:       localStorage.getItem('ops_demo_mode') !== '0',
+    refreshMs:      Math.max(1, refreshMin) * 60 * 1000,
+    alertaSinChecar: localStorage.getItem('ops_dash_alerta_sin_checar') !== '0',
+    alertaFueraZona: localStorage.getItem('ops_dash_alerta_fuera_zona') !== '0',
+    alertaExtra:     localStorage.getItem('ops_dash_alerta_extra') !== '0',
   };
 }
 
@@ -65,39 +69,46 @@ const DEMO_TECNICOS = [
 
 function generarAlertasDemo(tecnicos){
   const alertas = [];
+  const cfg = D.config || {};
 
   // Sin checar
-  const sinChecar = tecnicos.filter(t => t.status === 'sin_checar');
-  if(sinChecar.length){
-    alertas.push({
-      nivel: 'err',
-      icon: '⚠️',
-      titulo: sinChecar.length + ' técnico(s) sin checar',
-      msg: sinChecar.map(t => t.nombre).join(', ')
-    });
+  if(cfg.alertaSinChecar !== false){
+    const sinChecar = tecnicos.filter(t => t.status === 'sin_checar');
+    if(sinChecar.length){
+      alertas.push({
+        nivel: 'err',
+        icon: '⚠️',
+        titulo: sinChecar.length + ' técnico(s) sin checar',
+        msg: sinChecar.map(t => t.nombre).join(', ')
+      });
+    }
   }
 
   // Fuera de zona pendientes
-  const fueraZona = tecnicos.filter(t => t.status === 'fuera_zona' || t.geo_ok === false);
-  if(fueraZona.length){
-    alertas.push({
-      nivel: 'warn',
-      icon: '📍',
-      titulo: fueraZona.length + ' check-in(s) fuera de zona',
-      msg: fueraZona.map(t => t.nombre + (t.motivo ? ' — ' + t.motivo : '')).join(' · ')
-    });
+  if(cfg.alertaFueraZona !== false){
+    const fueraZona = tecnicos.filter(t => t.status === 'fuera_zona' || t.geo_ok === false);
+    if(fueraZona.length){
+      alertas.push({
+        nivel: 'warn',
+        icon: '📍',
+        titulo: fueraZona.length + ' check-in(s) fuera de zona',
+        msg: fueraZona.map(t => t.nombre + (t.motivo ? ' — ' + t.motivo : '')).join(' · ')
+      });
+    }
   }
 
   // Horas extra
-  const LIMITE = 576; // 9.6 hrs
-  const conExtra = tecnicos.filter(t => t.horas_efectivas > LIMITE);
-  if(conExtra.length){
-    alertas.push({
-      nivel: 'info',
-      icon: '⚡',
-      titulo: conExtra.length + ' técnico(s) con horas extra',
-      msg: conExtra.map(t => t.nombre + ' (+' + formatHoras(t.horas_efectivas - LIMITE) + ')').join(' · ')
-    });
+  if(cfg.alertaExtra !== false){
+    const LIMITE = 576; // 9.6 hrs
+    const conExtra = tecnicos.filter(t => t.horas_efectivas > LIMITE);
+    if(conExtra.length){
+      alertas.push({
+        nivel: 'info',
+        icon: '⚡',
+        titulo: conExtra.length + ' técnico(s) con horas extra',
+        msg: conExtra.map(t => t.nombre + ' (+' + formatHoras(t.horas_efectivas - LIMITE) + ')').join(' · ')
+      });
+    }
   }
 
   return alertas;
@@ -134,7 +145,7 @@ async function loadDatos(){
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': localStorage.getItem('kiosk_api_key') || ''
+          'x-api-key': D.config.apiKey || ''
         },
         body: '{}'
       });
@@ -268,9 +279,9 @@ function renderAlertas(){
 // ═══ Init ═══
 async function initDashboard(){
   await loadDatos();
-  // Refresh automático cada 5 minutos
+  // Refresh automático según configuración
   if(D.refreshTimer) clearInterval(D.refreshTimer);
-  D.refreshTimer = setInterval(loadDatos, REFRESH_MS);
+  D.refreshTimer = setInterval(loadDatos, D.config.refreshMs || 5 * 60 * 1000);
   // Timestamp tick cada segundo
   setInterval(actualizarTimestamp, 1000);
 }

@@ -45,9 +45,12 @@ function fmtFechaCorta(fechaStr){
 // ═══ Config ═══
 function loadConfig(){
   return {
-    n8nUrl:   localStorage.getItem('kiosk_n8n_url') || '',
-    apiKey:   localStorage.getItem('kiosk_api_key') || '',
-    demoMode: localStorage.getItem('kiosk_demo_mode') !== 'false',
+    n8nUrl:       localStorage.getItem('ops_n8n_url') || '',
+    apiKey:       localStorage.getItem('ops_api_key') || '',
+    demoMode:     localStorage.getItem('ops_demo_mode') !== '0',
+    horaEntrada:  localStorage.getItem('ops_plan_hora_entrada') || '07:00',
+    horaSalida:   localStorage.getItem('ops_plan_hora_salida') || '17:00',
+    waWebhook:    localStorage.getItem('ops_plan_wa_webhook') || '',
   };
 }
 
@@ -129,7 +132,13 @@ function onFechaDiarioChange(){
 window.onFechaDiarioChange = onFechaDiarioChange;
 
 function addTecnico(){
-  P.planDiario.push({ empleado:'', origen:'fts', planta:'', entrada:'07:00', salida:'17:00' });
+  P.planDiario.push({
+    empleado: '',
+    origen:   'fts',
+    planta:   '',
+    entrada:  (P.config && P.config.horaEntrada) || '07:00',
+    salida:   (P.config && P.config.horaSalida)  || '17:00',
+  });
   renderPlanDiario();
 }
 window.addTecnico = addTecnico;
