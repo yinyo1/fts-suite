@@ -2,6 +2,14 @@
 
 TYPE_PROMPTS['polipasto'] = `TIPO DE ANÁLISIS: POLIPASTO / GRÚA INDUSTRIAL
 
+IMPORTANTE — EVITAR REDUNDANCIA CON EL HEADER:
+El header del documento ya incluye cliente, proyecto, número de documento, revisión y fecha.
+- En la sección 1 INTRODUCCIÓN: NO repitas cliente, proyecto ni ubicación como lista o párrafo.
+  Solo escribe el ALCANCE TÉCNICO: qué se calcula, qué normas aplican, qué elementos se verifican.
+  Máximo 2 párrafos cortos.
+- En la sección 3 DESCRIPCIÓN DEL SISTEMA: La tabla de parámetros es SOLO datos técnicos
+  (capacidad, claro, altura, perfiles, clase CMAA, dimensiones). NO incluir cliente ni proyecto en esta tabla.
+
 NORMAS APLICABLES:
 AISC 360-10, AISC Design Guide 7 (Industrial Buildings), CMAA 74 (Specification for Top Running Single Girder Cranes), ACI 318-19 para anclajes, ASCE 7-10.
 
