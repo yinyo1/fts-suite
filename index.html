@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>FTS Suite</title>
 <link rel="stylesheet" href="shared/fts-styles.css">
+<script src="shared/auth-suite.js"></script>
 <style>
   .launcher{min-height:100vh;display:flex;flex-direction:column;max-width:520px;margin:0 auto;padding-bottom:28px}
   .launcher-header{text-align:center;padding:32px 16px 8px}
@@ -32,6 +33,30 @@
 </style>
 </head>
 <body>
+
+<!-- Login overlay -->
+<div id="login-overlay" style="display:none;position:fixed;inset:0;background:#fff;z-index:9999;flex-direction:column;align-items:center;justify-content:center;padding:24px;font-family:'Inter',sans-serif">
+  <div style="width:160px;height:54px;background:var(--logo) center/contain no-repeat;margin-bottom:24px"></div>
+  <div style="width:100%;max-width:360px">
+    <h2 style="text-align:center;color:#1a1a1a;font-size:20px;margin:0 0 8px;font-weight:800">FTS Suite</h2>
+    <p style="text-align:center;color:#666;font-size:14px;margin:0 0 24px">Ingresa tus credenciales para continuar</p>
+
+    <input id="login-user" type="text" placeholder="Usuario" autocomplete="username" style="width:100%;padding:12px;border:1px solid #e0e0e0;border-radius:8px;font-size:15px;margin-bottom:12px;box-sizing:border-box;background:#fff;color:#1a1a1a;font-family:inherit;outline:none">
+
+    <input id="login-pass" type="password" placeholder="Contraseña" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" style="width:100%;padding:12px;border:1px solid #e0e0e0;border-radius:8px;font-size:15px;margin-bottom:16px;box-sizing:border-box;background:#fff;color:#1a1a1a;font-family:inherit;outline:none">
+
+    <button id="login-btn" onclick="doLogin()" style="width:100%;background:#D83B01;color:#fff;border:none;padding:14px;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit">Ingresar</button>
+
+    <p id="login-error" style="color:#D83B01;text-align:center;font-size:13px;margin:12px 0 0;min-height:20px;font-weight:600"></p>
+
+    <!-- Primer login ftsmaster -->
+    <div id="first-login-box" style="display:none;margin-top:16px;background:#FFF9E6;border:1px solid #BF8F00;border-radius:8px;padding:16px">
+      <p style="font-size:13px;color:#BF8F00;margin:0 0 8px;font-weight:600">Primer acceso — configura tu contraseña</p>
+      <input id="login-pass-confirm" type="password" placeholder="Confirma tu contraseña" style="width:100%;padding:10px;border:1px solid #BF8F00;border-radius:6px;font-size:14px;box-sizing:border-box;background:#fff;color:#1a1a1a;font-family:inherit;outline:none">
+    </div>
+  </div>
+  <p style="color:#ccc;font-size:11px;margin-top:32px">FTS Full Technology Systems © 2026</p>
+</div>
 
 <div class="launcher">
 
@@ -97,6 +122,104 @@
 </div>
 
 <script>
+/* ── Auth centralizado ── */
+let _firstLoginData = null;
+
+async function initAuth(){
+  const session = FTSAuth.getSession();
+  if(session){
+    document.getElementById('login-overlay').style.display = 'none';
+    FTSAuth.initActivityTracking();
+    applyModuleAccess(session);
+    return;
+  }
+  const overlay = document.getElementById('login-overlay');
+  overlay.style.display = 'flex';
+  const u = document.getElementById('login-user');
+  if(u) u.focus();
+}
+
+async function doLogin(){
+  const username = document.getElementById('login-user').value.trim();
+  const password = document.getElementById('login-pass').value;
+  const errorEl  = document.getElementById('login-error');
+  const btnEl    = document.getElementById('login-btn');
+
+  errorEl.style.color = '#D83B01';
+  errorEl.textContent = '';
+  btnEl.textContent   = 'Verificando…';
+  btnEl.disabled      = true;
+
+  try{
+    const result = await FTSAuth.login(username, password);
+    if(!result){
+      errorEl.textContent = 'Usuario o contraseña incorrectos';
+      btnEl.textContent = 'Ingresar';
+      btnEl.disabled = false;
+      return;
+    }
+    if(result.firstLogin){
+      _firstLoginData = result;
+      document.getElementById('first-login-box').style.display = 'block';
+      document.getElementById('login-pass-confirm').focus();
+      errorEl.style.color = '#BF8F00';
+      errorEl.textContent = 'Confirma tu contraseña para activar tu cuenta';
+      btnEl.textContent = 'Activar cuenta';
+      btnEl.disabled = false;
+      btnEl.onclick = confirmFirstLogin;
+      return;
+    }
+    FTSAuth.setSession(result.user);
+    FTSAuth.initActivityTracking();
+    document.getElementById('login-overlay').style.display = 'none';
+    applyModuleAccess(result.user);
+  } catch(e){
+    errorEl.textContent = 'Error al verificar: ' + e.message;
+    btnEl.textContent = 'Ingresar';
+    btnEl.disabled = false;
+  }
+}
+
+async function confirmFirstLogin(){
+  const pass    = document.getElementById('login-pass').value;
+  const confirm = document.getElementById('login-pass-confirm').value;
+  const errorEl = document.getElementById('login-error');
+  const btnEl   = document.getElementById('login-btn');
+
+  if(pass !== confirm){
+    errorEl.style.color = '#D83B01';
+    errorEl.textContent = 'Las contraseñas no coinciden';
+    return;
+  }
+  if(pass.length < 6){
+    errorEl.style.color = '#D83B01';
+    errorEl.textContent = 'Mínimo 6 caracteres';
+    return;
+  }
+
+  // Persistir hash localmente hasta que exista el panel admin
+  _firstLoginData.user.password_hash = _firstLoginData.tempHash;
+  localStorage.setItem('fts_master_hash', _firstLoginData.tempHash);
+
+  FTSAuth.setSession(_firstLoginData.user);
+  FTSAuth.initActivityTracking();
+  document.getElementById('login-overlay').style.display = 'none';
+  applyModuleAccess(_firstLoginData.user);
+
+  // Reset estado del formulario por si se regresa
+  btnEl.onclick = doLogin;
+  btnEl.textContent = 'Ingresar';
+  document.getElementById('first-login-box').style.display = 'none';
+  errorEl.textContent = '';
+}
+
+function applyModuleAccess(userOrSession){
+  // TODO Auth-B: ocultar módulos no permitidos según
+  // userOrSession.modulos. Por ahora ftsmaster ve todo.
+}
+
+document.addEventListener('DOMContentLoaded', initAuth);
+
 (function(){
   'use strict';
 
