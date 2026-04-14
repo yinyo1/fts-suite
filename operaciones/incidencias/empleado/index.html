@@ -202,6 +202,8 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('home-nombre').textContent = s.nombre || s.username;
   renderTipos();
   cargarMisIncidencias();
+  // Pull desde GitHub en background para traer incidencias nuevas
+  IncDB.pull().then(function(){ cargarMisIncidencias(); });
 });
 
 // ─── Pantalla 2: Tipos ───
