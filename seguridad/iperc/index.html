@@ -4,6 +4,30 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>FTS · IPERC — Análisis de Riesgos</title>
+<!-- FTS Auth (verificar sesión antes de cualquier otra cosa) -->
+<script src="../../shared/auth-suite.js"></script>
+<script>
+(function(){
+  const s = window.FTSAuth && FTSAuth.getSession();
+  if(!s){
+    window.location.href = '../../index.html';
+    return;
+  }
+  const subs = s.modulos === 'all'
+    ? { iperc:true }
+    : ((s.modulos && s.modulos.seguridad && s.modulos.seguridad.submodulos) || {});
+  if(subs.iperc === false){
+    window.location.href = '../index.html';
+    return;
+  }
+  // Tiene acceso → ocultar overlay de IPERC al cargar
+  document.addEventListener('DOMContentLoaded', function(){
+    const overlay = document.getElementById('auth-overlay')
+      || document.querySelector('[id*="auth"]');
+    if(overlay) overlay.style.display = 'none';
+  });
+})();
+</script>
 <!-- Librerías externas -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
