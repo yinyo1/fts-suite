@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>FTS Diagnóstico</title>
+<style>
+  body{font-family:monospace;padding:16px;background:#1a1a1a;color:#0f0;font-size:13px;line-height:1.5}
+  h2{color:#0f0;margin-top:0}
+  .item{margin-bottom:6px;padding:8px 10px;background:#222;border-radius:4px;word-wrap:break-word;overflow-wrap:break-word}
+  .ok{color:#0f0}
+  .err{color:#f55}
+  .warn{color:#ff0}
+  .section{color:#4cdb4c;font-weight:bold;margin-top:12px;border-top:1px solid #333;padding-top:10px}
+  button{background:#107C10;color:#fff;border:none;padding:14px 28px;border-radius:8px;font-size:16px;cursor:pointer;margin-top:16px;font-family:inherit;font-weight:bold}
+  button:hover{background:#0d6b0d}
+  button:active{transform:scale(0.97)}
+</style>
+</head>
+<body>
+<h2>🔧 FTS Diagnóstico</h2>
+<div id="output"></div>
+<button onclick="runDiag()">▶ Ejecutar diagnóstico</button>
+
+<script>
+async function runDiag(){
+  const out = document.getElementById('output');
+  out.innerHTML = '';
+
+  function log(msg, type){
+    const cls = type || 'ok';
+    out.innerHTML += '<div class="item ' + cls + '">' + msg + '</div>';
+  }
+  function section(title){
+    out.innerHTML += '<div class="item section">=== ' + title + ' ===</div>';
+  }
+
+  // 1) LocalStorage keys
+  section('LOCAL STORAGE');
+  const keys = ['ops_n8n_url','ops_odoo_url','ops_demo_mode','ops_github_token','ops_sync_password'];
+  keys.forEach(function(k){
+    const v = localStorage.getItem(k);
+    if(v){
+      const isSecret = k.indexOf('key') !== -1 || k.indexOf('token') !== -1 || k.indexOf('password') !== -1;
+      const display = isSecret ? '***' + v.slice(-4) : v;
+      log('✅ ' + k + ' = ' + display);
+    } else {
+      log('❌ ' + k + ' = (vacío)', 'err');
+    }
+  });
+
+  // 2) Public config desde GitHub
+  section('PUBLIC CONFIG');
+  try{
+    const r = await fetch(
+      'https://raw.githubusercontent.com/yinyo1/fts-suite/main/shared/public-config.json?t=' + Date.now(),
+      { cache:'no-store' }
+    );
+    if(!r.ok){
+      log('❌ HTTP ' + r.status, 'err');
+    } else {
+      const d = await r.json();
+      log('✅ public-config.json cargado');
+      log('n8n_url: ' + (d.n8n_url || '(vacío)'));
+      log('odoo_url: ' + (d.odoo_url || '(vacío)'));
+      log('demo_mode: ' + d.demo_mode);
+      log('updated: ' + (d.updated || '?'));
+    }
+  } catch(e){
+    log('❌ Error: ' + e.message, 'err');
+  }
+
+  // 3) Ping n8n
+  section('N8N PING');
+  const n8nUrl = localStorage.getItem('ops_n8n_url') || 'https://primary-production-5c3c.up.railway.app';
+  log('URL usada: ' + n8nUrl);
+  try{
+    const controller = new AbortController();
+    const t = setTimeout(function(){ controller.abort(); }, 8000);
+    const r = await fetch(
+      n8nUrl + '/webhook/kiosk/empleados',
+      { method:'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ test:true }),
+        signal: controller.signal
+      }
+    );
+    clearTimeout(t);
+    log('HTTP status: ' + r.status);
+    const text = await r.text();
+    let d;
+    try{ d = JSON.parse(text); } catch(e){ d = null; }
+    if(d && d.empleados){
+      log('✅ n8n respondió: ' + d.empleados.length + ' empleados');
+      const primer = d.empleados[0];
+      log('Primer empleado: ' + ((primer && (primer.name || primer.nombre)) || '?'));
+    } else if(d){
+      log('⚠️ n8n respondió pero sin empleados: ' + JSON.stringify(d).substring(0,200), 'warn');
+    } else {
+      log('⚠️ Respuesta no-JSON: ' + text.substring(0,200), 'warn');
+    }
+  } catch(e){
+    log('❌ n8n error: ' + e.message, 'err');
+  }
+
+  // 4) Kiosk demo mode check
+  section('KIOSK MODE');
+  const demo = localStorage.getItem('ops_demo_mode');
+  if(demo === '0'){
+    log('✅ Modo demo DESACTIVADO (n8n real)');
+  } else if(demo === '1'){
+    log('⚠️ Modo demo ACTIVO (valor: 1)', 'warn');
+  } else {
+    log('⚠️ ops_demo_mode no configurado (valor: ' + demo + ') — default es DEMO', 'warn');
+  }
+
+  // 5) Sesión FTSAuth
+  section('SESIÓN FTSAUTH');
+  try{
+    const sess = sessionStorage.getItem('fts_session');
+    if(sess){
+      const s = JSON.parse(sess);
+      log('✅ Sesión activa: ' + (s.username || '?'));
+      log('Role: ' + (s.role || '?'));
+      log('Modulos: ' + (typeof s.modulos === 'string' ? s.modulos : 'objeto granular'));
+    } else {
+      log('⚠️ Sin sesión activa', 'warn');
+    }
+  } catch(e){
+    log('❌ Error leyendo sesión: ' + e.message, 'err');
+  }
+}
+</script>
+</body>
+</html>
