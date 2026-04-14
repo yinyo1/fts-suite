@@ -244,10 +244,36 @@
     }
   }
 
+  // ─── Helper: cargar URLs públicas inmediatamente ───
+  // Versión sincrónica (rápida) para usar al inicio de módulos
+  // que necesitan ops_n8n_url antes de hacer requests.
+  // No carga secrets cifrados — solo n8n_url, odoo_url, demo_mode.
+  async function loadPublicConfig(){
+    if(localStorage.getItem('ops_n8n_url')) return true; // Ya está configurado
+    try{
+      const res = await fetch(
+        'https://raw.githubusercontent.com/yinyo1/fts-suite/main/shared/public-config.json?t=' + Date.now(),
+        { cache:'no-store' }
+      );
+      if(!res.ok) return false;
+      const pub = await res.json();
+      if(pub.n8n_url)  localStorage.setItem('ops_n8n_url',  pub.n8n_url);
+      if(pub.odoo_url) localStorage.setItem('ops_odoo_url', pub.odoo_url);
+      if(pub.demo_mode !== undefined){
+        localStorage.setItem('ops_demo_mode', pub.demo_mode ? '1' : '0');
+      }
+      console.log('[FTSAuth] Public config loaded');
+      return true;
+    } catch(e){
+      console.warn('[FTSAuth] Public config falló:', e.message);
+      return false;
+    }
+  }
+
   window.FTSAuth = {
     login, logout, setSession, getSession,
     canAccess, isMaster, isLoggedIn,
-    hashPassword, loadUsers, autoLoadConfig,
+    hashPassword, loadUsers, autoLoadConfig, loadPublicConfig,
     initActivityTracking, updateActivity, resetInactivityTimer
   };
 })();
