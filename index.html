@@ -8,6 +8,7 @@
 <title>FTS Suite</title>
 <link rel="stylesheet" href="shared/fts-styles.css">
 <script src="shared/auth-suite.js"></script>
+<script src="shared/modules-registry.js"></script>
 <style>
   .launcher{min-height:100vh;display:flex;flex-direction:column;max-width:520px;margin:0 auto;padding-bottom:28px}
   .launcher-header{text-align:center;padding:32px 16px 8px}
@@ -79,29 +80,29 @@
 
   <!-- Grid de módulos -->
   <div class="mod-grid">
-    <a href="seguridad/index.html" class="mod-card active">
+    <a id="card-seguridad" href="seguridad/index.html" class="mod-card active">
       <div class="mod-icon">🛡️</div>
       <div class="mod-name">SEGURIDAD</div>
     </a>
-    <a href="ingenieria/index.html" class="mod-card active">
+    <a id="card-ingenieria" href="ingenieria/index.html" class="mod-card active">
       <div class="mod-icon">🏗️</div>
       <div class="mod-name">INGENIERÍA</div>
     </a>
-    <a href="operaciones/index.html" class="mod-card active-green">
+    <a id="card-operaciones" href="operaciones/index.html" class="mod-card active-green">
       <div class="mod-icon">⚙️</div>
       <div class="mod-name">OPERACIONES</div>
     </a>
-    <div class="mod-card disabled">
+    <div id="card-rh" class="mod-card disabled">
       <div class="mod-badge">Próximamente</div>
       <div class="mod-icon">👥</div>
       <div class="mod-name">RH</div>
     </div>
-    <div class="mod-card disabled">
+    <div id="card-comercial" class="mod-card disabled">
       <div class="mod-badge">Próximamente</div>
       <div class="mod-icon">📋</div>
       <div class="mod-name">COMERCIAL</div>
     </div>
-    <div class="mod-card disabled">
+    <div id="card-odoo" class="mod-card disabled">
       <div class="mod-badge">Próximamente</div>
       <div class="mod-icon">⚙️</div>
       <div class="mod-name">ODOO</div>
@@ -217,13 +218,43 @@ async function confirmFirstLogin(){
 }
 
 function applyModuleAccess(userOrSession){
-  // Mostrar botón Admin solo para ftsmaster
-  if(userOrSession.role === 'master'){
-    const adminBtn = document.getElementById('admin-btn');
-    if(adminBtn) adminBtn.style.display = 'inline-block';
-  }
-  // TODO Auth-B: ocultar módulos no permitidos según
-  // userOrSession.modulos para roles distintos de master.
+  const role    = userOrSession.role;
+  const modulos = userOrSession.modulos;
+  const nombre  = userOrSession.nombre || userOrSession.username;
+
+  // User bar siempre visible si hay sesión
+  const userBar = document.getElementById('user-bar');
+  if(userBar) userBar.style.display = 'flex';
+  const userInfo = document.getElementById('user-info');
+  if(userInfo) userInfo.textContent = '👤 ' + nombre;
+
+  // Botón admin solo para master
+  const adminBtn = document.getElementById('admin-btn');
+  if(adminBtn) adminBtn.style.display = (role === 'master') ? 'inline-block' : 'none';
+
+  // Master ve todo — no aplicar restricciones
+  if(role === 'master' || modulos === 'all') return;
+
+  // Aplicar restricciones por módulo usando el registry
+  if(typeof MODULES_REGISTRY === 'undefined') return;
+  MODULES_REGISTRY.forEach(function(mod){
+    const card = document.getElementById(mod.cardId);
+    if(!card) return;
+    const tieneAcceso = modulos && modulos[mod.id] && modulos[mod.id].acceso === true;
+    if(!tieneAcceso){
+      card.style.opacity = '0.4';
+      card.style.pointerEvents = 'none';
+      card.style.cursor = 'not-allowed';
+      if(!card.querySelector('.access-badge')){
+        const b = document.createElement('div');
+        b.className = 'access-badge';
+        b.style.cssText = 'position:absolute;top:8px;right:8px;background:#D83B01;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px';
+        b.textContent = '🔒 Sin acceso';
+        card.style.position = 'relative';
+        card.appendChild(b);
+      }
+    }
+  });
 }
 
 document.addEventListener('DOMContentLoaded', initAuth);
