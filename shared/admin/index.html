@@ -80,6 +80,27 @@
   }
   .adm-placeholder .emoji{font-size:40px;margin-bottom:12px}
 
+  /* Cards reutilizables */
+  .cfg-card{
+    background:#fff;border:1px solid #e0e0e0;
+    border-radius:12px;padding:22px;margin-bottom:16px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.04);
+  }
+  .cfg-card h3{margin:0 0 8px;color:#1a1a1a;font-size:15px;font-weight:700}
+  .cfg-label{
+    display:block;font-size:13px;font-weight:600;
+    color:#555;margin:12px 0 4px;
+  }
+  .cfg-input{
+    width:100%;padding:10px;border-radius:8px;
+    border:1px solid #e0e0e0;font-size:14px;
+    box-sizing:border-box;background:#fff;
+    color:#1a1a1a;margin-bottom:4px;
+    font-family:inherit;outline:none;
+    transition:border-color .15s;
+  }
+  .cfg-input:focus{border-color:#107C10}
+
   /* Modal */
   .adm-modal-overlay{
     position:fixed;inset:0;
@@ -147,9 +168,86 @@
 
   <!-- Panel API Keys -->
   <div class="adm-pane" id="pane-apikeys">
-    <div class="adm-placeholder">
-      <div class="emoji">🔑</div>
-      <div>🔑 API Keys — pendiente</div>
+    <div class="cfg-card">
+      <h3>🔑 API Keys del sistema</h3>
+      <p style="font-size:13px;color:#666;margin:0 0 16px">
+        Las API Keys se guardan cifradas junto con la configuración. Solo visible para ftsmaster.
+      </p>
+
+      <!-- Odoo -->
+      <div style="border:1px solid #e0e0e0;border-radius:10px;padding:14px;margin-bottom:12px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:10px;color:#1a1a1a">⚙️ Odoo</div>
+        <label class="cfg-label">URL de Odoo</label>
+        <input id="key_odoo_url" type="url" class="cfg-input" placeholder="https://serviciosfts.odoo.com">
+        <label class="cfg-label">API Key de Odoo</label>
+        <div style="position:relative">
+          <input id="key_odoo_api" type="password" class="cfg-input" placeholder="••••••••••••••••">
+          <button onclick="toggleKey('key_odoo_api')" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px">👁️</button>
+        </div>
+      </div>
+
+      <!-- n8n -->
+      <div style="border:1px solid #e0e0e0;border-radius:10px;padding:14px;margin-bottom:12px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:10px;color:#1a1a1a">🔗 n8n (Railway)</div>
+        <label class="cfg-label">URL de n8n</label>
+        <input id="key_n8n_url" type="url" class="cfg-input" placeholder="https://primary-xxx.up.railway.app">
+        <label class="cfg-label">API Key n8n</label>
+        <div style="position:relative">
+          <input id="key_n8n_api" type="password" class="cfg-input" placeholder="••••••••••••••••">
+          <button onclick="toggleKey('key_n8n_api')" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px">👁️</button>
+        </div>
+      </div>
+
+      <!-- Groq -->
+      <div style="border:1px solid #e0e0e0;border-radius:10px;padding:14px;margin-bottom:12px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:10px;color:#1a1a1a">🤖 IA — Groq</div>
+        <label class="cfg-label">Groq API Key</label>
+        <div style="position:relative">
+          <input id="key_groq" type="password" class="cfg-input" placeholder="gsk_••••••••••••••••">
+          <button onclick="toggleKey('key_groq')" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px">👁️</button>
+        </div>
+      </div>
+
+      <!-- Gemini -->
+      <div style="border:1px solid #e0e0e0;border-radius:10px;padding:14px;margin-bottom:12px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:10px;color:#1a1a1a">🤖 IA — Gemini</div>
+        <label class="cfg-label">Gemini API Key</label>
+        <div style="position:relative">
+          <input id="key_gemini" type="password" class="cfg-input" placeholder="AIza••••••••••••••••">
+          <button onclick="toggleKey('key_gemini')" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px">👁️</button>
+        </div>
+      </div>
+
+      <!-- OpenRouter -->
+      <div style="border:1px solid #e0e0e0;border-radius:10px;padding:14px;margin-bottom:12px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:10px;color:#1a1a1a">🤖 IA — OpenRouter</div>
+        <label class="cfg-label">OpenRouter API Key</label>
+        <div style="position:relative">
+          <input id="key_openrouter" type="password" class="cfg-input" placeholder="sk-or-••••••••••••••••">
+          <button onclick="toggleKey('key_openrouter')" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px">👁️</button>
+        </div>
+      </div>
+
+      <!-- GitHub -->
+      <div style="border:1px solid #e0e0e0;border-radius:10px;padding:14px;margin-bottom:12px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:10px;color:#1a1a1a">🐙 GitHub</div>
+        <label class="cfg-label">
+          GitHub Personal Access Token
+          <a href="https://github.com/settings/tokens" target="_blank" style="font-size:11px;color:#0078D4;margin-left:8px;font-weight:400">Administrar tokens</a>
+        </label>
+        <div style="position:relative">
+          <input id="key_github_token" type="password" class="cfg-input" placeholder="ghp_••••••••••••••••">
+          <button onclick="toggleKey('key_github_token')" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px">👁️</button>
+        </div>
+      </div>
+
+      <div style="background:#FFF9E6;border:1px solid #BF8F00;border-radius:8px;padding:12px;font-size:12px;color:#BF8F00;margin-top:4px">
+        ⚠️ Las API Keys se guardan en localStorage de este dispositivo. Usa el tab <b>☁️ Sincronización</b> para cifrarlas y sincronizarlas entre dispositivos.
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <button class="adm-btn green" onclick="saveApiKeys(true)">💾 Guardar API Keys</button>
+      </div>
     </div>
   </div>
 
@@ -212,8 +310,53 @@ function showTab(id){
   document.querySelectorAll('.adm-pane').forEach(p => p.classList.remove('active'));
   document.querySelector('.adm-tab[data-tab="'+id+'"]').classList.add('active');
   document.getElementById('pane-'+id).classList.add('active');
+  if(id === 'apikeys') loadApiKeys();
 }
 window.showTab = showTab;
+
+// ═══ API Keys ═══
+const API_KEYS_MAP = {
+  key_odoo_url:     'ops_odoo_url',
+  key_odoo_api:     'ops_api_key',
+  key_n8n_url:      'ops_n8n_url',
+  key_n8n_api:      'ops_n8n_api_key',
+  key_groq:         'ops_groq_key',
+  key_gemini:       'ops_gemini_key',
+  key_openrouter:   'ops_openrouter_key',
+  key_github_token: 'ops_github_token'
+};
+
+function toggleKey(id){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.type = el.type === 'password' ? 'text' : 'password';
+}
+
+function loadApiKeys(){
+  Object.keys(API_KEYS_MAP).forEach(function(inputId){
+    const el = document.getElementById(inputId);
+    if(el) el.value = localStorage.getItem(API_KEYS_MAP[inputId]) || '';
+  });
+}
+
+function saveApiKeys(showFeedback){
+  Object.keys(API_KEYS_MAP).forEach(function(inputId){
+    const el = document.getElementById(inputId);
+    if(el){
+      const val = el.value.trim();
+      if(val){
+        localStorage.setItem(API_KEYS_MAP[inputId], val);
+      }
+    }
+  });
+  if(showFeedback){
+    alert('✅ API Keys guardadas localmente. Usa "Sincronización" para cifrarlas y subirlas a GitHub.');
+  }
+}
+
+window.toggleKey    = toggleKey;
+window.loadApiKeys  = loadApiKeys;
+window.saveApiKeys  = saveApiKeys;
 
 // ═══ Modal ═══
 function closeModal(){
