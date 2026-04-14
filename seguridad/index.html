@@ -705,6 +705,16 @@ window.addEventListener('load', async function(){
           card.style.display = 'none';
         });
       }
+      // IPERC card: si tiene acceso → bypass; si no → ocultar
+      const ipercCard = document.querySelector('[onclick*="s-iperc-pin"]');
+      if(ipercCard){
+        if(_subs.iperc === false){
+          ipercCard.style.display = 'none';
+        } else {
+          // Reemplazar onclick para entrar directo a IPERC sin login
+          ipercCard.setAttribute('onclick', 'bypassIpercLogin()');
+        }
+      }
     }, 100);
 
     // Pre-cargar usuarios del módulo en background (sin bloquear)
@@ -1830,7 +1840,33 @@ function goEmpAccess() {
 }
 
 // ═══ IPERC ACCESS LOGIN ═══
+function bypassIpercLogin(){
+  const _s = window.FTSAuth && FTSAuth.getSession();
+  if(!_s){ go('s-iperc-pin'); return; }
+
+  // Inyectar sesión sintética en sessionStorage para que iperc-config.js
+  // la encuentre cuando cargue iperc/index.html
+  const ipercSession = {
+    user:     _s.username,
+    nombre:   _s.nombre || _s.username,
+    esMaster: _s.role === 'master',
+    acceso:   _s.role === 'master' ? 'master' : 'segurista',
+    via:      'fts_auth'
+  };
+  sessionStorage.setItem('fts_iperc_session', JSON.stringify(ipercSession));
+
+  // Navegar a IPERC
+  window.location.href = 'iperc/index.html';
+}
+window.bypassIpercLogin = bypassIpercLogin;
+
 async function ipercAccessLogin(){
+  // Bypass FTSAuth — si hay sesión válida, entrar directo a IPERC
+  const _s = window.FTSAuth && FTSAuth.getSession();
+  if(_s){
+    bypassIpercLogin();
+    return;
+  }
   const user=document.getElementById('iperc-login-user').value.trim().toLowerCase();
   const pass=document.getElementById('iperc-login-pass').value.trim();
   const err=document.getElementById('iperc-login-err');
