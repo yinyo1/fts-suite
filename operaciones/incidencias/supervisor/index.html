@@ -14,7 +14,10 @@
     window.location.href = '../../../index.html';
     return;
   }
-  if(s.role !== 'master' && s.role !== 'supervisor'){
+  const puedeSupervizar = s.role === 'master'
+    || s.modulos === 'all'
+    || (s.modulos && s.modulos.operaciones && s.modulos.operaciones.submodulos && s.modulos.operaciones.submodulos.supervisor === true);
+  if(!puedeSupervizar){
     window.location.href = '../index.html';
     return;
   }
