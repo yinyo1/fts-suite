@@ -425,13 +425,12 @@ async function saveToGitHub(){
 
     const content = JSON.stringify({ users: mergedUsers }, null, 2);
 
-    // Obtener SHA fresco (con cache bust + headers anti-cache)
+    // Obtener SHA fresco (cache bust por query string)
     const shaRes = await fetch(
       'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/users-suite.json?ref=main&t=' + Date.now(),
       { headers: {
           'Authorization': 'token ' + token,
-          'Accept':        'application/vnd.github.v3+json',
-          'Cache-Control': 'no-cache'
+          'Accept':        'application/vnd.github.v3+json'
       }}
     );
     const existing = shaRes.ok ? await shaRes.json() : null;
