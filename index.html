@@ -110,6 +110,9 @@
 
 </div>
 
+<!-- Botón Admin (solo visible para ftsmaster) -->
+<a id="admin-btn" href="shared/admin/" style="display:none;position:fixed;bottom:44px;right:16px;background:#1a1a1a;color:#fff;border-radius:10px;padding:8px 14px;font-size:13px;text-decoration:none;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,0.2);font-family:'Inter',sans-serif;font-weight:700">👑 Admin</a>
+
 <!-- Statusbar -->
 <div id="fts-statusbar">
   <div class="sb-left">
@@ -214,8 +217,13 @@ async function confirmFirstLogin(){
 }
 
 function applyModuleAccess(userOrSession){
+  // Mostrar botón Admin solo para ftsmaster
+  if(userOrSession.role === 'master'){
+    const adminBtn = document.getElementById('admin-btn');
+    if(adminBtn) adminBtn.style.display = 'inline-block';
+  }
   // TODO Auth-B: ocultar módulos no permitidos según
-  // userOrSession.modulos. Por ahora ftsmaster ve todo.
+  // userOrSession.modulos para roles distintos de master.
 }
 
 document.addEventListener('DOMContentLoaded', initAuth);
