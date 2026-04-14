@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FTS · Mis Incidencias</title>
+<link rel="stylesheet" href="../../../shared/fts-styles.css">
+<script src="../../../shared/auth-suite.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script src="../js/incidencias.js"></script>
+<script>
+(function(){
+  const s = window.FTSAuth && FTSAuth.getSession();
+  if(!s){
+    window.location.href = '../../../index.html';
+    return;
+  }
+  FTSAuth.initActivityTracking();
+  window._INC_SESSION = s;
+})();
+</script>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#fafafa;font-family:'Inter',-apple-system,sans-serif;min-height:100vh;color:#1a1a1a}
+  .scr{display:none;flex-direction:column;min-height:100vh}
+  .scr.on{display:flex}
+
+  .inc-topbar{
+    background:#fff;border-bottom:1px solid #e0e0e0;
+    padding:12px 16px;display:flex;align-items:center;
+    gap:12px;position:sticky;top:0;z-index:100;
+  }
+  .inc-back{
+    background:none;border:none;font-size:22px;
+    cursor:pointer;color:#666;padding:4px 8px;
+    border-radius:6px;font-family:inherit;
+  }
+  .inc-back:hover{background:#f5f5f5}
+  .inc-content{padding:16px;flex:1}
+
+  .inc-tipo-btn{
+    width:100%;background:#fff;border:2px solid #e0e0e0;
+    border-radius:12px;padding:16px;margin-bottom:10px;
+    display:flex;align-items:center;gap:14px;
+    cursor:pointer;text-align:left;
+    transition:all 0.2s;font-family:inherit;
+  }
+  .inc-tipo-btn:hover{border-color:#107C10;background:#f9fdf9}
+  .inc-tipo-icon{
+    font-size:24px;width:44px;height:44px;
+    border-radius:10px;display:flex;
+    align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+
+  .inc-card{
+    background:#fff;border:1px solid #e0e0e0;
+    border-radius:12px;padding:14px;margin-bottom:10px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+  .badge-pendiente{background:#FFF2CC;color:#BF8F00}
+  .badge-aprobada{background:#E2EFDA;color:#107C10}
+  .badge-denegada{background:#FFE8E8;color:#D83B01}
+
+  .inc-field{margin-bottom:14px}
+  .inc-field label{
+    display:block;font-size:12px;font-weight:700;
+    color:#555;margin-bottom:4px;text-transform:uppercase;
+    letter-spacing:0.5px;
+  }
+  .inc-input{
+    width:100%;padding:11px;border-radius:8px;
+    border:1px solid #e0e0e0;font-size:14px;
+    background:#fff;font-family:'Inter',sans-serif;
+    color:#1a1a1a;outline:none;
+  }
+  .inc-input:focus{border-color:#107C10}
+
+  .btn-primary{
+    width:100%;background:#107C10;color:#fff;border:none;
+    padding:14px;border-radius:10px;font-size:15px;
+    font-weight:700;cursor:pointer;margin-top:8px;
+    font-family:inherit;
+  }
+  .btn-primary:hover{background:#0d6b0d}
+  .btn-secondary{
+    width:100%;background:#fff;color:#666;
+    border:1px solid #e0e0e0;padding:12px;
+    border-radius:10px;font-size:14px;cursor:pointer;
+    margin-top:8px;font-family:inherit;
+  }
+  .btn-secondary:hover{border-color:#107C10;color:#1a1a1a}
+
+  /* Face verify */
+  .face-circle{
+    width:220px;height:220px;border-radius:50%;
+    overflow:hidden;border:4px solid #107C10;
+    margin:0 auto 16px;background:#f0f0f0;
+    box-shadow:0 4px 16px rgba(16,124,16,0.15);
+  }
+  #face-video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+  .face-status{text-align:center;font-size:14px;margin:8px 0;font-weight:600}
+</style>
+</head>
+<body>
+
+<!-- ── PANTALLA 1: Home ── -->
+<div class="scr on" id="sc-home">
+  <div class="inc-topbar">
+    <button class="inc-back" onclick="window.location.href='../index.html'">←</button>
+    <div>
+      <div style="font-weight:700">Mis Incidencias</div>
+      <div id="home-nombre" style="font-size:12px;color:#666"></div>
+    </div>
+  </div>
+  <div class="inc-content">
+    <button class="btn-primary" style="margin-bottom:16px" onclick="go('sc-tipo')">+ Nueva incidencia</button>
+    <div style="font-weight:700;font-size:14px;margin-bottom:10px">Mis solicitudes</div>
+    <div id="lista-incidencias">
+      <p style="color:#999;text-align:center;font-size:14px">Sin incidencias registradas</p>
+    </div>
+  </div>
+</div>
+
+<!-- ── PANTALLA 2: Tipo ── -->
+<div class="scr" id="sc-tipo">
+  <div class="inc-topbar">
+    <button class="inc-back" onclick="go('sc-home')">←</button>
+    <div style="font-weight:700">¿Qué deseas solicitar?</div>
+  </div>
+  <div class="inc-content" id="tipos-lista"></div>
+</div>
+
+<!-- ── PANTALLA 3: Face Verify ── -->
+<div class="scr" id="sc-face">
+  <div class="inc-topbar">
+    <button class="inc-back" onclick="stopCamera();go('sc-tipo')">←</button>
+    <div>
+      <div style="font-weight:700">Verificación facial</div>
+      <div style="font-size:12px;color:#666">Confirma que eres tú</div>
+    </div>
+  </div>
+  <div class="inc-content" style="align-items:center;display:flex;flex-direction:column;justify-content:center;flex:1;text-align:center">
+    <p style="color:#666;font-size:14px;margin-bottom:16px">Mira a la cámara para verificar tu identidad</p>
+    <div class="face-circle">
+      <video id="face-video" autoplay playsinline muted></video>
+    </div>
+    <div class="face-status" id="face-status">Iniciando cámara…</div>
+    <button class="btn-primary" style="max-width:300px" onclick="verificarFace()">📸 Verificar que soy yo</button>
+    <button class="btn-secondary" style="max-width:300px" onclick="saltarFaceVerify()">Continuar sin verificación facial</button>
+    <p style="font-size:11px;color:#999;margin-top:8px">* La verificación facial previene el uso de sesiones prestadas</p>
+  </div>
+</div>
+
+<!-- ── PANTALLA 4: Formulario ── -->
+<div class="scr" id="sc-form">
+  <div class="inc-topbar">
+    <button class="inc-back" onclick="go('sc-tipo')">←</button>
+    <div>
+      <div style="font-weight:700" id="form-titulo">Nueva incidencia</div>
+    </div>
+  </div>
+  <div class="inc-content">
+    <div id="form-campos"></div>
+    <div id="form-error" style="color:#D83B01;font-size:13px;min-height:20px;margin-bottom:8px;font-weight:600"></div>
+    <button class="btn-primary" onclick="enviarIncidencia()">📤 Enviar solicitud</button>
+    <button class="btn-secondary" onclick="go('sc-tipo')">Cancelar</button>
+  </div>
+</div>
+
+<!-- ── PANTALLA 5: Confirmación ── -->
+<div class="scr" id="sc-confirm">
+  <div class="inc-content" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;flex:1">
+    <div style="font-size:72px;margin-bottom:16px">✅</div>
+    <h2 style="margin:0 0 8px">Solicitud enviada</h2>
+    <p style="color:#666;font-size:14px;margin:0 0 16px" id="confirm-texto"></p>
+    <div style="background:#f5f5f5;border-radius:10px;padding:14px;width:100%;max-width:360px;font-size:13px;color:#666;text-align:left;margin-bottom:16px" id="confirm-detalle"></div>
+    <p style="color:#999;font-size:12px">Regresando en <span id="confirm-count">4</span>s…</p>
+  </div>
+</div>
+
+<script>
+// ─── Estado ───
+const INC = {
+  tipo:           null,
+  faceVerificado: false,
+  fotoFace:       null,
+  horasExtraDisp: null
+};
+
+// ─── Navegación ───
+function go(id){
+  document.querySelectorAll('.scr').forEach(s => s.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+}
+
+// ─── Init ───
+document.addEventListener('DOMContentLoaded', function(){
+  const s = window._INC_SESSION;
+  document.getElementById('home-nombre').textContent = s.nombre || s.username;
+  renderTipos();
+  cargarMisIncidencias();
+});
+
+// ─── Pantalla 2: Tipos ───
+function renderTipos(){
+  const cont = document.getElementById('tipos-lista');
+  cont.innerHTML = Object.keys(INC_TYPES).map(function(key){
+    const t = INC_TYPES[key];
+    const parts = t.label.split(' ');
+    const emoji = parts[0];
+    const text = parts.slice(1).join(' ');
+    return '<button class="inc-tipo-btn" onclick="seleccionarTipo(\''+key+'\')">'+
+      '<div class="inc-tipo-icon" style="background:'+t.color+'22;color:'+t.color+'">'+emoji+'</div>'+
+      '<div>'+
+        '<div style="font-weight:700;font-size:15px">'+text+'</div>'+
+        (t.nota ? '<div style="font-size:12px;color:#999;margin-top:2px">'+t.nota+'</div>' : '')+
+      '</div>'+
+    '</button>';
+  }).join('');
+}
+
+async function seleccionarTipo(tipo){
+  INC.tipo = tipo;
+
+  // Validar tiempo extra
+  if(tipo === 'tiempo_extra'){
+    const s = window._INC_SESSION;
+    const hoy = new Date().toISOString().split('T')[0];
+    const disp = IncDB.getHorasExtraDisponibles(s.username, hoy);
+    if(disp === null){
+      alert('⏰ El supervisor aún no ha contabilizado el día de hoy. No puedes solicitar tiempo extra hasta que el día esté contabilizado.');
+      return;
+    }
+    if(disp <= 0){
+      alert('⏰ No tienes horas extra disponibles. Ya usaste todas las horas extra registradas para hoy.');
+      return;
+    }
+    INC.horasExtraDisp = disp;
+  }
+
+  // Ir a verificación facial
+  go('sc-face');
+  iniciarCamera();
+}
+
+// ─── Pantalla 3: Face verify ───
+let _stream = null;
+
+async function iniciarCamera(){
+  const status = document.getElementById('face-status');
+  try{
+    _stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'user' } });
+    document.getElementById('face-video').srcObject = _stream;
+    status.textContent = 'Cámara lista — presiona Verificar';
+    status.style.color = '#107C10';
+  } catch(e){
+    status.textContent = '⚠️ Sin acceso a cámara';
+    status.style.color = '#BF8F00';
+  }
+}
+
+function stopCamera(){
+  if(_stream){
+    _stream.getTracks().forEach(function(t){ t.stop(); });
+    _stream = null;
+  }
+}
+
+function capturarFotoFace(){
+  const video = document.getElementById('face-video');
+  if(!video || !video.srcObject) return null;
+  const canvas = document.createElement('canvas');
+  canvas.width  = video.videoWidth  || 320;
+  canvas.height = video.videoHeight || 240;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  return canvas.toDataURL('image/jpeg', 0.7);
+}
+
+async function verificarFace(){
+  const status = document.getElementById('face-status');
+  status.textContent = '🔄 Verificando…';
+  status.style.color = '#0078D4';
+
+  try{
+    INC.fotoFace = capturarFotoFace();
+
+    const MODELS = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights';
+
+    if(typeof faceapi !== 'undefined'){
+      await faceapi.nets.tinyFaceDetector.loadFromUri(MODELS);
+      const video = document.getElementById('face-video');
+      const detections = await faceapi.detectAllFaces(
+        video, new faceapi.TinyFaceDetectorOptions()
+      );
+
+      if(detections.length === 0){
+        status.textContent = '❌ No se detectó ningún rostro';
+        status.style.color = '#D83B01';
+        return;
+      }
+      if(detections.length > 1){
+        status.textContent = '❌ Se detectaron múltiples rostros — debes estar solo';
+        status.style.color = '#D83B01';
+        return;
+      }
+    }
+
+    INC.faceVerificado = true;
+    status.textContent = '✅ Identidad verificada';
+    status.style.color = '#107C10';
+
+    setTimeout(function(){
+      stopCamera();
+      renderForm();
+      go('sc-form');
+    }, 800);
+
+  } catch(e){
+    status.textContent = '⚠️ Error en verificación: ' + e.message;
+    status.style.color = '#BF8F00';
+  }
+}
+
+function saltarFaceVerify(){
+  INC.faceVerificado = false;
+  INC.fotoFace = capturarFotoFace();
+  stopCamera();
+  renderForm();
+  go('sc-form');
+}
+
+// ─── Pantalla 4: Formulario ───
+function campo(id, label, type, value){
+  if(type === 'textarea'){
+    return '<div class="inc-field">'+
+      '<label>'+label+'</label>'+
+      '<textarea id="campo_'+id+'" class="inc-input" rows="3" placeholder="'+label+'" style="resize:vertical">'+(value||'')+'</textarea>'+
+    '</div>';
+  }
+  const ph = (type === 'date' || type === 'time') ? '' : 'placeholder="'+label+'"';
+  return '<div class="inc-field">'+
+    '<label>'+label+'</label>'+
+    '<input type="'+type+'" id="campo_'+id+'" class="inc-input" value="'+(value||'')+'" '+ph+'>'+
+  '</div>';
+}
+
+function renderForm(){
+  const t = INC_TYPES[INC.tipo];
+  document.getElementById('form-titulo').textContent = t.label;
+  document.getElementById('form-error').textContent = '';
+
+  const hoy = new Date().toISOString().split('T')[0];
+  let html = '';
+
+  if(INC.tipo === 'vacaciones' || INC.tipo === 'incapacidad'){
+    html += campo('fecha_inicio', 'Fecha inicio', 'date', hoy);
+    html += campo('fecha_fin',    'Fecha fin',    'date', hoy);
+    html += campo(
+      INC.tipo === 'incapacidad' ? 'descripcion' : 'comentarios',
+      INC.tipo === 'incapacidad' ? 'Descripción' : 'Comentarios (opcional)',
+      'textarea', ''
+    );
+    html += '<div id="dias-calc" style="background:#f0f7ff;border-radius:8px;padding:10px;font-size:13px;color:#0078D4;margin-bottom:8px;display:none">'+
+      '📅 <span id="dias-count"></span> días'+
+    '</div>';
+  }
+
+  if(INC.tipo === 'permiso_goce' || INC.tipo === 'permiso_sin_goce'){
+    html += campo('fecha',  'Fecha',  'date',     hoy);
+    html += campo('motivo', 'Motivo', 'textarea', '');
+    html += '<div class="inc-field">'+
+      '<label>¿Medio día?</label>'+
+      '<label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;text-transform:none;letter-spacing:0">'+
+        '<input type="checkbox" id="campo_medio_dia"> Sí, es medio día'+
+      '</label>'+
+    '</div>';
+  }
+
+  if(INC.tipo === 'tiempo_extra'){
+    const minDisp = INC.horasExtraDisp || 0;
+    const hrsDisp = (minDisp / 60).toFixed(1);
+    html += '<div style="background:#FFF2CC;border:1px solid #BF8F00;border-radius:8px;padding:10px;font-size:13px;color:#BF8F00;margin-bottom:12px">'+
+      '⏰ Tiempo extra disponible hoy: <strong>'+hrsDisp+' hrs ('+minDisp+' min)</strong>'+
+    '</div>';
+    html += campo('fecha', 'Fecha', 'date', hoy);
+    html += '<div class="inc-field">'+
+      '<label>Horas extra (máx '+hrsDisp+' hrs)</label>'+
+      '<input type="number" id="campo_horas_extra" class="inc-input" min="0.5" max="'+hrsDisp+'" step="0.5" value="'+hrsDisp+'" readonly>'+
+      '<p style="font-size:11px;color:#999;margin:4px 0 0">El valor se calcula automáticamente de tu registro del día.</p>'+
+    '</div>';
+    html += campo('so_proyecto', 'SO / Proyecto trabajado', 'text', '');
+  }
+
+  if(INC.tipo === 'olvide_checar'){
+    html += campo('fecha', 'Fecha', 'date', hoy);
+    html += '<div class="inc-field">'+
+      '<label>Tipo de checada olvidada</label>'+
+      '<select id="campo_tipo_checada" class="inc-input">'+
+        '<option value="entrada">🟢 Entrada</option>'+
+        '<option value="salida_comida">🍽️ Salida a comer</option>'+
+        '<option value="regreso_comida">🔄 Regreso de comida</option>'+
+        '<option value="salida">🔴 Salida</option>'+
+      '</select>'+
+    '</div>';
+    html += campo('hora_aproximada', 'Hora aproximada', 'time', '');
+    html += campo('motivo', 'Motivo', 'textarea', '');
+  }
+
+  document.getElementById('form-campos').innerHTML = html;
+
+  // Calcular días para vacaciones / incapacidad
+  if(INC.tipo === 'vacaciones' || INC.tipo === 'incapacidad'){
+    ['campo_fecha_inicio','campo_fecha_fin'].forEach(function(id){
+      const el = document.getElementById(id);
+      if(el) el.addEventListener('change', calcDias);
+    });
+    calcDias();
+  }
+}
+
+function calcDias(){
+  const e1 = document.getElementById('campo_fecha_inicio');
+  const e2 = document.getElementById('campo_fecha_fin');
+  if(!e1 || !e2) return;
+  const d1 = e1.value, d2 = e2.value;
+  if(!d1 || !d2) return;
+  const dias = Math.max(0, Math.round((new Date(d2) - new Date(d1)) / (1000 * 60 * 60 * 24)) + 1);
+  const box = document.getElementById('dias-calc');
+  const cnt = document.getElementById('dias-count');
+  if(box && cnt){
+    cnt.textContent = dias;
+    box.style.display = 'block';
+  }
+}
+
+function getFieldValue(id){
+  const el = document.getElementById('campo_' + id);
+  if(!el) return null;
+  if(el.type === 'checkbox') return el.checked;
+  return el.value;
+}
+
+function enviarIncidencia(){
+  const s = window._INC_SESSION;
+  const t = INC_TYPES[INC.tipo];
+  const errEl = document.getElementById('form-error');
+  errEl.textContent = '';
+
+  // Recopilar campos
+  const datos = { tipo: INC.tipo };
+  for(let i = 0; i < t.campos.length; i++){
+    const campo = t.campos[i];
+    const val = getFieldValue(campo);
+    if(!val && val !== false && campo !== 'comentarios'){
+      errEl.textContent = 'Por favor completa todos los campos';
+      return;
+    }
+    datos[campo] = val;
+  }
+
+  // Validar tiempo extra
+  if(INC.tipo === 'tiempo_extra'){
+    const hrs = parseFloat(datos.horas_extra || 0);
+    const maxHrs = (INC.horasExtraDisp || 0) / 60;
+    if(hrs > maxHrs){
+      errEl.textContent = 'No puedes solicitar más horas de las disponibles';
+      return;
+    }
+    datos.horas_min = Math.round(hrs * 60);
+  }
+
+  // Guardar incidencia
+  IncDB.save(Object.assign({}, datos, {
+    username:        s.username,
+    nombre:          s.nombre || s.username,
+    face_verificado: INC.faceVerificado,
+    foto_face:       INC.fotoFace
+  }));
+
+  // Mostrar confirmación
+  document.getElementById('confirm-texto').textContent = t.label + ' enviada para aprobación';
+  document.getElementById('confirm-detalle').innerHTML =
+    '<div>👤 ' + (s.nombre || s.username) + '</div>'+
+    '<div style="margin-top:4px">📋 ' + t.label + '</div>'+
+    '<div style="margin-top:4px">🕐 ' + new Date().toLocaleString('es-MX') + '</div>'+
+    '<div style="margin-top:8px"><span class="badge badge-pendiente">🟡 Pendiente aprobación</span></div>';
+
+  go('sc-confirm');
+
+  // Countdown
+  let count = 4;
+  const interval = setInterval(function(){
+    count--;
+    const el = document.getElementById('confirm-count');
+    if(el) el.textContent = count;
+    if(count <= 0){
+      clearInterval(interval);
+      INC.tipo = null;
+      INC.faceVerificado = false;
+      INC.fotoFace = null;
+      cargarMisIncidencias();
+      go('sc-home');
+    }
+  }, 1000);
+}
+
+// ─── Lista de incidencias ───
+function cargarMisIncidencias(){
+  const s = window._INC_SESSION;
+  const lista = IncDB.get({ username: s.username });
+  const cont = document.getElementById('lista-incidencias');
+
+  if(!lista.length){
+    cont.innerHTML = '<p style="color:#999;text-align:center;font-size:14px">Sin incidencias registradas</p>';
+    return;
+  }
+
+  cont.innerHTML = lista.map(function(inc){
+    const t = INC_TYPES[inc.tipo] || { label:inc.tipo, color:'#666' };
+    const fecha = inc.fecha || inc.fecha_inicio || (inc.timestamp ? inc.timestamp.split('T')[0] : '—');
+    const badgeClass = 'badge-' + inc.status;
+    const badgeLabel = inc.status === 'pendiente' ? '🟡 Pendiente'
+                     : inc.status === 'aprobada'  ? '✅ Aprobada'
+                     : '❌ Denegada';
+    const aprobInfo = inc.aprobado_por
+      ? '<div style="font-size:11px;color:#107C10;margin-top:4px">✅ Aprobado por: ' + inc.aprobado_por + '</div>'
+      : '';
+    return '<div class="inc-card">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'+
+        '<div style="font-weight:700;font-size:14px;color:'+t.color+'">'+t.label+'</div>'+
+        '<span class="badge '+badgeClass+'">'+badgeLabel+'</span>'+
+      '</div>'+
+      '<div style="font-size:13px;color:#666;margin-top:4px">📅 '+fecha+'</div>'+
+      aprobInfo+
+    '</div>';
+  }).join('');
+}
+</script>
+</body>
+</html>
