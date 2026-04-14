@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>FTS · Ingeniería</title>
 <link rel="stylesheet" href="../shared/fts-styles.css">
+<script src="../shared/auth-suite.js"></script>
+<script>
+(function(){
+  if(!window.FTSAuth || !FTSAuth.isLoggedIn()){
+    window.location.href = '../index.html';
+  }
+})();
+</script>
 <style>
   .ing-hero{padding:28px 20px 12px;text-align:center}
   .ing-hero h1{font-size:22px;font-weight:800;margin-bottom:4px}
