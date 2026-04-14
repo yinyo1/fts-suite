@@ -30,8 +30,7 @@
           'https://api.github.com/repos/yinyo1/fts-suite/contents/' + AUTH_FILE + '?ref=main&t=' + Date.now(),
           { headers: {
               'Authorization': 'token ' + token,
-              'Accept':        'application/vnd.github.v3+json',
-              'Cache-Control': 'no-cache'
+              'Accept':        'application/vnd.github.v3+json'
           }}
         );
         if(apiRes.ok){
@@ -42,14 +41,10 @@
           return JSON.parse(decoded);
         }
       }
-      // Intento 2: raw.githubusercontent.com con cache bust agresivo
+      // Intento 2: raw.githubusercontent.com con cache bust por query string
       const raw = await fetch(
         AUTH_RAW + '?nocache=' + Math.random() + '&t=' + Date.now(),
-        { cache: 'no-store',
-          headers: {
-            'Cache-Control': 'no-cache, no-store',
-            'Pragma':        'no-cache'
-          }}
+        { cache: 'no-store' }
       );
       if(!raw.ok) return getDefaultUsers();
       return await raw.json();
