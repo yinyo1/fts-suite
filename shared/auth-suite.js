@@ -193,35 +193,54 @@
     return !!getSession();
   }
 
-  // ─── Auto-cargar config cifrada de GitHub ───
-  // Si hay password maestra guardada, descifra ops-config.json
-  // y aplica todas las keys ops_* al localStorage. No bloquea
-  // el flujo de login si falla.
+  // ─── Auto-cargar config: pública + secrets cifrados ───
+  // Paso 1: descarga URLs no-sensibles de public-config.json (sin password).
+  // Paso 2: si hay password guardada, descifra ops-config.json con los secrets.
   async function autoLoadConfig(){
+    // ── PASO 1 — Config pública (sin password) ──
     try{
+      const PUBLIC_URL = 'https://raw.githubusercontent.com/yinyo1/fts-suite/main/shared/public-config.json?nocache=' + Math.random() + '&t=' + Date.now();
+
+      const res = await fetch(PUBLIC_URL, { cache:'no-store' });
+      if(res.ok){
+        const pub = await res.json();
+        // Solo aplicar si no están ya configuradas (permite override local)
+        if(pub.n8n_url && !localStorage.getItem('ops_n8n_url')){
+          localStorage.setItem('ops_n8n_url', pub.n8n_url);
+        }
+        if(pub.odoo_url && !localStorage.getItem('ops_odoo_url')){
+          localStorage.setItem('ops_odoo_url', pub.odoo_url);
+        }
+        if(pub.demo_mode !== undefined && !localStorage.getItem('ops_demo_mode')){
+          localStorage.setItem('ops_demo_mode', pub.demo_mode ? '1' : '0');
+        }
+        console.log('[FTSAuth] Config pública cargada');
+      }
+    } catch(e){
+      console.warn('[FTSAuth] Config pública falló:', e.message);
+    }
+
+    // ── PASO 2 — Secrets cifrados (solo si hay password guardada) ──
+    try{
+      const password = localStorage.getItem('ops_sync_password');
+      if(!password) return true; // OK, config pública ya se aplicó
+
+      if(typeof ConfigSync === 'undefined') return true;
+
       const CONFIG_RAW = 'https://raw.githubusercontent.com/yinyo1/fts-suite/main/shared/ops-config.json?nocache=' + Math.random() + '&t=' + Date.now();
 
-      const res = await fetch(CONFIG_RAW, { cache:'no-store' });
-      if(!res.ok) return false;
+      const res2 = await fetch(CONFIG_RAW, { cache:'no-store' });
+      if(!res2.ok) return true;
 
-      const fileData = await res.json();
-      if(!fileData || !fileData.data) return false;
+      const fileData = await res2.json();
+      if(!fileData || !fileData.data) return true;
 
-      // Necesitamos la contraseña maestra para descifrar.
-      // Solo se aplica si el usuario ya la guardó previamente
-      // (típicamente tras un sync exitoso anterior).
-      const password = localStorage.getItem('ops_sync_password');
-      if(!password) return false;
-
-      if(typeof ConfigSync === 'undefined') return false;
       await ConfigSync.load(password);
-
-      console.log('[FTSAuth] Config auto-cargada desde GitHub');
+      console.log('[FTSAuth] Secrets cifrados cargados');
       return true;
     } catch(e){
-      // Silencioso — no interrumpir el login
-      console.warn('[FTSAuth] Auto-load config:', e.message);
-      return false;
+      console.warn('[FTSAuth] Secrets falló:', e.message);
+      return true; // No es error crítico
     }
   }
 
