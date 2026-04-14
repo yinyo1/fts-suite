@@ -43,6 +43,31 @@
     const overlay = document.getElementById('auth-overlay');
     if(overlay) overlay.style.display = 'none';
   });
+
+  // Fallback: si después de window.load + 200ms el overlay sigue visible
+  // o _currentUser no se inicializó, forzar init manualmente.
+  window.addEventListener('load', function(){
+    setTimeout(function(){
+      const overlay = document.getElementById('auth-overlay');
+      if(overlay && overlay.style.display !== 'none'){
+        overlay.style.display = 'none';
+      }
+      // Si _currentUser no se inicializó, hacerlo ahora
+      if(!window._currentUser){
+        const sess = sessionStorage.getItem('fts_iperc_session');
+        if(sess){
+          try{
+            window._currentUser = JSON.parse(sess);
+            if(typeof showClientSelector === 'function'){
+              showClientSelector();
+            }
+          } catch(e){
+            console.warn('[IPERC fallback] Error parseando sesión:', e);
+          }
+        }
+      }
+    }, 200);
+  });
 })();
 </script>
 <!-- Librerías externas -->
