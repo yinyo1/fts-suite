@@ -39,7 +39,7 @@
         "ingenieria": {
           "acceso": true,
           "submodulos": {
-            "analisis_estructural": false
+            "analisis_estructural": true
           }
         },
         "rh": {
