@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FTS · Incidencias</title>
+<link rel="stylesheet" href="../../shared/fts-styles.css">
+<script src="../../shared/auth-suite.js"></script>
+<script>
+(function(){
+  const s = window.FTSAuth && FTSAuth.getSession();
+  if(!s){
+    window.location.href = '../../index.html';
+    return;
+  }
+  FTSAuth.initActivityTracking();
+})();
+</script>
+<style>
+  *{box-sizing:border-box}
+  body{
+    background:#fafafa;margin:0;
+    font-family:'Inter',-apple-system,sans-serif;
+    color:#1a1a1a;
+  }
+  .inc-topbar{
+    background:#fff;border-bottom:1px solid #e0e0e0;
+    padding:12px 16px;display:flex;
+    align-items:center;gap:12px;
+    position:sticky;top:0;z-index:100;
+  }
+  .inc-back{
+    background:none;border:none;
+    font-size:20px;cursor:pointer;color:#666;
+    padding:4px 8px;border-radius:6px;
+    font-family:inherit;
+  }
+  .inc-back:hover{background:#f5f5f5}
+  .inc-card{
+    background:#fff;border:1px solid #e0e0e0;
+    border-radius:12px;padding:20px;
+    margin:12px 16px;cursor:pointer;
+    display:flex;align-items:center;gap:16px;
+    text-decoration:none;color:#1a1a1a;
+    transition:all 0.2s;
+    box-shadow:0 1px 3px rgba(0,0,0,0.04);
+  }
+  .inc-card:hover{border-color:#107C10;background:#f9fdf9}
+  .inc-icon{
+    font-size:32px;width:56px;height:56px;
+    border-radius:12px;display:flex;
+    align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .inc-card-title{
+    font-weight:700;font-size:16px;
+    margin-bottom:4px;color:#1a1a1a;
+  }
+  .inc-card-sub{
+    font-size:13px;color:#666;line-height:1.4;
+  }
+</style>
+</head>
+<body>
+
+<div class="inc-topbar">
+  <button class="inc-back" onclick="window.location.href='../index.html'" title="Volver">←</button>
+  <div>
+    <div style="font-weight:700;font-size:16px">📝 Incidencias</div>
+    <div id="inc-saludo" style="font-size:12px;color:#666"></div>
+  </div>
+</div>
+
+<div style="padding:8px 0">
+  <a href="empleado/index.html" class="inc-card">
+    <div class="inc-icon" style="background:#E2EFDA">📝</div>
+    <div>
+      <div class="inc-card-title">Mis incidencias</div>
+      <div class="inc-card-sub">
+        Solicitar permiso, vacaciones, tiempo extra, reportar olvido de checada o incapacidad
+      </div>
+    </div>
+  </a>
+
+  <a href="supervisor/index.html" class="inc-card" id="btn-supervisor" style="display:none">
+    <div class="inc-icon" style="background:#f0f7ff">👨‍💼</div>
+    <div>
+      <div class="inc-card-title">Panel Supervisor</div>
+      <div class="inc-card-sub">
+        Aprobar incidencias de tu equipo y contabilizar horas del día
+      </div>
+    </div>
+  </a>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const s = FTSAuth.getSession();
+  if(!s) return;
+  document.getElementById('inc-saludo').textContent = 'Hola, ' + (s.nombre || s.username);
+  const esSup = s.role === 'master' || s.role === 'supervisor';
+  if(esSup){
+    document.getElementById('btn-supervisor').style.display = 'flex';
+  }
+});
+</script>
+</body>
+</html>
