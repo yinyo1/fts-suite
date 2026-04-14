@@ -493,7 +493,9 @@ function launchApp(){
 
 // Check existing session on load
 window.addEventListener('load',()=>{
-  _initApiPills(); // inicializar pills desde el primer momento
+  try { _initApiPills(); } catch(e){
+    console.warn('[IPERC] _initApiPills falló:', e);
+  }
   const sess=sessionStorage.getItem('fts_iperc_session');
   const clientSess=sessionStorage.getItem('fts_iperc_client');
   if(sess){
@@ -508,7 +510,9 @@ window.addEventListener('load',()=>{
         document.getElementById('auth-overlay').style.display='none';
         showClientSelector();
       }
-    }catch(e){}
+    }catch(e){
+      console.warn('[IPERC] Error iniciando sesión:', e);
+    }
   }
 });
 
