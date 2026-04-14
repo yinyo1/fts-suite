@@ -684,6 +684,35 @@ const AUTH_URL     = USERS_URL;
 const AUTH_FALLBACK = [];
 
 window.addEventListener('load', async function(){
+  // ── BYPASS auth viejo si hay sesión FTSAuth válida ──
+  const _ftsS = window.FTSAuth && FTSAuth.getSession();
+  if(_ftsS){
+    const _subs = _ftsS.modulos === 'all'
+      ? { instructor:true, empleado:true, iperc:true }
+      : ((_ftsS.modulos && _ftsS.modulos.seguridad && _ftsS.modulos.seguridad.submodulos) || {});
+
+    // Filtrar botones de s-home según permisos (después de un tick para asegurar DOM)
+    setTimeout(function(){
+      if(!_subs.instructor){
+        document.querySelectorAll('[onclick*="goInstPin"],[onclick*="s-pin"]').forEach(function(el){
+          const card = el.closest('.mode-card,.card,[class*="card"]') || el;
+          card.style.display = 'none';
+        });
+      }
+      if(!_subs.empleado){
+        document.querySelectorAll('[onclick*="goEmpAccess"],[onclick*="s-emp"]').forEach(function(el){
+          const card = el.closest('.mode-card,.card,[class*="card"]') || el;
+          card.style.display = 'none';
+        });
+      }
+    }, 100);
+
+    // Pre-cargar usuarios del módulo en background (sin bloquear)
+    setTimeout(function(){
+      if(typeof fetchAuthUsers === 'function') fetchAuthUsers();
+    }, 500);
+  }
+
   // Reacción inmediata a cambios de red del sistema operativo
   window.addEventListener('offline', () => {
     _noConnCount++;
@@ -913,7 +942,28 @@ const inst = {
 // Pre-select all courses
 CURSOS.forEach(c => inst.selCourses.add(c.id));
 
-function goInstPin() { document.getElementById('auth-user').value=''; document.getElementById('auth-pass').value=''; document.getElementById('pin-err').textContent=''; go('s-pin'); }
+function goInstPin() {
+  // Bypass PIN si hay sesión FTSAuth válida con acceso a instructor
+  if(window.FTSAuth){
+    const _s = FTSAuth.getSession();
+    if(_s && (_s.role === 'master'
+        || _s.modulos === 'all'
+        || (_s.modulos && _s.modulos.seguridad && _s.modulos.seguridad.submodulos && _s.modulos.seguridad.submodulos.instructor === true))){
+      currentUser = {
+        usuario: _s.username,
+        nombre:  _s.nombre || _s.username,
+        pin:     '',
+        acceso:  'ambos'
+      };
+      go('s-inst');
+      return;
+    }
+  }
+  document.getElementById('auth-user').value='';
+  document.getElementById('auth-pass').value='';
+  document.getElementById('pin-err').textContent='';
+  go('s-pin');
+}
 
 // ═══════════════════════════════════════════════════════
 // STATUS BAR — reloj en vivo + última validación
