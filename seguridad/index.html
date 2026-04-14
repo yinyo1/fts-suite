@@ -1805,7 +1805,29 @@ const emp = {
   lastScore: 0,
 };
 
-function goEmpAccess() { document.getElementById('emp-user').value=''; document.getElementById('emp-pass').value=''; document.getElementById('emp-auth-err').textContent=''; go('s-emp'); }
+function goEmpAccess() {
+  // Bypass FTSAuth — si tiene sesión válida con acceso a empleado, entrar directo
+  if(window.FTSAuth){
+    const _s = FTSAuth.getSession();
+    if(_s && (_s.role === 'master'
+        || _s.modulos === 'all'
+        || (_s.modulos && _s.modulos.seguridad && _s.modulos.seguridad.submodulos && _s.modulos.seguridad.submodulos.empleado === true))){
+      _loggedUser = {
+        usuario: _s.username,
+        nombre:  _s.nombre || _s.username,
+        acceso:  'empleado'
+      };
+      if(typeof startHeartbeat === 'function') startHeartbeat();
+      go('s-emp-info');
+      return;
+    }
+  }
+  // Flujo viejo si no hay sesión FTSAuth
+  document.getElementById('emp-user').value='';
+  document.getElementById('emp-pass').value='';
+  document.getElementById('emp-auth-err').textContent='';
+  go('s-emp');
+}
 
 // ═══ IPERC ACCESS LOGIN ═══
 async function ipercAccessLogin(){
