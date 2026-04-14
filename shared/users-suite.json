@@ -9,6 +9,52 @@
       "vigencia": null,
       "role": "master",
       "modulos": "all"
+    },
+    {
+      "id": 2,
+      "username": "felipe.perez",
+      "nombre": "felipe perez",
+      "password_hash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
+      "role": "tecnico",
+      "activo": true,
+      "vigencia": "2026-05-31",
+      "modulos": {
+        "seguridad": {
+          "acceso": true,
+          "submodulos": {
+            "instructor": true,
+            "empleado": true,
+            "iperc": true
+          }
+        },
+        "operaciones": {
+          "acceso": true,
+          "submodulos": {
+            "kiosk": true,
+            "dashboard": false,
+            "planeacion": false,
+            "incidencias": false
+          }
+        },
+        "ingenieria": {
+          "acceso": false,
+          "submodulos": {
+            "analisis_estructural": false
+          }
+        },
+        "rh": {
+          "acceso": false,
+          "submodulos": {}
+        },
+        "comercial": {
+          "acceso": false,
+          "submodulos": {}
+        },
+        "odoo": {
+          "acceso": false,
+          "submodulos": {}
+        }
+      }
     }
   ]
 }
