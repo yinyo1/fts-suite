@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FTS · Panel Supervisor</title>
+<link rel="stylesheet" href="../../../shared/fts-styles.css">
+<script src="../../../shared/auth-suite.js"></script>
+<script src="../js/incidencias.js"></script>
+<script>
+(function(){
+  const s = window.FTSAuth && FTSAuth.getSession();
+  if(!s){
+    window.location.href = '../../../index.html';
+    return;
+  }
+  if(s.role !== 'master' && s.role !== 'supervisor'){
+    window.location.href = '../index.html';
+    return;
+  }
+  FTSAuth.initActivityTracking();
+  window._SUP_SESSION = s;
+})();
+</script>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#fafafa;font-family:'Inter',-apple-system,sans-serif;color:#1a1a1a}
+
+  .inc-topbar{
+    background:#fff;border-bottom:1px solid #e0e0e0;
+    padding:12px 16px;display:flex;align-items:center;
+    gap:12px;position:sticky;top:0;z-index:100;
+  }
+  .inc-back{
+    background:none;border:none;font-size:22px;
+    cursor:pointer;color:#666;padding:4px 8px;
+    border-radius:6px;font-family:inherit;
+  }
+  .inc-back:hover{background:#f5f5f5}
+
+  .tab-row{
+    display:flex;border-bottom:2px solid #e0e0e0;
+    background:#fff;position:sticky;top:57px;z-index:99;
+  }
+  .tab-btn{
+    flex:1;padding:12px;border:none;background:none;
+    font-size:13px;font-weight:600;color:#666;
+    cursor:pointer;border-bottom:3px solid transparent;
+    margin-bottom:-2px;transition:all 0.2s;
+    font-family:inherit;
+  }
+  .tab-btn.on{color:#107C10;border-bottom-color:#107C10}
+
+  .tab-pane{display:none;padding:16px}
+  .tab-pane.on{display:block}
+
+  .inc-card{
+    background:#fff;border:1px solid #e0e0e0;
+    border-radius:12px;padding:14px;margin-bottom:10px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+  .badge-pendiente{background:#FFF2CC;color:#BF8F00}
+  .badge-aprobada{background:#E2EFDA;color:#107C10}
+  .badge-denegada{background:#FFE8E8;color:#D83B01}
+
+  .btn-aprobar{
+    background:#E2EFDA;color:#107C10;
+    border:1px solid #107C10;border-radius:8px;
+    padding:8px 14px;font-size:13px;font-weight:600;
+    cursor:pointer;font-family:inherit;
+  }
+  .btn-denegar{
+    background:#FFE8E8;color:#D83B01;
+    border:1px solid #D83B01;border-radius:8px;
+    padding:8px 14px;font-size:13px;font-weight:600;
+    cursor:pointer;font-family:inherit;
+  }
+  .btn-primary{
+    width:100%;background:#107C10;color:#fff;
+    border:none;padding:14px;border-radius:10px;
+    font-size:15px;font-weight:700;cursor:pointer;
+    font-family:inherit;
+  }
+  .btn-primary:hover{background:#0d6b0d}
+
+  /* Modal */
+  .modal-overlay{
+    display:none;position:fixed;inset:0;
+    background:rgba(0,0,0,0.5);z-index:200;
+    align-items:center;justify-content:center;
+    padding:24px;
+  }
+  .modal-overlay.on{display:flex}
+  .modal-box{
+    background:#fff;border-radius:16px;padding:24px;
+    width:100%;max-width:400px;
+    box-shadow:0 10px 40px rgba(0,0,0,0.2);
+  }
+  .face-circle{
+    width:180px;height:180px;border-radius:50%;
+    overflow:hidden;border:4px solid #107C10;
+    margin:0 auto 12px;background:#f0f0f0;
+    box-shadow:0 4px 16px rgba(16,124,16,0.15);
+  }
+  #sup-video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+
+  /* Técnicos contabilizar */
+  .tec-card{
+    background:#fff;border:1px solid #e0e0e0;
+    border-radius:10px;padding:12px;margin-bottom:8px;
+    display:flex;justify-content:space-between;
+    align-items:center;gap:8px;flex-wrap:wrap;
+  }
+  .tec-status-ok{color:#107C10;font-size:18px}
+  .tec-status-pending{color:#BF8F00;font-size:18px}
+</style>
+</head>
+<body>
+
+<div class="inc-topbar">
+  <button class="inc-back" onclick="window.location.href='../index.html'">←</button>
+  <div>
+    <div style="font-weight:700">Panel Supervisor</div>
+    <div id="sup-nombre" style="font-size:12px;color:#666"></div>
+  </div>
+</div>
+
+<div class="tab-row">
+  <button class="tab-btn on" onclick="showTab('tab-pendientes',this)">📋 Pendientes</button>
+  <button class="tab-btn"     onclick="showTab('tab-contabilizar',this)">⏱️ Contabilizar</button>
+</div>
+
+<!-- ── TAB 1: Pendientes ── -->
+<div class="tab-pane on" id="tab-pendientes">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div style="font-weight:700;font-size:14px">Incidencias pendientes</div>
+    <button onclick="cargarPendientes()" style="background:none;border:none;cursor:pointer;font-size:18px" title="Recargar">🔄</button>
+  </div>
+  <div id="lista-pendientes">
+    <p style="color:#999;text-align:center;font-size:14px">Sin incidencias pendientes</p>
+  </div>
+</div>
+
+<!-- ── TAB 2: Contabilizar ── -->
+<div class="tab-pane" id="tab-contabilizar">
+  <div style="margin-bottom:12px">
+    <label style="font-size:12px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Fecha</label>
+    <input type="date" id="cont-fecha" style="padding:10px;border-radius:8px;border:1px solid #e0e0e0;font-size:14px;width:100%;box-sizing:border-box;font-family:inherit" onchange="cargarTecnicos()">
+  </div>
+
+  <div id="lista-tecnicos">
+    <p style="color:#999;text-align:center;font-size:14px">Selecciona una fecha</p>
+  </div>
+
+  <div id="cont-footer" style="display:none;margin-top:16px">
+    <button class="btn-primary" onclick="contabilizarDia()">✅ Contabilizar día completo</button>
+    <p style="font-size:12px;color:#999;text-align:center;margin-top:8px">
+      Al contabilizar, los técnicos podrán solicitar tiempo extra si aplica.
+    </p>
+  </div>
+</div>
+
+<!-- ── MODAL: Face Recognition Supervisor ── -->
+<div class="modal-overlay" id="modal-face">
+  <div class="modal-box" style="text-align:center">
+    <h3 style="margin:0 0 4px">Confirmar aprobación</h3>
+    <p style="font-size:13px;color:#666;margin:0 0 12px" id="modal-inc-info"></p>
+    <p style="font-size:12px;color:#666;margin-bottom:12px">Verifica tu identidad como supervisor</p>
+    <div class="face-circle">
+      <video id="sup-video" autoplay playsinline muted></video>
+    </div>
+    <div id="modal-face-status" style="font-size:13px;color:#666;margin-bottom:12px;font-weight:600">Iniciando cámara…</div>
+    <div style="display:flex;gap:8px">
+      <button onclick="confirmarAprobacion()" id="btn-confirmar-aprobacion" style="flex:1;background:#107C10;color:#fff;border:none;padding:12px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">✅ Aprobar</button>
+      <button onclick="cancelarModal()" style="flex:1;background:#fff;color:#666;border:1px solid #e0e0e0;padding:12px;border-radius:8px;font-size:14px;cursor:pointer;font-family:inherit">Cancelar</button>
+    </div>
+    <button onclick="denegarDesdeModal()" style="width:100%;background:#FFE8E8;color:#D83B01;border:1px solid #D83B01;padding:10px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;margin-top:8px;font-family:inherit">❌ Denegar solicitud</button>
+  </div>
+</div>
+
+<script>
+// ─── Estado ───
+const SUP = {
+  incActiva: null,
+  supStream: null
+};
+
+// ─── Demo técnicos (placeholder hasta integrar Odoo) ───
+const DEMO_TECNICOS = [
+  { username:'mateo.salazar',  nombre:'Mateo Salazar',  horas_efectivas_min:574 },
+  { username:'carlos.mendoza', nombre:'Carlos Mendoza', horas_efectivas_min:612 },
+  { username:'roberto.garcia', nombre:'Roberto García', horas_efectivas_min:480 },
+];
+
+// ─── Init ───
+document.addEventListener('DOMContentLoaded', function(){
+  const s = window._SUP_SESSION;
+  document.getElementById('sup-nombre').textContent = s.nombre || s.username;
+
+  const hoy = new Date().toISOString().split('T')[0];
+  document.getElementById('cont-fecha').value = hoy;
+
+  cargarPendientes();
+  cargarTecnicos();
+});
+
+function showTab(id, btn){
+  document.querySelectorAll('.tab-pane').forEach(function(p){ p.classList.remove('on'); });
+  document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('on'); });
+  document.getElementById(id).classList.add('on');
+  btn.classList.add('on');
+}
+
+// ─── TAB 1: Pendientes ───
+function cargarPendientes(){
+  const todas = IncDB.get({ status:'pendiente' });
+  const cont = document.getElementById('lista-pendientes');
+
+  if(!todas.length){
+    cont.innerHTML = '<p style="color:#999;text-align:center;font-size:14px">Sin incidencias pendientes ✅</p>';
+    return;
+  }
+
+  cont.innerHTML = todas.map(function(inc){
+    const t = INC_TYPES[inc.tipo] || { label:inc.tipo, color:'#666' };
+    const fecha = inc.fecha || inc.fecha_inicio || (inc.timestamp ? inc.timestamp.split('T')[0] : '—');
+    const faceIcon = inc.face_verificado ? '✅ Face ID' : '⚠️ Sin face ID';
+    const faceColor = inc.face_verificado ? '#107C10' : '#BF8F00';
+
+    let detalle = '';
+    if(inc.motivo) detalle = inc.motivo;
+    if(inc.descripcion) detalle = inc.descripcion;
+    if(inc.tipo === 'tiempo_extra' && inc.horas_min){
+      detalle = (inc.horas_min/60).toFixed(1) + ' hrs';
+    }
+    if(inc.tipo === 'olvide_checar'){
+      detalle = (inc.tipo_checada || '') + ' ~' + (inc.hora_aproximada || '');
+    }
+
+    return '<div class="inc-card">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px">'+
+        '<div>'+
+          '<span style="font-weight:700;color:'+t.color+'">'+t.label+'</span>'+
+          '<div style="font-size:12px;color:#666;margin-top:2px">👤 '+(inc.nombre || inc.username)+'</div>'+
+        '</div>'+
+        '<span class="badge badge-pendiente">🟡 Pendiente</span>'+
+      '</div>'+
+      '<div style="font-size:13px;color:#555;margin-bottom:8px">'+
+        '📅 '+fecha+
+        (detalle ? '&nbsp;·&nbsp;'+detalle : '')+
+        '&nbsp;·&nbsp;<span style="font-size:11px;color:'+faceColor+'">'+faceIcon+'</span>'+
+      '</div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+        '<button class="btn-aprobar" onclick="abrirModalAprobar(\''+inc.id+'\')">✅ Aprobar</button>'+
+        '<button class="btn-denegar" onclick="denegar(\''+inc.id+'\')">❌ Denegar</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+function abrirModalAprobar(incId){
+  const inc = IncDB.get().find(function(i){ return i.id === incId; });
+  if(!inc) return;
+
+  SUP.incActiva = inc;
+
+  const t = INC_TYPES[inc.tipo] || { label:inc.tipo };
+  document.getElementById('modal-inc-info').textContent = t.label + ' de ' + (inc.nombre || inc.username);
+  document.getElementById('modal-face').classList.add('on');
+
+  // Iniciar cámara supervisor
+  navigator.mediaDevices.getUserMedia({ video:{ facingMode:'user' } })
+    .then(function(stream){
+      SUP.supStream = stream;
+      document.getElementById('sup-video').srcObject = stream;
+      document.getElementById('modal-face-status').textContent = 'Cámara lista';
+    })
+    .catch(function(){
+      document.getElementById('modal-face-status').textContent = '⚠️ Sin cámara — aprobación manual';
+    });
+}
+
+function cancelarModal(){
+  cerrarModal();
+}
+
+function cerrarModal(){
+  if(SUP.supStream){
+    SUP.supStream.getTracks().forEach(function(t){ t.stop(); });
+    SUP.supStream = null;
+  }
+  document.getElementById('modal-face').classList.remove('on');
+  SUP.incActiva = null;
+}
+
+function capturarFotoSup(){
+  const video = document.getElementById('sup-video');
+  if(!video || !video.srcObject) return null;
+  const canvas = document.createElement('canvas');
+  canvas.width  = video.videoWidth  || 320;
+  canvas.height = video.videoHeight || 240;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  return canvas.toDataURL('image/jpeg', 0.7);
+}
+
+function confirmarAprobacion(){
+  if(!SUP.incActiva) return;
+  const s = window._SUP_SESSION;
+  const foto = capturarFotoSup();
+
+  IncDB.update(SUP.incActiva.id, {
+    status:                 'aprobada',
+    aprobado_por:           s.nombre || s.username,
+    aprobado_por_username:  s.username,
+    aprobado_timestamp:     new Date().toISOString(),
+    foto_aprobacion:        foto
+  });
+
+  cerrarModal();
+  showToast('✅ Incidencia aprobada por ' + (s.nombre || s.username));
+  cargarPendientes();
+}
+
+function denegarDesdeModal(){
+  if(!SUP.incActiva) return;
+  const id = SUP.incActiva.id;
+  cerrarModal();
+  denegar(id);
+}
+
+function denegar(incId){
+  const motivo = prompt('¿Motivo de la denegación? (opcional)');
+  if(motivo === null) return; // canceló el prompt
+  const s = window._SUP_SESSION;
+
+  IncDB.update(incId, {
+    status:              'denegada',
+    denegado_por:        s.nombre || s.username,
+    denegado_timestamp:  new Date().toISOString(),
+    motivo_denegacion:   motivo || ''
+  });
+
+  showToast('❌ Incidencia denegada');
+  cargarPendientes();
+}
+
+// ─── TAB 2: Contabilizar ───
+function getDiaContKey(username, fecha){
+  return 'cont_' + username + '_' + fecha;
+}
+
+function cargarTecnicos(){
+  const fecha = document.getElementById('cont-fecha').value;
+  if(!fecha) return;
+
+  const cont = document.getElementById('lista-tecnicos');
+  const footer = document.getElementById('cont-footer');
+  const LIMITE = 576; // 9.6 hrs
+
+  cont.innerHTML = DEMO_TECNICOS.map(function(tec){
+    const yaContabilizado = !!localStorage.getItem(getDiaContKey(tec.username, fecha));
+    const hrs = (tec.horas_efectivas_min / 60).toFixed(1);
+    const extra = Math.max(0, tec.horas_efectivas_min - LIMITE);
+    const extraStr = extra > 0 ? ' · ⚡ ' + (extra/60).toFixed(1) + 'h extra' : '';
+
+    return '<div class="tec-card">'+
+      '<div style="flex:1">'+
+        '<div style="font-weight:700;font-size:14px">'+tec.nombre+'</div>'+
+        '<div style="font-size:13px;color:#666;margin-top:2px">⏱ '+hrs+' hrs efectivas'+extraStr+'</div>'+
+      '</div>'+
+      '<div class="'+(yaContabilizado ? 'tec-status-ok' : 'tec-status-pending')+'">'+
+        (yaContabilizado ? '✅' : '⏳')+
+      '</div>'+
+    '</div>';
+  }).join('');
+
+  const hayPendientes = DEMO_TECNICOS.some(function(tec){
+    return !localStorage.getItem(getDiaContKey(tec.username, fecha));
+  });
+  footer.style.display = hayPendientes ? 'block' : 'none';
+
+  if(!hayPendientes && DEMO_TECNICOS.length){
+    cont.innerHTML += '<div style="background:#E2EFDA;border-radius:10px;padding:12px;text-align:center;font-size:14px;color:#107C10;margin-top:8px;font-weight:600">✅ Día contabilizado correctamente</div>';
+  }
+}
+
+function contabilizarDia(){
+  const fecha = document.getElementById('cont-fecha').value;
+  if(!fecha) return;
+  const s = window._SUP_SESSION;
+  const LIMITE = 576;
+
+  DEMO_TECNICOS.forEach(function(tec){
+    const key = getDiaContKey(tec.username, fecha);
+    if(!localStorage.getItem(key)){
+      const extra = Math.max(0, tec.horas_efectivas_min - LIMITE);
+      IncDB.saveDiaContabilizado({
+        username:             tec.username,
+        nombre:               tec.nombre,
+        fecha:                fecha,
+        horas_efectivas_min:  tec.horas_efectivas_min,
+        horas_extra_min:      extra,
+        supervisor:           s.nombre || s.username,
+        supervisor_username:  s.username
+      });
+    }
+  });
+
+  showToast('✅ Día contabilizado — ' + fecha);
+  cargarTecnicos();
+}
+
+// ─── Toast ───
+function showToast(msg, duration){
+  if(duration === undefined) duration = 3000;
+  let t = document.getElementById('sup-toast');
+  if(!t){
+    t = document.createElement('div');
+    t.id = 'sup-toast';
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:8px;font-size:14px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.3);white-space:nowrap;font-family:Inter,sans-serif';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(function(){ t.style.display = 'none'; }, duration);
+}
+</script>
+</body>
+</html>
