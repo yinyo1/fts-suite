@@ -319,6 +319,27 @@ function renderAlertas(){
 
 // ═══ Init ═══
 async function initDashboard(){
+  // Cargar config pública si ops_n8n_url está vacío
+  if(!localStorage.getItem('ops_n8n_url')){
+    try{
+      const res = await fetch(
+        'https://raw.githubusercontent.com/yinyo1/fts-suite/main/shared/public-config.json?t=' + Date.now(),
+        { cache:'no-store' }
+      );
+      if(res.ok){
+        const pub = await res.json();
+        if(pub.n8n_url)  localStorage.setItem('ops_n8n_url',  pub.n8n_url);
+        if(pub.odoo_url) localStorage.setItem('ops_odoo_url', pub.odoo_url);
+        if(pub.demo_mode !== undefined){
+          localStorage.setItem('ops_demo_mode', pub.demo_mode ? '1' : '0');
+        }
+        console.log('[Dashboard] Config pública aplicada');
+      }
+    } catch(e){
+      console.warn('[Dashboard] Config pública falló:', e.message);
+    }
+  }
+
   await loadDatos();
   // Refresh automático según configuración
   if(D.refreshTimer) clearInterval(D.refreshTimer);
