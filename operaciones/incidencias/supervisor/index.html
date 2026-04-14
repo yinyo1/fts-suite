@@ -202,8 +202,18 @@ document.addEventListener('DOMContentLoaded', function(){
   const hoy = new Date().toISOString().split('T')[0];
   document.getElementById('cont-fecha').value = hoy;
 
-  cargarPendientes();
-  cargarTecnicos();
+  document.getElementById('lista-pendientes').innerHTML =
+    '<p style="color:#999;text-align:center;font-size:14px">🔄 Cargando…</p>';
+
+  IncDB.pull()
+    .then(function(){
+      cargarPendientes();
+      cargarTecnicos();
+    })
+    .catch(function(){
+      cargarPendientes();
+      cargarTecnicos();
+    });
 });
 
 function showTab(id, btn){
