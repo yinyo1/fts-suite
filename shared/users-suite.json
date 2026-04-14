@@ -1,0 +1,14 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "username": "ftsmaster",
+      "password_hash": null,
+      "nombre": "FTS Master",
+      "activo": true,
+      "vigencia": null,
+      "role": "master",
+      "modulos": "all"
+    }
+  ]
+}
