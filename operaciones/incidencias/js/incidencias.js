@@ -134,11 +134,125 @@ function getHorasExtraDisponibles(username, fecha){
 }
 
 window.INC_TYPES = INC_TYPES;
+
+// ─── GitHub sync ───
+
+const INC_GITHUB_FILE = 'shared/incidencias.json';
+const INC_GITHUB_REPO = 'yinyo1/fts-suite';
+
+async function githubPull(){
+  try{
+    const token = localStorage.getItem('ops_github_token');
+    let data;
+    if(token){
+      const res = await fetch(
+        'https://api.github.com/repos/' + INC_GITHUB_REPO + '/contents/' + INC_GITHUB_FILE + '?ref=main&t=' + Date.now(),
+        { headers: {
+            'Authorization': 'token ' + token,
+            'Accept':        'application/vnd.github.v3+json'
+        }}
+      );
+      if(res.status === 404) return [];
+      if(!res.ok) throw new Error('GitHub ' + res.status);
+      const file = await res.json();
+      const cleanB64 = (file.content || '').replace(/\n/g, '');
+      data = JSON.parse(decodeURIComponent(escape(atob(cleanB64))));
+    } else {
+      const res = await fetch(
+        'https://raw.githubusercontent.com/' + INC_GITHUB_REPO + '/main/' + INC_GITHUB_FILE + '?nocache=' + Math.random() + '&t=' + Date.now(),
+        { cache:'no-store' }
+      );
+      if(!res.ok) return [];
+      data = await res.json();
+    }
+    const incs = (data && data.incidencias) || [];
+    incs.forEach(function(inc){
+      localStorage.setItem(incKey(inc.id), JSON.stringify(inc));
+    });
+    localStorage.setItem('inc_index', JSON.stringify(incs.map(function(i){ return i.id; })));
+    return incs;
+  } catch(e){
+    console.warn('[IncDB] Pull falló:', e.message);
+    return [];
+  }
+}
+
+async function githubPush(incidencia){
+  const token = localStorage.getItem('ops_github_token');
+  if(!token) return false;
+  try{
+    const shaRes = await fetch(
+      'https://api.github.com/repos/' + INC_GITHUB_REPO + '/contents/' + INC_GITHUB_FILE + '?ref=main&t=' + Date.now(),
+      { headers: {
+          'Authorization': 'token ' + token,
+          'Accept':        'application/vnd.github.v3+json'
+      }}
+    );
+    let existingIncs = [];
+    let sha = null;
+    if(shaRes.ok){
+      const file = await shaRes.json();
+      sha = file.sha;
+      const cleanB64 = (file.content || '').replace(/\n/g, '');
+      const parsed = JSON.parse(decodeURIComponent(escape(atob(cleanB64))));
+      existingIncs = (parsed && parsed.incidencias) || [];
+    }
+    const idx = existingIncs.findIndex(function(i){ return i.id === incidencia.id; });
+    if(idx >= 0) existingIncs[idx] = incidencia;
+    else existingIncs.unshift(incidencia);
+
+    const content = JSON.stringify({ incidencias: existingIncs }, null, 2);
+    const body = {
+      message: 'Incidencia ' + incidencia.tipo + ' de ' + incidencia.username,
+      content: btoa(unescape(encodeURIComponent(content))),
+      branch:  'main'
+    };
+    if(sha) body.sha = sha;
+
+    const putRes = await fetch(
+      'https://api.github.com/repos/' + INC_GITHUB_REPO + '/contents/' + INC_GITHUB_FILE,
+      { method:'PUT',
+        headers:{
+          'Authorization':'token ' + token,
+          'Accept':       'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      }
+    );
+    return putRes.ok;
+  } catch(e){
+    console.warn('[IncDB] Push falló:', e.message);
+    return false;
+  }
+}
+
+// Wrappers con sync automático
+function saveIncidenciaSync(data){
+  const inc = saveIncidencia(data);
+  githubPush(inc).then(function(ok){
+    if(ok) console.log('[IncDB] Synced:', inc.id);
+  });
+  return inc;
+}
+
+function updateIncidenciaSync(id, changes){
+  const updated = updateIncidencia(id, changes);
+  if(updated){
+    githubPush(updated).then(function(ok){
+      if(ok) console.log('[IncDB] Updated:', id);
+    });
+  }
+  return updated;
+}
+
 window.IncDB = {
-  save:                    saveIncidencia,
-  get:                     getIncidencias,
-  update:                  updateIncidencia,
-  getDiaContabilizado:     getDiaContabilizado,
-  saveDiaContabilizado:    saveDiaContabilizado,
+  save:                     saveIncidenciaSync,
+  get:                      getIncidencias,
+  update:                   updateIncidenciaSync,
+  pull:                     githubPull,
+  push:                     githubPush,
+  getDiaContabilizado:      getDiaContabilizado,
+  saveDiaContabilizado:     saveDiaContabilizado,
   getHorasExtraDisponibles: getHorasExtraDisponibles
 };
