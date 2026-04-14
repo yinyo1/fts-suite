@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FTS Operaciones · Configuración</title>
 <link rel="stylesheet" href="../../shared/fts-styles.css">
+<script src="../../shared/config-sync.js"></script>
 <style>
   *{box-sizing:border-box}
   html{height:auto;min-height:100%}
@@ -203,6 +204,7 @@
     <button class="cfg-tab"        data-tab="kiosk"     onclick="showTab('kiosk')">🖥️ Kiosk</button>
     <button class="cfg-tab"        data-tab="planeacion" onclick="showTab('planeacion')">📋 Planeación</button>
     <button class="cfg-tab"        data-tab="dashboard" onclick="showTab('dashboard')">📊 Dashboard</button>
+    <button class="cfg-tab"        data-tab="sync"      onclick="showTab('sync')">☁️ Sync</button>
   </div>
 
   <div class="cfg-pane active" id="pane-general">
@@ -421,6 +423,47 @@
     </div>
   </div>
 
+  <div class="cfg-pane" id="pane-sync">
+    <div class="cfg-card">
+      <h3>☁️ Sincronización entre dispositivos</h3>
+      <p style="font-size:13px;color:#666;margin:0 0 16px">
+        Guarda tu configuración cifrada en GitHub para acceder desde cualquier dispositivo con tu contraseña maestra.
+      </p>
+
+      <div id="sync-status-box" style="background:#f5f5f5;border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px;font-weight:600">
+        <span id="sync-status-text">Verificando…</span>
+      </div>
+
+      <label class="cfg-label">
+        GitHub Personal Access Token
+        <a href="https://github.com/settings/tokens/new?scopes=repo&description=FTS+Suite+Config" target="_blank" style="font-size:11px;color:#0078D4;margin-left:8px;font-weight:400">+ Crear token</a>
+      </label>
+      <input id="sync-github-token" type="password" class="cfg-input" placeholder="ghp_xxxxxxxxxxxx">
+
+      <label class="cfg-label">Contraseña maestra de cifrado</label>
+      <input id="sync-password" type="password" class="cfg-input" placeholder="Mínimo 8 caracteres">
+      <p style="font-size:12px;color:#D83B01;margin:4px 0 8px">
+        ⚠️ Sin esta contraseña no podrás recuperar la config. Guárdala en un lugar seguro.
+      </p>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <button onclick="syncGuardar()" style="background:#107C10;color:#fff;border:none;padding:12px 20px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;flex:1;font-family:inherit">☁️ Guardar en GitHub</button>
+        <button onclick="syncCargar()" style="background:#0078D4;color:#fff;border:none;padding:12px 20px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;flex:1;font-family:inherit">📥 Cargar desde GitHub</button>
+      </div>
+      <div id="sync-result" style="margin-top:12px;font-size:13px;min-height:20px;font-weight:600"></div>
+    </div>
+
+    <div class="cfg-card" style="margin-top:16px;background:#FFF9E6;border:1px solid #BF8F00">
+      <h3 style="color:#BF8F00">ℹ️ ¿Cómo funciona?</h3>
+      <ol style="font-size:13px;color:#666;margin:0;padding-left:20px;line-height:2">
+        <li>Configura todo en este panel (General, Kiosk, Planeación, Dashboard)</li>
+        <li>Toca <b>Guardar en GitHub</b> con tu token y contraseña maestra</li>
+        <li>En otro dispositivo, abre la config y toca <b>Cargar desde GitHub</b></li>
+        <li>Ingresa la misma contraseña → la config se aplica automáticamente</li>
+      </ol>
+    </div>
+  </div>
+
 </div>
 
 <!-- Save bar sticky -->
@@ -461,6 +504,7 @@ function showTab(id){
   document.querySelectorAll('.cfg-pane').forEach(p => p.classList.remove('active'));
   document.querySelector('.cfg-tab[data-tab="'+id+'"]').classList.add('active');
   document.getElementById('pane-'+id).classList.add('active');
+  if(id === 'sync') initSyncTab();
 }
 
 // ═══ Migración de keys antiguas kiosk_* → ops_* ═══
@@ -769,6 +813,114 @@ function saveConfig(){
   savePlaneacionConfig();
   saveDashboardConfig();
   showToast('✅ Configuración guardada');
+}
+
+// ═══ Tab Sync (GitHub cifrado) ═══
+async function initSyncTab(){
+  const statusEl = document.getElementById('sync-status-text');
+  const tokenInput = document.getElementById('sync-github-token');
+  const tokenGuardado = localStorage.getItem('ops_github_token');
+
+  if(tokenGuardado && tokenInput){
+    tokenInput.value = '••••••••••••••••';
+    tokenInput.dataset.stored = '1';
+  }
+
+  if(!statusEl) return;
+  try{
+    const hayConfig = await ConfigSync.check();
+    const lastSync = ConfigSync.getLastSync();
+    if(hayConfig && lastSync){
+      const fecha = new Date(lastSync).toLocaleString('es-MX');
+      statusEl.innerHTML = '✅ Config sincronizada · Última sync: ' + fecha;
+      statusEl.style.color = '#107C10';
+    } else if(hayConfig){
+      statusEl.innerHTML = '☁️ Hay config en GitHub — usa Cargar para aplicarla';
+      statusEl.style.color = '#0078D4';
+    } else {
+      statusEl.innerHTML = '⚠️ Sin config guardada en GitHub todavía';
+      statusEl.style.color = '#BF8F00';
+    }
+  } catch(e){
+    statusEl.innerHTML = '⚠️ No se pudo verificar ('+e.message+')';
+    statusEl.style.color = '#BF8F00';
+  }
+}
+
+function getSyncToken(){
+  const el = document.getElementById('sync-github-token');
+  const val = el ? el.value.trim() : '';
+  // Si el usuario no tocó el campo (siguen los bullets), usar el guardado
+  if(/^•+$/.test(val) || el.dataset.stored === '1' && val === '••••••••••••••••'){
+    return localStorage.getItem('ops_github_token') || '';
+  }
+  return val;
+}
+
+async function syncGuardar(){
+  const token = getSyncToken();
+  const password = document.getElementById('sync-password').value;
+  const resultEl = document.getElementById('sync-result');
+
+  function setResult(text, color){
+    resultEl.textContent = text;
+    resultEl.style.color = color;
+  }
+
+  if(!token){
+    setResult('⚠️ Ingresa tu GitHub token', '#BF8F00');
+    return;
+  }
+  if(!password || password.length < 8){
+    setResult('⚠️ La contraseña debe tener al menos 8 caracteres', '#BF8F00');
+    return;
+  }
+
+  setResult('🔄 Guardando…', '#0078D4');
+
+  try{
+    // Guardar config actual antes de sincronizar
+    saveGeneralConfig();
+    saveKioskConfig();
+    savePlaneacionConfig();
+    saveDashboardConfig();
+    await ConfigSync.save(token, password);
+    setResult('✅ Config guardada en GitHub', '#107C10');
+    initSyncTab();
+  } catch(e){
+    setResult('❌ Error: ' + e.message, '#D83B01');
+  }
+}
+
+async function syncCargar(){
+  const token = getSyncToken();
+  const password = document.getElementById('sync-password').value;
+  const resultEl = document.getElementById('sync-result');
+
+  function setResult(text, color){
+    resultEl.textContent = text;
+    resultEl.style.color = color;
+  }
+
+  if(!password){
+    setResult('⚠️ Ingresa tu contraseña maestra', '#BF8F00');
+    return;
+  }
+
+  setResult('🔄 Cargando desde GitHub…', '#0078D4');
+
+  try{
+    await ConfigSync.load(password, token || undefined);
+    setResult('✅ Config cargada y aplicada — recargando…', '#107C10');
+    setTimeout(() => location.reload(), 2000);
+  } catch(e){
+    const msg = (e.message || '').toLowerCase();
+    if(msg.indexOf('decrypt') !== -1 || msg.indexOf('operation') !== -1){
+      setResult('❌ Contraseña incorrecta', '#D83B01');
+    } else {
+      setResult('❌ Error: ' + e.message, '#D83B01');
+    }
+  }
 }
 
 function showToast(text){
