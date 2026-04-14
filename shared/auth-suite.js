@@ -18,12 +18,41 @@
       .join('');
   }
 
-  // ─── Cargar usuarios desde GitHub raw ───
+  // ─── Cargar usuarios desde GitHub ───
+  // Prefiere GitHub API autenticada (sin cache de Fastly) cuando hay token.
+  // Cae a raw.githubusercontent.com con cache bust agresivo si no.
   async function loadUsers(){
+    const token = localStorage.getItem('ops_github_token');
     try{
-      const res = await fetch(AUTH_RAW + '?_=' + Date.now(), { cache:'no-store' });
-      if(!res.ok) return getDefaultUsers();
-      return await res.json();
+      // Intento 1: GitHub API autenticada — bypassa el CDN de Fastly
+      if(token){
+        const apiRes = await fetch(
+          'https://api.github.com/repos/yinyo1/fts-suite/contents/' + AUTH_FILE + '?ref=main&t=' + Date.now(),
+          { headers: {
+              'Authorization': 'token ' + token,
+              'Accept':        'application/vnd.github.v3+json',
+              'Cache-Control': 'no-cache'
+          }}
+        );
+        if(apiRes.ok){
+          const file = await apiRes.json();
+          const cleanB64 = (file.content || '').replace(/\n/g, '');
+          // decodeURIComponent(escape(...)) maneja UTF-8 desde base64
+          const decoded = decodeURIComponent(escape(atob(cleanB64)));
+          return JSON.parse(decoded);
+        }
+      }
+      // Intento 2: raw.githubusercontent.com con cache bust agresivo
+      const raw = await fetch(
+        AUTH_RAW + '?nocache=' + Math.random() + '&t=' + Date.now(),
+        { cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache, no-store',
+            'Pragma':        'no-cache'
+          }}
+      );
+      if(!raw.ok) return getDefaultUsers();
+      return await raw.json();
     } catch(e){
       return getDefaultUsers();
     }
