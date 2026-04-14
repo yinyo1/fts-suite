@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FTS Admin — Panel Master</title>
+<link rel="stylesheet" href="../fts-styles.css">
+<script src="../auth-suite.js"></script>
+<script src="../config-sync.js"></script>
+<style>
+  *{box-sizing:border-box}
+  html{height:auto;min-height:100%}
+  body{
+    min-height:100vh;height:auto;
+    overflow-y:auto;overflow-x:hidden;
+    margin:0;padding:0 0 40px;
+    background:#fafafa;color:#1a1a1a;
+    font-family:'Inter',-apple-system,sans-serif;
+  }
+
+  /* Topbar */
+  .adm-topbar{
+    position:sticky;top:0;z-index:50;
+    background:#1a1a1a;border-bottom:1px solid #333;
+    padding:14px 20px;display:flex;align-items:center;
+    justify-content:space-between;gap:12px;color:#fff;
+  }
+  .adm-topbar h1{font-size:18px;font-weight:800;margin:0;color:#fff}
+  .adm-topbar .back{
+    background:#fff;color:#1a1a1a;border:none;
+    padding:8px 14px;font-size:13px;font-weight:700;
+    border-radius:8px;cursor:pointer;text-decoration:none;
+    font-family:inherit;
+  }
+  .adm-topbar .back:hover{background:#f0f0f0}
+
+  .adm-wrap{max-width:960px;margin:0 auto;padding:20px}
+
+  /* Tabs */
+  .adm-tabs{
+    display:flex;gap:4px;background:#fff;
+    border:1px solid #e0e0e0;border-radius:10px;
+    padding:4px;margin-bottom:20px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.04);
+    overflow-x:auto;
+  }
+  .adm-tab{
+    flex:1;min-width:130px;padding:10px 16px;
+    border:none;background:transparent;cursor:pointer;
+    font-size:13px;font-weight:700;color:#666;
+    border-radius:7px;font-family:inherit;
+    white-space:nowrap;transition:all .15s;
+  }
+  .adm-tab:hover{color:#1a1a1a}
+  .adm-tab.active{background:#1a1a1a;color:#fff}
+
+  .adm-pane{display:none}
+  .adm-pane.active{display:block}
+
+  .adm-actions{
+    display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;
+  }
+  .adm-btn{
+    padding:10px 18px;border-radius:8px;border:none;
+    font-size:13px;font-weight:700;cursor:pointer;
+    font-family:inherit;transition:opacity .15s;
+  }
+  .adm-btn:hover{opacity:0.9}
+  .adm-btn:active{transform:scale(0.97)}
+  .adm-btn.green{background:#107C10;color:#fff}
+  .adm-btn.blue{background:#0078D4;color:#fff}
+  .adm-btn.ghost{background:#fff;border:1.5px solid #e0e0e0;color:#1a1a1a}
+
+  .adm-placeholder{
+    background:#fff;border:1px solid #e0e0e0;
+    border-radius:12px;padding:40px 20px;
+    text-align:center;color:#999;font-size:14px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.04);
+  }
+  .adm-placeholder .emoji{font-size:40px;margin-bottom:12px}
+
+  /* Modal */
+  .adm-modal-overlay{
+    position:fixed;inset:0;
+    background:rgba(0,0,0,0.5);
+    display:none;align-items:flex-start;justify-content:center;
+    z-index:9999;padding:20px;overflow-y:auto;
+  }
+  .adm-modal-overlay.show{display:flex}
+  .adm-modal{
+    background:#fff;border-radius:14px;
+    max-width:560px;width:100%;
+    padding:24px;margin:20px auto;
+    box-shadow:0 10px 40px rgba(0,0,0,0.2);
+  }
+  .adm-modal h2{font-size:18px;margin:0 0 16px;color:#1a1a1a}
+  .adm-modal label{
+    display:block;font-size:13px;font-weight:600;
+    color:#555;margin:12px 0 4px;
+  }
+  .adm-modal input[type="text"],
+  .adm-modal input[type="password"],
+  .adm-modal input[type="date"],
+  .adm-modal select{
+    width:100%;padding:10px;border:1px solid #e0e0e0;
+    border-radius:8px;font-size:14px;
+    background:#fff;color:#1a1a1a;
+    box-sizing:border-box;font-family:inherit;outline:none;
+  }
+  .adm-modal input:focus,
+  .adm-modal select:focus{border-color:#107C10}
+  .adm-modal-actions{
+    display:flex;gap:10px;margin-top:20px;justify-content:flex-end;
+  }
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="adm-topbar">
+  <h1>👑 Panel Admin — FTS Master</h1>
+  <a href="../../index.html" class="back">← Launcher</a>
+</div>
+
+<div class="adm-wrap">
+
+  <div class="adm-tabs">
+    <button class="adm-tab active" data-tab="usuarios" onclick="showTab('usuarios')">👥 Usuarios</button>
+    <button class="adm-tab"        data-tab="apikeys"  onclick="showTab('apikeys')">🔑 API Keys</button>
+    <button class="adm-tab"        data-tab="sync"     onclick="showTab('sync')">☁️ Sincronización</button>
+  </div>
+
+  <!-- Panel Usuarios -->
+  <div class="adm-pane active" id="pane-usuarios">
+    <div class="adm-actions">
+      <button class="adm-btn green" onclick="openNewUser()">+ Nuevo usuario</button>
+      <button class="adm-btn blue" id="btn-save-github" onclick="saveToGitHub()">☁️ Guardar en GitHub</button>
+    </div>
+    <div id="users-lista">
+      <div class="adm-placeholder">
+        <div class="emoji">👥</div>
+        <div>Cargando usuarios…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel API Keys -->
+  <div class="adm-pane" id="pane-apikeys">
+    <div class="adm-placeholder">
+      <div class="emoji">🔑</div>
+      <div>🔑 API Keys — pendiente</div>
+    </div>
+  </div>
+
+  <!-- Panel Sync -->
+  <div class="adm-pane" id="pane-sync">
+    <div class="adm-placeholder">
+      <div class="emoji">☁️</div>
+      <div>☁️ Sync — pendiente</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal usuario -->
+<div class="adm-modal-overlay" id="user-modal">
+  <div class="adm-modal">
+    <h2 id="modal-titulo">Nuevo usuario</h2>
+
+    <label>Nombre completo</label>
+    <input type="text" id="modal-nombre" placeholder="Juan Pérez">
+
+    <label>Username</label>
+    <input type="text" id="modal-username" placeholder="juan.perez">
+
+    <label>Contraseña <span style="font-weight:400;color:#999;font-size:11px">(dejar vacío para no cambiar)</span></label>
+    <input type="password" id="modal-password" placeholder="••••••">
+
+    <label>Rol</label>
+    <select id="modal-role">
+      <option value="supervisor">Supervisor</option>
+      <option value="tecnico">Técnico</option>
+      <option value="instructor">Instructor</option>
+      <option value="otro">Otro</option>
+    </select>
+
+    <label>Vigencia (opcional)</label>
+    <input type="date" id="modal-vigencia">
+
+    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-top:16px">
+      <input type="checkbox" id="modal-activo" checked>
+      <span>Usuario activo</span>
+    </label>
+
+    <label style="margin-top:16px">Módulos y submódulos</label>
+    <div id="modal-modulos" style="background:#f9f9f9;border-radius:8px;padding:12px;max-height:240px;overflow-y:auto">
+      <div style="color:#999;font-size:13px">— Pendiente Auth-B2 —</div>
+    </div>
+
+    <div class="adm-modal-actions">
+      <button class="adm-btn ghost" onclick="closeModal()">Cancelar</button>
+      <button class="adm-btn green" onclick="saveUser()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══ Guardia de acceso ═══
+(function(){
+  const session = FTSAuth.getSession();
+  if(!session || session.role !== 'master'){
+    window.location.href = '../../index.html';
+    return;
+  }
+  FTSAuth.initActivityTracking();
+})();
+
+// ═══ Tabs ═══
+function showTab(id){
+  document.querySelectorAll('.adm-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.adm-pane').forEach(p => p.classList.remove('active'));
+  document.querySelector('.adm-tab[data-tab="'+id+'"]').classList.add('active');
+  document.getElementById('pane-'+id).classList.add('active');
+}
+window.showTab = showTab;
+
+// ═══ Modal ═══
+function closeModal(){
+  document.getElementById('user-modal').classList.remove('show');
+}
+window.closeModal = closeModal;
+
+// ═══ Stubs (se implementan en Auth-B2) ═══
+function openNewUser(){ alert('Pendiente Auth-B2'); }
+function editUser(id){ alert('Pendiente Auth-B2'); }
+function toggleUser(id){ alert('Pendiente Auth-B2'); }
+function saveUser(){ alert('Pendiente Auth-B2'); }
+function saveToGitHub(){ alert('Pendiente Auth-B2'); }
+
+window.openNewUser = openNewUser;
+window.editUser    = editUser;
+window.toggleUser  = toggleUser;
+window.saveUser    = saveUser;
+window.saveToGitHub = saveToGitHub;
+</script>
+</body>
+</html>
