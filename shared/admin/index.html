@@ -255,9 +255,11 @@
         ⚠️ Las API Keys se guardan en localStorage de este dispositivo. Usa el tab <b>☁️ Sincronización</b> para cifrarlas y sincronizarlas entre dispositivos.
       </div>
 
-      <div style="display:flex;gap:10px;margin-top:16px">
-        <button class="adm-btn green" onclick="saveApiKeys(true)">💾 Guardar API Keys</button>
+      <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
+        <button onclick="saveApiKeys(true)" style="flex:1;background:#107C10;color:#fff;border:none;padding:12px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">💾 Guardar localmente</button>
+        <button onclick="saveAndSync()" style="flex:1;background:#0078D4;color:#fff;border:none;padding:12px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">☁️ Guardar y subir a GitHub</button>
       </div>
+      <div id="apikeys-status" style="font-size:13px;min-height:20px;margin-top:8px;text-align:center;font-weight:600"></div>
     </div>
   </div>
 
@@ -524,9 +526,49 @@ function showAdminToast(msg, duration){
   setTimeout(function(){ toast.style.display = 'none'; }, duration);
 }
 
+// ═══ Save API Keys + Sync inline ═══
+function saveAndSync(){
+  const token    = localStorage.getItem('ops_github_token');
+  const password = localStorage.getItem('ops_sync_password');
+  const statusEl = document.getElementById('apikeys-status');
+
+  // Primero persistir lo que esté en los inputs
+  const saved = saveApiKeys(false);
+
+  if(!token || !password){
+    if(statusEl){
+      statusEl.textContent = '⚠️ Ve al tab ☁️ Sincronización para configurar GitHub token y contraseña maestra primero';
+      statusEl.style.color = '#BF8F00';
+    }
+    setTimeout(function(){ showTab('sync'); }, 1500);
+    return;
+  }
+
+  if(statusEl){
+    statusEl.textContent = '🔄 Subiendo ' + saved + ' keys a GitHub…';
+    statusEl.style.color = '#0078D4';
+  }
+
+  ConfigSync.save(token, password)
+    .then(function(){
+      if(statusEl){
+        statusEl.textContent = '✅ Guardado en GitHub';
+        statusEl.style.color = '#107C10';
+        setTimeout(function(){ statusEl.textContent = ''; }, 3000);
+      }
+    })
+    .catch(function(e){
+      if(statusEl){
+        statusEl.textContent = '❌ Error: ' + e.message;
+        statusEl.style.color = '#D83B01';
+      }
+    });
+}
+
 window.toggleKey       = toggleKey;
 window.loadApiKeys     = loadApiKeys;
 window.saveApiKeys     = saveApiKeys;
+window.saveAndSync     = saveAndSync;
 window.showAdminToast  = showAdminToast;
 
 // ═══ Modal ═══
