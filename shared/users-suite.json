@@ -55,6 +55,53 @@
           "submodulos": {}
         }
       }
+    },
+    {
+      "id": 3,
+      "username": "ana.acevedo",
+      "nombre": "Ana Acevedo",
+      "password_hash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
+      "role": "user",
+      "activo": true,
+      "vigencia": null,
+      "modulos": {
+        "seguridad": {
+          "acceso": false,
+          "submodulos": {
+            "instructor": false,
+            "empleado": false,
+            "iperc": false
+          }
+        },
+        "operaciones": {
+          "acceso": true,
+          "submodulos": {
+            "kiosk": true,
+            "dashboard": true,
+            "planeacion": true,
+            "incidencias": true,
+            "supervisor": true
+          }
+        },
+        "ingenieria": {
+          "acceso": false,
+          "submodulos": {
+            "analisis_estructural": false
+          }
+        },
+        "rh": {
+          "acceso": false,
+          "submodulos": {}
+        },
+        "comercial": {
+          "acceso": false,
+          "submodulos": {}
+        },
+        "odoo": {
+          "acceso": false,
+          "submodulos": {}
+        }
+      }
     }
   ]
 }
