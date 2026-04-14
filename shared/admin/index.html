@@ -533,6 +533,9 @@ async function initAdmin(){
   const data = await FTSAuth.loadUsers();
   ADMIN_USERS = data.users || [];
   renderUsers();
+
+  // Pre-cargar API Keys en el tab correspondiente
+  loadApiKeys();
 }
 
 // ═══ Render lista ═══
