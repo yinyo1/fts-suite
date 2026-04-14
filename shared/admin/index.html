@@ -323,10 +323,8 @@
 
     <label>Rol</label>
     <select id="modal-role">
-      <option value="supervisor">Supervisor</option>
-      <option value="tecnico">Técnico</option>
-      <option value="instructor">Instructor</option>
-      <option value="otro">Otro</option>
+      <option value="admin">🔑 Administrador</option>
+      <option value="user">👤 Usuario</option>
     </select>
 
     <label>Vigencia (opcional)</label>
@@ -620,9 +618,9 @@ function renderUsers(){
     return;
   }
   lista.innerHTML = ADMIN_USERS.map(u => {
-    const roleColor = u.role === 'master'     ? '#1a1a1a'
-                    : u.role === 'supervisor' ? '#0078D4'
-                    : u.role === 'instructor' ? '#107C10'
+    const roleColor = u.role === 'master' ? '#1a1a1a'
+                    : u.role === 'admin'  ? '#0078D4'
+                    : u.role === 'user'   ? '#555'
                     : '#555';
     const isMaster = u.role === 'master';
     return '<div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'+
@@ -679,7 +677,7 @@ function openNewUser(){
     const el = document.getElementById(id);
     if(el) el.value = '';
   });
-  document.getElementById('modal-role').value = 'tecnico';
+  document.getElementById('modal-role').value = 'user';
   document.getElementById('modal-activo').checked = true;
   document.getElementById('modal-modulos').innerHTML = renderModuleTree({});
   document.getElementById('user-modal').classList.add('show');
@@ -694,7 +692,7 @@ function editUser(id){
   document.getElementById('modal-nombre').value = u.nombre || '';
   document.getElementById('modal-username').value = u.username || '';
   document.getElementById('modal-password').value = '';
-  document.getElementById('modal-role').value = u.role || 'tecnico';
+  document.getElementById('modal-role').value = u.role || 'user';
   document.getElementById('modal-vigencia').value = u.vigencia || '';
   document.getElementById('modal-activo').checked = !!u.activo;
   document.getElementById('modal-modulos').innerHTML = renderModuleTree(u.modulos);
