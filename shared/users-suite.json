@@ -28,7 +28,7 @@
           }
         },
         "operaciones": {
-          "acceso": true,
+          "acceso": false,
           "submodulos": {
             "kiosk": true,
             "dashboard": false,
