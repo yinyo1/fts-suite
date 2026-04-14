@@ -228,6 +228,16 @@
         </div>
       </div>
 
+      <!-- Claude (Anthropic) -->
+      <div style="border:1px solid #e0e0e0;border-radius:10px;padding:14px;margin-bottom:12px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:10px;color:#1a1a1a">🤖 IA — Claude (Anthropic)</div>
+        <label class="cfg-label">Claude API Key</label>
+        <div style="position:relative">
+          <input id="key_claude" type="password" class="cfg-input" placeholder="sk-ant-••••••••••••••••">
+          <button onclick="toggleKey('key_claude')" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px">👁️</button>
+        </div>
+      </div>
+
       <!-- GitHub -->
       <div style="border:1px solid #e0e0e0;border-radius:10px;padding:14px;margin-bottom:12px">
         <div style="font-weight:700;font-size:13px;margin-bottom:10px;color:#1a1a1a">🐙 GitHub</div>
@@ -463,6 +473,7 @@ const API_KEYS_MAP = {
   key_groq:         'ops_groq_key',
   key_gemini:       'ops_gemini_key',
   key_openrouter:   'ops_openrouter_key',
+  key_claude:       'ops_claude_key',
   key_github_token: 'ops_github_token'
 };
 
@@ -480,23 +491,43 @@ function loadApiKeys(){
 }
 
 function saveApiKeys(showFeedback){
+  if(showFeedback === undefined) showFeedback = true;
+  let saved = 0;
   Object.keys(API_KEYS_MAP).forEach(function(inputId){
     const el = document.getElementById(inputId);
-    if(el){
-      const val = el.value.trim();
-      if(val){
-        localStorage.setItem(API_KEYS_MAP[inputId], val);
-      }
+    if(!el) return;
+    const val = el.value.trim();
+    // Ignorar si son bullets (campo no tocado representando un valor existente)
+    if(val && !/^•+$/.test(val)){
+      localStorage.setItem(API_KEYS_MAP[inputId], val);
+      saved++;
     }
   });
   if(showFeedback){
-    alert('✅ API Keys guardadas localmente. Usa "Sincronización" para cifrarlas y subirlas a GitHub.');
+    showAdminToast('✅ ' + saved + ' API Keys guardadas');
   }
+  return saved;
 }
 
-window.toggleKey    = toggleKey;
-window.loadApiKeys  = loadApiKeys;
-window.saveApiKeys  = saveApiKeys;
+// ═══ Toast genérico del admin ═══
+function showAdminToast(msg, duration){
+  if(duration === undefined) duration = 3000;
+  let toast = document.getElementById('admin-toast');
+  if(!toast){
+    toast = document.createElement('div');
+    toast.id = 'admin-toast';
+    toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:8px;font-size:14px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.3);font-family:Inter,sans-serif';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.display = 'block';
+  setTimeout(function(){ toast.style.display = 'none'; }, duration);
+}
+
+window.toggleKey       = toggleKey;
+window.loadApiKeys     = loadApiKeys;
+window.saveApiKeys     = saveApiKeys;
+window.showAdminToast  = showAdminToast;
 
 // ═══ Modal ═══
 function closeModal(){
