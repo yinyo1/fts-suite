@@ -3,8 +3,12 @@
 // El token/credenciales de Odoo vive en el servidor n8n,
 // nunca en el navegador.
 
+// URL default — se usa si localStorage no tiene ops_n8n_url aún.
+// public-config.json de GitHub sobreescribe esto en primer login.
+const N8N_DEFAULT = 'https://primary-production-5c3c.up.railway.app';
+
 const N8N_BASE = () => {
-  const url = localStorage.getItem('ops_n8n_url') || '';
+  const url = localStorage.getItem('ops_n8n_url') || N8N_DEFAULT;
   return url.replace(/\/$/, '');
 };
 
