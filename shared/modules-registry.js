@@ -21,10 +21,11 @@ const MODULES_REGISTRY = [
     path:       'operaciones/',
     cardId:     'card-operaciones',
     submodulos: [
-      { id:'kiosk',       label:'Kiosk'       },
-      { id:'dashboard',   label:'Dashboard'   },
-      { id:'planeacion',  label:'Planeación'  },
-      { id:'incidencias', label:'Incidencias' }
+      { id:'kiosk',       label:'Kiosk'            },
+      { id:'dashboard',   label:'Dashboard'        },
+      { id:'planeacion',  label:'Planeación'       },
+      { id:'incidencias', label:'Incidencias'      },
+      { id:'supervisor',  label:'Panel Supervisor' }
     ]
   },
   {
