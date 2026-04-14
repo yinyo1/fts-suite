@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="../fts-styles.css">
 <script src="../auth-suite.js"></script>
 <script src="../config-sync.js"></script>
+<script src="../modules-registry.js"></script>
 <style>
   *{box-sizing:border-box}
   html{height:auto;min-height:100%}
@@ -220,33 +221,18 @@ function closeModal(){
 }
 window.closeModal = closeModal;
 
-// ═══ Árbol de módulos ═══
-const MODULE_TREE = {
-  seguridad: {
-    label:'🛡️ Seguridad',
-    subs:{
-      instructor:'Instructor DC-3',
-      empleado:  'Empleado DC-3',
-      iperc:     'IPERC'
-    }
-  },
-  operaciones: {
-    label:'⚙️ Operaciones',
-    subs:{
-      kiosk:       'Kiosk',
-      dashboard:   'Dashboard',
-      planeacion:  'Planeación',
-      incidencias: 'Incidencias'
-    }
-  },
-  ingenieria: {
-    label:'🏗️ Ingeniería',
-    subs:{ analisis_estructural:'Análisis Estructural' }
-  },
-  rh:        { label:'👥 RH',        subs:{} },
-  comercial: { label:'📋 Comercial', subs:{} },
-  odoo:      { label:'⚙️ Odoo',      subs:{} }
-};
+// ═══ Árbol de módulos (dinámico desde MODULES_REGISTRY) ═══
+function getModuleTree(){
+  const tree = {};
+  if(typeof MODULES_REGISTRY === 'undefined') return tree;
+  MODULES_REGISTRY.forEach(function(mod){
+    tree[mod.id] = { label: mod.label, subs: {} };
+    (mod.submodulos || []).forEach(function(sub){
+      tree[mod.id].subs[sub.id] = sub.label;
+    });
+  });
+  return tree;
+}
 
 // ═══ Estado ═══
 let ADMIN_USERS = [];
@@ -301,10 +287,11 @@ function renderUsers(){
   }).join('');
 }
 
-// ═══ Árbol de módulos ═══
+// ═══ Árbol de checkboxes ═══
 function renderModuleTree(modulos){
-  return Object.keys(MODULE_TREE).map(function(key){
-    const mod = MODULE_TREE[key];
+  const tree = getModuleTree();
+  return Object.keys(tree).map(function(key){
+    const mod = tree[key];
     const acc = modulos === 'all' || (modulos && modulos[key] && modulos[key].acceso);
     let html = '<div style="margin-bottom:10px">'+
       '<label style="display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;cursor:pointer;color:#1a1a1a">'+
