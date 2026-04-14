@@ -102,6 +102,53 @@
           "submodulos": {}
         }
       }
+    },
+    {
+      "id": 4,
+      "username": "monty",
+      "nombre": "Montalvo",
+      "password_hash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
+      "role": "user",
+      "activo": true,
+      "vigencia": null,
+      "modulos": {
+        "seguridad": {
+          "acceso": true,
+          "submodulos": {
+            "instructor": true,
+            "empleado": true,
+            "iperc": true
+          }
+        },
+        "operaciones": {
+          "acceso": true,
+          "submodulos": {
+            "kiosk": true,
+            "dashboard": true,
+            "planeacion": true,
+            "incidencias": false,
+            "supervisor": false
+          }
+        },
+        "ingenieria": {
+          "acceso": true,
+          "submodulos": {
+            "analisis_estructural": true
+          }
+        },
+        "rh": {
+          "acceso": false,
+          "submodulos": {}
+        },
+        "comercial": {
+          "acceso": false,
+          "submodulos": {}
+        },
+        "odoo": {
+          "acceso": false,
+          "submodulos": {}
+        }
+      }
     }
   ]
 }
