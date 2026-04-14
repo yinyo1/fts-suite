@@ -178,53 +178,78 @@ async function githubPull(){
 }
 
 async function githubPush(incidencia){
-  const token = localStorage.getItem('ops_github_token');
-  if(!token) return false;
-  try{
-    const shaRes = await fetch(
-      'https://api.github.com/repos/' + INC_GITHUB_REPO + '/contents/' + INC_GITHUB_FILE + '?ref=main&t=' + Date.now(),
-      { headers: {
-          'Authorization': 'token ' + token,
-          'Accept':        'application/vnd.github.v3+json'
-      }}
-    );
-    let existingIncs = [];
-    let sha = null;
-    if(shaRes.ok){
-      const file = await shaRes.json();
-      sha = file.sha;
-      const cleanB64 = (file.content || '').replace(/\n/g, '');
-      const parsed = JSON.parse(decodeURIComponent(escape(atob(cleanB64))));
-      existingIncs = (parsed && parsed.incidencias) || [];
-    }
-    const idx = existingIncs.findIndex(function(i){ return i.id === incidencia.id; });
-    if(idx >= 0) existingIncs[idx] = incidencia;
-    else existingIncs.unshift(incidencia);
+  const token  = localStorage.getItem('ops_github_token');
+  const n8nUrl = localStorage.getItem('ops_n8n_url');
 
-    const content = JSON.stringify({ incidencias: existingIncs }, null, 2);
-    const body = {
-      message: 'Incidencia ' + incidencia.tipo + ' de ' + incidencia.username,
-      content: btoa(unescape(encodeURIComponent(content))),
-      branch:  'main'
-    };
-    if(sha) body.sha = sha;
-
-    const putRes = await fetch(
-      'https://api.github.com/repos/' + INC_GITHUB_REPO + '/contents/' + INC_GITHUB_FILE,
-      { method:'PUT',
-        headers:{
-          'Authorization':'token ' + token,
-          'Accept':       'application/vnd.github.v3+json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(body)
+  // ── Opción A: GitHub API directo (master/supervisor con token) ──
+  if(token){
+    try{
+      const shaRes = await fetch(
+        'https://api.github.com/repos/' + INC_GITHUB_REPO + '/contents/' + INC_GITHUB_FILE + '?ref=main&t=' + Date.now(),
+        { headers: {
+            'Authorization': 'token ' + token,
+            'Accept':        'application/vnd.github.v3+json'
+        }}
+      );
+      let existingIncs = [];
+      let sha = null;
+      if(shaRes.ok){
+        const file = await shaRes.json();
+        sha = file.sha;
+        const cleanB64 = (file.content || '').replace(/\n/g, '');
+        const parsed = JSON.parse(decodeURIComponent(escape(atob(cleanB64))));
+        existingIncs = (parsed && parsed.incidencias) || [];
       }
-    );
-    return putRes.ok;
-  } catch(e){
-    console.warn('[IncDB] Push falló:', e.message);
-    return false;
+      const idx = existingIncs.findIndex(function(i){ return i.id === incidencia.id; });
+      if(idx >= 0) existingIncs[idx] = incidencia;
+      else existingIncs.unshift(incidencia);
+
+      const content = JSON.stringify({ incidencias: existingIncs }, null, 2);
+      const body = {
+        message: 'Incidencia ' + incidencia.tipo + ' de ' + incidencia.username,
+        content: btoa(unescape(encodeURIComponent(content))),
+        branch:  'main'
+      };
+      if(sha) body.sha = sha;
+
+      const putRes = await fetch(
+        'https://api.github.com/repos/' + INC_GITHUB_REPO + '/contents/' + INC_GITHUB_FILE,
+        { method:'PUT',
+          headers:{
+            'Authorization':'token ' + token,
+            'Accept':       'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        }
+      );
+      if(putRes.ok) return true;
+    } catch(e){
+      console.warn('[IncDB] Push directo falló:', e.message);
+    }
   }
+
+  // ── Opción B: via n8n proxy (empleados sin token) ──
+  if(n8nUrl){
+    try{
+      const res = await fetch(
+        n8nUrl.replace(/\/$/, '') + '/webhook/incidencias/push',
+        { method:'POST',
+          headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify({ incidencia: incidencia })
+        }
+      );
+      if(res.ok){
+        console.log('[IncDB] Synced via n8n:', incidencia.id);
+        return true;
+      }
+    } catch(e){
+      console.warn('[IncDB] Push n8n falló:', e.message);
+    }
+  }
+
+  console.warn('[IncDB] Sin token ni n8n — solo local:', incidencia.id);
+  return false;
 }
 
 // Wrappers con sync automático
