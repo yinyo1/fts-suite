@@ -1,0 +1,7 @@
+{
+  "n8n_url": "https://primary-production-5c3c.up.railway.app",
+  "odoo_url": "https://serviciosfts.odoo.com",
+  "demo_mode": false,
+  "version": "1.0.0",
+  "updated": "2026-04-14"
+}
