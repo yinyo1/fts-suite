@@ -189,10 +189,42 @@
     return !!getSession();
   }
 
+  // ─── Auto-cargar config cifrada de GitHub ───
+  // Si hay password maestra guardada, descifra ops-config.json
+  // y aplica todas las keys ops_* al localStorage. No bloquea
+  // el flujo de login si falla.
+  async function autoLoadConfig(){
+    try{
+      const CONFIG_RAW = 'https://raw.githubusercontent.com/yinyo1/fts-suite/main/shared/ops-config.json?nocache=' + Math.random() + '&t=' + Date.now();
+
+      const res = await fetch(CONFIG_RAW, { cache:'no-store' });
+      if(!res.ok) return false;
+
+      const fileData = await res.json();
+      if(!fileData || !fileData.data) return false;
+
+      // Necesitamos la contraseña maestra para descifrar.
+      // Solo se aplica si el usuario ya la guardó previamente
+      // (típicamente tras un sync exitoso anterior).
+      const password = localStorage.getItem('ops_sync_password');
+      if(!password) return false;
+
+      if(typeof ConfigSync === 'undefined') return false;
+      await ConfigSync.load(password);
+
+      console.log('[FTSAuth] Config auto-cargada desde GitHub');
+      return true;
+    } catch(e){
+      // Silencioso — no interrumpir el login
+      console.warn('[FTSAuth] Auto-load config:', e.message);
+      return false;
+    }
+  }
+
   window.FTSAuth = {
     login, logout, setSession, getSession,
     canAccess, isMaster, isLoggedIn,
-    hashPassword, loadUsers,
+    hashPassword, loadUsers, autoLoadConfig,
     initActivityTracking, updateActivity, resetInactivityTimer
   };
 })();
