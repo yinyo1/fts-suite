@@ -205,16 +205,6 @@
 </div>
 
 <script>
-// ═══ Guardia de acceso ═══
-(function(){
-  const session = FTSAuth.getSession();
-  if(!session || session.role !== 'master'){
-    window.location.href = '../../index.html';
-    return;
-  }
-  FTSAuth.initActivityTracking();
-})();
-
 // ═══ Tabs ═══
 function showTab(id){
   document.querySelectorAll('.adm-tab').forEach(t => t.classList.remove('active'));
@@ -230,18 +220,270 @@ function closeModal(){
 }
 window.closeModal = closeModal;
 
-// ═══ Stubs (se implementan en Auth-B2) ═══
-function openNewUser(){ alert('Pendiente Auth-B2'); }
-function editUser(id){ alert('Pendiente Auth-B2'); }
-function toggleUser(id){ alert('Pendiente Auth-B2'); }
-function saveUser(){ alert('Pendiente Auth-B2'); }
-function saveToGitHub(){ alert('Pendiente Auth-B2'); }
+// ═══ Árbol de módulos ═══
+const MODULE_TREE = {
+  seguridad: {
+    label:'🛡️ Seguridad',
+    subs:{
+      instructor:'Instructor DC-3',
+      empleado:  'Empleado DC-3',
+      iperc:     'IPERC'
+    }
+  },
+  operaciones: {
+    label:'⚙️ Operaciones',
+    subs:{
+      kiosk:       'Kiosk',
+      dashboard:   'Dashboard',
+      planeacion:  'Planeación',
+      incidencias: 'Incidencias'
+    }
+  },
+  ingenieria: {
+    label:'🏗️ Ingeniería',
+    subs:{ analisis_estructural:'Análisis Estructural' }
+  },
+  rh:        { label:'👥 RH',        subs:{} },
+  comercial: { label:'📋 Comercial', subs:{} },
+  odoo:      { label:'⚙️ Odoo',      subs:{} }
+};
 
-window.openNewUser = openNewUser;
-window.editUser    = editUser;
-window.toggleUser  = toggleUser;
-window.saveUser    = saveUser;
+// ═══ Estado ═══
+let ADMIN_USERS = [];
+let EDITING_ID  = null;
+
+// ═══ Init ═══
+async function initAdmin(){
+  const session = FTSAuth.getSession();
+  if(!session || session.role !== 'master'){
+    window.location.href = '../../index.html';
+    return;
+  }
+  FTSAuth.initActivityTracking();
+
+  const data = await FTSAuth.loadUsers();
+  ADMIN_USERS = data.users || [];
+  renderUsers();
+}
+
+// ═══ Render lista ═══
+function renderUsers(){
+  const lista = document.getElementById('users-lista');
+  if(!lista) return;
+  if(!ADMIN_USERS.length){
+    lista.innerHTML = '<p style="color:#999;text-align:center;padding:20px">Sin usuarios</p>';
+    return;
+  }
+  lista.innerHTML = ADMIN_USERS.map(u => {
+    const roleColor = u.role === 'master'     ? '#1a1a1a'
+                    : u.role === 'supervisor' ? '#0078D4'
+                    : u.role === 'instructor' ? '#107C10'
+                    : '#555';
+    const isMaster = u.role === 'master';
+    return '<div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">'+
+        '<div>'+
+          '<div style="font-weight:700;font-size:16px;color:#1a1a1a">'+(u.nombre||'—')+'</div>'+
+          '<div style="color:#666;font-size:13px">@'+(u.username||'')+'</div>'+
+          '<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">'+
+            '<span style="background:'+roleColor+';color:#fff;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">'+(u.role||'usuario')+'</span>'+
+            '<span style="background:'+(u.activo?'#E2EFDA':'#FFE8E8')+';color:'+(u.activo?'#107C10':'#D83B01')+';padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">'+(u.activo?'🟢 Activo':'🔴 Inactivo')+'</span>'+
+            (u.vigencia ? '<span style="background:#f5f5f5;color:#666;padding:2px 8px;border-radius:20px;font-size:11px">📅 '+u.vigencia+'</span>' : '')+
+          '</div>'+
+        '</div>'+
+        (isMaster ? '' :
+          '<div style="display:flex;gap:8px;flex-shrink:0">'+
+            '<button onclick="editUser('+u.id+')" style="background:#0078D4;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:700">✏️ Editar</button>'+
+            '<button onclick="toggleUser('+u.id+')" style="background:'+(u.activo?'#FFE8E8':'#E2EFDA')+';color:'+(u.activo?'#D83B01':'#107C10')+';border:1px solid '+(u.activo?'#D83B01':'#107C10')+';padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:700">'+(u.activo?'Desactivar':'Activar')+'</button>'+
+          '</div>')+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+// ═══ Árbol de módulos ═══
+function renderModuleTree(modulos){
+  return Object.keys(MODULE_TREE).map(function(key){
+    const mod = MODULE_TREE[key];
+    const acc = modulos === 'all' || (modulos && modulos[key] && modulos[key].acceso);
+    let html = '<div style="margin-bottom:10px">'+
+      '<label style="display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;cursor:pointer;color:#1a1a1a">'+
+        '<input type="checkbox" class="mod-check" data-mod="'+key+'"'+(acc?' checked':'')+'> '+
+        mod.label+
+      '</label>';
+    Object.keys(mod.subs).forEach(function(sk){
+      const sl = mod.subs[sk];
+      const subChecked = modulos === 'all' ||
+        (modulos && modulos[key] && (!modulos[key].submodulos || modulos[key].submodulos[sk] !== false));
+      html += '<label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-left:24px;margin-top:4px;cursor:pointer;color:#555">'+
+        '<input type="checkbox" class="sub-check" data-mod="'+key+'" data-sub="'+sk+'"'+(subChecked?' checked':'')+'> '+
+        sl+
+      '</label>';
+    });
+    html += '</div>';
+    return html;
+  }).join('');
+}
+
+// ═══ Nuevo usuario ═══
+function openNewUser(){
+  EDITING_ID = null;
+  document.getElementById('modal-titulo').textContent = 'Nuevo usuario';
+  ['modal-nombre','modal-username','modal-password','modal-vigencia'].forEach(function(id){
+    const el = document.getElementById(id);
+    if(el) el.value = '';
+  });
+  document.getElementById('modal-role').value = 'tecnico';
+  document.getElementById('modal-activo').checked = true;
+  document.getElementById('modal-modulos').innerHTML = renderModuleTree({});
+  document.getElementById('user-modal').classList.add('show');
+}
+
+// ═══ Editar usuario ═══
+function editUser(id){
+  const u = ADMIN_USERS.find(x => x.id === id);
+  if(!u) return;
+  EDITING_ID = id;
+  document.getElementById('modal-titulo').textContent = 'Editar: ' + u.nombre;
+  document.getElementById('modal-nombre').value = u.nombre || '';
+  document.getElementById('modal-username').value = u.username || '';
+  document.getElementById('modal-password').value = '';
+  document.getElementById('modal-role').value = u.role || 'tecnico';
+  document.getElementById('modal-vigencia').value = u.vigencia || '';
+  document.getElementById('modal-activo').checked = !!u.activo;
+  document.getElementById('modal-modulos').innerHTML = renderModuleTree(u.modulos);
+  document.getElementById('user-modal').classList.add('show');
+}
+
+// ═══ Activar/Desactivar ═══
+function toggleUser(id){
+  const u = ADMIN_USERS.find(x => x.id === id);
+  if(u){
+    u.activo = !u.activo;
+    renderUsers();
+  }
+}
+
+// ═══ Guardar usuario (memoria) ═══
+async function saveUser(){
+  const nombre   = document.getElementById('modal-nombre').value.trim();
+  const username = document.getElementById('modal-username').value.trim();
+  const password = document.getElementById('modal-password').value;
+  const role     = document.getElementById('modal-role').value;
+  const vigencia = document.getElementById('modal-vigencia').value || null;
+  const activo   = document.getElementById('modal-activo').checked;
+
+  if(!nombre || !username){
+    alert('Nombre y usuario son requeridos');
+    return;
+  }
+
+  // Recopilar módulos del árbol
+  const modulos = {};
+  document.querySelectorAll('.mod-check').forEach(function(cb){
+    const mod = cb.dataset.mod;
+    if(!modulos[mod]) modulos[mod] = { acceso:false, submodulos:{} };
+    modulos[mod].acceso = cb.checked;
+  });
+  document.querySelectorAll('.sub-check').forEach(function(cb){
+    const mod = cb.dataset.mod;
+    const sub = cb.dataset.sub;
+    if(!modulos[mod]) modulos[mod] = { acceso:true, submodulos:{} };
+    modulos[mod].submodulos[sub] = cb.checked;
+  });
+
+  if(EDITING_ID){
+    const u = ADMIN_USERS.find(x => x.id === EDITING_ID);
+    if(u){
+      Object.assign(u, { nombre, username, role, vigencia, activo, modulos });
+      if(password) u.password_hash = await FTSAuth.hashPassword(password);
+    }
+  } else {
+    const newId = Math.max(0, ...ADMIN_USERS.map(u => u.id || 0)) + 1;
+    ADMIN_USERS.push({
+      id: newId, username, nombre,
+      password_hash: password ? await FTSAuth.hashPassword(password) : null,
+      role, activo, vigencia, modulos
+    });
+  }
+
+  closeModal();
+  renderUsers();
+}
+
+// ═══ Guardar en GitHub ═══
+async function saveToGitHub(){
+  const token = localStorage.getItem('ops_github_token');
+  if(!token){
+    alert('Configura tu GitHub token en el tab Sincronización (o en Operaciones → Config → Sync)');
+    return;
+  }
+  const btn = document.getElementById('btn-save-github');
+  if(btn){
+    btn.textContent = '🔄 Guardando…';
+    btn.disabled = true;
+  }
+  try{
+    const content = JSON.stringify({ users: ADMIN_USERS }, null, 2);
+
+    // Obtener SHA actual
+    const shaRes = await fetch(
+      'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/users-suite.json',
+      { headers: {
+          'Authorization': 'token ' + token,
+          'Accept':        'application/vnd.github.v3+json'
+      }}
+    );
+    const existing = shaRes.ok ? await shaRes.json() : null;
+
+    const res = await fetch(
+      'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/users-suite.json',
+      { method:'PUT',
+        headers:{
+          'Authorization':'token ' + token,
+          'Content-Type':'application/json',
+          'Accept':       'application/vnd.github.v3+json'
+        },
+        body: JSON.stringify({
+          message: 'Actualizar usuarios desde admin',
+          content: btoa(unescape(encodeURIComponent(content))),
+          branch:  'main',
+          sha:     existing && existing.sha
+        })
+      }
+    );
+    if(!res.ok){
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'HTTP ' + res.status);
+    }
+
+    if(btn){
+      btn.textContent = '✅ Guardado';
+      btn.style.background = '#107C10';
+      setTimeout(function(){
+        btn.textContent = '☁️ Guardar en GitHub';
+        btn.style.background = '';
+        btn.disabled = false;
+      }, 3000);
+    }
+  } catch(e){
+    alert('Error: ' + e.message);
+    if(btn){
+      btn.textContent = '☁️ Guardar en GitHub';
+      btn.disabled = false;
+    }
+  }
+}
+
+// ═══ Exponer ═══
+window.initAdmin    = initAdmin;
+window.openNewUser  = openNewUser;
+window.editUser     = editUser;
+window.toggleUser   = toggleUser;
+window.saveUser     = saveUser;
 window.saveToGitHub = saveToGitHub;
+
+document.addEventListener('DOMContentLoaded', initAdmin);
 </script>
 </body>
 </html>
