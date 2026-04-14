@@ -98,7 +98,9 @@ document.addEventListener('DOMContentLoaded', function(){
   const s = FTSAuth.getSession();
   if(!s) return;
   document.getElementById('inc-saludo').textContent = 'Hola, ' + (s.nombre || s.username);
-  const esSup = s.role === 'master' || s.role === 'supervisor';
+  const esSup = s.role === 'master'
+    || s.modulos === 'all'
+    || (s.modulos && s.modulos.operaciones && s.modulos.operaciones.submodulos && s.modulos.operaciones.submodulos.supervisor === true);
   if(esSup){
     document.getElementById('btn-supervisor').style.display = 'flex';
   }
