@@ -10,6 +10,7 @@
 <script src="shared/auth-suite.js"></script>
 <script src="shared/modules-registry.js"></script>
 <style>
+  body{padding-top:32px}
   .launcher{min-height:100vh;display:flex;flex-direction:column;max-width:520px;margin:0 auto;padding-bottom:28px}
   .launcher-header{text-align:center;padding:32px 16px 8px}
   .launcher-logo{width:160px;height:54px;background:var(--logo) center/contain no-repeat;margin:0 auto 12px}
@@ -34,6 +35,12 @@
 </style>
 </head>
 <body>
+
+<!-- User bar (visible cuando hay sesión) -->
+<div id="user-bar" style="display:none;position:fixed;top:0;left:0;right:0;background:#1a1a1a;color:#fff;flex-direction:row;justify-content:space-between;align-items:center;padding:6px 16px;font-size:13px;z-index:1000;height:32px;box-sizing:border-box;font-family:'Inter',sans-serif">
+  <span id="user-info" style="color:#ccc">👤 —</span>
+  <button onclick="doLogout()" style="background:none;border:1px solid #555;color:#ccc;padding:3px 10px;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit">Cerrar sesión</button>
+</div>
 
 <!-- Login overlay -->
 <div id="login-overlay" style="display:none;position:fixed;inset:0;background:#fff;z-index:9999;flex-direction:column;align-items:center;justify-content:center;padding:24px;font-family:'Inter',sans-serif">
@@ -256,6 +263,47 @@ function applyModuleAccess(userOrSession){
     }
   });
 }
+
+function doLogout(){
+  FTSAuth.logout();
+  const overlay = document.getElementById('login-overlay');
+  if(overlay) overlay.style.display = 'flex';
+  const userBar = document.getElementById('user-bar');
+  if(userBar) userBar.style.display = 'none';
+  // Quitar badges de sin acceso
+  document.querySelectorAll('.access-badge').forEach(function(b){ b.remove(); });
+  // Restaurar cards
+  if(typeof MODULES_REGISTRY !== 'undefined'){
+    MODULES_REGISTRY.forEach(function(mod){
+      const card = document.getElementById(mod.cardId);
+      if(card){
+        card.style.opacity = '';
+        card.style.pointerEvents = '';
+        card.style.cursor = '';
+      }
+    });
+  }
+  // Ocultar botón admin
+  const adminBtn = document.getElementById('admin-btn');
+  if(adminBtn) adminBtn.style.display = 'none';
+  // Reset form
+  const btn = document.getElementById('login-btn');
+  if(btn){
+    btn.textContent = 'Ingresar';
+    btn.disabled = false;
+    btn.onclick = doLogin;
+  }
+  ['login-user','login-pass','login-pass-confirm'].forEach(function(id){
+    const el = document.getElementById(id);
+    if(el) el.value = '';
+  });
+  document.getElementById('login-error').textContent = '';
+  document.getElementById('first-login-box').style.display = 'none';
+  _firstLoginData = null;
+  const u = document.getElementById('login-user');
+  if(u) u.focus();
+}
+window.doLogout = doLogout;
 
 document.addEventListener('DOMContentLoaded', initAuth);
 
