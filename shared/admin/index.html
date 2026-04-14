@@ -411,14 +411,27 @@ async function saveToGitHub(){
     btn.disabled = true;
   }
   try{
-    const content = JSON.stringify({ users: ADMIN_USERS }, null, 2);
+    // Recargar usuarios remotos para no pisar cambios concurrentes
+    const remoteData = await FTSAuth.loadUsers();
+    const remoteUsers = (remoteData && remoteData.users) || [];
 
-    // Obtener SHA actual
+    // Merge: cambios locales (ADMIN_USERS) tienen prioridad sobre la base remota
+    const mergedUsers = remoteUsers.slice();
+    ADMIN_USERS.forEach(function(localUser){
+      const idx = mergedUsers.findIndex(function(u){ return u.id === localUser.id; });
+      if(idx >= 0) mergedUsers[idx] = localUser;
+      else mergedUsers.push(localUser);
+    });
+
+    const content = JSON.stringify({ users: mergedUsers }, null, 2);
+
+    // Obtener SHA fresco (con cache bust + headers anti-cache)
     const shaRes = await fetch(
-      'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/users-suite.json',
+      'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/users-suite.json?ref=main&t=' + Date.now(),
       { headers: {
           'Authorization': 'token ' + token,
-          'Accept':        'application/vnd.github.v3+json'
+          'Accept':        'application/vnd.github.v3+json',
+          'Cache-Control': 'no-cache'
       }}
     );
     const existing = shaRes.ok ? await shaRes.json() : null;
@@ -443,6 +456,10 @@ async function saveToGitHub(){
       const err = await res.json().catch(() => ({}));
       throw new Error(err.message || 'HTTP ' + res.status);
     }
+
+    // Sincronizar el array local con el merged que acabamos de subir
+    ADMIN_USERS = mergedUsers;
+    renderUsers();
 
     if(btn){
       btn.textContent = '✅ Guardado';
