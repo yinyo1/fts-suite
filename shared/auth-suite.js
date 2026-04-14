@@ -53,6 +53,10 @@
     }
   }
 
+  // Estructura de usuario:
+  //   { id, username, password_hash, nombre, activo, vigencia,
+  //     role: 'master' | 'admin' | 'user',
+  //     modulos: 'all' | { [mod]: { acceso, submodulos:{...} } } }
   function getDefaultUsers(){
     return {
       users: [{
