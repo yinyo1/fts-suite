@@ -136,28 +136,27 @@ async function loadDatos(){
 
   if(D.config.demoMode || !D.config.n8nUrl){
     D.tecnicos = DEMO_TECNICOS.slice();
-    D.alertas = generarAlertasDemo(D.tecnicos);
+    D.alertas  = generarAlertasDemo(D.tecnicos);
     mostrarDemoBadge(true);
   } else {
     try{
-      const url = D.config.n8nUrl.replace(/\/$/, '') + '/dashboard/resumen';
+      const url = D.config.n8nUrl.replace(/\/$/, '') + '/webhook/dashboard/resumen';
+      const fechaHoy = new Date().toISOString().split('T')[0];
       const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': D.config.apiKey || ''
-        },
-        body: '{}'
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ fecha: fechaHoy })
       });
       if(!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       D.tecnicos = (data && data.tecnicos) || [];
-      D.alertas  = (data && data.alertas)  || generarAlertasDemo(D.tecnicos);
+      // Si n8n devuelve alertas pre-calculadas las usamos, si no las generamos localmente
+      D.alertas  = (data && data.alertas) || generarAlertas(D.tecnicos);
       mostrarDemoBadge(false);
     } catch(e){
-      console.warn('Odoo no disponible, usando demo:', e);
+      console.warn('Dashboard: usando demo', e);
       D.tecnicos = DEMO_TECNICOS.slice();
-      D.alertas = generarAlertasDemo(D.tecnicos);
+      D.alertas  = generarAlertasDemo(D.tecnicos);
       mostrarDemoBadge(true);
     }
   }
@@ -172,6 +171,48 @@ async function loadDatos(){
   renderTecnicos();
   renderAlertas();
   actualizarTimestamp();
+}
+
+// Alertas generadas sobre datos reales de Odoo
+function generarAlertas(tecnicos){
+  const alertas = [];
+  const cfg = D.config || {};
+
+  tecnicos.forEach(function(t){
+    if(cfg.alertaSinChecar !== false && t.status === 'sin_checar'){
+      alertas.push({
+        nivel:  'err',
+        icon:   '⚠️',
+        titulo: t.nombre + ' no ha checado hoy',
+        msg:    'Técnico programado sin registro de entrada'
+      });
+    }
+    if(cfg.alertaFueraZona !== false && (t.status === 'fuera_zona' || t.geo_ok === false)){
+      alertas.push({
+        nivel:  'warn',
+        icon:   '📍',
+        titulo: t.nombre + ' checó fuera de zona',
+        msg:    t.motivo || 'Geolocalización fuera del radio autorizado'
+      });
+    }
+    if(cfg.alertaExtra !== false){
+      const LIMITE = 576; // 9.6h en minutos
+      const efectivasMin = (typeof t.horas_efectivas === 'number' && t.horas_efectivas < 24)
+        ? t.horas_efectivas * 60
+        : (t.horas_efectivas_min || 0);
+      if(efectivasMin > LIMITE){
+        const extra = ((efectivasMin - LIMITE) / 60).toFixed(1);
+        alertas.push({
+          nivel:  'info',
+          icon:   '⚡',
+          titulo: t.nombre + ' tiene ' + extra + 'h extra',
+          msg:    'Superó el límite de 9.6h efectivas'
+        });
+      }
+    }
+  });
+
+  return alertas;
 }
 
 function mostrarDemoBadge(on){
