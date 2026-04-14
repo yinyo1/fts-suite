@@ -422,6 +422,9 @@ async function syncGuardar(){
   try{
     // Persistir API keys locales antes de cifrar y subir
     saveApiKeys(false);
+    // Subir config pública (URLs sin cifrar) para que otros dispositivos
+    // puedan cargar las URLs sin necesitar la password maestra.
+    await updatePublicConfig();
     await ConfigSync.save(token, password);
     setResult('✅ Config guardada en GitHub', '#107C10');
     initSyncTab();
@@ -525,7 +528,56 @@ function showAdminToast(msg, duration){
 }
 
 // ═══ Save API Keys + Sync inline ═══
-function saveAndSync(){
+// Actualiza shared/public-config.json con las URLs no-sensibles
+// para que otros dispositivos las carguen sin necesitar password.
+async function updatePublicConfig(){
+  const token = localStorage.getItem('ops_github_token');
+  if(!token) return;
+
+  const pub = {
+    n8n_url:   localStorage.getItem('ops_n8n_url')   || '',
+    odoo_url:  localStorage.getItem('ops_odoo_url')  || '',
+    demo_mode: localStorage.getItem('ops_demo_mode') === '1',
+    version:   '1.0.0',
+    updated:   new Date().toISOString().split('T')[0]
+  };
+
+  try{
+    const shaRes = await fetch(
+      'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/public-config.json?ref=main&t=' + Date.now(),
+      { headers: {
+          'Authorization': 'token ' + token,
+          'Accept':        'application/vnd.github.v3+json'
+      }}
+    );
+    const existing = shaRes.ok ? await shaRes.json() : null;
+
+    const content = JSON.stringify(pub, null, 2);
+    const body = {
+      message: 'Actualizar config pública',
+      content: btoa(unescape(encodeURIComponent(content))),
+      branch:  'main'
+    };
+    if(existing && existing.sha) body.sha = existing.sha;
+
+    await fetch(
+      'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/public-config.json',
+      { method:'PUT',
+        headers:{
+          'Authorization':'token ' + token,
+          'Accept':       'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      }
+    );
+    console.log('[Admin] public-config.json actualizado');
+  } catch(e){
+    console.warn('[Admin] Error actualizando config pública:', e.message);
+  }
+}
+
+async function saveAndSync(){
   const token    = localStorage.getItem('ops_github_token');
   const password = localStorage.getItem('ops_sync_password');
   const statusEl = document.getElementById('apikeys-status');
@@ -547,27 +599,30 @@ function saveAndSync(){
     statusEl.style.color = '#0078D4';
   }
 
-  ConfigSync.save(token, password)
-    .then(function(){
-      if(statusEl){
-        statusEl.textContent = '✅ Guardado en GitHub';
-        statusEl.style.color = '#107C10';
-        setTimeout(function(){ statusEl.textContent = ''; }, 3000);
-      }
-    })
-    .catch(function(e){
-      if(statusEl){
-        statusEl.textContent = '❌ Error: ' + e.message;
-        statusEl.style.color = '#D83B01';
-      }
-    });
+  try{
+    // 1) Actualizar config pública (URLs no-sensibles sin cifrar)
+    await updatePublicConfig();
+    // 2) Subir secrets cifrados
+    await ConfigSync.save(token, password);
+    if(statusEl){
+      statusEl.textContent = '✅ Guardado en GitHub';
+      statusEl.style.color = '#107C10';
+      setTimeout(function(){ statusEl.textContent = ''; }, 3000);
+    }
+  } catch(e){
+    if(statusEl){
+      statusEl.textContent = '❌ Error: ' + e.message;
+      statusEl.style.color = '#D83B01';
+    }
+  }
 }
 
-window.toggleKey       = toggleKey;
-window.loadApiKeys     = loadApiKeys;
-window.saveApiKeys     = saveApiKeys;
-window.saveAndSync     = saveAndSync;
-window.showAdminToast  = showAdminToast;
+window.toggleKey         = toggleKey;
+window.loadApiKeys       = loadApiKeys;
+window.saveApiKeys       = saveApiKeys;
+window.saveAndSync       = saveAndSync;
+window.updatePublicConfig = updatePublicConfig;
+window.showAdminToast    = showAdminToast;
 
 // ═══ Modal ═══
 function closeModal(){
