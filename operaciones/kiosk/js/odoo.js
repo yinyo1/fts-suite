@@ -1,48 +1,45 @@
-// ═══ FTS Kiosk — Conexión Odoo via n8n ═══
-// Todas las llamadas pasan por n8n como proxy seguro
+// ═══ FTS Kiosk — Conexión Odoo via n8n webhooks ═══
+// Todas las llamadas pasan por n8n como proxy seguro.
+// El token/credenciales de Odoo vive en el servidor n8n,
+// nunca en el navegador.
 
-const ODOO_CFG = () => ({
-  n8nUrl: localStorage.getItem('ops_n8n_url') || '',
-  apiKey: localStorage.getItem('ops_api_key') || ''
-});
+const N8N_BASE = () => {
+  const url = localStorage.getItem('ops_n8n_url') || '';
+  return url.replace(/\/$/, '');
+};
 
-async function odooFetch(endpoint, body){
-  const cfg = ODOO_CFG();
-  if(!cfg.n8nUrl) throw new Error('n8n no configurado');
-  const url = cfg.n8nUrl.replace(/\/$/, '') + endpoint;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key':    cfg.apiKey || ''
-    },
-    body: JSON.stringify(body || {})
+async function n8nFetch(endpoint, body){
+  const base = N8N_BASE();
+  if(!base) throw new Error('n8n no configurado');
+  const res = await fetch(base + endpoint, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(body || {})
   });
-  if(!res.ok){
-    throw new Error('Error n8n: ' + res.status + ' ' + res.statusText);
-  }
+  if(!res.ok) throw new Error('n8n error: ' + res.status);
   return res.json();
 }
 
 async function getEmpleados(){
-  return odooFetch('/kiosk/empleados', {});
+  const data = await n8nFetch('/webhook/kiosk/empleados', {});
+  return (data && data.empleados) || [];
 }
 
 async function getSOs(){
-  return odooFetch('/kiosk/sos', {});
+  const data = await n8nFetch('/webhook/kiosk/sos', {});
+  return (data && data.sos) || [];
 }
 
-async function registrarCheckin(data){
-  // data: { empleado_id, so_id, tipo, foto_b64, lat, lng, timestamp }
-  return odooFetch('/kiosk/checkin', data);
+async function registrarCheckin(payload){
+  return n8nFetch('/webhook/kiosk/checkin', payload);
 }
 
 async function getAsistenciaHoy(empleadoId){
-  return odooFetch('/kiosk/asistencia', { empleado_id: empleadoId });
+  return n8nFetch('/webhook/kiosk/asistencia', { empleado_id: empleadoId });
 }
 
 async function getAsistenciaRango(empleadoId, desde, hasta){
-  return odooFetch('/kiosk/asistencia-rango', {
+  return n8nFetch('/webhook/kiosk/asistencia-rango', {
     empleado_id: empleadoId,
     fecha_desde: desde,
     fecha_hasta: hasta
@@ -51,11 +48,18 @@ async function getAsistenciaRango(empleadoId, desde, hasta){
 
 async function testConnection(){
   try{
-    const res = await odooFetch('/kiosk/ping', {});
-    return { ok:true, data:res };
+    const res = await n8nFetch('/webhook/kiosk/ping', {});
+    return { ok: true, data: res };
   } catch(e){
-    return { ok:false, error:e.message };
+    return { ok: false, error: e.message };
   }
 }
 
-window.OdooKiosk = { getEmpleados, getSOs, registrarCheckin, getAsistenciaHoy, getAsistenciaRango, testConnection };
+window.OdooKiosk = {
+  getEmpleados,
+  getSOs,
+  registrarCheckin,
+  getAsistenciaHoy,
+  getAsistenciaRango,
+  testConnection
+};
