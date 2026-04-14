@@ -10,7 +10,48 @@
 (function(){
   if(!window.FTSAuth || !FTSAuth.isLoggedIn()){
     window.location.href = '../index.html';
+    return;
   }
+  FTSAuth.initActivityTracking();
+
+  const session = FTSAuth.getSession();
+  if(!session) return;
+
+  // Master ve todo
+  if(session.role === 'master' || session.modulos === 'all') return;
+
+  // Aplicar permisos de submódulos al cargar el DOM
+  const subMods = (session.modulos && session.modulos.operaciones && session.modulos.operaciones.submodulos) || {};
+
+  const SUBMOD_CARDS = {
+    kiosk:       'card-kiosk',
+    dashboard:   'card-dashboard',
+    planeacion:  'card-planeacion',
+    asistencia:  'card-asistencia',
+    proyectos:   'card-proyectos',
+    incidencias: 'card-incidencias'
+  };
+
+  document.addEventListener('DOMContentLoaded', function(){
+    Object.keys(SUBMOD_CARDS).forEach(function(sub){
+      const card = document.getElementById(SUBMOD_CARDS[sub]);
+      if(!card) return;
+      const tieneAcceso = subMods[sub] === true;
+      if(!tieneAcceso){
+        card.style.opacity = '0.4';
+        card.style.pointerEvents = 'none';
+        card.style.cursor = 'not-allowed';
+        card.style.position = 'relative';
+        if(!card.querySelector('.access-badge')){
+          const b = document.createElement('div');
+          b.className = 'access-badge';
+          b.style.cssText = 'position:absolute;top:8px;right:8px;background:#D83B01;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;pointer-events:none;z-index:10';
+          b.textContent = '🔒 Sin acceso';
+          card.appendChild(b);
+        }
+      }
+    });
+  });
 })();
 </script>
 <style>
@@ -50,7 +91,7 @@
 
   <!-- Lista de submódulos -->
   <div class="op-list">
-    <a href="kiosk/index.html" class="op-card">
+    <a id="card-kiosk" href="kiosk/index.html" class="op-card">
       <div class="op-icon">🖥️</div>
       <div class="op-info">
         <strong>Kiosk — Checador</strong>
@@ -58,21 +99,21 @@
       </div>
       <span onclick="event.stopPropagation();event.preventDefault();window.location.href='kiosk/config.html'" style="position:absolute;top:12px;right:12px;color:#999;font-size:20px;text-decoration:none;padding:4px 8px;border-radius:6px;background:rgba(0,0,0,0.05);cursor:pointer" title="Configuración Kiosk">⚙️</span>
     </a>
-    <a href="dashboard/index.html" class="op-card">
+    <a id="card-dashboard" href="dashboard/index.html" class="op-card">
       <div class="op-icon">📊</div>
       <div class="op-info">
         <strong>Dashboard</strong>
         <span>Centro de comando en tiempo real</span>
       </div>
     </a>
-    <a href="planeacion/index.html" class="op-card">
+    <a id="card-planeacion" href="planeacion/index.html" class="op-card">
       <div class="op-icon">📋</div>
       <div class="op-info">
         <strong>Planeación</strong>
         <span>Plan diario y semanal de técnicos</span>
       </div>
     </a>
-    <div class="op-card disabled">
+    <div id="card-asistencia" class="op-card disabled">
       <div class="op-icon">👷</div>
       <div class="op-info">
         <strong>Asistencia</strong>
@@ -80,7 +121,7 @@
       </div>
       <span class="op-badge">Próximamente</span>
     </div>
-    <div class="op-card disabled">
+    <div id="card-proyectos" class="op-card disabled">
       <div class="op-icon">📋</div>
       <div class="op-info">
         <strong>Proyectos / SOs</strong>
@@ -88,7 +129,7 @@
       </div>
       <span class="op-badge">Próximamente</span>
     </div>
-    <div class="op-card disabled">
+    <div id="card-incidencias" class="op-card disabled">
       <div class="op-icon">📝</div>
       <div class="op-info">
         <strong>Incidencias</strong>
