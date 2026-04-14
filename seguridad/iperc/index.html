@@ -20,10 +20,27 @@
     window.location.href = '../index.html';
     return;
   }
-  // Tiene acceso → ocultar overlay de IPERC al cargar
+
+  // Tiene acceso → inyectar sesión IPERC sintética para que iperc-config.js
+  // (que escucha window.load) la encuentre y dispare launchApp/showClientSelector.
+  // Campos requeridos por iperc-config.js: { user, nombre, esMaster, acceso }
+  const _user   = s.username || 'ftsmaster';
+  const _nombre = s.nombre   || s.username || 'Usuario';
+  const _esMaster = s.role === 'master';
+
+  sessionStorage.setItem('fts_iperc_session', JSON.stringify({
+    user:     _user,
+    nombre:   _nombre,
+    esMaster: _esMaster,
+    acceso:   _esMaster ? 'master' : 'instructor',
+    via:      'fts_auth'
+  }));
+
+  // El window.load de iperc-config.js leerá la sesión y mostrará el cliente selector
+  // o launchApp directamente si hay client guardado. Si por alguna razón no llega
+  // a ocultar el overlay, lo forzamos manualmente como respaldo.
   document.addEventListener('DOMContentLoaded', function(){
-    const overlay = document.getElementById('auth-overlay')
-      || document.querySelector('[id*="auth"]');
+    const overlay = document.getElementById('auth-overlay');
     if(overlay) overlay.style.display = 'none';
   });
 })();
