@@ -243,7 +243,10 @@ function renderEmpleados(list){
   el.innerHTML = list.map(function(e){
     const nombre = e.name || e.nombre || '';
     const cargo  = e.cargo || e.job_title || e.puesto || 'Técnico';
-    const foto   = e.foto || e.image_128 || '';
+    const foto = e.foto
+      || (e.image_128
+          ? (e.image_128.startsWith('data:') ? e.image_128 : 'data:image/png;base64,' + e.image_128)
+          : '');
     const photoHtml = foto
       ? '<img src="' + foto + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">'
       : (nombre || '?').charAt(0);
@@ -263,7 +266,10 @@ function selectEmpleado(id){
   updatePinDots();
 
   const displayName = emp.name || emp.nombre || '';
-  const fotoSrc = emp.foto || emp.image_128 || '';
+  const fotoSrc = emp.foto
+    || (emp.image_128
+        ? (emp.image_128.startsWith('data:') ? emp.image_128 : 'data:image/png;base64,' + emp.image_128)
+        : '');
 
   // Preparar ks-verify (se usará después del selectTipo)
   const photoEl = document.getElementById('ksEmpPhoto');
