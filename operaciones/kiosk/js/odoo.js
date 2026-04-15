@@ -25,12 +25,14 @@ async function n8nFetch(endpoint, body){
 }
 
 async function getEmpleados(){
-  const data = await n8nFetch('/webhook/kiosk/empleados', {});
+  const companyId = parseInt(localStorage.getItem('ops_kiosk_company_id') || '1', 10);
+  const data = await n8nFetch('/webhook/kiosk/empleados', { company_id: companyId });
   return (data && data.empleados) || [];
 }
 
 async function getSOs(){
-  const data = await n8nFetch('/webhook/kiosk/sos', {});
+  const companyId = parseInt(localStorage.getItem('ops_kiosk_company_id') || '1', 10);
+  const data = await n8nFetch('/webhook/kiosk/sos', { company_id: companyId });
   return (data && data.sos) || [];
 }
 
