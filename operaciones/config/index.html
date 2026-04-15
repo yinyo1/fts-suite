@@ -279,8 +279,16 @@
             <td style="padding:8px;border:1px solid #e0e0e0;color:#666">hr.employee</td>
             <td style="padding:4px;border:1px solid #e0e0e0"><input class="cfg-input" style="margin:0" id="ops_kiosk_field_supervisor_wa" placeholder="mobile_phone"></td>
           </tr>
+          <tr>
+            <td style="padding:8px;border:1px solid #e0e0e0">Empresa Odoo (ID)</td>
+            <td style="padding:8px;border:1px solid #e0e0e0;color:#666">res.company</td>
+            <td style="padding:4px;border:1px solid #e0e0e0"><input class="cfg-input" style="margin:0" id="ops_kiosk_company_id" type="number" placeholder="1"></td>
+          </tr>
         </tbody>
       </table>
+      <p style="font-size:11px;color:#888;margin:8px 0 0">
+        <strong>Empresa Odoo:</strong> ID numérico de la company en Odoo. Filtra empleados y SOs que pertenecen solo a esa empresa. Default: <code>1</code> (SERVICIOS FTS).
+      </p>
     </div>
 
     <div class="cfg-card" style="margin-top:16px">
@@ -606,6 +614,7 @@ const KIOSK_FIELD_DEFAULTS = {
   ops_kiosk_field_manager:          'parent_id',
   ops_kiosk_field_supervisor_email: 'work_email',
   ops_kiosk_field_supervisor_wa:    'mobile_phone',
+  ops_kiosk_company_id:             '1',
 };
 
 function loadKioskConfig(){
