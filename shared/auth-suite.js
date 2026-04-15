@@ -116,12 +116,12 @@
       loginTime:    Date.now(),
       lastActivity: Date.now()
     };
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     resetInactivityTimer();
   }
 
   function getSession(){
-    const raw = sessionStorage.getItem(SESSION_KEY);
+    const raw = localStorage.getItem(SESSION_KEY);
     if(!raw) return null;
     let session;
     try{ session = JSON.parse(raw); } catch(e){ return null; }
@@ -133,16 +133,16 @@
   }
 
   function updateActivity(){
-    const raw = sessionStorage.getItem(SESSION_KEY);
+    const raw = localStorage.getItem(SESSION_KEY);
     if(!raw) return;
     let session;
     try{ session = JSON.parse(raw); } catch(e){ return; }
     session.lastActivity = Date.now();
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
   }
 
   function logout(){
-    sessionStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(SESSION_KEY);
     if(window._inactivityTimer){
       clearTimeout(window._inactivityTimer);
       window._inactivityTimer = null;
