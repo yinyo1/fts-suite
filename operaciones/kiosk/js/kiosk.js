@@ -227,7 +227,9 @@ function normalize(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[\
 
 function searchEmpleados(q){
   const nq = normalize(q);
-  const filtered = !nq ? K.empleados : K.empleados.filter(e => normalize(e.nombre).includes(nq));
+  const filtered = !nq ? K.empleados : K.empleados.filter(function(e){
+    return normalize(e.name || e.nombre || '').includes(nq);
+  });
   renderEmpleados(filtered);
 }
 
@@ -238,13 +240,19 @@ function renderEmpleados(list){
     el.innerHTML = '<div style="text-align:center;color:#666;padding:24px">Sin resultados</div>';
     return;
   }
-  el.innerHTML = list.map(e =>
-    '<div class="kiosk-employee-card" onclick="selectEmpleado('+e.id+')">'+
-      '<div class="kiosk-employee-photo">'+(e.foto?'<img src="'+e.foto+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">':(e.nombre||'?').charAt(0))+'</div>'+
-      '<div><div class="kiosk-employee-name">'+(e.nombre||'—')+'</div>'+
-      '<div class="kiosk-employee-sub">'+(e.puesto||'')+'</div></div>'+
-    '</div>'
-  ).join('');
+  el.innerHTML = list.map(function(e){
+    const nombre = e.name || e.nombre || '';
+    const cargo  = e.cargo || e.job_title || e.puesto || 'Técnico';
+    const foto   = e.foto || e.image_128 || '';
+    const photoHtml = foto
+      ? '<img src="' + foto + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">'
+      : (nombre || '?').charAt(0);
+    return '<div class="kiosk-employee-card" onclick="selectEmpleado('+e.id+')">'+
+      '<div class="kiosk-employee-photo">' + photoHtml + '</div>'+
+      '<div><div class="kiosk-employee-name">' + (nombre || '—') + '</div>'+
+      '<div class="kiosk-employee-sub">' + cargo + '</div></div>'+
+    '</div>';
+  }).join('');
 }
 
 function selectEmpleado(id){
@@ -255,11 +263,12 @@ function selectEmpleado(id){
   updatePinDots();
 
   const displayName = emp.name || emp.nombre || '';
+  const fotoSrc = emp.foto || emp.image_128 || '';
 
   // Preparar ks-verify (se usará después del selectTipo)
   const photoEl = document.getElementById('ksEmpPhoto');
   const nameEl  = document.getElementById('ksEmpName');
-  if(photoEl) photoEl.src = emp.foto || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220"><rect width="220" height="220" fill="%23f5f5f5"/><text x="50%" y="55%" text-anchor="middle" font-size="80" font-family="Inter,sans-serif" font-weight="700" fill="%23999">'+(displayName||'?').charAt(0)+'</text></svg>';
+  if(photoEl) photoEl.src = fotoSrc || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220"><rect width="220" height="220" fill="%23f5f5f5"/><text x="50%" y="55%" text-anchor="middle" font-size="80" font-family="Inter,sans-serif" font-weight="700" fill="%23999">'+(displayName||'?').charAt(0)+'</text></svg>';
   if(nameEl) nameEl.textContent = displayName;
 
   // Llenar pantalla ks-tipo
