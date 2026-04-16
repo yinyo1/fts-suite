@@ -92,11 +92,13 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-ser
   border-radius:12px;cursor:pointer;
   border:2px solid #e0e0e0;
   font-family:inherit;min-height:80px;
-  transition:all 0.1s;
+  transition:transform 0.08s,background 0.08s;
   box-shadow:0 1px 3px rgba(0,0,0,0.04);
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;-webkit-user-select:none;
 }
 .kiosk-pin-btn:hover{border-color:#0078D4;background:#f0f7ff}
-.kiosk-pin-btn:active{background:#107C10;color:#fff;border-color:#107C10;transform:scale(0.96)}
+.kiosk-pin-btn:active{background:#d0e8ff;transform:scale(0.94)}
 .kiosk-pin-btn.del{color:#D83B01}
 .kiosk-pin-dots{
   display:flex;gap:16px;margin:20px 0;
