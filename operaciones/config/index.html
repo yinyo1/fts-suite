@@ -344,6 +344,44 @@
       <button onclick="cambiarPinKiosk()" style="background:#0078D4;color:#fff;border:none;padding:10px 20px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin-top:12px;font-family:inherit">Cambiar PIN Kiosk</button>
       <p id="pin-kiosk-msg" style="font-size:13px;margin:8px 0 0;font-weight:600"></p>
     </div>
+
+    <div class="cfg-card" style="margin-top:16px">
+      <h3>📍 Geolocalización</h3>
+      <label class="cfg-label">Tipo de lugar</label>
+      <select id="ops_kiosk_lugar_tipo" class="cfg-input" onchange="document.getElementById('ops_kiosk_radio_custom_box').style.display=this.value==='custom'?'block':'none'">
+        <option value="fts">🏢 Oficinas FTS (radio 50m)</option>
+        <option value="planta">🏭 Planta cliente (radio 150m)</option>
+        <option value="custom">📐 Radio personalizado</option>
+      </select>
+
+      <label class="cfg-label">URL Google Maps del lugar</label>
+      <input id="ops_kiosk_maps_url" type="url" class="cfg-input" placeholder="https://maps.app.goo.gl/...">
+      <p style="font-size:11px;color:#999;margin:2px 0 8px">Pega la liga de Google Maps del lugar de trabajo. n8n resolverá las coordenadas.</p>
+
+      <div id="ops_kiosk_radio_custom_box" style="display:none">
+        <label class="cfg-label">Radio personalizado (metros)</label>
+        <input id="ops_kiosk_radio_custom" type="number" class="cfg-input" placeholder="100" min="10" max="5000">
+      </div>
+
+      <label class="cfg-label">Coordenadas del lugar (auto)</label>
+      <div style="display:flex;gap:8px">
+        <input id="ops_kiosk_geo_lat" type="text" class="cfg-input" placeholder="Latitud" readonly style="background:#f5f5f5">
+        <input id="ops_kiosk_geo_lng" type="text" class="cfg-input" placeholder="Longitud" readonly style="background:#f5f5f5">
+      </div>
+      <button onclick="resolverMapsUrl()" style="background:#0078D4;color:#fff;border:none;padding:10px;border-radius:8px;width:100%;margin-top:8px;cursor:pointer;font-size:14px;font-family:inherit;font-weight:700">🔍 Resolver coordenadas desde URL</button>
+      <div id="ops_kiosk_geo_status" style="font-size:12px;min-height:20px;margin-top:4px;text-align:center;font-weight:600"></div>
+    </div>
+
+    <div class="cfg-card" style="margin-top:16px">
+      <h3>👁️ Face Recognition</h3>
+      <label style="display:flex;align-items:center;gap:12px;cursor:pointer;padding:12px;background:#f9f9f9;border-radius:8px;border:1px solid #e0e0e0">
+        <input type="checkbox" id="ops_kiosk_face_required" style="width:20px;height:20px;flex-shrink:0">
+        <div>
+          <div style="font-weight:700;font-size:14px">Requerir Face Recognition</div>
+          <div style="font-size:12px;color:#666;margin-top:2px">Si está activo, el empleado debe verificar su cara al hacer check-in. Si está inactivo, solo se registra la foto sin validar identidad.</div>
+        </div>
+      </label>
+    </div>
   </div>
 
   <div class="cfg-pane" id="pane-planeacion">
@@ -615,6 +653,11 @@ const KIOSK_FIELD_DEFAULTS = {
   ops_kiosk_field_supervisor_email: 'work_email',
   ops_kiosk_field_supervisor_wa:    'mobile_phone',
   ops_kiosk_company_id:             '1',
+  ops_kiosk_lugar_tipo:             'fts',
+  ops_kiosk_maps_url:               '',
+  ops_kiosk_geo_lat:                '',
+  ops_kiosk_geo_lng:                '',
+  ops_kiosk_radio_custom:           '100',
 };
 
 function loadKioskConfig(){
@@ -646,6 +689,15 @@ function loadKioskConfig(){
   }
 
   renderGeoLista();
+
+  // Face required checkbox
+  var faceReq = document.getElementById('ops_kiosk_face_required');
+  if(faceReq) faceReq.checked = localStorage.getItem('ops_kiosk_face_required') === '1';
+
+  // Custom radio box visibility
+  var lugarTipo = document.getElementById('ops_kiosk_lugar_tipo');
+  var radioBox  = document.getElementById('ops_kiosk_radio_custom_box');
+  if(lugarTipo && radioBox) radioBox.style.display = lugarTipo.value === 'custom' ? 'block' : 'none';
 }
 
 function saveKioskConfig(){
@@ -662,6 +714,10 @@ function saveKioskConfig(){
   if(faceEl) localStorage.setItem('ops_kiosk_face_enabled', faceEl.checked ? '1' : '0');
   const threshEl = document.getElementById('ops_kiosk_face_threshold');
   if(threshEl) localStorage.setItem('ops_kiosk_face_threshold', (parseInt(threshEl.value, 10) / 100).toString());
+
+  // Face required
+  var faceReq = document.getElementById('ops_kiosk_face_required');
+  if(faceReq) localStorage.setItem('ops_kiosk_face_required', faceReq.checked ? '1' : '0');
   // Las geolocalizaciones ya se persisten en vivo con update/add/remove
 }
 
