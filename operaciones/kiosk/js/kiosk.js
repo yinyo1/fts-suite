@@ -1012,7 +1012,7 @@ async function fetchEstadoEmpleado(empleadoId){
 }
 
 function horasADisplay(horas){
-  if(horas == null) return '0:00';
+  if(horas == null || horas < 0) return '0:00';
   var h = Math.floor(horas);
   var m = Math.round((horas - h) * 60);
   return h + ':' + String(m).padStart(2, '0');
@@ -1051,8 +1051,10 @@ async function mostrarEstadoEmpleado(empleado){
   window._empleadoActual = empleado;
 
   // Horas
-  document.getElementById('ksHorasHoy').textContent = horasADisplay(estado.horas_hoy || 0);
-  document.getElementById('ksHorasRestantes').textContent = horasADisplay(estado.horas_restantes != null ? estado.horas_restantes : 9.6);
+  var horasHoy = Math.max(0, estado.horas_hoy || 0);
+  var horasRestantes = estado.horas_restantes != null ? Math.min(9.6, Math.max(0, estado.horas_restantes)) : 9.6;
+  document.getElementById('ksHorasHoy').textContent = horasADisplay(horasHoy);
+  document.getElementById('ksHorasRestantes').textContent = horasADisplay(horasRestantes);
 
   // Card de estado
   var card  = document.getElementById('ksEstadoCard');
