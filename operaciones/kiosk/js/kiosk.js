@@ -1193,6 +1193,118 @@ function resolverErrorCritico(){
   mostrarModalOlvideCheckout(estado, empleado);
 }
 
+// ═══════ MODAL OLVIDÉ CHECKOUT ═══════
+function mostrarModalOlvideCheckout(estado, empleado){
+  var regAbierto = estado && estado.registro_abierto;
+  var checkInStr = (regAbierto && regAbierto.check_in) || '';
+  var checkInHora  = checkInStr.substring(11, 16) || '??:??';
+  var checkInFecha = checkInStr.substring(0, 10) || '??';
+
+  var modal = document.createElement('div');
+  modal.id = 'modalOlvideCheckout';
+  modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;padding:24px';
+
+  modal.innerHTML =
+    '<div style="background:#fff;border-radius:16px;padding:24px;max-width:340px;width:100%">'+
+      '<h3 style="margin:0 0 8px;font-size:18px">❌ Olvidé checar salida</h3>'+
+      '<p style="font-size:13px;color:#666;margin:0 0 16px;line-height:1.5">'+
+        'Tu entrada registrada fue el <strong>' + checkInFecha + '</strong> a las <strong>' + checkInHora + '</strong>.<br>¿A qué hora fue tu salida real?'+
+      '</p>'+
+      '<div style="margin-bottom:16px">'+
+        '<label style="font-size:13px;color:#333;font-weight:600;display:block;margin-bottom:6px">Hora estimada de salida:</label>'+
+        '<input type="time" id="horaEstimadaSalida" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:16px;box-sizing:border-box;font-family:inherit">'+
+      '</div>'+
+      '<div style="margin-bottom:20px">'+
+        '<label style="font-size:13px;color:#333;font-weight:600;display:block;margin-bottom:6px">Motivo (obligatorio):</label>'+
+        '<textarea id="motivoOlvideCheckout" placeholder="Ej: Se me olvidó checar al salir..." style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:14px;box-sizing:border-box;height:80px;resize:none;font-family:inherit"></textarea>'+
+      '</div>'+
+      '<div style="display:flex;gap:10px">'+
+        '<button onclick="document.getElementById(\'modalOlvideCheckout\').remove();if(window._empleadoActual)mostrarEstadoEmpleado(window._empleadoActual)" style="flex:1;padding:12px;background:#f0f0f0;color:#333;border:1px solid #ccc;border-radius:10px;font-size:14px;cursor:pointer;font-family:inherit">Cancelar</button>'+
+        '<button onclick="confirmarOlvideCheckout()" style="flex:2;padding:12px;background:#D83B01;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Confirmar y checar entrada hoy</button>'+
+      '</div>'+
+    '</div>';
+
+  document.body.appendChild(modal);
+}
+window.mostrarModalOlvideCheckout = mostrarModalOlvideCheckout;
+
+async function confirmarOlvideCheckout(){
+  var horaInput = document.getElementById('horaEstimadaSalida');
+  var motivoInput = document.getElementById('motivoOlvideCheckout');
+
+  if(!horaInput || !horaInput.value){
+    alert('Por favor ingresa la hora estimada');
+    return;
+  }
+  if(!motivoInput || !motivoInput.value.trim()){
+    alert('El motivo es obligatorio');
+    return;
+  }
+
+  var estado = window._estadoActual;
+  var empleado = window._empleadoActual;
+
+  // Fecha del check_in original para construir el checkout estimado
+  var regAbierto = estado && estado.registro_abierto;
+  var fechaCheckIn = (regAbierto && regAbierto.check_in) ? regAbierto.check_in.substring(0, 10) : new Date().toISOString().split('T')[0];
+  var checkoutEstimado = fechaCheckIn + 'T' + horaInput.value + ':00';
+
+  // Cerrar modal
+  var m = document.getElementById('modalOlvideCheckout');
+  if(m) m.remove();
+
+  // Loading en pantalla estado
+  showScreen('ks-estado');
+  document.getElementById('ksEstadoBotones').innerHTML =
+    '<p style="text-align:center;color:#666;padding:20px">⏳ Procesando…</p>';
+
+  try{
+    var n8nUrl = localStorage.getItem('ops_n8n_url') || 'https://primary-production-5c3c.up.railway.app';
+
+    // 1) Cerrar registro viejo con hora estimada
+    var resCheckout = await n8nFetch('/webhook/kiosk/checkin', {
+      empleado_id:     empleado.id,
+      tipo:            'salida',
+      timestamp:       checkoutEstimado,
+      lat:             null,
+      lng:             null,
+      geo_autorizada:  true,
+      es_estimado:     true,
+      motivo_estimado: motivoInput.value.trim()
+    });
+    var r = Array.isArray(resCheckout) ? resCheckout[0] : resCheckout;
+    if(r && r.accion_valida === false){
+      mostrarErrorCandado(r.error_msg || 'Error al cerrar registro');
+      return;
+    }
+
+    // 2) Crear nuevo check-in de hoy
+    var geo = await window.getGeolocacion();
+    var resCheckin = await n8nFetch('/webhook/kiosk/checkin', {
+      empleado_id:    empleado.id,
+      tipo:           'entrada',
+      timestamp:      new Date().toISOString(),
+      lat:            (geo && geo.lat != null) ? geo.lat : null,
+      lng:            (geo && geo.lng != null) ? geo.lng : null,
+      geo_autorizada: true,
+      es_estimado:    false
+    });
+    var r2 = Array.isArray(resCheckin) ? resCheckin[0] : resCheckin;
+    if(r2 && r2.accion_valida === false){
+      mostrarErrorCandado(r2.error_msg || 'Error al registrar entrada');
+      return;
+    }
+
+    // 3) Refrescar pantalla de estado
+    mostrarEstadoEmpleado(empleado);
+
+  } catch(e){
+    alert('Error al procesar: ' + e.message);
+    mostrarEstadoEmpleado(empleado);
+  }
+}
+window.confirmarOlvideCheckout = confirmarOlvideCheckout;
+
 // ═══════ MODAL ERROR CANDADO ═══════
 function mostrarErrorCandado(errorMsg){
   var icono = '⚠️';
