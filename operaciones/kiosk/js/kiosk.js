@@ -35,13 +35,9 @@ function loadKioskConfig(){
   };
 }
 
-// ═══ Geo: radio configurable + distancia + validación ═══
+// ═══ Geo: radio fallback + distancia + validación ═══
 function getRadioPermitido(){
-  var tipo = localStorage.getItem('ops_kiosk_lugar_tipo') || 'fts';
-  if(tipo === 'fts')    return 50;
-  if(tipo === 'planta') return 150;
-  var custom = parseInt(localStorage.getItem('ops_kiosk_radio_custom') || '100', 10);
-  return custom > 0 ? custom : 100;
+  return 100; // fallback — cada sitio define su propio radio en ops_kiosk_geolocations
 }
 
 function calcularDistancia(lat1, lng1, lat2, lng2){
@@ -57,16 +53,8 @@ function calcularDistancia(lat1, lng1, lat2, lng2){
 
 function validarGeolocacion(lat, lng){
   var geos = K.config.geolocations;
-
-  // Si no hay sitios en el array, usar las coordenadas centrales de config
   if(!geos || !geos.length){
-    var cfgLat = parseFloat(localStorage.getItem('ops_kiosk_geo_lat'));
-    var cfgLng = parseFloat(localStorage.getItem('ops_kiosk_geo_lng'));
-    if(!isNaN(cfgLat) && !isNaN(cfgLng)){
-      geos = [{ nombre:'Sitio configurado', lat:cfgLat, lng:cfgLng, radio:getRadioPermitido() }];
-    } else {
-      return { autorizado: true, sitio: 'Sin restricción geo' };
-    }
+    return { autorizado: true, sitio: 'Sin restricción geo' };
   }
   if(lat == null || lng == null) return {
     autorizado: false,
