@@ -318,10 +318,15 @@ function obtenerIncidencia(incId){
   return IncDB.get().find(function(i){ return i.id === incId; });
 }
 
+function getSupNombre(){
+  var s = window._SUP_SESSION;
+  return (s && (s.nombre || s.username)) || 'Supervisor';
+}
+
 async function aprobarAjuste(incId){
   var inc = obtenerIncidencia(incId);
   if(!inc) return;
-  var s = window._SUP_SESSION;
+  var supNombre = getSupNombre();
   try{
     var n8nUrl = localStorage.getItem('ops_n8n_url') || 'https://primary-production-5c3c.up.railway.app';
     await fetch(n8nUrl + '/webhook/kiosk/aprobar-ajuste', {
@@ -332,14 +337,15 @@ async function aprobarAjuste(incId){
         attendance_id:      inc.attendance_id,
         empleado_id:        inc.empleado_id,
         check_out_aprobado: inc.check_out_estimado,
-        aprobado_por:       s.nombre || s.username,
+        aprobado_por:       supNombre,
+        supervisor_nombre:  supNombre,
         accion:             'aprobar'
       })
     });
     IncDB.update(incId, {
       estado:           'aprobado',
       status:           'aprobada',
-      aprobado_por:     s.nombre || s.username,
+      aprobado_por:     supNombre,
       fecha_aprobacion: new Date().toISOString()
     });
     showToast('✅ Ajuste aprobado');
@@ -358,7 +364,7 @@ async function modificarAjuste(incId){
     alert('Formato inválido. Usa HH:MM (ej: 17:30)');
     return;
   }
-  var s = window._SUP_SESSION;
+  var supNombre = getSupNombre();
   var fechaBase = (inc.check_out_estimado || '').substring(0, 10) || new Date().toISOString().split('T')[0];
   var nuevoCheckout = fechaBase + ' ' + nuevaHora + ':00';
   try{
@@ -371,7 +377,8 @@ async function modificarAjuste(incId){
         attendance_id:      inc.attendance_id,
         empleado_id:        inc.empleado_id,
         check_out_aprobado: nuevoCheckout,
-        aprobado_por:       s.nombre || s.username,
+        aprobado_por:       supNombre,
+        supervisor_nombre:  supNombre,
         accion:             'modificar',
         hora_original:      inc.check_out_estimado,
         hora_modificada:    nuevoCheckout
@@ -381,7 +388,7 @@ async function modificarAjuste(incId){
       estado:             'aprobado_modificado',
       status:             'aprobada',
       check_out_estimado: nuevoCheckout,
-      aprobado_por:       s.nombre || s.username,
+      aprobado_por:       supNombre,
       fecha_aprobacion:   new Date().toISOString(),
       modificado:         true
     });
@@ -392,34 +399,83 @@ async function modificarAjuste(incId){
   }
 }
 
-async function rechazarAjuste(incId){
+function rechazarAjuste(incId){
   var inc = obtenerIncidencia(incId);
   if(!inc) return;
-  var motivo = prompt('¿Motivo del rechazo? (opcional)');
-  if(motivo === null) return;
-  var s = window._SUP_SESSION;
+
+  var horaDeclarada = (inc.check_out_estimado || '').substring(11, 16) || '--:--';
+
+  var modal = document.createElement('div');
+  modal.id = 'modalRechazo';
+  modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;padding:24px';
+  modal.innerHTML =
+    '<div style="background:#fff;border-radius:16px;padding:24px;max-width:340px;width:100%">'+
+      '<h3 style="margin:0 0 8px;color:#D83B01">❌ Rechazar ajuste de hora</h3>'+
+      '<p style="font-size:13px;color:#666;margin:0 0 16px">Hora declarada por el técnico:<br><strong>' + (inc.check_out_estimado || '—') + '</strong></p>'+
+      '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">Hora real de salida (CST):</label>'+
+      '<input type="time" id="horaRealRechazo" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:16px;box-sizing:border-box;margin-bottom:12px;font-family:inherit">'+
+      '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">Motivo del rechazo (obligatorio):</label>'+
+      '<textarea id="motivoRechazo" placeholder="Ej: Según cámara de acceso salió a las 4:00 PM..." style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:13px;box-sizing:border-box;height:80px;resize:none;margin-bottom:16px;font-family:inherit"></textarea>'+
+      '<div style="display:flex;gap:10px">'+
+        '<button onclick="document.getElementById(\'modalRechazo\').remove()" style="flex:1;padding:12px;background:#f0f0f0;border:1px solid #ccc;border-radius:10px;cursor:pointer;font-family:inherit">Cancelar</button>'+
+        '<button onclick="confirmarRechazo(\''+incId+'\')" style="flex:2;padding:12px;background:#D83B01;color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer;font-family:inherit">Confirmar rechazo</button>'+
+      '</div>'+
+    '</div>';
+  document.body.appendChild(modal);
+}
+
+async function confirmarRechazo(incId){
+  var inc = obtenerIncidencia(incId);
+  if(!inc) return;
+  var horaInput  = document.getElementById('horaRealRechazo');
+  var motivoInput = document.getElementById('motivoRechazo');
+
+  if(!motivoInput || !motivoInput.value.trim()){
+    alert('El motivo es obligatorio');
+    return;
+  }
+
+  // Construir hora real UTC si se proporcionó
+  var horaRealUTC = null;
+  if(horaInput && horaInput.value){
+    var fechaBase = (inc.check_out_estimado || '').substring(0, 10) || new Date().toISOString().split('T')[0];
+    // CST a UTC: +6 horas
+    var cstDate = new Date(fechaBase + 'T' + horaInput.value + ':00');
+    var utcDate = new Date(cstDate.getTime() + (6 * 60 * 60000));
+    horaRealUTC = utcDate.toISOString().replace('T', ' ').substring(0, 19);
+  }
+
+  var supNombre = getSupNombre();
+
+  var m = document.getElementById('modalRechazo');
+  if(m) m.remove();
+
   try{
     var n8nUrl = localStorage.getItem('ops_n8n_url') || 'https://primary-production-5c3c.up.railway.app';
     await fetch(n8nUrl + '/webhook/kiosk/aprobar-ajuste', {
       method:'POST',
       headers:{ 'Content-Type':'application/json' },
       body: JSON.stringify({
-        incidencia_id:  inc.id,
-        attendance_id:  inc.attendance_id,
-        empleado_id:    inc.empleado_id,
-        aprobado_por:   s.nombre || s.username,
-        accion:         'rechazar',
-        motivo_rechazo: motivo || ''
+        incidencia_id:      incId,
+        attendance_id:      inc.attendance_id,
+        empleado_id:        inc.empleado_id,
+        accion:             'rechazar',
+        hora_real_utc:      horaRealUTC,
+        motivo_rechazo:     motivoInput.value.trim(),
+        supervisor_nombre:  supNombre,
+        aprobado_por:       supNombre
       })
     });
     IncDB.update(incId, {
-      estado:             'rechazado',
-      status:             'denegada',
-      denegado_por:       s.nombre || s.username,
-      denegado_timestamp: new Date().toISOString(),
-      motivo_denegacion:  motivo || ''
+      estado:               'rechazado',
+      status:               'denegada',
+      hora_real_supervisor:  horaRealUTC,
+      motivo_rechazo:        motivoInput.value.trim(),
+      denegado_por:          supNombre,
+      denegado_timestamp:    new Date().toISOString(),
+      motivo_denegacion:     motivoInput.value.trim()
     });
-    showToast('❌ Ajuste rechazado');
+    showToast('❌ Ajuste rechazado y corregido');
     cargarPendientes();
   } catch(e){
     alert('Error al rechazar: ' + e.message);
@@ -429,6 +485,7 @@ async function rechazarAjuste(incId){
 window.aprobarAjuste   = aprobarAjuste;
 window.modificarAjuste = modificarAjuste;
 window.rechazarAjuste  = rechazarAjuste;
+window.confirmarRechazo = confirmarRechazo;
 
 function abrirModalAprobar(incId){
   const inc = IncDB.get().find(function(i){ return i.id === incId; });
