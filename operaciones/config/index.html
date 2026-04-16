@@ -365,11 +365,12 @@
 
       <label class="cfg-label">Coordenadas del lugar (auto)</label>
       <div style="display:flex;gap:8px">
-        <input id="ops_kiosk_geo_lat" type="text" class="cfg-input" placeholder="Latitud" readonly style="background:#f5f5f5">
-        <input id="ops_kiosk_geo_lng" type="text" class="cfg-input" placeholder="Longitud" readonly style="background:#f5f5f5">
+        <input id="ops_kiosk_geo_lat" type="text" class="cfg-input" placeholder="Ej: 25.6704">
+        <input id="ops_kiosk_geo_lng" type="text" class="cfg-input" placeholder="Ej: -100.3102">
       </div>
-      <button onclick="resolverMapsUrl()" style="background:#0078D4;color:#fff;border:none;padding:10px;border-radius:8px;width:100%;margin-top:8px;cursor:pointer;font-size:14px;font-family:inherit;font-weight:700">🔍 Resolver coordenadas desde URL</button>
+      <button onclick="resolverMapsUrl()" style="background:#0078D4;color:#fff;border:none;padding:10px;border-radius:8px;width:100%;margin-top:8px;cursor:pointer;font-size:14px;font-family:inherit;font-weight:700">🔍 Resolver desde URL (o ingresa manualmente)</button>
       <div id="ops_kiosk_geo_status" style="font-size:12px;min-height:20px;margin-top:4px;text-align:center;font-weight:600"></div>
+      <p style="font-size:11px;color:#999;margin-top:4px">💡 Tip: En Google Maps web, haz click derecho en el punto exacto y copia las coordenadas.</p>
     </div>
 
     <div class="cfg-card" style="margin-top:16px">
