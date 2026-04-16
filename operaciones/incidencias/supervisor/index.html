@@ -228,8 +228,12 @@ function showTab(id, btn){
 
 // ─── TAB 1: Pendientes ───
 function cargarPendientes(){
-  const todas = IncDB.get({ status:'pendiente' });
-  const cont = document.getElementById('lista-pendientes');
+  // Incluir tanto incidencias normales (status:'pendiente') como ajustes hora (estado:'pendiente_supervisor')
+  var todasRaw = IncDB.get();
+  var todas = todasRaw.filter(function(inc){
+    return inc.status === 'pendiente' || inc.estado === 'pendiente_supervisor';
+  });
+  var cont = document.getElementById('lista-pendientes');
 
   if(!todas.length){
     cont.innerHTML = '<p style="color:#999;text-align:center;font-size:14px">Sin incidencias pendientes ✅</p>';
@@ -237,12 +241,15 @@ function cargarPendientes(){
   }
 
   cont.innerHTML = todas.map(function(inc){
-    const t = INC_TYPES[inc.tipo] || { label:inc.tipo, color:'#666' };
-    const fecha = inc.fecha || inc.fecha_inicio || (inc.timestamp ? inc.timestamp.split('T')[0] : '—');
-    const faceIcon = inc.face_verificado ? '✅ Face ID' : '⚠️ Sin face ID';
-    const faceColor = inc.face_verificado ? '#107C10' : '#BF8F00';
+    // Card especial para ajuste_hora_salida
+    if(inc.tipo === 'ajuste_hora_salida') return renderAjusteCard(inc);
 
-    let detalle = '';
+    var t = INC_TYPES[inc.tipo] || { label:inc.tipo, color:'#666' };
+    var fecha = inc.fecha || inc.fecha_inicio || (inc.timestamp ? inc.timestamp.split('T')[0] : '—');
+    var faceIcon = inc.face_verificado ? '✅ Face ID' : '⚠️ Sin face ID';
+    var faceColor = inc.face_verificado ? '#107C10' : '#BF8F00';
+
+    var detalle = '';
     if(inc.motivo) detalle = inc.motivo;
     if(inc.descripcion) detalle = inc.descripcion;
     if(inc.tipo === 'tiempo_extra' && inc.horas_min){
@@ -272,6 +279,156 @@ function cargarPendientes(){
     '</div>';
   }).join('');
 }
+
+// ─── Card ajuste_hora_salida ───
+function renderAjusteCard(inc){
+  var fechaCheckout = (inc.check_out_estimado || '').substring(0, 10) || '—';
+  var horaDisplay = (inc.check_out_estimado || '').substring(11, 16) || '--:--';
+  try{
+    var d = new Date((inc.check_out_estimado || '').replace(' ', 'T') + 'Z');
+    if(!isNaN(d.getTime())){
+      horaDisplay = d.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit', timeZone:'America/Monterrey' });
+    }
+  } catch(e){}
+
+  return '<div class="inc-card" style="border-left:4px solid #f39c12">'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px">'+
+      '<div>'+
+        '<span style="font-weight:700;color:#f39c12">⏰ Ajuste de hora de salida</span>'+
+        '<div style="font-size:12px;color:#666;margin-top:2px">👤 Empleado ID: '+(inc.empleado_id || '?')+'</div>'+
+      '</div>'+
+      '<span class="badge badge-pendiente">🟡 Pendiente validación</span>'+
+    '</div>'+
+    '<div style="font-size:13px;color:#555;margin-bottom:8px;line-height:1.8">'+
+      '📅 Fecha: <strong>'+fechaCheckout+'</strong><br>'+
+      '🕐 Hora declarada: <strong>'+horaDisplay+'</strong><br>'+
+      '📝 Motivo: '+(inc.motivo || '—')+'<br>'+
+      '<span style="color:#BF8F00;font-size:12px">⚠️ Odoo attendance ID: '+(inc.attendance_id || '?')+'</span>'+
+    '</div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+      '<button class="btn-aprobar" onclick="aprobarAjuste(\''+inc.id+'\')">✅ Aprobar hora</button>'+
+      '<button style="background:#f0f7ff;color:#0078D4;border:1px solid #0078D4;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit" onclick="modificarAjuste(\''+inc.id+'\')">✏️ Modificar</button>'+
+      '<button class="btn-denegar" onclick="rechazarAjuste(\''+inc.id+'\')">❌ Rechazar</button>'+
+    '</div>'+
+  '</div>';
+}
+
+// ─── Acciones ajuste_hora_salida ───
+function obtenerIncidencia(incId){
+  return IncDB.get().find(function(i){ return i.id === incId; });
+}
+
+async function aprobarAjuste(incId){
+  var inc = obtenerIncidencia(incId);
+  if(!inc) return;
+  var s = window._SUP_SESSION;
+  try{
+    var n8nUrl = localStorage.getItem('ops_n8n_url') || 'https://primary-production-5c3c.up.railway.app';
+    await fetch(n8nUrl + '/webhook/kiosk/aprobar-ajuste', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({
+        incidencia_id:      inc.id,
+        attendance_id:      inc.attendance_id,
+        empleado_id:        inc.empleado_id,
+        check_out_aprobado: inc.check_out_estimado,
+        aprobado_por:       s.nombre || s.username,
+        accion:             'aprobar'
+      })
+    });
+    IncDB.update(incId, {
+      estado:           'aprobado',
+      status:           'aprobada',
+      aprobado_por:     s.nombre || s.username,
+      fecha_aprobacion: new Date().toISOString()
+    });
+    showToast('✅ Ajuste aprobado');
+    cargarPendientes();
+  } catch(e){
+    alert('Error al aprobar: ' + e.message);
+  }
+}
+
+async function modificarAjuste(incId){
+  var inc = obtenerIncidencia(incId);
+  if(!inc) return;
+  var nuevaHora = prompt('Ingresa la hora correcta de salida (HH:MM):', '17:00');
+  if(!nuevaHora) return;
+  if(!/^\d{2}:\d{2}$/.test(nuevaHora)){
+    alert('Formato inválido. Usa HH:MM (ej: 17:30)');
+    return;
+  }
+  var s = window._SUP_SESSION;
+  var fechaBase = (inc.check_out_estimado || '').substring(0, 10) || new Date().toISOString().split('T')[0];
+  var nuevoCheckout = fechaBase + ' ' + nuevaHora + ':00';
+  try{
+    var n8nUrl = localStorage.getItem('ops_n8n_url') || 'https://primary-production-5c3c.up.railway.app';
+    await fetch(n8nUrl + '/webhook/kiosk/aprobar-ajuste', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({
+        incidencia_id:      inc.id,
+        attendance_id:      inc.attendance_id,
+        empleado_id:        inc.empleado_id,
+        check_out_aprobado: nuevoCheckout,
+        aprobado_por:       s.nombre || s.username,
+        accion:             'modificar',
+        hora_original:      inc.check_out_estimado,
+        hora_modificada:    nuevoCheckout
+      })
+    });
+    IncDB.update(incId, {
+      estado:             'aprobado_modificado',
+      status:             'aprobada',
+      check_out_estimado: nuevoCheckout,
+      aprobado_por:       s.nombre || s.username,
+      fecha_aprobacion:   new Date().toISOString(),
+      modificado:         true
+    });
+    showToast('✅ Hora modificada y aprobada');
+    cargarPendientes();
+  } catch(e){
+    alert('Error al modificar: ' + e.message);
+  }
+}
+
+async function rechazarAjuste(incId){
+  var inc = obtenerIncidencia(incId);
+  if(!inc) return;
+  var motivo = prompt('¿Motivo del rechazo? (opcional)');
+  if(motivo === null) return;
+  var s = window._SUP_SESSION;
+  try{
+    var n8nUrl = localStorage.getItem('ops_n8n_url') || 'https://primary-production-5c3c.up.railway.app';
+    await fetch(n8nUrl + '/webhook/kiosk/aprobar-ajuste', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({
+        incidencia_id:  inc.id,
+        attendance_id:  inc.attendance_id,
+        empleado_id:    inc.empleado_id,
+        aprobado_por:   s.nombre || s.username,
+        accion:         'rechazar',
+        motivo_rechazo: motivo || ''
+      })
+    });
+    IncDB.update(incId, {
+      estado:             'rechazado',
+      status:             'denegada',
+      denegado_por:       s.nombre || s.username,
+      denegado_timestamp: new Date().toISOString(),
+      motivo_denegacion:  motivo || ''
+    });
+    showToast('❌ Ajuste rechazado');
+    cargarPendientes();
+  } catch(e){
+    alert('Error al rechazar: ' + e.message);
+  }
+}
+
+window.aprobarAjuste   = aprobarAjuste;
+window.modificarAjuste = modificarAjuste;
+window.rechazarAjuste  = rechazarAjuste;
 
 function abrirModalAprobar(incId){
   const inc = IncDB.get().find(function(i){ return i.id === incId; });
