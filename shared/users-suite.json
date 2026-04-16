@@ -154,7 +154,7 @@
     {
       "id": 5,
       "username": "Tere Ramos",
-      "nombre": "Teresa Ramos Rodriguez",
+      "nombre": "Tere Ramos",
       "password_hash": "65c4145608e91a7313b574c6ed1d7207770c975ca8faf5196783314a584854c9",
       "role": "user",
       "activo": true,
