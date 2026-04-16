@@ -262,7 +262,11 @@ function renderEmpleados(list){
   }).join('');
 }
 
+var _lastTap = 0;
 function selectEmpleado(id){
+  var now = Date.now();
+  if(now - _lastTap < 300) return;
+  _lastTap = now;
   const emp = K.empleados.find(e => e.id === id);
   if(!emp) return;
   K.seleccionado = emp;
@@ -492,6 +496,9 @@ function renderSOs(list){
 }
 
 function selectSO(id){
+  var now = Date.now();
+  if(now - _lastTap < 300) return;
+  _lastTap = now;
   const so = K.sos.find(s => s.id === id);
   if(!so) return;
   K.soSeleccionada = so;
