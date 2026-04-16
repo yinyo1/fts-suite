@@ -293,11 +293,12 @@ function selectEmpleado(id){
   const tipoNombre = document.getElementById('ks-tipo-nombre');
   if(tipoNombre) tipoNombre.textContent = displayName;
 
-  // Sugerencia de tipo según hora
+  // Sugerencia de tipo según hora (prepara ks-tipo por si se usa después)
   const sug = document.getElementById('ks-tipo-sugerencia');
   if(sug) sug.textContent = getSugerenciaTipo();
 
-  showScreen('ks-tipo');
+  // Mostrar pantalla de estado del empleado (consulta n8n)
+  mostrarEstadoEmpleado(emp);
 }
 
 function getSugerenciaTipo(){
@@ -947,6 +948,194 @@ async function initKiosk(){
     }
   }
 }
+
+// ═══════ ESTADO EMPLEADO ═══════
+async function fetchEstadoEmpleado(empleadoId){
+  var n8nUrl = localStorage.getItem('ops_n8n_url') || 'https://primary-production-5c3c.up.railway.app';
+  try{
+    var res = await n8nFetch('/webhook/kiosk/estado-empleado', { empleado_id: empleadoId });
+    return res;
+  } catch(e){
+    console.warn('[Kiosk] fetchEstadoEmpleado falló:', e.message);
+    return null;
+  }
+}
+
+function horasADisplay(horas){
+  if(horas == null) return '0:00';
+  var h = Math.floor(horas);
+  var m = Math.round((horas - h) * 60);
+  return h + ':' + String(m).padStart(2, '0');
+}
+
+async function mostrarEstadoEmpleado(empleado){
+  showScreen('ks-estado');
+
+  var foto = empleado.foto
+    || (empleado.image_128
+        ? (empleado.image_128.startsWith('data:') ? empleado.image_128 : 'data:image/png;base64,' + empleado.image_128)
+        : '');
+  var nombre = empleado.name || empleado.nombre || '';
+
+  document.getElementById('ksEstadoFoto').src = foto || '';
+  document.getElementById('ksEstadoNombre').textContent = nombre;
+
+  var ahora = new Date();
+  document.getElementById('ksEstadoFecha').textContent = ahora.toLocaleDateString('es-MX', {
+    weekday:'long', day:'numeric', month:'long', year:'numeric'
+  });
+
+  // Consultar estado en n8n
+  var estado = await fetchEstadoEmpleado(empleado.id);
+
+  if(!estado){
+    document.getElementById('ksEstadoCard').style.background = '#fff3cd';
+    document.getElementById('ksEstadoIcon').textContent = '⚠️';
+    document.getElementById('ksEstadoTexto').textContent = 'Error al consultar estado. Intenta de nuevo.';
+    document.getElementById('ksEstadoBotones').innerHTML =
+      '<button onclick="showScreen(\'ks-search\')" style="background:#0078D4;color:#fff;border:none;padding:14px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">← Volver a buscar</button>';
+    return;
+  }
+
+  window._estadoActual = estado;
+  window._empleadoActual = empleado;
+
+  // Horas
+  document.getElementById('ksHorasHoy').textContent = horasADisplay(estado.horas_hoy || 0);
+  document.getElementById('ksHorasRestantes').textContent = horasADisplay(estado.horas_restantes != null ? estado.horas_restantes : 9.6);
+
+  // Card de estado
+  var card  = document.getElementById('ksEstadoCard');
+  var icon  = document.getElementById('ksEstadoIcon');
+  var texto = document.getElementById('ksEstadoTexto');
+
+  switch(estado.estado_actual){
+    case 'sin_registro':
+      card.style.background = '#f0f4ff';
+      icon.textContent = '🔵';
+      texto.textContent = 'Sin entrada registrada hoy';
+      break;
+    case 'activo':
+      card.style.background = '#f0f9f0';
+      icon.textContent = '🟢';
+      texto.textContent = 'En jornada — llevas ' + horasADisplay(estado.horas_transcurridas) + ' hrs';
+      break;
+    case 'zona_gris':
+      card.style.background = '#fff3cd';
+      icon.textContent = '🟡';
+      texto.textContent = 'Llevas ' + horasADisplay(estado.horas_transcurridas) + ' hrs desde tu última entrada';
+      break;
+    case 'error_critico':
+      card.style.background = '#ffe8e8';
+      icon.textContent = '🔴';
+      texto.textContent = 'Tienes una entrada sin salida de hace más de 24 hrs';
+      break;
+    default:
+      card.style.background = '#f5f5f5';
+      icon.textContent = '❓';
+      texto.textContent = estado.estado_actual || 'Estado desconocido';
+  }
+
+  // Alerta
+  var alertaDiv = document.getElementById('ksEstadoAlerta');
+  if(estado.alerta_nivel === 'advertencia'){
+    alertaDiv.style.display = 'block';
+    alertaDiv.style.background = '#fff3cd';
+    alertaDiv.style.border = '1px solid #ffc107';
+    alertaDiv.innerHTML = '⚠️ <strong>Atención:</strong> Tienes una entrada activa de hace ' + horasADisplay(estado.horas_transcurridas) + ' horas. ¿Olvidaste checar salida?';
+  } else if(estado.alerta_nivel === 'critico'){
+    alertaDiv.style.display = 'block';
+    alertaDiv.style.background = '#ffe8e8';
+    alertaDiv.style.border = '1px solid #D83B01';
+    alertaDiv.innerHTML = '⛔ <strong>Acción requerida:</strong> Debes resolver tu registro anterior antes de poder checar hoy.';
+  } else {
+    alertaDiv.style.display = 'none';
+  }
+
+  // Historial rápido
+  var histDiv = document.getElementById('ksHistorialRapido');
+  if(estado.historial && estado.historial.length > 0){
+    var html = '<p style="font-size:12px;color:#666;margin:0 0 8px">Últimas checadas:</p>';
+    estado.historial.slice(0, 3).forEach(function(r){
+      var ciStr = (r.check_in || '').replace(' ', 'T');
+      if(ciStr && ciStr.indexOf('Z') === -1 && ciStr.indexOf('+') === -1) ciStr += 'Z';
+      var ci = new Date(ciStr);
+      var coStr = r.check_out ? (r.check_out.replace(' ', 'T')) : '';
+      if(coStr && coStr.indexOf('Z') === -1 && coStr.indexOf('+') === -1) coStr += 'Z';
+      var co = coStr ? new Date(coStr) : null;
+      var flag = r.es_sospechoso ? ' ⚠️' : '';
+      var nocturno = r.es_nocturno ? ' 🌙' : '';
+      html += '<div style="display:flex;justify-content:space-between;padding:8px 10px;background:#f8f9fa;border-radius:8px;margin-bottom:6px;font-size:13px">' +
+        '<span>' + ci.toLocaleDateString('es-MX', { weekday:'short', day:'numeric', month:'short' }) + nocturno + flag + '</span>' +
+        '<span style="color:#0078D4">' + ci.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' }) +
+        ' → ' + (co ? co.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' }) : '⏳') + '</span>' +
+      '</div>';
+    });
+    histDiv.innerHTML = html;
+  } else {
+    histDiv.innerHTML = '';
+  }
+
+  // Botones dinámicos
+  renderEstadoBotones(estado);
+}
+
+function renderEstadoBotones(estado){
+  var botonesDiv = document.getElementById('ksEstadoBotones');
+  var html = '';
+
+  switch(estado.estado_actual){
+    case 'sin_registro':
+      html = '<button onclick="iniciarCheckin(\'entrada\')" style="background:#107C10;color:#fff;border:none;padding:16px;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;font-family:inherit">✅ Registrar Entrada</button>';
+      break;
+    case 'activo':
+      html = '<button onclick="iniciarCheckin(\'salida_comida\')" style="background:#0078D4;color:#fff;border:none;padding:14px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">🍽️ Salida a Comer</button>' +
+        '<button onclick="iniciarCheckin(\'salida\')" style="background:#D83B01;color:#fff;border:none;padding:14px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">🚪 Salida Final</button>';
+      break;
+    case 'zona_gris':
+      html = '<button onclick="resolverZonaGris(\'turno\')" style="background:#0078D4;color:#fff;border:none;padding:14px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">🌙 Seguí en turno — Checar salida</button>' +
+        '<button onclick="resolverZonaGris(\'olvide\')" style="background:#f0f0f0;color:#333;border:1px solid #ccc;padding:14px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">❌ Olvidé checar salida</button>';
+      break;
+    case 'error_critico':
+      html = '<button onclick="resolverErrorCritico()" style="background:#D83B01;color:#fff;border:none;padding:14px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">📋 Crear incidencia y checar entrada</button>';
+      break;
+  }
+
+  // Siempre historial
+  html += '<button onclick="showScreen(\'ks-historial\')" style="background:transparent;color:#0078D4;border:1px solid #0078D4;padding:12px;border-radius:12px;font-size:14px;cursor:pointer;margin-top:4px;font-family:inherit">📋 Ver historial completo</button>';
+
+  botonesDiv.innerHTML = html;
+}
+
+// Stubs — implementar lógica completa después
+function iniciarCheckin(tipo){
+  K.tipo = tipo;
+  var labels = { entrada:'🟢 Entrada', salida_comida:'🍽️ Salida a comer', regreso_comida:'🔄 Regreso de comida', salida:'🔴 Salida' };
+  var tipoLabel = document.getElementById('ks-verify-tipo');
+  if(tipoLabel) tipoLabel.textContent = labels[tipo] || tipo;
+  // Poblar nombre en PIN screen
+  var emp = window._empleadoActual || K.seleccionado;
+  if(emp){
+    var pinNombreEl = document.getElementById('ksPinNombre');
+    if(pinNombreEl) pinNombreEl.textContent = '👷 ' + (emp.name || emp.nombre || '');
+  }
+  showScreen('ks-verify');
+  startCamera();
+}
+
+function resolverZonaGris(opcion){
+  alert('Zona gris: ' + opcion + ' — próximamente');
+}
+
+function resolverErrorCritico(){
+  alert('Error crítico — próximamente');
+}
+
+window.fetchEstadoEmpleado   = fetchEstadoEmpleado;
+window.mostrarEstadoEmpleado = mostrarEstadoEmpleado;
+window.iniciarCheckin        = iniciarCheckin;
+window.resolverZonaGris      = resolverZonaGris;
+window.resolverErrorCritico  = resolverErrorCritico;
 
 // Expose
 window.showScreen = showScreen;
