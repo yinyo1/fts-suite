@@ -591,7 +591,14 @@ async function registrarAsistencia(){
   // Enviar a n8n (o solo log en demo)
   if(!K.config.demoMode && K.config.n8nUrl){
     try{
-      await window.OdooKiosk.registrarCheckin(payload);
+      var result = await window.OdooKiosk.registrarCheckin(payload);
+      // Verificar candados del backend
+      var r = Array.isArray(result) ? result[0] : result;
+      if(r && r.accion_valida === false){
+        var errMsg = r.error_msg || 'Error desconocido';
+        mostrarErrorCandado(errMsg);
+        return;
+      }
     } catch(e){
       console.warn('Error enviando a n8n:', e);
     }
@@ -1130,6 +1137,37 @@ function resolverZonaGris(opcion){
 function resolverErrorCritico(){
   alert('Error crítico — próximamente');
 }
+
+// ═══════ MODAL ERROR CANDADO ═══════
+function mostrarErrorCandado(errorMsg){
+  var icono = '⚠️';
+  var mensaje = errorMsg;
+
+  if(errorMsg.indexOf('ZONA_GRIS:') === 0){
+    icono = '🟡';
+    var hrsZG = errorMsg.split(':')[1] || '';
+    mensaje = 'Llevas ' + hrsZG.trim() + ' hrs desde tu última entrada.\n¿Olvidaste checar salida?';
+  } else if(errorMsg.indexOf('ERROR_CRITICO:') === 0){
+    icono = '🔴';
+    var hrsEC = errorMsg.split(':')[1] || '';
+    mensaje = 'Tienes una entrada sin salida de hace ' + hrsEC.trim() + ' horas.\nDebes resolver esto primero.';
+  } else if(errorMsg.indexOf('zona autorizada') !== -1 || errorMsg.indexOf('zona') !== -1 && errorMsg.indexOf('fuera') !== -1){
+    icono = '📍';
+  } else if(errorMsg.indexOf('Ya tienes') !== -1){
+    icono = 'ℹ️';
+  }
+
+  var modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;padding:24px';
+  modal.innerHTML =
+    '<div style="background:#fff;border-radius:16px;padding:24px;max-width:320px;width:100%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.2)">' +
+      '<div style="font-size:48px;margin-bottom:12px">' + icono + '</div>' +
+      '<p style="font-size:15px;color:#333;line-height:1.5;margin:0 0 20px;white-space:pre-line">' + mensaje + '</p>' +
+      '<button onclick="this.closest(\'[style*=fixed]\').remove();if(window._empleadoActual)mostrarEstadoEmpleado(window._empleadoActual);else showScreen(\'ks-search\')" style="background:#0078D4;color:#fff;border:none;padding:12px 32px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;width:100%;font-family:inherit">Entendido</button>' +
+    '</div>';
+  document.body.appendChild(modal);
+}
+window.mostrarErrorCandado = mostrarErrorCandado;
 
 window.fetchEstadoEmpleado   = fetchEstadoEmpleado;
 window.mostrarEstadoEmpleado = mostrarEstadoEmpleado;
