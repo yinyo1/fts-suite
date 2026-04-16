@@ -310,13 +310,14 @@
     </div>
 
     <div class="cfg-card" style="margin-top:16px">
-      <h3>📍 Geolocalizaciones autorizadas</h3>
-      <p style="font-size:12px;color:#999;margin:0 0 12px">Check-in fuera del radio requiere aprobación supervisor</p>
+      <h3>📍 Sitios autorizados para check-in</h3>
+      <p style="font-size:12px;color:#999;margin:0 0 12px">Check-in fuera del radio requiere aprobación supervisor. Pega la URL de Google Maps o ingresa las coordenadas manualmente.</p>
       <div id="geo-lista"></div>
       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
         <button onclick="addGeoSitio()" style="background:#107C10;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:700">+ Agregar sitio</button>
         <button onclick="usarUbicacionActual()" style="background:#fff;border:1px solid #e0e0e0;padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:700;color:#1a1a1a">📍 Mi ubicación</button>
       </div>
+      <p style="font-size:11px;color:#999;margin-top:8px">💡 Tip: En Google Maps web, haz click derecho en el punto exacto y copia las coordenadas.</p>
     </div>
 
     <div class="cfg-card" style="margin-top:16px">
@@ -343,34 +344,6 @@
       <input type="password" id="kiosk_pin_confirmar" maxlength="4" class="cfg-input" placeholder="••••">
       <button onclick="cambiarPinKiosk()" style="background:#0078D4;color:#fff;border:none;padding:10px 20px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin-top:12px;font-family:inherit">Cambiar PIN Kiosk</button>
       <p id="pin-kiosk-msg" style="font-size:13px;margin:8px 0 0;font-weight:600"></p>
-    </div>
-
-    <div class="cfg-card" style="margin-top:16px">
-      <h3>📍 Geolocalización</h3>
-      <label class="cfg-label">Tipo de lugar</label>
-      <select id="ops_kiosk_lugar_tipo" class="cfg-input" onchange="document.getElementById('ops_kiosk_radio_custom_box').style.display=this.value==='custom'?'block':'none'">
-        <option value="fts">🏢 Oficinas FTS (radio 50m)</option>
-        <option value="planta">🏭 Planta cliente (radio 150m)</option>
-        <option value="custom">📐 Radio personalizado</option>
-      </select>
-
-      <label class="cfg-label">URL Google Maps del lugar</label>
-      <input id="ops_kiosk_maps_url" type="url" class="cfg-input" placeholder="https://maps.app.goo.gl/...">
-      <p style="font-size:11px;color:#999;margin:2px 0 8px">Pega la liga de Google Maps del lugar de trabajo. n8n resolverá las coordenadas.</p>
-
-      <div id="ops_kiosk_radio_custom_box" style="display:none">
-        <label class="cfg-label">Radio personalizado (metros)</label>
-        <input id="ops_kiosk_radio_custom" type="number" class="cfg-input" placeholder="100" min="10" max="5000">
-      </div>
-
-      <label class="cfg-label">Coordenadas del lugar (auto)</label>
-      <div style="display:flex;gap:8px">
-        <input id="ops_kiosk_geo_lat" type="text" class="cfg-input" placeholder="Ej: 25.6704">
-        <input id="ops_kiosk_geo_lng" type="text" class="cfg-input" placeholder="Ej: -100.3102">
-      </div>
-      <button onclick="resolverMapsUrl()" style="background:#0078D4;color:#fff;border:none;padding:10px;border-radius:8px;width:100%;margin-top:8px;cursor:pointer;font-size:14px;font-family:inherit;font-weight:700">🔍 Resolver desde URL (o ingresa manualmente)</button>
-      <div id="ops_kiosk_geo_status" style="font-size:12px;min-height:20px;margin-top:4px;text-align:center;font-weight:600"></div>
-      <p style="font-size:11px;color:#999;margin-top:4px">💡 Tip: En Google Maps web, haz click derecho en el punto exacto y copia las coordenadas.</p>
     </div>
 
     <div class="cfg-card" style="margin-top:16px">
@@ -654,11 +627,6 @@ const KIOSK_FIELD_DEFAULTS = {
   ops_kiosk_field_supervisor_email: 'work_email',
   ops_kiosk_field_supervisor_wa:    'mobile_phone',
   ops_kiosk_company_id:             '1',
-  ops_kiosk_lugar_tipo:             'fts',
-  ops_kiosk_maps_url:               '',
-  ops_kiosk_geo_lat:                '',
-  ops_kiosk_geo_lng:                '',
-  ops_kiosk_radio_custom:           '100',
 };
 
 function loadKioskConfig(){
@@ -694,11 +662,6 @@ function loadKioskConfig(){
   // Face required checkbox
   var faceReq = document.getElementById('ops_kiosk_face_required');
   if(faceReq) faceReq.checked = localStorage.getItem('ops_kiosk_face_required') === '1';
-
-  // Custom radio box visibility
-  var lugarTipo = document.getElementById('ops_kiosk_lugar_tipo');
-  var radioBox  = document.getElementById('ops_kiosk_radio_custom_box');
-  if(lugarTipo && radioBox) radioBox.style.display = lugarTipo.value === 'custom' ? 'block' : 'none';
 }
 
 function saveKioskConfig(){
@@ -737,26 +700,55 @@ function writeGeosToStorage(){
 
 function renderGeoLista(){
   readGeosFromStorage();
-  const lista = document.getElementById('geo-lista');
+  var lista = document.getElementById('geo-lista');
   if(!lista) return;
   if(!_geos.length){
-    lista.innerHTML = '<p style="color:#999;font-size:13px;margin:0">Sin sitios configurados</p>';
+    lista.innerHTML = '<p style="color:#999;font-size:13px;margin:0">Sin sitios configurados. Agrega uno con el botón de abajo.</p>';
     return;
   }
-  lista.innerHTML = _geos.map(function(g, i){
-    return '<div style="display:grid;grid-template-columns:1fr 110px 110px 90px 36px;gap:6px;margin-bottom:8px;align-items:center">'+
-      '<input class="cfg-input" style="margin:0" value="'+(g.nombre||'').replace(/"/g,'&quot;')+'" placeholder="Nombre" onchange="updateGeo('+i+',\'nombre\',this.value)">'+
-      '<input class="cfg-input" style="margin:0" value="'+(g.lat||'')+'" placeholder="Lat" type="number" step="0.000001" onchange="updateGeo('+i+',\'lat\',this.value)">'+
-      '<input class="cfg-input" style="margin:0" value="'+(g.lng||'')+'" placeholder="Lng" type="number" step="0.000001" onchange="updateGeo('+i+',\'lng\',this.value)">'+
-      '<input class="cfg-input" style="margin:0" value="'+(g.radio||200)+'" placeholder="Radio m" type="number" onchange="updateGeo('+i+',\'radio\',this.value)">'+
-      '<button onclick="removeGeo('+i+')" style="background:#fff;border:1px solid #e0e0e0;border-radius:6px;cursor:pointer;font-size:14px;padding:4px;height:40px">🗑️</button>'+
+  lista.innerHTML = _geos.map(function(s, i){
+    var nombre   = (s.nombre || '').replace(/"/g, '&quot;');
+    var mapsUrl  = (s.maps_url || '').replace(/"/g, '&quot;');
+    var lat      = s.lat != null ? s.lat : '';
+    var lng      = s.lng != null ? s.lng : '';
+    var radio    = s.radio || 100;
+    return '<div style="border:1px solid #e0e0e0;border-radius:10px;padding:12px;margin-bottom:8px">'+
+      '<div style="margin-bottom:10px">'+
+        '<label style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Nombre del sitio</label>'+
+        '<input class="cfg-input" style="margin:0" value="'+nombre+'" placeholder="Ej: FTS Monterrey" onchange="updateGeo('+i+',\'nombre\',this.value)">'+
+      '</div>'+
+      '<div style="margin-bottom:10px">'+
+        '<label style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">URL Google Maps (opcional)</label>'+
+        '<div style="display:flex;gap:8px">'+
+          '<input type="url" id="geo-url-'+i+'" class="cfg-input" style="margin:0;flex:1" value="'+mapsUrl+'" placeholder="https://maps.app.goo.gl/..." onchange="updateGeo('+i+',\'maps_url\',this.value)">'+
+          '<button onclick="resolverGeoUrl('+i+')" style="background:#0078D4;color:#fff;border:none;padding:8px 12px;border-radius:8px;font-size:12px;cursor:pointer;white-space:nowrap;font-family:inherit;font-weight:700">🔍 Resolver</button>'+
+        '</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:8px">'+
+        '<div style="flex:1">'+
+          '<label style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Latitud</label>'+
+          '<input class="cfg-input" style="margin:0" value="'+lat+'" placeholder="25.6704" onchange="updateGeo('+i+',\'lat\',parseFloat(this.value))">'+
+        '</div>'+
+        '<div style="flex:1">'+
+          '<label style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Longitud</label>'+
+          '<input class="cfg-input" style="margin:0" value="'+lng+'" placeholder="-100.3102" onchange="updateGeo('+i+',\'lng\',parseFloat(this.value))">'+
+        '</div>'+
+        '<div style="width:100px">'+
+          '<label style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Radio (m)</label>'+
+          '<input type="number" class="cfg-input" style="margin:0" value="'+radio+'" min="10" max="5000" onchange="updateGeo('+i+',\'radio\',parseInt(this.value))">'+
+        '</div>'+
+      '</div>'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">'+
+        '<div id="geo-status-'+i+'" style="font-size:12px;color:#107C10;font-weight:600"></div>'+
+        '<button onclick="removeGeo('+i+')" style="background:#FFE8E8;color:#D83B01;border:1px solid #D83B01;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:700">🗑️ Eliminar sitio</button>'+
+      '</div>'+
     '</div>';
   }).join('');
 }
 
 function addGeoSitio(){
   readGeosFromStorage();
-  _geos.push({ nombre:'', lat:'', lng:'', radio:200 });
+  _geos.push({ nombre:'Nuevo sitio', maps_url:'', lat:'', lng:'', radio:100 });
   writeGeosToStorage();
   renderGeoLista();
 }
@@ -821,19 +813,18 @@ function cambiarPinKiosk(){
   setTimeout(function(){ msg.textContent = ''; }, 4000);
 }
 
-// ═══ Resolver coordenadas desde Google Maps URL ═══
-async function resolverMapsUrl(){
-  var url = document.getElementById('ops_kiosk_maps_url').value.trim();
-  var status = document.getElementById('ops_kiosk_geo_status');
+// ═══ Resolver coordenadas desde Google Maps URL (por sitio) ═══
+async function resolverGeoUrl(index){
+  var urlInput = document.getElementById('geo-url-' + index);
+  var url = urlInput ? urlInput.value.trim() : '';
+  var status = document.getElementById('geo-status-' + index);
 
   if(!url){
-    status.textContent = '⚠️ Ingresa una URL de Google Maps';
-    status.style.color = '#BF8F00';
+    if(status){ status.textContent = '⚠️ Ingresa una URL'; status.style.color = '#BF8F00'; }
     return;
   }
 
-  status.textContent = '🔄 Resolviendo…';
-  status.style.color = '#0078D4';
+  if(status){ status.textContent = '🔄 Resolviendo…'; status.style.color = '#0078D4'; }
 
   try{
     var n8nUrl = localStorage.getItem('ops_n8n_url') || 'https://primary-production-5c3c.up.railway.app';
@@ -842,37 +833,29 @@ async function resolverMapsUrl(){
       headers:{ 'Content-Type':'application/json' },
       body: JSON.stringify({ maps_url: url })
     });
-    if(!res.ok) throw new Error('n8n error ' + res.status);
-    var data = await res.json();
+    var data = res.ok ? await res.json() : {};
     if(data.lat && data.lng){
-      document.getElementById('ops_kiosk_geo_lat').value = data.lat;
-      document.getElementById('ops_kiosk_geo_lng').value = data.lng;
-      localStorage.setItem('ops_kiosk_geo_lat', data.lat);
-      localStorage.setItem('ops_kiosk_geo_lng', data.lng);
-      status.textContent = '✅ Coordenadas resueltas: ' + data.lat + ', ' + data.lng;
-      status.style.color = '#107C10';
+      updateGeo(index, 'lat', parseFloat(data.lat));
+      updateGeo(index, 'lng', parseFloat(data.lng));
+      renderGeoLista();
+      if(status){ status.textContent = '✅ ' + data.lat + ', ' + data.lng; status.style.color = '#107C10'; }
       return;
     }
     throw new Error('Sin coordenadas');
   } catch(e){
-    // Fallback: extraer coordenadas de URL larga con @lat,lng
-    var coordMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-    if(coordMatch){
-      var lat = coordMatch[1];
-      var lng = coordMatch[2];
-      document.getElementById('ops_kiosk_geo_lat').value = lat;
-      document.getElementById('ops_kiosk_geo_lng').value = lng;
-      localStorage.setItem('ops_kiosk_geo_lat', lat);
-      localStorage.setItem('ops_kiosk_geo_lng', lng);
-      status.textContent = '✅ Coordenadas extraídas: ' + lat + ', ' + lng;
-      status.style.color = '#107C10';
+    // Fallback: regex sobre URL larga
+    var match = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if(match){
+      updateGeo(index, 'lat', parseFloat(match[1]));
+      updateGeo(index, 'lng', parseFloat(match[2]));
+      renderGeoLista();
+      if(status){ status.textContent = '✅ ' + match[1] + ', ' + match[2]; status.style.color = '#107C10'; }
     } else {
-      status.textContent = '❌ No se pudieron resolver. Usa una URL completa de Google Maps con @lat,lng.';
-      status.style.color = '#D83B01';
+      if(status){ status.textContent = '❌ Ingresa coordenadas manualmente'; status.style.color = '#D83B01'; }
     }
   }
 }
-window.resolverMapsUrl = resolverMapsUrl;
+window.resolverGeoUrl = resolverGeoUrl;
 
 // ═══ Sección Planeación ═══
 function loadPlaneacionConfig(){
