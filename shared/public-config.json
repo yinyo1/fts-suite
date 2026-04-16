@@ -2,6 +2,14 @@
   "n8n_url": "https://primary-production-5c3c.up.railway.app",
   "odoo_url": "https://serviciosfts.odoo.com",
   "demo_mode": false,
+  "geolocations": [
+    {
+      "nombre": "FTS Monterrey",
+      "lat": 25.6889759,
+      "lng": -100.2916779,
+      "radio": 50
+    }
+  ],
   "version": "1.0.0",
-  "updated": "2026-04-14"
+  "updated": "2026-04-16"
 }
