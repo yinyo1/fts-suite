@@ -16,14 +16,15 @@
     {
       "id": "INC-ADJ-1776379297547",
       "tipo": "ajuste_hora_salida",
-      "estado": "pendiente_supervisor",
+      "estado": "aprobado",
       "empleado_id": 32,
       "attendance_id": 12343,
       "check_out_estimado": "2026-04-09 18:41:00",
       "motivo": "Prueba sistema",
       "fecha_solicitud": "2026-04-16T22:41:37.547Z",
-      "aprobado_por": null,
-      "fecha_aprobacion": null
+      "aprobado_por": "FTS Master",
+      "fecha_aprobacion": "2026-04-16T23:49:16.687Z",
+      "status": "aprobada"
     },
     {
       "tipo": "permiso_goce",
