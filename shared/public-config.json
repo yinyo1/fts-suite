@@ -5,9 +5,31 @@
   "geolocations": [
     {
       "nombre": "FTS Monterrey",
-      "lat": 25.6889759,
-      "lng": -100.2916779,
+      "lat": 25.6704,
+      "lng": -100.3102,
+      "radio": 50,
+      "maps_url": "https://maps.app.goo.gl/oa9RvBmtN8U8KQ686?g_st=ac"
+    },
+    {
+      "nombre": "Casa Esteban (prueba)",
+      "maps_url": "https://maps.app.goo.gl/nrkLUfFqtTrDL9pJ9?g_st=ac",
+      "lat": 25.6545306,
+      "lng": -100.2954833,
       "radio": 100
+    },
+    {
+      "nombre": "Topo Chico (cortina)",
+      "maps_url": "https://maps.app.goo.gl/1onH9ZUPdcWD8Hwc6?g_st=ac",
+      "lat": 25.7349503,
+      "lng": -100.3263381,
+      "radio": 60
+    },
+    {
+      "nombre": "Topo Chico (Caseta L6)",
+      "maps_url": "https://maps.app.goo.gl/mqE8MD6XeGVsscu36?g_st=ac",
+      "lat": 25.7356987,
+      "lng": -100.3288875,
+      "radio": 60
     }
   ],
   "version": "1.0.0",
