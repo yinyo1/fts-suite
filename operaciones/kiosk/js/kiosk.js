@@ -1265,7 +1265,6 @@ async function confirmarOlvideCheckout(){
 
     // 1) Cerrar registro viejo con endpoint especial (bypassa candados)
     var attendanceId = (regAbierto && regAbierto.id) || null;
-    console.log('PASO 1 - cerrar-registro:', checkoutEstimado, 'empleado:', empleado.id, 'attendance_id:', attendanceId);
     var resCheckout = await n8nFetch('/webhook/kiosk/cerrar-registro', {
       empleado_id:        empleado.id,
       attendance_id:      attendanceId,
@@ -1273,16 +1272,13 @@ async function confirmarOlvideCheckout(){
       motivo:             motivoInput.value.trim(),
       es_estimado:        true
     });
-    console.log('PASO 1 result:', JSON.stringify(resCheckout));
     var r = Array.isArray(resCheckout) ? resCheckout[0] : resCheckout;
-    alert('Cerrar-registro enviado: ' + JSON.stringify(r).substring(0, 200));
     if(r && r.accion_valida === false){
       mostrarErrorCandado(r.error_msg || 'Error al cerrar registro');
       return;
     }
 
     // 2) Crear nuevo check-in de hoy
-    console.log('PASO 2 - nueva entrada');
     var geo = await window.getGeolocacion();
     var resCheckin = await n8nFetch('/webhook/kiosk/checkin', {
       empleado_id:    empleado.id,
@@ -1293,7 +1289,6 @@ async function confirmarOlvideCheckout(){
       geo_autorizada: true,
       es_estimado:    false
     });
-    console.log('PASO 2 result:', JSON.stringify(resCheckin));
     var r2 = Array.isArray(resCheckin) ? resCheckin[0] : resCheckin;
     if(r2 && r2.accion_valida === false){
       mostrarErrorCandado(r2.error_msg || 'Error al registrar entrada');
