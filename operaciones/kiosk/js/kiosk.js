@@ -1262,6 +1262,7 @@ async function confirmarOlvideCheckout(){
     var n8nUrl = localStorage.getItem('ops_n8n_url') || 'https://primary-production-5c3c.up.railway.app';
 
     // 1) Cerrar registro viejo con hora estimada
+    console.log('PASO 1 - checkout estimado:', checkoutEstimado, 'empleado:', empleado.id);
     var resCheckout = await n8nFetch('/webhook/kiosk/checkin', {
       empleado_id:     empleado.id,
       tipo:            'salida',
@@ -1272,13 +1273,16 @@ async function confirmarOlvideCheckout(){
       es_estimado:     true,
       motivo_estimado: motivoInput.value.trim()
     });
+    console.log('PASO 1 result:', JSON.stringify(resCheckout));
     var r = Array.isArray(resCheckout) ? resCheckout[0] : resCheckout;
+    alert('Checkout enviado: ' + JSON.stringify(r).substring(0, 200));
     if(r && r.accion_valida === false){
       mostrarErrorCandado(r.error_msg || 'Error al cerrar registro');
       return;
     }
 
     // 2) Crear nuevo check-in de hoy
+    console.log('PASO 2 - nueva entrada');
     var geo = await window.getGeolocacion();
     var resCheckin = await n8nFetch('/webhook/kiosk/checkin', {
       empleado_id:    empleado.id,
@@ -1289,6 +1293,7 @@ async function confirmarOlvideCheckout(){
       geo_autorizada: true,
       es_estimado:    false
     });
+    console.log('PASO 2 result:', JSON.stringify(resCheckin));
     var r2 = Array.isArray(resCheckin) ? resCheckin[0] : resCheckin;
     if(r2 && r2.accion_valida === false){
       mostrarErrorCandado(r2.error_msg || 'Error al registrar entrada');
@@ -1299,6 +1304,7 @@ async function confirmarOlvideCheckout(){
     mostrarEstadoEmpleado(empleado);
 
   } catch(e){
+    console.error('ERROR confirmarOlvideCheckout:', e);
     alert('Error al procesar: ' + e.message);
     mostrarEstadoEmpleado(empleado);
   }
