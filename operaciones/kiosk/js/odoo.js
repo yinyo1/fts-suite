@@ -12,16 +12,31 @@ const N8N_BASE = () => {
   return url.replace(/\/$/, '');
 };
 
-async function n8nFetch(endpoint, body){
+async function n8nFetch(endpoint, body, retries){
+  if(body === undefined) body = {};
+  if(retries === undefined) retries = 2;
   const base = N8N_BASE();
   if(!base) throw new Error('n8n no configurado');
-  const res = await fetch(base + endpoint, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify(body || {})
-  });
-  if(!res.ok) throw new Error('n8n error: ' + res.status);
-  return res.json();
+
+  for(var i = 0; i <= retries; i++){
+    try{
+      var controller = new AbortController();
+      var timer = setTimeout(function(){ controller.abort(); }, 10000);
+      var res = await fetch(base + endpoint, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(body),
+        signal:  controller.signal
+      });
+      clearTimeout(timer);
+      if(!res.ok) throw new Error('n8n ' + res.status);
+      return res.json();
+    } catch(e){
+      if(i === retries) throw e;
+      console.log('[n8n] Reintentando (' + (i+1) + '/' + retries + ')…');
+      await new Promise(function(r){ setTimeout(r, 2000); });
+    }
+  }
 }
 
 async function getEmpleados(){
