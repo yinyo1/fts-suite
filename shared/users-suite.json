@@ -169,7 +169,7 @@
           }
         },
         "operaciones": {
-          "acceso": false,
+          "acceso": true,
           "submodulos": {
             "kiosk": true,
             "dashboard": false,
