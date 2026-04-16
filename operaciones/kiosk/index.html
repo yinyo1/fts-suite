@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>FTS · Kiosk Checador</title>
@@ -27,7 +27,7 @@
   <button class="kiosk-back" onclick="goHome()">← Volver</button>
   <div class="kiosk-logo-sm" style="margin-bottom:16px">F</div>
   <div class="kiosk-title">¿Quién eres?</div>
-  <input type="text" id="ksSearch" class="kiosk-search" placeholder="Busca tu nombre…" oninput="searchEmpleados(this.value)" autocomplete="off">
+  <input type="search" id="ksSearch" class="kiosk-search" placeholder="Busca tu nombre…" oninput="searchEmpleados(this.value)" autocomplete="off" inputmode="search" onfocus="setTimeout(()=>this.scrollIntoView({behavior:'smooth',block:'center'}),300)">
   <div class="kiosk-list" id="ksEmpleadosList">
     <div style="text-align:center;color:#666;padding:24px">Cargando empleados…</div>
   </div>

@@ -2,7 +2,7 @@
 @import url('../../../shared/fts-styles.css');
 
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-serif;background:#fafafa;color:#1a1a1a;user-select:none;-webkit-user-select:none}
+html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-serif;background:#fafafa;color:#1a1a1a;-webkit-tap-highlight-color:rgba(0,0,0,0.1)}
 
 .kiosk-screen{
   position:fixed;inset:0;
@@ -10,6 +10,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-ser
   display:none;flex-direction:column;
   align-items:center;justify-content:center;
   padding:24px;box-sizing:border-box;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
 }
 .kiosk-screen.active{display:flex}
 
@@ -45,12 +46,15 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-ser
 .kiosk-employee-card{
   display:flex;align-items:center;gap:16px;
   background:#fff;border-radius:12px;
-  padding:16px;margin:8px 0;width:100%;
+  padding:14px 16px;margin:8px 0;width:100%;
   cursor:pointer;
   border:1px solid #e0e0e0;
   color:#1a1a1a;
   transition:all 0.2s;
   box-shadow:0 1px 3px rgba(0,0,0,0.04);
+  min-height:56px;
+  -webkit-tap-highlight-color:rgba(0,0,0,0.1);
+  user-select:none;-webkit-user-select:none;
 }
 .kiosk-employee-card:hover,.kiosk-employee-card:active{border-color:#107C10;background:#f0faf0}
 .kiosk-employee-photo{
@@ -70,6 +74,9 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-ser
   color:#1a1a1a;
   transition:all 0.2s;
   box-shadow:0 1px 3px rgba(0,0,0,0.04);
+  min-height:56px;
+  -webkit-tap-highlight-color:rgba(0,0,0,0.1);
+  user-select:none;-webkit-user-select:none;
 }
 .kiosk-so-card:hover,.kiosk-so-card:active{border-color:#107C10;background:#f0faf0}
 .kiosk-so-num{font-size:13px;color:#107C10;font-weight:700;letter-spacing:1px}
