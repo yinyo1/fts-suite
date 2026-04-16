@@ -94,6 +94,8 @@ function mostrarModalGeo(geoResult){
         'Estás a '+geoResult.distancia+'m de "<strong>'+geoResult.sitioMasCercano+'</strong>".<br>'+
         'Tu check-in requerirá aprobación del supervisor.'+
       '</p>'+
+      '<button onclick="reintentarGeo()" id="geoRetryBtn" style="width:100%;background:#0078D4;color:#fff;border:none;padding:12px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:12px">🔄 Reintentar ubicación</button>'+
+      '<div id="geoRetryStatus" style="font-size:12px;color:#999;margin-bottom:12px;min-height:16px"></div>'+
       '<textarea id="geoMotivo" placeholder="Motivo del check-in fuera de zona (obligatorio)..." style="width:100%;height:80px;background:#0a0a0a;color:#fff;border:1px solid #555;border-radius:8px;padding:10px;font-size:14px;box-sizing:border-box;resize:none;margin-bottom:16px;font-family:inherit"></textarea>'+
       '<div style="display:flex;gap:12px">'+
         '<button onclick="cancelarGeo()" style="flex:1;background:#333;color:#fff;border:none;padding:14px;border-radius:8px;font-size:16px;cursor:pointer;font-family:inherit">✕ Cancelar</button>'+
@@ -102,6 +104,45 @@ function mostrarModalGeo(geoResult){
     '</div>';
   document.body.appendChild(modal);
 }
+
+async function reintentarGeo(){
+  const btn = document.getElementById('geoRetryBtn');
+  const status = document.getElementById('geoRetryStatus');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ Obteniendo ubicación…'; }
+  if(status){ status.textContent = 'Esperando GPS…'; status.style.color = '#0078D4'; }
+
+  const geo = await window.getGeolocacion();
+  K.geo = geo;
+
+  const geoResult = validarGeolocacion(
+    geo && geo.lat != null ? geo.lat : null,
+    geo && geo.lng != null ? geo.lng : null
+  );
+  K.geoAutorizada = geoResult.autorizado;
+  K.geoSitio      = geoResult.sitio || geoResult.sitioMasCercano;
+  K.geoDistancia  = geoResult.distancia || 0;
+
+  if(geoResult.autorizado){
+    // Cerrar modal y continuar el flujo normalmente
+    const m = document.getElementById('geoModal');
+    if(m) m.remove();
+    if(K.tipo === 'salida'){
+      showScreen('ks-project');
+    } else {
+      K.soSeleccionada = null;
+      registrarAsistencia();
+    }
+    return;
+  }
+
+  // Sigue fuera — actualizar el modal con la nueva distancia
+  if(btn){ btn.disabled = false; btn.textContent = '🔄 Reintentar ubicación'; }
+  if(status){
+    status.textContent = '❌ Sigues a ' + geoResult.distancia + 'm de "' + geoResult.sitioMasCercano + '"';
+    status.style.color = '#D83B01';
+  }
+}
+window.reintentarGeo = reintentarGeo;
 
 function cancelarGeo(){
   const m = document.getElementById('geoModal');
