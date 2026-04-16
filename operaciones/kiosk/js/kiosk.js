@@ -285,6 +285,10 @@ function selectEmpleado(id){
   if(photoEl) photoEl.src = fotoSrc || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220"><rect width="220" height="220" fill="%23f5f5f5"/><text x="50%" y="55%" text-anchor="middle" font-size="80" font-family="Inter,sans-serif" font-weight="700" fill="%23999">'+(displayName||'?').charAt(0)+'</text></svg>';
   if(nameEl) nameEl.textContent = displayName;
 
+  // Nombre visible en pantalla PIN
+  var pinNombreEl = document.getElementById('ksPinNombre');
+  if(pinNombreEl) pinNombreEl.textContent = '👷 ' + displayName;
+
   // Llenar pantalla ks-tipo
   const tipoNombre = document.getElementById('ks-tipo-nombre');
   if(tipoNombre) tipoNombre.textContent = displayName;
@@ -328,7 +332,7 @@ function addPin(n){
   K.pin += n;
   updatePinDots();
   if(K.pin.length === 4){
-    setTimeout(verifyPin, 200);
+    setTimeout(verifyPin, 50);
   }
 }
 function clearPin(){ K.pin = ''; updatePinDots(); }
