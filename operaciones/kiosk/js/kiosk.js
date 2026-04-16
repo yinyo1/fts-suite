@@ -1174,11 +1174,23 @@ function iniciarCheckin(tipo){
 }
 
 function resolverZonaGris(opcion){
-  alert('Zona gris: ' + opcion + ' — próximamente');
+  var estado = window._estadoActual;
+  var empleado = window._empleadoActual;
+
+  if(opcion === 'turno'){
+    // Seguí en turno → checar salida ahora (checkout normal)
+    iniciarCheckin('salida');
+  } else if(opcion === 'olvide'){
+    // Olvidé checar salida → modal para declarar hora estimada
+    mostrarModalOlvideCheckout(estado, empleado);
+  }
 }
 
 function resolverErrorCritico(){
-  alert('Error crítico — próximamente');
+  var estado = window._estadoActual;
+  var empleado = window._empleadoActual;
+  // Error crítico: siempre va al flujo de "olvidé checar"
+  mostrarModalOlvideCheckout(estado, empleado);
 }
 
 // ═══════ MODAL ERROR CANDADO ═══════
