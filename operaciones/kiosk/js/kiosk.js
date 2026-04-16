@@ -1261,21 +1261,19 @@ async function confirmarOlvideCheckout(){
   try{
     var n8nUrl = localStorage.getItem('ops_n8n_url') || 'https://primary-production-5c3c.up.railway.app';
 
-    // 1) Cerrar registro viejo con hora estimada
-    console.log('PASO 1 - checkout estimado:', checkoutEstimado, 'empleado:', empleado.id);
-    var resCheckout = await n8nFetch('/webhook/kiosk/checkin', {
-      empleado_id:     empleado.id,
-      tipo:            'salida',
-      timestamp:       checkoutEstimado,
-      lat:             null,
-      lng:             null,
-      geo_autorizada:  true,
-      es_estimado:     true,
-      motivo_estimado: motivoInput.value.trim()
+    // 1) Cerrar registro viejo con endpoint especial (bypassa candados)
+    var attendanceId = (regAbierto && regAbierto.id) || null;
+    console.log('PASO 1 - cerrar-registro:', checkoutEstimado, 'empleado:', empleado.id, 'attendance_id:', attendanceId);
+    var resCheckout = await n8nFetch('/webhook/kiosk/cerrar-registro', {
+      empleado_id:        empleado.id,
+      attendance_id:      attendanceId,
+      checkout_estimado:  checkoutEstimado,
+      motivo:             motivoInput.value.trim(),
+      es_estimado:        true
     });
     console.log('PASO 1 result:', JSON.stringify(resCheckout));
     var r = Array.isArray(resCheckout) ? resCheckout[0] : resCheckout;
-    alert('Checkout enviado: ' + JSON.stringify(r).substring(0, 200));
+    alert('Cerrar-registro enviado: ' + JSON.stringify(r).substring(0, 200));
     if(r && r.accion_valida === false){
       mostrarErrorCandado(r.error_msg || 'Error al cerrar registro');
       return;
