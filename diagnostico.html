@@ -23,6 +23,51 @@
 <button onclick="runDiag()">▶ Ejecutar diagnóstico</button>
 
 <script>
+// ═══ Interceptor de fetch para diagnóstico ═══
+window._ftsLogs = [];
+var _originalFetch = window.fetch;
+window.fetch = async function(){
+  var url = arguments[0];
+  var start = Date.now();
+  try{
+    var res = await _originalFetch.apply(this, arguments);
+    var clone = res.clone();
+    var body = await clone.text();
+    window._ftsLogs.push({
+      ts: new Date().toLocaleTimeString('es-MX'),
+      url: url,
+      ms: Date.now() - start,
+      status: res.status,
+      ok: res.ok,
+      response: body.substring(0, 500)
+    });
+    if(window._ftsLogs.length > 10) window._ftsLogs.shift();
+    return res;
+  } catch(e){
+    window._ftsLogs.push({
+      ts: new Date().toLocaleTimeString('es-MX'),
+      url: url,
+      ms: Date.now() - start,
+      status: 'ERROR',
+      ok: false,
+      response: e.message
+    });
+    if(window._ftsLogs.length > 10) window._ftsLogs.shift();
+    throw e;
+  }
+};
+
+// ═══ Capturar errores globales ═══
+window._ftsErrors = [];
+window.onerror = function(msg, src, line){
+  window._ftsErrors.push({
+    ts: new Date().toLocaleTimeString('es-MX'),
+    msg: msg,
+    src: src,
+    line: line
+  });
+};
+
 async function runDiag(){
   const out = document.getElementById('output');
   out.innerHTML = '';
@@ -162,7 +207,7 @@ async function runDiag(){
   // 5) Sesión FTSAuth
   section('SESIÓN FTSAUTH');
   try{
-    const sess = sessionStorage.getItem('fts_session');
+    const sess = localStorage.getItem('fts_session');
     if(sess){
       const s = JSON.parse(sess);
       log('✅ Sesión activa: ' + (s.username || '?'));
@@ -173,6 +218,32 @@ async function runDiag(){
     }
   } catch(e){
     log('❌ Error leyendo sesión: ' + e.message, 'err');
+  }
+
+  // 6) Fetch logs
+  section('ÚLTIMOS FETCH LOGS (' + window._ftsLogs.length + ')');
+  if(window._ftsLogs.length === 0){
+    log('Sin llamadas fetch registradas aún', 'warn');
+  } else {
+    window._ftsLogs.slice().reverse().forEach(function(l){
+      var statusColor = l.ok ? 'ok' : 'err';
+      var urlShort = (typeof l.url === 'string') ? l.url.replace('https://','').substring(0, 60) : String(l.url).substring(0, 60);
+      log('[' + l.ts + '] ' + l.status + ' ' + l.ms + 'ms — ' + urlShort, statusColor);
+      if(!l.ok || l.status === 'ERROR'){
+        log('   ↳ ' + (l.response || '').substring(0, 200), 'err');
+      }
+    });
+  }
+
+  // 7) Errores JS
+  section('ERRORES JS (' + window._ftsErrors.length + ')');
+  if(window._ftsErrors.length === 0){
+    log('✅ Sin errores JS capturados');
+  } else {
+    window._ftsErrors.forEach(function(e){
+      log('[' + e.ts + '] ' + e.msg, 'err');
+      if(e.src) log('   ↳ ' + e.src + ':' + e.line, 'err');
+    });
   }
 }
 </script>
