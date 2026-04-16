@@ -150,6 +150,53 @@
           "submodulos": {}
         }
       }
+    },
+    {
+      "id": 5,
+      "username": "Tere Ramos",
+      "nombre": "Teresa Ramos Rodriguez",
+      "password_hash": "65c4145608e91a7313b574c6ed1d7207770c975ca8faf5196783314a584854c9",
+      "role": "user",
+      "activo": true,
+      "vigencia": null,
+      "modulos": {
+        "seguridad": {
+          "acceso": false,
+          "submodulos": {
+            "instructor": false,
+            "empleado": false,
+            "iperc": false
+          }
+        },
+        "operaciones": {
+          "acceso": false,
+          "submodulos": {
+            "kiosk": true,
+            "dashboard": false,
+            "planeacion": false,
+            "incidencias": false,
+            "supervisor": false
+          }
+        },
+        "ingenieria": {
+          "acceso": false,
+          "submodulos": {
+            "analisis_estructural": false
+          }
+        },
+        "rh": {
+          "acceso": false,
+          "submodulos": {}
+        },
+        "comercial": {
+          "acceso": false,
+          "submodulos": {}
+        },
+        "odoo": {
+          "acceso": false,
+          "submodulos": {}
+        }
+      }
     }
   ]
 }
