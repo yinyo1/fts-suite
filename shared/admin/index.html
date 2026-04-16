@@ -292,6 +292,11 @@
         <button onclick="syncCargar()" style="background:#0078D4;color:#fff;border:none;padding:12px 20px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;flex:1;font-family:inherit">📥 Cargar desde GitHub</button>
       </div>
       <div id="sync-result" style="margin-top:12px;font-size:13px;min-height:20px;font-weight:600"></div>
+
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid #e0e0e0">
+        <button onclick="refrescarPublicConfig()" style="width:100%;background:#fff;color:#1a1a1a;border:1.5px solid #e0e0e0;padding:12px 20px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">⬇️ Refrescar config pública desde GitHub</button>
+        <p style="font-size:11px;color:#999;margin:6px 0 0;text-align:center">Descarga n8n_url, geolocations y demo_mode sin contraseña</p>
+      </div>
     </div>
 
     <div class="cfg-card" style="background:#FFF9E6;border:1px solid #BF8F00">
@@ -463,9 +468,38 @@ async function syncCargar(){
   }
 }
 
+async function refrescarPublicConfig(){
+  var resultEl = document.getElementById('sync-result');
+  function setResult(text, color){
+    if(resultEl){ resultEl.textContent = text; resultEl.style.color = color; }
+  }
+  setResult('⬇️ Descargando config pública…', '#0078D4');
+  try{
+    var res = await fetch(
+      'https://raw.githubusercontent.com/yinyo1/fts-suite/main/shared/public-config.json?nocache=' + Math.random() + '&t=' + Date.now(),
+      { cache:'no-store' }
+    );
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    var pub = await res.json();
+
+    if(pub.n8n_url)  localStorage.setItem('ops_n8n_url',  pub.n8n_url);
+    if(pub.odoo_url) localStorage.setItem('ops_odoo_url', pub.odoo_url);
+    if(pub.demo_mode !== undefined)
+      localStorage.setItem('ops_demo_mode', pub.demo_mode ? '1' : '0');
+    if(pub.geolocations && pub.geolocations.length > 0)
+      localStorage.setItem('ops_kiosk_geolocations', JSON.stringify(pub.geolocations));
+
+    setResult('✅ Config pública actualizada (' + (pub.geolocations ? pub.geolocations.length : 0) + ' sitios geo)', '#107C10');
+    setTimeout(function(){ setResult('', ''); }, 4000);
+  } catch(e){
+    setResult('❌ Error: ' + e.message, '#D83B01');
+  }
+}
+
 window.initSyncTab = initSyncTab;
 window.syncGuardar = syncGuardar;
 window.syncCargar  = syncCargar;
+window.refrescarPublicConfig = refrescarPublicConfig;
 
 // ═══ API Keys ═══
 const API_KEYS_MAP = {
