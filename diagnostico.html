@@ -35,19 +35,51 @@ async function runDiag(){
     out.innerHTML += '<div class="item section">=== ' + title + ' ===</div>';
   }
 
-  // 1) LocalStorage keys
-  section('LOCAL STORAGE');
-  const keys = ['ops_n8n_url','ops_odoo_url','ops_demo_mode','ops_github_token','ops_sync_password'];
-  keys.forEach(function(k){
-    const v = localStorage.getItem(k);
-    if(v){
-      const isSecret = k.indexOf('key') !== -1 || k.indexOf('token') !== -1 || k.indexOf('password') !== -1;
-      const display = isSecret ? '***' + v.slice(-4) : v;
-      log('✅ ' + k + ' = ' + display);
-    } else {
-      log('❌ ' + k + ' = (vacío)', 'err');
-    }
-  });
+  // 1) Config localStorage detallada
+  section('CONFIG LOCAL STORAGE');
+
+  // GitHub Token
+  const ghToken = localStorage.getItem('ops_github_token');
+  if(ghToken){
+    log('✅ GitHub Token: configurado (…' + ghToken.slice(-4) + ')');
+  } else {
+    log('❌ GitHub Token: NO configurado — auto-sync de geo NO funcionará', 'err');
+  }
+
+  // n8n URL
+  const n8nUrlLocal = localStorage.getItem('ops_n8n_url');
+  if(n8nUrlLocal){
+    log('✅ n8n URL: ' + n8nUrlLocal);
+  } else {
+    log('❌ n8n URL: (vacío)', 'err');
+  }
+
+  // Odoo URL
+  const odooUrl = localStorage.getItem('ops_odoo_url');
+  log(odooUrl ? '✅ Odoo URL: ' + odooUrl : '⚠️ Odoo URL: (vacío)', odooUrl ? 'ok' : 'warn');
+
+  // Demo mode
+  const demoVal = localStorage.getItem('ops_demo_mode');
+  log('ℹ️ Demo mode: ' + (demoVal === '0' ? 'DESACTIVADO (real)' : demoVal === '1' ? 'ACTIVO' : 'sin configurar (default demo)'), demoVal === '0' ? 'ok' : 'warn');
+
+  // Sync password
+  const syncPw = localStorage.getItem('ops_sync_password');
+  log(syncPw ? '✅ Sync password: configurada (…' + syncPw.slice(-4) + ')' : '⚠️ Sync password: no configurada (secrets cifrados no se cargarán auto)', syncPw ? 'ok' : 'warn');
+
+  // Geolocations
+  section('GEOLOCATIONS');
+  let geos = [];
+  try{ geos = JSON.parse(localStorage.getItem('ops_kiosk_geolocations') || '[]'); } catch(e){}
+  if(geos.length > 0){
+    log('✅ ' + geos.length + ' sitio(s) configurado(s):');
+    geos.forEach(function(g, i){
+      const lat = g.lat != null ? parseFloat(g.lat).toFixed(5) : '?';
+      const lng = g.lng != null ? parseFloat(g.lng).toFixed(5) : '?';
+      log('   📍 ' + (g.nombre || 'Sin nombre') + ' — ' + lat + ', ' + lng + ' — radio: ' + (g.radio || '?') + 'm');
+    });
+  } else {
+    log('❌ Sin geolocations configuradas — geo check deshabilitado', 'err');
+  }
 
   // 2) Public config desde GitHub
   section('PUBLIC CONFIG');
