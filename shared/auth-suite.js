@@ -214,6 +214,9 @@
         if(pub.demo_mode !== undefined && !localStorage.getItem('ops_demo_mode')){
           localStorage.setItem('ops_demo_mode', pub.demo_mode ? '1' : '0');
         }
+        if(pub.geolocations && pub.geolocations.length > 0){
+          localStorage.setItem('ops_kiosk_geolocations', JSON.stringify(pub.geolocations));
+        }
         console.log('[FTSAuth] Config pública cargada');
       }
     } catch(e){
@@ -261,6 +264,9 @@
       if(pub.odoo_url) localStorage.setItem('ops_odoo_url', pub.odoo_url);
       if(pub.demo_mode !== undefined){
         localStorage.setItem('ops_demo_mode', pub.demo_mode ? '1' : '0');
+      }
+      if(pub.geolocations && pub.geolocations.length > 0){
+        localStorage.setItem('ops_kiosk_geolocations', JSON.stringify(pub.geolocations));
       }
       console.log('[FTSAuth] Public config loaded');
       return true;
