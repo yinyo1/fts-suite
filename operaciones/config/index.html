@@ -683,6 +683,9 @@ function saveKioskConfig(){
   var faceReq = document.getElementById('ops_kiosk_face_required');
   if(faceReq) localStorage.setItem('ops_kiosk_face_required', faceReq.checked ? '1' : '0');
   // Las geolocalizaciones ya se persisten en vivo con update/add/remove
+
+  // Auto-sync public-config.json con geolocations actualizadas
+  autoSyncGeolocations();
 }
 
 // ─ Geolocalizaciones ─
@@ -856,6 +859,59 @@ async function resolverGeoUrl(index){
   }
 }
 window.resolverGeoUrl = resolverGeoUrl;
+
+// ═══ Auto-sync geolocations a public-config.json (sin password) ═══
+async function autoSyncGeolocations(){
+  var token = localStorage.getItem('ops_github_token');
+  if(!token) return; // sin token no se puede escribir
+
+  try{
+    var geolocations = JSON.parse(localStorage.getItem('ops_kiosk_geolocations') || '[]');
+
+    // Leer public-config.json actual
+    var resActual = await fetch(
+      'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/public-config.json?ref=main&t=' + Date.now(),
+      { headers: {
+          'Authorization': 'token ' + token,
+          'Accept':        'application/vnd.github.v3+json'
+      }}
+    );
+    if(!resActual.ok) return;
+    var dataActual = await resActual.json();
+
+    var cfgActual;
+    try{
+      cfgActual = JSON.parse(decodeURIComponent(escape(atob(dataActual.content.replace(/\n/g, '')))));
+    } catch(e){
+      cfgActual = {};
+    }
+
+    // Actualizar solo geolocations + updated
+    cfgActual.geolocations = geolocations;
+    cfgActual.updated = new Date().toISOString().split('T')[0];
+
+    var content = JSON.stringify(cfgActual, null, 2);
+    await fetch(
+      'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/public-config.json',
+      { method: 'PUT',
+        headers: {
+          'Authorization': 'token ' + token,
+          'Content-Type':  'application/json',
+          'Accept':        'application/vnd.github.v3+json'
+        },
+        body: JSON.stringify({
+          message: 'Auto-sync geolocations',
+          content: btoa(unescape(encodeURIComponent(content))),
+          branch:  'main',
+          sha:     dataActual.sha
+        })
+      }
+    );
+    showToast('✅ Sitios sincronizados');
+  } catch(e){
+    console.warn('[Config] Auto-sync geo falló:', e.message);
+  }
+}
 
 // ═══ Sección Planeación ═══
 function loadPlaneacionConfig(){
