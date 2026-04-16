@@ -820,6 +820,59 @@ function cambiarPinKiosk(){
   setTimeout(function(){ msg.textContent = ''; }, 4000);
 }
 
+// ═══ Resolver coordenadas desde Google Maps URL ═══
+async function resolverMapsUrl(){
+  var url = document.getElementById('ops_kiosk_maps_url').value.trim();
+  var status = document.getElementById('ops_kiosk_geo_status');
+
+  if(!url){
+    status.textContent = '⚠️ Ingresa una URL de Google Maps';
+    status.style.color = '#BF8F00';
+    return;
+  }
+
+  status.textContent = '🔄 Resolviendo…';
+  status.style.color = '#0078D4';
+
+  try{
+    var n8nUrl = localStorage.getItem('ops_n8n_url') || 'https://primary-production-5c3c.up.railway.app';
+    var res = await fetch(n8nUrl + '/webhook/kiosk/resolve-location', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ maps_url: url })
+    });
+    if(!res.ok) throw new Error('n8n error ' + res.status);
+    var data = await res.json();
+    if(data.lat && data.lng){
+      document.getElementById('ops_kiosk_geo_lat').value = data.lat;
+      document.getElementById('ops_kiosk_geo_lng').value = data.lng;
+      localStorage.setItem('ops_kiosk_geo_lat', data.lat);
+      localStorage.setItem('ops_kiosk_geo_lng', data.lng);
+      status.textContent = '✅ Coordenadas resueltas: ' + data.lat + ', ' + data.lng;
+      status.style.color = '#107C10';
+      return;
+    }
+    throw new Error('Sin coordenadas');
+  } catch(e){
+    // Fallback: extraer coordenadas de URL larga con @lat,lng
+    var coordMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if(coordMatch){
+      var lat = coordMatch[1];
+      var lng = coordMatch[2];
+      document.getElementById('ops_kiosk_geo_lat').value = lat;
+      document.getElementById('ops_kiosk_geo_lng').value = lng;
+      localStorage.setItem('ops_kiosk_geo_lat', lat);
+      localStorage.setItem('ops_kiosk_geo_lng', lng);
+      status.textContent = '✅ Coordenadas extraídas: ' + lat + ', ' + lng;
+      status.style.color = '#107C10';
+    } else {
+      status.textContent = '❌ No se pudieron resolver. Usa una URL completa de Google Maps con @lat,lng.';
+      status.style.color = '#D83B01';
+    }
+  }
+}
+window.resolverMapsUrl = resolverMapsUrl;
+
 // ═══ Sección Planeación ═══
 function loadPlaneacionConfig(){
   const fields = {
