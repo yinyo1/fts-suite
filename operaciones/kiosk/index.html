@@ -33,6 +33,47 @@
   </div>
 </div>
 
+<!-- ═══════ PANTALLA 2.5 — ESTADO EMPLEADO ═══════ -->
+<div class="kiosk-screen" id="ks-estado" style="justify-content:flex-start;padding-top:16px;overflow-y:auto">
+  <button class="kiosk-back" onclick="showScreen('ks-search')">← Volver</button>
+
+  <div style="padding:16px;width:100%;max-width:500px;margin:0 auto">
+    <!-- Foto y nombre -->
+    <div style="text-align:center;margin-bottom:16px">
+      <img id="ksEstadoFoto" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid #0078D4;background:#f0f0f0" alt="">
+      <h3 id="ksEstadoNombre" style="margin:8px 0 4px;font-size:20px"></h3>
+      <p id="ksEstadoFecha" style="color:#666;font-size:13px;margin:0"></p>
+    </div>
+
+    <!-- Card de estado -->
+    <div id="ksEstadoCard" style="border-radius:12px;padding:16px;margin-bottom:16px;text-align:center;background:#f5f5f5">
+      <div id="ksEstadoIcon" style="font-size:32px;margin-bottom:8px">⏳</div>
+      <div id="ksEstadoTexto" style="font-size:15px;font-weight:500">Consultando estado…</div>
+    </div>
+
+    <!-- Horas del día -->
+    <div style="display:flex;gap:12px;margin-bottom:16px">
+      <div style="flex:1;background:#f0f9f0;border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:22px;font-weight:700;color:#107C10" id="ksHorasHoy">0:00</div>
+        <div style="font-size:11px;color:#666;margin-top:4px">Horas trabajadas</div>
+      </div>
+      <div style="flex:1;background:#f0f4ff;border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:22px;font-weight:700;color:#0078D4" id="ksHorasRestantes">9:36</div>
+        <div style="font-size:11px;color:#666;margin-top:4px">Horas restantes</div>
+      </div>
+    </div>
+
+    <!-- Alerta -->
+    <div id="ksEstadoAlerta" style="display:none;border-radius:10px;padding:12px;margin-bottom:16px;font-size:14px;line-height:1.5"></div>
+
+    <!-- Historial rápido -->
+    <div id="ksHistorialRapido" style="margin-bottom:16px"></div>
+
+    <!-- Botones de acción -->
+    <div id="ksEstadoBotones" style="display:flex;flex-direction:column;gap:10px"></div>
+  </div>
+</div>
+
 <!-- ═══════ PANTALLA 3 — TIPO DE EVENTO ═══════ -->
 <div class="kiosk-screen" id="ks-tipo">
   <div class="kiosk-topbar">
