@@ -172,8 +172,8 @@
           "acceso": true,
           "submodulos": {
             "kiosk": true,
-            "dashboard": false,
-            "planeacion": false,
+            "dashboard": true,
+            "planeacion": true,
             "incidencias": false,
             "supervisor": false
           }
