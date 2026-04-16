@@ -28,18 +28,19 @@
           }
         },
         "operaciones": {
-          "acceso": false,
+          "acceso": true,
           "submodulos": {
-            "kiosk": false,
-            "dashboard": false,
-            "planeacion": false,
-            "incidencias": false
+            "kiosk": true,
+            "dashboard": true,
+            "planeacion": true,
+            "incidencias": true,
+            "supervisor": true
           }
         },
         "ingenieria": {
-          "acceso": false,
+          "acceso": true,
           "submodulos": {
-            "analisis_estructural": false
+            "analisis_estructural": true
           }
         },
         "rh": {
