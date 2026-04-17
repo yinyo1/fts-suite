@@ -1,6 +1,18 @@
 {
   "incidencias": [
     {
+      "id": "INC-ADJ-1776384928485",
+      "tipo": "ajuste_hora_salida",
+      "estado": "pendiente_supervisor",
+      "empleado_id": 32,
+      "attendance_id": 12349,
+      "check_out_estimado": "2026-04-07 00:30:00",
+      "motivo": "Prueba chatter v2",
+      "fecha_solicitud": "2026-04-17T00:15:28.485Z",
+      "aprobado_por": null,
+      "fecha_aprobacion": null
+    },
+    {
       "id": "INC-ADJ-1776384198845",
       "tipo": "ajuste_hora_salida",
       "estado": "aprobado",
