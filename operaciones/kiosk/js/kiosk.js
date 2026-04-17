@@ -103,6 +103,46 @@ function mostrarModalGeo(geoResult){
       '</div>'+
     '</div>';
   document.body.appendChild(modal);
+
+  // Código de diagnóstico compartible
+  try{
+    var sitiosConfig = [];
+    try{ sitiosConfig = JSON.parse(localStorage.getItem('ops_kiosk_geolocations') || '[]'); } catch(e){}
+    var empNombre = (K.seleccionado && (K.seleccionado.name || K.seleccionado.nombre)) || (window._empleadoActual && (window._empleadoActual.name || window._empleadoActual.nombre)) || 'desconocido';
+    var geoErrorCode = {
+      ts:                new Date().toISOString(),
+      device:            (navigator.userAgent || '').substring(0, 50),
+      coords_empleado:   { lat: K.geo && K.geo.lat, lng: K.geo && K.geo.lng, accuracy: K.geo && K.geo.accuracy },
+      sitio_mas_cercano: K.geoSitio || geoResult.sitioMasCercano,
+      distancia_metros:  K.geoDistancia || geoResult.distancia,
+      sitios_configurados: sitiosConfig.map(function(s){ return { nombre:s.nombre, lat:s.lat, lng:s.lng, radio:s.radio }; }),
+      geo_sync_timestamp: localStorage.getItem('ops_geo_sync_timestamp') || 'nunca',
+      empleado:          empNombre
+    };
+    var codigoB64 = btoa(unescape(encodeURIComponent(JSON.stringify(geoErrorCode))));
+    var debugDiv = document.createElement('div');
+    debugDiv.style.cssText = 'margin-top:16px;border-top:1px solid #444;padding-top:12px';
+    debugDiv.innerHTML =
+      '<p style="font-size:11px;color:#999;margin:0 0 6px;text-align:center">Código de diagnóstico para soporte:</p>'+
+      '<div style="background:#111;border-radius:8px;padding:8px;font-size:10px;font-family:monospace;color:#666;word-break:break-all;max-height:60px;overflow:hidden;margin-bottom:8px">' + codigoB64.substring(0, 80) + '...</div>'+
+      '<button id="btnCopiarGeoCode" style="width:100%;padding:8px;background:#333;border:1px solid #555;border-radius:8px;font-size:12px;cursor:pointer;color:#ccc;font-family:inherit">📋 Copiar código para soporte</button>';
+    modal.querySelector('div').appendChild(debugDiv);
+    document.getElementById('btnCopiarGeoCode').addEventListener('click', function(){
+      var btn = this;
+      navigator.clipboard.writeText(codigoB64).then(function(){
+        btn.textContent = '✅ Copiado';
+        setTimeout(function(){ btn.textContent = '📋 Copiar código para soporte'; }, 2000);
+      }).catch(function(){
+        var ta = document.createElement('textarea');
+        ta.value = codigoB64;
+        document.body.appendChild(ta);
+        ta.select();
+        try{ document.execCommand('copy'); btn.textContent = '✅ Copiado'; } catch(e){}
+        document.body.removeChild(ta);
+        setTimeout(function(){ btn.textContent = '📋 Copiar código para soporte'; }, 2000);
+      });
+    });
+  } catch(e){}
 }
 
 async function reintentarGeo(){
