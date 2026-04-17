@@ -5,8 +5,8 @@
   "geolocations": [
     {
       "nombre": "FTS Monterrey",
-      "lat": 25.6889759,
-      "lng": -100.2916779,
+      "lat": 25.6704,
+      "lng": -100.3102,
       "radio": 50,
       "maps_url": "https://maps.app.goo.gl/oa9RvBmtN8U8KQ686?g_st=ac"
     },
@@ -30,6 +30,13 @@
       "lat": 25.7356987,
       "lng": -100.3288875,
       "radio": 60
+    },
+    {
+      "nombre": "Sitio prueba mobil",
+      "maps_url": "",
+      "lat": 25.6907404,
+      "lng": -100.2872838,
+      "radio": 50
     }
   ],
   "version": "1.0.0",
