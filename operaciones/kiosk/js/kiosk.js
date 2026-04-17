@@ -954,6 +954,22 @@ function updateConnStatus(){
   else el.textContent = 'conectado';
 }
 
+function mostrarEstadoSync(){
+  var el = document.getElementById('geo-sync-status');
+  if(!el) return;
+  var ts = localStorage.getItem('ops_geo_sync_timestamp');
+  var geos = [];
+  try{ geos = JSON.parse(localStorage.getItem('ops_kiosk_geolocations') || '[]'); } catch(e){}
+  if(!ts || geos.length === 0){
+    el.innerHTML = '<span style="color:#D83B01;font-size:11px">⚠️ Geo no sincronizada</span>';
+    return;
+  }
+  var hace = Math.round((Date.now() - new Date(ts).getTime()) / 60000);
+  var color = hace > 60 ? '#BF8F00' : '#107C10';
+  var icono = hace > 60 ? '⚠️' : '✅';
+  el.innerHTML = '<span style="color:' + color + ';font-size:11px">' + icono + ' Geo sync hace ' + hace + ' min · ' + geos.length + ' sitio(s)</span>';
+}
+
 // ═══ Init ═══
 async function initKiosk(){
   // Cargar config pública (siempre — las geolocations pueden cambiar)
@@ -962,26 +978,27 @@ async function initKiosk(){
       'https://raw.githubusercontent.com/yinyo1/fts-suite/main/shared/public-config.json?t=' + Date.now(),
       { cache:'no-store' }
     );
-    if(res.ok){
-      var pub = await res.json();
-      if(pub.n8n_url && !localStorage.getItem('ops_n8n_url'))
-        localStorage.setItem('ops_n8n_url', pub.n8n_url);
-      if(pub.odoo_url && !localStorage.getItem('ops_odoo_url'))
-        localStorage.setItem('ops_odoo_url', pub.odoo_url);
-      if(pub.demo_mode !== undefined && !localStorage.getItem('ops_demo_mode'))
-        localStorage.setItem('ops_demo_mode', pub.demo_mode ? '1' : '0');
-      // Geolocations: siempre actualizar con la versión del repo
-      if(pub.geolocations && pub.geolocations.length > 0)
-        localStorage.setItem('ops_kiosk_geolocations', JSON.stringify(pub.geolocations));
-      console.log('[Kiosk] Config pública aplicada (' + (pub.geolocations ? pub.geolocations.length : 0) + ' sitios geo)');
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    var pub = await res.json();
+    if(pub.n8n_url && !localStorage.getItem('ops_n8n_url'))
+      localStorage.setItem('ops_n8n_url', pub.n8n_url);
+    if(pub.odoo_url && !localStorage.getItem('ops_odoo_url'))
+      localStorage.setItem('ops_odoo_url', pub.odoo_url);
+    if(pub.demo_mode !== undefined && !localStorage.getItem('ops_demo_mode'))
+      localStorage.setItem('ops_demo_mode', pub.demo_mode ? '1' : '0');
+    if(pub.geolocations && pub.geolocations.length > 0){
+      localStorage.setItem('ops_kiosk_geolocations', JSON.stringify(pub.geolocations));
+      localStorage.setItem('ops_geo_sync_timestamp', new Date().toISOString());
+      console.log('[GEO] Sincronizado:', pub.geolocations.length, 'sitios');
     }
   } catch(e){
-    console.warn('[Kiosk] Config pública falló:', e.message);
+    console.error('[GEO] Error sync:', e.message);
   }
 
   K.config = loadKioskConfig();
   tick(); setInterval(tick, 1000);
   updateConnStatus();
+  mostrarEstadoSync();
 
   await loadEmpleados();
   await loadSOs();
