@@ -32,11 +32,11 @@
       "radio": 60
     },
     {
-      "nombre": "Sitio prueba mobil",
+      "nombre": "Sitio prueba mobil 2",
       "maps_url": "",
-      "lat": 25.6907404,
-      "lng": -100.2872838,
-      "radio": 50
+      "lat": 25.703188,
+      "lng": -100.2874816,
+      "radio": 100
     }
   ],
   "version": "1.0.0",
