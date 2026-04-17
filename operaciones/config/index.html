@@ -955,6 +955,7 @@ async function autoSyncGeolocations(){
           return;
         }
         showToast('✅ Sitios sincronizados');
+        _refreshGeoFromGitHub();
         return;
       }
 
@@ -964,10 +965,30 @@ async function autoSyncGeolocations(){
     }
 
     showToast('✅ Sitios sincronizados');
+    _refreshGeoFromGitHub();
   } catch(e){
     console.warn('[Config] Auto-sync geo falló:', e.message);
     showToast('⚠️ Sync falló: ' + e.message);
   }
+}
+
+function _refreshGeoFromGitHub(){
+  setTimeout(async function(){
+    try{
+      var res = await fetch(
+        'https://raw.githubusercontent.com/yinyo1/fts-suite/main/shared/public-config.json?t=' + Date.now(),
+        { cache:'no-store' }
+      );
+      if(!res.ok) return;
+      var cfg = await res.json();
+      if(cfg.geolocations && cfg.geolocations.length > 0){
+        localStorage.setItem('ops_kiosk_geolocations', JSON.stringify(cfg.geolocations));
+        localStorage.setItem('ops_geo_sync_timestamp', new Date().toISOString());
+      }
+    } catch(e){
+      console.warn('Auto-refresh falló:', e);
+    }
+  }, 2000);
 }
 
 // ═══ Sección Planeación ═══
