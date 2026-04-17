@@ -897,7 +897,7 @@ async function autoSyncGeolocations(){
     cfgActual.updated = new Date().toISOString().split('T')[0];
 
     var content = JSON.stringify(cfgActual, null, 2);
-    await fetch(
+    var resPut = await fetch(
       'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/public-config.json',
       { method: 'PUT',
         headers: {
@@ -913,6 +913,56 @@ async function autoSyncGeolocations(){
         })
       }
     );
+
+    if(!resPut.ok){
+      var errBody = await resPut.json().catch(function(){ return {}; });
+
+      // 409 SHA conflict → reintentar con SHA fresco
+      if(resPut.status === 409){
+        showToast('🔄 Conflicto SHA, reintentando…');
+
+        var resRetry = await fetch(
+          'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/public-config.json?ref=main&t=' + Date.now(),
+          { headers: {
+              'Authorization': 'token ' + token,
+              'Accept':        'application/vnd.github.v3+json'
+          }}
+        );
+        if(!resRetry.ok){
+          showToast('⚠️ Error reintento: ' + resRetry.status);
+          return;
+        }
+        var dataRetry = await resRetry.json();
+
+        var resPut2 = await fetch(
+          'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/public-config.json',
+          { method: 'PUT',
+            headers: {
+              'Authorization': 'token ' + token,
+              'Content-Type':  'application/json',
+              'Accept':        'application/vnd.github.v3+json'
+            },
+            body: JSON.stringify({
+              message: 'Auto-sync geolocations (retry)',
+              content: btoa(unescape(encodeURIComponent(content))),
+              branch:  'main',
+              sha:     dataRetry.sha
+            })
+          }
+        );
+        if(!resPut2.ok){
+          showToast('⚠️ Sync falló después de reintento');
+          return;
+        }
+        showToast('✅ Sitios sincronizados');
+        return;
+      }
+
+      // Cualquier otro error
+      showToast('⚠️ Error PUT GitHub: ' + resPut.status + (errBody.message ? ' — ' + errBody.message : ''));
+      return;
+    }
+
     showToast('✅ Sitios sincronizados');
   } catch(e){
     console.warn('[Config] Auto-sync geo falló:', e.message);
