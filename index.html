@@ -195,7 +195,9 @@ async function doLogin(){
     const masterPwd = document.getElementById('masterPasswordLogin') && document.getElementById('masterPasswordLogin').value;
     if(masterPwd && typeof ConfigSync !== 'undefined'){
       try {
+        console.log('[Login] Intentando ConfigSync.load con pwd:', masterPwd.length, 'chars');
         await ConfigSync.load(masterPwd);
+        console.log('[Login] ConfigSync.load exitoso, ops_github_token:', localStorage.getItem('ops_github_token') ? 'presente' : 'AUSENTE');
         console.log('[Login] Config maestra restaurada');
       } catch(e){
         console.warn('[Login] Config maestra no cargó:', e.message);
