@@ -199,8 +199,15 @@ async function doLogin(){
         await ConfigSync.load(masterPwd);
         console.log('[Login] ConfigSync.load exitoso, ops_github_token:', localStorage.getItem('ops_github_token') ? 'presente' : 'AUSENTE');
         console.log('[Login] Config maestra restaurada');
+        const tokenOk = localStorage.getItem('ops_github_token');
+        const errEl2 = document.getElementById('login-error');
+        if(errEl2) errEl2.textContent = tokenOk
+          ? '✅ Config restaurada — token presente'
+          : '⚠️ Config cargada pero sin token';
       } catch(e){
         console.warn('[Login] Config maestra no cargó:', e.message);
+        const errEl = document.getElementById('login-error');
+        if(errEl) errEl.textContent = '⚠️ Config maestra: ' + e.message;
       }
     }
 
