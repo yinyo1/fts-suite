@@ -173,6 +173,11 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-ser
   border:3px solid #e0e0e0;border-top-color:#107C10;
   border-radius:50%;animation:spin 1s linear infinite;
 }
+
+@keyframes ksSpinAnim {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 .kiosk-shake{animation:shake 0.4s}

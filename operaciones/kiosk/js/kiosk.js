@@ -1078,6 +1078,12 @@ function horasADisplay(horas){
 async function mostrarEstadoEmpleado(empleado){
   showScreen('ks-estado');
 
+  // Mostrar spinner animado mientras se consulta estado
+  var _spinEl  = document.getElementById('ksSpinner');
+  var _emojiEl = document.getElementById('ksIconEmoji');
+  if(_spinEl)  _spinEl.style.display  = 'block';
+  if(_emojiEl) _emojiEl.style.display = 'none';
+
   var foto = empleado.foto
     || (empleado.image_128
         ? (empleado.image_128.startsWith('data:') ? empleado.image_128 : 'data:image/png;base64,' + empleado.image_128)
@@ -1095,9 +1101,13 @@ async function mostrarEstadoEmpleado(empleado){
   // Consultar estado en n8n
   var estado = await fetchEstadoEmpleado(empleado.id);
 
+  // Ocultar spinner, volver al emoji
+  if(_spinEl)  _spinEl.style.display  = 'none';
+  if(_emojiEl) _emojiEl.style.display = 'inline';
+
   if(!estado){
     document.getElementById('ksEstadoCard').style.background = '#fff3cd';
-    document.getElementById('ksEstadoIcon').textContent = '⚠️';
+    document.getElementById('ksIconEmoji').textContent = '⚠️';
     document.getElementById('ksEstadoTexto').textContent = 'Error al consultar estado. Intenta de nuevo.';
     document.getElementById('ksEstadoBotones').innerHTML =
       '<button onclick="showScreen(\'ks-search\')" style="background:#0078D4;color:#fff;border:none;padding:14px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">← Volver a buscar</button>';
@@ -1115,7 +1125,7 @@ async function mostrarEstadoEmpleado(empleado){
 
   // Card de estado
   var card  = document.getElementById('ksEstadoCard');
-  var icon  = document.getElementById('ksEstadoIcon');
+  var icon  = document.getElementById('ksIconEmoji');
   var texto = document.getElementById('ksEstadoTexto');
 
   switch(estado.estado_actual){
@@ -1280,7 +1290,7 @@ function mostrarModalOlvideCheckout(estado, empleado){
       '</div>'+
       '<div style="display:flex;gap:10px">'+
         '<button onclick="document.getElementById(\'modalOlvideCheckout\').remove();if(window._empleadoActual)mostrarEstadoEmpleado(window._empleadoActual)" style="flex:1;padding:12px;background:#f0f0f0;color:#333;border:1px solid #ccc;border-radius:10px;font-size:14px;cursor:pointer;font-family:inherit">Cancelar</button>'+
-        '<button onclick="confirmarOlvideCheckout()" style="flex:2;padding:12px;background:#D83B01;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Confirmar y checar entrada hoy</button>'+
+        '<button onclick="confirmarOlvideCheckout()" style="flex:2;padding:12px;background:#D83B01;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">💾 Guardar y resolver</button>'+
       '</div>'+
     '</div>';
 
@@ -1316,7 +1326,7 @@ async function confirmarOlvideCheckout(){
   // Loading en pantalla estado
   showScreen('ks-estado');
   document.getElementById('ksEstadoBotones').innerHTML =
-    '<p style="text-align:center;color:#666;padding:20px">⏳ Procesando…</p>';
+    '<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:rgba(255,255,255,0.95);padding:24px 32px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.15);text-align:center;font-size:16px;color:#333;font-weight:500">⏳ Procesando…</div>';
 
   try{
     var n8nUrl = localStorage.getItem('ops_n8n_url') || 'https://primary-production-5c3c.up.railway.app';
@@ -1462,7 +1472,7 @@ async function confirmarOlvideEntrada(){
   // Loading
   showScreen('ks-estado');
   document.getElementById('ksEstadoBotones').innerHTML =
-    '<p style="text-align:center;color:#666;padding:20px">⏳ Registrando entrada estimada…</p>';
+    '<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:rgba(255,255,255,0.95);padding:24px 32px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.15);text-align:center;font-size:16px;color:#333;font-weight:500">⏳ Registrando entrada estimada…</div>';
 
   try{
     // Obtener geo actual
