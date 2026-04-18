@@ -5,8 +5,8 @@
   "geolocations": [
     {
       "nombre": "FTS Monterrey",
-      "lat": 25.6889759,
-      "lng": -100.2916779,
+      "lat": 25.6704,
+      "lng": -100.3102,
       "radio": 50,
       "maps_url": "https://maps.app.goo.gl/oa9RvBmtN8U8KQ686?g_st=ac"
     },
@@ -32,13 +32,20 @@
       "radio": 60
     },
     {
-      "nombre": "Sitio prueba mobil 2",
+      "nombre": "Pasteleria Letty",
       "maps_url": "",
-      "lat": 25.703188,
-      "lng": -100.2874816,
+      "lat": 25.6880106,
+      "lng": -100.2960221,
+      "radio": 100
+    },
+    {
+      "nombre": "Nuevo sitio",
+      "maps_url": "",
+      "lat": "",
+      "lng": "",
       "radio": 100
     }
   ],
   "version": "1.0.0",
-  "updated": "2026-04-17"
+  "updated": "2026-04-18"
 }
