@@ -111,6 +111,24 @@ async function runDiag(){
   const syncPw = localStorage.getItem('ops_sync_password');
   log(syncPw ? '✅ Sync password: configurada (…' + syncPw.slice(-4) + ')' : '⚠️ Sync password: no configurada (secrets cifrados no se cargarán auto)', syncPw ? 'ok' : 'warn');
 
+  // Keys adicionales (sin prefijo ops_, timestamps, API keys estandarizadas)
+  const extraKeys = [
+    ['n8n_url',                 'URL n8n (sin prefijo ops_)'],
+    ['odoo_url',                'URL Odoo (sin prefijo ops_)'],
+    ['ops_geo_sync_timestamp',  'Último sync geo'],
+    ['key_claude',              'Claude API Key'],
+    ['key_groq',                'Groq API Key']
+  ];
+  for(const [k, label] of extraKeys){
+    const v = localStorage.getItem(k);
+    if(v){
+      const display = v.length > 50 ? '…' + v.slice(-4) : v;
+      log('✅ ' + label + ' (' + k + '): ' + display);
+    } else {
+      log('ℹ️ ' + label + ' (' + k + '): no configurada');
+    }
+  }
+
   // Geolocations
   section('GEOLOCATIONS');
   let geos = [];
@@ -218,6 +236,97 @@ async function runDiag(){
     }
   } catch(e){
     log('❌ Error leyendo sesión: ' + e.message, 'err');
+  }
+
+  // Sección 9 — Odoo test real
+  section('ODOO TEST REAL');
+  const odooUrlTest = localStorage.getItem('ops_odoo_url') || localStorage.getItem('odoo_url') || '';
+  const odooApi     = localStorage.getItem('ops_api_key')  || localStorage.getItem('key_odoo_api') || '';
+  if(!odooUrlTest){
+    log('❌ ops_odoo_url no configurada — skip test Odoo', 'err');
+  } else {
+    log('🔄 Testeando Odoo: ' + odooUrlTest);
+    try {
+      const odooRes = await fetch(odooUrlTest + '/web/session/authenticate', {
+        method:  'POST',
+        headers: { 'Content-Type':'application/json' },
+        body:    JSON.stringify({
+          jsonrpc: '2.0',
+          method:  'call',
+          params:  { db:'serviciosfts', login:'test_ping@fts.mx', password:'invalid_test' }
+        }),
+        signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(8000) : undefined
+      });
+      if(odooRes.ok){
+        const odooData = await odooRes.json();
+        if(odooData.jsonrpc === '2.0'){
+          log('✅ Odoo responde — HTTP ' + odooRes.status + ' (servidor activo)');
+          if(odooApi) log('✅ API Key configurada: …' + odooApi.slice(-4));
+          else        log('⚠️ ops_api_key no configurada', 'warn');
+        } else {
+          log('⚠️ Odoo responde pero formato inesperado', 'warn');
+        }
+      } else {
+        log('❌ Odoo HTTP ' + odooRes.status, 'err');
+      }
+    } catch(e){
+      log('❌ Odoo no responde: ' + e.message, 'err');
+    }
+  }
+
+  // Sección 10 — GitHub token validación real
+  section('GITHUB TOKEN');
+  const ghTokenDiag = localStorage.getItem('ops_github_token') || localStorage.getItem('key_github_token') || '';
+  if(!ghTokenDiag){
+    log('❌ GitHub token no configurado', 'err');
+  } else {
+    log('🔄 Validando token GitHub …' + ghTokenDiag.slice(-4));
+    try {
+      const ghRes = await fetch('https://api.github.com/repos/yinyo1/fts-suite', {
+        headers: {
+          'Authorization': 'token ' + ghTokenDiag,
+          'Accept':        'application/vnd.github.v3+json'
+        },
+        signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(8000) : undefined
+      });
+      if(ghRes.ok){
+        const ghData = await ghRes.json();
+        log('✅ Token válido — repo: ' + ghData.full_name);
+        log('✅ Rama default: ' + ghData.default_branch);
+        log('✅ Último push: ' + new Date(ghData.pushed_at).toLocaleString('es-MX'));
+      } else if(ghRes.status === 401){
+        log('❌ Token inválido o expirado (401)', 'err');
+      } else if(ghRes.status === 403){
+        log('⚠️ Token sin permisos suficientes (403)', 'warn');
+      } else {
+        log('❌ GitHub API HTTP ' + ghRes.status, 'err');
+      }
+    } catch(e){
+      log('❌ GitHub API error: ' + e.message, 'err');
+    }
+  }
+
+  // Sección 11 — API Keys IA
+  section('API KEYS IA');
+  const aiKeys = [
+    { label:'Claude (Anthropic)', keys:['key_claude','ANTHROPIC_API_KEY','fts_api_key'], prefix:'sk-ant' },
+    { label:'Groq',                keys:['key_groq'],                                     prefix:'gsk_'   },
+    { label:'OpenRouter',          keys:['key_openrouter'],                               prefix:'sk-or-' },
+    { label:'Gemini',              keys:['key_gemini'],                                   prefix:'AIza'   }
+  ];
+  for(const ai of aiKeys){
+    let found = null, foundKey = null;
+    for(const k of ai.keys){
+      const v = localStorage.getItem(k);
+      if(v && v.length > 8){ found = v; foundKey = k; break; }
+    }
+    if(found){
+      const looksValid = found.startsWith(ai.prefix) || found.length > 20;
+      log((looksValid ? '✅ ' : '⚠️ ') + ai.label + ': …' + found.slice(-4) + ' (key: ' + foundKey + ')',
+          looksValid ? 'ok' : 'warn');
+    } else {
+      log('⚠️ ' + ai.label + ': no configurada', 'warn');
+    }
   }
 
   // 6) Fetch logs
