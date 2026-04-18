@@ -245,40 +245,17 @@ async function runDiag(){
     log('❌ Error leyendo sesión: ' + e.message, 'err');
   }
 
-  // Sección 9 — Odoo test real
-  section('ODOO TEST REAL');
+  // Sección 9 — Odoo (info estático, sin fetch directo porque Odoo bloquea CORS del browser)
+  section('ODOO');
   const odooUrlTest = localStorage.getItem('ops_odoo_url') || localStorage.getItem('odoo_url') || '';
   const odooApi     = localStorage.getItem('ops_api_key')  || localStorage.getItem('key_odoo_api') || '';
   if(!odooUrlTest){
-    log('❌ ops_odoo_url no configurada — skip test Odoo', 'err');
+    log('❌ ops_odoo_url no configurada', 'err');
   } else {
-    log('🔄 Testeando Odoo: ' + odooUrlTest);
-    try {
-      const odooRes = await fetch(odooUrlTest + '/web/session/authenticate', {
-        method:  'POST',
-        headers: { 'Content-Type':'application/json' },
-        body:    JSON.stringify({
-          jsonrpc: '2.0',
-          method:  'call',
-          params:  { db:'serviciosfts', login:'test_ping@fts.mx', password:'invalid_test' }
-        }),
-        signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(8000) : undefined
-      });
-      if(odooRes.ok){
-        const odooData = await odooRes.json();
-        if(odooData.jsonrpc === '2.0'){
-          log('✅ Odoo responde — HTTP ' + odooRes.status + ' (servidor activo)');
-          if(odooApi) log('✅ API Key configurada: …' + odooApi.slice(-4));
-          else        log('⚠️ ops_api_key no configurada', 'warn');
-        } else {
-          log('⚠️ Odoo responde pero formato inesperado', 'warn');
-        }
-      } else {
-        log('❌ Odoo HTTP ' + odooRes.status, 'err');
-      }
-    } catch(e){
-      log('❌ Odoo no responde: ' + e.message, 'err');
-    }
+    log('✅ Odoo URL configurada: ' + odooUrlTest);
+    log('ℹ️ Test directo bloqueado por CORS (normal) — Odoo solo testeable desde n8n');
+    if(odooApi) log('✅ API Key configurada: …' + odooApi.slice(-4));
+    else        log('⚠️ ops_api_key no configurada', 'warn');
   }
 
   // Sección 10 — GitHub token validación real
