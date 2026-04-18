@@ -67,6 +67,10 @@ async function processRaw(){
         content.push({type:'document',source:{type:'base64',media_type:'application/pdf',data:f.data.split(',')[1]}});
         content.push({type:'text',text:'[PDF: '+f.name+']'});
         rlog(`  ✓ ${f.name} <span style="color:#7f8c8d">(PDF, ${sizeKB} KB)</span>`,'#1abc9c');
+      }else if(f.type==='text/plain'||f.name.toLowerCase().endsWith('.txt')){
+        const textContent=atob(f.data.split(',')[1].replace(/-/g,'+').replace(/_/g,'/'));
+        content.push({type:'text',text:'=== ARCHIVO TXT: '+f.name+' ===\n'+textContent+'\n=== FIN '+f.name+' ==='});
+        rlog(`  ✓ ${f.name} <span style="color:#7f8c8d">(TXT, ${sizeKB} KB)</span>`,'#1abc9c');
       }else{
         rlog(`  ⚠ ${f.name} <span style="color:#7f8c8d">(tipo no soportado: ${f.type}, omitido)</span>`,'#f39c12');
       }

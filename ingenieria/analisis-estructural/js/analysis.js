@@ -164,9 +164,9 @@ async function generateAnalysis(){
 
   // Construir content array con imágenes clasificadas + texto
   const content = [];
-  const allImgs = (typeof rawUploadedFiles !== 'undefined' && rawUploadedFiles)
-    ? rawUploadedFiles.filter(function(f){ return f && f.type && f.type.startsWith('image/'); })
-    : [];
+  const allFiles = (typeof rawUploadedFiles !== 'undefined' && rawUploadedFiles) ? rawUploadedFiles : [];
+  const allImgs = allFiles.filter(function(f){ return f && f.type && f.type.startsWith('image/'); });
+  const allTxts = allFiles.filter(function(f){ return f && (f.type==='text/plain' || (f.name||'').toLowerCase().endsWith('.txt')); });
 
   // Clasificador de imágenes por keywords en el nombre
   const FEA_KEYWORDS = ['fea','fusion','mises','stress','ansys','staad','sap','von','esfuerzo','tension','deform','modal','analisis','simulation','simulacion'];
@@ -220,6 +220,15 @@ async function generateAnalysis(){
       '- El idx es el mismo en ambos marcadores — usa el número de la imagen que corresponda\n'+
       '- El sistema reemplazará automáticamente ambos marcadores (data-fea-idx y data-sys-idx) con las imágenes reales'
     : '';
+
+  // Adjuntar archivos TXT como bloques de texto
+  allTxts.forEach(function(f){
+    try{
+      const textContent = atob((f.data||'').split(',')[1].replace(/-/g,'+').replace(/_/g,'/'));
+      content.push({type:'text', text:'=== ARCHIVO TXT: '+f.name+' ===\n'+textContent+'\n=== FIN '+f.name+' ==='});
+    }catch(e){ /* skip */ }
+  });
+  if(allTxts.length>0) statusLog('Incluyendo '+allTxts.length+' archivo(s) TXT','#1abc9c');
 
   content.push({type:'text', text:'Genera el análisis estructural completo para el siguiente proyecto. Responde SOLO en HTML (sin markdown, sin backticks). Datos del proyecto:\n\n'+JSON.stringify(analysisData,null,2)+imageContext});
 
