@@ -591,8 +591,291 @@
     </section>
 
     <!-- ════════════════════════════════════════ -->
-    <!-- (resto de secciones se agregan en Parte 2B) -->
+    <!-- SECCIÓN: PLANEACIÓN                       -->
     <!-- ════════════════════════════════════════ -->
+    <section class="cm-section" id="sec-planeacion">
+      <h1 class="cm-section-title">📋 Planeación</h1>
+      <p class="cm-section-sub">Horarios default y reglas para el envío del plan semanal a los técnicos vía WhatsApp.</p>
+
+      <div class="cm-card">
+        <div class="cm-card-title">Horarios diarios</div>
+        <div class="cm-row">
+          <div class="cm-field">
+            <label class="cm-label" for="pl_hora_entrada">Hora entrada default</label>
+            <input type="time" id="pl_hora_entrada" class="cm-input" value="07:00">
+          </div>
+          <div class="cm-field">
+            <label class="cm-label" for="pl_hora_salida">Hora salida default</label>
+            <input type="time" id="pl_hora_salida" class="cm-input" value="17:00">
+          </div>
+        </div>
+      </div>
+
+      <div class="cm-card">
+        <div class="cm-card-title">Plan semanal</div>
+        <div class="cm-row">
+          <div class="cm-field">
+            <label class="cm-label" for="pl_dia_semanal">Día de envío</label>
+            <select id="pl_dia_semanal" class="cm-input cm-select">
+              <option value="lunes">Lunes</option>
+              <option value="martes">Martes</option>
+              <option value="miercoles">Miércoles</option>
+              <option value="jueves">Jueves</option>
+              <option value="viernes" selected>Viernes</option>
+              <option value="sabado">Sábado</option>
+              <option value="domingo">Domingo</option>
+            </select>
+          </div>
+          <div class="cm-field">
+            <label class="cm-label" for="pl_hora_limite">Hora límite envío</label>
+            <input type="time" id="pl_hora_limite" class="cm-input" value="18:00">
+          </div>
+        </div>
+        <label class="cm-checkbox-row" style="margin-top:6px">
+          <input type="checkbox" id="pl_recordatorio">
+          <span>Enviar recordatorio por WhatsApp si no se envió a tiempo</span>
+        </label>
+        <div class="cm-row full" style="margin-top:14px">
+          <div class="cm-field">
+            <label class="cm-label" for="pl_wa_webhook">Webhook n8n para notificar plan</label>
+            <input type="url" id="pl_wa_webhook" class="cm-input" placeholder="https://.../webhook/plan-notify">
+          </div>
+        </div>
+      </div>
+
+      <div class="cm-btn-group">
+        <button class="cm-btn cm-btn-primary" onclick="savePlaneacion()">💾 Guardar Planeación</button>
+        <button class="cm-btn cm-btn-secondary" onclick="loadPlaneacion()">↻ Recargar</button>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- SECCIÓN: DASHBOARD                        -->
+    <!-- ════════════════════════════════════════ -->
+    <section class="cm-section" id="sec-dashboard">
+      <h1 class="cm-section-title">📊 Dashboard</h1>
+      <p class="cm-section-sub">Refresco automático y alertas del centro de comando.</p>
+
+      <div class="cm-card">
+        <div class="cm-card-title">Refresco</div>
+        <div class="cm-row full">
+          <div class="cm-field cm-range-row">
+            <label class="cm-label">Intervalo de refresh: <span class="cm-range-val" id="dash_refresh_val">5 min</span></label>
+            <input type="range" id="dash_refresh" min="1" max="30" value="5" oninput="document.getElementById('dash_refresh_val').textContent=this.value+' min'">
+            <div class="cm-hint">Cada cuántos minutos el dashboard re-consulta a n8n/Odoo</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cm-card">
+        <div class="cm-card-title">Alertas activas</div>
+        <label class="cm-checkbox-row">
+          <input type="checkbox" id="dash_alerta_sin_checar">
+          <span>Técnicos sin check-in al inicio de jornada</span>
+        </label>
+        <label class="cm-checkbox-row">
+          <input type="checkbox" id="dash_alerta_fuera_zona">
+          <span>Check-ins fuera de zona autorizada (geofence)</span>
+        </label>
+        <label class="cm-checkbox-row">
+          <input type="checkbox" id="dash_alerta_extra">
+          <span>Técnicos acumulando horas extra</span>
+        </label>
+      </div>
+
+      <div class="cm-btn-group">
+        <button class="cm-btn cm-btn-primary" onclick="saveDashboard()">💾 Guardar Dashboard</button>
+        <button class="cm-btn cm-btn-secondary" onclick="loadDashboard()">↻ Recargar</button>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- SECCIÓN: SEGURIDAD                        -->
+    <!-- ════════════════════════════════════════ -->
+    <section class="cm-section" id="sec-seguridad">
+      <h1 class="cm-section-title">🔒 Seguridad Industrial</h1>
+      <p class="cm-section-sub">Configuración del módulo Seguridad y IPERC.</p>
+
+      <div class="cm-status info">
+        ℹ️ El módulo IPERC <strong>no usa localStorage propio</strong>. Su estado vive en <code>sessionStorage.fts_iperc_session</code> (efímero, se limpia al cerrar el browser).
+      </div>
+
+      <div class="cm-card">
+        <div class="cm-card-title">Configuración requerida</div>
+        <p style="font-size:13px;color:var(--muted2);line-height:1.6;margin-bottom:12px">
+          IPERC consume las API Keys globales para análisis de riesgos asistido por IA. Verifica que tengas configuradas en la sección <strong>🔑 API Keys</strong>:
+        </p>
+        <ul style="font-size:13px;color:var(--text);line-height:1.8;margin-left:20px">
+          <li><strong>Claude API Key</strong> — análisis principal (Sonnet 4.6)</li>
+          <li><strong>Groq API Key</strong> — clasificación rápida de actividades</li>
+          <li><strong>OpenRouter API Key</strong> — fallback / modelos alternativos</li>
+        </ul>
+        <div class="cm-btn-group" style="margin-top:14px">
+          <a class="cm-btn cm-btn-secondary" href="javascript:showSection('sec-apikeys')">→ Ir a API Keys</a>
+          <a class="cm-btn cm-btn-secondary" href="../../seguridad/iperc/index.html" target="_blank">↗ Abrir IPERC</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- SECCIÓN: INGENIERÍA                       -->
+    <!-- ════════════════════════════════════════ -->
+    <section class="cm-section" id="sec-ingenieria">
+      <h1 class="cm-section-title">🏗️ Ingeniería</h1>
+      <p class="cm-section-sub">Configuración del módulo de Análisis Estructural con IA.</p>
+
+      <div class="cm-status info">
+        ℹ️ La <strong>Claude API Key</strong> se gestiona en la sección <strong>🔑 API Keys</strong>. Config Master hace dual-write a <code>fts_api_key</code> automáticamente para que análisis-estructural la lea sin cambios.
+      </div>
+
+      <div class="cm-card">
+        <div class="cm-card-title">System Prompt del Ingeniero IA</div>
+        <p style="font-size:12px;color:var(--muted2);margin-bottom:10px">
+          Prompt maestro que define el rol de Claude al generar memorias de cálculo. Persistido en <code>fts_system_prompt</code> y leído por análisis-estructural al iniciar.
+        </p>
+        <div class="cm-row full">
+          <div class="cm-field">
+            <textarea id="ing_system_prompt" class="cm-input" rows="14" placeholder="Eres un ingeniero estructural senior especializado en..."></textarea>
+            <div class="cm-hint">Dejar vacío para usar el prompt default embebido en <code>prompts/extract.js</code></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cm-btn-group">
+        <button class="cm-btn cm-btn-primary" onclick="saveIngenieria()">💾 Guardar System Prompt</button>
+        <button class="cm-btn cm-btn-danger" onclick="resetIngenieriaPrompt()">↺ Reset al default</button>
+        <button class="cm-btn cm-btn-secondary" onclick="loadIngenieria()">↻ Recargar</button>
+        <a class="cm-btn cm-btn-secondary" href="../../ingenieria/analisis-estructural/index.html" target="_blank">↗ Abrir Análisis Estructural</a>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- SECCIÓN: SYNC                             -->
+    <!-- ════════════════════════════════════════ -->
+    <section class="cm-section" id="sec-sync">
+      <h1 class="cm-section-title">☁️ Sincronización</h1>
+      <p class="cm-section-sub">Cifra y respalda toda la configuración (<code>ops_*</code>, <code>key_*</code>, <code>fts_*</code>) a GitHub. Permite recuperar la config en otro dispositivo con la contraseña maestra.</p>
+
+      <div class="cm-status" id="sync_status">⏳ Verificando estado…</div>
+
+      <div class="cm-card">
+        <div class="cm-card-title">Credenciales</div>
+        <div class="cm-row full">
+          <div class="cm-field">
+            <label class="cm-label" for="sync_github_pat">GitHub Personal Access Token</label>
+            <input type="password" id="sync_github_pat" class="cm-input" placeholder="ghp_...">
+            <div class="cm-hint">Necesario para escribir en el repo. Se persiste en <code>ops_github_token</code>.</div>
+          </div>
+        </div>
+        <div class="cm-row full">
+          <div class="cm-field">
+            <label class="cm-label" for="sync_password">Contraseña maestra de cifrado</label>
+            <input type="password" id="sync_password" class="cm-input" placeholder="Mínimo 8 caracteres">
+            <div class="cm-hint">Se usa para AES-256-GCM. <strong>Si la pierdes, no se puede descifrar.</strong> No se sube a GitHub.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cm-card">
+        <div class="cm-card-title">Acciones</div>
+        <div class="cm-btn-group" style="border-top:none;padding-top:0;margin-top:0">
+          <button class="cm-btn cm-btn-primary" onclick="doSyncSave()">⬆️ Guardar config en GitHub</button>
+          <button class="cm-btn cm-btn-secondary" onclick="doSyncLoad()">⬇️ Cargar config desde GitHub</button>
+        </div>
+        <div class="cm-hint" style="margin-top:14px">
+          ⬆️ <strong>Guardar</strong>: cifra TODAS las keys locales (<code>ops_*</code>, <code>key_*</code>, <code>fts_*</code>) y sube a <code>shared/ops-config.json</code>.<br>
+          ⬇️ <strong>Cargar</strong>: descarga, descifra con tu contraseña y aplica al localStorage local. Recarga la página al terminar.
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- SECCIÓN: USUARIOS                         -->
+    <!-- ════════════════════════════════════════ -->
+    <section class="cm-section" id="sec-usuarios">
+      <h1 class="cm-section-title">👥 Usuarios</h1>
+      <p class="cm-section-sub">Lectura de <code>shared/users-suite.json</code> desde GitHub raw. Para crear/editar/eliminar usuarios usa el <a href="index.html" style="color:var(--green);font-weight:600">Panel Admin</a>.</p>
+
+      <div class="cm-card">
+        <div class="cm-card-title">Usuarios registrados</div>
+        <div class="cm-btn-group" style="border-top:none;padding-top:0;margin-top:0;margin-bottom:14px">
+          <button class="cm-btn cm-btn-secondary" onclick="loadUsers()">↻ Cargar desde GitHub</button>
+          <span class="cm-hint" id="users_status" style="align-self:center"></span>
+        </div>
+        <div class="cm-table-wrap">
+          <table class="cm-table" id="users_table">
+            <thead>
+              <tr>
+                <th>Usuario</th>
+                <th>Nombre</th>
+                <th>Rol</th>
+                <th>Estado</th>
+                <th>Vigencia</th>
+              </tr>
+            </thead>
+            <tbody id="users_tbody">
+              <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Pulsa "Cargar desde GitHub"</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- SECCIÓN: SISTEMA                          -->
+    <!-- ════════════════════════════════════════ -->
+    <section class="cm-section" id="sec-sistema">
+      <h1 class="cm-section-title">🔧 Sistema</h1>
+      <p class="cm-section-sub">Estado en vivo de los servicios externos y enlaces de diagnóstico.</p>
+
+      <div class="cm-btn-group" style="border-top:none;padding-top:0;margin-top:0;margin-bottom:16px">
+        <button class="cm-btn cm-btn-primary" onclick="runSysCheck()">⚡ Verificar ahora</button>
+        <a class="cm-btn cm-btn-secondary" href="../../diagnostico.html" target="_blank">🔍 Diagnóstico completo</a>
+      </div>
+
+      <div class="cm-info-grid">
+        <div class="cm-info-item">
+          <div class="cm-info-label">n8n</div>
+          <div class="cm-info-val" id="sys_n8n_status">—</div>
+          <div class="cm-info-sub" id="sys_n8n_url">—</div>
+        </div>
+        <div class="cm-info-item">
+          <div class="cm-info-label">Odoo</div>
+          <div class="cm-info-val" id="sys_odoo_status">—</div>
+          <div class="cm-info-sub" id="sys_odoo_url">—</div>
+        </div>
+        <div class="cm-info-item">
+          <div class="cm-info-label">Modo</div>
+          <div class="cm-info-val" id="sys_demo_mode">—</div>
+          <div class="cm-info-sub">Demo / Producción</div>
+        </div>
+        <div class="cm-info-item">
+          <div class="cm-info-label">Último sync (config)</div>
+          <div class="cm-info-val" id="sys_last_sync">—</div>
+          <div class="cm-info-sub">ConfigSync.save</div>
+        </div>
+        <div class="cm-info-item">
+          <div class="cm-info-label">Último sync (geo)</div>
+          <div class="cm-info-val" id="sys_geo_sync">—</div>
+          <div class="cm-info-sub">public-config.json</div>
+        </div>
+        <div class="cm-info-item">
+          <div class="cm-info-label">Repo GitHub</div>
+          <div class="cm-info-val" style="font-size:13px">yinyo1/fts-suite</div>
+          <div class="cm-info-sub" id="sys_github_token_status">Token: —</div>
+        </div>
+        <div class="cm-info-item">
+          <div class="cm-info-label">Geolocations</div>
+          <div class="cm-info-val" id="sys_geo_count">—</div>
+          <div class="cm-info-sub">sitios autorizados</div>
+        </div>
+        <div class="cm-info-item">
+          <div class="cm-info-label">Sesión actual</div>
+          <div class="cm-info-val" id="sys_session_user">—</div>
+          <div class="cm-info-sub" id="sys_session_role">—</div>
+        </div>
+      </div>
+    </section>
 
   </main>
 </div>
