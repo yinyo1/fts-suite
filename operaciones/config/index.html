@@ -892,6 +892,11 @@ async function autoSyncGeolocations(){
       cfgActual = {};
     }
 
+    // Guard: nunca perder campos críticos
+    if(!cfgActual.n8n_url) cfgActual.n8n_url = localStorage.getItem('n8n_url') || 'https://primary-production-5c3c.up.railway.app';
+    if(!cfgActual.odoo_url) cfgActual.odoo_url = localStorage.getItem('odoo_url') || 'https://serviciosfts.odoo.com';
+    if(cfgActual.demo_mode === undefined) cfgActual.demo_mode = false;
+
     // Actualizar solo geolocations + updated
     cfgActual.geolocations = geolocations;
     cfgActual.updated = new Date().toISOString().split('T')[0];
@@ -984,6 +989,9 @@ function _refreshGeoFromGitHub(){
       if(cfg.geolocations && cfg.geolocations.length > 0){
         localStorage.setItem('ops_kiosk_geolocations', JSON.stringify(cfg.geolocations));
         localStorage.setItem('ops_geo_sync_timestamp', new Date().toISOString());
+        if(cfg.n8n_url) localStorage.setItem('n8n_url', cfg.n8n_url);
+        if(cfg.odoo_url) localStorage.setItem('odoo_url', cfg.odoo_url);
+        if(cfg.demo_mode !== undefined) localStorage.setItem('demo_mode', String(cfg.demo_mode));
       }
     } catch(e){
       console.warn('Auto-refresh falló:', e);
