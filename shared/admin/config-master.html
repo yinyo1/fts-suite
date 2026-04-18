@@ -288,7 +288,318 @@
 </head>
 <body>
 
-<!-- TODO: body content (auth overlay + topbar + layout + sections) -->
+<!-- ═══ AUTH OVERLAY (mostrado solo si NO es master) ═══ -->
+<div class="cm-auth-overlay" id="cmAuthOverlay" style="display:none">
+  <div class="cm-auth-box">
+    <div class="cm-auth-icon">⛔</div>
+    <h2>Acceso restringido</h2>
+    <p>Este panel solo está disponible para el usuario <strong>ftsmaster</strong>.</p>
+    <a href="../../index.html" class="cm-btn cm-btn-primary" style="display:inline-flex;margin-top:8px">← Volver a la Suite</a>
+    <div class="cm-auth-err" id="cmAuthErr"></div>
+  </div>
+</div>
+
+<!-- ═══ TOPBAR ═══ -->
+<div class="cm-topbar">
+  <div class="cm-topbar-left">
+    <a href="../../index.html" class="cm-back">← Suite</a>
+    <span class="cm-topbar-title">⚙️ Config Master</span>
+    <span class="cm-badge-master">Master</span>
+  </div>
+  <div class="cm-topbar-right">
+    <span class="cm-user-info" id="cmUserInfo">👤 —</span>
+  </div>
+</div>
+
+<!-- ═══ LAYOUT: SIDEBAR + CONTENT ═══ -->
+<div class="cm-layout">
+
+  <!-- ─── SIDEBAR ─── -->
+  <nav class="cm-sidebar">
+
+    <div class="cm-nav-group">
+      <div class="cm-nav-group-label">Sistema</div>
+      <a class="cm-nav-item active" data-section="sec-conexiones" onclick="showSection('sec-conexiones')">
+        <span class="cm-nav-icon">🌐</span><span>Conexiones</span>
+      </a>
+      <a class="cm-nav-item" data-section="sec-apikeys" onclick="showSection('sec-apikeys')">
+        <span class="cm-nav-icon">🔑</span><span>API Keys</span>
+      </a>
+    </div>
+
+    <div class="cm-nav-group">
+      <div class="cm-nav-group-label">Operaciones</div>
+      <a class="cm-nav-item" data-section="sec-kiosk" onclick="showSection('sec-kiosk')">
+        <span class="cm-nav-icon">🖥️</span><span>Kiosk</span>
+      </a>
+      <a class="cm-nav-item" data-section="sec-planeacion" onclick="showSection('sec-planeacion')">
+        <span class="cm-nav-icon">📋</span><span>Planeación</span>
+      </a>
+      <a class="cm-nav-item" data-section="sec-dashboard" onclick="showSection('sec-dashboard')">
+        <span class="cm-nav-icon">📊</span><span>Dashboard</span>
+      </a>
+    </div>
+
+    <div class="cm-nav-group">
+      <div class="cm-nav-group-label">Módulos</div>
+      <a class="cm-nav-item" data-section="sec-seguridad" onclick="showSection('sec-seguridad')">
+        <span class="cm-nav-icon">🔒</span><span>Seguridad</span>
+      </a>
+      <a class="cm-nav-item" data-section="sec-ingenieria" onclick="showSection('sec-ingenieria')">
+        <span class="cm-nav-icon">🏗️</span><span>Ingeniería</span>
+      </a>
+    </div>
+
+    <div class="cm-nav-group">
+      <div class="cm-nav-group-label">Administración</div>
+      <a class="cm-nav-item" data-section="sec-sync" onclick="showSection('sec-sync')">
+        <span class="cm-nav-icon">☁️</span><span>Sync</span>
+      </a>
+      <a class="cm-nav-item" data-section="sec-usuarios" onclick="showSection('sec-usuarios')">
+        <span class="cm-nav-icon">👥</span><span>Usuarios</span>
+      </a>
+      <a class="cm-nav-item" data-section="sec-sistema" onclick="showSection('sec-sistema')">
+        <span class="cm-nav-icon">🔧</span><span>Sistema</span>
+      </a>
+    </div>
+
+  </nav>
+
+  <!-- ─── CONTENT ─── -->
+  <main class="cm-content">
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- SECCIÓN: CONEXIONES                      -->
+    <!-- ════════════════════════════════════════ -->
+    <section class="cm-section active" id="sec-conexiones">
+      <h1 class="cm-section-title">🌐 Conexiones</h1>
+      <p class="cm-section-sub">URLs base y credenciales de los servicios externos. Se escriben en doble prefijo (<code>ops_*</code> + sin prefijo) para compatibilidad con todos los módulos.</p>
+
+      <div class="cm-card">
+        <div class="cm-card-title">n8n</div>
+        <div class="cm-row full">
+          <div class="cm-field">
+            <label class="cm-label" for="cnx_n8n_url">URL base de n8n</label>
+            <input type="url" id="cnx_n8n_url" class="cm-input" placeholder="https://primary-production-5c3c.up.railway.app">
+            <div class="cm-hint">Endpoint donde corren los webhooks (kiosk, asistencia, planeación)</div>
+          </div>
+        </div>
+        <div class="cm-btn-group">
+          <button class="cm-btn cm-btn-secondary" onclick="testN8N()">⚡ Probar n8n</button>
+          <span class="cm-hint" id="cnx_n8n_result" style="align-self:center"></span>
+        </div>
+      </div>
+
+      <div class="cm-card">
+        <div class="cm-card-title">Odoo</div>
+        <div class="cm-row">
+          <div class="cm-field">
+            <label class="cm-label" for="cnx_odoo_url">URL de Odoo</label>
+            <input type="url" id="cnx_odoo_url" class="cm-input" placeholder="https://serviciosfts.odoo.com">
+          </div>
+          <div class="cm-field">
+            <label class="cm-label" for="cnx_odoo_db">Base de datos</label>
+            <input type="text" id="cnx_odoo_db" class="cm-input" placeholder="serviciosfts">
+          </div>
+        </div>
+        <div class="cm-row full">
+          <div class="cm-field">
+            <label class="cm-label" for="cnx_odoo_api">API Key de Odoo</label>
+            <input type="password" id="cnx_odoo_api" class="cm-input" placeholder="••••••••">
+            <div class="cm-hint">Se sincroniza también como <code>key_odoo_api</code></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cm-card">
+        <div class="cm-card-title">Modo</div>
+        <label class="cm-checkbox-row">
+          <input type="checkbox" id="cnx_demo_mode">
+          <span>Modo Demo activo (usa datos de ejemplo en vez de Odoo real)</span>
+        </label>
+        <div class="cm-hint">Se escribe en <code>ops_demo_mode</code> ('1'/'0') y <code>demo_mode</code> ('true'/'false')</div>
+      </div>
+
+      <div class="cm-btn-group">
+        <button class="cm-btn cm-btn-primary" onclick="saveConexiones()">💾 Guardar Conexiones</button>
+        <button class="cm-btn cm-btn-secondary" onclick="loadConexiones()">↻ Recargar</button>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- SECCIÓN: API KEYS                        -->
+    <!-- ════════════════════════════════════════ -->
+    <section class="cm-section" id="sec-apikeys">
+      <h1 class="cm-section-title">🔑 API Keys</h1>
+      <p class="cm-section-sub">Claves de servicios IA y GitHub. Todas las apps de la suite leen de estas keys estandarizadas. Las keys se cifran con AES-GCM al hacer Sync → GitHub.</p>
+
+      <div class="cm-status info">
+        ℹ️ Las API Keys se sincronizan a <code>shared/ops-config.json</code> (cifrado) al usar la sección <strong>Sync</strong>.
+      </div>
+
+      <div class="cm-card">
+        <div class="cm-card-title">Modelos de IA</div>
+
+        <div class="cm-row full">
+          <div class="cm-field">
+            <label class="cm-label" for="key_claude_input">Claude API Key (Anthropic)</label>
+            <input type="password" id="key_claude_input" class="cm-input" placeholder="sk-ant-api03-...">
+            <div class="cm-hint">Dual-write: <code>key_claude</code> + <code>fts_api_key</code> (compat con análisis-estructural)</div>
+          </div>
+        </div>
+
+        <div class="cm-row">
+          <div class="cm-field">
+            <label class="cm-label" for="key_groq_input">Groq API Key</label>
+            <input type="password" id="key_groq_input" class="cm-input" placeholder="gsk_...">
+          </div>
+          <div class="cm-field">
+            <label class="cm-label" for="key_openrouter_input">OpenRouter API Key</label>
+            <input type="password" id="key_openrouter_input" class="cm-input" placeholder="sk-or-...">
+          </div>
+        </div>
+
+        <div class="cm-row full">
+          <div class="cm-field">
+            <label class="cm-label" for="key_gemini_input">Gemini API Key (Google)</label>
+            <input type="password" id="key_gemini_input" class="cm-input" placeholder="AIza...">
+          </div>
+        </div>
+      </div>
+
+      <div class="cm-card">
+        <div class="cm-card-title">GitHub</div>
+        <div class="cm-row full">
+          <div class="cm-field">
+            <label class="cm-label" for="key_github_input">Personal Access Token (PAT)</label>
+            <input type="password" id="key_github_input" class="cm-input" placeholder="ghp_...">
+            <div class="cm-hint">Dual-write: <code>ops_github_token</code> + <code>key_github_token</code>. Necesario para Sync de geolocations y config cifrada.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cm-btn-group">
+        <button class="cm-btn cm-btn-primary" onclick="saveAPIKeys()">💾 Guardar localmente</button>
+        <button class="cm-btn cm-btn-orange" onclick="encryptAndPushKeys()">🔒 Cifrar y subir a GitHub</button>
+        <button class="cm-btn cm-btn-secondary" onclick="loadAPIKeys()">↻ Recargar</button>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- SECCIÓN: KIOSK                            -->
+    <!-- ════════════════════════════════════════ -->
+    <section class="cm-section" id="sec-kiosk">
+      <h1 class="cm-section-title">🖥️ Kiosk Checador</h1>
+      <p class="cm-section-sub">Configuración del módulo de check-in/out: campos de Odoo, sitios autorizados (geofence), reconocimiento facial y PIN maestro.</p>
+
+      <div class="cm-card">
+        <div class="cm-card-title">Empresa Odoo</div>
+        <div class="cm-row">
+          <div class="cm-field">
+            <label class="cm-label" for="ks_company_id">Company ID</label>
+            <input type="number" id="ks_company_id" class="cm-input" placeholder="1" min="1">
+            <div class="cm-hint">ID numérico de la empresa en Odoo (res.company)</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cm-card">
+        <div class="cm-card-title">Mapeo de campos en hr.employee</div>
+        <div class="cm-row">
+          <div class="cm-field">
+            <label class="cm-label" for="ks_field_pin">Campo PIN</label>
+            <input type="text" id="ks_field_pin" class="cm-input" placeholder="x_studio_pin">
+          </div>
+          <div class="cm-field">
+            <label class="cm-label" for="ks_field_photo">Campo Foto</label>
+            <input type="text" id="ks_field_photo" class="cm-input" placeholder="image_1920">
+          </div>
+        </div>
+        <div class="cm-row">
+          <div class="cm-field">
+            <label class="cm-label" for="ks_field_manager">Campo Manager</label>
+            <input type="text" id="ks_field_manager" class="cm-input" placeholder="parent_id">
+          </div>
+          <div class="cm-field">
+            <label class="cm-label" for="ks_field_supervisor_email">Campo email supervisor</label>
+            <input type="text" id="ks_field_supervisor_email" class="cm-input" placeholder="x_studio_email_supervisor">
+          </div>
+        </div>
+        <div class="cm-row full">
+          <div class="cm-field">
+            <label class="cm-label" for="ks_field_supervisor_wa">Campo WhatsApp supervisor</label>
+            <input type="text" id="ks_field_supervisor_wa" class="cm-input" placeholder="x_studio_whatsapp_supervisor">
+          </div>
+        </div>
+      </div>
+
+      <div class="cm-card">
+        <div class="cm-card-title">Estados (stages) de la SO en Kiosk</div>
+        <p class="cm-hint" style="margin-bottom:12px">Marca los estados que el técnico puede seleccionar al hacer check-in.</p>
+        <label class="cm-checkbox-row"><input type="checkbox" id="ks_stage_todo"><span>To Do</span></label>
+        <label class="cm-checkbox-row"><input type="checkbox" id="ks_stage_progress"><span>In Progress</span></label>
+        <label class="cm-checkbox-row"><input type="checkbox" id="ks_stage_hold"><span>Hold</span></label>
+        <label class="cm-checkbox-row"><input type="checkbox" id="ks_stage_done"><span>Done</span></label>
+      </div>
+
+      <div class="cm-card">
+        <div class="cm-card-title">Sitios autorizados (Geofence)</div>
+        <p class="cm-hint" style="margin-bottom:12px">El check-in solo se permite si el técnico está dentro del radio de uno de estos sitios. <strong>Al guardar se sincronizan a <code>public-config.json</code> en GitHub.</strong></p>
+
+        <div class="geo-list" id="geoList">
+          <!-- Renderizado dinámicamente por renderGeos() -->
+        </div>
+
+        <button class="cm-btn cm-btn-secondary cm-btn-sm" onclick="addGeo()">＋ Agregar sitio</button>
+      </div>
+
+      <div class="cm-card">
+        <div class="cm-card-title">Reconocimiento facial</div>
+        <label class="cm-checkbox-row">
+          <input type="checkbox" id="ks_face_enabled">
+          <span>Habilitar verificación facial al hacer check-in</span>
+        </label>
+        <label class="cm-checkbox-row">
+          <input type="checkbox" id="ks_face_required">
+          <span>Requerir que la cara coincida con la foto del documento Odoo</span>
+        </label>
+        <div class="cm-row full" style="margin-top:14px">
+          <div class="cm-field cm-range-row">
+            <label class="cm-label">Umbral de similitud: <span class="cm-range-val" id="ks_face_threshold_val">50%</span></label>
+            <input type="range" id="ks_face_threshold" min="40" max="80" value="50" oninput="document.getElementById('ks_face_threshold_val').textContent=this.value+'%'">
+            <div class="cm-hint">40% = permisivo · 80% = estricto</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cm-card">
+        <div class="cm-card-title">PIN maestro del Kiosk</div>
+        <div class="cm-row">
+          <div class="cm-field">
+            <label class="cm-label" for="ks_master_pin">PIN (4 dígitos)</label>
+            <input type="password" id="ks_master_pin" class="cm-input" maxlength="4" pattern="[0-9]{4}" placeholder="••••">
+            <div class="cm-hint">Permite desbloquear funciones de admin desde el kiosk físico</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cm-btn-group">
+        <button class="cm-btn cm-btn-primary" onclick="saveKiosk()">💾 Guardar Kiosk + Sync Geo</button>
+        <button class="cm-btn cm-btn-secondary" onclick="loadKiosk()">↻ Recargar</button>
+        <span class="cm-hint" id="ks_geo_status" style="align-self:center"></span>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- (resto de secciones se agregan en Parte 2B) -->
+    <!-- ════════════════════════════════════════ -->
+
+  </main>
+</div>
+
+<!-- ═══ TOAST ═══ -->
+<div class="cm-toast" id="cmToast"></div>
+
 <!-- TODO: script (auth check + handlers + init) -->
 
 </body>
