@@ -31,7 +31,7 @@
     background: var(--bg);
     color: var(--text);
     font-family: 'Inter', -apple-system, sans-serif;
-    font-size: 14px;
+    font-size: 13px;
     overflow: hidden;
   }
 
@@ -90,13 +90,19 @@
   .cm-nav-icon { font-size: 15px; width: 20px; text-align: center; }
 
   /* ── CONTENT ── */
-  .cm-content { flex: 1; overflow-y: auto; padding: 28px 32px; }
+  .cm-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: calc(100vh - 52px);
+    overflow-y: auto;
+    padding: 20px 24px;
+  }
 
   /* ── SECTIONS ── */
   .cm-section { display: none; max-width: 760px; }
   .cm-section.active { display: block; }
   .cm-section-title {
-    font-size: 18px; font-weight: 700; margin-bottom: 4px;
+    font-size: 15px; font-weight: 700; margin-bottom: 4px;
     color: var(--text);
   }
   .cm-section-sub { font-size: 13px; color: var(--muted2); margin-bottom: 24px; }
@@ -104,24 +110,24 @@
   /* ── CARDS ── */
   .cm-card {
     background: #fff; border: 1px solid var(--border);
-    border-radius: 12px; padding: 20px 24px; margin-bottom: 16px;
+    border-radius: 12px; padding: 14px 18px; margin-bottom: 10px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.04);
   }
   .cm-card-title {
-    font-size: 13px; font-weight: 600; color: var(--muted2);
+    font-size: 11px; font-weight: 600; color: var(--muted2);
     text-transform: uppercase; letter-spacing: 0.5px;
-    margin-bottom: 16px; padding-bottom: 10px;
+    margin-bottom: 12px; padding-bottom: 8px;
     border-bottom: 1px solid var(--border);
   }
 
   /* ── FORM ── */
-  .cm-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 14px; }
+  .cm-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 10px; }
   .cm-row.full { grid-template-columns: 1fr; }
-  .cm-field { display: flex; flex-direction: column; gap: 5px; }
-  .cm-label { font-size: 12px; font-weight: 600; color: #444; }
+  .cm-field { display: flex; flex-direction: column; gap: 4px; }
+  .cm-label { font-size: 11px; font-weight: 600; color: #444; }
   .cm-input {
     border: 1px solid var(--border); border-radius: 8px;
-    padding: 9px 12px; font-size: 13px; font-family: 'Inter', sans-serif;
+    padding: 7px 10px; font-size: 13px; font-family: 'Inter', sans-serif;
     background: #fff; color: var(--text); outline: none;
     transition: border-color 0.15s;
     width: 100%;
@@ -149,8 +155,8 @@
 
   /* ── BOTONES ── */
   .cm-btn {
-    display: inline-flex; align-items: center; gap: 7px;
-    padding: 9px 20px; border: none; border-radius: 8px;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 16px; border: none; border-radius: 8px;
     font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600;
     cursor: pointer; transition: all 0.15s; text-decoration: none;
   }
@@ -169,7 +175,7 @@
   .cm-btn-sm { padding: 6px 12px; font-size: 11px; }
   .cm-btn-group {
     display: flex; gap: 10px; flex-wrap: wrap;
-    margin-top: 20px; padding-top: 16px;
+    margin-top: 14px; padding-top: 12px;
     border-top: 1px solid var(--border);
   }
 
