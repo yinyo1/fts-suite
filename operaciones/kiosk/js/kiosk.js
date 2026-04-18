@@ -1142,12 +1142,12 @@ async function mostrarEstadoEmpleado(empleado){
     case 'zona_gris':
       card.style.background = '#fff3cd';
       icon.textContent = '🟡';
-      texto.textContent = 'Llevas ' + horasADisplay(estado.horas_transcurridas) + ' hrs desde tu última entrada';
+      texto.textContent = 'Entrada sin salida registrada';
       break;
     case 'error_critico':
       card.style.background = '#ffe8e8';
       icon.textContent = '🔴';
-      texto.textContent = 'Tienes una entrada sin salida de hace más de 24 hrs';
+      texto.textContent = 'Entrada sin salida (+24 hrs)';
       break;
     default:
       card.style.background = '#f5f5f5';
@@ -1155,18 +1155,24 @@ async function mostrarEstadoEmpleado(empleado){
       texto.textContent = estado.estado_actual || 'Estado desconocido';
   }
 
-  // Alerta
+  // Aviso (subtexto pequeño debajo del card de estado — estilo sutil)
   var alertaDiv = document.getElementById('ksEstadoAlerta');
   if(estado.alerta_nivel === 'advertencia'){
     alertaDiv.style.display = 'block';
-    alertaDiv.style.background = '#fff3cd';
-    alertaDiv.style.border = '1px solid #ffc107';
-    alertaDiv.innerHTML = '⚠️ <strong>Atención:</strong> Tienes una entrada activa de hace ' + horasADisplay(estado.horas_transcurridas) + ' horas. ¿Olvidaste checar salida?';
+    alertaDiv.style.background = 'transparent';
+    alertaDiv.style.border = 'none';
+    alertaDiv.style.fontSize = '13px';
+    alertaDiv.style.color = '#666';
+    alertaDiv.style.padding = '4px 8px 8px';
+    alertaDiv.innerHTML = '⚠️ Llevas ' + horasADisplay(estado.horas_transcurridas) + ' hrs desde tu última entrada. ¿Olvidaste checar salida?';
   } else if(estado.alerta_nivel === 'critico'){
     alertaDiv.style.display = 'block';
-    alertaDiv.style.background = '#ffe8e8';
-    alertaDiv.style.border = '1px solid #D83B01';
-    alertaDiv.innerHTML = '⛔ <strong>Acción requerida:</strong> Debes resolver tu registro anterior antes de poder checar hoy.';
+    alertaDiv.style.background = 'transparent';
+    alertaDiv.style.border = 'none';
+    alertaDiv.style.fontSize = '13px';
+    alertaDiv.style.color = '#666';
+    alertaDiv.style.padding = '4px 8px 8px';
+    alertaDiv.innerHTML = '⛔ Debes resolver tu registro anterior antes de poder checar hoy.';
   } else {
     alertaDiv.style.display = 'none';
   }
@@ -1217,7 +1223,7 @@ function renderEstadoBotones(estado){
         '<button onclick="resolverZonaGris(\'olvide\')" style="background:#f0f0f0;color:#333;border:1px solid #ccc;padding:14px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">❌ Olvidé checar salida</button>';
       break;
     case 'error_critico':
-      html = '<button onclick="resolverErrorCritico()" style="background:#D83B01;color:#fff;border:none;padding:14px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">📋 Crear incidencia y checar entrada</button>';
+      html = '<button onclick="resolverErrorCritico()" style="background:#D83B01;color:#fff;border:none;padding:14px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">📋 Checar entrada y resolver</button>';
       break;
   }
 
@@ -1323,15 +1329,20 @@ async function confirmarOlvideCheckout(){
   var m = document.getElementById('modalOlvideCheckout');
   if(m) m.remove();
 
-  // Loading en pantalla estado
+  // Mostrar spinner en el card de estado + limpiar botones
   showScreen('ks-estado');
-  document.getElementById('ksEstadoBotones').innerHTML =
-    '<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:rgba(255,255,255,0.95);padding:24px 32px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.15);text-align:center;font-size:16px;color:#333;font-weight:500">⏳ Procesando…</div>';
+  document.getElementById('ksEstadoBotones').innerHTML = '';
+  var spinEl  = document.getElementById('ksSpinner');
+  var emojiEl = document.getElementById('ksIconEmoji');
+  if(spinEl)  spinEl.style.display  = 'block';
+  if(emojiEl) emojiEl.style.display = 'none';
+  var textoEl = document.getElementById('ksEstadoTexto');
+  if(textoEl) textoEl.textContent = 'Procesando…';
 
   try{
-    var n8nUrl = localStorage.getItem('ops_n8n_url') || 'https://primary-production-5c3c.up.railway.app';
-
-    // 1) Cerrar registro viejo con endpoint especial (bypassa candados)
+    // Cerrar registro viejo con endpoint especial (bypassa candados)
+    // No se crea nueva entrada — el usuario puede usar el botón normal
+    // "Registrar Entrada" después de que el estado se refresque.
     var attendanceId = (regAbierto && regAbierto.id) || null;
     var resCheckout = await n8nFetch('/webhook/kiosk/cerrar-registro', {
       empleado_id:        empleado.id,
@@ -1346,24 +1357,7 @@ async function confirmarOlvideCheckout(){
       return;
     }
 
-    // 2) Crear nuevo check-in de hoy
-    var geo = await window.getGeolocacion();
-    var resCheckin = await n8nFetch('/webhook/kiosk/checkin', {
-      empleado_id:    empleado.id,
-      tipo:           'entrada',
-      timestamp:      new Date().toISOString(),
-      lat:            (geo && geo.lat != null) ? geo.lat : null,
-      lng:            (geo && geo.lng != null) ? geo.lng : null,
-      geo_autorizada: true,
-      es_estimado:    false
-    });
-    var r2 = Array.isArray(resCheckin) ? resCheckin[0] : resCheckin;
-    if(r2 && r2.accion_valida === false){
-      mostrarErrorCandado(r2.error_msg || 'Error al registrar entrada');
-      return;
-    }
-
-    // 3) Refrescar pantalla de estado
+    // Refrescar pantalla de estado — ahora verá botón "Registrar Entrada"
     mostrarEstadoEmpleado(empleado);
 
   } catch(e){
