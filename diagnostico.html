@@ -19,6 +19,7 @@
 </head>
 <body>
 <h2>🔧 FTS Diagnóstico</h2>
+<button id="btnCopy" onclick="copyDiag()">📋 Copiar diagnóstico</button>
 <div id="output"></div>
 <button onclick="runDiag()">▶ Ejecutar diagnóstico</button>
 
@@ -553,6 +554,37 @@ async function runDiag(){
       if(e.src) log('   ↳ ' + e.src + ':' + e.line, 'err');
     });
   }
+}
+
+async function copyDiag(){
+  const btn = document.getElementById('btnCopy');
+  const out = document.getElementById('output');
+  const text = out ? (out.textContent || out.innerText || '') : '';
+  if(!text.trim()){
+    btn.textContent = '⚠️ Sin contenido';
+    setTimeout(function(){ btn.textContent = '📋 Copiar diagnóstico'; }, 2000);
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    btn.textContent = '✅ Copiado';
+  } catch(e){
+    // Fallback para contextos sin clipboard API (HTTP, browsers viejos)
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      btn.textContent = '✅ Copiado';
+    } catch(e2){
+      btn.textContent = '❌ Error al copiar';
+    }
+  }
+  setTimeout(function(){ btn.textContent = '📋 Copiar diagnóstico'; }, 2000);
 }
 
 function decodificarGeo(){
