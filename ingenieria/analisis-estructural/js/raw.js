@@ -71,6 +71,39 @@ async function processRaw(){
         const textContent=atob(f.data.split(',')[1].replace(/-/g,'+').replace(/_/g,'/'));
         content.push({type:'text',text:'=== ARCHIVO TXT: '+f.name+' ===\n'+textContent+'\n=== FIN '+f.name+' ==='});
         rlog(`  ✓ ${f.name} <span style="color:#7f8c8d">(TXT, ${sizeKB} KB)</span>`,'#1abc9c');
+      }else if(f.type==='text/html'||f.name.toLowerCase().endsWith('.html')||f.name.toLowerCase().endsWith('.htm')){
+        const htmlRaw=atob(f.data.split(',')[1].replace(/-/g,'+').replace(/_/g,'/'));
+        try{
+          const parser=new DOMParser();
+          const doc=parser.parseFromString(htmlRaw,'text/html');
+          const tables=doc.querySelectorAll('table');
+          let tableData='';
+          tables.forEach((t,i)=>{
+            tableData+='\n[Tabla '+(i+1)+']:\n';
+            t.querySelectorAll('tr').forEach(row=>{
+              const cells=[...row.querySelectorAll('td,th')].map(c=>c.textContent.trim()).join(' | ');
+              if(cells) tableData+=cells+'\n';
+            });
+          });
+          let scriptData='';
+          doc.querySelectorAll('script').forEach(s=>{
+            const txt=s.textContent;
+            if(txt.includes('vertices')||txt.includes('coordinates')||txt.includes('geometry')||txt.includes('nodes')||txt.includes('elements')){
+              scriptData+='\n[Datos 3D encontrados]:\n'+txt.substring(0,2000)+(txt.length>2000?'\n...(truncado)':'');
+            }
+          });
+          const bodyText=doc.body?.innerText||doc.body?.textContent||'';
+          content.push({type:'text',text:'=== ARCHIVO HTML: '+f.name+' ===\n'+
+            (tableData?'TABLAS:\n'+tableData+'\n':'')+
+            (scriptData?'DATOS 3D:\n'+scriptData+'\n':'')+
+            'TEXTO COMPLETO:\n'+bodyText.substring(0,5000)+
+            (bodyText.length>5000?'\n...(truncado a 5000 chars)':'')+
+            '\n=== FIN '+f.name+' ==='});
+          rlog(`  ✓ ${f.name} <span style="color:#7f8c8d">(HTML, ${sizeKB} KB, tablas: ${tables.length})</span>`,'#1abc9c');
+        }catch(e){
+          content.push({type:'text',text:'=== HTML RAW: '+f.name+' ===\n'+htmlRaw.substring(0,8000)+'\n=== FIN ==='});
+          rlog(`  ✓ ${f.name} <span style="color:#7f8c8d">(HTML raw, ${sizeKB} KB)</span>`,'#1abc9c');
+        }
       }else{
         rlog(`  ⚠ ${f.name} <span style="color:#7f8c8d">(tipo no soportado: ${f.type}, omitido)</span>`,'#f39c12');
       }

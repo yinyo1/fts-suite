@@ -167,6 +167,11 @@ async function generateAnalysis(){
   const allFiles = (typeof rawUploadedFiles !== 'undefined' && rawUploadedFiles) ? rawUploadedFiles : [];
   const allImgs = allFiles.filter(function(f){ return f && f.type && f.type.startsWith('image/'); });
   const allTxts = allFiles.filter(function(f){ return f && (f.type==='text/plain' || (f.name||'').toLowerCase().endsWith('.txt')); });
+  const allHtmls = allFiles.filter(function(f){
+    if(!f) return false;
+    const n=(f.name||'').toLowerCase();
+    return f.type==='text/html' || n.endsWith('.html') || n.endsWith('.htm');
+  });
 
   // Clasificador de imágenes por keywords en el nombre
   const FEA_KEYWORDS = ['fea','fusion','mises','stress','ansys','staad','sap','von','esfuerzo','tension','deform','modal','analisis','simulation','simulacion'];
@@ -229,6 +234,43 @@ async function generateAnalysis(){
     }catch(e){ /* skip */ }
   });
   if(allTxts.length>0) statusLog('Incluyendo '+allTxts.length+' archivo(s) TXT','#1abc9c');
+
+  // Adjuntar archivos HTML — extraer tablas, scripts 3D y texto
+  allHtmls.forEach(function(f){
+    try{
+      const htmlRaw = atob((f.data||'').split(',')[1].replace(/-/g,'+').replace(/_/g,'/'));
+      try{
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlRaw, 'text/html');
+        const tables = doc.querySelectorAll('table');
+        let tableData = '';
+        tables.forEach(function(t,i){
+          tableData += '\n[Tabla '+(i+1)+']:\n';
+          t.querySelectorAll('tr').forEach(function(row){
+            const cells = [].slice.call(row.querySelectorAll('td,th')).map(function(c){ return c.textContent.trim(); }).join(' | ');
+            if(cells) tableData += cells+'\n';
+          });
+        });
+        let scriptData = '';
+        doc.querySelectorAll('script').forEach(function(s){
+          const txt = s.textContent;
+          if(txt.includes('vertices')||txt.includes('coordinates')||txt.includes('geometry')||txt.includes('nodes')||txt.includes('elements')){
+            scriptData += '\n[Datos 3D encontrados]:\n'+txt.substring(0,2000)+(txt.length>2000?'\n...(truncado)':'');
+          }
+        });
+        const bodyText = (doc.body && (doc.body.innerText || doc.body.textContent)) || '';
+        content.push({type:'text', text:'=== ARCHIVO HTML: '+f.name+' ===\n'+
+          (tableData?'TABLAS:\n'+tableData+'\n':'')+
+          (scriptData?'DATOS 3D:\n'+scriptData+'\n':'')+
+          'TEXTO COMPLETO:\n'+bodyText.substring(0,5000)+
+          (bodyText.length>5000?'\n...(truncado a 5000 chars)':'')+
+          '\n=== FIN '+f.name+' ==='});
+      }catch(e){
+        content.push({type:'text', text:'=== HTML RAW: '+f.name+' ===\n'+htmlRaw.substring(0,8000)+'\n=== FIN ==='});
+      }
+    }catch(e){ /* skip */ }
+  });
+  if(allHtmls.length>0) statusLog('Incluyendo '+allHtmls.length+' archivo(s) HTML','#1abc9c');
 
   content.push({type:'text', text:'Genera el análisis estructural completo para el siguiente proyecto. Responde SOLO en HTML (sin markdown, sin backticks). Datos del proyecto:\n\n'+JSON.stringify(analysisData,null,2)+imageContext});
 
