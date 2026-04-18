@@ -1155,8 +1155,29 @@ async function syncCargar(){
 
   try{
     await ConfigSync.load(password, token || undefined);
+    setResult('✅ Config cargada — actualizando geolocations…', '#107C10');
+
+    // Sobreescribir geolocations con la versión más reciente de public-config.json
+    try {
+      const resPub = await fetch(
+        'https://raw.githubusercontent.com/yinyo1/fts-suite/main/shared/public-config.json?t=' + Date.now(),
+        { cache: 'no-store' }
+      );
+      if (resPub.ok) {
+        const pub = await resPub.json();
+        if (pub.geolocations && pub.geolocations.length > 0) {
+          localStorage.setItem('ops_kiosk_geolocations', JSON.stringify(pub.geolocations));
+          localStorage.setItem('ops_geo_sync_timestamp', new Date().toISOString());
+        }
+        if (pub.n8n_url) localStorage.setItem('n8n_url', pub.n8n_url);
+        if (pub.odoo_url) localStorage.setItem('odoo_url', pub.odoo_url);
+      }
+    } catch(geoErr) {
+      console.warn('No se pudo actualizar geolocations desde public-config:', geoErr);
+    }
+
     setResult('✅ Config cargada y aplicada — recargando…', '#107C10');
-    setTimeout(() => location.reload(), 2000);
+    setTimeout(() => location.reload(), 1500);
   } catch(e){
     const msg = (e.message || '').toLowerCase();
     if(msg.indexOf('decrypt') !== -1 || msg.indexOf('operation') !== -1){
