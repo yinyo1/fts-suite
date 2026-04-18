@@ -97,7 +97,13 @@
         <strong>Kiosk — Checador</strong>
         <span>Registro de entrada y salida</span>
       </div>
-      <span onclick="event.stopPropagation();event.preventDefault();window.location.href='kiosk/config.html'" style="position:absolute;top:12px;right:12px;color:#999;font-size:20px;text-decoration:none;padding:4px 8px;border-radius:6px;background:rgba(0,0,0,0.05);cursor:pointer" title="Configuración Kiosk">⚙️</span>
+    </a>
+    <a id="card-incidencias" href="incidencias/index.html" class="op-card">
+      <div class="op-icon">📝</div>
+      <div class="op-info">
+        <strong>Incidencias</strong>
+        <span>Permisos, vacaciones, tiempo extra</span>
+      </div>
     </a>
     <a id="card-dashboard" href="dashboard/index.html" class="op-card">
       <div class="op-icon">📊</div>
@@ -106,14 +112,15 @@
         <span>Centro de comando en tiempo real</span>
       </div>
     </a>
-    <a id="card-planeacion" href="planeacion/index.html" class="op-card">
+    <div id="card-planeacion" class="op-card disabled" style="opacity:0.4;pointer-events:none;cursor:not-allowed">
       <div class="op-icon">📋</div>
       <div class="op-info">
         <strong>Planeación</strong>
         <span>Plan diario y semanal de técnicos</span>
       </div>
-    </a>
-    <div id="card-asistencia" class="op-card disabled">
+      <span class="op-badge">Próximamente</span>
+    </div>
+    <div id="card-asistencia" class="op-card disabled" style="opacity:0.4;pointer-events:none;cursor:not-allowed">
       <div class="op-icon">👷</div>
       <div class="op-info">
         <strong>Asistencia</strong>
@@ -122,20 +129,13 @@
       <span class="op-badge">Próximamente</span>
     </div>
     <div id="card-proyectos" class="op-card disabled">
-      <div class="op-icon">📋</div>
+      <div class="op-icon">📂</div>
       <div class="op-info">
         <strong>Proyectos / SOs</strong>
         <span>Costos reales vs presupuesto</span>
       </div>
       <span class="op-badge">Próximamente</span>
     </div>
-    <a id="card-incidencias" href="incidencias/index.html" class="op-card">
-      <div class="op-icon">📝</div>
-      <div class="op-info">
-        <strong>Incidencias</strong>
-        <span>Permisos, vacaciones, tiempo extra</span>
-      </div>
-    </a>
   </div>
 
 </div>
