@@ -224,13 +224,19 @@ async function runDiag(){
 
   // 5) Sesión FTSAuth
   section('SESIÓN FTSAUTH');
+  // Preferir FTSAuth.getSession() (valida timeout de inactividad); fallback a parse directo
+  let sessionDataDiag = null;
+  if(typeof FTSAuth !== 'undefined' && FTSAuth.getSession){
+    sessionDataDiag = FTSAuth.getSession();
+  } else {
+    try { sessionDataDiag = JSON.parse(localStorage.getItem('fts_session') || 'null'); } catch(e){}
+  }
   try{
-    const sess = localStorage.getItem('fts_session');
-    if(sess){
-      const s = JSON.parse(sess);
-      log('✅ Sesión activa: ' + (s.username || '?'));
-      log('Role: ' + (s.role || '?'));
-      log('Modulos: ' + (typeof s.modulos === 'string' ? s.modulos : 'objeto granular'));
+    if(sessionDataDiag){
+      log('✅ Sesión activa: ' + (sessionDataDiag.username || '?'));
+      log('Role: ' + (sessionDataDiag.role || '?'));
+      log('Modulos: ' + (typeof sessionDataDiag.modulos === 'string' ? sessionDataDiag.modulos : 'objeto granular'));
+      log('Fuente: ' + (typeof FTSAuth !== 'undefined' && FTSAuth.getSession ? 'FTSAuth.getSession()' : 'localStorage directo'));
     } else {
       log('⚠️ Sin sesión activa', 'warn');
     }
@@ -327,6 +333,199 @@ async function runDiag(){
     } else {
       log('⚠️ ' + ai.label + ': no configurada', 'warn');
     }
+  }
+
+  // Sección 12 — N8N Workflows completo
+  section('N8N WORKFLOWS');
+  const n8nBase = localStorage.getItem('ops_n8n_url') || localStorage.getItem('n8n_url') || 'https://primary-production-5c3c.up.railway.app';
+  const workflows = [
+    { name:'kiosk/empleados', path:'/webhook/kiosk/empleados', body:{},
+      validate: d => Array.isArray(d.empleados) && d.empleados.length > 0
+        ? (d.empleados.length + ' empleados, 1ro: ' + (d.empleados[0] && (d.empleados[0].name || d.empleados[0].nombre) || '?'))
+        : null },
+    { name:'kiosk/sos', path:'/webhook/kiosk/sos', body:{},
+      validate: d => Array.isArray(d.sos) ? (d.sos.length + ' proyectos') : null },
+    { name:'dashboard/resumen', path:'/webhook/dashboard/resumen', body:{},
+      validate: d => d.metricas !== undefined
+        ? ('activos:' + d.metricas.activos + ' completados:' + d.metricas.completados)
+        : null },
+    { name:'kiosk/estado-empleado', path:'/webhook/kiosk/estado-empleado', body:{empleado_id:32},
+      validate: d => d.estado_actual
+        ? ('estado:' + d.estado_actual + ' historial:' + ((d.historial && d.historial.length) || 0))
+        : null },
+    { name:'kiosk/checkin', path:'/webhook/kiosk/checkin',
+      body:{empleado_id:99999, tipo:'entrada', timestamp:new Date().toISOString(), lat:25.68, lng:-100.29, geo_autorizada:true},
+      validate: d => {
+        if(d.error && d.error.data && d.error.data.name && d.error.data.name.includes('MissingError')) return 'conecta Odoo ✓ (ID test inválido esperado)';
+        if(d.accion_valida !== undefined) return 'workflow OK accion_valida:' + d.accion_valida;
+        if(d.error_msg) return 'candado: ' + d.error_msg.substring(0, 40);
+        return 'responde';
+      }},
+    { name:'kiosk/cerrar-registro', path:'/webhook/kiosk/cerrar-registro',
+      body:{empleado_id:32, attendance_id:99999, checkout_estimado:new Date().toISOString(), motivo:'test diagnostico'},
+      validate: d => {
+        if(d.content && (d.content.sha || d.content.name)) return 'llega a GitHub ✓';
+        if(d.commit) return 'PUT GitHub OK';
+        return 'responde (error Odoo esperado con ID test)';
+      }},
+    { name:'kiosk/aprobar-ajuste', path:'/webhook/kiosk/aprobar-ajuste',
+      body:{accion:'aprobar', attendance_id:99999, check_out_aprobado:'2026-04-18 03:00:00', supervisor_nombre:'Test'},
+      validate: d => {
+        if(d.error && d.error.data && d.error.data.name && (d.error.data.name.includes('AccessError') || d.error.data.name.includes('MissingError')))
+          return 'conecta Odoo ✓ (ID test inválido esperado)';
+        return 'responde';
+      }},
+    { name:'kiosk/crear-entrada-estimada', path:'/webhook/kiosk/crear-entrada-estimada',
+      body:{empleado_id:99999, nombre:'Test Diag', hora_estimada:new Date().toISOString().substring(0,19), motivo:'test'},
+      validate: d => {
+        if(d.error && d.error.data && d.error.data.name && d.error.data.name.includes('MissingError')) return 'conecta Odoo ✓ (ID test inválido esperado)';
+        if(d.status === 'ok') return 'OK attendance:' + d.attendance_id;
+        return 'responde';
+      }},
+    { name:'incidencias/push', path:'/webhook/incidencias/push',
+      body:{ incidencia:{ id:'DIAG-TEST-' + Date.now(), tipo:'test_diagnostico', username:'diagnostico' }},
+      validate: d => {
+        if(d.ok === true)  return 'OK id:' + d.id;
+        if(d.ok === false) return null;
+        return 'responde';
+      }},
+    { name:'kiosk/resolve-location', path:'/webhook/kiosk/resolve-location', body:{},
+      validate: d => d !== undefined ? 'responde' : null }
+  ];
+  const wfResults = await Promise.allSettled(
+    workflows.map(async function(wf){
+      try {
+        const r = await fetch(n8nBase + wf.path, {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json' },
+          body:    JSON.stringify(wf.body),
+          signal:  (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(12000) : undefined
+        });
+        const d = await r.json().catch(function(){ return {}; });
+        const detail = wf.validate(d, r.status);
+        return { name: wf.name, ok: detail !== null, detail: detail || JSON.stringify(d).substring(0, 60) };
+      } catch(e){
+        return { name: wf.name, ok: false, detail: e.message };
+      }
+    })
+  );
+  for(const r of wfResults){
+    const v = r.value || { name:'?', ok:false, detail: r.reason && r.reason.message };
+    log((v.ok ? '✅ ' : '❌ ') + v.name + ' → ' + v.detail, v.ok ? 'ok' : 'err');
+  }
+  const wfOk   = wfResults.filter(function(r){ return r.value && r.value.ok; }).length;
+  const wfFail = wfResults.filter(function(r){ return !(r.value && r.value.ok); }).length;
+  log('Workflows: ' + wfOk + '/' + workflows.length + ' OK' + (wfFail > 0 ? ' · ' + wfFail + ' FALLIDOS' : ''),
+      wfFail === 0 ? 'ok' : 'warn');
+
+  // Sección 13 — Geo sync status
+  section('GEO SYNC STATUS');
+  const lastGeoSync = localStorage.getItem('ops_geo_sync_timestamp');
+  let geosLocalDiag = [];
+  try { geosLocalDiag = JSON.parse(localStorage.getItem('ops_kiosk_geolocations') || '[]'); } catch(e){}
+  if(!Array.isArray(geosLocalDiag)) geosLocalDiag = [];
+  if(lastGeoSync){
+    const syncDate = new Date(lastGeoSync);
+    const diffHrs  = (Date.now() - syncDate.getTime()) / 3600000;
+    const syncStr  = syncDate.toLocaleString('es-MX');
+    if(diffHrs < 24)      log('✅ Último sync geo: ' + syncStr + ' (hace ' + (Math.round(diffHrs * 10) / 10) + ' hrs)');
+    else if(diffHrs < 72) log('⚠️ Sync geo: ' + syncStr + ' (hace ' + Math.round(diffHrs) + ' hrs)', 'warn');
+    else                  log('❌ Sync geo: ' + syncStr + ' (hace ' + Math.round(diffHrs / 24) + ' días — MUY desactualizado)', 'err');
+  } else {
+    log('⚠️ Sin registro de sync geo en este dispositivo', 'warn');
+  }
+  try {
+    const pubRes = await fetch(
+      'https://raw.githubusercontent.com/yinyo1/fts-suite/main/shared/public-config.json?t=' + Date.now(),
+      { cache:'no-store', signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(6000) : undefined }
+    );
+    if(pubRes.ok){
+      const pub    = await pubRes.json();
+      const geosGH = Array.isArray(pub.geolocations) ? pub.geolocations : [];
+      if(geosLocalDiag.length === geosGH.length){
+        const nL = geosLocalDiag.map(function(g){ return g.nombre; }).sort().join(',');
+        const nG = geosGH.map(function(g){ return g.nombre; }).sort().join(',');
+        if(nL === nG){
+          log('✅ Geolocations sincronizadas: ' + geosGH.length + ' sitios local = GitHub');
+        } else {
+          log('⚠️ Mismo count (' + geosGH.length + ') pero nombres diferentes', 'warn');
+          log('Local: ' + nL);
+          log('GitHub: ' + nG);
+        }
+      } else {
+        log('⚠️ Desincronizadas — Local: ' + geosLocalDiag.length + ' sitios · GitHub: ' + geosGH.length + ' sitios', 'warn');
+        if(geosLocalDiag.length > geosGH.length){
+          log('   → Hay sitios locales sin subir a GitHub', 'warn');
+        } else {
+          log('   → GitHub tiene sitios que no están en este dispositivo', 'warn');
+        }
+      }
+      log('   GitHub updated: ' + (pub.updated || 'sin fecha'));
+    }
+  } catch(e){
+    log('⚠️ No se pudo comparar con GitHub: ' + e.message, 'warn');
+  }
+
+  // Sección 14 — Páginas críticas
+  section('PÁGINAS CRÍTICAS');
+  const PAGES_BASE = 'https://yinyo1.github.io/fts-suite';
+  const pages = [
+    { name:'index.html (launcher)',            path:'/',                                     check: function(t){ return t.includes('FTS'); } },
+    { name:'config-master.html',               path:'/shared/admin/config-master.html',      check: function(t){ return t.includes('Config Master'); } },
+    { name:'operaciones/kiosk',                path:'/operaciones/kiosk/',                   check: function(t){ return t.includes('kiosk') || t.includes('Kiosk'); } },
+    { name:'operaciones/config',               path:'/operaciones/config/',                  check: function(t){ return t.includes('Configuraci') || t.includes('config'); } },
+    { name:'ingenieria/analisis-estructural',  path:'/ingenieria/analisis-estructural/',     check: function(t){ return t.includes('raw.js'); } },
+    { name:'seguridad/iperc',                  path:'/seguridad/iperc/',                     check: function(t){ return t.includes('IPERC') || t.includes('iperc'); } },
+    { name:'shared/admin/index.html',          path:'/shared/admin/',                        check: function(t){ return t.includes('Admin') || t.includes('admin'); } }
+  ];
+  const pageResults = await Promise.allSettled(
+    pages.map(async function(pg){
+      try {
+        const r = await fetch(PAGES_BASE + pg.path + '?t=' + Date.now(), {
+          cache:  'no-store',
+          signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(8000) : undefined
+        });
+        if(!r.ok) return { name: pg.name, ok:false, detail:'HTTP ' + r.status };
+        const text = await r.text();
+        const ok   = pg.check(text);
+        return { name: pg.name, ok: !!ok, detail: ok ? 'OK' : 'contenido inesperado' };
+      } catch(e){
+        return { name: pg.name, ok:false, detail: e.message };
+      }
+    })
+  );
+  for(const r of pageResults){
+    const v = r.value || { name:'?', ok:false, detail: r.reason && r.reason.message };
+    log((v.ok ? '✅ ' : '❌ ') + v.name + ' → ' + v.detail, v.ok ? 'ok' : 'err');
+  }
+  // Extra: validar raw.js (txt/html + cache-busting) y auth-suite.js (auto-run + sin guards)
+  try {
+    const idxR    = await fetch(PAGES_BASE + '/ingenieria/analisis-estructural/?t=' + Date.now(), { cache:'no-store' });
+    const idxText = await idxR.text();
+    const rawMatch = idxText.match(/raw\.js\?v=([a-f0-9]+)/);
+    const rawUrl   = rawMatch
+      ? (PAGES_BASE + '/ingenieria/analisis-estructural/js/raw.js?v=' + rawMatch[1])
+      : (PAGES_BASE + '/ingenieria/analisis-estructural/js/raw.js?t=' + Date.now());
+    const rawR    = await fetch(rawUrl, { cache:'no-store' });
+    const rawText = await rawR.text();
+    const hasTxt  = rawText.includes("endsWith('.txt')");
+    const hasHtml = rawText.includes("endsWith('.html')");
+    log((hasTxt  ? '✅ ' : '❌ ') + 'raw.js soporte .txt',  hasTxt  ? 'ok' : 'err');
+    log((hasHtml ? '✅ ' : '❌ ') + 'raw.js soporte .html', hasHtml ? 'ok' : 'err');
+    if(rawMatch) log('✅ raw.js cache-busting: v=' + rawMatch[1]);
+    else         log('⚠️ raw.js sin cache-busting', 'warn');
+  } catch(e){
+    log('⚠️ No se pudo verificar raw.js: ' + e.message, 'warn');
+  }
+  try {
+    const authR    = await fetch(PAGES_BASE + '/shared/auth-suite.js?t=' + Date.now(), { cache:'no-store' });
+    const authText = await authR.text();
+    const hasAutoRun = authText.includes('autoLoadConfig().catch');
+    const noGuard    = !authText.includes("!localStorage.getItem('ops_n8n_url')");
+    log((hasAutoRun ? '✅ ' : '❌ ') + 'auth-suite.js auto-run en cada página', hasAutoRun ? 'ok' : 'err');
+    log((noGuard    ? '✅ ' : '⚠️ ') + 'auth-suite.js sin guards (GitHub = fuente verdad)', noGuard ? 'ok' : 'warn');
+  } catch(e){
+    log('⚠️ No se pudo verificar auth-suite.js: ' + e.message, 'warn');
   }
 
   // 6) Fetch logs
