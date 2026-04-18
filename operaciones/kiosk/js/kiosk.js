@@ -1364,13 +1364,17 @@ async function confirmarOlvideCheckout(){
       es_estimado:        true
     });
     var r = Array.isArray(resCheckout) ? resCheckout[0] : resCheckout;
-    console.log('[cerrar-registro] respuesta raw:', JSON.stringify(resCheckout));
-    console.log('[cerrar-registro] r:', JSON.stringify(r));
-    console.log('[cerrar-registro] accion_valida:', r && r.accion_valida);
-    console.log('[cerrar-registro] attendance_id enviado:', attendanceId);
-    console.log('[cerrar-registro] checkout_estimado:', checkoutEstimado);
-    if(r && r.accion_valida === false){
-      mostrarErrorCandado(r.error_msg || 'Error al cerrar registro');
+    // cerrar-registro devuelve respuesta GitHub (content + commit) si OK,
+    // o un objeto con error / accion_valida:false si falla.
+    var exitoso = (r && r.commit) || (r && r.content) || (r && r.ok === true);
+    var fallo   = (r && r.accion_valida === false) || (r && r.error) || (r && r.status === 'error');
+
+    if(fallo && !exitoso){
+      mostrarErrorCandado(r.error_msg || r.error || 'Error al cerrar registro');
+      return;
+    }
+    if(!r && !resCheckout){
+      mostrarErrorCandado('Sin respuesta del servidor');
       return;
     }
 
