@@ -17,7 +17,7 @@
       "password_hash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
       "role": "user",
       "activo": true,
-      "vigencia": "2026-05-31",
+      "vigencia": null,
       "modulos": {
         "seguridad": {
           "acceso": true,
