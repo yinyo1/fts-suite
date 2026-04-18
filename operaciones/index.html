@@ -25,11 +25,9 @@
 
   const SUBMOD_CARDS = {
     kiosk:       'card-kiosk',
-    dashboard:   'card-dashboard',
+    incidencias: 'card-incidencias',
     planeacion:  'card-planeacion',
-    asistencia:  'card-asistencia',
-    proyectos:   'card-proyectos',
-    incidencias: 'card-incidencias'
+    dashboard:   'card-dashboard'
   };
 
   document.addEventListener('DOMContentLoaded', function(){
@@ -79,7 +77,6 @@
       <strong>Operaciones</strong>
       <span>SERVICIOS FTS SA DE CV</span>
     </div>
-    <a href="config/index.html" title="Configuración" style="color:#666;font-size:22px;text-decoration:none;padding:4px 8px;border-radius:6px;flex-shrink:0;line-height:1">⚙️</a>
     <a href="../index.html" style="text-decoration:none;background:var(--green);color:#fff;font-size:10px;font-weight:700;padding:4px 10px;border-radius:6px;flex-shrink:0">← Suite</a>
   </div>
 
@@ -105,13 +102,6 @@
         <span>Permisos, vacaciones, tiempo extra</span>
       </div>
     </a>
-    <a id="card-dashboard" href="dashboard/index.html" class="op-card">
-      <div class="op-icon">📊</div>
-      <div class="op-info">
-        <strong>Dashboard</strong>
-        <span>Centro de comando en tiempo real</span>
-      </div>
-    </a>
     <div id="card-planeacion" class="op-card disabled" style="opacity:0.4;pointer-events:none;cursor:not-allowed">
       <div class="op-icon">📋</div>
       <div class="op-info">
@@ -120,22 +110,13 @@
       </div>
       <span class="op-badge">Próximamente</span>
     </div>
-    <div id="card-asistencia" class="op-card disabled" style="opacity:0.4;pointer-events:none;cursor:not-allowed">
-      <div class="op-icon">👷</div>
+    <a id="card-dashboard" href="dashboard/index.html" class="op-card">
+      <div class="op-icon">📊</div>
       <div class="op-info">
-        <strong>Asistencia</strong>
-        <span>Historial y control de asistencia</span>
+        <strong>Dashboard</strong>
+        <span>Centro de comando en tiempo real</span>
       </div>
-      <span class="op-badge">Próximamente</span>
-    </div>
-    <div id="card-proyectos" class="op-card disabled">
-      <div class="op-icon">📂</div>
-      <div class="op-info">
-        <strong>Proyectos / SOs</strong>
-        <span>Costos reales vs presupuesto</span>
-      </div>
-      <span class="op-badge">Próximamente</span>
-    </div>
+    </a>
   </div>
 
 </div>
