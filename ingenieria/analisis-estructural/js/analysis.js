@@ -166,11 +166,16 @@ async function generateAnalysis(){
   const content = [];
   const allFiles = (typeof rawUploadedFiles !== 'undefined' && rawUploadedFiles) ? rawUploadedFiles : [];
   const allImgs = allFiles.filter(function(f){ return f && f.type && f.type.startsWith('image/'); });
-  const allTxts = allFiles.filter(function(f){ return f && (f.type==='text/plain' || (f.name||'').toLowerCase().endsWith('.txt')); });
+  const allTxts = allFiles.filter(function(f){
+    if(!f || !f.name) return false;
+    const n = f.name.toLowerCase();
+    const mimeOk = f.type === 'text/plain' || f.type === '' || f.type === 'application/octet-stream';
+    return n.endsWith('.txt') || (mimeOk && n.endsWith('.txt'));
+  });
   const allHtmls = allFiles.filter(function(f){
-    if(!f) return false;
-    const n=(f.name||'').toLowerCase();
-    return f.type==='text/html' || n.endsWith('.html') || n.endsWith('.htm');
+    if(!f || !f.name) return false;
+    const n = f.name.toLowerCase();
+    return n.endsWith('.html') || n.endsWith('.htm');
   });
 
   // Clasificador de imágenes por keywords en el nombre
