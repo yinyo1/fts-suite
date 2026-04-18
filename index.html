@@ -247,6 +247,24 @@ async function confirmFirstLogin(){
   localStorage.setItem('fts_master_hash', _firstLoginData.tempHash);
 
   FTSAuth.setSession(_firstLoginData.user);
+
+  // Restaurar config cifrada si el usuario proporcionó la contraseña maestra en el form
+  const masterPwdFirst = document.getElementById('masterPasswordLogin') && document.getElementById('masterPasswordLogin').value;
+  if(masterPwdFirst && typeof ConfigSync !== 'undefined'){
+    try {
+      await ConfigSync.load(masterPwdFirst);
+      const tokenOkFirst = localStorage.getItem('ops_github_token');
+      const errElFirst = document.getElementById('login-error');
+      if(errElFirst) errElFirst.textContent = tokenOkFirst
+        ? '✅ Config restaurada — token presente'
+        : '⚠️ Config cargada pero sin token';
+    } catch(e){
+      console.warn('[Login] Config maestra no cargó en firstLogin:', e.message);
+      const errElFirst = document.getElementById('login-error');
+      if(errElFirst) errElFirst.textContent = '⚠️ Config maestra: ' + e.message;
+    }
+  }
+
   FTSAuth.initActivityTracking();
   document.getElementById('login-overlay').style.display = 'none';
   applyModuleAccess(_firstLoginData.user);
