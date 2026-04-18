@@ -1511,7 +1511,356 @@
 })();
 </script>
 
-<!-- TODO: script Parte 3B-2 (sync, users, sistema, init final) -->
+<!-- ═══ SCRIPT — Parte 3B-2: sync + users + sistema + init final ═══ -->
+<script>
+(function(){
+  'use strict';
+
+  function $(id){ return document.getElementById(id); }
+  function lsGet(k, def){ const v = localStorage.getItem(k); return v === null ? (def === undefined ? '' : def) : v; }
+  function lsSet(k, v){
+    if(v === null || v === undefined || v === '') localStorage.removeItem(k);
+    else localStorage.setItem(k, String(v));
+  }
+
+  function esc(s){
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  function fmtDate(iso){
+    if(!iso) return '—';
+    try {
+      const d = new Date(iso);
+      if(isNaN(d.getTime())) return iso;
+      return d.toLocaleString('es-MX', { dateStyle:'short', timeStyle:'short' });
+    } catch(e){ return iso; }
+  }
+
+  // ═════════════════════════════════════════════
+  // LOAD / SAVE / LOAD: SYNC
+  // ═════════════════════════════════════════════
+  async function loadSync(){
+    // Prefill con bullets si hay token guardado (no mostrar el token real)
+    const pat = $('sync_github_pat');
+    const pwd = $('sync_password');
+    const tokenStored = lsGet('ops_github_token');
+    if(pat){
+      pat.value = tokenStored ? '••••••••••••••••' : '';
+      pat.dataset.stored = tokenStored ? '1' : '';
+    }
+    if(pwd) pwd.value = '';
+
+    const banner = $('sync_status');
+    if(!banner) return;
+    banner.className = 'cm-status';
+    banner.textContent = '⏳ Verificando estado en GitHub…';
+
+    try {
+      if(typeof ConfigSync === 'undefined'){
+        banner.className = 'cm-status err';
+        banner.textContent = '❌ ConfigSync no disponible';
+        return;
+      }
+      const hayConfig = await ConfigSync.check();
+      const lastSync  = ConfigSync.getLastSync();
+      const hasTok    = ConfigSync.hasToken();
+
+      if(hayConfig && lastSync){
+        banner.className = 'cm-status ok';
+        banner.innerHTML = '✅ Config sincronizada · Último sync: <strong>' + esc(fmtDate(lastSync)) + '</strong>';
+      } else if(hayConfig){
+        banner.className = 'cm-status info';
+        banner.textContent = '☁️ Hay config en GitHub — usa "Cargar" para aplicarla aquí';
+      } else {
+        banner.className = 'cm-status warn';
+        banner.textContent = '⚠️ Sin config guardada en GitHub todavía' + (hasTok ? '' : ' (y sin token PAT)');
+      }
+    } catch(e){
+      banner.className = 'cm-status err';
+      banner.textContent = '❌ Error verificando: ' + e.message;
+    }
+  }
+  window.loadSync = loadSync;
+
+  function _getSyncToken(){
+    const el = $('sync_github_pat');
+    const val = el ? el.value.trim() : '';
+    // Si el usuario no tocó el campo (siguen los bullets), usar el guardado
+    if(el && el.dataset.stored === '1' && /^•+$/.test(val)){
+      return lsGet('ops_github_token');
+    }
+    return val;
+  }
+
+  async function doSyncSave(){
+    const token    = _getSyncToken();
+    const password = $('sync_password').value;
+
+    if(!token){
+      window.toast && window.toast('⚠️ Ingresa el GitHub PAT', 'warn');
+      return;
+    }
+    if(!password || password.length < 8){
+      window.toast && window.toast('⚠️ La contraseña maestra requiere ≥ 8 caracteres', 'warn');
+      return;
+    }
+    if(typeof ConfigSync === 'undefined' || typeof ConfigSync.save !== 'function'){
+      window.toast && window.toast('❌ ConfigSync.save no disponible', 'err');
+      return;
+    }
+
+    const banner = $('sync_status');
+    if(banner){
+      banner.className = 'cm-status info';
+      banner.textContent = '⏳ Cifrando y subiendo a GitHub…';
+    }
+
+    try {
+      await ConfigSync.save(token, password);
+      window.toast && window.toast('✅ Config cifrada subida a GitHub', 'ok');
+      // Refrescar banner
+      await loadSync();
+    } catch(e){
+      if(banner){
+        banner.className = 'cm-status err';
+        banner.textContent = '❌ ' + e.message;
+      }
+      window.toast && window.toast('❌ ' + e.message, 'err');
+    }
+  }
+  window.doSyncSave = doSyncSave;
+
+  async function doSyncLoad(){
+    const token    = _getSyncToken();  // opcional — ConfigSync.load cae a raw sin token
+    const password = $('sync_password').value;
+
+    if(!password){
+      window.toast && window.toast('⚠️ Ingresa la contraseña maestra', 'warn');
+      return;
+    }
+    if(typeof ConfigSync === 'undefined' || typeof ConfigSync.load !== 'function'){
+      window.toast && window.toast('❌ ConfigSync.load no disponible', 'err');
+      return;
+    }
+
+    const banner = $('sync_status');
+    if(banner){
+      banner.className = 'cm-status info';
+      banner.textContent = '⏳ Descargando y descifrando desde GitHub…';
+    }
+
+    try {
+      // 1) Cargar la config cifrada (AES-GCM)
+      await ConfigSync.load(password, token || undefined);
+
+      // 2) También refrescar public-config.json (sin cifrar) para traer geolocations + URLs base
+      try {
+        const res = await fetch(
+          'https://raw.githubusercontent.com/yinyo1/fts-suite/main/shared/public-config.json?t=' + Date.now(),
+          { cache:'no-store' }
+        );
+        if(res.ok){
+          const pub = await res.json();
+          if(pub.n8n_url){
+            localStorage.setItem('ops_n8n_url', pub.n8n_url);
+            localStorage.setItem('n8n_url',     pub.n8n_url);
+          }
+          if(pub.odoo_url){
+            localStorage.setItem('ops_odoo_url', pub.odoo_url);
+            localStorage.setItem('odoo_url',     pub.odoo_url);
+          }
+          if(pub.demo_mode !== undefined){
+            localStorage.setItem('ops_demo_mode', pub.demo_mode ? '1' : '0');
+            localStorage.setItem('demo_mode',     String(pub.demo_mode));
+          }
+          if(Array.isArray(pub.geolocations) && pub.geolocations.length > 0){
+            localStorage.setItem('ops_kiosk_geolocations', JSON.stringify(pub.geolocations));
+            localStorage.setItem('ops_geo_sync_timestamp', new Date().toISOString());
+          }
+        }
+      } catch(e){
+        console.warn('[CM] public-config refresh falló:', e.message);
+      }
+
+      if(banner){
+        banner.className = 'cm-status ok';
+        banner.textContent = '✅ Config cargada — recargando página…';
+      }
+      window.toast && window.toast('✅ Config aplicada — recargando', 'ok');
+      setTimeout(function(){ location.reload(); }, 1500);
+    } catch(e){
+      const isDecryptErr = /decrypt|operation/i.test(e.message || '');
+      if(banner){
+        banner.className = 'cm-status err';
+        banner.textContent = isDecryptErr ? '❌ Contraseña incorrecta' : ('❌ ' + e.message);
+      }
+      window.toast && window.toast(isDecryptErr ? '❌ Contraseña incorrecta' : ('❌ ' + e.message), 'err');
+    }
+  }
+  window.doSyncLoad = doSyncLoad;
+
+  // ═════════════════════════════════════════════
+  // LOAD USERS — lectura de users-suite.json (GitHub raw)
+  // ═════════════════════════════════════════════
+  async function loadUsers(){
+    const tbody  = $('users_tbody');
+    const status = $('users_status');
+    if(!tbody) return;
+    if(status){ status.textContent = '⏳ Descargando…'; status.style.color = ''; }
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Cargando…</td></tr>';
+
+    try {
+      const res = await fetch(
+        'https://raw.githubusercontent.com/yinyo1/fts-suite/main/shared/users-suite.json?t=' + Date.now(),
+        { cache:'no-store' }
+      );
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      const data   = await res.json();
+      const users  = Array.isArray(data.users) ? data.users : [];
+
+      if(users.length === 0){
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Sin usuarios</td></tr>';
+        if(status){ status.textContent = '0 usuarios'; }
+        return;
+      }
+
+      tbody.innerHTML = users.map(function(u){
+        const roleCls = u.role === 'master' ? 'cm-badge-master'
+                      : u.role === 'admin'  ? 'cm-badge-admin'
+                      : 'cm-badge-user';
+        const estado = u.activo
+          ? '<span class="cm-badge cm-badge-active">ACTIVO</span>'
+          : '<span class="cm-badge cm-badge-off">INACTIVO</span>';
+        const vig = u.vigencia ? esc(u.vigencia) : '<span style="color:var(--muted)">Sin vencimiento</span>';
+        return (
+          '<tr>' +
+            '<td><strong>' + esc(u.username || '—') + '</strong></td>' +
+            '<td>' + esc(u.nombre || '—') + '</td>' +
+            '<td><span class="cm-badge ' + roleCls + '">' + esc((u.role || 'user').toUpperCase()) + '</span></td>' +
+            '<td>' + estado + '</td>' +
+            '<td>' + vig + '</td>' +
+          '</tr>'
+        );
+      }).join('');
+
+      if(status){
+        status.textContent = users.length + ' usuario(s) — ' + esc(fmtDate(data.updated || ''));
+        status.style.color = 'var(--green)';
+      }
+    } catch(e){
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--red);padding:20px">Error: ' + esc(e.message) + '</td></tr>';
+      if(status){ status.textContent = '❌ ' + e.message; status.style.color = 'var(--red)'; }
+    }
+  }
+  window.loadUsers = loadUsers;
+
+  // ═════════════════════════════════════════════
+  // RUN SYS CHECK — info cards + ping n8n
+  // ═════════════════════════════════════════════
+  async function runSysCheck(lazyOnly){
+    // lazyOnly = true cuando se llama al entrar a la sección (no hace el ping, sólo muestra stats locales)
+    const n8nUrl     = lsGet('ops_n8n_url')  || lsGet('n8n_url')  || '—';
+    const odooUrl    = lsGet('ops_odoo_url') || lsGet('odoo_url') || '—';
+    const demo       = lsGet('ops_demo_mode') === '1' || lsGet('demo_mode') === 'true';
+    const lastSync   = lsGet('ops_last_sync');
+    const geoSync    = lsGet('ops_geo_sync_timestamp');
+    const hasToken   = !!lsGet('ops_github_token');
+
+    // Geolocations count
+    let geoCount = 0;
+    try {
+      const arr = JSON.parse(lsGet('ops_kiosk_geolocations') || '[]');
+      if(Array.isArray(arr)) geoCount = arr.length;
+    } catch(e){}
+
+    // Session
+    let sessUser = '—', sessRole = '—';
+    try {
+      const raw = localStorage.getItem('fts_session');
+      if(raw){
+        const s = JSON.parse(raw);
+        sessUser = s.nombre || s.username || '—';
+        sessRole = (s.role || '—').toUpperCase();
+      }
+    } catch(e){}
+
+    // Render info grid
+    $('sys_n8n_url').textContent         = n8nUrl;
+    $('sys_odoo_url').textContent        = odooUrl;
+    $('sys_odoo_status').textContent     = odooUrl === '—' ? '—' : 'Configurado';
+    $('sys_demo_mode').textContent       = demo ? 'DEMO' : 'Producción';
+    $('sys_demo_mode').style.color       = demo ? 'var(--orange)' : 'var(--green)';
+    $('sys_last_sync').textContent       = fmtDate(lastSync);
+    $('sys_geo_sync').textContent        = fmtDate(geoSync);
+    $('sys_github_token_status').textContent = 'Token: ' + (hasToken ? '✅ configurado' : '⚠️ falta');
+    $('sys_geo_count').textContent       = String(geoCount);
+    $('sys_session_user').textContent    = sessUser;
+    $('sys_session_role').textContent    = sessRole;
+
+    // Ping n8n (sólo en modo explícito, no en lazy)
+    const statusEl = $('sys_n8n_status');
+    if(lazyOnly){
+      statusEl.textContent = n8nUrl === '—' ? '—' : 'Click "Verificar" para probar';
+      statusEl.style.color = 'var(--muted2)';
+      return;
+    }
+
+    if(n8nUrl === '—'){
+      statusEl.textContent = 'Sin URL configurada';
+      statusEl.style.color = 'var(--red)';
+      return;
+    }
+
+    statusEl.textContent = '⏳ Ping…';
+    statusEl.style.color = '';
+    try {
+      const endpoint = n8nUrl.replace(/\/+$/, '') + '/webhook/kiosk/empleados';
+      const r = await fetch(endpoint, {
+        method:  'POST',
+        headers: { 'Content-Type':'application/json' },
+        body:    JSON.stringify({ ping:true, source:'config-master-sys' }),
+        signal:  AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined
+      });
+      if(r.ok){
+        statusEl.textContent = '✅ OK (HTTP ' + r.status + ')';
+        statusEl.style.color = 'var(--green)';
+      } else {
+        statusEl.textContent = '⚠️ HTTP ' + r.status;
+        statusEl.style.color = 'var(--red)';
+      }
+    } catch(e){
+      statusEl.textContent = '❌ ' + e.message;
+      statusEl.style.color = 'var(--red)';
+    }
+  }
+  window.runSysCheck = runSysCheck;
+
+  // ═════════════════════════════════════════════
+  // INIT FINAL
+  // ═════════════════════════════════════════════
+  function init(){
+    // 1) Auth — si no es master, bloqueamos y salimos
+    if(typeof window._cmInit3A !== 'function'){
+      console.error('[CM] _cmInit3A no disponible — script 3A no se cargó');
+      return;
+    }
+    window._cmInit3A();  // ejecuta enforceMasterAccess + loadAll + restore section
+
+    // Listeners globales de tracking (mantener sesión viva)
+    if(typeof FTSAuth !== 'undefined' && typeof FTSAuth.initActivityTracking === 'function'){
+      try { FTSAuth.initActivityTracking(); } catch(e){}
+    }
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
 
 </body>
 </html>
