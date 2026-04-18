@@ -1147,7 +1147,7 @@ async function mostrarEstadoEmpleado(empleado){
     case 'error_critico':
       card.style.background = '#ffe8e8';
       icon.textContent = '🔴';
-      texto.textContent = 'Entrada sin salida (+24 hrs)';
+      texto.textContent = 'Checkeó sin salida (+24 hrs)';
       break;
     default:
       card.style.background = '#f5f5f5';
@@ -1207,6 +1207,11 @@ async function mostrarEstadoEmpleado(empleado){
 
 function renderEstadoBotones(estado){
   var botonesDiv = document.getElementById('ksEstadoBotones');
+
+  // Cleanup: remover botón inyectado de estado anterior (si existe)
+  var oldResolverBtn = document.getElementById('ksResolverBtn');
+  if(oldResolverBtn) oldResolverBtn.remove();
+
   var html = '';
 
   switch(estado.estado_actual){
@@ -1223,11 +1228,18 @@ function renderEstadoBotones(estado){
         '<button onclick="resolverZonaGris(\'olvide\')" style="background:#f0f0f0;color:#333;border:1px solid #ccc;padding:14px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">❌ Olvidé checar salida</button>';
       break;
     case 'error_critico':
-      html = '<button onclick="resolverErrorCritico()" style="background:#D83B01;color:#fff;border:none;padding:14px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">📋 Checar entrada y resolver</button>';
+      // Botón Resolver inyectado ANTES del historial (entre el aviso sutil y ksHistorialRapido)
+      var resolverWrapper = document.createElement('div');
+      resolverWrapper.id = 'ksResolverBtn';
+      resolverWrapper.style.cssText = 'margin-bottom:16px';
+      resolverWrapper.innerHTML = '<button onclick="resolverErrorCritico()" style="width:100%;background:#D83B01;color:#fff;border:none;padding:14px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">🔴 Resolver</button>';
+      var histDiv = document.getElementById('ksHistorialRapido');
+      if(histDiv && histDiv.parentNode) histDiv.parentNode.insertBefore(resolverWrapper, histDiv);
+      // ksEstadoBotones queda solo con "Ver historial completo" (se añade abajo)
       break;
   }
 
-  // Siempre historial
+  // Siempre historial completo al final
   html += '<button onclick="showScreen(\'ks-historial\')" style="background:transparent;color:#0078D4;border:1px solid #0078D4;padding:12px;border-radius:12px;font-size:14px;cursor:pointer;margin-top:4px;font-family:inherit">📋 Ver historial completo</button>';
 
   botonesDiv.innerHTML = html;
