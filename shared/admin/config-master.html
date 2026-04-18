@@ -1133,7 +1133,385 @@
 })();
 </script>
 
-<!-- TODO: script Parte 3B (saveKiosk, geo editor, sync, users, sistema, init final) -->
+<!-- ═══ SCRIPT — Parte 3B-1: kiosk + geo editor + planeación + dashboard + ingeniería ═══ -->
+<script>
+(function(){
+  'use strict';
+
+  function $(id){ return document.getElementById(id); }
+  function lsGet(k, def){ const v = localStorage.getItem(k); return v === null ? (def === undefined ? '' : def) : v; }
+  function lsSet(k, v){
+    if(v === null || v === undefined || v === '') localStorage.removeItem(k);
+    else localStorage.setItem(k, String(v));
+  }
+
+  // ═════════════════════════════════════════════
+  // GEO EDITOR — estado en memoria + render + CRUD
+  // ═════════════════════════════════════════════
+  let _geos = [];
+
+  function readGeosFromStorage(){
+    try {
+      const raw = localStorage.getItem('ops_kiosk_geolocations');
+      _geos = raw ? JSON.parse(raw) : [];
+      if(!Array.isArray(_geos)) _geos = [];
+    } catch(e){ _geos = []; }
+  }
+
+  function esc(s){
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  function renderGeos(){
+    const c = $('geoList');
+    if(!c) return;
+    if(_geos.length === 0){
+      c.innerHTML = '<div class="cm-hint" style="padding:8px 0">Sin sitios configurados. Pulsa "Agregar sitio" para crear uno.</div>';
+      return;
+    }
+    c.innerHTML = _geos.map(function(g, i){
+      const nombre = esc(g.nombre || 'Sitio ' + (i+1));
+      return (
+        '<div class="geo-site-card">' +
+          '<div class="geo-site-header">' +
+            '<span class="geo-site-name">📍 ' + nombre + '</span>' +
+            '<button class="cm-btn cm-btn-danger cm-btn-sm" onclick="window.removeGeo(' + i + ')">✕ Eliminar</button>' +
+          '</div>' +
+          '<div class="geo-site-grid">' +
+            '<div class="cm-field full">' +
+              '<label class="cm-label">Nombre</label>' +
+              '<input type="text" class="cm-input" value="' + esc(g.nombre || '') + '" ' +
+                'oninput="window.updateGeo(' + i + ',\'nombre\',this.value)">' +
+            '</div>' +
+            '<div class="cm-field">' +
+              '<label class="cm-label">Latitud</label>' +
+              '<input type="text" class="cm-input" value="' + esc(g.lat != null ? g.lat : '') + '" ' +
+                'placeholder="25.6889759" oninput="window.updateGeo(' + i + ',\'lat\',this.value)">' +
+            '</div>' +
+            '<div class="cm-field">' +
+              '<label class="cm-label">Longitud</label>' +
+              '<input type="text" class="cm-input" value="' + esc(g.lng != null ? g.lng : '') + '" ' +
+                'placeholder="-100.2916779" oninput="window.updateGeo(' + i + ',\'lng\',this.value)">' +
+            '</div>' +
+            '<div class="cm-field">' +
+              '<label class="cm-label">Radio (m)</label>' +
+              '<input type="number" class="cm-input" value="' + esc(g.radio != null ? g.radio : 100) + '" ' +
+                'min="10" max="5000" oninput="window.updateGeo(' + i + ',\'radio\',this.value)">' +
+            '</div>' +
+            '<div class="cm-field full">' +
+              '<label class="cm-label">URL de Google Maps (opcional)</label>' +
+              '<input type="url" class="cm-input" value="' + esc(g.maps_url || '') + '" ' +
+                'placeholder="https://maps.app.goo.gl/..." oninput="window.updateGeo(' + i + ',\'maps_url\',this.value)">' +
+            '</div>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join('');
+  }
+
+  function addGeo(){
+    _geos.push({ nombre:'', lat:'', lng:'', radio:100, maps_url:'' });
+    renderGeos();
+  }
+
+  function removeGeo(idx){
+    if(idx < 0 || idx >= _geos.length) return;
+    if(!confirm('¿Eliminar "' + (_geos[idx].nombre || 'Sitio ' + (idx+1)) + '"?')) return;
+    _geos.splice(idx, 1);
+    renderGeos();
+  }
+
+  function updateGeo(idx, field, value){
+    if(idx < 0 || idx >= _geos.length) return;
+    if(field === 'radio'){
+      const n = parseInt(value, 10);
+      _geos[idx].radio = isNaN(n) ? 100 : n;
+    } else if(field === 'lat' || field === 'lng'){
+      // Guardar como string — validación final en saveKiosk()
+      _geos[idx][field] = value.trim();
+    } else {
+      _geos[idx][field] = value;
+    }
+  }
+
+  window.addGeo    = addGeo;
+  window.removeGeo = removeGeo;
+  window.updateGeo = updateGeo;
+
+  // ═════════════════════════════════════════════
+  // SYNC GEO → public-config.json (con manejo de SHA 409)
+  // Replica autoSyncGeolocations() de operaciones/config/index.html
+  // ═════════════════════════════════════════════
+  async function syncGeoGitHub(){
+    const token = lsGet('ops_github_token');
+    const status = $('ks_geo_status');
+    function setStatus(msg, color){ if(status){ status.textContent = msg; status.style.color = color || ''; } }
+
+    if(!token){
+      setStatus('⚠️ Sin GitHub PAT (configura en Sync)', 'var(--red)');
+      return { ok:false, reason:'no-token' };
+    }
+
+    // Filtrar sitios con lat/lng vacíos o inválidos — nunca subir basura a GitHub
+    const geolocations = _geos
+      .map(function(g){
+        const lat = parseFloat(g.lat);
+        const lng = parseFloat(g.lng);
+        if(isNaN(lat) || isNaN(lng)) return null;
+        return {
+          nombre:   g.nombre || '',
+          lat:      lat,
+          lng:      lng,
+          radio:    parseInt(g.radio, 10) || 100,
+          maps_url: g.maps_url || ''
+        };
+      })
+      .filter(function(g){ return g !== null && g.nombre.trim() !== ''; });
+
+    const API_URL = 'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/public-config.json';
+    const headers = {
+      'Authorization': 'token ' + token,
+      'Accept':        'application/vnd.github.v3+json'
+    };
+
+    async function doPut(sha, cfg){
+      const content = JSON.stringify(cfg, null, 2);
+      const res = await fetch(API_URL, {
+        method: 'PUT',
+        headers: Object.assign({}, headers, { 'Content-Type':'application/json' }),
+        body: JSON.stringify({
+          message: 'Auto-sync geolocations desde Config Master',
+          content: btoa(unescape(encodeURIComponent(content))),
+          branch:  'main',
+          sha:     sha
+        })
+      });
+      return res;
+    }
+
+    setStatus('⏳ Subiendo geolocations a GitHub…', 'var(--blue)');
+
+    try {
+      // 1) GET config actual para obtener SHA y preservar otros campos
+      const resActual = await fetch(API_URL + '?ref=main&t=' + Date.now(), { headers });
+      if(!resActual.ok){
+        setStatus('⚠️ Error GitHub: ' + resActual.status, 'var(--red)');
+        return { ok:false, reason:'gh-get-' + resActual.status };
+      }
+      const dataActual = await resActual.json();
+      let cfgActual;
+      try {
+        cfgActual = JSON.parse(decodeURIComponent(escape(atob(dataActual.content.replace(/\n/g, '')))));
+      } catch(e){ cfgActual = {}; }
+
+      // Preservar campos críticos
+      if(!cfgActual.n8n_url)  cfgActual.n8n_url  = lsGet('n8n_url')  || 'https://primary-production-5c3c.up.railway.app';
+      if(!cfgActual.odoo_url) cfgActual.odoo_url = lsGet('odoo_url') || 'https://serviciosfts.odoo.com';
+      if(cfgActual.demo_mode === undefined) cfgActual.demo_mode = false;
+
+      cfgActual.geolocations = geolocations;
+      cfgActual.updated      = new Date().toISOString().split('T')[0];
+
+      // 2) PUT con el SHA actual
+      let resPut = await doPut(dataActual.sha, cfgActual);
+
+      // 3) Manejo de 409 SHA conflict → reintento con SHA fresco
+      if(resPut.status === 409){
+        setStatus('🔄 Conflicto SHA, reintentando…', 'var(--blue)');
+        const resRetry = await fetch(API_URL + '?ref=main&t=' + Date.now(), { headers });
+        if(!resRetry.ok){
+          setStatus('⚠️ Error reintento: ' + resRetry.status, 'var(--red)');
+          return { ok:false, reason:'gh-retry-' + resRetry.status };
+        }
+        const dataRetry = await resRetry.json();
+        resPut = await doPut(dataRetry.sha, cfgActual);
+      }
+
+      if(!resPut.ok){
+        let errBody = {};
+        try { errBody = await resPut.json(); } catch(e){}
+        setStatus('❌ Error PUT: ' + resPut.status + (errBody.message ? ' — ' + errBody.message : ''), 'var(--red)');
+        return { ok:false, reason:'gh-put-' + resPut.status };
+      }
+
+      // Guardar timestamp local
+      localStorage.setItem('ops_geo_sync_timestamp', new Date().toISOString());
+      setStatus('✅ ' + geolocations.length + ' sitio(s) sincronizados', 'var(--green)');
+      return { ok:true, count: geolocations.length };
+
+    } catch(e){
+      setStatus('❌ ' + e.message, 'var(--red)');
+      return { ok:false, reason: e.message };
+    }
+  }
+  window.syncGeoGitHub = syncGeoGitHub;
+
+  // ═════════════════════════════════════════════
+  // LOAD / SAVE: KIOSK
+  // ═════════════════════════════════════════════
+  function loadKiosk(){
+    $('ks_company_id').value              = lsGet('ops_kiosk_company_id');
+    $('ks_field_pin').value               = lsGet('ops_kiosk_field_pin');
+    $('ks_field_photo').value             = lsGet('ops_kiosk_field_photo');
+    $('ks_field_manager').value           = lsGet('ops_kiosk_field_manager');
+    $('ks_field_supervisor_email').value  = lsGet('ops_kiosk_field_supervisor_email');
+    $('ks_field_supervisor_wa').value     = lsGet('ops_kiosk_field_supervisor_wa');
+
+    // Stages (JSON array) → checkboxes
+    let stages = [];
+    try { stages = JSON.parse(lsGet('ops_kiosk_stages') || '[]'); } catch(e){}
+    if(!Array.isArray(stages)) stages = [];
+    $('ks_stage_todo').checked     = stages.indexOf('To Do') !== -1;
+    $('ks_stage_progress').checked = stages.indexOf('In Progress') !== -1;
+    $('ks_stage_hold').checked     = stages.indexOf('Hold') !== -1;
+    $('ks_stage_done').checked     = stages.indexOf('Done') !== -1;
+
+    // Geolocations → render visual
+    readGeosFromStorage();
+    renderGeos();
+
+    // Reconocimiento facial
+    $('ks_face_enabled').checked  = lsGet('ops_kiosk_face_enabled') !== '0';  // default ON
+    $('ks_face_required').checked = lsGet('ops_kiosk_face_required') === '1';
+    const th = parseFloat(lsGet('ops_kiosk_face_threshold') || '0.5');
+    const pct = Math.round((isNaN(th) ? 0.5 : th) * 100);
+    $('ks_face_threshold').value  = pct;
+    $('ks_face_threshold_val').textContent = pct + '%';
+
+    $('ks_master_pin').value = lsGet('ops_kiosk_master_pin');
+  }
+  window.loadKiosk = loadKiosk;
+
+  async function saveKiosk(){
+    // 1) Campos simples
+    lsSet('ops_kiosk_company_id',             $('ks_company_id').value.trim());
+    lsSet('ops_kiosk_field_pin',              $('ks_field_pin').value.trim());
+    lsSet('ops_kiosk_field_photo',            $('ks_field_photo').value.trim());
+    lsSet('ops_kiosk_field_manager',          $('ks_field_manager').value.trim());
+    lsSet('ops_kiosk_field_supervisor_email', $('ks_field_supervisor_email').value.trim());
+    lsSet('ops_kiosk_field_supervisor_wa',    $('ks_field_supervisor_wa').value.trim());
+
+    // 2) Stages → JSON array
+    const stages = [];
+    if($('ks_stage_todo').checked)     stages.push('To Do');
+    if($('ks_stage_progress').checked) stages.push('In Progress');
+    if($('ks_stage_hold').checked)     stages.push('Hold');
+    if($('ks_stage_done').checked)     stages.push('Done');
+    lsSet('ops_kiosk_stages', JSON.stringify(stages));
+
+    // 3) Geolocations → JSON (guardar TAL CUAL, aunque tengan lat/lng vacíos para edición local)
+    lsSet('ops_kiosk_geolocations', JSON.stringify(_geos));
+
+    // 4) Face
+    lsSet('ops_kiosk_face_enabled',   $('ks_face_enabled').checked  ? '1' : '0');
+    lsSet('ops_kiosk_face_required',  $('ks_face_required').checked ? '1' : '0');
+    const pct = parseInt($('ks_face_threshold').value, 10);
+    lsSet('ops_kiosk_face_threshold', String((isNaN(pct) ? 50 : pct) / 100));
+
+    // 5) PIN
+    const pin = $('ks_master_pin').value.trim();
+    if(pin && !/^\d{4}$/.test(pin)){
+      toast('⚠️ El PIN debe ser 4 dígitos', 'warn');
+      return;
+    }
+    lsSet('ops_kiosk_master_pin', pin);
+
+    toast('💾 Kiosk guardado — subiendo geo…', 'ok');
+
+    // 6) Auto-sync geolocations a public-config.json
+    const result = await syncGeoGitHub();
+    if(result.ok){
+      toast('✅ Kiosk guardado + ' + result.count + ' geo(s) sincronizadas', 'ok');
+    } else if(result.reason === 'no-token'){
+      toast('⚠️ Guardado local — falta token GitHub para sync', 'warn');
+    } else {
+      toast('⚠️ Guardado local — sync geo falló', 'warn');
+    }
+  }
+  window.saveKiosk = saveKiosk;
+
+  // ═════════════════════════════════════════════
+  // LOAD / SAVE: PLANEACIÓN
+  // ═════════════════════════════════════════════
+  function loadPlaneacion(){
+    $('pl_hora_entrada').value = lsGet('ops_plan_hora_entrada', '07:00');
+    $('pl_hora_salida').value  = lsGet('ops_plan_hora_salida',  '17:00');
+    $('pl_hora_limite').value  = lsGet('ops_plan_hora_limite',  '18:00');
+    $('pl_dia_semanal').value  = lsGet('ops_plan_dia_semanal',  'viernes');
+    $('pl_recordatorio').checked = lsGet('ops_plan_recordatorio') === '1';
+    $('pl_wa_webhook').value   = lsGet('ops_plan_wa_webhook');
+  }
+  window.loadPlaneacion = loadPlaneacion;
+
+  function savePlaneacion(){
+    lsSet('ops_plan_hora_entrada',  $('pl_hora_entrada').value);
+    lsSet('ops_plan_hora_salida',   $('pl_hora_salida').value);
+    lsSet('ops_plan_hora_limite',   $('pl_hora_limite').value);
+    lsSet('ops_plan_dia_semanal',   $('pl_dia_semanal').value);
+    lsSet('ops_plan_recordatorio',  $('pl_recordatorio').checked ? '1' : '0');
+    lsSet('ops_plan_wa_webhook',    $('pl_wa_webhook').value.trim());
+    toast('✅ Planeación guardada', 'ok');
+  }
+  window.savePlaneacion = savePlaneacion;
+
+  // ═════════════════════════════════════════════
+  // LOAD / SAVE: DASHBOARD
+  // ═════════════════════════════════════════════
+  function loadDashboard(){
+    const refresh = parseInt(lsGet('ops_dash_refresh', '5'), 10);
+    $('dash_refresh').value = isNaN(refresh) ? 5 : refresh;
+    $('dash_refresh_val').textContent = $('dash_refresh').value + ' min';
+    // Default ON (si no está explícito en '0')
+    $('dash_alerta_sin_checar').checked  = lsGet('ops_dash_alerta_sin_checar')  !== '0';
+    $('dash_alerta_fuera_zona').checked  = lsGet('ops_dash_alerta_fuera_zona')  !== '0';
+    $('dash_alerta_extra').checked       = lsGet('ops_dash_alerta_extra')       !== '0';
+  }
+  window.loadDashboard = loadDashboard;
+
+  function saveDashboard(){
+    lsSet('ops_dash_refresh',            $('dash_refresh').value);
+    lsSet('ops_dash_alerta_sin_checar',  $('dash_alerta_sin_checar').checked ? '1' : '0');
+    lsSet('ops_dash_alerta_fuera_zona',  $('dash_alerta_fuera_zona').checked ? '1' : '0');
+    lsSet('ops_dash_alerta_extra',       $('dash_alerta_extra').checked      ? '1' : '0');
+    toast('✅ Dashboard guardado', 'ok');
+  }
+  window.saveDashboard = saveDashboard;
+
+  // ═════════════════════════════════════════════
+  // LOAD / SAVE: INGENIERÍA
+  // ═════════════════════════════════════════════
+  function loadIngenieria(){
+    $('ing_system_prompt').value = lsGet('fts_system_prompt');
+  }
+  window.loadIngenieria = loadIngenieria;
+
+  function saveIngenieria(){
+    const txt = $('ing_system_prompt').value;
+    // Si está vacío, borramos la key para que el módulo use el default embebido
+    if(txt.trim() === ''){
+      localStorage.removeItem('fts_system_prompt');
+      toast('✅ System Prompt vaciado — se usará el default', 'ok');
+    } else {
+      lsSet('fts_system_prompt', txt);
+      toast('✅ System Prompt guardado', 'ok');
+    }
+  }
+  window.saveIngenieria = saveIngenieria;
+
+  function resetIngenieriaPrompt(){
+    if(!confirm('¿Borrar el System Prompt custom y volver al default embebido?')) return;
+    localStorage.removeItem('fts_system_prompt');
+    $('ing_system_prompt').value = '';
+    toast('↺ System Prompt reseteado al default', 'ok');
+  }
+  window.resetIngenieriaPrompt = resetIngenieriaPrompt;
+
+})();
+</script>
+
+<!-- TODO: script Parte 3B-2 (sync, users, sistema, init final) -->
 
 </body>
 </html>
