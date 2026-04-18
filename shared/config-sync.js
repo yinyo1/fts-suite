@@ -188,6 +188,18 @@
       if(config._github_token){
         localStorage.setItem('ops_github_token', config._github_token);
       }
+
+      // Dual-write para keys críticas (sin prefijo ops_)
+      if(config['ops_n8n_url'])  localStorage.setItem('n8n_url',  config['ops_n8n_url']);
+      if(config['ops_odoo_url']) localStorage.setItem('odoo_url', config['ops_odoo_url']);
+      if(config['ops_demo_mode'] !== undefined) localStorage.setItem('demo_mode', config['ops_demo_mode'] === '1' ? 'true' : 'false');
+      if(config['ops_github_token']) localStorage.setItem('key_github_token', config['ops_github_token']);
+      if(config._github_token)       localStorage.setItem('key_github_token', config._github_token);
+      if(config['key_claude'])       localStorage.setItem('key_claude', config['key_claude']);
+      if(config['key_groq'])         localStorage.setItem('key_groq', config['key_groq']);
+      if(config['key_openrouter'])   localStorage.setItem('key_openrouter', config['key_openrouter']);
+      if(config['key_gemini'])       localStorage.setItem('key_gemini', config['key_gemini']);
+
       localStorage.setItem('ops_sync_password', password);
       localStorage.setItem('ops_last_sync',     new Date().toISOString());
 
