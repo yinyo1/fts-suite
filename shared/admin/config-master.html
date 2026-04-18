@@ -883,7 +883,257 @@
 <!-- ═══ TOAST ═══ -->
 <div class="cm-toast" id="cmToast"></div>
 
-<!-- TODO: script (auth check + handlers + init) -->
+<!-- ═══ SCRIPT — Parte 3A: auth + helpers + loaders + conexiones + apikeys ═══ -->
+<script>
+(function(){
+  'use strict';
+
+  // ─────────────────────────────────────────────
+  // HELPERS
+  // ─────────────────────────────────────────────
+  function $(id){ return document.getElementById(id); }
+  function lsGet(k, def){ const v = localStorage.getItem(k); return v === null ? (def === undefined ? '' : def) : v; }
+  function lsSet(k, v){
+    if(v === null || v === undefined || v === '') localStorage.removeItem(k);
+    else localStorage.setItem(k, String(v));
+  }
+  function lsSetDual(k1, k2, v){ lsSet(k1, v); lsSet(k2, v); }
+
+  // Exponer para que los onclick inline del HTML encuentren las funciones
+  window.$ = $;
+
+  // ─────────────────────────────────────────────
+  // TOAST
+  // ─────────────────────────────────────────────
+  let _toastTimer = null;
+  function toast(msg, type){
+    const el = $('cmToast');
+    if(!el) return;
+    el.className = 'cm-toast';
+    if(type) el.classList.add(type);
+    el.textContent = msg;
+    // force reflow y mostrar
+    void el.offsetWidth;
+    el.classList.add('show');
+    if(_toastTimer) clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 3200);
+  }
+  window.toast = toast;
+
+  // ─────────────────────────────────────────────
+  // AUTH CHECK — solo ftsmaster puede ver este panel
+  // ─────────────────────────────────────────────
+  function getSession(){
+    // Preferir FTSAuth.getSession() si está disponible (maneja timeout de inactividad)
+    if(typeof FTSAuth !== 'undefined' && typeof FTSAuth.getSession === 'function'){
+      return FTSAuth.getSession();
+    }
+    // Fallback: leer directo del localStorage
+    try {
+      const raw = localStorage.getItem('fts_session');
+      return raw ? JSON.parse(raw) : null;
+    } catch(e){ return null; }
+  }
+
+  function enforceMasterAccess(){
+    const sess = getSession();
+    if(!sess || sess.role !== 'master'){
+      // Mostrar overlay bloqueante
+      const ov = $('cmAuthOverlay');
+      if(ov) ov.style.display = 'flex';
+      const err = $('cmAuthErr');
+      if(err) err.textContent = sess ? ('Sesión actual: ' + (sess.role || 'sin rol')) : 'Sin sesión activa';
+      // Ocultar el contenido del panel
+      document.querySelectorAll('.cm-topbar, .cm-layout, .cm-toast').forEach(function(el){ el.style.display = 'none'; });
+      return false;
+    }
+    // Actualizar user info en topbar
+    const ui = $('cmUserInfo');
+    if(ui) ui.textContent = '👤 ' + (sess.nombre || sess.username || 'master');
+    return true;
+  }
+
+  // ─────────────────────────────────────────────
+  // NAVEGACIÓN ENTRE SECCIONES
+  // ─────────────────────────────────────────────
+  function showSection(id){
+    document.querySelectorAll('.cm-section').forEach(function(s){ s.classList.remove('active'); });
+    document.querySelectorAll('.cm-nav-item').forEach(function(n){ n.classList.remove('active'); });
+    const sec = $(id);
+    if(sec) sec.classList.add('active');
+    const nav = document.querySelector('.cm-nav-item[data-section="' + id + '"]');
+    if(nav) nav.classList.add('active');
+    // Guardar sección activa para mantenerla al recargar
+    try { sessionStorage.setItem('cm_last_section', id); } catch(e){}
+
+    // Lazy loads por sección
+    if(id === 'sec-sync')     loadSync();
+    if(id === 'sec-sistema')  runSysCheck(true);
+  }
+  window.showSection = showSection;
+
+  // ─────────────────────────────────────────────
+  // LOAD: CONEXIONES
+  // ─────────────────────────────────────────────
+  function loadConexiones(){
+    $('cnx_n8n_url').value  = lsGet('ops_n8n_url')  || lsGet('n8n_url')  || '';
+    $('cnx_odoo_url').value = lsGet('ops_odoo_url') || lsGet('odoo_url') || '';
+    $('cnx_odoo_db').value  = lsGet('ops_odoo_db', 'serviciosfts');
+    $('cnx_odoo_api').value = lsGet('ops_api_key')  || lsGet('key_odoo_api') || '';
+    const demo = lsGet('ops_demo_mode') || lsGet('demo_mode') || '0';
+    $('cnx_demo_mode').checked = (demo === '1' || demo === 'true');
+  }
+  window.loadConexiones = loadConexiones;
+
+  function saveConexiones(){
+    const n8n  = $('cnx_n8n_url').value.trim();
+    const odoo = $('cnx_odoo_url').value.trim();
+    const db   = $('cnx_odoo_db').value.trim() || 'serviciosfts';
+    const api  = $('cnx_odoo_api').value.trim();
+    const demo = $('cnx_demo_mode').checked;
+
+    lsSetDual('ops_n8n_url',  'n8n_url',  n8n);
+    lsSetDual('ops_odoo_url', 'odoo_url', odoo);
+    lsSet('ops_odoo_db', db);
+    lsSetDual('ops_api_key',  'key_odoo_api', api);
+    // Dual-write con formatos distintos: ops_demo_mode usa '1'/'0', demo_mode usa 'true'/'false'
+    lsSet('ops_demo_mode', demo ? '1' : '0');
+    lsSet('demo_mode',     demo ? 'true' : 'false');
+
+    toast('✅ Conexiones guardadas', 'ok');
+  }
+  window.saveConexiones = saveConexiones;
+
+  // ─────────────────────────────────────────────
+  // TEST N8N
+  // ─────────────────────────────────────────────
+  async function testN8N(){
+    const urlBase = $('cnx_n8n_url').value.trim() || lsGet('ops_n8n_url');
+    const result  = $('cnx_n8n_result');
+    if(!urlBase){
+      result.textContent = '⚠️ Ingresa la URL primero';
+      result.style.color = '#b45309';
+      return;
+    }
+    result.textContent = '⏳ Probando…';
+    result.style.color = '';
+    const endpoint = urlBase.replace(/\/+$/, '') + '/webhook/kiosk/empleados';
+    try {
+      const r = await fetch(endpoint, {
+        method:  'POST',
+        headers: { 'Content-Type':'application/json' },
+        body:    JSON.stringify({ ping: true, source: 'config-master' }),
+        // Timeout manual con AbortController
+        signal:  AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined
+      });
+      if(r.ok){
+        result.textContent = '✅ OK (HTTP ' + r.status + ')';
+        result.style.color = 'var(--green)';
+        toast('✅ n8n responde correctamente', 'ok');
+      } else {
+        result.textContent = '⚠️ HTTP ' + r.status + ' ' + r.statusText;
+        result.style.color = 'var(--red)';
+        toast('⚠️ n8n respondió ' + r.status, 'warn');
+      }
+    } catch(e){
+      result.textContent = '❌ ' + e.message;
+      result.style.color = 'var(--red)';
+      toast('❌ No se pudo conectar a n8n', 'err');
+    }
+  }
+  window.testN8N = testN8N;
+
+  // ─────────────────────────────────────────────
+  // LOAD / SAVE: API KEYS
+  // ─────────────────────────────────────────────
+  function loadAPIKeys(){
+    // Claude: preferimos key_claude (estandarizada), fallback a fts_api_key (legacy)
+    $('key_claude_input').value     = lsGet('key_claude')     || lsGet('fts_api_key') || '';
+    $('key_groq_input').value       = lsGet('key_groq')       || '';
+    $('key_openrouter_input').value = lsGet('key_openrouter') || '';
+    $('key_gemini_input').value     = lsGet('key_gemini')     || '';
+    $('key_github_input').value     = lsGet('ops_github_token') || lsGet('key_github_token') || '';
+  }
+  window.loadAPIKeys = loadAPIKeys;
+
+  function saveAPIKeys(){
+    const claude     = $('key_claude_input').value.trim();
+    const groq       = $('key_groq_input').value.trim();
+    const openrouter = $('key_openrouter_input').value.trim();
+    const gemini     = $('key_gemini_input').value.trim();
+    const github     = $('key_github_input').value.trim();
+
+    // Dual-write Claude → key_claude + fts_api_key (compat con análisis-estructural)
+    lsSetDual('key_claude', 'fts_api_key', claude);
+    lsSet('key_groq',       groq);
+    lsSet('key_openrouter', openrouter);
+    lsSet('key_gemini',     gemini);
+    // Dual-write GitHub PAT → ops_github_token + key_github_token
+    lsSetDual('ops_github_token', 'key_github_token', github);
+
+    toast('✅ API Keys guardadas localmente', 'ok');
+  }
+  window.saveAPIKeys = saveAPIKeys;
+
+  // Encripta y sube TODO el localStorage relevante (ops_*/key_*/fts_*) a GitHub
+  // Reutiliza la contraseña guardada en ops_sync_password o pide ir a sec-sync
+  async function encryptAndPushKeys(){
+    // Guardar primero localmente
+    saveAPIKeys();
+    const token    = lsGet('ops_github_token');
+    const password = lsGet('ops_sync_password');
+    if(!token || !password){
+      toast('⚠️ Ve a "Sync" y configura token + contraseña maestra primero', 'warn');
+      showSection('sec-sync');
+      return;
+    }
+    if(typeof ConfigSync === 'undefined' || typeof ConfigSync.save !== 'function'){
+      toast('❌ ConfigSync no disponible', 'err');
+      return;
+    }
+    toast('⏳ Cifrando y subiendo a GitHub…');
+    try {
+      await ConfigSync.save(token, password);
+      toast('✅ Config cifrada subida a GitHub', 'ok');
+    } catch(e){
+      toast('❌ ' + e.message, 'err');
+    }
+  }
+  window.encryptAndPushKeys = encryptAndPushKeys;
+
+  // ─────────────────────────────────────────────
+  // LOAD ALL — cargar todos los inputs al iniciar
+  // (las funciones load* individuales se llaman desde aquí
+  //  y también están expuestas en window para botones "↻ Recargar")
+  // ─────────────────────────────────────────────
+  function loadAll(){
+    try { loadConexiones(); } catch(e){ console.warn('[CM] loadConexiones:', e); }
+    try { loadAPIKeys();    } catch(e){ console.warn('[CM] loadAPIKeys:',    e); }
+    // loadKiosk / loadPlaneacion / loadDashboard / loadIngenieria / loadSync
+    // se definen en la Parte 3B — se invocan si existen
+    if(typeof loadKiosk       === 'function') try { loadKiosk();       } catch(e){ console.warn(e); }
+    if(typeof loadPlaneacion  === 'function') try { loadPlaneacion();  } catch(e){ console.warn(e); }
+    if(typeof loadDashboard   === 'function') try { loadDashboard();   } catch(e){ console.warn(e); }
+    if(typeof loadIngenieria  === 'function') try { loadIngenieria();  } catch(e){ console.warn(e); }
+    if(typeof loadSync        === 'function') try { loadSync();        } catch(e){ console.warn(e); }
+  }
+  window.loadAll = loadAll;
+
+  // ─────────────────────────────────────────────
+  // INIT PARCIAL (Parte 3A) — la Parte 3B lo sobrescribirá con el init final
+  // ─────────────────────────────────────────────
+  window._cmInit3A = function(){
+    if(!enforceMasterAccess()) return;
+    loadAll();
+    // Restaurar última sección (si existe)
+    let last = null;
+    try { last = sessionStorage.getItem('cm_last_section'); } catch(e){}
+    if(last && $(last)) showSection(last);
+  };
+})();
+</script>
+
+<!-- TODO: script Parte 3B (saveKiosk, geo editor, sync, users, sistema, init final) -->
 
 </body>
 </html>
