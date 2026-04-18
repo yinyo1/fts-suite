@@ -102,14 +102,24 @@
 
   const ConfigSync = {
 
-    // Recolecta todas las keys ops_* del localStorage
+    // Recolecta todas las keys ops_*, key_* y fts_* del localStorage
+    // Excluye keys de auth/sesión locales que NO deben subirse a GitHub
     collectOpsKeys(){
       const config = {};
+      const EXCLUDE = new Set([
+        'ops_sync_password',  // password local, no se cifra a sí mismo
+        'ops_last_sync',      // timestamp local
+        'fts_session',        // sesión activa (auth-suite)
+        'fts_master_hash'     // hash temporal del primer login master
+      ]);
       for(let i = 0; i < localStorage.length; i++){
         const key = localStorage.key(i);
-        if(key && key.indexOf('ops_') === 0){
-          // Evitar recursión: no guardamos sync_password ni last_sync
-          if(key === 'ops_sync_password' || key === 'ops_last_sync') continue;
+        if(!key) continue;
+        if(EXCLUDE.has(key)) continue;
+        const isOps = key.indexOf('ops_') === 0;
+        const isKey = key.indexOf('key_') === 0;
+        const isFts = key.indexOf('fts_') === 0;
+        if(isOps || isKey || isFts){
           config[key] = localStorage.getItem(key);
         }
       }
