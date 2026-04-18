@@ -204,18 +204,15 @@
       const res = await fetch(PUBLIC_URL, { cache:'no-store' });
       if(res.ok){
         const pub = await res.json();
-        // Solo aplicar si no están ya configuradas (permite override local)
-        if(pub.n8n_url && !localStorage.getItem('ops_n8n_url')){
-          localStorage.setItem('ops_n8n_url', pub.n8n_url);
-        }
-        if(pub.odoo_url && !localStorage.getItem('ops_odoo_url')){
-          localStorage.setItem('ops_odoo_url', pub.odoo_url);
-        }
-        if(pub.demo_mode !== undefined && !localStorage.getItem('ops_demo_mode')){
-          localStorage.setItem('ops_demo_mode', pub.demo_mode ? '1' : '0');
-        }
+        if(pub.n8n_url) localStorage.setItem('ops_n8n_url', pub.n8n_url);
+        if(pub.n8n_url) localStorage.setItem('n8n_url', pub.n8n_url);
+        if(pub.odoo_url) localStorage.setItem('ops_odoo_url', pub.odoo_url);
+        if(pub.odoo_url) localStorage.setItem('odoo_url', pub.odoo_url);
+        if(pub.demo_mode !== undefined) localStorage.setItem('ops_demo_mode', pub.demo_mode ? '1' : '0');
+        if(pub.demo_mode !== undefined) localStorage.setItem('demo_mode', String(pub.demo_mode));
         if(pub.geolocations && pub.geolocations.length > 0){
           localStorage.setItem('ops_kiosk_geolocations', JSON.stringify(pub.geolocations));
+          localStorage.setItem('ops_geo_sync_timestamp', new Date().toISOString());
         }
         console.log('[FTSAuth] Config pública cargada');
       }
@@ -282,4 +279,8 @@
     hashPassword, loadUsers, autoLoadConfig, loadPublicConfig,
     initActivityTracking, updateActivity, resetInactivityTimer
   };
+
+  if(typeof autoLoadConfig === 'function'){
+    autoLoadConfig().catch(e => console.warn('[FTSAuth] autoLoad:', e.message));
+  }
 })();
