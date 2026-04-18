@@ -53,7 +53,10 @@
 
     <input id="login-user" type="text" placeholder="Usuario" autocomplete="username" style="width:100%;padding:12px;border:1px solid #e0e0e0;border-radius:8px;font-size:15px;margin-bottom:12px;box-sizing:border-box;background:#fff;color:#1a1a1a;font-family:inherit;outline:none">
 
-    <input id="login-pass" type="password" placeholder="Contraseña" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" style="width:100%;padding:12px;border:1px solid #e0e0e0;border-radius:8px;font-size:15px;margin-bottom:16px;box-sizing:border-box;background:#fff;color:#1a1a1a;font-family:inherit;outline:none">
+    <input id="login-pass" type="password" placeholder="Contraseña" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" style="width:100%;padding:12px;border:1px solid #e0e0e0;border-radius:8px;font-size:15px;margin-bottom:12px;box-sizing:border-box;background:#fff;color:#1a1a1a;font-family:inherit;outline:none">
+
+    <label for="masterPasswordLogin" style="display:block;font-size:12px;color:#666;margin-bottom:6px;font-weight:500">Contraseña maestra (opcional — restaura config completa)</label>
+    <input id="masterPasswordLogin" type="password" placeholder="Déjalo vacío si no tienes config guardada" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" style="width:100%;padding:12px;border:1px solid #e0e0e0;border-radius:8px;font-size:15px;margin-bottom:16px;box-sizing:border-box;background:#fff;color:#1a1a1a;font-family:inherit;outline:none">
 
     <button id="login-btn" onclick="doLogin()" style="width:100%;background:#D83B01;color:#fff;border:none;padding:14px;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit">Ingresar</button>
 
@@ -187,6 +190,18 @@ async function doLogin(){
       return;
     }
     FTSAuth.setSession(result.user);
+
+    // Restaurar config cifrada (ops_*/key_*/fts_*) si el usuario proporcionó la contraseña maestra
+    const masterPwd = document.getElementById('masterPasswordLogin') && document.getElementById('masterPasswordLogin').value;
+    if(masterPwd && typeof ConfigSync !== 'undefined'){
+      try {
+        await ConfigSync.load(masterPwd);
+        console.log('[Login] Config maestra restaurada');
+      } catch(e){
+        console.warn('[Login] Config maestra no cargó:', e.message);
+      }
+    }
+
     FTSAuth.initActivityTracking();
     document.getElementById('login-overlay').style.display = 'none';
     applyModuleAccess(result.user);
@@ -305,7 +320,7 @@ function doLogout(){
     btn.disabled = false;
     btn.onclick = doLogin;
   }
-  ['login-user','login-pass','login-pass-confirm'].forEach(function(id){
+  ['login-user','login-pass','login-pass-confirm','masterPasswordLogin'].forEach(function(id){
     const el = document.getElementById(id);
     if(el) el.value = '';
   });
