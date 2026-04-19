@@ -994,22 +994,6 @@ function updateConnStatus(){
   else el.textContent = 'conectado';
 }
 
-function mostrarEstadoSync(){
-  var el = document.getElementById('geo-sync-status');
-  if(!el) return;
-  var ts = localStorage.getItem('ops_geo_sync_timestamp');
-  var geos = [];
-  try{ geos = JSON.parse(localStorage.getItem('ops_kiosk_geolocations') || '[]'); } catch(e){}
-  if(!ts || geos.length === 0){
-    el.innerHTML = '<span style="color:#D83B01;font-size:11px">⚠️ Geo no sincronizada</span>';
-    return;
-  }
-  var hace = Math.round((Date.now() - new Date(ts).getTime()) / 60000);
-  var color = hace > 60 ? '#BF8F00' : '#107C10';
-  var icono = hace > 60 ? '⚠️' : '✅';
-  el.innerHTML = '<span style="color:' + color + ';font-size:11px">' + icono + ' Geo sync hace ' + hace + ' min · ' + geos.length + ' sitio(s)</span>';
-}
-
 // ═══ Init ═══
 async function initKiosk(){
   // Cargar config pública (siempre — las geolocations pueden cambiar)
@@ -1038,7 +1022,6 @@ async function initKiosk(){
   K.config = loadKioskConfig();
   tick(); setInterval(tick, 1000);
   updateConnStatus();
-  mostrarEstadoSync();
 
   await loadEmpleados();
   await loadSOs();
