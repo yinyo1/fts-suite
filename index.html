@@ -53,10 +53,16 @@
 
     <input id="login-user" type="text" placeholder="Usuario" autocomplete="username" style="width:100%;padding:12px;border:1px solid #e0e0e0;border-radius:8px;font-size:15px;margin-bottom:12px;box-sizing:border-box;background:#fff;color:#1a1a1a;font-family:inherit;outline:none">
 
-    <input id="login-pass" type="password" placeholder="Contraseña" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" style="width:100%;padding:12px;border:1px solid #e0e0e0;border-radius:8px;font-size:15px;margin-bottom:12px;box-sizing:border-box;background:#fff;color:#1a1a1a;font-family:inherit;outline:none">
+    <div style="position:relative;margin-bottom:12px">
+      <input id="login-pass" type="password" placeholder="Contraseña" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" style="width:100%;padding:12px 40px 12px 12px;border:1px solid #e0e0e0;border-radius:8px;font-size:15px;box-sizing:border-box;background:#fff;color:#1a1a1a;font-family:inherit;outline:none">
+      <button type="button" onclick="togglePass('login-pass',this)" aria-label="Mostrar/ocultar contraseña" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:#999;padding:4px">👁</button>
+    </div>
 
     <label for="masterPasswordLogin" style="display:block;font-size:12px;color:#666;margin-bottom:6px;font-weight:500">Contraseña maestra (opcional — restaura config completa)</label>
-    <input id="masterPasswordLogin" type="password" placeholder="Déjalo vacío si no tienes config guardada" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" style="width:100%;padding:12px;border:1px solid #e0e0e0;border-radius:8px;font-size:15px;margin-bottom:16px;box-sizing:border-box;background:#fff;color:#1a1a1a;font-family:inherit;outline:none">
+    <div style="position:relative;margin-bottom:16px">
+      <input id="masterPasswordLogin" type="password" placeholder="Déjalo vacío si no tienes config guardada" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" style="width:100%;padding:12px 40px 12px 12px;border:1px solid #e0e0e0;border-radius:8px;font-size:15px;box-sizing:border-box;background:#fff;color:#1a1a1a;font-family:inherit;outline:none">
+      <button type="button" onclick="togglePass('masterPasswordLogin',this)" aria-label="Mostrar/ocultar contraseña" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:#999;padding:4px">👁</button>
+    </div>
 
     <button id="login-btn" onclick="doLogin()" style="width:100%;background:#D83B01;color:#fff;border:none;padding:14px;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit">Ingresar</button>
 
@@ -140,6 +146,19 @@
 </div>
 
 <script>
+/* ── Toggle visibilidad de inputs password ── */
+function togglePass(inputId, btn){
+  const input = document.getElementById(inputId);
+  if(!input) return;
+  if(input.type === 'password'){
+    input.type = 'text';
+    btn.textContent = '🙈';
+  } else {
+    input.type = 'password';
+    btn.textContent = '👁';
+  }
+}
+
 /* ── Auth centralizado ── */
 let _firstLoginData = null;
 
