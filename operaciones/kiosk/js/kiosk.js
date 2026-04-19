@@ -1185,7 +1185,7 @@ async function mostrarEstadoEmpleado(empleado){
   var histDiv = document.getElementById('ksHistorialRapido');
   if(estado.historial && estado.historial.length > 0){
     var html = '<p style="font-size:12px;color:#666;margin:0 0 8px">Últimas checadas:</p>';
-    html += '<div style="max-height:180px;overflow-y:auto;border-radius:8px">';
+    html += '<div style="max-height:200px;overflow-y:auto;border:1px solid #e0e0e0;border-radius:8px;padding:4px">';
     estado.historial.forEach(function(r){
       var ciStr = (r.check_in || '').replace(' ', 'T');
       if(ciStr && ciStr.indexOf('Z') === -1 && ciStr.indexOf('+') === -1) ciStr += 'Z';
@@ -1213,11 +1213,11 @@ async function mostrarEstadoEmpleado(empleado){
 function renderEstadoBotones(estado){
   var botonesDiv = document.getElementById('ksEstadoBotones');
 
-  // Cleanup: remover botón inyectado de estado anterior (si existe)
+  // Cleanup: remover botón legacy inyectado (ya no se usa — Resolver está en #ksAccionRapida)
   var oldResolverBtn = document.getElementById('ksResolverBtn');
   if(oldResolverBtn) oldResolverBtn.remove();
 
-  // Botón de acción rápida en la mitad derecha del card de estado
+  // Botón de acción PRINCIPAL en la mitad derecha del card de estado
   var accionDiv = document.getElementById('ksAccionRapida');
   if(accionDiv){
     switch(estado.estado_actual){
@@ -1238,30 +1238,24 @@ function renderEstadoBotones(estado){
     }
   }
 
+  // Botones SECUNDARIOS (alternativos) en ksEstadoBotones — sin duplicar la acción principal
   var html = '';
 
   switch(estado.estado_actual){
     case 'sin_registro':
-      html = '<button onclick="iniciarCheckin(\'entrada\')" style="background:#107C10;color:#fff;border:none;padding:16px;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;font-family:inherit">✅ Registrar Entrada</button>' +
-        '<button onclick="olvideChecarEntrada()" style="background:#f0f4ff;color:#0078D4;border:1px solid #0078D4;padding:14px;border-radius:12px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;margin-top:4px">⏰ Llegué pero olvidé checar entrada</button>';
+      // Principal (Registrar Entrada) ya en #ksAccionRapida → sólo el alternativo
+      html = '<button onclick="olvideChecarEntrada()" style="background:#f0f4ff;color:#0078D4;border:1px solid #0078D4;padding:14px;border-radius:12px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit">⏰ Llegué pero olvidé checar entrada</button>';
       break;
     case 'activo':
-      html = '<button onclick="iniciarCheckin(\'salida_comida\')" style="background:#0078D4;color:#fff;border:none;padding:14px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">🍽️ Salida a Comer</button>' +
-        '<button onclick="iniciarCheckin(\'salida\')" style="background:#D83B01;color:#fff;border:none;padding:14px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">🚪 Salida Final</button>';
+      // Principal (Checar Salida) ya en #ksAccionRapida → sólo "Salida a Comer"
+      html = '<button onclick="iniciarCheckin(\'salida_comida\')" style="background:#0078D4;color:#fff;border:none;padding:14px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">🍽️ Salida a Comer</button>';
       break;
     case 'zona_gris':
-      html = '<button onclick="resolverZonaGris(\'turno\')" style="background:#0078D4;color:#fff;border:none;padding:14px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">🌙 Seguí en turno — Checar salida</button>' +
-        '<button onclick="resolverZonaGris(\'olvide\')" style="background:#f0f0f0;color:#333;border:1px solid #ccc;padding:14px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">❌ Olvidé checar salida</button>';
+      // Principal (Seguí en turno) ya en #ksAccionRapida → sólo el alternativo
+      html = '<button onclick="resolverZonaGris(\'olvide\')" style="background:#f0f0f0;color:#333;border:1px solid #ccc;padding:14px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">❌ Olvidé checar salida</button>';
       break;
     case 'error_critico':
-      // Botón Resolver inyectado ANTES del historial (entre el aviso sutil y ksHistorialRapido)
-      var resolverWrapper = document.createElement('div');
-      resolverWrapper.id = 'ksResolverBtn';
-      resolverWrapper.style.cssText = 'margin-bottom:16px';
-      resolverWrapper.innerHTML = '<button onclick="resolverErrorCritico()" style="width:100%;background:#D83B01;color:#fff;border:none;padding:14px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">🔴 Resolver</button>';
-      var histDiv = document.getElementById('ksHistorialRapido');
-      if(histDiv && histDiv.parentNode) histDiv.parentNode.insertBefore(resolverWrapper, histDiv);
-      // ksEstadoBotones queda solo con "Ver historial completo" (se añade abajo)
+      // Principal (Resolver) ya en #ksAccionRapida → no hay alternativo
       break;
   }
 
