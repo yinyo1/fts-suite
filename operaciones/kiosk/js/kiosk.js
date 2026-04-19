@@ -1185,7 +1185,7 @@ async function mostrarEstadoEmpleado(empleado){
   var histDiv = document.getElementById('ksHistorialRapido');
   if(estado.historial && estado.historial.length > 0){
     var html = '<p style="font-size:12px;color:#666;margin:0 0 8px">Últimas checadas:</p>';
-    var useScroll = estado.historial.length > 5;
+    var useScroll = estado.historial.length > 0;
     html += '<div style="border:1px solid #e0e0e0;border-radius:8px;padding:4px;' +
       (useScroll ? 'max-height:220px;overflow-y:auto;-webkit-overflow-scrolling:touch;' : '') + '">';
     estado.historial.forEach(function(r){
