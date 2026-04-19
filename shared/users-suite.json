@@ -3,7 +3,7 @@
     {
       "id": 1,
       "username": "ftsmaster",
-      "password_hash": null,
+      "password_hash": "6b7e107360e4603fb3f9e08c05cbcb31ae8bd9d65fa1ced9a9564c9263e8cbca",
       "nombre": "FTS Master",
       "activo": true,
       "vigencia": null,
