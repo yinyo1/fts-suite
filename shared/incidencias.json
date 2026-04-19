@@ -1,6 +1,18 @@
 {
   "incidencias": [
     {
+      "id": "INC-ADJ-1776574483640",
+      "tipo": "ajuste_hora_salida",
+      "estado": "pendiente_supervisor",
+      "empleado_id": 32,
+      "attendance_id": 12383,
+      "check_out_estimado": "2026-04-17 23:00:00",
+      "motivo": "Test debug",
+      "fecha_solicitud": "2026-04-19T04:54:43.640Z",
+      "aprobado_por": null,
+      "fecha_aprobacion": null
+    },
+    {
       "id": "INC-ADJ-1776574254463",
       "tipo": "ajuste_hora_salida",
       "estado": "pendiente_supervisor",
