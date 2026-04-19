@@ -14,6 +14,13 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-ser
 }
 .kiosk-screen.active{display:flex}
 
+/* Pantalla de estado: evita centrar verticalmente para que el contenido largo
+   (card + horas + aviso + historial scroll + botones) pueda desplazarse desde arriba */
+#ks-estado{
+  justify-content:flex-start;
+  padding-top:16px;
+}
+
 .kiosk-logo{display:block}
 .kiosk-logo-sm{width:40px;height:40px;border-radius:8px;background:#107C10;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff}
 
