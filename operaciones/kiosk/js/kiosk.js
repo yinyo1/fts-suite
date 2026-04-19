@@ -1377,7 +1377,7 @@ async function confirmarOlvideCheckout(){
   if(spinEl)  spinEl.style.display  = 'block';
   if(emojiEl) emojiEl.style.display = 'none';
   var textoEl = document.getElementById('ksEstadoTexto');
-  if(textoEl) textoEl.textContent = 'Procesando…';
+  if(textoEl) textoEl.textContent = 'Actualizando…';
 
   try{
     // Cerrar registro viejo con endpoint especial (bypassa candados)
