@@ -1159,6 +1159,12 @@ async function mostrarEstadoEmpleado(empleado){
       texto.textContent = estado.estado_actual || 'Estado desconocido';
   }
 
+  // Grid de horas solo visible durante jornada activa
+  var horasGrid = document.getElementById('ksHorasGrid');
+  if(horasGrid){
+    horasGrid.style.display = (estado.estado_actual === 'activo') ? 'flex' : 'none';
+  }
+
   // Aviso (subtexto pequeño debajo del card de estado — estilo sutil)
   var alertaDiv = document.getElementById('ksEstadoAlerta');
   if(estado.alerta_nivel === 'advertencia'){
