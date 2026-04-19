@@ -1185,7 +1185,7 @@ async function mostrarEstadoEmpleado(empleado){
   var histDiv = document.getElementById('ksHistorialRapido');
   if(estado.historial && estado.historial.length > 0){
     var html = '<p style="font-size:12px;color:#666;margin:0 0 8px">Últimas checadas:</p>';
-    html += '<div style="max-height:200px;overflow-y:auto;border:1px solid #e0e0e0;border-radius:8px;padding:4px">';
+    html += '<div style="max-height:200px;overflow-y:scroll;overflow-x:hidden;border:1px solid #e0e0e0;border-radius:8px;padding:4px;-webkit-overflow-scrolling:touch">';
     estado.historial.forEach(function(r){
       var ciStr = (r.check_in || '').replace(' ', 'T');
       if(ciStr && ciStr.indexOf('Z') === -1 && ciStr.indexOf('+') === -1) ciStr += 'Z';
