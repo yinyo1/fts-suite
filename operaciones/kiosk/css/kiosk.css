@@ -19,6 +19,8 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-ser
 #ks-estado{
   justify-content:flex-start;
   padding-top:16px;
+  transform:translateZ(0);
+  -webkit-transform:translateZ(0);
 }
 
 .kiosk-logo{display:block}
