@@ -1084,6 +1084,10 @@ async function mostrarEstadoEmpleado(empleado){
   if(_spinEl)  _spinEl.style.display  = 'block';
   if(_emojiEl) _emojiEl.style.display = 'none';
 
+  // Limpiar botón de acción rápida (mitad derecha del card) durante spinner
+  var _accionEl = document.getElementById('ksAccionRapida');
+  if(_accionEl) _accionEl.innerHTML = '';
+
   var foto = empleado.foto
     || (empleado.image_128
         ? (empleado.image_128.startsWith('data:') ? empleado.image_128 : 'data:image/png;base64,' + empleado.image_128)
@@ -1177,25 +1181,26 @@ async function mostrarEstadoEmpleado(empleado){
     alertaDiv.style.display = 'none';
   }
 
-  // Historial rápido
+  // Historial rápido (todos los registros con scroll)
   var histDiv = document.getElementById('ksHistorialRapido');
   if(estado.historial && estado.historial.length > 0){
     var html = '<p style="font-size:12px;color:#666;margin:0 0 8px">Últimas checadas:</p>';
-    estado.historial.slice(0, 3).forEach(function(r){
+    html += '<div style="max-height:180px;overflow-y:auto;border-radius:8px">';
+    estado.historial.forEach(function(r){
       var ciStr = (r.check_in || '').replace(' ', 'T');
       if(ciStr && ciStr.indexOf('Z') === -1 && ciStr.indexOf('+') === -1) ciStr += 'Z';
       var ci = new Date(ciStr);
       var coStr = r.check_out ? (r.check_out.replace(' ', 'T')) : '';
       if(coStr && coStr.indexOf('Z') === -1 && coStr.indexOf('+') === -1) coStr += 'Z';
       var co = coStr ? new Date(coStr) : null;
-      var flag = r.es_sospechoso ? ' ⚠️' : '';
-      var nocturno = r.es_nocturno ? ' 🌙' : '';
-      html += '<div style="display:flex;justify-content:space-between;padding:8px 10px;background:#f8f9fa;border-radius:8px;margin-bottom:6px;font-size:13px">' +
-        '<span>' + ci.toLocaleDateString('es-MX', { weekday:'short', day:'numeric', month:'short' }) + nocturno + flag + '</span>' +
-        '<span style="color:#0078D4">' + ci.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' }) +
-        ' → ' + (co ? co.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' }) : '⏳') + '</span>' +
+      html += '<div style="display:grid;grid-template-columns:auto 1fr 1fr auto;gap:6px;padding:8px 10px;background:#f8f9fa;border-radius:8px;margin-bottom:4px;font-size:12px;align-items:center">' +
+        '<span>' + (r.es_nocturno ? '🌙' : '☀️') + (r.es_sospechoso ? '⚠️' : '') + '</span>' +
+        '<span style="color:#333">' + ci.toLocaleDateString('es-MX', { weekday:'short', day:'numeric', month:'short' }) + '</span>' +
+        '<span style="color:#0078D4">' + ci.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' }) + ' → ' + (co ? co.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' }) : '⏳') + '</span>' +
+        '<span style="color:#666;font-size:11px">' + (r.horas ? r.horas.toFixed(1) + 'h' : '—') + '</span>' +
       '</div>';
     });
+    html += '</div>';
     histDiv.innerHTML = html;
   } else {
     histDiv.innerHTML = '';
@@ -1211,6 +1216,27 @@ function renderEstadoBotones(estado){
   // Cleanup: remover botón inyectado de estado anterior (si existe)
   var oldResolverBtn = document.getElementById('ksResolverBtn');
   if(oldResolverBtn) oldResolverBtn.remove();
+
+  // Botón de acción rápida en la mitad derecha del card de estado
+  var accionDiv = document.getElementById('ksAccionRapida');
+  if(accionDiv){
+    switch(estado.estado_actual){
+      case 'sin_registro':
+        accionDiv.innerHTML = '<button onclick="iniciarCheckin(\'entrada\')" style="background:#107C10;color:#fff;border:none;padding:14px 10px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;width:100%">✅ Registrar<br>Entrada</button>';
+        break;
+      case 'activo':
+        accionDiv.innerHTML = '<button onclick="iniciarCheckin(\'salida\')" style="background:#D83B01;color:#fff;border:none;padding:14px 10px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;width:100%">🚪 Checar<br>Salida</button>';
+        break;
+      case 'zona_gris':
+        accionDiv.innerHTML = '<button onclick="resolverZonaGris(\'turno\')" style="background:#0078D4;color:#fff;border:none;padding:14px 10px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;width:100%">🌙 Seguí<br>en turno</button>';
+        break;
+      case 'error_critico':
+        accionDiv.innerHTML = '<button onclick="resolverErrorCritico()" style="background:#D83B01;color:#fff;border:none;padding:14px 10px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;width:100%">🔴 Resolver<br>ahora</button>';
+        break;
+      default:
+        accionDiv.innerHTML = '';
+    }
+  }
 
   var html = '';
 
