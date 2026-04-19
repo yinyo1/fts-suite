@@ -14,6 +14,11 @@
 
 <!-- ═══════ PANTALLA 1 — HOME ═══════ -->
 <div class="kiosk-screen active" id="ks-home" onclick="showScreen('ks-search')">
+  <a href="../../index.html"
+     style="position:absolute;top:16px;left:16px;background:rgba(0,0,0,0.1);color:#666;text-decoration:none;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;z-index:10"
+     onclick="event.stopPropagation()">
+     ← Suite
+  </a>
   <div class="kiosk-logo" style="width:160px;height:54px;background:var(--logo) center/contain no-repeat;margin:0 auto 16px"></div>
   <div class="kiosk-time" id="ksClock">--:--:--</div>
   <div class="kiosk-date" id="ksDate">—</div>
