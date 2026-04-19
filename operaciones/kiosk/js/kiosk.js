@@ -725,6 +725,24 @@ function searchHistorial(q){
   }).join('');
 }
 
+function abrirHistorialDirecto(){
+  var emp = window._empleadoActual;
+  if(!emp || !emp.id){
+    // Sin empleado activo → ir a historial normal
+    showScreen('ks-historial');
+    return;
+  }
+  // Ir a historial y cargar directamente el empleado activo
+  showScreen('ks-historial');
+  // Ocultar búsqueda, mostrar historial directo
+  var searchEl = document.getElementById('hist-search');
+  var listaEl  = document.getElementById('hist-empleados');
+  if(searchEl) searchEl.style.display = 'none';
+  if(listaEl)  listaEl.style.display  = 'none';
+  mostrarHistorial(emp.id);
+}
+window.abrirHistorialDirecto = abrirHistorialDirecto;
+
 async function mostrarHistorial(empId){
   const emp = K.empleados.find(e => e.id === empId);
   if(!emp) return;
@@ -1251,7 +1269,7 @@ function renderEstadoBotones(estado){
   }
 
   // Siempre historial completo al final
-  html += '<button onclick="showScreen(\'ks-historial\')" style="background:transparent;color:#0078D4;border:1px solid #0078D4;padding:12px;border-radius:12px;font-size:14px;cursor:pointer;margin-top:4px;font-family:inherit">📋 Ver historial completo</button>';
+  html += '<button onclick="abrirHistorialDirecto()" style="background:transparent;color:#0078D4;border:1px solid #0078D4;padding:12px;border-radius:12px;font-size:14px;cursor:pointer;margin-top:4px;font-family:inherit">📋 Ver historial completo</button>';
 
   botonesDiv.innerHTML = html;
 }
