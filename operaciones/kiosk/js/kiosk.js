@@ -675,13 +675,26 @@ async function registrarAsistencia(){
       var result = await window.OdooKiosk.registrarCheckin(payload);
       // Verificar candados del backend
       var r = Array.isArray(result) ? result[0] : result;
-      if(r && r.accion_valida === false){
-        var errMsg = r.error_msg || 'Error desconocido';
-        mostrarErrorCandado(errMsg);
+      console.log('[KIOSK] n8n response:', r);
+
+      // Detectar éxito explícito (v4.0 usa accion_valida:true; v3.4 algunos endpoints usaban success:true)
+      if(r && (r.accion_valida === true || r.success === true)){
+        // éxito real, continuar al reset
+      } else if(r && r.accion_valida === false){
+        mostrarErrorCandado(r.error_msg || r.mensaje || 'Error desconocido');
+        return;
+      } else {
+        // Respuesta ambigua o vacía — el workflow debe responder con shape explícito
+        mostrarErrorCandado('Respuesta inválida del servidor. Intenta de nuevo.');
         return;
       }
     } catch(e){
-      console.warn('Error enviando a n8n:', e);
+      console.error('[KIOSK] Error fetch n8n:', e);
+      mostrarErrorCandado(
+        'No se pudo conectar al servidor. Verifica tu internet e intenta de nuevo. ' +
+        'Si el problema persiste, avisa a Esteban.'
+      );
+      return; // NO seguir al reset que limpia estado
     }
   } else {
     console.log('[DEMO] Payload kiosk:', payload);
@@ -1392,6 +1405,7 @@ async function confirmarOlvideCheckout(){
       motivo:             motivoInput.value.trim(),
       es_estimado:        true
     });
+    console.log('[KIOSK] cerrar-registro response:', resCheckout);
     var r = Array.isArray(resCheckout) ? resCheckout[0] : resCheckout;
     // cerrar-registro devuelve respuesta GitHub (content + commit) si OK,
     // o un objeto con error / accion_valida:false si falla.
@@ -1535,17 +1549,28 @@ async function confirmarOlvideEntrada(){
     });
 
     var r = Array.isArray(res) ? res[0] : res;
-    if(r && r.accion_valida === false){
-      mostrarErrorCandado(r.error_msg || 'Error al registrar entrada');
+    console.log('[KIOSK] n8n response:', r);
+
+    // Detectar éxito explícito (v4.0 usa accion_valida:true; v3.4 algunos endpoints usaban success:true)
+    if(r && (r.accion_valida === true || r.success === true)){
+      // éxito real, refrescar estado
+      mostrarEstadoEmpleado(empleado);
+    } else if(r && r.accion_valida === false){
+      mostrarErrorCandado(r.error_msg || r.mensaje || 'Error al registrar entrada');
+      return;
+    } else {
+      // Respuesta ambigua o vacía
+      mostrarErrorCandado('Respuesta inválida del servidor. Intenta de nuevo.');
       return;
     }
 
-    // Refrescar estado
-    mostrarEstadoEmpleado(empleado);
-
   } catch(e){
-    alert('Error al procesar: ' + e.message);
-    mostrarEstadoEmpleado(empleado);
+    console.error('[KIOSK] Error fetch n8n:', e);
+    mostrarErrorCandado(
+      'No se pudo conectar al servidor. Verifica tu internet e intenta de nuevo. ' +
+      'Si el problema persiste, avisa a Esteban.'
+    );
+    return; // NO seguir al reset que limpia estado
   }
 }
 window.confirmarOlvideEntrada = confirmarOlvideEntrada;
