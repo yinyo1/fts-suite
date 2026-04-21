@@ -90,6 +90,7 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-ser
 .kiosk-so-card:hover,.kiosk-so-card:active{border-color:#107C10;background:#f0faf0}
 .kiosk-so-num{font-size:13px;color:#107C10;font-weight:700;letter-spacing:1px}
 .kiosk-so-name{font-size:18px;font-weight:700;margin-top:4px;color:#1a1a1a}
+.kiosk-so-cliente{font-size:13px;color:#666;margin-top:4px}
 
 .kiosk-pin-pad{
   display:grid;grid-template-columns:repeat(3,1fr);
