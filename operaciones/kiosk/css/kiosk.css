@@ -123,6 +123,26 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-ser
 }
 .kiosk-pin-ok-btn.enabled{background:#107C10;cursor:pointer}
 .kiosk-pin-ok-btn.enabled:active{transform:scale(0.97)}
+
+/* Keypad bloqueado durante validación geo (post-PIN) */
+.ks-verify-busy .kiosk-pin-pad,
+.ks-verify-busy .kiosk-pin-ok-btn{
+  pointer-events:none;
+  opacity:0.4;
+}
+
+/* Spinner inline pequeño (para estados de "procesando") */
+.mini-spinner{
+  display:inline-block;
+  width:14px;height:14px;
+  margin-right:6px;
+  border:2px solid #e0e0e0;
+  border-top-color:#0078D4;
+  border-radius:50%;
+  animation:mini-spin 0.8s linear infinite;
+  vertical-align:middle;
+}
+@keyframes mini-spin{to{transform:rotate(360deg)}}
 .kiosk-pin-dots{
   display:flex;gap:16px;margin:20px 0;
   justify-content:center;
