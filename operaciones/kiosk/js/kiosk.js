@@ -423,12 +423,22 @@ function addPin(n){
   if(K.pin.length >= 4) return;
   K.pin += n;
   updatePinDots();
+  updateOkButton();
+}
+function clearPin(){ K.pin = ''; updatePinDots(); updateOkButton(); }
+function backPin(){ K.pin = K.pin.slice(0,-1); updatePinDots(); updateOkButton(); }
+
+function updateOkButton(){
+  const btn = document.getElementById('ksPinOkBtn');
+  if(!btn) return;
   if(K.pin.length === 4){
-    setTimeout(verifyPin, 50);
+    btn.classList.add('enabled');
+    btn.disabled = false;
+  } else {
+    btn.classList.remove('enabled');
+    btn.disabled = true;
   }
 }
-function clearPin(){ K.pin = ''; updatePinDots(); }
-function backPin(){ K.pin = K.pin.slice(0,-1); updatePinDots(); }
 
 function updatePinDots(){
   const dots = document.querySelectorAll('#ksPinDots .kiosk-pin-dot');
