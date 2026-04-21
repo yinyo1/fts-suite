@@ -1,6 +1,25 @@
 {
   "incidencias": [
     {
+      "id": "INC-ENT-1776735640466",
+      "tipo": "ajuste_hora_entrada",
+      "estado": "pendiente_supervisor",
+      "empleado_id": 32,
+      "empleado_nombre": "Jesus Esteban De La Cruz Calderon",
+      "attendance_id": 12424,
+      "hora_estimada": "2026-04-20 16:00:00",
+      "motivo": "TEST FINAL v4.2 - cierre de fase 1",
+      "geo_sitio": "Casa Esteban",
+      "geo_autorizada": true,
+      "lat": 25.6545306,
+      "lng": -100.2954833,
+      "fecha_solicitud": "2026-04-21T01:40:40.466Z",
+      "supervisor_aprobo": null,
+      "supervisor_fecha": null,
+      "rh_aprobo": null,
+      "rh_fecha": null
+    },
+    {
       "id": "INC-ENT-1776735117411",
       "tipo": "ajuste_hora_entrada",
       "estado": "pendiente_supervisor",
