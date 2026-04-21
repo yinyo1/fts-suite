@@ -1,6 +1,25 @@
 {
   "incidencias": [
     {
+      "id": "INC-ENT-1776735117411",
+      "tipo": "ajuste_hora_entrada",
+      "estado": "pendiente_supervisor",
+      "empleado_id": 32,
+      "empleado_nombre": "Jesus Esteban De La Cruz Calderon",
+      "attendance_id": 12423,
+      "hora_estimada": "2026-04-20 15:00:00",
+      "motivo": "Test validación token n8n - entrada estimada 09:00",
+      "geo_sitio": "Casa Esteban",
+      "geo_autorizada": true,
+      "lat": 25.6545306,
+      "lng": -100.2954833,
+      "fecha_solicitud": "2026-04-21T01:31:57.411Z",
+      "supervisor_aprobo": null,
+      "supervisor_fecha": null,
+      "rh_aprobo": null,
+      "rh_fecha": null
+    },
+    {
       "id": "INC-MANUAL-TEST-1776734847164",
       "tipo": "test_manual",
       "estado": "prueba",
