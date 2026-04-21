@@ -8,7 +8,7 @@
       "empleado_nombre": "Jesus Esteban De La Cruz Calderon",
       "attendance_id": 12423,
       "hora_estimada": "2026-04-20 15:00:00",
-      "motivo": "Test validación token n8n - entrada estimada 09:00",
+      "motivo": "Test validaciÃ³n token n8n - entrada estimada 09:00",
       "geo_sitio": "Casa Esteban",
       "geo_autorizada": true,
       "lat": 25.6545306,
@@ -18,13 +18,6 @@
       "supervisor_fecha": null,
       "rh_aprobo": null,
       "rh_fecha": null
-    },
-    {
-      "id": "INC-MANUAL-TEST-1776734847164",
-      "tipo": "test_manual",
-      "estado": "prueba",
-      "empleado_id": 32,
-      "fecha": "2026-04-21T01:27:27.164Z"
     }
   ],
   "_metadata": {
