@@ -35,6 +35,16 @@ function loadKioskConfig(){
   };
 }
 
+// Helper: fecha local en formato YYYY-MM-DD (NO usa UTC)
+// Fix bug: new Date().toISOString().split('T')[0] retorna UTC,
+// tras 18:00 CST queda 1 día adelantado
+function fechaLocalISO(fecha){
+  var d = fecha || new Date();
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+}
+
 // ═══ Geo: radio fallback + distancia + validación ═══
 function getRadioPermitido(){
   return 100; // fallback — cada sitio define su propio radio en ops_kiosk_geolocations
@@ -1363,7 +1373,7 @@ async function confirmarOlvideCheckout(){
 
   // Fecha del check_in original para construir el checkout estimado
   var regAbierto = estado && estado.registro_abierto;
-  var fechaCheckIn = (regAbierto && regAbierto.check_in) ? regAbierto.check_in.substring(0, 10) : new Date().toISOString().split('T')[0];
+  var fechaCheckIn = (regAbierto && regAbierto.check_in) ? regAbierto.check_in.substring(0, 10) : fechaLocalISO();
   var checkoutEstimado = fechaCheckIn + 'T' + horaInput.value + ':00';
 
   // Cerrar modal
@@ -1505,7 +1515,7 @@ async function confirmarOlvideEntrada(){
   var empleado = window._empleadoActual;
   if(!empleado) return;
 
-  var hoyISO = new Date().toISOString().split('T')[0];
+  var hoyISO = fechaLocalISO();
   var checkinEstimado = hoyISO + 'T' + horaInput.value + ':00';
   var motivo = motivoInput.value.trim();
 
