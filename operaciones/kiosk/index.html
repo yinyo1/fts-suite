@@ -137,10 +137,13 @@
     <button class="kiosk-pin-btn" onclick="addPin('7')">7</button>
     <button class="kiosk-pin-btn" onclick="addPin('8')">8</button>
     <button class="kiosk-pin-btn" onclick="addPin('9')">9</button>
-    <button class="kiosk-pin-btn del" onclick="clearPin()">C</button>
+    <button class="kiosk-pin-btn clear-btn" onclick="clearPin()">C</button>
     <button class="kiosk-pin-btn" onclick="addPin('0')">0</button>
-    <button class="kiosk-pin-btn del" onclick="backPin()">←</button>
+    <button class="kiosk-pin-btn back-btn" onclick="backPin()">←</button>
   </div>
+  <button id="ksPinOkBtn" class="kiosk-pin-ok-btn" onclick="verifyPin()" disabled>
+    ✓ Confirmar
+  </button>
 </div>
 
 <!-- ═══════ PANTALLA 4 — SELECCIONAR SO ═══════ -->

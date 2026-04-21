@@ -109,6 +109,20 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-ser
 .kiosk-pin-btn:hover{border-color:#0078D4;background:#f0f7ff}
 .kiosk-pin-btn:active{background:#d0e8ff;transform:scale(0.94)}
 .kiosk-pin-btn.del{color:#D83B01}
+.kiosk-pin-btn.clear-btn{color:#D83B01}
+.kiosk-pin-btn.back-btn{color:#666;background:#f5f5f5}
+
+.kiosk-pin-ok-btn{
+  display:block;width:100%;max-width:300px;
+  margin:12px auto 0;padding:18px;
+  border:none;border-radius:12px;
+  background:#ccc;color:#fff;
+  font-size:20px;font-weight:700;
+  font-family:inherit;cursor:not-allowed;
+  transition:background 0.15s;
+}
+.kiosk-pin-ok-btn.enabled{background:#107C10;cursor:pointer}
+.kiosk-pin-ok-btn.enabled:active{transform:scale(0.97)}
 .kiosk-pin-dots{
   display:flex;gap:16px;margin:20px 0;
   justify-content:center;
