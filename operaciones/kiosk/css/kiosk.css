@@ -143,6 +143,21 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-ser
   vertical-align:middle;
 }
 @keyframes mini-spin{to{transform:rotate(360deg)}}
+
+/* Botón "Terminado" en pantalla confirmación — skip al home sin esperar countdown */
+.kiosk-terminar-btn{
+  display:block;width:100%;max-width:420px;
+  margin:20px auto 0;padding:18px;
+  border:none;border-radius:12px;
+  background:#107C10;color:#fff;
+  font-size:20px;font-weight:700;
+  font-family:inherit;cursor:pointer;
+  transition:transform 0.05s;
+}
+.kiosk-terminar-btn:active{
+  transform:scale(0.97);
+  background:#0d6b0d;
+}
 .kiosk-pin-dots{
   display:flex;gap:16px;margin:20px 0;
   justify-content:center;

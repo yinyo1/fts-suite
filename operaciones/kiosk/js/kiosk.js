@@ -273,6 +273,34 @@ function goHome(){
   showScreen('ks-home');
 }
 
+function terminarYHome(){
+  // Cancelar countdown de auto-return si está en curso
+  if(K.autoReturnTimer){ clearTimeout(K.autoReturnTimer); K.autoReturnTimer = null; }
+  if(K.autoReturnInterval){ clearInterval(K.autoReturnInterval); K.autoReturnInterval = null; }
+
+  // Limpieza completa del estado del kiosk
+  K.seleccionado = null;
+  K.soSeleccionada = null;
+  K.tipo = null;
+  K.geo = null;
+  K.geoAutorizada = null;
+  K.geoMotivo = null;
+  K.geoSitio = null;
+  K.geoDistancia = 0;
+  K.pin = '';
+  updatePinDots();
+  if(typeof updateOkButton === 'function') updateOkButton();
+
+  // Cerrar stream de cámara
+  if(K.stream){
+    K.stream.getTracks().forEach(t => t.stop());
+    K.stream = null;
+  }
+
+  showScreen('ks-home');
+}
+window.terminarYHome = terminarYHome;
+
 // ═══ Carga de empleados/SOs ═══
 const DEMO_EMPLEADOS = [
   { id:1, nombre:'Mateo Salazar',     puesto:'Ingeniero',  foto:'', pin:'1234' },
@@ -720,24 +748,8 @@ async function registrarAsistencia(){
     console.log('[DEMO] Payload kiosk:', payload);
   }
 
-  // Reset estado y volver a home
-  setTimeout(() => {
-    K.seleccionado = null;
-    K.soSeleccionada = null;
-    K.tipo = null;
-    K.geo = null;
-    K.geoAutorizada = null;
-    K.geoMotivo = null;
-    K.geoSitio = null;
-    K.geoDistancia = 0;
-    K.pin = '';
-    updatePinDots();
-    if(K.stream){
-      K.stream.getTracks().forEach(t => t.stop());
-      K.stream = null;
-    }
-    showScreen('ks-home');
-  }, 4000);
+  // Contador visible + reset al terminar (o al click en "Terminado")
+  autoReturn();
 }
 
 // ═══════ HISTORIAL ═══════
@@ -1026,13 +1038,13 @@ function autoReturn(){
   let remaining = 4;
   const el = document.getElementById('ksReturnCounter');
   if(el) el.textContent = 'Regresando en '+remaining+'…';
-  K.returnTimer = setInterval(() => {
+  K.autoReturnInterval = setInterval(() => {
     remaining--;
     if(el) el.textContent = 'Regresando en '+remaining+'…';
     if(remaining <= 0){
-      clearInterval(K.returnTimer);
-      K.returnTimer = null;
-      goHome();
+      clearInterval(K.autoReturnInterval);
+      K.autoReturnInterval = null;
+      terminarYHome();
     }
   }, 1000);
 }
