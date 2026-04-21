@@ -1,5 +1,13 @@
 {
-  "incidencias": [],
+  "incidencias": [
+    {
+      "id": "INC-MANUAL-TEST-1776734847164",
+      "tipo": "test_manual",
+      "estado": "prueba",
+      "empleado_id": 32,
+      "fecha": "2026-04-21T01:27:27.164Z"
+    }
+  ],
   "_metadata": {
     "version": "1.0",
     "fecha_reset": "2026-04-20",
