@@ -503,9 +503,14 @@ function shakeVerify(){
   setTimeout(() => el.classList.remove('kiosk-shake'), 400);
 }
 
-function setFaceStatus(text){
+function setFaceStatus(text, spinner){
   const el = document.getElementById('ksFaceStatus');
-  if(el) el.textContent = text;
+  if(!el) return;
+  if(spinner){
+    el.innerHTML = '<span class="mini-spinner"></span>' + text;
+  } else {
+    el.textContent = text;
+  }
 }
 
 // ═══ Cámara ═══
@@ -537,7 +542,7 @@ async function doFaceVerify(){
     return;
   }
   try{
-    setFaceStatus('🔍 Analizando rostro…');
+    setFaceStatus('🔍 Analizando rostro…', true);
     const result = await window.FaceVerify.compareFaces(K.seleccionado.foto, video);
     if(result.match){
       setFaceStatus('✅ Rostro verificado ('+result.similarity+'%)');
@@ -556,7 +561,11 @@ async function doFaceVerify(){
 
 // ═══ Continuación tras PIN+facial OK: captura geo y valida zona ═══
 async function afterVerifyContinue(){
-  setFaceStatus('📍 Obteniendo ubicación…');
+  // Bloquear keypad visual/funcionalmente durante la validación geo
+  var verifyEl = document.getElementById('ks-verify');
+  if(verifyEl) verifyEl.classList.add('ks-verify-busy');
+
+  setFaceStatus('📍 Obteniendo ubicación…', true);
   K.geoMotivo = null;
   const geo = await window.getGeolocacion();
   K.geo = geo;
@@ -567,6 +576,10 @@ async function afterVerifyContinue(){
   K.geoAutorizada = geoResult.autorizado;
   K.geoSitio = geoResult.sitio || geoResult.sitioMasCercano;
   K.geoDistancia = geoResult.distancia || 0;
+
+  // Liberar bloqueo antes de avanzar a siguiente pantalla
+  if(verifyEl) verifyEl.classList.remove('ks-verify-busy');
+
   if(!geoResult.autorizado){
     mostrarModalGeo(geoResult);
   } else if(K.tipo === 'salida'){
