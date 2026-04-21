@@ -1272,8 +1272,9 @@ function renderEstadoBotones(estado){
       html = '<button onclick="olvideChecarEntrada()" style="background:#f0f4ff;color:#0078D4;border:1px solid #0078D4;padding:14px;border-radius:12px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit">⏰ Llegué pero olvidé checar entrada</button>';
       break;
     case 'activo':
-      // Principal (Checar Salida) ya en #ksAccionRapida → sólo "Salida a Comer"
-      html = '<button onclick="iniciarCheckin(\'salida_comida\')" style="background:#0078D4;color:#fff;border:none;padding:14px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">🍽️ Salida a Comer</button>';
+      // FASE 3 PENDIENTE: botón Salida a Comer desactivado temporalmente
+      // html = '<button onclick="iniciarCheckin(\'salida_comida\')" style="background:#0078D4;color:#fff;border:none;padding:14px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">🍽️ Salida a Comer</button>';
+      html = '';  // sin botón secundario mientras no exista Fase 3
       break;
     case 'zona_gris':
       // Principal (Seguí en turno) ya en #ksAccionRapida → sólo el alternativo
