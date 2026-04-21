@@ -282,10 +282,10 @@ const DEMO_EMPLEADOS = [
   { id:5, nombre:'Carlos Hernández',  puesto:'Ayudante',   foto:'', pin:'2222' },
 ];
 const DEMO_SOS = [
-  { id:101, num:'SO-2026-001', nombre:'Topo Chico — Radium' },
-  { id:102, num:'SO-2026-002', nombre:'Arca Continental — Mezzanine' },
-  { id:103, num:'SO-2026-003', nombre:'Sigma — Polipasto 2T' },
-  { id:104, num:'SO-2026-004', nombre:'HEB — Tanque 5000L' },
+  { id:101, name:'🛠️ SO-2026-001 - Topo Chico Radium',        cliente:'Ecolab Nalco',        nombre:'Topo Chico — Radium',       num:'SO-2026-001' },
+  { id:102, name:'🛠️ SO-2026-002 - Arca Mezzanine',           cliente:'Arca Continental',    nombre:'Arca Continental — Mezzanine', num:'SO-2026-002' },
+  { id:103, name:'🛠️ SO-2026-003 - Sigma Polipasto 2T',       cliente:'Sigma Alimentos',     nombre:'Sigma — Polipasto 2T',      num:'SO-2026-003' },
+  { id:104, name:'🛠️ SO-2026-004 - HEB Tanque 5000L',         cliente:'HEB México',          nombre:'HEB — Tanque 5000L',        num:'SO-2026-004' },
 ];
 
 async function loadEmpleados(){
@@ -572,7 +572,11 @@ async function afterVerifyContinue(){
 // ═══ SOs ═══
 function searchSOs(q){
   const nq = normalize(q);
-  const filtered = !nq ? K.sos : K.sos.filter(s => normalize(s.nombre).includes(nq) || normalize(s.num).includes(nq));
+  const filtered = !nq ? K.sos : K.sos.filter(s =>
+    normalize(s.name || s.nombre || '').includes(nq) ||
+    normalize(s.cliente || '').includes(nq) ||
+    normalize(s.num || '').includes(nq)
+  );
   renderSOs(filtered);
 }
 
@@ -583,12 +587,14 @@ function renderSOs(list){
     el.innerHTML = '<div style="text-align:center;color:#666;padding:24px">Sin resultados</div>';
     return;
   }
-  el.innerHTML = list.map(s =>
-    '<div class="kiosk-so-card" onclick="selectSO('+s.id+')">'+
-      '<div class="kiosk-so-num">'+(s.num||'')+'</div>'+
-      '<div class="kiosk-so-name">'+(s.nombre||'—')+'</div>'+
-    '</div>'
-  ).join('');
+  el.innerHTML = list.map(s => {
+    var nombre  = s.name || s.nombre || '—';
+    var cliente = s.cliente || '';
+    return '<div class="kiosk-so-card" onclick="selectSO('+s.id+')">'+
+      '<div class="kiosk-so-name">'+nombre+'</div>'+
+      (cliente ? '<div class="kiosk-so-cliente">'+cliente+'</div>' : '')+
+    '</div>';
+  }).join('');
 }
 
 function selectSO(id){
@@ -1266,8 +1272,9 @@ function renderEstadoBotones(estado){
       html = '<button onclick="olvideChecarEntrada()" style="background:#f0f4ff;color:#0078D4;border:1px solid #0078D4;padding:14px;border-radius:12px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit">⏰ Llegué pero olvidé checar entrada</button>';
       break;
     case 'activo':
-      // Principal (Checar Salida) ya en #ksAccionRapida → sólo "Salida a Comer"
-      html = '<button onclick="iniciarCheckin(\'salida_comida\')" style="background:#0078D4;color:#fff;border:none;padding:14px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">🍽️ Salida a Comer</button>';
+      // FASE 3 PENDIENTE: botón Salida a Comer desactivado temporalmente
+      // html = '<button onclick="iniciarCheckin(\'salida_comida\')" style="background:#0078D4;color:#fff;border:none;padding:14px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">🍽️ Salida a Comer</button>';
+      html = '';  // sin botón secundario mientras no exista Fase 3
       break;
     case 'zona_gris':
       // Principal (Seguí en turno) ya en #ksAccionRapida → sólo el alternativo
