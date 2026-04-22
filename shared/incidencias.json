@@ -1,6 +1,25 @@
 {
   "incidencias": [
     {
+      "id": "INC-ENT-1776824288531",
+      "tipo": "ajuste_hora_entrada",
+      "estado": "pendiente_supervisor",
+      "empleado_id": 75,
+      "empleado_nombre": "Mateo Salazar",
+      "attendance_id": 12461,
+      "hora_estimada": "2026-04-21 18:00:00",
+      "motivo": "Retest con Always Output Data ON",
+      "geo_sitio": "Topo Chico (cortina)",
+      "geo_autorizada": true,
+      "lat": 25.7349503,
+      "lng": -100.3263381,
+      "fecha_solicitud": "2026-04-22T02:18:08.531Z",
+      "supervisor_aprobo": null,
+      "supervisor_fecha": null,
+      "rh_aprobo": null,
+      "rh_fecha": null
+    },
+    {
       "id": "INC-ENT-1776807675752",
       "tipo": "ajuste_hora_entrada",
       "estado": "pendiente_supervisor",
