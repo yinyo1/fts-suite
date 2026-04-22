@@ -1,0 +1,13 @@
+{
+  "_comment": "Template para pegar en ~/.config/claude/claude_desktop_config.json bajo mcpServers.n8n. Reemplaza {{N8N_API_KEY}} con la API key real de n8n (Settings > API > Create API Key).",
+  "mcpServers": {
+    "n8n": {
+      "command": "npx",
+      "args": ["-y", "@czlonkowski/n8n-mcp"],
+      "env": {
+        "N8N_URL": "https://primary-production-5c3c.up.railway.app",
+        "N8N_API_KEY": "{{N8N_API_KEY}}"
+      }
+    }
+  }
+}
