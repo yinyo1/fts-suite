@@ -273,6 +273,34 @@ function goHome(){
   showScreen('ks-home');
 }
 
+function terminarYHome(){
+  // Cancelar countdown de auto-return si está en curso
+  if(K.autoReturnTimer){ clearTimeout(K.autoReturnTimer); K.autoReturnTimer = null; }
+  if(K.autoReturnInterval){ clearInterval(K.autoReturnInterval); K.autoReturnInterval = null; }
+
+  // Limpieza completa del estado del kiosk
+  K.seleccionado = null;
+  K.soSeleccionada = null;
+  K.tipo = null;
+  K.geo = null;
+  K.geoAutorizada = null;
+  K.geoMotivo = null;
+  K.geoSitio = null;
+  K.geoDistancia = 0;
+  K.pin = '';
+  updatePinDots();
+  if(typeof updateOkButton === 'function') updateOkButton();
+
+  // Cerrar stream de cámara
+  if(K.stream){
+    K.stream.getTracks().forEach(t => t.stop());
+    K.stream = null;
+  }
+
+  showScreen('ks-home');
+}
+window.terminarYHome = terminarYHome;
+
 // ═══ Carga de empleados/SOs ═══
 const DEMO_EMPLEADOS = [
   { id:1, nombre:'Mateo Salazar',     puesto:'Ingeniero',  foto:'', pin:'1234' },
@@ -423,12 +451,22 @@ function addPin(n){
   if(K.pin.length >= 4) return;
   K.pin += n;
   updatePinDots();
+  updateOkButton();
+}
+function clearPin(){ K.pin = ''; updatePinDots(); updateOkButton(); }
+function backPin(){ K.pin = K.pin.slice(0,-1); updatePinDots(); updateOkButton(); }
+
+function updateOkButton(){
+  const btn = document.getElementById('ksPinOkBtn');
+  if(!btn) return;
   if(K.pin.length === 4){
-    setTimeout(verifyPin, 50);
+    btn.classList.add('enabled');
+    btn.disabled = false;
+  } else {
+    btn.classList.remove('enabled');
+    btn.disabled = true;
   }
 }
-function clearPin(){ K.pin = ''; updatePinDots(); }
-function backPin(){ K.pin = K.pin.slice(0,-1); updatePinDots(); }
 
 function updatePinDots(){
   const dots = document.querySelectorAll('#ksPinDots .kiosk-pin-dot');
@@ -493,9 +531,14 @@ function shakeVerify(){
   setTimeout(() => el.classList.remove('kiosk-shake'), 400);
 }
 
-function setFaceStatus(text){
+function setFaceStatus(text, spinner){
   const el = document.getElementById('ksFaceStatus');
-  if(el) el.textContent = text;
+  if(!el) return;
+  if(spinner){
+    el.innerHTML = '<span class="mini-spinner"></span>' + text;
+  } else {
+    el.textContent = text;
+  }
 }
 
 // ═══ Cámara ═══
@@ -527,7 +570,7 @@ async function doFaceVerify(){
     return;
   }
   try{
-    setFaceStatus('🔍 Analizando rostro…');
+    setFaceStatus('🔍 Analizando rostro…', true);
     const result = await window.FaceVerify.compareFaces(K.seleccionado.foto, video);
     if(result.match){
       setFaceStatus('✅ Rostro verificado ('+result.similarity+'%)');
@@ -546,7 +589,11 @@ async function doFaceVerify(){
 
 // ═══ Continuación tras PIN+facial OK: captura geo y valida zona ═══
 async function afterVerifyContinue(){
-  setFaceStatus('📍 Obteniendo ubicación…');
+  // Bloquear keypad visual/funcionalmente durante la validación geo
+  var verifyEl = document.getElementById('ks-verify');
+  if(verifyEl) verifyEl.classList.add('ks-verify-busy');
+
+  setFaceStatus('📍 Obteniendo ubicación…', true);
   K.geoMotivo = null;
   const geo = await window.getGeolocacion();
   K.geo = geo;
@@ -557,6 +604,10 @@ async function afterVerifyContinue(){
   K.geoAutorizada = geoResult.autorizado;
   K.geoSitio = geoResult.sitio || geoResult.sitioMasCercano;
   K.geoDistancia = geoResult.distancia || 0;
+
+  // Liberar bloqueo antes de avanzar a siguiente pantalla
+  if(verifyEl) verifyEl.classList.remove('ks-verify-busy');
+
   if(!geoResult.autorizado){
     mostrarModalGeo(geoResult);
   } else if(K.tipo === 'salida'){
@@ -703,24 +754,8 @@ async function registrarAsistencia(){
     console.log('[DEMO] Payload kiosk:', payload);
   }
 
-  // Reset estado y volver a home
-  setTimeout(() => {
-    K.seleccionado = null;
-    K.soSeleccionada = null;
-    K.tipo = null;
-    K.geo = null;
-    K.geoAutorizada = null;
-    K.geoMotivo = null;
-    K.geoSitio = null;
-    K.geoDistancia = 0;
-    K.pin = '';
-    updatePinDots();
-    if(K.stream){
-      K.stream.getTracks().forEach(t => t.stop());
-      K.stream = null;
-    }
-    showScreen('ks-home');
-  }, 4000);
+  // Contador visible + reset al terminar (o al click en "Terminado")
+  autoReturn();
 }
 
 // ═══════ HISTORIAL ═══════
@@ -1009,13 +1044,13 @@ function autoReturn(){
   let remaining = 4;
   const el = document.getElementById('ksReturnCounter');
   if(el) el.textContent = 'Regresando en '+remaining+'…';
-  K.returnTimer = setInterval(() => {
+  K.autoReturnInterval = setInterval(() => {
     remaining--;
     if(el) el.textContent = 'Regresando en '+remaining+'…';
     if(remaining <= 0){
-      clearInterval(K.returnTimer);
-      K.returnTimer = null;
-      goHome();
+      clearInterval(K.autoReturnInterval);
+      K.autoReturnInterval = null;
+      terminarYHome();
     }
   }, 1000);
 }

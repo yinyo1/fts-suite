@@ -116,7 +116,7 @@
     </div>
     <div style="text-align:center">
       <video id="ksCamera" class="kiosk-camera-preview" autoplay playsinline muted></video>
-      <div style="font-size:13px;color:#999;margin-top:8px" id="ksFaceStatus">Esperando PIN…</div>
+      <div style="font-size:15px;color:#555;margin-top:10px;font-weight:500" id="ksFaceStatus">Esperando PIN…</div>
     </div>
   </div>
   <span id="ks-verify-tipo" style="color:#666;font-size:14px;display:block;text-align:center;margin-bottom:8px;font-weight:600"></span>
@@ -139,10 +139,13 @@
     <button class="kiosk-pin-btn" onclick="addPin('7')">7</button>
     <button class="kiosk-pin-btn" onclick="addPin('8')">8</button>
     <button class="kiosk-pin-btn" onclick="addPin('9')">9</button>
-    <button class="kiosk-pin-btn del" onclick="clearPin()">C</button>
+    <button class="kiosk-pin-btn clear-btn" onclick="clearPin()">C</button>
     <button class="kiosk-pin-btn" onclick="addPin('0')">0</button>
-    <button class="kiosk-pin-btn del" onclick="backPin()">←</button>
+    <button class="kiosk-pin-btn back-btn" onclick="backPin()">←</button>
   </div>
+  <button id="ksPinOkBtn" class="kiosk-pin-ok-btn" onclick="verifyPin()" disabled>
+    ✓ Confirmar
+  </button>
 </div>
 
 <!-- ═══════ PANTALLA 4 — SELECCIONAR SO ═══════ -->
@@ -166,6 +169,9 @@
     <div class="kiosk-confirm-row"><span class="lbl">Ubicación</span><span class="val" id="confirm-geo"><span class="kiosk-geo-dot warn"></span>Registrando…</span></div>
   </div>
   <div style="font-size:13px;color:#666;margin-top:32px" id="ksReturnCounter">Regresando en 4…</div>
+  <button class="kiosk-terminar-btn" onclick="terminarYHome()">
+    ✓ Terminado
+  </button>
 </div>
 
 <!-- ═══════ PANTALLA 6 — MI HISTORIAL ═══════ -->
