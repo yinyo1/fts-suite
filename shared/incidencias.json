@@ -1,6 +1,25 @@
 {
   "incidencias": [
     {
+      "id": "INC-ENT-1776899499571",
+      "tipo": "ajuste_hora_entrada",
+      "estado": "pendiente_supervisor",
+      "empleado_id": 98,
+      "empleado_nombre": "Ricardo Alán Hernández González",
+      "attendance_id": 12515,
+      "hora_estimada": "2026-04-22 15:00:00",
+      "motivo": "No sabía",
+      "geo_sitio": "",
+      "geo_autorizada": true,
+      "lat": 25.6890443,
+      "lng": -100.291673,
+      "fecha_solicitud": "2026-04-22T23:11:39.571Z",
+      "supervisor_aprobo": null,
+      "supervisor_fecha": null,
+      "rh_aprobo": null,
+      "rh_fecha": null
+    },
+    {
       "id": "INC-ENT-1776866476636",
       "tipo": "ajuste_hora_entrada",
       "estado": "pendiente_supervisor",
