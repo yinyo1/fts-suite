@@ -1,6 +1,25 @@
 {
   "incidencias": [
     {
+      "id": "INC-ENT-1776835088178",
+      "tipo": "ajuste_hora_entrada",
+      "estado": "pendiente_supervisor",
+      "empleado_id": 8,
+      "empleado_nombre": "Francisco Montalvo Ramirez",
+      "attendance_id": 12472,
+      "hora_estimada": "2026-04-21 15:00:00",
+      "motivo": "Olvido",
+      "geo_sitio": "",
+      "geo_autorizada": true,
+      "lat": 25.6544928,
+      "lng": -100.295603,
+      "fecha_solicitud": "2026-04-22T05:18:08.178Z",
+      "supervisor_aprobo": null,
+      "supervisor_fecha": null,
+      "rh_aprobo": null,
+      "rh_fecha": null
+    },
+    {
       "id": "INC-ADJ-1776834517215",
       "tipo": "ajuste_hora_salida",
       "estado": "pendiente_supervisor",
