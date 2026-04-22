@@ -1,6 +1,25 @@
 {
   "incidencias": [
     {
+      "id": "INC-ENT-1776827863070",
+      "tipo": "ajuste_hora_entrada",
+      "estado": "pendiente_supervisor",
+      "empleado_id": 112,
+      "empleado_nombre": "Felipe Pérez Guzmán",
+      "attendance_id": 12467,
+      "hora_estimada": "2026-04-21 14:06:00",
+      "motivo": "Se me.olvido ch3car",
+      "geo_sitio": "",
+      "geo_autorizada": true,
+      "lat": 25.6604419,
+      "lng": -100.1098119,
+      "fecha_solicitud": "2026-04-22T03:17:43.070Z",
+      "supervisor_aprobo": null,
+      "supervisor_fecha": null,
+      "rh_aprobo": null,
+      "rh_fecha": null
+    },
+    {
       "id": "INC-ENT-1776825901777",
       "tipo": "ajuste_hora_entrada",
       "estado": "pendiente_supervisor",
