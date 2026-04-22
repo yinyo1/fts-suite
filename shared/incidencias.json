@@ -1,6 +1,25 @@
 {
   "incidencias": [
     {
+      "id": "INC-ENT-1776825887078",
+      "tipo": "ajuste_hora_entrada",
+      "estado": "pendiente_supervisor",
+      "empleado_id": 124,
+      "empleado_nombre": "Germán Emmanuel Merino Falcón",
+      "attendance_id": 12464,
+      "hora_estimada": "2026-04-21 14:00:00",
+      "motivo": "Llegué a recolectar firmas",
+      "geo_sitio": "",
+      "geo_autorizada": true,
+      "lat": 25.7351422,
+      "lng": -100.3264923,
+      "fecha_solicitud": "2026-04-22T02:44:47.078Z",
+      "supervisor_aprobo": null,
+      "supervisor_fecha": null,
+      "rh_aprobo": null,
+      "rh_fecha": null
+    },
+    {
       "id": "INC-ENT-1776824879445",
       "tipo": "ajuste_hora_entrada",
       "estado": "pendiente_supervisor",
