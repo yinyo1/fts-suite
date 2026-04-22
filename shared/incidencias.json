@@ -1,6 +1,25 @@
 {
   "incidencias": [
     {
+      "id": "INC-ENT-1776824408042",
+      "tipo": "ajuste_hora_entrada",
+      "estado": "pendiente_supervisor",
+      "empleado_id": 32,
+      "empleado_nombre": "Jesus Esteban De La Cruz Calderon",
+      "attendance_id": 12462,
+      "hora_estimada": "2026-04-21 22:30:00",
+      "motivo": "Test Esteban post-cleanup",
+      "geo_sitio": "Casa Esteban",
+      "geo_autorizada": true,
+      "lat": 25.6545306,
+      "lng": -100.2954833,
+      "fecha_solicitud": "2026-04-22T02:20:08.042Z",
+      "supervisor_aprobo": null,
+      "supervisor_fecha": null,
+      "rh_aprobo": null,
+      "rh_fecha": null
+    },
+    {
       "id": "INC-ENT-1776824288531",
       "tipo": "ajuste_hora_entrada",
       "estado": "pendiente_supervisor",
