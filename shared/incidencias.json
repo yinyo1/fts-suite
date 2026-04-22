@@ -1,6 +1,25 @@
 {
   "incidencias": [
     {
+      "id": "INC-ENT-1776824879445",
+      "tipo": "ajuste_hora_entrada",
+      "estado": "pendiente_supervisor",
+      "empleado_id": 75,
+      "empleado_nombre": "Mateo Salazar",
+      "attendance_id": 12463,
+      "hora_estimada": "2026-04-21 17:00:00",
+      "motivo": "Olvide checar",
+      "geo_sitio": "",
+      "geo_autorizada": true,
+      "lat": 25.7351516,
+      "lng": -100.326498,
+      "fecha_solicitud": "2026-04-22T02:27:59.445Z",
+      "supervisor_aprobo": null,
+      "supervisor_fecha": null,
+      "rh_aprobo": null,
+      "rh_fecha": null
+    },
+    {
       "id": "INC-ENT-1776824408042",
       "tipo": "ajuste_hora_entrada",
       "estado": "pendiente_supervisor",
