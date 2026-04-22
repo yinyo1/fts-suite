@@ -1103,6 +1103,7 @@
     // Lazy loads por sección
     if(id === 'sec-sync')     loadSync();
     if(id === 'sec-sistema')  runSysCheck(true);
+    if(id === 'sec-usuarios') loadUsers();
   }
   window.showSection = showSection;
 
@@ -2021,6 +2022,187 @@
       result[modId] = { acceso: !!cb.checked, submodulos: submodulos };
     });
     return result;
+  }
+
+  // ─── SAVE + AUTO-SYNC ───
+  function nextUserId(){
+    if(!USERS_STATE.length) return 1;
+    return Math.max.apply(null, USERS_STATE.map(function(u){ return u.id || 0; })) + 1;
+  }
+
+  async function saveUserAndSync(event){
+    event.preventDefault();
+    const saveBtn = $('user_save_btn');
+    const status  = $('user_modal_status');
+    saveBtn.disabled = true;
+    status.textContent = '⏳ Validando…';
+    status.style.color = 'var(--blue)';
+
+    try {
+      const idRaw    = $('user_id').value;
+      const username = $('user_username').value.trim();
+      const nombre   = $('user_nombre').value.trim();
+      const password = $('user_password').value;
+      const role     = $('user_role').value;
+      const vigencia = $('user_vigencia').value || null;
+      const activo   = $('user_activo').checked;
+
+      if(!username || !nombre) throw new Error('Username y nombre son obligatorios');
+
+      const isEdit = !!idRaw;
+      const userId = isEdit ? parseInt(idRaw, 10) : nextUserId();
+
+      // Username único
+      const dup = USERS_STATE.find(function(u){ return u.username === username && u.id !== userId; });
+      if(dup) throw new Error('Ya existe un usuario con ese username');
+
+      // Password hash (requerido al crear; opcional al editar)
+      let passwordHash = null;
+      if(password){
+        if(!window.FTSAuth || typeof window.FTSAuth.hashPassword !== 'function'){
+          throw new Error('FTSAuth.hashPassword no disponible');
+        }
+        passwordHash = await window.FTSAuth.hashPassword(password);
+      } else if(!isEdit){
+        throw new Error('Password es obligatorio al crear un usuario');
+      }
+
+      // Construir user
+      let user;
+      if(isEdit){
+        const existing = USERS_STATE.find(function(u){ return u.id === userId; });
+        if(!existing) throw new Error('Usuario a editar no encontrado');
+        user = Object.assign({}, existing, {
+          username: username,
+          nombre:   nombre,
+          role:     role,
+          vigencia: vigencia,
+          activo:   activo
+        });
+        if(passwordHash) user.password_hash = passwordHash;
+      } else {
+        user = {
+          id:            userId,
+          username:      username,
+          password_hash: passwordHash,
+          nombre:        nombre,
+          activo:        activo,
+          vigencia:      vigencia,
+          role:          role
+        };
+      }
+
+      // Módulos (master → "all"; user/admin → árbol)
+      user.modulos = (role === 'master') ? 'all' : collectModulosFromTree();
+
+      // Merge al state local
+      if(isEdit){
+        const idx = USERS_STATE.findIndex(function(u){ return u.id === userId; });
+        USERS_STATE[idx] = user;
+      } else {
+        USERS_STATE.push(user);
+      }
+
+      status.textContent = '⏳ Guardando en GitHub…';
+      await syncUsersToGitHub();
+
+      status.textContent = '✅ Guardado';
+      status.style.color = 'var(--green)';
+      renderUsersTable();
+      setUsersStatus('✅ ' + USERS_STATE.length + ' usuario(s)', 'var(--green)');
+      setTimeout(closeUserModal, 700);
+    } catch(e){
+      status.textContent = '❌ ' + e.message;
+      status.style.color = 'var(--red)';
+      saveBtn.disabled = false;
+    }
+  }
+  window.saveUserAndSync = saveUserAndSync;
+
+  async function toggleUserActive(id){
+    const user = USERS_STATE.find(function(u){ return u.id === id; });
+    if(!user) return;
+    const nuevoEstado = !user.activo;
+    const label = nuevoEstado ? 'Activar' : 'Desactivar';
+    if(!confirm('¿' + label + ' a ' + (user.nombre || user.username) + '?')) return;
+
+    const prevState = user.activo;
+    setUsersStatus('⏳ Guardando…', 'var(--blue)');
+    user.activo = nuevoEstado;
+    try {
+      await syncUsersToGitHub();
+      renderUsersTable();
+      setUsersStatus('✅ ' + (user.nombre || user.username) + ' ' + (nuevoEstado ? 'activado' : 'desactivado'), 'var(--green)');
+    } catch(e){
+      // Rollback local
+      user.activo = prevState;
+      setUsersStatus('❌ ' + e.message, 'var(--red)');
+    }
+  }
+  window.toggleUserActive = toggleUserActive;
+
+  // ─── Core sync (espejo de syncGeoGitHub con 409 retry) ───
+  async function syncUsersToGitHub(){
+    const token = lsGet('ops_github_token');
+    if(!token) throw new Error('Sin GitHub PAT (configúralo en Sincronización)');
+
+    const API_URL = 'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/users-suite.json';
+    const headers = {
+      'Authorization': 'token ' + token,
+      'Accept':        'application/vnd.github.v3+json'
+    };
+
+    function buildBody(sha, jsonObj, retrying){
+      const content = btoa(unescape(encodeURIComponent(JSON.stringify(jsonObj, null, 2))));
+      return JSON.stringify({
+        message: 'Auto-sync usuarios desde Config Master' + (retrying ? ' (retry 409)' : ''),
+        content: content,
+        branch:  'main',
+        sha:     sha
+      });
+    }
+
+    async function getRemote(){
+      const res = await fetch(API_URL + '?ref=main&t=' + Date.now(), { headers: headers });
+      if(!res.ok) throw new Error('GET users: ' + res.status);
+      const data = await res.json();
+      let json;
+      try {
+        json = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\n/g,'')))));
+      } catch(e){
+        throw new Error('JSON remoto malformado: ' + e.message);
+      }
+      return { sha: data.sha, json: json };
+    }
+
+    // 1) GET snapshot remoto (para preservar metadata)
+    let remote = await getRemote();
+    remote.json.users = USERS_STATE;
+
+    // 2) PUT
+    let resPut = await fetch(API_URL, {
+      method: 'PUT',
+      headers: Object.assign({}, headers, { 'Content-Type':'application/json' }),
+      body:    buildBody(remote.sha, remote.json, false)
+    });
+
+    // 3) 409 retry con SHA fresco
+    if(resPut.status === 409){
+      remote = await getRemote();
+      remote.json.users = USERS_STATE;
+      resPut = await fetch(API_URL, {
+        method: 'PUT',
+        headers: Object.assign({}, headers, { 'Content-Type':'application/json' }),
+        body:    buildBody(remote.sha, remote.json, true)
+      });
+    }
+
+    if(!resPut.ok){
+      let err = {};
+      try { err = await resPut.json(); } catch(e){}
+      throw new Error('PUT ' + resPut.status + (err.message ? ' — ' + err.message : ''));
+    }
+    return true;
   }
 
   // ═════════════════════════════════════════════
