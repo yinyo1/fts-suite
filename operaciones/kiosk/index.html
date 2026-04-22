@@ -109,26 +109,24 @@
 <!-- ═══════ PANTALLA 4 — VERIFICACIÓN ═══════ -->
 <div class="kiosk-screen" id="ks-verify">
   <button class="kiosk-back" onclick="showScreen('ks-search')">← Volver</button>
-  <div class="kiosk-verify-row">
-    <div style="text-align:center">
-      <img id="ksEmpPhoto" class="kiosk-verify-photo" alt="">
-      <div class="kiosk-big-name" id="ksEmpName">—</div>
-    </div>
-    <div style="text-align:center">
+  <div class="kiosk-verify-grid">
+    <div class="kiosk-verify-cam">
       <video id="ksCamera" class="kiosk-camera-preview" autoplay playsinline muted></video>
-      <div style="font-size:15px;color:#555;margin-top:10px;font-weight:500" id="ksFaceStatus">Esperando PIN…</div>
+    </div>
+    <div class="kiosk-verify-info">
+      <div id="ksFaceStatus" class="kiosk-face-status">Esperando PIN…</div>
+      <div id="ks-verify-tipo" class="kiosk-verify-tipo"></div>
+      <div class="kiosk-verify-subtitle">Ingresa tu PIN</div>
+      <div class="kiosk-pin-dots" id="ksPinDots">
+        <div class="kiosk-pin-dot"></div>
+        <div class="kiosk-pin-dot"></div>
+        <div class="kiosk-pin-dot"></div>
+        <div class="kiosk-pin-dot"></div>
+      </div>
+      <p id="pin-status" class="kiosk-pin-status"></p>
+      <div id="ksPinNombre" class="kiosk-pin-nombre">👷 —</div>
     </div>
   </div>
-  <span id="ks-verify-tipo" style="color:#666;font-size:14px;display:block;text-align:center;margin-bottom:8px;font-weight:600"></span>
-  <div class="kiosk-subtitle">Ingresa tu PIN de 4 dígitos</div>
-  <div class="kiosk-pin-dots" id="ksPinDots">
-    <div class="kiosk-pin-dot"></div>
-    <div class="kiosk-pin-dot"></div>
-    <div class="kiosk-pin-dot"></div>
-    <div class="kiosk-pin-dot"></div>
-  </div>
-  <p id="pin-status" style="color:#D83B01;font-size:14px;min-height:20px;text-align:center;margin:4px 0;font-weight:700"></p>
-  <div id="ksPinNombre" style="text-align:center;font-size:18px;font-weight:600;color:#1a1a2e;margin:8px 0 16px 0;padding:10px 16px;background:#f0f4ff;border-radius:12px;border-left:4px solid #0078D4">👷 —</div>
   <div class="kiosk-pin-pad">
     <button class="kiosk-pin-btn" onclick="addPin('1')">1</button>
     <button class="kiosk-pin-btn" onclick="addPin('2')">2</button>
