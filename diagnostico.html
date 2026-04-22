@@ -444,6 +444,72 @@ async function runDiag(){
     log('⚠️ No se pudo comparar con GitHub: ' + e.message, 'warn');
   }
 
+  // Sección 13b — User management
+  section('USER MANAGEMENT');
+  const USERS_RAW = 'https://raw.githubusercontent.com/yinyo1/fts-suite/main/shared/users-suite.json';
+  let usersData = null;
+  try {
+    const uRes = await fetch(USERS_RAW + '?t=' + Date.now(), { cache:'no-store' });
+    if(uRes.ok){
+      usersData = await uRes.json();
+      const nUsers = Array.isArray(usersData.users) ? usersData.users.length : 0;
+      log('✅ users-suite.json accesible (' + nUsers + ' usuario(s))');
+    } else {
+      log('❌ users-suite.json HTTP ' + uRes.status, 'err');
+    }
+  } catch(e){
+    log('❌ Fetch users-suite.json: ' + e.message, 'err');
+  }
+
+  if(usersData && Array.isArray(usersData.users)){
+    const REQUIRED = ['id','username','nombre','role','activo','modulos'];
+    let schemaOk = true;
+    usersData.users.forEach(function(u){
+      const missing = REQUIRED.filter(function(f){ return !(f in u); });
+      if(missing.length){
+        log('⚠️ Usuario "' + (u.username || '?') + '" le faltan: ' + missing.join(', '), 'warn');
+        schemaOk = false;
+      }
+    });
+    if(schemaOk) log('✅ Schema válido en todos los usuarios');
+
+    const mastersActivos = usersData.users.filter(function(u){ return u.role === 'master' && u.activo === true; });
+    if(mastersActivos.length >= 1){
+      log('✅ Master(s) activo(s): ' + mastersActivos.length);
+    } else {
+      log('❌ NO hay ningún master activo', 'err');
+    }
+
+    try {
+      const session = JSON.parse(localStorage.getItem('fts_session') || 'null');
+      if(session && session.userId){
+        const exists = usersData.users.some(function(u){ return u.id === session.userId; });
+        if(exists) log('✅ Tu sesión (userId=' + session.userId + ') existe en users-suite.json');
+        else       log('⚠️ Tu userId (' + session.userId + ') NO existe en users-suite.json', 'warn');
+      } else {
+        log('ℹ️ Sin sesión activa en localStorage');
+      }
+    } catch(e){
+      log('⚠️ No se pudo leer sesión: ' + e.message, 'warn');
+    }
+  }
+
+  const ghTokenUsers = localStorage.getItem('ops_github_token');
+  if(!ghTokenUsers){
+    log('⚠️ Sin GitHub token — no se puede verificar acceso write a users-suite.json', 'warn');
+  } else {
+    try {
+      const usersApi = await fetch(
+        'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/users-suite.json?ref=main&t=' + Date.now(),
+        { headers: { 'Authorization': 'token ' + ghTokenUsers, 'Accept':'application/vnd.github.v3+json' } }
+      );
+      if(usersApi.ok) log('✅ GitHub token tiene acceso a users-suite.json');
+      else            log('❌ GitHub token falló: HTTP ' + usersApi.status, 'err');
+    } catch(e){
+      log('❌ Error validando token contra users-suite.json: ' + e.message, 'err');
+    }
+  }
+
   // Sección 14 — Páginas críticas
   section('PÁGINAS CRÍTICAS');
   const PAGES_BASE = 'https://yinyo1.github.io/fts-suite';
