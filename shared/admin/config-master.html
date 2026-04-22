@@ -1836,14 +1836,33 @@
   window.doSyncLoad = doSyncLoad;
 
   // ═════════════════════════════════════════════
-  // LOAD USERS — lectura de users-suite.json (GitHub raw)
+  // USERS — CRUD portado desde admin/index.html (legacy)
   // ═════════════════════════════════════════════
+
+  // Estructura real de módulos según shared/users-suite.json
+  const USERS_MODULES_TREE = {
+    seguridad:   { label: '🔒 Seguridad',   submodulos: ['instructor', 'empleado', 'iperc'] },
+    operaciones: { label: '🔧 Operaciones', submodulos: ['kiosk', 'dashboard', 'planeacion', 'incidencias', 'supervisor'] },
+    ingenieria:  { label: '🏗️ Ingeniería',  submodulos: ['analisis_estructural'] },
+    rh:          { label: '👥 RH',          submodulos: [] },
+    comercial:   { label: '📋 Comercial',   submodulos: [] },
+    odoo:        { label: '⚙️ Odoo',        submodulos: [] }
+  };
+
+  let USERS_STATE = [];
+
+  function setUsersStatus(text, color){
+    const el = $('users_status');
+    if(!el) return;
+    el.textContent = text || '';
+    el.style.color = color || '';
+  }
+
   async function loadUsers(){
-    const tbody  = $('users_tbody');
-    const status = $('users_status');
+    const tbody = $('users_tbody');
     if(!tbody) return;
-    if(status){ status.textContent = '⏳ Descargando…'; status.style.color = ''; }
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Cargando…</td></tr>';
+    setUsersStatus('⏳ Descargando…', 'var(--blue)');
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">Cargando…</td></tr>';
 
     try {
       const res = await fetch(
@@ -1851,44 +1870,158 @@
         { cache:'no-store' }
       );
       if(!res.ok) throw new Error('HTTP ' + res.status);
-      const data   = await res.json();
-      const users  = Array.isArray(data.users) ? data.users : [];
-
-      if(users.length === 0){
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Sin usuarios</td></tr>';
-        if(status){ status.textContent = '0 usuarios'; }
-        return;
-      }
-
-      tbody.innerHTML = users.map(function(u){
-        const roleCls = u.role === 'master' ? 'cm-badge-master'
-                      : u.role === 'admin'  ? 'cm-badge-admin'
-                      : 'cm-badge-user';
-        const estado = u.activo
-          ? '<span class="cm-badge cm-badge-active">ACTIVO</span>'
-          : '<span class="cm-badge cm-badge-off">INACTIVO</span>';
-        const vig = u.vigencia ? esc(u.vigencia) : '<span style="color:var(--muted)">Sin vencimiento</span>';
-        return (
-          '<tr>' +
-            '<td><strong>' + esc(u.username || '—') + '</strong></td>' +
-            '<td>' + esc(u.nombre || '—') + '</td>' +
-            '<td><span class="cm-badge ' + roleCls + '">' + esc((u.role || 'user').toUpperCase()) + '</span></td>' +
-            '<td>' + estado + '</td>' +
-            '<td>' + vig + '</td>' +
-          '</tr>'
-        );
-      }).join('');
-
-      if(status){
-        status.textContent = users.length + ' usuario(s) — ' + esc(fmtDate(data.updated || ''));
-        status.style.color = 'var(--green)';
-      }
+      const data = await res.json();
+      USERS_STATE = Array.isArray(data.users) ? data.users : [];
+      renderUsersTable();
+      setUsersStatus('✅ ' + USERS_STATE.length + ' usuario(s)', 'var(--green)');
     } catch(e){
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--red);padding:20px">Error: ' + esc(e.message) + '</td></tr>';
-      if(status){ status.textContent = '❌ ' + e.message; status.style.color = 'var(--red)'; }
+      USERS_STATE = [];
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--red);padding:20px">Error: ' + esc(e.message) + '</td></tr>';
+      setUsersStatus('❌ ' + e.message, 'var(--red)');
     }
   }
   window.loadUsers = loadUsers;
+
+  function renderUsersTable(){
+    const tbody = $('users_tbody');
+    if(!tbody) return;
+    if(!USERS_STATE.length){
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">Sin usuarios</td></tr>';
+      return;
+    }
+    tbody.innerHTML = USERS_STATE.map(function(u){
+      const roleCls = u.role === 'master' ? 'cm-badge-master'
+                    : u.role === 'admin'  ? 'cm-badge-admin'
+                    : 'cm-badge-user';
+      const estado = u.activo
+        ? '<span class="cm-badge cm-badge-active">ACTIVO</span>'
+        : '<span class="cm-badge cm-badge-off">INACTIVO</span>';
+      const vig = u.vigencia ? esc(u.vigencia) : '<span style="color:var(--muted)">Sin vencimiento</span>';
+      const toggleLabel = u.activo ? 'Desactivar' : 'Activar';
+      return (
+        '<tr>' +
+          '<td><strong>' + esc(u.username || '—') + '</strong></td>' +
+          '<td>' + esc(u.nombre || '—') + '</td>' +
+          '<td><span class="cm-badge ' + roleCls + '">' + esc((u.role || 'user').toUpperCase()) + '</span></td>' +
+          '<td>' + estado + '</td>' +
+          '<td>' + vig + '</td>' +
+          '<td>' +
+            '<button class="cm-btn cm-btn-secondary cm-btn-sm" onclick="openUserModal(' + u.id + ')">Editar</button> ' +
+            '<button class="cm-btn cm-btn-sm ' + (u.activo ? 'cm-btn-danger' : 'cm-btn-primary') + '" onclick="toggleUserActive(' + u.id + ')">' + toggleLabel + '</button>' +
+          '</td>' +
+        '</tr>'
+      );
+    }).join('');
+  }
+
+  // ─── MODAL: abrir / cerrar / poblar ───
+  function openUserModal(id){
+    const modal = $('userModal');
+    if(!modal) return;
+    const isEdit = typeof id !== 'undefined' && id !== null;
+
+    $('userModalTitle').textContent = isEdit ? 'Editar usuario' : 'Nuevo usuario';
+    $('userForm').reset();
+    $('user_id').value = '';
+    $('user_modal_status').textContent = '';
+    $('user_modal_status').style.color = '';
+
+    const pwLabel = $('user_password_label');
+    const pwHint  = $('user_password_hint');
+    const pwInput = $('user_password');
+    if(isEdit){
+      pwLabel.textContent = 'Password (nuevo)';
+      pwHint.style.display = 'block';
+      pwInput.required = false;
+    } else {
+      pwLabel.textContent = 'Password *';
+      pwHint.style.display = 'none';
+      pwInput.required = true;
+    }
+
+    if(isEdit){
+      const user = USERS_STATE.find(function(u){ return u.id === id; });
+      if(!user){ alert('Usuario no encontrado'); return; }
+      $('user_id').value        = user.id;
+      $('user_username').value  = user.username || '';
+      $('user_nombre').value    = user.nombre || '';
+      $('user_role').value      = user.role || 'user';
+      $('user_vigencia').value  = user.vigencia || '';
+      $('user_activo').checked  = !!user.activo;
+      renderModulosTree(user.modulos);
+    } else {
+      $('user_role').value = 'user';
+      $('user_activo').checked = true;
+      renderModulosTree(null);
+    }
+
+    $('user_save_btn').disabled = false;
+    onRoleChange();
+    modal.style.display = 'flex';
+  }
+  window.openUserModal = openUserModal;
+
+  function closeUserModal(){
+    const modal = $('userModal');
+    if(modal) modal.style.display = 'none';
+  }
+  window.closeUserModal = closeUserModal;
+
+  function onRoleChange(){
+    const role = $('user_role').value;
+    const row  = $('user_modulos_row');
+    if(!row) return;
+    row.style.display = (role === 'master') ? 'none' : '';
+  }
+  window.onRoleChange = onRoleChange;
+
+  // ─── Árbol de módulos ───
+  function renderModulosTree(currentModulos){
+    const tree = $('user_modulos_tree');
+    if(!tree) return;
+    const isAll = currentModulos === 'all';
+    const m = (typeof currentModulos === 'object' && currentModulos !== null) ? currentModulos : {};
+
+    let html = '';
+    Object.keys(USERS_MODULES_TREE).forEach(function(modId){
+      const modDef = USERS_MODULES_TREE[modId];
+      const hasAccess = isAll || !!(m[modId] && m[modId].acceso === true);
+      html += '<div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #e5e5e5">';
+      html += '<label style="display:block;font-weight:600;font-size:13px;color:var(--text);cursor:pointer">';
+      html += '<input type="checkbox" class="mod-check" data-mod="' + esc(modId) + '" ' + (hasAccess ? 'checked' : '') + '> ';
+      html += esc(modDef.label);
+      html += '</label>';
+      if(modDef.submodulos.length){
+        html += '<div style="margin-left:26px;margin-top:6px">';
+        modDef.submodulos.forEach(function(sub){
+          const subChecked = isAll || !!(m[modId] && m[modId].submodulos && m[modId].submodulos[sub] === true);
+          html += '<label style="display:block;font-weight:400;font-size:12px;color:var(--muted2);margin:3px 0;cursor:pointer">';
+          html += '<input type="checkbox" class="submod-check" data-mod="' + esc(modId) + '" data-sub="' + esc(sub) + '" ' + (subChecked ? 'checked' : '') + '> ';
+          html += esc(sub);
+          html += '</label>';
+        });
+        html += '</div>';
+      }
+      html += '</div>';
+    });
+    tree.innerHTML = html;
+  }
+
+  function collectModulosFromTree(){
+    const result = {};
+    const modChecks = document.querySelectorAll('#user_modulos_tree .mod-check');
+    modChecks.forEach(function(cb){
+      const modId = cb.dataset.mod;
+      const modDef = USERS_MODULES_TREE[modId];
+      const submodulos = {};
+      if(modDef){
+        const subChecks = document.querySelectorAll('#user_modulos_tree .submod-check[data-mod="' + modId + '"]');
+        subChecks.forEach(function(sb){ submodulos[sb.dataset.sub] = !!sb.checked; });
+      }
+      result[modId] = { acceso: !!cb.checked, submodulos: submodulos };
+    });
+    return result;
+  }
 
   // ═════════════════════════════════════════════
   // RUN SYS CHECK — info cards + ping n8n
