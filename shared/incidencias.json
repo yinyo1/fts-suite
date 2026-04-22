@@ -1,6 +1,25 @@
 {
   "incidencias": [
     {
+      "id": "INC-ENT-1776834461178",
+      "tipo": "ajuste_hora_entrada",
+      "estado": "pendiente_supervisor",
+      "empleado_id": 6,
+      "empleado_nombre": "Leonel Cruz Cristobal",
+      "attendance_id": 12471,
+      "hora_estimada": "2026-04-21 13:35:00",
+      "motivo": "Cheque ennodoo pero no jalaba",
+      "geo_sitio": "",
+      "geo_autorizada": true,
+      "lat": 25.6545106,
+      "lng": -100.2955616,
+      "fecha_solicitud": "2026-04-22T05:07:41.179Z",
+      "supervisor_aprobo": null,
+      "supervisor_fecha": null,
+      "rh_aprobo": null,
+      "rh_fecha": null
+    },
+    {
       "id": "INC-ENT-1776827863070",
       "tipo": "ajuste_hora_entrada",
       "estado": "pendiente_supervisor",
