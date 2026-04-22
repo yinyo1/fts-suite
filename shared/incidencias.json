@@ -1,6 +1,24 @@
 {
   "incidencias": [
     {
+      "id": "INC-ADJ-1776834517215",
+      "tipo": "ajuste_hora_salida",
+      "estado": "pendiente_supervisor",
+      "empleado_id": 6,
+      "attendance_id": 12471,
+      "check_in_original": "2026-04-21 13:35:00",
+      "check_out_estimado": "2026-04-22 02:30:00",
+      "motivo": "No pude checar porque estaba en topochico pero ya podré con el nuevo checador",
+      "fecha_solicitud": "2026-04-22T05:08:37.215Z",
+      "supervisor_aprobo": null,
+      "supervisor_fecha": null,
+      "supervisor_motivo": null,
+      "supervisor_hora_ajustada": null,
+      "rh_aprobo": null,
+      "rh_fecha": null,
+      "rh_horas_finales": null
+    },
+    {
       "id": "INC-ENT-1776834461178",
       "tipo": "ajuste_hora_entrada",
       "estado": "pendiente_supervisor",
