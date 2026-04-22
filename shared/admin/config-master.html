@@ -277,6 +277,55 @@
     font-size: 32px; margin: 0 auto 16px;
   }
 
+  /* ── USERS MODAL ── */
+  .cm-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; }
+  .cm-modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.55); }
+  .cm-modal-content {
+    position: relative; background: #fff; border-radius: 14px;
+    max-width: 560px; width: calc(100% - 32px); max-height: 92vh;
+    overflow-y: auto; padding: 24px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+  }
+  .cm-modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #e5e5e5;
+  }
+  .cm-modal-header h2 { margin: 0; font-size: 18px; font-weight: 700; color: var(--text); }
+  .cm-modal-close {
+    background: none; border: none; font-size: 24px; line-height: 1;
+    cursor: pointer; color: var(--muted2); padding: 4px 10px; border-radius: 6px;
+  }
+  .cm-modal-close:hover { background: #f5f5f5; color: var(--text); }
+  .cm-form-row { margin-bottom: 14px; }
+  .cm-form-row > label {
+    display: block; margin-bottom: 6px;
+    font-weight: 600; font-size: 12px; color: var(--muted2);
+    text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  .cm-form-row input[type=text],
+  .cm-form-row input[type=password],
+  .cm-form-row input[type=date],
+  .cm-form-row select {
+    width: 100%; padding: 10px 12px;
+    border: 1px solid #d5d5d5; border-radius: 8px;
+    font-size: 14px; font-family: inherit;
+    background: #fff; color: var(--text); outline: none;
+    box-sizing: border-box;
+  }
+  .cm-form-row input:focus, .cm-form-row select:focus { border-color: var(--green); }
+  .cm-form-row input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cursor: pointer; vertical-align: middle; }
+  .cm-form-hint { display: block; font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .cm-modulos-tree {
+    padding: 12px; background: #fafafa; border: 1px solid #eee;
+    border-radius: 8px; max-height: 280px; overflow-y: auto;
+  }
+  .cm-modulos-tree label { text-transform: none; letter-spacing: normal; }
+  .cm-modal-footer {
+    display: flex; justify-content: flex-end; gap: 8px;
+    margin-top: 18px; padding-top: 14px; border-top: 1px solid #e5e5e5;
+  }
+  .cm-modal-status { font-size: 13px; margin: 8px 0 4px; min-height: 18px; }
+
   /* ── MOBILE ── */
   @media (max-width: 600px) {
     .cm-sidebar { width: 56px; min-width: 56px; }
@@ -289,6 +338,7 @@
     .cm-info-grid { grid-template-columns: 1fr; }
     .cm-topbar { padding: 0 14px; }
     .cm-user-info { display: none; }
+    .cm-modal-content { width: calc(100% - 16px); padding: 18px; max-height: 96vh; }
   }
 </style>
 </head>
@@ -808,14 +858,17 @@
     <!-- ════════════════════════════════════════ -->
     <section class="cm-section" id="sec-usuarios">
       <h1 class="cm-section-title">👥 Usuarios</h1>
-      <p class="cm-section-sub">Lectura de <code>shared/users-suite.json</code> desde GitHub raw. Para crear/editar/eliminar usuarios usa el <a href="index.html" style="color:var(--green);font-weight:600">Panel Admin</a>.</p>
+      <p class="cm-section-sub">
+        Gestión completa de usuarios. Los cambios se guardan automáticamente en GitHub
+        (<code>shared/users-suite.json</code>).
+      </p>
 
       <div class="cm-card">
-        <div class="cm-card-title">Usuarios registrados</div>
-        <div class="cm-btn-group" style="border-top:none;padding-top:0;margin-top:0;margin-bottom:14px">
-          <button class="cm-btn cm-btn-secondary" onclick="loadUsers()">↻ Cargar desde GitHub</button>
-          <span class="cm-hint" id="users_status" style="align-self:center"></span>
+        <div class="cm-card-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:12px;flex-wrap:wrap">
+          <div class="cm-card-title" style="margin:0">Usuarios registrados</div>
+          <button class="cm-btn cm-btn-primary" onclick="openUserModal()">+ Nuevo usuario</button>
         </div>
+        <div style="margin-bottom:10px"><span id="users_status" style="font-size:12px"></span></div>
         <div class="cm-table-wrap">
           <table class="cm-table" id="users_table">
             <thead>
@@ -825,10 +878,11 @@
                 <th>Rol</th>
                 <th>Estado</th>
                 <th>Vigencia</th>
+                <th style="width:170px">Acciones</th>
               </tr>
             </thead>
             <tbody id="users_tbody">
-              <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Pulsa "Cargar desde GitHub"</td></tr>
+              <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Cargando…</td></tr>
             </tbody>
           </table>
         </div>
@@ -898,6 +952,70 @@
 
 <!-- ═══ TOAST ═══ -->
 <div class="cm-toast" id="cmToast"></div>
+
+<!-- ═══ USER MODAL (crear/editar) ═══ -->
+<div id="userModal" class="cm-modal" style="display:none" role="dialog" aria-modal="true" aria-labelledby="userModalTitle">
+  <div class="cm-modal-backdrop" onclick="closeUserModal()"></div>
+  <div class="cm-modal-content">
+    <div class="cm-modal-header">
+      <h2 id="userModalTitle">Nuevo usuario</h2>
+      <button type="button" class="cm-modal-close" onclick="closeUserModal()" aria-label="Cerrar">×</button>
+    </div>
+
+    <form id="userForm" onsubmit="saveUserAndSync(event)" autocomplete="off">
+      <input type="hidden" id="user_id" value="">
+
+      <div class="cm-form-row">
+        <label for="user_username">Username *</label>
+        <input type="text" id="user_username" required autocomplete="off" spellcheck="false">
+      </div>
+
+      <div class="cm-form-row">
+        <label for="user_nombre">Nombre completo *</label>
+        <input type="text" id="user_nombre" required autocomplete="off">
+      </div>
+
+      <div class="cm-form-row">
+        <label for="user_password" id="user_password_label">Password *</label>
+        <input type="password" id="user_password" autocomplete="new-password">
+        <span class="cm-form-hint" id="user_password_hint" style="display:none">Dejar vacío para mantener el password actual</span>
+      </div>
+
+      <div class="cm-form-row">
+        <label for="user_role">Rol *</label>
+        <select id="user_role" onchange="onRoleChange()">
+          <option value="user">user</option>
+          <option value="admin">admin</option>
+          <option value="master">master</option>
+        </select>
+      </div>
+
+      <div class="cm-form-row">
+        <label for="user_vigencia">Vigencia (opcional)</label>
+        <input type="date" id="user_vigencia">
+      </div>
+
+      <div class="cm-form-row">
+        <label style="font-weight:600;color:var(--text);text-transform:none;letter-spacing:normal;font-size:13px">
+          <input type="checkbox" id="user_activo" checked>
+          Usuario activo
+        </label>
+      </div>
+
+      <div class="cm-form-row" id="user_modulos_row">
+        <label>Módulos</label>
+        <div id="user_modulos_tree" class="cm-modulos-tree"></div>
+      </div>
+
+      <div id="user_modal_status" class="cm-modal-status"></div>
+
+      <div class="cm-modal-footer">
+        <button type="button" class="cm-btn cm-btn-secondary" onclick="closeUserModal()">Cancelar</button>
+        <button type="submit" class="cm-btn cm-btn-primary" id="user_save_btn">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <!-- ═══ SCRIPT — Parte 3A: auth + helpers + loaders + conexiones + apikeys ═══ -->
 <script>
