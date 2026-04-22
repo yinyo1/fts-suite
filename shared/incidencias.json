@@ -1,6 +1,25 @@
 {
   "incidencias": [
     {
+      "id": "INC-ENT-1776866476636",
+      "tipo": "ajuste_hora_entrada",
+      "estado": "pendiente_supervisor",
+      "empleado_id": 127,
+      "empleado_nombre": "Cesar Gildardo Gómez Cano",
+      "attendance_id": 12496,
+      "hora_estimada": "2026-04-22 13:00:00",
+      "motivo": "No sabía del checador",
+      "geo_sitio": "",
+      "geo_autorizada": true,
+      "lat": 25.7355743,
+      "lng": -100.328491,
+      "fecha_solicitud": "2026-04-22T14:01:16.636Z",
+      "supervisor_aprobo": null,
+      "supervisor_fecha": null,
+      "rh_aprobo": null,
+      "rh_fecha": null
+    },
+    {
       "id": "INC-ADJ-1776835473863",
       "tipo": "ajuste_hora_salida",
       "estado": "pendiente_supervisor",
