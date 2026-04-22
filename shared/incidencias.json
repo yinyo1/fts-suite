@@ -1,6 +1,25 @@
 {
   "incidencias": [
     {
+      "id": "INC-ENT-1776825901777",
+      "tipo": "ajuste_hora_entrada",
+      "estado": "pendiente_supervisor",
+      "empleado_id": 131,
+      "empleado_nombre": "Tomas Vázquez García",
+      "attendance_id": 12466,
+      "hora_estimada": "2026-04-21 17:30:00",
+      "motivo": "Olvide checar",
+      "geo_sitio": "",
+      "geo_autorizada": true,
+      "lat": 25.7347883,
+      "lng": -100.3265033,
+      "fecha_solicitud": "2026-04-22T02:45:01.777Z",
+      "supervisor_aprobo": null,
+      "supervisor_fecha": null,
+      "rh_aprobo": null,
+      "rh_fecha": null
+    },
+    {
       "id": "INC-ENT-1776825900466",
       "tipo": "ajuste_hora_entrada",
       "estado": "pendiente_supervisor",
