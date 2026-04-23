@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mis Incidencias — Mi Perfil — FTS</title>
+<script>
+  // Cache busting + BUILD_DATE expuesto a window.
+  (function() {
+    const BUILD_DATE = '20260423-mis-incidencias-v1';
+    window.BUILD_DATE = BUILD_DATE;
+  })();
+</script>
+<style>
+  :root{
+    --green:  #107C10;
+    --green2: #0d6b0d;
+    --red:    #D13438;
+    --blue:   #0078D4;
+    --orange: #D83B01;
+    --text:   #1a1a1a;
+    --muted:  #999;
+    --muted2: #666;
+    --bg:     #fafafa;
+    --card:   #ffffff;
+    --border: #e0e0e0;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:16px;color:var(--text);background:var(--bg)}
+  a{color:inherit}
+
+  .mi-topbar{
+    position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px 14px;gap:8px;
+  }
+  .mi-back{
+    display:inline-flex;align-items:center;gap:4px;
+    color:var(--muted2);text-decoration:none;font-size:13px;font-weight:500;
+    padding:6px 8px;border-radius:6px;
+  }
+  .mi-back:hover{color:var(--green);background:#f0f9f0}
+  .mi-title-wrap{display:flex;align-items:center;gap:6px;min-width:0;flex:1;justify-content:center}
+  .mi-title{font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mi-build{font-size:10px;color:var(--muted);font-weight:400}
+  .mi-user{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+  .mi-user-name{font-size:12px;color:var(--muted2);max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mi-logout-btn{
+    background:none;border:none;color:var(--blue);font-size:12px;cursor:pointer;
+    padding:2px 6px;border-radius:4px;font-family:inherit;
+  }
+
+  .mi-main{max-width:720px;margin:0 auto;padding:14px;padding-bottom:40px}
+  .mi-h1{font-size:22px;font-weight:700;margin:8px 0 4px}
+  .mi-sub{font-size:13px;color:var(--muted2);margin:0 0 16px}
+
+  /* ─── Filtros ─── */
+  .mi-filters{
+    background:var(--card);border:1px solid var(--border);border-radius:12px;
+    padding:14px;margin-bottom:16px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.04);
+  }
+  .mi-filters-grid{
+    display:grid;grid-template-columns:1fr 1fr;gap:10px;
+  }
+  .mi-field label{
+    display:block;font-size:11px;font-weight:700;color:var(--muted2);
+    text-transform:uppercase;letter-spacing:0.3px;margin-bottom:5px;
+  }
+  .mi-input,.mi-select{
+    width:100%;padding:10px 12px;border:1px solid #ccc;border-radius:8px;
+    font-size:15px;font-family:inherit;background:#fff;outline:none;
+    box-sizing:border-box;
+  }
+  .mi-input:focus,.mi-select:focus{border-color:var(--green)}
+  .mi-status-row{margin-top:10px}
+  .mi-actions{display:flex;gap:8px;margin-top:12px}
+  .mi-btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    padding:11px 14px;border-radius:9px;border:1px solid transparent;
+    font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;
+    min-height:42px;
+  }
+  .mi-btn-primary{background:var(--green);color:#fff;flex:1}
+  .mi-btn-primary:active{background:var(--green2)}
+  .mi-btn-primary:disabled{background:#ccc;cursor:not-allowed}
+  .mi-btn-secondary{background:#fff;color:var(--text);border-color:#d5d5d5}
+
+  .mi-result-status{font-size:12px;color:var(--muted2);margin:6px 0 12px;min-height:14px}
+
+  /* ─── Card de incidencia ─── */
+  .mi-card{
+    background:var(--card);border:1px solid var(--border);border-radius:12px;
+    padding:14px;margin-bottom:12px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.04);
+  }
+  .mi-card-id{
+    font-family:monospace;font-size:11px;color:var(--muted);
+    word-break:break-all;margin-bottom:2px;
+  }
+  .mi-card-fecha{font-size:12px;color:var(--muted2);margin-bottom:10px}
+  .mi-card-row{
+    display:flex;align-items:center;gap:6px;
+    font-size:14px;color:var(--text);margin:4px 0;line-height:1.4;
+  }
+  .mi-card-row .mi-row-lbl{color:var(--muted2);font-size:12px;min-width:170px}
+  .mi-card-row .mi-row-val{font-weight:600}
+  @media (max-width: 480px){
+    .mi-card-row{flex-direction:column;align-items:flex-start;gap:0;margin:6px 0}
+    .mi-card-row .mi-row-lbl{min-width:0;font-size:11px;text-transform:uppercase;letter-spacing:0.3px}
+  }
+
+  .mi-status-badge{
+    display:inline-block;padding:4px 10px;border-radius:20px;
+    font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;
+  }
+  .mi-status-pending{background:#fff4d9;color:#7a5800;border:1px solid #e6d38a}
+  .mi-status-approved{background:#e6f5e6;color:var(--green);border:1px solid #b3d9b3}
+  .mi-status-rejected{background:#fff0f0;color:var(--red);border:1px solid #f5c2c2}
+  .mi-status-expired{background:#eee;color:var(--muted2);border:1px solid #ccc}
+
+  .mi-motivo{
+    background:#fafafa;border-left:3px solid var(--blue);
+    padding:8px 12px;margin-top:10px;font-size:13px;color:var(--muted2);
+    font-style:italic;line-height:1.5;border-radius:0 6px 6px 0;
+  }
+
+  .mi-card-final{
+    background:#e6f5e6;color:var(--green);
+    padding:8px 12px;border-radius:8px;margin-top:10px;
+    font-size:13px;font-weight:600;
+  }
+
+  .mi-card-actions{
+    display:flex;justify-content:flex-end;margin-top:12px;
+  }
+  .mi-card-btn{
+    background:none;border:1px solid var(--blue);color:var(--blue);
+    padding:7px 14px;border-radius:6px;font-size:13px;font-weight:600;
+    cursor:pointer;font-family:inherit;
+  }
+  .mi-card-btn:active{background:#eef6ff}
+
+  .mi-empty{
+    background:var(--card);border:1px dashed var(--border);border-radius:12px;
+    padding:40px 20px;text-align:center;color:var(--muted2);
+  }
+  .mi-empty-icon{font-size:42px;margin-bottom:12px;opacity:0.6}
+  .mi-empty-msg{font-size:14px;line-height:1.5;max-width:320px;margin:0 auto}
+
+  .mi-footer{text-align:center;font-size:11px;color:var(--muted);margin-top:24px}
+</style>
+</head>
+<body>
+
+<div class="mi-topbar">
+  <a class="mi-back" href="../index.html">← Mi Perfil</a>
+  <div class="mi-title-wrap">
+    <span class="mi-title">📋 Mis Incidencias</span>
+    <span class="mi-build">build 20260423-mis-incidencias-v1</span>
+  </div>
+  <div class="mi-user">
+    <span class="mi-user-name" id="mi-user-name">—</span>
+    <button class="mi-logout-btn" onclick="mi_logout()">Cerrar sesión</button>
+  </div>
+</div>
+
+<main class="mi-main">
+
+  <p class="mi-sub">Consulta el estado de tus solicitudes de ajuste de hora.</p>
+
+  <div class="mi-filters">
+    <div class="mi-filters-grid">
+      <div class="mi-field">
+        <label for="mi-date-from">Desde</label>
+        <input type="date" id="mi-date-from" class="mi-input">
+      </div>
+      <div class="mi-field">
+        <label for="mi-date-to">Hasta</label>
+        <input type="date" id="mi-date-to" class="mi-input">
+      </div>
+    </div>
+    <div class="mi-status-row">
+      <div class="mi-field">
+        <label for="mi-status-filter">Status</label>
+        <select id="mi-status-filter" class="mi-select">
+          <option value="todas">Todas</option>
+          <option value="pendientes">🟡 Pendientes</option>
+          <option value="aprobadas">🟢 Aprobadas</option>
+          <option value="rechazadas">🔴 Rechazadas</option>
+          <option value="expiradas">⚫ Expiradas</option>
+        </select>
+      </div>
+    </div>
+    <div class="mi-actions">
+      <button class="mi-btn mi-btn-primary" id="mi-btn-buscar" onclick="mi_buscar()">🔎 Buscar</button>
+      <button class="mi-btn mi-btn-secondary" onclick="mi_reset_semana_fts()">📅 Esta semana FTS</button>
+    </div>
+  </div>
+
+  <div class="mi-result-status" id="mi-result-status"></div>
+
+  <div id="mi-results"></div>
+
+  <div class="mi-footer" id="mi-footer">FTS Industrial Suite</div>
+
+</main>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════
+const SESSION_KEY     = 'fts_mi_perfil_session';
+const SESSION_MAX_AGE = 4 * 60 * 60 * 1000;  // 4 horas
+const RAW_INCIDENCIAS = 'https://raw.githubusercontent.com/yinyo1/fts-suite/main/shared/incidencias-asistencia.json';
+
+let _session = null;
+let _allIncidencias = [];
+let _filtered = [];
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+// ═══════════════════════════════════════════════
+// AUTH GATE
+// ═══════════════════════════════════════════════
+function mi_get_session(){
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    if (!s || !s.empleado_id) return null;
+    // Expiración por antigüedad de ts
+    const ts = s.ts || s.loginTime;
+    if (typeof ts === 'number' && (Date.now() - ts) > SESSION_MAX_AGE) {
+      console.warn('[mis-incidencias] sesión expirada (>4h)');
+      return null;
+    }
+    return s;
+  } catch(e) { return null; }
+}
+
+function mi_logout(){
+  try { sessionStorage.removeItem(SESSION_KEY); } catch(e){}
+  window.location.href = '../index.html';
+}
+window.mi_logout = mi_logout;
+
+// ═══════════════════════════════════════════════
+// SEMANA FTS — viernes 00:00 → jueves 23:59 CST
+// ═══════════════════════════════════════════════
+function getFtsWeekRange(today){
+  today = today || new Date();
+  const dayOfWeek = today.getDay();          // 0=dom...5=vie...6=sáb
+  const daysToFriday = (dayOfWeek - 5 + 7) % 7;
+
+  const start = new Date(today);
+  start.setDate(today.getDate() - daysToFriday);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);          // jueves
+  end.setHours(23, 59, 59, 999);
+
+  const fmt = function(d){
+    return d.getFullYear() + '-' +
+      String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0');
+  };
+
+  return { start: start, end: end, startStr: fmt(start), endStr: fmt(end) };
+}
+
+// ═══════════════════════════════════════════════
+// FORMATO DE HORAS
+// ═══════════════════════════════════════════════
+function utcToCstDisplay(utcString){
+  if (!utcString) return '—';
+  const d = new Date(utcString + (utcString.endsWith('Z') ? '' : 'Z'));
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleString('es-MX', {
+    timeZone: 'America/Monterrey',
+    dateStyle: 'short',
+    timeStyle: 'short'
+  });
+}
+
+function cstStringDisplay(cstString){
+  if (!cstString) return '—';
+  // Tipo "2026-04-23 07:00:00" o "2026-04-23T07:00:00" (ya CST)
+  const m = cstString.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+  if (!m) return cstString;
+  return m[3] + '/' + m[2] + '/' + m[1] + ' ' + m[4] + ':' + m[5];
+}
+
+// ═══════════════════════════════════════════════
+// FETCH INCIDENCIAS (raw GitHub con cache-bust)
+// ═══════════════════════════════════════════════
+async function loadIncidencias(){
+  const url = RAW_INCIDENCIAS + '?cache_bust=' + Date.now();
+  try {
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok){
+      // 404 = archivo aún no existe → tratar como lista vacía
+      if (res.status === 404) return [];
+      console.warn('[mis-incidencias] HTTP', res.status);
+      return [];
+    }
+    const data = await res.json();
+    return Array.isArray(data && data.incidencias) ? data.incidencias : [];
+  } catch(e){
+    console.error('[mis-incidencias] fetch error', e);
+    return [];
+  }
+}
+
+// ═══════════════════════════════════════════════
+// FILTRADO
+// ═══════════════════════════════════════════════
+function filterIncidencias(all, session, dateFromStr, dateToStr, statusFilter){
+  return all.filter(function(inc){
+    // 1. Solo del empleado logueado
+    if (Number(inc.empleado_id) !== Number(session.empleado_id)) return false;
+
+    // 2. Rango de fechas (fecha_creacion ISO UTC; comparamos los primeros 10 chars)
+    const fechaCreacion = String(inc.fecha_creacion || '').slice(0, 10);
+    if (!fechaCreacion) return false;
+    if (dateFromStr && fechaCreacion < dateFromStr) return false;
+    if (dateToStr   && fechaCreacion > dateToStr)   return false;
+
+    // 3. Status filter
+    const st = String(inc.status || '');
+    if (statusFilter === 'pendientes'  && !st.startsWith('pendiente_')) return false;
+    if (statusFilter === 'aprobadas'   && !st.startsWith('aprobada_'))  return false;
+    if (statusFilter === 'rechazadas'  && st !== 'rechazada')           return false;
+    if (statusFilter === 'expiradas'   && st !== 'expirada_por_timeout') return false;
+
+    return true;
+  });
+}
+
+// ═══════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════
+const STATUS_META = {
+  pendiente_supervisor:  { cls: 'mi-status-pending',  icon: '🟡', label: 'Pendiente supervisor' },
+  pendiente_rh:          { cls: 'mi-status-pending',  icon: '🟡', label: 'Pendiente RH' },
+  pendiente_direccion:   { cls: 'mi-status-pending',  icon: '🟡', label: 'Pendiente Dirección' },
+  aprobada_tal_cual:     { cls: 'mi-status-approved', icon: '🟢', label: 'Aprobada tal cual' },
+  aprobada_con_ajuste:   { cls: 'mi-status-approved', icon: '🟢', label: 'Aprobada con ajuste' },
+  rechazada:             { cls: 'mi-status-rejected', icon: '🔴', label: 'Rechazada' },
+  expirada_por_timeout:  { cls: 'mi-status-expired',  icon: '⚫', label: 'Expirada' }
+};
+
+function statusBadge(status){
+  const meta = STATUS_META[status] || { cls: 'mi-status-expired', icon: '❓', label: status || 'Desconocido' };
+  return '<span class="mi-status-badge ' + meta.cls + '">' + meta.icon + ' ' + esc(meta.label) + '</span>';
+}
+
+function renderIncidencias(list){
+  const container = $('mi-results');
+  if (!container) return;
+
+  if (!list.length){
+    container.innerHTML =
+      '<div class="mi-empty">' +
+        '<div class="mi-empty-icon">✨</div>' +
+        '<div class="mi-empty-msg">' +
+          'No tienes incidencias en este rango de fechas.<br><br>' +
+          'Si olvidaste checar, usa el botón <strong>"Olvidé checar entrada"</strong> en el kiosk para crear una.' +
+        '</div>' +
+      '</div>';
+    return;
+  }
+
+  // Ordenar más recientes primero
+  list.sort(function(a, b){
+    return String(b.fecha_creacion || '').localeCompare(String(a.fecha_creacion || ''));
+  });
+
+  container.innerHTML = list.map(function(inc){
+    const propEmpleado = (inc.propuestas || []).find(function(p){ return p.rol === 'empleado'; }) || {};
+    const horaDeclarada = propEmpleado.hora_propuesta_cst || '—';
+    const motivo        = propEmpleado.comentario || '';
+
+    let finalRow = '';
+    if (inc.hora_final_aplicada_utc){
+      finalRow = '<div class="mi-card-final">' +
+        '✅ Hora final aplicada: ' + esc(utcToCstDisplay(inc.hora_final_aplicada_utc)) + ' CST' +
+      '</div>';
+    }
+
+    let motivoBlock = '';
+    if (motivo){
+      motivoBlock = '<div class="mi-motivo">"' + esc(motivo) + '"</div>';
+    }
+
+    return (
+      '<div class="mi-card">' +
+        '<div class="mi-card-id">' + esc(inc.id_interno || '') + '</div>' +
+        '<div class="mi-card-fecha">Creada: ' + esc(utcToCstDisplay(inc.fecha_creacion)) + '</div>' +
+        '<div class="mi-card-row">' +
+          '<span class="mi-row-lbl">🕐 Hora real del sistema:</span>' +
+          '<span class="mi-row-val">' + esc(utcToCstDisplay(inc.hora_real_checkin_utc)) + '</span>' +
+        '</div>' +
+        '<div class="mi-card-row">' +
+          '<span class="mi-row-lbl">🕐 Hora que declaré:</span>' +
+          '<span class="mi-row-val">' + esc(cstStringDisplay(horaDeclarada)) + '</span>' +
+        '</div>' +
+        '<div class="mi-card-row">' +
+          '<span class="mi-row-lbl">📌 Status:</span>' +
+          '<span>' + statusBadge(inc.status) + '</span>' +
+        '</div>' +
+        motivoBlock +
+        finalRow +
+        '<div class="mi-card-actions">' +
+          '<button class="mi-card-btn" onclick="verDetalle(\'' + esc(inc.id_interno) + '\')">Ver detalle →</button>' +
+        '</div>' +
+      '</div>'
+    );
+  }).join('');
+}
+
+function verDetalle(idInterno){
+  const inc = _allIncidencias.find(function(i){ return i.id_interno === idInterno; });
+  if (!inc){ alert('Incidencia no encontrada en el state actual.'); return; }
+  alert('DETALLE (WIP - será UI en B.3)\n\n' + JSON.stringify(inc, null, 2));
+}
+window.verDetalle = verDetalle;
+
+// ═══════════════════════════════════════════════
+// FLUJO DE BÚSQUEDA
+// ═══════════════════════════════════════════════
+async function mi_buscar(){
+  if (!_session) return;
+  const dateFrom = $('mi-date-from').value;
+  const dateTo   = $('mi-date-to').value;
+  const status   = $('mi-status-filter').value;
+  const btn      = $('mi-btn-buscar');
+  const stEl     = $('mi-result-status');
+
+  btn.disabled = true;
+  stEl.textContent = '⏳ Cargando incidencias…';
+
+  _allIncidencias = await loadIncidencias();
+  _filtered = filterIncidencias(_allIncidencias, _session, dateFrom, dateTo, status);
+
+  btn.disabled = false;
+  stEl.textContent = _filtered.length + ' resultado(s) en el rango ' + dateFrom + ' → ' + dateTo;
+  renderIncidencias(_filtered);
+}
+window.mi_buscar = mi_buscar;
+
+function mi_reset_semana_fts(){
+  const range = getFtsWeekRange(new Date());
+  $('mi-date-from').value = range.startStr;
+  $('mi-date-to').value   = range.endStr;
+  mi_buscar();
+}
+window.mi_reset_semana_fts = mi_reset_semana_fts;
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function(){
+  _session = mi_get_session();
+  if (!_session){
+    alert('Sesión no válida o expirada. Vuelve a entrar.');
+    window.location.href = '../index.html';
+    return;
+  }
+
+  $('mi-user-name').textContent = '👤 ' + (_session.empleado_nombre || '—');
+
+  // Default: semana FTS actual
+  const range = getFtsWeekRange(new Date());
+  $('mi-date-from').value = range.startStr;
+  $('mi-date-to').value   = range.endStr;
+
+  console.log('[mis-incidencias] init OK — empleado=' + _session.empleado_id + ' build=' + window.BUILD_DATE);
+  console.log('[mis-incidencias] semana FTS default:', range.startStr, '→', range.endStr);
+
+  mi_buscar();
+});
+</script>
+
+</body>
+</html>
