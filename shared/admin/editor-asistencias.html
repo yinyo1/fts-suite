@@ -1411,91 +1411,21 @@ function _diffChanges(before, after) {
 }
 
 // ═══════════════════════════════════════════════
-// AUDIT LOG — append-only a shared/audit-log.json vía GitHub API
+// AUDIT LOG — ahora vive en el backend (n8n)
 // ═══════════════════════════════════════════════
-// Patrón idéntico a syncUsersToGitHub() de config-master.html:
-// 1) GET del archivo (si existe) para obtener SHA + entries previas.
-// 2) Append de la nueva entry.
-// 3) PUT con el SHA (y 404-aware: si no existe, lo crea).
-// Es best-effort: si falla, loguea warning pero NO revierte la acción.
+// Antes: esta función escribía directamente al repo con el PAT
+// guardado en localStorage.
+// Ahora: el audit log lo escribe el backend n8n automáticamente en
+// cada write/delete exitoso, usando las credentials centralizadas
+// en Railway. El frontend ya no maneja tokens sensibles para este
+// flujo.
+//
+// Esta función queda como no-op para no romper call-sites existentes
+// que siguen invocándola (chunks 4 y 5). Re-envía a logAudit() con la
+// firma posicional del spec.
 async function ea_append_audit_log(entry) {
-  const session = (window.FTSAuth && FTSAuth.getSession && FTSAuth.getSession()) || {};
-  const fullEntry = {
-    timestamp:     new Date().toISOString(),
-    user:          session.username || 'unknown',
-    action:        entry.action || 'unknown',
-    attendance_id: entry.attendance_id || null,
-    employee_name: entry.employee_name || null,
-    changes:       entry.changes || {},
-    result:        entry.result || 'success',
-    error_message: entry.error_message || null
-  };
-
-  const token = localStorage.getItem('ops_github_token');
-  if (!token) {
-    console.warn('[ea] sin GitHub token → skip audit log', fullEntry);
-    return false;
-  }
-
-  const API = 'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/audit-log.json';
-  const headers = {
-    'Authorization': 'token ' + token,
-    'Accept':        'application/vnd.github.v3+json'
-  };
-
-  // 1) GET (404 tolerado → crear nuevo)
-  let sha = null;
-  let existing = { version: 1, entries: [] };
-  try {
-    const r = await fetch(API + '?ref=main&t=' + Date.now(), { headers: headers });
-    if (r.ok) {
-      const d = await r.json();
-      sha = d.sha;
-      try {
-        existing = JSON.parse(decodeURIComponent(escape(atob(d.content.replace(/\n/g,'')))));
-      } catch(parseErr) {
-        console.warn('[ea] audit-log existente malformado, se sobrescribe con estructura nueva');
-        existing = { version: 1, entries: [] };
-      }
-    } else if (r.status !== 404) {
-      console.warn('[ea] audit-log GET status=' + r.status + ' → skip');
-      return false;
-    }
-  } catch (e) {
-    console.warn('[ea] audit-log GET failed:', e);
-    return false;
-  }
-
-  if (!Array.isArray(existing.entries)) existing.entries = [];
-  if (!existing.version) existing.version = 1;
-  existing.entries.push(fullEntry);
-
-  // TODO: rotar a archivo mensual si existing.entries.length > 10000.
-
-  // 2) PUT
-  const bodyObj = {
-    message: 'audit: ' + fullEntry.action + ' #' + (fullEntry.attendance_id || '?'),
-    content: btoa(unescape(encodeURIComponent(JSON.stringify(existing, null, 2)))),
-    branch:  'main'
-  };
-  if (sha) bodyObj.sha = sha;
-
-  try {
-    const r = await fetch(API, {
-      method: 'PUT',
-      headers: Object.assign({}, headers, { 'Content-Type':'application/json' }),
-      body:    JSON.stringify(bodyObj)
-    });
-    if (!r.ok) {
-      const txt = await r.text().catch(function(){ return ''; });
-      console.warn('[ea] audit-log PUT failed ' + r.status + ' ' + txt.substring(0, 200));
-      return false;
-    }
-    return true;
-  } catch (e) {
-    console.warn('[ea] audit-log PUT error:', e);
-    return false;
-  }
+  const e = entry || {};
+  return logAudit(e.action, e.attendance_id, e.employee_name, e.changes, e.result, e.error_message);
 }
 
 // ═══════════════════════════════════════════════
@@ -1698,6 +1628,9 @@ window.ea_diag_list_fields     = function(){ return runDiagnosis('fields'); };  
 // - Si error_type === 'auth' → force logout
 // - Si error_type === 'odoo_timeout' y se pasó retry → botón reintentar con cuenta regresiva 30s
 // - Si error_type === 'odoo_field_invalid' → abre panel diagnóstico con el contexto pre-cargado
+//
+// Audit log ahora se escribe en el backend (n8n) automáticamente en
+// cada write/delete exitoso.
 function showError(err, opts) {
   const e = err || {};
   opts = opts || {};
@@ -1779,25 +1712,15 @@ window.ea_handle_webhook_error = function(err, titleCtx) {
 // CHUNK 6 — logAudit wrapper + forceLogout + wire-up sanity check
 // ═══════════════════════════════════════════════
 
-// ── logAudit (firma posicional pedida por el spec) ────────────
-// Envoltorio de ea_append_audit_log que acepta argumentos posicionales
-// en lugar de un objeto. Compatible con los call-sites nuevos que
-// prefieran esta API. Best-effort: si falla el PUT, loguea en consola
-// pero no bloquea al caller.
+// ── logAudit — no-op de frontend (el audit vive en n8n) ─────
+// Audit log ya NO se escribe desde frontend. Se escribe en el
+// backend (n8n) automáticamente en cada write/delete exitoso. Esta
+// función queda como no-op para mantener compatibilidad con los call
+// sites existentes.
 async function logAudit(action, attendanceId, employeeName, changes, result, errorMsg) {
-  try {
-    return await ea_append_audit_log({
-      action:        action,
-      attendance_id: attendanceId,
-      employee_name: employeeName,
-      changes:       changes || {},
-      result:        result || 'success',
-      error_message: errorMsg || null
-    });
-  } catch (e) {
-    console.warn('[ea] logAudit error:', e);
-    return false;
-  }
+  // El audit log se registra automáticamente en el backend n8n.
+  // No se requiere acción del frontend.
+  console.log(`[audit] ${action} attendance ${attendanceId} — logged server-side`);
 }
 window.logAudit = logAudit;
 
