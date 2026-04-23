@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi Perfil — FTS</title>
+<script>
+  // Cache busting + BUILD_DATE expuesto a window.
+  (function() {
+    const BUILD_DATE = '20260423-mi-perfil-hub-v1';
+    window.BUILD_DATE = BUILD_DATE;
+    if (!window.location.search.includes('v=')) {
+      document.addEventListener('DOMContentLoaded', function() {
+        const scripts = document.querySelectorAll('script[src]');
+        scripts.forEach(function(s) {
+          if (s.src.includes('face-api')) {
+            const sep = s.src.includes('?') ? '&' : '?';
+            s.src = s.src + sep + 'v=' + BUILD_DATE;
+          }
+        });
+      });
+    }
+  })();
+</script>
+<style>
+  :root{
+    --green:  #107C10;
+    --green2: #0d6b0d;
+    --red:    #D13438;
+    --blue:   #0078D4;
+    --orange: #D83B01;
+    --text:   #1a1a1a;
+    --muted:  #999;
+    --muted2: #666;
+    --bg:     #fafafa;
+    --card:   #ffffff;
+    --border: #e0e0e0;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:16px;color:var(--text);background:var(--bg)}
+  a{color:inherit}
+
+  .mp-topbar{
+    position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);
+    display:flex;align-items:center;justify-content:space-between;
+    padding:12px 16px;
+  }
+  .mp-logo{display:flex;align-items:center;gap:8px;font-weight:700;color:var(--green)}
+  .mp-logo-dot{width:28px;height:28px;border-radius:7px;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800}
+  .mp-build{font-size:10px;color:var(--muted);font-weight:400;margin-left:6px}
+  .mp-user-info{font-size:13px;color:var(--muted2)}
+  .mp-logout-btn{
+    background:none;border:none;color:var(--blue);font-size:14px;cursor:pointer;
+    padding:6px 10px;border-radius:6px;font-family:inherit;
+  }
+  .mp-logout-btn:hover{background:#eef6ff}
+
+  .mp-main{max-width:720px;margin:0 auto;padding:16px;padding-bottom:40px}
+  .mp-h1{font-size:22px;font-weight:700;margin:16px 0 4px}
+  .mp-sub{font-size:14px;color:var(--muted2);margin:0 0 20px}
+
+  /* ─── Login card ─── */
+  .mp-login-card{
+    background:var(--card);border:1px solid var(--border);border-radius:14px;
+    padding:20px;margin-top:20px;box-shadow:0 1px 3px rgba(0,0,0,0.04);
+  }
+  .mp-login-title{font-size:18px;font-weight:700;margin:0 0 14px;text-align:center}
+  .mp-step{display:none}
+  .mp-step.active{display:block}
+  .mp-step-title{
+    font-size:12px;font-weight:700;color:var(--muted2);text-transform:uppercase;
+    letter-spacing:0.3px;margin-bottom:10px;
+  }
+  .mp-input{
+    width:100%;padding:12px 14px;border:1px solid #ccc;border-radius:10px;
+    font-size:16px;font-family:inherit;outline:none;background:#fff;
+    box-sizing:border-box;
+  }
+  .mp-input:focus{border-color:var(--green)}
+
+  .mp-emp-list{
+    margin-top:10px;max-height:50vh;overflow-y:auto;
+    border:1px solid #eee;border-radius:10px;
+  }
+  .mp-emp-item{
+    display:flex;align-items:center;gap:12px;
+    padding:12px 14px;border-bottom:1px solid #eee;cursor:pointer;
+    transition:background 0.1s;
+  }
+  .mp-emp-item:last-child{border-bottom:none}
+  .mp-emp-item:active{background:#f0f9f0}
+  .mp-emp-photo{
+    width:44px;height:44px;border-radius:50%;background:#eee;
+    object-fit:cover;flex-shrink:0;
+  }
+  .mp-emp-nombre{font-weight:600;font-size:15px}
+  .mp-emp-cargo{font-size:12px;color:var(--muted2)}
+
+  .mp-pin-dots{display:flex;gap:14px;justify-content:center;margin:18px 0}
+  .mp-pin-dot{
+    width:20px;height:20px;border-radius:50%;
+    border:2px solid #ccc;background:#eee;
+    transition:background 0.1s,border-color 0.1s,transform 0.1s;
+  }
+  .mp-pin-dot.filled{background:var(--green);border-color:var(--green);transform:scale(1.05);box-shadow:0 2px 6px rgba(16,124,16,0.3)}
+  .mp-pin-dot.error{background:var(--red);border-color:var(--red)}
+
+  .mp-pin-pad{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:10px;
+    max-width:320px;margin:0 auto;
+  }
+  .mp-pin-btn{
+    background:#fff;border:1px solid #d5d5d5;border-radius:12px;
+    padding:18px;font-size:24px;font-weight:600;cursor:pointer;font-family:inherit;
+    min-height:60px;-webkit-tap-highlight-color:rgba(0,0,0,0.1);user-select:none;
+    transition:background 0.05s;
+  }
+  .mp-pin-btn:active{background:#e8f4e8;transform:scale(0.95)}
+  .mp-pin-btn.del{color:var(--red)}
+
+  .mp-cam-wrap{display:flex;flex-direction:column;align-items:center;margin:8px 0}
+  .mp-cam{
+    width:180px;height:180px;border-radius:50%;
+    background:#f0f0f0;border:4px solid var(--green);
+    object-fit:cover;transform:scaleX(-1);
+  }
+  .mp-cam-status{font-size:13px;color:var(--muted2);margin-top:10px;min-height:20px}
+
+  .mp-btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    padding:14px 20px;border-radius:10px;border:1px solid transparent;
+    font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;
+    width:100%;margin-top:12px;min-height:48px;
+  }
+  .mp-btn-primary{background:var(--green);color:#fff}
+  .mp-btn-primary:active{background:var(--green2)}
+  .mp-btn-primary:disabled{background:#ccc;cursor:not-allowed}
+  .mp-btn-secondary{background:#fff;color:var(--text);border-color:#d5d5d5}
+  .mp-btn-link{background:none;color:var(--blue);text-decoration:underline;border:none;padding:6px;font-size:13px;width:auto;margin-top:4px}
+
+  .mp-error{
+    background:#fff0f0;color:var(--red);padding:10px 14px;border-radius:8px;
+    font-size:13px;margin-top:10px;min-height:16px;
+  }
+  .mp-info{
+    background:#fffaf0;color:#7a5800;border:1px solid #e6d38a;
+    padding:10px 14px;border-radius:8px;font-size:13px;margin-top:10px;
+  }
+
+  /* ─── Dashboard (post-login) ─── */
+  .mp-dashboard{display:none}
+  .mp-dashboard.active{display:block}
+  .mp-welcome{
+    background:linear-gradient(135deg, var(--green) 0%, var(--green2) 100%);
+    color:#fff;border-radius:14px;padding:22px 18px;margin-bottom:18px;
+    box-shadow:0 4px 12px rgba(16,124,16,0.2);
+  }
+  .mp-welcome h2{margin:0 0 4px;font-size:20px;font-weight:700}
+  .mp-welcome p{margin:0;font-size:14px;opacity:0.9}
+
+  .mp-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width: 440px){ .mp-cards{grid-template-columns:1fr} }
+
+  .mp-card{
+    background:var(--card);border:1px solid var(--border);border-radius:14px;
+    padding:18px 16px;display:flex;flex-direction:column;gap:8px;
+    text-decoration:none;color:inherit;cursor:pointer;
+    transition:transform 0.1s,border-color 0.1s;min-height:120px;
+    position:relative;
+  }
+  .mp-card:active{transform:scale(0.98);border-color:var(--green)}
+  .mp-card.disabled{opacity:0.55;cursor:not-allowed}
+  .mp-card.disabled:active{transform:none;border-color:var(--border)}
+  .mp-card-icon{font-size:32px;line-height:1}
+  .mp-card-title{font-size:15px;font-weight:700}
+  .mp-card-sub{font-size:12px;color:var(--muted2);line-height:1.4}
+  .mp-card-badge{
+    position:absolute;top:8px;right:8px;
+    background:#fff4d9;color:#7a5800;border:1px solid #e6d38a;
+    font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;
+    text-transform:uppercase;letter-spacing:0.3px;
+  }
+  .mp-card-primary{
+    grid-column:span 2;background:linear-gradient(135deg,#f0f9f0 0%,#e3f2e3 100%);
+    border-color:#c3e6c3;
+  }
+  @media (max-width: 440px){ .mp-card-primary{grid-column:span 1} }
+  .mp-card-primary .mp-card-title{color:var(--green);font-size:17px}
+
+  .mp-footer{text-align:center;font-size:11px;color:var(--muted);margin-top:28px}
+</style>
+</head>
+<body>
+
+<div class="mp-topbar">
+  <div class="mp-logo">
+    <div class="mp-logo-dot">F</div>
+    <span>Mi Perfil<span class="mp-build">build 20260423-mi-perfil-hub-v1</span></span>
+  </div>
+  <div id="mp-topbar-right">
+    <span class="mp-user-info" id="mp-user-label" style="display:none"></span>
+    <button class="mp-logout-btn" id="mp-logout-btn" onclick="mp_logout()" style="display:none">Cerrar sesión</button>
+  </div>
+</div>
+
+<main class="mp-main">
+
+  <!-- ═══════════ LOGIN (default) ═══════════ -->
+  <section id="mp-login" style="display:block">
+    <h1 class="mp-h1">Ingresa a tu Perfil</h1>
+    <p class="mp-sub">Valida tu identidad para consultar tus incidencias, recibos y más.</p>
+
+    <div class="mp-login-card">
+
+      <!-- Paso 1: buscar empleado -->
+      <div class="mp-step active" id="mp-step-search">
+        <div class="mp-step-title">1. Busca tu nombre</div>
+        <input type="text" class="mp-input" id="mp-search-input"
+               placeholder="Escribe tu nombre..." autocomplete="off" spellcheck="false"
+               oninput="mp_search_empleados(this.value)">
+        <div class="mp-emp-list" id="mp-emp-list" style="display:none"></div>
+        <div id="mp-search-status" style="font-size:12px;color:var(--muted2);margin-top:8px"></div>
+      </div>
+
+      <!-- Paso 2: PIN -->
+      <div class="mp-step" id="mp-step-pin">
+        <div class="mp-step-title">2. Ingresa tu PIN de 4 dígitos</div>
+        <div style="text-align:center;margin:10px 0;font-size:14px;color:var(--muted2)">
+          <span id="mp-pin-nombre">—</span>
+        </div>
+        <div class="mp-pin-dots" id="mp-pin-dots">
+          <div class="mp-pin-dot"></div>
+          <div class="mp-pin-dot"></div>
+          <div class="mp-pin-dot"></div>
+          <div class="mp-pin-dot"></div>
+        </div>
+        <div class="mp-pin-pad">
+          <button class="mp-pin-btn" onclick="mp_pin_add('1')">1</button>
+          <button class="mp-pin-btn" onclick="mp_pin_add('2')">2</button>
+          <button class="mp-pin-btn" onclick="mp_pin_add('3')">3</button>
+          <button class="mp-pin-btn" onclick="mp_pin_add('4')">4</button>
+          <button class="mp-pin-btn" onclick="mp_pin_add('5')">5</button>
+          <button class="mp-pin-btn" onclick="mp_pin_add('6')">6</button>
+          <button class="mp-pin-btn" onclick="mp_pin_add('7')">7</button>
+          <button class="mp-pin-btn" onclick="mp_pin_add('8')">8</button>
+          <button class="mp-pin-btn" onclick="mp_pin_add('9')">9</button>
+          <button class="mp-pin-btn del" onclick="mp_pin_clear()">C</button>
+          <button class="mp-pin-btn" onclick="mp_pin_add('0')">0</button>
+          <button class="mp-pin-btn del" onclick="mp_pin_back()">←</button>
+        </div>
+        <div id="mp-pin-status" style="font-size:12px;color:var(--red);min-height:16px;text-align:center;margin:8px 0;font-weight:600"></div>
+        <button class="mp-btn mp-btn-secondary" onclick="mp_back_to_search()">← Cambiar de usuario</button>
+      </div>
+
+      <!-- Paso 3: Selfie (obligatoria) -->
+      <div class="mp-step" id="mp-step-selfie">
+        <div class="mp-step-title">3. Verificación facial</div>
+        <div class="mp-cam-wrap">
+          <video id="mp-cam" class="mp-cam" autoplay playsinline muted></video>
+          <div class="mp-cam-status" id="mp-cam-status">Iniciando cámara…</div>
+        </div>
+        <button class="mp-btn mp-btn-primary" id="mp-selfie-btn" onclick="mp_selfie_verify()">
+          Tomar selfie y entrar
+        </button>
+        <button class="mp-btn mp-btn-secondary" onclick="mp_back_to_pin()">
+          ← Volver al PIN
+        </button>
+        <div id="mp-selfie-err" class="mp-error" style="display:none"></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══════════ DASHBOARD (post-login) ═══════════ -->
+  <section id="mp-dashboard" class="mp-dashboard">
+    <div class="mp-welcome">
+      <h2>Hola, <span id="mp-welcome-nombre">—</span> 👋</h2>
+      <p>¿Qué necesitas consultar hoy?</p>
+    </div>
+
+    <div class="mp-cards">
+
+      <a class="mp-card mp-card-primary" href="mis-incidencias/">
+        <div class="mp-card-icon">📋</div>
+        <div class="mp-card-title">Mis Incidencias</div>
+        <div class="mp-card-sub">Consulta tus solicitudes de ajuste de hora y su estado.</div>
+      </a>
+
+      <div class="mp-card disabled">
+        <div class="mp-card-badge">Próximamente</div>
+        <div class="mp-card-icon">💰</div>
+        <div class="mp-card-title">Mis Recibos</div>
+        <div class="mp-card-sub">Recibos de nómina mensual.</div>
+      </div>
+
+      <div class="mp-card disabled">
+        <div class="mp-card-badge">Próximamente</div>
+        <div class="mp-card-icon">🌴</div>
+        <div class="mp-card-title">Vacaciones</div>
+        <div class="mp-card-sub">Días disponibles y solicitudes.</div>
+      </div>
+
+      <div class="mp-card disabled">
+        <div class="mp-card-badge">Próximamente</div>
+        <div class="mp-card-icon">📄</div>
+        <div class="mp-card-title">Mis Documentos</div>
+        <div class="mp-card-sub">DC-3, IPERC, contratos.</div>
+      </div>
+
+      <div class="mp-card disabled">
+        <div class="mp-card-badge">Próximamente</div>
+        <div class="mp-card-icon">👤</div>
+        <div class="mp-card-title">Datos personales</div>
+        <div class="mp-card-sub">Teléfono, dirección, emergencia.</div>
+      </div>
+
+    </div>
+
+    <div class="mp-footer">
+      FTS Industrial Suite — Sesión: <span id="mp-session-ts">—</span>
+    </div>
+  </section>
+
+</main>
+
+<!-- face-api.js para verificación facial (soft-fail si falla) -->
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════
+const N8N_BASE   = 'https://primary-production-5c3c.up.railway.app';
+const EMPLEADOS_ENDPOINT = N8N_BASE + '/webhook/kiosk/empleados';
+const FACE_MODELS_URL    = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights';
+const FACE_THRESHOLD     = 0.5;
+const SESSION_KEY        = 'fts_mi_perfil_session';
+
+let _empleados = [];
+let _selectedEmp = null;
+let _pin = '';
+let _camStream = null;
+let _faceReady = false;
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function normalize(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
+
+// ═══════════════════════════════════════════════
+// INIT — al cargar, decidir si mostrar login o dashboard
+// ═══════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function(){
+  const session = mp_get_session();
+  if (session && session.empleado_id) {
+    mp_show_dashboard(session);
+  } else {
+    mp_show_login();
+  }
+
+  // Auto-check de versión (background, no bloqueante)
+  setTimeout(async function(){
+    try {
+      const res = await fetch(location.pathname + '?_build_check=' + Date.now(), { cache:'reload' });
+      const html = await res.text();
+      const match = html.match(/BUILD_DATE\s*=\s*['"]([^'"]+)['"]/);
+      if (match && match[1] !== window.BUILD_DATE) {
+        console.warn('[mi-perfil] ⚠️ Versión nueva disponible:', match[1], '(actual:', window.BUILD_DATE, ')');
+      } else {
+        console.log('[mi-perfil] ✅ Build actualizada:', window.BUILD_DATE);
+      }
+    } catch(e) { console.warn('[mi-perfil] build-check failed:', e.message); }
+  }, 2000);
+});
+
+// ═══════════════════════════════════════════════
+// SESSION HELPERS
+// ═══════════════════════════════════════════════
+function mp_get_session(){
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch(e) { return null; }
+}
+function mp_save_session(emp){
+  const nowMs = Date.now();
+  const s = {
+    empleado_id:     emp.id,
+    empleado_nombre: emp.name || emp.nombre || '',
+    loginTime:       nowMs,
+    ts:              nowMs
+  };
+  try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(s)); } catch(e){}
+  return s;
+}
+function mp_logout(){
+  try { sessionStorage.removeItem(SESSION_KEY); } catch(e){}
+  if (_camStream) { _camStream.getTracks().forEach(function(t){ t.stop(); }); _camStream = null; }
+  location.reload();
+}
+window.mp_logout = mp_logout;
+
+// ═══════════════════════════════════════════════
+// VIEW SWITCHING
+// ═══════════════════════════════════════════════
+function mp_show_login(){
+  $('mp-login').style.display = 'block';
+  $('mp-dashboard').classList.remove('active');
+  $('mp-user-label').style.display = 'none';
+  $('mp-logout-btn').style.display = 'none';
+  mp_step('mp-step-search');
+  mp_load_empleados();
+}
+
+function mp_show_dashboard(session){
+  $('mp-login').style.display = 'none';
+  $('mp-dashboard').classList.add('active');
+  $('mp-welcome-nombre').textContent = session.empleado_nombre || '—';
+  $('mp-user-label').textContent = '👤 ' + (session.empleado_nombre || '—');
+  $('mp-user-label').style.display = 'inline';
+  $('mp-logout-btn').style.display = 'inline';
+  $('mp-session-ts').textContent = new Date(session.loginTime).toLocaleString('es-MX');
+}
+
+function mp_step(id){
+  ['mp-step-search','mp-step-pin','mp-step-selfie'].forEach(function(s){
+    const el = $(s);
+    if (el) el.classList.toggle('active', s === id);
+  });
+}
+
+// ═══════════════════════════════════════════════
+// PASO 1 — cargar y buscar empleados
+// ═══════════════════════════════════════════════
+async function mp_load_empleados(){
+  const status = $('mp-search-status');
+  status.textContent = '⏳ Cargando empleados…';
+  try {
+    const res = await fetch(EMPLEADOS_ENDPOINT, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: '{}'
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    _empleados = Array.isArray(data) ? data : (data && data.empleados) || [];
+    status.textContent = _empleados.length + ' empleados disponibles';
+  } catch(e) {
+    status.textContent = '❌ Error cargando empleados: ' + e.message;
+    _empleados = [];
+  }
+}
+
+function mp_search_empleados(q){
+  const nq = normalize(q);
+  const list = $('mp-emp-list');
+  if (!nq) { list.style.display = 'none'; list.innerHTML = ''; return; }
+  const matches = _empleados.filter(function(e){
+    const nom = e.name || e.nombre || '';
+    return normalize(nom).includes(nq) || String(e.id || '').includes(nq);
+  }).slice(0, 8);
+  if (matches.length === 0) {
+    list.style.display = 'block';
+    list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted)">Sin coincidencias</div>';
+    return;
+  }
+  list.style.display = 'block';
+  list.innerHTML = matches.map(function(e){
+    const nom   = e.name || e.nombre || '';
+    const cargo = e.cargo || e.job_title || e.puesto || '';
+    const foto  = e.foto || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="%23eee"/><text x="50%" y="58%" text-anchor="middle" font-size="28" font-family="Inter,sans-serif" font-weight="700" fill="%23999">'+(nom||'?').charAt(0)+'</text></svg>';
+    return '<div class="mp-emp-item" onclick="mp_select_empleado('+e.id+')">' +
+             '<img class="mp-emp-photo" src="' + esc(foto) + '" alt="">' +
+             '<div><div class="mp-emp-nombre">' + esc(nom) + '</div>' +
+             '<div class="mp-emp-cargo">' + esc(cargo || ('ID ' + e.id)) + '</div></div>' +
+           '</div>';
+  }).join('');
+}
+window.mp_search_empleados = mp_search_empleados;
+
+function mp_select_empleado(id){
+  const emp = _empleados.find(function(e){ return e.id === id; });
+  if (!emp) return;
+  _selectedEmp = emp;
+  _pin = '';
+  mp_pin_update();
+  $('mp-pin-nombre').textContent = emp.name || emp.nombre || '';
+  $('mp-pin-status').textContent = '';
+  mp_step('mp-step-pin');
+}
+window.mp_select_empleado = mp_select_empleado;
+
+function mp_back_to_search(){
+  _selectedEmp = null;
+  _pin = '';
+  mp_step('mp-step-search');
+}
+window.mp_back_to_search = mp_back_to_search;
+
+// ═══════════════════════════════════════════════
+// PASO 2 — PIN
+// ═══════════════════════════════════════════════
+function mp_pin_add(d){
+  if (_pin.length >= 4) return;
+  _pin += d;
+  mp_pin_update();
+  if (_pin.length === 4) setTimeout(mp_pin_validate, 120);
+}
+function mp_pin_back(){ _pin = _pin.slice(0, -1); mp_pin_update(); }
+function mp_pin_clear(){ _pin = ''; mp_pin_update(); $('mp-pin-status').textContent=''; }
+window.mp_pin_add   = mp_pin_add;
+window.mp_pin_back  = mp_pin_back;
+window.mp_pin_clear = mp_pin_clear;
+
+function mp_pin_update(){
+  const dots = document.querySelectorAll('#mp-pin-dots .mp-pin-dot');
+  dots.forEach(function(d, i){
+    d.classList.toggle('filled', i < _pin.length);
+    d.classList.remove('error');
+  });
+}
+
+function mp_pin_validate(){
+  if (!_selectedEmp) return;
+  const expected = String(_selectedEmp.pin || '');
+  if (!expected) {
+    $('mp-pin-status').textContent = '⚠️ Empleado sin PIN configurado. Avisa a sistemas.';
+    return;
+  }
+  if (_pin !== expected) {
+    document.querySelectorAll('#mp-pin-dots .mp-pin-dot').forEach(function(d){ d.classList.add('error'); });
+    $('mp-pin-status').textContent = '❌ PIN incorrecto. Intenta de nuevo.';
+    setTimeout(function(){ _pin=''; mp_pin_update(); $('mp-pin-status').textContent=''; }, 900);
+    return;
+  }
+  // PIN OK → al selfie
+  $('mp-pin-status').textContent = '';
+  mp_step('mp-step-selfie');
+  mp_start_camera();
+}
+
+// ═══════════════════════════════════════════════
+// PASO 3 — Selfie (opcional, soft-fail)
+// ═══════════════════════════════════════════════
+async function mp_start_camera(){
+  const video = $('mp-cam');
+  const status = $('mp-cam-status');
+  status.textContent = 'Iniciando cámara…';
+  try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error('Cámara no soportada en este dispositivo');
+    }
+    _camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width:{ideal:320}, height:{ideal:320} },
+      audio: false
+    });
+    video.srcObject = _camStream;
+    status.textContent = 'Centra tu cara y pulsa "Tomar selfie"';
+
+    // Cargar modelos de face-api en background
+    if (typeof faceapi !== 'undefined' && !_faceReady) {
+      try {
+        await faceapi.nets.tinyFaceDetector.loadFromUri(FACE_MODELS_URL);
+        await faceapi.nets.faceLandmark68TinyNet.loadFromUri(FACE_MODELS_URL);
+        await faceapi.nets.faceRecognitionNet.loadFromUri(FACE_MODELS_URL);
+        _faceReady = true;
+      } catch(e) {
+        console.warn('[mi-perfil] face-api no cargó:', e);
+      }
+    }
+  } catch(e) {
+    console.warn('[mi-perfil] cámara falló:', e);
+    status.textContent = '⚠️ No se pudo iniciar la cámara. Puedes omitir la verificación facial.';
+    $('mp-selfie-btn').disabled = true;
+  }
+}
+
+async function mp_selfie_verify(){
+  const video = $('mp-cam');
+  const status = $('mp-cam-status');
+  const errEl  = $('mp-selfie-err');
+  errEl.style.display = 'none';
+
+  if (!_camStream) {
+    errEl.textContent = '⚠️ Cámara no disponible. Sin cámara no se puede entrar a "Mi Perfil".';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  status.textContent = '⏳ Verificando rostro…';
+
+  // Si face-api no está listo, entrar sin comparar (soft-fail)
+  if (!_faceReady || typeof faceapi === 'undefined' || !_selectedEmp.foto) {
+    console.warn('[mi-perfil] face soft-fail — entrando sin comparación');
+    mp_complete_login();
+    return;
+  }
+
+  try {
+    const img = await faceapi.fetchImage(_selectedEmp.foto);
+    const refDescriptor  = await mp_get_descriptor(img);
+    const liveDescriptor = await mp_get_descriptor(video);
+
+    if (!refDescriptor || !liveDescriptor) {
+      errEl.textContent = '⚠️ No se detectó rostro. Intenta otra vez con mejor luz y la cara centrada.';
+      errEl.style.display = 'block';
+      status.textContent = '';
+      return;
+    }
+
+    const distance = faceapi.euclideanDistance(refDescriptor, liveDescriptor);
+    const similarity = Math.max(0, Math.round((1 - distance) * 100));
+
+    if (distance < FACE_THRESHOLD) {
+      status.textContent = '✅ Rostro verificado (' + similarity + '%)';
+      setTimeout(mp_complete_login, 600);
+    } else {
+      errEl.textContent = '❌ Rostro no coincide (' + similarity + '%). Intenta de nuevo. Si persiste, contacta a sistemas.';
+      errEl.style.display = 'block';
+      status.textContent = '';
+    }
+  } catch(e) {
+    console.warn('[mi-perfil] face-api error:', e);
+    errEl.textContent = '⚠️ Error verificando rostro: ' + e.message + '. Intenta de nuevo.';
+    errEl.style.display = 'block';
+    status.textContent = '';
+  }
+}
+window.mp_selfie_verify = mp_selfie_verify;
+
+async function mp_get_descriptor(input){
+  const det = await faceapi
+    .detectSingleFace(input, new faceapi.TinyFaceDetectorOptions({ inputSize:224, scoreThreshold:0.5 }))
+    .withFaceLandmarks(true)
+    .withFaceDescriptor();
+  return det ? det.descriptor : null;
+}
+
+function mp_back_to_pin(){
+  if (_camStream) { _camStream.getTracks().forEach(function(t){ t.stop(); }); _camStream = null; }
+  _pin = '';
+  mp_pin_update();
+  $('mp-pin-status').textContent = '';
+  mp_step('mp-step-pin');
+}
+window.mp_back_to_pin = mp_back_to_pin;
+
+function mp_complete_login(){
+  if (_camStream) { _camStream.getTracks().forEach(function(t){ t.stop(); }); _camStream = null; }
+  const session = mp_save_session(_selectedEmp);
+  mp_show_dashboard(session);
+}
+</script>
+
+</body>
+</html>
