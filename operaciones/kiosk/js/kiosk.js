@@ -1,7 +1,7 @@
 // ═══ FTS Kiosk — Lógica principal ═══
 // Script clásico, estado global compartido
 
-const KIOSK_BUILD = '20260423-olvido-fix-v2';
+const KIOSK_BUILD = '20260423-olvido-fix-v3';
 console.log('[kiosk] build:', KIOSK_BUILD);
 
 const K = {
@@ -288,6 +288,23 @@ function goHome(){
   updatePinDots();
   if(K.returnTimer){ clearTimeout(K.returnTimer); K.returnTimer = null; }
   showScreen('ks-home');
+}
+
+// Habilita el botón "Terminado" tras completar el await del checkin
+// (y la incidencia, si aplica). Hasta entonces queda disabled +
+// spinner ⏳ "Procesando..." para evitar que el usuario lo pulse y se
+// salga de ks-confirm sin ver el resultado.
+function habilitarBotonTerminado(){
+  var btnTerm = document.getElementById('btnTerminado');
+  var btnSpin = document.getElementById('btnTerminadoSpinner');
+  var btnText = document.getElementById('btnTerminadoText');
+  if(btnTerm){
+    btnTerm.disabled = false;
+    btnTerm.style.opacity = '1';
+    btnTerm.style.cursor = 'pointer';
+  }
+  if(btnSpin) btnSpin.textContent = '✓';
+  if(btnText) btnText.textContent = 'Terminado';
 }
 
 function terminarYHome(){
@@ -747,6 +764,20 @@ async function registrarAsistencia(){
   // Mostrar pantalla de confirmación inmediatamente
   showScreen('ks-confirm');
 
+  // Botón "Terminado" deshabilitado mientras procesamos (evita que el
+  // usuario salga de ks-confirm durante el await del checkin y se pierda
+  // el mensaje de "Check-in + Incidencia creadas").
+  var btnTerm = document.getElementById('btnTerminado');
+  var btnSpin = document.getElementById('btnTerminadoSpinner');
+  var btnText = document.getElementById('btnTerminadoText');
+  if(btnTerm){
+    btnTerm.disabled = true;
+    btnTerm.style.opacity = '0.6';
+    btnTerm.style.cursor = 'not-allowed';
+  }
+  if(btnSpin) btnSpin.textContent = '⏳';
+  if(btnText) btnText.textContent = 'Procesando...';
+
   const confirmTipo   = document.getElementById('confirm-tipo');
   const confirmNombre = document.getElementById('confirm-nombre');
   const confirmSO     = document.getElementById('confirm-so');
@@ -798,11 +829,13 @@ async function registrarAsistencia(){
         mostrarErrorCandado(errMsg);
         // Si venía en flujo de olvido, no crear incidencia (spec: si checkin falla, no incidencia)
         clearOlvidoEntradaFlag('registrarAsistencia_candado');
+        habilitarBotonTerminado();
         return;
       }
     } catch(e){
       console.warn('Error enviando a n8n:', e);
       checkinOk = false;
+      habilitarBotonTerminado();
     }
   } else {
     console.log('[DEMO] Payload kiosk:', payload);
@@ -827,8 +860,12 @@ async function registrarAsistencia(){
     var incRes = await crearIncidenciaOlvidoEntrada(payload, checkinResp);
     mostrarConfirmacionOlvidoEntrada(payload, K.olvidoEntradaData, incRes);
     clearOlvidoEntradaFlag('registrarAsistencia_ok');
+    habilitarBotonTerminado();
     return;   // evita autoReturn() estándar — el modal tiene su propio botón
   }
+
+  // Habilitar botón "Terminado" antes del autoReturn (flujo normal sin olvido)
+  habilitarBotonTerminado();
 
   // Contador visible + reset al terminar (o al click en "Terminado")
   autoReturn();

@@ -159,6 +159,12 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-ser
   transform:scale(0.97);
   background:#0d6b0d;
 }
+.kiosk-terminar-btn:disabled{
+  opacity:0.6;cursor:not-allowed;
+}
+.kiosk-terminar-btn:disabled:active{
+  transform:none;background:#107C10;
+}
 .kiosk-pin-dots{
   display:flex;gap:16px;margin:20px 0;
   justify-content:center;
