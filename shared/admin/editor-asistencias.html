@@ -803,6 +803,344 @@ function ea_logout(ev) {
   try { window.FTSAuth && FTSAuth.logout && FTSAuth.logout(); } catch(e){}
   window.location.href = '../../index.html';
 }
+
+// ═══════════════════════════════════════════════
+// SEARCH + RENDER + SORT
+// ═══════════════════════════════════════════════
+
+// Estado global para tabla
+let _currentAttendances = [];
+let _sortState = { column: 'check_in', dir: 'asc' };
+const _selection = new Set();
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function ea_set_search_status(text, cls) {
+  const el = document.getElementById('ea_search_status');
+  if (!el) return;
+  el.textContent = text || '';
+  el.className = 'ea-status' + (cls ? ' ' + cls : '');
+}
+
+// ── Buscar ─────────────────────────────────────
+// Lee el rango de fechas + filtro de empleado, arma el body del webhook
+// y dispara searchAttendances. El botón "Buscar" del HTML llama a ea_search().
+async function ea_search() {
+  const dFrom  = document.getElementById('ea_date_from');
+  const dTo    = document.getElementById('ea_date_to');
+  const empQ   = document.getElementById('ea_employee_filter');
+  const btn    = document.getElementById('ea_btn_search');
+
+  const dateFromCst = dFrom ? dFrom.value : '';
+  const dateToCst   = dTo ? dTo.value : '';
+  const employeeQ   = empQ ? empQ.value.trim() : '';
+
+  // Conversión de rango CST → UTC para el backend real.
+  // Mantenemos también los strings CST "YYYY-MM-DD" porque el mock compara así.
+  const date_from_utc = dateFromCst ? cstInputToUtc(dateFromCst + 'T00:00') : null;
+  const date_to_utc   = dateToCst   ? cstInputToUtc(dateToCst   + 'T23:59') : null;
+
+  const body = {
+    date_from:     dateFromCst,    // YYYY-MM-DD (CST, usado por mock)
+    date_to:       dateToCst,      // idem
+    date_from_utc: date_from_utc,  // UTC exacta (producción)
+    date_to_utc:   date_to_utc,    // idem
+    employee_query: employeeQ      // texto libre: nombre o id parcial
+  };
+
+  if (btn) btn.disabled = true;
+  ea_set_search_status('⏳ Buscando…', 'info');
+  ea_close_error_panel();
+
+  const result = await callWebhook('search', body);
+
+  if (btn) btn.disabled = false;
+
+  if (!result.success) {
+    ea_handle_webhook_error(result.error, 'Error buscando attendances');
+    ea_set_search_status('❌ Error en búsqueda', 'err');
+    _currentAttendances = [];
+    renderTable([]);
+    return;
+  }
+
+  const list = (result.data && result.data.attendances) || [];
+  _currentAttendances = list;
+  _selection.clear();
+  ea_update_bulk_bar();
+  renderTable(list);
+  ea_set_search_status('✅ ' + list.length + ' resultado(s)', 'ok');
+}
+window.searchAttendances = ea_search;  // alias solicitado en el spec
+
+// ── Render tabla ──────────────────────────────
+function renderTable(attendances) {
+  const tbody = document.getElementById('ea_tbody');
+  if (!tbody) return;
+
+  // Estado vacío
+  if (!attendances || attendances.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="ea-empty">Sin resultados para los filtros aplicados.</td></tr>';
+    ea_update_sort_indicators();
+    return;
+  }
+
+  // Aplicar el orden actual antes de renderizar
+  const sorted = _sortAttendances(attendances.slice(), _sortState.column, _sortState.dir);
+
+  // Render rows
+  const rows = sorted.map(function(a){
+    const selected = _selection.has(a.id);
+    const isOpen   = !a.check_out;
+    const hrs      = (typeof a.worked_hours === 'number') ? a.worked_hours.toFixed(2) : '—';
+
+    // Flag: el backend puede mandar a.flag; si no, lo deducimos
+    let flagHtml;
+    if (a.flag) {
+      flagHtml = '<span class="ea-flag ea-flag-' + esc(a.flag).toLowerCase() + '">' + esc(a.flag) + '</span>';
+    } else if (isOpen) {
+      flagHtml = '<span class="ea-flag ea-flag-open">🔓 Abierto</span>';
+    } else if (typeof a.worked_hours === 'number' && a.worked_hours > 14) {
+      flagHtml = '<span class="ea-flag ea-flag-long">⚠️ &gt;14h</span>';
+    } else {
+      flagHtml = '<span class="ea-flag ea-flag-closed">✅ OK</span>';
+    }
+
+    const checkOutCell = isOpen
+      ? '<span style="color:var(--red); font-weight:600;">❌ ABIERTO</span>'
+      : esc(utcToCstDisplay(a.check_out));
+
+    return (
+      '<tr data-aid="' + a.id + '"' + (selected ? ' class="selected"' : '') + '>' +
+        '<td class="ea-check-col">' +
+          '<input type="checkbox" onclick="ea_toggle_row_selection(' + a.id + ', this.checked)"' +
+          (selected ? ' checked' : '') + '>' +
+        '</td>' +
+        '<td class="ea-id-col">' + esc(a.id) + '</td>' +
+        '<td>' + esc(a.employee_name || ('ID ' + a.employee_id)) + '</td>' +
+        '<td>' + esc(utcToCstDisplay(a.check_in)) + '</td>' +
+        '<td>' + checkOutCell + '</td>' +
+        '<td class="ea-hours-col">' + hrs + '</td>' +
+        '<td class="ea-flag-col">' + flagHtml + '</td>' +
+        '<td class="ea-actions-col">' +
+          '<button class="ea-btn ea-btn-sm ea-btn-secondary" onclick="ea_edit_open(' + a.id + ')" title="Editar">✏️</button> ' +
+          '<button class="ea-btn ea-btn-sm ea-btn-danger" onclick="ea_delete_one(' + a.id + ')" title="Eliminar">🗑️</button>' +
+        '</td>' +
+      '</tr>'
+    );
+  }).join('');
+
+  tbody.innerHTML = rows;
+  ea_update_sort_indicators();
+  ea_sync_check_all();
+}
+
+// ── Sort ──────────────────────────────────────
+// Llamado por click en el thead. Alterna la dirección si se clickea la misma
+// columna; sino fija 'asc' y cambia la columna activa.
+function handleSort(column) {
+  if (!column) return;
+  if (_sortState.column === column) {
+    _sortState.dir = (_sortState.dir === 'asc') ? 'desc' : 'asc';
+  } else {
+    _sortState.column = column;
+    _sortState.dir    = 'asc';
+  }
+  renderTable(_currentAttendances);
+}
+window.handleSort = handleSort;
+
+function _sortAttendances(arr, column, dir) {
+  const sign = (dir === 'desc') ? -1 : 1;
+  arr.sort(function(a, b){
+    let va = a[column];
+    let vb = b[column];
+    // null/undefined al final (siempre, ignorando dir)
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    // numérico vs string
+    if (typeof va === 'number' && typeof vb === 'number') {
+      return (va - vb) * sign;
+    }
+    return String(va).localeCompare(String(vb), 'es-MX', { numeric: true, sensitivity: 'base' }) * sign;
+  });
+  return arr;
+}
+
+function ea_update_sort_indicators() {
+  const ths = document.querySelectorAll('#ea_table thead th[data-sort]');
+  ths.forEach(function(th){
+    const ind = th.querySelector('.ea-sort-ind');
+    if (!ind) return;
+    if (th.getAttribute('data-sort') === _sortState.column) {
+      ind.textContent = (_sortState.dir === 'asc') ? '▲' : '▼';
+      ind.style.opacity = '1';
+    } else {
+      ind.textContent = '';
+      ind.style.opacity = '0.5';
+    }
+  });
+}
+
+// Wire-up de los headers (ejecución síncrona — el script vive después del <table>)
+(function wireSortHeaders(){
+  const ths = document.querySelectorAll('#ea_table thead th[data-sort]');
+  ths.forEach(function(th){
+    th.addEventListener('click', function(){
+      handleSort(th.getAttribute('data-sort'));
+    });
+  });
+})();
+
+// ═══════════════════════════════════════════════
+// STUBS — implementación real en el siguiente chunk
+// ═══════════════════════════════════════════════
+// Estas funciones son llamadas desde el HTML (onclick inline) y desde
+// renderTable. Se definen aquí como no-op (con un console.warn) para
+// evitar ReferenceError al interactuar antes de tener el chunk 4.
+// El chunk 4 reemplaza cada función con su implementación real.
+
+if (typeof window.ea_edit_open !== 'function') {
+  window.ea_edit_open = function(id){ console.warn('[ea] edit stub — chunk 4 pendiente — id=' + id); };
+}
+if (typeof window.ea_delete_one !== 'function') {
+  window.ea_delete_one = function(id){ console.warn('[ea] delete stub — chunk 4 pendiente — id=' + id); };
+}
+if (typeof window.ea_bulk_delete !== 'function') {
+  window.ea_bulk_delete = function(){ console.warn('[ea] bulk-delete stub — chunk 4 pendiente'); };
+}
+if (typeof window.ea_clear_selection !== 'function') {
+  window.ea_clear_selection = function(){
+    _selection.clear();
+    renderTable(_currentAttendances);
+    ea_update_bulk_bar();
+  };
+}
+if (typeof window.ea_toggle_row_selection !== 'function') {
+  window.ea_toggle_row_selection = function(id, checked){
+    if (checked) _selection.add(id); else _selection.delete(id);
+    const tr = document.querySelector('#ea_table tbody tr[data-aid="' + id + '"]');
+    if (tr) tr.classList.toggle('selected', !!checked);
+    ea_update_bulk_bar();
+    ea_sync_check_all();
+  };
+}
+if (typeof window.ea_toggle_all_selection !== 'function') {
+  window.ea_toggle_all_selection = function(checked){
+    if (checked) {
+      _currentAttendances.forEach(function(a){ _selection.add(a.id); });
+    } else {
+      _selection.clear();
+    }
+    renderTable(_currentAttendances);
+    ea_update_bulk_bar();
+  };
+}
+if (typeof window.ea_close_edit_modal !== 'function') {
+  window.ea_close_edit_modal = function(){
+    const m = document.getElementById('ea_edit_modal');
+    if (m) m.classList.remove('show');
+  };
+}
+if (typeof window.ea_edit_save !== 'function') {
+  window.ea_edit_save = function(){ console.warn('[ea] edit-save stub — chunk 4 pendiente'); };
+}
+if (typeof window.ea_edit_recalc_hours !== 'function') {
+  window.ea_edit_recalc_hours = function(){ /* no-op hasta chunk 4 */ };
+}
+if (typeof window.ea_toggle_diag !== 'function') {
+  window.ea_toggle_diag = function(){
+    const d = document.getElementById('ea_diag_panel');
+    if (d) d.classList.toggle('show');
+  };
+}
+if (typeof window.ea_diag_test_connection !== 'function') {
+  window.ea_diag_test_connection = function(){ console.warn('[ea] diag stub — chunk 4 pendiente'); };
+}
+if (typeof window.ea_diag_list_fields !== 'function') {
+  window.ea_diag_list_fields = function(){ console.warn('[ea] diag stub — chunk 4 pendiente'); };
+}
+if (typeof window.ea_diag_last_error !== 'function') {
+  window.ea_diag_last_error = function(){
+    const out = document.getElementById('ea_diag_output');
+    if (out) out.textContent = _lastError ? JSON.stringify(_lastError, null, 2) : 'Sin errores capturados.';
+  };
+}
+
+// ═══════════════════════════════════════════════
+// HELPERS COMPARTIDOS — bulk bar, error panel, toast
+// ═══════════════════════════════════════════════
+function ea_update_bulk_bar() {
+  const bar = document.getElementById('ea_bulk_bar');
+  const cnt = document.getElementById('ea_bulk_count');
+  if (cnt) cnt.textContent = String(_selection.size);
+  if (bar) bar.classList.toggle('show', _selection.size > 0);
+}
+
+function ea_sync_check_all() {
+  const all = document.getElementById('ea_check_all');
+  if (!all) return;
+  const total = _currentAttendances.length;
+  const sel   = _selection.size;
+  all.checked       = (total > 0 && sel === total);
+  all.indeterminate = (sel > 0 && sel < total);
+}
+
+// Panel de error detallado (technical + suggestion)
+function ea_show_error_panel(title, errObj) {
+  const panel   = document.getElementById('ea_error_panel');
+  const tEl     = document.getElementById('ea_error_title');
+  const tech    = document.getElementById('ea_error_tech');
+  const suggest = document.getElementById('ea_error_suggest');
+  if (!panel) return;
+  if (tEl)     tEl.textContent     = title || 'Error';
+  if (tech)    tech.textContent    = (errObj && errObj.error_message) || 'Sin detalles técnicos.';
+  if (suggest) suggest.textContent = (errObj && errObj.suggestion)    || 'Sin sugerencia del backend.';
+  panel.classList.add('show');
+}
+function ea_close_error_panel() {
+  const panel = document.getElementById('ea_error_panel');
+  if (panel) panel.classList.remove('show');
+}
+
+// Manejo unificado de errores de webhook
+function ea_handle_webhook_error(err, titleCtx) {
+  const e = err || {};
+  _lastError = e;
+  ea_show_error_panel(titleCtx || 'Error', e);
+  // Routing por error_type (ya explicado en el spec)
+  if (e.error_type === 'auth') {
+    ea_force_logout('Sesión expirada. Vuelve a entrar.');
+  } else if (e.error_type === 'odoo_field_invalid') {
+    // Abrir diagnóstico + precargar info
+    const d = document.getElementById('ea_diag_panel');
+    if (d) d.classList.add('show');
+    const out = document.getElementById('ea_diag_output');
+    if (out) out.textContent = 'Campo invalidado detectado:\n' + JSON.stringify(e, null, 2);
+  }
+  // Toast compacto
+  ea_toast((e.error_message || 'Error desconocido'), 'err');
+}
+
+// Toast genérico
+let _toastTimer = null;
+function ea_toast(msg, kind) {
+  const el = document.getElementById('ea_toast');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.className = 'ea-toast';
+  if (kind) el.classList.add(kind);
+  // forzar reflow antes de show
+  void el.offsetWidth;
+  el.classList.add('show');
+  if (_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 3500);
+}
 </script>
 
 </body>
