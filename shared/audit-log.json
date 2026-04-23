@@ -237,6 +237,25 @@
       },
       "result": "success",
       "error_message": null
+    },
+    {
+      "timestamp": "2026-04-23T23:37:33.883Z",
+      "user": "ftsmaster",
+      "action": "edit_attendance",
+      "attendance_id": 12523,
+      "employee_name": "Vicente Martínez Cruz",
+      "changes": {
+        "check_in": {
+          "from": "2026-04-23 12:53:24",
+          "to": "2026-04-23 12:53:00"
+        },
+        "check_out": {
+          "from": null,
+          "to": "2026-04-23 23:02:00"
+        }
+      },
+      "result": "success",
+      "error_message": null
     }
   ]
 }
