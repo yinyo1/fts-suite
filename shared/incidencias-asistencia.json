@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "incidencias": [
+    {
+      "id_interno": "INC-OLV-76-2026-04-23T19-32-15-424Z",
+      "odoo_incidencia_id": null,
+      "tipo": "olvido_entrada",
+      "empleado_id": 76,
+      "empleado_nombre": "Carlos Manzanares",
+      "fecha_creacion": "2026-04-23T19:32:15.424Z",
+      "attendance_id": 99999,
+      "hora_real_checkin_utc": "2026-04-23 15:30:00",
+      "geolocation": null,
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "user_id": 76,
+          "usuario": "Carlos Manzanares",
+          "timestamp": "2026-04-23T19:32:15.424Z",
+          "hora_propuesta_cst": "2026-04-23 07:00:00",
+          "comentario": "Se me olvido checar por prisa en Budenheim",
+          "accion": "solicitud"
+        }
+      ],
+      "status": "pendiente_supervisor",
+      "hora_final_aplicada_utc": null,
+      "aplicado_en_odoo": false
+    }
+  ]
+}
