@@ -1,0 +1,17 @@
+{
+  "_comment": "Template para pegar en ~/.config/claude/claude_desktop_config.json bajo mcpServers.odoo. Reemplaza {{ODOO_API_KEY}} y {{ODOO_USERNAME}}. READ-ONLY durante el sprint: NO cambies ODOO_READ_ONLY a false sin acuerdo explicito.",
+  "mcpServers": {
+    "odoo": {
+      "command": "npx",
+      "args": ["-y", "@pantalytics/odoo-mcp-server"],
+      "env": {
+        "ODOO_URL": "https://serviciosfts.odoo.com",
+        "ODOO_DB": "serviciosfts",
+        "ODOO_USERNAME": "{{ODOO_USERNAME}}",
+        "ODOO_API_KEY": "{{ODOO_API_KEY}}",
+        "ODOO_READ_ONLY": "true",
+        "ODOO_ALLOWED_MODELS": "hr.employee,hr.attendance,project.project,sale.order"
+      }
+    }
+  }
+}
