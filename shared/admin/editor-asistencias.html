@@ -1774,6 +1774,85 @@ window.showError = showError;
 window.ea_handle_webhook_error = function(err, titleCtx) {
   return showError(err, { title: titleCtx });
 };
+
+// ═══════════════════════════════════════════════
+// CHUNK 6 — logAudit wrapper + forceLogout + wire-up sanity check
+// ═══════════════════════════════════════════════
+
+// ── logAudit (firma posicional pedida por el spec) ────────────
+// Envoltorio de ea_append_audit_log que acepta argumentos posicionales
+// en lugar de un objeto. Compatible con los call-sites nuevos que
+// prefieran esta API. Best-effort: si falla el PUT, loguea en consola
+// pero no bloquea al caller.
+async function logAudit(action, attendanceId, employeeName, changes, result, errorMsg) {
+  try {
+    return await ea_append_audit_log({
+      action:        action,
+      attendance_id: attendanceId,
+      employee_name: employeeName,
+      changes:       changes || {},
+      result:        result || 'success',
+      error_message: errorMsg || null
+    });
+  } catch (e) {
+    console.warn('[ea] logAudit error:', e);
+    return false;
+  }
+}
+window.logAudit = logAudit;
+
+// ── forceLogout ─────────────────────────────────────────
+// Cierra sesión completa: limpia sessionStorage + fts_session (via FTSAuth)
+// + redirige al login principal (/index.html relativo a shared/admin/).
+function forceLogout() {
+  try { sessionStorage.clear(); } catch(e){}
+  try { window.FTSAuth && FTSAuth.logout && FTSAuth.logout(); } catch(e){}
+  window.location.href = '../../index.html';
+}
+window.forceLogout     = forceLogout;
+window.ea_force_logout = function(msg) {
+  // Backwards-compat: la firma anterior aceptaba un mensaje.
+  if (msg) { try { alert(msg); } catch(e){} }
+  forceLogout();
+};
+
+// ── Wire-up sanity check ────────────────────────────────
+// Los botones del HTML usan onclick="..." inline (patrón del resto de la
+// suite). Este bloque verifica que cada botón crítico tenga su handler
+// disponible como window.*, y loguea en consola un reporte consolidado.
+// NO agrega listeners nuevos (evita doble-fire con los inline).
+(function verifyWireUp(){
+  const checks = [
+    // [elementId, globalFunctionName, descripción]
+    ['ea_btn_search',         'ea_search',              'Buscar'],
+    ['ea_btn_diag_toggle',    'ea_toggle_diag',         'Toggle diagnóstico'],
+    ['ea_edit_save_btn',      'ea_edit_save',           'Guardar (modal)'],
+    ['ea_check_all',          'ea_toggle_all_selection','Check-all'],
+    ['ea_edit_check_in',      'ea_edit_recalc_hours',   'Recalc horas (input check-in)'],
+    ['ea_edit_check_out',     'ea_edit_recalc_hours',   'Recalc horas (input check-out)']
+  ];
+  const missing  = [];
+  const hooked   = [];
+  checks.forEach(function(c){
+    const el = document.getElementById(c[0]);
+    if (!el) { missing.push(c[0] + ' (elemento DOM no existe)'); return; }
+    if (typeof window[c[1]] !== 'function') {
+      missing.push(c[0] + ' → ' + c[1] + ' (función no disponible)');
+      return;
+    }
+    hooked.push(c[2]);
+  });
+
+  // Verificación adicional: webhooks esperados existen como handlers lógicos
+  const webhookHandlers = ['searchAttendances','saveEdit','deleteAttendance','deleteSelected','runDiagnosis'];
+  const wmissing = webhookHandlers.filter(function(fn){ return typeof window[fn] !== 'function'; });
+
+  if (missing.length === 0 && wmissing.length === 0) {
+    console.log('[editor-asistencias] wire-up OK — ' + hooked.length + ' handlers activos, 4 webhooks mapeados');
+  } else {
+    console.warn('[editor-asistencias] wire-up incompleto:', { missing: missing, missingWebhooks: wmissing });
+  }
+})();
 </script>
 
 </body>
