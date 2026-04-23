@@ -370,6 +370,25 @@
       },
       "result": "success",
       "error_message": null
+    },
+    {
+      "timestamp": "2026-04-23T23:47:19.256Z",
+      "user": "ftsmaster",
+      "action": "edit_attendance",
+      "attendance_id": 12529,
+      "employee_name": "Leonel Cruz Cristobal",
+      "changes": {
+        "check_in": {
+          "from": "2026-04-23 13:15:26",
+          "to": "2026-04-23 13:15:00"
+        },
+        "check_out": {
+          "from": null,
+          "to": "2026-04-23 23:26:00"
+        }
+      },
+      "result": "success",
+      "error_message": null
     }
   ]
 }
