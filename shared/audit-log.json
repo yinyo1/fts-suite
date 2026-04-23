@@ -97,6 +97,16 @@
       "changes": {},
       "result": "success",
       "error_message": null
+    },
+    {
+      "timestamp": "2026-04-23T17:02:55.464Z",
+      "user": "ftsmaster",
+      "action": "edit_attendance",
+      "attendance_id": 12448,
+      "employee_name": "Jesus Esteban De La Cruz Calderon",
+      "changes": {},
+      "result": "success",
+      "error_message": null
     }
   ]
 }
