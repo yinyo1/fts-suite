@@ -351,6 +351,25 @@
       },
       "result": "success",
       "error_message": null
+    },
+    {
+      "timestamp": "2026-04-23T23:42:50.473Z",
+      "user": "ftsmaster",
+      "action": "edit_attendance",
+      "attendance_id": 12525,
+      "employee_name": "Cesar Gildardo Gómez Cano",
+      "changes": {
+        "check_in": {
+          "from": "2026-04-23 13:06:04",
+          "to": "2026-04-23 13:06:00"
+        },
+        "check_out": {
+          "from": null,
+          "to": "2026-04-23 23:22:00"
+        }
+      },
+      "result": "success",
+      "error_message": null
     }
   ]
 }
