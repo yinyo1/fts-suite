@@ -286,7 +286,8 @@
   // la fecha de última modificación para forzar recarga cuando cambie.
   // Evita que users queden atorados con versiones viejas en browsers agresivos.
   (function() {
-    const BUILD_DATE = '20260423-tz-fix';  // ← Claude Code: actualizar esto en cada commit
+    const BUILD_DATE = '20260423-diag-client';  // ← Claude Code: actualizar esto en cada commit
+    window.BUILD_DATE = BUILD_DATE;  // expuesto para diagnóstico
     if (!window.location.search.includes('v=')) {
       const scripts = document.querySelectorAll('script[src]');
       scripts.forEach(function(s) {
@@ -308,7 +309,7 @@
     <span style="color:var(--muted); font-size:18px;">·</span>
     <span class="ea-topbar-title">🕐 Editor de Asistencias
       <span style="font-size:10px; color:var(--muted); font-weight:400;">
-        build 20260423-tz-fix
+        build 20260423-diag-client
       </span>
     </span>
   </div>
@@ -370,6 +371,12 @@
       </button>
       <button class="ea-btn ea-btn-sm ea-btn-secondary" onclick="ea_diag_last_error()">
         ⚠️ Último error capturado
+      </button>
+      <button class="ea-btn ea-btn-sm ea-btn-secondary" onclick="ea_diag_client_info()">
+        📱 Info del dispositivo y caché
+      </button>
+      <button class="ea-btn ea-btn-sm ea-btn-danger" onclick="ea_diag_force_reload()">
+        🔄 Forzar recarga (limpia caché local)
       </button>
     </div>
     <div class="ea-diag-output" id="ea_diag_output">Sin output. Pulsa un botón para ejecutar.</div>
@@ -905,6 +912,26 @@ document.addEventListener('DOMContentLoaded', function(){
 
   // Marca de debugging en consola para confirmar init
   console.log('[editor-asistencias] init OK — mock=' + USE_MOCK + ' user=' + (session.username || '?'));
+
+  // Auto-check de versión en segundo plano (no bloqueante).
+  // Avisa en consola si el usuario tiene una build vieja cacheada.
+  setTimeout(async function() {
+    try {
+      const bustUrl = location.pathname + '?_build_check=' + Date.now();
+      const res = await fetch(bustUrl, { cache: 'reload' });
+      const html = await res.text();
+      const match = html.match(/BUILD_DATE\s*=\s*['"]([^'"]+)['"]/);
+      if (match && match[1] !== window.BUILD_DATE) {
+        console.warn('[editor-asistencias] ⚠️ Versión nueva disponible:', match[1],
+          '(actual:', window.BUILD_DATE, ')');
+        console.warn('[editor-asistencias] Ve a Diagnóstico → "Forzar recarga" para actualizar.');
+      } else {
+        console.log('[editor-asistencias] ✅ Build actualizada:', window.BUILD_DATE);
+      }
+    } catch(e) {
+      console.warn('[editor-asistencias] No pude verificar build remoto:', e.message);
+    }
+  }, 2000);
 });
 
 // Logout desde el topbar
@@ -1742,6 +1769,198 @@ async function runDiagnosis(op) {
 window.runDiagnosis         = runDiagnosis;
 window.ea_diag_test_connection = function(){ return runDiagnosis('ping');   };  // reemplaza stub
 window.ea_diag_list_fields     = function(){ return runDiagnosis('fields'); };  // reemplaza stub
+
+// ── Info del cliente + comparación de build ─────────────────
+// Pinta en #ea_diag_output un reporte completo: build loaded vs remote,
+// timezone, self-tests en vivo, cache, sesión, device, storage.
+// Diseñado para leerse en celular — formato monospace tipo terminal.
+async function ea_diag_client_info() {
+  const out = document.getElementById('ea_diag_output');
+  if (!out) return;
+  out.textContent = '⏳ Recolectando info del dispositivo…';
+
+  // 1. Build info
+  const currentBuild = (function(){
+    try { return window.BUILD_DATE || '(no expuesto a window)'; } catch(e){ return '?'; }
+  })();
+
+  // 2. Comparar con build remoto
+  let remoteBuild = '?';
+  let buildStatus = '?';
+  try {
+    const bustUrl = location.pathname + '?_build_check=' + Date.now();
+    const res = await fetch(bustUrl, { cache: 'reload' });
+    const html = await res.text();
+    const match = html.match(/BUILD_DATE\s*=\s*['"]([^'"]+)['"]/);
+    if (match) {
+      remoteBuild = match[1];
+      buildStatus = (remoteBuild === currentBuild)
+        ? '✅ Tu versión está actualizada'
+        : '⚠️ HAY VERSIÓN NUEVA disponible (' + remoteBuild + ') — recarga el navegador';
+    }
+  } catch(e) {
+    buildStatus = '❌ No se pudo verificar build remoto: ' + e.message;
+  }
+
+  // 3. Timezone info
+  const browserTz = (function(){
+    try { return Intl.DateTimeFormat().resolvedOptions().timeZone; }
+    catch(e) { return 'unknown'; }
+  })();
+  const now = new Date();
+  const nowUtc = now.toISOString();
+  const nowCst = now.toLocaleString('es-MX', {
+    timeZone: 'America/Monterrey', dateStyle: 'medium', timeStyle: 'medium'
+  });
+  const nowLocal = now.toLocaleString('es-MX', {
+    dateStyle: 'medium', timeStyle: 'medium'
+  });
+
+  // 4. TZ helpers live-test
+  const tzTests = [
+    { input: '2026-04-20T18:00', expected: '2026-04-21 00:00:00',
+      label: 'CST 6 PM → UTC medianoche día sig' },
+    { input: '2026-04-20T06:00', expected: '2026-04-20 12:00:00',
+      label: 'CST 6 AM → UTC mediodía mismo día' }
+  ];
+  const tzResults = tzTests.map(function(t){
+    const got = cstInputToUtc(t.input);
+    const ok = got === t.expected;
+    return (ok ? '✅' : '❌') + ' ' + t.label + '\n' +
+      '     input:    ' + t.input + '\n' +
+      '     expected: ' + t.expected + '\n' +
+      '     got:      ' + got;
+  }).join('\n');
+
+  // 5. Cache info
+  let cacheInfo = 'No disponible';
+  try {
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      cacheInfo = keys.length === 0
+        ? '✅ Sin caches de service worker'
+        : '⚠️ Caches activas: ' + keys.join(', ');
+    } else {
+      cacheInfo = '✅ Service workers no soportados';
+    }
+  } catch(e) {
+    cacheInfo = '❌ Error consultando caches: ' + e.message;
+  }
+
+  // 6. Sesión FTS
+  let sessionInfo = '❌ Sin sesión';
+  try {
+    const s = (window.FTSAuth && FTSAuth.getSession && FTSAuth.getSession()) || null;
+    if (s) {
+      sessionInfo = '✅ ' + (s.username || '?') + ' (role=' + (s.role || '?') +
+        ', loginTime=' + (s.loginTime || '?') + ')';
+    }
+  } catch(e){}
+
+  // 7. Device info
+  const ua = navigator.userAgent || '';
+  let deviceType = 'Desktop';
+  if (/Android/i.test(ua)) deviceType = '📱 Android';
+  else if (/iPhone|iPad|iPod/i.test(ua)) deviceType = '📱 iOS';
+  else if (/Mobile/i.test(ua)) deviceType = '📱 Mobile';
+  else if (/Mac OS/i.test(ua)) deviceType = '💻 macOS';
+  else if (/Windows/i.test(ua)) deviceType = '💻 Windows';
+  else if (/Linux/i.test(ua)) deviceType = '💻 Linux';
+
+  const browser = (function(){
+    if (/Edg\//.test(ua)) return 'Edge';
+    if (/Chrome\//.test(ua) && !/Chromium/.test(ua)) return 'Chrome';
+    if (/Firefox\//.test(ua)) return 'Firefox';
+    if (/Safari\//.test(ua) && !/Chrome/.test(ua)) return 'Safari';
+    return 'Otro';
+  })();
+
+  const screenInfo = screen.width + 'x' + screen.height +
+    ' @ ' + (window.devicePixelRatio || 1) + 'x';
+  const viewportInfo = window.innerWidth + 'x' + window.innerHeight;
+  const online = navigator.onLine ? '✅ Online' : '❌ Offline';
+
+  // 8. Storage info
+  let localStorageSize = '?';
+  try { localStorageSize = (JSON.stringify(localStorage).length / 1024).toFixed(1) + ' KB'; } catch(e){}
+  let sessionStorageSize = '?';
+  try { sessionStorageSize = (JSON.stringify(sessionStorage).length / 1024).toFixed(1) + ' KB'; } catch(e){}
+
+  // 9. Render
+  const report = [
+    '📱 INFO DEL DISPOSITIVO Y CACHÉ',
+    '═══════════════════════════════════════',
+    '',
+    '🔖 VERSIÓN (BUILD)',
+    '  Build cargado: ' + currentBuild,
+    '  Build en servidor: ' + remoteBuild,
+    '  Estado: ' + buildStatus,
+    '',
+    '🕐 ZONA HORARIA',
+    '  Browser: ' + browserTz,
+    '  FTS opera en: America/Monterrey (UTC-6, sin DST)',
+    '  Hora local del browser: ' + nowLocal,
+    '  Hora en Monterrey: ' + nowCst,
+    '  Hora UTC: ' + nowUtc,
+    '',
+    '🧪 TEST CONVERSIÓN CST→UTC EN VIVO',
+    tzResults,
+    '',
+    '📦 CACHÉ',
+    '  ' + cacheInfo,
+    '  localStorage: ' + localStorageSize,
+    '  sessionStorage: ' + sessionStorageSize,
+    '',
+    '👤 SESIÓN',
+    '  ' + sessionInfo,
+    '',
+    '📲 DISPOSITIVO',
+    '  Tipo: ' + deviceType,
+    '  Browser: ' + browser,
+    '  Pantalla: ' + screenInfo,
+    '  Viewport: ' + viewportInfo,
+    '  Red: ' + online,
+    '  User-Agent: ' + ua,
+    '',
+    '🔗 URLs',
+    '  Página actual: ' + location.href,
+    '  Host: ' + location.host,
+    '',
+    '═══════════════════════════════════════',
+    '💡 Si "Estado" dice que hay versión nueva, pulsa',
+    '   "🔄 Forzar recarga" para bajar la última versión.',
+    ''
+  ].join('\n');
+
+  out.textContent = report;
+}
+window.ea_diag_client_info = ea_diag_client_info;
+
+// ── Forzar recarga (limpia caches de SW + service workers + reload) ──
+async function ea_diag_force_reload() {
+  if (!confirm('Esto va a:\n' +
+    '• Borrar caché local de la app\n' +
+    '• Borrar service workers (si hay)\n' +
+    '• Recargar la página\n\n' +
+    '¿Continuar?')) return;
+
+  try {
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(function(k){ return caches.delete(k); }));
+    }
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(function(r){ return r.unregister(); }));
+    }
+  } catch(e) {
+    console.warn('Error limpiando caches:', e);
+  }
+
+  const url = location.pathname + '?_reload=' + Date.now();
+  location.replace(url);
+}
+window.ea_diag_force_reload = ea_diag_force_reload;
 
 // ── showError — formatter único para errores del webhook ──
 // - Renderiza toast con error_message
