@@ -1,7 +1,7 @@
 // ═══ FTS Kiosk — Lógica principal ═══
 // Script clásico, estado global compartido
 
-const KIOSK_BUILD = '20260423-olvido-fix-v1';
+const KIOSK_BUILD = '20260423-olvido-fix-v2';
 console.log('[kiosk] build:', KIOSK_BUILD);
 
 const K = {
@@ -268,8 +268,10 @@ function showScreen(id){
 }
 
 // Helper centralizado: limpia el flag de olvido-entrada con log de debug.
-// Razones válidas: 'goHome', 'terminarYHome', 'cancelarGeo', 'cancelarOlvidoEntrada',
-// 'tipo_change', 'registrarAsistencia_mismatch'.
+// Razones válidas: 'goHome', 'cancelarGeo', 'cancelarOlvidoEntrada',
+// 'tipo_change', 'registrarAsistencia_candado', 'registrarAsistencia_ok'.
+// NO incluir 'terminarYHome' — esa función puede dispararse durante
+// el flujo por autoReturn y limpiaría el flag prematuramente.
 function clearOlvidoEntradaFlag(reason){
   if (K.olvidoEntradaData){
     console.log('[kiosk] cleaning olvidoEntradaData due to [' + (reason || 'unknown') + ']');
@@ -289,7 +291,11 @@ function goHome(){
 }
 
 function terminarYHome(){
-  clearOlvidoEntradaFlag('terminarYHome');
+  // NOTA: NO limpiar K.olvidoEntradaData aquí — esta función puede
+  // dispararse DURANTE el flujo (por autoReturn o botón "Terminado"
+  // antes de que termine el await del checkin). El flag se limpia
+  // en rutas explícitas: registrarAsistencia_ok, _candado, goHome, etc.
+
   // Cancelar countdown de auto-return si está en curso
   if(K.autoReturnTimer){ clearTimeout(K.autoReturnTimer); K.autoReturnTimer = null; }
   if(K.autoReturnInterval){ clearInterval(K.autoReturnInterval); K.autoReturnInterval = null; }
@@ -811,6 +817,12 @@ async function registrarAsistencia(){
   });
   // FIX #2: guard mismatch eliminado — el FIX #1 garantiza que tipo sea
   // siempre 'entrada' cuando hay flag activo.
+  // Diagnóstico: el flag DEBE sobrevivir hasta aquí si empezó activo
+  console.log('[kiosk:registrar] flag check at incidencia point', {
+    k_olvido: K.olvidoEntradaData,
+    checkinOk: checkinOk,
+    willFire: !!(checkinOk && K.olvidoEntradaData)
+  });
   if(checkinOk && K.olvidoEntradaData){
     var incRes = await crearIncidenciaOlvidoEntrada(payload, checkinResp);
     mostrarConfirmacionOlvidoEntrada(payload, K.olvidoEntradaData, incRes);
