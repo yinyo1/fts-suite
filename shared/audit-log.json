@@ -275,6 +275,25 @@
       },
       "result": "success",
       "error_message": null
+    },
+    {
+      "timestamp": "2026-04-23T23:38:58.477Z",
+      "user": "ftsmaster",
+      "action": "edit_attendance",
+      "attendance_id": 12517,
+      "employee_name": "Stephany Ventura Arevalo",
+      "changes": {
+        "check_in": {
+          "from": "2026-04-23 12:35:03",
+          "to": "2026-04-23 12:35:00"
+        },
+        "check_out": {
+          "from": null,
+          "to": "2026-04-23 23:06:00"
+        }
+      },
+      "result": "success",
+      "error_message": null
     }
   ]
 }
