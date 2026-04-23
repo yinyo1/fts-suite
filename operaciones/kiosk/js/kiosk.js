@@ -195,6 +195,7 @@ async function reintentarGeo(){
 window.reintentarGeo = reintentarGeo;
 
 function cancelarGeo(){
+  clearOlvidoEntradaFlag('cancelarGeo');
   const m = document.getElementById('geoModal');
   if(m) m.remove();
   K.geoMotivo = null;
@@ -263,7 +264,18 @@ function showScreen(id){
   }
 }
 
+// Helper centralizado: limpia el flag de olvido-entrada con log de debug.
+// Razones válidas: 'goHome', 'terminarYHome', 'cancelarGeo', 'cancelarOlvidoEntrada',
+// 'tipo_change', 'registrarAsistencia_mismatch'.
+function clearOlvidoEntradaFlag(reason){
+  if (K.olvidoEntradaData){
+    console.log('[kiosk] cleaning olvidoEntradaData due to [' + (reason || 'unknown') + ']');
+    K.olvidoEntradaData = null;
+  }
+}
+
 function goHome(){
+  clearOlvidoEntradaFlag('goHome');
   K.seleccionado = null;
   K.soSeleccionada = null;
   K.tipo = null;
@@ -274,6 +286,7 @@ function goHome(){
 }
 
 function terminarYHome(){
+  clearOlvidoEntradaFlag('terminarYHome');
   // Cancelar countdown de auto-return si está en curso
   if(K.autoReturnTimer){ clearTimeout(K.autoReturnTimer); K.autoReturnTimer = null; }
   if(K.autoReturnInterval){ clearInterval(K.autoReturnInterval); K.autoReturnInterval = null; }
@@ -430,6 +443,10 @@ function getSugerenciaTipo(){
 }
 
 function selectTipo(tipo){
+  // El flag de olvido-entrada solo aplica a tipo 'entrada'. Si el usuario
+  // cambia a otro tipo mientras hay flag vivo (caso raro pero defensivo),
+  // se limpia aquí para no contaminar un checkin de otro tipo.
+  if (tipo !== 'entrada') clearOlvidoEntradaFlag('tipo_change');
   K.tipo = tipo;
 
   const labels = {
@@ -748,7 +765,7 @@ async function registrarAsistencia(){
         var errMsg = r.error_msg || 'Error desconocido';
         mostrarErrorCandado(errMsg);
         // Si venía en flujo de olvido, no crear incidencia (spec: si checkin falla, no incidencia)
-        K.olvidoEntradaData = null;
+        clearOlvidoEntradaFlag('registrarAsistencia_candado');
         return;
       }
     } catch(e){
@@ -761,10 +778,15 @@ async function registrarAsistencia(){
   }
 
   // ── Flujo olvido entrada: crear incidencia paralela ──
+  // Guard defensivo: si el flag está vivo pero el tipo no coincide con
+  // 'entrada' (edge-case por bug de flujo), limpiamos sin crear incidencia.
+  if(K.olvidoEntradaData && tipo !== 'entrada'){
+    clearOlvidoEntradaFlag('registrarAsistencia_mismatch');
+  }
   if(checkinOk && K.olvidoEntradaData){
     var incRes = await crearIncidenciaOlvidoEntrada(payload, checkinResp);
     mostrarConfirmacionOlvidoEntrada(payload, K.olvidoEntradaData, incRes);
-    K.olvidoEntradaData = null;
+    clearOlvidoEntradaFlag('registrarAsistencia_ok');
     return;   // evita autoReturn() estándar — el modal tiene su propio botón
   }
 
@@ -1375,6 +1397,8 @@ function renderEstadoBotones(estado){
 
 // Stubs — implementar lógica completa después
 function iniciarCheckin(tipo){
+  // Idem selectTipo: el flag de olvido-entrada solo aplica a 'entrada'.
+  if (tipo !== 'entrada') clearOlvidoEntradaFlag('tipo_change');
   K.tipo = tipo;
   var labels = { entrada:'🟢 Entrada', salida_comida:'🍽️ Salida a comer', regreso_comida:'🔄 Regreso de comida', salida:'🔴 Salida' };
   var tipoLabel = document.getElementById('ks-verify-tipo');
@@ -1605,6 +1629,7 @@ function olvideChecarEntrada(){
 window.olvideChecarEntrada = olvideChecarEntrada;
 
 function cancelarOlvidoEntrada(){
+  clearOlvidoEntradaFlag('cancelarOlvidoEntrada');
   var m = document.getElementById('modalOlvideEntrada');
   if(m) m.remove();
   if(window._empleadoActual) mostrarEstadoEmpleado(window._empleadoActual);
