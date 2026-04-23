@@ -1141,6 +1141,362 @@ function ea_toast(msg, kind) {
   if (_toastTimer) clearTimeout(_toastTimer);
   _toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 3500);
 }
+
+// ═══════════════════════════════════════════════
+// EDIT MODAL — chunk 4 (reemplaza stubs del chunk 3)
+// ═══════════════════════════════════════════════
+
+// Estado del modal en edición. Guarda el snapshot previo para armar el diff
+// del audit log al guardar.
+let _currentEditState = null;
+let _editListenersWired = false;
+
+// ── Open modal ─────────────────────────────────
+function openEditModal(attendanceId) {
+  const a = _currentAttendances.find(function(x){ return x.id === attendanceId; });
+  if (!a) {
+    ea_toast('Attendance no encontrada en el estado actual. Vuelve a buscar.', 'err');
+    return;
+  }
+
+  _currentEditState = {
+    id: a.id,
+    employee_id:   a.employee_id,
+    employee_name: a.employee_name,
+    before: {
+      check_in:  a.check_in || null,
+      check_out: a.check_out || null
+    }
+  };
+
+  // Info read-only
+  document.getElementById('ea_edit_id').textContent = String(a.id);
+  document.getElementById('ea_edit_employee').textContent =
+    (a.employee_name || ('ID ' + a.employee_id)) + (a.employee_id ? '  (id ' + a.employee_id + ')' : '');
+
+  // Inputs pre-llenados en CST (local al usuario)
+  const ciInput = document.getElementById('ea_edit_check_in');
+  const coInput = document.getElementById('ea_edit_check_out');
+  ciInput.value = utcToCstInput(a.check_in);
+  coInput.value = utcToCstInput(a.check_out);
+
+  // Wire listeners en vivo (solo la primera vez)
+  if (!_editListenersWired) {
+    ciInput.addEventListener('input', calculateHoursLive);
+    coInput.addEventListener('input', calculateHoursLive);
+    _editListenersWired = true;
+  }
+
+  // Limpiar estados previos
+  document.getElementById('ea_edit_status').textContent = '';
+  document.getElementById('ea_edit_status').style.color = '';
+  document.getElementById('ea_edit_save_btn').disabled = false;
+  document.getElementById('ea_edit_warn').style.display = 'none';
+  document.getElementById('ea_edit_warn').textContent = '';
+
+  calculateHoursLive();
+
+  // Mostrar
+  document.getElementById('ea_edit_modal').classList.add('show');
+}
+window.openEditModal = openEditModal;
+window.ea_edit_open  = openEditModal;  // reemplaza stub
+
+// ── Close modal ───────────────────────────────
+function closeModal() {
+  const m = document.getElementById('ea_edit_modal');
+  if (m) m.classList.remove('show');
+  _currentEditState = null;
+}
+window.closeModal           = closeModal;
+window.ea_close_edit_modal  = closeModal;  // reemplaza stub
+
+// ── Cálculo en vivo + validaciones soft ───────
+// No bloquea inputs; solo actualiza el readout de horas + warning si >24h.
+// Las validaciones duras se ejecutan en saveEdit().
+function calculateHoursLive() {
+  const ciCst = document.getElementById('ea_edit_check_in').value;
+  const coCst = document.getElementById('ea_edit_check_out').value;
+  const hoursEl = document.getElementById('ea_edit_hours');
+  const warnEl  = document.getElementById('ea_edit_warn');
+  const statusEl = document.getElementById('ea_edit_status');
+
+  if (!ciCst) {
+    hoursEl.textContent = '—';
+    warnEl.style.display = 'none';
+    return;
+  }
+
+  // Parsear CST a Date local
+  const ciMs = new Date(ciCst + ':00').getTime();
+  const coMs = coCst ? new Date(coCst + ':00').getTime() : null;
+  const nowMs = Date.now();
+
+  // 1) check_in > ahora → mensaje inline (no bloquea render)
+  if (ciMs > nowMs) {
+    statusEl.textContent = '⚠️ Check-in está en el futuro';
+    statusEl.style.color = 'var(--orange)';
+  } else if (statusEl.textContent && /futuro/.test(statusEl.textContent)) {
+    statusEl.textContent = '';
+  }
+
+  if (!coMs) {
+    hoursEl.textContent = 'Abierto (sin check-out)';
+    warnEl.style.display = 'none';
+    return;
+  }
+
+  // 2) check_out < check_in → mostrar como negativo/invalid
+  if (coMs < ciMs) {
+    hoursEl.textContent = '❌ Check-out anterior a check-in';
+    warnEl.style.display = 'none';
+    return;
+  }
+
+  // Diferencia en horas
+  const diffH = (coMs - ciMs) / 3600000;
+  hoursEl.textContent = diffH.toFixed(2) + ' hrs';
+
+  // 3) > 24h → warning (no bloquea, solo avisa)
+  if (diffH > 24) {
+    warnEl.style.display = 'block';
+    warnEl.textContent = '⚠️ ¿Seguro? Es una jornada de más de 24 horas (' + diffH.toFixed(1) + ' h).';
+  } else {
+    warnEl.style.display = 'none';
+    warnEl.textContent = '';
+  }
+}
+window.calculateHoursLive    = calculateHoursLive;
+window.ea_edit_recalc_hours  = calculateHoursLive;  // reemplaza stub
+
+// ── Guardar ───────────────────────────────────
+async function saveEdit() {
+  if (!_currentEditState) return;
+  const state   = _currentEditState;
+  const saveBtn = document.getElementById('ea_edit_save_btn');
+  const statusEl = document.getElementById('ea_edit_status');
+
+  const ciCst = document.getElementById('ea_edit_check_in').value;
+  const coCst = document.getElementById('ea_edit_check_out').value;
+
+  // ── Validaciones duras ───────────────────
+  if (!ciCst) {
+    statusEl.textContent = '❌ Check-in es obligatorio.';
+    statusEl.style.color = 'var(--red)';
+    return;
+  }
+  const ciMs = new Date(ciCst + ':00').getTime();
+  if (isNaN(ciMs)) {
+    statusEl.textContent = '❌ Check-in inválido.';
+    statusEl.style.color = 'var(--red)';
+    return;
+  }
+  if (ciMs > Date.now() + 60000) {   // tolerancia de 1 min por drift de reloj
+    statusEl.textContent = '❌ Check-in no puede ser futuro.';
+    statusEl.style.color = 'var(--red)';
+    return;
+  }
+
+  let coMs = null;
+  if (coCst) {
+    coMs = new Date(coCst + ':00').getTime();
+    if (isNaN(coMs)) {
+      statusEl.textContent = '❌ Check-out inválido.';
+      statusEl.style.color = 'var(--red)';
+      return;
+    }
+    if (coMs < ciMs) {
+      statusEl.textContent = '❌ Check-out no puede ser anterior a check-in.';
+      statusEl.style.color = 'var(--red)';
+      return;
+    }
+    const diffH = (coMs - ciMs) / 3600000;
+    if (diffH > 24) {
+      // El warning visual ya está activo; confirmar explícito
+      if (!confirm('La jornada es de ' + diffH.toFixed(1) + ' horas (>24h). ¿Confirmar?')) {
+        statusEl.textContent = 'Guardado cancelado por el usuario.';
+        statusEl.style.color = 'var(--muted2)';
+        return;
+      }
+    }
+  }
+
+  // ── Conversión CST → UTC para el payload ─
+  const check_in_utc  = cstInputToUtc(ciCst);
+  const check_out_utc = coCst ? cstInputToUtc(coCst) : null;
+
+  // ── Llamar webhook ───────────────────────
+  saveBtn.disabled = true;
+  statusEl.textContent = '⏳ Guardando…';
+  statusEl.style.color = 'var(--blue)';
+
+  const body = {
+    id:            state.id,          // mock lee `id`
+    attendance_id: state.id,          // producción lee `attendance_id`
+    check_in:      check_in_utc,
+    check_out:     check_out_utc,
+    check_in_utc:  check_in_utc,
+    check_out_utc: check_out_utc
+  };
+
+  const result = await callWebhook('write', body);
+
+  if (!result.success) {
+    statusEl.textContent = '❌ ' + ((result.error && result.error.error_message) || 'Error desconocido');
+    statusEl.style.color = 'var(--red)';
+    saveBtn.disabled = false;
+    // Panel externo con suggestion + routing (auth/odoo_field_invalid)
+    ea_handle_webhook_error(result.error, 'Error guardando attendance ' + state.id);
+    // Log auditoría del intento fallido (best-effort)
+    ea_append_audit_log({
+      action:        'edit_attendance',
+      attendance_id: state.id,
+      employee_name: state.employee_name,
+      changes:       _diffChanges(state.before, { check_in: check_in_utc, check_out: check_out_utc }),
+      result:        'error',
+      error_message: (result.error && result.error.error_message) || 'Error desconocido'
+    }).catch(function(e){ console.warn('[ea] audit failed', e); });
+    return;
+  }
+
+  statusEl.textContent = '✅ Guardado';
+  statusEl.style.color = 'var(--green)';
+
+  // Actualizar estado local con data devuelta (o con los valores enviados si el backend no la devuelve)
+  const updated = (result.data && result.data.attendance) || null;
+  const idx = _currentAttendances.findIndex(function(x){ return x.id === state.id; });
+  if (idx >= 0) {
+    if (updated) {
+      _currentAttendances[idx] = Object.assign({}, _currentAttendances[idx], updated);
+    } else {
+      _currentAttendances[idx].check_in  = check_in_utc;
+      _currentAttendances[idx].check_out = check_out_utc;
+      if (check_in_utc && check_out_utc) {
+        const h = (new Date(check_out_utc + 'Z').getTime() - new Date(check_in_utc + 'Z').getTime()) / 3600000;
+        _currentAttendances[idx].worked_hours = Math.round(h * 100) / 100;
+      } else {
+        _currentAttendances[idx].worked_hours = 0;
+      }
+      _currentAttendances[idx].is_open = !check_out_utc;
+    }
+  }
+  renderTable(_currentAttendances);
+
+  // Log de auditoría (best-effort, no bloqueante)
+  ea_append_audit_log({
+    action:        'edit_attendance',
+    attendance_id: state.id,
+    employee_name: state.employee_name,
+    changes:       _diffChanges(state.before, { check_in: check_in_utc, check_out: check_out_utc }),
+    result:        'success',
+    error_message: null
+  }).catch(function(e){ console.warn('[ea] audit failed', e); });
+
+  ea_toast('Attendance ' + state.id + ' actualizada', 'ok');
+  setTimeout(closeModal, 600);
+}
+window.saveEdit      = saveEdit;
+window.ea_edit_save  = saveEdit;  // reemplaza stub
+
+// Diff utility: compara 2 objetos planos { check_in, check_out } y devuelve
+// { campo: { from, to } } sólo de los campos que cambiaron.
+function _diffChanges(before, after) {
+  const out = {};
+  ['check_in', 'check_out'].forEach(function(k){
+    const a = before ? (before[k] == null ? null : before[k]) : null;
+    const b = after  ? (after[k]  == null ? null : after[k])  : null;
+    if (a !== b) out[k] = { from: a, to: b };
+  });
+  return out;
+}
+
+// ═══════════════════════════════════════════════
+// AUDIT LOG — append-only a shared/audit-log.json vía GitHub API
+// ═══════════════════════════════════════════════
+// Patrón idéntico a syncUsersToGitHub() de config-master.html:
+// 1) GET del archivo (si existe) para obtener SHA + entries previas.
+// 2) Append de la nueva entry.
+// 3) PUT con el SHA (y 404-aware: si no existe, lo crea).
+// Es best-effort: si falla, loguea warning pero NO revierte la acción.
+async function ea_append_audit_log(entry) {
+  const session = (window.FTSAuth && FTSAuth.getSession && FTSAuth.getSession()) || {};
+  const fullEntry = {
+    timestamp:     new Date().toISOString(),
+    user:          session.username || 'unknown',
+    action:        entry.action || 'unknown',
+    attendance_id: entry.attendance_id || null,
+    employee_name: entry.employee_name || null,
+    changes:       entry.changes || {},
+    result:        entry.result || 'success',
+    error_message: entry.error_message || null
+  };
+
+  const token = localStorage.getItem('ops_github_token');
+  if (!token) {
+    console.warn('[ea] sin GitHub token → skip audit log', fullEntry);
+    return false;
+  }
+
+  const API = 'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/audit-log.json';
+  const headers = {
+    'Authorization': 'token ' + token,
+    'Accept':        'application/vnd.github.v3+json'
+  };
+
+  // 1) GET (404 tolerado → crear nuevo)
+  let sha = null;
+  let existing = { version: 1, entries: [] };
+  try {
+    const r = await fetch(API + '?ref=main&t=' + Date.now(), { headers: headers });
+    if (r.ok) {
+      const d = await r.json();
+      sha = d.sha;
+      try {
+        existing = JSON.parse(decodeURIComponent(escape(atob(d.content.replace(/\n/g,'')))));
+      } catch(parseErr) {
+        console.warn('[ea] audit-log existente malformado, se sobrescribe con estructura nueva');
+        existing = { version: 1, entries: [] };
+      }
+    } else if (r.status !== 404) {
+      console.warn('[ea] audit-log GET status=' + r.status + ' → skip');
+      return false;
+    }
+  } catch (e) {
+    console.warn('[ea] audit-log GET failed:', e);
+    return false;
+  }
+
+  if (!Array.isArray(existing.entries)) existing.entries = [];
+  if (!existing.version) existing.version = 1;
+  existing.entries.push(fullEntry);
+
+  // TODO: rotar a archivo mensual si existing.entries.length > 10000.
+
+  // 2) PUT
+  const bodyObj = {
+    message: 'audit: ' + fullEntry.action + ' #' + (fullEntry.attendance_id || '?'),
+    content: btoa(unescape(encodeURIComponent(JSON.stringify(existing, null, 2)))),
+    branch:  'main'
+  };
+  if (sha) bodyObj.sha = sha;
+
+  try {
+    const r = await fetch(API, {
+      method: 'PUT',
+      headers: Object.assign({}, headers, { 'Content-Type':'application/json' }),
+      body:    JSON.stringify(bodyObj)
+    });
+    if (!r.ok) {
+      const txt = await r.text().catch(function(){ return ''; });
+      console.warn('[ea] audit-log PUT failed ' + r.status + ' ' + txt.substring(0, 200));
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.warn('[ea] audit-log PUT error:', e);
+    return false;
+  }
+}
 </script>
 
 </body>
