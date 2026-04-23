@@ -294,6 +294,25 @@
       },
       "result": "success",
       "error_message": null
+    },
+    {
+      "timestamp": "2026-04-23T23:39:43.056Z",
+      "user": "ftsmaster",
+      "action": "edit_attendance",
+      "attendance_id": 12530,
+      "employee_name": "José Carlos Ortiz romero",
+      "changes": {
+        "check_in": {
+          "from": "2026-04-23 13:15:48",
+          "to": "2026-04-23 13:15:00"
+        },
+        "check_out": {
+          "from": null,
+          "to": "2026-04-23 23:07:00"
+        }
+      },
+      "result": "success",
+      "error_message": null
     }
   ]
 }
