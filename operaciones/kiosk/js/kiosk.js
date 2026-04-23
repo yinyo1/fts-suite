@@ -1,6 +1,9 @@
 // ═══ FTS Kiosk — Lógica principal ═══
 // Script clásico, estado global compartido
 
+const KIOSK_BUILD = '20260423-olvido-fix-v1';
+console.log('[kiosk] build:', KIOSK_BUILD);
+
 const K = {
   empleados: [],
   sos: [],
@@ -697,7 +700,23 @@ async function registrarAsistencia(){
 
   // Determinar tipo — viene de ks-tipo (K.tipo)
   const now = new Date();
-  const tipo = K.tipo || 'entrada';
+  // FIX #1: Si hay flag de olvido-entrada activo, forzamos tipo a 'entrada'
+  // porque el botón solo aplica a entradas (por diseño del flujo).
+  var tipo = K.tipo || 'entrada';
+  if(K.olvidoEntradaData){
+    if(tipo !== 'entrada'){
+      console.warn('[kiosk] olvido flag activo pero K.tipo=' + tipo + ', forzando a entrada');
+    }
+    tipo = 'entrada';
+    K.tipo = 'entrada';   // también actualizar estado global
+  }
+
+  console.log('[kiosk:registrar] start', {
+    tipo: tipo,
+    k_tipo: K.tipo,
+    hasOlvidoFlag: !!K.olvidoEntradaData,
+    olvidoFlag: K.olvidoEntradaData
+  });
 
   // Construir payload completo
   const payload = {
@@ -761,6 +780,13 @@ async function registrarAsistencia(){
       checkinResp = await window.OdooKiosk.registrarCheckin(payload);
       // Verificar candados del backend
       var r = Array.isArray(checkinResp) ? checkinResp[0] : checkinResp;
+      console.log('[kiosk:registrar] checkin response', {
+        success: r && r.success,
+        accion_valida: r && r.accion_valida,
+        attendance_id: r && r.attendance_id,
+        checkinOk: checkinOk,
+        hasOlvidoFlagAfterCheckin: !!K.olvidoEntradaData
+      });
       if(r && r.accion_valida === false){
         var errMsg = r.error_msg || 'Error desconocido';
         mostrarErrorCandado(errMsg);
@@ -778,11 +804,13 @@ async function registrarAsistencia(){
   }
 
   // ── Flujo olvido entrada: crear incidencia paralela ──
-  // Guard defensivo: si el flag está vivo pero el tipo no coincide con
-  // 'entrada' (edge-case por bug de flujo), limpiamos sin crear incidencia.
-  if(K.olvidoEntradaData && tipo !== 'entrada'){
-    clearOlvidoEntradaFlag('registrarAsistencia_mismatch');
-  }
+  console.log('[kiosk:registrar] pre-incidencia check', {
+    checkinOk: checkinOk,
+    hasOlvidoFlag: !!K.olvidoEntradaData,
+    willCreateIncidencia: !!(checkinOk && K.olvidoEntradaData)
+  });
+  // FIX #2: guard mismatch eliminado — el FIX #1 garantiza que tipo sea
+  // siempre 'entrada' cuando hay flag activo.
   if(checkinOk && K.olvidoEntradaData){
     var incRes = await crearIncidenciaOlvidoEntrada(payload, checkinResp);
     mostrarConfirmacionOlvidoEntrada(payload, K.olvidoEntradaData, incRes);
@@ -1667,6 +1695,8 @@ function continuarOlvidoEntrada(){
     hora_declarada_cst: hora.replace('T', ' ') + ':00',   // "YYYY-MM-DD HH:MM:SS"
     motivo: motivo
   };
+  // FIX #3: forzar tipo ANTES de iniciar el checkin (cinturón + tirantes)
+  K.tipo = 'entrada';
 
   // Cerrar modal y arrancar flujo normal de entrada
   var m = document.getElementById('modalOlvideEntrada');
@@ -1701,13 +1731,36 @@ async function crearIncidenciaOlvidoEntrada(payloadCheckin, respuestaCheckin){
     }
   };
 
-  try {
-    var res = await n8nFetch('/webhook/incidencias/crear-olvido-entrada', body);
-    return { ok: true, data: res };
-  } catch(e) {
-    console.warn('[olvido-entrada] incidencia falló:', e);
-    return { ok: false, error: e && e.message };
+  console.log('[kiosk:incidencia] POST', {
+    url: '/webhook/incidencias/crear-olvido-entrada',
+    empleado_id: body.empleado_id,
+    motivo_len: (body.motivo || '').length
+  });
+
+  // FIX #5: retry automático (2 intentos, 1s entre ellos)
+  var intentos = 0;
+  var maxIntentos = 2;
+  var ultimoError = null;
+
+  while(intentos < maxIntentos){
+    intentos++;
+    try {
+      console.log('[kiosk:incidencia] intento', intentos, 'de', maxIntentos);
+      var res = await n8nFetch('/webhook/incidencias/crear-olvido-entrada', body);
+      console.log('[kiosk:incidencia] OK en intento', intentos, { response: res });
+      return { ok: true, data: res, intentos: intentos };
+    } catch(e) {
+      console.error('[kiosk:incidencia] FAIL intento', intentos, {
+        message: e && e.message,
+        stack:   e && e.stack
+      });
+      ultimoError = e;
+      if(intentos < maxIntentos){
+        await new Promise(function(r){ setTimeout(r, 1000); });
+      }
+    }
   }
+  return { ok: false, error: ultimoError && ultimoError.message, intentos: intentos };
 }
 window.crearIncidenciaOlvidoEntrada = crearIncidenciaOlvidoEntrada;
 
