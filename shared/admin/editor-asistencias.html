@@ -1497,6 +1497,283 @@ async function ea_append_audit_log(entry) {
     return false;
   }
 }
+
+// ═══════════════════════════════════════════════
+// DELETE + BULK DELETE + DIAGNOSIS + showError — chunk 5
+// ═══════════════════════════════════════════════
+
+// ── Eliminar una attendance ──────────────────
+async function deleteAttendance(id) {
+  const a = _currentAttendances.find(function(x){ return x.id === id; });
+  if (!a) {
+    ea_toast('Attendance no encontrada en el estado actual. Vuelve a buscar.', 'err');
+    return;
+  }
+  const who = a.employee_name || ('ID ' + a.employee_id);
+  if (!confirm('¿Eliminar attendance #' + id + ' de ' + who + '?\n\nEsta acción no se puede deshacer.')) return;
+
+  ea_set_search_status('⏳ Eliminando ' + id + '…', 'info');
+  ea_close_error_panel();
+
+  const result = await callWebhook('delete', {
+    ids:           [id],          // mock usa `ids` (array)
+    attendance_id: id,             // producción usa `attendance_id`
+    confirm:       true
+  });
+
+  if (!result.success) {
+    ea_set_search_status('❌ Error al eliminar', 'err');
+    // audit fallido
+    ea_append_audit_log({
+      action:        'delete_attendance',
+      attendance_id: id,
+      employee_name: a.employee_name,
+      changes:       {},
+      result:        'error',
+      error_message: (result.error && result.error.error_message) || 'Error desconocido'
+    }).catch(function(e){ console.warn('[ea] audit failed', e); });
+    showError(result.error, { title: 'Error eliminando attendance ' + id, retry: function(){ return deleteAttendance(id); } });
+    return;
+  }
+
+  // Remover del state local + de la selección + re-render
+  _currentAttendances = _currentAttendances.filter(function(x){ return x.id !== id; });
+  _selection.delete(id);
+  renderTable(_currentAttendances);
+  ea_update_bulk_bar();
+  ea_set_search_status('✅ ' + _currentAttendances.length + ' resultado(s)', 'ok');
+
+  // audit ok
+  ea_append_audit_log({
+    action:        'delete_attendance',
+    attendance_id: id,
+    employee_name: a.employee_name,
+    changes:       {},
+    result:        'success',
+    error_message: null
+  }).catch(function(e){ console.warn('[ea] audit failed', e); });
+
+  ea_toast('Attendance ' + id + ' eliminada', 'ok');
+}
+window.deleteAttendance = deleteAttendance;
+window.ea_delete_one    = deleteAttendance;  // reemplaza stub
+
+// ── Eliminar seleccionadas (bulk) ────────────
+async function deleteSelected() {
+  const ids = Array.from(_selection);
+  if (ids.length === 0) {
+    ea_toast('No hay attendances seleccionadas', 'warn');
+    return;
+  }
+  if (!confirm('¿Eliminar ' + ids.length + ' attendance(s) seleccionada(s)?\n\nEsta acción no se puede deshacer.')) return;
+
+  ea_set_search_status('⏳ Eliminando ' + ids.length + ' registros…', 'info');
+  ea_close_error_panel();
+
+  const success = [];
+  const failed  = [];   // { id, error }
+
+  // Serial para no saturar n8n y poder atribuir errores individualmente.
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    const a  = _currentAttendances.find(function(x){ return x.id === id; });
+    ea_set_search_status('⏳ Eliminando ' + (i + 1) + '/' + ids.length + ' (id ' + id + ')…', 'info');
+
+    const r = await callWebhook('delete', {
+      ids:           [id],
+      attendance_id: id,
+      confirm:       true
+    });
+
+    if (r.success) {
+      success.push(id);
+      ea_append_audit_log({
+        action:        'delete_attendance',
+        attendance_id: id,
+        employee_name: a ? a.employee_name : null,
+        changes:       {},
+        result:        'success',
+        error_message: null
+      }).catch(function(e){ console.warn('[ea] audit failed', e); });
+    } else {
+      failed.push({ id: id, error: (r.error && r.error.error_message) || 'Error desconocido' });
+      ea_append_audit_log({
+        action:        'delete_attendance',
+        attendance_id: id,
+        employee_name: a ? a.employee_name : null,
+        changes:       {},
+        result:        'error',
+        error_message: (r.error && r.error.error_message) || 'Error desconocido'
+      }).catch(function(e){ console.warn('[ea] audit failed', e); });
+    }
+
+    // Si el webhook pide auth, no tiene sentido seguir el bulk
+    if (!r.success && r.error && r.error.error_type === 'auth') {
+      showError(r.error);
+      break;
+    }
+  }
+
+  // Actualizar state local: sacar los exitosos
+  if (success.length > 0) {
+    const sset = new Set(success);
+    _currentAttendances = _currentAttendances.filter(function(x){ return !sset.has(x.id); });
+    success.forEach(function(id){ _selection.delete(id); });
+  }
+  renderTable(_currentAttendances);
+  ea_update_bulk_bar();
+
+  // Reporte final
+  if (failed.length === 0) {
+    ea_set_search_status('✅ ' + success.length + ' eliminadas', 'ok');
+    ea_toast(success.length + ' attendances eliminadas', 'ok');
+  } else if (success.length === 0) {
+    ea_set_search_status('❌ ' + failed.length + ' fallaron', 'err');
+    ea_toast(failed.length + ' eliminaciones fallaron', 'err');
+    showError({
+      error_type:    'bulk_partial',
+      error_message: 'Fallaron ' + failed.length + ' de ' + ids.length + ':\n' +
+                     failed.map(function(f){ return 'id ' + f.id + ' → ' + f.error; }).join('\n'),
+      suggestion:    'Revisa el último error en el panel de diagnóstico, corrige la causa y reintenta sólo los que fallaron.'
+    }, { title: 'Bulk delete con fallos' });
+  } else {
+    ea_set_search_status('⚠️ ' + success.length + ' OK, ' + failed.length + ' fallaron', 'info');
+    ea_toast(success.length + ' OK, ' + failed.length + ' fallaron', 'warn');
+    showError({
+      error_type:    'bulk_partial',
+      error_message: 'Éxitos: ' + success.join(', ') + '\nFallaron:\n' +
+                     failed.map(function(f){ return 'id ' + f.id + ' → ' + f.error; }).join('\n'),
+      suggestion:    'Los exitosos ya se eliminaron. Para los fallidos, revisa el panel de diagnóstico y reintenta individualmente.'
+    }, { title: 'Bulk delete parcial' });
+  }
+}
+window.deleteSelected = deleteSelected;
+window.ea_bulk_delete = deleteSelected;  // reemplaza stub
+
+// ── Diagnóstico Odoo ────────────────────────
+async function runDiagnosis(op) {
+  const out = document.getElementById('ea_diag_output');
+  if (!out) return;
+  out.textContent = '⏳ Ejecutando ' + op + '…';
+
+  const result = await callWebhook('diagnose', { operation: op });
+
+  if (!result.success) {
+    const e = result.error || {};
+    out.textContent = '❌ ' + (e.error_message || 'Error desconocido') + '\n\n' +
+      (e.suggestion ? 'Sugerencia: ' + e.suggestion : '');
+    showError(e, { title: 'Diagnóstico falló' });
+    return;
+  }
+
+  // Render: según op, formato ligeramente distinto.
+  const data = result.data || {};
+  if (op === 'ping') {
+    out.textContent =
+      '✅ Conexión OK\n' +
+      '────────────────────────\n' +
+      'Odoo version : ' + (data.odoo_version || '?') + '\n' +
+      'Database     : ' + (data.db           || '?') + '\n' +
+      'Server time  : ' + (data.server_time_utc || '?') + ' (UTC)\n' +
+      'Usuario      : ' + (data.user         || '?') + '\n' +
+      '\nRaw:\n' + JSON.stringify(data, null, 2);
+  } else if (op === 'fields') {
+    const fields = Array.isArray(data.fields) ? data.fields : [];
+    out.textContent =
+      '📋 Campos en ' + (data.model || 'hr.attendance') + ' (' + fields.length + '):\n' +
+      '────────────────────────\n' +
+      fields.map(function(f){ return '  • ' + f; }).join('\n') +
+      '\n\nRaw:\n' + JSON.stringify(data, null, 2);
+  } else {
+    out.textContent = JSON.stringify(data, null, 2);
+  }
+}
+window.runDiagnosis         = runDiagnosis;
+window.ea_diag_test_connection = function(){ return runDiagnosis('ping');   };  // reemplaza stub
+window.ea_diag_list_fields     = function(){ return runDiagnosis('fields'); };  // reemplaza stub
+
+// ── showError — formatter único para errores del webhook ──
+// - Renderiza toast con error_message
+// - Muestra panel expandible con suggestion
+// - Si error_type === 'auth' → force logout
+// - Si error_type === 'odoo_timeout' y se pasó retry → botón reintentar con cuenta regresiva 30s
+// - Si error_type === 'odoo_field_invalid' → abre panel diagnóstico con el contexto pre-cargado
+function showError(err, opts) {
+  const e = err || {};
+  opts = opts || {};
+  _lastError = e;
+
+  ea_show_error_panel(opts.title || 'Error', e);
+
+  // Limpiar botón retry previo si había
+  const panel = document.getElementById('ea_error_panel');
+  const oldRetry = document.getElementById('ea_error_retry');
+  if (oldRetry) oldRetry.remove();
+
+  // Botón reintentar solo para timeouts con callback disponible
+  if (e.error_type === 'odoo_timeout' && typeof opts.retry === 'function') {
+    const body = panel ? panel.querySelector('.ea-error-body') : null;
+    if (body) {
+      const btn = document.createElement('button');
+      btn.id = 'ea_error_retry';
+      btn.className = 'ea-btn ea-btn-sm ea-btn-secondary';
+      btn.style.marginTop = '10px';
+      btn.disabled = true;
+      let sec = 30;
+      btn.textContent = '🔄 Reintentar en ' + sec + 's';
+      const tick = setInterval(function(){
+        sec--;
+        if (sec <= 0) {
+          clearInterval(tick);
+          btn.disabled = false;
+          btn.textContent = '🔄 Reintentar ahora';
+          btn.onclick = function(){
+            btn.disabled = true;
+            btn.textContent = '⏳ Reintentando…';
+            ea_close_error_panel();
+            Promise.resolve(opts.retry()).catch(function(err2){
+              console.warn('[ea] retry failed', err2);
+            });
+          };
+        } else {
+          btn.textContent = '🔄 Reintentar en ' + sec + 's';
+        }
+      }, 1000);
+      body.appendChild(btn);
+    }
+  }
+
+  // Si un campo de Odoo es invalid, abrir panel diagnóstico con contexto
+  if (e.error_type === 'odoo_field_invalid') {
+    const d = document.getElementById('ea_diag_panel');
+    if (d) d.classList.add('show');
+    const out = document.getElementById('ea_diag_output');
+    if (out) {
+      out.textContent =
+        '⚠️ Campo Odoo inválido detectado\n' +
+        '────────────────────────\n' +
+        'Mensaje técnico:\n' + (e.error_message || '—') + '\n\n' +
+        'Sugerencia:\n' + (e.suggestion || '—') + '\n\n' +
+        'Ejecuta "Ver campos de hr.attendance" para confirmar qué campos acepta la versión actual de Odoo.';
+    }
+  }
+
+  // auth → force logout (último para que el usuario alcance a ver el toast)
+  if (e.error_type === 'auth') {
+    ea_toast(e.error_message || 'Sesión expirada', 'err');
+    setTimeout(function(){ ea_force_logout('Sesión expirada. Vuelve a entrar.'); }, 600);
+    return;
+  }
+
+  // Toast final
+  ea_toast(e.error_message || 'Error desconocido', 'err');
+}
+window.showError = showError;
+
+// Override: ea_handle_webhook_error ahora delega a showError para un único código-path
+window.ea_handle_webhook_error = function(err, titleCtx) {
+  return showError(err, { title: titleCtx });
+};
 </script>
 
 </body>
