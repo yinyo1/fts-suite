@@ -7,7 +7,7 @@
 <script>
   // Cache busting + BUILD_DATE expuesto a window.
   (function() {
-    const BUILD_DATE = '20260423-mi-perfil-hub-v1';
+    const BUILD_DATE = '20260423-mi-perfil-hub-v2';
     window.BUILD_DATE = BUILD_DATE;
     if (!window.location.search.includes('v=')) {
       document.addEventListener('DOMContentLoaded', function() {
@@ -48,6 +48,18 @@
   .mp-logo{display:flex;align-items:center;gap:8px;font-weight:700;color:var(--green)}
   .mp-logo-dot{width:28px;height:28px;border-radius:7px;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800}
   .mp-build{font-size:10px;color:var(--muted);font-weight:400;margin-left:6px}
+  .mp-topbar-left{display:flex;align-items:center;gap:10px;min-width:0}
+  .mp-back-suite{
+    display:inline-flex;align-items:center;gap:4px;
+    color:var(--muted2);text-decoration:none;font-size:13px;font-weight:600;
+    padding:6px 10px;border-radius:7px;border:1px solid var(--border);
+    background:#fff;white-space:nowrap;
+  }
+  .mp-back-suite:hover{color:var(--green);border-color:var(--green);background:#f0f9f0}
+  @media (max-width: 440px){
+    .mp-logo span:not(.mp-build){display:none}
+    .mp-build{display:none}
+  }
   .mp-user-info{font-size:13px;color:var(--muted2)}
   .mp-logout-btn{
     background:none;border:none;color:var(--blue);font-size:14px;cursor:pointer;
@@ -193,9 +205,12 @@
 <body>
 
 <div class="mp-topbar">
-  <div class="mp-logo">
-    <div class="mp-logo-dot">F</div>
-    <span>Mi Perfil<span class="mp-build">build 20260423-mi-perfil-hub-v1</span></span>
+  <div class="mp-topbar-left">
+    <a class="mp-back-suite" id="mp-back-suite" href="../../index.html" title="Volver al menú principal de la Suite" style="display:none">← Volver a Suite</a>
+    <div class="mp-logo">
+      <div class="mp-logo-dot">F</div>
+      <span>Mi Perfil<span class="mp-build">build 20260423-mi-perfil-hub-v2</span></span>
+    </div>
   </div>
   <div id="mp-topbar-right">
     <span class="mp-user-info" id="mp-user-label" style="display:none"></span>
@@ -409,6 +424,7 @@ function mp_show_login(){
   $('mp-dashboard').classList.remove('active');
   $('mp-user-label').style.display = 'none';
   $('mp-logout-btn').style.display = 'none';
+  $('mp-back-suite').style.display = 'none';   // oculto durante login (pre-auth)
   mp_step('mp-step-search');
   mp_load_empleados();
 }
@@ -420,6 +436,7 @@ function mp_show_dashboard(session){
   $('mp-user-label').textContent = '👤 ' + (session.empleado_nombre || '—');
   $('mp-user-label').style.display = 'inline';
   $('mp-logout-btn').style.display = 'inline';
+  $('mp-back-suite').style.display = 'inline-flex';   // solo visible en dashboard
   $('mp-session-ts').textContent = new Date(session.loginTime).toLocaleString('es-MX');
 }
 
