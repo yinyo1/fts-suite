@@ -679,6 +679,130 @@ function ea_force_logout(msg) {
   alert(msg || 'Sesión cerrada.');
   window.location.href = '../../index.html';
 }
+
+// ═══════════════════════════════════════════════
+// AUTH GATE — solo masters pueden entrar
+// ═══════════════════════════════════════════════
+// Bloquea la página si el usuario no tiene role === 'master'.
+// Si la sesión no existe, redirige al login principal.
+// Si existe pero role !== 'master', muestra overlay y redirige a config-master.
+// Retorna el objeto session con los datos del usuario master o null si falló.
+function checkMasterRole() {
+  let session = null;
+  try {
+    session = (window.FTSAuth && FTSAuth.getSession && FTSAuth.getSession()) || null;
+  } catch (e) {
+    session = null;
+  }
+
+  // Sin sesión → al login principal
+  if (!session) {
+    alert('Sesión no válida. Redirigiendo al login.');
+    window.location.href = '../../index.html';
+    return null;
+  }
+
+  // Sesión pero no master → overlay + redirect a config-master
+  if (session.role !== 'master') {
+    const overlay = document.getElementById('ea_auth_overlay');
+    if (overlay) overlay.classList.add('show');
+    alert('Este módulo es exclusivo de usuarios master.');
+    setTimeout(function(){ window.location.href = 'config-master.html'; }, 400);
+    return null;
+  }
+
+  // Mostrar nombre en el topbar
+  const label = document.getElementById('ea_user_label');
+  if (label) {
+    const who = session.nombre || session.username || '—';
+    label.textContent = '👤 ' + who + ' (master)';
+  }
+
+  return session;
+}
+
+// ═══════════════════════════════════════════════
+// MOCK: lista de empleados (para autocomplete)
+// ═══════════════════════════════════════════════
+// Se deriva del mock de attendances para evitar duplicar data.
+// Cuando USE_MOCK=false esto se reemplazará por un fetch a /webhook/kiosk/empleados.
+let _employeesCache = [];
+
+async function loadEmployees() {
+  if (USE_MOCK) {
+    const seen = {};
+    _employeesCache = [];
+    _mockState.forEach(function(a){
+      if (!seen[a.employee_id]) {
+        seen[a.employee_id] = true;
+        _employeesCache.push({ id: a.employee_id, name: a.employee_name });
+      }
+    });
+    return _employeesCache;
+  }
+  // Producción: reutilizar el webhook existente del kiosk.
+  try {
+    const res = await fetch(BASE_URL + 'kiosk/empleados', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}'
+    });
+    if (!res.ok) { _employeesCache = []; return _employeesCache; }
+    const data = await res.json();
+    const arr  = Array.isArray(data) ? data : (data && data.empleados) || [];
+    _employeesCache = arr.map(function(e){ return { id: e.id, name: e.name || e.nombre }; });
+    return _employeesCache;
+  } catch (e) {
+    _employeesCache = [];
+    return _employeesCache;
+  }
+}
+
+// ═══════════════════════════════════════════════
+// INIT — DOMContentLoaded
+// ═══════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function(){
+
+  // 1) Gate de auth — si no pasa, detiene la inicialización
+  const session = checkMasterRole();
+  if (!session) return;
+
+  // 2) Default dates: hoy en ambos (desde / hasta)
+  const today = new Date();
+  const todayStr = today.getFullYear() + '-' +
+    String(today.getMonth() + 1).padStart(2, '0') + '-' +
+    String(today.getDate()).padStart(2, '0');
+  const dFrom = document.getElementById('ea_date_from');
+  const dTo   = document.getElementById('ea_date_to');
+  if (dFrom) dFrom.value = todayStr;
+  if (dTo)   dTo.value   = todayStr;
+
+  // 3) Cargar empleados (background, no bloqueante)
+  loadEmployees().catch(function(e){ console.warn('[ea] loadEmployees:', e); });
+
+  // 4) Wire up — los onclick ya están inline en el HTML, acá añadimos
+  //    interacciones extra (Enter en filtros, submit con teclado).
+  const empFilter = document.getElementById('ea_employee_filter');
+  [dFrom, dTo, empFilter].forEach(function(el){
+    if (!el) return;
+    el.addEventListener('keydown', function(ev){
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        if (typeof ea_search === 'function') ea_search();
+      }
+    });
+  });
+
+  // Marca de debugging en consola para confirmar init
+  console.log('[editor-asistencias] init OK — mock=' + USE_MOCK + ' user=' + (session.username || '?'));
+});
+
+// Logout desde el topbar
+function ea_logout(ev) {
+  if (ev && ev.preventDefault) ev.preventDefault();
+  try { window.FTSAuth && FTSAuth.logout && FTSAuth.logout(); } catch(e){}
+  window.location.href = '../../index.html';
+}
 </script>
 
 </body>
