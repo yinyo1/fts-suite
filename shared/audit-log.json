@@ -332,6 +332,25 @@
       },
       "result": "success",
       "error_message": null
+    },
+    {
+      "timestamp": "2026-04-23T23:41:26.432Z",
+      "user": "ftsmaster",
+      "action": "edit_attendance",
+      "attendance_id": 12527,
+      "employee_name": "Juan Manuel Sánchez Lugo",
+      "changes": {
+        "check_in": {
+          "from": "2026-04-23 13:12:16",
+          "to": "2026-04-23 13:12:00"
+        },
+        "check_out": {
+          "from": null,
+          "to": "2026-04-23 23:20:00"
+        }
+      },
+      "result": "success",
+      "error_message": null
     }
   ]
 }
