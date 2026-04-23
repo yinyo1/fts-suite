@@ -1,0 +1,1782 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Editor de Asistencias — FTS Master</title>
+<script src="../config-sync.js"></script>
+<script src="../auth-suite.js"></script>
+<style>
+  :root{
+    --green:  #107C10;
+    --green2: #0d6b0d;
+    --red:    #D13438;
+    --blue:   #0078D4;
+    --orange: #D83B01;
+    --text:   #1a1a1a;
+    --muted:  #999;
+    --muted2: #666;
+    --bg:     #fafafa;
+    --card:   #ffffff;
+    --border: #e0e0e0;
+    --row-hover: #f5f9ff;
+  }
+  *{box-sizing: border-box;}
+  html,body{margin:0; padding:0; height:100%; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size:14px; color:var(--text); background:var(--bg);}
+  a{color:inherit;}
+
+  /* ─── Topbar ─── */
+  .ea-topbar{
+    position:sticky; top:0; z-index:50;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 24px;
+    background:#fff; border-bottom:1px solid var(--border);
+    height:54px;
+  }
+  .ea-back{
+    display:inline-flex; align-items:center; gap:6px;
+    color:var(--muted2); text-decoration:none; font-size:13px; font-weight:500;
+    padding:6px 10px; border-radius:6px;
+  }
+  .ea-back:hover{ color:var(--green); background:#f0f9f0; }
+  .ea-topbar-title{ font-size:15px; font-weight:700; color:var(--text); }
+  .ea-user-info{ font-size:12px; color:var(--muted2); }
+
+  /* ─── Layout ─── */
+  .ea-main{ max-width: 1280px; margin: 0 auto; padding: 24px; }
+  .ea-title{ font-size:24px; font-weight:700; margin: 4px 0 4px; }
+  .ea-subtitle{ font-size:13px; color:var(--muted2); margin-bottom: 22px; }
+
+  /* ─── Cards & filter panel ─── */
+  .ea-card{
+    background: var(--card); border:1px solid var(--border); border-radius:10px;
+    padding:18px; margin-bottom:20px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+  .ea-card-title{
+    font-size:12px; font-weight:700; color:var(--muted2);
+    text-transform:uppercase; letter-spacing:0.5px;
+    margin-bottom: 14px;
+  }
+  .ea-filters{
+    display:grid;
+    grid-template-columns: 1fr 1fr 1.5fr auto;
+    gap: 12px; align-items:end;
+  }
+  @media (max-width: 820px){
+    .ea-filters{ grid-template-columns: 1fr 1fr; }
+  }
+  .ea-field label{
+    display:block; font-size:11px; font-weight:600;
+    color:var(--muted2); text-transform:uppercase; letter-spacing:0.3px;
+    margin-bottom:6px;
+  }
+  .ea-input, .ea-select{
+    width:100%; padding:10px 12px;
+    border:1px solid #d5d5d5; border-radius:8px;
+    font-size:14px; font-family:inherit; background:#fff; outline:none;
+  }
+  .ea-input:focus, .ea-select:focus{ border-color: var(--green); }
+
+  /* ─── Botones ─── */
+  .ea-btn{
+    display:inline-flex; align-items:center; gap:6px;
+    padding:9px 16px; border-radius:8px; border:1px solid transparent;
+    font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
+    transition: background .1s, border-color .1s, color .1s;
+    white-space: nowrap;
+  }
+  .ea-btn:disabled{ opacity:0.5; cursor:not-allowed; }
+  .ea-btn-primary{ background:var(--green); color:#fff; }
+  .ea-btn-primary:hover:not(:disabled){ background:var(--green2); }
+  .ea-btn-secondary{ background:#fff; color:var(--text); border-color:#d5d5d5; }
+  .ea-btn-secondary:hover:not(:disabled){ border-color:var(--green); color:var(--green); }
+  .ea-btn-danger{ background:#fff; color:var(--red); border:1px solid var(--red); }
+  .ea-btn-danger:hover:not(:disabled){ background:var(--red); color:#fff; }
+  .ea-btn-sm{ padding:5px 10px; font-size:11px; }
+  .ea-btn-link{
+    background:none; border:none; color:var(--blue); cursor:pointer;
+    font-size:13px; font-family:inherit; padding: 4px 6px; text-decoration: underline;
+  }
+
+  /* ─── Bulk bar ─── */
+  .ea-bulk-bar{
+    display:none; align-items:center; gap:12px;
+    padding:10px 14px; margin-bottom:14px;
+    background:#fff4d9; border:1px solid #e6d38a; border-radius:8px;
+    font-size:13px;
+  }
+  .ea-bulk-bar.show{ display:flex; }
+  .ea-bulk-count{ font-weight:700; color:var(--orange); }
+
+  /* ─── Tabla ─── */
+  .ea-table-wrap{ overflow-x: auto; }
+  .ea-table{
+    width:100%; border-collapse: collapse; font-size:13px;
+  }
+  .ea-table th, .ea-table td{
+    padding: 10px 12px; text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .ea-table thead th{
+    font-size:11px; font-weight:700; color:var(--muted2);
+    text-transform:uppercase; letter-spacing:0.3px;
+    background:#fafafa; cursor: pointer; user-select:none;
+  }
+  .ea-table thead th:hover{ color:var(--text); }
+  .ea-table thead th .ea-sort-ind{ font-size:10px; opacity:0.5; margin-left:4px; }
+  .ea-table tbody tr:hover{ background: var(--row-hover); }
+  .ea-table tbody tr.selected{ background:#fff4d9; }
+  .ea-table .ea-check-col{ width:30px; text-align:center; }
+  .ea-table .ea-id-col{ width:70px; color:var(--muted); font-family:monospace; font-size:12px; }
+  .ea-table .ea-hours-col{ font-weight:600; text-align:right; width:80px; }
+  .ea-table .ea-flag-col{ width:80px; text-align:center; }
+  .ea-table .ea-actions-col{ width:130px; text-align:right; }
+  .ea-table .ea-empty{
+    text-align:center; padding:40px; color:var(--muted); font-style:italic;
+  }
+
+  .ea-flag{
+    display:inline-block; padding:3px 8px; border-radius:20px;
+    font-size:11px; font-weight:700; text-transform:uppercase;
+  }
+  .ea-flag-open{ background:#fff0f0; color:var(--red); }
+  .ea-flag-closed{ background:#f0f9f0; color:var(--green); }
+  .ea-flag-long{ background:#fff4d9; color:var(--orange); }
+
+  /* ─── Status feedback ─── */
+  .ea-status{
+    font-size:12px; color:var(--muted2); margin-left:10px;
+  }
+  .ea-status.ok{ color: var(--green); }
+  .ea-status.err{ color: var(--red); }
+  .ea-status.info{ color: var(--blue); }
+
+  /* ─── Modal ─── */
+  .ea-modal{
+    position:fixed; inset:0; z-index:1000;
+    display:none; align-items:center; justify-content:center;
+  }
+  .ea-modal.show{ display:flex; }
+  .ea-modal-backdrop{
+    position:absolute; inset:0; background: rgba(0,0,0,0.55);
+  }
+  .ea-modal-content{
+    position:relative; background:#fff; border-radius:12px;
+    max-width: 520px; width: calc(100% - 32px); max-height: 92vh;
+    overflow-y:auto; padding: 24px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+  }
+  .ea-modal-header{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border);
+  }
+  .ea-modal-header h2{ margin:0; font-size:17px; font-weight:700; }
+  .ea-modal-close{
+    background:none; border:none; font-size:24px; line-height:1; cursor:pointer;
+    color: var(--muted2); padding:4px 10px; border-radius:6px;
+  }
+  .ea-modal-close:hover{ background:#f5f5f5; color: var(--text); }
+  .ea-form-row{ margin-bottom:14px; }
+  .ea-form-row label{
+    display:block; font-size:11px; font-weight:700; color:var(--muted2);
+    text-transform:uppercase; letter-spacing:0.3px; margin-bottom:6px;
+  }
+  .ea-form-readonly{
+    padding: 9px 12px; background: #f7f7f7; border:1px solid var(--border); border-radius:8px;
+    font-family: monospace; font-size:13px; color:var(--text);
+  }
+  .ea-form-hint{
+    display:block; font-size:11px; color:var(--muted); margin-top:4px;
+  }
+  .ea-modal-status{
+    font-size:13px; margin: 8px 0 4px; min-height:20px;
+  }
+  .ea-modal-footer{
+    display:flex; justify-content:flex-end; gap:8px;
+    margin-top:18px; padding-top:14px; border-top:1px solid var(--border);
+  }
+  .ea-warn{
+    padding:9px 12px; margin-top:8px;
+    background:#fff4d9; border:1px solid #e6d38a; color:var(--orange);
+    border-radius:8px; font-size:12px;
+  }
+
+  /* ─── Diagnostico sección ─── */
+  .ea-diag{
+    display:none;
+    background:#fffaf0; border:1px solid #e6d38a; border-radius:10px;
+    padding:16px; margin-bottom:20px;
+  }
+  .ea-diag.show{ display:block; }
+  .ea-diag-header{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom: 12px;
+  }
+  .ea-diag-title{ font-size:14px; font-weight:700; }
+  .ea-diag-actions{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+  .ea-diag-output{
+    background:#1a1a1a; color:#0f0; font-family:monospace; font-size:11px;
+    padding:12px; border-radius:6px; max-height:300px; overflow:auto;
+    white-space:pre-wrap; word-break:break-word;
+  }
+
+  /* ─── Toast ─── */
+  .ea-toast{
+    position:fixed; bottom:24px; right:24px; z-index:1500;
+    padding:12px 16px; border-radius:8px;
+    background: var(--text); color:#fff;
+    font-size:13px; font-weight:500;
+    max-width: 480px;
+    transform: translateY(100px); opacity: 0;
+    transition: transform .2s, opacity .2s;
+  }
+  .ea-toast.show{ transform: translateY(0); opacity: 1; }
+  .ea-toast.ok{ background: var(--green); }
+  .ea-toast.err{ background: var(--red); }
+  .ea-toast.warn{ background: #7a5800; }
+
+  /* ─── Error details (expandible) ─── */
+  .ea-error-panel{
+    display:none; margin: 12px 0;
+    border:1px solid var(--red); border-radius:8px; overflow:hidden;
+  }
+  .ea-error-panel.show{ display:block; }
+  .ea-error-head{
+    padding:10px 14px; background:#fff0f0; color:var(--red);
+    font-size:13px; font-weight:700;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .ea-error-body{
+    padding:12px 14px; font-size:12px; border-top:1px solid var(--red);
+  }
+  .ea-error-body .ea-tech{
+    background:#f7f7f7; padding:8px; border-radius:6px;
+    font-family:monospace; font-size:11px; margin-bottom:10px;
+    word-break: break-word;
+  }
+  .ea-error-body .ea-suggest{
+    background:#fffaf0; padding:10px; border-radius:6px;
+    color:var(--orange); font-weight:500; line-height:1.5;
+  }
+
+  /* ─── Auth overlay (non-master) ─── */
+  .ea-auth-overlay{
+    position:fixed; inset:0; background: rgba(0,0,0,0.55);
+    display:none; align-items:center; justify-content:center;
+    z-index: 9999; backdrop-filter: blur(4px);
+  }
+  .ea-auth-overlay.show{ display:flex; }
+  .ea-auth-box{
+    background:#fff; border-radius:16px; padding:28px 32px;
+    width: 360px; text-align:center;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  }
+  .ea-auth-icon{
+    width:56px; height:56px; border-radius:14px;
+    background:#fff0e6; color: var(--orange);
+    display:flex; align-items:center; justify-content:center;
+    font-size:28px; margin: 0 auto 12px;
+  }
+  .ea-auth-box h2{ font-size:17px; margin: 0 0 6px; }
+  .ea-auth-box p{ font-size:13px; color: var(--muted2); margin: 0 0 18px; }
+</style>
+</head>
+<body>
+
+<!-- ─── TOPBAR ─── -->
+<div class="ea-topbar">
+  <div style="display:flex; align-items:center; gap:16px;">
+    <a class="ea-back" href="config-master.html">← Volver a Config Master</a>
+    <span style="color:var(--muted); font-size:18px;">·</span>
+    <span class="ea-topbar-title">🕐 Editor de Asistencias</span>
+  </div>
+  <div class="ea-user-info">
+    <span id="ea_user_label">—</span>
+    <span style="margin: 0 8px; color:var(--muted);">|</span>
+    <a class="ea-back" href="#" onclick="ea_logout(event)">Cerrar sesión</a>
+  </div>
+</div>
+
+<!-- ─── MAIN ─── -->
+<main class="ea-main">
+  <h1 class="ea-title">Editor de Asistencias</h1>
+  <p class="ea-subtitle">
+    Busca, edita o elimina registros de <code>hr.attendance</code>.
+    Todas las horas se muestran y editan en CST (America/Monterrey, UTC-6).
+    Los cambios se reflejan en Odoo vía el webhook <code>/webhook/asistencias/admin/*</code>.
+  </p>
+
+  <!-- Filtros -->
+  <div class="ea-card">
+    <div class="ea-card-title">Filtros de búsqueda</div>
+    <div class="ea-filters">
+      <div class="ea-field">
+        <label for="ea_date_from">Desde</label>
+        <input type="date" id="ea_date_from" class="ea-input">
+      </div>
+      <div class="ea-field">
+        <label for="ea_date_to">Hasta</label>
+        <input type="date" id="ea_date_to" class="ea-input">
+      </div>
+      <div class="ea-field">
+        <label for="ea_employee_filter">Empleado (opcional)</label>
+        <input type="text" id="ea_employee_filter" class="ea-input" placeholder="Nombre o ID (parcial)" autocomplete="off">
+      </div>
+      <div class="ea-field" style="display:flex; gap:8px; align-items:end;">
+        <button type="button" class="ea-btn ea-btn-primary" id="ea_btn_search" onclick="ea_search()">
+          🔎 Buscar
+        </button>
+        <button type="button" class="ea-btn ea-btn-secondary" id="ea_btn_diag_toggle" onclick="ea_toggle_diag()">
+          🔧 Diagnóstico
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Diagnóstico (colapsable) -->
+  <div class="ea-diag" id="ea_diag_panel">
+    <div class="ea-diag-header">
+      <div class="ea-diag-title">🔧 Diagnóstico Odoo</div>
+      <button class="ea-btn ea-btn-sm ea-btn-secondary" onclick="ea_toggle_diag()">Cerrar</button>
+    </div>
+    <div class="ea-diag-actions">
+      <button class="ea-btn ea-btn-sm ea-btn-secondary" onclick="ea_diag_test_connection()">
+        🔌 Probar conexión Odoo
+      </button>
+      <button class="ea-btn ea-btn-sm ea-btn-secondary" onclick="ea_diag_list_fields()">
+        📋 Ver campos de hr.attendance
+      </button>
+      <button class="ea-btn ea-btn-sm ea-btn-secondary" onclick="ea_diag_last_error()">
+        ⚠️ Último error capturado
+      </button>
+    </div>
+    <div class="ea-diag-output" id="ea_diag_output">Sin output. Pulsa un botón para ejecutar.</div>
+  </div>
+
+  <!-- Panel de resultados -->
+  <div class="ea-card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <div class="ea-card-title" style="margin-bottom:0;">
+        Resultados
+        <span class="ea-status" id="ea_search_status"></span>
+      </div>
+    </div>
+
+    <!-- Bulk bar -->
+    <div class="ea-bulk-bar" id="ea_bulk_bar">
+      <span><span class="ea-bulk-count" id="ea_bulk_count">0</span> seleccionados</span>
+      <button class="ea-btn ea-btn-sm ea-btn-danger" onclick="ea_bulk_delete()">
+        🗑️ Eliminar seleccionados
+      </button>
+      <button class="ea-btn ea-btn-sm ea-btn-secondary" onclick="ea_clear_selection()">
+        Limpiar selección
+      </button>
+    </div>
+
+    <!-- Error panel (shared) -->
+    <div class="ea-error-panel" id="ea_error_panel">
+      <div class="ea-error-head">
+        <span id="ea_error_title">Error</span>
+        <button class="ea-btn ea-btn-sm ea-btn-secondary" onclick="ea_close_error_panel()">Cerrar</button>
+      </div>
+      <div class="ea-error-body">
+        <div class="ea-tech" id="ea_error_tech">—</div>
+        <div class="ea-suggest" id="ea_error_suggest">—</div>
+      </div>
+    </div>
+
+    <div class="ea-table-wrap">
+      <table class="ea-table" id="ea_table">
+        <thead>
+          <tr>
+            <th class="ea-check-col"><input type="checkbox" id="ea_check_all" onclick="ea_toggle_all_selection(this.checked)"></th>
+            <th class="ea-id-col" data-sort="id">ID <span class="ea-sort-ind"></span></th>
+            <th data-sort="employee_name">Empleado <span class="ea-sort-ind"></span></th>
+            <th data-sort="check_in">Check-in CST <span class="ea-sort-ind"></span></th>
+            <th data-sort="check_out">Check-out CST <span class="ea-sort-ind"></span></th>
+            <th class="ea-hours-col" data-sort="worked_hours">Horas <span class="ea-sort-ind"></span></th>
+            <th class="ea-flag-col">Flag</th>
+            <th class="ea-actions-col">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="ea_tbody">
+          <tr><td colspan="8" class="ea-empty">Pulsa «Buscar» para listar attendances.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<!-- ─── MODAL DE EDICIÓN ─── -->
+<div class="ea-modal" id="ea_edit_modal" role="dialog" aria-modal="true">
+  <div class="ea-modal-backdrop" onclick="ea_close_edit_modal()"></div>
+  <div class="ea-modal-content">
+    <div class="ea-modal-header">
+      <h2>✏️ Editar Attendance</h2>
+      <button class="ea-modal-close" onclick="ea_close_edit_modal()" aria-label="Cerrar">×</button>
+    </div>
+
+    <div class="ea-form-row">
+      <label>ID</label>
+      <div class="ea-form-readonly" id="ea_edit_id">—</div>
+    </div>
+    <div class="ea-form-row">
+      <label>Empleado</label>
+      <div class="ea-form-readonly" id="ea_edit_employee">—</div>
+    </div>
+    <div class="ea-form-row">
+      <label for="ea_edit_check_in">Check-in (CST) *</label>
+      <input type="datetime-local" id="ea_edit_check_in" class="ea-input" onchange="ea_edit_recalc_hours()">
+    </div>
+    <div class="ea-form-row">
+      <label for="ea_edit_check_out">Check-out (CST) — dejar vacío para abrir</label>
+      <input type="datetime-local" id="ea_edit_check_out" class="ea-input" onchange="ea_edit_recalc_hours()">
+    </div>
+    <div class="ea-form-row">
+      <label>Horas calculadas</label>
+      <div class="ea-form-readonly" id="ea_edit_hours">—</div>
+    </div>
+    <div class="ea-warn" id="ea_edit_warn" style="display:none;"></div>
+    <div class="ea-modal-status" id="ea_edit_status"></div>
+
+    <div class="ea-modal-footer">
+      <button type="button" class="ea-btn ea-btn-secondary" onclick="ea_close_edit_modal()">Cancelar</button>
+      <button type="button" class="ea-btn ea-btn-primary" id="ea_edit_save_btn" onclick="ea_edit_save()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── TOAST ─── -->
+<div class="ea-toast" id="ea_toast"></div>
+
+<!-- ─── AUTH OVERLAY (si no es master) ─── -->
+<div class="ea-auth-overlay" id="ea_auth_overlay">
+  <div class="ea-auth-box">
+    <div class="ea-auth-icon">🔒</div>
+    <h2>Acceso restringido</h2>
+    <p>Este módulo es exclusivo de usuarios <strong>master</strong>. Redirigiendo…</p>
+  </div>
+</div>
+
+<script>
+/* EDITOR-ASISTENCIAS — JS chunk 1: constantes + timezone + callWebhook */
+'use strict';
+
+// ═══════════════════════════════════════════════
+// CONSTANTES GLOBALES
+// ═══════════════════════════════════════════════
+const BASE_URL = 'https://primary-production-5c3c.up.railway.app/webhook/';
+const USE_MOCK = true;  // cambiar a false cuando el workflow n8n esté activo
+const CST_OFFSET_HOURS = -6;
+
+const MOCK_ATTENDANCES = [
+  { id: 12474, employee_id: 119, employee_name: 'Carlos Eduardo Manzanares', check_in: '2026-04-22 12:35:00', check_out: '2026-04-23 01:30:00', worked_hours: 12.91, is_open: false },
+  { id: 12479, employee_id: 120, employee_name: 'Mario Armando Ruiz Ramirez', check_in: '2026-04-22 12:55:00', check_out: '2026-04-23 01:30:00', worked_hours: 12.57, is_open: false },
+  { id: 12481, employee_id: 121, employee_name: 'José Carlos Ortiz romero',    check_in: '2026-04-22 13:03:00', check_out: '2026-04-23 02:00:00', worked_hours: 12.95, is_open: false },
+  { id: 12484, employee_id: 6,   employee_name: 'Leonel Cruz Cristobal',        check_in: '2026-04-22 13:15:00', check_out: '2026-04-23 02:00:00', worked_hours: 12.73, is_open: false },
+  { id: 12510, employee_id: 122, employee_name: 'Rolando vazquez garcia',       check_in: '2026-04-22 16:54:00', check_out: '2026-04-23 02:30:00', worked_hours:  9.59, is_open: false },
+  { id: 12511, employee_id: 123, employee_name: 'Tomas Vázquez García',         check_in: '2026-04-22 16:54:00', check_out: '2026-04-23 02:30:00', worked_hours:  9.59, is_open: false },
+  { id: 12512, employee_id: 75,  employee_name: 'Mateo Salazar',                check_in: '2026-04-22 16:55:00', check_out: '2026-04-23 02:30:00', worked_hours:  9.58, is_open: false },
+  { id: 12513, employee_id: 124, employee_name: 'Germán Emmanuel Merino Falcón',check_in: '2026-04-22 17:41:00', check_out: '2026-04-23 02:30:00', worked_hours:  8.80, is_open: false }
+];
+
+// Estado global mutable del mock (permite edit/delete en modo USE_MOCK)
+let _mockState = MOCK_ATTENDANCES.map(a => Object.assign({}, a));
+
+// Último error capturado (para diagnóstico)
+let _lastError = null;
+
+// ═══════════════════════════════════════════════
+// HELPERS DE ZONA HORARIA
+// ═══════════════════════════════════════════════
+// Odoo envía/recibe strings UTC en formato "YYYY-MM-DD HH:MM:SS" (sin zona).
+// Frontend los trata como UTC y los muestra/edita en CST (America/Monterrey, UTC-6).
+
+function utcToCstDisplay(utcString) {
+  if (!utcString) return '—';
+  return new Date(utcString + 'Z').toLocaleString('es-MX', {
+    timeZone: 'America/Monterrey',
+    dateStyle: 'short',
+    timeStyle: 'short'
+  });
+}
+
+function utcToCstInput(utcString) {
+  if (!utcString) return '';
+  const d = new Date(utcString + 'Z');
+  const cst = new Date(d.getTime() - 6 * 60 * 60 * 1000);
+  return cst.toISOString().slice(0, 16);
+}
+
+function cstInputToUtc(cstInput) {
+  if (!cstInput) return null;
+  const cst = new Date(cstInput + ':00');
+  const utc = new Date(cst.getTime() + 6 * 60 * 60 * 1000);
+  return utc.toISOString().replace('T', ' ').replace('Z', '').split('.')[0];
+}
+
+// ═══════════════════════════════════════════════
+// HELPER GENÉRICO: callWebhook(endpoint, body)
+// ═══════════════════════════════════════════════
+// Endpoints soportados:
+//   'search'   → POST /webhook/asistencias/admin/search
+//   'write'    → POST /webhook/asistencias/admin/write
+//   'delete'   → POST /webhook/asistencias/admin/delete
+//   'diagnose' → POST /webhook/asistencias/admin/diagnose
+//
+// Retorna: { success: boolean, data?: any, error?: { error_type, error_message, suggestion } }
+async function callWebhook(endpoint, body) {
+  // ── MODO MOCK ───────────────────────────────
+  if (USE_MOCK) {
+    // pequeño delay simulando red para hacer visible el spinner/status
+    await new Promise(r => setTimeout(r, 150));
+
+    if (endpoint === 'search') {
+      const dateFrom = body && body.date_from;
+      const dateTo   = body && body.date_to;
+      const empQ     = (body && body.employee_query || '').trim().toLowerCase();
+
+      let results = _mockState.slice();
+      if (dateFrom) results = results.filter(a => a.check_in && a.check_in >= dateFrom + ' 00:00:00');
+      if (dateTo)   results = results.filter(a => a.check_in && a.check_in <= dateTo + ' 23:59:59');
+      if (empQ){
+        results = results.filter(a =>
+          (a.employee_name || '').toLowerCase().includes(empQ) ||
+          String(a.employee_id || '').includes(empQ)
+        );
+      }
+      return { success: true, data: { attendances: results, count: results.length } };
+    }
+
+    if (endpoint === 'write') {
+      const id = body && body.id;
+      const idx = _mockState.findIndex(a => a.id === id);
+      if (idx < 0) {
+        return { success: false, error: { error_type: 'validation', error_message: 'Attendance ' + id + ' no encontrado en mock', suggestion: 'Vuelve a buscar para refrescar el estado.' } };
+      }
+      const before = Object.assign({}, _mockState[idx]);
+      if ('check_in'  in body) _mockState[idx].check_in  = body.check_in  || null;
+      if ('check_out' in body) _mockState[idx].check_out = body.check_out || null;
+      _mockState[idx].is_open = !_mockState[idx].check_out;
+      // Recalcular worked_hours
+      if (_mockState[idx].check_in && _mockState[idx].check_out) {
+        const ci = new Date(_mockState[idx].check_in + 'Z').getTime();
+        const co = new Date(_mockState[idx].check_out + 'Z').getTime();
+        _mockState[idx].worked_hours = Math.round(((co - ci) / 3600000) * 100) / 100;
+      } else {
+        _mockState[idx].worked_hours = 0;
+      }
+      return { success: true, data: { attendance: _mockState[idx], before: before } };
+    }
+
+    if (endpoint === 'delete') {
+      const ids = Array.isArray(body && body.ids) ? body.ids : [];
+      const deleted = [];
+      _mockState = _mockState.filter(a => {
+        if (ids.indexOf(a.id) >= 0) { deleted.push(a.id); return false; }
+        return true;
+      });
+      return { success: true, data: { deleted_ids: deleted, count: deleted.length } };
+    }
+
+    if (endpoint === 'diagnose') {
+      const op = (body && body.operation) || 'ping';
+      if (op === 'ping') {
+        return { success: true, data: { odoo_version: 'MOCK', db: 'serviciosfts', server_time_utc: new Date().toISOString(), user: 'mock-admin' } };
+      }
+      if (op === 'fields') {
+        return { success: true, data: {
+          model: 'hr.attendance',
+          fields: ['id','employee_id','check_in','check_out','worked_hours','manager_id','department_id','group_by','create_date','write_date']
+        }};
+      }
+      return { success: true, data: { op: op, result: 'mock' } };
+    }
+
+    return { success: false, error: { error_type: 'validation', error_message: 'Endpoint mock desconocido: ' + endpoint, suggestion: 'Revisa que callWebhook se llame con un endpoint válido.' } };
+  }
+
+  // ── MODO PRODUCCIÓN (webhook n8n real) ─────
+  const url = BASE_URL + 'asistencias/admin/' + endpoint;
+  const sessionToken = ea_getSessionToken();
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-FTS-Session-Token': sessionToken
+      },
+      body: JSON.stringify(body || {})
+    });
+
+    // 401 → force logout
+    if (res.status === 401) {
+      _lastError = { error_type: 'auth', error_message: 'HTTP 401 Unauthorized', suggestion: 'Sesión expirada. Cierra sesión y vuelve a entrar.' };
+      ea_force_logout('Sesión expirada (401). Redirigiendo al login…');
+      return { success: false, error: _lastError };
+    }
+
+    // Intentar parsear JSON; si falla, devolver error genérico.
+    let payload = null;
+    try { payload = await res.json(); }
+    catch(parseErr) {
+      _lastError = { error_type: 'network', error_message: 'Respuesta no-JSON del webhook (HTTP ' + res.status + ')', suggestion: 'El webhook n8n puede estar apagado o devolvió HTML. Verifica el estado del workflow.' };
+      return { success: false, error: _lastError };
+    }
+
+    // Si el backend ya manda {success:false, error_type, error_message, suggestion}
+    if (payload && payload.success === false) {
+      _lastError = {
+        error_type:    payload.error_type    || 'unknown',
+        error_message: payload.error_message || ('HTTP ' + res.status),
+        suggestion:    payload.suggestion    || 'Sin sugerencia del backend.'
+      };
+      return { success: false, error: _lastError };
+    }
+
+    // HTTP no-ok sin shape explícito
+    if (!res.ok) {
+      _lastError = { error_type: 'network', error_message: 'HTTP ' + res.status + ' del webhook', suggestion: 'Revisa el workflow n8n y los logs de Railway.' };
+      return { success: false, error: _lastError };
+    }
+
+    // OK: payload esperado { success:true, data:{...} } o directamente datos crudos.
+    if (payload && payload.success === true) {
+      return { success: true, data: payload.data != null ? payload.data : payload };
+    }
+    return { success: true, data: payload };
+
+  } catch (e) {
+    _lastError = { error_type: 'network', error_message: e.message || String(e), suggestion: 'Falló la conexión al webhook. Verifica tu red e inténtalo de nuevo.' };
+    return { success: false, error: _lastError };
+  }
+}
+
+// Token de sesión para el header X-FTS-Session-Token.
+// El backend n8n valida la sesión del master. Por ahora envolvemos el objeto
+// `fts_session` en base64; el workflow puede decodificarlo y verificar role.
+function ea_getSessionToken() {
+  try {
+    const session = (window.FTSAuth && FTSAuth.getSession && FTSAuth.getSession()) || null;
+    if (!session) return '';
+    const payload = {
+      userId:    session.userId,
+      username:  session.username,
+      role:      session.role,
+      loginTime: session.loginTime,
+      ts:        Date.now()
+    };
+    return btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  } catch(e) { return ''; }
+}
+
+// Stub temporal (definición real vendrá en chunk posterior)
+function ea_force_logout(msg) {
+  try { window.FTSAuth && FTSAuth.logout && FTSAuth.logout(); } catch(e){}
+  alert(msg || 'Sesión cerrada.');
+  window.location.href = '../../index.html';
+}
+
+// ═══════════════════════════════════════════════
+// AUTH GATE — solo masters pueden entrar
+// ═══════════════════════════════════════════════
+// Bloquea la página si el usuario no tiene role === 'master'.
+// Si la sesión no existe, redirige al login principal.
+// Si existe pero role !== 'master', muestra overlay y redirige a config-master.
+// Retorna el objeto session con los datos del usuario master o null si falló.
+function checkMasterRole() {
+  let session = null;
+  try {
+    session = (window.FTSAuth && FTSAuth.getSession && FTSAuth.getSession()) || null;
+  } catch (e) {
+    session = null;
+  }
+
+  // Sin sesión → al login principal
+  if (!session) {
+    alert('Sesión no válida. Redirigiendo al login.');
+    window.location.href = '../../index.html';
+    return null;
+  }
+
+  // Sesión pero no master → overlay + redirect a config-master
+  if (session.role !== 'master') {
+    const overlay = document.getElementById('ea_auth_overlay');
+    if (overlay) overlay.classList.add('show');
+    alert('Este módulo es exclusivo de usuarios master.');
+    setTimeout(function(){ window.location.href = 'config-master.html'; }, 400);
+    return null;
+  }
+
+  // Mostrar nombre en el topbar
+  const label = document.getElementById('ea_user_label');
+  if (label) {
+    const who = session.nombre || session.username || '—';
+    label.textContent = '👤 ' + who + ' (master)';
+  }
+
+  return session;
+}
+
+// ═══════════════════════════════════════════════
+// MOCK: lista de empleados (para autocomplete)
+// ═══════════════════════════════════════════════
+// Se deriva del mock de attendances para evitar duplicar data.
+// Cuando USE_MOCK=false esto se reemplazará por un fetch a /webhook/kiosk/empleados.
+let _employeesCache = [];
+
+async function loadEmployees() {
+  if (USE_MOCK) {
+    const seen = {};
+    _employeesCache = [];
+    _mockState.forEach(function(a){
+      if (!seen[a.employee_id]) {
+        seen[a.employee_id] = true;
+        _employeesCache.push({ id: a.employee_id, name: a.employee_name });
+      }
+    });
+    return _employeesCache;
+  }
+  // Producción: reutilizar el webhook existente del kiosk.
+  try {
+    const res = await fetch(BASE_URL + 'kiosk/empleados', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}'
+    });
+    if (!res.ok) { _employeesCache = []; return _employeesCache; }
+    const data = await res.json();
+    const arr  = Array.isArray(data) ? data : (data && data.empleados) || [];
+    _employeesCache = arr.map(function(e){ return { id: e.id, name: e.name || e.nombre }; });
+    return _employeesCache;
+  } catch (e) {
+    _employeesCache = [];
+    return _employeesCache;
+  }
+}
+
+// ═══════════════════════════════════════════════
+// INIT — DOMContentLoaded
+// ═══════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function(){
+
+  // 1) Gate de auth — si no pasa, detiene la inicialización
+  const session = checkMasterRole();
+  if (!session) return;
+
+  // 2) Default dates: hoy en ambos (desde / hasta)
+  const today = new Date();
+  const todayStr = today.getFullYear() + '-' +
+    String(today.getMonth() + 1).padStart(2, '0') + '-' +
+    String(today.getDate()).padStart(2, '0');
+  const dFrom = document.getElementById('ea_date_from');
+  const dTo   = document.getElementById('ea_date_to');
+  if (dFrom) dFrom.value = todayStr;
+  if (dTo)   dTo.value   = todayStr;
+
+  // 3) Cargar empleados (background, no bloqueante)
+  loadEmployees().catch(function(e){ console.warn('[ea] loadEmployees:', e); });
+
+  // 4) Wire up — los onclick ya están inline en el HTML, acá añadimos
+  //    interacciones extra (Enter en filtros, submit con teclado).
+  const empFilter = document.getElementById('ea_employee_filter');
+  [dFrom, dTo, empFilter].forEach(function(el){
+    if (!el) return;
+    el.addEventListener('keydown', function(ev){
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        if (typeof ea_search === 'function') ea_search();
+      }
+    });
+  });
+
+  // Marca de debugging en consola para confirmar init
+  console.log('[editor-asistencias] init OK — mock=' + USE_MOCK + ' user=' + (session.username || '?'));
+});
+
+// Logout desde el topbar
+function ea_logout(ev) {
+  if (ev && ev.preventDefault) ev.preventDefault();
+  try { window.FTSAuth && FTSAuth.logout && FTSAuth.logout(); } catch(e){}
+  window.location.href = '../../index.html';
+}
+
+// ═══════════════════════════════════════════════
+// SEARCH + RENDER + SORT
+// ═══════════════════════════════════════════════
+
+// Estado global para tabla
+let _currentAttendances = [];
+let _sortState = { column: 'check_in', dir: 'asc' };
+const _selection = new Set();
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function ea_set_search_status(text, cls) {
+  const el = document.getElementById('ea_search_status');
+  if (!el) return;
+  el.textContent = text || '';
+  el.className = 'ea-status' + (cls ? ' ' + cls : '');
+}
+
+// ── Buscar ─────────────────────────────────────
+// Lee el rango de fechas + filtro de empleado, arma el body del webhook
+// y dispara searchAttendances. El botón "Buscar" del HTML llama a ea_search().
+async function ea_search() {
+  const dFrom  = document.getElementById('ea_date_from');
+  const dTo    = document.getElementById('ea_date_to');
+  const empQ   = document.getElementById('ea_employee_filter');
+  const btn    = document.getElementById('ea_btn_search');
+
+  const dateFromCst = dFrom ? dFrom.value : '';
+  const dateToCst   = dTo ? dTo.value : '';
+  const employeeQ   = empQ ? empQ.value.trim() : '';
+
+  // Conversión de rango CST → UTC para el backend real.
+  // Mantenemos también los strings CST "YYYY-MM-DD" porque el mock compara así.
+  const date_from_utc = dateFromCst ? cstInputToUtc(dateFromCst + 'T00:00') : null;
+  const date_to_utc   = dateToCst   ? cstInputToUtc(dateToCst   + 'T23:59') : null;
+
+  const body = {
+    date_from:     dateFromCst,    // YYYY-MM-DD (CST, usado por mock)
+    date_to:       dateToCst,      // idem
+    date_from_utc: date_from_utc,  // UTC exacta (producción)
+    date_to_utc:   date_to_utc,    // idem
+    employee_query: employeeQ      // texto libre: nombre o id parcial
+  };
+
+  if (btn) btn.disabled = true;
+  ea_set_search_status('⏳ Buscando…', 'info');
+  ea_close_error_panel();
+
+  const result = await callWebhook('search', body);
+
+  if (btn) btn.disabled = false;
+
+  if (!result.success) {
+    ea_handle_webhook_error(result.error, 'Error buscando attendances');
+    ea_set_search_status('❌ Error en búsqueda', 'err');
+    _currentAttendances = [];
+    renderTable([]);
+    return;
+  }
+
+  const list = (result.data && result.data.attendances) || [];
+  _currentAttendances = list;
+  _selection.clear();
+  ea_update_bulk_bar();
+  renderTable(list);
+  ea_set_search_status('✅ ' + list.length + ' resultado(s)', 'ok');
+}
+window.searchAttendances = ea_search;  // alias solicitado en el spec
+
+// ── Render tabla ──────────────────────────────
+function renderTable(attendances) {
+  const tbody = document.getElementById('ea_tbody');
+  if (!tbody) return;
+
+  // Estado vacío
+  if (!attendances || attendances.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="ea-empty">Sin resultados para los filtros aplicados.</td></tr>';
+    ea_update_sort_indicators();
+    return;
+  }
+
+  // Aplicar el orden actual antes de renderizar
+  const sorted = _sortAttendances(attendances.slice(), _sortState.column, _sortState.dir);
+
+  // Render rows
+  const rows = sorted.map(function(a){
+    const selected = _selection.has(a.id);
+    const isOpen   = !a.check_out;
+    const hrs      = (typeof a.worked_hours === 'number') ? a.worked_hours.toFixed(2) : '—';
+
+    // Flag: el backend puede mandar a.flag; si no, lo deducimos
+    let flagHtml;
+    if (a.flag) {
+      flagHtml = '<span class="ea-flag ea-flag-' + esc(a.flag).toLowerCase() + '">' + esc(a.flag) + '</span>';
+    } else if (isOpen) {
+      flagHtml = '<span class="ea-flag ea-flag-open">🔓 Abierto</span>';
+    } else if (typeof a.worked_hours === 'number' && a.worked_hours > 14) {
+      flagHtml = '<span class="ea-flag ea-flag-long">⚠️ &gt;14h</span>';
+    } else {
+      flagHtml = '<span class="ea-flag ea-flag-closed">✅ OK</span>';
+    }
+
+    const checkOutCell = isOpen
+      ? '<span style="color:var(--red); font-weight:600;">❌ ABIERTO</span>'
+      : esc(utcToCstDisplay(a.check_out));
+
+    return (
+      '<tr data-aid="' + a.id + '"' + (selected ? ' class="selected"' : '') + '>' +
+        '<td class="ea-check-col">' +
+          '<input type="checkbox" onclick="ea_toggle_row_selection(' + a.id + ', this.checked)"' +
+          (selected ? ' checked' : '') + '>' +
+        '</td>' +
+        '<td class="ea-id-col">' + esc(a.id) + '</td>' +
+        '<td>' + esc(a.employee_name || ('ID ' + a.employee_id)) + '</td>' +
+        '<td>' + esc(utcToCstDisplay(a.check_in)) + '</td>' +
+        '<td>' + checkOutCell + '</td>' +
+        '<td class="ea-hours-col">' + hrs + '</td>' +
+        '<td class="ea-flag-col">' + flagHtml + '</td>' +
+        '<td class="ea-actions-col">' +
+          '<button class="ea-btn ea-btn-sm ea-btn-secondary" onclick="ea_edit_open(' + a.id + ')" title="Editar">✏️</button> ' +
+          '<button class="ea-btn ea-btn-sm ea-btn-danger" onclick="ea_delete_one(' + a.id + ')" title="Eliminar">🗑️</button>' +
+        '</td>' +
+      '</tr>'
+    );
+  }).join('');
+
+  tbody.innerHTML = rows;
+  ea_update_sort_indicators();
+  ea_sync_check_all();
+}
+
+// ── Sort ──────────────────────────────────────
+// Llamado por click en el thead. Alterna la dirección si se clickea la misma
+// columna; sino fija 'asc' y cambia la columna activa.
+function handleSort(column) {
+  if (!column) return;
+  if (_sortState.column === column) {
+    _sortState.dir = (_sortState.dir === 'asc') ? 'desc' : 'asc';
+  } else {
+    _sortState.column = column;
+    _sortState.dir    = 'asc';
+  }
+  renderTable(_currentAttendances);
+}
+window.handleSort = handleSort;
+
+function _sortAttendances(arr, column, dir) {
+  const sign = (dir === 'desc') ? -1 : 1;
+  arr.sort(function(a, b){
+    let va = a[column];
+    let vb = b[column];
+    // null/undefined al final (siempre, ignorando dir)
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    // numérico vs string
+    if (typeof va === 'number' && typeof vb === 'number') {
+      return (va - vb) * sign;
+    }
+    return String(va).localeCompare(String(vb), 'es-MX', { numeric: true, sensitivity: 'base' }) * sign;
+  });
+  return arr;
+}
+
+function ea_update_sort_indicators() {
+  const ths = document.querySelectorAll('#ea_table thead th[data-sort]');
+  ths.forEach(function(th){
+    const ind = th.querySelector('.ea-sort-ind');
+    if (!ind) return;
+    if (th.getAttribute('data-sort') === _sortState.column) {
+      ind.textContent = (_sortState.dir === 'asc') ? '▲' : '▼';
+      ind.style.opacity = '1';
+    } else {
+      ind.textContent = '';
+      ind.style.opacity = '0.5';
+    }
+  });
+}
+
+// Wire-up de los headers (ejecución síncrona — el script vive después del <table>)
+(function wireSortHeaders(){
+  const ths = document.querySelectorAll('#ea_table thead th[data-sort]');
+  ths.forEach(function(th){
+    th.addEventListener('click', function(){
+      handleSort(th.getAttribute('data-sort'));
+    });
+  });
+})();
+
+// ═══════════════════════════════════════════════
+// STUBS — implementación real en el siguiente chunk
+// ═══════════════════════════════════════════════
+// Estas funciones son llamadas desde el HTML (onclick inline) y desde
+// renderTable. Se definen aquí como no-op (con un console.warn) para
+// evitar ReferenceError al interactuar antes de tener el chunk 4.
+// El chunk 4 reemplaza cada función con su implementación real.
+
+if (typeof window.ea_edit_open !== 'function') {
+  window.ea_edit_open = function(id){ console.warn('[ea] edit stub — chunk 4 pendiente — id=' + id); };
+}
+if (typeof window.ea_delete_one !== 'function') {
+  window.ea_delete_one = function(id){ console.warn('[ea] delete stub — chunk 4 pendiente — id=' + id); };
+}
+if (typeof window.ea_bulk_delete !== 'function') {
+  window.ea_bulk_delete = function(){ console.warn('[ea] bulk-delete stub — chunk 4 pendiente'); };
+}
+if (typeof window.ea_clear_selection !== 'function') {
+  window.ea_clear_selection = function(){
+    _selection.clear();
+    renderTable(_currentAttendances);
+    ea_update_bulk_bar();
+  };
+}
+if (typeof window.ea_toggle_row_selection !== 'function') {
+  window.ea_toggle_row_selection = function(id, checked){
+    if (checked) _selection.add(id); else _selection.delete(id);
+    const tr = document.querySelector('#ea_table tbody tr[data-aid="' + id + '"]');
+    if (tr) tr.classList.toggle('selected', !!checked);
+    ea_update_bulk_bar();
+    ea_sync_check_all();
+  };
+}
+if (typeof window.ea_toggle_all_selection !== 'function') {
+  window.ea_toggle_all_selection = function(checked){
+    if (checked) {
+      _currentAttendances.forEach(function(a){ _selection.add(a.id); });
+    } else {
+      _selection.clear();
+    }
+    renderTable(_currentAttendances);
+    ea_update_bulk_bar();
+  };
+}
+if (typeof window.ea_close_edit_modal !== 'function') {
+  window.ea_close_edit_modal = function(){
+    const m = document.getElementById('ea_edit_modal');
+    if (m) m.classList.remove('show');
+  };
+}
+if (typeof window.ea_edit_save !== 'function') {
+  window.ea_edit_save = function(){ console.warn('[ea] edit-save stub — chunk 4 pendiente'); };
+}
+if (typeof window.ea_edit_recalc_hours !== 'function') {
+  window.ea_edit_recalc_hours = function(){ /* no-op hasta chunk 4 */ };
+}
+if (typeof window.ea_toggle_diag !== 'function') {
+  window.ea_toggle_diag = function(){
+    const d = document.getElementById('ea_diag_panel');
+    if (d) d.classList.toggle('show');
+  };
+}
+if (typeof window.ea_diag_test_connection !== 'function') {
+  window.ea_diag_test_connection = function(){ console.warn('[ea] diag stub — chunk 4 pendiente'); };
+}
+if (typeof window.ea_diag_list_fields !== 'function') {
+  window.ea_diag_list_fields = function(){ console.warn('[ea] diag stub — chunk 4 pendiente'); };
+}
+if (typeof window.ea_diag_last_error !== 'function') {
+  window.ea_diag_last_error = function(){
+    const out = document.getElementById('ea_diag_output');
+    if (out) out.textContent = _lastError ? JSON.stringify(_lastError, null, 2) : 'Sin errores capturados.';
+  };
+}
+
+// ═══════════════════════════════════════════════
+// HELPERS COMPARTIDOS — bulk bar, error panel, toast
+// ═══════════════════════════════════════════════
+function ea_update_bulk_bar() {
+  const bar = document.getElementById('ea_bulk_bar');
+  const cnt = document.getElementById('ea_bulk_count');
+  if (cnt) cnt.textContent = String(_selection.size);
+  if (bar) bar.classList.toggle('show', _selection.size > 0);
+}
+
+function ea_sync_check_all() {
+  const all = document.getElementById('ea_check_all');
+  if (!all) return;
+  const total = _currentAttendances.length;
+  const sel   = _selection.size;
+  all.checked       = (total > 0 && sel === total);
+  all.indeterminate = (sel > 0 && sel < total);
+}
+
+// Panel de error detallado (technical + suggestion)
+function ea_show_error_panel(title, errObj) {
+  const panel   = document.getElementById('ea_error_panel');
+  const tEl     = document.getElementById('ea_error_title');
+  const tech    = document.getElementById('ea_error_tech');
+  const suggest = document.getElementById('ea_error_suggest');
+  if (!panel) return;
+  if (tEl)     tEl.textContent     = title || 'Error';
+  if (tech)    tech.textContent    = (errObj && errObj.error_message) || 'Sin detalles técnicos.';
+  if (suggest) suggest.textContent = (errObj && errObj.suggestion)    || 'Sin sugerencia del backend.';
+  panel.classList.add('show');
+}
+function ea_close_error_panel() {
+  const panel = document.getElementById('ea_error_panel');
+  if (panel) panel.classList.remove('show');
+}
+
+// Manejo unificado de errores de webhook
+function ea_handle_webhook_error(err, titleCtx) {
+  const e = err || {};
+  _lastError = e;
+  ea_show_error_panel(titleCtx || 'Error', e);
+  // Routing por error_type (ya explicado en el spec)
+  if (e.error_type === 'auth') {
+    ea_force_logout('Sesión expirada. Vuelve a entrar.');
+  } else if (e.error_type === 'odoo_field_invalid') {
+    // Abrir diagnóstico + precargar info
+    const d = document.getElementById('ea_diag_panel');
+    if (d) d.classList.add('show');
+    const out = document.getElementById('ea_diag_output');
+    if (out) out.textContent = 'Campo invalidado detectado:\n' + JSON.stringify(e, null, 2);
+  }
+  // Toast compacto
+  ea_toast((e.error_message || 'Error desconocido'), 'err');
+}
+
+// Toast genérico
+let _toastTimer = null;
+function ea_toast(msg, kind) {
+  const el = document.getElementById('ea_toast');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.className = 'ea-toast';
+  if (kind) el.classList.add(kind);
+  // forzar reflow antes de show
+  void el.offsetWidth;
+  el.classList.add('show');
+  if (_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 3500);
+}
+
+// ═══════════════════════════════════════════════
+// EDIT MODAL — chunk 4 (reemplaza stubs del chunk 3)
+// ═══════════════════════════════════════════════
+
+// Estado del modal en edición. Guarda el snapshot previo para armar el diff
+// del audit log al guardar.
+let _currentEditState = null;
+let _editListenersWired = false;
+
+// ── Open modal ─────────────────────────────────
+function openEditModal(attendanceId) {
+  const a = _currentAttendances.find(function(x){ return x.id === attendanceId; });
+  if (!a) {
+    ea_toast('Attendance no encontrada en el estado actual. Vuelve a buscar.', 'err');
+    return;
+  }
+
+  _currentEditState = {
+    id: a.id,
+    employee_id:   a.employee_id,
+    employee_name: a.employee_name,
+    before: {
+      check_in:  a.check_in || null,
+      check_out: a.check_out || null
+    }
+  };
+
+  // Info read-only
+  document.getElementById('ea_edit_id').textContent = String(a.id);
+  document.getElementById('ea_edit_employee').textContent =
+    (a.employee_name || ('ID ' + a.employee_id)) + (a.employee_id ? '  (id ' + a.employee_id + ')' : '');
+
+  // Inputs pre-llenados en CST (local al usuario)
+  const ciInput = document.getElementById('ea_edit_check_in');
+  const coInput = document.getElementById('ea_edit_check_out');
+  ciInput.value = utcToCstInput(a.check_in);
+  coInput.value = utcToCstInput(a.check_out);
+
+  // Wire listeners en vivo (solo la primera vez)
+  if (!_editListenersWired) {
+    ciInput.addEventListener('input', calculateHoursLive);
+    coInput.addEventListener('input', calculateHoursLive);
+    _editListenersWired = true;
+  }
+
+  // Limpiar estados previos
+  document.getElementById('ea_edit_status').textContent = '';
+  document.getElementById('ea_edit_status').style.color = '';
+  document.getElementById('ea_edit_save_btn').disabled = false;
+  document.getElementById('ea_edit_warn').style.display = 'none';
+  document.getElementById('ea_edit_warn').textContent = '';
+
+  calculateHoursLive();
+
+  // Mostrar
+  document.getElementById('ea_edit_modal').classList.add('show');
+}
+window.openEditModal = openEditModal;
+window.ea_edit_open  = openEditModal;  // reemplaza stub
+
+// ── Close modal ───────────────────────────────
+function closeModal() {
+  const m = document.getElementById('ea_edit_modal');
+  if (m) m.classList.remove('show');
+  _currentEditState = null;
+}
+window.closeModal           = closeModal;
+window.ea_close_edit_modal  = closeModal;  // reemplaza stub
+
+// ── Cálculo en vivo + validaciones soft ───────
+// No bloquea inputs; solo actualiza el readout de horas + warning si >24h.
+// Las validaciones duras se ejecutan en saveEdit().
+function calculateHoursLive() {
+  const ciCst = document.getElementById('ea_edit_check_in').value;
+  const coCst = document.getElementById('ea_edit_check_out').value;
+  const hoursEl = document.getElementById('ea_edit_hours');
+  const warnEl  = document.getElementById('ea_edit_warn');
+  const statusEl = document.getElementById('ea_edit_status');
+
+  if (!ciCst) {
+    hoursEl.textContent = '—';
+    warnEl.style.display = 'none';
+    return;
+  }
+
+  // Parsear CST a Date local
+  const ciMs = new Date(ciCst + ':00').getTime();
+  const coMs = coCst ? new Date(coCst + ':00').getTime() : null;
+  const nowMs = Date.now();
+
+  // 1) check_in > ahora → mensaje inline (no bloquea render)
+  if (ciMs > nowMs) {
+    statusEl.textContent = '⚠️ Check-in está en el futuro';
+    statusEl.style.color = 'var(--orange)';
+  } else if (statusEl.textContent && /futuro/.test(statusEl.textContent)) {
+    statusEl.textContent = '';
+  }
+
+  if (!coMs) {
+    hoursEl.textContent = 'Abierto (sin check-out)';
+    warnEl.style.display = 'none';
+    return;
+  }
+
+  // 2) check_out < check_in → mostrar como negativo/invalid
+  if (coMs < ciMs) {
+    hoursEl.textContent = '❌ Check-out anterior a check-in';
+    warnEl.style.display = 'none';
+    return;
+  }
+
+  // Diferencia en horas
+  const diffH = (coMs - ciMs) / 3600000;
+  hoursEl.textContent = diffH.toFixed(2) + ' hrs';
+
+  // 3) > 24h → warning (no bloquea, solo avisa)
+  if (diffH > 24) {
+    warnEl.style.display = 'block';
+    warnEl.textContent = '⚠️ ¿Seguro? Es una jornada de más de 24 horas (' + diffH.toFixed(1) + ' h).';
+  } else {
+    warnEl.style.display = 'none';
+    warnEl.textContent = '';
+  }
+}
+window.calculateHoursLive    = calculateHoursLive;
+window.ea_edit_recalc_hours  = calculateHoursLive;  // reemplaza stub
+
+// ── Guardar ───────────────────────────────────
+async function saveEdit() {
+  if (!_currentEditState) return;
+  const state   = _currentEditState;
+  const saveBtn = document.getElementById('ea_edit_save_btn');
+  const statusEl = document.getElementById('ea_edit_status');
+
+  const ciCst = document.getElementById('ea_edit_check_in').value;
+  const coCst = document.getElementById('ea_edit_check_out').value;
+
+  // ── Validaciones duras ───────────────────
+  if (!ciCst) {
+    statusEl.textContent = '❌ Check-in es obligatorio.';
+    statusEl.style.color = 'var(--red)';
+    return;
+  }
+  const ciMs = new Date(ciCst + ':00').getTime();
+  if (isNaN(ciMs)) {
+    statusEl.textContent = '❌ Check-in inválido.';
+    statusEl.style.color = 'var(--red)';
+    return;
+  }
+  if (ciMs > Date.now() + 60000) {   // tolerancia de 1 min por drift de reloj
+    statusEl.textContent = '❌ Check-in no puede ser futuro.';
+    statusEl.style.color = 'var(--red)';
+    return;
+  }
+
+  let coMs = null;
+  if (coCst) {
+    coMs = new Date(coCst + ':00').getTime();
+    if (isNaN(coMs)) {
+      statusEl.textContent = '❌ Check-out inválido.';
+      statusEl.style.color = 'var(--red)';
+      return;
+    }
+    if (coMs < ciMs) {
+      statusEl.textContent = '❌ Check-out no puede ser anterior a check-in.';
+      statusEl.style.color = 'var(--red)';
+      return;
+    }
+    const diffH = (coMs - ciMs) / 3600000;
+    if (diffH > 24) {
+      // El warning visual ya está activo; confirmar explícito
+      if (!confirm('La jornada es de ' + diffH.toFixed(1) + ' horas (>24h). ¿Confirmar?')) {
+        statusEl.textContent = 'Guardado cancelado por el usuario.';
+        statusEl.style.color = 'var(--muted2)';
+        return;
+      }
+    }
+  }
+
+  // ── Conversión CST → UTC para el payload ─
+  const check_in_utc  = cstInputToUtc(ciCst);
+  const check_out_utc = coCst ? cstInputToUtc(coCst) : null;
+
+  // ── Llamar webhook ───────────────────────
+  saveBtn.disabled = true;
+  statusEl.textContent = '⏳ Guardando…';
+  statusEl.style.color = 'var(--blue)';
+
+  const body = {
+    id:            state.id,          // mock lee `id`
+    attendance_id: state.id,          // producción lee `attendance_id`
+    check_in:      check_in_utc,
+    check_out:     check_out_utc,
+    check_in_utc:  check_in_utc,
+    check_out_utc: check_out_utc
+  };
+
+  const result = await callWebhook('write', body);
+
+  if (!result.success) {
+    statusEl.textContent = '❌ ' + ((result.error && result.error.error_message) || 'Error desconocido');
+    statusEl.style.color = 'var(--red)';
+    saveBtn.disabled = false;
+    // Panel externo con suggestion + routing (auth/odoo_field_invalid)
+    ea_handle_webhook_error(result.error, 'Error guardando attendance ' + state.id);
+    // Log auditoría del intento fallido (best-effort)
+    ea_append_audit_log({
+      action:        'edit_attendance',
+      attendance_id: state.id,
+      employee_name: state.employee_name,
+      changes:       _diffChanges(state.before, { check_in: check_in_utc, check_out: check_out_utc }),
+      result:        'error',
+      error_message: (result.error && result.error.error_message) || 'Error desconocido'
+    }).catch(function(e){ console.warn('[ea] audit failed', e); });
+    return;
+  }
+
+  statusEl.textContent = '✅ Guardado';
+  statusEl.style.color = 'var(--green)';
+
+  // Actualizar estado local con data devuelta (o con los valores enviados si el backend no la devuelve)
+  const updated = (result.data && result.data.attendance) || null;
+  const idx = _currentAttendances.findIndex(function(x){ return x.id === state.id; });
+  if (idx >= 0) {
+    if (updated) {
+      _currentAttendances[idx] = Object.assign({}, _currentAttendances[idx], updated);
+    } else {
+      _currentAttendances[idx].check_in  = check_in_utc;
+      _currentAttendances[idx].check_out = check_out_utc;
+      if (check_in_utc && check_out_utc) {
+        const h = (new Date(check_out_utc + 'Z').getTime() - new Date(check_in_utc + 'Z').getTime()) / 3600000;
+        _currentAttendances[idx].worked_hours = Math.round(h * 100) / 100;
+      } else {
+        _currentAttendances[idx].worked_hours = 0;
+      }
+      _currentAttendances[idx].is_open = !check_out_utc;
+    }
+  }
+  renderTable(_currentAttendances);
+
+  // Log de auditoría (best-effort, no bloqueante)
+  ea_append_audit_log({
+    action:        'edit_attendance',
+    attendance_id: state.id,
+    employee_name: state.employee_name,
+    changes:       _diffChanges(state.before, { check_in: check_in_utc, check_out: check_out_utc }),
+    result:        'success',
+    error_message: null
+  }).catch(function(e){ console.warn('[ea] audit failed', e); });
+
+  ea_toast('Attendance ' + state.id + ' actualizada', 'ok');
+  setTimeout(closeModal, 600);
+}
+window.saveEdit      = saveEdit;
+window.ea_edit_save  = saveEdit;  // reemplaza stub
+
+// Diff utility: compara 2 objetos planos { check_in, check_out } y devuelve
+// { campo: { from, to } } sólo de los campos que cambiaron.
+function _diffChanges(before, after) {
+  const out = {};
+  ['check_in', 'check_out'].forEach(function(k){
+    const a = before ? (before[k] == null ? null : before[k]) : null;
+    const b = after  ? (after[k]  == null ? null : after[k])  : null;
+    if (a !== b) out[k] = { from: a, to: b };
+  });
+  return out;
+}
+
+// ═══════════════════════════════════════════════
+// AUDIT LOG — ahora vive en el backend (n8n)
+// ═══════════════════════════════════════════════
+// Antes: esta función escribía directamente al repo con el PAT
+// guardado en localStorage.
+// Ahora: el audit log lo escribe el backend n8n automáticamente en
+// cada write/delete exitoso, usando las credentials centralizadas
+// en Railway. El frontend ya no maneja tokens sensibles para este
+// flujo.
+//
+// Esta función queda como no-op para no romper call-sites existentes
+// que siguen invocándola (chunks 4 y 5). Re-envía a logAudit() con la
+// firma posicional del spec.
+async function ea_append_audit_log(entry) {
+  const e = entry || {};
+  return logAudit(e.action, e.attendance_id, e.employee_name, e.changes, e.result, e.error_message);
+}
+
+// ═══════════════════════════════════════════════
+// DELETE + BULK DELETE + DIAGNOSIS + showError — chunk 5
+// ═══════════════════════════════════════════════
+
+// ── Eliminar una attendance ──────────────────
+async function deleteAttendance(id) {
+  const a = _currentAttendances.find(function(x){ return x.id === id; });
+  if (!a) {
+    ea_toast('Attendance no encontrada en el estado actual. Vuelve a buscar.', 'err');
+    return;
+  }
+  const who = a.employee_name || ('ID ' + a.employee_id);
+  if (!confirm('¿Eliminar attendance #' + id + ' de ' + who + '?\n\nEsta acción no se puede deshacer.')) return;
+
+  ea_set_search_status('⏳ Eliminando ' + id + '…', 'info');
+  ea_close_error_panel();
+
+  const result = await callWebhook('delete', {
+    ids:           [id],          // mock usa `ids` (array)
+    attendance_id: id,             // producción usa `attendance_id`
+    confirm:       true
+  });
+
+  if (!result.success) {
+    ea_set_search_status('❌ Error al eliminar', 'err');
+    // audit fallido
+    ea_append_audit_log({
+      action:        'delete_attendance',
+      attendance_id: id,
+      employee_name: a.employee_name,
+      changes:       {},
+      result:        'error',
+      error_message: (result.error && result.error.error_message) || 'Error desconocido'
+    }).catch(function(e){ console.warn('[ea] audit failed', e); });
+    showError(result.error, { title: 'Error eliminando attendance ' + id, retry: function(){ return deleteAttendance(id); } });
+    return;
+  }
+
+  // Remover del state local + de la selección + re-render
+  _currentAttendances = _currentAttendances.filter(function(x){ return x.id !== id; });
+  _selection.delete(id);
+  renderTable(_currentAttendances);
+  ea_update_bulk_bar();
+  ea_set_search_status('✅ ' + _currentAttendances.length + ' resultado(s)', 'ok');
+
+  // audit ok
+  ea_append_audit_log({
+    action:        'delete_attendance',
+    attendance_id: id,
+    employee_name: a.employee_name,
+    changes:       {},
+    result:        'success',
+    error_message: null
+  }).catch(function(e){ console.warn('[ea] audit failed', e); });
+
+  ea_toast('Attendance ' + id + ' eliminada', 'ok');
+}
+window.deleteAttendance = deleteAttendance;
+window.ea_delete_one    = deleteAttendance;  // reemplaza stub
+
+// ── Eliminar seleccionadas (bulk) ────────────
+async function deleteSelected() {
+  const ids = Array.from(_selection);
+  if (ids.length === 0) {
+    ea_toast('No hay attendances seleccionadas', 'warn');
+    return;
+  }
+  if (!confirm('¿Eliminar ' + ids.length + ' attendance(s) seleccionada(s)?\n\nEsta acción no se puede deshacer.')) return;
+
+  ea_set_search_status('⏳ Eliminando ' + ids.length + ' registros…', 'info');
+  ea_close_error_panel();
+
+  const success = [];
+  const failed  = [];   // { id, error }
+
+  // Serial para no saturar n8n y poder atribuir errores individualmente.
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    const a  = _currentAttendances.find(function(x){ return x.id === id; });
+    ea_set_search_status('⏳ Eliminando ' + (i + 1) + '/' + ids.length + ' (id ' + id + ')…', 'info');
+
+    const r = await callWebhook('delete', {
+      ids:           [id],
+      attendance_id: id,
+      confirm:       true
+    });
+
+    if (r.success) {
+      success.push(id);
+      ea_append_audit_log({
+        action:        'delete_attendance',
+        attendance_id: id,
+        employee_name: a ? a.employee_name : null,
+        changes:       {},
+        result:        'success',
+        error_message: null
+      }).catch(function(e){ console.warn('[ea] audit failed', e); });
+    } else {
+      failed.push({ id: id, error: (r.error && r.error.error_message) || 'Error desconocido' });
+      ea_append_audit_log({
+        action:        'delete_attendance',
+        attendance_id: id,
+        employee_name: a ? a.employee_name : null,
+        changes:       {},
+        result:        'error',
+        error_message: (r.error && r.error.error_message) || 'Error desconocido'
+      }).catch(function(e){ console.warn('[ea] audit failed', e); });
+    }
+
+    // Si el webhook pide auth, no tiene sentido seguir el bulk
+    if (!r.success && r.error && r.error.error_type === 'auth') {
+      showError(r.error);
+      break;
+    }
+  }
+
+  // Actualizar state local: sacar los exitosos
+  if (success.length > 0) {
+    const sset = new Set(success);
+    _currentAttendances = _currentAttendances.filter(function(x){ return !sset.has(x.id); });
+    success.forEach(function(id){ _selection.delete(id); });
+  }
+  renderTable(_currentAttendances);
+  ea_update_bulk_bar();
+
+  // Reporte final
+  if (failed.length === 0) {
+    ea_set_search_status('✅ ' + success.length + ' eliminadas', 'ok');
+    ea_toast(success.length + ' attendances eliminadas', 'ok');
+  } else if (success.length === 0) {
+    ea_set_search_status('❌ ' + failed.length + ' fallaron', 'err');
+    ea_toast(failed.length + ' eliminaciones fallaron', 'err');
+    showError({
+      error_type:    'bulk_partial',
+      error_message: 'Fallaron ' + failed.length + ' de ' + ids.length + ':\n' +
+                     failed.map(function(f){ return 'id ' + f.id + ' → ' + f.error; }).join('\n'),
+      suggestion:    'Revisa el último error en el panel de diagnóstico, corrige la causa y reintenta sólo los que fallaron.'
+    }, { title: 'Bulk delete con fallos' });
+  } else {
+    ea_set_search_status('⚠️ ' + success.length + ' OK, ' + failed.length + ' fallaron', 'info');
+    ea_toast(success.length + ' OK, ' + failed.length + ' fallaron', 'warn');
+    showError({
+      error_type:    'bulk_partial',
+      error_message: 'Éxitos: ' + success.join(', ') + '\nFallaron:\n' +
+                     failed.map(function(f){ return 'id ' + f.id + ' → ' + f.error; }).join('\n'),
+      suggestion:    'Los exitosos ya se eliminaron. Para los fallidos, revisa el panel de diagnóstico y reintenta individualmente.'
+    }, { title: 'Bulk delete parcial' });
+  }
+}
+window.deleteSelected = deleteSelected;
+window.ea_bulk_delete = deleteSelected;  // reemplaza stub
+
+// ── Diagnóstico Odoo ────────────────────────
+async function runDiagnosis(op) {
+  const out = document.getElementById('ea_diag_output');
+  if (!out) return;
+  out.textContent = '⏳ Ejecutando ' + op + '…';
+
+  const result = await callWebhook('diagnose', { operation: op });
+
+  if (!result.success) {
+    const e = result.error || {};
+    out.textContent = '❌ ' + (e.error_message || 'Error desconocido') + '\n\n' +
+      (e.suggestion ? 'Sugerencia: ' + e.suggestion : '');
+    showError(e, { title: 'Diagnóstico falló' });
+    return;
+  }
+
+  // Render: según op, formato ligeramente distinto.
+  const data = result.data || {};
+  if (op === 'ping') {
+    out.textContent =
+      '✅ Conexión OK\n' +
+      '────────────────────────\n' +
+      'Odoo version : ' + (data.odoo_version || '?') + '\n' +
+      'Database     : ' + (data.db           || '?') + '\n' +
+      'Server time  : ' + (data.server_time_utc || '?') + ' (UTC)\n' +
+      'Usuario      : ' + (data.user         || '?') + '\n' +
+      '\nRaw:\n' + JSON.stringify(data, null, 2);
+  } else if (op === 'fields') {
+    const fields = Array.isArray(data.fields) ? data.fields : [];
+    out.textContent =
+      '📋 Campos en ' + (data.model || 'hr.attendance') + ' (' + fields.length + '):\n' +
+      '────────────────────────\n' +
+      fields.map(function(f){ return '  • ' + f; }).join('\n') +
+      '\n\nRaw:\n' + JSON.stringify(data, null, 2);
+  } else {
+    out.textContent = JSON.stringify(data, null, 2);
+  }
+}
+window.runDiagnosis         = runDiagnosis;
+window.ea_diag_test_connection = function(){ return runDiagnosis('ping');   };  // reemplaza stub
+window.ea_diag_list_fields     = function(){ return runDiagnosis('fields'); };  // reemplaza stub
+
+// ── showError — formatter único para errores del webhook ──
+// - Renderiza toast con error_message
+// - Muestra panel expandible con suggestion
+// - Si error_type === 'auth' → force logout
+// - Si error_type === 'odoo_timeout' y se pasó retry → botón reintentar con cuenta regresiva 30s
+// - Si error_type === 'odoo_field_invalid' → abre panel diagnóstico con el contexto pre-cargado
+//
+// Audit log ahora se escribe en el backend (n8n) automáticamente en
+// cada write/delete exitoso.
+function showError(err, opts) {
+  const e = err || {};
+  opts = opts || {};
+  _lastError = e;
+
+  ea_show_error_panel(opts.title || 'Error', e);
+
+  // Limpiar botón retry previo si había
+  const panel = document.getElementById('ea_error_panel');
+  const oldRetry = document.getElementById('ea_error_retry');
+  if (oldRetry) oldRetry.remove();
+
+  // Botón reintentar solo para timeouts con callback disponible
+  if (e.error_type === 'odoo_timeout' && typeof opts.retry === 'function') {
+    const body = panel ? panel.querySelector('.ea-error-body') : null;
+    if (body) {
+      const btn = document.createElement('button');
+      btn.id = 'ea_error_retry';
+      btn.className = 'ea-btn ea-btn-sm ea-btn-secondary';
+      btn.style.marginTop = '10px';
+      btn.disabled = true;
+      let sec = 30;
+      btn.textContent = '🔄 Reintentar en ' + sec + 's';
+      const tick = setInterval(function(){
+        sec--;
+        if (sec <= 0) {
+          clearInterval(tick);
+          btn.disabled = false;
+          btn.textContent = '🔄 Reintentar ahora';
+          btn.onclick = function(){
+            btn.disabled = true;
+            btn.textContent = '⏳ Reintentando…';
+            ea_close_error_panel();
+            Promise.resolve(opts.retry()).catch(function(err2){
+              console.warn('[ea] retry failed', err2);
+            });
+          };
+        } else {
+          btn.textContent = '🔄 Reintentar en ' + sec + 's';
+        }
+      }, 1000);
+      body.appendChild(btn);
+    }
+  }
+
+  // Si un campo de Odoo es invalid, abrir panel diagnóstico con contexto
+  if (e.error_type === 'odoo_field_invalid') {
+    const d = document.getElementById('ea_diag_panel');
+    if (d) d.classList.add('show');
+    const out = document.getElementById('ea_diag_output');
+    if (out) {
+      out.textContent =
+        '⚠️ Campo Odoo inválido detectado\n' +
+        '────────────────────────\n' +
+        'Mensaje técnico:\n' + (e.error_message || '—') + '\n\n' +
+        'Sugerencia:\n' + (e.suggestion || '—') + '\n\n' +
+        'Ejecuta "Ver campos de hr.attendance" para confirmar qué campos acepta la versión actual de Odoo.';
+    }
+  }
+
+  // auth → force logout (último para que el usuario alcance a ver el toast)
+  if (e.error_type === 'auth') {
+    ea_toast(e.error_message || 'Sesión expirada', 'err');
+    setTimeout(function(){ ea_force_logout('Sesión expirada. Vuelve a entrar.'); }, 600);
+    return;
+  }
+
+  // Toast final
+  ea_toast(e.error_message || 'Error desconocido', 'err');
+}
+window.showError = showError;
+
+// Override: ea_handle_webhook_error ahora delega a showError para un único código-path
+window.ea_handle_webhook_error = function(err, titleCtx) {
+  return showError(err, { title: titleCtx });
+};
+
+// ═══════════════════════════════════════════════
+// CHUNK 6 — logAudit wrapper + forceLogout + wire-up sanity check
+// ═══════════════════════════════════════════════
+
+// ── logAudit — no-op de frontend (el audit vive en n8n) ─────
+// Audit log ya NO se escribe desde frontend. Se escribe en el
+// backend (n8n) automáticamente en cada write/delete exitoso. Esta
+// función queda como no-op para mantener compatibilidad con los call
+// sites existentes.
+async function logAudit(action, attendanceId, employeeName, changes, result, errorMsg) {
+  // El audit log se registra automáticamente en el backend n8n.
+  // No se requiere acción del frontend.
+  console.log(`[audit] ${action} attendance ${attendanceId} — logged server-side`);
+}
+window.logAudit = logAudit;
+
+// ── forceLogout ─────────────────────────────────────────
+// Cierra sesión completa: limpia sessionStorage + fts_session (via FTSAuth)
+// + redirige al login principal (/index.html relativo a shared/admin/).
+function forceLogout() {
+  try { sessionStorage.clear(); } catch(e){}
+  try { window.FTSAuth && FTSAuth.logout && FTSAuth.logout(); } catch(e){}
+  window.location.href = '../../index.html';
+}
+window.forceLogout     = forceLogout;
+window.ea_force_logout = function(msg) {
+  // Backwards-compat: la firma anterior aceptaba un mensaje.
+  if (msg) { try { alert(msg); } catch(e){} }
+  forceLogout();
+};
+
+// ── Wire-up sanity check ────────────────────────────────
+// Los botones del HTML usan onclick="..." inline (patrón del resto de la
+// suite). Este bloque verifica que cada botón crítico tenga su handler
+// disponible como window.*, y loguea en consola un reporte consolidado.
+// NO agrega listeners nuevos (evita doble-fire con los inline).
+(function verifyWireUp(){
+  const checks = [
+    // [elementId, globalFunctionName, descripción]
+    ['ea_btn_search',         'ea_search',              'Buscar'],
+    ['ea_btn_diag_toggle',    'ea_toggle_diag',         'Toggle diagnóstico'],
+    ['ea_edit_save_btn',      'ea_edit_save',           'Guardar (modal)'],
+    ['ea_check_all',          'ea_toggle_all_selection','Check-all'],
+    ['ea_edit_check_in',      'ea_edit_recalc_hours',   'Recalc horas (input check-in)'],
+    ['ea_edit_check_out',     'ea_edit_recalc_hours',   'Recalc horas (input check-out)']
+  ];
+  const missing  = [];
+  const hooked   = [];
+  checks.forEach(function(c){
+    const el = document.getElementById(c[0]);
+    if (!el) { missing.push(c[0] + ' (elemento DOM no existe)'); return; }
+    if (typeof window[c[1]] !== 'function') {
+      missing.push(c[0] + ' → ' + c[1] + ' (función no disponible)');
+      return;
+    }
+    hooked.push(c[2]);
+  });
+
+  // Verificación adicional: webhooks esperados existen como handlers lógicos
+  const webhookHandlers = ['searchAttendances','saveEdit','deleteAttendance','deleteSelected','runDiagnosis'];
+  const wmissing = webhookHandlers.filter(function(fn){ return typeof window[fn] !== 'function'; });
+
+  if (missing.length === 0 && wmissing.length === 0) {
+    console.log('[editor-asistencias] wire-up OK — ' + hooked.length + ' handlers activos, 4 webhooks mapeados');
+  } else {
+    console.warn('[editor-asistencias] wire-up incompleto:', { missing: missing, missingWebhooks: wmissing });
+  }
+})();
+</script>
+
+</body>
+</html>
