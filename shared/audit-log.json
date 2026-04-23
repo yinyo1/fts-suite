@@ -218,6 +218,25 @@
       },
       "result": "success",
       "error_message": null
+    },
+    {
+      "timestamp": "2026-04-23T23:36:32.534Z",
+      "user": "ftsmaster",
+      "action": "edit_attendance",
+      "attendance_id": 12524,
+      "employee_name": "Ana Laura Acevedo Flores",
+      "changes": {
+        "check_in": {
+          "from": "2026-04-23 13:03:56",
+          "to": "2026-04-23 13:03:00"
+        },
+        "check_out": {
+          "from": null,
+          "to": "2026-04-23 23:19:00"
+        }
+      },
+      "result": "success",
+      "error_message": null
     }
   ]
 }
