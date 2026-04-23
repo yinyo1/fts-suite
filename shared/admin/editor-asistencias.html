@@ -496,7 +496,9 @@ let _lastError = null;
 
 function utcToCstDisplay(utcString) {
   if (!utcString) return '—';
-  return new Date(utcString + 'Z').toLocaleString('es-MX', {
+  const d = new Date(utcString + 'Z');
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleString('es-MX', {
     timeZone: 'America/Monterrey',
     dateStyle: 'short',
     timeStyle: 'short'
@@ -506,16 +508,68 @@ function utcToCstDisplay(utcString) {
 function utcToCstInput(utcString) {
   if (!utcString) return '';
   const d = new Date(utcString + 'Z');
-  const cst = new Date(d.getTime() - 6 * 60 * 60 * 1000);
-  return cst.toISOString().slice(0, 16);
+  if (isNaN(d.getTime())) return '';
+  // Convertir a CST usando Intl (sv-SE emite "YYYY-MM-DD HH:MM:SS" nativo,
+  // independiente del timezone del browser). Luego formatear para datetime-local.
+  const cstParts = d.toLocaleString('sv-SE', {
+    timeZone: 'America/Monterrey',
+    hour12: false
+  });
+  // cstParts = "2026-04-20 18:00:00" → devolver "YYYY-MM-DDTHH:MM"
+  return cstParts.replace(' ', 'T').slice(0, 16);
 }
 
 function cstInputToUtc(cstInput) {
   if (!cstInput) return null;
-  const cst = new Date(cstInput + ':00');
-  const utc = new Date(cst.getTime() + 6 * 60 * 60 * 1000);
+  // Forzar interpretación como CST (UTC-6) usando offset explícito,
+  // independiente del timezone del browser. Esto evita el bug de doble offset.
+  const cstWithOffset = cstInput + ':00-06:00';
+  const utc = new Date(cstWithOffset);
+  if (isNaN(utc.getTime())) return null;
   return utc.toISOString().replace('T', ' ').replace('Z', '').split('.')[0];
 }
+
+// ═══════════════════════════════════════════════
+// TIMEZONE CONVERSION — SELF-TEST
+// ═══════════════════════════════════════════════
+// Se ejecuta al cargar la página y valida que los helpers funcionan
+// correctamente independientemente del timezone del browser. Si falla,
+// loguea en rojo para que Esteban note el problema antes de editar.
+(function timezoneSelfTest() {
+  const tests = [
+    { name: 'CST 6 PM → UTC medianoche día siguiente',
+      cstInput: '2026-04-20T18:00', expectedUtc: '2026-04-21 00:00:00' },
+    { name: 'UTC medianoche → CST 6 PM día anterior',
+      utc: '2026-04-21 00:00:00', expectedCstInput: '2026-04-20T18:00' },
+    { name: 'CST 6 AM → UTC mediodía mismo día',
+      cstInput: '2026-04-22T06:00', expectedUtc: '2026-04-22 12:00:00' }
+  ];
+  let allPassed = true;
+  tests.forEach(function(t){
+    if (t.cstInput && t.expectedUtc) {
+      const got = cstInputToUtc(t.cstInput);
+      if (got !== t.expectedUtc) {
+        console.error('[TZ-TEST FAIL] ' + t.name + ': expected ' + t.expectedUtc + ', got ' + got);
+        allPassed = false;
+      }
+    }
+    if (t.utc && t.expectedCstInput) {
+      const got = utcToCstInput(t.utc);
+      if (got !== t.expectedCstInput) {
+        console.error('[TZ-TEST FAIL] ' + t.name + ': expected ' + t.expectedCstInput + ', got ' + got);
+        allPassed = false;
+      }
+    }
+  });
+  if (allPassed) {
+    console.log('[TZ-TEST] ✅ Todos los helpers de zona horaria funcionan correctamente');
+  } else {
+    console.error('[TZ-TEST] 🚨 BUG DE ZONA HORARIA — revisar helpers antes de editar attendances');
+  }
+  try {
+    console.log('[TZ-TEST] browser timezone =', Intl.DateTimeFormat().resolvedOptions().timeZone);
+  } catch(e) {}
+})();
 
 // ═══════════════════════════════════════════════
 // HELPER GENÉRICO: callWebhook(endpoint, body)
@@ -1324,6 +1378,15 @@ async function saveEdit() {
   // ── Conversión CST → UTC para el payload ─
   const check_in_utc  = cstInputToUtc(ciCst);
   const check_out_utc = coCst ? cstInputToUtc(coCst) : null;
+
+  // Debug log — útil si vuelve a haber un problema de zona horaria.
+  console.log('[editor-asistencias] save payload', {
+    inputCheckIn:         ciCst,
+    inputCheckOut:        coCst,
+    convertedCheckInUtc:  check_in_utc,
+    convertedCheckOutUtc: check_out_utc,
+    browserTimezone:      (function(){ try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch(e){ return '?'; } })()
+  });
 
   // ── Llamar webhook ───────────────────────
   saveBtn.disabled = true;
