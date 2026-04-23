@@ -313,6 +313,25 @@
       },
       "result": "success",
       "error_message": null
+    },
+    {
+      "timestamp": "2026-04-23T23:40:27.557Z",
+      "user": "ftsmaster",
+      "action": "edit_attendance",
+      "attendance_id": 12519,
+      "employee_name": "Tomas Arnoldo Loredo Mares",
+      "changes": {
+        "check_in": {
+          "from": "2026-04-23 12:37:06",
+          "to": "2026-04-23 12:37:00"
+        },
+        "check_out": {
+          "from": null,
+          "to": "2026-04-23 23:08:00"
+        }
+      },
+      "result": "success",
+      "error_message": null
     }
   ]
 }
