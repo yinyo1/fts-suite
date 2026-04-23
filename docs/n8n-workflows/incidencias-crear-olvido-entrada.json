@@ -1,0 +1,208 @@
+{
+  "name": "incidencias/crear-olvido-entrada",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "incidencias/crear-olvido-entrada",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "c8e1f0a0-0000-4000-8000-100000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [200, 300],
+      "webhookId": "incidencias-crear-olvido-entrada"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json || {};\n\n// Validaciones mínimas\nif (!body.empleado_id || !body.motivo || !body.hora_declarada_cst || !body.hora_real_checkin_utc) {\n  return [{ json: {\n    _error: true,\n    codigo: 'INVALID_PAYLOAD',\n    mensaje: 'Faltan campos obligatorios (empleado_id, motivo, hora_declarada_cst, hora_real_checkin_utc)'\n  }}];\n}\n\nif (String(body.motivo).trim().length < 10) {\n  return [{ json: {\n    _error: true,\n    codigo: 'MOTIVO_CORTO',\n    mensaje: 'El motivo debe tener al menos 10 caracteres'\n  }}];\n}\n\n// Generar ID interno único\nconst ts = new Date().toISOString().replace(/[:.]/g, '-');\nconst idInterno = 'INC-OLV-' + body.empleado_id + '-' + ts;\n\n// Construir incidencia con propuesta inicial del empleado\nconst nueva = {\n  id_interno: idInterno,\n  odoo_incidencia_id: null,\n  tipo: 'olvido_entrada',\n  empleado_id: body.empleado_id,\n  empleado_nombre: body.empleado_nombre || '',\n  fecha_creacion: new Date().toISOString(),\n  attendance_id: body.attendance_id_creado || null,\n  hora_real_checkin_utc: body.hora_real_checkin_utc,\n  geolocation: body.geolocation || null,\n  foto_base64: body.foto_base64 || null,\n  propuestas: [{\n    paso: 1,\n    rol: 'empleado',\n    user_id: body.empleado_id,\n    usuario: body.empleado_nombre || 'empleado',\n    timestamp: new Date().toISOString(),\n    hora_propuesta_cst: body.hora_declarada_cst,\n    comentario: body.motivo,\n    accion: 'solicitud'\n  }],\n  status: 'pendiente_supervisor',\n  hora_final_aplicada_utc: null,\n  aplicado_en_odoo: false\n};\n\nreturn [{ json: { nueva_incidencia: nueva } }];"
+      },
+      "id": "c8e1f0a0-0000-4000-8000-100000000002",
+      "name": "Code - Validar payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-1",
+              "leftValue": "={{ $json._error }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c8e1f0a0-0000-4000-8000-100000000003",
+      "name": "IF - Error?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.1,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, codigo: $json.codigo, mensaje: $json.mensaje } }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "c8e1f0a0-0000-4000-8000-100000000004",
+      "name": "Respond 400 - Error payload",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [860, 180]
+    },
+    {
+      "parameters": {
+        "url": "https://api.github.com/repos/yinyo1/fts-suite/contents/shared/incidencias-asistencia.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Accept", "value": "application/vnd.github.v3+json" }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "c8e1f0a0-0000-4000-8000-100000000005",
+      "name": "GET incidencias-asistencia.json",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [860, 420],
+      "credentials": {
+        "githubApi": {
+          "id": "i6g6Y7fNeZJW0GA3",
+          "name": "GitHub FTS Suite"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const ghResp = $input.first().json;\nconst prev   = $('Code - Validar payload').item.json;\nconst nueva  = prev.nueva_incidencia;\n\nlet archivo = { version: 1, incidencias: [] };\nlet sha = null;\n\nif (ghResp && ghResp.content && ghResp.sha) {\n  sha = ghResp.sha;\n  try {\n    const decoded = Buffer.from(String(ghResp.content).replace(/\\n/g, ''), 'base64').toString('utf8');\n    archivo = JSON.parse(decoded);\n    if (!archivo.version) archivo.version = 1;\n    if (!Array.isArray(archivo.incidencias)) archivo.incidencias = [];\n  } catch (e) {\n    archivo = { version: 1, incidencias: [] };\n  }\n}\n\n// Más reciente al inicio\narchivo.incidencias.unshift(nueva);\n\nconst nuevoStr = JSON.stringify(archivo, null, 2);\nconst nuevoB64 = Buffer.from(nuevoStr, 'utf8').toString('base64');\n\nreturn [{\n  json: {\n    sha: sha || '',\n    content: nuevoB64,\n    message: 'incidencia: olvido_entrada ' + (nueva.empleado_nombre || 'emp?') + ' (' + nueva.id_interno + ')',\n    nueva_incidencia: nueva\n  }\n}];"
+      },
+      "id": "c8e1f0a0-0000-4000-8000-100000000006",
+      "name": "Code - Merge incidencia",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1080, 420]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://api.github.com/repos/yinyo1/fts-suite/contents/shared/incidencias-asistencia.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Accept", "value": "application/vnd.github.v3+json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"message\": \"{{ $json.message }}\",\n  \"content\": \"{{ $json.content }}\",\n  \"sha\": \"{{ $json.sha }}\",\n  \"branch\": \"main\"\n}",
+        "options": {}
+      },
+      "id": "c8e1f0a0-0000-4000-8000-100000000007",
+      "name": "PUT incidencias-asistencia.json",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1300, 420],
+      "credentials": {
+        "githubApi": {
+          "id": "i6g6Y7fNeZJW0GA3",
+          "name": "GitHub FTS Suite"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const prev = $('Code - Merge incidencia').item.json;\nconst n = prev.nueva_incidencia;\nreturn [{\n  json: {\n    success: true,\n    id_interno: n.id_interno,\n    status: n.status,\n    mensaje: 'Incidencia creada. Tu supervisor la revisará pronto.'\n  }\n}];"
+      },
+      "id": "c8e1f0a0-0000-4000-8000-100000000008",
+      "name": "Code - Respuesta OK",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1520, 420]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "c8e1f0a0-0000-4000-8000-100000000009",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1740, 420]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [ { "node": "Code - Validar payload", "type": "main", "index": 0 } ]
+      ]
+    },
+    "Code - Validar payload": {
+      "main": [
+        [ { "node": "IF - Error?", "type": "main", "index": 0 } ]
+      ]
+    },
+    "IF - Error?": {
+      "main": [
+        [ { "node": "Respond 400 - Error payload", "type": "main", "index": 0 } ],
+        [ { "node": "GET incidencias-asistencia.json", "type": "main", "index": 0 } ]
+      ]
+    },
+    "GET incidencias-asistencia.json": {
+      "main": [
+        [ { "node": "Code - Merge incidencia", "type": "main", "index": 0 } ]
+      ]
+    },
+    "Code - Merge incidencia": {
+      "main": [
+        [ { "node": "PUT incidencias-asistencia.json", "type": "main", "index": 0 } ]
+      ]
+    },
+    "PUT incidencias-asistencia.json": {
+      "main": [
+        [ { "node": "Code - Respuesta OK", "type": "main", "index": 0 } ]
+      ]
+    },
+    "Code - Respuesta OK": {
+      "main": [
+        [ { "node": "Respond to Webhook", "type": "main", "index": 0 } ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}

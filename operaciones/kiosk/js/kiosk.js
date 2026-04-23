@@ -737,26 +737,73 @@ async function registrarAsistencia(){
   }
 
   // Enviar a n8n (o solo log en demo)
+  var checkinResp = null;
+  var checkinOk   = true;
   if(!K.config.demoMode && K.config.n8nUrl){
     try{
-      var result = await window.OdooKiosk.registrarCheckin(payload);
+      checkinResp = await window.OdooKiosk.registrarCheckin(payload);
       // Verificar candados del backend
-      var r = Array.isArray(result) ? result[0] : result;
+      var r = Array.isArray(checkinResp) ? checkinResp[0] : checkinResp;
       if(r && r.accion_valida === false){
         var errMsg = r.error_msg || 'Error desconocido';
         mostrarErrorCandado(errMsg);
+        // Si venía en flujo de olvido, no crear incidencia (spec: si checkin falla, no incidencia)
+        K.olvidoEntradaData = null;
         return;
       }
     } catch(e){
       console.warn('Error enviando a n8n:', e);
+      checkinOk = false;
     }
   } else {
     console.log('[DEMO] Payload kiosk:', payload);
+    checkinResp = { demo: true };
+  }
+
+  // ── Flujo olvido entrada: crear incidencia paralela ──
+  if(checkinOk && K.olvidoEntradaData){
+    var incRes = await crearIncidenciaOlvidoEntrada(payload, checkinResp);
+    mostrarConfirmacionOlvidoEntrada(payload, K.olvidoEntradaData, incRes);
+    K.olvidoEntradaData = null;
+    return;   // evita autoReturn() estándar — el modal tiene su propio botón
   }
 
   // Contador visible + reset al terminar (o al click en "Terminado")
   autoReturn();
 }
+
+// UI de confirmación específica para flujo olvido-entrada
+function mostrarConfirmacionOlvidoEntrada(payload, olvidoData, incRes){
+  var horaActualCst = new Date().toLocaleTimeString('es-MX', { timeZone:'America/Monterrey', hour:'2-digit', minute:'2-digit' });
+  var horaDeclarada = (olvidoData.hora_declarada_cst || '').slice(11, 16);
+
+  var warn = '';
+  if(incRes && !incRes.ok){
+    warn = '<div style="background:#fff4d9;border:1px solid #e6d38a;border-radius:8px;padding:10px;margin:10px 0;font-size:12px;color:#7a5800">'+
+      '⚠️ Tu check-in se registró pero no pudimos crear la incidencia. Avisa a sistemas.'+
+    '</div>';
+  }
+
+  var modal = document.createElement('div');
+  modal.id = 'modalConfirmOlvEnt';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px';
+  modal.innerHTML =
+    '<div style="background:#fff;border-radius:16px;padding:22px;max-width:400px;width:100%">'+
+      '<h3 style="margin:0 0 10px;font-size:18px;color:#107C10">✅ Check-in registrado + Incidencia creada</h3>'+
+      '<p style="font-size:14px;color:#333;margin:0 0 10px;line-height:1.6">'+
+        'Tu check-in se registró a las <strong>' + horaActualCst + ' CST</strong> (hora actual).<br>'+
+        'Declaraste haber llegado a las <strong>' + horaDeclarada + ' CST</strong>.'+
+      '</p>'+
+      '<p style="font-size:13px;color:#666;margin:0 0 12px;line-height:1.5">'+
+        'Tu supervisor revisará la incidencia y te notificará cuando sea resuelta. '+
+        'Puedes consultar el estado de tus incidencias en "Mi Perfil" (próximamente disponible).'+
+      '</p>'+
+      warn +
+      '<button onclick="document.getElementById(\'modalConfirmOlvEnt\').remove();goHome()" style="width:100%;padding:14px;background:#107C10;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">Entendido</button>'+
+    '</div>';
+  document.body.appendChild(modal);
+}
+window.mostrarConfirmacionOlvidoEntrada = mostrarConfirmacionOlvidoEntrada;
 
 // ═══════ HISTORIAL ═══════
 function searchHistorial(q){
@@ -1304,7 +1351,7 @@ function renderEstadoBotones(estado){
   switch(estado.estado_actual){
     case 'sin_registro':
       // Principal (Registrar Entrada) ya en #ksAccionRapida → sólo el alternativo
-      html = '<button onclick="olvideChecarEntrada()" style="background:#f0f4ff;color:#0078D4;border:1px solid #0078D4;padding:14px;border-radius:12px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit">⏰ Llegué pero olvidé checar entrada</button>';
+      html = '<button onclick="olvideChecarEntrada()" style="background:#f0f4ff;color:#0078D4;border:1px solid #0078D4;padding:14px;border-radius:12px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;line-height:1.35">⏰ Llegué pero olvidé checar entrada<br><span style="font-size:11px;color:#7a5800;font-weight:600">[requiere aprobación]</span></button>';
       break;
     case 'activo':
       // FASE 3 PENDIENTE: botón Salida a Comer desactivado temporalmente
@@ -1507,100 +1554,137 @@ window.iniciarCheckin        = iniciarCheckin;
 window.resolverZonaGris      = resolverZonaGris;
 window.resolverErrorCritico  = resolverErrorCritico;
 
-// ═══════ OLVIDÉ CHECAR ENTRADA ═══════
+// ═══════ OLVIDÉ CHECAR ENTRADA — rediseño anti-abuso (#U1 Fase 1) ═══════
+// Comportamiento nuevo:
+// 1) Muestra advertencia + captura hora declarada + motivo ANTES del flujo.
+// 2) Empleado hace check-in NORMAL (PIN + face + geo + SO) con hora ACTUAL.
+// 3) Al terminar el checkin OK, se crea una incidencia paralela para que
+//    el supervisor ajuste la hora si es procedente.
+// Los campos hora/motivo viajan guardados en K.olvidoEntradaData y los
+// consume registrarAsistencia() tras el POST del checkin.
 function olvideChecarEntrada(){
   var empleado = window._empleadoActual;
   if(!empleado) return;
 
-  var hoy = new Date().toLocaleDateString('es-MX', { weekday:'long', day:'numeric', month:'long' });
+  // Default hora declarada: hace 1 hora (asume que llegó hace poco)
+  var nowM1 = new Date(Date.now() - 60 * 60 * 1000);
+  var pad = function(n){ return String(n).padStart(2,'0'); };
+  var defaultDT =
+    nowM1.getFullYear() + '-' + pad(nowM1.getMonth()+1) + '-' + pad(nowM1.getDate()) +
+    'T' + pad(nowM1.getHours()) + ':' + pad(nowM1.getMinutes());
 
   var modal = document.createElement('div');
   modal.id = 'modalOlvideEntrada';
-  modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;padding:24px';
+  modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.65);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px';
   modal.innerHTML =
-    '<div style="background:#fff;border-radius:16px;padding:24px;max-width:340px;width:100%">'+
-      '<h3 style="margin:0 0 8px;font-size:18px">⏰ Olvidé checar entrada</h3>'+
-      '<p style="font-size:13px;color:#666;margin:0 0 16px;line-height:1.5">'+
-        '<strong>' + hoy + '</strong><br>'+
-        'Ingresa la hora aproximada a la que llegaste. Tu supervisor deberá validar este registro.'+
-      '</p>'+
-      '<div style="margin-bottom:16px">'+
-        '<label style="font-size:13px;color:#333;font-weight:600;display:block;margin-bottom:6px">Hora estimada de llegada:</label>'+
-        '<input type="time" id="horaEstimadaEntrada" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:16px;box-sizing:border-box;font-family:inherit">'+
+    '<div style="background:#fff;border-radius:16px;padding:22px;max-width:400px;width:100%;max-height:92vh;overflow-y:auto">'+
+      '<h3 style="margin:0 0 4px;font-size:18px">⚠️ Olvido de check-in de entrada</h3>'+
+      '<div style="background:#fff4d9;border:1px solid #e6d38a;border-radius:10px;padding:12px;margin:10px 0 16px;font-size:13px;color:#7a5800;line-height:1.5">'+
+        'Se realizará el check-in <strong>AHORA</strong> con la hora actual del sistema. '+
+        'También se creará una incidencia que tu supervisor revisará para ajustar tu hora de entrada si es procedente.'+
+        '<br><br>Deberás hacer las verificaciones normales (PIN, foto, geo, SO).'+
       '</div>'+
-      '<div style="margin-bottom:20px">'+
-        '<label style="font-size:13px;color:#333;font-weight:600;display:block;margin-bottom:6px">Motivo (obligatorio):</label>'+
-        '<textarea id="motivoOlvideEntrada" placeholder="Ej: Se me olvidó checar al llegar, estuve en junta..." style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:14px;box-sizing:border-box;height:80px;resize:none;font-family:inherit"></textarea>'+
+      '<div style="margin-bottom:14px">'+
+        '<label style="font-size:12px;color:#333;font-weight:700;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.3px">¿A qué hora llegaste realmente?</label>'+
+        '<input type="datetime-local" id="olvEntHoraDeclarada" value="'+defaultDT+'" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:15px;box-sizing:border-box;font-family:inherit">'+
+        '<div style="font-size:11px;color:#888;margin-top:4px">No puede ser futura ni más de 12 h atrás.</div>'+
       '</div>'+
+      '<div style="margin-bottom:14px">'+
+        '<label style="font-size:12px;color:#333;font-weight:700;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.3px">Explica por qué olvidaste checar (obligatorio)</label>'+
+        '<textarea id="olvEntMotivo" placeholder="Ej: Celular sin batería, distracción, urgencia en sitio..." style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:14px;box-sizing:border-box;height:90px;resize:none;font-family:inherit"></textarea>'+
+        '<div style="font-size:11px;color:#888;margin-top:4px">Mínimo 10 caracteres.</div>'+
+      '</div>'+
+      '<div id="olvEntErr" style="color:#D83B01;font-size:12px;min-height:16px;margin-bottom:8px"></div>'+
       '<div style="display:flex;gap:10px">'+
-        '<button onclick="document.getElementById(\'modalOlvideEntrada\').remove();if(window._empleadoActual)mostrarEstadoEmpleado(window._empleadoActual)" style="flex:1;padding:12px;background:#f0f0f0;color:#333;border:1px solid #ccc;border-radius:10px;font-size:14px;cursor:pointer;font-family:inherit">Cancelar</button>'+
-        '<button onclick="confirmarOlvideEntrada()" style="flex:2;padding:12px;background:#107C10;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Confirmar entrada estimada</button>'+
+        '<button onclick="cancelarOlvidoEntrada()" style="flex:1;padding:12px;background:#f0f0f0;color:#333;border:1px solid #ccc;border-radius:10px;font-size:14px;cursor:pointer;font-family:inherit">Cancelar</button>'+
+        '<button onclick="continuarOlvidoEntrada()" style="flex:2;padding:12px;background:#D83B01;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Continuar</button>'+
       '</div>'+
     '</div>';
   document.body.appendChild(modal);
 }
 window.olvideChecarEntrada = olvideChecarEntrada;
 
-async function confirmarOlvideEntrada(){
-  var horaInput  = document.getElementById('horaEstimadaEntrada');
-  var motivoInput = document.getElementById('motivoOlvideEntrada');
-
-  if(!horaInput || !horaInput.value){
-    alert('Por favor ingresa la hora estimada de llegada');
-    return;
-  }
-  if(!motivoInput || !motivoInput.value.trim()){
-    alert('El motivo es obligatorio');
-    return;
-  }
-
-  var empleado = window._empleadoActual;
-  if(!empleado) return;
-
-  var hoyISO = fechaLocalISO();
-  var checkinEstimado = hoyISO + 'T' + horaInput.value + ':00';
-  var motivo = motivoInput.value.trim();
-
-  // Cerrar modal
+function cancelarOlvidoEntrada(){
   var m = document.getElementById('modalOlvideEntrada');
   if(m) m.remove();
+  if(window._empleadoActual) mostrarEstadoEmpleado(window._empleadoActual);
+}
+window.cancelarOlvidoEntrada = cancelarOlvidoEntrada;
 
-  // Loading
-  showScreen('ks-estado');
-  document.getElementById('ksEstadoBotones').innerHTML =
-    '<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:rgba(255,255,255,0.95);padding:24px 32px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.15);text-align:center;font-size:16px;color:#333;font-weight:500">⏳ Registrando entrada estimada…</div>';
+function continuarOlvidoEntrada(){
+  var horaInput   = document.getElementById('olvEntHoraDeclarada');
+  var motivoInput = document.getElementById('olvEntMotivo');
+  var errDiv      = document.getElementById('olvEntErr');
+  if(!horaInput || !motivoInput || !errDiv) return;
 
-  try{
-    // Obtener geo actual
-    var geo = await window.getGeolocacion();
+  var hora   = horaInput.value;
+  var motivo = (motivoInput.value || '').trim();
+  errDiv.textContent = '';
 
-    // Enviar check-in con hora estimada
-    var res = await n8nFetch('/webhook/kiosk/checkin', {
-      empleado_id:    empleado.id,
-      tipo:           'entrada',
-      timestamp:      checkinEstimado,
-      lat:            (geo && geo.lat != null) ? geo.lat : null,
-      lng:            (geo && geo.lng != null) ? geo.lng : null,
-      geo_autorizada: true,
-      es_estimado:    true,
-      motivo_estimado: motivo
-    });
+  if(!hora){ errDiv.textContent = '⚠️ Indica la hora a la que llegaste.'; return; }
+  if(motivo.length < 10){
+    errDiv.textContent = '⚠️ El motivo debe tener al menos 10 caracteres.'; return;
+  }
 
-    var r = Array.isArray(res) ? res[0] : res;
-    if(r && r.accion_valida === false){
-      mostrarErrorCandado(r.error_msg || 'Error al registrar entrada');
-      return;
+  // Validar rango: no futura, no más de 12 h atrás
+  var horaMs = new Date(hora + ':00').getTime();
+  if(isNaN(horaMs)){ errDiv.textContent = '⚠️ Hora inválida.'; return; }
+  var nowMs  = Date.now();
+  if(horaMs > nowMs + 60000){
+    errDiv.textContent = '⚠️ La hora no puede ser futura.'; return;
+  }
+  if((nowMs - horaMs) > 12 * 3600 * 1000){
+    errDiv.textContent = '⚠️ La hora no puede ser de hace más de 12 horas.'; return;
+  }
+
+  // Guardar para registrarAsistencia
+  K.olvidoEntradaData = {
+    hora_declarada_cst: hora.replace('T', ' ') + ':00',   // "YYYY-MM-DD HH:MM:SS"
+    motivo: motivo
+  };
+
+  // Cerrar modal y arrancar flujo normal de entrada
+  var m = document.getElementById('modalOlvideEntrada');
+  if(m) m.remove();
+  iniciarCheckin('entrada');
+}
+window.continuarOlvidoEntrada = continuarOlvidoEntrada;
+
+// Crea la incidencia paralela. Se llama desde registrarAsistencia() cuando
+// el checkin regresa OK y K.olvidoEntradaData está presente.
+async function crearIncidenciaOlvidoEntrada(payloadCheckin, respuestaCheckin){
+  var data = K.olvidoEntradaData || {};
+  // Extraer attendance_id si el backend lo devolvió
+  var attId = null;
+  try {
+    var r = Array.isArray(respuestaCheckin) ? respuestaCheckin[0] : respuestaCheckin;
+    attId = (r && (r.attendance_id || r.id || (r.data && r.data.attendance_id))) || null;
+  } catch(e){}
+
+  var body = {
+    empleado_id:            payloadCheckin.empleado_id,
+    empleado_nombre:        payloadCheckin.empleado_nombre,
+    attendance_id_creado:   attId,
+    hora_real_checkin_utc:  payloadCheckin.timestamp,
+    hora_declarada_cst:     data.hora_declarada_cst,
+    motivo:                 data.motivo,
+    foto_base64:            payloadCheckin.foto_b64,
+    geolocation: {
+      lat:            payloadCheckin.lat,
+      lng:            payloadCheckin.lng,
+      sitio_detectado: payloadCheckin.geo_sitio
     }
+  };
 
-    // Refrescar estado
-    mostrarEstadoEmpleado(empleado);
-
-  } catch(e){
-    alert('Error al procesar: ' + e.message);
-    mostrarEstadoEmpleado(empleado);
+  try {
+    var res = await n8nFetch('/webhook/incidencias/crear-olvido-entrada', body);
+    return { ok: true, data: res };
+  } catch(e) {
+    console.warn('[olvido-entrada] incidencia falló:', e);
+    return { ok: false, error: e && e.message };
   }
 }
-window.confirmarOlvideEntrada = confirmarOlvideEntrada;
+window.crearIncidenciaOlvidoEntrada = crearIncidenciaOlvidoEntrada;
 
 // Expose
 window.showScreen = showScreen;
