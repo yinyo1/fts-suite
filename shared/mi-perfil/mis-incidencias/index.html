@@ -7,7 +7,7 @@
 <script>
   // Cache busting + BUILD_DATE expuesto a window.
   (function() {
-    const BUILD_DATE = '20260423-mis-incidencias-v1';
+    const BUILD_DATE = '20260423-mis-incidencias-v2';
     window.BUILD_DATE = BUILD_DATE;
   })();
 </script>
@@ -149,6 +149,112 @@
   .mi-empty-msg{font-size:14px;line-height:1.5;max-width:320px;margin:0 auto}
 
   .mi-footer{text-align:center;font-size:11px;color:var(--muted);margin-top:24px}
+
+  /* ─── Modal de detalle (timeline) ─── */
+  .mi-modal{
+    position:fixed;inset:0;z-index:1000;display:none;
+    align-items:flex-start;justify-content:center;
+    padding:0;
+  }
+  .mi-modal.show{display:flex}
+  .mi-modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,0.55)}
+  .mi-modal-content{
+    position:relative;background:#fff;border-radius:0;
+    width:100%;max-width:640px;max-height:100vh;overflow-y:auto;
+    padding:0;box-shadow:0 12px 40px rgba(0,0,0,0.25);
+  }
+  @media (min-width: 600px){
+    .mi-modal{align-items:center;padding:20px}
+    .mi-modal-content{border-radius:14px;max-height:92vh}
+  }
+  .mi-modal-header{
+    position:sticky;top:0;z-index:1;
+    display:flex;justify-content:space-between;align-items:flex-start;
+    padding:14px 16px;background:#fff;border-bottom:1px solid var(--border);
+    gap:8px;
+  }
+  .mi-modal-header-info{flex:1;min-width:0}
+  .mi-modal-header h2{margin:0 0 4px;font-size:17px;font-weight:700}
+  .mi-modal-id{
+    font-family:monospace;font-size:11px;color:var(--muted);
+    word-break:break-all;
+  }
+  .mi-modal-close{
+    background:none;border:none;font-size:26px;line-height:1;cursor:pointer;
+    color:var(--muted2);padding:2px 12px;border-radius:6px;flex-shrink:0;
+  }
+  .mi-modal-close:hover{background:#f5f5f5;color:var(--text)}
+
+  .mi-modal-body{padding:16px}
+  .mi-modal-section{margin-bottom:20px}
+  .mi-modal-section-title{
+    font-size:11px;font-weight:700;color:var(--muted2);
+    text-transform:uppercase;letter-spacing:0.5px;
+    margin-bottom:10px;
+  }
+
+  .mi-info-grid{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13px}
+  .mi-info-grid .lbl{color:var(--muted2)}
+  .mi-info-grid .val{font-weight:600}
+
+  /* ─── Timeline ─── */
+  .mi-timeline{position:relative;padding-left:32px}
+  /* Línea vertical que conecta los pasos */
+  .mi-timeline::before{
+    content:'';position:absolute;left:13px;top:6px;bottom:6px;
+    width:2px;background:#d5d5d5;
+  }
+  .mi-tl-step{position:relative;margin-bottom:16px}
+  .mi-tl-step:last-child{margin-bottom:0}
+  /* Punto del timeline (sobre la línea) */
+  .mi-tl-step::before{
+    content:'';position:absolute;left:-25px;top:14px;
+    width:14px;height:14px;border-radius:50%;
+    background:#fff;border:3px solid var(--muted);
+    box-shadow:0 0 0 3px #fff;
+  }
+  .mi-tl-step.tl-empleado::before{   border-color:var(--blue) }
+  .mi-tl-step.tl-supervisor::before{ border-color:var(--orange) }
+  .mi-tl-step.tl-rh::before{         border-color:#7c3aed }
+  .mi-tl-step.tl-direccion::before{  border-color:#0d6b0d }
+
+  .mi-tl-card{
+    background:#fff;border:1px solid var(--border);border-radius:10px;
+    padding:12px 14px;border-left:4px solid var(--muted);
+  }
+  .mi-tl-step.tl-empleado   .mi-tl-card{border-left-color:var(--blue)}
+  .mi-tl-step.tl-supervisor .mi-tl-card{border-left-color:var(--orange)}
+  .mi-tl-step.tl-rh         .mi-tl-card{border-left-color:#7c3aed}
+  .mi-tl-step.tl-direccion  .mi-tl-card{border-left-color:#0d6b0d}
+
+  .mi-tl-head{
+    display:flex;justify-content:space-between;align-items:flex-start;
+    gap:8px;margin-bottom:8px;flex-wrap:wrap;
+  }
+  .mi-tl-paso{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase}
+  .mi-tl-actor{font-size:14px;font-weight:700;color:var(--text);margin-top:2px}
+  .mi-tl-ts{font-size:11px;color:var(--muted2);white-space:nowrap}
+
+  .mi-tl-row{font-size:13px;color:var(--text);margin:4px 0}
+  .mi-tl-row .lbl{color:var(--muted2);margin-right:4px}
+  .mi-tl-coment{
+    background:#fafafa;border-radius:8px;padding:8px 12px;
+    font-size:13px;color:var(--muted2);font-style:italic;
+    line-height:1.5;margin-top:8px;
+  }
+  .mi-tl-coment::before{content:'💬 '}
+
+  .mi-final-block{
+    background:#e6f5e6;border:1px solid #b3d9b3;border-radius:10px;
+    padding:14px;margin-top:8px;
+  }
+  .mi-final-title{
+    font-size:11px;font-weight:700;color:var(--green);
+    text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;
+  }
+  .mi-final-row{font-size:13px;color:var(--text);margin:4px 0}
+  .mi-final-row .lbl{color:var(--muted2);margin-right:6px}
+  .mi-final-row .val{font-weight:700}
 </style>
 </head>
 <body>
@@ -157,7 +263,7 @@
   <a class="mi-back" href="../index.html">← Mi Perfil</a>
   <div class="mi-title-wrap">
     <span class="mi-title">📋 Mis Incidencias</span>
-    <span class="mi-build">build 20260423-mis-incidencias-v1</span>
+    <span class="mi-build">build 20260423-mis-incidencias-v2</span>
   </div>
   <div class="mi-user">
     <span class="mi-user-name" id="mi-user-name">—</span>
@@ -205,6 +311,23 @@
   <div class="mi-footer" id="mi-footer">FTS Industrial Suite</div>
 
 </main>
+
+<!-- ─── Modal de detalle (timeline) ─── -->
+<div class="mi-modal" id="mi-modal" role="dialog" aria-modal="true" aria-labelledby="mi-modal-title">
+  <div class="mi-modal-backdrop" onclick="cerrarDetalle()"></div>
+  <div class="mi-modal-content">
+    <div class="mi-modal-header">
+      <div class="mi-modal-header-info">
+        <h2 id="mi-modal-title">📋 Detalle de incidencia</h2>
+        <div class="mi-modal-id" id="mi-modal-id">—</div>
+      </div>
+      <button class="mi-modal-close" onclick="cerrarDetalle()" aria-label="Cerrar">×</button>
+    </div>
+    <div class="mi-modal-body" id="mi-modal-body">
+      <!-- contenido inyectado por verDetalle() -->
+    </div>
+  </div>
+</div>
 
 <script>
 'use strict';
@@ -423,12 +546,139 @@ function renderIncidencias(list){
   }).join('');
 }
 
+// ═══════════════════════════════════════════════
+// DETALLE — modal con timeline visual
+// ═══════════════════════════════════════════════
+const ROL_META = {
+  empleado:   { icon: '👤', label: 'empleado',   cls: 'tl-empleado'   },
+  supervisor: { icon: '👔', label: 'supervisor', cls: 'tl-supervisor' },
+  rh:         { icon: '💼', label: 'RH',         cls: 'tl-rh'         },
+  direccion:  { icon: '🎯', label: 'Dirección',  cls: 'tl-direccion'  }
+};
+
+const ACCION_META = {
+  solicitud:           'Solicitud',
+  aprobado_tal_cual:   'Aprobado tal cual',
+  aprobado_con_ajuste: 'Aprobado con ajuste',
+  ajustado:            'Ajustado',
+  rechazado:           'Rechazado',
+  aprobado_final:      'Aprobado final',
+  escalado:            'Escalado a siguiente nivel'
+};
+
+const TIPO_META = {
+  olvido_entrada: 'Olvido de entrada',
+  olvido_salida:  'Olvido de salida'
+};
+
+function rolMeta(rol){
+  return ROL_META[String(rol || '').toLowerCase()] || { icon: '❓', label: String(rol || '—'), cls: '' };
+}
+function accionLabel(a){ return ACCION_META[String(a || '')] || String(a || '—'); }
+function tipoLabel(t){   return TIPO_META[String(t || '')]   || String(t || '—'); }
+
+function renderTimelineStep(p, idx){
+  const meta = rolMeta(p.rol);
+  const ts = p.timestamp ? utcToCstDisplay(p.timestamp) : '—';
+  const horaProp = p.hora_propuesta_cst ? cstStringDisplay(p.hora_propuesta_cst) : null;
+  const accion = p.accion ? accionLabel(p.accion) : null;
+  const coment = p.comentario ? '<div class="mi-tl-coment">' + esc(p.comentario) + '</div>' : '';
+  const horaRow = horaProp
+    ? '<div class="mi-tl-row"><span class="lbl">Hora propuesta:</span><strong>' + esc(horaProp) + '</strong></div>'
+    : '';
+  const accionRow = accion
+    ? '<div class="mi-tl-row"><span class="lbl">Acción:</span>' + esc(accion) + '</div>'
+    : '';
+  const actor = (p.usuario || meta.label);
+
+  return (
+    '<div class="mi-tl-step ' + meta.cls + '">' +
+      '<div class="mi-tl-card">' +
+        '<div class="mi-tl-head">' +
+          '<div>' +
+            '<div class="mi-tl-paso">Paso ' + (p.paso || (idx + 1)) + '</div>' +
+            '<div class="mi-tl-actor">' + meta.icon + ' ' + esc(actor) + ' (' + esc(meta.label) + ')</div>' +
+          '</div>' +
+          '<div class="mi-tl-ts">' + esc(ts) + '</div>' +
+        '</div>' +
+        horaRow + accionRow + coment +
+      '</div>' +
+    '</div>'
+  );
+}
+
 function verDetalle(idInterno){
   const inc = _allIncidencias.find(function(i){ return i.id_interno === idInterno; });
   if (!inc){ alert('Incidencia no encontrada en el state actual.'); return; }
-  alert('DETALLE (WIP - será UI en B.3)\n\n' + JSON.stringify(inc, null, 2));
+
+  $('mi-modal-id').textContent = inc.id_interno || '—';
+
+  // Sección info básica
+  const infoHtml =
+    '<div class="mi-info-grid">' +
+      '<div class="lbl">Fecha creación</div><div class="val">' + esc(utcToCstDisplay(inc.fecha_creacion)) + '</div>' +
+      '<div class="lbl">Tipo</div>          <div class="val">' + esc(tipoLabel(inc.tipo)) + '</div>' +
+      '<div class="lbl">Status actual</div> <div>' + statusBadge(inc.status) + '</div>' +
+      (inc.attendance_id
+        ? '<div class="lbl">Attendance ID</div><div class="val">' + esc(inc.attendance_id) + '</div>'
+        : '') +
+    '</div>';
+
+  // Timeline
+  const props = Array.isArray(inc.propuestas) ? inc.propuestas.slice() : [];
+  // Ordenar por paso ascendente (más antiguo arriba)
+  props.sort(function(a, b){ return (a.paso || 0) - (b.paso || 0); });
+  const timelineHtml = props.length
+    ? '<div class="mi-timeline">' + props.map(renderTimelineStep).join('') + '</div>'
+    : '<div style="color:var(--muted);font-style:italic;font-size:13px">Sin pasos registrados.</div>';
+
+  // Bloque resultado final
+  let finalHtml = '';
+  if (inc.hora_final_aplicada_utc){
+    const aplicadoEn = inc.fecha_aplicacion_utc || inc.fecha_resolucion_utc || null;
+    finalHtml =
+      '<div class="mi-final-block">' +
+        '<div class="mi-final-title">✅ Resultado final</div>' +
+        '<div class="mi-final-row"><span class="lbl">Hora aplicada en el sistema:</span><span class="val">' +
+          esc(utcToCstDisplay(inc.hora_final_aplicada_utc)) + ' CST</span></div>' +
+        (aplicadoEn
+          ? '<div class="mi-final-row"><span class="lbl">Aplicado:</span>' + esc(utcToCstDisplay(aplicadoEn)) + '</div>'
+          : '') +
+        (inc.aplicado_en_odoo
+          ? '<div class="mi-final-row"><span class="lbl">Estado Odoo:</span><span class="val">✓ Aplicado</span></div>'
+          : '<div class="mi-final-row"><span class="lbl">Estado Odoo:</span>Pendiente de aplicar</div>') +
+      '</div>';
+  }
+
+  $('mi-modal-body').innerHTML =
+    '<div class="mi-modal-section">' +
+      '<div class="mi-modal-section-title">Información básica</div>' +
+      infoHtml +
+    '</div>' +
+    '<div class="mi-modal-section">' +
+      '<div class="mi-modal-section-title">Historial de propuestas</div>' +
+      timelineHtml +
+    '</div>' +
+    finalHtml;
+
+  $('mi-modal').classList.add('show');
+  document.body.style.overflow = 'hidden';
 }
 window.verDetalle = verDetalle;
+
+function cerrarDetalle(){
+  $('mi-modal').classList.remove('show');
+  document.body.style.overflow = '';
+}
+window.cerrarDetalle = cerrarDetalle;
+
+// Cerrar con Escape
+document.addEventListener('keydown', function(ev){
+  if (ev.key === 'Escape'){
+    const m = document.getElementById('mi-modal');
+    if (m && m.classList.contains('show')) cerrarDetalle();
+  }
+});
 
 // ═══════════════════════════════════════════════
 // FLUJO DE BÚSQUEDA
