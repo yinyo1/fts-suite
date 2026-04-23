@@ -281,6 +281,23 @@
   .ea-auth-box h2{ font-size:17px; margin: 0 0 6px; }
   .ea-auth-box p{ font-size:13px; color: var(--muted2); margin: 0 0 18px; }
 </style>
+<script>
+  // Cache busting: si el archivo se carga sin query string, agregarle
+  // la fecha de última modificación para forzar recarga cuando cambie.
+  // Evita que users queden atorados con versiones viejas en browsers agresivos.
+  (function() {
+    const BUILD_DATE = '20260423-tz-fix';  // ← Claude Code: actualizar esto en cada commit
+    if (!window.location.search.includes('v=')) {
+      const scripts = document.querySelectorAll('script[src]');
+      scripts.forEach(function(s) {
+        if (s.src.includes('config-sync.js') || s.src.includes('auth-suite.js')) {
+          const sep = s.src.includes('?') ? '&' : '?';
+          s.src = s.src + sep + 'v=' + BUILD_DATE;
+        }
+      });
+    }
+  })();
+</script>
 </head>
 <body>
 
@@ -289,7 +306,11 @@
   <div style="display:flex; align-items:center; gap:16px;">
     <a class="ea-back" href="config-master.html">← Volver a Config Master</a>
     <span style="color:var(--muted); font-size:18px;">·</span>
-    <span class="ea-topbar-title">🕐 Editor de Asistencias</span>
+    <span class="ea-topbar-title">🕐 Editor de Asistencias
+      <span style="font-size:10px; color:var(--muted); font-weight:400;">
+        build 20260423-tz-fix
+      </span>
+    </span>
   </div>
   <div class="ea-user-info">
     <span id="ea_user_label">—</span>
@@ -471,6 +492,19 @@ const BASE_URL = 'https://primary-production-5c3c.up.railway.app/webhook/';
 const USE_MOCK = false;  // cambiar a false cuando el workflow n8n esté activo
 const CST_OFFSET_HOURS = -6;
 
+// FTS timezone: Monterrey = UTC-6 siempre (no DST). Funciona en cualquier
+// browser del mundo porque usamos offset fijo, no IANA timezone name.
+const FTS_TZ_OFFSET = '-06:00';
+const FTS_IANA_TZ   = 'America/Monterrey';
+
+// Helper central: convierte "YYYY-MM-DDTHH:MM" (input datetime-local CST)
+// a timestamp UTC milliseconds, forzando interpretación como Monterrey.
+function cstInputToUtcMs(cstInput) {
+  if (!cstInput) return null;
+  const d = new Date(cstInput + ':00' + FTS_TZ_OFFSET);
+  return isNaN(d.getTime()) ? null : d.getTime();
+}
+
 const MOCK_ATTENDANCES = [
   { id: 12474, employee_id: 119, employee_name: 'Carlos Eduardo Manzanares', check_in: '2026-04-22 12:35:00', check_out: '2026-04-23 01:30:00', worked_hours: 12.91, is_open: false },
   { id: 12479, employee_id: 120, employee_name: 'Mario Armando Ruiz Ramirez', check_in: '2026-04-22 12:55:00', check_out: '2026-04-23 01:30:00', worked_hours: 12.57, is_open: false },
@@ -536,39 +570,61 @@ function cstInputToUtc(cstInput) {
 // correctamente independientemente del timezone del browser. Si falla,
 // loguea en rojo para que Esteban note el problema antes de editar.
 (function timezoneSelfTest() {
+  const browserTz = (function(){
+    try { return Intl.DateTimeFormat().resolvedOptions().timeZone; }
+    catch(e) { return 'unknown'; }
+  })();
+
+  console.log('[TZ-TEST] Browser timezone detectado:', browserTz);
+  console.log('[TZ-TEST] FTS opera SIEMPRE en Monterrey (UTC-6, sin DST)');
+
+  // Formato: [descripción, función, expectedOutput]
   const tests = [
-    { name: 'CST 6 PM → UTC medianoche día siguiente',
-      cstInput: '2026-04-20T18:00', expectedUtc: '2026-04-21 00:00:00' },
-    { name: 'UTC medianoche → CST 6 PM día anterior',
-      utc: '2026-04-21 00:00:00', expectedCstInput: '2026-04-20T18:00' },
-    { name: 'CST 6 AM → UTC mediodía mismo día',
-      cstInput: '2026-04-22T06:00', expectedUtc: '2026-04-22 12:00:00' }
+    ['cstInputToUtc: 6 PM CST del 20 abril',
+      function(){ return cstInputToUtc('2026-04-20T18:00'); },
+      '2026-04-21 00:00:00'],
+    ['cstInputToUtc: 5 PM CST del 20 abril',
+      function(){ return cstInputToUtc('2026-04-20T17:00'); },
+      '2026-04-20 23:00:00'],
+    ['cstInputToUtc: 6 AM CST del 22 abril',
+      function(){ return cstInputToUtc('2026-04-22T06:00'); },
+      '2026-04-22 12:00:00'],
+    ['cstInputToUtc: medianoche CST del 1 ene',
+      function(){ return cstInputToUtc('2026-01-01T00:00'); },
+      '2026-01-01 06:00:00'],
+    ['utcToCstInput: 00:00 UTC del 21 abril → 18:00 CST del 20',
+      function(){ return utcToCstInput('2026-04-21 00:00:00'); },
+      '2026-04-20T18:00'],
+    ['utcToCstInput: 23:00 UTC del 20 abril → 17:00 CST del 20',
+      function(){ return utcToCstInput('2026-04-20 23:00:00'); },
+      '2026-04-20T17:00'],
+    ['cstInputToUtcMs: 5 PM CST → timestamp',
+      function(){ return cstInputToUtcMs('2026-04-20T17:00'); },
+      new Date('2026-04-20T23:00:00Z').getTime()]
   ];
-  let allPassed = true;
+
+  let passed = 0, failed = 0;
+  const failures = [];
   tests.forEach(function(t){
-    if (t.cstInput && t.expectedUtc) {
-      const got = cstInputToUtc(t.cstInput);
-      if (got !== t.expectedUtc) {
-        console.error('[TZ-TEST FAIL] ' + t.name + ': expected ' + t.expectedUtc + ', got ' + got);
-        allPassed = false;
-      }
-    }
-    if (t.utc && t.expectedCstInput) {
-      const got = utcToCstInput(t.utc);
-      if (got !== t.expectedCstInput) {
-        console.error('[TZ-TEST FAIL] ' + t.name + ': expected ' + t.expectedCstInput + ', got ' + got);
-        allPassed = false;
-      }
-    }
+    const desc = t[0], fn = t[1], expected = t[2];
+    const got  = fn();
+    const ok   = (got === expected);
+    if (ok) { passed++; }
+    else    { failed++; failures.push({ desc: desc, expected: expected, got: got }); }
   });
-  if (allPassed) {
-    console.log('[TZ-TEST] ✅ Todos los helpers de zona horaria funcionan correctamente');
+
+  if (failed === 0) {
+    console.log('[TZ-TEST] ✅ ' + passed + '/' + tests.length +
+      ' PASS — helpers funcionan desde cualquier timezone');
   } else {
-    console.error('[TZ-TEST] 🚨 BUG DE ZONA HORARIA — revisar helpers antes de editar attendances');
+    console.error('[TZ-TEST] 🚨 ' + failed + '/' + tests.length +
+      ' FAIL — el editor NO debe usarse hasta arreglar:');
+    failures.forEach(function(f){
+      console.error('[TZ-TEST FAIL]', f.desc);
+      console.error('   esperado:', f.expected);
+      console.error('   obtenido:', f.got);
+    });
   }
-  try {
-    console.log('[TZ-TEST] browser timezone =', Intl.DateTimeFormat().resolvedOptions().timeZone);
-  } catch(e) {}
 })();
 
 // ═══════════════════════════════════════════════
@@ -1282,8 +1338,10 @@ function calculateHoursLive() {
   }
 
   // Parsear CST a Date local
-  const ciMs = new Date(ciCst + ':00').getTime();
-  const coMs = coCst ? new Date(coCst + ':00').getTime() : null;
+  // FTS opera en Monterrey (CST = UTC-6, sin DST). Forzar offset para ser
+  // TZ-independiente del browser del usuario.
+  const ciMs = cstInputToUtcMs(ciCst);
+  const coMs = coCst ? cstInputToUtcMs(coCst) : null;
   const nowMs = Date.now();
 
   // 1) check_in > ahora → mensaje inline (no bloquea render)
@@ -1339,8 +1397,8 @@ async function saveEdit() {
     statusEl.style.color = 'var(--red)';
     return;
   }
-  const ciMs = new Date(ciCst + ':00').getTime();
-  if (isNaN(ciMs)) {
+  const ciMs = cstInputToUtcMs(ciCst);
+  if (ciMs == null || isNaN(ciMs)) {
     statusEl.textContent = '❌ Check-in inválido.';
     statusEl.style.color = 'var(--red)';
     return;
@@ -1353,8 +1411,8 @@ async function saveEdit() {
 
   let coMs = null;
   if (coCst) {
-    coMs = new Date(coCst + ':00').getTime();
-    if (isNaN(coMs)) {
+    coMs = cstInputToUtcMs(coCst);
+    if (coMs == null || isNaN(coMs)) {
       statusEl.textContent = '❌ Check-out inválido.';
       statusEl.style.color = 'var(--red)';
       return;
