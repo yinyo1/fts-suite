@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "timestamp": "2026-04-23T16:25:22.408Z",
+      "user": "ftsmaster",
+      "action": "edit_attendance",
+      "attendance_id": 12474,
+      "employee_name": "Carlos Eduardo Manzanares",
+      "changes": {
+        "check_in": {
+          "from": "2026-04-22 12:35:14",
+          "to": "2026-04-22 12:35:00"
+        }
+      },
+      "result": "success",
+      "error_message": null
+    }
+  ]
+}
