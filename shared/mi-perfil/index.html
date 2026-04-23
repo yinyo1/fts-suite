@@ -7,7 +7,7 @@
 <script>
   // Cache busting + BUILD_DATE expuesto a window.
   (function() {
-    const BUILD_DATE = '20260423-mi-perfil-hub-v2';
+    const BUILD_DATE = '20260423-mi-perfil-hub-v3';
     window.BUILD_DATE = BUILD_DATE;
     if (!window.location.search.includes('v=')) {
       document.addEventListener('DOMContentLoaded', function() {
@@ -206,11 +206,8 @@
 
 <div class="mp-topbar">
   <div class="mp-topbar-left">
-    <a class="mp-back-suite" id="mp-back-suite" href="../../index.html" title="Volver al menú principal de la Suite" style="display:none">← Volver a Suite</a>
-    <div class="mp-logo">
-      <div class="mp-logo-dot">F</div>
-      <span>Mi Perfil<span class="mp-build">build 20260423-mi-perfil-hub-v2</span></span>
-    </div>
+    <a class="mp-back-suite" id="mp-nav-btn" href="../../index.html">← Volver a Suite</a>
+    <span class="mp-build">build 20260423-mi-perfil-hub-v3</span>
   </div>
   <div id="mp-topbar-right">
     <span class="mp-user-info" id="mp-user-label" style="display:none"></span>
@@ -264,7 +261,6 @@
           <button class="mp-pin-btn del" onclick="mp_pin_back()">←</button>
         </div>
         <div id="mp-pin-status" style="font-size:12px;color:var(--red);min-height:16px;text-align:center;margin:8px 0;font-weight:600"></div>
-        <button class="mp-btn mp-btn-secondary" onclick="mp_back_to_search()">← Cambiar de usuario</button>
       </div>
 
       <!-- Paso 3: Selfie (obligatoria) -->
@@ -276,9 +272,6 @@
         </div>
         <button class="mp-btn mp-btn-primary" id="mp-selfie-btn" onclick="mp_selfie_verify()">
           Tomar selfie y entrar
-        </button>
-        <button class="mp-btn mp-btn-secondary" onclick="mp_back_to_pin()">
-          ← Volver al PIN
         </button>
         <div id="mp-selfie-err" class="mp-error" style="display:none"></div>
       </div>
@@ -351,6 +344,7 @@ const EMPLEADOS_ENDPOINT = N8N_BASE + '/webhook/kiosk/empleados';
 const FACE_MODELS_URL    = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights';
 const FACE_THRESHOLD     = 0.5;
 const SESSION_KEY        = 'fts_mi_perfil_session';
+const SESSION_MAX_AGE    = 15 * 60 * 1000;   // 15 minutos
 
 let _empleados = [];
 let _selectedEmp = null;
@@ -395,7 +389,17 @@ function mp_get_session(){
   try {
     const raw = sessionStorage.getItem(SESSION_KEY);
     if (!raw) return null;
-    return JSON.parse(raw);
+    const session = JSON.parse(raw);
+    if (!session || !session.empleado_id) return null;
+
+    // Validar edad (TTL 15 min)
+    const age = Date.now() - (session.ts || session.loginTime || 0);
+    if (age > SESSION_MAX_AGE){
+      console.log('[mi-perfil] sesión expirada (' + Math.round(age / 60000) + ' min)');
+      try { sessionStorage.removeItem(SESSION_KEY); } catch(e){}
+      return null;
+    }
+    return session;
   } catch(e) { return null; }
 }
 function mp_save_session(emp){
@@ -416,6 +420,40 @@ function mp_logout(){
 }
 window.mp_logout = mp_logout;
 
+// Limpia la sesión y sale al launcher de la suite. Usado por el botón
+// "← Volver a Suite" (tanto en search como en dashboard) para que no
+// quede sesión viva al salir del módulo — defensa contra préstamo de
+// celular ya logueado.
+function mp_logout_go_suite(){
+  try { sessionStorage.removeItem(SESSION_KEY); } catch(e){}
+  if (_camStream) { _camStream.getTracks().forEach(function(t){ t.stop(); }); _camStream = null; }
+  window.location.href = '../../index.html';
+}
+window.mp_logout_go_suite = mp_logout_go_suite;
+
+// Actualiza el botón de navegación único del topbar según la vista actual.
+// Vistas: 'search' | 'pin' | 'selfie' | 'dashboard'
+function mp_update_nav_button(view){
+  const btn = document.getElementById('mp-nav-btn');
+  if (!btn) return;
+
+  if (view === 'search' || view === 'dashboard'){
+    btn.textContent = '← Volver a Suite';
+    btn.href = '../../index.html';
+    btn.onclick = function(ev){ ev.preventDefault(); mp_logout_go_suite(); };
+  } else if (view === 'pin'){
+    btn.textContent = '← Cambiar empleado';
+    btn.href = '#';
+    btn.onclick = function(ev){ ev.preventDefault(); mp_back_to_search(); };
+  } else if (view === 'selfie'){
+    btn.textContent = '← Volver al PIN';
+    btn.href = '#';
+    btn.onclick = function(ev){ ev.preventDefault(); mp_back_to_pin(); };
+  }
+  btn.style.display = 'inline-flex';
+}
+window.mp_update_nav_button = mp_update_nav_button;
+
 // ═══════════════════════════════════════════════
 // VIEW SWITCHING
 // ═══════════════════════════════════════════════
@@ -424,8 +462,8 @@ function mp_show_login(){
   $('mp-dashboard').classList.remove('active');
   $('mp-user-label').style.display = 'none';
   $('mp-logout-btn').style.display = 'none';
-  $('mp-back-suite').style.display = 'none';   // oculto durante login (pre-auth)
   mp_step('mp-step-search');
+  mp_update_nav_button('search');
   mp_load_empleados();
 }
 
@@ -436,8 +474,8 @@ function mp_show_dashboard(session){
   $('mp-user-label').textContent = '👤 ' + (session.empleado_nombre || '—');
   $('mp-user-label').style.display = 'inline';
   $('mp-logout-btn').style.display = 'inline';
-  $('mp-back-suite').style.display = 'inline-flex';   // solo visible en dashboard
   $('mp-session-ts').textContent = new Date(session.loginTime).toLocaleString('es-MX');
+  mp_update_nav_button('dashboard');
 }
 
 function mp_step(id){
@@ -505,6 +543,7 @@ function mp_select_empleado(id){
   $('mp-pin-nombre').textContent = emp.name || emp.nombre || '';
   $('mp-pin-status').textContent = '';
   mp_step('mp-step-pin');
+  mp_update_nav_button('pin');
 }
 window.mp_select_empleado = mp_select_empleado;
 
@@ -512,6 +551,7 @@ function mp_back_to_search(){
   _selectedEmp = null;
   _pin = '';
   mp_step('mp-step-search');
+  mp_update_nav_button('search');
 }
 window.mp_back_to_search = mp_back_to_search;
 
@@ -554,6 +594,7 @@ function mp_pin_validate(){
   // PIN OK → al selfie
   $('mp-pin-status').textContent = '';
   mp_step('mp-step-selfie');
+  mp_update_nav_button('selfie');
   mp_start_camera();
 }
 
@@ -660,6 +701,7 @@ function mp_back_to_pin(){
   mp_pin_update();
   $('mp-pin-status').textContent = '';
   mp_step('mp-step-pin');
+  mp_update_nav_button('pin');
 }
 window.mp_back_to_pin = mp_back_to_pin;
 

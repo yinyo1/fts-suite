@@ -7,7 +7,7 @@
 <script>
   // Cache busting + BUILD_DATE expuesto a window.
   (function() {
-    const BUILD_DATE = '20260423-mis-incidencias-v2';
+    const BUILD_DATE = '20260423-mis-incidencias-v3';
     window.BUILD_DATE = BUILD_DATE;
   })();
 </script>
@@ -263,7 +263,7 @@
   <a class="mi-back" href="../index.html">← Mi Perfil</a>
   <div class="mi-title-wrap">
     <span class="mi-title">📋 Mis Incidencias</span>
-    <span class="mi-build">build 20260423-mis-incidencias-v2</span>
+    <span class="mi-build">build 20260423-mis-incidencias-v3</span>
   </div>
   <div class="mi-user">
     <span class="mi-user-name" id="mi-user-name">—</span>
@@ -336,7 +336,7 @@
 // CONFIG
 // ═══════════════════════════════════════════════
 const SESSION_KEY     = 'fts_mi_perfil_session';
-const SESSION_MAX_AGE = 4 * 60 * 60 * 1000;  // 4 horas
+const SESSION_MAX_AGE = 15 * 60 * 1000;  // 15 minutos — alineado con hub
 const RAW_INCIDENCIAS = 'https://raw.githubusercontent.com/yinyo1/fts-suite/main/shared/incidencias-asistencia.json';
 
 let _session = null;
