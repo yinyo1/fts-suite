@@ -192,6 +192,19 @@
       },
       "result": "success",
       "error_message": null
+    },
+    {
+      "timestamp": "2026-04-23T22:06:18.351Z",
+      "user": "ftsmaster",
+      "action": "delete_attendance",
+      "attendance_id": 12550,
+      "employee_name": "Jesus Esteban De La Cruz Calderon",
+      "changes": {
+        "deleted_check_in": "2026-04-23 22:01:46",
+        "deleted_check_out": null
+      },
+      "result": "success",
+      "error_message": null
     }
   ]
 }
