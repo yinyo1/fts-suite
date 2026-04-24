@@ -465,6 +465,25 @@
       },
       "result": "success",
       "error_message": null
+    },
+    {
+      "timestamp": "2026-04-24T16:49:01.644Z",
+      "user": "ftsmaster",
+      "action": "edit_attendance",
+      "attendance_id": 12429,
+      "employee_name": "Enoc Natanael Maldonado soto",
+      "changes": {
+        "check_in": {
+          "from": "2026-04-21 12:57:13",
+          "to": "2026-04-21 12:57:00"
+        },
+        "check_out": {
+          "from": "2026-04-21 23:00:00",
+          "to": "2026-04-22 02:30:00"
+        }
+      },
+      "result": "success",
+      "error_message": null
     }
   ]
 }
