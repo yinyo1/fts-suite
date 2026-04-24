@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Visor de Incidencias — RH — FTS</title>
+<script>
+  (function(){
+    const BUILD_DATE = '20260424-rh-incidencias-v1';
+    window.BUILD_DATE = BUILD_DATE;
+  })();
+</script>
+<script src="../../shared/auth-suite.js"></script>
+<style>
+  :root{
+    --green:#107C10; --green2:#0d6b0d; --red:#D13438; --blue:#0078D4; --orange:#D83B01;
+    --text:#1a1a1a; --muted:#999; --muted2:#666; --bg:#fafafa; --card:#fff; --border:#e0e0e0;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:16px;color:var(--text);background:var(--bg)}
+  a{color:inherit}
+
+  .vi-topbar{
+    position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);
+    display:flex;align-items:center;justify-content:space-between;padding:10px 14px;gap:8px;
+  }
+  .vi-back{display:inline-flex;align-items:center;gap:4px;color:var(--muted2);text-decoration:none;font-size:13px;font-weight:600;padding:6px 10px;border-radius:7px;border:1px solid var(--border);background:#fff;white-space:nowrap}
+  .vi-back:hover{color:var(--green);border-color:var(--green);background:#f0f9f0}
+  .vi-title-wrap{display:flex;align-items:center;gap:6px;min-width:0;flex:1;justify-content:center}
+  .vi-title{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .vi-build{font-size:10px;color:var(--muted);font-weight:400}
+  .vi-user{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+  .vi-user-name{font-size:12px;color:var(--muted2);max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .vi-logout{background:none;border:none;color:var(--blue);font-size:12px;cursor:pointer;padding:2px 6px;border-radius:4px;font-family:inherit}
+
+  .vi-main{max-width:900px;margin:0 auto;padding:16px;padding-bottom:40px}
+  .vi-sub{font-size:13px;color:var(--muted2);margin:8px 0 16px}
+
+  .vi-filters{
+    background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.03);
+  }
+  .vi-filters-title{font-size:12px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:12px}
+  .vi-filters-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+  .vi-field label{display:block;font-size:11px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:5px}
+  .vi-input,.vi-select{width:100%;padding:10px 12px;border:1px solid #ccc;border-radius:8px;font-size:15px;font-family:inherit;background:#fff;outline:none;box-sizing:border-box}
+  .vi-input:focus,.vi-select:focus{border-color:var(--green)}
+  .vi-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .vi-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 14px;border-radius:9px;border:1px solid transparent;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;min-height:42px}
+  .vi-btn-primary{background:var(--green);color:#fff;flex:1}
+  .vi-btn-primary:active{background:var(--green2)}
+  .vi-btn-secondary{background:#fff;color:var(--text);border-color:#d5d5d5}
+
+  .vi-status{font-size:12px;color:var(--muted2);margin:6px 0 12px;min-height:14px}
+
+  .vi-lista{display:flex;flex-direction:column;gap:12px}
+  .vi-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.03)}
+  .vi-card-header{margin-bottom:8px}
+  .vi-card-empleado{font-size:15px;margin-bottom:4px;display:flex;align-items:center;flex-wrap:wrap;gap:4px}
+  .vi-card-empleado strong{color:var(--text)}
+  .vi-card-id{color:var(--muted);font-size:12px;font-weight:400}
+  .vi-card-tipo{font-size:13px;color:var(--muted2);font-style:italic;margin-bottom:8px}
+  .vi-card-row{font-size:13px;color:var(--text);margin:3px 0;display:flex;gap:6px;flex-wrap:wrap;align-items:baseline}
+  .vi-label{color:var(--muted2);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;min-width:110px}
+  .vi-card-motivo{
+    background:#fafafa;border-left:3px solid var(--blue);
+    padding:8px 12px;margin-top:10px;font-size:13px;color:var(--muted2);
+    line-height:1.5;border-radius:0 6px 6px 0;
+  }
+  .vi-btn-detalle{
+    margin-top:12px;background:none;border:1px solid var(--blue);color:var(--blue);
+    padding:7px 14px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;
+  }
+  .vi-btn-detalle:hover{background:#eef6ff}
+
+  .vi-empty{
+    background:var(--card);border:1px dashed var(--border);border-radius:12px;
+    padding:40px 20px;text-align:center;color:var(--muted2);font-size:14px;line-height:1.5;
+  }
+
+  @media (max-width: 600px){
+    .vi-filters-grid{grid-template-columns:1fr}
+    .vi-card-row{flex-direction:column;gap:0}
+    .vi-label{min-width:0}
+  }
+</style>
+</head>
+<body>
+
+<div class="vi-topbar">
+  <a class="vi-back" href="index.html">← Dashboard RH</a>
+  <div class="vi-title-wrap">
+    <span class="vi-title">📋 Visor de Incidencias</span>
+    <span class="vi-build">build 20260424-rh-incidencias-v1</span>
+  </div>
+  <div class="vi-user">
+    <span class="vi-user-name" id="vi-user-nombre">—</span>
+    <button class="vi-logout" onclick="rh_logout()">Cerrar sesión</button>
+  </div>
+</div>
+
+<main class="vi-main">
+
+  <p class="vi-sub">Consulta el estado de incidencias reportadas por empleados. Solo lectura.</p>
+
+  <div class="vi-filters">
+    <div class="vi-filters-title">Filtros</div>
+    <div class="vi-filters-grid">
+      <div class="vi-field" style="grid-column:1 / -1">
+        <label for="vi-filtro-status">Estado</label>
+        <select id="vi-filtro-status" class="vi-select">
+          <option value="todas">Todas</option>
+          <option value="pendiente_supervisor">🟡 Pendiente Supervisor</option>
+          <option value="pendiente_rh">🟡 Pendiente RH</option>
+          <option value="pendiente_direccion">🟡 Pendiente Dirección</option>
+          <option value="aprobada">🟢 Aprobada</option>
+          <option value="rechazada">🔴 Rechazada</option>
+          <option value="expirada_por_timeout">⚫ Expirada</option>
+        </select>
+      </div>
+      <div class="vi-field">
+        <label for="vi-filtro-desde">Desde (opcional)</label>
+        <input type="date" id="vi-filtro-desde" class="vi-input">
+      </div>
+      <div class="vi-field">
+        <label for="vi-filtro-hasta">Hasta (opcional)</label>
+        <input type="date" id="vi-filtro-hasta" class="vi-input">
+      </div>
+    </div>
+    <div class="vi-actions">
+      <button class="vi-btn vi-btn-secondary" onclick="rh_semana_fts()">⚡ Esta semana FTS</button>
+      <button class="vi-btn vi-btn-primary" onclick="aplicarFiltros()">🔍 Buscar</button>
+    </div>
+  </div>
+
+  <div class="vi-status" id="vi-status"></div>
+
+  <div class="vi-lista" id="vi-lista"></div>
+
+</main>
+
+<script>
+'use strict';
+
+const RAW_URL = 'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/incidencias-asistencia.json?ref=main';
+
+let _incidencias = [];
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+// ═══════════════════════════════════════════════
+// AUTH GATE
+// ═══════════════════════════════════════════════
+function rh_check_auth(){
+  const s = (window.FTSAuth && FTSAuth.getSession && FTSAuth.getSession()) || null;
+  if (!s){
+    alert('Sesión no válida. Redirigiendo al launcher.');
+    window.location.href = '../../index.html';
+    return null;
+  }
+  const tieneRH = s.role === 'master'
+    || s.modulos === 'all'
+    || (s.modulos && s.modulos.rh && s.modulos.rh.acceso === true);
+  if (!tieneRH){
+    alert('No tienes acceso al módulo RH.');
+    window.location.href = '../../index.html';
+    return null;
+  }
+  return s;
+}
+
+function rh_logout(){
+  try { window.FTSAuth && FTSAuth.logout && FTSAuth.logout(); } catch(e){}
+  window.location.href = '../../index.html';
+}
+window.rh_logout = rh_logout;
+
+// ═══════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════
+function utcToCst(utcString){
+  if (!utcString) return '—';
+  const raw = String(utcString);
+  const withZ = raw.endsWith('Z') || raw.indexOf('+') > 0 || raw.indexOf('-', 10) > 0 ? raw : (raw.replace(' ','T') + 'Z');
+  const utc = new Date(withZ);
+  if (isNaN(utc.getTime())) return raw;
+  const cst = new Date(utc.getTime() - (6 * 60 * 60 * 1000));
+  const dd = String(cst.getUTCDate()).padStart(2, '0');
+  const mm = String(cst.getUTCMonth() + 1).padStart(2, '0');
+  const yyyy = cst.getUTCFullYear();
+  const hh = String(cst.getUTCHours()).padStart(2, '0');
+  const min = String(cst.getUTCMinutes()).padStart(2, '0');
+  return dd + '/' + mm + '/' + yyyy + ' ' + hh + ':' + min;
+}
+
+function statusBadge(status){
+  const colores = {
+    'pendiente_supervisor': { bg:'#fef3c7', fg:'#b45309', txt:'Pendiente Sup.'   },
+    'pendiente_rh':         { bg:'#fef3c7', fg:'#b45309', txt:'Pendiente RH'     },
+    'pendiente_direccion':  { bg:'#fef3c7', fg:'#b45309', txt:'Pendiente Dir.'   },
+    'aprobada_tal_cual':    { bg:'#d1fae5', fg:'#047857', txt:'Aprobada'         },
+    'aprobada_con_ajuste':  { bg:'#d1fae5', fg:'#047857', txt:'Aprobada (ajuste)' },
+    'rechazada':            { bg:'#fee2e2', fg:'#b91c1c', txt:'Rechazada'        },
+    'expirada_por_timeout': { bg:'#fee2e2', fg:'#b91c1c', txt:'Expirada'         }
+  };
+  const c = colores[status] || { bg:'#e5e7eb', fg:'#374151', txt:(status || '—') };
+  return '<span style="background:' + c.bg + ';color:' + c.fg + ';padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600">' + esc(c.txt) + '</span>';
+}
+
+function truncar(str, max){
+  if (!str) return '';
+  str = String(str);
+  if (str.length <= max) return str;
+  return str.substring(0, max) + '…';
+}
+
+function getSemanaFTS(){
+  const now = new Date();
+  const dia = now.getDay();
+  const diasAlViernesAnterior = dia >= 5 ? (dia - 5) : (dia + 2);
+  const viernes = new Date(now);
+  viernes.setDate(now.getDate() - diasAlViernesAnterior);
+  viernes.setHours(0,0,0,0);
+  const jueves = new Date(viernes);
+  jueves.setDate(viernes.getDate() + 6);
+  jueves.setHours(23,59,59,999);
+  const fmt = function(d){
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  };
+  return { desde: viernes, hasta: jueves, desdeStr: fmt(viernes), hastaStr: fmt(jueves) };
+}
+
+function rh_semana_fts(){
+  const r = getSemanaFTS();
+  $('vi-filtro-desde').value = r.desdeStr;
+  $('vi-filtro-hasta').value = r.hastaStr;
+  aplicarFiltros();
+}
+window.rh_semana_fts = rh_semana_fts;
+
+// ═══════════════════════════════════════════════
+// FETCH
+// ═══════════════════════════════════════════════
+async function cargarIncidencias(){
+  const statusEl = $('vi-status');
+  if (statusEl) statusEl.textContent = '⏳ Cargando…';
+  const url = RAW_URL + '&t=' + Date.now();
+  try {
+    const res = await fetch(url, {
+      cache: 'no-store',
+      headers: {
+        'Accept': 'application/vnd.github.v3.raw',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      }
+    });
+    if (!res.ok){
+      if (res.status === 404){
+        _incidencias = [];
+        if (statusEl) statusEl.textContent = 'Sin incidencias aún (archivo no existe).';
+        renderLista([]);
+        return;
+      }
+      throw new Error('HTTP ' + res.status);
+    }
+    const data = await res.json();
+    _incidencias = Array.isArray(data && data.incidencias) ? data.incidencias : [];
+    if (statusEl) statusEl.textContent = _incidencias.length + ' incidencia(s) cargadas';
+    aplicarFiltros();
+  } catch(e){
+    if (statusEl) statusEl.textContent = '❌ Error: ' + e.message;
+    console.error('[visor-incidencias] fetch failed', e);
+  }
+}
+
+// ═══════════════════════════════════════════════
+// FILTROS + RENDER
+// ═══════════════════════════════════════════════
+function aplicarFiltros(){
+  const filtroStatus = $('vi-filtro-status').value;
+  const desdeStr = $('vi-filtro-desde').value;
+  const hastaStr = $('vi-filtro-hasta').value;
+
+  const desde = desdeStr ? new Date(desdeStr + 'T00:00:00Z').getTime() : null;
+  const hasta = hastaStr ? new Date(hastaStr + 'T23:59:59Z').getTime() : null;
+
+  let filtradas = _incidencias.slice();
+
+  if (filtroStatus && filtroStatus !== 'todas'){
+    if (filtroStatus === 'aprobada'){
+      filtradas = filtradas.filter(function(i){
+        return i.status === 'aprobada_tal_cual' || i.status === 'aprobada_con_ajuste';
+      });
+    } else {
+      filtradas = filtradas.filter(function(i){ return i.status === filtroStatus; });
+    }
+  }
+
+  if (desde != null || hasta != null){
+    filtradas = filtradas.filter(function(i){
+      const fc = new Date(i.fecha_creacion).getTime();
+      if (isNaN(fc)) return false;
+      if (desde != null && fc < desde) return false;
+      if (hasta != null && fc > hasta) return false;
+      return true;
+    });
+  }
+
+  // Más recientes arriba
+  filtradas.sort(function(a,b){
+    return String(b.fecha_creacion || '').localeCompare(String(a.fecha_creacion || ''));
+  });
+
+  const statusEl = $('vi-status');
+  if (statusEl) statusEl.textContent = filtradas.length + ' incidencia(s) visibles';
+
+  renderLista(filtradas);
+}
+window.aplicarFiltros = aplicarFiltros;
+
+function renderLista(incidencias){
+  const cont = $('vi-lista');
+  if (!cont) return;
+  if (!incidencias.length){
+    cont.innerHTML = '<div class="vi-empty">✨ No hay incidencias que coincidan con los filtros.</div>';
+    return;
+  }
+  cont.innerHTML = incidencias.map(renderCard).join('');
+}
+
+function renderCard(inc){
+  const badges = [];
+  if (inc.autoincidencia === true){
+    badges.push('<span style="background:#fb923c;color:#fff;padding:3px 8px;border-radius:10px;font-size:10px;font-weight:600;margin-left:6px">🟡 AUTO</span>');
+  }
+  if (inc.sin_departamento === true){
+    badges.push('<span style="background:#a855f7;color:#fff;padding:3px 8px;border-radius:10px;font-size:10px;font-weight:600;margin-left:6px">⚠️ SIN DEPTO</span>');
+  }
+
+  const tipoLabel = inc.tipo === 'olvido_entrada' ? 'Olvido de entrada' : esc(inc.tipo || '—');
+  const prop0 = (inc.propuestas && inc.propuestas[0]) || {};
+  const horaDecl = prop0.hora_propuesta_cst || '—';
+  const motivo = prop0.comentario || '';
+
+  return (
+    '<div class="vi-card">' +
+      '<div class="vi-card-header">' + statusBadge(inc.status) + '</div>' +
+      '<div class="vi-card-empleado">' +
+        '<strong>' + esc(inc.empleado_nombre || '—') + '</strong>' +
+        ' <span class="vi-card-id">(ID ' + esc(inc.empleado_id || '?') + ')</span>' +
+        badges.join('') +
+      '</div>' +
+      '<div class="vi-card-tipo">' + tipoLabel + '</div>' +
+      '<div class="vi-card-row"><span class="vi-label">Creada:</span> <span>' + esc(utcToCst(inc.fecha_creacion)) + ' CST</span></div>' +
+      '<div class="vi-card-row"><span class="vi-label">Check-in real:</span> <span>' + esc(utcToCst(inc.hora_real_checkin_utc)) + ' CST</span></div>' +
+      '<div class="vi-card-row"><span class="vi-label">Hora declarada:</span> <span>' + esc(horaDecl) + ' CST</span></div>' +
+      (motivo ? '<div class="vi-card-motivo">"' + esc(truncar(motivo, 80)) + '"</div>' : '') +
+      '<button class="vi-btn-detalle" onclick="verDetalle(\'' + esc(inc.id_interno || '') + '\')">Ver detalle →</button>' +
+    '</div>'
+  );
+}
+
+function verDetalle(idInterno){
+  // TODO RH.3d: reemplazar por modal con timeline
+  alert('Detalle próximamente (disponible en próxima versión).\n\nID: ' + idInterno);
+}
+window.verDetalle = verDetalle;
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function(){
+  const session = rh_check_auth();
+  if (!session) return;
+  $('vi-user-nombre').textContent = '👤 ' + (session.nombre || session.username || '—');
+  try { FTSAuth.initActivityTracking && FTSAuth.initActivityTracking(); } catch(e){}
+  console.log('[visor-incidencias] init OK build=' + window.BUILD_DATE + ' user=' + (session.username || '?'));
+  cargarIncidencias();
+});
+</script>
+
+</body>
+</html>
