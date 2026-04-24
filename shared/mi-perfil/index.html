@@ -7,7 +7,7 @@
 <script>
   // Cache busting + BUILD_DATE expuesto a window.
   (function() {
-    const BUILD_DATE = '20260423-mi-perfil-hub-v3';
+    const BUILD_DATE = '20260423-mi-perfil-hub-v4';
     window.BUILD_DATE = BUILD_DATE;
     if (!window.location.search.includes('v=')) {
       document.addEventListener('DOMContentLoaded', function() {
@@ -207,7 +207,7 @@
 <div class="mp-topbar">
   <div class="mp-topbar-left">
     <a class="mp-back-suite" id="mp-nav-btn" href="../../index.html">← Volver a Suite</a>
-    <span class="mp-build">build 20260423-mi-perfil-hub-v3</span>
+    <span class="mp-build">build 20260423-mi-perfil-hub-v4</span>
   </div>
   <div id="mp-topbar-right">
     <span class="mp-user-info" id="mp-user-label" style="display:none"></span>
@@ -361,9 +361,27 @@ function normalize(s){ return String(s||'').toLowerCase().normalize('NFD').repla
 // ═══════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', function(){
   const session = mp_get_session();
-  if (session && session.empleado_id) {
+  const navType = mp_detect_nav_type();
+  const internalRef = mp_referrer_is_internal();
+
+  console.log('[mi-perfil] init', {
+    navType:     navType,
+    internalRef: internalRef,
+    hasSession:  !!session
+  });
+
+  if (!session || !session.empleado_id){
+    mp_show_login();
+  } else if (navType === 'reload'){
+    // F5 / reload puro: mantener sesión
+    mp_show_dashboard(session);
+  } else if (internalRef){
+    // Back desde mis-incidencias u otra página interna: mantener sesión
     mp_show_dashboard(session);
   } else {
+    // navigate / back_forward desde fuera del módulo: forzar re-login
+    console.log('[mi-perfil] sesión invalidada por navigation externa (' + navType + ')');
+    try { sessionStorage.removeItem(SESSION_KEY); } catch(e){}
     mp_show_login();
   }
 
@@ -385,6 +403,40 @@ document.addEventListener('DOMContentLoaded', function(){
 // ═══════════════════════════════════════════════
 // SESSION HELPERS
 // ═══════════════════════════════════════════════
+
+// Retorna 'navigate' | 'reload' | 'back_forward' | 'prerender'.
+// Fallback conservador a 'navigate' si la API no está disponible.
+function mp_detect_nav_type(){
+  try {
+    const entries = (performance && performance.getEntriesByType)
+      ? performance.getEntriesByType('navigation') : null;
+    if (entries && entries[0] && entries[0].type) return entries[0].type;
+    // Fallback legacy (deprecated pero aún funcional en browsers viejos)
+    if (performance && performance.navigation){
+      const t = performance.navigation.type;
+      if (t === 1) return 'reload';
+      if (t === 2) return 'back_forward';
+      return 'navigate';
+    }
+  } catch(e) {}
+  return 'navigate';
+}
+
+// True si el referrer apunta a una ruta interna del módulo (mis-incidencias u
+// otra página hija). Se usa para no forzar re-login cuando el usuario hace
+// back desde una página hija autenticada hacia el hub.
+function mp_referrer_is_internal(){
+  try {
+    const ref = document.referrer || '';
+    if (!ref) return false;
+    const refUrl = new URL(ref);
+    if (refUrl.origin !== location.origin) return false;
+    const myBase = location.pathname.replace(/index\.html$/, '');   // "/.../mi-perfil/"
+    return refUrl.pathname.indexOf(myBase) === 0 &&
+           refUrl.pathname !== location.pathname;   // excluye el propio hub
+  } catch(e){ return false; }
+}
+
 function mp_get_session(){
   try {
     const raw = sessionStorage.getItem(SESSION_KEY);
