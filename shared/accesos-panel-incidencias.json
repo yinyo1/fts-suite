@@ -11,8 +11,19 @@
       ],
       "fecha_asignacion": "2026-04-24T15:54:07.975Z",
       "asignado_por": "ftsmaster"
+    },
+    {
+      "empleado_id": 101,
+      "empleado_nombre": "Ana Laura Acevedo Flores",
+      "department_id": 8,
+      "department_name": "Administración y Finanzas",
+      "roles": [
+        "rh"
+      ],
+      "fecha_asignacion": "2026-04-24T15:55:52.853Z",
+      "asignado_por": "ftsmaster"
     }
   ],
-  "updated_at": "2026-04-24T15:54:07.975Z",
+  "updated_at": "2026-04-24T15:55:52.853Z",
   "updated_by": "ftsmaster"
 }
