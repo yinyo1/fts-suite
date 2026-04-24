@@ -389,6 +389,25 @@
       },
       "result": "success",
       "error_message": null
+    },
+    {
+      "timestamp": "2026-04-24T00:00:17.435Z",
+      "user": "ftsmaster",
+      "action": "edit_attendance",
+      "attendance_id": 12539,
+      "employee_name": "Ricardo Alán Hernández González",
+      "changes": {
+        "check_in": {
+          "from": "2026-04-23 14:26:38",
+          "to": "2026-04-23 14:26:00"
+        },
+        "check_out": {
+          "from": null,
+          "to": "2026-04-23 23:59:00"
+        }
+      },
+      "result": "success",
+      "error_message": null
     }
   ]
 }
