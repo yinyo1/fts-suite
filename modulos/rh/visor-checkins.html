@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Visor Check-ins — RH — FTS</title>
+<script>
+  (function(){
+    const BUILD_DATE = '20260424-rh-checkins-v1';
+    window.BUILD_DATE = BUILD_DATE;
+  })();
+</script>
+<script src="../../shared/auth-suite.js"></script>
+<style>
+  :root{
+    --green:#107C10; --green2:#0d6b0d; --red:#D13438; --blue:#0078D4; --orange:#D83B01;
+    --text:#1a1a1a; --muted:#999; --muted2:#666; --bg:#fafafa; --card:#fff; --border:#e0e0e0;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:16px;color:var(--text);background:var(--bg)}
+  a{color:inherit}
+
+  .rh-topbar{
+    position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);
+    display:flex;align-items:center;justify-content:space-between;padding:10px 14px;gap:8px;
+  }
+  .rh-back{display:inline-flex;align-items:center;gap:4px;color:var(--muted2);text-decoration:none;font-size:13px;font-weight:600;padding:6px 10px;border-radius:7px;border:1px solid var(--border);background:#fff;white-space:nowrap}
+  .rh-back:hover{color:var(--green);border-color:var(--green);background:#f0f9f0}
+  .rh-title-wrap{display:flex;align-items:center;gap:6px;min-width:0;flex:1;justify-content:center}
+  .rh-title{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rh-build{font-size:10px;color:var(--muted);font-weight:400}
+  .rh-user{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+  .rh-user-name{font-size:12px;color:var(--muted2);max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rh-logout{background:none;border:none;color:var(--blue);font-size:12px;cursor:pointer;padding:2px 6px;border-radius:4px;font-family:inherit}
+
+  .rh-main{max-width:1200px;margin:0 auto;padding:16px;padding-bottom:40px}
+  .rh-h1{font-size:22px;font-weight:700;margin:4px 0 4px}
+  .rh-sub{font-size:13px;color:var(--muted2);margin:0 0 16px}
+
+  .rh-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,0.03)}
+  .rh-card-title{font-size:12px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:12px}
+
+  .rh-filters{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .rh-field label{display:block;font-size:11px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:0.3px;margin-bottom:5px}
+  .rh-input{width:100%;padding:10px 12px;border:1px solid #ccc;border-radius:8px;font-size:15px;font-family:inherit;background:#fff;outline:none;box-sizing:border-box}
+  .rh-input:focus{border-color:var(--green)}
+  .rh-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .rh-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 14px;border-radius:9px;border:1px solid transparent;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;min-height:42px}
+  .rh-btn-primary{background:var(--green);color:#fff;flex:1}
+  .rh-btn-primary:active{background:var(--green2)}
+  .rh-btn-primary:disabled{background:#ccc;cursor:not-allowed}
+  .rh-btn-secondary{background:#fff;color:var(--text);border-color:#d5d5d5}
+
+  .rh-result-status{font-size:12px;color:var(--muted2);margin:6px 0 12px;min-height:14px}
+  .rh-result-status.ok{color:var(--green)}
+  .rh-result-status.err{color:var(--red)}
+  .rh-result-status.info{color:var(--blue)}
+
+  /* Desktop: tabla normal */
+  .rh-table-wrap{overflow-x:auto}
+  .rh-table{width:100%;border-collapse:collapse;font-size:13px}
+  .rh-table th, .rh-table td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--border)}
+  .rh-table thead th{font-size:11px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:0.3px;background:#fafafa;white-space:nowrap}
+  .rh-table tbody tr:hover{background:#f5f9ff}
+  .rh-table td code{font-family:monospace;font-size:12px;color:var(--muted)}
+  .rh-hours{font-weight:600;text-align:right}
+  .rh-empty{text-align:center;padding:40px;color:var(--muted);font-style:italic}
+
+  .rh-badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;white-space:nowrap}
+  .rh-badge-open{background:#fff0f0;color:var(--red);border:1px solid #f5c2c2}
+  .rh-badge-closed{background:#f0f9f0;color:var(--green);border:1px solid #c3e6c3}
+
+  /* Mobile: cards en vez de tabla */
+  @media (max-width: 720px){
+    .rh-filters{grid-template-columns:1fr}
+    .rh-table thead{display:none}
+    .rh-table,.rh-table tbody,.rh-table tr,.rh-table td{display:block;width:100%;border:none}
+    .rh-table tr{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px;box-shadow:0 1px 2px rgba(0,0,0,0.03)}
+    .rh-table td{padding:4px 0;border-bottom:none;display:flex;justify-content:space-between;gap:10px}
+    .rh-table td::before{content:attr(data-label);color:var(--muted2);font-size:11px;font-weight:700;text-transform:uppercase;flex-shrink:0}
+    .rh-hours{text-align:left}
+  }
+
+  .rh-toast{position:fixed;bottom:20px;right:20px;z-index:1000;padding:12px 16px;border-radius:8px;background:var(--text);color:#fff;font-size:13px;font-weight:500;max-width:400px;transform:translateY(100px);opacity:0;transition:all 0.2s}
+  .rh-toast.show{transform:translateY(0);opacity:1}
+  .rh-toast.err{background:var(--red)}
+</style>
+</head>
+<body>
+
+<div class="rh-topbar">
+  <a class="rh-back" href="index.html">← Dashboard RH</a>
+  <div class="rh-title-wrap">
+    <span class="rh-title">👁️ Visor de Check-ins</span>
+    <span class="rh-build">build 20260424-rh-checkins-v1</span>
+  </div>
+  <div class="rh-user">
+    <span class="rh-user-name" id="rh-user-name">—</span>
+    <button class="rh-logout" onclick="rh_logout()">Cerrar sesión</button>
+  </div>
+</div>
+
+<main class="rh-main">
+
+  <p class="rh-sub">Consulta de check-ins y check-outs en un rango de fechas. Solo lectura.</p>
+
+  <div class="rh-card">
+    <div class="rh-card-title">Filtros</div>
+    <div class="rh-filters">
+      <div class="rh-field">
+        <label for="rh-date-from">Desde</label>
+        <input type="date" id="rh-date-from" class="rh-input">
+      </div>
+      <div class="rh-field">
+        <label for="rh-date-to">Hasta</label>
+        <input type="date" id="rh-date-to" class="rh-input">
+      </div>
+    </div>
+    <div class="rh-actions">
+      <button class="rh-btn rh-btn-secondary" onclick="rh_reset_semana_fts()">⚡ Esta semana FTS</button>
+      <button class="rh-btn rh-btn-primary" id="rh-btn-buscar" onclick="rh_buscar()">🔍 Buscar</button>
+    </div>
+  </div>
+
+  <div class="rh-result-status" id="rh-result-status"></div>
+
+  <div class="rh-card">
+    <div class="rh-card-title">Resultados</div>
+    <div class="rh-table-wrap">
+      <table class="rh-table" id="rh-table">
+        <thead>
+          <tr>
+            <th>Empleado</th>
+            <th>Fecha</th>
+            <th>Check-in (CST)</th>
+            <th>Check-out (CST)</th>
+            <th class="rh-hours">Horas</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody id="rh-tbody">
+          <tr><td colspan="6" class="rh-empty">Pulsa «Buscar» para listar check-ins.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<div class="rh-toast" id="rh-toast"></div>
+
+<script>
+'use strict';
+
+const N8N_SEARCH_URL = 'https://primary-production-5c3c.up.railway.app/webhook/asistencias/admin/search';
+
+let _session = null;
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+// ═══════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════
+function rh_check_auth(){
+  const s = (window.FTSAuth && FTSAuth.getSession && FTSAuth.getSession()) || null;
+  if (!s){
+    alert('Sesión no válida. Redirigiendo al launcher.');
+    window.location.href = '../../index.html';
+    return null;
+  }
+  const tieneRH = s.role === 'master'
+    || s.modulos === 'all'
+    || (s.modulos && s.modulos.rh && s.modulos.rh.acceso === true);
+  if (!tieneRH){
+    alert('No tienes acceso al módulo RH.');
+    window.location.href = '../../index.html';
+    return null;
+  }
+  return s;
+}
+
+function rh_logout(){
+  try { window.FTSAuth && FTSAuth.logout && FTSAuth.logout(); } catch(e){}
+  window.location.href = '../../index.html';
+}
+window.rh_logout = rh_logout;
+
+function rh_session_token(){
+  const s = _session;
+  if (!s) return '';
+  const payload = {
+    userId:    s.userId,
+    username:  s.username,
+    role:      s.role,
+    loginTime: s.loginTime,
+    modulos:   s.modulos,
+    ts:        Date.now()
+  };
+  return btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+}
+
+// ═══════════════════════════════════════════════
+// TIMEZONE HELPERS (FTS = Monterrey, CST UTC-6, sin DST)
+// ═══════════════════════════════════════════════
+const FTS_TZ_OFFSET = '-06:00';
+
+function cstInputToUtc(cstInput){
+  if (!cstInput) return null;
+  const d = new Date(cstInput + ':00' + FTS_TZ_OFFSET);
+  if (isNaN(d.getTime())) return null;
+  return d.toISOString().replace('T',' ').replace('Z','').split('.')[0];
+}
+
+function utcToCstDateShort(utcString){
+  if (!utcString) return '—';
+  const d = new Date(utcString + (utcString.endsWith('Z') ? '' : 'Z'));
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('es-MX', { timeZone:'America/Monterrey', day:'2-digit', month:'2-digit' });
+}
+
+function utcToCstTime(utcString){
+  if (!utcString) return '—';
+  const d = new Date(utcString + (utcString.endsWith('Z') ? '' : 'Z'));
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleTimeString('es-MX', { timeZone:'America/Monterrey', hour:'2-digit', minute:'2-digit' });
+}
+
+// Semana FTS: viernes 00:00 → jueves 23:59 CST.
+function getFtsWeekRange(today){
+  today = today || new Date();
+  const dayOfWeek = today.getDay();
+  const daysToFriday = (dayOfWeek - 5 + 7) % 7;
+  const start = new Date(today);
+  start.setDate(today.getDate() - daysToFriday);
+  start.setHours(0,0,0,0);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  end.setHours(23,59,59,999);
+  const fmt = function(d){
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  };
+  return { startStr: fmt(start), endStr: fmt(end) };
+}
+
+// ═══════════════════════════════════════════════
+// UI helpers
+// ═══════════════════════════════════════════════
+function rh_status(msg, kind){
+  const el = $('rh-result-status');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.className = 'rh-result-status' + (kind ? ' ' + kind : '');
+}
+
+let _toastTimer = null;
+function rh_toast(msg, kind){
+  const el = $('rh-toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'rh-toast' + (kind ? ' ' + kind : '');
+  void el.offsetWidth;
+  el.classList.add('show');
+  if (_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 3500);
+}
+
+// ═══════════════════════════════════════════════
+// SEARCH
+// ═══════════════════════════════════════════════
+function rh_reset_semana_fts(){
+  const range = getFtsWeekRange(new Date());
+  $('rh-date-from').value = range.startStr;
+  $('rh-date-to').value   = range.endStr;
+  rh_buscar();
+}
+window.rh_reset_semana_fts = rh_reset_semana_fts;
+
+async function rh_buscar(){
+  const dateFromCst = $('rh-date-from').value;
+  const dateToCst   = $('rh-date-to').value;
+
+  if (!dateFromCst || !dateToCst){
+    rh_status('⚠️ Selecciona un rango de fechas', 'err');
+    return;
+  }
+
+  // Rango convertido a UTC completo (incluye hora).
+  const date_from_utc = cstInputToUtc(dateFromCst + 'T00:00');
+  const date_to_utc   = cstInputToUtc(dateToCst   + 'T23:59');
+
+  const body = {
+    date_from:     dateFromCst,
+    date_to:       dateToCst,
+    date_from_utc: date_from_utc,
+    date_to_utc:   date_to_utc
+  };
+
+  const btn = $('rh-btn-buscar');
+  btn.disabled = true;
+  rh_status('⏳ Buscando…', 'info');
+
+  try {
+    const res = await fetch(N8N_SEARCH_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-FTS-Session-Token': rh_session_token()
+      },
+      body: JSON.stringify(body)
+    });
+    btn.disabled = false;
+
+    if (res.status === 401 || res.status === 403){
+      alert('Tu sesión no tiene permiso para consultar check-ins. Vuelve a iniciar sesión.');
+      rh_logout();
+      return;
+    }
+
+    let payload = null;
+    try { payload = await res.json(); } catch(e){}
+    if (!payload || payload.success === false){
+      const msg = (payload && (payload.error_message || payload.mensaje)) || ('HTTP ' + res.status);
+      rh_status('❌ ' + msg, 'err');
+      rh_toast(msg, 'err');
+      rh_render_rows([]);
+      return;
+    }
+    // Aceptar tanto {success:true, data:{attendances}} como {success:true, attendances}
+    const data = payload.data || payload;
+    const list = (data && data.attendances) || [];
+    rh_render_rows(list);
+    rh_status('✅ ' + list.length + ' check-in(s) en ' + dateFromCst + ' → ' + dateToCst, 'ok');
+  } catch(e) {
+    btn.disabled = false;
+    rh_status('❌ ' + e.message, 'err');
+    rh_toast('No se pudo conectar al servidor', 'err');
+  }
+}
+window.rh_buscar = rh_buscar;
+
+function rh_render_rows(list){
+  const tb = $('rh-tbody');
+  if (!tb) return;
+  if (!list.length){
+    tb.innerHTML = '<tr><td colspan="6" class="rh-empty">Sin resultados para el rango seleccionado.</td></tr>';
+    return;
+  }
+  // Ordenar por check_in desc
+  list.sort(function(a,b){ return String(b.check_in || '').localeCompare(String(a.check_in || '')); });
+  tb.innerHTML = list.map(function(a){
+    const nom   = esc(a.employee_name || ('ID ' + a.employee_id));
+    const fecha = utcToCstDateShort(a.check_in);
+    const cin   = utcToCstTime(a.check_in);
+    const cout  = a.check_out ? utcToCstTime(a.check_out) : '—';
+    const hrs   = (typeof a.worked_hours === 'number') ? a.worked_hours.toFixed(1) : '—';
+    const isOpen = !a.check_out;
+    const badge = isOpen
+      ? '<span class="rh-badge rh-badge-open">🔓 Abierto</span>'
+      : '<span class="rh-badge rh-badge-closed">✅ Cerrado</span>';
+    return (
+      '<tr>' +
+        '<td data-label="Empleado">' + nom + ' <code>(id ' + esc(a.employee_id) + ')</code></td>' +
+        '<td data-label="Fecha">' + esc(fecha) + '</td>' +
+        '<td data-label="Check-in">' + esc(cin) + '</td>' +
+        '<td data-label="Check-out">' + esc(cout) + '</td>' +
+        '<td data-label="Horas" class="rh-hours">' + esc(hrs) + '</td>' +
+        '<td data-label="Estado">' + badge + '</td>' +
+      '</tr>'
+    );
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function(){
+  _session = rh_check_auth();
+  if (!_session) return;
+
+  $('rh-user-name').textContent = '👤 ' + (_session.nombre || _session.username || '—');
+  try { FTSAuth.initActivityTracking && FTSAuth.initActivityTracking(); } catch(e){}
+
+  // Default: semana FTS actual
+  const range = getFtsWeekRange(new Date());
+  $('rh-date-from').value = range.startStr;
+  $('rh-date-to').value   = range.endStr;
+
+  console.log('[rh-checkins] init OK build=' + window.BUILD_DATE + ' user=' + (_session.username || '?'));
+  console.log('[rh-checkins] default range FTS:', range.startStr, '→', range.endStr);
+
+  rh_buscar();
+});
+</script>
+
+</body>
+</html>
