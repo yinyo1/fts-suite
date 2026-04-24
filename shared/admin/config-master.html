@@ -340,6 +340,15 @@
     .cm-user-info { display: none; }
     .cm-modal-content { width: calc(100% - 16px); padding: 18px; max-height: 96vh; }
   }
+
+  /* ── Role chips (Accesos Panel Incidencias) ── */
+  .role-chip {
+    display: inline-block; padding: 2px 8px; border-radius: 12px;
+    font-size: 11px; font-weight: 600; margin-right: 4px; margin-bottom: 2px;
+  }
+  .role-chip-supervisor { background: #e3f2fd; color: #0078D4; }
+  .role-chip-rh         { background: #f3e5f5; color: #7c3aed; }
+  .role-chip-direccion  { background: #e8f5e9; color: #2e7d32; }
 </style>
 </head>
 <body>
@@ -902,76 +911,81 @@
     <section class="cm-section" id="sec-accesos-incidencias">
       <h1 class="cm-section-title">🔐 Accesos al Panel de Incidencias</h1>
       <p class="cm-section-sub">
-        Asigna qué empleados pueden aprobar incidencias de olvido de entrada.
-        Supervisores solo ven las de su departamento. RH ve todas las pendientes de segundo nivel.
-      </p>
-      <p style="font-size:12px;background:#fff4d9;border:1px solid #e6d38a;color:#7a5800;padding:10px 14px;border-radius:8px;margin:0 0 18px">
-        ⚠️ <strong>Dirección</strong> NO se configura aquí — Esteban la tiene automáticamente por ser master.
+        Asigna qué empleados pueden aprobar incidencias de olvido de entrada en Mi Perfil.
+        Los supervisores solo ven las incidencias de su departamento. RH y Dirección ven todas
+        las pendientes de su nivel.
       </p>
 
       <div style="margin-bottom:10px"><span id="ai_status" style="font-size:12px"></span></div>
 
-      <!-- ─── Sub-sección A: Supervisores por departamento ─── -->
+      <!-- ─── Card: Asignar acceso a empleado ─── -->
       <div class="cm-card">
-        <div class="cm-card-title" style="margin-bottom:12px">👔 Supervisores por departamento</div>
+        <div class="cm-card-title" style="margin-bottom:12px">➕ Asignar acceso a empleado</div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-          <div>
-            <label style="font-size:11px;color:var(--muted2);font-weight:700;text-transform:uppercase;letter-spacing:0.3px;display:block;margin-bottom:5px">Departamento</label>
-            <select id="ai_sup_depto" class="cm-input" style="width:100%">
-              <option value="">— Selecciona —</option>
-            </select>
-            <div id="ai_sup_depto_hint" style="font-size:11px;color:var(--muted);margin-top:3px"></div>
-          </div>
-          <div>
-            <label style="font-size:11px;color:var(--muted2);font-weight:700;text-transform:uppercase;letter-spacing:0.3px;display:block;margin-bottom:5px">Empleado</label>
-            <input type="text" id="ai_sup_emp_search" class="cm-input" style="width:100%" placeholder="Nombre..." autocomplete="off" oninput="ai_search_empleado('sup', this.value)">
-            <input type="hidden" id="ai_sup_emp_id" value="">
-            <div id="ai_sup_emp_list" style="display:none;max-height:180px;overflow-y:auto;border:1px solid #eee;border-radius:6px;margin-top:4px;background:#fff"></div>
-          </div>
+        <div style="margin-bottom:10px">
+          <label style="font-size:11px;color:var(--muted2);font-weight:700;text-transform:uppercase;letter-spacing:0.3px;display:block;margin-bottom:5px">Buscar empleado</label>
+          <input type="text" id="ai_emp_search" class="cm-input" style="width:100%" placeholder="🔎 nombre o ID..." autocomplete="off" oninput="ai_buscar(this.value)">
+          <div id="ai_emp_list" style="display:none;max-height:220px;overflow-y:auto;border:1px solid #eee;border-radius:6px;margin-top:4px;background:#fff"></div>
         </div>
-        <button class="cm-btn cm-btn-primary" onclick="ai_agregar_supervisor()">➕ Agregar supervisor a este depto</button>
 
-        <div class="cm-table-wrap" style="margin-top:16px">
-          <table class="cm-table" id="ai_sup_table">
-            <thead>
-              <tr>
-                <th>Departamento</th>
-                <th>Empleado</th>
-                <th style="width:80px">ID</th>
-                <th style="width:140px">Acción</th>
-              </tr>
-            </thead>
-            <tbody id="ai_sup_tbody">
-              <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px">Cargando…</td></tr>
-            </tbody>
-          </table>
+        <!-- Panel "Empleado seleccionado" — se muestra solo tras elegir -->
+        <div id="ai_emp_panel" style="display:none;margin-top:14px;padding:14px;background:#fafafa;border:1px solid #e5e5e5;border-radius:10px">
+          <div style="font-size:11px;color:var(--muted2);font-weight:700;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:8px">Empleado seleccionado</div>
+          <div style="font-size:15px;font-weight:700;color:var(--text)" id="ai_emp_nombre">—</div>
+          <div style="font-size:12px;color:var(--muted2);margin-top:2px">ID: <code id="ai_emp_id_label">—</code></div>
+          <div style="font-size:12px;color:var(--muted2);margin-top:2px" id="ai_emp_depto_line">📁 Departamento: <span id="ai_emp_depto_label">—</span></div>
+          <input type="hidden" id="ai_emp_id" value="">
+          <input type="hidden" id="ai_emp_nombre_val" value="">
+          <input type="hidden" id="ai_emp_dep_id" value="">
+          <input type="hidden" id="ai_emp_dep_name" value="">
+
+          <div style="margin-top:14px">
+            <div style="font-size:11px;color:var(--muted2);font-weight:700;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:8px">Roles a asignar</div>
+            <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin:6px 0;cursor:pointer">
+              <input type="checkbox" id="ai_role_supervisor" onchange="ai_recalc_btn()">
+              <span>👔 Supervisor <span style="color:var(--muted);font-size:12px">(de su departamento)</span></span>
+            </label>
+            <div id="ai_sup_warning" style="font-size:11px;color:var(--red);margin-left:24px;margin-top:-2px;margin-bottom:4px;display:none">⚠️ Este empleado no tiene departamento asignado en Odoo — no puede ser supervisor.</div>
+
+            <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin:6px 0;cursor:pointer">
+              <input type="checkbox" id="ai_role_rh" onchange="ai_recalc_btn()">
+              <span>💼 RH</span>
+            </label>
+
+            <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin:6px 0;cursor:pointer">
+              <input type="checkbox" id="ai_role_direccion" onchange="ai_recalc_btn()">
+              <span>🎯 Dirección</span>
+            </label>
+            <div style="font-size:11px;color:var(--muted);margin-left:24px;margin-top:-2px">
+              Esteban (master) tiene acceso automático. Usa esto solo para otras personas.
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+            <button class="cm-btn cm-btn-secondary" onclick="ai_cancelar()">Cancelar</button>
+            <button class="cm-btn cm-btn-primary" id="ai_save_btn" onclick="ai_guardar_acceso()" disabled>💾 Guardar acceso</button>
+          </div>
         </div>
       </div>
 
-      <!-- ─── Sub-sección B: RH ─── -->
+      <!-- ─── Card: Tabla de accesos configurados ─── -->
       <div class="cm-card" style="margin-top:18px">
-        <div class="cm-card-title" style="margin-bottom:12px">💼 Empleados con rol RH</div>
+        <div class="cm-card-title" id="ai_tabla_titulo" style="margin-bottom:12px">Tabla de accesos configurados</div>
 
-        <div style="margin-bottom:10px">
-          <label style="font-size:11px;color:var(--muted2);font-weight:700;text-transform:uppercase;letter-spacing:0.3px;display:block;margin-bottom:5px">Empleado</label>
-          <input type="text" id="ai_rh_emp_search" class="cm-input" style="width:100%" placeholder="Nombre..." autocomplete="off" oninput="ai_search_empleado('rh', this.value)">
-          <input type="hidden" id="ai_rh_emp_id" value="">
-          <div id="ai_rh_emp_list" style="display:none;max-height:180px;overflow-y:auto;border:1px solid #eee;border-radius:6px;margin-top:4px;background:#fff"></div>
-        </div>
-        <button class="cm-btn cm-btn-primary" onclick="ai_agregar_rh()">➕ Agregar a RH</button>
-
-        <div class="cm-table-wrap" style="margin-top:16px">
-          <table class="cm-table" id="ai_rh_table">
+        <div class="cm-table-wrap">
+          <table class="cm-table" id="ai_accesos_table">
             <thead>
               <tr>
                 <th>Empleado</th>
                 <th style="width:80px">ID</th>
-                <th style="width:140px">Acción</th>
+                <th>Departamento</th>
+                <th>Roles</th>
+                <th style="width:140px">Asignado</th>
+                <th style="width:160px">Acciones</th>
               </tr>
             </thead>
-            <tbody id="ai_rh_tbody">
-              <tr><td colspan="3" style="text-align:center;color:var(--muted);padding:20px">Cargando…</td></tr>
+            <tbody id="ai_accesos_tbody">
+              <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">Cargando…</td></tr>
             </tbody>
           </table>
         </div>
@@ -2404,20 +2418,14 @@
   }
 
   // ═════════════════════════════════════════════
-  // ACCESOS PANEL INCIDENCIAS (#U1 Fase 3 C.1)
+  // ACCESOS PANEL INCIDENCIAS (#U1 Fase 3 C.1 — v2 shape plano)
   // ═════════════════════════════════════════════
   const AI_RAW_URL = 'https://raw.githubusercontent.com/yinyo1/fts-suite/main/shared/accesos-panel-incidencias.json';
   const AI_WEBHOOK = 'https://primary-production-5c3c.up.railway.app/webhook/accesos-incidencias/guardar';
   const AI_EMPLEADOS_WEBHOOK = 'https://primary-production-5c3c.up.railway.app/webhook/kiosk/empleados';
 
-  let AI_STATE = {
-    supervisores_por_depto: {},
-    rh: [],
-    updated_at: null,
-    updated_by: null
-  };
+  let AI_STATE = { version: 2, accesos: [], updated_at: null, updated_by: null };
   let AI_EMPLEADOS = [];
-  let AI_DEPARTAMENTOS = [];   // [{id, nombre}]
 
   function ai_setStatus(msg, color){
     const el = $('ai_status');
@@ -2426,8 +2434,8 @@
     el.style.color = color || '';
   }
 
+  // Token de sesión para el webhook (role=master requerido server-side).
   function ai_token(){
-    // Mismo shape que ea_getSessionToken del editor-asistencias.
     try {
       const s = (window.FTSAuth && FTSAuth.getSession && FTSAuth.getSession()) || null;
       if(!s) return '';
@@ -2442,10 +2450,33 @@
     } catch(e){ return ''; }
   }
 
+  // Devuelve {id, name} del departamento del empleado, o null si no tiene.
+  // Soporta:
+  //   - e.department_id = [id, "Nombre"]  (Odoo many2one)
+  //   - e.department_id = {id, name}
+  //   - e.department_id = 12 + e.department_name = "..."
+  function ai_extraer_departamento(e){
+    if(!e) return null;
+    const d = e.department_id;
+    if(!d) return null;
+    if(Array.isArray(d) && d.length >= 1 && d[0] != null){
+      return { id: parseInt(d[0], 10), name: d[1] || ('Depto ' + d[0]) };
+    }
+    if(typeof d === 'object' && d.id != null){
+      return { id: parseInt(d.id, 10), name: d.name || d.nombre || ('Depto ' + d.id) };
+    }
+    if(typeof d === 'number' || typeof d === 'string'){
+      const id = parseInt(d, 10);
+      if(!isNaN(id)) return { id: id, name: e.department_name || ('Depto ' + id) };
+    }
+    return null;
+  }
+
   async function loadAccesosIncidencias(){
     ai_setStatus('⏳ Cargando accesos y empleados…', 'var(--blue)');
+    ai_cancelar();   // reset del panel de selección por si venía abierto
 
-    // 1) Cargar empleados (para autocomplete + extracción de departamentos)
+    // 1) Cargar empleados (para autocomplete + resolver depto por id)
     try {
       const resEmp = await fetch(AI_EMPLEADOS_WEBHOOK, {
         method: 'POST',
@@ -2460,24 +2491,19 @@
       AI_EMPLEADOS = [];
     }
 
-    // 2) Extraer departamentos únicos del payload de empleados
-    AI_DEPARTAMENTOS = ai_extraer_departamentos(AI_EMPLEADOS);
-    ai_render_dropdown_deptos();
-
-    // 3) Cargar accesos desde raw
+    // 2) Cargar accesos desde raw
     try {
       const res = await fetch(AI_RAW_URL + '?cache_bust=' + Date.now(), { cache:'no-store' });
       if(res.ok){
         const data = await res.json();
         AI_STATE = {
-          supervisores_por_depto: (data && typeof data.supervisores_por_depto === 'object') ? data.supervisores_por_depto : {},
-          rh:                     Array.isArray(data && data.rh) ? data.rh : [],
-          updated_at:             (data && data.updated_at) || null,
-          updated_by:             (data && data.updated_by) || null
+          version:    (data && data.version) || 2,
+          accesos:    Array.isArray(data && data.accesos) ? data.accesos : [],
+          updated_at: (data && data.updated_at) || null,
+          updated_by: (data && data.updated_by) || null
         };
       } else if(res.status === 404){
-        // Archivo no existe aún
-        AI_STATE = { supervisores_por_depto: {}, rh: [], updated_at: null, updated_by: null };
+        AI_STATE = { version: 2, accesos: [], updated_at: null, updated_by: null };
       } else {
         throw new Error('accesos HTTP ' + res.status);
       }
@@ -2487,76 +2513,32 @@
       return;
     }
 
-    ai_render_tablas();
-    ai_setStatus('✅ ' + AI_EMPLEADOS.length + ' empleados, ' + AI_DEPARTAMENTOS.length + ' departamento(s)', 'var(--green)');
+    ai_render_tabla();
+    const deptsCount = new Set((AI_EMPLEADOS || []).map(function(e){
+      const d = ai_extraer_departamento(e);
+      return d ? d.id : null;
+    }).filter(function(x){ return x != null; })).size;
+    ai_setStatus('✅ ' + AI_EMPLEADOS.length + ' empleados, ' + deptsCount + ' departamento(s) detectado(s)', 'var(--green)');
 
     const upd = $('ai_updated');
     if(upd){
-      if(AI_STATE.updated_at){
-        upd.textContent = fmtDate(AI_STATE.updated_at) + (AI_STATE.updated_by ? ' por ' + AI_STATE.updated_by : '');
-      } else {
-        upd.textContent = 'Sin cambios aún';
-      }
+      upd.textContent = AI_STATE.updated_at
+        ? (fmtDate(AI_STATE.updated_at) + (AI_STATE.updated_by ? ' por ' + AI_STATE.updated_by : ''))
+        : 'Sin cambios aún';
     }
   }
   window.loadAccesosIncidencias = loadAccesosIncidencias;
 
-  // Extrae departamentos únicos del payload de empleados. Soporta:
-  //   - empleado.department_id = [id, "Nombre"]  (formato Odoo many2one)
-  //   - empleado.department_id = 12 + empleado.department_name = "..."
-  //   - empleado.department_id = {id, name}
-  function ai_extraer_departamentos(empleados){
-    const map = {};
-    (empleados || []).forEach(function(e){
-      const d = e && e.department_id;
-      if(!d) return;
-      let id = null, nombre = '';
-      if(Array.isArray(d) && d.length >= 1){
-        id = d[0];
-        nombre = d[1] || ('Depto ' + d[0]);
-      } else if(typeof d === 'object'){
-        id = d.id;
-        nombre = d.name || d.nombre || ('Depto ' + d.id);
-      } else if(typeof d === 'number' || typeof d === 'string'){
-        id = parseInt(d, 10);
-        nombre = e.department_name || ('Depto ' + id);
-      }
-      if(id != null && !isNaN(id)) map[id] = nombre;
-    });
-    return Object.keys(map).sort(function(a,b){ return parseInt(a,10) - parseInt(b,10); })
-      .map(function(k){ return { id: parseInt(k, 10), nombre: map[k] }; });
-  }
-
-  function ai_render_dropdown_deptos(){
-    const sel = $('ai_sup_depto');
-    const hint = $('ai_sup_depto_hint');
-    if(!sel) return;
-    sel.innerHTML = '<option value="">— Selecciona —</option>' +
-      AI_DEPARTAMENTOS.map(function(d){ return '<option value="' + d.id + '">' + esc(d.nombre) + ' (id ' + d.id + ')</option>'; }).join('');
-    if(!hint) return;
-    if(AI_DEPARTAMENTOS.length === 0){
-      hint.textContent = '⚠️ El webhook /webhook/kiosk/empleados no trae department_id. Extender en C.3.';
-      hint.style.color = 'var(--red)';
-    } else {
-      hint.textContent = AI_DEPARTAMENTOS.length + ' depto(s) detectado(s)';
-      hint.style.color = 'var(--muted)';
-    }
-  }
-
-  // Autocomplete de empleados: muestra hasta 8 coincidencias en la lista del input correspondiente.
-  function ai_search_empleado(kind, q){
-    const listId = 'ai_' + kind + '_emp_list';
-    const hidId  = 'ai_' + kind + '_emp_id';
-    const list = $(listId);
-    const hid  = $(hidId);
+  // ── Autocomplete de empleados en el buscador único ──
+  function ai_buscar(q){
+    const list = $('ai_emp_list');
     if(!list) return;
-    hid.value = '';   // al cambiar el texto se limpia la selección previa
     const nq = String(q || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     if(!nq){ list.style.display = 'none'; list.innerHTML = ''; return; }
     const matches = AI_EMPLEADOS.filter(function(e){
       const nom = String(e.name || e.nombre || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
       return nom.indexOf(nq) >= 0 || String(e.id || '').indexOf(nq) >= 0;
-    }).slice(0, 8);
+    }).slice(0, 10);
     if(matches.length === 0){
       list.style.display = 'block';
       list.innerHTML = '<div style="padding:10px;text-align:center;color:var(--muted);font-size:12px">Sin coincidencias</div>';
@@ -2565,134 +2547,218 @@
     list.style.display = 'block';
     list.innerHTML = matches.map(function(e){
       const nom = esc(e.name || e.nombre || '');
+      const d = ai_extraer_departamento(e);
+      const sub = d ? esc(d.name) : '<span style="color:var(--red)">sin depto</span>';
       return '<div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid #f3f3f3;font-size:13px" ' +
-        'onclick="ai_seleccionar_empleado(\'' + kind + '\', ' + e.id + ', ' + JSON.stringify(nom) + ')">' +
-        nom + ' <span style="color:var(--muted);font-size:11px">(id ' + e.id + ')</span></div>';
+        'onclick="ai_seleccionar_empleado(' + e.id + ')">' +
+        '<div style="font-weight:600">' + nom + ' <span style="color:var(--muted);font-size:11px;font-weight:400">(id ' + e.id + ')</span></div>' +
+        '<div style="font-size:11px;color:var(--muted2)">' + sub + '</div>' +
+        '</div>';
     }).join('');
   }
-  window.ai_search_empleado = ai_search_empleado;
+  window.ai_buscar = ai_buscar;
 
-  function ai_seleccionar_empleado(kind, id, nombre){
-    $('ai_' + kind + '_emp_id').value = String(id);
-    $('ai_' + kind + '_emp_search').value = nombre;
-    const list = $('ai_' + kind + '_emp_list');
+  // ── Seleccionar empleado: popula el panel con sus datos + pre-marca roles existentes ──
+  function ai_seleccionar_empleado(empId){
+    const emp = AI_EMPLEADOS.find(function(e){ return e.id === empId; });
+    if(!emp){ alert('Empleado no encontrado'); return; }
+    const dep = ai_extraer_departamento(emp);
+    const existente = AI_STATE.accesos.find(function(a){ return a.empleado_id === empId; });
+
+    $('ai_emp_id').value           = String(empId);
+    $('ai_emp_nombre_val').value   = emp.name || emp.nombre || '';
+    $('ai_emp_dep_id').value       = dep ? String(dep.id) : '';
+    $('ai_emp_dep_name').value     = dep ? dep.name : '';
+
+    $('ai_emp_nombre').textContent    = emp.name || emp.nombre || '—';
+    $('ai_emp_id_label').textContent  = String(empId);
+    $('ai_emp_depto_label').textContent = dep ? (dep.name + ' (ID ' + dep.id + ')') : '⚠️ Sin departamento asignado';
+    $('ai_emp_depto_label').style.color = dep ? '' : 'var(--red)';
+
+    // Checkbox Supervisor: deshabilitado si no hay depto
+    const cbSup = $('ai_role_supervisor');
+    const warn  = $('ai_sup_warning');
+    if(dep){
+      cbSup.disabled = false;
+      warn.style.display = 'none';
+    } else {
+      cbSup.disabled = true;
+      cbSup.checked  = false;
+      warn.style.display = 'block';
+    }
+
+    // Pre-marcar roles si ya estaba asignado
+    const roles = existente ? (existente.roles || []) : [];
+    if(dep) cbSup.checked = roles.indexOf('supervisor') >= 0;
+    $('ai_role_rh').checked        = roles.indexOf('rh') >= 0;
+    $('ai_role_direccion').checked = roles.indexOf('direccion') >= 0;
+
+    // Mostrar panel + ocultar dropdown de búsqueda
+    $('ai_emp_panel').style.display = 'block';
+    const list = $('ai_emp_list');
     if(list){ list.style.display = 'none'; list.innerHTML = ''; }
+    $('ai_emp_search').value = emp.name || emp.nombre || '';
+
+    ai_recalc_btn();
   }
   window.ai_seleccionar_empleado = ai_seleccionar_empleado;
 
-  function ai_render_tablas(){
-    // ── Supervisores ──
-    const supTb = $('ai_sup_tbody');
-    if(supTb){
-      const rows = [];
-      Object.keys(AI_STATE.supervisores_por_depto).forEach(function(deptId){
-        const emps = AI_STATE.supervisores_por_depto[deptId] || [];
-        const dep  = AI_DEPARTAMENTOS.find(function(d){ return d.id === parseInt(deptId, 10); });
-        const depLabel = dep ? (dep.nombre + ' (id ' + deptId + ')') : ('Depto ' + deptId);
-        emps.forEach(function(empId){
-          const emp = AI_EMPLEADOS.find(function(e){ return e.id === empId; });
-          const nom = emp ? (emp.name || emp.nombre || ('Empleado ' + empId)) : ('Empleado ' + empId + ' (no en lista)');
-          rows.push(
-            '<tr>' +
-              '<td>' + esc(depLabel) + '</td>' +
-              '<td>' + esc(nom) + '</td>' +
-              '<td><code>' + empId + '</code></td>' +
-              '<td><button class="cm-btn cm-btn-danger cm-btn-sm" onclick="ai_quitar_supervisor(' + parseInt(deptId,10) + ',' + empId + ')">Quitar</button></td>' +
-            '</tr>'
-          );
-        });
-      });
-      supTb.innerHTML = rows.length
-        ? rows.join('')
-        : '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px">Sin supervisores asignados</td></tr>';
+  // Habilita/deshabilita el botón Guardar según si hay ≥1 rol marcado.
+  function ai_recalc_btn(){
+    const anyChecked = $('ai_role_supervisor').checked || $('ai_role_rh').checked || $('ai_role_direccion').checked;
+    $('ai_save_btn').disabled = !anyChecked;
+  }
+  window.ai_recalc_btn = ai_recalc_btn;
+
+  function ai_cancelar(){
+    $('ai_emp_panel').style.display = 'none';
+    $('ai_emp_search').value = '';
+    const list = $('ai_emp_list');
+    if(list){ list.style.display = 'none'; list.innerHTML = ''; }
+    $('ai_emp_id').value = '';
+    $('ai_emp_nombre_val').value = '';
+    $('ai_emp_dep_id').value = '';
+    $('ai_emp_dep_name').value = '';
+    $('ai_role_supervisor').checked = false;
+    $('ai_role_rh').checked = false;
+    $('ai_role_direccion').checked = false;
+    $('ai_sup_warning').style.display = 'none';
+    $('ai_save_btn').disabled = true;
+  }
+  window.ai_cancelar = ai_cancelar;
+
+  // ── Render tabla unificada con chips por rol ──
+  function ai_render_tabla(){
+    const tb = $('ai_accesos_tbody');
+    const titulo = $('ai_tabla_titulo');
+    if(!tb) return;
+
+    if(titulo){
+      titulo.textContent = AI_STATE.accesos.length
+        ? (AI_STATE.accesos.length + ' empleado(s) con accesos configurados')
+        : 'Tabla de accesos configurados';
     }
 
-    // ── RH ──
-    const rhTb = $('ai_rh_tbody');
-    if(rhTb){
-      const rows = AI_STATE.rh.map(function(empId){
-        const emp = AI_EMPLEADOS.find(function(e){ return e.id === empId; });
-        const nom = emp ? (emp.name || emp.nombre || ('Empleado ' + empId)) : ('Empleado ' + empId + ' (no en lista)');
-        return (
-          '<tr>' +
-            '<td>' + esc(nom) + '</td>' +
-            '<td><code>' + empId + '</code></td>' +
-            '<td><button class="cm-btn cm-btn-danger cm-btn-sm" onclick="ai_quitar_rh(' + empId + ')">Quitar</button></td>' +
-          '</tr>'
-        );
-      });
-      rhTb.innerHTML = rows.length
-        ? rows.join('')
-        : '<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:20px">Sin empleados con rol RH</td></tr>';
+    if(!AI_STATE.accesos.length){
+      tb.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">' +
+        'No hay empleados con accesos configurados. Usa el buscador arriba para asignar el primero.' +
+        '</td></tr>';
+      return;
     }
+
+    tb.innerHTML = AI_STATE.accesos.map(function(a){
+      const nom = esc(a.empleado_nombre || ('Empleado ' + a.empleado_id));
+      const dep = a.department_name
+        ? (esc(a.department_name) + (a.department_id ? ' <span style="color:var(--muted);font-size:11px">(ID ' + a.department_id + ')</span>' : ''))
+        : '<span style="color:var(--muted)">—</span>';
+      const chips = (a.roles || []).map(function(r){
+        if(r === 'supervisor') return '<span class="role-chip role-chip-supervisor">👔 Supervisor</span>';
+        if(r === 'rh')         return '<span class="role-chip role-chip-rh">💼 RH</span>';
+        if(r === 'direccion')  return '<span class="role-chip role-chip-direccion">🎯 Dirección</span>';
+        return '<span class="role-chip">' + esc(r) + '</span>';
+      }).join('');
+      const asign = a.fecha_asignacion ? fmtDate(a.fecha_asignacion) : '—';
+      return (
+        '<tr>' +
+          '<td>' + nom + '</td>' +
+          '<td><code>' + a.empleado_id + '</code></td>' +
+          '<td>' + dep + '</td>' +
+          '<td>' + chips + '</td>' +
+          '<td style="font-size:12px;color:var(--muted2)">' + esc(asign) + '</td>' +
+          '<td>' +
+            '<button class="cm-btn cm-btn-secondary cm-btn-sm" onclick="ai_editar_empleado(' + a.empleado_id + ')">✏️ Editar</button> ' +
+            '<button class="cm-btn cm-btn-danger cm-btn-sm" onclick="ai_quitar_empleado(' + a.empleado_id + ')">🗑️ Quitar</button>' +
+          '</td>' +
+        '</tr>'
+      );
+    }).join('');
   }
 
-  async function ai_agregar_supervisor(){
-    const depto = parseInt($('ai_sup_depto').value, 10);
-    const empId = parseInt($('ai_sup_emp_id').value, 10);
-    if(!depto){ alert('Selecciona un departamento'); return; }
-    if(!empId){ alert('Selecciona un empleado de la lista'); return; }
+  // ── Cargar empleado existente en el form para editar ──
+  function ai_editar_empleado(empId){
+    // Reutiliza ai_seleccionar_empleado — pre-marca los checkboxes automáticamente.
+    ai_seleccionar_empleado(empId);
+    // Scroll al panel
+    const panel = $('ai_emp_panel');
+    if(panel && panel.scrollIntoView) panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  window.ai_editar_empleado = ai_editar_empleado;
 
-    const prev = AI_STATE.supervisores_por_depto[depto] || [];
-    if(prev.indexOf(empId) >= 0){ alert('Ese empleado ya es supervisor de ese depto'); return; }
+  // ── Remover empleado: lo saca del array y guarda ──
+  async function ai_quitar_empleado(empId){
+    const a = AI_STATE.accesos.find(function(x){ return x.empleado_id === empId; });
+    if(!a) return;
+    if(!confirm('¿Eliminar todos los accesos de ' + (a.empleado_nombre || ('empleado ' + empId)) + '?')) return;
 
-    AI_STATE.supervisores_por_depto[depto] = prev.concat([empId]);
-    const ok = await ai_guardar();
-    if(ok){
-      // limpiar inputs
-      $('ai_sup_emp_search').value = '';
-      $('ai_sup_emp_id').value = '';
+    const prev = AI_STATE.accesos.slice();
+    AI_STATE.accesos = prev.filter(function(x){ return x.empleado_id !== empId; });
+    ai_render_tabla();
+
+    const ok = await ai_enviar();
+    if(!ok){
+      AI_STATE.accesos = prev;
+      ai_render_tabla();
+    }
+  }
+  window.ai_quitar_empleado = ai_quitar_empleado;
+
+  // ── Guardar acceso (create/update) ──
+  async function ai_guardar_acceso(){
+    const empId = parseInt($('ai_emp_id').value, 10);
+    const empNombre = $('ai_emp_nombre_val').value || '';
+    const depIdRaw  = $('ai_emp_dep_id').value;
+    const depName   = $('ai_emp_dep_name').value || null;
+    if(!empId){ alert('Selecciona un empleado primero'); return; }
+
+    const roles = [];
+    if($('ai_role_supervisor').checked) roles.push('supervisor');
+    if($('ai_role_rh').checked)         roles.push('rh');
+    if($('ai_role_direccion').checked)  roles.push('direccion');
+
+    if(roles.length === 0){ alert('Marca al menos un rol'); return; }
+
+    if(roles.indexOf('supervisor') >= 0 && !depIdRaw){
+      alert('Este empleado no tiene departamento asignado en Odoo — no puede ser supervisor.');
+      return;
+    }
+
+    const depId = depIdRaw ? parseInt(depIdRaw, 10) : null;
+
+    // Construir nueva entrada preservando fecha_asignacion/asignado_por previos si existen.
+    const prev = AI_STATE.accesos.slice();
+    const existenteIdx = prev.findIndex(function(x){ return x.empleado_id === empId; });
+    const base = existenteIdx >= 0 ? prev[existenteIdx] : {};
+
+    const entrada = {
+      empleado_id:      empId,
+      empleado_nombre:  empNombre,
+      department_id:    depId,
+      department_name:  depName,
+      roles:            roles,
+      fecha_asignacion: base.fecha_asignacion || null,   // backend llena si viene null
+      asignado_por:     base.asignado_por || null
+    };
+
+    if(existenteIdx >= 0){
+      AI_STATE.accesos[existenteIdx] = entrada;
     } else {
-      // rollback local
-      AI_STATE.supervisores_por_depto[depto] = prev;
-      ai_render_tablas();
+      AI_STATE.accesos.push(entrada);
     }
-  }
-  window.ai_agregar_supervisor = ai_agregar_supervisor;
+    ai_render_tabla();
 
-  async function ai_quitar_supervisor(deptoId, empId){
-    if(!confirm('¿Quitar a este supervisor del depto?')) return;
-    const prev = (AI_STATE.supervisores_por_depto[deptoId] || []).slice();
-    AI_STATE.supervisores_por_depto[deptoId] = prev.filter(function(x){ return x !== empId; });
-    if(AI_STATE.supervisores_por_depto[deptoId].length === 0){
-      delete AI_STATE.supervisores_por_depto[deptoId];
-    }
-    const ok = await ai_guardar();
-    if(!ok){ AI_STATE.supervisores_por_depto[deptoId] = prev; ai_render_tablas(); }
-  }
-  window.ai_quitar_supervisor = ai_quitar_supervisor;
-
-  async function ai_agregar_rh(){
-    const empId = parseInt($('ai_rh_emp_id').value, 10);
-    if(!empId){ alert('Selecciona un empleado de la lista'); return; }
-    if(AI_STATE.rh.indexOf(empId) >= 0){ alert('Ese empleado ya está en RH'); return; }
-
-    const prev = AI_STATE.rh.slice();
-    AI_STATE.rh = prev.concat([empId]);
-    const ok = await ai_guardar();
+    const ok = await ai_enviar();
     if(ok){
-      $('ai_rh_emp_search').value = '';
-      $('ai_rh_emp_id').value = '';
+      ai_cancelar();
     } else {
-      AI_STATE.rh = prev;
-      ai_render_tablas();
+      AI_STATE.accesos = prev;
+      ai_render_tabla();
     }
   }
-  window.ai_agregar_rh = ai_agregar_rh;
+  window.ai_guardar_acceso = ai_guardar_acceso;
 
-  async function ai_quitar_rh(empId){
-    if(!confirm('¿Quitar a este empleado de RH?')) return;
-    const prev = AI_STATE.rh.slice();
-    AI_STATE.rh = prev.filter(function(x){ return x !== empId; });
-    const ok = await ai_guardar();
-    if(!ok){ AI_STATE.rh = prev; ai_render_tablas(); }
-  }
-  window.ai_quitar_rh = ai_quitar_rh;
-
-  // Envía el estado completo al webhook. Retorna true si OK.
-  async function ai_guardar(){
+  // ── POST al webhook con todo el array actual. Retorna true si OK. ──
+  async function ai_enviar(){
     ai_setStatus('⏳ Guardando…', 'var(--blue)');
-    ai_render_tablas();   // actualización optimista
     const token = ai_token();
     if(!token){
       ai_setStatus('❌ Sin sesión de master. Cierra y vuelve a abrir el config-master.', 'var(--red)');
@@ -2705,12 +2771,7 @@
           'Content-Type': 'application/json',
           'X-FTS-Session-Token': token
         },
-        body: JSON.stringify({
-          accesos: {
-            supervisores_por_depto: AI_STATE.supervisores_por_depto,
-            rh: AI_STATE.rh
-          }
-        })
+        body: JSON.stringify({ accesos: AI_STATE.accesos })
       });
       const data = await res.json().catch(function(){ return null; });
       if(!res.ok || !data || data.success === false){
@@ -2718,19 +2779,18 @@
         ai_setStatus('❌ ' + msg, 'var(--red)');
         return false;
       }
-      // Sincronizar con la respuesta
-      if(data.accesos){
-        AI_STATE.supervisores_por_depto = data.accesos.supervisores_por_depto || {};
-        AI_STATE.rh                     = data.accesos.rh || [];
-        AI_STATE.updated_at             = data.accesos.updated_at || null;
-        AI_STATE.updated_by             = data.accesos.updated_by || null;
+      // Sincronizar con la respuesta (que viene enriquecida con fecha_asignacion + asignado_por)
+      if(Array.isArray(data.accesos)){
+        AI_STATE.accesos = data.accesos;
       }
-      ai_render_tablas();
+      ai_render_tabla();
       const upd = $('ai_updated');
-      if(upd && AI_STATE.updated_at){
-        upd.textContent = fmtDate(AI_STATE.updated_at) + (AI_STATE.updated_by ? ' por ' + AI_STATE.updated_by : '');
+      if(upd){
+        const now = new Date().toISOString();
+        AI_STATE.updated_at = now;
+        upd.textContent = fmtDate(now) + ' por ' + ((FTSAuth.getSession() && FTSAuth.getSession().username) || 'master');
       }
-      ai_setStatus('✅ Guardado', 'var(--green)');
+      ai_setStatus('✅ Guardado (' + (data.total || AI_STATE.accesos.length) + ' empleado(s))', 'var(--green)');
       return true;
     } catch(e){
       ai_setStatus('❌ ' + e.message, 'var(--red)');
