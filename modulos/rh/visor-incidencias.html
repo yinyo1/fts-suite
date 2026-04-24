@@ -6,7 +6,7 @@
 <title>Visor de Incidencias — RH — FTS</title>
 <script>
   (function(){
-    const BUILD_DATE = '20260424-rh-incidencias-v2';
+    const BUILD_DATE = '20260424-rh-incidencias-v3';
     window.BUILD_DATE = BUILD_DATE;
   })();
 </script>
@@ -53,35 +53,55 @@
 
   .vi-status{font-size:12px;color:var(--muted2);margin:6px 0 12px;min-height:14px}
 
-  .vi-lista{display:flex;flex-direction:column;gap:12px}
-  .vi-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.03)}
-  .vi-card-header{margin-bottom:8px}
-  .vi-card-empleado{font-size:15px;margin-bottom:4px;display:flex;align-items:center;flex-wrap:wrap;gap:4px}
-  .vi-card-empleado strong{color:var(--text)}
-  .vi-card-id{color:var(--muted);font-size:12px;font-weight:400}
-  .vi-card-tipo{font-size:13px;color:var(--muted2);font-style:italic;margin-bottom:8px}
-  .vi-card-row{font-size:13px;color:var(--text);margin:3px 0;display:flex;gap:6px;flex-wrap:wrap;align-items:baseline}
-  .vi-label{color:var(--muted2);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;min-width:110px}
-  .vi-card-motivo{
-    background:#fafafa;border-left:3px solid var(--blue);
-    padding:8px 12px;margin-top:10px;font-size:13px;color:var(--muted2);
-    line-height:1.5;border-radius:0 6px 6px 0;
-  }
-  .vi-btn-detalle{
-    margin-top:12px;background:none;border:1px solid var(--blue);color:var(--blue);
-    padding:7px 14px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;
-  }
-  .vi-btn-detalle:hover{background:#eef6ff}
+  .vi-contador{font-size:13px;color:#64748b;margin:0 0 8px;text-align:right}
 
-  .vi-empty{
-    background:var(--card);border:1px dashed var(--border);border-radius:12px;
-    padding:40px 20px;text-align:center;color:var(--muted2);font-size:14px;line-height:1.5;
+  .vi-tabla-container{
+    background:#fff;border-radius:12px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.06);
+    overflow-x:auto;margin-top:4px;
+  }
+  .vi-tabla{width:100%;border-collapse:collapse;font-size:14px}
+  .vi-tabla thead{background:#f8fafc;border-bottom:2px solid #e2e8f0}
+  .vi-tabla th{
+    text-align:left;padding:12px 14px;font-weight:600;color:#475569;
+    font-size:12px;text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap;
+  }
+  .vi-tabla tbody tr{border-bottom:1px solid #f1f5f9;transition:background 0.15s}
+  .vi-tabla tbody tr:hover{background:#f8fafc}
+  .vi-tabla td{padding:12px 14px;vertical-align:middle}
+
+  .vi-empleado-nombre{font-weight:600;color:#0f172a;font-size:14px}
+  .vi-empleado-id{font-size:11px;color:#64748b;margin-top:2px}
+
+  .vi-chip{
+    display:inline-block;padding:2px 7px;border-radius:10px;
+    font-size:10px;font-weight:600;color:#fff;margin-right:4px;white-space:nowrap;
+  }
+  .vi-chip-auto{background:#fb923c}
+  .vi-chip-sindepto{background:#a855f7}
+
+  .vi-btn-ver{
+    background:#0078D4;color:#fff;border:none;
+    padding:6px 12px;border-radius:6px;cursor:pointer;
+    font-size:12px;font-weight:500;white-space:nowrap;transition:background 0.15s;
+    font-family:inherit;
+  }
+  .vi-btn-ver:hover{background:#005a9e}
+
+  .vi-empty-tabla{
+    text-align:center;padding:40px 20px;color:#64748b;font-style:italic;
+    background:#fff;border:1px dashed var(--border);border-radius:12px;
   }
 
+  /* Mobile: ocultar columnas menos críticas */
+  @media (max-width: 768px){
+    .vi-tabla th.vi-col-desktop,
+    .vi-tabla td.vi-col-desktop{display:none}
+    .vi-tabla th,.vi-tabla td{padding:10px 8px;font-size:13px}
+    .vi-empleado-nombre{font-size:13px}
+  }
   @media (max-width: 600px){
     .vi-filters-grid{grid-template-columns:1fr}
-    .vi-card-row{flex-direction:column;gap:0}
-    .vi-label{min-width:0}
   }
 </style>
 </head>
@@ -91,7 +111,7 @@
   <a class="vi-back" href="index.html">← Dashboard RH</a>
   <div class="vi-title-wrap">
     <span class="vi-title">📋 Visor de Incidencias</span>
-    <span class="vi-build">build 20260424-rh-incidencias-v2</span>
+    <span class="vi-build">build 20260424-rh-incidencias-v3</span>
   </div>
   <div class="vi-user">
     <span class="vi-user-name" id="vi-user-nombre">—</span>
@@ -135,7 +155,9 @@
 
   <div class="vi-status" id="vi-status"></div>
 
-  <div class="vi-lista" id="vi-lista"></div>
+  <div class="vi-contador" id="vi-contador"></div>
+
+  <div id="vi-lista"></div>
 
 </main>
 
@@ -317,46 +339,75 @@ function aplicarFiltros(){
 }
 window.aplicarFiltros = aplicarFiltros;
 
-function renderLista(incidencias){
-  const cont = $('vi-lista');
-  if (!cont) return;
-  if (!incidencias.length){
-    cont.innerHTML = '<div class="vi-empty">✨ No hay incidencias que coincidan con los filtros.</div>';
-    return;
-  }
-  cont.innerHTML = incidencias.map(renderCard).join('');
+function flagsChips(inc){
+  const chips = [];
+  if (inc.autoincidencia === true) chips.push('<span class="vi-chip vi-chip-auto">AUTO</span>');
+  if (inc.sin_departamento === true) chips.push('<span class="vi-chip vi-chip-sindepto">SIN DEPTO</span>');
+  return chips.length ? chips.join(' ') : '—';
 }
 
-function renderCard(inc){
-  const badges = [];
-  if (inc.autoincidencia === true){
-    badges.push('<span style="background:#fb923c;color:#fff;padding:3px 8px;border-radius:10px;font-size:10px;font-weight:600;margin-left:6px">🟡 AUTO</span>');
-  }
-  if (inc.sin_departamento === true){
-    badges.push('<span style="background:#a855f7;color:#fff;padding:3px 8px;border-radius:10px;font-size:10px;font-weight:600;margin-left:6px">⚠️ SIN DEPTO</span>');
-  }
-
-  const tipoLabel = inc.tipo === 'olvido_entrada' ? 'Olvido de entrada' : esc(inc.tipo || '—');
+function renderFila(inc){
   const prop0 = (inc.propuestas && inc.propuestas[0]) || {};
   const horaDecl = prop0.hora_propuesta_cst || '—';
-  const motivo = prop0.comentario || '';
+  const depto = inc.department_name
+    ? (esc(inc.department_name) + (inc.department_id ? ' (' + esc(inc.department_id) + ')' : ''))
+    : '—';
+  const tipoLabel = inc.tipo === 'olvido_entrada' ? 'Olvido entrada' : esc(inc.tipo || '—');
 
   return (
-    '<div class="vi-card">' +
-      '<div class="vi-card-header">' + statusBadge(inc.status) + '</div>' +
-      '<div class="vi-card-empleado">' +
-        '<strong>' + esc(inc.empleado_nombre || '—') + '</strong>' +
-        ' <span class="vi-card-id">(ID ' + esc(inc.empleado_id || '?') + ')</span>' +
-        badges.join('') +
-      '</div>' +
-      '<div class="vi-card-tipo">' + tipoLabel + '</div>' +
-      '<div class="vi-card-row"><span class="vi-label">Creada:</span> <span>' + esc(utcToCst(inc.fecha_creacion)) + ' CST</span></div>' +
-      '<div class="vi-card-row"><span class="vi-label">Check-in real:</span> <span>' + esc(utcToCst(inc.hora_real_checkin_utc)) + ' CST</span></div>' +
-      '<div class="vi-card-row"><span class="vi-label">Hora declarada:</span> <span>' + esc(horaDecl) + ' CST</span></div>' +
-      (motivo ? '<div class="vi-card-motivo">"' + esc(truncar(motivo, 80)) + '"</div>' : '') +
-      '<button class="vi-btn-detalle" onclick="verDetalle(\'' + esc(inc.id_interno || '') + '\')">Ver detalle →</button>' +
-    '</div>'
+    '<tr class="vi-fila">' +
+      '<td>' + statusBadge(inc.status) + '</td>' +
+      '<td>' +
+        '<div class="vi-empleado-nombre">' + esc(inc.empleado_nombre || '—') + '</div>' +
+        '<div class="vi-empleado-id">ID ' + esc(inc.empleado_id || '?') + '</div>' +
+      '</td>' +
+      '<td class="vi-col-desktop">' + depto + '</td>' +
+      '<td>' + esc(utcToCst(inc.fecha_creacion)) + '</td>' +
+      '<td class="vi-col-desktop">' + esc(horaDecl) + '</td>' +
+      '<td class="vi-col-desktop">' + tipoLabel + '</td>' +
+      '<td class="vi-col-desktop">' + flagsChips(inc) + '</td>' +
+      '<td>' +
+        '<button class="vi-btn-ver" onclick="verDetalle(\'' + esc(inc.id_interno || '') + '\')">Ver detalle</button>' +
+      '</td>' +
+    '</tr>'
   );
+}
+
+function renderLista(incidencias){
+  const cont = $('vi-lista');
+  const contador = $('vi-contador');
+  if (!cont) return;
+
+  // Contador (mostrado de X de Y)
+  if (contador){
+    const total = _incidencias.length;
+    contador.textContent = incidencias.length + ' incidencia(s) mostrada(s) de ' + total + ' total';
+  }
+
+  if (!incidencias.length){
+    cont.innerHTML = '<div class="vi-empty-tabla">✨ No hay incidencias que coincidan con los filtros.</div>';
+    return;
+  }
+
+  const filasHtml = incidencias.map(renderFila).join('');
+  cont.innerHTML =
+    '<div class="vi-tabla-container">' +
+      '<table class="vi-tabla">' +
+        '<thead>' +
+          '<tr>' +
+            '<th>Estado</th>' +
+            '<th>Empleado</th>' +
+            '<th class="vi-col-desktop">Depto</th>' +
+            '<th>Creada</th>' +
+            '<th class="vi-col-desktop">Declarada</th>' +
+            '<th class="vi-col-desktop">Tipo</th>' +
+            '<th class="vi-col-desktop">Flags</th>' +
+            '<th>Acciones</th>' +
+          '</tr>' +
+        '</thead>' +
+        '<tbody>' + filasHtml + '</tbody>' +
+      '</table>' +
+    '</div>';
 }
 
 function verDetalle(idInterno){
