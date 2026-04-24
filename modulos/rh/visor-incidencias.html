@@ -6,7 +6,7 @@
 <title>Visor de Incidencias — RH — FTS</title>
 <script>
   (function(){
-    const BUILD_DATE = '20260424-rh-incidencias-v3';
+    const BUILD_DATE = '20260424-rh-incidencias-v4';
     window.BUILD_DATE = BUILD_DATE;
   })();
 </script>
@@ -103,6 +103,81 @@
   @media (max-width: 600px){
     .vi-filters-grid{grid-template-columns:1fr}
   }
+
+  /* ─── Modal de detalle ─── */
+  .vi-modal{
+    position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:1000;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .vi-modal-overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6)}
+  .vi-modal-content{
+    position:relative;background:#fff;border-radius:12px;
+    width:92%;max-width:720px;max-height:90vh;
+    display:flex;flex-direction:column;
+    box-shadow:0 10px 40px rgba(0,0,0,0.3);overflow:hidden;
+  }
+  .vi-modal-header{
+    padding:16px 20px;border-bottom:1px solid #e5e7eb;
+    display:flex;justify-content:space-between;align-items:flex-start;gap:12px;background:#f8fafc;
+  }
+  .vi-modal-header-info{flex:1;min-width:0}
+  .vi-modal-header h2{margin:0 0 6px 0;font-size:16px;color:#0f172a;font-weight:600;word-break:break-all}
+  .vi-modal-status-line{margin-top:4px}
+  .vi-modal-close{
+    background:transparent;border:none;font-size:20px;cursor:pointer;color:#64748b;
+    padding:4px 10px;border-radius:6px;line-height:1;flex-shrink:0;font-family:inherit;
+  }
+  .vi-modal-close:hover{background:#f1f5f9;color:#0f172a}
+  .vi-modal-body{padding:16px 20px;overflow-y:auto;flex:1}
+  .vi-modal-footer{padding:12px 20px;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;background:#f8fafc}
+  .vi-btn-cerrar{
+    background:#64748b;color:#fff;border:none;padding:8px 18px;border-radius:8px;
+    cursor:pointer;font-weight:500;font-size:14px;font-family:inherit;
+  }
+  .vi-btn-cerrar:hover{background:#475569}
+
+  .vi-section{margin-bottom:20px}
+  .vi-section-title{
+    font-size:12px;font-weight:700;text-transform:uppercase;color:#64748b;letter-spacing:0.6px;
+    margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e2e8f0;
+  }
+  .vi-section-row{
+    display:flex;gap:10px;margin-bottom:6px;font-size:14px;flex-wrap:wrap;line-height:1.5;
+  }
+  .vi-section-row strong{min-width:150px;color:#475569;font-weight:500}
+
+  .vi-timeline-step{
+    border-left:3px solid #e2e8f0;padding:10px 0 10px 16px;margin-bottom:12px;position:relative;
+  }
+  .vi-timeline-step::before{
+    content:'';position:absolute;left:-7px;top:14px;
+    width:11px;height:11px;background:#cbd5e1;border-radius:50%;border:2px solid #fff;
+  }
+  .vi-timeline-step-header{display:flex;gap:8px;align-items:center;font-weight:600;margin-bottom:4px;flex-wrap:wrap}
+  .vi-timeline-step-icon{font-size:16px}
+  .vi-timeline-step-rol{font-size:13px;color:#0f172a}
+  .vi-timeline-step-accion{
+    padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;color:#fff;text-transform:uppercase;
+  }
+  .vi-timeline-step-fecha{font-size:12px;color:#64748b;margin-bottom:4px}
+  .vi-timeline-step-hora{font-size:13px;color:#475569;margin-top:4px}
+  .vi-timeline-step-comentario{
+    font-size:14px;color:#334155;margin-top:6px;font-style:italic;
+    background:#f8fafc;padding:8px 12px;border-radius:6px;line-height:1.4;
+  }
+
+  .vi-geo-link{color:#0078D4;text-decoration:none;font-weight:500}
+  .vi-geo-link:hover{text-decoration:underline}
+
+  .vi-check-aplicado{display:inline-flex;align-items:center;gap:6px;color:#059669;font-weight:600}
+  .vi-check-noaplicado{color:#64748b}
+
+  @media (max-width: 600px){
+    .vi-modal-content{width:96%;max-height:95vh}
+    .vi-section-row{flex-direction:column;gap:2px}
+    .vi-section-row strong{min-width:auto}
+    .vi-modal-header h2{font-size:14px}
+  }
 </style>
 </head>
 <body>
@@ -111,7 +186,7 @@
   <a class="vi-back" href="index.html">← Dashboard RH</a>
   <div class="vi-title-wrap">
     <span class="vi-title">📋 Visor de Incidencias</span>
-    <span class="vi-build">build 20260424-rh-incidencias-v3</span>
+    <span class="vi-build">build 20260424-rh-incidencias-v4</span>
   </div>
   <div class="vi-user">
     <span class="vi-user-name" id="vi-user-nombre">—</span>
@@ -160,6 +235,24 @@
   <div id="vi-lista"></div>
 
 </main>
+
+<!-- Modal de detalle -->
+<div id="vi-modal" class="vi-modal" style="display:none" role="dialog" aria-modal="true" aria-labelledby="vi-modal-titulo">
+  <div class="vi-modal-overlay" onclick="cerrarModal()"></div>
+  <div class="vi-modal-content">
+    <div class="vi-modal-header">
+      <div class="vi-modal-header-info">
+        <h2 id="vi-modal-titulo">Detalle de Incidencia</h2>
+        <div id="vi-modal-status" class="vi-modal-status-line"></div>
+      </div>
+      <button class="vi-modal-close" onclick="cerrarModal()" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="vi-modal-body" id="vi-modal-body"></div>
+    <div class="vi-modal-footer">
+      <button class="vi-btn-cerrar" onclick="cerrarModal()">Cerrar</button>
+    </div>
+  </div>
+</div>
 
 <script>
 'use strict';
@@ -410,11 +503,169 @@ function renderLista(incidencias){
     '</div>';
 }
 
+// ═══════════════════════════════════════════════
+// MODAL DE DETALLE (#RH.3d)
+// ═══════════════════════════════════════════════
+function rolIcon(rol){
+  const icons = { 'empleado':'👤', 'supervisor':'👔', 'rh':'💼', 'direccion':'🎯' };
+  return icons[rol] || '•';
+}
+
+function accionColor(accion){
+  const colors = {
+    'solicitud':  '#3b82f6',
+    'aprobado':   '#10b981',
+    'ajustado':   '#f59e0b',
+    'rechazado':  '#ef4444',
+    'escalado':   '#8b5cf6'
+  };
+  return colors[accion] || '#64748b';
+}
+
+function renderSeccionEmpleado(inc){
+  const flags = flagsChips(inc);
+  const flagsInline = flags === '—' ? '' : ' ' + flags;
+  const deptoRow = inc.department_name
+    ? '<div class="vi-section-row"><strong>Departamento:</strong><span>' +
+      esc(inc.department_name) + ' (ID ' + esc(inc.department_id || '?') + ')</span></div>'
+    : '';
+  return (
+    '<div class="vi-section">' +
+      '<div class="vi-section-title">👤 Empleado</div>' +
+      '<div class="vi-section-row"><strong>Nombre:</strong><span>' + esc(inc.empleado_nombre || '—') + flagsInline + '</span></div>' +
+      '<div class="vi-section-row"><strong>ID Odoo:</strong><span>' + esc(inc.empleado_id || '—') + '</span></div>' +
+      deptoRow +
+      '<div class="vi-section-row"><strong>Tipo:</strong><span>' +
+        (inc.tipo === 'olvido_entrada' ? 'Olvido de entrada' : esc(inc.tipo || '—')) +
+      '</span></div>' +
+    '</div>'
+  );
+}
+
+function renderSeccionHoras(inc){
+  const horaDeclarada = (inc.propuestas && inc.propuestas[0] && inc.propuestas[0].hora_propuesta_cst)
+    ? inc.propuestas[0].hora_propuesta_cst : '—';
+
+  const aplicado = inc.aplicado_en_odoo === true
+    ? '<span class="vi-check-aplicado">✅ Aplicado en Odoo</span>'
+    : '<span class="vi-check-noaplicado">Sin aplicar en Odoo aún</span>';
+
+  const horaFinalRow = inc.hora_final_aplicada_utc
+    ? '<div class="vi-section-row"><strong>Hora final aplicada:</strong><span>' +
+      esc(utcToCst(inc.hora_final_aplicada_utc)) + ' CST</span></div>'
+    : '';
+
+  const attendanceRow = inc.attendance_id
+    ? '<div class="vi-section-row"><strong>Attendance ID:</strong><span>' + esc(inc.attendance_id) + '</span></div>'
+    : '';
+
+  return (
+    '<div class="vi-section">' +
+      '<div class="vi-section-title">🕒 Horas</div>' +
+      '<div class="vi-section-row"><strong>Check-in real:</strong><span>' + esc(utcToCst(inc.hora_real_checkin_utc)) + ' CST</span></div>' +
+      '<div class="vi-section-row"><strong>Hora declarada:</strong><span>' + esc(horaDeclarada) + ' CST</span></div>' +
+      horaFinalRow +
+      '<div class="vi-section-row"><strong>Estado Odoo:</strong>' + aplicado + '</div>' +
+      attendanceRow +
+      '<div class="vi-section-row"><strong>Creada:</strong><span>' + esc(utcToCst(inc.fecha_creacion)) + ' CST</span></div>' +
+    '</div>'
+  );
+}
+
+function renderSeccionTimeline(inc){
+  const propuestas = Array.isArray(inc.propuestas) ? inc.propuestas.slice() : [];
+  if (!propuestas.length){
+    return (
+      '<div class="vi-section">' +
+        '<div class="vi-section-title">📋 Timeline de Propuestas</div>' +
+        '<div style="color:#64748b;font-style:italic;padding:10px 0">Sin pasos registrados.</div>' +
+      '</div>'
+    );
+  }
+  // Ordenar por paso asc
+  propuestas.sort(function(a,b){ return (a.paso || 0) - (b.paso || 0); });
+  const stepsHtml = propuestas.map(function(p){
+    const icon = rolIcon(p.rol);
+    const accionBg = accionColor(p.accion);
+    const comentario = p.comentario
+      ? '<div class="vi-timeline-step-comentario">"' + esc(p.comentario) + '"</div>'
+      : '';
+    const horaProp = p.hora_propuesta_cst
+      ? '<div class="vi-timeline-step-hora">⏰ Hora propuesta: ' + esc(p.hora_propuesta_cst) + ' CST</div>'
+      : '';
+    return (
+      '<div class="vi-timeline-step">' +
+        '<div class="vi-timeline-step-header">' +
+          '<span class="vi-timeline-step-icon">' + icon + '</span>' +
+          '<span class="vi-timeline-step-rol">Paso ' + esc(p.paso || '?') + ' — ' + esc(p.rol || '—') + ': ' + esc(p.usuario || '—') + '</span>' +
+          '<span class="vi-timeline-step-accion" style="background:' + accionBg + '">' + esc(p.accion || '—') + '</span>' +
+        '</div>' +
+        '<div class="vi-timeline-step-fecha">' + esc(utcToCst(p.timestamp)) + ' CST</div>' +
+        horaProp + comentario +
+      '</div>'
+    );
+  }).join('');
+  return (
+    '<div class="vi-section">' +
+      '<div class="vi-section-title">📋 Timeline de Propuestas</div>' +
+      stepsHtml +
+    '</div>'
+  );
+}
+
+function renderSeccionGeo(inc){
+  if (!inc.geolocation || inc.geolocation.lat == null || inc.geolocation.lng == null) return '';
+  const lat = inc.geolocation.lat;
+  const lng = inc.geolocation.lng;
+  const sitio = inc.geolocation.sitio_detectado || '';
+  const mapsUrl = 'https://maps.google.com/?q=' + encodeURIComponent(lat + ',' + lng);
+  const sitioRow = sitio
+    ? '<div class="vi-section-row"><strong>Sitio detectado:</strong><span>' + esc(sitio) + '</span></div>'
+    : '';
+  const latNum = Number(lat), lngNum = Number(lng);
+  const coords = (isNaN(latNum) ? lat : latNum.toFixed(6)) + ', ' + (isNaN(lngNum) ? lng : lngNum.toFixed(6));
+  return (
+    '<div class="vi-section">' +
+      '<div class="vi-section-title">📍 Geolocation</div>' +
+      sitioRow +
+      '<div class="vi-section-row"><strong>Coordenadas:</strong><span>' + esc(coords) + '</span></div>' +
+      '<div class="vi-section-row"><strong>Mapa:</strong>' +
+        '<a href="' + esc(mapsUrl) + '" target="_blank" rel="noopener noreferrer" class="vi-geo-link">Ver en Google Maps →</a>' +
+      '</div>' +
+    '</div>'
+  );
+}
+
+function renderModal(inc){
+  $('vi-modal-titulo').textContent = 'ID: ' + (inc.id_interno || '—');
+  $('vi-modal-status').innerHTML = statusBadge(inc.status);
+  $('vi-modal-body').innerHTML =
+    renderSeccionEmpleado(inc) +
+    renderSeccionHoras(inc) +
+    renderSeccionTimeline(inc) +
+    renderSeccionGeo(inc);
+}
+
+function handleModalEscape(ev){
+  if (ev.key === 'Escape') cerrarModal();
+}
+
 function verDetalle(idInterno){
-  // TODO RH.3d: reemplazar por modal con timeline
-  alert('Detalle próximamente (disponible en próxima versión).\n\nID: ' + idInterno);
+  const inc = _incidencias.find(function(i){ return i.id_interno === idInterno; });
+  if (!inc){ alert('Incidencia no encontrada'); return; }
+  renderModal(inc);
+  $('vi-modal').style.display = 'flex';
+  document.addEventListener('keydown', handleModalEscape);
+  document.body.style.overflow = 'hidden';
 }
 window.verDetalle = verDetalle;
+
+function cerrarModal(){
+  $('vi-modal').style.display = 'none';
+  document.removeEventListener('keydown', handleModalEscape);
+  document.body.style.overflow = '';
+}
+window.cerrarModal = cerrarModal;
 
 // ═══════════════════════════════════════════════
 // INIT
