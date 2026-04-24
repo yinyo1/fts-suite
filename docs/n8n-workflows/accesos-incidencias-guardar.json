@@ -1,5 +1,5 @@
 {
-  "name": "accesos-incidencias/guardar",
+  "name": "accesos-incidencias/guardar (v2)",
   "nodes": [
     {
       "parameters": {
@@ -17,13 +17,23 @@
     },
     {
       "parameters": {
-        "jsCode": "// Validar auth + payload en un solo nodo.\n// Auth: header X-FTS-Session-Token (base64(JSON(session)))\n// El frontend de config-master-master lo arma así:\n//   btoa(unescape(encodeURIComponent(JSON.stringify({userId, username, role, loginTime, ts}))))\n\nconst req = $input.first().json;\nconst headers = (req && req.headers) || {};\nconst token = headers['x-fts-session-token'] || headers['X-FTS-Session-Token'] || '';\n\nif (!token){\n  return [{ json: {\n    _error: true,\n    codigo: 'AUTH_MISSING',\n    mensaje: 'Falta el header X-FTS-Session-Token'\n  }}];\n}\n\nlet session = null;\ntry {\n  const decoded = Buffer.from(token, 'base64').toString('utf8');\n  session = JSON.parse(decoded);\n} catch(e){\n  return [{ json: {\n    _error: true,\n    codigo: 'AUTH_BAD_TOKEN',\n    mensaje: 'Token inválido o mal formado'\n  }}];\n}\n\nif (!session || session.role !== 'master'){\n  return [{ json: {\n    _error: true,\n    codigo: 'AUTH_FAILED',\n    mensaje: 'Solo master puede modificar accesos'\n  }}];\n}\n\n// Validar payload\nconst body = req.body || {};\nconst accesos = body.accesos || null;\n\nif (!accesos || typeof accesos !== 'object'){\n  return [{ json: {\n    _error: true,\n    codigo: 'INVALID_PAYLOAD',\n    mensaje: 'Falta el objeto \"accesos\"'\n  }}];\n}\n\nconst sups = accesos.supervisores_por_depto;\nif (!sups || typeof sups !== 'object' || Array.isArray(sups)){\n  return [{ json: {\n    _error: true,\n    codigo: 'INVALID_PAYLOAD',\n    mensaje: '\"supervisores_por_depto\" debe ser un objeto'\n  }}];\n}\n\nconst rh = accesos.rh;\nif (!Array.isArray(rh)){\n  return [{ json: {\n    _error: true,\n    codigo: 'INVALID_PAYLOAD',\n    mensaje: '\"rh\" debe ser un array de empleado_ids'\n  }}];\n}\n\n// Validar contenido de sups: cada key debe ser stringified int, cada value debe ser array de ints\nfor (const deptId of Object.keys(sups)){\n  if (!/^[0-9]+$/.test(String(deptId))){\n    return [{ json: {\n      _error: true,\n      codigo: 'INVALID_PAYLOAD',\n      mensaje: 'Departamento inválido en supervisores_por_depto: ' + deptId\n    }}];\n  }\n  if (!Array.isArray(sups[deptId])){\n    return [{ json: {\n      _error: true,\n      codigo: 'INVALID_PAYLOAD',\n      mensaje: 'Valor de depto ' + deptId + ' debe ser array'\n    }}];\n  }\n  for (const empId of sups[deptId]){\n    if (!Number.isInteger(empId)){\n      return [{ json: {\n        _error: true,\n        codigo: 'INVALID_PAYLOAD',\n        mensaje: 'empleado_id inválido en depto ' + deptId + ': ' + empId\n      }}];\n    }\n  }\n}\n\nfor (const empId of rh){\n  if (!Number.isInteger(empId)){\n    return [{ json: {\n      _error: true,\n      codigo: 'INVALID_PAYLOAD',\n      mensaje: 'empleado_id inválido en rh: ' + empId\n    }}];\n  }\n}\n\n// Normalizar + construir objeto final\nconst nuevo = {\n  version: 1,\n  supervisores_por_depto: sups,\n  rh: rh,\n  updated_at: new Date().toISOString(),\n  updated_by: session.username || ('userId:' + session.userId)\n};\n\nreturn [{ json: { nuevo_accesos: nuevo, session_username: session.username } }];"
+        "jsCode": "// Auth: header X-FTS-Session-Token (base64(JSON(session))) — solo role=master puede modificar.\nconst req = $input.first().json;\nconst headers = (req && req.headers) || {};\nconst token = headers['x-fts-session-token'] || headers['X-FTS-Session-Token'] || '';\n\nif (!token){\n  return [{ json: { _error: true, codigo: 'AUTH_MISSING', mensaje: 'Falta el header X-FTS-Session-Token' } }];\n}\n\nlet session = null;\ntry {\n  const decoded = Buffer.from(token, 'base64').toString('utf8');\n  session = JSON.parse(decoded);\n} catch(e){\n  return [{ json: { _error: true, codigo: 'AUTH_BAD_TOKEN', mensaje: 'Token inválido o mal formado' } }];\n}\n\nif (!session || session.role !== 'master'){\n  return [{ json: { _error: true, codigo: 'AUTH_FAILED', mensaje: 'Solo master puede modificar accesos' } }];\n}\n\nreturn [{ json: { session: session, body: req.body || {} } }];"
       },
       "id": "a9e1f0a0-0000-4000-8000-200000000002",
-      "name": "Code - Validar auth + payload",
+      "name": "Code - Validar auth",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Valida el shape v2 del payload: body.accesos es un array de entradas,\n// cada una con empleado_id, empleado_nombre, roles[] no vacío, y si incluye\n// 'supervisor' debe traer department_id.\nconst prev = $input.first().json;\nif (prev._error){\n  // Propaga error de auth\n  return [{ json: prev }];\n}\nconst body = prev.body || {};\nconst session = prev.session;\n\nif (!Array.isArray(body.accesos)){\n  return [{ json: { _error: true, codigo: 'INVALID_PAYLOAD', mensaje: 'accesos debe ser un array' } }];\n}\n\nconst rolesValidos = ['supervisor', 'rh', 'direccion'];\n\nfor (const a of body.accesos){\n  if (!a || typeof a !== 'object'){\n    return [{ json: { _error: true, codigo: 'INVALID_ACCESO', mensaje: 'Entrada no es objeto' } }];\n  }\n  if (!a.empleado_id || !a.empleado_nombre){\n    return [{ json: { _error: true, codigo: 'INVALID_ACCESO', mensaje: 'Entrada sin empleado_id/nombre: ' + JSON.stringify(a) } }];\n  }\n  if (!Array.isArray(a.roles) || a.roles.length === 0){\n    return [{ json: { _error: true, codigo: 'INVALID_ACCESO', mensaje: 'Empleado ' + a.empleado_nombre + ' sin roles asignados' } }];\n  }\n  for (const r of a.roles){\n    if (rolesValidos.indexOf(r) < 0){\n      return [{ json: { _error: true, codigo: 'ROL_INVALIDO', mensaje: 'Rol no permitido: ' + r } }];\n    }\n  }\n  if (a.roles.indexOf('supervisor') >= 0 && !a.department_id){\n    return [{ json: { _error: true, codigo: 'SUPERVISOR_SIN_DEPTO', mensaje: 'Supervisor ' + a.empleado_nombre + ' requiere department_id' } }];\n  }\n}\n\nreturn [{ json: { accesos: body.accesos, session: session } }];"
+      },
+      "id": "a9e1f0a0-0000-4000-8000-200000000010",
+      "name": "Code - Validar payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 300]
     },
     {
       "parameters": {
@@ -53,7 +63,7 @@
       "name": "IF - Error?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.1,
-      "position": [640, 300]
+      "position": [860, 300]
     },
     {
       "parameters": {
@@ -67,7 +77,7 @@
       "name": "Respond - Error",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [860, 180]
+      "position": [1080, 180]
     },
     {
       "parameters": {
@@ -92,7 +102,7 @@
       "name": "GET accesos-panel-incidencias.json",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [860, 420],
+      "position": [1080, 420],
       "credentials": {
         "githubApi": {
           "id": "i6g6Y7fNeZJW0GA3",
@@ -102,13 +112,13 @@
     },
     {
       "parameters": {
-        "jsCode": "// Reemplaza el archivo completo con el nuevo contenido validado.\n// Preserva el SHA si existía (para update), o lo omite si era primer write (404 tolerado).\nconst ghResp = $input.first().json;\nconst prev   = $('Code - Validar auth + payload').item.json;\nconst nuevo  = prev.nuevo_accesos;\n\nlet sha = null;\nif (ghResp && ghResp.sha){\n  sha = ghResp.sha;\n}\n\nconst nuevoStr = JSON.stringify(nuevo, null, 2);\nconst nuevoB64 = Buffer.from(nuevoStr, 'utf8').toString('base64');\n\nreturn [{\n  json: {\n    sha: sha || '',\n    content: nuevoB64,\n    message: 'accesos-panel-incidencias: actualizado por ' + (prev.session_username || 'master'),\n    nuevo_accesos: nuevo\n  }\n}];"
+        "jsCode": "// Enriquece cada entrada con fecha_asignacion + asignado_por si no los trae,\n// y escribe el archivo completo con shape v2.\nconst ghResp = $input.first().json;\nconst prev = $('Code - Validar payload').item.json;\nconst session = prev.session;\n\nlet sha = null;\nif (ghResp && ghResp.sha){\n  sha = ghResp.sha;\n}\n\nconst now = new Date().toISOString();\nconst username = (session && session.username) || ('userId:' + (session && session.userId));\n\nconst accesosEnriquecidos = prev.accesos.map(function(a){\n  return Object.assign({}, a, {\n    fecha_asignacion: a.fecha_asignacion || now,\n    asignado_por:     a.asignado_por || username\n  });\n});\n\nconst archivo = {\n  version: 2,\n  accesos: accesosEnriquecidos,\n  updated_at: now,\n  updated_by: username\n};\n\nconst nuevoStr = JSON.stringify(archivo, null, 2);\nconst nuevoB64 = Buffer.from(nuevoStr, 'utf8').toString('base64');\n\nreturn [{\n  json: {\n    sha:     sha || '',\n    content: nuevoB64,\n    message: 'accesos-incidencias: ' + accesosEnriquecidos.length + ' empleado(s) por ' + username,\n    total:   accesosEnriquecidos.length,\n    accesos: accesosEnriquecidos\n  }\n}];"
       },
       "id": "a9e1f0a0-0000-4000-8000-200000000006",
       "name": "Code - Merge",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1080, 420]
+      "position": [1300, 420]
     },
     {
       "parameters": {
@@ -131,7 +141,7 @@
       "name": "PUT accesos-panel-incidencias.json",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1300, 420],
+      "position": [1520, 420],
       "credentials": {
         "githubApi": {
           "id": "i6g6Y7fNeZJW0GA3",
@@ -141,13 +151,13 @@
     },
     {
       "parameters": {
-        "jsCode": "const prev = $('Code - Merge').item.json;\nreturn [{\n  json: {\n    success: true,\n    accesos: prev.nuevo_accesos,\n    mensaje: 'Accesos actualizados'\n  }\n}];"
+        "jsCode": "const prev = $('Code - Merge').item.json;\nreturn [{\n  json: {\n    success: true,\n    total:   prev.total,\n    accesos: prev.accesos,\n    mensaje: 'Accesos actualizados correctamente'\n  }\n}];"
       },
       "id": "a9e1f0a0-0000-4000-8000-200000000008",
       "name": "Code - Respuesta OK",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1520, 420]
+      "position": [1740, 420]
     },
     {
       "parameters": {
@@ -159,19 +169,18 @@
       "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1740, 420]
+      "position": [1960, 420]
     }
   ],
   "connections": {
     "Webhook": {
-      "main": [
-        [ { "node": "Code - Validar auth + payload", "type": "main", "index": 0 } ]
-      ]
+      "main": [ [ { "node": "Code - Validar auth", "type": "main", "index": 0 } ] ]
     },
-    "Code - Validar auth + payload": {
-      "main": [
-        [ { "node": "IF - Error?", "type": "main", "index": 0 } ]
-      ]
+    "Code - Validar auth": {
+      "main": [ [ { "node": "Code - Validar payload", "type": "main", "index": 0 } ] ]
+    },
+    "Code - Validar payload": {
+      "main": [ [ { "node": "IF - Error?", "type": "main", "index": 0 } ] ]
     },
     "IF - Error?": {
       "main": [
@@ -180,24 +189,16 @@
       ]
     },
     "GET accesos-panel-incidencias.json": {
-      "main": [
-        [ { "node": "Code - Merge", "type": "main", "index": 0 } ]
-      ]
+      "main": [ [ { "node": "Code - Merge", "type": "main", "index": 0 } ] ]
     },
     "Code - Merge": {
-      "main": [
-        [ { "node": "PUT accesos-panel-incidencias.json", "type": "main", "index": 0 } ]
-      ]
+      "main": [ [ { "node": "PUT accesos-panel-incidencias.json", "type": "main", "index": 0 } ] ]
     },
     "PUT accesos-panel-incidencias.json": {
-      "main": [
-        [ { "node": "Code - Respuesta OK", "type": "main", "index": 0 } ]
-      ]
+      "main": [ [ { "node": "Code - Respuesta OK", "type": "main", "index": 0 } ] ]
     },
     "Code - Respuesta OK": {
-      "main": [
-        [ { "node": "Respond to Webhook", "type": "main", "index": 0 } ]
-      ]
+      "main": [ [ { "node": "Respond to Webhook", "type": "main", "index": 0 } ] ]
     }
   },
   "active": false,

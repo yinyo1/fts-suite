@@ -1,7 +1,6 @@
 {
-  "version": 1,
-  "supervisores_por_depto": {},
-  "rh": [],
+  "version": 2,
+  "accesos": [],
   "updated_at": null,
   "updated_by": null
 }
