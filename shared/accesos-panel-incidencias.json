@@ -22,8 +22,19 @@
       ],
       "fecha_asignacion": "2026-04-24T15:55:52.853Z",
       "asignado_por": "ftsmaster"
+    },
+    {
+      "empleado_id": 63,
+      "empleado_nombre": "Magaly Estefanía Pérez García",
+      "department_id": 9,
+      "department_name": "Legal",
+      "roles": [
+        "rh"
+      ],
+      "fecha_asignacion": "2026-04-24T15:56:03.591Z",
+      "asignado_por": "ftsmaster"
     }
   ],
-  "updated_at": "2026-04-24T15:55:52.853Z",
+  "updated_at": "2026-04-24T15:56:03.591Z",
   "updated_by": "ftsmaster"
 }
