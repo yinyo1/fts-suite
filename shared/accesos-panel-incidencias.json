@@ -1,6 +1,18 @@
 {
   "version": 2,
-  "accesos": [],
-  "updated_at": null,
-  "updated_by": null
+  "accesos": [
+    {
+      "empleado_id": 112,
+      "empleado_nombre": "Felipe Perez",
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "roles": [
+        "supervisor"
+      ],
+      "fecha_asignacion": "2026-04-24T15:54:07.975Z",
+      "asignado_por": "ftsmaster"
+    }
+  ],
+  "updated_at": "2026-04-24T15:54:07.975Z",
+  "updated_by": "ftsmaster"
 }
