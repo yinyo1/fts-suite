@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Módulo RH — FTS Suite</title>
+<script>
+  (function(){
+    const BUILD_DATE = '20260424-rh-hub-v1';
+    window.BUILD_DATE = BUILD_DATE;
+  })();
+</script>
+<script src="../../shared/auth-suite.js"></script>
+<style>
+  :root{
+    --green:  #107C10;
+    --green2: #0d6b0d;
+    --red:    #D13438;
+    --blue:   #0078D4;
+    --orange: #D83B01;
+    --text:   #1a1a1a;
+    --muted:  #999;
+    --muted2: #666;
+    --bg:     #fafafa;
+    --card:   #ffffff;
+    --border: #e0e0e0;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:16px;color:var(--text);background:var(--bg)}
+  a{color:inherit}
+
+  .rh-topbar{
+    position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px 16px;gap:8px;
+  }
+  .rh-back{
+    display:inline-flex;align-items:center;gap:4px;
+    color:var(--muted2);text-decoration:none;font-size:13px;font-weight:600;
+    padding:6px 10px;border-radius:7px;border:1px solid var(--border);
+    background:#fff;white-space:nowrap;
+  }
+  .rh-back:hover{color:var(--green);border-color:var(--green);background:#f0f9f0}
+  .rh-title-wrap{display:flex;align-items:center;gap:6px;min-width:0;flex:1;justify-content:center}
+  .rh-title{font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rh-build{font-size:10px;color:var(--muted);font-weight:400}
+  .rh-user{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+  .rh-user-name{font-size:12px;color:var(--muted2);max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rh-logout{
+    background:none;border:none;color:var(--blue);font-size:12px;cursor:pointer;
+    padding:2px 6px;border-radius:4px;font-family:inherit;
+  }
+
+  .rh-main{max-width:960px;margin:0 auto;padding:16px;padding-bottom:40px}
+
+  .rh-welcome{
+    background:linear-gradient(135deg, var(--green) 0%, var(--green2) 100%);
+    color:#fff;border-radius:14px;padding:22px 18px;margin-bottom:20px;
+    box-shadow:0 4px 12px rgba(16,124,16,0.2);
+  }
+  .rh-welcome h1{margin:0 0 6px;font-size:22px;font-weight:700}
+  .rh-welcome p{margin:0;font-size:14px;opacity:0.92;line-height:1.5}
+
+  .rh-cards{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width: 640px){ .rh-cards{grid-template-columns:1fr} }
+
+  .rh-card{
+    background:var(--card);border:1px solid var(--border);border-radius:14px;
+    padding:22px 18px;display:flex;flex-direction:column;gap:8px;
+    text-decoration:none;color:inherit;cursor:pointer;
+    transition:transform 0.1s,border-color 0.1s;min-height:140px;
+  }
+  .rh-card:active{transform:scale(0.98);border-color:var(--green)}
+  .rh-card-icon{font-size:36px;line-height:1}
+  .rh-card-title{font-size:17px;font-weight:700;color:var(--green)}
+  .rh-card-sub{font-size:13px;color:var(--muted2);line-height:1.5}
+
+  .rh-footer{text-align:center;font-size:11px;color:var(--muted);margin-top:28px}
+</style>
+</head>
+<body>
+
+<div class="rh-topbar">
+  <a class="rh-back" href="../../index.html">← Volver a Suite</a>
+  <div class="rh-title-wrap">
+    <span class="rh-title">👥 Módulo RH</span>
+    <span class="rh-build">build 20260424-rh-hub-v1</span>
+  </div>
+  <div class="rh-user">
+    <span class="rh-user-name" id="rh-user-name">—</span>
+    <button class="rh-logout" onclick="rh_logout()">Cerrar sesión</button>
+  </div>
+</div>
+
+<main class="rh-main">
+
+  <div class="rh-welcome">
+    <h1>👥 Módulo RH — Visualización</h1>
+    <p id="rh-welcome-sub">Selecciona qué deseas consultar.</p>
+  </div>
+
+  <div class="rh-cards">
+    <a class="rh-card" href="visor-checkins.html">
+      <div class="rh-card-icon">👁️</div>
+      <div class="rh-card-title">Visor de Check-ins</div>
+      <div class="rh-card-sub">Consulta check-ins y check-outs por rango de fechas.</div>
+    </a>
+    <a class="rh-card" href="visor-incidencias.html">
+      <div class="rh-card-icon">📋</div>
+      <div class="rh-card-title">Visor de Incidencias</div>
+      <div class="rh-card-sub">Revisa el estado de incidencias reportadas por empleados.</div>
+    </a>
+  </div>
+
+  <div class="rh-footer">
+    FTS Industrial Suite — Módulo RH (solo lectura)
+  </div>
+
+</main>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════
+// AUTH GATE
+// ═══════════════════════════════════════════════
+function rh_check_auth(){
+  const session = (window.FTSAuth && FTSAuth.getSession && FTSAuth.getSession()) || null;
+  if (!session){
+    alert('Sesión no válida. Redirigiendo al launcher.');
+    window.location.href = '../../index.html';
+    return null;
+  }
+  const tieneRH = session.role === 'master'
+    || session.modulos === 'all'
+    || (session.modulos && session.modulos.rh && session.modulos.rh.acceso === true);
+  if (!tieneRH){
+    alert('No tienes acceso al módulo RH.');
+    window.location.href = '../../index.html';
+    return null;
+  }
+  return session;
+}
+
+function rh_logout(){
+  try { window.FTSAuth && FTSAuth.logout && FTSAuth.logout(); } catch(e){}
+  window.location.href = '../../index.html';
+}
+window.rh_logout = rh_logout;
+
+document.addEventListener('DOMContentLoaded', function(){
+  const session = rh_check_auth();
+  if (!session) return;
+  const nom = session.nombre || session.username || '—';
+  document.getElementById('rh-user-name').textContent = '👤 ' + nom;
+  document.getElementById('rh-welcome-sub').textContent =
+    'Hola, ' + nom + '. Selecciona qué deseas consultar.';
+
+  // Init tracking de actividad para renovar TTL de sesión FTSAuth
+  try { FTSAuth.initActivityTracking && FTSAuth.initActivityTracking(); } catch(e){}
+
+  console.log('[rh-hub] init OK build=' + window.BUILD_DATE + ' user=' + (session.username || '?'));
+});
+</script>
+
+</body>
+</html>
