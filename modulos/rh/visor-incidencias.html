@@ -6,7 +6,7 @@
 <title>Visor de Incidencias — RH — FTS</title>
 <script>
   (function(){
-    const BUILD_DATE = '20260424-rh-incidencias-v1';
+    const BUILD_DATE = '20260424-rh-incidencias-v2';
     window.BUILD_DATE = BUILD_DATE;
   })();
 </script>
@@ -91,7 +91,7 @@
   <a class="vi-back" href="index.html">← Dashboard RH</a>
   <div class="vi-title-wrap">
     <span class="vi-title">📋 Visor de Incidencias</span>
-    <span class="vi-build">build 20260424-rh-incidencias-v1</span>
+    <span class="vi-build">build 20260424-rh-incidencias-v2</span>
   </div>
   <div class="vi-user">
     <span class="vi-user-name" id="vi-user-nombre">—</span>
@@ -250,9 +250,7 @@ async function cargarIncidencias(){
     const res = await fetch(url, {
       cache: 'no-store',
       headers: {
-        'Accept': 'application/vnd.github.v3.raw',
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache'
+        'Accept': 'application/vnd.github.v3.raw'
       }
     });
     if (!res.ok){
