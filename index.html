@@ -292,6 +292,37 @@ async function confirmFirstLogin(){
   errorEl.textContent = '';
 }
 
+function activarTileRH(userOrSession){
+  const card = document.getElementById('card-rh');
+  if(!card) return;
+  const role    = userOrSession.role;
+  const modulos = userOrSession.modulos;
+  const tieneRH = role === 'master'
+    || modulos === 'all'
+    || (modulos && modulos.rh && modulos.rh.acceso === true);
+  if(!tieneRH) return;
+  card.classList.remove('disabled');
+  card.classList.add('active');
+  const badge = card.querySelector('.mod-badge');
+  if(badge) badge.style.display = 'none';
+  card.style.cursor = 'pointer';
+  card.onclick = function(){ window.location.href = 'modulos/rh/index.html'; };
+  card.setAttribute('data-rh-active','1');
+}
+
+function revertirTileRH(){
+  const card = document.getElementById('card-rh');
+  if(!card) return;
+  if(card.getAttribute('data-rh-active') !== '1') return;
+  card.classList.remove('active');
+  card.classList.add('disabled');
+  const badge = card.querySelector('.mod-badge');
+  if(badge) badge.style.display = '';
+  card.style.cursor = '';
+  card.onclick = null;
+  card.removeAttribute('data-rh-active');
+}
+
 function applyModuleAccess(userOrSession){
   const role    = userOrSession.role;
   const modulos = userOrSession.modulos;
@@ -306,6 +337,9 @@ function applyModuleAccess(userOrSession){
   // Card Config Master solo para master
   const cardMaster = document.getElementById('card-config-master');
   if(cardMaster) cardMaster.style.display = (role === 'master') ? 'flex' : 'none';
+
+  // Activar tile RH si el usuario tiene acceso (aplica también a master)
+  activarTileRH(userOrSession);
 
   // Master ve todo — no aplicar restricciones
   if(role === 'master' || modulos === 'all') return;
@@ -338,6 +372,8 @@ function doLogout(){
   if(overlay) overlay.style.display = 'flex';
   const userBar = document.getElementById('user-bar');
   if(userBar) userBar.style.display = 'none';
+  // Revertir tile RH al estado "Próximamente"
+  revertirTileRH();
   // Quitar badges de sin acceso
   document.querySelectorAll('.access-badge').forEach(function(b){ b.remove(); });
   // Restaurar cards
