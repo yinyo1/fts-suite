@@ -6,7 +6,7 @@
 <title>Panel de Incidencias — Mi Perfil — FTS</title>
 <script>
   (function(){
-    const BUILD_DATE = '20260424-pi-skeleton-v1';
+    const BUILD_DATE = '20260424-pi-lista-v2';
     window.BUILD_DATE = BUILD_DATE;
   })();
 </script>
@@ -97,6 +97,59 @@
     text-align:center;padding:40px;color:var(--muted2);font-size:14px;
   }
 
+  /* Cards */
+  .pi-card{
+    background:#fff;border:1px solid var(--border);border-radius:10px;
+    padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);
+  }
+  .pi-card-header{
+    display:flex;justify-content:space-between;align-items:center;
+    margin-bottom:10px;flex-wrap:wrap;gap:8px;
+  }
+  .pi-card-flags{display:flex;gap:4px;flex-wrap:wrap}
+  .pi-chip{
+    display:inline-block;padding:3px 8px;border-radius:10px;
+    font-size:10px;font-weight:600;color:#fff;
+  }
+  .pi-chip-auto{background:#fb923c}
+  .pi-chip-sindepto{background:#a855f7}
+
+  .pi-card-empleado{font-size:15px;margin-bottom:4px}
+  .pi-card-id{font-size:11px;color:var(--muted);margin-left:6px}
+  .pi-card-tipo{font-size:13px;color:var(--muted2);margin-bottom:8px}
+
+  .pi-card-row{display:flex;gap:8px;font-size:13px;margin-bottom:4px}
+  .pi-label{color:var(--muted2);min-width:110px}
+
+  .pi-card-motivo{
+    font-style:italic;color:#334155;background:#f8fafc;
+    padding:8px 12px;border-radius:6px;margin-top:8px;font-size:13px;
+  }
+
+  .pi-card-actions{
+    display:flex;gap:8px;margin-top:12px;padding-top:12px;
+    border-top:1px solid #f1f5f9;flex-wrap:wrap;
+  }
+  .pi-btn-detalle{
+    background:var(--blue);color:#fff;border:none;
+    padding:7px 14px;border-radius:7px;cursor:pointer;
+    font-size:13px;font-weight:600;font-family:inherit;
+  }
+  .pi-btn-detalle:hover{background:#005a9e}
+  .pi-btn-acciones{
+    background:var(--green);color:#fff;border:none;
+    padding:7px 14px;border-radius:7px;cursor:pointer;
+    font-size:13px;font-weight:600;font-family:inherit;
+  }
+  .pi-btn-disabled{
+    background:#cbd5e1 !important;color:#475569 !important;cursor:not-allowed !important;
+  }
+
+  .pi-empty{
+    background:#fff;border:1px solid var(--border);border-radius:10px;
+    padding:40px;text-align:center;color:var(--muted);font-style:italic;
+  }
+
   @media (max-width: 720px){
     .pi-tab{padding:10px 10px;font-size:13px}
     .pi-controls{flex-direction:column;gap:10px;align-items:stretch}
@@ -113,7 +166,7 @@
   <a class="pi-back" href="../index.html">← Mi Perfil</a>
   <div class="pi-title-wrap">
     <span class="pi-title">⚖️ Panel de Incidencias</span>
-    <span class="pi-build">build 20260424-pi-skeleton-v1</span>
+    <span class="pi-build">build 20260424-pi-lista-v2</span>
   </div>
   <div class="pi-user">
     <span id="pi-user-nombre">—</span>
@@ -150,11 +203,29 @@
 const MP_SESSION_KEY     = 'fts_mi_perfil_session';
 const MP_SESSION_MAX_AGE = 15 * 60 * 1000;   // 15 min
 const ACCESOS_URL        = 'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/accesos-panel-incidencias.json?ref=main';
+const INCIDENCIAS_URL    = 'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/incidencias-asistencia.json?ref=main';
+
+const STATUS_PENDIENTE_POR_ROL = {
+  'supervisor': 'pendiente_supervisor',
+  'rh':         'pendiente_rh',
+  'direccion':  'pendiente_direccion'
+};
+
+const STATUS_RESUELTOS = [
+  'aprobada_tal_cual',
+  'aprobada_con_ajuste',
+  'aprobada_por_direccion',
+  'rechazada_por_supervisor',
+  'rechazada_por_rh',
+  'rechazada_por_direccion',
+  'expirada_por_timeout'
+];
 
 let _empleadoAcceso = null;
 let _roles          = [];
 let _session        = null;
 let _tabActiva      = null;
+let _incidencias    = [];
 
 function $(id){ return document.getElementById(id); }
 function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
@@ -230,11 +301,192 @@ function cambiarTab(rol){
   document.querySelectorAll('.pi-tab').forEach(function(t){
     t.classList.toggle('pi-tab-active', t.dataset.rol === rol);
   });
-  // C.2.2b conectará aquí refiltrarYRenderizar()
-  $('pi-lista').innerHTML =
-    '<div class="pi-placeholder">Lista de incidencias — próximamente en C.2.2b</div>';
+  refiltrarYRenderizar();
 }
 window.cambiarTab = cambiarTab;
+
+// ═══════════════════════════════════════════════
+// HELPERS DE FORMATO
+// ═══════════════════════════════════════════════
+function truncar(str, max){
+  if (!str) return '';
+  str = String(str);
+  return str.length <= max ? str : str.substring(0, max) + '…';
+}
+
+function utcToCst(utcString){
+  if (!utcString) return '—';
+  const raw = String(utcString);
+  const withZ = raw.endsWith('Z') || raw.indexOf('+') > 0 || raw.indexOf('-', 10) > 0
+    ? raw : (raw.replace(' ','T') + 'Z');
+  const utc = new Date(withZ);
+  if (isNaN(utc.getTime())) return raw;
+  const cst = new Date(utc.getTime() - (6 * 60 * 60 * 1000));
+  const dd = String(cst.getUTCDate()).padStart(2, '0');
+  const mm = String(cst.getUTCMonth() + 1).padStart(2, '0');
+  const yyyy = cst.getUTCFullYear();
+  const hh = String(cst.getUTCHours()).padStart(2, '0');
+  const min = String(cst.getUTCMinutes()).padStart(2, '0');
+  return dd + '/' + mm + '/' + yyyy + ' ' + hh + ':' + min;
+}
+
+function statusBadge(status){
+  const colores = {
+    'pendiente_supervisor':     { bg:'#fef3c7', fg:'#b45309', txt:'Pendiente Sup.'    },
+    'pendiente_rh':             { bg:'#fef3c7', fg:'#b45309', txt:'Pendiente RH'      },
+    'pendiente_direccion':      { bg:'#fef3c7', fg:'#b45309', txt:'Pendiente Dir.'    },
+    'aprobada_tal_cual':        { bg:'#d1fae5', fg:'#047857', txt:'Aprobada'          },
+    'aprobada_con_ajuste':      { bg:'#d1fae5', fg:'#047857', txt:'Aprobada (ajuste)' },
+    'aprobada_por_direccion':   { bg:'#d1fae5', fg:'#047857', txt:'Aprobada (Dir.)'   },
+    'rechazada_por_supervisor': { bg:'#fee2e2', fg:'#b91c1c', txt:'Rechazada (Sup.)'  },
+    'rechazada_por_rh':         { bg:'#fee2e2', fg:'#b91c1c', txt:'Rechazada (RH)'    },
+    'rechazada_por_direccion':  { bg:'#fee2e2', fg:'#b91c1c', txt:'Rechazada (Dir.)'  },
+    'expirada_por_timeout':     { bg:'#fee2e2', fg:'#b91c1c', txt:'Expirada'          }
+  };
+  const c = colores[status] || { bg:'#e5e7eb', fg:'#374151', txt:(status || '—') };
+  return '<span style="background:' + c.bg + ';color:' + c.fg +
+         ';padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600">' +
+         esc(c.txt) + '</span>';
+}
+
+// ═══════════════════════════════════════════════
+// FETCH INCIDENCIAS
+// ═══════════════════════════════════════════════
+async function cargarIncidencias(){
+  const url = INCIDENCIAS_URL + '&t=' + Date.now();
+  try {
+    const res = await fetch(url, {
+      cache: 'no-store',
+      headers: { 'Accept': 'application/vnd.github.v3.raw' }
+    });
+    if (!res.ok){
+      console.warn('[panel-incidencias] HTTP', res.status);
+      _incidencias = [];
+    } else {
+      const data = await res.json();
+      _incidencias = Array.isArray(data && data.incidencias) ? data.incidencias : [];
+      console.log('[panel-incidencias] cargadas', _incidencias.length, 'incidencias');
+    }
+  } catch(e){
+    console.error('[panel-incidencias] error fetch:', e);
+    _incidencias = [];
+  }
+  actualizarBadges();
+  refiltrarYRenderizar();
+}
+window.cargarIncidencias = cargarIncidencias;
+
+// ═══════════════════════════════════════════════
+// FILTRADO + RENDER
+// ═══════════════════════════════════════════════
+function filtrarPorRol(rol, incidencias, verResueltas){
+  const statusActivo = STATUS_PENDIENTE_POR_ROL[rol];
+
+  let filtradas = incidencias.filter(function(i){
+    if (verResueltas){
+      return i.status === statusActivo || STATUS_RESUELTOS.indexOf(i.status) !== -1;
+    }
+    return i.status === statusActivo;
+  });
+
+  // Supervisor: solo su departamento
+  if (rol === 'supervisor' && _empleadoAcceso && _empleadoAcceso.department_id != null){
+    filtradas = filtradas.filter(function(i){
+      return Number(i.department_id) === Number(_empleadoAcceso.department_id);
+    });
+  }
+
+  filtradas.sort(function(a, b){
+    return String(b.fecha_creacion || '').localeCompare(String(a.fecha_creacion || ''));
+  });
+
+  return filtradas;
+}
+
+function actualizarBadges(){
+  _roles.forEach(function(rol){
+    const filtradas = filtrarPorRol(rol, _incidencias, false);
+    const badge = $('pi-badge-' + rol);
+    if (badge) badge.textContent = filtradas.length;
+  });
+}
+
+function refiltrarYRenderizar(){
+  if (!_tabActiva) return;
+  const verResueltas = $('pi-ver-resueltas') && $('pi-ver-resueltas').checked;
+  const filtradas = filtrarPorRol(_tabActiva, _incidencias, verResueltas);
+  renderLista(filtradas);
+}
+window.refiltrarYRenderizar = refiltrarYRenderizar;
+
+function renderLista(incidencias){
+  const cont = $('pi-lista');
+  if (!cont) return;
+  if (!incidencias || incidencias.length === 0){
+    cont.innerHTML = '<div class="pi-empty">✨ No hay incidencias en este filtro.</div>';
+    return;
+  }
+  cont.innerHTML = incidencias.map(renderCard).join('');
+}
+
+function renderCard(inc){
+  const horaDeclarada = (inc.propuestas && inc.propuestas[0] && inc.propuestas[0].hora_propuesta_cst)
+    ? inc.propuestas[0].hora_propuesta_cst : '—';
+
+  const motivoTrunc = (inc.propuestas && inc.propuestas[0] && inc.propuestas[0].comentario)
+    ? truncar(inc.propuestas[0].comentario, 100) : '';
+
+  const flags = [];
+  if (inc.autoincidencia === true) flags.push('<span class="pi-chip pi-chip-auto">🟡 AUTO</span>');
+  if (inc.sin_departamento === true) flags.push('<span class="pi-chip pi-chip-sindepto">⚠️ SIN DEPTO</span>');
+
+  const esResuelta = STATUS_RESUELTOS.indexOf(inc.status) !== -1;
+
+  const botonAcciones = esResuelta
+    ? '<button class="pi-btn-acciones pi-btn-disabled" disabled title="Incidencia resuelta — solo lectura">✓ Resuelta</button>'
+    : '<button class="pi-btn-acciones pi-btn-disabled" disabled title="Disponible en C.2.3">⚙️ Acciones (próx.)</button>';
+
+  const motivoHtml = motivoTrunc
+    ? '<div class="pi-card-motivo">"' + esc(motivoTrunc) + '"</div>'
+    : '';
+
+  const tipoLabel = inc.tipo === 'olvido_entrada' ? 'Olvido de entrada' : esc(inc.tipo || '—');
+
+  return (
+    '<div class="pi-card">' +
+      '<div class="pi-card-header">' +
+        statusBadge(inc.status) +
+        '<div class="pi-card-flags">' + flags.join('') + '</div>' +
+      '</div>' +
+      '<div class="pi-card-body">' +
+        '<div class="pi-card-empleado">' +
+          '<strong>' + esc(inc.empleado_nombre || '—') + '</strong>' +
+          '<span class="pi-card-id">ID ' + esc(inc.empleado_id || '?') + '</span>' +
+        '</div>' +
+        '<div class="pi-card-tipo">' + tipoLabel + '</div>' +
+        '<div class="pi-card-row">' +
+          '<span class="pi-label">Creada:</span>' +
+          '<span>' + esc(utcToCst(inc.fecha_creacion)) + ' CST</span>' +
+        '</div>' +
+        '<div class="pi-card-row">' +
+          '<span class="pi-label">Hora declarada:</span>' +
+          '<span>' + esc(horaDeclarada) + ' CST</span>' +
+        '</div>' +
+        motivoHtml +
+      '</div>' +
+      '<div class="pi-card-actions">' +
+        '<button class="pi-btn-detalle" onclick="verDetalle(\'' + esc(inc.id_interno || '') + '\')">👁️ Ver detalle</button>' +
+        botonAcciones +
+      '</div>' +
+    '</div>'
+  );
+}
+
+function verDetalle(idInterno){
+  // C.2.2c implementará el modal completo
+  alert('Modal de detalle disponible en C.2.2c\n\nID: ' + idInterno);
+}
+window.verDetalle = verDetalle;
 
 // ═══════════════════════════════════════════════
 // INIT
@@ -266,6 +518,11 @@ document.addEventListener('DOMContentLoaded', async function(){
   $('pi-user-nombre').textContent = '👤 ' + (session.empleado_nombre || '—');
 
   inicializarTabs(_roles);
+
+  const tgl = $('pi-ver-resueltas');
+  if (tgl) tgl.addEventListener('change', refiltrarYRenderizar);
+
+  await cargarIncidencias();
 
   console.log('[panel-incidencias] init OK build=' + window.BUILD_DATE +
               ' empleado=' + session.empleado_id +
