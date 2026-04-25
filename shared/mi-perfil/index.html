@@ -7,7 +7,7 @@
 <script>
   // Cache busting + BUILD_DATE expuesto a window.
   (function() {
-    const BUILD_DATE = '20260423-mi-perfil-hub-v4';
+    const BUILD_DATE = '20260424-mp-panel-card-v1';
     window.BUILD_DATE = BUILD_DATE;
     if (!window.location.search.includes('v=')) {
       document.addEventListener('DOMContentLoaded', function() {
@@ -199,6 +199,22 @@
   @media (max-width: 440px){ .mp-card-primary{grid-column:span 1} }
   .mp-card-primary .mp-card-title{color:var(--green);font-size:17px}
 
+  .mp-card-panel{
+    grid-column:span 2;background:linear-gradient(135deg,#fffaf0 0%,#fff4d9 100%);
+    border-color:#e6d38a;
+  }
+  @media (max-width: 440px){ .mp-card-panel{grid-column:span 1} }
+  .mp-card-panel .mp-card-title{color:#7a5800;font-size:17px}
+
+  .mp-card-roles{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+  .mp-role-chip{
+    display:inline-block;font-size:10px;padding:3px 8px;border-radius:10px;
+    font-weight:700;text-transform:uppercase;letter-spacing:0.4px;
+  }
+  .mp-role-chip-supervisor{background:#dbeafe;color:#1e40af}
+  .mp-role-chip-rh{background:#fce7f3;color:#9f1239}
+  .mp-role-chip-direccion{background:#fef3c7;color:#92400e}
+
   .mp-footer{text-align:center;font-size:11px;color:var(--muted);margin-top:28px}
 </style>
 </head>
@@ -207,7 +223,7 @@
 <div class="mp-topbar">
   <div class="mp-topbar-left">
     <a class="mp-back-suite" id="mp-nav-btn" href="../../index.html">← Volver a Suite</a>
-    <span class="mp-build">build 20260423-mi-perfil-hub-v4</span>
+    <span class="mp-build">build 20260424-mp-panel-card-v1</span>
   </div>
   <div id="mp-topbar-right">
     <span class="mp-user-info" id="mp-user-label" style="display:none"></span>
@@ -292,6 +308,13 @@
         <div class="mp-card-icon">📋</div>
         <div class="mp-card-title">Mis Incidencias</div>
         <div class="mp-card-sub">Consulta tus solicitudes de ajuste de hora y su estado.</div>
+      </a>
+
+      <a id="mp-card-panel" class="mp-card mp-card-panel" href="panel-incidencias/index.html" style="display:none">
+        <div class="mp-card-icon">⚖️</div>
+        <div class="mp-card-title">Panel de Incidencias</div>
+        <div class="mp-card-sub">Aprueba o rechaza incidencias del equipo.</div>
+        <div class="mp-card-roles" id="mp-card-roles"></div>
       </a>
 
       <div class="mp-card disabled">
@@ -528,6 +551,55 @@ function mp_show_dashboard(session){
   $('mp-logout-btn').style.display = 'inline';
   $('mp-session-ts').textContent = new Date(session.loginTime).toLocaleString('es-MX');
   mp_update_nav_button('dashboard');
+  inicializarPanelCard(session);
+}
+
+// ═══════════════════════════════════════════════
+// PANEL DE INCIDENCIAS — card condicional
+// ═══════════════════════════════════════════════
+async function cargarRolesEmpleado(empleadoId){
+  if (!empleadoId) return [];
+  try {
+    const url = 'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/accesos-panel-incidencias.json?ref=main&t=' + Date.now();
+    const res = await fetch(url, {
+      cache: 'no-store',
+      headers: { 'Accept': 'application/vnd.github.v3.raw' }
+    });
+    if (!res.ok){
+      console.warn('[mi-perfil] accesos-panel HTTP', res.status);
+      return [];
+    }
+    const data = await res.json();
+    const accesos = Array.isArray(data.accesos) ? data.accesos : [];
+    const empleado = accesos.find(function(a){ return Number(a.empleado_id) === Number(empleadoId); });
+    return empleado && Array.isArray(empleado.roles) ? empleado.roles : [];
+  } catch(e){
+    console.error('[mi-perfil] error cargando accesos:', e);
+    return [];
+  }
+}
+
+async function inicializarPanelCard(session){
+  if (!session || !session.empleado_id) return;
+  const roles = await cargarRolesEmpleado(session.empleado_id);
+  if (roles.length > 0) mostrarCardPanel(roles);
+}
+
+function mostrarCardPanel(roles){
+  const card = $('mp-card-panel');
+  const rolesEl = $('mp-card-roles');
+  if (!card || !rolesEl) return;
+  card.style.display = '';
+  const labels = {
+    'supervisor': 'Supervisor',
+    'rh':         'RH',
+    'direccion':  'Dirección'
+  };
+  rolesEl.innerHTML = roles.map(function(r){
+    const cls = 'mp-role-chip mp-role-chip-' + r;
+    const label = labels[r] || r;
+    return '<span class="' + cls + '">' + esc(label) + '</span>';
+  }).join('');
 }
 
 function mp_step(id){
