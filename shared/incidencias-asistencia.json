@@ -36,11 +36,21 @@
           "hora_propuesta_cst": null,
           "comentario": "Aprobado vino temprano y olvido checar",
           "accion": "aprobado"
+        },
+        {
+          "paso": 3,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-04-25T01:35:14.983Z",
+          "hora_propuesta_cst": "2026-04-23 08:30:00",
+          "comentario": "Pongo hora real",
+          "accion": "ajustado"
         }
       ],
-      "status": "pendiente_rh",
-      "hora_final_aplicada_utc": null,
-      "aplicado_en_odoo": false
+      "status": "aprobada_con_ajuste",
+      "hora_final_aplicada_utc": "2026-04-23 14:30:00",
+      "aplicado_en_odoo": true
     },
     {
       "id_interno": "INC-OLV-32-2026-04-23T22-08-43-496Z",
