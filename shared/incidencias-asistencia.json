@@ -26,9 +26,19 @@
           "hora_propuesta_cst": "2026-04-23 08:24:00",
           "comentario": "olvide porque no me acorde",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe Perez",
+          "timestamp": "2026-04-25T01:19:04.127Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Aprobado vino temprano y olvido checar",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false
     },
