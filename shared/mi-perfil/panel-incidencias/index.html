@@ -6,7 +6,7 @@
 <title>Panel de Incidencias — Mi Perfil — FTS</title>
 <script>
   (function(){
-    const BUILD_DATE = '20260424-pi-modal-v3';
+    const BUILD_DATE = '20260424-pi-acciones-v4';
     window.BUILD_DATE = BUILD_DATE;
   })();
 </script>
@@ -232,6 +232,60 @@
     .pi-title{font-size:13px}
     .pi-build{display:none}
   }
+
+  /* ─── Botones de acción por rol ─── */
+  .pi-btn-aprobar, .pi-btn-ajustar, .pi-btn-rechazar, .pi-btn-escalar{
+    border:none;padding:7px 12px;border-radius:7px;cursor:pointer;
+    font-size:12px;font-weight:600;font-family:inherit;color:#fff;
+  }
+  .pi-btn-aprobar{background:#10b981}
+  .pi-btn-aprobar:hover{background:#059669}
+  .pi-btn-ajustar{background:#f59e0b}
+  .pi-btn-ajustar:hover{background:#d97706}
+  .pi-btn-rechazar{background:#ef4444}
+  .pi-btn-rechazar:hover{background:#dc2626}
+  .pi-btn-escalar{background:#8b5cf6}
+  .pi-btn-escalar:hover{background:#7c3aed}
+
+  /* ─── Modal de acción ─── */
+  .pi-acc-contexto{
+    background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;
+    padding:12px;margin-bottom:16px;font-size:13px;line-height:1.5;
+  }
+  .pi-acc-contexto strong{color:#475569}
+  .pi-acc-grupo{margin-bottom:16px}
+  .pi-acc-label{
+    display:block;font-size:13px;font-weight:600;color:#475569;margin-bottom:6px;
+  }
+  .pi-acc-required{color:#ef4444}
+  .pi-acc-input, .pi-acc-textarea{
+    width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;
+    font-size:14px;font-family:inherit;box-sizing:border-box;
+  }
+  .pi-acc-input:focus, .pi-acc-textarea:focus{outline:none;border-color:var(--blue)}
+  .pi-acc-textarea{resize:vertical;min-height:80px}
+  .pi-acc-help{font-size:11px;color:#94a3b8;margin-top:4px}
+
+  .pi-acc-quick-buttons{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+  .pi-acc-quick-btn{
+    background:#fff;border:1px solid #cbd5e1;padding:6px 10px;border-radius:6px;
+    cursor:pointer;font-size:11px;color:#475569;font-family:inherit;
+  }
+  .pi-acc-quick-btn:hover{background:#f1f5f9;border-color:var(--blue);color:var(--blue)}
+
+  .pi-acc-feedback{
+    font-size:13px;margin-top:12px;padding:10px 12px;border-radius:6px;display:none;
+  }
+  .pi-acc-feedback.error{display:block;background:#fee2e2;color:#b91c1c;border:1px solid #fecaca}
+  .pi-acc-feedback.loading{display:block;background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe}
+  .pi-acc-feedback.success{display:block;background:#d1fae5;color:#047857;border:1px solid #a7f3d0}
+
+  .pi-btn-confirmar{
+    background:var(--green);color:#fff;border:none;padding:8px 18px;border-radius:8px;
+    cursor:pointer;font-weight:600;font-size:14px;font-family:inherit;margin-left:8px;
+  }
+  .pi-btn-confirmar:hover{background:var(--green2)}
+  .pi-btn-confirmar:disabled{background:#cbd5e1;cursor:not-allowed}
 </style>
 </head>
 <body>
@@ -240,7 +294,7 @@
   <a class="pi-back" href="../index.html">← Mi Perfil</a>
   <div class="pi-title-wrap">
     <span class="pi-title">⚖️ Panel de Incidencias</span>
-    <span class="pi-build">build 20260424-pi-modal-v3</span>
+    <span class="pi-build">build 20260424-pi-acciones-v4</span>
   </div>
   <div class="pi-user">
     <span id="pi-user-nombre">—</span>
@@ -282,6 +336,43 @@
     <div class="pi-modal-body" id="pi-modal-body"></div>
     <div class="pi-modal-footer">
       <button class="pi-btn-cerrar" onclick="cerrarModal()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de acción (Aprobar/Ajustar/Rechazar/Escalar) -->
+<div id="pi-modal-accion" class="pi-modal" style="display:none" role="dialog" aria-modal="true" aria-labelledby="pi-acc-titulo">
+  <div class="pi-modal-overlay" onclick="cerrarModalAccion()"></div>
+  <div class="pi-modal-content" style="max-width:560px">
+    <div class="pi-modal-header">
+      <div class="pi-modal-header-info">
+        <h2 id="pi-acc-titulo">Acción</h2>
+        <div id="pi-acc-subtitulo" class="pi-modal-status-line"></div>
+      </div>
+      <button class="pi-modal-close" onclick="cerrarModalAccion()" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="pi-modal-body">
+      <div id="pi-acc-contexto" class="pi-acc-contexto"></div>
+
+      <div id="pi-acc-hora-grupo" class="pi-acc-grupo" style="display:none">
+        <label class="pi-acc-label" for="pi-acc-hora-final">Hora final aplicada (CST)</label>
+        <div class="pi-acc-quick-buttons" id="pi-acc-quick-buttons"></div>
+        <input type="datetime-local" id="pi-acc-hora-final" class="pi-acc-input">
+        <div class="pi-acc-help">Hora local Monterrey (CST UTC−6)</div>
+      </div>
+
+      <div class="pi-acc-grupo">
+        <label class="pi-acc-label" for="pi-acc-comentario">Comentario <span class="pi-acc-required">*</span></label>
+        <textarea id="pi-acc-comentario" class="pi-acc-textarea" rows="3"
+                  placeholder="Mínimo 10 caracteres…" maxlength="500"></textarea>
+        <div class="pi-acc-help"><span id="pi-acc-char-count">0</span>/500 caracteres</div>
+      </div>
+
+      <div id="pi-acc-feedback" class="pi-acc-feedback"></div>
+    </div>
+    <div class="pi-modal-footer">
+      <button class="pi-btn-cerrar" onclick="cerrarModalAccion()">Cancelar</button>
+      <button class="pi-btn-confirmar" id="pi-acc-confirmar" onclick="confirmarAccion()">Confirmar</button>
     </div>
   </div>
 </div>
@@ -536,7 +627,7 @@ function renderCard(inc){
 
   const botonAcciones = esResuelta
     ? '<button class="pi-btn-acciones pi-btn-disabled" disabled title="Incidencia resuelta — solo lectura">✓ Resuelta</button>'
-    : '<button class="pi-btn-acciones pi-btn-disabled" disabled title="Disponible en C.2.3">⚙️ Acciones (próx.)</button>';
+    : renderBotonesAccion(inc, _tabActiva);
 
   const motivoHtml = motivoTrunc
     ? '<div class="pi-card-motivo">"' + esc(motivoTrunc) + '"</div>'
@@ -743,6 +834,222 @@ function cerrarModal(){
 window.cerrarModal = cerrarModal;
 
 // ═══════════════════════════════════════════════
+// MODAL DE ACCIÓN (Aprobar/Ajustar/Rechazar/Escalar)
+// ═══════════════════════════════════════════════
+const RESOLVER_URL = 'https://primary-production-5c3c.up.railway.app/webhook/incidencias/resolver';
+
+let _accionPendiente = null;   // { id_interno, accion, inc }
+
+function renderBotonesAccion(inc, rol){
+  const id = esc(inc.id_interno || '');
+  const btn = function(accion, cls, label){
+    return '<button class="' + cls + '" onclick="abrirModalAccion(\'' + accion + '\', \'' + id + '\')">' + label + '</button>';
+  };
+  if (rol === 'supervisor'){
+    return btn('aprobar','pi-btn-aprobar','✓ Aprobar') +
+           btn('ajustar','pi-btn-ajustar','✎ Ajustar') +
+           btn('rechazar','pi-btn-rechazar','✕ Rechazar');
+  }
+  if (rol === 'rh'){
+    return btn('aprobar','pi-btn-aprobar','✓ Aprobar') +
+           btn('ajustar','pi-btn-ajustar','✎ Ajustar') +
+           btn('escalar','pi-btn-escalar','⬆ Escalar a Dir.') +
+           btn('rechazar','pi-btn-rechazar','✕ Rechazar');
+  }
+  if (rol === 'direccion'){
+    return btn('aprobar','pi-btn-aprobar','✓ Aprobar') +
+           btn('ajustar','pi-btn-ajustar','✎ Ajustar') +
+           btn('rechazar','pi-btn-rechazar','✕ Rechazar');
+  }
+  return '';
+}
+
+// Supervisor aprobando NO necesita hora (solo pasa a RH).
+// RH/Dirección aprobando SÍ necesitan hora final (la que se aplica en Odoo).
+// Ajustar SIEMPRE requiere hora.
+function accionRequiereHora(accion, rol){
+  if (accion === 'ajustar') return true;
+  if (accion === 'aprobar' && rol !== 'supervisor') return true;
+  return false;
+}
+
+function abrirModalAccion(accion, idInterno){
+  const inc = _incidencias.find(function(i){ return i.id_interno === idInterno; });
+  if (!inc){ alert('Incidencia no encontrada'); return; }
+
+  _accionPendiente = { id_interno: idInterno, accion: accion, inc: inc };
+
+  const titulos = {
+    'aprobar':  '✓ Aprobar incidencia',
+    'ajustar':  '✎ Ajustar incidencia',
+    'rechazar': '✕ Rechazar incidencia',
+    'escalar':  '⬆ Escalar a Dirección'
+  };
+  $('pi-acc-titulo').textContent = titulos[accion] || accion;
+  $('pi-acc-subtitulo').innerHTML = statusBadge(inc.status);
+
+  // Contexto
+  const horaDeclarada = (inc.propuestas && inc.propuestas[0] && inc.propuestas[0].hora_propuesta_cst)
+    ? inc.propuestas[0].hora_propuesta_cst : '—';
+  const ultimaPropuesta = (inc.propuestas && inc.propuestas.length > 0)
+    ? inc.propuestas[inc.propuestas.length - 1] : null;
+
+  let contextoHtml =
+    '<div><strong>Empleado:</strong> ' + esc(inc.empleado_nombre || '—') + ' (ID ' + esc(inc.empleado_id || '?') + ')</div>' +
+    '<div><strong>Hora declarada:</strong> ' + esc(horaDeclarada) + ' CST</div>' +
+    '<div><strong>Status actual:</strong> ' + statusBadge(inc.status) + '</div>';
+
+  if (ultimaPropuesta && ultimaPropuesta.rol && ultimaPropuesta.rol !== 'empleado'){
+    const horaProp = ultimaPropuesta.hora_propuesta_cst
+      ? ' → ' + esc(ultimaPropuesta.hora_propuesta_cst)
+      : '';
+    const com = ultimaPropuesta.comentario
+      ? '<div style="font-style:italic;color:#64748b;margin-top:4px">"' + esc(ultimaPropuesta.comentario) + '"</div>'
+      : '';
+    contextoHtml +=
+      '<div style="margin-top:8px;padding-top:8px;border-top:1px solid #e2e8f0">' +
+        '<strong>Última propuesta:</strong> ' + rolIcon(ultimaPropuesta.rol) + ' ' + esc(ultimaPropuesta.usuario || '—') +
+        horaProp +
+        com +
+      '</div>';
+  }
+  $('pi-acc-contexto').innerHTML = contextoHtml;
+
+  // Hora final
+  const requiereHora = accionRequiereHora(accion, _tabActiva);
+  $('pi-acc-hora-grupo').style.display = requiereHora ? 'block' : 'none';
+
+  if (requiereHora){
+    const horaDeclaradaCst = (inc.propuestas && inc.propuestas[0] && inc.propuestas[0].hora_propuesta_cst) || '';
+    $('pi-acc-hora-final').value = horaDeclaradaCst
+      ? horaDeclaradaCst.substring(0, 16).replace(' ', 'T')
+      : '';
+    renderQuickButtons(inc);
+  }
+
+  // Reset comentario y feedback
+  $('pi-acc-comentario').value = '';
+  $('pi-acc-char-count').textContent = '0';
+  $('pi-acc-feedback').className = 'pi-acc-feedback';
+  $('pi-acc-feedback').textContent = '';
+  const btnConfirmar = $('pi-acc-confirmar');
+  btnConfirmar.disabled = false;
+  btnConfirmar.textContent = 'Confirmar';
+
+  $('pi-modal-accion').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  document.addEventListener('keydown', handleAccionEscape);
+}
+window.abrirModalAccion = abrirModalAccion;
+
+function renderQuickButtons(inc){
+  const cont = $('pi-acc-quick-buttons');
+  if (!cont) return;
+  const buttons = [];
+  const propuestas = Array.isArray(inc.propuestas) ? inc.propuestas : [];
+
+  if (propuestas[0] && propuestas[0].hora_propuesta_cst){
+    const h = propuestas[0].hora_propuesta_cst;
+    buttons.push('<button type="button" class="pi-acc-quick-btn" onclick="usarHora(\'' + esc(h) + '\')">📌 Declarada empleado: ' + esc(h.substring(11, 16)) + '</button>');
+  }
+  for (let i = 1; i < propuestas.length; i++){
+    const p = propuestas[i];
+    if (p.hora_propuesta_cst){
+      buttons.push('<button type="button" class="pi-acc-quick-btn" onclick="usarHora(\'' + esc(p.hora_propuesta_cst) + '\')">📌 De ' + esc(p.rol || '?') + ': ' + esc(p.hora_propuesta_cst.substring(11, 16)) + '</button>');
+    }
+  }
+  cont.innerHTML = buttons.join('');
+}
+
+function usarHora(horaCst){
+  const dtLocal = String(horaCst || '').substring(0, 16).replace(' ', 'T');
+  $('pi-acc-hora-final').value = dtLocal;
+}
+window.usarHora = usarHora;
+
+function cerrarModalAccion(){
+  $('pi-modal-accion').style.display = 'none';
+  document.body.style.overflow = '';
+  document.removeEventListener('keydown', handleAccionEscape);
+  _accionPendiente = null;
+}
+window.cerrarModalAccion = cerrarModalAccion;
+
+function handleAccionEscape(ev){
+  if (ev.key === 'Escape') cerrarModalAccion();
+}
+
+function mostrarFeedbackAccion(msg, tipo){
+  const el = $('pi-acc-feedback');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'pi-acc-feedback ' + (tipo || '');
+}
+
+async function confirmarAccion(){
+  if (!_accionPendiente) return;
+  const accion    = _accionPendiente.accion;
+  const idInterno = _accionPendiente.id_interno;
+
+  const comentario = ($('pi-acc-comentario').value || '').trim();
+  if (comentario.length < 10){
+    mostrarFeedbackAccion('El comentario debe tener al menos 10 caracteres.', 'error');
+    return;
+  }
+
+  let horaFinalCst = null;
+  if (accionRequiereHora(accion, _tabActiva)){
+    const inputHora = $('pi-acc-hora-final').value;
+    if (!inputHora){
+      mostrarFeedbackAccion('Debes especificar la hora final.', 'error');
+      return;
+    }
+    horaFinalCst = inputHora.replace('T', ' ') + ':00';
+  }
+
+  const payload = {
+    id_interno:               idInterno,
+    accion:                   accion,
+    rol_ejecutor:             _tabActiva,
+    empleado_ejecutor_id:     _session.empleado_id,
+    empleado_ejecutor_nombre: _session.empleado_nombre || ('id ' + _session.empleado_id),
+    comentario:               comentario
+  };
+  if (horaFinalCst) payload.hora_final_cst = horaFinalCst;
+
+  const btnConfirmar = $('pi-acc-confirmar');
+  btnConfirmar.disabled = true;
+  btnConfirmar.textContent = 'Procesando…';
+  mostrarFeedbackAccion('Enviando solicitud…', 'loading');
+
+  try {
+    const res  = await fetch(RESOLVER_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload)
+    });
+    const data = await res.json();
+
+    if (data && data.success === true){
+      mostrarFeedbackAccion('✓ ' + (data.mensaje || 'Acción aplicada.'), 'success');
+      setTimeout(async function(){
+        await cargarIncidencias();
+        cerrarModalAccion();
+      }, 1200);
+    } else {
+      mostrarFeedbackAccion('✕ ' + ((data && data.mensaje) || 'Error desconocido'), 'error');
+      btnConfirmar.disabled = false;
+      btnConfirmar.textContent = 'Reintentar';
+    }
+  } catch(e){
+    mostrarFeedbackAccion('✕ Error de conexión: ' + e.message, 'error');
+    btnConfirmar.disabled = false;
+    btnConfirmar.textContent = 'Reintentar';
+  }
+}
+window.confirmarAccion = confirmarAccion;
+
+// ═══════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', async function(){
@@ -775,6 +1082,14 @@ document.addEventListener('DOMContentLoaded', async function(){
 
   const tgl = $('pi-ver-resueltas');
   if (tgl) tgl.addEventListener('change', refiltrarYRenderizar);
+
+  const txt = $('pi-acc-comentario');
+  if (txt){
+    txt.addEventListener('input', function(){
+      const cc = $('pi-acc-char-count');
+      if (cc) cc.textContent = String(this.value.length);
+    });
+  }
 
   await cargarIncidencias();
 
