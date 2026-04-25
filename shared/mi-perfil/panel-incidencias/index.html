@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel de Incidencias — Mi Perfil — FTS</title>
+<script>
+  (function(){
+    const BUILD_DATE = '20260424-pi-skeleton-v1';
+    window.BUILD_DATE = BUILD_DATE;
+  })();
+</script>
+<style>
+  :root{
+    --green:  #107C10;
+    --green2: #0d6b0d;
+    --red:    #D13438;
+    --blue:   #0078D4;
+    --orange: #D83B01;
+    --text:   #1a1a1a;
+    --muted:  #999;
+    --muted2: #666;
+    --bg:     #fafafa;
+    --card:   #ffffff;
+    --border: #e0e0e0;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:16px;color:var(--text);background:var(--bg)}
+  a{color:inherit}
+
+  .pi-topbar{
+    position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);
+    display:flex;align-items:center;justify-content:space-between;padding:10px 14px;gap:8px;
+  }
+  .pi-back{
+    display:inline-flex;align-items:center;gap:4px;color:var(--muted2);text-decoration:none;
+    font-size:13px;font-weight:600;padding:6px 10px;border-radius:7px;border:1px solid var(--border);
+    background:#fff;white-space:nowrap;
+  }
+  .pi-back:hover{color:var(--green);border-color:var(--green);background:#f0f9f0}
+  .pi-title-wrap{display:flex;align-items:center;gap:6px;min-width:0;flex:1;justify-content:center}
+  .pi-title{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pi-build{font-size:10px;color:var(--muted);font-weight:400}
+  .pi-user{
+    font-size:12px;color:var(--muted2);max-width:160px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+
+  .pi-main{max-width:1200px;margin:0 auto;padding:16px;padding-bottom:40px}
+
+  /* Tabs */
+  .pi-tabs{
+    display:flex;gap:4px;border-bottom:2px solid var(--border);
+    margin-bottom:16px;flex-wrap:wrap;
+  }
+  .pi-tab{
+    background:none;border:none;padding:10px 16px;
+    font-size:14px;font-weight:600;cursor:pointer;
+    color:var(--muted2);border-bottom:3px solid transparent;
+    margin-bottom:-2px;font-family:inherit;
+    display:inline-flex;align-items:center;gap:6px;
+  }
+  .pi-tab:hover{color:var(--text)}
+  .pi-tab-active{color:var(--green);border-bottom-color:var(--green)}
+  .pi-tab-badge{
+    display:inline-block;min-width:22px;padding:2px 7px;
+    border-radius:10px;background:var(--green);color:#fff;
+    font-size:11px;font-weight:700;text-align:center;
+  }
+  .pi-tab:not(.pi-tab-active) .pi-tab-badge{background:#ccc}
+
+  /* Controls */
+  .pi-controls{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:16px;padding:10px 14px;
+    background:#fff;border:1px solid var(--border);border-radius:10px;
+  }
+  .pi-toggle{
+    display:inline-flex;align-items:center;gap:6px;
+    font-size:13px;color:var(--muted2);cursor:pointer;
+  }
+  .pi-btn-refresh{
+    background:#fff;border:1px solid var(--border);color:var(--text);
+    padding:6px 12px;border-radius:7px;cursor:pointer;
+    font-family:inherit;font-size:13px;
+  }
+  .pi-btn-refresh:hover{border-color:var(--green);color:var(--green)}
+
+  /* Placeholder */
+  .pi-placeholder{
+    background:#fff;border:1px dashed var(--border);border-radius:10px;
+    padding:40px;text-align:center;color:var(--muted);
+    font-style:italic;
+  }
+
+  .pi-loading{
+    text-align:center;padding:40px;color:var(--muted2);font-size:14px;
+  }
+
+  @media (max-width: 720px){
+    .pi-tab{padding:10px 10px;font-size:13px}
+    .pi-controls{flex-direction:column;gap:10px;align-items:stretch}
+  }
+  @media (max-width: 440px){
+    .pi-title{font-size:13px}
+    .pi-build{display:none}
+  }
+</style>
+</head>
+<body>
+
+<div class="pi-topbar">
+  <a class="pi-back" href="../index.html">← Mi Perfil</a>
+  <div class="pi-title-wrap">
+    <span class="pi-title">⚖️ Panel de Incidencias</span>
+    <span class="pi-build">build 20260424-pi-skeleton-v1</span>
+  </div>
+  <div class="pi-user">
+    <span id="pi-user-nombre">—</span>
+  </div>
+</div>
+
+<main class="pi-main">
+
+  <!-- Tabs según roles -->
+  <div class="pi-tabs" id="pi-tabs">
+    <div class="pi-loading">⏳ Cargando…</div>
+  </div>
+
+  <!-- Controles -->
+  <div class="pi-controls">
+    <label class="pi-toggle">
+      <input type="checkbox" id="pi-ver-resueltas">
+      <span>Ver también resueltas</span>
+    </label>
+    <button class="pi-btn-refresh" onclick="window.location.reload()">🔄 Refrescar</button>
+  </div>
+
+  <!-- Lista (placeholder) -->
+  <div id="pi-lista" class="pi-lista"></div>
+
+</main>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════
+const MP_SESSION_KEY     = 'fts_mi_perfil_session';
+const MP_SESSION_MAX_AGE = 15 * 60 * 1000;   // 15 min
+const ACCESOS_URL        = 'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/accesos-panel-incidencias.json?ref=main';
+
+let _empleadoAcceso = null;
+let _roles          = [];
+let _session        = null;
+let _tabActiva      = null;
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+// ═══════════════════════════════════════════════
+// SESIÓN — replica del hub Mi Perfil
+// ═══════════════════════════════════════════════
+function obtenerSesionMP(){
+  try {
+    const raw = sessionStorage.getItem(MP_SESSION_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    if (!s || !s.empleado_id) return null;
+    const age = Date.now() - (s.ts || s.loginTime || 0);
+    if (age > MP_SESSION_MAX_AGE){
+      try { sessionStorage.removeItem(MP_SESSION_KEY); } catch(e){}
+      return null;
+    }
+    return s;
+  } catch(e){ return null; }
+}
+
+// ═══════════════════════════════════════════════
+// FETCH ACCESOS
+// ═══════════════════════════════════════════════
+async function cargarAccesos(){
+  try {
+    const url = ACCESOS_URL + '&t=' + Date.now();
+    const res = await fetch(url, {
+      cache: 'no-store',
+      headers: { 'Accept': 'application/vnd.github.v3.raw' }
+    });
+    if (!res.ok){
+      console.warn('[panel-incidencias] accesos HTTP', res.status);
+      return { accesos: [] };
+    }
+    return await res.json();
+  } catch(e){
+    console.error('[panel-incidencias] error cargando accesos:', e);
+    return { accesos: [] };
+  }
+}
+
+// ═══════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════
+function inicializarTabs(roles){
+  const cont = $('pi-tabs');
+  if (!cont) return;
+
+  const labels = {
+    'supervisor': '👔 Supervisor',
+    'rh':         '💼 RH',
+    'direccion':  '🎯 Dirección'
+  };
+
+  cont.innerHTML = roles.map(function(rol){
+    const deptInfo = (rol === 'supervisor' && _empleadoAcceso && _empleadoAcceso.department_name)
+      ? ' (' + esc(_empleadoAcceso.department_name) + ')'
+      : '';
+    const label = labels[rol] || rol;
+    return '<button class="pi-tab" data-rol="' + esc(rol) + '" onclick="cambiarTab(\'' + esc(rol) + '\')">' +
+             label + deptInfo +
+             '<span class="pi-tab-badge" id="pi-badge-' + esc(rol) + '">—</span>' +
+           '</button>';
+  }).join('');
+
+  if (roles.length > 0) cambiarTab(roles[0]);
+}
+
+function cambiarTab(rol){
+  _tabActiva = rol;
+  document.querySelectorAll('.pi-tab').forEach(function(t){
+    t.classList.toggle('pi-tab-active', t.dataset.rol === rol);
+  });
+  // C.2.2b conectará aquí refiltrarYRenderizar()
+  $('pi-lista').innerHTML =
+    '<div class="pi-placeholder">Lista de incidencias — próximamente en C.2.2b</div>';
+}
+window.cambiarTab = cambiarTab;
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', async function(){
+  const session = obtenerSesionMP();
+
+  if (!session || !session.empleado_id){
+    alert('Sesión no válida. Vuelve a iniciar sesión en Mi Perfil.');
+    window.location.href = '../index.html';
+    return;
+  }
+
+  const accesosData = await cargarAccesos();
+  const empleadoAcceso = (accesosData.accesos || []).find(function(a){
+    return Number(a.empleado_id) === Number(session.empleado_id);
+  });
+
+  if (!empleadoAcceso || !Array.isArray(empleadoAcceso.roles) || empleadoAcceso.roles.length === 0){
+    alert('No tienes roles asignados en el panel de incidencias.');
+    window.location.href = '../index.html';
+    return;
+  }
+
+  _empleadoAcceso = empleadoAcceso;
+  _roles          = empleadoAcceso.roles;
+  _session        = session;
+
+  $('pi-user-nombre').textContent = '👤 ' + (session.empleado_nombre || '—');
+
+  inicializarTabs(_roles);
+
+  console.log('[panel-incidencias] init OK build=' + window.BUILD_DATE +
+              ' empleado=' + session.empleado_id +
+              ' roles=' + _roles.join(','));
+});
+</script>
+
+</body>
+</html>
