@@ -6,7 +6,7 @@
 <title>Panel de Incidencias — Mi Perfil — FTS</title>
 <script>
   (function(){
-    const BUILD_DATE = '20260424-pi-lista-v2';
+    const BUILD_DATE = '20260424-pi-modal-v3';
     window.BUILD_DATE = BUILD_DATE;
   })();
 </script>
@@ -150,9 +150,83 @@
     padding:40px;text-align:center;color:var(--muted);font-style:italic;
   }
 
+  /* ─── Modal de detalle ─── */
+  .pi-modal{
+    position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:1000;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .pi-modal-overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6)}
+  .pi-modal-content{
+    position:relative;background:#fff;border-radius:12px;
+    width:92%;max-width:720px;max-height:90vh;
+    display:flex;flex-direction:column;
+    box-shadow:0 10px 40px rgba(0,0,0,0.3);overflow:hidden;
+  }
+  .pi-modal-header{
+    padding:16px 20px;border-bottom:1px solid #e5e7eb;
+    display:flex;justify-content:space-between;align-items:flex-start;gap:12px;background:#f8fafc;
+  }
+  .pi-modal-header-info{flex:1;min-width:0}
+  .pi-modal-header h2{margin:0 0 6px 0;font-size:16px;color:#0f172a;font-weight:600;word-break:break-all}
+  .pi-modal-status-line{margin-top:4px}
+  .pi-modal-close{
+    background:transparent;border:none;font-size:20px;cursor:pointer;color:#64748b;
+    padding:4px 10px;border-radius:6px;line-height:1;flex-shrink:0;font-family:inherit;
+  }
+  .pi-modal-close:hover{background:#f1f5f9;color:#0f172a}
+  .pi-modal-body{padding:16px 20px;overflow-y:auto;flex:1}
+  .pi-modal-footer{padding:12px 20px;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;background:#f8fafc}
+  .pi-btn-cerrar{
+    background:#64748b;color:#fff;border:none;padding:8px 18px;border-radius:8px;
+    cursor:pointer;font-weight:500;font-size:14px;font-family:inherit;
+  }
+  .pi-btn-cerrar:hover{background:#475569}
+
+  .pi-section{margin-bottom:20px}
+  .pi-section-title{
+    font-size:12px;font-weight:700;text-transform:uppercase;color:#64748b;letter-spacing:0.6px;
+    margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e2e8f0;
+  }
+  .pi-section-row{
+    display:flex;gap:10px;margin-bottom:6px;font-size:14px;flex-wrap:wrap;line-height:1.5;
+  }
+  .pi-section-row strong{min-width:150px;color:#475569;font-weight:500}
+
+  .pi-timeline-step{
+    border-left:3px solid #e2e8f0;padding:10px 0 10px 16px;margin-bottom:12px;position:relative;
+  }
+  .pi-timeline-step::before{
+    content:'';position:absolute;left:-7px;top:14px;
+    width:11px;height:11px;background:#cbd5e1;border-radius:50%;border:2px solid #fff;
+  }
+  .pi-timeline-step-header{display:flex;gap:8px;align-items:center;font-weight:600;margin-bottom:4px;flex-wrap:wrap}
+  .pi-timeline-step-icon{font-size:16px}
+  .pi-timeline-step-rol{font-size:13px;color:#0f172a}
+  .pi-timeline-step-accion{
+    padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;color:#fff;text-transform:uppercase;
+  }
+  .pi-timeline-step-fecha{font-size:12px;color:#64748b;margin-bottom:4px}
+  .pi-timeline-step-hora{font-size:13px;color:#475569;margin-top:4px}
+  .pi-timeline-step-comentario{
+    font-size:14px;color:#334155;margin-top:6px;font-style:italic;
+    background:#f8fafc;padding:8px 12px;border-radius:6px;line-height:1.4;
+  }
+
+  .pi-geo-link{color:#0078D4;text-decoration:none;font-weight:500}
+  .pi-geo-link:hover{text-decoration:underline}
+
+  .pi-check-aplicado{display:inline-flex;align-items:center;gap:6px;color:#059669;font-weight:600}
+  .pi-check-noaplicado{color:#64748b}
+
   @media (max-width: 720px){
     .pi-tab{padding:10px 10px;font-size:13px}
     .pi-controls{flex-direction:column;gap:10px;align-items:stretch}
+  }
+  @media (max-width: 600px){
+    .pi-modal-content{width:96%;max-height:95vh}
+    .pi-section-row{flex-direction:column;gap:2px}
+    .pi-section-row strong{min-width:auto}
+    .pi-modal-header h2{font-size:14px}
   }
   @media (max-width: 440px){
     .pi-title{font-size:13px}
@@ -166,7 +240,7 @@
   <a class="pi-back" href="../index.html">← Mi Perfil</a>
   <div class="pi-title-wrap">
     <span class="pi-title">⚖️ Panel de Incidencias</span>
-    <span class="pi-build">build 20260424-pi-lista-v2</span>
+    <span class="pi-build">build 20260424-pi-modal-v3</span>
   </div>
   <div class="pi-user">
     <span id="pi-user-nombre">—</span>
@@ -193,6 +267,24 @@
   <div id="pi-lista" class="pi-lista"></div>
 
 </main>
+
+<!-- Modal de detalle -->
+<div id="pi-modal" class="pi-modal" style="display:none" role="dialog" aria-modal="true" aria-labelledby="pi-modal-titulo">
+  <div class="pi-modal-overlay" onclick="cerrarModal()"></div>
+  <div class="pi-modal-content">
+    <div class="pi-modal-header">
+      <div class="pi-modal-header-info">
+        <h2 id="pi-modal-titulo">Detalle de Incidencia</h2>
+        <div id="pi-modal-status" class="pi-modal-status-line"></div>
+      </div>
+      <button class="pi-modal-close" onclick="cerrarModal()" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="pi-modal-body" id="pi-modal-body"></div>
+    <div class="pi-modal-footer">
+      <button class="pi-btn-cerrar" onclick="cerrarModal()">Cerrar</button>
+    </div>
+  </div>
+</div>
 
 <script>
 'use strict';
@@ -482,11 +574,173 @@ function renderCard(inc){
   );
 }
 
+// ═══════════════════════════════════════════════
+// MODAL DE DETALLE
+// ═══════════════════════════════════════════════
+function rolIcon(rol){
+  const icons = { 'empleado':'👤', 'supervisor':'👔', 'rh':'💼', 'direccion':'🎯' };
+  return icons[rol] || '•';
+}
+
+function accionColor(accion){
+  const colors = {
+    'solicitud': '#3b82f6',
+    'aprobado':  '#10b981',
+    'ajustado':  '#f59e0b',
+    'rechazado': '#ef4444',
+    'escalado':  '#8b5cf6'
+  };
+  return colors[accion] || '#64748b';
+}
+
+function renderSeccionEmpleado(inc){
+  const flags = [];
+  if (inc.autoincidencia === true){
+    flags.push(' <span style="background:#fb923c;color:#fff;padding:3px 8px;border-radius:10px;font-size:10px;font-weight:600">🟡 AUTO</span>');
+  }
+  if (inc.sin_departamento === true){
+    flags.push(' <span style="background:#a855f7;color:#fff;padding:3px 8px;border-radius:10px;font-size:10px;font-weight:600">⚠️ SIN DEPTO</span>');
+  }
+  const deptoRow = inc.department_name
+    ? '<div class="pi-section-row"><strong>Departamento:</strong><span>' +
+      esc(inc.department_name) + ' (ID ' + esc(inc.department_id || '?') + ')</span></div>'
+    : '';
+  return (
+    '<div class="pi-section">' +
+      '<div class="pi-section-title">👤 Empleado</div>' +
+      '<div class="pi-section-row"><strong>Nombre:</strong><span>' + esc(inc.empleado_nombre || '—') + flags.join('') + '</span></div>' +
+      '<div class="pi-section-row"><strong>ID Odoo:</strong><span>' + esc(inc.empleado_id || '—') + '</span></div>' +
+      deptoRow +
+      '<div class="pi-section-row"><strong>Tipo:</strong><span>' +
+        (inc.tipo === 'olvido_entrada' ? 'Olvido de entrada' : esc(inc.tipo || '—')) +
+      '</span></div>' +
+    '</div>'
+  );
+}
+
+function renderSeccionHoras(inc){
+  const horaDeclarada = (inc.propuestas && inc.propuestas[0] && inc.propuestas[0].hora_propuesta_cst)
+    ? inc.propuestas[0].hora_propuesta_cst : '—';
+
+  const aplicado = inc.aplicado_en_odoo === true
+    ? '<span class="pi-check-aplicado">✅ Aplicado en Odoo</span>'
+    : '<span class="pi-check-noaplicado">Sin aplicar en Odoo aún</span>';
+
+  const horaFinalRow = inc.hora_final_aplicada_utc
+    ? '<div class="pi-section-row"><strong>Hora final aplicada:</strong><span>' +
+      esc(utcToCst(inc.hora_final_aplicada_utc)) + ' CST</span></div>'
+    : '';
+
+  const attendanceRow = inc.attendance_id
+    ? '<div class="pi-section-row"><strong>Attendance ID:</strong><span>' + esc(inc.attendance_id) + '</span></div>'
+    : '';
+
+  return (
+    '<div class="pi-section">' +
+      '<div class="pi-section-title">🕒 Horas</div>' +
+      '<div class="pi-section-row"><strong>Check-in real:</strong><span>' + esc(utcToCst(inc.hora_real_checkin_utc)) + ' CST</span></div>' +
+      '<div class="pi-section-row"><strong>Hora declarada:</strong><span>' + esc(horaDeclarada) + ' CST</span></div>' +
+      horaFinalRow +
+      '<div class="pi-section-row"><strong>Estado Odoo:</strong>' + aplicado + '</div>' +
+      attendanceRow +
+      '<div class="pi-section-row"><strong>Creada:</strong><span>' + esc(utcToCst(inc.fecha_creacion)) + ' CST</span></div>' +
+    '</div>'
+  );
+}
+
+function renderSeccionTimeline(inc){
+  const propuestas = Array.isArray(inc.propuestas) ? inc.propuestas.slice() : [];
+  if (!propuestas.length){
+    return (
+      '<div class="pi-section">' +
+        '<div class="pi-section-title">📋 Timeline de Propuestas</div>' +
+        '<div style="color:#64748b;font-style:italic;padding:10px 0">Sin pasos registrados.</div>' +
+      '</div>'
+    );
+  }
+  propuestas.sort(function(a, b){ return (a.paso || 0) - (b.paso || 0); });
+  const stepsHtml = propuestas.map(function(p){
+    const icon = rolIcon(p.rol);
+    const accionBg = accionColor(p.accion);
+    const comentario = p.comentario
+      ? '<div class="pi-timeline-step-comentario">"' + esc(p.comentario) + '"</div>'
+      : '';
+    const horaProp = p.hora_propuesta_cst
+      ? '<div class="pi-timeline-step-hora">⏰ Hora propuesta: ' + esc(p.hora_propuesta_cst) + ' CST</div>'
+      : '';
+    return (
+      '<div class="pi-timeline-step">' +
+        '<div class="pi-timeline-step-header">' +
+          '<span class="pi-timeline-step-icon">' + icon + '</span>' +
+          '<span class="pi-timeline-step-rol">Paso ' + esc(p.paso || '?') + ' — ' + esc(p.rol || '—') + ': ' + esc(p.usuario || '—') + '</span>' +
+          '<span class="pi-timeline-step-accion" style="background:' + accionBg + '">' + esc(p.accion || '—') + '</span>' +
+        '</div>' +
+        '<div class="pi-timeline-step-fecha">' + esc(utcToCst(p.timestamp)) + ' CST</div>' +
+        horaProp + comentario +
+      '</div>'
+    );
+  }).join('');
+  return (
+    '<div class="pi-section">' +
+      '<div class="pi-section-title">📋 Timeline de Propuestas</div>' +
+      stepsHtml +
+    '</div>'
+  );
+}
+
+function renderSeccionGeo(inc){
+  if (!inc.geolocation || inc.geolocation.lat == null || inc.geolocation.lng == null) return '';
+  const lat = inc.geolocation.lat;
+  const lng = inc.geolocation.lng;
+  const sitio = inc.geolocation.sitio_detectado || '';
+  const mapsUrl = 'https://maps.google.com/?q=' + encodeURIComponent(lat + ',' + lng);
+  const sitioRow = sitio
+    ? '<div class="pi-section-row"><strong>Sitio detectado:</strong><span>' + esc(sitio) + '</span></div>'
+    : '';
+  const latNum = Number(lat), lngNum = Number(lng);
+  const coords = (isNaN(latNum) ? lat : latNum.toFixed(6)) + ', ' + (isNaN(lngNum) ? lng : lngNum.toFixed(6));
+  return (
+    '<div class="pi-section">' +
+      '<div class="pi-section-title">📍 Geolocation</div>' +
+      sitioRow +
+      '<div class="pi-section-row"><strong>Coordenadas:</strong><span>' + esc(coords) + '</span></div>' +
+      '<div class="pi-section-row"><strong>Mapa:</strong>' +
+        '<a href="' + esc(mapsUrl) + '" target="_blank" rel="noopener noreferrer" class="pi-geo-link">Ver en Google Maps →</a>' +
+      '</div>' +
+    '</div>'
+  );
+}
+
+function renderModal(inc){
+  $('pi-modal-titulo').textContent = 'ID: ' + (inc.id_interno || '—');
+  $('pi-modal-status').innerHTML = statusBadge(inc.status);
+  $('pi-modal-body').innerHTML =
+    renderSeccionEmpleado(inc) +
+    renderSeccionHoras(inc) +
+    renderSeccionTimeline(inc) +
+    renderSeccionGeo(inc);
+}
+
+function handleModalEscape(ev){
+  if (ev.key === 'Escape') cerrarModal();
+}
+
 function verDetalle(idInterno){
-  // C.2.2c implementará el modal completo
-  alert('Modal de detalle disponible en C.2.2c\n\nID: ' + idInterno);
+  const inc = _incidencias.find(function(i){ return i.id_interno === idInterno; });
+  if (!inc){ alert('Incidencia no encontrada'); return; }
+  renderModal(inc);
+  $('pi-modal').style.display = 'flex';
+  document.addEventListener('keydown', handleModalEscape);
+  document.body.style.overflow = 'hidden';
 }
 window.verDetalle = verDetalle;
+
+function cerrarModal(){
+  $('pi-modal').style.display = 'none';
+  document.removeEventListener('keydown', handleModalEscape);
+  document.body.style.overflow = '';
+}
+window.cerrarModal = cerrarModal;
 
 // ═══════════════════════════════════════════════
 // INIT
