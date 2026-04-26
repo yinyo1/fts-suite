@@ -598,6 +598,21 @@
       },
       "result": "success",
       "error_message": null
+    },
+    {
+      "timestamp": "2026-04-26T03:31:05.140Z",
+      "user": "ftsmaster",
+      "action": "edit_attendance",
+      "attendance_id": 12596,
+      "employee_name": "José Luis Romero Grados",
+      "changes": {
+        "check_in": {
+          "from": "2026-04-26 02:22:26",
+          "to": "2026-04-26 01:13:00"
+        }
+      },
+      "result": "success",
+      "error_message": null
     }
   ]
 }
