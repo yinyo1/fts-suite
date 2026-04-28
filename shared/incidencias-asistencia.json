@@ -2,6 +2,40 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-112-2026-04-28T05-10-22-472Z",
+      "odoo_incidencia_id": null,
+      "tipo": "olvido_entrada",
+      "empleado_id": 112,
+      "empleado_nombre": "Felipe P?rez Guzm?n",
+      "fecha_creacion": "2026-04-28T05:10:22.473Z",
+      "attendance_id": 99001,
+      "hora_real_checkin_utc": "2026-04-25T15:00:00Z",
+      "geolocation": {
+        "lat": 25.689,
+        "lng": -100.291,
+        "sitio_detectado": "FTS Monterrey"
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "user_id": 112,
+          "usuario": "Felipe P?rez Guzm?n",
+          "timestamp": "2026-04-28T05:10:22.473Z",
+          "hora_propuesta_cst": "2026-04-25 08:00:00",
+          "comentario": "Test PowerShell - olvido entrada con depto OK",
+          "accion": "solicitud"
+        }
+      ],
+      "status": "pendiente_supervisor",
+      "hora_final_aplicada_utc": null,
+      "aplicado_en_odoo": false,
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "sin_departamento": false
+    },
+    {
       "id_interno": "INC-OLV-32-2026-04-23T22-24-59-737Z",
       "odoo_incidencia_id": null,
       "tipo": "olvido_entrada",
