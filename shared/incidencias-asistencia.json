@@ -114,7 +114,10 @@
       ],
       "status": "aprobada_con_ajuste",
       "hora_final_aplicada_utc": "2026-04-23 14:30:00",
-      "aplicado_en_odoo": true
+      "aplicado_en_odoo": true,
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "sin_departamento": false
     },
     {
       "id_interno": "INC-OLV-32-2026-04-23T22-08-43-496Z",
@@ -145,7 +148,10 @@
       ],
       "status": "pendiente_supervisor",
       "hora_final_aplicada_utc": null,
-      "aplicado_en_odoo": false
+      "aplicado_en_odoo": false,
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "sin_departamento": false
     },
     {
       "id_interno": "INC-OLV-76-2026-04-23T19-32-15-424Z",
@@ -172,7 +178,10 @@
       ],
       "status": "pendiente_supervisor",
       "hora_final_aplicada_utc": null,
-      "aplicado_en_odoo": false
+      "aplicado_en_odoo": false,
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "sin_departamento": false
     }
   ]
 }
