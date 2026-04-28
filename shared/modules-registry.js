@@ -23,7 +23,7 @@ const MODULES_REGISTRY = [
     submodulos: [
       { id:'kiosk',       label:'Kiosk'            },
       { id:'dashboard',   label:'Dashboard'        },
-      { id:'planeacion',  label:'Planeación', status:'active', version:'2.1.0', build:'20260428-planeacion-f2-empleados-v2' },
+      { id:'planeacion',  label:'Planeación', status:'active', version:'2.2.0', build:'20260428-planeacion-f3-export-v3' },
       { id:'incidencias', label:'Incidencias'      },
       { id:'supervisor',  label:'Panel Supervisor' }
     ]
