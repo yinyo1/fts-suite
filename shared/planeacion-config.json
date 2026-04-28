@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "actualizado": "2026-04-28",
+  "configurado_por": "felipe.perez",
+  "empleados": {
+    "_doc": "key = hr.employee.id (Odoo). value.requiere_check = bool",
+    "112": { "requiere_check": true,  "nombre": "Felipe Pérez" },
+    "167": { "requiere_check": true,  "nombre": "Mateo Salazar" },
+    "76":  { "requiere_check": true,  "nombre": "Carlos Manzanares" },
+    "156": { "requiere_check": true,  "nombre": "Samuel Ulises" },
+    "158": { "requiere_check": true,  "nombre": "Leonel Cruz" },
+    "159": { "requiere_check": true,  "nombre": "Carlos Marín" },
+    "160": { "requiere_check": true,  "nombre": "Juan Pablo Lucas" },
+    "178": { "requiere_check": true,  "nombre": "Erick Santiago" },
+    "89":  { "requiere_check": false, "nombre": "Gibrán Solís" },
+    "91":  { "requiere_check": false, "nombre": "Gerardo Hernández" },
+    "113": { "requiere_check": false, "nombre": "Teresa Ramos" }
+  }
+}

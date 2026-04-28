@@ -132,8 +132,12 @@ window.PLANEACION_EMPLEADOS = {
       .sort(function(a, b){ return a.nombre.localeCompare(b.nombre); });
   },
 
-  // ID de Odoo (hr.employee.id)
+  // ID de Odoo (hr.employee.id). Usa config persistente si está disponible;
+  // sino cae al hardcoded SIN_CHECK_DIARIO.
   requiereCheck(empleadoId){
+    if (window.PLANEACION_CONFIG && window.PLANEACION_CONFIG.config){
+      return window.PLANEACION_CONFIG.requiereCheck(empleadoId);
+    }
     return this.SIN_CHECK_DIARIO.indexOf(empleadoId) === -1;
   },
 
