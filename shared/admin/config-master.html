@@ -1901,8 +1901,8 @@
       // 2) También refrescar public-config.json (sin cifrar) para traer geolocations + URLs base
       try {
         const res = await fetch(
-          'https://raw.githubusercontent.com/yinyo1/fts-suite/main/shared/public-config.json?t=' + Date.now(),
-          { cache:'no-store' }
+          'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/public-config.json?ref=main&t=' + Date.now(),
+          { cache:'no-store', headers: { 'Accept': 'application/vnd.github.v3.raw' } }
         );
         if(res.ok){
           const pub = await res.json();
@@ -1975,8 +1975,8 @@
 
     try {
       const res = await fetch(
-        'https://raw.githubusercontent.com/yinyo1/fts-suite/main/shared/users-suite.json?t=' + Date.now(),
-        { cache:'no-store' }
+        'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/users-suite.json?ref=main&t=' + Date.now(),
+        { cache:'no-store', headers: { 'Accept': 'application/vnd.github.v3.raw' } }
       );
       if(!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
@@ -2420,7 +2420,7 @@
   // ═════════════════════════════════════════════
   // ACCESOS PANEL INCIDENCIAS (#U1 Fase 3 C.1 — v2 shape plano)
   // ═════════════════════════════════════════════
-  const AI_RAW_URL = 'https://raw.githubusercontent.com/yinyo1/fts-suite/main/shared/accesos-panel-incidencias.json';
+  const AI_API_URL = 'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/accesos-panel-incidencias.json?ref=main';
   const AI_WEBHOOK = 'https://primary-production-5c3c.up.railway.app/webhook/accesos-incidencias/guardar';
   const AI_EMPLEADOS_WEBHOOK = 'https://primary-production-5c3c.up.railway.app/webhook/kiosk/empleados';
 
@@ -2493,7 +2493,10 @@
 
     // 2) Cargar accesos desde raw
     try {
-      const res = await fetch(AI_RAW_URL + '?cache_bust=' + Date.now(), { cache:'no-store' });
+      const res = await fetch(AI_API_URL + '&t=' + Date.now(), {
+        cache: 'no-store',
+        headers: { 'Accept': 'application/vnd.github.v3.raw' }
+      });
       if(res.ok){
         const data = await res.json();
         AI_STATE = {

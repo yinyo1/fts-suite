@@ -159,8 +159,8 @@ async function githubPull(){
       data = JSON.parse(decodeURIComponent(escape(atob(cleanB64))));
     } else {
       const res = await fetch(
-        'https://raw.githubusercontent.com/' + INC_GITHUB_REPO + '/main/' + INC_GITHUB_FILE + '?nocache=' + Math.random() + '&t=' + Date.now(),
-        { cache:'no-store' }
+        'https://api.github.com/repos/' + INC_GITHUB_REPO + '/contents/' + INC_GITHUB_FILE + '?ref=main&t=' + Date.now(),
+        { cache:'no-store', headers: { 'Accept': 'application/vnd.github.v3.raw' } }
       );
       if(!res.ok) return [];
       data = await res.json();

@@ -7,7 +7,7 @@
 <script>
   // Cache busting + BUILD_DATE expuesto a window.
   (function() {
-    const BUILD_DATE = '20260423-mis-incidencias-v3';
+    const BUILD_DATE = '20260428-mis-incidencias-v4-cache';
     window.BUILD_DATE = BUILD_DATE;
   })();
 </script>
@@ -263,7 +263,7 @@
   <a class="mi-back" href="../index.html">← Mi Perfil</a>
   <div class="mi-title-wrap">
     <span class="mi-title">📋 Mis Incidencias</span>
-    <span class="mi-build">build 20260423-mis-incidencias-v3</span>
+    <span class="mi-build">build 20260428-mis-incidencias-v4-cache</span>
   </div>
   <div class="mi-user">
     <span class="mi-user-name" id="mi-user-name">—</span>
@@ -337,7 +337,7 @@
 // ═══════════════════════════════════════════════
 const SESSION_KEY     = 'fts_mi_perfil_session';
 const SESSION_MAX_AGE = 15 * 60 * 1000;  // 15 minutos — alineado con hub
-const RAW_INCIDENCIAS = 'https://raw.githubusercontent.com/yinyo1/fts-suite/main/shared/incidencias-asistencia.json';
+const INCIDENCIAS_URL = 'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/incidencias-asistencia.json?ref=main';
 
 let _session = null;
 let _allIncidencias = [];
@@ -419,12 +419,15 @@ function cstStringDisplay(cstString){
 }
 
 // ═══════════════════════════════════════════════
-// FETCH INCIDENCIAS (raw GitHub con cache-bust)
+// FETCH INCIDENCIAS (GitHub Contents API + Accept v3.raw — evita cache mobile)
 // ═══════════════════════════════════════════════
 async function loadIncidencias(){
-  const url = RAW_INCIDENCIAS + '?cache_bust=' + Date.now();
+  const url = INCIDENCIAS_URL + '&t=' + Date.now();
   try {
-    const res = await fetch(url, { cache: 'no-store' });
+    const res = await fetch(url, {
+      cache: 'no-store',
+      headers: { 'Accept': 'application/vnd.github.v3.raw' }
+    });
     if (!res.ok){
       // 404 = archivo aún no existe → tratar como lista vacía
       if (res.status === 404) return [];
