@@ -981,8 +981,8 @@ function _refreshGeoFromGitHub(){
   setTimeout(async function(){
     try{
       var res = await fetch(
-        'https://raw.githubusercontent.com/yinyo1/fts-suite/main/shared/public-config.json?t=' + Date.now(),
-        { cache:'no-store' }
+        'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/public-config.json?ref=main&t=' + Date.now(),
+        { cache:'no-store', headers: { 'Accept': 'application/vnd.github.v3.raw' } }
       );
       if(!res.ok) return;
       var cfg = await res.json();
@@ -1160,8 +1160,8 @@ async function syncCargar(){
     // Sobreescribir geolocations con la versión más reciente de public-config.json
     try {
       const resPub = await fetch(
-        'https://raw.githubusercontent.com/yinyo1/fts-suite/main/shared/public-config.json?t=' + Date.now(),
-        { cache: 'no-store' }
+        'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/public-config.json?ref=main&t=' + Date.now(),
+        { cache: 'no-store', headers: { 'Accept': 'application/vnd.github.v3.raw' } }
       );
       if (resPub.ok) {
         const pub = await resPub.json();

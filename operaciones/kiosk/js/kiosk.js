@@ -1214,8 +1214,8 @@ async function initKiosk(){
   // Cargar config pública (siempre — las geolocations pueden cambiar)
   try{
     var res = await fetch(
-      'https://raw.githubusercontent.com/yinyo1/fts-suite/main/shared/public-config.json?t=' + Date.now(),
-      { cache:'no-store' }
+      'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/public-config.json?ref=main&t=' + Date.now(),
+      { cache:'no-store', headers: { 'Accept': 'application/vnd.github.v3.raw' } }
     );
     if(!res.ok) throw new Error('HTTP ' + res.status);
     var pub = await res.json();

@@ -323,8 +323,8 @@ async function initDashboard(){
   if(!localStorage.getItem('ops_n8n_url')){
     try{
       const res = await fetch(
-        'https://raw.githubusercontent.com/yinyo1/fts-suite/main/shared/public-config.json?t=' + Date.now(),
-        { cache:'no-store' }
+        'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/public-config.json?ref=main&t=' + Date.now(),
+        { cache:'no-store', headers: { 'Accept': 'application/vnd.github.v3.raw' } }
       );
       if(res.ok){
         const pub = await res.json();
