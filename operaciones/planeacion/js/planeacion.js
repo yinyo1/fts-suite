@@ -1,6 +1,6 @@
-// Build: 20260428-planeacion-f2-empleados-v2
+// Build: 20260428-planeacion-f3-export-v3
 'use strict';
-window.BUILD_DATE = '20260428-planeacion-f2-empleados-v2';
+window.BUILD_DATE = '20260428-planeacion-f3-export-v3';
 
 (function(){
 
@@ -22,15 +22,21 @@ window.BUILD_DATE = '20260428-planeacion-f2-empleados-v2';
     async init(){
       const ok = await Promise.all([
         window.PLANEACION_HORARIOS.cargar(),
-        window.PLANEACION_EMPLEADOS.cargar()
+        window.PLANEACION_EMPLEADOS.cargar(),
+        window.PLANEACION_CONFIG.cargar(),
+        window.PLANEACION_SITIOS.cargar(),
+        window.PLANEACION_PROYECTOS.cargar()
       ]);
-      console.log('[planeacion] deps cargadas', { horarios: ok[0], empleados: ok[1] });
+      console.log('[planeacion] deps cargadas', {
+        horarios: ok[0], empleados: ok[1], config: ok[2], sitios: ok[3], proyectos: ok[4]
+      });
 
       this.cargarAsignacionesDelDia();
       this.renderHeader();
       this.renderProgresoBanner();
       this.renderJornadaBanner();
       this.renderLista();
+      this.renderExportZone();
       this.bindEventosGlobales();
     },
 
@@ -82,13 +88,15 @@ window.BUILD_DATE = '20260428-planeacion-f2-empleados-v2';
             '<button class="pl-btn-nav" id="next-day" aria-label="Día siguiente">›</button>' +
           '</div>' +
           '<div class="pl-acciones-header">' +
-            '<button class="pl-btn-secondary" id="btn-jalar">+ Jalar externo</button>' +
+            '<button class="pl-btn-secondary" id="btn-jalar">+ Jalar de otro departamento</button>' +
+            '<button class="pl-btn-secondary pl-btn-icon" id="btn-config" title="Configuración" aria-label="Configuración">⚙️</button>' +
           '</div>' +
         '</div>';
 
       $('prev-day').addEventListener('click', () => this.cambiarDia(-1));
       $('next-day').addEventListener('click', () => this.cambiarDia(1));
       $('btn-jalar').addEventListener('click', () => this.abrirModalJalar());
+      $('btn-config').addEventListener('click', () => window.PLANEACION_CONFIG.abrirMenuConfig());
     },
 
     cambiarDia(delta){
@@ -100,6 +108,7 @@ window.BUILD_DATE = '20260428-planeacion-f2-empleados-v2';
       this.renderProgresoBanner();
       this.renderJornadaBanner();
       this.renderLista();
+      this.actualizarPreviewExport();
     },
 
     renderProgresoBanner(){
@@ -130,7 +139,7 @@ window.BUILD_DATE = '20260428-planeacion-f2-empleados-v2';
       zone.className = 'pl-banner pl-banner-info';
       zone.innerHTML =
         '<span>📊 Total horas plan: <strong>' + totalH.toFixed(1) + 'h</strong>' +
-        ' · HE planeadas: <strong>' + totalHE + 'h</strong>' +
+        ' · Horas extras planeadas: <strong>' + totalHE + 'h</strong>' +
         ' · Personas: <strong>' + personas + '</strong></span>';
     },
 
@@ -177,7 +186,7 @@ window.BUILD_DATE = '20260428-planeacion-f2-empleados-v2';
         ? (a.confirmado ? 'pl-card-confirmado' : 'pl-card-pendiente')
         : 'pl-card-auto';
 
-      const heLabel       = a.he > 0     ? '<span class="pl-badge pl-badge-he">+' + a.he + 'h HE</span>' : '';
+      const heLabel       = a.he > 0     ? '<span class="pl-badge pl-badge-he">+' + a.he + 'h Horas extras</span>' : '';
       const externoLabel  = a.externo    ? '<span class="pl-badge pl-badge-externo">🔄 ' + esc(a.empleado_dept) + '</span>' : '';
       const jornadaLabel  = (jornadaCorta && a.requiere_check)
         ? '<span class="pl-badge pl-badge-warn">⚠️ ' + horasJornada.toFixed(1) + 'h</span>' : '';
@@ -223,9 +232,9 @@ window.BUILD_DATE = '20260428-planeacion-f2-empleados-v2';
         ? 'Externo de ' + esc(a.empleado_dept) + ' · Asignación puntual'
         : esc(a.empleado_job) + ' · Horario base: ' + J.fmtAMPM(a.horario_base.entrada) + ' – ' + J.fmtAMPM(a.horario_base.salida);
 
-      const origenes = ['FTS Monterrey','Topo Chico planta','Vertiv Apodaca','Mission Houston','Directo a sitio'];
-      const origenOpts = origenes.map(o =>
-        '<option' + (a.origen === o ? ' selected' : '') + '>' + esc(o) + '</option>'
+      const sitios = (window.PLANEACION_SITIOS && window.PLANEACION_SITIOS.getOpcionesDropdown()) || [];
+      const origenOpts = sitios.map(o =>
+        '<option value="' + esc(o.value) + '"' + (a.origen === o.value ? ' selected' : '') + '>' + esc(o.label) + '</option>'
       ).join('');
 
       $('modal-editar').innerHTML =
@@ -243,13 +252,14 @@ window.BUILD_DATE = '20260428-planeacion-f2-empleados-v2';
                 '<div><label>Salida</label><input type="time" id="m-salida" value="' + a.salida + '"></div>' +
               '</div>' +
               '<div id="m-jornada-feedback" class="pl-jornada-feedback"></div>' +
-              '<div class="pl-form-row">' +
+              '<div class="pl-form-row pl-form-row-so">' +
                 '<label>Proyecto / SO</label>' +
-                '<input type="text" id="m-so" value="' + esc(a.so_nombre) + '" placeholder="Ej: SO11547 - Topo Chico">' +
-                '<small class="pl-form-hint">F4 conectará dropdown con SOs de Odoo</small>' +
+                '<input type="text" id="m-so-search" value="' + esc(a.so_nombre) + '" placeholder="Buscar SO… (ej: 11547, Topo Chico)" autocomplete="off"' +
+                  (a.so_id != null ? ' data-so-id="' + a.so_id + '"' : '') + '>' +
+                '<div id="m-so-dropdown" class="pl-so-dropdown" style="display:none"></div>' +
               '</div>' +
               '<div class="pl-form-row"><label>Sitio</label><input type="text" id="m-sitio" value="' + esc(a.sitio) + '" placeholder="Ej: Topo Chico planta"></div>' +
-              '<div class="pl-form-row"><label>HE planeadas (h)</label><input type="number" id="m-he" value="' + a.he + '" min="0" max="6" step="0.5"></div>' +
+              '<div class="pl-form-row"><label>Horas extras planeadas (h)</label><input type="number" id="m-he" value="' + a.he + '" min="0" max="6" step="0.5"></div>' +
               '<div class="pl-form-row"><label>Actividades</label><textarea id="m-actividades" placeholder="Ej: Soldar manifold, prueba presión...">' + esc(a.actividad) + '</textarea></div>' +
             '</div>' +
             '<div class="pl-modal-footer">' +
@@ -270,6 +280,48 @@ window.BUILD_DATE = '20260428-planeacion-f2-empleados-v2';
       const upd = () => this.actualizarFeedbackJornada('m-entrada', 'm-salida', 'm-jornada-feedback');
       $('m-entrada').addEventListener('change', upd);
       $('m-salida').addEventListener('change',  upd);
+
+      this.bindAutocompleteSO('m-so-search', 'm-so-dropdown');
+    },
+
+    // ─── Autocomplete SO genérico (reutilizable por ambos modales) ───
+    bindAutocompleteSO(inputId, dropdownId){
+      const input = $(inputId);
+      const dropdown = $(dropdownId);
+      if (!input || !dropdown) return;
+
+      const renderDropdown = (query) => {
+        const matches = window.PLANEACION_PROYECTOS.buscar(query);
+        if (matches.length === 0){
+          dropdown.innerHTML = '<div class="pl-so-empty">Sin resultados</div>';
+        } else {
+          dropdown.innerHTML = matches.slice(0, 10).map(s =>
+            '<div class="pl-so-option" data-so-id="' + s.id + '" data-so-nombre="' + esc(s.nombre) + '">' +
+              '<div class="pl-so-nombre">' + esc(s.nombre) + '</div>' +
+              (s.cliente ? '<div class="pl-so-cliente">' + esc(s.cliente) + '</div>' : '') +
+            '</div>'
+          ).join('');
+          dropdown.querySelectorAll('.pl-so-option').forEach(opt => {
+            opt.addEventListener('mousedown', (e) => {
+              e.preventDefault();
+              input.value = opt.dataset.soNombre;
+              input.dataset.soId = opt.dataset.soId;
+              dropdown.style.display = 'none';
+            });
+          });
+        }
+        dropdown.style.display = 'block';
+      };
+
+      input.addEventListener('focus', () => renderDropdown(input.value));
+      input.addEventListener('input', () => {
+        // Si el usuario edita manualmente, invalida el so_id previo
+        delete input.dataset.soId;
+        renderDropdown(input.value);
+      });
+      input.addEventListener('blur', () => {
+        setTimeout(() => { dropdown.style.display = 'none'; }, 200);
+      });
     },
 
     cerrarModalEditar(){
@@ -303,10 +355,12 @@ window.BUILD_DATE = '20260428-planeacion-f2-empleados-v2';
         if (!confirm(msg)) return;
       }
 
+      const soInput = $('m-so-search');
       a.origen     = $('m-origen').value;
       a.entrada    = entrada;
       a.salida     = salida;
-      a.so_nombre  = $('m-so').value;
+      a.so_nombre  = soInput.value;
+      a.so_id      = soInput.dataset.soId ? parseInt(soInput.dataset.soId, 10) : null;
       a.sitio      = $('m-sitio').value;
       a.he         = parseFloat($('m-he').value) || 0;
       a.actividad  = $('m-actividades').value;
@@ -321,12 +375,16 @@ window.BUILD_DATE = '20260428-planeacion-f2-empleados-v2';
     // ─── Modal: jalar externo ───
     abrirModalJalar(){
       const deptos = window.PLANEACION_EMPLEADOS.getDepartamentos();
+      const sitios = (window.PLANEACION_SITIOS && window.PLANEACION_SITIOS.getOpcionesDropdown()) || [];
+      const origenOpts = sitios.map(o =>
+        '<option value="' + esc(o.value) + '">' + esc(o.label) + '</option>'
+      ).join('');
 
       $('modal-jalar').innerHTML =
         '<div class="pl-modal-overlay" id="j-overlay">' +
           '<div class="pl-modal-content">' +
             '<div class="pl-modal-header">' +
-              '<div class="pl-modal-title">Jalar empleado externo</div>' +
+              '<div class="pl-modal-title">Jalar empleado de otro departamento</div>' +
               '<button class="pl-modal-close" id="j-close" aria-label="Cerrar">✕</button>' +
             '</div>' +
             '<div class="pl-modal-body">' +
@@ -337,12 +395,17 @@ window.BUILD_DATE = '20260428-planeacion-f2-empleados-v2';
                 '</select>' +
               '</div>' +
               '<div class="pl-form-row"><label>Empleado</label><select id="j-empleado"></select></div>' +
+              '<div class="pl-form-row"><label>Origen</label><select id="j-origen">' + origenOpts + '</select></div>' +
               '<div class="pl-form-row pl-form-row-double">' +
                 '<div><label>Entrada</label><input type="time" id="j-entrada" value="09:00"></div>' +
                 '<div><label>Salida</label><input type="time" id="j-salida" value="14:00"></div>' +
               '</div>' +
               '<div id="j-jornada-feedback" class="pl-jornada-feedback"></div>' +
-              '<div class="pl-form-row"><label>Proyecto / SO</label><input type="text" id="j-so" placeholder="Ej: SO11547 - Topo Chico"></div>' +
+              '<div class="pl-form-row pl-form-row-so">' +
+                '<label>Proyecto / SO</label>' +
+                '<input type="text" id="j-so-search" placeholder="Buscar SO… (ej: 11547, Topo Chico)" autocomplete="off">' +
+                '<div id="j-so-dropdown" class="pl-so-dropdown" style="display:none"></div>' +
+              '</div>' +
               '<div class="pl-form-row"><label>Sitio</label><input type="text" id="j-sitio" placeholder="Ej: Topo Chico planta"></div>' +
               '<div class="pl-form-row"><label>Actividad</label><textarea id="j-actividad" placeholder="Ej: Programación PLC + capacitación"></textarea></div>' +
             '</div>' +
@@ -356,6 +419,7 @@ window.BUILD_DATE = '20260428-planeacion-f2-empleados-v2';
       $('modal-jalar').style.display = 'block';
       if (deptos.length > 0) this.actualizarEmpleadosExternos();
       this.actualizarFeedbackJornada('j-entrada', 'j-salida', 'j-jornada-feedback');
+      this.bindAutocompleteSO('j-so-search', 'j-so-dropdown');
 
       $('j-close').addEventListener('click',    () => this.cerrarModalJalar());
       $('j-cancelar').addEventListener('click', () => this.cerrarModalJalar());
@@ -398,6 +462,8 @@ window.BUILD_DATE = '20260428-planeacion-f2-empleados-v2';
       if (horas <= 0) { alert('La jornada no es válida. Revisa entrada/salida.'); return; }
 
       const deptArr = emp.department_id || [0, 'Externo'];
+      const soInput = $('j-so-search');
+      const origenSel = $('j-origen');
       this.asignaciones.push({
         empleado_id:      emp.id,
         empleado_nombre:  emp.name,
@@ -407,11 +473,11 @@ window.BUILD_DATE = '20260428-planeacion-f2-empleados-v2';
         externo:          true,
         requiere_check:   true,
         confirmado:       false,
-        origen:           'FTS Monterrey',
+        origen:           (origenSel && origenSel.value) || 'FTS Monterrey',
         entrada:          entrada,
         salida:           salida,
-        so_id:            null,
-        so_nombre:        $('j-so').value,
+        so_id:            (soInput && soInput.dataset.soId) ? parseInt(soInput.dataset.soId, 10) : null,
+        so_nombre:        (soInput && soInput.value) || '',
         sitio:            $('j-sitio').value,
         actividad:        $('j-actividad').value || 'Apoyo técnico puntual',
         he:               0,
@@ -424,11 +490,96 @@ window.BUILD_DATE = '20260428-planeacion-f2-empleados-v2';
       this.renderLista();
     },
 
+    // ─── Export zone (preview + WA + PNG) ───
+    renderExportZone(){
+      const zone = $('export-zone');
+      if (!zone) return;
+      zone.innerHTML =
+        '<div class="pl-export-card">' +
+          '<div class="pl-export-toggle" id="export-toggle">' +
+            '<div>' +
+              '<div class="pl-export-titulo">Compartir plan</div>' +
+              '<div class="pl-export-subtitulo">Texto WhatsApp + Imagen PNG</div>' +
+            '</div>' +
+            '<span id="export-arrow">▼</span>' +
+          '</div>' +
+          '<div class="pl-export-content" id="export-content" style="display:none">' +
+            '<div class="pl-export-preview" id="export-preview"></div>' +
+            '<div class="pl-export-buttons">' +
+              '<button id="btn-copiar" class="pl-btn-export">📋 Copiar texto</button>' +
+              '<button id="btn-imagen" class="pl-btn-export">🖼️ Generar PNG</button>' +
+              '<button id="btn-wa"     class="pl-btn-export pl-btn-wa">📱 Enviar a WhatsApp</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+
+      $('export-toggle').addEventListener('click', () => {
+        const c = $('export-content');
+        const a = $('export-arrow');
+        if (c.style.display === 'none'){
+          c.style.display = 'block';
+          a.textContent = '▲';
+          this.actualizarPreviewExport();
+        } else {
+          c.style.display = 'none';
+          a.textContent = '▼';
+        }
+      });
+
+      $('btn-copiar').addEventListener('click', async () => {
+        const texto = window.PLANEACION_EXPORTAR.generarTextoWA(this.asignaciones, this.fechaFormateadaCorta());
+        await window.PLANEACION_EXPORTAR.copiarTexto(texto);
+        const b = $('btn-copiar');
+        const orig = b.textContent;
+        b.textContent = '✓ Copiado';
+        setTimeout(() => { b.textContent = orig; }, 1500);
+      });
+
+      $('btn-imagen').addEventListener('click', async () => {
+        const btn = $('btn-imagen');
+        const orig = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '⏳ Generando…';
+        try {
+          const supervisor = (window.FTSAuth && window.FTSAuth.getSession() && window.FTSAuth.getSession().nombre) || 'Felipe Pérez';
+          await window.PLANEACION_EXPORTAR.generarPNG(this.asignaciones, this.fechaFormateadaCorta(), supervisor);
+        } catch (e){
+          alert('Error generando imagen: ' + e.message);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = orig;
+        }
+      });
+
+      $('btn-wa').addEventListener('click', () => {
+        const texto = window.PLANEACION_EXPORTAR.generarTextoWA(this.asignaciones, this.fechaFormateadaCorta());
+        window.PLANEACION_EXPORTAR.compartirWA(texto);
+      });
+    },
+
+    actualizarPreviewExport(){
+      const preview = $('export-preview');
+      if (!preview) return;
+      const texto = window.PLANEACION_EXPORTAR.generarTextoWA(this.asignaciones, this.fechaFormateadaCorta());
+      preview.textContent = texto;
+    },
+
+    fechaFormateadaCorta(){
+      const d = new Date(this.fechaActual + 'T12:00:00');
+      const dias  = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+      const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+      return dias[d.getDay()] + ' ' + d.getDate() + ' ' + meses[d.getMonth()] + ' ' + d.getFullYear();
+    },
+
     bindEventosGlobales(){
       document.addEventListener('keydown', e => {
         if (e.key !== 'Escape') return;
         if ($('modal-editar').style.display === 'block') this.cerrarModalEditar();
         if ($('modal-jalar').style.display === 'block')  this.cerrarModalJalar();
+        const cfg = $('modal-config');
+        if (cfg && cfg.style.display === 'block' && window.PLANEACION_CONFIG){
+          window.PLANEACION_CONFIG.cerrarMenuConfig();
+        }
       });
     }
   };

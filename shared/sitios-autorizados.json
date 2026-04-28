@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "actualizado": "2026-04-28",
+  "sitios": [
+    { "id": "fts_mty",       "nombre": "FTS Monterrey",                 "lat": 25.6866, "lng": -100.3161, "radio_m": 100, "activo": true },
+    { "id": "topo_chico",    "nombre": "Topo Chico planta",             "lat": 25.7547, "lng": -100.2858, "radio_m": 100, "activo": true },
+    { "id": "vertiv_apod",   "nombre": "Vertiv Apodaca",                "lat": 25.7796, "lng": -100.2238, "radio_m": 100, "activo": true },
+    { "id": "mission_hou",   "nombre": "Mission Foods Houston",         "lat": 29.7604, "lng":  -95.3698, "radio_m": 200, "activo": true },
+    { "id": "directo_sitio", "nombre": "Directo a sitio (sin oficina)", "lat": null,    "lng": null,      "radio_m": null, "activo": true }
+  ]
+}

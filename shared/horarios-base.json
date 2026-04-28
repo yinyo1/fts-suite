@@ -1,12 +1,12 @@
 {
-  "version": 1,
+  "version": 2,
   "actualizado": "2026-04-28",
   "perfiles": {
     "operaciones_campo": {
       "departamento_id": 3,
       "departamento_nombre": "Operaciones",
-      "entrada": "07:30",
-      "salida": "17:36",
+      "entrada": "07:00",
+      "salida": "17:06",
       "comida_minutos": 30,
       "horas_netas": 9.6,
       "descripcion": "Operaciones campo (técnicos)"
@@ -50,8 +50,8 @@
     "legal": {
       "departamento_id": 9,
       "departamento_nombre": "Legal",
-      "entrada": "08:00",
-      "salida": "18:06",
+      "entrada": "07:30",
+      "salida": "17:36",
       "comida_minutos": 30,
       "horas_netas": 9.6,
       "descripcion": "Magaly Legal"

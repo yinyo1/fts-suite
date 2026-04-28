@@ -1,10 +1,10 @@
 {
   "module": "operaciones/planeacion",
-  "version": "2.1.0",
-  "build": "20260428-planeacion-f2-empleados-v2",
+  "version": "2.2.0",
+  "build": "20260428-planeacion-f3-export-v3",
   "status": "in_development",
-  "fase": "F2",
+  "fase": "F3",
   "actualizado": "2026-04-28",
   "rebuilt_from_scratch": true,
-  "notas": "F2: empleados desde Odoo + horarios base + edición + jalar externos"
+  "notas": "F3: config persistente + selector SO desde Odoo + dropdowns origen + exportación WhatsApp/PNG + renombres HE→Horas extras"
 }
