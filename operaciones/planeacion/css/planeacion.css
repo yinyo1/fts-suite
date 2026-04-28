@@ -1,0 +1,110 @@
+/* Build: 20260428-planeacion-f1-skeleton-v1 */
+:root {
+  --pl-primary:        #0078D4;
+  --pl-success:        #107C10;
+  --pl-warning:        #BA7517;
+  --pl-danger:         #A32D2D;
+  --pl-info:           #0C447C;
+  --pl-bg-info:        #E6F1FB;
+  --pl-bg-success:     #EAF3DE;
+  --pl-bg-warning:     #FAEEDA;
+  --pl-bg-danger:      #FCEBEB;
+  --pl-border:         #E5E7EB;
+  --pl-text-secondary: #64748B;
+  --pl-text-tertiary:  #94A3B8;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #F8FAFC;
+  color: #0F172A;
+  font-size: 16px;
+}
+
+a { color: inherit; }
+
+/* ─── Topbar (inline pattern) ─── */
+.pl-topbar {
+  position: sticky; top: 0; z-index: 50;
+  background: #fff; border-bottom: 1px solid var(--pl-border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; gap: 8px;
+}
+.pl-back {
+  display: inline-flex; align-items: center; gap: 4px;
+  color: var(--pl-text-secondary); text-decoration: none;
+  font-size: 13px; font-weight: 600;
+  padding: 6px 10px; border-radius: 7px;
+  border: 1px solid var(--pl-border); background: #fff;
+  white-space: nowrap;
+}
+.pl-back:hover {
+  color: var(--pl-success); border-color: var(--pl-success);
+  background: #f0f9f0;
+}
+.pl-title-wrap {
+  display: flex; align-items: center; gap: 6px;
+  min-width: 0; flex: 1; justify-content: center;
+}
+.pl-title {
+  font-size: 14px; font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pl-build { font-size: 10px; color: var(--pl-text-tertiary); font-weight: 400; }
+.pl-user {
+  font-size: 12px; color: var(--pl-text-secondary);
+  max-width: 160px; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+
+@media (max-width: 440px) {
+  .pl-title { font-size: 13px; }
+  .pl-build { display: none; }
+}
+
+/* ─── Auth deny gate ─── */
+.pl-gate {
+  max-width: 480px; margin: 60px auto;
+  background: #fff; border: 1px solid var(--pl-border); border-radius: 12px;
+  padding: 28px 24px; text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+.pl-gate h2 {
+  margin: 0 0 8px; font-size: 18px; color: var(--pl-danger);
+}
+.pl-gate p {
+  margin: 0 0 16px; font-size: 14px; color: var(--pl-text-secondary);
+  line-height: 1.5;
+}
+.pl-gate-btn {
+  display: inline-block; background: var(--pl-success); color: #fff;
+  padding: 10px 18px; border-radius: 8px; text-decoration: none;
+  font-size: 14px; font-weight: 600;
+}
+.pl-gate-btn:hover { background: #0d6b0d; }
+
+/* ─── Main layout ─── */
+.pl-main {
+  max-width: 720px; margin: 0 auto;
+  padding: 16px; padding-bottom: 40px;
+}
+
+.pl-placeholder {
+  background: #fff; border: 1px dashed var(--pl-border); border-radius: 10px;
+  padding: 40px 20px; text-align: center;
+  color: var(--pl-text-tertiary); font-style: italic; font-size: 14px;
+}
+
+/* ─── Modals (placeholder shell — TODO F2) ─── */
+.pl-modal {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.5);
+}
+
+/* TODO F2: estilos de empleados, banners, modal de edición, etc. */

@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "actualizado": "2026-04-28",
+  "perfiles": {
+    "operaciones_campo": {
+      "departamento_id": 3,
+      "departamento_nombre": "Operaciones",
+      "entrada": "07:30",
+      "salida": "17:36",
+      "comida_minutos": 30,
+      "horas_netas": 9.6,
+      "descripcion": "Operaciones campo (técnicos)"
+    },
+    "operaciones_oficina": {
+      "departamento_id": 3,
+      "departamento_nombre": "Operaciones",
+      "entrada": "07:30",
+      "salida": "17:36",
+      "comida_minutos": 30,
+      "horas_netas": 9.6,
+      "descripcion": "Operaciones admin (Gibrán, Gerardo, Teresa)"
+    },
+    "ingenieria": {
+      "departamento_id": 12,
+      "departamento_nombre": "Ingeniería",
+      "entrada": "07:00",
+      "salida": "17:06",
+      "comida_minutos": 30,
+      "horas_netas": 9.6,
+      "descripcion": "Ingeniería (Vicente, Juan Manuel, Héctor Cruz)"
+    },
+    "comercial": {
+      "departamento_id": 6,
+      "departamento_nombre": "Comercial",
+      "entrada": "08:00",
+      "salida": "18:06",
+      "comida_minutos": 30,
+      "horas_netas": 9.6,
+      "descripcion": "Comercial (Francisco, Luis Ángel)"
+    },
+    "rh": {
+      "departamento_id": 8,
+      "departamento_nombre": "Administración y Finanzas",
+      "entrada": "07:00",
+      "salida": "17:06",
+      "comida_minutos": 30,
+      "horas_netas": 9.6,
+      "descripcion": "Ana RH"
+    },
+    "legal": {
+      "departamento_id": 9,
+      "departamento_nombre": "Legal",
+      "entrada": "08:00",
+      "salida": "18:06",
+      "comida_minutos": 30,
+      "horas_netas": 9.6,
+      "descripcion": "Magaly Legal"
+    }
+  }
+}
