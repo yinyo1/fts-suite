@@ -1,6 +1,10 @@
 {
-  "version": "1.0.0",
-  "modulo": "planeacion",
-  "status": "online",
-  "updated": "2026-04-13"
+  "module": "operaciones/planeacion",
+  "version": "2.0.0",
+  "build": "20260428-planeacion-f1-skeleton-v1",
+  "status": "in_development",
+  "fase": "F1",
+  "actualizado": "2026-04-28",
+  "rebuilt_from_scratch": true,
+  "notas": "Reescrito completo desde cero. Captura MO a proyectos vía SO. Aprobado mockup v3."
 }
