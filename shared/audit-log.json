@@ -711,6 +711,25 @@
       },
       "result": "success",
       "error_message": null
+    },
+    {
+      "timestamp": "2026-04-28T02:03:52.445Z",
+      "user": "ftsmaster",
+      "action": "edit_attendance",
+      "attendance_id": 12612,
+      "employee_name": "Gilberto Gibran Solís Carrillo",
+      "changes": {
+        "check_in": {
+          "from": "2026-04-27 13:34:50",
+          "to": "2026-04-27 13:34:00"
+        },
+        "check_out": {
+          "from": null,
+          "to": "2026-04-27 23:30:00"
+        }
+      },
+      "result": "success",
+      "error_message": null
     }
   ]
 }
