@@ -730,6 +730,25 @@
       },
       "result": "success",
       "error_message": null
+    },
+    {
+      "timestamp": "2026-04-29T03:20:18.107Z",
+      "user": "ftsmaster",
+      "action": "edit_attendance",
+      "attendance_id": 12639,
+      "employee_name": "Mario Armando Ruiz Ramirez",
+      "changes": {
+        "check_in": {
+          "from": "2026-04-28 12:55:05",
+          "to": "2026-04-28 12:55:00"
+        },
+        "check_out": {
+          "from": null,
+          "to": "2026-04-28 23:00:00"
+        }
+      },
+      "result": "success",
+      "error_message": null
     }
   ]
 }
