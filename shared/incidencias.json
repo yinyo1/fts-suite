@@ -1,6 +1,24 @@
 {
   "incidencias": [
     {
+      "id": "INC-ADJ-1777577470450",
+      "tipo": "ajuste_hora_salida",
+      "estado": "pendiente_supervisor",
+      "empleado_id": 114,
+      "attendance_id": 12677,
+      "check_in_original": "2026-04-29 12:59:38",
+      "check_out_estimado": "2026-04-29 23:30:00",
+      "motivo": "Olvido registrar salida",
+      "fecha_solicitud": "2026-04-30T19:31:10.450Z",
+      "supervisor_aprobo": null,
+      "supervisor_fecha": null,
+      "supervisor_motivo": null,
+      "supervisor_hora_ajustada": null,
+      "rh_aprobo": null,
+      "rh_fecha": null,
+      "rh_horas_finales": null
+    },
+    {
       "id": "INC-ADJ-1776924613754",
       "tipo": "ajuste_hora_salida",
       "estado": "pendiente_supervisor",
