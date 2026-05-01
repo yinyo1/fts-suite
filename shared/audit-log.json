@@ -787,6 +787,25 @@
       },
       "result": "success",
       "error_message": null
+    },
+    {
+      "timestamp": "2026-05-01T13:58:20.195Z",
+      "user": "ftsmaster",
+      "action": "edit_attendance",
+      "attendance_id": 12706,
+      "employee_name": "Hugo Ernesto González Moreno",
+      "changes": {
+        "check_in": {
+          "from": "2026-04-30 12:57:21",
+          "to": "2026-04-30 12:57:00"
+        },
+        "check_out": {
+          "from": "2026-05-01 00:00:00",
+          "to": "2026-04-30 23:00:00"
+        }
+      },
+      "result": "success",
+      "error_message": null
     }
   ]
 }
