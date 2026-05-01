@@ -768,6 +768,25 @@
       },
       "result": "success",
       "error_message": null
+    },
+    {
+      "timestamp": "2026-05-01T13:57:56.921Z",
+      "user": "ftsmaster",
+      "action": "edit_attendance",
+      "attendance_id": 12709,
+      "employee_name": "Abraham Said Martínez Leal",
+      "changes": {
+        "check_in": {
+          "from": "2026-04-30 13:02:30",
+          "to": "2026-04-30 13:02:00"
+        },
+        "check_out": {
+          "from": "2026-05-01 02:27:17",
+          "to": "2026-04-30 23:30:00"
+        }
+      },
+      "result": "success",
+      "error_message": null
     }
   ]
 }
