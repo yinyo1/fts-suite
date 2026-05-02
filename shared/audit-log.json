@@ -806,6 +806,25 @@
       },
       "result": "success",
       "error_message": null
+    },
+    {
+      "timestamp": "2026-05-02T21:12:26.828Z",
+      "user": "ftsmaster",
+      "action": "edit_attendance",
+      "attendance_id": 12758,
+      "employee_name": "Felipe Pérez Guzmán",
+      "changes": {
+        "check_in": {
+          "from": "2026-05-02 14:10:39",
+          "to": "2026-05-02 14:10:00"
+        },
+        "check_out": {
+          "from": null,
+          "to": "2026-05-02 21:00:00"
+        }
+      },
+      "result": "success",
+      "error_message": null
     }
   ]
 }
