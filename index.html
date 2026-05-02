@@ -113,6 +113,11 @@
       <div class="mod-icon">⚙️</div>
       <div class="mod-name">CONFIG</div>
     </a>
+    <a id="card-hatch" href="hatch/index.html" class="mod-card active" style="display:none">
+      <div class="mod-badge" style="background:#0071E3;color:#fff">MASTER</div>
+      <div class="mod-icon">⚓</div>
+      <div class="mod-name">HATCH</div>
+    </a>
     <div id="card-rh" class="mod-card disabled">
       <div class="mod-badge">Próximamente</div>
       <div class="mod-icon">👥</div>
@@ -337,6 +342,10 @@ function applyModuleAccess(userOrSession){
   // Card Config Master solo para master
   const cardMaster = document.getElementById('card-config-master');
   if(cardMaster) cardMaster.style.display = (role === 'master') ? 'flex' : 'none';
+
+  // Card Hatch solo para master
+  const cardHatch = document.getElementById('card-hatch');
+  if(cardHatch) cardHatch.style.display = (role === 'master') ? 'flex' : 'none';
 
   // Activar tile RH si el usuario tiene acceso (aplica también a master)
   activarTileRH(userOrSession);

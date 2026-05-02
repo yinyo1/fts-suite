@@ -1,0 +1,2865 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hatch — Procurement Infrastructure</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=SF+Mono&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="../shared/auth-suite.js"></script>
+<style>
+  :root {
+    --white: #FFFFFF;
+    --bg: #FBFBFD;
+    --bg-soft: #F5F5F7;
+    --bg-card: #FFFFFF;
+    --ink: #1D1D1F;
+    --ink-secondary: #424245;
+    --ink-tertiary: #6E6E73;
+    --ink-quaternary: #86868B;
+    --ink-faint: #D2D2D7;
+    --blue: #0071E3;
+    --blue-soft: #E8F0FE;
+    --green: #00875A;
+    --green-soft: #E3F4ED;
+    --orange: #C2410C;
+    --orange-soft: #FEEFE3;
+    --red: #BF1F38;
+    --red-soft: #FCE8EB;
+    --purple: #6E5BFF;
+    --purple-soft: #EFEDFF;
+    --separator: rgba(0, 0, 0, 0.08);
+    --separator-strong: rgba(0, 0, 0, 0.12);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
+    --shadow-xl: 0 24px 56px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 0, 0, 0.06);
+    --r-sm: 8px;
+    --r-md: 12px;
+    --r-lg: 18px;
+    --r-xl: 24px;
+    --r-2xl: 32px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 1.47;
+    letter-spacing: -0.005em;
+  }
+
+  /* ============= APP ============= */
+  #app { display: block; }
+
+  /* TOPBAR */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(251, 251, 253, 0.85);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: 1px solid var(--separator);
+  }
+  .topbar-inner {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 32px;
+    align-items: center;
+    padding: 14px 28px;
+    max-width: 1680px;
+    margin: 0 auto;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+  }
+  .logo-mark {
+    width: 28px; height: 28px;
+    background: var(--ink);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .logo-mark::before {
+    content: '';
+    width: 12px; height: 12px;
+    background: var(--white);
+    border-radius: 3px;
+    transform: rotate(45deg);
+  }
+  .logo-text {
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .logo-meta {
+    margin-left: 4px;
+    padding-left: 12px;
+    border-left: 1px solid var(--ink-faint);
+    font-size: 12px;
+    color: var(--ink-tertiary);
+  }
+  .market-switch {
+    display: flex;
+    background: var(--bg-soft);
+    padding: 3px;
+    border-radius: 999px;
+    margin-left: 12px;
+  }
+  .market-switch .opt {
+    padding: 5px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-tertiary);
+    border-radius: 999px;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    transition: all 0.15s;
+  }
+  .market-switch .opt.active {
+    background: var(--white);
+    color: var(--ink);
+    box-shadow: var(--shadow-sm);
+  }
+  .search-bar {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    background: var(--bg-soft);
+    border-radius: var(--r-md);
+    height: 44px;
+    align-items: center;
+    max-width: 720px;
+    margin: 0 auto;
+    width: 100%;
+  }
+  .search-bar:focus-within {
+    background: var(--white);
+    box-shadow: 0 0 0 4px var(--blue-soft);
+  }
+  .search-mode {
+    padding: 0 16px;
+    height: 100%;
+    border-right: 1px solid var(--separator);
+    font-size: 13px;
+    color: var(--ink-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 500;
+  }
+  .search-input {
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: inherit;
+    font-size: 15px;
+    padding: 0 16px;
+    height: 100%;
+  }
+  .search-photo {
+    padding: 0 14px;
+    height: 100%;
+    background: transparent;
+    border: none;
+    border-left: 1px solid var(--separator);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--ink-secondary);
+    font-weight: 500;
+  }
+  .search-photo:hover { color: var(--blue); }
+  .search-submit {
+    height: 36px;
+    margin-right: 4px;
+    padding: 0 18px;
+    background: var(--ink);
+    border: none;
+    border-radius: 8px;
+    color: var(--white);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .search-submit:hover { background: #000; }
+  .top-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--green-soft);
+    color: var(--green);
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .pill .dot {
+    width: 6px; height: 6px;
+    background: var(--green);
+    border-radius: 50%;
+  }
+  .user-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 14px 4px 4px;
+    background: var(--bg-soft);
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .avatar {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, #FF8A65 0%, #FF5252 100%);
+    color: var(--white);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 12px;
+  }
+  .user-chip-info { display: flex; flex-direction: column; line-height: 1.2; }
+  .user-chip-name { font-size: 13px; color: var(--ink); font-weight: 500; }
+  .user-chip-org { font-size: 11px; color: var(--ink-tertiary); }
+  .logout-btn {
+    background: transparent;
+    border: 1px solid var(--separator-strong);
+    border-radius: 999px;
+    padding: 7px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-secondary);
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .logout-btn:hover { background: var(--bg-soft); }
+
+  /* SUBNAV */
+  .subnav {
+    background: rgba(251, 251, 253, 0.85);
+    backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: 1px solid var(--separator);
+    position: sticky;
+    top: 72px;
+    z-index: 99;
+  }
+  .subnav-inner {
+    display: flex;
+    gap: 4px;
+    padding: 8px 28px;
+    max-width: 1680px;
+    margin: 0 auto;
+    overflow-x: auto;
+  }
+  .subnav-item {
+    font-size: 13px;
+    color: var(--ink-secondary);
+    cursor: pointer;
+    padding: 8px 14px;
+    white-space: nowrap;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 500;
+    transition: all 0.12s;
+  }
+  .subnav-item:hover {
+    background: var(--bg-soft);
+    color: var(--ink);
+  }
+  .subnav-item.active {
+    background: var(--ink);
+    color: var(--white);
+  }
+  .subnav-item .count {
+    background: var(--blue-soft);
+    color: var(--blue);
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .subnav-item.active .count {
+    background: rgba(255,255,255,0.2);
+    color: var(--white);
+  }
+
+  /* VIEWS */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* HERO */
+  .hero-band {
+    background: var(--white);
+    border-bottom: 1px solid var(--separator);
+    padding: 56px 28px 44px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    text-align: center;
+    position: relative;
+    z-index: 2;
+  }
+  .hero-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-soft);
+    color: var(--ink-secondary);
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    margin-bottom: 18px;
+  }
+  .hero-eyebrow::before {
+    content: '';
+    width: 6px; height: 6px;
+    background: var(--blue);
+    border-radius: 50%;
+  }
+  .hero-title {
+    font-size: 44px;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 1.05;
+    margin-bottom: 14px;
+  }
+  .hero-title .gradient {
+    background: linear-gradient(135deg, var(--blue) 0%, #6E5BFF 50%, #FF6B9D 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero-subtitle {
+    font-size: 17px;
+    color: var(--ink-tertiary);
+    line-height: 1.45;
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  .hero-band::before {
+    content: '';
+    position: absolute;
+    top: -200px; right: -100px;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(0, 113, 227, 0.06) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+
+  /* MAIN CONTENT */
+  .main {
+    max-width: 1680px;
+    margin: 0 auto;
+    padding: 28px;
+  }
+
+  .placeholder-view {
+    text-align: center;
+    padding: 80px 24px;
+    color: var(--ink-tertiary);
+  }
+  .placeholder-view h2 {
+    font-size: 24px;
+    color: var(--ink);
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+  .placeholder-view p {
+    font-size: 15px;
+  }
+
+  /* SEARCH GRID LAYOUT */
+  .search-grid {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 28px;
+  }
+  .filters {
+    align-self: start;
+    position: sticky;
+    top: 130px;
+  }
+  .filter-group { margin-bottom: 28px; }
+  .filter-group h3 {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-tertiary);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    letter-spacing: 0.04em;
+    display: flex;
+    justify-content: space-between;
+  }
+  .filter-group h3 .clear {
+    color: var(--blue);
+    cursor: pointer;
+    text-transform: none;
+    font-weight: 500;
+  }
+  .filter-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .filter-list li {
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    color: var(--ink-secondary);
+    cursor: pointer;
+    padding: 7px 10px;
+    border-radius: 8px;
+    transition: all 0.12s;
+    gap: 10px;
+    margin: 0 -10px;
+    user-select: none;
+  }
+  .filter-list li:hover { background: var(--bg-soft); color: var(--ink); }
+  .filter-list li::before {
+    content: '';
+    display: inline-block;
+    width: 16px; height: 16px;
+    border: 1.5px solid var(--ink-faint);
+    background: var(--white);
+    flex-shrink: 0;
+    border-radius: 4px;
+  }
+  .filter-list li.checked { color: var(--ink); font-weight: 500; }
+  .filter-list li.checked::before {
+    background: var(--blue);
+    border-color: var(--blue);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M3.5 8.5l3 3 6-6'/%3E%3C/svg%3E");
+    background-size: 12px;
+    background-repeat: no-repeat;
+    background-position: center;
+  }
+  .filter-list li .count {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--ink-quaternary);
+  }
+
+  /* RESULTS */
+  .empty-state {
+    text-align: center;
+    padding: 80px 24px;
+    color: var(--ink-tertiary);
+  }
+  .empty-state h3 {
+    font-size: 18px;
+    color: var(--ink);
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+  .results-header {
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .breadcrumb {
+    font-size: 12px;
+    color: var(--ink-tertiary);
+    margin-bottom: 6px;
+  }
+  .breadcrumb .sep { color: var(--ink-faint); margin: 0 6px; }
+  .query-text {
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+  }
+  .query-text .term { color: var(--blue); }
+  .query-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--ink-tertiary);
+    flex-wrap: wrap;
+  }
+  .ai-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: linear-gradient(135deg, var(--blue) 0%, #6E5BFF 100%);
+    color: var(--white);
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 999px;
+  }
+  .ai-badge::before { content: '✦'; font-size: 10px; }
+  .reveal-link {
+    color: var(--blue);
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-underline-offset: 3px;
+  }
+  .sort-select {
+    padding: 8px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--separator);
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-secondary);
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  /* AI LOADING */
+  .ai-loading {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 24px 28px;
+    background: linear-gradient(135deg, var(--blue-soft) 0%, var(--purple-soft) 100%);
+    border-radius: var(--r-lg);
+    margin-bottom: 16px;
+    color: var(--blue);
+    font-weight: 500;
+    font-size: 14px;
+    border: 1px solid rgba(0, 113, 227, 0.2);
+  }
+  .spinner {
+    width: 20px;
+    height: 20px;
+    border: 2.5px solid rgba(0, 113, 227, 0.2);
+    border-top-color: var(--blue);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* AI ID CARD */
+  .ai-id-card {
+    background: linear-gradient(135deg, #FFFFFF 0%, #F8F9FB 100%);
+    border-radius: var(--r-xl);
+    padding: 26px 30px;
+    margin-bottom: 22px;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--separator);
+    position: relative;
+    overflow: hidden;
+  }
+  .ai-id-card::before {
+    content: '';
+    position: absolute;
+    top: -100px; right: -100px;
+    width: 280px; height: 280px;
+    background: radial-gradient(circle, rgba(0, 113, 227, 0.08) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .ai-id-inner {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 26px;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+  }
+  .ai-thumbnail {
+    width: 80px; height: 80px;
+    background: linear-gradient(135deg, var(--blue) 0%, #6E5BFF 100%);
+    border-radius: var(--r-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--white);
+    box-shadow: 0 8px 24px rgba(0, 113, 227, 0.25);
+  }
+  .ai-thumbnail svg { width: 40px; height: 40px; stroke: currentColor; stroke-width: 1.5; fill: none; }
+  .ai-id-content small {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--blue);
+    margin-bottom: 6px;
+    display: inline-block;
+  }
+  .ai-id-title {
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0 0 12px 0;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+  .ai-id-specs {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px 24px;
+    font-size: 12px;
+    color: var(--ink-secondary);
+  }
+  .ai-id-specs span {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+  }
+  .ai-id-specs strong {
+    color: var(--ink-tertiary);
+    font-weight: 500;
+    min-width: 80px;
+    font-size: 11px;
+  }
+  .ai-id-specs em {
+    color: var(--ink);
+    font-weight: 500;
+    font-style: normal;
+  }
+  .confidence-meter {
+    text-align: center;
+    border-left: 1px solid var(--separator);
+    padding-left: 26px;
+    min-width: 130px;
+  }
+  .confidence-meter > small {
+    font-size: 10px;
+    color: var(--ink-tertiary);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .confidence-value {
+    font-size: 40px;
+    line-height: 1;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    font-feature-settings: "tnum";
+  }
+  .confidence-value sup {
+    font-size: 16px;
+    color: var(--ink-tertiary);
+    vertical-align: top;
+    font-weight: 600;
+  }
+  .confidence-bar {
+    width: 100%;
+    height: 5px;
+    background: var(--bg-soft);
+    border-radius: 3px;
+    margin-top: 8px;
+    overflow: hidden;
+  }
+  .confidence-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--blue) 0%, #6E5BFF 100%);
+    border-radius: 3px;
+    transition: width 0.8s ease;
+  }
+
+  /* RESULT CARDS */
+  .results-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .result-card {
+    display: grid;
+    grid-template-columns: 80px 1fr 220px;
+    gap: 22px;
+    padding: 22px;
+    background: var(--bg-card);
+    border-radius: var(--r-xl);
+    border: 1px solid var(--separator);
+    transition: all 0.2s ease;
+    position: relative;
+  }
+  .result-card:hover {
+    border-color: var(--separator-strong);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+  .result-card.featured {
+    border: 1.5px solid var(--blue);
+    background: linear-gradient(135deg, var(--white) 0%, var(--blue-soft) 100%);
+  }
+  .recommended-tag {
+    position: absolute;
+    top: -10px; left: 22px;
+    padding: 4px 11px;
+    background: linear-gradient(135deg, var(--blue) 0%, #6E5BFF 100%);
+    color: var(--white);
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 999px;
+    box-shadow: 0 4px 12px rgba(0, 113, 227, 0.3);
+  }
+  .recommended-tag::before { content: '✦ '; }
+  .product-img {
+    width: 80px; height: 80px;
+    background: var(--bg-soft);
+    border-radius: var(--r-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink-quaternary);
+  }
+  .product-img svg { width: 40px; height: 40px; stroke: currentColor; stroke-width: 1.5; fill: none; }
+  .result-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    justify-content: center;
+  }
+  .vendor-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--ink-tertiary);
+    flex-wrap: wrap;
+  }
+  .vendor-blind {
+    color: var(--ink);
+    cursor: help;
+    font-weight: 500;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 999px;
+  }
+  .badge-green { background: var(--green-soft); color: var(--green); }
+  .badge-orange { background: var(--orange-soft); color: var(--orange); }
+  .badge-red { background: var(--red-soft); color: var(--red); }
+  .badge-blue { background: var(--blue-soft); color: var(--blue); }
+  .badge-purple { background: var(--purple-soft); color: var(--purple); }
+  .product-title {
+    font-size: 17px;
+    line-height: 1.3;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .product-meta {
+    display: flex;
+    gap: 14px;
+    font-size: 13px;
+    color: var(--ink-secondary);
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .meta-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .meta-pill strong { color: var(--ink); font-weight: 600; }
+  .meta-pill .dot-green { color: var(--green); font-size: 8px; }
+  .meta-pill .dot-orange { color: var(--orange); font-size: 8px; }
+  .meta-pill .dot-red { color: var(--red); font-size: 8px; }
+  .price-block {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-left: 18px;
+    border-left: 1px solid var(--separator);
+    justify-content: center;
+  }
+  .price-amount {
+    font-size: 28px;
+    line-height: 1;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    font-feature-settings: "tnum";
+  }
+  .price-amount sub {
+    font-size: 12px;
+    color: var(--ink-tertiary);
+    margin-left: 4px;
+    vertical-align: baseline;
+    bottom: 0;
+    font-weight: 500;
+  }
+  .price-detail {
+    font-size: 11px;
+    color: var(--ink-tertiary);
+    line-height: 1.4;
+  }
+  .price-detail.savings { color: var(--green); font-weight: 600; }
+  .btn-primary, .btn-secondary {
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    width: 100%;
+    border: none;
+    border-radius: 999px;
+    font-family: inherit;
+  }
+  .btn-primary { background: var(--ink); color: var(--white); }
+  .btn-primary:hover { background: #000; transform: translateY(-1px); }
+  .btn-primary.added { background: var(--green); }
+  .btn-secondary { background: var(--bg-soft); color: var(--ink); }
+  .btn-secondary:hover { background: var(--ink-faint); }
+
+  @media (max-width: 1100px) {
+    .search-grid { grid-template-columns: 1fr; }
+    .filters { position: static; }
+    .result-card { grid-template-columns: 60px 1fr; }
+    .price-block { grid-column: 1 / -1; border-left: none; border-top: 1px solid var(--separator); padding-left: 0; padding-top: 14px; text-align: left; }
+    .ai-id-inner { grid-template-columns: 1fr; }
+    .confidence-meter { border-left: none; padding-left: 0; border-top: 1px solid var(--separator); padding-top: 16px; }
+  }
+
+  /* QUOTE VIEW */
+  .quote-grid {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 24px;
+  }
+  .quote-header {
+    margin-bottom: 24px;
+  }
+  .quote-header h1 {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    margin-bottom: 6px;
+  }
+  .quote-header p {
+    color: var(--ink-tertiary);
+    font-size: 15px;
+  }
+  .panel-card {
+    background: var(--bg-card);
+    border: 1px solid var(--separator);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .panel-card-header {
+    padding: 14px 18px;
+    background: var(--bg-soft);
+    border-bottom: 1px solid var(--separator);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .panel-card-header .meta {
+    font-size: 11px;
+    color: var(--ink-tertiary);
+    font-weight: 400;
+  }
+  .panel-card-body { padding: 18px; }
+  .live-tag {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--green);
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .live-tag::before {
+    content: '';
+    width: 6px; height: 6px;
+    background: var(--green);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.85); }
+  }
+
+  /* CART ITEMS */
+  .cart-row {
+    display: grid;
+    grid-template-columns: 48px 1fr auto auto auto;
+    gap: 14px;
+    align-items: center;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--separator);
+  }
+  .cart-row:last-child { border-bottom: none; }
+  .cart-icon {
+    width: 48px; height: 48px;
+    background: var(--bg-soft);
+    border-radius: var(--r-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink-quaternary);
+  }
+  .cart-icon svg { width: 24px; height: 24px; stroke: currentColor; stroke-width: 1.5; fill: none; }
+  .cart-info {
+    min-width: 0;
+  }
+  .cart-info .ti {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .cart-info .vd {
+    font-size: 12px;
+    color: var(--ink-tertiary);
+  }
+  .qty-control {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--bg-soft);
+    border-radius: 999px;
+    padding: 3px;
+  }
+  .qty-btn {
+    width: 24px; height: 24px;
+    border: none;
+    background: var(--white);
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-sm);
+  }
+  .qty-btn:hover { background: var(--ink); color: var(--white); }
+  .qty-display {
+    min-width: 24px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    font-feature-settings: "tnum";
+  }
+  .cart-price {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+    font-feature-settings: "tnum";
+    min-width: 90px;
+    text-align: right;
+  }
+  .cart-remove {
+    width: 28px; height: 28px;
+    border: none;
+    background: transparent;
+    color: var(--ink-quaternary);
+    cursor: pointer;
+    border-radius: 50%;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+  .cart-remove:hover {
+    background: var(--red-soft);
+    color: var(--red);
+  }
+  .cart-empty-msg {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--ink-tertiary);
+    font-size: 14px;
+  }
+  .cart-empty-msg .icon {
+    font-size: 40px;
+    margin-bottom: 12px;
+    opacity: 0.4;
+  }
+
+  /* LOGISTICS */
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 12px;
+    margin-top: 18px;
+  }
+  .logistics-option {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    padding: 12px 14px;
+    background: var(--bg-soft);
+    border-radius: var(--r-md);
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    align-items: center;
+    border: 1.5px solid transparent;
+  }
+  .logistics-option:hover { background: var(--ink-faint); }
+  .logistics-option.selected {
+    background: var(--blue-soft);
+    border-color: var(--blue);
+  }
+  .logistics-name { font-size: 13px; font-weight: 600; }
+  .logistics-eta { font-size: 11px; color: var(--ink-tertiary); margin-top: 2px; }
+  .logistics-price { font-size: 14px; font-weight: 700; text-align: right; font-feature-settings: "tnum"; }
+
+  /* SUMMARY */
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    font-size: 13px;
+    color: var(--ink-secondary);
+    font-feature-settings: "tnum";
+  }
+  .summary-row span:last-child {
+    color: var(--ink);
+    font-weight: 500;
+  }
+  .summary-divider {
+    border-top: 1px solid var(--separator);
+    margin: 8px 0;
+  }
+  .summary-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding-top: 12px;
+    border-top: 1px solid var(--ink);
+    margin-top: 8px;
+    font-feature-settings: "tnum";
+  }
+  .summary-total span:first-child {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .summary-total span:last-child {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+  }
+
+  /* STEPPER */
+  .po-step {
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    gap: 14px;
+    padding: 12px 0;
+    align-items: start;
+    position: relative;
+  }
+  .po-step::before {
+    content: '';
+    position: absolute;
+    left: 15px; top: 38px;
+    width: 2px;
+    height: calc(100% - 18px);
+    background: var(--separator);
+  }
+  .po-step:last-child::before { display: none; }
+  .po-step.done .step-num {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--white);
+  }
+  .po-step.done::before { background: var(--ink); }
+  .po-step.active .step-num {
+    background: var(--blue);
+    border-color: var(--blue);
+    color: var(--white);
+    box-shadow: 0 0 0 4px var(--blue-soft);
+  }
+  .po-step.active strong { color: var(--blue); }
+  .po-step.pending .step-num {
+    background: var(--white);
+    border-color: var(--ink-faint);
+    color: var(--ink-quaternary);
+  }
+  .po-step.pending strong { color: var(--ink-tertiary); }
+  .po-step.pending span { color: var(--ink-quaternary); }
+  .step-num {
+    width: 32px; height: 32px;
+    border: 1.5px solid;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    flex-shrink: 0;
+    z-index: 2;
+  }
+  .po-step strong {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--ink);
+  }
+  .po-step span {
+    display: block;
+    font-size: 12px;
+    color: var(--ink-tertiary);
+    margin-top: 3px;
+  }
+
+  /* PO UPLOAD ZONE */
+  .po-upload-zone {
+    margin-top: 16px;
+    padding: 28px 20px;
+    background: var(--blue-soft);
+    border: 2px dashed var(--blue);
+    border-radius: var(--r-lg);
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .po-upload-zone:hover {
+    background: var(--white);
+    border-style: solid;
+    box-shadow: var(--shadow-md);
+  }
+  .po-upload-zone.dragover {
+    background: var(--white);
+    transform: scale(1.01);
+  }
+  .po-upload-zone .zone-icon {
+    font-size: 36px;
+    color: var(--blue);
+    margin-bottom: 10px;
+  }
+  .po-upload-zone .zone-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--blue);
+    margin-bottom: 4px;
+  }
+  .po-upload-zone .zone-sub {
+    font-size: 12px;
+    color: var(--ink-tertiary);
+  }
+  .po-upload-zone.has-file {
+    background: var(--green-soft);
+    border-color: var(--green);
+    border-style: solid;
+  }
+  .po-upload-zone.has-file .zone-icon,
+  .po-upload-zone.has-file .zone-text { color: var(--green); }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    backdrop-filter: blur(4px);
+    z-index: 999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .modal-overlay.show {
+    display: flex;
+    opacity: 1;
+  }
+  .modal {
+    background: var(--white);
+    border-radius: var(--r-2xl);
+    max-width: 560px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 36px;
+    box-shadow: var(--shadow-xl);
+  }
+  .modal h2 {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+  }
+  .modal-sub {
+    font-size: 14px;
+    color: var(--ink-tertiary);
+    margin-bottom: 22px;
+  }
+  .ocr-result {
+    background: var(--bg-soft);
+    border-radius: var(--r-md);
+    padding: 18px;
+    margin: 16px 0;
+  }
+  .ocr-row {
+    display: grid;
+    grid-template-columns: 130px 1fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 8px 0;
+    font-size: 13px;
+    border-bottom: 1px dotted var(--ink-faint);
+  }
+  .ocr-row:last-child { border-bottom: none; }
+  .ocr-row .label {
+    color: var(--ink-tertiary);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+  }
+  .ocr-row .value { font-weight: 500; }
+  .ocr-row .check { color: var(--green); font-weight: 700; font-size: 16px; }
+  .ocr-row .fail { color: var(--red); font-weight: 700; font-size: 16px; }
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 24px;
+  }
+  .modal-actions button { flex: 1; }
+
+  .ocr-loading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px;
+    background: var(--blue-soft);
+    border-radius: var(--r-md);
+    color: var(--blue);
+    font-weight: 500;
+    font-size: 14px;
+    margin: 16px 0;
+  }
+
+  @media (max-width: 1100px) {
+    .quote-grid { grid-template-columns: 1fr; }
+    .cart-row { grid-template-columns: 40px 1fr auto; gap: 10px; }
+    .cart-row .qty-control { grid-column: 2; }
+    .cart-row .cart-price { grid-column: 3; }
+  }
+
+  /* HISTORY TABLE */
+  .page-header {
+    margin-bottom: 24px;
+  }
+  .page-header h1 {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    margin-bottom: 6px;
+  }
+  .page-header p {
+    color: var(--ink-tertiary);
+    font-size: 15px;
+  }
+  .history-table {
+    background: var(--bg-card);
+    border: 1px solid var(--separator);
+    border-radius: var(--r-xl);
+    overflow: hidden;
+  }
+  .history-row {
+    display: grid;
+    grid-template-columns: 160px 1fr 110px 120px 110px 100px;
+    gap: 16px;
+    align-items: center;
+    padding: 14px 22px;
+    border-bottom: 1px solid var(--separator);
+    font-size: 13px;
+    transition: background 0.12s;
+  }
+  .history-row.clickable { cursor: pointer; }
+  .history-row.clickable:hover { background: var(--bg-soft); }
+  .history-row:last-child { border-bottom: none; }
+  .history-row.header {
+    background: var(--bg-soft);
+    font-weight: 600;
+    font-size: 11px;
+    color: var(--ink-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .history-row.header:hover { background: var(--bg-soft); }
+  .history-folio {
+    font-weight: 600;
+    font-family: 'SF Mono', monospace;
+    font-size: 12px;
+    color: var(--ink);
+  }
+  .history-product {
+    color: var(--ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .history-amount {
+    font-weight: 700;
+    font-feature-settings: "tnum";
+    text-align: right;
+  }
+  .history-date {
+    color: var(--ink-tertiary);
+    font-size: 12px;
+  }
+  .history-empty {
+    padding: 60px 24px;
+    text-align: center;
+    color: var(--ink-tertiary);
+  }
+  .history-empty .icon {
+    font-size: 36px;
+    opacity: 0.4;
+    margin-bottom: 10px;
+  }
+  .download-icon-btn {
+    background: transparent;
+    border: 1px solid var(--separator-strong);
+    border-radius: 999px;
+    padding: 5px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-secondary);
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .download-icon-btn:hover {
+    background: var(--ink);
+    color: var(--white);
+    border-color: var(--ink);
+  }
+
+  /* DASHBOARD STATS */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--separator);
+    border-radius: var(--r-lg);
+    padding: 22px 24px;
+  }
+  .stat-card .label {
+    font-size: 11px;
+    color: var(--ink-tertiary);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 10px;
+  }
+  .stat-card .value {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    font-feature-settings: "tnum";
+    line-height: 1;
+  }
+  .stat-card .delta {
+    font-size: 12px;
+    color: var(--green);
+    font-weight: 500;
+    margin-top: 8px;
+  }
+  .insight-card {
+    background: linear-gradient(135deg, var(--blue-soft) 0%, var(--purple-soft) 100%);
+    border: 1px solid rgba(0, 113, 227, 0.15);
+    border-radius: var(--r-xl);
+    padding: 28px;
+    margin-bottom: 16px;
+  }
+  .insight-card h3 {
+    font-size: 17px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    letter-spacing: -0.01em;
+  }
+  .insight-card p {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--ink-secondary);
+  }
+  .insight-card .insight-eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--blue);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+  }
+
+  @media (max-width: 1100px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .history-row {
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      padding: 14px;
+    }
+    .history-row.header { display: none; }
+    .history-row > .history-product,
+    .history-row > .history-date,
+    .history-row > .history-status { display: none; }
+  }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--ink);
+    color: var(--white);
+    padding: 14px 18px;
+    border-radius: var(--r-md);
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: var(--shadow-xl);
+    z-index: 1000;
+    transform: translateX(120%);
+    transition: transform 0.3s cubic-bezier(.2,.8,.2,1);
+  }
+  .toast.show { transform: translateX(0); }
+  .toast.success { background: var(--green); }
+  .toast.error { background: var(--red); }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    .topbar-inner { grid-template-columns: 1fr auto; gap: 16px; }
+    .search-bar { grid-column: 1 / -1; }
+    .hero-title { font-size: 28px; }
+    .market-switch { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============= APP ============= -->
+<div id="app">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="logo" onclick="navigate('search')">
+        <div class="logo-mark"></div>
+        <span class="logo-text">Hatch</span>
+        <span class="logo-meta">Procurement Infrastructure</span>
+        <div class="market-switch">
+          <span class="opt active" data-market="MX" onclick="switchMarket('MX', event)">MX</span>
+          <span class="opt" data-market="US" onclick="switchMarket('US', event)">USA</span>
+        </div>
+      </div>
+
+      <div class="search-bar">
+        <div class="search-mode">Refacciones MRO</div>
+        <input class="search-input" id="searchInput" placeholder="Sube foto, número de parte, descripción técnica…" onkeydown="if(event.key==='Enter')runSearch()">
+        <button class="search-photo" onclick="runPhotoSearch()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="4"/></svg>
+          Foto
+        </button>
+        <button class="search-submit" onclick="runSearch()">Buscar</button>
+      </div>
+
+      <div class="top-right">
+        <div class="pill"><span class="dot"></span>Verificado · NL-MX</div>
+        <div class="user-chip">
+          <div class="avatar">FM</div>
+          <div class="user-chip-info">
+            <span class="user-chip-name">ftsmaster</span>
+            <span class="user-chip-org">FTS Servicios</span>
+          </div>
+        </div>
+        <button class="logout-btn" onclick="logout()">Salir</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- SUBNAV -->
+  <div class="subnav">
+    <div class="subnav-inner">
+      <div class="subnav-item active" data-view="search" onclick="navigate('search')">Buscar</div>
+      <div class="subnav-item" data-view="quote" onclick="navigate('quote')">Cotización <span class="count" id="cartCount">0</span></div>
+      <div class="subnav-item" data-view="history" onclick="navigate('history')">Histórico</div>
+      <div class="subnav-item" data-view="dashboard" onclick="navigate('dashboard')">Analytics</div>
+    </div>
+  </div>
+
+  <!-- SEARCH VIEW -->
+  <div class="view active" id="view-search">
+    <section class="hero-band" id="heroSection">
+      <div class="hero-inner">
+        <div class="hero-eyebrow">Comprador experto, codificado en software</div>
+        <h1 class="hero-title">
+          Encuentra cualquier refacción.<br>
+          <span class="gradient">En segundos. Con compliance.</span>
+        </h1>
+        <p class="hero-subtitle">
+          Identificación por IA, validación de PO, ejecución de compra, factura CFDI 4.0 y entrega cross-border MX–USA.
+        </p>
+      </div>
+    </section>
+
+    <main class="main">
+      <div class="search-grid" id="searchGrid" style="display:none">
+        <aside class="filters">
+          <div class="filter-group">
+            <h3>Marca <span class="clear" onclick="clearFilters('brand')">Limpiar</span></h3>
+            <ul class="filter-list" id="filterBrand"></ul>
+          </div>
+          <div class="filter-group">
+            <h3>Categoría</h3>
+            <ul class="filter-list" id="filterCategory"></ul>
+          </div>
+          <div class="filter-group">
+            <h3>Disponibilidad</h3>
+            <ul class="filter-list" id="filterAvailability"></ul>
+          </div>
+          <div class="filter-group">
+            <h3>Origen</h3>
+            <ul class="filter-list" id="filterOrigin"></ul>
+          </div>
+        </aside>
+
+        <section id="resultsCol">
+          <div class="results-header">
+            <div class="query-display">
+              <div class="breadcrumb" id="breadcrumb"></div>
+              <div class="query-text" id="queryText"></div>
+              <div class="query-meta" id="queryMeta"></div>
+            </div>
+            <select class="sort-select" id="sortSelect" onchange="renderResults()">
+              <option value="recommended">Mejor opción para mí</option>
+              <option value="price-asc">Precio: menor a mayor</option>
+              <option value="price-desc">Precio: mayor a menor</option>
+              <option value="eta">Tiempo de entrega</option>
+            </select>
+          </div>
+
+          <div id="aiZone"></div>
+          <div class="results-grid" id="resultsGrid"></div>
+        </section>
+      </div>
+
+      <div class="empty-state" id="initialEmpty">
+        <h3>Empieza una búsqueda</h3>
+        <p>Escribe un número de parte, marca o descripción técnica.<br><br>Prueba: <code style="background:var(--bg-soft); padding:2px 8px; border-radius:4px; font-family:'SF Mono',monospace; font-size:12px;">1756-L73</code> · <code style="background:var(--bg-soft); padding:2px 8px; border-radius:4px; font-family:'SF Mono',monospace; font-size:12px;">Siemens HMI</code> · <code style="background:var(--bg-soft); padding:2px 8px; border-radius:4px; font-family:'SF Mono',monospace; font-size:12px;">VFD Schneider</code></p>
+      </div>
+    </main>
+  </div>
+
+  <!-- QUOTE VIEW -->
+  <div class="view" id="view-quote">
+    <main class="main">
+      <div class="quote-header">
+        <h1>Cotización en proceso</h1>
+        <p>Revisa items, selecciona logística, sube tu PO y ejecuta la compra.</p>
+      </div>
+
+      <div class="quote-grid">
+        <!-- LEFT: Items + Stepper + PO -->
+        <div>
+          <!-- Items -->
+          <div class="panel-card">
+            <div class="panel-card-header">
+              <span id="quoteFolio">Items en cotización</span>
+              <span class="meta">7 días vigencia</span>
+            </div>
+            <div class="panel-card-body" id="cartItems"></div>
+          </div>
+
+          <!-- Stepper + PO Upload -->
+          <div class="panel-card">
+            <div class="panel-card-header">
+              <span>Flujo de proceso</span>
+              <div class="live-tag">EN VIVO</div>
+            </div>
+            <div class="panel-card-body">
+              <div id="poStepperList"></div>
+              <div class="po-upload-zone" id="poUploadZone" onclick="triggerPOUpload()">
+                <div class="zone-icon">↑</div>
+                <div class="zone-text">Arrastra tu PO aquí o haz clic</div>
+                <div class="zone-sub">PDF, imagen o XML · OCR + IA validan automáticamente</div>
+              </div>
+              <input type="file" id="poFileInput" accept=".pdf,.png,.jpg,.jpeg,.xml" style="display:none" onchange="handlePOUpload(this)">
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Summary + Logistics -->
+        <div>
+          <div class="panel-card">
+            <div class="panel-card-header">
+              <span>Resumen</span>
+            </div>
+            <div class="panel-card-body" id="quoteSummary"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- HISTORY VIEW -->
+  <div class="view" id="view-history">
+    <main class="main">
+      <div class="page-header">
+        <h1>Histórico</h1>
+        <p>Todas tus cotizaciones y órdenes ejecutadas.</p>
+      </div>
+      <div class="history-table" id="historyTable"></div>
+    </main>
+  </div>
+
+  <!-- DASHBOARD VIEW -->
+  <div class="view" id="view-dashboard">
+    <main class="main">
+      <div class="page-header">
+        <h1>Analytics</h1>
+        <p>Tu actividad en Hatch · datos en tiempo real.</p>
+      </div>
+
+      <div class="stats-grid" id="statsGrid"></div>
+
+      <div class="insight-card" id="insightCard"></div>
+
+      <div class="panel-card">
+        <div class="panel-card-header">
+          <span>Resumen ejecutivo</span>
+        </div>
+        <div class="panel-card-body" style="padding: 24px;" id="execSummary"></div>
+      </div>
+    </main>
+  </div>
+
+</div>
+
+<!-- PO VALIDATION MODAL -->
+<div class="modal-overlay" id="poModal">
+  <div class="modal">
+    <h2 id="poModalTitle">Validando PO con IA + OCR</h2>
+    <div class="modal-sub" id="poModalSub">Comparando documento contra cotización generada.</div>
+    <div id="poModalContent"></div>
+    <div class="modal-actions" id="poModalActions" style="display:none">
+      <button class="btn-secondary" onclick="closeModal()">Cerrar</button>
+      <button class="btn-primary" id="poExecuteBtn" onclick="executeOrder()">Ejecutar compra</button>
+    </div>
+  </div>
+</div>
+
+<!-- ORDER EXECUTED MODAL -->
+<div class="modal-overlay" id="orderModal">
+  <div class="modal">
+    <div style="text-align: center; margin-bottom: 16px;">
+      <div style="width: 64px; height: 64px; border-radius: 50%; background: var(--green-soft); color: var(--green); display: inline-flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 700;">✓</div>
+    </div>
+    <h2 style="text-align: center;">Orden ejecutada</h2>
+    <div class="modal-sub" style="text-align: center;">Tu compra se procesó correctamente. Recibirás updates por email.</div>
+
+    <div class="ocr-result" id="orderConfirmDetails"></div>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal()">Cerrar</button>
+      <button class="btn-primary" onclick="closeModal(); navigate('history');">Ver histórico</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ============= AUTH (integrada con FTS Suite) =============
+  function authGate() {
+    if (!window.FTSAuth) {
+      alert('Error: FTSAuth no disponible. Recarga FTS Suite primero.');
+      window.location.href = '../index.html';
+      return false;
+    }
+    if (!FTSAuth.isLoggedIn()) {
+      window.location.href = '../index.html';
+      return false;
+    }
+    if (!FTSAuth.isMaster()) {
+      alert('Acceso restringido a ftsmaster.');
+      window.location.href = '../index.html';
+      return false;
+    }
+    FTSAuth.initActivityTracking();
+    return true;
+  }
+
+  function logout() {
+    if (window.FTSAuth) FTSAuth.logout();
+    window.location.href = '../index.html';
+  }
+
+  // Load external JSON data (catalog, logistics). Idempotent.
+  let _dataBootDone = false;
+  async function bootData() {
+    if (_dataBootDone) return;
+    const result = await loadDataFiles();
+    _dataBootDone = true;
+    // Refresh any visible state that depended on CATALOG/LOGISTICS
+    if (appState.currentProduct) renderResults();
+    if (document.getElementById('view-quote').classList.contains('active')) renderQuoteView();
+    // Show subtle indicator if running in fallback mode
+    if (!result.catalogLoaded || !result.logisticsLoaded) {
+      console.info('[Hatch] Running with embedded defaults. Upload data/*.json to repo to override.');
+    }
+  }
+
+  // ============= NAVIGATION =============
+  function navigate(viewName) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.subnav-item').forEach(i => i.classList.remove('active'));
+    const view = document.getElementById('view-' + viewName);
+    const navItem = document.querySelector('.subnav-item[data-view="' + viewName + '"]');
+    if (view) view.classList.add('active');
+    if (navItem) navItem.classList.add('active');
+    window.scrollTo(0, 0);
+  }
+
+  // ============= MARKET SWITCH =============
+  let currentMarket = 'MX';
+  function switchMarket(market, e) {
+    if (e) e.stopPropagation();
+    currentMarket = market;
+    document.querySelectorAll('.market-switch .opt').forEach(o => o.classList.remove('active'));
+    document.querySelector('.market-switch .opt[data-market="' + market + '"]').classList.add('active');
+    showToast('Mercado: ' + (market === 'MX' ? 'México' : 'USA'));
+  }
+
+  // ============= TOAST =============
+  let toastTimer = null;
+  function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (type ? ' ' + type : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  // ============= DATA LOADER =============
+  // Catalog/vendors/logistics are loaded from /hatch/data/*.json in the repo.
+  // If fetch fails (offline / local file), fall back to embedded defaults.
+
+  const DATA_BASE = './data/';  // relative path; works on GitHub Pages
+
+  let CATALOG = [];
+  let LOGISTICS = [];
+  const DEFAULT_CATALOG = [
+    { id: 'ab-1756-l73', brand: 'Allen-Bradley', sku: '1756-L73',
+      title: 'Allen-Bradley 1756-L73 ControlLogix Processor 8MB', category: 'PLCs',
+      keywords: ['1756-l73','controllogix','allen','bradley','plc','rockwell','processor','l7','8mb'],
+      specs: [
+        { l: 'Memoria', v: '8 MB' },
+        { l: 'Comunicación', v: 'EtherNet/IP, ControlNet' },
+        { l: 'I/O capacidad', v: '128k digital · 4k analog' },
+        { l: 'Compatible', v: '1756-EN2T, 1756-IB16' }
+      ],
+      vendors: [
+        { name: 'Distribuidor verificado · MX-NL', mx: 2847, us: 2950, stock: 4, eta: '1–2 días', loc: 'MTY directo', recommended: true, badges: ['auth','credit'], savings: 312 },
+        { name: 'Marketplace público · US', mx: 2640, us: 2520, stock: 12, eta: '5–7 días', loc: 'vía Laredo', badges: ['cross','dropship'] },
+        { name: 'Distribuidor regional · Bajío', mx: 1985, us: 2080, stock: 2, eta: '3–4 días', loc: 'Querétaro', badges: ['auth','refurb'], savings: 862 },
+        { name: 'Distribuidor autorizado · CDMX', mx: 3124, us: 3220, stock: 8, eta: '2–3 días', loc: 'CDMX', badges: ['auth','partner'] },
+        { name: 'Marketplace público · US', mx: 1420, us: 1390, stock: 1, eta: '7–10 días', loc: 'cross-border', badges: ['warning','used'] }
+      ]
+    },
+    { id: 'siemens-tp1200', brand: 'Siemens', sku: '6AV2124-0MC01-0AX0',
+      title: 'Siemens SIMATIC HMI TP1200 Comfort 12"', category: 'HMI',
+      keywords: ['siemens','hmi','tp1200','simatic','touchscreen','comfort','panel','6av2'],
+      specs: [
+        { l: 'Tamaño', v: '12.1" widescreen' },
+        { l: 'Resolución', v: '1280 × 800 px' },
+        { l: 'Conectividad', v: 'PROFINET, MPI/DP' },
+        { l: 'Memoria', v: '24 MB' }
+      ],
+      vendors: [
+        { name: 'Distribuidor Siemens · MX-NL', mx: 4250, us: 4400, stock: 3, eta: '1–2 días', loc: 'MTY directo', recommended: true, badges: ['auth','credit'], savings: 380 },
+        { name: 'Marketplace público · US', mx: 4080, us: 3950, stock: 8, eta: '5–7 días', loc: 'vía Laredo', badges: ['cross','dropship'] },
+        { name: 'Distribuidor industrial · Bajío', mx: 4480, us: 4620, stock: 2, eta: '3–4 días', loc: 'Querétaro', badges: ['auth'] }
+      ]
+    },
+    { id: 'schneider-atv630', brand: 'Schneider Electric', sku: 'ATV630D11N4',
+      title: 'Schneider Altivar 630 VFD 11kW 480V', category: 'VFDs',
+      keywords: ['schneider','vfd','altivar','atv630','drive','variador','frecuencia','11kw','drives'],
+      specs: [
+        { l: 'Potencia', v: '11 kW · 15 HP' },
+        { l: 'Voltaje', v: '380–480V trifásico' },
+        { l: 'Comunicación', v: 'Modbus TCP, Ethernet/IP' },
+        { l: 'IP rating', v: 'IP21' }
+      ],
+      vendors: [
+        { name: 'Distribuidor Schneider · MX-NL', mx: 3680, us: 3850, stock: 5, eta: '1–2 días', loc: 'MTY directo', recommended: true, badges: ['auth','credit'], savings: 290 },
+        { name: 'Marketplace público · US', mx: 3520, us: 3420, stock: 14, eta: '5–7 días', loc: 'vía Laredo', badges: ['cross','dropship'] },
+        { name: 'Distribuidor regional · Bajío', mx: 3970, us: 4120, stock: 3, eta: '3–4 días', loc: 'Querétaro', badges: ['auth'] }
+      ]
+    },
+    { id: 'ab-pf755', brand: 'Allen-Bradley', sku: '20G11ND022JA0NNNNN',
+      title: 'Allen-Bradley PowerFlex 755 VFD 22A', category: 'VFDs',
+      keywords: ['powerflex','755','allen','bradley','vfd','drive','rockwell','22a','drives'],
+      specs: [
+        { l: 'Corriente', v: '22 A' },
+        { l: 'Voltaje', v: '480V trifásico' },
+        { l: 'Comunicación', v: 'EtherNet/IP integrado' },
+        { l: 'IP rating', v: 'IP20' }
+      ],
+      vendors: [
+        { name: 'Distribuidor verificado · MX-NL', mx: 5240, us: 5380, stock: 3, eta: '1–2 días', loc: 'MTY directo', recommended: true, badges: ['auth','credit'], savings: 410 },
+        { name: 'Marketplace público · US', mx: 4980, us: 4850, stock: 6, eta: '5–7 días', loc: 'vía Laredo', badges: ['cross','dropship'] }
+      ]
+    },
+    { id: 'omron-e3z', brand: 'Omron', sku: 'E3Z-D62',
+      title: 'Omron E3Z-D62 Sensor fotoeléctrico difuso', category: 'Sensores',
+      keywords: ['omron','sensor','fotoelectrico','e3z','difuso','d62','sensores'],
+      specs: [
+        { l: 'Tipo', v: 'Difuso reflectivo' },
+        { l: 'Distancia', v: '10–100 mm' },
+        { l: 'Salida', v: 'PNP NO/NC' },
+        { l: 'Voltaje', v: '12–24 VDC' }
+      ],
+      vendors: [
+        { name: 'Distribuidor Omron · MX-NL', mx: 245, us: 260, stock: 24, eta: '1–2 días', loc: 'MTY directo', recommended: true, badges: ['auth','credit'], savings: 35 },
+        { name: 'Marketplace público · US', mx: 220, us: 210, stock: 50, eta: '5–7 días', loc: 'vía Laredo', badges: ['cross','dropship'] }
+      ]
+    },
+    { id: 'sick-encoder', brand: 'SICK', sku: 'DFS60B-S4PL01024',
+      title: 'SICK DFS60 Encoder incremental 1024 PPR', category: 'Sensores',
+      keywords: ['sick','encoder','incremental','dfs60','1024','ppr','sensores'],
+      specs: [
+        { l: 'Resolución', v: '1024 PPR' },
+        { l: 'Eje', v: '10 mm sólido' },
+        { l: 'Salida', v: 'TTL/RS422' },
+        { l: 'IP rating', v: 'IP65' }
+      ],
+      vendors: [
+        { name: 'Distribuidor verificado · MX-NL', mx: 580, us: 610, stock: 6, eta: '2–3 días', loc: 'MTY directo', recommended: true, badges: ['auth'], savings: 65 },
+        { name: 'Marketplace público · US', mx: 540, us: 520, stock: 18, eta: '5–7 días', loc: 'vía Laredo', badges: ['cross','dropship'] }
+      ]
+    }
+  ];
+
+  const DEFAULT_LOGISTICS = [
+    { id: 'estafeta', name: 'Estafeta Industrial', eta: '1–2 días · MTY → Apodaca', price: 84 },
+    { id: '99min', name: '99 Minutos Express', eta: 'Hoy · MTY metro', price: 148 },
+    { id: 'fedex', name: 'FedEx Cross-Border', eta: '3–5 días · vía Laredo', price: 215 },
+    { id: 'dhl', name: 'DHL Express', eta: '1–2 días · MTY → Apodaca', price: 110 }
+  ];
+
+  // Initialize with defaults immediately so the app works before loadDataFiles() resolves.
+  // loadDataFiles() will overwrite if /data/*.json exists in repo.
+  CATALOG = DEFAULT_CATALOG;
+  LOGISTICS = DEFAULT_LOGISTICS;
+
+  // Async loader. CATALOG and LOGISTICS are already initialized with defaults.
+  // This function overrides them if /hatch/data/*.json exists in the repo.
+  async function loadDataFiles() {
+    let catalogLoaded = false, logisticsLoaded = false;
+    try {
+      const r = await fetch(DATA_BASE + 'catalog.json', { cache: 'no-store' });
+      if (r.ok) {
+        const data = await r.json();
+        if (Array.isArray(data) && data.length > 0) {
+          CATALOG = data;
+          catalogLoaded = true;
+          console.log('[Hatch] catalog.json loaded:', CATALOG.length, 'products');
+        }
+      }
+    } catch(e) { console.warn('[Hatch] catalog.json fetch failed, using defaults:', e.message); }
+
+    try {
+      const r = await fetch(DATA_BASE + 'logistics.json', { cache: 'no-store' });
+      if (r.ok) {
+        const data = await r.json();
+        if (Array.isArray(data) && data.length > 0) {
+          LOGISTICS = data;
+          logisticsLoaded = true;
+          console.log('[Hatch] logistics.json loaded:', LOGISTICS.length, 'carriers');
+        }
+      }
+    } catch(e) { console.warn('[Hatch] logistics.json fetch failed, using defaults:', e.message); }
+
+    return { catalogLoaded, logisticsLoaded };
+  }
+
+  // ============= STATE =============
+  let appState = {
+    currentSearch: null,
+    currentProduct: null,
+    activeFilters: { brand: [], category: [], availability: [], origin: [] },
+    cart: []
+  };
+
+  // ============= SEARCH =============
+  function runSearch() {
+    const q = document.getElementById('searchInput').value.trim();
+    if (!q) {
+      showToast('Escribe algo para buscar', 'error');
+      return;
+    }
+    performSearch(q);
+  }
+
+  function runPhotoSearch() {
+    document.getElementById('searchInput').value = 'Allen-Bradley 1756-L73';
+    showToast('📷 Foto procesada con IA');
+    performSearch('Allen-Bradley 1756-L73');
+  }
+
+  function performSearch(query) {
+    const lowQ = query.toLowerCase();
+    let match = null;
+    for (const p of CATALOG) {
+      const hits = p.keywords.filter(k => lowQ.includes(k) || k.includes(lowQ.split(' ')[0]));
+      if (hits.length > 0) { match = p; break; }
+    }
+    if (!match) match = CATALOG[0]; // fallback
+    appState.currentSearch = query;
+    appState.currentProduct = match;
+
+    // Hide hero, show results
+    document.getElementById('heroSection').style.display = 'none';
+    document.getElementById('initialEmpty').style.display = 'none';
+    document.getElementById('searchGrid').style.display = 'grid';
+
+    showAILoading();
+    setTimeout(() => {
+      showAIResult();
+      renderFilters();
+      renderResults();
+    }, 1800);
+  }
+
+  function showAILoading() {
+    document.getElementById('aiZone').innerHTML =
+      '<div class="ai-loading"><div class="spinner"></div>Identificando producto con IA · cross-referencing 12 fuentes…</div>';
+    document.getElementById('resultsGrid').innerHTML = '';
+    document.getElementById('queryText').textContent = appState.currentSearch;
+    document.getElementById('breadcrumb').innerHTML = '';
+    document.getElementById('queryMeta').innerHTML = '';
+  }
+
+  function showAIResult() {
+    const p = appState.currentProduct;
+    document.getElementById('breadcrumb').innerHTML =
+      'Buscar <span class="sep">·</span> Refacciones MRO <span class="sep">·</span> ' + p.category;
+    document.getElementById('queryText').innerHTML =
+      p.brand + ' <span class="term">' + p.sku + '</span>';
+    document.getElementById('queryMeta').innerHTML =
+      '<span class="ai-badge">Identificado por IA</span>' +
+      '<span>' + p.vendors.length + ' opciones · respuesta 1.8s</span>' +
+      '<span class="reveal-link" onclick="revealVendors()">Revelar todos los vendors · $24 USD</span>';
+
+    let specsHTML = '';
+    p.specs.forEach(s => {
+      specsHTML += '<span><strong>' + s.l + '</strong><em>' + s.v + '</em></span>';
+    });
+
+    document.getElementById('aiZone').innerHTML =
+      '<div class="ai-id-card"><div class="ai-id-inner">' +
+        '<div class="ai-thumbnail"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="1"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="18" x2="8" y2="22"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="16" y1="18" x2="16" y2="22"/><circle cx="12" cy="12" r="2"/></svg></div>' +
+        '<div class="ai-id-content">' +
+          '<small>✦ Producto identificado</small>' +
+          '<h2 class="ai-id-title">' + p.title + '</h2>' +
+          '<div class="ai-id-specs">' + specsHTML + '</div>' +
+        '</div>' +
+        '<div class="confidence-meter">' +
+          '<small>Confianza IA</small>' +
+          '<div class="confidence-value">96<sup>%</sup></div>' +
+          '<div class="confidence-bar"><div class="confidence-bar-fill" id="confBar"></div></div>' +
+          '<small style="margin-top:8px">Cross-ref · 12 fuentes</small>' +
+        '</div>' +
+      '</div></div>';
+
+    setTimeout(() => {
+      const bar = document.getElementById('confBar');
+      if (bar) bar.style.width = '96%';
+    }, 100);
+  }
+
+  // ============= FILTERS =============
+  function renderFilters() {
+    const p = appState.currentProduct;
+    const brands = ['Allen-Bradley', 'Siemens', 'Schneider Electric', 'Omron', 'SICK'];
+    const cats = ['PLCs', 'HMI', 'VFDs', 'Sensores'];
+    const avail = ['En stock inmediato', '1–3 días', '4–10 días'];
+    const origin = ['Verificado por Hatch', 'Marketplace público', 'Distribuidor autorizado', 'Cross-border'];
+
+    document.getElementById('filterBrand').innerHTML = brands.map(b =>
+      '<li class="' + (b === p.brand ? 'checked' : '') + '" onclick="this.classList.toggle(\'checked\')">' + b + ' <span class="count">' + Math.floor(Math.random()*40+5) + '</span></li>'
+    ).join('');
+    document.getElementById('filterCategory').innerHTML = cats.map(c =>
+      '<li class="' + (c === p.category ? 'checked' : '') + '" onclick="this.classList.toggle(\'checked\')">' + c + ' <span class="count">' + Math.floor(Math.random()*100+20) + '</span></li>'
+    ).join('');
+    document.getElementById('filterAvailability').innerHTML = avail.map((a,i) =>
+      '<li class="' + (i===0 ? 'checked' : '') + '" onclick="this.classList.toggle(\'checked\')">' + a + ' <span class="count">' + Math.floor(Math.random()*15+3) + '</span></li>'
+    ).join('');
+    document.getElementById('filterOrigin').innerHTML = origin.map((o,i) =>
+      '<li class="' + (i<2 ? 'checked' : '') + '" onclick="this.classList.toggle(\'checked\')">' + o + ' <span class="count">' + Math.floor(Math.random()*20+5) + '</span></li>'
+    ).join('');
+  }
+
+  function clearFilters(group) {
+    const map = { brand: 'filterBrand', category: 'filterCategory', availability: 'filterAvailability', origin: 'filterOrigin' };
+    document.querySelectorAll('#' + map[group] + ' li').forEach(li => li.classList.remove('checked'));
+  }
+
+  // ============= RESULTS =============
+  function renderResults() {
+    const p = appState.currentProduct;
+    if (!p) return;
+    const sortVal = document.getElementById('sortSelect').value;
+    let vendors = [...p.vendors];
+
+    if (sortVal === 'price-asc') vendors.sort((a,b) => priceFor(a) - priceFor(b));
+    else if (sortVal === 'price-desc') vendors.sort((a,b) => priceFor(b) - priceFor(a));
+    else if (sortVal === 'eta') vendors.sort((a,b) => parseInt(a.eta) - parseInt(b.eta));
+
+    const grid = document.getElementById('resultsGrid');
+    grid.innerHTML = vendors.map((v, idx) => renderVendorCard(p, v, idx)).join('');
+  }
+
+  function priceFor(v) {
+    return currentMarket === 'MX' ? v.mx : v.us;
+  }
+
+  function renderVendorCard(p, v, idx) {
+    const price = priceFor(v);
+    const featured = v.recommended ? 'featured' : '';
+    const tag = v.recommended ? '<div class="recommended-tag">Opción recomendada</div>' : '';
+
+    let badgesHTML = '';
+    if (v.badges) {
+      v.badges.forEach(b => {
+        if (b === 'auth') badgesHTML += '<span class="badge badge-green">✓ Auth</span>';
+        if (b === 'credit') badgesHTML += '<span class="badge badge-blue">Crédito 30d</span>';
+        if (b === 'cross') badgesHTML += '<span class="badge badge-blue">Cross-border</span>';
+        if (b === 'dropship') badgesHTML += '<span class="badge badge-purple">Drop-ship</span>';
+        if (b === 'refurb') badgesHTML += '<span class="badge badge-orange">Refurbished</span>';
+        if (b === 'partner') badgesHTML += '<span class="badge badge-blue">PartnerNetwork</span>';
+        if (b === 'warning') badgesHTML += '<span class="badge badge-red">⚠ Vendor pendiente</span>';
+        if (b === 'used') badgesHTML += '<span class="badge badge-orange">Usado</span>';
+      });
+    }
+
+    const itemId = p.id + '-' + idx;
+    const inCart = appState.cart.some(c => c.id === itemId);
+
+    const stockColor = v.stock > 5 ? 'dot-green' : (v.stock > 1 ? 'dot-orange' : 'dot-red');
+    const savingsHTML = v.savings ? '<div class="price-detail savings">↓ $' + v.savings + ' menor que promedio</div>' : '';
+
+    return (
+      '<div class="result-card ' + featured + '">' +
+        tag +
+        '<div class="product-img"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="1"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="18" x2="8" y2="22"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="16" y1="18" x2="16" y2="22"/><circle cx="12" cy="12" r="2"/></svg></div>' +
+        '<div class="result-info">' +
+          '<div class="vendor-line">' +
+            '<span class="vendor-blind" title="Vendor revelado tras la compra">' + v.name + '</span>' +
+            badgesHTML +
+          '</div>' +
+          '<h3 class="product-title">' + p.title + '</h3>' +
+          '<div class="product-meta">' +
+            '<span class="meta-pill"><span class="' + stockColor + '">●</span> <strong>' + v.stock + ' unidades</strong> en stock</span>' +
+            '<span class="meta-pill"><strong>' + v.eta + '</strong> · ' + v.loc + '</span>' +
+            '<span class="meta-pill">CFDI 4.0</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="price-block">' +
+          '<div>' +
+            '<div class="price-amount">$' + price.toLocaleString() + '<sub>USD</sub></div>' +
+            '<div class="price-detail">Incluye logística + factura</div>' +
+            savingsHTML +
+          '</div>' +
+          '<button class="btn-primary ' + (inCart ? 'added' : '') + '" onclick="addToCart(\'' + itemId + '\', \'' + p.id + '\', ' + idx + ')">' +
+            (inCart ? '✓ Agregado' : 'Cotizar') +
+          '</button>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  // ============= CART =============
+  function addToCart(itemId, productId, vendorIdx) {
+    if (appState.cart.some(c => c.id === itemId)) {
+      showToast('Ya está en tu cotización');
+      return;
+    }
+    const product = CATALOG.find(p => p.id === productId);
+    const vendor = product.vendors[vendorIdx];
+    appState.cart.push({
+      id: itemId,
+      productId: productId,
+      vendorIdx: vendorIdx,
+      sku: product.sku,
+      title: product.title,
+      vendor: vendor.name,
+      price: priceFor(vendor),
+      qty: 1
+    });
+    updateCartCount();
+    renderResults();
+    showToast('Agregado a cotización ✓', 'success');
+  }
+
+  function updateCartCount() {
+    document.getElementById('cartCount').textContent = appState.cart.length;
+  }
+
+  function revealVendors() {
+    showToast('Esta acción cobra $24 USD a tu cuenta. Función en demo.', 'error');
+  }
+
+  // ============= LAYER 3: QUOTE VIEW =============
+  let quoteState = {
+    folio: null,
+    selectedLogistics: 'estafeta',
+    poFile: null,
+    poValidated: false,
+    currentStep: 2  // 0 search, 1 quote, 2 waiting PO, 3 validating, 4 executing, 5 delivered
+  };
+
+  // LOGISTICS array now loaded from data/logistics.json (see DATA LOADER section)
+
+  function generateFolio() {
+    const year = new Date().getFullYear();
+    const num = Math.floor(Math.random() * 89999 + 10000);
+    return 'HCH-' + year + '-' + num;
+  }
+
+  // Hook navigate to render quote when entering
+  const _origNavigate = navigate;
+  navigate = function(viewName) {
+    _origNavigate(viewName);
+    if (viewName === 'quote') renderQuoteView();
+  };
+
+  function renderQuoteView() {
+    if (!quoteState.folio) quoteState.folio = generateFolio();
+    document.getElementById('quoteFolio').textContent = 'Cotización · ' + quoteState.folio;
+    renderCartItems();
+    renderQuoteSummary();
+    renderStepper();
+  }
+
+  function renderCartItems() {
+    const container = document.getElementById('cartItems');
+    if (appState.cart.length === 0) {
+      container.innerHTML =
+        '<div class="cart-empty-msg">' +
+          '<div class="icon">🛒</div>' +
+          '<div>No hay items en tu cotización</div>' +
+          '<div style="margin-top:14px"><button class="btn-secondary" style="width:auto; padding:10px 20px;" onclick="navigate(\'search\')">Empezar búsqueda</button></div>' +
+        '</div>';
+      return;
+    }
+    let html = '';
+    appState.cart.forEach((item, idx) => {
+      const lineTotal = item.price * item.qty;
+      html +=
+        '<div class="cart-row">' +
+          '<div class="cart-icon"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="1"/><circle cx="12" cy="12" r="2"/></svg></div>' +
+          '<div class="cart-info">' +
+            '<div class="ti">' + item.title + '</div>' +
+            '<div class="vd">' + item.vendor + '</div>' +
+          '</div>' +
+          '<div class="qty-control">' +
+            '<button class="qty-btn" onclick="updateQty(' + idx + ', -1)">−</button>' +
+            '<span class="qty-display">' + item.qty + '</span>' +
+            '<button class="qty-btn" onclick="updateQty(' + idx + ', 1)">+</button>' +
+          '</div>' +
+          '<div class="cart-price">$' + lineTotal.toLocaleString() + '</div>' +
+          '<button class="cart-remove" onclick="removeFromCart(' + idx + ')" title="Eliminar">×</button>' +
+        '</div>';
+    });
+    container.innerHTML = html;
+  }
+
+  function updateQty(idx, delta) {
+    appState.cart[idx].qty = Math.max(1, appState.cart[idx].qty + delta);
+    renderCartItems();
+    renderQuoteSummary();
+  }
+
+  function removeFromCart(idx) {
+    appState.cart.splice(idx, 1);
+    updateCartCount();
+    renderCartItems();
+    renderQuoteSummary();
+    showToast('Item eliminado');
+  }
+
+  function renderQuoteSummary() {
+    const container = document.getElementById('quoteSummary');
+    if (appState.cart.length === 0) {
+      container.innerHTML = '<div class="cart-empty-msg" style="padding:24px 12px;">Agrega items para ver el resumen</div>';
+      return;
+    }
+
+    const subtotal = appState.cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+    const hatchFee = subtotal * 0.034;
+    const logistics = LOGISTICS.find(l => l.id === quoteState.selectedLogistics) || LOGISTICS[0];
+    const logisticsCost = logistics.price;
+    const preTax = subtotal + hatchFee + logisticsCost;
+    const iva = preTax * 0.16;
+    const total = preTax + iva;
+
+    let logisticsHTML = '';
+    LOGISTICS.forEach(l => {
+      logisticsHTML +=
+        '<div class="logistics-option ' + (l.id === quoteState.selectedLogistics ? 'selected' : '') + '" onclick="selectLogistics(\'' + l.id + '\')">' +
+          '<div>' +
+            '<div class="logistics-name">' + l.name + '</div>' +
+            '<div class="logistics-eta">' + l.eta + '</div>' +
+          '</div>' +
+          '<div class="logistics-price">$' + l.price + '</div>' +
+        '</div>';
+    });
+
+    container.innerHTML =
+      '<div class="section-label" style="margin-top:0">Logística</div>' +
+      logisticsHTML +
+      '<div class="section-label">Desglose</div>' +
+      '<div class="summary-row"><span>Subtotal productos</span><span>$' + subtotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</span></div>' +
+      '<div class="summary-row"><span>Servicio Hatch (3.4%)</span><span>$' + hatchFee.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</span></div>' +
+      '<div class="summary-row"><span>Logística</span><span>$' + logisticsCost.toFixed(2) + '</span></div>' +
+      '<div class="summary-row"><span>IVA 16%</span><span>$' + iva.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</span></div>' +
+      '<div class="summary-total"><span>Total · USD</span><span>$' + total.toLocaleString(undefined, {maximumFractionDigits: 0}) + '</span></div>' +
+      '<button class="btn-primary" style="margin-top:18px" onclick="generateQuotePDF()">Descargar cotización PDF</button>';
+  }
+
+  function selectLogistics(id) {
+    quoteState.selectedLogistics = id;
+    renderQuoteSummary();
+    showToast('Logística actualizada');
+  }
+
+  function renderStepper() {
+    const steps = [
+      { num: '✓', title: 'Búsqueda + identificación IA', sub: 'Producto identificado · 96% confianza', state: 'done' },
+      { num: '✓', title: 'Cotización formal', sub: 'Folio ' + (quoteState.folio || '—'), state: 'done' },
+      { num: '3', title: 'Esperando PO interno', sub: 'Sube tu PO arriba o pídelo a Procurement', state: quoteState.poFile ? 'done' : 'active' },
+      { num: '4', title: 'Validación PO con OCR', sub: 'Match contra cotización · 90% auto', state: quoteState.poValidated ? 'done' : (quoteState.poFile ? 'active' : 'pending') },
+      { num: '5', title: 'Ejecución de compra', sub: 'Hatch ejecuta en vendor real', state: 'pending' },
+      { num: '6', title: 'Logística + entrega', sub: 'Tracking unificado · CFDI emitido', state: 'pending' }
+    ];
+
+    if (quoteState.poFile) {
+      steps[2].num = '✓';
+      steps[2].sub = 'PO recibido: ' + quoteState.poFile;
+    }
+
+    let html = '';
+    steps.forEach(s => {
+      html +=
+        '<div class="po-step ' + s.state + '">' +
+          '<div class="step-num">' + s.num + '</div>' +
+          '<div>' +
+            '<strong>' + s.title + '</strong>' +
+            '<span>' + s.sub + '</span>' +
+          '</div>' +
+        '</div>';
+    });
+    document.getElementById('poStepperList').innerHTML = html;
+  }
+
+  // ============= PO UPLOAD =============
+  function triggerPOUpload() {
+    if (appState.cart.length === 0) {
+      showToast('Agrega items a la cotización primero', 'error');
+      return;
+    }
+    document.getElementById('poFileInput').click();
+  }
+
+  function handlePOUpload(input) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    quoteState.poFile = file.name;
+
+    const zone = document.getElementById('poUploadZone');
+    zone.classList.add('has-file');
+    zone.querySelector('.zone-text').textContent = '✓ ' + file.name;
+    zone.querySelector('.zone-sub').textContent = 'Procesando con OCR + IA…';
+
+    renderStepper();
+    showToast('PO recibido. Validando…', 'success');
+
+    setTimeout(() => {
+      validatePO();
+    }, 800);
+  }
+
+  function validatePO() {
+    const modal = document.getElementById('poModal');
+    document.getElementById('poModalTitle').textContent = 'Validando PO con IA + OCR';
+    document.getElementById('poModalSub').textContent = 'Comparando documento contra cotización generada.';
+    document.getElementById('poModalContent').innerHTML =
+      '<div class="ocr-loading"><div class="spinner"></div>Extrayendo datos del PO…</div>';
+    document.getElementById('poModalActions').style.display = 'none';
+    modal.classList.add('show');
+
+    setTimeout(showOCRResults, 2000);
+  }
+
+  function showOCRResults() {
+    const subtotal = appState.cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+    const logistics = LOGISTICS.find(l => l.id === quoteState.selectedLogistics) || LOGISTICS[0];
+    const total = (subtotal + (subtotal * 0.034) + logistics.price) * 1.16;
+
+    // Simulated OCR: match cotización
+    const poNumber = 'PO-FTS-' + Math.floor(Math.random() * 89999 + 10000);
+    const supplierMatch = true;
+    const itemsMatch = true;
+    const totalMatch = true;
+    const dateMatch = true;
+
+    document.getElementById('poModalTitle').textContent = '✓ PO validado correctamente';
+    document.getElementById('poModalSub').textContent = 'OCR extrajo todos los campos. Match contra cotización: 4/4 ✓';
+
+    document.getElementById('poModalContent').innerHTML =
+      '<div class="ocr-result">' +
+        '<div class="ocr-row"><span class="label">Número PO</span><span class="value">' + poNumber + '</span><span class="check">✓</span></div>' +
+        '<div class="ocr-row"><span class="label">Proveedor</span><span class="value">Hatch Procurement</span><span class="check">✓</span></div>' +
+        '<div class="ocr-row"><span class="label">Items</span><span class="value">' + appState.cart.length + ' líneas</span><span class="check">✓</span></div>' +
+        '<div class="ocr-row"><span class="label">Total PO</span><span class="value">$' + total.toLocaleString(undefined, {maximumFractionDigits: 0}) + ' USD</span><span class="check">✓</span></div>' +
+        '<div class="ocr-row"><span class="label">Folio cotización</span><span class="value">' + quoteState.folio + '</span><span class="check">✓</span></div>' +
+        '<div class="ocr-row"><span class="label">Vigencia</span><span class="value">7 días</span><span class="check">✓</span></div>' +
+      '</div>' +
+      '<p style="font-size:13px; color:var(--ink-tertiary); line-height:1.5;">El PO coincide con la cotización generada. Puedes proceder con la ejecución de compra. Hatch comprará al vendor real, emitirá factura CFDI 4.0 y coordinará la entrega.</p>';
+
+    document.getElementById('poModalActions').style.display = 'flex';
+    quoteState.poValidated = true;
+
+    const zone = document.getElementById('poUploadZone');
+    zone.querySelector('.zone-sub').textContent = '✓ Validado · Listo para ejecutar';
+
+    renderStepper();
+  }
+
+  function closeModal() {
+    document.getElementById('poModal').classList.remove('show');
+    document.getElementById('orderModal').classList.remove('show');
+  }
+
+  function executeOrder() {
+    closeModal();
+
+    // Build order record
+    const subtotal = appState.cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+    const logistics = LOGISTICS.find(l => l.id === quoteState.selectedLogistics) || LOGISTICS[0];
+    const total = (subtotal + (subtotal * 0.034) + logistics.price) * 1.16;
+    const orderFolio = quoteState.folio.replace('HCH', 'ORD');
+
+    const order = {
+      folio: orderFolio,
+      quoteFolio: quoteState.folio,
+      date: new Date().toISOString(),
+      items: JSON.parse(JSON.stringify(appState.cart)),
+      logistics: logistics,
+      total: total,
+      status: 'En proceso',
+      eta: logistics.eta
+    };
+
+    // Persist to history (Layer 4 will use it more)
+    if (!window._hatchHistory) window._hatchHistory = [];
+    window._hatchHistory.push(order);
+
+    // Show confirmation
+    document.getElementById('orderConfirmDetails').innerHTML =
+      '<div class="ocr-row"><span class="label">Folio orden</span><span class="value">' + orderFolio + '</span><span></span></div>' +
+      '<div class="ocr-row"><span class="label">Total</span><span class="value">$' + total.toLocaleString(undefined, {maximumFractionDigits: 0}) + ' USD</span><span></span></div>' +
+      '<div class="ocr-row"><span class="label">Items</span><span class="value">' + order.items.length + ' productos</span><span></span></div>' +
+      '<div class="ocr-row"><span class="label">Logística</span><span class="value">' + logistics.name + '</span><span></span></div>' +
+      '<div class="ocr-row"><span class="label">ETA</span><span class="value">' + logistics.eta + '</span><span></span></div>';
+
+    document.getElementById('orderModal').classList.add('show');
+
+    // Reset cart for next quote
+    appState.cart = [];
+    quoteState = {
+      folio: null,
+      selectedLogistics: 'estafeta',
+      poFile: null,
+      poValidated: false,
+      currentStep: 2
+    };
+    updateCartCount();
+  }
+
+  function generateQuotePDF() {
+    if (appState.cart.length === 0) {
+      showToast('Carrito vacío', 'error');
+      return;
+    }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    const subtotal = appState.cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+    const hatchFee = subtotal * 0.034;
+    const logistics = LOGISTICS.find(l => l.id === quoteState.selectedLogistics) || LOGISTICS[0];
+    const preTax = subtotal + hatchFee + logistics.price;
+    const iva = preTax * 0.16;
+    const total = preTax + iva;
+
+    // Header band
+    doc.setFillColor(29, 29, 31);
+    doc.rect(0, 0, 210, 30, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Hatch', 20, 18);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Procurement Infrastructure', 20, 24);
+
+    doc.setTextColor(29, 29, 31);
+
+    // Quote info
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('COTIZACIÓN', 20, 50);
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(110, 110, 115);
+    doc.text('Folio: ' + quoteState.folio, 20, 58);
+    doc.text('Fecha: ' + new Date().toLocaleDateString('es-MX'), 20, 64);
+    doc.text('Vigencia: 7 días', 20, 70);
+
+    // Cliente block (right)
+    doc.setTextColor(29, 29, 31);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Cliente', 130, 50);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(110, 110, 115);
+    doc.text('FTS Servicios S.A. de C.V.', 130, 58);
+    doc.text('RFC: SFT170905L43', 130, 64);
+    doc.text('Monterrey, NL', 130, 70);
+
+    // Table header
+    let y = 88;
+    doc.setFillColor(245, 245, 247);
+    doc.rect(20, y - 6, 170, 9, 'F');
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(110, 110, 115);
+    doc.text('PRODUCTO', 22, y);
+    doc.text('VENDOR', 110, y);
+    doc.text('CANT', 145, y);
+    doc.text('PRECIO', 158, y);
+    doc.text('TOTAL', 180, y);
+
+    y += 8;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(29, 29, 31);
+    doc.setFontSize(9);
+
+    appState.cart.forEach(item => {
+      const titleShort = item.title.length > 42 ? item.title.substring(0, 42) + '…' : item.title;
+      const vendorShort = item.vendor.length > 22 ? item.vendor.substring(0, 22) + '…' : item.vendor;
+      const lineTotal = item.price * item.qty;
+      doc.text(titleShort, 22, y);
+      doc.setTextColor(110, 110, 115);
+      doc.setFontSize(8);
+      doc.text(vendorShort, 110, y);
+      doc.setTextColor(29, 29, 31);
+      doc.setFontSize(9);
+      doc.text(String(item.qty), 145, y);
+      doc.text('$' + item.price.toLocaleString(), 158, y);
+      doc.setFont('helvetica', 'bold');
+      doc.text('$' + lineTotal.toLocaleString(), 180, y);
+      doc.setFont('helvetica', 'normal');
+      y += 7;
+    });
+
+    // Logistics
+    y += 4;
+    doc.setDrawColor(220, 220, 220);
+    doc.line(20, y, 190, y);
+    y += 8;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text('Logística', 22, y);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(110, 110, 115);
+    doc.text(logistics.name + ' · ' + logistics.eta, 22, y + 6);
+    doc.setTextColor(29, 29, 31);
+    doc.text('$' + logistics.price.toFixed(2), 180, y + 3);
+
+    // Totals
+    y += 18;
+    doc.setDrawColor(220, 220, 220);
+    doc.line(110, y, 190, y);
+    y += 8;
+    doc.setFontSize(10);
+    doc.setTextColor(110, 110, 115);
+    doc.text('Subtotal productos', 110, y);
+    doc.setTextColor(29, 29, 31);
+    doc.text('$' + subtotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}), 180, y);
+    y += 6;
+    doc.setTextColor(110, 110, 115);
+    doc.text('Servicio Hatch (3.4%)', 110, y);
+    doc.setTextColor(29, 29, 31);
+    doc.text('$' + hatchFee.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}), 180, y);
+    y += 6;
+    doc.setTextColor(110, 110, 115);
+    doc.text('Logística', 110, y);
+    doc.setTextColor(29, 29, 31);
+    doc.text('$' + logistics.price.toFixed(2), 180, y);
+    y += 6;
+    doc.setTextColor(110, 110, 115);
+    doc.text('IVA 16%', 110, y);
+    doc.setTextColor(29, 29, 31);
+    doc.text('$' + iva.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}), 180, y);
+    y += 8;
+
+    doc.setFillColor(29, 29, 31);
+    doc.rect(108, y - 5, 84, 12, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('TOTAL · USD', 110, y + 2);
+    doc.setFontSize(14);
+    doc.text('$' + total.toLocaleString(undefined, {maximumFractionDigits: 0}), 180, y + 2);
+
+    // Footer
+    doc.setTextColor(160, 160, 165);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.text('Hatch Procurement Infrastructure · MX · USA', 105, 280, { align: 'center' });
+    doc.text('Cotización válida por 7 días desde la fecha de emisión. Sujeta a disponibilidad de stock.', 105, 285, { align: 'center' });
+    doc.text('Compliance: CFDI 4.0 · Vendor verificado · Pago consolidado disponible', 105, 290, { align: 'center' });
+
+    doc.save('Cotizacion-' + quoteState.folio + '.pdf');
+    showToast('PDF descargado ✓', 'success');
+  }
+
+  // ============= LAYER 4: PERSISTENCE =============
+  const STATE_KEY = 'hatch_state_v1';
+
+  function persistAll() {
+    try {
+      localStorage.setItem(STATE_KEY, JSON.stringify({
+        cart: appState.cart,
+        quoteFolio: quoteState.folio,
+        selectedLogistics: quoteState.selectedLogistics,
+        market: currentMarket,
+        history: window._hatchHistory || []
+      }));
+    } catch(e) { console.warn('Persist failed', e); }
+  }
+
+  function loadPersisted() {
+    try {
+      const raw = localStorage.getItem(STATE_KEY);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (data.cart) appState.cart = data.cart;
+      if (data.quoteFolio) quoteState.folio = data.quoteFolio;
+      if (data.selectedLogistics) quoteState.selectedLogistics = data.selectedLogistics;
+      if (data.market) {
+        currentMarket = data.market;
+        document.querySelectorAll('.market-switch .opt').forEach(o => o.classList.remove('active'));
+        const btn = document.querySelector('.market-switch .opt[data-market="' + data.market + '"]');
+        if (btn) btn.classList.add('active');
+      }
+      window._hatchHistory = data.history || [];
+      updateCartCount();
+    } catch(e) { console.warn('Load failed', e); }
+  }
+
+  // Wrap mutations to persist
+  const _origAddToCart = addToCart;
+  addToCart = function(...args) { _origAddToCart(...args); persistAll(); };
+  const _origUpdateQty = updateQty;
+  updateQty = function(...args) { _origUpdateQty(...args); persistAll(); };
+  const _origRemoveFromCart = removeFromCart;
+  removeFromCart = function(...args) { _origRemoveFromCart(...args); persistAll(); };
+  const _origSelectLogistics = selectLogistics;
+  selectLogistics = function(...args) { _origSelectLogistics(...args); persistAll(); };
+  const _origSwitchMarket = switchMarket;
+  switchMarket = function(...args) { _origSwitchMarket(...args); persistAll(); if (appState.currentProduct) renderResults(); };
+  const _origExecuteOrder = executeOrder;
+  executeOrder = function() { _origExecuteOrder(); persistAll(); };
+
+  // ============= LAYER 4: HISTORY VIEW =============
+  const _origNavigate2 = navigate;
+  navigate = function(viewName) {
+    _origNavigate2(viewName);
+    if (viewName === 'history') renderHistory();
+    if (viewName === 'dashboard') renderDashboard();
+  };
+
+  function renderHistory() {
+    const table = document.getElementById('historyTable');
+    const history = window._hatchHistory || [];
+
+    if (history.length === 0) {
+      table.innerHTML =
+        '<div class="history-empty">' +
+          '<div class="icon">📋</div>' +
+          '<div style="font-size:15px; color:var(--ink); margin-bottom:6px;">No hay órdenes todavía</div>' +
+          '<div>Ejecuta tu primera compra para verla aquí.</div>' +
+        '</div>';
+      return;
+    }
+
+    let html =
+      '<div class="history-row header">' +
+        '<div>Folio</div>' +
+        '<div>Productos</div>' +
+        '<div style="text-align:right">Total</div>' +
+        '<div>Fecha</div>' +
+        '<div>Estado</div>' +
+        '<div></div>' +
+      '</div>';
+
+    [...history].reverse().forEach((order, revIdx) => {
+      const realIdx = history.length - 1 - revIdx;
+      const productNames = order.items.map(i => i.title.split(' ').slice(0, 4).join(' ')).join(' · ');
+      const date = new Date(order.date);
+      const dateStr = date.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
+      html +=
+        '<div class="history-row clickable" onclick="downloadOrderPDF(' + realIdx + ')">' +
+          '<div class="history-folio">' + order.folio + '</div>' +
+          '<div class="history-product">' + productNames + '</div>' +
+          '<div class="history-amount">$' + order.total.toLocaleString(undefined, {maximumFractionDigits: 0}) + '</div>' +
+          '<div class="history-date">' + dateStr + '</div>' +
+          '<div><span class="badge badge-blue">' + order.status + '</span></div>' +
+          '<div><button class="download-icon-btn" onclick="event.stopPropagation(); downloadOrderPDF(' + realIdx + ')">PDF ↓</button></div>' +
+        '</div>';
+    });
+
+    table.innerHTML = html;
+  }
+
+  function downloadOrderPDF(idx) {
+    const history = window._hatchHistory || [];
+    const order = history[idx];
+    if (!order) return;
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    const subtotal = order.items.reduce((sum, item) => sum + (item.price * item.qty), 0);
+    const hatchFee = subtotal * 0.034;
+
+    // Header
+    doc.setFillColor(0, 135, 90);
+    doc.rect(0, 0, 210, 30, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Hatch', 20, 18);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Comprobante de Orden Ejecutada', 20, 24);
+
+    doc.setTextColor(29, 29, 31);
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('ORDEN EJECUTADA ✓', 20, 50);
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(110, 110, 115);
+    doc.text('Folio orden: ' + order.folio, 20, 58);
+    doc.text('Folio cotización: ' + order.quoteFolio, 20, 64);
+    doc.text('Fecha: ' + new Date(order.date).toLocaleDateString('es-MX'), 20, 70);
+    doc.text('Estado: ' + order.status, 20, 76);
+
+    doc.setTextColor(29, 29, 31);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Cliente', 130, 50);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(110, 110, 115);
+    doc.text('FTS Servicios S.A. de C.V.', 130, 58);
+    doc.text('RFC: SFT170905L43', 130, 64);
+    doc.text('Monterrey, NL', 130, 70);
+
+    // Items table
+    let y = 92;
+    doc.setFillColor(245, 245, 247);
+    doc.rect(20, y - 6, 170, 9, 'F');
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(110, 110, 115);
+    doc.text('PRODUCTO', 22, y);
+    doc.text('CANT', 145, y);
+    doc.text('PRECIO', 158, y);
+    doc.text('TOTAL', 180, y);
+
+    y += 8;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(29, 29, 31);
+
+    order.items.forEach(item => {
+      const titleShort = item.title.length > 50 ? item.title.substring(0, 50) + '…' : item.title;
+      const lineTotal = item.price * item.qty;
+      doc.text(titleShort, 22, y);
+      doc.text(String(item.qty), 145, y);
+      doc.text('$' + item.price.toLocaleString(), 158, y);
+      doc.setFont('helvetica', 'bold');
+      doc.text('$' + lineTotal.toLocaleString(), 180, y);
+      doc.setFont('helvetica', 'normal');
+      y += 7;
+    });
+
+    // Logistics
+    y += 6;
+    doc.setDrawColor(220, 220, 220);
+    doc.line(20, y, 190, y);
+    y += 8;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text('Logística', 22, y);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(110, 110, 115);
+    doc.text(order.logistics.name + ' · ' + order.logistics.eta, 22, y + 6);
+    doc.setTextColor(29, 29, 31);
+
+    // Total final
+    y += 18;
+    doc.setFillColor(0, 135, 90);
+    doc.rect(108, y - 5, 84, 12, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('TOTAL · USD', 110, y + 2);
+    doc.setFontSize(14);
+    doc.text('$' + order.total.toLocaleString(undefined, {maximumFractionDigits: 0}), 180, y + 2);
+
+    doc.setTextColor(160, 160, 165);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.text('Hatch Procurement Infrastructure · Comprobante de orden ejecutada', 105, 280, { align: 'center' });
+    doc.text('Esta orden fue procesada con compliance CFDI 4.0 y vendor verificado.', 105, 285, { align: 'center' });
+    doc.text('Tracking unificado disponible en plataforma · Soporte 24/7', 105, 290, { align: 'center' });
+
+    doc.save('Orden-' + order.folio + '.pdf');
+    showToast('Comprobante descargado ✓', 'success');
+  }
+
+  // ============= LAYER 4: DASHBOARD =============
+  function renderDashboard() {
+    const history = window._hatchHistory || [];
+    const totalOrders = history.length;
+    const totalGMV = history.reduce((sum, o) => sum + o.total, 0);
+    const totalItems = history.reduce((sum, o) => sum + o.items.length, 0);
+    // Estimated savings: 18% of GMV (vs traditional distributor markup of ~25-30%)
+    const estimatedSavings = totalGMV * 0.18;
+    // Estimated time saved: 1.5h per order vs manual procurement
+    const timeSaved = totalOrders * 1.5;
+
+    document.getElementById('statsGrid').innerHTML =
+      '<div class="stat-card">' +
+        '<div class="label">Órdenes ejecutadas</div>' +
+        '<div class="value">' + totalOrders + '</div>' +
+        (totalOrders > 0 ? '<div class="delta">↑ Activas en plataforma</div>' : '') +
+      '</div>' +
+      '<div class="stat-card">' +
+        '<div class="label">GMV total</div>' +
+        '<div class="value">$' + totalGMV.toLocaleString(undefined, {maximumFractionDigits: 0}) + '</div>' +
+        (totalGMV > 0 ? '<div class="delta">USD acumulados</div>' : '') +
+      '</div>' +
+      '<div class="stat-card">' +
+        '<div class="label">Ahorro estimado</div>' +
+        '<div class="value">$' + estimatedSavings.toLocaleString(undefined, {maximumFractionDigits: 0}) + '</div>' +
+        (estimatedSavings > 0 ? '<div class="delta">vs distribuidor tradicional</div>' : '') +
+      '</div>' +
+      '<div class="stat-card">' +
+        '<div class="label">Tiempo ahorrado</div>' +
+        '<div class="value">' + timeSaved.toFixed(1) + 'h</div>' +
+        (timeSaved > 0 ? '<div class="delta">vs procurement manual</div>' : '') +
+      '</div>';
+
+    if (totalOrders === 0) {
+      document.getElementById('insightCard').innerHTML =
+        '<div class="insight-eyebrow">✦ Empieza a usar Hatch</div>' +
+        '<h3>Tus métricas aparecerán aquí</h3>' +
+        '<p>Cada orden ejecutada genera datos en tiempo real: ahorro vs canales tradicionales, tiempo recuperado, cumplimiento de compliance, y patrones de consumo. Empieza con tu primera búsqueda.</p>';
+      document.getElementById('execSummary').innerHTML =
+        '<p style="color: var(--ink-tertiary); line-height: 1.65;">Empieza generando cotizaciones para ver tu actividad aquí. Cada orden alimenta los analytics y permite identificar patrones de optimización en tu cadena de suministro.</p>';
+    } else {
+      const avgOrder = totalGMV / totalOrders;
+      const lastOrder = history[history.length - 1];
+      document.getElementById('insightCard').innerHTML =
+        '<div class="insight-eyebrow">✦ Insight de la semana</div>' +
+        '<h3>Tu ticket promedio es $' + avgOrder.toLocaleString(undefined, {maximumFractionDigits: 0}) + ' USD</h3>' +
+        '<p>Has ejecutado ' + totalOrders + ' órden' + (totalOrders === 1 ? '' : 'es') + ' en Hatch con un GMV total de $' + totalGMV.toLocaleString(undefined, {maximumFractionDigits: 0}) + '. Tu última compra fue ' + lastOrder.folio + ' por $' + lastOrder.total.toLocaleString(undefined, {maximumFractionDigits: 0}) + '. El ahorro acumulado se estima en $' + estimatedSavings.toLocaleString(undefined, {maximumFractionDigits: 0}) + ' USD vs comprar a través de distribuidores intermediarios tradicionales.</p>';
+
+      // Top vendor
+      const vendorCounts = {};
+      history.forEach(o => o.items.forEach(i => {
+        vendorCounts[i.vendor] = (vendorCounts[i.vendor] || 0) + 1;
+      }));
+      const topVendor = Object.entries(vendorCounts).sort((a,b) => b[1] - a[1])[0];
+
+      document.getElementById('execSummary').innerHTML =
+        '<div style="display:grid; gap:14px;">' +
+          '<div><strong style="font-size:14px;">Resumen ejecutivo · ftsmaster</strong></div>' +
+          '<p style="color: var(--ink-secondary); line-height: 1.65; font-size:14px;">Has procesado <strong>' + totalItems + ' líneas de producto</strong> a través de Hatch en ' + totalOrders + ' órdenes ejecutadas. El vendor más utilizado es <strong>' + topVendor[0] + '</strong> con ' + topVendor[1] + ' línea' + (topVendor[1] === 1 ? '' : 's') + '. La eficiencia operativa estimada (vs procurement tradicional con WhatsApp + emails + cotizaciones manuales con 3 distribuidores) representa <strong>' + timeSaved.toFixed(1) + ' horas recuperadas</strong> que tu equipo dedicó a actividades de valor agregado.</p>' +
+          '<p style="color: var(--ink-secondary); line-height: 1.65; font-size:14px;">El ahorro económico se calcula contra el sobrecosto típico de 18-25% que distribuidores intermediarios cobran por la función de búsqueda, cotización y coordinación. Hatch reemplaza esa capa con software, transferiendo el ahorro al comprador final mientras mantiene compliance CFDI 4.0 completo.</p>' +
+        '</div>';
+    }
+  }
+
+  // ============= INIT =============
+  // Run auth gate first; only init app if passes
+  if (authGate()) {
+    const session = FTSAuth.getSession();
+    // Update topbar avatar/name with real user data
+    const userNameEl = document.querySelector('.user-chip-name');
+    const userOrgEl = document.querySelector('.user-chip-org');
+    const avatarEl = document.querySelector('.avatar');
+    if (userNameEl && session) userNameEl.textContent = session.username;
+    if (userOrgEl && session) userOrgEl.textContent = session.nombre || 'FTS Suite';
+    if (avatarEl && session) {
+      const initials = (session.nombre || session.username || 'FM')
+        .split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+      avatarEl.textContent = initials;
+    }
+    // Boot data and persisted state
+    loadPersisted();
+    bootData();
+  }
+</script>
+
+</body>
+</html>

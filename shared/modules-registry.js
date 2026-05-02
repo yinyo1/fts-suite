@@ -57,6 +57,13 @@ const MODULES_REGISTRY = [
     path:       'odoo/',
     cardId:     'card-odoo',
     submodulos: []
+  },
+  {
+    id:         'hatch',
+    label:      '⚓ Hatch',
+    path:       'hatch/',
+    cardId:     'card-hatch',
+    submodulos: []
   }
 ];
 

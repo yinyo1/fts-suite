@@ -1,0 +1,26 @@
+[
+  {
+    "id": "estafeta",
+    "name": "Estafeta Industrial",
+    "eta": "1–2 días · MTY → Apodaca",
+    "price": 84
+  },
+  {
+    "id": "99min",
+    "name": "99 Minutos Express",
+    "eta": "Hoy · MTY metro",
+    "price": 148
+  },
+  {
+    "id": "fedex",
+    "name": "FedEx Cross-Border",
+    "eta": "3–5 días · vía Laredo",
+    "price": 215
+  },
+  {
+    "id": "dhl",
+    "name": "DHL Express",
+    "eta": "1–2 días · MTY → Apodaca",
+    "price": 110
+  }
+]
