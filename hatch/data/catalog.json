@@ -1,0 +1,115 @@
+[
+  {
+    "id": "ab-1756-l73",
+    "brand": "Allen-Bradley",
+    "sku": "1756-L73",
+    "title": "Allen-Bradley 1756-L73 ControlLogix Processor 8MB",
+    "category": "PLCs",
+    "keywords": ["1756-l73", "controllogix", "allen", "bradley", "plc", "rockwell", "processor", "l7", "8mb"],
+    "specs": [
+      { "l": "Memoria", "v": "8 MB" },
+      { "l": "Comunicación", "v": "EtherNet/IP, ControlNet" },
+      { "l": "I/O capacidad", "v": "128k digital · 4k analog" },
+      { "l": "Compatible", "v": "1756-EN2T, 1756-IB16" }
+    ],
+    "vendors": [
+      { "name": "Distribuidor verificado · MX-NL", "mx": 2847, "us": 2950, "stock": 4, "eta": "1–2 días", "loc": "MTY directo", "recommended": true, "badges": ["auth", "credit"], "savings": 312 },
+      { "name": "Marketplace público · US", "mx": 2640, "us": 2520, "stock": 12, "eta": "5–7 días", "loc": "vía Laredo", "badges": ["cross", "dropship"] },
+      { "name": "Distribuidor regional · Bajío", "mx": 1985, "us": 2080, "stock": 2, "eta": "3–4 días", "loc": "Querétaro", "badges": ["auth", "refurb"], "savings": 862 },
+      { "name": "Distribuidor autorizado · CDMX", "mx": 3124, "us": 3220, "stock": 8, "eta": "2–3 días", "loc": "CDMX", "badges": ["auth", "partner"] },
+      { "name": "Marketplace público · US", "mx": 1420, "us": 1390, "stock": 1, "eta": "7–10 días", "loc": "cross-border", "badges": ["warning", "used"] }
+    ]
+  },
+  {
+    "id": "siemens-tp1200",
+    "brand": "Siemens",
+    "sku": "6AV2124-0MC01-0AX0",
+    "title": "Siemens SIMATIC HMI TP1200 Comfort 12\"",
+    "category": "HMI",
+    "keywords": ["siemens", "hmi", "tp1200", "simatic", "touchscreen", "comfort", "panel", "6av2"],
+    "specs": [
+      { "l": "Tamaño", "v": "12.1\" widescreen" },
+      { "l": "Resolución", "v": "1280 × 800 px" },
+      { "l": "Conectividad", "v": "PROFINET, MPI/DP" },
+      { "l": "Memoria", "v": "24 MB" }
+    ],
+    "vendors": [
+      { "name": "Distribuidor Siemens · MX-NL", "mx": 4250, "us": 4400, "stock": 3, "eta": "1–2 días", "loc": "MTY directo", "recommended": true, "badges": ["auth", "credit"], "savings": 380 },
+      { "name": "Marketplace público · US", "mx": 4080, "us": 3950, "stock": 8, "eta": "5–7 días", "loc": "vía Laredo", "badges": ["cross", "dropship"] },
+      { "name": "Distribuidor industrial · Bajío", "mx": 4480, "us": 4620, "stock": 2, "eta": "3–4 días", "loc": "Querétaro", "badges": ["auth"] }
+    ]
+  },
+  {
+    "id": "schneider-atv630",
+    "brand": "Schneider Electric",
+    "sku": "ATV630D11N4",
+    "title": "Schneider Altivar 630 VFD 11kW 480V",
+    "category": "VFDs",
+    "keywords": ["schneider", "vfd", "altivar", "atv630", "drive", "variador", "frecuencia", "11kw", "drives"],
+    "specs": [
+      { "l": "Potencia", "v": "11 kW · 15 HP" },
+      { "l": "Voltaje", "v": "380–480V trifásico" },
+      { "l": "Comunicación", "v": "Modbus TCP, Ethernet/IP" },
+      { "l": "IP rating", "v": "IP21" }
+    ],
+    "vendors": [
+      { "name": "Distribuidor Schneider · MX-NL", "mx": 3680, "us": 3850, "stock": 5, "eta": "1–2 días", "loc": "MTY directo", "recommended": true, "badges": ["auth", "credit"], "savings": 290 },
+      { "name": "Marketplace público · US", "mx": 3520, "us": 3420, "stock": 14, "eta": "5–7 días", "loc": "vía Laredo", "badges": ["cross", "dropship"] },
+      { "name": "Distribuidor regional · Bajío", "mx": 3970, "us": 4120, "stock": 3, "eta": "3–4 días", "loc": "Querétaro", "badges": ["auth"] }
+    ]
+  },
+  {
+    "id": "ab-pf755",
+    "brand": "Allen-Bradley",
+    "sku": "20G11ND022JA0NNNNN",
+    "title": "Allen-Bradley PowerFlex 755 VFD 22A",
+    "category": "VFDs",
+    "keywords": ["powerflex", "755", "allen", "bradley", "vfd", "drive", "rockwell", "22a", "drives"],
+    "specs": [
+      { "l": "Corriente", "v": "22 A" },
+      { "l": "Voltaje", "v": "480V trifásico" },
+      { "l": "Comunicación", "v": "EtherNet/IP integrado" },
+      { "l": "IP rating", "v": "IP20" }
+    ],
+    "vendors": [
+      { "name": "Distribuidor verificado · MX-NL", "mx": 5240, "us": 5380, "stock": 3, "eta": "1–2 días", "loc": "MTY directo", "recommended": true, "badges": ["auth", "credit"], "savings": 410 },
+      { "name": "Marketplace público · US", "mx": 4980, "us": 4850, "stock": 6, "eta": "5–7 días", "loc": "vía Laredo", "badges": ["cross", "dropship"] }
+    ]
+  },
+  {
+    "id": "omron-e3z",
+    "brand": "Omron",
+    "sku": "E3Z-D62",
+    "title": "Omron E3Z-D62 Sensor fotoeléctrico difuso",
+    "category": "Sensores",
+    "keywords": ["omron", "sensor", "fotoelectrico", "e3z", "difuso", "d62", "sensores"],
+    "specs": [
+      { "l": "Tipo", "v": "Difuso reflectivo" },
+      { "l": "Distancia", "v": "10–100 mm" },
+      { "l": "Salida", "v": "PNP NO/NC" },
+      { "l": "Voltaje", "v": "12–24 VDC" }
+    ],
+    "vendors": [
+      { "name": "Distribuidor Omron · MX-NL", "mx": 245, "us": 260, "stock": 24, "eta": "1–2 días", "loc": "MTY directo", "recommended": true, "badges": ["auth", "credit"], "savings": 35 },
+      { "name": "Marketplace público · US", "mx": 220, "us": 210, "stock": 50, "eta": "5–7 días", "loc": "vía Laredo", "badges": ["cross", "dropship"] }
+    ]
+  },
+  {
+    "id": "sick-encoder",
+    "brand": "SICK",
+    "sku": "DFS60B-S4PL01024",
+    "title": "SICK DFS60 Encoder incremental 1024 PPR",
+    "category": "Sensores",
+    "keywords": ["sick", "encoder", "incremental", "dfs60", "1024", "ppr", "sensores"],
+    "specs": [
+      { "l": "Resolución", "v": "1024 PPR" },
+      { "l": "Eje", "v": "10 mm sólido" },
+      { "l": "Salida", "v": "TTL/RS422" },
+      { "l": "IP rating", "v": "IP65" }
+    ],
+    "vendors": [
+      { "name": "Distribuidor verificado · MX-NL", "mx": 580, "us": 610, "stock": 6, "eta": "2–3 días", "loc": "MTY directo", "recommended": true, "badges": ["auth"], "savings": 65 },
+      { "name": "Marketplace público · US", "mx": 540, "us": 520, "stock": 18, "eta": "5–7 días", "loc": "vía Laredo", "badges": ["cross", "dropship"] }
+    ]
+  }
+]

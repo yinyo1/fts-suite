@@ -1,0 +1,14 @@
+{
+  "module": "hatch",
+  "version": "0.4.1-integrated",
+  "build": "2026-05-02-fts-auth-integrated",
+  "status": "online",
+  "data_files": [
+    "data/catalog.json",
+    "data/logistics.json"
+  ],
+  "embedded_defaults": true,
+  "auth": "FTSAuth_integrated",
+  "persistence": "localStorage (UI + history) + repo JSON (catalog + logistics)",
+  "next_phase": "Fase C — n8n workflows for orders + Odoo integration"
+}
