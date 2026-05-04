@@ -28,9 +28,19 @@
           "fecha": "2026-05-04T08:47:05.131Z",
           "hora_propuesta_cst": "02:30",
           "comentario": "Caso 8 smoke test: empleado declara salida 02:30 CST"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe P�rez Guzm�n",
+          "timestamp": "2026-05-04T08:47:08.936Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Caso 8: supervisor aprueba para que avance a RH",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": "2026-05-04 08:30:00",
       "aplicado_en_odoo": true,
       "tag_disputa_activo": true,
