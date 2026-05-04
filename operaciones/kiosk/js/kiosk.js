@@ -1,7 +1,7 @@
 // ═══ FTS Kiosk — Lógica principal ═══
 // Script clásico, estado global compartido
 
-const KIOSK_BUILD = '20260428-kiosk-olvide-checkout-fix-v1';
+const KIOSK_BUILD = '20260504-kiosk-olvide-checkout-v3-modernizado';
 console.log('[kiosk] build:', KIOSK_BUILD);
 
 const K = {
@@ -1687,25 +1687,23 @@ async function confirmarOlvideCheckout(){
 
   try{
     var attendanceId = (regAbierto && regAbierto.id) || null;
-    var resCheckout = await n8nFetch('/webhook/kiosk/cerrar-registro', {
-      empleado_id:           empleado.id,
-      attendance_id:         attendanceId,
-      checkout_estimado:     checkoutEstimado,
-      motivo:                motivo,
-      es_estimado:           true,
-      geo:                   geoData,
-      validaciones_frontend: 'F1-2026-04-28'
+    // F1 v3: endpoint moderno con TAG de disputa Odoo. Schema HH:MM.
+    var resCheckout = await n8nFetch('/webhook/incidencias/crear-olvido-checkout', {
+      empleado_id:        empleado.id,
+      attendance_id:      attendanceId,
+      hora_propuesta_cst: horaInput.value,
+      motivo:             motivo,
+      geolocation:        geoData,
+      cliente_build:      KIOSK_BUILD || 'unknown'
     });
     var r = Array.isArray(resCheckout) ? resCheckout[0] : resCheckout;
-    var exitoso = (r && r.commit) || (r && r.content) || (r && r.ok === true);
-    var fallo   = (r && r.accion_valida === false) || (r && r.error) || (r && r.status === 'error');
 
-    if(fallo && !exitoso){
-      mostrarErrorCandado(r.error_msg || r.error || 'Error al cerrar registro');
+    if(!r){
+      mostrarErrorCandado('Sin respuesta del servidor');
       return;
     }
-    if(!r && !resCheckout){
-      mostrarErrorCandado('Sin respuesta del servidor');
+    if(r.success !== true || !r.id_interno){
+      mostrarErrorCandado(r.mensaje || r.codigo || 'Error al registrar la salida');
       return;
     }
 
