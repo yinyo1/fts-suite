@@ -2,6 +2,42 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-CHK-128-2026-05-04T08-46-51-938Z",
+      "tipo": "olvido_checkout",
+      "empleado_id": 128,
+      "empleado_nombre": "Enoc Natanael Maldonado soto",
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "sin_departamento": false,
+      "attendance_id": 12779,
+      "fecha_creacion": "2026-05-04T08:46:51.938Z",
+      "check_in_original_utc": "2026-05-04 07:44:42",
+      "check_out_propuesto_utc": "2026-05-04 08:30:00",
+      "check_out_propuesto_cst": "2026-05-04 02:30:00",
+      "geolocation": {
+        "lng": -100.3161,
+        "lat": 25.6866,
+        "accuracy": 50
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "accion": "crear",
+          "fecha": "2026-05-04T08:46:51.938Z",
+          "hora_propuesta_cst": "02:30",
+          "comentario": "Caso 5 smoke test: empleado declara salida 02:30 CST"
+        }
+      ],
+      "status": "pendiente_supervisor",
+      "hora_final_aplicada_utc": "2026-05-04 08:30:00",
+      "aplicado_en_odoo": true,
+      "tag_disputa_activo": true,
+      "creada_por_modulo": "kiosk",
+      "creada_por_build": "smoke-test-F1v3-caso5"
+    },
+    {
       "id_interno": "INC-OLV-CHK-127-2026-05-04T08-46-43-533Z",
       "tipo": "olvido_checkout",
       "empleado_id": 127,
