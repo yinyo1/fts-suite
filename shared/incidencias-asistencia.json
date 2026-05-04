@@ -2,6 +2,43 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-CHK-32-2026-05-04T19-33-15-136Z",
+      "tipo": "olvido_checkout",
+      "empleado_id": 32,
+      "empleado_nombre": "Jesus Esteban De La Cruz Calderon",
+      "department_id": 5,
+      "department_name": "Dirección",
+      "sin_departamento": false,
+      "attendance_id": 12812,
+      "fecha_creacion": "2026-05-04T19:33:15.136Z",
+      "check_in_original_utc": "2026-05-04 17:30:58",
+      "check_out_propuesto_utc": "2026-05-04 19:00:00",
+      "check_out_propuesto_cst": "2026-05-04 13:00:00",
+      "geolocation": {
+        "lat": 25.654797156239848,
+        "lng": -100.29581564328912,
+        "accuracy": 96,
+        "captured_at": "2026-05-04T19:33:12.250Z"
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "accion": "crear",
+          "fecha": "2026-05-04T19:33:15.136Z",
+          "hora_propuesta_cst": "13:00",
+          "comentario": "Smoke test boton jornada activa F1 v3"
+        }
+      ],
+      "status": "pendiente_supervisor",
+      "hora_final_aplicada_utc": "2026-05-04 19:00:00",
+      "aplicado_en_odoo": true,
+      "tag_disputa_activo": true,
+      "creada_por_modulo": "kiosk",
+      "creada_por_build": "20260504-kiosk-olvide-checkout-v3-boton-jornada"
+    },
+    {
       "id_interno": "INC-OLV-CHK-32-2026-05-04T17-52-13-851Z",
       "tipo": "olvido_checkout",
       "empleado_id": 32,
