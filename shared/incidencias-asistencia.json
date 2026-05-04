@@ -84,12 +84,22 @@
           "hora_propuesta_cst": null,
           "comentario": "Caso 8: supervisor aprueba para que avance a RH",
           "accion": "aprobado"
+        },
+        {
+          "paso": 3,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-05-04T08:53:57.445Z",
+          "hora_propuesta_cst": "02:15",
+          "comentario": "Caso 8 retry: RH ajusta hora a 02:15 segun evidencia",
+          "accion": "ajustado"
         }
       ],
-      "status": "pendiente_rh",
-      "hora_final_aplicada_utc": "2026-05-04 08:30:00",
+      "status": "aprobada_con_ajuste",
+      "hora_final_aplicada_utc": "2026-05-04 08:15:00",
       "aplicado_en_odoo": true,
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "creada_por_modulo": "kiosk",
       "creada_por_build": "smoke-test-F1v3-caso8"
     },
