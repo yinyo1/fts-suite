@@ -202,10 +202,20 @@
           "fecha": "2026-05-04T08:45:53.637Z",
           "hora_propuesta_cst": "02:30",
           "comentario": "Caso 3 smoke test: empleado declara salida 02:30 CST"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe P�rez Guzm�n",
+          "timestamp": "2026-05-04T08:53:40.644Z",
+          "hora_propuesta_cst": "02:00",
+          "comentario": "Caso 3 retry: el empleado infl�, sali� antes a las 02:00",
+          "accion": "rechazado"
         }
       ],
-      "status": "pendiente_supervisor",
-      "hora_final_aplicada_utc": "2026-05-04 08:30:00",
+      "status": "pendiente_rh",
+      "hora_final_aplicada_utc": "2026-05-04 08:00:00",
       "aplicado_en_odoo": true,
       "tag_disputa_activo": true,
       "creada_por_modulo": "kiosk",
