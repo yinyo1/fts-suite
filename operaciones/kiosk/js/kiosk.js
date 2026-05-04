@@ -1,7 +1,7 @@
 // ═══ FTS Kiosk — Lógica principal ═══
 // Script clásico, estado global compartido
 
-const KIOSK_BUILD = '20260423-olvido-fix-v3';
+const KIOSK_BUILD = '20260428-kiosk-olvide-checkout-fix-v1';
 console.log('[kiosk] build:', KIOSK_BUILD);
 
 const K = {
@@ -1531,13 +1531,15 @@ function mostrarModalOlvideCheckout(estado, empleado){
         '<label style="font-size:13px;color:#333;font-weight:600;display:block;margin-bottom:6px">Hora estimada de salida:</label>'+
         '<input type="time" id="horaEstimadaSalida" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:16px;box-sizing:border-box;font-family:inherit">'+
       '</div>'+
-      '<div style="margin-bottom:20px">'+
+      '<div style="margin-bottom:14px">'+
         '<label style="font-size:13px;color:#333;font-weight:600;display:block;margin-bottom:6px">Motivo (obligatorio):</label>'+
         '<textarea id="motivoOlvideCheckout" placeholder="Ej: Se me olvidó checar al salir..." style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:14px;box-sizing:border-box;height:80px;resize:none;font-family:inherit"></textarea>'+
+        '<div style="font-size:11px;color:#888;margin-top:4px">Mínimo 10 caracteres.</div>'+
       '</div>'+
+      '<div id="errOlvideCheckout" style="color:#D83B01;font-size:12px;min-height:16px;margin-bottom:8px"></div>'+
       '<div style="display:flex;gap:10px">'+
         '<button onclick="document.getElementById(\'modalOlvideCheckout\').remove();if(window._empleadoActual)mostrarEstadoEmpleado(window._empleadoActual)" style="flex:1;padding:12px;background:#f0f0f0;color:#333;border:1px solid #ccc;border-radius:10px;font-size:14px;cursor:pointer;font-family:inherit">Cancelar</button>'+
-        '<button onclick="confirmarOlvideCheckout()" style="flex:2;padding:12px;background:#D83B01;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">💾 Guardar y resolver</button>'+
+        '<button id="btnGuardarOlvideCheckout" onclick="confirmarOlvideCheckout()" style="flex:2;padding:12px;background:#D83B01;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">💾 Guardar y resolver</button>'+
       '</div>'+
     '</div>';
 
@@ -1545,32 +1547,135 @@ function mostrarModalOlvideCheckout(estado, empleado){
 }
 window.mostrarModalOlvideCheckout = mostrarModalOlvideCheckout;
 
+// F1 fix (#urgente-F1): validaciones simétricas a continuarOlvidoEntrada
+// + bug medianoche en construcción del checkoutEstimado + captura geo defensiva.
 async function confirmarOlvideCheckout(){
-  var horaInput = document.getElementById('horaEstimadaSalida');
+  var horaInput   = document.getElementById('horaEstimadaSalida');
   var motivoInput = document.getElementById('motivoOlvideCheckout');
-
-  if(!horaInput || !horaInput.value){
-    alert('Por favor ingresa la hora estimada');
-    return;
-  }
-  if(!motivoInput || !motivoInput.value.trim()){
-    alert('El motivo es obligatorio');
+  var errDiv      = document.getElementById('errOlvideCheckout');
+  var btnGuardar  = document.getElementById('btnGuardarOlvideCheckout');
+  if(!horaInput || !motivoInput || !errDiv) {
+    alert('Modal corrupto. Recarga la página.');
     return;
   }
 
-  var estado = window._estadoActual;
+  errDiv.textContent = '';
+
+  // ── VALIDACIÓN 1: campos no vacíos ──
+  if(!horaInput.value){
+    errDiv.textContent = '⚠️ Indica la hora estimada de salida.';
+    return;
+  }
+  var motivo = (motivoInput.value || '').trim();
+  if(!motivo){
+    errDiv.textContent = '⚠️ Indica el motivo del olvido.';
+    return;
+  }
+
+  // ── VALIDACIÓN 2: motivo ≥10 chars (paridad con continuarOlvidoEntrada) ──
+  if(motivo.length < 10){
+    errDiv.textContent = '⚠️ El motivo debe tener al menos 10 caracteres. Sé específico.';
+    return;
+  }
+
+  // ── VALIDACIÓN 3: hay registro abierto con check_in ──
+  var estado   = window._estadoActual;
   var empleado = window._empleadoActual;
-
-  // Fecha del check_in original para construir el checkout estimado
   var regAbierto = estado && estado.registro_abierto;
-  var fechaCheckIn = (regAbierto && regAbierto.check_in) ? regAbierto.check_in.substring(0, 10) : fechaLocalISO();
-  var checkoutEstimado = fechaCheckIn + 'T' + horaInput.value + ':00';
+  if(!regAbierto || !regAbierto.check_in){
+    errDiv.textContent = '⚠️ No se detecta entrada abierta. Refresca la pantalla.';
+    return;
+  }
 
-  // Cerrar modal
+  // ── VALIDACIÓN 4: parsear hora declarada y construir candidato ──
+  var hhmm = horaInput.value.split(':').map(Number);
+  var hh = hhmm[0], mm = hhmm[1];
+  if(isNaN(hh) || isNaN(mm)){
+    errDiv.textContent = '⚠️ Hora inválida.';
+    return;
+  }
+
+  // check_in viene como "YYYY-MM-DD HH:MM:SS" sin TZ (asumido CST/Monterrey).
+  // Para preservar la fecha calendario sin shifts de TZ, construimos sobre
+  // los componentes locales y la hora declarada va sobre el mismo día base.
+  var ciStr = String(regAbierto.check_in);
+  var ciParts = ciStr.replace('T', ' ').split(' ');
+  var dateParts = ciParts[0].split('-').map(Number);   // [Y, M, D]
+  var timeParts = (ciParts[1] || '00:00:00').split(':').map(Number);  // [h, m, s]
+  if(dateParts.length !== 3 || isNaN(dateParts[0])){
+    errDiv.textContent = '⚠️ Fecha de check-in no parseable.';
+    return;
+  }
+  // Date local: meses 0-indexed
+  var checkInLocal = new Date(dateParts[0], dateParts[1] - 1, dateParts[2],
+                               timeParts[0] || 0, timeParts[1] || 0, timeParts[2] || 0);
+
+  var candidato = new Date(dateParts[0], dateParts[1] - 1, dateParts[2], hh, mm, 0);
+
+  // ── VALIDACIÓN 5: bug medianoche — si quedó antes del check_in,
+  //    asumir día siguiente (turno nocturno cruza medianoche). ──
+  if(candidato.getTime() <= checkInLocal.getTime()){
+    candidato.setDate(candidato.getDate() + 1);
+  }
+
+  // ── VALIDACIÓN 6: no puede ser futura (60s tolerancia) ──
+  var ahora = new Date();
+  if(candidato.getTime() > ahora.getTime() + 60000){
+    errDiv.textContent = '⚠️ La hora de salida no puede ser en el futuro.';
+    return;
+  }
+
+  // ── VALIDACIÓN 7: no más de 12 h atrás respecto a NOW ──
+  var diffAhora = ahora.getTime() - candidato.getTime();
+  if(diffAhora > 12 * 3600 * 1000){
+    errDiv.textContent = '⚠️ La salida fue hace más de 12 horas. Contacta a tu supervisor para registrarla manualmente.';
+    return;
+  }
+
+  // ── VALIDACIÓN 8: turno duración razonable (≤24h) ──
+  var turnoMs = candidato.getTime() - checkInLocal.getTime();
+  if(turnoMs > 24 * 3600 * 1000){
+    errDiv.textContent = '⚠️ La duración del turno parece incorrecta (>24h). Verifica la hora.';
+    return;
+  }
+
+  // ── CAPTURA GEO defensiva (no bloquea si falla) ──
+  var geoData = null;
+  try {
+    var pos = await new Promise(function(resolve, reject){
+      if(!navigator.geolocation) return reject(new Error('no_geo_support'));
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        timeout: 5000, maximumAge: 60000, enableHighAccuracy: false
+      });
+    });
+    geoData = {
+      lat:          pos.coords.latitude,
+      lng:          pos.coords.longitude,
+      accuracy:     pos.coords.accuracy,
+      captured_at:  new Date().toISOString()
+    };
+  } catch(geoErr){
+    geoData = {
+      error:       (geoErr && geoErr.message) || 'no_disponible',
+      captured_at: new Date().toISOString()
+    };
+  }
+
+  // ── Construir checkout_estimado en formato "YYYY-MM-DD HH:MM:SS" (compat backend) ──
+  var pad = function(n){ return String(n).padStart(2, '0'); };
+  var checkoutEstimado =
+    candidato.getFullYear() + '-' + pad(candidato.getMonth() + 1) + '-' + pad(candidato.getDate()) +
+    'T' + pad(candidato.getHours()) + ':' + pad(candidato.getMinutes()) + ':00';
+
+  // ── Disable botón mientras envía ──
+  if(btnGuardar){
+    btnGuardar.disabled = true;
+    btnGuardar.textContent = '⏳ Guardando…';
+  }
+
+  // ── Cerrar modal y mostrar spinner en card de estado ──
   var m = document.getElementById('modalOlvideCheckout');
   if(m) m.remove();
-
-  // Mostrar spinner en el card de estado + limpiar botones
   showScreen('ks-estado');
   document.getElementById('ksEstadoBotones').innerHTML = '';
   var spinEl  = document.getElementById('ksSpinner');
@@ -1581,20 +1686,17 @@ async function confirmarOlvideCheckout(){
   if(textoEl) textoEl.textContent = 'Actualizando…';
 
   try{
-    // Cerrar registro viejo con endpoint especial (bypassa candados)
-    // No se crea nueva entrada — el usuario puede usar el botón normal
-    // "Registrar Entrada" después de que el estado se refresque.
     var attendanceId = (regAbierto && regAbierto.id) || null;
     var resCheckout = await n8nFetch('/webhook/kiosk/cerrar-registro', {
-      empleado_id:        empleado.id,
-      attendance_id:      attendanceId,
-      checkout_estimado:  checkoutEstimado,
-      motivo:             motivoInput.value.trim(),
-      es_estimado:        true
+      empleado_id:           empleado.id,
+      attendance_id:         attendanceId,
+      checkout_estimado:     checkoutEstimado,
+      motivo:                motivo,
+      es_estimado:           true,
+      geo:                   geoData,
+      validaciones_frontend: 'F1-2026-04-28'
     });
     var r = Array.isArray(resCheckout) ? resCheckout[0] : resCheckout;
-    // cerrar-registro devuelve respuesta GitHub (content + commit) si OK,
-    // o un objeto con error / accion_valida:false si falla.
     var exitoso = (r && r.commit) || (r && r.content) || (r && r.ok === true);
     var fallo   = (r && r.accion_valida === false) || (r && r.error) || (r && r.status === 'error');
 
@@ -1607,7 +1709,6 @@ async function confirmarOlvideCheckout(){
       return;
     }
 
-    // Refrescar pantalla de estado — ahora verá botón "Registrar Entrada"
     mostrarEstadoEmpleado(empleado);
 
   } catch(e){
