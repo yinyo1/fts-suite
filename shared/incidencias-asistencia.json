@@ -28,9 +28,19 @@
           "fecha": "2026-05-04T08:09:00.206Z",
           "hora_propuesta_cst": "01:00",
           "comentario": "Smoke test F1 v3 olvido checkout sistema moderno con turno nocturno"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe P�rez Guzm�n",
+          "timestamp": "2026-05-04T08:30:02.238Z",
+          "hora_propuesta_cst": null,
+          "comentario": "OK confirmado, salio a esa hora",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": "2026-05-04 07:00:00",
       "aplicado_en_odoo": true,
       "tag_disputa_activo": true,
