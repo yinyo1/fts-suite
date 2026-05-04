@@ -825,6 +825,25 @@
       },
       "result": "success",
       "error_message": null
+    },
+    {
+      "timestamp": "2026-05-04T01:00:37.504Z",
+      "user": "ftsmaster",
+      "action": "edit_attendance",
+      "attendance_id": 12759,
+      "employee_name": "Carlos Eduardo Manzanares",
+      "changes": {
+        "check_in": {
+          "from": "2026-05-03 13:52:11",
+          "to": "2026-05-03 13:52:00"
+        },
+        "check_out": {
+          "from": null,
+          "to": "2026-05-04 00:00:00"
+        }
+      },
+      "result": "success",
+      "error_message": null
     }
   ]
 }
