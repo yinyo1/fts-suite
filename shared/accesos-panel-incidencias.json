@@ -40,12 +40,14 @@
       "department_id": 5,
       "department_name": "Dirección",
       "roles": [
-        "direccion"
+        "direccion",
+        "supervisor",
+        "rh"
       ],
       "fecha_asignacion": "2026-04-25T00:26:19.975Z",
       "asignado_por": "ftsmaster"
     }
   ],
-  "updated_at": "2026-04-25T00:26:19.975Z",
-  "updated_by": "ftsmaster"
+  "updated_at": "2026-05-04T18:30:00.000Z",
+  "updated_by": "esteban_self_assign_f1_v3"
 }
