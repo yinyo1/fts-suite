@@ -29,10 +29,20 @@
           "fecha": "2026-05-04T17:52:13.851Z",
           "hora_propuesta_cst": "10:30",
           "comentario": "Smoke test F1 v3 desde kiosk web - validacion endpoint moderno"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 32,
+          "usuario": "Jesus Esteban De La Cruz Calderon",
+          "timestamp": "2026-05-04T18:49:53.105Z",
+          "hora_propuesta_cst": "10:35",
+          "comentario": "Smoke test ajuste F1 v3 desde panel",
+          "accion": "ajustado"
         }
       ],
-      "status": "pendiente_supervisor",
-      "hora_final_aplicada_utc": "2026-05-04 16:30:00",
+      "status": "pendiente_rh",
+      "hora_final_aplicada_utc": "2026-05-04 16:35:00",
       "aplicado_en_odoo": true,
       "tag_disputa_activo": true,
       "creada_por_modulo": "kiosk",
