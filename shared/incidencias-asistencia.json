@@ -2,6 +2,42 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-CHK-78-2026-05-04T08-47-05-131Z",
+      "tipo": "olvido_checkout",
+      "empleado_id": 78,
+      "empleado_nombre": "Aldo Jesús Méndez Garza",
+      "department_id": 6,
+      "department_name": "Comercial",
+      "sin_departamento": false,
+      "attendance_id": 12780,
+      "fecha_creacion": "2026-05-04T08:47:05.131Z",
+      "check_in_original_utc": "2026-05-04 07:45:42",
+      "check_out_propuesto_utc": "2026-05-04 08:30:00",
+      "check_out_propuesto_cst": "2026-05-04 02:30:00",
+      "geolocation": {
+        "lng": -100.3161,
+        "lat": 25.6866,
+        "accuracy": 50
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "accion": "crear",
+          "fecha": "2026-05-04T08:47:05.131Z",
+          "hora_propuesta_cst": "02:30",
+          "comentario": "Caso 8 smoke test: empleado declara salida 02:30 CST"
+        }
+      ],
+      "status": "pendiente_supervisor",
+      "hora_final_aplicada_utc": "2026-05-04 08:30:00",
+      "aplicado_en_odoo": true,
+      "tag_disputa_activo": true,
+      "creada_por_modulo": "kiosk",
+      "creada_por_build": "smoke-test-F1v3-caso8"
+    },
+    {
       "id_interno": "INC-OLV-CHK-128-2026-05-04T08-46-51-938Z",
       "tipo": "olvido_checkout",
       "empleado_id": 128,
