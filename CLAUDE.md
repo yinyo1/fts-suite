@@ -36,7 +36,7 @@ Idiomas del repo: español para UI/textos, inglés para variables/funciones de c
 | 9 | `dashboard/resumen (v4.3)` | `nNNQrFMTSjIfqHep` | `IfqHep` | KPIs operación |
 | 10 | `kiosk/sos (v3.4)` | `m6dyGa0yV1zYPwJF` | `zYPwJF` | Pánico + Bloque B incidentes |
 
-**Workflows archivados (21):** ignorar a menos que el usuario lo pida explícitamente para historial.
+**Workflows archivados (19):** ignorar a menos que el usuario lo pida explícitamente para historial.
 
 **Workflows huérfanos INACTIVOS sin uso (3):** `2padPo` incidencias/push, `flXTeF` kiosk/crear-entrada-estimada, `CJdJzP` kiosk/aprobar-ajuste. Candidatos a archivar.
 
@@ -133,7 +133,7 @@ Pendiente F4: usar este mapeo al guardar planes operativos.
 - A.1: ✅ DONE — lookup `department_id` activo en `crear-olvido-entrada` v3.2 con escalación auto a RH si empleado sin depto.
 - A.2: PIN+selfie como 2do factor en RH module
 - A.3: cache fix raw → api.github en `seguridad/index.html`, `seguridad/iperc/iperc-config.js`, `seguridad/js/videos.js`, `ingenieria/analisis-estructural/version.json`
-- A.4: audit workflows con campo viejo `x_studio_many2one_field_wyDLM`
+- A.4: ✅ DONE (2026-05-04) — audit completo en 34 workflows. 10 productivos limpios. Campo `x_studio_many2one_field_wyDLM` quedaba solo en: 2 archivados con WRITE real (kiosk/checkin v4.0 BuMHz9 + v4.1 70hera, eliminados con `n8n_delete_workflow`) y 1 string cosmético en `asistencias/admin` /diagnose (corregido in-place). Smoke test: response ya reporta `x_studio_sales_order_2`.
 - A.6: kiosk distinguir "nunca checó hoy" vs "ya cerró su día" (mostrar último checkout)
 - A.7+A.8: banner persistente en SO selection, confirmación back/close
 - A.9: hotfix `olvido_checkout` permite hora libre con incidencia auto
