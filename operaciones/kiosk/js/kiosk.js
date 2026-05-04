@@ -1,7 +1,7 @@
 // ═══ FTS Kiosk — Lógica principal ═══
 // Script clásico, estado global compartido
 
-const KIOSK_BUILD = '20260504-kiosk-olvide-checkout-v3-modernizado';
+const KIOSK_BUILD = '20260504-kiosk-olvide-checkout-v3-tz-fix';
 console.log('[kiosk] build:', KIOSK_BUILD);
 
 const K = {
@@ -1514,8 +1514,18 @@ function resolverErrorCritico(){
 function mostrarModalOlvideCheckout(estado, empleado){
   var regAbierto = estado && estado.registro_abierto;
   var checkInStr = (regAbierto && regAbierto.check_in) || '';
-  var checkInHora  = checkInStr.substring(11, 16) || '??:??';
-  var checkInFecha = checkInStr.substring(0, 10) || '??';
+  var checkInFecha = '??', checkInHora = '??:??';
+  if (checkInStr) {
+    // Odoo envía check_in en UTC sin Z. Forzar interpretación UTC y convertir a CST (UTC-6) para display.
+    var checkInUTC = new Date(checkInStr.replace(' ', 'T') + 'Z');
+    if (!isNaN(checkInUTC.getTime())) {
+      var pad = function(n) { return String(n).padStart(2, '0'); };
+      var cstMs = checkInUTC.getTime() - 6 * 3600 * 1000;
+      var cstDate = new Date(cstMs);
+      checkInFecha = cstDate.getUTCFullYear() + '-' + pad(cstDate.getUTCMonth() + 1) + '-' + pad(cstDate.getUTCDate());
+      checkInHora = pad(cstDate.getUTCHours()) + ':' + pad(cstDate.getUTCMinutes());
+    }
+  }
 
   var modal = document.createElement('div');
   modal.id = 'modalOlvideCheckout';
@@ -1595,46 +1605,42 @@ async function confirmarOlvideCheckout(){
     return;
   }
 
-  // check_in viene como "YYYY-MM-DD HH:MM:SS" sin TZ (asumido CST/Monterrey).
-  // Para preservar la fecha calendario sin shifts de TZ, construimos sobre
-  // los componentes locales y la hora declarada va sobre el mismo día base.
-  var ciStr = String(regAbierto.check_in);
-  var ciParts = ciStr.replace('T', ' ').split(' ');
-  var dateParts = ciParts[0].split('-').map(Number);   // [Y, M, D]
-  var timeParts = (ciParts[1] || '00:00:00').split(':').map(Number);  // [h, m, s]
-  if(dateParts.length !== 3 || isNaN(dateParts[0])){
+  // check_in viene de Odoo en UTC sin Z. Forzar interpretación UTC.
+  var checkInDate = new Date(String(regAbierto.check_in).replace(' ', 'T') + 'Z');
+  if (isNaN(checkInDate.getTime())) {
     errDiv.textContent = '⚠️ Fecha de check-in no parseable.';
     return;
   }
-  // Date local: meses 0-indexed
-  var checkInLocal = new Date(dateParts[0], dateParts[1] - 1, dateParts[2],
-                               timeParts[0] || 0, timeParts[1] || 0, timeParts[2] || 0);
 
-  var candidato = new Date(dateParts[0], dateParts[1] - 1, dateParts[2], hh, mm, 0);
+  // Construir candidato: hora HH:MM en CST (UTC-6, Monterrey sin DST).
+  var checkInCST = new Date(checkInDate.getTime() - 6 * 3600 * 1000);
+  var candidatoCST = new Date(checkInCST);
+  candidatoCST.setUTCHours(hh, mm, 0, 0);
 
-  // ── VALIDACIÓN 5: bug medianoche — si quedó antes del check_in,
+  // ── VALIDACIÓN 5: bug medianoche — si candidato CST < check_in CST,
   //    asumir día siguiente (turno nocturno cruza medianoche). ──
-  if(candidato.getTime() <= checkInLocal.getTime()){
-    candidato.setDate(candidato.getDate() + 1);
+  if (candidatoCST.getTime() < checkInCST.getTime()) {
+    candidatoCST.setUTCDate(candidatoCST.getUTCDate() + 1);
   }
 
+  // Convertir candidato CST → UTC para comparar contra NOW (todas en UTC vía getTime()).
+  var candidatoUTC = new Date(candidatoCST.getTime() + 6 * 3600 * 1000);
+  var ahoraUTC = new Date();
+
   // ── VALIDACIÓN 6: no puede ser futura (60s tolerancia) ──
-  var ahora = new Date();
-  if(candidato.getTime() > ahora.getTime() + 60000){
+  if (candidatoUTC.getTime() > ahoraUTC.getTime() + 60000) {
     errDiv.textContent = '⚠️ La hora de salida no puede ser en el futuro.';
     return;
   }
 
   // ── VALIDACIÓN 7: no más de 12 h atrás respecto a NOW ──
-  var diffAhora = ahora.getTime() - candidato.getTime();
-  if(diffAhora > 12 * 3600 * 1000){
+  if (ahoraUTC.getTime() - candidatoUTC.getTime() > 12 * 3600 * 1000) {
     errDiv.textContent = '⚠️ La salida fue hace más de 12 horas. Contacta a tu supervisor para registrarla manualmente.';
     return;
   }
 
   // ── VALIDACIÓN 8: turno duración razonable (≤24h) ──
-  var turnoMs = candidato.getTime() - checkInLocal.getTime();
-  if(turnoMs > 24 * 3600 * 1000){
+  if (candidatoUTC.getTime() - checkInDate.getTime() > 24 * 3600 * 1000) {
     errDiv.textContent = '⚠️ La duración del turno parece incorrecta (>24h). Verifica la hora.';
     return;
   }
@@ -1660,12 +1666,6 @@ async function confirmarOlvideCheckout(){
       captured_at: new Date().toISOString()
     };
   }
-
-  // ── Construir checkout_estimado en formato "YYYY-MM-DD HH:MM:SS" (compat backend) ──
-  var pad = function(n){ return String(n).padStart(2, '0'); };
-  var checkoutEstimado =
-    candidato.getFullYear() + '-' + pad(candidato.getMonth() + 1) + '-' + pad(candidato.getDate()) +
-    'T' + pad(candidato.getHours()) + ':' + pad(candidato.getMinutes()) + ':00';
 
   // ── Disable botón mientras envía ──
   if(btnGuardar){
