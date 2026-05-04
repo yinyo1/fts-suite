@@ -6,7 +6,7 @@
 <title>Panel de Incidencias — Mi Perfil — FTS</title>
 <script>
   (function(){
-    const BUILD_DATE = '20260424-pi-acciones-v4';
+    const BUILD_DATE = '20260504-pi-f1-v3';
     window.BUILD_DATE = BUILD_DATE;
   })();
 </script>
@@ -113,6 +113,7 @@
   }
   .pi-chip-auto{background:#fb923c}
   .pi-chip-sindepto{background:#a855f7}
+  .pi-chip-disputa{background:#f97316}
 
   .pi-card-empleado{font-size:15px;margin-bottom:4px}
   .pi-card-id{font-size:11px;color:var(--muted);margin-left:6px}
@@ -294,7 +295,7 @@
   <a class="pi-back" href="../index.html">← Mi Perfil</a>
   <div class="pi-title-wrap">
     <span class="pi-title">⚖️ Panel de Incidencias</span>
-    <span class="pi-build">build 20260424-pi-acciones-v4</span>
+    <span class="pi-build">build 20260504-pi-f1-v3</span>
   </div>
   <div class="pi-user">
     <span id="pi-user-nombre">—</span>
@@ -404,6 +405,11 @@ const STATUS_RESUELTOS = [
   'expirada_por_timeout'
 ];
 
+const TIPO_LABELS = {
+  'olvido_entrada':  '📥 Olvido de entrada',
+  'olvido_checkout': '📤 Olvido de salida'
+};
+
 let _empleadoAcceso = null;
 let _roles          = [];
 let _session        = null;
@@ -495,6 +501,16 @@ function truncar(str, max){
   if (!str) return '';
   str = String(str);
   return str.length <= max ? str : str.substring(0, max) + '…';
+}
+
+// F1 v3: extraer "HH:MM" de un string que puede ser ya HH:MM (kiosk moderno)
+// o "YYYY-MM-DD HH:MM:SS" (legacy). Devuelve string vacío si no parseable.
+function extraerHoraHHMM(s){
+  if (!s) return '';
+  const str = String(s);
+  if (/^\d{2}:\d{2}$/.test(str)) return str;
+  if (str.length >= 16) return str.substring(11, 16);
+  return str.substring(0, 5);
 }
 
 function utcToCst(utcString){
@@ -622,6 +638,7 @@ function renderCard(inc){
   const flags = [];
   if (inc.autoincidencia === true) flags.push('<span class="pi-chip pi-chip-auto">🟡 AUTO</span>');
   if (inc.sin_departamento === true) flags.push('<span class="pi-chip pi-chip-sindepto">⚠️ SIN DEPTO</span>');
+  if (inc.tag_disputa_activo === true) flags.push('<span class="pi-chip pi-chip-disputa">🏷️ En disputa</span>');
 
   const esResuelta = STATUS_RESUELTOS.indexOf(inc.status) !== -1;
 
@@ -633,7 +650,7 @@ function renderCard(inc){
     ? '<div class="pi-card-motivo">"' + esc(motivoTrunc) + '"</div>'
     : '';
 
-  const tipoLabel = inc.tipo === 'olvido_entrada' ? 'Olvido de entrada' : esc(inc.tipo || '—');
+  const tipoLabel = TIPO_LABELS[inc.tipo] || esc(inc.tipo || '—');
 
   return (
     '<div class="pi-card">' +
@@ -703,7 +720,7 @@ function renderSeccionEmpleado(inc){
       '<div class="pi-section-row"><strong>ID Odoo:</strong><span>' + esc(inc.empleado_id || '—') + '</span></div>' +
       deptoRow +
       '<div class="pi-section-row"><strong>Tipo:</strong><span>' +
-        (inc.tipo === 'olvido_entrada' ? 'Olvido de entrada' : esc(inc.tipo || '—')) +
+        (TIPO_LABELS[inc.tipo] || esc(inc.tipo || '—')) +
       '</span></div>' +
     '</div>'
   );
@@ -726,11 +743,24 @@ function renderSeccionHoras(inc){
     ? '<div class="pi-section-row"><strong>Attendance ID:</strong><span>' + esc(inc.attendance_id) + '</span></div>'
     : '';
 
+  // F1 v3: branch por tipo. olvido_entrada usa hora_real_checkin_utc;
+  // olvido_checkout usa check_in_original_utc + check_out_propuesto_cst.
+  let horasEspecificas;
+  if (inc.tipo === 'olvido_checkout') {
+    horasEspecificas =
+      '<div class="pi-section-row"><strong>Check-in original:</strong><span>' + esc(utcToCst(inc.check_in_original_utc)) + ' CST</span></div>' +
+      '<div class="pi-section-row"><strong>Check-out propuesto:</strong><span>' +
+        esc(inc.check_out_propuesto_cst || utcToCst(inc.check_out_propuesto_utc)) + ' CST</span></div>';
+  } else {
+    horasEspecificas =
+      '<div class="pi-section-row"><strong>Check-in real:</strong><span>' + esc(utcToCst(inc.hora_real_checkin_utc)) + ' CST</span></div>' +
+      '<div class="pi-section-row"><strong>Hora declarada:</strong><span>' + esc(horaDeclarada) + ' CST</span></div>';
+  }
+
   return (
     '<div class="pi-section">' +
       '<div class="pi-section-title">🕒 Horas</div>' +
-      '<div class="pi-section-row"><strong>Check-in real:</strong><span>' + esc(utcToCst(inc.hora_real_checkin_utc)) + ' CST</span></div>' +
-      '<div class="pi-section-row"><strong>Hora declarada:</strong><span>' + esc(horaDeclarada) + ' CST</span></div>' +
+      horasEspecificas +
       horaFinalRow +
       '<div class="pi-section-row"><strong>Estado Odoo:</strong>' + aplicado + '</div>' +
       attendanceRow +
@@ -848,7 +878,8 @@ function renderBotonesAccion(inc, rol){
   if (rol === 'supervisor'){
     return btn('aprobar','pi-btn-aprobar','✓ Aprobar') +
            btn('ajustar','pi-btn-ajustar','✎ Ajustar') +
-           btn('rechazar','pi-btn-rechazar','✕ Rechazar');
+           btn('rechazar','pi-btn-rechazar','✕ Rechazar') +
+           btn('escalar','pi-btn-escalar','↑ Escalar a RH');
   }
   if (rol === 'rh'){
     return btn('aprobar','pi-btn-aprobar','✓ Aprobar') +
@@ -921,9 +952,18 @@ function abrirModalAccion(accion, idInterno){
 
   if (requiereHora){
     const horaDeclaradaCst = (inc.propuestas && inc.propuestas[0] && inc.propuestas[0].hora_propuesta_cst) || '';
-    $('pi-acc-hora-final').value = horaDeclaradaCst
-      ? horaDeclaradaCst.substring(0, 16).replace(' ', 'T')
-      : '';
+    // F1 v3: hora_propuesta_cst puede ser HH:MM (kiosk moderno) o "YYYY-MM-DD HH:MM:SS" (legacy).
+    // El input datetime-local necesita formato "YYYY-MM-DDTHH:MM" → reconstruir si solo tenemos HH:MM.
+    let prefillDateTime = '';
+    if (/^\d{2}:\d{2}$/.test(horaDeclaradaCst)){
+      const fechaBase = inc.check_in_original_utc
+        ? String(inc.check_in_original_utc).substring(0, 10)
+        : (inc.fecha_creacion ? String(inc.fecha_creacion).substring(0, 10) : new Date().toISOString().substring(0, 10));
+      prefillDateTime = fechaBase + 'T' + horaDeclaradaCst;
+    } else if (horaDeclaradaCst){
+      prefillDateTime = String(horaDeclaradaCst).substring(0, 16).replace(' ', 'T');
+    }
+    $('pi-acc-hora-final').value = prefillDateTime;
     renderQuickButtons(inc);
   }
 
@@ -950,20 +990,31 @@ function renderQuickButtons(inc){
 
   if (propuestas[0] && propuestas[0].hora_propuesta_cst){
     const h = propuestas[0].hora_propuesta_cst;
-    buttons.push('<button type="button" class="pi-acc-quick-btn" onclick="usarHora(\'' + esc(h) + '\')">📌 Declarada empleado: ' + esc(h.substring(11, 16)) + '</button>');
+    buttons.push('<button type="button" class="pi-acc-quick-btn" onclick="usarHora(\'' + esc(h) + '\')">📌 Declarada empleado: ' + esc(extraerHoraHHMM(h)) + '</button>');
   }
   for (let i = 1; i < propuestas.length; i++){
     const p = propuestas[i];
     if (p.hora_propuesta_cst){
-      buttons.push('<button type="button" class="pi-acc-quick-btn" onclick="usarHora(\'' + esc(p.hora_propuesta_cst) + '\')">📌 De ' + esc(p.rol || '?') + ': ' + esc(p.hora_propuesta_cst.substring(11, 16)) + '</button>');
+      buttons.push('<button type="button" class="pi-acc-quick-btn" onclick="usarHora(\'' + esc(p.hora_propuesta_cst) + '\')">📌 De ' + esc(p.rol || '?') + ': ' + esc(extraerHoraHHMM(p.hora_propuesta_cst)) + '</button>');
     }
   }
   cont.innerHTML = buttons.join('');
 }
 
 function usarHora(horaCst){
-  const dtLocal = String(horaCst || '').substring(0, 16).replace(' ', 'T');
-  $('pi-acc-hora-final').value = dtLocal;
+  // F1 v3: horaCst puede ser HH:MM (kiosk moderno) o "YYYY-MM-DD HH:MM:SS" (legacy).
+  // El input datetime-local necesita "YYYY-MM-DDTHH:MM"; reconstruir con fecha base si solo tenemos HH:MM.
+  const inc = _accionPendiente && _accionPendiente.inc;
+  const hh = extraerHoraHHMM(horaCst);
+  if (!hh){ $('pi-acc-hora-final').value = ''; return; }
+  if (/^\d{2}:\d{2}$/.test(String(horaCst || ''))){
+    const fechaBase = (inc && inc.check_in_original_utc)
+      ? String(inc.check_in_original_utc).substring(0, 10)
+      : (inc && inc.fecha_creacion ? String(inc.fecha_creacion).substring(0, 10) : new Date().toISOString().substring(0, 10));
+    $('pi-acc-hora-final').value = fechaBase + 'T' + hh;
+  } else {
+    $('pi-acc-hora-final').value = String(horaCst).substring(0, 16).replace(' ', 'T');
+  }
 }
 window.usarHora = usarHora;
 
@@ -1004,7 +1055,12 @@ async function confirmarAccion(){
       mostrarFeedbackAccion('Debes especificar la hora final.', 'error');
       return;
     }
-    horaFinalCst = inputHora.replace('T', ' ') + ':00';
+    // F1 v3: el resolver espera HH:MM. Input datetime-local devuelve "YYYY-MM-DDTHH:MM".
+    horaFinalCst = inputHora.split('T')[1] || inputHora;
+    if (!/^\d{2}:\d{2}$/.test(horaFinalCst)){
+      mostrarFeedbackAccion('Formato de hora inválido. Esperado HH:MM.', 'error');
+      return;
+    }
   }
 
   const payload = {
