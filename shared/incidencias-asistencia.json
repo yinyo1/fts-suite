@@ -39,12 +39,22 @@
           "hora_propuesta_cst": "10:35",
           "comentario": "Smoke test ajuste F1 v3 desde panel",
           "accion": "ajustado"
+        },
+        {
+          "paso": 3,
+          "rol": "rh",
+          "user_id": 32,
+          "usuario": "Jesus Esteban De La Cruz Calderon",
+          "timestamp": "2026-05-04T18:52:33.903Z",
+          "hora_propuesta_cst": "10:30",
+          "comentario": "Smoke test aprobacion RH F1 v3",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_rh",
+      "status": "aprobada_tal_cual",
       "hora_final_aplicada_utc": "2026-05-04 16:35:00",
       "aplicado_en_odoo": true,
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "creada_por_modulo": "kiosk",
       "creada_por_build": "20260504-kiosk-olvide-checkout-v3-tz-fix"
     }
