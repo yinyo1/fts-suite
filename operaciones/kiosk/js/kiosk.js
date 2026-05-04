@@ -1,7 +1,7 @@
 // ═══ FTS Kiosk — Lógica principal ═══
 // Script clásico, estado global compartido
 
-const KIOSK_BUILD = '20260504-kiosk-olvide-checkout-v3-tz-fix';
+const KIOSK_BUILD = '20260504-kiosk-olvide-checkout-v3-boton-jornada';
 console.log('[kiosk] build:', KIOSK_BUILD);
 
 const K = {
@@ -1453,9 +1453,16 @@ function renderEstadoBotones(estado){
       html = '<button onclick="olvideChecarEntrada()" style="background:#f0f4ff;color:#0078D4;border:1px solid #0078D4;padding:14px;border-radius:12px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;line-height:1.35">⏰ Llegué pero olvidé checar entrada<br><span style="font-size:11px;color:#7a5800;font-weight:600">[requiere aprobación]</span></button>';
       break;
     case 'activo':
-      // FASE 3 PENDIENTE: botón Salida a Comer desactivado temporalmente
-      // html = '<button onclick="iniciarCheckin(\'salida_comida\')" style="background:#0078D4;color:#fff;border:none;padding:14px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">🍽️ Salida a Comer</button>';
-      html = '';  // sin botón secundario mientras no exista Fase 3
+      // F1 v3: botón directo "Olvidé checar salida" durante jornada activa.
+      // Reutiliza resolverZonaGris('olvide') → mostrarModalOlvideCheckout (validado en Parte 6a).
+      html = '<button onclick="resolverZonaGris(\'olvide\')" ' +
+             'style="background:#fff5f0;color:#D83B01;border:1px solid #D83B01;' +
+                    'padding:14px;border-radius:12px;font-size:14px;font-weight:500;' +
+                    'cursor:pointer;font-family:inherit;line-height:1.35">' +
+             '❌ Salí pero olvidé checar salida<br>' +
+             '<span style="font-size:11px;color:#7a5800;font-weight:600">[crea solicitud de aprobación]</span>' +
+             '</button>';
+      // FASE 3 (Salida a Comer) sigue desactivada hasta que se implemente.
       break;
     case 'zona_gris':
       // Principal (Seguí en turno) ya en #ksAccionRapida → sólo el alternativo
