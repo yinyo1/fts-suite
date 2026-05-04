@@ -1,4 +1,42 @@
 {
   "version": 1,
-  "incidencias": []
+  "incidencias": [
+    {
+      "id_interno": "INC-OLV-CHK-32-2026-05-04T17-52-13-851Z",
+      "tipo": "olvido_checkout",
+      "empleado_id": 32,
+      "empleado_nombre": "Jesus Esteban De La Cruz Calderon",
+      "department_id": 5,
+      "department_name": "Dirección",
+      "sin_departamento": false,
+      "attendance_id": 12811,
+      "fecha_creacion": "2026-05-04T17:52:13.851Z",
+      "check_in_original_utc": "2026-05-04 14:10:31",
+      "check_out_propuesto_utc": "2026-05-04 16:30:00",
+      "check_out_propuesto_cst": "2026-05-04 10:30:00",
+      "geolocation": {
+        "lat": 25.654799852919375,
+        "lng": -100.29578348704659,
+        "accuracy": 102,
+        "captured_at": "2026-05-04T17:52:03.356Z"
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "accion": "crear",
+          "fecha": "2026-05-04T17:52:13.851Z",
+          "hora_propuesta_cst": "10:30",
+          "comentario": "Smoke test F1 v3 desde kiosk web - validacion endpoint moderno"
+        }
+      ],
+      "status": "pendiente_supervisor",
+      "hora_final_aplicada_utc": "2026-05-04 16:30:00",
+      "aplicado_en_odoo": true,
+      "tag_disputa_activo": true,
+      "creada_por_modulo": "kiosk",
+      "creada_por_build": "20260504-kiosk-olvide-checkout-v3-tz-fix"
+    }
+  ]
 }
