@@ -75,6 +75,11 @@ Siempre revisar y rellenar a mano:
 2. Credential en cada nodo (a veces se desasigna)
 3. Webhook IDs (n8n los regenera)
 
+### Patterns validados en producción
+- **Referenciar nodo no-adyacente:** cuando un Code node necesita output de un nodo Odoo que NO es el inmediato anterior, usar `$('Nombre exacto del nodo').all()` (validado en `crear-olvido-entrada` v3.2).
+- **Parsing defensive de Odoo many2one:** los campos many2one (ej. `department_id`) pueden venir como `[id, name]` (array tuple), `{id, name}` (object) o `id` (number) según versión/contexto. Siempre parsear con `Array.isArray()` antes de acceder por índice.
+- **Escalación auto a RH:** si lookup Odoo retorna empleado sin departamento, setear `status = 'pendiente_rh'` para saltar supervisor y escalar directo. Patrón implementado en `crear-olvido-entrada`.
+
 ---
 
 ## 4. Reglas Odoo
@@ -89,6 +94,7 @@ Siempre revisar y rellenar a mano:
 - **`hr.attendance`:** campo SO link es `x_studio_sales_order_2` (renombrado desde `x_studio_many2one_field_wyDLM`).
 - **`account.analytic.line`:** Odoo 19 usa `analytic_distribution` (no `analytic_account_id` como en v16).
 - **`resource.calendar`:** debe excluir tipo `lunch` para cálculo correcto de horas trabajadas.
+- **Empleados sin `department_id`:** caso real, ya manejado en código. Workflows que dependan de departamento deben tener fallback explícito (escalación a RH o flag `sin_departamento`).
 
 ### Reglas de negocio (LFT)
 - 48 hrs/semana pagadas Mon-Fri.
@@ -124,7 +130,7 @@ Pendiente F4: usar este mapeo al guardar planes operativos.
 ## 6. Roadmap activo (Bloques A-E)
 
 ### Bloque A — Tech debt (4 hrs)
-- A.1: workflow `crear-olvido-entrada` agregar lookup `department_id`
+- A.1: ✅ DONE — lookup `department_id` activo en `crear-olvido-entrada` v3.2 con escalación auto a RH si empleado sin depto.
 - A.2: PIN+selfie como 2do factor en RH module
 - A.3: cache fix raw → api.github en `seguridad/index.html`, `seguridad/iperc/iperc-config.js`, `seguridad/js/videos.js`, `ingenieria/analisis-estructural/version.json`
 - A.4: audit workflows con campo viejo `x_studio_many2one_field_wyDLM`
