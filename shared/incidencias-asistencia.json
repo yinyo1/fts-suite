@@ -2,6 +2,42 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-CHK-112-2026-05-04T08-09-00-205Z",
+      "tipo": "olvido_checkout",
+      "empleado_id": 112,
+      "empleado_nombre": "Felipe Pérez Guzmán",
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "sin_departamento": false,
+      "attendance_id": 12765,
+      "fecha_creacion": "2026-05-04T08:09:00.206Z",
+      "check_in_original_utc": "2026-05-04 05:06:43",
+      "check_out_propuesto_utc": "2026-05-04 07:00:00",
+      "check_out_propuesto_cst": "2026-05-04 01:00:00",
+      "geolocation": {
+        "lng": -100.3161,
+        "lat": 25.6866,
+        "accuracy": 50
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "accion": "crear",
+          "fecha": "2026-05-04T08:09:00.206Z",
+          "hora_propuesta_cst": "01:00",
+          "comentario": "Smoke test F1 v3 olvido checkout sistema moderno con turno nocturno"
+        }
+      ],
+      "status": "pendiente_supervisor",
+      "hora_final_aplicada_utc": "2026-05-04 07:00:00",
+      "aplicado_en_odoo": true,
+      "tag_disputa_activo": true,
+      "creada_por_modulo": "kiosk",
+      "creada_por_build": "smoke-test-F1v3"
+    },
+    {
       "id_interno": "INC-OLV-98-2026-04-30T16-09-18-824Z",
       "odoo_incidencia_id": null,
       "tipo": "olvido_entrada",
