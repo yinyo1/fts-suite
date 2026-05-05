@@ -25,8 +25,8 @@ Idiomas del repo: español para UI/textos, inglés para variables/funciones de c
 
 | # | Nombre exacto en n8n | ID completo (API) | ID corto | Notas |
 |---|---|---|---|---|
-| 1 | `incidencias/crear-olvido-entrada` | `JLiuczUd61xVNp36` | `xVNp36` | Bloque A.1 — ya tiene nodo Odoo de lookup |
-| 2 | `incidencias/resolver` (v2.0 F1 v3) | `Oc2ceMHX2O0L0y2X` | `0L0y2X` | 20 nodos. TAG management + 4 acciones (sup/rh/dir) + branch tipo (entrada/checkout). Helper `esEstadoTerminal`. |
+| 1 | `incidencias/crear-olvido-entrada` (F1.1) | `JLiuczUd61xVNp36` | `xVNp36` | 11 nodos. Lookup empleado + Odoo UPDATE TAG (`x_studio_horario_en_disputa` + `x_studio_incidencia_pendiente_id` sobre `check_in`). Snapshot supervisor. |
+| 2 | `incidencias/resolver` (v2.1 F1.1) | `Oc2ceMHX2O0L0y2X` | `0L0y2X` | 20 nodos. TAG management + 4 acciones (sup/rh/dir) + branch tipo (entrada/checkout). Fixes D1-D4 F1.1: respeta `tag_disputa_activo` previo, calcula `aplicaHora` antes de conversión, discrimina `baseUtcStr` por tipo, night-shift fix solo para checkout. Helper `esEstadoTerminal`. |
 | 3 | `asistencias/admin` | `Bqnfsx8gx2TpzfwM` | `TpzfwM` | Consultas admin |
 | 4 | `accesos-incidencias/guardar (v2.2 auth-fix)` | `HwPq9dqxjy2KETi7` | `2KETi7` | Auth + persistencia |
 | 5 | `kiosk/empleados (v3.1)` | `2UGWLjNwYRGtXq5y` | `GtXq5y` | Lookup empleados pre-checkin |
@@ -81,7 +81,9 @@ Siempre revisar y rellenar a mano:
 - **Referenciar nodo no-adyacente:** cuando un Code node necesita output de un nodo Odoo que NO es el inmediato anterior, usar `$('Nombre exacto del nodo').all()` (validado en `crear-olvido-entrada` v3.2).
 - **Parsing defensive de Odoo many2one:** los campos many2one (ej. `department_id`) pueden venir como `[id, name]` (array tuple), `{id, name}` (object) o `id` (number) según versión/contexto. Siempre parsear con `Array.isArray()` antes de acceder por índice.
 - **Escalación auto a RH:** si lookup Odoo retorna empleado sin departamento, setear `status = 'pendiente_rh'` para saltar supervisor y escalar directo. Patrón implementado en `crear-olvido-entrada`.
-- **TAG management para disputa:** custom fields `hr.attendance` (`x_studio_horario_en_disputa` boolean + `x_studio_incidencia_pendiente_id` char) — set al crear incidencia que toca check_in/check_out, cleanup en estados terminales del resolver. Validado en F1 v3 olvido_checkout (4-may-2026).
+- **TAG management para disputa:** custom fields `hr.attendance` (`x_studio_horario_en_disputa` boolean + `x_studio_incidencia_pendiente_id` char) — set al crear incidencia que toca check_in/check_out, cleanup en estados terminales del resolver. Validado en F1 v3 olvido_checkout (4-may-2026) y F1.1 olvido_entrada (5-may-2026, mismo schema, target field `check_in`).
+- **Consistencia `tag_disputa_activo` en resolver (F1.1):** el resolver SOLO debe flippear `tag_disputa_activo` si la incidencia entrante lo trae `=== true`. Asignación incondicional `inc.tag_disputa_activo = !esEstadoTerminal(...)` contamina rows legacy (incidencias viejas que nunca escribieron TAG real). Patrón D1: `if (inc.tag_disputa_activo === true) { inc.tag_disputa_activo = !esEstadoTerminal(nuevoStatus); }`.
+- **`aplicaHora` antes de conversión UTC (F1.1):** calcular el flag `aplicaHora` (true solo si `accion ∈ {ajustar, rechazar}`) ANTES de intentar convertir HH:MM → UTC. Y la base UTC debe discriminarse por tipo: `olvido_checkout` usa `inc.check_in_original_utc`, `olvido_entrada` usa `inc.hora_real_checkin_utc`. Asumir un único campo base es bug raíz F1.1.
 - **Helper `esEstadoTerminal(status)` en Code nodes:** dict con los 5 status terminales (`aprobada_tal_cual`, `aprobada_con_ajuste`, `aprobada_por_direccion`, `rechazada_por_rh`, `rechazada_por_direccion`). Útil para decidir cleanup TAG y estado final.
 - **Update Odoo + GitHub PUT en mismo workflow:** patrón validado sin race condition observada en F1 v3. El nodo Odoo UPDATE puede ser previo al HTTP PUT del JSON GitHub (rollback conceptual: si Odoo falla, no se crea la incidencia).
 - **`customResource` preservado al crear vía MCP directo:** `n8n_create_workflow` con el field en JSON al momento del POST preserva el valor. Solo el flujo "import JSON desde UI" reproduce el bug de campo en blanco (regla §3 Tras importar JSON).
@@ -199,6 +201,10 @@ Pendiente F4: usar este mapeo al guardar planes operativos.
   - `7443699` feat(kiosk): F1 v3 boton 'Olvide checar salida' en jornada activa
 
   Endpoint legacy `/webhook/kiosk/cerrar-registro` queda LEGACY (cleanup formal en F6).
+- F1.1: ✅ DONE (2026-05-05) — `olvido_entrada` end-to-end con TAG disputa Odoo:
+  - Fase 1 resolver `Oc2ceMHX2O0L0y2X` con 4 fixes (D1 respetar TAG previo, D2 `aplicaHora` antes de convertir, D3 `baseUtcStr` discriminado por tipo, D4 night-shift fix solo en checkout) + patch retroactivo Pedro JSON.
+  - Fase 2 creator `xVNp36` con nodo `Odoo - UPDATE Attendance (TAG)` antes del READ depto, escribe `x_studio_horario_en_disputa: true` + `x_studio_incidencia_pendiente_id` al crear.
+  - Tests: Pedro (retroactivo) + Esteban olvido_entrada nuevo → ambos verdes (status `aprobada_tal_cual`, TAG limpiado en Odoo post-aprobación).
 - 27 legacy se cierran en bloque manual
 - Selfie en TODOS los 5 tipos pro-activos
 - Naming: `permiso_con_goce` / `permiso_sin_goce`
@@ -212,13 +218,13 @@ Pendiente F4: usar este mapeo al guardar planes operativos.
   - JSON estático `accesos-panel-incidencias.json` eliminado
   - Caso Pedro validado e2e: Rissia aprobó como supervisor automático
   - 3 commits: `560cb8c` (panel + workflows), `21c8e7a` (Pedro retroactivo), `c4f0209` (fix hub)
-- **TAG disputa para `olvido_entrada`:** hoy solo `olvido_checkout` aplica TAG. Esteban request: `olvido_entrada` también debe taguear hasta resolución. Mismo schema (`x_studio_horario_en_disputa` + `x_studio_incidencia_pendiente_id`), solo cambia el field de hora a tocar (`check_in` en vez de `check_out`).
+- ✅ **TAG disputa para `olvido_entrada`** — DONE 2026-05-05 en sprint F1.1 (ver Bloque F arriba).
 - **Visor RH cosmético:** `modulos/rh/visor-incidencias.html` tiene TIPO_LABELS hardcoded a `olvido_entrada` (L448, L539) y `hora_real_checkin_utc` hardcoded (L565). NO tiene regresión funcional (es solo lectura). Aplicar mismo patch que panel-incidencias.
 
-### Próximo sprint inmediato (post F2.1)
+### Próximo sprint inmediato (post F1.1)
 
-1. **TAG disputa para `olvido_entrada`** (estimado ~45 min): replicar pattern F1 v3 olvido_checkout pero sobre `check_in`.
-2. **F2.2 Botón Nueva Incidencia** (estimado ~3-4 hrs): modal multi-tipo desde Mi Perfil (al menos olvido_entrada + olvido_checkout MVP).
+1. **F2.2 Botón Nueva Incidencia** (estimado ~3-4 hrs): modal multi-tipo desde Mi Perfil (al menos olvido_entrada + olvido_checkout MVP).
+2. **Side issue F1.1: Esteban (CEO empleado_id=32) panel mostró badge "SIN DEPTO".** JSON post-aprobación tiene `sin_departamento:true` + `sin_supervisor:true`. Debería ser Dirección. Investigar en `xVNp36` (lookup depto del CEO) y/o tabla decisión status (CEO debe caer en `pendiente_rh` con `es_ceo:true`, no en `sin_supervisor`). No bloqueó test, pero contradice diseño F2.1.
 3. **Visor RH cosmético** — apuntado, no bloquea.
 
 ---
@@ -270,7 +276,7 @@ Pendiente F4: usar este mapeo al guardar planes operativos.
 
 ---
 
-## 11. Hallazgos arquitectónicos del 4-may-2026 (F1 v3 + F2.1)
+## 11. Hallazgos arquitectónicos (F1 v3, F2.1, F1.1)
 
 Lecciones cross-cutting documentadas para evitar repetir bugs en futuros sprints.
 
@@ -282,3 +288,4 @@ Lecciones cross-cutting documentadas para evitar repetir bugs en futuros sprints
 6. **Deuda técnica detectada y resuelta: lookup de roles duplicado.** Tanto `panel-incidencias/index.html` como `mi-perfil/index.html` tenían su propia función `cargarRolesEmpleado` apuntando al JSON eliminado. Ambos archivos migrados al workflow `derivar-roles` en F2.1, pero tomó 1 round adicional (commit `c4f0209`) descubrirlo en smoke test. **Lección:** cuando se elimina/migra recurso compartido, hacer grep en TODO el repo, no solo en el archivo que originalmente lo introdujo.
 7. **Patrón sistema autosuficiente vs JSON estático (F2.1).** Datos de "quién tiene qué rol" derivados de Odoo en runtime son superiores a JSON manual: (a) sincronizados con cambios organizacionales sin intervención humana, (b) eliminan deuda manual permanente. Costo (1 query Odoo + cache 5min) aceptable. Aplicable a otros sistemas donde Odoo tenga la información estructurada.
 8. **`Ingenieria` sin acento en Odoo producción.** Confirmado durante F2.1: nombres de departamento NO siempre tienen tildes. Verificar SIEMPRE strings de Odoo antes de usarlos en condicionales. Apuntado como deuda cosmética: corregir a `Ingeniería` cuando haya tiempo.
+9. **Bug colateral resolver F1 v3 → fix F1.1 (5-may-2026).** F1 v3 introdujo asunción universal `inc.check_in_original_utc must exist` en el resolver, válida solo para `olvido_checkout`. Para `olvido_entrada` la base UTC vive en `hora_real_checkin_utc`. Además `inc.tag_disputa_activo = !esEstadoTerminal(...)` se asignaba incondicional, contaminando rows legacy que nunca escribieron TAG. **Lección:** cuando se introduce una característica nueva (TAG management) sobre un resolver que sirve a múltiples tipos, audit obligatorio de cada branch (`tipo === 'X'`) para garantizar invariantes específicos del tipo. Y los flags transversales (TAG) deben respetar el estado entrante (`=== true`) antes de flippear, NO asumir que todas las rows entran al sistema con el flag bien inicializado.
