@@ -17,7 +17,7 @@ Idiomas del repo: español para UI/textos, inglés para variables/funciones de c
 
 ---
 
-## 2. Workflows n8n productivos (11 activos)
+## 2. Workflows n8n productivos (12 activos)
 
 **No tocar sin avisar al usuario.** Cualquier modificación a estos requiere validar primero con `n8n_validate_workflow` y mostrar diff antes de aplicar.
 
@@ -36,6 +36,7 @@ Idiomas del repo: español para UI/textos, inglés para variables/funciones de c
 | 9 | `dashboard/resumen (v4.3)` | `nNNQrFMTSjIfqHep` | `IfqHep` | KPIs operación |
 | 10 | `kiosk/sos (v3.4)` | `m6dyGa0yV1zYPwJF` | `zYPwJF` | Pánico + Bloque B incidentes |
 | 11 | `incidencias/crear-olvido-checkout` (F1 v3) | `IRtG38Aknb5SW15h` | `5SW15h` | 15 nodos. Lookup attendance + Odoo UPDATE check_out + TAG. Endpoint moderno reemplaza `/webhook/kiosk/cerrar-registro` (legacy hasta F6). |
+| 12 | `panel/derivar-roles` (F2.1) | `f59LMsbjPmO8pzWu` | `O8pzWu` | 8 nodos. Webhook GET. Read hr.employee + Search reportes_directos via parent_id reverso. Devuelve `roles_derivados` (`['supervisor','rh','direccion']`) auto-derivados. Reemplaza JSON estático eliminado. |
 
 **Workflows archivados (19):** ignorar a menos que el usuario lo pida explícitamente para historial.
 
@@ -84,6 +85,30 @@ Siempre revisar y rellenar a mano:
 - **Helper `esEstadoTerminal(status)` en Code nodes:** dict con los 5 status terminales (`aprobada_tal_cual`, `aprobada_con_ajuste`, `aprobada_por_direccion`, `rechazada_por_rh`, `rechazada_por_direccion`). Útil para decidir cleanup TAG y estado final.
 - **Update Odoo + GitHub PUT en mismo workflow:** patrón validado sin race condition observada en F1 v3. El nodo Odoo UPDATE puede ser previo al HTTP PUT del JSON GitHub (rollback conceptual: si Odoo falla, no se crea la incidencia).
 - **`customResource` preservado al crear vía MCP directo:** `n8n_create_workflow` con el field en JSON al momento del POST preserva el valor. Solo el flujo "import JSON desde UI" reproduce el bug de campo en blanco (regla §3 Tras importar JSON).
+- **Derivación runtime de roles vía workflow n8n (F2.1):** webhook GET stateless consulta Odoo para derivar roles según jerarquía (`parent_id`) + departamento (whitelist). Cache 5 min en cliente para no fritar Odoo. Reemplaza patrón "JSON estático en repo" (deprecated y eliminado en F2.1). Aplica para panel-incidencias y hub Mi Perfil.
+- **Salvaguarda anti-auto-aprobación (F2.1):** filtro adicional en panel asegura que ningún usuario vea sus propias incidencias en NINGÚN tab. Beneficio: protege contra self-approval para casos edge (ej. CEO con rol RH virtual).
+- **Snapshot de supervisor + contactos al crear incidencia (F2.1):** workflows `crear-olvido-*` snapshot `parent_id` (como supervisor_id), name, work_email, work_phone/mobile_phone al crear. Garantiza que la incidencia es auditada por quien era supervisor en el momento del incidente, aunque el manager cambie después. Email/phone defensivos (no falla si null).
+
+### Tabla de decisión status incidencia (F2.1)
+
+Aplicada en `Code Merge incidencia` de `xVNp36` y `Code Build incidencia` de `5SW15h`:
+
+| Condición empleado                       | Status              | Flag                  | supervisor_id |
+|------------------------------------------|---------------------|------------------------|---------------|
+| depto NO en `DEPTOS_VALIDOS`             | (sigue, flag para auditar) | `depto_invalido: true` | —      |
+| `parent_id == empleado_id` (CEO mismo)   | `pendiente_rh`      | `es_ceo: true`         | null          |
+| depto in `DEPTOS_RH` && parent==CEO      | `pendiente_direccion` | `rh_directo_ceo: true` | null         |
+| parent_id == CEO (no RH)                 | `pendiente_rh`      | `directo_ceo: true`    | null          |
+| parent_id null/inválido                  | `pendiente_rh`      | `sin_supervisor: true` | null          |
+| parent_id válido (caso normal)           | `pendiente_supervisor` | —                   | parent_id     |
+
+**Constantes:**
+- `DEPTOS_VALIDOS = ['Comercial', 'Dirección', 'Ingenieria', 'Legal', 'Operaciones', 'Recursos Humanos']`
+- `DEPTOS_RH = ['Legal', 'Recursos Humanos']`
+- `DEPTOS_DIRECCION = ['Dirección']`
+- `CEO_EMPLEADO_ID = 32` (Esteban)
+
+⚠️ **`Ingenieria` SIN acento** porque es la configuración real en Odoo (deuda cosmética: corregir el dept name a `Ingeniería` cuando haya tiempo, sin urgencia).
 
 ---
 
@@ -101,6 +126,7 @@ Siempre revisar y rellenar a mano:
 - **`account.analytic.line`:** Odoo 19 usa `analytic_distribution` (no `analytic_account_id` como en v16).
 - **`resource.calendar`:** debe excluir tipo `lunch` para cálculo correcto de horas trabajadas.
 - **Empleados sin `department_id`:** caso real, ya manejado en código. Workflows que dependan de departamento deben tener fallback explícito (escalación a RH o flag `sin_departamento`).
+- **`hr.employee` campos relevantes F2.1:** `parent_id` (many2one) es la fuente de verdad para supervisor (jerarquía organizacional). `attendance_manager_id` EXISTE pero está vacío para todos los empleados (no usar). `work_email`, `work_phone`, `mobile_phone` se snapshot al crear incidencia (defensivo, pueden ser null sin romper). Verificado todos los empleados activos tienen `parent_id` poblado al 4-may-2026.
 
 ### Reglas de negocio (LFT)
 - 48 hrs/semana pagadas Mon-Fri.
@@ -124,10 +150,10 @@ Siempre revisar y rellenar a mano:
 
 `FTSAuth.setSession` contiene: `userId`, `username`, `nombre`, `role`, `modulos`, `loginTime`, `lastActivity`. **NO contiene Odoo `empleado_id`.**
 
-Para mapear FTS user → Odoo employee:
-1. Leer `accesos-panel-incidencias.json` del repo.
-2. Match por `username`.
-3. Obtener `odoo_employee_id` desde ese JSON.
+Para mapear FTS user → Odoo employee (post F2.1):
+1. La sesión `MP_SESSION_KEY` (sessionStorage) ya guarda `empleado_id` directamente al login.
+2. Para derivar roles + jerarquía, usar workflow `panel/derivar-roles` (F2.1) — retorna `department_id`, `parent_id`, `reportes_directos`, `roles_derivados`.
+3. Para info adicional Odoo (work_email, parent_id, etc.) usar el mismo workflow o un endpoint nuevo similar.
 
 Pendiente F4: usar este mapeo al guardar planes operativos.
 
@@ -179,9 +205,21 @@ Pendiente F4: usar este mapeo al guardar planes operativos.
 - HE requiere pre-aprobación en plan operativo
 
 ### Backlog F2 — próximos pendientes (identificados sprint 4-may)
-- **Supervisor automático por jerarquía Odoo (`manager_id`):** los accesos hoy son manuales en `accesos-panel-incidencias.json` (4 entries: Felipe→Operaciones, Esteban→Dirección con 3 roles, Ana Laura→RH, Magaly→RH). Pedro Arturo Hernandez (id 143, dept 6 Comercial) quedó huérfano durante el sprint F1 v3 — incidencia `INC-OLV-143-2026-05-04T19-33-21-197Z` (olvido_entrada, status pendiente_supervisor) preservada en JSON como caso de prueba real para F2. Rissia Xavier de Araujo (id 97) es la supervisora natural de Comercial según jerarquía Odoo (manager_id), pero NO tiene rol supervisor en accesos-panel-incidencias.json. Esto es exactamente lo que el sistema debería derivar automáticamente. **Primera incidencia a resolver en F2: caso Pedro con Rissia como supervisora.**
+- ✅ **Supervisor automático por jerarquía Odoo** — DONE 2026-05-04. Implementación:
+  - Workflow nuevo `panel/derivar-roles` (`f59LMsbjPmO8pzWu`)
+  - Workflows `xVNp36` + `5SW15h` modificados con snapshot supervisor + contactos
+  - Panel-incidencias y hub Mi Perfil derivan roles dinámicamente runtime
+  - JSON estático `accesos-panel-incidencias.json` eliminado
+  - Caso Pedro validado e2e: Rissia aprobó como supervisor automático
+  - 3 commits: `560cb8c` (panel + workflows), `21c8e7a` (Pedro retroactivo), `c4f0209` (fix hub)
 - **TAG disputa para `olvido_entrada`:** hoy solo `olvido_checkout` aplica TAG. Esteban request: `olvido_entrada` también debe taguear hasta resolución. Mismo schema (`x_studio_horario_en_disputa` + `x_studio_incidencia_pendiente_id`), solo cambia el field de hora a tocar (`check_in` en vez de `check_out`).
 - **Visor RH cosmético:** `modulos/rh/visor-incidencias.html` tiene TIPO_LABELS hardcoded a `olvido_entrada` (L448, L539) y `hora_real_checkin_utc` hardcoded (L565). NO tiene regresión funcional (es solo lectura). Aplicar mismo patch que panel-incidencias.
+
+### Próximo sprint inmediato (post F2.1)
+
+1. **TAG disputa para `olvido_entrada`** (estimado ~45 min): replicar pattern F1 v3 olvido_checkout pero sobre `check_in`.
+2. **F2.2 Botón Nueva Incidencia** (estimado ~3-4 hrs): modal multi-tipo desde Mi Perfil (al menos olvido_entrada + olvido_checkout MVP).
+3. **Visor RH cosmético** — apuntado, no bloquea.
 
 ---
 
@@ -232,7 +270,7 @@ Pendiente F4: usar este mapeo al guardar planes operativos.
 
 ---
 
-## 11. Hallazgos arquitectónicos del sprint 4-may-2026 (F1 v3)
+## 11. Hallazgos arquitectónicos del 4-may-2026 (F1 v3 + F2.1)
 
 Lecciones cross-cutting documentadas para evitar repetir bugs en futuros sprints.
 
@@ -241,3 +279,6 @@ Lecciones cross-cutting documentadas para evitar repetir bugs en futuros sprints
 3. **`mostrarModalOlvideCheckout(estado, empleado)` requiere ambos args.** Reutilizar `resolverZonaGris('olvide')` que lee `window._estadoActual` y `window._empleadoActual` (poblados por `mostrarEstadoEmpleado` antes del render del botón). NO inventar nuevas funciones disparadoras.
 4. **Panel-incidencias pre-F1 v3 enviaba datetime completo al resolver.** Era regresión bloqueante después del patch resolver HH:MM (commit `100b4d3` fix). Smoke test desde panel rompía con `HORA_FORMATO_INVALIDO`. Lección: cuando se cambia un schema en backend (resolver), audit obligatorio del frontend que lo consume.
 5. **CSP de Microsoft Edge bloquea `fetch` a `raw.githubusercontent.com` desde la home.** Para diagnóstico, usar la pestaña GitHub Pages directamente (sirve desde el dominio del repo, no del raw).
+6. **Deuda técnica detectada y resuelta: lookup de roles duplicado.** Tanto `panel-incidencias/index.html` como `mi-perfil/index.html` tenían su propia función `cargarRolesEmpleado` apuntando al JSON eliminado. Ambos archivos migrados al workflow `derivar-roles` en F2.1, pero tomó 1 round adicional (commit `c4f0209`) descubrirlo en smoke test. **Lección:** cuando se elimina/migra recurso compartido, hacer grep en TODO el repo, no solo en el archivo que originalmente lo introdujo.
+7. **Patrón sistema autosuficiente vs JSON estático (F2.1).** Datos de "quién tiene qué rol" derivados de Odoo en runtime son superiores a JSON manual: (a) sincronizados con cambios organizacionales sin intervención humana, (b) eliminan deuda manual permanente. Costo (1 query Odoo + cache 5min) aceptable. Aplicable a otros sistemas donde Odoo tenga la información estructurada.
+8. **`Ingenieria` sin acento en Odoo producción.** Confirmado durante F2.1: nombres de departamento NO siempre tienen tildes. Verificar SIEMPRE strings de Odoo antes de usarlos en condicionales. Apuntado como deuda cosmética: corregir a `Ingeniería` cuando haya tiempo.
