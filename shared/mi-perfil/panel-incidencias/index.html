@@ -6,7 +6,7 @@
 <title>Panel de Incidencias — Mi Perfil — FTS</title>
 <script>
   (function(){
-    const BUILD_DATE = '20260504-pi-f1-v3';
+    const BUILD_DATE = '20260504-pi-f2-1-roles-auto';
     window.BUILD_DATE = BUILD_DATE;
   })();
 </script>
@@ -295,7 +295,7 @@
   <a class="pi-back" href="../index.html">← Mi Perfil</a>
   <div class="pi-title-wrap">
     <span class="pi-title">⚖️ Panel de Incidencias</span>
-    <span class="pi-build">build 20260504-pi-f1-v3</span>
+    <span class="pi-build">build 20260504-pi-f2-1-roles-auto</span>
   </div>
   <div class="pi-user">
     <span id="pi-user-nombre">—</span>
@@ -386,7 +386,8 @@
 // ═══════════════════════════════════════════════
 const MP_SESSION_KEY     = 'fts_mi_perfil_session';
 const MP_SESSION_MAX_AGE = 15 * 60 * 1000;   // 15 min
-const ACCESOS_URL        = 'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/accesos-panel-incidencias.json?ref=main';
+// F2.1: roles auto-derivados desde Odoo via workflow n8n (no más JSON estático)
+const DERIVAR_ROLES_URL  = 'https://primary-production-5c3c.up.railway.app/webhook/panel/derivar-roles';
 const INCIDENCIAS_URL    = 'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/incidencias-asistencia.json?ref=main';
 
 const STATUS_PENDIENTE_POR_ROL = {
@@ -438,23 +439,34 @@ function obtenerSesionMP(){
 }
 
 // ═══════════════════════════════════════════════
-// FETCH ACCESOS
+// F2.1: DERIVAR ROLES desde Odoo via workflow n8n
+// (reemplaza fetch GitHub al JSON estático accesos-panel-incidencias.json)
 // ═══════════════════════════════════════════════
-async function cargarAccesos(){
+async function deriveRolesFromOdoo(empleadoId){
   try {
-    const url = ACCESOS_URL + '&t=' + Date.now();
-    const res = await fetch(url, {
-      cache: 'no-store',
-      headers: { 'Accept': 'application/vnd.github.v3.raw' }
-    });
+    const url = DERIVAR_ROLES_URL + '?empleado_id=' + encodeURIComponent(empleadoId) + '&t=' + Date.now();
+    const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok){
-      console.warn('[panel-incidencias] accesos HTTP', res.status);
-      return { accesos: [] };
+      console.warn('[panel-incidencias] derivar-roles HTTP', res.status);
+      return null;
     }
-    return await res.json();
+    const data = await res.json();
+    if (!data || data.success !== true){
+      console.warn('[panel-incidencias] derivar-roles success=false', data);
+      return null;
+    }
+    return {
+      empleado_id:     data.empleado_id,
+      empleado_nombre: data.empleado_nombre,
+      department_id:   data.department_id,
+      department_name: data.department_name,
+      parent_id:       data.parent_id,
+      parent_name:     data.parent_name,
+      roles:           data.roles_derivados || []
+    };
   } catch(e){
-    console.error('[panel-incidencias] error cargando accesos:', e);
-    return { accesos: [] };
+    console.error('[panel-incidencias] error derivar-roles:', e);
+    return null;
   }
 }
 
@@ -588,10 +600,17 @@ function filtrarPorRol(rol, incidencias, verResueltas){
     return i.status === statusActivo;
   });
 
-  // Supervisor: solo su departamento
-  if (rol === 'supervisor' && _empleadoAcceso && _empleadoAcceso.department_id != null){
+  // F2.1: Supervisor por jerarquía Odoo (parent_id) — filtro por supervisor_id == empleado_id
+  if (rol === 'supervisor' && _empleadoAcceso){
     filtradas = filtradas.filter(function(i){
-      return Number(i.department_id) === Number(_empleadoAcceso.department_id);
+      return Number(i.supervisor_id) === Number(_empleadoAcceso.empleado_id);
+    });
+  }
+
+  // F2.1: salvaguarda anti-auto-aprobación — nadie ve sus propias incidencias en ningún tab
+  if (_empleadoAcceso){
+    filtradas = filtradas.filter(function(i){
+      return Number(i.empleado_id) !== Number(_empleadoAcceso.empleado_id);
     });
   }
 
@@ -1117,13 +1136,11 @@ document.addEventListener('DOMContentLoaded', async function(){
     return;
   }
 
-  const accesosData = await cargarAccesos();
-  const empleadoAcceso = (accesosData.accesos || []).find(function(a){
-    return Number(a.empleado_id) === Number(session.empleado_id);
-  });
+  // F2.1: derivar roles dinámicamente desde Odoo (parent_id + departamento)
+  const empleadoAcceso = await deriveRolesFromOdoo(session.empleado_id);
 
   if (!empleadoAcceso || !Array.isArray(empleadoAcceso.roles) || empleadoAcceso.roles.length === 0){
-    alert('No tienes roles asignados en el panel de incidencias.');
+    alert('No tienes roles asignados en el panel de incidencias (sin reportes directos ni rol RH/dirección por departamento).');
     window.location.href = '../index.html';
     return;
   }
