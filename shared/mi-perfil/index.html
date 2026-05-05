@@ -7,7 +7,7 @@
 <script>
   // Cache busting + BUILD_DATE expuesto a window.
   (function() {
-    const BUILD_DATE = '20260424-mp-panel-card-v1';
+    const BUILD_DATE = '20260504-mp-f2-1-roles-auto';
     window.BUILD_DATE = BUILD_DATE;
     if (!window.location.search.includes('v=')) {
       document.addEventListener('DOMContentLoaded', function() {
@@ -560,21 +560,21 @@ function mp_show_dashboard(session){
 async function cargarRolesEmpleado(empleadoId){
   if (!empleadoId) return [];
   try {
-    const url = 'https://api.github.com/repos/yinyo1/fts-suite/contents/shared/accesos-panel-incidencias.json?ref=main&t=' + Date.now();
-    const res = await fetch(url, {
-      cache: 'no-store',
-      headers: { 'Accept': 'application/vnd.github.v3.raw' }
-    });
+    // F2.1: roles auto-derivados desde Odoo (parent_id + departamento) via workflow n8n
+    const url = 'https://primary-production-5c3c.up.railway.app/webhook/panel/derivar-roles?empleado_id=' + encodeURIComponent(empleadoId) + '&t=' + Date.now();
+    const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok){
-      console.warn('[mi-perfil] accesos-panel HTTP', res.status);
+      console.warn('[mi-perfil] derivar-roles HTTP', res.status);
       return [];
     }
     const data = await res.json();
-    const accesos = Array.isArray(data.accesos) ? data.accesos : [];
-    const empleado = accesos.find(function(a){ return Number(a.empleado_id) === Number(empleadoId); });
-    return empleado && Array.isArray(empleado.roles) ? empleado.roles : [];
+    if (!data || data.success !== true){
+      console.warn('[mi-perfil] derivar-roles success=false', data);
+      return [];
+    }
+    return Array.isArray(data.roles_derivados) ? data.roles_derivados : [];
   } catch(e){
-    console.error('[mi-perfil] error cargando accesos:', e);
+    console.error('[mi-perfil] error derivar-roles:', e);
     return [];
   }
 }
