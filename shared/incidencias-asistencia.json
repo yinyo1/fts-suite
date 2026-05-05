@@ -33,7 +33,16 @@
       "aplicado_en_odoo": false,
       "department_id": 6,
       "department_name": "Comercial",
-      "sin_departamento": false
+      "sin_departamento": false,
+      "supervisor_id": 97,
+      "supervisor_name": "Rissia Xavier de Araujo",
+      "supervisor_email": "rissia@fts.mx",
+      "supervisor_phone": "+52 81 1470 9388",
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": false,
+      "sin_supervisor": false,
+      "depto_invalido": false
     }
   ]
 }
