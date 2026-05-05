@@ -26,9 +26,19 @@
           "hora_propuesta_cst": "2026-05-04 07:29:00",
           "comentario": "Nuevo ingreso",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 97,
+          "usuario": "Rissia Xavier de Araujo",
+          "timestamp": "2026-05-05T04:36:33.944Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Aprobado , si llego a esa hora",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false,
       "department_id": 6,
@@ -42,7 +52,8 @@
       "rh_directo_ceo": false,
       "directo_ceo": false,
       "sin_supervisor": false,
-      "depto_invalido": false
+      "depto_invalido": false,
+      "tag_disputa_activo": true
     }
   ]
 }
