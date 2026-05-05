@@ -17,7 +17,7 @@ Idiomas del repo: español para UI/textos, inglés para variables/funciones de c
 
 ---
 
-## 2. Workflows n8n productivos (10 activos)
+## 2. Workflows n8n productivos (11 activos)
 
 **No tocar sin avisar al usuario.** Cualquier modificación a estos requiere validar primero con `n8n_validate_workflow` y mostrar diff antes de aplicar.
 
@@ -26,7 +26,7 @@ Idiomas del repo: español para UI/textos, inglés para variables/funciones de c
 | # | Nombre exacto en n8n | ID completo (API) | ID corto | Notas |
 |---|---|---|---|---|
 | 1 | `incidencias/crear-olvido-entrada` | `JLiuczUd61xVNp36` | `xVNp36` | Bloque A.1 — ya tiene nodo Odoo de lookup |
-| 2 | `incidencias/resolver` | `Oc2ceMHX2O0L0y2X` | `0L0y2X` | Aprobaciones supervisor → RH |
+| 2 | `incidencias/resolver` (v2.0 F1 v3) | `Oc2ceMHX2O0L0y2X` | `0L0y2X` | 20 nodos. TAG management + 4 acciones (sup/rh/dir) + branch tipo (entrada/checkout). Helper `esEstadoTerminal`. |
 | 3 | `asistencias/admin` | `Bqnfsx8gx2TpzfwM` | `TpzfwM` | Consultas admin |
 | 4 | `accesos-incidencias/guardar (v2.2 auth-fix)` | `HwPq9dqxjy2KETi7` | `2KETi7` | Auth + persistencia |
 | 5 | `kiosk/empleados (v3.1)` | `2UGWLjNwYRGtXq5y` | `GtXq5y` | Lookup empleados pre-checkin |
@@ -35,6 +35,7 @@ Idiomas del repo: español para UI/textos, inglés para variables/funciones de c
 | 8 | `kiosk/estado-empleado (v3 Fase 1)` | `U13fngg2dTKgDQ8Y` | `KgDQ8Y` | Estado actual empleado |
 | 9 | `dashboard/resumen (v4.3)` | `nNNQrFMTSjIfqHep` | `IfqHep` | KPIs operación |
 | 10 | `kiosk/sos (v3.4)` | `m6dyGa0yV1zYPwJF` | `zYPwJF` | Pánico + Bloque B incidentes |
+| 11 | `incidencias/crear-olvido-checkout` (F1 v3) | `IRtG38Aknb5SW15h` | `5SW15h` | 15 nodos. Lookup attendance + Odoo UPDATE check_out + TAG. Endpoint moderno reemplaza `/webhook/kiosk/cerrar-registro` (legacy hasta F6). |
 
 **Workflows archivados (19):** ignorar a menos que el usuario lo pida explícitamente para historial.
 
@@ -79,6 +80,10 @@ Siempre revisar y rellenar a mano:
 - **Referenciar nodo no-adyacente:** cuando un Code node necesita output de un nodo Odoo que NO es el inmediato anterior, usar `$('Nombre exacto del nodo').all()` (validado en `crear-olvido-entrada` v3.2).
 - **Parsing defensive de Odoo many2one:** los campos many2one (ej. `department_id`) pueden venir como `[id, name]` (array tuple), `{id, name}` (object) o `id` (number) según versión/contexto. Siempre parsear con `Array.isArray()` antes de acceder por índice.
 - **Escalación auto a RH:** si lookup Odoo retorna empleado sin departamento, setear `status = 'pendiente_rh'` para saltar supervisor y escalar directo. Patrón implementado en `crear-olvido-entrada`.
+- **TAG management para disputa:** custom fields `hr.attendance` (`x_studio_horario_en_disputa` boolean + `x_studio_incidencia_pendiente_id` char) — set al crear incidencia que toca check_in/check_out, cleanup en estados terminales del resolver. Validado en F1 v3 olvido_checkout (4-may-2026).
+- **Helper `esEstadoTerminal(status)` en Code nodes:** dict con los 5 status terminales (`aprobada_tal_cual`, `aprobada_con_ajuste`, `aprobada_por_direccion`, `rechazada_por_rh`, `rechazada_por_direccion`). Útil para decidir cleanup TAG y estado final.
+- **Update Odoo + GitHub PUT en mismo workflow:** patrón validado sin race condition observada en F1 v3. El nodo Odoo UPDATE puede ser previo al HTTP PUT del JSON GitHub (rollback conceptual: si Odoo falla, no se crea la incidencia).
+- **`customResource` preservado al crear vía MCP directo:** `n8n_create_workflow` con el field en JSON al momento del POST preserva el valor. Solo el flujo "import JSON desde UI" reproduce el bug de campo en blanco (regla §3 Tras importar JSON).
 
 ---
 
@@ -92,6 +97,7 @@ Siempre revisar y rellenar a mano:
 ### Modelos críticos
 - **`hr.employee`:** Felipe Pérez Guzmán = ID **112** (no 102, ese es bug histórico).
 - **`hr.attendance`:** campo SO link es `x_studio_sales_order_2` (renombrado desde `x_studio_many2one_field_wyDLM`).
+- **`hr.attendance` custom fields F1 v3 (4-may-2026):** `x_studio_horario_en_disputa` (id 97921, boolean, default false) + `x_studio_incidencia_pendiente_id` (id 97923, char size 100). Aplicados al crear incidencia olvido_checkout, cleanup en estados terminales del resolver. Cleanup paralelo del sprint: borrados `x_studio_tiempo_2` (id 29492) + `x_studio_tiempo_de_comida_horas` (id 7915) → net 0 nuevas líneas Studio.
 - **`account.analytic.line`:** Odoo 19 usa `analytic_distribution` (no `analytic_account_id` como en v16).
 - **`resource.calendar`:** debe excluir tipo `lunch` para cálculo correcto de horas trabajadas.
 - **Empleados sin `department_id`:** caso real, ya manejado en código. Workflows que dependan de departamento deben tener fallback explícito (escalación a RH o flag `sin_departamento`).
@@ -159,11 +165,23 @@ Pendiente F4: usar este mapeo al guardar planes operativos.
 - Auto-aprobación HE solo si dentro de plan
 
 ### Bloque F — Incidencias rediseño (28-abr)
-- F1: fix `olvido_checkout` 1.5h (en curso)
+- F1: ✅ DONE (2026-05-04) — `olvido_checkout` migrado a sistema moderno con TAG de disputa Odoo. 5 commits del sprint:
+  - `e713e32` feat(kiosk): F1 v3 olvido_checkout migrado a sistema moderno
+  - `6ee64cd` fix(kiosk): parsear check_in de Odoo como UTC
+  - `100b4d3` feat(panel-incidencias): F1 v3 soporte olvido_checkout + fix regresion HH:MM
+  - `cf106fa` chore(accesos): CEO Esteban con 3 roles para audit + test F1 v3
+  - `7443699` feat(kiosk): F1 v3 boton 'Olvide checar salida' en jornada activa
+
+  Endpoint legacy `/webhook/kiosk/cerrar-registro` queda LEGACY (cleanup formal en F6).
 - 27 legacy se cierran en bloque manual
 - Selfie en TODOS los 5 tipos pro-activos
 - Naming: `permiso_con_goce` / `permiso_sin_goce`
 - HE requiere pre-aprobación en plan operativo
+
+### Backlog F2 — próximos pendientes (identificados sprint 4-may)
+- **Supervisor automático por jerarquía Odoo (`manager_id`):** los accesos hoy son manuales en `accesos-panel-incidencias.json` (4 entries: Felipe→Operaciones, Esteban→Dirección con 3 roles, Ana Laura→RH, Magaly→RH). Pedro Arturo Hernandez (id 143, dept 6 Comercial) quedó huérfano durante el sprint F1 v3 — incidencia `INC-OLV-143-2026-05-04T19-33-21-197Z` (olvido_entrada, status pendiente_supervisor) preservada en JSON como caso de prueba real para F2. Rissia Xavier de Araujo (id 97) es la supervisora natural de Comercial según jerarquía Odoo (manager_id), pero NO tiene rol supervisor en accesos-panel-incidencias.json. Esto es exactamente lo que el sistema debería derivar automáticamente. **Primera incidencia a resolver en F2: caso Pedro con Rissia como supervisora.**
+- **TAG disputa para `olvido_entrada`:** hoy solo `olvido_checkout` aplica TAG. Esteban request: `olvido_entrada` también debe taguear hasta resolución. Mismo schema (`x_studio_horario_en_disputa` + `x_studio_incidencia_pendiente_id`), solo cambia el field de hora a tocar (`check_in` en vez de `check_out`).
+- **Visor RH cosmético:** `modulos/rh/visor-incidencias.html` tiene TIPO_LABELS hardcoded a `olvido_entrada` (L448, L539) y `hora_real_checkin_utc` hardcoded (L565). NO tiene regresión funcional (es solo lectura). Aplicar mismo patch que panel-incidencias.
 
 ---
 
@@ -211,3 +229,15 @@ Pendiente F4: usar este mapeo al guardar planes operativos.
 - **Magaly Pérez** — Legal
 - **Gerardo Lozano** — Accounting
 - **Francisco Montalvo** — Senior Ops
+
+---
+
+## 11. Hallazgos arquitectónicos del sprint 4-may-2026 (F1 v3)
+
+Lecciones cross-cutting documentadas para evitar repetir bugs en futuros sprints.
+
+1. **Odoo envía datetimes en UTC sin sufijo Z.** JS sin Z los interpreta como zona local del browser → fechas off por 6h en Monterrey. **Solución:** parsear con `new Date(str.replace(' ','T') + 'Z')`. Aplicado en `kiosk.js` (parseo check_in) + `panel-incidencias` (helper `utcToCst`).
+2. **Botón "Olvidé checar salida" en estado `activo` NUNCA existió** antes de F1 v3. El git log muestra que solo se agregó para `zona_gris` y `error_critico` en Feature 3A. F1 v3 lo introduce como feature nueva en jornada activa, no como restauración.
+3. **`mostrarModalOlvideCheckout(estado, empleado)` requiere ambos args.** Reutilizar `resolverZonaGris('olvide')` que lee `window._estadoActual` y `window._empleadoActual` (poblados por `mostrarEstadoEmpleado` antes del render del botón). NO inventar nuevas funciones disparadoras.
+4. **Panel-incidencias pre-F1 v3 enviaba datetime completo al resolver.** Era regresión bloqueante después del patch resolver HH:MM (commit `100b4d3` fix). Smoke test desde panel rompía con `HORA_FORMATO_INVALIDO`. Lección: cuando se cambia un schema en backend (resolver), audit obligatorio del frontend que lo consume.
+5. **CSP de Microsoft Edge bloquea `fetch` a `raw.githubusercontent.com` desde la home.** Para diagnóstico, usar la pestaña GitHub Pages directamente (sirve desde el dominio del repo, no del raw).
