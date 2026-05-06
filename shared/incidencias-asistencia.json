@@ -38,9 +38,19 @@
           "fecha": "2026-05-06T03:19:32.293Z",
           "hora_propuesta_cst": "19:00",
           "comentario": "Al salir de caseta, se me olvidó registrar salida."
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe Pérez Guzmán",
+          "timestamp": "2026-05-06T21:34:25.776Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Se valida esta hora de salida",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": "2026-05-06 01:00:00",
       "aplicado_en_odoo": true,
       "tag_disputa_activo": true,
