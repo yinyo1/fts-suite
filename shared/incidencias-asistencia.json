@@ -48,12 +48,22 @@
           "hora_propuesta_cst": null,
           "comentario": "Se valida esta hora de salida",
           "accion": "aprobado"
+        },
+        {
+          "paso": 3,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-05-06T21:38:47.880Z",
+          "hora_propuesta_cst": "19:00",
+          "comentario": "Aprobado, ok",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_rh",
+      "status": "aprobada_tal_cual",
       "hora_final_aplicada_utc": "2026-05-06 01:00:00",
       "aplicado_en_odoo": true,
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "creada_por_modulo": "kiosk",
       "creada_por_build": "20260504-kiosk-olvide-checkout-v3-boton-jornada"
     },
