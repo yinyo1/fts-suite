@@ -2,6 +2,52 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-CHK-121-2026-05-06T03-19-32-293Z",
+      "tipo": "olvido_checkout",
+      "empleado_id": 121,
+      "empleado_nombre": "Stephany Ventura Arevalo",
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "sin_departamento": false,
+      "depto_invalido": false,
+      "supervisor_id": 112,
+      "supervisor_name": "Felipe Pérez Guzmán",
+      "supervisor_email": "stephanyventura708@gmai.com",
+      "supervisor_phone": "+52 933 123 3163",
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": false,
+      "sin_supervisor": false,
+      "attendance_id": 12814,
+      "fecha_creacion": "2026-05-06T03:19:32.293Z",
+      "check_in_original_utc": "2026-05-05 12:34:26",
+      "check_out_propuesto_utc": "2026-05-06 01:00:00",
+      "check_out_propuesto_cst": "2026-05-05 19:00:00",
+      "geolocation": {
+        "lat": 25.7827977,
+        "lng": -100.1841582,
+        "accuracy": 100,
+        "captured_at": "2026-05-06T03:19:28.651Z"
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "accion": "crear",
+          "fecha": "2026-05-06T03:19:32.293Z",
+          "hora_propuesta_cst": "19:00",
+          "comentario": "Al salir de caseta, se me olvidó registrar salida."
+        }
+      ],
+      "status": "pendiente_supervisor",
+      "hora_final_aplicada_utc": "2026-05-06 01:00:00",
+      "aplicado_en_odoo": true,
+      "tag_disputa_activo": true,
+      "creada_por_modulo": "kiosk",
+      "creada_por_build": "20260504-kiosk-olvide-checkout-v3-boton-jornada"
+    },
+    {
       "id_interno": "INC-OLV-32-2026-05-05T18-41-20-731Z",
       "odoo_incidencia_id": null,
       "tipo": "olvido_entrada",
