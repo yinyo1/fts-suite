@@ -146,6 +146,10 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 </label>
 </div>
 </div>
+<div class="action-buttons">
+<button type="button" class="btn-action" id="btn-add-day">📅 Agregar día</button>
+<button type="button" class="btn-action btn-secondary" id="btn-add-activity">➕ Agregar actividad</button>
+</div>
 <div class="legend">
 <div class="legend-item"><div class="legend-color c1-inst"></div> C1 (FTS) Instalación</div>
 <div class="legend-item"><div class="legend-color c1-prog"></div> C1 (FTS) Programación</div>
@@ -1100,6 +1104,12 @@ test del chat AI v2<br>
 .filter-label input{cursor:pointer}
 tr.hidden-completed{display:none !important}
 .gantt-row.hidden-completed{display:none !important}
+.action-buttons{display:flex;gap:8px;margin:12px 30px;flex-wrap:wrap}
+.btn-action{background:#2563eb;color:#fff;border:none;padding:8px 14px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:background .15s;font-family:inherit}
+.btn-action:hover{background:#1d4ed8}
+.btn-action:disabled{background:#94a3b8;cursor:not-allowed}
+.btn-action.btn-secondary{background:#475569}
+.btn-action.btn-secondary:hover{background:#334155}
 </style>
 
 <!-- ===== Sprint 1A scripts (alert toggle, show-completed filter) ===== -->
@@ -1149,6 +1159,118 @@ tr.hidden-completed{display:none !important}
     applyFilter(checkbox.checked);
     localStorage.setItem('pmo_show_completed', String(checkbox.checked));
   });
+})();
+</script>
+
+<!-- ===== Sprint 1B scripts (botones manuales: agregar dia + agregar actividad) ===== -->
+<script>
+(function() {
+  function sendToChat(message) {
+    const chatPanel = document.getElementById('pmo-chat-panel');
+    const chatInput = document.getElementById('pmo-chat-input');
+    const chatSend = document.getElementById('pmo-chat-send');
+    const chatFab = document.getElementById('pmo-chat-fab');
+
+    if (!chatInput || !chatSend) {
+      alert('Chat IA no disponible. Refresca la página.');
+      return;
+    }
+
+    if (chatPanel && !chatPanel.classList.contains('show')) {
+      if (chatFab) chatFab.click();
+    }
+
+    setTimeout(function() {
+      chatInput.value = message;
+      chatInput.dispatchEvent(new Event('input'));
+      chatSend.click();
+    }, 150);
+  }
+
+  const addDayBtn = document.getElementById('btn-add-day');
+  if (addDayBtn) {
+    addDayBtn.addEventListener('click', function() {
+      const date = window.prompt('Fecha del nuevo día (formato YYYY-MM-DD):\n\nEjemplo: 2026-05-12');
+      if (!date) return;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        alert('Formato inválido. Usa YYYY-MM-DD (ejemplo: 2026-05-12)');
+        return;
+      }
+      const dayLabel = window.prompt('Etiqueta del día (ej: "Mar 12 May", "Lun 11 May"):', '');
+      if (!dayLabel) return;
+      const message = 'Agrega un day-divider nuevo para la fecha ' + date + ' con etiqueta "' + dayLabel + '" al final del cronograma scheduled. Asegura que el colspan del divider sea 9 (no 8).';
+      sendToChat(message);
+    });
+  }
+
+  const addActBtn = document.getElementById('btn-add-activity');
+  if (addActBtn) {
+    addActBtn.addEventListener('click', function() {
+      const id = window.prompt('ID de la actividad (ej: C1-30, C2-25):');
+      if (!id) return;
+
+      const cuad = window.prompt('Cuadrilla (C1 = FTS interno, C2 = contratista):', 'C1');
+      if (!cuad || !['C1', 'C2'].includes(cuad.toUpperCase())) {
+        alert('Cuadrilla debe ser C1 o C2');
+        return;
+      }
+
+      const tipo = window.prompt('Tipo (I = instalación, D = desinstalación, M = mantenimiento, O = obra civil):', 'I');
+      if (!tipo) return;
+
+      const name = window.prompt('Descripción / nombre de la actividad:');
+      if (!name) return;
+
+      const fechaInicio = window.prompt('Fecha de inicio (YYYY-MM-DD) o vacío para TBD:', '');
+
+      let fechaFin = '';
+      let pct = 0;
+
+      if (fechaInicio) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaInicio)) {
+          alert('Formato fecha inválido. Usa YYYY-MM-DD.');
+          return;
+        }
+        fechaFin = window.prompt('Fecha de fin (YYYY-MM-DD):', fechaInicio);
+        if (!fechaFin || !/^\d{4}-\d{2}-\d{2}$/.test(fechaFin)) {
+          alert('Fecha de fin inválida.');
+          return;
+        }
+        const pctStr = window.prompt('% Avance (0-100):', '0');
+        pct = parseInt(pctStr) || 0;
+        if (pct < 0 || pct > 100) {
+          alert('% debe estar entre 0 y 100');
+          return;
+        }
+      }
+
+      const notas = window.prompt('Notas adicionales (opcional, puede quedar vacío):', '');
+
+      let message = 'Agrega una nueva actividad con los siguientes datos:\n';
+      message += '- ID: ' + id.toUpperCase() + '\n';
+      message += '- Cuadrilla: ' + cuad.toUpperCase() + '\n';
+      message += '- Tipo: ' + tipo.toUpperCase() + '\n';
+      message += '- Descripción: ' + name + '\n';
+
+      if (fechaInicio) {
+        message += '- Fecha inicio: ' + fechaInicio + '\n';
+        message += '- Fecha fin: ' + fechaFin + '\n';
+        message += '- % Avance: ' + pct + '\n';
+        message += '- Tabla: scheduled (con fecha)\n';
+        message += '- Si pct=100, status debe ser "completado"\n';
+      } else {
+        message += '- Tabla: TBD (sin fecha asignada)\n';
+      }
+
+      if (notas) {
+        message += '- Notas: ' + notas + '\n';
+      }
+
+      message += '\nInsertar en posición correcta según orden alfabético de ID dentro de su cuadrilla. Actualizar stat counters y footer (X actividades).';
+
+      sendToChat(message);
+    });
+  }
 })();
 </script>
 </body></html>
