@@ -1,0 +1,731 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<title>Cronograma Interno FTS v2 - Panel View NALCO Topo Chico</title>
+<script src="../shared/auth-suite.js"></script>
+<script>
+  if (typeof FTSAuth === "undefined" || !FTSAuth.isLoggedIn || !FTSAuth.isLoggedIn()) {
+    window.location.href = "../index.html";
+  }
+</script>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:#f0f2f5;color:#2c3e50;font-size:13px}
+.header{background:linear-gradient(135deg,#1a365d 0%,#2c5282 100%);color:white;padding:20px 30px;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+.header h1{font-size:22px;font-weight:700;margin-bottom:6px}
+.header .meta{font-size:12px;opacity:.92}
+.header .badge-internal{display:inline-block;background:#d69e2e;color:#1a202c;padding:3px 10px;border-radius:12px;font-weight:700;font-size:11px;margin-right:8px;text-transform:uppercase;letter-spacing:.5px}
+.header .badge-version{display:inline-block;background:#48bb78;color:white;padding:3px 8px;border-radius:10px;font-weight:600;font-size:10px;margin-left:6px}
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;padding:15px 30px;background:white;border-bottom:1px solid #e2e8f0}
+.stat-card{background:#f7fafc;border-left:4px solid #4299e1;padding:10px 12px;border-radius:4px}
+.stat-card.urgent{border-left-color:#e53e3e}
+.stat-card.troubleshooting{border-left-color:#ed8936}
+.stat-card.new{border-left-color:#9f7aea}
+.stat-card.tbd{border-left-color:#a0aec0}
+.stat-card.split{border-left-color:#38b2ac}
+.stat-card .value{font-size:22px;font-weight:700;color:#2d3748}
+.stat-card .label{font-size:10px;color:#718096;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+.legend{display:flex;gap:18px;padding:12px 30px;background:#fafafa;border-bottom:1px solid #e2e8f0;font-size:11px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:6px}
+.legend-color{width:20px;height:14px;border-radius:2px;border:1px solid rgba(0,0,0,.15)}
+.legend-color.c1-inst{background:#4472c4}
+.legend-color.c1-prog{background:#70ad47}
+.legend-color.c2{background:#ffc000}
+.legend-color.tbd{background:#a0aec0}
+.legend-color.urgent{background:#e53e3e}
+.legend-color.troubleshooting{background:#ed8936}
+.legend-color.new{background:#9f7aea}
+.legend-color.split{background:#38b2ac}
+.section-title{background:#1a365d;color:white;padding:10px 30px;font-size:14px;font-weight:600;margin-top:16px}
+.section-title.tbd-section{background:#4a5568}
+.gantt-container{display:flex;background:white;border-bottom:1px solid #e2e8f0}
+.gantt-side{flex:0 0 auto;border-right:2px solid #1a365d}
+.gantt-chart{flex:1;overflow-x:auto;background:#f7fafc}
+table.gantt{border-collapse:collapse;background:white}
+table.gantt thead{background:#2d3748;color:white}
+table.gantt th{padding:10px 8px;text-align:left;font-weight:600;font-size:11px;border-right:1px solid rgba(255,255,255,.15);text-transform:uppercase;letter-spacing:.4px}
+table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px solid #f7fafc;font-size:12px;vertical-align:middle;height:32px}
+.col-id{width:65px;font-family:Consolas,Monaco,monospace;font-size:11px;color:#718096;font-weight:600}
+.col-cuad{width:65px;text-align:center}
+.col-tipo{width:36px;text-align:center}
+.col-name{min-width:340px;max-width:440px}
+.col-fecha{width:75px;font-family:Consolas,monospace;font-size:11px}
+.col-dur{width:38px;text-align:center;font-size:11px}
+.col-status{width:120px}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.badge-c1{background:#ebf8ff;color:#2c5282;border:1px solid #bee3f8}
+.badge-c2{background:#fffbeb;color:#c05621;border:1px solid #feebc8}
+.badge-progress{background:#faf089;color:#744210;border:1px solid #ecc94b}
+.badge-urgent{background:#fed7d7;color:#742a2a;border:1px solid #fc8181}
+.badge-troubleshooting{background:#feebc8;color:#7b341e;border:1px solid #f6ad55}
+.badge-moved{background:#e9d8fd;color:#553c9a;border:1px solid #b794f4}
+.badge-new{background:#c4b5fd;color:#4c1d95;border:1px solid #8b5cf6}
+.badge-tbd{background:#e2e8f0;color:#2d3748;border:1px solid #a0aec0}
+.badge-split{background:#b2f5ea;color:#234e52;border:1px solid #4fd1c5}
+.notes{font-size:10.5px;color:#718096;font-style:italic;margin-top:2px;line-height:1.3}
+.notes.urgent{color:#c53030;font-weight:600;font-style:normal}
+.notes.troubleshooting{color:#c05621;font-weight:600;font-style:normal}
+.notes.progress{color:#b7791f;font-weight:600;font-style:normal}
+.gantt-timeline{background:#2d3748;color:white;height:60px;position:relative}
+.gantt-month{position:absolute;top:0;height:30px;line-height:30px;text-align:center;border-right:1px solid rgba(255,255,255,.15);border-bottom:1px solid rgba(255,255,255,.15);font-weight:600;font-size:12px}
+.gantt-day{position:absolute;top:30px;height:30px;line-height:30px;text-align:center;border-right:1px solid rgba(255,255,255,.15);font-size:10px;font-weight:500}
+.gantt-day.weekend{background:rgba(255,255,255,.08)}
+.gantt-day.today{background:rgba(254,215,0,.3);font-weight:700}
+.gantt-row{height:32px;border-bottom:1px solid #edf2f7;position:relative}
+.gantt-row:hover{background:rgba(66,153,225,.05)}
+.bar{position:absolute;top:4px;height:24px;border-radius:3px;box-shadow:0 1px 3px rgba(0,0,0,.2);color:white;padding:0 8px;font-size:10px;line-height:24px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:2;font-weight:500}
+.bar.c1-inst{background:linear-gradient(to bottom,#5b8fd9,#4472c4)}
+.bar.c1-prog{background:linear-gradient(to bottom,#82c456,#70ad47)}
+.bar.c2{background:linear-gradient(to bottom,#ffd23f,#f5b400);color:#5e4400;text-shadow:0 1px 0 rgba(255,255,255,.3)}
+.bar.troubleshooting{background:linear-gradient(to bottom,#f6ad55,#ed8936)!important;border:2px solid #c05621;box-shadow:0 0 6px rgba(237,137,54,.6)}
+.bar.urgent{background:linear-gradient(to bottom,#fc8181,#e53e3e)!important;color:white!important;text-shadow:0 1px 0 rgba(0,0,0,.3);border:2px solid #c53030}
+.bar.new{background:linear-gradient(to bottom,#b794f4,#9f7aea)!important;color:white!important}
+.bar.moved{background:linear-gradient(to bottom,#d6bcfa,#b794f4)!important;color:#44337a!important;border:2px dashed #6b46c1}
+.bar.split{background:linear-gradient(to bottom,#4fd1c5,#38b2ac)!important;color:white!important;border:2px solid #234e52}
+.bar.progress{background:linear-gradient(to bottom,#f6e05e,#d69e2e)!important;color:#1a202c!important;text-shadow:none}
+.tbd-list{background:white;padding:0}
+.tbd-list table{width:100%}
+.summary-box{background:white;margin:16px 30px;padding:16px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.summary-box h3{color:#1a365d;margin-bottom:12px;font-size:14px;border-bottom:2px solid #e2e8f0;padding-bottom:6px}
+.summary-box .item{padding:6px 0;border-bottom:1px solid #f7fafc;font-size:12px}
+.summary-box .item .icon{display:inline-block;width:18px;text-align:center;margin-right:6px}
+.footer{margin-top:24px;padding:14px 30px;background:#1a365d;color:white;font-size:11px;text-align:center}
+.day-divider{background:#e2e8f0;color:#2d3748;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+.day-divider td{padding:6px 12px!important;border-bottom:2px solid #4a5568!important}
+.day-divider.strong-day{background:#fed7e2;color:#97266d}
+.day-divider.today-row{background:#fef3c7;color:#92400e}
+</style></head><body>
+<div class="header">
+  <h1><span class="badge-internal">INTERNO FTS</span><span class="badge-version">v2</span>📊 Plan Panel View — NALCO Topo Chico</h1>
+  <div class="meta">
+    <strong>Cliente:</strong> NALCO (Topo Chico) &nbsp;•&nbsp;
+    <strong>Autor:</strong> Esteban De La Cruz Calderón – FTS &nbsp;•&nbsp;
+    <strong>Generado:</strong> 06/05/2026 23:27 &nbsp;•&nbsp;
+    <strong>Período:</strong> 6 May → 14 May 2026 (+TBD)
+  </div>
+</div>
+<div class="stats">
+<div class="stat-card"><div class="value">52</div><div class="label">Total actividades</div></div>
+<div class="stat-card urgent"><div class="value">1</div><div class="label">🚨 URGENTE HOY</div></div>
+<div class="stat-card troubleshooting"><div class="value">6</div><div class="label">⚠️ Troubleshooting pdte</div></div>
+<div class="stat-card new"><div class="value">6</div><div class="label">🆕 Nuevas / Movidas</div></div>
+<div class="stat-card split"><div class="value">4</div><div class="label">✂️ Divididas en partes</div></div>
+<div class="stat-card tbd"><div class="value">10</div><div class="label">⏸ TBD</div></div>
+</div>
+<div class="legend">
+<div class="legend-item"><div class="legend-color c1-inst"></div> C1 (FTS) Instalación</div>
+<div class="legend-item"><div class="legend-color c1-prog"></div> C1 (FTS) Programación</div>
+<div class="legend-item"><div class="legend-color c2"></div> C2 Mecánica/Civil</div>
+<div class="legend-item"><div class="legend-color urgent"></div> 🚨 Urgente HOY</div>
+<div class="legend-item"><div class="legend-color troubleshooting"></div> ⚠️ Troubleshooting</div>
+<div class="legend-item"><div class="legend-color new"></div> 🆕 Nueva/Movida</div>
+<div class="legend-item"><div class="legend-color split"></div> ✂️ Parte 1 (split)</div>
+<div class="legend-item"><div class="legend-color tbd"></div> ⏸ TBD</div>
+</div>
+<div class="section-title">📋 Plan Cronológico Unificado (C1 + C2)</div>
+<div class="gantt-container">
+<div class="gantt-side"><table class="gantt"><thead><tr>
+<th class="col-id">ID</th><th class="col-cuad">Cuadrilla</th><th class="col-tipo">T</th>
+<th class="col-name">Actividad</th><th class="col-fecha">Inicio</th><th class="col-fecha">Fin</th>
+<th class="col-dur">Días</th><th class="col-status">Estado</th>
+</tr></thead><tbody>
+<tr class="day-divider today-row"><td colspan="8">📅 Mié 6/05/2026 (HOY)</td></tr>
+<tr>
+<td class="col-id">C1-15a</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Instalación mecánica bases diferenciales presión - Tren 1</strong><div class="notes ">Movida desde Sáb/Dom 9-10</div></td>
+<td class="col-fecha">Mié 6/05</td>
+<td class="col-fecha">Mié 6/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"><span class="badge badge-new">🆕 Nueva</span></td>
+</tr>
+<tr>
+<td class="col-id">C1-5</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Fabricación de base para cerebro de sensor de turbidez</strong><div class="notes progress">90% - falta terminar agujeros y pulirla, debe terminar HOY</div></td>
+<td class="col-fecha">Mié 6/05</td>
+<td class="col-fecha">Mié 6/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"><span class="badge badge-progress">⏳ En proceso</span></td>
+</tr>
+<tr>
+<td class="col-id">C2-16</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Cambio de niples en zona de pulidores</strong><div class="notes urgent">⚠️ EN PARO CON NALCO - URGENTE conseguir niples HOY</div></td>
+<td class="col-fecha">Mié 6/05</td>
+<td class="col-fecha">Mié 6/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"><span class="badge badge-urgent">🚨 URGENTE</span></td>
+</tr>
+<tr>
+<td class="col-id">C2-31</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Cambio de 2 tornillos en Brida de 6&quot; en área de UV</strong><div class="notes ">Moni - auditoría el viernes</div></td>
+<td class="col-fecha">Mié 6/05</td>
+<td class="col-fecha">Mié 6/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"></td>
+</tr>
+<tr>
+<td class="col-id">C2-32</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Cambio de empaques en zona de UV Brida de 6&quot;</strong></td>
+<td class="col-fecha">Mié 6/05</td>
+<td class="col-fecha">Mié 6/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"></td>
+</tr>
+<tr>
+<td class="col-id">C2-34</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Remover válvula mariposa para instalar válvula de alivio de presión</strong></td>
+<td class="col-fecha">Mié 6/05</td>
+<td class="col-fecha">Mié 6/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"></td>
+</tr>
+<tr>
+<td class="col-id">C2-36</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Reensamblar carretes Tanques Resinas 6 y 7 (9:00 PM)</strong><div class="notes ">Después saneo Ecolab</div></td>
+<td class="col-fecha">Mié 6/05</td>
+<td class="col-fecha">Mié 6/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"></td>
+</tr>
+<tr class="day-divider"><td colspan="8">📅 Jue 7/05/2026</td></tr>
+<tr>
+<td class="col-id">C1-1</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">💻</td>
+<td class="col-name"><strong>Visualización retros válvulas solenoides (FINALIZAR)</strong><div class="notes ">Es talacha, cambiar como se ve en la pantalla</div></td>
+<td class="col-fecha">Jue 7/05</td>
+<td class="col-fecha">Jue 7/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"><span class="badge badge-moved">🔄 Movida</span></td>
+</tr>
+<tr>
+<td class="col-id">C1-11a</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">💻</td>
+<td class="col-name"><strong>Visualización sensor nivel (PARTE 1)</strong><div class="notes ">Dividida en 2 partes</div></td>
+<td class="col-fecha">Jue 7/05</td>
+<td class="col-fecha">Jue 7/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"><span class="badge badge-split">✂️ Parte 1</span></td>
+</tr>
+<tr>
+<td class="col-id">C1-13a</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">💻</td>
+<td class="col-name"><strong>Programación y atenuación válvulas modulantes filtros resina (PARTE 1)</strong><div class="notes troubleshooting">TROUBLESHOOTING NECESARIO - dividida en 2 partes</div></td>
+<td class="col-fecha">Jue 7/05</td>
+<td class="col-fecha">Jue 7/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"><span class="badge badge-troubleshooting">⚠️ TS pdte</span></td>
+</tr>
+<tr>
+<td class="col-id">C1-15b</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Instalación mecánica bases diferenciales presión - Tren 2</strong><div class="notes ">Movida desde Sáb/Dom 9-10</div></td>
+<td class="col-fecha">Jue 7/05</td>
+<td class="col-fecha">Jue 7/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"><span class="badge badge-new">🆕 Nueva</span></td>
+</tr>
+<tr>
+<td class="col-id">C1-26</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">💻</td>
+<td class="col-name"><strong>Probar salidas analógicas y ver cómo reacciona VFDs ABB</strong><div class="notes ">Nueva - deriva de C1-3 ya completado</div></td>
+<td class="col-fecha">Jue 7/05</td>
+<td class="col-fecha">Jue 7/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"><span class="badge badge-new">🆕 Nueva</span></td>
+</tr>
+<tr>
+<td class="col-id">C1-27</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Fabricación del empaque para brida de sensor de nivel</strong><div class="notes ">Nueva - deriva de C1-6 ya completado</div></td>
+<td class="col-fecha">Jue 7/05</td>
+<td class="col-fecha">Jue 7/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"><span class="badge badge-new">🆕 Nueva</span></td>
+</tr>
+<tr>
+<td class="col-id">C1-7</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Instalación mecánica de cerebro y conexión eléctrica sensor turbidez</strong></td>
+<td class="col-fecha">Jue 7/05</td>
+<td class="col-fecha">Jue 7/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"></td>
+</tr>
+<tr>
+<td class="col-id">C1-8</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Instalación y ruteo de cableado de sensor nivel y conexión en PLC</strong></td>
+<td class="col-fecha">Jue 7/05</td>
+<td class="col-fecha">Jue 7/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"></td>
+</tr>
+<tr>
+<td class="col-id">C1-9</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Cableado tarjeta PLCs 2a de 3 faltantes (Turbidez + sensor de nivel)</strong></td>
+<td class="col-fecha">Jue 7/05</td>
+<td class="col-fecha">Jue 7/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"></td>
+</tr>
+<tr>
+<td class="col-id">C2-26a</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Modificar 3 carretes (de 8) entradas/salidas resinas - férula 1.5&quot; lateral</strong><div class="notes ">Igual que válvulas KEOFFIT (Manzanares) - se fabrican y luego se pasivan</div></td>
+<td class="col-fecha">Jue 7/05</td>
+<td class="col-fecha">Jue 7/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"></td>
+</tr>
+<tr>
+<td class="col-id">C2-30</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Modificar codos de SALIDA de Resinas R6-R7-R8 (codos abajo después del niple)</strong><div class="notes ">Objetivo: alinear bien los trenes de tubos de las resinas. Falta sacar medida del carretito</div></td>
+<td class="col-fecha">Jue 7/05</td>
+<td class="col-fecha">Jue 7/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"></td>
+</tr>
+<tr>
+<td class="col-id">NEW-1</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Pedir pasivado de codos (C2-30) y carretes (C2-26a)</strong><div class="notes ">Nueva - se piden para que estén pasivados antes del viernes</div></td>
+<td class="col-fecha">Jue 7/05</td>
+<td class="col-fecha">Jue 7/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"><span class="badge badge-new">🆕 Nueva</span></td>
+</tr>
+<tr class="day-divider strong-day"><td colspan="8">📅 Vie 8/05/2026 ⚠️ DÍA FUERTE</td></tr>
+<tr>
+<td class="col-id">C1-10</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Cableado tarjeta PLCs 2a (flujómetro principal)</strong></td>
+<td class="col-fecha">Vie 8/05</td>
+<td class="col-fecha">Vie 8/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"></td>
+</tr>
+<tr>
+<td class="col-id">C1-11b</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">💻</td>
+<td class="col-name"><strong>Visualización sensor nivel (PARTE 2)</strong><div class="notes troubleshooting">TROUBLESHOOTING NECESARIO - continúa de Parte 1</div></td>
+<td class="col-fecha">Vie 8/05</td>
+<td class="col-fecha">Vie 8/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"><span class="badge badge-troubleshooting">⚠️ TS pdte</span></td>
+</tr>
+<tr>
+<td class="col-id">C1-12</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">💻</td>
+<td class="col-name"><strong>Programación para controlar desde HMI los VFD</strong><div class="notes troubleshooting">TROUBLESHOOTING NECESARIO</div></td>
+<td class="col-fecha">Vie 8/05</td>
+<td class="col-fecha">Vie 8/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"><span class="badge badge-troubleshooting">⚠️ TS pdte</span></td>
+</tr>
+<tr>
+<td class="col-id">C1-13b</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">💻</td>
+<td class="col-name"><strong>Programación y atenuación válvulas modulantes filtros resina (PARTE 2)</strong><div class="notes troubleshooting">TROUBLESHOOTING NECESARIO - continúa de Parte 1 Jue 7</div></td>
+<td class="col-fecha">Vie 8/05</td>
+<td class="col-fecha">Vie 8/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"><span class="badge badge-troubleshooting">⚠️ TS pdte</span></td>
+</tr>
+<tr>
+<td class="col-id">C1-14</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">💻</td>
+<td class="col-name"><strong>Lógica funcionamiento en base a inputs Panel View (semiautomático)</strong></td>
+<td class="col-fecha">Vie 8/05</td>
+<td class="col-fecha">Vie 8/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"></td>
+</tr>
+<tr>
+<td class="col-id">C2-11</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Cambiar anclas oxidadas Tren 1 entre R1-R2 y R3</strong></td>
+<td class="col-fecha">Vie 8/05</td>
+<td class="col-fecha">Vie 8/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"></td>
+</tr>
+<tr>
+<td class="col-id">C2-2</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Pintura ángulos soportería área racks (anti-corrosivo gris)</strong></td>
+<td class="col-fecha">Vie 8/05</td>
+<td class="col-fecha">Vie 8/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"></td>
+</tr>
+<tr>
+<td class="col-id">C2-28</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Tubo 3&quot; soldado en drenes a trinchera</strong></td>
+<td class="col-fecha">Vie 8/05</td>
+<td class="col-fecha">Vie 8/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"></td>
+</tr>
+<tr>
+<td class="col-id">NEW-2</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Instalar carretes y codos (pasivados) - aprox 11 AM</strong><div class="notes ">Nueva - llegan en la mañana, antes de la 1 PM. Se instalan los fabricados el jueves</div></td>
+<td class="col-fecha">Vie 8/05</td>
+<td class="col-fecha">Vie 8/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"><span class="badge badge-new">🆕 Nueva</span></td>
+</tr>
+<tr class="day-divider"><td colspan="8">📅 Sáb 9 - Dom 10/05/2026 (Fin de semana)</td></tr>
+<tr>
+<td class="col-id">C1-16</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Rematar cableado eléctrico diferenciales presión</strong></td>
+<td class="col-fecha">Sáb 9/05</td>
+<td class="col-fecha">Dom 10/05</td>
+<td class="col-dur">2d</td>
+<td class="col-status"></td>
+</tr>
+<tr>
+<td class="col-id">C1-17</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Instalación tubings y accesorios diferenciales presión</strong><div class="notes ">Depende de definición método saneamiento y flusheo</div></td>
+<td class="col-fecha">Sáb 9/05</td>
+<td class="col-fecha">Dom 10/05</td>
+<td class="col-dur">2d</td>
+<td class="col-status"></td>
+</tr>
+<tr>
+<td class="col-id">C2-17</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Terminar obra civil de Trinchera</strong></td>
+<td class="col-fecha">Sáb 9/05</td>
+<td class="col-fecha">Dom 10/05</td>
+<td class="col-dur">2d</td>
+<td class="col-status"></td>
+</tr>
+<tr>
+<td class="col-id">C2-19</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Emparejar obra civil cemento debajo de bases de bombas</strong></td>
+<td class="col-fecha">Sáb 9/05</td>
+<td class="col-fecha">Dom 10/05</td>
+<td class="col-dur">2d</td>
+<td class="col-status"></td>
+</tr>
+<tr>
+<td class="col-id">C2-37</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Meter PVC 6&quot; para conectar trinchera→registro y tapar concreto</strong></td>
+<td class="col-fecha">Sáb 9/05</td>
+<td class="col-fecha">Dom 10/05</td>
+<td class="col-dur">2d</td>
+<td class="col-status"></td>
+</tr>
+<tr>
+<td class="col-id">C2-38</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Obra civil trayectoria tierras tablero altura Tren 2 + tapar hueco</strong></td>
+<td class="col-fecha">Sáb 9/05</td>
+<td class="col-fecha">Dom 10/05</td>
+<td class="col-dur">2d</td>
+<td class="col-status"></td>
+</tr>
+<tr class="day-divider"><td colspan="8">📅 Lun 11/05/2026</td></tr>
+<tr>
+<td class="col-id">C1-18</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">💻</td>
+<td class="col-name"><strong>Lógica por demanda de planta (full automático)</strong></td>
+<td class="col-fecha">Lun 11/05</td>
+<td class="col-fecha">Lun 11/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"></td>
+</tr>
+<tr>
+<td class="col-id">C1-19</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Atenuación y conexión de diferenciales de presión</strong></td>
+<td class="col-fecha">Lun 11/05</td>
+<td class="col-fecha">Lun 11/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"></td>
+</tr>
+<tr>
+<td class="col-id">C1-20</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">💻</td>
+<td class="col-name"><strong>Visualización diferenciales presión y conexión final</strong><div class="notes troubleshooting">TROUBLESHOOTING NECESARIO - DEPENDEMOS DE MECÁNICO QUE DEPENDE DE ESTRATEGIA FINAL</div></td>
+<td class="col-fecha">Lun 11/05</td>
+<td class="col-fecha">Lun 11/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"><span class="badge badge-troubleshooting">⚠️ TS pdte</span></td>
+</tr>
+<tr class="day-divider"><td colspan="8">📅 Mar 12/05/2026</td></tr>
+<tr>
+<td class="col-id">C1-21</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">💻</td>
+<td class="col-name"><strong>Lógica por demanda de planta (full automático) - cont.</strong></td>
+<td class="col-fecha">Mar 12/05</td>
+<td class="col-fecha">Mar 12/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"></td>
+</tr>
+<tr>
+<td class="col-id">C1-22</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">💻</td>
+<td class="col-name"><strong>Visualización diferenciales presión y conexión final - cont.</strong><div class="notes troubleshooting">TROUBLESHOOTING NECESARIO - depende mecánico/estrategia final</div></td>
+<td class="col-fecha">Mar 12/05</td>
+<td class="col-fecha">Mar 12/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"><span class="badge badge-troubleshooting">⚠️ TS pdte</span></td>
+</tr>
+<tr>
+<td class="col-id">C1-23</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Atenuación y conexión de diferenciales de presión - cont.</strong></td>
+<td class="col-fecha">Mar 12/05</td>
+<td class="col-fecha">Mar 12/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"></td>
+</tr>
+<tr class="day-divider"><td colspan="8">📅 Mié 13/05/2026</td></tr>
+<tr>
+<td class="col-id">C1-24</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">💻</td>
+<td class="col-name"><strong>Envío datos hacia pantalla de planta</strong></td>
+<td class="col-fecha">Mié 13/05</td>
+<td class="col-fecha">Mié 13/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"></td>
+</tr>
+<tr class="day-divider"><td colspan="8">📅 Jue 14/05/2026</td></tr>
+<tr>
+<td class="col-id">C1-25</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">💻</td>
+<td class="col-name"><strong>Envío datos hacia pantalla de planta - cont.</strong></td>
+<td class="col-fecha">Jue 14/05</td>
+<td class="col-fecha">Jue 14/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"></td>
+</tr>
+</tbody></table></div>
+<div class="gantt-chart">
+<div class="gantt-timeline" style="width:720px;">
+<div class="gantt-month" style="left:0;width:720px;">Mayo 2026</div>
+<div class="gantt-day today" style="left:0px;width:80px;">Mié 6</div>
+<div class="gantt-day " style="left:80px;width:80px;">Jue 7</div>
+<div class="gantt-day " style="left:160px;width:80px;">Vie 8</div>
+<div class="gantt-day weekend" style="left:240px;width:80px;">Sáb 9</div>
+<div class="gantt-day weekend" style="left:320px;width:80px;">Dom 10</div>
+<div class="gantt-day " style="left:400px;width:80px;">Lun 11</div>
+<div class="gantt-day " style="left:480px;width:80px;">Mar 12</div>
+<div class="gantt-day " style="left:560px;width:80px;">Mié 13</div>
+<div class="gantt-day " style="left:640px;width:80px;">Jue 14</div>
+</div>
+<div style="position:relative;width:720px;">
+<div class="gantt-row" style="background:#f0f4f8;border-bottom:2px solid #4a5568;"></div>
+<div class="gantt-row"><div class="bar new" style="left:0px;width:76px;" title="Instalación mecánica bases diferenciales presión - Tren 1">[C1-15a] Instalación mecánica bases diferenciales presión -</div></div>
+<div class="gantt-row"><div class="bar progress" style="left:0px;width:76px;" title="Fabricación de base para cerebro de sensor de turbidez">[C1-5] Fabricación de base para cerebro de sensor de turb</div></div>
+<div class="gantt-row"><div class="bar urgent" style="left:0px;width:76px;" title="Cambio de niples en zona de pulidores">[C2-16] Cambio de niples en zona de pulidores</div></div>
+<div class="gantt-row"><div class="bar c2" style="left:0px;width:76px;" title="Cambio de 2 tornillos en Brida de 6&quot; en área de UV">[C2-31] Cambio de 2 tornillos en Brida de 6&quot; en área de UV</div></div>
+<div class="gantt-row"><div class="bar c2" style="left:0px;width:76px;" title="Cambio de empaques en zona de UV Brida de 6&quot;">[C2-32] Cambio de empaques en zona de UV Brida de 6&quot;</div></div>
+<div class="gantt-row"><div class="bar c2" style="left:0px;width:76px;" title="Remover válvula mariposa para instalar válvula de alivio de presión">[C2-34] Remover válvula mariposa para instalar válvula de </div></div>
+<div class="gantt-row"><div class="bar c2" style="left:0px;width:76px;" title="Reensamblar carretes Tanques Resinas 6 y 7 (9:00 PM)">[C2-36] Reensamblar carretes Tanques Resinas 6 y 7 (9:00 P</div></div>
+<div class="gantt-row" style="background:#f0f4f8;border-bottom:2px solid #4a5568;"></div>
+<div class="gantt-row"><div class="bar moved" style="left:80px;width:76px;" title="Visualización retros válvulas solenoides (FINALIZAR)">[C1-1] Visualización retros válvulas solenoides (FINALIZA</div></div>
+<div class="gantt-row"><div class="bar split" style="left:80px;width:76px;" title="Visualización sensor nivel (PARTE 1)">[C1-11a] Visualización sensor nivel (PARTE 1)</div></div>
+<div class="gantt-row"><div class="bar troubleshooting" style="left:80px;width:76px;" title="Programación y atenuación válvulas modulantes filtros resina (PARTE 1)">[C1-13a] Programación y atenuación válvulas modulantes filt</div></div>
+<div class="gantt-row"><div class="bar new" style="left:80px;width:76px;" title="Instalación mecánica bases diferenciales presión - Tren 2">[C1-15b] Instalación mecánica bases diferenciales presión -</div></div>
+<div class="gantt-row"><div class="bar new" style="left:80px;width:76px;" title="Probar salidas analógicas y ver cómo reacciona VFDs ABB">[C1-26] Probar salidas analógicas y ver cómo reacciona VFD</div></div>
+<div class="gantt-row"><div class="bar new" style="left:80px;width:76px;" title="Fabricación del empaque para brida de sensor de nivel">[C1-27] Fabricación del empaque para brida de sensor de ni</div></div>
+<div class="gantt-row"><div class="bar c1-inst" style="left:80px;width:76px;" title="Instalación mecánica de cerebro y conexión eléctrica sensor turbidez">[C1-7] Instalación mecánica de cerebro y conexión eléctri</div></div>
+<div class="gantt-row"><div class="bar c1-inst" style="left:80px;width:76px;" title="Instalación y ruteo de cableado de sensor nivel y conexión en PLC">[C1-8] Instalación y ruteo de cableado de sensor nivel y </div></div>
+<div class="gantt-row"><div class="bar c1-inst" style="left:80px;width:76px;" title="Cableado tarjeta PLCs 2a de 3 faltantes (Turbidez + sensor de nivel)">[C1-9] Cableado tarjeta PLCs 2a de 3 faltantes (Turbidez </div></div>
+<div class="gantt-row"><div class="bar c2" style="left:80px;width:76px;" title="Modificar 3 carretes (de 8) entradas/salidas resinas - férula 1.5&quot; lateral">[C2-26a] Modificar 3 carretes (de 8) entradas/salidas resin</div></div>
+<div class="gantt-row"><div class="bar c2" style="left:80px;width:76px;" title="Modificar codos de SALIDA de Resinas R6-R7-R8 (codos abajo después del niple)">[C2-30] Modificar codos de SALIDA de Resinas R6-R7-R8 (cod</div></div>
+<div class="gantt-row"><div class="bar new" style="left:80px;width:76px;" title="Pedir pasivado de codos (C2-30) y carretes (C2-26a)">[NEW-1] Pedir pasivado de codos (C2-30) y carretes (C2-26a</div></div>
+<div class="gantt-row" style="background:#f0f4f8;border-bottom:2px solid #4a5568;"></div>
+<div class="gantt-row"><div class="bar c1-inst" style="left:160px;width:76px;" title="Cableado tarjeta PLCs 2a (flujómetro principal)">[C1-10] Cableado tarjeta PLCs 2a (flujómetro principal)</div></div>
+<div class="gantt-row"><div class="bar troubleshooting" style="left:160px;width:76px;" title="Visualización sensor nivel (PARTE 2)">[C1-11b] Visualización sensor nivel (PARTE 2)</div></div>
+<div class="gantt-row"><div class="bar troubleshooting" style="left:160px;width:76px;" title="Programación para controlar desde HMI los VFD">[C1-12] Programación para controlar desde HMI los VFD</div></div>
+<div class="gantt-row"><div class="bar troubleshooting" style="left:160px;width:76px;" title="Programación y atenuación válvulas modulantes filtros resina (PARTE 2)">[C1-13b] Programación y atenuación válvulas modulantes filt</div></div>
+<div class="gantt-row"><div class="bar c1-prog" style="left:160px;width:76px;" title="Lógica funcionamiento en base a inputs Panel View (semiautomático)">[C1-14] Lógica funcionamiento en base a inputs Panel View </div></div>
+<div class="gantt-row"><div class="bar c2" style="left:160px;width:76px;" title="Cambiar anclas oxidadas Tren 1 entre R1-R2 y R3">[C2-11] Cambiar anclas oxidadas Tren 1 entre R1-R2 y R3</div></div>
+<div class="gantt-row"><div class="bar c2" style="left:160px;width:76px;" title="Pintura ángulos soportería área racks (anti-corrosivo gris)">[C2-2] Pintura ángulos soportería área racks (anti-corros</div></div>
+<div class="gantt-row"><div class="bar c2" style="left:160px;width:76px;" title="Tubo 3&quot; soldado en drenes a trinchera">[C2-28] Tubo 3&quot; soldado en drenes a trinchera</div></div>
+<div class="gantt-row"><div class="bar new" style="left:160px;width:76px;" title="Instalar carretes y codos (pasivados) - aprox 11 AM">[NEW-2] Instalar carretes y codos (pasivados) - aprox 11 A</div></div>
+<div class="gantt-row" style="background:#f0f4f8;border-bottom:2px solid #4a5568;"></div>
+<div class="gantt-row"><div class="bar c1-inst" style="left:240px;width:156px;" title="Rematar cableado eléctrico diferenciales presión">[C1-16] Rematar cableado eléctrico diferenciales presión</div></div>
+<div class="gantt-row"><div class="bar c1-inst" style="left:240px;width:156px;" title="Instalación tubings y accesorios diferenciales presión">[C1-17] Instalación tubings y accesorios diferenciales pre</div></div>
+<div class="gantt-row"><div class="bar c2" style="left:240px;width:156px;" title="Terminar obra civil de Trinchera">[C2-17] Terminar obra civil de Trinchera</div></div>
+<div class="gantt-row"><div class="bar c2" style="left:240px;width:156px;" title="Emparejar obra civil cemento debajo de bases de bombas">[C2-19] Emparejar obra civil cemento debajo de bases de bo</div></div>
+<div class="gantt-row"><div class="bar c2" style="left:240px;width:156px;" title="Meter PVC 6&quot; para conectar trinchera→registro y tapar concreto">[C2-37] Meter PVC 6&quot; para conectar trinchera→registro y ta</div></div>
+<div class="gantt-row"><div class="bar c2" style="left:240px;width:156px;" title="Obra civil trayectoria tierras tablero altura Tren 2 + tapar hueco">[C2-38] Obra civil trayectoria tierras tablero altura Tren</div></div>
+<div class="gantt-row" style="background:#f0f4f8;border-bottom:2px solid #4a5568;"></div>
+<div class="gantt-row"><div class="bar c1-prog" style="left:400px;width:76px;" title="Lógica por demanda de planta (full automático)">[C1-18] Lógica por demanda de planta (full automático)</div></div>
+<div class="gantt-row"><div class="bar c1-inst" style="left:400px;width:76px;" title="Atenuación y conexión de diferenciales de presión">[C1-19] Atenuación y conexión de diferenciales de presión</div></div>
+<div class="gantt-row"><div class="bar troubleshooting" style="left:400px;width:76px;" title="Visualización diferenciales presión y conexión final">[C1-20] Visualización diferenciales presión y conexión fin</div></div>
+<div class="gantt-row" style="background:#f0f4f8;border-bottom:2px solid #4a5568;"></div>
+<div class="gantt-row"><div class="bar c1-prog" style="left:480px;width:76px;" title="Lógica por demanda de planta (full automático) - cont.">[C1-21] Lógica por demanda de planta (full automático) - c</div></div>
+<div class="gantt-row"><div class="bar troubleshooting" style="left:480px;width:76px;" title="Visualización diferenciales presión y conexión final - cont.">[C1-22] Visualización diferenciales presión y conexión fin</div></div>
+<div class="gantt-row"><div class="bar c1-inst" style="left:480px;width:76px;" title="Atenuación y conexión de diferenciales de presión - cont.">[C1-23] Atenuación y conexión de diferenciales de presión </div></div>
+<div class="gantt-row" style="background:#f0f4f8;border-bottom:2px solid #4a5568;"></div>
+<div class="gantt-row"><div class="bar c1-prog" style="left:560px;width:76px;" title="Envío datos hacia pantalla de planta">[C1-24] Envío datos hacia pantalla de planta</div></div>
+<div class="gantt-row" style="background:#f0f4f8;border-bottom:2px solid #4a5568;"></div>
+<div class="gantt-row"><div class="bar c1-prog" style="left:640px;width:76px;" title="Envío datos hacia pantalla de planta - cont.">[C1-25] Envío datos hacia pantalla de planta - cont.</div></div>
+</div></div></div>
+<div class="section-title tbd-section">⏸ TBD — Pendientes de fechar</div>
+<div class="tbd-list"><table class="gantt" style="width:100%;"><thead><tr>
+<th class="col-id">ID</th><th class="col-cuad">Cuadrilla</th><th class="col-tipo">T</th>
+<th class="col-name">Actividad</th><th>Notas / Razón TBD</th>
+</tr></thead><tbody>
+<tr>
+<td class="col-id">C1-LC</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">💻</td>
+<td class="col-name"><strong>Lazo de control con sistema existente y 3D trazar</strong></td>
+<td style="font-size:11.5px;color:#718096;font-style:italic;">TBD - cuando llegue info</td>
+</tr>
+<tr>
+<td class="col-id">C1-PV1</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Montaje mecánico Panel View en puerta de tablero</strong></td>
+<td style="font-size:11.5px;color:#718096;font-style:italic;">TBD - después de caseta multipanel</td>
+</tr>
+<tr>
+<td class="col-id">C1-PV2</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Instalación final Panel View</strong></td>
+<td style="font-size:11.5px;color:#718096;font-style:italic;">TBD - después de caseta multipanel</td>
+</tr>
+<tr>
+<td class="col-id">C2-18</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Fab conexión NPT férula B1-B2-B3 + soldadura/instalación 3 manómetros voluta</strong></td>
+<td style="font-size:11.5px;color:#718096;font-style:italic;">TBD - 3 manómetros llegan aprox 20 May</td>
+</tr>
+<tr>
+<td class="col-id">C2-22</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Fab soporte PTR inox para R4</strong></td>
+<td style="font-size:11.5px;color:#718096;font-style:italic;">TBD - después de caseta</td>
+</tr>
+<tr>
+<td class="col-id">C2-23</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Fabricación adicional Polipasto y Cuarto Multi-Panel</strong></td>
+<td style="font-size:11.5px;color:#718096;font-style:italic;">TBD - re-ingeniería, materiales, corte/soldadura, pruebas, instalación, eléctrica + iluminación + extractor</td>
+</tr>
+<tr>
+<td class="col-id">C2-26b</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Modificar 5 carretes restantes (de 8 totales)</strong></td>
+<td style="font-size:11.5px;color:#718096;font-style:italic;">TBD - coordinar con NALCO</td>
+</tr>
+<tr>
+<td class="col-id">C2-33</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Cambio empaques en flujómetros de todas las Resinas</strong></td>
+<td style="font-size:11.5px;color:#718096;font-style:italic;">TBD - se hará GRADUAL con programación NALCO 1 por 1 (cuando se meta 1 resina más a producción, se saca otra y se retrabaja)</td>
+</tr>
+<tr>
+<td class="col-id">C2-35</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Fabricación malla irving acero inoxidable</strong></td>
+<td style="font-size:11.5px;color:#718096;font-style:italic;">TBD - validar presupuesto adicional con NALCO</td>
+</tr>
+<tr>
+<td class="col-id">C2-5</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Terminar abrazaderas 6&quot; en tren 2</strong></td>
+<td style="font-size:11.5px;color:#718096;font-style:italic;">TBD - depende de instalar últimos codos que se van a fabricar/pasivar (tentativo viernes en la tarde)</td>
+</tr>
+</tbody></table></div>
+<div class="summary-box">
+<h3>📝 Cambios aplicados en v2 (sobre v1)</h3>
+<div class="item"><span class="icon">🔄</span><strong>C2-33 Empaques flujómetros</strong> → MOVIDA A TBD (gradual con NALCO 1 por 1)</div>
+<div class="item"><span class="icon">✂️</span><strong>C1-15 Bases diferenciales</strong> → DIVIDIDA en C1-15a (Tren 1, HOY) + C1-15b (Tren 2, mañana Jue 7)</div>
+<div class="item"><span class="icon">📝</span><strong>C2-30 Codos R6-R7-R8</strong> → ACTUALIZADA (codos de SALIDA de Resinas, alinear trenes de tubos)</div>
+<div class="item"><span class="icon">🔄</span><strong>C2-5 Abrazaderas tren 2</strong> → MOVIDA A TBD (depende de codos pasivados, tentativo Vie tarde)</div>
+<div class="item"><span class="icon">🆕</span><strong>NEW-1</strong> Pedir pasivado de codos C2-30 + carretes C2-26a → Jue 7</div>
+<div class="item"><span class="icon">🆕</span><strong>NEW-2</strong> Instalar carretes y codos pasivados → Vie 8 ~11 AM</div>
+<div class="item"><span class="icon">✂️</span><strong>C1-11 Visualización sensor nivel</strong> → DIVIDIDA: Parte 1 Jue 7 + Parte 2 Vie 8</div>
+<div class="item"><span class="icon">✂️</span><strong>C1-13 Programación válvulas modulantes</strong> → DIVIDIDA: Parte 1 Jue 7 + Parte 2 Vie 8</div>
+</div>
+<div class="summary-box">
+<h3>⚠️ TROUBLESHOOTINGS aún pendientes</h3>
+<div class="item"><span class="icon">🟡</span>C1-11b Visualización sensor nivel Parte 2 <em>(Vie 8)</em></div>
+<div class="item"><span class="icon">🟡</span>C1-12 Programación HMI VFD <em>(Vie 8)</em></div>
+<div class="item"><span class="icon">🟡</span>C1-13a Programación válvulas modulantes Parte 1 <em>(Jue 7)</em></div>
+<div class="item"><span class="icon">🟡</span>C1-13b Programación válvulas modulantes Parte 2 <em>(Vie 8)</em></div>
+<div class="item"><span class="icon">🟡</span>C1-20 Visualización diferenciales presión + conexión final <em>(Lun 11 + Mar 12)</em></div>
+</div>
+<div class="footer">
+<strong>📊 Resumen:</strong>
+52 actividades · 
+29 C1 (FTS) · 
+23 C2 (Mec/Civil) · 
+42 con fecha · 
+10 en TBD · 
+6 TS pendientes
+<br><br>
+<em>🔒 Documento INTERNO de FTS · Generado 06/05/2026 23:27 · v2</em>
+</div>
+</body></html>
