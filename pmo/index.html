@@ -1,12 +1,11 @@
 <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
-<title>Cronograma Interno FTS v2 - Panel View NALCO Topo Chico</title>
+<title>Cronograma Interno FTS v3 - Panel View NALCO Topo Chico</title>
 <script src="../shared/auth-suite.js"></script>
 <script>
-  if (typeof FTSAuth === "undefined" || !FTSAuth.isLoggedIn || !FTSAuth.isLoggedIn()) {
-    window.location.href = "../index.html";
+  if (typeof FTSAuth === 'undefined' || !FTSAuth.isLoggedIn || !FTSAuth.isLoggedIn()) {
+    window.location.href = '../index.html';
   }
 </script>
-
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:#f0f2f5;color:#2c3e50;font-size:13px}
@@ -95,19 +94,19 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 .day-divider.today-row{background:#fef3c7;color:#92400e}
 </style></head><body>
 <div class="header">
-  <h1><span class="badge-internal">INTERNO FTS</span><span class="badge-version">v2</span>📊 Plan Panel View — NALCO Topo Chico</h1>
+  <h1><span class="badge-internal">INTERNO FTS</span><span class="badge-version">v3</span>📊 Plan Panel View — NALCO Topo Chico</h1>
   <div class="meta">
     <strong>Cliente:</strong> NALCO (Topo Chico) &nbsp;•&nbsp;
     <strong>Autor:</strong> Esteban De La Cruz Calderón – FTS &nbsp;•&nbsp;
-    <strong>Generado:</strong> 06/05/2026 23:27 &nbsp;•&nbsp;
+    <strong>Generado:</strong> 07/05/2026 01:02 &nbsp;•&nbsp;
     <strong>Período:</strong> 6 May → 14 May 2026 (+TBD)
   </div>
 </div>
 <div class="stats">
-<div class="stat-card"><div class="value">52</div><div class="label">Total actividades</div></div>
+<div class="stat-card"><div class="value">50</div><div class="label">Total actividades</div></div>
 <div class="stat-card urgent"><div class="value">1</div><div class="label">🚨 URGENTE HOY</div></div>
 <div class="stat-card troubleshooting"><div class="value">6</div><div class="label">⚠️ Troubleshooting pdte</div></div>
-<div class="stat-card new"><div class="value">6</div><div class="label">🆕 Nuevas / Movidas</div></div>
+<div class="stat-card new"><div class="value">5</div><div class="label">🆕 Nuevas / Movidas</div></div>
 <div class="stat-card split"><div class="value">4</div><div class="label">✂️ Divididas en partes</div></div>
 <div class="stat-card tbd"><div class="value">10</div><div class="label">⏸ TBD</div></div>
 </div>
@@ -130,24 +129,14 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 </tr></thead><tbody>
 <tr class="day-divider today-row"><td colspan="8">📅 Mié 6/05/2026 (HOY)</td></tr>
 <tr>
-<td class="col-id">C1-15a</td>
+<td class="col-id">C1-15b</td>
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">🔧</td>
-<td class="col-name"><strong>Instalación mecánica bases diferenciales presión - Tren 1</strong><div class="notes ">Movida desde Sáb/Dom 9-10</div></td>
+<td class="col-name"><strong>Instalación mecánica bases diferenciales presión - Tren 2</strong><div class="notes ">Adelantada de Jue 7 a HOY</div></td>
 <td class="col-fecha">Mié 6/05</td>
 <td class="col-fecha">Mié 6/05</td>
 <td class="col-dur">1d</td>
 <td class="col-status"><span class="badge badge-new">🆕 Nueva</span></td>
-</tr>
-<tr>
-<td class="col-id">C1-5</td>
-<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
-<td class="col-tipo">🔧</td>
-<td class="col-name"><strong>Fabricación de base para cerebro de sensor de turbidez</strong><div class="notes progress">90% - falta terminar agujeros y pulirla, debe terminar HOY</div></td>
-<td class="col-fecha">Mié 6/05</td>
-<td class="col-fecha">Mié 6/05</td>
-<td class="col-dur">1d</td>
-<td class="col-status"><span class="badge badge-progress">⏳ En proceso</span></td>
 </tr>
 <tr>
 <td class="col-id">C2-16</td>
@@ -193,7 +182,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-id">C2-36</td>
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
-<td class="col-name"><strong>Reensamblar carretes Tanques Resinas 6 y 7 (9:00 PM)</strong><div class="notes ">Después saneo Ecolab</div></td>
+<td class="col-name"><strong>Reensamblar carretes Tanque Resina 7 (9:00 PM)</strong><div class="notes ">Después saneo Ecolab. Tanque 6 ya hecho.</div></td>
 <td class="col-fecha">Mié 6/05</td>
 <td class="col-fecha">Mié 6/05</td>
 <td class="col-dur">1d</td>
@@ -231,16 +220,6 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-status"><span class="badge badge-troubleshooting">⚠️ TS pdte</span></td>
 </tr>
 <tr>
-<td class="col-id">C1-15b</td>
-<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
-<td class="col-tipo">🔧</td>
-<td class="col-name"><strong>Instalación mecánica bases diferenciales presión - Tren 2</strong><div class="notes ">Movida desde Sáb/Dom 9-10</div></td>
-<td class="col-fecha">Jue 7/05</td>
-<td class="col-fecha">Jue 7/05</td>
-<td class="col-dur">1d</td>
-<td class="col-status"><span class="badge badge-new">🆕 Nueva</span></td>
-</tr>
-<tr>
 <td class="col-id">C1-26</td>
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">💻</td>
@@ -264,7 +243,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-id">C1-7</td>
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">🔧</td>
-<td class="col-name"><strong>Instalación mecánica de cerebro y conexión eléctrica sensor turbidez</strong></td>
+<td class="col-name"><strong>Conexión eléctrica sensor turbidez</strong><div class="notes ">Inst mecánica cerebro ya completada el Mié 6</div></td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-dur">1d</td>
@@ -572,21 +551,19 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 </div>
 <div style="position:relative;width:720px;">
 <div class="gantt-row" style="background:#f0f4f8;border-bottom:2px solid #4a5568;"></div>
-<div class="gantt-row"><div class="bar new" style="left:0px;width:76px;" title="Instalación mecánica bases diferenciales presión - Tren 1">[C1-15a] Instalación mecánica bases diferenciales presión -</div></div>
-<div class="gantt-row"><div class="bar progress" style="left:0px;width:76px;" title="Fabricación de base para cerebro de sensor de turbidez">[C1-5] Fabricación de base para cerebro de sensor de turb</div></div>
+<div class="gantt-row"><div class="bar new" style="left:0px;width:76px;" title="Instalación mecánica bases diferenciales presión - Tren 2">[C1-15b] Instalación mecánica bases diferenciales presión -</div></div>
 <div class="gantt-row"><div class="bar urgent" style="left:0px;width:76px;" title="Cambio de niples en zona de pulidores">[C2-16] Cambio de niples en zona de pulidores</div></div>
 <div class="gantt-row"><div class="bar c2" style="left:0px;width:76px;" title="Cambio de 2 tornillos en Brida de 6&quot; en área de UV">[C2-31] Cambio de 2 tornillos en Brida de 6&quot; en área de UV</div></div>
 <div class="gantt-row"><div class="bar c2" style="left:0px;width:76px;" title="Cambio de empaques en zona de UV Brida de 6&quot;">[C2-32] Cambio de empaques en zona de UV Brida de 6&quot;</div></div>
 <div class="gantt-row"><div class="bar c2" style="left:0px;width:76px;" title="Remover válvula mariposa para instalar válvula de alivio de presión">[C2-34] Remover válvula mariposa para instalar válvula de </div></div>
-<div class="gantt-row"><div class="bar c2" style="left:0px;width:76px;" title="Reensamblar carretes Tanques Resinas 6 y 7 (9:00 PM)">[C2-36] Reensamblar carretes Tanques Resinas 6 y 7 (9:00 P</div></div>
+<div class="gantt-row"><div class="bar c2" style="left:0px;width:76px;" title="Reensamblar carretes Tanque Resina 7 (9:00 PM)">[C2-36] Reensamblar carretes Tanque Resina 7 (9:00 PM)</div></div>
 <div class="gantt-row" style="background:#f0f4f8;border-bottom:2px solid #4a5568;"></div>
 <div class="gantt-row"><div class="bar moved" style="left:80px;width:76px;" title="Visualización retros válvulas solenoides (FINALIZAR)">[C1-1] Visualización retros válvulas solenoides (FINALIZA</div></div>
 <div class="gantt-row"><div class="bar split" style="left:80px;width:76px;" title="Visualización sensor nivel (PARTE 1)">[C1-11a] Visualización sensor nivel (PARTE 1)</div></div>
 <div class="gantt-row"><div class="bar troubleshooting" style="left:80px;width:76px;" title="Programación y atenuación válvulas modulantes filtros resina (PARTE 1)">[C1-13a] Programación y atenuación válvulas modulantes filt</div></div>
-<div class="gantt-row"><div class="bar new" style="left:80px;width:76px;" title="Instalación mecánica bases diferenciales presión - Tren 2">[C1-15b] Instalación mecánica bases diferenciales presión -</div></div>
 <div class="gantt-row"><div class="bar new" style="left:80px;width:76px;" title="Probar salidas analógicas y ver cómo reacciona VFDs ABB">[C1-26] Probar salidas analógicas y ver cómo reacciona VFD</div></div>
 <div class="gantt-row"><div class="bar new" style="left:80px;width:76px;" title="Fabricación del empaque para brida de sensor de nivel">[C1-27] Fabricación del empaque para brida de sensor de ni</div></div>
-<div class="gantt-row"><div class="bar c1-inst" style="left:80px;width:76px;" title="Instalación mecánica de cerebro y conexión eléctrica sensor turbidez">[C1-7] Instalación mecánica de cerebro y conexión eléctri</div></div>
+<div class="gantt-row"><div class="bar c1-inst" style="left:80px;width:76px;" title="Conexión eléctrica sensor turbidez">[C1-7] Conexión eléctrica sensor turbidez</div></div>
 <div class="gantt-row"><div class="bar c1-inst" style="left:80px;width:76px;" title="Instalación y ruteo de cableado de sensor nivel y conexión en PLC">[C1-8] Instalación y ruteo de cableado de sensor nivel y </div></div>
 <div class="gantt-row"><div class="bar c1-inst" style="left:80px;width:76px;" title="Cableado tarjeta PLCs 2a de 3 faltantes (Turbidez + sensor de nivel)">[C1-9] Cableado tarjeta PLCs 2a de 3 faltantes (Turbidez </div></div>
 <div class="gantt-row"><div class="bar c2" style="left:80px;width:76px;" title="Modificar 3 carretes (de 8) entradas/salidas resinas - férula 1.5&quot; lateral">[C2-26a] Modificar 3 carretes (de 8) entradas/salidas resin</div></div>
@@ -699,15 +676,12 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 </tr>
 </tbody></table></div>
 <div class="summary-box">
-<h3>📝 Cambios aplicados en v2 (sobre v1)</h3>
-<div class="item"><span class="icon">🔄</span><strong>C2-33 Empaques flujómetros</strong> → MOVIDA A TBD (gradual con NALCO 1 por 1)</div>
-<div class="item"><span class="icon">✂️</span><strong>C1-15 Bases diferenciales</strong> → DIVIDIDA en C1-15a (Tren 1, HOY) + C1-15b (Tren 2, mañana Jue 7)</div>
-<div class="item"><span class="icon">📝</span><strong>C2-30 Codos R6-R7-R8</strong> → ACTUALIZADA (codos de SALIDA de Resinas, alinear trenes de tubos)</div>
-<div class="item"><span class="icon">🔄</span><strong>C2-5 Abrazaderas tren 2</strong> → MOVIDA A TBD (depende de codos pasivados, tentativo Vie tarde)</div>
-<div class="item"><span class="icon">🆕</span><strong>NEW-1</strong> Pedir pasivado de codos C2-30 + carretes C2-26a → Jue 7</div>
-<div class="item"><span class="icon">🆕</span><strong>NEW-2</strong> Instalar carretes y codos pasivados → Vie 8 ~11 AM</div>
-<div class="item"><span class="icon">✂️</span><strong>C1-11 Visualización sensor nivel</strong> → DIVIDIDA: Parte 1 Jue 7 + Parte 2 Vie 8</div>
-<div class="item"><span class="icon">✂️</span><strong>C1-13 Programación válvulas modulantes</strong> → DIVIDIDA: Parte 1 Jue 7 + Parte 2 Vie 8</div>
+<h3>📝 Cambios v3 (sobre v2)</h3>
+<div class="item"><span class="icon">✅</span><strong>C1-15a</strong> Bases diferenciales Tren 1 → ELIMINADA (terminada)</div>
+<div class="item"><span class="icon">✅</span><strong>C1-5</strong> Fabricación base cerebro turbidez → ELIMINADA (terminada)</div>
+<div class="item"><span class="icon">📅</span><strong>C1-15b</strong> Bases diferenciales Tren 2 → ADELANTADA de Jue 7 a HOY</div>
+<div class="item"><span class="icon">📝</span><strong>C2-36</strong> Reensamblar carretes → ahora solo Tanque 7 (Tanque 6 ya hecho)</div>
+<div class="item"><span class="icon">📝</span><strong>C1-7</strong> Sensor turbidez → ahora solo conexión eléctrica (mecánica ya hecha hoy)</div>
 </div>
 <div class="summary-box">
 <h3>⚠️ TROUBLESHOOTINGS aún pendientes</h3>
@@ -719,13 +693,13 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 </div>
 <div class="footer">
 <strong>📊 Resumen:</strong>
-52 actividades · 
-29 C1 (FTS) · 
+50 actividades · 
+27 C1 (FTS) · 
 23 C2 (Mec/Civil) · 
-42 con fecha · 
+40 con fecha · 
 10 en TBD · 
 6 TS pendientes
 <br><br>
-<em>🔒 Documento INTERNO de FTS · Generado 06/05/2026 23:27 · v2</em>
+<em>🔒 Documento INTERNO de FTS · Generado 07/05/2026 01:02 · v3</em>
 </div>
 </body></html>
