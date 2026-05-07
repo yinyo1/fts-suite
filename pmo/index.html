@@ -115,8 +115,13 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
     <strong>Período:</strong> 6 May → 14 May 2026 (+TBD)
   </div>
 </div>
-<div class="alert-banner">
-<h3><span class="icon-bell">🔔</span> ALERTAS PARA FELIPE</h3>
+<div class="alert-banner" id="alert-banner">
+<button class="alert-toggle" id="alert-toggle" type="button">
+<span class="icon-bell">🔔</span>
+<span id="alert-count-text">2 alertas</span>
+<span class="alert-arrow">▼</span>
+</button>
+<div class="alert-items-container" id="alert-items-container" style="display:none;">
 <div class="alert-item">
 <span class="alert-id">TURNO-VIE</span><strong>Turno apoyo carga resinas C6+C7 (4 pers · 3PM-12AM)</strong><span class="alert-when">Vie 8/05</span>
 <div style="margin-top:4px;color:#2c5282;font-size:11.5px;">🔔 ALERTA FELIPE: turno especial 3:00 PM → 12:00 AM (medianoche), 4 personas. Objetivo principal: carga resina columnas 6 y 7. En tiempos muertos pueden apoyar otras actividades del día. Horario diseñado para evitar overtime.</div>
@@ -126,6 +131,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <div style="margin-top:4px;color:#2c5282;font-size:11.5px;">🔔 ALERTA FELIPE: ESPERANDO LUZ VERDE o HOLD de planta. Calidad debe autorizar la obra civil del fin de semana (riesgo: polvo contamina producción que arranca el dom). Si OK: liberar toda la obra civil del weekend desde TBD. Si HOLD: queda toda en TBD permanente.</div>
 </div>
 </div>
+</div>
 <div class="stats">
 <div class="stat-card"><div class="value">52</div><div class="label">Total actividades</div></div>
 <div class="stat-card urgent"><div class="value">1</div><div class="label">🚨 URGENTE HOY</div></div>
@@ -133,6 +139,12 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <div class="stat-card new"><div class="value">6</div><div class="label">🆕 Nuevas / Movidas</div></div>
 <div class="stat-card split"><div class="value">4</div><div class="label">✂️ Divididas en partes</div></div>
 <div class="stat-card tbd"><div class="value">13</div><div class="label">⏸ TBD</div></div>
+<div class="stat-card filter-card">
+<label class="filter-label">
+<input type="checkbox" id="show-completed">
+<span>Mostrar completadas</span>
+</label>
+</div>
 </div>
 <div class="legend">
 <div class="legend-item"><div class="legend-color c1-inst"></div> C1 (FTS) Instalación</div>
@@ -143,21 +155,23 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <div class="legend-item"><div class="legend-color new"></div> 🆕 Nueva/Movida</div>
 <div class="legend-item"><div class="legend-color split"></div> ✂️ Parte 1 (split)</div>
 <div class="legend-item"><div class="legend-color tbd"></div> ⏸ TBD</div>
+<div class="legend-item"><div class="legend-color" style="background:#107C10"></div> ✅ Completado</div>
 <div class="legend-item"><div class="legend-color alert"></div> 🔔 Alerta Felipe</div>
 </div>
 <div class="section-title">📋 Plan Cronológico Unificado (C1 + C2)</div>
 <div class="gantt-container">
 <div class="gantt-side"><table class="gantt"><thead><tr>
 <th class="col-id">ID</th><th class="col-cuad">Cuadrilla</th><th class="col-tipo">T</th>
-<th class="col-name">Actividad</th><th class="col-fecha">Inicio</th><th class="col-fecha">Fin</th>
+<th class="col-name">Actividad</th><th class="col-pct">%</th><th class="col-fecha">Inicio</th><th class="col-fecha">Fin</th>
 <th class="col-dur">Días</th><th class="col-status">Estado</th>
 </tr></thead><tbody>
-<tr class="day-divider today-row"><td colspan="8">📅 Mié 6/05/2026 (HOY)</td></tr>
+<tr class="day-divider today-row"><td colspan="9">📅 Mié 6/05/2026 (HOY)</td></tr>
 <tr>
 <td class="col-id">C2-16</td>
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Cambio de niples en zona de pulidores</strong><div class="notes urgent">⚠️ EN PARO CON NALCO - URGENTE conseguir niples HOY</div></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Mié 6/05</td>
 <td class="col-fecha">Mié 6/05</td>
 <td class="col-dur">1d</td>
@@ -168,6 +182,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Cambio de 2 tornillos en Brida de 6&quot; en área de UV</strong><div class="notes ">Moni - auditoría el viernes</div></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Mié 6/05</td>
 <td class="col-fecha">Mié 6/05</td>
 <td class="col-dur">1d</td>
@@ -178,6 +193,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Cambio de empaques en zona de UV Brida de 6&quot;</strong></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Mié 6/05</td>
 <td class="col-fecha">Mié 6/05</td>
 <td class="col-dur">1d</td>
@@ -188,6 +204,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Remover válvula mariposa para instalar válvula de alivio de presión</strong></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Mié 6/05</td>
 <td class="col-fecha">Mié 6/05</td>
 <td class="col-dur">1d</td>
@@ -198,17 +215,19 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Reensamblar carretes Tanque Resina 7 (9:00 PM)</strong><div class="notes ">Después saneo Ecolab. Tanque 6 ya hecho.</div></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Mié 6/05</td>
 <td class="col-fecha">Mié 6/05</td>
 <td class="col-dur">1d</td>
 <td class="col-status"></td>
 </tr>
-<tr class="day-divider"><td colspan="8">📅 Jue 7/05/2026</td></tr>
+<tr class="day-divider"><td colspan="9">📅 Jue 7/05/2026</td></tr>
 <tr>
 <td class="col-id">C1-1</td>
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">💻</td>
 <td class="col-name"><strong>Visualización retros válvulas solenoides (FINALIZAR)</strong><div class="notes ">Es talacha, cambiar como se ve en la pantalla</div></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-dur">1d</td>
@@ -219,6 +238,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">💻</td>
 <td class="col-name"><strong>Visualización sensor nivel (PARTE 1)</strong><div class="notes ">Dividida en 2 partes</div></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-dur">1d</td>
@@ -229,6 +249,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">💻</td>
 <td class="col-name"><strong>Programación y atenuación válvulas modulantes filtros resina (PARTE 1)</strong><div class="notes troubleshooting">TROUBLESHOOTING NECESARIO - dividida en 2 partes</div></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-dur">1d</td>
@@ -239,6 +260,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Instalación mecánica bases diferenciales presión - Tren 2</strong><div class="notes ">Movida de HOY a Jue 7: piso mojado en el área, condición insegura.</div></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-dur">1d</td>
@@ -249,6 +271,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">💻</td>
 <td class="col-name"><strong>Probar salidas analógicas y ver cómo reacciona VFDs ABB</strong><div class="notes ">Nueva - deriva de C1-3 ya completado</div></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-dur">1d</td>
@@ -259,6 +282,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Fabricación del empaque para brida de sensor de nivel</strong><div class="notes ">Nueva - deriva de C1-6 ya completado</div></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-dur">1d</td>
@@ -269,6 +293,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Conexión eléctrica sensor turbidez</strong><div class="notes ">Inst mecánica cerebro ya completada el Mié 6</div></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-dur">1d</td>
@@ -279,6 +304,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Instalación y ruteo de cableado de sensor nivel y conexión en PLC</strong></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-dur">1d</td>
@@ -289,6 +315,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Cableado tarjeta PLCs 2a de 3 faltantes (Turbidez + sensor de nivel)</strong></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-dur">1d</td>
@@ -299,6 +326,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Modificar 3 carretes (de 8) entradas/salidas resinas - férula 1.5&quot; lateral</strong><div class="notes ">Igual que válvulas KEOFFIT (Manzanares) - se fabrican y luego se pasivan</div></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-dur">1d</td>
@@ -309,6 +337,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Modificar codos de SALIDA de Resinas R6-R7-R8 (codos abajo después del niple)</strong><div class="notes ">Objetivo: alinear bien los trenes de tubos de las resinas. Falta sacar medida del carretito</div></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-dur">1d</td>
@@ -319,17 +348,19 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Pedir pasivado de codos (C2-30) y carretes (C2-26a)</strong><div class="notes ">Nueva - se piden para que estén pasivados antes del viernes</div></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-dur">1d</td>
 <td class="col-status"><span class="badge badge-new">🆕 Nueva</span></td>
 </tr>
-<tr class="day-divider strong-day"><td colspan="8">📅 Vie 8/05/2026 ⚠️ DÍA FUERTE</td></tr>
+<tr class="day-divider strong-day"><td colspan="9">📅 Vie 8/05/2026 ⚠️ DÍA FUERTE</td></tr>
 <tr>
 <td class="col-id">C1-10</td>
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Cableado tarjeta PLCs 2a (flujómetro principal)</strong></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Vie 8/05</td>
 <td class="col-fecha">Vie 8/05</td>
 <td class="col-dur">1d</td>
@@ -340,6 +371,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">💻</td>
 <td class="col-name"><strong>Visualización sensor nivel (PARTE 2)</strong><div class="notes troubleshooting">TROUBLESHOOTING NECESARIO - continúa de Parte 1</div></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Vie 8/05</td>
 <td class="col-fecha">Vie 8/05</td>
 <td class="col-dur">1d</td>
@@ -350,6 +382,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">💻</td>
 <td class="col-name"><strong>Programación para controlar desde HMI los VFD</strong><div class="notes troubleshooting">TROUBLESHOOTING NECESARIO</div></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Vie 8/05</td>
 <td class="col-fecha">Vie 8/05</td>
 <td class="col-dur">1d</td>
@@ -360,6 +393,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">💻</td>
 <td class="col-name"><strong>Programación y atenuación válvulas modulantes filtros resina (PARTE 2)</strong><div class="notes troubleshooting">TROUBLESHOOTING NECESARIO - continúa de Parte 1 Jue 7</div></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Vie 8/05</td>
 <td class="col-fecha">Vie 8/05</td>
 <td class="col-dur">1d</td>
@@ -370,6 +404,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">💻</td>
 <td class="col-name"><strong>Lógica funcionamiento en base a inputs Panel View (semiautomático)</strong></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Vie 8/05</td>
 <td class="col-fecha">Vie 8/05</td>
 <td class="col-dur">1d</td>
@@ -380,6 +415,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Cambiar anclas oxidadas Tren 1 entre R1-R2 y R3</strong></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Vie 8/05</td>
 <td class="col-fecha">Vie 8/05</td>
 <td class="col-dur">1d</td>
@@ -390,6 +426,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Pintura ángulos soportería área racks (anti-corrosivo gris)</strong></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Vie 8/05</td>
 <td class="col-fecha">Vie 8/05</td>
 <td class="col-dur">1d</td>
@@ -400,6 +437,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Tubo 3&quot; soldado en drenes a trinchera</strong></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Vie 8/05</td>
 <td class="col-fecha">Vie 8/05</td>
 <td class="col-dur">1d</td>
@@ -410,6 +448,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Instalar carretes y codos (pasivados) - aprox 11 AM</strong><div class="notes ">Nueva - llegan en la mañana, antes de la 1 PM. Se instalan los fabricados el jueves</div></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Vie 8/05</td>
 <td class="col-fecha">Vie 8/05</td>
 <td class="col-dur">1d</td>
@@ -420,17 +459,19 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Turno apoyo carga resinas C6+C7 (4 pers · 3PM-12AM)</strong><div class="notes alert">🔔 ALERTA FELIPE: turno especial 3:00 PM → 12:00 AM (medianoche), 4 personas. Objetivo principal: carga resina columnas 6 y 7. En tiempos muertos pueden apoyar otras actividades del día. Horario diseñado para evitar overtime.</div></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Vie 8/05</td>
 <td class="col-fecha">Vie 8/05</td>
 <td class="col-dur">1d</td>
 <td class="col-status"><span class="badge badge-alert">🔔 FELIPE</span></td>
 </tr>
-<tr class="day-divider"><td colspan="8">📅 Sáb 9 - Dom 10/05/2026 (Fin de semana)</td></tr>
+<tr class="day-divider"><td colspan="9">📅 Sáb 9 - Dom 10/05/2026 (Fin de semana)</td></tr>
 <tr>
 <td class="col-id">C1-16</td>
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Rematar cableado eléctrico diferenciales presión</strong></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Sáb 9/05</td>
 <td class="col-fecha">Dom 10/05</td>
 <td class="col-dur">2d</td>
@@ -441,6 +482,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Instalación tubings y accesorios diferenciales presión</strong><div class="notes ">Depende de definición método saneamiento y flusheo</div></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Sáb 9/05</td>
 <td class="col-fecha">Dom 10/05</td>
 <td class="col-dur">2d</td>
@@ -451,6 +493,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Obra civil weekend TENTATIVA (placeholder)</strong><div class="notes alert">🔔 ALERTA FELIPE: una sola línea de obra civil tentativa Sáb-Dom. ESPERANDO LUZ VERDE o HOLD de planta — calidad debe autorizar (riesgo: polvo contamina producción que arranca el dom). Si OK: liberar TODA la obra civil del weekend (trinchera + cemento bombas + PVC + tierras tablero, ver TBD). Si HOLD: queda toda en TBD permanente.</div></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Sáb 9/05</td>
 <td class="col-fecha">Dom 10/05</td>
 <td class="col-dur">2d</td>
@@ -461,17 +504,19 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Punchlist Mónica (validación PowerPoint en piso)</strong><div class="notes ">Validar y ejecutar items del punchlist directamente con Mónica en sitio.</div></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Sáb 9/05</td>
 <td class="col-fecha">Sáb 9/05</td>
 <td class="col-dur">1d</td>
 <td class="col-status"><span class="badge badge-new">🆕 Nueva</span></td>
 </tr>
-<tr class="day-divider"><td colspan="8">📅 Lun 11/05/2026</td></tr>
+<tr class="day-divider"><td colspan="9">📅 Lun 11/05/2026</td></tr>
 <tr>
 <td class="col-id">C1-18</td>
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">💻</td>
 <td class="col-name"><strong>Lógica por demanda de planta (full automático)</strong></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Lun 11/05</td>
 <td class="col-fecha">Lun 11/05</td>
 <td class="col-dur">1d</td>
@@ -482,6 +527,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Atenuación y conexión de diferenciales de presión</strong></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Lun 11/05</td>
 <td class="col-fecha">Lun 11/05</td>
 <td class="col-dur">1d</td>
@@ -492,17 +538,19 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">💻</td>
 <td class="col-name"><strong>Visualización diferenciales presión y conexión final</strong><div class="notes troubleshooting">TROUBLESHOOTING NECESARIO - DEPENDEMOS DE MECÁNICO QUE DEPENDE DE ESTRATEGIA FINAL</div></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Lun 11/05</td>
 <td class="col-fecha">Lun 11/05</td>
 <td class="col-dur">1d</td>
 <td class="col-status"><span class="badge badge-troubleshooting">⚠️ TS pdte</span></td>
 </tr>
-<tr class="day-divider"><td colspan="8">📅 Mar 12/05/2026</td></tr>
+<tr class="day-divider"><td colspan="9">📅 Mar 12/05/2026</td></tr>
 <tr>
 <td class="col-id">C1-21</td>
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">💻</td>
 <td class="col-name"><strong>Lógica por demanda de planta (full automático) - cont.</strong></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Mar 12/05</td>
 <td class="col-fecha">Mar 12/05</td>
 <td class="col-dur">1d</td>
@@ -513,6 +561,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">💻</td>
 <td class="col-name"><strong>Visualización diferenciales presión y conexión final - cont.</strong><div class="notes troubleshooting">TROUBLESHOOTING NECESARIO - depende mecánico/estrategia final</div></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Mar 12/05</td>
 <td class="col-fecha">Mar 12/05</td>
 <td class="col-dur">1d</td>
@@ -523,28 +572,31 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Atenuación y conexión de diferenciales de presión - cont.</strong></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Mar 12/05</td>
 <td class="col-fecha">Mar 12/05</td>
 <td class="col-dur">1d</td>
 <td class="col-status"></td>
 </tr>
-<tr class="day-divider"><td colspan="8">📅 Mié 13/05/2026</td></tr>
+<tr class="day-divider"><td colspan="9">📅 Mié 13/05/2026</td></tr>
 <tr>
 <td class="col-id">C1-24</td>
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">💻</td>
 <td class="col-name"><strong>Envío datos hacia pantalla de planta</strong></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Mié 13/05</td>
 <td class="col-fecha">Mié 13/05</td>
 <td class="col-dur">1d</td>
 <td class="col-status"></td>
 </tr>
-<tr class="day-divider"><td colspan="8">📅 Jue 14/05/2026</td></tr>
+<tr class="day-divider"><td colspan="9">📅 Jue 14/05/2026</td></tr>
 <tr>
 <td class="col-id">C1-25</td>
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">💻</td>
 <td class="col-name"><strong>Envío datos hacia pantalla de planta - cont.</strong></td>
+<td class="col-pct">0</td>
 <td class="col-fecha">Jue 14/05</td>
 <td class="col-fecha">Jue 14/05</td>
 <td class="col-dur">1d</td>
@@ -735,6 +787,9 @@ test del chat AI v2<br>
 2 alerta(s) Felipe
 <br><br>
 <em>🔒 Documento INTERNO de FTS · Generado 07/05/2026 01:02 · v7</em>
+<div class="footer-copyright" style="margin-top:12px;padding-top:12px;border-top:1px solid #e2e8f0;font-size:10px;color:#718096;text-align:center;">
+© 2026 Servicios FTS S.A. de C.V. — Documento interno y confidencial. Todos los derechos reservados.
+</div>
 </div>
 
 <!-- ============================================================ -->
@@ -1029,4 +1084,71 @@ test del chat AI v2<br>
 <!-- END PMO CHAT WIDGET                                            -->
 <!-- ============================================================ -->
 
+
+<!-- ===== Sprint 1A styles (col-pct, badge-completed, alert-toggle, filter, hidden) ===== -->
+<style>
+.col-pct{width:50px;text-align:center;font-size:12px;font-weight:600;color:#4a5568}
+.col-pct.complete{color:#107C10}
+.badge-completed{background:linear-gradient(135deg,#107C10,#0e6b0e);color:#fff}
+.alert-toggle{width:100%;background:#fef3c7;border:2px solid #d69e2e;border-radius:10px;padding:10px 14px;font-size:14px;font-weight:700;color:#92400e;cursor:pointer;display:flex;align-items:center;gap:8px;font-family:inherit}
+.alert-toggle:hover{background:#fde68a}
+.alert-toggle .alert-arrow{margin-left:auto;transition:transform .2s}
+.alert-banner.expanded .alert-toggle .alert-arrow{transform:rotate(180deg)}
+.alert-items-container{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.filter-card{background:#f7fafc;border:1px dashed #cbd5e0}
+.filter-label{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;font-weight:600;color:#4a5568}
+.filter-label input{cursor:pointer}
+tr.hidden-completed{display:none !important}
+.gantt-row.hidden-completed{display:none !important}
+</style>
+
+<!-- ===== Sprint 1A scripts (alert toggle, show-completed filter) ===== -->
+<script>
+(function() {
+  const banner = document.getElementById('alert-banner');
+  const toggle = document.getElementById('alert-toggle');
+  const container = document.getElementById('alert-items-container');
+  if (!banner || !toggle || !container) return;
+  const alertCount = container.querySelectorAll('.alert-item').length;
+  const lbl = document.getElementById('alert-count-text');
+  if (lbl) lbl.textContent = alertCount === 1 ? '1 alerta' : alertCount + ' alertas';
+  const expanded = localStorage.getItem('pmo_alerts_expanded') === 'true';
+  if (expanded) {
+    banner.classList.add('expanded');
+    container.style.display = 'flex';
+  }
+  toggle.addEventListener('click', function() {
+    const isExpanded = banner.classList.toggle('expanded');
+    container.style.display = isExpanded ? 'flex' : 'none';
+    localStorage.setItem('pmo_alerts_expanded', String(isExpanded));
+  });
+})();
+(function() {
+  const checkbox = document.getElementById('show-completed');
+  if (!checkbox) return;
+  function applyFilter(show) {
+    document.querySelectorAll('tr').forEach(function(tr) {
+      const badge = tr.querySelector('.badge-completed');
+      if (badge) {
+        if (show) tr.classList.remove('hidden-completed');
+        else tr.classList.add('hidden-completed');
+      }
+    });
+    document.querySelectorAll('.bar.completed').forEach(function(bar) {
+      const row = bar.closest('.gantt-row');
+      if (row) {
+        if (show) row.classList.remove('hidden-completed');
+        else row.classList.add('hidden-completed');
+      }
+    });
+  }
+  const showCompleted = localStorage.getItem('pmo_show_completed') === 'true';
+  checkbox.checked = showCompleted;
+  applyFilter(showCompleted);
+  checkbox.addEventListener('change', function() {
+    applyFilter(checkbox.checked);
+    localStorage.setItem('pmo_show_completed', String(checkbox.checked));
+  });
+})();
+</script>
 </body></html>
