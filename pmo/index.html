@@ -1560,9 +1560,64 @@ tr.hidden-completed{display:none !important}
 })();
 </script>
 
-<!-- ===== Sprint 3B: Edit row button + inline pct editing ===== -->
+<!-- ===== Sprint 3B + 4: Edit row + inline pct + endpoint directo ===== -->
 <script>
 (function() {
+  // === Sprint 4: dispatchDirectOp helper (op determinística sin Claude API) ===
+  async function dispatchDirectOp(op, summaryHint) {
+    const DIRECT_URL = 'https://primary-production-5c3c.up.railway.app/webhook/pmo-direct-op';
+    const SECRET = '2023971e671e3934cd87bd1c94f67ee08e733153ccaa62c59a9b882ca7ec3ec5';
+    const ts = new Date().toISOString();
+    const session = (typeof FTSAuth !== 'undefined' && FTSAuth.getSession) ? FTSAuth.getSession() : {};
+    const userId = String(session.userId || session.username || 'unknown');
+    const dataToSign = userId + ts + JSON.stringify(op);
+    const enc = new TextEncoder();
+    const cryptoKey = await crypto.subtle.importKey('raw', enc.encode(SECRET), {name:'HMAC', hash:'SHA-256'}, false, ['sign']);
+    const sigBuf = await crypto.subtle.sign('HMAC', cryptoKey, enc.encode(dataToSign));
+    const sigHex = Array.from(new Uint8Array(sigBuf)).map(b => b.toString(16).padStart(2,'0')).join('');
+
+    const statusEl = document.getElementById('pmo-chat-status');
+    if (statusEl) {
+      statusEl.className = 'pmo-chat-status applying';
+      statusEl.textContent = 'Aplicando ' + (summaryHint || op.type) + '...';
+    }
+    try {
+      const resp = await fetch(DIRECT_URL, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({op: op, userId: userId, timestamp: ts, signature: sigHex})
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) {
+        if (statusEl) {
+          statusEl.className = 'pmo-chat-status error';
+          statusEl.textContent = '❌ ' + (data.code || 'Error') + ': ' + (data.msg || 'fallo');
+        }
+        return {ok: false, error: data};
+      }
+      let secs = data.deploy_eta_seconds || 60;
+      const tick = setInterval(() => {
+        secs--;
+        if (secs > 0 && statusEl) {
+          statusEl.className = 'pmo-chat-status applying';
+          statusEl.textContent = 'Deploy en ' + secs + 's · aprox, puedes refrescar antes';
+        } else if (statusEl) {
+          clearInterval(tick);
+          statusEl.className = 'pmo-chat-status success';
+          statusEl.innerHTML = '✅ ' + data.summary + ' <span class="pmo-chat-tokens">direct · 0 tokens</span>';
+        }
+      }, 1000);
+      return {ok: true, data: data};
+    } catch (err) {
+      if (statusEl) {
+        statusEl.className = 'pmo-chat-status error';
+        statusEl.textContent = '❌ Error de red: ' + err.message;
+      }
+      return {ok: false, error: err};
+    }
+  }
+  window.dispatchDirectOp = dispatchDirectOp;
+
   function sendToChat(message) {
     const chatPanel = document.getElementById('pmo-chat-panel');
     const chatInput = document.getElementById('pmo-chat-input');
@@ -1659,24 +1714,27 @@ tr.hidden-completed{display:none !important}
       document.getElementById('me-name-err').classList.add('show');
       return;
     }
-    const statusMap = {
-      '': 'sin status especial',
-      'urgent': 'urgente HOY',
-      'ts': 'troubleshooting',
-      'new': 'nueva/movida',
-      'alert': 'alerta Felipe',
-      'completed': 'completado'
-    };
-    let message = 'Modifica la actividad ' + id + ' con los siguientes cambios:\n';
-    message += '- Descripción: "' + name + '"\n';
-    message += '- % Avance: ' + pct + '\n';
-    message += '- Status: ' + (statusMap[status] || 'sin status especial') + '\n';
-    if (notas) message += '- Notas: ' + notas + '\n';
-    if (pct >= 100 && status !== 'completed') {
-      message += '\nNota: pct=100 implica auto-promote a status completado.';
+    // Open chat panel para mostrar status
+    const chatFab = document.getElementById('pmo-chat-fab');
+    const chatPanel = document.getElementById('pmo-chat-panel');
+    if (chatPanel && !chatPanel.classList.contains('show') && chatFab) {
+      chatFab.click();
     }
     closeModal('modal-edit-activity-overlay');
-    sendToChat(message);
+    // Sprint 4: aplicar 4 ops directas en serie (descripción, %, status, notas)
+    (async function() {
+      const ops = [
+        {type: 'update_description', id: id, value: name},
+        {type: 'update_pct', id: id, value: pct},
+        {type: 'update_status', id: id, value: status},
+        {type: 'update_notes', id: id, value: notas}
+      ];
+      for (const op of ops) {
+        const r = await window.dispatchDirectOp(op, op.type.replace('update_', ''));
+        if (!r.ok) break;
+        await new Promise(rs => setTimeout(rs, 500));
+      }
+    })();
   });
 
   // Inline % editing
@@ -1707,9 +1765,13 @@ tr.hidden-completed{display:none !important}
       }
       cell.classList.add('saving');
       cell.textContent = newVal;
-      const message = 'Cambia el % de avance de ' + id + ' a ' + newVal +
-        (newVal >= 100 ? ' (auto-promote a status completado)' : '') + '.';
-      sendToChat(message);
+      // Sprint 4: usar endpoint directo (1-2s) en vez de chat IA (~10s)
+      const chatFab = document.getElementById('pmo-chat-fab');
+      const chatPanel = document.getElementById('pmo-chat-panel');
+      if (chatPanel && !chatPanel.classList.contains('show') && chatFab) {
+        chatFab.click();
+      }
+      window.dispatchDirectOp({type: 'update_pct', id: id, value: newVal}, newVal + '% en ' + id);
       setTimeout(function() { cell.classList.remove('saving'); }, 5000);
     }
     function cancel() {
