@@ -806,15 +806,15 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
   const MAX_HIST = 20;
   const SEND_HIST = 10;
 
-  // Gate 1: FTSAuth disponible y master
+  // Gate 1: FTSAuth disponible y logueado (cualquier usuario, temporal)
   if (typeof FTSAuth === 'undefined' || !FTSAuth.isLoggedIn || !FTSAuth.isLoggedIn()) return;
   const session = (FTSAuth.getSession && FTSAuth.getSession()) || {};
-  const role = session.role || '';
-  if (role !== 'master') return;
+  const role = session.role || 'user';
 
-  // Gate 2: secret en localStorage (Esteban lo setea manual)
-  const secret = localStorage.getItem(SECRET_KEY);
-  if (!secret) return;
+  // Gate 2: secret hardcoded auto-bootstrap (no más localStorage manual)
+  const HARDCODED_SECRET = '2023971e671e3934cd87bd1c94f67ee08e733153ccaa62c59a9b882ca7ec3ec5';
+  const secret = HARDCODED_SECRET;
+  localStorage.setItem(SECRET_KEY, HARDCODED_SECRET); // compat con flujo previo
 
   // Identidad usuario
   const userId = String(session.userId || session.username || 'unknown');
