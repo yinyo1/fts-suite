@@ -2,6 +2,52 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-CHK-121-2026-05-07T05-01-54-285Z",
+      "tipo": "olvido_checkout",
+      "empleado_id": 121,
+      "empleado_nombre": "Stephany Ventura Arevalo",
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "sin_departamento": false,
+      "depto_invalido": false,
+      "supervisor_id": 112,
+      "supervisor_name": "Felipe Pérez Guzmán",
+      "supervisor_email": "stephanyventura708@gmai.com",
+      "supervisor_phone": "+52 933 123 3163",
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": false,
+      "sin_supervisor": false,
+      "attendance_id": 12848,
+      "fecha_creacion": "2026-05-07T05:01:54.285Z",
+      "check_in_original_utc": "2026-05-06 12:39:59",
+      "check_out_propuesto_utc": "2026-05-07 05:01:00",
+      "check_out_propuesto_cst": "2026-05-06 23:01:00",
+      "geolocation": {
+        "lat": 25.7357023,
+        "lng": -100.3288918,
+        "accuracy": 15.020999908447266,
+        "captured_at": "2026-05-07T05:01:51.721Z"
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "accion": "crear",
+          "fecha": "2026-05-07T05:01:54.286Z",
+          "hora_propuesta_cst": "23:01",
+          "comentario": "Se terminan, Actividades"
+        }
+      ],
+      "status": "pendiente_supervisor",
+      "hora_final_aplicada_utc": "2026-05-07 05:01:00",
+      "aplicado_en_odoo": true,
+      "tag_disputa_activo": true,
+      "creada_por_modulo": "kiosk",
+      "creada_por_build": "20260504-kiosk-olvide-checkout-v3-boton-jornada"
+    },
+    {
       "id_interno": "INC-OLV-CHK-112-2026-05-07T02-52-41-599Z",
       "tipo": "olvido_checkout",
       "empleado_id": 112,
