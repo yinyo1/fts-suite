@@ -738,4 +738,297 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <br><br>
 <em>🔒 Documento INTERNO de FTS · Generado 07/05/2026 01:02 · v6</em>
 </div>
+
+<!-- ============================================================ -->
+<!-- PMO CHAT WIDGET — Fase 1 (texto, master only, hidden gate)    -->
+<!-- Webhook: https://primary-production-5c3c.up.railway.app/webhook/pmo-chat -->
+<!-- ============================================================ -->
+<style>
+#pmo-chat-fab{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:#1a365d;color:#fff;border:none;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.25);font-size:24px;display:none;align-items:center;justify-content:center;z-index:9998;transition:transform .15s}
+#pmo-chat-fab:hover{transform:scale(1.08)}
+#pmo-chat-fab.show{display:flex}
+#pmo-chat-panel{position:fixed;bottom:96px;right:24px;width:400px;max-width:calc(100vw - 32px);height:560px;max-height:calc(100vh - 120px);background:#fff;border-radius:14px;box-shadow:0 12px 32px rgba(0,0,0,.18);display:none;flex-direction:column;overflow:hidden;z-index:9999;font-family:'Segoe UI',Tahoma,Arial,sans-serif}
+#pmo-chat-panel.show{display:flex;animation:pmoChatSlide .2s ease-out}
+@keyframes pmoChatSlide{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.pmo-chat-header{background:linear-gradient(135deg,#1a365d,#2c5282);color:#fff;padding:14px 18px;display:flex;align-items:center;justify-content:space-between}
+.pmo-chat-header h4{font-size:15px;font-weight:700;margin:0}
+.pmo-chat-header .pmo-sub{font-size:11px;opacity:.85;margin-top:2px}
+.pmo-chat-close{background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:0 6px;opacity:.85;line-height:1}
+.pmo-chat-close:hover{opacity:1}
+#pmo-chat-messages{flex:1;overflow-y:auto;padding:14px;background:#f7fafc;display:flex;flex-direction:column;gap:10px}
+.pmo-chat-msg{max-width:85%;padding:9px 13px;border-radius:12px;font-size:13px;line-height:1.45;word-wrap:break-word;white-space:pre-wrap}
+.pmo-chat-msg.user{align-self:flex-end;background:#1a365d;color:#fff;border-bottom-right-radius:4px}
+.pmo-chat-msg.assistant{align-self:flex-start;background:#fff;color:#1a202c;border:1px solid #e2e8f0;border-bottom-left-radius:4px}
+.pmo-chat-msg.system{align-self:center;background:#fef3c7;color:#92400e;font-size:11.5px;font-style:italic;padding:6px 12px;border-radius:10px}
+.pmo-chat-msg .pmo-meta{display:block;font-size:10px;opacity:.7;margin-top:4px}
+.pmo-chat-msg .pmo-action-link{display:inline-block;margin-top:6px;padding:3px 10px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:8px;color:#fff;text-decoration:none;font-size:11px;font-weight:600}
+.pmo-chat-msg.assistant .pmo-action-link{background:#edf2f7;border-color:#cbd5e0;color:#1a365d}
+#pmo-chat-status{padding:6px 14px;font-size:11px;color:#718096;background:#fff;border-top:1px solid #e2e8f0;min-height:22px}
+#pmo-chat-status.thinking{color:#2c5282}
+#pmo-chat-status.applying{color:#d69e2e}
+#pmo-chat-status.success{color:#107C10}
+#pmo-chat-status.error{color:#D13438;font-weight:600}
+.pmo-chat-input-area{display:flex;gap:8px;padding:10px;border-top:1px solid #e2e8f0;background:#fff;align-items:flex-end}
+#pmo-chat-input{flex:1;border:1px solid #cbd5e0;border-radius:10px;padding:10px 12px;font-size:13px;font-family:inherit;resize:none;min-height:40px;max-height:120px;outline:none}
+#pmo-chat-input:focus{border-color:#1a365d}
+#pmo-chat-input:disabled{background:#f7fafc;cursor:not-allowed}
+#pmo-chat-send{background:#1a365d;color:#fff;border:none;border-radius:10px;width:40px;height:40px;font-size:18px;cursor:pointer;flex-shrink:0;transition:opacity .15s}
+#pmo-chat-send:hover{opacity:.85}
+#pmo-chat-send:disabled{opacity:.4;cursor:not-allowed}
+@media(max-width:768px){#pmo-chat-panel{bottom:0;right:0;left:0;width:100%;height:100vh;max-height:100vh;border-radius:0}#pmo-chat-fab{bottom:16px;right:16px}}
+</style>
+
+<button id="pmo-chat-fab" type="button" title="Asistente PMO" aria-label="Abrir chat PMO">💬</button>
+
+<div id="pmo-chat-panel" role="dialog" aria-label="Chat asistente PMO">
+  <div class="pmo-chat-header">
+    <div>
+      <h4>🤖 Asistente PMO</h4>
+      <div class="pmo-sub">Plan NALCO Topo Chico · cambios por chat</div>
+    </div>
+    <button class="pmo-chat-close" type="button" aria-label="Cerrar chat">×</button>
+  </div>
+  <div id="pmo-chat-messages"></div>
+  <div id="pmo-chat-status"></div>
+  <div class="pmo-chat-input-area">
+    <textarea id="pmo-chat-input" rows="1" placeholder="Pide un cambio… (Enter para enviar, Shift+Enter línea nueva)" maxlength="2000" disabled></textarea>
+    <button id="pmo-chat-send" type="button" disabled aria-label="Enviar">➤</button>
+  </div>
+</div>
+
+<script>
+(function initPMOChat(){
+  'use strict';
+  const WEBHOOK_URL = 'https://primary-production-5c3c.up.railway.app/webhook/pmo-chat';
+  const SECRET_KEY = 'PMO_CHAT_SECRET';
+  const HIST_PREFIX = 'pmo_chat_history_';
+  const MAX_HIST = 20;
+  const SEND_HIST = 10;
+
+  // Gate 1: FTSAuth disponible y master
+  if (typeof FTSAuth === 'undefined' || !FTSAuth.isLoggedIn || !FTSAuth.isLoggedIn()) return;
+  const session = (FTSAuth.getSession && FTSAuth.getSession()) || {};
+  const role = session.role || '';
+  if (role !== 'master') return;
+
+  // Gate 2: secret en localStorage (Esteban lo setea manual)
+  const secret = localStorage.getItem(SECRET_KEY);
+  if (!secret) return;
+
+  // Identidad usuario
+  const userId = String(session.userId || session.username || 'unknown');
+  const userName = session.nombre || session.username || userId;
+  const histKey = HIST_PREFIX + userId;
+
+  // Cargar history
+  let history = [];
+  try { history = JSON.parse(localStorage.getItem(histKey) || '[]'); }
+  catch(e){ history = []; }
+  if (!Array.isArray(history)) history = [];
+
+  // Refs DOM
+  const fab = document.getElementById('pmo-chat-fab');
+  const panel = document.getElementById('pmo-chat-panel');
+  const closeBtn = panel.querySelector('.pmo-chat-close');
+  const messagesEl = document.getElementById('pmo-chat-messages');
+  const statusEl = document.getElementById('pmo-chat-status');
+  const inputEl = document.getElementById('pmo-chat-input');
+  const sendBtn = document.getElementById('pmo-chat-send');
+
+  // Mostrar FAB
+  fab.classList.add('show');
+
+  let busy = false;
+
+  function setStatus(text, kind){
+    statusEl.textContent = text || '';
+    statusEl.className = kind || '';
+  }
+
+  function setBusy(b){
+    busy = b;
+    inputEl.disabled = b;
+    sendBtn.disabled = b;
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function renderMessage(m){
+    const div = document.createElement('div');
+    div.className = 'pmo-chat-msg ' + m.role;
+    div.innerHTML = escapeHtml(m.content);
+    if (m.meta) {
+      const meta = document.createElement('span');
+      meta.className = 'pmo-meta';
+      meta.textContent = m.meta;
+      div.appendChild(meta);
+    }
+    if (m.action_link) {
+      const a = document.createElement('a');
+      a.className = 'pmo-action-link';
+      a.href = m.action_link.url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = m.action_link.label;
+      div.appendChild(a);
+    }
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function renderHistory(){
+    messagesEl.innerHTML = '';
+    if (history.length === 0) {
+      const intro = document.createElement('div');
+      intro.className = 'pmo-chat-msg system';
+      intro.textContent = 'Hola ' + userName + '. Pide cambios al plan NALCO en lenguaje natural. Cada cambio aprobado genera un commit y deploy ~95s después.';
+      messagesEl.appendChild(intro);
+    } else {
+      history.forEach(renderMessage);
+    }
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function persistHistory(){
+    try {
+      const trimmed = history.slice(-MAX_HIST);
+      localStorage.setItem(histKey, JSON.stringify(trimmed));
+      history = trimmed;
+    } catch(e){ /* localStorage full or disabled */ }
+  }
+
+  async function signRequest(timestamp, payload){
+    const enc = new TextEncoder();
+    const keyData = enc.encode(secret);
+    const cryptoKey = await crypto.subtle.importKey('raw', keyData, {name:'HMAC', hash:'SHA-256'}, false, ['sign']);
+    const sig = await crypto.subtle.sign('HMAC', cryptoKey, enc.encode(timestamp + JSON.stringify(payload)));
+    return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+
+  async function send(){
+    if (busy) return;
+    const msg = inputEl.value.trim();
+    if (!msg) return;
+
+    inputEl.value = '';
+    autoresize();
+
+    history.push({role:'user', content: msg});
+    renderMessage({role:'user', content: msg});
+    persistHistory();
+
+    setBusy(true);
+    setStatus('Pensando…', 'thinking');
+
+    const timestamp = new Date().toISOString();
+    const sigPayload = { message: msg, userId };
+    let signature;
+    try { signature = await signRequest(timestamp, sigPayload); }
+    catch(e){
+      setStatus('⚠️ Error firmando request: ' + e.message, 'error');
+      setBusy(false);
+      return;
+    }
+
+    const requestBody = {
+      message: msg,
+      userId,
+      timestamp,
+      signature,
+      history: history.slice(-(SEND_HIST+1), -1).map(h => ({role: h.role, content: h.content}))
+    };
+
+    let resp, data;
+    try {
+      resp = await fetch(WEBHOOK_URL, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(requestBody)
+      });
+    } catch(e){
+      setStatus('⚠️ No se pudo conectar al backend: ' + e.message, 'error');
+      addAssistant('Error de red: ' + e.message);
+      setBusy(false);
+      return;
+    }
+
+    try { data = await resp.json(); }
+    catch(e){ data = {ok:false, code:'BAD_RESPONSE', message:'Respuesta no es JSON'}; }
+
+    if (!data.ok) {
+      setStatus('⚠️ ' + (data.code || 'ERROR'), 'error');
+      addAssistant('No se pudo aplicar: ' + (data.message || data.code || 'error desconocido'));
+      setBusy(false);
+      return;
+    }
+
+    if (data.no_commit) {
+      setStatus(data.kind === 'clarify' ? '❓ Clarificación' : '⛔ Rechazado', '');
+      addAssistant(data.user_message || '(sin mensaje)');
+      setBusy(false);
+      return;
+    }
+
+    // Success: commit hecho
+    setStatus('Aplicando cambio…', 'applying');
+    addAssistant(
+      '✅ ' + (data.summary || 'cambios aplicados') +
+      (data.version_bump ? ' (' + data.version_bump + ')' : '') +
+      '\n\nDeploy en ~95s. Puedes refrescar después.',
+      data.commit_url ? {url: data.commit_url, label: 'Ver commit en GitHub'} : null
+    );
+
+    let secs = data.deploy_eta_seconds || 95;
+    const tick = setInterval(()=>{
+      secs--;
+      if (secs > 0) setStatus('Deploy en ' + secs + 's…', 'applying');
+      else { clearInterval(tick); setStatus('✅ Listo. Refresca la página para ver cambios.', 'success'); }
+    }, 1000);
+
+    setBusy(false);
+  }
+
+  function addAssistant(content, action_link){
+    const m = {role:'assistant', content, meta: new Date().toLocaleTimeString()};
+    if (action_link) m.action_link = action_link;
+    history.push(m);
+    renderMessage(m);
+    persistHistory();
+  }
+
+  function open(){
+    panel.classList.add('show');
+    setTimeout(()=> inputEl.focus(), 100);
+  }
+  function close(){ panel.classList.remove('show'); }
+
+  function autoresize(){
+    inputEl.style.height = 'auto';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+  }
+
+  // Eventos
+  fab.addEventListener('click', ()=> panel.classList.contains('show') ? close() : open());
+  closeBtn.addEventListener('click', close);
+  sendBtn.addEventListener('click', send);
+  inputEl.addEventListener('input', autoresize);
+  inputEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); send(); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && panel.classList.contains('show')) close();
+  });
+
+  // Habilitar input
+  inputEl.disabled = false;
+  sendBtn.disabled = false;
+  renderHistory();
+})();
+</script>
+<!-- ============================================================ -->
+<!-- END PMO CHAT WIDGET                                            -->
+<!-- ============================================================ -->
+
 </body></html>
