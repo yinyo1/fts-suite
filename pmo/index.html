@@ -149,6 +149,12 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <div class="action-buttons">
 <button type="button" class="btn-action" id="btn-add-day">📅 Agregar día</button>
 <button type="button" class="btn-action btn-secondary" id="btn-add-activity">➕ Agregar actividad</button>
+<div class="filter-card">
+<label class="filter-label">
+<input type="checkbox" id="show-completed-2">
+<span>Mostrar completadas</span>
+</label>
+</div>
 </div>
 <div class="legend">
 <div class="legend-item"><div class="legend-color c1-inst"></div> C1 (FTS) Instalación</div>
@@ -833,6 +839,12 @@ test del chat AI v2<br>
 #pmo-chat-send:hover{opacity:.85}
 #pmo-chat-send:disabled{opacity:.4;cursor:not-allowed}
 @media(max-width:768px){#pmo-chat-panel{bottom:0;right:0;left:0;width:100%;height:100vh;max-height:100vh;border-radius:0}#pmo-chat-fab{bottom:16px;right:16px}}
+/* Sprint 2: spinner + shimmer animations for chat status */
+@keyframes pmo-spin { to { transform: rotate(360deg); } }
+@keyframes pmo-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+#pmo-chat-status.thinking, #pmo-chat-status.applying { background: linear-gradient(90deg, currentColor 0%, rgba(255,255,255,0.6) 50%, currentColor 100%); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: pmo-shimmer 2s linear infinite; display: inline-flex; align-items: center; gap: 6px; }
+#pmo-chat-status.thinking::before, #pmo-chat-status.applying::before { content: ''; display: inline-block; width: 11px; height: 11px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: pmo-spin 0.7s linear infinite; -webkit-text-fill-color: currentColor; flex-shrink: 0; }
+.pmo-chat-tokens { display: inline-block; background: #e2e8f0; color: #475569; font-size: 10px; padding: 2px 6px; border-radius: 10px; margin-left: 6px; font-weight: 600; }
 </style>
 
 <button id="pmo-chat-fab" type="button" title="Asistente PMO" aria-label="Abrir chat PMO">💬</button>
@@ -1037,11 +1049,23 @@ test del chat AI v2<br>
       data.commit_url ? {url: data.commit_url, label: 'Ver commit en GitHub'} : null
     );
 
-    let secs = data.deploy_eta_seconds || 95;
+    let secs = 60; // Sprint 2: bajamos de 95 a 60s
+    const usage = data.usage || {};
+    const totalTokens = (usage.input_tokens || 0) + (usage.output_tokens || 0);
+    const tokensSpan = totalTokens > 0 ? '<span class="pmo-chat-tokens">' + totalTokens + ' tokens</span>' : '';
     const tick = setInterval(()=>{
       secs--;
-      if (secs > 0) setStatus('Deploy en ' + secs + 's…', 'applying');
-      else { clearInterval(tick); setStatus('✅ Listo. Refresca la página para ver cambios.', 'success'); }
+      if (secs > 0) setStatus('Deploy en ' + secs + 's · aprox, puedes refrescar antes', 'applying');
+      else {
+        clearInterval(tick);
+        const statusEl = document.getElementById('pmo-chat-status');
+        if (statusEl) {
+          statusEl.className = 'pmo-chat-status success';
+          statusEl.innerHTML = '✅ Listo. Refresca la página para ver cambios.' + tokensSpan;
+        } else {
+          setStatus('✅ Listo. Refresca la página para ver cambios.', 'success');
+        }
+      }
     }, 1000);
 
     setBusy(false);
@@ -1110,6 +1134,11 @@ tr.hidden-completed{display:none !important}
 .btn-action:disabled{background:#94a3b8;cursor:not-allowed}
 .btn-action.btn-secondary{background:#475569}
 .btn-action.btn-secondary:hover{background:#334155}
+/* Sprint 2: UI cleanup — hide legend and numeric stat-cards */
+.legend { display: none !important; }
+.stats { display: none !important; }
+.action-buttons .filter-card { background: #f7fafc; border: 1px dashed #cbd5e0; padding: 8px 14px; border-radius: 6px; margin-left: auto; }
+.action-buttons .filter-card .filter-label { font-size: 13px; }
 </style>
 
 <!-- ===== Sprint 1A scripts (alert toggle, show-completed filter) ===== -->
@@ -1158,6 +1187,29 @@ tr.hidden-completed{display:none !important}
   checkbox.addEventListener('change', function() {
     applyFilter(checkbox.checked);
     localStorage.setItem('pmo_show_completed', String(checkbox.checked));
+  });
+})();
+(function() {
+  // Sprint 2: sync entre show-completed (oculto en stats) y show-completed-2 (visible en action-buttons)
+  const cbOld = document.getElementById('show-completed');
+  const cbNew = document.getElementById('show-completed-2');
+  if (!cbNew) return;
+  const showCompleted = localStorage.getItem('pmo_show_completed') === 'true';
+  cbNew.checked = showCompleted;
+  cbNew.addEventListener('change', function() {
+    if (cbOld) {
+      cbOld.checked = cbNew.checked;
+      cbOld.dispatchEvent(new Event('change'));
+    } else {
+      localStorage.setItem('pmo_show_completed', String(cbNew.checked));
+      document.querySelectorAll('tr').forEach(function(tr) {
+        const badge = tr.querySelector('.badge-completed');
+        if (badge) {
+          if (cbNew.checked) tr.classList.remove('hidden-completed');
+          else tr.classList.add('hidden-completed');
+        }
+      });
+    }
   });
 })();
 </script>
