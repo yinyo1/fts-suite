@@ -1,5 +1,5 @@
 <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
-<title>Cronograma Interno FTS v5 - Panel View NALCO Topo Chico</title>
+<title>Cronograma Interno FTS v6 - Sistema de Filtros NALCO Topo Chico</title>
 <script src="../shared/auth-suite.js"></script>
 <script>
   if (typeof FTSAuth === 'undefined' || !FTSAuth.isLoggedIn || !FTSAuth.isLoggedIn()) {
@@ -107,7 +107,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 .bar.alert{background:linear-gradient(to bottom,#2c5282,#1a365d)!important;color:#fef3c7!important;border:2px solid #fef3c7;box-shadow:0 0 8px rgba(254,243,199,.6)}
 </style></head><body>
 <div class="header">
-  <h1><span class="badge-internal">INTERNO FTS</span><span class="badge-version">v5</span>📊 Plan Panel View — NALCO Topo Chico</h1>
+  <h1><span class="badge-internal">INTERNO FTS</span><span class="badge-version">v6</span>📊 Plan Sistema de Filtros — NALCO Topo Chico</h1>
   <div class="meta">
     <strong>Cliente:</strong> NALCO (Topo Chico) &nbsp;•&nbsp;
     <strong>Autor:</strong> Esteban De La Cruz Calderón – FTS &nbsp;•&nbsp;
@@ -121,14 +121,18 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <span class="alert-id">TURNO-VIE</span><strong>Turno apoyo carga resinas C6+C7 (4 pers · 3PM-12AM)</strong><span class="alert-when">Vie 8/05</span>
 <div style="margin-top:4px;color:#2c5282;font-size:11.5px;">🔔 ALERTA FELIPE: turno especial 3:00 PM → 12:00 AM (medianoche), 4 personas. Objetivo principal: carga resina columnas 6 y 7. En tiempos muertos pueden apoyar otras actividades del día. Horario diseñado para evitar overtime.</div>
 </div>
+<div class="alert-item">
+<span class="alert-id">C2-17</span><strong>Obra civil weekend TENTATIVA (placeholder)</strong><span class="alert-when">Sáb-Dom</span>
+<div style="margin-top:4px;color:#2c5282;font-size:11.5px;">🔔 ALERTA FELIPE: ESPERANDO LUZ VERDE o HOLD de planta. Calidad debe autorizar la obra civil del fin de semana (riesgo: polvo contamina producción que arranca el dom). Si OK: liberar toda la obra civil del weekend desde TBD. Si HOLD: queda toda en TBD permanente.</div>
+</div>
 </div>
 <div class="stats">
-<div class="stat-card"><div class="value">50</div><div class="label">Total actividades</div></div>
+<div class="stat-card"><div class="value">52</div><div class="label">Total actividades</div></div>
 <div class="stat-card urgent"><div class="value">1</div><div class="label">🚨 URGENTE HOY</div></div>
 <div class="stat-card troubleshooting"><div class="value">6</div><div class="label">⚠️ Troubleshooting pdte</div></div>
-<div class="stat-card new"><div class="value">5</div><div class="label">🆕 Nuevas / Movidas</div></div>
+<div class="stat-card new"><div class="value">6</div><div class="label">🆕 Nuevas / Movidas</div></div>
 <div class="stat-card split"><div class="value">4</div><div class="label">✂️ Divididas en partes</div></div>
-<div class="stat-card tbd"><div class="value">10</div><div class="label">⏸ TBD</div></div>
+<div class="stat-card tbd"><div class="value">13</div><div class="label">⏸ TBD</div></div>
 </div>
 <div class="legend">
 <div class="legend-item"><div class="legend-color c1-inst"></div> C1 (FTS) Instalación</div>
@@ -446,41 +450,21 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-id">C2-17</td>
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
-<td class="col-name"><strong>Terminar obra civil de Trinchera</strong><div class="notes ">Sábado todo el día OK. DOMINGO NO disponible - planta inicia producción. Tentativo: si pueden adelantar HOY hasta máx 2 PM (después llenan la trinchera).</div></td>
+<td class="col-name"><strong>Obra civil weekend TENTATIVA (placeholder)</strong><div class="notes alert">🔔 ALERTA FELIPE: una sola línea de obra civil tentativa Sáb-Dom. ESPERANDO LUZ VERDE o HOLD de planta — calidad debe autorizar (riesgo: polvo contamina producción que arranca el dom). Si OK: liberar TODA la obra civil del weekend (trinchera + cemento bombas + PVC + tierras tablero, ver TBD). Si HOLD: queda toda en TBD permanente.</div></td>
+<td class="col-fecha">Sáb 9/05</td>
+<td class="col-fecha">Dom 10/05</td>
+<td class="col-dur">2d</td>
+<td class="col-status"><span class="badge badge-alert">🔔 FELIPE</span></td>
+</tr>
+<tr>
+<td class="col-id">PUNCHLIST-SAB</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Punchlist Mónica (validación PowerPoint en piso)</strong><div class="notes ">Validar y ejecutar items del punchlist directamente con Mónica en sitio.</div></td>
 <td class="col-fecha">Sáb 9/05</td>
 <td class="col-fecha">Sáb 9/05</td>
 <td class="col-dur">1d</td>
-<td class="col-status"></td>
-</tr>
-<tr>
-<td class="col-id">C2-19</td>
-<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
-<td class="col-tipo">🔧</td>
-<td class="col-name"><strong>Emparejar obra civil cemento debajo de bases de bombas</strong></td>
-<td class="col-fecha">Sáb 9/05</td>
-<td class="col-fecha">Dom 10/05</td>
-<td class="col-dur">2d</td>
-<td class="col-status"></td>
-</tr>
-<tr>
-<td class="col-id">C2-37</td>
-<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
-<td class="col-tipo">🔧</td>
-<td class="col-name"><strong>Meter PVC 6&quot; para conectar trinchera→registro y tapar concreto</strong></td>
-<td class="col-fecha">Sáb 9/05</td>
-<td class="col-fecha">Dom 10/05</td>
-<td class="col-dur">2d</td>
-<td class="col-status"></td>
-</tr>
-<tr>
-<td class="col-id">C2-38</td>
-<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
-<td class="col-tipo">🔧</td>
-<td class="col-name"><strong>Obra civil trayectoria tierras tablero altura Tren 2 + tapar hueco</strong></td>
-<td class="col-fecha">Sáb 9/05</td>
-<td class="col-fecha">Dom 10/05</td>
-<td class="col-dur">2d</td>
-<td class="col-status"></td>
+<td class="col-status"><span class="badge badge-new">🆕 Nueva</span></td>
 </tr>
 <tr class="day-divider"><td colspan="8">📅 Lun 11/05/2026</td></tr>
 <tr>
@@ -614,10 +598,8 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <div class="gantt-row" style="background:#f0f4f8;border-bottom:2px solid #4a5568;"></div>
 <div class="gantt-row"><div class="bar c1-inst" style="left:240px;width:156px;" title="Rematar cableado eléctrico diferenciales presión">[C1-16] Rematar cableado eléctrico diferenciales presión</div></div>
 <div class="gantt-row"><div class="bar c1-inst" style="left:240px;width:156px;" title="Instalación tubings y accesorios diferenciales presión">[C1-17] Instalación tubings y accesorios diferenciales pre</div></div>
-<div class="gantt-row"><div class="bar c2" style="left:240px;width:76px;" title="Terminar obra civil de Trinchera">[C2-17] Terminar obra civil de Trinchera</div></div>
-<div class="gantt-row"><div class="bar c2" style="left:240px;width:156px;" title="Emparejar obra civil cemento debajo de bases de bombas">[C2-19] Emparejar obra civil cemento debajo de bases de bo</div></div>
-<div class="gantt-row"><div class="bar c2" style="left:240px;width:156px;" title="Meter PVC 6&quot; para conectar trinchera→registro y tapar concreto">[C2-37] Meter PVC 6&quot; para conectar trinchera→registro y ta</div></div>
-<div class="gantt-row"><div class="bar c2" style="left:240px;width:156px;" title="Obra civil trayectoria tierras tablero altura Tren 2 + tapar hueco">[C2-38] Obra civil trayectoria tierras tablero altura Tren</div></div>
+<div class="gantt-row"><div class="bar alert" style="left:240px;width:156px;" title="Obra civil weekend TENTATIVA (placeholder)">[C2-17] Obra civil weekend TENTATIVA (placeholder)</div></div>
+<div class="gantt-row"><div class="bar new" style="left:240px;width:76px;" title="Punchlist Mónica (validación PowerPoint en piso)">[PUNCHLIST-SAB] Punchlist Mónica (validación PowerPoint en piso)</div></div>
 <div class="gantt-row" style="background:#f0f4f8;border-bottom:2px solid #4a5568;"></div>
 <div class="gantt-row"><div class="bar c1-prog" style="left:400px;width:76px;" title="Lógica por demanda de planta (full automático)">[C1-18] Lógica por demanda de planta (full automático)</div></div>
 <div class="gantt-row"><div class="bar c1-inst" style="left:400px;width:76px;" title="Atenuación y conexión de diferenciales de presión">[C1-19] Atenuación y conexión de diferenciales de presión</div></div>
@@ -665,6 +647,13 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td style="font-size:11.5px;color:#718096;font-style:italic;">TBD - 3 manómetros llegan aprox 20 May</td>
 </tr>
 <tr>
+<td class="col-id">C2-19</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Emparejar obra civil cemento debajo de bases de bombas</strong></td>
+<td style="font-size:11.5px;color:#718096;font-style:italic;">TBD - obra civil tentativa weekend (ver C2-17 placeholder). Si calidad da luz verde, esta vuelve a Sáb 9.</td>
+</tr>
+<tr>
 <td class="col-id">C2-22</td>
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
@@ -700,6 +689,20 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td style="font-size:11.5px;color:#718096;font-style:italic;">TBD - validar presupuesto adicional con NALCO</td>
 </tr>
 <tr>
+<td class="col-id">C2-37</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Meter PVC 6&quot; para conectar trinchera→registro y tapar concreto</strong></td>
+<td style="font-size:11.5px;color:#718096;font-style:italic;">TBD - obra civil tentativa weekend (ver C2-17 placeholder). Si calidad da luz verde, esta vuelve a Sáb 9.</td>
+</tr>
+<tr>
+<td class="col-id">C2-38</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Obra civil trayectoria tierras tablero altura Tren 2 + tapar hueco</strong></td>
+<td style="font-size:11.5px;color:#718096;font-style:italic;">TBD - obra civil tentativa weekend (ver C2-17 placeholder). Si calidad da luz verde, esta vuelve a Sáb 9.</td>
+</tr>
+<tr>
 <td class="col-id">C2-5</td>
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
@@ -708,9 +711,12 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 </tr>
 </tbody></table></div>
 <div class="summary-box">
-<h3>📝 Cambios v5 (sobre v4)</h3>
-<div class="item"><span class="icon">📅</span><strong>C1-15b</strong> Bases diferenciales Tren 2 → REGRESADA de Mié 6 a Jue 7 (piso mojado, área insegura)</div>
-<div class="item"><span class="icon">📝</span><strong>C2-17</strong> Trinchera → ahora solo Sáb 9 (domingo NO disponible, planta inicia producción). Tentativo HOY hasta máx 2 PM antes que llenen la trinchera</div>
+<h3>📝 Cambios v6 (sobre v5)</h3>
+<div class="item"><span class="icon">🏷️</span>Rename proyecto: <strong>"Panel View" → "Sistema de Filtros"</strong> (en title + h1, NO en actividades C1-14/PV1/PV2 que se refieren al componente físico Allen-Bradley)</div>
+<div class="item"><span class="icon">🆕</span><strong>PUNCHLIST-SAB</strong> Nueva Sáb 9: Punchlist Mónica, validar items con PowerPoint en piso</div>
+<div class="item"><span class="icon">📦</span><strong>C2-19, C2-37, C2-38</strong> Obra civil → TBD (ya no hay paro Sáb-Dom, planta no permite obra civil por polvo)</div>
+<div class="item"><span class="icon">⏸️</span><strong>C2-17</strong> ahora PLACEHOLDER tentativo Sáb-Dom (status alert). Esperando LUZ VERDE/HOLD de calidad. Si OK: se libera toda la obra civil del weekend desde TBD. Si HOLD: queda todo en TBD permanente.</div>
+<div class="item"><span class="icon">✋</span><strong>C1-16, C1-17</strong> Mantienen Sáb-Dom (no son obra civil)</div>
 </div>
 <div class="summary-box">
 <h3>⚠️ TROUBLESHOOTINGS aún pendientes</h3>
@@ -722,14 +728,14 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 </div>
 <div class="footer">
 <strong>📊 Resumen:</strong>
-51 actividades ·
+52 actividades ·
 27 C1 (FTS) ·
-24 C2 (Mec/Civil) ·
-41 con fecha ·
-10 en TBD ·
+25 C2 (Mec/Civil) ·
+39 con fecha ·
+13 en TBD ·
 6 TS pendientes ·
-1 alerta(s) Felipe
+2 alerta(s) Felipe
 <br><br>
-<em>🔒 Documento INTERNO de FTS · Generado 07/05/2026 01:02 · v5</em>
+<em>🔒 Documento INTERNO de FTS · Generado 07/05/2026 01:02 · v6</em>
 </div>
 </body></html>
