@@ -94,9 +94,19 @@
           "fecha": "2026-05-07T05:01:54.286Z",
           "hora_propuesta_cst": "23:01",
           "comentario": "Se terminan, Actividades"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe Pérez Guzmán",
+          "timestamp": "2026-05-07T15:02:04.037Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Aprobada incidencia",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": "2026-05-07 05:01:00",
       "aplicado_en_odoo": true,
       "tag_disputa_activo": true,
