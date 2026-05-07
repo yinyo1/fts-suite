@@ -882,6 +882,19 @@
       },
       "result": "success",
       "error_message": null
+    },
+    {
+      "timestamp": "2026-05-07T02:49:15.027Z",
+      "user": "ftsmaster",
+      "action": "delete_attendance",
+      "attendance_id": 12877,
+      "employee_name": "Germán Emmanuel Merino Falcón",
+      "changes": {
+        "deleted_check_in": "2026-05-06 22:29:02",
+        "deleted_check_out": null
+      },
+      "result": "success",
+      "error_message": null
     }
   ]
 }
