@@ -2,6 +2,52 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-CHK-112-2026-05-07T23-02-00-153Z",
+      "tipo": "olvido_checkout",
+      "empleado_id": 112,
+      "empleado_nombre": "Felipe Pérez Guzmán",
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "sin_departamento": false,
+      "depto_invalido": false,
+      "supervisor_id": null,
+      "supervisor_name": null,
+      "supervisor_email": "Felipe.perez0305@gmail.com",
+      "supervisor_phone": null,
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": true,
+      "sin_supervisor": false,
+      "attendance_id": 12889,
+      "fecha_creacion": "2026-05-07T23:02:00.153Z",
+      "check_in_original_utc": "2026-05-07 12:41:45",
+      "check_out_propuesto_utc": "2026-05-07 23:01:00",
+      "check_out_propuesto_cst": "2026-05-07 17:01:00",
+      "geolocation": {
+        "lat": 25.6696269,
+        "lng": -100.3744474,
+        "accuracy": 27.184999465942383,
+        "captured_at": "2026-05-07T23:01:56.885Z"
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "accion": "crear",
+          "fecha": "2026-05-07T23:02:00.153Z",
+          "hora_propuesta_cst": "17:01",
+          "comentario": "Vengo de regreso de Vertiv y no puedo checar por geolocalizacion"
+        }
+      ],
+      "status": "pendiente_rh",
+      "hora_final_aplicada_utc": "2026-05-07 23:01:00",
+      "aplicado_en_odoo": true,
+      "tag_disputa_activo": true,
+      "creada_por_modulo": "kiosk",
+      "creada_por_build": "20260504-kiosk-olvide-checkout-v3-boton-jornada"
+    },
+    {
       "id_interno": "INC-OLV-CHK-62-2026-05-07T13-51-57-973Z",
       "tipo": "olvido_checkout",
       "empleado_id": 62,
