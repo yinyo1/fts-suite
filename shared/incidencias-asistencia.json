@@ -48,12 +48,22 @@
           "hora_propuesta_cst": null,
           "comentario": "Aprobado por olvido del.personal",
           "accion": "aprobado"
+        },
+        {
+          "paso": 3,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-05-07T22:07:40.304Z",
+          "hora_propuesta_cst": "05:35",
+          "comentario": "Aprobado ok",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_rh",
+      "status": "aprobada_tal_cual",
       "hora_final_aplicada_utc": "2026-05-07 11:35:00",
       "aplicado_en_odoo": true,
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "creada_por_modulo": "kiosk",
       "creada_por_build": "20260504-kiosk-olvide-checkout-v3-boton-jornada"
     },
