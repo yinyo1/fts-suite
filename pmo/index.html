@@ -1146,6 +1146,34 @@ tr.hidden-completed{display:none !important}
 .stats { display: none !important; }
 .action-buttons .filter-card { background: #f7fafc; border: 1px dashed #cbd5e0; padding: 8px 14px; border-radius: 6px; margin-left: auto; }
 .action-buttons .filter-card .filter-label { font-size: 13px; }
+/* === Sprint 3A: Modal system (reusable) === */
+.pmo-modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.6); display: none; align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(2px); }
+.pmo-modal-overlay.show { display: flex; }
+.pmo-modal-dialog { background: #fff; border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,0.25); width: 100%; max-width: 480px; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; animation: modalIn 0.18s ease-out; }
+@keyframes modalIn { from { opacity: 0; transform: translateY(-20px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.pmo-modal-header { padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; }
+.pmo-modal-title { font-size: 16px; font-weight: 700; color: #1e293b; margin: 0; }
+.pmo-modal-close { background: none; border: none; font-size: 22px; color: #64748b; cursor: pointer; padding: 0; width: 32px; height: 32px; border-radius: 6px; }
+.pmo-modal-close:hover { background: #e2e8f0; color: #1e293b; }
+.pmo-modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+.pmo-modal-footer { padding: 12px 20px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 8px; }
+.pmo-form-group { margin-bottom: 14px; }
+.pmo-form-row { display: flex; gap: 12px; }
+.pmo-form-row .pmo-form-group { flex: 1; }
+.pmo-form-label { display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px; }
+.pmo-form-label .req { color: #dc2626; }
+.pmo-form-input, .pmo-form-select, .pmo-form-textarea { width: 100%; padding: 8px 10px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 13px; font-family: inherit; background: #fff; box-sizing: border-box; }
+.pmo-form-input:focus, .pmo-form-select:focus, .pmo-form-textarea:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+.pmo-form-textarea { min-height: 60px; resize: vertical; }
+.pmo-form-section-title { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin: 14px 0 8px; padding-top: 10px; border-top: 1px dashed #e2e8f0; }
+.pmo-form-error { font-size: 11px; color: #dc2626; margin-top: 4px; display: none; }
+.pmo-form-error.show { display: block; }
+.pmo-btn-primary, .pmo-btn-secondary { padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; font-family: inherit; transition: background 0.15s; }
+.pmo-btn-primary { background: #2563eb; color: #fff; }
+.pmo-btn-primary:hover { background: #1d4ed8; }
+.pmo-btn-secondary { background: #e2e8f0; color: #475569; }
+.pmo-btn-secondary:hover { background: #cbd5e0; }
+@media (max-width: 600px) { .pmo-modal-dialog { max-width: 100%; margin: 12px; max-height: 95vh; } .pmo-form-row { flex-direction: column; gap: 0; } }
 </style>
 
 <!-- ===== Sprint 1A scripts (alert toggle, show-completed filter) ===== -->
@@ -1221,7 +1249,97 @@ tr.hidden-completed{display:none !important}
 })();
 </script>
 
-<!-- ===== Sprint 1B scripts (botones manuales: agregar dia + agregar actividad) ===== -->
+<!-- ===== Sprint 3A: Modales agregar día / actividad ===== -->
+
+<div class="pmo-modal-overlay" id="modal-add-day-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-add-day-title">
+  <div class="pmo-modal-dialog">
+    <div class="pmo-modal-header">
+      <h3 class="pmo-modal-title" id="modal-add-day-title">📅 Agregar nuevo día</h3>
+      <button type="button" class="pmo-modal-close" data-modal-close="modal-add-day-overlay" aria-label="Cerrar">×</button>
+    </div>
+    <div class="pmo-modal-body">
+      <div class="pmo-form-group">
+        <label class="pmo-form-label" for="md-date">Fecha <span class="req">*</span></label>
+        <input type="date" id="md-date" class="pmo-form-input" required>
+        <div class="pmo-form-error" id="md-date-err">Fecha requerida</div>
+      </div>
+      <div class="pmo-form-group">
+        <label class="pmo-form-label" for="md-label">Etiqueta <span class="req">*</span></label>
+        <input type="text" id="md-label" class="pmo-form-input" placeholder="Ej: Mar 12 May, Sáb 9 May" required>
+        <div class="pmo-form-error" id="md-label-err">Etiqueta requerida</div>
+      </div>
+    </div>
+    <div class="pmo-modal-footer">
+      <button type="button" class="pmo-btn-secondary" data-modal-close="modal-add-day-overlay">Cancelar</button>
+      <button type="button" class="pmo-btn-primary" id="md-submit">Agregar día</button>
+    </div>
+  </div>
+</div>
+
+<div class="pmo-modal-overlay" id="modal-add-activity-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-add-activity-title">
+  <div class="pmo-modal-dialog">
+    <div class="pmo-modal-header">
+      <h3 class="pmo-modal-title" id="modal-add-activity-title">➕ Agregar actividad</h3>
+      <button type="button" class="pmo-modal-close" data-modal-close="modal-add-activity-overlay" aria-label="Cerrar">×</button>
+    </div>
+    <div class="pmo-modal-body">
+      <div class="pmo-form-group">
+        <label class="pmo-form-label" for="ma-id">ID <span class="req">*</span></label>
+        <input type="text" id="ma-id" class="pmo-form-input" placeholder="Ej: C1-30, C2-25" required>
+        <div class="pmo-form-error" id="ma-id-err">ID requerido</div>
+      </div>
+      <div class="pmo-form-row">
+        <div class="pmo-form-group">
+          <label class="pmo-form-label" for="ma-cuad">Cuadrilla <span class="req">*</span></label>
+          <select id="ma-cuad" class="pmo-form-select" required>
+            <option value="C1">C1 — FTS interno</option>
+            <option value="C2">C2 — Contratista</option>
+          </select>
+        </div>
+        <div class="pmo-form-group">
+          <label class="pmo-form-label" for="ma-tipo">Tipo <span class="req">*</span></label>
+          <select id="ma-tipo" class="pmo-form-select" required>
+            <option value="I">I — Instalación</option>
+            <option value="D">D — Desinstalación</option>
+            <option value="M">M — Mantenimiento</option>
+            <option value="O">O — Obra civil</option>
+          </select>
+        </div>
+      </div>
+      <div class="pmo-form-group">
+        <label class="pmo-form-label" for="ma-name">Descripción <span class="req">*</span></label>
+        <input type="text" id="ma-name" class="pmo-form-input" placeholder="Ej: Instalar tren de filtros 1" required>
+        <div class="pmo-form-error" id="ma-name-err">Descripción requerida</div>
+      </div>
+      <div class="pmo-form-section-title">Fechas (vacío = TBD)</div>
+      <div class="pmo-form-row">
+        <div class="pmo-form-group">
+          <label class="pmo-form-label" for="ma-fecha-ini">Inicio</label>
+          <input type="date" id="ma-fecha-ini" class="pmo-form-input">
+        </div>
+        <div class="pmo-form-group">
+          <label class="pmo-form-label" for="ma-fecha-fin">Fin</label>
+          <input type="date" id="ma-fecha-fin" class="pmo-form-input">
+        </div>
+        <div class="pmo-form-group" style="max-width: 90px;">
+          <label class="pmo-form-label" for="ma-pct">% Avance</label>
+          <input type="number" id="ma-pct" class="pmo-form-input" min="0" max="100" value="0">
+        </div>
+      </div>
+      <div class="pmo-form-error" id="ma-fechas-err">Si pones fecha inicio, también requieres fecha fin</div>
+      <div class="pmo-form-group">
+        <label class="pmo-form-label" for="ma-notas">Notas (opcional)</label>
+        <textarea id="ma-notas" class="pmo-form-textarea" placeholder="Notas adicionales, dependencias, observaciones..."></textarea>
+      </div>
+    </div>
+    <div class="pmo-modal-footer">
+      <button type="button" class="pmo-btn-secondary" data-modal-close="modal-add-activity-overlay">Cancelar</button>
+      <button type="button" class="pmo-btn-primary" id="ma-submit">Agregar actividad</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Sprint 1B + 3A: Botones manuales con modales centralizados ===== -->
 <script>
 (function() {
   function sendToChat(message) {
@@ -1229,16 +1347,13 @@ tr.hidden-completed{display:none !important}
     const chatInput = document.getElementById('pmo-chat-input');
     const chatSend = document.getElementById('pmo-chat-send');
     const chatFab = document.getElementById('pmo-chat-fab');
-
     if (!chatInput || !chatSend) {
       alert('Chat IA no disponible. Refresca la página.');
       return;
     }
-
     if (chatPanel && !chatPanel.classList.contains('show')) {
       if (chatFab) chatFab.click();
     }
-
     setTimeout(function() {
       chatInput.value = message;
       chatInput.dispatchEvent(new Event('input'));
@@ -1246,90 +1361,141 @@ tr.hidden-completed{display:none !important}
     }, 150);
   }
 
+  function openModal(id) {
+    const m = document.getElementById(id);
+    if (m) {
+      m.classList.add('show');
+      setTimeout(function() {
+        const first = m.querySelector('input, select, textarea');
+        if (first) first.focus();
+      }, 50);
+    }
+  }
+  function closeModal(id) {
+    const m = document.getElementById(id);
+    if (m) {
+      m.classList.remove('show');
+      m.querySelectorAll('.pmo-form-error.show').forEach(function(e){ e.classList.remove('show'); });
+    }
+  }
+  document.querySelectorAll('.pmo-modal-overlay').forEach(function(ov) {
+    ov.addEventListener('click', function(e) {
+      if (e.target === ov) closeModal(ov.id);
+    });
+  });
+  document.querySelectorAll('[data-modal-close]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      closeModal(btn.getAttribute('data-modal-close'));
+    });
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.pmo-modal-overlay.show').forEach(function(m){ closeModal(m.id); });
+    }
+  });
+
+  function autoLabel(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr + 'T12:00:00');
+    const dias = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+    const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    return dias[d.getDay()] + ' ' + d.getDate() + ' ' + meses[d.getMonth()];
+  }
+
   const addDayBtn = document.getElementById('btn-add-day');
   if (addDayBtn) {
     addDayBtn.addEventListener('click', function() {
-      const date = window.prompt('Fecha del nuevo día (formato YYYY-MM-DD):\n\nEjemplo: 2026-05-12');
-      if (!date) return;
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-        alert('Formato inválido. Usa YYYY-MM-DD (ejemplo: 2026-05-12)');
-        return;
-      }
-      const dayLabel = window.prompt('Etiqueta del día (ej: "Mar 12 May", "Lun 11 May"):', '');
-      if (!dayLabel) return;
-      const message = 'Agrega un day-divider nuevo para la fecha ' + date + ' con etiqueta "' + dayLabel + '" al final del cronograma scheduled. Asegura que el colspan del divider sea 9 (no 8).';
-      sendToChat(message);
+      const dateInput = document.getElementById('md-date');
+      const labelInput = document.getElementById('md-label');
+      const onDateChange = function() {
+        if (!labelInput.value || labelInput.dataset.auto === '1') {
+          labelInput.value = autoLabel(dateInput.value);
+          labelInput.dataset.auto = '1';
+        }
+      };
+      dateInput.removeEventListener('change', onDateChange);
+      dateInput.addEventListener('change', onDateChange);
+      labelInput.addEventListener('input', function() { labelInput.dataset.auto = '0'; });
+      dateInput.value = '';
+      labelInput.value = '';
+      labelInput.dataset.auto = '0';
+      openModal('modal-add-day-overlay');
     });
   }
+
+  document.getElementById('md-submit').addEventListener('click', function() {
+    const date = document.getElementById('md-date').value;
+    const label = document.getElementById('md-label').value.trim();
+    let valid = true;
+    if (!date) { document.getElementById('md-date-err').classList.add('show'); valid = false; }
+    else { document.getElementById('md-date-err').classList.remove('show'); }
+    if (!label) { document.getElementById('md-label-err').classList.add('show'); valid = false; }
+    else { document.getElementById('md-label-err').classList.remove('show'); }
+    if (!valid) return;
+    const message = 'Agrega un day-divider nuevo para la fecha ' + date +
+      ' con etiqueta "' + label + '" al final del cronograma scheduled. ' +
+      'Asegura que el colspan del divider sea 9 (no 8).';
+    closeModal('modal-add-day-overlay');
+    sendToChat(message);
+  });
 
   const addActBtn = document.getElementById('btn-add-activity');
   if (addActBtn) {
     addActBtn.addEventListener('click', function() {
-      const id = window.prompt('ID de la actividad (ej: C1-30, C2-25):');
-      if (!id) return;
-
-      const cuad = window.prompt('Cuadrilla (C1 = FTS interno, C2 = contratista):', 'C1');
-      if (!cuad || !['C1', 'C2'].includes(cuad.toUpperCase())) {
-        alert('Cuadrilla debe ser C1 o C2');
-        return;
-      }
-
-      const tipo = window.prompt('Tipo (I = instalación, D = desinstalación, M = mantenimiento, O = obra civil):', 'I');
-      if (!tipo) return;
-
-      const name = window.prompt('Descripción / nombre de la actividad:');
-      if (!name) return;
-
-      const fechaInicio = window.prompt('Fecha de inicio (YYYY-MM-DD) o vacío para TBD:', '');
-
-      let fechaFin = '';
-      let pct = 0;
-
-      if (fechaInicio) {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaInicio)) {
-          alert('Formato fecha inválido. Usa YYYY-MM-DD.');
-          return;
-        }
-        fechaFin = window.prompt('Fecha de fin (YYYY-MM-DD):', fechaInicio);
-        if (!fechaFin || !/^\d{4}-\d{2}-\d{2}$/.test(fechaFin)) {
-          alert('Fecha de fin inválida.');
-          return;
-        }
-        const pctStr = window.prompt('% Avance (0-100):', '0');
-        pct = parseInt(pctStr) || 0;
-        if (pct < 0 || pct > 100) {
-          alert('% debe estar entre 0 y 100');
-          return;
-        }
-      }
-
-      const notas = window.prompt('Notas adicionales (opcional, puede quedar vacío):', '');
-
-      let message = 'Agrega una nueva actividad con los siguientes datos:\n';
-      message += '- ID: ' + id.toUpperCase() + '\n';
-      message += '- Cuadrilla: ' + cuad.toUpperCase() + '\n';
-      message += '- Tipo: ' + tipo.toUpperCase() + '\n';
-      message += '- Descripción: ' + name + '\n';
-
-      if (fechaInicio) {
-        message += '- Fecha inicio: ' + fechaInicio + '\n';
-        message += '- Fecha fin: ' + fechaFin + '\n';
-        message += '- % Avance: ' + pct + '\n';
-        message += '- Tabla: scheduled (con fecha)\n';
-        message += '- Si pct=100, status debe ser "completado"\n';
-      } else {
-        message += '- Tabla: TBD (sin fecha asignada)\n';
-      }
-
-      if (notas) {
-        message += '- Notas: ' + notas + '\n';
-      }
-
-      message += '\nInsertar en posición correcta según orden alfabético de ID dentro de su cuadrilla. Actualizar stat counters y footer (X actividades).';
-
-      sendToChat(message);
+      ['ma-id','ma-name','ma-fecha-ini','ma-fecha-fin','ma-notas'].forEach(function(id){
+        document.getElementById(id).value = '';
+      });
+      document.getElementById('ma-cuad').value = 'C1';
+      document.getElementById('ma-tipo').value = 'I';
+      document.getElementById('ma-pct').value = '0';
+      openModal('modal-add-activity-overlay');
     });
   }
+
+  document.getElementById('ma-submit').addEventListener('click', function() {
+    const id = document.getElementById('ma-id').value.trim().toUpperCase();
+    const cuad = document.getElementById('ma-cuad').value;
+    const tipo = document.getElementById('ma-tipo').value;
+    const name = document.getElementById('ma-name').value.trim();
+    const fechaIni = document.getElementById('ma-fecha-ini').value;
+    const fechaFin = document.getElementById('ma-fecha-fin').value;
+    const pct = parseInt(document.getElementById('ma-pct').value) || 0;
+    const notas = document.getElementById('ma-notas').value.trim();
+
+    let valid = true;
+    if (!id) { document.getElementById('ma-id-err').classList.add('show'); valid = false; }
+    else { document.getElementById('ma-id-err').classList.remove('show'); }
+    if (!name) { document.getElementById('ma-name-err').classList.add('show'); valid = false; }
+    else { document.getElementById('ma-name-err').classList.remove('show'); }
+    if ((fechaIni && !fechaFin) || (!fechaIni && fechaFin)) {
+      document.getElementById('ma-fechas-err').classList.add('show');
+      valid = false;
+    } else {
+      document.getElementById('ma-fechas-err').classList.remove('show');
+    }
+    if (!valid) return;
+
+    let message = 'Agrega una nueva actividad con los siguientes datos:\n';
+    message += '- ID: ' + id + '\n';
+    message += '- Cuadrilla: ' + cuad + '\n';
+    message += '- Tipo: ' + tipo + '\n';
+    message += '- Descripción: ' + name + '\n';
+    if (fechaIni && fechaFin) {
+      message += '- Fecha inicio: ' + fechaIni + '\n';
+      message += '- Fecha fin: ' + fechaFin + '\n';
+      message += '- % Avance: ' + pct + '\n';
+      message += '- Tabla: scheduled (con fecha)\n';
+      if (pct >= 100) message += '- Status debe ser "completado"\n';
+    } else {
+      message += '- Tabla: TBD (sin fecha asignada)\n';
+    }
+    if (notas) message += '- Notas: ' + notas + '\n';
+    message += '\nInsertar en posición correcta según orden alfabético de ID dentro de su cuadrilla. ' +
+      'Actualizar footer counters (X actividades).';
+
+    closeModal('modal-add-activity-overlay');
+    sendToChat(message);
+  });
 })();
 </script>
 </body></html>
