@@ -170,12 +170,22 @@
           "fecha": "2026-05-07T02:52:41.599Z",
           "hora_propuesta_cst": "17:00",
           "comentario": "Hoy estuve de Home office"
+        },
+        {
+          "paso": 2,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-05-07T22:09:07.508Z",
+          "hora_propuesta_cst": "17:00",
+          "comentario": "Aprobado ok",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_rh",
+      "status": "aprobada_tal_cual",
       "hora_final_aplicada_utc": "2026-05-06 23:00:00",
       "aplicado_en_odoo": true,
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "creada_por_modulo": "kiosk",
       "creada_por_build": "20260504-kiosk-olvide-checkout-v3-boton-jornada"
     },
