@@ -1191,6 +1191,22 @@ tr.hidden-completed{display:none !important}
 .col-pct.editing input { width: 100%; height: 100%; border: 2px solid #2563eb; border-radius: 3px; text-align: center; font-size: 12px; font-weight: 600; font-family: inherit; padding: 4px; outline: none; box-sizing: border-box; }
 .col-pct.saving { background: #fef3c7; color: #92400e; }
 .col-pct.saving::after { content: '⏳'; margin-left: 3px; animation: pmo-spin 1s linear infinite; display: inline-block; }
+/* === Sprint 4 toast: feedback visual de ops directas (standalone, fuera del chat) === */
+#pmo-toast { position: fixed; bottom: 24px; right: 24px; background: #1e293b; color: #fff; padding: 12px 18px; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.25); font-size: 13px; font-weight: 600; display: none; align-items: center; gap: 10px; z-index: 10000; max-width: 400px; animation: toastIn 0.25s ease-out; }
+#pmo-toast.show { display: flex; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes toastOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(20px); } }
+#pmo-toast.hiding { animation: toastOut 0.25s ease-out forwards; }
+#pmo-toast.applying { background: linear-gradient(90deg, #2563eb 0%, #60a5fa 50%, #2563eb 100%); background-size: 200% 100%; animation: pmo-shimmer 2s linear infinite, toastIn 0.25s ease-out; }
+#pmo-toast.applying::before { content: ''; display: inline-block; width: 14px; height: 14px; border: 2px solid #fff; border-right-color: transparent; border-radius: 50%; animation: pmo-spin 0.7s linear infinite; flex-shrink: 0; }
+#pmo-toast.success { background: #16a34a; }
+#pmo-toast.success::before { content: '✅'; font-size: 16px; }
+#pmo-toast.error { background: #dc2626; }
+#pmo-toast.error::before { content: '❌'; font-size: 16px; }
+#pmo-toast .pmo-toast-tokens { background: rgba(255,255,255,0.25); color: #fff; font-size: 11px; padding: 2px 6px; border-radius: 8px; margin-left: 4px; font-weight: 600; }
+#pmo-toast .pmo-toast-close { background: transparent; border: none; color: #fff; cursor: pointer; font-size: 18px; margin-left: auto; padding: 0 4px; line-height: 1; opacity: 0.7; }
+#pmo-toast .pmo-toast-close:hover { opacity: 1; }
+@media (max-width: 600px) { #pmo-toast { bottom: 12px; left: 12px; right: 12px; max-width: none; } }
 </style>
 
 <!-- ===== Sprint 1A scripts (alert toggle, show-completed filter) ===== -->
@@ -1563,7 +1579,7 @@ tr.hidden-completed{display:none !important}
 <!-- ===== Sprint 3B + 4: Edit row + inline pct + endpoint directo ===== -->
 <script>
 (function() {
-  // === Sprint 4: dispatchDirectOp helper (op determinística sin Claude API) ===
+  // === Sprint 4: dispatchDirectOp helper con toast standalone (no abre chat) ===
   async function dispatchDirectOp(op, summaryHint) {
     const DIRECT_URL = 'https://primary-production-5c3c.up.railway.app/webhook/pmo-direct-op';
     const SECRET = '2023971e671e3934cd87bd1c94f67ee08e733153ccaa62c59a9b882ca7ec3ec5';
@@ -1576,11 +1592,26 @@ tr.hidden-completed{display:none !important}
     const sigBuf = await crypto.subtle.sign('HMAC', cryptoKey, enc.encode(dataToSign));
     const sigHex = Array.from(new Uint8Array(sigBuf)).map(b => b.toString(16).padStart(2,'0')).join('');
 
-    const statusEl = document.getElementById('pmo-chat-status');
-    if (statusEl) {
-      statusEl.className = 'pmo-chat-status applying';
-      statusEl.textContent = 'Aplicando ' + (summaryHint || op.type) + '...';
+    const toast = document.getElementById('pmo-toast');
+    const toastText = document.getElementById('pmo-toast-text');
+    function showToast(state, text) {
+      if (!toast || !toastText) return;
+      toast.className = '';
+      toast.classList.add('show', state);
+      toastText.innerHTML = text;
     }
+    function hideToast(delayMs) {
+      if (!toast) return;
+      setTimeout(() => {
+        toast.classList.add('hiding');
+        setTimeout(() => {
+          toast.classList.remove('show', 'hiding', 'applying', 'success', 'error');
+        }, 250);
+      }, delayMs);
+    }
+
+    showToast('applying', 'Aplicando ' + (summaryHint || op.type) + '...');
+
     try {
       const resp = await fetch(DIRECT_URL, {
         method: 'POST',
@@ -1589,34 +1620,42 @@ tr.hidden-completed{display:none !important}
       });
       const data = await resp.json();
       if (!resp.ok || !data.ok) {
-        if (statusEl) {
-          statusEl.className = 'pmo-chat-status error';
-          statusEl.textContent = '❌ ' + (data.code || 'Error') + ': ' + (data.msg || 'fallo');
-        }
+        showToast('error', (data.code || 'Error') + ': ' + (data.msg || 'falló'));
+        hideToast(5000);
         return {ok: false, error: data};
       }
+      showToast('success', data.summary + ' <span class="pmo-toast-tokens">direct · 0 tokens</span>');
       let secs = data.deploy_eta_seconds || 60;
       const tick = setInterval(() => {
         secs--;
-        if (secs > 0 && statusEl) {
-          statusEl.className = 'pmo-chat-status applying';
-          statusEl.textContent = 'Deploy en ' + secs + 's · aprox, puedes refrescar antes';
-        } else if (statusEl) {
+        if (secs > 0) {
+          toastText.innerHTML = '✅ ' + data.summary + ' <span class="pmo-toast-tokens">deploy ' + secs + 's</span>';
+        } else {
           clearInterval(tick);
-          statusEl.className = 'pmo-chat-status success';
-          statusEl.innerHTML = '✅ ' + data.summary + ' <span class="pmo-chat-tokens">direct · 0 tokens</span>';
+          toastText.innerHTML = '✅ Deploy listo · ' + data.summary;
+          hideToast(3000);
         }
       }, 1000);
       return {ok: true, data: data};
     } catch (err) {
-      if (statusEl) {
-        statusEl.className = 'pmo-chat-status error';
-        statusEl.textContent = '❌ Error de red: ' + err.message;
-      }
+      showToast('error', 'Red: ' + err.message);
+      hideToast(5000);
       return {ok: false, error: err};
     }
   }
   window.dispatchDirectOp = dispatchDirectOp;
+
+  // Toast close button handler
+  const _toastCloseBtn = document.getElementById('pmo-toast-close');
+  if (_toastCloseBtn) {
+    _toastCloseBtn.addEventListener('click', function() {
+      const t = document.getElementById('pmo-toast');
+      if (t) {
+        t.classList.add('hiding');
+        setTimeout(() => t.classList.remove('show', 'hiding', 'applying', 'success', 'error'), 250);
+      }
+    });
+  }
 
   function sendToChat(message) {
     const chatPanel = document.getElementById('pmo-chat-panel');
@@ -1714,12 +1753,6 @@ tr.hidden-completed{display:none !important}
       document.getElementById('me-name-err').classList.add('show');
       return;
     }
-    // Open chat panel para mostrar status
-    const chatFab = document.getElementById('pmo-chat-fab');
-    const chatPanel = document.getElementById('pmo-chat-panel');
-    if (chatPanel && !chatPanel.classList.contains('show') && chatFab) {
-      chatFab.click();
-    }
     closeModal('modal-edit-activity-overlay');
     // Sprint 4: aplicar 4 ops directas en serie (descripción, %, status, notas)
     (async function() {
@@ -1765,12 +1798,7 @@ tr.hidden-completed{display:none !important}
       }
       cell.classList.add('saving');
       cell.textContent = newVal;
-      // Sprint 4: usar endpoint directo (1-2s) en vez de chat IA (~10s)
-      const chatFab = document.getElementById('pmo-chat-fab');
-      const chatPanel = document.getElementById('pmo-chat-panel');
-      if (chatPanel && !chatPanel.classList.contains('show') && chatFab) {
-        chatFab.click();
-      }
+      // Sprint 4: usar endpoint directo (1-2s) en vez de chat IA (~10s) — toast standalone, sin abrir chat
       window.dispatchDirectOp({type: 'update_pct', id: id, value: newVal}, newVal + '% en ' + id);
       setTimeout(function() { cell.classList.remove('saving'); }, 5000);
     }
@@ -1786,4 +1814,11 @@ tr.hidden-completed{display:none !important}
   });
 })();
 </script>
+
+<!-- Sprint 4 toast container (standalone, fuera del chat widget) -->
+<div id="pmo-toast" role="status" aria-live="polite">
+  <span id="pmo-toast-text"></span>
+  <button type="button" class="pmo-toast-close" id="pmo-toast-close" aria-label="Cerrar">×</button>
+</div>
+
 </body></html>
