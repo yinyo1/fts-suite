@@ -1,5 +1,5 @@
 <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
-<title>Cronograma Interno FTS v4 - Panel View NALCO Topo Chico</title>
+<title>Cronograma Interno FTS v5 - Panel View NALCO Topo Chico</title>
 <script src="../shared/auth-suite.js"></script>
 <script>
   if (typeof FTSAuth === 'undefined' || !FTSAuth.isLoggedIn || !FTSAuth.isLoggedIn()) {
@@ -107,7 +107,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 .bar.alert{background:linear-gradient(to bottom,#2c5282,#1a365d)!important;color:#fef3c7!important;border:2px solid #fef3c7;box-shadow:0 0 8px rgba(254,243,199,.6)}
 </style></head><body>
 <div class="header">
-  <h1><span class="badge-internal">INTERNO FTS</span><span class="badge-version">v4</span>📊 Plan Panel View — NALCO Topo Chico</h1>
+  <h1><span class="badge-internal">INTERNO FTS</span><span class="badge-version">v5</span>📊 Plan Panel View — NALCO Topo Chico</h1>
   <div class="meta">
     <strong>Cliente:</strong> NALCO (Topo Chico) &nbsp;•&nbsp;
     <strong>Autor:</strong> Esteban De La Cruz Calderón – FTS &nbsp;•&nbsp;
@@ -149,16 +149,6 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <th class="col-dur">Días</th><th class="col-status">Estado</th>
 </tr></thead><tbody>
 <tr class="day-divider today-row"><td colspan="8">📅 Mié 6/05/2026 (HOY)</td></tr>
-<tr>
-<td class="col-id">C1-15b</td>
-<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
-<td class="col-tipo">🔧</td>
-<td class="col-name"><strong>Instalación mecánica bases diferenciales presión - Tren 2</strong><div class="notes ">Adelantada de Jue 7 a HOY</div></td>
-<td class="col-fecha">Mié 6/05</td>
-<td class="col-fecha">Mié 6/05</td>
-<td class="col-dur">1d</td>
-<td class="col-status"><span class="badge badge-new">🆕 Nueva</span></td>
-</tr>
 <tr>
 <td class="col-id">C2-16</td>
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
@@ -239,6 +229,16 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-dur">1d</td>
 <td class="col-status"><span class="badge badge-troubleshooting">⚠️ TS pdte</span></td>
+</tr>
+<tr>
+<td class="col-id">C1-15b</td>
+<td class="col-cuad"><span class="badge badge-c1">C1</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Instalación mecánica bases diferenciales presión - Tren 2</strong><div class="notes ">Movida de HOY a Jue 7: piso mojado en el área, condición insegura.</div></td>
+<td class="col-fecha">Jue 7/05</td>
+<td class="col-fecha">Jue 7/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"><span class="badge badge-new">🆕 Nueva</span></td>
 </tr>
 <tr>
 <td class="col-id">C1-26</td>
@@ -446,10 +446,10 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-id">C2-17</td>
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
-<td class="col-name"><strong>Terminar obra civil de Trinchera</strong></td>
+<td class="col-name"><strong>Terminar obra civil de Trinchera</strong><div class="notes ">Sábado todo el día OK. DOMINGO NO disponible - planta inicia producción. Tentativo: si pueden adelantar HOY hasta máx 2 PM (después llenan la trinchera).</div></td>
 <td class="col-fecha">Sáb 9/05</td>
-<td class="col-fecha">Dom 10/05</td>
-<td class="col-dur">2d</td>
+<td class="col-fecha">Sáb 9/05</td>
+<td class="col-dur">1d</td>
 <td class="col-status"></td>
 </tr>
 <tr>
@@ -582,7 +582,6 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 </div>
 <div style="position:relative;width:720px;">
 <div class="gantt-row" style="background:#f0f4f8;border-bottom:2px solid #4a5568;"></div>
-<div class="gantt-row"><div class="bar new" style="left:0px;width:76px;" title="Instalación mecánica bases diferenciales presión - Tren 2">[C1-15b] Instalación mecánica bases diferenciales presión -</div></div>
 <div class="gantt-row"><div class="bar urgent" style="left:0px;width:76px;" title="Cambio de niples en zona de pulidores">[C2-16] Cambio de niples en zona de pulidores</div></div>
 <div class="gantt-row"><div class="bar c2" style="left:0px;width:76px;" title="Cambio de 2 tornillos en Brida de 6&quot; en área de UV">[C2-31] Cambio de 2 tornillos en Brida de 6&quot; en área de UV</div></div>
 <div class="gantt-row"><div class="bar c2" style="left:0px;width:76px;" title="Cambio de empaques en zona de UV Brida de 6&quot;">[C2-32] Cambio de empaques en zona de UV Brida de 6&quot;</div></div>
@@ -592,6 +591,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <div class="gantt-row"><div class="bar moved" style="left:80px;width:76px;" title="Visualización retros válvulas solenoides (FINALIZAR)">[C1-1] Visualización retros válvulas solenoides (FINALIZA</div></div>
 <div class="gantt-row"><div class="bar split" style="left:80px;width:76px;" title="Visualización sensor nivel (PARTE 1)">[C1-11a] Visualización sensor nivel (PARTE 1)</div></div>
 <div class="gantt-row"><div class="bar troubleshooting" style="left:80px;width:76px;" title="Programación y atenuación válvulas modulantes filtros resina (PARTE 1)">[C1-13a] Programación y atenuación válvulas modulantes filt</div></div>
+<div class="gantt-row"><div class="bar new" style="left:80px;width:76px;" title="Instalación mecánica bases diferenciales presión - Tren 2">[C1-15b] Instalación mecánica bases diferenciales presión -</div></div>
 <div class="gantt-row"><div class="bar new" style="left:80px;width:76px;" title="Probar salidas analógicas y ver cómo reacciona VFDs ABB">[C1-26] Probar salidas analógicas y ver cómo reacciona VFD</div></div>
 <div class="gantt-row"><div class="bar new" style="left:80px;width:76px;" title="Fabricación del empaque para brida de sensor de nivel">[C1-27] Fabricación del empaque para brida de sensor de ni</div></div>
 <div class="gantt-row"><div class="bar c1-inst" style="left:80px;width:76px;" title="Conexión eléctrica sensor turbidez">[C1-7] Conexión eléctrica sensor turbidez</div></div>
@@ -614,7 +614,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <div class="gantt-row" style="background:#f0f4f8;border-bottom:2px solid #4a5568;"></div>
 <div class="gantt-row"><div class="bar c1-inst" style="left:240px;width:156px;" title="Rematar cableado eléctrico diferenciales presión">[C1-16] Rematar cableado eléctrico diferenciales presión</div></div>
 <div class="gantt-row"><div class="bar c1-inst" style="left:240px;width:156px;" title="Instalación tubings y accesorios diferenciales presión">[C1-17] Instalación tubings y accesorios diferenciales pre</div></div>
-<div class="gantt-row"><div class="bar c2" style="left:240px;width:156px;" title="Terminar obra civil de Trinchera">[C2-17] Terminar obra civil de Trinchera</div></div>
+<div class="gantt-row"><div class="bar c2" style="left:240px;width:76px;" title="Terminar obra civil de Trinchera">[C2-17] Terminar obra civil de Trinchera</div></div>
 <div class="gantt-row"><div class="bar c2" style="left:240px;width:156px;" title="Emparejar obra civil cemento debajo de bases de bombas">[C2-19] Emparejar obra civil cemento debajo de bases de bo</div></div>
 <div class="gantt-row"><div class="bar c2" style="left:240px;width:156px;" title="Meter PVC 6&quot; para conectar trinchera→registro y tapar concreto">[C2-37] Meter PVC 6&quot; para conectar trinchera→registro y ta</div></div>
 <div class="gantt-row"><div class="bar c2" style="left:240px;width:156px;" title="Obra civil trayectoria tierras tablero altura Tren 2 + tapar hueco">[C2-38] Obra civil trayectoria tierras tablero altura Tren</div></div>
@@ -708,9 +708,9 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 </tr>
 </tbody></table></div>
 <div class="summary-box">
-<h3>📝 Cambios v4 (sobre v3)</h3>
-<div class="item"><span class="icon">🆕</span><strong>TURNO-VIE</strong> Nueva: Turno apoyo carga resinas C6+C7, Vie 8 May 3PM-12AM, 4 personas, status ALERTA FELIPE para coordinación sin overtime</div>
-<div class="item"><span class="icon">🎨</span>Nuevo tipo de status <strong>"alert"</strong> con icono 🔔 (color azul intenso, animación pulse, banner destacado en parte superior)</div>
+<h3>📝 Cambios v5 (sobre v4)</h3>
+<div class="item"><span class="icon">📅</span><strong>C1-15b</strong> Bases diferenciales Tren 2 → REGRESADA de Mié 6 a Jue 7 (piso mojado, área insegura)</div>
+<div class="item"><span class="icon">📝</span><strong>C2-17</strong> Trinchera → ahora solo Sáb 9 (domingo NO disponible, planta inicia producción). Tentativo HOY hasta máx 2 PM antes que llenen la trinchera</div>
 </div>
 <div class="summary-box">
 <h3>⚠️ TROUBLESHOOTINGS aún pendientes</h3>
@@ -730,6 +730,6 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 6 TS pendientes ·
 1 alerta(s) Felipe
 <br><br>
-<em>🔒 Documento INTERNO de FTS · Generado 07/05/2026 01:02 · v4</em>
+<em>🔒 Documento INTERNO de FTS · Generado 07/05/2026 01:02 · v5</em>
 </div>
 </body></html>
