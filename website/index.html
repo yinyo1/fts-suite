@@ -17,6 +17,7 @@
     --text: #1A1410;
     --text-muted: #6B5F55;
     --border: #EAE3DA;
+    --hero-img: url('https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&w=2200&q=85');
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Manrope', sans-serif; color: var(--text); line-height: 1.6; -webkit-font-smoothing: antialiased; }
@@ -24,9 +25,32 @@
   .brand-bar { height: 4px; background: var(--brand-gradient); }
   nav { background: #FFF; padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
   .logo-img { height: 44px; width: auto; display: block; }
+  .nav-right { display: flex; align-items: center; gap: 1.25rem; }
+  .lang-switcher { display: flex; gap: 0.3rem; }
+  .lang-btn { background: none; border: none; cursor: pointer; padding: 0.3rem 0.4rem; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; font-weight: 500; color: var(--text-muted); transition: color 0.15s; line-height: 1; }
+  .lang-btn:hover { color: var(--text); }
+  .lang-btn.active { color: var(--brand-red); font-weight: 700; }
   .nav-cta { background: var(--brand-red); color: #FFF; padding: 0.85rem 1.6rem; text-decoration: none; font-weight: 600; font-size: 0.85rem; }
-  .hero { padding: 6rem 2rem 4rem; background: var(--bg-warm); min-height: 80vh; display: flex; flex-direction: column; justify-content: center; }
-  .hero-inner { max-width: 1400px; margin: 0 auto; width: 100%; }
+  .hero {
+    position: relative; overflow: hidden;
+    padding: 6rem 2rem 4rem; min-height: 80vh;
+    display: flex; flex-direction: column; justify-content: center;
+    background-color: var(--bg-warm);
+    background-image:
+      linear-gradient(90deg, rgba(250,247,242,0.96) 0%, rgba(250,247,242,0.82) 45%, rgba(250,247,242,0.55) 100%),
+      var(--hero-img);
+    background-size: cover, cover;
+    background-position: center, center right;
+    background-repeat: no-repeat, no-repeat;
+  }
+  .hero::before {
+    content: ''; position: absolute; top: -180px; right: -180px;
+    width: 580px; height: 580px;
+    background: var(--brand-gradient);
+    filter: blur(80px); opacity: 0.2;
+    border-radius: 50%; pointer-events: none; z-index: 0;
+  }
+  .hero-inner { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; width: 100%; }
   .hero-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--brand-red); text-transform: uppercase; letter-spacing: 0.18em; margin-bottom: 1.5rem; font-weight: 500; }
   .hero h1 { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: clamp(2.5rem, 7vw, 6rem); line-height: 0.95; letter-spacing: -0.03em; margin-bottom: 2rem; max-width: 900px; }
   .hero p { font-size: 1.15rem; color: var(--text-muted); max-width: 580px; margin-bottom: 2.5rem; }
@@ -52,7 +76,17 @@
   @media (max-width: 700px) {
     nav { padding: 0.8rem 1rem; }
     .logo-img { height: 34px; }
-    .hero { padding: 4rem 1.5rem 3rem; }
+    .nav-right { gap: 0.75rem; }
+    .nav-cta { padding: 0.65rem 1rem; font-size: 0.75rem; }
+    .lang-btn { padding: 0.25rem 0.3rem; font-size: 0.7rem; }
+    .hero {
+      padding: 4rem 1.5rem 3rem;
+      background-image:
+        linear-gradient(180deg, rgba(250,247,242,0.97) 0%, rgba(250,247,242,0.92) 65%, rgba(250,247,242,0.85) 100%),
+        var(--hero-img);
+      background-position: center, center;
+    }
+    .hero::before { top: -120px; right: -120px; width: 360px; height: 360px; filter: blur(60px); opacity: 0.18; }
     section { padding: 3.5rem 1.5rem; }
     .stats { padding: 3rem 1.5rem; }
   }
@@ -62,50 +96,176 @@
 <div class="brand-bar"></div>
 <nav>
   <a href="#"><img class="logo-img" src="assets/logo.png" alt="FTS · Full Technology Systems"></a>
-  <a href="#contact" class="nav-cta">Cotizar</a>
+  <div class="nav-right">
+    <div class="lang-switcher" role="group" aria-label="Language selector">
+      <button type="button" class="lang-btn active" data-lang="es">ES</button>
+      <button type="button" class="lang-btn" data-lang="en">EN</button>
+      <button type="button" class="lang-btn" data-lang="pt">PT</button>
+    </div>
+    <a href="#contact" class="nav-cta" data-i18n="cta_nav">Cotizar</a>
+  </div>
 </nav>
 <section class="hero">
   <div class="hero-inner">
-    <div class="hero-eyebrow">— Servicios EPC industriales · Desde 2014</div>
-    <h1>Construimos plantas que <span class="gradient-text">no pueden parar.</span></h1>
-    <p>Ingeniería, procura y construcción para operaciones industriales activas. Automatización, electromecánica, HVAC y mantenimiento — sin detener tu producción.</p>
+    <div class="hero-eyebrow" data-i18n="hero_eyebrow">— Servicios EPC industriales · Desde 2014</div>
+    <h1><span data-i18n="hero_h1_a">Construimos plantas que </span><span class="gradient-text" data-i18n="hero_h1_b">no pueden parar.</span></h1>
+    <p data-i18n="hero_p">Ingeniería, procura y construcción para operaciones industriales activas. Automatización, electromecánica, HVAC y mantenimiento — sin detener tu producción.</p>
     <div>
-      <a href="#contact" class="btn-primary">Solicitar cotización →</a>
-      <a href="#caps" class="btn-ghost">Ver capacidades →</a>
+      <a href="#contact" class="btn-primary" data-i18n="btn_quote">Solicitar cotización →</a>
+      <a href="#caps" class="btn-ghost" data-i18n="btn_caps">Ver capacidades →</a>
     </div>
   </div>
 </section>
 <section id="caps">
-  <h2>Cinco disciplinas integradas.<br><span class="gradient-text">Una sola entrega.</span></h2>
-  <p class="lead">Ejecutamos toda la cadena de un proyecto industrial bajo un mismo equipo y un mismo contrato.</p>
+  <h2><span data-i18n="caps_h2_a">Cinco disciplinas integradas.</span><br><span class="gradient-text" data-i18n="caps_h2_b">Una sola entrega.</span></h2>
+  <p class="lead" data-i18n="caps_lead">Ejecutamos toda la cadena de un proyecto industrial bajo un mismo equipo y un mismo contrato.</p>
   <div class="caps-grid">
-    <div class="cap"><div class="cap-num">— 01</div><h3>Automatización</h3><p>Control PLC/SCADA, ciberseguridad industrial, robótica, smart manufacturing.</p></div>
-    <div class="cap"><div class="cap-num">— 02</div><h3>Electromecánica</h3><p>Subestaciones, distribución, instrumentación, migraciones VFD/PLC sin paro.</p></div>
-    <div class="cap"><div class="cap-num">— 03</div><h3>Construcción mecánica</h3><p>Tubería, soportería, montajes, memorias de cálculo certificadas LRFD/AISC.</p></div>
-    <div class="cap"><div class="cap-num">— 04</div><h3>HVAC industrial</h3><p>Control de polvo, áreas críticas, salas eléctricas, áreas blancas.</p></div>
-    <div class="cap"><div class="cap-num">— 05</div><h3>Mantenimiento</h3><p>Brigadas 24/7 con SLAs garantizados sobre plataforma propia FTS Suite.</p></div>
+    <div class="cap"><div class="cap-num">— 01</div><h3 data-i18n="cap1_h">Automatización</h3><p data-i18n="cap1_p">Control PLC/SCADA, ciberseguridad industrial, robótica, smart manufacturing.</p></div>
+    <div class="cap"><div class="cap-num">— 02</div><h3 data-i18n="cap2_h">Electromecánica</h3><p data-i18n="cap2_p">Subestaciones, distribución, instrumentación, migraciones VFD/PLC sin paro.</p></div>
+    <div class="cap"><div class="cap-num">— 03</div><h3 data-i18n="cap3_h">Construcción mecánica</h3><p data-i18n="cap3_p">Tubería, soportería, montajes, memorias de cálculo certificadas LRFD/AISC.</p></div>
+    <div class="cap"><div class="cap-num">— 04</div><h3 data-i18n="cap4_h">HVAC industrial</h3><p data-i18n="cap4_p">Control de polvo, áreas críticas, salas eléctricas, áreas blancas.</p></div>
+    <div class="cap"><div class="cap-num">— 05</div><h3 data-i18n="cap5_h">Mantenimiento</h3><p data-i18n="cap5_p">Brigadas 24/7 con SLAs garantizados sobre plataforma propia FTS Suite.</p></div>
   </div>
 </section>
 <div class="stats">
   <div class="stats-inner">
-    <div><div class="stat-num">12</div><div class="stat-label">Años de operación</div></div>
-    <div><div class="stat-num">3</div><div class="stat-label">Países activos</div></div>
-    <div><div class="stat-num">200+</div><div class="stat-label">Proyectos entregados</div></div>
-    <div><div class="stat-num">24/7</div><div class="stat-label">Brigadas críticas</div></div>
+    <div><div class="stat-num">12</div><div class="stat-label" data-i18n="stat1_label">Años de operación</div></div>
+    <div><div class="stat-num">3</div><div class="stat-label" data-i18n="stat2_label">Países activos</div></div>
+    <div><div class="stat-num">200+</div><div class="stat-label" data-i18n="stat3_label">Proyectos entregados</div></div>
+    <div><div class="stat-num">24/7</div><div class="stat-label" data-i18n="stat4_label">Brigadas críticas</div></div>
   </div>
 </div>
 <section id="contact">
-  <h2>¿Tienes una planta que <span class="gradient-text">no puede parar?</span></h2>
-  <p class="lead">Respuesta técnica en menos de 24 horas. Propuesta formal en 5 días.</p>
+  <h2><span data-i18n="contact_h2_a">¿Tienes una planta que </span><span class="gradient-text" data-i18n="contact_h2_b">no puede parar?</span></h2>
+  <p class="lead" data-i18n="contact_lead">Respuesta técnica en menos de 24 horas. Propuesta formal en 5 días.</p>
   <a href="mailto:contacto@fts.mx" class="btn-primary">contacto@fts.mx →</a>
   <a href="tel:+528123580501" class="btn-ghost">+52 81 2358 0501 →</a>
 </section>
 <footer>
   <div class="brand-bar"></div>
   <img class="logo-img" src="assets/logo.png" alt="FTS">
-  <strong>FTS · Full Technology Systems</strong>
-  Servicios EPC industriales · México · USA · Brasil<br>
-  © 2026 Servicios FTS SA de CV · RFC: SFT170905L43
+  <strong data-i18n="footer_brand">FTS · Full Technology Systems</strong>
+  <span data-i18n="footer_tagline">Servicios EPC industriales · México · USA · Brasil</span><br>
+  <span data-i18n="footer_legal">© 2026 Servicios FTS SA de CV · RFC: SFT170905L43</span>
 </footer>
+<script>
+  const TRANSLATIONS = {
+    es: {
+      cta_nav: "Cotizar",
+      hero_eyebrow: "— Servicios EPC industriales · Desde 2014",
+      hero_h1_a: "Construimos plantas que ",
+      hero_h1_b: "no pueden parar.",
+      hero_p: "Ingeniería, procura y construcción para operaciones industriales activas. Automatización, electromecánica, HVAC y mantenimiento — sin detener tu producción.",
+      btn_quote: "Solicitar cotización →",
+      btn_caps: "Ver capacidades →",
+      caps_h2_a: "Cinco disciplinas integradas.",
+      caps_h2_b: "Una sola entrega.",
+      caps_lead: "Ejecutamos toda la cadena de un proyecto industrial bajo un mismo equipo y un mismo contrato.",
+      cap1_h: "Automatización",
+      cap1_p: "Control PLC/SCADA, ciberseguridad industrial, robótica, smart manufacturing.",
+      cap2_h: "Electromecánica",
+      cap2_p: "Subestaciones, distribución, instrumentación, migraciones VFD/PLC sin paro.",
+      cap3_h: "Construcción mecánica",
+      cap3_p: "Tubería, soportería, montajes, memorias de cálculo certificadas LRFD/AISC.",
+      cap4_h: "HVAC industrial",
+      cap4_p: "Control de polvo, áreas críticas, salas eléctricas, áreas blancas.",
+      cap5_h: "Mantenimiento",
+      cap5_p: "Brigadas 24/7 con SLAs garantizados sobre plataforma propia FTS Suite.",
+      stat1_label: "Años de operación",
+      stat2_label: "Países activos",
+      stat3_label: "Proyectos entregados",
+      stat4_label: "Brigadas críticas",
+      contact_h2_a: "¿Tienes una planta que ",
+      contact_h2_b: "no puede parar?",
+      contact_lead: "Respuesta técnica en menos de 24 horas. Propuesta formal en 5 días.",
+      footer_brand: "FTS · Full Technology Systems",
+      footer_tagline: "Servicios EPC industriales · México · USA · Brasil",
+      footer_legal: "© 2026 Servicios FTS SA de CV · RFC: SFT170905L43"
+    },
+    en: {
+      cta_nav: "Get a quote",
+      hero_eyebrow: "— Industrial EPC services · Since 2014",
+      hero_h1_a: "We build plants that ",
+      hero_h1_b: "cannot stop.",
+      hero_p: "Engineering, procurement and construction for active industrial operations. Automation, electromechanical, HVAC and maintenance — without stopping your production.",
+      btn_quote: "Request a quote →",
+      btn_caps: "View capabilities →",
+      caps_h2_a: "Five integrated disciplines.",
+      caps_h2_b: "One single delivery.",
+      caps_lead: "We execute the entire chain of an industrial project under one team and one contract.",
+      cap1_h: "Automation",
+      cap1_p: "PLC/SCADA control, industrial cybersecurity, robotics, smart manufacturing.",
+      cap2_h: "Electromechanical",
+      cap2_p: "Substations, distribution, instrumentation, VFD/PLC migrations without downtime.",
+      cap3_h: "Mechanical construction",
+      cap3_p: "Piping, supports, assemblies, certified LRFD/AISC calculation reports.",
+      cap4_h: "Industrial HVAC",
+      cap4_p: "Dust control, critical areas, electrical rooms, cleanrooms.",
+      cap5_h: "Maintenance",
+      cap5_p: "24/7 crews with guaranteed SLAs on our own FTS Suite platform.",
+      stat1_label: "Years in operation",
+      stat2_label: "Active countries",
+      stat3_label: "Projects delivered",
+      stat4_label: "Critical crews",
+      contact_h2_a: "Do you have a plant that ",
+      contact_h2_b: "cannot stop?",
+      contact_lead: "Technical response in under 24 hours. Formal proposal in 5 days.",
+      footer_brand: "FTS · Full Technology Systems",
+      footer_tagline: "Industrial EPC services · Mexico · USA · Brazil",
+      footer_legal: "© 2026 Servicios FTS SA de CV · RFC: SFT170905L43"
+    },
+    pt: {
+      cta_nav: "Cotação",
+      hero_eyebrow: "— Serviços EPC industriais · Desde 2014",
+      hero_h1_a: "Construímos plantas que ",
+      hero_h1_b: "não podem parar.",
+      hero_p: "Engenharia, compras e construção para operações industriais ativas. Automação, eletromecânica, HVAC e manutenção — sem parar sua produção.",
+      btn_quote: "Solicitar cotação →",
+      btn_caps: "Ver capacidades →",
+      caps_h2_a: "Cinco disciplinas integradas.",
+      caps_h2_b: "Uma única entrega.",
+      caps_lead: "Executamos toda a cadeia de um projeto industrial sob uma mesma equipe e um mesmo contrato.",
+      cap1_h: "Automação",
+      cap1_p: "Controle PLC/SCADA, cibersegurança industrial, robótica, smart manufacturing.",
+      cap2_h: "Eletromecânica",
+      cap2_p: "Subestações, distribuição, instrumentação, migrações VFD/PLC sem parada.",
+      cap3_h: "Construção mecânica",
+      cap3_p: "Tubulação, suportes, montagens, memoriais de cálculo certificados LRFD/AISC.",
+      cap4_h: "HVAC industrial",
+      cap4_p: "Controle de poeira, áreas críticas, salas elétricas, salas limpas.",
+      cap5_h: "Manutenção",
+      cap5_p: "Brigadas 24/7 com SLAs garantidos na plataforma própria FTS Suite.",
+      stat1_label: "Anos de operação",
+      stat2_label: "Países ativos",
+      stat3_label: "Projetos entregues",
+      stat4_label: "Brigadas críticas",
+      contact_h2_a: "Você tem uma planta que ",
+      contact_h2_b: "não pode parar?",
+      contact_lead: "Resposta técnica em menos de 24 horas. Proposta formal em 5 dias.",
+      footer_brand: "FTS · Full Technology Systems",
+      footer_tagline: "Serviços EPC industriais · México · EUA · Brasil",
+      footer_legal: "© 2026 Servicios FTS SA de CV · RFC: SFT170905L43"
+    }
+  };
+  function applyLang(lang) {
+    if (!TRANSLATIONS[lang]) lang = 'es';
+    document.documentElement.lang = lang;
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      const txt = TRANSLATIONS[lang][key];
+      if (txt != null) el.innerText = txt;
+    });
+    document.querySelectorAll('.lang-btn').forEach(b => {
+      b.classList.toggle('active', b.getAttribute('data-lang') === lang);
+    });
+    try { localStorage.setItem('fts_lang', lang); } catch (e) {}
+  }
+  document.querySelectorAll('.lang-btn').forEach(b => {
+    b.addEventListener('click', () => applyLang(b.getAttribute('data-lang')));
+  });
+  let saved = 'es';
+  try { saved = localStorage.getItem('fts_lang') || 'es'; } catch (e) {}
+  applyLang(saved);
+</script>
 </body>
 </html>
