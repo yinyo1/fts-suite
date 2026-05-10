@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FTS — Servicios EPC industriales</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --brand-red: #DC5544;
+    --brand-yellow: #F5C518;
+    --brand-orange: #F08C28;
+    --brand-gradient: linear-gradient(135deg, #F5C518 0%, #F08C28 50%, #DC5544 100%);
+    --bg: #FFFFFF;
+    --bg-warm: #FAF7F2;
+    --bg-dark: #1F1410;
+    --text: #1A1410;
+    --text-muted: #6B5F55;
+    --border: #EAE3DA;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Manrope', sans-serif; color: var(--text); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  .gradient-text { background: var(--brand-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .brand-bar { height: 4px; background: var(--brand-gradient); }
+  nav { background: #FFF; padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+  .logo-img { height: 44px; width: auto; display: block; }
+  .nav-cta { background: var(--brand-red); color: #FFF; padding: 0.85rem 1.6rem; text-decoration: none; font-weight: 600; font-size: 0.85rem; }
+  .hero { padding: 6rem 2rem 4rem; background: var(--bg-warm); min-height: 80vh; display: flex; flex-direction: column; justify-content: center; }
+  .hero-inner { max-width: 1400px; margin: 0 auto; width: 100%; }
+  .hero-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--brand-red); text-transform: uppercase; letter-spacing: 0.18em; margin-bottom: 1.5rem; font-weight: 500; }
+  .hero h1 { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: clamp(2.5rem, 7vw, 6rem); line-height: 0.95; letter-spacing: -0.03em; margin-bottom: 2rem; max-width: 900px; }
+  .hero p { font-size: 1.15rem; color: var(--text-muted); max-width: 580px; margin-bottom: 2.5rem; }
+  .btn-primary { background: var(--brand-red); color: #FFF; padding: 1.1rem 2rem; text-decoration: none; font-weight: 600; display: inline-block; margin-right: 1rem; }
+  .btn-ghost { color: var(--text); padding: 1.1rem 0; text-decoration: none; font-weight: 600; border-bottom: 2px solid var(--text); display: inline-block; }
+  section { padding: 5rem 2rem; max-width: 1400px; margin: 0 auto; }
+  h2 { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: clamp(2rem, 4vw, 3.2rem); line-height: 1.05; letter-spacing: -0.025em; margin-bottom: 1rem; }
+  .lead { color: var(--text-muted); font-size: 1.1rem; max-width: 640px; margin-bottom: 3rem; }
+  .caps-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+  .cap { border: 1px solid var(--border); padding: 2rem; transition: border-color 0.2s, transform 0.2s; }
+  .cap:hover { border-color: var(--brand-red); transform: translateY(-4px); }
+  .cap-num { font-family: 'JetBrains Mono', monospace; color: var(--brand-red); font-size: 0.8rem; margin-bottom: 1rem; }
+  .cap h3 { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 1.4rem; margin-bottom: 0.7rem; }
+  .cap p { color: var(--text-muted); font-size: 0.95rem; }
+  .stats { background: var(--bg-dark); color: #FFF; padding: 4rem 2rem; }
+  .stats-inner { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 3rem; }
+  .stat-num { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 3rem; line-height: 1; margin-bottom: 0.5rem; }
+  .stat-label { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: rgba(255,255,255,0.65); text-transform: uppercase; letter-spacing: 0.12em; }
+  footer { background: #150C09; color: rgba(255,255,255,0.6); padding: 4rem 2rem 2rem; text-align: center; font-size: 0.9rem; }
+  footer .brand-bar { margin: -4rem -2rem 3rem; }
+  footer .logo-img { height: 52px; margin: 0 auto 1rem; opacity: 0.9; }
+  footer strong { color: var(--brand-yellow); display: block; font-family: 'Bricolage Grotesque', sans-serif; font-size: 1.2rem; margin: 1rem 0 0.5rem; }
+  @media (max-width: 700px) {
+    nav { padding: 0.8rem 1rem; }
+    .logo-img { height: 34px; }
+    .hero { padding: 4rem 1.5rem 3rem; }
+    section { padding: 3.5rem 1.5rem; }
+    .stats { padding: 3rem 1.5rem; }
+  }
+</style>
+</head>
+<body>
+<div class="brand-bar"></div>
+<nav>
+  <a href="#"><img class="logo-img" src="assets/logo.png" alt="FTS · Full Technology Systems"></a>
+  <a href="#contact" class="nav-cta">Cotizar</a>
+</nav>
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-eyebrow">— Servicios EPC industriales · Desde 2014</div>
+    <h1>Construimos plantas que <span class="gradient-text">no pueden parar.</span></h1>
+    <p>Ingeniería, procura y construcción para operaciones industriales activas. Automatización, electromecánica, HVAC y mantenimiento — sin detener tu producción.</p>
+    <div>
+      <a href="#contact" class="btn-primary">Solicitar cotización →</a>
+      <a href="#caps" class="btn-ghost">Ver capacidades →</a>
+    </div>
+  </div>
+</section>
+<section id="caps">
+  <h2>Cinco disciplinas integradas.<br><span class="gradient-text">Una sola entrega.</span></h2>
+  <p class="lead">Ejecutamos toda la cadena de un proyecto industrial bajo un mismo equipo y un mismo contrato.</p>
+  <div class="caps-grid">
+    <div class="cap"><div class="cap-num">— 01</div><h3>Automatización</h3><p>Control PLC/SCADA, ciberseguridad industrial, robótica, smart manufacturing.</p></div>
+    <div class="cap"><div class="cap-num">— 02</div><h3>Electromecánica</h3><p>Subestaciones, distribución, instrumentación, migraciones VFD/PLC sin paro.</p></div>
+    <div class="cap"><div class="cap-num">— 03</div><h3>Construcción mecánica</h3><p>Tubería, soportería, montajes, memorias de cálculo certificadas LRFD/AISC.</p></div>
+    <div class="cap"><div class="cap-num">— 04</div><h3>HVAC industrial</h3><p>Control de polvo, áreas críticas, salas eléctricas, áreas blancas.</p></div>
+    <div class="cap"><div class="cap-num">— 05</div><h3>Mantenimiento</h3><p>Brigadas 24/7 con SLAs garantizados sobre plataforma propia FTS Suite.</p></div>
+  </div>
+</section>
+<div class="stats">
+  <div class="stats-inner">
+    <div><div class="stat-num">12</div><div class="stat-label">Años de operación</div></div>
+    <div><div class="stat-num">3</div><div class="stat-label">Países activos</div></div>
+    <div><div class="stat-num">200+</div><div class="stat-label">Proyectos entregados</div></div>
+    <div><div class="stat-num">24/7</div><div class="stat-label">Brigadas críticas</div></div>
+  </div>
+</div>
+<section id="contact">
+  <h2>¿Tienes una planta que <span class="gradient-text">no puede parar?</span></h2>
+  <p class="lead">Respuesta técnica en menos de 24 horas. Propuesta formal en 5 días.</p>
+  <a href="mailto:contacto@fts.mx" class="btn-primary">contacto@fts.mx →</a>
+  <a href="tel:+528123580501" class="btn-ghost">+52 81 2358 0501 →</a>
+</section>
+<footer>
+  <div class="brand-bar"></div>
+  <img class="logo-img" src="assets/logo.png" alt="FTS">
+  <strong>FTS · Full Technology Systems</strong>
+  Servicios EPC industriales · México · USA · Brasil<br>
+  © 2026 Servicios FTS SA de CV · RFC: SFT170905L43
+</footer>
+</body>
+</html>
