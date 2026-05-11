@@ -101,8 +101,24 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .caps-header { text-align: center; max-width: 720px; margin: 0 auto 4rem; }
   .caps-header .lead { margin-left: auto; margin-right: auto; max-width: 640px; }
   .caps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; align-items: stretch; }
-  .cap-card { background: var(--bg-warm); border: 1px solid var(--border); border-radius: 12px; padding: 2rem 1.75rem 1.75rem; display: flex; flex-direction: column; gap: 1rem; transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s; }
-  .cap-card:hover { border-color: var(--brand-red); box-shadow: 0 4px 24px rgba(220,85,68,0.08); transform: translateY(-4px); }
+  .cap-card { --accent: #DC5544; position: relative; overflow: hidden; background: var(--bg-warm); border: 1px solid var(--border); border-radius: 12px; padding: 2rem 1.75rem 1.75rem; display: flex; flex-direction: column; gap: 1rem; transition: background 0.35s ease, border-color 0.35s ease, transform 0.25s ease, box-shadow 0.35s ease; }
+  .cap-card[data-area="ingenieria"]      { --accent: #3B82F6; }
+  .cap-card[data-area="automatizacion"]  { --accent: #DC5544; }
+  .cap-card[data-area="electromecanica"] { --accent: #F08C28; }
+  .cap-card:hover { background: color-mix(in srgb, var(--accent) 7%, white 93%); border-color: color-mix(in srgb, var(--accent) 35%, transparent); box-shadow: 0 12px 40px color-mix(in srgb, var(--accent) 15%, transparent); transform: translateY(-4px); }
+  .cap-number, .cap-num { transition: color 0.35s ease; }
+  .cap-card:hover .cap-number, .cap-card:hover .cap-num { color: var(--accent); }
+  .cap-icon { transition: color 0.35s ease, filter 0.35s ease; }
+  .cap-card:hover .cap-icon { color: var(--accent); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 40%, transparent)); }
+  .cap-title { transition: color 0.3s ease; }
+  .cap-card:hover .cap-title { color: var(--accent); }
+  .cap-card::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform 0.35s ease; }
+  .cap-card:hover::after { transform: scaleX(1); }
+  @supports not (color: color-mix(in srgb, red, blue)) {
+    .cap-card:hover { background: rgba(220,85,68,0.06); border-color: rgba(220,85,68,0.3); }
+    .cap-card[data-area="ingenieria"]:hover { background: rgba(59,130,246,0.06); border-color: rgba(59,130,246,0.3); }
+    .cap-card[data-area="electromecanica"]:hover { background: rgba(240,140,40,0.06); border-color: rgba(240,140,40,0.3); }
+  }
   .cap-number { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--brand-red); letter-spacing: 0.1em; }
   .cap-icon { color: var(--brand-red); margin-bottom: 0.25rem; line-height: 0; }
   .cap-title { font-family: 'Bricolage Grotesque', sans-serif; font-size: 1.35rem; font-weight: 700; color: var(--text); line-height: 1.2; letter-spacing: -0.015em; }
@@ -183,7 +199,22 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .featured-case-visual::after { content: ''; position: absolute; inset: 0; background-image: linear-gradient(rgba(245,197,24,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(245,197,24,0.07) 1px, transparent 1px); background-size: 28px 28px; pointer-events: none; }
   .featured-case-visual::before { content: ''; position: absolute; top: -100px; right: -100px; width: 280px; height: 280px; background: var(--brand-gradient); filter: blur(60px); opacity: 0.35; border-radius: 50%; pointer-events: none; }
   .featured-case-visual-label { position: relative; z-index: 2; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; letter-spacing: 0.18em; color: var(--brand-yellow); font-weight: 500; }
-  .projects-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin-top: 1rem; }
+  .projects-grid { position: relative; display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin-top: 1rem; }
+  .proj-filters { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 2rem; }
+  .proj-filter { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.5rem 1.1rem; border-radius: 100px; border: 1px solid var(--border, #EAE3DA); background: transparent; color: var(--text-muted, #6B5F55); cursor: pointer; transition: all 0.2s ease; }
+  .proj-filter:hover { border-color: var(--brand-red, #DC5544); color: var(--brand-red, #DC5544); }
+  .proj-filter.active { background: var(--brand-red, #DC5544); border-color: var(--brand-red, #DC5544); color: white; }
+  .project-card { transition: opacity 0.3s ease, transform 0.3s ease, border-color 0.2s, box-shadow 0.2s; }
+  .project-card.hidden { opacity: 0; pointer-events: none; transform: scale(0.97); position: absolute; visibility: hidden; }
+  .sticky-subnav { position: fixed; top: 0; left: 0; right: 0; z-index: 110; background: rgba(255,255,255,0.92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--border, #EAE3DA); transform: translateY(-100%); transition: transform 0.3s ease; pointer-events: none; }
+  .sticky-subnav.is-visible { transform: translateY(0); pointer-events: all; }
+  .sticky-subnav-inner { max-width: 1160px; margin: 0 auto; padding: 0 2rem; display: flex; align-items: center; gap: 0; height: 44px; overflow-x: auto; scrollbar-width: none; }
+  .sticky-subnav-inner::-webkit-scrollbar { display: none; }
+  .subnav-link { font-size: 0.78rem; font-weight: 500; color: var(--text-muted, #6B5F55); text-decoration: none; padding: 0 1rem; height: 100%; display: flex; align-items: center; border-bottom: 2px solid transparent; white-space: nowrap; transition: color 0.2s, border-color 0.2s; flex-shrink: 0; }
+  .subnav-link:hover, .subnav-link.active { color: var(--brand-red, #DC5544); border-bottom-color: var(--brand-red, #DC5544); }
+  .subnav-cta { margin-left: auto; background: var(--brand-red, #DC5544); color: white !important; border-radius: 4px; padding: 0.35rem 1rem !important; height: auto !important; border-bottom: none !important; font-size: 0.75rem; }
+  .subnav-cta:hover { opacity: 0.9; }
+  @media (max-width: 768px) { .sticky-subnav-inner { padding: 0 1rem; gap: 0; } }
   .project-card { background: var(--bg); border: 1px solid var(--border); padding: 1.8rem; transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; }
   .project-card:hover { border-color: var(--brand-red); transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.07); }
   .project-tag { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--brand-red); margin-bottom: 1rem; font-weight: 500; }
@@ -351,6 +382,15 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <span class="ham-bar"></span>
   </button>
 </nav>
+<nav class="sticky-subnav" id="stickySubnav" aria-label="Navegación de secciones">
+  <div class="sticky-subnav-inner">
+    <a href="#caps"      class="subnav-link" data-i18n="nav_services">Servicios</a>
+    <a href="#clientes"  class="subnav-link" data-i18n="subnav_clients">Clientes</a>
+    <a href="#proyectos" class="subnav-link" data-i18n="nav_projects">Proyectos</a>
+    <a href="#nosotros"  class="subnav-link" data-i18n="nav_about">Nosotros</a>
+    <a href="#contact"   class="subnav-link subnav-cta" data-i18n="cta_nav">Cotizar →</a>
+  </div>
+</nav>
 <div class="mobile-drawer" id="mobileDrawer" aria-hidden="true">
   <button class="drawer-close-btn" id="drawerCloseBtn" type="button" aria-label="Cerrar menú">
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 4L16 16M16 4L4 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -493,8 +533,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         <div class="featured-case-visual-label">▸ MULTIPANEL · TOPOCHICO</div>
       </div>
     </article>
+    <div class="proj-filters" role="tablist" aria-label="Filtrar proyectos">
+      <button class="proj-filter active" data-filter="all" role="tab" aria-selected="true" data-i18n="proj_filter_all">Todos</button>
+      <button class="proj-filter" data-filter="ingenieria" role="tab" aria-selected="false" data-i18n="proj_filter_eng">Ingeniería</button>
+      <button class="proj-filter" data-filter="automatizacion" role="tab" aria-selected="false" data-i18n="proj_filter_aut">Automatización</button>
+      <button class="proj-filter" data-filter="electromecanica" role="tab" aria-selected="false" data-i18n="proj_filter_em">Electromecánica</button>
+    </div>
     <div class="projects-grid">
-      <article class="project-card">
+      <article class="project-card" data-category="automatizacion">
         <div class="proj-visual blueprint-aut" aria-hidden="true">
           <svg width="100%" height="100%" viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
             <defs>
@@ -521,7 +567,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         <p class="project-desc" data-i18n="proj1_desc">Modernización de control completa sin paro de producción.</p>
         <div class="project-metrics" data-i18n="proj1_metrics">45 VFDs · 0 días paro · 100% migrado</div>
       </article>
-      <article class="project-card">
+      <article class="project-card" data-category="electromecanica">
         <div class="project-tag" data-i18n="proj2_tag">Infraestructura electromecánica</div>
         <div class="project-client" data-i18n="proj2_client">Confidencial · Industria pesada</div>
         <div class="project-location" data-i18n="loc_mexico">México</div>
@@ -529,7 +575,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         <p class="project-desc" data-i18n="proj2_desc">Reemplazo transformadores de corriente y potencial en operación crítica.</p>
         <div class="project-metrics" data-i18n="proj2_metrics">Subestación 34.5kV · Cero downtime</div>
       </article>
-      <article class="project-card">
+      <article class="project-card" data-category="automatizacion">
         <div class="project-tag" data-i18n="proj3_tag">Smart Manufacturing · Industria 4.0</div>
         <div class="project-client" data-i18n="proj3_client">Acerera nacional</div>
         <div class="project-location" data-i18n="loc_mexico">México</div>
@@ -537,21 +583,21 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         <p class="project-desc" data-i18n="proj3_desc">Integración SCADA + MES + dashboards productivos en tiempo real.</p>
         <div class="project-metrics" data-i18n="proj3_metrics">OEE +18% · Tracking en línea</div>
       </article>
-      <article class="project-card">
+      <article class="project-card" data-category="automatizacion">
         <div class="project-tag" data-i18n="proj4_tag">Automatización · Logística industrial</div>
         <div class="project-client" data-i18n="proj4_client">Manufactura global</div>
         <h3 class="project-title" data-i18n="proj4_title">Desmontaje y transferencia de planta de producción</h3>
         <p class="project-desc" data-i18n="proj4_desc">Reubicación completa de líneas productivas entre instalaciones.</p>
         <a href="https://www.linkedin.com/pulse/desmontaje-y-transferencia-de-planta-producci%25C3%25B3n-7v3pf/" target="_blank" rel="noopener" class="project-link" data-i18n="proj_link_linkedin">Caso en LinkedIn →</a>
       </article>
-      <article class="project-card">
+      <article class="project-card" data-category="electromecanica">
         <div class="project-tag" data-i18n="proj5_tag">Infraestructura electromecánica · Upgrade</div>
         <div class="project-client" data-i18n="proj5_client">Industria alimenticia · Café</div>
         <h3 class="project-title" data-i18n="proj5_title">Upgrade Tostador de Café</h3>
         <p class="project-desc" data-i18n="proj5_desc">Modernización electromecánica de línea de tostado, conservando producción activa.</p>
         <a href="https://www.linkedin.com/pulse/proyecto-upgrade-tostador-de-caf%25C3%25A9-full-technology-systems-lgqac/" target="_blank" rel="noopener" class="project-link" data-i18n="proj_link_linkedin">Caso en LinkedIn →</a>
       </article>
-      <article class="project-card">
+      <article class="project-card" data-category="ingenieria">
         <div class="project-tag" data-i18n="proj6_tag">Mantenimiento · Optimización</div>
         <div class="project-client" data-i18n="proj6_client">Industria azucarera</div>
         <h3 class="project-title" data-i18n="proj6_title">Reducción de humedad en producción de azúcar</h3>
@@ -570,7 +616,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     </div>
     <div class="caps-grid">
       <!-- TODO: migrar a assets/ locales — ver issue assets-migration -->
-      <div class="cap-card" id="ingenieria">
+      <div class="cap-card" data-area="ingenieria" id="ingenieria">
         <div class="cap-visual">
           <img src="https://fulltechnologysystems.com/wp-content/uploads/2024/12/WhatsApp-Image-2024-10-03-at-11.44.17-768x1024.jpeg" alt="Ingeniería industrial — FTS" loading="lazy" class="cap-photo">
         </div>
@@ -594,7 +640,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           </div>
         </div>
       </div>
-      <div class="cap-card" id="automatizacion">
+      <div class="cap-card" data-area="automatizacion" id="automatizacion">
         <div class="cap-visual">
           <img src="https://fulltechnologysystems.com/wp-content/uploads/2024/12/Automatizacion-768x1024.jpeg" alt="Automatización industrial — FTS" loading="lazy" class="cap-photo">
         </div>
@@ -618,7 +664,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           </div>
         </div>
       </div>
-      <div class="cap-card" id="electromecanica">
+      <div class="cap-card" data-area="electromecanica" id="electromecanica">
         <div class="cap-visual">
           <img src="https://fulltechnologysystems.com/wp-content/uploads/2024/12/image.jpeg" alt="Infraestructura electromecánica — FTS" loading="lazy" class="cap-photo">
         </div>
@@ -647,10 +693,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </section>
 <div class="stats">
   <div class="stats-inner">
-    <div><div class="stat-num">12</div><div class="stat-label" data-i18n="stat1_label">Años de operación</div></div>
-    <div><div class="stat-num">3</div><div class="stat-label" data-i18n="stat2_label">Países activos</div></div>
-    <div><div class="stat-num">200+</div><div class="stat-label" data-i18n="stat3_label">Proyectos entregados</div></div>
-    <div><div class="stat-num">24/7</div><div class="stat-label" data-i18n="stat4_label">Brigadas críticas</div></div>
+    <div><div class="stat-num" data-count="12" data-suffix="">12</div><div class="stat-label" data-i18n="stat1_label">Años de operación</div></div>
+    <div><div class="stat-num" data-count="3" data-suffix="">3</div><div class="stat-label" data-i18n="stat2_label">Países activos</div></div>
+    <div><div class="stat-num" data-count="200" data-suffix="+">200+</div><div class="stat-label" data-i18n="stat3_label">Proyectos entregados</div></div>
+    <div><div class="stat-num" data-count="24" data-suffix="/7">24/7</div><div class="stat-label" data-i18n="stat4_label">Brigadas críticas</div></div>
   </div>
 </div>
 <section class="partners-section" id="partners">
@@ -859,6 +905,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       nav_projects: "Proyectos",
       nav_contact: "Contacto",
       trust_label: "Empresas que confían en FTS",
+      proj_filter_all: "Todos",
+      proj_filter_eng: "Ingeniería",
+      proj_filter_aut: "Automatización",
+      proj_filter_em: "Electromecánica",
+      subnav_clients: "Clientes",
       partners_eyebrow: "— Tecnologías que dominamos",
       partners_title: "Partners certificados.",
       partners_lead: "Integramos las plataformas líderes en automatización industrial mundial. Certificaciones vigentes y soporte directo de fabricantes.",
@@ -1014,6 +1065,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       nav_projects: "Projects",
       nav_contact: "Contact",
       trust_label: "Companies that trust FTS",
+      proj_filter_all: "All",
+      proj_filter_eng: "Engineering",
+      proj_filter_aut: "Automation",
+      proj_filter_em: "Electromechanical",
+      subnav_clients: "Clients",
       partners_eyebrow: "— Technologies we master",
       partners_title: "Certified partners.",
       partners_lead: "We integrate the leading platforms in global industrial automation. Active certifications and direct manufacturer support.",
@@ -1169,6 +1225,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       nav_projects: "Projetos",
       nav_contact: "Contato",
       trust_label: "Empresas que confiam na FTS",
+      proj_filter_all: "Todos",
+      proj_filter_eng: "Engenharia",
+      proj_filter_aut: "Automação",
+      proj_filter_em: "Eletromecânica",
+      subnav_clients: "Clientes",
       partners_eyebrow: "— Tecnologias que dominamos",
       partners_title: "Parceiros certificados.",
       partners_lead: "Integramos as plataformas líderes em automação industrial mundial. Certificações vigentes e suporte direto de fabricantes.",
@@ -1365,6 +1426,86 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     const closeBtn = document.getElementById('drawerCloseBtn');
     if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
     document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeDrawer(); });
+  })();
+</script>
+<script>
+  /* Stat counters */
+  (function() {
+    const counters = document.querySelectorAll('[data-count]');
+    if (!counters.length) return;
+    const easeOut = t => 1 - Math.pow(1 - t, 3);
+    function animateCounter(el) {
+      const target = parseInt(el.dataset.count, 10);
+      const suffix = el.dataset.suffix || '';
+      const duration = 1800;
+      const start = performance.now();
+      function update(now) {
+        const elapsed = now - start;
+        const progress = Math.min(elapsed / duration, 1);
+        const value = Math.floor(easeOut(progress) * target);
+        el.textContent = value + suffix;
+        if (progress < 1) requestAnimationFrame(update);
+        else el.textContent = target + suffix;
+      }
+      requestAnimationFrame(update);
+    }
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          animateCounter(entry.target);
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.5 });
+    counters.forEach(el => observer.observe(el));
+  })();
+
+  /* Project filter */
+  (function() {
+    const filters = document.querySelectorAll('.proj-filter');
+    const cards   = document.querySelectorAll('.project-card[data-category]');
+    if (!filters.length || !cards.length) return;
+    filters.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const filter = btn.dataset.filter;
+        filters.forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
+        btn.classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
+        cards.forEach(card => {
+          const match = filter === 'all' || card.dataset.category === filter;
+          card.classList.toggle('hidden', !match);
+        });
+      });
+    });
+  })();
+
+  /* Sticky subnav */
+  (function() {
+    const subnav = document.getElementById('stickySubnav');
+    if (!subnav) return;
+    const hero = document.querySelector('.hero, #hero, section:first-of-type');
+    const subLinks = subnav.querySelectorAll('.subnav-link:not(.subnav-cta)');
+    if (hero) {
+      const heroObserver = new IntersectionObserver(entries => {
+        subnav.classList.toggle('is-visible', !entries[0].isIntersecting);
+      }, { threshold: 0 });
+      heroObserver.observe(hero);
+    }
+    const sections = Array.from(subLinks)
+      .map(link => document.querySelector(link.getAttribute('href')))
+      .filter(Boolean);
+    if (sections.length) {
+      const sectionObserver = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            subLinks.forEach(link => link.classList.remove('active'));
+            const active = subnav.querySelector('a[href="#' + entry.target.id + '"]');
+            if (active) active.classList.add('active');
+          }
+        });
+      }, { rootMargin: '-40% 0px -55% 0px' });
+      sections.forEach(s => sectionObserver.observe(s));
+    }
   })();
 </script>
 </body>
