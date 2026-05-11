@@ -1581,7 +1581,18 @@ function resolverZonaGris(opcion){
 function resolverErrorCritico(){
   var estado = window._estadoActual;
   var empleado = window._empleadoActual;
-  // Error crítico: siempre va al flujo de "olvidé checar"
+  var horas = (estado && estado.horas_transcurridas) || 0;
+  // F1.5 Issue 2 fix: si la huérfana es >=16h, dispara el flujo de checkin entrada
+  // normal — el workflow a7mEjjdwIzzvomXs detecta la huérfana en Code - Analizar
+  // candados y ejecuta auto-rescate (cierra a 9.6h, marca TAG, crea incidencia
+  // auto_cierre_pendiente). Como UMBRAL_ERROR_CRITICO en backend es 24h, en la
+  // práctica todos los casos error_critico califican; el if es salvaguarda si
+  // algún día se relaja ese umbral.
+  if (horas >= 16) {
+    iniciarCheckin('entrada');
+    return;
+  }
+  // Fallback: modal manual F1.1 (caso teórico 14-16h, raro)
   mostrarModalOlvideCheckout(estado, empleado);
 }
 
