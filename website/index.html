@@ -85,6 +85,25 @@
   .partner-name { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 1.6rem; letter-spacing: -0.02em; margin-bottom: 0.25rem; }
   .partner-by { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 1rem; min-height: 1em; }
   .partner-desc { font-family: 'Manrope', sans-serif; font-size: 0.95rem; color: var(--text-muted); }
+  .about-section { background: var(--bg); padding: 5rem 2rem; max-width: none; margin: 0; }
+  .about-grid { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 1.2fr 1fr; gap: 3rem; align-items: start; }
+  .about-content .section-eyebrow { margin-bottom: 1rem; }
+  .about-content .section-title { margin-bottom: 1.5rem; }
+  .about-content .lead { margin-bottom: 1.2rem; max-width: none; }
+  .about-values { list-style: none; margin: 1.8rem 0 2rem; padding: 0; }
+  .about-values li { font-family: 'Manrope', sans-serif; font-size: 0.95rem; color: var(--text); padding: 0.5rem 0 0.5rem 1.4rem; position: relative; }
+  .about-values li::before { content: '▸'; position: absolute; left: 0; color: var(--brand-red); font-weight: 700; }
+  .about-card { background: var(--bg-dark); color: #FFF; padding: 2.5rem; position: relative; }
+  .about-card-bar { position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--brand-gradient); }
+  .about-card-title { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 1.4rem; letter-spacing: -0.015em; margin-bottom: 1.8rem; }
+  .about-country { display: flex; gap: 1rem; padding: 1.2rem 0; border-top: 1px solid rgba(255,255,255,0.1); }
+  .about-country:first-of-type { border-top: none; padding-top: 0; }
+  .about-country:last-of-type { padding-bottom: 0; }
+  .about-country-flag { font-size: 1.6rem; line-height: 1.2; }
+  .about-country-info { flex: 1; }
+  .about-country-name { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 1.1rem; margin-bottom: 0.15rem; }
+  .about-country-rs { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: rgba(255,255,255,0.7); margin-bottom: 0.2rem; letter-spacing: 0.02em; }
+  .about-country-meta { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--brand-yellow); letter-spacing: 0.05em; }
   .projects-section { background: var(--bg-warm); padding: 5rem 2rem; max-width: none; margin: 0; }
   .projects-inner { max-width: 1400px; margin: 0 auto; }
   .featured-case { display: grid; grid-template-columns: 1.4fr 1fr; gap: 0; background: linear-gradient(135deg, #FFFFFF 0%, var(--bg-warm) 100%); border-left: 4px solid var(--brand-red); margin: 2.5rem 0 3rem; box-shadow: 0 8px 24px rgba(0,0,0,0.04); overflow: hidden; }
@@ -141,6 +160,9 @@
     .trust-logos span { font-size: 1rem; text-align: center; }
     .partners-section { padding: 3.5rem 1.5rem; }
     .partners-grid { grid-template-columns: 1fr; }
+    .about-section { padding: 3.5rem 1.5rem; }
+    .about-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+    .about-card { padding: 2rem; }
     .projects-section { padding: 3.5rem 1.5rem; }
     .featured-case { grid-template-columns: 1fr; }
     .featured-case-content { padding: 1.8rem; }
@@ -194,6 +216,51 @@
       <span>Clarios</span>
       <span>Budenheim</span>
     </div>
+  </div>
+</section>
+<section class="about-section" id="nosotros">
+  <div class="about-grid">
+    <div class="about-content">
+      <div class="section-eyebrow" data-i18n="about_eyebrow">— Quiénes somos</div>
+      <h2 class="section-title"><span data-i18n="about_title_a">12 años construyendo </span><span class="gradient-text" data-i18n="about_title_b">infraestructura crítica.</span></h2>
+      <p class="lead" data-i18n="about_p1">FTS es una empresa industrial mexicana fundada en 2014 que ejecuta proyectos llave en mano de Automatización, Infraestructura Electromecánica y Mantenimiento. Trabajamos con operaciones que no pueden parar.</p>
+      <p class="lead" data-i18n="about_p2">Hemos expandido nuestra operación de México a Estados Unidos y Brasil, atendiendo a líderes globales en alimentos, bebidas, automotriz, telecom, química y energía.</p>
+      <ul class="about-values">
+        <li data-i18n="about_v1">Enfoque al cliente · alta personalización</li>
+        <li data-i18n="about_v2">Compromiso 24/7 · brigadas críticas activas</li>
+        <li data-i18n="about_v3">Calidad técnica certificada</li>
+        <li data-i18n="about_v4">Relaciones de largo plazo · trayectoria con clientes</li>
+      </ul>
+      <a href="https://drive.google.com/file/d/1VEkMQ0O7_MKYYm0XR0kFFbOqjQZRmTBm/view?usp=sharing" target="_blank" rel="noopener" class="btn-primary" data-i18n="about_cta">Descargar Brochure Corporativo →</a>
+    </div>
+    <aside class="about-card">
+      <div class="about-card-bar"></div>
+      <div class="about-card-title" data-i18n="about_card_title">Tres entidades, una operación</div>
+      <div class="about-country">
+        <div class="about-country-flag">🇲🇽</div>
+        <div class="about-country-info">
+          <div class="about-country-name" data-i18n="about_country_mx">México</div>
+          <div class="about-country-rs">Servicios FTS SA de CV</div>
+          <div class="about-country-meta" data-i18n="about_mx_meta">Monterrey, NL · 2014</div>
+        </div>
+      </div>
+      <div class="about-country">
+        <div class="about-country-flag">🇺🇸</div>
+        <div class="about-country-info">
+          <div class="about-country-name" data-i18n="about_country_us">USA</div>
+          <div class="about-country-rs">FTS Full Technology Systems LLC</div>
+          <div class="about-country-meta" data-i18n="about_us_meta">Texas · Operación activa</div>
+        </div>
+      </div>
+      <div class="about-country">
+        <div class="about-country-flag">🇧🇷</div>
+        <div class="about-country-info">
+          <div class="about-country-name" data-i18n="about_country_br">Brasil</div>
+          <div class="about-country-rs">FTS Brasil LTDA</div>
+          <div class="about-country-meta" data-i18n="about_br_meta">São Paulo · En expansión</div>
+        </div>
+      </div>
+    </aside>
   </div>
 </section>
 <section class="projects-section" id="proyectos">
@@ -408,7 +475,24 @@
       proj6_tag: "Mantenimiento · Optimización",
       proj6_client: "Industria azucarera",
       proj6_title: "Reducción de humedad en producción de azúcar",
-      proj6_desc: "Intervención de procesos para mejora de calidad final y rendimiento."
+      proj6_desc: "Intervención de procesos para mejora de calidad final y rendimiento.",
+      about_eyebrow: "— Quiénes somos",
+      about_title_a: "12 años construyendo ",
+      about_title_b: "infraestructura crítica.",
+      about_p1: "FTS es una empresa industrial mexicana fundada en 2014 que ejecuta proyectos llave en mano de Automatización, Infraestructura Electromecánica y Mantenimiento. Trabajamos con operaciones que no pueden parar.",
+      about_p2: "Hemos expandido nuestra operación de México a Estados Unidos y Brasil, atendiendo a líderes globales en alimentos, bebidas, automotriz, telecom, química y energía.",
+      about_v1: "Enfoque al cliente · alta personalización",
+      about_v2: "Compromiso 24/7 · brigadas críticas activas",
+      about_v3: "Calidad técnica certificada",
+      about_v4: "Relaciones de largo plazo · trayectoria con clientes",
+      about_cta: "Descargar Brochure Corporativo →",
+      about_card_title: "Tres entidades, una operación",
+      about_country_mx: "México",
+      about_country_us: "USA",
+      about_country_br: "Brasil",
+      about_mx_meta: "Monterrey, NL · 2014",
+      about_us_meta: "Texas · Operación activa",
+      about_br_meta: "São Paulo · En expansión"
     },
     en: {
       cta_nav: "Get a quote",
@@ -493,7 +577,24 @@
       proj6_tag: "Maintenance · Optimization",
       proj6_client: "Sugar industry",
       proj6_title: "Moisture reduction in sugar production",
-      proj6_desc: "Process intervention to improve final quality and yield."
+      proj6_desc: "Process intervention to improve final quality and yield.",
+      about_eyebrow: "— About us",
+      about_title_a: "12 years building ",
+      about_title_b: "critical infrastructure.",
+      about_p1: "FTS is a Mexican industrial company founded in 2014, delivering turnkey projects in Automation, Electromechanical Infrastructure and Maintenance. We work with operations that cannot stop.",
+      about_p2: "We have expanded our operation from Mexico to the United States and Brazil, serving global leaders in food, beverage, automotive, telecom, chemicals and energy.",
+      about_v1: "Customer focus · high personalization",
+      about_v2: "24/7 commitment · active critical crews",
+      about_v3: "Certified technical quality",
+      about_v4: "Long-term relationships · proven client track record",
+      about_cta: "Download Corporate Brochure →",
+      about_card_title: "Three entities, one operation",
+      about_country_mx: "Mexico",
+      about_country_us: "USA",
+      about_country_br: "Brazil",
+      about_mx_meta: "Monterrey, NL · 2014",
+      about_us_meta: "Texas · Active operation",
+      about_br_meta: "São Paulo · Expanding"
     },
     pt: {
       cta_nav: "Cotação",
@@ -578,7 +679,24 @@
       proj6_tag: "Manutenção · Otimização",
       proj6_client: "Indústria açucareira",
       proj6_title: "Redução de umidade na produção de açúcar",
-      proj6_desc: "Intervenção em processos para melhoria de qualidade final e rendimento."
+      proj6_desc: "Intervenção em processos para melhoria de qualidade final e rendimento.",
+      about_eyebrow: "— Quem somos",
+      about_title_a: "12 anos construindo ",
+      about_title_b: "infraestrutura crítica.",
+      about_p1: "A FTS é uma empresa industrial mexicana fundada em 2014 que executa projetos chave-na-mão de Automação, Infraestrutura Eletromecânica e Manutenção. Trabalhamos com operações que não podem parar.",
+      about_p2: "Expandimos nossa operação do México para os Estados Unidos e o Brasil, atendendo a líderes globais em alimentos, bebidas, automotivo, telecom, química e energia.",
+      about_v1: "Foco no cliente · alta personalização",
+      about_v2: "Compromisso 24/7 · brigadas críticas ativas",
+      about_v3: "Qualidade técnica certificada",
+      about_v4: "Relações de longo prazo · trajetória comprovada com clientes",
+      about_cta: "Baixar Brochure Corporativo →",
+      about_card_title: "Três entidades, uma operação",
+      about_country_mx: "México",
+      about_country_us: "EUA",
+      about_country_br: "Brasil",
+      about_mx_meta: "Monterrey, NL · 2014",
+      about_us_meta: "Texas · Operação ativa",
+      about_br_meta: "São Paulo · Em expansão"
     }
   };
   function applyLang(lang) {
