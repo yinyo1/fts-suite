@@ -94,6 +94,58 @@ function validarGeolocacion(lat, lng){
   };
 }
 
+// ═══ Candado hora mínima check-in por geocerca (F1.5 Issue 1) ═══
+// Aplica solo a tipo 'entrada'. Si la geocerca declara aplica_hora_minima_checkin=true
+// y la hora CST actual es menor a hora_minima_checkin, bloquea el check-in.
+function validarHoraMinimaCheckin(sitioNombre, tipo){
+  if(tipo !== 'entrada') return { ok: true };
+  var geos = (K.config && K.config.geolocations) || [];
+  var sitio = null;
+  for(var i = 0; i < geos.length; i++){
+    if(geos[i].nombre === sitioNombre){ sitio = geos[i]; break; }
+  }
+  if(!sitio || sitio.aplica_hora_minima_checkin !== true) return { ok: true };
+  if(!sitio.hora_minima_checkin) return { ok: true };
+  // Hora actual en CST (Monterrey UTC-6, sin DST)
+  var now = new Date();
+  var cst = new Date(now.getTime() - 6 * 3600 * 1000);
+  var hh = String(cst.getUTCHours()).padStart(2, '0');
+  var mm = String(cst.getUTCMinutes()).padStart(2, '0');
+  var horaActual = hh + ':' + mm;
+  if(horaActual < sitio.hora_minima_checkin){
+    return {
+      ok: false,
+      sitio: sitio.nombre,
+      hora_minima: sitio.hora_minima_checkin,
+      hora_actual: horaActual,
+      mensaje: 'Aún no es tu hora de entrada en ' + sitio.nombre +
+               '. Puedes checar a partir de las ' + sitio.hora_minima_checkin + '.'
+    };
+  }
+  return { ok: true };
+}
+
+function mostrarModalHoraMinima(result){
+  var modal = document.createElement('div');
+  modal.id = 'horaMinimaModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:9999;padding:24px;box-sizing:border-box';
+  modal.innerHTML =
+    '<div style="background:#1a1a1a;border:2px solid #D83B01;border-radius:16px;padding:24px;max-width:440px;width:100%;text-align:center">'+
+      '<div style="font-size:48px;margin-bottom:12px">⏰</div>'+
+      '<h2 style="color:#D83B01;margin:0 0 8px">Aún no es tu hora</h2>'+
+      '<p style="color:#ccc;font-size:15px;margin:0 0 20px;line-height:1.4">'+ result.mensaje +'</p>'+
+      '<p style="color:#666;font-size:12px;margin:0 0 20px">Hora actual: '+ result.hora_actual +' CST · Mínima: '+ result.hora_minima +'</p>'+
+      '<button onclick="cerrarHoraMinima()" style="width:100%;background:#0078D4;color:#fff;border:none;padding:14px;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit">Entendido</button>'+
+    '</div>';
+  document.body.appendChild(modal);
+}
+
+function cerrarHoraMinima(){
+  var modal = document.getElementById('horaMinimaModal');
+  if(modal) modal.remove();
+  if(typeof goHome === 'function') goHome();
+}
+
 // ═══ Modal "fuera de zona" ═══
 function mostrarModalGeo(geoResult){
   const modal = document.createElement('div');
@@ -179,6 +231,12 @@ async function reintentarGeo(){
     // Cerrar modal y continuar el flujo normalmente
     const m = document.getElementById('geoModal');
     if(m) m.remove();
+    // F1.5 Issue 1: re-aplicar candado hora mínima tras reintento geo exitoso
+    var horaCheck = validarHoraMinimaCheckin(geoResult.sitio, K.tipo);
+    if(!horaCheck.ok){
+      mostrarModalHoraMinima(horaCheck);
+      return;
+    }
     if(K.tipo === 'salida'){
       showScreen('ks-project');
     } else {
@@ -653,7 +711,17 @@ async function afterVerifyContinue(){
 
   if(!geoResult.autorizado){
     mostrarModalGeo(geoResult);
-  } else if(K.tipo === 'salida'){
+    return;
+  }
+
+  // F1.5 Issue 1: candado hora mínima por geocerca (solo entrada)
+  var horaCheck = validarHoraMinimaCheckin(geoResult.sitio, K.tipo);
+  if(!horaCheck.ok){
+    mostrarModalHoraMinima(horaCheck);
+    return;
+  }
+
+  if(K.tipo === 'salida'){
     // Solo en salida pedir proyecto
     showScreen('ks-project');
   } else {
