@@ -2,8 +2,32 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-MGBW9XKZ');</script>
+<!-- End Google Tag Manager -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FTS — Servicios EPC industriales</title>
+<title>FTS · Full Technology Systems — Servicios EPC industriales en México, USA y Brasil</title>
+<meta name="description" content="Empresa industrial especializada en proyectos llave en mano de Automatización, Infraestructura Electromecánica y Mantenimiento. 12 años entregando infraestructura crítica para operaciones que no pueden parar.">
+<meta name="keywords" content="automatización industrial, infraestructura electromecánica, mantenimiento industrial, EPC, llave en mano, México, Monterrey, GRUMA, Nalco, Industria 4.0, SCADA, PLC, integración Ignition, Cognex">
+<meta name="author" content="Servicios FTS SA de CV">
+<link rel="canonical" href="https://fulltechnologysystems.com/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://fulltechnologysystems.com/">
+<meta property="og:title" content="FTS · Full Technology Systems — Servicios EPC industriales">
+<meta property="og:description" content="Proyectos llave en mano de Automatización, Infraestructura Electromecánica y Mantenimiento. 12 años. México, USA, Brasil. Operaciones que no pueden parar.">
+<meta property="og:image" content="https://yinyo1.github.io/fts-suite/website/assets/og-image.jpg">
+<meta property="og:locale" content="es_MX">
+<meta property="og:site_name" content="FTS · Full Technology Systems">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="FTS · Servicios EPC industriales">
+<meta name="twitter:description" content="Proyectos llave en mano de Automatización, Infraestructura Electromecánica y Mantenimiento. México, USA, Brasil.">
+<meta name="twitter:image" content="https://yinyo1.github.io/fts-suite/website/assets/og-image.jpg">
+<link rel="icon" type="image/png" href="assets/logo.png">
+<link rel="apple-touch-icon" href="assets/logo.png">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -41,27 +65,32 @@
     display: flex; flex-direction: column; justify-content: center;
     background-color: var(--bg-warm);
     background-image:
-      linear-gradient(90deg, rgba(250,247,242,0.96) 0%, rgba(250,247,242,0.82) 45%, rgba(250,247,242,0.55) 100%),
+      linear-gradient(115deg, rgba(250,247,242,0.97) 0%, rgba(250,247,242,0.92) 35%, rgba(250,247,242,0.4) 65%, rgba(220,85,68,0.15) 100%),
       var(--hero-img);
     background-size: cover, cover;
     background-position: center, center right;
     background-repeat: no-repeat, no-repeat;
   }
   .hero::before {
-    content: ''; position: absolute; top: -180px; right: -180px;
-    width: 580px; height: 580px;
+    content: ''; position: absolute; top: -120px; right: -120px;
+    width: 380px; height: 380px;
     background: var(--brand-gradient);
-    filter: blur(80px); opacity: 0.2;
-    border-radius: 50%; pointer-events: none; z-index: 0;
+    filter: blur(80px); opacity: 0.22;
+    border-radius: 50%; pointer-events: none; z-index: 1;
   }
-  .hero-inner { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; width: 100%; }
+  .hero-inner { position: relative; z-index: 2; max-width: 1400px; margin: 0 auto; width: 100%; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  .hero-eyebrow { animation: fadeUp 0.7s ease 0.1s both; }
+  .hero h1 { animation: fadeUp 0.7s ease 0.2s both; }
+  .hero p { animation: fadeUp 0.7s ease 0.35s both; }
+  .hero-actions { animation: fadeUp 0.7s ease 0.5s both; }
   .hero-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--brand-red); text-transform: uppercase; letter-spacing: 0.18em; margin-bottom: 1.5rem; font-weight: 500; }
   .hero h1 { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: clamp(2.5rem, 7vw, 6rem); line-height: 0.95; letter-spacing: -0.03em; margin-bottom: 2rem; max-width: 900px; }
   .hero p { font-size: 1.15rem; color: var(--text-muted); max-width: 580px; margin-bottom: 2.5rem; }
   .btn-primary { background: var(--brand-red); color: #FFF; padding: 1.1rem 2rem; text-decoration: none; font-weight: 600; display: inline-block; margin-right: 1rem; }
   .btn-ghost { color: var(--text); padding: 1.1rem 0; text-decoration: none; font-weight: 600; border-bottom: 2px solid var(--text); display: inline-block; }
   section { padding: 5rem 2rem; max-width: 1400px; margin: 0 auto; }
-  h2 { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: clamp(2rem, 4vw, 3.2rem); line-height: 1.05; letter-spacing: -0.025em; margin-bottom: 1rem; }
+  h2 { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: clamp(2rem, 4.4vw, 3.4rem); line-height: 1.05; letter-spacing: -0.025em; margin-bottom: 1rem; }
   .lead { color: var(--text-muted); font-size: 1.1rem; max-width: 640px; margin-bottom: 3rem; }
   .caps-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
   .cap { border: 1px solid var(--border); padding: 2rem; transition: border-color 0.2s, transform 0.2s; }
@@ -75,24 +104,107 @@
   .trust-logos { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 2.5rem; }
   .trust-logos span { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 1.2rem; letter-spacing: -0.01em; color: var(--text-muted); cursor: default; transition: color 0.2s, transform 0.2s; }
   .trust-logos span:hover { color: var(--brand-red); transform: translateY(-2px); }
-  .partners-section { background: var(--bg); padding: 5rem 2rem; max-width: none; margin: 0; }
+  .partners-section { background: var(--bg-warm); padding: 5rem 2rem; max-width: none; margin: 0; }
   .partners-inner { max-width: 1400px; margin: 0 auto; }
-  .section-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; letter-spacing: 0.18em; color: var(--brand-red); text-transform: uppercase; margin-bottom: 1rem; font-weight: 500; }
-  .section-title { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: clamp(2rem, 4vw, 3.2rem); line-height: 1.05; letter-spacing: -0.025em; margin-bottom: 1rem; }
+  .section-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; letter-spacing: 0.18em; color: var(--brand-red); text-transform: uppercase; margin-bottom: 1rem; font-weight: 500; display: inline-flex; align-items: center; gap: 12px; }
+  .section-eyebrow::before { content: ''; display: block; width: 40px; height: 3px; background: var(--brand-gradient); flex-shrink: 0; }
+  .section-title { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: clamp(2rem, 4.4vw, 3.4rem); line-height: 1.05; letter-spacing: -0.025em; margin-bottom: 1rem; }
   .partners-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 2rem; }
   .partner-card { border: 1px solid var(--border); padding: 2rem; transition: border-color 0.2s, transform 0.2s; }
   .partner-card:hover { border-color: var(--brand-red); transform: translateY(-4px); }
   .partner-name { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 1.6rem; letter-spacing: -0.02em; margin-bottom: 0.25rem; }
   .partner-by { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 1rem; min-height: 1em; }
   .partner-desc { font-family: 'Manrope', sans-serif; font-size: 0.95rem; color: var(--text-muted); }
+  .about-section { background: var(--bg); padding: 5rem 2rem; max-width: none; margin: 0; }
+  .about-grid { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 1.2fr 1fr; gap: 3rem; align-items: start; }
+  .about-content .section-eyebrow { margin-bottom: 1rem; }
+  .about-content .section-title { margin-bottom: 1.5rem; }
+  .about-content .lead { margin-bottom: 1.2rem; max-width: none; }
+  .about-values { list-style: none; margin: 1.8rem 0 2rem; padding: 0; }
+  .about-values li { font-family: 'Manrope', sans-serif; font-size: 0.95rem; color: var(--text); padding: 0.5rem 0 0.5rem 1.4rem; position: relative; }
+  .about-values li::before { content: '▸'; position: absolute; left: 0; color: var(--brand-red); font-weight: 700; }
+  .about-card { background: var(--bg-dark); color: #FFF; padding: 2.5rem; position: relative; }
+  .about-card-bar { position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--brand-gradient); }
+  .about-card-title { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 1.4rem; letter-spacing: -0.015em; margin-bottom: 1.8rem; }
+  .about-country { display: flex; gap: 1rem; padding: 1.2rem 0; border-top: 1px solid rgba(255,255,255,0.1); }
+  .about-country:first-of-type { border-top: none; padding-top: 0; }
+  .about-country:last-of-type { padding-bottom: 0; }
+  .about-country-flag { font-size: 1.6rem; line-height: 1.2; }
+  .about-country-info { flex: 1; }
+  .about-country-name { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 1.1rem; margin-bottom: 0.15rem; }
+  .about-country-rs { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: rgba(255,255,255,0.7); margin-bottom: 0.2rem; letter-spacing: 0.02em; }
+  .about-country-meta { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--brand-yellow); letter-spacing: 0.05em; }
+  .projects-section { background: var(--bg-warm); padding: 5rem 2rem; max-width: none; margin: 0; }
+  .projects-inner { max-width: 1400px; margin: 0 auto; }
+  .featured-case { display: grid; grid-template-columns: 1.4fr 1fr; gap: 0; background: linear-gradient(135deg, #FFFFFF 0%, var(--bg-warm) 100%); border-left: 4px solid var(--brand-red); margin: 2.5rem 0 3rem; box-shadow: 0 8px 24px rgba(0,0,0,0.04); overflow: hidden; }
+  .featured-case-content { padding: 2.5rem; }
+  .featured-case-tag { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--brand-red); font-weight: 500; margin-bottom: 1rem; }
+  .featured-case-client { font-family: 'Manrope', sans-serif; font-weight: 600; font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.4rem; }
+  .featured-case-title { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: clamp(1.5rem, 2.5vw, 2.1rem); line-height: 1.15; letter-spacing: -0.02em; margin-bottom: 1rem; }
+  .featured-case-desc { color: var(--text-muted); font-size: 1rem; line-height: 1.65; margin-bottom: 1.5rem; }
+  .featured-case-metrics { display: flex; flex-wrap: wrap; gap: 1.8rem; margin-bottom: 1.8rem; padding-top: 1.2rem; border-top: 1px solid var(--border); }
+  .featured-case-metric { font-family: 'JetBrains Mono', monospace; font-size: 0.74rem; color: var(--text-muted); }
+  .featured-case-metric strong { display: block; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 1.35rem; color: var(--brand-red); margin-bottom: 0.15rem; letter-spacing: -0.01em; }
+  .featured-case-cta { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--brand-red); text-decoration: none; border-bottom: 1px solid var(--brand-red); padding-bottom: 2px; font-weight: 600; display: inline-block; }
+  .featured-case-visual { background: linear-gradient(135deg, var(--bg-dark) 0%, #2a1c17 100%); position: relative; overflow: hidden; min-height: 280px; display: flex; align-items: flex-end; padding: 1.5rem; }
+  .featured-case-visual::after { content: ''; position: absolute; inset: 0; background-image: linear-gradient(rgba(245,197,24,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(245,197,24,0.07) 1px, transparent 1px); background-size: 28px 28px; pointer-events: none; }
+  .featured-case-visual::before { content: ''; position: absolute; top: -100px; right: -100px; width: 280px; height: 280px; background: var(--brand-gradient); filter: blur(60px); opacity: 0.35; border-radius: 50%; pointer-events: none; }
+  .featured-case-visual-label { position: relative; z-index: 2; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; letter-spacing: 0.18em; color: var(--brand-yellow); font-weight: 500; }
+  .projects-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin-top: 1rem; }
+  .project-card { background: var(--bg); border: 1px solid var(--border); padding: 1.8rem; transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; }
+  .project-card:hover { border-color: var(--brand-red); transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.07); }
+  .project-tag { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--brand-red); margin-bottom: 1rem; font-weight: 500; }
+  .project-client { font-family: 'Manrope', sans-serif; font-weight: 600; font-size: 0.85rem; color: var(--text-muted); }
+  .project-location { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; color: var(--text-muted); opacity: 0.8; letter-spacing: 0.05em; margin-top: 0.2rem; }
+  .project-title { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 1.25rem; line-height: 1.2; letter-spacing: -0.015em; margin: 0.8rem 0; }
+  .project-desc { color: var(--text-muted); font-size: 0.92rem; line-height: 1.65; margin-bottom: 1.2rem; flex-grow: 1; }
+  .project-metrics { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--text); letter-spacing: 0.05em; padding-top: 1rem; border-top: 1px solid var(--border); }
+  .project-link { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--brand-red); text-decoration: none; border-bottom: 1px solid var(--brand-red); padding-bottom: 2px; font-weight: 500; margin-top: 1rem; align-self: flex-start; }
   .stats { background: var(--bg-dark); color: #FFF; padding: 4rem 2rem; }
   .stats-inner { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 3rem; }
   .stat-num { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 3rem; line-height: 1; margin-bottom: 0.5rem; }
   .stat-label { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: rgba(255,255,255,0.65); text-transform: uppercase; letter-spacing: 0.12em; }
-  footer { background: #150C09; color: rgba(255,255,255,0.6); padding: 4rem 2rem 2rem; text-align: center; font-size: 0.9rem; }
-  footer .brand-bar { margin: -4rem -2rem 3rem; }
-  footer .logo-img { height: 52px; margin: 0 auto 1rem; opacity: 0.9; }
-  footer strong { color: var(--brand-yellow); display: block; font-family: 'Bricolage Grotesque', sans-serif; font-size: 1.2rem; margin: 1rem 0 0.5rem; }
+  .contact-section { background: var(--bg); padding: 5rem 2rem; max-width: none; margin: 0; }
+  .contact-grid { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1.2fr; gap: 3rem; align-items: start; }
+  .contact-info-cards { display: flex; flex-direction: column; gap: 0.8rem; margin-top: 2rem; }
+  .contact-info-card { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.2rem; border: 1px solid var(--border); text-decoration: none; color: var(--text); transition: border-color 0.15s, transform 0.15s; }
+  .contact-info-card:hover { border-color: var(--brand-red); transform: translateX(4px); }
+  .contact-info-icon { font-size: 1.4rem; line-height: 1; }
+  .contact-info-label { display: block; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.15rem; }
+  .contact-info-value { font-family: 'Manrope', sans-serif; font-weight: 600; font-size: 1rem; display: block; }
+  .contact-form { display: flex; flex-direction: column; gap: 1.2rem; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+  .form-label { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); display: block; }
+  .form-req { color: var(--brand-red); }
+  .form-input { width: 100%; padding: 1rem; border: 1px solid var(--border); border-radius: 0; font-family: 'Manrope', sans-serif; font-size: 0.95rem; background: var(--bg); color: var(--text); transition: border-color 0.15s, background 0.15s; }
+  .form-input:focus { outline: none; border-color: var(--brand-red); background: var(--bg-warm); }
+  .form-textarea { resize: vertical; min-height: 110px; font-family: 'Manrope', sans-serif; }
+  .form-checkbox-row { display: flex; gap: 0.6rem; align-items: center; font-size: 0.85rem; color: var(--text-muted); }
+  .form-checkbox-row input { width: 16px; height: 16px; accent-color: var(--brand-red); }
+  .form-submit { width: 100%; padding: 1.1rem; border: none; cursor: pointer; font-family: 'Manrope', sans-serif; font-weight: 600; font-size: 0.95rem; }
+  .form-submit:disabled { opacity: 0.6; cursor: wait; }
+  .form-success { padding: 2rem; background: var(--bg-warm); border-left: 4px solid var(--brand-red); font-size: 1.05rem; color: var(--text); line-height: 1.5; }
+  footer { background: #150C09; color: rgba(255,255,255,0.65); padding: 0; }
+  .footer-main { max-width: 1400px; margin: 0 auto; padding: 4rem 2rem 3rem; }
+  .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 3rem; }
+  .footer-col { display: flex; flex-direction: column; gap: 0.6rem; }
+  .footer-col-brand p { font-size: 0.9rem; line-height: 1.65; max-width: 360px; color: rgba(255,255,255,0.6); margin-top: 0.6rem; }
+  .footer-logo { height: 44px; width: auto; opacity: 0.95; margin-bottom: 0.2rem; display: block; }
+  .footer-heading { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--brand-yellow); font-weight: 500; margin-bottom: 0.6rem; }
+  .footer-link { color: rgba(255,255,255,0.6); text-decoration: none; font-size: 0.9rem; transition: color 0.15s; }
+  .footer-link:hover { color: var(--brand-yellow); }
+  .footer-meta { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: rgba(255,255,255,0.5); letter-spacing: 0.02em; }
+  .footer-social { display: flex; gap: 0.6rem; margin-top: 1.2rem; }
+  .footer-social a { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.65); text-decoration: none; transition: border-color 0.15s, color 0.15s; }
+  .footer-social a:hover { border-color: var(--brand-red); color: var(--brand-yellow); }
+  .footer-brochure { background: rgba(255,255,255,0.04); padding: 2.5rem 2rem; border-top: 1px solid rgba(255,255,255,0.08); }
+  .footer-brochure-inner { max-width: 1400px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: center; justify-content: space-between; }
+  .footer-brochure-title { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 1.4rem; color: #FFF; letter-spacing: -0.015em; }
+  .footer-bottom { padding: 1.5rem 2rem 2rem; text-align: center; font-size: 0.8rem; color: rgba(255,255,255,0.45); }
+  .footer-bottom .brand-bar { margin: 0 0 1.5rem; height: 4px; }
+  .whatsapp-float { position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; border-radius: 50%; background: #25D366; color: #FFF; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(37,211,102,0.4); z-index: 999; transition: transform 0.2s, box-shadow 0.2s; text-decoration: none; }
+  .whatsapp-float:hover { transform: scale(1.08); box-shadow: 0 12px 32px rgba(37,211,102,0.5); }
   @media (max-width: 700px) {
     nav { padding: 0.8rem 1rem; }
     .logo-img { height: 34px; }
@@ -102,11 +214,11 @@
     .hero {
       padding: 4rem 1.5rem 3rem;
       background-image:
-        linear-gradient(180deg, rgba(250,247,242,0.97) 0%, rgba(250,247,242,0.92) 65%, rgba(250,247,242,0.85) 100%),
+        linear-gradient(180deg, rgba(250,247,242,0.98) 0%, rgba(250,247,242,0.96) 60%, rgba(250,247,242,0.95) 100%),
         var(--hero-img);
       background-position: center, center;
     }
-    .hero::before { top: -120px; right: -120px; width: 360px; height: 360px; filter: blur(60px); opacity: 0.18; }
+    .hero::before { top: -90px; right: -90px; width: 260px; height: 260px; filter: blur(60px); opacity: 0.2; }
     section { padding: 3.5rem 1.5rem; }
     .stats { padding: 3rem 1.5rem; }
     .nav-links { display: none; }
@@ -115,10 +227,33 @@
     .trust-logos span { font-size: 1rem; text-align: center; }
     .partners-section { padding: 3.5rem 1.5rem; }
     .partners-grid { grid-template-columns: 1fr; }
+    .about-section { padding: 3.5rem 1.5rem; }
+    .about-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+    .about-card { padding: 2rem; }
+    .projects-section { padding: 3.5rem 1.5rem; }
+    .featured-case { grid-template-columns: 1fr; }
+    .featured-case-content { padding: 1.8rem; }
+    .featured-case-visual { min-height: 180px; padding: 1.2rem; }
+    .featured-case-metrics { gap: 1.2rem; }
+    .projects-grid { grid-template-columns: 1fr; }
+    .contact-section { padding: 3.5rem 1.5rem; }
+    .contact-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+    .form-row { grid-template-columns: 1fr; }
+    .footer-main { padding: 2.5rem 1.5rem 2rem; }
+    .footer-grid { grid-template-columns: 1fr; gap: 2rem; }
+    .footer-brochure { padding: 2rem 1.5rem; }
+    .footer-brochure-inner { flex-direction: column; align-items: flex-start; gap: 1rem; }
+    .footer-brochure-title { font-size: 1.2rem; }
+    .footer-bottom { padding: 1rem 1.5rem 2rem; }
+    .whatsapp-float { width: 48px; height: 48px; bottom: 16px; right: 16px; }
+    .whatsapp-float svg { width: 24px; height: 24px; }
   }
 </style>
 </head>
 <body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MGBW9XKZ" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
 <div class="brand-bar" id="top"></div>
 <nav>
   <a href="#top"><img class="logo-img" src="assets/logo.png" alt="FTS · Full Technology Systems"></a>
@@ -126,7 +261,7 @@
     <a href="#top" data-i18n="nav_home">Inicio</a>
     <a href="#nosotros" data-i18n="nav_about">Nosotros</a>
     <a href="#caps" data-i18n="nav_services">Servicios</a>
-    <a href="#caps" data-i18n="nav_projects">Proyectos</a>
+    <a href="#proyectos" data-i18n="nav_projects">Proyectos</a>
     <a href="#contact" data-i18n="nav_contact">Contacto</a>
   </div>
   <div class="nav-right">
@@ -143,7 +278,7 @@
     <div class="hero-eyebrow" data-i18n="hero_eyebrow">— Servicios EPC industriales · Desde 2014</div>
     <h1><span data-i18n="hero_h1_a">Construimos plantas que </span><span class="gradient-text" data-i18n="hero_h1_b">no pueden parar.</span></h1>
     <p data-i18n="hero_p">Ingeniería, procura y construcción para operaciones industriales activas. Automatización, electromecánica, HVAC y mantenimiento — sin detener tu producción.</p>
-    <div>
+    <div class="hero-actions">
       <a href="#contact" class="btn-primary" data-i18n="btn_quote">Solicitar cotización →</a>
       <a href="#caps" class="btn-ghost" data-i18n="btn_caps">Ver capacidades →</a>
     </div>
@@ -161,6 +296,122 @@
       <span>Mattel</span>
       <span>Clarios</span>
       <span>Budenheim</span>
+    </div>
+  </div>
+</section>
+<section class="about-section" id="nosotros">
+  <div class="about-grid">
+    <div class="about-content">
+      <div class="section-eyebrow" data-i18n="about_eyebrow">— Quiénes somos</div>
+      <h2 class="section-title"><span data-i18n="about_title_a">12 años construyendo </span><span class="gradient-text" data-i18n="about_title_b">infraestructura crítica.</span></h2>
+      <p class="lead" data-i18n="about_p1">FTS es una empresa industrial mexicana fundada en 2014 que ejecuta proyectos llave en mano de Automatización, Infraestructura Electromecánica y Mantenimiento. Trabajamos con operaciones que no pueden parar.</p>
+      <p class="lead" data-i18n="about_p2">Hemos expandido nuestra operación de México a Estados Unidos y Brasil, atendiendo a líderes globales en alimentos, bebidas, automotriz, telecom, química y energía.</p>
+      <ul class="about-values">
+        <li data-i18n="about_v1">Enfoque al cliente · alta personalización</li>
+        <li data-i18n="about_v2">Compromiso 24/7 · brigadas críticas activas</li>
+        <li data-i18n="about_v3">Calidad técnica certificada</li>
+        <li data-i18n="about_v4">Relaciones de largo plazo · trayectoria con clientes</li>
+      </ul>
+      <a href="https://drive.google.com/file/d/1VEkMQ0O7_MKYYm0XR0kFFbOqjQZRmTBm/view?usp=sharing" target="_blank" rel="noopener" class="btn-primary" data-i18n="about_cta">Descargar Brochure Corporativo →</a>
+    </div>
+    <aside class="about-card">
+      <div class="about-card-bar"></div>
+      <div class="about-card-title" data-i18n="about_card_title">Tres entidades, una operación</div>
+      <div class="about-country">
+        <div class="about-country-flag">🇲🇽</div>
+        <div class="about-country-info">
+          <div class="about-country-name" data-i18n="about_country_mx">México</div>
+          <div class="about-country-rs">Servicios FTS SA de CV</div>
+          <div class="about-country-meta" data-i18n="about_mx_meta">Monterrey, NL · 2014</div>
+        </div>
+      </div>
+      <div class="about-country">
+        <div class="about-country-flag">🇺🇸</div>
+        <div class="about-country-info">
+          <div class="about-country-name" data-i18n="about_country_us">USA</div>
+          <div class="about-country-rs">FTS Full Technology Systems LLC</div>
+          <div class="about-country-meta" data-i18n="about_us_meta">Texas · Operación activa</div>
+        </div>
+      </div>
+      <div class="about-country">
+        <div class="about-country-flag">🇧🇷</div>
+        <div class="about-country-info">
+          <div class="about-country-name" data-i18n="about_country_br">Brasil</div>
+          <div class="about-country-rs">FTS Brasil LTDA</div>
+          <div class="about-country-meta" data-i18n="about_br_meta">São Paulo · En expansión</div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>
+<section class="projects-section" id="proyectos">
+  <div class="projects-inner">
+    <div class="section-eyebrow" data-i18n="projects_eyebrow">— Proyectos destacados</div>
+    <h2 class="section-title"><span data-i18n="projects_title_a">Plantas reales. </span><span class="gradient-text" data-i18n="projects_title_b">Proyectos vivos.</span></h2>
+    <p class="lead" data-i18n="projects_lead">Más de 10 años entregando proyectos llave en mano. Aquí algunos casos representativos.</p>
+    <article class="featured-case">
+      <div class="featured-case-content">
+        <div class="featured-case-tag" data-i18n="featured_tag">▸ Caso destacado · 2026</div>
+        <div class="featured-case-client">Nalco Water · Ecolab</div>
+        <h3 class="featured-case-title" data-i18n="featured_title">Memoria estructural multipanel - Planta Topochico</h3>
+        <p class="featured-case-desc" data-i18n="featured_desc">Diseño, cálculo y verificación estructural de gabinete multipanel para tratamiento químico. 17 secciones, 28 verificaciones LRFD bajo NTC-DCEA / AISC 360-10 / ACI 318-19, validación FEA Autodesk Fusion 360.</p>
+        <div class="featured-case-metrics">
+          <div class="featured-case-metric"><strong>28/28</strong><span data-i18n="featured_m1">verificaciones aprobadas</span></div>
+          <div class="featured-case-metric"><strong>52</strong><span data-i18n="featured_m2">páginas memoria certificada</span></div>
+          <div class="featured-case-metric"><strong>72.84 MPa</strong><span data-i18n="featured_m3">Von Mises max</span></div>
+        </div>
+        <a href="#" class="featured-case-cta" data-i18n="featured_cta">Ver memoria técnica →</a>
+      </div>
+      <div class="featured-case-visual" aria-hidden="true">
+        <div class="featured-case-visual-label">▸ MULTIPANEL · TOPOCHICO</div>
+      </div>
+    </article>
+    <div class="projects-grid">
+      <article class="project-card">
+        <div class="project-tag" data-i18n="proj1_tag">Automatización · Migración</div>
+        <div class="project-client" data-i18n="proj1_client">Planta alimenticia US líder</div>
+        <div class="project-location">Hayward, CA</div>
+        <h3 class="project-title" data-i18n="proj1_title">Migración 45 VFDs, 1 PLC y 5 Switches</h3>
+        <p class="project-desc" data-i18n="proj1_desc">Modernización de control completa sin paro de producción.</p>
+        <div class="project-metrics" data-i18n="proj1_metrics">45 VFDs · 0 días paro · 100% migrado</div>
+      </article>
+      <article class="project-card">
+        <div class="project-tag" data-i18n="proj2_tag">Infraestructura electromecánica</div>
+        <div class="project-client" data-i18n="proj2_client">Confidencial · Industria pesada</div>
+        <div class="project-location" data-i18n="loc_mexico">México</div>
+        <h3 class="project-title" data-i18n="proj2_title">Cambio TCs y TPs en Subestación Eléctrica</h3>
+        <p class="project-desc" data-i18n="proj2_desc">Reemplazo transformadores de corriente y potencial en operación crítica.</p>
+        <div class="project-metrics" data-i18n="proj2_metrics">Subestación 34.5kV · Cero downtime</div>
+      </article>
+      <article class="project-card">
+        <div class="project-tag" data-i18n="proj3_tag">Smart Manufacturing · Industria 4.0</div>
+        <div class="project-client" data-i18n="proj3_client">Acerera nacional</div>
+        <div class="project-location" data-i18n="loc_mexico">México</div>
+        <h3 class="project-title" data-i18n="proj3_title">Implementación Industria 4.0 en planta acerera</h3>
+        <p class="project-desc" data-i18n="proj3_desc">Integración SCADA + MES + dashboards productivos en tiempo real.</p>
+        <div class="project-metrics" data-i18n="proj3_metrics">OEE +18% · Tracking en línea</div>
+      </article>
+      <article class="project-card">
+        <div class="project-tag" data-i18n="proj4_tag">Automatización · Logística industrial</div>
+        <div class="project-client" data-i18n="proj4_client">Manufactura global</div>
+        <h3 class="project-title" data-i18n="proj4_title">Desmontaje y transferencia de planta de producción</h3>
+        <p class="project-desc" data-i18n="proj4_desc">Reubicación completa de líneas productivas entre instalaciones.</p>
+        <a href="https://www.linkedin.com/pulse/desmontaje-y-transferencia-de-planta-producci%25C3%25B3n-7v3pf/" target="_blank" rel="noopener" class="project-link" data-i18n="proj_link_linkedin">Caso en LinkedIn →</a>
+      </article>
+      <article class="project-card">
+        <div class="project-tag" data-i18n="proj5_tag">Infraestructura electromecánica · Upgrade</div>
+        <div class="project-client" data-i18n="proj5_client">Industria alimenticia · Café</div>
+        <h3 class="project-title" data-i18n="proj5_title">Upgrade Tostador de Café</h3>
+        <p class="project-desc" data-i18n="proj5_desc">Modernización electromecánica de línea de tostado, conservando producción activa.</p>
+        <a href="https://www.linkedin.com/pulse/proyecto-upgrade-tostador-de-caf%25C3%25A9-full-technology-systems-lgqac/" target="_blank" rel="noopener" class="project-link" data-i18n="proj_link_linkedin">Caso en LinkedIn →</a>
+      </article>
+      <article class="project-card">
+        <div class="project-tag" data-i18n="proj6_tag">Mantenimiento · Optimización</div>
+        <div class="project-client" data-i18n="proj6_client">Industria azucarera</div>
+        <h3 class="project-title" data-i18n="proj6_title">Reducción de humedad en producción de azúcar</h3>
+        <p class="project-desc" data-i18n="proj6_desc">Intervención de procesos para mejora de calidad final y rendimiento.</p>
+        <a href="https://www.linkedin.com/pulse/innovaci%25C3%25B3n-en-la-industria-alimenticia-reducci%25C3%25B3n/" target="_blank" rel="noopener" class="project-link" data-i18n="proj_link_linkedin">Caso en LinkedIn →</a>
+      </article>
     </div>
   </div>
 </section>
@@ -207,19 +458,131 @@
     </div>
   </div>
 </section>
-<section id="contact">
-  <h2><span data-i18n="contact_h2_a">¿Tienes una planta que </span><span class="gradient-text" data-i18n="contact_h2_b">no puede parar?</span></h2>
-  <p class="lead" data-i18n="contact_lead">Respuesta técnica en menos de 24 horas. Propuesta formal en 5 días.</p>
-  <a href="mailto:contacto@fts.mx" class="btn-primary">contacto@fts.mx →</a>
-  <a href="tel:+528123580501" class="btn-ghost">+52 81 2358 0501 →</a>
+<section class="contact-section" id="contact">
+  <div class="contact-grid">
+    <div class="contact-info">
+      <div class="section-eyebrow" data-i18n="contact_eyebrow">— Hablemos</div>
+      <h2 class="section-title"><span data-i18n="contact_h2_a">¿Tienes una planta que </span><span class="gradient-text" data-i18n="contact_h2_b">no puede parar?</span></h2>
+      <p class="lead" data-i18n="contact_lead">Respuesta técnica en menos de 24 horas. Propuesta formal en 5 días.</p>
+      <div class="contact-info-cards">
+        <a href="tel:+528123580501" class="contact-info-card">
+          <span class="contact-info-icon">📞</span>
+          <span>
+            <span class="contact-info-label" data-i18n="contact_phone_label">Teléfono</span>
+            <span class="contact-info-value">+52 81 2358 0501</span>
+          </span>
+        </a>
+        <a href="mailto:contacto@fts.mx" class="contact-info-card">
+          <span class="contact-info-icon">✉</span>
+          <span>
+            <span class="contact-info-label">Email</span>
+            <span class="contact-info-value">contacto@fts.mx</span>
+          </span>
+        </a>
+        <a href="https://api.whatsapp.com/send/?phone=5218123580501&text=Hola.+Necesito+m%C3%A1s+informaci%C3%B3n+sobre..." target="_blank" rel="noopener" class="contact-info-card">
+          <span class="contact-info-icon">💬</span>
+          <span>
+            <span class="contact-info-label">WhatsApp</span>
+            <span class="contact-info-value" data-i18n="contact_wa_value">Respuesta inmediata</span>
+          </span>
+        </a>
+      </div>
+    </div>
+    <div class="contact-form-wrap">
+      <!-- TODO Esteban: reemplazar 'REPLACE_WITH_N8N_WEBHOOK_URL' en const CONTACT_FORM_ENDPOINT (al final del body) con la URL del webhook n8n en Railway -->
+      <form id="contact-form" class="contact-form" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="nombre"><span data-i18n="form_l_name">Nombre completo</span> <span class="form-req">*</span></label>
+          <input class="form-input" id="nombre" name="nombre" type="text" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="empresa"><span data-i18n="form_l_company">Empresa</span> <span class="form-req">*</span></label>
+          <input class="form-input" id="empresa" name="empresa" type="text" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="email"><span data-i18n="form_l_email">Email</span> <span class="form-req">*</span></label>
+            <input class="form-input" id="email" name="email" type="email" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="telefono" data-i18n="form_l_phone">Teléfono (opcional)</label>
+            <input class="form-input" id="telefono" name="telefono" type="tel">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="tipo_proyecto"><span data-i18n="form_l_type">Tipo de proyecto</span> <span class="form-req">*</span></label>
+          <select class="form-input" id="tipo_proyecto" name="tipo_proyecto" required>
+            <option value="" data-i18n="form_o_select">Seleccionar...</option>
+            <option value="automatizacion" data-i18n="form_o_auto">Automatización</option>
+            <option value="electromecanica" data-i18n="form_o_elec">Infraestructura electromecánica</option>
+            <option value="hvac" data-i18n="form_o_hvac">HVAC</option>
+            <option value="mantenimiento" data-i18n="form_o_maint">Mantenimiento</option>
+            <option value="otro" data-i18n="form_o_other">Otro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="mensaje"><span data-i18n="form_l_message">Mensaje</span> <span class="form-req">*</span></label>
+          <textarea class="form-input form-textarea" id="mensaje" name="mensaje" rows="4" required></textarea>
+        </div>
+        <div class="form-checkbox-row">
+          <input type="checkbox" id="consent" required>
+          <label for="consent" data-i18n="form_l_consent">Acepto política de privacidad</label>
+        </div>
+        <button type="submit" class="form-submit btn-primary" data-i18n="form_submit">Enviar solicitud →</button>
+      </form>
+    </div>
+  </div>
 </section>
 <footer>
-  <div class="brand-bar"></div>
-  <img class="logo-img" src="assets/logo.png" alt="FTS">
-  <strong data-i18n="footer_brand">FTS · Full Technology Systems</strong>
-  <span data-i18n="footer_tagline">Servicios EPC industriales · México · USA · Brasil</span><br>
-  <span data-i18n="footer_legal">© 2026 Servicios FTS SA de CV · RFC: SFT170905L43</span>
+  <div class="footer-main">
+    <div class="footer-grid">
+      <div class="footer-col footer-col-brand">
+        <img class="footer-logo" src="assets/logo.png" alt="FTS · Full Technology Systems" loading="lazy">
+        <p data-i18n="footer_brand_tagline">Empresa industrial especializada en proyectos llave en mano en Automatización, Infraestructura Electromecánica y Mantenimiento.</p>
+        <div class="footer-social">
+          <a href="https://www.facebook.com/profile.php?id=100091824900548" target="_blank" rel="noopener" aria-label="Facebook"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z"/></svg></a>
+          <a href="https://www.youtube.com/@FTS-FullTechnologySystems" target="_blank" rel="noopener" aria-label="YouTube"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M23.5 6.2a3 3 0 00-2.1-2.1C19.6 3.6 12 3.6 12 3.6s-7.6 0-9.4.5A3 3 0 00.5 6.2C0 8 0 12 0 12s0 4 .5 5.8a3 3 0 002.1 2.1c1.8.5 9.4.5 9.4.5s7.6 0 9.4-.5a3 3 0 002.1-2.1c.5-1.8.5-5.8.5-5.8s0-4-.5-5.8zM9.6 15.6V8.4l6.2 3.6-6.2 3.6z"/></svg></a>
+          <a href="https://www.linkedin.com/company/full-technology-systems" target="_blank" rel="noopener" aria-label="LinkedIn"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19 0h-14c-2.76 0-5 2.24-5 5v14c0 2.76 2.24 5 5 5h14c2.76 0 5-2.24 5-5v-14c0-2.76-2.24-5-5-5zm-11.4 19.4h-3v-9.5h3v9.5zm-1.5-10.8c-.97 0-1.75-.79-1.75-1.75s.78-1.75 1.75-1.75 1.75.79 1.75 1.75-.78 1.75-1.75 1.75zm12.4 10.8h-3v-4.6c0-1.1-.02-2.5-1.5-2.5s-1.75 1.18-1.75 2.4v4.7h-3v-9.5h2.9v1.3h.04c.4-.76 1.4-1.55 2.85-1.55 3.05 0 3.6 2 3.6 4.6v5.15z"/></svg></a>
+          <a href="https://www.instagram.com/fts_full_technology_systems" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2.16c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.23.41.56.22.96.48 1.38.9.42.42.68.82.9 1.38.16.42.36 1.06.41 2.23.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.23-.22.56-.48.96-.9 1.38-.42.42-.82.68-1.38.9-.42.16-1.06.36-2.23.41-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.23-.41-.56-.22-.96-.48-1.38-.9-.42-.42-.68-.82-.9-1.38-.16-.42-.36-1.06-.41-2.23-.06-1.27-.07-1.65-.07-4.85s.01-3.58.07-4.85c.05-1.17.25-1.8.41-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.42-.16 1.06-.36 2.23-.41 1.27-.06 1.65-.07 4.85-.07M12 0C8.74 0 8.33.01 7.05.07 5.78.13 4.9.33 4.14.63c-.78.3-1.45.71-2.12 1.38C1.35 2.69.94 3.36.63 4.14.33 4.9.13 5.78.07 7.05.01 8.33 0 8.74 0 12s.01 3.67.07 4.95c.06 1.27.26 2.15.56 2.91.31.78.72 1.45 1.39 2.12.67.67 1.34 1.08 2.12 1.39.76.3 1.64.5 2.91.56C8.33 23.99 8.74 24 12 24s3.67-.01 4.95-.07c1.27-.06 2.15-.26 2.91-.56.78-.31 1.45-.72 2.12-1.39.67-.67 1.08-1.34 1.39-2.12.3-.76.5-1.64.56-2.91.06-1.28.07-1.69.07-4.95s-.01-3.67-.07-4.95c-.06-1.27-.26-2.15-.56-2.91-.31-.78-.72-1.45-1.39-2.12C21.31 1.35 20.64.94 19.86.63c-.76-.3-1.64-.5-2.91-.56C15.67.01 15.26 0 12 0zm0 5.84c-3.4 0-6.16 2.76-6.16 6.16s2.76 6.16 6.16 6.16 6.16-2.76 6.16-6.16S15.4 5.84 12 5.84zM12 16c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm6.41-11.85c-.8 0-1.44.65-1.44 1.44s.65 1.44 1.44 1.44 1.44-.65 1.44-1.44-.64-1.44-1.44-1.44z"/></svg></a>
+          <a href="https://api.whatsapp.com/send/?phone=5218123580501&text=Hola.+Necesito+m%C3%A1s+informaci%C3%B3n+sobre..." target="_blank" rel="noopener" aria-label="WhatsApp"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg></a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <div class="footer-heading" data-i18n="footer_h_solutions">Soluciones</div>
+        <a href="#caps" class="footer-link" data-i18n="footer_l_automation">Automatización</a>
+        <a href="#caps" class="footer-link" data-i18n="footer_l_electromech">Infraestructura electromecánica</a>
+        <a href="#caps" class="footer-link" data-i18n="footer_l_maintenance">Mantenimiento</a>
+        <a href="https://serviciosfts.odoo.com/" target="_blank" rel="noopener" class="footer-link" data-i18n="footer_l_products">Productos</a>
+        <a href="https://serviciosfts.odoo.com/jobs" target="_blank" rel="noopener" class="footer-link" data-i18n="footer_l_jobs">Jobs</a>
+      </div>
+      <div class="footer-col">
+        <div class="footer-heading" data-i18n="footer_h_company">Compañía</div>
+        <a href="#nosotros" class="footer-link" data-i18n="nav_about">Nosotros</a>
+        <a href="#proyectos" class="footer-link" data-i18n="nav_projects">Proyectos</a>
+        <a href="#partners" class="footer-link" data-i18n="footer_l_partners">Partners</a>
+        <a href="#contact" class="footer-link" data-i18n="nav_contact">Contacto</a>
+      </div>
+      <div class="footer-col">
+        <div class="footer-heading" data-i18n="footer_h_contact">Contacto</div>
+        <a href="tel:+528123580501" class="footer-link">+52 81 2358 0501</a>
+        <a href="mailto:contacto@fts.mx" class="footer-link">contacto@fts.mx</a>
+        <span class="footer-meta" data-i18n="footer_hours">Lunes a Viernes · 7:30 - 17:30</span>
+        <span class="footer-meta" data-i18n="footer_address">Monterrey, NL · México</span>
+      </div>
+    </div>
+  </div>
+  <div class="footer-brochure">
+    <div class="footer-brochure-inner">
+      <div class="footer-brochure-title" data-i18n="footer_brochure_title">¿Necesitas más información técnica?</div>
+      <a href="https://drive.google.com/file/d/1VEkMQ0O7_MKYYm0XR0kFFbOqjQZRmTBm/view?usp=sharing" target="_blank" rel="noopener" class="btn-primary" data-i18n="about_cta">Descargar Brochure Corporativo →</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <div class="brand-bar"></div>
+    <span data-i18n="footer_legal_v2">© 2026 Servicios FTS SA de CV · RFC: SFT170905L43 · Todos los derechos reservados</span>
+  </div>
 </footer>
+<a href="https://api.whatsapp.com/send/?phone=5218123580501&text=Hola.+Necesito+m%C3%A1s+informaci%C3%B3n+sobre..." class="whatsapp-float" target="_blank" rel="noopener" aria-label="WhatsApp FTS"><svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg></a>
 <script>
   const TRANSLATIONS = {
     es: {
@@ -265,7 +628,99 @@
       partner_ignition_by: "por Inductive Automation",
       partner_ignition_desc: "SCADA / MES / IIoT",
       partner_cognex_desc: "Visión artificial industrial",
-      partner_ur_desc: "Robótica colaborativa"
+      partner_ur_desc: "Robótica colaborativa",
+      projects_eyebrow: "— Proyectos destacados",
+      projects_title_a: "Plantas reales. ",
+      projects_title_b: "Proyectos vivos.",
+      projects_lead: "Más de 10 años entregando proyectos llave en mano. Aquí algunos casos representativos.",
+      featured_tag: "▸ Caso destacado · 2026",
+      featured_title: "Memoria estructural multipanel - Planta Topochico",
+      featured_desc: "Diseño, cálculo y verificación estructural de gabinete multipanel para tratamiento químico. 17 secciones, 28 verificaciones LRFD bajo NTC-DCEA / AISC 360-10 / ACI 318-19, validación FEA Autodesk Fusion 360.",
+      featured_m1: "verificaciones aprobadas",
+      featured_m2: "páginas memoria certificada",
+      featured_m3: "Von Mises max",
+      featured_cta: "Ver memoria técnica →",
+      loc_mexico: "México",
+      proj_link_linkedin: "Caso en LinkedIn →",
+      proj1_tag: "Automatización · Migración",
+      proj1_client: "Planta alimenticia US líder",
+      proj1_title: "Migración 45 VFDs, 1 PLC y 5 Switches",
+      proj1_desc: "Modernización de control completa sin paro de producción.",
+      proj1_metrics: "45 VFDs · 0 días paro · 100% migrado",
+      proj2_tag: "Infraestructura electromecánica",
+      proj2_client: "Confidencial · Industria pesada",
+      proj2_title: "Cambio TCs y TPs en Subestación Eléctrica",
+      proj2_desc: "Reemplazo transformadores de corriente y potencial en operación crítica.",
+      proj2_metrics: "Subestación 34.5kV · Cero downtime",
+      proj3_tag: "Smart Manufacturing · Industria 4.0",
+      proj3_client: "Acerera nacional",
+      proj3_title: "Implementación Industria 4.0 en planta acerera",
+      proj3_desc: "Integración SCADA + MES + dashboards productivos en tiempo real.",
+      proj3_metrics: "OEE +18% · Tracking en línea",
+      proj4_tag: "Automatización · Logística industrial",
+      proj4_client: "Manufactura global",
+      proj4_title: "Desmontaje y transferencia de planta de producción",
+      proj4_desc: "Reubicación completa de líneas productivas entre instalaciones.",
+      proj5_tag: "Infraestructura electromecánica · Upgrade",
+      proj5_client: "Industria alimenticia · Café",
+      proj5_title: "Upgrade Tostador de Café",
+      proj5_desc: "Modernización electromecánica de línea de tostado, conservando producción activa.",
+      proj6_tag: "Mantenimiento · Optimización",
+      proj6_client: "Industria azucarera",
+      proj6_title: "Reducción de humedad en producción de azúcar",
+      proj6_desc: "Intervención de procesos para mejora de calidad final y rendimiento.",
+      about_eyebrow: "— Quiénes somos",
+      about_title_a: "12 años construyendo ",
+      about_title_b: "infraestructura crítica.",
+      about_p1: "FTS es una empresa industrial mexicana fundada en 2014 que ejecuta proyectos llave en mano de Automatización, Infraestructura Electromecánica y Mantenimiento. Trabajamos con operaciones que no pueden parar.",
+      about_p2: "Hemos expandido nuestra operación de México a Estados Unidos y Brasil, atendiendo a líderes globales en alimentos, bebidas, automotriz, telecom, química y energía.",
+      about_v1: "Enfoque al cliente · alta personalización",
+      about_v2: "Compromiso 24/7 · brigadas críticas activas",
+      about_v3: "Calidad técnica certificada",
+      about_v4: "Relaciones de largo plazo · trayectoria con clientes",
+      about_cta: "Descargar Brochure Corporativo →",
+      about_card_title: "Tres entidades, una operación",
+      about_country_mx: "México",
+      about_country_us: "USA",
+      about_country_br: "Brasil",
+      about_mx_meta: "Monterrey, NL · 2014",
+      about_us_meta: "Texas · Operación activa",
+      about_br_meta: "São Paulo · En expansión",
+      footer_brand_tagline: "Empresa industrial especializada en proyectos llave en mano en Automatización, Infraestructura Electromecánica y Mantenimiento.",
+      footer_h_solutions: "Soluciones",
+      footer_l_automation: "Automatización",
+      footer_l_electromech: "Infraestructura electromecánica",
+      footer_l_maintenance: "Mantenimiento",
+      footer_l_products: "Productos",
+      footer_l_jobs: "Jobs",
+      footer_h_company: "Compañía",
+      footer_l_partners: "Partners",
+      footer_h_contact: "Contacto",
+      footer_hours: "Lunes a Viernes · 7:30 - 17:30",
+      footer_address: "Monterrey, NL · México",
+      footer_brochure_title: "¿Necesitas más información técnica?",
+      footer_legal_v2: "© 2026 Servicios FTS SA de CV · RFC: SFT170905L43 · Todos los derechos reservados",
+      contact_eyebrow: "— Hablemos",
+      contact_phone_label: "Teléfono",
+      contact_wa_value: "Respuesta inmediata",
+      form_l_name: "Nombre completo",
+      form_l_company: "Empresa",
+      form_l_email: "Email",
+      form_l_phone: "Teléfono (opcional)",
+      form_l_type: "Tipo de proyecto",
+      form_l_message: "Mensaje",
+      form_l_consent: "Acepto política de privacidad",
+      form_submit: "Enviar solicitud →",
+      form_o_select: "Seleccionar...",
+      form_o_auto: "Automatización",
+      form_o_elec: "Infraestructura electromecánica",
+      form_o_hvac: "HVAC",
+      form_o_maint: "Mantenimiento",
+      form_o_other: "Otro",
+      form_sending: "Enviando...",
+      form_retry: "Reintentar →",
+      form_success: "✓ Mensaje enviado. Te contactaremos en menos de 24 horas.",
+      form_error: "Hubo un problema. Por favor escríbenos a contacto@fts.mx o WhatsApp directo."
     },
     en: {
       cta_nav: "Get a quote",
@@ -310,7 +765,99 @@
       partner_ignition_by: "by Inductive Automation",
       partner_ignition_desc: "SCADA / MES / IIoT",
       partner_cognex_desc: "Industrial machine vision",
-      partner_ur_desc: "Collaborative robotics"
+      partner_ur_desc: "Collaborative robotics",
+      projects_eyebrow: "— Featured projects",
+      projects_title_a: "Real plants. ",
+      projects_title_b: "Live projects.",
+      projects_lead: "Over 10 years delivering turnkey projects. A few representative cases below.",
+      featured_tag: "▸ Featured case · 2026",
+      featured_title: "Multipanel structural calculation report - Topochico Plant",
+      featured_desc: "Design, calculation and structural verification of a multipanel cabinet for chemical treatment. 17 sections, 28 LRFD verifications under NTC-DCEA / AISC 360-10 / ACI 318-19, FEA validation in Autodesk Fusion 360.",
+      featured_m1: "verifications passed",
+      featured_m2: "certified report pages",
+      featured_m3: "Von Mises max",
+      featured_cta: "View technical report →",
+      loc_mexico: "Mexico",
+      proj_link_linkedin: "Case on LinkedIn →",
+      proj1_tag: "Automation · Migration",
+      proj1_client: "Leading US food plant",
+      proj1_title: "Migration of 45 VFDs, 1 PLC and 5 switches",
+      proj1_desc: "Full control modernization with zero production downtime.",
+      proj1_metrics: "45 VFDs · 0 downtime days · 100% migrated",
+      proj2_tag: "Electromechanical infrastructure",
+      proj2_client: "Confidential · Heavy industry",
+      proj2_title: "CT and PT replacement in electrical substation",
+      proj2_desc: "Current and potential transformer replacement in a live critical operation.",
+      proj2_metrics: "34.5kV substation · Zero downtime",
+      proj3_tag: "Smart Manufacturing · Industry 4.0",
+      proj3_client: "National steel producer",
+      proj3_title: "Industry 4.0 deployment at a steel plant",
+      proj3_desc: "SCADA + MES integration + real-time production dashboards.",
+      proj3_metrics: "OEE +18% · Online tracking",
+      proj4_tag: "Automation · Industrial logistics",
+      proj4_client: "Global manufacturer",
+      proj4_title: "Production plant dismantling and transfer",
+      proj4_desc: "Full relocation of production lines across facilities.",
+      proj5_tag: "Electromechanical infrastructure · Upgrade",
+      proj5_client: "Food industry · Coffee",
+      proj5_title: "Coffee roaster upgrade",
+      proj5_desc: "Electromechanical modernization of the roasting line while keeping production active.",
+      proj6_tag: "Maintenance · Optimization",
+      proj6_client: "Sugar industry",
+      proj6_title: "Moisture reduction in sugar production",
+      proj6_desc: "Process intervention to improve final quality and yield.",
+      about_eyebrow: "— About us",
+      about_title_a: "12 years building ",
+      about_title_b: "critical infrastructure.",
+      about_p1: "FTS is a Mexican industrial company founded in 2014, delivering turnkey projects in Automation, Electromechanical Infrastructure and Maintenance. We work with operations that cannot stop.",
+      about_p2: "We have expanded our operation from Mexico to the United States and Brazil, serving global leaders in food, beverage, automotive, telecom, chemicals and energy.",
+      about_v1: "Customer focus · high personalization",
+      about_v2: "24/7 commitment · active critical crews",
+      about_v3: "Certified technical quality",
+      about_v4: "Long-term relationships · proven client track record",
+      about_cta: "Download Corporate Brochure →",
+      about_card_title: "Three entities, one operation",
+      about_country_mx: "Mexico",
+      about_country_us: "USA",
+      about_country_br: "Brazil",
+      about_mx_meta: "Monterrey, NL · 2014",
+      about_us_meta: "Texas · Active operation",
+      about_br_meta: "São Paulo · Expanding",
+      footer_brand_tagline: "Industrial company specialized in turnkey projects for Automation, Electromechanical Infrastructure and Maintenance.",
+      footer_h_solutions: "Solutions",
+      footer_l_automation: "Automation",
+      footer_l_electromech: "Electromechanical infrastructure",
+      footer_l_maintenance: "Maintenance",
+      footer_l_products: "Products",
+      footer_l_jobs: "Jobs",
+      footer_h_company: "Company",
+      footer_l_partners: "Partners",
+      footer_h_contact: "Contact",
+      footer_hours: "Monday to Friday · 7:30 - 17:30",
+      footer_address: "Monterrey, NL · Mexico",
+      footer_brochure_title: "Need more technical info?",
+      footer_legal_v2: "© 2026 Servicios FTS SA de CV · RFC: SFT170905L43 · All rights reserved",
+      contact_eyebrow: "— Let's talk",
+      contact_phone_label: "Phone",
+      contact_wa_value: "Immediate reply",
+      form_l_name: "Full name",
+      form_l_company: "Company",
+      form_l_email: "Email",
+      form_l_phone: "Phone (optional)",
+      form_l_type: "Project type",
+      form_l_message: "Message",
+      form_l_consent: "I accept the privacy policy",
+      form_submit: "Send request →",
+      form_o_select: "Select...",
+      form_o_auto: "Automation",
+      form_o_elec: "Electromechanical infrastructure",
+      form_o_hvac: "HVAC",
+      form_o_maint: "Maintenance",
+      form_o_other: "Other",
+      form_sending: "Sending...",
+      form_retry: "Retry →",
+      form_success: "✓ Message sent. We will contact you within 24 hours.",
+      form_error: "Something went wrong. Please email contacto@fts.mx or contact us directly via WhatsApp."
     },
     pt: {
       cta_nav: "Cotação",
@@ -355,7 +902,99 @@
       partner_ignition_by: "por Inductive Automation",
       partner_ignition_desc: "SCADA / MES / IIoT",
       partner_cognex_desc: "Visão artificial industrial",
-      partner_ur_desc: "Robótica colaborativa"
+      partner_ur_desc: "Robótica colaborativa",
+      projects_eyebrow: "— Projetos em destaque",
+      projects_title_a: "Plantas reais. ",
+      projects_title_b: "Projetos vivos.",
+      projects_lead: "Mais de 10 anos entregando projetos chave-na-mão. Alguns casos representativos abaixo.",
+      featured_tag: "▸ Caso em destaque · 2026",
+      featured_title: "Memorial estrutural multipainel - Planta Topochico",
+      featured_desc: "Projeto, cálculo e verificação estrutural de gabinete multipainel para tratamento químico. 17 seções, 28 verificações LRFD sob NTC-DCEA / AISC 360-10 / ACI 318-19, validação FEA Autodesk Fusion 360.",
+      featured_m1: "verificações aprovadas",
+      featured_m2: "páginas memorial certificado",
+      featured_m3: "Von Mises max",
+      featured_cta: "Ver memorial técnico →",
+      loc_mexico: "México",
+      proj_link_linkedin: "Caso no LinkedIn →",
+      proj1_tag: "Automação · Migração",
+      proj1_client: "Planta alimentícia líder nos EUA",
+      proj1_title: "Migração de 45 VFDs, 1 PLC e 5 switches",
+      proj1_desc: "Modernização completa de controle sem parada de produção.",
+      proj1_metrics: "45 VFDs · 0 dias de parada · 100% migrado",
+      proj2_tag: "Infraestrutura eletromecânica",
+      proj2_client: "Confidencial · Indústria pesada",
+      proj2_title: "Troca de TCs e TPs em subestação elétrica",
+      proj2_desc: "Substituição de transformadores de corrente e potencial em operação crítica.",
+      proj2_metrics: "Subestação 34.5kV · Zero downtime",
+      proj3_tag: "Smart Manufacturing · Indústria 4.0",
+      proj3_client: "Siderúrgica nacional",
+      proj3_title: "Implementação Indústria 4.0 em siderúrgica",
+      proj3_desc: "Integração SCADA + MES + dashboards produtivos em tempo real.",
+      proj3_metrics: "OEE +18% · Tracking on-line",
+      proj4_tag: "Automação · Logística industrial",
+      proj4_client: "Manufatura global",
+      proj4_title: "Desmontagem e transferência de planta de produção",
+      proj4_desc: "Realocação completa de linhas produtivas entre instalações.",
+      proj5_tag: "Infraestrutura eletromecânica · Upgrade",
+      proj5_client: "Indústria alimentícia · Café",
+      proj5_title: "Upgrade de torrador de café",
+      proj5_desc: "Modernização eletromecânica da linha de torra mantendo a produção ativa.",
+      proj6_tag: "Manutenção · Otimização",
+      proj6_client: "Indústria açucareira",
+      proj6_title: "Redução de umidade na produção de açúcar",
+      proj6_desc: "Intervenção em processos para melhoria de qualidade final e rendimento.",
+      about_eyebrow: "— Quem somos",
+      about_title_a: "12 anos construindo ",
+      about_title_b: "infraestrutura crítica.",
+      about_p1: "A FTS é uma empresa industrial mexicana fundada em 2014 que executa projetos chave-na-mão de Automação, Infraestrutura Eletromecânica e Manutenção. Trabalhamos com operações que não podem parar.",
+      about_p2: "Expandimos nossa operação do México para os Estados Unidos e o Brasil, atendendo a líderes globais em alimentos, bebidas, automotivo, telecom, química e energia.",
+      about_v1: "Foco no cliente · alta personalização",
+      about_v2: "Compromisso 24/7 · brigadas críticas ativas",
+      about_v3: "Qualidade técnica certificada",
+      about_v4: "Relações de longo prazo · trajetória comprovada com clientes",
+      about_cta: "Baixar Brochure Corporativo →",
+      about_card_title: "Três entidades, uma operação",
+      about_country_mx: "México",
+      about_country_us: "EUA",
+      about_country_br: "Brasil",
+      about_mx_meta: "Monterrey, NL · 2014",
+      about_us_meta: "Texas · Operação ativa",
+      about_br_meta: "São Paulo · Em expansão",
+      footer_brand_tagline: "Empresa industrial especializada em projetos chave-na-mão de Automação, Infraestrutura Eletromecânica e Manutenção.",
+      footer_h_solutions: "Soluções",
+      footer_l_automation: "Automação",
+      footer_l_electromech: "Infraestrutura eletromecânica",
+      footer_l_maintenance: "Manutenção",
+      footer_l_products: "Produtos",
+      footer_l_jobs: "Vagas",
+      footer_h_company: "Empresa",
+      footer_l_partners: "Partners",
+      footer_h_contact: "Contato",
+      footer_hours: "Segunda a Sexta · 7:30 - 17:30",
+      footer_address: "Monterrey, NL · México",
+      footer_brochure_title: "Precisa de mais informações técnicas?",
+      footer_legal_v2: "© 2026 Servicios FTS SA de CV · RFC: SFT170905L43 · Todos os direitos reservados",
+      contact_eyebrow: "— Vamos conversar",
+      contact_phone_label: "Telefone",
+      contact_wa_value: "Resposta imediata",
+      form_l_name: "Nome completo",
+      form_l_company: "Empresa",
+      form_l_email: "Email",
+      form_l_phone: "Telefone (opcional)",
+      form_l_type: "Tipo de projeto",
+      form_l_message: "Mensagem",
+      form_l_consent: "Aceito a política de privacidade",
+      form_submit: "Enviar solicitação →",
+      form_o_select: "Selecionar...",
+      form_o_auto: "Automação",
+      form_o_elec: "Infraestrutura eletromecânica",
+      form_o_hvac: "HVAC",
+      form_o_maint: "Manutenção",
+      form_o_other: "Outro",
+      form_sending: "Enviando...",
+      form_retry: "Tentar novamente →",
+      form_success: "✓ Mensagem enviada. Entraremos em contato em menos de 24 horas.",
+      form_error: "Houve um problema. Por favor envie um email para contacto@fts.mx ou WhatsApp direto."
     }
   };
   function applyLang(lang) {
@@ -377,6 +1016,48 @@
   let saved = 'es';
   try { saved = localStorage.getItem('fts_lang') || 'es'; } catch (e) {}
   applyLang(saved);
+
+  // TODO Esteban: reemplazar con la URL del webhook n8n en Railway que recibirá el lead
+  const CONTACT_FORM_ENDPOINT = 'REPLACE_WITH_N8N_WEBHOOK_URL';
+  const contactForm = document.getElementById('contact-form');
+  if (contactForm) {
+    contactForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const lang = (function(){ try { return localStorage.getItem('fts_lang') || 'es'; } catch(_) { return 'es'; } })();
+      const t = TRANSLATIONS[lang] || TRANSLATIONS.es;
+      const submitBtn = contactForm.querySelector('button[type="submit"]');
+      const originalLabel = submitBtn.textContent;
+      submitBtn.disabled = true;
+      submitBtn.textContent = t.form_sending || 'Enviando...';
+      const payload = {
+        nombre: contactForm.nombre.value,
+        empresa: contactForm.empresa.value,
+        email: contactForm.email.value,
+        telefono: contactForm.telefono.value,
+        tipo_proyecto: contactForm.tipo_proyecto.value,
+        mensaje: contactForm.mensaje.value,
+        origen: 'website_fts',
+        timestamp: new Date().toISOString(),
+        lang: lang
+      };
+      try {
+        if (CONTACT_FORM_ENDPOINT.startsWith('REPLACE_')) {
+          throw new Error('Webhook endpoint not configured');
+        }
+        const response = await fetch(CONTACT_FORM_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!response.ok) throw new Error('Submit failed: ' + response.status);
+        contactForm.innerHTML = '<div class="form-success">' + (t.form_success || '✓ Mensaje enviado. Te contactaremos en menos de 24 horas.') + '</div>';
+      } catch (err) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = t.form_retry || originalLabel;
+        alert(t.form_error || 'Hubo un problema. Por favor escríbenos a contacto@fts.mx o WhatsApp directo.');
+      }
+    });
+  }
 </script>
 </body>
 </html>
