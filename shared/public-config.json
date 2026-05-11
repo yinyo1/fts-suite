@@ -22,14 +22,18 @@
       "maps_url": "https://maps.app.goo.gl/1onH9ZUPdcWD8Hwc6?g_st=ac",
       "lat": 25.7349503,
       "lng": -100.3263381,
-      "radio": 60
+      "radio": 60,
+      "aplica_hora_minima_checkin": true,
+      "hora_minima_checkin": "07:30"
     },
     {
       "nombre": "Topo Chico (Caseta L6)",
       "maps_url": "https://maps.app.goo.gl/mqE8MD6XeGVsscu36?g_st=ac",
       "lat": 25.7356987,
       "lng": -100.3288875,
-      "radio": 60
+      "radio": 60,
+      "aplica_hora_minima_checkin": true,
+      "hora_minima_checkin": "07:30"
     },
     {
       "nombre": "Pasteleria Letty",
@@ -39,6 +43,6 @@
       "radio": 100
     }
   ],
-  "version": "1.0.0",
-  "updated": "2026-04-18"
+  "version": "1.1.0",
+  "updated": "2026-05-11"
 }
