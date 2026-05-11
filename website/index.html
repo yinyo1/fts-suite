@@ -140,6 +140,27 @@
   .stats-inner { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 3rem; }
   .stat-num { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 3rem; line-height: 1; margin-bottom: 0.5rem; }
   .stat-label { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: rgba(255,255,255,0.65); text-transform: uppercase; letter-spacing: 0.12em; }
+  .contact-section { background: var(--bg); padding: 5rem 2rem; max-width: none; margin: 0; }
+  .contact-grid { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1.2fr; gap: 3rem; align-items: start; }
+  .contact-info-cards { display: flex; flex-direction: column; gap: 0.8rem; margin-top: 2rem; }
+  .contact-info-card { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.2rem; border: 1px solid var(--border); text-decoration: none; color: var(--text); transition: border-color 0.15s, transform 0.15s; }
+  .contact-info-card:hover { border-color: var(--brand-red); transform: translateX(4px); }
+  .contact-info-icon { font-size: 1.4rem; line-height: 1; }
+  .contact-info-label { display: block; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.15rem; }
+  .contact-info-value { font-family: 'Manrope', sans-serif; font-weight: 600; font-size: 1rem; display: block; }
+  .contact-form { display: flex; flex-direction: column; gap: 1.2rem; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+  .form-label { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); display: block; }
+  .form-req { color: var(--brand-red); }
+  .form-input { width: 100%; padding: 1rem; border: 1px solid var(--border); border-radius: 0; font-family: 'Manrope', sans-serif; font-size: 0.95rem; background: var(--bg); color: var(--text); transition: border-color 0.15s, background 0.15s; }
+  .form-input:focus { outline: none; border-color: var(--brand-red); background: var(--bg-warm); }
+  .form-textarea { resize: vertical; min-height: 110px; font-family: 'Manrope', sans-serif; }
+  .form-checkbox-row { display: flex; gap: 0.6rem; align-items: center; font-size: 0.85rem; color: var(--text-muted); }
+  .form-checkbox-row input { width: 16px; height: 16px; accent-color: var(--brand-red); }
+  .form-submit { width: 100%; padding: 1.1rem; border: none; cursor: pointer; font-family: 'Manrope', sans-serif; font-weight: 600; font-size: 0.95rem; }
+  .form-submit:disabled { opacity: 0.6; cursor: wait; }
+  .form-success { padding: 2rem; background: var(--bg-warm); border-left: 4px solid var(--brand-red); font-size: 1.05rem; color: var(--text); line-height: 1.5; }
   footer { background: #150C09; color: rgba(255,255,255,0.65); padding: 0; }
   .footer-main { max-width: 1400px; margin: 0 auto; padding: 4rem 2rem 3rem; }
   .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 3rem; }
@@ -191,6 +212,9 @@
     .featured-case-visual { min-height: 180px; padding: 1.2rem; }
     .featured-case-metrics { gap: 1.2rem; }
     .projects-grid { grid-template-columns: 1fr; }
+    .contact-section { padding: 3.5rem 1.5rem; }
+    .contact-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+    .form-row { grid-template-columns: 1fr; }
     .footer-main { padding: 2.5rem 1.5rem 2rem; }
     .footer-grid { grid-template-columns: 1fr; gap: 2rem; }
     .footer-brochure { padding: 2rem 1.5rem; }
@@ -407,11 +431,80 @@
     </div>
   </div>
 </section>
-<section id="contact">
-  <h2><span data-i18n="contact_h2_a">¿Tienes una planta que </span><span class="gradient-text" data-i18n="contact_h2_b">no puede parar?</span></h2>
-  <p class="lead" data-i18n="contact_lead">Respuesta técnica en menos de 24 horas. Propuesta formal en 5 días.</p>
-  <a href="mailto:contacto@fts.mx" class="btn-primary">contacto@fts.mx →</a>
-  <a href="tel:+528123580501" class="btn-ghost">+52 81 2358 0501 →</a>
+<section class="contact-section" id="contact">
+  <div class="contact-grid">
+    <div class="contact-info">
+      <div class="section-eyebrow" data-i18n="contact_eyebrow">— Hablemos</div>
+      <h2 class="section-title"><span data-i18n="contact_h2_a">¿Tienes una planta que </span><span class="gradient-text" data-i18n="contact_h2_b">no puede parar?</span></h2>
+      <p class="lead" data-i18n="contact_lead">Respuesta técnica en menos de 24 horas. Propuesta formal en 5 días.</p>
+      <div class="contact-info-cards">
+        <a href="tel:+528123580501" class="contact-info-card">
+          <span class="contact-info-icon">📞</span>
+          <span>
+            <span class="contact-info-label" data-i18n="contact_phone_label">Teléfono</span>
+            <span class="contact-info-value">+52 81 2358 0501</span>
+          </span>
+        </a>
+        <a href="mailto:contacto@fts.mx" class="contact-info-card">
+          <span class="contact-info-icon">✉</span>
+          <span>
+            <span class="contact-info-label">Email</span>
+            <span class="contact-info-value">contacto@fts.mx</span>
+          </span>
+        </a>
+        <a href="https://api.whatsapp.com/send/?phone=5218123580501&text=Hola.+Necesito+m%C3%A1s+informaci%C3%B3n+sobre..." target="_blank" rel="noopener" class="contact-info-card">
+          <span class="contact-info-icon">💬</span>
+          <span>
+            <span class="contact-info-label">WhatsApp</span>
+            <span class="contact-info-value" data-i18n="contact_wa_value">Respuesta inmediata</span>
+          </span>
+        </a>
+      </div>
+    </div>
+    <div class="contact-form-wrap">
+      <!-- TODO Esteban: reemplazar 'REPLACE_WITH_N8N_WEBHOOK_URL' en const CONTACT_FORM_ENDPOINT (al final del body) con la URL del webhook n8n en Railway -->
+      <form id="contact-form" class="contact-form" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="nombre"><span data-i18n="form_l_name">Nombre completo</span> <span class="form-req">*</span></label>
+          <input class="form-input" id="nombre" name="nombre" type="text" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="empresa"><span data-i18n="form_l_company">Empresa</span> <span class="form-req">*</span></label>
+          <input class="form-input" id="empresa" name="empresa" type="text" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="email"><span data-i18n="form_l_email">Email</span> <span class="form-req">*</span></label>
+            <input class="form-input" id="email" name="email" type="email" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="telefono" data-i18n="form_l_phone">Teléfono (opcional)</label>
+            <input class="form-input" id="telefono" name="telefono" type="tel">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="tipo_proyecto"><span data-i18n="form_l_type">Tipo de proyecto</span> <span class="form-req">*</span></label>
+          <select class="form-input" id="tipo_proyecto" name="tipo_proyecto" required>
+            <option value="" data-i18n="form_o_select">Seleccionar...</option>
+            <option value="automatizacion" data-i18n="form_o_auto">Automatización</option>
+            <option value="electromecanica" data-i18n="form_o_elec">Infraestructura electromecánica</option>
+            <option value="hvac" data-i18n="form_o_hvac">HVAC</option>
+            <option value="mantenimiento" data-i18n="form_o_maint">Mantenimiento</option>
+            <option value="otro" data-i18n="form_o_other">Otro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="mensaje"><span data-i18n="form_l_message">Mensaje</span> <span class="form-req">*</span></label>
+          <textarea class="form-input form-textarea" id="mensaje" name="mensaje" rows="4" required></textarea>
+        </div>
+        <div class="form-checkbox-row">
+          <input type="checkbox" id="consent" required>
+          <label for="consent" data-i18n="form_l_consent">Acepto política de privacidad</label>
+        </div>
+        <button type="submit" class="form-submit btn-primary" data-i18n="form_submit">Enviar solicitud →</button>
+      </form>
+    </div>
+  </div>
 </section>
 <footer>
   <div class="footer-main">
@@ -579,7 +672,28 @@
       footer_hours: "Lunes a Viernes · 7:30 - 17:30",
       footer_address: "Monterrey, NL · México",
       footer_brochure_title: "¿Necesitas más información técnica?",
-      footer_legal_v2: "© 2026 Servicios FTS SA de CV · RFC: SFT170905L43 · Todos los derechos reservados"
+      footer_legal_v2: "© 2026 Servicios FTS SA de CV · RFC: SFT170905L43 · Todos los derechos reservados",
+      contact_eyebrow: "— Hablemos",
+      contact_phone_label: "Teléfono",
+      contact_wa_value: "Respuesta inmediata",
+      form_l_name: "Nombre completo",
+      form_l_company: "Empresa",
+      form_l_email: "Email",
+      form_l_phone: "Teléfono (opcional)",
+      form_l_type: "Tipo de proyecto",
+      form_l_message: "Mensaje",
+      form_l_consent: "Acepto política de privacidad",
+      form_submit: "Enviar solicitud →",
+      form_o_select: "Seleccionar...",
+      form_o_auto: "Automatización",
+      form_o_elec: "Infraestructura electromecánica",
+      form_o_hvac: "HVAC",
+      form_o_maint: "Mantenimiento",
+      form_o_other: "Otro",
+      form_sending: "Enviando...",
+      form_retry: "Reintentar →",
+      form_success: "✓ Mensaje enviado. Te contactaremos en menos de 24 horas.",
+      form_error: "Hubo un problema. Por favor escríbenos a contacto@fts.mx o WhatsApp directo."
     },
     en: {
       cta_nav: "Get a quote",
@@ -695,7 +809,28 @@
       footer_hours: "Monday to Friday · 7:30 - 17:30",
       footer_address: "Monterrey, NL · Mexico",
       footer_brochure_title: "Need more technical info?",
-      footer_legal_v2: "© 2026 Servicios FTS SA de CV · RFC: SFT170905L43 · All rights reserved"
+      footer_legal_v2: "© 2026 Servicios FTS SA de CV · RFC: SFT170905L43 · All rights reserved",
+      contact_eyebrow: "— Let's talk",
+      contact_phone_label: "Phone",
+      contact_wa_value: "Immediate reply",
+      form_l_name: "Full name",
+      form_l_company: "Company",
+      form_l_email: "Email",
+      form_l_phone: "Phone (optional)",
+      form_l_type: "Project type",
+      form_l_message: "Message",
+      form_l_consent: "I accept the privacy policy",
+      form_submit: "Send request →",
+      form_o_select: "Select...",
+      form_o_auto: "Automation",
+      form_o_elec: "Electromechanical infrastructure",
+      form_o_hvac: "HVAC",
+      form_o_maint: "Maintenance",
+      form_o_other: "Other",
+      form_sending: "Sending...",
+      form_retry: "Retry →",
+      form_success: "✓ Message sent. We will contact you within 24 hours.",
+      form_error: "Something went wrong. Please email contacto@fts.mx or contact us directly via WhatsApp."
     },
     pt: {
       cta_nav: "Cotação",
@@ -811,7 +946,28 @@
       footer_hours: "Segunda a Sexta · 7:30 - 17:30",
       footer_address: "Monterrey, NL · México",
       footer_brochure_title: "Precisa de mais informações técnicas?",
-      footer_legal_v2: "© 2026 Servicios FTS SA de CV · RFC: SFT170905L43 · Todos os direitos reservados"
+      footer_legal_v2: "© 2026 Servicios FTS SA de CV · RFC: SFT170905L43 · Todos os direitos reservados",
+      contact_eyebrow: "— Vamos conversar",
+      contact_phone_label: "Telefone",
+      contact_wa_value: "Resposta imediata",
+      form_l_name: "Nome completo",
+      form_l_company: "Empresa",
+      form_l_email: "Email",
+      form_l_phone: "Telefone (opcional)",
+      form_l_type: "Tipo de projeto",
+      form_l_message: "Mensagem",
+      form_l_consent: "Aceito a política de privacidade",
+      form_submit: "Enviar solicitação →",
+      form_o_select: "Selecionar...",
+      form_o_auto: "Automação",
+      form_o_elec: "Infraestrutura eletromecânica",
+      form_o_hvac: "HVAC",
+      form_o_maint: "Manutenção",
+      form_o_other: "Outro",
+      form_sending: "Enviando...",
+      form_retry: "Tentar novamente →",
+      form_success: "✓ Mensagem enviada. Entraremos em contato em menos de 24 horas.",
+      form_error: "Houve um problema. Por favor envie um email para contacto@fts.mx ou WhatsApp direto."
     }
   };
   function applyLang(lang) {
@@ -833,6 +989,48 @@
   let saved = 'es';
   try { saved = localStorage.getItem('fts_lang') || 'es'; } catch (e) {}
   applyLang(saved);
+
+  // TODO Esteban: reemplazar con la URL del webhook n8n en Railway que recibirá el lead
+  const CONTACT_FORM_ENDPOINT = 'REPLACE_WITH_N8N_WEBHOOK_URL';
+  const contactForm = document.getElementById('contact-form');
+  if (contactForm) {
+    contactForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const lang = (function(){ try { return localStorage.getItem('fts_lang') || 'es'; } catch(_) { return 'es'; } })();
+      const t = TRANSLATIONS[lang] || TRANSLATIONS.es;
+      const submitBtn = contactForm.querySelector('button[type="submit"]');
+      const originalLabel = submitBtn.textContent;
+      submitBtn.disabled = true;
+      submitBtn.textContent = t.form_sending || 'Enviando...';
+      const payload = {
+        nombre: contactForm.nombre.value,
+        empresa: contactForm.empresa.value,
+        email: contactForm.email.value,
+        telefono: contactForm.telefono.value,
+        tipo_proyecto: contactForm.tipo_proyecto.value,
+        mensaje: contactForm.mensaje.value,
+        origen: 'website_fts',
+        timestamp: new Date().toISOString(),
+        lang: lang
+      };
+      try {
+        if (CONTACT_FORM_ENDPOINT.startsWith('REPLACE_')) {
+          throw new Error('Webhook endpoint not configured');
+        }
+        const response = await fetch(CONTACT_FORM_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!response.ok) throw new Error('Submit failed: ' + response.status);
+        contactForm.innerHTML = '<div class="form-success">' + (t.form_success || '✓ Mensaje enviado. Te contactaremos en menos de 24 horas.') + '</div>';
+      } catch (err) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = t.form_retry || originalLabel;
+        alert(t.form_error || 'Hubo un problema. Por favor escríbenos a contacto@fts.mx o WhatsApp directo.');
+      }
+    });
+  }
 </script>
 </body>
 </html>
