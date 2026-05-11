@@ -72,9 +72,19 @@
           "hora_propuesta_cst": "2026-05-08 07:00:00",
           "comentario": "Viene directo a planta vertiv",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe Pérez Guzmán",
+          "timestamp": "2026-05-11T12:59:50.714Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Aprobada incidencia",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false,
       "department_id": 3,
