@@ -223,7 +223,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 3rem; }
   .footer-col { display: flex; flex-direction: column; gap: 0.6rem; }
   .footer-col-brand p { font-size: 0.9rem; line-height: 1.65; max-width: 360px; color: rgba(255,255,255,0.6); margin-top: 0.6rem; }
-  .footer-logo { height: 44px; width: auto; opacity: 0.95; margin-bottom: 0.2rem; display: block; }
+  .footer-logo { max-width: 160px; width: auto; height: auto; opacity: 0.95; margin-bottom: 0.2rem; display: block; }
+  @media (max-width: 768px) { .footer-logo { max-width: 130px; } }
   .footer-heading { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--brand-yellow); font-weight: 500; margin-bottom: 0.6rem; }
   .footer-link { color: rgba(255,255,255,0.6); text-decoration: none; font-size: 0.9rem; transition: color 0.15s; }
   .footer-link:hover { color: var(--brand-yellow); }
