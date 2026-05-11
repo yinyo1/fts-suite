@@ -120,12 +120,18 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .blueprint-aut { background: #080d18; }
   .blueprint-eng { background: #0a1628; }
   .blueprint-em  { background: #110806; }
-  .trust-strip { background: var(--bg-warm); padding: 3rem 2rem; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-  .trust-inner { max-width: 1400px; margin: 0 auto; }
-  .trust-label { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; letter-spacing: 0.18em; color: var(--brand-red); text-transform: uppercase; text-align: center; margin-bottom: 1.5rem; font-weight: 500; }
-  .trust-logos { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 2.5rem; }
-  .trust-logos span { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 1.2rem; letter-spacing: -0.01em; color: var(--text-muted); cursor: default; transition: color 0.2s, transform 0.2s; }
-  .trust-logos span:hover { color: var(--brand-red); transform: translateY(-2px); }
+  .clients-section { padding: 3rem 0 3.5rem; background: var(--bg-cream, #F5EFE7); overflow: hidden; }
+  .clients-eyebrow-wrap { text-align: center; margin-bottom: 2rem; padding: 0 1.5rem; }
+  .clients-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-light, #998F85); }
+  .clients-track-wrap { -webkit-mask-image: linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%); mask-image: linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%); overflow: hidden; }
+  .clients-track-wrap:hover .clients-track { animation-play-state: paused; }
+  .clients-track { display: flex; align-items: center; gap: 1.5rem; padding: 0.5rem 1rem; width: max-content; animation: clients-scroll 35s linear infinite; }
+  @keyframes clients-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  .client-logo-card { display: flex; align-items: center; justify-content: center; height: 60px; min-width: 150px; padding: 0 1.5rem; background: #fff; border: 1px solid var(--border, #EAE3DA); border-radius: 8px; flex-shrink: 0; filter: grayscale(100%) opacity(0.55); transition: filter 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease; }
+  .client-logo-card:hover { filter: grayscale(0%) opacity(1); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.08); }
+  .client-logo-card img { max-height: 36px; max-width: 130px; width: auto; height: auto; object-fit: contain; display: block; }
+  .logo-fallback { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--text-muted, #6B5F55); align-items: center; justify-content: center; text-align: center; }
+  @media (prefers-reduced-motion: reduce) { .clients-track { animation: none; } }
   .partners-section { background: var(--bg-warm); padding: 5rem 2rem; max-width: none; margin: 0; }
   .partners-inner { max-width: 1400px; margin: 0 auto; }
   .section-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; letter-spacing: 0.18em; color: var(--brand-red); text-transform: uppercase; margin-bottom: 1rem; font-weight: 500; display: inline-flex; align-items: center; gap: 12px; }
@@ -281,9 +287,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     section { padding: 3.5rem 1.5rem; }
     .stats { padding: 3rem 1.5rem; }
     .nav-links { display: none; }
-    .trust-strip { padding: 2.5rem 1.5rem; }
-    .trust-logos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
-    .trust-logos span { font-size: 1rem; text-align: center; }
     .partners-section { padding: 3.5rem 1.5rem; }
     .partners-grid { grid-template-columns: 1fr; }
     .about-section { padding: 3.5rem 1.5rem; }
@@ -373,18 +376,30 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     </div>
   </div>
 </section>
-<section class="trust-strip" id="clientes">
-  <div class="trust-inner">
-    <div class="trust-label" data-i18n="trust_label">— Clientes que confían en FTS</div>
-    <div class="trust-logos">
-      <span>GRUMA</span>
-      <span>Nalco · Ecolab</span>
-      <span>Mondelez</span>
-      <span>Arca Continental</span>
-      <span>Mercado Libre</span>
-      <span>Mattel</span>
-      <span>Clarios</span>
-      <span>Budenheim</span>
+<section class="clients-section" id="clientes">
+  <div class="clients-eyebrow-wrap">
+    <p class="clients-eyebrow" data-i18n="trust_label">Empresas que confían en FTS</p>
+  </div>
+  <div class="clients-track-wrap">
+    <div class="clients-track">
+      <div class="client-logo-card"><img src="https://commons.wikimedia.org/wiki/Special:FilePath/Gruma_logo-en.svg" alt="GRUMA" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="logo-fallback" style="display:none">GRUMA</span></div>
+      <div class="client-logo-card"><img src="https://commons.wikimedia.org/wiki/Special:FilePath/Nalco_Water_logo.svg" alt="Nalco Water" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="logo-fallback" style="display:none">Nalco · Ecolab</span></div>
+      <div class="client-logo-card"><img src="https://commons.wikimedia.org/wiki/Special:FilePath/Mondelez_International.svg" alt="Mondelez International" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="logo-fallback" style="display:none">Mondelez</span></div>
+      <div class="client-logo-card"><img src="https://commons.wikimedia.org/wiki/Special:FilePath/Arca_Continental_logo.svg" alt="Arca Continental" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="logo-fallback" style="display:none">Arca Continental</span></div>
+      <div class="client-logo-card"><img src="https://commons.wikimedia.org/wiki/Special:FilePath/Mercado_Libre_wordmark_(Spanish_version).svg" alt="Mercado Libre" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="logo-fallback" style="display:none">Mercado Libre</span></div>
+      <div class="client-logo-card"><img src="https://commons.wikimedia.org/wiki/Special:FilePath/Mattel_(2019).svg" alt="Mattel" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="logo-fallback" style="display:none">Mattel</span></div>
+      <div class="client-logo-card"><img src="https://commons.wikimedia.org/wiki/Special:FilePath/Clarios_logo.svg" alt="Clarios" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="logo-fallback" style="display:none">Clarios</span></div>
+      <div class="client-logo-card"><img src="https://commons.wikimedia.org/wiki/Special:FilePath/Vertiv_logo.svg" alt="Vertiv" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="logo-fallback" style="display:none">Vertiv</span></div>
+      <div class="client-logo-card"><img src="https://commons.wikimedia.org/wiki/Special:FilePath/Chemische_Fabrik_Budenheim_logo.svg" alt="Budenheim" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="logo-fallback" style="display:none">Budenheim</span></div>
+      <div class="client-logo-card" aria-hidden="true"><img src="https://commons.wikimedia.org/wiki/Special:FilePath/Gruma_logo-en.svg" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="logo-fallback" style="display:none">GRUMA</span></div>
+      <div class="client-logo-card" aria-hidden="true"><img src="https://commons.wikimedia.org/wiki/Special:FilePath/Nalco_Water_logo.svg" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="logo-fallback" style="display:none">Nalco · Ecolab</span></div>
+      <div class="client-logo-card" aria-hidden="true"><img src="https://commons.wikimedia.org/wiki/Special:FilePath/Mondelez_International.svg" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="logo-fallback" style="display:none">Mondelez</span></div>
+      <div class="client-logo-card" aria-hidden="true"><img src="https://commons.wikimedia.org/wiki/Special:FilePath/Arca_Continental_logo.svg" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="logo-fallback" style="display:none">Arca Continental</span></div>
+      <div class="client-logo-card" aria-hidden="true"><img src="https://commons.wikimedia.org/wiki/Special:FilePath/Mercado_Libre_wordmark_(Spanish_version).svg" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="logo-fallback" style="display:none">Mercado Libre</span></div>
+      <div class="client-logo-card" aria-hidden="true"><img src="https://commons.wikimedia.org/wiki/Special:FilePath/Mattel_(2019).svg" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="logo-fallback" style="display:none">Mattel</span></div>
+      <div class="client-logo-card" aria-hidden="true"><img src="https://commons.wikimedia.org/wiki/Special:FilePath/Clarios_logo.svg" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="logo-fallback" style="display:none">Clarios</span></div>
+      <div class="client-logo-card" aria-hidden="true"><img src="https://commons.wikimedia.org/wiki/Special:FilePath/Vertiv_logo.svg" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="logo-fallback" style="display:none">Vertiv</span></div>
+      <div class="client-logo-card" aria-hidden="true"><img src="https://commons.wikimedia.org/wiki/Special:FilePath/Chemische_Fabrik_Budenheim_logo.svg" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="logo-fallback" style="display:none">Budenheim</span></div>
     </div>
   </div>
 </section>
@@ -885,7 +900,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       nav_services: "Servicios",
       nav_projects: "Proyectos",
       nav_contact: "Contacto",
-      trust_label: "— Clientes que confían en FTS",
+      trust_label: "Empresas que confían en FTS",
       partners_eyebrow: "— Tecnologías que dominamos",
       partners_title: "Partners certificados.",
       partners_lead: "Integramos las plataformas líderes en automatización industrial mundial. Certificaciones vigentes y soporte directo de fabricantes.",
@@ -1037,7 +1052,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       nav_services: "Services",
       nav_projects: "Projects",
       nav_contact: "Contact",
-      trust_label: "— Clients who trust FTS",
+      trust_label: "Companies that trust FTS",
       partners_eyebrow: "— Technologies we master",
       partners_title: "Certified partners.",
       partners_lead: "We integrate the leading platforms in global industrial automation. Active certifications and direct manufacturer support.",
@@ -1189,7 +1204,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       nav_services: "Serviços",
       nav_projects: "Projetos",
       nav_contact: "Contato",
-      trust_label: "— Clientes que confiam na FTS",
+      trust_label: "Empresas que confiam na FTS",
       partners_eyebrow: "— Tecnologias que dominamos",
       partners_title: "Parceiros certificados.",
       partners_lead: "Integramos as plataformas líderes em automação industrial mundial. Certificações vigentes e suporte direto de fabricantes.",
