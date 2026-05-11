@@ -85,6 +85,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .hero h1 { animation: fadeUp 0.7s ease 0.2s both; }
   .hero p { animation: fadeUp 0.7s ease 0.35s both; }
   .hero-actions { animation: fadeUp 0.7s ease 0.5s both; }
+  .hero-trust-signals { display: flex; flex-direction: column; gap: 0.55rem; margin-top: 1.75rem; animation: fadeUp 0.7s ease 0.65s both; }
+  .trust-signal { display: flex; align-items: center; gap: 0.5rem; font-size: 0.78rem; color: var(--text-muted, #6B5F55); line-height: 1.3; }
+  .trust-signal svg { color: var(--brand-red, #DC5544); flex-shrink: 0; opacity: 0.75; }
   .hero-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--brand-red); text-transform: uppercase; letter-spacing: 0.18em; margin-bottom: 1.5rem; font-weight: 500; }
   .hero h1 { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: clamp(2.5rem, 7vw, 6rem); line-height: 0.95; letter-spacing: -0.03em; margin-bottom: 2rem; max-width: 900px; }
   .hero p { font-size: 1.15rem; color: var(--text-muted); max-width: 580px; margin-bottom: 2.5rem; }
@@ -369,10 +372,24 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   <div class="hero-inner">
     <div class="hero-eyebrow" data-i18n="hero_eyebrow">— Servicios EPC industriales · Desde 2014</div>
     <h1><span data-i18n="hero_h1_a">Construimos plantas que </span><span class="gradient-text" data-i18n="hero_h1_b">no pueden parar.</span></h1>
-    <p data-i18n="hero_p">Ingeniería, procura y construcción para operaciones industriales activas. Automatización, electromecánica, HVAC y mantenimiento — sin detener tu producción.</p>
+    <p data-i18n="hero_p">Ejecutamos proyectos CAPEX completos dentro de plantas en operación. Un equipo, un contrato: ingeniería certificada, automatización e infraestructura electromecánica — sin detener tu producción, sin dividir la responsabilidad.</p>
     <div class="hero-actions">
       <a href="#contact" class="btn-primary" data-i18n="btn_quote">Solicitar cotización →</a>
       <a href="#caps" class="btn-ghost" data-i18n="btn_caps">Ver capacidades →</a>
+    </div>
+    <div class="hero-trust-signals">
+      <div class="trust-signal">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M4 7L6 9L10 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span data-i18n="hero_trust1">Ingeniería certificada LRFD · AISC · NTC-DCEA</span>
+      </div>
+      <div class="trust-signal">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M4 7L6 9L10 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span data-i18n="hero_trust2">Un solo contrato · Sin subcontratar el núcleo</span>
+      </div>
+      <div class="trust-signal">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M4 7L6 9L10 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span data-i18n="hero_trust3">Presencia en México · USA · Brasil</span>
+      </div>
     </div>
   </div>
 </section>
@@ -408,8 +425,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <div class="about-content">
       <div class="section-eyebrow" data-i18n="about_eyebrow">— Quiénes somos</div>
       <h2 class="section-title"><span data-i18n="about_title_a">12 años construyendo </span><span class="gradient-text" data-i18n="about_title_b">infraestructura crítica.</span></h2>
-      <p class="lead" data-i18n="about_p1">FTS es una empresa industrial mexicana fundada en 2014 que ejecuta proyectos llave en mano de Automatización, Infraestructura Electromecánica y Mantenimiento. Trabajamos con operaciones que no pueden parar.</p>
-      <p class="lead" data-i18n="about_p2">Hemos expandido nuestra operación de México a Estados Unidos y Brasil, atendiendo a líderes globales en alimentos, bebidas, automotriz, telecom, química y energía.</p>
+      <p class="lead" data-i18n="about_p1">FTS es una empresa EPC industrial fundada en 2014 en Monterrey. Nos especializamos en ejecutar proyectos CAPEX dentro de plantas en operación activa — sin subcontratar el núcleo técnico.</p>
+      <p class="lead" data-i18n="about_p2">Operamos en México, Estados Unidos y Brasil bajo un solo equipo, con ingeniería certificada, automatización y construcción electromecánica propias.</p>
       <ul class="about-values">
         <li data-i18n="about_v1">Enfoque al cliente · alta personalización</li>
         <li data-i18n="about_v2">Compromiso 24/7 · brigadas críticas activas</li>
@@ -542,8 +559,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   <div class="caps-inner">
     <div class="caps-header">
       <div class="section-eyebrow" data-i18n="caps_eyebrow">Tres áreas · Una entrega</div>
-      <h2 class="section-title"><span data-i18n="caps_h2_a">Ingeniería, automatización e infraestructura.</span><br><span data-i18n="caps_h2_b">Todo bajo un mismo equipo.</span></h2>
-      <p class="lead" data-i18n="caps_lead">Ejecutamos toda la cadena de un proyecto CAPEX industrial: desde la memoria de cálculo hasta la puesta en marcha, sin subcontratar el núcleo.</p>
+      <h2 class="section-title"><span data-i18n="caps_h2_a">Tres áreas. Un solo equipo.</span><br><span data-i18n="caps_h2_b">Un solo contrato.</span></h2>
+      <p class="lead" data-i18n="caps_lead">Ejecutamos toda la cadena de un proyecto CAPEX dentro de tu planta en operación — desde el cálculo estructural hasta la puesta en marcha.</p>
     </div>
     <div class="caps-grid">
       <div class="cap-card" id="ingenieria">
@@ -576,7 +593,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         <div class="cap-number">01</div>
         <div class="cap-icon"><svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M4 28L16 4L28 28" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 20H24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
         <h3 class="cap-title" data-i18n="caps_eng_title">Ingeniería</h3>
-        <p class="cap-desc" data-i18n="caps_eng_desc">Diseño y cálculo estructural certificado. Somos el origen técnico de cada proyecto.</p>
+        <p class="cap-desc" data-i18n="caps_eng_desc">El origen técnico de cada proyecto. Memorias de cálculo certificadas LRFD/AISC/NTC-DCEA, soportería estructural, HVAC industrial y gestión EPC completa. No improvisamos — cada estructura tiene su cálculo.</p>
         <ul class="cap-skills">
           <li data-i18n="caps_eng_s1">Memorias de cálculo LRFD / AISC / NTC-DCEA / ACI 318</li>
           <li data-i18n="caps_eng_s2">Soportería y estructuras industriales</li>
@@ -622,7 +639,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         <div class="cap-number">02</div>
         <div class="cap-icon"><svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true"><rect x="4" y="10" width="24" height="16" rx="2" stroke="currentColor" stroke-width="2"/><circle cx="11" cy="18" r="2.5" stroke="currentColor" stroke-width="2"/><circle cx="21" cy="18" r="2.5" stroke="currentColor" stroke-width="2"/><path d="M11 10V6M21 10V6M16 6V4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
         <h3 class="cap-title" data-i18n="caps_aut_title">Automatización</h3>
-        <p class="cap-desc" data-i18n="caps_aut_desc">Control inteligente de procesos. PLC, SCADA, robótica y Industria 4.0 sin detener tu producción.</p>
+        <p class="cap-desc" data-i18n="caps_aut_desc">Control inteligente implementado dentro de tu planta activa — sin detener la producción. PLC, SCADA, migraciones VFD, robótica e instrumentación bajo un mismo equipo.</p>
         <ul class="cap-skills">
           <li data-i18n="caps_aut_s1">Programación PLC / SCADA — Allen-Bradley, Siemens, Schneider</li>
           <li data-i18n="caps_aut_s2">Migraciones VFD sin paro productivo</li>
@@ -670,7 +687,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         <div class="cap-number">03</div>
         <div class="cap-icon"><svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 4V28M4 16H28" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8 8L24 24M24 8L8 24" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.4"/><circle cx="16" cy="16" r="5" stroke="currentColor" stroke-width="2"/></svg></div>
         <h3 class="cap-title" data-i18n="caps_em_title">Infraestructura Electromecánica</h3>
-        <p class="cap-desc" data-i18n="caps_em_desc">Construimos y mantenemos la infraestructura física de planta. Ejecución en operación continua, sin comprometer la producción.</p>
+        <p class="cap-desc" data-i18n="caps_em_desc">Subestaciones, distribución eléctrica, tubería de proceso y montajes mecánicos — ejecutados con tu planta en operación continua. Brigadas 24/7 coordinadas por FTS Suite.</p>
         <ul class="cap-skills">
           <li data-i18n="caps_em_s1">Subestaciones eléctricas MT / BT — diseño y construcción</li>
           <li data-i18n="caps_em_s2">Distribución eléctrica industrial</li>
@@ -854,23 +871,26 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       hero_eyebrow: "— Servicios EPC industriales · Desde 2014",
       hero_h1_a: "Construimos plantas que ",
       hero_h1_b: "no pueden parar.",
-      hero_p: "Ingeniería, procura y construcción para operaciones industriales activas. Automatización, electromecánica, HVAC y mantenimiento — sin detener tu producción.",
+      hero_p: "Ejecutamos proyectos CAPEX completos dentro de plantas en operación. Un equipo, un contrato: ingeniería certificada, automatización e infraestructura electromecánica — sin detener tu producción, sin dividir la responsabilidad.",
+      hero_trust1: "Ingeniería certificada LRFD · AISC · NTC-DCEA",
+      hero_trust2: "Un solo contrato · Sin subcontratar el núcleo",
+      hero_trust3: "Presencia en México · USA · Brasil",
       btn_quote: "Solicitar cotización →",
       btn_caps: "Ver capacidades →",
       caps_eyebrow: "Tres áreas · Una entrega",
-      caps_h2_a: "Ingeniería, automatización e infraestructura.",
-      caps_h2_b: "Todo bajo un mismo equipo.",
-      caps_lead: "Ejecutamos toda la cadena de un proyecto CAPEX industrial: desde la memoria de cálculo hasta la puesta en marcha, sin subcontratar el núcleo.",
+      caps_h2_a: "Tres áreas. Un solo equipo.",
+      caps_h2_b: "Un solo contrato.",
+      caps_lead: "Ejecutamos toda la cadena de un proyecto CAPEX dentro de tu planta en operación — desde el cálculo estructural hasta la puesta en marcha.",
       caps_anchor_projects: "Proyectos en esta área",
       caps_eng_title: "Ingeniería",
-      caps_eng_desc: "Diseño y cálculo estructural certificado. Somos el origen técnico de cada proyecto.",
+      caps_eng_desc: "El origen técnico de cada proyecto. Memorias de cálculo certificadas LRFD/AISC/NTC-DCEA, soportería estructural, HVAC industrial y gestión EPC completa. No improvisamos — cada estructura tiene su cálculo.",
       caps_eng_s1: "Memorias de cálculo LRFD / AISC / NTC-DCEA / ACI 318",
       caps_eng_s2: "Soportería y estructuras industriales",
       caps_eng_s3: "HVAC industrial — salas eléctricas, áreas blancas, control de polvo",
       caps_eng_s4: "Gestión EPC — procura, documentación, entregables técnicos",
       caps_eng_s5: "Ingeniería de detalle para plantas en operación continua",
       caps_aut_title: "Automatización",
-      caps_aut_desc: "Control inteligente de procesos. PLC, SCADA, robótica y Industria 4.0 sin detener tu producción.",
+      caps_aut_desc: "Control inteligente implementado dentro de tu planta activa — sin detener la producción. PLC, SCADA, migraciones VFD, robótica e instrumentación bajo un mismo equipo.",
       caps_aut_s1: "Programación PLC / SCADA — Allen-Bradley, Siemens, Schneider",
       caps_aut_s2: "Migraciones VFD sin paro productivo",
       caps_aut_s3: "Robótica e integración de sistemas",
@@ -878,7 +898,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       caps_aut_s5: "Smart manufacturing / Industria 4.0",
       caps_aut_s6: "Ciberseguridad industrial OT / ICS",
       caps_em_title: "Infraestructura Electromecánica",
-      caps_em_desc: "Construimos y mantenemos la infraestructura física de planta. Ejecución en operación continua, sin comprometer la producción.",
+      caps_em_desc: "Subestaciones, distribución eléctrica, tubería de proceso y montajes mecánicos — ejecutados con tu planta en operación continua. Brigadas 24/7 coordinadas por FTS Suite.",
       caps_em_s1: "Subestaciones eléctricas MT / BT — diseño y construcción",
       caps_em_s2: "Distribución eléctrica industrial",
       caps_em_s3: "Tubería de proceso y servicios industriales",
@@ -951,8 +971,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       about_eyebrow: "— Quiénes somos",
       about_title_a: "12 años construyendo ",
       about_title_b: "infraestructura crítica.",
-      about_p1: "FTS es una empresa industrial mexicana fundada en 2014 que ejecuta proyectos llave en mano de Automatización, Infraestructura Electromecánica y Mantenimiento. Trabajamos con operaciones que no pueden parar.",
-      about_p2: "Hemos expandido nuestra operación de México a Estados Unidos y Brasil, atendiendo a líderes globales en alimentos, bebidas, automotriz, telecom, química y energía.",
+      about_p1: "FTS es una empresa EPC industrial fundada en 2014 en Monterrey. Nos especializamos en ejecutar proyectos CAPEX dentro de plantas en operación activa — sin subcontratar el núcleo técnico.",
+      about_p2: "Operamos en México, Estados Unidos y Brasil bajo un solo equipo, con ingeniería certificada, automatización y construcción electromecánica propias.",
       about_v1: "Enfoque al cliente · alta personalización",
       about_v2: "Compromiso 24/7 · brigadas críticas activas",
       about_v3: "Calidad técnica certificada",
@@ -1006,23 +1026,26 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       hero_eyebrow: "— Industrial EPC services · Since 2014",
       hero_h1_a: "We build plants that ",
       hero_h1_b: "cannot stop.",
-      hero_p: "Engineering, procurement and construction for active industrial operations. Automation, electromechanical, HVAC and maintenance — without stopping your production.",
+      hero_p: "We execute complete CAPEX projects inside operating plants. One team, one contract: certified engineering, automation and electromechanical infrastructure — without stopping your production, without splitting accountability.",
+      hero_trust1: "Certified engineering LRFD · AISC · NTC-DCEA",
+      hero_trust2: "Single contract · Core work never subcontracted",
+      hero_trust3: "Operations in Mexico · USA · Brazil",
       btn_quote: "Request a quote →",
       btn_caps: "View capabilities →",
       caps_eyebrow: "Three areas · One delivery",
-      caps_h2_a: "Engineering, automation and infrastructure.",
-      caps_h2_b: "All under one team.",
-      caps_lead: "We execute the full CAPEX project chain — from structural calculations to commissioning — without subcontracting the core.",
+      caps_h2_a: "Three areas. One team.",
+      caps_h2_b: "One contract.",
+      caps_lead: "We execute the full CAPEX project chain inside your operating plant — from structural calculations to commissioning.",
       caps_anchor_projects: "Projects in this area",
       caps_eng_title: "Engineering",
-      caps_eng_desc: "Certified structural design and calculation. We are the technical origin of every project.",
+      caps_eng_desc: "The technical origin of every project. Certified LRFD/AISC/NTC-DCEA calculation reports, structural supports, industrial HVAC and full EPC management. Every structure is engineered, not guessed.",
       caps_eng_s1: "Structural calculations LRFD / AISC / NTC-DCEA / ACI 318",
       caps_eng_s2: "Industrial support structures and assemblies",
       caps_eng_s3: "Industrial HVAC — electrical rooms, cleanrooms, dust control",
       caps_eng_s4: "EPC management — procurement, documentation, technical deliverables",
       caps_eng_s5: "Detailed engineering for continuously operating plants",
       caps_aut_title: "Automation",
-      caps_aut_desc: "Intelligent process control. PLC, SCADA, robotics and Industry 4.0 without stopping production.",
+      caps_aut_desc: "Smart control deployed inside your active plant — without stopping production. PLC, SCADA, VFD migrations, robotics and instrumentation under one team.",
       caps_aut_s1: "PLC / SCADA programming — Allen-Bradley, Siemens, Schneider",
       caps_aut_s2: "VFD migrations without production downtime",
       caps_aut_s3: "Robotics and systems integration",
@@ -1030,7 +1053,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       caps_aut_s5: "Smart manufacturing / Industry 4.0",
       caps_aut_s6: "Industrial cybersecurity OT / ICS",
       caps_em_title: "Electromechanical Infrastructure",
-      caps_em_desc: "We build and maintain plant physical infrastructure. Execution during continuous operation, without compromising production.",
+      caps_em_desc: "Substations, electrical distribution, process piping and mechanical assemblies — executed while your plant runs continuously. 24/7 crews coordinated through FTS Suite.",
       caps_em_s1: "MV / LV electrical substations — design and construction",
       caps_em_s2: "Industrial electrical distribution",
       caps_em_s3: "Process and industrial services piping",
@@ -1103,8 +1126,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       about_eyebrow: "— About us",
       about_title_a: "12 years building ",
       about_title_b: "critical infrastructure.",
-      about_p1: "FTS is a Mexican industrial company founded in 2014, delivering turnkey projects in Automation, Electromechanical Infrastructure and Maintenance. We work with operations that cannot stop.",
-      about_p2: "We have expanded our operation from Mexico to the United States and Brazil, serving global leaders in food, beverage, automotive, telecom, chemicals and energy.",
+      about_p1: "FTS is an industrial EPC company founded in 2014 in Monterrey. We specialize in executing CAPEX projects inside active operating plants — without subcontracting the technical core.",
+      about_p2: "We operate in Mexico, the United States and Brazil under one team, with our own certified engineering, automation and electromechanical construction capabilities.",
       about_v1: "Customer focus · high personalization",
       about_v2: "24/7 commitment · active critical crews",
       about_v3: "Certified technical quality",
@@ -1158,23 +1181,26 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       hero_eyebrow: "— Serviços EPC industriais · Desde 2014",
       hero_h1_a: "Construímos plantas que ",
       hero_h1_b: "não podem parar.",
-      hero_p: "Engenharia, compras e construção para operações industriais ativas. Automação, eletromecânica, HVAC e manutenção — sem parar sua produção.",
+      hero_p: "Executamos projetos CAPEX completos dentro de plantas em operação. Uma equipe, um contrato: engenharia certificada, automação e infraestrutura eletromecânica — sem parar sua produção, sem dividir a responsabilidade.",
+      hero_trust1: "Engenharia certificada LRFD · AISC · NTC-DCEA",
+      hero_trust2: "Contrato único · Núcleo nunca terceirizado",
+      hero_trust3: "Presença no México · EUA · Brasil",
       btn_quote: "Solicitar cotação →",
       btn_caps: "Ver capacidades →",
       caps_eyebrow: "Três áreas · Uma entrega",
-      caps_h2_a: "Engenharia, automação e infraestrutura.",
-      caps_h2_b: "Tudo sob uma mesma equipe.",
-      caps_lead: "Executamos toda a cadeia de um projeto CAPEX industrial — do memorial de cálculo ao comissionamento — sem subcontratar o núcleo.",
+      caps_h2_a: "Três áreas. Uma equipe.",
+      caps_h2_b: "Um contrato.",
+      caps_lead: "Executamos toda a cadeia de um projeto CAPEX dentro da sua planta em operação — do cálculo estrutural até a partida.",
       caps_anchor_projects: "Projetos nesta área",
       caps_eng_title: "Engenharia",
-      caps_eng_desc: "Projeto e cálculo estrutural certificado. Somos a origem técnica de cada projeto.",
+      caps_eng_desc: "A origem técnica de cada projeto. Memoriais de cálculo certificados, suportes estruturais, HVAC industrial e gestão EPC completa.",
       caps_eng_s1: "Memoriais de cálculo LRFD / AISC / NTC-DCEA / ACI 318",
       caps_eng_s2: "Suportes e estruturas industriais",
       caps_eng_s3: "HVAC industrial — salas elétricas, salas limpas, controle de poeira",
       caps_eng_s4: "Gestão EPC — compras, documentação, entregáveis técnicos",
       caps_eng_s5: "Engenharia de detalhe para plantas em operação contínua",
       caps_aut_title: "Automação",
-      caps_aut_desc: "Controle inteligente de processos. PLC, SCADA, robótica e Indústria 4.0 sem parar a produção.",
+      caps_aut_desc: "Controle inteligente implementado dentro da sua planta ativa — sem parar a produção. PLC, SCADA, migrações VFD, robótica e instrumentação.",
       caps_aut_s1: "Programação PLC / SCADA — Allen-Bradley, Siemens, Schneider",
       caps_aut_s2: "Migrações VFD sem parada produtiva",
       caps_aut_s3: "Robótica e integração de sistemas",
@@ -1182,7 +1208,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       caps_aut_s5: "Smart manufacturing / Indústria 4.0",
       caps_aut_s6: "Cibersegurança industrial OT / ICS",
       caps_em_title: "Infraestrutura Eletromecânica",
-      caps_em_desc: "Construímos e mantemos a infraestrutura física da planta. Execução em operação contínua, sem comprometer a produção.",
+      caps_em_desc: "Subestações, distribuição elétrica, tubulação de processo e montagens mecânicas — executados com a planta em operação contínua. Equipes 24/7 coordenadas pelo FTS Suite.",
       caps_em_s1: "Subestações elétricas MT / BT — projeto e construção",
       caps_em_s2: "Distribuição elétrica industrial",
       caps_em_s3: "Tubulação de processo e utilidades industriais",
@@ -1255,8 +1281,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       about_eyebrow: "— Quem somos",
       about_title_a: "12 anos construindo ",
       about_title_b: "infraestrutura crítica.",
-      about_p1: "A FTS é uma empresa industrial mexicana fundada em 2014 que executa projetos chave-na-mão de Automação, Infraestrutura Eletromecânica e Manutenção. Trabalhamos com operações que não podem parar.",
-      about_p2: "Expandimos nossa operação do México para os Estados Unidos e o Brasil, atendendo a líderes globais em alimentos, bebidas, automotivo, telecom, química e energia.",
+      about_p1: "A FTS é uma empresa de EPC industrial fundada em 2014 em Monterrey. Somos especializados em executar projetos CAPEX dentro de plantas em operação ativa — sem terceirizar o núcleo técnico.",
+      about_p2: "Operamos no México, Estados Unidos e Brasil com uma equipe própria de engenharia certificada, automação e construção eletromecânica.",
       about_v1: "Foco no cliente · alta personalização",
       about_v2: "Compromisso 24/7 · brigadas críticas ativas",
       about_v3: "Qualidade técnica certificada",
