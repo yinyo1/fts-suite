@@ -20,6 +20,7 @@
     --hero-img: url('https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&w=2200&q=85');
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 72px; }
   body { font-family: 'Manrope', sans-serif; color: var(--text); line-height: 1.6; -webkit-font-smoothing: antialiased; }
   .gradient-text { background: var(--brand-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
   .brand-bar { height: 4px; background: var(--brand-gradient); }
@@ -30,6 +31,9 @@
   .lang-btn { background: none; border: none; cursor: pointer; padding: 0.3rem 0.4rem; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; font-weight: 500; color: var(--text-muted); transition: color 0.15s; line-height: 1; }
   .lang-btn:hover { color: var(--text); }
   .lang-btn.active { color: var(--brand-red); font-weight: 700; }
+  .nav-links { display: flex; align-items: center; gap: 1.5rem; }
+  .nav-links a { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text); text-decoration: none; transition: color 0.15s; }
+  .nav-links a:hover { color: var(--brand-red); }
   .nav-cta { background: var(--brand-red); color: #FFF; padding: 0.85rem 1.6rem; text-decoration: none; font-weight: 600; font-size: 0.85rem; }
   .hero {
     position: relative; overflow: hidden;
@@ -65,6 +69,22 @@
   .cap-num { font-family: 'JetBrains Mono', monospace; color: var(--brand-red); font-size: 0.8rem; margin-bottom: 1rem; }
   .cap h3 { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 1.4rem; margin-bottom: 0.7rem; }
   .cap p { color: var(--text-muted); font-size: 0.95rem; }
+  .trust-strip { background: var(--bg-warm); padding: 3rem 2rem; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .trust-inner { max-width: 1400px; margin: 0 auto; }
+  .trust-label { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; letter-spacing: 0.18em; color: var(--brand-red); text-transform: uppercase; text-align: center; margin-bottom: 1.5rem; font-weight: 500; }
+  .trust-logos { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 2.5rem; }
+  .trust-logos span { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 1.2rem; letter-spacing: -0.01em; color: var(--text-muted); cursor: default; transition: color 0.2s, transform 0.2s; }
+  .trust-logos span:hover { color: var(--brand-red); transform: translateY(-2px); }
+  .partners-section { background: var(--bg); padding: 5rem 2rem; max-width: none; margin: 0; }
+  .partners-inner { max-width: 1400px; margin: 0 auto; }
+  .section-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; letter-spacing: 0.18em; color: var(--brand-red); text-transform: uppercase; margin-bottom: 1rem; font-weight: 500; }
+  .section-title { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: clamp(2rem, 4vw, 3.2rem); line-height: 1.05; letter-spacing: -0.025em; margin-bottom: 1rem; }
+  .partners-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 2rem; }
+  .partner-card { border: 1px solid var(--border); padding: 2rem; transition: border-color 0.2s, transform 0.2s; }
+  .partner-card:hover { border-color: var(--brand-red); transform: translateY(-4px); }
+  .partner-name { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 1.6rem; letter-spacing: -0.02em; margin-bottom: 0.25rem; }
+  .partner-by { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 1rem; min-height: 1em; }
+  .partner-desc { font-family: 'Manrope', sans-serif; font-size: 0.95rem; color: var(--text-muted); }
   .stats { background: var(--bg-dark); color: #FFF; padding: 4rem 2rem; }
   .stats-inner { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 3rem; }
   .stat-num { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 3rem; line-height: 1; margin-bottom: 0.5rem; }
@@ -89,13 +109,26 @@
     .hero::before { top: -120px; right: -120px; width: 360px; height: 360px; filter: blur(60px); opacity: 0.18; }
     section { padding: 3.5rem 1.5rem; }
     .stats { padding: 3rem 1.5rem; }
+    .nav-links { display: none; }
+    .trust-strip { padding: 2.5rem 1.5rem; }
+    .trust-logos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+    .trust-logos span { font-size: 1rem; text-align: center; }
+    .partners-section { padding: 3.5rem 1.5rem; }
+    .partners-grid { grid-template-columns: 1fr; }
   }
 </style>
 </head>
 <body>
-<div class="brand-bar"></div>
+<div class="brand-bar" id="top"></div>
 <nav>
-  <a href="#"><img class="logo-img" src="assets/logo.png" alt="FTS · Full Technology Systems"></a>
+  <a href="#top"><img class="logo-img" src="assets/logo.png" alt="FTS · Full Technology Systems"></a>
+  <div class="nav-links">
+    <a href="#top" data-i18n="nav_home">Inicio</a>
+    <a href="#nosotros" data-i18n="nav_about">Nosotros</a>
+    <a href="#caps" data-i18n="nav_services">Servicios</a>
+    <a href="#caps" data-i18n="nav_projects">Proyectos</a>
+    <a href="#contact" data-i18n="nav_contact">Contacto</a>
+  </div>
   <div class="nav-right">
     <div class="lang-switcher" role="group" aria-label="Language selector">
       <button type="button" class="lang-btn active" data-lang="es">ES</button>
@@ -113,6 +146,21 @@
     <div>
       <a href="#contact" class="btn-primary" data-i18n="btn_quote">Solicitar cotización →</a>
       <a href="#caps" class="btn-ghost" data-i18n="btn_caps">Ver capacidades →</a>
+    </div>
+  </div>
+</section>
+<section class="trust-strip" id="clientes">
+  <div class="trust-inner">
+    <div class="trust-label" data-i18n="trust_label">— Clientes que confían en FTS</div>
+    <div class="trust-logos">
+      <span>GRUMA</span>
+      <span>Nalco · Ecolab</span>
+      <span>Mondelez</span>
+      <span>Arca Continental</span>
+      <span>Mercado Libre</span>
+      <span>Mattel</span>
+      <span>Clarios</span>
+      <span>Budenheim</span>
     </div>
   </div>
 </section>
@@ -135,6 +183,30 @@
     <div><div class="stat-num">24/7</div><div class="stat-label" data-i18n="stat4_label">Brigadas críticas</div></div>
   </div>
 </div>
+<section class="partners-section" id="partners">
+  <div class="partners-inner">
+    <div class="section-eyebrow" data-i18n="partners_eyebrow">— Tecnologías que dominamos</div>
+    <h2 class="section-title"><span data-i18n="partners_title">Partners certificados.</span></h2>
+    <p class="lead" data-i18n="partners_lead">Integramos las plataformas líderes en automatización industrial mundial. Certificaciones vigentes y soporte directo de fabricantes.</p>
+    <div class="partners-grid">
+      <div class="partner-card">
+        <div class="partner-name">Ignition</div>
+        <div class="partner-by" data-i18n="partner_ignition_by">por Inductive Automation</div>
+        <div class="partner-desc" data-i18n="partner_ignition_desc">SCADA / MES / IIoT</div>
+      </div>
+      <div class="partner-card">
+        <div class="partner-name">Cognex</div>
+        <div class="partner-by"></div>
+        <div class="partner-desc" data-i18n="partner_cognex_desc">Visión artificial industrial</div>
+      </div>
+      <div class="partner-card">
+        <div class="partner-name">Universal Robots</div>
+        <div class="partner-by"></div>
+        <div class="partner-desc" data-i18n="partner_ur_desc">Robótica colaborativa</div>
+      </div>
+    </div>
+  </div>
+</section>
 <section id="contact">
   <h2><span data-i18n="contact_h2_a">¿Tienes una planta que </span><span class="gradient-text" data-i18n="contact_h2_b">no puede parar?</span></h2>
   <p class="lead" data-i18n="contact_lead">Respuesta técnica en menos de 24 horas. Propuesta formal en 5 días.</p>
@@ -180,7 +252,20 @@
       contact_lead: "Respuesta técnica en menos de 24 horas. Propuesta formal en 5 días.",
       footer_brand: "FTS · Full Technology Systems",
       footer_tagline: "Servicios EPC industriales · México · USA · Brasil",
-      footer_legal: "© 2026 Servicios FTS SA de CV · RFC: SFT170905L43"
+      footer_legal: "© 2026 Servicios FTS SA de CV · RFC: SFT170905L43",
+      nav_home: "Inicio",
+      nav_about: "Nosotros",
+      nav_services: "Servicios",
+      nav_projects: "Proyectos",
+      nav_contact: "Contacto",
+      trust_label: "— Clientes que confían en FTS",
+      partners_eyebrow: "— Tecnologías que dominamos",
+      partners_title: "Partners certificados.",
+      partners_lead: "Integramos las plataformas líderes en automatización industrial mundial. Certificaciones vigentes y soporte directo de fabricantes.",
+      partner_ignition_by: "por Inductive Automation",
+      partner_ignition_desc: "SCADA / MES / IIoT",
+      partner_cognex_desc: "Visión artificial industrial",
+      partner_ur_desc: "Robótica colaborativa"
     },
     en: {
       cta_nav: "Get a quote",
@@ -212,7 +297,20 @@
       contact_lead: "Technical response in under 24 hours. Formal proposal in 5 days.",
       footer_brand: "FTS · Full Technology Systems",
       footer_tagline: "Industrial EPC services · Mexico · USA · Brazil",
-      footer_legal: "© 2026 Servicios FTS SA de CV · RFC: SFT170905L43"
+      footer_legal: "© 2026 Servicios FTS SA de CV · RFC: SFT170905L43",
+      nav_home: "Home",
+      nav_about: "About",
+      nav_services: "Services",
+      nav_projects: "Projects",
+      nav_contact: "Contact",
+      trust_label: "— Clients who trust FTS",
+      partners_eyebrow: "— Technologies we master",
+      partners_title: "Certified partners.",
+      partners_lead: "We integrate the leading platforms in global industrial automation. Active certifications and direct manufacturer support.",
+      partner_ignition_by: "by Inductive Automation",
+      partner_ignition_desc: "SCADA / MES / IIoT",
+      partner_cognex_desc: "Industrial machine vision",
+      partner_ur_desc: "Collaborative robotics"
     },
     pt: {
       cta_nav: "Cotação",
@@ -244,7 +342,20 @@
       contact_lead: "Resposta técnica em menos de 24 horas. Proposta formal em 5 dias.",
       footer_brand: "FTS · Full Technology Systems",
       footer_tagline: "Serviços EPC industriais · México · EUA · Brasil",
-      footer_legal: "© 2026 Servicios FTS SA de CV · RFC: SFT170905L43"
+      footer_legal: "© 2026 Servicios FTS SA de CV · RFC: SFT170905L43",
+      nav_home: "Início",
+      nav_about: "Sobre",
+      nav_services: "Serviços",
+      nav_projects: "Projetos",
+      nav_contact: "Contato",
+      trust_label: "— Clientes que confiam na FTS",
+      partners_eyebrow: "— Tecnologias que dominamos",
+      partners_title: "Parceiros certificados.",
+      partners_lead: "Integramos as plataformas líderes em automação industrial mundial. Certificações vigentes e suporte direto de fabricantes.",
+      partner_ignition_by: "por Inductive Automation",
+      partner_ignition_desc: "SCADA / MES / IIoT",
+      partner_cognex_desc: "Visão artificial industrial",
+      partner_ur_desc: "Robótica colaborativa"
     }
   };
   function applyLang(lang) {
