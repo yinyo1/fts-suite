@@ -30,7 +30,7 @@ Idiomas del repo: español para UI/textos, inglés para variables/funciones de c
 | 3 | `asistencias/admin` | `Bqnfsx8gx2TpzfwM` | `TpzfwM` | Consultas admin |
 | 4 | `accesos-incidencias/guardar (v2.2 auth-fix)` | `HwPq9dqxjy2KETi7` | `2KETi7` | Auth + persistencia |
 | 5 | `kiosk/empleados (v3.1)` | `2UGWLjNwYRGtXq5y` | `GtXq5y` | Lookup empleados pre-checkin |
-| 6 | `kiosk/checkin (v4.2 fix respuesta · build 20abr · 00c76071)` | `a7mEjjdwIzzvomXs` | `zvomXs` | **Núcleo del kiosk** |
+| 6 | `kiosk/checkin (v4.2 fix respuesta · build 20abr · 00c76071)` | `a7mEjjdwIzzvomXs` | `zvomXs` | **Núcleo del kiosk**. 26 nodos (3 nuevos F1.5: `IF - Auto-rescate?` + `Odoo - UPDATE Auto-rescate Close` + `Code - Continue Auto-rescate`). Auto-rescate huérfana >16h en rama entrada. |
 | 7 | `kiosk/cerrar-registro (v2.0 · build 20abr · f020af31)` | `WkgYjDeL2kQInz3H` | `QInz3H` | Cierre manual humano |
 | 8 | `kiosk/estado-empleado (v3 Fase 1)` | `U13fngg2dTKgDQ8Y` | `KgDQ8Y` | Estado actual empleado |
 | 9 | `dashboard/resumen (v4.3)` | `nNNQrFMTSjIfqHep` | `IfqHep` | KPIs operación |
@@ -177,6 +177,12 @@ Pendiente F4: usar este mapeo al guardar planes operativos.
 - Auto-cierre cron 2am
 - Notificaciones escalonadas
 - Status-change notifications
+- **F1.5** (parcial, 2026-05-11): ✅ DONE auto-rescate reactivo de attendance huérfana >16h al siguiente check-in del empleado (`Code - Analizar candados` rama `≥16h` ya no bloquea, dispara auto-cierre + TAG + incidencia `auto_cierre_pendiente`). Cron 2am sigue pendiente como tarea separada — esta es solo la red de seguridad in-flight, no la limpieza proactiva nocturna.
+
+### Bloque F1.5 — Operativos urgentes (2026-05-11) ✅ DONE
+- Issue 1: candado hora mínima check-in por geocerca (Topo Chico cortina + Caseta L6 con 07:30 CST). Validación frontend en `kiosk.js`, config en `shared/public-config.json` v1.1.0.
+- Issue 2: auto-rescate >16h en workflow `a7mEjjdwIzzvomXs` (ver Bloque B + §11 hallazgo #12).
+- Ver `docs/SPRINT_F1.5_REPORTE.md` para detalles.
 
 ### Bloque C — Mi Nómina (10 hrs)
 - Quitar contador acumulado de kiosk pre-checkin
@@ -277,7 +283,7 @@ Pendiente F4: usar este mapeo al guardar planes operativos.
 
 ---
 
-## 11. Hallazgos arquitectónicos (F1 v3, F2.1, F1.1)
+## 11. Hallazgos arquitectónicos (F1 v3, F2.1, F1.1, F1.5)
 
 Lecciones cross-cutting documentadas para evitar repetir bugs en futuros sprints.
 
@@ -291,3 +297,5 @@ Lecciones cross-cutting documentadas para evitar repetir bugs en futuros sprints
 8. **`Ingenieria` sin acento en Odoo producción.** Confirmado durante F2.1: nombres de departamento NO siempre tienen tildes. Verificar SIEMPRE strings de Odoo antes de usarlos en condicionales. Apuntado como deuda cosmética: corregir a `Ingeniería` cuando haya tiempo.
 9. **Bug colateral resolver F1 v3 → fix F1.1 (5-may-2026).** F1 v3 introdujo asunción universal `inc.check_in_original_utc must exist` en el resolver, válida solo para `olvido_checkout`. Para `olvido_entrada` la base UTC vive en `hora_real_checkin_utc`. Además `inc.tag_disputa_activo = !esEstadoTerminal(...)` se asignaba incondicional, contaminando rows legacy que nunca escribieron TAG. **Lección:** cuando se introduce una característica nueva (TAG management) sobre un resolver que sirve a múltiples tipos, audit obligatorio de cada branch (`tipo === 'X'`) para garantizar invariantes específicos del tipo. Y los flags transversales (TAG) deben respetar el estado entrante (`=== true`) antes de flippear, NO asumir que todas las rows entran al sistema con el flag bien inicializado.
 10. **Regresión post-F1.1 fase 2 (5-may-2026, mismo día).** El `UPDATE TAG` insertado entre `IF Error?` y `READ Empleado` en xVNp36 cambió el data flow del `filterRequest`. La expresión `={{ $json.empleado_id }}` resolvía a `undefined` porque el output del UPDATE TAG (data del attendance) no contiene `empleado_id`. Resultado: TODOS los empleados creando olvido_entrada caían en `sin_departamento:true + sin_supervisor:true → pendiente_rh`. Fix: referencia explícita `={{ $('Code - Validar payload').item.json.empleado_id }}`. Bug fue inadvertido en testing porque Esteban (único test post-deploy) salió SIN DEPTO sin que se identificara como regresión hasta el debug profundo. **Lección crítica:** cuando se modifica topología n8n en sprint, smoke test debe verificar TODOS los nodos downstream con expresiones `$json`, no solo el end-state funcional. Incidencia INC-OLV-32-2026-05-05T17-07-44-203Z queda con flags JSON incorrectos por este bug — cerrada con TAG limpio en Odoo, no se patchea retroactivamente.
+11. **Geocercas Topo Chico con hora mínima check-in (F1.5, 11-may-2026).** Operación cliente Nalco/Ecolab cita personal 07:30 AM en planta Topo Chico (Cortina + Caseta L6); empleados llegaban 7:00 AM y checaban para cobrar desde esa hora sin supervisión. Solución: campos `aplica_hora_minima_checkin` (bool) + `hora_minima_checkin` (HH:MM) en `shared/public-config.json` por geocerca. Validación frontend-only en `kiosk.js` función `validarHoraMinimaCheckin(sitioNombre, tipo)`, aplica solo cuando `tipo === 'entrada'` (no bloquea salida ni comida). Defensa profunda server-side queda en backlog. **Lección:** geocercas viven en `public-config.json` (no en `sitios-autorizados.json` que es legacy sin consumer), kiosk fetchea de GitHub raw + cache localStorage, workflow n8n NO valida geocerca (solo confía en frontend).
+12. **Auto-rescate de attendance huérfana >16h al siguiente check-in (F1.5, 11-may-2026).** Antes: rama `≥16h` en `Code - Analizar candados` (workflow `a7mEjjdwIzzvomXs`) bloqueaba con `ERROR_CRITICO`, forzando al empleado usar olvido_checkout antes de checar entrada. Caso real Vie 8: Ricardo (att 12948) y Héctor (att 12921) bloqueados lunes 11-may por checkout olvidado. **Patrón nuevo (red de seguridad reactiva, no reemplaza cron 2am de Bloque B):** cuando workflow detecta huérfana >16h, auto-cierra a 9.6h, escribe TAGs `x_studio_horario_en_disputa:true` + `x_studio_incidencia_pendiente_id`, crea incidencia `auto_cierre_pendiente` con `estado:pendiente_rh` + `tag_disputa_activo:true` + `autoincidencia:true` (salta supervisor, va directo a Ana Laura), permite check-in nuevo sin fricción. Umbral 16h elegido para no falsamente disparar en turno nocturno T2 (Vie 22:30 → Sáb 07:00 = 8.5h). Nodos nuevos: `IF - Auto-rescate?` + `Odoo - UPDATE Auto-rescate Close` + `Code - Continue Auto-rescate` (restaura params via `$('Code - Analizar candados').item.json` después del UPDATE Odoo, necesario porque output Odoo no preserva `tipo` que necesita `Switch - Por tipo`). **Patrón anti-regresión:** cuando inserts nodo Odoo entre nodos Code, agrega un Code de "restore params" usando referencia explícita al nodo upstream (no confíes en propagación natural de fields).
