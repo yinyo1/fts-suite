@@ -48,7 +48,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   body { font-family: 'Manrope', sans-serif; color: var(--text); line-height: 1.6; -webkit-font-smoothing: antialiased; }
   .gradient-text { background: var(--brand-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
   .brand-bar { height: 4px; background: var(--brand-gradient); }
-  nav { background: #FFF; padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+  body > nav { background: #FFF; padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
   .logo-img { height: 44px; width: auto; display: block; }
   .nav-right { display: flex; align-items: center; gap: 1.25rem; }
   .lang-switcher { display: flex; gap: 0.3rem; }
@@ -241,15 +241,24 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .mob-cta { display: block; text-align: center; width: 100%; box-sizing: border-box; }
   .drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 999; opacity: 0; pointer-events: none; transition: opacity 0.28s ease; backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
   .drawer-backdrop.is-visible { opacity: 1; pointer-events: all; }
+  .drawer-close-btn { position: absolute; top: 1rem; right: 1rem; background: rgba(255,255,255,0.08); border: none; color: rgba(255,255,255,0.85); border-radius: 6px; padding: 0.5rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s; z-index: 2; }
+  .drawer-close-btn:hover { background: rgba(255,255,255,0.18); color: #FFF; }
+  .flag-img { display: inline-block; vertical-align: middle; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0,0,0,0.12); flex-shrink: 0; }
+  .about-country-flag .flag-img { width: 32px; height: 24px; border-radius: 3px; }
+  .nav-lang-mini { display: none; align-items: center; gap: 0.25rem; }
+  .lang-mini-btn { background: none; border: none; padding: 0.3rem; cursor: pointer; border-radius: 4px; display: flex; align-items: center; transition: background 0.15s, opacity 0.15s; opacity: 0.75; }
+  .lang-mini-btn:hover { opacity: 1; background: rgba(0,0,0,0.05); }
+  .lang-mini-btn.active { opacity: 1; background: rgba(220,85,68,0.1); }
   @media (max-width: 768px) {
     .nav-hamburger { display: flex; }
     .nav-links, .nav-right { display: none !important; }
+    .nav-lang-mini { display: flex; }
   }
   @media (min-width: 769px) {
-    .mobile-drawer, .drawer-backdrop, .nav-hamburger { display: none !important; }
+    .mobile-drawer, .drawer-backdrop, .nav-hamburger, .nav-lang-mini { display: none !important; }
   }
   @media (max-width: 700px) {
-    nav { padding: 0.8rem 1rem; }
+    body > nav { padding: 0.8rem 1rem; }
     .logo-img { height: 34px; }
     .nav-right { gap: 0.75rem; }
     .nav-cta { padding: 0.65rem 1rem; font-size: 0.75rem; }
@@ -309,11 +318,16 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   </div>
   <div class="nav-right">
     <div class="lang-switcher" role="group" aria-label="Language selector">
-      <button type="button" class="lang-btn active" data-lang="es">🇲🇽&nbsp;ES</button>
-      <button type="button" class="lang-btn" data-lang="en">🇺🇸&nbsp;EN</button>
-      <button type="button" class="lang-btn" data-lang="pt">🇧🇷&nbsp;PT</button>
+      <button type="button" class="lang-btn active" data-lang="es"><img src="https://flagcdn.com/w20/mx.png" srcset="https://flagcdn.com/w40/mx.png 2x" width="20" height="15" alt="MX" class="flag-img" loading="lazy">ES</button>
+      <button type="button" class="lang-btn" data-lang="en"><img src="https://flagcdn.com/w20/us.png" srcset="https://flagcdn.com/w40/us.png 2x" width="20" height="15" alt="US" class="flag-img" loading="lazy">EN</button>
+      <button type="button" class="lang-btn" data-lang="pt"><img src="https://flagcdn.com/w20/br.png" srcset="https://flagcdn.com/w40/br.png 2x" width="20" height="15" alt="BR" class="flag-img" loading="lazy">PT</button>
     </div>
     <a href="#contact" class="nav-cta" data-i18n="cta_nav">Cotizar</a>
+  </div>
+  <div class="nav-lang-mini" role="group" aria-label="Language selector">
+    <button type="button" onclick="setLang('es')" class="lang-mini-btn active" data-lang="es" aria-label="Español"><img src="https://flagcdn.com/w20/mx.png" srcset="https://flagcdn.com/w40/mx.png 2x" width="18" height="14" alt="ES" class="flag-img" loading="lazy"></button>
+    <button type="button" onclick="setLang('en')" class="lang-mini-btn" data-lang="en" aria-label="English"><img src="https://flagcdn.com/w20/us.png" srcset="https://flagcdn.com/w40/us.png 2x" width="18" height="14" alt="EN" class="flag-img" loading="lazy"></button>
+    <button type="button" onclick="setLang('pt')" class="lang-mini-btn" data-lang="pt" aria-label="Português"><img src="https://flagcdn.com/w20/br.png" srcset="https://flagcdn.com/w40/br.png 2x" width="18" height="14" alt="PT" class="flag-img" loading="lazy"></button>
   </div>
   <button class="nav-hamburger" id="navHamburger" aria-label="Abrir menú" aria-expanded="false" aria-controls="mobileDrawer">
     <span class="ham-bar"></span>
@@ -322,6 +336,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   </button>
 </nav>
 <div class="mobile-drawer" id="mobileDrawer" aria-hidden="true">
+  <button class="drawer-close-btn" id="drawerCloseBtn" type="button" aria-label="Cerrar menú">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 4L16 16M16 4L4 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+  </button>
   <nav class="mobile-nav-links" aria-label="Navegación mobile">
     <a href="#caps"      class="mob-link" data-i18n="nav_services">Servicios</a>
     <a href="#nosotros"  class="mob-link" data-i18n="nav_about">Nosotros</a>
@@ -330,9 +347,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   </nav>
   <div class="mobile-drawer-footer">
     <div class="mobile-lang-switcher" role="group" aria-label="Language selector">
-      <button type="button" class="lang-btn-mob active" data-lang="es" onclick="setLang('es')">🇲🇽&nbsp;ES</button>
-      <button type="button" class="lang-btn-mob" data-lang="en" onclick="setLang('en')">🇺🇸&nbsp;EN</button>
-      <button type="button" class="lang-btn-mob" data-lang="pt" onclick="setLang('pt')">🇧🇷&nbsp;PT</button>
+      <button type="button" class="lang-btn-mob active" data-lang="es" onclick="setLang('es')"><img src="https://flagcdn.com/w20/mx.png" srcset="https://flagcdn.com/w40/mx.png 2x" width="20" height="15" alt="MX" class="flag-img" loading="lazy">ES</button>
+      <button type="button" class="lang-btn-mob" data-lang="en" onclick="setLang('en')"><img src="https://flagcdn.com/w20/us.png" srcset="https://flagcdn.com/w40/us.png 2x" width="20" height="15" alt="US" class="flag-img" loading="lazy">EN</button>
+      <button type="button" class="lang-btn-mob" data-lang="pt" onclick="setLang('pt')"><img src="https://flagcdn.com/w20/br.png" srcset="https://flagcdn.com/w40/br.png 2x" width="20" height="15" alt="BR" class="flag-img" loading="lazy">PT</button>
     </div>
     <a href="#contact" class="btn-primary mob-cta" data-i18n="cta_nav">Cotizar →</a>
   </div>
@@ -383,7 +400,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       <div class="about-card-bar"></div>
       <div class="about-card-title" data-i18n="about_card_title">Tres entidades, una operación</div>
       <div class="about-country">
-        <div class="about-country-flag">🇲🇽</div>
+        <div class="about-country-flag"><img src="https://flagcdn.com/w40/mx.png" srcset="https://flagcdn.com/w80/mx.png 2x" width="32" height="24" alt="MX" class="flag-img" loading="lazy"></div>
         <div class="about-country-info">
           <div class="about-country-name" data-i18n="about_country_mx">México</div>
           <div class="about-country-rs">Servicios FTS SA de CV</div>
@@ -391,7 +408,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         </div>
       </div>
       <div class="about-country">
-        <div class="about-country-flag">🇺🇸</div>
+        <div class="about-country-flag"><img src="https://flagcdn.com/w40/us.png" srcset="https://flagcdn.com/w80/us.png 2x" width="32" height="24" alt="US" class="flag-img" loading="lazy"></div>
         <div class="about-country-info">
           <div class="about-country-name" data-i18n="about_country_us">USA</div>
           <div class="about-country-rs">FTS Full Technology Systems LLC</div>
@@ -399,7 +416,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         </div>
       </div>
       <div class="about-country">
-        <div class="about-country-flag">🇧🇷</div>
+        <div class="about-country-flag"><img src="https://flagcdn.com/w40/br.png" srcset="https://flagcdn.com/w80/br.png 2x" width="32" height="24" alt="BR" class="flag-img" loading="lazy"></div>
         <div class="about-country-info">
           <div class="about-country-name" data-i18n="about_country_br">Brasil</div>
           <div class="about-country-rs">FTS Brasil LTDA</div>
@@ -1178,7 +1195,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       const txt = TRANSLATIONS[lang][key];
       if (txt != null) el.innerText = txt;
     });
-    document.querySelectorAll('.lang-btn, .lang-btn-mob').forEach(b => {
+    document.querySelectorAll('.lang-btn, .lang-btn-mob, .lang-mini-btn').forEach(b => {
       b.classList.toggle('active', b.getAttribute('data-lang') === lang);
     });
     try { localStorage.setItem('fts_lang', lang); } catch (e) {}
@@ -1262,6 +1279,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     });
     backdrop.addEventListener('click', closeDrawer);
     mobLinks.forEach(function(link) { link.addEventListener('click', closeDrawer); });
+    const closeBtn = document.getElementById('drawerCloseBtn');
+    if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
     document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeDrawer(); });
   })();
 </script>
