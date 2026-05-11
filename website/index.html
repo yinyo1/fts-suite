@@ -92,12 +92,26 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   section { padding: 5rem 2rem; max-width: 1400px; margin: 0 auto; }
   h2 { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: clamp(2rem, 4.4vw, 3.4rem); line-height: 1.05; letter-spacing: -0.025em; margin-bottom: 1rem; }
   .lead { color: var(--text-muted); font-size: 1.1rem; max-width: 640px; margin-bottom: 3rem; }
-  .caps-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
-  .cap { border: 1px solid var(--border); padding: 2rem; transition: border-color 0.2s, transform 0.2s; }
-  .cap:hover { border-color: var(--brand-red); transform: translateY(-4px); }
-  .cap-num { font-family: 'JetBrains Mono', monospace; color: var(--brand-red); font-size: 0.8rem; margin-bottom: 1rem; }
-  .cap h3 { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 1.4rem; margin-bottom: 0.7rem; }
-  .cap p { color: var(--text-muted); font-size: 0.95rem; }
+  .caps-section { background: var(--bg); padding: 5rem 2rem; max-width: none; margin: 0; }
+  .caps-inner { max-width: 1400px; margin: 0 auto; }
+  .caps-header { text-align: center; max-width: 720px; margin: 0 auto 4rem; }
+  .caps-header .lead { margin-left: auto; margin-right: auto; max-width: 640px; }
+  .caps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; align-items: stretch; }
+  .cap-card { background: var(--bg-warm); border: 1px solid var(--border); border-radius: 12px; padding: 2rem 1.75rem 1.75rem; display: flex; flex-direction: column; gap: 1rem; transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s; }
+  .cap-card:hover { border-color: var(--brand-red); box-shadow: 0 4px 24px rgba(220,85,68,0.08); transform: translateY(-4px); }
+  .cap-number { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--brand-red); letter-spacing: 0.1em; }
+  .cap-icon { color: var(--brand-red); margin-bottom: 0.25rem; line-height: 0; }
+  .cap-title { font-family: 'Bricolage Grotesque', sans-serif; font-size: 1.35rem; font-weight: 700; color: var(--text); line-height: 1.2; letter-spacing: -0.015em; }
+  .cap-desc { font-size: 0.9rem; color: var(--text-muted); line-height: 1.6; }
+  .cap-skills { list-style: none; display: flex; flex-direction: column; gap: 0.45rem; margin: 0; padding: 1rem 0 0; border-top: 1px solid var(--border); }
+  .cap-skills li { font-size: 0.82rem; color: var(--text-muted); padding-left: 1rem; position: relative; line-height: 1.4; }
+  .cap-skills li::before { content: '→'; position: absolute; left: 0; color: var(--brand-red); font-size: 0.75rem; line-height: 1.4; }
+  .cap-anchor-block { margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border); }
+  .cap-anchor-label { display: block; font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); opacity: 0.75; margin-bottom: 0.6rem; }
+  .cap-anchor-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .cap-chip { font-size: 0.72rem; color: var(--brand-red); background: rgba(220,85,68,0.06); border: 1px solid rgba(220,85,68,0.2); border-radius: 100px; padding: 0.25rem 0.7rem; text-decoration: none; transition: background 0.2s, border-color 0.2s; line-height: 1.3; }
+  .cap-chip:hover { background: rgba(220,85,68,0.14); border-color: rgba(220,85,68,0.35); }
+  @media (max-width: 900px) { .caps-grid { grid-template-columns: 1fr; } }
   .trust-strip { background: var(--bg-warm); padding: 3rem 2rem; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
   .trust-inner { max-width: 1400px; margin: 0 auto; }
   .trust-label { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; letter-spacing: 0.18em; color: var(--brand-red); text-transform: uppercase; text-align: center; margin-bottom: 1.5rem; font-weight: 500; }
@@ -415,15 +429,78 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     </div>
   </div>
 </section>
-<section id="caps">
-  <h2><span data-i18n="caps_h2_a">Cinco disciplinas integradas.</span><br><span class="gradient-text" data-i18n="caps_h2_b">Una sola entrega.</span></h2>
-  <p class="lead" data-i18n="caps_lead">Ejecutamos toda la cadena de un proyecto industrial bajo un mismo equipo y un mismo contrato.</p>
-  <div class="caps-grid">
-    <div class="cap"><div class="cap-num">— 01</div><h3 data-i18n="cap1_h">Automatización</h3><p data-i18n="cap1_p">Control PLC/SCADA, ciberseguridad industrial, robótica, smart manufacturing.</p></div>
-    <div class="cap"><div class="cap-num">— 02</div><h3 data-i18n="cap2_h">Electromecánica</h3><p data-i18n="cap2_p">Subestaciones, distribución, instrumentación, migraciones VFD/PLC sin paro.</p></div>
-    <div class="cap"><div class="cap-num">— 03</div><h3 data-i18n="cap3_h">Construcción mecánica</h3><p data-i18n="cap3_p">Tubería, soportería, montajes, memorias de cálculo certificadas LRFD/AISC.</p></div>
-    <div class="cap"><div class="cap-num">— 04</div><h3 data-i18n="cap4_h">HVAC industrial</h3><p data-i18n="cap4_p">Control de polvo, áreas críticas, salas eléctricas, áreas blancas.</p></div>
-    <div class="cap"><div class="cap-num">— 05</div><h3 data-i18n="cap5_h">Mantenimiento</h3><p data-i18n="cap5_p">Brigadas 24/7 con SLAs garantizados sobre plataforma propia FTS Suite.</p></div>
+<section class="caps-section" id="caps">
+  <div class="caps-inner">
+    <div class="caps-header">
+      <div class="section-eyebrow" data-i18n="caps_eyebrow">Tres áreas · Una entrega</div>
+      <h2 class="section-title"><span data-i18n="caps_h2_a">Ingeniería, automatización e infraestructura.</span><br><span data-i18n="caps_h2_b">Todo bajo un mismo equipo.</span></h2>
+      <p class="lead" data-i18n="caps_lead">Ejecutamos toda la cadena de un proyecto CAPEX industrial: desde la memoria de cálculo hasta la puesta en marcha, sin subcontratar el núcleo.</p>
+    </div>
+    <div class="caps-grid">
+      <div class="cap-card" id="ingenieria">
+        <div class="cap-number">01</div>
+        <div class="cap-icon"><svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M4 28L16 4L28 28" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 20H24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+        <h3 class="cap-title" data-i18n="caps_eng_title">Ingeniería</h3>
+        <p class="cap-desc" data-i18n="caps_eng_desc">Diseño y cálculo estructural certificado. Somos el origen técnico de cada proyecto.</p>
+        <ul class="cap-skills">
+          <li data-i18n="caps_eng_s1">Memorias de cálculo LRFD / AISC / NTC-DCEA / ACI 318</li>
+          <li data-i18n="caps_eng_s2">Soportería y estructuras industriales</li>
+          <li data-i18n="caps_eng_s3">HVAC industrial — salas eléctricas, áreas blancas, control de polvo</li>
+          <li data-i18n="caps_eng_s4">Gestión EPC — procura, documentación, entregables técnicos</li>
+          <li data-i18n="caps_eng_s5">Ingeniería de detalle para plantas en operación continua</li>
+        </ul>
+        <div class="cap-anchor-block">
+          <span class="cap-anchor-label" data-i18n="caps_anchor_projects">Proyectos en esta área</span>
+          <div class="cap-anchor-chips">
+            <a href="#proyectos" class="cap-chip">Enclosure Multipanel — Nalco / Topo Chico</a>
+            <a href="#proyectos" class="cap-chip">Monorail 2T — Arca Continental</a>
+            <a href="#proyectos" class="cap-chip">Pipe Support — Planta Topo Chico</a>
+          </div>
+        </div>
+      </div>
+      <div class="cap-card" id="automatizacion">
+        <div class="cap-number">02</div>
+        <div class="cap-icon"><svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true"><rect x="4" y="10" width="24" height="16" rx="2" stroke="currentColor" stroke-width="2"/><circle cx="11" cy="18" r="2.5" stroke="currentColor" stroke-width="2"/><circle cx="21" cy="18" r="2.5" stroke="currentColor" stroke-width="2"/><path d="M11 10V6M21 10V6M16 6V4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+        <h3 class="cap-title" data-i18n="caps_aut_title">Automatización</h3>
+        <p class="cap-desc" data-i18n="caps_aut_desc">Control inteligente de procesos. PLC, SCADA, robótica y Industria 4.0 sin detener tu producción.</p>
+        <ul class="cap-skills">
+          <li data-i18n="caps_aut_s1">Programación PLC / SCADA — Allen-Bradley, Siemens, Schneider</li>
+          <li data-i18n="caps_aut_s2">Migraciones VFD sin paro productivo</li>
+          <li data-i18n="caps_aut_s3">Robótica e integración de sistemas</li>
+          <li data-i18n="caps_aut_s4">Instrumentación y control de procesos</li>
+          <li data-i18n="caps_aut_s5">Smart manufacturing / Industria 4.0</li>
+          <li data-i18n="caps_aut_s6">Ciberseguridad industrial OT / ICS</li>
+        </ul>
+        <div class="cap-anchor-block">
+          <span class="cap-anchor-label" data-i18n="caps_anchor_projects">Proyectos en esta área</span>
+          <div class="cap-anchor-chips">
+            <a href="#proyectos" class="cap-chip">Migración VFD — GRUMA Hayward CA</a>
+            <a href="#proyectos" class="cap-chip">Sistema de control — Nalco Water</a>
+          </div>
+        </div>
+      </div>
+      <div class="cap-card" id="electromecanica">
+        <div class="cap-number">03</div>
+        <div class="cap-icon"><svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 4V28M4 16H28" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8 8L24 24M24 8L8 24" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.4"/><circle cx="16" cy="16" r="5" stroke="currentColor" stroke-width="2"/></svg></div>
+        <h3 class="cap-title" data-i18n="caps_em_title">Infraestructura Electromecánica</h3>
+        <p class="cap-desc" data-i18n="caps_em_desc">Construimos y mantenemos la infraestructura física de planta. Ejecución en operación continua, sin comprometer la producción.</p>
+        <ul class="cap-skills">
+          <li data-i18n="caps_em_s1">Subestaciones eléctricas MT / BT — diseño y construcción</li>
+          <li data-i18n="caps_em_s2">Distribución eléctrica industrial</li>
+          <li data-i18n="caps_em_s3">Tubería de proceso y servicios industriales</li>
+          <li data-i18n="caps_em_s4">Montajes mecánicos en planta activa</li>
+          <li data-i18n="caps_em_s5">Brigadas 24/7 con SLA — plataforma FTS Suite</li>
+          <li data-i18n="caps_em_s6">Mantenimiento correctivo y preventivo programado</li>
+        </ul>
+        <div class="cap-anchor-block">
+          <span class="cap-anchor-label" data-i18n="caps_anchor_projects">Proyectos en esta área</span>
+          <div class="cap-anchor-chips">
+            <a href="#proyectos" class="cap-chip">SO11547 — Nalco / Planta Topo Chico</a>
+            <a href="#proyectos" class="cap-chip">Infraestructura — Arca Continental</a>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 <div class="stats">
@@ -549,9 +626,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       </div>
       <div class="footer-col">
         <div class="footer-heading" data-i18n="footer_h_solutions">Soluciones</div>
-        <a href="#caps" class="footer-link" data-i18n="footer_l_automation">Automatización</a>
-        <a href="#caps" class="footer-link" data-i18n="footer_l_electromech">Infraestructura electromecánica</a>
-        <a href="#caps" class="footer-link" data-i18n="footer_l_maintenance">Mantenimiento</a>
+        <a href="#automatizacion" class="footer-link" data-i18n="footer_l_automation">Automatización</a>
+        <a href="#electromecanica" class="footer-link" data-i18n="footer_l_electromech">Infraestructura electromecánica</a>
+        <a href="#electromecanica" class="footer-link" data-i18n="footer_l_maintenance">Mantenimiento</a>
         <a href="https://serviciosfts.odoo.com/" target="_blank" rel="noopener" class="footer-link" data-i18n="footer_l_products">Productos</a>
         <a href="https://serviciosfts.odoo.com/jobs" target="_blank" rel="noopener" class="footer-link" data-i18n="footer_l_jobs">Jobs</a>
       </div>
@@ -593,19 +670,34 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       hero_p: "Ingeniería, procura y construcción para operaciones industriales activas. Automatización, electromecánica, HVAC y mantenimiento — sin detener tu producción.",
       btn_quote: "Solicitar cotización →",
       btn_caps: "Ver capacidades →",
-      caps_h2_a: "Cinco disciplinas integradas.",
-      caps_h2_b: "Una sola entrega.",
-      caps_lead: "Ejecutamos toda la cadena de un proyecto industrial bajo un mismo equipo y un mismo contrato.",
-      cap1_h: "Automatización",
-      cap1_p: "Control PLC/SCADA, ciberseguridad industrial, robótica, smart manufacturing.",
-      cap2_h: "Electromecánica",
-      cap2_p: "Subestaciones, distribución, instrumentación, migraciones VFD/PLC sin paro.",
-      cap3_h: "Construcción mecánica",
-      cap3_p: "Tubería, soportería, montajes, memorias de cálculo certificadas LRFD/AISC.",
-      cap4_h: "HVAC industrial",
-      cap4_p: "Control de polvo, áreas críticas, salas eléctricas, áreas blancas.",
-      cap5_h: "Mantenimiento",
-      cap5_p: "Brigadas 24/7 con SLAs garantizados sobre plataforma propia FTS Suite.",
+      caps_eyebrow: "Tres áreas · Una entrega",
+      caps_h2_a: "Ingeniería, automatización e infraestructura.",
+      caps_h2_b: "Todo bajo un mismo equipo.",
+      caps_lead: "Ejecutamos toda la cadena de un proyecto CAPEX industrial: desde la memoria de cálculo hasta la puesta en marcha, sin subcontratar el núcleo.",
+      caps_anchor_projects: "Proyectos en esta área",
+      caps_eng_title: "Ingeniería",
+      caps_eng_desc: "Diseño y cálculo estructural certificado. Somos el origen técnico de cada proyecto.",
+      caps_eng_s1: "Memorias de cálculo LRFD / AISC / NTC-DCEA / ACI 318",
+      caps_eng_s2: "Soportería y estructuras industriales",
+      caps_eng_s3: "HVAC industrial — salas eléctricas, áreas blancas, control de polvo",
+      caps_eng_s4: "Gestión EPC — procura, documentación, entregables técnicos",
+      caps_eng_s5: "Ingeniería de detalle para plantas en operación continua",
+      caps_aut_title: "Automatización",
+      caps_aut_desc: "Control inteligente de procesos. PLC, SCADA, robótica y Industria 4.0 sin detener tu producción.",
+      caps_aut_s1: "Programación PLC / SCADA — Allen-Bradley, Siemens, Schneider",
+      caps_aut_s2: "Migraciones VFD sin paro productivo",
+      caps_aut_s3: "Robótica e integración de sistemas",
+      caps_aut_s4: "Instrumentación y control de procesos",
+      caps_aut_s5: "Smart manufacturing / Industria 4.0",
+      caps_aut_s6: "Ciberseguridad industrial OT / ICS",
+      caps_em_title: "Infraestructura Electromecánica",
+      caps_em_desc: "Construimos y mantenemos la infraestructura física de planta. Ejecución en operación continua, sin comprometer la producción.",
+      caps_em_s1: "Subestaciones eléctricas MT / BT — diseño y construcción",
+      caps_em_s2: "Distribución eléctrica industrial",
+      caps_em_s3: "Tubería de proceso y servicios industriales",
+      caps_em_s4: "Montajes mecánicos en planta activa",
+      caps_em_s5: "Brigadas 24/7 con SLA — plataforma FTS Suite",
+      caps_em_s6: "Mantenimiento correctivo y preventivo programado",
       stat1_label: "Años de operación",
       stat2_label: "Países activos",
       stat3_label: "Proyectos entregados",
@@ -730,19 +822,34 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       hero_p: "Engineering, procurement and construction for active industrial operations. Automation, electromechanical, HVAC and maintenance — without stopping your production.",
       btn_quote: "Request a quote →",
       btn_caps: "View capabilities →",
-      caps_h2_a: "Five integrated disciplines.",
-      caps_h2_b: "One single delivery.",
-      caps_lead: "We execute the entire chain of an industrial project under one team and one contract.",
-      cap1_h: "Automation",
-      cap1_p: "PLC/SCADA control, industrial cybersecurity, robotics, smart manufacturing.",
-      cap2_h: "Electromechanical",
-      cap2_p: "Substations, distribution, instrumentation, VFD/PLC migrations without downtime.",
-      cap3_h: "Mechanical construction",
-      cap3_p: "Piping, supports, assemblies, certified LRFD/AISC calculation reports.",
-      cap4_h: "Industrial HVAC",
-      cap4_p: "Dust control, critical areas, electrical rooms, cleanrooms.",
-      cap5_h: "Maintenance",
-      cap5_p: "24/7 crews with guaranteed SLAs on our own FTS Suite platform.",
+      caps_eyebrow: "Three areas · One delivery",
+      caps_h2_a: "Engineering, automation and infrastructure.",
+      caps_h2_b: "All under one team.",
+      caps_lead: "We execute the full CAPEX project chain — from structural calculations to commissioning — without subcontracting the core.",
+      caps_anchor_projects: "Projects in this area",
+      caps_eng_title: "Engineering",
+      caps_eng_desc: "Certified structural design and calculation. We are the technical origin of every project.",
+      caps_eng_s1: "Structural calculations LRFD / AISC / NTC-DCEA / ACI 318",
+      caps_eng_s2: "Industrial support structures and assemblies",
+      caps_eng_s3: "Industrial HVAC — electrical rooms, cleanrooms, dust control",
+      caps_eng_s4: "EPC management — procurement, documentation, technical deliverables",
+      caps_eng_s5: "Detailed engineering for continuously operating plants",
+      caps_aut_title: "Automation",
+      caps_aut_desc: "Intelligent process control. PLC, SCADA, robotics and Industry 4.0 without stopping production.",
+      caps_aut_s1: "PLC / SCADA programming — Allen-Bradley, Siemens, Schneider",
+      caps_aut_s2: "VFD migrations without production downtime",
+      caps_aut_s3: "Robotics and systems integration",
+      caps_aut_s4: "Instrumentation and process control",
+      caps_aut_s5: "Smart manufacturing / Industry 4.0",
+      caps_aut_s6: "Industrial cybersecurity OT / ICS",
+      caps_em_title: "Electromechanical Infrastructure",
+      caps_em_desc: "We build and maintain plant physical infrastructure. Execution during continuous operation, without compromising production.",
+      caps_em_s1: "MV / LV electrical substations — design and construction",
+      caps_em_s2: "Industrial electrical distribution",
+      caps_em_s3: "Process and industrial services piping",
+      caps_em_s4: "Mechanical assemblies in active plant",
+      caps_em_s5: "24/7 crews with SLA — FTS Suite platform",
+      caps_em_s6: "Scheduled corrective and preventive maintenance",
       stat1_label: "Years in operation",
       stat2_label: "Active countries",
       stat3_label: "Projects delivered",
@@ -867,19 +974,34 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       hero_p: "Engenharia, compras e construção para operações industriais ativas. Automação, eletromecânica, HVAC e manutenção — sem parar sua produção.",
       btn_quote: "Solicitar cotação →",
       btn_caps: "Ver capacidades →",
-      caps_h2_a: "Cinco disciplinas integradas.",
-      caps_h2_b: "Uma única entrega.",
-      caps_lead: "Executamos toda a cadeia de um projeto industrial sob uma mesma equipe e um mesmo contrato.",
-      cap1_h: "Automação",
-      cap1_p: "Controle PLC/SCADA, cibersegurança industrial, robótica, smart manufacturing.",
-      cap2_h: "Eletromecânica",
-      cap2_p: "Subestações, distribuição, instrumentação, migrações VFD/PLC sem parada.",
-      cap3_h: "Construção mecânica",
-      cap3_p: "Tubulação, suportes, montagens, memoriais de cálculo certificados LRFD/AISC.",
-      cap4_h: "HVAC industrial",
-      cap4_p: "Controle de poeira, áreas críticas, salas elétricas, salas limpas.",
-      cap5_h: "Manutenção",
-      cap5_p: "Brigadas 24/7 com SLAs garantidos na plataforma própria FTS Suite.",
+      caps_eyebrow: "Três áreas · Uma entrega",
+      caps_h2_a: "Engenharia, automação e infraestrutura.",
+      caps_h2_b: "Tudo sob uma mesma equipe.",
+      caps_lead: "Executamos toda a cadeia de um projeto CAPEX industrial — do memorial de cálculo ao comissionamento — sem subcontratar o núcleo.",
+      caps_anchor_projects: "Projetos nesta área",
+      caps_eng_title: "Engenharia",
+      caps_eng_desc: "Projeto e cálculo estrutural certificado. Somos a origem técnica de cada projeto.",
+      caps_eng_s1: "Memoriais de cálculo LRFD / AISC / NTC-DCEA / ACI 318",
+      caps_eng_s2: "Suportes e estruturas industriais",
+      caps_eng_s3: "HVAC industrial — salas elétricas, salas limpas, controle de poeira",
+      caps_eng_s4: "Gestão EPC — compras, documentação, entregáveis técnicos",
+      caps_eng_s5: "Engenharia de detalhe para plantas em operação contínua",
+      caps_aut_title: "Automação",
+      caps_aut_desc: "Controle inteligente de processos. PLC, SCADA, robótica e Indústria 4.0 sem parar a produção.",
+      caps_aut_s1: "Programação PLC / SCADA — Allen-Bradley, Siemens, Schneider",
+      caps_aut_s2: "Migrações VFD sem parada produtiva",
+      caps_aut_s3: "Robótica e integração de sistemas",
+      caps_aut_s4: "Instrumentação e controle de processos",
+      caps_aut_s5: "Smart manufacturing / Indústria 4.0",
+      caps_aut_s6: "Cibersegurança industrial OT / ICS",
+      caps_em_title: "Infraestrutura Eletromecânica",
+      caps_em_desc: "Construímos e mantemos a infraestrutura física da planta. Execução em operação contínua, sem comprometer a produção.",
+      caps_em_s1: "Subestações elétricas MT / BT — projeto e construção",
+      caps_em_s2: "Distribuição elétrica industrial",
+      caps_em_s3: "Tubulação de processo e utilidades industriais",
+      caps_em_s4: "Montagens mecânicas em planta ativa",
+      caps_em_s5: "Brigadas 24/7 com SLA — plataforma FTS Suite",
+      caps_em_s6: "Manutenção corretiva e preventiva programada",
       stat1_label: "Anos de operação",
       stat2_label: "Países ativos",
       stat3_label: "Projetos entregues",
