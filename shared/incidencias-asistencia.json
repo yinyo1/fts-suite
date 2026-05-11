@@ -38,9 +38,19 @@
           "fecha": "2026-05-09T02:26:13.234Z",
           "hora_propuesta_cst": "20:00",
           "comentario": "Llegué a dejar camióneta de planta topó chico a fts cerré avisé en poner la alarma y se me antoja olvidó checar salida"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe Pérez Guzmán",
+          "timestamp": "2026-05-11T13:00:23.753Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Aprobada incidencia",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": "2026-05-09 02:00:00",
       "aplicado_en_odoo": true,
       "tag_disputa_activo": true,
