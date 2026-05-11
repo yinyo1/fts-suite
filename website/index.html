@@ -101,23 +101,27 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .caps-header { text-align: center; max-width: 720px; margin: 0 auto 4rem; }
   .caps-header .lead { margin-left: auto; margin-right: auto; max-width: 640px; }
   .caps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; align-items: stretch; }
-  .cap-card { --accent: #DC5544; position: relative; overflow: hidden; background: var(--bg-warm); border: 1px solid var(--border); border-radius: 12px; padding: 2rem 1.75rem 1.75rem; display: flex; flex-direction: column; gap: 1rem; transition: background 0.35s ease, border-color 0.35s ease, transform 0.25s ease, box-shadow 0.35s ease; }
-  .cap-card[data-area="ingenieria"]      { --accent: #3B82F6; }
-  .cap-card[data-area="automatizacion"]  { --accent: #DC5544; }
-  .cap-card[data-area="electromecanica"] { --accent: #F08C28; }
-  .cap-card:hover { background: color-mix(in srgb, var(--accent) 7%, white 93%); border-color: color-mix(in srgb, var(--accent) 35%, transparent); box-shadow: 0 12px 40px color-mix(in srgb, var(--accent) 15%, transparent); transform: translateY(-4px); }
-  .cap-number, .cap-num { transition: color 0.35s ease; }
-  .cap-card:hover .cap-number, .cap-card:hover .cap-num { color: var(--accent); }
-  .cap-icon { transition: color 0.35s ease, filter 0.35s ease; }
-  .cap-card:hover .cap-icon { color: var(--accent); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 40%, transparent)); }
-  .cap-title { transition: color 0.3s ease; }
-  .cap-card:hover .cap-title { color: var(--accent); }
-  .cap-card::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform 0.35s ease; }
-  .cap-card:hover::after { transform: scaleX(1); }
+  .cap-card { --accent: #DC5544; --accent-alt: #F08C28; --card-radius: 12px; position: relative; cursor: pointer; background: var(--bg-warm, #FAF7F2); border: 1px solid var(--border, #EAE3DA); border-radius: var(--card-radius); padding: 2rem 1.75rem 1.75rem; display: flex; flex-direction: column; gap: 1rem; transition: transform 0.25s ease, box-shadow 0.3s ease, border-color 0.3s ease, background 0.35s ease; z-index: 0; }
+  .cap-card[data-area="ingenieria"]      { --accent: #3B82F6; --accent-alt: #8B5CF6; }
+  .cap-card[data-area="automatizacion"]  { --accent: #DC5544; --accent-alt: #F08C28; }
+  .cap-card[data-area="electromecanica"] { --accent: #F08C28; --accent-alt: #F5C518; }
+  .cap-card::before { content: ''; position: absolute; inset: -2px; border-radius: calc(var(--card-radius) + 2px); background: linear-gradient(135deg, var(--accent), var(--accent-alt), var(--accent)); z-index: -1; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; }
+  .cap-card:hover { transform: translateY(-3px); border-color: transparent; }
+  .cap-card:hover::before { opacity: 1; }
+  .cap-card.is-selected { border-color: transparent; background: color-mix(in srgb, var(--accent) 8%, white 92%); }
+  .cap-card.is-selected::before { opacity: 1; }
+  .cap-number, .cap-num { transition: color 0.3s ease; }
+  .cap-icon { transition: color 0.3s ease, filter 0.3s ease; }
+  .cap-card:hover .cap-icon, .cap-card.is-selected .cap-icon { color: var(--accent); filter: drop-shadow(0 0 5px color-mix(in srgb, var(--accent) 50%, transparent)); }
+  .cap-card:hover .cap-number, .cap-card:hover .cap-num,
+  .cap-card.is-selected .cap-number, .cap-card.is-selected .cap-num { color: var(--accent); }
+  .cap-card::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--accent), var(--accent-alt)); border-radius: 0 0 var(--card-radius) var(--card-radius); transform: scaleX(0); transform-origin: left; transition: transform 0.35s ease; }
+  .cap-card.is-selected::after { transform: scaleX(1); }
+  .cap-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
   @supports not (color: color-mix(in srgb, red, blue)) {
-    .cap-card:hover { background: rgba(220,85,68,0.06); border-color: rgba(220,85,68,0.3); }
-    .cap-card[data-area="ingenieria"]:hover { background: rgba(59,130,246,0.06); border-color: rgba(59,130,246,0.3); }
-    .cap-card[data-area="electromecanica"]:hover { background: rgba(240,140,40,0.06); border-color: rgba(240,140,40,0.3); }
+    .cap-card.is-selected { background: rgba(220,85,68,0.07); }
+    .cap-card[data-area="ingenieria"].is-selected { background: rgba(59,130,246,0.07); }
+    .cap-card[data-area="electromecanica"].is-selected { background: rgba(240,140,40,0.07); }
   }
   .cap-number { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--brand-red); letter-spacing: 0.1em; }
   .cap-icon { color: var(--brand-red); margin-bottom: 0.25rem; line-height: 0; }
@@ -1475,6 +1479,28 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           const match = filter === 'all' || card.dataset.category === filter;
           card.classList.toggle('hidden', !match);
         });
+      });
+    });
+  })();
+
+  /* Cap card selection (AWS-style click-to-select) */
+  (function() {
+    const cards = document.querySelectorAll('.cap-card[data-area]');
+    if (!cards.length) return;
+    cards.forEach(card => {
+      card.setAttribute('tabindex', '0');
+      card.setAttribute('role', 'button');
+      card.addEventListener('click', e => {
+        if (e.target.closest('a, button')) return;
+        const isSelected = card.classList.contains('is-selected');
+        cards.forEach(c => c.classList.remove('is-selected'));
+        if (!isSelected) card.classList.add('is-selected');
+      });
+      card.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          card.click();
+        }
       });
     });
   })();
