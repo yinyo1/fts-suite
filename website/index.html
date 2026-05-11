@@ -85,6 +85,32 @@
   .partner-name { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 1.6rem; letter-spacing: -0.02em; margin-bottom: 0.25rem; }
   .partner-by { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 1rem; min-height: 1em; }
   .partner-desc { font-family: 'Manrope', sans-serif; font-size: 0.95rem; color: var(--text-muted); }
+  .projects-section { background: var(--bg-warm); padding: 5rem 2rem; max-width: none; margin: 0; }
+  .projects-inner { max-width: 1400px; margin: 0 auto; }
+  .featured-case { display: grid; grid-template-columns: 1.4fr 1fr; gap: 0; background: linear-gradient(135deg, #FFFFFF 0%, var(--bg-warm) 100%); border-left: 4px solid var(--brand-red); margin: 2.5rem 0 3rem; box-shadow: 0 8px 24px rgba(0,0,0,0.04); overflow: hidden; }
+  .featured-case-content { padding: 2.5rem; }
+  .featured-case-tag { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--brand-red); font-weight: 500; margin-bottom: 1rem; }
+  .featured-case-client { font-family: 'Manrope', sans-serif; font-weight: 600; font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.4rem; }
+  .featured-case-title { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: clamp(1.5rem, 2.5vw, 2.1rem); line-height: 1.15; letter-spacing: -0.02em; margin-bottom: 1rem; }
+  .featured-case-desc { color: var(--text-muted); font-size: 1rem; line-height: 1.65; margin-bottom: 1.5rem; }
+  .featured-case-metrics { display: flex; flex-wrap: wrap; gap: 1.8rem; margin-bottom: 1.8rem; padding-top: 1.2rem; border-top: 1px solid var(--border); }
+  .featured-case-metric { font-family: 'JetBrains Mono', monospace; font-size: 0.74rem; color: var(--text-muted); }
+  .featured-case-metric strong { display: block; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 1.35rem; color: var(--brand-red); margin-bottom: 0.15rem; letter-spacing: -0.01em; }
+  .featured-case-cta { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--brand-red); text-decoration: none; border-bottom: 1px solid var(--brand-red); padding-bottom: 2px; font-weight: 600; display: inline-block; }
+  .featured-case-visual { background: linear-gradient(135deg, var(--bg-dark) 0%, #2a1c17 100%); position: relative; overflow: hidden; min-height: 280px; display: flex; align-items: flex-end; padding: 1.5rem; }
+  .featured-case-visual::after { content: ''; position: absolute; inset: 0; background-image: linear-gradient(rgba(245,197,24,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(245,197,24,0.07) 1px, transparent 1px); background-size: 28px 28px; pointer-events: none; }
+  .featured-case-visual::before { content: ''; position: absolute; top: -100px; right: -100px; width: 280px; height: 280px; background: var(--brand-gradient); filter: blur(60px); opacity: 0.35; border-radius: 50%; pointer-events: none; }
+  .featured-case-visual-label { position: relative; z-index: 2; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; letter-spacing: 0.18em; color: var(--brand-yellow); font-weight: 500; }
+  .projects-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin-top: 1rem; }
+  .project-card { background: var(--bg); border: 1px solid var(--border); padding: 1.8rem; transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; }
+  .project-card:hover { border-color: var(--brand-red); transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.07); }
+  .project-tag { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--brand-red); margin-bottom: 1rem; font-weight: 500; }
+  .project-client { font-family: 'Manrope', sans-serif; font-weight: 600; font-size: 0.85rem; color: var(--text-muted); }
+  .project-location { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; color: var(--text-muted); opacity: 0.8; letter-spacing: 0.05em; margin-top: 0.2rem; }
+  .project-title { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 1.25rem; line-height: 1.2; letter-spacing: -0.015em; margin: 0.8rem 0; }
+  .project-desc { color: var(--text-muted); font-size: 0.92rem; line-height: 1.65; margin-bottom: 1.2rem; flex-grow: 1; }
+  .project-metrics { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--text); letter-spacing: 0.05em; padding-top: 1rem; border-top: 1px solid var(--border); }
+  .project-link { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--brand-red); text-decoration: none; border-bottom: 1px solid var(--brand-red); padding-bottom: 2px; font-weight: 500; margin-top: 1rem; align-self: flex-start; }
   .stats { background: var(--bg-dark); color: #FFF; padding: 4rem 2rem; }
   .stats-inner { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 3rem; }
   .stat-num { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 3rem; line-height: 1; margin-bottom: 0.5rem; }
@@ -115,6 +141,12 @@
     .trust-logos span { font-size: 1rem; text-align: center; }
     .partners-section { padding: 3.5rem 1.5rem; }
     .partners-grid { grid-template-columns: 1fr; }
+    .projects-section { padding: 3.5rem 1.5rem; }
+    .featured-case { grid-template-columns: 1fr; }
+    .featured-case-content { padding: 1.8rem; }
+    .featured-case-visual { min-height: 180px; padding: 1.2rem; }
+    .featured-case-metrics { gap: 1.2rem; }
+    .projects-grid { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -126,7 +158,7 @@
     <a href="#top" data-i18n="nav_home">Inicio</a>
     <a href="#nosotros" data-i18n="nav_about">Nosotros</a>
     <a href="#caps" data-i18n="nav_services">Servicios</a>
-    <a href="#caps" data-i18n="nav_projects">Proyectos</a>
+    <a href="#proyectos" data-i18n="nav_projects">Proyectos</a>
     <a href="#contact" data-i18n="nav_contact">Contacto</a>
   </div>
   <div class="nav-right">
@@ -161,6 +193,77 @@
       <span>Mattel</span>
       <span>Clarios</span>
       <span>Budenheim</span>
+    </div>
+  </div>
+</section>
+<section class="projects-section" id="proyectos">
+  <div class="projects-inner">
+    <div class="section-eyebrow" data-i18n="projects_eyebrow">— Proyectos destacados</div>
+    <h2 class="section-title"><span data-i18n="projects_title_a">Plantas reales. </span><span class="gradient-text" data-i18n="projects_title_b">Proyectos vivos.</span></h2>
+    <p class="lead" data-i18n="projects_lead">Más de 10 años entregando proyectos llave en mano. Aquí algunos casos representativos.</p>
+    <article class="featured-case">
+      <div class="featured-case-content">
+        <div class="featured-case-tag" data-i18n="featured_tag">▸ Caso destacado · 2026</div>
+        <div class="featured-case-client">Nalco Water · Ecolab</div>
+        <h3 class="featured-case-title" data-i18n="featured_title">Memoria estructural multipanel - Planta Topochico</h3>
+        <p class="featured-case-desc" data-i18n="featured_desc">Diseño, cálculo y verificación estructural de gabinete multipanel para tratamiento químico. 17 secciones, 28 verificaciones LRFD bajo NTC-DCEA / AISC 360-10 / ACI 318-19, validación FEA Autodesk Fusion 360.</p>
+        <div class="featured-case-metrics">
+          <div class="featured-case-metric"><strong>28/28</strong><span data-i18n="featured_m1">verificaciones aprobadas</span></div>
+          <div class="featured-case-metric"><strong>52</strong><span data-i18n="featured_m2">páginas memoria certificada</span></div>
+          <div class="featured-case-metric"><strong>72.84 MPa</strong><span data-i18n="featured_m3">Von Mises max</span></div>
+        </div>
+        <a href="#" class="featured-case-cta" data-i18n="featured_cta">Ver memoria técnica →</a>
+      </div>
+      <div class="featured-case-visual" aria-hidden="true">
+        <div class="featured-case-visual-label">▸ MULTIPANEL · TOPOCHICO</div>
+      </div>
+    </article>
+    <div class="projects-grid">
+      <article class="project-card">
+        <div class="project-tag" data-i18n="proj1_tag">Automatización · Migración</div>
+        <div class="project-client" data-i18n="proj1_client">Planta alimenticia US líder</div>
+        <div class="project-location">Hayward, CA</div>
+        <h3 class="project-title" data-i18n="proj1_title">Migración 45 VFDs, 1 PLC y 5 Switches</h3>
+        <p class="project-desc" data-i18n="proj1_desc">Modernización de control completa sin paro de producción.</p>
+        <div class="project-metrics" data-i18n="proj1_metrics">45 VFDs · 0 días paro · 100% migrado</div>
+      </article>
+      <article class="project-card">
+        <div class="project-tag" data-i18n="proj2_tag">Infraestructura electromecánica</div>
+        <div class="project-client" data-i18n="proj2_client">Confidencial · Industria pesada</div>
+        <div class="project-location" data-i18n="loc_mexico">México</div>
+        <h3 class="project-title" data-i18n="proj2_title">Cambio TCs y TPs en Subestación Eléctrica</h3>
+        <p class="project-desc" data-i18n="proj2_desc">Reemplazo transformadores de corriente y potencial en operación crítica.</p>
+        <div class="project-metrics" data-i18n="proj2_metrics">Subestación 34.5kV · Cero downtime</div>
+      </article>
+      <article class="project-card">
+        <div class="project-tag" data-i18n="proj3_tag">Smart Manufacturing · Industria 4.0</div>
+        <div class="project-client" data-i18n="proj3_client">Acerera nacional</div>
+        <div class="project-location" data-i18n="loc_mexico">México</div>
+        <h3 class="project-title" data-i18n="proj3_title">Implementación Industria 4.0 en planta acerera</h3>
+        <p class="project-desc" data-i18n="proj3_desc">Integración SCADA + MES + dashboards productivos en tiempo real.</p>
+        <div class="project-metrics" data-i18n="proj3_metrics">OEE +18% · Tracking en línea</div>
+      </article>
+      <article class="project-card">
+        <div class="project-tag" data-i18n="proj4_tag">Automatización · Logística industrial</div>
+        <div class="project-client" data-i18n="proj4_client">Manufactura global</div>
+        <h3 class="project-title" data-i18n="proj4_title">Desmontaje y transferencia de planta de producción</h3>
+        <p class="project-desc" data-i18n="proj4_desc">Reubicación completa de líneas productivas entre instalaciones.</p>
+        <a href="https://www.linkedin.com/pulse/desmontaje-y-transferencia-de-planta-producci%25C3%25B3n-7v3pf/" target="_blank" rel="noopener" class="project-link" data-i18n="proj_link_linkedin">Caso en LinkedIn →</a>
+      </article>
+      <article class="project-card">
+        <div class="project-tag" data-i18n="proj5_tag">Infraestructura electromecánica · Upgrade</div>
+        <div class="project-client" data-i18n="proj5_client">Industria alimenticia · Café</div>
+        <h3 class="project-title" data-i18n="proj5_title">Upgrade Tostador de Café</h3>
+        <p class="project-desc" data-i18n="proj5_desc">Modernización electromecánica de línea de tostado, conservando producción activa.</p>
+        <a href="https://www.linkedin.com/pulse/proyecto-upgrade-tostador-de-caf%25C3%25A9-full-technology-systems-lgqac/" target="_blank" rel="noopener" class="project-link" data-i18n="proj_link_linkedin">Caso en LinkedIn →</a>
+      </article>
+      <article class="project-card">
+        <div class="project-tag" data-i18n="proj6_tag">Mantenimiento · Optimización</div>
+        <div class="project-client" data-i18n="proj6_client">Industria azucarera</div>
+        <h3 class="project-title" data-i18n="proj6_title">Reducción de humedad en producción de azúcar</h3>
+        <p class="project-desc" data-i18n="proj6_desc">Intervención de procesos para mejora de calidad final y rendimiento.</p>
+        <a href="https://www.linkedin.com/pulse/innovaci%25C3%25B3n-en-la-industria-alimenticia-reducci%25C3%25B3n/" target="_blank" rel="noopener" class="project-link" data-i18n="proj_link_linkedin">Caso en LinkedIn →</a>
+      </article>
     </div>
   </div>
 </section>
@@ -265,7 +368,47 @@
       partner_ignition_by: "por Inductive Automation",
       partner_ignition_desc: "SCADA / MES / IIoT",
       partner_cognex_desc: "Visión artificial industrial",
-      partner_ur_desc: "Robótica colaborativa"
+      partner_ur_desc: "Robótica colaborativa",
+      projects_eyebrow: "— Proyectos destacados",
+      projects_title_a: "Plantas reales. ",
+      projects_title_b: "Proyectos vivos.",
+      projects_lead: "Más de 10 años entregando proyectos llave en mano. Aquí algunos casos representativos.",
+      featured_tag: "▸ Caso destacado · 2026",
+      featured_title: "Memoria estructural multipanel - Planta Topochico",
+      featured_desc: "Diseño, cálculo y verificación estructural de gabinete multipanel para tratamiento químico. 17 secciones, 28 verificaciones LRFD bajo NTC-DCEA / AISC 360-10 / ACI 318-19, validación FEA Autodesk Fusion 360.",
+      featured_m1: "verificaciones aprobadas",
+      featured_m2: "páginas memoria certificada",
+      featured_m3: "Von Mises max",
+      featured_cta: "Ver memoria técnica →",
+      loc_mexico: "México",
+      proj_link_linkedin: "Caso en LinkedIn →",
+      proj1_tag: "Automatización · Migración",
+      proj1_client: "Planta alimenticia US líder",
+      proj1_title: "Migración 45 VFDs, 1 PLC y 5 Switches",
+      proj1_desc: "Modernización de control completa sin paro de producción.",
+      proj1_metrics: "45 VFDs · 0 días paro · 100% migrado",
+      proj2_tag: "Infraestructura electromecánica",
+      proj2_client: "Confidencial · Industria pesada",
+      proj2_title: "Cambio TCs y TPs en Subestación Eléctrica",
+      proj2_desc: "Reemplazo transformadores de corriente y potencial en operación crítica.",
+      proj2_metrics: "Subestación 34.5kV · Cero downtime",
+      proj3_tag: "Smart Manufacturing · Industria 4.0",
+      proj3_client: "Acerera nacional",
+      proj3_title: "Implementación Industria 4.0 en planta acerera",
+      proj3_desc: "Integración SCADA + MES + dashboards productivos en tiempo real.",
+      proj3_metrics: "OEE +18% · Tracking en línea",
+      proj4_tag: "Automatización · Logística industrial",
+      proj4_client: "Manufactura global",
+      proj4_title: "Desmontaje y transferencia de planta de producción",
+      proj4_desc: "Reubicación completa de líneas productivas entre instalaciones.",
+      proj5_tag: "Infraestructura electromecánica · Upgrade",
+      proj5_client: "Industria alimenticia · Café",
+      proj5_title: "Upgrade Tostador de Café",
+      proj5_desc: "Modernización electromecánica de línea de tostado, conservando producción activa.",
+      proj6_tag: "Mantenimiento · Optimización",
+      proj6_client: "Industria azucarera",
+      proj6_title: "Reducción de humedad en producción de azúcar",
+      proj6_desc: "Intervención de procesos para mejora de calidad final y rendimiento."
     },
     en: {
       cta_nav: "Get a quote",
@@ -310,7 +453,47 @@
       partner_ignition_by: "by Inductive Automation",
       partner_ignition_desc: "SCADA / MES / IIoT",
       partner_cognex_desc: "Industrial machine vision",
-      partner_ur_desc: "Collaborative robotics"
+      partner_ur_desc: "Collaborative robotics",
+      projects_eyebrow: "— Featured projects",
+      projects_title_a: "Real plants. ",
+      projects_title_b: "Live projects.",
+      projects_lead: "Over 10 years delivering turnkey projects. A few representative cases below.",
+      featured_tag: "▸ Featured case · 2026",
+      featured_title: "Multipanel structural calculation report - Topochico Plant",
+      featured_desc: "Design, calculation and structural verification of a multipanel cabinet for chemical treatment. 17 sections, 28 LRFD verifications under NTC-DCEA / AISC 360-10 / ACI 318-19, FEA validation in Autodesk Fusion 360.",
+      featured_m1: "verifications passed",
+      featured_m2: "certified report pages",
+      featured_m3: "Von Mises max",
+      featured_cta: "View technical report →",
+      loc_mexico: "Mexico",
+      proj_link_linkedin: "Case on LinkedIn →",
+      proj1_tag: "Automation · Migration",
+      proj1_client: "Leading US food plant",
+      proj1_title: "Migration of 45 VFDs, 1 PLC and 5 switches",
+      proj1_desc: "Full control modernization with zero production downtime.",
+      proj1_metrics: "45 VFDs · 0 downtime days · 100% migrated",
+      proj2_tag: "Electromechanical infrastructure",
+      proj2_client: "Confidential · Heavy industry",
+      proj2_title: "CT and PT replacement in electrical substation",
+      proj2_desc: "Current and potential transformer replacement in a live critical operation.",
+      proj2_metrics: "34.5kV substation · Zero downtime",
+      proj3_tag: "Smart Manufacturing · Industry 4.0",
+      proj3_client: "National steel producer",
+      proj3_title: "Industry 4.0 deployment at a steel plant",
+      proj3_desc: "SCADA + MES integration + real-time production dashboards.",
+      proj3_metrics: "OEE +18% · Online tracking",
+      proj4_tag: "Automation · Industrial logistics",
+      proj4_client: "Global manufacturer",
+      proj4_title: "Production plant dismantling and transfer",
+      proj4_desc: "Full relocation of production lines across facilities.",
+      proj5_tag: "Electromechanical infrastructure · Upgrade",
+      proj5_client: "Food industry · Coffee",
+      proj5_title: "Coffee roaster upgrade",
+      proj5_desc: "Electromechanical modernization of the roasting line while keeping production active.",
+      proj6_tag: "Maintenance · Optimization",
+      proj6_client: "Sugar industry",
+      proj6_title: "Moisture reduction in sugar production",
+      proj6_desc: "Process intervention to improve final quality and yield."
     },
     pt: {
       cta_nav: "Cotação",
@@ -355,7 +538,47 @@
       partner_ignition_by: "por Inductive Automation",
       partner_ignition_desc: "SCADA / MES / IIoT",
       partner_cognex_desc: "Visão artificial industrial",
-      partner_ur_desc: "Robótica colaborativa"
+      partner_ur_desc: "Robótica colaborativa",
+      projects_eyebrow: "— Projetos em destaque",
+      projects_title_a: "Plantas reais. ",
+      projects_title_b: "Projetos vivos.",
+      projects_lead: "Mais de 10 anos entregando projetos chave-na-mão. Alguns casos representativos abaixo.",
+      featured_tag: "▸ Caso em destaque · 2026",
+      featured_title: "Memorial estrutural multipainel - Planta Topochico",
+      featured_desc: "Projeto, cálculo e verificação estrutural de gabinete multipainel para tratamento químico. 17 seções, 28 verificações LRFD sob NTC-DCEA / AISC 360-10 / ACI 318-19, validação FEA Autodesk Fusion 360.",
+      featured_m1: "verificações aprovadas",
+      featured_m2: "páginas memorial certificado",
+      featured_m3: "Von Mises max",
+      featured_cta: "Ver memorial técnico →",
+      loc_mexico: "México",
+      proj_link_linkedin: "Caso no LinkedIn →",
+      proj1_tag: "Automação · Migração",
+      proj1_client: "Planta alimentícia líder nos EUA",
+      proj1_title: "Migração de 45 VFDs, 1 PLC e 5 switches",
+      proj1_desc: "Modernização completa de controle sem parada de produção.",
+      proj1_metrics: "45 VFDs · 0 dias de parada · 100% migrado",
+      proj2_tag: "Infraestrutura eletromecânica",
+      proj2_client: "Confidencial · Indústria pesada",
+      proj2_title: "Troca de TCs e TPs em subestação elétrica",
+      proj2_desc: "Substituição de transformadores de corrente e potencial em operação crítica.",
+      proj2_metrics: "Subestação 34.5kV · Zero downtime",
+      proj3_tag: "Smart Manufacturing · Indústria 4.0",
+      proj3_client: "Siderúrgica nacional",
+      proj3_title: "Implementação Indústria 4.0 em siderúrgica",
+      proj3_desc: "Integração SCADA + MES + dashboards produtivos em tempo real.",
+      proj3_metrics: "OEE +18% · Tracking on-line",
+      proj4_tag: "Automação · Logística industrial",
+      proj4_client: "Manufatura global",
+      proj4_title: "Desmontagem e transferência de planta de produção",
+      proj4_desc: "Realocação completa de linhas produtivas entre instalações.",
+      proj5_tag: "Infraestrutura eletromecânica · Upgrade",
+      proj5_client: "Indústria alimentícia · Café",
+      proj5_title: "Upgrade de torrador de café",
+      proj5_desc: "Modernização eletromecânica da linha de torra mantendo a produção ativa.",
+      proj6_tag: "Manutenção · Otimização",
+      proj6_client: "Indústria açucareira",
+      proj6_title: "Redução de umidade na produção de açúcar",
+      proj6_desc: "Intervenção em processos para melhoria de qualidade final e rendimento."
     }
   };
   function applyLang(lang) {
