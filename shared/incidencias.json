@@ -1,6 +1,23 @@
 {
   "incidencias": [
     {
+      "id": "INC-AUTO-CIERRE-98-2026-05-11T23-33-15-573Z",
+      "tipo": "auto_cierre_pendiente",
+      "estado": "pendiente_rh",
+      "empleado_id": 98,
+      "empleado_nombre": "Ricardo Alán Hernández González",
+      "attendance_id_cerrado": 12948,
+      "check_in_original_utc": "2026-05-08 15:51:23",
+      "check_out_aplicado_utc": "2026-05-09 01:27:23",
+      "horas_originales": "79.70",
+      "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
+      "fecha_solicitud": "2026-05-11T23:33:17.227Z",
+      "tag_disputa_activo": true,
+      "autoincidencia": true,
+      "rh_aprobo": null,
+      "rh_fecha": null
+    },
+    {
       "id": "INC-AUTO-CIERRE-25-2026-05-11T23-27-33-651Z",
       "tipo": "auto_cierre_pendiente",
       "estado": "pendiente_rh",
