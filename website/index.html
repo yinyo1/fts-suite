@@ -101,27 +101,23 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .caps-header { text-align: center; max-width: 720px; margin: 0 auto 4rem; }
   .caps-header .lead { margin-left: auto; margin-right: auto; max-width: 640px; }
   .caps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; align-items: stretch; }
-  .cap-card { --accent: #DC5544; --accent-alt: #F08C28; --card-radius: 12px; position: relative; cursor: pointer; background: var(--bg-warm, #FAF7F2); border: 1px solid var(--border, #EAE3DA); border-radius: var(--card-radius); padding: 2rem 1.75rem 1.75rem; display: flex; flex-direction: column; gap: 1rem; transition: transform 0.25s ease, box-shadow 0.3s ease, border-color 0.3s ease, background 0.35s ease; z-index: 0; }
+  .cap-card { --accent: #DC5544; --accent-alt: #F08C28; --card-radius: 12px; position: relative; cursor: pointer; background: var(--bg-warm, #FAF7F2); border: 1px solid var(--border, #EAE3DA); border-radius: var(--card-radius); padding: 2rem 1.75rem 1.75rem; display: flex; flex-direction: column; gap: 1rem; transition: box-shadow 0.3s ease, background 0.15s ease, transform 0.25s ease, border-color 0.2s ease; -webkit-tap-highlight-color: transparent; }
   .cap-card[data-area="ingenieria"]      { --accent: #3B82F6; --accent-alt: #8B5CF6; }
   .cap-card[data-area="automatizacion"]  { --accent: #DC5544; --accent-alt: #F08C28; }
   .cap-card[data-area="electromecanica"] { --accent: #F08C28; --accent-alt: #F5C518; }
-  .cap-card::before { content: ''; position: absolute; inset: -2px; border-radius: calc(var(--card-radius) + 2px); background: linear-gradient(135deg, var(--accent), var(--accent-alt), var(--accent)); z-index: -1; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; }
-  .cap-card:hover { transform: translateY(-3px); border-color: transparent; }
-  .cap-card:hover::before { opacity: 1; }
-  .cap-card.is-selected { border-color: transparent; background: color-mix(in srgb, var(--accent) 8%, white 92%); }
-  .cap-card.is-selected::before { opacity: 1; }
-  .cap-number, .cap-num { transition: color 0.3s ease; }
-  .cap-icon { transition: color 0.3s ease, filter 0.3s ease; }
-  .cap-card:hover .cap-icon, .cap-card.is-selected .cap-icon { color: var(--accent); filter: drop-shadow(0 0 5px color-mix(in srgb, var(--accent) 50%, transparent)); }
-  .cap-card:hover .cap-number, .cap-card:hover .cap-num,
-  .cap-card.is-selected .cap-number, .cap-card.is-selected .cap-num { color: var(--accent); }
-  .cap-card::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--accent), var(--accent-alt)); border-radius: 0 0 var(--card-radius) var(--card-radius); transform: scaleX(0); transform-origin: left; transition: transform 0.35s ease; }
-  .cap-card.is-selected::after { transform: scaleX(1); }
+  .cap-card:active, .cap-card.is-pressing { background: color-mix(in srgb, var(--accent) 12%, white 88%); transform: scale(0.985); border-color: transparent; }
+  .cap-card.is-selected { background: var(--bg-warm, #FAF7F2); border-color: transparent; box-shadow: 0 0 0 1.5px var(--accent), 0 0 12px 3px color-mix(in srgb, var(--accent) 35%, transparent), 0 0 28px 8px color-mix(in srgb, var(--accent-alt) 18%, transparent); transform: translateY(-2px); }
+  .cap-number, .cap-num { transition: color 0.2s ease; }
+  .cap-icon { transition: color 0.2s ease, filter 0.2s ease; }
+  .cap-card.is-selected .cap-icon, .cap-card.is-pressing .cap-icon { color: var(--accent); filter: drop-shadow(0 0 4px color-mix(in srgb, var(--accent) 50%, transparent)); }
+  .cap-card.is-selected .cap-number, .cap-card.is-selected .cap-num,
+  .cap-card.is-pressing .cap-number, .cap-card.is-pressing .cap-num { color: var(--accent); }
   .cap-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
   @supports not (color: color-mix(in srgb, red, blue)) {
-    .cap-card.is-selected { background: rgba(220,85,68,0.07); }
-    .cap-card[data-area="ingenieria"].is-selected { background: rgba(59,130,246,0.07); }
-    .cap-card[data-area="electromecanica"].is-selected { background: rgba(240,140,40,0.07); }
+    .cap-card:active, .cap-card.is-pressing { background: rgba(220,85,68,0.1); }
+    .cap-card[data-area="ingenieria"]:active, .cap-card[data-area="ingenieria"].is-pressing { background: rgba(59,130,246,0.1); }
+    .cap-card[data-area="electromecanica"]:active, .cap-card[data-area="electromecanica"].is-pressing { background: rgba(240,140,40,0.1); }
+    .cap-card.is-selected { box-shadow: 0 0 0 2px var(--accent), 0 4px 20px rgba(0,0,0,0.12); }
   }
   .cap-number { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--brand-red); letter-spacing: 0.1em; }
   .cap-icon { color: var(--brand-red); margin-bottom: 0.25rem; line-height: 0; }
@@ -139,7 +135,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .cap-visual { margin: -2rem -1.75rem 0; height: 200px; overflow: hidden; border-radius: 12px 12px 0 0; display: block; }
   .cap-visual svg { width: 100%; height: 100%; display: block; }
   .cap-photo { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; transition: transform 0.4s ease; }
-  .cap-card:hover .cap-photo { transform: scale(1.04); }
+  .cap-card.is-selected .cap-photo { transform: scale(1.03); }
   .proj-visual { margin: -1.8rem -1.8rem 1rem; height: 160px; overflow: hidden; display: block; }
   .proj-visual svg { width: 100%; height: 100%; display: block; }
   .blueprint-aut { background: #080d18; }
@@ -1483,23 +1479,42 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     });
   })();
 
-  /* Cap card selection (AWS-style click-to-select) */
+  /* Cap card — press fill + selected glow */
   (function() {
     const cards = document.querySelectorAll('.cap-card[data-area]');
     if (!cards.length) return;
+    function clearAll() {
+      cards.forEach(c => c.classList.remove('is-selected', 'is-pressing'));
+    }
     cards.forEach(card => {
       card.setAttribute('tabindex', '0');
       card.setAttribute('role', 'button');
-      card.addEventListener('click', e => {
-        if (e.target.closest('a, button')) return;
-        const isSelected = card.classList.contains('is-selected');
-        cards.forEach(c => c.classList.remove('is-selected'));
-        if (!isSelected) card.classList.add('is-selected');
+      card.addEventListener('mousedown', () => { card.classList.add('is-pressing'); });
+      card.addEventListener('mouseup', e => {
+        if (e.target.closest('a, button')) { card.classList.remove('is-pressing'); return; }
+        if (!card.classList.contains('is-pressing')) return;
+        card.classList.remove('is-pressing');
+        const wasSelected = card.classList.contains('is-selected');
+        clearAll();
+        if (!wasSelected) card.classList.add('is-selected');
       });
+      card.addEventListener('mouseleave', () => { card.classList.remove('is-pressing'); });
+      card.addEventListener('touchstart', () => { card.classList.add('is-pressing'); }, { passive: true });
+      card.addEventListener('touchend', e => {
+        if (e.target.closest('a, button')) { card.classList.remove('is-pressing'); return; }
+        if (!card.classList.contains('is-pressing')) return;
+        card.classList.remove('is-pressing');
+        const wasSelected = card.classList.contains('is-selected');
+        clearAll();
+        if (!wasSelected) card.classList.add('is-selected');
+      });
+      card.addEventListener('touchcancel', () => { card.classList.remove('is-pressing'); });
       card.addEventListener('keydown', e => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          card.click();
+          const wasSelected = card.classList.contains('is-selected');
+          clearAll();
+          if (!wasSelected) card.classList.add('is-selected');
         }
       });
     });
