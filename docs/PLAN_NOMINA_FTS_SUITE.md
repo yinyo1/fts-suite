@@ -420,9 +420,13 @@ Hipótesis: probablemente test/legacy del setup inicial de Odoo. Confirmación h
 - ✅ Test suite `tests/test-autoprogresivo.js` con 34 cases (5 empleado fantasma + 10 reales + 6 HE tipo + 7 normalización + 5 edge) — **34/34 pasan ✅**
 - ⏸ Pendiente: confirmar PR + merge antes de seguir con Fase 3
 
-**Fase 3 (Claude, ~6h):** Workflow n8n `rh/empleados-master/sync` (cron 6am + on-change webhook) + frontend admin panel mínimo. Spec en `docs/SPRINT_1_FASE_3_WORKFLOW_SPEC.md`.
+**Fase 3 (parcial) 🟡 IN PROGRESS (2026-05-11):**
+- ✅ Workflow `rh/empleados-master/sync` (`5nzVRsCMlCZlq5s4`) creado + activado en n8n. 10 nodos, 2 triggers (Schedule 6am CST + Webhook). Smoke test 3.14s exitoso, 44 empleados sincronizados, commit `e3f3bbc`.
+- ✅ `auto_update_status: "auto_synced"` activo (escrito automáticamente por el workflow en su primer run).
+- ✅ Refactor `horarios-base.js:48` aplicado: `x_categoria_nomina === 'hourly_sencilla'` || `'confianza'` ahora detectan oficina autoprogresivamente. `oficinaIdsLegacy` queda como fallback temporal hasta validar 100% categorización en Sprint 2.
+- ⏸ Panel admin RH (`modulos/rh/config-empleados/`): pendiente Fase 4 cuando Ana lo necesite editar masivamente.
 
-**Fase 4 (Claude, ~1h):** Smoke test E2E (Ana edita → Odoo → JSON sync → kiosk lee correctamente). Activar `auto_update_status: "auto_synced"` en empleados-master.json.
+**Fase 4 (pendiente):** Panel admin RH + smoke test E2E (Ana edita → workflow B → JSON sync → kiosk lee correctamente).
 
 ### Sprint 2 — Cálculo automático nómina semanal (~12-15h)
 
