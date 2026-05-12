@@ -1,8 +1,20 @@
 # Sprint 1 — Specs paso-a-paso para Esteban en Odoo Studio
 
+> ⚠️ **SUPERSEDED 2026-05-11 por audit quirúrgico.**
+>
+> Este doc fue la propuesta original via Studio UI (~45-60 min, genera billable code en módulo `studio_customization`).
+>
+> **Usar en su lugar:** `docs/SPRINT_1_FASE_1_CONSOLE_SNIPPETS.md` — ejecución vía console JS F12 (~10-15 min, zero billable code, zero Studio UI).
+>
+> Audit que justifica el cambio: `docs/SPRINT_1_FASE_1_AUDIT.md` (reuso → 4 campos reducidos a 2).
+>
+> Este doc se preserva como contexto histórico y para campos que requieran labels/help text consistentes.
+
+---
+
 **Fecha:** 2026-05-11
-**Objetivo:** todo lo que Esteban necesita ejecutar manualmente en Odoo Studio para que Sprint 1 quede operativo.
-**Tiempo estimado total:** ~45-60 min de Studio UI clicks.
+**Objetivo (original):** todo lo que Esteban necesita ejecutar manualmente en Odoo Studio para que Sprint 1 quede operativo.
+**Tiempo estimado total (original):** ~45-60 min de Studio UI clicks. **Reemplazado por ~10-15 min de console F12 snippets.**
 **Pre-requisito:** `docs/PLAN_NOMINA_FTS_SUITE.md` aprobado (decisiones [AUTO] OK, decisiones [TBD] resueltas o aceptadas como están).
 
 ---
