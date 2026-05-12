@@ -32,6 +32,98 @@ FTS Suite necesita un sistema de cálculo de nómina automático que:
 
 ---
 
+## 0.5 Principio rector — Diseño Autoprogresivo 🔑
+
+Todo módulo del sistema debe funcionar end-to-end para CUALQUIER empleado que exista en Odoo, sin requerir edición de código, JSON o configuración manual cuando entra alguien nuevo.
+
+**Test mental:** *"Ana Laura crea empleado nuevo en Odoo mañana 9 AM. ¿Puede checar entrada a las 9:15 AM y aparecer en Mi Nómina correctamente, sin que Esteban toque código?"*
+
+Si la respuesta es NO, el módulo NO está listo para producción.
+
+### Reglas de implementación
+
+1. **Lookups por `department_id` o `x_categoria_nomina`**, nunca por employee_id específico.
+2. **Defaults inteligentes** cuando campos están vacíos (fallback por depto del empleado, no fallback hard-coded global).
+3. **Sync automático Odoo → JSON** vía webhook on-change + cron 6am respaldo (no snapshots manuales).
+4. **Fail-open en UX de empleado**: mostrar todo, validar en submit, nunca bloquear por config faltante.
+5. **Tests deben incluir "empleado fantasma"**: uno que no existía cuando se diseñó el módulo.
+6. **Cuando agregas hardcoded list**, justifica por qué no se puede generalizar + agrega TODO de eliminación con prioridad.
+7. **Cuando agregas validación obligatoria**, considera si en su lugar puede ser default + warning.
+
+### Anti-patrones detectados y prohibidos
+
+- ❌ Listas de employee_ids en código frontend (ej. `oficinaIds = [89, 91, 113]` en `horarios-base.js:48`)
+- ❌ Validaciones que requieren campos custom poblados para empleados nuevos
+- ❌ Snapshots manuales de JSON sin mecanismo de regeneración automática
+
+### Categorización autoprogresiva
+
+**Regla por defecto** cuando `x_categoria_nomina` está null (campo vacío Odoo):
+
+| dept_id | dept_name | categoría default |
+|---|---|---|
+| 5 | Dirección | `confianza` (excepto Esteban → `ceo` override) |
+| 6 | Comercial | `no_he_comercial` |
+| 9 | Legal | `confianza` |
+| 16 | Recursos Humanos | `confianza` |
+| 17 | Ingeniería | `confianza` |
+| 3 | Operaciones | `hourly_doble` (excepciones a `confianza` o `hourly_sencilla` marcadas explícitamente) |
+| sin depto | — | `null` → flag rojo "sin categorizar" en panel admin (NO bloquea checkin) |
+
+**Override explícito vía `x_categoria_nomina` para excepciones:**
+
+- `ceo`: Esteban (id 32)
+- `confianza` (override `hourly_doble` default de Operaciones): Felipe (112), Mateo (75)
+- `hourly_sencilla` (override `hourly_doble` default de Operaciones): Gerardo (59), Teresa (60), Gibrán (62), Jésus Montalvo (68), Abraham (135)
+
+**Pseudocode lógica de cálculo:**
+
+```python
+DEFAULT_POR_DEPT = {
+  3: 'hourly_doble',   # Operaciones
+  5: 'confianza',      # Dirección
+  6: 'no_he_comercial',# Comercial
+  9: 'confianza',      # Legal
+  16: 'confianza',     # Recursos Humanos
+  17: 'confianza',     # Ingeniería
+}
+
+def get_categoria(empleado):
+  if empleado.x_categoria_nomina:
+    return empleado.x_categoria_nomina  # override explícito gana
+  if empleado.department_id:
+    return DEFAULT_POR_DEPT.get(empleado.department_id, None)
+  return None  # sin depto → flag rojo panel admin, fail-open en kiosk
+```
+
+Test autoprogresivo: empleado nuevo dept 3 sin `x_categoria_nomina` → recibe `hourly_doble` por default → kiosk y nómina coherentes desde minuto 1. Ana puede después poner override explícito si aplica.
+
+### Fail-open en UX de empleado
+
+- **Kiosk:** empleado nuevo sin categoría puede checar entrada/salida normalmente. Geo + hora se validan; categoría NO es requirement.
+- **Mi Perfil → Nueva Incidencia:** todos los tipos de incidencia visibles. Workflow valida al submit. Categoría no filtra el menú.
+- **Mi Nómina:** muestra cálculo basado en default por depto + banner amarillo "⚠️ Tu categoría no está configurada, valor mostrado es estimado. Contacta a Ana Laura para asignación oficial."
+- **Plan operativo:** empleado se puede asignar a SO desde el primer día (no requiere categoría).
+- **Panel admin RH:** SÍ requiere categoría explícita para acciones críticas (aprobar nómina mensual, generar reporte). Fila sin categoría se marca con flag rojo "REQUIERE CATEGORIZACIÓN" y queda excluida de export hasta resolverse.
+
+### Festivos anuales (convención autoprogresiva)
+
+- **Naming:** `shared/config/festivos-mx-YYYY.json`. Ej: `festivos-mx-2027.json`.
+- **Sprint 4 backlog (target nov-2026):** workflow n8n cron 15-nov anual:
+  - Calcula festivos LFT oficiales del año siguiente (3 son fijos por fecha, 4 son lunes movibles → fórmula determinística).
+  - Hereda custom FTS del año anterior como propuesta (Jueves/Viernes Santo, Día Muertos, Virgen Guadalupe, Nochebuena/Fin de Año).
+  - Genera `shared/config/festivos-mx-YYYY+1.json` y abre PR autónomo vía gh CLI.
+  - Ana + Esteban validan en PR → merge → frontend lo lee automáticamente en enero.
+- **Hasta entonces (Sprint 1-3):** generación manual una vez al año en oct/nov (low cost, low risk).
+
+### Lista de deuda técnica autoprogresiva (prioridad alta — eliminar en Sprint 1 Fase 4 o Sprint 2)
+
+1. **`operaciones/planeacion/js/horarios-base.js:48`**: `oficinaIds = [89, 91, 113]` hardcoded. Refactor a `x_categoria_nomina === 'hourly_sencilla'` o `x_studio_hora_entrada >= 7.5` cuando categorías estén pobladas (post Sprint 1 Fase 2).
+2. **`shared/planeacion-config.json`**: mapa `empleados[id].requiere_check` duplica intent de `x_categoria_nomina`. Eliminar archivo cuando frontend planeación migre a `empleados-master.json` categoría (Sprint 2).
+3. **Existencia paralela `shared/incidencias.json` (legacy) vs `shared/incidencias-asistencia.json` (F2.1+)**: solo `auto_cierre_pendiente` migrado en Opción 2 F1.5. Ramas `ajuste_hora_entrada` y `ajuste_hora_salida` siguen en legacy. Migración total = Opción 1 F1.5 backlog (Sprint 2).
+
+---
+
 ## 1. 5 Categorías de empleados (definidas para Sprint 1)
 
 Campo nuevo `x_categoria_nomina` en `hr.employee`. Selección con 5 valores:
