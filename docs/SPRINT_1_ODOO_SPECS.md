@@ -24,12 +24,14 @@ Al terminar cada sección, marca `[ ] → [x]` en el checklist final (§H).
 | Atributo | Valor |
 |---|---|
 | Field name | `x_categoria_nomina` |
-| Label | "Categoría nómina" |
+| Label | "Categoría nómina (override)" |
 | Type | **Selection** |
-| Required | No |
-| Default | (vacío — se llenará en §G) |
-| Help text | "Categoría para cálculo de nómina y HE según LFT" |
+| Required | **No** (importante — debe permitir null/vacío) |
+| Default | **null/vacío** ⚠️ (fallback al default por depto, ver §G.1) |
+| Help text | "Override explícito de categoría nómina. Si está vacío, se infiere del departamento (ver PLAN_NOMINA_FTS_SUITE §0.5). Solo poblar para excepciones (e.g., Mateo es 'confianza' aunque su depto sea Operaciones que defaultea a 'hourly_doble')." |
 | Selection values | `ceo`, `confianza`, `hourly_doble`, `hourly_sencilla`, `no_he_comercial` |
+
+**Importante (principio autoprogresivo):** dejar este campo NULL es la opción correcta para 32 de 44 empleados. Solo se setea explícitamente para 8 excepciones (ver §G.2). El cálculo de nómina aplica fallback automático cuando está null.
 
 Display labels en la UI:
 - `ceo` → "CEO"
@@ -257,94 +259,81 @@ Ver §F.
 
 ---
 
-## §G — Categorización inicial 44 empleados → `x_categoria_nomina` (~10 min)
+## §G — Categorización autoprogresiva (default-por-dept + excepciones, ~10 min)
 
-**Propuesta inicial basada en cargo conocido + departamento.** Esteban valida con Ana antes de aplicar masivamente.
+**Filosofía:** según PLAN §0.5 (principio rector), categorización debe ser autoprogresiva. Esteban NO categoriza 44 empleados uno por uno. **Categorías se infieren del `department_id`** por default, y solo las **excepciones** se setean explícitamente en `x_categoria_nomina`.
 
-### G.1 — `ceo` (1 empleado)
+### G.1 — Default por depto (NO requiere acción Esteban — solo informativo)
 
-| ID | Nombre |
-|---|---|
-| 32 | Jesus Esteban De La Cruz Calderon |
+La lógica de cálculo aplica esta tabla cuando `x_categoria_nomina` está null:
 
-### G.2 — `confianza` (9 propuestos)
-
-| ID | Nombre | Depto | Razón |
+| dept_id | dept_name | categoría default | razón |
 |---|---|---|---|
-| 25 | Héctor Cruz Hernández | Ingeniería | Ingeniero senior, no técnico hourly |
-| 55 | Juan Manuel Sánchez Lugo | Ingeniería | Ingeniero senior |
-| 63 | Magaly Estefanía Pérez García | Legal | Mando medio Legal |
-| 75 | Mateo Salazar | Operaciones | Senior Supervisor |
-| 97 | Rissia Xavier de Araujo | Comercial | Mando medio Comercial (manager de comerciales) |
-| 98 | Ricardo Alán Hernández González | Ingeniería | PMO / Manager Ingeniería |
-| 101 | Ana Laura Acevedo Flores | RH | Mando medio RH |
-| 107 | Vicente Martínez Cruz | Ingeniería | Ingeniero senior |
-| 112 | Felipe Pérez Guzmán | Operaciones | Operations Manager |
+| 5 | Dirección | `confianza` | mandos directivos sin HE |
+| 6 | Comercial | `no_he_comercial` | variables compensan |
+| 9 | Legal | `confianza` | mando medio |
+| 16 | Recursos Humanos | `confianza` | mando medio |
+| 17 | Ingeniería | `confianza` | ingenieros senior |
+| 3 | Operaciones | `hourly_doble` | técnicos campo mayoría |
+| (sin depto) | — | `null` | flag rojo en panel admin, NO bloquea kiosk |
 
-### G.3 — `hourly_doble` (16 propuestos)
+**Empleado nuevo dept 3 sin categoría** → recibe `hourly_doble` automático. ✅ Autoprogresivo.
 
-Operaciones campo (técnicos con HE doble por turnos largos campo):
+### G.2 — Excepciones explícitas (SÍ requiere acción Esteban — 12 empleados)
 
-| ID | Nombre |
-|---|---|
-| 6 | Leonel Cruz Cristobal |
-| 57 | Samuel Ulises Alcántara |
-| 76 | Carlos Eduardo Manzanares |
-| 79 | José Luis Romero Grados |
-| 110 | Alejandro Reyes Galvez |
-| 114 | Nelson Israel Márquez Carvajal |
-| 116 | Mario Armando Ruiz Ramirez |
-| 121 | Stephany Ventura Arevalo |
-| 124 | Germán Emmanuel Merino Falcón |
-| 127 | Cesar Gildardo Gómez Cano |
-| 128 | Enoc Natanael Maldonado Soto |
-| 130 | Rolando Vázquez García |
-| 131 | Tomas Vázquez García |
-| 132 | José Carlos Ortiz Romero |
-| 137 | Hugo Ernesto González Moreno |
-| 138 | Tomas Arnoldo Loredo Mares |
+Estas 12 contradicen el default por depto y deben tener `x_categoria_nomina` seteado EXPLÍCITAMENTE:
 
-### G.4 — `hourly_sencilla` (5 propuestos)
+#### G.2.1 — `ceo` (1 empleado, override Dirección)
 
-Operaciones oficina con entrada 7:30-8:00 (gestores, supply chain):
-
-| ID | Nombre | hora_entrada |
+| ID | Nombre | Setear `x_categoria_nomina` = |
 |---|---|---|
-| 59 | Gerardo Isai Lozano Davila | 7:30 |
-| 60 | Teresa Ramos Rodríguez | 7:30 |
-| 62 | Gilberto Gibran Solís Carrillo | 7:30 |
-| 68 | Jésus Montalvo Ramirez | 8:00 |
-| 135 | Abraham Said Martínez Leal | 7:30 |
+| 32 | Jesus Esteban De La Cruz Calderon | `ceo` |
 
-### G.5 — `no_he_comercial` (6 propuestos)
+#### G.2.2 — `confianza` overrides en Operaciones (2 empleados)
 
-Comerciales (variables compensan HE):
+Estos 2 NO son técnicos hourly aunque su depto sea Operaciones. Sin override caerían a `hourly_doble`.
 
-| ID | Nombre |
-|---|---|
-| 8 | Francisco Montalvo Ramirez |
-| 48 | Luis Ángel García Cruz |
-| 78 | Aldo Jesús Méndez Garza |
-| 85 | Diego Andrés Clavijo Chaparro |
-| 108 | Pablo Bayly Fernández |
-| 143 | Pedro Arturo Hernandez |
+| ID | Nombre | Setear `x_categoria_nomina` = | Razón |
+|---|---|---|---|
+| 75 | Mateo Salazar | `confianza` | Senior Supervisor |
+| 112 | Felipe Pérez Guzmán | `confianza` | Operations Manager |
 
-### G.6 — Sin categorizar (7)
+#### G.2.3 — `hourly_sencilla` overrides en Operaciones (5 empleados)
 
-Los 7 placeholders sin depto (§F). Tras decisión §F:
-- Si archivados: NA
-- Si activados como reales: asignar categoría según cargo definitivo
+Operaciones oficina (entrada 7:30-8:00, no campo). Sin override caerían a `hourly_doble`.
+
+| ID | Nombre | hora_entrada | Setear `x_categoria_nomina` = |
+|---|---|---|---|
+| 59 | Gerardo Isai Lozano Davila | 7:30 | `hourly_sencilla` |
+| 60 | Teresa Ramos Rodríguez | 7:30 | `hourly_sencilla` |
+| 62 | Gilberto Gibran Solís Carrillo | 7:30 | `hourly_sencilla` |
+| 68 | Jésus Montalvo Ramirez | 8:00 | `hourly_sencilla` |
+| 135 | Abraham Said Martínez Leal | 7:30 | `hourly_sencilla` |
+
+### G.3 — Empleados que NO requieren acción explícita (32 empleados)
+
+Estos heredan correctamente del default por depto. **NO** setear `x_categoria_nomina` — dejar vacío para que el sistema use el fallback. Si en futuro la regla por depto cambia, estos empleados se ajustan automáticamente sin tocar cada record.
+
+- **Operaciones (16 → `hourly_doble` default):** Leonel 6, Samuel 57, Carlos Eduardo 76, José Luis Romero 79, Alejandro 110, Nelson 114, Mario 116, Stephany 121, Germán 124, Cesar 127, Enoc 128, Rolando 130, Tomás V 131, José Carlos 132, Hugo 137, Tomás A. Loredo 138
+- **Comercial (7 → `no_he_comercial` default):** Francisco 8, Luis Ángel 48, Aldo 78, Diego 85, Rissia 97, Pablo 108, Pedro 143
+- **Ingeniería (4 → `confianza` default):** Héctor 25, Juan Manuel 55, Ricardo 98, Vicente 107
+- **Legal (1 → `confianza` default):** Magaly 63
+- **RH (1 → `confianza` default):** Ana Laura 101
+
+### G.4 — Sin departamento (7 empleados)
+
+Después de §F (sesión Ana):
+- Si Esteban + Ana deciden archivar 6 placeholders + asignar depto a Miriam (148): los 7 quedan resueltos.
+- Si Miriam queda en algún depto, hereda categoría por default automáticamente.
+- Si por alguna razón un placeholder se mantiene activo sin depto: aparece en panel admin RH con flag rojo "REQUIERE CATEGORIZACIÓN" — no bloquea operaciones (fail-open).
 
 ### Validación
 
-**Total: 1 (ceo) + 9 (confianza) + 16 (hourly_doble) + 5 (hourly_sencilla) + 6 (no_he_comercial) = 37 empleados categorizados de 37 activos con depto.** ✓
+**Total acciones Esteban en §G: 8 records con override explícito.** Los otros 32 NO requieren acción manual — el sistema los maneja por defecto.
 
-✅ **Acción Esteban:** validar G.2-G.5 con Ana Laura. Cambios típicos:
-- Algún técnico operaciones es promovido a "confianza" → mover de G.3 a G.2
-- Algún comercial recibe HE (raro) → mover de G.5 a G.3 o G.4
-- Empleado nuevo no listado → categorizar
+**Test autoprogresivo:** Ana crea empleado nuevo en dept 3 mañana → sin tocar `x_categoria_nomina` → kiosk + nómina funcionan asumiendo `hourly_doble` desde el minuto 1. ✅
 
-Después de validación: aplicar masivamente en Studio (1 vez por empleado, ~15s c/u, ~10 min total) o via XML-RPC script.
+✅ **Acción Esteban:** setear `x_categoria_nomina` SOLO para los 8 records en §G.2 (Esteban + Felipe + Mateo + 5 hourly_sencilla). Validar con Ana antes de aplicar.
 
 ---
 
@@ -361,9 +350,9 @@ Marca con `[x]` cuando completes:
 - [ ] §D — Archivar 3 deptos zombies (8, 10, 15)
 - [ ] §E — Sesión con Ana: cita Pedro (id 143)
 - [ ] §F — Sesión con Ana: archivar 6 placeholders + asignar Miriam (148)
-- [ ] §G — Categorizar 37 empleados con depto según propuesta G.1-G.5 (con Ana)
+- [ ] §G — Setear `x_categoria_nomina` SOLO en 8 excepciones (Esteban CEO + Felipe + Mateo + 5 hourly_sencilla). NO categorizar los otros 32 (fallback automático por depto)
 
-**Tiempo total estimado: ~45-60 min.**
+**Tiempo total estimado: ~30-45 min** (reducido desde 60 min original — la categorización es ahora autoprogresiva y solo requiere 8 excepciones manuales en lugar de 37).
 
 ---
 
