@@ -2,6 +2,46 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-121-2026-05-12T04-53-00-205Z",
+      "odoo_incidencia_id": null,
+      "tipo": "olvido_entrada",
+      "empleado_id": 121,
+      "empleado_nombre": "Stephany smoke",
+      "fecha_creacion": "2026-05-12T04:53:00.205Z",
+      "attendance_id": 12886,
+      "hora_real_checkin_utc": "2026-05-12T13:00:00Z",
+      "geolocation": null,
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "user_id": 121,
+          "usuario": "Stephany smoke",
+          "timestamp": "2026-05-12T04:53:00.205Z",
+          "hora_propuesta_cst": "07:00",
+          "comentario": "smoke test supervisor path post-refactor",
+          "accion": "solicitud"
+        }
+      ],
+      "status": "pendiente_supervisor",
+      "hora_final_aplicada_utc": null,
+      "aplicado_en_odoo": false,
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "sin_departamento": false,
+      "depto_invalido": false,
+      "supervisor_id": 112,
+      "supervisor_name": "Felipe Pérez Guzmán",
+      "supervisor_email": "stephanyventura708@gmai.com",
+      "supervisor_phone": "+52 933 123 3163",
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": false,
+      "sin_supervisor": false,
+      "tag_disputa_activo": true
+    },
+    {
       "id_interno": "INC-OLV-112-2026-05-12T04-52-46-018Z",
       "odoo_incidencia_id": null,
       "tipo": "olvido_entrada",
