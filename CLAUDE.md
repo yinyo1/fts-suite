@@ -29,7 +29,7 @@ Idiomas del repo: español para UI/textos, inglés para variables/funciones de c
 | 2 | `incidencias/resolver` (v2.1 F1.1) | `Oc2ceMHX2O0L0y2X` | `0L0y2X` | 20 nodos. TAG management + 4 acciones (sup/rh/dir) + branch tipo (entrada/checkout). Fixes D1-D4 F1.1: respeta `tag_disputa_activo` previo, calcula `aplicaHora` antes de conversión, discrimina `baseUtcStr` por tipo, night-shift fix solo para checkout. Helper `esEstadoTerminal`. |
 | 3 | `asistencias/admin` | `Bqnfsx8gx2TpzfwM` | `TpzfwM` | Consultas admin |
 | 4 | `accesos-incidencias/guardar (v2.2 auth-fix)` | `HwPq9dqxjy2KETi7` | `2KETi7` | Auth + persistencia |
-| 5 | `kiosk/empleados (v3.1)` | `2UGWLjNwYRGtXq5y` | `GtXq5y` | Lookup empleados pre-checkin |
+| 5 | `kiosk/empleados (v3.1)` | `2UGWLjNwYRGtXq5y` | `GtXq5y` | Lookup empleados pre-checkin. **Fix Sprint 1 Fase 3 (2026-05-11):** response ahora incluye `x_studio_hora_entrada`, `x_categoria_nomina`, `x_aplica_ppa` para soportar refactor autoprogresivo de planeación. 8 consumers verificados sin breaking change. |
 | 6 | `kiosk/checkin (v4.2 fix respuesta · build 20abr · 00c76071)` | `a7mEjjdwIzzvomXs` | `zvomXs` | **Núcleo del kiosk**. 26 nodos (3 nuevos F1.5: `IF - Auto-rescate?` + `Odoo - UPDATE Auto-rescate Close` + `Code - Continue Auto-rescate`). Auto-rescate huérfana >16h en rama entrada. |
 | 7 | `kiosk/cerrar-registro (v2.0 · build 20abr · f020af31)` | `WkgYjDeL2kQInz3H` | `QInz3H` | Cierre manual humano |
 | 8 | `kiosk/estado-empleado (v3 Fase 1)` | `U13fngg2dTKgDQ8Y` | `KgDQ8Y` | Estado actual empleado |
