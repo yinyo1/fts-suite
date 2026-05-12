@@ -401,20 +401,28 @@ Hipótesis: probablemente test/legacy del setup inicial de Odoo. Confirmación h
 
 ### Sprint 1 — Catálogos maestros (este sprint, ~10h)
 
-**Fase 0 (en curso, ~2h):** PLAN doc + GAP_ANALYSIS + SPRINT_1_ODOO_SPECS + JSON catálogos + fix horarios bugs + PR autónomo.
+**Fase 0 ✅ DONE (2026-05-11, PR #33 merged):** PLAN doc + GAP_ANALYSIS + SPRINT_1_ODOO_SPECS + JSON catálogos + fix horarios bugs.
 
-**Fase 1 (Esteban Studio, ~45 min):**
-- Crear 4 campos custom hr.employee
-- Crear 7 festivos LFT + festivos custom como resource.calendar.leaves (si se elige opción B de D3) o ya en JSON (opción C)
-- Archive 3 deptos zombies
-- Reasignar resource_calendar_id masivo
-- Validar 7 sin depto + 8 sin hora_entrada
+**Fase 1 ✅ DONE (2026-05-11, console F12 ejecución por Esteban):**
+- ✅ 2 campos custom hr.employee creados via console F12 (`x_categoria_nomina` + `x_aplica_ppa`, ambos `state='manual'` sin Studio billable wrappers)
+- ✅ 3 deptos zombies archivados (8, 10, 15)
+- ✅ 19 empleados reasignados a calendar 2 "Horas operaciones" (total = 22 en cal 2)
+- ✅ 43 empleados con `x_aplica_ppa=true` (Esteban excluido por categoría `ceo`)
+- ✅ 8 empleados con `x_categoria_nomina` override explícito (1 ceo + 2 confianza + 5 hourly_sencilla)
+- ✅ Pedro Hernández (id 143) `x_studio_hora_entrada=8.0` poblado
+- ✅ Validación §G.0 pasó 6/6 checks
+- Ver `docs/SPRINT_1_FASE_1_AUDIT.md` + `docs/SPRINT_1_FASE_1_CONSOLE_SNIPPETS.md`
+- Reduccionne: 4 campos propuestos → 2 estrictamente necesarios. ~45 min Studio → ~15 min console. Cero billable code.
 
-**Fase 2 (Esteban+Claude, ~2h):** Categorizar 44 empleados (`x_categoria_nomina`) + PPA toggle (`x_aplica_ppa`).
+**Fase 2 🟡 IN PROGRESS (2026-05-11, Claude):**
+- ✅ Re-dump Odoo a `shared/config/empleados-master.json` v2 con campos custom poblados
+- ✅ Implementación `shared/lib/get-categoria.js` (lógica autoprogresiva default-por-dept + override gana)
+- ✅ Test suite `tests/test-autoprogresivo.js` con 34 cases (5 empleado fantasma + 10 reales + 6 HE tipo + 7 normalización + 5 edge) — **34/34 pasan ✅**
+- ⏸ Pendiente: confirmar PR + merge antes de seguir con Fase 3
 
-**Fase 3 (Claude, ~2h):** Workflow n8n `rh/empleados-master/update` + frontend admin panel mínimo.
+**Fase 3 (Claude, ~6h):** Workflow n8n `rh/empleados-master/sync` (cron 6am + on-change webhook) + frontend admin panel mínimo. Spec en `docs/SPRINT_1_FASE_3_WORKFLOW_SPEC.md`.
 
-**Fase 4 (Claude, ~2h):** Smoke test E2E (Ana edita → Odoo → JSON sync → kiosk lee correctamente).
+**Fase 4 (Claude, ~1h):** Smoke test E2E (Ana edita → Odoo → JSON sync → kiosk lee correctamente). Activar `auto_update_status: "auto_synced"` en empleados-master.json.
 
 ### Sprint 2 — Cálculo automático nómina semanal (~12-15h)
 
