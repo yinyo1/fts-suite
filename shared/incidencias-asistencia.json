@@ -2,6 +2,46 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-112-2026-05-12T04-52-46-018Z",
+      "odoo_incidencia_id": null,
+      "tipo": "olvido_entrada",
+      "empleado_id": 112,
+      "empleado_nombre": "Felipe smoke",
+      "fecha_creacion": "2026-05-12T04:52:46.018Z",
+      "attendance_id": 12889,
+      "hora_real_checkin_utc": "2026-05-12T13:00:00Z",
+      "geolocation": null,
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "user_id": 112,
+          "usuario": "Felipe smoke",
+          "timestamp": "2026-05-12T04:52:46.018Z",
+          "hora_propuesta_cst": "07:00",
+          "comentario": "smoke test post-refactor",
+          "accion": "solicitud"
+        }
+      ],
+      "status": "pendiente_rh",
+      "hora_final_aplicada_utc": null,
+      "aplicado_en_odoo": false,
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "sin_departamento": false,
+      "depto_invalido": false,
+      "supervisor_id": null,
+      "supervisor_name": null,
+      "supervisor_email": "Felipe.perez0305@gmail.com",
+      "supervisor_phone": null,
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": true,
+      "sin_supervisor": false,
+      "tag_disputa_activo": true
+    },
+    {
       "id_interno": "INC-AUTO-CIERRE-25-2026-05-11T23-27-33-651Z",
       "tipo": "auto_cierre_pendiente",
       "status": "pendiente_rh",
