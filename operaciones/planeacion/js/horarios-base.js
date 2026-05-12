@@ -43,6 +43,10 @@ window.PLANEACION_HORARIOS = {
   // según si el empleado está en la lista de oficina (Gibrán/Gerardo/Tere).
   // Si hay PLANEACION_CONFIG.config con requiere_check explícito, también
   // considera que requiere_check=false → perfil oficina.
+  //
+  // F1 Sprint 1 Fase 0 (2026-05-11): bug fix — dept 8 (zombie Admin&Finanzas)
+  // → dept 16 (Recursos Humanos real). dept 12 (no existe Odoo) → dept 17
+  // (Ingeniería real). Antes: Ana RH caía a fallback 'operaciones_campo'.
   perfilParaDepto(deptId, empleado){
     if (deptId === 3){
       const oficinaIds = [89, 91, 113];
@@ -54,7 +58,13 @@ window.PLANEACION_HORARIOS = {
       }
       return 'operaciones_campo';
     }
-    const map = { 6: 'comercial', 8: 'rh', 9: 'legal', 12: 'ingenieria' };
+    const map = {
+      5: 'direccion',
+      6: 'comercial',
+      9: 'legal',
+      16: 'rh',
+      17: 'ingenieria'
+    };
     return map[deptId] || 'operaciones_campo';
   },
 

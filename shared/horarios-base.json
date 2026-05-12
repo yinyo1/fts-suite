@@ -1,6 +1,7 @@
 {
-  "version": 2,
-  "actualizado": "2026-04-28",
+  "version": 3,
+  "actualizado": "2026-05-11",
+  "_nota_fix": "v3 (2026-05-11): Bug fix Sprint 1 Fase 0 — Ana RH dept 8 (zombie Admin&Finanzas) → dept 16 (Recursos Humanos real). Ingeniería dept 12 (no existe Odoo) → dept 17 real. Bajo decisión D10 del PLAN_NOMINA. Datos verificados con dump fresco de Odoo hr.department.",
   "perfiles": {
     "operaciones_campo": {
       "departamento_id": 3,
@@ -18,16 +19,16 @@
       "salida": "17:36",
       "comida_minutos": 30,
       "horas_netas": 9.6,
-      "descripcion": "Operaciones admin (Gibrán, Gerardo, Teresa)"
+      "descripcion": "Operaciones admin (Gibrán, Gerardo, Teresa, Abraham, Jésus Montalvo)"
     },
     "ingenieria": {
-      "departamento_id": 12,
-      "departamento_nombre": "Ingeniería",
+      "departamento_id": 17,
+      "departamento_nombre": "Ingenieria",
       "entrada": "07:00",
       "salida": "17:06",
       "comida_minutos": 30,
       "horas_netas": 9.6,
-      "descripcion": "Ingeniería (Vicente, Juan Manuel, Héctor Cruz)"
+      "descripcion": "Ingeniería (Vicente, Juan Manuel, Héctor Cruz, Ricardo)"
     },
     "comercial": {
       "departamento_id": 6,
@@ -36,16 +37,16 @@
       "salida": "18:06",
       "comida_minutos": 30,
       "horas_netas": 9.6,
-      "descripcion": "Comercial (Francisco, Luis Ángel)"
+      "descripcion": "Comercial (Francisco, Luis Ángel, Aldo, Diego, Pablo, Pedro, Rissia)"
     },
     "rh": {
-      "departamento_id": 8,
-      "departamento_nombre": "Administración y Finanzas",
+      "departamento_id": 16,
+      "departamento_nombre": "Recursos Humanos",
       "entrada": "07:00",
       "salida": "17:06",
       "comida_minutos": 30,
       "horas_netas": 9.6,
-      "descripcion": "Ana RH"
+      "descripcion": "Ana Laura Acevedo (RH)"
     },
     "legal": {
       "departamento_id": 9,
@@ -55,6 +56,15 @@
       "comida_minutos": 30,
       "horas_netas": 9.6,
       "descripcion": "Magaly Legal"
+    },
+    "direccion": {
+      "departamento_id": 5,
+      "departamento_nombre": "Dirección",
+      "entrada": "07:00",
+      "salida": "17:06",
+      "comida_minutos": 30,
+      "horas_netas": 9.6,
+      "descripcion": "Esteban (CEO, sin HE)"
     }
   }
 }
