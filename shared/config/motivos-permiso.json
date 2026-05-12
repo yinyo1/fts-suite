@@ -1,0 +1,90 @@
+{
+  "_meta": {
+    "version": 1,
+    "generated_at": "2026-05-12T05:28:38Z",
+    "source": "Sprint 1 Fase 4 Decisión 4 — catálogo motivos permiso híbrido",
+    "editable_by": ["Ana Laura Acevedo (RH)", "Esteban (Dirección)"],
+    "consumido_por": [
+      "frontend Mi Perfil → modal Nueva Incidencia → Permiso",
+      "workflow n8n incidencias/crear-permiso-con-goce (sugerencia inicial)",
+      "workflow n8n incidencias/crear-permiso-sin-goce (sugerencia inicial)",
+      "visor RH (mostrar motivo seleccionado)"
+    ],
+    "regla_escalado_direccion": "permiso_sin_goce > 3 días → dirección terminal"
+  },
+  "motivos": [
+    {
+      "id": "cita_medica_personal",
+      "label": "Cita médica personal",
+      "sugerencia": "con_goce",
+      "override_permitido": true,
+      "documento_requerido": false,
+      "max_dias": 1,
+      "categoria_visual": "salud",
+      "icon": "🏥"
+    },
+    {
+      "id": "cita_medica_familiar_directo",
+      "label": "Cita médica familiar directo (hijo/cónyuge)",
+      "sugerencia": "con_goce",
+      "override_permitido": true,
+      "documento_requerido": false,
+      "max_dias": 1,
+      "categoria_visual": "salud",
+      "icon": "🏥"
+    },
+    {
+      "id": "defuncion_familiar_directo",
+      "label": "Defunción familiar directo (padre/madre/cónyuge/hijo)",
+      "sugerencia": "con_goce",
+      "override_permitido": false,
+      "documento_requerido": false,
+      "max_dias": 3,
+      "categoria_visual": "luto",
+      "icon": "🕊️",
+      "nota_lft": "LFT no obliga pago, pero política FTS sí. Override NO permitido por compromiso de la empresa."
+    },
+    {
+      "id": "tramite_gubernamental",
+      "label": "Trámite gubernamental (IMSS, SAT, registro civil, INE)",
+      "sugerencia": "con_goce",
+      "override_permitido": true,
+      "documento_requerido": false,
+      "max_dias": 1,
+      "categoria_visual": "tramite",
+      "icon": "📋"
+    },
+    {
+      "id": "asunto_personal",
+      "label": "Asunto personal",
+      "sugerencia": "sin_goce",
+      "override_permitido": true,
+      "documento_requerido": false,
+      "max_dias": 5,
+      "categoria_visual": "personal",
+      "icon": "👤"
+    },
+    {
+      "id": "vacaciones_sin_saldo",
+      "label": "Vacaciones extra (sin saldo disponible)",
+      "sugerencia": "sin_goce",
+      "override_permitido": false,
+      "documento_requerido": false,
+      "max_dias": 10,
+      "categoria_visual": "vacaciones_extra",
+      "icon": "🏖️",
+      "nota_lft": "Cuando saldo hr.leave.allocation = 0, este motivo permite continuar pidiendo días sin goce. Override no permitido."
+    },
+    {
+      "id": "otro",
+      "label": "Otro (especificar en motivo)",
+      "sugerencia": "sin_goce",
+      "override_permitido": true,
+      "documento_requerido": false,
+      "max_dias": 3,
+      "categoria_visual": "otro",
+      "icon": "❓",
+      "requiere_texto_libre": true
+    }
+  ]
+}
