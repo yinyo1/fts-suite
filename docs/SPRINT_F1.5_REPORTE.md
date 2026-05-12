@@ -223,3 +223,93 @@ Estructura prevista (3 commits):
 3. `docs: SPRINT_F1.5_REPORTE + CLAUDE.md update`
 
 Workflow n8n: ya desplegado, no requiere commit (vive en n8n cloud).
+
+---
+
+## Sub-bug post-deploy descubierto + fix (2026-05-11 ~16:10 CST)
+
+**Síntoma:** Ricardo Hernández (id 98) hizo clic en "Resolver ahora" después del merge frontend Opción B. El frontend avanzó al flujo de checkin entrada (PIN + "Terminado"), pero al volver a abrir su perfil seguía la pantalla "Checkeo sin salida (+24 hrs)". Auto-rescate falló silenciosamente.
+
+**Diagnóstico:** ver `docs/SPRINT_F1.5_BUG_DIAGNOSTICO.md` para el primer bug y este bloque para el segundo.
+
+Execution 8771 reveló que `Code - Analizar candados` recibió `attendances=[]` (array vacío) porque `Odoo - Buscar pendientes` filtraba con `check_in >= ahora-48h`, y la huérfana de Ricardo (att 12948, check_in 2026-05-08 15:51 UTC = 95h atrás) cayó FUERA de la ventana. Como `abiertas.length === 0` → branch "sin huérfana" → `auto_rescate_pending: false` → `Switch - Por tipo` → `Odoo - CREATE Entrada` → ❌ Odoo enterprise `_check_validity` rechazó: "Cannot create new attendance record for Ricardo... hasn't checked out since 05/08/2026 09:51:23 AM".
+
+**Causa raíz:** inconsistencia entre 2 workflows que consultan el mismo dataset.
+
+| Workflow | Ventana SEARCH `hr.attendance` | Ventaja |
+|---|---|---|
+| `kiosk/estado-empleado` (U13fngg2dTKgDQ8Y) | 15 días | Detectaba la huérfana correctamente, frontend mostraba `error_critico` |
+| `kiosk/checkin` (a7mEjjdwIzzvomXs) | **48h** ❌ | NO detectaba la huérfana, auto-rescate F1.5 nunca disparaba |
+
+**Fix aplicado:** patchNodeField sobre `Code - Preparar parámetros` del workflow `a7mEjjdwIzzvomXs`. Ventana 48h → 15 días.
+
+```js
+// Antes
+const hace48h = new Date(ahoraUTC.getTime() - (48 * 60 * 60 * 1000));
+const ventanaInicio = hace48h.toISOString().slice(0, 19).replace('T', ' ');
+
+// Después (F1.5 fix 2026-05-11)
+const hace15Dias = new Date(ahoraUTC.getTime() - (15 * 24 * 60 * 60 * 1000));
+const ventanaInicio = hace15Dias.toISOString().slice(0, 19).replace('T', ' ');
+```
+
+Validación post-fix: 26 nodos + 30 conexiones válidas + 0 conexiones rotas. Cero errores nuevos (mismo único Webhook config pre-existente).
+
+**Test E2E pendiente:** que Ricardo y Héctor (id 25, att 12921) intenten nuevamente. La huérfana de Héctor también está fuera de la ventana 48h original — el fix también lo desbloquea.
+
+**Lección:** cuando 2+ workflows consultan el mismo dataset (hr.attendance abiertas del empleado), DEBEN usar la misma ventana de búsqueda. Documentado en CLAUDE.md §11 hallazgo #12.
+
+---
+
+## Sub-bug #2 post-deploy descubierto + fix (2026-05-11 ~17:33 CST)
+
+**Síntoma:** Ricardo y Héctor checaron exitosamente post-fix-ventana (att 12948 + 12921 cerradas con check_out 9.6h después, TAGs marcados, nuevas attendances 12981 creadas para hoy lunes 11). Workflow completó end-to-end. Ejecuciones 8851 + 8852 ambas con status `success`. PERO al abrir el visor RH (`modulos/rh/visor-incidencias.html`), Ana Laura NO ve las 2 incidencias `auto_cierre_pendiente`.
+
+**Diagnóstico:**
+
+| Archivo | Schema | Quién escribe | Quién lee |
+|---|---|---|---|
+| `shared/incidencias.json` (legacy) | `estado`, `id`, `fecha_solicitud` | Workflow `a7mEjjdwIzzvomXs` (kiosk/checkin v4.2 + F1.5) | **NADIE en frontend** |
+| `shared/incidencias-asistencia.json` (F2.1+) | `status`, `id_interno`, `fecha_creacion`, `propuestas[]`, `department_*`, `supervisor_*` | Workflows `xVNp36`, `5SW15h`, `0L0y2X` (F2.1 incidencias modernas) | `visor-incidencias.html`, `panel-incidencias`, `mis-incidencias` |
+
+El sprint F1.5 heredó del workflow kiosk/checkin v4.2 el archivo legacy `incidencias.json`. Las 2 incidencias `auto_cierre_pendiente` se crearon ahí, fuera del alcance del visor RH.
+
+**Fix (Opción 2):** migrar SOLO la rama `auto_rescate_pending` del workflow para que escriba al archivo nuevo con schema F2.1+. Las ramas legacy (`ajuste_hora_entrada`, `ajuste_hora_salida`) quedan tocando `incidencias.json` hasta migración completa futura.
+
+**Cambios aplicados en `a7mEjjdwIzzvomXs`:**
+
+1. **`Code - Prep Incidencia`** — rama `isAutoRescate` ahora construye objeto con schema F2.1+:
+   - `id_interno` (no `id`)
+   - `status: 'pendiente_rh'` (no `estado`)
+   - `fecha_creacion` (no `fecha_solicitud`)
+   - `propuestas: []` (vacío — auto-incidencia no tiene propuestas)
+   - `department_*`, `supervisor_*` en `null` (auto salta supervisor, va directo a RH)
+   - `tag_disputa_activo: true`, `autoincidencia: true` (preservados)
+   - Nuevo campo `_target_file_path: 'shared/incidencias-asistencia.json'` para que HTTP GET/PUT use el archivo correcto.
+   - Rama legacy también recibe `_target_file_path: 'shared/incidencias.json'` para mantener comportamiento.
+
+2. **`HTTP - GET incidencias.json` URL:** ahora dinámica via `={{ ... /contents/{{ $json._target_file_path }} }}`. Mantiene auth + headers + queryParameter `ref=main`.
+
+3. **`HTTP - PUT incidencias.json` URL:** misma plantilla dinámica. `_target_file_path` propagado via `Code - Merge incidencia`.
+
+4. **`Code - Merge incidencia`** — actualizado para:
+   - **Bug cosmético corregido:** commit message ahora dinámico `'incidencia: ' + nueva.tipo + ' ' + ...` (antes hardcoded a `'ajuste_hora_entrada'` para todos los tipos).
+   - Preserva `_target_file_path` en output para que HTTP PUT lo lea.
+   - `incidencia_id` ahora lee `nueva.id_interno || nueva.id` (compatible con ambos schemas).
+
+5. **Backfill manual de las 2 incidencias ya creadas (Ricardo + Héctor):** agregadas a `shared/incidencias-asistencia.json` con schema F2.1+ + flag `_backfill_origin` explicando que se duplicaron desde `incidencias.json`. Por ahora se quedan en ambos archivos (incidencias.json = log raw, incidencias-asistencia.json = lo que ve frontend). Backlog: limpiar duplicados cuando se migre completamente.
+
+**Validación post-fix:** 26 nodos / 30 conexiones / 28 expresiones validadas / 0 errores nuevos.
+
+**Test E2E pendiente:** Ana Laura (o cualquier usuario con rol RH) abre `modulos/rh/visor-incidencias.html` post-deploy y confirma que aparecen:
+- INC-AUTO-CIERRE-98-2026-05-11T23-33-15-573Z (Ricardo)
+- INC-AUTO-CIERRE-25-2026-05-11T23-27-33-651Z (Héctor)
+
+ambas con badge AUTO (porque `autoincidencia:true`), tipo "auto_cierre_pendiente" (label fallback al no estar en TIPO_LABELS hardcoded), status `pendiente_rh`.
+
+**Lección complementaria a #12:** cuando un workflow escribe a un archivo de datos compartido, validar quién lo lee. Si los lectores esperan otro schema o archivo, hay drift silencioso. Mantener tabla `archivo → schema → escritores → lectores` documentada (idealmente en CLAUDE.md o un README de `shared/`).
+
+**Backlog identificado:**
+- **Migración completa workflow kiosk/checkin a F2.1+ (Opción 1):** las ramas `ajuste_hora_entrada` y `ajuste_hora_salida` siguen escribiendo a `incidencias.json` y siguen siendo invisibles al visor RH. Estimado: 45-60 min de trabajo (incluye lookups de supervisor + department para snapshot, building propuestas array vacío).
+- **Cleanup `shared/incidencias.json`:** archivo legacy queda como log raw. Decidir si se mantiene (write-only, sin consumer) o se elimina post-migración completa de Opción 1.
+- **`_backfill_origin` field cleanup:** quitar el campo cosmético después de validación (o dejarlo como audit trail).
