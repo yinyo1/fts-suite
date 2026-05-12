@@ -1,0 +1,148 @@
+{
+  "_meta": {
+    "version": 1,
+    "year": 2026,
+    "source": "LFT Art. 74 (oficiales obligatorios) + custom FTS [PROPUESTO — Esteban valida con Ana]",
+    "total_festivos": 14,
+    "total_oficiales": 7,
+    "total_custom_propuestos": 7,
+    "notas": "Festivos LFT son obligatorios — descansados con paga. Si trabaja: paga doble del día + HE descanso. Custom FTS son práctica común MX industria — pueden ser día completo o medio. Marcados [PROPUESTO] hasta validación de Esteban.",
+    "schema": {
+      "fecha": "YYYY-MM-DD ISO date",
+      "dia_semana": "Lun|Mar|Mié|Jue|Vie|Sáb|Dom",
+      "descripcion": "string",
+      "tipo": "festivo_descansado | festivo_laborable_doble",
+      "fundamento": "LFT Art. X fracc. Y | Custom FTS",
+      "aplica_a": "todos | array de categorias",
+      "estado": "vigente | [PROPUESTO] | pasado"
+    }
+  },
+  "festivos": [
+    {
+      "fecha": "2026-01-01",
+      "dia_semana": "Jue",
+      "descripcion": "Año Nuevo",
+      "tipo": "festivo_descansado",
+      "fundamento": "LFT Art. 74-I",
+      "aplica_a": "todos",
+      "estado": "pasado"
+    },
+    {
+      "fecha": "2026-02-02",
+      "dia_semana": "Lun",
+      "descripcion": "Día de la Constitución (1er lunes febrero)",
+      "tipo": "festivo_descansado",
+      "fundamento": "LFT Art. 74-II",
+      "aplica_a": "todos",
+      "estado": "pasado"
+    },
+    {
+      "fecha": "2026-03-16",
+      "dia_semana": "Lun",
+      "descripcion": "Natalicio de Benito Juárez (3er lunes marzo)",
+      "tipo": "festivo_descansado",
+      "fundamento": "LFT Art. 74-III",
+      "aplica_a": "todos",
+      "estado": "pasado"
+    },
+    {
+      "fecha": "2026-04-02",
+      "dia_semana": "Jue",
+      "descripcion": "Jueves Santo [PROPUESTO custom FTS]",
+      "tipo": "festivo_descansado",
+      "fundamento": "Custom FTS",
+      "aplica_a": "todos",
+      "estado": "[PROPUESTO] pasado"
+    },
+    {
+      "fecha": "2026-04-03",
+      "dia_semana": "Vie",
+      "descripcion": "Viernes Santo [PROPUESTO custom FTS]",
+      "tipo": "festivo_descansado",
+      "fundamento": "Custom FTS",
+      "aplica_a": "todos",
+      "estado": "[PROPUESTO] pasado"
+    },
+    {
+      "fecha": "2026-05-01",
+      "dia_semana": "Vie",
+      "descripcion": "Día del Trabajo",
+      "tipo": "festivo_descansado",
+      "fundamento": "LFT Art. 74-IV",
+      "aplica_a": "todos",
+      "estado": "pasado"
+    },
+    {
+      "fecha": "2026-05-10",
+      "dia_semana": "Dom",
+      "descripcion": "Día de las Madres [PROPUESTO — Esteban define si es laborable doble o solo descansado para mujeres]",
+      "tipo": "festivo_laborable_doble",
+      "fundamento": "Custom FTS",
+      "aplica_a": "todos",
+      "estado": "[PROPUESTO] pasado"
+    },
+    {
+      "fecha": "2026-09-16",
+      "dia_semana": "Mié",
+      "descripcion": "Día de la Independencia",
+      "tipo": "festivo_descansado",
+      "fundamento": "LFT Art. 74-V",
+      "aplica_a": "todos",
+      "estado": "vigente"
+    },
+    {
+      "fecha": "2026-11-02",
+      "dia_semana": "Lun",
+      "descripcion": "Día de Muertos [PROPUESTO custom FTS]",
+      "tipo": "festivo_descansado",
+      "fundamento": "Custom FTS",
+      "aplica_a": "todos",
+      "estado": "[PROPUESTO] vigente"
+    },
+    {
+      "fecha": "2026-11-16",
+      "dia_semana": "Lun",
+      "descripcion": "Aniversario Revolución Mexicana (3er lunes noviembre)",
+      "tipo": "festivo_descansado",
+      "fundamento": "LFT Art. 74-VI",
+      "aplica_a": "todos",
+      "estado": "vigente"
+    },
+    {
+      "fecha": "2026-12-12",
+      "dia_semana": "Sáb",
+      "descripcion": "Virgen de Guadalupe [PROPUESTO custom FTS]",
+      "tipo": "festivo_descansado",
+      "fundamento": "Custom FTS",
+      "aplica_a": "todos",
+      "estado": "[PROPUESTO] vigente"
+    },
+    {
+      "fecha": "2026-12-24",
+      "dia_semana": "Jue",
+      "descripcion": "Nochebuena [PROPUESTO custom FTS — completo o medio?]",
+      "tipo": "festivo_descansado",
+      "fundamento": "Custom FTS",
+      "aplica_a": "todos",
+      "estado": "[PROPUESTO] vigente"
+    },
+    {
+      "fecha": "2026-12-25",
+      "dia_semana": "Vie",
+      "descripcion": "Navidad",
+      "tipo": "festivo_descansado",
+      "fundamento": "LFT Art. 74-VIII",
+      "aplica_a": "todos",
+      "estado": "vigente"
+    },
+    {
+      "fecha": "2026-12-31",
+      "dia_semana": "Jue",
+      "descripcion": "Fin de Año [PROPUESTO custom FTS — completo o medio?]",
+      "tipo": "festivo_descansado",
+      "fundamento": "Custom FTS",
+      "aplica_a": "todos",
+      "estado": "[PROPUESTO] vigente"
+    }
+  ]
+}
