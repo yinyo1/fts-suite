@@ -116,6 +116,19 @@ Test autoprogresivo: empleado nuevo dept 3 sin `x_categoria_nomina` → recibe `
   - Ana + Esteban validan en PR → merge → frontend lo lee automáticamente en enero.
 - **Hasta entonces (Sprint 1-3):** generación manual una vez al año en oct/nov (low cost, low risk).
 
+### Update Sprint 1 Fase 1 (audit quirúrgico 2026-05-11): reducción 4 → 2 campos custom
+
+Audit en `docs/SPRINT_1_FASE_1_AUDIT.md` reveló que de los 4 campos custom propuestos originalmente, **solo 2 son estrictamente necesarios**:
+
+| Campo original | Status post-audit | Razón |
+|---|---|---|
+| `x_categoria_nomina` | ✅ **Crear** | No hay equivalente. Crítico para autoprogresivo. |
+| `x_he_tipo` | ❌ **Eliminar del scope** | Derivable 1:1 de `x_categoria_nomina` vía lookup en workflow nómina Sprint 2. |
+| `x_aplica_ppa` | ✅ **Crear** | No hay boolean equivalente. |
+| `x_dias_laborables` | ❌ **Eliminar del scope** | Ya derivable de `resource_calendar_id.attendance_ids.dayofweek` (campo nativo Odoo). |
+
+Ejecución vía console JS F12 con snippets en `docs/SPRINT_1_FASE_1_CONSOLE_SNIPPETS.md` (zero Studio UI = zero billable code generation por wrapper `studio_customization`).
+
 ### Lista de deuda técnica autoprogresiva (prioridad alta — eliminar en Sprint 1 Fase 4 o Sprint 2)
 
 1. **`operaciones/planeacion/js/horarios-base.js:48`**: `oficinaIds = [89, 91, 113]` hardcoded. Refactor a `x_categoria_nomina === 'hourly_sencilla'` o `x_studio_hora_entrada >= 7.5` cuando categorías estén pobladas (post Sprint 1 Fase 2).
