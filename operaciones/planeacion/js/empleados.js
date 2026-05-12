@@ -1,16 +1,21 @@
-// Build: 20260428-planeacion-f2-empleados-v2
+// Build: 20260512-planeacion-fase3-empleados-categoria
 // V1 confirmado caso A: /webhook/kiosk/empleados retorna empleados activos
 // de todos los deptos (consumido también por kiosk, mi-perfil, config-master).
+// F1 Sprint 1 Fase 3 (2026-05-11): _normalizar preserva x_categoria_nomina +
+// x_aplica_ppa + x_studio_hora_entrada del workflow. SIN_CHECK_DIARIO array
+// hardcoded → esSinCheckDiario() autoprogresiva por categoría.
 'use strict';
 
 window.PLANEACION_EMPLEADOS = {
   todos: [],
   byDept: {},
 
-  // IDs Odoo de empleados de Operaciones que NO requieren confirmación
-  // diaria (oficina con horario fijo). TODO F4: cargar desde
-  // shared/planeacion-config.json. Por ahora hardcoded basado en mockup v3.
-  SIN_CHECK_DIARIO: [89, 91, 113],
+  // TEMP fallback legacy: IDs hardcoded mientras se valida que 100% de
+  // empleados oficina tengan x_categoria_nomina='hourly_sencilla' en Odoo.
+  // Eliminar en Sprint 2 (CLAUDE.md §13 deuda autoprogresiva #1+#2).
+  // F1 Sprint 1 Fase 3: nota historica — array NO se usa directamente;
+  // ver esSinCheckDiario() abajo que es el reemplazo autoprogresivo.
+  SIN_CHECK_DIARIO_LEGACY: [89, 91, 113],
 
   N8N_BASE: 'https://primary-production-5c3c.up.railway.app',
 
@@ -65,8 +70,27 @@ window.PLANEACION_EMPLEADOS = {
       name:           e.name || e.nombre || ('Empleado ' + e.id),
       job_title:      e.job_title || e.cargo || e.puesto || '',
       department_id:  [deptId, deptName],   // formato Odoo many2one canónico
-      active:         e.active !== false
+      active:         e.active !== false,
+      // F1 Sprint 1 Fase 3 (2026-05-11): preservar campos custom del workflow
+      // kiosk/empleados v3.1 para que horarios-base.js perfilParaDepto() pueda
+      // leer x_categoria_nomina autoprogresivamente. Ver PLAN_NOMINA §0.5.
+      x_studio_hora_entrada: e.x_studio_hora_entrada || 0,
+      x_categoria_nomina:    e.x_categoria_nomina || null,
+      x_aplica_ppa:          e.x_aplica_ppa === true
     };
+  },
+
+  // F1 Sprint 1 Fase 3: reemplazo autoprogresivo del array SIN_CHECK_DIARIO.
+  // Empleados con categoría hourly_sencilla o confianza NO requieren check
+  // diario (oficina con horario fijo, sin HE hourly). Override automático
+  // cuando Ana setea x_categoria_nomina en Odoo — sin tocar código.
+  esSinCheckDiario(empleadoId){
+    const emp = this.todos.find(e => e.id === empleadoId);
+    if (!emp) return false;
+    if (emp.x_categoria_nomina === 'hourly_sencilla') return true;
+    if (emp.x_categoria_nomina === 'confianza') return true;
+    // TEMP fallback legacy (eliminar en Sprint 2 cuando 100% categorizados):
+    return this.SIN_CHECK_DIARIO_LEGACY.indexOf(empleadoId) !== -1;
   },
 
   _reindexar(){
@@ -133,12 +157,12 @@ window.PLANEACION_EMPLEADOS = {
   },
 
   // ID de Odoo (hr.employee.id). Usa config persistente si está disponible;
-  // sino cae al hardcoded SIN_CHECK_DIARIO.
+  // sino cae a esSinCheckDiario() autoprogresivo (x_categoria_nomina).
   requiereCheck(empleadoId){
     if (window.PLANEACION_CONFIG && window.PLANEACION_CONFIG.config){
       return window.PLANEACION_CONFIG.requiereCheck(empleadoId);
     }
-    return this.SIN_CHECK_DIARIO.indexOf(empleadoId) === -1;
+    return !this.esSinCheckDiario(empleadoId);
   },
 
   byId(id){
