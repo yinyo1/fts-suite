@@ -74,9 +74,19 @@
           "hora_propuesta_cst": "2026-05-11 07:00:00",
           "comentario": "Ingrese a planta vertiv directo",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe Pérez Guzmán",
+          "timestamp": "2026-05-12T14:15:20.591Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Aprobada incidencia",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false,
       "department_id": 3,
