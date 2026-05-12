@@ -305,3 +305,84 @@ Lecciones cross-cutting documentadas para evitar repetir bugs en futuros sprints
     **Sub-bug #2 (mismo día 11-may-2026, ejecuciones 8851 + 8852, fix Opción 2 aplicado):** workflow `kiosk/checkin` escribía a `shared/incidencias.json` (schema legacy con `estado`, `id`, `fecha_solicitud`), pero el visor RH (`modulos/rh/visor-incidencias.html`) y los paneles modernos (`panel-incidencias`, `mis-incidencias`) leen de `shared/incidencias-asistencia.json` (schema F2.1+ con `status`, `id_interno`, `fecha_creacion`, `propuestas[]`, `department_*`, `supervisor_*`). Las 2 incidencias `auto_cierre_pendiente` se crearon en producción pero quedaron INVISIBLES para Ana Laura. **Fix Opción 2:** solo la rama `auto_rescate_pending` del workflow se migró al schema F2.1+ y al archivo correcto. Las ramas legacy `ajuste_hora_entrada` y `ajuste_hora_salida` siguen en `incidencias.json` (backlog: Opción 1 migración total). Mecanismo: nuevo campo `_target_file_path` en `Code - Prep Incidencia` decide el archivo destino; `HTTP - GET` y `HTTP - PUT` usan URL dinámica `{{ $json._target_file_path }}`; `Code - Merge incidencia` propaga el campo y arregla commit message hardcoded `ajuste_hora_entrada` → dinámico por `nueva.tipo`. **Lección complementaria:** cuando un workflow escribe a un archivo compartido, validar quién lo lee. Si los consumers esperan otro schema o archivo, hay drift silencioso. Mantener una tabla `archivo → schema → escritores → lectores` documentada. **Tabla actual:**
     - `shared/incidencias.json` (legacy) — escritores: `a7mEjjdwIzzvomXs` ramas `ajuste_hora_entrada` + `ajuste_hora_salida`. Lectores: NINGUNO (write-only orphan, backlog cleanup).
     - `shared/incidencias-asistencia.json` (F2.1+) — escritores: `xVNp36`, `5SW15h`, `0L0y2X`, + `a7mEjjdwIzzvomXs` rama `auto_rescate_pending` (post-F1.5). Lectores: visor RH, panel-incidencias, mis-incidencias.
+
+---
+
+## 12. Capacidad de PRs autónomos (configurado 2026-05-11, parcial)
+
+Claude Code puede crear PRs sin intervención manual de Esteban — **una vez que el PAT tenga los scopes correctos**.
+
+### Setup actual
+
+- **Método:** GitHub CLI (`gh`) versión 2.92.0 instalada vía `winget install --id GitHub.cli --scope user`.
+- **Binario:** `C:\Users\esteb\AppData\Local\Microsoft\WinGet\Links\gh.exe` (también accesible en PATH después de reiniciar shell — agregado en `~/.bashrc`).
+- **Auth:** `gh auth login --with-token` vía stdin pipe. Token persistido en **Windows Credential Manager** (keyring) — más seguro que `~/.config/gh/hosts.yml`.
+- **Account:** yinyo1 (verificado con `gh auth status`).
+
+### Estado de permissions del PAT actual
+
+| Operación | Permission requerido | Estado actual |
+|---|---|---|
+| git push/pull/delete branches | Contents: write | ✅ OK |
+| List PRs (`gh pr list`) | Pull requests: read | ✅ OK |
+| **Create PR (`gh pr create`)** | **Pull requests: write** | ❌ **MISSING** |
+| Activar `delete_branch_on_merge` | Administration: write | ❌ MISSING |
+
+El PAT actual es el mismo que usa n8n para auto-commits (`Contents: write` solamente). Para autonomía completa de PRs falta extender permissions.
+
+### Cómo extender el PAT (2 opciones)
+
+**Opción A — Extender el fine-grained PAT existente** (recomendada — menor superficie de tokens):
+1. Ir a https://github.com/settings/personal-access-tokens
+2. Click en el token actual `Claude Code FTS Suite PR autonomy` (o como esté nombrado)
+3. Click "Edit" → "Permissions"
+4. Marcar **Pull requests: Read and Write** + opcional **Administration: Write**
+5. Save (token sigue igual, no requiere re-paste)
+6. Re-confirmar auth si gh reporta unauthorized: `printf '%s\n' "MISMO_TOKEN" | gh auth login --with-token --hostname github.com`
+
+**Opción B — Crear PAT classic separado** (más simple, más permisos otorgados):
+1. Ir a https://github.com/settings/tokens/new
+2. Scope: `repo` (incluye PR write, contents, etc.)
+3. Genera, paste a Claude Code en próximo mensaje
+
+### Comando estándar para futuros PRs (cuando PAT esté listo)
+
+```bash
+GH=/c/Users/esteb/AppData/Local/Microsoft/WinGet/Links/gh.exe
+"$GH" pr create \
+  --title "feat(area): one-line title" \
+  --base main \
+  --head feature/sprint-name \
+  --body "$(cat <<'BODY_EOF'
+## Summary
+...
+
+## Test plan
+...
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+BODY_EOF
+)"
+```
+
+Para futuros sprints: **NO pidas URL manual a Esteban una vez que el PAT esté upgraded — abre el PR tú mismo** con el comando arriba.
+
+### Smoke test pendiente
+
+Una vez el PAT tenga `Pull requests: write`, validar con:
+```bash
+git checkout main && git pull
+git checkout -b test/pr-autonomy
+git commit --allow-empty -m "test: verify autonomous PR creation"
+git push -u origin test/pr-autonomy
+"$GH" pr create --title "test: PR autonomy" --base main --body "validation only, will be closed"
+"$GH" pr close <number> --delete-branch
+```
+
+Si esto funciona end-to-end → capability confirmada.
+
+### Cleanup ejecutado en este setup
+
+- ✅ Branch `feature/sprint-f1.5-topochico-y-checkout-bloqueado` borrada en remoto (merged en PR #30, ya no necesaria).
+- ⏸ Auto-delete-on-merge en repo settings: pendiente (requiere PAT con Administration: write).
+- ⏸ 22 branches stale `claude/fts-website-iter-*` + 10 branches viejas `feat/*` y `fix/*` siguen en remoto. Backlog cleanup masivo cuando haya tiempo.
