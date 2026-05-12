@@ -1,4 +1,4 @@
-// Build: 20260428-planeacion-f3-export-v3
+// Build: 20260511-planeacion-fase3-categoria-autoprogresiva
 'use strict';
 
 window.PLANEACION_HORARIOS = {
@@ -39,23 +39,40 @@ window.PLANEACION_HORARIOS = {
     }
   },
 
-  // Mapeo dept_id → perfil_key. Operaciones distingue campo vs oficina
-  // según si el empleado está en la lista de oficina (Gibrán/Gerardo/Tere).
-  // Si hay PLANEACION_CONFIG.config con requiere_check explícito, también
-  // considera que requiere_check=false → perfil oficina.
+  // Mapeo dept_id → perfil_key. Operaciones distingue campo vs oficina via
+  // x_categoria_nomina del empleado (autoprogresivo) con fallback temporal a
+  // oficinaIds hardcoded mientras se valida que todos los hourly_sencilla
+  // tengan categoría explícita en Odoo.
   //
-  // F1 Sprint 1 Fase 0 (2026-05-11): bug fix — dept 8 (zombie Admin&Finanzas)
-  // → dept 16 (Recursos Humanos real). dept 12 (no existe Odoo) → dept 17
-  // (Ingeniería real). Antes: Ana RH caía a fallback 'operaciones_campo'.
+  // Historia:
+  // - F1 Sprint 1 Fase 0 (2026-05-11): bug fix dept_id mapping (8→16, 12→17).
+  // - F1 Sprint 1 Fase 3 (2026-05-11): refactor autoprogresivo — empleado nuevo
+  //   con x_categoria_nomina='hourly_sencilla' (set en Odoo) → perfil oficina
+  //   automático sin tocar este código.
   perfilParaDepto(deptId, empleado){
     if (deptId === 3){
-      const oficinaIds = [89, 91, 113];
-      if (empleado && oficinaIds.indexOf(empleado.id) !== -1) return 'operaciones_oficina';
-      // Si la config dice que NO requiere check → tratar como oficina
+      // Regla autoprogresiva: x_categoria_nomina='hourly_sencilla' = oficina.
+      // Gerardo (59), Teresa (60), Gibrán (62), Jésus M (68), Abraham (135)
+      // ya tienen este override post-Sprint-1-Fase-1.
+      if (empleado && empleado.x_categoria_nomina === 'hourly_sencilla'){
+        return 'operaciones_oficina';
+      }
+      // Regla autoprogresiva: x_categoria_nomina='confianza' (Felipe, Mateo)
+      // — tratamos como oficina hasta que existan perfiles dedicados (Sprint 2).
+      if (empleado && empleado.x_categoria_nomina === 'confianza'){
+        return 'operaciones_oficina';
+      }
+      // TEMP fallback: lista hardcoded para empleados sin categoría poblada todavía.
+      // Eliminar cuando 100% de operaciones_oficina tengan x_categoria_nomina='hourly_sencilla'
+      // (validar via empleados-master.json _meta.total_con_categoria_default).
+      const oficinaIdsLegacy = [89, 91, 113];
+      if (empleado && oficinaIdsLegacy.indexOf(empleado.id) !== -1) return 'operaciones_oficina';
+      // PLANEACION_CONFIG fallback (deuda relacionada — shared/planeacion-config.json).
       if (empleado && window.PLANEACION_CONFIG &&
           !window.PLANEACION_CONFIG.requiereCheck(empleado.id)){
         return 'operaciones_oficina';
       }
+      // Default por depto: Operaciones = campo (x_categoria_nomina='hourly_doble' default).
       return 'operaciones_campo';
     }
     const map = {

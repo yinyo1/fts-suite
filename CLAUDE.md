@@ -17,7 +17,7 @@ Idiomas del repo: español para UI/textos, inglés para variables/funciones de c
 
 ---
 
-## 2. Workflows n8n productivos (12 activos)
+## 2. Workflows n8n productivos (13 activos)
 
 **No tocar sin avisar al usuario.** Cualquier modificación a estos requiere validar primero con `n8n_validate_workflow` y mostrar diff antes de aplicar.
 
@@ -37,6 +37,7 @@ Idiomas del repo: español para UI/textos, inglés para variables/funciones de c
 | 10 | `kiosk/sos (v3.4)` | `m6dyGa0yV1zYPwJF` | `zYPwJF` | Pánico + Bloque B incidentes |
 | 11 | `incidencias/crear-olvido-checkout` (F1 v3) | `IRtG38Aknb5SW15h` | `5SW15h` | 15 nodos. Lookup attendance + Odoo UPDATE check_out + TAG. Endpoint moderno reemplaza `/webhook/kiosk/cerrar-registro` (legacy hasta F6). |
 | 12 | `panel/derivar-roles` (F2.1) | `f59LMsbjPmO8pzWu` | `O8pzWu` | 8 nodos. Webhook GET. Read hr.employee + Search reportes_directos via parent_id reverso. Devuelve `roles_derivados` (`['supervisor','rh','direccion']`) auto-derivados. Reemplaza JSON estático eliminado. |
+| 13 | `rh/empleados-master/sync` (Sprint 1 Fase 3) | `5nzVRsCMlCZlq5s4` | `q5s4` | 10 nodos, 2 triggers (Schedule 6am CST + Webhook POST). Re-dumpea hr.employee active a `shared/config/empleados-master.json` con _meta auto_synced. Smoke test 2026-05-11: 44 empleados sincronizados en 3.14s. **Primer workflow con Schedule Trigger del sistema** (Bloque B cron 2am pendiente). |
 
 **Workflows archivados (19):** ignorar a menos que el usuario lo pida explícitamente para historial.
 
@@ -448,7 +449,7 @@ const DEPTOS_RH = ['Legal', 'Recursos Humanos'];
 | 1 | Refactor `CEO_EMPLEADO_ID` → Odoo SEARCH x_categoria_nomina | `JLiuczUd61xVNp36` | 🔴 alta | 30 min | Sprint 1 Fase 1 completo (campo `x_categoria_nomina` creado + Esteban setea su override `ceo`) |
 | 2 | Mismo refactor en `crear-olvido-checkout` | `IRtG38Aknb5SW15h` | 🔴 alta | 20 min | Misma + ya hecho #1 (copy pattern) |
 | 3 | `DEPTOS_VALIDOS` → leer de `shared/config/departamentos.json` o Odoo SEARCH | Ambos | 🟡 media | 30 min | Sprint 2 (puede esperar) |
-| 4 | Frontend `horarios-base.js:48` `oficinaIds` → `x_categoria_nomina === 'hourly_sencilla'` | n/a (frontend) | 🟡 media | 15 min | Sprint 1 Fase 2 + Sync Odoo→JSON activo |
+| 4 | Frontend `horarios-base.js:48` `oficinaIds` → `x_categoria_nomina === 'hourly_sencilla'` | n/a (frontend) | ✅ **DONE PARCIAL (Sprint 1 Fase 3, 2026-05-11)** | — | Refactor aplicado: lookup primario por `x_categoria_nomina`, fallback temporal a `oficinaIdsLegacy = [89, 91, 113]` marcado para eliminar cuando 100% empleados oficina tengan override. Eliminar fallback en Sprint 2 cuando `total_con_categoria_default` = 0 para hourly_sencilla. |
 
 ### Anti-patrones a vigilar en futuros workflows
 
