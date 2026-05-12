@@ -3,13 +3,15 @@
     "version": 1,
     "generated_at": "2026-05-11T18:30:00Z",
     "source": "Odoo hr.employee fresh dump via MCP (read-only) — Sprint 1 Fase 0 baseline",
-    "sync_strategy": "n8n webhook on-change (D4): cuando Ana Laura edita en panel admin → workflow rh/empleados-master/update → escribe a Odoo Y a este archivo. Cron 6am diario reescribe desde Odoo para capturar cambios internos (counters retardos, etc.).",
+    "auto_update_status": "manual_snapshot_temporary",
+    "auto_update_status_explicacion": "Este archivo es un SNAPSHOT MANUAL temporal. El workflow n8n para sync automático Odoo → JSON aún no existe — spec en docs/SPRINT_1_FASE_3_WORKFLOW_SPEC.md, implementación en Sprint 1 Fase 3. Hasta entonces, este archivo NO se actualiza automáticamente cuando entra empleado nuevo en Odoo. ⚠️ Anti-patrón temporal aceptado para desbloquear Fase 0; se elimina en Fase 3 cuando auto_update_status pase a 'auto_synced'.",
+    "sync_strategy_post_fase3": "n8n webhook on-change (D4): cuando Ana Laura edita en panel admin → workflow rh/empleados-master/update → escribe a Odoo Y a este archivo. Cron 6am diario respaldo para changes internos Odoo (counters retardos, etc.).",
     "total_active": 44,
     "total_con_departamento": 37,
     "total_sin_departamento": 7,
     "total_con_hora_entrada": 36,
     "total_sin_hora_entrada": 8,
-    "notas": "Campos x_categoria_nomina, x_he_tipo, x_aplica_ppa, x_dias_laborables NO incluidos todavía — pendiente que Esteban los cree en Studio (ver docs/SPRINT_1_ODOO_SPECS.md §A) y se carguen vía Sprint 1 Fase 2."
+    "notas": "Campos x_categoria_nomina, x_he_tipo, x_aplica_ppa, x_dias_laborables NO incluidos todavía — pendiente que Esteban los cree en Studio (ver docs/SPRINT_1_ODOO_SPECS.md §A) y se carguen vía Sprint 1 Fase 2. Ver docs/PLAN_NOMINA_FTS_SUITE.md §0.5 (Principio autoprogresivo) para la lógica de fallback cuando estos campos están vacíos."
   },
   "empleados": [
     {"id":6,"name":"Leonel Cruz Cristobal","department_id":3,"department_name":"Operaciones","parent_id":112,"parent_name":"Felipe Pérez Guzmán","resource_calendar_id":2,"resource_calendar_name":"Horas operaciones","work_email":"leoncruzcriz261987@gmail.com","work_phone":"+52 81 1665 1692","mobile_phone":null,"x_studio_hora_entrada":7.0,"x_studio_retardos_15_dias":2},
