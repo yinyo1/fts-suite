@@ -25,7 +25,7 @@ Idiomas del repo: español para UI/textos, inglés para variables/funciones de c
 
 | # | Nombre exacto en n8n | ID completo (API) | ID corto | Notas |
 |---|---|---|---|---|
-| 1 | `incidencias/crear-olvido-entrada` (F1.1) | `JLiuczUd61xVNp36` | `xVNp36` | 11 nodos. Lookup empleado + Odoo UPDATE TAG (`x_studio_horario_en_disputa` + `x_studio_incidencia_pendiente_id` sobre `check_in`). Snapshot supervisor. |
+| 1 | `incidencias/crear-olvido-entrada` (F1.1) | `JLiuczUd61xVNp36` | `xVNp36` | 12 nodos. Lookup empleado + Odoo UPDATE TAG (`x_studio_horario_en_disputa` + `x_studio_incidencia_pendiente_id` sobre `check_in`). Snapshot supervisor. **Sprint 1 cleanup (2026-05-12):** CEO_EMPLEADO_ID hardcoded refactorizado a lookup `empleados-master.json` autoprogresivo. Nodo nuevo `HTTP - GET empleados-master.json`. |
 | 2 | `incidencias/resolver` (v2.1 F1.1) | `Oc2ceMHX2O0L0y2X` | `0L0y2X` | 20 nodos. TAG management + 4 acciones (sup/rh/dir) + branch tipo (entrada/checkout). Fixes D1-D4 F1.1: respeta `tag_disputa_activo` previo, calcula `aplicaHora` antes de conversión, discrimina `baseUtcStr` por tipo, night-shift fix solo para checkout. Helper `esEstadoTerminal`. |
 | 3 | `asistencias/admin` | `Bqnfsx8gx2TpzfwM` | `TpzfwM` | Consultas admin |
 | 4 | `accesos-incidencias/guardar (v2.2 auth-fix)` | `HwPq9dqxjy2KETi7` | `2KETi7` | Auth + persistencia |
@@ -35,7 +35,7 @@ Idiomas del repo: español para UI/textos, inglés para variables/funciones de c
 | 8 | `kiosk/estado-empleado (v3 Fase 1)` | `U13fngg2dTKgDQ8Y` | `KgDQ8Y` | Estado actual empleado |
 | 9 | `dashboard/resumen (v4.3)` | `nNNQrFMTSjIfqHep` | `IfqHep` | KPIs operación |
 | 10 | `kiosk/sos (v3.4)` | `m6dyGa0yV1zYPwJF` | `zYPwJF` | Pánico + Bloque B incidentes |
-| 11 | `incidencias/crear-olvido-checkout` (F1 v3) | `IRtG38Aknb5SW15h` | `5SW15h` | 15 nodos. Lookup attendance + Odoo UPDATE check_out + TAG. Endpoint moderno reemplaza `/webhook/kiosk/cerrar-registro` (legacy hasta F6). |
+| 11 | `incidencias/crear-olvido-checkout` (F1 v3) | `IRtG38Aknb5SW15h` | `5SW15h` | 16 nodos. Lookup attendance + Odoo UPDATE check_out + TAG. Endpoint moderno reemplaza `/webhook/kiosk/cerrar-registro` (legacy hasta F6). **Sprint 1 cleanup (2026-05-12):** CEO_EMPLEADO_ID hardcoded refactorizado a lookup `empleados-master.json` autoprogresivo (en nodo `Code - Build incidencia`, no Merge). Nodo nuevo `HTTP - GET empleados-master.json`. |
 | 12 | `panel/derivar-roles` (F2.1) | `f59LMsbjPmO8pzWu` | `O8pzWu` | 8 nodos. Webhook GET. Read hr.employee + Search reportes_directos via parent_id reverso. Devuelve `roles_derivados` (`['supervisor','rh','direccion']`) auto-derivados. Reemplaza JSON estático eliminado. |
 | 13 | `rh/empleados-master/sync` (Sprint 1 Fase 3) | `5nzVRsCMlCZlq5s4` | `q5s4` | 10 nodos, 2 triggers (Schedule 6am CST + Webhook POST). Re-dumpea hr.employee active a `shared/config/empleados-master.json` con _meta auto_synced. Smoke test 2026-05-11: 44 empleados sincronizados en 3.14s. **Primer workflow con Schedule Trigger del sistema** (Bloque B cron 2am pendiente). |
 
@@ -446,8 +446,8 @@ const DEPTOS_RH = ['Legal', 'Recursos Humanos'];
 
 | # | Item | Workflow | Prioridad | Tiempo | Dependencia |
 |---|---|---|---|---|---|
-| 1 | Refactor `CEO_EMPLEADO_ID` → Odoo SEARCH x_categoria_nomina | `JLiuczUd61xVNp36` | 🔴 alta | 30 min | Sprint 1 Fase 1 completo (campo `x_categoria_nomina` creado + Esteban setea su override `ceo`) |
-| 2 | Mismo refactor en `crear-olvido-checkout` | `IRtG38Aknb5SW15h` | 🔴 alta | 20 min | Misma + ya hecho #1 (copy pattern) |
+| 1 | Refactor `CEO_EMPLEADO_ID` → empleados-master.json lookup | `JLiuczUd61xVNp36` | ✅ **DONE (Sprint 1 cleanup, 2026-05-12)** | — | Nodo nuevo `HTTP - GET empleados-master.json` + Code Merge usa `master.empleados.find(e => e.x_categoria_nomina === 'ceo')`. Fallback defensivo a 32 si lookup falla. Smoke test A+B passed (Felipe → pendiente_rh, Stephany → pendiente_supervisor). |
+| 2 | Mismo refactor en `crear-olvido-checkout` | `IRtG38Aknb5SW15h` | ✅ **DONE (Sprint 1 cleanup, 2026-05-12)** | — | Mismo patrón aplicado a `Code - Build incidencia` (no Merge — la CEO logic está en Build aquí). Validate runtime OK. Smoke test live no posible (requiere attendance sin check_out, todas cerradas), validación estructural code review + workflow validator. |
 | 3 | `DEPTOS_VALIDOS` → leer de `shared/config/departamentos.json` o Odoo SEARCH | Ambos | 🟡 media | 30 min | Sprint 2 (puede esperar) |
 | 4 | Frontend `horarios-base.js:48` `oficinaIds` → `x_categoria_nomina === 'hourly_sencilla'` | n/a (frontend) | ✅ **DONE PARCIAL (Sprint 1 Fase 3, 2026-05-11)** | — | Refactor aplicado: lookup primario por `x_categoria_nomina`, fallback temporal a `oficinaIdsLegacy = [89, 91, 113]` marcado para eliminar cuando 100% empleados oficina tengan override. Eliminar fallback en Sprint 2 cuando `total_con_categoria_default` = 0 para hourly_sencilla. |
 
