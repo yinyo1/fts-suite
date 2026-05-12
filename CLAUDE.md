@@ -308,44 +308,23 @@ Lecciones cross-cutting documentadas para evitar repetir bugs en futuros sprints
 
 ---
 
-## 12. Capacidad de PRs autónomos (configurado 2026-05-11, parcial)
+## 12. Capacidad de PRs autónomos (configurado 2026-05-11 ✅)
 
-Claude Code puede crear PRs sin intervención manual de Esteban — **una vez que el PAT tenga los scopes correctos**.
+Claude Code crea PRs sin intervención manual de Esteban. Capability validada end-to-end con smoke test PR #32 (creado + cerrado + branch borrada).
 
-### Setup actual
+### Setup
 
 - **Método:** GitHub CLI (`gh`) versión 2.92.0 instalada vía `winget install --id GitHub.cli --scope user`.
-- **Binario:** `C:\Users\esteb\AppData\Local\Microsoft\WinGet\Links\gh.exe` (también accesible en PATH después de reiniciar shell — agregado en `~/.bashrc`).
-- **Auth:** `gh auth login --with-token` vía stdin pipe. Token persistido en **Windows Credential Manager** (keyring) — más seguro que `~/.config/gh/hosts.yml`.
-- **Account:** yinyo1 (verificado con `gh auth status`).
+- **Binario:** `C:\Users\esteb\AppData\Local\Microsoft\WinGet\Links\gh.exe`. Persistido en PATH bash via `~/.bashrc`. En PowerShell aparece tras restart del shell (winget agregó a User PATH).
+- **Auth:** `gh auth login --with-token` vía stdin pipe (heredoc o `printf | gh`). Token en **Windows Credential Manager** (más seguro que `~/.config/gh/hosts.yml` plaintext).
+- **Account:** yinyo1.
+- **PAT permissions (fine-grained):** Contents: write, Pull requests: read+write, Administration: read+write, Metadata: read.
 
-### Estado de permissions del PAT actual
+### Repo settings activados
 
-| Operación | Permission requerido | Estado actual |
-|---|---|---|
-| git push/pull/delete branches | Contents: write | ✅ OK |
-| List PRs (`gh pr list`) | Pull requests: read | ✅ OK |
-| **Create PR (`gh pr create`)** | **Pull requests: write** | ❌ **MISSING** |
-| Activar `delete_branch_on_merge` | Administration: write | ❌ MISSING |
+- `delete_branch_on_merge: true` — branches feature se auto-borran al mergear PR. Previene acumulación stale (antes de esto había 22 branches `claude/fts-website-iter-*` + 10 viejas que nunca se limpiaron).
 
-El PAT actual es el mismo que usa n8n para auto-commits (`Contents: write` solamente). Para autonomía completa de PRs falta extender permissions.
-
-### Cómo extender el PAT (2 opciones)
-
-**Opción A — Extender el fine-grained PAT existente** (recomendada — menor superficie de tokens):
-1. Ir a https://github.com/settings/personal-access-tokens
-2. Click en el token actual `Claude Code FTS Suite PR autonomy` (o como esté nombrado)
-3. Click "Edit" → "Permissions"
-4. Marcar **Pull requests: Read and Write** + opcional **Administration: Write**
-5. Save (token sigue igual, no requiere re-paste)
-6. Re-confirmar auth si gh reporta unauthorized: `printf '%s\n' "MISMO_TOKEN" | gh auth login --with-token --hostname github.com`
-
-**Opción B — Crear PAT classic separado** (más simple, más permisos otorgados):
-1. Ir a https://github.com/settings/tokens/new
-2. Scope: `repo` (incluye PR write, contents, etc.)
-3. Genera, paste a Claude Code en próximo mensaje
-
-### Comando estándar para futuros PRs (cuando PAT esté listo)
+### Comando estándar para crear PR
 
 ```bash
 GH=/c/Users/esteb/AppData/Local/Microsoft/WinGet/Links/gh.exe
@@ -358,31 +337,39 @@ GH=/c/Users/esteb/AppData/Local/Microsoft/WinGet/Links/gh.exe
 ...
 
 ## Test plan
-...
+- [ ] item
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 BODY_EOF
 )"
 ```
 
-Para futuros sprints: **NO pidas URL manual a Esteban una vez que el PAT esté upgraded — abre el PR tú mismo** con el comando arriba.
+Devuelve la URL del PR. **Para futuros sprints: NO pidas URL manual a Esteban — abre el PR tú mismo** con el comando arriba.
 
-### Smoke test pendiente
+### Comandos útiles relacionados
 
-Una vez el PAT tenga `Pull requests: write`, validar con:
-```bash
-git checkout main && git pull
-git checkout -b test/pr-autonomy
-git commit --allow-empty -m "test: verify autonomous PR creation"
-git push -u origin test/pr-autonomy
-"$GH" pr create --title "test: PR autonomy" --base main --body "validation only, will be closed"
-"$GH" pr close <number> --delete-branch
+- `"$GH" pr list --state open` — listar PRs abiertos
+- `"$GH" pr close <number> --comment "..." --delete-branch` — cerrar PR + borrar branch
+- `"$GH" pr merge <number> --squash --delete-branch` — squash merge + delete branch (auto-delete ya activo, pero `--delete-branch` lo fuerza por si acaso)
+- `"$GH" pr checks <number>` — ver checks de CI/CD
+- `"$GH" pr diff <number>` — ver diff de un PR
+- `"$GH" api repos/yinyo1/fts-suite --jq '.permissions'` — verificar permissions del token
+
+### Smoke test ejecutado
+
+```
+2026-05-11 18:00 CST:
+✅ Branch test/pr-autonomy creada (empty commit)
+✅ Push exitoso a origin
+✅ gh pr create devolvió URL https://github.com/yinyo1/fts-suite/pull/32
+✅ gh pr close 32 --delete-branch limpió remoto
+✅ git fetch --prune limpió ref local
+✅ gh api PATCH delete_branch_on_merge=true → 200 OK
 ```
 
-Si esto funciona end-to-end → capability confirmada.
+### Si gh deja de funcionar en el futuro
 
-### Cleanup ejecutado en este setup
-
-- ✅ Branch `feature/sprint-f1.5-topochico-y-checkout-bloqueado` borrada en remoto (merged en PR #30, ya no necesaria).
-- ⏸ Auto-delete-on-merge en repo settings: pendiente (requiere PAT con Administration: write).
-- ⏸ 22 branches stale `claude/fts-website-iter-*` + 10 branches viejas `feat/*` y `fix/*` siguen en remoto. Backlog cleanup masivo cuando haya tiempo.
+1. Verificar auth: `"$GH" auth status` — debe decir "Logged in to github.com account yinyo1"
+2. Si "not logged in" → token revocado o expirado. Pide a Esteban PAT nuevo y re-auth:
+   `printf '%s\n' 'NUEVO_TOKEN' | "$GH" auth login --with-token --hostname github.com`
+3. Si "Resource not accessible by personal access token" → permissions del PAT insuficientes. Esteban debe ir a https://github.com/settings/personal-access-tokens, editar el token y marcar Pull requests / Administration según necesite.
