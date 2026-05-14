@@ -36,9 +36,19 @@
           "hora_propuesta_cst": null,
           "comentario": "Yo lo envie por el tema del choque que tuvo Carlos Manzanares, fue a recoger el personal en la calle Conchello y llevarlos a Topochico",
           "accion": "aprobado"
+        },
+        {
+          "paso": 3,
+          "rol": "rh",
+          "user_id": 63,
+          "usuario": "Magaly Estefanía Pérez García",
+          "timestamp": "2026-05-14T22:01:22.103Z",
+          "hora_propuesta_cst": "07:40",
+          "comentario": "Registro correcto 7:40 am.",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_rh",
+      "status": "aprobada_tal_cual",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false,
       "department_id": 3,
@@ -53,7 +63,7 @@
       "rh_directo_ceo": false,
       "directo_ceo": false,
       "sin_supervisor": false,
-      "tag_disputa_activo": true
+      "tag_disputa_activo": false
     },
     {
       "id_interno": "INC-OLV-124-2026-05-14T13-26-03-471Z",
