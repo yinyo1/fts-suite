@@ -80,9 +80,19 @@
           "hora_propuesta_cst": "2026-05-14 07:00:00",
           "comentario": "Celular sin batería",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe Pérez Guzmán",
+          "timestamp": "2026-05-14T21:46:39.443Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Se va a revisar con caseta de Vertiv si esta registrado a las 7 am",
+          "accion": "escalado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false,
       "department_id": 3,
