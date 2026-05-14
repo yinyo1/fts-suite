@@ -166,12 +166,22 @@
           "hora_propuesta_cst": null,
           "comentario": "Se va a revisar en caseta Vertiv si tiene registrada salida a las 5:05 pm",
           "accion": "escalado"
+        },
+        {
+          "paso": 3,
+          "rol": "rh",
+          "user_id": 63,
+          "usuario": "Magaly Estefanía Pérez García",
+          "timestamp": "2026-05-14T22:17:35.092Z",
+          "hora_propuesta_cst": "17:05",
+          "comentario": "-SE REVISO CON EL AREA DE OPERACIONES y se concluyo salida las 5.05 pm",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_rh",
+      "status": "aprobada_tal_cual",
       "hora_final_aplicada_utc": "2026-05-13 23:05:00",
       "aplicado_en_odoo": true,
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "creada_por_modulo": "kiosk",
       "creada_por_build": "20260504-kiosk-olvide-checkout-v3-boton-jornada"
     },
