@@ -146,9 +146,19 @@
           "fecha": "2026-05-13T23:33:44.198Z",
           "hora_propuesta_cst": "17:05",
           "comentario": "Se me olvidó checar salida en la caseta de Vertiv"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe Pérez Guzmán",
+          "timestamp": "2026-05-14T21:47:12.349Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Se va a revisar en caseta Vertiv si tiene registrada salida a las 5:05 pm",
+          "accion": "escalado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": "2026-05-13 23:05:00",
       "aplicado_en_odoo": true,
       "tag_disputa_activo": true,
