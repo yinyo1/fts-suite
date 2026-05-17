@@ -2,6 +2,52 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-CHK-76-2026-05-17T16-16-32-161Z",
+      "tipo": "olvido_checkout",
+      "empleado_id": 76,
+      "empleado_nombre": "Carlos Eduardo Manzanares",
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "sin_departamento": false,
+      "depto_invalido": false,
+      "supervisor_id": 112,
+      "supervisor_name": "Felipe Pérez Guzmán",
+      "supervisor_email": "c6203082@gmail.com",
+      "supervisor_phone": null,
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": false,
+      "sin_supervisor": false,
+      "attendance_id": 13109,
+      "fecha_creacion": "2026-05-17T16:16:32.161Z",
+      "check_in_original_utc": "2026-05-17 03:05:09",
+      "check_out_propuesto_utc": "2026-05-17 15:00:00",
+      "check_out_propuesto_cst": "2026-05-17 09:00:00",
+      "geolocation": {
+        "lat": 25.8545493,
+        "lng": -100.4011154,
+        "accuracy": 22.260000228881836,
+        "captured_at": "2026-05-17T16:16:27.644Z"
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "accion": "crear",
+          "fecha": "2026-05-17T16:16:32.161Z",
+          "hora_propuesta_cst": "09:00",
+          "comentario": "Se me olvidó checar en planta topó chico horario de 9am A 9 pm sábado 16 mayo 2026"
+        }
+      ],
+      "status": "pendiente_supervisor",
+      "hora_final_aplicada_utc": "2026-05-17 15:00:00",
+      "aplicado_en_odoo": true,
+      "tag_disputa_activo": true,
+      "creada_por_modulo": "kiosk",
+      "creada_por_build": "20260504-kiosk-olvide-checkout-v3-boton-jornada"
+    },
+    {
       "id_interno": "INC-OLV-CHK-127-2026-05-17T15-38-01-570Z",
       "tipo": "olvido_checkout",
       "empleado_id": 127,
