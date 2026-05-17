@@ -2,6 +2,52 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-CHK-127-2026-05-17T15-38-01-570Z",
+      "tipo": "olvido_checkout",
+      "empleado_id": 127,
+      "empleado_nombre": "Cesar Gildardo Gómez Cano",
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "sin_departamento": false,
+      "depto_invalido": false,
+      "supervisor_id": 112,
+      "supervisor_name": "Felipe Pérez Guzmán",
+      "supervisor_email": "cesar_gil12@hotmail.com",
+      "supervisor_phone": "+52 81 8203 8252",
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": false,
+      "sin_supervisor": false,
+      "attendance_id": 13106,
+      "fecha_creacion": "2026-05-17T15:38:01.571Z",
+      "check_in_original_utc": "2026-05-17 02:54:46",
+      "check_out_propuesto_utc": "2026-05-17 15:00:00",
+      "check_out_propuesto_cst": "2026-05-17 09:00:00",
+      "geolocation": {
+        "lat": 25.7660206,
+        "lng": -100.3256258,
+        "accuracy": 4.48199987411499,
+        "captured_at": "2026-05-17T15:37:58.545Z"
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "accion": "crear",
+          "fecha": "2026-05-17T15:38:01.571Z",
+          "hora_propuesta_cst": "09:00",
+          "comentario": "Se me olvidó checar salida"
+        }
+      ],
+      "status": "pendiente_supervisor",
+      "hora_final_aplicada_utc": "2026-05-17 15:00:00",
+      "aplicado_en_odoo": true,
+      "tag_disputa_activo": true,
+      "creada_por_modulo": "kiosk",
+      "creada_por_build": "20260504-kiosk-olvide-checkout-v3-boton-jornada"
+    },
+    {
       "id_interno": "INC-AUTO-CIERRE-112-2026-05-16T20-18-43-928Z",
       "tipo": "auto_cierre_pendiente",
       "status": "pendiente_rh",
