@@ -1,24 +1,24 @@
 {
   "_meta": {
     "version": 3,
-    "generated_at": "2026-05-18T10:00:02.488Z",
+    "generated_at": "2026-05-19T10:00:01.523Z",
     "source": "Odoo hr.employee live sync via workflow rh/empleados-master/sync",
     "auto_update_status": "auto_synced",
     "auto_update_status_explicacion": "Workflow n8n rh/empleados-master/sync ACTIVO. Cron 6am CST diario + webhook on-change POST /rh/empleados-master/refresh.",
     "fase": "3-active",
     "last_sync_event": "cron 6am CST",
-    "last_sync_started_at": "2026-05-18T10:00:00.422Z",
-    "last_sync_completed_at": "2026-05-18T10:00:02.488Z",
+    "last_sync_started_at": "2026-05-19T10:00:00.416Z",
+    "last_sync_completed_at": "2026-05-19T10:00:01.523Z",
     "sync_strategy": "Cron 6am diario (Schedule Trigger) + webhook on-change desde panel admin (Fase 4 cuando exista).",
-    "total_active": 44,
-    "total_con_departamento": 37,
+    "total_active": 45,
+    "total_con_departamento": 38,
     "total_sin_departamento": 7,
     "total_con_hora_entrada": 37,
-    "total_sin_hora_entrada": 7,
+    "total_sin_hora_entrada": 8,
     "total_con_categoria_explicita": 8,
-    "total_con_categoria_default": 36,
+    "total_con_categoria_default": 37,
     "total_ppa_aplica": 43,
-    "total_ppa_no_aplica": 1,
+    "total_ppa_no_aplica": 2,
     "distribucion_categorias_explicitas": {
       "ceo": 1,
       "hourly_sencilla": 5,
@@ -779,6 +779,23 @@
       "x_studio_retardos_15_dias": 0,
       "x_categoria_nomina": null,
       "x_aplica_ppa": true
+    },
+    {
+      "id": 149,
+      "name": "Erick Belmont Kato",
+      "department_id": 18,
+      "department_name": "Administracion y Finanzas",
+      "parent_id": 32,
+      "parent_name": "Jesus Esteban De La Cruz Calderon",
+      "resource_calendar_id": 6,
+      "resource_calendar_name": "Horas de oficina",
+      "work_email": "erick@fts.mx",
+      "work_phone": "+52 81 1497 5381",
+      "mobile_phone": null,
+      "x_studio_hora_entrada": 0,
+      "x_studio_retardos_15_dias": 0,
+      "x_categoria_nomina": null,
+      "x_aplica_ppa": false
     }
   ]
 }
