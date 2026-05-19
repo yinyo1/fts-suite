@@ -2,6 +2,52 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-CHK-124-2026-05-19T00-26-47-500Z",
+      "tipo": "olvido_checkout",
+      "empleado_id": 124,
+      "empleado_nombre": "Germán Emmanuel Merino Falcón",
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "sin_departamento": false,
+      "depto_invalido": false,
+      "supervisor_id": 112,
+      "supervisor_name": "Felipe Pérez Guzmán",
+      "supervisor_email": "emmanu.2001@gmail.com",
+      "supervisor_phone": "+52 271 229 6489",
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": false,
+      "sin_supervisor": false,
+      "attendance_id": 13136,
+      "fecha_creacion": "2026-05-19T00:26:47.500Z",
+      "check_in_original_utc": "2026-05-18 13:54:48",
+      "check_out_propuesto_utc": "2026-05-19 00:00:00",
+      "check_out_propuesto_cst": "2026-05-18 18:00:00",
+      "geolocation": {
+        "lat": 25.6643023,
+        "lng": -100.4290625,
+        "accuracy": 77.5999984741211,
+        "captured_at": "2026-05-19T00:26:42.785Z"
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "accion": "crear",
+          "fecha": "2026-05-19T00:26:47.500Z",
+          "hora_propuesta_cst": "18:00",
+          "comentario": "Se me olvidó checar salida"
+        }
+      ],
+      "status": "pendiente_supervisor",
+      "hora_final_aplicada_utc": "2026-05-19 00:00:00",
+      "aplicado_en_odoo": true,
+      "tag_disputa_activo": true,
+      "creada_por_modulo": "kiosk",
+      "creada_por_build": "20260504-kiosk-olvide-checkout-v3-boton-jornada"
+    },
+    {
       "id_interno": "INC-OLV-CHK-124-2026-05-19T00-26-47-514Z",
       "tipo": "olvido_checkout",
       "empleado_id": 124,
