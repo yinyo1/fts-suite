@@ -104,14 +104,18 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 .badge-alert{background:#1a365d;color:#fef3c7;border:1px solid #1a365d;animation:pulse-alert 2s infinite}
 @keyframes pulse-alert{0%,100%{box-shadow:0 0 0 0 rgba(254,243,199,.7)}50%{box-shadow:0 0 0 4px rgba(254,243,199,0)}}
 .notes.alert{color:#1a365d;font-weight:600;font-style:normal;background:#fef3c7;padding:4px 8px;border-radius:4px;border-left:3px solid #1a365d;margin-top:4px}
+.badge-cancelled{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
+.badge-hold{background:#fed7aa;color:#9a3412;border:1px solid #fdba74}
+.tr-cancelled td.col-name strong{text-decoration:line-through;color:#94a3b8}
+.tr-cancelled td.col-name .notes{text-decoration:line-through;color:#cbd5e1}
 .bar.alert{background:linear-gradient(to bottom,#2c5282,#1a365d)!important;color:#fef3c7!important;border:2px solid #fef3c7;box-shadow:0 0 8px rgba(254,243,199,.6)}
 </style></head><body>
 <div class="header">
-  <h1><span class="badge-internal">INTERNO FTS</span><span class="badge-version">v34</span>📊 Plan Sistema de Filtros — NALCO Topo Chico</h1>
+  <h1><span class="badge-internal">INTERNO FTS</span><span class="badge-version">v35</span>📊 Plan Sistema de Filtros — NALCO Topo Chico</h1>
   <div class="meta">
     <strong>Cliente:</strong> NALCO (Topo Chico) &nbsp;•&nbsp;
     <strong>Autor:</strong> Esteban De La Cruz Calderón – FTS &nbsp;•&nbsp;
-    <strong>Generado:</strong> 07/05/2026 01:02 &nbsp;•&nbsp;
+    <strong>Generado:</strong> 18/05/2026 &nbsp;•&nbsp;
     <strong>Período:</strong> 6 May → 14 May 2026 (+TBD)
   </div>
 </div>
@@ -175,7 +179,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <th class="col-name">Actividad</th><th class="col-pct">%</th><th class="col-fecha">Inicio</th><th class="col-fecha">Fin</th>
 <th class="col-dur">Días</th><th class="col-status">Estado</th>
 </tr></thead><tbody>
-<tr class="day-divider today-row"><td colspan="10">📅 Mié 6/05/2026 (HOY)</td></tr>
+<tr class="day-divider"><td colspan="10">📅 Mié 6/05/2026</td></tr>
 <tr>
 <td class="col-edit"><button type="button" class="btn-edit-row" data-tr-id="C2-16" title="Editar actividad">✏️</button></td><td class="col-id">C2-16</td>
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
@@ -292,8 +296,8 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-edit"><button type="button" class="btn-edit-row" data-tr-id="C1-7" title="Editar actividad">✏️</button></td><td class="col-id">C1-7</td>
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">🔧</td>
-<td class="col-name"><strong>Conexión eléctrica sensor turbidez</strong><div class="notes ">Inst mecánica cerebro ya completada el Mié 6</div></td>
-<td class="col-pct editable">80</td>
+<td class="col-name"><strong>Conexión eléctrica sensor turbidez</strong><div class="notes ">Ya se tiene en lugar, solo falta hacer la conexión</div></td>
+<td class="col-pct editable">90</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-dur">1d</td>
@@ -304,11 +308,11 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Instalación y ruteo de cableado de sensor nivel y conexión en PLC</strong></td>
-<td class="col-pct editable">90</td>
+<td class="col-pct editable">100</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-dur">1d</td>
-<td class="col-status"></td>
+<td class="col-status"><span class="badge badge-completed">✅ Completado</span></td>
 </tr>
 <tr>
 <td class="col-edit"><button type="button" class="btn-edit-row" data-tr-id="C1-9" title="Editar actividad">✏️</button></td><td class="col-id">C1-9</td>
@@ -326,33 +330,33 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Modificar 3 carretes (de 8) entradas/salidas resinas - férula 1.5&quot; lateral</strong><div class="notes ">Igual que válvulas KEOFFIT (Manzanares) - se fabrican y luego se pasivan</div></td>
-<td class="col-pct editable">0</td>
+<td class="col-pct editable">100</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-dur">1d</td>
-<td class="col-status"></td>
+<td class="col-status"><span class="badge badge-completed">✅ Completado</span></td>
 </tr>
 <tr>
 <td class="col-edit"><button type="button" class="btn-edit-row" data-tr-id="C2-30" title="Editar actividad">✏️</button></td><td class="col-id">C2-30</td>
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Modificar codos de SALIDA de Resinas R6-R7-R8 (codos abajo después del niple)</strong><div class="notes">Objetivo: alinear bien los trenes de tubos de las resinas. Falta sacar medida del carretito, falta  solo el codo de la resina #6</div></td>
-<td class="col-pct editable">80</td>
+<td class="col-pct editable">100</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-dur">1d</td>
-<td class="col-status"></td>
+<td class="col-status"><span class="badge badge-completed">✅ Completado</span></td>
 </tr>
 <tr>
 <td class="col-edit"><button type="button" class="btn-edit-row" data-tr-id="NEW-1" title="Editar actividad">✏️</button></td><td class="col-id">NEW-1</td>
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
-<td class="col-name"><strong>Pedir pasivado de codos (C2-30) y carretes (C2-26a)</strong><div class="notes ">Nueva - se piden para que estén pasivados antes del viernes</div></td>
-<td class="col-pct editable">0</td>
+<td class="col-name"><strong>Pedir pasivado de codos (C2-30) y carretes (C2-26a)</strong><div class="notes ">Ya están fabricados, se programa con Aldo para agregar más cosas. 18/may</div></td>
+<td class="col-pct editable">100</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-fecha">Jue 7/05</td>
 <td class="col-dur">1d</td>
-<td class="col-status"><span class="badge badge-new">🆕 Nueva</span></td>
+<td class="col-status"><span class="badge badge-completed">✅ Completado</span></td>
 </tr>
 <tr class="day-divider strong-day"><td colspan="10">📅 Vie 8/05/2026 ⚠️ DÍA FUERTE</td></tr>
 <tr>
@@ -415,29 +419,29 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Cambiar anclas oxidadas Tren 1 entre R1-R2 y R3</strong></td>
-<td class="col-pct editable">0</td>
+<td class="col-pct editable">100</td>
 <td class="col-fecha">Vie 8/05</td>
 <td class="col-fecha">Vie 8/05</td>
 <td class="col-dur">1d</td>
-<td class="col-status"></td>
+<td class="col-status"><span class="badge badge-completed">✅ Completado</span></td>
 </tr>
 <tr>
 <td class="col-edit"><button type="button" class="btn-edit-row" data-tr-id="C2-2" title="Editar actividad">✏️</button></td><td class="col-id">C2-2</td>
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Pintura ángulos soportería área racks (anti-corrosivo gris)</strong></td>
-<td class="col-pct editable">0</td>
+<td class="col-pct editable">100</td>
 <td class="col-fecha">Vie 8/05</td>
 <td class="col-fecha">Vie 8/05</td>
 <td class="col-dur">1d</td>
-<td class="col-status"></td>
+<td class="col-status"><span class="badge badge-completed">✅ Completado</span></td>
 </tr>
 <tr>
 <td class="col-edit"><button type="button" class="btn-edit-row" data-tr-id="C2-28" title="Editar actividad">✏️</button></td><td class="col-id">C2-28</td>
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
-<td class="col-name"><strong>Tubo 3&quot; soldado en drenes a trinchera</strong></td>
-<td class="col-pct editable">0</td>
+<td class="col-name"><strong>Tubo 3&quot; soldado en drenes a trinchera</strong><div class="notes ">4 de 8 del tren 2. Hoy 18/may se reanuda actividad</div></td>
+<td class="col-pct editable">50</td>
 <td class="col-fecha">Vie 8/05</td>
 <td class="col-fecha">Vie 8/05</td>
 <td class="col-dur">1d</td>
@@ -447,7 +451,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-edit"><button type="button" class="btn-edit-row" data-tr-id="NEW-2" title="Editar actividad">✏️</button></td><td class="col-id">NEW-2</td>
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
-<td class="col-name"><strong>Instalar carretes y codos (pasivados) - aprox 11 AM</strong><div class="notes ">Nueva - llegan en la mañana, antes de la 1 PM. Se instalan los fabricados el jueves</div></td>
+<td class="col-name"><strong>Instalar carretes y codos (pasivados) - aprox 11 AM</strong><div class="notes ">Aún no están pasivados 18/may</div></td>
 <td class="col-pct editable">0</td>
 <td class="col-fecha">Vie 8/05</td>
 <td class="col-fecha">Vie 8/05</td>
@@ -466,39 +470,29 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-status"><span class="badge badge-alert">🔔 FELIPE</span></td>
 </tr>
 <tr class="day-divider"><td colspan="10">📅 Sáb 9 - Dom 10/05/2026 (Fin de semana)</td></tr>
-<tr>
+<tr class="tr-cancelled">
 <td class="col-edit"><button type="button" class="btn-edit-row" data-tr-id="C1-16" title="Editar actividad">✏️</button></td><td class="col-id">C1-16</td>
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">🔧</td>
-<td class="col-name"><strong>Rematar cableado eléctrico diferenciales presión</strong></td>
+<td class="col-name"><strong>Rematar cableado eléctrico diferenciales presión</strong><div class="notes ">Se cancela: se remueven diferenciales de presión</div></td>
 <td class="col-pct editable">0</td>
 <td class="col-fecha">Sáb 9/05</td>
 <td class="col-fecha">Dom 10/05</td>
 <td class="col-dur">2d</td>
-<td class="col-status"></td>
+<td class="col-status"><span class="badge badge-cancelled">❌ CANCELADA</span></td>
 </tr>
-<tr>
+<tr class="tr-cancelled">
 <td class="col-edit"><button type="button" class="btn-edit-row" data-tr-id="C1-17" title="Editar actividad">✏️</button></td><td class="col-id">C1-17</td>
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">🔧</td>
-<td class="col-name"><strong>Instalación tubings y accesorios diferenciales presión</strong><div class="notes ">Depende de definición método saneamiento y flusheo</div></td>
+<td class="col-name"><strong>Instalación tubings y accesorios diferenciales presión</strong><div class="notes ">Se cancela: se remueven diferenciales de presión</div></td>
 <td class="col-pct editable">0</td>
 <td class="col-fecha">Sáb 9/05</td>
 <td class="col-fecha">Dom 10/05</td>
 <td class="col-dur">2d</td>
-<td class="col-status"></td>
+<td class="col-status"><span class="badge badge-cancelled">❌ CANCELADA</span></td>
 </tr>
-<tr>
-<td class="col-edit"><button type="button" class="btn-edit-row" data-tr-id="C2-17" title="Editar actividad">✏️</button></td><td class="col-id">C2-17</td>
-<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
-<td class="col-tipo">🔧</td>
-<td class="col-name"><strong>Obra civil weekend TENTATIVA (placeholder)</strong><div class="notes alert">🔔 ALERTA FELIPE: una sola línea de obra civil tentativa Sáb-Dom. ESPERANDO LUZ VERDE o HOLD de planta — calidad debe autorizar (riesgo: polvo contamina producción que arranca el dom). Si OK: liberar TODA la obra civil del weekend (trinchera + cemento bombas + PVC + tierras tablero, ver TBD). Si HOLD: queda toda en TBD permanente.</div></td>
-<td class="col-pct editable">0</td>
-<td class="col-fecha">Sáb 9/05</td>
-<td class="col-fecha">Dom 10/05</td>
-<td class="col-dur">2d</td>
-<td class="col-status"><span class="badge badge-alert">🔔 FELIPE</span></td>
-</tr>
+
 <tr>
 <td class="col-edit"><button type="button" class="btn-edit-row" data-tr-id="PUNCHLIST-SAB" title="Editar actividad">✏️</button></td><td class="col-id">PUNCHLIST-SAB</td>
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
@@ -522,16 +516,16 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-dur">1d</td>
 <td class="col-status"></td>
 </tr>
-<tr>
+<tr class="tr-cancelled">
 <td class="col-edit"><button type="button" class="btn-edit-row" data-tr-id="C1-19" title="Editar actividad">✏️</button></td><td class="col-id">C1-19</td>
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">🔧</td>
-<td class="col-name"><strong>Atenuación y conexión de diferenciales de presión</strong></td>
+<td class="col-name"><strong>Atenuación y conexión de diferenciales de presión</strong><div class="notes ">Se cancela: se remueven diferenciales de presión</div></td>
 <td class="col-pct editable">0</td>
 <td class="col-fecha">Lun 11/05</td>
 <td class="col-fecha">Lun 11/05</td>
 <td class="col-dur">1d</td>
-<td class="col-status"></td>
+<td class="col-status"><span class="badge badge-cancelled">❌ CANCELADA</span></td>
 </tr>
 <tr>
 <td class="col-edit"><button type="button" class="btn-edit-row" data-tr-id="C1-20" title="Editar actividad">✏️</button></td><td class="col-id">C1-20</td>
@@ -567,16 +561,16 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-dur">1d</td>
 <td class="col-status"><span class="badge badge-troubleshooting">⚠️ TS pdte</span></td>
 </tr>
-<tr>
+<tr class="tr-cancelled">
 <td class="col-edit"><button type="button" class="btn-edit-row" data-tr-id="C1-23" title="Editar actividad">✏️</button></td><td class="col-id">C1-23</td>
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">🔧</td>
-<td class="col-name"><strong>Atenuación y conexión de diferenciales de presión - cont.</strong></td>
+<td class="col-name"><strong>Atenuación y conexión de diferenciales de presión - cont.</strong><div class="notes ">Se cancela: se remueven diferenciales de presión</div></td>
 <td class="col-pct editable">0</td>
 <td class="col-fecha">Mar 12/05</td>
 <td class="col-fecha">Mar 12/05</td>
 <td class="col-dur">1d</td>
-<td class="col-status"></td>
+<td class="col-status"><span class="badge badge-cancelled">❌ CANCELADA</span></td>
 </tr>
 <tr class="day-divider"><td colspan="10">📅 Mié 13/05/2026</td></tr>
 <tr>
@@ -602,6 +596,40 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-dur">1d</td>
 <td class="col-status"></td>
 </tr>
+<tr class="day-divider today-row"><td colspan="10">📅 Lun 18/05/2026 (HOY)</td></tr>
+<tr>
+<td class="col-edit"><button type="button" class="btn-edit-row" data-tr-id="HOY-1" title="Editar actividad">✏️</button></td><td class="col-id">HOY-1</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Instalar tornillos 5/8" en bridas zona de turbidez</strong><div class="notes ">Tilin — Se tienen que cortar, llegaron muy grandes</div></td>
+<td class="col-pct editable">0</td>
+<td class="col-fecha">Lun 18/05</td>
+<td class="col-fecha">Lun 18/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"><span class="badge badge-new">🆕 NUEVA</span></td>
+</tr>
+<tr>
+<td class="col-edit"><button type="button" class="btn-edit-row" data-tr-id="HOY-2" title="Editar actividad">✏️</button></td><td class="col-id">HOY-2</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Instalar pijabrocas en lámina zona UV</strong><div class="notes ">Alex — Lámina que quitó Mateo cuando se instalaron los andamios</div></td>
+<td class="col-pct editable">0</td>
+<td class="col-fecha">Lun 18/05</td>
+<td class="col-fecha">Lun 18/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"><span class="badge badge-new">🆕 NUEVA</span></td>
+</tr>
+<tr>
+<td class="col-edit"><button type="button" class="btn-edit-row" data-tr-id="HOY-3" title="Editar actividad">✏️</button></td><td class="col-id">HOY-3</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Decapar y dar acabado a piezas de dren de resinas T1</strong><div class="notes ">J. Carlos</div></td>
+<td class="col-pct editable">0</td>
+<td class="col-fecha">Lun 18/05</td>
+<td class="col-fecha">Lun 18/05</td>
+<td class="col-dur">1d</td>
+<td class="col-status"><span class="badge badge-new">🆕 NUEVA</span></td>
+</tr>
 <tr class="day-divider"><td colspan="10">📅 Mar 19/05/2026</td></tr>
 <tr>
 <td class="col-edit"><button type="button" class="btn-edit-row" data-tr-id="C1-1" title="Editar actividad">✏️</button></td><td class="col-id">C1-1</td>
@@ -616,9 +644,9 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 </tr>
 </tbody></table></div>
 <div class="gantt-chart">
-<div class="gantt-timeline" style="width:800px;">
+<div class="gantt-timeline" style="width:880px;">
 <div class="gantt-month" style="left:0;width:720px;">Mayo 2026</div>
-<div class="gantt-day today" style="left:0px;width:80px;">Mié 6</div>
+<div class="gantt-day " style="left:0px;width:80px;">Mié 6</div>
 <div class="gantt-day " style="left:80px;width:80px;">Jue 7</div>
 <div class="gantt-day " style="left:160px;width:80px;">Vie 8</div>
 <div class="gantt-day weekend" style="left:240px;width:80px;">Sáb 9</div>
@@ -628,8 +656,9 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <div class="gantt-day " style="left:560px;width:80px;">Mié 13</div>
 <div class="gantt-day " style="left:640px;width:80px;">Jue 14</div>
 <div class="gantt-day " style="left:720px;width:80px;">Mar 19</div>
+<div class="gantt-day today" style="left:800px;width:80px;">Lun 18</div>
 </div>
-<div style="position:relative;width:800px;">
+<div style="position:relative;width:880px;">
 <div class="gantt-row" style="background:#f0f4f8;border-bottom:2px solid #4a5568;"></div>
 <div class="gantt-row"><div class="bar completed" style="left:0px;width:76px;" title="Cambio de niples en zona de pulidores">[C2-16] Cambio de niples en zona de pulidores</div></div>
 <div class="gantt-row"><div class="bar completed" style="left:0px;width:76px;" title="Cambio de 2 tornillos en Brida de 6&quot; en área de UV">[C2-31] Cambio de 2 tornillos en Brida de 6&quot; en área de UV</div></div>
@@ -679,6 +708,9 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <div class="gantt-row"><div class="bar c1-prog" style="left:640px;width:76px;" title="Envío datos hacia pantalla de planta - cont.">[C1-25] Envío datos hacia pantalla de planta - cont.</div></div>
 <div class="gantt-row" style="background:#f0f4f8;border-bottom:2px solid #4a5568;"></div>
 <div class="gantt-row"><div class="bar moved" style="left:0px;width:76px;" title="Visualización retros válvulas solenoides (FINALIZAR)">[C1-1] Visualización retros válvulas solenoides (FINALIZA</div></div>
+<div class="gantt-row"><div class="bar new" style="left:800px;width:76px;" title="Instalar tornillos 5/8&quot; en bridas zona de turbidez">[HOY-1] Instalar tornillos 5/8&quot; en bridas zona de turbidez</div></div>
+<div class="gantt-row"><div class="bar new" style="left:800px;width:76px;" title="Instalar pijabrocas en lámina zona UV">[HOY-2] Instalar pijabrocas en lámina zona UV</div></div>
+<div class="gantt-row"><div class="bar new" style="left:800px;width:76px;" title="Decapar y dar acabado a piezas de dren de resinas T1">[HOY-3] Decapar y dar acabado a piezas de dren de resinas T1</div></div>
 </div></div></div>
 <div class="section-title tbd-section">⏸ TBD — Pendientes de fechar</div>
 <div class="tbd-list"><table class="gantt" style="width:100%;"><thead><tr>
@@ -697,7 +729,7 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c1">C1</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Montaje mecánico Panel View en puerta de tablero</strong></td>
-<td style="font-size:11.5px;color:#718096;font-style:italic;">TBD - después de caseta multipanel</td>
+<td style="font-size:11.5px;color:#718096;font-style:italic;">18/may: se monta placa de panel en tablero por dentro. Hoy se instala HMI en placa que se fabricó</td>
 </tr>
 <tr>
 <td class="col-id">C1-PV2</td>
@@ -711,14 +743,14 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Fab conexión NPT férula B1-B2-B3 + soldadura/instalación 3 manómetros voluta</strong></td>
-<td style="font-size:11.5px;color:#718096;font-style:italic;">TBD - 3 manómetros llegan aprox 20 May</td>
+<td style="font-size:11.5px;color:#718096;font-style:italic;">Se pide por Amazon, llega para finales de mayo</td>
 </tr>
 <tr>
 <td class="col-id">C2-19</td>
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Emparejar obra civil cemento debajo de bases de bombas</strong></td>
-<td style="font-size:11.5px;color:#718096;font-style:italic;">TBD - obra civil tentativa weekend (ver C2-17 placeholder). Si calidad da luz verde, esta vuelve a Sáb 9.</td>
+<td style="font-size:11.5px;color:#718096;font-style:italic;">Se debe definir hoy con Esteban el plan de acción 18/may</td>
 </tr>
 <tr>
 <td class="col-id">C2-22</td>
@@ -739,14 +771,14 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Modificar 5 carretes restantes (de 8 totales)</strong></td>
-<td style="font-size:11.5px;color:#718096;font-style:italic;">TBD - coordinar con NALCO</td>
+<td style="font-size:11.5px;color:#718096;font-style:italic;">Revisar con Monti si ya se envió la cotización del adicional para luz verde</td>
 </tr>
 <tr>
 <td class="col-id">C2-33</td>
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Cambio empaques en flujómetros de todas las Resinas</strong></td>
-<td style="font-size:11.5px;color:#718096;font-style:italic;">TBD - se hará GRADUAL con programación NALCO 1 por 1 (cuando se meta 1 resina más a producción, se saca otra y se retrabaja)</td>
+<td style="font-size:11.5px;color:#718096;font-style:italic;">Se cambian hoy las de R6-R7 y R8 — 18/may</td>
 </tr>
 <tr>
 <td class="col-id">C2-35</td>
@@ -774,9 +806,44 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <td class="col-cuad"><span class="badge badge-c2">C2</span></td>
 <td class="col-tipo">🔧</td>
 <td class="col-name"><strong>Terminar abrazaderas 6&quot; en tren 2</strong></td>
-<td style="font-size:11.5px;color:#718096;font-style:italic;">TBD - depende de instalar últimos codos que se van a fabricar/pasivar (tentativo viernes en la tarde)</td>
+<td style="font-size:11.5px;color:#718096;font-style:italic;">Hasta que se monten los carretes pasivados y resinas en posición final</td>
 </tr>
 
+<tr>
+<td class="col-id">C2-17</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Obra civil weekend TENTATIVA (placeholder)</strong></td>
+<td style="font-size:11.5px;color:#718096;font-style:italic;"><span class="badge badge-hold">⏸️ HOLD</span> En espera de luz verde de calidad — obra civil weekend en pausa</td>
+</tr>
+<tr>
+<td class="col-id">NEW-3</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Instalación de Toma de 3" en zona de turbidez</strong></td>
+<td style="font-size:11.5px;color:#718096;font-style:italic;"><span class="badge badge-new">🆕 NUEVA</span> Pendiente Monti — por cotizar</td>
+</tr>
+<tr>
+<td class="col-id">NEW-4</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Modificación de carretes para férula 2" para presostatos</strong></td>
+<td style="font-size:11.5px;color:#718096;font-style:italic;"><span class="badge badge-new">🆕 NUEVA</span> Pendiente Monti — por cotizar</td>
+</tr>
+<tr>
+<td class="col-id">NEW-5</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Cotizar tratamiento a tornillos oxidados de brida superior</strong></td>
+<td style="font-size:11.5px;color:#718096;font-style:italic;"><span class="badge badge-new">🆕 NUEVA</span> Cotizar</td>
+</tr>
+<tr>
+<td class="col-id">NEW-6</td>
+<td class="col-cuad"><span class="badge badge-c2">C2</span></td>
+<td class="col-tipo">🔧</td>
+<td class="col-name"><strong>Cotizar piezas internas de resinas en inox (distribuidores)</strong></td>
+<td style="font-size:11.5px;color:#718096;font-style:italic;"><span class="badge badge-new">🆕 NUEVA</span> Cotizar</td>
+</tr>
 </tbody></table></div>
 <div class="summary-box">
 <h3>📝 Cambios v34 (sobre v33)</h3>
@@ -794,15 +861,15 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 <strong>📊 Resumen:</strong>
 <!-- test del chat AI -->
 test del chat AI v2<br>
-50 actividades ·
-25 C1 (FTS) ·
-25 C2 (Mec/Civil) ·
-39 con fecha ·
-13 en TBD ·
+59 actividades ·
+27 C1 (FTS) ·
+32 C2 (Mec/Civil) ·
+41 con fecha ·
+18 en TBD ·
 6 TS pendientes ·
-2 alerta(s) Felipe
+1 alerta(s) Felipe
 <br><br>
-<em>🔒 Documento INTERNO de FTS · Generado 07/05/2026 01:02 · v34</em>
+<em>🔒 Documento INTERNO de FTS · Generado 18/05/2026 · v35</em>
 <div class="footer-copyright" style="margin-top:12px;padding-top:12px;border-top:1px solid #e2e8f0;font-size:10px;color:#718096;text-align:center;">
 © 2026 Servicios FTS S.A. de C.V. — Documento interno y confidencial. Todos los derechos reservados.
 </div>
