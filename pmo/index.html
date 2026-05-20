@@ -1,5 +1,5 @@
 <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
-<title>Cronograma Interno FTS v37 - Sistema de Filtros NALCO Topo Chico</title>
+<title>Cronograma Interno FTS v38 - Sistema de Filtros NALCO Topo Chico</title>
 <script src="../shared/auth-suite.js"></script>
 <script>
   if (typeof FTSAuth === 'undefined' || !FTSAuth.isLoggedIn || !FTSAuth.isLoggedIn()) {
@@ -104,14 +104,11 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 .badge-alert{background:#1a365d;color:#fef3c7;border:1px solid #1a365d;animation:pulse-alert 2s infinite}
 @keyframes pulse-alert{0%,100%{box-shadow:0 0 0 0 rgba(254,243,199,.7)}50%{box-shadow:0 0 0 4px rgba(254,243,199,0)}}
 .notes.alert{color:#1a365d;font-weight:600;font-style:normal;background:#fef3c7;padding:4px 8px;border-radius:4px;border-left:3px solid #1a365d;margin-top:4px}
-.badge-cancelled{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
 .badge-hold{background:#fed7aa;color:#9a3412;border:1px solid #fdba74}
-.tr-cancelled td.col-name strong{text-decoration:line-through;color:#94a3b8}
-.tr-cancelled td.col-name .notes{text-decoration:line-through;color:#cbd5e1}
 .bar.alert{background:linear-gradient(to bottom,#2c5282,#1a365d)!important;color:#fef3c7!important;border:2px solid #fef3c7;box-shadow:0 0 8px rgba(254,243,199,.6)}
 </style></head><body>
 <div class="header">
-  <h1><span class="badge-internal">INTERNO FTS</span><span class="badge-version">v37</span>📊 Plan Sistema de Filtros — NALCO Topo Chico</h1>
+  <h1><span class="badge-internal">INTERNO FTS</span><span class="badge-version">v38</span>📊 Plan Sistema de Filtros — NALCO Topo Chico</h1>
   <div class="meta">
     <strong>Cliente:</strong> NALCO (Topo Chico) &nbsp;•&nbsp;
     <strong>Autor:</strong> Esteban De La Cruz Calderón – FTS &nbsp;•&nbsp;
@@ -917,14 +914,9 @@ table.gantt td{padding:6px 10px;border-bottom:1px solid #edf2f7;border-right:1px
 </tr>
 </tbody></table></div>
 <div class="summary-box">
-<h3>📝 Cambios v37 (sobre v36)</h3>
-<div class="item"><span class="icon">❌</span>Eliminadas 4 canceladas (C1-16, C1-17, C1-19, C1-23) + dividers huérfanos Lun 11 + Mar 12.</div>
-<div class="item"><span class="icon">✅</span>HOY-1, HOY-2, HOY-3 cerradas a 100% Completado. HOY-1 con tornillos (C. Manzanares). HOY-3 pendiente pasivado con Nalco.</div>
-<div class="item"><span class="icon">📍</span>HOY: Mar 19 → Mar 20/05. Nuevo divider Mié 21/05.</div>
-<div class="item"><span class="icon">🆕</span>Mar 20 scheduled: NEW-7, NEW-8 + punch list HOY-4, HOY-5, HOY-6. Mié 21 scheduled: C2-33 reactivada desde TBD + HOY-7 (espárragos anclas).</div>
-<div class="item"><span class="icon">📝</span>Notas TBD actualizadas: C1-PV1, C2-18, C2-19, C2-26b, NEW-3 (listas materiales pendientes aprobación).</div>
-<div class="item"><span class="icon">⏸</span>7 punch list nuevas en TBD: NEW-9 (manómetros voluta), NEW-10 (piso bombas), NEW-11/12 (tierras UV + bombas), NEW-13 (rotación válvulas), NEW-14 (soportería inox), NEW-15 (sistema tierras zanja).</div>
-<div class="item"><span class="icon">📊</span>Timeline Gantt extendido a 1040px (col Mié 21). Title sincronizado a v37.</div>
+<h3>📝 Cambios v38 (sobre v37)</h3>
+<div class="item"><span class="icon">🧹</span>Limpieza CSS: eliminadas 3 reglas huérfanas (.badge-cancelled, .tr-cancelled td.col-name strong, .tr-cancelled td.col-name .notes) sin refs activas en body tras eliminar las 4 canceladas en v37.</div>
+<div class="item"><span class="icon">📊</span>Sin cambios funcionales — solo housekeeping CSS + version bump.</div>
 </div>
 <div class="summary-box">
 <h3>⚠️ TROUBLESHOOTINGS aún pendientes</h3>
@@ -942,7 +934,7 @@ test del chat AI v2<br>
 0 TS pendientes ·
 0 alerta(s) Felipe
 <br><br>
-<em>🔒 Documento INTERNO de FTS · Generado 20/05/2026 · v37</em>
+<em>🔒 Documento INTERNO de FTS · Generado 20/05/2026 · v38</em>
 <div class="footer-copyright" style="margin-top:12px;padding-top:12px;border-top:1px solid #e2e8f0;font-size:10px;color:#718096;text-align:center;">
 © 2026 Servicios FTS S.A. de C.V. — Documento interno y confidencial. Todos los derechos reservados.
 </div>
