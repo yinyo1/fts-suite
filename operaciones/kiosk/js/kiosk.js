@@ -427,26 +427,78 @@ const _LEGACY_DEMOS_OPTIN_ONLY_SOS = [
   { id:104, name:'🛠️ SO-2026-004 - HEB Tanque 5000L',         cliente:'HEB México',          nombre:'HEB — Tanque 5000L',        num:'SO-2026-004' },
 ];
 
+// ═══ State machine UI carga empleados (hotfix 20260520) ═══
+// Estados: 'loading' (spinner) | 'ok' (search habilitado) | 'error' (banner + retry).
+// Aplica solo a la pantalla #ks-search; los SOs viven en otro screen.
+let _empEscalateTimer = null;
+function setEmpState(state){
+  const loadEl  = document.getElementById('ksLoadEmp');
+  const errEl   = document.getElementById('ksErrorEmp');
+  const listEl  = document.getElementById('ksEmpleadosList');
+  const searchEl= document.getElementById('ksSearch');
+  const textEl  = document.getElementById('ksLoadEmpText');
+  const metaEl  = document.getElementById('ksErrorEmpMeta');
+  if(_empEscalateTimer){ clearTimeout(_empEscalateTimer); _empEscalateTimer = null; }
+  if(state === 'loading'){
+    if(loadEl)   loadEl.hidden = false;
+    if(errEl)    errEl.hidden  = true;
+    if(listEl)   listEl.innerHTML = '';
+    if(searchEl) searchEl.disabled = true;
+    if(textEl)   textEl.textContent = 'Cargando empleados…';
+    // Escalación: si >5s, cambiar mensaje a "Conectando con el servidor…"
+    _empEscalateTimer = setTimeout(function(){
+      if(K.empleadosState === 'loading' && textEl) textEl.textContent = 'Conectando con el servidor…';
+    }, 5000);
+  } else if(state === 'ok'){
+    if(loadEl)   loadEl.hidden = true;
+    if(errEl)    errEl.hidden  = true;
+    if(searchEl) searchEl.disabled = false;
+  } else if(state === 'error'){
+    if(loadEl)   loadEl.hidden = true;
+    if(errEl)    errEl.hidden  = false;
+    if(listEl)   listEl.innerHTML = '';
+    if(searchEl) searchEl.disabled = true;
+    if(metaEl){
+      const ts = K.empleadosLastTryAt
+        ? K.empleadosLastTryAt.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit', second:'2-digit' })
+        : '—';
+      const tries = K.empleadosTryCount || 1;
+      const errMsg = K.empleadosError ? ' · ' + K.empleadosError : '';
+      metaEl.textContent = 'Último intento: ' + ts + ' · Intentos: ' + tries + errMsg;
+    }
+  }
+}
+
+async function retryLoadEmpleados(){
+  await loadEmpleados();
+  if(typeof updateConnStatus === 'function') updateConnStatus();
+}
+window.retryLoadEmpleados = retryLoadEmpleados;
+
 async function loadEmpleados(){
   K.empleadosState = 'loading';
   K.empleadosError = null;
   K.empleadosLastTryAt = new Date();
   K.empleadosTryCount = (K.empleadosTryCount || 0) + 1;
+  setEmpState('loading');
   // Opt-in explícito: solo si Esteban setea ops_demo_mode='1' a propósito para testing.
   if(K.config.demoMode || !K.config.n8nUrl){
     K.empleados = _LEGACY_DEMOS_OPTIN_ONLY_EMPLEADOS.slice();
     K.empleadosState = 'ok';
+    setEmpState('ok');
     return;
   }
   try{
     const data = await window.OdooKiosk.getEmpleados();
     K.empleados = Array.isArray(data) ? data : (data.empleados || []);
     K.empleadosState = 'ok';
+    setEmpState('ok');
   } catch(e){
     console.warn('Odoo no disponible (sin fallback a demos):', e);
     K.empleados = [];
     K.empleadosState = 'error';
     K.empleadosError = e && e.message ? e.message : String(e);
+    setEmpState('error');
   }
 }
 
