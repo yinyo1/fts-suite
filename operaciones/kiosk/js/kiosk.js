@@ -1,7 +1,7 @@
 // ═══ FTS Kiosk — Lógica principal ═══
 // Script clásico, estado global compartido
 
-const KIOSK_BUILD = '20260504-kiosk-olvide-checkout-v3-boton-jornada';
+const KIOSK_BUILD = '20260520-kiosk-fix-fallback-error-ux';
 console.log('[kiosk] build:', KIOSK_BUILD);
 
 const K = {
@@ -16,6 +16,16 @@ const K = {
   returnTimer: null,
   faceReady: false,
   demoMode: false,
+  // Estado de carga runtime (hotfix 20260520):
+  //   'loading' = fetch en vuelo
+  //   'ok'      = datos cargados de n8n/Odoo (o opt-in demo explícito)
+  //   'error'   = fetch falló, K.empleados/K.sos quedan vacíos (NO fallback a demos)
+  empleadosState: 'loading',
+  empleadosError: null,
+  empleadosLastTryAt: null,
+  empleadosTryCount: 0,
+  sosState: 'loading',
+  sosError: null,
 };
 
 // ═══ Carga de configuración (nuevo schema) ═══
@@ -399,14 +409,18 @@ function terminarYHome(){
 window.terminarYHome = terminarYHome;
 
 // ═══ Carga de empleados/SOs ═══
-const DEMO_EMPLEADOS = [
+// Hotfix 20260520: los arrays demo viven SOLO para el opt-in explícito de testing
+// (localStorage.ops_demo_mode = '1'). El catch del fetch NO regresa a demos:
+// cae en estado 'error' con K.empleados/K.sos = [] y la UI muestra banner.
+// Ver docs/audit-kiosk-empleados-fallback.md
+const _LEGACY_DEMOS_OPTIN_ONLY_EMPLEADOS = [
   { id:1, nombre:'Mateo Salazar',     puesto:'Ingeniero',  foto:'', pin:'1234' },
   { id:2, nombre:'Felipe Pérez',      puesto:'Supervisor', foto:'', pin:'5678' },
   { id:3, nombre:'Esteban De La Cruz',puesto:'Director',   foto:'', pin:'0000' },
   { id:4, nombre:'Ana Ramírez',       puesto:'Soldador',   foto:'', pin:'1111' },
   { id:5, nombre:'Carlos Hernández',  puesto:'Ayudante',   foto:'', pin:'2222' },
 ];
-const DEMO_SOS = [
+const _LEGACY_DEMOS_OPTIN_ONLY_SOS = [
   { id:101, name:'🛠️ SO-2026-001 - Topo Chico Radium',        cliente:'Ecolab Nalco',        nombre:'Topo Chico — Radium',       num:'SO-2026-001' },
   { id:102, name:'🛠️ SO-2026-002 - Arca Mezzanine',           cliente:'Arca Continental',    nombre:'Arca Continental — Mezzanine', num:'SO-2026-002' },
   { id:103, name:'🛠️ SO-2026-003 - Sigma Polipasto 2T',       cliente:'Sigma Alimentos',     nombre:'Sigma — Polipasto 2T',      num:'SO-2026-003' },
@@ -414,31 +428,45 @@ const DEMO_SOS = [
 ];
 
 async function loadEmpleados(){
+  K.empleadosState = 'loading';
+  K.empleadosError = null;
+  K.empleadosLastTryAt = new Date();
+  K.empleadosTryCount = (K.empleadosTryCount || 0) + 1;
+  // Opt-in explícito: solo si Esteban setea ops_demo_mode='1' a propósito para testing.
   if(K.config.demoMode || !K.config.n8nUrl){
-    K.empleados = DEMO_EMPLEADOS.slice();
+    K.empleados = _LEGACY_DEMOS_OPTIN_ONLY_EMPLEADOS.slice();
+    K.empleadosState = 'ok';
     return;
   }
   try{
     const data = await window.OdooKiosk.getEmpleados();
     K.empleados = Array.isArray(data) ? data : (data.empleados || []);
+    K.empleadosState = 'ok';
   } catch(e){
-    console.warn('Odoo no disponible, usando demo:', e);
-    K.empleados = DEMO_EMPLEADOS.slice();
-    K.demoMode = true;
+    console.warn('Odoo no disponible (sin fallback a demos):', e);
+    K.empleados = [];
+    K.empleadosState = 'error';
+    K.empleadosError = e && e.message ? e.message : String(e);
   }
 }
 
 async function loadSOs(){
+  K.sosState = 'loading';
+  K.sosError = null;
   if(K.config.demoMode || !K.config.n8nUrl){
-    K.sos = DEMO_SOS.slice();
+    K.sos = _LEGACY_DEMOS_OPTIN_ONLY_SOS.slice();
+    K.sosState = 'ok';
     return;
   }
   try{
     const data = await window.OdooKiosk.getSOs();
     K.sos = Array.isArray(data) ? data : (data.sos || []);
+    K.sosState = 'ok';
   } catch(e){
-    console.warn('Odoo no disponible, usando demo:', e);
-    K.sos = DEMO_SOS.slice();
+    console.warn('SOs no disponibles (sin fallback a demos):', e);
+    K.sos = [];
+    K.sosState = 'error';
+    K.sosError = e && e.message ? e.message : String(e);
   }
 }
 
@@ -1273,8 +1301,18 @@ function autoReturn(){
 function updateConnStatus(){
   const el = document.getElementById('ksConnStatus');
   if(!el) return;
-  if(K.config.demoMode || !K.config.n8nUrl) el.textContent = 'MODO DEMO';
-  else el.textContent = 'conectado';
+  if(K.config.demoMode || !K.config.n8nUrl){
+    el.textContent = 'MODO DEMO';
+    return;
+  }
+  // Hotfix 20260520: reflejar también estado runtime, no solo K.config.demoMode
+  if(K.empleadosState === 'error' || K.sosState === 'error'){
+    el.textContent = '⚠️ sin conexión';
+  } else if(K.empleadosState === 'loading' || K.sosState === 'loading'){
+    el.textContent = 'conectando…';
+  } else {
+    el.textContent = 'conectado';
+  }
 }
 
 // ═══ Init ═══
