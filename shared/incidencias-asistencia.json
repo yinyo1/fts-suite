@@ -4,7 +4,7 @@
     {
       "id_interno": "INC-AUTO-CIERRE-98-2026-05-19T14-43-31-312Z",
       "tipo": "auto_cierre_pendiente",
-      "status": "pendiente_rh",
+      "status": "aprobada_tal_cual",
       "fecha_creacion": "2026-05-19T14:43:33.879Z",
       "empleado_id": 98,
       "empleado_nombre": "Ricardo Alán Hernández González",
@@ -22,7 +22,18 @@
       "department_name": null,
       "supervisor_id": null,
       "supervisor_name": null,
-      "propuestas": []
+      "propuestas": [],
+      "resolucion_rh": {
+        "resuelto_por": {
+          "user_id": 2,
+          "nombre": "Esteban De La Cruz (cleanup admin post-Railway-outage)",
+          "role": "direccion"
+        },
+        "resuelto_at": "2026-05-20T07:47:14.000Z",
+        "accion": "cleanup_admin",
+        "comentario": "Incidencia obsoleta. Attendance 13179 cerrado manual con check_out 2026-05-19 23:30:00 UTC (5:30 PM CST) durante recuperación de caída Railway 19-may-2026. Incidencia auto_cierre original no aplica porque Esteban escribió directamente la hora real reportada en hoja Topo Chico.",
+        "hora_final_check_out": "2026-05-19T23:30:00Z"
+      }
     },
     {
       "id_interno": "INC-OLV-137-2026-05-19T14-28-01-946Z",
