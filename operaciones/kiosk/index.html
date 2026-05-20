@@ -32,10 +32,27 @@
   <button class="kiosk-back" onclick="goHome()">← Volver</button>
   <div class="kiosk-logo-sm" style="margin-bottom:16px">F</div>
   <div class="kiosk-title">¿Quién eres?</div>
-  <input type="search" id="ksSearch" class="kiosk-search" placeholder="Busca tu nombre…" oninput="searchEmpleados(this.value)" autocomplete="off" inputmode="search" onfocus="setTimeout(()=>this.scrollIntoView({behavior:'smooth',block:'center'}),300)">
-  <div class="kiosk-list" id="ksEmpleadosList">
-    <div style="text-align:center;color:#666;padding:24px">Cargando empleados…</div>
+  <input type="search" id="ksSearch" class="kiosk-search" placeholder="Busca tu nombre…" oninput="searchEmpleados(this.value)" autocomplete="off" inputmode="search" onfocus="setTimeout(()=>this.scrollIntoView({behavior:'smooth',block:'center'}),300)" disabled>
+
+  <!-- Estado A: cargando empleados -->
+  <div id="ksLoadEmp" class="kiosk-loading">
+    <div class="kiosk-loading-spinner" aria-hidden="true"></div>
+    <div class="kiosk-loading-text" id="ksLoadEmpText">Cargando empleados…</div>
   </div>
+
+  <!-- Estado C/D: error de conexión -->
+  <div id="ksErrorEmp" class="kiosk-error-banner" hidden>
+    <div class="kiosk-error-title">⚠️ Sistema temporalmente no disponible</div>
+    <div class="kiosk-error-sub">
+      No podemos conectar con el servidor en este momento. Por favor, registra
+      tu hora manualmente en la libreta o avisa a tu supervisor.
+    </div>
+    <button type="button" class="kiosk-error-retry" onclick="retryLoadEmpleados()">🔄 Reintentar</button>
+    <div class="kiosk-error-meta" id="ksErrorEmpMeta"></div>
+  </div>
+
+  <!-- Estado B: lista cargada (se llena con renderEmpleados al tipear) -->
+  <div class="kiosk-list" id="ksEmpleadosList"></div>
 </div>
 
 <!-- ═══════ PANTALLA 2.5 — ESTADO EMPLEADO ═══════ -->
