@@ -536,6 +536,11 @@ function searchEmpleados(q){
 function renderEmpleados(list){
   const el = document.getElementById('ksEmpleadosList');
   if(!el) return;
+  // Hotfix bugs visuales: si aún no terminamos de cargar empleados (loading/error),
+  // NO escribir "Sin resultados" en la lista — esa zona la maneja setEmpState
+  // (spinner o banner). showScreen('ks-search') llama aquí al volver al search
+  // screen y antes pintaba "Sin resultados" sobre la zona de loading.
+  if(K.empleadosState !== 'ok'){ el.innerHTML = ''; return; }
   if(!list.length){
     el.innerHTML = '<div style="text-align:center;color:#666;padding:24px">Sin resultados</div>';
     return;

@@ -63,12 +63,15 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-ser
 }
 .kiosk-loading[hidden]{display:none}
 .kiosk-loading-spinner{
+  box-sizing:border-box;
+  flex-shrink:0;            /* evita deformación dentro del flex-column padre */
   width:44px;height:44px;
   border:4px solid #e0e0e0;border-top:4px solid #107C10;border-radius:50%;
   animation:ksSpinAnim 0.8s linear infinite;
 }
 .kiosk-loading-text{
   font-size:15px;color:#555;text-align:center;
+  animation:none;           /* defensivo: ningún ancestro debe rotarlo */
 }
 .kiosk-error-banner{
   width:100%;max-width:500px;margin-top:20px;
@@ -310,11 +313,11 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-ser
   text-align:center;font-size:12px;color:#999;
 }
 
-.kiosk-loading{
-  display:inline-block;width:24px;height:24px;
-  border:3px solid #e0e0e0;border-top-color:#107C10;
-  border-radius:50%;animation:spin 1s linear infinite;
-}
+/* Eliminado regla `.kiosk-loading` duplicada (display:inline-block; 24x24;
+   animation:spin) que era código muerto pre-hotfix 20260520. Colisión con
+   `.kiosk-loading` wrapper (L60) hacía rotar texto + deformar spinner en
+   #ksLoadEmp por la regla de cascade (last-rule-wins). Sin consumers en
+   HTML/JS — borrado seguro. Ver fix(kiosk): bugs visuales hotfix PR #42. */
 
 @keyframes ksSpinAnim {
   0%   { transform: rotate(0deg); }
