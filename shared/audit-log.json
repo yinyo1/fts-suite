@@ -948,6 +948,25 @@
       },
       "result": "success",
       "error_message": null
+    },
+    {
+      "timestamp": "2026-05-21T01:56:28.223Z",
+      "user": "ftsmaster",
+      "action": "edit_attendance",
+      "attendance_id": 13216,
+      "employee_name": "Héctor Cruz Hernández",
+      "changes": {
+        "check_in": {
+          "from": "2026-05-21 00:58:47",
+          "to": "2026-05-21 00:58:00"
+        },
+        "check_out": {
+          "from": null,
+          "to": "2026-05-21 01:56:00"
+        }
+      },
+      "result": "success",
+      "error_message": null
     }
   ]
 }
