@@ -310,17 +310,20 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-ser
   text-align:center;font-size:12px;color:#999;
 }
 
-.kiosk-loading{
-  display:inline-block;width:24px;height:24px;
-  border:3px solid #e0e0e0;border-top-color:#107C10;
-  border-radius:50%;animation:spin 1s linear infinite;
-}
+/* Eliminadas reglas duplicadas/huérfanas pre-hotfix-20260520 (21-may-2026):
+   - .kiosk-loading{display:inline-block;width:24px;height:24px;animation:spin}
+     Estaba ANTES en el archivo (L313) pero por orden CSS ganaba sobre la
+     regla wrapper L60 del hotfix (#ksLoadEmp como flex container). El bug
+     se manifestaba en móvil: spinner 24x24 deformado + texto rotando. Único
+     consumer en HTML: index.html:38 ya usa la regla L60 correcta.
+   - @keyframes spin: solo lo usaba la regla legacy. Otros archivos del repo
+     (pmo/, seguridad/, shared/admin/) definen su propio @keyframes spin
+     localmente, no dependen de este. */
 
 @keyframes ksSpinAnim {
   0%   { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
-@keyframes spin{to{transform:rotate(360deg)}}
 
 .kiosk-shake{animation:shake 0.4s}
 @keyframes shake{
