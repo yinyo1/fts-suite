@@ -34,7 +34,14 @@ function loadKioskConfig(){
     n8nUrl:        localStorage.getItem('ops_n8n_url') || '',
     apiKey:        localStorage.getItem('ops_api_key') || '',
     demoMode:      localStorage.getItem('ops_demo_mode') !== '0',
-    faceEnabled:   localStorage.getItem('ops_kiosk_face_enabled') !== '0',
+    // 21-may-2026: face recognition opt-in explícito (default OFF). Tras PR #44 (CDN gh
+    // sirviendo modelos reales) la validación volvió a operar tras semanas de bypass
+    // silencioso (CDN npm 404 → loadFaceModels throw → K.faceReady=false → flow saltaba
+    // doFaceVerify). El reactivado real rechazó a 4+ empleados por threshold 0.5 estricto
+    // sobre foto image_128 baja resolución. PIN sigue siendo barrera de seguridad. Para
+    // reactivar por dispositivo: localStorage.setItem('ops_kiosk_face_enabled', '1').
+    // Plan de reactivación global: docs/FEATURE_FLAGS.md.
+    faceEnabled:   localStorage.getItem('ops_kiosk_face_enabled') === '1',
     faceThreshold: parseFloat(localStorage.getItem('ops_kiosk_face_threshold') || '0.5'),
     geolocations:  JSON.parse(localStorage.getItem('ops_kiosk_geolocations') || '[]'),
     stages:        JSON.parse(localStorage.getItem('ops_kiosk_stages') || '["To Do","In Progress","Hold"]'),
