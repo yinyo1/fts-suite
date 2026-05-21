@@ -1,7 +1,7 @@
 // ═══ FTS Kiosk — Lógica principal ═══
 // Script clásico, estado global compartido
 
-const KIOSK_BUILD = '20260520-kiosk-fix-fallback-error-ux';
+const KIOSK_BUILD = '20260521-kiosk-fix-face-cdn-resilient-init';
 console.log('[kiosk] build:', KIOSK_BUILD);
 
 const K = {
@@ -1399,16 +1399,24 @@ async function initKiosk(){
   await loadEmpleados();
   await loadSOs();
 
-  // Cargar modelos de face-api en background
-  if(K.config.faceEnabled && window.FaceVerify){
+  // Cargar modelos de face-api en background — feature opcional, NO bloqueante.
+  // Si el CDN responde 404 / red caída / face-api.js no cargó, desactivamos la
+  // feature en runtime (K.faceReady=false + K.config.faceEnabled=false) para
+  // que los call sites downstream salten verificación facial sin crashear el
+  // flow de checkin. Loading de empleados/SOs ya corrió arriba.
+  // (Fix 21-may-2026: previene regresión si vuelve a fallar cualquier CDN.)
+  if(K.config.faceEnabled && window.FaceVerify && typeof window.FaceVerify.loadFaceModels === 'function'){
     try{
       await window.FaceVerify.loadFaceModels();
       K.faceReady = true;
       console.log('✅ Modelos faciales listos');
     } catch(e){
-      console.warn('Error cargando modelos faciales:', e);
+      console.warn('[face] modelos NO disponibles, feature desactivada en runtime:', e && e.message || e);
       K.faceReady = false;
+      K.config.faceEnabled = false;
     }
+  } else {
+    K.faceReady = false;
   }
 }
 

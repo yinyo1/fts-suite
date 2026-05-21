@@ -1,7 +1,11 @@
 // ═══ FTS Kiosk — Verificación facial con face-api.js ═══
 
 const FACE_THRESHOLD = parseFloat(localStorage.getItem('ops_kiosk_face_threshold') || '0.5');
-const FACE_MODELS_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights';
+// jsdelivr-npm dejó de servir /weights del paquete 0.22.2 (404 confirmado 21-may-2026).
+// Cambio a jsdelivr-gh (sirve el repo source directamente) — 7/7 assets verificados 200 OK.
+// Override opcional via localStorage.ops_kiosk_face_models_url (testing local con server propio).
+const FACE_MODELS_URL = localStorage.getItem('ops_kiosk_face_models_url') ||
+  'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
 
 let faceModelsLoaded = false;
 
