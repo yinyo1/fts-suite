@@ -1,7 +1,7 @@
 // ═══ FTS Kiosk — Lógica principal ═══
 // Script clásico, estado global compartido
 
-const KIOSK_BUILD = '20260521-kiosk-fix-face-cdn-resilient-init';
+const KIOSK_BUILD = '20260521-kiosk-fix-css-duplicate-rule';
 console.log('[kiosk] build:', KIOSK_BUILD);
 
 const K = {
