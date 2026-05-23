@@ -2,6 +2,52 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-CHK-135-2026-05-23T00-13-59-890Z",
+      "tipo": "olvido_checkout",
+      "empleado_id": 135,
+      "empleado_nombre": "Abraham Said Martínez Leal",
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "sin_departamento": false,
+      "depto_invalido": false,
+      "supervisor_id": 112,
+      "supervisor_name": "Felipe Pérez Guzmán",
+      "supervisor_email": "Saidmartinez1512@gmail.com",
+      "supervisor_phone": "+52 81 1911 0580",
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": false,
+      "sin_supervisor": false,
+      "attendance_id": 13268,
+      "fecha_creacion": "2026-05-23T00:13:59.891Z",
+      "check_in_original_utc": "2026-05-22 13:43:38",
+      "check_out_propuesto_utc": "2026-05-22 23:50:00",
+      "check_out_propuesto_cst": "2026-05-22 17:50:00",
+      "geolocation": {
+        "lat": 25.6686867,
+        "lng": -100.3143567,
+        "accuracy": 4.199999809265137,
+        "captured_at": "2026-05-23T00:13:57.337Z"
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "accion": "crear",
+          "fecha": "2026-05-23T00:13:59.891Z",
+          "hora_propuesta_cst": "17:50",
+          "comentario": "Se me olvidó checar salida"
+        }
+      ],
+      "status": "pendiente_supervisor",
+      "hora_final_aplicada_utc": "2026-05-22 23:50:00",
+      "aplicado_en_odoo": true,
+      "tag_disputa_activo": true,
+      "creada_por_modulo": "kiosk",
+      "creada_por_build": "20260521-kiosk-face-opt-in-default"
+    },
+    {
       "id_interno": "INC-OLV-CHK-62-2026-05-23T00-13-25-393Z",
       "tipo": "olvido_checkout",
       "empleado_id": 62,
