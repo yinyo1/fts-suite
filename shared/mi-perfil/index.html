@@ -7,7 +7,7 @@
 <script>
   // Cache busting + BUILD_DATE expuesto a window.
   (function() {
-    const BUILD_DATE = '20260504-mp-f2-1-roles-auto';
+    const BUILD_DATE = '20260512-mp-f4-1-nueva-incidencia-card';
     window.BUILD_DATE = BUILD_DATE;
     if (!window.location.search.includes('v=')) {
       document.addEventListener('DOMContentLoaded', function() {
@@ -304,10 +304,16 @@
 
     <div class="mp-cards">
 
+      <a class="mp-card mp-card-primary" href="nueva-incidencia/">
+        <div class="mp-card-icon">➕</div>
+        <div class="mp-card-title">Nueva Incidencia</div>
+        <div class="mp-card-sub">Reporta olvido de checada, vacaciones, permisos, incapacidad.</div>
+      </a>
+
       <a class="mp-card mp-card-primary" href="mis-incidencias/">
         <div class="mp-card-icon">📋</div>
         <div class="mp-card-title">Mis Incidencias</div>
-        <div class="mp-card-sub">Consulta tus solicitudes de ajuste de hora y su estado.</div>
+        <div class="mp-card-sub">Consulta tus solicitudes y su estado.</div>
       </a>
 
       <a id="mp-card-panel" class="mp-card mp-card-panel" href="panel-incidencias/index.html" style="display:none">
