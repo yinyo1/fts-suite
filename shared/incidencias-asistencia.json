@@ -2129,6 +2129,31 @@
       "sin_supervisor": false,
       "depto_invalido": false,
       "tag_disputa_activo": false
+    },
+    {
+      "id_interno": "INC-VALIDACION-98-2026-05-28T23-09-36-918Z",
+      "empleado_id": 98,
+      "empleado_nombre": "Ricardo Alán Hernández González",
+      "tipo": "validacion_rh",
+      "fecha_creacion": "2026-05-28T23:09:36.918Z",
+      "fecha_evento": "2026-05-26",
+      "status": "pendiente_rh",
+      "creado_por": "admin_cleanup",
+      "attendance_id": 13334,
+      "descripcion": "Orphan preexistente recuperado. Att 13334 cerrado a horario razonable (18:00 CST 26-may). RH debe validar si Ricardo trabajó 27-may y 28-may.",
+      "datos_referencia": {
+        "att_id": 13334,
+        "check_in_original": "2026-05-26 15:29:24 UTC",
+        "check_out_aplicado": "2026-05-27 00:00:00 UTC",
+        "evidencia_magaly": "17:45 CST 27-may (libreta)",
+        "kiosko_27_may": "sin checkin",
+        "kiosko_28_may": "sin checkin"
+      },
+      "accion_requerida_rh": [
+        "Confirmar con Ricardo si trabajó 27-may y 28-may",
+        "Si sí: crear attendances manuales con horarios reales",
+        "Si no: documentar ausencia/permiso/campo"
+      ]
     }
   ]
 }
