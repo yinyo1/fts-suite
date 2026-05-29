@@ -8,7 +8,7 @@ El **27-may-2026** un outage de backend (~18:16 CST → 06:28 CST, ~12h) dejó *
 
 El sprint ataca las 3 capas que fallaron: **el kiosk mentía** (mostraba éxito sin backend), **perdía el dato** (sin cola offline) y **nadie se enteró** (sin monitoring).
 
-## Los 3 PRs (orden de implementación)
+## Los 4 PRs (orden de implementación)
 
 ### PR D — Hardening errores + Fix "Seguí en turno"
 - **Esfuerzo:** 3–3.5h CC · **Prioridad:** 🔴 ALTA (síntoma inmediato)
@@ -27,9 +27,16 @@ El sprint ataca las 3 capas que fallaron: **el kiosk mentía** (mostraba éxito 
 - **Independiente:** NO requiere D ni C.
 - **Diseño:** `docs/SPRINT_RESILIENCIA_PR_B_DESIGN.md`
 
+### PR E — Cron auto-cierre 2am (NUEVO en este update)
+- **Esfuerzo:** ~5h CC · **Prioridad:** 🟠 MEDIA-ALTA (complementa PR C)
+- **Hallazgo clave:** el queue offline (PR C) solo ayuda a quien **regresa** al kiosk. PR E cierra automáticamente los attendances de empleados que **NO vuelven** (caso Mario 116, Enoc 128, Ricardo 98 del 27-may, que siguen abiertos porque nunca re-checaron).
+- **Independiente:** NO requiere D / C / B.
+- Ya estaba en el roadmap original como **Bloque B** (cron 2am pendiente).
+- **Diseño:** `docs/SPRINT_RESILIENCIA_PR_E_DESIGN.md` (stub — *diseño detallado en próxima iteración*)
+
 ## Esfuerzo total
 
-- **Claude Code:** ~12.5–14h distribuidas en los 3 PRs.
+- **Claude Code:** ~17–19h distribuidas en los 4 PRs.
 - **Esteban:** ~30 min (UptimeRobot + validaciones manuales en browser).
 
 ## Orden recomendado
@@ -37,6 +44,7 @@ El sprint ataca las 3 capas que fallaron: **el kiosk mentía** (mostraba éxito 
 1. **PR D** — resuelve el síntoma inmediato del 27-may (UI honesta + no más turnos fantasma).
 2. **PR C** — resuelve la causa (preserva el dato durante outages). Depende de D.
 3. **PR B** — visibilidad proactiva. Independiente; puede adelantarse si se prioriza monitoring.
+4. **PR E** — red de seguridad nocturna para quien no regresa. Independiente; cierra el caso que C no cubre.
 
 ## Decisiones que Esteban debe tomar antes de implementar
 
@@ -66,7 +74,11 @@ El sprint ataca las 3 capas que fallaron: **el kiosk mentía** (mostraba éxito 
 - Mié–Jue: Implementar PR B (3.5h).
 - Vie: UptimeRobot + validación de alertas (apagar webhook a propósito).
 
-**Meta: 2 semanas para kiosk resiliente end-to-end.**
+**Semana 3 (16–20 jun)**
+- Lun–Mar: Diseño detallado + implementación PR E (cron auto-cierre 2am, ~5h).
+- Mié: Validación (sembrar orphan, esperar/disparar cron, verificar cierre +9.6h + TAG + incidencia).
+
+**Meta: kiosk resiliente end-to-end + red de seguridad nocturna en ~3 semanas.**
 
 ## Rollback general
 
@@ -74,7 +86,7 @@ Cada PR trae su propio rollback:
 - PR D/C: `git revert <commit>` + push + bump `KIOSK_BUILD`. PR C además tiene kill-switch `offlineQueueEnabled=0` sin redeploy.
 - PR B: desactivar cron del workflow + quitar link a `status.html`. Workflows n8n versionados.
 
-## Métricas de éxito conjuntas (D + C + B)
+## Métricas de éxito conjuntas (D + C + B + E)
 
 | Escenario | Antes (27-may) | Después |
 |---|---|---|
@@ -82,6 +94,7 @@ Cada PR trae su propio rollback:
 | Empleado ante un fallo | "✓" falso (creía que checó) | UI honesta: "en cola / no se registró" |
 | Detectar el outage | 12h (día siguiente) | < 15 min (UptimeRobot) |
 | Turno fantasma 24h | 11 generados | imposible (`ts_evento`) |
+| **Empleado NO regresa** (Mario, Enoc, Ricardo) | orphan abierto indefinido → corrección manual RH | cron 2am lo cierra a +9.6h + TAG + incidencia (PR E) |
 | Forense post-incidente | logs podados/perdidos | 14 días retención + histórico 24h |
 
 ## Estado actual al cierre 28-may
@@ -90,7 +103,7 @@ Cada PR trae su propio rollback:
 ✅ Forense outage 27-may documentado (PR #47 merged)
 ✅ Incidencia validación Ricardo creada (PR #48 merged)
 ✅ Empleados-master.json refrescado (42→40, sync on-change)
-✅ 3 docs de diseño en este branch, listos para revisión
+✅ 4 docs de diseño en este branch, listos para revisión (PR E como stub)
 
 ⏳ Worker + Redis Railway crashed (apagar por etapas — recomendación dada, no urgente)
 ⏳ UptimeRobot setup (parte de PR B)
