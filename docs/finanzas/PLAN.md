@@ -1,338 +1,302 @@
-# FTS Suite · Módulo Finanzas — PLAN de Implementación
+# FTS Suite · Módulo Finanzas — PLAN de Implementación · **v2**
 
-> **Estado:** análisis previo. NADA implementado. Documento para revisión de Esteban antes de aprobar el inicio.
+> **Estado:** análisis FINAL pre-desarrollo. NADA implementado. Documento para aprobar antes del Paso 1.
 > **Autor:** Claude Code · 28-may-2026 · grounded en lectura real del repo + n8n MCP + Odoo MCP (read-only).
-> **Restricción cumplida:** solo lectura. No se creó código, ni workflows, ni se modificaron archivos existentes. Este `PLAN.md` es el único entregable.
+> **v2:** incorpora decisiones de Esteban (multi-company + multi-currency desde v1, auth de 1 usuario) y verificación profunda de Odoo/n8n. Las contradicciones con decisiones tomadas se marcan como `RIESGO:` (no se cambian unilateralmente).
+
+---
+
+## 0. Cambios de alcance v1 → v2
+
+| Tema | v1 | v2 (decisión Esteban) |
+|---|---|---|
+| Companies | solo SERVICIOS FTS (1) | **Multi-company desde v1:** FTS MX (`company_id=1`) + FTS USA (`company_id=6`). Vista consolidada por default + selector. |
+| Currency | MXN, USD fase 2 | **Multi-currency desde v1:** monto en moneda nativa + equivalente MXN (rate de Odoo a fecha de factura). |
+| Auth/roles | JWT con claim de role, RBAC | **1 solo usuario compartido**, acceso total, sin roles. JWT con estructura lista para roles pero sin usarlos aún. Trazabilidad individual → v2 del producto. |
+| Manifest | con `permissions` por rol | **Simplificado** sin `permissions`; con sub-estados de `status`. |
+| Hashing/JWT | scrypt + JWT-HMAC con `node:crypto` | ⚠️ Ver **RIESGO-1**: el sandbox de n8n NO permite `node:crypto`. Se mantiene la intención (HMAC-JWT + hash con salt) pero **en JS puro**. |
+| Detalle factura | listado + export v1 | igual (drill-down a líneas en v2). |
 
 ---
 
 ## 1. Resumen ejecutivo
 
-El módulo **Finanzas** se monta sobre el stack ya validado de FTS Suite (GitHub Pages + n8n/Railway + Odoo 19 SaaS). El análisis confirma:
+El módulo Finanzas se monta sobre el stack validado (GitHub Pages + n8n/Railway + Odoo 19). Confirmado en v2:
 
-- **El patrón de auth actual (`FTSAuth`) NO sirve para Finanzas.** Guarda hashes SHA-256 (sin salt) en `shared/users-suite.json`, un archivo en repo **público**. Para datos financieros esto es inaceptable → Finanzas necesita auth **server-side vía n8n + env vars en Railway** (valida la propuesta A del brief). Será la **primera** auth server-side del Suite.
-- **No existe cliente n8n compartido.** `shared/odoo.js` es un placeholder vacío ("Pendiente de implementar"); cada app hace su propio `fetch`. El kiosk tiene su `odoo.js` con un helper `n8nFetch` (retry 2× + timeout 10s) que sirve de patrón de referencia.
-- **Existe infraestructura reutilizable:** registry de módulos (`shared/modules-registry.js`), tema (`shared/fts-styles.css`), cifrado AES-256-GCM (`shared/config-sync.js`, para secrets de config), y un patrón de escritura a GitHub vía API.
-- **Odoo `account.move` está listo** con todos los campos del brief. Volumen manejable pero requiere paginación (ver §3).
-- **No hay nada de Finanzas en el repo todavía** (el HTML draft mencionado no está commiteado). Arrancamos en limpio.
-
-**Veredicto:** el camino propuesto en el brief es correcto. Las decisiones A-F se afinan abajo con los hallazgos reales.
+- **FTS USA existe como company real en Odoo** (`company_id=6`, USD, United States) — **NO es bloqueante**. Factura activo (13 out + 13 in en 6 meses).
+- **El sandbox de Code nodes de n8n está restringido**: sin `require`, `node:crypto`, `process`, ni `$env` (evidencia directa en el workflow de auth de PMO). Esto **obliga a HMAC/hash en JS puro** y a una estrategia de secretos distinta a env vars en Code node → `RIESGO-1`.
+- **El auth actual del Suite (`FTSAuth`) no sirve** (hashes SHA-256 sin salt en repo público). Finanzas estrena auth server-side.
+- **No hay cliente n8n compartido** (`shared/odoo.js` vacío), **ni componentes UI compartidos** (`shared/` es plano, sin `ui/`), **ni CI/CD** (no hay `.github/workflows/`; deploy = push a `main` → GitHub Pages). Todo se construye en `finanzas/` tomando el HTML draft como referencia visual.
+- **`account.move` listo** con campos signed/currency; la consolidación a MXN de las facturas USD requiere conversión por rate → `RIESGO-4`.
 
 ---
 
-## 2. Inventario detallado
+## 2. Inventario A — Odoo multi-company
 
-### 2.1 Estructura del repo (relevante)
+### A.1 Companies registradas (`res.company`, 8 activas)
 
-```
-fts-suite/
-├── index.html                      # launcher raíz (lee MODULES_REGISTRY)
-├── CLAUDE.md                       # reglas del repo (leer Hallazgo #15 antes de tocar kiosk)
-├── shared/                         # código compartido entre apps
-│   ├── auth-suite.js               # FTSAuth (login client-side, SHA-256, users-suite.json)
-│   ├── auth.js                     # (variante/legacy de auth)
-│   ├── config-sync.js              # ConfigSync — AES-256-GCM + PBKDF2 (secrets de config)
-│   ├── odoo.js                     # ⚠️ PLACEHOLDER VACÍO ("pendiente de implementar")
-│   ├── modules-registry.js         # MODULES_REGISTRY (sidebar/launcher)
-│   ├── fts-styles.css              # tema (navy/amber, IBM Plex)
-│   ├── users-suite.json            # ⚠️ usuarios + password_hash SHA-256 (repo público)
-│   ├── public-config.json          # n8n_url, odoo_url, demo_mode (NO secreto)
-│   ├── ops-config.json             # secrets CIFRADOS (AES) — API keys
-│   └── ... (incidencias, empleados-master, etc.)
-├── operaciones/
-│   └── kiosk/js/odoo.js            # ✅ cliente n8n REAL de referencia (n8nFetch)
-├── seguridad/  ingenieria/  modulos/rh/  pmo/  hatch/   # otras apps
-└── docs/                           # documentación (este PLAN va en docs/finanzas/)
-```
+| company_id | Nombre | Moneda | País | Relevante Finanzas |
+|---|---|---|---|---|
+| **1** | **SERVICIOS FTS** | MXN | México | ✅ SÍ (principal) |
+| **6** | **FTS FULL TECHNOLOGY SYSTEMS LLC** | **USD** | **United States** | ✅ SÍ (USA) |
+| 4 | TECNOLOGIAS Y PRODUCTOS YIN | MXN | México | ❌ (otra entidad) |
+| 2,3,5,8,10 | Personales / terceros (Juan, Esteban, Ximena, "Taqueria los Jimenez", etc.) | MXN | MX | ❌ |
 
-### 2.2 Patrón FTSAuth (cómo es hoy)
+→ **FTS USA NO es bloqueante**: existe como company `6`, activa, USD. El plan multi-company procede.
 
-`shared/auth-suite.js` → `window.FTSAuth`:
-- **Login:** `hashPassword` (SHA-256 sin salt, Web Crypto) → compara contra `password_hash` en `shared/users-suite.json` (cargado de GitHub raw/API).
-- **Sesión:** `localStorage['fts_session']` = `{userId, username, nombre, role, modulos, loginTime, lastActivity}`. Timeout de inactividad **30 min** (`INACTIVITY_TIMEOUT`), tracking por eventos (click/keydown/touchstart/scroll).
-- **Roles:** `master` | `admin` | `user`. `canAccess(modulo, submodulo)` valida contra `session.modulos` (`'all'` o `{mod:{acceso, submodulos}}`).
-- **⚠️ Debilidad para Finanzas:** hash sin salt + archivo público = cualquiera con el repo puede intentar crackear los hashes offline. Para Finanzas NO se reutiliza este mecanismo de credenciales (sí se puede reutilizar el patrón de sesión/inactividad en el cliente).
+### A.2 Acceso del API key `Wansi69xesEqEiY1` a ambas companies
 
-### 2.3 Cifrado AES-256-GCM (`config-sync.js`)
+- El **MCP de Odoo** (usuario distinto al de la credencial) **SÍ ve datos de company 1 y 6** (los agregados devolvieron ambas). Eso prueba que el dato es accesible multi-company a nivel DB.
+- ⚠️ **`RIESGO-6` / BLOQUEANTE A VERIFICAR:** la credencial n8n `Wansi69xesEqEiY1` es un **usuario Odoo distinto** al del MCP. No pude verificar desde aquí que ESE usuario tenga `company_ids` = {1, 6}. **Antes del Paso 3** hay que confirmar (en Odoo: Settings → Users → el usuario de la API key → Allowed Companies) que incluye FTS USA. Si solo tiene company 1, las queries a company 6 volverán vacías silenciosamente.
+- **Multi-company en queries XML-RPC:** el contexto se controla con `allowed_company_ids` / `force_company` en el `context` de la llamada. El nodo Odoo community (v2.16.1) no expone esto directo → puede requerir filtrar por `company_id` en el domain (que SÍ funciona si el usuario tiene acceso) en vez de cambiar el contexto. **Approach recomendado:** no cambiar contexto; filtrar `['company_id','in',[1,6]]` en el `filterRequest` y confiar en que el usuario ve ambas.
 
-- `deriveKey`: PBKDF2, 100k iteraciones, SHA-256 → AES-GCM 256.
-- `encryptConfig`/`decryptConfig`: empaqueta `salt(16)+iv(12)+ciphertext` en base64.
-- **Uso actual:** cifrar `ops_*`/`key_*`/`fts_*` de localStorage → `shared/ops-config.json` (sincroniza API keys entre dispositivos).
-- **Para Finanzas:** es el patrón correcto para *secrets de config*, pero **no** para credenciales de usuario (esas van server-side). Útil si Finanzas necesita guardar algún secreto de cliente cifrado.
+### A.3 Inventario de facturas por company (6 meses, posted)
 
-### 2.4 Workflows n8n (vía n8n-mcp — 15 activos)
-
-n8n v2.50.0 en `https://primary-production-5c3c.up.railway.app`, conectado y sano. Workflows que tocan Odoo (patrones de referencia):
-
-| Workflow | ID | Patrón aprovechable para Finanzas |
-|---|---|---|
-| `kiosk/empleados (v3.1)` | `2UGWLjNwYRGtXq5y` | Odoo SEARCH + filtro `company_id` + respuesta JSON `{empleados:[...]}` |
-| `kiosk/checkin v4.2` | `a7mEjjdwIzzvomXs` | Webhook→validación→Odoo→respuesta; manejo de errores |
-| `incidencias/resolver` | `Oc2ceMHX2O0L0y2X` | State machine + Odoo UPDATE |
-| `dashboard/resumen (v4.3)` | `nNNQrFMTSjIfqHep` | Agregación de KPIs Odoo → JSON |
-| `rh/empleados-master/sync` | `5nzVRsCMlCZlq5s4` | Schedule + Webhook dual trigger + GitHub PUT |
-
-**Patrón de webhook validado (reglas del repo, CLAUDE.md §3):**
-- Nodo Odoo (community v2.16.1): SEARCH usa `filterRequest` (no `filters`), `value` (no `fieldValue`), `fieldsList` como ARRAY. "Always Output Data" = ON. Credencial **`'Odoo FTS'` (ID `Wansi69xesEqEiY1`)** — confirmada como la credencial activa referenciada en los 5 workflows productivos que tocan Odoo.
-- IF nodes: `typeValidation: "loose"`.
-- GitHub writes: HTTP Request con Header Auth `"GitHub FTS Suite"` (NO el native node).
-- Respuesta: `respondToWebhook` con JSON estructurado.
-- Base URL webhooks: `https://primary-production-5c3c.up.railway.app/webhook/<path>`.
-
-> **Nota:** NO existe ningún workflow de auth server-side hoy. `/auth/finanzas-login` sería el primero. n8n no tiene store de sesión nativo → la auth debe ser **stateless (JWT firmado)** o usar un store externo (no disponible sin Redis, que justo se va a apagar).
-
-### 2.5 Modelo de datos Odoo — `account.move`
-
-**Campos confirmados existentes** (probados vía MCP, todos presentes):
-`id, name, partner_id, move_type, invoice_date, invoice_date_due, amount_total, amount_untaxed, amount_tax, amount_residual, payment_state, state, l10n_mx_edi_cfdi_uuid, ref, invoice_origin, journal_id, currency_id, invoice_payment_term_id, company_id, user_id, invoice_user_id`.
-
-**Hallazgos del modelo:**
-- **Multi-moneda:** facturas en MXN (`currency_id [33]`) y USD (`[2]`). El monto está en su moneda; para KPIs en MXN hay que convertir o reportar por moneda. **PREGUNTA PARA ESTEBAN** (ver §8).
-- **Multi-company:** existe `company_id` (SERVICIOS FTS = `[1]`) y partners como "CORPORATE USA". El webhook debe filtrar `company_id=1` por default (como hace el kiosk), salvo que Caro necesite consolidado.
-- **`l10n_mx_edi_cfdi_uuid` puede ser `false`** (ej. facturas USD a entidades extranjeras sin CFDI). El frontend debe manejar `false`/`null`.
-- `invoice_origin` = referencia a la SO (ej. `SO11663`) → enlace útil a proyecto/venta.
-- `analytic_distribution` (no `analytic_account_id`, v19) vive típicamente en las **líneas** (`account.move.line`), no en el header — si Caro necesita costo por proyecto, será una query secundaria a las líneas (fuera del MVP de Facturas).
-- `project_id` en el header: **no confirmado / probablemente inexistente** en `account.move` (la dimensión de proyecto va por `analytic_distribution` en líneas). Marcado como campo NO disponible directo.
-
-**Volumen (vía aggregate, state=posted):**
-
-| Periodo | move_type | Count | Σ amount_total |
+| company | out_invoice | in_invoice | out_refund |
 |---|---|---|---|
-| Últimos 6 meses | `in_invoice` (proveedor) | 794 | $13.28M |
-| Últimos 6 meses | `out_invoice` (cliente) | 40 | $20.04M |
-| Últimos 6 meses | `out_refund` | 1 | $0.56M |
-| Histórico total | `out_invoice` posted | ~4,981 | — |
+| 1 · SERVICIOS FTS | 27 | 780 | 1 |
+| 6 · FTS USA | 13 | 13 | 0 |
+| 4 · YIN | 0 | 1 | 0 |
 
-→ **Conclusión de volumen:** el grueso es `in_invoice` (facturas de proveedor, 794/6mo). Las ventas son pocas pero grandes (CAPEX/EPC). Una query sin límite puede traer miles de filas (histórico) → **paginación obligatoria** (limit/offset) + filtro de rango de fechas por default (últimos 30d). El `summary` (totales/conteos) debe calcularse server-side vía `aggregate_records`, no sumando en cliente sobre una página.
+**Distribución de moneda (6mo, out+in):** MXN **799** · USD **35** (~4%). El grueso es MXN; USD vive en company 6.
 
----
+### A.4 Esquema de campos `account.move` (confirmados existentes)
 
-## 3. Decisiones arquitectónicas (con justificación)
+| Campo | Existe | Notas |
+|---|---|---|
+| `id`, `name`, `ref`, `move_type`, `state` | ✅ | `name`=folio (INV…); `ref`=ref proveedor |
+| `partner_id`, `journal_id`, `currency_id`, `company_id` | ✅ | many2one → vienen como `[id, "nombre"]` |
+| `invoice_date`, `invoice_date_due` | ✅ | |
+| `payment_state` | ✅ | paid / not_paid / partial / in_payment / reversed |
+| `amount_total`, `amount_untaxed`, `amount_tax` | ✅ | en **moneda de la factura** |
+| `amount_residual` | ✅ | saldo, moneda factura |
+| `amount_total_signed`, `amount_residual_signed` | ✅ | **en moneda de la COMPANY** (USA=USD, MX=MXN). NO es MXN global → ver A.5 / RIESGO-4 |
+| `amount_total_in_currency_signed` | ✅ | total con signo en moneda factura |
+| `l10n_mx_edi_cfdi_uuid` | ✅ | **`false`** en facturas de company 6 (USA) — confirmado |
+| `invoice_origin` | ✅ | SO/PO origen (ej. SO11663) |
+| `currency_rate` | ⚠️ no confirmado en header | Odoo suele exponerlo; si no, se deriva (A.5) |
+| `project_id` (header) | ❌ probable inexistente | la dimensión proyecto va por `analytic_distribution` en **líneas** (`account.move.line`), v19 |
 
-### A. Manejo seguro del password — **RECOMENDADO: JWT stateless + hash con `crypto` nativo**
+### A.5 Currency rate — cómo obtener el equivalente MXN
 
-La propuesta del brief (env var con hashes + workflow `/auth/finanzas-login` → token) es correcta. Afinaciones por constraints reales de n8n:
+Hechos verificados: para una factura USD de company 6, `amount_total = amount_total_signed = amount_total_in_currency_signed = 534.4` (todos USD). **Conclusión: `*_signed` está en moneda de la company, NO en un MXN global.** No existe un campo "equivalente MXN consolidado" listo.
 
-- **Hashing:** ⚠️ `argon2`/`bcrypt` son módulos **externos** que las Code nodes de n8n **podrían no tener** disponibles (requieren `NODE_FUNCTION_ALLOW_EXTERNAL`). **Recomendación: usar `crypto.scryptSync` o `crypto.pbkdf2` (built-in de Node, siempre disponibles)** con salt por usuario. Igual de seguro para este caso de uso, cero dependencias.
-- **Token:** **JWT firmado con HMAC-SHA256** (`crypto.createHmac`) usando un secreto `FINANZAS_JWT_SECRET` en Railway. Stateless → no necesita store de sesión (importante: Redis se va a apagar). Payload `{user, role, exp}`, expiración corta (ej. 8h).
-- **Env vars Railway:**
-  ```
-  FINANZAS_USERS='{"esteban":{"hash":"<scrypt>","salt":"<hex>","role":"admin"}, "caro":{...,"role":"auditor"}, ...}'
-  FINANZAS_JWT_SECRET='<random 32+ bytes>'
-  ```
-- **Flujo:**
-  1. `POST /webhook/auth/finanzas-login {user, password}` → workflow lee `FINANZAS_USERS`, recomputa hash con el salt del usuario, compara, firma JWT → `{token, expires_at, role}`.
-  2. Frontend guarda en `localStorage['fts_fin_session']`.
-  3. Cada webhook de datos (`/fin/*`) valida el JWT (firma + exp) en un nodo Code inicial antes de tocar Odoo. Si inválido → 401.
-- **Generación de hashes:** un mini-script local (Node) que Esteban corre una vez para generar el JSON de `FINANZAS_USERS` a partir de passwords en claro (nunca commiteado).
+`RIESGO-4` (consolidación MXN): para mostrar USD→MXN hay que **convertir con un rate a la fecha de la factura**. Opciones:
+- **(a)** Pedir `res.currency` / `res.currency.rate` (tabla de tasas por fecha) y aplicar `monto_mxn = monto_usd * rate(USD→MXN, invoice_date)`. Requiere un nodo Odoo extra que lea rates.
+- **(b)** Usar el método nativo de Odoo `currency._convert(amount, to, company, date)` — más preciso, pero es un *method call* no expuesto por el nodo community → requeriría un HTTP/JSON-RPC manual.
+- **(c)** v1 pragmático: como solo ~4% son USD y todas en company 6, devolver `amount_native` + `currency`, y `amount_mxn` calculado con rate (a) **solo para USD**; MXN-equiv de facturas MXN = nativo (rate 1).
 
-> **PREGUNTA PARA ESTEBAN:** ¿confirmas scrypt+JWT-HMAC (cero dependencias externas) en vez de argon2/bcrypt? Es la opción robusta y compatible con n8n sin tocar flags del runtime.
+**Recomendación:** approach (a) en v1 (un nodo Odoo SEARCH a `res.currency.rate` para USD, cachear el rate por fecha). Documentar que el rate es el de Odoo (no Banxico/DOF) salvo que Esteban indique otra fuente → `PREGUNTA #1`.
 
-### B. Estructura de carpetas — **RECOMENDADO: carpeta `finanzas/` plana ahora, multi-file**
+### A.6 CFDI en USA
 
-No refactorizar a `apps/ + shared/` ahora (riesgo alto, sin beneficio inmediato). Mantener el patrón actual del repo (cada módulo en su carpeta top-level). Finanzas multi-file (no single-file) por su tamaño (13 submódulos).
-
-```
-finanzas/
-├── index.html              # shell del módulo: sidebar + router + login gate
-├── login.html              # (o modal dentro de index) pantalla de login Finanzas
-├── css/finanzas.css        # estilos propios (importa shared/fts-styles.css)
-├── js/
-│   ├── auth-fin.js         # cliente de auth Finanzas (login → JWT → fts_fin_session)
-│   ├── fin-client.js       # cliente n8n dedicado (fetch + Bearer token + manejo error)
-│   ├── state.js            # estado demo/real por módulo (localStorage)
-│   ├── sidebar.js          # render del nav + indicadores ⚪🟡🟢
-│   ├── router.js           # carga de submódulos
-│   └── modules/
-│       ├── facturas.js     # Bloque 4 — Centro de Transacciones (PRIMER módulo real)
-│       └── ...             # los otros 12 como stubs (estado empty)
-├── data/mock/              # JSON mock por módulo (para el toggle demo)
-│   └── facturas.mock.json
-└── version.json
-```
-
-- **Carga:** `<script>` tags (consistente con el resto del Suite, sin bundler).
-- **Registro:** agregar entrada `finanzas` a `shared/modules-registry.js` (1 línea, lo hace visible en launcher/admin).
-
-### C. Toggle demo/real — **por módulo, en `localStorage`, con descubrimiento de webhook**
-
-- Estado por módulo: `localStorage['fts_fin_mode_<moduloId>']` ∈ `{empty, demo, real}`. Default `empty`.
-- Switch en la cabecera del módulo: `[Vacío] [Demo] [Real]`.
-- **`Real` deshabilitado** (con tooltip "Webhook no configurado todavía") si el webhook del módulo no existe. ¿Cómo sabe el front si existe? Un manifiesto `finanzas/js/webhooks-manifest.js` declara qué módulos tienen webhook real listo (`{facturas:true, flujo_caja:false, ...}`). Se actualiza al desplegar cada webhook. (Alternativa: un endpoint `/fin/capabilities` que liste los webhooks activos — más dinámico pero requiere otro workflow; MVP usa el manifiesto estático.)
-- `empty` = todo en ceros + mensaje "Sin datos. Activa Demo o conecta datos reales."
-
-### D. Indicador en sidebar — reutiliza el campo `status` del registry
-
-Cada item del nav muestra un dot según el modo activo del módulo:
-- ⚪ gris — `empty` / sin webhook configurado
-- 🟡 ámbar — `demo` activo
-- 🟢 verde — `real` conectado
-
-`sidebar.js` lee `fts_fin_mode_<id>` de cada submódulo y pinta el dot. Patrón consistente con el `status:'active'` que ya usa `planeacion` en `modules-registry.js`.
-
-### E. Spec del webhook `/fin/facturas` — ver §5.
-### F. Spec del módulo Facturas — ver §6.
+- `l10n_mx_edi_cfdi_uuid = false` confirmado en facturas de company 6 (esperado, USA no emite CFDI).
+- `PREGUNTA #8:` ¿Caro necesita en el export algún identificador fiscal USA (EIN, invoice #, W-9)? Odoo guarda el fiscal del partner en `vat`/`partner_id.vat`. Si sí, se agrega `partner_vat` al webhook. (No bloqueante v1.)
 
 ---
 
-## 4. Estructura de archivos a crear (árbol consolidado)
+## 3. Inventario B — n8n
 
-(ver §3.B). Archivos nuevos del **MVP (Pasos 1-4)**:
+### B.1 Entorno
+- Base webhooks: `https://primary-production-5c3c.up.railway.app/webhook/<path>`. n8n v2.50.0, conectado.
+- Env vars en Railway: **se pueden definir** (ya se aplicaron las de retención de logs hoy). PERO ver `RIESGO-1`: un Code node **no las lee con `$env`/`process.env`** en este sandbox.
+- **Workflow de referencia con auth:** PMO `chat-apply` valida requests con **HMAC-SHA256 en JS puro** (`docs/n8n-workflows/pmo-chat-apply-code-code-validar-auth.js`). Es el patrón a reusar (firma + ventana de tiempo 5 min + comparación constant-time). **Modelo: firma en el BODY, no header.**
 
-```
-finanzas/index.html                     # shell + login gate + sidebar
-finanzas/css/finanzas.css
-finanzas/js/auth-fin.js                 # login Finanzas (JWT)
-finanzas/js/fin-client.js               # cliente n8n con Bearer
-finanzas/js/state.js                    # toggle demo/real por módulo
-finanzas/js/sidebar.js                  # nav + indicadores
-finanzas/js/router.js
-finanzas/js/webhooks-manifest.js        # qué módulos tienen webhook real
-finanzas/js/modules/facturas.js         # Centro de Transacciones
-finanzas/data/mock/facturas.mock.json
-finanzas/version.json
-docs/finanzas/PLAN.md                   # este documento
-```
+### B.2 Capacidad técnica de Code nodes — `RIESGO-1` (contradice decisión "node:crypto")
 
-Cambios mínimos a archivos existentes (1 línea c/u, en su momento):
-- `shared/modules-registry.js` → agregar entrada `finanzas` con sus 13 submódulos.
-- `index.html` (launcher) → card de Finanzas (si no se autogenera del registry).
+Evidencia directa (comentario línea 1 del auth de PMO): *"sandbox-safe — sin crypto.subtle, sin require, sin process, sin $env"*. El autor implementó SHA-256/HMAC **a mano** justamente porque el sandbox **no expone**:
+- ❌ `require('crypto')` / `node:crypto` → **`scrypt` y `createHmac` NO disponibles**.
+- ❌ `process.env` / `$env` dentro del Code node.
+- ❌ `crypto.subtle` (Web Crypto) dentro del Code node.
 
-n8n (Pasos 1-2):
-- Workflow `auth/finanzas-login` (nuevo).
-- Workflow `fin/facturas` (nuevo).
+**Implicaciones para el auth de Finanzas:**
+- **JWT firmado:** ✅ factible con **HMAC-SHA256 en JS puro** (ya existe implementación probada en el repo — reusar verbatim).
+- **Hash de password:** ❌ `scrypt` impracticable en JS puro (memory-hard, lento). ✅ Alternativa: **PBKDF2-SHA256 en JS puro** (es HMAC iterado; el primitivo SHA-256 ya existe). Para **1 login** con ~100k iteraciones es aceptable (~cientos de ms, una vez).
+- **Secretos (`JWT_SECRET`, hash del user):** como `$env` no se lee en Code node → opciones:
+  - **(i)** Hardcodear en el Code node del workflow de login. El workflow JSON vive en n8n (no en el repo público) — **siempre que NO se exporte el JSON a `docs/`** (ver `RIESGO-3`).
+  - **(ii)** Verificar si `{{$env.FINANZAS_JWT_SECRET}}` resuelve en un nodo de **expresión** (Set), que NO es el sandbox del Code node. Si funciona, es lo más limpio. **A verificar en Paso 1.**
+  - **(iii)** Guardar en una credential de n8n.
+  - **Recomendación:** intentar (ii); si falla, usar (i) con la disciplina de no commitear el workflow.
 
-Railway env vars: `FINANZAS_USERS`, `FINANZAS_JWT_SECRET`.
+> `PREGUNTA #2 (revisada):` la decisión "scrypt + node:crypto nativo" **no es viable** en este n8n. ¿Apruebas el reemplazo por **PBKDF2-SHA256 + HMAC-JWT, ambos en JS puro** (patrón ya probado en producción para PMO)? Es igual de seguro para 1 usuario.
+
+### B.3 CORS / preflight — `RIESGO-2`
+
+- El webhook `kiosk/empleados` tiene `options: {}` (sin CORS configurado) y aun así GitHub Pages lo consume con éxito (POST `application/json`). n8n maneja el preflight en estas rutas.
+- ⚠️ **`RIESGO-2`:** agregar un header `Authorization: Bearer` convierte el request en "no simple" y **fuerza un preflight OPTIONS** que el webhook (solo POST) podría no contestar → el fetch fallaría desde el browser.
+- **Mitigación (alineada con el patrón PMO que ya funciona):** **NO** mandar el token en header `Authorization`. Mandarlo en el **body** (POST) o como query param. Así se evita el preflight de headers custom y se reusa el patrón probado. Esto **contradice el brief** ("header Authorization: Bearer") → lo dejo como recomendación + `PREGUNTA #9`. Alternativa si se quiere header: configurar en el webhook `Allowed Origins (CORS)` + allowed headers incluyendo `authorization`, y verificar que n8n responde el OPTIONS.
+
+### B.4 Conflictos de nombres de webhook
+
+Webhooks actuales (15 workflows): `kiosk/{empleados,checkin,sos,estado-empleado,cerrar-registro,asistencia,asistencia-rango,ping}`, `incidencias/*`, `panel/derivar-roles`, `rh/empleados-master/refresh`, `dashboard/resumen`, `asistencias/admin`, `accesos-incidencias/guardar`.
+→ **`/auth/finanzas-login` y `/fin/*` NO chocan.** Convención: namespace por prefijo (`kiosk/`, `incidencias/`, `rh/`). Finanzas usa `fin/` y `auth/`. ✅
+
+### B.5 Error handling y rate limiting
+- Patrón estándar: Code node devuelve `{_error, code, http, msg}`; un IF/Respond traduce a status. (Visto en PMO auth.)
+- No hay rate-limiting a nivel n8n/Railway visible → el **lockout por intentos** del login lo implementa el propio workflow (B.6 del spec auth) usando `staticData` del workflow o un contador en memoria por ventana.
 
 ---
 
-## 5. Spec técnica — webhook `/fin/facturas` + workflow n8n
+## 4. Inventario C — Frontend
 
-### 5.1 Contrato HTTP
+### C.1 Manifest/registry actual
+- `shared/modules-registry.js` → `MODULES_REGISTRY` (array de `{id, label, path, cardId, submodulos[]}`). Submódulos admiten `status`/`version`/`build` (ej. `planeacion` tiene `status:'active'`).
+- Sirve para **registrar la app** Finanzas en el launcher (1 entrada nueva), pero el **estado por módulo demo/real** de Finanzas vivirá en su **propio `manifest.json`** (más rico: webhook, block, status). El registry global y el manifest de Finanzas son complementarios.
 
-- **Método:** GET (o POST si se prefiere body; GET con query params es lo del brief).
-- **Path:** `/webhook/fin/facturas`
-- **Auth:** header `Authorization: Bearer <JWT de finanzas-login>`. Nodo Code inicial valida firma + exp → 401 si falla.
-- **Query params:**
-  | Param | Tipo | Default | Notas |
-  |---|---|---|---|
-  | `from_date` | YYYY-MM-DD | hoy-30d | filtro `invoice_date >=` |
-  | `to_date` | YYYY-MM-DD | hoy | filtro `invoice_date <=` |
-  | `type` | `out`/`in`/`all` | `all` | mapea a `move_type` |
-  | `partner_id` | int | — | opcional |
-  | `state` | string | `posted` | default solo posted |
-  | `payment_state` | string | — | opcional (paid/not_paid/partial) |
-  | `company_id` | int | 1 | default SERVICIOS FTS |
-  | `limit` | int | 100 | máx 200 |
-  | `offset` | int | 0 | paginación |
+### C.2 CI/CD
+- **No hay `.github/workflows/`.** Deploy = **push a `main` → GitHub Pages** rebuild (~60-90s). Flujo manual. Cache-busting via query string / `version.json` (patrón del repo). No se necesita pipeline nuevo para Finanzas.
 
-### 5.2 Lógica del workflow `fin/facturas`
+### C.3 Componentes shared/ui reutilizables
+- `shared/` es **plano**: `auth-suite.js`, `config-sync.js`, `fts-styles.css`, `modules-registry.js`, etc. **No hay `shared/ui/`** (ni toast, modal, table, paginación reutilizables).
+- → **`RIESGO-5` (menor):** los componentes UI (sidebar, tabla paginada, toast, modal, filtros) **se construyen desde cero** en `finanzas/`, tomando el **HTML draft** (`fts-suite-finanzas-v2.html`) como base visual. El draft ya trae el design system completo (CSS vars navy/amber, IBM Plex, `.card`, `.data-table`, `.pill`, `.nav-item` con badges) → se extrae a `finanzas/css/finanzas.css`.
 
-```
-Webhook (GET)
-  → Code: validar JWT (firma HMAC + exp). Si inválido → Respond 401.
-  → Code: construir domain Odoo desde query params (defensivo: fechas válidas, type→move_type).
-  → Odoo SEARCH account.move (filterRequest=domain, fieldsList=[ARRAY de campos], limit, offset, order='invoice_date desc')
-  → Odoo aggregate_records (mismo domain SIN limit) → total_count + summary (Σ amount_total, by payment_state)   [paralelo o 2º nodo]
-  → Code: map a JSON de salida (partner_id[1]→nombre, currency_id[1]→código, cfdi false→null)
-  → Respond OK (JSON)
-```
+---
 
-> Nota: el `summary` y `total_count` se calculan con `aggregate_records` sobre el domain completo (no sobre la página). Evita el bug de "sumar solo la página visible".
+## 5. Spec webhook `/fin/facturas` (multi-company)
 
-### 5.3 Respuesta (formato del brief, confirmado contra campos reales)
+- **Método:** POST (token en body — ver `RIESGO-2`). Path `/webhook/fin/facturas`.
+- **Auth:** body incluye `token` (JWT). Code inicial valida firma HMAC (JS puro) + `exp`. Inválido → `{_error, http:401}`.
+- **Body params:**
+  | Param | Default | Notas |
+  |---|---|---|
+  | `token` | — | JWT de login (requerido) |
+  | `from_date` / `to_date` | hoy-30d / hoy | `invoice_date` rango |
+  | `type` | `all` | out / in / all → `move_type` |
+  | `company_id` | **`all`** (=[1,6]) | filtro company (selector) |
+  | `partner_id`, `payment_state` | — | opcionales |
+  | `state` | `posted` | |
+  | `limit` / `offset` | 100 / 0 | máx 200, paginación |
 
+- **Lógica:** validar JWT → domain (incluye `['company_id','in', companies]`) → Odoo SEARCH `account.move` (fieldsList ARRAY) → Odoo SEARCH `res.currency.rate` para USD (rate por fecha, A.5) → `aggregate_records` para `total_count` + `summary` → Code map → Respond.
+
+- **Respuesta:**
 ```json
 {
   "facturas": [
     {
-      "id": 57357,
-      "name": "INV1997",
-      "partner": "Nalco de Mexico",
-      "type": "out_invoice",
-      "date": "2026-05-27",
-      "due_date": "2026-07-26",
-      "amount": 2273646.40,
-      "amount_residual": 2273646.40,
-      "payment_state": "not_paid",
-      "cfdi_uuid": "AE4ACC99-E9E6-57D8-830C-953F9C2A098E",
-      "currency": "MXN",
-      "origin": "SO11663"
+      "id": 57357, "name": "INV1997", "partner": "Nalco de Mexico",
+      "type": "out_invoice", "company_id": 1, "company_name": "SERVICIOS FTS",
+      "date": "2026-05-27", "due_date": "2026-07-26",
+      "currency": "MXN", "amount_native": 2273646.40, "amount_mxn": 2273646.40,
+      "currency_rate": 1.0,
+      "amount_residual_native": 2273646.40, "payment_state": "not_paid",
+      "cfdi_uuid": "AE4ACC99-...", "origin": "SO11663"
+    },
+    {
+      "id": 57295, "name": "INV164", "partner": "CORPORATE USA",
+      "type": "out_invoice", "company_id": 6, "company_name": "FTS USA",
+      "currency": "USD", "amount_native": 534.40, "amount_mxn": 9619.20,
+      "currency_rate": 18.0, "amount_residual_native": 534.40,
+      "payment_state": "not_paid", "cfdi_uuid": null, "origin": null
     }
   ],
   "total_count": 40,
   "summary": {
-    "total_amount": 20035972.21,
-    "by_status": {"paid": 18, "not_paid": 20, "partial": 2}
+    "consolidado_mxn": {"total": 20500000.00, "paid": 18, "not_paid": 20, "partial": 2},
+    "by_company": {
+      "1": {"name":"SERVICIOS FTS","currency":"MXN","total_native": 20035972.21, "total_mxn": 20035972.21},
+      "6": {"name":"FTS USA","currency":"USD","total_native": 25800.00, "total_mxn": 464400.00}
+    }
   },
   "page": {"limit": 100, "offset": 0}
 }
 ```
+> `summary.by_company` en moneda nativa + `consolidado_mxn` con todo convertido. El front muestra KPIs consolidados MXN + desglose por company.
 
 ---
 
-## 6. Spec técnica — módulo "Centro de Transacciones · Facturas"
+## 6. Spec workflow `/auth/finanzas-login` (1 usuario, JS puro)
 
-- **Vista:** tabla con paginación (server-side via limit/offset).
-- **KPIs arriba (4 cards):** total facturado · cobrado · pendiente · vencido (de `summary`, ojo multi-moneda — ver §8).
-- **Filtros:** rango de fechas (default últimos 30d) · tipo (todas/emitidas/recibidas) · cliente/proveedor (autocomplete partner) · status (`state`) · status de pago (`payment_state`).
-- **Columnas:** Folio (`name`), Cliente/Proveedor (`partner`), Tipo, Fecha, Vencimiento, Monto, Saldo, Estado pago, CFDI (uuid o "—"), Moneda.
-- **Acciones:** Export Excel (`.xlsx` via SheetJS o CSV nativo) · Export CSV · Ver detalle (modal con líneas — fase 2).
-- **Estados:** `empty` (ceros) / `demo` (lee `data/mock/facturas.mock.json`) / `real` (llama `/fin/facturas` con Bearer).
-- **Vencido:** se calcula en cliente (`invoice_date_due < hoy && payment_state != 'paid'`) o se pide al server. MVP: cliente.
-
-**Petición de Carolina (auditoría):** el export con filtros de rango + cliente + status es el caso de uso primario. Priorizar export correcto y completo (todas las páginas del filtro, no solo la visible → el export debe iterar offset hasta `total_count`).
+- **Método:** POST `/webhook/auth/finanzas-login`, body `{user, password}`.
+- **Flujo de nodos:**
+  1. **Code — validar + hash (JS puro):** PBKDF2-SHA256(password, salt, 100k) → compara constant-time contra el hash almacenado del usuario. Salt + hash + `JWT_SECRET` provienen de §B.2 (expresión `$env` si funciona, si no hardcode en workflow).
+  2. **Code — firmar JWT (JS puro HMAC-SHA256):** header `{alg:HS256,typ:JWT}` + payload + firma base64url.
+  3. **Respond:** `{token, expires_at}` o `{_error, http:401}`.
+- **Estructura del JWT (claims):**
+  ```json
+  { "sub": "finanzas", "iat": 1716940000, "exp": 1716968800,
+    "app": "finanzas", "ver": 1, "role": null }
+  ```
+  (`role:null` reservado para RBAC futuro; el verificador no lo exige aún.)
+- **Lifetime:** **8 horas** (`exp = iat + 28800`). Sin refresh automático (re-login manual). Stateless (no store; Redis se apaga).
+- **Rate limit / lockout:** contador por ventana en `workflow.staticData` (o por IP del header `x-forwarded-for`): **5 intentos fallidos → lockout 15 min**. Respuesta `{_error, code:'LOCKED', http:429}`. (En memoria/staticData; aceptable para 1 usuario.)
+- **Verificación en `/fin/*`:** Code inicial recomputa HMAC sobre `header.payload` y compara con la firma + valida `exp`. No toca Odoo si falla.
 
 ---
 
-## 7. Plan de implementación (pasos discretos)
+## 7. Spec `manifest.json` (v1 simplificado, sin permisos)
+
+`finanzas/manifest.json`:
+```json
+{
+  "app": "finanzas",
+  "version": "0.1.0",
+  "modules": [
+    { "id": "dashboard", "name": "Dashboard", "block": null, "status": "empty", "webhook": null },
+    { "id": "facturas", "name": "Facturas", "block": "B4", "status": "real-readonly",
+      "webhook": "/fin/facturas", "last_updated": "2026-05-29" }
+  ],
+  "status_legend": {
+    "empty": "Sin webhook configurado",
+    "demo": "Datos demo activos",
+    "real-readonly": "Conectado a Odoo (solo lectura)",
+    "real": "Conectado a Odoo (lectura + escritura)"
+  }
+}
+```
+- Estado activo por módulo (lo que elige el usuario con el toggle) vive en `localStorage['fts_fin_mode_<id>']`; el `status` del manifest declara la **capacidad máxima** del módulo (si no hay webhook, el toggle "Real" se deshabilita).
+- Los 13 módulos se listan; los no implementados quedan `status:"empty"`.
+
+---
+
+## 8. Plan de implementación (5 pasos refinados)
 
 | Paso | Entregable | Detalle | Esfuerzo |
 |---|---|---|---|
-| **1** | Auth Finanzas | Env vars Railway (`FINANZAS_USERS`, `FINANZAS_JWT_SECRET`) + workflow `auth/finanzas-login` (scrypt+JWT) + `finanzas/login` + `auth-fin.js` + `fin-client.js` (Bearer). Smoke: login OK/KO, token expira. | ~3h |
-| **2** | Webhook `/fin/facturas` | Workflow n8n: validar JWT → domain → Odoo SEARCH + aggregate → JSON. Smoke vs Odoo real (Caro como tester). | ~3h |
-| **3** | Módulo Facturas + toggle | `facturas.js` con tabla + filtros + KPIs + export; `state.js` toggle empty/demo/real; mock JSON. | ~4h |
-| **4** | Indicadores sidebar | `sidebar.js` dots ⚪🟡🟢 + registry entry `finanzas` + los otros 12 submódulos como stubs `empty`. | ~1.5h |
-| **5** | E2E con Caro | Caro corre filtros reales (rango, cliente, status) + export Excel; validar contra Odoo. Ajustes. | ~1.5h + Caro |
+| **1 · Auth** | login server-side | Workflow `auth/finanzas-login` (PBKDF2+HMAC-JWT **JS puro**) + verificación de secreto (§B.2) + `finanzas/login` + `auth-fin.js` + `fin-client.js` (token en body). Smoke: login OK/KO, exp 8h, lockout. | ~3.5h |
+| **2 · Shell + sidebar** | shell + estados | `finanzas/index.html` (extraído del draft) + `manifest.json` + `sidebar.js` con dots ⚪🟡🟢 + entrada en `MODULES_REGISTRY`. Los 13 módulos como items; 12 en `empty`. | ~2.5h |
+| **3 · Webhook facturas** | `/fin/facturas` multi-company | Workflow: validar JWT → domain multi-company → Odoo SEARCH + `res.currency.rate` + aggregate → JSON (nativo + MXN). **Pre-req: verificar A.2 (credencial ve company 6).** Smoke vs Odoo real. | ~4h |
+| **4 · Módulo Facturas** | UI completa | tabla paginada + filtros (fechas/tipo/company/partner/status/pago) + KPIs (consolidado MXN + by-company) + columnas nativo/MXN + export Excel/CSV (itera todas las páginas). | ~4.5h |
+| **5 · Toggle demo/real** | estados funcionales | `state.js` empty/demo/real por módulo + mock `data/mock/facturas.mock.json` + default todo en ceros. E2E con Caro. | ~2h + Caro |
 
-**Total estimado:** ~13h CC + sesiones de validación con Caro. Orden estricto 1→2→3→4→5 (cada paso depende del anterior excepto 4 que puede solaparse con 3).
-
----
-
-## 8. Riesgos y preguntas abiertas (requieren input de Esteban)
-
-**`PREGUNTA PARA ESTEBAN #1 — Multi-moneda.** Hay facturas en MXN y USD. ¿Los KPIs (total facturado/cobrado/pendiente) se reportan (a) por moneda separada, (b) todo convertido a MXN con tipo de cambio (¿de Odoo `currency_id.rate` o fijo?), o (c) solo MXN en el MVP y USD fase 2? Afecta el diseño de los KPI cards y el `summary` del webhook.
-
-**`PREGUNTA PARA ESTEBAN #2 — Hashing/JWT.** ¿Confirmas `scrypt` (built-in Node) + JWT-HMAC en vez de argon2/bcrypt (externos, riesgo de no cargar en n8n)? Recomiendo sí.
-
-**`PREGUNTA PARA ESTEBAN #3 — Usuarios y roles Finanzas.** ¿Lista definitiva de usuarios (esteban, erick, caro, gera, ¿otros?) y qué rol/permiso tiene cada uno? ¿Caro = solo lectura/export (auditor)? ¿Quién puede ver `in_invoice` (proveedores, sensible) vs solo `out_invoice`?
-
-**`PREGUNTA PARA ESTEBAN #4 — Alcance company.** ¿Finanzas es solo SERVICIOS FTS (`company_id=1`) o también consolida CORPORATE USA / otras companies? Default propuesto: solo company 1.
-
-**`PREGUNTA PARA ESTEBAN #5 — Descubrimiento de webhooks.** ¿Manifiesto estático (`webhooks-manifest.js`, simple, se actualiza al desplegar) o endpoint dinámico `/fin/capabilities`? Recomiendo manifiesto estático para el MVP.
-
-**`PREGUNTA PARA ESTEBAN #6 — El HTML draft.** El draft funcional con datos mock que mencionas NO está en el repo. ¿Me lo pasas (lo subo a `finanzas/` como base) o reconstruyo el shell desde cero siguiendo el tema del Suite?
-
-**`PREGUNTA PARA ESTEBAN #7 — Detalle de factura.** ¿El MVP necesita "Ver detalle" con líneas (`account.move.line` + `analytic_distribution` por proyecto), o basta el listado + export para Caro en v1? Recomiendo listado+export v1, detalle v2.
-
-**Riesgos técnicos:**
-- **R1 — n8n Code node sin módulos externos:** mitigado usando solo `crypto` nativo (§A).
-- **R2 — JWT stateless no revocable:** un token robado vale hasta `exp`. Mitigar con exp corto (8h) + secreto rotable. Sin store (Redis se apaga) no hay revocación inmediata; aceptable para el caso.
-- **R3 — Rate limit GitHub / Odoo:** Finanzas lee Odoo en vivo (no escribe a GitHub en runtime), así que sin riesgo de rate-limit de commits. Odoo SaaS puede throttlear queries grandes → paginación + aggregate server-side lo mitiga.
-- **R4 — CFDI/`null` y multi-moneda en UI:** el front debe manejar `cfdi_uuid=null` y monedas mixtas sin romper KPIs.
-- **R5 — Volumen histórico (~5k out_invoice):** sin filtro de fecha por default una query puede ser pesada. Mitigado con default últimos 30d + límite máx 200/página + export iterativo.
-- **R6 — Auth server-side es nueva en el Suite:** primer workflow de este tipo. Validar bien el flujo JWT antes de exponer datos financieros.
+**Total:** ~16.5h CC + validación Caro. Orden 1→2→3→4→5 (4 puede solaparse con 5).
 
 ---
 
-## Anexo — Constantes y referencias confirmadas
+## 9. Bloqueantes y riesgos (acción antes/durante de codear)
 
-- Credencial Odoo n8n: `'Odoo FTS'` ID **`Wansi69xesEqEiY1`** (activa, usada por 5 workflows productivos).
-- Base webhooks: `https://primary-production-5c3c.up.railway.app/webhook/`.
-- Odoo: `serviciosfts.odoo.com`, v19 SaaS, MCP read-only UID 2. `account.move` total ~4,981 out_invoice posted.
-- GitHub writes: HTTP Request + Header Auth `"GitHub FTS Suite"` (no native node).
-- Tema: `shared/fts-styles.css` (navy/amber, IBM Plex).
-- Patrón cliente n8n de referencia: `operaciones/kiosk/js/odoo.js` (`n8nFetch`, retry 2× + timeout 10s).
-- **NO reutilizar** `FTSAuth`/`users-suite.json` para credenciales Finanzas (hash público sin salt).
+### Bloqueantes (resolver antes del paso indicado)
+- **BLOQ-1 (antes Paso 3):** verificar que la credencial Odoo `Wansi69xesEqEiY1` (usuario n8n) tiene **Allowed Companies = {FTS MX, FTS USA}**. Si no, pedir al admin Odoo habilitarlo. (FTS USA company SÍ existe — eso ya no bloquea.)
+- **BLOQ-2 (antes Paso 1):** decidir estrategia de secreto en n8n (`$env` en expresión vs hardcode en workflow) — depende de verificar `RIESGO-1`. Y **obtener de Esteban el/los password(s)** del usuario compartido de Finanzas para generar el hash (nunca commiteado).
+- **BLOQ-3 (antes Paso 1):** confirmar el approach de transporte del token (body vs header) por `RIESGO-2`.
 
-> **Siguiente acción:** Esteban revisa este PLAN, responde las 7 preguntas, y aprueba el inicio por el **Paso 1 (auth)**. No se escribe código hasta entonces.
+### Riesgos (flagged; NO cambiados unilateralmente)
+- **`RIESGO-1`** — *Contradice la decisión "scrypt + node:crypto nativo".* El sandbox de n8n no expone `require`/`node:crypto`/`process`/`$env`. Propuesta: **PBKDF2-SHA256 + HMAC-JWT en JS puro** (patrón ya en producción para PMO). Requiere tu OK (`PREGUNTA #2`).
+- **`RIESGO-2`** — *Contradice "header Authorization: Bearer".* Un header custom fuerza preflight CORS que el webhook puede no contestar. Propuesta: **token en el body** (como PMO). Requiere tu OK (`PREGUNTA #9`).
+- **`RIESGO-3` (SEGURIDAD)** — el archivo `docs/n8n-workflows/pmo-chat-apply-code-code-validar-auth.js` tiene un **`SECRET` HMAC hardcodeado commiteado en el repo público** (línea 4). Cualquiera puede forjar requests al chat de PMO. **Recomendación: rotar ese secreto + dejar de exportar JS de workflows con secretos al repo.** Para Finanzas: NUNCA commitear el workflow/Code con el `JWT_SECRET`.
+- **`RIESGO-4`** — `amount_total_signed` es moneda de la company, no MXN global. La consolidación MXN de USD requiere conversión por rate (A.5). Mitigado con nodo `res.currency.rate`. Define la fuente del rate (`PREGUNTA #1`).
+- **`RIESGO-5`** — no hay componentes UI compartidos; se construyen en `finanzas/` desde el draft (esfuerzo ya contemplado en Paso 2/4).
+- **`RIESGO-6`** — acceso multi-company de la credencial n8n no verificable desde aquí (= BLOQ-1).
+
+### Preguntas para Esteban
+1. **Fuente del tipo de cambio** USD→MXN: ¿rate de Odoo (`res.currency`) o fuente externa (Banxico/DOF)? ¿Rate del día de la factura (recomendado) o del día de consulta?
+2. **`RIESGO-1`:** ¿OK reemplazar scrypt/node:crypto por **PBKDF2 + HMAC-JWT en JS puro**?
+3. **Usuario compartido:** ¿user/password definitivos? ¿lo genero yo el hash con un script local que corres tú?
+4. **Companies en scope:** ¿solo {1 MX, 6 USA} o también incluir company 4 (YIN)? (Default propuesto: {1,6}.)
+5. **Manifiesto** estático confirmado (sí, ya decidido).
+6. **HTML draft** `fts-suite-finanzas-v2.html`: recibido como referencia (lo encontré en tu Downloads). ¿Lo subo a `finanzas/` como base o solo extraigo el design system?
+7. **Detalle de factura:** listado+export en v1 confirmado (drill-down v2).
+8. **Fiscal USA en export:** ¿Caro necesita `vat`/EIN del partner USA en el export?
+9. **`RIESGO-2`:** ¿OK token en body (vs header Authorization)?
+
+---
+
+## Anexo — Constantes confirmadas (v2)
+- Odoo companies: **FTS MX = 1 (MXN)**, **FTS USA = 6 (USD)**. Credencial n8n: `Wansi69xesEqEiY1` ("Odoo FTS").
+- `account.move`: ~835 posted/6mo (96% MXN). Campos signed = moneda company (no MXN global).
+- Webhooks base: `https://primary-production-5c3c.up.railway.app/webhook/`. Sin colisión con `fin/`+`auth/`.
+- n8n Code sandbox: **sin `require`/`node:crypto`/`process`/`$env`** → JS puro obligatorio (HMAC-SHA256 ya implementado en repo, reusar).
+- Frontend: sin CI/CD (push→Pages), sin `shared/ui/`. Draft = `fts-suite-finanzas-v2.html` (design system navy/amber, IBM Plex). Registrar app en `MODULES_REGISTRY`.
+- **NO reutilizar** `FTSAuth`/`users-suite.json` para credenciales.
+
+> **Siguiente acción:** Esteban responde las 9 preguntas (en especial #2, #9, BLOQ-1/2). Con eso aprobado, el siguiente prompt es **Paso 1 (auth)**. No se escribe código hasta entonces.
