@@ -468,3 +468,63 @@ Cuando crees un nuevo workflow:
 3. ❌ **NO** uses `array.includes(empleadoId)` con array literal — derive lista de Odoo.
 4. ✅ **SÍ** lee `x_categoria_nomina`, `x_dias_laborables`, `x_aplica_ppa` del payload upstream (vía `Odoo - READ Empleado`).
 5. ✅ **SÍ** usa default-por-dept fallback declarado en PLAN §0.5 cuando un campo está null.
+
+---
+
+## 14. Hallazgos arquitectónicos (cont.)
+
+### Hallazgo #15: Incidente 27-may-2026 + Sprint Resiliencia
+
+**Contexto del incidente:**
+- 27-may 18:16 CST → 28-may 06:28 CST (~12h outage backend kiosk).
+- 29 checkins ese día, solo 6 cerraron checkout antes del corte (firma: corte limpio a las 18:16 CST).
+- 23 empleados afectados, 11 turnos fantasma de ~24h generados por recovery.
+- Causa probable: sub-incidente Railway NO reflejado en status page (mayo cerró 99.11% "verde"). Logs n8n del incidente se podaron antes del forense → causa técnica exacta no determinable.
+- Forense completo: `docs/INCIDENTES/2026-05-27-kiosk-checkout-outage-12h.md` (PR #47, merged).
+
+**3 bugs críticos descubiertos en el audit (kiosk.js):**
+1. **UI muestra "✓ SALIDA" ANTES del POST a backend** (`kiosk.js:943-965` render vs `972` fetch) → el empleado cree que checó aunque nunca llegó a Odoo. **Este es el anti-patrón más grave (silent corruption).**
+2. **catch silencioso en `kiosk.js:990`** → `console.warn` solo, sin UI. Cubre 4 flujos (checkin/checkout/comida/olvido_entrada vía `registrarAsistencia`).
+3. **Botón "Seguí en turno" genera turnos fantasma de ~24h sin TAG** (`resolverZonaGris('turno')` → `iniciarCheckin('salida')` estampa ahora) → datos sucios silenciosos que contaminan nómina, sin incidencia para RH.
+
+**Recovery realizado 28-may (acciones de Esteban, no re-verificadas vía Odoo en la sesión del forense):**
+- 24 attendances corregidos con horas reales (libreta Magaly).
+- 2 bajas formalizadas (Mario 116, José Carlos 132).
+- 1 incidencia validación RH creada (Ricardo 98 — orphan preexistente del 26-may, PR #48 merged).
+- 1 caso time-by-time documentado (Enoc 128).
+- PR #47 (forense) + PR #48 (incidencia Ricardo) → MERGED.
+
+**Sprint resiliencia diseñado (PR #49, branch `docs/sprint-resiliencia-design`, sin mergear — revisión Esteban):**
+- **PR D:** Hardening errores + fix "Seguí en turno" (3–3.5h). Prioridad ALTA.
+- **PR C:** Queue offline checkout, preserva `ts_evento` (6–7h). Depende de PR D. Prioridad ALTA.
+- **PR B:** Status page interna + UptimeRobot externo (3.5h + 15min Esteban). Independiente. Prioridad MEDIA.
+- **PR E:** Cron auto-cierre 2am (Bloque B), complementa PR C (5h, stub). Independiente. Prioridad MEDIA-ALTA.
+- Total: 17–19h CC distribuidas en ~3 semanas.
+
+**Dependencia crítica documentada (PR C ↔ PR E):**
+- El cron 2am (PR E) cierra el orphan a +9.6h con TAG disputa.
+- El replay del queue offline (PR C) puede llegar después con el `ts_evento` real.
+- **Regla: `ts_evento` real GANA sobre el +9.6h estimado.** Documentado en ambos docs para no perderse.
+
+**Infra hardening 28-may:**
+- Variables Railway n8n aplicadas: `EXECUTIONS_DATA_MAX_AGE=336` (14 días), `EXECUTIONS_DATA_SAVE_ON_ERROR=all`, `EXECUTIONS_DATA_SAVE_ON_SUCCESS=all` + 6 más de cleanup.
+- Worker + Redis Railway = crashed loop legacy del modo queue anterior (`EXECUTIONS_MODE=regular` desde hace 8 días). Recomendación: apagar por etapas (pendiente Esteban, no urgente — ningún workflow depende de worker en modo regular).
+
+**Constantes/invariantes validadas:**
+- `n8nFetch` (`odoo.js:15-40`) **ya tiene retry 2× con timeout 10s** — NO necesita más resiliencia de red; el problema fue *surfacing* del fallo terminal.
+- El confirm screen DEBE renderizarse **DESPUÉS** del OK del fetch (fix PR D).
+- `ts_evento` es el campo crítico que preserva integridad temporal en el replay offline.
+- 1 solo catch (`kiosk.js:990`) cubre 4 flujos transaccionales.
+
+**Lecciones operativas:**
+1. El status público de Railway NO detecta sub-incidentes que SÍ afectan a FTS.
+2. n8n poda logs agresivamente → retención 14 días es no-negociable (ya aplicado).
+3. UI que muestra éxito antes de confirmar el backend = el bug más grave (silent corruption). **Anti-patrón a evitar en TODO frontend FTS.**
+4. PRs stale que mejoran resiliencia (#3 llevaba 5 semanas) deben mergear/reimplementar rápido, no acumularse.
+5. Análisis forense con datos crudos es esencial — el recovery "automático" puede ocultar 11 turnos fantasma de 24h. El discriminador `out_mode` (`kiosk` vs `manual`) + TAG distingue el camino real de cierre.
+
+**Para próximas sesiones CC:**
+- PR #49 contiene los 5 docs de diseño (D/C/B completos, E stub) + README ejecutivo.
+- **Antes de tocar `kiosk.js`, releer este hallazgo #15.**
+- **Antes de implementar el cron 2am (PR E), releer la reconciliación PR C ↔ PR E.**
+- El bug del "✓ antes del POST" es el ANTI-PATRÓN a evitar en todo frontend FTS.
