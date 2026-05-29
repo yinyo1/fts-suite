@@ -579,3 +579,25 @@ Si una sesión CC futura necesita contexto del incidente 27-may, leer en orden:
 4. PR #49 `docs/SPRINT_RESILIENCIA_PR_*_DESIGN.md` — diseño técnico por PR.
 
 **NO confiar en summaries de chat anterior — usar siempre los archivos en main como fuente de verdad.**
+
+---
+
+## 15. Módulo Finanzas (Paso 1 — auth, 2026-05-29)
+
+Plataforma financiera nueva en `finanzas/`. Multi-company (FTS MX `company_id=1` MXN + FTS USA `company_id=6` USD) + multi-currency. Diseño completo en `docs/finanzas/PLAN.md` (v2). Stack igual al resto del Suite (GitHub Pages + n8n + Odoo).
+
+### Auth dedicada (NO usar FTSAuth)
+- Finanzas estrena **auth server-side** (la primera del Suite). NO reutiliza `FTSAuth`/`users-suite.json` (esos guardan hashes SHA-256 sin salt en repo público — inaceptable para finanzas).
+- Workflow n8n **`auth/finanzas-login`** (ID `ykNzGCvdjzjdXYhc`): PBKDF2-SHA256 100k + HMAC-SHA256 JWT, **todo en JS puro** (ver convención sandbox abajo). Lifetime token **8h**, lockout 5 intentos → 15 min (en `workflow.staticData`). 1 solo usuario v1: `finanzas`.
+- Cliente: `finanzas/js/auth-fin.js` (login → `localStorage['fts_fin_session']`) + `finanzas/js/fin-client.js` (webhooks `/fin/*` con **token en el body**, NO header Authorization).
+
+### Convenciones críticas (aprendidas en Paso 1)
+1. **Sandbox de Code nodes n8n:** NO expone `require`, `node:crypto`, `process` ni `$env`. Todo cripto (SHA-256/HMAC/PBKDF2) debe ser **JS puro**. Implementación de referencia probada: el Code de `auth/finanzas-login` (reusa el SHA-256/HMAC del workflow PMO). `$env` **SÍ** resuelve en expresiones de **nodo Set** (no en Code) — verificado con probe.
+2. **Secretos propios (Opción B aplicada):** `FINANZAS_USER_SALT`, `FINANZAS_USER_HASH`, `FINANZAS_JWT_SECRET` viven como **env vars de Railway**, leídas vía un **nodo Set** (`={{ $env.X }}`) que las pasa al Code. (Opción A `$vars` descartada: vacía/Enterprise; Opción C hardcode no necesaria.)
+3. **Workflows con secretos NUNCA se exportan al repo público** bajo ninguna circunstancia (ni a `docs/n8n-workflows/`). El JSON de `auth/finanzas-login` vive solo en n8n. (Deuda pendiente relacionada: `docs/n8n-workflows/pmo-chat-apply-code-code-validar-auth.js` tiene un SECRET HMAC filtrado → rotar, tarea aparte.)
+4. **Scripts locales con material sensible:** viven en `scripts/local/` (en `.gitignore`, nunca commiteado). Ej.: `generate-finanzas-hash.js` (genera `{salt, hash}` del password en la laptop de Esteban; el password en claro nunca toca chat/repo/logs).
+5. **Token en body, no en header** (`RIESGO-2`): header `Authorization` fuerza preflight CORS que el webhook n8n puede no contestar. Patrón validado: token como campo del body JSON.
+
+### Pendientes Finanzas
+- **BLOQ-1 (antes Paso 3):** confirmar que la credencial Odoo `Wansi69xesEqEiY1` tiene Allowed Companies = {1, 6}.
+- Paso 2: shell + sidebar + manifest (parcialmente ya en Paso 1). Paso 3: webhook `/fin/facturas` multi-company. Paso 4: módulo Facturas (tabla+filtros+export). Paso 5: toggle demo/real.

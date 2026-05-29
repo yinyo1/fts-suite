@@ -1,0 +1,1612 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FTS Suite · Finanzas v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #0B2545; --navy-2: #13315C; --navy-3: #1A3A6E;
+    --steel: #8DA9C4; --paper: #FBFBF9; --paper-2: #F4F4F0;
+    --rule: #D9D9D6; --ink: #0A0A0A; --ink-soft: #3A3A3A; --muted: #6B7280;
+    --amber: #D99000; --amber-bg: #FFF6E5;
+    --green: #1F7A4A; --green-bg: #E6F2EC;
+    --red: #B91C2C; --red-bg: #FBE9EA;
+    --blue-soft: #E8F0FB; --purple: #6B5CA5; --purple-bg: #EFEAF5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: 'IBM Plex Sans', sans-serif; background: var(--paper); color: var(--ink); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  .mono { font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; }
+  .condensed { font-family: 'IBM Plex Sans Condensed', sans-serif; }
+
+  /* LOGIN */
+  .login-screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 20% 20%, #1A3A6E 0%, transparent 40%), radial-gradient(circle at 80% 80%, #0B2545 0%, transparent 50%), var(--navy); z-index: 1000; }
+  .login-card { background: var(--paper); width: 380px; padding: 40px 32px; border-radius: 4px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); position: relative; }
+  .login-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--navy), var(--amber)); }
+  .brand-mark { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
+  .brand-mark .logo { width: 32px; height: 32px; background: var(--navy); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 14px; border-radius: 2px; }
+  .brand-mark .brand-text { font-weight: 600; font-size: 14px; letter-spacing: 0.5px; }
+  .brand-mark .brand-text small { display: block; color: var(--muted); font-size: 10px; font-weight: 500; letter-spacing: 1.5px; text-transform: uppercase; }
+
+  /* APP SHELL */
+  .app-shell { display: grid; grid-template-columns: 250px 1fr; min-height: 100vh; }
+  .sidebar { background: var(--navy); color: white; padding: 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; }
+  .sidebar-brand { padding: 20px 22px; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; gap: 10px; }
+  .sidebar-brand .logo { width: 30px; height: 30px; background: white; color: var(--navy); display: flex; align-items: center; justify-content: center; font-weight: 700; border-radius: 2px; }
+  .sidebar-brand .brand-text { font-size: 13px; font-weight: 600; letter-spacing: 0.5px; }
+  .sidebar-brand .brand-text small { display: block; color: var(--steel); font-size: 9.5px; font-weight: 500; letter-spacing: 1.5px; text-transform: uppercase; }
+  .sidebar-section { padding: 16px 22px 6px; font-size: 9.5px; font-weight: 600; letter-spacing: 1.8px; color: var(--steel); text-transform: uppercase; }
+  .sidebar-section.with-num { display: flex; align-items: baseline; gap: 8px; }
+  .sidebar-section .num { font-size: 9px; opacity: 0.5; }
+  .nav-item { padding: 8px 22px; cursor: pointer; font-size: 13px; color: rgba(255,255,255,0.85); display: flex; align-items: center; gap: 10px; border-left: 2px solid transparent; transition: all 0.15s; }
+  .nav-item:hover { background: rgba(255,255,255,0.05); color: white; }
+  .nav-item.active { background: rgba(255,255,255,0.08); color: white; border-left-color: var(--amber); }
+  .nav-item .badge { margin-left: auto; background: var(--amber); color: var(--navy); font-size: 10px; padding: 1px 6px; border-radius: 8px; font-weight: 600; font-family: 'IBM Plex Mono'; }
+  .nav-item .badge.red { background: var(--red); color: white; }
+  .nav-item .badge.green { background: var(--green); color: white; }
+  .nav-item .icon { font-size: 13px; opacity: 0.7; width: 14px; }
+  .nav-item.locked .icon::before { content: '🔒'; opacity: 0.6; font-size: 11px; }
+  .sidebar-user { margin-top: auto; padding: 18px 22px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 12px; }
+  .sidebar-user .name { font-weight: 600; }
+  .sidebar-user .role { color: var(--steel); font-size: 10.5px; letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
+  .sidebar-user .logout { margin-top: 10px; color: var(--steel); font-size: 11px; cursor: pointer; }
+  .sidebar-user .logout:hover { color: white; }
+
+  /* MAIN */
+  .main { padding: 0; background: var(--paper); min-height: 100vh; }
+  .topbar { background: white; border-bottom: 1px solid var(--rule); padding: 12px 32px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+  .breadcrumb { font-size: 12px; color: var(--muted); letter-spacing: 0.5px; text-transform: uppercase; }
+  .breadcrumb b { color: var(--ink); font-weight: 600; }
+  .breadcrumb .block { color: var(--amber); font-weight: 600; margin-right: 8px; }
+  .topbar-actions { display: flex; align-items: center; gap: 12px; }
+  .ai-btn { background: var(--navy); color: white; border: none; padding: 6px 12px; font-size: 11.5px; cursor: pointer; border-radius: 2px; display: flex; align-items: center; gap: 6px; font-weight: 500; letter-spacing: 0.3px; }
+  .ai-btn::before { content: '◆'; font-size: 9px; color: var(--amber); }
+  .ai-btn:hover { background: var(--navy-2); }
+
+  .page { padding: 28px 32px; max-width: 1400px; }
+  .page-header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+  .page-title { font-family: 'IBM Plex Sans Condensed'; font-size: 30px; font-weight: 700; color: var(--ink); letter-spacing: -0.5px; }
+  .page-subtitle { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .page-meta { font-size: 11px; color: var(--muted); text-align: right; letter-spacing: 0.5px; }
+  .page-meta .mono { font-size: 12px; color: var(--ink); }
+  .block-tag { display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: 1.5px; color: var(--amber); background: rgba(217,144,0,0.12); padding: 3px 8px; border-radius: 2px; margin-bottom: 8px; }
+
+  /* CARDS */
+  .grid { display: grid; gap: 14px; }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .card { background: white; border: 1px solid var(--rule); padding: 18px 20px; border-radius: 3px; position: relative; }
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .card-label { font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
+  .card-value { font-family: 'IBM Plex Mono'; font-size: 24px; font-weight: 600; color: var(--ink); line-height: 1.1; }
+  .card-value .currency { font-size: 13px; color: var(--muted); margin-right: 3px; }
+  .card-sub { font-size: 11.5px; color: var(--muted); margin-top: 6px; }
+  .card-sub .up { color: var(--green); font-weight: 600; }
+  .card-sub .down { color: var(--red); font-weight: 600; }
+  .card.alert-card { border-left: 3px solid var(--red); }
+  .card.warn-card { border-left: 3px solid var(--amber); }
+  .card.good-card { border-left: 3px solid var(--green); }
+
+  /* TABLES */
+  .data-table { background: white; border: 1px solid var(--rule); border-radius: 3px; overflow: hidden; }
+  .data-table table { width: 100%; border-collapse: collapse; }
+  .data-table th { background: var(--paper-2); padding: 10px 14px; text-align: left; font-size: 10.5px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--rule); }
+  .data-table th.right, .data-table td.right { text-align: right; }
+  .data-table th.center, .data-table td.center { text-align: center; }
+  .data-table td { padding: 11px 14px; font-size: 13px; border-bottom: 1px solid var(--rule); color: var(--ink); }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: var(--paper-2); }
+  .data-table .mono { font-size: 12.5px; }
+  .data-table tr.flagged td { background: var(--red-bg); }
+  .data-table tr.flagged:hover td { background: #F8D5D8; }
+
+  /* PILLS */
+  .pill { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 2px; letter-spacing: 0.4px; text-transform: uppercase; }
+  .pill-green { background: var(--green-bg); color: var(--green); }
+  .pill-amber { background: var(--amber-bg); color: var(--amber); }
+  .pill-red { background: var(--red-bg); color: var(--red); }
+  .pill-blue { background: var(--blue-soft); color: var(--navy); }
+  .pill-gray { background: var(--paper-2); color: var(--muted); }
+  .pill-purple { background: var(--purple-bg); color: var(--purple); }
+
+  /* BUTTONS */
+  .btn { background: var(--navy); color: white; border: none; padding: 8px 16px; font-size: 12.5px; cursor: pointer; border-radius: 2px; font-weight: 500; letter-spacing: 0.3px; font-family: 'IBM Plex Sans'; }
+  .btn:hover { background: var(--navy-2); }
+  .btn-secondary { background: white; color: var(--navy); border: 1px solid var(--rule); }
+  .btn-secondary:hover { border-color: var(--navy); }
+  .btn-danger { background: var(--red); }
+  .btn-success { background: var(--green); }
+  .btn-amber { background: var(--amber); color: white; }
+  .btn-sm { padding: 5px 10px; font-size: 11px; }
+  .btn-icon { display: inline-flex; align-items: center; gap: 5px; }
+
+  /* SECTION */
+  .section { margin-bottom: 28px; }
+  .section-title { font-family: 'IBM Plex Sans Condensed'; font-size: 18px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+  .section-title .rule { flex: 1; height: 1px; background: var(--rule); }
+  .section-title .meta { font-size: 12px; color: var(--muted); font-weight: 400; font-family: 'IBM Plex Sans'; }
+
+  /* KPI */
+  .kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; background: white; border: 1px solid var(--rule); border-radius: 3px; }
+  .kpi-cell { padding: 16px 20px; border-right: 1px solid var(--rule); }
+  .kpi-cell:last-child { border-right: none; }
+  .kpi-cell .label { font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .kpi-cell .value { font-family: 'IBM Plex Mono'; font-size: 20px; font-weight: 600; }
+  .kpi-cell .delta { font-size: 11px; margin-top: 4px; color: var(--muted); }
+  .kpi-cell.alert { background: var(--red-bg); }
+  .kpi-cell.alert .value { color: var(--red); }
+  .kpi-cell.warn { background: var(--amber-bg); }
+  .kpi-cell.warn .value { color: var(--amber); }
+  .kpi-cell.good { background: var(--green-bg); }
+  .kpi-cell.good .value { color: var(--green); }
+
+  /* ALERT BANNER */
+  .alert-banner { background: var(--amber-bg); border-left: 3px solid var(--amber); padding: 12px 18px; font-size: 13px; margin-bottom: 20px; display: flex; gap: 12px; align-items: flex-start; }
+  .alert-banner.red { background: var(--red-bg); border-color: var(--red); }
+  .alert-banner.green { background: var(--green-bg); border-color: var(--green); }
+  .alert-banner.info { background: var(--blue-soft); border-color: var(--navy); }
+  .alert-banner.purple { background: var(--purple-bg); border-color: var(--purple); }
+
+  /* TABS */
+  .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--rule); margin-bottom: 20px; }
+  .tab { padding: 10px 18px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tab.active { color: var(--navy); border-bottom-color: var(--navy); font-weight: 600; }
+  .tab:hover { color: var(--ink); }
+
+  /* MODAL */
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(11,37,69,0.55); display: flex; align-items: center; justify-content: center; z-index: 100; }
+  .modal { background: white; border-radius: 4px; max-width: 620px; width: 90%; max-height: 85vh; overflow-y: auto; }
+  .modal-header { padding: 18px 22px; border-bottom: 1px solid var(--rule); display: flex; justify-content: space-between; align-items: center; }
+  .modal-header h3 { font-size: 16px; font-weight: 600; }
+  .modal-body { padding: 22px; }
+  .modal-footer { padding: 14px 22px; border-top: 1px solid var(--rule); display: flex; gap: 10px; justify-content: flex-end; }
+  .close-btn { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--muted); line-height: 1; }
+  .form-row { margin-bottom: 14px; }
+  .form-row label { display: block; font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+  .form-row input, .form-row select, .form-row textarea { width: 100%; padding: 9px 12px; border: 1px solid var(--rule); border-radius: 2px; font-size: 13.5px; font-family: 'IBM Plex Sans'; }
+  .form-row input:focus, .form-row select:focus, .form-row textarea:focus { outline: none; border-color: var(--navy); }
+
+  /* SCRAPING STATUS */
+  .scraper-card { background: white; border: 1px solid var(--rule); border-radius: 3px; padding: 18px 20px; display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+  .scraper-icon { width: 48px; height: 48px; background: var(--paper-2); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; }
+  .scraper-info { flex: 1; }
+  .scraper-info .name { font-weight: 600; font-size: 14px; }
+  .scraper-info .meta { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .status-dot.green { background: var(--green); }
+  .status-dot.amber { background: var(--amber); }
+  .status-dot.red { background: var(--red); }
+  .status-dot.gray { background: var(--muted); }
+
+  /* MATCH ROW (3-way) */
+  .match-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; background: white; border: 1px solid var(--rule); padding: 18px; margin-bottom: 12px; border-radius: 3px; position: relative; }
+  .match-cell { padding: 12px; background: var(--paper-2); border-radius: 2px; }
+  .match-cell .label { font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .match-cell.ok { background: var(--green-bg); }
+  .match-cell.missing { background: var(--red-bg); }
+  .match-cell.partial { background: var(--amber-bg); }
+  .match-actions { grid-column: 1/-1; margin-top: 8px; display: flex; gap: 8px; justify-content: flex-end; }
+
+  /* PRIVATE LOCK */
+  .private-banner { background: linear-gradient(90deg, var(--navy) 0%, var(--navy-2) 100%); color: white; padding: 14px 22px; border-radius: 3px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
+  .private-banner .icon { font-size: 18px; }
+  .private-banner .text { font-size: 12.5px; }
+  .private-banner .text b { font-weight: 600; }
+
+  /* HIDDEN */
+  .hidden { display: none !important; }
+
+  /* AGING BAR */
+  .aging-bar { display: flex; height: 6px; border-radius: 1px; overflow: hidden; margin-top: 6px; background: var(--paper-2); }
+  .aging-bar > div { height: 100%; }
+  .aging-segment-0 { background: var(--green); }
+  .aging-segment-30 { background: var(--amber); }
+  .aging-segment-60 { background: #E27A00; }
+  .aging-segment-90 { background: var(--red); }
+
+  /* AI DRAWER */
+  .ai-drawer { position: fixed; right: 0; top: 0; bottom: 0; width: 380px; background: white; border-left: 1px solid var(--rule); transform: translateX(100%); transition: transform 0.25s; z-index: 50; display: flex; flex-direction: column; }
+  .ai-drawer.open { transform: translateX(0); }
+  .ai-drawer-header { padding: 18px 22px; border-bottom: 1px solid var(--rule); display: flex; justify-content: space-between; align-items: center; }
+  .ai-drawer-body { flex: 1; overflow-y: auto; padding: 18px 22px; }
+  .ai-msg { background: var(--paper-2); padding: 12px; margin-bottom: 10px; border-radius: 3px; font-size: 13px; line-height: 1.55; }
+  .ai-msg.user { background: var(--blue-soft); }
+  .ai-drawer-input { padding: 14px; border-top: 1px solid var(--rule); display: flex; gap: 8px; }
+  .ai-drawer-input input { flex: 1; padding: 9px 12px; border: 1px solid var(--rule); border-radius: 2px; font-size: 13px; }
+
+  /* IFRAME PLACEHOLDER */
+  .iframe-mock { background: repeating-linear-gradient(45deg, var(--paper-2), var(--paper-2) 10px, white 10px, white 20px); height: 380px; border: 1px solid var(--rule); border-radius: 3px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; text-align: center; padding: 20px; }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 30px; right: 30px; background: var(--navy); color: white; padding: 14px 22px; border-radius: 3px; font-size: 13.5px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); z-index: 200; }
+
+  @media (max-width: 900px) {
+    .app-shell { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .kpi-cell { border-right: none; border-bottom: 1px solid var(--rule); }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login" class="login-screen">
+  <div class="login-card">
+    <div class="brand-mark">
+      <div class="logo">F</div>
+      <div class="brand-text">FTS Suite<small>Finanzas · v0.2 draft</small></div>
+    </div>
+    <h2 style="font-family:'IBM Plex Sans Condensed';font-size:22px;font-weight:600;margin-bottom:6px;">Acceso al área financiera</h2>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:24px;">Vigilancia diaria · Rentabilidad · Estados financieros · Patrimonio · Acciones.</p>
+    <div class="form-row">
+      <label>Usuario</label>
+      <select id="loginUser">
+        <option value="esteban">Esteban &mdash; CEO (master)</option>
+        <option value="erick">Erick Belmont &mdash; Financial Analyst</option>
+        <option value="caro">Carolina &mdash; Auditoría Interna</option>
+        <option value="gera">Gerardo Lozano &mdash; Accounting</option>
+        <option value="gibran">Gibrán Solís &mdash; Supply Chain</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>PIN</label>
+      <input type="password" id="loginPin" maxlength="4" class="mono" value="1234"/>
+    </div>
+    <button class="btn" style="width:100%;padding:11px;margin-top:8px;" onclick="login()">Iniciar sesión</button>
+    <p style="text-align:center;color:var(--muted);font-size:11px;margin-top:18px;letter-spacing:0.5px;">DRAFT · Datos simulados</p>
+  </div>
+</div>
+
+<!-- APP SHELL -->
+<div id="app" class="app-shell hidden">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo">F</div>
+      <div class="brand-text">FTS Suite<small>Finanzas</small></div>
+    </div>
+
+    <div class="nav-item" data-route="dashboard"><span class="icon">▦</span>Dashboard</div>
+
+    <div class="sidebar-section with-num"><span class="num">1</span>Vigilancia</div>
+    <div class="nav-item" data-route="cash"><span class="icon">$</span>Saldos &amp; Cash</div>
+    <div class="nav-item" data-route="anomalias"><span class="icon">!</span>Anomalías<span class="badge red">4</span></div>
+    <div class="nav-item" data-route="ar"><span class="icon">↗</span>AR &mdash; por cobrar</div>
+    <div class="nav-item" data-route="ap"><span class="icon">↘</span>AP &mdash; por pagar</div>
+    <div class="nav-item" data-route="bills"><span class="icon">⚏</span>Bills 3-way<span class="badge amber">5</span></div>
+
+    <div class="sidebar-section with-num"><span class="num">2</span>Rentabilidad</div>
+    <div class="nav-item" data-route="rent-emp"><span class="icon">⌬</span>Empresa</div>
+    <div class="nav-item" data-route="rent-proy"><span class="icon">▤</span>Proyectos</div>
+    <div class="nav-item" data-route="det-fantasma"><span class="icon">◎</span>Detector fantasma<span class="badge red">2</span></div>
+    <div class="nav-item" data-route="det-mo"><span class="icon">⏱</span>Detector MO<span class="badge amber">3</span></div>
+
+    <div class="sidebar-section with-num"><span class="num">3</span>Estados financieros</div>
+    <div class="nav-item" data-route="pl"><span class="icon">▥</span>P&amp;L (Resultados)</div>
+    <div class="nav-item" data-route="bg-fts"><span class="icon">⚖</span>Balance FTS</div>
+    <div class="nav-item locked" data-route="bg-personal"><span class="icon"></span>Patrimonio personal</div>
+    <div class="nav-item" data-route="cashflow"><span class="icon">⇋</span>Cash Flow</div>
+
+    <div class="sidebar-section with-num"><span class="num">4</span>Centro</div>
+    <div class="nav-item" data-route="transacciones"><span class="icon">⊞</span>Transacciones</div>
+
+    <div class="sidebar-section with-num"><span class="num">5</span>Acciones</div>
+    <div class="nav-item" data-route="pagos-hub"><span class="icon">⇋</span>Hub de Pagos</div>
+    <div class="nav-item" data-route="sync-sat"><span class="icon">⟳</span>Sync SAT<span class="badge green">●</span></div>
+
+    <div class="sidebar-user" id="sidebarUser"></div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="breadcrumb"><span class="block" id="bcBlock"></span>FTS Suite · <b id="bcCurrent">Dashboard</b></div>
+      <div class="topbar-actions">
+        <span class="mono" style="font-size:12px;color:var(--muted);" id="topbarDate"></span>
+        <button class="ai-btn" onclick="toggleAI()">Asistente IA</button>
+      </div>
+    </div>
+    <div id="viewContainer"></div>
+  </main>
+
+  <aside class="ai-drawer" id="aiDrawer">
+    <div class="ai-drawer-header">
+      <div>
+        <div style="font-weight:600;">Asistente IA</div>
+        <div style="font-size:11px;color:var(--muted);">Claude · Groq · Gemini</div>
+      </div>
+      <button class="close-btn" onclick="toggleAI()">×</button>
+    </div>
+    <div class="ai-drawer-body" id="aiBody">
+      <div class="ai-msg">Hola. Pregúntame sobre cualquier número en pantalla, pídeme detectar anomalías, redactar notas o resumir para el grupo de WhatsApp.</div>
+    </div>
+    <div class="ai-drawer-input">
+      <input type="text" placeholder="Pregunta o instrucción..." id="aiInput" onkeydown="if(event.key==='Enter')sendAI()"/>
+      <button class="btn" onclick="sendAI()">→</button>
+    </div>
+  </aside>
+</div>
+
+<div id="modalRoot"></div>
+
+<script>
+/* =========================================================
+   FTS SUITE · FINANZAS v0.2 — Draft con 5 bloques
+   ========================================================= */
+
+const CONFIG = {
+  useMocks: true,
+  n8nBase: 'https://n8n.fts.example/webhook',
+};
+
+const USERS = {
+  esteban: { name: 'Esteban', role: 'master', display: 'CEO' },
+  erick:   { name: 'Erick Belmont', role: 'finance_lead', display: 'Financial Analyst' },
+  caro:    { name: 'Carolina', role: 'audit', display: 'Auditoría Interna' },
+  gera:    { name: 'Gerardo Lozano', role: 'finance_op', display: 'Accounting' },
+  gibran:  { name: 'Gibrán Solís', role: 'procurement', display: 'Supply Chain' },
+};
+
+const STATE = { user: null, route: 'dashboard' };
+
+const BLOCK_OF = {
+  dashboard: '', cash: 'B1 · Vigilancia', anomalias: 'B1 · Vigilancia',
+  ar: 'B1 · Vigilancia', ap: 'B1 · Vigilancia', bills: 'B1 · Vigilancia',
+  'rent-emp': 'B2 · Rentabilidad', 'rent-proy': 'B2 · Rentabilidad',
+  'det-fantasma': 'B2 · Rentabilidad', 'det-mo': 'B2 · Rentabilidad',
+  pl: 'B3 · Estados financieros', 'bg-fts': 'B3 · Estados financieros',
+  'bg-personal': 'B3 · Estados financieros', cashflow: 'B3 · Estados financieros',
+  transacciones: 'B4 · Centro de transacciones',
+  'pagos-hub': 'B5 · Acciones', 'sync-sat': 'B5 · Acciones',
+};
+
+const TITLES = {
+  dashboard: 'Dashboard', cash: 'Saldos & Cash', anomalias: 'Anomalías',
+  ar: 'AR — por cobrar', ap: 'AP — por pagar', bills: 'Bills 3-way',
+  'rent-emp': 'Rentabilidad empresa', 'rent-proy': 'Rentabilidad proyectos',
+  'det-fantasma': 'Detector de proyectos fantasma', 'det-mo': 'Detector de MO mal cargada',
+  pl: 'Estado de Resultados (P&L)', 'bg-fts': 'Balance General FTS',
+  'bg-personal': 'Patrimonio personal', cashflow: 'Cash Flow',
+  transacciones: 'Centro de transacciones',
+  'pagos-hub': 'Hub de Pagos', 'sync-sat': 'Sincronización SAT',
+};
+
+/* ========================= MOCK DATA ========================= */
+const M = {
+  cash: { asof: '2026-05-19 08:00', total_mxn_equiv: 8254312,
+    banks: [
+      { bank: 'BBVA MXN', currency: 'MXN', amount: 1240500, fx: 1, pct: -2.1 },
+      { bank: 'BBVA USD', currency: 'USD', amount: 84120, fx: 17.45, pct: 0.4 },
+      { bank: 'BBVA Nómina', currency: 'MXN', amount: 312400, fx: 1, pct: 12.3 },
+      { bank: 'Monex MXN', currency: 'MXN', amount: 985211, fx: 1, pct: -0.5 },
+      { bank: 'Monex USD', currency: 'USD', amount: 62500, fx: 17.45, pct: 0 },
+      { bank: 'JPM Chase USD', currency: 'USD', amount: 156800, fx: 17.45, pct: 3.2 },
+      { bank: 'Jeeves', currency: 'USD', amount: 8245, fx: 17.45, pct: -8.0 },
+      { bank: 'Payana', currency: 'MXN', amount: 145222, fx: 1, pct: -15.4 },
+    ] },
+
+  anomalias: {
+    movs_sin_po: [
+      { date: '2026-05-18', bank: 'BBVA MXN', desc: 'Pago a "Industrias del Norte" ref TRN-882', amount: 14500, severity: 'high' },
+      { date: '2026-05-15', bank: 'Monex USD', desc: 'Transferencia salida sin referencia', amount: 3400, currency: 'USD', severity: 'high' },
+    ],
+    pos_sin_bill: [
+      { po: 'PO-2026-0138', vendor: 'Refacciones HVAC del Norte', amount: 18500, age: 10, project: 'GRUMA Hayward' },
+      { po: 'PO-2026-0125', vendor: 'Eléctrica Industrial MTY', amount: 32200, age: 28, project: 'Topo Chico CdF' },
+    ],
+    bills_pagados_marcados_unpaid: [
+      { bill: 'BILL-995', vendor: 'Aceros del Norte SA', amount: 412000, paid_date: '2026-04-22', bank_ref: 'BBVA-TRN-771', impact: 'AP inflado' },
+      { bill: 'BILL-982', vendor: 'Soldadura Industrial', amount: 18500, paid_date: '2026-04-15', bank_ref: 'BBVA-TRN-742', impact: 'AP inflado' },
+    ],
+    bills_unpaid_credito: [
+      { bill: 'BILL-101', vendor: 'Bombas y Equipos del Bajío', amount: 295000, due: '2026-06-10', terms: '60d', legitimate: true },
+      { bill: 'BILL-104', vendor: 'Electromateriales MTY', amount: 145000, due: '2026-06-02', terms: '45d', legitimate: true },
+    ],
+  },
+
+  ar: { total: 4830000, b030: 2100000, b3160: 1350000, b6190: 880000, b90p: 500000,
+    clients: [
+      { client: 'GRUMA / Azteca Milling', total: 1980000, invoices: 7, oldest: 78, portal: 'Coupa', status: 'partial' },
+      { client: 'Arca Continental / Topo Chico', total: 1450000, invoices: 4, oldest: 42, portal: 'SAP Ariba', status: 'on_track' },
+      { client: 'Nalco Water / Ecolab', total: 820000, invoices: 5, oldest: 95, portal: 'Coupa', status: 'overdue' },
+      { client: 'GRUMA San Antonio TX', total: 380000, invoices: 2, oldest: 15, portal: 'Portal propio', status: 'on_track' },
+      { client: 'Otros', total: 200000, invoices: 6, oldest: 30, portal: 'varios', status: 'on_track' },
+    ] },
+
+  ap: { total: 2640000, b030: 1800000, b3160: 540000, b6190: 250000, b90p: 50000,
+    suppliers: [
+      { supplier: 'Aceros del Norte SA', total: 845000, bills: 3, oldest: 22, status: 'on_track' },
+      { supplier: 'Electromateriales MTY', total: 420000, bills: 5, oldest: 38, status: 'caution' },
+      { supplier: 'Soldadura Industrial', total: 380000, bills: 2, oldest: 12, status: 'on_track' },
+      { supplier: 'Bombas y Equipos del Bajío', total: 295000, bills: 2, oldest: 68, status: 'overdue' },
+      { supplier: 'Servicios Eléctricos Pérez', total: 245000, bills: 4, oldest: 18, status: 'on_track' },
+      { supplier: 'Otros', total: 455000, bills: 12, oldest: 28, status: 'on_track' },
+    ] },
+
+  bills: [
+    { id: 'BILL-001', vendor: 'Aceros del Norte SA', po: 'PO-2026-0142', reception: 'OK', amount: 234500, match: 'ok', cfdi: 'A1B2-C3D4' },
+    { id: 'BILL-002', vendor: 'Bombas y Equipos', po: 'PO-2026-0141', reception: 'OK', amount: 12950, match: 'partial', cfdi: 'X4Y5-Z6', reason: 'Bill $12,950 vs PO $12,800 (diff $150)' },
+    { id: 'BILL-003', vendor: 'Refacciones HVAC', po: 'PO-2026-0138', reception: 'missing', amount: 18500, match: 'missing_reception', cfdi: 'M7N8' },
+    { id: 'BILL-004', vendor: 'Tornillería Industrial', po: 'PO-2026-0137', reception: 'OK', amount: 1850, match: 'ok', cfdi: 'T9U0' },
+    { id: 'BILL-005', vendor: 'Soldadura Industrial', po: 'PO-2026-0140', reception: 'OK', amount: 2400, match: 'ok', cfdi: 'S8V9' },
+  ],
+
+  rentEmpresa: {
+    mes: { ingresos: 3240000, costos: 2150000, gastos: 580000, utilidad: 510000, margen: 15.7 },
+    ytd: { ingresos: 16200000, costos: 10700000, gastos: 2880000, utilidad: 2620000, margen: 16.2 },
+    serie: [
+      { mes: 'Ene', ing: 2850000, ut: 420000 },
+      { mes: 'Feb', ing: 3100000, ut: 510000 },
+      { mes: 'Mar', ing: 3350000, ut: 560000 },
+      { mes: 'Abr', ing: 3660000, ut: 620000 },
+      { mes: 'May', ing: 3240000, ut: 510000 },
+    ],
+  },
+
+  rentProyectos: [
+    { code: 'PRJ-2026-014', client: 'Arca Continental / Topo Chico', so: 'SO11547', presupuesto: 8000000, ejecutado: 4250000, costo_real: 3520000, margen_pct: 17.2, margen_pres: 18.5, status: 'on_track', alert: null },
+    { code: 'PRJ-2026-008', client: 'GRUMA Hayward CA', so: 'SO11420', presupuesto: 2200000, ejecutado: 1980000, costo_real: 1620000, margen_pct: 18.2, margen_pres: 22.0, status: 'on_track', alert: null },
+    { code: 'PRJ-2026-009', client: 'GRUMA Houston TX', so: 'SO11455', presupuesto: 1850000, ejecutado: 920000, costo_real: 845000, margen_pct: 8.2, margen_pres: 20.0, status: 'alert', alert: 'Margen ejecutado 8.2% vs presupuesto 20%' },
+    { code: 'PRJ-2026-010', client: 'GRUMA San Antonio TX', so: 'SO11488', presupuesto: 1280000, ejecutado: 480000, costo_real: 395000, margen_pct: 17.7, margen_pres: 19.0, status: 'on_track', alert: null },
+    { code: 'PRJ-2026-011', client: 'Nalco / Ecolab', so: 'SO11502', presupuesto: 2600000, ejecutado: 1850000, costo_real: 1620000, margen_pct: 12.4, margen_pres: 16.5, status: 'warn', alert: 'Margen ejecutado 12.4% — bajo objetivo' },
+    { code: 'PRJ-2025-021', client: 'Arca / casa filtros (cont.)', so: 'SO11349', presupuesto: 950000, ejecutado: 940000, costo_real: 855000, margen_pct: 9.0, margen_pres: 14.0, status: 'warn', alert: 'Margen bajo cierre' },
+  ],
+
+  detFantasma: [
+    { po: 'PO-2026-0119', vendor: 'Materiales Express', amount: 28500, charged_to: 'PRJ-FANTOM-001', reason: 'Proyecto NO existe en sales.order · sin actividad en hr.attendance', severity: 'high' },
+    { po: 'PO-2026-0126', vendor: 'Distribuidora del Norte', amount: 18900, charged_to: 'PRJ-2026-099', reason: 'Proyecto existe pero sin Sales Order ni actividad de campo últimos 30d', severity: 'high' },
+  ],
+
+  detMO: [
+    { proj: 'PRJ-2026-009 GRUMA Houston', empleado: 'Juan Pérez (Soldador)', hrs_mes: 184, actividad_campo: false, reason: 'Horas cargadas sin avance reportado en obra', severity: 'high' },
+    { proj: 'PRJ-2025-021 Arca cierre', empleado: 'Carlos Mendoza (Aux)', hrs_mes: 96, actividad_campo: true, reason: 'Proyecto en cierre — horas excesivas vs avance', severity: 'med' },
+    { proj: 'PRJ-FANTOM-001', empleado: 'Múltiples (3 empleados)', hrs_mes: 240, actividad_campo: false, reason: 'Horas cargadas a proyecto inexistente', severity: 'high' },
+  ],
+
+  pl: {
+    periodo: 'Mayo 2026',
+    ingresos: [
+      { concepto: 'Ingresos por proyectos', monto: 3240000 },
+      { concepto: 'Otros ingresos', monto: 45000 },
+    ],
+    costos: [
+      { concepto: 'Materiales y suministros', monto: 1280000 },
+      { concepto: 'Mano de obra directa', monto: 620000 },
+      { concepto: 'Subcontratos', monto: 250000 },
+    ],
+    gastos: [
+      { concepto: 'Sueldos administrativos', monto: 280000 },
+      { concepto: 'Renta y servicios', monto: 95000 },
+      { concepto: 'Honorarios profesionales', monto: 80000 },
+      { concepto: 'Gastos generales', monto: 125000 },
+    ],
+  },
+
+  bgFTS: {
+    activos: {
+      corriente: [
+        { c: 'Caja y bancos', v: 8254000 },
+        { c: 'Cuentas por cobrar', v: 4830000 },
+        { c: 'Inventarios', v: 420000 },
+        { c: 'IVA acreditable', v: 380000 },
+      ],
+      noCorriente: [
+        { c: 'Activo fijo (maquinaria y equipo)', v: 3200000 },
+        { c: 'Depreciación acumulada', v: -780000 },
+        { c: 'Activos intangibles', v: 150000 },
+      ],
+    },
+    pasivos: {
+      corriente: [
+        { c: 'Cuentas por pagar', v: 2640000 },
+        { c: 'Impuestos por pagar', v: 705000 },
+        { c: 'IMSS / ISN por pagar', v: 234000 },
+      ],
+      noCorriente: [
+        { c: 'Crédito Jeeves', v: 850000 },
+        { c: 'Otros préstamos', v: 1200000 },
+      ],
+    },
+  },
+
+  bgPersonal: {
+    activos: {
+      liquidez: [
+        { c: 'BBVA personal MXN', v: 480000 },
+        { c: 'BBVA personal USD (≈)', v: 280000 },
+        { c: 'Inversiones / Mercado de Dinero', v: 1850000 },
+        { c: 'Efectivo USD', v: 75000 },
+      ],
+      bienes: [
+        { c: 'Casa Monterrey (valor estimado)', v: 8500000 },
+        { c: 'Casa McAllen TX (en evaluación)', v: 0 },
+        { c: 'Vehículo 1', v: 850000 },
+        { c: 'Vehículo 2', v: 420000 },
+        { c: 'Otros bienes muebles / arte', v: 350000 },
+      ],
+      empresariales: [
+        { c: 'Equity en FTS MX', v: 12000000 },
+        { c: 'Equity en FTS USA', v: 2200000 },
+        { c: 'Equity en FTS Brasil', v: 0 },
+        { c: 'Otras inversiones', v: 500000 },
+      ],
+    },
+    pasivos: [
+      { c: 'Crédito hipotecario casa MTY', v: 2800000 },
+      { c: 'Crédito automotriz', v: 320000 },
+      { c: 'Tarjetas de crédito', v: 85000 },
+    ],
+  },
+
+  cashflow: {
+    operativo: [
+      { c: 'Cobranza a clientes', v: 2980000 },
+      { c: 'Pagos a proveedores', v: -1740000 },
+      { c: 'Nómina y prestaciones', v: -620000 },
+      { c: 'Impuestos pagados', v: -380000 },
+    ],
+    inversion: [
+      { c: 'Compra de equipo', v: -180000 },
+    ],
+    financiamiento: [
+      { c: 'Pago crédito Jeeves', v: -85000 },
+      { c: 'Línea revolvente', v: 0 },
+    ],
+  },
+
+  transacciones: [
+    { date: '2026-05-19', type: 'Pago', ref: 'PMT-228', cp: 'Aceros del Norte SA', amount: -234500, bank: 'BBVA MXN', proj: 'PRJ-2026-014', cfdi: 'A1B2-C3D4', status: 'authorized' },
+    { date: '2026-05-19', type: 'Cobro', ref: 'INV-2026-091', cp: 'Arca Continental', amount: 645000, bank: 'BBVA MXN', proj: 'PRJ-2026-014', cfdi: 'BC83-...', status: 'reconciled' },
+    { date: '2026-05-18', type: 'Bill', ref: 'BILL-005', cp: 'Soldadura Industrial', amount: -2400, bank: '—', proj: 'PRJ-2026-008', cfdi: 'S8V9', status: 'captured' },
+    { date: '2026-05-18', type: 'Pago', ref: 'PMT-227', cp: 'Soldadura Industrial', amount: -2400, bank: 'BBVA MXN', proj: 'PRJ-2026-008', cfdi: 'S8V9', status: 'reconciled' },
+    { date: '2026-05-17', type: 'Pago', ref: 'PMT-225', cp: 'CFE', amount: -78400, bank: 'Monex MXN', proj: '—', cfdi: 'CFE-...', status: 'reconciled' },
+    { date: '2026-05-17', type: 'Cobro', ref: 'INV-2026-088', cp: 'GRUMA Hayward', amount: 320000, bank: 'JPM Chase USD', proj: 'PRJ-2026-008', cfdi: 'GR42-...', status: 'reconciled' },
+    { date: '2026-05-16', type: 'Pago', ref: 'PMT-224', cp: 'Aceros del Norte SA', amount: -412000, bank: 'BBVA MXN', proj: 'PRJ-2026-014', cfdi: 'AC11-...', status: 'reconciled' },
+    { date: '2026-05-16', type: 'Bill', ref: 'BILL-003', cp: 'Refacciones HVAC', amount: -18500, bank: '—', proj: 'PRJ-2026-008', cfdi: 'M7N8', status: 'pending_match' },
+    { date: '2026-05-15', type: 'Pago', ref: 'PMT-223', cp: 'Renta MTY', amount: -95000, bank: 'BBVA MXN', proj: '—', cfdi: '—', status: 'pending_auth' },
+    { date: '2026-05-15', type: 'Cobro', ref: 'INV-2026-085', cp: 'Nalco Water', amount: 180000, bank: 'BBVA USD', proj: 'PRJ-2026-011', cfdi: 'NL77-...', status: 'partial' },
+  ],
+
+  scrapers: [
+    { name: 'Payana', mode: 'API (pendiente · Nelson/Benito)', last_sync: '—', status: 'pending', color: 'amber' },
+    { name: 'Jeeves', mode: 'Scraping headless (Playwright + n8n)', last_sync: '2026-05-19 06:00', status: 'ok', color: 'green' },
+    { name: 'BBVA Net Cash', mode: 'Scraping headless (e.firma + 2FA)', last_sync: '2026-05-19 07:15', status: 'ok', color: 'green' },
+    { name: 'Monex', mode: 'Scraping headless', last_sync: '2026-05-19 07:20', status: 'ok', color: 'green' },
+    { name: 'JPMorgan Chase', mode: 'API JPM Access (en setup)', last_sync: '—', status: 'pending', color: 'amber' },
+  ],
+
+  satSync: {
+    last_sync: '2026-05-19 04:30',
+    next_sync: '2026-05-20 04:30',
+    cfdi_recibidos_mes: 142,
+    cfdi_emitidos_mes: 38,
+    pendientes_capturar_odoo: 7,
+    history: [
+      { date: '2026-05-19 04:30', recibidos: 12, emitidos: 3, errors: 0 },
+      { date: '2026-05-18 04:30', recibidos: 8, emitidos: 2, errors: 0 },
+      { date: '2026-05-17 04:30', recibidos: 5, emitidos: 1, errors: 1 },
+    ],
+  },
+};
+
+/* ========================= UTILS ========================= */
+const fmtMXN = n => '$' + Math.round(n).toLocaleString('es-MX');
+const fmtMXN2 = n => '$' + n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtUSD = n => 'US$' + Math.round(n).toLocaleString('en-US');
+const pct = n => (n > 0 ? '+' : '') + n.toFixed(1) + '%';
+
+const PILL_MAP = {
+  on_track: ['Al día', 'green'], partial: ['Parcial', 'amber'], overdue: ['Vencido', 'red'],
+  caution: ['Atención', 'amber'], ok: ['Cuadrado', 'green'],
+  missing_reception: ['Sin recepción', 'red'], missing: ['Faltante', 'red'],
+  authorized: ['Autorizado', 'amber'], reconciled: ['Conciliado', 'green'],
+  pending_auth: ['Pend auth', 'red'], captured: ['Capturado', 'blue'],
+  pending_match: ['3-way pend', 'amber'], paid: ['Pagado', 'green'],
+  pending: ['Pendiente', 'amber'], alert: ['Alerta', 'red'], warn: ['Atención', 'amber'],
+  high: ['Alta', 'red'], med: ['Media', 'amber'], low: ['Baja', 'blue'],
+};
+const pill = s => { const [l, c] = PILL_MAP[s] || [s, 'gray']; return `<span class="pill pill-${c}">${l}</span>`; };
+
+/* ========================= AUTH ========================= */
+function login() {
+  const userKey = document.getElementById('loginUser').value;
+  const pin = document.getElementById('loginPin').value;
+  if (pin.length !== 4) { alert('PIN inválido'); return; }
+  STATE.user = { key: userKey, ...USERS[userKey] };
+  localStorage.setItem('fts_finanzas_user', JSON.stringify(STATE.user));
+  document.getElementById('login').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  renderApp();
+}
+function logout() { localStorage.removeItem('fts_finanzas_user'); location.reload(); }
+function tryRestoreSession() {
+  const stored = localStorage.getItem('fts_finanzas_user');
+  if (stored) { STATE.user = JSON.parse(stored); document.getElementById('login').classList.add('hidden'); document.getElementById('app').classList.remove('hidden'); renderApp(); }
+}
+
+/* ========================= RENDER APP ========================= */
+function renderApp() {
+  document.getElementById('sidebarUser').innerHTML = `
+    <div class="name">${STATE.user.name}</div>
+    <div class="role">${STATE.user.display}</div>
+    <div class="logout" onclick="logout()">Cerrar sesión →</div>
+  `;
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.onclick = () => navigate(el.dataset.route);
+  });
+  document.getElementById('topbarDate').textContent = new Date().toLocaleString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  navigate('dashboard');
+}
+
+function navigate(route) {
+  // Patrimonio personal: solo Esteban
+  if (route === 'bg-personal' && STATE.user.key !== 'esteban') {
+    showToast('Acceso restringido — solo CEO');
+    return;
+  }
+  STATE.route = route;
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.route === route));
+  document.getElementById('bcCurrent').textContent = TITLES[route];
+  document.getElementById('bcBlock').textContent = BLOCK_OF[route];
+  views[route]();
+}
+
+/* ========================= VIEWS ========================= */
+const views = {};
+const $v = () => document.getElementById('viewContainer');
+
+/* ----- DASHBOARD ----- */
+views.dashboard = () => {
+  const usrName = STATE.user.name.split(' ')[0];
+  const a = M.anomalias;
+  $v().innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Hola, ${usrName}</div>
+          <div class="page-subtitle">Pulso financiero · ${new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
+        </div>
+        <div class="page-meta">
+          <div>Última sync Odoo</div>
+          <div class="mono">hace 12 min</div>
+        </div>
+      </div>
+
+      <div class="alert-banner red">
+        <div style="font-weight:600;font-size:16px;">⚠</div>
+        <div><b>4 anomalías requieren atención hoy.</b> 2 movimientos bancarios sin PO · 2 Bills marcados unpaid que ya salieron del banco · ver <a onclick="navigate('anomalias');return false;" style="color:var(--red);text-decoration:underline;cursor:pointer;font-weight:600;">detalle de anomalías →</a></div>
+      </div>
+
+      <div class="kpi-row">
+        <div class="kpi-cell">
+          <div class="label">Cash position</div>
+          <div class="value">${fmtMXN(M.cash.total_mxn_equiv)}</div>
+          <div class="delta">8 cuentas · MXN equiv</div>
+        </div>
+        <div class="kpi-cell">
+          <div class="label">Por cobrar</div>
+          <div class="value">${fmtMXN(M.ar.total)}</div>
+          <div class="delta">${fmtMXN(M.ar.b90p)} &gt;90d</div>
+        </div>
+        <div class="kpi-cell">
+          <div class="label">Por pagar (real)</div>
+          <div class="value">${fmtMXN(M.ap.total - 430500)}</div>
+          <div class="delta">excluye Bills mal marcados</div>
+        </div>
+        <div class="kpi-cell good">
+          <div class="label">Utilidad MTD</div>
+          <div class="value">${fmtMXN(M.rentEmpresa.mes.utilidad)}</div>
+          <div class="delta">${M.rentEmpresa.mes.margen}% margen</div>
+        </div>
+        <div class="kpi-cell alert">
+          <div class="label">Anomalías</div>
+          <div class="value">4</div>
+          <div class="delta">requieren acción</div>
+        </div>
+      </div>
+
+      <div class="section" style="margin-top:28px;">
+        <div class="section-title">Snapshot de anomalías<div class="rule"></div><div class="meta">Detalle en módulo Anomalías</div></div>
+        <div class="grid grid-2">
+          <div class="card alert-card">
+            <div class="card-header">
+              <div class="card-label">Movs bancarios sin PO</div>
+              <span class="pill pill-red">${a.movs_sin_po.length}</span>
+            </div>
+            <div style="margin-top:8px;">
+              ${a.movs_sin_po.map(m => `<div style="font-size:12.5px;padding:6px 0;border-bottom:1px solid var(--rule);"><b>${m.desc}</b> <span class="mono" style="float:right;">${m.currency==='USD'?fmtUSD(m.amount):fmtMXN(m.amount)}</span></div>`).join('')}
+            </div>
+          </div>
+          <div class="card alert-card">
+            <div class="card-header">
+              <div class="card-label">Bills "unpaid" ya pagados</div>
+              <span class="pill pill-red">${a.bills_pagados_marcados_unpaid.length}</span>
+            </div>
+            <div style="margin-top:8px;">
+              ${a.bills_pagados_marcados_unpaid.map(b => `<div style="font-size:12.5px;padding:6px 0;border-bottom:1px solid var(--rule);"><b>${b.vendor}</b> · ${b.bill} <span class="mono" style="float:right;">${fmtMXN(b.amount)}</span><br/><span style="color:var(--muted);font-size:11px;">Pagado ${b.paid_date} · ${b.bank_ref}</span></div>`).join('')}
+            </div>
+          </div>
+          <div class="card warn-card">
+            <div class="card-header">
+              <div class="card-label">POs sin Bill</div>
+              <span class="pill pill-amber">${a.pos_sin_bill.length}</span>
+            </div>
+            <div style="margin-top:8px;">
+              ${a.pos_sin_bill.map(p => `<div style="font-size:12.5px;padding:6px 0;border-bottom:1px solid var(--rule);"><b>${p.po}</b> · ${p.vendor} <span class="mono" style="float:right;">${fmtMXN(p.amount)}</span><br/><span style="color:var(--muted);font-size:11px;">${p.age}d sin Bill · proyecto ${p.project}</span></div>`).join('')}
+            </div>
+          </div>
+          <div class="card good-card">
+            <div class="card-header">
+              <div class="card-label">Bills unpaid legítimos (crédito)</div>
+              <span class="pill pill-green">${a.bills_unpaid_credito.length}</span>
+            </div>
+            <div style="margin-top:8px;">
+              ${a.bills_unpaid_credito.map(b => `<div style="font-size:12.5px;padding:6px 0;border-bottom:1px solid var(--rule);"><b>${b.vendor}</b> · ${b.bill} <span class="mono" style="float:right;">${fmtMXN(b.amount)}</span><br/><span style="color:var(--muted);font-size:11px;">Vence ${b.due} · términos ${b.terms}</span></div>`).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-2">
+        <div>
+          <div class="section-title">Rentabilidad por proyecto activo<div class="rule"></div><a onclick="navigate('rent-proy');return false;" class="meta" style="cursor:pointer;color:var(--navy);font-weight:600;">Ver detalle →</a></div>
+          <div class="data-table">
+            <table>
+              <thead><tr><th>Proyecto</th><th class="right">Margen</th><th class="center">Status</th></tr></thead>
+              <tbody>
+                ${M.rentProyectos.slice(0,5).map(p => `<tr><td><b>${p.client}</b><br/><span class="mono" style="font-size:11px;color:var(--muted);">${p.code}</span></td><td class="right mono">${p.margen_pct}%</td><td class="center">${pill(p.status)}</td></tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div>
+          <div class="section-title">Detectores activos<div class="rule"></div></div>
+          <div class="card alert-card" style="margin-bottom:10px;">
+            <div class="card-header">
+              <div class="card-label">Proyectos fantasma</div>
+              <span class="pill pill-red">${M.detFantasma.length}</span>
+            </div>
+            <div style="font-size:12.5px;margin-top:6px;">POs con compras a proyectos sin SO o sin actividad operativa. <a onclick="navigate('det-fantasma');return false;" style="color:var(--navy);font-weight:600;cursor:pointer;">Investigar →</a></div>
+          </div>
+          <div class="card warn-card">
+            <div class="card-header">
+              <div class="card-label">MO mal cargada</div>
+              <span class="pill pill-amber">${M.detMO.length}</span>
+            </div>
+            <div style="font-size:12.5px;margin-top:6px;">Horas cargadas a proyectos sin avance reportado en obra. <a onclick="navigate('det-mo');return false;" style="color:var(--navy);font-weight:600;cursor:pointer;">Investigar →</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+};
+
+/* ----- CASH ----- */
+views.cash = () => {
+  const d = M.cash;
+  const totalUSD = d.banks.filter(b => b.currency === 'USD').reduce((s,b) => s + b.amount, 0);
+  const totalMXN = d.banks.filter(b => b.currency === 'MXN').reduce((s,b) => s + b.amount, 0);
+  $v().innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <div>
+          <span class="block-tag">BLOQUE 1 · VIGILANCIA</span>
+          <div class="page-title">Saldos &amp; Cash</div>
+          <div class="page-subtitle">8 bancos + Jeeves consolidados al ${d.asof}</div>
+        </div>
+        <button class="btn">Sincronizar ahora</button>
+      </div>
+
+      <div class="grid grid-3 section">
+        <div class="card">
+          <div class="card-label">Total consolidado MXN equiv</div>
+          <div class="card-value"><span class="currency">$</span>${fmtMXN(d.total_mxn_equiv).slice(1)}</div>
+          <div class="card-sub"><span class="up">+2.4%</span> vs ayer · FX 17.45</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Total MXN nativo</div>
+          <div class="card-value"><span class="currency">$</span>${Math.round(totalMXN).toLocaleString('es-MX')}</div>
+          <div class="card-sub">4 cuentas · ${(totalMXN/d.total_mxn_equiv*100).toFixed(0)}%</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Total USD nativo</div>
+          <div class="card-value"><span class="currency">US$</span>${Math.round(totalUSD).toLocaleString('en-US')}</div>
+          <div class="card-sub">3 cuentas + Jeeves</div>
+        </div>
+      </div>
+
+      <div class="section-title">Detalle por cuenta<div class="rule"></div></div>
+      <div class="data-table">
+        <table>
+          <thead><tr><th>Banco</th><th>Moneda</th><th class="right">Saldo nativo</th><th class="right">MXN equiv</th><th class="right">Δ vs ayer</th></tr></thead>
+          <tbody>
+            ${d.banks.map(b => `<tr>
+              <td><b>${b.bank}</b></td>
+              <td class="mono">${b.currency}</td>
+              <td class="right mono">${(b.currency==='USD'?fmtUSD:fmtMXN)(b.amount)}</td>
+              <td class="right mono">${fmtMXN(b.amount*b.fx)}</td>
+              <td class="right mono" style="color:${b.pct>0?'var(--green)':b.pct<0?'var(--red)':'var(--muted)'};">${pct(b.pct)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="alert-banner info" style="margin-top:20px;">
+        <div style="font-weight:600;">i</div>
+        <div>Datos vía scraping headless (BBVA, Monex, Jeeves) + captura manual JPM en fase 1. API directas (Payana, JPM Access) en setup. Ver <a onclick="navigate('pagos-hub');return false;" style="color:var(--navy);font-weight:600;cursor:pointer;">Hub de Pagos →</a></div>
+      </div>
+    </div>
+  `;
+};
+
+/* ----- ANOMALÍAS ----- */
+views.anomalias = () => {
+  const a = M.anomalias;
+  $v().innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <div>
+          <span class="block-tag">BLOQUE 1 · VIGILANCIA</span>
+          <div class="page-title">Anomalías</div>
+          <div class="page-subtitle">Cross-check Odoo ↔ Bancos · detección automática diaria</div>
+        </div>
+      </div>
+
+      <div class="section-title">1. Movimientos bancarios sin PO asociada<div class="rule"></div></div>
+      <div class="data-table" style="margin-bottom:24px;">
+        <table>
+          <thead><tr><th>Fecha</th><th>Banco</th><th>Descripción</th><th class="right">Monto</th><th class="center">Severidad</th><th></th></tr></thead>
+          <tbody>
+            ${a.movs_sin_po.map(m => `<tr class="flagged">
+              <td class="mono">${m.date}</td><td>${m.bank}</td><td>${m.desc}</td>
+              <td class="right mono">${m.currency==='USD'?fmtUSD(m.amount):fmtMXN(m.amount)}</td>
+              <td class="center">${pill(m.severity)}</td>
+              <td><button class="btn btn-sm btn-secondary">Investigar</button></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="section-title">2. POs sin Bill asociado<div class="rule"></div></div>
+      <div class="data-table" style="margin-bottom:24px;">
+        <table>
+          <thead><tr><th>PO</th><th>Proveedor</th><th class="right">Monto</th><th class="center">Días</th><th>Proyecto</th><th></th></tr></thead>
+          <tbody>
+            ${a.pos_sin_bill.map(p => `<tr>
+              <td class="mono"><b>${p.po}</b></td><td>${p.vendor}</td>
+              <td class="right mono">${fmtMXN(p.amount)}</td>
+              <td class="center mono">${p.age}d</td><td>${p.project}</td>
+              <td><button class="btn btn-sm btn-secondary">Pedir Bill</button></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="section-title">3. Bills "no pagados" en Odoo que ya salieron del banco<div class="rule"></div></div>
+      <div class="alert-banner red" style="margin-bottom:14px;"><div style="font-weight:600;">⚠</div><div>Esto infla artificialmente el AP. Fallo histórico #1 que esta app debe cerrar.</div></div>
+      <div class="data-table" style="margin-bottom:24px;">
+        <table>
+          <thead><tr><th>Bill</th><th>Proveedor</th><th class="right">Monto</th><th>Fecha pago real</th><th>Ref banco</th><th></th></tr></thead>
+          <tbody>
+            ${a.bills_pagados_marcados_unpaid.map(b => `<tr class="flagged">
+              <td class="mono"><b>${b.bill}</b></td><td>${b.vendor}</td>
+              <td class="right mono">${fmtMXN(b.amount)}</td>
+              <td class="mono">${b.paid_date}</td><td class="mono">${b.bank_ref}</td>
+              <td><button class="btn btn-sm btn-success">Conciliar</button></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="section-title">4. Bills unpaid legítimos (a crédito, no vencidos)<div class="rule"></div></div>
+      <div class="alert-banner green" style="margin-bottom:14px;"><div style="font-weight:600;">✓</div><div>Estos son OK — términos de crédito vigentes. No requieren acción inmediata, pero se monitorean.</div></div>
+      <div class="data-table">
+        <table>
+          <thead><tr><th>Bill</th><th>Proveedor</th><th class="right">Monto</th><th>Vence</th><th>Términos</th></tr></thead>
+          <tbody>
+            ${a.bills_unpaid_credito.map(b => `<tr>
+              <td class="mono"><b>${b.bill}</b></td><td>${b.vendor}</td>
+              <td class="right mono">${fmtMXN(b.amount)}</td>
+              <td class="mono">${b.due}</td><td>${b.terms}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+};
+
+/* ----- AR ----- */
+views.ar = () => {
+  const d = M.ar;
+  const buckets = [
+    { l: '0-30d', v: d.b030, cl: 'aging-segment-0' },
+    { l: '31-60d', v: d.b3160, cl: 'aging-segment-30' },
+    { l: '61-90d', v: d.b6190, cl: 'aging-segment-60' },
+    { l: '>90d', v: d.b90p, cl: 'aging-segment-90' },
+  ];
+  $v().innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <div>
+          <span class="block-tag">BLOQUE 1 · VIGILANCIA</span>
+          <div class="page-title">AR &mdash; Por cobrar</div>
+          <div class="page-subtitle">Aging desde Odoo · live</div>
+        </div>
+        <div class="page-meta"><div>Total outstanding</div><div class="mono" style="font-size:18px;color:var(--ink);">${fmtMXN(d.total)}</div></div>
+      </div>
+      <div class="grid grid-4 section">
+        ${buckets.map(b => `<div class="card"><div class="card-label">${b.l}</div><div class="card-value mono">${fmtMXN(b.v)}</div><div class="card-sub">${(b.v/d.total*100).toFixed(1)}%</div><div class="aging-bar"><div class="${b.cl}" style="width:100%"></div></div></div>`).join('')}
+      </div>
+      <div class="section-title">Por cliente<div class="rule"></div></div>
+      <div class="data-table">
+        <table>
+          <thead><tr><th>Cliente</th><th class="center">Facturas</th><th class="right">Saldo</th><th class="center">Más antigua</th><th>Portal</th><th class="center">Status</th></tr></thead>
+          <tbody>
+            ${d.clients.map(c => `<tr><td><b>${c.client}</b></td><td class="center mono">${c.invoices}</td><td class="right mono">${fmtMXN(c.total)}</td><td class="center mono">${c.oldest}d</td><td>${c.portal}</td><td class="center">${pill(c.status)}</td></tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+};
+
+/* ----- AP ----- */
+views.ap = () => {
+  const d = M.ap;
+  const buckets = [
+    { l: '0-30d', v: d.b030, cl: 'aging-segment-0' },
+    { l: '31-60d', v: d.b3160, cl: 'aging-segment-30' },
+    { l: '61-90d', v: d.b6190, cl: 'aging-segment-60' },
+    { l: '>90d', v: d.b90p, cl: 'aging-segment-90' },
+  ];
+  $v().innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <div>
+          <span class="block-tag">BLOQUE 1 · VIGILANCIA</span>
+          <div class="page-title">AP &mdash; Por pagar</div>
+          <div class="page-subtitle">Aging desde Odoo · neto de Bills mal marcados</div>
+        </div>
+        <div class="page-meta"><div>Total outstanding</div><div class="mono" style="font-size:18px;color:var(--ink);">${fmtMXN(d.total)}</div></div>
+      </div>
+      <div class="grid grid-4 section">
+        ${buckets.map(b => `<div class="card"><div class="card-label">${b.l}</div><div class="card-value mono">${fmtMXN(b.v)}</div><div class="card-sub">${(b.v/d.total*100).toFixed(1)}%</div><div class="aging-bar"><div class="${b.cl}" style="width:100%"></div></div></div>`).join('')}
+      </div>
+      <div class="section-title">Por proveedor<div class="rule"></div></div>
+      <div class="data-table">
+        <table>
+          <thead><tr><th>Proveedor</th><th class="center">Bills</th><th class="right">Saldo</th><th class="center">Más antiguo</th><th class="center">Status</th></tr></thead>
+          <tbody>
+            ${d.suppliers.map(s => `<tr><td><b>${s.supplier}</b></td><td class="center mono">${s.bills}</td><td class="right mono">${fmtMXN(s.total)}</td><td class="center mono">${s.oldest}d</td><td class="center">${pill(s.status)}</td></tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+};
+
+/* ----- BILLS 3-WAY ----- */
+views.bills = () => {
+  $v().innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <div>
+          <span class="block-tag">BLOQUE 1 · VIGILANCIA</span>
+          <div class="page-title">Bills · 3-way match</div>
+          <div class="page-subtitle">PO ↔ Recepción ↔ Bill antes de autorizar pago</div>
+        </div>
+      </div>
+      <div class="alert-banner"><div style="font-weight:600;">★</div><div>Cada Bill debe cuadrar contra su PO aprobada y la recepción documentada. Sin match, no se autoriza pago.</div></div>
+      ${M.bills.map(b => `
+        <div class="match-row">
+          <div class="match-cell ${b.match==='ok'?'ok':b.match==='partial'?'partial':'missing'}">
+            <div class="label">PO</div>
+            <div class="mono" style="font-size:13px;font-weight:600;">${b.po}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;">${b.vendor}</div>
+          </div>
+          <div class="match-cell ${b.reception==='OK'?'ok':'missing'}">
+            <div class="label">Recepción</div>
+            <div style="font-size:13px;font-weight:600;">${b.reception==='OK'?'✓ Registrada':'✗ Faltante'}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;">stock.picking en Odoo</div>
+          </div>
+          <div class="match-cell ${b.match==='ok'?'ok':b.match==='partial'?'partial':'missing'}">
+            <div class="label">Bill</div>
+            <div class="mono" style="font-size:13px;font-weight:600;">${b.id} · ${fmtMXN(b.amount)}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;">CFDI ${b.cfdi}</div>
+          </div>
+          ${b.reason ? `<div style="grid-column:1/-1;font-size:12px;color:var(--red);padding:6px 10px;background:var(--red-bg);border-radius:2px;">⚠ ${b.reason}</div>` : ''}
+          <div class="match-actions">
+            ${b.match==='ok' ? `<button class="btn btn-success" onclick="showToast('Pago autorizado ✓')">Autorizar pago</button>` : `<button class="btn btn-amber" onclick="showToast('Investigación abierta')">Investigar</button><button class="btn btn-danger">Rechazar</button>`}
+            <button class="btn btn-secondary">Ver en Odoo →</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>`;
+};
+
+/* ----- RENT EMPRESA ----- */
+views['rent-emp'] = () => {
+  const d = M.rentEmpresa;
+  $v().innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <div>
+          <span class="block-tag">BLOQUE 2 · RENTABILIDAD</span>
+          <div class="page-title">Rentabilidad de empresa</div>
+          <div class="page-subtitle">Mayo 2026 + acumulado YTD</div>
+        </div>
+      </div>
+
+      <div class="grid grid-2 section">
+        <div class="card">
+          <div class="card-label">Mes actual</div>
+          <div class="card-value mono">${fmtMXN(d.mes.utilidad)}</div>
+          <div class="card-sub">Margen <b>${d.mes.margen}%</b> · sobre ingresos ${fmtMXN(d.mes.ingresos)}</div>
+          <div style="margin-top:14px;font-size:12px;color:var(--muted);">
+            Ingresos <span class="mono" style="float:right;color:var(--ink);">${fmtMXN(d.mes.ingresos)}</span><br/>
+            (-) Costos <span class="mono" style="float:right;color:var(--red);">-${fmtMXN(d.mes.costos)}</span><br/>
+            (-) Gastos <span class="mono" style="float:right;color:var(--red);">-${fmtMXN(d.mes.gastos)}</span><br/>
+            = Utilidad <span class="mono" style="float:right;color:var(--green);font-weight:600;">${fmtMXN(d.mes.utilidad)}</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-label">Año a la fecha (YTD)</div>
+          <div class="card-value mono">${fmtMXN(d.ytd.utilidad)}</div>
+          <div class="card-sub">Margen <b>${d.ytd.margen}%</b> · sobre ingresos ${fmtMXN(d.ytd.ingresos)}</div>
+          <div style="margin-top:14px;font-size:12px;color:var(--muted);">
+            Ingresos <span class="mono" style="float:right;color:var(--ink);">${fmtMXN(d.ytd.ingresos)}</span><br/>
+            (-) Costos <span class="mono" style="float:right;color:var(--red);">-${fmtMXN(d.ytd.costos)}</span><br/>
+            (-) Gastos <span class="mono" style="float:right;color:var(--red);">-${fmtMXN(d.ytd.gastos)}</span><br/>
+            = Utilidad <span class="mono" style="float:right;color:var(--green);font-weight:600;">${fmtMXN(d.ytd.utilidad)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">Evolución mensual<div class="rule"></div></div>
+      <div class="data-table">
+        <table>
+          <thead><tr><th>Mes</th><th class="right">Ingresos</th><th class="right">Utilidad</th><th class="right">Margen %</th></tr></thead>
+          <tbody>
+            ${d.serie.map(s => `<tr><td><b>${s.mes}</b></td><td class="right mono">${fmtMXN(s.ing)}</td><td class="right mono">${fmtMXN(s.ut)}</td><td class="right mono">${(s.ut/s.ing*100).toFixed(1)}%</td></tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+};
+
+/* ----- RENT PROYECTOS ----- */
+views['rent-proy'] = () => {
+  const total_pres = M.rentProyectos.reduce((s,p) => s + p.presupuesto, 0);
+  const total_ej = M.rentProyectos.reduce((s,p) => s + p.ejecutado, 0);
+  const total_cr = M.rentProyectos.reduce((s,p) => s + p.costo_real, 0);
+  $v().innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <div>
+          <span class="block-tag">BLOQUE 2 · RENTABILIDAD</span>
+          <div class="page-title">Rentabilidad por proyecto</div>
+          <div class="page-subtitle">Proyectos activos · margen ejecutado vs presupuesto</div>
+        </div>
+      </div>
+
+      <div class="grid grid-3 section">
+        <div class="card"><div class="card-label">Backlog total</div><div class="card-value mono">${fmtMXN(total_pres)}</div><div class="card-sub">${M.rentProyectos.length} proyectos activos</div></div>
+        <div class="card"><div class="card-label">Ejecutado</div><div class="card-value mono">${fmtMXN(total_ej)}</div><div class="card-sub">${(total_ej/total_pres*100).toFixed(0)}% del backlog</div></div>
+        <div class="card"><div class="card-label">Margen ejecutado promedio</div><div class="card-value mono">${((total_ej-total_cr)/total_ej*100).toFixed(1)}%</div><div class="card-sub">Costo real ${fmtMXN(total_cr)}</div></div>
+      </div>
+
+      <div class="alert-banner">
+        <div style="font-weight:600;">⚠</div>
+        <div>Hay <b>1 proyecto en alerta</b> (margen &lt;10%) y <b>2 en atención</b> (margen &lt;15%). Detalle abajo.</div>
+      </div>
+
+      <div class="data-table">
+        <table>
+          <thead><tr><th>Proyecto / Cliente</th><th>SO</th><th class="right">Presupuesto</th><th class="right">Ejecutado</th><th class="right">Costo real</th><th class="right">Margen real</th><th class="right">vs Pres.</th><th class="center">Status</th></tr></thead>
+          <tbody>
+            ${M.rentProyectos.map(p => {
+              const cls = p.status === 'alert' ? 'flagged' : '';
+              const diff = p.margen_pct - p.margen_pres;
+              const diffColor = diff < -5 ? 'var(--red)' : diff < 0 ? 'var(--amber)' : 'var(--green)';
+              return `<tr class="${cls}">
+                <td><b>${p.client}</b><br/><span class="mono" style="font-size:11px;color:var(--muted);">${p.code}</span></td>
+                <td class="mono">${p.so}</td>
+                <td class="right mono">${fmtMXN(p.presupuesto)}</td>
+                <td class="right mono">${fmtMXN(p.ejecutado)}</td>
+                <td class="right mono">${fmtMXN(p.costo_real)}</td>
+                <td class="right mono"><b>${p.margen_pct}%</b></td>
+                <td class="right mono" style="color:${diffColor};">${diff>=0?'+':''}${diff.toFixed(1)}pp</td>
+                <td class="center">${pill(p.status)}</td>
+              </tr>${p.alert ? `<tr class="${cls}"><td colspan="8" style="padding:6px 14px;font-size:11.5px;color:var(--red);font-style:italic;">⚠ ${p.alert}</td></tr>` : ''}`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+};
+
+/* ----- DETECTOR FANTASMA ----- */
+views['det-fantasma'] = () => {
+  $v().innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <div>
+          <span class="block-tag">BLOQUE 2 · RENTABILIDAD</span>
+          <div class="page-title">Detector de proyectos fantasma</div>
+          <div class="page-subtitle">Cross-check: POs ↔ sales.order ↔ hr.attendance · IA flagging</div>
+        </div>
+      </div>
+
+      <div class="alert-banner red">
+        <div style="font-weight:600;">⚠</div>
+        <div>Compras detectadas a proyectos que <b>NO existen</b> en Sales Orders o <b>NO tienen actividad operativa</b>. Acción recomendada: bloquear códigos y abrir investigación.</div>
+      </div>
+
+      <div class="data-table">
+        <table>
+          <thead><tr><th>PO</th><th>Proveedor</th><th class="right">Monto</th><th>Cargado a</th><th>Razón del flag</th><th class="center">Severidad</th><th></th></tr></thead>
+          <tbody>
+            ${M.detFantasma.map(d => `<tr class="flagged">
+              <td class="mono"><b>${d.po}</b></td>
+              <td>${d.vendor}</td>
+              <td class="right mono">${fmtMXN(d.amount)}</td>
+              <td class="mono" style="color:var(--red);">${d.charged_to}</td>
+              <td style="font-size:12px;">${d.reason}</td>
+              <td class="center">${pill(d.severity)}</td>
+              <td><button class="btn btn-sm btn-danger">Bloquear</button></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="alert-banner info" style="margin-top:24px;">
+        <div style="font-weight:600;">i</div>
+        <div>Detector full lo entrega Bloque D del roadmap (cuando <code>x_studio_sales_order_2</code> esté 100% en POs y <code>hr.attendance</code>). Hoy corre con cross-check semi-manual.</div>
+      </div>
+    </div>`;
+};
+
+/* ----- DETECTOR MO ----- */
+views['det-mo'] = () => {
+  $v().innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <div>
+          <span class="block-tag">BLOQUE 2 · RENTABILIDAD</span>
+          <div class="page-title">Detector de mano de obra mal cargada</div>
+          <div class="page-subtitle">Horas en hr.attendance ↔ avance físico de proyecto</div>
+        </div>
+      </div>
+
+      <div class="alert-banner">
+        <div style="font-weight:600;">⚠</div>
+        <div>Empleados con horas cargadas a proyectos <b>sin actividad de campo reportada</b> o con <b>avance físico no proporcional</b>. La IA cruza hr.attendance vs reportes de obra.</div>
+      </div>
+
+      <div class="data-table">
+        <table>
+          <thead><tr><th>Proyecto</th><th>Empleado</th><th class="right">Hrs mes</th><th class="center">Actividad campo</th><th>Razón</th><th class="center">Severidad</th></tr></thead>
+          <tbody>
+            ${M.detMO.map(d => `<tr class="${d.severity==='high'?'flagged':''}">
+              <td><b>${d.proj}</b></td>
+              <td>${d.empleado}</td>
+              <td class="right mono">${d.hrs_mes}h</td>
+              <td class="center">${d.actividad_campo ? '✓' : '<span style="color:var(--red);">✗</span>'}</td>
+              <td style="font-size:12px;">${d.reason}</td>
+              <td class="center">${pill(d.severity)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+};
+
+/* ----- P&L ----- */
+views.pl = () => {
+  const d = M.pl;
+  const totalIng = d.ingresos.reduce((s,x) => s + x.monto, 0);
+  const totalCos = d.costos.reduce((s,x) => s + x.monto, 0);
+  const totalGas = d.gastos.reduce((s,x) => s + x.monto, 0);
+  const utilidad = totalIng - totalCos - totalGas;
+  $v().innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <div>
+          <span class="block-tag">BLOQUE 3 · ESTADOS FINANCIEROS</span>
+          <div class="page-title">Estado de Resultados (P&amp;L)</div>
+          <div class="page-subtitle">Periodo: ${d.periodo} · MXN</div>
+        </div>
+        <div>
+          <button class="btn">Exportar PDF</button>
+          <button class="btn btn-secondary">Mes anterior</button>
+        </div>
+      </div>
+
+      <div class="card" style="padding:0;">
+        <table style="width:100%;border-collapse:collapse;">
+          <tr style="background:var(--paper-2);"><th colspan="2" style="padding:10px 18px;text-align:left;font-size:11px;letter-spacing:1.5px;color:var(--navy);text-transform:uppercase;">INGRESOS</th></tr>
+          ${d.ingresos.map(x => `<tr><td style="padding:10px 18px;border-bottom:1px solid var(--rule);">${x.concepto}</td><td class="mono right" style="padding:10px 18px;border-bottom:1px solid var(--rule);text-align:right;">${fmtMXN(x.monto)}</td></tr>`).join('')}
+          <tr style="background:var(--green-bg);font-weight:600;"><td style="padding:10px 18px;">Total ingresos</td><td class="mono" style="padding:10px 18px;text-align:right;color:var(--green);">${fmtMXN(totalIng)}</td></tr>
+
+          <tr style="background:var(--paper-2);"><th colspan="2" style="padding:10px 18px;text-align:left;font-size:11px;letter-spacing:1.5px;color:var(--navy);text-transform:uppercase;">COSTOS DE OPERACIÓN</th></tr>
+          ${d.costos.map(x => `<tr><td style="padding:10px 18px;border-bottom:1px solid var(--rule);">${x.concepto}</td><td class="mono" style="padding:10px 18px;border-bottom:1px solid var(--rule);text-align:right;">-${fmtMXN(x.monto)}</td></tr>`).join('')}
+          <tr style="background:var(--red-bg);font-weight:600;"><td style="padding:10px 18px;">Total costos</td><td class="mono" style="padding:10px 18px;text-align:right;color:var(--red);">-${fmtMXN(totalCos)}</td></tr>
+
+          <tr style="background:var(--blue-soft);font-weight:600;"><td style="padding:10px 18px;">Utilidad bruta</td><td class="mono" style="padding:10px 18px;text-align:right;">${fmtMXN(totalIng-totalCos)}</td></tr>
+
+          <tr style="background:var(--paper-2);"><th colspan="2" style="padding:10px 18px;text-align:left;font-size:11px;letter-spacing:1.5px;color:var(--navy);text-transform:uppercase;">GASTOS DE OPERACIÓN</th></tr>
+          ${d.gastos.map(x => `<tr><td style="padding:10px 18px;border-bottom:1px solid var(--rule);">${x.concepto}</td><td class="mono" style="padding:10px 18px;border-bottom:1px solid var(--rule);text-align:right;">-${fmtMXN(x.monto)}</td></tr>`).join('')}
+          <tr style="background:var(--red-bg);font-weight:600;"><td style="padding:10px 18px;">Total gastos</td><td class="mono" style="padding:10px 18px;text-align:right;color:var(--red);">-${fmtMXN(totalGas)}</td></tr>
+
+          <tr style="background:var(--navy);color:white;font-weight:600;font-size:15px;"><td style="padding:14px 18px;">UTILIDAD NETA</td><td class="mono" style="padding:14px 18px;text-align:right;">${fmtMXN(utilidad)}</td></tr>
+        </table>
+      </div>
+
+      <div class="alert-banner info" style="margin-top:20px;">
+        <div style="font-weight:600;">i</div>
+        <div>Datos preliminares. Cierre formal sale del despacho contable al día 15 del mes siguiente. Este reporte refleja lo capturado en Odoo al cierre del día.</div>
+      </div>
+    </div>`;
+};
+
+/* ----- BG FTS ----- */
+views['bg-fts'] = () => {
+  const d = M.bgFTS;
+  const totalActCorr = d.activos.corriente.reduce((s,x) => s + x.v, 0);
+  const totalActNoCorr = d.activos.noCorriente.reduce((s,x) => s + x.v, 0);
+  const totalAct = totalActCorr + totalActNoCorr;
+  const totalPasCorr = d.pasivos.corriente.reduce((s,x) => s + x.v, 0);
+  const totalPasNoCorr = d.pasivos.noCorriente.reduce((s,x) => s + x.v, 0);
+  const totalPas = totalPasCorr + totalPasNoCorr;
+  const capital = totalAct - totalPas;
+  $v().innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <div>
+          <span class="block-tag">BLOQUE 3 · ESTADOS FINANCIEROS</span>
+          <div class="page-title">Balance General FTS</div>
+          <div class="page-subtitle">Servicios FTS SA de CV · al 19 de mayo 2026</div>
+        </div>
+        <button class="btn">Exportar PDF</button>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="card" style="padding:0;">
+          <div style="padding:14px 20px;background:var(--navy);color:white;font-weight:600;letter-spacing:1px;text-transform:uppercase;font-size:12px;">Activos</div>
+          <div style="padding:8px 20px;background:var(--paper-2);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:600;">Corriente</div>
+          ${d.activos.corriente.map(x => `<div style="padding:9px 20px;display:flex;justify-content:space-between;border-bottom:1px solid var(--rule);font-size:13px;"><span>${x.c}</span><span class="mono">${fmtMXN(x.v)}</span></div>`).join('')}
+          <div style="padding:9px 20px;display:flex;justify-content:space-between;background:var(--green-bg);font-weight:600;font-size:13px;"><span>Subtotal corriente</span><span class="mono">${fmtMXN(totalActCorr)}</span></div>
+          <div style="padding:8px 20px;background:var(--paper-2);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:600;">No corriente</div>
+          ${d.activos.noCorriente.map(x => `<div style="padding:9px 20px;display:flex;justify-content:space-between;border-bottom:1px solid var(--rule);font-size:13px;"><span>${x.c}</span><span class="mono" style="color:${x.v<0?'var(--red)':'var(--ink)'};">${fmtMXN(x.v)}</span></div>`).join('')}
+          <div style="padding:9px 20px;display:flex;justify-content:space-between;background:var(--green-bg);font-weight:600;font-size:13px;"><span>Subtotal no corriente</span><span class="mono">${fmtMXN(totalActNoCorr)}</span></div>
+          <div style="padding:14px 20px;display:flex;justify-content:space-between;background:var(--navy);color:white;font-weight:600;font-size:14px;"><span>TOTAL ACTIVOS</span><span class="mono">${fmtMXN(totalAct)}</span></div>
+        </div>
+
+        <div class="card" style="padding:0;">
+          <div style="padding:14px 20px;background:var(--navy);color:white;font-weight:600;letter-spacing:1px;text-transform:uppercase;font-size:12px;">Pasivos &amp; capital</div>
+          <div style="padding:8px 20px;background:var(--paper-2);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:600;">Pasivo corriente</div>
+          ${d.pasivos.corriente.map(x => `<div style="padding:9px 20px;display:flex;justify-content:space-between;border-bottom:1px solid var(--rule);font-size:13px;"><span>${x.c}</span><span class="mono">${fmtMXN(x.v)}</span></div>`).join('')}
+          <div style="padding:9px 20px;display:flex;justify-content:space-between;background:var(--red-bg);font-weight:600;font-size:13px;"><span>Subtotal corriente</span><span class="mono">${fmtMXN(totalPasCorr)}</span></div>
+          <div style="padding:8px 20px;background:var(--paper-2);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:600;">Pasivo no corriente</div>
+          ${d.pasivos.noCorriente.map(x => `<div style="padding:9px 20px;display:flex;justify-content:space-between;border-bottom:1px solid var(--rule);font-size:13px;"><span>${x.c}</span><span class="mono">${fmtMXN(x.v)}</span></div>`).join('')}
+          <div style="padding:9px 20px;display:flex;justify-content:space-between;background:var(--red-bg);font-weight:600;font-size:13px;"><span>Subtotal no corriente</span><span class="mono">${fmtMXN(totalPasNoCorr)}</span></div>
+          <div style="padding:8px 20px;background:var(--paper-2);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:600;">Capital contable</div>
+          <div style="padding:9px 20px;display:flex;justify-content:space-between;background:var(--blue-soft);font-weight:600;font-size:13px;"><span>Capital contable (calculado)</span><span class="mono">${fmtMXN(capital)}</span></div>
+          <div style="padding:14px 20px;display:flex;justify-content:space-between;background:var(--navy);color:white;font-weight:600;font-size:14px;"><span>TOTAL PASIVO + CAPITAL</span><span class="mono">${fmtMXN(totalPas+capital)}</span></div>
+        </div>
+      </div>
+    </div>`;
+};
+
+/* ----- BG PERSONAL (CANDADO) ----- */
+views['bg-personal'] = () => {
+  const d = M.bgPersonal;
+  const totalLiq = d.activos.liquidez.reduce((s,x) => s + x.v, 0);
+  const totalBien = d.activos.bienes.reduce((s,x) => s + x.v, 0);
+  const totalEmp = d.activos.empresariales.reduce((s,x) => s + x.v, 0);
+  const totalAct = totalLiq + totalBien + totalEmp;
+  const totalPas = d.pasivos.reduce((s,x) => s + x.v, 0);
+  const patrimonioNeto = totalAct - totalPas;
+  $v().innerHTML = `
+    <div class="page">
+      <div class="private-banner">
+        <div class="icon">🔒</div>
+        <div class="text"><b>Patrimonio personal — Esteban</b> · Vista privada · No visible para ningún otro usuario · Auth adicional recomendado en producción (2FA o passphrase aparte)</div>
+      </div>
+      <div class="page-header">
+        <div>
+          <span class="block-tag">BLOQUE 3 · ESTADOS FINANCIEROS</span>
+          <div class="page-title">Patrimonio personal</div>
+          <div class="page-subtitle">Activos personales + empresariales · al 19 de mayo 2026</div>
+        </div>
+        <button class="btn btn-secondary">Editar</button>
+      </div>
+
+      <div class="grid grid-3 section">
+        <div class="card"><div class="card-label">Liquidez</div><div class="card-value mono">${fmtMXN(totalLiq)}</div><div class="card-sub">Cuentas + inversiones líquidas</div></div>
+        <div class="card"><div class="card-label">Bienes</div><div class="card-value mono">${fmtMXN(totalBien)}</div><div class="card-sub">Inmuebles + muebles</div></div>
+        <div class="card"><div class="card-label">Equity empresarial</div><div class="card-value mono">${fmtMXN(totalEmp)}</div><div class="card-sub">FTS MX + USA + Brasil</div></div>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="card" style="padding:0;">
+          <div style="padding:14px 20px;background:var(--navy);color:white;font-weight:600;letter-spacing:1px;text-transform:uppercase;font-size:12px;">Activos personales</div>
+          <div style="padding:8px 20px;background:var(--paper-2);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:600;">Liquidez &amp; inversiones</div>
+          ${d.activos.liquidez.map(x => `<div style="padding:9px 20px;display:flex;justify-content:space-between;border-bottom:1px solid var(--rule);font-size:13px;"><span>${x.c}</span><span class="mono">${fmtMXN(x.v)}</span></div>`).join('')}
+          <div style="padding:8px 20px;background:var(--paper-2);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:600;">Bienes raíces y muebles</div>
+          ${d.activos.bienes.map(x => `<div style="padding:9px 20px;display:flex;justify-content:space-between;border-bottom:1px solid var(--rule);font-size:13px;"><span>${x.c}</span><span class="mono">${fmtMXN(x.v)}</span></div>`).join('')}
+          <div style="padding:8px 20px;background:var(--paper-2);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:600;">Participaciones empresariales</div>
+          ${d.activos.empresariales.map(x => `<div style="padding:9px 20px;display:flex;justify-content:space-between;border-bottom:1px solid var(--rule);font-size:13px;"><span>${x.c}</span><span class="mono">${fmtMXN(x.v)}</span></div>`).join('')}
+          <div style="padding:14px 20px;display:flex;justify-content:space-between;background:var(--green);color:white;font-weight:600;font-size:14px;"><span>TOTAL ACTIVOS</span><span class="mono">${fmtMXN(totalAct)}</span></div>
+        </div>
+
+        <div>
+          <div class="card" style="padding:0;margin-bottom:14px;">
+            <div style="padding:14px 20px;background:var(--navy);color:white;font-weight:600;letter-spacing:1px;text-transform:uppercase;font-size:12px;">Pasivos personales</div>
+            ${d.pasivos.map(x => `<div style="padding:10px 20px;display:flex;justify-content:space-between;border-bottom:1px solid var(--rule);font-size:13px;"><span>${x.c}</span><span class="mono">${fmtMXN(x.v)}</span></div>`).join('')}
+            <div style="padding:14px 20px;display:flex;justify-content:space-between;background:var(--red);color:white;font-weight:600;font-size:14px;"><span>TOTAL PASIVOS</span><span class="mono">${fmtMXN(totalPas)}</span></div>
+          </div>
+
+          <div class="card" style="padding:0;">
+            <div style="padding:14px 20px;background:linear-gradient(90deg,var(--navy),var(--navy-2));color:white;font-weight:600;letter-spacing:1px;text-transform:uppercase;font-size:12px;">Patrimonio neto</div>
+            <div style="padding:28px 22px;text-align:center;">
+              <div style="font-size:11px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;">Activos − Pasivos</div>
+              <div class="mono" style="font-size:36px;font-weight:700;color:var(--navy);">${fmtMXN(patrimonioNeto)}</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:8px;">${(patrimonioNeto/totalAct*100).toFixed(1)}% del total de activos</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert-banner info" style="margin-top:20px;">
+        <div style="font-weight:600;">i</div>
+        <div>Este módulo es <b>fully editable</b>. Los valores de Casa McAllen están en $0 hasta cerrar la compra. Equity en FTS se actualiza cada mes con el cierre contable.</div>
+      </div>
+    </div>`;
+};
+
+/* ----- CASH FLOW ----- */
+views.cashflow = () => {
+  const d = M.cashflow;
+  const totalOp = d.operativo.reduce((s,x) => s + x.v, 0);
+  const totalInv = d.inversion.reduce((s,x) => s + x.v, 0);
+  const totalFin = d.financiamiento.reduce((s,x) => s + x.v, 0);
+  const totalCF = totalOp + totalInv + totalFin;
+  $v().innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <div>
+          <span class="block-tag">BLOQUE 3 · ESTADOS FINANCIEROS</span>
+          <div class="page-title">Cash Flow</div>
+          <div class="page-subtitle">Flujo de efectivo · Mayo 2026</div>
+        </div>
+        <button class="btn">Exportar PDF</button>
+      </div>
+
+      <div class="card" style="padding:0;">
+        <div style="padding:12px 20px;background:var(--paper-2);font-size:11px;letter-spacing:1.5px;color:var(--navy);text-transform:uppercase;font-weight:600;">Actividades operativas</div>
+        ${d.operativo.map(x => `<div style="padding:10px 20px;display:flex;justify-content:space-between;border-bottom:1px solid var(--rule);font-size:13px;"><span>${x.c}</span><span class="mono" style="color:${x.v<0?'var(--red)':'var(--green)'};">${x.v<0?'-':''}${fmtMXN(Math.abs(x.v))}</span></div>`).join('')}
+        <div style="padding:10px 20px;display:flex;justify-content:space-between;background:${totalOp>=0?'var(--green-bg)':'var(--red-bg)'};font-weight:600;font-size:13px;"><span>Flujo operativo neto</span><span class="mono">${totalOp<0?'-':''}${fmtMXN(Math.abs(totalOp))}</span></div>
+
+        <div style="padding:12px 20px;background:var(--paper-2);font-size:11px;letter-spacing:1.5px;color:var(--navy);text-transform:uppercase;font-weight:600;">Actividades de inversión</div>
+        ${d.inversion.map(x => `<div style="padding:10px 20px;display:flex;justify-content:space-between;border-bottom:1px solid var(--rule);font-size:13px;"><span>${x.c}</span><span class="mono" style="color:${x.v<0?'var(--red)':'var(--green)'};">${x.v<0?'-':''}${fmtMXN(Math.abs(x.v))}</span></div>`).join('')}
+        <div style="padding:10px 20px;display:flex;justify-content:space-between;background:var(--red-bg);font-weight:600;font-size:13px;"><span>Flujo inversión neto</span><span class="mono">-${fmtMXN(Math.abs(totalInv))}</span></div>
+
+        <div style="padding:12px 20px;background:var(--paper-2);font-size:11px;letter-spacing:1.5px;color:var(--navy);text-transform:uppercase;font-weight:600;">Actividades de financiamiento</div>
+        ${d.financiamiento.map(x => `<div style="padding:10px 20px;display:flex;justify-content:space-between;border-bottom:1px solid var(--rule);font-size:13px;"><span>${x.c}</span><span class="mono" style="color:${x.v<0?'var(--red)':'var(--green)'};">${x.v<0?'-':''}${fmtMXN(Math.abs(x.v))}</span></div>`).join('')}
+        <div style="padding:10px 20px;display:flex;justify-content:space-between;background:var(--red-bg);font-weight:600;font-size:13px;"><span>Flujo financiamiento neto</span><span class="mono">${totalFin<0?'-':''}${fmtMXN(Math.abs(totalFin))}</span></div>
+
+        <div style="padding:16px 20px;display:flex;justify-content:space-between;background:var(--navy);color:white;font-weight:600;font-size:15px;"><span>CAMBIO NETO EN EFECTIVO</span><span class="mono">${totalCF<0?'-':''}${fmtMXN(Math.abs(totalCF))}</span></div>
+      </div>
+    </div>`;
+};
+
+/* ----- TRANSACCIONES ----- */
+views.transacciones = () => {
+  $v().innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <div>
+          <span class="block-tag">BLOQUE 4 · CENTRO</span>
+          <div class="page-title">Centro de transacciones</div>
+          <div class="page-subtitle">Browse · filtros · exportable</div>
+        </div>
+        <div>
+          <button class="btn">Exportar Excel</button>
+          <button class="btn btn-secondary">Exportar PDF</button>
+        </div>
+      </div>
+
+      <div class="grid grid-4 section">
+        <div class="form-row"><label>Tipo</label><select><option>Todos</option><option>Pago</option><option>Cobro</option><option>Bill</option></select></div>
+        <div class="form-row"><label>Banco</label><select><option>Todos</option><option>BBVA MXN</option><option>BBVA USD</option><option>Monex MXN</option></select></div>
+        <div class="form-row"><label>Proyecto</label><select><option>Todos</option><option>PRJ-2026-014</option><option>PRJ-2026-008</option></select></div>
+        <div class="form-row"><label>Rango fecha</label><input type="text" placeholder="01/05/2026 → 19/05/2026" value="01/05/2026 → 19/05/2026"/></div>
+      </div>
+
+      <div class="data-table">
+        <table>
+          <thead>
+            <tr><th>Fecha</th><th>Tipo</th><th>Ref</th><th>Contraparte</th><th class="right">Monto</th><th>Banco</th><th>Proyecto</th><th>CFDI</th><th class="center">Status</th></tr>
+          </thead>
+          <tbody>
+            ${M.transacciones.map(t => `<tr>
+              <td class="mono">${t.date}</td>
+              <td><span class="pill pill-${t.type==='Pago'?'red':t.type==='Cobro'?'green':'blue'}">${t.type}</span></td>
+              <td class="mono"><b>${t.ref}</b></td>
+              <td>${t.cp}</td>
+              <td class="right mono" style="color:${t.amount<0?'var(--red)':'var(--green)'};">${t.amount<0?'-':''}${fmtMXN(Math.abs(t.amount))}</td>
+              <td style="font-size:12px;">${t.bank}</td>
+              <td class="mono" style="font-size:11.5px;color:var(--muted);">${t.proj}</td>
+              <td class="mono" style="font-size:11px;color:var(--muted);">${t.cfdi}</td>
+              <td class="center">${pill(t.status)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:14px;font-size:12px;color:var(--muted);text-align:right;">Mostrando ${M.transacciones.length} de 1,247 transacciones · <a style="color:var(--navy);cursor:pointer;font-weight:600;">cargar más →</a></div>
+    </div>`;
+};
+
+/* ----- HUB PAGOS ----- */
+views['pagos-hub'] = () => {
+  $v().innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <div>
+          <span class="block-tag">BLOQUE 5 · ACCIONES</span>
+          <div class="page-title">Hub de Pagos</div>
+          <div class="page-subtitle">Doble modo: portales embebidos (acceso directo) + scraping en background</div>
+        </div>
+      </div>
+
+      <div class="alert-banner purple">
+        <div style="font-weight:600;">⟳</div>
+        <div><b>Mientras se desarrolla la API de Payana</b> (Nelson comercial + Benito dev), corremos en doble modo: (1) embeber portales en iframe para entrar 1-click, (2) scraping headless en n8n para sincronizar movimientos automáticamente. Cuando la API esté lista, se reemplaza el scraping.</div>
+      </div>
+
+      <div class="section-title">Estado de sincronizadores<div class="rule"></div></div>
+      ${M.scrapers.map(s => `
+        <div class="scraper-card">
+          <div class="scraper-icon">${s.name.charAt(0)}</div>
+          <div class="scraper-info">
+            <div class="name"><span class="status-dot ${s.color}"></span>${s.name}</div>
+            <div class="meta">${s.mode} · Última sync: <b>${s.last_sync}</b></div>
+          </div>
+          <button class="btn btn-secondary btn-sm">Sincronizar</button>
+          <button class="btn btn-sm">Abrir portal</button>
+        </div>
+      `).join('')}
+
+      <div class="section-title" style="margin-top:28px;">Vista embebida (iframe)<div class="rule"></div><div class="meta">Elige portal abajo</div></div>
+      <div class="tabs">
+        <div class="tab active" onclick="switchPagosTab('payana', this)">Payana</div>
+        <div class="tab" onclick="switchPagosTab('jeeves', this)">Jeeves</div>
+        <div class="tab" onclick="switchPagosTab('bbva', this)">BBVA Net Cash</div>
+        <div class="tab" onclick="switchPagosTab('monex', this)">Monex</div>
+      </div>
+      <div id="pagosIframe">
+        <div class="iframe-mock"><div><b>Portal Payana embebido</b><br/><span style="font-size:11px;">En producción: &lt;iframe src="https://app.payana.com" sandbox="allow-same-origin allow-scripts allow-forms"&gt;<br/>Con SSO opcional o login una sola vez por sesión</span></div></div>
+      </div>
+
+      <div class="alert-banner info" style="margin-top:20px;">
+        <div style="font-weight:600;">i</div>
+        <div><b>Nota técnica:</b> Algunos portales bancarios bloquean iframes (X-Frame-Options). Para esos, abrir en nueva pestaña con SSO o re-login. El scraping background sigue corriendo igual.</div>
+      </div>
+    </div>`;
+};
+function switchPagosTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  const labels = { payana: 'Payana', jeeves: 'Jeeves', bbva: 'BBVA Net Cash', monex: 'Monex' };
+  document.getElementById('pagosIframe').innerHTML = `<div class="iframe-mock"><div><b>Portal ${labels[name]} embebido</b><br/><span style="font-size:11px;">En producción: &lt;iframe src="..."&gt;</span></div></div>`;
+}
+
+/* ----- SYNC SAT ----- */
+views['sync-sat'] = () => {
+  const s = M.satSync;
+  $v().innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <div>
+          <span class="block-tag">BLOQUE 5 · ACCIONES</span>
+          <div class="page-title">Sincronización SAT</div>
+          <div class="page-subtitle">Descarga automática de CFDIs emitidos y recibidos · empuje a Odoo</div>
+        </div>
+        <button class="btn">Sincronizar ahora</button>
+      </div>
+
+      <div class="grid grid-4 section">
+        <div class="card good-card">
+          <div class="card-label">Última sync</div>
+          <div class="card-value mono" style="font-size:16px;">${s.last_sync}</div>
+          <div class="card-sub"><span style="color:var(--green);">✓ exitosa</span></div>
+        </div>
+        <div class="card">
+          <div class="card-label">CFDIs recibidos mes</div>
+          <div class="card-value mono">${s.cfdi_recibidos_mes}</div>
+          <div class="card-sub">Facturas de proveedores</div>
+        </div>
+        <div class="card">
+          <div class="card-label">CFDIs emitidos mes</div>
+          <div class="card-value mono">${s.cfdi_emitidos_mes}</div>
+          <div class="card-sub">Facturas a clientes</div>
+        </div>
+        <div class="card warn-card">
+          <div class="card-label">Pendientes en Odoo</div>
+          <div class="card-value mono">${s.pendientes_capturar_odoo}</div>
+          <div class="card-sub">CFDIs sin Bill/factura</div>
+        </div>
+      </div>
+
+      <div class="alert-banner purple">
+        <div style="font-weight:600;">⟳</div>
+        <div>Sync diaria automática a las 04:30 vía Playwright + e.firma. Descarga XML, valida UUID, busca match con Bills/facturas existentes en Odoo, crea registros faltantes con flag <code>auto_from_sat=true</code> para que Gera revise.</div>
+      </div>
+
+      <div class="section-title">Historial de sincronizaciones<div class="rule"></div></div>
+      <div class="data-table">
+        <table>
+          <thead><tr><th>Fecha/hora</th><th class="center">Recibidos</th><th class="center">Emitidos</th><th class="center">Errores</th><th class="center">Status</th></tr></thead>
+          <tbody>
+            ${s.history.map(h => `<tr>
+              <td class="mono">${h.date}</td>
+              <td class="center mono">${h.recibidos}</td>
+              <td class="center mono">${h.emitidos}</td>
+              <td class="center mono" style="color:${h.errors>0?'var(--amber)':'var(--ink)'};">${h.errors}</td>
+              <td class="center">${pill(h.errors>0?'warn':'ok')}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:24px;">
+        <div class="section-title">Configuración<div class="rule"></div></div>
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="card-label">e.firma cargada</div>
+            <div style="margin-top:8px;font-size:13px;"><span class="pill pill-green">✓ Vigente</span> · vence 14/Mar/2028</div>
+            <div style="margin-top:14px;"><button class="btn btn-secondary btn-sm">Actualizar e.firma</button></div>
+          </div>
+          <div class="card">
+            <div class="card-label">Periodicidad</div>
+            <div style="margin-top:8px;font-size:13px;">Diaria · 04:30 (CT)</div>
+            <div style="margin-top:14px;"><button class="btn btn-secondary btn-sm">Cambiar horario</button></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+};
+
+/* ========================= AI / MODAL / TOAST ========================= */
+function toggleAI() { document.getElementById('aiDrawer').classList.toggle('open'); }
+function sendAI() {
+  const input = document.getElementById('aiInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  const body = document.getElementById('aiBody');
+  body.innerHTML += `<div class="ai-msg user">${msg}</div>`;
+  input.value = '';
+  setTimeout(() => {
+    body.innerHTML += `<div class="ai-msg"><i>(Mock IA · módulo ${STATE.route})</i> En producción consulto Claude → Groq → Gemini con el contexto del módulo y los datos visibles. Te puedo redactar el mensaje para el grupo, detectar anomalías ocultas, o explicarte cualquier número.</div>`;
+    body.scrollTop = body.scrollHeight;
+  }, 600);
+  body.scrollTop = body.scrollHeight;
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+/* INIT */
+tryRestoreSession();
+</script>
+</body>
+</html>
