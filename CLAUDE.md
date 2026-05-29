@@ -528,3 +528,54 @@ Cuando crees un nuevo workflow:
 - **Antes de tocar `kiosk.js`, releer este hallazgo #15.**
 - **Antes de implementar el cron 2am (PR E), releer la reconciliación PR C ↔ PR E.**
 - El bug del "✓ antes del POST" es el ANTI-PATRÓN a evitar en todo frontend FTS.
+
+**Pendientes operativos post-incidente (estado al cierre 28-may 20:30 CST):**
+
+#### Bloque A — Decisiones pendientes Esteban (próxima sesión)
+
+1. **PR #49 — Sprint Resiliencia** (5 docs, ~920 líneas)
+   - Status: abierto, sin mergear. Acción: Esteban revisa con cabeza fresca.
+   - 12 decisiones abiertas distribuidas en los 4 PRs (3 por PR D/C/B + 4 stub PR E). Estimación lectura: 15 min.
+2. **PR #40 — Modal Nueva Incidencia (Sprint 1 F4.1)**
+   - Status: abierto, sin mergear, sin smoke tests. Opciones: mergear post-smoke / cerrar y replanear / dejar abierto. No bloquea Sprint Resiliencia.
+3. **Orden de implementación Sprint Resiliencia**
+   - Propuesto: D → C → B → E (3 semanas). Alternativa: B primero (independiente, da visibilidad para implementar D/C). Decisión: Esteban define en revisión PR #49.
+
+#### Bloque B — Pendientes técnicos no urgentes
+
+4. **Worker + Redis Railway crashed loop**
+   - Causa: legacy del modo queue anterior (`EXECUTIONS_MODE=regular` desde hace 8 días).
+   - Procedimiento por etapas: pausar worker → smoke test 24h → eliminar; pausar Redis → smoke test 24h → eliminar.
+   - Impacto si NO se hace: ~$5-10 USD/mes desperdicio + logs ruidosos. Riesgo: cero (nada depende de worker en regular mode).
+5. **Auditar 6 empleados activos fuera del roster kiosko**
+   - Hallazgo: Odoo tiene 40 activos, webhook `kiosk/empleados` retorna 34. Diferencia: filtro `company_id=1` del workflow `2UGWLjNwYRGtXq5y`.
+   - Hipótesis: empleados en otra company (Brasil/USA) o filtro adicional. Acción: query directa a Odoo + comparar contra payload del webhook. ~15 min.
+6. **Caso Ricardo Hernández (98) — validación RH**
+   - Incidencia `INC-VALIDACION-98-2026-05-28T23-09-36-918Z`, status `pendiente_rh`.
+   - Acción RH (Ana/Felipe): preguntar a Ricardo si trabajó 27 y 28-may. Si sí → registrar attendances manuales con horas reales. Si no → documentar ausencia/permiso.
+
+#### Bloque C — Validaciones retrospectivas (opcionales)
+
+7. **Cuadrar los 24 attendances corregidos vs Odoo real**
+   - Hallazgo CC: el Hallazgo #15 tiene coletilla "no re-verificadas vía Odoo".
+   - Acción: query Odoo a los 24 attendance IDs, validar: `check_out` coincide con horas reportadas (libreta Magaly), `x_studio_horario_en_disputa=true` en cada uno, chatter con comentario de cleanup. Si todo OK → quitar la coletilla. ~5 min via script F12 Odoo.
+8. **Validación discrepancia `ts_evento` de "Seguí en turno"**
+   - Hallazgo: 11 turnos fantasma 24h se generaron vía el botón. Acción: review de casos individuales del 27-may (ya corregidos), confirmar que el fix de PR D efectivamente atacaría esos casos. ~10 min.
+
+#### Bloque D — Reglas operativas para próximas sesiones CC
+
+- **ANTES de tocar `operaciones/kiosk/js/kiosk.js`:** releer Hallazgo #15 completo.
+- **ANTES de implementar PR C o PR E:** releer reconciliación PR C ↔ PR E (regla: `ts_evento` real GANA sobre `+9.6h` estimado).
+- **ANTES de planear cualquier feature que toque el flow de checkout:** validar que NO introduce el anti-patrón "UI muestra éxito antes del POST".
+- **ANTES de marcar trabajo como "completado":** validar resultado real (no asumir éxito por ausencia de error).
+- **ANTES de cerrar un PR como obsoleto:** validar que el problema que atacaba sigue presente o ya está resuelto en main.
+
+#### Bloque E — Contexto recuperable para sesiones nuevas
+
+Si una sesión CC futura necesita contexto del incidente 27-may, leer en orden:
+1. `CLAUDE.md` Hallazgo #15 (este documento) — visión completa.
+2. `docs/INCIDENTES/2026-05-27-kiosk-checkout-outage-12h.md` — forense detallado.
+3. PR #49 `docs/SPRINT_RESILIENCIA_README.md` — plan de implementación.
+4. PR #49 `docs/SPRINT_RESILIENCIA_PR_*_DESIGN.md` — diseño técnico por PR.
+
+**NO confiar en summaries de chat anterior — usar siempre los archivos en main como fuente de verdad.**
