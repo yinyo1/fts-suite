@@ -2,6 +2,52 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-CHK-128-2026-06-06T01-45-45-289Z",
+      "tipo": "olvido_checkout",
+      "empleado_id": 128,
+      "empleado_nombre": "Enoc Natanael Maldonado soto",
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "sin_departamento": false,
+      "depto_invalido": false,
+      "supervisor_id": 112,
+      "supervisor_name": "Felipe Pérez Guzmán",
+      "supervisor_email": "enocmaldonado07@gmail.com",
+      "supervisor_phone": "+52 81 1399 3719",
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": false,
+      "sin_supervisor": false,
+      "attendance_id": 13549,
+      "fecha_creacion": "2026-06-06T01:45:45.290Z",
+      "check_in_original_utc": "2026-06-05 12:58:33",
+      "check_out_propuesto_utc": "2026-06-05 23:03:00",
+      "check_out_propuesto_cst": "2026-06-05 17:03:00",
+      "geolocation": {
+        "lat": 25.76357292966154,
+        "lng": -100.36409535867841,
+        "accuracy": 5,
+        "captured_at": "2026-06-06T01:45:42.860Z"
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "accion": "crear",
+          "fecha": "2026-06-06T01:45:45.290Z",
+          "hora_propuesta_cst": "17:03",
+          "comentario": "El telefono del taller estaba apagado"
+        }
+      ],
+      "status": "pendiente_supervisor",
+      "hora_final_aplicada_utc": "2026-06-05 23:03:00",
+      "aplicado_en_odoo": true,
+      "tag_disputa_activo": true,
+      "creada_por_modulo": "kiosk",
+      "creada_por_build": "20260521-kiosk-face-opt-in-default"
+    },
+    {
       "id_interno": "INC-AUTO-CIERRE-98-2026-06-05T15-56-20-137Z",
       "tipo": "auto_cierre_pendiente",
       "status": "pendiente_rh",
