@@ -52,6 +52,35 @@ const MODULES_REGISTRY = [
     submodulos: []
   },
   {
+    id:         'finanzas',
+    label:      '💰 Finanzas',
+    path:       'finanzas/',
+    cardId:     'card-finanzas',
+    status:     'active',
+    version:    '0.1.0',
+    build:      '20260529-paso1-auth',
+    // 13+ submódulos en 5 bloques. Auth dedicada (no FTSAuth). Paso 1 = auth server-side.
+    submodulos: [
+      { id:'dashboard',     label:'Dashboard' },
+      { id:'cash',          label:'Saldos & Cash' },
+      { id:'anomalias',     label:'Anomalías' },
+      { id:'ar',            label:'AR — por cobrar' },
+      { id:'ap',            label:'AP — por pagar' },
+      { id:'bills',         label:'Bills 3-way' },
+      { id:'rent-emp',      label:'Rentabilidad empresa' },
+      { id:'rent-proy',     label:'Rentabilidad proyectos' },
+      { id:'det-fantasma',  label:'Detector fantasma' },
+      { id:'det-mo',        label:'Detector MO' },
+      { id:'pl',            label:'P&L (Resultados)' },
+      { id:'bg-fts',        label:'Balance FTS' },
+      { id:'bg-personal',   label:'Patrimonio personal' },
+      { id:'cashflow',      label:'Cash Flow' },
+      { id:'transacciones', label:'Transacciones (Facturas)' },
+      { id:'pagos-hub',     label:'Hub de Pagos' },
+      { id:'sync-sat',      label:'Sync SAT' }
+    ]
+  },
+  {
     id:         'odoo',
     label:      '⚙️ Odoo',
     path:       'odoo/',
