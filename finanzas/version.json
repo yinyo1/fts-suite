@@ -1,0 +1,7 @@
+{
+  "module": "finanzas",
+  "version": "0.1.0",
+  "build": "20260529-paso1-auth",
+  "description": "Paso 1 — auth server-side (JWT + PBKDF2 vía n8n). Shell + login gate + sidebar dinámico. Módulos en estado empty.",
+  "status": "active"
+}

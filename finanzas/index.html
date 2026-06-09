@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FTS Suite · Finanzas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/finanzas.css?v=0.1.0">
+</head>
+<body>
+
+<!-- ═══ LOGIN GATE ═══ -->
+<div id="login" class="login-screen">
+  <div class="login-card">
+    <div class="brand-mark">
+      <div class="logo">F</div>
+      <div class="brand-text">FTS Suite<small>Finanzas</small></div>
+    </div>
+    <h2 style="font-family:'IBM Plex Sans Condensed';font-size:22px;font-weight:600;margin-bottom:6px;">Acceso al área financiera</h2>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:24px;">Vigilancia · Rentabilidad · Estados financieros · Centro de transacciones · Acciones.</p>
+    <form id="loginForm" autocomplete="off">
+      <div class="form-row">
+        <label>Usuario</label>
+        <input type="text" id="loginUser" value="finanzas" autocomplete="username" />
+      </div>
+      <div class="form-row">
+        <label>Contraseña</label>
+        <input type="password" id="loginPass" autocomplete="current-password" autofocus />
+      </div>
+      <button class="btn" id="loginBtn" type="submit" style="width:100%;padding:11px;margin-top:8px;">Iniciar sesión</button>
+    </form>
+    <div id="loginError" class="login-error hidden"></div>
+  </div>
+</div>
+
+<!-- ═══ APP SHELL ═══ -->
+<div id="app" class="app-shell hidden">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo">F</div>
+      <div class="brand-text">FTS Suite<small>Finanzas</small></div>
+    </div>
+    <nav id="sidebarNav"><!-- generado desde manifest.json --></nav>
+    <div class="sidebar-user" id="sidebarUser"></div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="breadcrumb"><span class="block" id="bcBlock"></span>FTS Suite · <b id="bcCurrent">Dashboard</b></div>
+      <div class="topbar-actions">
+        <span class="mono" style="font-size:12px;color:var(--muted);" id="topbarDate"></span>
+      </div>
+    </div>
+    <div id="viewContainer"></div>
+  </main>
+</div>
+
+<script src="js/auth-fin.js?v=0.1.0"></script>
+<script src="js/fin-client.js?v=0.1.0"></script>
+<script>
+/* ═══ FTS Finanzas — shell (Paso 1: auth + sidebar + empty states) ═══ */
+'use strict';
+
+var MANIFEST = null;
+var STATE = { route: 'dashboard' };
+
+// ─── arranque ───
+document.addEventListener('DOMContentLoaded', function () {
+  document.getElementById('loginForm').addEventListener('submit', onLogin);
+  if (window.FinAuth && window.FinAuth.isValid()) {
+    bootApp();
+  } else {
+    showLogin();
+  }
+});
+
+function showLogin() {
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('login').classList.remove('hidden');
+  var p = document.getElementById('loginPass'); if (p) { p.value = ''; p.focus(); }
+}
+
+async function onLogin(e) {
+  e.preventDefault();
+  var user = document.getElementById('loginUser').value.trim();
+  var pass = document.getElementById('loginPass').value;
+  var btn  = document.getElementById('loginBtn');
+  var err  = document.getElementById('loginError');
+  err.classList.add('hidden');
+  btn.disabled = true; btn.textContent = 'Verificando…';
+
+  var r = await window.FinAuth.login(user, pass);
+
+  btn.disabled = false; btn.textContent = 'Iniciar sesión';
+  if (!r.ok) {
+    var msg = r.msg || 'No se pudo iniciar sesión.';
+    if (r.code === 'LOCKED' && r.retry_after_s) {
+      msg = 'Demasiados intentos. Espera ~' + Math.ceil(r.retry_after_s / 60) + ' min e intenta de nuevo.';
+    }
+    err.textContent = msg;
+    err.classList.remove('hidden');
+    return;
+  }
+  bootApp();
+}
+
+async function bootApp() {
+  // Re-chequeo defensivo de expiración
+  if (!window.FinAuth.isValid()) { window.FinAuth.logout(); showLogin(); return; }
+
+  document.getElementById('login').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+
+  var d = new Date();
+  document.getElementById('topbarDate').textContent =
+    d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
+
+  if (!MANIFEST) {
+    try {
+      var res = await fetch('manifest.json?v=0.1.0', { cache: 'no-store' });
+      MANIFEST = await res.json();
+    } catch (e) { MANIFEST = { modules: [], blocks: {} }; }
+  }
+  renderSidebar();
+  renderUser();
+  navigate('dashboard');
+}
+
+// ─── sidebar dinámico desde manifest (con indicador de estado por módulo) ───
+function moduleMode(mod) {
+  // Estado que el usuario eligió (empty/demo/real). Default empty. (toggle completo = Paso 5)
+  var saved = localStorage.getItem('fts_fin_mode_' + mod.id);
+  if (saved === 'demo' || saved === 'real') return saved;
+  return 'empty';
+}
+
+function renderSidebar() {
+  var nav = document.getElementById('sidebarNav');
+  var mods = (MANIFEST && MANIFEST.modules) || [];
+  var blocks = (MANIFEST && MANIFEST.blocks) || {};
+  var html = '';
+  var currentBlock = '__none__';
+
+  mods.forEach(function (m) {
+    var blk = m.block || null;
+    if (blk !== currentBlock && blk !== null) {
+      var num = blk.replace(/[^0-9]/g, '');
+      html += '<div class="sidebar-section with-num"><span class="num">' + num + '</span>' +
+              esc(blocks[blk] || blk) + '</div>';
+      currentBlock = blk;
+    } else if (blk === null) {
+      currentBlock = '__none__';
+    }
+    var mode = moduleMode(m);
+    html += '<div class="nav-item" data-route="' + esc(m.id) + '" onclick="navigate(\'' + esc(m.id) + '\')">' +
+              '<span class="state-dot ' + mode + '" title="' + mode + '"></span>' +
+              '<span>' + esc(m.name) + '</span>' +
+            '</div>';
+  });
+  nav.innerHTML = html;
+}
+
+function renderUser() {
+  var s = window.FinAuth.getSession() || {};
+  var exp = s.expires_at ? new Date(s.expires_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : '—';
+  document.getElementById('sidebarUser').innerHTML =
+    '<div class="name">' + esc(s.user || 'finanzas') + '</div>' +
+    '<div class="role">Sesión válida hasta ' + exp + '</div>' +
+    '<div class="logout" onclick="doLogout()">Cerrar sesión →</div>';
+}
+
+function doLogout() {
+  window.FinAuth.logout();
+  showLogin();
+}
+
+// ─── navegación (Paso 1: empty states; vistas reales en pasos siguientes) ───
+function navigate(route) {
+  // Guard de expiración en cada navegación (smoke #7)
+  if (!window.FinAuth.isValid()) { window.FinAuth.logout(); showLogin(); return; }
+
+  STATE.route = route;
+  var mods = (MANIFEST && MANIFEST.modules) || [];
+  var mod = mods.filter(function (m) { return m.id === route; })[0] || { id: route, name: route, block: null };
+  var blocks = (MANIFEST && MANIFEST.blocks) || {};
+
+  // marca activo
+  Array.prototype.forEach.call(document.querySelectorAll('.nav-item'), function (el) {
+    el.classList.toggle('active', el.getAttribute('data-route') === route);
+  });
+  document.getElementById('bcBlock').textContent = mod.block ? (mod.block + ' · ' + (blocks[mod.block] || '')) : '';
+  document.getElementById('bcCurrent').textContent = mod.name;
+
+  // Paso 1: todos los módulos en empty state.
+  document.getElementById('viewContainer').innerHTML =
+    '<div class="page">' +
+      (mod.block ? '<span class="block-tag">' + esc(mod.block) + '</span>' : '') +
+      '<div class="page-header"><div>' +
+        '<div class="page-title">' + esc(mod.name) + '</div>' +
+        '<div class="page-subtitle">Módulo aún sin datos conectados.</div>' +
+      '</div></div>' +
+      '<div class="empty-state">' +
+        '<div class="icon">▢</div>' +
+        '<div class="title">Sin datos</div>' +
+        '<div>Este módulo se conectará en un paso posterior del plan.<br>El switch Demo/Real se habilitará cuando exista su webhook.</div>' +
+      '</div>' +
+    '</div>';
+}
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+</script>
+</body>
+</html>
