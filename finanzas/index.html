@@ -59,6 +59,13 @@
 
 <script src="js/auth-fin.js?v=0.1.0"></script>
 <script src="js/fin-client.js?v=0.1.0"></script>
+<!-- Paso 3: componentes + módulos (auto-registran en FinRouter al cargar) -->
+<script src="js/state.js?v=0.3.0"></script>
+<script src="js/router.js?v=0.3.0"></script>
+<script src="js/company-selector.js?v=0.3.0"></script>
+<script src="js/modules/facturas-core.js?v=0.3.0"></script>
+<script src="js/modules/facturas-odoo.js?v=0.3.0"></script>
+<script src="js/modules/bills-odoo.js?v=0.3.0"></script>
 <script>
 /* ═══ FTS Finanzas — shell (Paso 1: auth + sidebar + empty states) ═══ */
 'use strict';
@@ -81,6 +88,7 @@ function showLogin() {
   document.getElementById('login').classList.remove('hidden');
   var p = document.getElementById('loginPass'); if (p) { p.value = ''; p.focus(); }
 }
+window.showLogin = showLogin;   // FinRouter lo invoca al detectar sesión expirada
 
 async function onLogin(e) {
   e.preventDefault();
@@ -123,44 +131,11 @@ async function bootApp() {
       MANIFEST = await res.json();
     } catch (e) { MANIFEST = { modules: [], blocks: {} }; }
   }
-  renderSidebar();
   renderUser();
-  navigate('dashboard');
+  window.FinRouter.init(MANIFEST);   // sidebar + ruta inicial (extraído a router.js en Paso 3)
 }
 
-// ─── sidebar dinámico desde manifest (con indicador de estado por módulo) ───
-function moduleMode(mod) {
-  // Estado que el usuario eligió (empty/demo/real). Default empty. (toggle completo = Paso 5)
-  var saved = localStorage.getItem('fts_fin_mode_' + mod.id);
-  if (saved === 'demo' || saved === 'real') return saved;
-  return 'empty';
-}
-
-function renderSidebar() {
-  var nav = document.getElementById('sidebarNav');
-  var mods = (MANIFEST && MANIFEST.modules) || [];
-  var blocks = (MANIFEST && MANIFEST.blocks) || {};
-  var html = '';
-  var currentBlock = '__none__';
-
-  mods.forEach(function (m) {
-    var blk = m.block || null;
-    if (blk !== currentBlock && blk !== null) {
-      var num = blk.replace(/[^0-9]/g, '');
-      html += '<div class="sidebar-section with-num"><span class="num">' + num + '</span>' +
-              esc(blocks[blk] || blk) + '</div>';
-      currentBlock = blk;
-    } else if (blk === null) {
-      currentBlock = '__none__';
-    }
-    var mode = moduleMode(m);
-    html += '<div class="nav-item" data-route="' + esc(m.id) + '" onclick="navigate(\'' + esc(m.id) + '\')">' +
-              '<span class="state-dot ' + mode + '" title="' + mode + '"></span>' +
-              '<span>' + esc(m.name) + '</span>' +
-            '</div>';
-  });
-  nav.innerHTML = html;
-}
+// ─── sidebar dinámico + moduleMode: extraídos a js/router.js (FinRouter) + js/state.js en Paso 3 ───
 
 function renderUser() {
   var s = window.FinAuth.getSession() || {};
@@ -176,38 +151,7 @@ function doLogout() {
   showLogin();
 }
 
-// ─── navegación (Paso 1: empty states; vistas reales en pasos siguientes) ───
-function navigate(route) {
-  // Guard de expiración en cada navegación (smoke #7)
-  if (!window.FinAuth.isValid()) { window.FinAuth.logout(); showLogin(); return; }
-
-  STATE.route = route;
-  var mods = (MANIFEST && MANIFEST.modules) || [];
-  var mod = mods.filter(function (m) { return m.id === route; })[0] || { id: route, name: route, block: null };
-  var blocks = (MANIFEST && MANIFEST.blocks) || {};
-
-  // marca activo
-  Array.prototype.forEach.call(document.querySelectorAll('.nav-item'), function (el) {
-    el.classList.toggle('active', el.getAttribute('data-route') === route);
-  });
-  document.getElementById('bcBlock').textContent = mod.block ? (mod.block + ' · ' + (blocks[mod.block] || '')) : '';
-  document.getElementById('bcCurrent').textContent = mod.name;
-
-  // Paso 1: todos los módulos en empty state.
-  document.getElementById('viewContainer').innerHTML =
-    '<div class="page">' +
-      (mod.block ? '<span class="block-tag">' + esc(mod.block) + '</span>' : '') +
-      '<div class="page-header"><div>' +
-        '<div class="page-title">' + esc(mod.name) + '</div>' +
-        '<div class="page-subtitle">Módulo aún sin datos conectados.</div>' +
-      '</div></div>' +
-      '<div class="empty-state">' +
-        '<div class="icon">▢</div>' +
-        '<div class="title">Sin datos</div>' +
-        '<div>Este módulo se conectará en un paso posterior del plan.<br>El switch Demo/Real se habilitará cuando exista su webhook.</div>' +
-      '</div>' +
-    '</div>';
-}
+// ─── navegación: vive ahora en js/router.js → FinRouter.navigate (empty-state incluido) ───
 
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
