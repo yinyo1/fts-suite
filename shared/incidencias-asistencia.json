@@ -548,9 +548,19 @@
           "fecha": "2026-05-25T23:46:25.479Z",
           "hora_propuesta_cst": "17:06",
           "comentario": "Se le olvido, totalmente checar a salida, por Llevar prisa del Ray..\nno vuelve a pasar."
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe Pérez Guzmán",
+          "timestamp": "2026-06-10T21:51:55.859Z",
+          "hora_propuesta_cst": null,
+          "comentario": "aprobado, salida 5 de la tarde",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": "2026-05-25 23:06:00",
       "aplicado_en_odoo": true,
       "tag_disputa_activo": true,
