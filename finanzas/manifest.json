@@ -1,30 +1,36 @@
 {
   "app": "finanzas",
-  "version": "0.1.0",
-  "note": "Paso 1 (auth). Todos los módulos arrancan en 'empty' (sin webhook). El estado activo que elige el usuario (empty/demo/real) vive en localStorage['fts_fin_mode_<id>']; aquí se declara la CAPACIDAD máxima de cada módulo. transacciones (B4) es el primer módulo que tendrá webhook real (Paso 3).",
+  "version": "0.2.0",
+  "note": "Reestructura B4 (split Odoo/SAT) + B1 (so-tracker/concil-sat) + rename bills→bills-3way. Módulos arrancan en 'empty'. El estado activo (empty/demo/real) vive en localStorage['fts_fin_mode_<id>']; aquí se declara la CAPACIDAD máxima. Paso 3 implementa webhooks reales para facturas-odoo + bills-odoo (ver webhook_planned). SAT requiere descarga masiva (asunto aparte).",
   "modules": [
-    { "id": "dashboard",     "name": "Dashboard",                 "block": null, "icon": "▦", "status": "empty", "webhook": null },
+    { "id": "dashboard",             "name": "Dashboard",                "block": null, "icon": "▦", "status": "empty", "webhook": null },
 
-    { "id": "cash",          "name": "Saldos & Cash",             "block": "B1", "icon": "$", "status": "empty", "webhook": null },
-    { "id": "anomalias",     "name": "Anomalías",                 "block": "B1", "icon": "!", "status": "empty", "webhook": null },
-    { "id": "ar",            "name": "AR — por cobrar",           "block": "B1", "icon": "↗", "status": "empty", "webhook": null },
-    { "id": "ap",            "name": "AP — por pagar",            "block": "B1", "icon": "↘", "status": "empty", "webhook": null },
-    { "id": "bills",         "name": "Bills 3-way",               "block": "B1", "icon": "⚏", "status": "empty", "webhook": null },
+    { "id": "cash",                  "name": "Saldos & Cash",            "block": "B1", "icon": "$", "status": "empty", "webhook": null },
+    { "id": "anomalias",             "name": "Anomalías",                "block": "B1", "icon": "!", "status": "empty", "webhook": null },
+    { "id": "ar",                    "name": "AR — por cobrar",          "block": "B1", "icon": "↗", "status": "empty", "webhook": null },
+    { "id": "ap",                    "name": "AP — por pagar",           "block": "B1", "icon": "↘", "status": "empty", "webhook": null },
+    { "id": "bills-3way",            "name": "Bills 3-way",              "block": "B1", "icon": "⚏", "status": "empty", "webhook": null },
+    { "id": "so-tracker",            "name": "Tracker SO",               "block": "B1", "icon": "☰", "status": "empty", "webhook": null },
+    { "id": "concil-sat",            "name": "Conciliación SAT ↔ Odoo",  "block": "B1", "icon": "⇄", "status": "empty", "webhook": null },
 
-    { "id": "rent-emp",      "name": "Rentabilidad empresa",      "block": "B2", "icon": "⌬", "status": "empty", "webhook": null },
-    { "id": "rent-proy",     "name": "Rentabilidad proyectos",    "block": "B2", "icon": "▤", "status": "empty", "webhook": null },
-    { "id": "det-fantasma",  "name": "Detector fantasma",         "block": "B2", "icon": "◎", "status": "empty", "webhook": null },
-    { "id": "det-mo",        "name": "Detector MO",               "block": "B2", "icon": "⏱", "status": "empty", "webhook": null },
+    { "id": "rent-emp",              "name": "Rentabilidad empresa",     "block": "B2", "icon": "⌬", "status": "empty", "webhook": null },
+    { "id": "rent-proy",             "name": "Rentabilidad proyectos",   "block": "B2", "icon": "▤", "status": "empty", "webhook": null },
+    { "id": "det-fantasma",          "name": "Detector fantasma",        "block": "B2", "icon": "◎", "status": "empty", "webhook": null },
+    { "id": "det-mo",                "name": "Detector MO",              "block": "B2", "icon": "⏱", "status": "empty", "webhook": null },
 
-    { "id": "pl",            "name": "P&L (Resultados)",          "block": "B3", "icon": "▥", "status": "empty", "webhook": null },
-    { "id": "bg-fts",        "name": "Balance FTS",               "block": "B3", "icon": "⚖", "status": "empty", "webhook": null },
-    { "id": "bg-personal",   "name": "Patrimonio personal",       "block": "B3", "icon": "🔒", "status": "empty", "webhook": null },
-    { "id": "cashflow",      "name": "Cash Flow",                 "block": "B3", "icon": "⇋", "status": "empty", "webhook": null },
+    { "id": "pl",                    "name": "P&L (Resultados)",         "block": "B3", "icon": "▥", "status": "empty", "webhook": null },
+    { "id": "bg-fts",                "name": "Balance FTS",              "block": "B3", "icon": "⚖", "status": "empty", "webhook": null },
+    { "id": "bg-personal",           "name": "Patrimonio personal",      "block": "B3", "icon": "🔒", "status": "empty", "webhook": null },
+    { "id": "cashflow",              "name": "Cash Flow",                "block": "B3", "icon": "⇋", "status": "empty", "webhook": null },
 
-    { "id": "transacciones", "name": "Transacciones (Facturas)",  "block": "B4", "icon": "⊞", "status": "empty", "webhook": null },
+    { "id": "facturas-odoo",         "name": "Facturas Odoo",            "block": "B4", "icon": "→", "status": "empty", "webhook": null, "webhook_planned": "/fin/facturas-odoo" },
+    { "id": "bills-odoo",            "name": "Bills Odoo",               "block": "B4", "icon": "←", "status": "empty", "webhook": null, "webhook_planned": "/fin/bills-odoo" },
+    { "id": "facturas-sat-ingresos", "name": "Facturas SAT Ingresos",    "block": "B4", "icon": "⇧", "status": "empty", "webhook": null },
+    { "id": "facturas-sat-egresos",  "name": "Facturas SAT Egresos",     "block": "B4", "icon": "⇩", "status": "empty", "webhook": null },
+    { "id": "instrumentos-pago",     "name": "Instrumentos de pago",     "block": "B4", "icon": "◧", "status": "empty", "webhook": null },
 
-    { "id": "pagos-hub",     "name": "Hub de Pagos",              "block": "B5", "icon": "⇋", "status": "empty", "webhook": null },
-    { "id": "sync-sat",      "name": "Sync SAT",                  "block": "B5", "icon": "⟳", "status": "empty", "webhook": null }
+    { "id": "pagos-hub",             "name": "Hub de Pagos",             "block": "B5", "icon": "⊕", "status": "empty", "webhook": null },
+    { "id": "sync-sat",              "name": "Sync SAT",                 "block": "B5", "icon": "⟳", "status": "empty", "webhook": null }
   ],
   "blocks": {
     "B1": "Vigilancia",
