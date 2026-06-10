@@ -1,7 +1,7 @@
 {
   "app": "finanzas",
-  "version": "0.2.0",
-  "note": "Reestructura B4 (split Odoo/SAT) + B1 (so-tracker/concil-sat) + rename bills→bills-3way. Módulos arrancan en 'empty'. El estado activo (empty/demo/real) vive en localStorage['fts_fin_mode_<id>']; aquí se declara la CAPACIDAD máxima. Paso 3 implementa webhooks reales para facturas-odoo + bills-odoo (ver webhook_planned). SAT requiere descarga masiva (asunto aparte).",
+  "version": "0.3.0",
+  "note": "Paso 3: facturas-odoo + bills-odoo conectados a Odoo (real-readonly, webhook poblado). El resto sigue en 'empty'. El estado activo (empty/demo/real) vive en localStorage['fts_fin_mode_<id>']; aquí se declara la CAPACIDAD máxima. SAT requiere descarga masiva (asunto aparte).",
   "modules": [
     { "id": "dashboard",             "name": "Dashboard",                "block": null, "icon": "▦", "status": "empty", "webhook": null },
 
@@ -23,8 +23,8 @@
     { "id": "bg-personal",           "name": "Patrimonio personal",      "block": "B3", "icon": "🔒", "status": "empty", "webhook": null },
     { "id": "cashflow",              "name": "Cash Flow",                "block": "B3", "icon": "⇋", "status": "empty", "webhook": null },
 
-    { "id": "facturas-odoo",         "name": "Facturas Odoo",            "block": "B4", "icon": "→", "status": "empty", "webhook": null, "webhook_planned": "/fin/facturas-odoo" },
-    { "id": "bills-odoo",            "name": "Bills Odoo",               "block": "B4", "icon": "←", "status": "empty", "webhook": null, "webhook_planned": "/fin/bills-odoo" },
+    { "id": "facturas-odoo",         "name": "Facturas Odoo",            "block": "B4", "icon": "→", "status": "real-readonly", "webhook": "/fin/facturas-odoo" },
+    { "id": "bills-odoo",            "name": "Bills Odoo",               "block": "B4", "icon": "←", "status": "real-readonly", "webhook": "/fin/bills-odoo" },
     { "id": "facturas-sat-ingresos", "name": "Facturas SAT Ingresos",    "block": "B4", "icon": "⇧", "status": "empty", "webhook": null },
     { "id": "facturas-sat-egresos",  "name": "Facturas SAT Egresos",     "block": "B4", "icon": "⇩", "status": "empty", "webhook": null },
     { "id": "instrumentos-pago",     "name": "Instrumentos de pago",     "block": "B4", "icon": "◧", "status": "empty", "webhook": null },
