@@ -228,9 +228,19 @@
           "fecha": "2026-05-28T23:26:58.182Z",
           "hora_propuesta_cst": "17:00",
           "comentario": "Salí pero olvide checar salida"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe Pérez Guzmán",
+          "timestamp": "2026-06-10T21:48:39.741Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Salida 5 de la tarde, aprobado",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": "2026-05-28 23:00:00",
       "aplicado_en_odoo": true,
       "tag_disputa_activo": true,
