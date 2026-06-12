@@ -550,7 +550,7 @@
     {
       "id_interno": "INC-AUTO-CIERRE-138-2026-05-28T12-41-24-443Z",
       "tipo": "auto_cierre_pendiente",
-      "status": "pendiente_rh",
+      "status": "aprobada_con_ajuste",
       "fecha_creacion": "2026-05-28T12:41:26.133Z",
       "empleado_id": 138,
       "empleado_nombre": "Tomas Arnoldo Loredo Mares",
@@ -560,7 +560,7 @@
       "check_out_aplicado_utc": "2026-05-27 22:15:40",
       "horas_originales": "24.03",
       "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "autoincidencia": true,
       "rh_aprobo": null,
       "rh_fecha": null,
@@ -568,7 +568,18 @@
       "department_name": null,
       "supervisor_id": null,
       "supervisor_name": null,
-      "propuestas": []
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-06-12T19:26:14.740Z",
+          "hora_propuesta_cst": "17:00",
+          "comentario": "Confirmo incidencia",
+          "accion": "ajustado"
+        }
+      ]
     },
     {
       "id_interno": "INC-AUTO-CIERRE-130-2026-05-28T12-40-52-265Z",
