@@ -248,9 +248,19 @@
           "hora_propuesta_cst": "2026-06-01 09:30:00",
           "comentario": "Iba para vertiv y me",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-06-12T19:22:03.218Z",
+          "hora_propuesta_cst": "09:30",
+          "comentario": "Confirmo incidencia",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_rh",
+      "status": "aprobada_tal_cual",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false,
       "department_id": 17,
@@ -265,7 +275,7 @@
       "rh_directo_ceo": false,
       "directo_ceo": true,
       "sin_supervisor": false,
-      "tag_disputa_activo": true
+      "tag_disputa_activo": false
     },
     {
       "id_interno": "INC-OLV-CHK-124-2026-05-28T23-26-58-182Z",
