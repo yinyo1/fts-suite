@@ -482,7 +482,7 @@
     {
       "id_interno": "INC-AUTO-CIERRE-131-2026-05-28T12-43-02-855Z",
       "tipo": "auto_cierre_pendiente",
-      "status": "pendiente_rh",
+      "status": "aprobada_tal_cual",
       "fecha_creacion": "2026-05-28T12:43:04.475Z",
       "empleado_id": 131,
       "empleado_nombre": "Tomas Vázquez García",
@@ -492,7 +492,7 @@
       "check_out_aplicado_utc": "2026-05-27 22:13:15",
       "horas_originales": "24.10",
       "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "autoincidencia": true,
       "rh_aprobo": null,
       "rh_fecha": null,
@@ -500,7 +500,18 @@
       "department_name": null,
       "supervisor_id": null,
       "supervisor_name": null,
-      "propuestas": []
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-06-12T19:25:54.742Z",
+          "hora_propuesta_cst": "17:00",
+          "comentario": "Confirmo incidencia",
+          "accion": "aprobado"
+        }
+      ]
     },
     {
       "id_interno": "INC-AUTO-CIERRE-76-2026-05-28T12-42-35-122Z",
