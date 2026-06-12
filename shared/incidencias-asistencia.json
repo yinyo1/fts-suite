@@ -2509,7 +2509,7 @@
       "tipo": "validacion_rh",
       "fecha_creacion": "2026-05-28T23:09:36.918Z",
       "fecha_evento": "2026-05-26",
-      "status": "pendiente_rh",
+      "status": "aprobada_tal_cual",
       "creado_por": "admin_cleanup",
       "attendance_id": 13334,
       "descripcion": "Orphan preexistente recuperado. Att 13334 cerrado a horario razonable (18:00 CST 26-may). RH debe validar si Ricardo trabajó 27-may y 28-may.",
@@ -2525,6 +2525,18 @@
         "Confirmar con Ricardo si trabajó 27-may y 28-may",
         "Si sí: crear attendances manuales con horarios reales",
         "Si no: documentar ausencia/permiso/campo"
+      ],
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-06-12T19:23:31.892Z",
+          "hora_propuesta_cst": "17:00",
+          "comentario": "Confirmo incidencia",
+          "accion": "aprobado"
+        }
       ]
     }
   ]
