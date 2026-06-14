@@ -1,7 +1,7 @@
 {
   "module": "finanzas",
-  "version": "0.2.0",
-  "build": "20260609-restructure-b4",
-  "description": "Reestructura B4 (split Facturas Odoo / Bills Odoo / SAT Ingresos / SAT Egresos / Instrumentos) + B1 (Tracker SO, Conciliación SAT↔Odoo) + rename bills→bills-3way. Solo manifest + registry; webhooks reales vienen en Paso 3.",
+  "version": "0.3.0",
+  "build": "20260609-paso3-facturas",
+  "description": "Paso 3 — módulos Facturas Odoo + Bills Odoo (account.move out/in) con webhook real /fin/facturas-odoo y /fin/bills-odoo. Router + state + company-selector + tabla config-driven (FinFacturas). Modo demo (mock sanitizado) + real (Odoo read-only).",
   "status": "active"
 }
