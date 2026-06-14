@@ -57,9 +57,9 @@ const MODULES_REGISTRY = [
     path:       'finanzas/',
     cardId:     'card-finanzas',
     status:     'active',
-    version:    '0.2.0',
-    build:      '20260609-restructure-b4',
-    // 23 submódulos en 5 bloques. Auth dedicada (no FTSAuth). B4 split Odoo/SAT (reestructura 09-jun).
+    version:    '0.3.0',
+    build:      '20260609-paso3-facturas',
+    // 23 submódulos en 5 bloques. Auth dedicada (no FTSAuth). Paso 3: facturas-odoo + bills-odoo conectados a Odoo.
     submodulos: [
       { id:'dashboard',             label:'Dashboard' },
       { id:'cash',                  label:'Saldos & Cash' },
