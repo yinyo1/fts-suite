@@ -17,7 +17,7 @@ Idiomas del repo: español para UI/textos, inglés para variables/funciones de c
 
 ---
 
-## 2. Workflows n8n productivos (13 activos)
+## 2. Workflows n8n productivos (16 activos)
 
 **No tocar sin avisar al usuario.** Cualquier modificación a estos requiere validar primero con `n8n_validate_workflow` y mostrar diff antes de aplicar.
 
@@ -38,6 +38,9 @@ Idiomas del repo: español para UI/textos, inglés para variables/funciones de c
 | 11 | `incidencias/crear-olvido-checkout` (F1 v3) | `IRtG38Aknb5SW15h` | `5SW15h` | 16 nodos. Lookup attendance + Odoo UPDATE check_out + TAG. Endpoint moderno reemplaza `/webhook/kiosk/cerrar-registro` (legacy hasta F6). **Sprint 1 cleanup (2026-05-12):** CEO_EMPLEADO_ID hardcoded refactorizado a lookup `empleados-master.json` autoprogresivo (en nodo `Code - Build incidencia`, no Merge). Nodo nuevo `HTTP - GET empleados-master.json`. |
 | 12 | `panel/derivar-roles` (F2.1) | `f59LMsbjPmO8pzWu` | `O8pzWu` | 8 nodos. Webhook GET. Read hr.employee + Search reportes_directos via parent_id reverso. Devuelve `roles_derivados` (`['supervisor','rh','direccion']`) auto-derivados. Reemplaza JSON estático eliminado. |
 | 13 | `rh/empleados-master/sync` (Sprint 1 Fase 3) | `5nzVRsCMlCZlq5s4` | `q5s4` | 10 nodos, 2 triggers (Schedule 6am CST + Webhook POST). Re-dumpea hr.employee active a `shared/config/empleados-master.json` con _meta auto_synced. Smoke test 2026-05-11: 44 empleados sincronizados en 3.14s. **Primer workflow con Schedule Trigger del sistema** (Bloque B cron 2am pendiente). |
+| 14 | `auth/finanzas-login` (Finanzas Paso 1) | `ykNzGCvdjzjdXYhc` | `jdXYhc` | 4 nodos. Login server-side del módulo Finanzas. PBKDF2-SHA256 100k + HMAC-SHA256 JWT (8h), **JS puro** (sandbox sin crypto). Secretos `FINANZAS_*` vía nodo Set `$env`. Lockout 5→15min en `staticData`. ⚠️ **NUNCA exportar el JSON al repo** (§15 #3, tiene secretos). |
+| 15 | `fin/facturas-odoo` (Finanzas Paso 3) | `VszW2euwnG3NE37p` | `3NE37p` | 11 nodos. Facturas emitidas (`out_invoice`+`out_refund`) multi-company {1,6}. Valida JWT (reusa cripto de #14) → Odoo SEARCH `account.move`+`res.partner`(vat)+`res.currency.rate`(USD) → Map+summary+paginate. **8/8 smokes verdes** (2026-06-14). Contrato = mock+`buildParams()`, NO PLAN.md §5 (stale). NO exportar al repo. |
+| 16 | `fin/bills-odoo` (Finanzas Paso 3) | `sXbg7hiLjJOGH2T1` | `OGH2T1` | 11 nodos. Facturas recibidas (`in_invoice`+`in_refund`). Clon de #15 con `move_types` cambiado y **fix de signo:** Odoo `amount_total_signed` de `in_invoice` es NEGATIVO (cuentas por pagar) → el Map invierte con `sign por move_type + abs()` para salir POSITIVO. Counts control 303/4 + signo confirmado en vivo (2026-06-14). NO exportar al repo. |
 
 **Workflows archivados (19):** ignorar a menos que el usuario lo pida explícitamente para historial.
 
@@ -599,5 +602,19 @@ Plataforma financiera nueva en `finanzas/`. Multi-company (FTS MX `company_id=1`
 5. **Token en body, no en header** (`RIESGO-2`): header `Authorization` fuerza preflight CORS que el webhook n8n puede no contestar. Patrón validado: token como campo del body JSON.
 
 ### Pendientes Finanzas
-- **BLOQ-1 (antes Paso 3):** confirmar que la credencial Odoo `Wansi69xesEqEiY1` tiene Allowed Companies = {1, 6}.
-- Paso 2: shell + sidebar + manifest (parcialmente ya en Paso 1). Paso 3: webhook `/fin/facturas` multi-company. Paso 4: módulo Facturas (tabla+filtros+export). Paso 5: toggle demo/real.
+- **BLOQ-1:** ✅ RESUELTO (2026-06-14) — credencial Odoo `Wansi69xesEqEiY1` = usuario `estebandelacruz@fts.mx` (uid 2), `company_ids` incluye {1, 6}. Verificado vía MCP Odoo.
+- Paso 2: shell + sidebar + manifest (parcialmente ya en Paso 1). Paso 3: ✅ DONE (ver Hallazgo #16). Paso 4: módulo Facturas (tabla+filtros+export) — ya entregado en Paso 3. Paso 5: toggle demo/real — ya en `facturas-core.js`.
+
+### Hallazgo #16 — Finanzas Paso 3 CERRADO (2026-06-14)
+
+Webhooks `fin/facturas-odoo` + `fin/bills-odoo` construidos, validados y **vivos**. PR #53 mergeado a main (squash `5ce283b`), Pages desplegado, branch borrada. URL pública: `https://yinyo1.github.io/fts-suite/finanzas/`.
+
+- **Contrato real ≠ PLAN.md §5.** El §5 quedó stale (`facturas[]`/`from_date`). El contrato que consume el frontend es el del **mock + `buildParams()`**: `rows[]`, params `companies[]`/`date_from`/`date_to`/`payment_states[]`/`limit`/`offset`/`sort_*`, respuesta `{rows, summary:{total_native_by_company, consolidado_mxn, total_count}, pagination:{has_more}}`. Cualquier endpoint `/fin/*` futuro sigue ESE contrato, no el PLAN.
+- **Nodo Odoo v1 — operadores (source `nodes/Odoo/v1/GenericFunctions.ts`):** `in` SÍ acepta value **array** vía expresión `={{ $json.x }}` (pasa as-is al dominio Odoo, sin split/wrap). Tokens correctos: `lesserOrEqual`/`greaterOrEqual` (NO existen `lessOrEqual`/`lessThan`). v1 NO tiene parámetro de orden → ordenar en Code.
+- **Fix de signo (bills):** Odoo `amount_total_signed` de `in_invoice` es NEGATIVO (convención cuentas por pagar) pero el frontend espera bills POSITIVOS. Solución: signo por `move_type` (`in_refund`/`out_refund` → −1, invoices → +1) × `abs(amount_total)`, NO usar `amount_total_signed` crudo. Confirmado en vivo: Odoo −14500 → workflow +14500. (En facturas no se notó porque `out_invoice` signed ya es +.)
+- **Rate USD→MXN:** `res.currency.rate.inverse_company_rate` (≈17.35 MXN/USD, USD = currency_id 2, rates con company_id 1), lookup `name <= invoice_date` desc; fallback `1/rate`; último fallback const 17.38.
+- **Patrón runner server-side para smokes (token sin exponer en chat/logs):** workflow TMP (Webhook→Set `$env`→Code→Respond) que mintea el JWT DENTRO del Code (firma con el secret real: válido +1h, y uno con `exp` pasado para probar `TOKEN_EXPIRED` en vivo), dispara los tests vía `$helpers.httpRequest` (fallbacks `this.helpers`/`fetch`) y devuelve SOLO resultados. Activar en UI, disparar con `n8n_test_workflow`, **borrar al terminar**. Es el método validado para no filtrar credenciales en el transcript.
+- **Quirk del API n8n de esta instancia:** rechaza `activateWorkflow` y `update_partial` vía MCP (`"request/body must NOT have additional properties"`). Workarounds: **activar workflows a mano en la UI**; para editar usar `n8n_update_full_workflow` (requiere `name` + nodes completos). Crear (`n8n_create_workflow`) y validar (`n8n_validate_workflow`) sí funcionan, y preservan `customResource` (a diferencia del import-UI, §3).
+- **2 backlog items (no urgentes, no bloquean):**
+  1. `summary.total_native_by_company` asume 1 moneda por empresa, pero los bills de company 6 son **moneda mixta** (3 MXN + 1 USD) → el "total nativo por empresa" suma monedas distintas (cosmético en KPI). `consolidado_mxn` SÍ es correcto. Heredado de `facturas-core`.
+  2. **Perf de bills (~50s/llamada que toca company 1):** 303 moves + ~300 partners + `res.currency.rate` `returnAll` (~960 filas) por request. Fix: filtrar rates por rango de fechas + `read_group` para el summary en vez de fetch-all-y-paginar-en-Code.
