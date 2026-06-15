@@ -618,3 +618,13 @@ Webhooks `fin/facturas-odoo` + `fin/bills-odoo` construidos, validados y **vivos
 - **2 backlog items (no urgentes, no bloquean):**
   1. `summary.total_native_by_company` asume 1 moneda por empresa, pero los bills de company 6 son **moneda mixta** (3 MXN + 1 USD) → el "total nativo por empresa" suma monedas distintas (cosmético en KPI). `consolidado_mxn` SÍ es correcto. Heredado de `facturas-core`.
   2. **Perf de bills (~50s/llamada que toca company 1):** 303 moves + ~300 partners + `res.currency.rate` `returnAll` (~960 filas) por request. Fix: filtrar rates por rango de fechas + `read_group` para el summary en vez de fetch-all-y-paginar-en-Code.
+
+---
+
+## 17. Automatización de proyectos al confirmar SO (Fase A — en desarrollo)
+
+Reconstrucción de AA2 (borrada) con arquitectura **nativa Odoo 19 + n8n, cero código/server-actions en Odoo**. Workflow n8n **`sale/crear-proyecto-al-confirmar`** (id `XhuTlvPKDBjkDeso`): timer 2 min → detecta SOs marcadas con `x_studio_generar_proyecto=True` (gatillo Studio opt-in) → crea proyecto + cuenta analítica (plan 1 MX / 18 USA) + link nativo `sale.order.project_id` (+ dual-write custom RjLNg / `x_studio_project_id_created_1`). Idempotente (getAll project por RjLNg) + claim temprano + revert/delete-on-error.
+
+**📄 Documentación completa en [`docs/finanzas/AUTOMATIZACION_PROYECTOS.md`](docs/finanzas/AUTOMATIZACION_PROYECTOS.md)** — diagnóstico del ciclo financiero (fuga analítica 99%, lock dates, drafts, 2 ejes plan 1/18 + plan 20), relaciones nativo vs custom, diseño del workflow, quirks (update_full deja inactivo; MCP Odoo read-only), y pendientes (límite de reintentos, desactivar 5 productos service_tracking, Parte B notificación M365, cleanup huérfanas 3068/3069/3070).
+
+⚠️ **Antes de tocar este workflow o el ciclo SO→project→analytic→budget, leer ese doc** (evita re-investigar varias sesiones de deep-search).
