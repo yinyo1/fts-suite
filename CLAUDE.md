@@ -621,10 +621,56 @@ Webhooks `fin/facturas-odoo` + `fin/bills-odoo` construidos, validados y **vivos
 
 ---
 
-## 17. Automatización de proyectos al confirmar SO (Fase A — en desarrollo)
+## 17. Automatización de proyectos al confirmar SO (✅ EN PRODUCCIÓN 2026-06-16)
 
-Reconstrucción de AA2 (borrada) con arquitectura **nativa Odoo 19 + n8n, cero código/server-actions en Odoo**. Workflow n8n **`sale/crear-proyecto-al-confirmar`** (id `XhuTlvPKDBjkDeso`): timer 2 min → detecta SOs marcadas con `x_studio_generar_proyecto=True` (gatillo Studio opt-in) → crea proyecto + cuenta analítica (plan 1 MX / 18 USA) + link nativo `sale.order.project_id` (+ dual-write custom RjLNg / `x_studio_project_id_created_1`). Idempotente (getAll project por RjLNg) + claim temprano + revert/delete-on-error.
+Reconstrucción de AA2 (borrada) con arquitectura **nativa Odoo 19 + n8n, cero código/server-actions en Odoo**. Workflow n8n **`sale/crear-proyecto-al-confirmar`** (id `XhuTlvPKDBjkDeso`, **21 nodos, ACTIVO**): Schedule cada **5 min** → detecta SOs confirmadas sin proyecto → crea **proyecto + cuenta analítica** (plan 1 MX / 18 USA) + links nativo `sale.order.project_id` y dual-write custom (RjLNg / `x_studio_project_id_created_1`) + **envía correo de handoff** al grupo. Idempotente (getAll project por RjLNg) + claim temprano + error-handling (revert / delete-orphan-analytic / tope 3 reintentos).
 
-**📄 Documentación completa en [`docs/finanzas/AUTOMATIZACION_PROYECTOS.md`](docs/finanzas/AUTOMATIZACION_PROYECTOS.md)** — diagnóstico del ciclo financiero (fuga analítica 99%, lock dates, drafts, 2 ejes plan 1/18 + plan 20), relaciones nativo vs custom, diseño del workflow, quirks (update_full deja inactivo; MCP Odoo read-only), y pendientes (límite de reintentos, desactivar 5 productos service_tracking, Parte B notificación M365, cleanup huérfanas 3068/3069/3070).
+**📄 Documentación completa en [`docs/finanzas/AUTOMATIZACION_PROYECTOS.md`](docs/finanzas/AUTOMATIZACION_PROYECTOS.md)** — diagnóstico del ciclo financiero (fuga analítica 99%, lock dates, drafts, 2 ejes plan 1/18 + plan 20), relaciones nativo vs custom, diseño del workflow, Parte B M365.
 
-⚠️ **Antes de tocar este workflow o el ciclo SO→project→analytic→budget, leer ese doc** (evita re-investigar varias sesiones de deep-search).
+⚠️ **Antes de tocar este workflow o el ciclo SO→project→analytic→budget, leer ese doc + esta sección** (evita re-investigar varias sesiones).
+
+### Estado FINAL en producción (2026-06-16)
+
+**Gatillo ELIMINADO — ahora es por domain, no por flag manual.** Toda SO de FTS MX/USA confirmada con monto genera proyecto. Domain endurecido del nodo `Odoo - getAll SO` (5 filtros):
+```
+state = 'sale'  AND  x_studio_project_created = False
+  AND  date_order >= '2026-05-01'         (greaterOrEqual)
+  AND  company_id in [1, 6]               (in — solo FTS MX + USA; Brasil/otras EXCLUIDAS)
+  AND  amount_total >= 0.01               (greaterOrEqual — salta SOs vacías/$0)
+```
+- Magnitud: 6,506 SOs históricas sin proyecto (5,048 son companies ≠{1,6}); el filtro de fecha+company las contiene → primera corrida procesó solo las recientes.
+- ⚠️ **El candado `company_id in [1,6]` es OBLIGATORIO**: sin él, 5,048 SOs foráneas entrarían con `plan_id=1` incorrecto (la lógica es `company===6?18:1`).
+- ⚠️ **121 SOs históricas** tienen `project_created=False` + `project_id` nativo poblado (inconsistentes). Contenidas por el filtro de fecha (0 en rango). La idempotencia busca por **RjLNg, NO por project_id nativo** → si algún día se quita/afloja el filtro de fecha, backfillear RjLNg primero o duplicará.
+
+**Correo de handoff (Microsoft Graph, Parte B — DONE).** Nodos nuevos: `Odoo - read PO file` + `Code - Build correo` + `HTTP - Enviar correo (Graph)`. Al crear el proyecto (rama éxito) manda email a **`newordersnotification@fts.mx`** (grupo de distribución de producción) con:
+- Asunto: `[Nuevo Proyecto Confirmado] <SO name> - <cliente>`.
+- Tabla: SO, Cliente, Proyecto, **PO** (`x_studio_purchase_order_number`), Inicio/Fin deseados (**fechas formateadas `16/June/2026`** — array de meses EN inglés en JS nativo, NO `toLocaleDateString` por locale del server), Descripción (`x_studio_proyect_description`).
+- 2 botones apilados (cada uno en su `<div>`, `margin-bottom:10px`): **Open Project** (`/web#id=<projId>&model=project.project&view_type=form`) + **Open Sales Order** (`/web#id=<soId>&model=sale.order&view_type=form` — id numérico, NO name).
+- **Adjunto del PO** (`x_studio_purchase_order_file`, binary): leído con nodo Odoo `get` dedicado (mantiene el getAll ligero), base64 va **directo a `contentBytes`** (sin re-encodear), `name` = `x_studio_purchase_order_file_filename` (original con extensión), `contentType` derivado de la extensión (pdf/jpg/png…, fallback octet-stream). **Cap 3 MB** inline (Graph simple ~4MB con overhead base64); si excede → no adjunta + nota "ábrelo en Odoo". **Best-effort:** `onError:continueRegularOutput` en el read + `try/catch` en Build correo → si falla el adjunto, el correo sale igual (el proyecto YA está creado).
+
+### Microsoft Graph — credencial y app-permission (Parte B Paso 1-3, DONE)
+
+- **Credencial n8n `Microsoft Graph - sales`** (id `Mh5kBNduMzOl3nzT`, tipo `oAuth2Api` genérico — las credenciales nativas Microsoft de n8n son todas *delegated*; solo la OAuth2 genérica expone `grantType: clientCredentials`).
+- Config: Grant=**Client Credentials**, Access Token URL `https://login.microsoftonline.com/<TENANT_ID>/oauth2/v2.0/token`, Client ID `45131668-92ec-4819-b2d6-826773abb852` (app "n8n-mail-sender"), Scope `https://graph.microsoft.com/.default`, Auth=**Body**.
+- Azure: permiso **Mail.Send (Application)** + admin consent + **Application Access Policy** acotando la app a `sales@fts.mx`.
+- Endpoint: `POST https://graph.microsoft.com/v1.0/users/sales@fts.mx/sendMail`. Éxito = **202** (body vacío). Body Graph: `{message:{subject, body:{contentType:'HTML',content}, toRecipients:[…], attachments?:[…]}, saveToSentItems:true}`.
+- El HTTP node manda `={{ JSON.stringify($json) }}` → `attachments` viaja en el body automáticamente (no requiere cambio del HTTP node).
+- ⚠️ **Diagnóstico de fallo de token:** `Failed to acquire OAuth2 access token: Client authentication failed` (httpCode null, falla ANTES de Graph) = problema de credencial, NO de Access Policy. Causa #1: pegar el **Secret ID** (GUID) en vez del **Secret Value**; #2: tenant_id mal en la URL.
+
+### Quirks / lecciones (NO re-descubrir)
+
+1. **Operador `greaterThan` NO existe en el nodo Odoo v1 de n8n** → llega como `None` al dominio → Odoo crashea con `'NoneType' object has no attribute 'lower'` (en `domains.py`, el operador de la tupla es None). **Usar `greaterOrEqual`** (probado). Tokens válidos: `equal`, `in`, `greaterOrEqual`, `lesserOrEqual`, `like`. (Complementa §3/§16.)
+2. **`update_full` deja el workflow ACTIVO o INACTIVO de forma no determinista** (preserva el estado previo de forma inconsistente). **SIEMPRE verificar `active` en la respuesta** y avisar a Esteban; el API de esta instancia **rechaza activar/desactivar vía MCP** (`deactivate`/`deactivateWorkflow` → "additional properties" / "Unknown operation type") → toggle a mano en la UI.
+3. **Campo analítico del proyecto:** el real es `account_id` ("Project Account", **stored**, lo consume budget+profitability). El campo "Analytic Account" que se ve vacío en la UI es `auto_account_id` (**computed, no-stored, vacío en TODOS los proyectos**, sanos incluidos) — era un campo de Studio en el header; NO confundir. Para mostrarlo en el form, usar `account_id` vía Studio, no `auto_account_id`.
+4. **Bloquear confirmación de SO con campos requeridos (filosofía cero-código):** un `required` de vista NO bloquea el Confirmar (el botón guarda con `state` aún en `draft`, y el write de `state=sale` no re-valida modifiers). Solución pure-Studio: poner **`invisible` en el propio botón Confirmar** condicionado a los campos. Candado duro (API/import) requiere Automation Rule + ~4 líneas Python (rollback por `raise`).
+5. **Campos sale.order del handoff (técnicos exactos):** `x_studio_proyect_description` (text, ojo "**proyect**" sin 2ª 'o'), `x_studio_fecha_inicio_deseada` + `x_studio_fecha_fin_deseada` (date), `x_studio_purchase_order_number` (char), `x_studio_purchase_order_file` (binary) + `x_studio_purchase_order_file_filename` (char).
+6. **Verificar ejecuciones con adjunto sin volcar el base64 al chat:** usar `mode:preview` (da `estimatedSizeKB` + `dataStructure` por nodo). HTTP node con output **vacío `{}` (1KB) = 202 enviado**; si trae ~726KB = el sendMail falló y `onError` pasó el mensaje. El read PO file ~722KB confirma binary leído.
+
+### Pendientes / recomendaciones operativas
+
+- **(Esteban, UI)** Recomendado: Settings del workflow → **"Save successful production executions" = Do not save** (la mayoría de corridas son no-ops; frena el crecimiento de ejecuciones n8n). Prune ya en 14 días (`EXECUTIONS_DATA_MAX_AGE=336`).
+- **(Esteban, Railway)** Verificar `N8N_ENCRYPTION_KEY` como variable fija + respaldarla en gestor de contraseñas (si se pierde, TODAS las credenciales — Odoo, Graph — quedan ilegibles). No legible vía MCP.
+- **(Esteban, Odoo)** Cleanup opcional de proyectos/analíticas de prueba (2337-2344 / 3071-3078) + huérfanas viejas 3068/3069/3070. No bloquean.
+- Volumen Odoo: 221 proyectos totales → cero riesgo. Higiene: archivar proyectos al cerrar (UX, no perf).
+- **Calendario kickoff** (integrar evento al crear proyecto): pendiente, requiere permiso `Calendars.ReadWrite` en Azure (no agregado aún).
+- Pendientes del doc: desactivar 5 productos `service_tracking` (ya en 'no'), límite de reintentos (DONE, tope 3 vía `x_studio_intentos_proyecto` + `x_studio_proyecto_error`).
