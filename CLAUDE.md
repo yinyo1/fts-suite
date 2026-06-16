@@ -629,6 +629,8 @@ Reconstrucción de AA2 (borrada) con arquitectura **nativa Odoo 19 + n8n, cero c
 
 ⚠️ **Antes de tocar este workflow o el ciclo SO→project→analytic→budget, leer ese doc + esta sección** (evita re-investigar varias sesiones).
 
+**Frente B — bloqueo de gastos + cierre de budget por stage:** diseño final en [`docs/finanzas/FRENTE_B_BLOQUEO_GASTOS.md`](docs/finanzas/FRENTE_B_BLOQUEO_GASTOS.md). 3 piezas: (1) Automation Rule Python en `account.move` que bloquea facturas de proveedor (`in_invoice`/`in_refund`) cuyo proyecto está fuera de `EXPENSE_STAGES = [1,2,5,3,7]` (bloqueo entra en stage 9 Revisión rentabilidad); (2) workflow n8n que archiva la cuenta solo en cierre definitivo (stage-bloqueo **Y AR=0 Y AP=0**); (3) log note + correo de reapertura. Distinción gasto/ingreso/cobranza por `move_type` (costos = `in_invoice`; ingresos = `out_invoice`; pagos/cobranza = `entry` IVA-flujo, NO se bloquean). Operador `analytic_distribution 'in' <cuenta>` verificado para detectar AP=0. **Fuga analítica del 99%** (gastos con `analytic_distribution` separada `{"3034":100,"1176":100}` no descuentan del budget 2-ejes; debe ser compuesta `{"3034,1176":100}`) documentada como problema aparte de captura.
+
 ### Estado FINAL en producción (2026-06-16)
 
 **Gatillo ELIMINADO — ahora es por domain, no por flag manual.** Toda SO de FTS MX/USA confirmada con monto genera proyecto. Domain endurecido del nodo `Odoo - getAll SO` (5 filtros):
