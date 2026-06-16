@@ -316,4 +316,97 @@ Ingreso atribuido (`out_invoice` analítico) vs costo atribuido (`in_invoice` an
 
 ---
 
-🤖 Mapa + A0 generados con [Claude Code](https://claude.com/claude-code) (deep-search read-only, sin cambios a Odoo ni workflows).
+## 9. A3 — Diseño del mandatory (proyecto obligatorio en captura) · read-only 2026-06-16
+
+> Decisión tomada: **forzar atribución obligatoria en captura**. Esta sección es el diseño; **nada construido**. Aterriza el mecanismo Odoo 19 real (`account.analytic.applicability`) + el plan de transición.
+
+### 9.0 Cómo funciona el `mandatory` en Odoo 19 (mecánica real)
+
+- La obligatoriedad vive en **`account.analytic.applicability`**, filas con: `analytic_plan_id`, `business_domain` (`bill`, `purchase_order`, `invoice`, `sale_order`, `expense`, `general`), `applicability` (`optional`/`mandatory`/`unavailable`), **`company_id`**, **`account_prefix`** (prefijo de cuenta GL) y **`product_categ_id`**. ⇒ el mandatory se puede **acotar por empresa, por prefijo de cuenta contable y por categoría de producto** (granularidad fina, clave para el rollout).
+- **Se evalúa al POSTEAR** (`action_post`), NO al guardar borrador. Un borrador sin proyecto se puede guardar; **falla al postear**. (Esto define la transición — §9.5.)
+- **`mandatory` es POR PLAN, independiente.** Si pones plan 1 *y* plan 2 mandatory → exige AMBOS (no "uno u otro"). Si pones solo plan 1 mandatory → **bloquea los indirectos legítimos** ($7.27M que NO van a proyecto). Ese es el problema de diseño central.
+- `plan 1` es **root plano**: 89 cuentas, `children_count: 0`, `parent_id: false`. (Idem plan 2 = 31, plan 18 = 5.)
+
+### 9.1 El mandatory correcto — "proyecto **O** centro de costo, pero ALGO" (R1 del problema)
+
+Odoo **no soporta nativamente "uno de varios planes"**. Tres caminos:
+
+| Opción | Cómo | Riesgo | Veredicto |
+|--------|------|--------|-----------|
+| **C — bucket NO-PROYECTO en plan 1** ⭐ | Crear UNA cuenta analítica en plan 1: **`NO-PROYECTO / Gasto indirecto`**. Hacer **plan 1 mandatory** (bill, company 1). El operador elige **proyecto real O `NO-PROYECTO`** → siempre hay decisión explícita. El centro de costo plan 2 se añade opcional como sub-clasificación. | **Bajo** — 1 cuenta nueva, cero re-estructura, cero migración. Pequeña "contaminación" del eje proyecto con 1 cuenta explícita (fácil de excluir en reportes). | **RECOMENDADO** |
+| **B — plan padre "Atribución"** | Crear root nuevo "Atribución"; re-parentar plan 1 + 18 + 2 como hijos. Mandatory en el padre = satisface cualquier hijo (proyecto MX/USA o indirecto). | **Alto** — re-parentar plan 1 cambia el `root_id` de sus cuentas → afecta las **columnas de `analytic.line`** y el **eje proyecto del budget** (`account_id`). Migración de datos delicada. | Conceptualmente limpio, **demasiado invasivo ahora** |
+| **A — fusionar plan 2 en plan 1** | Mover las 31 cuentas indirectas a plan 1. Mandatory en plan 1. | Medio-alto — mezcla proyectos y centros de costo en un mismo eje; ensucia budget/profitability por plan 1; rompe reportes que separan plan1/plan2. | No |
+
+**Recomendación: Opción C.** Da el "uno u otro" con una sola cuenta nueva y sin tocar la estructura analítica existente. El bucket `NO-PROYECTO` además se vuelve un **KPI visible** (cuánto gasto es legítimamente no-proyecto vs cuánto se está "escondiendo" ahí).
+
+### 9.2 Dónde forzarlo — Bill primero, PO después
+
+- **Bill = el gate obligatorio (must-have).** Es la última compuerta antes de postear, la controla el equipo de Gera, y **cubre TODO**: bills derivadas de PO + las **bills directas sin PO** (que hoy son la mayoría del gasto misceláneo).
+- **PO = fase 2 (opcional, aguas arriba).** Verificado en A0: la **PO propaga su `analytic_distribution` a la Bill** (`{"576":100}` PO → Bill). Si la PO trae proyecto, la Bill lo hereda y satisface el mandatory sola. Pero PO-mandatory mete fricción al equipo de compras (otro equipo) → mejor después de estabilizar Bill.
+- **Plan 18 (USA, company 6):** mismo patrón cuando se extienda a esa empresa (fase posterior).
+
+### 9.3 ⚠️ Riesgo de atribución basura (re-Topo-Chico) y mitigaciones
+
+El peligro real: con mandatory, la gente teclea "cualquier proyecto" para destrabarse. Mitigaciones (en capas):
+
+1. **El bucket `NO-PROYECTO` es la válvula de escape legítima** → reduce el incentivo de inventar proyecto (hay una opción honesta para "no es de proyecto").
+2. **Lista de proyectos manejable vía Frente B.** El archivado de `project/archive-budget-cierre` (Frente B, ya en producción) **saca las cuentas cerradas del selector** (solo aparecen activas). Sinergia directa: mantener limpio el set activo achica el picker de ~177 a los realmente vivos.
+3. **Detective n8n (extender `fin/detect-gasto-cierre`).** Vigilar dos señales: (a) volumen del bucket `NO-PROYECTO` (esperado ~18%; si se dispara = la gente esconde gasto ahí), (b) **gasto anómalo a un proyecto** (bill grande a un proyecto viejo/casi-cerrado = el nuevo Topo Chico) → correo a Gera/Esteban. No bloquea; detecta el abuso temprano.
+4. **Capacitación con el "por qué"** (§9.5): el operador entiende que un proyecto mal puesto rompe la rentabilidad — no es burocracia.
+
+### 9.4 Matar el catch-all 3034 (Topo Chico)
+
+- **3034 no es un default técnico** — no aparece en ninguna `distribution.model`. Es **hábito**: los operadores eligen el proyecto estrella activo para gasto misceláneo. Lo mata: (a) el mandatory **fuerza decisión consciente**, (b) el bucket `NO-PROYECTO` les da a dónde mandar lo no-atribuible, (c) el detective vigila que 3034 deje de recibir UBER/café/garrafones.
+- **¿A dónde DEBE ir el gasto misceláneo?** A **centros de costo indirectos reales (plan 2)**, que YA existen y son adecuados: `636 Oficina/Taller`, `744 Seguridad EPP`, `509 Gasolina`, `308 Mantenimiento carros`, `828 Estacionamiento`, `632 Caja de herramientas`, `619 Servicios FTS`, `604 Nóminas`, `296 Honorarios`. Consumibles de obra realmente compartidos → al proyecto donde se consumen, o a un centro "consumibles taller"; **no se prorratean** (complejidad innecesaria por ahora).
+
+### 9.5 ⚠️ Transición (lo más delicado) — rollout por etapas
+
+Datos que la facilitan: **applicability tiene `company_id`** → se puede activar **MX (company 1) primero**, USA después. Y el **backlog de borradores es trivial: 31 bills / $301k** (company 1) → limpiar antes del flip es cuestión de minutos.
+
+**Secuencia propuesta (sin paralizar a Gera):**
+1. **Preparar** (read/write mínima): crear cuenta `NO-PROYECTO` en plan 1 + dejar `applicability` en **`optional`** todavía. Capacitación corta al equipo de Gera (el "por qué" + cómo elegir proyecto/NO-PROYECTO).
+2. **Fase blanda (2–4 semanas):** detective n8n alerta sobre bills posteadas **sin atribución** (NO bloquea). Se corrige el hábito con datos reales, se mide cuánto caería en `NO-PROYECTO`.
+3. **Limpiar backlog:** revisar los ~31 borradores sin proyecto (reporte) + cualquier pendiente, atribuirlos.
+4. **Flip Bill mandatory (company 1):** cambiar `applicability` de plan 1 a **`mandatory`** para `business_domain=bill`, `company_id=1`. (Opcional acotar con `account_prefix`/`product_categ` si se quiere arrancar con un subconjunto — ej. solo cuentas de costo de obra — antes de todo el gasto.)
+5. **Estabilizar → extender:** PO mandatory (fase 2) + company 6 USA (plan 18).
+
+**Prueba en subconjunto antes de global:** sí — usar `account_prefix` y/o `product_categ_id` en la fila de applicability para que el mandatory aplique primero a un grupo acotado de cuentas/categorías, y ampliar. Es la palanca nativa para un piloto.
+
+**Qué pasa con los borradores actuales sin proyecto:** se guardan, pero **fallan al postear** tras el flip → por eso el paso 3 (limpiar los 31) va ANTES del paso 4.
+
+### 9.6 Análisis del $24.6M sin proyecto (qué es, ¿recuperable?)
+
+Medido (company 1, 12m, gasto sin proyecto **y** sin centro de costo): **963 líneas / $24,634,135**, el **99% en una sola cuenta GL `601.84.01 "Otros gastos generales"`** (un solo cajón contable absorbe casi todo lo no-atribuido).
+
+**Top proveedores del gasto no-atribuido** (revela el hábito y guía la capacitación):
+
+| Proveedor | $ | # | Naturaleza probable |
+|-----------|--:|--:|---------------------|
+| ELECTRICIDAD Y CONSTRUCCION DEL BOSQUE | $3.28M | 6 | 🔧 **Subcontratista** → costo de PROYECTO |
+| SERVICIOS ADMINISTRATIVOS PAYCO | $2.54M | 2 | Nómina/admin → indirecto (o MO de proyecto) |
+| INSTALADORES ELECTRICOS ESP. EN CLIMAS | $2.50M | 5 | 🔧 **Subcontratista** → PROYECTO |
+| MAX IMPRESIÓN | $2.33M | 8 | ambiguo (revisar) |
+| EXPERTOS ASESORIA FISCAL Y CONTABLE | $2.23M | 7 | 🏢 Contabilidad → **indirecto** (296 Honorarios) |
+| INSTALADORES ELECTRICOS | $1.67M | 4 | 🔧 **Subcontratista** → PROYECTO |
+| ROSA MARIA CALDERON DIMAS | $1.09M | 1 | persona (renta?) revisar |
+| RTE DE MEXICO | $0.95M | 1 | revisar |
+| JULIO CESAR RAMIREZ | $0.88M | 3 | 🔧 subcontratista persona → PROYECTO |
+| EXPERTOS ELECTRICOS Y COMERCIALIZADORES | $0.84M | 2 | 🔧 materiales/subcontrato → PROYECTO |
+| Toyota Lindavista / GNP Seguros / Santander | $1.0M | varios | 🏢 vehículos/seguros/banco → **indirecto** |
+
+**Hallazgo clave:** el grueso del $24.6M es **mano de obra subcontratada de instalación/construcción eléctrica** — la categoría de costo MÁS grande de un EPC, y la que típicamente entra como **una sola bill grande que nadie atribuye**. Por eso TODO proyecto se ve demasiado rentable (el costo más grande es justo el que se fuga). El resto (~$5–7M) es overhead real (contabilidad, seguros, banco, vehículos, nómina) que debe ir a **plan 2**.
+
+**¿Recuperable retroactivamente?** **Sí, y es tratable:** los **~15 proveedores top concentran ~$20M de los $24.6M** en **~50 bills**. Plan: Gera revisa por proveedor (no línea por línea) y atribuye — los subcontratistas se mapean al proyecto por fecha + obra activa de ese cliente (muchas bills traen el cliente final en el nombre, ej. "recicladora Clarios"). No es irrecuperable; es un sprint de limpieza acotado por proveedor.
+
+### 9.7 Resumen ejecutivo A3
+
+- **Mecanismo:** Opción C — cuenta `NO-PROYECTO` en plan 1 + `applicability` plan 1 `mandatory` en `bill`/company 1. Da "proyecto O indirecto" sin re-estructurar (bajo riesgo).
+- **Dónde:** Bill primero (cubre directas + derivadas de PO); PO en fase 2.
+- **Anti-basura:** bucket NO-PROYECTO + archivado Frente B (picker corto) + detective n8n + capacitación.
+- **3034:** se mata por hábito→decisión forzada; misc va a centros de costo plan 2 que ya existen.
+- **Transición:** MX primero (applicability per-company), fase blanda con detective, limpiar 31 borradores, flip; piloto posible vía `account_prefix`/`product_categ`.
+- **Backlog $24.6M:** mayormente subcontratistas (costo de proyecto fugado); recuperable por proveedor (~15 proveedores = ~$20M).
+
+---
+
+🤖 Mapa + A0 + A3 generados con [Claude Code](https://claude.com/claude-code) (deep-search read-only, sin cambios a Odoo ni workflows).
