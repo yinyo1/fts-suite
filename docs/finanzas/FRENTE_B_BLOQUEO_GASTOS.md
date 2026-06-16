@@ -140,7 +140,7 @@ Si un proyecto avanza con una orden de compra confirmada sin facturar, su BILL f
 ## Estado de construcción
 
 - [x] **`fin/detect-gasto-cierre`** (Fase 2 detective + correo) — id `zLmmY0pqYC9kjLaw`, **ACTIVO**, validado e2e (detección + 3 dimensiones Moneda/Origen fondos/Empresa proyecto + resaltado cross-company + idempotencia por staticData).
-- [x] **`project/archive-budget-cierre`** (Fase 3 archivado + reapertura) — id `RW7KnoeEzYLvavI0`, **ACTIVO** (Schedule diario). Domain de archivado **[8,13,10,4]** (excluidos 7=Admin in progress, 9=Revisión rentabilidad, 6=Templates → no se archivan durante revisión/no son proyectos). Reopen en stages activos **[1,2,5,3]**. AR y AP **por analítica** (gemelos). Log note vía CREATE `mail.message` (subtype 2). **Go-live ejecutado 2026-06-16: 53 cuentas archivadas** (49 stage 8 + 4 stage 10), validado por dry-run idéntico. Archive en **producción plena** (`TEST_MODE=false`); reopen **gateado** (`TEST_MODE=true` allowlist 2344) hasta resolver genéricas.
+- [x] **`project/archive-budget-cierre`** (Fase 3 archivado + reapertura) — id `RW7KnoeEzYLvavI0`, **ACTIVO** (Schedule diario), **PRODUCCIÓN PLENA** (archive **`TEST_MODE=false`** + reopen **`TEST_MODE=false`**, ambos sin allowlist). Domain de archivado **[8,13,10,4]** (excluidos 7=Admin in progress, 9=Revisión rentabilidad, 6=Templates → no se archivan durante revisión/no son proyectos). Reopen en stages activos **[1,2,5,3]**. AR y AP **por analítica** (gemelos). Log note vía CREATE `mail.message` (subtype 2). **Go-live ejecutado 2026-06-16: 53 cuentas archivadas** (49 stage 8 + 4 stage 10), validado por dry-run idéntico. **Reapertura validada e2e (2026-06-16):** mover una de las 53 a stage activo → reactiva cuenta + log note + correo, mientras las genéricas (Internal/Field Service) NO se reactivan (exclusión). Re-archiva sola en el siguiente barrido si vuelve a cumplir AR=0∧AP=0. Idempotente por el flag `active`.
 - [x] (Descartado) ~~Automation Rule Python~~ → reemplazado por detective + archivado nativo.
 
 **Exclusión de proyectos de SISTEMA (regla ESTRUCTURAL, no por nombre):** ambos Prep (archive + reopen) saltan proyectos con **`is_internal_project === true` OR `is_fsm === true`** (flags nativos de Odoo). Esto excluye las ~13 cuentas genéricas (9 "Internal" + 4 "Field Service", una por company, recurrentes) de archivado/reapertura automáticos. **NO se usa coincidencia por nombre** (frágil + peligrosa: hay SOs reales con "Template"/"Internal" en el nombre, ej. `SO11320 - Template...`, que SÍ deben archivarse). Verificado: proyectos reales (ej. Clarios 50) tienen ambos flags `false`. Las plantillas reales viven en stage 6 (ya excluido por el domain). Proyectos reales que un humano mueva a Cancelado (ej. SO9667/581) se manejan por stage, no por exclusión.
@@ -176,3 +176,28 @@ Detectado en el dry-run del archivado (2026-06-16). **Proyecto 50** "SO7207 - Cl
 **Anomalía:** la cuenta analítica 479 tiene **balance +$3,549,318** que NO es utilidad real. Desglose: **Ventas (401.01.01) +$3,635,603** vs **Costos (601.84.01) solo −$79,405**. Un proyecto de instalación de transformador de $5.1M con solo ~$79k de costos en la analítica = **los costos reales nunca se atribuyeron** (fuga del 99%). Además el ingreso en analítica ($3.6M) < facturado ($5.1M) → ~$1.5M de ingreso tampoco atribuido. **El balance es un artefacto de la fuga, no rentabilidad real.**
 
 Califica para archivar (AR=0, AP=0, `amount_to_invoice=0` — nada pendiente de cobrar/pagar). **Decisión: SE ARCHIVA igual** (incluido en el lote); archivar NO borra las líneas. **Pendiente Gera:** revisar el balance/rentabilidad de este proyecto aparte (ejemplo concreto del impacto de la fuga analítica en reportes). Cuenta 479 queda archivada con su historia intacta para auditoría.
+
+### Backlog de conciliación bancaria — `in_payment` masivo (PENDIENTE GERA)
+
+Detectado al analizar el criterio AR/AP. En `account.move`: **5,649 asientos en `payment_state='in_payment'`** (el 100% con `amount_residual=0`) vs solo **2,688 en `paid`**. Afecta facturas de cliente **y** BILLs de proveedor.
+
+- **`in_payment`** = pago registrado a cuenta puente (Outstanding), residual=0, **pero el banco NO se concilió** → no avanza a `paid`. El evento que lo mueve a `paid` es la **conciliación bancaria** (importar/matchear extractos).
+- **Causa probable:** falta de conciliación bancaria continua (reforzado por el mecanismo de IVA flujo de efectivo — journal "Effectively Paid"). El dinero está bien (residual=0), pero el estado no progresa.
+- **Por qué importa al Frente B:** el criterio AR/AP usa **`amount_residual` (NO `payment_state`)** → trata `in_payment` (residual=0) como saldado = correcto. Si hubiera usado `payment_state='paid'`, las 5,649 bloquearían el archivado indefinidamente. **El Frente B está blindado.** Pero el backlog distorsiona cash real / antigüedad de cartera / estado "Paid" en toda la operación → **tema de fondo para Gera.**
+
+---
+
+## Pendientes al cierre de la sesión (2026-06-16)
+
+### Limpieza del proyecto de prueba 2344 (SO11758)
+- Tiene una **factura de cliente de prueba de $100** (`out_invoice`) emitida + cobrada durante la validación del archivado. **Borrarla/reversarla.**
+- Regresar 2344 a su stage original (quedó en stage 1 To Do tras las pruebas). Cuenta 3078 quedó reactivada (active=True).
+
+### Temas financieros de fondo para Gera (independientes del Frente B)
+1. **Clarios SO7207 (cuenta 479):** balance $3.5M = artefacto de la fuga analítica (ver arriba).
+2. **80 facturas de cliente huérfanas** (equipo YIN, 24 sin cobrar hasta $588k) — ver arriba.
+3. **5,649 asientos en `in_payment`** (backlog de conciliación bancaria) — ver arriba.
+
+### Próximo bloque — Frente A (rentabilidad por proyecto/empresa)
+- Siguiente bloque tras el Frente B. Objetivo: **rentabilidad por proyecto Y por empresa**.
+- **Dependencia clave:** la **fuga analítica del 99%** (gastos con `analytic_distribution` separada `{"3034":100,"1176":100}` en vez de compuesta `{"3034,1176":100}` → no descuentan del budget 2-ejes). Hasta resolver la captura compuesta, la rentabilidad **no se puede leer del budget**; sí del `account.analytic.line` por `account_id` (con la distorsión que muestra Clarios). Ver CLAUDE.md §17 + diagnóstico del modelo `budget.analytic`/`budget.line`.
