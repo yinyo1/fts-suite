@@ -137,8 +137,32 @@ Si un proyecto avanza con una orden de compra confirmada sin facturar, su BILL f
 
 ---
 
-## Pendientes de construcción
+## Estado de construcción
 
-- [ ] `fin/detect-gasto-cierre` (Fase 2 detective + correo).
-- [ ] `project/archive-budget-cierre` (Fase 3 archivado AR=0∧AP=0 + log note + reapertura).
-- [ ] (Descartado) ~~Automation Rule Python~~ → reemplazado por detective + archivado nativo.
+- [x] **`fin/detect-gasto-cierre`** (Fase 2 detective + correo) — id `zLmmY0pqYC9kjLaw`, **ACTIVO**, validado e2e (detección + 3 dimensiones Moneda/Origen fondos/Empresa proyecto + resaltado cross-company + idempotencia por staticData).
+- [x] **`project/archive-budget-cierre`** (Fase 3 archivado + reapertura) — id `RW7KnoeEzYLvavI0`, **INACTIVO** (en validación), allowlist `TEST_PROJECTS=[2344]`. AR y AP **por analítica** (gemelos, blindados contra huérfanas). Log note vía CREATE `mail.message` (subtype 2). Falta probar con 2344 (negativo→positivo→reapertura) + quitar allowlist + cuantificar lote real antes de producción global.
+- [x] (Descartado) ~~Automation Rule Python~~ → reemplazado por detective + archivado nativo.
+
+**Detección AR/AP robusta (ambas por analítica, simétricas):** `account.move.line` con `analytic_distribution 'in' [cuenta]` + `parent_state='posted'` + `move_id.amount_residual != 0`, cambiando `move_id.move_type`: `out_invoice/out_refund` = AR (cobranza), `in_invoice/in_refund` = AP (pago). El operador `'in'` matchea claves single/separado/compuesto (verificado: `'in' 555` devuelve `{"555,1171"}`). AR=0 = `amount_to_invoice==0` (SO) **Y** sin línea AR pendiente por analítica.
+
+---
+
+## ⚠️ Tema APARTE (NO Frente B) — Facturas de cliente HUÉRFANAS (trabajo financiero con Gerardo)
+
+Detectado durante el blindaje del AR de la Fase 3. **No es del Frente B** — es un problema de fondo del ciclo financiero que queda abierto para el trabajo con **Gerardo Lozano (Accounting)**.
+
+**Hallazgo:**
+- **80 facturas de cliente** (`out_invoice`/`out_refund`, posted) **sin ligar a su SO** (sin `invoice_origin`, sin `sale_line_ids` en sus líneas), de 5,005 totales.
+- **24 sin cobrar** (`amount_residual≠0`), montos grandes: INV1986 **$588,830** (MAGNEKON), INV1973 **$550,362** (MAGNEKON), INV1987 **$447,911** (JCI), INV1996 $123,424 (BEBIDAS), + varias ~$19-75k.
+- **Creadas manual por el equipo FTS-YIN** (usuarios `OPERACIONES FTS-YIN` uid 6 y `Administracion FTS-YIN` uid 25), fechas **2023→2026**. Partners: clientes reales + entidades YIN/ajustes (`RAA AJUSTES`, `TECNOLOGIAS Y PRODUCTOS YIN`, `GRUPO KINETICA`, personas físicas).
+- **Sí llevan `analytic_distribution`** con la cuenta del proyecto (puesta a mano), pero sin enlace a la SO.
+
+**Impacto:**
+- Rompen reportes vía SO (`amount_to_invoice`/`amount_invoiced` no las cuentan), conciliación, y el AR-vía-SO. (El archivado de la Fase 3 **ya quedó blindado** porque detecta AR por analítica, no por SO — pero el problema de fondo persiste.)
+
+**Pendientes para Gerardo:**
+1. **¿Por qué YIN factura sin SO?** (refacturación / anticipos / ajustes / operación YIN fuera del flujo SO→factura). Entender la causa antes de decidir.
+2. **¿Ligar las 80 retroactivamente** a su SO (o crear las SOs faltantes)? Evaluar caso por caso (algunas viejas de migración, otras recientes).
+3. **¿Prevenir a futuro** forzando el flujo SO→factura para la operación YIN? (política / config / restricción de creación manual de `out_invoice`).
+
+**Estado:** problema de fondo **ABIERTO**. El Frente B no depende de resolverlo (AR por analítica lo cubre para el archivado).
