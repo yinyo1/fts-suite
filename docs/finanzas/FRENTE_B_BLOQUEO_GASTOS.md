@@ -166,3 +166,11 @@ Detectado durante el blindaje del AR de la Fase 3. **No es del Frente B** — es
 3. **¿Prevenir a futuro** forzando el flujo SO→factura para la operación YIN? (política / config / restricción de creación manual de `out_invoice`).
 
 **Estado:** problema de fondo **ABIERTO**. El Frente B no depende de resolverlo (AR por analítica lo cubre para el archivado).
+
+### Caso ejemplo de la fuga analítica — Clarios SO7207 (cuenta 479) — PENDIENTE REVISIÓN GERA
+
+Detectado en el dry-run del archivado (2026-06-16). **Proyecto 50** "SO7207 - Clarios - Instalacion transformador" (JOHNSON CONTROLS, FTS MEX, stage 8 Complete TOTAL, creado 2024-11). SO de **$5.11M facturada al 100%**.
+
+**Anomalía:** la cuenta analítica 479 tiene **balance +$3,549,318** que NO es utilidad real. Desglose: **Ventas (401.01.01) +$3,635,603** vs **Costos (601.84.01) solo −$79,405**. Un proyecto de instalación de transformador de $5.1M con solo ~$79k de costos en la analítica = **los costos reales nunca se atribuyeron** (fuga del 99%). Además el ingreso en analítica ($3.6M) < facturado ($5.1M) → ~$1.5M de ingreso tampoco atribuido. **El balance es un artefacto de la fuga, no rentabilidad real.**
+
+Califica para archivar (AR=0, AP=0, `amount_to_invoice=0` — nada pendiente de cobrar/pagar). **Decisión: SE ARCHIVA igual** (incluido en el lote); archivar NO borra las líneas. **Pendiente Gera:** revisar el balance/rentabilidad de este proyecto aparte (ejemplo concreto del impacto de la fuga analítica en reportes). Cuenta 479 queda archivada con su historia intacta para auditoría.
