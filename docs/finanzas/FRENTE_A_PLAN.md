@@ -409,4 +409,72 @@ Medido (company 1, 12m, gasto sin proyecto **y** sin centro de costo): **963 lí
 
 ---
 
-🤖 Mapa + A0 + A3 generados con [Claude Code](https://claude.com/claude-code) (deep-search read-only, sin cambios a Odoo ni workflows).
+## 10. A3 — Mecanismo REVISADO tras confirmar el plan 2 · read-only 2026-06-16
+
+> Hallazgo que cambia la recomendación de §9.1: **el plan 2 "Gasto Indirecto en FTS" ya existe, está vivo y bien usado.** Esto vuelve **innecesario** el parche `NO-PROYECTO` (Opción C) y reordena las opciones. Esta sección **supersede la recomendación de §9.1/§9.7**.
+
+### 10.0 Estado real del plan 2 (no está abandonado)
+
+- **31 cuentas, todas `active`. ~$7.3M/12m** fluyendo (coincide con el `has_indirect` de A0). 23 cuentas con movimiento en 12 meses.
+- **Cubre bien las categorías no-proyecto:** `513 Administración` −$2.96M (87 líneas), `636 Oficina/Taller` −$1.11M (**349 líneas**), `527 Créditos camiones YIN` −$1.50M, `509 Gasolina` −$299k, `608 Ventas`, `632 Caja Herramientas` (77), `478 RH` (115 líneas), `744 Seguridad EPP` (66), `828 Estacionamiento`, `621 Comedor`, `308 Mantenimiento/seguros carros`, `293 Licencias/software`, `768 Legal`, `771 Compras`, `604 Nóminas`.
+- **Veredicto: plan 2 es el hogar REAL y durable de los indirectos** — activo, con alto volumen de líneas. No es un plan muerto.
+- **Limpieza menor (no bloquea):** algunos ítems mal archivados ahí — proyectos internos con número SO (`698 RACK packouts`, `778`/`767` remodelaciones) y personales (`788 Torneo`, `40 Gastos personales Esteban`, `294 Quinta`). Cosmético.
+
+### 10.1 ⭐ ¿Se puede exigir "plan 1 (proyecto) **O** plan 2 (indirecto)" con los dos planes que ya existen?
+
+**Estructura confirmada (clave):** en `account.analytic.line` **cada plan tiene su propia columna**: `account_id` = plan 1 (proyecto), `x_plan2_id` = plan 2 (indirecto), `x_plan18_id` = USA, `x_plan20_id` = rubro, etc. Son ejes independientes.
+
+| Vía | ¿"plan 1 O plan 2"? | Notas |
+|-----|---------------------|-------|
+| **`applicability` nativa `mandatory`** | ❌ **NO** | Es **por plan, independiente**. plan1+plan2 mandatory = exige AMBOS; solo plan1 = bloquea indirectos. No existe "al menos uno de {1,2}". |
+| **Constraint Python (base.automation)** ⭐ | ✅ **SÍ** | Una Automation Rule "al postear bill": Python que valida que cada línea de producto tenga `account_id` (plan1) **O** `x_plan18_id` (plan18) **O** `x_plan2_id` (plan2); si ninguna → `raise` (rollback). **~6 líneas.** TRUE "OR", usa los DOS planes existentes, **sin parche, sin reparentar.** Es el patrón de candado duro que FTS ya documentó (CLAUDE.md §17 quirk #4: "~4 líneas Python"). |
+| **n8n detective (blando)** | ⚠️ parcial | Cero-código, **NO bloquea** — detecta posteadas sin plan1/2/18 y avisa. No cumple "obligatorio" duro; sirve como fase de transición o si se descarta todo Python. |
+| **Studio "required" en vista** | ❌ | Solo vista; NO bloquea el post/API/import (verificado en Frente B). |
+
+**Conclusión:** "plan 1 O plan 2" **no es expresable en applicability nativa**, pero **SÍ con una mini-constraint Python** que se apoya en los dos planes que ya existen. Esa es la forma correcta del "uno u otro".
+
+### 10.2 Opción B (plan padre reparentando 1/18/2) — riesgo REAL cuantificado
+
+Con la estructura de columnas confirmada, el daño es concreto, no vago:
+
+- **`account_id` es la columna PRIMARIA/legacy** de `account.analytic.line`, ligada al plan 1 como "default plan". La **lee TODO**: el panel de rentabilidad nativo (`_get_profitability_items`), el **eje proyecto del budget**, y referencias nativas/reportes por doquier.
+- **Reparentar plan 1** cambia el `root_id` de sus 89 cuentas → la columna `account_id` se recomputa: o **migra los valores de proyecto a otra columna**, o **conflacta proyecto+indirecto bajo un mismo `account_id`** (si "Atribución" pasa a ser el default root). Cualquiera de los dos **perturba el campo analítico más referenciado del sistema.**
+- **Alcance del daño:** recálculo de columnas de plan en **todo el histórico** de `analytic.line`; riesgo al cómputo de `budget.achieved` (que casa por columnas de plan); el panel de rentabilidad (lee `account_id`); cualquier filtro/reporte que asuma `account_id = proyecto`. Son las 1,750 líneas/12m **+ todo el histórico**.
+- **¿Reversible?** En principio sí (reparentar de vuelta), pero con churn de recálculo y ventana de riesgo sobre budget/rentabilidad.
+- **Veredicto: riesgo ALTO**, desproporcionado. Toca la viga maestra (`account_id`) para un beneficio que la constraint logra sin tocarla. **Descartada.**
+
+### 10.3 Opción C (cuenta NO-PROYECTO en plan 1) — molestia real + redundancia
+
+- La cuenta `NO-PROYECTO` viviría en `account_id` como **pseudo-proyecto**. Hay que **excluirla explícitamente** en: (1) rentabilidad por proyecto, (2) creación de budget, (3) panel `rent-proy`, (4) cualquier listado de proyectos por plan 1. ~3–4 puntos de exclusión de un id conocido → molestia **baja pero real**, y **contamina el eje proyecto**.
+- **Peor: es redundante.** Con el plan 2 vivo, lo no-proyecto ya tiene a dónde ir (centros de costo reales). El bucket `NO-PROYECTO` sería un segundo "cajón de no-proyecto" peor que el que ya existe → **trabajo tirado** cuando plan 2 + GL futuro se vuelvan el estándar. **Descartada en favor de plan 2 directo.**
+
+### 10.4 ⭐ Visión de largo plazo (indirectos en su propio GL con subcuentas)
+
+- Esteban quiere a futuro los indirectos en **cuenta CONTABLE (GL) propia con subcuentas** (reestructura aparte de la analítica). El **plan 2 analítico es el complemento natural y durable** de esa visión: cuando existan los GL de indirectos, una `distribution.model` mapea **GL→cuenta plan 2** (igual que hoy `601.84.01→1176`), reforzando la captura.
+- **Apoyarse en plan 2 ahora = CERO trabajo tirado:** el plan 2 sigue siendo el hogar de indirectos antes y después del cambio de GL. La constraint "plan1/18 O plan2" **no depende del GL** → sobrevive intacta a la reestructura contable.
+- **Opción C sería trabajo tirado** (el parche muere cuando plan 2 + GL se estandarizan). **Opción B** es ortogonal y disruptiva al objetivo de GL.
+
+### 10.5 ✅ Recomendación final del mecanismo (revisada)
+
+**Mecanismo: plan 2 directo + mini-constraint "plan 1/18 O plan 2" — NO parche, NO reparentar.**
+
+1. **Captura:** costo de proyecto → cuenta de proyecto (plan 1/18, columna `account_id`/`x_plan18_id`). Gasto no-proyecto → centro de costo **plan 2** (`x_plan2_id`) que YA existe. Mata 3034 (decisión forzada + destino claro).
+2. **Candado duro:** **una** Automation Rule (~6 líneas Python) que al postear una bill exige `plan1 OR plan18 OR plan2` en cada línea de producto; si no, `raise`. TRUE "OR", apoyado en los planes existentes.
+3. **Transición:** idéntica a §9.5 — MX primero (la constraint se acota a `company_id=1` en su código), fase blanda con **detective n8n** (no bloquea) 2–4 sem, limpiar los **31 borradores**, luego activar la Automation Rule. (Piloto: la constraint puede arrancar filtrando por prefijo GL/categoría dentro del Python.)
+4. **Anti-basura + picker corto + retro-atribución del $24.6M:** sin cambios respecto a §9.3/§9.6.
+
+| Criterio | Plan 2 + constraint ⭐ | C (NO-PROYECTO) | B (reparentar) |
+|----------|----------------------|------------------|----------------|
+| "Uno u otro" real | ✅ (constraint) | ✅ (forzado a plan 1) | ✅ (root común) |
+| Riesgo estructural | **mínimo** (0 cambios de esquema) | bajo (1 cuenta parche) | **alto** (`account_id`/budget) |
+| Cero-código | ❌ ~6 líneas Python | ✅ pero parche | ❌ + migración |
+| Alineado a visión GL | ✅ **durable** | ❌ trabajo tirado | ❌ ortogonal |
+| Usa lo que ya existe | ✅ plan 2 | parcial | re-estructura |
+
+**El único costo del camino recomendado son ~6 líneas de Python en una Automation Rule** — el precio de un "OR" duro real. Es el mismo patrón de candado que FTS ya aceptó para bloqueos API. Si Esteban quiere CERO Python absoluto, el fallback es el **detective n8n blando** (no bloquea, igual se apoya en plan 2), asumiendo que "obligatorio" pasa a ser "vigilado" en vez de "bloqueado".
+
+> **Decisión para Esteban:** ¿candado duro (mini-constraint Python, recomendado) o vigilancia blanda (n8n, cero-Python)? Es la única bifurcación que queda para construir A3.
+
+---
+
+🤖 Mapa + A0 + A3 (+ revisión plan 2) generados con [Claude Code](https://claude.com/claude-code) (deep-search read-only, sin cambios a Odoo ni workflows).
