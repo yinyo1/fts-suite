@@ -139,3 +139,45 @@ nativo y normalmente vacío.
 - BLOQ-1 resuelto: credencial Odoo FTS ve companies {1, 6}.
 - Trigger = timer 2 min (no webhook push: el sandbox de server-action Odoo no hace HTTP saliente confiable).
 - Gatillo opt-in `x_studio_generar_proyecto`; handoff fields required condicional a gatillo=True (Studio, sin código).
+
+---
+
+## F. Parte B — Notificación por correo M365 (DECIDIDO, pendiente de Azure)
+
+**Decisión:** al crear el proyecto, enviar correo **desde `sales@fts.mx`** → a **`newordersnotification@fts.mx`** (grupo de distribución que reenvía a todos). Identidad de EMPRESA con **permiso de APLICACIÓN (client-credentials)**, NO delegado/cuenta personal — proceso 24/7 que no depende de la sesión/MFA de nadie.
+
+### Camino técnico (auditado por schema de credenciales n8n)
+**Los nodos/credenciales Microsoft nativos son TODOS delegados** (authorization code) — ninguno expone `grantType: clientCredentials` en sus propiedades:
+- `microsoftOutlookOAuth2Api` (nodo Microsoft Outlook): delegado. Su `useShared`/`userPrincipalName` es "usuario delegado envía COMO buzón compartido" → sigue requiriendo login de usuario + SendAs. ❌
+- `microsoftOAuth2Api` (Microsoft OAuth2 API genérica): delegado, sin selector de grant. ❌
+- `microsoftGraphSecurityOAuth2Api`: delegado **y** scope hardcodeado al API de Graph Security (sin campo `scope`) → ni siquiera sirve para mail. ❌
+- **`oAuth2Api` (OAuth2 API genérica): la ÚNICA que expone `grantType: [authorizationCode, clientCredentials, pkce]`** → soporta client-credentials. ✅
+
+→ **Único camino app-permission:** **nodo HTTP Request + credencial `OAuth2 API` (Client Credentials)** → `POST https://graph.microsoft.com/v1.0/users/sales@fts.mx/sendMail`. Es el patrón estándar de Microsoft Graph con permiso de aplicación, NO un workaround. El nodo nativo Outlook queda descartado.
+
+### Config exacta de la credencial n8n (OAuth2 API)
+| Campo | Valor |
+|---|---|
+| Grant Type | **Client Credentials** |
+| Access Token URL | `https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token` |
+| Client ID | `{APPLICATION_ID}` |
+| Client Secret | `{CLIENT_SECRET_VALUE}` |
+| Scope | `https://graph.microsoft.com/.default` |
+| Authentication | **Body** |
+
+Body del HTTP Request (JSON): `{ "message": { "subject": "...", "body": {"contentType":"HTML","content":"<html>…"}, "toRecipients":[{"emailAddress":{"address":"newordersnotification@fts.mx"}}] }, "saveToSentItems": true }`. Esperado: **HTTP 202** en éxito; **403** = falta admin consent o Application Access Policy.
+
+### Seguridad de credenciales
+- El **client secret se mete DIRECTO en n8n** (UI), **nunca en chat/repo**. n8n lo **encripta en reposo** con `N8N_ENCRYPTION_KEY` y enmascara el campo tras guardar (no se vuelve a mostrar).
+- ⚠️ **`N8N_ENCRYPTION_KEY` debe ser una env var PERSISTENTE en Railway.** El filesystem de Railway es efímero: si la key no es env var fija, n8n genera una nueva en cada redeploy → **todas las credenciales encriptadas se vuelven ilegibles**. Verificar en Railway → servicio n8n → Variables → que `N8N_ENCRYPTION_KEY` exista con valor fijo. **Evidencia empírica de que ya es persistente:** la credencial `Odoo FTS` (creada 2026-04-20) sigue funcional 2 meses después tras múltiples runs/redeploys — si la key se regenerara, ya estaría rota. **Hardening:** respaldar el valor de la key en un gestor de contraseñas (si se pierde, las credenciales son irrecuperables); 2FA en el owner de n8n; mantener n8n actualizado.
+
+### Pendientes (requieren acceso Azure de Esteban — admin del tenant)
+1. App registration (recomendado: **nueva dedicada** "n8n-mail-sender", no reusar la de Power Automate). Anotar **tenant_id** + **client_id**.
+2. Microsoft Graph → **Application permission `Mail.Send`** → **admin consent** (palomita verde).
+3. (Recomendado seguridad) **Application Access Policy** acotando la app a solo `sales@fts.mx` (`New-ApplicationAccessPolicy`, Exchange Online PS) — con Mail.Send de app sin policy, puede enviar como cualquier buzón.
+4. **Client secret** → copiar VALUE (se muestra una vez) + anotar expiración/rotación.
+5. Confirmar que `sales@fts.mx` es **buzón REAL sendable** (no alias) y que `newordersnotification@fts.mx` existe y reenvía como se espera.
+6. Entregar a CC: tenant_id + client_id + client_secret → CC crea la credencial n8n + arma el HTTP Request + **prueba 1 envío** (espera 202; si 403 → revisar consent/Access Policy).
+
+### Futuro (Paso 2+)
+Integrar el nodo de notificación al workflow `XhuTlvPKDBjkDeso` (tras crear el proyecto, antes de cerrar el loop) + **evento de kickoff en calendario** (Graph `/events`): siguiente día hábil 14:00 CST; si la SO se confirma vie/sáb/dom → lunes.
