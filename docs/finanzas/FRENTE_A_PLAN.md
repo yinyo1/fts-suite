@@ -214,10 +214,10 @@ sale.order (confirmada)
 | **A4 — Rentabilidad por proyecto** | Panel en Finanzas (`rent-proy`) leyendo profitability/analytic por `account_id`; contrasta budget vs achieved vs committed | Frontend + n8n `/fin/*` | A1+A2 para budget; parcial con solo A3 |
 | **A5 — Rentabilidad por empresa** | Rollup `rent-emp` agregando proyectos por `company_id` (MX/USA), consolidado MXN | Frontend + n8n | A4 |
 
-**Orden recomendado:** A0 → **A2/A3 primero** (sin captura limpia, cualquier budget o panel miente) → A1 → A4 → A5. R2/R3 son el cuello de botella; **A1 sin A2 produce budgets que nunca se descuentan** (justo el estado actual de los 123 budgets).
+**Orden recomendado (ACTUALIZADO tras A0 — ver §8):** A0 ✅ → **A3 PRIMERO** (la fuga grande es de atribución, no de compuesto) → A2 (refinamiento, ya 88% compuesto cuando hay proyecto) → A1 (poblar montos reales en el budget) → A4 → A5.
 
 ### 6.1 Decisión grande pendiente (de Esteban, NO resoluble solo)
-El camino de **A2**: ¿`mandatory` + capacitación (cambia el hábito de captura, **cero código**) **vs** workflow reparador n8n (no cambia hábito, mantiene repintado automático)? Esa elección define casi todo el Frente A.
+El camino de **A2**: ¿`mandatory` + capacitación (cambia el hábito de captura, **cero código**) **vs** workflow reparador n8n (no cambia hábito, mantiene repintado automático)? Esa elección define casi todo el Frente A. **A0 baja la urgencia de A2** (ver §8).
 
 ---
 
@@ -233,4 +233,87 @@ El camino de **A2**: ¿`mandatory` + capacitación (cambia el hábito de captura
 
 ---
 
-🤖 Mapa generado con [Claude Code](https://claude.com/claude-code) (deep-search read-only, sin cambios a Odoo ni workflows).
+## 8. A0 — Diagnóstico cuantitativo (read-only, 2026-06-16)
+
+> Universo medido: **gastos de proveedor** (`account.move.line`, `in_invoice`+`in_refund`, `parent_state=posted`, `display_type=product`), **últimos 12 meses** (`date >= 2025-06-16`). Clasificación por forma de `analytic_distribution` vía el operador `'in'` (verificado: **SÍ** matchea claves compuestas `{"3034,1176":100}`) + corte de "compuesto" leído de `account.analytic.line` con **ambos ejes** (`account_id` proyecto **y** `x_plan20_id` rubro) poblados.
+>
+> ⚠️ El $ de magnitud viene de `move.line` (`display_type=product`); NO de `analytic.line`, que duplica por las líneas de IVA/base (`category:"other"`).
+
+### 8.1 Tamaño de cada fuga — empresa 1 (FTS MX), 12 meses
+
+**Universo: 3,757 líneas / $40,860,390 MXN.** (YIN co.4: 208 / $1.23M · USA co.6: 27 / $83.8k — marginales, foco MX.)
+
+| Bucket | # líneas | $ MXN | % del $ |
+|--------|---------:|------:|--------:|
+| **Atribuido a PROYECTO** (plan 1/18) | 1,750 | **$8,766,068** | **21.5 %** |
+| — de ello **COMPUESTO** (visible al budget 2-ejes) | ~1,414 | **$7,717,510** | 18.9 % |
+| — de ello **separado / solo-proyecto** (ciego al budget) | ~336 | **~$1,048,558** | 2.6 % |
+| **Indirecto** (plan 2: RH, gasolina, oficina) — legítimo no-proyecto | 994 | $7,269,424 | 17.8 % |
+| **SOLO-RUBRO** (rubro sin proyecto ni centro de costo) | ~816 | **~$24,059,944** | **58.9 %** |
+| **Sin analítica** | 191 | $534,723 | 1.3 % |
+
+**Lectura:**
+1. **R2 (separado vs compuesto) es la fuga CHICA.** Cuando el gasto SÍ llega a un proyecto, el **88 % por $ ya es compuesto** (lo ve el budget). El separado real es **~$1.05M/12m (2.6 % del gasto)**.
+2. **La fuga GRANDE es de ATRIBUCIÓN (R3-extendido):** solo el **21.5 %** del gasto toca un proyecto. **$24M (59 %) flota como SOLO-RUBRO** — etiquetado "Materiales/Mano de Obra" pero **sin proyecto** → invisible para rentabilidad por proyecto **y** para budget. (Avg ~$29.5k/línea: las compras grandes son las que se van sin proyecto.)
+3. **Catch-all 3034 (SO11547 Topo Chico):** 479 líneas / **$1,600,083** (3.9 % del total, **18 % de todo lo atribuido a proyecto**) — un proyecto real absorbiendo gasto misceláneo (UBER, garrafones, café).
+
+> **Reframe clave:** el "99 % de fuga analítica" que documentaba Frente B estaba **mal diagnosticado en el mecanismo**. No es compuesto-vs-separado (eso es 2.6 %). Es que **el 59 % del gasto nunca recibe proyecto**.
+
+### 8.2 R1 — Cobertura de budget en proyectos activos
+
+- **177 proyectos activos** (company 1+6).
+- **~90 cuentas de proyecto tienen `budget.line` con eje proyecto** — PERO los **recién auto-creados son ESQUELETOS placeholder**: solo `Ingreso` poblado (= monto SO), y **todos los rubros de costo en `budget_amount = −1`** (ej. SO11631, SO11644). Estructura sí, estimados reales no.
+- **Budgets poblados de verdad:** un puñado, hechos a mano (576 Vertiv, 454, 475 Budenheim, 3034 Topo Chico…).
+- **Clarios SO7207 (479):** budget = placeholder (`Materiales budget_amount = 1`).
+- Incluso el **mejor trackeado (576 Vertiv 2da):** `Materiales` achieved **−$2.48M** vs budget **−$7.25M** con el proyecto ~90 % facturado (ingreso achieved $14.39M / budget $15.92M) → **sub-captura ~$4.7M** aun en el caso estrella.
+
+⇒ **R1 no es "falta estructura"** (el esqueleto se crea), sino **(a)** los costos del esqueleto son `−1` placeholder y **(b)** el lado `achieved` lo mata la atribución.
+
+### 8.3 Impacto en rentabilidad — top proyectos activos (todo el histórico)
+
+Ingreso atribuido (`out_invoice` analítico) vs costo atribuido (`in_invoice` analítico), por cuenta de proyecto:
+
+| Proyecto | Ingreso atribuido | Costo atribuido | Costo / Ingreso | Veredicto |
+|----------|------------------:|----------------:|----------------:|-----------|
+| SO9428 Vertiv 2da (576) | $14,388,235 | $3,156,240 | 22 % | margen ~78 % implausible |
+| SO10344 Budenheim ergo (662) | $6,463,038 | $2,075,484 | 32 % | bajo |
+| **SO5995 Vertiv f1 (454)** | $5,363,729 | **$64,475** | **1.2 %** | ⚠️ patrón Clarios |
+| SO10977 Mezanine (834) | $1,960,981 | $502,171 | 26 % | bajo |
+| **SO10300 Techo Magnekon (668)** | $1,581,500 | **$79,623** | **5 %** | ⚠️ patrón Clarios |
+| SO11471 Budenheim (1089) | $930,694 | $212,702 | 23 % | bajo |
+| **SO11261 Magnekon flujo (960)** | $725,160 | **$0** | **0 %** | ⚠️ extremo |
+| SO10702 Panduit (737) | $656,689 | $231,910 | 35 % | el más creíble |
+| SO9137 refacc. L6 (554) | $545,326 | $98,825 | 18 % | bajo |
+| **SO9181 base tanques (577)** | $414,153 | **$0** | **0 %** | ⚠️ extremo |
+| SO10821 extractores (751) | $402,960 | $109,435 | 27 % | bajo |
+
+**Q4 — ¿es creíble la rentabilidad por proyecto hoy? NO.** Para EPC/instalación industrial el costo esperado es **60–80 %** del ingreso (margen bruto 20–40 %). **TODOS** los proyectos arriba muestran costo **0–35 %** (margen aparente 65–100 %) → **sub-captura sistemática de costo**. El panel nativo infla utilidad en todos los proyectos.
+
+**Q5 — ¿cuántos con patrón "Clarios" (ingreso ≫ costo)? Es la NORMA, no la excepción.** De ~35 proyectos con ingreso, prácticamente todos caen por debajo del 40 % de costo; **≥8 con costo ≈ 0** (454, 668, 960, 577, 832, 846, 1132, 825). El costo perdido se va al bucket SOLO-RUBRO (§8.1) o al catch-all 3034.
+
+### 8.4 Q6 — Decisión: ¿R2 o R3? Recomendación de prioridad
+
+| | **R2 (separado→compuesto)** | **R3 (atribución de proyecto)** |
+|--|------------------------------|----------------------------------|
+| $ en juego (12m) | ~$1.05M (2.6 %) | ~$24M solo-rubro (59 %) + $1.6M catch-all |
+| Qué rompe | budget 2-ejes (parcial) | rentabilidad por proyecto **Y** budget (total) |
+| Estado base | ya **88 % compuesto** cuando hay proyecto | solo **21.5 %** del gasto llega a proyecto |
+| Costo de arreglar | config/widget/repair n8n | **mandatory + capacitación + matar catch-all** (cambio de hábito) |
+
+**Recomendación: A3 (atribución) es la prioridad #1, con amplio margen.** R3 pierde ~20× más dinero y visibilidad que R2, y rompe ambas mitades (rentabilidad y budget). R2 es refinamiento secundario: una vez que el gasto llega al proyecto, el 88 % ya entra compuesto solo — así que **A2 deja de ser bloqueante** y puede ir después de A3. La secuencia eficiente:
+
+1. **A3** — forzar proyecto en Bill/PO (applicability `mandatory` para plan 1/18 en `bill`+`purchase_order`), matar el uso de 3034 como catch-all, separar indirectos. Aquí está el 59 %.
+2. **A2** — asegurar compuesto (cerrar el 12 % residual) una vez que el volumen de atribución sube.
+3. **A1** — reemplazar los placeholders `−1` del esqueleto de budget por estimados reales (de las líneas de la SO / costeo).
+4. **A4 / A5** — paneles de rentabilidad (ya con datos creíbles).
+
+> **Matiz para A3:** como `distribution.model` inyecta el rubro en grupo aparte, forzar el proyecto NO garantiza compuesto por sí solo. Pero el dato muestra que cuando el operador SÍ atribuye proyecto, el 88 % entra compuesto (lo teclean en la misma fila). El cuello no es el mecanismo — es que **el 59 % del gasto ni siquiera intenta atribuir proyecto**.
+
+### 8.5 Notas de método / límites
+- 'in' sobre `analytic_distribution` **matchea compuesto** (probado con move.line 191567 `{"3034,1176":100}`). El doble-`'in'` ANDeado (proyecto **y** rubro en un solo dominio) devuelve vacío por un quirk jsonb de esta instancia → el corte de "compuesto" se tomó de `analytic.line` ambos-ejes, no de ese dominio.
+- `budget.line.achieved` respeta el rango de fechas del budget → NO sirve como medida limpia de "% compuesto" por proyecto (ej. 3034 muestra achieved $14.5k pese a tener compuesto real; es recorte de fechas del budget, no falta de compuesto).
+- Buckets de §8.1 disjuntos verificado: proyecto∩indirecto ≈ 0 (2,744 vs 2,745 en el OR). Suma de buckets ≈ universo (✓).
+
+---
+
+🤖 Mapa + A0 generados con [Claude Code](https://claude.com/claude-code) (deep-search read-only, sin cambios a Odoo ni workflows).
