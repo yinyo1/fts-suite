@@ -631,6 +631,29 @@ Validado → **desactivar** reglas. Go-live: `TEST_MODE=False` en ambas + **acti
 - **Riesgo de fricción acotado:** 743 líneas / $4.5M (17%) verían el bloqueo al confirmar. **Backlog actual: 106 POs en borrador** (no se bloquean hasta confirmar).
 - **Decisión de diseño (recomendada):** mantener **PO hard al confirmar** (es el comportamiento correcto y el 83% ya lo cumple); el **Bill es el backstop final** de todos modos. **Si compras empuja**, degradar SOLO la regla PO a **blanda** (detective n8n avisa, no bloquea) desactivando la Regla B — el Bill sigue duro y nada se fuga. Bajo costo de reversa.
 
+### 11.8 ✅ Resultados de la prueba (2026-06-16) — 5/5 PASADOS
+
+Validado end-to-end sobre **ZZ-PRUEBA A3 (2260)**, company 1, `TEST_MODE=True`:
+
+| Caso | Artefacto | Resultado | Detalle |
+|------|-----------|-----------|---------|
+| (a) Bill sin atribución | (draft descartado) | ✅ **bloqueó** | `UserError`, no posteó |
+| (b) Bill con plan 1 | BILL2765 | ✅ **posteó** | `{"576":100}` |
+| (c) Bill con plan 2 | BILL2766 | ✅ **posteó** | `{"636,1176":100}` **compuesta** |
+| (d) Bill real (UBER) | BILL2767 | ✅ **posteó** | `{"1176":100}` sin plan1/2/18; `TEST_MODE` lo excluye |
+| (e) PO bloquea→confirma | P06493 | ✅ **bloqueó→confirmó** | tras agregar `636` → `state=purchase` |
+
+- **Ambas reglas validadas** (Bill `account.move` + PO `purchase.order`). Mensaje `UserError` bien formado con nombre de orden + línea ("P06493 / Abanico RITTAL").
+- **Parsing de clave compuesta verificado en vivo** (A3 aceptó `{"636,1176"}` → 636∈plan2).
+- **Captura real intacta** (BILL2767 UBER posteó sin bloqueo).
+- **Subproducto A2:** BILL2766 prueba que el gesto misma-fila produce compuesto sin tooling (§12.5).
+
+**Estado: LISTO para go-live** (pendiente confirmación explícita de Esteban — NO ejecutado). Pasos:
+1. **Limpiar borradores de bill sin atribución** (company 1; eran 31/$301k — re-verificar conteo al momento).
+2. **`TEST_MODE=False`** en ambos server actions (Reglas `56`/`57`, actions `2432`/`2433`).
+3. (Opcional) afinar `filter_domain` con `move_type`/`company_id`; cancelar/archivar data de prueba (BILL2765, BILL2766, P06493 — el vendor ZZ-PRUEBA A3).
+4. Dejar **activas**. 🚨 Emergencia = desmarcar `Activo` (un clic).
+
 ### 11.7 Estado del build
 - **NO creado vía MCP** (deliberado): es el primer `base.automation` del sistema y bloquea toda la captura de gasto → se construye eyes-on en la UI (o MCP-create inactivo bajo confirmación explícita de Esteban). Todo verificado y turnkey arriba.
 - Pendiente al arrancar: crear proveedor de prueba + fijar `TEST_PARTNER_ID` + (opcional) extender a company 6 / PO mandatory ya incluido.
