@@ -796,6 +796,53 @@ CREATE sin `operation` explícito → `fieldsToCreateOrUpdate`; expresiones `={{
 3. **¿`date_to` = `date_order` + 1 año** exacto (cálculo en Code)? Confirmar.
 4. **¿Abrir el budget (`state='confirmed'`) o dejar `draft`?** (achieved computa igual). Sugerencia: confirmar, replicando AA2.
 
+### 14.9 ✅ DISEÑO FINAL de nodos (decisiones Esteban aplicadas) — PARA REVISIÓN, sin construir
+
+**Mapeo final (3 rubros, solo lo que tiene datos hoy):**
+| Rubro | Campo SO | Signo |
+|---|---|---|
+| 1171 Ingreso | `amount_untaxed` | +1 |
+| 1177 Mano de Obra | `x_studio_presupuesto_mano_de_obra` | −1 |
+| 1176 Materiales | `x_studio_monetary_field_vcA1E` | −1 |
+
+Comisiones/bonos/equipos: **NO** en este build (fase 2, se jalarán del machote). `x_studio_jose_luis` y `x_studio_presupuesto_de_equipos` descartados.
+
+**Topología: el budget es una RAMA PARALELA (side-branch) que cuelga de `Odoo - link SO`** — NO se intercala en el camino del email. Razón: el email necesita el contexto SO/proyecto aguas abajo; una rama paralela best-effort no lo perturba y un fallo del budget no rompe el correo. La rama usa **referencias explícitas `$('nodo').item.json`** (patrón §3) para sus datos.
+
+```
+Odoo - link SO ──┬──► Odoo - read PO file ──► Code - Build correo ──► HTTP - Enviar correo   (camino EXISTENTE, intacto)
+                 └──► [RAMA BUDGET nueva, best-effort]
+```
+
+**RAMA BUDGET — nodos (todos `onError: continueRegularOutput`):**
+
+0. **(editar nodo existente) `Odoo - getAll SO`** → agregar al `fieldsList`: `amount_untaxed`, `x_studio_presupuesto_mano_de_obra`, `x_studio_monetary_field_vcA1E`.
+
+1. **`Odoo - getAll budget (idempotencia)`** — model `budget.line`, `filterRequest [['account_id','=', AA_id]]`, `fieldsList ['id']`, limit 1. `AA_id = {{ $('Odoo - create analytic').item.json.id }}`. Si devuelve ≥1 → la AA ya tiene budget.
+
+2. **`Code - Gate budget`** — decide:
+   - **SKIP** (return `[]`, corta la rama sin tocar el email) si: (a) idempotencia devolvió ≥1 línea, **o** (b) `amount_untaxed <= 0`.
+   - **Procede:** emite 1 ítem con la cabecera + contexto: `name` (= nombre del proyecto), `date_from` (date-only de `date_order`), `date_to` (`date_order` + 1 año), `company_id` (`...company_id[0]`), `budget_type='both'`, y arrastra `AA_id` + los 3 montos + fechas.
+
+3. **`Odoo - create budget.analytic`** — create (`fieldsToCreateOrUpdate`): `name, date_from, date_to, company_id, budget_type`. Output → `budget_id`.
+
+4. **`Code - Build budget lines`** — arma array (1–3 ítems) recorriendo el mapeo; por cada rubro con `monto != 0`: `{budget_analytic_id: budget_id, account_id: AA_id, x_plan20_id: <rubro>, date_from, date_to, budget_amount: monto*signo}`. (Ingreso siempre sale por el gate `amount>0`; MO/Materiales solo si ≠0.)
+
+5. **`Odoo - create budget.line`** — create **item-based** (corre N veces, 1 línea por ítem), `fieldsToCreateOrUpdate`, many2one (`budget_analytic_id`/`account_id`/`x_plan20_id`) como **id entero**.
+
+6. **`Code - collapse`** — N→1, reemite 1 ítem con `budget_id`.
+
+7. **`Odoo - update budget.analytic (confirm)`** — update, `customResourceId = budget_id`, `state='confirmed'`. Fin de la rama.
+
+**Idempotencia (doble, responde a la pregunta de Esteban):**
+- **Primaria (heredada):** `getAll SO` filtra `x_studio_project_created = False` → una SO con proyecto creado NO se re-procesa → la rama budget corre **una sola vez por SO** (igual que proyecto/AA).
+- **Secundaria (explícita, lo pedido):** paso 1 (`getAll budget.line` por `account_id = AA`) evita duplicar si la AA ya tiene budget — protege re-proceso manual o corrida parcial previa. **Mismo criterio que la idempotencia de proyecto** (getAll project por RjLNg).
+- ⚠️ **Gap honesto:** como es best-effort y la idempotencia primaria marca la SO, si el budget falla en su única corrida, la SO queda con proyecto pero SIN budget y no se reintenta solo. Mitigación futura (fuera de este build): rama "backfill budget" que recorra SOs con proyecto sin budget (incluye los esqueletos −1 legacy).
+
+**Quirks n8n-Odoo aplicados (§3/§16):** create sin `operation` → `fieldsToCreateOrUpdate`; `customResource` a mano (`budget.analytic` / `budget.line`); expresiones `={{ }}` (un solo `=`); `Always Output Data` ON; many2one como id entero; signo calculado en el Code (no en el nodo Odoo).
+
+**A confirmar al construir (no bloquea el diseño):** (i) campo exacto del nombre del proyecto en el output de `create project`; (ii) que el nodo Odoo `update` escriba `state='confirmed'` (si no, dejar `draft` — achieved computa igual); (iii) formato date-only aceptado por `budget.analytic.date_from/to`.
+
 ---
 
-🤖 Mapa + A0 + A3 + build-spec + frente futuro + A1-diseño generados con [Claude Code](https://claude.com/claude-code) (read-only; A1 sin construir).
+🤖 Mapa + A0 + A3 + build-spec + frente futuro + A1-diseño-final generados con [Claude Code](https://claude.com/claude-code) (read-only; A1 sin construir).
