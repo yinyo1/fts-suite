@@ -118,6 +118,103 @@ Del snapshot diario: `%verde_mes = días-proyecto-en-verde / días-proyecto-tota
 
 ---
 
+## 5. v3 — Umbrales + integridad anti-manipulación + casos especiales (validado read-only 2026-06-17)
+
+> ⭐ **Resultado clave: TODO es viable solo-lectura. NADA requiere tocar código de Odoo** (el tracking necesario ya está activo). Único punto que *opcionalmente* tocaría Odoo = recrear un campo "materiales" limpio (§5.4, decisión Esteban — evitable).
+
+### 5.1 Umbrales (Esteban) — 🟡 = 90% del 🔴
+
+| Stage | Grupo | 🔴 EN STAGE | 🔴 SIN SEGUIMIENTO |
+|-------|-------|-------------|---------------------|
+| To Do (1) | Ops | 1 día | 1 día |
+| In Progress (2) | Ops | **DINÁMICO:** hoy > `project.date` | 2 días |
+| Hold (5) | Ops | 30 días | 7 días |
+| Done Operations (3) | Admin | 2 días | 1 día |
+| Admin - In progress (7) | Admin | 14 días | 1 día |
+| En plazo de credito (13) | Admin | **DINÁMICO (crédito)** | **DINÁMICO (crédito)** |
+| Complete (8) / Canceled (4) / Templates (6) | — | **EXCLUIDOS** | — |
+
+### 5.2 Dinámico "In Progress" — `project.project.date` ✅ validado
+- `project.date` ("Expiration Date", `ttype=date`, **`tracking=100`**) — poblado por **A1** desde `x_studio_fecha_fin_deseada` (verificado: proyecto 2347 = 2026-06-24). 🔴 = `hoy > project.date`.
+- **Fallback sin fecha** (propuesta): 🔴 a 30 días en stage **+** badge "⚠️ sin fecha fin" en el frontend (para que Comercial la cargue). Decisión Esteban.
+
+### 5.3 Dinámico "En plazo de credito" — términos de crédito ✅ validado
+- 🔴 = `fecha_entrada_stage` (último subtype-94 del chatter) **+** `días_credito` **+ 7**.
+- `días_credito` = `res.partner.property_payment_term_id` → `account.payment.term` → `line_ids.nb_days` (tomar el mayor si hay varias líneas).
+- **Probado:** Nalco (94) → término **`10 "60 Days FTS 2024"`** → `nb_days=60` → 🔴 a **67 días**. Budenheim (815) → **sin término** → **fallback** (propuesta **30+7=37**, decisión Esteban).
+
+### 5.4 ⭐ Integridad anti-manipulación — DETECTABLE read-only (cero cambios a Odoo)
+
+`project.date` y `stage_id` tienen **`tracking=100`** → Odoo ya loguea cada cambio en `mail.message` (autor + fecha) + `mail.tracking.value` (old/new). El watchdog SOLO LEE.
+
+**(#3) Manipulación de FECHA FIN** — `mail.tracking.value` `[field_id=24700]` (project.date) → `mail_message_id` → `author_id` + `date`. **65 cambios ya registrados** (estructura verificada). Regla: **flag si el autor NO ∈ whitelist Comercial** (y `old_value` ≠ false = edición real, no el set inicial).
+- ⚠️ **TRAMPA DE USUARIOS CONFIRMADA:** `ventas@fts.mx` = **user 6 "OPERACIONES FTS-YIN"** (partner **12**) = **OPERACIONES** (NO comercial, pese al correo "ventas"). `montalvo@fts.mx` = **user 12 "Sales FTS"** (partner **306**) = **Montalvo = COMERCIAL**. ⇒ **whitelist por partner/user id, NUNCA por email.** Comercial confirmado: partner **306** (Montalvo). **Decisión Esteban: lista completa de comercial** (¿quién más?).
+
+**(#4) Reseteo de STAGE hacia atrás** — `mail.tracking.value` `[field_id=24714]` (stage_id) da `old_value_integer`/`new_value_integer` (ej. real `13→8`) + el `mail_message_id` da el autor. Regla: **flag si `sequence(new_stage) < sequence(old_stage)`** (movimiento hacia atrás) + reporta autor y de→hacia. Cero cambios a Odoo.
+
+### 5.5 Caso "PURA VENTA DE MATERIALES" — ⚠️ el campo exacto no existe hoy
+- **NO hay** un campo Studio con valores literales "proyecto/materiales". Lo que existe en `sale.order`:
+  - `x_studio_product_type` "Product Type" — **bien poblado**: `Servicio` 6658 · `Flete realizado` 2820 · `MRO` 401 · `Terciada` 62 · `PO Generation` 44 · `Comision Cristian` 5 · (vacío 375).
+  - `x_studio_business_unit` — casi vacío (96 de ~10,365): Automatización/Electromecanico/Mantenimiento/Product. **No sirve.**
+- **Propuesta (cero Odoo):** categorizar el proyecto vía `project.sale_order_id` → `SO.x_studio_product_type`, con **mapping configurable** de qué valores = "materiales" (candidatos: `MRO`, `Terciada`, `PO Generation`). 
+- **DECISIÓN Esteban:** (a) usar `x_studio_product_type` con mapping (read-only, recomendado), **o** (b) recrear un campo limpio `tipo: proyecto/materiales` (esto SÍ toca Studio/Odoo).
+- Umbrales agresivos materiales: **To Do 1 día, In Progress 1 día**. **Sub-semáforo separado** (impacta Compras + Ops), medido aparte.
+
+### 5.6 Jornada hábil + cadencia (n8n puro, cero Odoo)
+- **Días hábiles:** Code node en n8n. Si el cambio entró **> 17:00** o en **sábado/domingo** → el reloj arranca el **próximo día hábil 8 AM**. `días` = días hábiles transcurridos (excluye sáb/dom). **Decisión:** ¿agregar calendario de festivos MX? (por ahora no).
+- **Cadencia:** watchdog corre **días hábiles, 8 AM CST** (Schedule n8n). **Ops:** correo **diario + semanal**. **KPI %cumplimiento:** **semanal** (con el semáforo semanal). **Mensual** al cierre.
+- **Destinatario:** **`estebandelacruz@fts.mx`** (modo prueba), **parametrizable por área** en el config (Ops/Admin después).
+
+### 5.7 `shared/operaciones/sla_stages.json` — estructura propuesta
+```json
+{
+  "config": {
+    "alert_recipient_default": "estebandelacruz@fts.mx",
+    "watchdog_author_partner_id": 2,
+    "comercial_whitelist_partner_ids": [306],
+    "materiales_field": "x_studio_product_type",
+    "materiales_values": ["MRO", "Terciada", "PO Generation"],
+    "credit_fallback_days": 30, "credit_extra_days": 7,
+    "in_progress_fallback_dias": 30,
+    "business_day_cutoff_hour": 17, "amarillo_pct": 0.9
+  },
+  "stages": {
+    "1":  { "label": "To Do", "grupo": "Operaciones",
+            "en_stage": { "rojo_dias": 1 }, "sin_seguimiento": { "rojo_dias": 1 } },
+    "2":  { "label": "In Progress", "grupo": "Operaciones",
+            "en_stage": { "modo": "due_date", "campo": "project.date" }, "sin_seguimiento": { "rojo_dias": 2 } },
+    "5":  { "label": "Hold", "grupo": "Operaciones",
+            "en_stage": { "rojo_dias": 30 }, "sin_seguimiento": { "rojo_dias": 7 } },
+    "3":  { "label": "Done Operations", "grupo": "Admin",
+            "en_stage": { "rojo_dias": 2 }, "sin_seguimiento": { "rojo_dias": 1 } },
+    "7":  { "label": "Admin - In progress", "grupo": "Admin",
+            "en_stage": { "rojo_dias": 14 }, "sin_seguimiento": { "rojo_dias": 1 } },
+    "13": { "label": "En plazo de credito", "grupo": "Admin",
+            "en_stage": { "modo": "credito" }, "sin_seguimiento": { "modo": "credito" } }
+  },
+  "materiales_overrides": { "1": { "en_stage": { "rojo_dias": 1 } }, "2": { "en_stage": { "rojo_dias": 1 } } },
+  "excluidos": [8, 4, 6],
+  "integridad": { "fecha_fin_field_id": 24700, "stage_field_id": 24714 }
+}
+```
+
+### 5.8 Arquitectura del watchdog (actualizada)
+Cron días-hábiles 8 AM → (1) lee proyectos vigilados + `sale_order_id` + `project.date` + `last_update_status`; (2) **métrica A** vía último subtype-94 (con jornada hábil); (3) **métrica B** vía último `comment` no-bot; (4) **dinámicos:** In Progress vs `project.date`, En plazo de credito vs término del cliente; (5) **color** = peor de A/B (+ overrides materiales + `last_update_status`); (6) **banderas anti-manip:** lee `mail.tracking.value` (date/stage) → autor no-comercial / stage-atrás; (7) **🔴 → correo** al responsable (+ banderas como sección aparte "posible manipulación"); (8) **log note** al chatter (`message_type='notification'`); (9) **snapshot** → KPI %verde semanal/mensual. Cadencia diaria/semanal/mensual.
+
+### 5.9 Viable read-only vs requiere Odoo
+| Necesidad | ¿Read-only? | Notas |
+|-----------|:-----------:|-------|
+| 2 métricas (stage / seguimiento) | ✅ | chatter (subtype 94 / comment) |
+| Dinámico In Progress | ✅ | `project.date` (tracked, poblado A1) |
+| Dinámico crédito | ✅ | `property_payment_term_id.nb_days` |
+| Anti-manip fecha fin | ✅ | `mail.tracking.value` 24700 + autor (tracking ya activo) |
+| Anti-manip stage atrás | ✅ | `mail.tracking.value` 24714 + sequence |
+| Jornada hábil / cadencia | ✅ | n8n puro |
+| Log note al chatter | ✅ | CREATE `mail.message` (write mínima, ya validado) |
+| **Campo "materiales" limpio** | ⚠️ | **NO existe**; usar `x_studio_product_type` (read-only) **o** recrear (toca Studio) → **decisión** |
+
+---
+
 ## 4. Para construir (cuando se apruebe)
 1. `shared/operaciones/sla_stages.json` (stages reales + 2 umbrales/métrica + responsables).
 2. `ops/watchdog-semaforo` (n8n cron: 2 métricas vía chatter + color + correo 🔴 + log note + snapshot).
