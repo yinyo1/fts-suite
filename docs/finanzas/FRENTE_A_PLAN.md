@@ -586,18 +586,18 @@ for po in records:
 **Regla A (Bills):**
 1. **Nombre:** `A3 — Atribucion obligatoria (Bills MX)`.
 2. **Modelo:** `Asiento contable` (`account.move`).
-3. **Disparador:** `Al guardar` / "Al crear y actualizar" (`on_create_or_write`).
-4. **Dominio antes de actualizar** (filter_pre_domain): `[("state","!=","posted")]`.
-5. **Aplicar en** (dominio): `[("move_type","in",["in_invoice","in_refund"]),("company_id","=",1),("state","=","posted")]`.
-   → así dispara **solo en la transición a posteado** (no en pagos/escrituras posteriores).
-6. **Acciones a realizar → Agregar → Tipo: `Ejecutar código`** → pegar el código Regla A.
-7. **Guardar** y **desmarcar `Activo`** (dejar INACTIVO).
+3. **Disparador:** **`El estado se establece en → Posteado`** (`on_state_set`, campo `state` → `posted`). ⬅ trigger síncrono validado en Frente B (NO `on_create_or_write`). Dispara **exactamente al postear**, no en ediciones del borrador.
+4. **Aplicar en** (dominio): `[("move_type","in",["in_invoice","in_refund"]),("company_id","=",1)]`.
+5. **Acciones a realizar → Agregar → Tipo: `Ejecutar código`** → pegar el código Regla A.
+6. **Guardar** y **desmarcar `Activo`** (dejar INACTIVO).
 
 **Regla B (POs):** igual con:
 - **Modelo:** `Orden de compra` (`purchase.order`).
-- **Dominio antes de actualizar:** `[("state","!=","purchase")]`.
-- **Aplicar en:** `[("state","=","purchase"),("company_id","=",1)]`.
+- **Disparador:** **`El estado se establece en → Orden de compra`** (`on_state_set`, `state` → `purchase`).
+- **Aplicar en:** `[("company_id","=",1)]`.
 - Código Regla B. Guardar **INACTIVO**.
+
+> **Por qué `on_state_set` y no `on_create_or_write`+pre_domain:** ambos son síncronos y el `raise` revierte, pero `on_state_set` es el patrón **preciso y validado en esta instancia** (Frente B): dispara **solo en la transición de estado** (draft→posted / draft→purchase), nunca en ediciones de borrador ni en escrituras posteriores al asiento ya posteado (pagos, conciliación). El código además re-verifica `state` defensivamente — inofensivo. (El `on_create_or_write` requería `filter_pre_domain` para emular lo mismo y tenía bordes con create-as-posted vía import.)
 
 ### 11.4 Plan de prueba (4 casos, sobre el proveedor de prueba)
 Prep: crear proveedor `ZZ-PRUEBA A3`, poner su id en `TEST_PARTNER_ID`, `TEST_MODE=True`, **activar** ambas reglas.
@@ -615,7 +615,23 @@ Validado → **desactivar** reglas. Go-live: `TEST_MODE=False` en ambas + **acti
 ### 11.5 🚨 Salida de emergencia
 **Desmarcar `Activo`** en la Automation Rule (un clic, Ajustes → Técnico → Automatización) → desactiva el candado al instante, global. (Equivale al `TEST_MODE`/toggle del Frente B.) Reversión total: no deja rastro en los asientos ya posteados.
 
-### 11.6 Estado del build
+### 11.6 ⚠️ Verificaciones pre-build (2026-06-16)
+
+**(1) Trigger Bills — confirmado `on_state_set` → Posteado.** Es síncrono y el `raise` revierte el post (rollback de la transacción de `action_post`). Dispara **exactamente al postear**, **no** en cada edición del borrador (un borrador conserva `state=draft` → no dispara) ni al reescribir un asiento ya posteado (pagos/conciliación no re-setean `state` a posted). Es el patrón validado en Frente B; §11.3 ya actualizado a este trigger. ✅
+
+**(2) PO — momento de la atribución (¿secuencia correcta?).** Medido en POs **confirmadas** (company 1, 12m, líneas de producto):
+
+| | líneas | $ subtotal | % |
+|--|------:|-----------:|--:|
+| **CON** analítica al confirmar | 3,450 | $17,253,673 | **82.7 %** |
+| **SIN** analítica al confirmar | 743 | $4,496,225 | 17.3 % |
+
+- **El hábito dominante YA es atribuir-antes-de-confirmar** (83%). El candado de PO al confirmar está **alineado** con el flujo real para la gran mayoría.
+- **Matiz importante:** el candado NO impide atribuir — exige que la analítica esté **presente en el momento del confirm** (misma pantalla de la PO). Para los que hoy confirman-y-luego-atribuyen, es un **reordenamiento de un paso** (poner analítica antes de clic Confirmar), no una ruptura de flujo. Y ese 17% ($4.5M) es justo el hábito que A3 quiere corregir.
+- **Riesgo de fricción acotado:** 743 líneas / $4.5M (17%) verían el bloqueo al confirmar. **Backlog actual: 106 POs en borrador** (no se bloquean hasta confirmar).
+- **Decisión de diseño (recomendada):** mantener **PO hard al confirmar** (es el comportamiento correcto y el 83% ya lo cumple); el **Bill es el backstop final** de todos modos. **Si compras empuja**, degradar SOLO la regla PO a **blanda** (detective n8n avisa, no bloquea) desactivando la Regla B — el Bill sigue duro y nada se fuga. Bajo costo de reversa.
+
+### 11.7 Estado del build
 - **NO creado vía MCP** (deliberado): es el primer `base.automation` del sistema y bloquea toda la captura de gasto → se construye eyes-on en la UI (o MCP-create inactivo bajo confirmación explícita de Esteban). Todo verificado y turnkey arriba.
 - Pendiente al arrancar: crear proveedor de prueba + fijar `TEST_PARTNER_ID` + (opcional) extender a company 6 / PO mandatory ya incluido.
 
