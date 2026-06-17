@@ -929,6 +929,17 @@ Plan elegido por Esteban: construir sobre un **duplicado desechable**, NO tocar 
 - ⚠️ **Post-import (quirk §3):** la importación por UI suele **blanquear `customResource`** en los nodos Odoo y **desasignar credenciales**. Revisar/rellenar en los nodos Odoo (existentes + 7 nuevos): `customResource` (`budget.line`/`budget.analytic`/`sale.order`/`account.analytic.account`/`project.project`) + credencial **Odoo FTS**. (Esto se hace en la revisión nodo-por-nodo de todos modos.)
 - Probar con una SO de prueba; producción no se toca hasta validar y portar.
 
+### 14.12 Validación read-only del duplicado importado (2026-06-17)
+
+Duplicado **`u7Ni2cRAxu3zfBid`** ("crear-proyecto-al-confirmar - BUDGET DEV"), **inactivo**, **28 nodos**. Validado vía MCP read-only.
+
+- **(2) Integridad 21 originales:** ✅ params/logic intactos (getAll SO, Code Gate+prep, create analytic, create project, link SO, read PO, Build correo, HTTP Graph, error-handling). El generador ya verificó deep-equal vs fuente; la inspección del importado confirma `customResource`, credenciales, jsCode y expresiones intactos.
+- **(3) 7 nodos budget — el quirk de import NO golpeó:** ✅ TODOS con `customResource` correcto (`budget.line`/`budget.analytic`), credencial **Odoo FTS** asignada, operations correctas (create SIN operation; `update` CON `operation:update`+`customResourceId`), expresiones `={{ }}` intactas, `onError:continueRegularOutput` + `alwaysOutputData:true`, y el jsCode de Gate/Build lines/collapse **completo**.
+- **(4) Conexiones:** ✅ `link SO` → 2 salidas (`read PO file` + `getAll budget`); cadena budget 1→2→3→4→5→6→7 (dead-end, `update confirm` sin salida).
+- **Normalizaciones cosméticas del import (NO afectan lógica):** ids de nodo regenerados (uuid); Schedule perdió `minutesInterval:5` (irrelevante — NO activar el schedule del DEV); getAll budget normalizó `returnAll`/`limit:1` (la idempotencia funciona igual: `items.some(i=>i.json.id)`).
+- **(5) Checklist manual:** ✅ **NADA que re-llenar** — customResource y credenciales se preservaron. (Opcional: re-añadir `limit:1` en getAll budget por eficiencia.)
+- ⚠️ **Caveat de prueba:** ejecutar el DEV hace **writes REALES a Odoo producción** (crea proyecto + analítica + budget) y **envía correo real** a `newordersnotification@fts.mx`. Probar con SO desechable y/o desactivar temporalmente el nodo email; limpiar el proyecto/budget de prueba después. NO activar el workflow (ejecutar manual / Webhook Test).
+
 ---
 
 🤖 Mapa + A0 + A3 + build-spec + frente futuro + A1-diseño-final + A1-build-spec generados con [Claude Code](https://claude.com/claude-code) (A1 validado, build por UI/under review).
