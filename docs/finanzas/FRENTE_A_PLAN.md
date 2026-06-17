@@ -947,6 +947,19 @@ Para que el correo de prueba llegue a Esteban y no a la bandeja real. **Solo en 
 - 🔁 **PENDIENTE DE REVERTIR AL PORTAR A PRODUCCIÓN:** el destinatario en producción debe ser **`newordersnotification@fts.mx`**. Al portar la rama budget a `XhuTlvPKDBjkDeso`, NO arrastrar este cambio de destinatario.
 - Producción `XhuTlvPKDBjkDeso` **NO se tocó** (el intento MCP apuntó solo al id del DEV y falló; nada cambió).
 
+### 14.14 Prueba DEV validada (SO11760) + 2 bugs de campos a corregir (2026-06-17)
+
+**✅ Budget creado correcto (end-to-end).** SO11760 → budget.analytic **390** ("SO11760 - prueba dev - Budenheim Mexico"): `date_from 2026-06-17` / `date_to 2027-06-17` (+1 año), `company_id 1`, `budget_type both`, `state confirmed`. 3 líneas (cuenta analítica 3080): **1171 Ingreso +100**, **1177 Mano de Obra −1000**, **1176 Materiales −1000**. Signos correctos. La rama budget funciona.
+
+**BUG 1 — `create analytic` sin `partner_id` (Customer).** Hoy manda solo `name`+`plan_id`. `account.analytic.account.partner_id` existe (`many2one res.partner`, "Customer"). **FIX:** agregar campo `partner_id` = `={{ $('Code - Gate + prep').item.json.partner_id }}` (mismo dato que ya usa `create project`).
+
+**BUG 2 — `create project` sin fechas planeadas.** Hoy no manda fechas. `project.project`: `date_start` (date, "Start Date") + `date` (date, "Expiration Date"). El `getAll SO` ya trae `x_studio_fecha_inicio_deseada`+`x_studio_fecha_fin_deseada`. **FIX:** agregar al `create project`:
+- `date_start` = `={{ $('Loop Over SOs').item.json.x_studio_fecha_inicio_deseada }}`
+- `date` = `={{ $('Loop Over SOs').item.json.x_studio_fecha_fin_deseada }}`
+- (watch-item: fechas vacías → Odoo las deja sin fecha; si diera error por string vacío, guardar con `|| ''`.)
+
+> ⚠️ Ambos bugs viven también en **producción** (`create analytic`/`create project`) — al portar la rama budget, incluir estos 2 fixes. Ediciones al DEV por UI (MCP bloqueado §16). **Limpiar después de la prueba:** budget 390 + cuenta analítica 3080 + proyecto SO11760 + resetear `x_studio_project_created` en SO11760.
+
 ---
 
 🤖 Mapa + A0 + A3 + build-spec + frente futuro + A1-diseño-final + A1-build-spec generados con [Claude Code](https://claude.com/claude-code) (A1 validado, build por UI/under review).
