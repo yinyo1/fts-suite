@@ -940,6 +940,13 @@ Duplicado **`u7Ni2cRAxu3zfBid`** ("crear-proyecto-al-confirmar - BUDGET DEV"), *
 - **(5) Checklist manual:** ✅ **NADA que re-llenar** — customResource y credenciales se preservaron. (Opcional: re-añadir `limit:1` en getAll budget por eficiencia.)
 - ⚠️ **Caveat de prueba:** ejecutar el DEV hace **writes REALES a Odoo producción** (crea proyecto + analítica + budget) y **envía correo real** a `newordersnotification@fts.mx`. Probar con SO desechable y/o desactivar temporalmente el nodo email; limpiar el proyecto/budget de prueba después. NO activar el workflow (ejecutar manual / Webhook Test).
 
+### 14.13 DEV — redirigir correo de prueba (2026-06-17)
+
+Para que el correo de prueba llegue a Esteban y no a la bandeja real. **Solo en el DEV `u7Ni2cRAxu3zfBid`.** `update_partial` rechazado por la instancia (§16) → edición **manual en la UI**:
+- Nodo **`Code - Build correo`** → en el jsCode, cambiar `newordersnotification@fts.mx` → `estebandelacruz@fts.mx` (única ocurrencia, en `toRecipients:[{ emailAddress:{ address:'…' } }]`). Guardar (sin activar).
+- 🔁 **PENDIENTE DE REVERTIR AL PORTAR A PRODUCCIÓN:** el destinatario en producción debe ser **`newordersnotification@fts.mx`**. Al portar la rama budget a `XhuTlvPKDBjkDeso`, NO arrastrar este cambio de destinatario.
+- Producción `XhuTlvPKDBjkDeso` **NO se tocó** (el intento MCP apuntó solo al id del DEV y falló; nada cambió).
+
 ---
 
 🤖 Mapa + A0 + A3 + build-spec + frente futuro + A1-diseño-final + A1-build-spec generados con [Claude Code](https://claude.com/claude-code) (A1 validado, build por UI/under review).
