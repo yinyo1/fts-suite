@@ -962,6 +962,8 @@ Para que el correo de prueba llegue a Esteban y no a la bandeja real. **Solo en 
 
 **Catch en validación (2026-06-17):** al aplicar los 3 campos nuevos en la UI quedaron con **doble `==`** (`=={{ … }}`) — el bug clásico §3 (pegar `={{}}` en campo ya-Expression antepone otro `=`). Hay que dejarlos en `={{ … }}` simple: `partner_id` (create analytic) + `date_start`/`date` (create project). customResource y credenciales OK en ambos nodos.
 
+**✅ Fixes validados e2e (prueba SO11759, 2026-06-17):** los 3 campos corregidos a `={{ }}` simple → corrida limpia. AA **3081** con `partner_id=Budenheim Mexico` ✅; proyecto **2347** con `date_start=2026-06-17`+`date=2026-06-24` (fechas handoff) ✅; budget **391** (+1 año, both, confirmed) + 3 líneas (Ingreso +18000 / MO −1000 / Materiales −10000) ✅. **DEV completo y validado.** Pendiente: limpiar data de prueba (SO11759: AA 3081/proyecto 2347/budget 391; SO11760: AA 3080/budget 390 + sus proyectos; resetear `x_studio_project_created`) y **portar a producción** (incluir: rama budget + fix partner_id en create analytic + fix date_start/date en create project; revertir destinatario correo a `newordersnotification@fts.mx`).
+
 ---
 
 🤖 Mapa + A0 + A3 + build-spec + frente futuro + A1-diseño-final + A1-build-spec generados con [Claude Code](https://claude.com/claude-code) (A1 validado, build por UI/under review).
