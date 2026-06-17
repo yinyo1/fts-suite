@@ -688,4 +688,21 @@ Validado end-to-end sobre **ZZ-PRUEBA A3 (2260)**, company 1, `TEST_MODE=True`:
 
 ---
 
-🤖 Mapa + A0 + A3 + build-spec + hallazgo auto-default generados con [Claude Code](https://claude.com/claude-code) (read-only, sin cambios a Odoo ni workflows).
+## 13. Frente futuro — simplificación estructural de planes analíticos (PENDIENTE Esteban)
+
+> Decisión registrada durante el go-live de A3 (2026-06-16): se eligió la **opción (a)** — `OK_ROOTS` ampliado a `{1,18,2,5,8,11,13}` (A3 acepta planes de costo legítimos Assets/Combustible/Inmuebles/Flota; solo bloquea rubro-solo o sin atribución). **Esto NO avala que esos planes deban existir** — los acepta temporalmente. La reestructura es su propio frente.
+
+**Visión objetivo — modelo de DOS ejes limpios:**
+- **Eje 1 — objeto de costo:** directo a proyecto (**plan 1 MX / 18 USA**) **O** indirecto (**plan 2**). Idealmente **multicompany** (un solo eje proyecto que sirva MX y USA, en vez de plan 1 + plan 18 separados).
+- **Eje 2 — rubro / naturaleza:** **plan 20** (material / mano de obra / comisión / ingreso / utilidad). **SÍ debe existir separado** — arma el **estado de resultados por naturaleza de costo dentro de cada proyecto** (el budget 2-ejes proyecto×rubro depende de él).
+
+**Sospecha a investigar:** los planes **5 (Assets), 8 (Combustible), 11 (Inmuebles), 13 (Flota)** podrían estar **de más** — candidatos a **colapsarse como CUENTAS dentro del plan 2 (indirecto)** o moverse a GL, **no como planes propios**. Pista: **Combustible ya existe como cuenta `509` dentro del plan 2** (duplicado con el plan 8). Es decir, hay solape entre "planes de costo" y "cuentas de centro de costo".
+
+**Pendiente (su propio frente, NO ahora):**
+- Diagnóstico read-only futuro: qué son realmente los planes 5/8/11/13, cuánto gasto tienen, qué tan usados, y costo/riesgo de colapsarlos + de hacer el eje proyecto multicompany.
+- ⚠️ **Reestructura de ALTO riesgo:** tocar `root_plan_id` / re-parentar / mover cuentas entre planes afecta el **histórico de `analytic.line`** (columnas por plan) y la **lectura del budget** (`account_id` = eje proyecto, `x_plan20_id` = rubro). Mismo riesgo que la Opción B descartada en §10.2.
+- Cuando se aborde y se limpien 5/8/11/13, **revisar `OK_ROOTS` de A3** (Reglas 56/57) para quitar los planes colapsados.
+
+---
+
+🤖 Mapa + A0 + A3 + build-spec + hallazgo auto-default + frente futuro generados con [Claude Code](https://claude.com/claude-code) (read-only salvo el go-live A3 paso a paso).
