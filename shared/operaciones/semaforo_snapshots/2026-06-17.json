@@ -1,0 +1,12 @@
+{
+  "fecha": "2026-06-17",
+  "total": 1,
+  "por_color": {
+    "undefined": 1
+  },
+  "proyectos": [
+    {
+      "error": "Cannot read properties of undefined (reading 'comercial_whitelist_partner_ids') [line 4]"
+    }
+  ]
+}
