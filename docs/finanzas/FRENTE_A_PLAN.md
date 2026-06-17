@@ -960,6 +960,8 @@ Para que el correo de prueba llegue a Esteban y no a la bandeja real. **Solo en 
 
 > ⚠️ Ambos bugs viven también en **producción** (`create analytic`/`create project`) — al portar la rama budget, incluir estos 2 fixes. Ediciones al DEV por UI (MCP bloqueado §16). **Limpiar después de la prueba:** budget 390 + cuenta analítica 3080 + proyecto SO11760 + resetear `x_studio_project_created` en SO11760.
 
+**Catch en validación (2026-06-17):** al aplicar los 3 campos nuevos en la UI quedaron con **doble `==`** (`=={{ … }}`) — el bug clásico §3 (pegar `={{}}` en campo ya-Expression antepone otro `=`). Hay que dejarlos en `={{ … }}` simple: `partner_id` (create analytic) + `date_start`/`date` (create project). customResource y credenciales OK en ambos nodos.
+
 ---
 
 🤖 Mapa + A0 + A3 + build-spec + frente futuro + A1-diseño-final + A1-build-spec generados con [Claude Code](https://claude.com/claude-code) (A1 validado, build por UI/under review).
