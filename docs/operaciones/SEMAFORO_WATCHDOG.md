@@ -314,7 +314,16 @@ return out;
 ```
 > ⚠️ Nota de revisión: `p.create_date` y la fecha "hoy" — conviene inyectar la fecha del watchdog vía `args`/Set para reproducibilidad; los reads de project deben incluir `create_date`. La métrica A `due_date` (In Progress) compara `project.date < hoy` directo; las demás usan días hábiles vs umbral.
 
-### 6.3 Pendientes del build (siguientes piezas)
+### 6.3 ✅ Watchdog GENERADO (2026-06-17) — listo para importar por UI
+
+- **Generador:** `scripts/local/gen-watchdog.js` (gitignored). **Salida:** `scripts/local/watchdog-semaforo.json` (gitignored) — **27 nodos, JSON válido, 0 conexiones rotas, 10 nodos Odoo con `customResource`+credencial Odoo FTS**.
+- **3er control AP incluido** (stage 13): lee `Odoo - getAll msgComment` (con `body`+`attachment_ids`) + `Odoo - getAll attachments` (`mimetype`) → en `Code - MAIN`: busca un comment con el template (`config.ap_confirmacion.template`, normalizado sin acentos/case) **Y** un adjunto `image/*`; si falta → bandera `ap_sin_confirmacion`. **Control de PRESENCIA, no de contenido.** 🔮 **OCR = refinamiento futuro** (leer/validar el contenido del pantallazo) — no en este build.
+- **Importar:** n8n UI → Import from File → `watchdog-semaforo.json` → crea **`ops/watchdog-semaforo`** INACTIVO.
+- ⚠️ **Post-import (quirk §3):** revisar en los 10 nodos Odoo que `customResource` no se haya blanqueado + credencial **Odoo FTS** asignada. Para **`HTTP - PUT snapshot (GitHub)`**: asignar credencial **Header Auth "GitHub FTS Suite"** (el id va como `REEMPLAZAR`). 
+- **Probar:** ejecutar con el **Manual Trigger** (no activar). Hace reads + escribe **log notes** reales al chatter (best-effort) + **snapshot** a `shared/operaciones/semaforo_snapshots/<fecha>.json`. Revisar la salida de `Code - MAIN` (colores, días, banderas) antes de activar.
+- **Nota de patrón n8n:** cadena lineal con nodos "collapse" (`Code - col*` que devuelven 1 ítem) para que cada lectura Odoo corra UNA vez; `Code - MAIN` referencia cada lectura con `$('nodo').all()`. La fecha "hoy" se inyecta vía `Set - hoy` (`$now.toISO()`).
+
+### 6.4 Pendientes del build (siguientes piezas)
 - #3 workflow correo (digest 🔴/🟡 + sección "posible manipulación", diario/semanal/mensual, idempotencia staticData).
 - #4 `ops/semaforo` (webhook GET → grilla JSON + KPI).
 - #5 frontend `operaciones/semaforo/`.

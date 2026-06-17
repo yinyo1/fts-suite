@@ -23,6 +23,13 @@
     "excluir_findes": true,
     "festivos_mx": [],
     "amarillo_pct": 0.9,
+    "in_progress_amarillo_dias_habiles": 3,
+    "ap_confirmacion": {
+      "_descripcion": "3er control de integridad SOLO stage 13. Control de PRESENCIA (existe evidencia), NO de contenido (no se lee la imagen). OCR = refinamiento futuro.",
+      "template": "CONFIRMACIÓN AP CLIENTE - en plazo de pago",
+      "requiere_imagen": true,
+      "aplica_stages": [13]
+    },
     "cadencia": { "watchdog": "dias_habiles_8am_cst", "ops": ["diario", "semanal"], "kpi_cumplimiento": "semanal", "cierre": "mensual" }
   },
   "stages": {
