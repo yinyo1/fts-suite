@@ -477,4 +477,148 @@ Con la estructura de columnas confirmada, el daño es concreto, no vago:
 
 ---
 
-🤖 Mapa + A0 + A3 (+ revisión plan 2) generados con [Claude Code](https://claude.com/claude-code) (deep-search read-only, sin cambios a Odoo ni workflows).
+## 11. A3 — Build spec del candado duro (constraint "plan1/18 O plan2") · 2026-06-16
+
+> Decisión Esteban: **candado duro en Bill Y PO, mandatory día 1, company 1 (MX)**. Esta sección es el artefacto construible. **Se crea INACTIVO.** Es la **primera Automation Rule del sistema** (`base.automation` estaba vacío) y gobierna TODA la captura de gasto → se construye con TEST_MODE y salida de emergencia.
+
+### 11.0 Datos verificados (turnkey)
+- `base.automation`: **0 reglas existentes**; enlaza código vía `action_server_ids`. `ir.model`: **account.move = 210**, **purchase.order = 1123**.
+- `account.analytic.account.root_plan_id` existe → se valida por plan **raíz** (robusto ante cuentas nuevas; NO hardcodear ids de cuenta).
+- Planes OK = **{1 proyecto MX, 18 proyecto USA, 2 indirecto}**.
+
+### 11.1 ⭐ TEST_MODE recomendado (Q4) — el subconjunto más seguro
+
+**Proveedor de prueba dedicado.** Es el único subconjunto con **CERO impacto en captura real**: la regla solo evalúa bills/POs de ese proveedor; todo lo demás pasa intacto. (Un prefijo GL o categoría afectaría bills reales → descartado.) Patrón idéntico al `TEST_MODE` del Frente B: constante `TEST_MODE=True` + `TEST_PARTNER_ID` en el código; **go-live = `TEST_MODE=False`** (un cambio de línea).
+
+- Crear proveedor `ZZ-PRUEBA A3 (atribución)` (tipo proveedor). Poner su id en `TEST_PARTNER_ID`.
+- Doble red: la regla además nace **`active=False`**; durante la prueba se activa, se corren los 4 casos sobre el proveedor de prueba, se desactiva.
+
+### 11.2 Código Python FINAL
+
+**Regla A — Bills (`account.move`):**
+```python
+# A3 — Atribución analítica obligatoria. Cada línea de producto debe llevar
+# PROYECTO (plan 1/18) O CENTRO DE COSTO (plan 2). Si no -> raise (rollback del post).
+TEST_MODE = True            # <-- go-live: poner False
+TEST_PARTNER_ID = 0         # <-- id del proveedor ZZ-PRUEBA A3
+OK_ROOTS = {1, 18, 2}       # plan1 MX, plan18 USA, plan2 indirecto
+OK_COMPANIES = {1}          # MX primero; agregar 6 para USA
+
+def _acct_ids(dist):
+    out = set()
+    if dist:
+        for k in dist:                       # claves simples "1176" o compuestas "3034,1176"
+            for p in str(k).split(','):
+                p = p.strip()
+                if p.isdigit():
+                    out.add(int(p))
+    return out
+
+for move in records:
+    if move.company_id.id not in OK_COMPANIES:        continue
+    if move.move_type not in ('in_invoice', 'in_refund'): continue
+    if move.state != 'posted':                        continue
+    if TEST_MODE and move.partner_id.id != TEST_PARTNER_ID: continue
+    faltantes = []
+    for line in move.invoice_line_ids:
+        if line.display_type in ('line_section', 'line_note'):
+            continue
+        ids = _acct_ids(line.analytic_distribution)
+        ok = False
+        if ids:
+            accs = env['account.analytic.account'].browse(list(ids)).exists()
+            ok = any(a.root_plan_id.id in OK_ROOTS for a in accs)
+        if not ok:
+            faltantes.append(line.name or '(linea sin nombre)')
+    if faltantes:
+        raise UserError(
+            u"Falta atribucion: asigna PROYECTO (plan 1/18) o CENTRO DE COSTO (plan 2) "
+            u"a cada linea antes de validar.\n\nLineas sin atribuir en %s:\n- %s"
+            % (move.name or 'la factura', u"\n- ".join(faltantes))
+        )
+```
+
+**Regla B — Purchase Orders (`purchase.order`):** idéntica salvo el bucle y el estado:
+```python
+TEST_MODE = True
+TEST_PARTNER_ID = 0
+OK_ROOTS = {1, 18, 2}
+OK_COMPANIES = {1}
+
+def _acct_ids(dist):
+    out = set()
+    if dist:
+        for k in dist:
+            for p in str(k).split(','):
+                p = p.strip()
+                if p.isdigit():
+                    out.add(int(p))
+    return out
+
+for po in records:
+    if po.company_id.id not in OK_COMPANIES:          continue
+    if po.state != 'purchase':                        continue   # orden confirmada
+    if TEST_MODE and po.partner_id.id != TEST_PARTNER_ID: continue
+    faltantes = []
+    for line in po.order_line:
+        if line.display_type:                          # secciones/notas
+            continue
+        ids = _acct_ids(line.analytic_distribution)
+        ok = False
+        if ids:
+            accs = env['account.analytic.account'].browse(list(ids)).exists()
+            ok = any(a.root_plan_id.id in OK_ROOTS for a in accs)
+        if not ok:
+            faltantes.append(line.name or '(linea sin nombre)')
+    if faltantes:
+        raise UserError(
+            u"Falta atribucion: asigna PROYECTO (plan 1/18) o CENTRO DE COSTO (plan 2) "
+            u"a cada linea antes de confirmar la orden.\n\nLineas sin atribuir en %s:\n- %s"
+            % (po.name or 'la orden', u"\n- ".join(faltantes))
+        )
+```
+> `UserError` está disponible en el contexto de "Ejecutar código" de la Automation Rule (no requiere import). El `raise` dentro del write transaccional **revierte el post/confirmación** (candado duro real).
+
+### 11.3 Pasos exactos en Odoo 19 (Automation Rules)
+
+> Requiere **modo desarrollador** (Ajustes → Activar funciones de desarrollador). Ruta: **Ajustes → Técnico → Automatización → Reglas de automatización → Nuevo**. (Studio → pestaña Automatizaciones lleva al mismo modelo.)
+
+**Regla A (Bills):**
+1. **Nombre:** `A3 — Atribucion obligatoria (Bills MX)`.
+2. **Modelo:** `Asiento contable` (`account.move`).
+3. **Disparador:** `Al guardar` / "Al crear y actualizar" (`on_create_or_write`).
+4. **Dominio antes de actualizar** (filter_pre_domain): `[("state","!=","posted")]`.
+5. **Aplicar en** (dominio): `[("move_type","in",["in_invoice","in_refund"]),("company_id","=",1),("state","=","posted")]`.
+   → así dispara **solo en la transición a posteado** (no en pagos/escrituras posteriores).
+6. **Acciones a realizar → Agregar → Tipo: `Ejecutar código`** → pegar el código Regla A.
+7. **Guardar** y **desmarcar `Activo`** (dejar INACTIVO).
+
+**Regla B (POs):** igual con:
+- **Modelo:** `Orden de compra` (`purchase.order`).
+- **Dominio antes de actualizar:** `[("state","!=","purchase")]`.
+- **Aplicar en:** `[("state","=","purchase"),("company_id","=",1)]`.
+- Código Regla B. Guardar **INACTIVO**.
+
+### 11.4 Plan de prueba (4 casos, sobre el proveedor de prueba)
+Prep: crear proveedor `ZZ-PRUEBA A3`, poner su id en `TEST_PARTNER_ID`, `TEST_MODE=True`, **activar** ambas reglas.
+
+| # | Caso | Acción | Esperado |
+|---|------|--------|----------|
+| a | **Bloquea sin atribución** | Bill al proveedor de prueba, línea de producto **sin** analítica → Validar | ❌ `UserError "Falta atribucion…"`, NO postea |
+| b | **Pasa con PROYECTO (plan 1)** | Misma bill, asignar una cuenta de **proyecto** (ej. 576) → Validar | ✅ postea |
+| c | **Pasa con CENTRO DE COSTO (plan 2)** | Otra bill al proveedor de prueba, asignar **plan 2** (ej. 636 Oficina) → Validar | ✅ postea |
+| d | **No afecta lo real** | Postear una bill **real** (otro proveedor) sin tocar nada | ✅ postea (TEST_MODE la excluye) |
+| e | **PO** | Repetir a/b/c creando+confirmando una PO al proveedor de prueba | ❌/✅ igual que bills |
+
+Validado → **desactivar** reglas. Go-live: `TEST_MODE=False` en ambas + **activar**. (Antes del go-live: limpiar los **31 borradores** sin atribución, §9.5.)
+
+### 11.5 🚨 Salida de emergencia
+**Desmarcar `Activo`** en la Automation Rule (un clic, Ajustes → Técnico → Automatización) → desactiva el candado al instante, global. (Equivale al `TEST_MODE`/toggle del Frente B.) Reversión total: no deja rastro en los asientos ya posteados.
+
+### 11.6 Estado del build
+- **NO creado vía MCP** (deliberado): es el primer `base.automation` del sistema y bloquea toda la captura de gasto → se construye eyes-on en la UI (o MCP-create inactivo bajo confirmación explícita de Esteban). Todo verificado y turnkey arriba.
+- Pendiente al arrancar: crear proveedor de prueba + fijar `TEST_PARTNER_ID` + (opcional) extender a company 6 / PO mandatory ya incluido.
+
+---
+
+🤖 Mapa + A0 + A3 + build-spec generados con [Claude Code](https://claude.com/claude-code) (deep-search read-only, sin cambios a Odoo ni workflows).
