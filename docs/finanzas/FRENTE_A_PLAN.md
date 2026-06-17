@@ -919,6 +919,16 @@ return [{ json: { budget_id: bid } }];
 
 > **Alternativa MCP (si Esteban la pide):** `update_full` con body byte-perfect generado por script (existentes intactos + 7 nodos validados); riesgo = el full-replace toca los nodos existentes, mitigado por validación post-apply + workflow inactivo. Recomendado: UI (additivo, cero riesgo a lo existente).
 
+### 14.11 Build sobre DUPLICADO vía JSON generado (2026-06-17)
+
+Plan elegido por Esteban: construir sobre un **duplicado desechable**, NO tocar producción (que sigue desactivado e intacto). **Crear/duplicar vía MCP NO es viable limpio** (`create`/`update_full` exigen el body completo inline; sin puente archivo→parámetro ⇒ habría que transcribir 21 KB a mano). Solución: **script genera el duplicado byte-perfect** para **importar por UI**.
+
+- **Generador:** `scripts/local/gen-budget-dev.js` (gitignored). **Salida:** `scripts/local/budget-dev-workflow.json` (28 nodos, 21 KB, gitignored — no se commitea, §15).
+- **Integridad verificada por el script:** `JSON.stringify` de los **21 nodos originales == fuente** (salvo el `fieldsList` del getAll SO) ⇒ create project / link SO / error-handling / email **intactos**. `link SO` ahora tiene 2 salidas: `read PO file` (existente) + `getAll budget` (rama nueva). Cadena budget 1→…→7 OK.
+- **Importar:** n8n UI → menú workflow → *Import from File* → `budget-dev-workflow.json` → crea **"crear-proyecto-al-confirmar - BUDGET DEV"** INACTIVO.
+- ⚠️ **Post-import (quirk §3):** la importación por UI suele **blanquear `customResource`** en los nodos Odoo y **desasignar credenciales**. Revisar/rellenar en los nodos Odoo (existentes + 7 nuevos): `customResource` (`budget.line`/`budget.analytic`/`sale.order`/`account.analytic.account`/`project.project`) + credencial **Odoo FTS**. (Esto se hace en la revisión nodo-por-nodo de todos modos.)
+- Probar con una SO de prueba; producción no se toca hasta validar y portar.
+
 ---
 
 🤖 Mapa + A0 + A3 + build-spec + frente futuro + A1-diseño-final + A1-build-spec generados con [Claude Code](https://claude.com/claude-code) (A1 validado, build por UI/under review).
