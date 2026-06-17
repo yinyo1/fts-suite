@@ -717,4 +717,85 @@ Verificado read-only el estado final de ambas reglas:
 
 ---
 
-🤖 Mapa + A0 + A3 + build-spec + hallazgo auto-default + frente futuro generados con [Claude Code](https://claude.com/claude-code) (read-only salvo el go-live A3 paso a paso).
+## 14. A1 — Diseño: creación automática del budget en el workflow `XhuTlvPKDBjkDeso` (read-only, 2026-06-16)
+
+> Decisión arquitectónica (dada): el budget se crea en el **workflow n8n `XhuTlvPKDBjkDeso`** (junto a proyecto + cuenta analítica), NO en una server action. La vieja AA2 ya no existe; se usó solo como referencia de mecánica. Esta sección es DISEÑO — nada construido.
+
+### 14.1 Topología actual del workflow + punto de inserción
+
+Flujo principal (21 nodos): `Schedule 5min`/`Webhook` → **`Odoo - getAll SO`** (SOs confirmadas sin proyecto) → `Odoo - getAll project` (idempotencia por RjLNg) → `Code - Gate` → `Odoo - claim SO` → **`Odoo - create analytic`** (crea la cuenta analítica) → **`Odoo - create project`** → **`Odoo - link SO`** (nativo `project_id` + dual-write RjLNg/`x_studio_project_id_created_1`) → `Odoo - read PO file` → `Code - Build correo` → `HTTP - Enviar correo (Graph)`. Ramas de error: `delete orphan analytic`, `flag error`, `revert`, `compute attempt` (tope 3 reintentos).
+
+- **Punto de inserción natural del budget: DESPUÉS de `Odoo - link SO`** (ahí ya existen proyecto + cuenta analítica + link), **antes del** `Odoo - read PO file`/email. Así el budget es lo último "duro" antes del handoff, y su fallo no afecta el correo.
+- **La cuenta analítica (AA)** para las `budget.line` sale del output de **`Odoo - create analytic`** (= `x_studio_many2one_field_RjLNg`, la clave de idempotencia).
+- **`date_order`** (ya leído por `getAll SO`) = fecha de confirmación → `date_from` del budget. `company_id` ya disponible. El **nombre del proyecto** sale de `create project`.
+- ⚠️ El `getAll SO` **NO lee hoy los campos presupuestales** → hay que **agregarlos al `fieldsList`** del nodo (o leerlos en un nodo aparte).
+
+### 14.2 Modelos / métodos confirmados (Odoo vivo)
+
+- **`budget.analytic`** (cabecera): `name`, `date_from`, `date_to`, `state` (`draft`/`confirmed`/`done`), `budget_type` (`both`), `company_id`, `parent_id`, `budget_line_ids`. ✅
+- **`budget.line`**: `budget_analytic_id`, `account_id` (AA proyecto), `x_plan20_id` (rubro), `date_from`/`date_to`, `budget_amount`. ✅
+- **"Abrir" el budget:** la AA2 llamaba `action_budget_confirm()` (un MÉTODO). ⚠️ **El nodo Odoo de n8n (CRUD) NO ejecuta métodos arbitrarios** → se replica con **`update` de `budget.analytic` poniendo `state='confirmed'`**. Nota: `achieved_amount`/`committed_amount` se computan de las `analytic.line` **independiente del state** (vimos budgets `draft` con achieved), así que abrir es cosmético/lifecycle — si el `update state` diera problema, dejarlo en `draft` igual funciona. (Verificar que el nodo escribe `state` antes del go-live.)
+
+### 14.3 ⭐ Los 19 rubros del plan 20 existen ✅ … pero el MAPEO del AA2 está STALE
+
+Los 19 IDs de rubro siguen vivos con sus nombres (1171 Ingreso, 1177 MO, 1176 Materiales, 1178 Aldo … 1174 Hiram). **PERO los nombres de campo `sale.order` del AA2 ya NO existen** — la estructura de comisiones se rediseñó. Inventario REAL de campos presupuestales en `sale.order` hoy:
+
+| Campo actual | Descripción | ttype | ¿Poblado en SOs recientes? |
+|---|---|---|---|
+| `amount_untaxed` | Untaxed Amount | monetary | **SÍ (siempre)** |
+| `x_studio_presupuesto_mano_de_obra` | Presupuesto Mano de Obra | float | **SÍ** |
+| `x_studio_monetary_field_vcA1E` | 2.2 Materiales | monetary | **SÍ** |
+| `x_studio_presupuesto_materiales` | Presupuesto Materiales | float | siempre 0 |
+| `x_studio_presupuesto_de_equipos` | Presupuesto de equipos | float | siempre 0 |
+| `x_studio_total_comisin_diego` | Total Comisión Diego | monetary | 0 |
+| `x_studio_total_comisin_usuarios_clientes_fts` | Total Comisión Usuarios/Clientes FTS | monetary | 0 |
+| `x_studio_clarios_andres_valencia` | Clarios - Andres Valencia | monetary | 0 |
+| `x_studio_clarios_sergio_ongay` | Clarios - Sergio Ongay | monetary | 0 |
+| `x_studio_nalco_misael` | Nalco - Misael | monetary | 0 |
+| `x_studio_jose_luis` | Bono Jose Luis | monetary | 0 |
+| `x_studio_utilidad_neta_del_proyecto` | Utilidad neta del proyecto | float | 0 |
+
+**Campos AA2 que YA NO EXISTEN:** Aldo, Rissia, Luis Angel, Montalvo, Budenheim, Magnekon, Nalco Luis, Bridgestone, Hiram, Bono Supervisores, Bono Técnicos.
+
+### 14.4 ⭐ En la práctica SOLO 3 campos llevan datos reales (validado)
+
+De 8 SOs recientes, **solo `amount_untaxed`, `x_studio_presupuesto_mano_de_obra` y `x_studio_monetary_field_vcA1E`** tienen valores reales; el resto = 0. **Validación dura:** SO11547 Topo Chico tiene `presupuesto_mano_de_obra=555800` + `vcA1E=3412298`, que **coinciden EXACTO** con su `budget.line` existente (MO −555,800 / Materiales −3,412,298). ⇒ Mapeo de los 3 vivos confirmado:
+
+| Rubro plan 20 | Campo SO | Signo |
+|---|---|---|
+| **1171 Ingreso** | `amount_untaxed` | **+1** |
+| **1177 Mano de Obra** | `x_studio_presupuesto_mano_de_obra` | **−1** |
+| **1176 Materiales** | `x_studio_monetary_field_vcA1E` | **−1** |
+
+> Las `1` placeholder (MO=1/vcA1E=1) en SOs como SO11631 explican los budgets-esqueleto `−1` — eran de la **AA2 legacy** (ya borrada); el workflow actual NO crea budget (de ahí A1).
+
+### 14.5 Mapeo RECONCILIADO propuesto (regla `if not amount: continue` → incluir de más es inofensivo)
+
+- **LIVE (los 3 de §14.4)** — generan línea hoy.
+- **EXISTEN pero hoy en 0 (mapear para el futuro, no crean línea mientras sean 0):** `x_studio_total_comisin_diego`→**1157**(−), `x_studio_clarios_andres_valencia`→**1162**(−), `x_studio_clarios_sergio_ongay`→**1163**(−), `x_studio_nalco_misael`→**1168**(−), `x_studio_utilidad_neta_del_proyecto`→**1153 Utilidad**(+).
+- **⚠️ REQUIEREN CONFIRMACIÓN DE ESTEBAN (campo nuevo sin rubro 1:1):** `x_studio_jose_luis` "Bono Jose Luis" → ¿1159/1160 bono u otro? · `x_studio_total_comisin_usuarios_clientes_fts` → ¿1173 Comisiones externo? · `x_studio_presupuesto_de_equipos` → ¿1176 Materiales u otro? · `x_studio_presupuesto_materiales` (duplica Materiales, siempre 0) → ¿ignorar?
+- **DROP (ya no existen):** Aldo/Rissia/Luis Angel/Montalvo/Budenheim/Magnekon/Nalco Luis/Bridgestone/Hiram/Bono Sup/Téc.
+
+### 14.6 Patrón n8n para N budget.lines variables (robusto)
+
+El nodo Odoo crea **un registro por ítem** de entrada → se aprovecha el modelo item-based de n8n (no hace falta nodo Loop):
+1. **`Odoo - create budget.analytic`** (1 ítem) → output: `budget_analytic_id`.
+2. **`Code - Build budget lines`** (1→N): recibe el budget id + los campos presupuestales de la SO; itera el MAPEO; por cada campo con `monto != 0` emite un ítem `{budget_analytic_id, account_id (AA), x_plan20_id (rubro), date_from, date_to, budget_amount: monto*signo}`. Aplica `if not amount: continue`. Devuelve array de N ítems.
+3. **`Odoo - create budget.line`** (N ítems) → n8n lo ejecuta N veces (una línea por ítem). `customResource=budget.line`, operation create con `fieldsToCreateOrUpdate` (quirk §3), expresiones `={{ }}` simples.
+4. **`Code - collapse`** (N→1) → reemite 1 ítem con `budget_analytic_id`.
+5. **`Odoo - update budget.analytic`** → `state='confirmed'` (abrir).
+
+**Best-effort:** todo el sub-flujo de budget con **`onError: continueRegularOutput`** (igual que el email) → si el budget falla, **NO revierte** proyecto/AA/link ni rompe el correo (el proyecto ya está creado y linkeado upstream). Si N=0 (todos los campos en 0) → no se crean líneas; opcional: aún crear la cabecera vacía o saltarla (decisión menor).
+
+### 14.7 Quirks n8n-Odoo a respetar (§3/§16)
+CREATE sin `operation` explícito → `fieldsToCreateOrUpdate`; expresiones `={{ }}` (un solo `=`); `customResource` se llena a mano al crear el nodo; `Always Output Data` ON en nodos Odoo; many2one (`budget_analytic_id`, `account_id`, `x_plan20_id`) se pasan como **id entero**. El monto va con su signo ya calculado en el Code.
+
+### 14.8 Preguntas abiertas para Esteban (antes de construir)
+1. **Mapeo de los campos "existen pero en 0":** confirmar `jose_luis`→rubro, `usuarios_clientes_fts`→rubro, `presupuesto_de_equipos`→rubro (o ignorarlos). Los LIVE (Ingreso/MO/Materiales) ya están claros.
+2. **¿Crear cabecera de budget aunque N=0 líneas?** (SOs sin presupuesto cargado, ej. SO11551 con todo en 0 salvo ingreso → solo saldría la línea Ingreso). Sugerencia: crear cabecera siempre que `amount_untaxed>0` (siempre habrá al menos la línea Ingreso).
+3. **¿`date_to` = `date_order` + 1 año** exacto (cálculo en Code)? Confirmar.
+4. **¿Abrir el budget (`state='confirmed'`) o dejar `draft`?** (achieved computa igual). Sugerencia: confirmar, replicando AA2.
+
+---
+
+🤖 Mapa + A0 + A3 + build-spec + frente futuro + A1-diseño generados con [Claude Code](https://claude.com/claude-code) (read-only; A1 sin construir).
