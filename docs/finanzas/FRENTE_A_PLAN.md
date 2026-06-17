@@ -648,11 +648,23 @@ Validado end-to-end sobre **ZZ-PRUEBA A3 (2260)**, company 1, `TEST_MODE=True`:
 - **Captura real intacta** (BILL2767 UBER posteó sin bloqueo).
 - **Subproducto A2:** BILL2766 prueba que el gesto misma-fila produce compuesto sin tooling (§12.5).
 
-**Estado: LISTO para go-live** (pendiente confirmación explícita de Esteban — NO ejecutado). Pasos:
-1. **Limpiar borradores de bill sin atribución** (company 1; eran 31/$301k — re-verificar conteo al momento).
-2. **`TEST_MODE=False`** en ambos server actions (Reglas `56`/`57`, actions `2432`/`2433`).
-3. (Opcional) afinar `filter_domain` con `move_type`/`company_id`; cancelar/archivar data de prueba (BILL2765, BILL2766, P06493 — el vendor ZZ-PRUEBA A3).
-4. Dejar **activas**. 🚨 Emergencia = desmarcar `Activo` (un clic).
+### ✅ GO-LIVE EJECUTADO (2026-06-16) — A3 VIVO EN PRODUCCIÓN
+
+Verificado read-only el estado final de ambas reglas:
+- **Regla 56 (Bills, `account.move`):** `active=True`, `on_state_set`→Posted, dominio `[('state','=','posted')]`, action 2432.
+- **Regla 57 (POs, `purchase.order`):** `active=True`, `on_state_set`→Purchase Order, dominio `[('state','=','purchase')]`, action 2433.
+- **Ambos server actions:** `TEST_MODE=False`, **`OK_ROOTS={1,18,2,5,8,11,13}`** (decisión opción (a), §13), `OK_COMPANIES={1}`.
+
+**El candado bloquea, al postear/confirmar en company 1, cualquier línea de producto sin un plan de costo {1,18,2,5,8,11,13}** (es decir: solo-rubro plan 20 o sin analítica). 🚨 **Salida de emergencia:** desmarcar `Activo` en la regla (un clic).
+
+**Decisión de transición (PASO 2):** las 2 bills borrador huérfanas (BILL2685 $425, IMSS $0, ambas `{"1176"}`) se **dejaron sin atribuir** — el candado las bloqueará al postearlas (comportamiento deseado).
+
+**Pendientes post-go-live:**
+1. Cancelar/archivar data de prueba: **BILL2765, BILL2766** (bills) + **P06493** (PO) del vendor **ZZ-PRUEBA A3 (2260)**. La **BILL2767 (UBER real, $10) se queda**.
+2. `TEST_PARTNER_ID=2260` queda inerte en el código (no se evalúa con `TEST_MODE=False`); no requiere borrarse.
+3. Roadmap: **A2** (gesto compuesto, §12) → **A1** (poblar budgets reales) → **A4/A5** rentabilidad.
+
+**Nota previa (histórica):** antes del go-live se midieron 31 borradores de bill sin atribución; con `OK_ROOTS` ampliado solo 2 bloquean (las huérfanas rubro-only). El resto ya traía plan válido (incl. Assets/Inmuebles ahora aceptados, y proyectos archivados que `browse().root_plan_id` acepta).
 
 ### 11.7 Estado del build
 - **NO creado vía MCP** (deliberado): es el primer `base.automation` del sistema y bloquea toda la captura de gasto → se construye eyes-on en la UI (o MCP-create inactivo bajo confirmación explícita de Esteban). Todo verificado y turnkey arriba.
