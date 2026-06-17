@@ -215,6 +215,115 @@ Cron días-hábiles 8 AM → (1) lee proyectos vigilados + `sale_order_id` + `pr
 
 ---
 
+## 6. BUILD — #1 config ✅ + #2 watchdog (diseño para revisión, 2026-06-17)
+
+**#1 `shared/operaciones/sla_stages.json`** → ✅ creado y commiteado (`ebc870b`). Refleja todas las decisiones finales.
+
+### 6.1 Watchdog `ops/watchdog-semaforo` — grafo de nodos (a generar como JSON e importar por UI)
+> Método: igual que el budget DEV — script genera el JSON byte-perfect → import por UI (MCP rechaza update_partial/full; create preserva customResource). Best-effort en escrituras. **NO se activa hasta tu revisión.**
+
+Cadena lineal (cada lectura Odoo corre 1 vez vía nodos "collapse→1 ítem"; el `Code MAIN` referencia cada lectura con `$('nodo').all()`):
+
+1. **Manual Trigger** + **Schedule** (cron `0 14 * * 1-5` = Lun-Vie 8 AM CST) → 2 entradas.
+2. **HTTP - load config** (GET `raw.githubusercontent.com/.../shared/operaciones/sla_stages.json`).
+3. **Odoo getAll projects** — `project.project` `[stage_id in [1,2,5,3,7,13]]` (active implícito) → `id,name,stage_id,sale_order_id,partner_id,date,last_update_status`.
+4. **Code prep** — extrae listas: `projIds, soIds, partnerIds`.
+5. **Odoo getAll SO** `[id in soIds]` → `id, x_studio_product_type` (materiales).
+6. **Odoo getAll partners** `[id in partnerIds]` → `id, property_payment_term_id` (crédito).
+7. **Odoo getAll payment.term.line** `[payment_id in termIds]` → `payment_id, nb_days`.
+8. **Odoo getAll msg94** `[model=project.project, res_id in projIds, subtype_id=94]` order date desc → métrica A + autor del cambio de stage.
+9. **Odoo getAll msgComment** `[model=project.project, res_id in projIds, message_type=comment]` order date desc → métrica B.
+10. **Odoo getAll trackedMsgs** `[model=project.project, res_id in projIds, date >= hoy-30d]` → `res_id, author_id, date, tracking_value_ids` (anti-manip).
+11. **Odoo getAll trackingVals** `[id in <tracking_value_ids planos>]` → `field_id, old/new_value_integer, old/new_value_datetime, mail_message_id`.
+12. **Code MAIN** (núcleo — §6.2).
+13. **Code buildLogNotes** → ítems `{res_id, body}` para 🔴/flag.
+14. **Odoo CREATE mail.message** (log note) item-based: `model=project.project, res_id, body, subtype_id=2, message_type='notification', author_id=2`. onError continue.
+15. **HTTP PUT snapshot** → GitHub `shared/operaciones/semaforo_snapshots/<fecha>.json` (para el KPI %verde histórico). onError continue.
+
+### 6.2 `Code MAIN` — jsCode del núcleo (PARA REVISAR la lógica)
+```javascript
+const cfg = $('HTTP - load config').first().json;
+const C = cfg.config, STG = cfg.stages, MAT = cfg.materiales_overrides, EXCL = cfg.excluidos;
+const SEQ = {1:0, 2:1, 5:2, 3:3, 7:4, 13:8, 8:9, 4:10, 6:11};      // sequence por stage_id
+const COM = C.comercial_whitelist_partner_ids, WD = C.watchdog_author_partner_id;
+const FF = cfg.integridad.fecha_fin_field_id, FS = cfg.integridad.stage_field_id;
+const today = new Date();                                          // (idealmente inyectar fecha vía args)
+
+// ---- jornada hábil: días hábiles entre 'fromISO' y hoy; si entró >17h o finde, arranca próximo hábil 8am
+function startClock(d){ d=new Date(d); let h=d.getHours();
+  if (C.excluir_findes && (d.getDay()===6||d.getDay()===0)){ while(d.getDay()===6||d.getDay()===0){d.setDate(d.getDate()+1);} d.setHours(C.business_day_start_hour,0,0,0); return d; }
+  if (h>=C.business_day_cutoff_hour){ d.setDate(d.getDate()+1); while(C.excluir_findes&&(d.getDay()===6||d.getDay()===0)){d.setDate(d.getDate()+1);} d.setHours(C.business_day_start_hour,0,0,0); }
+  return d; }
+function bizDays(fromISO){ if(!fromISO) return null; let s=startClock(fromISO), n=0, c=new Date(s);
+  while(c < today){ const g=c.getDay(); if(!(C.excluir_findes&&(g===6||g===0))) n++; c.setDate(c.getDate()+1);} return n; }
+
+// ---- reduce mensajes a "último por proyecto"
+function lastBy(node, filt){ const m={}; for(const it of $(node).all()){ const r=it.json; if(filt&&!filt(r))continue;
+  const rid=r.res_id; if(!m[rid]||new Date(r.date)>new Date(m[rid].date)) m[rid]=r; } return m; }
+const aId = v => Array.isArray(v)?v[0]:v;
+const lastStageMsg = lastBy('Odoo getAll msg94');                                   // métrica A
+const lastComment  = lastBy('Odoo getAll msgComment', r => aId(r.author_id)!==WD);  // métrica B (excluye watchdog)
+
+// ---- materiales (vía SO) + términos de crédito
+const matSO = {}; for(const it of $('Odoo getAll SO').all()){ matSO[it.json.id] = C.materiales_values.includes(it.json.x_studio_product_type); }
+const termDays = {}; for(const it of $('Odoo getAll payment.term.line').all()){ const t=aId(it.json.payment_id); termDays[t]=Math.max(termDays[t]||0, Number(it.json.nb_days)||0); }
+const partnerTerm = {}; for(const it of $('Odoo getAll partners').all()){ partnerTerm[it.json.id]= it.json.property_payment_term_id?aId(it.json.property_payment_term_id):null; }
+
+// ---- anti-manipulación (tracking values recientes)
+const trkByMsg = {}; for(const it of $('Odoo getAll trackingVals').all()){ trkByMsg[aId(it.json.mail_message_id)] = it.json; }
+const flagsByProj = {};
+for(const it of $('Odoo getAll trackedMsgs').all()){ const m=it.json; const t=trkByMsg[m.id]; if(!t) continue; const au=aId(m.author_id);
+  (flagsByProj[m.res_id] = flagsByProj[m.res_id]||[]);
+  if(t.field_id && aId(t.field_id)===FF && t.old_value_datetime && !COM.includes(au))   // fecha fin movida por no-comercial
+    flagsByProj[m.res_id].push({tipo:'fecha_fin', autor:m.author_id[1], fecha:m.date});
+  if(t.field_id && aId(t.field_id)===FS && SEQ[t.new_value_integer]<SEQ[t.old_value_integer]) // stage hacia atrás
+    flagsByProj[m.res_id].push({tipo:'stage_atras', de:t.old_value_char, a:t.new_value_char, autor:m.author_id[1], fecha:m.date}); }
+
+// ---- color por umbral
+function color(dias, rojo){ if(dias==null||rojo==null) return 'verde'; if(dias>=rojo) return 'rojo'; if(dias>=Math.round(rojo*C.amarillo_pct)) return 'amarillo'; return 'verde'; }
+function rojoEnStage(p, sc, esMat){ const o = esMat&&MAT[p.stage_id]?MAT[p.stage_id].en_stage:sc.en_stage;
+  if(o.modo==='fijo') return o.rojo_dias;
+  if(o.modo==='due_date'){ if(!p.date) return C.in_progress_fallback_dias; /* manejado aparte por fecha */ return null; }
+  if(o.modo==='credito'){ const t=partnerTerm[aId(p.partner_id)]; const d=(t&&termDays[t]!=null)?termDays[t]:C.credit_fallback_days; return d + C.credit_extra_days; }
+  return null; }
+
+const out=[];
+for(const it of $('Odoo getAll projects').all()){ const p=it.json; const sid=p.stage_id?aId(p.stage_id):null;
+  if(EXCL.includes(sid)) continue; const sc=STG[String(sid)]; if(!sc) continue;
+  const esMat = p.sale_order_id ? !!matSO[aId(p.sale_order_id)] : false;
+  const ls = lastStageMsg[p.id]; const diasEnStage = ls?bizDays(ls.date):null;
+  const lc = lastComment[p.id];  const diasSinSeg  = lc?bizDays(lc.date):(p.create_date?bizDays(p.create_date):null);
+  // métrica A color: due_date especial (In Progress)
+  let colA;
+  const oEn = (esMat&&MAT[sid]?MAT[sid].en_stage:sc.en_stage);
+  if(oEn.modo==='due_date'){ if(!p.date){ colA = color(diasEnStage, C.in_progress_fallback_dias); } else { colA = (new Date(p.date) < today)?'rojo':'verde'; } }
+  else { colA = color(diasEnStage, rojoEnStage(p, sc, esMat)); }
+  // métrica B color
+  const oSeg = (esMat&&MAT[sid]&&MAT[sid].sin_seguimiento?MAT[sid].sin_seguimiento:sc.sin_seguimiento);
+  let rojoSeg = oSeg.modo==='credito' ? rojoEnStage(p,sc,esMat) : oSeg.rojo_dias;
+  const colB = color(diasSinSeg, rojoSeg);
+  // peor de A/B + override last_update_status
+  const ord={verde:0,amarillo:1,rojo:2}; let col = ord[colA]>=ord[colB]?colA:colB;
+  if(['off_track'].includes(p.last_update_status)) col='rojo'; else if(['at_risk'].includes(p.last_update_status)&&col==='verde') col='amarillo';
+  out.push({ json:{ id:p.id, name:p.name, stage_id:sid, stage:sc.label, grupo:sc.grupo,
+    cliente: p.partner_id?p.partner_id[1]:'', es_materiales:esMat,
+    dias_en_stage:diasEnStage, dias_sin_seguimiento:diasSinSeg, color_a:colA, color_b:colB, color:col,
+    banderas: flagsByProj[p.id]||[], link_odoo:'https://serviciosfts.odoo.com/web#id='+p.id+'&model=project.project&view_type=form' }});
+}
+return out;
+```
+> ⚠️ Nota de revisión: `p.create_date` y la fecha "hoy" — conviene inyectar la fecha del watchdog vía `args`/Set para reproducibilidad; los reads de project deben incluir `create_date`. La métrica A `due_date` (In Progress) compara `project.date < hoy` directo; las demás usan días hábiles vs umbral.
+
+### 6.3 Pendientes del build (siguientes piezas)
+- #3 workflow correo (digest 🔴/🟡 + sección "posible manipulación", diario/semanal/mensual, idempotencia staticData).
+- #4 `ops/semaforo` (webhook GET → grilla JSON + KPI).
+- #5 frontend `operaciones/semaforo/`.
+
+## 7. PENDIENTE — otro frente (NO en este build): botón Confirmar de la SO
+Mejora de captura SO (toca **Odoo/Studio**, frente aparte): hacer **`x_studio_product_type` obligatorio** + en blanco al crear + **condición de visibilidad del botón Confirmar** junto con MO/Materiales del handoff (patrón pure-Studio §17 quirk #4: `invisible` en el botón Confirmar condicionado a los campos). Sin esto, las órdenes "materiales" pueden quedar sin clasificar. **NO construir ahora.**
+
+---
+
 ## 4. Para construir (cuando se apruebe)
 1. `shared/operaciones/sla_stages.json` (stages reales + 2 umbrales/métrica + responsables).
 2. `ops/watchdog-semaforo` (n8n cron: 2 métricas vía chatter + color + correo 🔴 + log note + snapshot).
