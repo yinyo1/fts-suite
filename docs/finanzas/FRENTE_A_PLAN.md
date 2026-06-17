@@ -841,7 +841,12 @@ Odoo - link SO ──┬──► Odoo - read PO file ──► Code - Build cor
 
 **Quirks n8n-Odoo aplicados (§3/§16):** create sin `operation` → `fieldsToCreateOrUpdate`; `customResource` a mano (`budget.analytic` / `budget.line`); expresiones `={{ }}` (un solo `=`); `Always Output Data` ON; many2one como id entero; signo calculado en el Code (no en el nodo Odoo).
 
-**A confirmar al construir (no bloquea el diseño):** (i) campo exacto del nombre del proyecto en el output de `create project`; (ii) que el nodo Odoo `update` escriba `state='confirmed'` (si no, dejar `draft` — achieved computa igual); (iii) formato date-only aceptado por `budget.analytic.date_from/to`.
+**Puntos pre-build VERIFICADOS (2026-06-17, read-only):**
+- (i) **Nombre del budget** = `={{ $('Code - Gate + prep').item.json.project_name }}` (misma fuente que `create project`). `company_id` = `={{ $('Code - Gate + prep').item.json.company_id }}`. AA = `={{ $('Odoo - create analytic').item.json.id }}`. Montos + `date_order` = `={{ $('Odoo - getAll SO').item.json.<campo> }}`.
+- (ii) `budget.analytic.state` = `selection`, `readonly=True` (solo UI) → el nodo `update` (ORM/RPC) **sí escribe** `state='confirmed'`. Fallback: `draft` (achieved computa igual). Verificar en la prueba controlada.
+- (iii) `date_from`/`date_to` = `ttype=date` → string **"YYYY-MM-DD"**: `date_order.split('T')[0]` y +1 año. `name` = char required.
+
+**⚠️ Seguridad de deploy:** `XhuTlvPKDBjkDeso` está **ACTIVO en producción** (Schedule 5min). Editar vía `n8n_update_full_workflow` puede dejar la rama nueva **viva de inmediato** (update_full no controla `active` de forma determinista — §16 — y MCP no puede desactivar: "additional properties"). **Plan seguro:** Esteban **desactiva el workflow en la UI** → CC construye en el inactivo → Esteban revisa nodo por nodo + prueba (SO de prueba / reactivación controlada) → reactiva. Así la rama no corre sin revisión.
 
 ---
 
