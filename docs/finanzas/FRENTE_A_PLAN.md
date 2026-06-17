@@ -848,6 +848,77 @@ Odoo - link SO ──┬──► Odoo - read PO file ──► Code - Build cor
 
 **⚠️ Seguridad de deploy:** `XhuTlvPKDBjkDeso` está **ACTIVO en producción** (Schedule 5min). Editar vía `n8n_update_full_workflow` puede dejar la rama nueva **viva de inmediato** (update_full no controla `active` de forma determinista — §16 — y MCP no puede desactivar: "additional properties"). **Plan seguro:** Esteban **desactiva el workflow en la UI** → CC construye en el inactivo → Esteban revisa nodo por nodo + prueba (SO de prueba / reactivación controlada) → reactiva. Así la rama no corre sin revisión.
 
+### 14.10 Build A1 — bloqueo MCP + spec UI turnkey (2026-06-17)
+
+**Estado:** diseño **validado localmente** (n8n-mcp `validateOnly:true` → 15 operaciones válidas), pero **NO aplicado vía MCP**.
+
+**Bloqueo:** esta instancia **rechaza `update_partial`** (`"request/body must NOT have additional properties"`, quirk §16 confirmado). La única vía MCP restante es **`update_full`**, que **reemplaza los 21 nodos completos** → transmitir el body de 16 KB a mano arriesga **corromper los nodos de producción que ya funcionan** (create project, link SO, error-handling), no solo la rama nueva. El fallo del partial fue **atómico**: el workflow quedó intacto (21 nodos, inactivo). **Decisión: construir la rama por UI** (solo AGREGA nodos; deja intacto el flujo existente) — mismo patrón que el candado A3 en Studio. Configs abajo, todas validadas.
+
+**(0) Editar `Odoo - getAll SO`** → en *Options → Fields*, agregar al final: `amount_untaxed`, `x_studio_presupuesto_mano_de_obra`, `x_studio_monetary_field_vcA1E`.
+
+**Rama paralela colgando de `Odoo - link SO (project_id_created_1)`** (agregar segunda salida; el camino al email queda igual). En CADA nodo nuevo: **Settings → On Error = "Continue (using regular output)"**; nodos Odoo: **Always Output Data = ON**, credencial **Odoo FTS**, Resource **Custom**.
+
+| # | Nodo | Tipo / config |
+|---|------|---------------|
+| 1 | **Odoo - getAll budget (idempotencia)** | Odoo · Custom Resource `budget.line` · Operation **Get All** · Return All OFF · Filter: `account_id` **equal** `={{ $('Odoo - create analytic').item.json.id }}` · Options: Fields `id`, Limit `1` |
+| 2 | **Code - Gate budget** | Code · jsCode ↓ (A) |
+| 3 | **Odoo - create budget.analytic** | Odoo · Custom Resource `budget.analytic` · **(sin Operation = create)** · Fields: `name`=`={{ $json.budget_name }}`, `date_from`=`={{ $json.date_from }}`, `date_to`=`={{ $json.date_to }}`, `company_id`=`={{ $json.company_id }}`, `budget_type`=`both` |
+| 4 | **Code - Build budget lines** | Code · jsCode ↓ (B) |
+| 5 | **Odoo - create budget.line** | Odoo · Custom Resource `budget.line` · **(sin Operation = create)** · Fields: `budget_analytic_id`=`={{ $json.budget_analytic_id }}`, `account_id`=`={{ $json.account_id }}`, `x_plan20_id`=`={{ $json.x_plan20_id }}`, `date_from`=`={{ $json.date_from }}`, `date_to`=`={{ $json.date_to }}`, `budget_amount`=`={{ $json.budget_amount }}` |
+| 6 | **Code - collapse budget** | Code · jsCode ↓ (C) |
+| 7 | **Odoo - update budget (confirm)** | Odoo · Custom Resource `budget.analytic` · Operation **Update** · Record ID `={{ $json.budget_id }}` · Fields: `state`=`confirmed` |
+
+**Conexiones:** link SO → 1 → 2 → 3 → 4 → 5 → 6 → 7 (7 dead-ends, no vuelve al loop).
+
+**jsCode (A) Gate budget:**
+```javascript
+const items = $input.all();
+const hasBudget = items.some(i => i.json && i.json.id);
+if (hasBudget) { return []; }                 // idempotencia: AA ya tiene budget
+const so = $('Odoo - getAll SO').item.json;
+const ingreso = Number(so.amount_untaxed) || 0;
+if (ingreso <= 0) { return []; }              // sin ingreso -> no budget
+const prep = $('Code - Gate + prep').item.json;
+const d = String(so.date_order || '').slice(0, 10);            // YYYY-MM-DD
+const dateTo = d ? (String(Number(d.slice(0,4)) + 1) + d.slice(4)) : d;  // +1 año
+let companyId = prep.company_id;
+if (Array.isArray(companyId)) companyId = companyId[0];
+return [{ json: {
+  budget_name: prep.project_name, date_from: d, date_to: dateTo, company_id: companyId,
+  aa_id: $('Odoo - create analytic').item.json.id,
+  amt_ingreso: ingreso,
+  amt_mo: Number(so.x_studio_presupuesto_mano_de_obra) || 0,
+  amt_mat: Number(so.x_studio_monetary_field_vcA1E) || 0
+} }];
+```
+**jsCode (B) Build budget lines:**
+```javascript
+const budgetId = $input.first().json.id;
+const g = $('Code - Gate budget').item.json;
+const MAP = [
+  { rubro: 1171, amt: g.amt_ingreso, sign: 1 },   // Ingreso
+  { rubro: 1177, amt: g.amt_mo,      sign: -1 },   // Mano de Obra
+  { rubro: 1176, amt: g.amt_mat,     sign: -1 }    // Materiales
+];
+const out = [];
+for (const m of MAP) {
+  const a = Number(m.amt) || 0;
+  if (!a) continue;                                // if not amount: continue
+  out.push({ json: {
+    budget_analytic_id: budgetId, account_id: g.aa_id, x_plan20_id: m.rubro,
+    date_from: g.date_from, date_to: g.date_to, budget_amount: a * m.sign
+  } });
+}
+return out;
+```
+**jsCode (C) collapse budget:**
+```javascript
+const bid = $('Code - Build budget lines').first().json.budget_analytic_id;
+return [{ json: { budget_id: bid } }];
+```
+
+> **Alternativa MCP (si Esteban la pide):** `update_full` con body byte-perfect generado por script (existentes intactos + 7 nodos validados); riesgo = el full-replace toca los nodos existentes, mitigado por validación post-apply + workflow inactivo. Recomendado: UI (additivo, cero riesgo a lo existente).
+
 ---
 
-🤖 Mapa + A0 + A3 + build-spec + frente futuro + A1-diseño-final generados con [Claude Code](https://claude.com/claude-code) (read-only; A1 sin construir).
+🤖 Mapa + A0 + A3 + build-spec + frente futuro + A1-diseño-final + A1-build-spec generados con [Claude Code](https://claude.com/claude-code) (A1 validado, build por UI/under review).
