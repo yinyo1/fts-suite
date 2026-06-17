@@ -329,6 +329,38 @@ return out;
 - #4 `ops/semaforo` (webhook GET → grilla JSON + KPI).
 - #5 frontend `operaciones/semaforo/`.
 
+## 8. Panorama del 1er run + decisión de filtrado (read-only, 2026-06-17)
+
+**Validación del caso extremo (proyecto 178 "10441"):** creado 2025-07-03, **NUNCA cambió de stage** (su único mensaje es una nota automática, NO comment), **sin cliente** → 250 días hábiles = **CORRECTO** (≈349 cal × 5/7). Es un **zombie / import artifact**, no señal.
+
+**Composición de los ~101 proyectos vigilados:**
+| | Proyectos |
+|--|----------:|
+| **CON cliente (set real a vigilar)** | **47** — ToDo 3 · InProg 11 · Hold 3 · DoneOps 11 · Admin 16 · EnCrédito 3 |
+| Sistema (`is_internal_project`/`is_fsm` = "Internal"/"Field Service") | 13 (ToDo 12, InProg 1) — sin cliente |
+| Zombies sin cliente, no-sistema (numéricos "10441/SO10441", "CENTRO DE COSTOS") | ~41 — casi todos 2025-07-03 (~250d) o 2024 |
+
+⇒ **De 101, solo 47 son proyectos reales.** El resto (~54) son zombies + sistema → con umbral To Do = 1 día, el semáforo se llenaría de **~54 rojos viejos que nadie va a accionar = ruido, no señal.**
+
+**Validación de 2 casos más (lógica OK en general):**
+- **2337 (Quimitec, To Do, real, creado 06-15):** sin subtype-94, sin comment → 2 días hábiles → 🔴. **Correcto** (proyecto real estancado 2d en To Do = señal legítima para Ops).
+- **240 (SO11227, stage 13 En plazo crédito):** último subtype-94 = **2026-06-17** (entró ayer por la reconfig) → en-stage ≈0; último comment humano = 2025-12-17 → sin-seguimiento ≈128d. ⚠️ Nota: la **reconfig del 06-17 generó cambios de stage masivos** → la métrica "en stage" quedó **reseteada a ayer** para muchos proyectos; la métrica "sin seguimiento" es la que hoy refleja la realidad.
+
+**Banderas:**
+- **AP (stage 13):** TODOS los stage-13 actuales dispararán `ap_sin_confirmacion` — el template/proceso es **nuevo**, ningún comment viejo lo tiene. Esperado (no son violaciones, es el arranque del proceso). Se apagará conforme usen el log note.
+- **Anti-manip:** la reconfig movió muchos proyectos el 06-17 (autores 996 Admin / 306 Montalvo / 3 Esteban). El watchdog las leerá; revisar el primer run por si alguna fue stage-atrás real (vs la reorg). (No reproducido aquí; se ve en el output del run.)
+
+### 8.1 ⭐ DECISIÓN DE FILTRADO — recomendación
+**Filtro recomendado: vigilar SOLO proyectos CON cliente** (`partner_id != false`) → 101 → **47 reales**. Una línea en el dominio de `Odoo - getAll projects`:
+```
+[["stage_id","in",[1,2,5,3,7,13]], ["partner_id","!=",false]]
+```
+- Los proyectos reales (auto-creados por A1) **siempre traen cliente** (de la SO). Sin cliente = zombie/interno. Filtro de alta señal, 0 falsos negativos esperados.
+- **Belt-and-suspenders (opcional):** además excluir `is_internal_project`/`is_fsm` (estructural, como Frente B) — aunque "con cliente" ya los atrapa (no tienen partner).
+- **Los ~41 zombies "10441/SO10441"** = **backlog de higiene de datos** (archivarlos en Odoo, frente aparte). Frente B no los atrapó porque nunca llegaron a stages de cierre (siguen en To Do). El filtro los oculta del semáforo; limpiarlos es tarea separada de Esteban.
+
+**Aplicación:** editar el dominio del nodo `Odoo - getAll projects` (UI) o regenerar. Decisión Esteban: ¿solo "con cliente", o "+ excluir is_internal/is_fsm"?
+
 ## 7. PENDIENTE — otro frente (NO en este build): botón Confirmar de la SO
 Mejora de captura SO (toca **Odoo/Studio**, frente aparte): hacer **`x_studio_product_type` obligatorio** + en blanco al crear + **condición de visibilidad del botón Confirmar** junto con MO/Materiales del handoff (patrón pure-Studio §17 quirk #4: `invisible` en el botón Confirmar condicionado a los campos). Sin esto, las órdenes "materiales" pueden quedar sin clasificar. **NO construir ahora.**
 
