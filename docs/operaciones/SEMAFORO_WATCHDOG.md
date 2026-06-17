@@ -322,6 +322,7 @@ return out;
 - ⚠️ **Post-import (quirk §3):** revisar en los 10 nodos Odoo que `customResource` no se haya blanqueado + credencial **Odoo FTS** asignada. Para **`HTTP - PUT snapshot (GitHub)`**: asignar credencial **Header Auth "GitHub FTS Suite"** (el id va como `REEMPLAZAR`). 
 - **Probar:** ejecutar con el **Manual Trigger** (no activar). Hace reads + escribe **log notes** reales al chatter (best-effort) + **snapshot** a `shared/operaciones/semaforo_snapshots/<fecha>.json`. Revisar la salida de `Code - MAIN` (colores, días, banderas) antes de activar.
 - **Nota de patrón n8n:** cadena lineal con nodos "collapse" (`Code - col*` que devuelven 1 ítem) para que cada lectura Odoo corra UNA vez; `Code - MAIN` referencia cada lectura con `$('nodo').all()`. La fecha "hoy" se inyecta vía `Set - hoy` (`$now.toISO()`).
+- ⚠️ **Quirk HTTP load config (resuelto):** GitHub raw sirve el `sla_stages.json` con `content-type: text/plain` → el nodo HTTP de n8n NO lo parsea (lo entrega como `{data:"<string>"}`) → `cfg.config` undefined. **Fix:** (a) HTTP node → Options → Response → Response Format = `JSON`; **y/o** (b) parse defensivo en el Code: `const cfg = (_r && _r.config) ? _r : JSON.parse(_r.data || _r.body || ...)`. Ambos aplicados en el generador. **Aplica igual a #3 correo y #4 endpoint** (también cargan el config desde raw).
 
 ### 6.4 Pendientes del build (siguientes piezas)
 - #3 workflow correo (digest 🔴/🟡 + sección "posible manipulación", diario/semanal/mensual, idempotencia staticData).
