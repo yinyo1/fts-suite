@@ -637,4 +637,24 @@ Validado → **desactivar** reglas. Go-live: `TEST_MODE=False` en ambas + **acti
 
 ---
 
-🤖 Mapa + A0 + A3 + build-spec generados con [Claude Code](https://claude.com/claude-code) (deep-search read-only, sin cambios a Odoo ni workflows).
+## 12. Hallazgo durante pruebas A3 — auto-default de "Materiales" (distribution.model #46)
+
+> Observado por Esteban en la captura del caso (c): la línea de la Bill trae el campo plan 20 ("Upgraded Budget Plan") **PRESELECCIONADO con "2.2 Materiales" (1176)**; tuvo que borrarlo a mano antes de timbrar. Diagnóstico read-only (2026-06-16):
+
+**1. Origen — `account.analytic.distribution.model` #46.** Confirmado: la línea de producto de **BILL2765 postea al GL `601.84.01 Otros gastos generales`** (account 32). La regla #46 (`account_prefix "601.84.01"`, company 1 → `{"1176":100}`) dispara al elegir esa cuenta GL y **auto-rellena el rubro Materiales**. **NO es default de campo Studio ni por categoría de producto** — es la `distribution.model` por prefijo de cuenta GL.
+
+**2. Alcance.** Aplica por **prefijo de cuenta GL**, no por categoría. Como **~99% de las líneas de bill postean a `601.84.01`** (A0 §8.6: 963/963 del bucket no-atribuido), el default de Materiales aplica a **casi TODAS las bills**. Otros prefijos mapean a otros rubros (`2023.51`→comisiones, `2023.34`→mano de obra, etc.) — son las 53 reglas `distribution.model` (§3 del mapa).
+
+**3. ⭐ Relación con A2 / R2 — el matiz que define A2.** El auto-default es **a la vez la semilla de la separación R2 Y la palanca del compuesto**, según el GESTO de captura:
+- Auto-rubro `{"1176":100}` en su grupo + proyecto tecleado en **grupo/fila NUEVO** → `{"576":100,"1176":100}` **SEPARADA** (ciega al budget 2-ejes).
+- Auto-rubro + proyecto metido en la **MISMA fila** (columna plan-1 del mismo grupo) → `{"576,1176":100}` **COMPUESTA** (la ve el budget).
+- **Instinto actual = BORRAR el rubro** (lo que hizo Esteban) → queda `{"576":100}` **solo-proyecto**: pasa A3 pero **pierde el eje rubro** (el budget tampoco lo ve). Es el **PEOR** resultado para A2. *(BILL2765 quedó exactamente así: `{"576":100}`.)*
+- ⇒ **A2 NO debe eliminar la `distribution.model`**; debe **cambiar el gesto**: conservar el auto-rubro y meter el proyecto **en el mismo grupo** (capacitación + posible ajuste de captura/widget) → el auto-default pasa de **causa de R2** a **generador de compuesto gratis**. Es una palanca a favor, mal usada hoy.
+
+**4. Impacto en el candado A3 — NINGUNO.** A3 solo valida plan1/18/2; el rubro (plan 20) ni satisface ni rompe A3. **Interacción positiva:** si alguien deja SOLO el auto-rubro `{"1176":100}` sin proyecto, **A3 BLOQUEA** (1176 no es plan1/2/18) → fuerza a poner proyecto o centro de costo aunque el rubro se auto-rellene. BILL2765 lo confirma: con el rubro borrado, `576` (plan 1) → A3 deja pasar. ✅
+
+> **Para A2 (futuro):** este hallazgo redefine el trabajo — no es "forzar compuesto desde cero", es "evitar que se borre el rubro auto-puesto y lograr que el proyecto entre en el mismo grupo". El `distribution.model` #46 ya hace la mitad del trabajo.
+
+---
+
+🤖 Mapa + A0 + A3 + build-spec + hallazgo auto-default generados con [Claude Code](https://claude.com/claude-code) (read-only, sin cambios a Odoo ni workflows).
