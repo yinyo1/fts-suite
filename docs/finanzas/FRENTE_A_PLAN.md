@@ -653,7 +653,15 @@ Validado → **desactivar** reglas. Go-live: `TEST_MODE=False` en ambas + **acti
 
 **4. Impacto en el candado A3 — NINGUNO.** A3 solo valida plan1/18/2; el rubro (plan 20) ni satisface ni rompe A3. **Interacción positiva:** si alguien deja SOLO el auto-rubro `{"1176":100}` sin proyecto, **A3 BLOQUEA** (1176 no es plan1/2/18) → fuerza a poner proyecto o centro de costo aunque el rubro se auto-rellene. BILL2765 lo confirma: con el rubro borrado, `576` (plan 1) → A3 deja pasar. ✅
 
-> **Para A2 (futuro):** este hallazgo redefine el trabajo — no es "forzar compuesto desde cero", es "evitar que se borre el rubro auto-puesto y lograr que el proyecto entre en el mismo grupo". El `distribution.model` #46 ya hace la mitad del trabajo.
+**5. ✅ Confirmación EN VIVO (pruebas A3, 2026-06-16) — el gesto define la forma.** Dos bills al mismo proveedor de prueba, mismo GL `601.84.01`, prueban el mapeo gesto→forma:
+| Bill | Gesto de captura | Resultado | Forma |
+|------|------------------|-----------|-------|
+| BILL2765 (caso b) | **borró** el auto-rubro, dejó solo el proyecto | `{"576":100}` | solo-proyecto (budget no ve rubro) |
+| BILL2766 (caso c) | **dejó** el auto-rubro 1176 + agregó 636 en la **misma fila** | `{"636,1176":100}` | **COMPUESTA** ✅ |
+
+⇒ El widget de Odoo **fusiona en clave compuesta** cuando se llenan dos planes en la **misma fila** de la distribución. **No hace falta tooling nuevo para el compuesto: el gesto correcto ya lo produce.** A2 ≈ capacitación ("no borres el Materiales; pon tu proyecto/centro de costo en la misma línea") + vigilancia de que no se separe.
+
+> **Para A2 (futuro):** este hallazgo redefine el trabajo — no es "forzar compuesto desde cero", es "evitar que se borre el rubro auto-puesto y lograr que el proyecto entre en el mismo grupo". El `distribution.model` #46 ya hace la mitad del trabajo, y BILL2766 prueba que el gesto de misma-fila completa la otra mitad **sin código**.
 
 ---
 
