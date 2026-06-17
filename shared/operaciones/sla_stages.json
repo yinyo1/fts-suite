@@ -1,0 +1,73 @@
+{
+  "_meta": {
+    "doc": "docs/operaciones/SEMAFORO_WATCHDOG.md",
+    "descripcion": "Config del semáforo/watchdog operativo. Umbrales por stage (project.project.stage_id) para 2 métricas: A=tiempo en stage (chatter subtype 94), B=tiempo sin seguimiento (chatter comment no-bot). 🟡 = amarillo_pct del 🔴. Días = HÁBILES (excluye sáb/dom). Todo read-only en Odoo salvo el log note al chatter.",
+    "version": "1.0",
+    "fecha": "2026-06-17"
+  },
+  "config": {
+    "alert_recipient_default": "estebandelacruz@fts.mx",
+    "recipients_por_grupo": {
+      "Operaciones": "estebandelacruz@fts.mx",
+      "Admin": "estebandelacruz@fts.mx"
+    },
+    "watchdog_author_partner_id": 2,
+    "comercial_whitelist_partner_ids": [306],
+    "materiales_field": "x_studio_product_type",
+    "materiales_values": ["MRO"],
+    "in_progress_fallback_dias": 30,
+    "credit_fallback_days": 30,
+    "credit_extra_days": 7,
+    "business_day_start_hour": 8,
+    "business_day_cutoff_hour": 17,
+    "excluir_findes": true,
+    "festivos_mx": [],
+    "amarillo_pct": 0.9,
+    "cadencia": { "watchdog": "dias_habiles_8am_cst", "ops": ["diario", "semanal"], "kpi_cumplimiento": "semanal", "cierre": "mensual" }
+  },
+  "stages": {
+    "1": {
+      "label": "To Do", "grupo": "Operaciones",
+      "en_stage": { "modo": "fijo", "rojo_dias": 1 },
+      "sin_seguimiento": { "modo": "fijo", "rojo_dias": 1 }
+    },
+    "2": {
+      "label": "In Progress", "grupo": "Operaciones",
+      "en_stage": { "modo": "due_date", "campo": "date", "fallback_dias": 30 },
+      "sin_seguimiento": { "modo": "fijo", "rojo_dias": 2 }
+    },
+    "5": {
+      "label": "Hold", "grupo": "Operaciones",
+      "en_stage": { "modo": "fijo", "rojo_dias": 30 },
+      "sin_seguimiento": { "modo": "fijo", "rojo_dias": 7 }
+    },
+    "3": {
+      "label": "Done Operations", "grupo": "Admin",
+      "en_stage": { "modo": "fijo", "rojo_dias": 2 },
+      "sin_seguimiento": { "modo": "fijo", "rojo_dias": 1 }
+    },
+    "7": {
+      "label": "Admin - In progress", "grupo": "Admin",
+      "en_stage": { "modo": "fijo", "rojo_dias": 14 },
+      "sin_seguimiento": { "modo": "fijo", "rojo_dias": 1 }
+    },
+    "13": {
+      "label": "En plazo de credito", "grupo": "Admin",
+      "en_stage": { "modo": "credito" },
+      "sin_seguimiento": { "modo": "credito" }
+    }
+  },
+  "materiales_overrides": {
+    "_descripcion": "Proyectos cuya SO tiene x_studio_product_type='MRO'. Umbrales agresivos + sub-semáforo SEPARADO (impacta Compras + Ops).",
+    "1": { "en_stage": { "modo": "fijo", "rojo_dias": 1 }, "sin_seguimiento": { "modo": "fijo", "rojo_dias": 1 } },
+    "2": { "en_stage": { "modo": "fijo", "rojo_dias": 1 }, "sin_seguimiento": { "modo": "fijo", "rojo_dias": 2 } }
+  },
+  "excluidos": [8, 4, 6],
+  "_excluidos_labels": { "8": "Complete TOTAL (Gera)", "4": "Canceled", "6": "Templates" },
+  "integridad": {
+    "fecha_fin_field_id": 24700,
+    "stage_field_id": 24714,
+    "regla_fecha_fin": "flag si autor del cambio (mail.tracking.value field 24700 -> mail_message_id.author_id) NO está en comercial_whitelist_partner_ids Y old_value != false",
+    "regla_stage_atras": "flag si sequence(new_stage) < sequence(old_stage) (mail.tracking.value field 24714, old/new_value_integer) + reporta autor"
+  }
+}
