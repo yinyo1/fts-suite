@@ -361,6 +361,13 @@ return out;
 
 **Aplicación:** editar el dominio del nodo `Odoo - getAll projects` (UI) o regenerar. Decisión Esteban: ¿solo "con cliente", o "+ excluir is_internal/is_fsm"?
 
+### 8.2 ⚠️ 2º hallazgo (post-filtro): el set limpio (47) sale CASI TODO ROJO por la métrica B
+Confirmado el set en **47** (ToDo 3 · InProg 11 · Hold 3 · DoneOps 11 · Admin 16 · Crédito 3). Pero al medir la **recencia del último comment humano** (métrica B): de una muestra, **solo ~1 de cada 10 tiene nota reciente** (ej. proj 101 = ayer); el resto tiene su último comment de **hace MESES** (28→dic-2025, 59/72→mar-2025, 108→jun-2025, 143/146→sep-2025…). Muchos no tienen comment nunca (fallback create_date → también viejo).
+- **Implicación:** con umbrales "sin seguimiento" de **1–2 días**, **casi los 47 salen 🔴 en métrica B**. Y como el color = peor(A,B), el semáforo limpio sale **≈ todo rojo HOY**.
+- La métrica A (en stage) está **mayormente verde** ahora (la reconfig del 06-17 reseteó la entrada-a-stage a ayer) → no compensa.
+- **NO es ruido de zombies (eso ya se filtró)** — es real: **nadie pone notas de seguimiento**. La pregunta de diseño: ¿"sin seguimiento 1 día" es la **disciplina buscada** (🔴 = "ponle nota hoy"; el equipo adopta el hábito → verde; el KPI mensual ≥90% mide la adopción), o es **demasiado agresivo**? **Decisión Esteban antes de #3 (correo)** — si no, el primer correo manda ~47 rojos.
+- Opciones: (a) dejar 1–2 días (disciplina dura, rojo = baseline a mejorar), (b) aflojar "sin seguimiento" (ej. 3–5 días hábiles), (c) el correo #3 arranca SOLO con métrica A + banderas, y "sin seguimiento" como lista informativa hasta que el hábito agarre.
+
 ## 7. PENDIENTE — otro frente (NO en este build): botón Confirmar de la SO
 Mejora de captura SO (toca **Odoo/Studio**, frente aparte): hacer **`x_studio_product_type` obligatorio** + en blanco al crear + **condición de visibilidad del botón Confirmar** junto con MO/Materiales del handoff (patrón pure-Studio §17 quirk #4: `invisible` en el botón Confirmar condicionado a los campos). Sin esto, las órdenes "materiales" pueden quedar sin clasificar. **NO construir ahora.**
 
