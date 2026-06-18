@@ -406,11 +406,24 @@ Construido en `Code - buildEmail` desde `Code - MAIN`. Buckets:
 ### 9.5 Destinatario
 `config.recipients_por_grupo` (Ops/Admin) o `alert_recipient_default` (`estebandelacruz@fts.mx` en prueba). Decisión: **¿un correo combinado (Ops+Admin) o uno por grupo** (2 envíos, cada quien lo suyo)? Recomiendo **por grupo** al salir de prueba; en prueba, uno solo a Esteban.
 
-### 9.6 Decisiones para Esteban (antes de generar)
-1. **Idempotencia:** ¿enviar diario siempre (con nota de cambios) o saltar si nada cambió?
-2. **Por grupo vs combinado:** ¿1 correo Ops+Admin, o 2 (Ops / Admin)?
-3. **KPI semanal:** ¿% de proyectos verdes el lunes, o promedio project-days de la semana? (lo 2º es más justo pero pesa más snapshots).
-4. **Sección "EN STAGE":** ¿incluir amarillos (preventivo) o solo rojos?
+### 9.6 Decisiones de Esteban (aplicadas)
+1. **Idempotencia:** enviar **DIARIO SIEMPRE** + nota "🆕 desde ayer" / "(sin cambios en críticos desde ayer)". Ritmo constante = instala el hábito.
+2. **Destinatarios:** **prueba** = 1 correo combinado a `estebandelacruz@fts.mx` (`config.modo_prueba=true`); **producción** = por grupo (Ops/Admin) vía `recipients_por_grupo` (poner `modo_prueba=false`).
+3. **KPI semanal — transición AUTOMÁTICA:** semana 1 (arranque, `<4` días de historia) → % verde simple del día; desde que hay ≥4 días → **promedio project-days verde de la semana**. El Code detecta cuántos días de historia tiene → cambia solo.
+4. **EN STAGE:** incluye **amarillos + rojos**, diferenciados (🔴 rojo / 🟡 amarillo).
+
+### 9.7 ✅ Watchdog COMPLETO regenerado (2026-06-18) — listo para importar
+
+- **Generador:** `scripts/local/gen-watchdog.js` → **`scripts/local/watchdog-semaforo.json`** (gitignored). **29 nodos · 0 conexiones rotas · 10 Odoo con customResource+cred · buildEmail válido · 0 errores de sintaxis en Code nodes.**
+- **Incluye:** filtro 47 (`partner_id != false` + `is_internal_project/is_fsm != true`) + control AP + correo priorizado (5 secciones) + KPI auto-transición + idempotencia + snapshot.
+- **Rama correo:** `Code - col-main` → `Code - buildEmail` → `HTTP - Enviar correo (Graph)` (best-effort).
+- ⚠️ **Fuente del KPI = `staticData` del workflow** (acumula tally diario `{fecha,V,A,R,total}`), NO los archivos de GitHub. Razón: leer N snapshots de GitHub dentro de un Code es frágil; `staticData` es self-contained y la auto-transición cuenta los días acumulados. Los snapshots de GitHub siguen escribiéndose (historia durable para #4/#5). **Caveat:** `staticData` **solo persiste en runs de producción (workflow ACTIVO)**, NO en Manual Trigger → en pruebas el KPI saldrá siempre "arranque/simple" (no acumula); en producción acumula diario. (Si Esteban prefiere leer de GitHub, se cambia.)
+- **Importar (1 sola vez):** n8n UI → Import from File → `watchdog-semaforo.json` → `ops/watchdog-semaforo` INACTIVO.
+- ⚠️ **Post-import — verificar credenciales (el import suele blanquearlas):**
+  1. **10 nodos Odoo:** `customResource` + credencial **Odoo FTS** (`Wansi69xesEqEiY1`).
+  2. **`HTTP - PUT snapshot (GitHub)`:** credencial **Header Auth "GitHub FTS Suite"** (id va como `REEMPLAZAR`).
+  3. **`HTTP - Enviar correo (Graph)`:** credencial **OAuth2 "Microsoft Graph - sales"** (`Mh5kBNduMzOl3nzT`).
+- **Probar con Manual Trigger** (NO activar). Hace reads + escribe log notes + snapshot + **manda 1 correo combinado a Esteban**. Revisar el correo (estructura priorizada) + la salida de `Code - MAIN`.
 
 ## 7. PENDIENTE — otro frente (NO en este build): botón Confirmar de la SO
 Mejora de captura SO (toca **Odoo/Studio**, frente aparte): hacer **`x_studio_product_type` obligatorio** + en blanco al crear + **condición de visibilidad del botón Confirmar** junto con MO/Materiales del handoff (patrón pure-Studio §17 quirk #4: `invisible` en el botón Confirmar condicionado a los campos). Sin esto, las órdenes "materiales" pueden quedar sin clasificar. **NO construir ahora.**

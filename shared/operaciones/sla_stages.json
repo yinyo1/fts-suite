@@ -7,6 +7,7 @@
   },
   "config": {
     "alert_recipient_default": "estebandelacruz@fts.mx",
+    "modo_prueba": true,
     "recipients_por_grupo": {
       "Operaciones": "estebandelacruz@fts.mx",
       "Admin": "estebandelacruz@fts.mx"
