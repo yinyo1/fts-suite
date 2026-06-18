@@ -425,6 +425,21 @@ Construido en `Code - buildEmail` desde `Code - MAIN`. Buckets:
   3. **`HTTP - Enviar correo (Graph)`:** credencial **OAuth2 "Microsoft Graph - sales"** (`Mh5kBNduMzOl3nzT`).
 - **Probar con Manual Trigger** (NO activar). Hace reads + escribe log notes + snapshot + **manda 1 correo combinado a Esteban**. Revisar el correo (estructura priorizada) + la salida de `Code - MAIN`.
 
+### 9.8 ✅ Fixes post-1ª prueba de correo (2026-06-18)
+
+Tras la 1ª prueba (correo llegó, lógica OK) se aplicaron 4 ajustes — **solo presentación + un flag, cero cambios a la lógica del semáforo:**
+
+1. **🔴 Encoding roto (emojis/acentos como Hangul `뜜뜝뜡뜢`) — RESUELTO en la raíz.** Causa real: NO eran los emojis (ya eran entidades `&#NNN;`, ASCII puro), sino los **acentos del contenido dinámico de Odoo** (nombres de proyecto, clientes, autores de banderas — ej. "Operación", "Administración FTS-YIN"). `esc()` solo escapaba `&<>"`, dejaba los multibyte UTF-8 crudos → el nodo Graph los mandaba sin charset → Outlook los decodificaba como Hangul. **Fix:** `esc()` reescrito con `Array.from(...).map(codePointAt)` → entitiza **todo codepoint >127** (acentos Y emojis literales, maneja surrogate pairs). Resultado: **el body entero queda 100% ASCII** → renderiza idéntico en cualquier cliente, sin depender del transporte. + `<meta charset="utf-8">` como defensa en profundidad. Verificado: `México`→`M&#233;xico`, `🔴`→`&#128308;`, 0 no-ASCII en salida.
+2. **Nombres largos truncados.** Helper `escN(s, n=60)` (corta a 60 + `...`). Los SO de flete (Racing Cargo "Origen: BSH - AVENIDA...") ya no hacen el correo eterno. Clientes truncados a 40. Aplicado en las 4 secciones.
+3. **"En stage" sin duplicar críticos.** `est` ahora excluye los IDs que ya salen en la tabla de Críticos (`critSet`). Encabezado: *"En stage - otros atorados (no criticos)"*.
+4. **Flag `log_note_silenciar_en_prueba` (config).** Cuando `modo_prueba=true` **Y** `log_note_silenciar_en_prueba=true` → `Code - buildLogNotes` retorna `[]` (no escribe nada al chatter). Permite probar el correo sin ensuciar el chatter. En producción (`modo_prueba=false`) escribe normal. Commiteado a `main` (`2b647a5`) porque la config se lee desde GitHub raw `main`.
+
+**Las banderas de integridad NO se tocaron** (Esteban confirmó que detectaron stages regresados reales por Operaciones/Administración FTS-YIN + AP sin confirmación — funcionan perfecto).
+
+#### ⏳ Refinamiento PENDIENTE para producción (NO ahora)
+
+**Log note solo en cambio de estado, no diario.** Hoy `buildLogNotes` escribe una nota cada corrida para todo proyecto rojo o con bandera → en producción (diario) llenaría el chatter de notas idénticas. **Refinar a:** escribir el log note **solo cuando el proyecto cambia de color** (verde→amarillo→rojo, o viceversa) **o entra en rojo por primera vez** — no si lleva N días en el mismo rojo. Mecánica sugerida: persistir el último color por proyecto en `staticData` (como ya se hace con `lastCritIds`/`lastCritKey`) y comparar; escribir nota solo si `color != color_previo[id]` o es bandera nueva. El correo SÍ sigue diario (ritmo/hábito); es solo el log note del chatter el que se hace event-driven. Aplicar al pasar a `modo_prueba=false` + activar el Schedule.
+
 ## 7. PENDIENTE — otro frente (NO en este build): botón Confirmar de la SO
 Mejora de captura SO (toca **Odoo/Studio**, frente aparte): hacer **`x_studio_product_type` obligatorio** + en blanco al crear + **condición de visibilidad del botón Confirmar** junto con MO/Materiales del handoff (patrón pure-Studio §17 quirk #4: `invisible` en el botón Confirmar condicionado a los campos). Sin esto, las órdenes "materiales" pueden quedar sin clasificar. **NO construir ahora.**
 
