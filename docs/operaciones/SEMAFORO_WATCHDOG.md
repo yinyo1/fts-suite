@@ -461,6 +461,32 @@ Tras la 1ª prueba (correo llegó, lógica OK) se aplicaron 4 ajustes — **solo
 
 **Frontend #5 (`operaciones/semaforo/`) hereda este modelo:** grilla con 2 columnas-semáforo por proyecto (A estancamiento / B seguimiento), filtros por grupo, drill-down al chatter Odoo, tiles de %verde por semáforo, y la MISMA acción contextual por reloj. El backend `/ops/semaforo` (#4) sirve el mismo `rows[]` que `Code - MAIN` produce (`color_a`, `color_b`, `dias_en_stage`, `dias_sin_seguimiento`, `banderas`).
 
+### 9.10 ✅ EN PRODUCCIÓN — GO-LIVE 18-jun-2026
+
+El semáforo + watchdog está **EN PRODUCCIÓN**. Workflow n8n **`ops/watchdog-semaforo` (id `29eaGe2wkS98lRMU`)**, 29 nodos, **Schedule ACTIVO**.
+
+- **Horario:** cron `0 14 * * 1-5` + **`settings.timezone = "Etc/UTC"`** = **8:00 AM CST, lunes a viernes**, DST-proof (Monterrey UTC-6 fijo). ⚠️ n8n **descarta `settings.timezone` al importar** → se puso a mano en la UI (Settings → Timezone). Verificar tras cualquier re-import.
+- **Config (lee de `main` raw):** `modo_prueba=false`, `redirect_todo_a` borrado, `recipients_por_grupo` reales.
+- **Primer run (manual, exec 20208, 18-jun 23:28):** 44 proyectos (17 Operaciones + 27 Admin). **2 correos enviados (Graph 202):**
+  - `[Semaforo Operaciones]` → felipe, gibran, mateo, estebandelacruz, info_comercialFTS (5). 17 proyectos: 12 críticos doble-rojo, 5 solo-estancados.
+  - `[Semaforo Admin]` → erick, gerardo, estebandelacruz, info_comercialFTS (4). 27 proyectos: 16 críticos, 10 solo-estancados, 1 solo-sin-nota.
+- Verificado en vivo: 225 y 2306 salieron **verdes en seguimiento** (cierre del bug de timing del 18-jun).
+- **Credenciales OK:** 10 Odoo (Odoo FTS) · GitHub FTS Suite (snapshot) · Microsoft Graph - sales (envío).
+
+#### 🔴 Known issue (no bloquea el correo) — log notes NO se escribían
+
+El nodo `Odoo - CREATE log note` usaba **`author_id: 2`** (OdooBot). **Partner 2 está archivado/inaccesible** → el CREATE falla con *"res.partner('2') does not exist or has been deleted"*. Los 44 del baseline fallaron (silencioso por `onError:continue`); de hecho **nunca se escribió ningún log note** (las "pruebas previas" también fallaban — `body like 'Watchdog'` = 0). **No afecta:** el correo (sí salió) ni la métrica B (filtra `message_type='comment'`, la nota es `notification`).
+- **Fix:** `author_id` `2` → **`3`** (partner de Esteban, válido). Ya corregido en el generador de disco. **Aplicar en producción con UN edit en la UI:** abrir el nodo `Odoo - CREATE log note` → campo `author_id` → cambiar `2` por `3` → Save. **No requiere re-importar** (evita re-hacer timezone + credenciales). En el próximo run del Schedule escribirá el baseline correctamente.
+- Mejora futura opcional: crear un partner dedicado "Watchdog" (activo) en vez de usar a Esteban.
+
+#### Pendientes (post go-live)
+
+1. **Fix log note `author_id` 2→3** en la UI (arriba) — para que el registro al chatter funcione.
+2. **#4 — endpoint `ops/semaforo`** (n8n webhook GET → grilla + tiles KPI; mismo `rows[]` de `Code - MAIN`).
+3. **#5 — frontend `operaciones/semaforo/`** (grilla 2-semáforos por proyecto, drill-down, %verde; hereda §9.9).
+4. **Auditar TZ de otros workflows con Schedule.** La instancia n8n está en **America/New_York (UTC-4)**; cualquier cron sin `settings.timezone="UTC"` dispara desfasado. Revisar `rh/empleados-master/sync` ("6am CST"), el futuro cron 2am de Bloque B, y demás Schedule triggers.
+5. **#7 (otro frente):** botón Confirmar de la SO (Studio) — abajo.
+
 ## 7. PENDIENTE — otro frente (NO en este build): botón Confirmar de la SO
 Mejora de captura SO (toca **Odoo/Studio**, frente aparte): hacer **`x_studio_product_type` obligatorio** + en blanco al crear + **condición de visibilidad del botón Confirmar** junto con MO/Materiales del handoff (patrón pure-Studio §17 quirk #4: `invisible` en el botón Confirmar condicionado a los campos). Sin esto, las órdenes "materiales" pueden quedar sin clasificar. **NO construir ahora.**
 
