@@ -10,8 +10,8 @@
     "modo_prueba": true,
     "log_note_silenciar_en_prueba": true,
     "recipients_por_grupo": {
-      "Operaciones": "estebandelacruz@fts.mx",
-      "Admin": "estebandelacruz@fts.mx"
+      "Operaciones": "felipe@fts.mx, gibran@fts.mx, mateo@fts.mx, estebandelacruz@fts.mx, info_comercialFTS@fts.mx",
+      "Admin": "erick@fts.mx, gerardo@fts.mx, estebandelacruz@fts.mx, info_comercialFTS@fts.mx"
     },
     "watchdog_author_partner_id": 2,
     "comercial_whitelist_partner_ids": [306],
