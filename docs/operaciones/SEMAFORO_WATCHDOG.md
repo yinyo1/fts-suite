@@ -440,6 +440,27 @@ Tras la 1ª prueba (correo llegó, lógica OK) se aplicaron 4 ajustes — **solo
 
 **Log note solo en cambio de estado, no diario.** Hoy `buildLogNotes` escribe una nota cada corrida para todo proyecto rojo o con bandera → en producción (diario) llenaría el chatter de notas idénticas. **Refinar a:** escribir el log note **solo cuando el proyecto cambia de color** (verde→amarillo→rojo, o viceversa) **o entra en rojo por primera vez** — no si lleva N días en el mismo rojo. Mecánica sugerida: persistir el último color por proyecto en `staticData` (como ya se hace con `lastCritIds`/`lastCritKey`) y comparar; escribir nota solo si `color != color_previo[id]` o es bandera nueva. El correo SÍ sigue diario (ritmo/hábito); es solo el log note del chatter el que se hace event-driven. Aplicar al pasar a `modo_prueba=false` + activar el Schedule.
 
+### 9.9 ⭐ Estructura FINAL del correo — DOS semáforos independientes (2026-06-18, decisión Esteban)
+
+**Diseño canónico** del correo **y base del frontend #5**. Reemplaza la estructura de §9.2 (color combinado). **Causa:** el color combinado (`max(A,B)`) confundía — un proyecto con seguimiento al día seguía rojo por estancamiento y el equipo perdía confianza (ver §8.2 + diagnóstico timing 2026-06-18). **Decisión: NO mostrar color combinado. Mostrar 2 semáforos sobre los mismos proyectos, con acciones distintas.**
+
+- 🅐 **ESTANCAMIENTO EN STAGE** (`color_a`): demasiado tiempo en su etapa. **Se apaga avanzando de stage o cerrando.**
+- 🅑 **FALTA DE SEGUIMIENTO** (`color_b`): hace cuánto sin Log note. **Se apaga con una Log note** (`message_type='comment'` por cualquier autor ≠ OdooBot/partner 2).
+
+**Estructura del correo (arriba→abajo), implementada en `Code - buildEmail`:**
+1. **Totalizador (banner):** `N proyectos totales` + 2 líneas de conteo, **cada una por SU métrica** (no el combinado): `🔵 ESTANCAMIENTO: V verde · A amarillo · R rojo` / `📝 SEGUIMIENTO: V verde · A amarillo · R rojo`. (`cntBy(rows,'color_a')` y `cntBy(rows,'color_b')`.)
+2. **🔴🔴 CRÍTICOS — doble rojo** (`color_a==='rojo' && color_b==='rojo'`): ordenados por `(dias_en_stage + dias_sin_seguimiento)` desc. Muestran AMBOS números + doble acción *"↳ Avanza de stage Y pon una Log note"*. 🚀 marca los nuevos vs ayer (`lastCritIds`).
+3. **🔵 SOLO ESTANCADOS** (`color_a==='rojo' && color_b!=='rojo'`): orden `dias_en_stage` desc. Acción *"↳ Avanza de stage o documenta por qué sigue aquí (Log note)"*.
+4. **📝 SOLO SIN SEGUIMIENTO** (`color_b==='rojo' && color_a!=='rojo'`): orden `dias_sin_seguimiento` desc. Acción *"↳ Pon una Log note en el chatter del proyecto"*.
+5. **🟡 AMARILLOS** (amarillo en A o B, y NO rojo en ninguno): breve, preventivo; indica cuál reloj se acerca.
+6. **🚩 INTEGRIDAD / manipulación:** banderas, al final (sin cambios).
+
+**Reglas:** rojos priorizados por TIEMPO (peor primero); NO listar verdes; cada rojo lleva su acción concreta según qué reloj falla; nombres truncados (`escN` 60/cliente 40); body 100% ASCII (`esc` entitiza >127); subject resumido con emojis literales (`String.fromCodePoint`, para que el generador quede ASCII). **Subject:** `[Semaforo <grupo>] DD/Mon - 🔴🔴 N criticos · 🔵 X estancados · 📝 Y sin nota`.
+
+**KPI (mantiene auto-transición):** ahora reporta **ambos %verde** (estancamiento + seguimiento) — `staticData.history` guarda `{fecha,total,aV,aA,aR,bV,bA,bR}`. Bloque semanal (lunes) + cierre mensual (inicio de mes), meta ≥90% verde en cada semáforo. Idempotencia/críticos por doble-rojo (`lastCritKey`). Caveat `staticData` solo persiste en runs de producción (igual que §9.7).
+
+**Frontend #5 (`operaciones/semaforo/`) hereda este modelo:** grilla con 2 columnas-semáforo por proyecto (A estancamiento / B seguimiento), filtros por grupo, drill-down al chatter Odoo, tiles de %verde por semáforo, y la MISMA acción contextual por reloj. El backend `/ops/semaforo` (#4) sirve el mismo `rows[]` que `Code - MAIN` produce (`color_a`, `color_b`, `dias_en_stage`, `dias_sin_seguimiento`, `banderas`).
+
 ## 7. PENDIENTE — otro frente (NO en este build): botón Confirmar de la SO
 Mejora de captura SO (toca **Odoo/Studio**, frente aparte): hacer **`x_studio_product_type` obligatorio** + en blanco al crear + **condición de visibilidad del botón Confirmar** junto con MO/Materiales del handoff (patrón pure-Studio §17 quirk #4: `invisible` en el botón Confirmar condicionado a los campos). Sin esto, las órdenes "materiales" pueden quedar sin clasificar. **NO construir ahora.**
 
