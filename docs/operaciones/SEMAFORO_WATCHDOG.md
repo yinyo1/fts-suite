@@ -368,6 +368,50 @@ Confirmado el set en **47** (ToDo 3 · InProg 11 · Hold 3 · DoneOps 11 · Admi
 - **NO es ruido de zombies (eso ya se filtró)** — es real: **nadie pone notas de seguimiento**. La pregunta de diseño: ¿"sin seguimiento 1 día" es la **disciplina buscada** (🔴 = "ponle nota hoy"; el equipo adopta el hábito → verde; el KPI mensual ≥90% mide la adopción), o es **demasiado agresivo**? **Decisión Esteban antes de #3 (correo)** — si no, el primer correo manda ~47 rojos.
 - Opciones: (a) dejar 1–2 días (disciplina dura, rojo = baseline a mejorar), (b) aflojar "sin seguimiento" (ej. 3–5 días hábiles), (c) el correo #3 arranca SOLO con métrica A + banderas, y "sin seguimiento" como lista informativa hasta que el hábito agarre.
 
+## 9. #3 Correo — DISEÑO para revisión (2026-06-18)
+
+> Decisión Esteban: umbral estricto SE MANTIENE (rojo = verdad operativa a corregir); el correo debe ser **accionable y priorizado**, no avalancha de 47 rojos idénticos. Filtro ya bakeado (47 reales).
+
+### 9.1 Integración (no un workflow aparte)
+El correo va **dentro del watchdog** (ya tiene los datos de `Code - MAIN`): nueva rama desde `Code - col-main`, paralela a logNotes/snapshot → `Code - buildEmail` → `HTTP - Enviar correo (Graph)` (patrón A1, best-effort). El watchdog corre diario → correo diario.
+
+### 9.2 Estructura del correo (priorizada, NO lista plana)
+Construido en `Code - buildEmail` desde `Code - MAIN`. Buckets:
+- `criticos` = `color_a==='rojo' && color_b==='rojo'` (atorado **Y** sin seguimiento).
+- `ponleNota` = `color_b==='rojo' && color_a!=='rojo'` (avanza en stage pero sin nota).
+- `enStage` = `color_a ∈ {rojo,amarillo}` agrupado por stage.
+- `integridad` = `banderas.length > 0`.
+
+**HTML (orden de arriba a abajo):**
+1. **RESUMEN (banner):** `🚦 Semáforo Operaciones — DD/Mon/YYYY` + tiles **Total N · 🟢 V · 🟡 A · 🔴 R · %verde X%** + barra de progreso hacia **meta ≥90%**. Convierte la avalancha en objetivo medible.
+2. **🔴🔴 CRÍTICOS:** tabla destacada (proyecto · cliente · días en stage · días sin nota · stage · link Odoo). "Máxima urgencia."
+3. **✍️ PONLE NOTA HOY:** lista accionable (proyecto · cliente · días sin nota · link). "Avanzan en su etapa, falta registrar seguimiento." Separado de lo urgente-urgente.
+4. **⏱️ EN STAGE (atorados):** rojos/amarillos de métrica A, **agrupados por stage**.
+5. **🚩 INTEGRIDAD / POSIBLE MANIPULACIÓN:** banderas (fecha fin por no-comercial · stage atrás · AP sin confirmación), sección aparte al final.
+
+**Subject:** `[Semáforo Ops] DD/Mon — 🔴N críticos · ✍️M sin nota · X% verde`.
+
+### 9.3 Cadencia (un correo, bloques condicionales por fecha)
+- **Diario (Ops):** siempre el digest priorizado.
+- **Semanal (lunes):** + bloque **KPI %verde de la semana** (promedio project-days-verde de los snapshots de la semana, leídos de GitHub).
+- **Mensual (1er día hábil del mes):** + bloque **cierre mensual** (%verde del mes anterior).
+- Detectado en `Code - buildEmail` por `$now` (día de semana / día de mes).
+
+### 9.4 Idempotencia anti-spam (staticData)
+`staticData` guarda el **set crítico previo** (ids de `criticos` + `integridad`). En el envío diario:
+- Si el set crítico **cambió** → resalta los **nuevos** críticos/banderas arriba ("🆕 desde ayer").
+- Si **no cambió** → el digest va igual (ritmo operativo) pero marca "sin cambios en críticos desde ayer" (no re-alarma como nuevo).
+- (Alternativa: **saltar** el envío si NADA cambió — decisión Esteban; recomiendo enviar diario con la nota de cambios.)
+
+### 9.5 Destinatario
+`config.recipients_por_grupo` (Ops/Admin) o `alert_recipient_default` (`estebandelacruz@fts.mx` en prueba). Decisión: **¿un correo combinado (Ops+Admin) o uno por grupo** (2 envíos, cada quien lo suyo)? Recomiendo **por grupo** al salir de prueba; en prueba, uno solo a Esteban.
+
+### 9.6 Decisiones para Esteban (antes de generar)
+1. **Idempotencia:** ¿enviar diario siempre (con nota de cambios) o saltar si nada cambió?
+2. **Por grupo vs combinado:** ¿1 correo Ops+Admin, o 2 (Ops / Admin)?
+3. **KPI semanal:** ¿% de proyectos verdes el lunes, o promedio project-days de la semana? (lo 2º es más justo pero pesa más snapshots).
+4. **Sección "EN STAGE":** ¿incluir amarillos (preventivo) o solo rojos?
+
 ## 7. PENDIENTE — otro frente (NO en este build): botón Confirmar de la SO
 Mejora de captura SO (toca **Odoo/Studio**, frente aparte): hacer **`x_studio_product_type` obligatorio** + en blanco al crear + **condición de visibilidad del botón Confirmar** junto con MO/Materiales del handoff (patrón pure-Studio §17 quirk #4: `invisible` en el botón Confirmar condicionado a los campos). Sin esto, las órdenes "materiales" pueden quedar sin clasificar. **NO construir ahora.**
 
