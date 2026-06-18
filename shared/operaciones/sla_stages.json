@@ -9,6 +9,8 @@
     "alert_recipient_default": "estebandelacruz@fts.mx",
     "modo_prueba": true,
     "log_note_silenciar_en_prueba": true,
+    "_redirect_todo_a_nota": "PRUEBA DE VESTIDO: si presente, los 2 correos por grupo (Ops+Admin con su contenido separado) van SOLO a este correo, sin tocar recipients_por_grupo. BORRAR esta clave para el go-live real.",
+    "redirect_todo_a": "estebandelacruz@fts.mx",
     "recipients_por_grupo": {
       "Operaciones": "felipe@fts.mx, gibran@fts.mx, mateo@fts.mx, estebandelacruz@fts.mx, info_comercialFTS@fts.mx",
       "Admin": "erick@fts.mx, gerardo@fts.mx, estebandelacruz@fts.mx, info_comercialFTS@fts.mx"
