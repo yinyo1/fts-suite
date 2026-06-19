@@ -45,11 +45,11 @@ Branch `feat/rh-alta-baja-empleados`. Diseño: [`ALTA_BAJA_EMPLEADOS_DISENO.md`]
 - `image_1920`: el prep quita el prefijo `data:...;base64,`. **PIN manual, SIN validación de unicidad** (decisión #1).
 - Respuesta: `{ ok, employee_id, name, pin }`.
 
-### 2. `rh/empleado/archivar` — POST `/webhook/rh/empleado/archivar`
-`Webhook → Code prep → HTTP GET incidencias → Odoo SEARCH att abierta → Code col → Code checks → Odoo UPDATE active=false → Code result → HTTP refresh → Respond`
-- **Pre-chequeos (no bloquean):** attendance sin `check_out` + incidencias `pendiente_*` → se devuelven en `warnings[]`.
-- UPDATE: `active=false`, `departure_date` (default hoy si no viene), `departure_reason_id`, `departure_description`.
-- Respuesta: `{ ok, empleado_id, departure_date, warnings }`.
+### 2. `rh/empleado/archivar` — POST `/webhook/rh/empleado/archivar` (12 nodos)
+`Webhook → prep → HTTP GET incidencias → SEARCH att abierta → col → Code checks → IF bloqueado → [true] Respond bloqueo · [false] UPDATE active=false → result → HTTP refresh → Respond ok`
+- 🔴 **BLOQUEA (decisión Esteban #1):** si hay attendance sin `check_out` → **NO archiva**, responde `{ ok:false, blocked:true, error, attendance_ids }`. El frontend muestra el error y no cierra el form (RH cierra el turno primero).
+- Incidencias `pendiente_*` → solo `warnings[]` (no bloquean).
+- Rama no-bloqueada: `UPDATE active=false` + `departure_date` (default hoy) + `departure_reason_id` + `departure_description`. Respuesta `{ ok, empleado_id, departure_date, warnings }`.
 
 ### 3. `rh/empleado/reactivar` — POST `/webhook/rh/empleado/reactivar`
 `Webhook → Code prep → Odoo UPDATE active=true (+ limpia departure_date/reason) → Code result → HTTP refresh → Respond`  (decisión #8).
@@ -73,9 +73,9 @@ Tras crear/archivar/reactivar, `HTTP - refresh master` hace **POST** a `https://
 
 ## Decisiones abiertas / a verificar (FASE 1)
 
-1. **`archivar` NO bloquea ni auto-cierra.** Reporta `warnings` (attendance abierta + incidencias pendientes) pero **igual archiva**. Una attendance abierta en un empleado archivado **queda colgada** (ya no aparece en kiosk para cerrarla). ¿Aceptable para MVP, o `archivar` debe **bloquear** si hay attendance abierta (forzar cerrarla antes)? *(Implementado: reporta + procede.)*
+1. ✅ **RESUELTO (decisión Esteban #1): `archivar` BLOQUEA** si hay attendance abierta — no archiva, devuelve `{ok:false, blocked:true, error}`; RH cierra el turno primero. *(Implementado: `Code checks` → `IF bloqueado` → `Respond bloqueo`.)*
 2. **Shape de `incidencias-asistencia.json`:** el filtro asume `{ incidencias:[{ empleado_id, status }] }` con `status` que empieza con `pendiente`. El Code es defensivo (prueba `.incidencias` / array / `.data.incidencias`), pero **verificar los nombres reales** en el primer smoke.
-3. **Path del `/refresh`** (arriba) — confirmar.
+3. ✅ **CONFIRMADO (decisión #2): path `/refresh`** = `https://primary-production-5c3c.up.railway.app/webhook/rh/empleados-master/refresh` (POST sin token).
 4. **`reactivar`** limpia `departure_date` + `departure_reason_id` (decisión #8) pero **deja `departure_description`** como histórico. ¿Limpiar también? *(Implementado: se conserva.)*
 5. **Sin HMAC.** Los 5 webhooks aceptan `token` en el body pero **no lo validan** (deuda preexistente §9). Crear/archivar empleados es sensible → recomendado un shared-secret antes de exponer en producción. **No bloquea MVP.**
 6. **`lookups` devuelve TODOS los managers** (empleados activos, incl. cuentas zombie/cajero). El frontend puede filtrar por departamento si se quiere.

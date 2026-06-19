@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RH — Alta / Baja de empleados — FTS Suite</title>
+<script>
+  (function(){ window.BUILD_DATE = '20260619-rh-empleados-v1'; })();
+</script>
+<script src="../../../shared/auth-suite.js"></script>
+<link rel="stylesheet" href="css/empleados.css">
+</head>
+<body>
+
+<div class="rh-topbar">
+  <a class="rh-back" href="../index.html">← Módulo RH</a>
+  <div class="rh-title-wrap">
+    <span class="rh-title">👥 Alta / Baja de empleados</span>
+    <span class="rh-build">build 20260619-rh-empleados-v1</span>
+  </div>
+  <div class="rh-user">
+    <span class="rh-user-name" id="rh-user-name">—</span>
+    <button class="rh-logout" onclick="rh_logout()">Cerrar sesión</button>
+  </div>
+</div>
+
+<main class="rh-main">
+
+  <!-- Tabs -->
+  <div class="rh-tabs">
+    <button class="rh-tab active" data-tab="alta">➕ Alta</button>
+    <button class="rh-tab" data-tab="baja">📤 Baja</button>
+    <button class="rh-tab" data-tab="archivados">🗄️ Archivados</button>
+  </div>
+
+  <!-- ════════════ TAB ALTA ════════════ -->
+  <section class="rh-panel active" id="panel-alta">
+    <h2 class="rh-h2">Nuevo empleado</h2>
+    <form id="formAlta" class="rh-form" autocomplete="off">
+      <div class="rh-grid">
+        <label class="rh-f"><span>Nombre completo *</span><input name="name" type="text" required></label>
+        <label class="rh-f"><span>Empresa *</span><select name="company_id" required></select></label>
+        <label class="rh-f"><span>Correo de empresa *</span><input name="work_email" type="email" required></label>
+        <label class="rh-f"><span>Correo personal</span><input name="private_email" type="email"></label>
+        <label class="rh-f"><span>Celular</span><input name="mobile_phone" type="tel"></label>
+        <label class="rh-f"><span>Teléfono</span><input name="work_phone" type="tel"></label>
+        <label class="rh-f"><span>Departamento *</span><select name="department_id" required></select></label>
+        <label class="rh-f"><span>Jefe directo *</span><select name="parent_id" required></select></label>
+        <label class="rh-f"><span>Puesto</span><select name="job_id"></select></label>
+        <label class="rh-f"><span>Horario *</span><select name="resource_calendar_id" required></select></label>
+        <label class="rh-f"><span>PIN de kiosko * <em>(lo elige el empleado)</em></span><input name="pin" type="text" inputmode="numeric" required></label>
+        <label class="rh-f"><span>Hora de entrada</span><input name="x_studio_hora_entrada" type="number" step="0.01" min="0" max="23.99"></label>
+        <label class="rh-f"><span>Categoría nómina <em>(vacío = auto por depto)</em></span><select name="x_categoria_nomina"></select></label>
+        <label class="rh-f rh-check"><input name="x_aplica_ppa" type="checkbox" checked><span>Aplica PPA</span></label>
+      </div>
+
+      <div class="rh-foto">
+        <span class="rh-foto-label">Foto de perfil <em>(opcional)</em></span>
+        <div class="rh-foto-row">
+          <img id="fotoPreview" class="rh-foto-preview" alt="">
+          <input id="fotoInput" type="file" accept="image/jpeg,image/png">
+          <span id="fotoInfo" class="rh-foto-info"></span>
+        </div>
+      </div>
+
+      <div class="rh-actions">
+        <button type="submit" class="rh-btn rh-btn-primary" id="btnAlta">Crear empleado</button>
+        <span id="altaMsg" class="rh-msg"></span>
+      </div>
+    </form>
+  </section>
+
+  <!-- ════════════ TAB BAJA ════════════ -->
+  <section class="rh-panel" id="panel-baja">
+    <h2 class="rh-h2">Dar de baja (archivar)</h2>
+    <form id="formBaja" class="rh-form" autocomplete="off">
+      <div class="rh-grid">
+        <label class="rh-f rh-f-wide"><span>Empleado *</span><select name="empleado_id" required></select></label>
+        <label class="rh-f"><span>Fecha de baja *</span><input name="departure_date" type="date" required></label>
+        <label class="rh-f"><span>Motivo *</span><select name="departure_reason_id" required></select></label>
+        <label class="rh-f rh-f-wide"><span>Nota del motivo</span><textarea name="departure_description" rows="2"></textarea></label>
+      </div>
+      <div class="rh-actions">
+        <button type="submit" class="rh-btn rh-btn-danger" id="btnBaja">Dar de baja</button>
+        <span id="bajaMsg" class="rh-msg"></span>
+      </div>
+    </form>
+  </section>
+
+  <!-- ════════════ TAB ARCHIVADOS ════════════ -->
+  <section class="rh-panel" id="panel-archivados">
+    <div class="rh-panel-head">
+      <h2 class="rh-h2">Empleados archivados</h2>
+      <button class="rh-btn rh-btn-ghost" id="btnReloadArch">↻ Recargar</button>
+    </div>
+    <div class="rh-table-wrap">
+      <table class="rh-table" id="tablaArchivados">
+        <thead><tr>
+          <th>Nombre</th><th>Depto</th><th>Puesto</th><th>Fecha baja</th>
+          <th>Motivo</th><th>Nota</th><th>Última actividad</th><th>Alta</th><th></th>
+        </tr></thead>
+        <tbody><tr><td colspan="9" class="rh-empty">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="rh-footer">FTS Industrial Suite — RH · Alta / Baja de empleados</div>
+</main>
+
+<script src="js/foto.js"></script>
+<script src="js/empleados.js"></script>
+</body>
+</html>
