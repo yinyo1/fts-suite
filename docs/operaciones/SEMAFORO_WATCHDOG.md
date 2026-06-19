@@ -461,30 +461,40 @@ Tras la 1ª prueba (correo llegó, lógica OK) se aplicaron 4 ajustes — **solo
 
 **Frontend #5 (`operaciones/semaforo/`) hereda este modelo:** grilla con 2 columnas-semáforo por proyecto (A estancamiento / B seguimiento), filtros por grupo, drill-down al chatter Odoo, tiles de %verde por semáforo, y la MISMA acción contextual por reloj. El backend `/ops/semaforo` (#4) sirve el mismo `rows[]` que `Code - MAIN` produce (`color_a`, `color_b`, `dias_en_stage`, `dias_sin_seguimiento`, `banderas`).
 
-### 9.10 ✅ EN PRODUCCIÓN — GO-LIVE 18-jun-2026
+### 9.10 ✅ EN PRODUCCIÓN — Schedule ACTIVO desde 19-jun-2026
 
-El semáforo + watchdog está **EN PRODUCCIÓN**. Workflow n8n **`ops/watchdog-semaforo` (id `29eaGe2wkS98lRMU`)**, 29 nodos, **Schedule ACTIVO**.
+El semáforo + watchdog está **EN PRODUCCIÓN, corriendo solo**. Workflow n8n **`ops/watchdog-semaforo` (id `29eaGe2wkS98lRMU`)**, 29 nodos.
 
-- **Horario:** cron `0 14 * * 1-5` + **`settings.timezone = "Etc/UTC"`** = **8:00 AM CST, lunes a viernes**, DST-proof (Monterrey UTC-6 fijo). ⚠️ n8n **descarta `settings.timezone` al importar** → se puso a mano en la UI (Settings → Timezone). Verificar tras cualquier re-import.
-- **Config (lee de `main` raw):** `modo_prueba=false`, `redirect_todo_a` borrado, `recipients_por_grupo` reales.
-- **Primer run (manual, exec 20208, 18-jun 23:28):** 44 proyectos (17 Operaciones + 27 Admin). **2 correos enviados (Graph 202):**
-  - `[Semaforo Operaciones]` → felipe, gibran, mateo, estebandelacruz, info_comercialFTS (5). 17 proyectos: 12 críticos doble-rojo, 5 solo-estancados.
-  - `[Semaforo Admin]` → erick, gerardo, estebandelacruz, info_comercialFTS (4). 27 proyectos: 16 críticos, 10 solo-estancados, 1 solo-sin-nota.
-- Verificado en vivo: 225 y 2306 salieron **verdes en seguimiento** (cierre del bug de timing del 18-jun).
+- **Estado (verificado read-only 19-jun):** `active: true` · `triggerCount: 1` · `activeVersionId` poblado → el Schedule está **armado**.
+- **Horario:** cron `0 14 * * 1-5` + **`settings.timezone = "Etc/UTC"`** = **8:00 AM CST, lunes a viernes**, DST-proof (Monterrey UTC-6 fijo).
+- **Primer run automático esperado: lunes 22-jun-2026 8:00 AM CST** (el 18-jun fue manual; el 19-jun a las 8am ya estaba activado pero esa hora ya había pasado al activar — ver lecciones abajo).
+- **Config (se lee de `main` raw EN VIVO):** `modo_prueba=false`, sin `redirect_todo_a`. **Cambiar destinatarios/umbrales = editar `sla_stages.json` + push a main; NO requiere re-importar ni re-activar.**
+- **Destinatarios actuales:**
+  - **Operaciones (5):** felipe, gibran, mateo, estebandelacruz, info_comercialFTS.
+  - **Admin (5):** erick, gerardo, **carolina** (agregada 19-jun), estebandelacruz, info_comercialFTS.
 - **Credenciales OK:** 10 Odoo (Odoo FTS) · GitHub FTS Suite (snapshot) · Microsoft Graph - sales (envío).
+- **Correo:** estructura de DOS semáforos (§9.9). Primer envío real (manual, exec 20208, 18-jun): 44 proyectos (17 Ops + 27 Admin), 2 correos Graph 202. Verificado en vivo que 225/2306 salieron verdes en seguimiento (cierre del bug de timing).
+- **Capacitación:** se generaron **2 PDFs** (`Semaforo_Operaciones.pdf` / `Semaforo_Admin.pdf`) con la guía de los **2 relojes** (🅐 estancamiento → avanza de stage/cierra · 🅑 seguimiento → pon Log note) + umbrales por grupo, para repartir al equipo.
 
-#### 🔴 Known issue (no bloquea el correo) — log notes NO se escribían
+#### ⚠️ Lecciones críticas del go-live (NO repetir)
 
-El nodo `Odoo - CREATE log note` usaba **`author_id: 2`** (OdooBot). **Partner 2 está archivado/inaccesible** → el CREATE falla con *"res.partner('2') does not exist or has been deleted"*. Los 44 del baseline fallaron (silencioso por `onError:continue`); de hecho **nunca se escribió ningún log note** (las "pruebas previas" también fallaban — `body like 'Watchdog'` = 0). **No afecta:** el correo (sí salió) ni la métrica B (filtra `message_type='comment'`, la nota es `notification`).
-- **Fix:** `author_id` `2` → **`3`** (partner de Esteban, válido). Ya corregido en el generador de disco. **Aplicar en producción con UN edit en la UI:** abrir el nodo `Odoo - CREATE log note` → campo `author_id` → cambiar `2` por `3` → Save. **No requiere re-importar** (evita re-hacer timezone + credenciales). En el próximo run del Schedule escribirá el baseline correctamente.
-- Mejora futura opcional: crear un partner dedicado "Watchdog" (activo) en vez de usar a Esteban.
+1. **n8n descarta `settings.timezone` al importar.** El JSON de disco trae `timezone:"Etc/UTC"` pero el import lo borra (deja los defaults de la instancia = **America/New_York UTC-4**). **HAY QUE ponerlo a mano:** workflow → ⋯ Settings → Timezone → `UTC`. Sin esto el cron `0 14` cae a **mediodía CST**, no a las 8am. Re-verificar tras cualquier re-import.
+2. **Un Manual Trigger NO activa el Schedule.** El go-live del 18-jun mandó los correos por Manual Trigger, pero el toggle **Active** quedó apagado → el 19-jun a las 8am **no corrió solo** (`active:false`, `triggerCount:0`). El Schedule **solo** se arma con el toggle **Active** (verde) en la UI. El API de esta instancia **no** deja activar vía MCP. Confirmar siempre `active:true` + `triggerCount:1` después.
 
-#### Pendientes (post go-live)
+#### ✅ Bug resuelto — log notes ahora sí se escriben (`author_id` 2→3)
 
-1. **Fix log note `author_id` 2→3** en la UI (arriba) — para que el registro al chatter funcione.
-2. **#4 — endpoint `ops/semaforo`** (n8n webhook GET → grilla + tiles KPI; mismo `rows[]` de `Code - MAIN`).
-3. **#5 — frontend `operaciones/semaforo/`** (grilla 2-semáforos por proyecto, drill-down, %verde; hereda §9.9).
-4. **Auditar TZ de otros workflows con Schedule.** La instancia n8n está en **America/New_York (UTC-4)**; cualquier cron sin `settings.timezone="UTC"` dispara desfasado. Revisar `rh/empleados-master/sync` ("6am CST"), el futuro cron 2am de Bloque B, y demás Schedule triggers.
+El nodo `Odoo - CREATE log note` usaba **`author_id: 2`** (OdooBot). **Partner 2 está archivado/inaccesible** → el CREATE fallaba con *"res.partner('2') does not exist or has been deleted"* (silencioso por `onError:continue`). **Los log notes NUNCA se escribieron** hasta este fix (`body like 'Watchdog'` daba 0). **No afectaba** el correo ni la métrica B (la nota es `notification`, no `comment`). **Fix aplicado (19-jun):** `author_id` `2` → **`3`** (partner de Esteban) — confirmado en producción (`fieldValue:"3"`). Se ejercitará por primera vez en el run del lunes 22-jun (o en un Manual Trigger). Mejora futura opcional: partner dedicado "Watchdog" activo.
+
+#### Refinamiento log note event-driven (vivo en producción)
+
+`Code - buildLogNotes` escribe la nota **solo si el estado del proyecto cambió** (`color_a|color_b|banderas`) vs la corrida previa (`staticData.estadoPrev`), no diario. **Caveat:** `staticData` solo persiste en runs del Schedule (no en Manual Trigger) → el primer run automático escribe baseline (~44) y de ahí solo cambios.
+
+#### Pendientes (post go-live — para la próxima sesión)
+
+1. **#4 — endpoint `ops/semaforo`** (n8n webhook GET → grilla + tiles KPI; mismo `rows[]` de `Code - MAIN`).
+2. **#5 — frontend `operaciones/semaforo/`** (grilla 2-semáforos por proyecto, drill-down al chatter, %verde por reloj; hereda §9.9).
+3. **🔴 PRIORIDAD — Auditar TZ de otros workflows con Schedule.** La instancia n8n está en **America/New_York (UTC-4)**; cualquier cron sin `settings.timezone="UTC"` dispara desfasado. **Puede haber workflows productivos corriendo a la hora equivocada.** Revisar `rh/empleados-master/sync` ("6am CST"), el futuro cron 2am de Bloque B, y todo Schedule trigger.
+4. **Confirmar en vivo el log note** (lunes): que el baseline se escribió con `author_id=3` (`body like 'Watchdog'` en Odoo).
 5. **#7 (otro frente):** botón Confirmar de la SO (Studio) — abajo.
 
 ## 7. PENDIENTE — otro frente (NO en este build): botón Confirmar de la SO

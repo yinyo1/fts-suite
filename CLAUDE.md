@@ -699,3 +699,19 @@ state = 'sale'  AND  x_studio_project_created = False
 - Volumen Odoo: 221 proyectos totales → cero riesgo. Higiene: archivar proyectos al cerrar (UX, no perf).
 - **Calendario kickoff** (integrar evento al crear proyecto): pendiente, requiere permiso `Calendars.ReadWrite` en Azure (no agregado aún).
 - Pendientes del doc: desactivar 5 productos `service_tracking` (ya en 'no'), límite de reintentos (DONE, tope 3 vía `x_studio_intentos_proyecto` + `x_studio_proyecto_error`).
+
+---
+
+## 18. Semáforo operativo + watchdog de proyectos (✅ EN PRODUCCIÓN 2026-06-19)
+
+**Hito:** vigilancia diaria de proyectos por stage, EN PRODUCCIÓN. Workflow n8n **`ops/watchdog-semaforo` (id `29eaGe2wkS98lRMU`)**, **Schedule ACTIVO** (`active:true`, `triggerCount:1`) → **8:00 AM CST días hábiles** manda **2 correos por grupo** (Operaciones / Admin) con **DOS semáforos independientes** (🅐 estancamiento en stage · 🅑 falta de seguimiento), banderas de integridad anti-manipulación, KPI ≥90% verde, + log notes al chatter. Read-only en Odoo salvo el log note.
+
+**📄 Doc completa en [`docs/operaciones/SEMAFORO_WATCHDOG.md`](docs/operaciones/SEMAFORO_WATCHDOG.md)** — diagnóstico, diseño v1→v3, estructura del correo (§9.9), build, go-live (§9.10).
+
+⚠️ **Antes de tocar el watchdog, leer §9.10 + estas lecciones (aprendidas en el go-live):**
+1. **n8n descarta `settings.timezone` al importar** → ponerlo a mano (UI → Settings → Timezone = `UTC`/`Etc/UTC`). Sin esto el cron cae en el TZ de la instancia = **America/New_York (UTC-4)** → mediodía CST, no 8am. ⚠️ **PENDIENTE PRIORIDAD: auditar TODOS los Schedule triggers de la instancia** (`rh/empleados-master/sync` "6am CST", cron 2am Bloque B, etc.) — pueden estar corriendo desfasados.
+2. **Manual Trigger NO activa el Schedule** — solo el toggle **Active**. El API no deja activar vía MCP. Confirmar siempre `active:true` + `triggerCount:1`.
+3. **Config se lee de `main` raw EN VIVO** (`shared/operaciones/sla_stages.json`): cambiar destinatarios/umbrales = editar + push a main, **sin re-importar ni re-activar**.
+4. **Log note `author_id` debe ser 3 (Esteban), NO 2** (OdooBot partner 2 archivado → CREATE falla silencioso).
+
+**Pendientes:** #4 endpoint `ops/semaforo` (webhook GET → grilla+KPI) · #5 frontend `operaciones/semaforo/` (grilla 2-semáforos) · auditar TZ otros workflows (PRIORIDAD) · confirmar log note en vivo (lunes 22-jun). **Capacitación:** 2 PDFs (`Semaforo_Operaciones.pdf` / `Semaforo_Admin.pdf`) con guía de los 2 relojes, para el equipo.
