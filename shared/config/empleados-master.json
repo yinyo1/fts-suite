@@ -1,14 +1,14 @@
 {
   "_meta": {
     "version": 3,
-    "generated_at": "2026-06-20T02:22:33.233Z",
+    "generated_at": "2026-06-20T02:23:00.601Z",
     "source": "Odoo hr.employee live sync via workflow rh/empleados-master/sync",
     "auto_update_status": "auto_synced",
     "auto_update_status_explicacion": "Workflow n8n rh/empleados-master/sync ACTIVO. Cron 6am CST diario + webhook on-change POST /rh/empleados-master/refresh.",
     "fase": "3-active",
     "last_sync_event": "webhook on-change",
-    "last_sync_started_at": "2026-06-20T02:22:32.383Z",
-    "last_sync_completed_at": "2026-06-20T02:22:33.233Z",
+    "last_sync_started_at": "2026-06-20T02:22:59.807Z",
+    "last_sync_completed_at": "2026-06-20T02:23:00.601Z",
     "sync_strategy": "Cron 6am diario (Schedule Trigger) + webhook on-change desde panel admin (Fase 4 cuando exista).",
     "total_active": 40,
     "total_con_departamento": 33,
