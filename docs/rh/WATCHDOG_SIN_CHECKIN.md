@@ -13,12 +13,12 @@ Investigados `ops/watchdog-semaforo` + `crear-proyecto-al-confirmar`. Ambos usan
 `Schedule/Manual → Set hoy → Code prep (corte −30d) → Odoo getAll empleados → col1 → Odoo getAll attendances → Code MAIN → Code buildEmail → HTTP Graph`
 
 - **Schedule:** `0 14 * * 1-5` + `timezone UTC` = **8am CST, L-V** (no sáb/dom).
-- **Empleados:** `hr.employee` `active=true` **+ `department_id != false`** → excluye las cuentas de sistema (sin depto: Administracion FTS-YIN, CAJERO, etc.). Refuerzo: `EXCLUDE_NAMES=['FTS-YIN']` + `EXCLUDE_IDS=[]` en el Code.
+- **Empleados:** `hr.employee` `active=true` **+ `department_id != false`** → excluye las cuentas de sistema (sin depto: Administracion FTS-YIN, CAJERO, etc.). Refuerzo en el Code: `EXCLUDE_NAMES=['FTS-YIN']` + `EXCLUDE_IDS=[]` + **`EXCLUDE_CATEGORIAS=['ceo']`** (excluye a quien tenga `x_categoria_nomina='ceo'` — hoy solo Esteban id 32, CEO no checa en kiosk; autoprogresivo para cualquier dirección futura).
 - **Días hábiles sin checkin:** último `check_in` por empleado (ventana 30 días) → `bizDaysSince()` cuenta **solo L-V** (excluye findes → no falsos positivos los lunes). Umbral **`>= 5` días hábiles**. Sin checkin en la ventana → marcado como `>30d / nunca`. Empleado **muy nuevo** (creado hace < 5 días hábiles) **no** se marca.
 - **Correo:** si `total > 0` → **UN** correo resumen a `estebandelacruz@fts.mx`, `magaly@fts.mx`, `ana.acevedo@fts.mx`. Asunto `[RH Watchdog] N empleado(s) sin checar >=5 dias habiles - YYYY-MM-DD`. Cuerpo = tabla (Empleado · Depto · Último checkin · Días hábiles) + texto pidiendo validar baja/permiso. **NO archiva, solo avisa.** Si `total === 0` → `buildEmail` devuelve `[]` → **no se envía**.
 
 ## Config (flags visibles en `Code - MAIN`)
-`UMBRAL_DIAS_HABILES = 5` · `VALIDAR_VACACIONES = false` · `EXCLUDE_NAMES = ['FTS-YIN']` · `EXCLUDE_IDS = []`.
+`UMBRAL_DIAS_HABILES = 5` · `VALIDAR_VACACIONES = false` · `EXCLUDE_NAMES = ['FTS-YIN']` · `EXCLUDE_IDS = []` · `EXCLUDE_CATEGORIAS = ['ceo']` (excluye CEO/Dirección — Esteban). Actualizado en n8n vía `update_full` 2026-06-20.
 
 ## 🔓 Decisión abierta — filtro de vacaciones
 `VALIDAR_VACACIONES = false` (desactivado). Hay un **bloque comentado en `Code - MAIN`** listo para cuando exista el **módulo de permisos (`hr.leave`)**: `SEARCH hr.leave` del empleado con `state='validate'` y hoy entre `date_from`/`date_to` → si está de vacaciones, `continue` (no alertar). Mientras tanto el watchdog **alerta sin filtrar vacaciones** (RH valida manualmente en el correo).
