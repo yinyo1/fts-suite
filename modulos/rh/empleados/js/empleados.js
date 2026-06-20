@@ -11,7 +11,9 @@ var EP = {
   crear:      N8N + '/webhook/rh/empleado/crear',
   archivar:   N8N + '/webhook/rh/empleado/archivar',
   reactivar:  N8N + '/webhook/rh/empleado/reactivar',
-  archivados: N8N + '/webhook/rh/empleados/archivados'
+  archivados: N8N + '/webhook/rh/empleados/archivados',
+  detalle:    N8N + '/webhook/rh/empleado/detalle',
+  editar:     N8N + '/webhook/rh/empleado/editar'
 };
 // Defaults autoprogresivos: deptos de campo (Operaciones 3, Ingenieria 17) → calendar 2 / hora 7; oficina → 6 / 8.
 var CAMPO_DEPTS = [3, 17];
@@ -23,7 +25,13 @@ var CATEGORIAS = [
 var REASON_ES = { 'Fired': 'Despido', 'Resigned': 'Renuncia', 'Retired': 'Fin de contrato' }; // cortesía hasta que se renombre en Odoo
 
 var LK = null;        // lookups cacheados
-var fotoB64 = null;   // foto comprimida (base64 sin prefijo)
+var fotoB64 = null;   // foto comprimida (base64 sin prefijo) — alta
+var editFotoB64 = null; // foto nueva en edición (null = no cambiar la existente)
+
+// hora float 24h <-> "HH:MM" (7.5 = 07:30)
+function pad2(n){ return (n < 10 ? '0' : '') + n; }
+function floatToHHMM(f){ f = parseFloat(f) || 0; var h = Math.floor(f); var mn = Math.round((f - h) * 60); if (mn === 60){ h++; mn = 0; } return pad2(h) + ':' + pad2(mn); }
+function hhmmToFloat(s){ if (!s) return 0; var p = String(s).split(':'); return (parseInt(p[0], 10) || 0) + (parseInt(p[1], 10) || 0) / 60; }
 
 // ─── Auth gate (mismo patrón que el hub RH) ───
 function rh_check_auth(){
@@ -73,6 +81,16 @@ async function cargarLookups(){
   fillSelect(elName('departure_reason_id'), LK.reasons, 'id', function(r){ return REASON_ES[r.name] || r.name; }, '— elige —');
   // empleados activos para la baja
   fillSelect(elName('empleado_id'), LK.managers, 'id', function(m){ return m.name; }, '— elige —');
+  // ─── form de EDICIÓN: selects scoped al form + selector de empleado ───
+  var fe = document.getElementById('formEditar');
+  fillSelect(fe.elements['company_id'], LK.companies, 'id', function(c){ return c.name; });
+  fillSelect(fe.elements['department_id'], LK.departments, 'id', function(d){ return d.name; }, '— elige —');
+  fillSelect(fe.elements['parent_id'], LK.managers, 'id', function(m){ return m.name; }, '— elige —');
+  fillSelect(fe.elements['job_id'], LK.jobs, 'id', function(j){ return j.name; }, '— ninguno —');
+  fillSelect(fe.elements['resource_calendar_id'], LK.calendars, 'id', function(c){ return c.name + ' (' + (c.hours_per_week || '?') + 'h)'; }, '— elige —');
+  var ecat = fe.elements['x_categoria_nomina']; ecat.innerHTML = '';
+  CATEGORIAS.forEach(function(c){ var o = document.createElement('option'); o.value = c[0]; o.textContent = c[1]; ecat.appendChild(o); });
+  fillSelect(document.getElementById('editEmpSel'), LK.managers, 'id', function(m){ return m.name; }, '— elige empleado —');
 }
 
 // ─── ALTA: defaults autoprogresivos por depto ───
@@ -104,7 +122,7 @@ async function onAlta(e){
   var hora = elName('x_studio_hora_entrada').value;
   if (hora !== '' && (parseFloat(hora) < 0 || parseFloat(hora) > 23.99)) return msg(m, 'Hora de entrada fuera de 0–23.99', 'err');
   var body = {
-    name: f.name.value.trim(), company_id: f.company_id.value, work_email: f.work_email.value.trim(),
+    name: f.elements['name'].value.trim(), company_id: f.company_id.value, work_email: f.work_email.value.trim(),
     private_email: f.private_email.value.trim(), mobile_phone: f.mobile_phone.value.trim(), work_phone: f.work_phone.value.trim(),
     department_id: f.department_id.value, parent_id: f.parent_id.value, job_id: f.job_id.value || null,
     resource_calendar_id: f.resource_calendar_id.value, pin: f.pin.value.trim(),
@@ -179,6 +197,66 @@ async function onReactivar(id, btn){
   } catch (err){ alert('❌ ' + err.message); btn.disabled = false; btn.textContent = 'Reactivar'; }
 }
 
+// ─── EDITAR: cargar detalle + pre-llenar el form ───
+async function onEditSelect(){
+  var id = $('#editEmpSel').value, fe = $('#formEditar'), m = $('#editMsg');
+  if (!id){ fe.style.display = 'none'; return; }
+  msg(m, 'Cargando…');
+  try {
+    var r = await api(EP.detalle, { empleado_id: id });
+    if (!r.ok || !r.empleado) throw new Error(r.error || 'No se encontró el empleado');
+    var e = r.empleado, E = fe.elements;
+    E['empleado_id'].value = e.id;
+    E['name'].value = e.name || '';
+    E['work_email'].value = e.work_email || '';
+    E['private_email'].value = e.private_email || '';
+    E['mobile_phone'].value = e.mobile_phone || '';
+    E['work_phone'].value = e.work_phone || '';
+    E['department_id'].value = e.department_id || '';
+    E['parent_id'].value = e.parent_id || '';
+    E['job_id'].value = e.job_id || '';
+    E['resource_calendar_id'].value = e.resource_calendar_id || '';
+    E['company_id'].value = e.company_id || '';
+    E['pin'].value = e.pin || '';
+    E['x_categoria_nomina'].value = e.x_categoria_nomina || '';
+    E['x_aplica_ppa'].checked = !!e.x_aplica_ppa;
+    E['hora_hhmm'].value = floatToHHMM(e.x_studio_hora_entrada);
+    editFotoB64 = null; $('#editFotoInput').value = ''; $('#editFotoInfo').textContent = '';
+    var prev = $('#editFotoPreview');
+    if (e.image_128) prev.src = 'data:image/png;base64,' + e.image_128; else prev.removeAttribute('src');
+    fe.style.display = ''; msg(m, '');
+  } catch (err){ msg(m, '❌ ' + err.message, 'err'); fe.style.display = 'none'; }
+}
+async function onEditFoto(e){
+  var f = e.target.files && e.target.files[0], info = $('#editFotoInfo'), prev = $('#editFotoPreview');
+  editFotoB64 = null;
+  if (!f){ info.textContent = ''; return; }
+  try { var r = await FTSFoto.comprimirFoto(f); editFotoB64 = r.base64; prev.src = r.dataUrl; info.textContent = r.w + '×' + r.h + ' · ' + (r.bytes / 1024).toFixed(0) + ' KB'; }
+  catch (err){ info.textContent = '⚠️ ' + err.message; }
+}
+async function onEditar(e){
+  e.preventDefault();
+  var f = e.target, E = f.elements, m = $('#editMsg'), btn = $('#btnEditar');
+  if (!E['empleado_id'].value) return msg(m, 'Elige un empleado primero', 'err');
+  var horaF = hhmmToFloat(E['hora_hhmm'].value);
+  if (horaF < 0 || horaF > 23.99) return msg(m, 'Hora de entrada fuera de 0–23.99', 'err');
+  var body = {
+    empleado_id: E['empleado_id'].value, name: E['name'].value.trim(), company_id: E['company_id'].value, work_email: E['work_email'].value.trim(),
+    private_email: E['private_email'].value.trim(), mobile_phone: E['mobile_phone'].value.trim(), work_phone: E['work_phone'].value.trim(),
+    department_id: E['department_id'].value, parent_id: E['parent_id'].value, job_id: E['job_id'].value || null,
+    resource_calendar_id: E['resource_calendar_id'].value, pin: E['pin'].value.trim(),
+    x_studio_hora_entrada: horaF, x_categoria_nomina: E['x_categoria_nomina'].value || null, x_aplica_ppa: E['x_aplica_ppa'].checked
+  };
+  if (editFotoB64) body.image_1920 = editFotoB64;   // SOLO si subió foto nueva (si no, el workflow no toca la existente)
+  btn.disabled = true; msg(m, 'Guardando…');
+  try {
+    var r = await api(EP.editar, body);
+    if (!r.ok) throw new Error(r.error || 'No se pudo guardar');
+    msg(m, '✅ Cambios guardados (' + esc(body.name) + ').', 'ok');
+  } catch (err){ msg(m, '❌ ' + err.message, 'err'); }
+  finally { btn.disabled = false; }
+}
+
 // ─── Tabs ───
 function setTab(name){
   document.querySelectorAll('.rh-tab').forEach(function(t){ t.classList.toggle('active', t.dataset.tab === name); });
@@ -201,6 +279,9 @@ document.addEventListener('DOMContentLoaded', async function(){
   $('#fotoInput').addEventListener('change', onFoto);
   $('#formAlta').addEventListener('submit', onAlta);
   $('#formBaja').addEventListener('submit', onBaja);
+  $('#editEmpSel').addEventListener('change', onEditSelect);
+  $('#editFotoInput').addEventListener('change', onEditFoto);
+  $('#formEditar').addEventListener('submit', onEditar);
   $('#btnReloadArch').addEventListener('click', cargarArchivados);
   $('#tablaArchivados').addEventListener('click', function(ev){
     var b = ev.target.closest('[data-react]'); if (b) onReactivar(b.dataset.react, b);
