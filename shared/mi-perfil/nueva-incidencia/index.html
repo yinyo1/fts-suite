@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nueva Incidencia — Mi Perfil — FTS</title>
+<script>
+  // Cache busting + BUILD_DATE expuesto a window.
+  (function() {
+    const BUILD_DATE = '20260512-nueva-incidencia-v1-multistep';
+    window.BUILD_DATE = BUILD_DATE;
+  })();
+</script>
+<style>
+  :root{
+    --green:  #107C10;
+    --green2: #0d6b0d;
+    --red:    #D13438;
+    --blue:   #0078D4;
+    --orange: #D83B01;
+    --amber:  #7a5800;
+    --text:   #1a1a1a;
+    --muted:  #999;
+    --muted2: #666;
+    --bg:     #fafafa;
+    --card:   #ffffff;
+    --border: #e0e0e0;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:16px;color:var(--text);background:var(--bg)}
+  a{color:inherit}
+
+  .ni-topbar{
+    position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--border);
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px 14px;gap:8px;
+  }
+  .ni-back{
+    display:inline-flex;align-items:center;gap:4px;
+    color:var(--muted2);text-decoration:none;font-size:13px;font-weight:600;
+    padding:6px 8px;border-radius:6px;
+  }
+  .ni-back:hover{color:var(--green);background:#f0f9f0}
+  .ni-title-wrap{display:flex;align-items:center;gap:6px;min-width:0;flex:1;justify-content:center}
+  .ni-title{font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ni-build{font-size:10px;color:var(--muted);font-weight:400}
+  .ni-user{font-size:12px;color:var(--muted2);max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  .ni-main{max-width:720px;margin:0 auto;padding:14px;padding-bottom:60px}
+
+  /* Stepper visual */
+  .ni-steps{display:flex;gap:8px;margin:8px 0 18px}
+  .ni-step-dot{
+    flex:1;height:6px;border-radius:3px;background:#e6e6e6;transition:background 0.2s;
+  }
+  .ni-step-dot.active{background:var(--green)}
+  .ni-step-dot.done{background:var(--green2)}
+
+  .ni-h1{font-size:22px;font-weight:700;margin:8px 0 6px}
+  .ni-sub{font-size:14px;color:var(--muted2);margin:0 0 18px}
+
+  /* Step base */
+  .ni-step{display:none}
+  .ni-step.active{display:block}
+
+  /* Step 1 — grid de tipos */
+  .ni-tipo-grid{
+    display:grid;grid-template-columns:1fr 1fr;gap:12px;
+  }
+  @media (min-width:540px){
+    .ni-tipo-grid{grid-template-columns:1fr 1fr 1fr}
+  }
+  .ni-tipo-card{
+    background:var(--card);border:1px solid var(--border);border-radius:14px;
+    padding:18px 14px;display:flex;flex-direction:column;gap:6px;
+    text-align:left;cursor:pointer;
+    transition:transform 0.1s,border-color 0.1s,background 0.1s;
+    min-height:120px;position:relative;font-family:inherit;color:inherit;
+    width:100%;
+  }
+  .ni-tipo-card:active{transform:scale(0.98);border-color:var(--green);background:#f0f9f0}
+  .ni-tipo-card.disabled{opacity:0.55;cursor:pointer;background:#fafafa}
+  .ni-tipo-card.disabled:active{transform:none;background:#f5f5f5;border-color:var(--border)}
+  .ni-tipo-icon{font-size:30px;line-height:1}
+  .ni-tipo-titulo{font-size:14px;font-weight:700;color:var(--text)}
+  .ni-tipo-sub{font-size:11px;color:var(--muted2);line-height:1.35}
+  .ni-tipo-badge{
+    position:absolute;top:8px;right:8px;
+    background:#fff4d9;color:var(--amber);border:1px solid #e6d38a;
+    font-size:9px;font-weight:700;padding:3px 7px;border-radius:20px;
+    text-transform:uppercase;letter-spacing:0.3px;
+  }
+
+  /* Step 2/3 — form */
+  .ni-card{
+    background:var(--card);border:1px solid var(--border);border-radius:14px;
+    padding:18px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,0.04);
+  }
+  .ni-card-title{font-size:16px;font-weight:700;margin:0 0 10px}
+  .ni-card-sub{font-size:13px;color:var(--muted2);margin:0 0 14px;line-height:1.5}
+  .ni-info-box{
+    background:#f0f9f0;border:1px solid #c3e6c3;border-radius:10px;
+    padding:12px;margin-bottom:14px;
+  }
+  .ni-info-label{font-size:11px;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted2);font-weight:700;margin-bottom:4px}
+  .ni-info-value{font-size:15px;font-weight:600;color:var(--text)}
+  .ni-warn-box{
+    background:#fff4d9;border:1px solid #e6d38a;border-radius:10px;
+    padding:12px;margin-bottom:14px;color:var(--amber);font-size:13px;line-height:1.5;
+  }
+  .ni-err-box{
+    background:#fff0f0;border:1px solid #f5c2c2;border-radius:10px;
+    padding:12px;margin-bottom:14px;color:var(--red);font-size:13px;line-height:1.5;
+  }
+
+  .ni-field{margin-bottom:14px}
+  .ni-field label{
+    display:block;font-size:12px;font-weight:700;color:var(--text);
+    text-transform:uppercase;letter-spacing:0.3px;margin-bottom:6px;
+  }
+  .ni-field .ni-hint{font-size:11px;color:var(--muted2);margin-top:4px;line-height:1.4}
+  .ni-input,.ni-textarea,.ni-select{
+    width:100%;padding:12px 14px;border:1px solid #ccc;border-radius:10px;
+    font-size:16px;font-family:inherit;background:#fff;outline:none;
+    box-sizing:border-box;
+  }
+  .ni-input:focus,.ni-textarea:focus,.ni-select:focus{border-color:var(--green)}
+  .ni-textarea{resize:none;min-height:100px}
+  .ni-input-time{font-size:18px;font-weight:600;font-variant-numeric:tabular-nums}
+
+  .ni-actions{
+    display:flex;gap:10px;margin-top:18px;
+  }
+  .ni-btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    padding:14px 18px;border-radius:10px;border:1px solid transparent;
+    font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;
+    min-height:48px;
+  }
+  .ni-btn-primary{background:var(--green);color:#fff;flex:2}
+  .ni-btn-primary:active{background:var(--green2)}
+  .ni-btn-primary:disabled{background:#ccc;cursor:not-allowed}
+  .ni-btn-secondary{background:#fff;color:var(--text);border-color:#d5d5d5;flex:1}
+
+  /* Toast / overlay */
+  .ni-overlay{
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);
+    z-index:9999;align-items:center;justify-content:center;padding:24px;
+  }
+  .ni-overlay.active{display:flex}
+  .ni-modal-box{
+    background:#fff;border-radius:16px;padding:24px;max-width:360px;width:100%;
+    text-align:center;box-shadow:0 10px 30px rgba(0,0,0,0.2);
+  }
+  .ni-modal-icon{font-size:48px;line-height:1;margin-bottom:10px}
+  .ni-modal-title{font-size:18px;font-weight:700;margin:0 0 8px}
+  .ni-modal-text{font-size:14px;color:var(--muted2);margin:0 0 18px;line-height:1.5}
+
+  .ni-spinner{
+    display:inline-block;width:18px;height:18px;border:2px solid #fff;
+    border-top-color:transparent;border-radius:50%;animation:nispin 0.9s linear infinite;
+    margin-right:8px;vertical-align:middle;
+  }
+  @keyframes nispin{to{transform:rotate(360deg)}}
+
+  .ni-empty{
+    background:var(--card);border:1px dashed var(--border);border-radius:14px;
+    padding:32px 18px;text-align:center;
+  }
+  .ni-empty-icon{font-size:48px;margin-bottom:8px}
+  .ni-empty-text{color:var(--muted2);font-size:14px;line-height:1.5}
+</style>
+</head>
+<body>
+
+<div class="ni-topbar">
+  <a class="ni-back" href="../index.html">← Volver</a>
+  <div class="ni-title-wrap">
+    <span class="ni-title">Nueva Incidencia</span>
+    <span class="ni-build" id="ni-build"></span>
+  </div>
+  <span class="ni-user" id="ni-user">—</span>
+</div>
+
+<main class="ni-main">
+
+  <!-- Stepper visual -->
+  <div class="ni-steps" id="ni-stepper">
+    <div class="ni-step-dot active"></div>
+    <div class="ni-step-dot"></div>
+    <div class="ni-step-dot"></div>
+  </div>
+
+  <!-- ═══ STEP 1 — selección de tipo ═══ -->
+  <section class="ni-step active" id="ni-step-1">
+    <h1 class="ni-h1">¿Qué necesitas reportar?</h1>
+    <p class="ni-sub">Selecciona el tipo de incidencia que quieres crear.</p>
+
+    <div class="ni-tipo-grid" id="ni-tipo-grid">
+      <!-- Tipos activos -->
+      <button class="ni-tipo-card" type="button" data-tipo="olvido_entrada">
+        <div class="ni-tipo-icon">📝</div>
+        <div class="ni-tipo-titulo">Olvidé checar entrada</div>
+        <div class="ni-tipo-sub">Llegué a trabajar pero olvidé registrar mi hora de entrada.</div>
+      </button>
+
+      <button class="ni-tipo-card" type="button" data-tipo="olvido_checkout">
+        <div class="ni-tipo-icon">📤</div>
+        <div class="ni-tipo-titulo">Olvidé checar salida</div>
+        <div class="ni-tipo-sub">Salí sin registrar mi hora final del día.</div>
+      </button>
+
+      <!-- Tipos stub -->
+      <button class="ni-tipo-card disabled" type="button" data-tipo="vacaciones" data-stub="4.2">
+        <span class="ni-tipo-badge">Próx. 4.2</span>
+        <div class="ni-tipo-icon">🏖️</div>
+        <div class="ni-tipo-titulo">Vacaciones</div>
+        <div class="ni-tipo-sub">Solicitar días de vacaciones LFT.</div>
+      </button>
+
+      <button class="ni-tipo-card disabled" type="button" data-tipo="permiso_con_goce" data-stub="4.2">
+        <span class="ni-tipo-badge">Próx. 4.2</span>
+        <div class="ni-tipo-icon">🤝</div>
+        <div class="ni-tipo-titulo">Permiso con goce</div>
+        <div class="ni-tipo-sub">Cita médica, trámite, defunción familiar.</div>
+      </button>
+
+      <button class="ni-tipo-card disabled" type="button" data-tipo="permiso_sin_goce" data-stub="4.2">
+        <span class="ni-tipo-badge">Próx. 4.2</span>
+        <div class="ni-tipo-icon">⚠️</div>
+        <div class="ni-tipo-titulo">Permiso sin goce</div>
+        <div class="ni-tipo-sub">Asunto personal sin pago.</div>
+      </button>
+
+      <button class="ni-tipo-card disabled" type="button" data-tipo="incapacidad_medica" data-stub="4.3">
+        <span class="ni-tipo-badge">Próx. 4.3</span>
+        <div class="ni-tipo-icon">🏥</div>
+        <div class="ni-tipo-titulo">Incapacidad médica</div>
+        <div class="ni-tipo-sub">Subir foto IMSS para validación.</div>
+      </button>
+
+      <button class="ni-tipo-card disabled" type="button" data-tipo="tiempo_extra_pre_autorizado" data-stub="4.4">
+        <span class="ni-tipo-badge">Próx. 4.4</span>
+        <div class="ni-tipo-icon">⏰</div>
+        <div class="ni-tipo-titulo">Tiempo extra (HE)</div>
+        <div class="ni-tipo-sub">Horas extras pre-autorizadas.</div>
+      </button>
+    </div>
+  </section>
+
+  <!-- ═══ STEP 2 — datos del olvido ═══ -->
+  <section class="ni-step" id="ni-step-2">
+    <h1 class="ni-h1" id="ni-step2-titulo">Datos</h1>
+    <p class="ni-sub" id="ni-step2-sub">Completa la información de la incidencia.</p>
+
+    <div id="ni-step2-content">
+      <!-- Renderizado dinámico según tipo -->
+    </div>
+
+    <div class="ni-actions">
+      <button class="ni-btn ni-btn-secondary" type="button" onclick="niBackTo(1)">← Atrás</button>
+      <button class="ni-btn ni-btn-primary" type="button" id="ni-step2-next" onclick="niStep2Next()">Continuar →</button>
+    </div>
+  </section>
+
+  <!-- ═══ STEP 3 — confirmación ═══ -->
+  <section class="ni-step" id="ni-step-3">
+    <h1 class="ni-h1">Revisa y confirma</h1>
+    <p class="ni-sub">Verifica los datos antes de enviar.</p>
+
+    <div class="ni-card" id="ni-resumen">
+      <!-- Renderizado dinámico -->
+    </div>
+
+    <div class="ni-actions">
+      <button class="ni-btn ni-btn-secondary" type="button" onclick="niBackTo(2)">← Atrás</button>
+      <button class="ni-btn ni-btn-primary" type="button" id="ni-submit-btn" onclick="niSubmit()">Crear incidencia</button>
+    </div>
+  </section>
+
+</main>
+
+<!-- Overlay para modales informativos / loading / success / error -->
+<div class="ni-overlay" id="ni-overlay">
+  <div class="ni-modal-box">
+    <div class="ni-modal-icon" id="ni-modal-icon">ℹ️</div>
+    <h3 class="ni-modal-title" id="ni-modal-title">—</h3>
+    <p class="ni-modal-text" id="ni-modal-text">—</p>
+    <div id="ni-modal-actions">
+      <button class="ni-btn ni-btn-primary" type="button" onclick="niOverlayClose()">Entendido</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════
+const N8N_BASE  = 'https://primary-production-5c3c.up.railway.app';
+const EP_ESTADO = N8N_BASE + '/webhook/kiosk/estado-empleado';
+const EP_OLVIDO_ENTRADA  = N8N_BASE + '/webhook/incidencias/crear-olvido-entrada';
+const EP_OLVIDO_CHECKOUT = N8N_BASE + '/webhook/incidencias/crear-olvido-checkout';
+
+const SESSION_KEY = 'fts_mi_perfil_session';
+const DRAFT_KEY_PREFIX = 'fts_nueva_inc_draft_';
+const DRAFT_TTL_MS = 24 * 60 * 60 * 1000;   // 24h
+
+const BUILD = window.BUILD_DATE || 'dev';
+
+// Estado runtime
+const NI = {
+  step: 1,
+  tipo: null,
+  empleado: null,        // {id, nombre} desde sessionStorage
+  estado: null,          // respuesta de kiosk/estado-empleado (cacheada)
+  form: {                // datos capturados en step 2
+    hora: '',
+    motivo: ''
+  },
+  submitting: false
+};
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function(){
+  $('ni-build').textContent = 'build ' + BUILD;
+
+  // Validar sesión Mi Perfil
+  const session = niGetSession();
+  if (!session || !session.empleado_id){
+    // Sin sesión, mandar al hub para login
+    console.warn('[nueva-incidencia] sin sesión, redirigiendo al hub');
+    window.location.replace('../index.html');
+    return;
+  }
+  NI.empleado = {
+    id: session.empleado_id,
+    nombre: session.empleado_nombre || ''
+  };
+  $('ni-user').textContent = '👤 ' + NI.empleado.nombre;
+
+  // Wire grid clicks
+  document.querySelectorAll('.ni-tipo-card').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      niSelectTipo(btn.dataset.tipo, btn.dataset.stub);
+    });
+  });
+
+  // Restaurar draft si existe y válido
+  niLoadDraft();
+});
+
+// ═══════════════════════════════════════════════
+// SESSION
+// ═══════════════════════════════════════════════
+function niGetSession(){
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    if (!s || !s.empleado_id) return null;
+    return s;
+  } catch(e){ return null; }
+}
+
+// ═══════════════════════════════════════════════
+// DRAFT (localStorage)
+// ═══════════════════════════════════════════════
+function niDraftKey(){
+  return DRAFT_KEY_PREFIX + (NI.empleado && NI.empleado.id || 'anon');
+}
+function niSaveDraft(){
+  if (!NI.empleado) return;
+  try {
+    const draft = {
+      step:     NI.step,
+      tipo:     NI.tipo,
+      form:     NI.form,
+      savedAt:  Date.now()
+    };
+    localStorage.setItem(niDraftKey(), JSON.stringify(draft));
+  } catch(e){ /* quota? ignore */ }
+}
+function niLoadDraft(){
+  if (!NI.empleado) return;
+  try {
+    const raw = localStorage.getItem(niDraftKey());
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    if (!d || !d.savedAt) return;
+    if ((Date.now() - d.savedAt) > DRAFT_TTL_MS){
+      localStorage.removeItem(niDraftKey());
+      return;
+    }
+    // Solo restauramos si el draft es step 2 con tipo válido para olvido_*
+    if (d.step === 2 && (d.tipo === 'olvido_entrada' || d.tipo === 'olvido_checkout')){
+      console.log('[nueva-incidencia] restaurando draft', d);
+      niSelectTipo(d.tipo, null, /*fromDraft*/true).then(function(){
+        if (d.form){
+          NI.form = Object.assign({}, NI.form, d.form);
+          const horaEl = $('ni-form-hora');
+          const motivoEl = $('ni-form-motivo');
+          if (horaEl && d.form.hora) horaEl.value = d.form.hora;
+          if (motivoEl && d.form.motivo) motivoEl.value = d.form.motivo;
+        }
+      });
+    }
+  } catch(e){
+    try { localStorage.removeItem(niDraftKey()); } catch(_){}
+  }
+}
+function niClearDraft(){
+  try { localStorage.removeItem(niDraftKey()); } catch(e){}
+}
+
+// ═══════════════════════════════════════════════
+// NAVIGATION ENTRE STEPS
+// ═══════════════════════════════════════════════
+function niShowStep(n){
+  NI.step = n;
+  ['ni-step-1','ni-step-2','ni-step-3'].forEach(function(id, i){
+    const el = $(id);
+    if (el) el.classList.toggle('active', (i+1) === n);
+  });
+  // Stepper
+  const dots = document.querySelectorAll('#ni-stepper .ni-step-dot');
+  dots.forEach(function(d, i){
+    d.classList.remove('active','done');
+    if (i+1 < n) d.classList.add('done');
+    else if (i+1 === n) d.classList.add('active');
+  });
+  window.scrollTo(0, 0);
+}
+
+function niBackTo(n){
+  niShowStep(n);
+  niSaveDraft();
+}
+window.niBackTo = niBackTo;
+
+// ═══════════════════════════════════════════════
+// STEP 1 — selección de tipo
+// ═══════════════════════════════════════════════
+async function niSelectTipo(tipo, stub, fromDraft){
+  if (stub){
+    niOverlayShow({
+      icon: '🚧',
+      title: 'Próximamente',
+      text: 'Esta función estará disponible en Sub-fase ' + stub + '. Por ahora, contacta a tu supervisor o a RH por WhatsApp.'
+    });
+    return;
+  }
+  if (tipo !== 'olvido_entrada' && tipo !== 'olvido_checkout') return;
+
+  NI.tipo = tipo;
+  NI.form = { hora: '', motivo: '' };
+
+  // Fetch estado del empleado para conocer la attendance actual
+  await niFetchEstadoEmpleado();
+
+  niRenderStep2();
+  niShowStep(2);
+  if (!fromDraft) niSaveDraft();
+}
+
+async function niFetchEstadoEmpleado(){
+  // Cache 60 segundos para evitar refetch al ir y volver entre steps
+  if (NI.estado && (Date.now() - NI.estado._cachedAt) < 60000) return NI.estado;
+  try {
+    const res = await fetch(EP_ESTADO, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ empleado_id: NI.empleado.id })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    NI.estado = (Array.isArray(data) ? data[0] : data) || {};
+    NI.estado._cachedAt = Date.now();
+    console.log('[nueva-incidencia] estado-empleado:', NI.estado);
+    return NI.estado;
+  } catch(e){
+    console.warn('[nueva-incidencia] error estado-empleado:', e);
+    NI.estado = { _error: true, _msg: e.message };
+    return NI.estado;
+  }
+}
+
+// ═══════════════════════════════════════════════
+// STEP 2 — render dinámico por tipo
+// ═══════════════════════════════════════════════
+function niRenderStep2(){
+  const tipo = NI.tipo;
+  const est = NI.estado || {};
+
+  if (tipo === 'olvido_entrada'){
+    $('ni-step2-titulo').textContent = 'Olvidé checar entrada';
+    $('ni-step2-sub').textContent = 'Declara la hora real en que llegaste y un motivo.';
+    $('ni-step2-content').innerHTML = niStep2OlvidoEntrada(est);
+  } else if (tipo === 'olvido_checkout'){
+    $('ni-step2-titulo').textContent = 'Olvidé checar salida';
+    $('ni-step2-sub').textContent = 'Declara la hora a la que terminaste y un motivo.';
+    $('ni-step2-content').innerHTML = niStep2OlvidoCheckout(est);
+  }
+}
+
+// olvido_entrada: requiere attendance abierta CON check_in para AJUSTAR su hora
+function niStep2OlvidoEntrada(est){
+  const att = est && est.registro_abierto;
+  if (!att || !att.id || !att.check_in){
+    return '<div class="ni-empty">' +
+      '<div class="ni-empty-icon">📭</div>' +
+      '<div class="ni-empty-text">No tienes una jornada abierta a la cual ajustarle la hora de entrada.<br><br>' +
+      'Si necesitas registrar una entrada retroactiva sin haber checado, hazlo desde el kiosko de tu sitio. Si ya checaste y la hora está mal, esta opción aparecerá cuando tengas la jornada abierta.</div>' +
+      '</div>';
+  }
+  const checkInLocal = niFormatUtcToLocal(att.check_in);
+  let html = '';
+  html += '<div class="ni-card">';
+  html +=   '<div class="ni-card-title">Tu jornada actual</div>';
+  html +=   '<div class="ni-info-box">';
+  html +=     '<div class="ni-info-label">Hora registrada en el sistema</div>';
+  html +=     '<div class="ni-info-value">' + esc(checkInLocal) + '</div>';
+  html +=   '</div>';
+  html +=   '<div class="ni-warn-box">Esto creará una incidencia para que tu supervisor revise y ajuste tu hora de entrada al valor que declaras abajo.</div>';
+  html +=   '<div class="ni-field">';
+  html +=     '<label for="ni-form-hora">¿A qué hora llegaste realmente? (HH:MM)</label>';
+  html +=     '<input class="ni-input ni-input-time" type="time" id="ni-form-hora" value="' + esc(NI.form.hora || '07:00') + '">';
+  html +=     '<div class="ni-hint">Formato 24h. Ejemplo: 07:00 = 7:00 am.</div>';
+  html +=   '</div>';
+  html +=   '<div class="ni-field">';
+  html +=     '<label for="ni-form-motivo">Motivo (mínimo 10 caracteres)</label>';
+  html +=     '<textarea class="ni-textarea" id="ni-form-motivo" placeholder="Ej: Celular sin batería al llegar, llegué temprano pero el kiosko estaba caído...">' + esc(NI.form.motivo || '') + '</textarea>';
+  html +=     '<div class="ni-hint">Sé específico. Tu supervisor lo lee.</div>';
+  html +=   '</div>';
+  html += '</div>';
+  return html;
+}
+
+// olvido_checkout: requiere attendance abierta (con check_in pero sin check_out)
+function niStep2OlvidoCheckout(est){
+  const att = est && est.registro_abierto;
+  if (!att || !att.id || !att.check_in){
+    return '<div class="ni-empty">' +
+      '<div class="ni-empty-icon">📭</div>' +
+      '<div class="ni-empty-text">No tienes una jornada abierta para cerrar.<br><br>' +
+      'Si ya cerraste tu día desde el kiosko, no hace falta esta acción. Si crees que es un error, contacta a tu supervisor.</div>' +
+      '</div>';
+  }
+  const checkInLocal = niFormatUtcToLocal(att.check_in);
+  let html = '';
+  html += '<div class="ni-card">';
+  html +=   '<div class="ni-card-title">Tu jornada abierta</div>';
+  html +=   '<div class="ni-info-box">';
+  html +=     '<div class="ni-info-label">Entrada registrada</div>';
+  html +=     '<div class="ni-info-value">' + esc(checkInLocal) + '</div>';
+  html +=   '</div>';
+  html +=   '<div class="ni-warn-box">Esto creará una incidencia para cerrar tu jornada con la hora que declaras. RH la revisará.</div>';
+  html +=   '<div class="ni-field">';
+  html +=     '<label for="ni-form-hora">¿A qué hora terminaste? (HH:MM)</label>';
+  html +=     '<input class="ni-input ni-input-time" type="time" id="ni-form-hora" value="' + esc(NI.form.hora || '17:00') + '">';
+  html +=     '<div class="ni-hint">Formato 24h. Ejemplo: 17:00 = 5:00 pm.</div>';
+  html +=   '</div>';
+  html +=   '<div class="ni-field">';
+  html +=     '<label for="ni-form-motivo">Motivo (mínimo 10 caracteres)</label>';
+  html +=     '<textarea class="ni-textarea" id="ni-form-motivo" placeholder="Ej: Salí en emergencia y olvidé checar, el kiosko no funcionaba...">' + esc(NI.form.motivo || '') + '</textarea>';
+  html +=     '<div class="ni-hint">Sé específico. RH lo lee.</div>';
+  html +=   '</div>';
+  html +=   '<input type="hidden" id="ni-form-attendance-id" value="' + esc(att.id) + '">';
+  html += '</div>';
+  return html;
+}
+
+function niStep2Next(){
+  const horaEl   = $('ni-form-hora');
+  const motivoEl = $('ni-form-motivo');
+  if (!horaEl || !motivoEl){
+    // Empty state (no attendance) → no se puede continuar
+    niOverlayShow({
+      icon: '⚠️',
+      title: 'Sin datos para continuar',
+      text: 'Esta incidencia no aplica en este momento. Regresa y elige otro tipo si lo necesitas.'
+    });
+    return;
+  }
+  const hora = (horaEl.value || '').trim();
+  const motivo = (motivoEl.value || '').trim();
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(hora)){
+    niOverlayShow({ icon:'⚠️', title:'Hora inválida', text:'Usa formato HH:MM en 24h, por ejemplo 07:00 o 17:30.' });
+    return;
+  }
+  if (motivo.length < 10){
+    niOverlayShow({ icon:'⚠️', title:'Motivo muy corto', text:'Tu motivo debe tener al menos 10 caracteres. Sé específico.' });
+    return;
+  }
+  NI.form.hora = hora;
+  NI.form.motivo = motivo;
+  niSaveDraft();
+  niRenderStep3();
+  niShowStep(3);
+}
+window.niStep2Next = niStep2Next;
+
+// ═══════════════════════════════════════════════
+// STEP 3 — resumen
+// ═══════════════════════════════════════════════
+function niRenderStep3(){
+  const tipo = NI.tipo;
+  const tipoLabel = tipo === 'olvido_entrada' ? 'Olvido de entrada' : 'Olvido de salida';
+  const horaLabel = tipo === 'olvido_entrada' ? 'Hora real de entrada' : 'Hora real de salida';
+  let html = '';
+  html += '<div class="ni-info-box"><div class="ni-info-label">Tipo</div><div class="ni-info-value">' + esc(tipoLabel) + '</div></div>';
+  html += '<div class="ni-info-box"><div class="ni-info-label">' + esc(horaLabel) + ' (CST)</div><div class="ni-info-value">' + esc(NI.form.hora) + '</div></div>';
+  html += '<div class="ni-info-box"><div class="ni-info-label">Motivo</div><div class="ni-info-value" style="font-weight:400;white-space:pre-wrap">' + esc(NI.form.motivo) + '</div></div>';
+  html += '<div class="ni-warn-box">Al enviar, la incidencia queda pendiente de revisión. Podrás ver su estado en "Mis Incidencias".</div>';
+  $('ni-resumen').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════
+// SUBMIT — llama al workflow correspondiente
+// ═══════════════════════════════════════════════
+async function niSubmit(){
+  if (NI.submitting) return;
+  NI.submitting = true;
+  const btn = $('ni-submit-btn');
+  if (btn){
+    btn.disabled = true;
+    btn.innerHTML = '<span class="ni-spinner"></span>Enviando...';
+  }
+
+  let url, body;
+  if (NI.tipo === 'olvido_entrada'){
+    url = EP_OLVIDO_ENTRADA;
+    // El attendance_id y check_in_utc se capturaron en step 2 como hidden inputs.
+    // Si volvió a step 3 directamente, los reconstruimos del estado.
+    const att = (NI.estado && NI.estado.registro_abierto) || {};
+    // El workflow xVNp36 espera hora_real_checkin_utc en formato ISO UTC con sufijo Z.
+    // Odoo devuelve 'YYYY-MM-DD HH:mm:ss' sin Z → normalizamos.
+    let checkInUtcIso = null;
+    if (att.check_in){
+      const t = att.check_in.indexOf('T') >= 0 ? att.check_in : att.check_in.replace(' ', 'T');
+      checkInUtcIso = t.endsWith('Z') ? t : (t + 'Z');
+    }
+    body = {
+      empleado_id:           NI.empleado.id,
+      empleado_nombre:       NI.empleado.nombre || '',
+      attendance_id_creado:  att.id || null,
+      hora_real_checkin_utc: checkInUtcIso,
+      hora_declarada_cst:    NI.form.hora,
+      motivo:                NI.form.motivo,
+      geolocation:           null,
+      cliente_origen:        'mi-perfil-' + BUILD
+    };
+  } else if (NI.tipo === 'olvido_checkout'){
+    url = EP_OLVIDO_CHECKOUT;
+    const att = (NI.estado && NI.estado.registro_abierto) || {};
+    body = {
+      empleado_id:         NI.empleado.id,
+      attendance_id:       att.id || null,
+      hora_propuesta_cst:  NI.form.hora,
+      motivo:              NI.form.motivo,
+      geolocation:         null,
+      cliente_build:       'mi-perfil-' + BUILD
+    };
+  } else {
+    niSubmitDone(false, { mensaje: 'Tipo no soportado en Sub-fase 4.1' });
+    return;
+  }
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    const r = Array.isArray(data) ? data[0] : data;
+    if (!r){
+      niSubmitDone(false, { mensaje: 'Sin respuesta del servidor.' });
+      return;
+    }
+    if (r.success === true && r.id_interno){
+      niSubmitDone(true, r);
+    } else {
+      niSubmitDone(false, r);
+    }
+  } catch(e){
+    console.error('[nueva-incidencia] submit error:', e);
+    niSubmitDone(false, { mensaje: 'Error de red: ' + e.message });
+  }
+}
+window.niSubmit = niSubmit;
+
+function niSubmitDone(ok, r){
+  NI.submitting = false;
+  const btn = $('ni-submit-btn');
+  if (btn){
+    btn.disabled = false;
+    btn.innerHTML = 'Crear incidencia';
+  }
+  if (ok){
+    niClearDraft();
+    niOverlayShow({
+      icon: '✅',
+      title: '¡Incidencia creada!',
+      text: (r && r.mensaje) || 'Tu incidencia quedó registrada.',
+      actions: '<button class="ni-btn ni-btn-primary" type="button" onclick="window.location.href=\'../mis-incidencias/\'">Ver Mis Incidencias</button>'
+    });
+  } else {
+    niOverlayShow({
+      icon: '❌',
+      title: 'No se pudo crear',
+      text: (r && (r.mensaje || r.codigo)) || 'Error desconocido. Intenta de nuevo.'
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════
+// OVERLAY MODAL
+// ═══════════════════════════════════════════════
+function niOverlayShow(opts){
+  $('ni-modal-icon').textContent  = opts.icon || 'ℹ️';
+  $('ni-modal-title').textContent = opts.title || '';
+  $('ni-modal-text').textContent  = opts.text || '';
+  if (opts.actions){
+    $('ni-modal-actions').innerHTML = opts.actions;
+  } else {
+    $('ni-modal-actions').innerHTML = '<button class="ni-btn ni-btn-primary" type="button" onclick="niOverlayClose()">Entendido</button>';
+  }
+  $('ni-overlay').classList.add('active');
+}
+function niOverlayClose(){ $('ni-overlay').classList.remove('active'); }
+window.niOverlayClose = niOverlayClose;
+
+// ═══════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════
+function niFormatUtcToLocal(utcStr){
+  if (!utcStr) return '—';
+  try {
+    // Odoo manda 'YYYY-MM-DD HH:mm:ss' sin Z. Parsear como UTC y mostrar en CST.
+    const isoLike = utcStr.indexOf('T') >= 0 ? utcStr : utcStr.replace(' ', 'T');
+    const withZ = isoLike.endsWith('Z') ? isoLike : (isoLike + 'Z');
+    const d = new Date(withZ);
+    if (isNaN(d.getTime())) return utcStr;
+    const pad = function(n){ return String(n).padStart(2,'0'); };
+    return pad(d.getDate()) + '/' + pad(d.getMonth()+1) + '/' + d.getFullYear() +
+           ' a las ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  } catch(e){ return utcStr; }
+}
+</script>
+
+</body>
+</html>
