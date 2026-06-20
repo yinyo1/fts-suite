@@ -986,6 +986,25 @@
       },
       "result": "success",
       "error_message": null
+    },
+    {
+      "timestamp": "2026-06-20T01:04:59.341Z",
+      "user": "ftsmaster",
+      "action": "edit_attendance",
+      "attendance_id": 13518,
+      "employee_name": "Alejandro Reyes Galvez",
+      "changes": {
+        "check_in": {
+          "from": "2026-06-04 12:58:14",
+          "to": "2026-06-04 12:58:00"
+        },
+        "check_out": {
+          "from": null,
+          "to": "2026-06-04 23:04:00"
+        }
+      },
+      "result": "success",
+      "error_message": null
     }
   ]
 }
