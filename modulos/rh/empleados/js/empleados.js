@@ -146,8 +146,7 @@ async function onBaja(e){
   var f = e.target, m = $('#bajaMsg'), btn = $('#btnBaja');
   var body = {
     empleado_id: f.empleado_id.value, departure_date: f.departure_date.value,
-    departure_reason_id: f.departure_reason_id.value, departure_description: f.departure_description.value.trim(),
-    fin_contrato: f.fin_contrato.checked
+    departure_reason_id: f.departure_reason_id.value, departure_description: f.departure_description.value.trim()
   };
   btn.disabled = true; msg(m, 'Archivando…');
   try {
@@ -157,6 +156,8 @@ async function onBaja(e){
     var warn = (r.warnings && r.warnings.length) ? ' ⚠️ ' + r.warnings.map(function(w){ return w.detalle; }).join(' ') : '';
     msg(m, '✅ Empleado archivado.' + warn, 'ok');
     f.reset();
+    elName('departure_date').value = new Date().toISOString().slice(0, 10);  // restaurar default
+    await cargarLookups();   // el empleado archivado sale de los selectores activos sin recargar la página
   } catch (err){ msg(m, '❌ ' + err.message, 'err'); }
   finally { btn.disabled = false; }
 }
@@ -252,7 +253,11 @@ async function onEditar(e){
   try {
     var r = await api(EP.editar, body);
     if (!r.ok) throw new Error(r.error || 'No se pudo guardar');
-    msg(m, '✅ Cambios guardados (' + esc(body.name) + ').', 'ok');
+    var savedId = String(body.empleado_id);
+    await cargarLookups();                                  // refresca nombres en selectores (jefe directo, baja, editar)
+    document.getElementById('editEmpSel').value = savedId;  // mantener al empleado editado seleccionado
+    await onEditSelect();                                    // re-llena el form desde Odoo (deja el mensaje vacío)
+    msg(m, '✅ Cambios guardados (' + esc(body.name) + ').', 'ok');  // mensaje al final para que no lo pise onEditSelect
   } catch (err){ msg(m, '❌ ' + err.message, 'err'); }
   finally { btn.disabled = false; }
 }

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RH — Alta / Baja de empleados — FTS Suite</title>
 <script>
-  (function(){ window.BUILD_DATE = '20260620-rh-empleados-v2'; })();
+  (function(){ window.BUILD_DATE = '20260620-rh-empleados-v3'; })();
 </script>
 <script src="../../../shared/auth-suite.js"></script>
 <link rel="stylesheet" href="css/empleados.css">
@@ -16,7 +16,7 @@
   <a class="rh-back" href="../index.html">← Módulo RH</a>
   <div class="rh-title-wrap">
     <span class="rh-title">👥 Alta / Baja de empleados</span>
-    <span class="rh-build">build 20260620-rh-empleados-v2</span>
+    <span class="rh-build">build 20260620-rh-empleados-v3</span>
   </div>
   <div class="rh-user">
     <span class="rh-user-name" id="rh-user-name">—</span>
@@ -79,7 +79,9 @@
         <label class="rh-f rh-f-wide"><span>Empleado *</span><select name="empleado_id" required></select></label>
         <label class="rh-f"><span>Fecha de baja *</span><input name="departure_date" type="date" required></label>
         <label class="rh-f"><span>Motivo *</span><select name="departure_reason_id" required></select></label>
-        <label class="rh-f rh-check"><input name="fin_contrato" type="checkbox" checked><span>Fin de contrato <em>(pone fecha fin = fecha de baja)</em></span></label>
+        <!-- Checkbox "Fin de contrato" retirado: FTS no lleva contratos formales en Odoo (la nómina vive en el kiosk)
+             y escribir contract_date_end tumbaba el archivado (Odoo exige fecha de inicio de contrato).
+             Reactivar a futuro solo si FTS formaliza contratos en Odoo. -->
         <label class="rh-f rh-f-wide"><span>Nota del motivo</span><textarea name="departure_description" rows="2"></textarea></label>
       </div>
       <div class="rh-actions">
