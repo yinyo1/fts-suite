@@ -128,7 +128,8 @@ async function onBaja(e){
   var f = e.target, m = $('#bajaMsg'), btn = $('#btnBaja');
   var body = {
     empleado_id: f.empleado_id.value, departure_date: f.departure_date.value,
-    departure_reason_id: f.departure_reason_id.value, departure_description: f.departure_description.value.trim()
+    departure_reason_id: f.departure_reason_id.value, departure_description: f.departure_description.value.trim(),
+    fin_contrato: f.fin_contrato.checked
   };
   btn.disabled = true; msg(m, 'Archivando…');
   try {

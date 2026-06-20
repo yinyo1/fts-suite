@@ -9,7 +9,30 @@ Branch `feat/rh-alta-baja-empleados`. Diseño: [`ALTA_BAJA_EMPLEADOS_DISENO.md`]
 
 ---
 
-## Importar + activar (Esteban, por cada uno de los 5)
+## ✅ ACTUALIZACIÓN 2026-06-20 — los 5 ya están CREADOS en n8n vía MCP (solo falta Publish)
+
+Ya **NO hay que importar JSON ni rellenar customResource**. Los 5 se subieron a n8n por MCP (`n8n_create_workflow` + `n8n_update_full_workflow`), que **preserva customResource + credenciales**. Quedan **INACTIVOS**; Esteban solo da **Publish**.
+
+| Workflow | id n8n | Path webhook | Método | Nodos Odoo (customResource) | Cred | Estado | valid |
+|---|---|---|---|---|---|---|---|
+| `rh/empleado/crear` | `XFVuCSq1xCOmeeDf` | `/webhook/rh/empleado/crear` | POST | CREATE → `hr.employee` | Odoo FTS ✅ | inactivo | ✅ 0 err |
+| `rh/empleado/archivar` | `pXK0d5j5oovabsnT` | `/webhook/rh/empleado/archivar` | POST | SEARCH `hr.attendance` · UPDATE×2 `hr.employee` | Odoo FTS ✅ | inactivo | ✅ 0 err |
+| `rh/empleado/reactivar` | `j7CTVsqhjLrTbvXu` | `/webhook/rh/empleado/reactivar` | POST | UPDATE `hr.employee` | Odoo FTS ✅ | inactivo | ✅ 0 err |
+| `rh/empleado/lookups` | `SPsyzmkSuOnhUY0u` | `/webhook/rh/empleado/lookups` | GET | getAll `hr.department`,`hr.employee`,`hr.job`,`resource.calendar`,`hr.departure.reason`,`res.company` | Odoo FTS ✅ | inactivo | ✅ 0 err |
+| `rh/empleados/archivados` | `8hXuf09tDKwuHH8K` | `/webhook/rh/empleados/archivados` | GET | getAll `hr.employee` (active=false) | Odoo FTS ✅ | inactivo | ✅ 0 err |
+
+- **customResource:** poblado en los 11 nodos Odoo (validación n8n 0 errores en nodos Odoo + dump full de `crear` confirmado).
+- **Fix aplicado:** los Webhook en modo `responseNode` requieren `onError: "continueRegularOutput"` → añadido a los 5 (sin esto el validador marcaba error y el webhook podía colgarse en rutas de error).
+- **archivar nuevo:** checkbox **Fin de contrato** (default on) → rama `IF - fin contrato` con 2 UPDATE: con `contract_date_end` (si on) / sin él (si off, NO toca el campo). Ver [`DEPARTURE_WIZARD_ANALISIS.md`](DEPARTURE_WIZARD_ANALISIS.md).
+- **Warnings benignos** (no bloquean Publish): typeVersion "outdated" (2 vs 2.1, cosmético) + falso-positivo del IF de 2 salidas.
+
+**👉 Acción de Esteban: entrar a n8n y dar Publish a los 5. Nada más.** (Tras Publish: smoke test del PR #54.)
+
+> ⚠️ A verificar en el primer smoke: que `contract_date_end` writable propaga a la versión Odoo 19 (decisión #4); si no, fallback = UPDATE a `hr.version` por `current_version_id`.
+
+---
+
+## (Histórico) Importar + activar — YA NO aplica (los workflows se crearon por MCP)
 
 1. n8n → **Import from File** → `scripts/local/rh/<archivo>.json`.
 2. 🔴 **`customResource` se BLANQUEA al importar** (bug §3). Rellenar a mano en cada nodo Odoo (tabla abajo).
