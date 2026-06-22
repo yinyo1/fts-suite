@@ -1,28 +1,28 @@
 {
   "_meta": {
     "version": 3,
-    "generated_at": "2026-06-22T10:00:01.803Z",
+    "generated_at": "2026-06-22T13:40:54.644Z",
     "source": "Odoo hr.employee live sync via workflow rh/empleados-master/sync",
     "auto_update_status": "auto_synced",
     "auto_update_status_explicacion": "Workflow n8n rh/empleados-master/sync ACTIVO. Cron 6am CST diario + webhook on-change POST /rh/empleados-master/refresh.",
     "fase": "3-active",
-    "last_sync_event": "cron 6am CST",
-    "last_sync_started_at": "2026-06-22T10:00:00.497Z",
-    "last_sync_completed_at": "2026-06-22T10:00:01.803Z",
+    "last_sync_event": "webhook on-change",
+    "last_sync_started_at": "2026-06-22T13:40:53.846Z",
+    "last_sync_completed_at": "2026-06-22T13:40:54.644Z",
     "sync_strategy": "Cron 6am diario (Schedule Trigger) + webhook on-change desde panel admin (Fase 4 cuando exista).",
-    "total_active": 34,
-    "total_con_departamento": 32,
+    "total_active": 35,
+    "total_con_departamento": 33,
     "total_sin_departamento": 2,
-    "total_con_hora_entrada": 30,
+    "total_con_hora_entrada": 31,
     "total_sin_hora_entrada": 4,
-    "total_con_categoria_explicita": 7,
+    "total_con_categoria_explicita": 8,
     "total_con_categoria_default": 27,
-    "total_ppa_aplica": 30,
+    "total_ppa_aplica": 31,
     "total_ppa_no_aplica": 4,
     "distribucion_categorias_explicitas": {
       "ceo": 1,
       "hourly_sencilla": 4,
-      "confianza": 2
+      "confianza": 3
     },
     "campos_custom_creados": [
       "x_categoria_nomina",
@@ -609,6 +609,23 @@
       "x_studio_retardos_15_dias": 0,
       "x_categoria_nomina": null,
       "x_aplica_ppa": false
+    },
+    {
+      "id": 153,
+      "name": "Eduardo Garza",
+      "department_id": 18,
+      "department_name": "Administracion y Finanzas",
+      "parent_id": 149,
+      "parent_name": "Erick Belmont Kato",
+      "resource_calendar_id": 6,
+      "resource_calendar_name": "Horas de oficina",
+      "work_email": "business72756@gmail.com",
+      "work_phone": null,
+      "mobile_phone": "8143033117",
+      "x_studio_hora_entrada": 8.05,
+      "x_studio_retardos_15_dias": 0,
+      "x_categoria_nomina": "confianza",
+      "x_aplica_ppa": true
     }
   ]
 }
