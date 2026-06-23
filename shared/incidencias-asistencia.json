@@ -107,7 +107,7 @@
     {
       "id_interno": "INC-AUTO-CIERRE-97-2026-06-22T13-54-47-838Z",
       "tipo": "auto_cierre_pendiente",
-      "status": "pendiente_rh",
+      "status": "aprobada_con_ajuste",
       "fecha_creacion": "2026-06-22T13:54:50.260Z",
       "empleado_id": 97,
       "empleado_nombre": "Rissia Xavier de Araujo",
@@ -117,7 +117,7 @@
       "check_out_aplicado_utc": "2026-06-19 23:26:05",
       "horas_originales": "72.08",
       "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "autoincidencia": true,
       "rh_aprobo": null,
       "rh_fecha": null,
@@ -125,7 +125,18 @@
       "department_name": null,
       "supervisor_id": null,
       "supervisor_name": null,
-      "propuestas": []
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-06-23T15:15:22.164Z",
+          "hora_propuesta_cst": "18:00",
+          "comentario": "Incidencia ajustada",
+          "accion": "ajustado"
+        }
+      ]
     },
     {
       "id_interno": "INC-AUTO-CIERRE-59-2026-06-22T13-22-53-930Z",
