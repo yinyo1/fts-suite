@@ -2,6 +2,52 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-CHK-6-2026-06-24T12-43-45-122Z",
+      "tipo": "olvido_checkout",
+      "empleado_id": 6,
+      "empleado_nombre": "Leonel Cruz Cristobal",
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "sin_departamento": false,
+      "depto_invalido": false,
+      "supervisor_id": 112,
+      "supervisor_name": "Felipe Pérez Guzmán",
+      "supervisor_email": "leoncruzcriz261987@gmail.com",
+      "supervisor_phone": "+52 81 1665 1692",
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": false,
+      "sin_supervisor": false,
+      "attendance_id": 13882,
+      "fecha_creacion": "2026-06-24T12:43:45.122Z",
+      "check_in_original_utc": "2026-06-23 12:51:57",
+      "check_out_propuesto_utc": "2026-06-24 11:11:00",
+      "check_out_propuesto_cst": "2026-06-24 05:11:00",
+      "geolocation": {
+        "lat": 25.6890906,
+        "lng": -100.2916232,
+        "accuracy": 100,
+        "captured_at": "2026-06-24T12:43:41.671Z"
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "accion": "crear",
+          "fecha": "2026-06-24T12:43:45.122Z",
+          "hora_propuesta_cst": "05:11",
+          "comentario": "No había Internet."
+        }
+      ],
+      "status": "pendiente_supervisor",
+      "hora_final_aplicada_utc": "2026-06-24 11:11:00",
+      "aplicado_en_odoo": true,
+      "tag_disputa_activo": true,
+      "creada_por_modulo": "kiosk",
+      "creada_por_build": "20260521-kiosk-face-opt-in-default"
+    },
+    {
       "id_interno": "INC-AUTO-CIERRE-62-2026-06-23T13-17-49-169Z",
       "tipo": "auto_cierre_pendiente",
       "status": "aprobada_con_ajuste",
