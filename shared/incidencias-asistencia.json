@@ -230,9 +230,19 @@
           "fecha": "2026-06-24T12:43:45.122Z",
           "hora_propuesta_cst": "05:11",
           "comentario": "No había Internet."
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe Pérez Guzmán",
+          "timestamp": "2026-06-29T17:05:33.250Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Aprobada salida 5:00pm",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": "2026-06-24 11:11:00",
       "aplicado_en_odoo": true,
       "tag_disputa_activo": true,
