@@ -118,9 +118,19 @@
           "hora_propuesta_cst": "2026-06-26 07:55:00",
           "comentario": "Olvidé checar",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe Pérez Guzmán",
+          "timestamp": "2026-06-29T17:04:43.805Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Salida 6 de la tarde",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false,
       "department_id": 3,
