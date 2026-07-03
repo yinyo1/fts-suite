@@ -498,7 +498,7 @@
     {
       "id_interno": "INC-AUTO-CIERRE-62-2026-06-24T13-27-53-641Z",
       "tipo": "auto_cierre_pendiente",
-      "status": "pendiente_rh",
+      "status": "aprobada_con_ajuste",
       "fecha_creacion": "2026-06-24T13:27:55.168Z",
       "empleado_id": 62,
       "empleado_nombre": "Gilberto Gibran Solís Carrillo",
@@ -508,7 +508,7 @@
       "check_out_aplicado_utc": "2026-06-23 22:53:47",
       "horas_originales": "24.17",
       "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "autoincidencia": true,
       "rh_aprobo": null,
       "rh_fecha": null,
@@ -516,7 +516,18 @@
       "department_name": null,
       "supervisor_id": null,
       "supervisor_name": null,
-      "propuestas": []
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-07-03T14:56:58.162Z",
+          "hora_propuesta_cst": "18:00",
+          "comentario": "Incidencia no confirmada",
+          "accion": "ajustado"
+        }
+      ]
     },
     {
       "id_interno": "INC-AUTO-CIERRE-59-2026-06-24T13-25-09-300Z",
