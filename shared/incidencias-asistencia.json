@@ -142,7 +142,7 @@
     {
       "id_interno": "INC-AUTO-CIERRE-78-2026-07-01T19-21-21-445Z",
       "tipo": "auto_cierre_pendiente",
-      "status": "pendiente_rh",
+      "status": "aprobada_tal_cual",
       "fecha_creacion": "2026-07-01T19:21:23.190Z",
       "empleado_id": 78,
       "empleado_nombre": "Aldo Jesús Méndez Garza",
@@ -152,7 +152,7 @@
       "check_out_aplicado_utc": "2026-06-29 20:07:44",
       "horas_originales": "56.83",
       "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "autoincidencia": true,
       "rh_aprobo": null,
       "rh_fecha": null,
@@ -160,7 +160,18 @@
       "department_name": null,
       "supervisor_id": null,
       "supervisor_name": null,
-      "propuestas": []
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-07-03T14:56:08.357Z",
+          "hora_propuesta_cst": "18:06",
+          "comentario": "Incidencia confirmada",
+          "accion": "aprobado"
+        }
+      ]
     },
     {
       "id_interno": "INC-AUTO-CIERRE-143-2026-07-01T14-54-29-656Z",
