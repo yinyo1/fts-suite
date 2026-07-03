@@ -2,6 +2,52 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-CHK-153-2026-07-03T01-57-42-933Z",
+      "tipo": "olvido_checkout",
+      "empleado_id": 153,
+      "empleado_nombre": "Eduardo Garza",
+      "department_id": 18,
+      "department_name": "Administracion y Finanzas",
+      "sin_departamento": false,
+      "depto_invalido": true,
+      "supervisor_id": 149,
+      "supervisor_name": "Erick Belmont Kato",
+      "supervisor_email": "business72756@gmail.com",
+      "supervisor_phone": "8143033117",
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": false,
+      "sin_supervisor": false,
+      "attendance_id": 14093,
+      "fecha_creacion": "2026-07-03T01:57:42.933Z",
+      "check_in_original_utc": "2026-07-02 13:46:55",
+      "check_out_propuesto_utc": "2026-07-02 23:40:00",
+      "check_out_propuesto_cst": "2026-07-02 17:40:00",
+      "geolocation": {
+        "lat": 25.7652178,
+        "lng": -100.2355918,
+        "accuracy": 22.611000061035156,
+        "captured_at": "2026-07-03T01:57:40.709Z"
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "accion": "crear",
+          "fecha": "2026-07-03T01:57:42.933Z",
+          "hora_propuesta_cst": "17:40",
+          "comentario": "Marcaba error el checador"
+        }
+      ],
+      "status": "pendiente_supervisor",
+      "hora_final_aplicada_utc": "2026-07-02 23:40:00",
+      "aplicado_en_odoo": true,
+      "tag_disputa_activo": true,
+      "creada_por_modulo": "kiosk",
+      "creada_por_build": "20260521-kiosk-face-opt-in-default"
+    },
+    {
       "id_interno": "INC-OLV-CHK-8-2026-07-03T01-56-04-637Z",
       "tipo": "olvido_checkout",
       "empleado_id": 8,
