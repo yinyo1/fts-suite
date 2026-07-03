@@ -2,6 +2,52 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-CHK-8-2026-07-03T01-56-04-637Z",
+      "tipo": "olvido_checkout",
+      "empleado_id": 8,
+      "empleado_nombre": "Francisco Montalvo Ramirez",
+      "department_id": 6,
+      "department_name": "Comercial",
+      "sin_departamento": false,
+      "depto_invalido": false,
+      "supervisor_id": 97,
+      "supervisor_name": "Rissia Xavier de Araujo",
+      "supervisor_email": "montalvo@fts.mx",
+      "supervisor_phone": "+52 81 3281 93 87",
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": false,
+      "sin_supervisor": false,
+      "attendance_id": 14098,
+      "fecha_creacion": "2026-07-03T01:56:04.637Z",
+      "check_in_original_utc": "2026-07-02 14:45:42",
+      "check_out_propuesto_utc": "2026-07-03 00:00:00",
+      "check_out_propuesto_cst": "2026-07-02 18:00:00",
+      "geolocation": {
+        "lat": 25.7649715,
+        "lng": -100.2355097,
+        "accuracy": 25.840999603271484,
+        "captured_at": "2026-07-03T01:56:02.482Z"
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "accion": "crear",
+          "fecha": "2026-07-03T01:56:04.637Z",
+          "hora_propuesta_cst": "18:00",
+          "comentario": "Marcaba error el checador, se envio evidencia"
+        }
+      ],
+      "status": "pendiente_supervisor",
+      "hora_final_aplicada_utc": "2026-07-03 00:00:00",
+      "aplicado_en_odoo": true,
+      "tag_disputa_activo": true,
+      "creada_por_modulo": "kiosk",
+      "creada_por_build": "20260521-kiosk-face-opt-in-default"
+    },
+    {
       "id_interno": "INC-OLV-CHK-108-2026-07-03T01-55-16-332Z",
       "tipo": "olvido_checkout",
       "empleado_id": 108,
