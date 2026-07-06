@@ -88,6 +88,7 @@ window.BUILD_DATE = '20260428-planeacion-f3-export-v3';
             '<button class="pl-btn-nav" id="next-day" aria-label="Día siguiente">›</button>' +
           '</div>' +
           '<div class="pl-acciones-header">' +
+            '<button class="pl-btn-secondary" id="btn-colapsar" title="Colapsar lista para ir a publicar">▼ Ocultar lista</button>' +
             '<button class="pl-btn-secondary" id="btn-jalar">+ Jalar de otro departamento</button>' +
             '<button class="pl-btn-secondary pl-btn-icon" id="btn-config" title="Configuración" aria-label="Configuración">⚙️</button>' +
           '</div>' +
@@ -97,6 +98,21 @@ window.BUILD_DATE = '20260428-planeacion-f3-export-v3';
       $('next-day').addEventListener('click', () => this.cambiarDia(1));
       $('btn-jalar').addEventListener('click', () => this.abrirModalJalar());
       $('btn-config').addEventListener('click', () => window.PLANEACION_CONFIG.abrirMenuConfig());
+      $('btn-colapsar').addEventListener('click', () => this.toggleLista());
+    },
+
+    // Colapsa/expande el listado de empleados para llegar rápido a publicar.
+    toggleLista(){
+      const z = $('empleados-zone');
+      const btn = $('btn-colapsar');
+      if (!z) return;
+      const oculto = z.style.display === 'none';
+      z.style.display = oculto ? '' : 'none';
+      if (btn) btn.textContent = oculto ? '▼ Ocultar lista' : '▶ Mostrar lista';
+      if (!oculto){
+        const ez = $('export-zone');
+        if (ez && ez.scrollIntoView) ez.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     },
 
     cambiarDia(delta){
