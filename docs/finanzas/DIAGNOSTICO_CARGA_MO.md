@@ -1,177 +1,249 @@
 # Diagnóstico — Carga de Mano de Obra a proyectos
 
-> **Estado:** 🚧 **WIP (parcial).** Solo secciones que NO requieren Odoo están completas.
-> Las secciones marcadas **⛔ PENDIENTE (Odoo)** quedaron bloqueadas porque el servidor
-> **Odoo MCP no estaba conectado en runtime** durante esta sesión (el probe de `claude mcp list`
-> reportaba "Connected" pero el cliente en-sesión devolvía `Server "odoo" is not connected` en
-> 3 intentos: resource read, count, fields). Se completarán en una segunda pasada tras reconectar Odoo.
-> **Fecha:** 2026-07-06. **Read-only.** No se tocó Odoo, código ni workflows n8n.
-> **Fuentes leídas:** `CLAUDE.md`, `docs/finanzas/FRENTE_A_PLAN.md`, `docs/PLAN_NOMINA_FTS_SUITE.md`.
+> **Estado:** ✅ **COMPLETO** (read-only). Las 7 secciones respondidas contra Odoo `serviciosfts.odoo.com` (MCP UID 2, READ-ONLY) + workflow n8n activo + repo.
+> **Fecha:** 2026-07-06. **Ventanas:** 60 días = desde 2026-05-07; 12 meses = desde 2025-07-06. No se tocó Odoo, código ni workflows.
+> **Fuentes:** `CLAUDE.md`, `docs/finanzas/FRENTE_A_PLAN.md`, `docs/PLAN_NOMINA_FTS_SUITE.md`.
+> **NO propone implementación** — solo diagnóstico + decisiones a tomar.
 
 ---
 
-## 0. Resumen ejecutivo (parcial — 10 líneas)
+## 0. Resumen ejecutivo (10 líneas)
 
-1. **Objetivo:** cadena completa de carga de MO: planeación (Felipe) → checkout con SO pre-llenada → horas confirmadas → $ estimado (costo/hora) → $ real (CONTPAQi Ulises) → `analytic.line` compuesta (proyecto plan 1 × rubro 1177 MO) impactando los budgets que A1 ya crea.
-2. **Hoy NO se captura nada de MO en costo.** El checkout solo estampa `check_out` + geo + SO opcional; no hay horas confirmadas, ni costo/hora, ni escritura de `analytic.line`.
-3. **Hallazgo clave §1:** la SO en checkout es **nullable y no se pre-llena en backend** — si el técnico no elige SO se escribe `null` en `x_studio_sales_order_2`. El eje proyecto de la MO nace roto desde la captura.
-4. **Hallazgo clave §6:** el módulo `operaciones/planeacion/` está en **F3 (in_development)**; **F4 (backend `/planeacion/guardar`) no existe** → la planeación de Felipe no persiste a Odoo todavía. El costeo MO a proyectos que promete su README es aspiracional.
-5. **Riesgo central aún sin cuantificar (§4 doble conteo):** si la nómina real ya entra a Odoo vía `account.move` con distribución analítica automática, escribir nuestras propias `analytic.line` de MO desde attendance **duplicaría el gasto**. ⛔ pendiente Odoo.
-6. **⛔ Pendiente Odoo:** §1 números (60d attendances/SO), §2 (`hourly_cost` + campos custom `hr.employee`), §3 (líneas 1177), §4 (nómina real), §5 (budgets post-A1), §6 Odoo (planning.slot, resource.calendar), §7 (cuentas plan 2 por depto).
-7. Frente A ya dejó A3 (candado atribución) y A1 (budgets al confirmar SO) en producción — el rubro **1177 Mano de Obra** ya existe como línea de budget (−`x_studio_presupuesto_mano_de_obra`), así que el "presupuesto MO" ya tiene destino; falta el "consumo real MO".
-8. La convención LFT ya está documentada (9.6 h netas + 0.5 h comida; HE > 9.6 h/día) — base para convertir horas → $ estimado.
-9. Administrativos deben cargar default a su cuenta de departamento (plan 2 Gasto Indirecto); el mapeo `hr.department → cuenta plan 2` es ⛔ pendiente de verificar (¿existe campo o hay que crearlo?).
-10. **No proponer implementación aún** — este doc es solo diagnóstico; falta ~70% de los datos duros.
+1. **Objetivo:** cadena MO = planeación (Felipe) → checkout con SO → horas confirmadas → $ estimado (costo/hora) → $ real (CONTPAQi Ulises) → `analytic.line` compuesta (proyecto × rubro 1177 MO) impactando los budgets que A1 crea.
+2. **🔴 EL RIESGO SE MATERIALIZÓ (§4):** la nómina real **YA entra a la analítica en el rubro 1177**. El 100% de las 203 líneas 1177 de los últimos 12m (−$2.70M) nacen de los **pagos bancarios de nómina BBVA** (journal `BNK1`, GL `2023.34`), auto-etiquetados 1177 por `distribution.model #48`. **Escribir nuestras propias `analytic.line` de MO desde attendance DUPLICARÍA el gasto.** Este es el hallazgo que gobierna el diseño.
+3. **§1 — La captura de horas por SO NO está muerta: arrancó ~abril 2026 y va al 96%.** En 60d: 1,231 attendances cerradas, **89.9% con SO** (124 sin SO). El "hoy no se captura nada" es falso para horas-por-SO.
+4. **PERO §1 tiene su propio catch-all:** el 83% de las horas caen en **3 SOs recurrentes viejas sin proyecto** (Mondelez SO2286, Rittal SO160/SO121, todas draft/sent/sale, `project_id=false`) → esas horas **no llegan a ningún budget**. Es el R3 del lado MO.
+5. **§2 — `hourly_cost` existe nativo pero solo 12/34 activos lo tienen (35%), con valores placeholder** (casi todos $140/h). No hay costo/hora real cargado. **No existe `x_codigo_nomina`** ni llave para CONTPAQi (candidato débil: `registration_number`, 9/34 poblado).
+6. **§3 — rubro 1177:** 203 líneas / −$2.70M/12m, **43% compuesto (con proyecto) / 57% rubro-solo (−$1.54M sin proyecto)**. Todas de nómina bancaria (ninguna de bill de subcontratista).
+7. **§5 — budgets MO:** existe la línea 1177 en 100 budgets, pero muchos son placeholder `budget_amount=−1` y **`achieved_amount=0` en TODOS** (incluido Topo Chico con −$555,800 presupuestado) → el consumo MO no se está trackeando.
+8. **§6 — planeación cortada por ambos lados:** el módulo repo `operaciones/planeacion/` está en F3 sin backend (F4 no existe, no persiste). El `planning.slot` nativo tiene 762 slots (387 ligados a SO) pero **abandonado desde nov-2025** (cero en 2026).
+9. **§7 — administrativos:** plan 2 "Gasto Indirecto" tiene 31 cuentas activas, mapeables por nombre a deptos (478 RH, 608 Ventas, 513 Admin, 636 Oficina…), **pero NO existe campo `hr.department → cuenta`** — habría que crearlo o mantener un map.
+10. **Decisión #1 bloqueante:** definir la **fuente única de verdad del costo MO en la analítica** (nómina bancaria actual vs attendance×costo/hora) antes de escribir una sola línea — coexistir ambas duplica.
 
 ---
 
 ## 1. Captura de horas por SO (`hr.attendance`)
 
-### 1.a — ✅ Qué escribe HOY el workflow `kiosk/checkin` en checkout (leído del workflow activo)
+### 1.a — ✅ Campos que escribe HOY `kiosk/checkin` en checkout (workflow `a7mEjjdwIzzvomXs`, ACTIVE)
 
-Workflow **`kiosk/checkin` (v4.2, id `a7mEjjdwIzzvomXs`, ACTIVE, 26 nodos)**. Ruta de checkout:
-`Switch - Por tipo` → **`Odoo - UPDATE Salida`** → `Code - Armar Datos Salida`.
+Ruta: `Switch - Por tipo` → **`Odoo - UPDATE Salida`** (update `hr.attendance` sobre `attendance_id_pendiente`). Escribe **5 campos**:
 
-El nodo **`Odoo - UPDATE Salida`** hace `hr.attendance` **update** sobre `customResourceId = attendance_id_pendiente`, escribiendo exactamente **5 campos**:
-
-| Campo Odoo | Valor (expresión n8n) | Nota |
+| Campo Odoo | Valor | Nota |
 |---|---|---|
-| `check_out` | `={{ $json.fechaOdoo }}` | server time UTC (o hora declarada si `es_estimado`) |
-| `out_latitude` | `={{ $json.lat }}` | geo salida |
-| `out_longitude` | `={{ $json.lng }}` | geo salida |
-| `out_mode` | `"kiosk"` | **constante** — discriminador kiosk/manual del Hallazgo #15 |
-| `x_studio_sales_order_2` | `={{ $json.so_id }}` | **link SO (el campo de costeo MO)** |
+| `check_out` | server time UTC (o hora declarada si `es_estimado`) | |
+| `out_latitude` / `out_longitude` | geo de salida | |
+| `out_mode` | `"kiosk"` (constante) | discriminador kiosk/manual (Hallazgo #15) |
+| `x_studio_sales_order_2` | `so_id` | **link SO — único campo de costeo MO** |
 
-**No escribe:** horas trabajadas, costo, categoría, ni `analytic_distribution`. El checkout es puramente `check_out` + geo + SO.
+**No escribe:** horas, costo, categoría, ni `analytic_distribution`.
+**SO nullable, sin pre-llenado backend:** en `Code - Preparar parámetros`, `const so_id = body.so_id ? parseInt(body.so_id) : null;`. Solo en `tipo='salida'`. Si el técnico no elige SO → `null`. Cualquier pre-llenado tendría que vivir en `kiosk.js` (frontend) leyendo del plan — que hoy no persiste (§6).
 
-### 1.b — ⭐ Hallazgo: la SO es **nullable y NO se pre-llena en backend**
+### 1.b — ✅ Números 60 días (attendances cerradas, desde 2026-05-07)
 
-En `Code - Preparar parámetros` (primer Code del workflow):
+- **Total cerradas: 1,231.**
+- **Con `x_studio_sales_order_2`: 1,107 (89.9%). Sin SO: 124 (10.1%).**
+- **Top SOs por # attendances (83% en top-3):**
 
-```js
-// SO (solo en salida)
-const so_id = body.so_id ? parseInt(body.so_id) : null;
-const so_nombre = String(body.so_nombre || '');
-```
+| SO (name) | sale.order id | Cliente | Estado | project_id | # attendances |
+|---|---|---|---|---|---:|
+| SO2286 | 2302 | MONDELEZ MEXICO | **draft** | false | 378 |
+| SO160 | 160 | Rittal SA de CV | sent | false | 359 |
+| SO121 | 121 | Rittal SA de CV | sale | false | 284 |
+| SO212 | 212 | MONDELEZ MEXICO | sent | false | 53 |
+| SO155 | — | — | — | — | 12 |
+| (resto: 8 SOs) | | | | | ≤8 c/u |
 
-Consecuencias para la cadena MO:
-- El `so_id` **viene solo de lo que el frontend (`kiosk.js`) mande**, y **solo tiene sentido en `tipo='salida'`**. No hay lógica de default/pre-llenado en n8n.
-- Si el técnico **no elige SO**, se escribe **`null`** en `x_studio_sales_order_2` → el attendance queda sin eje proyecto → **la MO de esa jornada es inatribuible** (mismo patrón R3 de Frente A, pero del lado de la mano de obra).
-- Cualquier "SO pre-llenada en checkout" (objetivo del diseño) tendría que implementarse en el **frontend** (kiosk) tomándola de la **planeación** — que hoy no persiste (§6). Es el eslabón faltante planeación→checkout.
-- La lista de SOs seleccionables viene del webhook `/webhook/kiosk/sos` (visto en `planeacion/js/proyectos.js` y `kiosk/js/odoo.js`), filtrada por `company_id`.
+⭐ **Los 3 buckets principales (Mondelez SO2286, Rittal SO160/SO121) son SOs viejas recurrentes sin proyecto ni cuenta analítica** (draft/sent/sale, `project_id=false`). Son el **catch-all de MANO DE OBRA** — análogo al catch-all de gasto (3034 Topo Chico) pero **distinto**: ninguna hora cayó en SO11547 Topo Chico en 60d. Las horas tienen SO pero **la SO no tiene proyecto → no alimentan budget**.
 
-### 1.c — ⛔ PENDIENTE (Odoo): números de captura
+### 1.c — ✅ Corte temporal: la captura de SO ARRANCÓ, no paró
 
-Requieren consulta a `hr.attendance` (read-only). Falta responder:
-- Últimos 60 días: total attendances **cerradas**; **% con `x_studio_sales_order_2` poblado** vs vacío.
-- Distribución por SO (top 10) y **cuánto cae en SO11547 Topo Chico** (catch-all cuenta 3034).
-- ¿Desde qué fecha aprox. se dejó de capturar SO (si hay corte visible)?
+Attendances cerradas con SO poblado, por mes:
 
----
+| Mes | cerradas | con SO | % con SO |
+|---|---:|---:|---:|
+| jul 2025 – mar 2026 | ~5,700 | **0** (1 en ago) | ~0% |
+| abr 2026 | 671 | 184 | 27% |
+| may 2026 | 648 | 547 | 84% |
+| jun 2026 | 625 | 597 | 96% |
+| jul 2026 (parcial) | 83 | 80 | 96% |
 
-## 2. Costo por empleado (`hr.employee`) — ⛔ PENDIENTE (Odoo)
-
-Requiere `hr.employee` + `fields_get`. Falta responder:
-- ¿Existe **`hourly_cost`** (nativo timesheet)? ¿En cuántos empleados activos está poblado y con qué valores?
-- ¿Existe **`x_codigo_nomina`** o equivalente para match con **CONTPAQi**? ¿Otro campo de costo/salario custom?
-- Lista de campos custom `hr.employee` relevantes a nómina (ya conocidos por doc: `x_categoria_nomina`, `x_aplica_ppa`, `x_studio_hora_entrada`).
-
-**Contexto ya conocido (de `PLAN_NOMINA_FTS_SUITE.md`, no requiere Odoo):**
-- Categorización por `x_categoria_nomina` con default por depto (`ceo`, `confianza`, `hourly_doble`, `hourly_sencilla`, `no_he_comercial`).
-- Overrides explícitos ya asignados: Esteban(32)=`ceo`; Felipe(112)/Mateo(75)=`confianza`; Gerardo(59)/Teresa(60)/Gibrán(62)/Jésus M(68)/Abraham(135)=`hourly_sencilla`.
-- Base horaria: 9.6 h netas/día, quincena 96 h, mensual ~208 h (para derivar `hourly_cost` si no existe nativo).
+**El feature de seleccionar SO en checkout nació ~abril 2026** y se adoptó rápido (27→84→96%). La captura de horas-por-SO está **sana y madura**; lo que falta es que la SO seleccionada sea un **proyecto real** (§1.b) y que se convierta a **costo** (§2–§4).
 
 ---
 
-## 3. Estado del rubro 1177 MO en la analítica — ⛔ PENDIENTE (Odoo)
+## 2. Costo por empleado (`hr.employee`)
 
-Requiere `account.analytic.line`. Falta responder (12 meses):
-- Líneas con rubro **1177** (`x_plan20_id`): cuántas, monto total.
-- Cuántas **COMPUESTAS** (traen también proyecto en `account_id`) vs **rubro-solo**.
-- ¿De dónde nacen? (¿todas de bills al GL `2023.34` vía `distribution.model`?)
+### 2.a — ✅ `hourly_cost` (nativo timesheet) EXISTE
 
-**Contexto ya conocido (Frente A):** el rubro `1177 "2.1 Mano de Obra"` es del plan 20 (eje RUBRO), signo **negativo** (costo). La `distribution.model` que inyecta 1177 está mapeada al prefijo GL `2023.34` (según §3 de FRENTE_A_PLAN). A1 ya crea la `budget.line` 1177 con `−x_studio_presupuesto_mano_de_obra`.
+Campo monetary nativo `hourly_cost`. **Poblado en solo 12 de 34 empleados activos (35%)**, con valores que parecen placeholder:
 
----
+| Empleado | Depto | hourly_cost |
+|---|---|---:|
+| Héctor Cruz (25) | Ingeniería | 300 |
+| Mateo Salazar (75) | Operaciones | 200 |
+| Francisco Montalvo (8) | Comercial | 140 |
+| Luis Ángel García (48) | Comercial | 140 |
+| Juan Manuel Sánchez (55) | Ingeniería | 140 |
+| Carlos Manzanares (76), Gibrán Solís (62), José Luis Romero (79), Jésus Montalvo (68), Leonel Cruz (6), Samuel Ulises (57) | Operaciones | 140 c/u |
+| Gerardo Lozano (59) | Operaciones | 100 |
 
-## 4. Cómo entra HOY la nómina real a Odoo (RIESGO doble conteo) — ⛔ PENDIENTE (Odoo)
+- **22/34 en `hourly_cost = 0`** — incluye CEO (32), **Felipe (112)**, todos los admins, casi todo Comercial, y varios operativos de campo (Cesar 127, Enoc 128, Germán 124, Ramiro 154, Rolando 130, Stephany 121, Tomás L 138, Tomás V 131).
+- Valores agrupados en **$140** = default manual, no costo cargado real (sin prestaciones/IMSS). `hourly_wage`, `wage` = 0 en todos; `wage_type` = `monthly` (Payroll Odoo no se usa, ver §4).
 
-> **Esta es la sección de mayor riesgo del diseño.** Sin ella no se puede diseñar la escritura de `analytic.line` de MO.
+### 2.b — ✅ Llave para CONTPAQi: NO existe campo dedicado
 
-Requiere `account.move` + `account.move.line` + `account.journal`. Falta responder:
-- ¿Hay `account.move` periódicos de nómina? ¿A qué GL pegan (`601.01.01` Wages, `2023.34`, provisión `210.01.01`)? ¿Qué journal?
-- ¿Generan `analytic.line` automáticas por `distribution.model`?
-- **Veredicto doble conteo:** si la nómina ya produce `analytic.line` con rubro 1177, escribir las nuestras desde attendance **duplicaría** el costo MO en la analítica y el budget. Documentar el flujo actual completo antes de diseñar.
-
----
-
-## 5. Presupuesto MO en budgets (post-A1) — ⛔ PENDIENTE (Odoo)
-
-Requiere `budget.analytic` + `budget.line` + `sale.order`. Falta responder:
-- SOs confirmadas después del **2026-06-17**: ¿cuántas traen `x_studio_presupuesto_mano_de_obra` real vs `−1` placeholder?
-- Estado de las líneas **1177** en sus `budget.line` (monto `budget_amount`, `achieved_amount`).
-
-**Contexto ya conocido (CLAUDE.md §17 A1):** desde 2026-06-17 el workflow `u7Ni2cRAxu3zfBid` crea al confirmar SO la línea `1177 Mano de Obra = −x_studio_presupuesto_mano_de_obra`. Muchos budgets legacy son esqueletos placeholder (`budget_amount = −1`).
+- **No hay `x_codigo_nomina`.** Campos custom `hr.employee`: `x_categoria_nomina` (selección), `x_aplica_ppa`, `x_studio_hora_entrada`, `x_studio_link_nomina` (char, **vacío en todos**), `x_studio_retardos_15_dias`, `x_studio_ultimo_retardo_notificado`, `x_studio_adjunto`, `x_currency_id`.
+- **Candidatos de match:** `registration_number` ("Employee Reference") — poblado en **9/34** con enteros chicos ("2","3","5","6","13","19","20","22","24"); `identification_id` = vacío en todos; `barcode` (Badge ID). Ninguno es una llave confiable/completa hacia CONTPAQi hoy.
+- Otros campos de costo nativos disponibles si se activa Payroll: `wage` (mensual), `contract_wage`, `hourly_wage`, `wage_type` (monthly/hourly) — todos en 0.
 
 ---
 
-## 6. Planeación (módulo + Odoo)
+## 3. Estado del rubro 1177 MO en la analítica
 
-### 6.a — ✅ Estado real de `operaciones/planeacion/` en el repo
+### 3.a — ✅ Volumen (12 meses, `x_plan20_id = 1177`)
 
-- **Versión:** `version.json` → **v2.2.0**, `build 20260428-planeacion-f3-export-v3`, **`status: "in_development"`, `fase: "F3"`**, `rebuilt_from_scratch: true`. Reemplaza un módulo viejo (commit `2d09ef9`) borrado por incompatible con costeo a proyectos.
-- **Archivos (13):** `index.html`, `css/planeacion.css`, y JS: `planeacion.js` (entry + auth gate), `empleados.js`, `jornada.js` (validador 9.6h), `turnos.js`, `exportar.js` (WhatsApp + PNG), `horarios-base.js`, `config.js`, `proyectos.js` (SOs desde `/webhook/kiosk/sos`), `sitios.js`, `version.json`, `README.md`.
-- **Qué funciona (F1–F3):** auth gate (solo `ftsmaster` + `felipe.perez`, gate por `session.username`/`role==='master'`), carga de empleados desde Odoo, validador de jornada 9.6h con sugerencia, agrupación por sub-turnos, exportación a texto WhatsApp + PNG (html2canvas).
-- **Qué NO existe (placeholder / pendiente):**
-  - **F4 — backend workflow `/planeacion/guardar` NO EXISTE.** El README lo lista como fase pendiente. ⇒ **la planeación de Felipe no persiste a Odoo ni a ningún store**; es captura + export visual.
-  - El propósito #2 del README ("habilitar costeo de MO por proyecto vía `account.analytic.line`") es **aspiracional, no implementado**. No hay escritura de `planning.slot`, `analytic.line`, ni vínculo persistente empleado→SO.
-- **Deuda autoprogresiva viva:** `js/horarios-base.js:68` mantiene fallback hardcoded `oficinaIdsLegacy = [89, 91, 113]` (marcado "eliminar cuando 100% de operaciones_oficina tengan `x_categoria_nomina='hourly_sencilla'`"). Confirma que la categorización aún no es 100% autoprogresiva.
+- **203 líneas / −$2,704,275 MXN.**
+- **Compuestas (con `account_id` de proyecto): 99 líneas / −$1,163,325 (43%).**
+- **Rubro-solo (sin proyecto): 104 líneas / −$1,540,950 (57%).**
 
-**Implicación para la cadena MO:** el eslabón "planeación → checkout con SO pre-llenada" está **cortado en el primer nodo** — no hay plan persistido del cual el kiosk pueda leer la SO asignada a cada empleado.
+> Ojo: al revés que Materiales (1176, que Frente A midió 88% compuesto), la MO es **mayoría rubro-solo** → la MO no llega al proyecto.
 
-### 6.b — ⛔ PENDIENTE (Odoo): planning.slot + resource.calendar
+Top proyectos compuestos: Vertiv 2da (576) −$539,866; Budenheim ergo (662) −$233,049; Optima JCI (697) −$64,292; Magnekon techo (668) −$47,342; extractores Optima (751) −$46,116.
 
-- `planning.slot` en Odoo: ¿hay registros? ¿alguien lo ha usado?
-- `resource.calendar`: calendarios activos y cuántos empleados asignados.
+### 3.b — ✅ De dónde nacen: 100% NÓMINA BANCARIA (no bills)
 
----
+- **Las 203 líneas provienen de una sola cuenta GL: `270 = "2023.34 *FTS_Egreso Nominas_BBVA"`.** Cero de bills de proveedor.
+- Cada movimiento fuente es `BNK1/2025/xxxx` (Bank Statement), partner **BBVA México**, nombre "Open balance … nomina/Nominas". Es el **pago de la nómina** que Ulises/finanzas concilia en el banco.
+- El rubro 1177 se inyecta por **`account.analytic.distribution.model #48`**: `account_prefix "2023.34" → {"1177":100}`, company 1.
+- Las **compuestas** (Vertiv, Budenheim) son pagos de nómina que **alguien atribuyó a mano a un proyecto** al conciliar; las **rubro-solo** son la nómina sin proyecto.
 
-## 7. Cuentas destino para administrativos (plan 2) — ⛔ PENDIENTE (Odoo)
-
-Requiere `account.analytic.account` (plan 2) + `hr.department`. Falta responder:
-- Plan 2 "Gasto Indirecto": lista de cuentas activas por departamento (513 Administración, 478 RH, etc.).
-- ¿Existe mapeo posible `hr.department → cuenta plan 2`? ¿Hay campo o habría que crearlo?
-
-**Contexto ya conocido (Frente A §10):** plan 2 tiene 31 cuentas activas (~$7.3M/12m); ejemplos: `513 Administración`, `636 Oficina/Taller`, `478 RH`, `509 Gasolina`, `744 EPP`, `604 Nóminas`. El eje plan 2 vive en `account.analytic.line.x_plan2_id`.
+⇒ **El rubro 1177 = la nómina real ya contabilizada.** No es subcontratación (esa va a 1176/otros vía `601.84.01`).
 
 ---
 
-## 8. Riesgos detectados (parcial)
+## 4. 🔴 Cómo entra HOY la nómina real a Odoo — RIESGO DE DOBLE CONTEO
 
-| # | Riesgo | Severidad | Estado |
-|---|--------|-----------|--------|
-| R-MO-1 | **Doble conteo de MO en analítica** si la nómina real ya genera `analytic.line` 1177 y además escribimos las nuestras desde attendance. | 🔴 ALTA | ⛔ sin cuantificar (§4) |
-| R-MO-2 | **SO nullable en checkout** (`so_id ? : null`, sin pre-llenado backend) → jornadas sin eje proyecto = MO inatribuible. | 🟠 MEDIA-ALTA | ✅ confirmado (§1.b) |
-| R-MO-3 | **Planeación no persiste (F4 inexistente)** → imposible pre-llenar SO en checkout desde el plan. Eslabón inicial de la cadena cortado. | 🟠 MEDIA-ALTA | ✅ confirmado (§6.a) |
-| R-MO-4 | Categorización aún con fallback hardcoded (`[89,91,113]`) → costo/hora por categoría no 100% autoprogresivo. | 🟡 MEDIA | ✅ confirmado (§6.a) |
-| R-MO-5 | `hourly_cost` puede no existir/estar despoblado → sin base para $ estimado. | 🟡 MEDIA | ⛔ verificar (§2) |
+### 4.a — ✅ Flujo actual completo
 
----
+1. **Payroll de Odoo (`hr.payslip`) NO se usa** (todos los `wage`=0, `wage_type=monthly` inerte). La nómina se calcula **fuera** (CONTPAQi, Ulises).
+2. La nómina entra a Odoo **solo como el desembolso bancario**: líneas de `account.bank.statement.line` en journal **`BNK1`**, contra GL **`2023.34 *FTS_Egreso Nominas_BBVA`** (partner BBVA).
+3. `distribution.model #48` (`2023.34 → {1177:100}`) hace que **cada** pago de nómina genere automáticamente una `account.analytic.line` con rubro **1177 Mano de Obra**.
+4. Resultado (12m): **−$2.70M de MO ya vive en la analítica** (43% atribuido a proyecto, 57% no).
+5. Existe además una cuenta GL de gasto `Mano de Obra` (id 224, code "Timesheet", type expense) — vestigio de un intento de timesheet-costing; **no está en el flujo real** (la nómina va por 2023.34 bancario).
 
-## 9. Decisiones que Esteban debe tomar antes del diseño (preliminar)
+### 4.b — ✅ Veredicto doble conteo
 
-> Se ampliará al completar las secciones Odoo. Por ahora, las que ya se pueden anticipar:
+**SÍ, riesgo ALTO y confirmado.** Si el diseño de "carga de MO desde attendance" escribe `analytic.line` de MO a rubro **1177** por proyecto (horas × costo/hora), esas líneas se **sumarían** a las que ya genera la nómina bancaria → **doble conteo** en:
+- el rubro 1177 (−$2.70M se volvería ~−$5.4M), y
+- el `achieved_amount` del budget 2-ejes de cada proyecto.
 
-1. **$ estimado — fuente del costo/hora:** ¿`hourly_cost` nativo de Odoo, o campo custom nuevo derivado de sueldo/208h? (depende de §2).
-2. **Doble conteo — quién es la fuente de verdad del costo MO en analítica:** ¿la nómina contable (`account.move`) o nuestras `analytic.line` desde attendance? **No pueden coexistir ambas en el rubro 1177.** (depende de §4 — decisión bloqueante).
-3. **SO en checkout — obligatoria o no:** ¿se hace `so_id` requerido para operativos (candado tipo A3), o se permite null con default a cuenta de proyecto/indirecto? (§1.b).
-4. **Administrativos — mapeo depto→cuenta plan 2:** ¿crear campo `hr.department.x_cuenta_plan2` o hardcodear un map? (§7).
-5. **Planeación F4 — construir persistencia** (`/planeacion/guardar`) como prerequisito de "SO pre-llenada en checkout", o desacoplar (kiosk lee SO de otra fuente). (§6).
-6. **$ real CONTPAQi — llave de match:** ¿`x_codigo_nomina` u otro identificador para reconciliar el Excel de Ulises con `hr.employee`? (§2).
+**El diseño DEBE elegir UNA sola fuente de verdad del costo MO** (opciones en §9 decisión #1). No pueden coexistir la nómina bancaria (2023.34→1177) y las líneas desde attendance en el mismo rubro.
 
 ---
 
-## 10. Qué falta para cerrar este diagnóstico
+## 5. Presupuesto MO en budgets (post-A1)
 
-Reconectar **Odoo MCP** (`/mcp` → odoo → Reconnect, o reiniciar Claude Code) y correr read-only:
-`hr.attendance` (§1), `hr.employee` + fields (§2), `account.analytic.line` (§3), `account.move`/`account.move.line`/`account.journal` (§4), `budget.analytic`/`budget.line`/`sale.order` (§5), `planning.slot`/`resource.calendar` (§6.b), `account.analytic.account` plan 2 + `hr.department` (§7).
+### 5.a — ✅ SOs confirmadas después de 2026-06-17 (company 1+6): solo 7
+
+| SO | amount_untaxed | `x_studio_presupuesto_mano_de_obra` | proyecto |
+|---|---:|---:|---|
+| SO11761 (test) | 100 | 10 | false |
+| SO11762 Nalco TopoChico | **1,505,182** | **0** | 2349 |
+| SO11746 Mission | 8,300 | 2,000 | 2345 |
+| SO11699 Bridgestone | 16,145 | 1,420 | 2352 |
+| SO11779 Bebidas | 12,474 | **0** | 2353 |
+| SO11673 Mission | 37,406 | **1** (placeholder) | 2355 |
+| SO11773 Mission | 8,199 | 2,000 | 2356 |
+
+→ De 7: **4 con MO real, 2 con MO=0, 1 con MO=1 placeholder**. Incluso un proyecto de $1.5M (SO11762) salió con MO presupuestada = 0. El campo se llena inconsistentemente.
+
+### 5.b — ✅ Estado de las líneas 1177 en `budget.line` (100 líneas)
+
+- Mezcla de reales (Topo Chico SO11547 **−$555,800**, SO11511 −$20,400, SO11557 −$4,320, SO11507 −$4,300…) y **muchos placeholder `budget_amount = −1`** (SO11673, SO11644, SO11636, SO11634, SO11631, SO11521…).
+- **`achieved_amount = 0` y `committed_amount = 0` en el 100%** de las líneas 1177 — incluido Topo Chico con −$555,800 presupuestado. El consumo de MO no se descuenta de ningún budget hoy (porque las `analytic.line` 1177 que existen son nómina rubro-solo o atribuida a OTROS proyectos viejos, y no casan la cuenta/fecha de estos budgets nuevos).
+
+---
+
+## 6. Planeación (módulo repo + Odoo)
+
+### 6.a — ✅ Módulo repo `operaciones/planeacion/` — F3, sin persistencia
+
+- `version.json`: **v2.2.0, `status:"in_development"`, `fase:"F3"**`, rebuilt from scratch. Auth gate: solo `ftsmaster` + `felipe.perez`.
+- Funciona F1–F3: carga empleados de Odoo, validador 9.6h, agrupación por turnos, exportación WhatsApp + PNG. SOs vía `/webhook/kiosk/sos`.
+- **F4 (backend `/planeacion/guardar`) NO EXISTE** → **la planeación NO persiste** (ni Odoo ni store). El "costeo MO vía `analytic.line`" que promete su README es **aspiracional**.
+- Deuda viva: `horarios-base.js:68` fallback hardcoded `oficinaIdsLegacy=[89,91,113]`.
+
+### 6.b — ✅ `planning.slot` nativo Odoo — usado en 2025, abandonado
+
+- **762 slots** existen; **387 (51%) tienen `sale_line_id`** (se intentó ligar planeación↔SO para costeo).
+- **Abandonado:** actividad solo abr–nov 2025 (may 244, jun 230, jul 122, oct 72, **nov 11**), **cero en 2026**. Es el módulo Planning nativo, independiente del frontend custom.
+
+### 6.c — ✅ `resource.calendar` — empleados activos por calendario
+
+| Calendario (company 1) | h/día | empleados activos |
+|---|---:|---:|
+| Horas operaciones (id 2) | 10 | 17 |
+| Horas de oficina (id 6) | 10 | 16 |
+| Standard 40 hours/week (id 13) | 8 | 1 |
+
+Los 34 activos están en calendarios de 10 h/día (ops/oficina). Hay 16 calendarios en total (el resto son de otras companies 2–11, varias basura "…BORRAR…").
+
+---
+
+## 7. Cuentas destino para administrativos (plan 2 "Gasto Indirecto")
+
+### 7.a — ✅ 31 cuentas activas; mapeables por nombre a departamento
+
+| Depto FTS | Cuenta plan 2 candidata (id) |
+|---|---|
+| Recursos Humanos (16) | 478 "CENTRO DE COSTOS RH" (+ 772 "RH DE ADMINISTRACION") |
+| Comercial (6) | 608 "CENTRO DE COSTO VENTAS" |
+| Legal (9) | 768 "LEGAL" |
+| Admin y Finanzas (18) | 513 "Administración" · 636 "OFICINA ADMINISTRACION Y TALLER" |
+| Compras | 771 "COMPRAS" · 383 "Dpto Compras" |
+| (nómina genérica) | 604 "NOMINAS FTS" |
+| Operaciones overhead | 632 Caja Herramientas · 744 EPP · 509 Gasolina (compartidos, no por-persona) |
+
+### 7.b — ✅ Mapeo `hr.department → cuenta`: NO existe campo
+
+- **No hay campo en `hr.department`** que ligue a una cuenta analítica plan 2. El match es solo **por nombre** y es **incompleto**: no hay cuenta indirecta dedicada para **Dirección (5)**, **Ingeniería (17)** ni para **Operaciones como overhead** (Ops va directo a proyecto).
+- Para "administrativos cargan default a su cuenta de departamento" habría que **crear** el mapeo: campo nuevo `hr.department.x_cuenta_indirecta` (m2o a `account.analytic.account`) o un JSON de configuración. **Decisión para Esteban.**
+
+---
+
+## 8. Riesgos detectados
+
+| # | Riesgo | Sev | Estado |
+|---|--------|-----|--------|
+| R-MO-1 | **Doble conteo MO en rubro 1177** — la nómina bancaria (2023.34→1177) ya aporta −$2.70M/12m; sumar attendance×costo duplica gasto y `achieved`. | 🔴 ALTA | ✅ confirmado (§4) |
+| R-MO-2 | **Catch-all de MO** — 83% de horas a 3 SOs recurrentes sin proyecto (Mondelez/Rittal) → horas capturadas pero inatribuibles a budget. | 🟠 MEDIA-ALTA | ✅ confirmado (§1.b) |
+| R-MO-3 | **Costo/hora inexistente o placeholder** — `hourly_cost` 35% poblado, valores $140 default; sin costo cargado real. | 🟠 MEDIA-ALTA | ✅ confirmado (§2) |
+| R-MO-4 | **Sin llave CONTPAQi** — no hay `x_codigo_nomina`; `registration_number` 9/34, `x_studio_link_nomina` vacío. | 🟠 MEDIA | ✅ confirmado (§2.b) |
+| R-MO-5 | **Planeación no persiste** — F4 inexistente + `planning.slot` abandonado → no hay plan del cual pre-llenar SO en checkout. | 🟠 MEDIA | ✅ confirmado (§6) |
+| R-MO-6 | **Budget MO ciego** — `achieved=0` en el 100% de líneas 1177; MO presupuestada inconsistente (0/−1/real). | 🟡 MEDIA | ✅ confirmado (§5) |
+| R-MO-7 | **SO nullable en checkout** — sin candado, 10% de jornadas sin SO. | 🟡 MEDIA | ✅ confirmado (§1.a) |
+
+---
+
+## 9. Decisiones que Esteban debe tomar antes del diseño
+
+1. **🔴 (BLOQUEANTE) Fuente única de verdad del costo MO en la analítica.** Elegir UNA:
+   - **(a)** Mantener la **nómina bancaria** (2023.34→1177) como el costo real, y usar attendance solo para **atribuir a proyecto** ese gasto (reemplazar la atribución manual del pago BBVA por una automática basada en horas) — NO crear líneas nuevas.
+   - **(b)** Cambiar a **attendance×costo/hora** como costo MO por proyecto, y **quitar** el rubro 1177 del `distribution.model #48` (que la nómina bancaria deje de generar 1177).
+   - **(c)** Usar **rubros distintos**: 1177 = real (nómina), y un rubro nuevo "MO estimada" para el cálculo desde attendance (reporte, no budget).
+   - *Coexistir (a)+(b) en el mismo rubro = doble conteo garantizado.*
+2. **Costo/hora — fuente.** ¿Poblar `hourly_cost` nativo (costo cargado con prestaciones, derivado de CONTPAQi/sueldo÷horas), o campo custom? Hoy 35% poblado con placeholders.
+3. **Llave CONTPAQi.** ¿Crear `x_codigo_nomina` en `hr.employee` y poblarlo, o reutilizar `registration_number`? Define el match del Excel de Ulises.
+4. **SO en checkout — ¿obligatoria?** ¿Candado (tipo A3) que exija SO en salida para operativos, o permitir null con default? Y **matar el catch-all** Mondelez/Rittal (que sean proyectos reales o un centro de costo).
+5. **Administrativos — mapeo depto→cuenta plan 2.** ¿Crear campo `hr.department.x_cuenta_indirecta` (m2o) o JSON? Falta cuenta indirecta para Dirección/Ingeniería/Operaciones-overhead.
+6. **Planeación — prerequisito.** ¿Construir F4 (`/planeacion/guardar`) para pre-llenar SO en checkout, o desacoplar (kiosk lee SO de otra fuente)? ¿Revivir `planning.slot` nativo (ya soporta `sale_line_id`) o seguir con el frontend custom?
+7. **Alcance de "horas confirmadas".** ¿Quién confirma horas antes de costear (supervisor/Felipe), y sobre qué — el attendance crudo o un paso de validación (el validador 9.6h de planeación)?
+
+---
+
+## 10. Notas de método / límites
+
+- Números de Odoo vía MCP read-only (UID 2). `hr.attendance` cerradas = `check_out != false`. "Compuesto" = `analytic.line` con `x_plan20_id=1177` **y** `account_id` (proyecto) poblado; "rubro-solo" = `account_id=false`.
+- Activos = `hr.employee active=true` → 34 (vs "40" histórico en CLAUDE.md; discrepancia menor ya apuntada en Bloque B pendiente #5).
+- La ventana de 60d incluye el arranque de captura SO (abr–may), por eso los 124 sin-SO son mayormente del inicio; el corriente (jun–jul) va al 96%.
+- `planning.slot` y `hr.attendance` son modelos distintos: Planning (previsión) vs Attendance (real). El costeo hoy no usa ninguno — usa el pago bancario de nómina.
