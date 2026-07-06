@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Confirmar Horas — FTS Suite</title>
+<script>
+  (function(){ window.CH_BUILD = '20260706-b4-confirmar-horas-v1'; })();
+</script>
+<script src="../../shared/auth-suite.js"></script>
+<style>
+  :root{ --azul:#1a4480; --azul2:#0C447C; --ok:#1a7a3a; --warn:#BA7517; --err:#b3261e; --bg:#f4f6f9; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; font-family:'Segoe UI',Arial,sans-serif; background:var(--bg); color:#1c1c1c; }
+  .ch-topbar{ display:flex; align-items:center; gap:14px; background:var(--azul); color:#fff; padding:10px 16px; }
+  .ch-back{ color:#fff; text-decoration:none; font-size:14px; opacity:.9; }
+  .ch-title-wrap{ display:flex; flex-direction:column; flex:1; }
+  .ch-title{ font-size:16px; font-weight:600; }
+  .ch-build{ font-size:10px; opacity:.7; }
+  .ch-user{ font-size:13px; opacity:.9; }
+  .ch-gate{ max-width:520px; margin:60px auto; background:#fff; border-radius:12px; padding:28px; text-align:center; box-shadow:0 2px 12px rgba(0,0,0,.08); }
+  .ch-gate a{ display:inline-block; margin-top:14px; background:var(--azul); color:#fff; text-decoration:none; padding:9px 18px; border-radius:8px; }
+  .ch-main{ max-width:1000px; margin:0 auto; padding:16px; }
+  .ch-controls{ display:flex; flex-wrap:wrap; align-items:end; gap:12px; background:#fff; border-radius:10px; padding:14px; box-shadow:0 1px 6px rgba(0,0,0,.06); margin-bottom:14px; }
+  .ch-field{ display:flex; flex-direction:column; gap:3px; }
+  .ch-field label{ font-size:11px; color:#555; font-weight:600; }
+  .ch-field input{ padding:7px 9px; border:1px solid #ccc; border-radius:7px; font-size:14px; }
+  .ch-btn{ border:none; border-radius:8px; padding:8px 16px; font-size:14px; cursor:pointer; font-weight:500; }
+  .ch-btn-primary{ background:var(--azul); color:#fff; }
+  .ch-btn-sm{ padding:5px 10px; font-size:12px; }
+  .ch-btn-ok{ background:var(--ok); color:#fff; }
+  .ch-btn-edit{ background:#eef2f8; color:var(--azul2); border:1px solid #cfdcf0; }
+  .ch-btn:disabled{ opacity:.55; cursor:not-allowed; }
+  .ch-summary{ font-size:13px; color:#444; margin:2px 4px 12px; }
+  .ch-table{ width:100%; border-collapse:collapse; background:#fff; border-radius:10px; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,.06); font-size:13px; }
+  .ch-table th{ background:var(--azul); color:#fff; text-align:left; padding:9px 10px; font-weight:500; }
+  .ch-table td{ padding:8px 10px; border-top:1px solid #eee; vertical-align:middle; }
+  .ch-badge{ display:inline-block; font-size:11px; padding:2px 8px; border-radius:10px; font-weight:600; }
+  .b-ok{ background:#e3f4e8; color:var(--ok); }
+  .b-pend{ background:#fff3df; color:var(--warn); }
+  .b-disp{ background:#fdeceb; color:var(--err); }
+  .b-open{ background:#eceff3; color:#555; }
+  .ch-sinso{ color:var(--err); font-weight:600; }
+  .ch-actions{ display:flex; gap:6px; white-space:nowrap; }
+  .ch-msg{ padding:10px 12px; border-radius:8px; margin-bottom:12px; font-size:13px; display:none; }
+  .ch-msg-ok{ background:#e3f4e8; color:var(--ok); }
+  .ch-msg-err{ background:#fdeceb; color:var(--err); }
+  .ch-placeholder{ text-align:center; color:#777; padding:28px; }
+  .ch-modal{ position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; z-index:50; }
+  .ch-modal-box{ background:#fff; border-radius:12px; width:min(440px,92vw); max-height:80vh; display:flex; flex-direction:column; overflow:hidden; }
+  .ch-modal-head{ display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid #eee; }
+  .ch-modal-body{ padding:14px 16px; overflow:auto; }
+  .ch-so-search{ width:100%; padding:9px; border:1px solid #ccc; border-radius:8px; font-size:14px; margin-bottom:10px; }
+  .ch-so-item{ padding:9px 10px; border:1px solid #e5e5e5; border-radius:8px; margin-bottom:6px; cursor:pointer; }
+  .ch-so-item:hover{ background:#f0f4f9; }
+  .ch-so-item .n{ font-weight:600; color:var(--azul); }
+  .ch-so-item .c{ font-size:12px; color:#666; }
+  .ch-x{ background:none; border:none; font-size:18px; cursor:pointer; color:#888; }
+</style>
+</head>
+<body>
+
+<div class="ch-topbar">
+  <a class="ch-back" href="../index.html">← Operaciones</a>
+  <div class="ch-title-wrap">
+    <span class="ch-title">✅ Confirmar Horas</span>
+    <span class="ch-build" id="ch-build">build …</span>
+  </div>
+  <div class="ch-user"><span id="ch-user-nombre">—</span></div>
+</div>
+
+<div id="auth-gate" class="ch-gate" style="display:none"></div>
+
+<main id="main-content" class="ch-main" style="display:none">
+  <div class="ch-controls">
+    <div class="ch-field">
+      <label for="f-desde">Desde</label>
+      <input type="date" id="f-desde">
+    </div>
+    <div class="ch-field">
+      <label for="f-hasta">Hasta</label>
+      <input type="date" id="f-hasta">
+    </div>
+    <button class="ch-btn ch-btn-primary" id="btn-cargar">Cargar</button>
+  </div>
+
+  <div class="ch-msg" id="ch-msg"></div>
+  <div class="ch-summary" id="ch-summary"></div>
+
+  <div id="tabla-zone">
+    <div class="ch-placeholder">Elige un rango y presiona <strong>Cargar</strong>.</div>
+  </div>
+</main>
+
+<!-- Modal corregir SO -->
+<div id="modal-so" class="ch-modal">
+  <div class="ch-modal-box">
+    <div class="ch-modal-head">
+      <strong id="modal-so-title">Corregir SO</strong>
+      <button class="ch-x" id="modal-so-close">✕</button>
+    </div>
+    <div class="ch-modal-body">
+      <input type="text" class="ch-so-search" id="modal-so-search" placeholder="Buscar SO… (nombre o cliente)" autocomplete="off">
+      <div id="modal-so-list"></div>
+    </div>
+  </div>
+</div>
+
+<script src="js/confirmar-horas.js"></script>
+</body>
+</html>
