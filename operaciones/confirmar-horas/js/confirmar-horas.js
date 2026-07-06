@@ -101,6 +101,7 @@
       var horas = row.worked_hours != null ? row.worked_hours.toFixed(2) + 'h' : '—';
       var confirmarDisabled = (row.confirmado || row.en_disputa || row.abierta) ? ' disabled' : '';
       return '<tr data-att="' + row.attendance_id + '">' +
+          '<td style="color:#9aa0a6;font-size:11px;font-variant-numeric:tabular-nums" title="Attendance ID (Odoo)">' + row.attendance_id + '</td>' +
           '<td>' + esc(row.empleado_nombre || ('#' + row.empleado_id)) + '</td>' +
           '<td>' + esc(horario) + '</td>' +
           '<td>' + horas + '</td>' +
@@ -115,7 +116,7 @@
 
     $('tabla-zone').innerHTML =
       '<table class="ch-table"><thead><tr>' +
-        '<th>Empleado</th><th>Entrada → Salida (CST)</th><th>Horas</th><th>SO</th><th>Estado</th><th>Acciones</th>' +
+        '<th style="width:56px">ID</th><th>Empleado</th><th>Entrada → Salida (CST)</th><th>Horas</th><th>SO</th><th>Estado</th><th>Acciones</th>' +
       '</tr></thead><tbody>' + filas + '</tbody></table>';
 
     $('tabla-zone').querySelectorAll('button[data-act]').forEach(function(b){
