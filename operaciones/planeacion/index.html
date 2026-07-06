@@ -20,7 +20,7 @@
   <a class="pl-back" href="../index.html">← Operaciones</a>
   <div class="pl-title-wrap">
     <span class="pl-title">📅 Planeación Operativa</span>
-    <span class="pl-build">build 20260428-planeacion-f3-export-v3</span>
+    <span class="pl-build" id="pl-build">build …</span>
   </div>
   <div class="pl-user">
     <span id="pl-user-nombre">—</span>
@@ -71,6 +71,21 @@
 <script src="js/turnos.js"></script>
 <script src="js/exportar.js"></script>
 <script src="js/planeacion.js"></script>
+
+<!-- Build indicator: lee version.json (cache-bust) para verificación visual del deploy -->
+<script>
+  (function(){
+    fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(d){
+        if (!d || !d.build) return;
+        window.BUILD_DATE = d.build;
+        var el = document.getElementById('pl-build');
+        if (el) el.textContent = 'build ' + d.build;
+      })
+      .catch(function(){});
+  })();
+</script>
 
 </body>
 </html>

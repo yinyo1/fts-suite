@@ -32,12 +32,56 @@ window.BUILD_DATE = '20260428-planeacion-f3-export-v3';
       });
 
       this.cargarAsignacionesDelDia();
+      await this.mergePlanPublicado();
       this.renderHeader();
       this.renderProgresoBanner();
       this.renderJornadaBanner();
       this.renderLista();
       this.renderExportZone();
       this.bindEventosGlobales();
+    },
+
+    // ─── B2: trae el plan ya publicado (planning.slot vía planeacion/dia) y lo mergea ───
+    // Empleados con slot llegan pre-cargados (SO, horario, actividad) y marcados
+    // "ya_publicado"; los demás quedan normal. Editar + re-publicar = upsert B1.
+    async mergePlanPublicado(){
+      const N8N = 'https://primary-production-5c3c.up.railway.app';
+      try {
+        const res = await fetch(N8N + '/webhook/planeacion/dia', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fecha: this.fechaActual })
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const r = Array.isArray(data) ? data[0] : data;
+        if (!r || !Array.isArray(r.slots)) return;
+        r.slots.forEach(slot => {
+          if (slot.empleado_id == null) return;
+          let a = this.asignaciones.find(x => x.empleado_id === slot.empleado_id);
+          if (!a){
+            // externo publicado que no está en el roster base de Operaciones
+            a = {
+              empleado_id: slot.empleado_id,
+              empleado_nombre: slot.empleado_nombre || ('#' + slot.empleado_id),
+              empleado_dept: 'Externo', empleado_dept_id: 0, empleado_job: '',
+              externo: true, requiere_check: true,
+              origen: 'FTS Monterrey', sitio: '', he: 0,
+              entrada: slot.entrada || '07:00', salida: slot.salida || '17:06',
+              horario_base: { entrada: slot.entrada || '07:00', salida: slot.salida || '17:06' }
+            };
+            this.asignaciones.push(a);
+          }
+          if (slot.entrada)   a.entrada   = slot.entrada;
+          if (slot.salida)    a.salida    = slot.salida;
+          if (slot.actividad) a.actividad = slot.actividad;
+          a.so_id = slot.so_id || null;
+          a.so_nombre = slot.so_nombre || '';
+          a.ya_publicado = true;
+          a.confirmado = true;
+        });
+      } catch (e){
+        console.warn('[planeacion] mergePlanPublicado falló (se muestra plan base):', e);
+      }
     },
 
     cargarAsignacionesDelDia(){
@@ -115,11 +159,12 @@ window.BUILD_DATE = '20260428-planeacion-f3-export-v3';
       }
     },
 
-    cambiarDia(delta){
+    async cambiarDia(delta){
       const d = new Date(this.fechaActual + 'T12:00:00');
       d.setDate(d.getDate() + delta);
       this.fechaActual = d.toISOString().split('T')[0];
       this.cargarAsignacionesDelDia();
+      await this.mergePlanPublicado();
       this.renderHeader();
       this.renderProgresoBanner();
       this.renderJornadaBanner();
@@ -206,6 +251,8 @@ window.BUILD_DATE = '20260428-planeacion-f3-export-v3';
       const externoLabel  = a.externo    ? '<span class="pl-badge pl-badge-externo">🔄 ' + esc(a.empleado_dept) + '</span>' : '';
       const jornadaLabel  = (jornadaCorta && a.requiere_check)
         ? '<span class="pl-badge pl-badge-warn">⚠️ ' + horasJornada.toFixed(1) + 'h</span>' : '';
+      const publicadoLabel = a.ya_publicado
+        ? '<span class="pl-badge" style="background:#e3f4e8;color:#1a7a3a">📂 publicado</span>' : '';
 
       const checkOrAuto = a.requiere_check
         ? '<input type="checkbox" class="pl-emp-check" data-emp-id="' + a.empleado_id + '"' + (a.confirmado ? ' checked' : '') + ' />'
@@ -219,7 +266,7 @@ window.BUILD_DATE = '20260428-planeacion-f3-export-v3';
         '<div class="pl-card-empleado ' + cardClass + '" data-emp-id="' + a.empleado_id + '">' +
           '<div class="pl-card-content">' +
             '<div class="pl-card-info">' +
-              '<div class="pl-card-nombre">' + esc(a.empleado_nombre) + heLabel + externoLabel + jornadaLabel + '</div>' +
+              '<div class="pl-card-nombre">' + esc(a.empleado_nombre) + heLabel + externoLabel + jornadaLabel + publicadoLabel + '</div>' +
               '<div class="pl-card-detalles">🕐 ' + J.fmtAMPM(a.entrada) + ' → ' + J.fmtAMPM(a.salida) + ' · 📍 ' + sitio + ' · ' + so + '</div>' +
               '<div class="pl-card-actividad">' + actividad + '</div>' +
             '</div>' +

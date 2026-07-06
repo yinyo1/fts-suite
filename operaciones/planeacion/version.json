@@ -1,10 +1,10 @@
 {
   "module": "operaciones/planeacion",
-  "version": "2.3.0",
-  "build": "20260706-planeacion-b1-v1",
+  "version": "2.4.0",
+  "build": "20260706-planeacion-b2-v1",
   "status": "in_development",
-  "fase": "F4-B1",
+  "fase": "F4-B2",
   "actualizado": "2026-07-06",
   "rebuilt_from_scratch": true,
-  "notas": "B1 Carga MO: boton Publicar (upsert planning.slot con tag SO, solo asignaciones con SO) + toggle colapsar lista"
+  "notas": "B2 Carga MO: merge automatico del plan publicado (planeacion/dia) al entrar/cambiar dia + indicador 'publicado'"
 }
