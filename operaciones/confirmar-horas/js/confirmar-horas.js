@@ -102,7 +102,10 @@
       var confirmarDisabled = (row.confirmado || row.en_disputa || row.abierta) ? ' disabled' : '';
       return '<tr data-att="' + row.attendance_id + '">' +
           '<td style="color:#9aa0a6;font-size:11px;font-variant-numeric:tabular-nums" title="Attendance ID (Odoo)">' + row.attendance_id + '</td>' +
-          '<td>' + esc(row.empleado_nombre || ('#' + row.empleado_id)) + '</td>' +
+          '<td>' + esc(row.empleado_nombre || ('#' + row.empleado_id)) +
+            (row.es_operaciones === false && row.department_name
+              ? ' <span title="Cargó horas a un proyecto (otro depto)" style="background:#eef2f8;color:#0C447C;font-size:10px;padding:1px 7px;border-radius:8px;white-space:nowrap">' + esc(row.department_name) + '</span>'
+              : '') + '</td>' +
           '<td>' + esc(horario) + '</td>' +
           '<td>' + horas + '</td>' +
           '<td class="cell-so">' + so + '</td>' +
