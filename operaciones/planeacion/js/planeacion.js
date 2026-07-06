@@ -509,7 +509,9 @@ window.BUILD_DATE = '20260428-planeacion-f3-export-v3';
               '<button id="btn-copiar" class="pl-btn-export">📋 Copiar texto</button>' +
               '<button id="btn-imagen" class="pl-btn-export">🖼️ Generar PNG</button>' +
               '<button id="btn-wa"     class="pl-btn-export pl-btn-wa">📱 Enviar a WhatsApp</button>' +
+              '<button id="btn-publicar" class="pl-btn-export">💾 Publicar (guardar plan)</button>' +
             '</div>' +
+            '<div id="pl-publicar-msg" style="font-size:12px;margin-top:8px"></div>' +
           '</div>' +
         '</div>';
 
@@ -555,6 +557,8 @@ window.BUILD_DATE = '20260428-planeacion-f3-export-v3';
         const texto = window.PLANEACION_EXPORTAR.generarTextoWA(this.asignaciones, this.fechaFormateadaCorta());
         window.PLANEACION_EXPORTAR.compartirWA(texto);
       });
+
+      $('btn-publicar').addEventListener('click', () => this.publicarPlan());
     },
 
     actualizarPreviewExport(){
@@ -562,6 +566,65 @@ window.BUILD_DATE = '20260428-planeacion-f3-export-v3';
       if (!preview) return;
       const texto = window.PLANEACION_EXPORTAR.generarTextoWA(this.asignaciones, this.fechaFormateadaCorta());
       preview.textContent = texto;
+    },
+
+    // ─── B1: publicar plan → planning.slot (upsert vía n8n) ───
+    async publicarPlan(){
+      const J = window.PLANEACION_JORNADA;
+      const N8N = 'https://primary-production-5c3c.up.railway.app';
+      const session = (window.FTSAuth && window.FTSAuth.getSession()) || {};
+      const msg = $('pl-publicar-msg');
+      const btn = $('btn-publicar');
+
+      const asigns = this.asignaciones.map(a => ({
+        empleado_id:      a.empleado_id,
+        so_id:            a.so_id || null,
+        so_nombre:        a.so_nombre || '',
+        entrada:          a.entrada,
+        salida:           a.salida,
+        he:               a.he || 0,
+        sitio:            a.sitio || '',
+        actividad:        a.actividad || '',
+        origen:           a.origen || '',
+        externo:          !!a.externo,
+        empleado_dept_id: a.empleado_dept_id || 0,
+        horas_netas:      J.calcularNeta(a.entrada, a.salida)
+      }));
+
+      if (!asigns.length){
+        if (msg){ msg.style.color = '#b3261e'; msg.textContent = 'No hay asignaciones que publicar.'; }
+        return;
+      }
+
+      const payload = {
+        fecha: this.fechaActual,
+        supervisor: { username: session.username || '', nombre: session.nombre || '' },
+        asignaciones: asigns
+      };
+
+      if (btn){ btn.disabled = true; btn.textContent = '⏳ Publicando…'; }
+      if (msg){ msg.style.color = '#555'; msg.textContent = 'Guardando en Odoo…'; }
+
+      try {
+        const res = await fetch(N8N + '/webhook/planeacion/guardar', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const r = Array.isArray(data) ? data[0] : data;
+        if (!r || r.success === false) throw new Error((r && r.mensaje) || 'Error');
+        // Éxito confirmado por el backend → recién ahora mostramos OK (anti #15)
+        if (msg){
+          msg.style.color = '#1a7a3a';
+          msg.textContent = '✓ Plan publicado — ' + (r.created || 0) + ' creados, ' +
+            (r.updated || 0) + ' actualizados' + (r.skipped ? ', ' + r.skipped + ' omitidos' : '') + '.';
+        }
+      } catch (e){
+        if (msg){ msg.style.color = '#b3261e'; msg.textContent = '❌ No se pudo publicar: ' + e.message; }
+      } finally {
+        if (btn){ btn.disabled = false; btn.textContent = '💾 Publicar (guardar plan)'; }
+      }
     },
 
     fechaFormateadaCorta(){
