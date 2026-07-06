@@ -262,6 +262,8 @@ Pendiente F4: usar este mapeo al guardar planes operativos.
 - **Después de cada cambio:** dejar resumen con archivos tocados, IDs de workflows modificados, y siguiente paso sugerido.
 - **No usar lenguaje IA-ish** en outputs externos (correos a clientes, mensajes a empleados). Tono directo, ejecutivo, español MX.
 - **Confirmación entre etapas:** Esteban prefiere validar entre fase y fase, no batches grandes.
+- **Bump de build obligatorio (verificación visual):** todo PR que toque un módulo con `version.json` (o con indicador de build en pantalla como `CH_BUILD`) DEBE bumpear el build. Esteban verifica en pantalla que su cambio quedó desplegado. Convención de build: `YYYYMMDD-<modulo>-<hito>`.
+- **No cambiar el working dir mientras Esteban valida:** cuando Esteban esté validando un branch en su browser local, NO hacer `git checkout` a otros branches en el working directory compartido (le cambia el piso). Usar `git worktree` para branches paralelos, o avisarle antes.
 
 ---
 

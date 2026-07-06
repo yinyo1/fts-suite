@@ -1,10 +1,10 @@
 {
   "module": "operaciones/planeacion",
-  "version": "2.2.0",
-  "build": "20260428-planeacion-f3-export-v3",
+  "version": "2.3.0",
+  "build": "20260706-planeacion-b1-v1",
   "status": "in_development",
-  "fase": "F3",
-  "actualizado": "2026-04-28",
+  "fase": "F4-B1",
+  "actualizado": "2026-07-06",
   "rebuilt_from_scratch": true,
-  "notas": "F3: config persistente + selector SO desde Odoo + dropdowns origen + exportación WhatsApp/PNG + renombres HE→Horas extras"
+  "notas": "B1 Carga MO: boton Publicar (upsert planning.slot con tag SO, solo asignaciones con SO) + toggle colapsar lista"
 }
