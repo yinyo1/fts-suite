@@ -270,6 +270,7 @@ Pendiente F4: usar este mapeo al guardar planes operativos.
 - **Nunca** commitear API keys, tokens, ni credenciales en el repo.
 - Si se detecta una credencial hardcoded, **alertar inmediatamente** y mover a env var de n8n.
 - Webhook secrets HMAC: pendientes de implementar (Bloque A pending).
+- **Pendiente HMAC (B4 Carga MO, 2026-07-06):** los webhooks nuevos `planeacion/horas-dia` (lectura) y `planeacion/confirmar-horas` (UPDATE hr.attendance) heredan el modelo sin secreto. `confirmar-horas` **escribe a producción** (`x_studio_manager_approval` + `x_studio_sales_order_2`) → priorizar HMAC/token cuando se aborde el hardening de webhooks. Gate actual: solo frontend (auth Felipe/master).
 
 ---
 
