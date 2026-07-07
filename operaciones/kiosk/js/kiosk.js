@@ -1,7 +1,7 @@
 // ═══ FTS Kiosk — Lógica principal ═══
 // Script clásico, estado global compartido
 
-const KIOSK_BUILD = '20260521-kiosk-face-opt-in-default';
+const KIOSK_BUILD = '20260706-kiosk-ksproject-3estados';
 console.log('[kiosk] build:', KIOSK_BUILD);
 
 const K = {
@@ -317,10 +317,10 @@ function showScreen(id){
     renderEmpleados(K.empleados);
   }
   if(id === 'ks-project'){
-    renderPreLlenadoSO();
     const input = document.getElementById('ksSoSearch');
     if(input){ input.value=''; }
     renderSOs(K.sos);
+    renderProjectScreen();
   }
   if(id === 'ks-historial'){
     const input = document.getElementById('hist-search');
@@ -867,49 +867,106 @@ async function iniciarSalida(){
   var perfil = perfilEmpleado(emp);
   K.perfilSalida = perfil;
   K.planSO = null;
+  K.planExpandido = false;
   if(perfil === 'admin'){
     // Administrativos: no piden SO
     K.soSeleccionada = null;
     registrarAsistencia();
     return;
   }
-  // Operativo / comercial: mostrar la pantalla YA (con "buscando plan…") y
-  // pre-llenar la SO del plan de HOY cuando llegue (no bloquea el flujo).
+  // Operativo / comercial: Estado 1 CARGANDO (nada seleccionable) hasta que B2
+  // responda. Timeout defensivo 6s → cae a Estado 3 SIN PLAN (nunca deja atorado
+  // al técnico). Hooks PRE-POST (Hallazgo #15): NO tocan registrarAsistencia.
   K.planLoading = true;
   showScreen('ks-project');
+  var settled = false;
+  var timer = setTimeout(function(){
+    if(settled) return;
+    settled = true;
+    console.warn('[kiosk] getPlanDia timeout 6s → Estado 3 (sin plan)');
+    K.planLoading = false;
+    K.planSO = null;
+    renderProjectScreen();
+  }, 6000);
   try{
     var r = await window.OdooKiosk.getPlanDia(emp.id);
+    if(settled) return;   // el timeout ya cayó a Estado 3; ignorar respuesta tardía
+    settled = true;
+    clearTimeout(timer);
     var rr = Array.isArray(r) ? r[0] : r;
     if(rr && rr.plan && rr.so_id){
       K.planSO = { id: rr.so_id, nombre: rr.so_nombre || ('SO ' + rr.so_id) };
     }
-  } catch(e){ /* sin plan / error → modal normal, no bloquea */ }
+  } catch(e){
+    if(settled) return;
+    settled = true;
+    clearTimeout(timer);
+    /* sin plan / error → Estado 3, no bloquea */
+  }
   K.planLoading = false;
-  renderPreLlenadoSO();
+  renderProjectScreen();
 }
 
-// Banner de ks-project: pre-llenado del plan + opción "sin SO" (candado BLANDO)
-function renderPreLlenadoSO(){
-  var el = document.getElementById('ksProjectBanner');
+// ks-project: 3 estados mutuamente excluyentes (CARGANDO / CON PLAN / SIN PLAN).
+// Solo un contenedor visible a la vez → nunca hay dos caminos activos ni se puede
+// teclear/elegir durante la carga (le ganaba al pre-llenado).
+function renderProjectScreen(){
+  var loadingEl = document.getElementById('ksProjectLoading');
+  var planEl    = document.getElementById('ksProjectPlan');
+  var listEl    = document.getElementById('ksProjectListWrap');
+  if(!loadingEl || !planEl || !listEl) return;
+
+  // Estado 1: CARGANDO — solo el mensaje; buscador/lista/sin-proyecto ocultos
+  if(K.planLoading){
+    loadingEl.style.display = '';
+    planEl.style.display    = 'none';
+    listEl.style.display    = 'none';
+    planEl.innerHTML = '';
+    return;
+  }
+  loadingEl.style.display = 'none';
+
+  // Estado 2: CON PLAN (colapsado) — banner + "Confirmar" como única acción visible
+  if(K.planSO && !K.planExpandido){
+    planEl.style.display = '';
+    listEl.style.display = 'none';
+    planEl.innerHTML =
+      '<div class="ksp-plan-banner">'+
+        '<div class="ksp-plan-label">📋 Tu plan de hoy</div>'+
+        '<div class="ksp-plan-name">'+ (K.planSO.nombre || '') +'</div>'+
+        '<button onclick="confirmarPlanSO()" class="ksp-plan-confirm">✔ Confirmar este proyecto</button>'+
+      '</div>'+
+      '<button onclick="expandirListaSO()" class="ksp-plan-cambiar">¿Trabajaste en otro proyecto? Cámbialo aquí</button>';
+    return;
+  }
+
+  // Estado 3: SIN PLAN (o Estado 2 expandido) — buscador + lista + "sin proyecto"
+  planEl.style.display = 'none';
+  listEl.style.display = '';
+  renderNoSOButton();
+}
+
+// Botón "sin proyecto" (candado BLANDO) — solo operativo/comercial, vive dentro
+// de la vista de lista (Estado 3 / Estado 2 expandido), no en la principal.
+function renderNoSOButton(){
+  var el = document.getElementById('ksProjectNoSO');
   if(!el) return;
   var html = '';
-  if(K.planLoading){
-    html += '<div style="text-align:center;color:#666;padding:10px;font-size:14px">⏳ Buscando tu plan de hoy…</div>';
-  }
-  if(K.planSO){
-    html += '<div style="background:#e8f4ea;border:1px solid #b6dcc0;border-radius:12px;padding:14px;margin-bottom:14px;text-align:center">'+
-      '<div style="font-size:15px;color:#1a4480;margin-bottom:8px">📋 Tu plan de hoy: <strong>'+ (K.planSO.nombre || '') +'</strong></div>'+
-      '<button onclick="confirmarPlanSO()" style="background:#107C10;color:#fff;border:none;border-radius:10px;padding:12px 22px;font-size:16px;font-weight:600;cursor:pointer">✔ Confirmar este proyecto</button>'+
-      '<div style="font-size:12px;color:#666;margin-top:8px">o elige otro de la lista</div>'+
-    '</div>';
-  }
   if(K.perfilSalida === 'operativo' || K.perfilSalida === 'comercial'){
-    html += '<button onclick="registrarSinSO()" style="width:100%;background:#f4f6f9;color:#555;border:1px solid #ccc;border-radius:10px;padding:10px;font-size:14px;cursor:pointer;margin-bottom:6px">Registrar salida sin proyecto</button>';
+    html += '<button onclick="registrarSinSO()" class="ksp-sinso-btn">Registrar salida sin proyecto</button>';
     if(K.perfilSalida === 'operativo'){
-      html += '<div style="font-size:12px;color:#BA7517;text-align:center;margin-bottom:10px">⚠️ Sin SO tu salida no queda ligada a un proyecto.</div>';
+      html += '<div class="ksp-sinso-warn">⚠️ Sin SO tu salida no queda ligada a un proyecto.</div>';
     }
   }
   el.innerHTML = html;
+}
+
+// Estado 2 → expandir a lista para elegir otro proyecto (oculta el banner: un solo camino).
+function expandirListaSO(){
+  K.planExpandido = true;
+  renderProjectScreen();
+  var input = document.getElementById('ksSoSearch');
+  if(input){ input.value = ''; searchSOs(''); input.focus(); }
 }
 
 function confirmarPlanSO(){
@@ -2183,6 +2240,7 @@ window.searchSOs = searchSOs;
 window.selectSO = selectSO;
 window.confirmarPlanSO = confirmarPlanSO;
 window.registrarSinSO = registrarSinSO;
+window.expandirListaSO = expandirListaSO;
 window.selectTipo = selectTipo;
 window.cancelarGeo = cancelarGeo;
 window.confirmarGeo = confirmarGeo;
