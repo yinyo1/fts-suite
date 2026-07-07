@@ -12,7 +12,7 @@
 1. **Objetivo:** cadena MO = planeación (Felipe) → checkout con SO → horas confirmadas → $ estimado (costo/hora) → $ real (CONTPAQi Ulises) → `analytic.line` compuesta (proyecto × rubro 1177 MO) impactando los budgets que A1 crea.
 2. **🔴 EL RIESGO SE MATERIALIZÓ (§4):** la nómina real **YA entra a la analítica en el rubro 1177**. El 100% de las 203 líneas 1177 de los últimos 12m (−$2.70M) nacen de los **pagos bancarios de nómina BBVA** (journal `BNK1`, GL `2023.34`), auto-etiquetados 1177 por `distribution.model #48`. **Escribir nuestras propias `analytic.line` de MO desde attendance DUPLICARÍA el gasto.** Este es el hallazgo que gobierna el diseño.
 3. **§1 — La captura de horas por SO NO está muerta: arrancó ~abril 2026 y va al 96%.** En 60d: 1,231 attendances cerradas, **89.9% con SO** (124 sin SO). El "hoy no se captura nada" es falso para horas-por-SO.
-4. **PERO §1 tiene su propio catch-all:** el 83% de las horas caen en **3 SOs recurrentes viejas sin proyecto** (Mondelez SO2286, Rittal SO160/SO121, todas draft/sent/sale, `project_id=false`) → esas horas **no llegan a ningún budget**. Es el R3 del lado MO.
+4. **⚠️ CORRECCIÓN (§11):** lo que parecía "catch-all de buckets recurrentes (Mondelez/Rittal)" era un **misread por un bug**: `x_studio_sales_order_2` guarda un id de `project.project` en un campo m2o a `sale.order` → nombre falso. Las horas **sí van a proyectos reales** (Topo Chico, Magnekon, Vertiv). Es un problema de **tipo de campo**, no de atribución. Fix = **Opción 2** (`MIGRACION_PROJECT_ID.md`).
 5. **§2 — `hourly_cost` existe nativo pero solo 12/34 activos lo tienen (35%), con valores placeholder** (casi todos $140/h). No hay costo/hora real cargado. **No existe `x_codigo_nomina`** ni llave para CONTPAQi (candidato débil: `registration_number`, 9/34 poblado).
 6. **§3 — rubro 1177:** 203 líneas / −$2.70M/12m, **43% compuesto (con proyecto) / 57% rubro-solo (−$1.54M sin proyecto)**. Todas de nómina bancaria (ninguna de bill de subcontratista).
 7. **§5 — budgets MO:** existe la línea 1177 en 100 budgets, pero muchos son placeholder `budget_amount=−1` y **`achieved_amount=0` en TODOS** (incluido Topo Chico con −$555,800 presupuestado) → el consumo MO no se está trackeando.
@@ -42,18 +42,18 @@ Ruta: `Switch - Por tipo` → **`Odoo - UPDATE Salida`** (update `hr.attendance`
 
 - **Total cerradas: 1,231.**
 - **Con `x_studio_sales_order_2`: 1,107 (89.9%). Sin SO: 124 (10.1%).**
-- **Top SOs por # attendances (83% en top-3):**
+- **Top "SOs" por # attendances (top-3 = 83%):**
 
-| SO (name) | sale.order id | Cliente | Estado | project_id | # attendances |
-|---|---|---|---|---|---:|
-| SO2286 | 2302 | MONDELEZ MEXICO | **draft** | false | 378 |
-| SO160 | 160 | Rittal SA de CV | sent | false | 359 |
-| SO121 | 121 | Rittal SA de CV | sale | false | 284 |
-| SO212 | 212 | MONDELEZ MEXICO | sent | false | 53 |
-| SO155 | — | — | — | — | 12 |
-| (resto: 8 SOs) | | | | | ≤8 c/u |
+> ⚠️ **CORRECCIÓN 2026-07-07 (ver §11 BUG):** el número guardado en `x_studio_sales_order_2` es un **id de `project.project`**, NO de `sale.order`. Odoo lo resuelve como el `sale.order` que coincide por número → **nombre falso**. La selección real fue un **proyecto correcto**.
 
-⭐ **Los 3 buckets principales (Mondelez SO2286, Rittal SO160/SO121) son SOs viejas recurrentes sin proyecto ni cuenta analítica** (draft/sent/sale, `project_id=false`). Son el **catch-all de MANO DE OBRA** — análogo al catch-all de gasto (3034 Topo Chico) pero **distinto**: ninguna hora cayó en SO11547 Topo Chico en 60d. Las horas tienen SO pero **la SO no tiene proyecto → no alimentan budget**.
+| id guardado | # att (60d) | PROYECTO real (lo elegido) | Se muestra como (MAL) |
+|---|---:|---|---|
+| 2302 | 378 | **SO11547 Topo Chico** (Nalco) | SO2286 Mondelez |
+| 160 | 359 | **SO10300 Magnekon** | SO160 Rittal |
+| 121 | 284 | **SO9428 Vertiv** (Nalco) | SO121 Rittal |
+| 212 | 53 | **SO10337 Bridgestone** | SO212 Mondelez |
+
+❌ **NO existe "catch-all de buckets recurrentes"** — fue un misread causado por el bug. Las horas **sí van a proyectos reales**; lo roto es el **tipo del campo destino** (m2o a `sale.order` en vez de `project.project`). Ver **§11** (causa raíz) y **`MIGRACION_PROJECT_ID.md`** (migración, Opción 2).
 
 ### 1.c — ✅ Corte temporal: la captura de SO ARRANCÓ, no paró
 
@@ -247,3 +247,19 @@ Los 34 activos están en calendarios de 10 h/día (ops/oficina). Hay 16 calendar
 - Activos = `hr.employee active=true` → 34 (vs "40" histórico en CLAUDE.md; discrepancia menor ya apuntada en Bloque B pendiente #5).
 - La ventana de 60d incluye el arranque de captura SO (abr–may), por eso los 124 sin-SO son mayormente del inicio; el corriente (jun–jul) va al 96%.
 - `planning.slot` y `hr.attendance` son modelos distintos: Planning (previsión) vs Attendance (real). El costeo hoy no usa ninguno — usa el pago bancario de nómina.
+
+---
+
+## 11. 🔴 BUG CRÍTICO — id de `project.project` en campo m2o a `sale.order` (2026-07-07)
+
+**Síntoma:** un técnico elige "SO9428 Vertiv" en el kiosk y el attendance queda con "SO121 Rittal". Repetido en 3 casos (kiosk viejo pre-B3, banner pre-llenado B3, modal smoke test). Aparece por modal **Y** por plan → misma fuente.
+
+**Causa raíz:** el catálogo `/webhook/kiosk/sos` (workflow `kiosk/sos v3.4`, `m6dyGa0yV1zYPwJF`) hace `getAll` de **`project.project`** y mapea **`id: p.id` = id de PROYECTO** + `name: p.name` (nombre del proyecto, correcto). El kiosk escribe ese id en **`x_studio_sales_order_2`**, m2o a **`sale.order`**. Como los espacios de id se solapan por número, Odoo lo resuelve al `sale.order` con ese id → **nombre equivocado**. El `id` (proyecto) es correcto; el **campo destino** es el equivocado.
+
+**Camino del dato:** `kiosk/sos` (project.project → `id:p.id`) → `renderSOs`/`selectSO` (pasa id proyecto) → payload `so_id` → `kiosk/checkin` escribe `x_studio_sales_order_2 = id proyecto` → Odoo lo lee como sale.order. **El mismo catálogo alimenta `proyectos.js`** (planeación) → el tag de B1 y la respuesta de B2 arrastran el mismo id.
+
+**Dimensión (desde abril 2026):** **~1,432 attendances** con "SO" poblada → el **100% son ids de `project.project`** en el campo de sale.order. El nombre mostrado está mal en todas; **el id sí es el proyecto correcto** (dato recuperable, no perdido). Distribución real: Topo Chico 546 · Magnekon 448 · Vertiv 332 · Bridgestone 57 · +13 proyectos (~49).
+
+**Consumers afectados** (muestran nombre equivocado; el dato interno es OK): panel Confirmar Horas (resuelve `x_studio_sales_order_2` como SO), tag de B1, pre-llenado de B2/B3. B1/B2/B3 son **internamente consistentes** (pasan el id de proyecto) — solo el nombre desplegado es falso.
+
+**Decisión (Esteban, 2026-07-07): Opción 2** — crear `x_studio_project_id` (m2o `project.project`) en `hr.attendance`, backfill de los ~1,432, repuntar consumers, congelar `x_studio_sales_order_2` (no borrar). Plan paso a paso en **`docs/finanzas/MIGRACION_PROJECT_ID.md`**.
