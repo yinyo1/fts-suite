@@ -15,7 +15,7 @@ window.BUILD_DATE = '20260428-planeacion-f3-export-v3';
   // PlaneacionApp — UI principal
   // ═══════════════════════════════════════════════
   const PlaneacionApp = {
-    fechaActual: new Date().toISOString().split('T')[0],
+    fechaActual: new Date(Date.now() - 6*3600*1000).toISOString().split('T')[0], // hoy en CST (UTC-6), NO UTC — evita que el plan default caiga en manana tras 18:00 CST
     asignaciones: [],
     empleadoEditando: null,
 
