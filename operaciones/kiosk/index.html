@@ -163,14 +163,31 @@
   </button>
 </div>
 
-<!-- ═══════ PANTALLA 4 — SELECCIONAR SO ═══════ -->
+<!-- ═══════ PANTALLA 4 — SELECCIONAR SO (3 estados) ═══════ -->
 <div class="kiosk-screen" id="ks-project">
-  <button class="kiosk-back" onclick="showScreen('ks-verify')">← Volver</button>
-  <div class="kiosk-title">¿En qué proyecto trabajas hoy?</div>
-  <div id="ksProjectBanner"></div>
-  <input type="text" id="ksSoSearch" class="kiosk-search" placeholder="Busca la SO o proyecto…" oninput="searchSOs(this.value)" autocomplete="off">
-  <div class="kiosk-list" id="ksSOsList">
-    <div style="text-align:center;color:#666;padding:24px">Cargando proyectos…</div>
+  <div class="kiosk-topbar">
+    <button class="kiosk-back" onclick="showScreen('ks-verify')">←</button>
+    <span class="kiosk-topbar-title">Proyecto de hoy</span>
+    <span style="min-width:44px"></span>
+  </div>
+
+  <!-- Estado 1: CARGANDO -->
+  <div id="ksProjectLoading" class="kiosk-loading" style="display:none">
+    <div class="kiosk-loading-spinner"></div>
+    <div style="font-size:16px;color:#555;text-align:center">⏳ Buscando tu plan de hoy…</div>
+  </div>
+
+  <!-- Estado 2: CON PLAN (banner + confirmar) -->
+  <div id="ksProjectPlan" style="display:none"></div>
+
+  <!-- Estado 3: SIN PLAN / Estado 2 expandido (buscador + lista + sin proyecto) -->
+  <div id="ksProjectListWrap" style="display:none">
+    <div class="kiosk-title">¿En qué proyecto trabajas hoy?</div>
+    <input type="text" id="ksSoSearch" class="kiosk-search" placeholder="Busca la SO o proyecto…" oninput="searchSOs(this.value)" autocomplete="off">
+    <div class="kiosk-list" id="ksSOsList">
+      <div style="text-align:center;color:#666;padding:24px">Cargando proyectos…</div>
+    </div>
+    <div id="ksProjectNoSO"></div>
   </div>
 </div>
 

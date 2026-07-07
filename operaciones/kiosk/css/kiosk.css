@@ -360,6 +360,45 @@ html,body{height:100%;overflow:hidden;font-family:'Inter',-apple-system,sans-ser
   position:static;padding:8px 14px;font-size:18px;
   min-width:44px;
 }
+.kiosk-topbar-title{
+  flex:1;text-align:center;
+  font-weight:700;font-size:18px;color:#1a1a1a;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+
+/* ─── ks-project: selector de proyecto en 3 estados ─── */
+/* Contenido bajo el topbar absoluto (no se encima con "← Volver") */
+#ks-project{ justify-content:flex-start; padding-top:76px; }
+#ksProjectLoading{ margin-top:12vh; }
+#ksProjectPlan{ width:100%;max-width:500px; }
+#ksProjectListWrap{
+  width:100%;max-width:500px;
+  display:flex;flex-direction:column;align-items:center;
+}
+/* Estado 2 — banner del plan */
+.ksp-plan-banner{
+  background:#e8f4ea;border:2px solid #b6dcc0;border-radius:16px;
+  padding:22px 18px;text-align:center;margin-bottom:14px;
+}
+.ksp-plan-label{ font-size:14px;color:#3a6b46;font-weight:600;margin-bottom:6px; }
+.ksp-plan-name{ font-size:22px;font-weight:800;color:#0f3d18;margin-bottom:18px;line-height:1.25; }
+.ksp-plan-confirm{
+  width:100%;background:#107C10;color:#fff;border:none;border-radius:12px;
+  padding:16px 22px;font-size:18px;font-weight:700;cursor:pointer;font-family:inherit;
+}
+.ksp-plan-confirm:active{ background:#0b5e0b; }
+.ksp-plan-cambiar{
+  display:block;width:100%;background:none;border:none;
+  color:#0078D4;font-size:14px;text-decoration:underline;cursor:pointer;
+  padding:10px;font-family:inherit;
+}
+/* Estado 3 — botón "sin proyecto" (candado BLANDO) */
+.ksp-sinso-btn{
+  width:100%;max-width:500px;background:#f4f6f9;color:#555;border:1px solid #ccc;
+  border-radius:10px;padding:12px;font-size:14px;cursor:pointer;
+  margin-top:14px;font-family:inherit;
+}
+.ksp-sinso-warn{ font-size:12px;color:#BA7517;text-align:center;margin-top:8px; }
 
 /* ─── Botones de tipo de evento ─── */
 .kiosk-tipo-btn{
