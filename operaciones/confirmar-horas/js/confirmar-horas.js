@@ -95,8 +95,8 @@
     }
     var filas = CH.rows.map(function(row){
       var so = row.so_id
-        ? esc(row.so_nombre || ('SO ' + row.so_id))
-        : '<span class="ch-sinso">⚠ Sin SO</span>';
+        ? esc(row.so_nombre || ('Proy ' + row.so_id))
+        : '<span class="ch-sinso">⚠ Sin proyecto</span>';
       var horario = (row.check_in_cst || '—') + (row.check_out_cst ? ' → ' + row.check_out_cst.slice(11) : ' → …');
       var horas = row.worked_hours != null ? row.worked_hours.toFixed(2) + 'h' : '—';
       var confirmarDisabled = (row.confirmado || row.en_disputa || row.abierta) ? ' disabled' : '';
@@ -112,14 +112,14 @@
           '<td class="cell-estado">' + estadoBadge(row) + '</td>' +
           '<td><div class="ch-actions">' +
             '<button class="ch-btn ch-btn-sm ch-btn-ok" data-act="confirm" data-att="' + row.attendance_id + '"' + confirmarDisabled + '>✔ Confirmar</button>' +
-            '<button class="ch-btn ch-btn-sm ch-btn-edit" data-act="editso" data-att="' + row.attendance_id + '">✎ SO</button>' +
+            '<button class="ch-btn ch-btn-sm ch-btn-edit" data-act="editso" data-att="' + row.attendance_id + '">✎ Proy</button>' +
           '</div></td>' +
         '</tr>';
     }).join('');
 
     $('tabla-zone').innerHTML =
       '<table class="ch-table"><thead><tr>' +
-        '<th style="width:56px">ID</th><th>Empleado</th><th>Entrada → Salida (CST)</th><th>Horas</th><th>SO</th><th>Estado</th><th>Acciones</th>' +
+        '<th style="width:56px">ID</th><th>Empleado</th><th>Entrada → Salida (CST)</th><th>Horas</th><th>Proyecto</th><th>Estado</th><th>Acciones</th>' +
       '</tr></thead><tbody>' + filas + '</tbody></table>';
 
     $('tabla-zone').querySelectorAll('button[data-act]').forEach(function(b){
@@ -159,8 +159,8 @@
     if(!row || !tr) return;
     tr.querySelector('.cell-estado').innerHTML = estadoBadge(row);
     tr.querySelector('.cell-so').innerHTML = row.so_id
-      ? esc(row.so_nombre || ('SO ' + row.so_id))
-      : '<span class="ch-sinso">⚠ Sin SO</span>';
+      ? esc(row.so_nombre || ('Proy ' + row.so_id))
+      : '<span class="ch-sinso">⚠ Sin proyecto</span>';
     var btnC = tr.querySelector('button[data-act="confirm"]');
     if(btnC){
       var dis = (row.confirmado || row.en_disputa || row.abierta);
@@ -176,7 +176,7 @@
   function abrirModalSO(attId){
     CH.modalAttId = attId;
     var row = findRow(attId);
-    $('modal-so-title').textContent = 'Corregir SO — ' + ((row && row.empleado_nombre) || ('att ' + attId));
+    $('modal-so-title').textContent = 'Corregir Proyecto — ' + ((row && row.empleado_nombre) || ('att ' + attId));
     $('modal-so-search').value = '';
     $('modal-so').style.display = 'flex';
     $('modal-so-search').focus();
