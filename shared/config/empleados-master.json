@@ -1,14 +1,14 @@
 {
   "_meta": {
     "version": 3,
-    "generated_at": "2026-07-06T16:58:55.577Z",
+    "generated_at": "2026-07-07T00:00:44.887Z",
     "source": "Odoo hr.employee live sync via workflow rh/empleados-master/sync",
     "auto_update_status": "auto_synced",
     "auto_update_status_explicacion": "Workflow n8n rh/empleados-master/sync ACTIVO. Cron 6am CST diario + webhook on-change POST /rh/empleados-master/refresh.",
     "fase": "3-active",
     "last_sync_event": "webhook on-change",
-    "last_sync_started_at": "2026-07-06T16:58:54.792Z",
-    "last_sync_completed_at": "2026-07-06T16:58:55.577Z",
+    "last_sync_started_at": "2026-07-07T00:00:44.101Z",
+    "last_sync_completed_at": "2026-07-07T00:00:44.887Z",
     "sync_strategy": "Cron 6am diario (Schedule Trigger) + webhook on-change desde panel admin (Fase 4 cuando exista).",
     "total_active": 34,
     "total_con_departamento": 32,
@@ -86,8 +86,8 @@
     {
       "id": 32,
       "name": "Jesus Esteban De La Cruz Calderon",
-      "department_id": 5,
-      "department_name": "Dirección",
+      "department_id": 3,
+      "department_name": "Operaciones",
       "parent_id": 32,
       "parent_name": "Jesus Esteban De La Cruz Calderon",
       "resource_calendar_id": 6,
