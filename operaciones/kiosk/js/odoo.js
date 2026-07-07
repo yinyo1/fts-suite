@@ -51,6 +51,11 @@ async function getSOs(){
   return (data && data.sos) || [];
 }
 
+// B3: plan del día del empleado (pre-llenado de SO en salida)
+async function getPlanDia(empleadoId){
+  return n8nFetch('/webhook/planeacion/dia', { empleado_id: empleadoId });
+}
+
 async function registrarCheckin(payload){
   return n8nFetch('/webhook/kiosk/checkin', payload);
 }
@@ -79,6 +84,7 @@ async function testConnection(){
 window.OdooKiosk = {
   getEmpleados,
   getSOs,
+  getPlanDia,
   registrarCheckin,
   getAsistenciaHoy,
   getAsistenciaRango,

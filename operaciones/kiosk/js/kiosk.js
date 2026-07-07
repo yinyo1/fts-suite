@@ -254,12 +254,7 @@ async function reintentarGeo(){
       mostrarModalHoraMinima(horaCheck);
       return;
     }
-    if(K.tipo === 'salida'){
-      showScreen('ks-project');
-    } else {
-      K.soSeleccionada = null;
-      registrarAsistencia();
-    }
+    rutearPostGeo();
     return;
   }
 
@@ -291,12 +286,7 @@ function confirmarGeo(){
   K.geoAutorizada = false;
   const m = document.getElementById('geoModal');
   if(m) m.remove();
-  if(K.tipo === 'salida'){
-    showScreen('ks-project');
-  } else {
-    K.soSeleccionada = null;
-    registrarAsistencia();
-  }
+  rutearPostGeo();
 }
 
 // ═══ Reloj ═══
@@ -327,8 +317,9 @@ function showScreen(id){
     renderEmpleados(K.empleados);
   }
   if(id === 'ks-project'){
+    renderPreLlenadoSO();
     const input = document.getElementById('ksSoSearch');
-    if(input){ input.value=''; input.focus(); }
+    if(input){ input.value=''; }
     renderSOs(K.sos);
   }
   if(id === 'ks-historial'){
@@ -808,14 +799,7 @@ async function afterVerifyContinue(){
     return;
   }
 
-  if(K.tipo === 'salida'){
-    // Solo en salida pedir proyecto
-    showScreen('ks-project');
-  } else {
-    // Entrada, salida_comida, regreso_comida → registrar directo
-    K.soSeleccionada = null;
-    registrarAsistencia();
-  }
+  rutearPostGeo();
 }
 
 // ═══ SOs ═══
@@ -853,6 +837,90 @@ function selectSO(id){
   const so = K.sos.find(s => s.id === id);
   if(!so) return;
   K.soSeleccionada = so;
+  registrarAsistencia();
+}
+
+// ═══ B3: ruteo de salida por categoría + pre-llenado de SO desde el plan ═══
+// TODOS los hooks son PRE-POST (Hallazgo #15): NO tocan registrarAsistencia (L~875-990).
+function rutearPostGeo(){
+  if(K.tipo === 'salida'){ iniciarSalida(); }
+  else { K.soSeleccionada = null; registrarAsistencia(); }
+}
+
+function perfilEmpleado(emp){
+  var cat = emp && emp.x_categoria_nomina;
+  if(cat === 'ceo' || cat === 'confianza') return 'admin';
+  if(cat === 'no_he_comercial') return 'comercial';
+  if(cat === 'hourly_doble' || cat === 'hourly_sencilla') return 'operativo';
+  // fallback por departamento (parse defensivo many2one)
+  var d = emp && emp.department_id, dept = 0;
+  if(Array.isArray(d)) dept = parseInt(d[0], 10) || 0;
+  else if(d && typeof d === 'object' && d.id != null) dept = parseInt(d.id, 10) || 0;
+  else if(typeof d === 'number' || typeof d === 'string') dept = parseInt(d, 10) || 0;
+  if(dept === 5 || dept === 9 || dept === 16 || dept === 18) return 'admin';
+  if(dept === 6) return 'comercial';
+  return 'operativo'; // dept 3 y default: fail-open al flujo de SO
+}
+
+async function iniciarSalida(){
+  var emp = K.seleccionado || {};
+  var perfil = perfilEmpleado(emp);
+  K.perfilSalida = perfil;
+  K.planSO = null;
+  if(perfil === 'admin'){
+    // Administrativos: no piden SO
+    K.soSeleccionada = null;
+    registrarAsistencia();
+    return;
+  }
+  // Operativo / comercial: mostrar la pantalla YA (con "buscando plan…") y
+  // pre-llenar la SO del plan de HOY cuando llegue (no bloquea el flujo).
+  K.planLoading = true;
+  showScreen('ks-project');
+  try{
+    var r = await window.OdooKiosk.getPlanDia(emp.id);
+    var rr = Array.isArray(r) ? r[0] : r;
+    if(rr && rr.plan && rr.so_id){
+      K.planSO = { id: rr.so_id, nombre: rr.so_nombre || ('SO ' + rr.so_id) };
+    }
+  } catch(e){ /* sin plan / error → modal normal, no bloquea */ }
+  K.planLoading = false;
+  renderPreLlenadoSO();
+}
+
+// Banner de ks-project: pre-llenado del plan + opción "sin SO" (candado BLANDO)
+function renderPreLlenadoSO(){
+  var el = document.getElementById('ksProjectBanner');
+  if(!el) return;
+  var html = '';
+  if(K.planLoading){
+    html += '<div style="text-align:center;color:#666;padding:10px;font-size:14px">⏳ Buscando tu plan de hoy…</div>';
+  }
+  if(K.planSO){
+    html += '<div style="background:#e8f4ea;border:1px solid #b6dcc0;border-radius:12px;padding:14px;margin-bottom:14px;text-align:center">'+
+      '<div style="font-size:15px;color:#1a4480;margin-bottom:8px">📋 Tu plan de hoy: <strong>'+ (K.planSO.nombre || '') +'</strong></div>'+
+      '<button onclick="confirmarPlanSO()" style="background:#107C10;color:#fff;border:none;border-radius:10px;padding:12px 22px;font-size:16px;font-weight:600;cursor:pointer">✔ Confirmar este proyecto</button>'+
+      '<div style="font-size:12px;color:#666;margin-top:8px">o elige otro de la lista</div>'+
+    '</div>';
+  }
+  if(K.perfilSalida === 'operativo' || K.perfilSalida === 'comercial'){
+    html += '<button onclick="registrarSinSO()" style="width:100%;background:#f4f6f9;color:#555;border:1px solid #ccc;border-radius:10px;padding:10px;font-size:14px;cursor:pointer;margin-bottom:6px">Registrar salida sin proyecto</button>';
+    if(K.perfilSalida === 'operativo'){
+      html += '<div style="font-size:12px;color:#BA7517;text-align:center;margin-bottom:10px">⚠️ Sin SO tu salida no queda ligada a un proyecto.</div>';
+    }
+  }
+  el.innerHTML = html;
+}
+
+function confirmarPlanSO(){
+  if(!K.planSO) return;
+  K.soSeleccionada = { id: K.planSO.id, name: K.planSO.nombre };
+  registrarAsistencia();
+}
+
+function registrarSinSO(){
+  // Candado BLANDO: se permite salir sin SO (con aviso para operativos)
+  K.soSeleccionada = null;
   registrarAsistencia();
 }
 
@@ -2113,6 +2181,8 @@ window.clearPin = clearPin;
 window.backPin = backPin;
 window.searchSOs = searchSOs;
 window.selectSO = selectSO;
+window.confirmarPlanSO = confirmarPlanSO;
+window.registrarSinSO = registrarSinSO;
 window.selectTipo = selectTipo;
 window.cancelarGeo = cancelarGeo;
 window.confirmarGeo = confirmarGeo;
