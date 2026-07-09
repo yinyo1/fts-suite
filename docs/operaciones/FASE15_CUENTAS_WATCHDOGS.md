@@ -289,6 +289,124 @@ Regla maestra: **1) siempre se consulta el plan; 2) si el plan trae proyecto →
 
 ---
 
+## PARTE 8 — Auditoría de arquitectura analítica + diseño del catálogo de centros de costo (read-only)
+
+> **Objetivo:** que la estructura analítica sirva para un **estado de resultados por área gerencial**, no solo para el checkout. Todo read-only (MCP UID 2). Ventana volumen = 12m (desde 2025-07-09). **STOP antes de crear/mover/archivar nada.**
+
+### 8.A — Campos Studio reusables (`hr.attendance`) — ✅ VEREDICTO: REUSAR, cero campos nuevos
+
+| Campo | Label actual | Poblados | Rango | Contenido | Leído por |
+|---|---|---:|---|---|---|
+| `x_studio_analytic_2` | "Analytic 2" | **2,381** | ago-2025 → **29-ene-2026** | centros de costo (608 Ventas, 768 Legal, 771 Compras, 772 RH) + algunos proyectos | **nadie** (grep repo=0; `horas-dia` fieldsList NO lo incluye) |
+| `x_studio_many2one_field_GUbBF` | "Analytic 1" | **2,381** | idem | **valores IDÉNTICOS** a Analytic 2 (duplicado) | nadie |
+
+- Son **duplicados** (mismos 2,381 attendances, mismos valores). Fue el tagging histórico de centro de costo, **abandonado desde 29-ene-2026** (antes del feature SO-en-checkout de ~abril). Ningún workflow/vista/repo los lee o escribe.
+- **✅ REUSAR `x_studio_analytic_2`** como "Cuenta Indirecta": solo **renombrar la etiqueta en Studio** → "Cuenta Indirecta". **Cero campos nuevos.** El otro (`GUbBF`) queda deprecated (ignorar o archivar). Los valores viejos (mix con algún proyecto) no molestan: nadie los lee y las escrituras nuevas serán indirecto-only. (Opcional: limpiar los 2,381 viejos; no urge.)
+- ⇒ **La Parte 1.3 se resuelve sin crear `x_studio_cuenta_indirecta`.** Reusar Analytic 2.
+
+### 8.B — Auditoría de planes analíticos (17 planes; 3 vivos-core + estructura)
+
+**Volumen real (12m) y veredicto por plan:**
+
+| Plan (id) | Cuentas act/arch | Líneas 12m | $ 12m (neto) | Pregunta de negocio | Veredicto | Dependencias al tocar |
+|---|---:|---:|---:|---|---|---|
+| **1** Gasto Directo a proyectos | 27 / 316 | 9,593 | +$860k | **costo/ingreso por PROYECTO** | ✅ **EJE 1 (Proyectos)** | budgets `account_id`, rentabilidad nativa, A3 OK_ROOTS, `x_studio_project_id` |
+| **2** Gasto Indirecto en FTS | 31 / 13 | 3,950 | **−$9.11M** | **costo por CENTRO DE COSTO / área** | ✅ **EJE 2 (Centros de costo)** | distribution.models, A3, `x_studio_analytic_2` |
+| **20** Upgraded Budget Plan | 28 / 0 | 9,267 | −$3.6M | **naturaleza del gasto (RUBRO)** | ✅ **EJE 3 (Rubros)** — pero **ampliar** (ver 8.D) | budget.line `x_plan20_id`, distribution.models |
+| **18** Gasto directo proyectos USA | 7 / 1 | 31 | +$16k | eje 1 para FTS USA | ✅ mantener (eje 1 · USA) | A3 OK_ROOTS, multicompany |
+| **21** Gasto Indirecto FTS USA | 1 / 0 | 5 | −$314 | eje 2 para FTS USA | ✅ mantener (eje 2 · USA, poblar) | — |
+| **5** Assets | 147 / 115 | 384 | −$1.65M | registro de activos / CAPEX | 🟠 **REVISAR:** ¿4º eje CAPEX o fold a rubro? material | **A3 OK_ROOTS**, 147 cuentas |
+| **11** Inmuebles | 29 / 1 | 324 | −$256k | costo por inmueble | 🟠 consolidar → centro de costo (plan 2) salvo que quieras P&L por inmueble | A3 OK_ROOTS |
+| **8** Combustible | 23 / 0 | 13 | −$12k (YIN) | gasto combustible | 🟠 **CONSOLIDAR** → rubro 1155 (ya existe) + centro costo; **triple overlap** (plan 8 + rubro 1155 + cuenta 509 Gasolina) | A3 OK_ROOTS |
+| **13** Flota | 1 / 0 | 7 | −$8.7k | gasto flota | 🟠 consolidar → plan 2 (308/527 ya existen) | A3 OK_ROOTS |
+| **3** Gastos personales Esteban | 1 / 1 | 74 | −$377k | gastos personales (NO P&L operativo) | ⚪ mantener SEPARADO (finanzas) | — |
+| **14** Ajuste contable | 2 / 0 | 95 | ±$13M gross | ajustes/préstamos contables | ⚪ mantener (mecanismo finanzas, no es "área") | — |
+| **12** Gastos FTS USA | 1 / 0 | minor | minor | gastos USA | 🟠 consolidar con 21 (dup USA) | — |
+| **15** Plan for FTS USA | 2 / 0 | minor | minor | USA | 🟠 revisar/archivar (dup USA) | — |
+| **17** Gasto FTS Brasil | 1 / 0 | minor | minor | Brasil | ⚪ mantener si hay ops Brasil; si no, archivar | — |
+| **7** Materiales (child de Assets) | **0** | ~0 | ~0 | — | 🔴 **ARCHIVAR (muerto, 0 cuentas)** — overlap con 9 / rubro 1154 / rubro 1176 | ninguna |
+| **9** Materiales (root) | **0** | ~0 | ~0 | — | 🔴 **ARCHIVAR (muerto)** | ninguna |
+| **16** Default | **0** | ~0 | ~0 | — | 🔴 **ARCHIVAR (vanity)** | ninguna |
+| **19** Project | **0** | ~0 | ~0 | — | 🔴 **ARCHIVAR (vanity, dup conceptual de plan 1)** | ninguna |
+
+**Hallazgos:**
+- **Hipótesis de 3 ejes VALIDADA** para el P&L operativo: **1 Proyectos · 2 Centros de costo · 20 Rubros** son los 3 vivos y de mayor volumen. Los demás son (a) el **espejo USA** (18/21), (b) **sub-ejes de activo/gasto** que se solapan (5/8/11/13), (c) **finanzas puras** (3/14), (d) **muertos** (7/9/16/19).
+- **4 planes muertos** (7/9/16/19, 0 cuentas) → archivar, cero dependencias.
+- **Overlaps reales:** Combustible en 3 lugares (plan 8 + rubro 1155 + cuenta 509); Flota en 2 (plan 13 + cuentas 308/527); "Materiales" en 4 (plan 7, plan 9, rubro 1154, rubro 1176). Consolidar hacia el modelo 2-ejes (centro de costo × rubro).
+- ⚠️ **Dependencia crítica — A3 (candado Reglas 56/57):** `OK_ROOTS={1,18,2,5,8,11,13}`. Incluye **5/8/11/13**. Si consolidas/archivas esos planes, **hay que actualizar OK_ROOTS** o el candado A3 empezará a rechazar bills legítimos. → mover 5/8/11/13 NO es "solo archivar"; toca el candado. Recomendado: **fase 2** (primero estabilizar el modelo 2-ejes; luego migrar 8/13→plan2, decidir 5/11, y recién ahí ajustar OK_ROOTS).
+- **Quién alimenta cada eje:** plan 1 ← checkout (`x_studio_project_id`) + PO/Bill + budgets; plan 2 ← Bill/PO manual + (futuro) checkout `x_studio_analytic_2`; plan 20 ← **distribution.models** (GL-prefijo→rubro) + budget.line. Cambiar 2/20 impacta las ~53 distribution.models y los budgets 2-ejes.
+
+### 8.C — Organigrama real (por MCP) vs Odoo
+
+**Departamentos Odoo = 7, PLANOS** (sin `parent_id`; jerarquía real vive en `hr.employee.parent_id`):
+
+```
+Esteban (32, CEO · Dirección)
+├─ Rissia (97, Sales Leader · Comercial)
+│   ├─ Arturo (143, Supervisor Comercial) → Ricardo (98, Ing. Comercial)
+│   ├─ Aldo (78) · Luis (48) · Marcus (150) — Ing. Comercial
+│   ├─ Francisco Montalvo (8, Sr Technical Sales)
+│   └─ Pablo Bayly (108, MARKETING Specialist)     ← marketing vive en Comercial
+├─ Felipe (112, Operations Manager · Operaciones)
+│   ├─ Mateo (75, Supervisor Sr Ops)               ← campo (a proyecto)
+│   ├─ Gibrán (62, SUPPLY CHAIN Specialist) → Ramiro (154, Chofer)   ← Compras/SC dentro de Ops
+│   ├─ Jésus Montalvo (68, Auxiliar de COMPRAS)     ← Compras dentro de Ops
+│   ├─ Gerardo Lozano (59, Auxiliar CONTABLE)       ← rol admin, MAL ubicado en Ops
+│   └─ 11 técnicos/soldadores/seguristas            ← campo (a proyecto)
+├─ Erick Belmont (149, Financial Analyst · Admin&Finanzas)
+│   └─ Eduardo Garza (153, Consultant)
+├─ Magaly (63, Gerente Legal · Legal)
+│   └─ Ana Laura (101, HR Generalist · RH)          ← RH reporta a Legal
+```
+
+**Mapa persona → depto Odoo → área gerencial propuesta:**
+| Persona | Depto Odoo | Área gerencial (P&L) |
+|---|---|---|
+| Techs/soldadores/seguristas Ops (11) + Mateo + Felipe | Operaciones | **Proyectos** (MO directa, a proyecto) |
+| **Gibrán (62), Jésus Montalvo (68)** (Compras/SC) + **Gerardo Lozano (59)** (contable) + Ramiro (154) | Operaciones | **ADMIN DE OPERACIONES** (indirecto) |
+| Rissia, Arturo, Ricardo, Aldo, Luis, Marcus, Francisco, **Pablo (marketing)** | Comercial | **VENTAS/COMERCIAL** |
+| Esteban | Dirección | **DIRECCIÓN** |
+| Erick + Eduardo | Admin y Finanzas | **ADMIN & FINANZAS** |
+| Magaly (Legal) + Ana Laura (RH) | Legal + RH | **LEGAL + RH** (cluster; RH cuelga de Legal) |
+
+- ⚠️ **Compras/Supply Chain NO es un depto Odoo** — vive dentro de Operaciones (Gibrán + Jésus Montalvo). Existen cuentas plan-2 771 COMPRAS + 383 Dpto Compras, pero sin MO atribuida (esas personas, siendo Ops, hoy irían a "operativo→proyecto" en el checkout).
+- ⚠️ **Anomalía:** Gerardo Lozano (59) es "Auxiliar Contable" pero está en **Operaciones** (categoría nómina `hourly_sencilla`). Su MO debería ir a ADMIN DE OPERACIONES / Admin, no a un proyecto.
+
+### 8.D — Diseño del catálogo de centros de costo (plan 2, sobre la arquitectura 8.B)
+
+**Reglas:** NO duplicar (ya hay 608 VENTAS, 513 Administración, 771 COMPRAS…). Contraste con las 31 cuentas plan-2 existentes: reusar / renombrar / obsoleta / falta.
+
+| Centro de costo (target) | Qué agrega | Rubros (plan 20) | Depto(s) Odoo | Existente / acción |
+|---|---|---|---|---|
+| **ADMIN DE OPERACIONES** | Compras (Gibrán 62, Jésus Montalvo 68) + Supply Chain + contable Ops (Gerardo 59) + Ramiro (154) + día-admin de Mateo | MO (1177) + EPP/herramienta/combustible | Operaciones (roles no-billables) | **CONSOLIDAR** 771 COMPRAS + 383 Dpto Compras + 636 Oficina/Taller → 1 cuenta, o **NUEVA** "ADMIN DE OPERACIONES" y archivar las otras |
+| **VENTAS / COMERCIAL** | Toda la bolsa: MO equipo, **viajes**, **leads/marketing** (Pablo 108), comisiones | plan2 × plan20; **FALTAN rubros: Viajes, Marketing/Leads** | Comercial (6) | **REUSAR/RENOMBRAR 608** "CENTRO DE COSTO VENTAS" |
+| **DIRECCIÓN** | Esteban (32) + gastos de dirección | MO + rubros | Dirección (5) | **NUEVA** (hueco confirmado Fase 1.5 P1) |
+| **ADMIN & FINANZAS** | Erick (149) + Eduardo (153) | MO + rubros | Admin y Finanzas (18) | **REUSAR 513** "Administración" |
+| **LEGAL + RH** | Magaly (63) + Ana Laura (101) | MO + rubros | Legal (9) + RH (16) | reusar **768 LEGAL** + **478 RH**; **decisión materialidad** (2 personas) → ¿2 cuentas o 1 "Corporativo"? |
+
+**Materialidad (criterio $ anual):** Dirección (1), Legal (1), RH (1), Admin&Finanzas (2) = áreas de 1-2 personas. Recomendación: **DIRECCIÓN separada** (tu costo, lo quieres ver); **VENTAS** y **ADMIN DE OPERACIONES** separadas (materiales); **RH+Legal** candidatas a **1 cuenta "Corporativo/Backoffice"** si el $ no amerita 2 (decisión tuya).
+
+**Rubros faltantes en plan 20 para el desglose de Ventas:** el plan 20 actual es **margen-de-proyecto** (Ingreso, MO, Materiales, Comisiones por vendedor/cliente, Bonos, Utilidad) — **NO tiene rubros de naturaleza de gasto** como **Viajes**, **Marketing/Leads**, **Renta**, **Servicios**. Para "Ventas desglosado MO/viajes/leads" hay que **agregar esos rubros** al plan 20 (o abrir un sub-set de rubros de gasto indirecto). El patrón **plan 2 (centro) × plan 20 (rubro)** SÍ resuelve el desglose, una vez existan los rubros.
+
+**Las 31 cuentas plan-2 existentes — clasificación rápida:**
+- ✅ **Centros de costo reales (reusar):** 608 Ventas, 513 Administración, 768 Legal, 478 RH, 772 RH Admin, 771 Compras, 383 Dpto Compras, 636 Oficina/Taller, 509 Gasolina, 744 EPP, 632 Caja Herramientas, 604 Nóminas FTS, 308 Mtto carros.
+- 🟠 **One-offs / proyectos internos MAL ubicados en plan 2 (revisar → archivar o mover):** 623 Chiler PRO, 698 Rack Packouts, 649 Sala Operaciones, 778/767 Remodelaciones, 621 Comedor, 788 Torneo Fútbol 2025, 828 Estacionamiento, 294 Quinta, 369 Cristian Ortiz, 293 Licencias, 784 Mtto/limpieza, 769 YIN, 770 BDM, 527 Créditos camiones YIN, 619 Servicios FTS, 296 Honorarios, 40 Gastos Personales Esteban (¿duplicado del plan 3?).
+- ⇒ Plan 2 hoy **mezcla** centros de costo recurrentes (bien) con eventos/proyectos puntuales (ruido) → higiene en 2ª pasada.
+
+### 8.E — Validación: ¿el conjunto responde tus 3 preguntas de P&L?
+
+| Pregunta | ¿Se responde? | Qué falta |
+|---|---|---|
+| **1. ¿Cuánto cuesta Admin de Operaciones (incl. Compras+SC)?** | 🟠 **Parcial** | Crear/consolidar la cuenta ADMIN DE OPERACIONES **y** que la MO de Gibrán/Jésus Montalvo/Gerardo/Ramiro caiga ahí (hoy, siendo Ops, el checkout PR-1 los rutea a "operativo→proyecto"). **Requiere override por-persona** en el checkout (default a cuenta indirecta, no a proyecto) — nota para PR-2. |
+| **2. ¿Cuánto cuesta Ventas, desglosado MO/viajes/leads?** | 🟠 **Parcial** | MO sí (rubro 1177). **Faltan rubros Viajes + Marketing/Leads** en plan 20. Con ellos, 608 × rubros resuelve el desglose. |
+| **3. ¿Cuánto cuesta cada área vs lo que factura el negocio?** | ✅ **Sí** (con el modelo 2-ejes completo) | Costo por área = Σ plan 2 por centro; ingreso = Σ `out_invoice` (o rubro 1171 Ingreso). Ratio área-costo / ingreso = overhead. Requiere que la MO indirecta se atribuya (Q1) y los rubros de Ventas (Q2). |
+
+**Conclusión 8:** tu hipótesis de 3 ejes es **correcta y suficiente** para el P&L por área. El trabajo NO es crear más planes, sino: (1) **poblar el eje 2** (centros de costo) con la MO indirecta vía checkout (reusando `x_studio_analytic_2`), (2) **ampliar el eje 3** (rubros Viajes/Marketing/Leads), (3) **consolidar los sub-ejes solapados** (5/8/11/13) hacia 2-ejes en fase 2 (ojo A3 OK_ROOTS), (4) **archivar los 4 planes muertos** (7/9/16/19), (5) **higiene** de las cuentas plan-2 mal ubicadas. **El checkout (PR-2) debe esperar a que definas el catálogo y el override por-persona de Ops-admin.**
+
+⚠️ **NO crear/mover/archivar nada aún** — todo esto es diseño para tu decisión.
+
+---
+
 ## Límites / método
 - Números Odoo vía MCP read-only (UID 2). Depto→empleados activos y cuentas plan 2 medidos hoy 2026-07-08.
 - No se tocó Odoo, ni workflows productivos, ni frontend. Único artefacto: one-shot **inactivo** `97Qj9v46ILOWV9Lf`.
