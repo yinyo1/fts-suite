@@ -10,6 +10,33 @@
   var N8N_BASE = 'https://primary-production-5c3c.up.railway.app';
   var COMPANY_ID = 1;
 
+  // PR-5: corrección de atribución (proyecto O bolsa, excluyencia mutua) → workflow
+  // separado planeacion/corregir-bolsa (O61Abp4s26yYpFEq). El botón ✔ Confirmar sigue
+  // usando /planeacion/confirmar-horas (sin cambios).
+  var CORREGIR_URL = '/webhook/planeacion/corregir-bolsa';
+  var BOLSAS = [
+    { id: 3095, nombre: 'DIRECCION' },
+    { id: 3096, nombre: 'ADMIN DE OPERACIONES' },
+    { id: 608,  nombre: 'VENTAS' },
+    { id: 513,  nombre: 'Administración' },
+    { id: 768,  nombre: 'LEGAL' },
+    { id: 478,  nombre: 'RH' }
+  ];
+
+  // Celda de atribución: proyecto (🛠️) > bolsa (🗂️) > sin atribución.
+  function celdaAtribucion(row){
+    if(row.so_id) return esc(row.so_nombre || ('Proy ' + row.so_id));
+    if(row.cuenta_id) return '<span class="ch-bolsa">🗂️ ' + esc(row.cuenta_nombre || ('Bolsa ' + row.cuenta_id)) + '</span>';
+    return '<span class="ch-sinso">⚠ Sin atribución</span>';
+  }
+  // Etiqueta de la atribución ACTUAL (para prev_label del chatter).
+  function labelAtribucion(row){
+    if(!row) return '(sin atribución)';
+    if(row.so_id) return row.so_nombre || ('Proy ' + row.so_id);
+    if(row.cuenta_id) return row.cuenta_nombre || ('Bolsa ' + row.cuenta_id);
+    return '(sin atribución)';
+  }
+
   var CH = {
     rows: [],
     sos: null,            // cache lista SO (lazy)
@@ -97,7 +124,7 @@
     { key:'depto',    label:'Depto',                  sortable:true,  type:'str', get:function(r){ return r.department_name || ''; } },
     { key:'horario',  label:'Entrada → Salida (CST)', sortable:true,  type:'str', get:function(r){ return r.check_in_cst || ''; } },
     { key:'horas',    label:'Horas',                  sortable:true,  type:'num', get:function(r){ return r.worked_hours == null ? -1 : r.worked_hours; } },
-    { key:'proyecto', label:'Proyecto',               sortable:true,  type:'str', get:function(r){ return r.so_id ? (r.so_nombre || ('Proy ' + r.so_id)) : ''; } },
+    { key:'proyecto', label:'Proyecto / Bolsa',        sortable:true,  type:'str', get:function(r){ return r.so_id ? (r.so_nombre || ('Proy ' + r.so_id)) : (r.cuenta_id ? ('🗂️ ' + (r.cuenta_nombre || ('Bolsa ' + r.cuenta_id))) : ''); } },
     { key:'estado',   label:'Estado',                 sortable:true,  type:'num', get:function(r){ return estadoRank(r); } },
     { key:'acc',      label:'Acciones',               sortable:false }
   ];
@@ -149,9 +176,7 @@
       return;
     }
     var filas = sortedRows().map(function(row){
-      var so = row.so_id
-        ? esc(row.so_nombre || ('Proy ' + row.so_id))
-        : '<span class="ch-sinso">⚠ Sin proyecto</span>';
+      var so = celdaAtribucion(row);
       var depto = row.department_name
         ? (row.es_operaciones === false
             ? '<span class="ch-depto-cross" title="Cargó horas a un proyecto siendo de otro depto">' + esc(row.department_name) + '</span>'
@@ -170,7 +195,7 @@
           '<td class="cell-estado">' + estadoBadge(row) + '</td>' +
           '<td><div class="ch-actions">' +
             '<button class="ch-btn ch-btn-sm ch-btn-ok" data-act="confirm" data-att="' + row.attendance_id + '"' + confirmarDisabled + '>✔ Confirmar</button>' +
-            '<button class="ch-btn ch-btn-sm ch-btn-edit" data-act="editso" data-att="' + row.attendance_id + '">✎ Proy</button>' +
+            '<button class="ch-btn ch-btn-sm ch-btn-edit" data-act="editso" data-att="' + row.attendance_id + '">✎ Corregir</button>' +
           '</div></td>' +
         '</tr>';
     }).join('');
@@ -224,9 +249,7 @@
     var tr = document.querySelector('tr[data-att="' + attId + '"]');
     if(!row || !tr) return;
     tr.querySelector('.cell-estado').innerHTML = estadoBadge(row);
-    tr.querySelector('.cell-so').innerHTML = row.so_id
-      ? esc(row.so_nombre || ('Proy ' + row.so_id))
-      : '<span class="ch-sinso">⚠ Sin proyecto</span>';
+    tr.querySelector('.cell-so').innerHTML = celdaAtribucion(row);
     var btnC = tr.querySelector('button[data-act="confirm"]');
     if(btnC){
       var dis = (row.confirmado || row.en_disputa || row.abierta);
@@ -238,11 +261,12 @@
       ' confirmado(s) · ' + (CH.rows.length - conf) + ' pendiente(s)';
   }
 
-  // ─── Modal corregir SO ───
+  // ─── Modal corregir atribución (proyecto O bolsa) ───
   function abrirModalSO(attId){
     CH.modalAttId = attId;
     var row = findRow(attId);
-    $('modal-so-title').textContent = 'Corregir Proyecto — ' + ((row && row.empleado_nombre) || ('att ' + attId));
+    $('modal-so-title').textContent = 'Corregir atribución — ' + ((row && row.empleado_nombre) || ('att ' + attId)) +
+      ' · actual: ' + labelAtribucion(row);
     $('modal-so-search').value = '';
     $('modal-so').style.display = 'flex';
     $('modal-so-search').focus();
@@ -267,39 +291,65 @@
     }).finally(function(){ CH.sosCargando = false; });
   }
 
+  // Dos grupos: 🗂️ Bolsas (fijas) + 🛠️ Proyectos (de /kiosk/sos). El buscador filtra ambos.
   function renderSOList(q){
-    var lista = CH.sos || [];
     var nq = q ? q.toLowerCase() : '';
-    if(nq) lista = lista.filter(function(s){
-      return (s.nombre || '').toLowerCase().indexOf(nq) !== -1 ||
-             (s.cliente || '').toLowerCase().indexOf(nq) !== -1;
+    var bolsas = BOLSAS.filter(function(b){ return !nq || b.nombre.toLowerCase().indexOf(nq) !== -1; });
+    var proys = (CH.sos || []).filter(function(s){
+      return !nq || (s.nombre || '').toLowerCase().indexOf(nq) !== -1 ||
+                    (s.cliente || '').toLowerCase().indexOf(nq) !== -1;
     });
-    if(!lista.length){ $('modal-so-list').innerHTML = '<div class="ch-placeholder">Sin resultados</div>'; return; }
-    $('modal-so-list').innerHTML = lista.slice(0, 40).map(function(s){
-      return '<div class="ch-so-item" data-so="' + s.id + '">' +
+    var html = '';
+    if(bolsas.length){
+      html += '<div class="ch-grp">🗂️ Bolsas (cuenta indirecta)</div>';
+      html += bolsas.map(function(b){
+        return '<div class="ch-so-item ch-item-bolsa" data-tipo="bolsa" data-id="' + b.id + '" data-nombre="' + esc(b.nombre) + '">' +
+          '<div class="n">🗂️ ' + esc(b.nombre) + '</div></div>';
+      }).join('');
+    }
+    html += '<div class="ch-grp">🛠️ Proyectos</div>';
+    if(!proys.length){ html += '<div class="ch-placeholder">Sin proyectos que coincidan</div>'; }
+    else html += proys.slice(0, 40).map(function(s){
+      return '<div class="ch-so-item" data-tipo="proyecto" data-id="' + s.id + '" data-nombre="' + esc(s.nombre) + '">' +
         '<div class="n">' + esc(s.nombre) + '</div>' +
         (s.cliente ? '<div class="c">' + esc(s.cliente) + '</div>' : '') +
       '</div>';
     }).join('');
+    $('modal-so-list').innerHTML = html;
     $('modal-so-list').querySelectorAll('.ch-so-item').forEach(function(it){
-      it.addEventListener('click', function(){ corregirSO(CH.modalAttId, parseInt(it.dataset.so, 10)); });
+      it.addEventListener('click', function(){
+        corregir(CH.modalAttId, it.dataset.tipo, parseInt(it.dataset.id, 10), it.dataset.nombre);
+      });
     });
   }
 
-  function corregirSO(attId, soId){
-    if(!attId || !soId) return;
-    var so = (CH.sos || []).find(function(s){ return s.id === soId; });
+  // Corrección con excluyencia mutua → planeacion/corregir-bolsa. Escribe manager_approval=true.
+  function corregir(attId, tipo, id, nombre){
+    if(!attId || !id || !tipo) return;
+    var row = findRow(attId);
+    var esBolsa = tipo === 'bolsa';
+    var origen = (row && row.cuenta_id) ? 'bolsa' : ((row && row.so_id) ? 'proyecto' : 'nada');
+    var payload = {
+      attendance_id: attId,
+      action: esBolsa ? 'correct_bolsa' : 'correct_so',
+      target_nombre: nombre,
+      prev_label: labelAtribucion(row),
+      tipo_correccion: origen + '_a_' + tipo,
+      supervisor_nombre: CH.supervisor
+    };
+    if(esBolsa) payload.cuenta_id = id; else payload.so_id = id;
     $('modal-so-list').innerHTML = '<div class="ch-placeholder">⏳ Guardando…</div>';
-    n8n('/webhook/planeacion/confirmar-horas', {
-      attendance_id: attId, action: 'correct_so', so_id: soId, supervisor_nombre: CH.supervisor
-    }).then(function(data){
+    n8n(CORREGIR_URL, payload).then(function(data){
       var r = Array.isArray(data) ? data[0] : data;
       if(!r || r.success === false) throw new Error((r && r.mensaje) || 'Error');
-      var row = findRow(attId);
-      if(row){ row.so_id = soId; row.so_nombre = so ? so.nombre : ('SO ' + soId); row.confirmado = true; }
+      if(row){
+        if(esBolsa){ row.cuenta_id = id; row.cuenta_nombre = nombre; row.so_id = null; row.so_nombre = ''; }
+        else { row.so_id = id; row.so_nombre = nombre; row.cuenta_id = null; row.cuenta_nombre = ''; }
+        row.confirmado = true;
+      }
       actualizarFila(attId);
       cerrarModalSO();
-      showMsg('✓ SO corregida a ' + (so ? so.nombre : soId) + ' y horas confirmadas', 'ok');
+      showMsg('✓ ' + (esBolsa ? 'Bolsa' : 'Proyecto') + ' asignado: ' + nombre + ' y horas confirmadas', 'ok');
     }).catch(function(e){
       $('modal-so-list').innerHTML = '<div class="ch-placeholder">❌ ' + esc(e.message) + '</div>';
     });
