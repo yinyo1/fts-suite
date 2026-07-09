@@ -259,10 +259,20 @@
           "fecha": "2026-07-03T01:56:04.637Z",
           "hora_propuesta_cst": "18:00",
           "comentario": "Marcaba error el checador, se envio evidencia"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 97,
+          "usuario": "Rissia Xavier de Araujo",
+          "timestamp": "2026-07-09T17:25:02.846Z",
+          "hora_propuesta_cst": "18:04",
+          "comentario": "Está aprobado.",
+          "accion": "ajustado"
         }
       ],
-      "status": "pendiente_supervisor",
-      "hora_final_aplicada_utc": "2026-07-03 00:00:00",
+      "status": "pendiente_rh",
+      "hora_final_aplicada_utc": "2026-07-03 00:04:00",
       "aplicado_en_odoo": true,
       "tag_disputa_activo": true,
       "creada_por_modulo": "kiosk",
