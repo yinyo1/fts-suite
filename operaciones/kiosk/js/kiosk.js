@@ -1,7 +1,7 @@
 // ═══ FTS Kiosk — Lógica principal ═══
 // Script clásico, estado global compartido
 
-const KIOSK_BUILD = '20260708-kiosk-plan-gana-ruteo';
+const KIOSK_BUILD = '20260709-kiosk-bolsa-default';
 console.log('[kiosk] build:', KIOSK_BUILD);
 
 const K = {
@@ -837,6 +837,7 @@ function selectSO(id){
   const so = K.sos.find(s => s.id === id);
   if(!so) return;
   K.soSeleccionada = so;
+  K.bolsaSeleccionada = null;   // PR-2: elegir proyecto gana sobre la bolsa
   registrarAsistencia();
 }
 
@@ -863,9 +864,25 @@ function perfilEmpleado(emp){
   return 'operativo'; // default y sin depto: fail-open al flujo de SO
 }
 
+// PR-2: bolsa (cuenta indirecta) DEFAULT del empleado, leída de
+// x_studio_cuenta_indirecta_default (m2o account.analytic.account) que
+// /kiosk/empleados agrega. Parse defensivo del many2one. Vacío = técnico de
+// campo (siempre a proyecto). Ver Fase 1.5 Parte 10.
+function parseBolsaDefault(emp){
+  var v = emp && emp.x_studio_cuenta_indirecta_default;
+  if(!v) return null;
+  if(Array.isArray(v)) return { id: v[0], nombre: v[1] || ('Cuenta ' + v[0]) };
+  if(typeof v === 'object' && v.id != null) return { id: v.id, nombre: v.name || v.nombre || ('Cuenta ' + v.id) };
+  if(typeof v === 'number' || typeof v === 'string'){ var n = parseInt(v, 10); return n ? { id: n, nombre: 'Cuenta ' + n } : null; }
+  return null;
+}
+
 async function iniciarSalida(){
   var emp = K.seleccionado || {};
   K.perfilSalida = perfilEmpleado(emp);
+  K.bolsaDefault = parseBolsaDefault(emp);   // PR-2: bolsa default del empleado (o null = técnico)
+  K.bolsaSeleccionada = null;
+  K.bolsaExpandido = false;
   K.planSO = null;
   K.planExpandido = false;
 
@@ -910,17 +927,25 @@ async function iniciarSalida(){
   }
 }
 
-// SIN PLAN: ramifica por perfil. En PR-1 se conserva el comportamiento actual
-// (admin registra directo "—"; operativo/comercial ven la lista con candado blando).
-// La UX de "cuenta de departamento" (admin muestra su cuenta, comercial default,
-// opción cambiar a cuenta) llega en PR-2 (depende del campo x_studio_cuenta_indirecta).
+// SIN PLAN (PR-2): el DEFAULT DEL EMPLEADO (bolsa) manda sobre la inferencia por
+// perfil. Prioridad de fuentes = plan del día > selección manual > default del
+// empleado. Aquí ya no hay plan, así que:
+//  - con bolsa default → banner "Tu bolsa: X" (confirmar / elegir proyecto).
+//  - sin bolsa default (técnicos de campo) → lista de proyectos + candado blando → W1.
+// Fallback de rollout: si el empleado aún NO trae el campo default (bolsaDefault
+// null y no es técnico), se usa el perfil de PR-1 (admin registra "—").
 function resolverSalidaSinPlan(){
+  if(K.bolsaDefault){
+    renderProjectScreen();    // Estado CON BOLSA (banner) — no infiere por depto
+    return;
+  }
+  // Sin bolsa: técnicos → lista de proyectos. Fallback de rollout: admin sin campo → "—".
   if(K.perfilSalida === 'admin'){
     K.soSeleccionada = null;
     registrarAsistencia();
     return;
   }
-  renderProjectScreen();      // Estado 3 SIN PLAN — buscador + lista + "sin proyecto"
+  renderProjectScreen();      // Estado SIN PLAN — buscador + lista + "sin proyecto"
 }
 
 // ks-project: 3 estados mutuamente excluyentes (CARGANDO / CON PLAN / SIN PLAN).
@@ -956,22 +981,39 @@ function renderProjectScreen(){
     return;
   }
 
-  // Estado 3: SIN PLAN (o Estado 2 expandido) — buscador + lista + "sin proyecto"
+  // Estado 2b: CON BOLSA (sin plan, empleado con bolsa default) — banner bolsa +
+  // opción de elegir proyecto si ese día trabajó en uno.
+  if(K.bolsaDefault && !K.bolsaExpandido){
+    planEl.style.display = '';
+    listEl.style.display = 'none';
+    planEl.innerHTML =
+      '<div class="ksp-plan-banner">'+
+        '<div class="ksp-plan-label">🗂️ Tu bolsa</div>'+
+        '<div class="ksp-plan-name">'+ (K.bolsaDefault.nombre || '') +'</div>'+
+        '<button onclick="confirmarBolsa()" class="ksp-plan-confirm">✔ Confirmar</button>'+
+      '</div>'+
+      '<button onclick="expandirListaBolsa()" class="ksp-plan-cambiar">¿Trabajaste en un proyecto? Elígelo aquí</button>';
+    return;
+  }
+
+  // Estado 3: SIN PLAN / lista expandida — buscador + lista + escape (bolsa o "sin proyecto")
   planEl.style.display = 'none';
   listEl.style.display = '';
   renderNoSOButton();
 }
 
-// Botón "sin proyecto" (candado BLANDO) — solo operativo/comercial, vive dentro
-// de la vista de lista (Estado 3 / Estado 2 expandido), no en la principal.
+// Escape dentro de la lista (candado BLANDO). Un empleado CON bolsa siempre puede
+// volver a su bolsa; un técnico (sin bolsa) puede registrar sin proyecto (→ W1).
 function renderNoSOButton(){
   var el = document.getElementById('ksProjectNoSO');
   if(!el) return;
   var html = '';
-  if(K.perfilSalida === 'operativo' || K.perfilSalida === 'comercial'){
+  if(K.bolsaDefault){
+    html += '<button onclick="confirmarBolsa()" class="ksp-sinso-btn">← Registrar en mi bolsa: '+ (K.bolsaDefault.nombre || '') +'</button>';
+  } else if(K.perfilSalida === 'operativo' || K.perfilSalida === 'comercial'){
     html += '<button onclick="registrarSinSO()" class="ksp-sinso-btn">Registrar salida sin proyecto</button>';
     if(K.perfilSalida === 'operativo'){
-      html += '<div class="ksp-sinso-warn">⚠️ Sin SO tu salida no queda ligada a un proyecto.</div>';
+      html += '<div class="ksp-sinso-warn">⚠️ Sin proyecto tu salida no queda ligada a nada.</div>';
     }
   }
   el.innerHTML = html;
@@ -988,12 +1030,30 @@ function expandirListaSO(){
 function confirmarPlanSO(){
   if(!K.planSO) return;
   K.soSeleccionada = { id: K.planSO.id, name: K.planSO.nombre };
+  K.bolsaSeleccionada = null;   // proyecto gana → sin bolsa
+  registrarAsistencia();
+}
+
+// PR-2: expandir de la bolsa a la lista de proyectos (por si ese día trabajó en uno).
+function expandirListaBolsa(){
+  K.bolsaExpandido = true;
+  renderProjectScreen();
+  var input = document.getElementById('ksSoSearch');
+  if(input){ input.value = ''; searchSOs(''); input.focus(); }
+}
+
+// PR-2: confirmar la bolsa (default del empleado). Escribe cuenta indirecta, no proyecto.
+function confirmarBolsa(){
+  if(!K.bolsaDefault) return;
+  K.bolsaSeleccionada = { id: K.bolsaDefault.id, nombre: K.bolsaDefault.nombre };
+  K.soSeleccionada = null;
   registrarAsistencia();
 }
 
 function registrarSinSO(){
   // Candado BLANDO: se permite salir sin SO (con aviso para operativos)
   K.soSeleccionada = null;
+  K.bolsaSeleccionada = null;
   registrarAsistencia();
 }
 
@@ -1043,6 +1103,8 @@ async function registrarAsistencia(){
     empleado_nombre:    (K.seleccionado && (K.seleccionado.name || K.seleccionado.nombre)) || '',
     so_id:              (K.soSeleccionada && K.soSeleccionada.id) || null,
     so_nombre:          (K.soSeleccionada && (K.soSeleccionada.name || K.soSeleccionada.nombre)) || '',
+    cuenta_id:          (K.bolsaSeleccionada && K.bolsaSeleccionada.id) || null,   // PR-2: bolsa (cuenta indirecta) → checkin la escribe en x_studio_analytic_2
+    cuenta_nombre:      (K.bolsaSeleccionada && K.bolsaSeleccionada.nombre) || '',
     tipo:               tipo,
     timestamp:          now.toISOString(),
     foto_b64:           fotoB64,
@@ -2257,6 +2319,8 @@ window.selectSO = selectSO;
 window.confirmarPlanSO = confirmarPlanSO;
 window.registrarSinSO = registrarSinSO;
 window.expandirListaSO = expandirListaSO;
+window.confirmarBolsa = confirmarBolsa;
+window.expandirListaBolsa = expandirListaBolsa;
 window.selectTipo = selectTipo;
 window.cancelarGeo = cancelarGeo;
 window.confirmarGeo = confirmarGeo;
