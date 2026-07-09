@@ -462,6 +462,57 @@ Target: 18/15(proyectos)→**plan 1**; 21/12/17/15(holding 823)→**plan 2**; to
 
 ---
 
+## PARTE 10 — Bolsa default en `hr.employee` + rediseño fino de PR-2 (checkout lee el campo)
+
+> Requisito nuevo (Esteban): cada empleado tiene su **cuenta indirecta DEFAULT** en su ficha (de qué bolsa sale su nómina si NO carga a proyecto). El checkout **LEE** este campo — ya no infiere por departamento. Garantía "**nadie sin bolsa**".
+
+### 10.1 — Campo: NO hay reusable → **campo nuevo m2o** (recomendado)
+- **Campos custom de `hr.employee` hoy:** `x_studio_adjunto` (binary), `x_studio_hora_entrada` (float), `x_studio_link_nomina` (char, vacío), `x_studio_retardos_15_dias` (int), `x_studio_ultimo_retardo_notificado` (date), + `x_categoria_nomina`, `x_aplica_ppa`, `x_currency_id`. **Ninguno es m2o a `account.analytic.account`.**
+- **Único nativo relacionado:** `distribution_analytic_account_ids` (**m2m** "Distribution Analytic Account", propósito Odoo = distribución analítica default de gastos/timesheets). Reusarlo es posible pero **semántica de m2m (múltiples cuentas con %)** y Odoo podría usarlo para otras features → ambiguo para "la bolsa única default".
+
+| Opción | Pro | Contra |
+|---|---|---|
+| **(a) Campo nuevo m2o** `x_studio_cuenta_indirecta_default` → `account.analytic.account` (RECOMENDADO) | 1 campo, semántica clara, **garantiza "nadie sin bolsa"** (se puebla en los 34), lectura directa checkout/W1/Fase 3 | +1 campo Studio |
+| (b) Derivar de `hr.department` (map depto→cuenta) | 0 campos | ❌ no permite override por-persona (Gerardo contable en Ops, híbridos); depto no distingue tech vs admin-de-ops dentro de Operaciones |
+| (c) Reusar m2m nativo `distribution_analytic_account_ids` | 0 campos nuevos | semántica m2m/%; colisiona con features nativas; frágil |
+
+- **Recomendación: (a) campo nuevo m2o.** Es la excepción justificada a "campos mínimos": el requisito "nadie sin bolsa" **exige** un valor por-persona que el depto no puede dar (dentro de Operaciones conviven techs→proyecto y admin-de-ops→bolsa). Es **1 solo campo**.
+
+### 10.2 — Cómo lo consumen
+- **Checkout (PR-2):** cuando NO hay plan del día y el empleado NO elige proyecto → default = `x_studio_cuenta_indirecta_default`. Si está vacío (techs) → no hay default → candado blando "elige proyecto" / registrar sin proyecto → dispara W1.
+- **Watchdog W1:** "nadie sin bolsa NI proyecto" = checkout cerrado con `x_studio_project_id` vacío **Y** `x_studio_analytic_2` (Cuenta Indirecta) vacío. El default del empleado hace que W1 solo salte en huecos reales (techs sin proyecto, o alguien sin default).
+- **Fase 3 (distribución de nómina):** para MO no atribuida a proyecto, la nómina del empleado cae a su bolsa default. Regla de resolución: `attendance.x_studio_project_id` (proyecto) → si no, `attendance.x_studio_analytic_2` (bolsa elegida ese día) → si no, `employee.x_studio_cuenta_indirecta_default` → si no, W1/pendiente.
+
+### 10.3 — Poblado inicial de los 34 (mapeo aprobado)
+| Empleados | Bolsa default | id cuenta |
+|---|---|---|
+| **Esteban (32)** | DIRECCION | **3095** |
+| **Felipe (112), Mateo (75), Gibrán (62), Jésus Montalvo (68), Ramiro (154)** (híbridos) | ADMIN DE OPERACIONES | **3096** |
+| **Comercial 8** (Rissia 97, Arturo 143, Ricardo 98, Aldo 78, Luis 48, Marcus 150, Francisco 8, Pablo 108) | VENTAS | 608 |
+| **Erick (149), Eduardo (153), Gerardo Lozano (59)** | Administración | 513 |
+| **Magaly (63)** | LEGAL | 768 |
+| **Ana Laura (101)** | RH | 478 |
+| **13 técnicos/soldadores/seguristas Ops** (Carlos 76, Cesar 127, Enoc 128, Germán 124, Héctor 25, José Luis 79, Juan Manuel 55, Leonel 6, Rolando 130, Samuel 57, Stephany 121, Tomas L 138, Tomas V 131) | **VACÍO** (siempre a proyecto) | — |
+| _pseudo (148, 81)_ | ignorar | — |
+
+- **⭐ Decisión técnicos (5c): VACÍO + watchdog, NO ADMIN DE OPERACIONES como red de seguridad.** Razón: si el default fuera ADMIN DE OPERACIONES, un tech que olvida elegir proyecto **silenciosamente** manda su costo a admin-ops → **contamina la bolsa y esconde el hueco** de atribución (justo lo que Frente A quiere evitar). Con **vacío**, W1 **surface-a** el hueco ("Tomás cerró sin proyecto") → se corrige. La red de seguridad es la **visibilidad (W1)**, no un default que oculta. (32 poblados con bolsa, 2 pseudo ignorados; los 13 techs a propósito vacíos.)
+
+### 10.4 — PR-2 fino: el ruteo LEE el campo (supera la inferencia por depto de PR-1)
+**Prioridad de fuentes en checkout (salida):** `plan del día` **>** `selección manual` **>** `default del empleado`.
+
+1. **Consultar plan del día** (ya en PR-1). Si trae proyecto → banner CON PLAN (gana). *(plan del día)*
+2. Si NO hay plan → mostrar pantalla según el **campo default del empleado** (ya NO por `perfilEmpleado`/depto):
+   - **Con default bag** (admin, comercial, híbridos, dirección) → banner "Tu bolsa: `<cuenta>`" pre-seleccionada + "¿Trabajaste en un proyecto? Elígelo" + "¿Otra bolsa?". *(default del empleado, cambiable → selección manual)*
+   - **Sin default bag** (13 techs) → lista de proyectos + "registrar sin proyecto" (candado blando) → si nada, W1. *(selección manual obligada)*
+3. **Cualquier perfil** puede elegir proyecto o cambiar de bolsa → eso es la **selección manual**, que gana sobre el default pero NO sobre el plan.
+- **Qué se escribe:** proyecto → `x_studio_project_id`; bolsa (default o elegida) → `x_studio_analytic_2` (Cuenta Indirecta); nada → ambos vacíos → W1.
+- **`perfilEmpleado` (PR-1) queda como fallback** solo si el empleado no tiene el campo default poblado aún (defensa durante el rollout). Tras poblar los 34, el campo manda.
+- **Costo:** el checkout ya trae el empleado crudo de `/kiosk/empleados` (v3.1) → **agregar `x_studio_cuenta_indirecta_default` a ese webhook** (1 campo más en la respuesta, como se hizo con categoría/depto). Sin llamada extra.
+
+⚠️ **Nada construido — diseño para tu aprobación.** PR-1 (#68) sigue OPEN; PR-2 depende de: (a) el campo nuevo en Studio, (b) poblar los 34, (c) `/kiosk/empleados` devuelve el campo.
+
+---
+
 ## Límites / método
 - Números Odoo vía MCP read-only (UID 2). Depto→empleados activos y cuentas plan 2 medidos hoy 2026-07-08.
 - No se tocó Odoo, ni workflows productivos, ni frontend. Único artefacto: one-shot **inactivo** `97Qj9v46ILOWV9Lf`.
