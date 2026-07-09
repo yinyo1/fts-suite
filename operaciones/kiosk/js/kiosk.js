@@ -1157,7 +1157,7 @@ async function registrarAsistencia(){
   if(confirmNombre) confirmNombre.textContent = payload.empleado_nombre || '—';
   // PR-2 fix: si el checkout fue por BOLSA (cuenta indirecta) y no por proyecto,
   // mostrar la bolsa en vez de "—" (payload.so_nombre viene vacío en ese caso).
-  if(confirmSO)     confirmSO.textContent     = payload.so_nombre || (payload.cuenta_nombre ? 'Bolsa: ' + payload.cuenta_nombre : '—');
+  if(confirmSO)     confirmSO.textContent     = payload.so_nombre || (payload.cuenta_nombre ? '🗂️ Bolsa: ' + payload.cuenta_nombre : '—');
   if(confirmHora)   confirmHora.textContent   = now.toLocaleTimeString('es-MX');
   if(confirmGeo){
     confirmGeo.innerHTML = payload.geo_autorizada
