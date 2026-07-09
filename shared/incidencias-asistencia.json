@@ -147,9 +147,19 @@
           "hora_propuesta_cst": "2026-07-07 08:00:00",
           "comentario": "Llegué a la 1:30 porque se me debía mediodía se platicó con Arturo para tomar el mediodía que se tenía del día 25 de junio, ese día salí a la 1:30se tomó el día completo como vacaciones",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 97,
+          "usuario": "Rissia Xavier de Araujo",
+          "timestamp": "2026-07-09T17:23:09.941Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Ok, aprobado por Rissia.",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false,
       "department_id": 6,
