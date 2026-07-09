@@ -26,9 +26,19 @@
           "hora_propuesta_cst": "2026-07-09 07:57:00",
           "comentario": "El dia de hoy acudir a planta budenheim así que ingrese ahi a las 7:57",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 97,
+          "usuario": "Rissia Xavier de Araujo",
+          "timestamp": "2026-07-09T17:19:27.175Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Ok aprobado por Rissia",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false,
       "department_id": 6,
