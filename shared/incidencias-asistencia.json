@@ -315,10 +315,20 @@
           "fecha": "2026-07-03T01:55:16.332Z",
           "hora_propuesta_cst": "18:00",
           "comentario": "Marcaba error el checador , mande evidenci"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 97,
+          "usuario": "Rissia Xavier de Araujo",
+          "timestamp": "2026-07-09T17:25:26.740Z",
+          "hora_propuesta_cst": "18:04",
+          "comentario": "Aprobado.e",
+          "accion": "ajustado"
         }
       ],
-      "status": "pendiente_supervisor",
-      "hora_final_aplicada_utc": "2026-07-03 00:00:00",
+      "status": "pendiente_rh",
+      "hora_final_aplicada_utc": "2026-07-03 00:04:00",
       "aplicado_en_odoo": true,
       "tag_disputa_activo": true,
       "creada_por_modulo": "kiosk",
