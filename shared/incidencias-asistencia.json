@@ -36,11 +36,21 @@
           "hora_propuesta_cst": null,
           "comentario": "Ok aprobado por Rissia",
           "accion": "aprobado"
+        },
+        {
+          "paso": 3,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-07-09T21:16:22.561Z",
+          "hora_propuesta_cst": "07:57",
+          "comentario": "Aprobado ok",
+          "accion": "ajustado"
         }
       ],
-      "status": "pendiente_rh",
-      "hora_final_aplicada_utc": null,
-      "aplicado_en_odoo": false,
+      "status": "aprobada_con_ajuste",
+      "hora_final_aplicada_utc": "2026-07-09 13:57:00",
+      "aplicado_en_odoo": true,
       "department_id": 6,
       "department_name": "Comercial",
       "sin_departamento": false,
@@ -53,7 +63,7 @@
       "rh_directo_ceo": false,
       "directo_ceo": false,
       "sin_supervisor": false,
-      "tag_disputa_activo": true
+      "tag_disputa_activo": false
     },
     {
       "id_interno": "INC-AUTO-CIERRE-98-2026-07-09T15-34-45-065Z",
