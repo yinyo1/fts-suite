@@ -247,6 +247,48 @@ Regla maestra: **1) siempre se consulta el plan; 2) si el plan trae proyecto →
 
 ---
 
+## PARTE 7 — Proceso permanente de cierre (budget→done + cuenta→archivada) — DISEÑO
+
+> Formaliza el cierre ejecutado por consola (2026-07-09: 27 budgets `action_budget_done` + 40 cuentas archivadas). El **flujo extendido de Frente B** (`project/archive-budget-cierre`, id `RW7KnoeEzYLvavI0`) debe hacer **AMBOS en el mismo disparo de etapa terminal**: `budget.state→done` **y** `account.analytic.account.active→false`. Hoy Frente B solo archiva la cuenta (falta el `action_budget_done`).
+
+### 7.1 — Ciclo confirmado (método oficial)
+- **Budget:** `action_budget_done` (método del modelo `budget.analytic`) → `state='done'`. Es el camino oficial (funcionó en el cierre por consola). Complementa/valida el patrón A1 (que crea el budget en `state='confirmed'`).
+- **Cuenta:** `active=False` (prevención dura nativa — el widget analítico oculta cuentas inactivas en captura). Ya validado por Frente B (53 cuentas en go-live).
+- **Ambos en el mismo trigger de stage** para no dejar budgets abiertos con cuenta archivada (o viceversa).
+
+### 7.2 — Incluir stage **14 "Incobrables"** (gap detectado)
+- Frente B archiva hoy `stage_id in [8,13,10,4]`. **Falta `14`** → las cuentas de proyectos incobrables nunca se archivan solas (6 detectadas en la auditoría). **Agregar `14` a la lista.**
+- ⚠️ **Caso especial AR:** un incobrable **por definición NO llega a AR=0** (el residual queda abierto = deuda incobrable). Si el gate de archivado exige `AR=0`, un incobrable **jamás** se archivaría. → Para stage **14**, archivar **sin exigir AR=0** (solo `AP=0`, o directo). El write-off ya asume que no se cobra.
+
+### 7.3 — 🔀 Trade-off en crédito (stage 13): archivar al ENTRAR vs al AR=0
+
+| | **(A) Archivar al ENTRAR a crédito** (tu regla: cero gasto nuevo desde plazo de crédito) | **(B) Archivar al AR=0** (comportamiento actual de Frente B) |
+|---|---|---|
+| Gasto nuevo | **Bloqueado duro** (cuenta inactiva → no seleccionable en captura) | Permitido hasta que se liquide todo |
+| Cobranza (AR) | No se afecta (el AR vive en `account.move`/partner, no en el flag `active` de la cuenta) | Igual |
+| Semáforo crédito (stage 13) | Sigue funcionando (mide stage + vencimiento factura, no el flag de la cuenta) | Igual |
+| **Factura tardía legítima de proveedor** | 🔴 **PROBLEMA:** la cuenta está archivada → la Bill **no puede** atribuirse al proyecto → el costo queda **huérfano (fuga R3)** o hay que **des-archivar → postear → re-archivar** (fricción + riesgo). El candado A3 la forzaría a un indirecto (plan 2) → costo mal atribuido, rentabilidad del proyecto subcontada. | ✅ La Bill mantiene `AP≠0` → la cuenta sigue activa → **el costo tardío se atribuye correcto** al proyecto → luego se archiva liquidado. Captura el costo REAL completo. |
+| Alineación con Frente A | ⚠️ Riesgo de **subcontar** el costo del proyecto (late bills stranded) → peor rentabilidad | ✅ Rentabilidad más fiel (costo completo) |
+
+**RECOMENDACIÓN: híbrido (lo mejor de ambos).**
+1. **Al ENTRAR a crédito (stage 13):** `budget→done` **inmediato** (congela el plan; no más cambios de budget) + **log note** al chatter ("entró a crédito — no capturar gasto nuevo salvo factura tardía justificada"). **NO archivar la cuenta todavía.**
+2. **Archivar la cuenta** solo cuando **`AR=0 Y AP=0`** (gate actual de Frente B) → preserva la atribución de la factura tardía legítima (mientras `AP≠0`, la cuenta sigue viva).
+3. **Enforcement "cero gasto nuevo" = BLANDO por visibilidad:** el detective ya existente **`fin/detect-gasto-cierre`** (id `zLmmY0pqYC9kjLaw`) ya vigila Bills posteadas sobre proyectos en stages de cierre `[7,9,10,13,8,4]` → **correo a Esteban** cuando entra gasto en crédito. Así el control es "flag + rendición de cuentas", no un bloqueo duro que estrangule costos legítimos.
+
+**Por qué híbrido y no (A) puro:** el objetivo de Frente A es la **rentabilidad fiel por proyecto**. Archivar al entrar a crédito optimiza higiene pero **sacrifica exactitud** (late bills legítimos quedan fuera). El detective da el control sin ese costo. Si en la práctica el gasto-en-crédito resulta ser casi siempre mala atribución (no late bills legítimos), se endurece a (A) — decisión basada en lo que el detective reporte las primeras semanas.
+
+### 7.4 — Resumen del trigger terminal (para construir en Frente B, cuando se apruebe)
+| Al entrar a stage | budget | cuenta | nota |
+|---|---|---|---|
+| **8** Complete / **4** Canceled | → `done` | → `active=False` si `AR=0 Y AP=0` | terminal, sin ambigüedad |
+| **14** Incobrables (nuevo) | → `done` | → `active=False` si `AP=0` (**ignorar AR**) | write-off; AR nunca llega a 0 |
+| **13** En plazo de crédito | → `done` **al entrar** | → `active=False` cuando `AR=0 Y AP=0` (no al entrar) | híbrido §7.3; detective flag-ea gasto nuevo |
+| **1/2/5/3/7** ejecución/admin | — | — | gasto legítimo, no cerrar |
+
+⚠️ **No implementar aún** — diseño para aprobación. Toca el workflow productivo `RW7KnoeEzYLvavI0` (Frente B).
+
+---
+
 ## Límites / método
 - Números Odoo vía MCP read-only (UID 2). Depto→empleados activos y cuentas plan 2 medidos hoy 2026-07-08.
 - No se tocó Odoo, ni workflows productivos, ni frontend. Único artefacto: one-shot **inactivo** `97Qj9v46ILOWV9Lf`.
