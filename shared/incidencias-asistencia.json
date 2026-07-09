@@ -335,12 +335,22 @@
           "hora_propuesta_cst": "18:04",
           "comentario": "Aprobado.e",
           "accion": "ajustado"
+        },
+        {
+          "paso": 3,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-07-09T21:47:05.897Z",
+          "hora_propuesta_cst": "18:00",
+          "comentario": "Incidencia Aprobada",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_rh",
+      "status": "aprobada_tal_cual",
       "hora_final_aplicada_utc": "2026-07-03 00:04:00",
       "aplicado_en_odoo": true,
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "creada_por_modulo": "kiosk",
       "creada_por_build": "20260521-kiosk-face-opt-in-default"
     },
