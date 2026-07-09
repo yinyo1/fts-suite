@@ -1,7 +1,7 @@
 // ═══ FTS Kiosk — Lógica principal ═══
 // Script clásico, estado global compartido
 
-const KIOSK_BUILD = '20260709-kiosk-bolsa-default';
+const KIOSK_BUILD = '20260709-kiosk-confirm-bolsa';
 console.log('[kiosk] build:', KIOSK_BUILD);
 
 const K = {
@@ -1155,7 +1155,9 @@ async function registrarAsistencia(){
     confirmTipo.className = 'kiosk-big-type ' + (entradaLike ? 'in' : 'out');
   }
   if(confirmNombre) confirmNombre.textContent = payload.empleado_nombre || '—';
-  if(confirmSO)     confirmSO.textContent     = payload.so_nombre || '—';
+  // PR-2 fix: si el checkout fue por BOLSA (cuenta indirecta) y no por proyecto,
+  // mostrar la bolsa en vez de "—" (payload.so_nombre viene vacío en ese caso).
+  if(confirmSO)     confirmSO.textContent     = payload.so_nombre || (payload.cuenta_nombre ? 'Bolsa: ' + payload.cuenta_nombre : '—');
   if(confirmHora)   confirmHora.textContent   = now.toLocaleTimeString('es-MX');
   if(confirmGeo){
     confirmGeo.innerHTML = payload.geo_autorizada
