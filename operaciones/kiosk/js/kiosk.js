@@ -1,7 +1,7 @@
 // ═══ FTS Kiosk — Lógica principal ═══
 // Script clásico, estado global compartido
 
-const KIOSK_BUILD = '20260706-kiosk-ksproject-3estados';
+const KIOSK_BUILD = '20260708-kiosk-plan-gana-ruteo';
 console.log('[kiosk] build:', KIOSK_BUILD);
 
 const K = {
@@ -840,57 +840,56 @@ function selectSO(id){
   registrarAsistencia();
 }
 
-// ═══ B3: ruteo de salida por categoría + pre-llenado de SO desde el plan ═══
-// TODOS los hooks son PRE-POST (Hallazgo #15): NO tocan registrarAsistencia (L~875-990).
+// ═══ B3 + Fase 1.5 P6: ruteo de salida (EL PLAN GANA) + perfil por departamento ═══
+// TODOS los hooks son PRE-POST (Hallazgo #15): NO tocan registrarAsistencia (L~1000-1090).
 function rutearPostGeo(){
   if(K.tipo === 'salida'){ iniciarSalida(); }
   else { K.soSeleccionada = null; registrarAsistencia(); }
 }
 
 function perfilEmpleado(emp){
-  var cat = emp && emp.x_categoria_nomina;
-  if(cat === 'ceo' || cat === 'confianza') return 'admin';
-  if(cat === 'no_he_comercial') return 'comercial';
-  if(cat === 'hourly_doble' || cat === 'hourly_sencilla') return 'operativo';
-  // fallback por departamento (parse defensivo many2one)
+  // Ruteo por DEPARTAMENTO (poblado en 34/34 empleados reales). La categoría de
+  // nómina NO es un proxy fiable del comportamiento de checkout: está vacía en la
+  // mayoría (27/34) y 'confianza' NO significa "no carga a proyectos" — Mateo (75)
+  // y Felipe (112) son 'confianza' de CAMPO y sí cargan a proyecto. Ver Fase 1.5,
+  // Parte 6. Parse defensivo del many2one.
   var d = emp && emp.department_id, dept = 0;
   if(Array.isArray(d)) dept = parseInt(d[0], 10) || 0;
   else if(d && typeof d === 'object' && d.id != null) dept = parseInt(d.id, 10) || 0;
   else if(typeof d === 'number' || typeof d === 'string') dept = parseInt(d, 10) || 0;
-  if(dept === 5 || dept === 9 || dept === 16 || dept === 18) return 'admin';
-  if(dept === 6) return 'comercial';
-  return 'operativo'; // dept 3 y default: fail-open al flujo de SO
+  if(dept === 3) return 'operativo';  // Operaciones (incl. supervisores de campo)
+  if(dept === 6) return 'comercial';  // Comercial
+  if(dept === 5 || dept === 9 || dept === 16 || dept === 18) return 'admin'; // Dir/Legal/RH/Admin
+  return 'operativo'; // default y sin depto: fail-open al flujo de SO
 }
 
 async function iniciarSalida(){
   var emp = K.seleccionado || {};
-  var perfil = perfilEmpleado(emp);
-  K.perfilSalida = perfil;
+  K.perfilSalida = perfilEmpleado(emp);
   K.planSO = null;
   K.planExpandido = false;
-  if(perfil === 'admin'){
-    // Administrativos: no piden SO
-    K.soSeleccionada = null;
-    registrarAsistencia();
-    return;
-  }
-  // Operativo / comercial: Estado 1 CARGANDO (nada seleccionable) hasta que B2
-  // responda. Timeout defensivo 6s → cae a Estado 3 SIN PLAN (nunca deja atorado
-  // al técnico). Hooks PRE-POST (Hallazgo #15): NO tocan registrarAsistencia.
+
+  // ═══ EL PLAN GANA SOBRE EL PERFIL (Fase 1.5, Parte 6) ═══
+  // Consultamos el plan del día SIEMPRE, para TODOS los perfiles (incl. admin),
+  // ANTES de decidir el flujo. Si el plan trae proyecto → banner CON PLAN sin
+  // importar el perfil (arregla el caso Mateo: supervisor de campo con plan cuyo
+  // checkout se ruteaba como admin y saltaba el modal). El costo es 1 llamada extra
+  // getPlanDia en checkouts de admin (~5/día). Estado 1 CARGANDO mientras responde;
+  // timeout defensivo 6s. Hooks PRE-POST (Hallazgo #15): NO tocan registrarAsistencia.
   K.planLoading = true;
   showScreen('ks-project');
   var settled = false;
   var timer = setTimeout(function(){
     if(settled) return;
     settled = true;
-    console.warn('[kiosk] getPlanDia timeout 6s → Estado 3 (sin plan)');
+    console.warn('[kiosk] getPlanDia timeout 6s → sin plan');
     K.planLoading = false;
     K.planSO = null;
-    renderProjectScreen();
+    resolverSalidaSinPlan();
   }, 6000);
   try{
     var r = await window.OdooKiosk.getPlanDia(emp.id);
-    if(settled) return;   // el timeout ya cayó a Estado 3; ignorar respuesta tardía
+    if(settled) return;   // el timeout ya resolvió; ignorar respuesta tardía
     settled = true;
     clearTimeout(timer);
     var rr = Array.isArray(r) ? r[0] : r;
@@ -901,10 +900,27 @@ async function iniciarSalida(){
     if(settled) return;
     settled = true;
     clearTimeout(timer);
-    /* sin plan / error → Estado 3, no bloquea */
+    /* sin plan / error → resolver por perfil, no bloquea */
   }
   K.planLoading = false;
-  renderProjectScreen();
+  if(K.planSO){
+    renderProjectScreen();    // Estado 2 CON PLAN — banner confirmar/cambiar (todos los perfiles)
+  } else {
+    resolverSalidaSinPlan();  // sin plan → ramifica por perfil
+  }
+}
+
+// SIN PLAN: ramifica por perfil. En PR-1 se conserva el comportamiento actual
+// (admin registra directo "—"; operativo/comercial ven la lista con candado blando).
+// La UX de "cuenta de departamento" (admin muestra su cuenta, comercial default,
+// opción cambiar a cuenta) llega en PR-2 (depende del campo x_studio_cuenta_indirecta).
+function resolverSalidaSinPlan(){
+  if(K.perfilSalida === 'admin'){
+    K.soSeleccionada = null;
+    registrarAsistencia();
+    return;
+  }
+  renderProjectScreen();      // Estado 3 SIN PLAN — buscador + lista + "sin proyecto"
 }
 
 // ks-project: 3 estados mutuamente excluyentes (CARGANDO / CON PLAN / SIN PLAN).
