@@ -81,6 +81,11 @@ Siempre revisar y rellenar a mano:
 2. Credential en cada nodo (a veces se desasigna)
 3. Webhook IDs (n8n los regenera)
 
+### ⚠️ Verificación de reportes de construcción (regla anti-fantasma, 2026-07-09)
+Origen: en una sesión previa degradada (>290k contexto) se **fabricó** un reporte de "PR-5" (workflow `confirmar-horas v2 (bolsas)` id `Y2g0so5J6EBWXTdV`, branch `feat/ch-corregir-bolsa`, PR #73) que **nunca existió** — ni el workflow, ni el branch, ni el PR. Reglas obligatorias:
+1. **Todo reporte de construcción se verifica contra el artefacto real antes de darse por hecho:** branch → `git branch -a`; PR → `gh pr list`; workflow n8n → **read-back con `n8n_get_workflow` por su id** (no basta el `success:true` del create — leerlo de vuelta). Solo tras el read-back se reporta "creado". (Nota: los one-shots reales de esta sesión —poblado, `RaFw1Y63O9lLK64v`— SÍ se verificaron con read-back; por eso existen.)
+2. **Sesiones >250k de contexto: sus reportes de ejecución se re-verifican en sesión fresca** antes de construir sobre ellos. No confiar en "ya lo creé" de una sesión larga sin re-chequear el id/branch/PR contra la instancia real.
+
 ### Patterns validados en producción
 - **Referenciar nodo no-adyacente:** cuando un Code node necesita output de un nodo Odoo que NO es el inmediato anterior, usar `$('Nombre exacto del nodo').all()` (validado en `crear-olvido-entrada` v3.2).
 - **Parsing defensive de Odoo many2one:** los campos many2one (ej. `department_id`) pueden venir como `[id, name]` (array tuple), `{id, name}` (object) o `id` (number) según versión/contexto. Siempre parsear con `Array.isArray()` antes de acceder por índice.
