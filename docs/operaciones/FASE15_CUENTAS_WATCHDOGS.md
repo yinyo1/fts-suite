@@ -407,6 +407,61 @@ Esteban (32, CEO · Dirección)
 
 ---
 
+## PARTE 9 — Consolidación multicompany de planes (3 planes vía `company_id`) — read-only
+
+> **Visión target (Esteban):** solo 3 planes (1 Directo, 2 Indirecto, 20 Rubros) funcionando **multicompany** — USA/Brasil viven en los mismos 3 planes distinguidos por `company_id`; los espejos 18/21/12/15/17 desaparecen. ¿Lo soporta Odoo 19 SaaS y qué cuesta?
+
+### 9.1 — Mecánica: ✅ SÍ lo soporta; los planes-país fueron decisión ORGANIZATIVA, no técnica
+- **`account.analytic.plan` NO tiene `company_id`** (verificado: el campo no existe) → un plan **no** está atado a una compañía.
+- **El scope de compañía vive en `account.analytic.account.company_id`** (verificado): cada cuenta se estampa con su compañía (los espejos USA = company **6**), y Odoo filtra los selectores por compañía → **cada company ve solo sus cuentas** aunque compartan plan.
+- Plan 1 hoy: todas sus cuentas son company **1**. Meter cuentas company 6 al plan 1 (con su `company_id=6`) las deja **visibles solo para USA** en captura. ⇒ **un plan multicompany es nativo y correcto en Odoo 19.** No hay razón técnica para los planes-país; fueron una separación manual.
+
+### 9.2 — Inventario de los espejos + dependencias
+
+| Plan | Cuentas activas | `company_id` real | Líneas (all-time) | Budgets | En A3 OK_ROOTS |
+|---|---|---|---:|---|---|
+| **18** Directo proyectos USA | 7 | **6 (USA)** | 31 | sí — pero por `account_id` (plan-agnóstico) | **SÍ** (18 ∈ OK_ROOTS) |
+| **21** Indirecto USA | 1 (3089 Sales FTS USA) | 6 (USA) | 5 | no | no |
+| **12** Gastos FTS USA | 1 (663) | **1 (¡MX!)** mislabeled | ~58 | no | **NO** → A3 rechazaría bills company-1 a 663 |
+| **15** Plan for FTS USA | 2 (823 FTS USA LLC **bal $2.7M**, 835 proyecto) | 6 (USA) | 12 | no | no |
+| **17** Gasto FTS Brasil | 1 (842) | **1 (¡MX!)** mislabeled | 24 | no | **NO** → A3 rechazaría bills company-1 a 842 |
+
+**Dependencias mapeadas:**
+- **Budgets: ✅ plan-agnósticos.** `budget.line.account_id` es un m2o genérico — los budgets de proyectos USA (396/397/404…) ya guardan la cuenta plan-18 en `account_id` + rubro en `x_plan20_id`, **igual que los MX**. Mover el plan **NO toca budgets**.
+- **distribution.models: ✅ ninguno depende de los espejos.** Los 2 modelos company-6 inyectan el rubro plan-20 `1175`, no cuentas plan-18/21.
+- **A3 (Reglas 56/57): ⚠️** solo dispara para `OK_COMPANIES={1}` → USA (company 6) está **exento**, así que 18/21/15 no le afectan. Pero **12 y 17 son company-1** y **NO** están en OK_ROOTS → hoy un bill company-1 atribuido a 663/842 **sería rechazado** (latente).
+- **Reportes: ⚠️ la rentabilidad nativa USA ya está rota.** Los actuals USA viven en la columna `x_plan18_id`, pero el budget usa `account_id` → el `achieved` de proyectos USA no casa (mismo tipo de desajuste R1/R2 pero estructural por columna).
+- **Actuals a migrar (histórico):** 18→31 · 21→5 · 12→~58 · 15→12 · 17→24 = **~130 líneas** en total. Minúsculo.
+
+### 9.3 — Plan de migración (si se hace)
+Target: 18/15(proyectos)→**plan 1**; 21/12/17/15(holding 823)→**plan 2**; todo conservando `company_id` por cuenta.
+1. **Repuntar la fuente (A1):** hoy A1 crea USA con `company===6?18:1`. Cambiar a **siempre plan 1** (con `company_id=6`) para proyectos y plan 2 para indirecto → **deja de crecer el espejo**. (Cheap, alto impacto.)
+2. **Mover cuentas:** `write` de `plan_id` en la cuenta **es posible** (campo stored) → recomputa `root_plan_id` → **las líneas NUEVAS** caen en la columna nueva (`account_id`). 
+3. **⚠️ Migrar el histórico (el punto duro):** las líneas viejas quedan en `x_plan18_id`, NO en `account_id` → historia **partida**. Consolidarla exige reescribir cada `analytic.line` (mover el valor de columna) — **y aquí está el riesgo real:** `account.analytic.line` suele **derivarse del `analytic_distribution` del asiento fuente**; puede ser **no reescribible directo** (se recomputa). **Go/no-go = probar el write en 1 sola línea antes de comprometer** (no lo hice: es write, MCP read-only).
+4. **OK_ROOTS:** tras mover USA a plan 1, quitar `18` de OK_ROOTS (o dejarlo, inocuo); 1 y 2 ya están → cubre lo movido. Fix colateral: 12/17 (company-1) al pasar a plan 2 quedan cubiertos (2 ∈ OK_ROOTS) → **arregla el latente**.
+5. **Archivar** los planes espejo vacíos (la columna `x_plan18_id` permanece en el esquema → el histórico no se pierde).
+
+### 9.4 — Riesgos
+- 🔴 **Reescritura de `analytic.line` (columna de plan) posiblemente NO soportada en SaaS** (campo computado desde el asiento). Si no se puede, "consolidar el histórico" obligaría a tocar asientos fuente = invasivo y semi-irreversible. **Es el único bloqueante real.**
+- 🟠 **Historia partida** durante la migración (actuals viejos en columna vieja, nuevos en la nueva) hasta terminar.
+- 🟠 **Fuga cross-company** si al mover una cuenta se pierde `company_id` (USA vería MX y viceversa). Mitigable: nunca limpiar `company_id`.
+- 🟢 Archivar un plan es **reversible** (des-archivar); la columna no se borra.
+- **Irreversible de verdad:** solo si se tocan asientos fuente para forzar la migración de columna. Todo lo demás es reversible.
+
+### 9.5 — 🎯 Recomendación (sin rodeos)
+**La capacidad multicompany ya está probada y es nativa** (company_id por cuenta + budgets plan-agnósticos). Pero **el histórico USA es 31 líneas** (todo plan-18) y ~130 en total → **el jugo no vale el exprimido de una migración de columnas de `analytic.line` en SaaS (bloqueante incierto).**
+
+**Recomendado — en 3 pasos, NO big-bang:**
+1. **AHORA (cheap, alto valor, fase 2 con 5/8/11/13):** **forward-fix de A1** → proyectos USA a **plan 1** (company 6), indirecto USA a **plan 2**. Deja de crecer el espejo y valida el modelo 3-planes-multicompany para **todo lo nuevo**. Bajo riesgo, sin migración.
+2. **Cheap-win inmediato:** **mover 663 (plan 12) y 842 (plan 17) a plan 2** — son cuentas **company-1** mal etiquetadas "USA/Brasil" (no son otra compañía); esto **además arregla el latente de A3** (hoy fuera de OK_ROOTS). Son 2 cuentas, ~82 líneas — probar la reescritura aquí primero (test go/no-go del punto 9.3.3).
+3. **Backfill del histórico USA real (31+5+12 líneas): OPCIONAL, baja prioridad** — solo si te importa una historia USA limpia, y **solo tras confirmar** que la línea es reescribible. Si no lo es, **deja los espejos archivados** con su histórico intacto (el reporte nuevo ya sería limpio vía el forward-fix).
+
+**En una línea:** consolidar el **flujo futuro** sí (barato, ya soportado); **migrar el histórico** no vale la pena por 130 líneas salvo que la reescritura resulte trivial — pruébalo en 663/842 y decide. **No consolidar en big-bang ahora.**
+
+⚠️ **Read-only — nada movido.** El único write pendiente para decidir es un test de 1 línea (lo hace Esteban o un one-shot).
+
+---
+
 ## Límites / método
 - Números Odoo vía MCP read-only (UID 2). Depto→empleados activos y cuentas plan 2 medidos hoy 2026-07-08.
 - No se tocó Odoo, ni workflows productivos, ni frontend. Único artefacto: one-shot **inactivo** `97Qj9v46ILOWV9Lf`.
