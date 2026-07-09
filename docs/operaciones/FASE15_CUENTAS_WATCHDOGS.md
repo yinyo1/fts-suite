@@ -513,6 +513,59 @@ Target: 18/15(proyectos)→**plan 1**; 21/12/17/15(holding 823)→**plan 2**; to
 
 ---
 
+## PARTE 11 — Watchdogs W1-W4: DISEÑO FINAL (post PR-1..5) — STOP antes de construir
+
+> Refina la Parte 3 con lo aprendido: el panel ya **muestra** la atribución (proyecto/bolsa), el checkout escribe GUbBF, y el workflow **`corregir-bolsa`** (`O61Abp4s26yYpFEq`) deja **chatter `de→a`** en cada corrección. Los watchdogs cuelgan de esas señales. **NADA construido — diseño para aprobación.**
+
+### 11.0 — Infra reutilizada (del semáforo)
+1 solo workflow nuevo **`ops/watchdog-mo`** (cron diario) que corre W1-W4 sobre los datos de **ayer** y manda **hasta 3 correos por grupo de destinatario**. Reusa: Schedule n8n (`0 15 * * 1-5` + **`settings.timezone="UTC"` a mano** = 9 AM CST — ⚠️ la trampa del TZ), nodo Graph (`Mh5kBNduMzOl3nzT`, `sales@fts.mx`), config `shared/operaciones/watchdogs_mo.json`, idempotencia `staticData`. Destinatarios (decididos): **Esteban en todos · W2 +Felipe · W3/W4 +Ana Laura**.
+
+### 11.1 — W1 · Checkout sin cuenta NI proyecto (doble superficie)
+- **(a) EN PANEL (primaria):** el panel de Felipe ya pinta **"⚠ Sin atribución"** en filas con `x_studio_project_id=false` **Y** GUbBF=false (tras la receta `horas-dia` de PR-5). Felipe las corrige con **✎** en su ritual diario. Es la corrección de primera línea, sin correo.
+- **(b) CORREO RESPALDO (red de seguridad):** watchdog diario ~9 AM CST → correo a **Esteban** con la lista de attendances **cerradas de ayer** con: `check_out!=false` **AND** `check_in >= 2026-07-08` (go-live) **AND** `x_studio_project_id=false` **AND** `x_studio_many2one_field_GUbBF=false` **AND** `x_studio_horario_en_disputa!=true`. Solo envía si hay ≥1. Cubre lo que Felipe no alcanzó.
+- Umbral cero (cualquier fila sin atribución es señal). Los 13 técnicos con bolsa vacía a propósito NO disparan aquí porque SÍ eligen proyecto — si un técnico sale sin proyecto Y sin bolsa, es justo el hueco que W1 quiere.
+
+### 11.2 — W2 · Horas de ayer SIN confirmar por Felipe
+- Watchdog diario ~10:30 AM CST → correo a **Esteban + Felipe** (solo si hay pendientes).
+- Condición: attendances con `check_in` = ayer (CST), `check_out!=false`, **`x_studio_manager_approval != true`**, `x_studio_horario_en_disputa != true`.
+- `manager_approval` lo escribe tanto ✔ Confirmar como toda corrección (✎) — así una fila corregida ya cuenta como confirmada. Sin cambios vs Parte 3.
+
+### 11.3 — W3 · Correcciones de atribución (cuelga del chatter de `corregir-bolsa`)
+- **Fuente = chatter**, no una rama nueva. `corregir-bolsa` ya escribe `mail.message` (`body` = "Correccion de atribucion (`tipo`) por `supervisor`: de \"X\" a \"Y\"", `author_id 3`).
+- Watchdog diario → lee `mail.message` `[model=hr.attendance, body like 'Correccion de atribucion', date=ayer]` → **digest a Esteban + Ana Laura** con cada corrección (empleado, `de→a`, `tipo_correccion`, supervisor).
+- **Resalta cross-depto:** si el `res_id` pertenece a un empleado de depto ≠ Operaciones (3) → marca "corrección cross-depto" (transparencia: Felipe re-atribuyó a alguien de otra área). Requiere un lookup `hr.attendance→employee→department` por `res_id` (batch).
+- Transparencia, no bloqueo. Reemplaza el "aviso inmediato" de Parte 3 por un digest diario desde el chatter (más simple, ya hay registro).
+
+### 11.4 · W4 — Anti-manipulación (re-modificación de attendance ya confirmado)
+- **Señal por chatter (sin campos nuevos):** agrupar `mail.message` `[model=hr.attendance, body like 'Correccion de atribucion']` por `res_id`. Flag si:
+  1. **`res_id` con ≥2 notas de corrección** (re-modificado varias veces = indecisión o manipulación) — ej. att 14206 tuvo 3 en la prueba.
+  2. **Corrección DESPUÉS de una confirmación:** existe una nota "Horas confirmadas" (de `confirmar-horas`) y LUEGO una "Correccion de atribucion" en el mismo `res_id` → alguien tocó horas ya confirmadas.
+- **Refuerzo opcional (tracking):** `mail.tracking.value` sobre `x_studio_manager_approval` / GUbBF / `x_studio_project_id` si tienen `tracking=true` → detecta toggles + autor + fecha (patrón semáforo §5.4). Si no hay tracking, la señal de chatter basta.
+- → correo a **Esteban + Ana Laura** con los `res_id` marcados + su historia (de→a, cuántas veces, autor). Idempotencia `staticData` (no re-alertar lo ya avisado).
+
+### 11.5 — Config `shared/operaciones/watchdogs_mo.json` (propuesta)
+```json
+{ "go_live": "2026-07-08", "dept_ops": 3,
+  "w1": { "activo": true, "hora_cst": 9,  "to": ["estebandelacruz@fts.mx"] },
+  "w2": { "activo": true, "hora_cst": 10, "to": ["estebandelacruz@fts.mx", "felipe@fts.mx"] },
+  "w3": { "activo": true, "hora_cst": 9,  "to": ["estebandelacruz@fts.mx", "ana.laura@fts.mx"] },
+  "w4": { "activo": true, "hora_cst": 9,  "to": ["estebandelacruz@fts.mx", "ana.laura@fts.mx"] } }
+```
+
+### 11.6 — Item 5: catch-all Rittal/121 + barrido asistido (evaluación)
+- **Diagnóstico (corrección de Gerardo):** el catch-all "elige un SO cualquiera (Rittal/121)" sigue siendo el **default mental** de la gente. **PR-2 lo resuelve hacia adelante** para admin/comercial (ahora su default ES la bolsa, no un proyecto random). Los técnicos siguen a proyecto (correcto). ⇒ el catch-all **se apaga orgánicamente** para lo nuevo.
+- **Backlog histórico:** attendances viejos de **admin/comercial con un proyecto basura** (pre-PR-2) — ahora **corregibles 1-clic vía ✎**. 
+- **Recomendación: barrido ASISTIDO ligero, NO auto-corrección masiva.** Generar una **lista de candidatos** = closed attendances de empleados **admin/comercial** (deptos 5/6/9/16/18) con `x_studio_project_id != false` (proyecto = casi seguro mala atribución; deberían ser bolsa). Felipe/Esteban deciden **por fila** (algunos comercial SÍ apoyaron en un proyecto real). NO bulk (riesgo de re-Topo-Chico). Es un **reporte W1-adjacente** ("posible mala atribución: admin/comercial con proyecto"), no un watchdog nuevo.
+- **Cuándo:** después de W1-W4; opcional. Puedo cuantificar el backlog (cuántos admin/comercial × proyecto hay) cuando lo pidas — si es chico, orgánico basta; si es grande, el barrido asistido ahorra.
+
+### 11.7 — Secuencia de build (cuando apruebes)
+1. `shared/operaciones/watchdogs_mo.json` (config).
+2. `ops/watchdog-mo` (n8n): cron + 4 lecturas Odoo (ayer) + 4 bloques de correo + idempotencia. Generado como JSON → import UI (customResource) → **read-back** → activar a mano (toggle) con `settings.timezone=UTC`.
+3. (Opcional) reporte de barrido asistido.
+⚠️ **STOP — no construir hasta tu OK del diseño.**
+
+---
+
 ## Límites / método
 - Números Odoo vía MCP read-only (UID 2). Depto→empleados activos y cuentas plan 2 medidos hoy 2026-07-08.
 - No se tocó Odoo, ni workflows productivos, ni frontend. Único artefacto: one-shot **inactivo** `97Qj9v46ILOWV9Lf`.
