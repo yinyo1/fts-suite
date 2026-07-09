@@ -15,7 +15,9 @@
     sos: null,            // cache lista SO (lazy)
     sosCargando: false,
     supervisor: 'Supervisor',
-    modalAttId: null
+    modalAttId: null,
+    sortKey: null,        // PR-4: orden client-side
+    sortDir: 'asc'
   };
 
   function $(id){ return document.getElementById(id); }
@@ -88,24 +90,80 @@
     return '<span class="ch-badge b-pend">Pendiente</span>';
   }
 
+  // ─── PR-4: columnas + orden client-side ───
+  var COLS = [
+    { key:'id',       label:'ID',                     sortable:true,  type:'num', thStyle:'width:56px', get:function(r){ return r.attendance_id || 0; } },
+    { key:'empleado', label:'Empleado',               sortable:true,  type:'str', get:function(r){ return r.empleado_nombre || ('#' + r.empleado_id); } },
+    { key:'depto',    label:'Depto',                  sortable:true,  type:'str', get:function(r){ return r.department_name || ''; } },
+    { key:'horario',  label:'Entrada → Salida (CST)', sortable:true,  type:'str', get:function(r){ return r.check_in_cst || ''; } },
+    { key:'horas',    label:'Horas',                  sortable:true,  type:'num', get:function(r){ return r.worked_hours == null ? -1 : r.worked_hours; } },
+    { key:'proyecto', label:'Proyecto',               sortable:true,  type:'str', get:function(r){ return r.so_id ? (r.so_nombre || ('Proy ' + r.so_id)) : ''; } },
+    { key:'estado',   label:'Estado',                 sortable:true,  type:'num', get:function(r){ return estadoRank(r); } },
+    { key:'acc',      label:'Acciones',               sortable:false }
+  ];
+
+  // Rank de estado: lo accionable primero (disputa < pendiente < abierta < confirmada)
+  function estadoRank(row){
+    if(row.en_disputa) return 0;
+    if(row.abierta)    return 2;
+    if(row.confirmado) return 3;
+    return 1; // pendiente
+  }
+
+  function colByKey(key){
+    for(var i=0;i<COLS.length;i++){ if(COLS[i].key === key) return COLS[i]; }
+    return null;
+  }
+
+  function sortedRows(){
+    var rows = CH.rows.slice();
+    var col = CH.sortKey ? colByKey(CH.sortKey) : null;
+    if(!col || !col.get) return rows;
+    var dir = CH.sortDir === 'desc' ? -1 : 1;
+    rows.sort(function(a,b){
+      var va = col.get(a), vb = col.get(b), r;
+      if(col.type === 'num'){ r = (Number(va) - Number(vb)); }
+      else { r = String(va).localeCompare(String(vb), 'es', { numeric:true, sensitivity:'base' }); }
+      if(r === 0) r = (a.attendance_id || 0) - (b.attendance_id || 0); // desempate estable
+      return r * dir;
+    });
+    return rows;
+  }
+
+  function sortInd(key){
+    if(CH.sortKey !== key) return '<span class="ch-sort-ind">↕</span>';
+    return '<span class="ch-sort-ind">' + (CH.sortDir === 'desc' ? '▼' : '▲') + '</span>';
+  }
+
+  function onHeaderClick(key){
+    var col = colByKey(key);
+    if(!col || !col.sortable) return;
+    if(CH.sortKey === key){ CH.sortDir = (CH.sortDir === 'asc') ? 'desc' : 'asc'; }
+    else { CH.sortKey = key; CH.sortDir = 'asc'; }
+    renderTabla();
+  }
+
   function renderTabla(){
     if(!CH.rows.length){
       $('tabla-zone').innerHTML = '<div class="ch-placeholder">Sin registros en el rango.</div>';
       return;
     }
-    var filas = CH.rows.map(function(row){
+    var filas = sortedRows().map(function(row){
       var so = row.so_id
         ? esc(row.so_nombre || ('Proy ' + row.so_id))
         : '<span class="ch-sinso">⚠ Sin proyecto</span>';
+      var depto = row.department_name
+        ? (row.es_operaciones === false
+            ? '<span class="ch-depto-cross" title="Cargó horas a un proyecto siendo de otro depto">' + esc(row.department_name) + '</span>'
+            : esc(row.department_name))
+        : '—';
       var horario = (row.check_in_cst || '—') + (row.check_out_cst ? ' → ' + row.check_out_cst.slice(11) : ' → …');
       var horas = row.worked_hours != null ? row.worked_hours.toFixed(2) + 'h' : '—';
       var confirmarDisabled = (row.confirmado || row.en_disputa || row.abierta) ? ' disabled' : '';
       return '<tr data-att="' + row.attendance_id + '">' +
           '<td style="color:#9aa0a6;font-size:11px;font-variant-numeric:tabular-nums" title="Attendance ID (Odoo)">' + row.attendance_id + '</td>' +
-          '<td>' + esc(row.empleado_nombre || ('#' + row.empleado_id)) +
-            (row.es_operaciones === false && row.department_name
-              ? ' <span title="Cargó horas a un proyecto (otro depto)" style="background:#eef2f8;color:#0C447C;font-size:10px;padding:1px 7px;border-radius:8px;white-space:nowrap">' + esc(row.department_name) + '</span>'
-              : '') + '</td>' +
+          '<td>' + esc(row.empleado_nombre || ('#' + row.empleado_id)) + '</td>' +
+          '<td>' + depto + '</td>' +
           '<td>' + esc(horario) + '</td>' +
           '<td>' + horas + '</td>' +
           '<td class="cell-so">' + so + '</td>' +
@@ -117,11 +175,19 @@
         '</tr>';
     }).join('');
 
-    $('tabla-zone').innerHTML =
-      '<table class="ch-table"><thead><tr>' +
-        '<th style="width:56px">ID</th><th>Empleado</th><th>Entrada → Salida (CST)</th><th>Horas</th><th>Proyecto</th><th>Estado</th><th>Acciones</th>' +
-      '</tr></thead><tbody>' + filas + '</tbody></table>';
+    var ths = COLS.map(function(c){
+      if(!c.sortable) return '<th' + (c.thStyle ? ' style="' + c.thStyle + '"' : '') + '>' + c.label + '</th>';
+      var active = (CH.sortKey === c.key) ? ' ch-th-active' : '';
+      return '<th class="ch-sortable' + active + '"' + (c.thStyle ? ' style="' + c.thStyle + '"' : '') +
+        ' data-key="' + c.key + '">' + c.label + ' ' + sortInd(c.key) + '</th>';
+    }).join('');
 
+    $('tabla-zone').innerHTML =
+      '<table class="ch-table"><thead><tr>' + ths + '</tr></thead><tbody>' + filas + '</tbody></table>';
+
+    $('tabla-zone').querySelectorAll('th.ch-sortable').forEach(function(th){
+      th.addEventListener('click', function(){ onHeaderClick(th.dataset.key); });
+    });
     $('tabla-zone').querySelectorAll('button[data-act]').forEach(function(b){
       b.addEventListener('click', function(){
         var att = parseInt(b.dataset.att, 10);
