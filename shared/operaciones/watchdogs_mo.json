@@ -1,0 +1,16 @@
+{
+  "_meta": "Config de ops/watchdog-mo (W1-W4 Fase 1.5). Se lee de GitHub raw main EN VIVO: editar + push, sin re-importar. Ver docs/operaciones/FASE15_CUENTAS_WATCHDOGS.md Parte 11.",
+  "go_live": "2026-07-08",
+  "dept_ops": 3,
+  "recipients": {
+    "esteban": "estebandelacruz@fts.mx",
+    "felipe": "felipe.perez0305@gmail.com",
+    "ana_laura": "ana.acevedo@fts.mx"
+  },
+  "w1_activo": true,
+  "w2_activo": true,
+  "w3_activo": true,
+  "w4_activo": true,
+  "w4_ventana_dias": 30,
+  "w4_min_correcciones": 2
+}
