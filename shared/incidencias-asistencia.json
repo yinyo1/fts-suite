@@ -92,12 +92,22 @@
           "hora_propuesta_cst": null,
           "comentario": "Salida a las 5 de ma tarde",
           "accion": "aprobado"
+        },
+        {
+          "paso": 3,
+          "rol": "rh",
+          "user_id": 63,
+          "usuario": "Magaly Estefanía Pérez García",
+          "timestamp": "2026-07-10T21:24:24.662Z",
+          "hora_propuesta_cst": "17:00",
+          "comentario": "Hora de salida 5:00 pm",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_rh",
+      "status": "aprobada_tal_cual",
       "hora_final_aplicada_utc": "2026-07-09 23:06:00",
       "aplicado_en_odoo": true,
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "creada_por_modulo": "kiosk",
       "creada_por_build": "20260521-kiosk-face-opt-in-default"
     },
