@@ -233,9 +233,19 @@
           "hora_propuesta_cst": null,
           "comentario": "Salida 6 de la tarde",
           "accion": "aprobado"
+        },
+        {
+          "paso": 3,
+          "rol": "rh",
+          "user_id": 63,
+          "usuario": "Magaly Estefanía Pérez García",
+          "timestamp": "2026-07-10T21:26:52.055Z",
+          "hora_propuesta_cst": "07:25",
+          "comentario": "Hora de entrada 7:25 a.m",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_rh",
+      "status": "aprobada_tal_cual",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false,
       "department_id": 3,
@@ -250,7 +260,7 @@
       "rh_directo_ceo": false,
       "directo_ceo": false,
       "sin_supervisor": false,
-      "tag_disputa_activo": true
+      "tag_disputa_activo": false
     },
     {
       "id_interno": "INC-OLV-8-2026-07-07T19-33-08-292Z",
