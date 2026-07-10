@@ -1,0 +1,6 @@
+{
+  "build": "20260710-ch-versioncheck",
+  "modulo": "confirmar-horas",
+  "updated": "2026-07-10",
+  "_nota": "build DEBE coincidir con CH_BUILD en index.html. Bumpear ambos al mismo string en cada deploy (ver FASE15 Parte 12)."
+}

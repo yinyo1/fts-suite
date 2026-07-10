@@ -1,8 +1,12 @@
 // ═══ FTS Kiosk — Lógica principal ═══
 // Script clásico, estado global compartido
 
-const KIOSK_BUILD = '20260709-kiosk-confirm-bolsa';
+const KIOSK_BUILD = '20260710-kiosk-versioncheck';
 console.log('[kiosk] build:', KIOSK_BUILD);
+window.KIOSK_BUILD = KIOSK_BUILD;
+// PR-7: auto version-check — si el navegador sirve un bundle viejo cacheado
+// (payload sin cuenta_id, ver FASE15 Parte 12), detecta y fuerza refresh.
+try { if (window.FTSVersionCheck) FTSVersionCheck.run({ versionUrl: 'version.json', localBuild: KIOSK_BUILD, tag: 'kiosk' }); } catch (e) {}
 
 const K = {
   empleados: [],
