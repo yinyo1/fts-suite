@@ -27,6 +27,7 @@
   function celdaAtribucion(row){
     if(row.so_id) return esc(row.so_nombre || ('Proy ' + row.so_id));
     if(row.cuenta_id) return '<span class="ch-bolsa">🗂️ ' + esc(row.cuenta_nombre || ('Bolsa ' + row.cuenta_id)) + '</span>';
+    if(row.abierta) return '<span style="color:#999">— (en curso)</span>';   // PR-6: abierta sin atribución aún ≠ hueco
     return '<span class="ch-sinso">⚠ Sin atribución</span>';
   }
   // Etiqueta de la atribución ACTUAL (para prev_label del chatter).
@@ -112,7 +113,7 @@
 
   function estadoBadge(row){
     if(row.en_disputa) return '<span class="ch-badge b-disp">⚠ En disputa</span>';
-    if(row.abierta)    return '<span class="ch-badge b-open">⏳ Abierta</span>';
+    if(row.abierta)    return '<span class="ch-badge b-open">⏳ Sin completar</span>';
     if(row.confirmado) return '<span class="ch-badge b-ok">✓ Confirmada</span>';
     return '<span class="ch-badge b-pend">Pendiente</span>';
   }
@@ -195,7 +196,7 @@
           '<td class="cell-estado">' + estadoBadge(row) + '</td>' +
           '<td><div class="ch-actions">' +
             '<button class="ch-btn ch-btn-sm ch-btn-ok" data-act="confirm" data-att="' + row.attendance_id + '"' + confirmarDisabled + '>✔ Confirmar</button>' +
-            '<button class="ch-btn ch-btn-sm ch-btn-edit" data-act="editso" data-att="' + row.attendance_id + '">✎ Corregir</button>' +
+            '<button class="ch-btn ch-btn-sm ch-btn-edit" data-act="editso" data-att="' + row.attendance_id + '"' + (row.abierta ? ' disabled title="Jornada abierta — sin acciones hasta que cierre"' : '') + '>✎ Corregir</button>' +
           '</div></td>' +
         '</tr>';
     }).join('');
