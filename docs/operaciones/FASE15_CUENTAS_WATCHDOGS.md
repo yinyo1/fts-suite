@@ -566,6 +566,45 @@ Target: 18/15(proyectos)→**plan 1**; 21/12/17/15(holding 823)→**plan 2**; to
 
 ---
 
+## PARTE 12 — Reincidencia de cache del navegador en admin (evidencia execution 33625) — ✅ CAUSA RAÍZ + PR-7
+
+> El panel PR-6 sacó a la luz a **Eduardo Garza (153), Erick Belmont (149) y Gerardo Lozano (59)** en "Sin atribución" en días **POST-Receta B** (checkouts del 9-jul, deploy PR-2 ya vivo). Investigación cerrada: **no es bug de backend ni de datos — es cache del bundle viejo en el dispositivo.**
+
+### 12.1 — Todo verde salvo el frontend servido
+- Los 3 admin tienen `x_studio_cuenta_indirecta_default = 513` ("SO8439 Administración") en Odoo. ✓
+- El webhook `kiosk/empleados` (`2UGWLjNwYRGtXq5y`) **sí** devuelve el campo (agregado 9-jul **03:19 CST**). ✓
+- Kiosk PR-2 (`KIOSK_BUILD 20260709-kiosk-confirm-bolsa`, PR #69) desplegó **03:24 CST**. Los checkouts del 9-jul (~17:40 CST) son POST-deploy por ~14 h. ✓
+
+### 12.2 — Prueba definitiva (execution n8n 33625)
+Checkout de Eduardo (att **14239**, 9-jul 17:42 CST). Body del webhook `kiosk/checkin`:
+```
+{ empleado_id:153, so_id:null, so_nombre:"", tipo:"salida", ... }   ← NO existe la llave cuenta_id
+```
+El build nuevo (`kiosk.js:1106`) **siempre** manda `cuenta_id` (aunque sea `null`). Que la llave esté **ausente por completo** ⇒ ese dispositivo corrió el **bundle pre-PR-2 cacheado**. `Code - Preparar parámetros` la default a `null` → nunca escribió bolsa. **Contraprueba:** Gibrán (att **14237**, mismo 9-jul) **sí** escribió bolsa 3096 vía kiosk → su dispositivo ya tenía el build nuevo. Falla por-dispositivo, no sistémica.
+
+### 12.3 — No es "service worker", es HTTP cache
+**No hay ningún service worker registrado** en el repo (el kiosk carga `js/*.js` con `<script src>` **sin cache-bust**). La "cache PWA" es en realidad el **HTTP cache del navegador móvil** sobre `kiosk.js`. GitHub Pages sirve los assets con `Cache-Control: max-age=600` (10 min) ⇒ un simple reload **después** de 10 min ya trae el build nuevo. Que el hueco dure **días** implica que **el dispositivo/pestaña nunca se recarga** (kiosco de oficina con la pestaña abierta, o el navegador móvil sirviendo de su cache sin re-navegar). Clase = **Hallazgo #14** (asset externo/stale que pasa desapercibido), pero aquí el asset stale es **el propio bundle de la app**.
+
+### 12.4 — Impacto y backlog corregible (✎ → 513)
+Mientras el dispositivo no refresque, **reincide**: cada checkout sin proyecto cae "sin atribución". Corregible 1-clic en el panel. Attendances afectados (cerrados, sin atribución, rango 25-jun→10-jul):
+- **Eduardo 153:** 14239 (9-jul), 14205 (8-jul), 14175 (7-jul).
+- **Erick 149:** 14235 (9-jul), 14204 (8-jul), 14176 (7-jul).
+- **Gerardo 59:** 14236 (9-jul). *(14209 del 8-jul ya quedó en 513 por corrección manual previa.)*
+
+*(No incluir el 14093 de Eduardo del 2-jul: está `en_disputa` por olvido_checkout, no "sin atribución".)*
+
+### 12.5 — Fix hacia adelante: PR-7 version-check (kiosk + confirmar-horas)
+Tercera mordida de la cache esta semana y hoy **genera huecos de datos activamente** ⇒ se asciende a PR-7.
+- **Mecánica:** cada módulo publica un `version.json` (`{ "build": "<mismo string que KIOSK_BUILD/CH_BUILD>" }`). Un módulo compartido `shared/version-check.js` lo consulta con `cache:'no-store'` **al cargar** y **al volver el foco** (`visibilitychange`/`focus` — cubre pestañas de larga vida). Si `remote.build ≠ localBuild` ⇒ limpieza defensiva (unregister de SW + `caches.delete`, por si algún día se agrega un SW) + `location.replace(path + '?v=' + build)` (busta el documento).
+- **Anti-loop:** guard en `sessionStorage` con **cooldown de 11 min** (> `max-age` 600s de GH Pages) por cada `remote.build` — si el primer reload cayó dentro de la ventana de 10 min y aún trajo JS viejo, reintenta pasada la ventana; nunca en bucle apretado.
+- **Alcance:** kiosk **y** panel `confirmar-horas` (ambos con build manual en pantalla).
+- **Convención de deploy (documentada en el PR):** al bumpear `KIOSK_BUILD`/`CH_BUILD`, bumpear también `version.json.build` al mismo string. Es la misma disciplina de "bump de build obligatorio" (CLAUDE.md §8), extendida un archivo.
+
+### 12.6 — Lección
+Todo módulo con **build constante manual** (indicador en pantalla) debe **enviar su `version.json` + auto-version-check**. `max-age=600` de GH Pages hace que el stale se auto-cure en ≤10 min **solo si la página se recarga** — las pestañas de kiosco de larga vida **nunca** se recargan, de ahí el stale de días. El version-check convierte "el usuario tiene que saber recargar en incógnito" (Hallazgo #14/#15) en recuperación automática.
+
+---
+
 ## Límites / método
 - Números Odoo vía MCP read-only (UID 2). Depto→empleados activos y cuentas plan 2 medidos hoy 2026-07-08.
 - No se tocó Odoo, ni workflows productivos, ni frontend. Único artefacto: one-shot **inactivo** `97Qj9v46ILOWV9Lf`.
