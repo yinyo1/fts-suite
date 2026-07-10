@@ -605,6 +605,36 @@ Todo módulo con **build constante manual** (indicador en pantalla) debe **envia
 
 ---
 
+## ESTADO 2026-07-10 — Watchdog canary + fixes (checkpoint)
+
+**Canary ejecutado** (`RBxoREDTfehELmyr`, execution 34377, recipients los 3 → Esteban vía PR #77). Llegaron **2 correos** (subject `W1:0 W2:0 W3:120 W4:35`). ✅ Guards de vacío OK (sin correo de Felipe porque W2=0), Graph **202**, HTML de tablas renderiza. El canary cachó **4 bugs**:
+
+| Bug | Causa REAL (verificada en la execution) | Estado |
+|---|---|---|
+| **1 · dup ×30** | Nodos n8n corren 1× por item de entrada; `att-ayer` emitía 30 → `Odoo - correcciones` corría 30× (**out=1230** = 41 únicas ×30) | ✅ **FIXED** — nodo nuevo **`Code - 1 item`** colapsa a 1 item antes de `correcciones`; att-ayer sigue accesible vía `$('Odoo - att ayer').all()` |
+| **2 · "ventana de fecha"** | **NO era bug de W3** — verificado: las 4 en ventana son TODAS 9-jul (14206 ×3 + 14209 ×1); las 37 del 10-jul quedaban fuera. Lo "10-jul" era **W4 (ventana 30 días por diseño, `w4_ventana_dias`)** + inflado por bug 1 | ✅ **CLARIFICADO** — W3 sin cambios (ya filtraba bien); W4 header ahora dice "últimos N días" + subject con `rango_label` |
+| **3 · cross-depto=SI en todo** | **Lookup NO roto** — `deptDe` devolvía depts correctos (14206→Comercial, 14209→Admin). "SI en todo" = dup ×30 + ambas personas de W3 eran no-Ops | ✅ **FIXED** — columna cambiada de binario "Cross-depto SI" a **nombre de depto** (informativo) |
+| **4 · W4 envenenado** | Consecuencia de bug 1 (1 corr real ×30 → num_corr=30, umbral ≥2 dispara para todos) | ✅ **FIXED con bug 1** — W4 real post-dedup = **4** (14206:3, 14227:2, 14237:3, 14238:2) |
+
+**Ajustes de diseño:**
+- **A · ventana lunes:** `Code - Fechas` detecta día CST; **lunes → `backDays=3`** = barre **Vie 00:00 → Dom 23:59 CST** (W1/W2/W3). Martes-Viernes = "ayer". Subject muestra `rango_label`. ✅ implementado.
+- **C · correo Ana Laura = W3+W4:** confirmado **es diseño** (Esteban combinado W1-W4 + Ana Laura copia de su slice). ✅ sin cambio.
+
+**Workflow:** `update_full` aplicado + `n8n_validate_workflow` = **`valid:true`, 0 errores**, 11 nodos, `active:false`, `customResource` intacto, rewire `att-ayer → Code - 1 item → correcciones` confirmado por read-back.
+
+**Secuencia PENDIENTE (misma sesión):**
+1. **RE-CANARY** — Execute manual de `RBxoREDTfehELmyr` (recipients siguen → Esteban, config #77 vigente). Esperado limpio: **W3=4** (con depto, no 120), **W4=4** (# corr real 2-3, no 30).
+2. **Validación** de conteos por Esteban.
+3. **Revert recipients** — `felipe → felipe@fts.mx` (✅ verificado activo en M365: envió correos 9 y 10-jul) + `ana_laura → ana.acevedo@fts.mx`, quitar `_canary`. Push a main (raw en vivo).
+4. **Activación** — toggle Active (TZ ya = UTC; cron `0 15 * * 1-5` = 9 AM CST). No se activa con bugs vivos.
+
+**Pendiente adicional:**
+- **Odoo work_email de Felipe (112) = `felipe.perez0305@gmail.com`** (inconsistente con `felipe@fts.mx`). Recomendado actualizarlo en Odoo para consistencia con snapshots de supervisor en incidencias. ⚠️ MCP read-only → lo hace Esteban.
+- **Re-cuantificar catch-all post-barrido de Felipe:** hoy 10-jul = **470** (−12 vs 482 inicial); las correcciones masivas de Felipe fueron sobre todo **técnicos de OPS (dept 3, fuera del universo oficina)**. One-shots **RH+Legal ≈ 90 intactos** + comercial-Magnekon ≈ 200. Re-medir de nuevo si Felipe sigue corrigiendo oficina, ANTES de armar los one-shots.
+- **W4 sin idempotencia:** ventana 30 días re-reportará los mismos res_ids a diario hasta caducar; follow-up opcional = `staticData` (previsto en Parte 11.4).
+
+---
+
 ## Límites / método
 - Números Odoo vía MCP read-only (UID 2). Depto→empleados activos y cuentas plan 2 medidos hoy 2026-07-08.
 - No se tocó Odoo, ni workflows productivos, ni frontend. Único artefacto: one-shot **inactivo** `97Qj9v46ILOWV9Lf`.
