@@ -3,9 +3,10 @@
   "go_live": "2026-07-08",
   "dept_ops": 3,
   "recipients": {
+    "_canary": "2026-07-10: felipe y ana_laura apuntados a Esteban para prueba de humo. REVERTIR a felipe.perez0305@gmail.com / ana.acevedo@fts.mx antes de activar en produccion.",
     "esteban": "estebandelacruz@fts.mx",
-    "felipe": "felipe.perez0305@gmail.com",
-    "ana_laura": "ana.acevedo@fts.mx"
+    "felipe": "estebandelacruz@fts.mx",
+    "ana_laura": "estebandelacruz@fts.mx"
   },
   "w1_activo": true,
   "w2_activo": true,
