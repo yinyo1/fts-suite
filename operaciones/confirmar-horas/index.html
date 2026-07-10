@@ -5,9 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Confirmar Horas — FTS Suite</title>
 <script>
-  (function(){ window.CH_BUILD = '20260710-ch-panel-completo'; })();
+  (function(){ window.CH_BUILD = '20260710-ch-versioncheck'; })();
 </script>
 <script src="../../shared/auth-suite.js"></script>
+<script src="../../shared/version-check.js"></script>
+<script>
+  // PR-7: auto version-check — detecta bundle viejo cacheado y fuerza refresh (ver FASE15 Parte 12).
+  try { if (window.FTSVersionCheck) FTSVersionCheck.run({ versionUrl: 'version.json', localBuild: window.CH_BUILD, tag: 'ch' }); } catch (e) {}
+</script>
 <style>
   :root{ --azul:#1a4480; --azul2:#0C447C; --ok:#1a7a3a; --warn:#BA7517; --err:#b3261e; --bg:#f4f6f9; }
   *{ box-sizing:border-box; }
