@@ -625,8 +625,11 @@ Todo módulo con **build constante manual** (indicador en pantalla) debe **envia
 **Secuencia PENDIENTE (misma sesión):**
 1. **RE-CANARY** — Execute manual de `RBxoREDTfehELmyr` (recipients siguen → Esteban, config #77 vigente). Esperado limpio: **W3=4** (con depto, no 120), **W4=4** (# corr real 2-3, no 30).
 2. **Validación** de conteos por Esteban.
-3. **Revert recipients** — `felipe → felipe@fts.mx` (✅ verificado activo en M365: envió correos 9 y 10-jul) + `ana_laura → ana.acevedo@fts.mx`, quitar `_canary`. Push a main (raw en vivo).
-4. **Activación** — toggle Active (TZ ya = UTC; cron `0 15 * * 1-5` = 9 AM CST). No se activa con bugs vivos.
+3. **Revert recipients (DONE 2026-07-10)** — `_canary` quitado. **Matriz final de destinatarios** (config `watchdogs_mo.json`, leída en vivo de raw main):
+   - **Combinado W1-W4** → `estebandelacruz@fts.mx` (`R.esteban`)
+   - **Slice W2 (Felipe)** → `felipe@fts.mx` (`R.felipe`) — ✅ verificado activo en M365 (envió correos 9 y 10-jul)
+   - **Slice W3+W4** → **`ana.acevedo@fts.mx` + `magaly@fts.mx`** (`R.ana_laura` + `R.magaly`) — **2 destinatarias**, Magaly agregada por decisión de Esteban (✅ magaly@fts.mx activa en M365). Requirió 1 línea en `Code - MAIN`: `graph([R.ana_laura, R.magaly], ...)` + key `magaly` en la config.
+4. **Activación (pendiente Esteban)** — toggle Active (TZ ya = UTC; cron `0 15 * * 1-5` = 9 AM CST).
 
 **Pendiente adicional:**
 - **Odoo work_email de Felipe (112) = `felipe.perez0305@gmail.com`** (inconsistente con `felipe@fts.mx`). Recomendado actualizarlo en Odoo para consistencia con snapshots de supervisor en incidencias. ⚠️ MCP read-only → lo hace Esteban.
