@@ -633,6 +633,14 @@ Todo módulo con **build constante manual** (indicador en pantalla) debe **envia
 - **Re-cuantificar catch-all post-barrido de Felipe:** hoy 10-jul = **470** (−12 vs 482 inicial); las correcciones masivas de Felipe fueron sobre todo **técnicos de OPS (dept 3, fuera del universo oficina)**. One-shots **RH+Legal ≈ 90 intactos** + comercial-Magnekon ≈ 200. Re-medir de nuevo si Felipe sigue corrigiendo oficina, ANTES de armar los one-shots.
 - **W4 sin idempotencia:** ventana 30 días re-reportará los mismos res_ids a diario hasta caducar; follow-up opcional = `staticData` (previsto en Parte 11.4).
 
+### Candado (b) + acoplamiento panel↔watchdog + convención de writes de sistema (2026-07-10)
+
+**Aplicado:** el nodo `Odoo - correcciones` del watchdog filtra **`body like 'panel Confirmar Horas'`** (ya NO `'Correccion de atribucion'`). Verificado en workflow `RBxoREDTfehELmyr` (versionId `12d456fc`). Motivo raíz: **TODAS** las notas de chatter tienen `author_id = 3` (Esteban) sin importar quién corrigió — `corregir-bolsa` fija el autor (regla §9/§18); el "felipe perez"/"FTS Master" vive solo en el **texto** del body, no en el autor. ⇒ el `author_id` NO sirve para distinguir humano vs sistema; la única marca fiable es el texto `(panel Confirmar Horas)` que solo llevan las correcciones del panel.
+
+1. **Convención OBLIGATORIA para writes masivos de sistema (one-shots, backfills, scripts):** su nota de chatter DEBE usar **texto propio**, NUNCA `Correccion de atribucion ... (panel Confirmar Horas)`. Ej.: `"Reatribucion masiva one-shot (barrido RH+Legal) por sistema: de X a Y"`. Así W3/W4 los ignoran automáticamente — auditables en el chatter, invisibles para el watchdog. Un one-shot que copiara el texto del panel inyectaría N **falsos positivos** a W3/W4 (ej. barrido RH+Legal de 90 → 90 falsos positivos). El `author_id=3` no los frena porque el panel también escribe con autor 3.
+
+2. **⚠️ Acoplamiento panel↔watchdog (invariante frágil, ceguera silenciosa):** el filtro del watchdog depende del **texto literal `panel Confirmar Horas`** que `corregir-bolsa` (`O61Abp4s26yYpFEq`) escribe al final del body. **Si se cambia ese texto en el panel/workflow, hay que actualizar el filtro del watchdog en el MISMO cambio**, o W3/W4 se quedan en **0 sin lanzar error** (dejan de ver correcciones y nadie se entera). Par acoplado a vigilar juntos: `corregir-bolsa` = **escritor** del marcador `(panel Confirmar Horas)` ↔ `ops/watchdog-mo` nodo `Odoo - correcciones` = **lector** del marcador. Cualquier futuro escritor de correcciones "humanas" que quiera aparecer en W3/W4 debe incluir el mismo marcador.
+
 ---
 
 ## Límites / método
