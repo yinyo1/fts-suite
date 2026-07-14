@@ -5,6 +5,11 @@
 > **Fuentes:** `CLAUDE.md`, `docs/finanzas/FRENTE_A_PLAN.md`, `docs/PLAN_NOMINA_FTS_SUITE.md`.
 > **NO propone implementación** — solo diagnóstico + decisiones a tomar.
 
+> ⚠️ **CORRECCIONES POST-INCIDENTE 2026-07-13** (ver [`docs/INCIDENTES/2026-07-13_odoo_distribution_model_crash.md`](../INCIDENTES/2026-07-13_odoo_distribution_model_crash.md) §9):
+> 1. **Neutralización del double-count MO = `unlink` del distribution model, NUNCA vaciarlo.** Un model vacío matchea todo y crashea el onchange de PO/SO (fue el P1 del 13-jul, id 53). Cutover: unlink **#47 (BBVA Nomina 102.01.00008) + #48 (2023.34) + #9 (101000)**, los 3 inyectan 1177.
+> 2. **⚠️ Reconciliar:** este §4 atribuye la fuga a **#48 (GL 2023.34)**; el Audit C del 2026-07-12 encontró **#48 dormido** (no existe `account.account` code `2023.34*`) y **#47 (BBVA Nomina) activo**. Unlinkear los 3 lo resuelve igual; verificar cuál está vivo antes del cutover.
+> 3. **Invariante dura:** jamás guardar distribution model sin `analytic_distribution` ni applicability sin plan.
+
 ---
 
 ## 0. Resumen ejecutivo (10 líneas)
