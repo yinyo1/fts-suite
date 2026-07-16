@@ -1,0 +1,30 @@
+{
+  "_meta": "Config de comercial/watchdog-enviadas. Se lee de GitHub raw main EN VIVO: editar + push a main, sin re-importar ni re-activar el workflow. Mismo patron que shared/operaciones/watchdogs_mo.json.",
+  "_doc": "comercial/baseline.md §5 + comercial/SUPUESTOS.md §T2",
+
+  "activo": true,
+  "canary": true,
+  "_canary_nota": "canary=true => el digest va SOLO a recipients.esteban. Poner en false y llenar recipients.equipo[] es la decision manual de rollout al equipo. Ver CHECKLIST-MANUAL.md.",
+
+  "recipients": {
+    "esteban": "estebandelacruz@fts.mx",
+    "equipo": []
+  },
+
+  "companies": [1, 6],
+
+  "umbral_amarillo_dias": 4,
+  "umbral_rojo_dias": 6,
+
+  "ventana_dias": 365,
+  "_ventana_nota": "Filtra por create_date. SIN este filtro el universo es de 1,131 ordenes enviadas historicas, todas rojas (baseline §5). 365 lo acota a ~122. Subir con cuidado.",
+
+  "top_n_por_vendedor": 15,
+  "_top_n_nota": "Tope de filas por bucket en el correo. El resto se reporta como '+N mas' con su monto agregado; NUNCA se ocultan en silencio. El dia 1 hay 122 rojas: sin tope el correo es ilegible y se ignora.",
+
+  "monto_minimo": 1000,
+  "_monto_minimo_nota": "Filtra ruido de portal web (ordenes de $0/$1.16/$44 de Public user, baseline RIESGO-5). Poner en 0 para no filtrar nada.",
+
+  "fx_usd_mxn": 17.35,
+  "_fx_nota": "La empresa es la autoridad de moneda (company 1=MXN, company 6=USD). currency_id NO es confiable: baseline RIESGO-1."
+}
