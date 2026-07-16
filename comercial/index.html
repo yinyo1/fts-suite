@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>FTS Suite · Comercial</title>
+<link rel="stylesheet" href="../shared/fts-styles.css" />
+<style>
+  /* Mobile-first: se usa desde el celular en planta. Nada de frameworks. */
+  body{background:var(--dark)}
+  .wrap{max-width:520px;margin:0 auto;padding:0 14px 40px}
+  .top{display:flex;align-items:center;gap:10px;padding:16px 0 12px;border-bottom:1px solid var(--border);margin-bottom:16px}
+  .top h1{font-size:19px;font-weight:700;flex:1}
+  .top .back{color:var(--muted2);text-decoration:none;font-size:22px;line-height:1}
+  .top .out{background:none;border:1px solid var(--border);border-radius:8px;color:var(--muted2);padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit}
+
+  .tabs{display:flex;gap:6px;margin-bottom:16px}
+  .tab{flex:1;padding:11px;border:1px solid var(--border);background:var(--d2);border-radius:10px;font-size:14px;font-weight:600;color:var(--muted2);cursor:pointer;font-family:inherit}
+  .tab.on{background:var(--o);border-color:var(--o);color:#fff}
+
+  .fld{margin-bottom:14px}
+  .fld label{display:block;font-size:13px;font-weight:600;margin-bottom:5px;color:var(--muted2)}
+  .fld input,.fld textarea,.fld select{width:100%;padding:13px;border:1px solid var(--border);border-radius:10px;background:var(--d2);
+    color:var(--text);font-family:inherit;font-size:16px} /* 16px evita el zoom automatico de iOS */
+  .fld textarea{min-height:110px;resize:vertical}
+  .fld input:focus,.fld textarea:focus,.fld select:focus{outline:none;border-color:var(--o)}
+
+  .big{width:100%;padding:17px;background:var(--o);color:#fff;border:none;border-radius:12px;font-size:17px;font-weight:700;
+    cursor:pointer;font-family:inherit;margin-top:6px}
+  .big:active{transform:scale(.985)}
+  .big:disabled{opacity:.5;cursor:default}
+
+  .msg{padding:12px;border-radius:10px;font-size:14px;margin-bottom:14px;display:none}
+  .msg.err{background:#fde7e9;border:1px solid var(--red);color:#8a1c20;display:block}
+  .msg.ok{background:#dff6dd;border:1px solid var(--green);color:#0b5a0b;display:block}
+  .msg.warn{background:#fff4ce;border:1px solid #d8a601;color:#6b5200;display:block}
+
+  .card{background:var(--d2);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:9px}
+  .card .r1{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+  .card .nm{font-weight:700;font-size:14px}
+  .card .cl{color:var(--muted2);font-size:13px;margin-top:2px}
+  .card .mt{font-weight:700;font-size:14px;white-space:nowrap}
+  .card .mu{font-size:12px;color:var(--muted);margin-top:6px}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle}
+  .dot.verde{background:var(--green)} .dot.amarillo{background:#d8a601} .dot.rojo{background:var(--red)}
+
+  .sec{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin:20px 0 9px}
+  .empty{color:var(--muted);font-size:14px;padding:18px;text-align:center;border:1px dashed var(--border);border-radius:10px}
+  .hidden{display:none !important}
+  .lgn{max-width:380px;margin:60px auto;padding:0 16px}
+  .lgn h2{font-size:21px;margin-bottom:5px}
+  .lgn p.sub{color:var(--muted);font-size:13px;margin-bottom:20px}
+  .foot{font-size:11px;color:var(--muted);margin-top:20px;line-height:1.6}
+</style>
+</head>
+<body>
+
+<!-- ═══ LOGIN ═══ -->
+<div id="login" class="lgn">
+  <h2>Comercial</h2>
+  <p class="sub">Captura de oportunidades y seguimiento de pipeline.</p>
+  <div id="loginMsg" class="msg"></div>
+  <form id="loginForm" autocomplete="off">
+    <div class="fld">
+      <label for="u">Usuario</label>
+      <input type="text" id="u" value="finanzas" autocomplete="username" />
+    </div>
+    <div class="fld">
+      <label for="p">Contraseña</label>
+      <input type="password" id="p" autocomplete="current-password" />
+    </div>
+    <button class="big" id="loginBtn" type="submit">Entrar</button>
+  </form>
+  <p class="foot">Usa las mismas credenciales del módulo Finanzas.</p>
+</div>
+
+<!-- ═══ APP ═══ -->
+<div id="app" class="wrap hidden">
+  <div class="top">
+    <a href="../index.html" class="back" aria-label="Volver">&#8249;</a>
+    <h1>Comercial</h1>
+    <button class="out" id="logoutBtn">Salir</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" id="tabCap">Captura</button>
+    <button class="tab" id="tabPipe">Mi Pipeline</button>
+  </div>
+
+  <!-- ── Captura ── -->
+  <section id="vCap">
+    <div id="capMsg" class="msg"></div>
+    <form id="capForm" autocomplete="off">
+      <div class="fld">
+        <label for="cliente">Cliente</label>
+        <input type="text" id="cliente" placeholder="Nombre del cliente" />
+      </div>
+      <div class="fld">
+        <label for="descripcion">Descripción</label>
+        <textarea id="descripcion" placeholder="¿Qué necesita? Falla, alcance, contexto…"></textarea>
+      </div>
+      <div class="fld">
+        <label for="rango">Rango de monto</label>
+        <select id="rango">
+          <option value="">Selecciona…</option>
+          <option value="&lt;200K">&lt; 200K</option>
+          <option value="200K-1M">200K – 1M</option>
+          <option value="1M-3M">1M – 3M</option>
+          <option value="3M-5M">3M – 5M</option>
+          <option value="&gt;5M">&gt; 5M</option>
+        </select>
+      </div>
+      <div class="fld">
+        <label for="origen">Origen</label>
+        <select id="origen">
+          <option value="">Selecciona…</option>
+          <option value="referido">Referido</option>
+          <option value="cliente_existente">Cliente existente</option>
+          <option value="marketing">Marketing</option>
+          <option value="portal">Portal</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
+      <button class="big" id="capBtn" type="submit">Crear oportunidad</button>
+    </form>
+  </section>
+
+  <!-- ── Mi Pipeline ── -->
+  <section id="vPipe" class="hidden">
+    <div id="pipeMsg" class="msg"></div>
+    <button class="big" id="refreshBtn" style="background:var(--d3);color:var(--text);border:1px solid var(--border);font-size:15px;padding:12px">Refrescar</button>
+    <div id="pipeBody"></div>
+  </section>
+</div>
+
+<script src="../finanzas/js/auth-fin.js"></script>
+<script src="js/comercial-client.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  function show(el, cls, txt) { el.className = 'msg ' + cls; el.textContent = txt; }
+  function hide(el) { el.className = 'msg'; el.textContent = ''; }
+  function money(n) { return (n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 }); }
+  function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+
+  // ── Sesión ──
+  function gate() {
+    var ok = window.FinAuth && window.FinAuth.isValid();
+    $('login').classList.toggle('hidden', !!ok);
+    $('app').classList.toggle('hidden', !ok);
+    if (ok) avisoHmac();
+  }
+  // Aviso temprano: sin clave de dispositivo la captura NO va a funcionar. Mejor decirlo
+  // al entrar que dejar que el usuario escriba todo y falle al enviar.
+  function avisoHmac() {
+    if (!window.ComercialClient.tieneHmac()) {
+      show($('capMsg'), 'warn', 'Este dispositivo no está aprovisionado para capturar. Pide a Esteban la clave del dispositivo (ver comercial/CHECKLIST-MANUAL.md). Mi Pipeline sí funciona.');
+    }
+  }
+
+  $('loginForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    hide($('loginMsg'));
+    $('loginBtn').disabled = true;
+    $('loginBtn').textContent = 'Entrando…';
+    try {
+      var r = await window.FinAuth.login($('u').value, $('p').value);
+      if (!r.ok) show($('loginMsg'), 'err', r.msg || 'No se pudo iniciar sesión.');
+      else { $('p').value = ''; gate(); }
+    } catch (err) {
+      show($('loginMsg'), 'err', (err && err.msg) || 'Error inesperado.');
+    } finally {
+      $('loginBtn').disabled = false;
+      $('loginBtn').textContent = 'Entrar';
+    }
+  });
+
+  $('logoutBtn').addEventListener('click', function () { window.FinAuth.logout(); gate(); });
+
+  // ── Tabs ──
+  function tab(cap) {
+    $('tabCap').classList.toggle('on', cap);
+    $('tabPipe').classList.toggle('on', !cap);
+    $('vCap').classList.toggle('hidden', !cap);
+    $('vPipe').classList.toggle('hidden', cap);
+    if (!cap && !$('pipeBody').dataset.loaded) cargarPipeline();
+  }
+  $('tabCap').addEventListener('click', function () { tab(true); });
+  $('tabPipe').addEventListener('click', function () { tab(false); });
+
+  // ── Captura ──
+  $('capForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    hide($('capMsg'));
+    var p = {
+      cliente: $('cliente').value.trim(),
+      descripcion: $('descripcion').value.trim(),
+      rango: $('rango').value,
+      origen: $('origen').value
+    };
+    if (!p.cliente)     return show($('capMsg'), 'err', 'Falta el cliente.');
+    if (!p.descripcion) return show($('capMsg'), 'err', 'Falta la descripción.');
+    if (!p.rango)       return show($('capMsg'), 'err', 'Selecciona un rango.');
+    if (!p.origen)      return show($('capMsg'), 'err', 'Selecciona un origen.');
+
+    $('capBtn').disabled = true;
+    $('capBtn').textContent = 'Creando…';
+    try {
+      var r = await window.ComercialClient.capturar(p);
+      var extra = r.fallback_owner ? ' Quedó asignada a ' + esc(r.owner) + ' por defecto: reasígnala en Odoo al vendedor real.' : ' Asignada a ' + esc(r.owner) + '.';
+      show($('capMsg'), 'ok', '✅ Oportunidad creada · lead ' + r.lead_id + '.' + extra);
+      $('capForm').reset();
+      $('pipeBody').dataset.loaded = '';   // el pipeline quedó viejo: forzar recarga
+    } catch (err) {
+      if (err && err.code === 'SESSION_EXPIRED') { gate(); return; }
+      show($('capMsg'), 'err', (err && err.msg) || 'No se pudo crear la oportunidad.');
+    } finally {
+      $('capBtn').disabled = false;
+      $('capBtn').textContent = 'Crear oportunidad';
+    }
+  });
+
+  // ── Pipeline ──
+  // Los umbrales 4/6 son los MISMOS que comercial/watchdog-enviadas: si el correo dice
+  // rojo, la pantalla debe decir rojo. El backend ya manda `semaforo` calculado con esa
+  // regla; esto es solo el fallback si faltara.
+  var AM = 4, RO = 6;
+  function semaforo(d) { if (d === null || d === undefined || d >= RO) return 'rojo'; if (d >= AM) return 'amarillo'; return 'verde'; }
+
+  async function cargarPipeline() {
+    hide($('pipeMsg'));
+    $('pipeBody').innerHTML = '<p class="empty">Cargando…</p>';
+    try {
+      var d = await window.ComercialClient.pipeline();
+      render(d);
+      $('pipeBody').dataset.loaded = '1';
+    } catch (err) {
+      if (err && err.code === 'SESSION_EXPIRED') { gate(); return; }
+      $('pipeBody').innerHTML = '';
+      show($('pipeMsg'), 'err', (err && err.msg) || 'No se pudo cargar el pipeline.');
+    }
+  }
+  $('refreshBtn').addEventListener('click', cargarPipeline);
+
+  function render(d) {
+    var h = '';
+    if (d._nota) h += '<div class="msg warn" style="display:block">' + esc(d._nota) + '</div>';
+    h += '<div class="msg ok" style="display:block">' + esc(d.owner) + (d.es_direccion ? ' · dirección (ve todo)' : '') +
+         ' · ' + d.resumen.oportunidades + ' oportunidades · ' + d.resumen.cotizaciones + ' cotizaciones (' +
+         d.resumen.rojas + ' 🔴 / ' + d.resumen.amarillas + ' 🟡 / ' + d.resumen.verdes + ' 🟢)</div>';
+
+    h += '<div class="sec">Oportunidades abiertas</div>';
+    if (!d.oportunidades.length) h += '<p class="empty">Sin oportunidades abiertas.</p>';
+    else d.oportunidades.forEach(function (o) {
+      h += '<div class="card"><div class="r1"><div><div class="nm">' + esc(o.name) + '</div>' +
+           '<div class="cl">' + esc(o.partner_name || '—') + '</div></div>' +
+           '<div class="mt">$' + money(o.expected_revenue) + '</div></div>' +
+           '<div class="mu">' + esc(o.stage || '') + (o.create_date ? ' · ' + esc(String(o.create_date).slice(0, 10)) : '') + '</div></div>';
+    });
+
+    h += '<div class="sec">Cotizaciones enviadas</div>';
+    if (!d.cotizaciones.length) h += '<p class="empty">Sin cotizaciones enviadas.</p>';
+    else d.cotizaciones.forEach(function (c) {
+      var s = c.semaforo || semaforo(c.dias_sin_movimiento);
+      h += '<div class="card"><div class="r1"><div><div class="nm"><span class="dot ' + s + '"></span>' + esc(c.name) + '</div>' +
+           '<div class="cl">' + esc(c.partner || '—') + '</div></div>' +
+           '<div class="mt">$' + money(c.amount_total) + ' <span style="font-size:11px;color:var(--muted)">' + esc(c.moneda) + '</span></div></div>' +
+           '<div class="mu">' + (c.dias_sin_movimiento === null ? 'sin fecha de movimiento' : c.dias_sin_movimiento + ' días sin movimiento') + '</div></div>';
+    });
+    $('pipeBody').innerHTML = h;
+  }
+
+  gate();
+})();
+</script>
+</body>
+</html>
