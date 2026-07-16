@@ -40,18 +40,19 @@ console.log('▶ LIMPIEZA (0,0):', rest, rest2, '| IDs usados:', {bid,bl,al});
 Recomendado crearlo en **Studio** (Empleado → nuevo campo char "Código CONTPAQi", `required` al alta). Studio maneja el `ir.model.fields` + vistas correctamente. *(Vía RPC es frágil para campos Studio — usar Studio.)*
 
 ### B.2 — Poblar los códigos de los ya-existentes (27) — tras crear el campo
+> **Corrección 2026-07-16:** código **080 = Arturo Hernández (emp 143)**, que YA existe (nombre completo "Pedro Arturo Hernández Ramírez", misma persona). NO se crea empleado nuevo. Se agrega `143:'080'` al mapa → **27 códigos**.
 ```js
-const COD={25:'002',68:'003',6:'005',8:'006',55:'010',48:'011',63:'012',62:'013',57:'014',59:'016',75:'027',78:'028',79:'029',97:'036',101:'038',108:'044',121:'052',124:'056',127:'058',128:'059',131:'061',130:'062',138:'074',149:'081',153:'084',154:'085'};
+const COD={25:'002',68:'003',6:'005',8:'006',55:'010',48:'011',63:'012',62:'013',57:'014',59:'016',75:'027',78:'028',79:'029',97:'036',101:'038',108:'044',121:'052',124:'056',127:'058',128:'059',131:'061',130:'062',138:'074',143:'080',149:'081',153:'084',154:'085'};
 for(const [emp,cod] of Object.entries(COD)){ await rpc('hr.employee','write',[[+emp],{x_studio_codigo_contpaqi:cod}]); }
-console.log('▶ Poblados', Object.keys(COD).length, 'códigos');
+console.log('▶ Poblados', Object.keys(COD).length, 'códigos');  // 27
 ```
 
-### B.3 — Crear Pedro (080) + asimilados Juan (017) / Juana (018)
+### B.3 — Crear SÓLO los asimilados Juan (017) / Juana (018)
+> **Corrección 2026-07-16:** Pedro/Arturo (080) YA NO se crea (es el emp 143 existente, ver B.2). Sólo quedan los 2 asimilados.
 ```js
-const pedro=await rpc('hr.employee','create',[{name:'Pedro Arturo Hernández Ramírez', department_id:6, x_studio_codigo_contpaqi:'080', x_studio_cuenta_indirecta_default:608}]);
 const juan =await rpc('hr.employee','create',[{name:'Juan De La Cruz Maldonado (asimilado)', department_id:18, x_studio_codigo_contpaqi:'017', x_studio_cuenta_indirecta_default:513}]);
 const juana=await rpc('hr.employee','create',[{name:'Juana Camarillo Torrez (asimilado)', department_id:18, x_studio_codigo_contpaqi:'018', x_studio_cuenta_indirecta_default:513}]);
-console.log('▶ Creados:', {pedro, juan, juana});
+console.log('▶ Creados asimilados:', {juan, juana});
 ```
 ⚠️ El nombre de Juan colisiona con la **company_id 2** "JUAN DE LA CRUZ MALDONADO" — son modelos distintos (`hr.employee` vs `res.company`), no hay conflicto técnico, pero distínguelos en el nombre.
 
@@ -73,7 +74,14 @@ for(const [b,nm] of BOLSAS){
 *(También faltan las 6 líneas 1177 de proyecto de Auditoría C: 3071 sin budget, 3083/3087 sin 1177, 3038/3091/3094 placeholder −1 — se pueblan con los montos de cotización de Esteban.)*
 
 ### B.6 — Campo `x_studio_solo_bolsa` (bool) para la regla per-empleado
-Crear en Studio (Empleado, bool "Solo bolsa"). Marcar `true` en: Rissia(97), Pablo(108), Aldo(78), Arturo(143), Ana Laura(101), Magaly(63), Gerardo(59), Erick(149), Eduardo(153), Pedro(080), Juan/Juana. `false` (default) = respeta checkout (Ops, Felipe, Francisco, choferes/aux). El workflow V1 real leerá este campo en vez del mapa en memoria.
+> **Corrección 2026-07-16:** solo_bolsa FINAL = **sólo 3** (nunca cargan horas a proyecto). Todos los demás son **híbridos** (respetan checkout), incluidos Aldo, Ana Laura, Magaly, Gerardo, Erick, Eduardo, Luis Ángel, Francisco, Ricardo, Ramiro. Los 3 sí siguen checando en kiosko — el flag sólo afecta el dinero.
+
+Crear en Studio (Empleado, bool "Solo bolsa"). Marcar `true` en **sólo**: **Rissia (97)**, **Pablo (108)**, **Arturo (143)** → su bruto va 100% a la bolsa **608 VENTAS**. `false` (default) = respeta checkout (Ops, admin, legal, RH, choferes/aux — todos).
+```js
+for(const emp of [97,108,143]){ await rpc('hr.employee','write',[[emp],{x_studio_solo_bolsa:true}]); }
+console.log('▶ solo_bolsa=true en 97/108/143');
+```
+Los asimilados (017/018) NO necesitan el flag: van a 513 por la regla `asim` (columna sueldo asimilado > 0), no por solo_bolsa. El workflow V1 leerá este campo cuando exista y hará *fallback* al mapa en memoria mientras no exista (hook `x_studio_solo_bolsa` marcado en el MOTOR).
 
 ---
 
