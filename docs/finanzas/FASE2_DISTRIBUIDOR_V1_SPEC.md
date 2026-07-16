@@ -145,28 +145,30 @@ await rpc('account.analytic.distribution.model','unlink',[[47, 48, 9]]);
 **Archivo:** `SEM 28 NOMINAS DE FTS 2026.xlsx` (44 filas, 36 cols). Headers **fila 8**. Datos **filas 9-37** (29 empleados). Filas manuales **38 (CARLOS) + 39 (FELIPE)** = trío, valor en col 36 (NETO). Separador fila 40. **Total Gral fila 41.**
 **Columnas clave:** 1 `Código` · 2 `Empleado` (APELLIDO APELLIDO NOMBRE) · 9 `Vacaciones a tiempo` · 10 `Prima de vacaciones` · 12 `SUELDO ASIMILADO` · **14 `*TOTAL* *PERCEPCIONES*` = el BRUTO a distribuir** · 26 `Fondo de ahorro` (columna Z, capa futura) · 36 `*NETO*`.
 
-**Reglas refinadas (del cruce Excel↔Odoo):**
-- **Asimilado = col 12 > 0** → 100% bolsa **513**, sin horas ni empleado. (Juan De La Cruz `017` y Juana Camarillo `018` se detectan así; se crean como `hr.employee` igual, pero el tag col-12 los rutea aunque no chequen.)
-- **Vacaciones = cols 9/10 > 0** → tag (es el "tag de vacaciones" para V1; futuro módulo lo alimenta). Ops con vacaciones y sin horas → **bolsa del depto (3096)**.
-- **Override de departamento de OFICINA:** Comercial → **608** (instrucción Esteban: "1 sola cuenta"). Extendido (propuesto): RH→478, Legal→768, Admin→513, Dir→3095. **Solo Operaciones distribuye por horas** (proyecto | 3096). ⚠️ Edge: **Francisco Montalvo (comercial) hizo 4 días reales en Topo Chico** pero con el override va 100% a 608 — confirmar con Esteban.
-- **Trío:** monto = col 36 (NETO) de su fila manual, repartido por sus horas de kiosk. **Pendiente: umbral mínimo de horas** (Ricardo tuvo 0.01h en una semana previa → no debe anclar 100% por un checkout trivial).
-- **Miriam (emp 148):** **archivar `hr.employee` (active=False)**, el user 25 (`miriam@fts.mx`) queda. (Ya no es empleada.)
-- **Código sin empleado** (ej. `080` "HERNANDEZ RAMIREZ PEDRO" $9,446 no cruza) → **validación dura #1 ABORTA** el run completo.
+**Reglas refinadas (cruce Excel↔Odoo + decisiones Esteban 2026-07-16):**
+- **BRUTO, no neto:** se distribuye **col 14 `TOTAL PERCEPCIONES`** (bruto). El neto tiene rebajes (infonavit, préstamos) que reducirían falsamente el costo del proyecto; el bruto es el costo real de MO. *(Carga patronal del empleador = capa futura, ENCIMA del bruto.)*
+- **Asimilado = col 12 > 0** → 100% bolsa **513**, sin horas ni empleado (tag col-12). Juan De La Cruz `017` + Juana Camarillo `018`. Se crean como `hr.employee` igual (decisión), pero el tag los rutea aunque no chequen.
+- **Vacaciones = cols 9/10 > 0** → **bolsa de vacaciones = Administración 513** (NO proyecto: el gasto es administrativo, pagamos los días pero no cargan a obra). Sin horas + vacaciones → 100% a 513. *(Futuro: bolsa dedicada de vacaciones + split de vacación parcial como Luis Ángel.)*
+- **Flag por-empleado `solo_bolsa` (NO override por depto):** puro escritorio/ventas (**Rissia, Pablo**, Aldo, Arturo, Ana Laura, Magaly, Gerardo, Erick, Eduardo, y supervisores que no checan como **Pedro `080`**) → 100% a su bolsa, ignoran checkout. **Roles de campo** (Ops técnicos, **Felipe**, aux de compras, choferes, y comercial-de-campo como **Francisco Montalvo** — sí apoyó Topo Chico) → distribuyen por horas de checkout. Default = respeta checkout; el flag fuerza bolsa. Esteban fija el flag por empleado.
+- **Sin checar + sin vacaciones + no asimilado + no solo_bolsa → COLA DE EXCEPCIÓN** (ausencia real = "se rebaja"; o asignación manual si es **USA/Brasil sin checador** — ej. Ricardo esa semana en USA, Marcus en Brasil). Nunca se distribuye a ciegas.
+- **Trío:** monto = col 36 (NETO) de su fila manual (para vendors = su costo bruto, sin rebajes de nómina), repartido por sus horas de kiosk. **Pendiente: umbral mínimo de horas** (<2h → a default/excepción, no anclar 100% por un checkout trivial).
+- **Miriam (emp 148):** **archivar `hr.employee` (active=False)**, el user 25 (`miriam@fts.mx`) queda.
+- **Código sin empleado** → **validación dura #1 ABORTA** el run. `080` resuelto = **Pedro Arturo Hernández (supervisor comercial)**, mapear/crear + `solo_bolsa`→608.
 
-## Dry-run SEM 28 — VALIDADO (bruto real × peso real, 2026-07-16)
-Ventana VIE 03→JUE 09-jul (⚠️ VIE 03 sin confirmar → excluido). **Sum-control: total distribuido $186,784.47 = percepciones $177,778.56 + trío $18,452.25 − Pedro/080 $9,446.35 → diferencia $0.01 (redondeo). ✅**
+## Dry-run SEM 28 — VALIDADO FINAL (bruto real × peso real, 2026-07-16)
+Ventana VIE 03→JUE 09-jul (⚠️ VIE 03 sin confirmar → excluido; regla de timing). **Sum-control: total distribuido $196,230.82 = percepciones $177,778.56 + trío $18,452.25 → diferencia $0.01 (redondeo). ✅ CERO excepciones.**
 | Destino | Monto MO |
 |---|--:|
-| SO11547 Topo Chico | 61,874.34 |
+| SO11547 Topo Chico | 69,015.81 |
 | SO9428 Vertiv 2da | 41,098.11 |
-| bolsa 608 VENTAS | 35,693.19 |
-| bolsa 513 ADMIN | 22,742.77 |
-| bolsa 3096 ADMIN-OPS | 8,813.75 |
+| bolsa 608 VENTAS | 35,732.18 |
+| bolsa 513 ADMIN (incl. asimilados + vacaciones) | 27,142.77 |
 | bolsa 768 LEGAL | 6,562.50 |
 | bolsa 478 RH | 5,833.31 |
+| bolsa 3096 ADMIN-OPS | 4,413.75 |
+| SO10300 Magnekon | 3,648.39 |
 | SO11551 Chiller | 2,784.00 |
-| SO10300 Magnekon | 1,382.50 |
-**Excepción:** `080` Pedro (sin empleado). Ops multi-destino reales: Jésus Montalvo (75/25 Topo/3096), Gibrán (25/25/50), Tomas Vázquez (75/25 Topo/Vertiv), Ramiro (75/25). Asimilados → 513. Felipe (trío) → 25/50/25.
+**Casos:** Ops multi-destino (Gibrán 25/25/50, Jésus M 75/25, Tomas V 75/25, Ramiro 75/25) · Francisco→Topo (campo) · Rissia/Pablo→608 (solo_bolsa) · asimilados+Juan Manuel(vac)→513 · trío Carlos→Vertiv, Felipe→25/50/25. **Pendiente confirmar:** Luis Ángel (comercial con 1 día Magnekon + vacación parcial — hoy respeta checkout).
 
 ## Apéndice — Detalle Budenheim/HMI (las 11 líneas post-cierre de Audit D)
 Para el veredicto de Felipe (garantía vs mala atribución). **Conclusión: NINGUNA es mano de obra** — son facturación (ingreso) + un bill de material + una entrada de flujo. El distribuidor no las toca.
