@@ -89,7 +89,7 @@ Empleado con nómina pero **0 horas confirmadas** en la ventana (viaje sin geoce
 - Crear **`account.analytic.line`**:
   - destino **proyecto** (plan 1) → `{ account_id: <proj_account>, x_plan20_id: 1177, amount: -<monto>, date: <jueves de la semana>, name: <LLAVE>, general_account_id: <GL MO a definir> }`
   - destino **bolsa** (plan 2) → `{ x_plan2_id: <bolsa_account>, x_plan20_id: 1177, amount: -<monto>, ... }` (`account_id` vacío).
-  - ⚠️ **Validar en el build:** que el budget "achieved" del rubro 1177 lea la línea por la columna correcta (proyecto→`account_id`, bolsa→`x_plan2_id`), y el signo (costo negativo). Ver budgets de Audit C.
+  - ✅ **VALIDADO (canary 2026-07-16):** el budget "achieved" lee la línea por `x_plan2_id` (bolsa) — `achieved -500` con `budget -1000`, signo negativo correcto. IDs `{bid:405, bl:2521, al:59925}`.
 - **Llave de idempotencia (formato propuesto):**
   `name = "MO S<WW>/<YYYY> · emp<empId> · <destino_code>"`
   ej. `"MO S28/2026 · emp112 · 3096"` (bolsa ADMIN OPS) o `"MO S28/2026 · emp75 · SO11547"` (proyecto).
@@ -205,7 +205,12 @@ Para el veredicto de Felipe (garantía vs mala atribución). **Conclusión: NING
 2. **Parseo:** en cliente con **SheetJS** (ya vive en el IPERC) → JSON al webhook. n8n NO toca binarios.
 3. **Asignación manual de la semana:** **DIFERIDA a V1.1.** Cascada V1 = solo `default → cola de excepción` (sin el paso 1 manual). El paso manual queda documentado como futuro.
 4. **Escritura:** `analytic.line` **standalone** (sin asiento). La contabilidad fiscal vive en CONTPAQi; Odoo analítico = gestión.
-5. **Columna budget plan 2:** **VALIDAR con prueba real** en el canary (budget de prueba en una bolsa + analytic.line de prueba + verificar que "achieved" la lee + borrar ambos). No asumir.
+5. **Columna budget plan 2:** ✅ **VALIDADO (canary 2026-07-16):** `budget.line` con `x_plan2_id`=bolsa **sí** lee la `analytic.line` — `achieved_amount = -500` con `budget_amount = -1000`, signo correcto. IDs de prueba `{bid:405, bl:2521, al:59925}`, limpieza `0,0`. El nodo `Odoo - CREATE` del workflow `j0V9wfpuPTLFO9DZ` (que usa `x_plan2_id` para bolsas / `account_id` para proyectos) queda **DEFINITIVO**.
+
+## 🎯 Go-live V1 — target viernes 24-jul (SEM 29)
+- **Prerequisitos de Esteban (ver `FASE2_SCRIPTS_F12.md`):** campo `x_studio_codigo_contpaqi` + poblado, campo `x_studio_solo_bolsa`, crear Pedro/Juan/Juana, archivar Miriam 148, montos reales de los 6 budgets de bolsa + 6 líneas 1177 de proyecto.
+- **Día del run (vie 24-jul):** (1) confirmar SEM 29 completa; (2) subir Excel por la página → DRY-RUN → validar sumas; (3) **cutover `unlink [47,48,9]`** previa verificación de cuál está vivo; (4) activar `j0V9wfpuPTLFO9DZ` + POST `confirm_write:true` → read-back; (5) desactivar.
+- **Sin incógnitas técnicas abiertas:** motor validado SEM 28 ($0.01, 0 excepciones) + canary budget plan-2 PASADO.
 
 ## Visión de conciliación (V1.1+, backlog — NO V1)
 Flujo bancario real (contexto Esteban): **BBVA México (principal) → fondea → BBVA Nómina → dispersa** a empleados los viernes. La cuenta BBVA Nómina se mantiene en ceros salvo el monto de la semana (control anti-mal-manejo).
