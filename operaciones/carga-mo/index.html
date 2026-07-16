@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Carga MO — FTS Suite</title>
+<script>(function(){ window.CMO_BUILD = '20260716-cmo-ingesta-dryrun'; })();</script>
+<script src="../../shared/auth-suite.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{ --azul:#1a4480; --ok:#1a7a3a; --warn:#BA7517; --err:#b3261e; --bg:#f4f6f9; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; font-family:'Segoe UI',Arial,sans-serif; background:var(--bg); color:#1c1c1c; }
+  .top{ display:flex; align-items:center; gap:14px; background:var(--azul); color:#fff; padding:10px 16px; }
+  .top a{ color:#fff; text-decoration:none; font-size:14px; opacity:.9; }
+  .top .t{ font-weight:600; flex:1; } .top .b{ font-size:10px; opacity:.6; }
+  .wrap{ max-width:1040px; margin:0 auto; padding:16px; }
+  .card{ background:#fff; border-radius:10px; padding:16px; box-shadow:0 1px 6px rgba(0,0,0,.06); margin-bottom:14px; }
+  .drop{ border:2px dashed #bcd; border-radius:10px; padding:28px; text-align:center; cursor:pointer; background:#fafcff; }
+  .drop:hover{ background:#f0f6ff; }
+  .btn{ border:none; border-radius:8px; padding:9px 18px; font-size:14px; cursor:pointer; font-weight:500; }
+  .btn-p{ background:var(--azul); color:#fff; } .btn:disabled{ opacity:.5; cursor:not-allowed; }
+  table{ width:100%; border-collapse:collapse; font-size:12px; }
+  th{ background:#eef2f8; text-align:left; padding:6px 8px; position:sticky; top:0; }
+  td{ padding:5px 8px; border-top:1px solid #eee; }
+  .r{ text-align:right; } .mut{ color:#888; }
+  .chk{ padding:10px 12px; border-radius:8px; margin:6px 0; font-size:13px; }
+  .chk.ok{ background:#e3f4e8; color:var(--ok); } .chk.err{ background:#fdeceb; color:var(--err); }
+  .chk.warn{ background:#fff3df; color:var(--warn); }
+  .gate{ max-width:520px; margin:60px auto; background:#fff; border-radius:12px; padding:28px; text-align:center; }
+  .pill{ display:inline-block; font-size:10px; padding:1px 7px; border-radius:9px; background:#eef2f8; color:#456; margin-left:4px; }
+  .pill.vac{ background:#fff3df; color:var(--warn); } .pill.asim{ background:#e7e9fd; color:#3b3fb6; }
+  .pill.trio{ background:#e3f4e8; color:var(--ok); } .pill.nc{ background:#fdeceb; color:var(--err); }
+</style>
+</head>
+<body>
+<div class="top">
+  <a href="../index.html">← Operaciones</a>
+  <div class="t">💰 Carga de Mano de Obra <span class="b" id="b"></span></div>
+  <div style="font-size:13px" id="u">—</div>
+</div>
+
+<div id="gate" class="gate" style="display:none"></div>
+
+<main id="main" class="wrap" style="display:none">
+  <div class="card">
+    <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:10px">
+      <div>
+        <label style="font-size:11px;color:#555;font-weight:600;display:block">Semana de nómina (VIE→JUE)</label>
+        <input type="date" id="f-vie" style="padding:7px;border:1px solid #ccc;border-radius:7px">
+        <span class="mut" style="font-size:11px">→ jueves = <b id="f-jue">—</b> · SEM <b id="f-sem">—</b></span>
+      </div>
+    </div>
+    <div class="drop" id="drop">
+      📄 Arrastra o haz clic para elegir el Excel CONTPAQi (.xlsx)
+      <input type="file" id="file" accept=".xlsx,.xls" style="display:none">
+    </div>
+  </div>
+
+  <div id="result" style="display:none">
+    <div class="card">
+      <strong>Validaciones duras</strong>
+      <div id="checks"></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <strong>Roster parseado (<span id="cnt">0</span>)</strong>
+        <button class="btn btn-p" id="send" disabled>Enviar a DRY-RUN →</button>
+      </div>
+      <div style="max-height:440px;overflow:auto">
+        <table>
+          <thead><tr><th>Cód</th><th>Empleado (Excel)</th><th class="r">Bruto (col 14)</th><th>Tags</th><th>Empleado Odoo</th></tr></thead>
+          <tbody id="tb"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card" id="msg" style="display:none"></div>
+  </div>
+</main>
+
+<script>
+// ── Mapeo PROVISIONAL codigo CONTPAQi → empleado Odoo (dry-run; V1 real = x_studio_codigo_contpaqi) ──
+const CODE_MAP = {
+ '002':{id:25,n:'Héctor Cruz',solo:false},'003':{id:68,n:'Jésus Montalvo',solo:false},'005':{id:6,n:'Leonel Cruz',solo:false},
+ '006':{id:8,n:'Francisco Montalvo',solo:false},'010':{id:55,n:'Juan Manuel Sánchez',solo:false},'011':{id:48,n:'Luis Ángel García',solo:false},
+ '012':{id:63,n:'Magaly Pérez',solo:true},'013':{id:62,n:'Gibrán Solís',solo:false},'014':{id:57,n:'Samuel Alcántara',solo:false},
+ '016':{id:59,n:'Gerardo Lozano',solo:true},'017':{id:null,n:'Juan De La Cruz',solo:true,asim:true},'018':{id:null,n:'Juana Camarillo',solo:true,asim:true},
+ '027':{id:75,n:'Mateo Salazar',solo:false},'028':{id:78,n:'Aldo Méndez',solo:true},'029':{id:79,n:'José Luis Romero',solo:false},
+ '036':{id:97,n:'Rissia Araujo',solo:true},'038':{id:101,n:'Ana Laura Acevedo',solo:true},'044':{id:108,n:'Pablo Bayly',solo:true},
+ '052':{id:121,n:'Stephany Ventura',solo:false},'056':{id:124,n:'Germán Merino',solo:false},'058':{id:127,n:'Cesar Gómez',solo:false},
+ '059':{id:128,n:'Enoc Maldonado',solo:false},'061':{id:131,n:'Tomas Vázquez',solo:false},'062':{id:130,n:'Rolando Vázquez',solo:false},
+ '074':{id:138,n:'Tomas Loredo',solo:false},'080':{id:null,n:'Pedro A. Hernández (sup com)',solo:true,crear:true},
+ '081':{id:149,n:'Erick Belmont',solo:true},'084':{id:153,n:'Eduardo Garza',solo:true},'085':{id:154,n:'Ramiro Segovia',solo:true}
+};
+const TRIO_NAMES = ['CARLOS','FELIPE','RICARDO'];
+const WEBHOOK = 'https://primary-production-5c3c.up.railway.app/webhook/planeacion/carga-mo';
+// columnas 0-based del layout SEM 28
+const C = { cod:0, nom:1, vac:8, primaVac:9, asim:11, bruto:13, neto:35 };
+const HEADER_ROW = 7; // fila 8 (0-based)
+
+let PARSED = null;
+document.getElementById('b').textContent = window.CMO_BUILD;
+
+function gate(){
+  const s = window.FTSAuth && FTSAuth.getSession && FTSAuth.getSession();
+  if(!s){ document.getElementById('gate').style.display='block';
+    document.getElementById('gate').innerHTML='<h3>Sesión requerida</h3><a class="btn btn-p" href="../../index.html">Ir al inicio</a>'; return false; }
+  document.getElementById('main').style.display='block';
+  document.getElementById('u').textContent = s.nombre || s.username || '';
+  return true;
+}
+function fmt(n){ return (n||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+// semana: viernes elegido → jueves +6
+document.getElementById('f-vie').addEventListener('change', e=>{
+  const v=e.target.value; if(!v) return;
+  const d=new Date(v+'T12:00:00'); const j=new Date(d.getTime()+6*864e5);
+  document.getElementById('f-jue').textContent = j.toISOString().slice(0,10);
+  // # de semana ISO aprox
+  const oneJan=new Date(d.getFullYear(),0,1); const wk=Math.ceil((((d-oneJan)/864e5)+oneJan.getDay()+1)/7);
+  document.getElementById('f-sem').textContent = wk;
+});
+
+const drop=document.getElementById('drop'), file=document.getElementById('file');
+drop.addEventListener('click',()=>file.click());
+drop.addEventListener('dragover',e=>{e.preventDefault();drop.style.background='#e8f2ff';});
+drop.addEventListener('dragleave',()=>drop.style.background='');
+drop.addEventListener('drop',e=>{e.preventDefault();drop.style.background='';if(e.dataTransfer.files[0])parse(e.dataTransfer.files[0]);});
+file.addEventListener('change',e=>{if(e.target.files[0])parse(e.target.files[0]);});
+
+function parse(f){
+  const rd=new FileReader();
+  rd.onload=ev=>{
+    let rows;
+    try{
+      const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
+    }catch(err){ return showErr('No se pudo leer el .xlsx: '+err.message); }
+    const emps=[], trio=[]; let totalGral=null;
+    for(let i=HEADER_ROW+1;i<rows.length;i++){
+      const r=rows[i]||[]; const cod=r[C.cod], nom=(r[C.nom]||'').toString().trim();
+      if(!cod && !nom) continue;
+      if((cod||'').toString().toLowerCase().startsWith('total')){ totalGral=num(r[C.bruto]); continue; }
+      if(!cod && TRIO_NAMES.includes(nom.toUpperCase())){ trio.push({nombre:nom.toUpperCase(), neto:num(r[C.neto])}); continue; }
+      if(cod){ emps.push({ cod:String(cod).padStart(3,'0'), nombre:nom, bruto:num(r[C.bruto]),
+        vac:num(r[C.vac])+num(r[C.primaVac]), asim:num(r[C.asim]) }); }
+    }
+    PARSED={ emps, trio, totalGral, vie:document.getElementById('f-vie').value, jue:document.getElementById('f-jue').textContent };
+    render();
+  };
+  rd.readAsArrayBuffer(f);
+}
+function num(v){ const n=parseFloat(v); return isNaN(n)?0:Math.round(n*100)/100; }
+function showErr(m){ document.getElementById('result').style.display='block';
+  document.getElementById('checks').innerHTML='<div class="chk err">✗ '+m+'</div>'; }
+
+function render(){
+  document.getElementById('result').style.display='block';
+  const p=PARSED, checks=[];
+  // Validación 1: cruce de códigos
+  const noCruza=p.emps.filter(e=>!CODE_MAP[e.cod]);
+  if(noCruza.length===0) checks.push(['ok','✓ Todos los códigos cruzan ('+p.emps.length+' empleados)']);
+  else checks.push(['err','✗ '+noCruza.length+' código(s) SIN empleado (ABORTA): '+noCruza.map(e=>e.cod+' '+e.nombre).join(', ')]);
+  // Validación 2: suma de control
+  const sumBruto=p.emps.reduce((s,e)=>s+e.bruto,0);
+  const sumTrio=p.trio.reduce((s,t)=>s+t.neto,0);
+  if(p.totalGral!=null){
+    const diff=Math.abs(sumBruto - p.totalGral);
+    if(diff<=Math.max(0.05, p.emps.length*0.01)) checks.push(['ok','✓ Suma de control: Σ brutos '+fmt(sumBruto)+' = Total Gral '+fmt(p.totalGral)+' (Δ '+fmt(diff)+')']);
+    else checks.push(['err','✗ Suma NO cuadra: Σ brutos '+fmt(sumBruto)+' vs Total Gral '+fmt(p.totalGral)+' (Δ '+fmt(diff)+')']);
+  } else checks.push(['warn','⚠ No se encontró fila "Total Gral" — no se validó la suma.']);
+  checks.push(['ok','ℹ Trío: '+(p.trio.map(t=>t.nombre+' '+fmt(t.neto)).join(' · ')||'ninguno')+'. Total a distribuir = '+fmt(sumBruto+sumTrio)]);
+  // Validación 3: semana
+  if(!p.vie) checks.push(['warn','⚠ Elige el viernes de la semana antes de enviar (para idempotencia).']);
+  document.getElementById('checks').innerHTML = checks.map(c=>'<div class="chk '+c[0]+'">'+c[1]+'</div>').join('');
+  // tabla
+  document.getElementById('cnt').textContent=p.emps.length;
+  document.getElementById('tb').innerHTML = p.emps.map(e=>{
+    const m=CODE_MAP[e.cod]; const tags=[];
+    if(e.asim>0) tags.push('<span class="pill asim">asimilado→513</span>');
+    if(e.vac>0) tags.push('<span class="pill vac">vacaciones→513</span>');
+    if(m&&m.solo) tags.push('<span class="pill">solo bolsa</span>');
+    if(!m) tags.push('<span class="pill nc">SIN empleado</span>');
+    if(m&&m.crear) tags.push('<span class="pill nc">crear en Odoo</span>');
+    return '<tr><td>'+e.cod+'</td><td>'+e.nombre+'</td><td class="r">'+fmt(e.bruto)+'</td><td>'+tags.join(' ')+'</td><td class="mut">'+(m?(m.n+(m.id?(' ('+m.id+')'):' (crear)')):'—')+'</td></tr>';
+  }).join('') + p.trio.map(t=>'<tr><td>—</td><td>'+t.nombre+'</td><td class="r">'+fmt(t.neto)+'</td><td><span class="pill trio">trío (neto)</span></td><td class="mut">factura proveedor</td></tr>').join('');
+  const canSend = noCruza.length===0 && !!p.vie;
+  document.getElementById('send').disabled = !canSend;
+}
+
+document.getElementById('send').addEventListener('click', async ()=>{
+  if(!PARSED) return;
+  const btn=document.getElementById('send'); btn.disabled=true; btn.textContent='Enviando…';
+  const s=FTSAuth.getSession();
+  const payload={ modo:'dry_run', semana_vie:PARSED.vie, semana_jue:PARSED.jue,
+    solicitante:(s&&(s.username||s.nombre))||'', empleados:PARSED.emps, trio:PARSED.trio, total_gral:PARSED.totalGral };
+  const msg=document.getElementById('msg'); msg.style.display='block';
+  try{
+    const rsp=await fetch(WEBHOOK,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const j=await rsp.json().catch(()=>({}));
+    msg.className='card'; msg.innerHTML='<div class="chk ok">✓ Enviado a DRY-RUN. Respuesta:</div><pre style="font-size:12px;overflow:auto">'+JSON.stringify(j,null,2)+'</pre>';
+  }catch(err){
+    msg.innerHTML='<div class="chk err">✗ Error enviando: '+err.message+' (¿el workflow n8n está activo?)</div>';
+  }
+  btn.textContent='Enviar a DRY-RUN →'; btn.disabled=false;
+});
+
+gate();
+</script>
+</body>
+</html>
