@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Carga MO — FTS Suite</title>
-<script>(function(){ window.CMO_BUILD = '20260716-cmo-ingesta-dryrun'; })();</script>
-<script src="../../shared/auth-suite.js"></script>
+<script>(function(){ window.CMO_BUILD = '20260716-cmo-jwt-v2'; })();</script>
+<script src="../../finanzas/js/auth-fin.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{ --azul:#1a4480; --ok:#1a7a3a; --warn:#BA7517; --err:#b3261e; --bg:#f4f6f9; }
@@ -80,17 +80,19 @@
 
 <script>
 // ── Mapeo PROVISIONAL codigo CONTPAQi → empleado Odoo (dry-run; V1 real = x_studio_codigo_contpaqi) ──
+// solo_bolsa=true SÓLO 3 (nunca cargan a proyecto): Rissia 97, Pablo 108, Arturo 143.
+// Resto = híbrido (respeta checkout). Los asimilados (017/018) van a 513 por regla asim, no por solo.
 const CODE_MAP = {
- '002':{id:25,n:'Héctor Cruz',solo:false},'003':{id:68,n:'Jésus Montalvo',solo:false},'005':{id:6,n:'Leonel Cruz',solo:false},
- '006':{id:8,n:'Francisco Montalvo',solo:false},'010':{id:55,n:'Juan Manuel Sánchez',solo:false},'011':{id:48,n:'Luis Ángel García',solo:false},
- '012':{id:63,n:'Magaly Pérez',solo:true},'013':{id:62,n:'Gibrán Solís',solo:false},'014':{id:57,n:'Samuel Alcántara',solo:false},
- '016':{id:59,n:'Gerardo Lozano',solo:true},'017':{id:null,n:'Juan De La Cruz',solo:true,asim:true},'018':{id:null,n:'Juana Camarillo',solo:true,asim:true},
- '027':{id:75,n:'Mateo Salazar',solo:false},'028':{id:78,n:'Aldo Méndez',solo:true},'029':{id:79,n:'José Luis Romero',solo:false},
- '036':{id:97,n:'Rissia Araujo',solo:true},'038':{id:101,n:'Ana Laura Acevedo',solo:true},'044':{id:108,n:'Pablo Bayly',solo:true},
- '052':{id:121,n:'Stephany Ventura',solo:false},'056':{id:124,n:'Germán Merino',solo:false},'058':{id:127,n:'Cesar Gómez',solo:false},
- '059':{id:128,n:'Enoc Maldonado',solo:false},'061':{id:131,n:'Tomas Vázquez',solo:false},'062':{id:130,n:'Rolando Vázquez',solo:false},
- '074':{id:138,n:'Tomas Loredo',solo:false},'080':{id:null,n:'Pedro A. Hernández (sup com)',solo:true,crear:true},
- '081':{id:149,n:'Erick Belmont',solo:true},'084':{id:153,n:'Eduardo Garza',solo:true},'085':{id:154,n:'Ramiro Segovia',solo:true}
+ '002':{id:25,n:'Héctor Cruz'},'003':{id:68,n:'Jésus Montalvo'},'005':{id:6,n:'Leonel Cruz'},
+ '006':{id:8,n:'Francisco Montalvo'},'010':{id:55,n:'Juan Manuel Sánchez'},'011':{id:48,n:'Luis Ángel García'},
+ '012':{id:63,n:'Magaly Pérez'},'013':{id:62,n:'Gibrán Solís'},'014':{id:57,n:'Samuel Alcántara'},
+ '016':{id:59,n:'Gerardo Lozano'},'017':{id:null,n:'Juan De La Cruz',asim:true},'018':{id:null,n:'Juana Camarillo',asim:true},
+ '027':{id:75,n:'Mateo Salazar'},'028':{id:78,n:'Aldo Méndez'},'029':{id:79,n:'José Luis Romero'},
+ '036':{id:97,n:'Rissia Araujo',solo:true},'038':{id:101,n:'Ana Laura Acevedo'},'044':{id:108,n:'Pablo Bayly',solo:true},
+ '052':{id:121,n:'Stephany Ventura'},'056':{id:124,n:'Germán Merino'},'058':{id:127,n:'Cesar Gómez'},
+ '059':{id:128,n:'Enoc Maldonado'},'061':{id:131,n:'Tomas Vázquez'},'062':{id:130,n:'Rolando Vázquez'},
+ '074':{id:138,n:'Tomas Loredo'},'080':{id:143,n:'Arturo Hernández (sup com)',solo:true},
+ '081':{id:149,n:'Erick Belmont'},'084':{id:153,n:'Eduardo Garza'},'085':{id:154,n:'Ramiro Segovia'}
 };
 const TRIO_NAMES = ['CARLOS','FELIPE','RICARDO'];
 const WEBHOOK = 'https://primary-production-5c3c.up.railway.app/webhook/planeacion/carga-mo';
@@ -101,13 +103,38 @@ const HEADER_ROW = 7; // fila 8 (0-based)
 let PARSED = null;
 document.getElementById('b').textContent = window.CMO_BUILD;
 
-function gate(){
-  const s = window.FTSAuth && FTSAuth.getSession && FTSAuth.getSession();
-  if(!s){ document.getElementById('gate').style.display='block';
-    document.getElementById('gate').innerHTML='<h3>Sesión requerida</h3><a class="btn btn-p" href="../../index.html">Ir al inicio</a>'; return false; }
+// ── Auth: reusa el JWT del módulo Finanzas (server-side, token en body). Sin login no se ve nada. ──
+function boot(){
+  document.getElementById('gate').style.display='none';
   document.getElementById('main').style.display='block';
-  document.getElementById('u').textContent = s.nombre || s.username || '';
-  return true;
+  const s=window.FinAuth&&FinAuth.getSession&&FinAuth.getSession();
+  document.getElementById('u').textContent = (s&&s.user)||'nómina';
+}
+async function doLogin(){
+  const u=(document.getElementById('lg-u').value||'').trim();
+  const p=document.getElementById('lg-p').value||'';
+  const btn=document.getElementById('lg-btn'), m=document.getElementById('lg-msg');
+  btn.disabled=true; btn.textContent='Entrando…'; m.textContent='';
+  const r=await FinAuth.login(u,p);
+  if(r&&r.ok){ boot(); }
+  else{ m.textContent=(r&&r.msg)||'No se pudo iniciar sesión.'; btn.disabled=false; btn.textContent='Entrar'; }
+}
+function showGate(){
+  const g=document.getElementById('gate'); g.style.display='block';
+  document.getElementById('main').style.display='none';
+  g.innerHTML='<h3>🔒 Acceso Nómina</h3>'
+    +'<p class="mut" style="font-size:13px">Esta pantalla muestra brutos de nómina (confidencial). Inicia sesión.</p>'
+    +'<input id="lg-u" placeholder="Usuario" autocomplete="username" style="width:100%;padding:9px;border:1px solid #ccc;border-radius:7px;margin:5px 0">'
+    +'<input id="lg-p" type="password" placeholder="Contraseña" autocomplete="current-password" style="width:100%;padding:9px;border:1px solid #ccc;border-radius:7px;margin:5px 0">'
+    +'<button class="btn btn-p" id="lg-btn" style="width:100%;margin-top:6px">Entrar</button>'
+    +'<div id="lg-msg" class="chk err" style="margin-top:8px;display:none"></div>';
+  const msg=document.getElementById('lg-msg');
+  document.getElementById('lg-btn').onclick=()=>{ msg.style.display='block'; doLogin(); };
+  document.getElementById('lg-p').addEventListener('keydown',e=>{ if(e.key==='Enter'){ msg.style.display='block'; doLogin(); } });
+}
+function gate(){
+  if(window.FinAuth && FinAuth.isValid()){ boot(); return true; }
+  showGate(); return false;
 }
 function fmt(n){ return (n||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 
@@ -137,16 +164,32 @@ function parse(f){
       const ws=wb.Sheets[wb.SheetNames[0]];
       rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
     }catch(err){ return showErr('No se pudo leer el .xlsx: '+err.message); }
+    // ── Periodo CONTPAQi (fila ~4) = FUENTE DE VERDAD de la semana e idempotencia ──
+    let periodo=null, pStart=null, pEnd=null;
+    for(let i=0;i<Math.min(8,rows.length);i++){
+      const line=(rows[i]||[]).map(c=>c==null?'':String(c)).join(' ');
+      const mm=line.match(/Periodo\s+(\d+).*?del\s+(\d{1,2})\/(\d{1,2})\/(\d{4})\s+al\s+(\d{1,2})\/(\d{1,2})\/(\d{4})/i);
+      if(mm){ periodo=parseInt(mm[1],10);
+        pStart=mm[4]+'-'+String(mm[3]).padStart(2,'0')+'-'+String(mm[2]).padStart(2,'0');
+        pEnd  =mm[7]+'-'+String(mm[6]).padStart(2,'0')+'-'+String(mm[5]).padStart(2,'0'); break; }
+    }
     const emps=[], trio=[]; let totalGral=null;
     for(let i=HEADER_ROW+1;i<rows.length;i++){
-      const r=rows[i]||[]; const cod=r[C.cod], nom=(r[C.nom]||'').toString().trim();
-      if(!cod && !nom) continue;
-      if((cod||'').toString().toLowerCase().startsWith('total')){ totalGral=num(r[C.bruto]); continue; }
-      if(!cod && TRIO_NAMES.includes(nom.toUpperCase())){ trio.push({nombre:nom.toUpperCase(), neto:num(r[C.neto])}); continue; }
-      if(cod){ emps.push({ cod:String(cod).padStart(3,'0'), nombre:nom, bruto:num(r[C.bruto]),
+      const r=rows[i]||[];
+      const nom=(r[C.nom]||'').toString().trim();
+      const codStr=(r[C.cod]==null?'':String(r[C.cod]).trim());
+      const bruto=num(r[C.bruto]);
+      if(codStr.toLowerCase().startsWith('total')||nom.toLowerCase().startsWith('total')){ totalGral=bruto; continue; }
+      const isRealCod=/^0*\d+$/.test(codStr) && parseInt(codStr,10)>0;
+      // trío (sin código, nombre CARLOS/FELIPE/RICARDO, valor en NETO)
+      if(!isRealCod && TRIO_NAMES.includes(nom.toUpperCase())){ trio.push({nombre:nom.toUpperCase(), neto:num(r[C.neto])}); continue; }
+      // fila fantasma: sin código válido (ej. "00") Y sin bruto → basura de Excel, ignorar
+      if(!isRealCod && bruto===0) continue;
+      if(isRealCod){ emps.push({ cod:codStr.padStart(3,'0'), nombre:nom, bruto:bruto,
         vac:num(r[C.vac])+num(r[C.primaVac]), asim:num(r[C.asim]) }); }
     }
-    PARSED={ emps, trio, totalGral, vie:document.getElementById('f-vie').value, jue:document.getElementById('f-jue').textContent };
+    PARSED={ emps, trio, totalGral, periodo, periodoStart:pStart, periodoEnd:pEnd,
+      vie:document.getElementById('f-vie').value, jue:document.getElementById('f-jue').textContent };
     render();
   };
   rd.readAsArrayBuffer(f);
@@ -171,8 +214,21 @@ function render(){
     else checks.push(['err','✗ Suma NO cuadra: Σ brutos '+fmt(sumBruto)+' vs Total Gral '+fmt(p.totalGral)+' (Δ '+fmt(diff)+')']);
   } else checks.push(['warn','⚠ No se encontró fila "Total Gral" — no se validó la suma.']);
   checks.push(['ok','ℹ Trío: '+(p.trio.map(t=>t.nombre+' '+fmt(t.neto)).join(' · ')||'ninguno')+'. Total a distribuir = '+fmt(sumBruto+sumTrio)]);
-  // Validación 3: semana
-  if(!p.vie) checks.push(['warn','⚠ Elige el viernes de la semana antes de enviar (para idempotencia).']);
+  // Validación 3: Periodo CONTPAQi (fuente de verdad de la semana) + cruce con el viernes elegido
+  let periodoOK=false;
+  if(p.periodo==null){
+    checks.push(['err','✗ No se detectó el "Periodo N ... del DD/MM al DD/MM" en la fila 4 (¿archivo equivocado?).']);
+  } else {
+    document.getElementById('f-sem').textContent = 'S'+p.periodo+'/'+(p.periodoStart||'').slice(0,4);
+    if(!p.vie){
+      checks.push(['warn','⚠ Elige el viernes de la semana para cruzarlo con el Periodo '+p.periodo+' ('+p.periodoStart+' → '+p.periodoEnd+').']);
+    } else if(p.periodoStart && p.vie!==p.periodoStart){
+      checks.push(['err','✗ Archivo equivocado: el Excel es Periodo '+p.periodo+' ('+p.periodoStart+' → '+p.periodoEnd+') pero seleccionaste el viernes '+p.vie+'.']);
+    } else {
+      periodoOK=true;
+      checks.push(['ok','✓ Periodo '+p.periodo+' ('+p.periodoStart+' → '+p.periodoEnd+') = viernes elegido. Llave: MO S'+p.periodo+'/'+(p.periodoStart||'').slice(0,4)]);
+    }
+  }
   document.getElementById('checks').innerHTML = checks.map(c=>'<div class="chk '+c[0]+'">'+c[1]+'</div>').join('');
   // tabla
   document.getElementById('cnt').textContent=p.emps.length;
@@ -185,16 +241,20 @@ function render(){
     if(m&&m.crear) tags.push('<span class="pill nc">crear en Odoo</span>');
     return '<tr><td>'+e.cod+'</td><td>'+e.nombre+'</td><td class="r">'+fmt(e.bruto)+'</td><td>'+tags.join(' ')+'</td><td class="mut">'+(m?(m.n+(m.id?(' ('+m.id+')'):' (crear)')):'—')+'</td></tr>';
   }).join('') + p.trio.map(t=>'<tr><td>—</td><td>'+t.nombre+'</td><td class="r">'+fmt(t.neto)+'</td><td><span class="pill trio">trío (neto)</span></td><td class="mut">factura proveedor</td></tr>').join('');
-  const canSend = noCruza.length===0 && !!p.vie;
+  const canSend = noCruza.length===0 && !!p.vie && periodoOK;
   document.getElementById('send').disabled = !canSend;
 }
 
 document.getElementById('send').addEventListener('click', async ()=>{
   if(!PARSED) return;
   const btn=document.getElementById('send'); btn.disabled=true; btn.textContent='Enviando…';
-  const s=FTSAuth.getSession();
-  const payload={ modo:'dry_run', semana_vie:PARSED.vie, semana_jue:PARSED.jue,
-    solicitante:(s&&(s.username||s.nombre))||'', empleados:PARSED.emps, trio:PARSED.trio, total_gral:PARSED.totalGral };
+  const token=window.FinAuth&&FinAuth.getToken&&FinAuth.getToken();
+  if(!token){ showGate(); btn.textContent='Enviar a DRY-RUN →'; btn.disabled=false; return; }
+  const s=FinAuth.getSession();
+  const payload={ modo:'dry_run', token:token,
+    periodo:PARSED.periodo, periodo_start:PARSED.periodoStart, periodo_end:PARSED.periodoEnd,
+    semana_vie:PARSED.vie, semana_jue:PARSED.jue,
+    solicitante:(s&&s.user)||'', empleados:PARSED.emps, trio:PARSED.trio, total_gral:PARSED.totalGral };
   const msg=document.getElementById('msg'); msg.style.display='block';
   try{
     const rsp=await fetch(WEBHOOK,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
