@@ -1,0 +1,160 @@
+{
+  "_meta": {
+    "generado": "2026-07-16",
+    "fuente": "Odoo sale.order (read-only, MCP UID 2)",
+    "ventana": { "desde": "2025-07-01", "hasta": "2026-07-16" },
+    "companies": [1, 6],
+    "universo_ordenes": 541,
+    "fx_usd_mxn": 17.35,
+    "regla_moneda": "La empresa es la autoridad de moneda: company 1 = MXN tal cual; company 6 = USD x 17.35. El campo currency_id NO es confiable (ver riesgos.RIESGO_1).",
+    "doc": "comercial/baseline.md"
+  },
+
+  "resumen_ejecutivo": {
+    "cotizaciones_por_mes": 42.6,
+    "cotizaciones_12m_completos": 511,
+    "win_rate_global_pct": 30.1,
+    "win_rate_global_sin_cancelaciones_pct": 39.6,
+    "dias_lead_a_envio": null,
+    "dias_envio_a_cierre": null,
+    "dias_create_a_confirmacion_promedio": 21.6,
+    "dias_create_a_confirmacion_mediana": 11.5,
+    "nota_dias": "lead->envio y envio->cierre NO son medibles: Odoo no persiste timestamp de transicion a state=sent. El proxy medible es create_date -> date_order en ordenes confirmadas (ciclo completo lead->cierre)."
+  },
+
+  "cotizaciones_por_mes": [
+    { "mes": "2025-07", "count": 46, "monto_nominal": 44294711.46 },
+    { "mes": "2025-08", "count": 33, "monto_nominal": 22616243.98 },
+    { "mes": "2025-09", "count": 29, "monto_nominal": 43959963.33 },
+    { "mes": "2025-10", "count": 33, "monto_nominal": 9580585.37 },
+    { "mes": "2025-11", "count": 64, "monto_nominal": 49375786.49 },
+    { "mes": "2025-12", "count": 49, "monto_nominal": 10594698.13 },
+    { "mes": "2026-01", "count": 24, "monto_nominal": 4848983.82 },
+    { "mes": "2026-02", "count": 90, "monto_nominal": 17856588.70 },
+    { "mes": "2026-03", "count": 30, "monto_nominal": 18238494.15 },
+    { "mes": "2026-04", "count": 27, "monto_nominal": 16453438.39 },
+    { "mes": "2026-05", "count": 35, "monto_nominal": 11074629.92 },
+    { "mes": "2026-06", "count": 51, "monto_nominal": 69139754.96 },
+    { "mes": "2026-07", "count": 30, "monto_nominal": 15903247.30, "parcial": true }
+  ],
+
+  "por_vendedor": {
+    "_alerta": "77% del volumen esta en una cuenta generica compartida (Sales FTS). NO existe atribucion por vendedor real. Ver riesgos.RIESGO_3.",
+    "vendedores": [
+      { "user_id": 12, "nombre": "Sales FTS", "count": 416, "pct": 76.9, "monto_nominal": 319508419.80, "generica": true },
+      { "user_id": 2, "nombre": "Jesus Esteban De La Cruz", "count": 91, "pct": 16.8, "monto_nominal": 162428.62, "generica": false, "nota": "monto promedio ~$1.8K: ruido de portal, no venta real" },
+      { "user_id": 6, "nombre": "OPERACIONES FTS-YIN", "count": 14, "pct": 2.6, "monto_nominal": 11833786.29, "generica": true },
+      { "user_id": 25, "nombre": "Administracion FTS-YIN", "count": 8, "pct": 1.5, "monto_nominal": 82980.00, "generica": true },
+      { "user_id": null, "nombre": "SIN OWNER", "count": 12, "pct": 2.2, "monto_nominal": 2349511.29, "generica": false, "nota": "fuga: ninguna persona es responsable" }
+    ]
+  },
+
+  "distribucion_por_rango": {
+    "_regla": "MXN normalizado por empresa. Umbrales company 6 (USD): 11527 / 57637 / 172911 / 288184.",
+    "rangos": [
+      { "rango": "<200K",   "draft": 128, "sent": 42, "sale": 58, "cancel": 64, "total": 292 },
+      { "rango": "200K-1M", "draft": 82,  "sent": 48, "sale": 14, "cancel": 0,  "total": 144 },
+      { "rango": "1M-3M",   "draft": 45,  "sent": 24, "sale": 6,  "cancel": 0,  "total": 75 },
+      { "rango": "3M-5M",   "draft": 5,   "sent": 4,  "sale": 1,  "cancel": 0,  "total": 10 },
+      { "rango": ">5M",     "draft": 15,  "sent": 4,  "sale": 1,  "cancel": 0,  "total": 20 }
+    ],
+    "totales": { "draft": 275, "sent": 122, "sale": 80, "cancel": 64, "total": 541 }
+  },
+
+  "win_rate_por_rango": {
+    "_formula": "sale / (sent + sale + cancel), segun especificacion",
+    "_nota": "Las 64 cancelaciones son ruido de portal web (50 en USD sumando $2,184 total). Concentradas en <200K, hunden su win rate de 58% a 35%. El win rate honesto de <200K es ~58%.",
+    "rangos": [
+      { "rango": "<200K",   "sale": 58, "denominador": 164, "win_rate_pct": 35.4, "win_rate_sin_cancel_pct": 58.0 },
+      { "rango": "200K-1M", "sale": 14, "denominador": 62,  "win_rate_pct": 22.6, "win_rate_sin_cancel_pct": 22.6 },
+      { "rango": "1M-3M",   "sale": 6,  "denominador": 30,  "win_rate_pct": 20.0, "win_rate_sin_cancel_pct": 20.0 },
+      { "rango": "3M-5M",   "sale": 1,  "denominador": 5,   "win_rate_pct": 20.0, "win_rate_sin_cancel_pct": 20.0, "n_bajo": true },
+      { "rango": ">5M",     "sale": 1,  "denominador": 5,   "win_rate_pct": 20.0, "win_rate_sin_cancel_pct": 20.0, "n_bajo": true }
+    ],
+    "global": { "sale": 80, "denominador": 266, "win_rate_pct": 30.1, "win_rate_sin_cancel_pct": 39.6 }
+  },
+
+  "dias_por_rango": {
+    "_metrica": "create_date -> date_order (confirmacion) en ordenes state=sale. n=80.",
+    "_no_medible": ["dias_create_a_envio", "dias_envio_a_confirmacion"],
+    "_razon_no_medible": "Odoo no persiste la fecha de transicion a state=sent. write_date esta contaminado por escrituras masivas (RIESGO_2). La via correcta es reconstruir desde mail.message del chatter (ver ROADMAP).",
+    "rangos": [
+      { "rango": "<200K",   "n": 58, "promedio": 18.9, "mediana": 9.5,   "min": 0.0,   "max": 272.0 },
+      { "rango": "200K-1M", "n": 14, "promedio": 20.0, "mediana": 15.5,  "min": 0.1,   "max": 84.8 },
+      { "rango": "1M-3M",   "n": 6,  "promedio": 37.1, "mediana": 14.1,  "min": 0.1,   "max": 118.0 },
+      { "rango": "3M-5M",   "n": 1,  "promedio": 107.0, "mediana": 107.0, "min": 107.0, "max": 107.0, "n_bajo": true },
+      { "rango": ">5M",     "n": 1,  "promedio": 17.2, "mediana": 17.2,  "min": 17.2,  "max": 17.2, "n_bajo": true }
+    ],
+    "total": { "n": 80, "promedio": 21.6, "mediana": 11.5, "min": 0.0, "max": 272.0 }
+  },
+
+  "pipeline_vivo": {
+    "state": "sent",
+    "count_ventana_12m": 122,
+    "count_historico_total": 1131,
+    "monto_nominal_12m": 107537459.30,
+    "_alerta_watchdog": "CERO ordenes enviadas fueron tocadas en los ultimos 6 dias. El write_date mas reciente es 2026-07-08 (8 dias). Con la regla 4/6 dias, el 100% cae en ROJO el dia 1.",
+    "semaforo_dia_1": { "rojo": 122, "amarillo": 0, "al_dia": 0 },
+    "sin_owner": 12,
+    "concentracion_cliente": "Nalco de Mexico aparece en 6 del top 10 por monto y en ~30 de las 122.",
+    "top_10_por_monto": [
+      { "name": "SO11135", "cliente": "Nalco de Mexico", "monto_nominal": 22683898.60, "company": 1, "create_date": "2025-09-11", "dias_sin_movimiento": 50 },
+      { "name": "SO11352", "cliente": "Nalco de Mexico", "monto_nominal": 8021681.88, "company": 1, "create_date": "2025-11-27", "dias_sin_movimiento": 50 },
+      { "name": "SO11657", "cliente": "Nalco de Mexico", "monto_nominal": 4414612.00, "company": 1, "create_date": "2026-03-09", "dias_sin_movimiento": 50 },
+      { "name": "SO11183", "cliente": "Nalco de Mexico", "monto_nominal": 3887208.72, "company": 1, "create_date": "2025-09-24", "dias_sin_movimiento": 50 },
+      { "name": "SO11046", "cliente": "CBRE GCS", "monto_nominal": 3286686.00, "company": 1, "create_date": "2025-08-21", "dias_sin_movimiento": 231 },
+      { "name": "SO10988", "cliente": "BEBIDAS PURIFICADAS", "monto_nominal": 3257552.60, "company": 1, "create_date": "2025-08-11", "dias_sin_movimiento": 231 },
+      { "name": "SO11164", "cliente": "Nalco de Mexico", "monto_nominal": 2983658.04, "company": 1, "create_date": "2025-09-18", "dias_sin_movimiento": 50 },
+      { "name": "SO11493", "cliente": "QUIMITEC TRATAMIENTO DE AGUAS", "monto_nominal": 2678788.00, "company": 1, "create_date": "2025-12-19", "dias_sin_movimiento": 202 },
+      { "name": "SO11048", "cliente": "Nalco de Mexico", "monto_nominal": 2381636.60, "company": 1, "create_date": "2025-08-22", "dias_sin_movimiento": 50 },
+      { "name": "SO11258", "cliente": "Terra Energy", "monto_nominal": 2314200.00, "company": 1, "create_date": "2025-10-29", "dias_sin_movimiento": 231, "sin_owner": true }
+    ]
+  },
+
+  "riesgos": {
+    "RIESGO_1": {
+      "severidad": "alta",
+      "titulo": "amount_total no es comparable entre ordenes: moneda mal asignada",
+      "evidencia": "127 ordenes de la empresa 1 (mexicana) marcadas currency_id=USD. SO11771 (Conmet de Mexico) = 53,190,685 USD = $923M MXN, imposible. Tambien MONDELEZ, MAGNEKON, CHEMTREAT: clientes MX, empresa MX, marcados USD con montos que son pesos. Pero coexisten ordenes empresa-1-en-USD que SI son dolares genuinos (Visionary $1,624).",
+      "impacto": "Los totales en pesos son indicativos, no auditables. La distribucion por rango sigue siendo robusta (los errores son de orden de magnitud).",
+      "ambiguedad_residual": "2 ordenes Mission Foods (empresa 6, $1.35M y $1.20M USD) podrian ser MXN mal etiquetadas; si lo son, el pipeline vivo normalizado baja ~$44M MXN.",
+      "accion": "Auditar las 127 ordenes empresa-1-en-USD (trabajo Odoo/Gerardo, fuera del modulo)."
+    },
+    "RIESGO_2": {
+      "severidad": "alta",
+      "titulo": "write_date no mide seguimiento comercial",
+      "evidencia": "60 de las 122 enviadas comparten write_date exacto 2025-11-28 03:13:06; otras 27 comparten 2026-05-27 17:56:35. Son escrituras masivas, no toques humanos.",
+      "impacto": "El watchdog T2 usa 'dias desde write_date' por especificacion. Hoy da igual porque todo esta rojo, pero cualquier script futuro que toque sale.order en masa reseteara todos los semaforos a verde sin que nadie haya llamado a un cliente. Falso negativo silencioso.",
+      "accion": "Watchdog v2 debe usar mail.message del chatter (comunicacion real con cliente) como senal de movimiento. Ver ROADMAP."
+    },
+    "RIESGO_3": {
+      "severidad": "alta",
+      "titulo": "No hay atribucion por vendedor",
+      "evidencia": "416/541 (77%) en la cuenta generica 'Sales FTS'. 12 ordenes sin user_id. 81% del volumen en 3 cuentas genericas.",
+      "impacto": "El digest 'por vendedor' de T2 produce un solo bucket con ~122 ordenes. Ninguna metrica por persona, ranking o comision es posible. El bucket SIN OWNER si es senal real (12 ordenes, incluida SO11258 de $2.3M).",
+      "accion": "El WF comercial/captura (T3) es el arranque de la atribucion real. Falta migrar Sales FTS a usuarios reales."
+    },
+    "RIESGO_4": {
+      "severidad": "media",
+      "titulo": "275 borradores (51%) nunca enviados",
+      "evidencia": "275 de 541 en state=draft. Ni ganados ni perdidos: invisibles.",
+      "impacto": "Es la mitad del esfuerzo de cotizacion sin destino conocido. Puede ser basura o fuga pura; no es determinable sin revision humana.",
+      "accion": "Muestra manual de 20 antes de decidir si el watchdog debe vigilar draft (hoy solo mira sent)."
+    },
+    "RIESGO_5": {
+      "severidad": "media",
+      "titulo": "Ruido de portal web mezclado con venta real",
+      "evidencia": "Ordenes de 'Public user' por $0, $1.16, $1.68. 50 cancelaciones USD sumando $2,184 (~$44 c/u).",
+      "impacto": "Contaminan conteos y hunden el win rate de <200K de 58% a 35%.",
+      "accion": "Filtro de monto minimo (ej. >=$1,000). No aplicado en este baseline para no ocultar el fenomeno."
+    }
+  },
+
+  "campos_sanos": ["state", "create_date", "date_order", "partner_id", "company_id"],
+
+  "verificacion_cruzada": {
+    "metodo_1": "Agregacion server-side Odoo (formatted_read_group con dominios por bucket)",
+    "metodo_2": "Bucketing client-side sobre los 80 registros crudos de state=sale",
+    "resultado": "Coinciden exactamente: 58 / 14 / 6 / 1 / 1"
+  }
+}
