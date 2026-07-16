@@ -1,5 +1,21 @@
 # FASE 2 — Spec del Distribuidor V1 de Carga MO (horas → pesos)
 
+> ## ⚠️ Correcciones 2026-07-16 (post browser-test de Esteban) — LEER PRIMERO
+> Aplicadas a la página `operaciones/carga-mo/index.html` (build `20260716-cmo-jwt-v2`) + workflows `HV1UE5JxN5fKdC2Y` (dry-run) y `j0V9wfpuPTLFO9DZ` (write, sigue INACTIVO):
+> 1. **Código 080 = Arturo Hernández (emp 143)**, ya existente (nombre completo "Pedro Arturo Hernández Ramírez"). **NO se crea empleado.** Mapa 080→143 en página + ambos workflows; F12 B.2 ahora incluye `143:'080'` (**27 códigos**); Pedro eliminado de B.3.
+> 2. **solo_bolsa = sólo 3** (Rissia 97, Pablo 108, Arturo 143 → **608**). Todos los demás **híbridos** (respetan checkout). Los 3 sí checan kiosko; el flag sólo afecta el dinero. Workflows leerán `x_studio_solo_bolsa` de Odoo cuando exista (fallback al mapa, hook marcado en el MOTOR).
+> 3. **Parser ignora fila fantasma** (código "00"/vacío **y** sin bruto = basura de Excel). Validación dura se mantiene para códigos reales sin cruce.
+> 4. **Semana = Periodo CONTPAQi de la fila 4** (`Periodo N ... del DD/MM al DD/MM`), NO semana ISO. La página valida que la fecha de inicio del periodo == viernes elegido (si no, error "archivo equivocado"). Llave idempotencia `MO S<periodo>/<año>`.
+> 5. **Vacación parcial:** cols 9+10 (Vacaciones + Prima) → **513**; el RESTO del bruto se reparte por horas confirmadas. Sólo si NO hay horas en toda la ventana → 100% a 513. Caso real Luis Ángel.
+> 6. **Umbral trío `<2h`** confirmadas en la semana → su monto va a excepción. (Ricardo 98 en SEM 28: 0.01h → excepción; de hecho no aparece en el Excel SEM 28.)
+> 7. **SEGURIDAD (JWT):** página detrás del auth de Finanzas (`FinAuth`, sin login no se ve nada — muestra brutos confidenciales). Ambos webhooks **validan el token por request** (mismo HMAC-SHA256 JS puro de `auth/finanzas-login`, token en el body). WRITE conserva su gate `confirm_write` como 2ª capa. Verificado en vivo: sin token/token basura/JWT con secreto falso → **401**.
+>
+> **Fix de precisión (descubierto en la re-corrida):** el reparto usaba `tot=Math.round(sum*100)/100` (redondear horas antes de dividir) → drift de **$1.80** en SEM 28. Corregido a **tot precisión completa + residuo-a-última-línea** → cada empleado suma EXACTO a su bruto → total cuadra Δ 0.00. Aplicado en ambos MOTOR + la simulación.
+>
+> **Dry-run SEM 28 con reglas nuevas (Δ control 0.00):**
+> Topo Chico 68,756.78 · Vertiv 41,295.20 · 608 VENTAS 35,486.37 · 513 ADMIN 27,089.74 · 768 LEGAL 6,562.50 · 478 RH 5,833.31 · 3096 ADMIN OPS 4,364.44 · Magnekon 4,019.10 · Chiller 2,823.37 · **Total 196,230.81** (= bruto 177,778.56 + trío 18,452.25). 0 excepciones. Reglas especiales: Juan Manuel vacación_total→513; Luis Ángel vacación_parcial (2,173.75→513 + resto por horas Magnekon/608); Juan/Juana asimilado→513; Rissia/Pablo/Arturo solo_bolsa→608; Carlos/Felipe trío por horas.
+> _(Nota: los totales por destino pueden variar ±centavos en el live según el orden de iteración de las asistencias — el total siempre cuadra exacto.)_
+
 > **Estado:** DISEÑO (cero escrituras). Diseñado 2026-07-13 contra Odoo `serviciosfts.odoo.com` (MCP UID 2 read-only) + decisiones cerradas de Esteban.
 > **Alcance V1 (MVP):** distribuir SOLO el **bruto CONTPAQi** (percepciones totales por empleado) + montos del trío facturante (Carlos/Felipe/Ricardo), ponderado por **horas confirmadas** de la ventana de nómina **VIE→JUE**, escribiendo **`account.analytic.line` compuesta (proyecto|bolsa × rubro 1177 MO)**. La línea nace etiquetada por rubro desde V1.
 > **Fuera de V1 (backlog, no diseñar):** carga patronal por factor (SUA), ISN, fondo de ahorro (columna Z del Excel), true-ups, geocercas dinámicas.
