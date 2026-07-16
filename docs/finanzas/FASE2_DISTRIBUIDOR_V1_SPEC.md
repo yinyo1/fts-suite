@@ -171,9 +171,17 @@ Para el veredicto de Felipe (garantía vs mala atribución). **Conclusión: NING
 
 ---
 
-## Puntos de decisión abiertos (resumen)
-1. **UI de subida** del Excel vs subida directa Ulises (§a).
-2. **Parseo** del xlsx: cliente (recomendado) vs n8n (§b).
-3. **Fuente de asignación manual semanal** (§c/§d).
-4. **`general_account_id`** de la analytic.line MO vs standalone (recomendado standalone) (§e).
-5. **Columna del budget** para bolsas (plan 2 `x_plan2_id`) — validar que "achieved" la lea (§e).
+## Puntos de decisión — CERRADOS (Esteban, 2026-07-16)
+1. **Subida:** página simple en FTS Suite (patrón kiosk); **V1 la usa solo Esteban**, Ulises en V1.1.
+2. **Parseo:** en cliente con **SheetJS** (ya vive en el IPERC) → JSON al webhook. n8n NO toca binarios.
+3. **Asignación manual de la semana:** **DIFERIDA a V1.1.** Cascada V1 = solo `default → cola de excepción` (sin el paso 1 manual). El paso manual queda documentado como futuro.
+4. **Escritura:** `analytic.line` **standalone** (sin asiento). La contabilidad fiscal vive en CONTPAQi; Odoo analítico = gestión.
+5. **Columna budget plan 2:** **VALIDAR con prueba real** en el canary (budget de prueba en una bolsa + analytic.line de prueba + verificar que "achieved" la lee + borrar ambos). No asumir.
+
+## Visión de conciliación (V1.1+, backlog — NO V1)
+Flujo bancario real (contexto Esteban): **BBVA México (principal) → fondea → BBVA Nómina → dispersa** a empleados los viernes. La cuenta BBVA Nómina se mantiene en ceros salvo el monto de la semana (control anti-mal-manejo).
+- **Meta futura:** Excel → asignar gasto MO a cada bolsa/proyecto → **conciliar la salida BBVA México→Nómina→dispersión contra esos gastos asignados**.
+- ⚠️ **Dependencia:** para conciliar, esos movimientos bancarios **deben existir en Odoo primero** — hoy NO están (`account.move.line [GL 102.01.00008]` = 0 en 2026; la dispersión vive solo en el banco). La conciliación V1.1 requerirá **importar el movimiento bancario a Odoo** (o conciliar fuera). Fuera de alcance V1.
+
+## ⚠️ Regla de timing crítica (hallazgo del dry-run SEM 28)
+El motor SOLO cuenta horas con `manager_approval=true`. En SEM 28, **el VIERNES 03-jul (26 attendances) estaba SIN confirmar** → habría quedado EXCLUIDO. **Invariante:** el distribuidor NO debe correr hasta que Felipe confirme la semana completa VIE→JUE. El run del viernes debe **gatear sobre "semana 100% confirmada"** (o reportar las jornadas sin confirmar como bloqueo, no distribuirlas). Ver dry-run.
