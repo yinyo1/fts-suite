@@ -996,7 +996,7 @@ test del chat AI v2<br>
   const role = session.role || 'user';
 
   // Gate 2: secret hardcoded auto-bootstrap (no más localStorage manual)
-  const HARDCODED_SECRET = '2023971e671e3934cd87bd1c94f67ee08e733153ccaa62c59a9b882ca7ec3ec5';
+  const HARDCODED_SECRET = 'ac9599d09817923b0d3003e406cb0d89f7a0f3e8bdcb3cdb270f0198859ebb34';
   const secret = HARDCODED_SECRET;
   localStorage.setItem(SECRET_KEY, HARDCODED_SECRET); // compat con flujo previo
 
@@ -1684,7 +1684,7 @@ tr.hidden-completed{display:none !important}
   // === Sprint 4: dispatchDirectOp helper con toast standalone (no abre chat) ===
   async function dispatchDirectOp(op, summaryHint) {
     const DIRECT_URL = 'https://primary-production-5c3c.up.railway.app/webhook/pmo-direct-op';
-    const SECRET = '2023971e671e3934cd87bd1c94f67ee08e733153ccaa62c59a9b882ca7ec3ec5';
+    const SECRET = 'ac9599d09817923b0d3003e406cb0d89f7a0f3e8bdcb3cdb270f0198859ebb34';
     const ts = new Date().toISOString();
     const session = (typeof FTSAuth !== 'undefined' && FTSAuth.getSession) ? FTSAuth.getSession() : {};
     const userId = String(session.userId || session.username || 'unknown');
