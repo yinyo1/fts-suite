@@ -8,7 +8,7 @@
     "ana_laura": "ana.acevedo@fts.mx",
     "magaly": "magaly@fts.mx"
   },
-  "canary": true,
+  "canary": false,
   "_canary_nota": "canary=true redirige TODOS los correos del watchdog solo a esteban con subject [CANARY], sin spammear a Felipe/Ana/Magaly. Usar para probar W5 con Manual Trigger, luego volver a false.",
   "w1_activo": true,
   "w2_activo": true,
