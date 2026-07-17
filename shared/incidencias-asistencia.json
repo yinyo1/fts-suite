@@ -171,15 +171,26 @@
       "department_name": "Operaciones",
       "sin_departamento": false,
       "depto_invalido": false,
-      "supervisor_id": 62,
-      "supervisor_name": "Gilberto Gibran Solís Carrillo",
-      "supervisor_email": "rayado_32@hotmail.com",
-      "supervisor_phone": "8136441743",
+      "supervisor_id": 112,
+      "supervisor_name": "Felipe Pérez Guzmán",
+      "supervisor_email": "felipe@fts.mx",
+      "supervisor_phone": null,
       "es_ceo": false,
       "rh_directo_ceo": false,
       "directo_ceo": false,
       "sin_supervisor": false,
-      "tag_disputa_activo": true
+      "tag_disputa_activo": true,
+      "reasignaciones": [
+        {
+          "fecha": "2026-07-18",
+          "de_supervisor_id": 62,
+          "de_supervisor_name": "Gilberto Gibran Solís Carrillo",
+          "a_supervisor_id": 112,
+          "a_supervisor_name": "Felipe Pérez Guzmán",
+          "motivo": "reasignada 18-jul: manager corregido de Gibran a Felipe, error de captura del alta original",
+          "por": "Esteban (Odoo parent_id 112) + CC (edicion almacen)"
+        }
+      ]
     },
     {
       "id_interno": "INC-OLV-CHK-124-2026-07-09T23-50-57-523Z",
