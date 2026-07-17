@@ -103,6 +103,7 @@
   // ─── Cargar horas del rango ───
   function cargar(){
     clearMsg();
+    CH._autoDismissed = false; if(CH._autoTimer){ clearTimeout(CH._autoTimer); CH._autoTimer = null; }
     var desde = $('f-desde').value;
     var hasta = $('f-hasta').value;
     if(!desde){ showMsg('Elige la fecha "Desde".', 'err'); return; }
@@ -133,9 +134,10 @@
   }
 
   function estadoBadge(row){
-    if(row.en_disputa) return '<span class="ch-badge b-disp">⚠ En disputa</span>';
+    if(row.en_disputa) return '<span class="ch-badge b-disp">⚠ En disputa' + (row._marcado ? ' ☑' : '') + '</span>';
     if(row.abierta)    return '<span class="ch-badge b-open">⏳ Sin completar</span>';
     if(row.confirmado) return '<span class="ch-badge b-ok">✓ Confirmada</span>';
+    if(row._marcado)   return '<span class="ch-badge b-mark">☑ Revisado</span>';
     return '<span class="ch-badge b-pend">Pendiente</span>';
   }
 
@@ -206,8 +208,11 @@
       var soCell = soCellHtml(row);
       var horario = (row.check_in_cst || '—') + (row.check_out_cst ? ' → ' + row.check_out_cst.slice(11) : ' → …');
       var horas = row.worked_hours != null ? row.worked_hours.toFixed(2) + 'h' : '—';
-      var confirmarDisabled = (row.confirmado || row.en_disputa || row.abierta) ? ' disabled' : '';
-      return '<tr data-att="' + row.attendance_id + '">' +
+      var moEst = budgetEstado(row);
+      var markDisabled = !marcable(row);
+      var markTitle = (moEst === 'sin_linea') ? ' title="🔴 Sin línea de Mano de Obra — corrige el destino (✎) para poder enviar"'
+        : (row.confirmado ? ' title="Ya confirmada"' : (row.abierta ? ' title="Jornada abierta"' : (row.en_disputa ? ' title="⚠️ En disputa — se confirma normal pero deberá resolverse antes de nómina"' : ' title="Marca revisado para incluir en el envío"')));
+      return '<tr data-att="' + row.attendance_id + '"' + (row._marcado ? ' class="ch-row-mark"' : '') + '>' +
           '<td style="color:#9aa0a6;font-size:11px;font-variant-numeric:tabular-nums" title="Attendance ID (Odoo)">' + row.attendance_id + '</td>' +
           '<td>' + esc(row.empleado_nombre || ('#' + row.empleado_id)) + '</td>' +
           '<td>' + depto + '</td>' +
@@ -216,7 +221,7 @@
           '<td class="cell-so">' + soCell + '</td>' +
           '<td class="cell-estado">' + estadoBadge(row) + '</td>' +
           '<td><div class="ch-actions">' +
-            '<button class="ch-btn ch-btn-sm ch-btn-ok" data-act="confirm" data-att="' + row.attendance_id + '"' + confirmarDisabled + '>✔ Confirmar</button>' +
+            '<label class="ch-mark-lbl' + (markDisabled ? ' ch-mark-off' : '') + '"' + markTitle + '><input type="checkbox" class="ch-mark" data-att="' + row.attendance_id + '"' + (row._marcado ? ' checked' : '') + (markDisabled ? ' disabled' : '') + '> revisado</label>' +
             '<button class="ch-btn ch-btn-sm ch-btn-edit" data-act="editso" data-att="' + row.attendance_id + '"' + (row.abierta ? ' disabled title="Jornada abierta — sin acciones hasta que cierre"' : '') + '>✎ Corregir</button>' +
           '</div></td>' +
         '</tr>';
@@ -235,68 +240,66 @@
     $('tabla-zone').querySelectorAll('th.ch-sortable').forEach(function(th){
       th.addEventListener('click', function(){ onHeaderClick(th.dataset.key); });
     });
-    $('tabla-zone').querySelectorAll('button[data-act]').forEach(function(b){
-      b.addEventListener('click', function(){
-        var att = parseInt(b.dataset.att, 10);
-        if(b.dataset.act === 'confirm') confirmar(att, b);
-        else abrirModalSO(att);
-      });
+    $('tabla-zone').querySelectorAll('.ch-mark').forEach(function(cb){
+      cb.addEventListener('change', function(){ toggleMark(parseInt(cb.dataset.att, 10), cb.checked); });
     });
+    $('tabla-zone').querySelectorAll('button[data-act="editso"]').forEach(function(b){
+      b.addEventListener('click', function(){ abrirModalSO(parseInt(b.dataset.att, 10)); });
+    });
+    updateSendBtn();
+    checkAutoPopup();
   }
 
   function findRow(attId){ return CH.rows.find(function(x){ return x.attendance_id === attId; }); }
 
-  // ─── Confirmar horas (set manager_approval) — con candado presupuestal MO (CC-1) ───
-  // Regla: proyecto sin línea 1177 → BLOQUEO DURO (no envía). placeholder/agotado → popup de
-  // conciencia → reenvía con ack. El workflow re-valida server-side (la UI avisa, el candado es el server).
-  function confirmar(attId, btn){
-    clearMsg();
-    var row = findRow(attId);
-    var est = budgetEstado(row);
-    if(est === 'sin_linea'){
-      showMsg('🔴 No se puede confirmar: esta cuenta no contempla gasto de Mano de Obra (ej. trabajo de terceros). Corrige el destino (✎) antes de confirmar.', 'err');
-      return;
-    }
-    var ack = {};
-    if(est === 'placeholder'){
-      if(!window.confirm('⚠️ MO sin fondos asignados en esta cuenta (presupuesto placeholder).\n\n¿Confirmar de todos modos?')) return;
-      ack.ack_mo_placeholder = true;
-    } else if(est === 'agotado'){
-      var bm = row.budget_mo || {};
-      if(!window.confirm('⚠️ MO agotada: ' + fmtMoney(bm.consumido) + ' consumido de ' + fmtMoney(bm.presupuesto) + ' presupuestado.\n\n¿Confirmar el sobrecosto?')) return;
-      ack.ack_mo_agotado = true;
-    }
-    enviarConfirm(attId, btn, ack);
-  }
+  // ═══ Modelo "revisar → enviar" (dos pasos) ═══
+  // El click individual solo MARCA el renglón (estado local, no escribe en Odoo, no dispara W6).
+  // El botón general es la ÚNICA vía real: exige marcados, SIEMPRE muestra popup-resumen con
+  // alertas visibles, y al enviar escribe en Odoo. Ese envío es el evento del W6.
+  // sin_linea (server-side) sigue siendo bloqueo duro: no es marcable ni pasa con OK.
+  // Disputa YA NO bloquea la confirmación diaria: el renglón en disputa se confirma normal
+  // (se señala en el popup) — el bloqueo duro por disputa vive en el semáforo del distribuidor (write semanal).
+  function marcable(row){ return !(row.confirmado || row.abierta || budgetEstado(row) === 'sin_linea'); }
+  function marcados(){ return CH.rows.filter(function(r){ return r._marcado && marcable(r); }); }
+  function pendientes(){ return CH.rows.filter(function(r){ return !r.confirmado && !r.abierta; }); }
 
-  function enviarConfirm(attId, btn, ack){
-    if(btn){ btn.disabled = true; btn.textContent = '⏳'; }
-    var payload = Object.assign({ attendance_id: attId, action: 'confirm', supervisor_nombre: CH.supervisor }, ack || {});
-    n8n('/webhook/planeacion/confirmar-horas', payload).then(function(data){
-      var r = Array.isArray(data) ? data[0] : data;
-      // Server pide ack (badge desfasado) → re-prompt con el ack correcto y reintenta
-      if(r && r.needs_ack){
-        if(window.confirm('⚠️ ' + (r.mensaje || 'Requiere confirmación consciente.') + '\n\n¿Confirmar de todos modos?')){
-          var ack2 = (r.codigo === 'MO_AGOTADO') ? { ack_mo_agotado: true } : { ack_mo_placeholder: true };
-          enviarConfirm(attId, btn, ack2);
-        } else if(btn){ btn.disabled = false; btn.textContent = '✔ Confirmar'; }
-        return;
+  function toggleMark(attId, checked){
+    var row = findRow(attId); if(!row) return;
+    if(checked && !marcable(row)){ return; }
+    row._marcado = !!checked;
+    if(!checked) CH._autoDismissed = false;   // re-arma el auto-popup al desmarcar
+    var tr = document.querySelector('tr[data-att="' + attId + '"]');
+    if(tr){ tr.classList.toggle('ch-row-mark', row._marcado); tr.querySelector('.cell-estado').innerHTML = estadoBadge(row); }
+    updateSendBtn();
+    checkAutoPopup();
+  }
+  function updateSendBtn(){
+    var btn = $('btn-tanda'); if(!btn) return;
+    var n = marcados().length;
+    btn.textContent = '✔ Enviar confirmación' + (n ? ' (' + n + ')' : '');
+    btn.disabled = (n === 0);
+  }
+  function marcarTodos(){
+    var any = false;
+    CH.rows.forEach(function(r){ if(marcable(r) && !r._marcado){ r._marcado = true; any = true; } });
+    if(any){ CH._autoDismissed = false; renderTabla(); }
+    else showMsg('No hay renglones nuevos por marcar (revisa abiertas / 🔴 sin línea MO).', 'err');
+  }
+  // Auto-popup anti-olvido: cuando TODO lo confirmable del rango queda marcado, dispara el envío tras ~4s.
+  function modalAbierto(){ return $('pop-tanda').style.display === 'flex' || $('modal-so').style.display === 'flex'; }
+  function checkAutoPopup(){
+    if(CH._autoTimer){ clearTimeout(CH._autoTimer); CH._autoTimer = null; }
+    if(CH._autoDismissed) return;
+    if(modalAbierto()) return;
+    var conf = CH.rows.filter(marcable);
+    if(!conf.length || !conf.every(function(r){ return r._marcado; })) return;
+    CH._autoTimer = setTimeout(function(){
+      CH._autoTimer = null;
+      var c2 = CH.rows.filter(marcable);
+      if(c2.length && c2.every(function(r){ return r._marcado; }) && !CH._autoDismissed && !modalAbierto()){
+        confirmarEnvio(true);
       }
-      if(r && r.bloqueo){
-        showMsg('🔴 ' + (r.mensaje || 'Confirmación bloqueada por presupuesto MO.'), 'err');
-        if(btn){ btn.disabled = false; btn.textContent = '✔ Confirmar'; }
-        return;
-      }
-      if(!r || r.success === false) throw new Error((r && r.mensaje) || 'Error');
-      // Éxito confirmado por el backend → recién ahora actualizamos UI (anti #15)
-      var row = findRow(attId);
-      if(row) row.confirmado = true;
-      actualizarFila(attId);
-      showMsg('✓ Horas confirmadas (att ' + attId + ')', 'ok');
-    }).catch(function(e){
-      showMsg('❌ No se pudo confirmar: ' + e.message, 'err');
-      if(btn){ btn.disabled = false; btn.textContent = '✔ Confirmar'; }
-    });
+    }, 4000);
   }
 
   function actualizarFila(attId){
@@ -305,79 +308,96 @@
     if(!row || !tr) return;
     tr.querySelector('.cell-estado').innerHTML = estadoBadge(row);
     tr.querySelector('.cell-so').innerHTML = soCellHtml(row);
-    var btnC = tr.querySelector('button[data-act="confirm"]');
-    if(btnC){
-      var dis = (row.confirmado || row.en_disputa || row.abierta);
-      btnC.disabled = dis;
-      btnC.textContent = '✔ Confirmar';
-    }
+    var cb = tr.querySelector('.ch-mark');
+    if(cb){ cb.checked = !!row._marcado; cb.disabled = !marcable(row); }
+    tr.classList.toggle('ch-row-mark', !!row._marcado);
     var conf = CH.rows.filter(function(x){ return x.confirmado; }).length;
     $('ch-summary').textContent = CH.rows.length + ' registro(s) · ' + conf +
       ' confirmado(s) · ' + (CH.rows.length - conf) + ' pendiente(s)';
+    updateSendBtn();
   }
 
-  // ─── #2c: Confirmar día/tanda (consolidado) — PRIMER FILTRO de conciencia ───
-  function pendientesConfirmar(){
-    return CH.rows.filter(function(r){ return !r.confirmado && !r.en_disputa && !r.abierta; });
-  }
-  function confirmarTanda(){
+  // ─── Envío: única vía de confirmación real. SIEMPRE popup-resumen con alertas visibles. ───
+  function confirmarEnvio(auto){
     clearMsg();
-    var pend = pendientesConfirmar();
-    if(!pend.length){ showMsg('No hay renglones pendientes de confirmar en el rango.', 'err'); return; }
-    // CC-1: excluir sin_linea (bloqueo duro, no se confirman); marcar placeholder/agotado (conciencia).
-    var blocked = pend.filter(function(r){ return budgetEstado(r) === 'sin_linea'; });
-    var confirmables = pend.filter(function(r){ return budgetEstado(r) !== 'sin_linea'; });
-    var cross = confirmables.filter(esCrossProy);
-    var warn = confirmables.filter(function(r){ var e = budgetEstado(r); return e === 'placeholder' || e === 'agotado'; });
-    if(blocked.length || cross.length || warn.length){
-      abrirPopupTanda(confirmables, cross, warn, blocked);
-    } else {
-      confirmarVarios(confirmables.map(function(r){ return r.attendance_id; }));
-    }
+    var marked = marcados();
+    if(!marked.length){ if(!auto) showMsg('No hay nada marcado para enviar. Marca (revisado) los renglones que quieras confirmar.', 'err'); return; }
+    var pend = pendientes();
+    var sinMarcar = pend.filter(function(r){ return !r._marcado && marcable(r); });
+    var sinLinea = pend.filter(function(r){ return budgetEstado(r) === 'sin_linea'; });
+    abrirPopupEnvio(marked, sinMarcar, sinLinea, auto === true);
   }
-  function popTablaFilas(arr, colProy){
+  function flagsRow(r){
+    var s = '', e = budgetEstado(r);
+    if(r.en_disputa) s += '⚖️';
+    if(esCrossProy(r)) s += '⚠️';
+    if(e === 'placeholder' || e === 'agotado') s += '🟠';
+    if(e === 'sin_linea') s += '🔴';
+    return s;
+  }
+  function popFilas(arr){
     return arr.map(function(r){
-      return '<tr><td>' + esc(r.empleado_nombre||'') + '</td><td>' + esc(r.department_name||'') + '</td><td>' +
-        (colProy ? esc(r.so_nombre || ('Proy ' + r.so_id)) : esc(labelAtribucion(r))) + '</td><td style="text-align:right">' +
-        (r.worked_hours!=null? r.worked_hours.toFixed(2)+'h':'—') + '</td></tr>';
+      var fl = flagsRow(r);
+      return '<tr><td>' + (fl ? fl + ' ' : '') + esc(r.empleado_nombre||'') + '</td><td>' + esc(r.department_name||'') + '</td><td>' +
+        esc(labelAtribucion(r)) + '</td><td style="text-align:right">' + (r.worked_hours!=null? r.worked_hours.toFixed(2)+'h':'—') + '</td></tr>';
     }).join('');
   }
-  function abrirPopupTanda(confirmables, cross, warn, blocked){
-    var html = '<p>Vas a confirmar <b>' + confirmables.length + '</b> renglón(es).</p>';
-    if(blocked.length){
-      html += '<p style="color:#b3261e;font-weight:600">🔴 ' + blocked.length + ' NO se confirmarán (cuenta sin Mano de Obra — trabajo de terceros). Corrige su destino primero:</p>' +
-        '<table class="ch-pop-tbl"><thead><tr><th>Empleado</th><th>Depto</th><th>Proyecto</th><th>Hrs</th></tr></thead><tbody>' + popTablaFilas(blocked, true) + '</tbody></table>';
+  function abrirPopupEnvio(marked, sinMarcar, sinLinea, auto){
+    var cross = marked.filter(esCrossProy);
+    var warn = marked.filter(function(r){ var e = budgetEstado(r); return e === 'placeholder' || e === 'agotado'; });
+    var disp = marked.filter(function(r){ return r.en_disputa; });
+    var intro = auto
+      ? '<p style="color:#1a4480;font-weight:600">✅ Todos los registros del rango están pre-confirmados — ¿enviar confirmación?</p><p>Se enviarán <b>' + marked.length + '</b> registro(s):</p>'
+      : '<p>Vas a <b>enviar la confirmación</b> de <b>' + marked.length + '</b> registro(s):</p>';
+    var html = intro +
+      '<table class="ch-pop-tbl"><thead><tr><th>Empleado</th><th>Depto</th><th>Destino</th><th>Hrs</th></tr></thead><tbody>' + popFilas(marked) + '</tbody></table>';
+    var alertas = [];
+    if(cross.length) alertas.push('⚠️ <b>' + cross.length + '</b> de otro depto cargando a proyecto');
+    if(warn.length)  alertas.push('🟠 <b>' + warn.length + '</b> con MO sin fondos / agotada (se registra el sobrecosto)');
+    if(disp.length)  alertas.push('⚖️ <b>' + disp.length + '</b> en disputa — se confirman pero deberán resolverse antes de nómina');
+    if(alertas.length){
+      html += '<p style="color:#8a5a12;font-size:12px;background:#fff3df;padding:8px 10px;border-radius:8px">Alertas de lo que envías: ' + alertas.join(' · ') + '</p>';
+    } else {
+      html += '<p style="color:#1a7a3a;font-size:12px">Sin alertas en lo marcado.</p>';
     }
-    if(warn.length){
-      html += '<p style="color:#BA7517;font-weight:600">🟠 ' + warn.length + ' con MO sin fondos / agotada (se registrará el sobrecosto):</p>' +
-        '<table class="ch-pop-tbl"><thead><tr><th>Empleado</th><th>Depto</th><th>Cuenta</th><th>Hrs</th></tr></thead><tbody>' + popTablaFilas(warn, true) + '</tbody></table>';
+    if(sinMarcar.length){
+      html += '<p style="color:#555;font-size:12px">↩ Quedan <b>' + sinMarcar.length + '</b> pendiente(s) sin marcar — NO se enviarán.</p>';
     }
-    if(cross.length){
-      html += '<p style="color:#0C447C;font-weight:600">⚠️ ' + cross.length + ' de otro depto cargando a proyecto:</p>' +
-        '<table class="ch-pop-tbl"><thead><tr><th>Empleado</th><th>Depto</th><th>Proyecto</th><th>Hrs</th></tr></thead><tbody>' + popTablaFilas(cross, true) + '</tbody></table>';
+    if(sinLinea.length){
+      html += '<p style="color:#b3261e;font-size:12px">🔴 <b>' + sinLinea.length + '</b> con sin línea de Mano de Obra — no se pueden enviar; corrige su destino (✎).</p>';
     }
-    html += '<p style="color:#555;font-size:12px">¿Confirmas los ' + confirmables.length + ' renglón(es) listados como confirmables?</p>';
     $('pop-tanda-body').innerHTML = html;
-    CH._tandaPend = confirmables.map(function(r){ return r.attendance_id; });
+    CH._envioPend = marked.map(function(r){ return r.attendance_id; });
     $('pop-tanda').style.display = 'flex';
   }
-  function cerrarPopupTanda(){ $('pop-tanda').style.display = 'none'; CH._tandaPend = null; }
-  function confirmarVarios(atts){
-    if(!atts || !atts.length) return;
-    var total = atts.length, ok = 0, fail = 0, i = 0;
-    showMsg('Confirmando ' + total + ' renglón(es)…', 'ok');
+  function cerrarPopupEnvio(){ $('pop-tanda').style.display = 'none'; CH._envioPend = null; CH._autoDismissed = true; }
+  function enviarLote(atts){
+    if(!atts || !atts.length){ showMsg('No había nada marcado para enviar.', 'err'); return; }
+    var total = atts.length, ok = 0, fail = 0, blocked = 0, i = 0;
+    showMsg('Enviando confirmación de ' + total + ' registro(s)…', 'ok');
     function next(){
       if(i >= atts.length){
-        showMsg('✓ Tanda: ' + ok + ' confirmada(s)' + (fail ? (' · ' + fail + ' con error') : ''), fail ? 'err' : 'ok');
+        var extra = [];
+        if(blocked) extra.push(blocked + ' bloqueado(s)');
+        if(fail) extra.push(fail + ' con error');
+        var msg = ok ? ('✓ Confirmación enviada — ' + ok + ' registro(s)' + (extra.length ? (' · ' + extra.join(' · ')) : ''))
+                     : ('❌ No se envió ninguno' + (extra.length ? (' — ' + extra.join(' · ')) : ''));
+        showMsg(msg, (fail || blocked || !ok) ? 'err' : 'ok');
+        CH._autoDismissed = false;   // re-arma para un siguiente marcado completo
         return;
       }
       var att = atts[i++];
-      // CC-1: el usuario ya consintió en el popup → mandar ack según el estado presupuestal del renglón.
       var row = findRow(att); var est = budgetEstado(row); var ack = {};
       if(est === 'placeholder') ack.ack_mo_placeholder = true;
       else if(est === 'agotado') ack.ack_mo_agotado = true;
-      n8n('/webhook/planeacion/confirmar-horas', Object.assign({ attendance_id: att, action: 'confirm', supervisor_nombre: CH.supervisor }, ack))
-        .then(function(data){ var r = Array.isArray(data) ? data[0] : data; if(!r || r.success === false) throw new Error(); if(row) row.confirmado = true; actualizarFila(att); ok++; })
+      n8n('/webhook/planeacion/confirmar-horas', Object.assign({ attendance_id: att, action: 'confirm', origen: 'envio', supervisor_nombre: CH.supervisor }, ack))
+        .then(function(data){
+          var r = Array.isArray(data) ? data[0] : data;
+          if(r && (r.bloqueo || r.needs_ack)){ blocked++; return; }
+          if(!r || r.success === false) throw new Error();
+          if(row){ row.confirmado = true; row._marcado = false; }
+          actualizarFila(att); ok++;
+        })
         .catch(function(){ fail++; })
         .finally(next);
     }
@@ -521,11 +541,12 @@
     $('f-hasta').value = ayer;
 
     $('btn-cargar').addEventListener('click', cargar);
-    var btnTanda = $('btn-tanda'); if(btnTanda) btnTanda.addEventListener('click', confirmarTanda);
-    var pcancel = $('pop-tanda-cancel'); if(pcancel) pcancel.addEventListener('click', cerrarPopupTanda);
-    var pcancel2 = $('pop-tanda-cancel2'); if(pcancel2) pcancel2.addEventListener('click', cerrarPopupTanda);
-    var pconfirm = $('pop-tanda-confirm'); if(pconfirm) pconfirm.addEventListener('click', function(){ var a = CH._tandaPend; cerrarPopupTanda(); confirmarVarios(a); });
-    var pop = $('pop-tanda'); if(pop) pop.addEventListener('click', function(e){ if(e.target.id === 'pop-tanda') cerrarPopupTanda(); });
+    var btnTanda = $('btn-tanda'); if(btnTanda) btnTanda.addEventListener('click', function(){ confirmarEnvio(false); });
+    var btnMarcar = $('btn-marcar-todos'); if(btnMarcar) btnMarcar.addEventListener('click', marcarTodos);
+    var pcancel = $('pop-tanda-cancel'); if(pcancel) pcancel.addEventListener('click', cerrarPopupEnvio);
+    var pcancel2 = $('pop-tanda-cancel2'); if(pcancel2) pcancel2.addEventListener('click', cerrarPopupEnvio);
+    var pconfirm = $('pop-tanda-confirm'); if(pconfirm) pconfirm.addEventListener('click', function(){ var a = CH._envioPend; cerrarPopupEnvio(); enviarLote(a); });
+    var pop = $('pop-tanda'); if(pop) pop.addEventListener('click', function(e){ if(e.target.id === 'pop-tanda') cerrarPopupEnvio(); });
     $('modal-so-close').addEventListener('click', cerrarModalSO);
     $('modal-so').addEventListener('click', function(e){ if(e.target.id === 'modal-so') cerrarModalSO(); });
     $('modal-so-search').addEventListener('input', function(e){ renderSOList(e.target.value); });
