@@ -1,7 +1,7 @@
 // HMAC SHA-256 pure JS (sandbox-safe — sin crypto.subtle, sin require, sin process, sin $env)
 // Implementacion FIPS 180-4 verificada contra Node crypto + RFC test vector.
 
-const SECRET = '2023971e671e3934cd87bd1c94f67ee08e733153ccaa62c59a9b882ca7ec3ec5';
+const SECRET = '<SECRETO_HMAC_VIVE_EN_N8N_NO_COMMITEAR>'; // rotado 2026-07-17; valor real solo en los Code nodes de pmo/chat-apply + pmo/chat-direct
 
 const _K = [
   0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
