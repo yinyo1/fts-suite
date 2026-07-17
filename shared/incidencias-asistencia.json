@@ -314,7 +314,7 @@
     {
       "id_interno": "INC-AUTO-CIERRE-98-2026-07-09T15-34-45-065Z",
       "tipo": "auto_cierre_pendiente",
-      "status": "pendiente_rh",
+      "status": "aprobada_con_ajuste",
       "fecha_creacion": "2026-07-09T15:34:46.650Z",
       "empleado_id": 98,
       "empleado_nombre": "Ricardo Alán Hernández González",
@@ -324,7 +324,7 @@
       "check_out_aplicado_utc": "2026-07-02 23:08:03",
       "horas_originales": "170.05",
       "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "autoincidencia": true,
       "rh_aprobo": null,
       "rh_fecha": null,
@@ -332,7 +332,18 @@
       "department_name": null,
       "supervisor_id": null,
       "supervisor_name": null,
-      "propuestas": []
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-07-17T13:29:50.795Z",
+          "hora_propuesta_cst": "18:00",
+          "comentario": "Incidencia confirmada",
+          "accion": "ajustado"
+        }
+      ]
     },
     {
       "id_interno": "INC-OLV-62-2026-07-09T13-46-56-284Z",
