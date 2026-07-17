@@ -1,5 +1,5 @@
 {
-  "build": "20260717-ch-revisar-enviar",
+  "build": "20260717-ch-revisar-enviar2",
   "modulo": "confirmar-horas",
   "updated": "2026-07-17",
   "_nota": "build DEBE coincidir con CH_BUILD en index.html. Bumpear ambos al mismo string en cada deploy (ver FASE15 Parte 12)."

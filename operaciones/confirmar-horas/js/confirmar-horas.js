@@ -103,6 +103,7 @@
   // ─── Cargar horas del rango ───
   function cargar(){
     clearMsg();
+    CH._autoDismissed = false; if(CH._autoTimer){ clearTimeout(CH._autoTimer); CH._autoTimer = null; }
     var desde = $('f-desde').value;
     var hasta = $('f-hasta').value;
     if(!desde){ showMsg('Elige la fecha "Desde".', 'err'); return; }
@@ -133,7 +134,7 @@
   }
 
   function estadoBadge(row){
-    if(row.en_disputa) return '<span class="ch-badge b-disp">⚠ En disputa</span>';
+    if(row.en_disputa) return '<span class="ch-badge b-disp">⚠ En disputa' + (row._marcado ? ' ☑' : '') + '</span>';
     if(row.abierta)    return '<span class="ch-badge b-open">⏳ Sin completar</span>';
     if(row.confirmado) return '<span class="ch-badge b-ok">✓ Confirmada</span>';
     if(row._marcado)   return '<span class="ch-badge b-mark">☑ Revisado</span>';
@@ -208,9 +209,9 @@
       var horario = (row.check_in_cst || '—') + (row.check_out_cst ? ' → ' + row.check_out_cst.slice(11) : ' → …');
       var horas = row.worked_hours != null ? row.worked_hours.toFixed(2) + 'h' : '—';
       var moEst = budgetEstado(row);
-      var markDisabled = (row.confirmado || row.en_disputa || row.abierta || moEst === 'sin_linea');
+      var markDisabled = !marcable(row);
       var markTitle = (moEst === 'sin_linea') ? ' title="🔴 Sin línea de Mano de Obra — corrige el destino (✎) para poder enviar"'
-        : (row.confirmado ? ' title="Ya confirmada"' : (row.abierta ? ' title="Jornada abierta"' : (row.en_disputa ? ' title="En disputa"' : ' title="Marca revisado para incluir en el envío"')));
+        : (row.confirmado ? ' title="Ya confirmada"' : (row.abierta ? ' title="Jornada abierta"' : (row.en_disputa ? ' title="⚠️ En disputa — se confirma normal pero deberá resolverse antes de nómina"' : ' title="Marca revisado para incluir en el envío"')));
       return '<tr data-att="' + row.attendance_id + '"' + (row._marcado ? ' class="ch-row-mark"' : '') + '>' +
           '<td style="color:#9aa0a6;font-size:11px;font-variant-numeric:tabular-nums" title="Attendance ID (Odoo)">' + row.attendance_id + '</td>' +
           '<td>' + esc(row.empleado_nombre || ('#' + row.empleado_id)) + '</td>' +
@@ -246,6 +247,7 @@
       b.addEventListener('click', function(){ abrirModalSO(parseInt(b.dataset.att, 10)); });
     });
     updateSendBtn();
+    checkAutoPopup();
   }
 
   function findRow(attId){ return CH.rows.find(function(x){ return x.attendance_id === attId; }); }
@@ -255,17 +257,21 @@
   // El botón general es la ÚNICA vía real: exige marcados, SIEMPRE muestra popup-resumen con
   // alertas visibles, y al enviar escribe en Odoo. Ese envío es el evento del W6.
   // sin_linea (server-side) sigue siendo bloqueo duro: no es marcable ni pasa con OK.
-  function marcable(row){ return !(row.confirmado || row.en_disputa || row.abierta || budgetEstado(row) === 'sin_linea'); }
+  // Disputa YA NO bloquea la confirmación diaria: el renglón en disputa se confirma normal
+  // (se señala en el popup) — el bloqueo duro por disputa vive en el semáforo del distribuidor (write semanal).
+  function marcable(row){ return !(row.confirmado || row.abierta || budgetEstado(row) === 'sin_linea'); }
   function marcados(){ return CH.rows.filter(function(r){ return r._marcado && marcable(r); }); }
-  function pendientes(){ return CH.rows.filter(function(r){ return !r.confirmado && !r.en_disputa && !r.abierta; }); }
+  function pendientes(){ return CH.rows.filter(function(r){ return !r.confirmado && !r.abierta; }); }
 
   function toggleMark(attId, checked){
     var row = findRow(attId); if(!row) return;
     if(checked && !marcable(row)){ return; }
     row._marcado = !!checked;
+    if(!checked) CH._autoDismissed = false;   // re-arma el auto-popup al desmarcar
     var tr = document.querySelector('tr[data-att="' + attId + '"]');
     if(tr){ tr.classList.toggle('ch-row-mark', row._marcado); tr.querySelector('.cell-estado').innerHTML = estadoBadge(row); }
     updateSendBtn();
+    checkAutoPopup();
   }
   function updateSendBtn(){
     var btn = $('btn-tanda'); if(!btn) return;
@@ -276,8 +282,23 @@
   function marcarTodos(){
     var any = false;
     CH.rows.forEach(function(r){ if(marcable(r) && !r._marcado){ r._marcado = true; any = true; } });
-    if(any) renderTabla();
-    else showMsg('No hay renglones nuevos por marcar (revisa disputa / abiertas / 🔴 sin línea MO).', 'err');
+    if(any){ CH._autoDismissed = false; renderTabla(); }
+    else showMsg('No hay renglones nuevos por marcar (revisa abiertas / 🔴 sin línea MO).', 'err');
+  }
+  // Auto-popup anti-olvido: cuando TODO lo confirmable del rango queda marcado, dispara el envío tras ~4s.
+  function checkAutoPopup(){
+    if(CH._autoTimer){ clearTimeout(CH._autoTimer); CH._autoTimer = null; }
+    if(CH._autoDismissed) return;
+    if($('pop-tanda').style.display === 'flex') return;
+    var conf = CH.rows.filter(marcable);
+    if(!conf.length || !conf.every(function(r){ return r._marcado; })) return;
+    CH._autoTimer = setTimeout(function(){
+      CH._autoTimer = null;
+      var c2 = CH.rows.filter(marcable);
+      if(c2.length && c2.every(function(r){ return r._marcado; }) && !CH._autoDismissed && $('pop-tanda').style.display !== 'flex'){
+        confirmarEnvio(true);
+      }
+    }, 4000);
   }
 
   function actualizarFila(attId){
@@ -296,17 +317,18 @@
   }
 
   // ─── Envío: única vía de confirmación real. SIEMPRE popup-resumen con alertas visibles. ───
-  function confirmarEnvio(){
+  function confirmarEnvio(auto){
     clearMsg();
     var marked = marcados();
-    if(!marked.length){ showMsg('No hay nada marcado para enviar. Marca (revisado) los renglones que quieras confirmar.', 'err'); return; }
+    if(!marked.length){ if(!auto) showMsg('No hay nada marcado para enviar. Marca (revisado) los renglones que quieras confirmar.', 'err'); return; }
     var pend = pendientes();
     var sinMarcar = pend.filter(function(r){ return !r._marcado && marcable(r); });
     var sinLinea = pend.filter(function(r){ return budgetEstado(r) === 'sin_linea'; });
-    abrirPopupEnvio(marked, sinMarcar, sinLinea);
+    abrirPopupEnvio(marked, sinMarcar, sinLinea, auto === true);
   }
   function flagsRow(r){
     var s = '', e = budgetEstado(r);
+    if(r.en_disputa) s += '⚖️';
     if(esCrossProy(r)) s += '⚠️';
     if(e === 'placeholder' || e === 'agotado') s += '🟠';
     if(e === 'sin_linea') s += '🔴';
@@ -319,14 +341,19 @@
         esc(labelAtribucion(r)) + '</td><td style="text-align:right">' + (r.worked_hours!=null? r.worked_hours.toFixed(2)+'h':'—') + '</td></tr>';
     }).join('');
   }
-  function abrirPopupEnvio(marked, sinMarcar, sinLinea){
+  function abrirPopupEnvio(marked, sinMarcar, sinLinea, auto){
     var cross = marked.filter(esCrossProy);
     var warn = marked.filter(function(r){ var e = budgetEstado(r); return e === 'placeholder' || e === 'agotado'; });
-    var html = '<p>Vas a <b>enviar la confirmación</b> de <b>' + marked.length + '</b> registro(s):</p>' +
+    var disp = marked.filter(function(r){ return r.en_disputa; });
+    var intro = auto
+      ? '<p style="color:#1a4480;font-weight:600">✅ Todos los registros del rango están pre-confirmados — ¿enviar confirmación?</p><p>Se enviarán <b>' + marked.length + '</b> registro(s):</p>'
+      : '<p>Vas a <b>enviar la confirmación</b> de <b>' + marked.length + '</b> registro(s):</p>';
+    var html = intro +
       '<table class="ch-pop-tbl"><thead><tr><th>Empleado</th><th>Depto</th><th>Destino</th><th>Hrs</th></tr></thead><tbody>' + popFilas(marked) + '</tbody></table>';
     var alertas = [];
     if(cross.length) alertas.push('⚠️ <b>' + cross.length + '</b> de otro depto cargando a proyecto');
     if(warn.length)  alertas.push('🟠 <b>' + warn.length + '</b> con MO sin fondos / agotada (se registra el sobrecosto)');
+    if(disp.length)  alertas.push('⚖️ <b>' + disp.length + '</b> en disputa — se confirman pero deberán resolverse antes de nómina');
     if(alertas.length){
       html += '<p style="color:#8a5a12;font-size:12px;background:#fff3df;padding:8px 10px;border-radius:8px">Alertas de lo que envías: ' + alertas.join(' · ') + '</p>';
     } else {
@@ -342,7 +369,7 @@
     CH._envioPend = marked.map(function(r){ return r.attendance_id; });
     $('pop-tanda').style.display = 'flex';
   }
-  function cerrarPopupEnvio(){ $('pop-tanda').style.display = 'none'; CH._envioPend = null; }
+  function cerrarPopupEnvio(){ $('pop-tanda').style.display = 'none'; CH._envioPend = null; CH._autoDismissed = true; }
   function enviarLote(atts){
     if(!atts || !atts.length){ showMsg('No había nada marcado para enviar.', 'err'); return; }
     var total = atts.length, ok = 0, fail = 0, blocked = 0, i = 0;
@@ -355,6 +382,7 @@
         var msg = ok ? ('✓ Confirmación enviada — ' + ok + ' registro(s)' + (extra.length ? (' · ' + extra.join(' · ')) : ''))
                      : ('❌ No se envió ninguno' + (extra.length ? (' — ' + extra.join(' · ')) : ''));
         showMsg(msg, (fail || blocked || !ok) ? 'err' : 'ok');
+        CH._autoDismissed = false;   // re-arma para un siguiente marcado completo
         return;
       }
       var att = atts[i++];
@@ -512,7 +540,7 @@
     $('f-hasta').value = ayer;
 
     $('btn-cargar').addEventListener('click', cargar);
-    var btnTanda = $('btn-tanda'); if(btnTanda) btnTanda.addEventListener('click', confirmarEnvio);
+    var btnTanda = $('btn-tanda'); if(btnTanda) btnTanda.addEventListener('click', function(){ confirmarEnvio(false); });
     var btnMarcar = $('btn-marcar-todos'); if(btnMarcar) btnMarcar.addEventListener('click', marcarTodos);
     var pcancel = $('pop-tanda-cancel'); if(pcancel) pcancel.addEventListener('click', cerrarPopupEnvio);
     var pcancel2 = $('pop-tanda-cancel2'); if(pcancel2) pcancel2.addEventListener('click', cerrarPopupEnvio);
