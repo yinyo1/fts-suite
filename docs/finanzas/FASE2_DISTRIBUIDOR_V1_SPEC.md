@@ -1,7 +1,14 @@
 # FASE 2 — Spec del Distribuidor V1 de Carga MO (horas → pesos)
 
 > ## 🟢 GO-LIVE OCURRIÓ — SEM 28 EN PRODUCCIÓN (RE-ESCRITA DEFINITIVA 2026-07-17)
-> **La primera corrida real ya pasó.** Mañana con SEM 29 es la **2ª corrida**, no el estreno.
+> **La primera corrida real ya pasó.** SEM 29 (abajo) fue la **2ª corrida**.
+>
+> ## 🟢 SEM 29 EN PRODUCCIÓN — 2ª corrida (2026-07-18), ESCRITA
+> - **46 líneas** `account.analytic.line`, IDs **60147-60192**, fecha **2026-07-16**, suma **−206,781.61** (Δ 0.00), llave `MO S29/2026 ·`. Validado línea-por-línea por MCP: 0 llaves duplicadas; `account_id` en proyectos / `x_plan2_id` en bolsas; rubro **1177** en las 46.
+> - **Correcciones del día verificadas en las líneas escritas:** Ricardo (98) → 1 línea **B608 −7,633.33**, **cero a 3096** (Felipe lo había movido VENTAS→ADMIN el 14-jul; revertido por Dirección, att 14298). Mateo (75) → **P2349 −7,968.21 + P2302 −1,975.34** (intactas). Juan Manuel (55) → **P241/SO11290 −2,750 + B3096 −1,375**.
+> - **Achieved post-write (crudo):** Vertiv **576** achieved −602,597.74 vs budget −591,800 → **CRUZÓ 100% (101.82%, sobrecosto −10,797.74)**; SO11290 (854/línea 1125) achieved **−6,343.33** vs −21,000 (30.2%); SO11547 (3034/2300) −74,917.12 vs −555,800; **SO11762 (3083/2522) achieved −60,408.35 vs budget −1 placeholder** → escribe sin medición (pendiente poblar). Bolsas 608/3096 sin budget (esperado): SEM 29 landed 608 −47,474.46 · 3096 −24,380.96.
+> - **Override stage-13: NO consumido** — ningún destino de SEM 29 está en stage-13 (241/SO11290 en "In Progress"; Topo/Vertiv/Mexicali activos). Verificado por MCP.
+> - **Incidente forense de la semana** (deploy trabado frontend↔server + falsa alarma "pérdida de confirmaciones" + cruce de IDs 14372/14377 vs 14298): documentado en `CLAUDE.md §8` (reglas anti-fantasma: timestamps UTC+CST, "verificado"=ejecutado, todo ID con su read crudo pegado).
 > - **Estado DEFINITIVO: 36 líneas** `account.analytic.line`, IDs **60057-60092**, fecha 09-jul, suma **−196,230.81** (Δ 0.00), llave `MO S28/2026 ·`. Validado línea-por-línea por MCP (0 duplicados, 0 sobrevivientes de la corrida vieja). ⚠️ **Los IDs 60013-60056 (1ª corrida, 44 líneas, regla 3-solo) YA NO EXISTEN** — se hizo rollback por prefijo y re-write con: **solo_bolsa=10** + `trio_solo_bolsa` (Felipe) + **att 14183 corregido** (Luis Ángel nunca trabajó en Magnekon — checkout mal seleccionado; **primer caso real que justifica el candado UI #2**).
 > - Efecto del re-write: **Magnekon (668) y Chiller (3071) desaparecieron** del por_destino (Gerardo/Gibrán se fueron por solo_bolsa; Felipe→3096; el día de Magnekon de Luis Ángel se corrigió a 608). Por destino: Topo −62,899.66 · Vertiv −38,127.80 · 608 −37,998.07 · 513 −22,742.77 · 3096 −22,066.70 · 768 −6,562.50 · 478 −5,833.31. Felipe emp112·B3096 −11,136 (`trio_solo_bolsa`); Luis Ángel emp48·B608 −6,797.66 (vac+horas fusionadas en 1 línea). Nombres de bolsa vivos (CENTRO DE COSTOS ADMINISTRACION/LEGAL/etc.).
 > - Compuesto correcto: proyecto→`account_id` (P2302→3034, P121→576), bolsa→`x_plan2_id`, rubro 1177.
