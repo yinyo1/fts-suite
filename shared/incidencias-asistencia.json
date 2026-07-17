@@ -162,9 +162,18 @@
           "hora_propuesta_cst": "2026-07-10 07:10:00",
           "comentario": "NO HAY LUZ EN FTS  Y NO REGISTRA CORRECTAMENTE. LA UBICACION. ENTRANDO ALAS 7:10",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "direccion",
+          "user_id": 32,
+          "usuario": "Jesus Esteban De La Cruz (Direccion)",
+          "timestamp": "2026-07-18",
+          "accion": "aprobar",
+          "comentario": "Cierre terminal por Direccion (Esteban) 18-jul-2026: horario estimado 17:32 validado (empleado reporto 5:30pm), destino ADMIN DE OPERACIONES validado. Incidencia demoro 7 dias por snapshot de supervisor apuntando a manager incorrecto (ya corregido: Ramiro -> Felipe)."
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "aprobada_por_direccion",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false,
       "department_id": 3,
@@ -179,7 +188,7 @@
       "rh_directo_ceo": false,
       "directo_ceo": false,
       "sin_supervisor": false,
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "reasignaciones": [
         {
           "fecha": "2026-07-18",
