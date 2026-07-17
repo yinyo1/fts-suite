@@ -286,16 +286,17 @@
     else showMsg('No hay renglones nuevos por marcar (revisa abiertas / 🔴 sin línea MO).', 'err');
   }
   // Auto-popup anti-olvido: cuando TODO lo confirmable del rango queda marcado, dispara el envío tras ~4s.
+  function modalAbierto(){ return $('pop-tanda').style.display === 'flex' || $('modal-so').style.display === 'flex'; }
   function checkAutoPopup(){
     if(CH._autoTimer){ clearTimeout(CH._autoTimer); CH._autoTimer = null; }
     if(CH._autoDismissed) return;
-    if($('pop-tanda').style.display === 'flex') return;
+    if(modalAbierto()) return;
     var conf = CH.rows.filter(marcable);
     if(!conf.length || !conf.every(function(r){ return r._marcado; })) return;
     CH._autoTimer = setTimeout(function(){
       CH._autoTimer = null;
       var c2 = CH.rows.filter(marcable);
-      if(c2.length && c2.every(function(r){ return r._marcado; }) && !CH._autoDismissed && $('pop-tanda').style.display !== 'flex'){
+      if(c2.length && c2.every(function(r){ return r._marcado; }) && !CH._autoDismissed && !modalAbierto()){
         confirmarEnvio(true);
       }
     }, 4000);
