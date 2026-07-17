@@ -1,5 +1,25 @@
 # FASE 2 — Spec del Distribuidor V1 de Carga MO (horas → pesos)
 
+> ## 🟢 GO-LIVE OCURRIÓ — SEM 28 EN PRODUCCIÓN (RE-ESCRITA DEFINITIVA 2026-07-17)
+> **La primera corrida real ya pasó.** Mañana con SEM 29 es la **2ª corrida**, no el estreno.
+> - **Estado DEFINITIVO: 36 líneas** `account.analytic.line`, IDs **60057-60092**, fecha 09-jul, suma **−196,230.81** (Δ 0.00), llave `MO S28/2026 ·`. Validado línea-por-línea por MCP (0 duplicados, 0 sobrevivientes de la corrida vieja). ⚠️ **Los IDs 60013-60056 (1ª corrida, 44 líneas, regla 3-solo) YA NO EXISTEN** — se hizo rollback por prefijo y re-write con: **solo_bolsa=10** + `trio_solo_bolsa` (Felipe) + **att 14183 corregido** (Luis Ángel nunca trabajó en Magnekon — checkout mal seleccionado; **primer caso real que justifica el candado UI #2**).
+> - Efecto del re-write: **Magnekon (668) y Chiller (3071) desaparecieron** del por_destino (Gerardo/Gibrán se fueron por solo_bolsa; Felipe→3096; el día de Magnekon de Luis Ángel se corrigió a 608). Por destino: Topo −62,899.66 · Vertiv −38,127.80 · 608 −37,998.07 · 513 −22,742.77 · 3096 −22,066.70 · 768 −6,562.50 · 478 −5,833.31. Felipe emp112·B3096 −11,136 (`trio_solo_bolsa`); Luis Ángel emp48·B608 −6,797.66 (vac+horas fusionadas en 1 línea). Nombres de bolsa vivos (CENTRO DE COSTOS ADMINISTRACION/LEGAL/etc.).
+> - Compuesto correcto: proyecto→`account_id` (P2302→3034, P121→576), bolsa→`x_plan2_id`, rubro 1177.
+> - **Cutover ejecutado:** `unlink [47,48,9]` hecho. Verificado: 49 distribution models vivos, **NINGUNO inyecta 1177**.
+> - **Deltas SEM 28 por proyecto (exactos):** Topo −68,324.60 · Vertiv −40,367.60 · Magnekon −3,510.88 · Chiller −2,235.46 · 1130 sin cambio (Rissia→608 por solo_bolsa).
+> - **Correo:** bug cosmético corregido (el MOTOR dry-run había perdido `total_nomina`/`total_distribuido` del top-level → "$0.00"; re-añadidos. El write nunca tuvo el bug).
+>
+> ### 📌 POLÍTICA DEL HISTÓRICO 1177 (legitimidad y frontera, NO exclusión)
+> El 1177 manual **pre-distribuidor es LEGÍTIMO, se queda, suma al acumulado** (es el costo verdadero — en 2024/2025 se cargaban horas manual; Vertiv lleva 2+ años abierto). El prefijo **`MO S`** identifica la era del distribuidor. El `achieved` acumulado DEBE incluir el histórico. Inventario 1177 no-MO: **274 líneas**, 2023 (−1.31M, 68) · 2024 (+4.11M, 2) · 2025 (−2.81M, 204) · 2026 no-MO = 0.
+> - **Frontera:** última carga manual = **2025-12-26** ("Open balance … nomina"). **Hueco ene-jun 2026 (SEM 1-27) sin NINGÚN MO** → ése es el alcance del Backfill 2026.
+> - **Contaminación #47 (auto-inyectado GL 102.01.00008) = 0 líneas.** Los 7 huérfanos sin eje (sin proyecto ni bolsa) son del #48/#9 (GL 2023.34/101000): 5 nóminas/transferencias manuales reales (neto −326,251.60) + **2 "AJUSTE-HISTORICO-FINAL" (+4,105,043.26, 31-dic-2024) = artefacto de conciliación** (no costo real; sin eje → no toca budgets de proyecto/bolsa). Revisar con Gera si se reclasifica/limpia el ajuste.
+>
+> ### ⚠️ HALLAZGOS en budgets (estructura, no del write)
+> - **Magnekon (668):** su `budget.line` 1177 cierra **2025-12-31** → el `achieved` (−47,341.77) NO capta el SEM 28 (−3,510.88, fechado 2026-07-09). **Extender `date_to` del budget** para que capture 2026.
+> - **Chiller (3071):** **no existe** `budget.line` con rubro 1177 → el SEM 28 (−2,235.46) no acumula en ningún budget. Crear la línea 1177.
+> - (Ambos son gaps de la estructura de budgets legada, no del distribuidor. Las `analytic.line` sí quedaron bien; es el budget el que no las capta.)
+
+
 > ## ⚠️ Correcciones 2026-07-16 (post browser-test de Esteban) — LEER PRIMERO
 > Aplicadas a la página `operaciones/carga-mo/index.html` (build `20260716-cmo-jwt-v2`) + workflows `HV1UE5JxN5fKdC2Y` (dry-run) y `j0V9wfpuPTLFO9DZ` (write, sigue INACTIVO):
 > 1. **Código 080 = Arturo Hernández (emp 143)**, ya existente (nombre completo "Pedro Arturo Hernández Ramírez"). **NO se crea empleado.** Mapa 080→143 en página + ambos workflows; F12 B.2 ahora incluye `143:'080'` (**27 códigos**); Pedro eliminado de B.3.
