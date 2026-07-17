@@ -44,7 +44,19 @@
   function soCellHtml(row){
     var so = celdaAtribucion(row);
     return (esCrossProy(row) ? '<span class="ch-warn" title="Empleado de ' + esc(row.department_name || 'otro depto') + ' cargando a proyecto">⚠️</span> ' : '') +
-      so + (row.solo_bolsa ? ' <span class="ch-solo" title="Solo-bolsa: costo fijo a su bolsa, sin proyecto">🔒</span>' : '');
+      so + (row.solo_bolsa ? ' <span class="ch-solo" title="Solo-bolsa: costo fijo a su bolsa, sin proyecto">🔒</span>' : '') +
+      budgetBadge(row);
+  }
+
+  // CC-1: estado presupuestal MO (budget rubro 1177) del renglón. Sólo aplica a proyectos (bolsas = exento).
+  function budgetEstado(row){ return (row && row.budget_mo && row.budget_mo.estado) || null; }
+  function fmtMoney(n){ return '$' + Number(n||0).toLocaleString('es-MX', { maximumFractionDigits: 0 }); }
+  function budgetBadge(row){
+    var e = budgetEstado(row);
+    if(e === 'sin_linea')   return ' <span class="ch-mo ch-mo-red" title="Sin línea de Mano de Obra (rubro 1177): no confirmable">🔴 sin MO</span>';
+    if(e === 'placeholder') return ' <span class="ch-mo ch-mo-amber" title="MO sin presupuesto asignado (placeholder)">🟠 s/fondos</span>';
+    if(e === 'agotado'){ var bm = row.budget_mo || {}; return ' <span class="ch-mo ch-mo-amber" title="MO agotada: ' + fmtMoney(bm.consumido) + ' de ' + fmtMoney(bm.presupuesto) + '">🟠 MO agotada</span>'; }
+    return '';
   }
 
   var CH = {
@@ -234,14 +246,47 @@
 
   function findRow(attId){ return CH.rows.find(function(x){ return x.attendance_id === attId; }); }
 
-  // ─── Confirmar horas (set manager_approval) ───
+  // ─── Confirmar horas (set manager_approval) — con candado presupuestal MO (CC-1) ───
+  // Regla: proyecto sin línea 1177 → BLOQUEO DURO (no envía). placeholder/agotado → popup de
+  // conciencia → reenvía con ack. El workflow re-valida server-side (la UI avisa, el candado es el server).
   function confirmar(attId, btn){
     clearMsg();
+    var row = findRow(attId);
+    var est = budgetEstado(row);
+    if(est === 'sin_linea'){
+      showMsg('🔴 No se puede confirmar: esta cuenta no contempla gasto de Mano de Obra (ej. trabajo de terceros). Corrige el destino (✎) antes de confirmar.', 'err');
+      return;
+    }
+    var ack = {};
+    if(est === 'placeholder'){
+      if(!window.confirm('⚠️ MO sin fondos asignados en esta cuenta (presupuesto placeholder).\n\n¿Confirmar de todos modos?')) return;
+      ack.ack_mo_placeholder = true;
+    } else if(est === 'agotado'){
+      var bm = row.budget_mo || {};
+      if(!window.confirm('⚠️ MO agotada: ' + fmtMoney(bm.consumido) + ' consumido de ' + fmtMoney(bm.presupuesto) + ' presupuestado.\n\n¿Confirmar el sobrecosto?')) return;
+      ack.ack_mo_agotado = true;
+    }
+    enviarConfirm(attId, btn, ack);
+  }
+
+  function enviarConfirm(attId, btn, ack){
     if(btn){ btn.disabled = true; btn.textContent = '⏳'; }
-    n8n('/webhook/planeacion/confirmar-horas', {
-      attendance_id: attId, action: 'confirm', supervisor_nombre: CH.supervisor
-    }).then(function(data){
+    var payload = Object.assign({ attendance_id: attId, action: 'confirm', supervisor_nombre: CH.supervisor }, ack || {});
+    n8n('/webhook/planeacion/confirmar-horas', payload).then(function(data){
       var r = Array.isArray(data) ? data[0] : data;
+      // Server pide ack (badge desfasado) → re-prompt con el ack correcto y reintenta
+      if(r && r.needs_ack){
+        if(window.confirm('⚠️ ' + (r.mensaje || 'Requiere confirmación consciente.') + '\n\n¿Confirmar de todos modos?')){
+          var ack2 = (r.codigo === 'MO_AGOTADO') ? { ack_mo_agotado: true } : { ack_mo_placeholder: true };
+          enviarConfirm(attId, btn, ack2);
+        } else if(btn){ btn.disabled = false; btn.textContent = '✔ Confirmar'; }
+        return;
+      }
+      if(r && r.bloqueo){
+        showMsg('🔴 ' + (r.mensaje || 'Confirmación bloqueada por presupuesto MO.'), 'err');
+        if(btn){ btn.disabled = false; btn.textContent = '✔ Confirmar'; }
+        return;
+      }
       if(!r || r.success === false) throw new Error((r && r.mensaje) || 'Error');
       // Éxito confirmado por el backend → recién ahora actualizamos UI (anti #15)
       var row = findRow(attId);
@@ -279,21 +324,41 @@
     clearMsg();
     var pend = pendientesConfirmar();
     if(!pend.length){ showMsg('No hay renglones pendientes de confirmar en el rango.', 'err'); return; }
-    var cross = pend.filter(esCrossProy);
-    if(cross.length){ abrirPopupTanda(pend, cross); }         // con ⚠️ → popup
-    else { confirmarVarios(pend.map(function(r){ return r.attendance_id; })); }  // sin ⚠️ → directo
+    // CC-1: excluir sin_linea (bloqueo duro, no se confirman); marcar placeholder/agotado (conciencia).
+    var blocked = pend.filter(function(r){ return budgetEstado(r) === 'sin_linea'; });
+    var confirmables = pend.filter(function(r){ return budgetEstado(r) !== 'sin_linea'; });
+    var cross = confirmables.filter(esCrossProy);
+    var warn = confirmables.filter(function(r){ var e = budgetEstado(r); return e === 'placeholder' || e === 'agotado'; });
+    if(blocked.length || cross.length || warn.length){
+      abrirPopupTanda(confirmables, cross, warn, blocked);
+    } else {
+      confirmarVarios(confirmables.map(function(r){ return r.attendance_id; }));
+    }
   }
-  function abrirPopupTanda(pend, cross){
-    var filas = cross.map(function(r){
+  function popTablaFilas(arr, colProy){
+    return arr.map(function(r){
       return '<tr><td>' + esc(r.empleado_nombre||'') + '</td><td>' + esc(r.department_name||'') + '</td><td>' +
-        esc(r.so_nombre || ('Proy ' + r.so_id)) + '</td><td style="text-align:right">' +
+        (colProy ? esc(r.so_nombre || ('Proy ' + r.so_id)) : esc(labelAtribucion(r))) + '</td><td style="text-align:right">' +
         (r.worked_hours!=null? r.worked_hours.toFixed(2)+'h':'—') + '</td></tr>';
     }).join('');
-    $('pop-tanda-body').innerHTML =
-      '<p>Vas a confirmar <b>' + pend.length + '</b> renglón(es). <b>' + cross.length + '</b> son de empleados de <b>otro depto</b> cargando a un <b>proyecto</b>:</p>' +
-      '<table class="ch-pop-tbl"><thead><tr><th>Empleado</th><th>Depto</th><th>Proyecto</th><th>Hrs</th></tr></thead><tbody>' + filas + '</tbody></table>' +
-      '<p style="color:#555;font-size:12px">¿Confirmas que estos empleados sí cargaron horas a proyecto?</p>';
-    CH._tandaPend = pend.map(function(r){ return r.attendance_id; });
+  }
+  function abrirPopupTanda(confirmables, cross, warn, blocked){
+    var html = '<p>Vas a confirmar <b>' + confirmables.length + '</b> renglón(es).</p>';
+    if(blocked.length){
+      html += '<p style="color:#b3261e;font-weight:600">🔴 ' + blocked.length + ' NO se confirmarán (cuenta sin Mano de Obra — trabajo de terceros). Corrige su destino primero:</p>' +
+        '<table class="ch-pop-tbl"><thead><tr><th>Empleado</th><th>Depto</th><th>Proyecto</th><th>Hrs</th></tr></thead><tbody>' + popTablaFilas(blocked, true) + '</tbody></table>';
+    }
+    if(warn.length){
+      html += '<p style="color:#BA7517;font-weight:600">🟠 ' + warn.length + ' con MO sin fondos / agotada (se registrará el sobrecosto):</p>' +
+        '<table class="ch-pop-tbl"><thead><tr><th>Empleado</th><th>Depto</th><th>Cuenta</th><th>Hrs</th></tr></thead><tbody>' + popTablaFilas(warn, true) + '</tbody></table>';
+    }
+    if(cross.length){
+      html += '<p style="color:#0C447C;font-weight:600">⚠️ ' + cross.length + ' de otro depto cargando a proyecto:</p>' +
+        '<table class="ch-pop-tbl"><thead><tr><th>Empleado</th><th>Depto</th><th>Proyecto</th><th>Hrs</th></tr></thead><tbody>' + popTablaFilas(cross, true) + '</tbody></table>';
+    }
+    html += '<p style="color:#555;font-size:12px">¿Confirmas los ' + confirmables.length + ' renglón(es) listados como confirmables?</p>';
+    $('pop-tanda-body').innerHTML = html;
+    CH._tandaPend = confirmables.map(function(r){ return r.attendance_id; });
     $('pop-tanda').style.display = 'flex';
   }
   function cerrarPopupTanda(){ $('pop-tanda').style.display = 'none'; CH._tandaPend = null; }
@@ -307,8 +372,12 @@
         return;
       }
       var att = atts[i++];
-      n8n('/webhook/planeacion/confirmar-horas', { attendance_id: att, action: 'confirm', supervisor_nombre: CH.supervisor })
-        .then(function(data){ var r = Array.isArray(data) ? data[0] : data; if(!r || r.success === false) throw new Error(); var row = findRow(att); if(row) row.confirmado = true; actualizarFila(att); ok++; })
+      // CC-1: el usuario ya consintió en el popup → mandar ack según el estado presupuestal del renglón.
+      var row = findRow(att); var est = budgetEstado(row); var ack = {};
+      if(est === 'placeholder') ack.ack_mo_placeholder = true;
+      else if(est === 'agotado') ack.ack_mo_agotado = true;
+      n8n('/webhook/planeacion/confirmar-horas', Object.assign({ attendance_id: att, action: 'confirm', supervisor_nombre: CH.supervisor }, ack))
+        .then(function(data){ var r = Array.isArray(data) ? data[0] : data; if(!r || r.success === false) throw new Error(); if(row) row.confirmado = true; actualizarFila(att); ok++; })
         .catch(function(){ fail++; })
         .finally(next);
     }
