@@ -90,15 +90,19 @@
     return new Date(nowCst.getTime() - 24*3600*1000);
   }
 
-  function showMsg(texto, tipo){
+  function showMsg(texto, tipo, persist){
     var el = $('ch-msg');
     if(!el) return;
     el.textContent = texto;
     el.className = 'ch-msg ' + (tipo === 'ok' ? 'ch-msg-ok' : 'ch-msg-err');
     el.style.display = 'block';
-    if(tipo === 'ok') setTimeout(function(){ el.style.display = 'none'; }, 4000);
+    if(tipo === 'ok' && !persist) setTimeout(function(){ el.style.display = 'none'; }, 4000);
   }
   function clearMsg(){ var el = $('ch-msg'); if(el) el.style.display = 'none'; }
+  // Overlay de progreso del envío (batch invisible -> visible)
+  function showOverlay(t){ var o = $('ch-overlay'); if(o){ var x = $('ch-overlay-text'); if(x) x.textContent = t; o.style.display = 'flex'; } }
+  function updateOverlay(t){ var x = $('ch-overlay-text'); if(x) x.textContent = t; }
+  function hideOverlay(){ var o = $('ch-overlay'); if(o) o.style.display = 'none'; }
 
   // ─── Cargar horas del rango ───
   function cargar(){
@@ -289,17 +293,18 @@
   function modalAbierto(){ return $('pop-tanda').style.display === 'flex' || $('modal-so').style.display === 'flex'; }
   function checkAutoPopup(){
     if(CH._autoTimer){ clearTimeout(CH._autoTimer); CH._autoTimer = null; }
-    if(CH._autoDismissed) return;
     if(modalAbierto()) return;
-    var conf = CH.rows.filter(marcable);
-    if(!conf.length || !conf.every(function(r){ return r._marcado; })) return;
+    var conf = CH.rows.filter(marcable);   // disputa CUENTA (marcable por la regla nueva)
+    var allMarked = conf.length && conf.every(function(r){ return r._marcado; });
+    if(!allMarked){ CH._autoDismissed = false; return; }   // estado parcial re-arma el disparador
+    if(CH._autoDismissed) return;                          // ya se mostró/canceló para este set completo
     CH._autoTimer = setTimeout(function(){
       CH._autoTimer = null;
       var c2 = CH.rows.filter(marcable);
       if(c2.length && c2.every(function(r){ return r._marcado; }) && !CH._autoDismissed && !modalAbierto()){
         confirmarEnvio(true);
       }
-    }, 4000);
+    }, 2000);
   }
 
   function actualizarFila(attId){
@@ -374,15 +379,16 @@
   function enviarLote(atts){
     if(!atts || !atts.length){ showMsg('No había nada marcado para enviar.', 'err'); return; }
     var total = atts.length, ok = 0, fail = 0, blocked = 0, i = 0;
-    showMsg('Enviando confirmación de ' + total + ' registro(s)…', 'ok');
+    showOverlay('Confirmando… 0 de ' + total);
     function next(){
       if(i >= atts.length){
+        hideOverlay();
         var extra = [];
         if(blocked) extra.push(blocked + ' bloqueado(s)');
         if(fail) extra.push(fail + ' con error');
-        var msg = ok ? ('✓ Confirmación enviada — ' + ok + ' registro(s)' + (extra.length ? (' · ' + extra.join(' · ')) : ''))
+        var msg = ok ? ('✓ ' + ok + ' registro(s) confirmados' + (extra.length ? (' · ' + extra.join(' · ')) : ''))
                      : ('❌ No se envió ninguno' + (extra.length ? (' — ' + extra.join(' · ')) : ''));
-        showMsg(msg, (fail || blocked || !ok) ? 'err' : 'ok');
+        showMsg(msg, (fail || blocked || !ok) ? 'err' : 'ok', true);   // PERSISTENTE hasta refresh o cambio de rango
         CH._autoDismissed = false;   // re-arma para un siguiente marcado completo
         return;
       }
@@ -399,7 +405,7 @@
           actualizarFila(att); ok++;
         })
         .catch(function(){ fail++; })
-        .finally(next);
+        .finally(function(){ updateOverlay('Confirmando… ' + (ok + fail + blocked) + ' de ' + total); next(); });
     }
     next();
   }
