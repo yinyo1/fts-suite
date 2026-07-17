@@ -1,5 +1,8 @@
 # FASE 2 — Scripts F12 (canary + prerequisitos de escritura)
 
+> ✅ **Prereqs COMPLETADOS por Esteban (2026-07-16):** campo `x_studio_codigo_contpaqi` + 27 códigos poblados (incl. `143:'080'`); **Juan = emp 155 (017)** y **Juana = emp 156 (018)** creados (default 513); Miriam 148 archivada; campo `x_studio_solo_bolsa` creado.
+> 🚨 **PENDIENTE (1 cosa):** el `true` de `x_studio_solo_bolsa` en 97/108/143 **NO persistió** (read-back los muestra en `false`). **Re-correr B.6** y verificar antes del ensayo. Los workflows ya NO usan el mapa en memoria — leen estos campos de Odoo en cada corrida.
+
 > ⚠️ El MCP Odoo está en **read-only** ("read-only YOLO mode") → estos writes se corren en la **consola F12 de Odoo** (con tu sesión). NO ejecutados por CC. Pega primero el helper, luego el bloque que toque.
 > Modelos verificados: `budget.line` tiene `x_plan2_id` (bolsas plan 2) + `x_plan20_id` (rubro) + `achieved_amount`. `analytic.line` acepta `x_plan2_id` / `account_id` + `x_plan20_id`.
 
@@ -76,12 +79,14 @@ for(const [b,nm] of BOLSAS){
 ### B.6 — Campo `x_studio_solo_bolsa` (bool) para la regla per-empleado
 > **Corrección 2026-07-16:** solo_bolsa FINAL = **sólo 3** (nunca cargan horas a proyecto). Todos los demás son **híbridos** (respetan checkout), incluidos Aldo, Ana Laura, Magaly, Gerardo, Erick, Eduardo, Luis Ángel, Francisco, Ricardo, Ramiro. Los 3 sí siguen checando en kiosko — el flag sólo afecta el dinero.
 
-Crear en Studio (Empleado, bool "Solo bolsa"). Marcar `true` en **sólo**: **Rissia (97)**, **Pablo (108)**, **Arturo (143)** → su bruto va 100% a la bolsa **608 VENTAS**. `false` (default) = respeta checkout (Ops, admin, legal, RH, choferes/aux — todos).
+Marcar `true` en **sólo**: **Rissia (97)**, **Pablo (108)**, **Arturo (143)** → su bruto va 100% a su `x_studio_cuenta_indirecta_default` (= **608 VENTAS** en los 3). `false` (default) = respeta checkout (Ops, admin, legal, RH, choferes/aux — todos).
+> 🚨 **RE-CORRER: el read-back 2026-07-16 mostró los 3 en `false`** (el true de Studio no persistió). Corre esto por RPC (más confiable que el checkbox) y **verifica con el read de abajo**:
 ```js
 for(const emp of [97,108,143]){ await rpc('hr.employee','write',[[emp],{x_studio_solo_bolsa:true}]); }
-console.log('▶ solo_bolsa=true en 97/108/143');
+const chk=await rpc('hr.employee','read',[[97,108,143],['name','x_studio_solo_bolsa','x_studio_cuenta_indirecta_default']]);
+console.log('▶ VERIFICA solo_bolsa=true + default 608:', chk);
 ```
-Los asimilados (017/018) NO necesitan el flag: van a 513 por la regla `asim` (columna sueldo asimilado > 0), no por solo_bolsa. El workflow V1 leerá este campo cuando exista y hará *fallback* al mapa en memoria mientras no exista (hook `x_studio_solo_bolsa` marcado en el MOTOR).
+Los asimilados (017/018 = emp 155/156) NO necesitan el flag: van a su default 513 por la regla `asim` (columna sueldo asimilado > 0). El workflow lee `x_studio_solo_bolsa` directo de Odoo (el mapa en memoria ya murió) — si está `false`, el empleado se trata como híbrido.
 
 ---
 
