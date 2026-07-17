@@ -38,6 +38,15 @@
     return '(sin atribución)';
   }
 
+  // #2b: cross-departamento a PROYECTO (no bolsa). Los híbridos pueden hacerlo; la alerta hace visible, no bloquea.
+  function esCrossProy(row){ return !!(row && row.es_operaciones === false && row.so_id); }
+  // Celda de atribución con marcadores ⚠️ (cross-proy) y 🔒 (solo_bolsa).
+  function soCellHtml(row){
+    var so = celdaAtribucion(row);
+    return (esCrossProy(row) ? '<span class="ch-warn" title="Empleado de ' + esc(row.department_name || 'otro depto') + ' cargando a proyecto">⚠️</span> ' : '') +
+      so + (row.solo_bolsa ? ' <span class="ch-solo" title="Solo-bolsa: costo fijo a su bolsa, sin proyecto">🔒</span>' : '');
+  }
+
   var CH = {
     rows: [],
     sos: null,            // cache lista SO (lazy)
@@ -177,12 +186,12 @@
       return;
     }
     var filas = sortedRows().map(function(row){
-      var so = celdaAtribucion(row);
       var depto = row.department_name
-        ? (row.es_operaciones === false
-            ? '<span class="ch-depto-cross" title="Cargó horas a un proyecto siendo de otro depto">' + esc(row.department_name) + '</span>'
+        ? (esCrossProy(row)
+            ? '<span class="ch-depto-cross" title="Cargó horas a un PROYECTO siendo de otro depto">' + esc(row.department_name) + '</span>'
             : esc(row.department_name))
         : '—';
+      var soCell = soCellHtml(row);
       var horario = (row.check_in_cst || '—') + (row.check_out_cst ? ' → ' + row.check_out_cst.slice(11) : ' → …');
       var horas = row.worked_hours != null ? row.worked_hours.toFixed(2) + 'h' : '—';
       var confirmarDisabled = (row.confirmado || row.en_disputa || row.abierta) ? ' disabled' : '';
@@ -192,7 +201,7 @@
           '<td>' + depto + '</td>' +
           '<td>' + esc(horario) + '</td>' +
           '<td>' + horas + '</td>' +
-          '<td class="cell-so">' + so + '</td>' +
+          '<td class="cell-so">' + soCell + '</td>' +
           '<td class="cell-estado">' + estadoBadge(row) + '</td>' +
           '<td><div class="ch-actions">' +
             '<button class="ch-btn ch-btn-sm ch-btn-ok" data-act="confirm" data-att="' + row.attendance_id + '"' + confirmarDisabled + '>✔ Confirmar</button>' +
@@ -250,7 +259,7 @@
     var tr = document.querySelector('tr[data-att="' + attId + '"]');
     if(!row || !tr) return;
     tr.querySelector('.cell-estado').innerHTML = estadoBadge(row);
-    tr.querySelector('.cell-so').innerHTML = celdaAtribucion(row);
+    tr.querySelector('.cell-so').innerHTML = soCellHtml(row);
     var btnC = tr.querySelector('button[data-act="confirm"]');
     if(btnC){
       var dis = (row.confirmado || row.en_disputa || row.abierta);
@@ -260,6 +269,50 @@
     var conf = CH.rows.filter(function(x){ return x.confirmado; }).length;
     $('ch-summary').textContent = CH.rows.length + ' registro(s) · ' + conf +
       ' confirmado(s) · ' + (CH.rows.length - conf) + ' pendiente(s)';
+  }
+
+  // ─── #2c: Confirmar día/tanda (consolidado) — PRIMER FILTRO de conciencia ───
+  function pendientesConfirmar(){
+    return CH.rows.filter(function(r){ return !r.confirmado && !r.en_disputa && !r.abierta; });
+  }
+  function confirmarTanda(){
+    clearMsg();
+    var pend = pendientesConfirmar();
+    if(!pend.length){ showMsg('No hay renglones pendientes de confirmar en el rango.', 'err'); return; }
+    var cross = pend.filter(esCrossProy);
+    if(cross.length){ abrirPopupTanda(pend, cross); }         // con ⚠️ → popup
+    else { confirmarVarios(pend.map(function(r){ return r.attendance_id; })); }  // sin ⚠️ → directo
+  }
+  function abrirPopupTanda(pend, cross){
+    var filas = cross.map(function(r){
+      return '<tr><td>' + esc(r.empleado_nombre||'') + '</td><td>' + esc(r.department_name||'') + '</td><td>' +
+        esc(r.so_nombre || ('Proy ' + r.so_id)) + '</td><td style="text-align:right">' +
+        (r.worked_hours!=null? r.worked_hours.toFixed(2)+'h':'—') + '</td></tr>';
+    }).join('');
+    $('pop-tanda-body').innerHTML =
+      '<p>Vas a confirmar <b>' + pend.length + '</b> renglón(es). <b>' + cross.length + '</b> son de empleados de <b>otro depto</b> cargando a un <b>proyecto</b>:</p>' +
+      '<table class="ch-pop-tbl"><thead><tr><th>Empleado</th><th>Depto</th><th>Proyecto</th><th>Hrs</th></tr></thead><tbody>' + filas + '</tbody></table>' +
+      '<p style="color:#555;font-size:12px">¿Confirmas que estos empleados sí cargaron horas a proyecto?</p>';
+    CH._tandaPend = pend.map(function(r){ return r.attendance_id; });
+    $('pop-tanda').style.display = 'flex';
+  }
+  function cerrarPopupTanda(){ $('pop-tanda').style.display = 'none'; CH._tandaPend = null; }
+  function confirmarVarios(atts){
+    if(!atts || !atts.length) return;
+    var total = atts.length, ok = 0, fail = 0, i = 0;
+    showMsg('Confirmando ' + total + ' renglón(es)…', 'ok');
+    function next(){
+      if(i >= atts.length){
+        showMsg('✓ Tanda: ' + ok + ' confirmada(s)' + (fail ? (' · ' + fail + ' con error') : ''), fail ? 'err' : 'ok');
+        return;
+      }
+      var att = atts[i++];
+      n8n('/webhook/planeacion/confirmar-horas', { attendance_id: att, action: 'confirm', supervisor_nombre: CH.supervisor })
+        .then(function(data){ var r = Array.isArray(data) ? data[0] : data; if(!r || r.success === false) throw new Error(); var row = findRow(att); if(row) row.confirmado = true; actualizarFila(att); ok++; })
+        .catch(function(){ fail++; })
+        .finally(next);
+    }
+    next();
   }
 
   // ─── Modal corregir atribución (proyecto O bolsa) ───
@@ -295,12 +348,17 @@
   // Dos grupos: 🗂️ Bolsas (fijas) + 🛠️ Proyectos (de /kiosk/sos). El buscador filtra ambos.
   function renderSOList(q){
     var nq = q ? q.toLowerCase() : '';
+    var curRow = findRow(CH.modalAttId);
+    var soloB = !!(curRow && curRow.solo_bolsa);   // #2a: solo_bolsa → sólo bolsas, sin proyectos
     var bolsas = BOLSAS.filter(function(b){ return !nq || b.nombre.toLowerCase().indexOf(nq) !== -1; });
     var proys = (CH.sos || []).filter(function(s){
       return !nq || (s.nombre || '').toLowerCase().indexOf(nq) !== -1 ||
                     (s.cliente || '').toLowerCase().indexOf(nq) !== -1;
     });
     var html = '';
+    if(soloB){
+      html += '<div class="ch-lock-note">🔒 Empleado <b>solo-bolsa</b>: su costo va fijo a su bolsa. Sólo se puede corregir entre bolsas (sin proyectos).</div>';
+    }
     if(bolsas.length){
       html += '<div class="ch-grp">🗂️ Bolsas (cuenta indirecta)</div>';
       html += bolsas.map(function(b){
@@ -308,14 +366,16 @@
           '<div class="n">🗂️ ' + esc(b.nombre) + '</div></div>';
       }).join('');
     }
-    html += '<div class="ch-grp">🛠️ Proyectos</div>';
-    if(!proys.length){ html += '<div class="ch-placeholder">Sin proyectos que coincidan</div>'; }
-    else html += proys.slice(0, 40).map(function(s){
-      return '<div class="ch-so-item" data-tipo="proyecto" data-id="' + s.id + '" data-nombre="' + esc(s.nombre) + '">' +
-        '<div class="n">' + esc(s.nombre) + '</div>' +
-        (s.cliente ? '<div class="c">' + esc(s.cliente) + '</div>' : '') +
-      '</div>';
-    }).join('');
+    if(!soloB){
+      html += '<div class="ch-grp">🛠️ Proyectos</div>';
+      if(!proys.length){ html += '<div class="ch-placeholder">Sin proyectos que coincidan</div>'; }
+      else html += proys.slice(0, 40).map(function(s){
+        return '<div class="ch-so-item" data-tipo="proyecto" data-id="' + s.id + '" data-nombre="' + esc(s.nombre) + '">' +
+          '<div class="n">' + esc(s.nombre) + '</div>' +
+          (s.cliente ? '<div class="c">' + esc(s.cliente) + '</div>' : '') +
+        '</div>';
+      }).join('');
+    }
     $('modal-so-list').innerHTML = html;
     $('modal-so-list').querySelectorAll('.ch-so-item').forEach(function(it){
       it.addEventListener('click', function(){
@@ -392,6 +452,11 @@
     $('f-hasta').value = ayer;
 
     $('btn-cargar').addEventListener('click', cargar);
+    var btnTanda = $('btn-tanda'); if(btnTanda) btnTanda.addEventListener('click', confirmarTanda);
+    var pcancel = $('pop-tanda-cancel'); if(pcancel) pcancel.addEventListener('click', cerrarPopupTanda);
+    var pcancel2 = $('pop-tanda-cancel2'); if(pcancel2) pcancel2.addEventListener('click', cerrarPopupTanda);
+    var pconfirm = $('pop-tanda-confirm'); if(pconfirm) pconfirm.addEventListener('click', function(){ var a = CH._tandaPend; cerrarPopupTanda(); confirmarVarios(a); });
+    var pop = $('pop-tanda'); if(pop) pop.addEventListener('click', function(e){ if(e.target.id === 'pop-tanda') cerrarPopupTanda(); });
     $('modal-so-close').addEventListener('click', cerrarModalSO);
     $('modal-so').addEventListener('click', function(e){ if(e.target.id === 'modal-so') cerrarModalSO(); });
     $('modal-so-search').addEventListener('input', function(e){ renderSOList(e.target.value); });

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Confirmar Horas — FTS Suite</title>
 <script>
-  (function(){ window.CH_BUILD = '20260710-ch-versioncheck'; })();
+  (function(){ window.CH_BUILD = '20260717-ch-candado-solobolsa'; })();
 </script>
 <script src="../../shared/auth-suite.js"></script>
 <script src="../../shared/version-check.js"></script>
@@ -69,6 +69,12 @@
   .ch-grp{ font-size:11px; font-weight:700; color:#555; text-transform:uppercase; margin:10px 0 6px; letter-spacing:.3px; }
   .ch-item-bolsa{ background:#f5f8fc; border-color:#cfdcf0; }
   .ch-x{ background:none; border:none; font-size:18px; cursor:pointer; color:#888; }
+  .ch-warn{ color:var(--warn); }
+  .ch-solo{ font-size:12px; }
+  .ch-lock-note{ background:#fff3df; color:#8a5a12; border-radius:8px; padding:8px 10px; font-size:12px; margin-bottom:8px; }
+  .ch-pop-tbl{ width:100%; border-collapse:collapse; font-size:12px; margin:8px 0; }
+  .ch-pop-tbl th{ background:#eef2f8; color:#333; text-align:left; padding:5px 7px; }
+  .ch-pop-tbl td{ padding:5px 7px; border-top:1px solid #eee; }
 </style>
 </head>
 <body>
@@ -95,6 +101,7 @@
       <input type="date" id="f-hasta">
     </div>
     <button class="ch-btn ch-btn-primary" id="btn-cargar">Cargar</button>
+    <button class="ch-btn ch-btn-ok" id="btn-tanda" title="Confirmar todos los pendientes del rango (con filtro de conciencia si hay cargas cross-depto a proyecto)">✔ Confirmar día/tanda</button>
   </div>
 
   <div class="ch-msg" id="ch-msg"></div>
@@ -115,6 +122,21 @@
     <div class="ch-modal-body">
       <input type="text" class="ch-so-search" id="modal-so-search" placeholder="Buscar SO… (nombre o cliente)" autocomplete="off">
       <div id="modal-so-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Popup Confirmar tanda (#2c: primer filtro de conciencia) -->
+<div id="pop-tanda" class="ch-modal">
+  <div class="ch-modal-box">
+    <div class="ch-modal-head">
+      <strong>⚠️ Confirmar tanda — revisar cargas a proyecto</strong>
+      <button class="ch-x" id="pop-tanda-cancel">✕</button>
+    </div>
+    <div class="ch-modal-body" id="pop-tanda-body"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;border-top:1px solid #eee">
+      <button class="ch-btn ch-btn-edit" id="pop-tanda-cancel2">Revisar</button>
+      <button class="ch-btn ch-btn-ok" id="pop-tanda-confirm">Confirmar todo</button>
     </div>
   </div>
 </div>
