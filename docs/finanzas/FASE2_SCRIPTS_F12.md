@@ -1,7 +1,7 @@
 # FASE 2 — Scripts F12 (canary + prerequisitos de escritura)
 
 > ✅ **Prereqs COMPLETADOS por Esteban (2026-07-16):** campo `x_studio_codigo_contpaqi` + 27 códigos poblados (incl. `143:'080'`); **Juan = emp 155 (017)** y **Juana = emp 156 (018)** creados (default 513); Miriam 148 archivada; campo `x_studio_solo_bolsa` creado.
-> 🚨 **PENDIENTE (1 cosa):** el `true` de `x_studio_solo_bolsa` en 97/108/143 **NO persistió** (read-back los muestra en `false`). **Re-correr B.6** y verificar antes del ensayo. Los workflows ya NO usan el mapa en memoria — leen estos campos de Odoo en cada corrida.
+> ✅ **RESUELTO 2026-07-16:** `x_studio_solo_bolsa=true` en 97/108/143 (re-corrido + verificado con read-back). Los workflows ya NO usan el mapa en memoria — leen `x_studio_codigo_contpaqi` + `x_studio_solo_bolsa` + `x_studio_cuenta_indirecta_default` + `department_id` de Odoo en cada corrida. **Vacaciones → bolsa madre del depto** (Comercial 608 / Operaciones 3096 / RH 478 / Legal 768 / Admin 513 / Dirección 3095), NO 513 fijo.
 
 > ⚠️ El MCP Odoo está en **read-only** ("read-only YOLO mode") → estos writes se corren en la **consola F12 de Odoo** (con tu sesión). NO ejecutados por CC. Pega primero el helper, luego el bloque que toque.
 > Modelos verificados: `budget.line` tiene `x_plan2_id` (bolsas plan 2) + `x_plan20_id` (rubro) + `achieved_amount`. `analytic.line` acepta `x_plan2_id` / `account_id` + `x_plan20_id`.

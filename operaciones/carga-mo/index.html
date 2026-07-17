@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Carga MO — FTS Suite</title>
-<script>(function(){ window.CMO_BUILD = '20260716-cmo-odoo-v3'; })();</script>
+<script>(function(){ window.CMO_BUILD = '20260716-cmo-vacdepto-v4'; })();</script>
 <script src="../../finanzas/js/auth-fin.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -237,7 +237,7 @@ function render(){
   document.getElementById('tb').innerHTML = p.emps.map(e=>{
     const m=CODE_MAP[e.cod]; const tags=[];
     if(e.asim>0) tags.push('<span class="pill asim">asimilado→513</span>');
-    if(e.vac>0) tags.push('<span class="pill vac">vacaciones→513</span>');
+    if(e.vac>0) tags.push('<span class="pill vac">vacaciones→bolsa depto</span>');
     if(m&&m.solo) tags.push('<span class="pill">solo bolsa</span>');
     if(!m) tags.push('<span class="pill nc">SIN empleado</span>');
     if(m&&m.crear) tags.push('<span class="pill nc">crear en Odoo</span>');
