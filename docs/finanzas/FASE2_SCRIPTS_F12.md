@@ -77,14 +77,15 @@ for(const [b,nm] of BOLSAS){
 *(También faltan las 6 líneas 1177 de proyecto de Auditoría C: 3071 sin budget, 3083/3087 sin 1177, 3038/3091/3094 placeholder −1 — se pueblan con los montos de cotización de Esteban.)*
 
 ### B.6 — Campo `x_studio_solo_bolsa` (bool) para la regla per-empleado
-> **Corrección 2026-07-16:** solo_bolsa FINAL = **sólo 3** (nunca cargan horas a proyecto). Todos los demás son **híbridos** (respetan checkout), incluidos Aldo, Ana Laura, Magaly, Gerardo, Erick, Eduardo, Luis Ángel, Francisco, Ricardo, Ramiro. Los 3 sí siguen checando en kiosko — el flag sólo afecta el dinero.
+> **AMPLIACIÓN 2026-07-16 (post go-live SEM 28):** solo_bolsa = **10** (cada uno 100% a su `x_studio_cuenta_indirecta_default`, siempre): **Rissia(97)→608, Pablo(108)→608, Arturo(143)→608, Gerardo(59)→513, Gibrán(62)→3096, Felipe(112)→3096, Magaly(63)→768, Ana Laura(101)→478, Erick(149)→513, Eduardo(153)→513.** Híbridos (respetan checkout): Ops de campo + Luis Ángel, Francisco, Aldo, Carlos, Ricardo, Ramiro, etc. ⚠️ **Felipe(112) es fila de TRÍO** (sin código) → el MOTOR lo lee por `empById` (mapa por employee_id de TODOS los activos), no por código. Los 9 restantes son código-empleados (auto-leídos). El flag sólo afecta el dinero; los 10 siguen checando kiosko.
 
 Marcar `true` en **sólo**: **Rissia (97)**, **Pablo (108)**, **Arturo (143)** → su bruto va 100% a su `x_studio_cuenta_indirecta_default` (= **608 VENTAS** en los 3). `false` (default) = respeta checkout (Ops, admin, legal, RH, choferes/aux — todos).
 > 🚨 **RE-CORRER: el read-back 2026-07-16 mostró los 3 en `false`** (el true de Studio no persistió). Corre esto por RPC (más confiable que el checkbox) y **verifica con el read de abajo**:
 ```js
-for(const emp of [97,108,143]){ await rpc('hr.employee','write',[[emp],{x_studio_solo_bolsa:true}]); }
-const chk=await rpc('hr.employee','read',[[97,108,143],['name','x_studio_solo_bolsa','x_studio_cuenta_indirecta_default']]);
-console.log('▶ VERIFICA solo_bolsa=true + default 608:', chk);
+const SOLO=[97,108,143,59,62,112,63,101,149,153];   // los 10
+for(const emp of SOLO){ await rpc('hr.employee','write',[[emp],{x_studio_solo_bolsa:true}]); }
+const chk=await rpc('hr.employee','read',[SOLO,['name','x_studio_solo_bolsa','x_studio_cuenta_indirecta_default']]);
+console.log('▶ VERIFICA solo_bolsa=true + su default:', chk);   // Felipe(112) default debe ser 3096
 ```
 Los asimilados (017/018 = emp 155/156) NO necesitan el flag: van a su default 513 por la regla `asim` (columna sueldo asimilado > 0). El workflow lee `x_studio_solo_bolsa` directo de Odoo (el mapa en memoria ya murió) — si está `false`, el empleado se trata como híbrido.
 
@@ -124,3 +125,35 @@ const rest = await rpc('account.analytic.line','search_count',[[['name','like',P
 console.log('▶ borradas; quedan (esperado 0):', rest);
 ```
 Tras el rollback la semana queda **no-procesada** (la idempotencia por prefijo vuelve a estar limpia) → puedes re-correr el write. Los `budget.line.achieved_amount` de las bolsas/proyectos se recalculan solos al borrar las `analytic.line`.
+
+---
+
+## Budgets — fixes de estructura (hallazgos post SEM 28; corre tú, no CC)
+El write dejó las `analytic.line` correctas, pero 2 budgets no las captan por su estructura legada.
+
+### C.1 — Magnekon (668): extender `date_to` (cierra 2025-12-31 → no capta 2026)
+```js
+const bl = await rpc('budget.line','read',[[204],['budget_analytic_id','account_id','date_from','date_to','achieved_amount']]);
+console.log('▶ ANTES:', bl);                              // date_to 2025-12-31, achieved -47,341.77 (sin SEM 28)
+await rpc('budget.line','write',[[204],{date_to:'2026-12-31'}]);
+// si la cabecera tambien cierra 2025, extenderla (id 70):
+await rpc('budget.analytic','write',[[70],{date_to:'2026-12-31'}]);
+const bl2 = await rpc('budget.line','read',[[204],['date_to','achieved_amount']]);
+console.log('▶ DESPUES (achieved debe incluir el -3,510.88 de SEM 28):', bl2);
+```
+
+### C.2 — Chiller (3071): crear `budget.line` 1177 (no existe → el MO no acumula)
+```js
+// buscar la cabecera del budget del proyecto Chiller (SO11551)
+const bh = await rpc('budget.analytic','search_read',[[['name','like','SO11551']],['id','name','date_from','date_to']]);
+console.log('▶ budget.analytic Chiller:', bh);            // toma el id (BID)
+const BID = bh.length ? bh[0].id : null;
+if(BID){
+  const nl = await rpc('budget.line','create',[{budget_analytic_id:BID, account_id:3071, x_plan20_id:1177, budget_amount:-1, date_from:'2026-01-01', date_to:'2027-12-31'}]);
+  const chk = await rpc('budget.line','read',[[nl],['account_id','x_plan20_id','budget_amount','achieved_amount']]);
+  console.log('▶ linea 1177 Chiller creada (achieved debe reflejar -2,235.46):', chk);
+} else {
+  console.log('⚠️ no hay budget.analytic para Chiller — crear cabecera primero (como B.5).');
+}
+```
+*(Placeholder `budget_amount:-1`; poner el monto real de cotización cuando esté.)*
