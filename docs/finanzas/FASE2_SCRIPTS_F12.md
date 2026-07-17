@@ -90,8 +90,37 @@ Los asimilados (017/018 = emp 155/156) NO necesitan el flag: van a su default 51
 
 ---
 
-## Cutover (día del primer run real)
+## Cutover (día del primer write real) — verificación + unlink
+Estado verificado 2026-07-16: **los 3 [47,48,9] están VIVOS**, todos inyectan `{1177:100}` (prefijos `2023.34` / `102.01.00008` / `101000`, company 1). Verifica de nuevo antes de unlink:
 ```js
-await rpc('account.analytic.distribution.model','unlink',[[47, 48, 9]]);  // los 3 que inyectan 1177 — nunca vaciar
+// 1) VERIFICAR cuáles siguen vivos + qué inyectan
+const dm = await rpc('account.analytic.distribution.model','read',[[47,48,9],['id','analytic_distribution','account_prefix','company_id']]);
+console.log('▶ distribution models vivos:', dm);   // esperado: 3 filas, todas con {"1177":100}
 ```
-Antes: verificar cuál está vivo (ver `docs/INCIDENTES/2026-07-13...` §9).
+```js
+// 2) CUTOVER — unlink de los que inyectan 1177 (NUNCA vaciar el modelo; unlink completo)
+await rpc('account.analytic.distribution.model','unlink',[[47, 48, 9]]);
+console.log('▶ unlinked [47,48,9]');
+const rest = await rpc('account.analytic.distribution.model','search_count',[[['id','in',[47,48,9]]]]);
+console.log('▶ quedan (esperado 0):', rest);
+```
+⚠️ **Vaciar el `analytic_distribution` a `{}` crashea el onchange de Odoo (incidente 13-jul §9). SIEMPRE unlink completo, nunca vaciar.**
+
+---
+
+## Rollback del write (si algo sale mal) — unlink por llave de semana
+El read-back del workflow devuelve `ids_creados` + `llave_prefijo` (ej. `MO S28/2026 ·`). Rollback limpio:
+```js
+// 1) Ver qué se escribió (por prefijo de llave de la semana)
+const PREFIJO = 'MO S28/2026 ·';   // <-- ajusta al periodo escrito
+const rows = await rpc('account.analytic.line','search_read',[[['name','like',PREFIJO]],['id','name','amount','account_id','x_plan2_id','x_plan20_id']]);
+console.log('▶ líneas MO de la semana:', rows.length, rows);
+```
+```js
+// 2) ROLLBACK — borra TODAS las líneas MO de esa semana (idempotencia vuelve a cero para esa semana)
+const ids = rows.map(r=>r.id);
+if(ids.length){ await rpc('account.analytic.line','unlink',[[...ids]]); }
+const rest = await rpc('account.analytic.line','search_count',[[['name','like',PREFIJO]]]);
+console.log('▶ borradas; quedan (esperado 0):', rest);
+```
+Tras el rollback la semana queda **no-procesada** (la idempotencia por prefijo vuelve a estar limpia) → puedes re-correr el write. Los `budget.line.achieved_amount` de las bolsas/proyectos se recalculan solos al borrar las `analytic.line`.
