@@ -1,8 +1,10 @@
 # FASE 2 — Spec del Distribuidor V1 de Carga MO (horas → pesos)
 
-> ## 🟢 GO-LIVE OCURRIÓ — SEM 28 ESCRITA EN PRODUCCIÓN (2026-07-16)
+> ## 🟢 GO-LIVE OCURRIÓ — SEM 28 EN PRODUCCIÓN (RE-ESCRITA DEFINITIVA 2026-07-17)
 > **La primera corrida real ya pasó.** Mañana con SEM 29 es la **2ª corrida**, no el estreno.
-> - **44 líneas** `account.analytic.line` creadas, IDs **60013-60056**, fecha 09-jul, suma **−196,230.81** (Δ 0.00), llave `MO S28/2026 ·`. Fusión por empleado+destino confirmada (Luis Ángel emp48·B608 = −5,270.83 en 1 línea). Compuesto correcto: proyecto→`account_id` (P2302→3034, P121→576, P160→668, P2337→3071), bolsa→`x_plan2_id`, rubro 1177. Cero duplicados. Validado por MCP + UI.
+> - **Estado DEFINITIVO: 36 líneas** `account.analytic.line`, IDs **60057-60092**, fecha 09-jul, suma **−196,230.81** (Δ 0.00), llave `MO S28/2026 ·`. Validado línea-por-línea por MCP (0 duplicados, 0 sobrevivientes de la corrida vieja). ⚠️ **Los IDs 60013-60056 (1ª corrida, 44 líneas, regla 3-solo) YA NO EXISTEN** — se hizo rollback por prefijo y re-write con: **solo_bolsa=10** + `trio_solo_bolsa` (Felipe) + **att 14183 corregido** (Luis Ángel nunca trabajó en Magnekon — checkout mal seleccionado; **primer caso real que justifica el candado UI #2**).
+> - Efecto del re-write: **Magnekon (668) y Chiller (3071) desaparecieron** del por_destino (Gerardo/Gibrán se fueron por solo_bolsa; Felipe→3096; el día de Magnekon de Luis Ángel se corrigió a 608). Por destino: Topo −62,899.66 · Vertiv −38,127.80 · 608 −37,998.07 · 513 −22,742.77 · 3096 −22,066.70 · 768 −6,562.50 · 478 −5,833.31. Felipe emp112·B3096 −11,136 (`trio_solo_bolsa`); Luis Ángel emp48·B608 −6,797.66 (vac+horas fusionadas en 1 línea). Nombres de bolsa vivos (CENTRO DE COSTOS ADMINISTRACION/LEGAL/etc.).
+> - Compuesto correcto: proyecto→`account_id` (P2302→3034, P121→576), bolsa→`x_plan2_id`, rubro 1177.
 > - **Cutover ejecutado:** `unlink [47,48,9]` hecho. Verificado: 49 distribution models vivos, **NINGUNO inyecta 1177**.
 > - **Deltas SEM 28 por proyecto (exactos):** Topo −68,324.60 · Vertiv −40,367.60 · Magnekon −3,510.88 · Chiller −2,235.46 · 1130 sin cambio (Rissia→608 por solo_bolsa).
 > - **Correo:** bug cosmético corregido (el MOTOR dry-run había perdido `total_nomina`/`total_distribuido` del top-level → "$0.00"; re-añadidos. El write nunca tuvo el bug).
