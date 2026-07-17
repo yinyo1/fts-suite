@@ -16,6 +16,66 @@
 > Topo Chico 68,756.78 · Vertiv 41,295.20 · 608 VENTAS 35,486.37 · 513 ADMIN 27,089.74 · 768 LEGAL 6,562.50 · 478 RH 5,833.31 · 3096 ADMIN OPS 4,364.44 · Magnekon 4,019.10 · Chiller 2,823.37 · **Total 196,230.81** (= bruto 177,778.56 + trío 18,452.25). 0 excepciones. Reglas especiales: Juan Manuel vacación_total→513; Luis Ángel vacación_parcial (2,173.75→513 + resto por horas Magnekon/608); Juan/Juana asimilado→513; Rissia/Pablo/Arturo solo_bolsa→608; Carlos/Felipe trío por horas.
 > _(Nota: los totales por destino pueden variar ±centavos en el live según el orden de iteración de las asistencias — el total siempre cuadra exacto.)_
 
+> ## ⚠️ 3ª pasada 2026-07-16 (vacaciones → bolsa MADRE del depto)
+> Cambio de regla (Esteban): **el dinero de vacaciones (cols 9+10) va a la bolsa madre del DEPARTAMENTO del empleado, NO a 513 fijo.** Razón: el costo de vacaciones es del depto que las otorga; 513 fijo inflaría Administración con vacaciones ajenas. Mapa depto→bolsa: **Comercial→608, Operaciones→3096, RH→478, Legal→768, Admin y Finanzas→513, Dirección→3095** (por nombre de `department_id`, normalizado sin acentos; fallback 513 si el depto no mapea). Precisión: cols 9+10 = SOLO el dinero de los días de vacaciones → bolsa depto; el **resto** del bruto se reparte por horas confirmadas normal (proyecto si trabajó, bolsa si no). Aplica a parcial y total. **Los ASIMILADOS NO cambian** (513 por su `cuenta_indirecta_default` vía regla `asim`). Se agregó `department_id` al nodo `Odoo - empleados` (build página `20260716-cmo-vacdepto-v4`).
+>
+> **Dry-run SEM 28 con la regla nueva (Δ 0.00):** Topo 68,756.78 · Vertiv 41,295.20 · **608 VENTAS 37,660.12** · **513 ADMIN 20,515.99** · **3096 ADMIN OPS 8,764.44** · 768 LEGAL 6,562.50 · 478 RH 5,833.31 · Magnekon 4,019.10 · Chiller 2,823.37 · **Total 196,230.81**. Casos: Luis Ángel vac $2,173.75 → 608 (Comercial, antes 513); Juan Manuel $4,400 → 3096 (Operaciones, antes 513); asimilados Juan/Juana → 513 (sin cambio).
+
+> ## ⚠️ 2ª pasada 2026-07-16 (prereqs de Esteban listos → el mapa en memoria MURIÓ)
+> Esteban completó los prereqs en Odoo ANTES de esta pasada: campo `x_studio_codigo_contpaqi` + 27 códigos poblados; **Juan = emp 155 (017)** y **Juana = emp 156 (018)** (default 513); Miriam 148 archivada; campo `x_studio_solo_bolsa` creado. Por lo tanto:
+> 1. **El mapa en memoria murió.** Ambos workflows (`HV1UE5JxN5fKdC2Y` dry-run, `j0V9wfpuPTLFO9DZ` write) ahora tienen un nodo **`Odoo - empleados`** que lee `x_studio_codigo_contpaqi` + `x_studio_solo_bolsa` + `x_studio_cuenta_indirecta_default` en CADA corrida. `código → employee_id`, `solo_bolsa` y la bolsa destino salen de Odoo, no de un dict. Autoprogresivo: un empleado nuevo con código entra solo. El `CODE_MAP` de la página queda **sólo para el preview** (build `20260716-cmo-odoo-v3`).
+> 2. Página + workflows: **017→155, 018→156** (ya no "crear").
+> 3. **Reglas de destino ahora por Odoo:** asimilado → su `cuenta_indirecta_default` (513 para Juan/Juana); solo_bolsa → su `cuenta_indirecta_default` (608 para los 3); vacación → 513 fijo; sin horas/sin vac → excepción (la cascada a `cuenta_indirecta_default` §d.2 queda como opt-in de 1 línea si Esteban la aprueba tras ver el ensayo).
+> 4. **Regla de timing (día sin confirmar = bloqueo):** el dry-run reporta `confirmacion:{todo_confirmado, dias_sin_confirmar, pendientes[]}` — lista cada attendance del roster (incluye trío Felipe/Carlos/Ricardo) en la ventana **sin** `manager_approval`, en disputa, o sin check_out. El **WRITE se BLOQUEA** si `todo_confirmado===false` (además del gate `confirm_write` + idempotencia).
+>
+> ### 🚨 Pendiente de Esteban ANTES del ensayo: `x_studio_solo_bolsa` está en FALSE
+> El read-back (abajo) mostró `x_studio_solo_bolsa = false` en **los 29**, incluidos 97/108/143 — el `true` que marcaste en Studio **no persistió**. El campo existe (no da error). El código honra lo que diga Odoo → **si corres el ensayo con el flag en false, Rissia/Pablo/Arturo se reparten por horas (híbrido), NO 100% a 608.** Fix (F12, el MCP es read-only):
+> ```js
+> for(const emp of [97,108,143]){ await rpc('hr.employee','write',[[emp],{x_studio_solo_bolsa:true}]); }
+> ```
+> (o re-marcar en Studio y **guardar el registro**). Verifícalo con un read antes del ensayo.
+>
+> ### Read-back del mapeo final (29 códigos, Odoo 2026-07-16)
+> | Cód | emp | Nombre | solo_bolsa | cuenta_indirecta_default | Depto |
+> |---|---|---|---|---|---|
+> | 002 | 25 | Héctor Cruz | false | — | Operaciones |
+> | 003 | 68 | Jésus Montalvo | false | 3096 ADMIN OPS | Operaciones |
+> | 005 | 6 | Leonel Cruz | false | — | Operaciones |
+> | 006 | 8 | Francisco Montalvo | false | 608 VENTAS | Comercial |
+> | 010 | 55 | Juan Manuel Sánchez | false | — | Operaciones |
+> | 011 | 48 | Luis Ángel García | false | 608 VENTAS | Comercial |
+> | 012 | 63 | Magaly Pérez | false | 768 LEGAL | Legal |
+> | 013 | 62 | Gibrán Solís | false | 3096 ADMIN OPS | Operaciones |
+> | 014 | 57 | Samuel Alcántara | false | — | Operaciones |
+> | 016 | 59 | Gerardo Lozano | false | 513 ADMIN | Admin y Finanzas |
+> | 017 | 155 | Juan De La Cruz (asimilado) | false | 513 ADMIN | RH |
+> | 018 | 156 | Juana Camarillo (asimilado) | false | 513 ADMIN | RH |
+> | 027 | 75 | Mateo Salazar | false | 3096 ADMIN OPS | Operaciones |
+> | 028 | 78 | Aldo Méndez | false | 608 VENTAS | Comercial |
+> | 029 | 79 | José Luis Romero | false | — | Operaciones |
+> | 036 | 97 | Rissia Araujo | **false ⚠️** | 608 VENTAS | Comercial |
+> | 038 | 101 | Ana Laura Acevedo | false | 478 RH | RH |
+> | 044 | 108 | Pablo Bayly | **false ⚠️** | 608 VENTAS | Comercial |
+> | 052 | 121 | Stephany Ventura | false | — | Operaciones |
+> | 056 | 124 | Germán Merino | false | — | Operaciones |
+> | 058 | 127 | Cesar Gómez | false | — | Operaciones |
+> | 059 | 128 | Enoc Maldonado | false | — | Operaciones |
+> | 061 | 131 | Tomas Vázquez | false | — | Operaciones |
+> | 062 | 130 | Rolando Vázquez | false | — | Operaciones |
+> | 074 | 138 | Tomas Loredo | false | — | Operaciones |
+> | 080 | 143 | Arturo Hernández | **false ⚠️** | 608 VENTAS | Comercial |
+> | 081 | 149 | Erick Belmont | false | 513 ADMIN | Admin y Finanzas |
+> | 084 | 153 | Eduardo Garza | false | 513 ADMIN | Admin y Finanzas |
+> | 085 | 154 | Ramiro Segovia | false | 3096 ADMIN OPS | Operaciones |
+>
+> ⚠️ = debería ser `true`. Los 15 "Operaciones" con default `—` está OK: son de campo (respetan checkout, casi nunca caen al fallback).
+>
+> ### 📅 Calendario real (corregido)
+> - **HOY = jueves 16-jul.** La SEM 29 (ventana vie 10 → jue 16, cierra hoy) la manda Ulises **mañana vie 17**.
+> - **Mañana vie 17 = ENSAYO REAL con SEM 29** (dry-run completo). Requiere que Felipe tenga confirmada la semana hasta hoy jue 16; el dry-run reporta como bloqueo cualquier día sin confirmar.
+> - **Go-live (write + cutover `unlink [47,48,9]`):** Esteban decide mañana con el dry-run enfrente — si sale impecable, puede ser mañana mismo (SEM 29); si no, **vie 24 con SEM 30**.
+> - **Backfill (viable ✅):** las semanas no escritas en vivo (28, y 29 si se espera) se pueden escribir retroactivamente con su propia llave `MO S<periodo>/<año>` — llaves distintas por periodo ⇒ sin colisión con la idempotencia. **Recomendación:** hacer el backfill **DESPUÉS del cutover** (`unlink [47,48,9]`) para que los distribution models ya desactivados no inyecten un 2º rubro 1177 sobre las líneas backfilleadas. Las líneas de MO que escribe el distribuidor son nuevas (no existían antes) → el backfill en sí no duplica.
+
 > **Estado:** DISEÑO (cero escrituras). Diseñado 2026-07-13 contra Odoo `serviciosfts.odoo.com` (MCP UID 2 read-only) + decisiones cerradas de Esteban.
 > **Alcance V1 (MVP):** distribuir SOLO el **bruto CONTPAQi** (percepciones totales por empleado) + montos del trío facturante (Carlos/Felipe/Ricardo), ponderado por **horas confirmadas** de la ventana de nómina **VIE→JUE**, escribiendo **`account.analytic.line` compuesta (proyecto|bolsa × rubro 1177 MO)**. La línea nace etiquetada por rubro desde V1.
 > **Fuera de V1 (backlog, no diseñar):** carga patronal por factor (SUA), ISN, fondo de ahorro (columna Z del Excel), true-ups, geocercas dinámicas.
