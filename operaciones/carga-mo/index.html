@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Carga MO — FTS Suite</title>
-<script>(function(){ window.CMO_BUILD = '20260716-cmo-vacdepto-v4'; })();</script>
+<script>(function(){ window.CMO_BUILD = '20260716-cmo-semaforo-v5'; })();</script>
 <script src="../../finanzas/js/auth-fin.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -98,6 +98,8 @@ const CODE_MAP = {
 };
 const TRIO_NAMES = ['CARLOS','FELIPE','RICARDO'];
 const WEBHOOK = 'https://primary-production-5c3c.up.railway.app/webhook/planeacion/carga-mo';
+const WRITE_WEBHOOK = 'https://primary-production-5c3c.up.railway.app/webhook/planeacion/carga-mo-write';
+let LAST_REPORT = null;
 // columnas 0-based del layout SEM 28
 const C = { cod:0, nom:1, vac:8, primaVac:9, asim:11, bruto:13, neto:35 };
 const HEADER_ROW = 7; // fila 8 (0-based)
@@ -261,12 +263,70 @@ document.getElementById('send').addEventListener('click', async ()=>{
   try{
     const rsp=await fetch(WEBHOOK,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const j=await rsp.json().catch(()=>({}));
-    msg.className='card'; msg.innerHTML='<div class="chk ok">✓ Enviado a DRY-RUN. Respuesta:</div><pre style="font-size:12px;overflow:auto">'+JSON.stringify(j,null,2)+'</pre>';
+    LAST_REPORT=j; renderReport(j, msg);
   }catch(err){
     msg.innerHTML='<div class="chk err">✗ Error enviando: '+err.message+' (¿el workflow n8n está activo?)</div>';
   }
   btn.textContent='Enviar a DRY-RUN →'; btn.disabled=false;
 });
+
+// ── Semáforo de semana completa (stop duro, visible y temprano) + escritura real ──
+function money(n){ return '$'+(Number(n||0)).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function renderReport(j, msg){
+  const sf=j.semaforo||{}; const verde = (j.listo_para_escribir===true) || (sf.verde===true);
+  const cf=j.confirmacion||{}; const exc=(j.excepciones||[]);
+  const cod=exc.filter(x=>x.motivo&&x.motivo.indexOf('codigo sin empleado')>=0);
+  let h='';
+  if(verde){
+    h+='<div class="chk ok" style="font-size:15px;font-weight:700">✓ Semana completa, lista para cargar</div>';
+  } else {
+    h+='<div class="chk err" style="font-size:15px;font-weight:700">⛔ SEMANA INCOMPLETA — el write está bloqueado</div>';
+    if(cf.dias_sin_confirmar){ h+='<div class="chk warn"><b>Días sin confirmar ('+cf.dias_sin_confirmar+'):</b> '+(cf.pendientes||[]).map(p=>p.nombre+' — '+(p.check_in||'').slice(0,16)+' ('+p.motivo+')').join(' · ')+'</div>'; }
+    if(cf.confirmados_sin_destino){ h+='<div class="chk warn"><b>Confirmados sin destino — corregir en panel ✎ ('+cf.confirmados_sin_destino+'):</b> '+(cf.sin_destino||[]).map(p=>p.nombre+' — '+(p.check_in||'').slice(0,16)+' (att '+p.att_id+')').join(' · ')+'</div>'; }
+    if(cod.length){ h+='<div class="chk err"><b>Códigos sin cruce ('+cod.length+'):</b> '+cod.map(x=>(x.cod||'')+' '+(x.nombre||'')).join(' · ')+'</div>'; }
+  }
+  const ctl=j.control||{};
+  h+='<div style="margin:8px 0;font-size:13px">Σ nómina '+money(j.total_nomina)+' · Σ distribuido '+money(ctl.total_distribuido)+' · Δ <b style="color:'+(ctl.ok?'#1a7a3a':'#b3261e')+'">'+money(ctl.diferencia)+'</b> ('+(ctl.ok?'OK':'DESCUADRE')+') · periodo '+(j.periodo!=null?j.periodo:'?')+'</div>';
+  // por destino
+  if(j.por_destino&&j.por_destino.length){
+    h+='<table style="margin:6px 0"><thead><tr><th>Destino</th><th class="r">Monto</th></tr></thead><tbody>'+j.por_destino.map(d=>'<tr><td>'+d.label+'</td><td class="r">'+money(d.monto)+'</td></tr>').join('')+'</tbody></table>';
+  }
+  if(exc.length){ h+='<div class="chk err"><b>Excepciones ('+exc.length+'):</b> '+exc.map(x=>(x.nombre||x.trio||x.cod||'?')+': '+x.motivo+(x.amount!=null?(' '+money(x.amount)):'')).join(' · ')+'</div>'; }
+  // botón de escritura real
+  h+='<div style="margin-top:12px;padding-top:12px;border-top:2px solid #eee">';
+  if(verde){
+    h+='<div class="mut" style="font-size:12px;margin-bottom:6px">Semáforo verde. Si el workflow WRITE ya está activo, puedes cargar a Odoo (irreversible salvo rollback por llave).</div>';
+    h+='<button class="btn" id="wbtn" style="background:#b3261e;color:#fff">⚠️ ESCRIBIR EN ODOO (REAL) — Periodo '+(j.periodo!=null?j.periodo:'?')+'</button>';
+  } else {
+    h+='<button class="btn" disabled style="background:#ccc;color:#666">Escritura bloqueada — resuelve el semáforo</button>';
+  }
+  h+='</div>';
+  h+='<details style="margin-top:10px"><summary class="mut" style="cursor:pointer;font-size:12px">Ver JSON completo</summary><pre style="font-size:11px;overflow:auto">'+JSON.stringify(j,null,2)+'</pre></details>';
+  msg.className='card'; msg.innerHTML=h;
+  const wb=document.getElementById('wbtn'); if(wb) wb.addEventListener('click', doWrite);
+}
+async function doWrite(){
+  if(!PARSED || !LAST_REPORT) return;
+  if(!confirm('¿ESCRIBIR en Odoo el Periodo '+PARSED.periodo+'? Esto crea partidas analíticas reales. Requiere que el workflow WRITE esté activo. Rollback: unlink por llave "MO S'+PARSED.periodo+'/…".')) return;
+  const token=window.FinAuth&&FinAuth.getToken&&FinAuth.getToken();
+  if(!token){ showGate(); return; }
+  const wb=document.getElementById('wbtn'); if(wb){ wb.disabled=true; wb.textContent='Escribiendo…'; }
+  const s=FinAuth.getSession();
+  const payload={ modo:'write', token:token, confirm_write:true,
+    periodo:PARSED.periodo, periodo_start:PARSED.periodoStart, periodo_end:PARSED.periodoEnd,
+    semana_vie:PARSED.vie, semana_jue:PARSED.jue,
+    solicitante:(s&&s.user)||'', empleados:PARSED.emps, trio:PARSED.trio, total_gral:PARSED.totalGral };
+  const msg=document.getElementById('msg');
+  try{
+    const rsp=await fetch(WRITE_WEBHOOK,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const j=await rsp.json().catch(()=>({}));
+    const ok=j.modo==='ESCRITO';
+    const head=ok?('<div class="chk ok" style="font-weight:700">✓ ESCRITO: '+(j.lineas_creadas||0)+' líneas · Δ '+money((j.control||{}).diferencia)+' ('+((j.control||{}).ok?'OK':'REVISAR')+')</div>'):('<div class="chk err" style="font-weight:700">✗ NO ESCRITO: '+(j.motivo||j.msg||'ver detalle')+'</div>');
+    msg.innerHTML=head+(j.ids_creados?('<div class="mut" style="font-size:11px">IDs: '+j.ids_creados.join(', ')+' · rollback: unlink name like "'+(j.llave_prefijo||('MO '+j.semana+' ·'))+'"</div>'):'')+'<details open><summary class="mut" style="cursor:pointer;font-size:12px">Respuesta</summary><pre style="font-size:11px;overflow:auto">'+JSON.stringify(j,null,2)+'</pre></details>';
+  }catch(err){
+    msg.innerHTML='<div class="chk err">✗ Error en write: '+err.message+' (¿el workflow WRITE está activo?)</div>';
+  }
+}
 
 gate();
 </script>
