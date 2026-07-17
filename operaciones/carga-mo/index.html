@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Carga MO — FTS Suite</title>
-<script>(function(){ window.CMO_BUILD = '20260716-cmo-jwt-v2'; })();</script>
+<script>(function(){ window.CMO_BUILD = '20260716-cmo-odoo-v3'; })();</script>
 <script src="../../finanzas/js/auth-fin.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -79,14 +79,16 @@
 </main>
 
 <script>
-// ── Mapeo PROVISIONAL codigo CONTPAQi → empleado Odoo (dry-run; V1 real = x_studio_codigo_contpaqi) ──
-// solo_bolsa=true SÓLO 3 (nunca cargan a proyecto): Rissia 97, Pablo 108, Arturo 143.
-// Resto = híbrido (respeta checkout). Los asimilados (017/018) van a 513 por regla asim, no por solo.
+// ── Mapeo codigo CONTPAQi → empleado Odoo — SOLO PREVIEW/tags de la pagina ──
+// FUENTE DE VERDAD = Odoo: los workflows leen x_studio_codigo_contpaqi + x_studio_solo_bolsa
+// + x_studio_cuenta_indirecta_default en cada corrida (el mapa en memoria ya murio del lado motor).
+// Este mapa solo pinta la tabla de preview; ids verificados por read-back 2026-07-16 (29 codigos).
+// solo:true (preview) = los 3 que en Odoo llevan x_studio_solo_bolsa=true: Rissia 97, Pablo 108, Arturo 143.
 const CODE_MAP = {
  '002':{id:25,n:'Héctor Cruz'},'003':{id:68,n:'Jésus Montalvo'},'005':{id:6,n:'Leonel Cruz'},
  '006':{id:8,n:'Francisco Montalvo'},'010':{id:55,n:'Juan Manuel Sánchez'},'011':{id:48,n:'Luis Ángel García'},
  '012':{id:63,n:'Magaly Pérez'},'013':{id:62,n:'Gibrán Solís'},'014':{id:57,n:'Samuel Alcántara'},
- '016':{id:59,n:'Gerardo Lozano'},'017':{id:null,n:'Juan De La Cruz',asim:true},'018':{id:null,n:'Juana Camarillo',asim:true},
+ '016':{id:59,n:'Gerardo Lozano'},'017':{id:155,n:'Juan De La Cruz',asim:true},'018':{id:156,n:'Juana Camarillo',asim:true},
  '027':{id:75,n:'Mateo Salazar'},'028':{id:78,n:'Aldo Méndez'},'029':{id:79,n:'José Luis Romero'},
  '036':{id:97,n:'Rissia Araujo',solo:true},'038':{id:101,n:'Ana Laura Acevedo'},'044':{id:108,n:'Pablo Bayly',solo:true},
  '052':{id:121,n:'Stephany Ventura'},'056':{id:124,n:'Germán Merino'},'058':{id:127,n:'Cesar Gómez'},
