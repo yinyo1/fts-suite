@@ -1,5 +1,5 @@
 {
-  "_meta": "Config de ops/watchdog-mo (W1-W4 Fase 1.5). Se lee de GitHub raw main EN VIVO: editar + push, sin re-importar. Ver docs/operaciones/FASE15_CUENTAS_WATCHDOGS.md Parte 11.",
+  "_meta": "Config de ops/watchdog-mo (W1-W5 Fase 1.5). Se lee de GitHub raw main EN VIVO: editar + push, sin re-importar. Ver docs/operaciones/FASE15_CUENTAS_WATCHDOGS.md Parte 11.",
   "go_live": "2026-07-08",
   "dept_ops": 3,
   "recipients": {
@@ -8,10 +8,13 @@
     "ana_laura": "ana.acevedo@fts.mx",
     "magaly": "magaly@fts.mx"
   },
+  "canary": false,
+  "_canary_nota": "canary=true redirige TODOS los correos del watchdog solo a esteban con subject [CANARY], sin spammear a Felipe/Ana/Magaly. Usar para probar W5 con Manual Trigger, luego volver a false.",
   "w1_activo": true,
   "w2_activo": true,
   "w3_activo": true,
   "w4_activo": true,
+  "w5_activo": true,
   "w4_ventana_dias": 30,
   "w4_min_correcciones": 2
 }
