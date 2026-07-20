@@ -179,3 +179,32 @@ Comparativa de vías: **RPC (Birlos, esta receta) vs UI widget (Telcel)** → de
 - statement line `30443` · statement move `58572` (BNK6/2026/00630) · suspense aml `198764`.
 - Bill `BILL3064` = move `58554` · payable aml `198717` · vendor partner `1341` (BIRLOS Y TORNILLOS) · UUID `F0940225-B05E-48D6-9B21-2CC1E9206882`.
 - `account.full.reconcile` resultante: `8807`.
+
+---
+
+## 11. Desactivación del auto-match nativo (`ir.cron` 52) — 2026-07-20
+
+- **id `52`** · "Try to reconcile automatically your statement lines" · código `model._cron_try_auto_reconcile_statement_lines(batch_size=100)` · modelo Bank Statement Line · **diario ~18:40 UTC** · usuario OdooBot.
+- **Desactivado el 2026-07-20** (`active=false`, vía RPC, read-back confirmado) — antes de su corrida del 21-jul 18:40 UTC.
+- **Razón:** auto-casaba las capturas nuevas de Jeeves contra el **backlog sucio de la cuenta 186 Outstanding Payments** (**$12,157,042 / 978 líneas abiertas**, pagos 2024/2025 nunca conciliados contra banco) → **falsos positivos**: Telcel 30462/30468 y Steren 30453 casados a pagos viejos en vez de a sus bills. Las 13 `account.reconcile.model` son **todas `trigger: manual`** → el cron NO usa reglas custom; usa el auto-match **nativo** de Odoo.
+- **Reversible con un clic** (`active=true`).
+- **Condición de reevaluación (para reactivar):** (a) backlog de la 186 limpio/conciliado **y** (b) motor de conciliación de Fase 2 vivo — para que el matching correcto lo haga el motor/humano, no el auto-match ciego contra basura.
+
+## 12. Receta de DESENREDO (3er flujo del motor: detectar → desenredar → re-conciliar) — CONFIRMADA
+
+Caso: falso positivo del auto-match (línea conciliada contra un pago viejo equivocado en la cuenta 186). Piloto: Telcel 30462 (2026-07-20). **Atómico en un run, con `ir.cron` 52 ya apagado.**
+
+1. **Derivar** la contrapartida mal conciliada: `search_read account.move.line [('move_id.statement_line_id','=',LINE),('reconciled','=',True),('account_id','!=',<liquidez 223>)]` → la pata en 186.
+2. **Unwind:** `account.partial.reconcile.unlink([partial_ids])` (de los `matched_debit_ids`/`matched_credit_ids` de esa pata) → desata el falso positivo. **Side-effect correcto:** el pago viejo recupera su residual real (el $200 TELCEL pasó de −75 a **−100** al liberarse el $25).
+3. **Mover** la contrapartida `186 → 201.01.01` + partner: `account.move.line.write([cp], {'account_id':17,'partner_id':P})`.
+4. **Reconcile** contra el bill correcto: `account.move.line.reconcile([cp, bill_aml])`.
+- **Auto-revert:** si (4) falla → revierte la cuenta a 186; la contrapartida queda **abierta, sin el falso positivo** (estado estrictamente mejor, nunca peor).
+- **Guards:** `NO_WRONG_COUNTERPART`, `NO_PARTIALS`, `BILL_NO_201`, `BILL_YA_CONCILIADO`.
+- **Método de unwind confirmado en v19:** `account.partial.reconcile.unlink` (callable vía RPC; `remove_move_reconcile` no se necesitó).
+- **Resultado Telcel:** 30462 conciliada a **BILL3052** (`payment_state=paid`, `full_reconcile 8825`); pago viejo $200 restaurado a −100 (aún con el falso positivo de 30468 pendiente de desenredar).
+
+## 13. Nota — el guard maneja concurrencia HUMANA (evidencia de producción)
+
+Ferre 30478 ↔ BILL3063 **no se pudo conciliar por RPC**: entre la sugerencia (~21:00) y el disparo (22:18), **un humano (`Administracion FTS-YIN`, uid 25) concilió BILL3063 manualmente** ("Manual: BILL3063", partial 12735, create_uid 25). El guard **`BILL_YA_CONCILIADO`** lo detectó y **rehusó escribir** (cero write). No fue bug ni el cron — **trabajo contable humano legítimo concurrente**.
+
+→ **Regla dura para `fin/captura-conciliar`:** re-validar el estado del bill (`reconciled`) **en el instante del write**, nunca confiar en lo que el front mostró minutos antes. El mundo cambia entre la sugerencia y el clic. El guard ya lo probó en vivo.
