@@ -27,7 +27,7 @@
     { "id": "bills-odoo",            "name": "Bills Odoo",               "block": "B4", "icon": "←", "status": "real-readonly", "webhook": "/fin/bills-odoo" },
     { "id": "facturas-sat-ingresos", "name": "Facturas SAT Ingresos",    "block": "B4", "icon": "⇧", "status": "empty", "webhook": null },
     { "id": "facturas-sat-egresos",  "name": "Facturas SAT Egresos",     "block": "B4", "icon": "⇩", "status": "empty", "webhook": null },
-    { "id": "instrumentos-pago",     "name": "Instrumentos de pago",     "block": "B4", "icon": "◧", "status": "empty", "webhook": null },
+    { "id": "instrumentos-pago",     "name": "Instrumentos de pago",     "block": "B4", "icon": "◧", "status": "real-readonly", "webhook": "/fin/captura-status" },
 
     { "id": "pagos-hub",             "name": "Hub de Pagos",             "block": "B5", "icon": "⊕", "status": "empty", "webhook": null },
     { "id": "sync-sat",              "name": "Sync SAT",                 "block": "B5", "icon": "⟳", "status": "empty", "webhook": null }

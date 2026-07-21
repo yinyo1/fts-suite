@@ -1,0 +1,144 @@
+/* ═══ FTS Suite · Finanzas — Instrumentos de pago (Bancos) ═══
+   Port fiel del mockup v7 (docs/mockup-finanzas-bancos.html), namespaced bajo
+   .ip-view para no colisionar con finanzas.css. Las variables de tema viven en
+   .ip-view (NO en :root). El selector de empresas usa FinCompanySelector (no se
+   replican los chips del v7). El toast propio es .ip-toast (evita choque con
+   el .toast global de facturas-core). */
+
+.ip-view{
+  --ink:#1a2129;          /* grafito */
+  --ip-panel:#ffffff;
+  --ip-line:#d7dde3;
+  --steel:#5b6875;
+  --ip-accent:#0e5fd8;    /* azul FTS acción */
+  --ip-ok:#12a150;
+  --ip-warn:#e8a500;
+  --ip-bad:#d63b2f;
+  --ip-mono:'IBM Plex Mono',monospace;
+  color:var(--ink);
+}
+
+.ip-view h2{font-size:14px;text-transform:uppercase;letter-spacing:1.2px;color:var(--steel);margin:26px 0 12px;font-weight:700}
+.ip-view h2:first-of-type{margin-top:8px}
+
+/* ---- header de la vista (título + acciones) ---- */
+.ip-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:4px}
+.ip-head .ip-gearwrap{margin-left:auto}
+
+/* ---- cards journals / kpi / btn ---- */
+.ip-view .kpi{margin-top:12px;padding-top:12px;border-top:1px dashed var(--ip-line)}
+.ip-view .kpi .lbl{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--steel)}
+.ip-view .kpi .val{font-family:var(--ip-mono);font-size:26px;font-weight:600;color:var(--ip-bad)}
+.ip-view .kpi .note{font-size:11px;color:var(--steel);margin-top:2px}
+.ip-view .ip-btn{display:inline-flex;align-items:center;gap:8px;background:var(--ip-accent);color:#fff;border:none;border-radius:6px;padding:9px 16px;font-family:inherit;font-weight:600;font-size:14px;cursor:pointer;margin-top:14px}
+.ip-view .ip-btn:disabled{background:#8fa8cc;cursor:wait}
+.ip-view .ip-btn .spin{width:13px;height:13px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:ipsp .7s linear infinite;display:none}
+.ip-view .ip-btn.busy .spin{display:inline-block}
+@keyframes ipsp{to{transform:rotate(360deg)}}
+.ip-view .synced{display:flex;align-items:center;gap:8px;margin-top:12px;padding:8px 10px;background:#f0f6ff;border:1px solid #cfe0f5;border-radius:6px;font-size:13px;color:#274b7a}
+.ip-view .synced b{color:#0e5fd8}
+.ip-view .schChip{margin-left:auto;font-family:var(--ip-mono);font-size:10.5px;color:#5b6875;background:#fff;border:1px solid var(--ip-line);border-radius:4px;padding:2px 6px;white-space:nowrap}
+.ip-view .pulse{width:8px;height:8px;border-radius:50%;background:var(--ip-accent);animation:ippl 2s ease-in-out infinite}
+@keyframes ippl{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ---- toast propio (no choca con el .toast global) ---- */
+.ip-toast{position:fixed;bottom:22px;right:22px;background:var(--ink);color:#fff;padding:12px 18px;border-radius:6px;font-size:14px;display:none;box-shadow:0 6px 20px rgba(0,0,0,.25);z-index:60}
+.ip-toast b{color:#7dd89b}
+
+/* ---- fuentes colapsables ---- */
+.ip-view .srclist{display:flex;flex-direction:column;gap:8px}
+.ip-view .src{background:var(--ip-panel);border:1px solid var(--ip-line);border-radius:8px;overflow:hidden}
+.ip-view .srchead{display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;user-select:none}
+.ip-view .srchead:hover{background:#f7f9fb}
+.ip-view .srchead .chev{font-family:var(--ip-mono);color:var(--steel);transition:transform .18s;font-size:12px}
+.ip-view .src.open .chev{transform:rotate(90deg)}
+.ip-view .srchead .nm{font-weight:700;font-size:15px}
+.ip-view .stchip{display:inline-flex;align-items:center;gap:6px;font-family:var(--ip-mono);font-size:11.5px;font-weight:600;border-radius:12px;padding:3px 10px}
+.ip-view .stchip.ok{background:#e7f6ed;color:#0d7a3f}
+.ip-view .stchip.err{background:#fdeae8;color:#b32d22}
+.ip-view .stchip.off{background:#eef1f4;color:#5b6875}
+.ip-view .wdbadge{display:inline-flex;align-items:center;gap:6px;background:#d63b2f;color:#fff;font-size:11.5px;font-weight:700;border-radius:12px;padding:3px 10px;margin-left:4px}
+.ip-view .wdbadge button{background:#fff;color:#b32d22;border:none;border-radius:8px;padding:1px 8px;font-size:11px;font-weight:700;cursor:pointer}
+.ip-view .srchead .sp{margin-left:auto;font-size:12px;color:var(--steel);font-family:var(--ip-mono)}
+.ip-view .srcbody{display:none;border-top:1px solid var(--ip-line);padding:16px 18px}
+.ip-view .src.open .srcbody{display:block}
+.ip-view .src .meta{font-size:13px;color:var(--steel);line-height:1.7}
+.ip-view .src .meta b{color:var(--ink);font-weight:600}
+
+/* ---- settings (agregar fuente — cosmético/demo) ---- */
+.ip-gearwrap{position:relative}
+.ip-view .gear{background:#fff;border:1px solid var(--ip-line);color:var(--steel);border-radius:6px;padding:6px 11px;cursor:pointer;font-size:15px}
+.ip-view .setmenu{display:none;position:absolute;right:0;top:40px;background:#fff;color:var(--ink);border:1px solid var(--ip-line);border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,.2);padding:16px;z-index:40;width:270px}
+.ip-view .setmenu.open{display:block}
+.ip-view .setmenu .mt{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--steel);font-weight:700;margin-bottom:10px}
+.ip-view .setmenu label{display:block;font-size:12px;color:var(--steel);margin:8px 0 3px}
+.ip-view .setmenu select,.ip-view .setmenu input{width:100%;font-family:inherit;font-size:13px;padding:7px 9px;border:1px solid var(--ip-line);border-radius:5px}
+.ip-view .setmenu .ip-btn{width:100%;justify-content:center;margin-top:12px}
+
+/* ---- filtros + tabla ---- */
+.ip-view .panel{background:var(--ip-panel);border:1px solid var(--ip-line);border-radius:8px;overflow:hidden}
+.ip-view .filters{display:flex;flex-wrap:wrap;gap:10px;padding:14px 16px;border-bottom:1px solid var(--ip-line);background:#f7f9fb}
+.ip-view .filters select,.ip-view .filters input{font-family:inherit;font-size:13.5px;padding:7px 10px;border:1px solid var(--ip-line);border-radius:5px;background:#fff;color:var(--ink)}
+.ip-view .colbtn{position:relative;margin-left:auto}
+.ip-view .colbtn>button{border:1px solid var(--ip-line);background:#fff;border-radius:5px;padding:7px 11px;cursor:pointer;font-weight:700;letter-spacing:2px;color:var(--steel)}
+.ip-view .colmenu{display:none;position:absolute;right:0;top:38px;background:#fff;border:1px solid var(--ip-line);border-radius:7px;box-shadow:0 8px 24px rgba(0,0,0,.14);padding:10px 14px;z-index:20;min-width:210px;max-height:320px;overflow:auto}
+.ip-view .colmenu.open{display:block}
+.ip-view .colmenu label{display:flex;gap:8px;align-items:center;font-size:13px;padding:4px 0;cursor:pointer;white-space:nowrap}
+.ip-view .colmenu .mt{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--steel);margin-bottom:6px;font-weight:700}
+.ip-view .colmenu .cact{display:flex;gap:10px;margin-bottom:8px;font-size:12px}
+.ip-view .colmenu .cact a{color:var(--ip-accent);cursor:pointer;font-weight:600;text-decoration:none}
+.ip-view th.sortable{cursor:pointer;user-select:none}
+.ip-view th.sortable:hover{color:var(--ink)}
+.ip-view th .sarr{font-family:var(--ip-mono);font-size:10px;margin-left:3px;color:var(--ip-accent)}
+.ip-view .xlsbtn{display:none;align-items:center;gap:6px;border:1px solid var(--ip-ok);color:var(--ip-ok);background:#fff;border-radius:5px;padding:7px 12px;cursor:pointer;font-family:inherit;font-weight:600;font-size:13px;white-space:nowrap}
+.ip-view .xlsbtn.show{display:inline-flex}
+.ip-view .xlsbtn:hover{background:#eefaf2}
+.ip-view .xlsbtn:disabled{opacity:.45;cursor:not-allowed}
+.ip-view .selbanner{display:none;background:#f0f6ff;border-bottom:1px solid #cfe0f5;padding:9px 16px;font-size:13px;color:#274b7a}
+.ip-view .selbanner.show{display:flex;align-items:center;gap:12px}
+.ip-view .selbanner b{font-family:var(--ip-mono)}
+.ip-view .selbanner a{color:var(--ip-accent);cursor:pointer;font-weight:600;text-decoration:none}
+.ip-view td.chk,.ip-view th.chk{width:34px;text-align:center;padding:9px 6px}
+.ip-view td.chk input,.ip-view th.chk input{width:15px;height:15px;cursor:pointer;accent-color:var(--ip-accent)}
+.ip-view tr.selrow{background:#f0f6ff}
+.ip-view .filters input[type=date]{width:140px}
+.ip-view .filters .grow{flex:1;min-width:160px}
+.ip-view table{width:100%;border-collapse:collapse;font-size:13.5px}
+.ip-view th{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--steel);text-align:left;padding:9px 14px;border-bottom:1px solid var(--ip-line);background:#fbfcfd}
+.ip-view td{padding:9px 14px;border-bottom:1px solid #edf0f3}
+.ip-view td.amt{font-family:var(--ip-mono);text-align:right;white-space:nowrap}
+.ip-view td.amt.neg{color:var(--ip-bad)}
+.ip-view td.amt.pos{color:var(--ip-ok)}
+.ip-view .st{font-family:var(--ip-mono);font-size:12px;font-weight:600}
+.ip-view .st.ok{color:var(--ip-ok)}
+.ip-view .st.pend{color:var(--ip-warn)}
+.ip-view .jtag{font-family:var(--ip-mono);font-size:11px;background:#eef3fa;color:#274b7a;border-radius:3px;padding:2px 6px}
+.ip-view .amber{color:var(--ip-warn)}
+.ip-view .tfoot{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;font-size:13px;color:var(--steel);background:#f7f9fb;border-top:1px solid var(--ip-line)}
+.ip-view .pager button{border:1px solid var(--ip-line);background:#fff;border-radius:4px;padding:4px 10px;margin-left:5px;cursor:pointer;font-family:var(--ip-mono);font-size:12px}
+.ip-view .pager button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.ip-view .ip-empty{padding:30px;text-align:center;color:var(--steel);font-size:14px}
+
+/* ---- semáforo ---- */
+.ip-view .sem{background:var(--ink);border-radius:8px;padding:16px 18px;color:#dfe6ec}
+.ip-view .sem .title{font-size:12px;text-transform:uppercase;letter-spacing:1.4px;color:#8fa0b0;margin-bottom:12px;font-weight:700}
+.ip-view .semrow{display:grid;grid-template-columns:120px 1fr 90px 130px;gap:12px;align-items:center;padding:9px 4px;border-bottom:1px solid #2b333c;font-size:14px}
+.ip-view .semrow:last-child{border-bottom:none}
+.ip-view .semrow.total{background:#232b34;margin:8px -8px -8px;padding:12px;border-radius:6px;font-weight:700}
+.ip-view .light{width:16px;height:16px;border-radius:50%;box-shadow:0 0 0 3px rgba(255,255,255,.06);justify-self:start}
+.ip-view .light.g{background:var(--ip-ok);box-shadow:0 0 10px rgba(18,161,80,.8)}
+.ip-view .light.y{background:var(--ip-warn);box-shadow:0 0 10px rgba(232,165,0,.8)}
+.ip-view .light.r{background:var(--ip-bad);box-shadow:0 0 10px rgba(214,59,47,.8)}
+.ip-view .bar{height:7px;background:#2b333c;border-radius:4px;overflow:hidden}
+.ip-view .bar i{display:block;height:100%;border-radius:4px}
+.ip-view .pct{font-family:var(--ip-mono);font-size:14px;text-align:right}
+.ip-view .res{font-family:var(--ip-mono);font-size:13px;text-align:right;color:#f0b9b3}
+.ip-view .semnote{margin-top:10px;font-size:11.5px;color:#8fa0b0}
+
+/* ---- corridas ---- */
+.ip-view .runs td{font-family:var(--ip-mono);font-size:12.5px}
+
+@media(max-width:700px){
+  .ip-view .semrow{grid-template-columns:26px 1fr 70px 110px}
+  .ip-view .semrow .jn{font-size:13px}
+}
