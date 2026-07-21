@@ -208,3 +208,24 @@ Caso: falso positivo del auto-match (línea conciliada contra un pago viejo equi
 Ferre 30478 ↔ BILL3063 **no se pudo conciliar por RPC**: entre la sugerencia (~21:00) y el disparo (22:18), **un humano (`Administracion FTS-YIN`, uid 25) concilió BILL3063 manualmente** ("Manual: BILL3063", partial 12735, create_uid 25). El guard **`BILL_YA_CONCILIADO`** lo detectó y **rehusó escribir** (cero write). No fue bug ni el cron — **trabajo contable humano legítimo concurrente**.
 
 → **Regla dura para `fin/captura-conciliar`:** re-validar el estado del bill (`reconciled`) **en el instante del write**, nunca confiar en lo que el front mostró minutos antes. El mundo cambia entre la sugerencia y el clic. El guard ya lo probó en vivo.
+
+## 14. Desenredo en lote + edge case de match PARCIAL (2026-07-20/21)
+
+Tras apagar el cron 52, se desenredaron los falsos positivos conocidos (mismo runner multi-job):
+
+| línea | monto | modo | resultado |
+|---|---|---|---|
+| 30462 (Telcel) | −25 | full → BILL3052 | ✅ `paid`, full_reconcile 8825 |
+| 30468 (Telcel) | −100 | full → BILL2947 | ✅ `paid` |
+| 30453 (Steren) | −99.01 | unwind-only (sin bill) | ✅ contrapartida → suspense 184, línea limpia (`is_reconciled=false`, residual 99.01) |
+| 30466 (Ferretería) | −647.10 | unwind-only (FP parcial $576.11) | ⚠️ FP removido, **estado dividido** |
+
+**Edge case — match PARCIAL:** el cron casó **$576.11 de $647.10** (parcial). Al desenredar: el `unlink` del partial quita el FP, pero mover la contrapartida liberada (186, $576.11) a **suspense 184** falla con `UserError: "must always have exactly one suspense line"` — porque la línea ya tiene una suspense (los $70.99 restantes). Odoo prohíbe 2 líneas de suspense en el mismo asiento de statement.
+
+- **Full false match** (contrapartida 100% en 186, sin suspense separada) → unwind-only funciona directo: `186 → 184`, una sola suspense. Limpio.
+- **Partial false match** → el `unlink` quita el FP (queda consistente: liquidez + 1 suspense + resto en 186), pero **la consolidación a suspense único requiere el "Deshacer conciliación" del widget de Odoo** (recrea la suspense por el monto total), no un `write` de cuenta. Alternativa: dejar el resto en 186 abierto (no es FP, solo no-consolidado) para que el motor/humano lo tome.
+- **Regla para el motor de Fase 2:** distinguir FP **full** vs **parcial**; el parcial no se auto-consolida por RPC simple — enrutar a reset-widget o dejar el remanente abierto marcado.
+
+## 15. Auto-match nativo — mecanismo confirmado (`ir.cron` 52)
+
+El culpable de los FP fue **`ir.cron` 52 `_cron_try_auto_reconcile_statement_lines`** (diario ~18:40 UTC, OdooBot), NO una `reconcile.model` (las 13 son `trigger:manual`). Evidencia: los partials FP los creó **OdooBot** (uid 1) en la ventana del cron (12728/12729/12730 el 07-19 18:42). Los partials legítimos (ej. BILL3063) los creó un **humano** (uid 25). → Desactivado (§11).
