@@ -1,0 +1,48 @@
+{
+  "_note": "Datos demo del módulo Instrumentos de pago (Bancos), portados del mockup v7 (docs/mockup-finanzas-bancos.html). Ficticios, no provienen de Odoo. Las filas llevan company_id (1=FTS-MX, 6=FTS-USA) para filtrar vía FinCompanySelector. Las columnas transitivas (ana/po/bill/sb/ff/art) aquí traen ejemplos; en modo real llegan null hasta que exista el motor de Fase 2.",
+  "cron": {
+    "tz": "America/Monterrey",
+    "days": [1, 2, 3, 4, 5],
+    "start_hour": 7,
+    "regular_end_hour": 16,
+    "regular_interval_min": 30,
+    "peak_hour": 17,
+    "peak_interval_min": 10,
+    "close_hour": 18,
+    "label": "L–V 7–18h · 30 min · pico 10 min"
+  },
+  "sources": [
+    { "id": "jeeves",   "co": 1, "pais": "MEX", "nm": "Jeeves Tarjeta Crédito", "jt": "journal 61",  "met": "MCP nativo", "st": "ok",  "last": "hace 12 min", "kpi": "$342,918.40",     "note": "incluye backlog histórico (50 líneas)", "movHoy": 6, "movMes": 112, "run": "OK — 6 nuevas · 0 duplicadas", "main": true },
+    { "id": "bbvag",    "co": 1, "pais": "MEX", "nm": "BBVA General MXN",       "jt": "journal 8",   "met": "CAMT.053",   "st": "ok",  "last": "hoy 07:30",   "kpi": "$1,204,330.12",   "movHoy": 3, "movMes": 88,  "run": "OK — 3 nuevas" },
+    { "id": "bbvan",    "co": 1, "pais": "MEX", "nm": "BBVA Nómina MXN",        "jt": "journal 96",  "met": "CAMT.053",   "st": "ok",  "last": "hoy 07:30",   "kpi": "$88,410.00",      "movHoy": 0, "movMes": 31,  "run": "OK — 0 nuevas" },
+    { "id": "bbvau",    "co": 1, "pais": "MEX", "nm": "BBVA USD",               "jt": "journal 58",  "met": "CAMT.053",   "st": "ok",  "last": "hoy 07:30",   "kpi": "$12,940.55",      "movHoy": 1, "movMes": 6,   "run": "OK — 1 nueva" },
+    { "id": "payana",   "co": 1, "pais": "MEX", "nm": "Payana (STP)",           "jt": "journal 75",  "met": "Portal",     "st": "ok",  "last": "ayer 17:50",  "kpi": "$310,220.90",     "movHoy": 0, "movMes": 41,  "run": "OK — 5 nuevas" },
+    { "id": "monexm",   "co": 1, "pais": "MEX", "nm": "Monex MXN",              "jt": "journal 111", "met": "MT940",      "st": "err", "last": "hace 4 días", "kpi": "$96,502.33",      "movHoy": 0, "movMes": 5,   "run": "ERROR — timeout de export", "wd": "Sin sync desde hace 4 días · Watchdog W2 notificó a Gera" },
+    { "id": "monexu",   "co": 1, "pais": "MEX", "nm": "Monex USD",              "jt": "journal 112", "met": "MT940",      "st": "ok",  "last": "hoy 07:30",   "kpi": "$4,110.00",       "movHoy": 0, "movMes": 2,   "run": "OK — 0 nuevas" },
+    { "id": "chase",    "co": 6, "pais": "USA", "nm": "JP Morgan Chase",        "jt": "journal 73",  "met": "Plaid",      "st": "ok",  "last": "hace 25 min", "kpi": "$54,208.10 USD",  "movHoy": 2, "movMes": 100, "run": "OK — 2 nuevas" },
+    { "id": "chasetdc", "co": 6, "pais": "USA", "nm": "Chase TDC",              "jt": "journal 74",  "met": "Plaid",      "st": "ok",  "last": "hace 25 min", "kpi": "$8,114.02 USD",   "movHoy": 1, "movMes": 21,  "run": "OK — 1 nueva" }
+  ],
+  "runs": [
+    { "run": "Jeeves 2026-07-18 07:30", "origen": "schedule", "rango": "07-14 → 07-18", "nuevas": 6,  "dup": 2,  "rech": 1,  "status": "ok",    "status_label": "OK" },
+    { "run": "Jeeves 2026-07-17 07:30", "origen": "schedule", "rango": "07-13 → 07-17", "nuevas": 9,  "dup": 3,  "rech": 0,  "status": "ok",    "status_label": "OK" },
+    { "run": "Jeeves 2026-07-16 11:02", "origen": "manual",   "rango": "07-12 → 07-16", "nuevas": 0,  "dup": 11, "rech": 0,  "status": "ok",    "status_label": "OK" },
+    { "run": "Jeeves 2026-07-16 07:30", "origen": "schedule", "rango": "07-12 → 07-16", "nuevas": 11, "dup": 2,  "rech": 0,  "status": "ok",    "status_label": "OK" },
+    { "run": "Jeeves 2026-07-15 07:30", "origen": "schedule", "rango": "07-11 → 07-15", "nuevas": null, "dup": null, "rech": null, "status": "abort", "status_label": "ABORTADO (total API ≠ filas)" }
+  ],
+  "rows": [
+    { "company_id": 1, "d": "2026-07-18", "j": "Jeeves", "tipo": "Egreso",   "ref": "[Primary ****6831] Costco Wholesale",               "amt": -714.04,    "mon": "MXN", "tarj": "Primary",       "comp": "Esteban",        "rs": "Servicios FTS", "art": "Consumibles",       "ana": "SO8205-OFICINA",      "po": "",       "bill": "",         "sb": "",       "ff": "",           "tk": "",  "ok": false, "res": 714.04 },
+    { "company_id": 1, "d": "2026-07-18", "j": "Jeeves", "tipo": "Egreso",   "ref": "[Mateo Salazar ****4197] Oxxo Gas Santa Catarina", "amt": -1580.00,   "mon": "MXN", "tarj": "Mateo Salazar", "comp": "Mateo Salazar",  "rs": "Servicios FTS", "art": "Gasolina",          "ana": "SO8438-GASOLINA",     "po": "PO6591", "bill": "BILL2951", "sb": "PAGADA", "ff": "A1B2-…-9F3C", "tk": "✓", "ok": false, "res": 1580.00 },
+    { "company_id": 1, "d": "2026-07-17", "j": "Jeeves", "tipo": "Egreso",   "ref": "[Felipe Pérez ****4548] Home Depot Mty",           "amt": -4231.90,   "mon": "MXN", "tarj": "Felipe Pérez",  "comp": "Felipe Pérez",   "rs": "Servicios FTS", "art": "Material eléctrico", "ana": "SO11547-TOPO CHICO",  "po": "PO6588", "bill": "BILL2948", "sb": "PAGADA", "ff": "C4D1-…-22AB", "tk": "✓", "ok": true,  "res": 0 },
+    { "company_id": 1, "d": "2026-07-17", "j": "Jeeves", "tipo": "Egreso",   "ref": "[Primary ****6831] AWS EMEA",                       "amt": -2118.33,   "mon": "MXN", "tarj": "Primary",       "comp": "Esteban",        "rs": "Servicios FTS", "art": "Cloud",             "ana": "SO8205-OFICINA",      "po": "PO6585", "bill": "BILL2945", "sb": "PAGADA", "ff": "",           "tk": "",  "ok": true,  "res": 0 },
+    { "company_id": 1, "d": "2026-07-16", "j": "Jeeves", "tipo": "Ingreso",  "ref": "[DEVOLUCIÓN ****4548] Uber Trip",                   "amt": 429.98,     "mon": "MXN", "tarj": "Felipe Pérez",  "comp": "Felipe Pérez",   "rs": "Servicios FTS", "art": "",                  "ana": "",                    "po": "",       "bill": "",         "sb": "",       "ff": "",           "tk": "",  "ok": true,  "res": 0 },
+    { "company_id": 6, "d": "2026-07-15", "j": "Jeeves", "tipo": "Egreso",   "ref": "[Ricardo Hdz ****4197] Vuelo VivaAerobus MTY-DFW", "amt": -6874.00,   "mon": "MXN", "tarj": "Ricardo Hdz",   "comp": "Ricardo Hdz",    "rs": "FTS LLC",       "art": "Viáticos",          "ana": "SO9428-VERTIV",       "po": "",       "bill": "",         "sb": "",       "ff": "",           "tk": "",  "ok": false, "res": 6874.00 },
+    { "company_id": 1, "d": "2026-07-14", "j": "Jeeves", "tipo": "Egreso",   "ref": "[Primary ****6831] Ferretería Industrial del Norte", "amt": -12408.55, "mon": "MXN", "tarj": "Primary",       "comp": "Gibrán Solís",   "rs": "Servicios FTS", "art": "Tornillería",       "ana": "SO11547-TOPO CHICO",  "po": "PO6580", "bill": "BILL2940", "sb": "PAGADA", "ff": "E8F2-…-77CD", "tk": "✓", "ok": true,  "res": 0 },
+    { "company_id": 1, "d": "2026-07-12", "j": "Jeeves", "tipo": "Egreso",   "ref": "[Mateo Salazar ****4197] Oxxo Gas Cumbres",        "amt": -1420.00,   "mon": "MXN", "tarj": "Mateo Salazar", "comp": "Mateo Salazar",  "rs": "Servicios FTS", "art": "Gasolina",          "ana": "SO8438-GASOLINA",     "po": "PO6576", "bill": "BILL2936", "sb": "PAGADA", "ff": "B7A9-…-1E2F", "tk": "✓", "ok": true,  "res": 0 },
+    { "company_id": 1, "d": "2026-07-10", "j": "Jeeves", "tipo": "Egreso",   "ref": "[Felipe Pérez ****4548] Hotel City Express Saltillo", "amt": -3890.00, "mon": "MXN", "tarj": "Felipe Pérez",  "comp": "Felipe Pérez",   "rs": "Servicios FTS", "art": "Viáticos",          "ana": "SO9428-VERTIV NALCO", "po": "PO6570", "bill": "",         "sb": "",       "ff": "",           "tk": "",  "ok": false, "res": 3890.00 },
+    { "company_id": 1, "d": "2026-07-08", "j": "Jeeves", "tipo": "Egreso",   "ref": "[Primary ****6831] Grainger México",               "amt": -18742.10,  "mon": "MXN", "tarj": "Primary",       "comp": "Gibrán Solís",   "rs": "Servicios FTS", "art": "Herramienta",       "ana": "SO11547-TOPO CHICO",  "po": "PO6566", "bill": "BILL2929", "sb": "PAGADA", "ff": "D3C8-…-44BE", "tk": "",  "ok": false, "res": 18742.10 },
+    { "company_id": 1, "d": "2026-07-02", "j": "Jeeves", "tipo": "Traspaso", "ref": "[FONDEO] Credit Line",                             "amt": 198757.85,  "mon": "MXN", "tarj": "",              "comp": "Gera",           "rs": "Servicios FTS", "art": "",                  "ana": "",                    "po": "",       "bill": "",         "sb": "",       "ff": "",           "tk": "",  "ok": false, "res": 198757.85 },
+    { "company_id": 1, "d": "2026-07-02", "j": "Jeeves", "tipo": "Traspaso", "ref": "[FONDEO] Credit Line",                             "amt": 34998.00,   "mon": "MXN", "tarj": "",              "comp": "Gera",           "rs": "Servicios FTS", "art": "",                  "ana": "",                    "po": "",       "bill": "",         "sb": "",       "ff": "",           "tk": "",  "ok": false, "res": 34998.00 },
+    { "company_id": 1, "d": "2026-07-01", "j": "Jeeves", "tipo": "Egreso",   "ref": "[Primary ****6831] Steren Tienda 44",              "amt": -1235.60,   "mon": "MXN", "tarj": "Primary",       "comp": "Esteban",        "rs": "Servicios FTS", "art": "Electrónica",       "ana": "SO8205-OFICINA",      "po": "PO6560", "bill": "BILL2920", "sb": "PAGADA", "ff": "",           "tk": "",  "ok": true,  "res": 0 },
+    { "company_id": 6, "d": "2026-07-11", "j": "Chase",  "tipo": "Egreso",   "ref": "GRAINGER US - HOUSTON TX",                         "amt": -1240.80,   "mon": "USD", "tarj": "Chase TDC",     "comp": "Jesús Montalvo", "rs": "FTS LLC",       "art": "Herramienta",       "ana": "SO9428-VERTIV",       "po": "PO6572", "bill": "BILL2933", "sb": "PAGADA", "ff": "",           "tk": "✓", "ok": true,  "res": 0 }
+  ]
+}
