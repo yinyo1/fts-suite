@@ -76,9 +76,11 @@
     };
 
     function currentMode() {
-      var m = window.FinState ? window.FinState.getMode(MODULE_ID) : 'empty';
-      if (m === 'real' && !IP_REAL_ENABLED) return 'demo';   // coerción: Real gateado
-      return m;
+      var stored = null;
+      try { stored = localStorage.getItem('fts_fin_mode_' + MODULE_ID); } catch (e) { stored = null; }
+      if (stored === 'real') return IP_REAL_ENABLED ? 'real' : 'demo';   // Real gateado → cae a demo
+      if (stored === 'demo' || stored === 'empty') return stored;         // respeta elección explícita del usuario
+      return IP_REAL_ENABLED ? 'empty' : 'demo';   // sin preferencia: demo por default mientras Real esté gateado (deploy de revisión)
     }
 
     var q  = function (s) { return container.querySelector(s); };
