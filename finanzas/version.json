@@ -1,7 +1,7 @@
 {
   "module": "finanzas",
-  "version": "0.4.0",
-  "build": "20260720-paso6-instrumentos-pago",
+  "version": "0.4.1",
+  "build": "20260720-paso6b-demo-default",
   "description": "Paso 6 — Instrumentos de pago (Bancos): fuentes de pago colapsables, tabla 17 columnas, semáforo de conciliación, countdown al próximo sync y últimas corridas (CBRUN), portado del mockup v7. Modo demo (mock) + real gateado (fin/captura-status/transacciones/dataset) hasta cerrar checklist de seguridad. Paso 3 previo: Facturas Odoo + Bills Odoo.",
   "status": "active"
 }
