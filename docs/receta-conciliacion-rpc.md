@@ -247,3 +247,21 @@ Match Oxxo gas de Mateo: línea **31507** (`[Mateo Salazar ****4197] Oxxo` −60
 - **`fin/captura-sugerencias`** (JWT `bancos:read`): las 5 reglas del motor → score → nivel (auto-elegible / sugerida / sin-documento), pre-marcado por cercanía de fecha en sugeridas.
 - **3 cubetas en `captura-status`**: 🔵 en tránsito (pendings vía MCP Jeeves read-only, nunca a Odoo) · 🔴 conciliable pendiente por antigüedad · 🟢 conciliadas hoy (auto vs manual).
 - **Hardening menor de `fin/captura-conciliar`**: envolver los reads en try/catch (hoy solo auth + los 2 writes lo están; un read RPC caído lanza sin respuesta limpia — pero cero write parcial, los reads son antes de los writes).
+
+## 17. Etapa B del motor — B.0 + B.1 en producción, B.2 PENDIENTE (2026-07-23)
+
+### B.0 — rastro del botón (hecho)
+`fin/captura-conciliar` postea al éxito un marcador **`[[CONCFTS]]`{origen:'boton', line_id, bill_aml_id, full_reconcile_id, monto, parcial}** en el chatter del **move del BILL**, **NO-bloqueante** (try/catch → `firma:true/false` en el response; **nunca rechaza una conciliación válida** por un fallo de bitácora). Sirve para clasificar conciliadas-hoy botón vs widget.
+
+### B.1 — `fin/captura-sugerencias` (hecho, INACTIVO, id `43ueZWEXzLyty0LF`)
+JWT `bancos:read`, read-only. Las 5 reglas → **score `0.6·comercio_sim + 0.4·cercanía_fecha`** → nivel:
+- Candidatos = bills abiertos 201.01.01, `|residual|=|monto|±0.01`, fecha `±5d`. Sin candidato → **`sin-documento`**.
+- **`auto-elegible`** solo si **único + score>0.7 + no conflict-pair**. Si ≥2 candidatos → **`sugerida`** con **pre-marcado por cercanía** (FIFO secundario). Texto pobre + monto/fecha/único → `sugerida` (NO descarta; bill puede estar con otra razón social).
+- **`CONFLICT_PAIRS`** editable `[['oxxo','oxxo gas'],['ferreteria','material electrico']]` (crece con cada FP) → capa a `sugerida` (nunca auto). **B SOLO ETIQUETA** — nada auto-concilia hasta D con su gate.
+- Response: `{lineas:[{line_id,comercio,monto,nivel,candidatos:[{bill_aml_id,bill_name,partner,score,banda,pre_marcado,conflicto}]}], pagination}`. Paginado 50/req. **D reusa la lógica interna en lotes, no el HTTP.**
+
+### B.2 — PENDIENTE: 3 cubetas en `fin/captura-status`
+Extender el response con bloque `hoy`: **🔵 en_transito** (pendings Jeeves SSE, key `$env.JEEVES_API_KEY`, **timeout 5s + no-bloqueante**, `disponible:false` si falla, NUNCA tumba el resto) · **🔴 conciliable_pendiente** (buckets de antigüedad hoy/1-3d/+3d de las statement lines sin conciliar) · **🟢 conciliadas_hoy** (v1 `{boton, auto}` desde marcadores `[[CONCFTS]]`; `widget`/`total` = **v2** por el join `full_reconcile.create_date`↔journal 61). `captura-status` NO tiene gate de scope (no agregar). Diseño detallado en memoria `bancos-motor-etapa-b.md`.
+
+### Etapa C (siguiente) — UI en `instrumentos-pago`
+Panel **Hoy** (3 cubetas de captura-status) · sección **En tránsito** (pendings, estilo no-contable gris/itálica, desaparecen al liquidar) · **fila pendiente expandible** → sugerencias de `fin/captura-sugerencias` (score+nivel+pre-marcado) → **botón Conciliar** → `fin/captura-conciliar` (manejo de **éxito full**, **parcial con residuales**, y **rechazo de guard con refresh** de la fila). Branch → PR → revisión visual → merge. ⚠️ **El panel Hoy depende de B.2** — hacer B.2 antes, o el panel Hoy espera esa parte. **Ritual de activación pendiente:** activar B.1 (`43ueZWEXzLyty0LF`) + reactivar los que `update_full` toque, en un solo golpe al cerrar B.2.
