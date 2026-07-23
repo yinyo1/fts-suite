@@ -229,3 +229,39 @@ Tras apagar el cron 52, se desenredaron los falsos positivos conocidos (mismo ru
 ## 15. Auto-match nativo — mecanismo confirmado (`ir.cron` 52)
 
 El culpable de los FP fue **`ir.cron` 52 `_cron_try_auto_reconcile_statement_lines`** (diario ~18:40 UTC, OdooBot), NO una `reconcile.model` (las 13 son `trigger:manual`). Evidencia: los partials FP los creó **OdooBot** (uid 1) en la ventana del cron (12728/12729/12730 el 07-19 18:42). Los partials legítimos (ej. BILL3063) los creó un **humano** (uid 25). → Desactivado (§11).
+
+## 16. Etapa A del motor — EN PRODUCCIÓN (2026-07-23)
+
+**El botón de conciliación manual está vivo.**
+
+### A.1 — Login emite `bancos:write`
+`auth/finanzas-login` (**ver:3**, exp 2h): payload `scope = ['bancos:read','bancos:write','facturas:read','bills:read']`. Verificado en el jsCode desplegado (read-back) + token decodificado offline. Único usuario `finanzas` nace autorizado a conciliar (v1 single-user; multiusuario/gate por persona = v2).
+
+### A.2 — `fin/captura-conciliar` (id `PcnlIPWh30l2LrwW`, ACTIVO)
+JWT + scope **`bancos:write`** (403 `SCOPE_INSUFFICIENT` sin él — probado offline). Recibe `{line_id, bill_aml_id}`. Ejecuta la receta §2 (`write([susp],{account_id:17,partner_id:vendor})` + `reconcile([susp, bill_aml])`) con **auto-revert**. Guards **re-validados en el instante del write**: `LINE_YA_CONCILIADA`, `NO_SUSPENSE_UNICA` (descarta línea ya medio-desenredada), `BILL_NO_201`, `BILL_NO_POSTED`, `BILL_YA_CONCILIADO` (concurrencia humana §13), `BILL_SIN_PARTNER`. **NO exige match exacto** (eso es regla del pase automático D, no del botón — el humano puede hacer parciales honestos; `reconcile()` estándar los maneja). Detecta y reporta parcial: `{parcial, residual_linea, residual_bill}`. Respuesta: `{ok:true, full_reconcile_id, bill_name, vendor_id, monto, parcial, residuales, msg}` o `{ok:false, code, msg, http}` (para la UI).
+
+### Caso real verificado (2026-07-23)
+Match Oxxo gas de Mateo: línea **31507** (`[Mateo Salazar ****4197] Oxxo` −600, 2026-03-24, journal 61) ↔ bill_aml **192331** (BILL2490, OXXO Gas partner 1816, 201.01.01, −600, 2026-03-26). Disparado vía runner TMP (mintea JWT `bancos:write` server-side + POST al endpoint; borrado al terminar). Resultado: **FULL reconcile, `full_reconcile 8858`**, `parcial:false`. **Verificación independiente en Odoo:** línea `is_reconciled=true`/residual 0 · BILL2490 `payment_state=paid`/residual 0 · ambas patas unidas en 8858 sobre 201.01.01 · gasto intacto. `ODOO_RPC_KEY` resuelve en vivo. Gate cumplido: A probada con 1 caso real antes de B.
+
+### Pendiente (Etapa B — sesión próxima)
+- **`fin/captura-sugerencias`** (JWT `bancos:read`): las 5 reglas del motor → score → nivel (auto-elegible / sugerida / sin-documento), pre-marcado por cercanía de fecha en sugeridas.
+- **3 cubetas en `captura-status`**: 🔵 en tránsito (pendings vía MCP Jeeves read-only, nunca a Odoo) · 🔴 conciliable pendiente por antigüedad · 🟢 conciliadas hoy (auto vs manual).
+- **Hardening menor de `fin/captura-conciliar`**: envolver los reads en try/catch (hoy solo auth + los 2 writes lo están; un read RPC caído lanza sin respuesta limpia — pero cero write parcial, los reads son antes de los writes).
+
+## 17. Etapa B del motor — B.0 + B.1 en producción, B.2 PENDIENTE (2026-07-23)
+
+### B.0 — rastro del botón (hecho)
+`fin/captura-conciliar` postea al éxito un marcador **`[[CONCFTS]]`{origen:'boton', line_id, bill_aml_id, full_reconcile_id, monto, parcial}** en el chatter del **move del BILL**, **NO-bloqueante** (try/catch → `firma:true/false` en el response; **nunca rechaza una conciliación válida** por un fallo de bitácora). Sirve para clasificar conciliadas-hoy botón vs widget.
+
+### B.1 — `fin/captura-sugerencias` (hecho, INACTIVO, id `43ueZWEXzLyty0LF`)
+JWT `bancos:read`, read-only. Las 5 reglas → **score `0.6·comercio_sim + 0.4·cercanía_fecha`** → nivel:
+- Candidatos = bills abiertos 201.01.01, `|residual|=|monto|±0.01`, fecha `±5d`. Sin candidato → **`sin-documento`**.
+- **`auto-elegible`** solo si **único + score>0.7 + no conflict-pair**. Si ≥2 candidatos → **`sugerida`** con **pre-marcado por cercanía** (FIFO secundario). Texto pobre + monto/fecha/único → `sugerida` (NO descarta; bill puede estar con otra razón social).
+- **`CONFLICT_PAIRS`** editable `[['oxxo','oxxo gas'],['ferreteria','material electrico']]` (crece con cada FP) → capa a `sugerida` (nunca auto). **B SOLO ETIQUETA** — nada auto-concilia hasta D con su gate.
+- Response: `{lineas:[{line_id,comercio,monto,nivel,candidatos:[{bill_aml_id,bill_name,partner,score,banda,pre_marcado,conflicto}]}], pagination}`. Paginado 50/req. **D reusa la lógica interna en lotes, no el HTTP.**
+
+### B.2 — PENDIENTE: 3 cubetas en `fin/captura-status`
+Extender el response con bloque `hoy`: **🔵 en_transito** (pendings Jeeves SSE, key `$env.JEEVES_API_KEY`, **timeout 5s + no-bloqueante**, `disponible:false` si falla, NUNCA tumba el resto) · **🔴 conciliable_pendiente** (buckets de antigüedad hoy/1-3d/+3d de las statement lines sin conciliar) · **🟢 conciliadas_hoy** (v1 `{boton, auto}` desde marcadores `[[CONCFTS]]`; `widget`/`total` = **v2** por el join `full_reconcile.create_date`↔journal 61). `captura-status` NO tiene gate de scope (no agregar). Diseño detallado en memoria `bancos-motor-etapa-b.md`.
+
+### Etapa C (siguiente) — UI en `instrumentos-pago`
+Panel **Hoy** (3 cubetas de captura-status) · sección **En tránsito** (pendings, estilo no-contable gris/itálica, desaparecen al liquidar) · **fila pendiente expandible** → sugerencias de `fin/captura-sugerencias` (score+nivel+pre-marcado) → **botón Conciliar** → `fin/captura-conciliar` (manejo de **éxito full**, **parcial con residuales**, y **rechazo de guard con refresh** de la fila). Branch → PR → revisión visual → merge. ⚠️ **El panel Hoy depende de B.2** — hacer B.2 antes, o el panel Hoy espera esa parte. **Ritual de activación pendiente:** activar B.1 (`43ueZWEXzLyty0LF`) + reactivar los que `update_full` toque, en un solo golpe al cerrar B.2.
