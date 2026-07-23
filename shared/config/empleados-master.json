@@ -1,23 +1,23 @@
 {
   "_meta": {
     "version": 3,
-    "generated_at": "2026-07-23T10:00:01.163Z",
+    "generated_at": "2026-07-23T22:55:02.178Z",
     "source": "Odoo hr.employee live sync via workflow rh/empleados-master/sync",
     "auto_update_status": "auto_synced",
     "auto_update_status_explicacion": "Workflow n8n rh/empleados-master/sync ACTIVO. Cron 6am CST diario + webhook on-change POST /rh/empleados-master/refresh.",
     "fase": "3-active",
-    "last_sync_event": "cron 6am CST",
-    "last_sync_started_at": "2026-07-23T10:00:00.298Z",
-    "last_sync_completed_at": "2026-07-23T10:00:01.163Z",
+    "last_sync_event": "webhook on-change",
+    "last_sync_started_at": "2026-07-23T22:55:01.345Z",
+    "last_sync_completed_at": "2026-07-23T22:55:02.178Z",
     "sync_strategy": "Cron 6am diario (Schedule Trigger) + webhook on-change desde panel admin (Fase 4 cuando exista).",
-    "total_active": 34,
-    "total_con_departamento": 33,
+    "total_active": 35,
+    "total_con_departamento": 34,
     "total_sin_departamento": 1,
-    "total_con_hora_entrada": 30,
+    "total_con_hora_entrada": 31,
     "total_sin_hora_entrada": 4,
     "total_con_categoria_explicita": 7,
-    "total_con_categoria_default": 27,
-    "total_ppa_aplica": 29,
+    "total_con_categoria_default": 28,
+    "total_ppa_aplica": 30,
     "total_ppa_no_aplica": 5,
     "distribucion_categorias_explicitas": {
       "ceo": 1,
@@ -609,6 +609,23 @@
       "x_studio_retardos_15_dias": 0,
       "x_categoria_nomina": null,
       "x_aplica_ppa": false
+    },
+    {
+      "id": 157,
+      "name": "Candelin Jonadab Sanchez Gomez",
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "parent_id": 112,
+      "parent_name": "Felipe Pérez Guzmán",
+      "resource_calendar_id": 2,
+      "resource_calendar_name": "Horas operaciones",
+      "work_email": "jonadabsg2@gmail.com",
+      "work_phone": null,
+      "mobile_phone": "922 104 76 02",
+      "x_studio_hora_entrada": 7,
+      "x_studio_retardos_15_dias": 0,
+      "x_categoria_nomina": null,
+      "x_aplica_ppa": true
     }
   ]
 }
