@@ -229,3 +229,21 @@ Tras apagar el cron 52, se desenredaron los falsos positivos conocidos (mismo ru
 ## 15. Auto-match nativo — mecanismo confirmado (`ir.cron` 52)
 
 El culpable de los FP fue **`ir.cron` 52 `_cron_try_auto_reconcile_statement_lines`** (diario ~18:40 UTC, OdooBot), NO una `reconcile.model` (las 13 son `trigger:manual`). Evidencia: los partials FP los creó **OdooBot** (uid 1) en la ventana del cron (12728/12729/12730 el 07-19 18:42). Los partials legítimos (ej. BILL3063) los creó un **humano** (uid 25). → Desactivado (§11).
+
+## 16. Etapa A del motor — EN PRODUCCIÓN (2026-07-23)
+
+**El botón de conciliación manual está vivo.**
+
+### A.1 — Login emite `bancos:write`
+`auth/finanzas-login` (**ver:3**, exp 2h): payload `scope = ['bancos:read','bancos:write','facturas:read','bills:read']`. Verificado en el jsCode desplegado (read-back) + token decodificado offline. Único usuario `finanzas` nace autorizado a conciliar (v1 single-user; multiusuario/gate por persona = v2).
+
+### A.2 — `fin/captura-conciliar` (id `PcnlIPWh30l2LrwW`, ACTIVO)
+JWT + scope **`bancos:write`** (403 `SCOPE_INSUFFICIENT` sin él — probado offline). Recibe `{line_id, bill_aml_id}`. Ejecuta la receta §2 (`write([susp],{account_id:17,partner_id:vendor})` + `reconcile([susp, bill_aml])`) con **auto-revert**. Guards **re-validados en el instante del write**: `LINE_YA_CONCILIADA`, `NO_SUSPENSE_UNICA` (descarta línea ya medio-desenredada), `BILL_NO_201`, `BILL_NO_POSTED`, `BILL_YA_CONCILIADO` (concurrencia humana §13), `BILL_SIN_PARTNER`. **NO exige match exacto** (eso es regla del pase automático D, no del botón — el humano puede hacer parciales honestos; `reconcile()` estándar los maneja). Detecta y reporta parcial: `{parcial, residual_linea, residual_bill}`. Respuesta: `{ok:true, full_reconcile_id, bill_name, vendor_id, monto, parcial, residuales, msg}` o `{ok:false, code, msg, http}` (para la UI).
+
+### Caso real verificado (2026-07-23)
+Match Oxxo gas de Mateo: línea **31507** (`[Mateo Salazar ****4197] Oxxo` −600, 2026-03-24, journal 61) ↔ bill_aml **192331** (BILL2490, OXXO Gas partner 1816, 201.01.01, −600, 2026-03-26). Disparado vía runner TMP (mintea JWT `bancos:write` server-side + POST al endpoint; borrado al terminar). Resultado: **FULL reconcile, `full_reconcile 8858`**, `parcial:false`. **Verificación independiente en Odoo:** línea `is_reconciled=true`/residual 0 · BILL2490 `payment_state=paid`/residual 0 · ambas patas unidas en 8858 sobre 201.01.01 · gasto intacto. `ODOO_RPC_KEY` resuelve en vivo. Gate cumplido: A probada con 1 caso real antes de B.
+
+### Pendiente (Etapa B — sesión próxima)
+- **`fin/captura-sugerencias`** (JWT `bancos:read`): las 5 reglas del motor → score → nivel (auto-elegible / sugerida / sin-documento), pre-marcado por cercanía de fecha en sugeridas.
+- **3 cubetas en `captura-status`**: 🔵 en tránsito (pendings vía MCP Jeeves read-only, nunca a Odoo) · 🔴 conciliable pendiente por antigüedad · 🟢 conciliadas hoy (auto vs manual).
+- **Hardening menor de `fin/captura-conciliar`**: envolver los reads en try/catch (hoy solo auth + los 2 writes lo están; un read RPC caído lanza sin respuesta limpia — pero cero write parcial, los reads son antes de los writes).
