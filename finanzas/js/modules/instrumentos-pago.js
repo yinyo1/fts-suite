@@ -19,7 +19,8 @@
   // ── config ──
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
-  var IP_REAL_ENABLED = false;            // ⚠ gate: Real deshabilitado hasta firmar el checklist de seguridad
+  var IP_REAL_ENABLED = true;             // Real HABILITADO en producción (flip 2026-07-23; checklist: JWT ok, Cloudflare diferido)
+  var IP_BUILD = '0.5.2';                 // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -88,7 +89,7 @@
       try { stored = localStorage.getItem('fts_fin_mode_' + MODULE_ID); } catch (e) { stored = null; }
       if (stored === 'real') return IP_REAL_ENABLED ? 'real' : 'demo';   // Real gateado → cae a demo
       if (stored === 'demo' || stored === 'empty') return stored;         // respeta elección explícita del usuario
-      return IP_REAL_ENABLED ? 'empty' : 'demo';   // sin preferencia: demo por default mientras Real esté gateado (deploy de revisión)
+      return 'demo';   // primera visita = demo; luego recuerda la elección (localStorage). Real habilitado NO fuerza real por default (coerción de seguridad intacta).
     }
 
     var q  = function (s) { return container.querySelector(s); };
@@ -182,7 +183,7 @@
                 '<div class="page-title">Instrumentos de pago</div>' +
                 '<div class="page-subtitle">Captura bancaria · fuentes de pago, transacciones y conciliación</div>' +
               '</div></div>' +
-              gearHtml() + modeToggle() + '</div>';
+              gearHtml() + modeToggle() + '<span class="ip-ver" title="build desplegado">v' + IP_BUILD + '</span></div>';
       html += '<div id="ip-companies"></div>';
 
       if (state.mode === 'empty') {
