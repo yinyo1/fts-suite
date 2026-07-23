@@ -29,6 +29,48 @@
     { "run": "Jeeves 2026-07-16 07:30", "origen": "schedule", "rango": "07-12 → 07-16", "nuevas": 11, "dup": 2,  "rech": 0,  "status": "ok",    "status_label": "OK" },
     { "run": "Jeeves 2026-07-15 07:30", "origen": "schedule", "rango": "07-11 → 07-15", "nuevas": null, "dup": null, "rech": null, "status": "abort", "status_label": "ABORTADO (total API ≠ filas)" }
   ],
+  "today": {
+    "en_transito": { "count": 7, "suma": 18450.50, "disponible": true },
+    "conciliable_pendiente": { "hoy": 4, "d1_3": 9, "d3plus": 22, "total": 35, "suma": 88230.10 },
+    "conciliadas_hoy": { "auto": 0, "boton": 3, "widget": 1, "total": 4 }
+  },
+  "intransit": [
+    { "d": "2026-07-18", "ref": "[Primary ****6831] Amazon MX — autorización", "amt": -2340.00, "tarj": "Primary", "comp": "Esteban" },
+    { "d": "2026-07-18", "ref": "[Mateo Salazar ****4197] Uber Eats — hold", "amt": -410.50, "tarj": "Mateo Salazar", "comp": "Mateo Salazar" },
+    { "d": "2026-07-17", "ref": "[Felipe Pérez ****4548] Pemex Estación 4412 — pre-auth", "amt": -1200.00, "tarj": "Felipe Pérez", "comp": "Felipe Pérez" },
+    { "d": "2026-07-17", "ref": "[Chase TDC] Hertz Rental — deposit hold", "amt": -14500.00, "tarj": "Chase TDC", "comp": "Jesús Montalvo" }
+  ],
+  "suggestions": {
+    "1": {
+      "nivel": "auto-elegible",
+      "candidatos": [
+        { "bill_aml_id": 88231, "bill_name": "BILL2951", "partner": "Oxxo Gas Santa Catarina", "partner_id": 4412, "monto_bill": 1580.00, "date_bill": "2026-07-18", "days_diff": 0, "score": 98, "banda": "pleno", "pre_marcado": true, "conflicto": false, "demo_outcome": "full" }
+      ]
+    },
+    "5": {
+      "nivel": "sugerida",
+      "candidatos": [
+        { "bill_aml_id": 87540, "bill_name": "BILL2905", "partner": "VivaAerobus", "partner_id": 2755, "monto_bill": 6874.00, "date_bill": "2026-07-15", "days_diff": 0, "score": 79, "banda": "sugerida", "pre_marcado": true, "conflicto": false, "demo_outcome": "full" },
+        { "bill_aml_id": 87541, "bill_name": "BILL2906", "partner": "VivaAerobus", "partner_id": 2755, "monto_bill": 6900.00, "date_bill": "2026-07-13", "days_diff": 2, "score": 55, "banda": "baja", "pre_marcado": false, "conflicto": false, "demo_outcome": "full" }
+      ]
+    },
+    "8": {
+      "nivel": "sugerida",
+      "candidatos": [
+        { "bill_aml_id": 87720, "bill_name": "BILL2911", "partner": "Hotel City Express Saltillo", "partner_id": 2980, "monto_bill": 3890.00, "date_bill": "2026-07-10", "days_diff": 0, "score": 91, "banda": "pleno", "pre_marcado": true, "conflicto": false, "demo_outcome": "rechazo" }
+      ]
+    },
+    "9": {
+      "nivel": "sugerida",
+      "candidatos": [
+        { "bill_aml_id": 88109, "bill_name": "BILL2929", "partner": "Grainger México", "partner_id": 3301, "monto_bill": 18671.11, "date_bill": "2026-07-08", "days_diff": 0, "score": 84, "banda": "sugerida", "pre_marcado": true, "conflicto": false, "demo_outcome": "parcial", "residual_demo": { "linea": 70.99, "bill": 0 } },
+        { "bill_aml_id": 88110, "bill_name": "BILL2930", "partner": "Grainger México", "partner_id": 3301, "monto_bill": 18742.10, "date_bill": "2026-07-09", "days_diff": 1, "score": 62, "banda": "baja", "pre_marcado": false, "conflicto": true, "demo_outcome": "full" }
+      ]
+    },
+    "0":  { "nivel": "sin-documento", "candidatos": [] },
+    "10": { "nivel": "sin-documento", "candidatos": [] },
+    "11": { "nivel": "sin-documento", "candidatos": [] }
+  },
   "rows": [
     { "company_id": 1, "d": "2026-07-18", "j": "Jeeves", "tipo": "Egreso",   "ref": "[Primary ****6831] Costco Wholesale",               "amt": -714.04,    "mon": "MXN", "tarj": "Primary",       "comp": "Esteban",        "rs": "Servicios FTS", "art": "Consumibles",       "ana": "SO8205-OFICINA",      "po": "",       "bill": "",         "sb": "",       "ff": "",           "tk": "",  "ok": false, "res": 714.04 },
     { "company_id": 1, "d": "2026-07-18", "j": "Jeeves", "tipo": "Egreso",   "ref": "[Mateo Salazar ****4197] Oxxo Gas Santa Catarina", "amt": -1580.00,   "mon": "MXN", "tarj": "Mateo Salazar", "comp": "Mateo Salazar",  "rs": "Servicios FTS", "art": "Gasolina",          "ana": "SO8438-GASOLINA",     "po": "PO6591", "bill": "BILL2951", "sb": "PAGADA", "ff": "A1B2-…-9F3C", "tk": "✓", "ok": false, "res": 1580.00 },
