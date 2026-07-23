@@ -2,6 +2,52 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-CHK-79-2026-07-23T12-26-07-621Z",
+      "tipo": "olvido_checkout",
+      "empleado_id": 79,
+      "empleado_nombre": "José Luis Romero Grados",
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "sin_departamento": false,
+      "depto_invalido": false,
+      "supervisor_id": 112,
+      "supervisor_name": "Felipe Pérez Guzmán",
+      "supervisor_email": "joseluisrg980326@gmail.com",
+      "supervisor_phone": "+52 22 1361 5823",
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": false,
+      "sin_supervisor": false,
+      "attendance_id": 14476,
+      "fecha_creacion": "2026-07-23T12:26:07.621Z",
+      "check_in_original_utc": "2026-07-22 12:29:27",
+      "check_out_propuesto_utc": "2026-07-23 11:00:00",
+      "check_out_propuesto_cst": "2026-07-23 05:00:00",
+      "geolocation": {
+        "lat": 25.6888006,
+        "lng": -100.2916131,
+        "accuracy": 6.38700008392334,
+        "captured_at": "2026-07-23T12:26:04.790Z"
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "accion": "crear",
+          "fecha": "2026-07-23T12:26:07.621Z",
+          "hora_propuesta_cst": "05:00",
+          "comentario": "Tuve que salir de emergencia se le informó a Felipe"
+        }
+      ],
+      "status": "pendiente_supervisor",
+      "hora_final_aplicada_utc": "2026-07-23 11:00:00",
+      "aplicado_en_odoo": true,
+      "tag_disputa_activo": true,
+      "creada_por_modulo": "kiosk",
+      "creada_por_build": "20260709-kiosk-confirm-bolsa"
+    },
+    {
       "id_interno": "INC-OLV-CHK-112-2026-07-23T00-54-28-928Z",
       "tipo": "olvido_checkout",
       "empleado_id": 112,
