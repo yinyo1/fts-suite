@@ -138,6 +138,102 @@
 /* ---- corridas ---- */
 .ip-view .runs td{font-family:var(--ip-mono);font-size:12.5px}
 
+/* ═══ Etapa C — conciliación ═══ */
+
+/* ---- panel "Hoy" (3 cubetas) ---- */
+.ip-view .ip-today{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.ip-view .ip-tcard{background:var(--ip-panel);border:1px solid var(--ip-line);border-left-width:4px;border-radius:8px;padding:14px 16px;cursor:pointer;transition:box-shadow .15s,transform .05s}
+.ip-view .ip-tcard:hover{box-shadow:0 3px 12px rgba(0,0,0,.08)}
+.ip-view .ip-tcard:active{transform:translateY(1px)}
+.ip-view .ip-tcard.blue{border-left-color:var(--ip-accent)}
+.ip-view .ip-tcard.red{border-left-color:var(--ip-bad)}
+.ip-view .ip-tcard.green{border-left-color:var(--ip-ok)}
+.ip-view .ip-tcard.active{box-shadow:0 0 0 2px rgba(14,95,216,.28)}
+.ip-view .ip-tcard.red.active{box-shadow:0 0 0 2px rgba(214,59,47,.30)}
+.ip-view .ip-tcard.green.active{box-shadow:0 0 0 2px rgba(18,161,80,.30)}
+.ip-view .ip-tk{font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--steel);font-weight:700}
+.ip-view .ip-tn{font-family:var(--ip-mono);font-size:26px;font-weight:600;margin:6px 0 2px;line-height:1.1}
+.ip-view .ip-tcard.blue .ip-tn{color:var(--ip-accent)}
+.ip-view .ip-tcard.red .ip-tn{color:var(--ip-bad)}
+.ip-view .ip-tcard.green .ip-tn{color:var(--ip-ok)}
+.ip-view .ip-tn .ip-tnc{font-size:14px;color:var(--steel);font-weight:400}
+.ip-view .ip-tn.na{font-size:15px;color:var(--steel);font-style:italic;font-weight:400}
+.ip-view .ip-tsub{font-size:11.5px;color:var(--steel)}
+
+/* ---- chevron de expansión en la celda .chk ---- */
+.ip-view td.chk,.ip-view th.chk{width:46px;white-space:nowrap}
+.ip-view .ip-expbtn{border:none;background:transparent;color:var(--steel);cursor:pointer;font-family:var(--ip-mono);font-size:11px;padding:0 3px;transition:transform .18s;line-height:1;vertical-align:middle}
+.ip-view .ip-expbtn:hover{color:var(--ip-accent)}
+.ip-view .ip-expbtn.open{transform:rotate(90deg);color:var(--ip-accent)}
+.ip-view tr.ip-exprow>td{border-bottom-color:transparent}
+.ip-view tr.ip-exprow{background:#f7f9fb}
+
+/* ---- fila-detalle: acordeón de sugerencias ---- */
+.ip-view .ip-acc-row>td{background:#f7f9fb;border-bottom:1px solid var(--ip-line);padding:0}
+.ip-view .ip-acc{padding:14px 18px}
+.ip-view .ip-acc-loading{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--steel)}
+.ip-view .ip-accspin{width:13px;height:13px;border:2px solid var(--ip-line);border-top-color:var(--ip-accent);border-radius:50%;animation:ipsp .7s linear infinite;display:inline-block}
+.ip-view .ip-nivel{display:inline-block;font-family:var(--ip-mono);font-size:11px;font-weight:600;border-radius:12px;padding:3px 11px;margin-bottom:10px}
+.ip-view .ip-nivel.ok{background:#e7f6ed;color:#0d7a3f}
+.ip-view .ip-nivel.warn{background:#fdf3d9;color:#8a6400}
+.ip-view .ip-nivel.gray{background:#eef1f4;color:#5b6875}
+.ip-view .ip-acc-nodoc{font-size:13px;color:var(--steel);line-height:1.6}
+.ip-view .ip-acc-nodoc b{color:var(--ink)}
+
+/* ---- lista de candidatos ---- */
+.ip-view .ip-acc-list{display:flex;flex-direction:column;gap:8px}
+.ip-view .ip-cand{display:flex;align-items:flex-start;gap:11px;background:#fff;border:1px solid var(--ip-line);border-radius:7px;padding:10px 13px;cursor:pointer}
+.ip-view .ip-cand:hover{border-color:#b9c6d6}
+.ip-view .ip-cand.on{border-color:var(--ip-accent);box-shadow:0 0 0 1px var(--ip-accent) inset;background:#f0f6ff}
+.ip-view .ip-cand>input[type=radio]{margin-top:3px;accent-color:var(--ip-accent);cursor:pointer}
+.ip-view .ip-cand-main{flex:1;min-width:0}
+.ip-view .ip-cand-top{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:4px}
+.ip-view .ip-cand-bill{font-family:var(--ip-mono);font-size:12.5px;font-weight:600;color:var(--ink)}
+.ip-view .ip-cand-partner{font-size:13px;color:var(--steel)}
+.ip-view .ip-chip{font-family:var(--ip-mono);font-size:10px;font-weight:700;border-radius:10px;padding:2px 8px;text-transform:uppercase;letter-spacing:.4px}
+.ip-view .ip-chip.pre{background:#e7f6ed;color:#0d7a3f}
+.ip-view .ip-chip.conf{background:#fdf3d9;color:#8a6400}
+.ip-view .ip-cand-sub{display:flex;flex-wrap:wrap;align-items:center;gap:12px;font-size:12px;color:var(--steel)}
+.ip-view .ip-cand-monto{font-family:var(--ip-mono);font-weight:600;color:var(--ink)}
+.ip-view .ip-cand-date{font-family:var(--ip-mono);font-size:11.5px}
+.ip-view .ip-band{font-family:var(--ip-mono);font-size:10.5px;font-weight:600;border-radius:4px;padding:1px 7px;text-transform:uppercase;letter-spacing:.4px}
+.ip-view .ip-band.pleno{background:#e7f6ed;color:#0d7a3f}
+.ip-view .ip-band.sugerida{background:#fdf3d9;color:#8a6400}
+.ip-view .ip-band.baja{background:#fdeae8;color:#b32d22}
+.ip-view .ip-score{display:inline-flex;align-items:center;gap:6px;font-family:var(--ip-mono);font-size:11.5px}
+.ip-view .ip-scorebar{width:56px;height:6px;background:#e3e8ee;border-radius:3px;overflow:hidden}
+.ip-view .ip-scorebar i{display:block;height:100%;border-radius:3px}
+.ip-view .ip-scorebar.g i{background:var(--ip-ok)}
+.ip-view .ip-scorebar.y i{background:var(--ip-warn)}
+.ip-view .ip-scorebar.r i{background:var(--ip-bad)}
+.ip-view .ip-scorenum{color:var(--steel)}
+
+/* ---- acciones + resultado ---- */
+.ip-view .ip-acc-actions{display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap}
+.ip-view .ip-acc-conc{background:var(--ip-accent);color:#fff;border:none;border-radius:6px;padding:8px 18px;font-family:inherit;font-weight:600;font-size:13.5px;cursor:pointer}
+.ip-view .ip-acc-conc:disabled{background:#8fa8cc;cursor:not-allowed}
+.ip-view .ip-acc-conc.busy{background:#8fa8cc;cursor:wait}
+.ip-view .ip-acc-hint{font-size:11.5px;color:var(--steel)}
+.ip-view .ip-acc-reload{background:#fff;border:1px solid var(--ip-line);color:var(--ip-accent);border-radius:6px;padding:6px 13px;font-family:inherit;font-weight:600;font-size:12.5px;cursor:pointer}
+.ip-view .ip-acc-reload:hover{border-color:var(--ip-accent)}
+.ip-view .ip-res{font-size:13.5px;font-weight:600;border-radius:6px;padding:10px 13px}
+.ip-view .ip-res.ok{background:#e7f6ed;color:#0d7a3f}
+.ip-view .ip-res.partial{background:#fdf3d9;color:#8a6400}
+.ip-view .ip-res.bad{background:#fdeae8;color:#b32d22}
+.ip-view .ip-res b{font-weight:700}
+.ip-view .ip-mono2{font-family:var(--ip-mono);font-size:12px}
+
+/* ---- sección "En tránsito" (no-contable) ---- */
+.ip-view .ip-itnote{font-size:12px;color:var(--steel);padding:12px 16px;border-bottom:1px solid var(--ip-line);background:#f7f9fb}
+.ip-view .ip-ittbl{width:100%}
+.ip-view .ip-ittbl .ip-itrow td{color:var(--steel);font-style:italic}
+.ip-view .ip-ittbl .ip-itrow td.amt{font-style:normal}
+.ip-view .ip-itbadge{display:inline-block;font-family:var(--ip-mono);font-size:10.5px;font-weight:600;background:#eef1f4;color:#5b6875;border-radius:10px;padding:2px 9px;font-style:normal}
+
+@media(max-width:700px){
+  .ip-view .ip-today{grid-template-columns:1fr}
+}
+
 @media(max-width:700px){
   .ip-view .semrow{grid-template-columns:26px 1fr 70px 110px}
   .ip-view .semrow .jn{font-size:13px}
