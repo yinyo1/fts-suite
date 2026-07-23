@@ -20,7 +20,7 @@
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
   var IP_REAL_ENABLED = true;             // Real HABILITADO en producción (flip 2026-07-23; checklist: JWT ok, Cloudflare diferido)
-  var IP_BUILD = '0.5.2';                 // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.3';                 // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -30,6 +30,53 @@
   var EP_SUGERENCIAS = '/fin/captura-sugerencias', EP_CONCILIAR = '/fin/captura-conciliar';
 
   var DEFAULT_CRON = { days: [1, 2, 3, 4, 5], start_hour: 7, regular_end_hour: 16, regular_interval_min: 30, peak_hour: 17, peak_interval_min: 10, close_hour: 18, label: 'L–V 7–18h · 30 min · pico 10 min' };
+
+  // ── cron: normaliza a la forma interna {days,start_hour,...}. El mock/DEMO ya la trae; el
+  //    backend real (captura-status) emite {timezone, rules:['min hr dom mon dow', ...]} → se parsea
+  //    a la forma interna para que el countdown no reviente (bug v0.5.2: nextSync leía cron.days de
+  //    un cron sin esa llave → TypeError → toda la carga Real caía al .catch. Fix v0.5.3).
+  function parseCronField(field) {
+    field = String(field);
+    if (field === '*') return null;                 // comodín (cualquier valor)
+    var out = [];
+    field.split(',').forEach(function (part) {
+      var step = 1, base = part, sl = part.split('/');
+      if (sl.length === 2) { base = sl[0]; step = parseInt(sl[1], 10) || 1; }
+      if (base === '*') { for (var i = 0; i <= 59; i += step) out.push(i); return; }
+      var rg = base.split('-');
+      if (rg.length === 2) { for (var j = +rg[0]; j <= +rg[1]; j += step) out.push(j); }
+      else out.push(+base);
+    });
+    return out;
+  }
+  function cronRulesToModel(rules) {
+    var m = { days: [1, 2, 3, 4, 5], start_hour: 7, regular_end_hour: 16, regular_interval_min: 30, peak_hour: 17, peak_interval_min: 10, close_hour: 18, label: '' };
+    var daysSet = null;
+    (rules || []).forEach(function (r) {
+      var f = String(r).trim().split(/\s+/); if (f.length < 5) return;
+      var mins = parseCronField(f[0]), hours = parseCronField(f[1]), dow = parseCronField(f[4]);
+      if (dow) daysSet = dow;
+      var hourIsRange = /-/.test(f[1]);
+      var minMultiple = /[,*\/-]/.test(f[0]);
+      if (hourIsRange && hours && hours.length) {                        // ventana regular
+        m.start_hour = hours[0]; m.regular_end_hour = hours[hours.length - 1];
+        m.regular_interval_min = (mins && mins.length >= 2) ? (mins[1] - mins[0]) : 30;
+      } else if (hours && hours.length === 1 && minMultiple && mins && mins.length >= 2) {  // pico
+        m.peak_hour = hours[0]; m.peak_interval_min = mins[1] - mins[0];
+      } else if (hours && hours.length === 1) {                          // cierre
+        m.close_hour = hours[0];
+      }
+    });
+    if (daysSet) m.days = daysSet;
+    m.label = 'L–V ' + m.start_hour + '–' + m.close_hour + 'h · ' + m.regular_interval_min + ' min · pico ' + m.peak_interval_min + ' min';
+    return m;
+  }
+  function normalizeCron(raw) {
+    if (!raw) return DEFAULT_CRON;
+    if (Array.isArray(raw.days)) return raw;                            // forma interna (mock/DEFAULT)
+    if (Array.isArray(raw.rules)) return cronRulesToModel(raw.rules);   // forma real del backend
+    return DEFAULT_CRON;
+  }
 
   // ── helpers ──
   function esc(s) {
@@ -144,7 +191,7 @@
     }
     function ingest(rows, sources, runs, cron, extra) {
       rows.forEach(function (r, i) { r._id = i; });
-      state.allRows = rows; state.sources = sources; state.runs = runs; state.cron = cron || DEFAULT_CRON;
+      state.allRows = rows; state.sources = sources; state.runs = runs; state.cron = normalizeCron(cron);
       extra = extra || {};
       state.today = extra.today || null;
       state.intransit = extra.intransit || [];
@@ -743,6 +790,7 @@
 
     // ── countdown al próximo sync ──
     function nextSync(now, cron) {
+      if (!cron || !Array.isArray(cron.days)) cron = DEFAULT_CRON;   // guarda dura: nunca lanzar
       var c = new Date(now.getTime());
       for (var i = 0; i < 10080; i++) {
         c.setSeconds(0, 0);

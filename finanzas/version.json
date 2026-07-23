@@ -1,7 +1,7 @@
 {
   "module": "finanzas",
-  "version": "0.5.2",
-  "build": "20260723-flip-real-badge",
-  "description": "Real HABILITADO (flip IP_REAL_ENABLED=true, primera habilitación en prod) + badge de versión visible v0.5.2 + persistencia de modo (1a visita demo, luego recuerda). Etapa C — motor de conciliación Bancos: panel 'Hoy' (3 cubetas clicables como filtro), acordeón de sugerencias por línea pendiente (fetch lazy, 1 sola fila abierta) con botón Conciliar (full/parcial/rechazo con guard 'recargar sugerencias'), y sección 'En tránsito' (movimientos no liquidados). Endpoints reales fin/captura-sugerencias + fin/captura-conciliar cableados (solo demo ejercitada, Real gateado). Previo Paso 6: fuentes colapsables, tabla 17 columnas, semáforo, corridas.",
+  "version": "0.5.3",
+  "build": "20260723-fix-cron-real",
+  "description": "HOTFIX Real: normaliza el cron real de captura-status ({timezone,rules[]}) a la forma interna del countdown — v0.5.2 reventaba en Real porque nextSync leía cron.days de un cron sin esa llave (TypeError → toda la carga caía al .catch → 'Error al consultar el servidor'), pese a que el server devolvía 200 correcto. Guarda dura en nextSync. Real HABILITADO (flip IP_REAL_ENABLED=true) + badge v0.5.3 + persistencia de modo. Etapa C — motor de conciliación Bancos: panel 'Hoy' (3 cubetas clicables como filtro), acordeón de sugerencias por línea pendiente (fetch lazy, 1 sola fila abierta) con botón Conciliar (full/parcial/rechazo con guard 'recargar sugerencias'), y sección 'En tránsito' (movimientos no liquidados). Endpoints reales fin/captura-sugerencias + fin/captura-conciliar cableados (solo demo ejercitada, Real gateado). Previo Paso 6: fuentes colapsables, tabla 17 columnas, semáforo, corridas.",
   "status": "active"
 }
