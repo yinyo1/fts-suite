@@ -115,16 +115,33 @@
 .ip-view td.amt.pos{color:var(--ip-ok)}
 /* Pieza #2: estados de fila */
 .ip-view .ip-est{font-weight:600;white-space:nowrap}
-.ip-view .ip-est.liq{color:var(--ip-ok)}
-.ip-view .ip-est.fon{color:#8a94a0}
-.ip-view .ip-est.dev-ret{color:#3a7ca5}
-.ip-view .ip-est.pre{color:#c98a00}
-.ip-view .ip-est.cand{color:var(--ip-accent)}
-.ip-view .ip-est.sindoc{color:#b0392b}
-.ip-view .ip-est.ev{color:#8a94a0;font-style:italic;font-weight:500}
-.ip-view .ip-est.pend{color:#5b6875}
+.ip-view .ip-est.liq{color:var(--ip-ok)}          /* CONCILIADO (Liquidado) */
+.ip-view .ip-est.tra{color:#c98a00}               /* CONCILIADO (En tránsito) */
+.ip-view .ip-est.fon{color:#8a94a0}               /* FONDEO */
+.ip-view .ip-est.dev-ret{color:#3a7ca5}           /* DEVOLUCIÓN */
+.ip-view .ip-est.sinc{color:#5b6875}              /* SIN CONCILIAR (absorbe pendiente/sin-doc/evaluando) */
 .ip-view .ip-est-bill{font-family:var(--ip-mono);font-size:11.5px;color:#5b6875;margin-left:4px}
 .ip-view .ip-est-buscar{color:var(--ip-accent);cursor:pointer;text-decoration:underline;font-size:12px;margin-left:6px}
+/* filtros por columna estilo Excel */
+.ip-view th.sortable .thlbl{cursor:pointer}
+.ip-view .ip-colfil{display:inline-block;margin-left:6px;color:#9aa7b4;cursor:pointer;font-size:10px;vertical-align:middle;user-select:none}
+.ip-view .ip-colfil:hover{color:var(--ip-accent)}
+.ip-view .ip-colfil.on{color:var(--ip-accent)}
+.ip-view th.filon{background:#eef4fe}
+.ip-view th.filon .thlbl{color:var(--ip-accent)}
+.ip-view .ip-cfpop{position:fixed;z-index:50;width:250px;max-height:340px;display:flex;flex-direction:column;background:#fff;border:1px solid var(--ip-line);border-radius:8px;box-shadow:0 8px 26px rgba(20,40,70,.18);padding:10px;font-size:13px}
+.ip-view .ip-cfhead{font-size:12px;color:var(--steel);margin-bottom:7px}
+.ip-view .ip-cfsearch{border:1px solid var(--ip-line);border-radius:6px;padding:6px 9px;font-family:inherit;font-size:12.5px;margin-bottom:6px}
+.ip-view .ip-cfsearch:focus{outline:none;border-color:var(--ip-accent)}
+.ip-view .ip-cfacts{display:flex;gap:12px;margin-bottom:6px}
+.ip-view .ip-cfacts a{color:var(--ip-accent);cursor:pointer;font-weight:600;font-size:11.5px;text-decoration:none}
+.ip-view .ip-cflist{overflow-y:auto;flex:1;border-top:1px solid var(--ip-line);border-bottom:1px solid var(--ip-line);padding:4px 0}
+.ip-view .ip-cfitem{display:flex;align-items:center;gap:8px;padding:4px 3px;cursor:pointer;font-size:12.5px}
+.ip-view .ip-cfitem:hover{background:#f4f7fb}
+.ip-view .ip-cfitem input{accent-color:var(--ip-accent)}
+.ip-view .ip-cffoot{display:flex;gap:8px;margin-top:8px}
+.ip-view .ip-cfapply{flex:1;background:var(--ip-accent);color:#fff;border:none;border-radius:6px;padding:7px;font-family:inherit;font-weight:600;font-size:12.5px;cursor:pointer}
+.ip-view .ip-cfclear{background:#fff;border:1px solid var(--ip-line);color:var(--steel);border-radius:6px;padding:7px 12px;font-family:inherit;font-weight:600;font-size:12.5px;cursor:pointer}
 .ip-view .st{font-family:var(--ip-mono);font-size:12px;font-weight:600}
 .ip-view .st.ok{color:var(--ip-ok)}
 .ip-view .st.pend{color:var(--ip-warn)}
