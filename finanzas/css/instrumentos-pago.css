@@ -113,6 +113,18 @@
 .ip-view td.amt{font-family:var(--ip-mono);text-align:right;white-space:nowrap}
 .ip-view td.amt.neg{color:var(--ip-bad)}
 .ip-view td.amt.pos{color:var(--ip-ok)}
+/* Pieza #2: estados de fila */
+.ip-view .ip-est{font-weight:600;white-space:nowrap}
+.ip-view .ip-est.liq{color:var(--ip-ok)}
+.ip-view .ip-est.fon{color:#8a94a0}
+.ip-view .ip-est.dev-ret{color:#3a7ca5}
+.ip-view .ip-est.pre{color:#c98a00}
+.ip-view .ip-est.cand{color:var(--ip-accent)}
+.ip-view .ip-est.sindoc{color:#b0392b}
+.ip-view .ip-est.ev{color:#8a94a0;font-style:italic;font-weight:500}
+.ip-view .ip-est.pend{color:#5b6875}
+.ip-view .ip-est-bill{font-family:var(--ip-mono);font-size:11.5px;color:#5b6875;margin-left:4px}
+.ip-view .ip-est-buscar{color:var(--ip-accent);cursor:pointer;text-decoration:underline;font-size:12px;margin-left:6px}
 .ip-view .st{font-family:var(--ip-mono);font-size:12px;font-weight:600}
 .ip-view .st.ok{color:var(--ip-ok)}
 .ip-view .st.pend{color:var(--ip-warn)}
