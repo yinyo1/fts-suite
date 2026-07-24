@@ -20,7 +20,7 @@
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
   var IP_REAL_ENABLED = true;             // Real HABILITADO en producción (flip 2026-07-23; checklist: JWT ok, Cloudflare diferido)
-  var IP_BUILD = '0.5.11';                // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.12';                // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -29,6 +29,8 @@
   // Etapa C — motor de conciliación (contrato real; solo se ejercita al des-gatear Real).
   var EP_SUGERENCIAS = '/fin/captura-sugerencias', EP_CONCILIAR = '/fin/captura-conciliar';
   var EP_BUSCAR = '/fin/captura-buscar-bills';   // Pieza #1: buscador manual de bills (17+285). Degrada si el workflow está inactivo.
+  var EP_SYNC_NOW = '/fin/captura-sync-now';     // #4a: corrida de captura on-demand (clon del cron). Degrada si inactivo.
+  var EP_CONCILIA_NOW = '/fin/concilia-now';     // #4b: autoconciliar on-demand (lógica de D). Botón gateado hasta mañana.
 
   var DEFAULT_CRON = { days: [1, 2, 3, 4, 5], start_hour: 7, regular_end_hour: 16, regular_interval_min: 30, peak_hour: 17, peak_interval_min: 10, close_hour: 18, label: 'L–V 7–18h · 30 min · pico 10 min' };
 
@@ -108,7 +110,7 @@
 
   // 17 columnas (contrato exacto del v7). vis = visible por default (8).
   var COLS = [
-    { k: 'd',    lbl: 'Fecha',        vis: true,  cls: 'style="font-family:var(--ip-mono);font-size:12.5px"', fmt: function (r) { return esc(r.d); } },
+    { k: 'd',    lbl: 'Fecha',        vis: true,  hdrTitle: 'Fecha de liquidación (settled) en Jeeves. Mañana se agrega "Fecha transacción" (la que casa con PO/Bill).', cls: 'style="font-family:var(--ip-mono);font-size:12.5px"', fmt: function (r) { return esc(r.d); } },
     { k: 'j',    lbl: 'Instrumento',  vis: true,  fmt: function (r) { return '<span class="jtag">' + esc(r.j) + '</span>'; } },
     { k: 'tipo', lbl: 'Tipo',         vis: false, fmt: function (r) { return esc(r.tipo); } },
     { k: 'ref',  lbl: 'Descripción',  vis: true,  fmt: function (r) { return esc(r.ref); } },
@@ -124,7 +126,7 @@
     { k: 'tk',   lbl: 'Ticket',       vis: false, fmt: function (r) { return esc(r.tk) || '—'; } },
     { k: 'mon',  lbl: 'Moneda',       vis: false, fmt: function (r) { return esc(r.mon); } },
     { k: 'amt',  lbl: 'Monto',        vis: true,  cls: function (r) { return 'class="amt ' + (r.amt < 0 ? 'neg' : 'pos') + '"'; }, fmt: function (r) { return money(r.amt); } },
-    { k: 'ok',   lbl: 'Estado',       vis: true,  cls: function (r) { return 'class="st est-' + IP_rowState(r) + '"'; }, fmt: function (r) { return IP_stateCell(r); } },
+    { k: 'ok',   lbl: 'Estado con Odoo', vis: true, cls: function (r) { return 'class="st est-' + IP_rowState(r) + '"'; }, fmt: function (r) { return IP_stateCell(r); } },
     { k: 'sj',   lbl: 'Status Jeeves', vis: false, fmt: function (r) { return statusJeeves(r); } }   // dimensión Jeeves (no visible default; contrato para Pieza #4/B.2)
   ];
   function colAttr(col, r) { return typeof col.cls === 'function' ? col.cls(r) : (col.cls || ''); }
@@ -259,8 +261,33 @@
     }
     function afterData() { startCountdown(); }
 
+    // ── #4a: "Sincronizar transacciones" — corrida de captura on-demand (fin/captura-sync-now) ──
+    function syncNow() {
+      var btn = q('#ip-syncnow'), note = q('#ip-syncnote');
+      if (state.mode !== 'real') { if (note) note.textContent = 'El sincronizador solo opera en modo Real.'; return; }
+      if (btn) { btn.disabled = true; btn.classList.add('busy'); }
+      if (note) { note.textContent = 'Sincronizando captura…'; note.className = 'ip-toolbar-note load'; }
+      window.FinClient.call(EP_SYNC_NOW, { origen: 'boton-refresh' })
+        .then(function (data) {
+          if (!data || (data.ok !== true && data.nuevas == null && data._ran !== true)) {
+            // endpoint sin activar → n8n 404 sin shape → degrada elegante
+            if (note) { note.textContent = 'Sincronizador no disponible aún (endpoint sin activar).'; note.className = 'ip-toolbar-note na'; }
+            return;
+          }
+          var resumen = (data.nuevas != null) ? (' — ' + data.nuevas + ' nuevas · ' + (data.duplicadas || 0) + ' dup.' + (data.rechazadas ? ' · ' + data.rechazadas + ' rech.' : '')) : '';
+          if (note) { note.textContent = 'Captura lista' + resumen + '. Recargando…'; note.className = 'ip-toolbar-note ok'; }
+          setTimeout(function () { if (document.body.contains(container)) load(); }, 900);
+        })
+        .catch(function (err) {
+          var code = (err && err.code) || '';
+          var na = code === 'NETWORK' || code === 'BAD_RESPONSE' || (err && err.http === 404);
+          if (note) { note.textContent = na ? 'Sincronizador no disponible (endpoint inactivo).' : ('Error: ' + ((err && err.msg) || code || 'no se pudo sincronizar.')); note.className = 'ip-toolbar-note ' + (na ? 'na' : 'err'); }
+        })
+        .then(function () { if (btn) { btn.disabled = false; btn.classList.remove('busy'); } });
+    }
+
     // ── filtros por columna estilo Excel (categóricas) ──
-    var FILTERABLE_COLS = { ok: 'Estado', j: 'Journal', comp: 'Comprador', tarj: 'Tarjeta', mon: 'Moneda' };
+    var FILTERABLE_COLS = { ok: 'Estado con Odoo', j: 'Journal', comp: 'Comprador', tarj: 'Tarjeta', mon: 'Moneda' };
     function colValueOf(k, t) {
       if (k === 'ok') return rowState(t);                 // Estado = los 5 estados de primer nivel (no t.ok crudo)
       var v = t[k];
@@ -387,7 +414,13 @@
       html += '<h2>Fuentes de pago — FTS MEX</h2><div class="srclist" id="ip-srcMEX"></div>';
       html += '<h2>Fuentes de pago — FTS USA</h2><div class="srclist" id="ip-srcUSA"></div>';
 
-      html += '<h2>Transacciones</h2><div class="panel">' + filtersHtml() +
+      html += '<h2>Transacciones</h2>' +
+        '<div class="ip-toolbar">' +
+          '<button class="ip-refresh" id="ip-syncnow" title="Ejecuta una captura extra ahora (mismo rango/traslape/dedupe que el cron). Útil para tener info fresca sin esperar al motor nocturno.">⟳ Sincronizar transacciones</button>' +
+          '<button class="ip-refresh gated" id="ip-concilianow" disabled title="Se estrena mañana tras el forense de la noche 2 del canary — un disparo hoy se comería los matches de la corrida de las 23:00.">⟳ Autoconciliar ahora</button>' +
+          '<span class="ip-toolbar-note" id="ip-syncnote"></span>' +
+        '</div>' +
+        '<div class="panel">' + filtersHtml() +
               '<div class="selbanner" id="ip-selbanner"></div>' +
               '<div id="ip-tblwrap"></div>' +
               '<div class="tfoot"><span id="ip-aggs"></span><span class="pager" id="ip-pager"></span></div></div>';
@@ -444,6 +477,7 @@
         if (ev.target && ev.target.closest && (ev.target.closest('#ip-cfpop') || ev.target.closest('.ip-colfil'))) return;
         closeColFilter();
       });
+      var sn = q('#ip-syncnow'); if (sn) sn.addEventListener('click', syncNow);   // #4a (el botón #4b 'Autoconciliar' nace disabled — gate hasta mañana)
       var el = q('#ip-companies');
       if (el && window.FinCompanySelector) window.FinCompanySelector.mount(el, { onChange: function () {
         if (state.mode === 'empty') return;
@@ -533,7 +567,7 @@
           '<option value="BBVA"' + (f.journal === 'BBVA' ? ' selected' : '') + '>BBVA General</option></select>' +
         '<input type="date" id="ip-fFrom" value="' + esc(f.from) + '">' +
         '<input type="date" id="ip-fTo" value="' + esc(f.to) + '">' +
-        '<select id="ip-fEstado"><option value="">Estado: todos</option>' +
+        '<select id="ip-fEstado"><option value="">Estado con Odoo: todos</option>' +
           '<option value="liquidado"' + (f.estado === 'liquidado' ? ' selected' : '') + '>Conciliado (Liquidado)</option>' +
           '<option value="transito"' + (f.estado === 'transito' ? ' selected' : '') + '>Conciliado (En tránsito)</option>' +
           '<option value="sinconciliar"' + (f.estado === 'sinconciliar' ? ' selected' : '') + '>Sin conciliar</option>' +
@@ -675,7 +709,7 @@
         vis.map(function (c) {
           var isF = Object.prototype.hasOwnProperty.call(FILTERABLE_COLS, c.k);
           var active = isF && state.colFilters[c.k] != null;
-          return '<th class="sortable' + (active ? ' filon' : '') + '" data-sort="' + c.k + '"' + (c.k === 'amt' ? ' style="text-align:right"' : '') + '>' +
+          return '<th class="sortable' + (active ? ' filon' : '') + '" data-sort="' + c.k + '"' + (c.hdrTitle ? ' title="' + esc(c.hdrTitle) + '"' : '') + (c.k === 'amt' ? ' style="text-align:right"' : '') + '>' +
             '<span class="thlbl">' + esc(c.lbl) + (state.sortK === c.k ? '<span class="sarr">' + (state.sortDir > 0 ? '▲' : '▼') + '</span>' : '') + '</span>' +
             (isF ? '<span class="ip-colfil' + (active ? ' on' : '') + '" data-colfil="' + c.k + '" title="Filtrar columna">▾</span>' : '') +
           '</th>';
@@ -803,11 +837,13 @@
             '<span class="ip-cand-partner">' + esc(c.partner) + '</span>' +
             (c.pre_marcado ? '<span class="ip-chip pre">pre-marcado</span>' : '') +
             (c._fromSearch ? '<span class="ip-chip busca">🔎 buscado</span>' : '') +
+            (c.empresa ? '<span class="ip-chip emp">' + esc(c.empresa) + '</span>' : '') +
             (c.conflicto ? '<span class="ip-chip conf">⚠ revisar</span>' : '') + '</span>' +
           '<span class="ip-cand-sub"><span class="ip-cand-monto">' + money(c.monto_bill) + '</span>' +
             '<span class="ip-cand-date">' + esc(c.date_bill) + ' · ' + esc(dd) + '</span>' +
             '<span class="ip-band ' + esc(c.banda) + '">' + esc(c.banda) + '</span>' +
             (c.score == null ? (c.cuenta ? '<span class="ip-cand-cta">cta ' + esc(c.cuenta) + '</span>' : '') : scoreBar(c.score)) + '</span>' +
+          (c.analitica ? '<span class="ip-cand-ana" title="Analítica del bill (proyecto/rubro)">📊 ' + esc(c.analitica) + '</span>' : '') +
         '</span></label>';
     }
     function resultHtml(t, r) {
@@ -817,8 +853,19 @@
       if (r.ok && r.parcial) {
         return '<div class="ip-acc"><div class="ip-res partial">✓ Conciliada PARCIALMENTE — quedan línea <b>' + money(r.residual_linea) + '</b> / bill <b>' + money(r.residual_bill) + '</b></div></div>';
       }
-      return '<div class="ip-acc"><div class="ip-res bad"><b>' + esc(r.code || 'ERROR') + '</b> — ' + esc(r.msg || 'No se pudo conciliar.') + '</div>' +
+      // Guard humanizado (ej. BILL_NO_201 = cross-company) + código técnico en el detalle.
+      var human = humanConcMsg(r.code, r.msg);
+      return '<div class="ip-acc"><div class="ip-res bad">' + esc(human) + ' <span class="ip-mono2">(' + esc(r.code || 'ERROR') + ')</span></div>' +
         '<div class="ip-acc-actions"><button class="ip-acc-reload" data-reload="' + t._id + '">↻ Recargar sugerencias</button></div></div>';
+    }
+    // Traduce códigos de guard del conciliar a lenguaje humano (el código técnico queda en el detalle).
+    function humanConcMsg(code, msg) {
+      var map = {
+        'BILL_NO_201': 'Este bill está cargado a otra empresa/cuenta — caso cross-company, no conciliable desde aquí por ahora.',
+        'LINE_YA_CONCILIADA': 'Esta línea ya fue conciliada (el mundo cambió). Recarga las sugerencias.',
+        'BILL_YA_CONCILIADO': 'El bill ya fue conciliado por otra línea. Recarga las sugerencias.'
+      };
+      return map[code] || msg || 'No se pudo conciliar.';
     }
     // ── Pieza #1: buscador manual de bills (17+285) dentro del acordeón ──
     // Enriquece la MISMA lista de candidatos (append + dedupe) → el botón Conciliar existente hace el write, cero lógica nueva.
