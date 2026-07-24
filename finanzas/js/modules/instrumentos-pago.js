@@ -20,7 +20,7 @@
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
   var IP_REAL_ENABLED = true;             // Real HABILITADO en producción (flip 2026-07-23; checklist: JWT ok, Cloudflare diferido)
-  var IP_BUILD = '0.5.4';                 // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.5';                 // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -121,7 +121,7 @@
       sortK: 'd', sortDir: -1,
       pageSize: 100, page: 1,
       sel: {},                 // rowId -> true
-      loading: false, error: null,
+      loading: false, error: null, loadProgress: null, partialLoad: null,
       timer: null,
       // Etapa C — conciliación
       today: null,             // panel "Hoy" (3 cubetas)
@@ -155,7 +155,7 @@
 
     // ── carga de datos ──
     function load() {
-      state.loading = true; state.error = null; render();
+      state.loading = true; state.error = null; state.partialLoad = null; state.loadProgress = null; render();
       if (state.mode === 'demo') {
         fetch(MOCK_PATH, { cache: 'no-store' })
           .then(function (r) { return r.json(); })
@@ -163,22 +163,54 @@
           .catch(function (e) { state.loading = false; state.error = 'No se pudo cargar el mock: ' + e.message; render(); });
         return;
       }
-      // real: status (fuentes/runs/cron) + transacciones. Verificar nombres de campo al des-gatear.
+      // real: status (fuentes/runs/cron) + transacciones PAGINADAS (acumula todas las páginas hasta has_more=false).
       var params = { companies: window.FinState.getCompanies() };
       Promise.all([
         window.FinClient.call(EP_STATUS, params),
-        window.FinClient.call(EP_TX, txParams())
+        loadAllTxPages()
       ]).then(function (res) {
-        var st = res[0] || {}, tx = res[1] || {};
+        var st = res[0] || {}, txAll = res[1] || { rows: [] };
         // captura-status.hoy es opcional (B.2 pendiente): si no llega, degrada elegante sin romper.
         var today = st.hoy || { en_transito: { disponible: false }, conciliable_pendiente: null, conciliadas_hoy: null, _degradado: true };
-        ingest(tx.rows || [], st.sources || [], st.runs || [], st.cron || DEFAULT_CRON, { today: today, intransit: st.intransit || [], suggByRow: {} });
-        state.loading = false; render(); afterData();
+        ingest(txAll.rows || [], st.sources || [], st.runs || [], st.cron || DEFAULT_CRON, { today: today, intransit: st.intransit || [], suggByRow: {} });
+        state.loading = false; state.loadProgress = null;
+        // carga parcial: nunca fingir que está completo → aviso visible; los agregados reflejan solo lo cargado.
+        state.partialLoad = txAll.partial ? { loaded: (txAll.rows || []).length, total: (txAll.pagination && txAll.pagination.total_count) || null, reason: txAll.reason || null } : null;
+        render(); afterData();
       }).catch(function (err) {
-        state.loading = false;
+        state.loading = false; state.loadProgress = null;
         state.error = (err && err.msg) || (err && err.code) || 'Error al consultar el servidor.';
         render();
       });
+    }
+    // Opción A (paginación por acumulación): pide page=1..N a captura-transacciones hasta has_more=false, acumulando
+    // TODAS las filas en un solo arreglo → pager/select-all/export/agregados operan sobre el universo completo.
+    // NUNCA descarta lo ya cargado si una página falla (marca parcial + aviso). Guard duro de tope de páginas anti-loop.
+    function loadAllTxPages() {
+      var MAX_PAGES = 60;   // 60 × PAGE_SIZE(100) = 6,000 filas máx; jamás loop infinito si has_more se atora en true
+      return new Promise(function (resolve) {
+        var acc = [], page = 1, lastPag = null;
+        function step() {
+          var p = txParams(); p.page = page;
+          window.FinClient.call(EP_TX, p).then(function (tx) {
+            acc = acc.concat((tx && tx.rows) || []);
+            lastPag = (tx && tx.pagination) || null;
+            var total = (lastPag && lastPag.total_count != null) ? lastPag.total_count : acc.length;
+            setLoadProgress(acc.length, total);
+            var hasMore = !!(lastPag && lastPag.has_more === true);
+            if (hasMore && page < MAX_PAGES) { page++; step(); }
+            else if (hasMore) { resolve({ rows: acc, pagination: lastPag, partial: true, reason: 'tope de ' + MAX_PAGES + ' páginas alcanzado' }); }
+            else { resolve({ rows: acc, pagination: lastPag, partial: false }); }
+          }).catch(function (err) {
+            resolve({ rows: acc, pagination: lastPag, partial: true, reason: 'falló la página ' + page + (err && err.code ? ' (' + err.code + ')' : '') });
+          });
+        }
+        step();
+      });
+    }
+    function setLoadProgress(loaded, total) {
+      state.loadProgress = { loaded: loaded, total: total };
+      var el = q('#ip-loader'); if (el) el.textContent = 'Cargando ' + loaded + ' de ' + (total || '?') + ' líneas…';
     }
     function txParams() {
       var f = state.filters;
@@ -256,8 +288,11 @@
       }
       if (state.mode === 'demo') html += '<div class="demo-banner"><b>DEMO</b> · datos ficticios de muestra, no provienen de Odoo.</div>';
 
-      if (state.loading) { html += '<div class="loader" style="padding:30px;text-align:center;color:var(--steel)">Cargando…</div></div>'; container.innerHTML = html; wireHead(); return; }
+      if (state.loading) { html += '<div class="loader" id="ip-loader" style="padding:30px;text-align:center;color:var(--steel)">' + (state.loadProgress ? ('Cargando ' + state.loadProgress.loaded + ' de ' + (state.loadProgress.total || '?') + ' líneas…') : 'Cargando…') + '</div></div>'; container.innerHTML = html; wireHead(); return; }
       if (state.error)   { html += '<div class="empty-state"><div class="icon">⚠</div><div class="title">Error</div><div class="mono">' + esc(state.error) + '</div></div></div>'; container.innerHTML = html; wireHead(); return; }
+      if (state.partialLoad) {
+        html += '<div class="ip-partial" style="margin:12px 0;padding:10px 14px;border:1px solid #c0392b;border-radius:8px;background:rgba(192,57,43,.10);color:#c0392b;font-size:13px;font-weight:500">⚠ Carga parcial: ' + state.partialLoad.loaded + ' de ' + (state.partialLoad.total || '?') + ' líneas' + (state.partialLoad.reason ? ' — ' + esc(state.partialLoad.reason) : '') + '. Recarga para reintentar. Los agregados y el semáforo reflejan SOLO lo cargado.</div>';
+      }
 
       html += '<h2>Fuentes de pago — FTS MEX</h2><div class="srclist" id="ip-srcMEX"></div>';
       html += '<h2>Fuentes de pago — FTS USA</h2><div class="srclist" id="ip-srcUSA"></div>';
