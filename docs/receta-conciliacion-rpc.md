@@ -274,3 +274,22 @@ El front de `instrumentos-pago` **solo consume la página 1** del endpoint `capt
 
 ### Prerrequisito para la prueba en Real (flip IP_REAL_ENABLED)
 Para que Esteban pruebe desde el botón en Real se necesita `IP_REAL_ENABLED=true` (gate del checklist de seguridad, `docs/finanzas/BANCOS_CHECKLIST_SEGURIDAD.md`): **(a) JWT hardening = HECHO** (login ver:3, 2h, scope); **(c) Cloudflare Access = diferido** (aprobado en principio, proyecto aparte). Post-flip, en Real: el **acordeón (sugerencias) + botón Conciliar SÍ operan** (endpoints vivos), pero el **panel Hoy muestra "no disponible" hasta B.2** (captura-status.hoy). Prueba Real completa (incl. panel Hoy con cubetas reales) = flip **+ B.2**.
+
+## 18. Etapa D — pase automático de conciliación (canary, 2026-07-23)
+
+**Workflow `captura-concilia-auto` (id `hY6uKxEvs1LLpyf5`), ACTIVO.** Schedule `0 23 * * 1-5` TZ `America/Monterrey`. 9 nodos: Schedule → Set `rpc_key` (`$env.ODOO_RPC_KEY`) → config (`CANARY_MAX=20`) → Odoo líneas journal 61 `is_reconciled=false` → select (universo COMPLETO, **FIFO más-antiguas-primero** → el tope canary ataca el backlog viejo) → Odoo bills abiertos `201.01.01` → **match VERBATIM de `captura-sugerencias`** (5 reglas → score → nivel) → plan (SOLO `auto-elegible`, tope canary 20; sugeridas/sin-documento NI TOCARLAS) → **ejecutar+log** (receta §2 write suspense→17 + reconcile + auto-revert; CONCFTS `origen:'auto'`; resumen `[[CBAUTO]]` al chatter journal 61). **Solo exactas/full.**
+
+**8 guards re-validados al instante del write:** los 6 del botón A (`LINE_YA_CONCILIADA`, `NO_SUSPENSE_UNICA`, `BILL_NO_201`, `BILL_NO_POSTED`, `BILL_YA_CONCILIADO`, `BILL_SIN_PARTNER`) **+ 2 auto-strict:** `MONTO_DRIFT` (monto ±$0.01 exacto sobre el bill elegido) y `NOT_UNIQUE_AT_WRITE` (re-query del pool al instante → exige 1 solo candidato = el elegido; regla 4 dura). Auto-revert por ítem; un ítem que falla no tumba el lote.
+
+### Night-0 (supervisada, Execute Workflow, 2026-07-23 19:00 CST) — LIMPIA 9/9
+Ejecución n8n **`45112`** · CBAUTO **`mail.message 2920067`** (journal 61, `2026-07-24T01:00:11 UTC = 2026-07-23 19:00:11 CST`). **1823 evaluadas → 9 auto-elegibles → 9 conciliadas, 0 rechazadas, 0 overflow** (+28 sugeridas, 1786 sin-documento). Verificación **independiente en Odoo** de las 9: líneas `is_reconciled=true`/residual 0; bills `payment_state=paid`/residual 0; pata en **`201.01.01`** (§11.8, jamás 601.84.01); `full_reconcile` de n8n = el de Odoo (8876…8892); firma CONCFTS `origen:auto`. Todas **monto exacto + mismo día (Δ0) + comercio↔partner score ≥0.94**. FIFO OK (feb→may→jul). Aeromexico 32010→BILL2238 score 1.0; Home Depot 30437→BILL3084 (el mismo de la validación B.1).
+
+### Canary formal + reglas de operación
+- **2 noches** (23:00 auto): CC relee cada mañana la ejecución de `hY6uKxEvs1LLpyf5` + el `[[CBAUTO]]` en journal 61 + muestra Odoo independiente. **Cero incidentes 2 noches → decidir nuevo `CANARY_MAX`** (subir/quitar) en la sesión siguiente.
+- **Diferidos hasta 2 noches limpias:** (1) gancho post-sync (captura-jeeves dispara D con nuevas>0 — toca ese workflow activo); (2) B.2 (cubetas en captura-status → panel Hoy 🟢; la firma `origen:auto` ya está sembrada).
+
+### Quirks confirmados en Etapa D (no re-descubrir)
+1. **`n8n_test_workflow` / API NO disparan schedule ni manual triggers** (solo webhook/form/chat) → la corrida supervisada = Esteban "Execute Workflow" en el editor n8n.
+2. **La verdad de terreno de una corrida vive en ODOO** (CBAUTO + reconciliaciones), robusto a que la manual-execution de n8n persista o no. Regla: "JSON pegado no es evidencia; evidencia es ejecución con ID releíble" (memoria `evidencia-ejecucion-no-json-pegado`).
+3. **Runner webhook para llamar endpoints con JWT:** activar en UI a veces NO registra el webhook (404, cuadra con §17 "API rechaza activar; toggle UI no siempre propaga") → path nuevo + curl directo lo resolvió; evidencia = execution en el workflow llamado (no en el runner). El grep de llaves en tool-results va con **bareword** (el escapado `\"` rompe el anclado por comillas).
+4. **B.2 RE-CONFIRMADO NO-construido 3×:** `captura-status` `Respond OK` = `{por_journal, global, cron, residual_umbral}`, cero cubetas (ejec 44762). El "conciliadas_hoy:6 verificado en vivo" fue fantasma (= diseño/mock).
