@@ -118,6 +118,41 @@ Write del pre-conf: endpoint chico `fin/captura-preconciliar` (bancos:write) o r
 
 ---
 
+## 5.5 CORRECCIÓN DE TAXONOMÍA (2026-07-24, v0.5.10) — la fuente de verdad son los 5 estados de Esteban
+
+La implementación v0.5.7 fragmentó los estados en categorías técnicas (`pre-conciliado`, `pendiente con sugerencia`, `sin documento`, `evaluando`, `pendiente neutro`). **Corrección: 5 estados de PRIMER NIVEL, y el detalle del cerebro es PISTA, no estado.**
+
+| Estado (primer nivel) | Definición | Color | Nota |
+|---|---|---|---|
+| **CONCILIADO (Liquidado)** | `is_reconciled=true` | verde | terminal |
+| **CONCILIADO (En tránsito)** | bill **asignada** (confirmada por humano vía Pieza #3, o pre-match del motor sobre pendings vía Pieza #4/B.2) pero **no cerrada formalmente** | ámbar | **absorbe y reemplaza "Pre-conciliado"** — mismo cableado (`state.preconc`), nuevo nombre. Hoy 0 hasta Pieza #3 |
+| **FONDEO** | marcador `[FONDEO]` en ref | gris | no cuenta a pendientes/residual |
+| **DEVOLUCIÓN** | marcador `[DEVOLUCIÓN]` en ref | azul | no cuenta a pendientes/residual |
+| **SIN CONCILIAR** | **TODO lo demás** (candidato + sin-documento + evaluando + neutro) | neutro | el detalle del cerebro es PISTA secundaria en la fila, NO estado |
+
+**Pista del cerebro (dentro de SIN CONCILIAR, sin cambiar el estado):**
+- hay candidato → `○ Sin conciliar` **+ bill·score** al lado (visible sin abrir acordeón).
+- sin candidato → `○ Sin conciliar` **+ link "buscar bill"**.
+- batch en vuelo o sin evaluar → `○ Sin conciliar` **a secas** (nada de "evaluando" como estado).
+
+Agregados: `N conciliadas · M en tránsito · X sin conciliar · fondeos · devoluciones`. Solo SIN CONCILIAR suma al residual. Filtro dropdown = 5 opciones + todos; `ok`/`pend` se mantienen como compat del panel Hoy.
+
+⚠️ **DECISIÓN PENDIENTE (cuando Pieza #3 pueble `En tránsito`):** hoy "En tránsito" está vacío en real, así que el residual = solo SIN CONCILIAR es correcto de facto. Cuando Pieza #3 empiece a marcar bills asignadas (`state.preconc`), **definir si el residual INCLUYE lo En tránsito o lo muestra por separado.** Argumentos: (a) *incluir* — la plata aún no está formalmente cerrada, sigue siendo exposición hasta el cierre → un solo número de "lo que falta cerrar"; (b) *separado* — En tránsito ya tiene bill asignada (decisión humana tomada), es distinto de lo que ni siquiera tiene documento → dos números: "sin conciliar $X · en tránsito $Y". Decisión de Esteban al abordar Pieza #3; afecta la línea de agregados y posiblemente el semáforo.
+
+---
+
+## 5.6 RE-EVALUACIÓN DEL MOTOR D — ya cubierto por diseño (petición #2 de Esteban, confirmado 2026-07-24)
+
+El **motor de la Etapa D** (`captura-concilia-auto`, cron 23:00 CST L–V) hace **`getAll` con `returnAll:true` del universo COMPLETO sin conciliar en cada corrida** — **NO tiene memoria de corridas previas**. Consecuencia (deseada):
+
+> El caso "compra en fin de semana sin PO/Bill, el equipo la crea el lunes, y el motor la concilia el lunes 23:00" **ya está cubierto**. El motor re-evalúa cada línea abierta en cada corrida, así que una línea que hoy no tiene documento y mañana sí, **se concilia sola en la siguiente corrida** sin intervención.
+
+**El equipo puede confiarse en crear PO + Bill y dejar que el motor cierre** (dentro de las reglas del gate D: mismo monto, ventana de fechas, y score de nombre suficiente).
+
+**Limitación honesta (reglas v1 de nombre):** un match con **descriptor débil** (el comercio del banco no se parece al nombre del proveedor del bill) cae a **sugerencia** — aparece como **pista en la fila** (`bill·score`) para que un humano lo confirme, **no se auto-concilia**. Eso lo resuelve el **motor v2** (pool 285 + mejores señales de match). Hasta entonces: auto para los matches limpios, pista para los débiles.
+
+---
+
 ## 6. Deuda conocida (post-canary, NO fix hoy)
 
 - **`evalSugg()` corre el cerebro completo en cada carga (sin caché).** Cada carga de la tabla dispara el batch a `fin/captura-sugerencias` (~9 llamadas paginadas × matching contra bills abiertos por cada página). Con **un solo usuario** ocasional es aceptable; con **Gera/Miriam conciliando a diario** esto refritea Odoo en cada refresh. **Fix (post-canary):** cachear el resultado del matching — server-side (TTL en `captura-sugerencias` o tabla de sugerencias materializada) o TTL en el front (p.ej. sugerencias por `line_id` válidas N minutos en memoria/localStorage con invalidación al conciliar). Decisión de dónde cachear = cuando se aborde motor v2 / B.2.

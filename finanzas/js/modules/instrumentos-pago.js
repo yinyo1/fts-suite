@@ -20,7 +20,7 @@
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
   var IP_REAL_ENABLED = true;             // Real HABILITADO en producción (flip 2026-07-23; checklist: JWT ok, Cloudflare diferido)
-  var IP_BUILD = '0.5.9';                 // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.10';                // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -136,7 +136,8 @@
       suggByRow: {},           // demo: sugerencias precargadas del mock, por índice de row
       expanded: null,          // _id de la ÚNICA fila expandida (acordeón), o null
       sugg: {},                // _id -> {loading, cand:{nivel,candidatos}, sel:idx, result, error}
-      preconc: {}              // line_id -> {bill_aml_id, bill_name, by, ts} (Pieza #3; hoy vacío)
+      preconc: {},             // line_id -> {bill_aml_id, bill_name, by, ts} → estado 'En tránsito' (Pieza #3; hoy vacío en real)
+      colFilters: {}           // colKey -> array de valores permitidos (filtro por columna estilo Excel). Ausente = sin filtro.
     };
 
     function currentMode() {
@@ -171,7 +172,7 @@
       if (state.mode === 'demo') {
         fetch(MOCK_PATH, { cache: 'no-store' })
           .then(function (r) { return r.json(); })
-          .then(function (data) { ingest(data.rows || [], data.sources || [], data.runs || [], data.cron || DEFAULT_CRON, { today: data.today || null, intransit: data.intransit || [], suggByRow: data.suggestions || {} }); state.loading = false; try { evalSugg(); } catch (e) { if (window.console) console.warn('[ip] evalSugg demo falló (no bloquea):', e); } render(); afterData(); })
+          .then(function (data) { ingest(data.rows || [], data.sources || [], data.runs || [], data.cron || DEFAULT_CRON, { today: data.today || null, intransit: data.intransit || [], suggByRow: data.suggestions || {} }); state.preconc = data.preconc || {}; state.loading = false; try { evalSugg(); } catch (e) { if (window.console) console.warn('[ip] evalSugg demo falló (no bloquea):', e); } render(); afterData(); })
           .catch(function (e) { state.loading = false; state.error = 'No se pudo cargar el mock: ' + e.message; render(); });
         return;
       }
@@ -248,6 +249,69 @@
     }
     function afterData() { startCountdown(); }
 
+    // ── filtros por columna estilo Excel (categóricas) ──
+    var FILTERABLE_COLS = { ok: 'Estado', j: 'Journal', comp: 'Comprador', tarj: 'Tarjeta', mon: 'Moneda' };
+    function colValueOf(k, t) {
+      if (k === 'ok') return rowState(t);                 // Estado = los 5 estados de primer nivel (no t.ok crudo)
+      var v = t[k];
+      return (v == null || v === '') ? '—' : String(v);
+    }
+    function colValLabel(k, v) {
+      if (k === 'ok') { var m = { liquidado: 'Conciliado (Liquidado)', transito: 'Conciliado (En tránsito)', fondeo: 'Fondeo', devolucion: 'Devolución', sinconciliar: 'Sin conciliar' }; return m[v] || v; }
+      return v;
+    }
+    function colFiltersPass(t) {
+      var cf = state.colFilters || {};
+      for (var k in cf) {
+        if (!Object.prototype.hasOwnProperty.call(cf, k)) continue;
+        var allowed = cf[k];
+        if (allowed == null) continue;                    // sin filtro en esta columna
+        if (allowed.indexOf(colValueOf(k, t)) < 0) return false;   // array vacío = nada matchea (correcto)
+      }
+      return true;
+    }
+    function uniqueColValues(k) {
+      var seen = {}, out = [];
+      state.allRows.forEach(function (t) { var v = colValueOf(k, t); if (!Object.prototype.hasOwnProperty.call(seen, v)) { seen[v] = true; out.push(v); } });
+      if (k === 'ok') { var order = ['liquidado', 'transito', 'sinconciliar', 'fondeo', 'devolucion']; out.sort(function (a, b) { return order.indexOf(a) - order.indexOf(b); }); }
+      else out.sort(function (a, b) { return String(colValLabel(k, a)).toLowerCase().localeCompare(String(colValLabel(k, b)).toLowerCase()); });
+      return out;
+    }
+    function closeColFilter() { var pop = q('#ip-cfpop'); if (pop) { pop.style.display = 'none'; pop.removeAttribute('data-col'); } }
+    function openColFilter(k, anchor) {
+      var pop = q('#ip-cfpop'); if (!pop) return;
+      if (pop.getAttribute('data-col') === k && pop.style.display === 'block') { closeColFilter(); return; }   // toggle mismo
+      var vals = uniqueColValues(k);
+      var sel = state.colFilters[k] || null;   // null = todos
+      pop.innerHTML =
+        '<div class="ip-cfhead">Filtrar · <b>' + esc(FILTERABLE_COLS[k] || k) + '</b></div>' +
+        '<input class="ip-cfsearch" id="ip-cfq" placeholder="Buscar valor…" autocomplete="off">' +
+        '<div class="ip-cfacts"><a id="ip-cfall">Seleccionar todo</a><a id="ip-cfnone">Nada</a></div>' +
+        '<div class="ip-cflist" id="ip-cflist">' + vals.map(function (v) {
+          var chk = !sel || sel.indexOf(v) >= 0;
+          return '<label class="ip-cfitem" data-lbl="' + esc(String(colValLabel(k, v) + ' ' + v).toLowerCase()) + '"><input type="checkbox" data-cfv="' + esc(v) + '"' + (chk ? ' checked' : '') + '><span>' + esc(colValLabel(k, v)) + '</span></label>';
+        }).join('') + '</div>' +
+        '<div class="ip-cffoot"><button class="ip-cfapply" id="ip-cfapply">Aplicar</button><button class="ip-cfclear" id="ip-cfclear">Limpiar</button></div>';
+      pop.setAttribute('data-col', k);
+      pop.style.display = 'block';
+      var rc = anchor.getBoundingClientRect(); var W = 250;
+      pop.style.left = Math.round(Math.max(8, Math.min((rc.left || 0), (window.innerWidth || 1200) - W - 8))) + 'px';
+      pop.style.top = Math.round((rc.bottom || 0) + 4) + 'px';
+      var cfq = q('#ip-cfq');
+      if (cfq) { try { cfq.focus(); } catch (e) {} cfq.addEventListener('input', function () { var s = cfq.value.toLowerCase(); qa('#ip-cflist .ip-cfitem').forEach(function (it) { it.style.display = it.getAttribute('data-lbl').indexOf(s) >= 0 ? '' : 'none'; }); }); }
+      var all = q('#ip-cfall'); if (all) all.addEventListener('click', function () { qa('#ip-cflist .ip-cfitem').forEach(function (it) { if (it.style.display !== 'none') { var x = it.querySelector('input'); if (x) x.checked = true; } }); });
+      var none = q('#ip-cfnone'); if (none) none.addEventListener('click', function () { qa('#ip-cflist .ip-cfitem').forEach(function (it) { if (it.style.display !== 'none') { var x = it.querySelector('input'); if (x) x.checked = false; } }); });
+      var apply = q('#ip-cfapply'); if (apply) apply.addEventListener('click', function () { applyColFilter(k); });
+      var clr = q('#ip-cfclear'); if (clr) clr.addEventListener('click', function () { delete state.colFilters[k]; closeColFilter(); state.page = 1; paintTable(); });
+    }
+    function applyColFilter(k) {
+      var boxes = qa('#ip-cflist input[data-cfv]');
+      var chosen = boxes.filter(function (x) { return x.checked; }).map(function (x) { return x.getAttribute('data-cfv'); });
+      if (chosen.length === boxes.length) delete state.colFilters[k];   // todo = sin filtro
+      else state.colFilters[k] = chosen;                                // subconjunto (o [] = nada)
+      closeColFilter(); state.page = 1; paintTable();
+    }
+
     // ── filtrado / orden (cliente) ──
     function visibleRows() {
       var f = state.filters, s = (f.search || '').toLowerCase();
@@ -272,6 +336,7 @@
         return okCompany &&
           (!f.journal || t.j === f.journal) &&
           (!f.estado || matchEstado(f.estado, t)) &&
+          colFiltersPass(t) &&                                        // filtros por columna estilo Excel (se COMBINAN con los demás)
           (!s || Object.keys(t).map(function (k) { return t[k]; }).join(' ').toLowerCase().indexOf(s) >= 0) &&
           (!f.from || t.d >= f.from) && (!f.to || t.d <= f.to);
       });
@@ -329,6 +394,7 @@
               '<thead><tr><th>Run</th><th>Origen</th><th>Rango</th><th>Nuevas</th><th>Dup.</th><th>Rech.</th><th>Status</th></tr></thead>' +
               '<tbody id="ip-runsbody"></tbody></table></div>';
 
+      html += '<div class="ip-cfpop" id="ip-cfpop" style="display:none"></div>';   // popup flotante del filtro por columna (Excel-style)
       html += '<div class="ip-toast" id="ip-toast"></div>';
       html += '</div>';
       container.innerHTML = html;
@@ -361,6 +427,13 @@
       return '<div class="mode-toggle" id="ip-mode">' + b('empty', 'Vacío') + b('demo', 'Demo') + b('real', 'Real') + '</div>';
     }
     function wireHead() {
+      // cierra el popup de filtro por columna al hacer click fuera de él (una vez por render, con auto-limpieza al desmontar)
+      document.addEventListener('click', function cfClose(ev) {
+        if (!document.body.contains(container)) { document.removeEventListener('click', cfClose); return; }
+        var pop = q('#ip-cfpop'); if (!pop || pop.style.display === 'none') return;
+        if (ev.target && ev.target.closest && (ev.target.closest('#ip-cfpop') || ev.target.closest('.ip-colfil'))) return;
+        closeColFilter();
+      });
       var el = q('#ip-companies');
       if (el && window.FinCompanySelector) window.FinCompanySelector.mount(el, { onChange: function () {
         if (state.mode === 'empty') return;
@@ -451,10 +524,9 @@
         '<input type="date" id="ip-fFrom" value="' + esc(f.from) + '">' +
         '<input type="date" id="ip-fTo" value="' + esc(f.to) + '">' +
         '<select id="ip-fEstado"><option value="">Estado: todos</option>' +
-          '<option value="liquidado"' + (f.estado === 'liquidado' ? ' selected' : '') + '>Liquidado</option>' +
-          '<option value="preconc"' + (f.estado === 'preconc' ? ' selected' : '') + '>Pre-conciliado</option>' +
-          '<option value="cand"' + (f.estado === 'cand' ? ' selected' : '') + '>Pendiente (con sugerencia)</option>' +
-          '<option value="sindoc"' + (f.estado === 'sindoc' ? ' selected' : '') + '>Sin documento</option>' +
+          '<option value="liquidado"' + (f.estado === 'liquidado' ? ' selected' : '') + '>Conciliado (Liquidado)</option>' +
+          '<option value="transito"' + (f.estado === 'transito' ? ' selected' : '') + '>Conciliado (En tránsito)</option>' +
+          '<option value="sinconciliar"' + (f.estado === 'sinconciliar' ? ' selected' : '') + '>Sin conciliar</option>' +
           '<option value="fondeo"' + (f.estado === 'fondeo' ? ' selected' : '') + '>Fondeo</option>' +
           '<option value="devolucion"' + (f.estado === 'devolucion' ? ' selected' : '') + '>Devolución</option></select>' +
         '<input class="grow" type="text" id="ip-fSearch" placeholder="Buscar en TODAS las columnas… (comercio, PO, folio, comprador, analítica)" value="' + esc(f.search) + '">' +
@@ -506,37 +578,42 @@
     // las devoluciones ([DEVOLUCIÓN ****XXXX]) también son positivas y no deben caer en Fondeo (dinero mal clasificado en silencio).
     function isFondeo(r) { return /FONDEO/i.test(String(r.ref || '')); }
     function isDevolucion(r) { return /DEVOLUCI/i.test(String(r.ref || '')); }
+    // Taxonomía de Esteban: 5 estados de PRIMER NIVEL. El detalle del cerebro (candidato / sin-doc / en vuelo) es
+    // PISTA secundaria en la celda, NO un estado. 'sinconciliar' absorbe pendiente-con-sugerencia + sin-documento + evaluando + neutro.
     function rowState(r) {
-      if (r.ok) return 'liquidado';
+      if (r.ok) return 'liquidado';                                  // CONCILIADO (Liquidado) — is_reconciled
       if (isFondeo(r)) return 'fondeo';
       if (isDevolucion(r)) return 'devolucion';
-      if (state.preconc && state.preconc[r.id]) return 'preconc';
+      if (state.preconc && state.preconc[r.id]) return 'transito';   // CONCILIADO (En tránsito) — bill asignada, no cerrada (Pieza #3/#4). Reemplaza 'preconc'.
+      return 'sinconciliar';                                         // TODO lo demás
+    }
+    // Pista secundaria SOLO para 'sinconciliar' (no cambia el estado ni el color): candidato del cerebro, sin-doc, o nada.
+    function suggHint(r) {
       var s = state.sugg[r._id];
-      if (s && s.cand) return (s.cand.candidatos && s.cand.candidatos.length) ? 'pend-cand' : 'pend-sindoc';
-      if (s && s.loading) return 'pend-eval';
-      return 'pend';
+      if (s && s.cand && s.cand.candidatos && s.cand.candidatos.length) return { kind: 'cand', cand: s.cand.candidatos[0] };
+      if (s && s.cand) return { kind: 'sindoc' };   // evaluado, sin candidatos → link buscar
+      return { kind: 'plain' };                       // en vuelo o sin evaluar → 'Sin conciliar' a secas (sin 'evaluando' como estado)
     }
     function stateCell(r) {
       var st = rowState(r);
-      if (st === 'liquidado') return '<span class="ip-est liq">✓ Liquidado</span>';
+      if (st === 'liquidado') return '<span class="ip-est liq" title="Conciliado y liquidado (is_reconciled)">✓ Conciliado</span>';
+      if (st === 'transito')  { var pc = state.preconc[r.id] || {}; return '<span class="ip-est tra" title="Conciliado en tránsito — bill asignada, aún no cerrada">◐ En tránsito</span>' + (pc.bill_name ? ' <span class="ip-est-bill">' + esc(pc.bill_name) + '</span>' : ''); }
       if (st === 'fondeo')    return '<span class="ip-est fon">◇ Fondeo</span>';
       if (st === 'devolucion') return '<span class="ip-est dev-ret">↩ Devolución</span>';
-      if (st === 'preconc')   { var pc = state.preconc[r.id] || {}; return '<span class="ip-est pre">⏳ Pre-conciliado</span>' + (pc.bill_name ? ' <span class="ip-est-bill">' + esc(pc.bill_name) + '</span>' : ''); }
-      if (st === 'pend-cand') { var c = (state.sugg[r._id].cand.candidatos || [])[0] || {}; return '<span class="ip-est cand">● Pendiente</span> <span class="ip-est-bill" title="mejor candidato del cerebro">' + esc(c.bill_name || '') + ' · ' + Math.round((c.score || 0) * 100) + '</span>'; }
-      if (st === 'pend-sindoc') return '<span class="ip-est sindoc">○ Sin documento</span> <a class="ip-est-buscar" data-buscar="' + r._id + '">buscar bill</a>';
-      if (st === 'pend-eval') return '<span class="ip-est ev">◌ evaluando…</span>';
-      return '<span class="ip-est pend">● Pendiente</span>';
+      // sinconciliar + pista del cerebro (no es estado)
+      var h = suggHint(r);
+      if (h.kind === 'cand') { var c = h.cand || {}; return '<span class="ip-est sinc">○ Sin conciliar</span> <span class="ip-est-bill" title="mejor candidato del cerebro (pista, no estado)">' + esc(c.bill_name || '') + ' · ' + Math.round((c.score || 0) * 100) + '</span>'; }
+      if (h.kind === 'sindoc') return '<span class="ip-est sinc">○ Sin conciliar</span> <a class="ip-est-buscar" data-buscar="' + r._id + '">buscar bill</a>';
+      return '<span class="ip-est sinc">○ Sin conciliar</span>';
     }
     function matchEstado(f, t) {
       var st = rowState(t);
       switch (f) {
-        case 'liquidado': case 'ok': return st === 'liquidado';                 // 'ok' = compat panel Hoy
+        case 'liquidado': case 'ok': return st === 'liquidado';          // 'ok' = compat panel Hoy
+        case 'transito':  return st === 'transito';
         case 'fondeo':    return st === 'fondeo';
         case 'devolucion': return st === 'devolucion';
-        case 'preconc':   return st === 'preconc';
-        case 'cand':      return st === 'pend-cand';
-        case 'sindoc':    return st === 'pend-sindoc';
-        case 'pend':      return st === 'pend-cand' || st === 'pend-sindoc' || st === 'pend-eval' || st === 'pend';
+        case 'sinconciliar': case 'pend': return st === 'sinconciliar';  // 'pend' = compat panel Hoy
         default: return true;
       }
     }
@@ -585,7 +662,14 @@
 
       var tbl = rows.length ? '<div class="ip-tblscroll"><table><thead><tr>' +
         '<th class="chk"><input type="checkbox" id="ip-checkall"' + (allSel ? ' checked' : '') + ' title="Seleccionar toda la vista filtrada (' + rows.length + ')"></th>' +
-        vis.map(function (c) { return '<th class="sortable" data-sort="' + c.k + '"' + (c.k === 'amt' ? ' style="text-align:right"' : '') + '>' + esc(c.lbl) + (state.sortK === c.k ? '<span class="sarr">' + (state.sortDir > 0 ? '▲' : '▼') + '</span>' : '') + '</th>'; }).join('') +
+        vis.map(function (c) {
+          var isF = Object.prototype.hasOwnProperty.call(FILTERABLE_COLS, c.k);
+          var active = isF && state.colFilters[c.k] != null;
+          return '<th class="sortable' + (active ? ' filon' : '') + '" data-sort="' + c.k + '"' + (c.k === 'amt' ? ' style="text-align:right"' : '') + '>' +
+            '<span class="thlbl">' + esc(c.lbl) + (state.sortK === c.k ? '<span class="sarr">' + (state.sortDir > 0 ? '▲' : '▼') + '</span>' : '') + '</span>' +
+            (isF ? '<span class="ip-colfil' + (active ? ' on' : '') + '" data-colfil="' + c.k + '" title="Filtrar columna">▾</span>' : '') +
+          '</th>';
+        }).join('') +
         '</tr></thead><tbody>' +
         slice.map(function (t) {
           var chev = t.ok ? '' : '<button class="ip-expbtn' + (state.expanded === t._id ? ' open' : '') + '" data-expand="' + t._id + '" title="Sugerencias de conciliación" aria-label="Ver sugerencias">▶</button>';
@@ -600,13 +684,11 @@
         : '<div class="ip-empty">Sin movimientos con estos filtros. Ajusta el rango o la búsqueda.</div>';
       var w = q('#ip-tblwrap'); if (w) w.innerHTML = tbl;
 
-      var conc = rows.filter(function (t) { return t.ok; }).length;
-      var fond = rows.filter(function (t) { return !t.ok && isFondeo(t); }).length;
-      var devo = rows.filter(function (t) { return !t.ok && !isFondeo(t) && isDevolucion(t); }).length;
-      var pend = rows.length - conc - fond - devo;
-      var resid = rows.reduce(function (a, t) { return (isFondeo(t) || isDevolucion(t)) ? a : a + (t.res || 0); }, 0);   // fondeos y devoluciones NO cuentan al residual pendiente
+      var cnt = { liquidado: 0, transito: 0, fondeo: 0, devolucion: 0, sinconciliar: 0 };
+      rows.forEach(function (t) { cnt[rowState(t)]++; });
+      var resid = rows.reduce(function (a, t) { return rowState(t) === 'sinconciliar' ? a + (t.res || 0) : a; }, 0);   // solo lo SIN CONCILIAR suma al residual pendiente
       var nSel = rows.filter(function (t) { return state.sel[t._id]; }).length;
-      var ag = q('#ip-aggs'); if (ag) ag.textContent = rows.length + ' líneas · ' + conc + ' liquidadas · ' + pend + ' pendientes' + (fond ? ' · ' + fond + ' fondeos' : '') + (devo ? ' · ' + devo + ' devoluciones' : '') + ' · residual ' + money(resid) + (nSel ? ' · ' + nSel + ' seleccionadas' : '');
+      var ag = q('#ip-aggs'); if (ag) ag.textContent = rows.length + ' líneas · ' + cnt.liquidado + ' conciliadas · ' + cnt.transito + ' en tránsito · ' + cnt.sinconciliar + ' sin conciliar' + (cnt.fondeo ? ' · ' + cnt.fondeo + ' fondeos' : '') + (cnt.devolucion ? ' · ' + cnt.devolucion + ' devoluciones' : '') + ' · residual ' + money(resid) + (nSel ? ' · ' + nSel + ' seleccionadas' : '');
 
       var bn = q('#ip-selbanner');
       if (bn) {
@@ -634,6 +716,8 @@
       if (ca) ca.addEventListener('change', function () { rows.forEach(function (t) { if (ca.checked) state.sel[t._id] = true; else delete state.sel[t._id]; }); paintTable(); });
       qa('input[data-row]').forEach(function (rc) { rc.addEventListener('change', function () { var id = +rc.getAttribute('data-row'); if (rc.checked) state.sel[id] = true; else delete state.sel[id]; paintTable(); }); });
       qa('th[data-sort]').forEach(function (th) { th.addEventListener('click', function () { var k = th.getAttribute('data-sort'); if (state.sortK === k) state.sortDir *= -1; else { state.sortK = k; state.sortDir = 1; } paintTable(); }); });
+      qa('.ip-colfil').forEach(function (el) { el.addEventListener('click', function (e) { e.stopPropagation(); openColFilter(el.getAttribute('data-colfil'), el); }); });   // Excel-filter: icono ▾ (stopPropagation → no dispara el sort del th)
+      var scr = q('.ip-tblscroll'); if (scr) scr.addEventListener('scroll', closeColFilter);   // el popup es fixed → cierra al hacer scroll para no desalinearse
 
       // wiring del acordeón de sugerencias (Etapa C) — solo existe en filas expandidas
       qa('button[data-expand]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); toggleExpand(+b.getAttribute('data-expand')); }); });
@@ -921,11 +1005,11 @@
           ? '<div class="ip-tn">' + money(et.suma) + ' <span class="ip-tnc">(' + (et.count || 0) + ')</span></div>'
           : '<div class="ip-tn na">no disponible · reintenta</div>') +
         '<div class="ip-tsub">pendings, no cuentan</div></div>';
-      var c2 = '<div class="ip-tcard red' + (estado === 'pend' ? ' active' : '') + '" data-today="pend">' +
-        '<div class="ip-tk">🔴 Conciliable pendiente</div>' +
+      var c2 = '<div class="ip-tcard red' + (estado === 'sinconciliar' ? ' active' : '') + '" data-today="sinconciliar">' +
+        '<div class="ip-tk">🔴 Sin conciliar</div>' +
         '<div class="ip-tn">' + (cp.total || 0) + ' <span class="ip-tnc">líneas</span></div>' +
         '<div class="ip-tsub">hoy ' + (cp.hoy || 0) + ' · 1-3d ' + (cp.d1_3 || 0) + ' · +3d ' + (cp.d3plus || 0) + ' · ' + money(cp.suma) + '</div></div>';
-      var c3 = '<div class="ip-tcard green' + (estado === 'ok' ? ' active' : '') + '" data-today="ok">' +
+      var c3 = '<div class="ip-tcard green' + (estado === 'liquidado' ? ' active' : '') + '" data-today="liquidado">' +
         '<div class="ip-tk">🟢 Conciliadas hoy</div>' +
         '<div class="ip-tn">' + (ch.total || 0) + '</div>' +
         '<div class="ip-tsub">auto ' + (ch.auto || 0) + ' · manual ' + ((ch.boton || 0) + (ch.widget || 0)) + '</div></div>';
@@ -933,8 +1017,8 @@
       qa('#ip-today .ip-tcard').forEach(function (card) {
         card.addEventListener('click', function () {
           var k = card.getAttribute('data-today');
-          if (k === 'pend' || k === 'ok') {
-            var target = (k === 'pend') ? 'pend' : 'ok';
+          if (k === 'sinconciliar' || k === 'liquidado') {
+            var target = k;
             state.filters.estado = (state.filters.estado === target) ? '' : target;   // toggle
             state.page = 1; syncEstadoSelect(); paintTable(); paintToday();
           } else {
