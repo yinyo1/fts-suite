@@ -20,7 +20,7 @@
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
   var IP_REAL_ENABLED = true;             // Real HABILITADO en producción (flip 2026-07-23; checklist: JWT ok, Cloudflare diferido)
-  var IP_BUILD = '0.5.5';                 // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.6';                 // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -490,7 +490,7 @@
       var vis = COLS.filter(function (c) { return c.vis; });
       var allSel = rows.length > 0 && rows.every(function (t) { return state.sel[t._id]; });
 
-      var tbl = rows.length ? '<div style="overflow-x:auto"><table><thead><tr>' +
+      var tbl = rows.length ? '<div class="ip-tblscroll"><table><thead><tr>' +
         '<th class="chk"><input type="checkbox" id="ip-checkall"' + (allSel ? ' checked' : '') + ' title="Seleccionar toda la vista filtrada (' + rows.length + ')"></th>' +
         vis.map(function (c) { return '<th class="sortable" data-sort="' + c.k + '"' + (c.k === 'amt' ? ' style="text-align:right"' : '') + '>' + esc(c.lbl) + (state.sortK === c.k ? '<span class="sarr">' + (state.sortDir > 0 ? '▲' : '▼') + '</span>' : '') + '</th>'; }).join('') +
         '</tr></thead><tbody>' +
