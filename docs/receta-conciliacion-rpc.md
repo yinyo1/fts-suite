@@ -293,3 +293,44 @@ Ejecución n8n **`45112`** · CBAUTO **`mail.message 2920067`** (journal 61, `20
 2. **La verdad de terreno de una corrida vive en ODOO** (CBAUTO + reconciliaciones), robusto a que la manual-execution de n8n persista o no. Regla: "JSON pegado no es evidencia; evidencia es ejecución con ID releíble" (memoria `evidencia-ejecucion-no-json-pegado`).
 3. **Runner webhook para llamar endpoints con JWT:** activar en UI a veces NO registra el webhook (404, cuadra con §17 "API rechaza activar; toggle UI no siempre propaga") → path nuevo + curl directo lo resolvió; evidencia = execution en el workflow llamado (no en el runner). El grep de llaves en tool-results va con **bareword** (el escapado `\"` rompe el anclado por comillas).
 4. **B.2 RE-CONFIRMADO NO-construido 3×:** `captura-status` `Respond OK` = `{por_journal, global, cron, residual_umbral}`, cero cubetas (ejec 44762). El "conciliadas_hoy:6 verificado en vivo" fue fantasma (= diseño/mock).
+
+## 19. Hallazgo "Manual:BILL" — el "98% sin documento" es un artefacto del workaround del equipo (2026-07-24)
+
+**Origen:** Excel de Gera (BASE DE DATOS TRANSACCIONES) mostró 270/310 movimientos Jeeves jun-jul con BILL capturado y status "PAGADA". Forense Odoo READ-ONLY confirmó y redefinió el diagnóstico. **Cambia el diseño del motor.**
+
+### 19.1 El proceso real del equipo (confirmado por Esteban)
+RFQ (Gibrán, desde uid 25) → confirmación Felipe/Montalvo → PO → **fondeo de la tarjeta Jeeves** → compra → **validan que monto-tarjeta = monto-PO** → crean el **bill** (que trae la **analítica de proyecto**) → lo marcan `paid` con una **entrada MANUAL "Manual: BILLxxxx"** en el journal 61. **NO era error:** era la ÚNICA forma de (a) cerrar el ciclo sin conciliación bancaria (que nunca existió hasta esta semana) y (b) cargar el gasto al proyecto (la analítica viaja PO→bill; por eso pagan el bill). El equipo tenía un proceso **correcto en intención**; solo les faltaba la conciliación bancaria.
+
+### 19.2 El mecanismo contable (rastreo crudo, caso BILL2881 OXXO Gas $479.80)
+- Bill `BILL2881` (id 57954): `posted`, `payment_state=paid`, residual 0.
+- Su pago = move `57961 "BNK6/2026/00497 (BILL2881)"`, journal 61, con 2 patas:
+  - línea 196873: cuenta **17 (201.01.01)** +479.80, `name "Manual: BILL2881"`, `reconciled=true` (casa el bill vía full_reconcile 8511).
+  - línea 196872: cuenta **223 (102.01.007 Jeeves banco)** −479.80.
+- **La línea Jeeves REAL** (statement line 30542, importada por captura-jeeves) queda `is_reconciled=false`, residual 479.80 — y **su pata de liquidez también pega a 223**. → **el banco 223 recibe −479.80 DOS VECES** (la manual + la real) = doble-contabilización.
+- El pago **NO está en 186** (Outstanding Payments). El backlog 186 ($12.16M, 980 líneas viejas 2025: subcontratistas eléctricos, etc.) es un **problema SEPARADO**, no el de tarjetas.
+
+### 19.3 Números clave (crudos, 2026-07-24)
+- **Corrupción del 223:** 550 entradas "Manual: BILL" con pata en 223 suman **−$1,245,329.34**. Saldo Odoo 223 = **−$1,520,157.38** → sin duplicados ≈ **−$274,828**; **~82% del saldo es ficción.** (Jeeves availableBalance $171,458 = crédito disponible, no comparable directo al GL.)
+- Por mes (patas 223): Feb −252k/84 · Mar −324k/108 · Abr −281k/92 · Jun −195k/142 · Jul −114k/120.
+- **~782 "Manual: BILL"** totales en cuenta 17; solo **550 con pata 223** → las ~232 restantes se fondearon de OTRA cuenta (censar en Fase 3).
+- **Ritmo ACTIVO ~30-60/semana** (create_date W24→W30: 18·33·32·44·62·42·31). Cada semana +~40 duplicados + más corrupción → **urgencia del cambio de proceso.**
+- **Calidad analítica: 100%** de las líneas de producto de bills del equipo (muestra 40/40) traen `analytic_distribution` a proyecto+rubro (`{"1176":100,"3083":100}`, `{"668":100,"1176":100}`, `{"478":100,...}`, una compuesta `{"509,1176":100}`). **El bill del equipo es el productor de la analítica.**
+- jun-jul: **324 paid / 97 not_paid / 1 partial = 423 bills (77% paid)** — corrobora el 270/310.
+
+### 19.4 Los 3 puntos ciegos del motor (v1)
+1. **Bills pagados-vía-manual** → `paid`/residual 0 → fuera del pool abierto. El motor no puede casar la línea real contra ellos.
+2. **Cuenta 285 "Account Payable":** 25 bills abiertos viven en 285 (no la 17 que filtra el motor) → invisibles aunque abiertos. (Ej.: UBER `BILL/2026/07/0001` $500, abierto, cta 285.)
+3. **186 no es el target:** los pagos chicos de tarjeta son duplicados manuales en journal 61, no outstanding en 186.
+
+### 19.5 Falso candidato (por qué las reglas importan)
+Línea mercadopago $500 07-02: B.1 sugirió `BILL2954` (OXXO Gas $500, cta 17) — **falso** (coincidencia de monto, comercio "mercadopago" débil). El bill REAL era **UBER `BILL/2026/07/0001`** (cta 285, invisible al pool). **Score 0.32 → las 5 reglas lo frenaron a `sugerida`, NO auto** — el candado funcionó. (`BILL3015` que el Excel llamó "AEROTRIP" es en Odoo OXXO SA de CV $167 — ref de bill equivocada en el Excel.)
+
+### 19.6 Decisiones firmadas (Esteban, 2026-07-24)
+1. **Sync SAT baja de rango:** a verificador de UUID/vigencia, NO fabricador de bills. El equipo produce bills con analítica; el CFDI no sabe el proyecto.
+2. **Pool del motor v2 = cuenta 17 + 285 + pagados-vía-Manual (desenredo).**
+3. **Señales de match: monto → fecha → comprador.** Comprador leído del `payment_ref` de la LÍNEA (`[Mateo Salazar ****4197]`); `create_uid` del PO **inservible** (uniforme uid 25).
+4. **Fase 3 = desenredo masivo ~550+** (patrón §12: unwind del duplicado → reconciliar línea real contra bill → borrar/revertir la entrada manual, limpia los $1.245M del 223). Edge: parciales (caso $576.11/residual 70.99, línea 30466).
+5. **Corte de proceso:** fecha "cero Manual:BILL nuevos" — el equipo crea el bill y NO lo paga; el motor cierra el ciclo.
+
+### 19.7 Cross-match X/Y/Z
+Ver `docs/analisis/cross-match-2026-07.md` (batch read-only, insumo #1 de Fase 3): X directo (bills abiertos 17+285) / Y recuperable (desenredo pagados-manual) / Z sin documento real — excluyendo los `[FONDEO]` del denominador (no son compras).
