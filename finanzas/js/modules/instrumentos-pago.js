@@ -20,7 +20,7 @@
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
   var IP_REAL_ENABLED = true;             // Real HABILITADO en producción (flip 2026-07-23; checklist: JWT ok, Cloudflare diferido)
-  var IP_BUILD = '0.5.8';                 // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.9';                 // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -28,6 +28,7 @@
   var EP_STATUS = '/fin/captura-status', EP_TX = '/fin/captura-transacciones', EP_DATASET = '/fin/captura-dataset';
   // Etapa C — motor de conciliación (contrato real; solo se ejercita al des-gatear Real).
   var EP_SUGERENCIAS = '/fin/captura-sugerencias', EP_CONCILIAR = '/fin/captura-conciliar';
+  var EP_BUSCAR = '/fin/captura-buscar-bills';   // Pieza #1: buscador manual de bills (17+285). Degrada si el workflow está inactivo.
 
   var DEFAULT_CRON = { days: [1, 2, 3, 4, 5], start_hour: 7, regular_end_hour: 16, regular_interval_min: 30, peak_hour: 17, peak_interval_min: 10, close_hour: 18, label: 'L–V 7–18h · 30 min · pico 10 min' };
 
@@ -639,7 +640,9 @@
       qa('input[data-cand]').forEach(function (rc) { rc.addEventListener('change', function () { var id = +rc.getAttribute('data-cand'), idx = +rc.getAttribute('data-idx'); var s = state.sugg[id]; if (s) { s.sel = idx; if (state.expanded === id) paintTable(); } }); });
       qa('button[data-conc]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); doConciliar(+b.getAttribute('data-conc'), b); }); });
       qa('button[data-reload]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); var id = +b.getAttribute('data-reload'); delete state.sugg[id]; loadSugg(state.allRows[id]); paintTable(); }); });
-      qa('[data-buscar]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); toggleExpand(+b.getAttribute('data-buscar')); }); });   // "buscar bill" (Pieza #1 enriquece)
+      qa('[data-buscar]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); toggleExpand(+b.getAttribute('data-buscar')); }); });   // "buscar bill" (link del estado sin-doc → abre acordeón)
+      qa('[data-billsearch]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); buscarBills(+b.getAttribute('data-billsearch')); }); });   // Pieza #1: botón Buscar del acordeón
+      qa('.ip-busca-in').forEach(function (inp) { inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); buscarBills(+inp.getAttribute('data-bs-folio') || +inp.getAttribute('data-bs-prov') || +inp.getAttribute('data-bs-monto') || +inp.getAttribute('data-bs-tol')); } }); });
 
       paintSem();
     }
@@ -705,11 +708,12 @@
           '<span class="ip-cand-top"><span class="ip-cand-bill">' + esc(c.bill_name) + '</span>' +
             '<span class="ip-cand-partner">' + esc(c.partner) + '</span>' +
             (c.pre_marcado ? '<span class="ip-chip pre">pre-marcado</span>' : '') +
+            (c._fromSearch ? '<span class="ip-chip busca">🔎 buscado</span>' : '') +
             (c.conflicto ? '<span class="ip-chip conf">⚠ revisar</span>' : '') + '</span>' +
           '<span class="ip-cand-sub"><span class="ip-cand-monto">' + money(c.monto_bill) + '</span>' +
             '<span class="ip-cand-date">' + esc(c.date_bill) + ' · ' + esc(dd) + '</span>' +
             '<span class="ip-band ' + esc(c.banda) + '">' + esc(c.banda) + '</span>' +
-            scoreBar(c.score) + '</span>' +
+            (c.score == null ? (c.cuenta ? '<span class="ip-cand-cta">cta ' + esc(c.cuenta) + '</span>' : '') : scoreBar(c.score)) + '</span>' +
         '</span></label>';
     }
     function resultHtml(t, r) {
@@ -722,6 +726,64 @@
       return '<div class="ip-acc"><div class="ip-res bad"><b>' + esc(r.code || 'ERROR') + '</b> — ' + esc(r.msg || 'No se pudo conciliar.') + '</div>' +
         '<div class="ip-acc-actions"><button class="ip-acc-reload" data-reload="' + t._id + '">↻ Recargar sugerencias</button></div></div>';
     }
+    // ── Pieza #1: buscador manual de bills (17+285) dentro del acordeón ──
+    // Enriquece la MISMA lista de candidatos (append + dedupe) → el botón Conciliar existente hace el write, cero lógica nueva.
+    function readVal(sel) { var el = q(sel); return el ? String(el.value || '').trim() : ''; }
+    function buscaHtml(t) {
+      var b = (state.sugg[t._id] && state.sugg[t._id].busca) || null;
+      var st = '';
+      if (b) {
+        if (b.status === 'loading') st = '<span class="ip-busca-st load"><span class="ip-accspin"></span> buscando…</span>';
+        else if (b.status === 'unavailable') st = '<span class="ip-busca-st na">' + esc(b.msg || 'Buscador no disponible.') + '</span>';
+        else if (b.status === 'error') st = '<span class="ip-busca-st err">' + esc(b.msg || 'Error al buscar.') + '</span>';
+        else if (b.status === 'done') st = '<span class="ip-busca-st ok">' + b.count + ' encontrado' + (b.count === 1 ? '' : 's') +
+          (b.count > 0 && b.added === 0 ? ' (ya estaban en la lista)' : (b.added ? ' · ' + b.added + ' agregado' + (b.added === 1 ? '' : 's') : '')) +
+          (b.truncated ? ' · hay más, afina la búsqueda' : '') + '</span>';
+      }
+      return '<div class="ip-busca"><div class="ip-busca-tit">¿No está el bill correcto? <b>Búscalo</b> <span class="ip-busca-sub">· cuentas 17 y 285, bills abiertos</span></div>' +
+        '<div class="ip-busca-form">' +
+          '<input class="ip-busca-in" data-bs-folio="' + t._id + '" placeholder="Folio (BILL…)" autocomplete="off">' +
+          '<input class="ip-busca-in" data-bs-prov="' + t._id + '" placeholder="Proveedor" autocomplete="off">' +
+          '<input class="ip-busca-in mon" type="number" step="0.01" data-bs-monto="' + t._id + '" placeholder="Monto">' +
+          '<input class="ip-busca-in tol" type="number" step="0.01" data-bs-tol="' + t._id + '" placeholder="± tol" value="0.50">' +
+          '<button class="ip-busca-btn" data-billsearch="' + t._id + '">🔎 Buscar</button>' +
+        '</div>' + (st ? '<div class="ip-busca-status">' + st + '</div>' : '') + '</div>';
+    }
+    function buscarBills(id) {
+      var row = state.allRows[id]; if (!row) return;
+      var s = state.sugg[id]; if (!s) { s = state.sugg[id] = { loading: false, cand: { nivel: 'sin-documento', candidatos: [] }, sel: null }; }
+      if (!s.cand) s.cand = { nivel: 'sin-documento', candidatos: [] };
+      var folio = readVal('[data-bs-folio="' + id + '"]'), prov = readVal('[data-bs-prov="' + id + '"]');
+      var monto = readVal('[data-bs-monto="' + id + '"]'), tol = readVal('[data-bs-tol="' + id + '"]');
+      if (!folio && !prov && !monto) { s.busca = { status: 'error', msg: 'Escribe folio, proveedor o monto.' }; paintTable(); return; }
+      s.busca = { status: 'loading' }; paintTable();
+      if (state.mode !== 'real') {
+        setTimeout(function () { if (!document.body.contains(container)) return; s.busca = { status: 'unavailable', msg: 'El buscador solo opera en modo Real.' }; paintTable(); }, 300);
+        return;
+      }
+      var params = { line_id: row.id, line_date: row.d, limit: 20, companies: window.FinState.getCompanies() };
+      if (folio) params.folio = folio;
+      if (prov) params.proveedor = prov;
+      if (monto) { params.monto = Number(monto); params.monto_tol = tol ? Number(tol) : 0.5; }
+      window.FinClient.call(EP_BUSCAR, params)
+        .then(function (data) {
+          // endpoint inactivo → n8n responde 404 sin `resultados` (FinClient no lo rechaza) → degrada elegante
+          if (!data || !Array.isArray(data.resultados)) { s.busca = { status: 'unavailable', msg: 'Buscador no disponible aún (endpoint sin activar).' }; paintTable(); return; }
+          var existing = {}; (s.cand.candidatos || []).forEach(function (c) { existing[c.bill_aml_id] = true; });
+          var added = 0;
+          data.resultados.forEach(function (c) { if (!existing[c.bill_aml_id]) { c._fromSearch = true; s.cand.candidatos.push(c); existing[c.bill_aml_id] = true; added++; } });
+          if ((s.cand.nivel === 'sin-documento') && s.cand.candidatos.length) s.cand.nivel = 'sugerida';
+          if (s.sel == null && s.cand.candidatos.length) s.sel = 0;   // preselecciona el primero para habilitar Conciliar
+          s.busca = { status: 'done', count: data.resultados.length, added: added, truncated: !!data.truncated };
+          paintTable();
+        })
+        .catch(function (err) {
+          var code = (err && err.code) || '';
+          var unavailable = code === 'NETWORK' || code === 'BAD_RESPONSE' || (err && err.http === 404);
+          s.busca = unavailable ? { status: 'unavailable', msg: 'Buscador no disponible (sin conexión / endpoint inactivo).' } : { status: 'error', msg: (err && err.msg) || code || 'Error al buscar.' };
+          paintTable();
+        });
+    }
     function accordionHtml(t) {
       var s = state.sugg[t._id];
       if (!s || s.loading) return '<div class="ip-acc"><div class="ip-acc-loading"><span class="ip-accspin"></span> Cargando sugerencias…</div></div>';
@@ -732,13 +794,15 @@
       var list = cand.candidatos || [];
       if (nivel === 'sin-documento' || !list.length) {
         return '<div class="ip-acc">' + nivelBadge(nivel) +
-          '<div class="ip-acc-nodoc">Sin bill que conciliar — esta línea va al <b>censo</b> para captura / registro manual.</div></div>';
+          '<div class="ip-acc-nodoc">Sin bill que conciliar automáticamente — <b>búscalo abajo</b>, o esta línea va al <b>censo</b> para captura / registro manual.</div>' +
+          buscaHtml(t) + '</div>';
       }
       var chosen = (s.sel != null && list[s.sel]);
       return '<div class="ip-acc">' + nivelBadge(nivel) +
         '<div class="ip-acc-list">' + list.map(function (c, i) { return candHtml(t, c, i); }).join('') + '</div>' +
         '<div class="ip-acc-actions"><button class="ip-acc-conc" data-conc="' + t._id + '"' + (chosen ? '' : ' disabled') + '>Conciliar</button>' +
-          '<span class="ip-acc-hint">Elige el documento y confirma. La conciliación escribe en Odoo (modo real).</span></div></div>';
+          '<span class="ip-acc-hint">Elige el documento y confirma. La conciliación escribe en Odoo (modo real).</span></div>' +
+        buscaHtml(t) + '</div>';
     }
     function demoOutcome(cand) {
       var o = cand.demo_outcome || 'full';

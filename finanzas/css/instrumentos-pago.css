@@ -209,6 +209,7 @@
 .ip-view .ip-chip{font-family:var(--ip-mono);font-size:10px;font-weight:700;border-radius:10px;padding:2px 8px;text-transform:uppercase;letter-spacing:.4px}
 .ip-view .ip-chip.pre{background:#e7f6ed;color:#0d7a3f}
 .ip-view .ip-chip.conf{background:#fdf3d9;color:#8a6400}
+.ip-view .ip-chip.busca{background:#e6effc;color:#0e5fd8}
 .ip-view .ip-cand-sub{display:flex;flex-wrap:wrap;align-items:center;gap:12px;font-size:12px;color:var(--steel)}
 .ip-view .ip-cand-monto{font-family:var(--ip-mono);font-weight:600;color:var(--ink)}
 .ip-view .ip-cand-date{font-family:var(--ip-mono);font-size:11.5px}
@@ -232,6 +233,25 @@
 .ip-view .ip-acc-hint{font-size:11.5px;color:var(--steel)}
 .ip-view .ip-acc-reload{background:#fff;border:1px solid var(--ip-line);color:var(--ip-accent);border-radius:6px;padding:6px 13px;font-family:inherit;font-weight:600;font-size:12.5px;cursor:pointer}
 .ip-view .ip-acc-reload:hover{border-color:var(--ip-accent)}
+
+/* ---- Pieza #1: buscador manual de bills en el acordeón ---- */
+.ip-view .ip-cand-cta{font-family:var(--ip-mono);font-size:10.5px;font-weight:600;border-radius:4px;padding:1px 7px;background:#e6effc;color:#0e5fd8}
+.ip-view .ip-busca{margin-top:14px;padding-top:12px;border-top:1px dashed var(--ip-line)}
+.ip-view .ip-busca-tit{font-size:13px;color:var(--ip-ink);margin-bottom:8px}
+.ip-view .ip-busca-sub{font-size:11.5px;color:var(--steel);font-weight:400}
+.ip-view .ip-busca-form{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ip-view .ip-busca-in{border:1px solid var(--ip-line);border-radius:6px;padding:7px 10px;font-family:inherit;font-size:13px;min-width:130px;flex:1 1 130px}
+.ip-view .ip-busca-in.mon{max-width:110px;flex:0 0 110px;min-width:0;font-family:var(--ip-mono)}
+.ip-view .ip-busca-in.tol{max-width:80px;flex:0 0 80px;min-width:0;font-family:var(--ip-mono)}
+.ip-view .ip-busca-in:focus{outline:none;border-color:var(--ip-accent)}
+.ip-view .ip-busca-btn{background:#fff;border:1px solid var(--ip-accent);color:var(--ip-accent);border-radius:6px;padding:7px 15px;font-family:inherit;font-weight:600;font-size:13px;cursor:pointer;white-space:nowrap}
+.ip-view .ip-busca-btn:hover{background:var(--ip-accent);color:#fff}
+.ip-view .ip-busca-status{margin-top:8px;font-size:12.5px}
+.ip-view .ip-busca-st{display:inline-flex;align-items:center;gap:6px;font-weight:500}
+.ip-view .ip-busca-st.load{color:var(--steel)}
+.ip-view .ip-busca-st.ok{color:var(--ip-ok)}
+.ip-view .ip-busca-st.na{color:#8a6400}
+.ip-view .ip-busca-st.err{color:var(--ip-bad)}
 .ip-view .ip-res{font-size:13.5px;font-weight:600;border-radius:6px;padding:10px 13px}
 .ip-view .ip-res.ok{background:#e7f6ed;color:#0d7a3f}
 .ip-view .ip-res.partial{background:#fdf3d9;color:#8a6400}
