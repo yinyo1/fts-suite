@@ -20,7 +20,7 @@
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
   var IP_REAL_ENABLED = true;             // Real HABILITADO en producción (flip 2026-07-23; checklist: JWT ok, Cloudflare diferido)
-  var IP_BUILD = '0.5.3';                 // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.4';                 // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -205,8 +205,24 @@
     function visibleRows() {
       var f = state.filters, s = (f.search || '').toLowerCase();
       var cos = window.FinState.getCompanies();
+      // Filtro de empresa TOLERANTE (3 niveles). El demo trae company_id (id); el endpoint real trae rs (razón social) sin id.
+      // Clave: distinguir "rs RECONOCIDO pero deseleccionado" (chip apagado → ocultar, filtro legítimo) de "rs DESCONOCIDO"
+      // (typo/null/razón nueva → MOSTRAR, fail-open + warn). Ocultar dinero en silencio es el peor modo de fallo, pero eso
+      // SOLO aplica a lo desconocido — NO a una empresa reconocida que el usuario deseleccionó a propósito.
+      var RS_BY_ID = { 1: 'Servicios FTS', 6: 'FTS LLC' };
+      var ALL_RS = Object.keys(RS_BY_ID).map(function (k) { return RS_BY_ID[k]; });   // TODAS las razones sociales reconocidas
+      var cosRs = cos.map(function (id) { return RS_BY_ID[id]; });                    // solo las SELECCIONADAS
       var rows = state.allRows.filter(function (t) {
-        return (cos.indexOf(t.company_id) >= 0) &&
+        var okCompany;
+        if (t.company_id != null) {                                                  // 1: contrato con id (demo)
+          okCompany = cos.indexOf(t.company_id) >= 0;
+        } else if (t.rs != null && ALL_RS.indexOf(t.rs) >= 0) {                       // 2: rs RECONOCIDO → filtro por selección (chip apagado oculta)
+          okCompany = cosRs.indexOf(t.rs) >= 0;
+        } else {                                                                     // 3: rs null o NO reconocido → fail-open + warn
+          okCompany = true;
+          if (window.console && console.warn) console.warn('[instrumentos-pago] fila sin company_id ni rs reconocido — MOSTRADA (fail-open):', t.id, t.rs);
+        }
+        return okCompany &&
           (!f.journal || t.j === f.journal) &&
           (!f.estado || (f.estado === 'ok' ? t.ok : !t.ok)) &&
           (!s || Object.keys(t).map(function (k) { return t[k]; }).join(' ').toLowerCase().indexOf(s) >= 0) &&
