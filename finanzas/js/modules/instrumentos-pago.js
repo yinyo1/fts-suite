@@ -20,7 +20,7 @@
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
   var IP_REAL_ENABLED = true;             // Real HABILITADO en producción (flip 2026-07-23; checklist: JWT ok, Cloudflare diferido)
-  var IP_BUILD = '0.5.10';                // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.11';                // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -95,7 +95,16 @@
   // vista (leen `state`). COLS es de módulo → no puede verlas. Estos hooks se pueblan desde createView.
   // Default seguro (no ReferenceError) por si se invocan antes de montar la vista — fue la regresión v0.5.7.
   var IP_rowState  = function (r) { return (r && r.ok) ? 'liquidado' : 'pend'; };
-  var IP_stateCell = function (r) { return (r && r.ok) ? '<span class="ip-est liq">✓ Liquidado</span>' : '<span class="ip-est pend">● Pendiente</span>'; };
+  var IP_stateCell = function (r) { return (r && r.ok) ? '<span class="ip-est liq">✓ Conciliado (Liquidado)</span>' : '<span class="ip-est sinc">○ Sin conciliar</span>'; };
+
+  // "Status Jeeves" = estado del movimiento EN JEEVES (dimensión distinta de Estado-vs-Odoo). Función a nivel MÓDULO
+  // (COLS es de módulo, no puede ver funciones del closure — lección regresión v0.5.7). Solo depende de `r`, sin `state`.
+  // Hoy TODO lo capturado es settled por diseño → 'Liquidado'. Pieza #4/B.2 meterá pendings a la vista → marcarán
+  // r.jeeves_status='transito' (o r.jeeves_pending) y ahí mostrará 'En tránsito'. Contrato listo por adelantado.
+  function statusJeeves(r) {
+    var pend = r && (r.jeeves_status === 'transito' || r.jeeves_pending === true);
+    return pend ? '<span class="ip-sj tra">◐ En tránsito</span>' : '<span class="ip-sj liq">✓ Liquidado</span>';
+  }
 
   // 17 columnas (contrato exacto del v7). vis = visible por default (8).
   var COLS = [
@@ -115,7 +124,8 @@
     { k: 'tk',   lbl: 'Ticket',       vis: false, fmt: function (r) { return esc(r.tk) || '—'; } },
     { k: 'mon',  lbl: 'Moneda',       vis: false, fmt: function (r) { return esc(r.mon); } },
     { k: 'amt',  lbl: 'Monto',        vis: true,  cls: function (r) { return 'class="amt ' + (r.amt < 0 ? 'neg' : 'pos') + '"'; }, fmt: function (r) { return money(r.amt); } },
-    { k: 'ok',   lbl: 'Estado',       vis: true,  cls: function (r) { return 'class="st est-' + IP_rowState(r) + '"'; }, fmt: function (r) { return IP_stateCell(r); } }
+    { k: 'ok',   lbl: 'Estado',       vis: true,  cls: function (r) { return 'class="st est-' + IP_rowState(r) + '"'; }, fmt: function (r) { return IP_stateCell(r); } },
+    { k: 'sj',   lbl: 'Status Jeeves', vis: false, fmt: function (r) { return statusJeeves(r); } }   // dimensión Jeeves (no visible default; contrato para Pieza #4/B.2)
   ];
   function colAttr(col, r) { return typeof col.cls === 'function' ? col.cls(r) : (col.cls || ''); }
 
@@ -596,8 +606,8 @@
     }
     function stateCell(r) {
       var st = rowState(r);
-      if (st === 'liquidado') return '<span class="ip-est liq" title="Conciliado y liquidado (is_reconciled)">✓ Conciliado</span>';
-      if (st === 'transito')  { var pc = state.preconc[r.id] || {}; return '<span class="ip-est tra" title="Conciliado en tránsito — bill asignada, aún no cerrada">◐ En tránsito</span>' + (pc.bill_name ? ' <span class="ip-est-bill">' + esc(pc.bill_name) + '</span>' : ''); }
+      if (st === 'liquidado') return '<span class="ip-est liq" title="Conciliado y liquidado (is_reconciled)">✓ Conciliado (Liquidado)</span>';
+      if (st === 'transito')  { var pc = state.preconc[r.id] || {}; return '<span class="ip-est tra" title="Bill asignada, aún no cerrada formalmente">◐ Conciliado (En tránsito)</span>' + (pc.bill_name ? ' <span class="ip-est-bill">' + esc(pc.bill_name) + '</span>' : ''); }
       if (st === 'fondeo')    return '<span class="ip-est fon">◇ Fondeo</span>';
       if (st === 'devolucion') return '<span class="ip-est dev-ret">↩ Devolución</span>';
       // sinconciliar + pista del cerebro (no es estado)
@@ -688,7 +698,7 @@
       rows.forEach(function (t) { cnt[rowState(t)]++; });
       var resid = rows.reduce(function (a, t) { return rowState(t) === 'sinconciliar' ? a + (t.res || 0) : a; }, 0);   // solo lo SIN CONCILIAR suma al residual pendiente
       var nSel = rows.filter(function (t) { return state.sel[t._id]; }).length;
-      var ag = q('#ip-aggs'); if (ag) ag.textContent = rows.length + ' líneas · ' + cnt.liquidado + ' conciliadas · ' + cnt.transito + ' en tránsito · ' + cnt.sinconciliar + ' sin conciliar' + (cnt.fondeo ? ' · ' + cnt.fondeo + ' fondeos' : '') + (cnt.devolucion ? ' · ' + cnt.devolucion + ' devoluciones' : '') + ' · residual ' + money(resid) + (nSel ? ' · ' + nSel + ' seleccionadas' : '');
+      var ag = q('#ip-aggs'); if (ag) ag.textContent = rows.length + ' líneas · ' + cnt.liquidado + ' conciliadas (liquidadas) · ' + cnt.transito + ' en tránsito · ' + cnt.sinconciliar + ' sin conciliar' + (cnt.fondeo ? ' · ' + cnt.fondeo + ' fondeos' : '') + (cnt.devolucion ? ' · ' + cnt.devolucion + ' devoluciones' : '') + ' · residual ' + money(resid) + (nSel ? ' · ' + nSel + ' seleccionadas' : '');
 
       var bn = q('#ip-selbanner');
       if (bn) {
