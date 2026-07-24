@@ -117,4 +117,11 @@ Write del pre-conf: endpoint chico `fin/captura-preconciliar` (bancos:write) o r
 **Qué es front-only (ya, tras canary):** #2, y los consumidores UI de #1/#3. **Qué necesita endpoint nuevo (ritual de activación tuyo):** #1 buscar-bills, #3 preconciliar. **Qué depende de motor v2/B.2:** #4 (B.2), #5 (gancho + pool 285).
 
 ---
-_Diseño read-only. Nada implementado. Nada de workflows existentes tocado._
+
+## 6. Deuda conocida (post-canary, NO fix hoy)
+
+- **`evalSugg()` corre el cerebro completo en cada carga (sin caché).** Cada carga de la tabla dispara el batch a `fin/captura-sugerencias` (~9 llamadas paginadas × matching contra bills abiertos por cada página). Con **un solo usuario** ocasional es aceptable; con **Gera/Miriam conciliando a diario** esto refritea Odoo en cada refresh. **Fix (post-canary):** cachear el resultado del matching — server-side (TTL en `captura-sugerencias` o tabla de sugerencias materializada) o TTL en el front (p.ej. sugerencias por `line_id` válidas N minutos en memoria/localStorage con invalidación al conciliar). Decisión de dónde cachear = cuando se aborde motor v2 / B.2.
+- **Clasificación Fondeo/Devolución por marcador de texto (`ref`), no por dato estructurado.** `isFondeo` = `/FONDEO/i`, `isDevolucion` = `/DEVOLUCI/i` sobre `ref`. Depende de que captura-jeeves siga estampando esos marcadores. Si algún día el formato del `ref` cambia, estos estados se rompen en silencio. Decidido así (v0.5.7) porque el signo del monto NO discrimina (fondeos y devoluciones son ambos positivos). Backlog: si el motor expone un campo de tipo estructurado, migrar a él.
+
+---
+_Diseño read-only en su origen (§1-5). §6 = deuda anotada durante la implementación de la Pieza #2 (v0.5.7). Nada de workflows existentes tocado._

@@ -20,7 +20,7 @@
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
   var IP_REAL_ENABLED = true;             // Real HABILITADO en producción (flip 2026-07-23; checklist: JWT ok, Cloudflare diferido)
-  var IP_BUILD = '0.5.6';                 // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.7';                 // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -108,7 +108,7 @@
     { k: 'tk',   lbl: 'Ticket',       vis: false, fmt: function (r) { return esc(r.tk) || '—'; } },
     { k: 'mon',  lbl: 'Moneda',       vis: false, fmt: function (r) { return esc(r.mon); } },
     { k: 'amt',  lbl: 'Monto',        vis: true,  cls: function (r) { return 'class="amt ' + (r.amt < 0 ? 'neg' : 'pos') + '"'; }, fmt: function (r) { return money(r.amt); } },
-    { k: 'ok',   lbl: 'Status',       vis: true,  cls: function (r) { return 'class="st ' + (r.ok ? 'ok' : 'pend') + '"'; }, fmt: function (r) { return r.ok ? '✓ conciliada' : '● pendiente'; } }
+    { k: 'ok',   lbl: 'Estado',       vis: true,  cls: function (r) { return 'class="st est-' + rowState(r) + '"'; }, fmt: function (r) { return stateCell(r); } }
   ];
   function colAttr(col, r) { return typeof col.cls === 'function' ? col.cls(r) : (col.cls || ''); }
 
@@ -128,7 +128,8 @@
       intransit: [],           // movimientos en tránsito (pendings)
       suggByRow: {},           // demo: sugerencias precargadas del mock, por índice de row
       expanded: null,          // _id de la ÚNICA fila expandida (acordeón), o null
-      sugg: {}                 // _id -> {loading, cand:{nivel,candidatos}, sel:idx, result, error}
+      sugg: {},                // _id -> {loading, cand:{nivel,candidatos}, sel:idx, result, error}
+      preconc: {}              // line_id -> {bill_aml_id, bill_name, by, ts} (Pieza #3; hoy vacío)
     };
 
     function currentMode() {
@@ -159,7 +160,7 @@
       if (state.mode === 'demo') {
         fetch(MOCK_PATH, { cache: 'no-store' })
           .then(function (r) { return r.json(); })
-          .then(function (data) { ingest(data.rows || [], data.sources || [], data.runs || [], data.cron || DEFAULT_CRON, { today: data.today || null, intransit: data.intransit || [], suggByRow: data.suggestions || {} }); state.loading = false; render(); afterData(); })
+          .then(function (data) { ingest(data.rows || [], data.sources || [], data.runs || [], data.cron || DEFAULT_CRON, { today: data.today || null, intransit: data.intransit || [], suggByRow: data.suggestions || {} }); state.loading = false; evalSugg(); render(); afterData(); })
           .catch(function (e) { state.loading = false; state.error = 'No se pudo cargar el mock: ' + e.message; render(); });
         return;
       }
@@ -177,6 +178,7 @@
         // carga parcial: nunca fingir que está completo → aviso visible; los agregados reflejan solo lo cargado.
         state.partialLoad = txAll.partial ? { loaded: (txAll.rows || []).length, total: (txAll.pagination && txAll.pagination.total_count) || null, reason: txAll.reason || null } : null;
         render(); afterData();
+        evalSugg();   // Pieza #2: batch de sugerencias en 2o plano → puebla el estado por fila (reveal progresivo)
       }).catch(function (err) {
         state.loading = false; state.loadProgress = null;
         state.error = (err && err.msg) || (err && err.code) || 'Error al consultar el servidor.';
@@ -256,7 +258,7 @@
         }
         return okCompany &&
           (!f.journal || t.j === f.journal) &&
-          (!f.estado || (f.estado === 'ok' ? t.ok : !t.ok)) &&
+          (!f.estado || matchEstado(f.estado, t)) &&
           (!s || Object.keys(t).map(function (k) { return t[k]; }).join(' ').toLowerCase().indexOf(s) >= 0) &&
           (!f.from || t.d >= f.from) && (!f.to || t.d <= f.to);
       });
@@ -436,8 +438,12 @@
         '<input type="date" id="ip-fFrom" value="' + esc(f.from) + '">' +
         '<input type="date" id="ip-fTo" value="' + esc(f.to) + '">' +
         '<select id="ip-fEstado"><option value="">Estado: todos</option>' +
-          '<option value="ok"' + (f.estado === 'ok' ? ' selected' : '') + '>Conciliadas</option>' +
-          '<option value="pend"' + (f.estado === 'pend' ? ' selected' : '') + '>Sin conciliar</option></select>' +
+          '<option value="liquidado"' + (f.estado === 'liquidado' ? ' selected' : '') + '>Liquidado</option>' +
+          '<option value="preconc"' + (f.estado === 'preconc' ? ' selected' : '') + '>Pre-conciliado</option>' +
+          '<option value="cand"' + (f.estado === 'cand' ? ' selected' : '') + '>Pendiente (con sugerencia)</option>' +
+          '<option value="sindoc"' + (f.estado === 'sindoc' ? ' selected' : '') + '>Sin documento</option>' +
+          '<option value="fondeo"' + (f.estado === 'fondeo' ? ' selected' : '') + '>Fondeo</option>' +
+          '<option value="devolucion"' + (f.estado === 'devolucion' ? ' selected' : '') + '>Devolución</option></select>' +
         '<input class="grow" type="text" id="ip-fSearch" placeholder="Buscar en TODAS las columnas… (comercio, PO, folio, comprador, analítica)" value="' + esc(f.search) + '">' +
         '<button class="xlsbtn" id="ip-btnxls" title="Descarga las filas seleccionadas con las columnas visibles">⬇ Excel <span id="ip-xlscount"></span></button>' +
         '<select id="ip-fPageSize" title="Filas por página">' +
@@ -482,6 +488,80 @@
     }
 
     // ── tabla (repintado parcial, preserva menús abiertos) ──
+    // ── Pieza #2: estado enriquecido por fila ──
+    // Fondeo y devolución se deciden SOLO por el marcador del ref — NUNCA por el signo del monto:
+    // las devoluciones ([DEVOLUCIÓN ****XXXX]) también son positivas y no deben caer en Fondeo (dinero mal clasificado en silencio).
+    function isFondeo(r) { return /FONDEO/i.test(String(r.ref || '')); }
+    function isDevolucion(r) { return /DEVOLUCI/i.test(String(r.ref || '')); }
+    function rowState(r) {
+      if (r.ok) return 'liquidado';
+      if (isFondeo(r)) return 'fondeo';
+      if (isDevolucion(r)) return 'devolucion';
+      if (state.preconc && state.preconc[r.id]) return 'preconc';
+      var s = state.sugg[r._id];
+      if (s && s.cand) return (s.cand.candidatos && s.cand.candidatos.length) ? 'pend-cand' : 'pend-sindoc';
+      if (s && s.loading) return 'pend-eval';
+      return 'pend';
+    }
+    function stateCell(r) {
+      var st = rowState(r);
+      if (st === 'liquidado') return '<span class="ip-est liq">✓ Liquidado</span>';
+      if (st === 'fondeo')    return '<span class="ip-est fon">◇ Fondeo</span>';
+      if (st === 'devolucion') return '<span class="ip-est dev-ret">↩ Devolución</span>';
+      if (st === 'preconc')   { var pc = state.preconc[r.id] || {}; return '<span class="ip-est pre">⏳ Pre-conciliado</span>' + (pc.bill_name ? ' <span class="ip-est-bill">' + esc(pc.bill_name) + '</span>' : ''); }
+      if (st === 'pend-cand') { var c = (state.sugg[r._id].cand.candidatos || [])[0] || {}; return '<span class="ip-est cand">● Pendiente</span> <span class="ip-est-bill" title="mejor candidato del cerebro">' + esc(c.bill_name || '') + ' · ' + Math.round((c.score || 0) * 100) + '</span>'; }
+      if (st === 'pend-sindoc') return '<span class="ip-est sindoc">○ Sin documento</span> <a class="ip-est-buscar" data-buscar="' + r._id + '">buscar bill</a>';
+      if (st === 'pend-eval') return '<span class="ip-est ev">◌ evaluando…</span>';
+      return '<span class="ip-est pend">● Pendiente</span>';
+    }
+    function matchEstado(f, t) {
+      var st = rowState(t);
+      switch (f) {
+        case 'liquidado': case 'ok': return st === 'liquidado';                 // 'ok' = compat panel Hoy
+        case 'fondeo':    return st === 'fondeo';
+        case 'devolucion': return st === 'devolucion';
+        case 'preconc':   return st === 'preconc';
+        case 'cand':      return st === 'pend-cand';
+        case 'sindoc':    return st === 'pend-sindoc';
+        case 'pend':      return st === 'pend-cand' || st === 'pend-sindoc' || st === 'pend-eval' || st === 'pend';
+        default: return true;
+      }
+    }
+    // Evalúa sugerencias de las filas cargadas → puebla state.sugg para pintar el estado (real: batch al endpoint; demo: del mock).
+    function evalSugg() {
+      if (state.mode !== 'real') {
+        state.allRows.forEach(function (r) {
+          if (state.sugg[r._id] && state.sugg[r._id].cand) return;
+          var raw = (state.suggByRow && state.suggByRow[r._id]);
+          if (raw) state.sugg[r._id] = { loading: false, cand: { nivel: raw.nivel, candidatos: raw.candidatos || [] }, sel: defaultSel(raw.candidatos || []) };
+        });
+        return Promise.resolve();
+      }
+      var targets = state.allRows.filter(function (r) { return !r.ok && !isFondeo(r) && !isDevolucion(r); });
+      if (!targets.length) return Promise.resolve();
+      var ids = targets.map(function (r) { return r.id; });
+      var byLine = {}; state.allRows.forEach(function (r) { byLine[r.id] = r._id; });
+      return new Promise(function (resolve) {
+        var offset = 0, LIMIT = 200, guard = 0;
+        function step() {
+          window.FinClient.call(EP_SUGERENCIAS, { companies: window.FinState.getCompanies(), line_ids: ids, limit: LIMIT, offset: offset })
+            .then(function (data) {
+              ((data && data.lineas) || []).forEach(function (l) {
+                var _id = byLine[l.line_id];
+                if (_id != null && !(state.sugg[_id] && state.sugg[_id].cand)) {
+                  state.sugg[_id] = { loading: false, cand: { nivel: l.nivel, candidatos: l.candidatos || [] }, sel: defaultSel(l.candidatos || []) };
+                }
+              });
+              if (document.body.contains(container)) paintTable();     // reveal progresivo del estado
+              var pag = data && data.pagination;
+              if (pag && pag.has_more && ++guard < 40) { offset += LIMIT; step(); } else resolve();
+            })
+            .catch(function () { resolve(); });   // degrada: el estado queda "● Pendiente" neutral, sin romper la tabla
+        }
+        step();
+      });
+    }
+
     function paintTable() {
       var rows = visibleRows();
       var pages = Math.max(1, Math.ceil(rows.length / state.pageSize));
@@ -508,9 +588,12 @@
       var w = q('#ip-tblwrap'); if (w) w.innerHTML = tbl;
 
       var conc = rows.filter(function (t) { return t.ok; }).length;
-      var resid = rows.reduce(function (a, t) { return a + (t.res || 0); }, 0);
+      var fond = rows.filter(function (t) { return !t.ok && isFondeo(t); }).length;
+      var devo = rows.filter(function (t) { return !t.ok && !isFondeo(t) && isDevolucion(t); }).length;
+      var pend = rows.length - conc - fond - devo;
+      var resid = rows.reduce(function (a, t) { return (isFondeo(t) || isDevolucion(t)) ? a : a + (t.res || 0); }, 0);   // fondeos y devoluciones NO cuentan al residual pendiente
       var nSel = rows.filter(function (t) { return state.sel[t._id]; }).length;
-      var ag = q('#ip-aggs'); if (ag) ag.textContent = rows.length + ' líneas · ' + conc + ' conciliadas · ' + (rows.length - conc) + ' pendientes · residual ' + money(resid) + (nSel ? ' · ' + nSel + ' seleccionadas' : '');
+      var ag = q('#ip-aggs'); if (ag) ag.textContent = rows.length + ' líneas · ' + conc + ' liquidadas · ' + pend + ' pendientes' + (fond ? ' · ' + fond + ' fondeos' : '') + (devo ? ' · ' + devo + ' devoluciones' : '') + ' · residual ' + money(resid) + (nSel ? ' · ' + nSel + ' seleccionadas' : '');
 
       var bn = q('#ip-selbanner');
       if (bn) {
@@ -544,6 +627,7 @@
       qa('input[data-cand]').forEach(function (rc) { rc.addEventListener('change', function () { var id = +rc.getAttribute('data-cand'), idx = +rc.getAttribute('data-idx'); var s = state.sugg[id]; if (s) { s.sel = idx; if (state.expanded === id) paintTable(); } }); });
       qa('button[data-conc]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); doConciliar(+b.getAttribute('data-conc'), b); }); });
       qa('button[data-reload]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); var id = +b.getAttribute('data-reload'); delete state.sugg[id]; loadSugg(state.allRows[id]); paintTable(); }); });
+      qa('[data-buscar]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); toggleExpand(+b.getAttribute('data-buscar')); }); });   // "buscar bill" (Pieza #1 enriquece)
 
       paintSem();
     }
