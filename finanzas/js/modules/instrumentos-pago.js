@@ -20,7 +20,7 @@
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
   var IP_REAL_ENABLED = true;             // Real HABILITADO en producción (flip 2026-07-23; checklist: JWT ok, Cloudflare diferido)
-  var IP_BUILD = '0.5.7';                 // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.8';                 // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -90,6 +90,12 @@
   }
   var amber = function (s) { return '<span class="amber">' + s + '</span>'; };
 
+  // Pieza #2 (v0.5.8): la columna de Estado necesita rowState/stateCell, que viven DENTRO del closure de la
+  // vista (leen `state`). COLS es de módulo → no puede verlas. Estos hooks se pueblan desde createView.
+  // Default seguro (no ReferenceError) por si se invocan antes de montar la vista — fue la regresión v0.5.7.
+  var IP_rowState  = function (r) { return (r && r.ok) ? 'liquidado' : 'pend'; };
+  var IP_stateCell = function (r) { return (r && r.ok) ? '<span class="ip-est liq">✓ Liquidado</span>' : '<span class="ip-est pend">● Pendiente</span>'; };
+
   // 17 columnas (contrato exacto del v7). vis = visible por default (8).
   var COLS = [
     { k: 'd',    lbl: 'Fecha',        vis: true,  cls: 'style="font-family:var(--ip-mono);font-size:12.5px"', fmt: function (r) { return esc(r.d); } },
@@ -108,7 +114,7 @@
     { k: 'tk',   lbl: 'Ticket',       vis: false, fmt: function (r) { return esc(r.tk) || '—'; } },
     { k: 'mon',  lbl: 'Moneda',       vis: false, fmt: function (r) { return esc(r.mon); } },
     { k: 'amt',  lbl: 'Monto',        vis: true,  cls: function (r) { return 'class="amt ' + (r.amt < 0 ? 'neg' : 'pos') + '"'; }, fmt: function (r) { return money(r.amt); } },
-    { k: 'ok',   lbl: 'Estado',       vis: true,  cls: function (r) { return 'class="st est-' + rowState(r) + '"'; }, fmt: function (r) { return stateCell(r); } }
+    { k: 'ok',   lbl: 'Estado',       vis: true,  cls: function (r) { return 'class="st est-' + IP_rowState(r) + '"'; }, fmt: function (r) { return IP_stateCell(r); } }
   ];
   function colAttr(col, r) { return typeof col.cls === 'function' ? col.cls(r) : (col.cls || ''); }
 
@@ -143,6 +149,10 @@
     var q  = function (s) { return container.querySelector(s); };
     var qa = function (s) { return Array.prototype.slice.call(container.querySelectorAll(s)); };
 
+    // Cablea los hooks de módulo a las funciones de este closure (rowState/stateCell son declaraciones
+    // hoisted, disponibles aquí). Sin esto, COLS.ok llama al default seguro y no rompe (v0.5.8 fix).
+    IP_rowState = rowState; IP_stateCell = stateCell;
+
     // ── ciclo de vida ──
     function mount() {
       window.FinState.subscribe(function (evt) {
@@ -160,7 +170,7 @@
       if (state.mode === 'demo') {
         fetch(MOCK_PATH, { cache: 'no-store' })
           .then(function (r) { return r.json(); })
-          .then(function (data) { ingest(data.rows || [], data.sources || [], data.runs || [], data.cron || DEFAULT_CRON, { today: data.today || null, intransit: data.intransit || [], suggByRow: data.suggestions || {} }); state.loading = false; evalSugg(); render(); afterData(); })
+          .then(function (data) { ingest(data.rows || [], data.sources || [], data.runs || [], data.cron || DEFAULT_CRON, { today: data.today || null, intransit: data.intransit || [], suggByRow: data.suggestions || {} }); state.loading = false; try { evalSugg(); } catch (e) { if (window.console) console.warn('[ip] evalSugg demo falló (no bloquea):', e); } render(); afterData(); })
           .catch(function (e) { state.loading = false; state.error = 'No se pudo cargar el mock: ' + e.message; render(); });
         return;
       }
@@ -178,7 +188,9 @@
         // carga parcial: nunca fingir que está completo → aviso visible; los agregados reflejan solo lo cargado.
         state.partialLoad = txAll.partial ? { loaded: (txAll.rows || []).length, total: (txAll.pagination && txAll.pagination.total_count) || null, reason: txAll.reason || null } : null;
         render(); afterData();
-        evalSugg();   // Pieza #2: batch de sugerencias en 2o plano → puebla el estado por fila (reveal progresivo)
+        // Pieza #2: batch de sugerencias en 2o plano. try/catch DURO: pase lo que pase, evalSugg NUNCA tumba load()
+        // (la tabla ya está pintada; su fallo solo deja estados neutros).
+        try { evalSugg(); } catch (e) { if (window.console) console.warn('[ip] evalSugg falló (no bloquea la tabla):', e); }
       }).catch(function (err) {
         state.loading = false; state.loadProgress = null;
         state.error = (err && err.msg) || (err && err.code) || 'Error al consultar el servidor.';
