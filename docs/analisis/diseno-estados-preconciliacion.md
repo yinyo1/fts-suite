@@ -153,6 +153,16 @@ El **motor de la Etapa D** (`captura-concilia-auto`, cron 23:00 CST L–V) hace 
 
 ---
 
+## 5.7 Columna "Status Jeeves" — contrato adelantado para Pieza #4 (v0.5.11)
+
+Nueva columna de tabla **"Status Jeeves"** (no visible por default, activable en el menú ⋮). Es una **dimensión distinta del Estado-vs-Odoo**: describe el estado del movimiento **en Jeeves**, no su conciliación contra Odoo.
+
+- **Hoy:** todo lo que entra por captura es **settled por diseño** → la columna muestra **"✓ Liquidado"** en todas las filas. Derivable en el front, **sin tocar el endpoint** (si la fila vino de captura = Liquidado).
+- **Cuando llegue Pieza #4/B.2** (pendings a la vista): esos movimientos traerán una marca (`r.jeeves_status='transito'` o `r.jeeves_pending`) y la columna mostrará **"◐ En tránsito"** para ellos. El contrato de la columna ya está puesto por adelantado; Pieza #4 solo inyecta las filas pending con la marca.
+- Función `statusJeeves(r)` a **nivel módulo** (no closure) porque la consume `COLS` — misma lección de la regresión v0.5.7 (COLS es de módulo, no ve funciones del closure).
+
+---
+
 ## 6. Deuda conocida (post-canary, NO fix hoy)
 
 - **`evalSugg()` corre el cerebro completo en cada carga (sin caché).** Cada carga de la tabla dispara el batch a `fin/captura-sugerencias` (~9 llamadas paginadas × matching contra bills abiertos por cada página). Con **un solo usuario** ocasional es aceptable; con **Gera/Miriam conciliando a diario** esto refritea Odoo en cada refresh. **Fix (post-canary):** cachear el resultado del matching — server-side (TTL en `captura-sugerencias` o tabla de sugerencias materializada) o TTL en el front (p.ej. sugerencias por `line_id` válidas N minutos en memoria/localStorage con invalidación al conciliar). Decisión de dónde cachear = cuando se aborde motor v2 / B.2.
