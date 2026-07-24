@@ -105,6 +105,9 @@
 .ip-view .filters input[type=date]{width:140px}
 .ip-view .filters .grow{flex:1;min-width:160px}
 .ip-view table{width:100%;border-collapse:collapse;font-size:13.5px}
+/* caja de scroll de la tabla: alto acotado → el scrollbar horizontal queda al fondo del viewport (alcanzable desde cualquier fila) + thead sticky (no se pierden títulos con 1,776 filas). Nativo, cero JS. */
+.ip-view .ip-tblscroll{overflow:auto;max-height:65vh}
+.ip-view .ip-tblscroll thead th{position:sticky;top:0;z-index:3}
 .ip-view th{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--steel);text-align:left;padding:9px 14px;border-bottom:1px solid var(--ip-line);background:#fbfcfd}
 .ip-view td{padding:9px 14px;border-bottom:1px solid #edf0f3}
 .ip-view td.amt{font-family:var(--ip-mono);text-align:right;white-space:nowrap}
