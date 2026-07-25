@@ -2,6 +2,50 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-CHK-124-2026-07-25T00-08-14-641Z",
+      "tipo": "olvido_checkout",
+      "empleado_id": 124,
+      "empleado_nombre": "Germán Emmanuel Merino Falcón",
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "sin_departamento": false,
+      "depto_invalido": false,
+      "supervisor_id": 112,
+      "supervisor_name": "Felipe Pérez Guzmán",
+      "supervisor_email": "emmanu.2001@gmail.com",
+      "supervisor_phone": "+52 271 229 6489",
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": false,
+      "sin_supervisor": false,
+      "attendance_id": 14540,
+      "fecha_creacion": "2026-07-25T00:08:14.641Z",
+      "check_in_original_utc": "2026-07-24 12:57:21",
+      "check_out_propuesto_utc": "2026-07-24 23:07:00",
+      "check_out_propuesto_cst": "2026-07-24 17:07:00",
+      "geolocation": {
+        "error": "Timeout expired",
+        "captured_at": "2026-07-25T00:08:10.601Z"
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "accion": "crear",
+          "fecha": "2026-07-25T00:08:14.641Z",
+          "hora_propuesta_cst": "17:07",
+          "comentario": "Se me olvidó checar salida"
+        }
+      ],
+      "status": "pendiente_supervisor",
+      "hora_final_aplicada_utc": "2026-07-24 23:07:00",
+      "aplicado_en_odoo": true,
+      "tag_disputa_activo": true,
+      "creada_por_modulo": "kiosk",
+      "creada_por_build": "20260710-kiosk-versioncheck"
+    },
+    {
       "id_interno": "INC-AUTO-CIERRE-149-2026-07-24T13-13-00-978Z",
       "tipo": "auto_cierre_pendiente",
       "status": "pendiente_rh",
