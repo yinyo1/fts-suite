@@ -20,7 +20,7 @@
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
   var IP_REAL_ENABLED = true;             // Real HABILITADO en producción (flip 2026-07-23; checklist: JWT ok, Cloudflare diferido)
-  var IP_BUILD = '0.5.12';                // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.13';                // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -29,7 +29,7 @@
   // Etapa C — motor de conciliación (contrato real; solo se ejercita al des-gatear Real).
   var EP_SUGERENCIAS = '/fin/captura-sugerencias', EP_CONCILIAR = '/fin/captura-conciliar';
   var EP_BUSCAR = '/fin/captura-buscar-bills';   // Pieza #1: buscador manual de bills (17+285). Degrada si el workflow está inactivo.
-  var EP_SYNC_NOW = '/fin/captura-sync-now';     // #4a: corrida de captura on-demand (clon del cron). Degrada si inactivo.
+  var EP_SYNC_NOW = '/captura-jeeves/run';       // #4a: webhook NATIVO de captura-jeeves (dual-trigger, origen='manual', CBRUN). Cero clon. ⚠️ sin scope-check → hardening backlog (Cloudflare post-canary).
   var EP_CONCILIA_NOW = '/fin/concilia-now';     // #4b: autoconciliar on-demand (lógica de D). Botón gateado hasta mañana.
 
   var DEFAULT_CRON = { days: [1, 2, 3, 4, 5], start_hour: 7, regular_end_hour: 16, regular_interval_min: 30, peak_hour: 17, peak_interval_min: 10, close_hour: 18, label: 'L–V 7–18h · 30 min · pico 10 min' };
