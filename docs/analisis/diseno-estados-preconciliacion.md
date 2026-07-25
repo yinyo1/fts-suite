@@ -177,6 +177,7 @@ Evaluación read-only de los dos wrappers (probado el mecanismo leyendo los work
 - → `fin/concilia-now` = **clon de los 9 nodos de D** con trigger Webhook+JWT, firma **`origen:'boton-refresh'`** (para distinguirlo en forenses), candado séptuple + tope canary + `[[CBAUTO]]`. **Deuda de sincronía:** todo edit a D se replica en concilia-now (documentado en memoria).
 - **Contrato honesto:** hoy produce settled→**Conciliado (Liquidado)**; el resultado **En tránsito** (pre-match de pendings) llega con Pieza #4/B.2. Nace con gate visual "primer clic mañana" (un disparo hoy contaminaría la noche 2 del canary).
 - **NO testeable hoy** (dispararlo = correr conciliación = contamina el canary, justo lo que el gate evita). Se construye inactivo; su prueba real es post-canary.
+- **✅ CONSTRUIDO 2026-07-24: `fin/concilia-now` id `GYsE6Z8hCAiQE0Vc`, 14 nodos, INACTIVO, validado (0 errores).** Clon de D con nodos 3-7 verbatim; divergencias: trigger Webhook+JWT (`bancos:write`), `origen:'boton-refresh'` (config+CONCFTS+CBAUTO), Respond OK. **Prueba de mañana:** primer clic supervisado post-forense noche 2, con forense inmediato de Esteban (execution + CBAUTO chatter journal 61 + Odoo is_reconciled/full_reconcile/CONCFTS origen:'boton-refresh') — mismo patrón del estreno de D. Deuda de sincronía documentada en memoria [[concilia-now-sync-debt]].
 
 ---
 
