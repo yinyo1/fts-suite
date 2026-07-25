@@ -163,6 +163,23 @@ Nueva columna de tabla **"Status Jeeves"** (no visible por default, activable en
 
 ---
 
+## 5.8 Botones refresh (#4) — decisión con evidencia (2026-07-24)
+
+Evaluación read-only de los dos wrappers (probado el mecanismo leyendo los workflows reales, sin dispararlos):
+
+**#4a "Sincronizar transacciones" → usa el webhook NATIVO de captura-jeeves. Cero clon, cero deuda, cero edición.**
+- Hallazgo: `captura-jeeves` (`PWEiA37CLfP6lMgg`) **ya es dual-trigger**: "A - Schedule Trigger" (cron) **+** "B - Webhook run" (path **`captura-jeeves/run`**), ambos convergen en la misma lógica.
+- La rama webhook ya pasa por JWT (valida firma/exp/app, **sin check de scope** → cualquier token finanzas válido entra), setea **`origen = _jwt_ok ? 'manual' : 'schedule'`** (nodo 2) y loguea **`[[CBRUN]]`** con ese origen (nodo 10→12). Respuesta: `{origen, desde, hasta, total_api, nuevas, duplicadas, rechazadas, status}`.
+- **Contrato del botón:** apuntar `EP_SYNC_NOW` a `/captura-jeeves/run` (1 línea). La corrida on-demand ya está construida y en producción — el clon de 26 nodos habría sido trabajo tirado + deuda de sincronía. **Pendiente de OK de Esteban para cablearlo en vivo** (respeta "no disparar captura-jeeves hoy": el cambio de front no dispara nada; el primer clic es decisión de Esteban, y por su propia nota "una corrida extra de captura no toca el canary").
+
+**#4b "Autoconciliar ahora" → CLON de D. La vía delgada NO es viable.**
+- Hallazgo: `captura-concilia-auto` (D, `hY6uKxEvs1LLpyf5`) es **Schedule-ONLY** (solo "Schedule 23:00 CST", sin webhook ni Execute-Workflow-Trigger). Un Execute Workflow node no puede invocarlo limpio sin **editar D** (agregar un trigger) → prohibido.
+- → `fin/concilia-now` = **clon de los 9 nodos de D** con trigger Webhook+JWT, firma **`origen:'boton-refresh'`** (para distinguirlo en forenses), candado séptuple + tope canary + `[[CBAUTO]]`. **Deuda de sincronía:** todo edit a D se replica en concilia-now (documentado en memoria).
+- **Contrato honesto:** hoy produce settled→**Conciliado (Liquidado)**; el resultado **En tránsito** (pre-match de pendings) llega con Pieza #4/B.2. Nace con gate visual "primer clic mañana" (un disparo hoy contaminaría la noche 2 del canary).
+- **NO testeable hoy** (dispararlo = correr conciliación = contamina el canary, justo lo que el gate evita). Se construye inactivo; su prueba real es post-canary.
+
+---
+
 ## 6. Deuda conocida (post-canary, NO fix hoy)
 
 - **`evalSugg()` corre el cerebro completo en cada carga (sin caché).** Cada carga de la tabla dispara el batch a `fin/captura-sugerencias` (~9 llamadas paginadas × matching contra bills abiertos por cada página). Con **un solo usuario** ocasional es aceptable; con **Gera/Miriam conciliando a diario** esto refritea Odoo en cada refresh. **Fix (post-canary):** cachear el resultado del matching — server-side (TTL en `captura-sugerencias` o tabla de sugerencias materializada) o TTL en el front (p.ej. sugerencias por `line_id` válidas N minutos en memoria/localStorage con invalidación al conciliar). Decisión de dónde cachear = cuando se aborde motor v2 / B.2.
