@@ -20,7 +20,7 @@
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
   var IP_REAL_ENABLED = true;             // Real HABILITADO en producción (flip 2026-07-23; checklist: JWT ok, Cloudflare diferido)
-  var IP_BUILD = '0.5.13';                // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.14';                // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -31,6 +31,7 @@
   var EP_BUSCAR = '/fin/captura-buscar-bills';   // Pieza #1: buscador manual de bills (17+285). Degrada si el workflow está inactivo.
   var EP_SYNC_NOW = '/captura-jeeves/run';       // #4a: webhook NATIVO de captura-jeeves (dual-trigger, origen='manual', CBRUN). Cero clon. ⚠️ sin scope-check → hardening backlog (Cloudflare post-canary).
   var EP_CONCILIA_NOW = '/fin/concilia-now';     // #4b: autoconciliar on-demand (lógica de D). Botón gateado hasta mañana.
+  var EP_PENDINGS = '/fin/captura-pendings-status';   // A: preview honesto de pendings Jeeves (Pieza #4 lite). Degrada a nada si inactivo/no disponible.
 
   var DEFAULT_CRON = { days: [1, 2, 3, 4, 5], start_hour: 7, regular_end_hour: 16, regular_interval_min: 30, peak_hour: 17, peak_interval_min: 10, close_hour: 18, label: 'L–V 7–18h · 30 min · pico 10 min' };
 
@@ -149,7 +150,8 @@
       expanded: null,          // _id de la ÚNICA fila expandida (acordeón), o null
       sugg: {},                // _id -> {loading, cand:{nivel,candidatos}, sel:idx, result, error}
       preconc: {},             // line_id -> {bill_aml_id, bill_name, by, ts} → estado 'En tránsito' (Pieza #3; hoy vacío en real)
-      colFilters: {}           // colKey -> array de valores permitidos (filtro por columna estilo Excel). Ausente = sin filtro.
+      colFilters: {},          // colKey -> array de valores permitidos (filtro por columna estilo Excel). Ausente = sin filtro.
+      pendings: null           // A: {disponible, pendings_count, pendings_suma, ultimo_settled_date, muestra} del preview de pendings Jeeves
     };
 
     function currentMode() {
@@ -205,6 +207,7 @@
         // Pieza #2: batch de sugerencias en 2o plano. try/catch DURO: pase lo que pase, evalSugg NUNCA tumba load()
         // (la tabla ya está pintada; su fallo solo deja estados neutros).
         try { evalSugg(); } catch (e) { if (window.console) console.warn('[ip] evalSugg falló (no bloquea la tabla):', e); }
+        try { loadPendings(); } catch (e) { if (window.console) console.warn('[ip] loadPendings falló (no bloquea):', e); }   // A: nota de pendings en 2o plano
       }).catch(function (err) {
         state.loading = false; state.loadProgress = null;
         state.error = (err && err.msg) || (err && err.code) || 'Error al consultar el servidor.';
@@ -284,6 +287,21 @@
           if (note) { note.textContent = na ? 'Sincronizador no disponible (endpoint inactivo).' : ('Error: ' + ((err && err.msg) || code || 'no se pudo sincronizar.')); note.className = 'ip-toolbar-note ' + (na ? 'na' : 'err'); }
         })
         .then(function () { if (btn) { btn.disabled = false; btn.classList.remove('busy'); } });
+    }
+
+    // ── A: preview de pendings Jeeves (nota junto al botón Sincronizar) ──
+    function paintPendNote() {
+      var el = q('#ip-pendnote'); if (!el) return;
+      var p = state.pendings;
+      if (!p || !p.disponible || !p.pendings_count) { el.innerHTML = ''; return; }   // degrada a nada
+      var tip = (p.muestra || []).map(function (m) { return m.fecha + ' · ' + m.comercio + ' · ' + money(m.monto); }).join('\n');
+      el.innerHTML = '<span class="ip-pend" title="' + esc(tip || 'movimientos en tránsito') + '">◔ Últimos liquidados: <b>' + esc(p.ultimo_settled_date || '—') + '</b> · <b>' + p.pendings_count + '</b> en tránsito (~' + money(p.pendings_suma) + ') sin liquidar aún</span>';
+    }
+    function loadPendings() {
+      if (state.mode !== 'real') { state.pendings = null; return; }
+      window.FinClient.call(EP_PENDINGS, {})
+        .then(function (data) { state.pendings = (data && typeof data === 'object' && ('disponible' in data)) ? data : { disponible: false }; paintPendNote(); })
+        .catch(function () { state.pendings = { disponible: false }; paintPendNote(); });   // endpoint inactivo/no disponible → nota vacía
     }
 
     // ── filtros por columna estilo Excel (categóricas) ──
@@ -419,6 +437,7 @@
           '<button class="ip-refresh" id="ip-syncnow" title="Ejecuta una captura extra ahora (mismo rango/traslape/dedupe que el cron). Útil para tener info fresca sin esperar al motor nocturno.">⟳ Sincronizar transacciones</button>' +
           '<button class="ip-refresh gated" id="ip-concilianow" disabled title="Se estrena mañana tras el forense de la noche 2 del canary — un disparo hoy se comería los matches de la corrida de las 23:00.">⟳ Autoconciliar ahora</button>' +
           '<span class="ip-toolbar-note" id="ip-syncnote"></span>' +
+          '<span class="ip-pendnote" id="ip-pendnote"></span>' +
         '</div>' +
         '<div class="panel">' + filtersHtml() +
               '<div class="selbanner" id="ip-selbanner"></div>' +
@@ -478,6 +497,7 @@
         closeColFilter();
       });
       var sn = q('#ip-syncnow'); if (sn) sn.addEventListener('click', syncNow);   // #4a (el botón #4b 'Autoconciliar' nace disabled — gate hasta mañana)
+      paintPendNote();   // A: repinta la nota de pendings si ya se cargó (persiste entre renders)
       var el = q('#ip-companies');
       if (el && window.FinCompanySelector) window.FinCompanySelector.mount(el, { onChange: function () {
         if (state.mode === 'empty') return;

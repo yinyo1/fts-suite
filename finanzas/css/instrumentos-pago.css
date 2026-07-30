@@ -285,6 +285,8 @@
 .ip-view .ip-toolbar-note.ok{color:var(--ip-ok)}
 .ip-view .ip-toolbar-note.na{color:#8a6400}
 .ip-view .ip-toolbar-note.err{color:var(--ip-bad)}
+.ip-view .ip-pendnote{font-size:12.5px}
+.ip-view .ip-pend{color:#8a6400;cursor:help;white-space:nowrap}
 .ip-view .ip-res{font-size:13.5px;font-weight:600;border-radius:6px;padding:10px 13px}
 .ip-view .ip-res.ok{background:#e7f6ed;color:#0d7a3f}
 .ip-view .ip-res.partial{background:#fdf3d9;color:#8a6400}
