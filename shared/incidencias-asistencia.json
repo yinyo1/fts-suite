@@ -388,12 +388,22 @@
           "fecha": "2026-07-23T00:54:28.928Z",
           "hora_propuesta_cst": "17:02",
           "comentario": "Registre salida pero el checador no registro mi salida"
+        },
+        {
+          "paso": 2,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-08-04T13:39:45.691Z",
+          "hora_propuesta_cst": "17:02",
+          "comentario": "Dato no verificado",
+          "accion": "ajustado"
         }
       ],
-      "status": "pendiente_rh",
+      "status": "aprobada_con_ajuste",
       "hora_final_aplicada_utc": "2026-07-22 23:02:00",
       "aplicado_en_odoo": true,
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "creada_por_modulo": "kiosk",
       "creada_por_build": "20260710-kiosk-versioncheck"
     },
