@@ -161,7 +161,7 @@
     {
       "id_interno": "INC-AUTO-CIERRE-76-2026-07-27T13-54-38-601Z",
       "tipo": "auto_cierre_pendiente",
-      "status": "pendiente_rh",
+      "status": "aprobada_con_ajuste",
       "fecha_creacion": "2026-07-27T13:54:40.170Z",
       "empleado_id": 76,
       "empleado_nombre": "Carlos Eduardo Manzanares",
@@ -171,7 +171,7 @@
       "check_out_aplicado_utc": "2026-07-24 22:26:42",
       "horas_originales": "73.07",
       "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "autoincidencia": true,
       "rh_aprobo": null,
       "rh_fecha": null,
@@ -179,7 +179,18 @@
       "department_name": null,
       "supervisor_id": null,
       "supervisor_name": null,
-      "propuestas": []
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-08-04T13:41:58.978Z",
+          "hora_propuesta_cst": "17:00",
+          "comentario": "Dato no verificado",
+          "accion": "ajustado"
+        }
+      ]
     },
     {
       "id_interno": "INC-AUTO-CIERRE-128-2026-07-27T12-56-40-489Z",
