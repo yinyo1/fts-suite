@@ -2,6 +2,52 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-CHK-57-2026-08-04T12-49-13-847Z",
+      "tipo": "olvido_checkout",
+      "empleado_id": 57,
+      "empleado_nombre": "Samuel Ulises Alcántara",
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "sin_departamento": false,
+      "depto_invalido": false,
+      "supervisor_id": 112,
+      "supervisor_name": "Felipe Pérez Guzmán",
+      "supervisor_email": "samuelulises91@gmail.com",
+      "supervisor_phone": " +52 81 2973 9620",
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": false,
+      "sin_supervisor": false,
+      "attendance_id": 14715,
+      "fecha_creacion": "2026-08-04T12:49:13.847Z",
+      "check_in_original_utc": "2026-08-03 12:56:20",
+      "check_out_propuesto_utc": "2026-08-04 11:04:00",
+      "check_out_propuesto_cst": "2026-08-04 05:04:00",
+      "geolocation": {
+        "lat": 25.6890632,
+        "lng": -100.2916601,
+        "accuracy": 14.87399959564209,
+        "captured_at": "2026-08-04T12:49:11.337Z"
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "accion": "crear",
+          "fecha": "2026-08-04T12:49:13.847Z",
+          "hora_propuesta_cst": "05:04",
+          "comentario": "Se me olvido checar salida"
+        }
+      ],
+      "status": "pendiente_supervisor",
+      "hora_final_aplicada_utc": "2026-08-04 11:04:00",
+      "aplicado_en_odoo": true,
+      "tag_disputa_activo": true,
+      "creada_por_modulo": "kiosk",
+      "creada_por_build": "20260710-kiosk-versioncheck"
+    },
+    {
       "id_interno": "INC-AUTO-CIERRE-112-2026-08-03T12-55-42-935Z",
       "tipo": "auto_cierre_pendiente",
       "status": "pendiente_rh",
