@@ -285,7 +285,7 @@
     {
       "id_interno": "INC-AUTO-CIERRE-112-2026-07-24T12-55-43-214Z",
       "tipo": "auto_cierre_pendiente",
-      "status": "pendiente_rh",
+      "status": "aprobada_con_ajuste",
       "fecha_creacion": "2026-07-24T12:55:44.834Z",
       "empleado_id": 112,
       "empleado_nombre": "Felipe Pérez Guzmán",
@@ -295,7 +295,7 @@
       "check_out_aplicado_utc": "2026-07-23 22:31:14",
       "horas_originales": "24.01",
       "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "autoincidencia": true,
       "rh_aprobo": null,
       "rh_fecha": null,
@@ -303,7 +303,18 @@
       "department_name": null,
       "supervisor_id": null,
       "supervisor_name": null,
-      "propuestas": []
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-08-04T13:40:31.479Z",
+          "hora_propuesta_cst": "17:00",
+          "comentario": "Dato no verificado",
+          "accion": "ajustado"
+        }
+      ]
     },
     {
       "id_interno": "INC-OLV-CHK-79-2026-07-23T12-26-07-621Z",
