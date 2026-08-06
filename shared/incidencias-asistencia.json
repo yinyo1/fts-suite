@@ -2,6 +2,52 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-CHK-62-2026-08-06T13-44-45-887Z",
+      "tipo": "olvido_checkout",
+      "empleado_id": 62,
+      "empleado_nombre": "Gilberto Gibran Solís Carrillo",
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "sin_departamento": false,
+      "depto_invalido": false,
+      "supervisor_id": 112,
+      "supervisor_name": "Felipe Pérez Guzmán",
+      "supervisor_email": "gibran@fts.mx",
+      "supervisor_phone": "+52 81 3159 1596",
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": false,
+      "sin_supervisor": false,
+      "attendance_id": 14774,
+      "fecha_creacion": "2026-08-06T13:44:45.887Z",
+      "check_in_original_utc": "2026-08-05 14:00:53",
+      "check_out_propuesto_utc": "2026-08-06 12:04:00",
+      "check_out_propuesto_cst": "2026-08-06 06:04:00",
+      "geolocation": {
+        "lat": 25.68881,
+        "lng": -100.2914133,
+        "accuracy": 5.699999809265137,
+        "captured_at": "2026-08-06T13:44:42.961Z"
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "accion": "crear",
+          "fecha": "2026-08-06T13:44:45.887Z",
+          "hora_propuesta_cst": "06:04",
+          "comentario": "Se me olvidó checar salida"
+        }
+      ],
+      "status": "pendiente_supervisor",
+      "hora_final_aplicada_utc": "2026-08-06 12:04:00",
+      "aplicado_en_odoo": true,
+      "tag_disputa_activo": true,
+      "creada_por_modulo": "kiosk",
+      "creada_por_build": "20260710-kiosk-versioncheck"
+    },
+    {
       "id_interno": "INC-AUTO-CIERRE-98-2026-08-04T16-57-47-234Z",
       "tipo": "auto_cierre_pendiente",
       "status": "pendiente_rh",
