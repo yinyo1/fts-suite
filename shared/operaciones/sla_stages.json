@@ -1,9 +1,10 @@
 {
   "_meta": {
     "doc": "docs/operaciones/SEMAFORO_WATCHDOG.md",
-    "descripcion": "Config del semáforo/watchdog operativo. Umbrales por stage (project.project.stage_id) para 2 métricas: A=tiempo en stage (chatter subtype 94), B=tiempo sin seguimiento (chatter comment no-bot). 🟡 = amarillo_pct del 🔴. Días = HÁBILES (excluye sáb/dom). Todo read-only en Odoo salvo el log note al chatter.",
-    "version": "1.0",
-    "fecha": "2026-06-17"
+    "descripcion": "Config del semáforo/watchdog operativo. Umbrales por stage (project.project.stage_id) para 2 métricas: A=tiempo en stage (chatter subtype 94), B=tiempo sin seguimiento (chatter comment no-bot). 🟡 = max(🔴 - 1, 1). Días = HÁBILES (excluye sáb/dom) contados en hora de Monterrey. Todo read-only en Odoo salvo el log note al chatter.",
+    "version": "1.1",
+    "fecha": "2026-08-09",
+    "_cambios_v1_1": "bizDays reescrito: días hábiles TRANSCURRIDOS desde la nota (hoy=0, ayer hábil=1), con granularidad de día en hora de Monterrey. Antes contaba el día de la nota Y el día en curso, y operaba en la TZ del contenedor (UTC), lo que hacía que una nota de ayer 07:26 CST leyera '2d' y saliera roja al día siguiente. Umbrales SIN recalibrar todavía — cambiaron de significado."
   },
   "config": {
     "alert_recipient_default": "estebandelacruz@fts.mx",
@@ -20,10 +21,13 @@
     "in_progress_fallback_dias": 30,
     "credit_fallback_days": 30,
     "credit_extra_days": 7,
-    "business_day_start_hour": 8,
-    "business_day_cutoff_hour": 17,
+    "tz_offset_hours": -6,
+    "_tz_offset_hours": "Hora de Monterrey. El contenedor n8n corre en UTC (medido 2026-08-09: reconstruyendo el snapshot 2026-07-24, solo offset 0 lo reproduce 23/23; -4h/-5h/-6h dan 10/23). settings.timezone del workflow NO aplica a getHours()/setDate() de un Code node, por eso Code - MAIN normaliza a mano con este offset. Monterrey NO tiene DST desde el decreto de oct-2022 (no es municipio fronterizo), así que un offset fijo es exacto. Si México reinstala DST, este es el único campo a tocar.",
     "excluir_findes": true,
     "festivos_mx": [],
+    "_deprecado_v1_1": "business_day_start_hour, business_day_cutoff_hour y amarillo_pct ya NO se usan. Los dos primeros murieron al volverse bizDays granular por día (el resultado ya no depende de la hora de captura). amarillo_pct se reemplazó por max(rojo-1,1) porque 0.9 colapsaba el amarillo sobre el rojo con cualquier rojo_dias<=2. Se dejan las llaves para no romper lectores externos.",
+    "business_day_start_hour": 8,
+    "business_day_cutoff_hour": 17,
     "amarillo_pct": 0.9,
     "in_progress_amarillo_dias_habiles": 3,
     "ap_confirmacion": {
