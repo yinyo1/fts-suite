@@ -728,9 +728,19 @@
           "hora_propuesta_cst": "2026-07-20 11:00:00",
           "comentario": "Entrada tarde autorizada",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe Pérez Guzmán",
+          "timestamp": "2026-08-10T23:18:25.672Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Solicito.permiso por temampersonal. Aprobada",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false,
       "department_id": 3,
