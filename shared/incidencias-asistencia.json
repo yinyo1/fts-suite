@@ -140,9 +140,19 @@
           "fecha": "2026-08-06T13:44:45.887Z",
           "hora_propuesta_cst": "06:04",
           "comentario": "Se me olvidó checar salida"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe Pérez Guzmán",
+          "timestamp": "2026-08-10T23:16:29.365Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Aprobada salida",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": "2026-08-06 12:04:00",
       "aplicado_en_odoo": true,
       "tag_disputa_activo": true,
