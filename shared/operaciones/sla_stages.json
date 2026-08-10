@@ -2,8 +2,9 @@
   "_meta": {
     "doc": "docs/operaciones/SEMAFORO_WATCHDOG.md",
     "descripcion": "Config del semáforo/watchdog operativo. Umbrales por stage (project.project.stage_id) para 2 métricas: A=tiempo en stage (chatter subtype 94), B=tiempo sin seguimiento (chatter comment no-bot). 🟡 = max(🔴 - 1, 1). Días = HÁBILES (excluye sáb/dom) contados en hora de Monterrey. Todo read-only en Odoo salvo el log note al chatter.",
-    "version": "1.1",
+    "version": "1.2",
     "fecha": "2026-08-09",
+    "_cambios_v1_2": "Recalibración a política de captura DIARIA (Mundo A: el run se queda a las 8:00 CST). Semáforo B uniformado a rojo_dias=2 / amarillo=1 en TODOS los stages activos — a las 8:00, 1d significa 'escribió el día hábil anterior y aún no hoy' (normal para quien cumple) y solo 2d es un día hábil perdido; con rojo_dias=1 el semáforo marcaba rojo a gente que sí cumplía (caso real: proy 241, 09-ago). Stage 13 entra en observación hasta 2026-08-24 (ver bloque 'observacion'). Nuevos: guard de nota vacía, detección de nota repetida, bloque SEGUIMIENTO SIN AVANCE y bandera hold_sin_fecha_vigente.",
     "_cambios_v1_1": "bizDays reescrito: días hábiles TRANSCURRIDOS desde la nota (hoy=0, ayer hábil=1), con granularidad de día en hora de Monterrey. Antes contaba el día de la nota Y el día en curso, y operaba en la TZ del contenedor (UTC), lo que hacía que una nota de ayer 07:26 CST leyera '2d' y saliera roja al día siguiente. Umbrales SIN recalibrar todavía — cambiaron de significado."
   },
   "config": {
@@ -42,7 +43,7 @@
     "1": {
       "label": "To Do", "grupo": "Operaciones",
       "en_stage": { "modo": "fijo", "rojo_dias": 1 },
-      "sin_seguimiento": { "modo": "fijo", "rojo_dias": 1 }
+      "sin_seguimiento": { "modo": "fijo", "rojo_dias": 2 }
     },
     "2": {
       "label": "In Progress", "grupo": "Operaciones",
@@ -52,22 +53,22 @@
     "5": {
       "label": "Hold", "grupo": "Operaciones",
       "en_stage": { "modo": "fijo", "rojo_dias": 30 },
-      "sin_seguimiento": { "modo": "fijo", "rojo_dias": 7 }
+      "sin_seguimiento": { "modo": "fijo", "rojo_dias": 2 }
     },
     "3": {
       "label": "Done Operations", "grupo": "Admin",
       "en_stage": { "modo": "fijo", "rojo_dias": 2 },
-      "sin_seguimiento": { "modo": "fijo", "rojo_dias": 1 }
+      "sin_seguimiento": { "modo": "fijo", "rojo_dias": 2 }
     },
     "7": {
       "label": "Admin - In progress", "grupo": "Admin",
       "en_stage": { "modo": "fijo", "rojo_dias": 14 },
-      "sin_seguimiento": { "modo": "fijo", "rojo_dias": 1 }
+      "sin_seguimiento": { "modo": "fijo", "rojo_dias": 2 }
     },
     "13": {
       "label": "En plazo de credito", "grupo": "Admin",
       "en_stage": { "modo": "credito" },
-      "sin_seguimiento": { "modo": "credito" }
+      "sin_seguimiento": { "modo": "fijo", "rojo_dias": 2 }
     }
   },
   "materiales_overrides": {
@@ -77,6 +78,26 @@
   },
   "excluidos": [8, 4, 6],
   "_excluidos_labels": { "8": "Complete TOTAL (Gera)", "4": "Canceled", "6": "Templates" },
+  "observacion": {
+    "_descripcion": "Stages cuyo criterio de seguimiento acaba de cambiar. Mientras dure, siguen puntuando en bloques, contadores y KPI con su criterio PREVIO (sin_seguimiento_previo); su veredicto con el criterio NUEVO aparece SOLO en la sección '🔬 NUEVO CRITERIO — EN OBSERVACIÓN' del correo. Al pasar la fecha 'hasta', la excepción caduca sola y el stage entra al régimen normal sin tocar nada.",
+    "stages": [13],
+    "hasta": "2026-08-24",
+    "sin_seguimiento_previo": { "13": { "modo": "credito" } }
+  },
+  "nota_repetida": {
+    "_descripcion": "Detección de copy-paste en el chatter. Compara cada nota contra la anterior del mismo proyecto: texto normalizado idéntico, o coeficiente de Dice sobre bigramas de caracteres >= umbral_similitud. Usa el campo 'body' que YA viene en 'Odoo - getAll msgComment' → cero consultas extra a Odoo. Las notas vacías se descartan ANTES de comparar. Medición 10-jul→09-ago: 43 de 195 notas (25%) caerían en la regla; racha máxima 10 (proy 2356).",
+    "umbral_similitud": 0.85,
+    "racha_minima": 2
+  },
+  "sin_avance": {
+    "_descripcion": "Bloque 'SEGUIMIENTO SIN AVANCE': racha de notas repetidas >= nota_repetida.racha_minima Y (dias_en_stage > dias_en_stage_min O color_a != verde). NO se gatea solo por color_a a propósito: en stage 2, color_a depende de project.date, que suele estar desfasado — SO11492 llevaba 165 días en stage con 8 notas idénticas seguidas y color_a VERDE porque su fecha compromiso aún no vencía.",
+    "dias_en_stage_min": 60
+  },
+  "banderas": {
+    "hold_sin_fecha_stages": [5],
+    "_hold_sin_fecha_vigente": "Levanta bandera si un proyecto en estos stages tiene project.date vacío o vencido. 'date' es la fecha comprometida de reactivación; la bandera solo sirve si el proceso la mantiene al mover a Hold. Caso 09-ago: proy 213 con fecha vencida el 30-jul y 244 días en Hold; proy 2352 con fecha 31-ago pero su propia nota decía 'se reanudan en diciembre 2026' — ninguna automatización caza esa contradicción.",
+    "_nota_vacia": "Levanta bandera si el proyecto tiene log notes cuyo body normalizado queda vacío. Esas notas NO cuentan como seguimiento válido. Caso 09-ago: proy 2345 salía verde con 22d teniendo sus DOS únicas notas de toda su historia vacías; con el guard pasa a 39d desde create_date."
+  },
   "integridad": {
     "fecha_fin_field_id": 24700,
     "stage_field_id": 24714,
