@@ -628,9 +628,19 @@
           "fecha": "2026-07-23T12:26:07.621Z",
           "hora_propuesta_cst": "05:00",
           "comentario": "Tuve que salir de emergencia se le informó a Felipe"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe Pérez Guzmán",
+          "timestamp": "2026-08-10T23:18:03.356Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Informo salida anticipada 4:30 pm",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": "2026-07-23 11:00:00",
       "aplicado_en_odoo": true,
       "tag_disputa_activo": true,
