@@ -321,9 +321,19 @@
           "hora_propuesta_cst": "2026-07-28 11:00:00",
           "comentario": "Olvide registrar entrada",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 63,
+          "usuario": "Magaly Estefanía Pérez García",
+          "timestamp": "2026-08-10T22:56:18.210Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Llego a las 11:00 am",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false,
       "department_id": 16,
