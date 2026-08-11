@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Carga MO — FTS Suite</title>
-<script>(function(){ window.CMO_BUILD = '20260811-cmo-parser-v2b'; })();</script>
+<script>(function(){ window.CMO_BUILD = '20260811-cmo-parser-v2c'; })();</script>
 <script src="../../finanzas/js/auth-fin.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/resolver.js"></script>
@@ -296,7 +296,7 @@ function render(){
   } else { $('c-kpi').style.display='none'; $('layout').innerHTML=''; }
 
   /* ── bloque PUENTE, grande y con detalle por persona ── */
-  renderPuente(P);
+  renderPuente(P, null);
 
   /* mensajes ordenados por severidad */
   var orden = { INTEGRIDAD:0, CLASIFICACION:1, AVISO:2 };
@@ -344,32 +344,86 @@ function k(label, val, color){
 }
 
 /* ── el puente: nunca un saldo sin explicación ───────────────────────────── */
-function renderPuente(P, servidor){
-  var det = [];
+/* Dos fuentes describen el MISMO dinero: la clasificación que la página calcula, y
+   puente_detalle que devuelve el servidor. Concatenarlas duplica. Cuando el servidor
+   responde, ÉL manda: es literalmente lo que se va a escribir. La lista local sirve
+   sólo para etiquetar qué renglones ya venían previstos desde la página. */
+function clavePuente(quien, motivo, monto){
+  return String(quien).trim() + '|' + String(motivo).trim() + '|' + (Math.round((monto||0)*100)/100);
+}
+function renderPuente(P, servidor, totalServidor){
+  var local = [];
   if(P && P.empleados) P.empleados.forEach(function(e){
-    e.a_bolsa.forEach(function(b){ if(b.destino==='PUENTE') det.push({ quien:e.cod+' '+e.nombre, motivo:b.header, monto:b.monto }); });
-    e.no_catalogado.forEach(function(x){ det.push({ quien:e.cod+' '+e.nombre, motivo:'concepto sin catalogar: '+x.header+' ('+x.letra+')', monto:x.monto }); });
+    e.a_bolsa.forEach(function(b){ if(b.destino==='PUENTE') local.push({ quien:e.cod+' '+e.nombre, motivo:b.header, monto:b.monto }); });
+    e.no_catalogado.forEach(function(x){ local.push({ quien:e.cod+' '+e.nombre, motivo:'concepto sin catalogar: '+x.header+' ('+x.letra+')', monto:x.monto }); });
   });
   if(P && P.puente_filas) P.puente_filas.forEach(function(f){
-    det.push({ quien:'(fila '+f.fila+') '+f.nombre, motivo:'fila sin código ni alias de trío', monto:f.bruto||f.neto });
+    local.push({ quien:'(fila '+f.fila+') '+f.nombre, motivo:'fila sin código ni alias de trío', monto:f.bruto||f.neto });
   });
-  /* lo que aporta el servidor: empleados archivados, códigos sin cruce, etc. */
-  if(servidor && servidor.length) servidor.forEach(function(s){ det.push(s); });
 
-  if(!det.length){ $('puente-box').innerHTML = ''; return; }
+  /* servidor===null => todavia no ha respondido (estimado local).
+     servidor===[]   => respondio y dice que NO hay puente => el bloque se vacia. */
+  var haySrv = Array.isArray(servidor);
+  var vistos = {}; local.forEach(function(d){ vistos[clavePuente(d.quien,d.motivo,d.monto)] = true; });
+
+  var det = haySrv
+    ? servidor.map(function(s){
+        return { quien:s.quien, motivo:s.motivo, monto:s.monto,
+                 origen: vistos[clavePuente(s.quien,s.motivo,s.monto)] ? 'clas' : 'srv' };
+      })
+    : local.map(function(d){ d.origen='clas'; return d; });
+
+  if(!det.length){
+    $('puente-box').innerHTML = '';
+    if(haySrv) actualizarKpiPuente(0);
+    return 0;
+  }
   var tot = det.reduce(function(s,d){ return s+(d.monto||0); }, 0);
+  tot = Math.round(tot*100)/100;
+
+  /* guardia en vivo: si mi suma no es la del servidor, lo digo en vez de mostrar
+     un número firme que nadie va a poder cuadrar */
+  var alerta = '';
+  if(haySrv && totalServidor != null && Math.abs(tot - totalServidor) > 0.011){
+    alerta = '<div class="msg m-int" style="margin:8px 0 0"><span class="q">⛔ El detalle no suma lo que reporta el servidor</span>'
+           + '<span class="d">detalle ' + money(tot) + ' vs servidor ' + money(totalServidor) + ' · Δ ' + money(tot-totalServidor) + '</span>'
+           + '<span class="a"><b>Qué hacer:</b> no cargues. Avisa a soporte de FTS Suite con esta pantalla.</span></div>';
+  }
+  var nClas = det.filter(function(d){ return d.origen==='clas'; }).length;
+  var nSrv  = det.length - nClas;
+
   $('puente-box').innerHTML =
       '<div class="puente">'
     +   '<h3>🌉 Va a la cuenta puente: ' + money(tot) + '</h3>'
-    +   '<p class="mut" style="font-size:12.5px;margin:0 0 10px">Este dinero <b>sí se carga</b>, pero queda apartado en «MO · POR REASIGNAR» '
+    +   '<p class="mut" style="font-size:12.5px;margin:0 0 8px">Este dinero <b>sí se carga</b>, pero queda apartado en «MO · POR REASIGNAR» '
     +   'en vez de repartirse a proyectos, porque todavía no se sabe a dónde va. '
     +   'Cada renglón dice de quién es y por qué. Si el saldo del puente crece semana con semana, hay que reasignarlo.</p>'
-    +   '<table><thead><tr><th>Quién</th><th>Por qué</th><th class="r">Monto</th></tr></thead><tbody>'
+    +   '<p class="mut" style="font-size:11.5px;margin:0 0 10px">'
+    +     (haySrv
+            ? 'Cifras confirmadas por el servidor · <span class="pill pue">concepto</span> ' + nClas
+              + ' &nbsp; <span class="pill baja">baja</span> ' + nSrv
+            : 'Estimado de la página. Al enviar a DRY-RUN el servidor confirma y puede agregar renglones por empleados dados de baja.')
+    +   '</p>'
+    +   '<table><thead><tr><th>Quién</th><th>Por qué</th><th>Origen</th><th class="r">Monto</th></tr></thead><tbody>'
     +   det.sort(function(a,b){ return Math.abs(b.monto)-Math.abs(a.monto); }).map(function(d){
-          return '<tr><td>'+esc(d.quien)+'</td><td>'+esc(d.motivo)+'</td><td class="r mono">'+money(d.monto)+'</td></tr>';
+          var et = d.origen==='clas'
+            ? '<span class="pill pue">concepto</span>'
+            : '<span class="pill baja">baja / servidor</span>';
+          return '<tr><td>'+esc(d.quien)+'</td><td>'+esc(d.motivo)+'</td><td>'+et+'</td><td class="r mono">'+money(d.monto)+'</td></tr>';
         }).join('')
-    +   '<tr style="font-weight:700;background:#fff3df"><td colspan="2">TOTAL AL PUENTE</td><td class="r mono">'+money(tot)+'</td></tr>'
-    +   '</tbody></table></div>';
+    +   '<tr style="font-weight:700;background:#fff3df"><td colspan="3">TOTAL AL PUENTE</td><td class="r mono">'+money(tot)+'</td></tr>'
+    +   '</tbody></table>' + alerta + '</div>';
+  return tot;
+}
+/* el KPI tiene que decir lo mismo que el bloque: cuando el servidor confirma, se actualiza */
+function actualizarKpiPuente(total){
+  var k = $('kpi'); if(!k) return;
+  /* OJO: reemplazo por FUNCION, no por cadena. money() devuelve "$1,234.56" y en un
+     reemplazo de cadena el "$2" se interpreta como referencia al grupo 2 y parte el
+     HTML. Con funcion, el texto se inserta literal. */
+  k.innerHTML = k.innerHTML.replace(
+    /(<div><span>Va al puente<\/span><b[^>]*>)[^<]*(<\/b><\/div>)/,
+    function(_m, ini, fin){ return ini + money(total) + fin; });
 }
 
 /* ── envío al dry-run ────────────────────────────────────────────────────── */
@@ -438,7 +492,12 @@ function renderReport(j, msg){
   var puenteSrv = (j.puente_detalle || []).map(function(p){
     return { quien: (p.cod ? p.cod+' ' : '') + (p.nombre||''), motivo: p.motivo || 'apartado por el servidor', monto: p.monto };
   });
-  if(puenteSrv.length) renderPuente(PARSED, puenteSrv);
+  /* el servidor manda: repinta el bloque con SU detalle y alinea el KPI.
+     Si el servidor dice que no hay puente, el bloque se vacia (no se queda el estimado). */
+  if(j.puente_total != null || puenteSrv.length){
+    var totPuente = renderPuente(PARSED, puenteSrv, j.puente_total);
+    actualizarKpiPuente(j.puente_total != null ? j.puente_total : (totPuente||0));
+  }
 
   var h = verde
     ? '<div class="banner b-ok">✓ Semana completa en Odoo — lista para cargar</div>'
