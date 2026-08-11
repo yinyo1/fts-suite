@@ -4,18 +4,20 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Carga MO — FTS Suite</title>
-<script>(function(){ window.CMO_BUILD = '20260716-cmo-semaforo-v5'; })();</script>
+<script>(function(){ window.CMO_BUILD = '20260811-cmo-parser-v2b'; })();</script>
 <script src="../../finanzas/js/auth-fin.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="js/resolver.js"></script>
 <style>
-  :root{ --azul:#1a4480; --ok:#1a7a3a; --warn:#BA7517; --err:#b3261e; --bg:#f4f6f9; }
+  :root{ --azul:#1a4480; --ok:#1a7a3a; --warn:#BA7517; --err:#b3261e; --info:#3b5bdb; --bg:#f4f6f9; }
   *{ box-sizing:border-box; }
   body{ margin:0; font-family:'Segoe UI',Arial,sans-serif; background:var(--bg); color:#1c1c1c; }
   .top{ display:flex; align-items:center; gap:14px; background:var(--azul); color:#fff; padding:10px 16px; }
   .top a{ color:#fff; text-decoration:none; font-size:14px; opacity:.9; }
   .top .t{ font-weight:600; flex:1; } .top .b{ font-size:10px; opacity:.6; }
-  .wrap{ max-width:1040px; margin:0 auto; padding:16px; }
+  .wrap{ max-width:1080px; margin:0 auto; padding:16px; }
   .card{ background:#fff; border-radius:10px; padding:16px; box-shadow:0 1px 6px rgba(0,0,0,.06); margin-bottom:14px; }
+  .card h3{ margin:0 0 10px; font-size:15px; }
   .drop{ border:2px dashed #bcd; border-radius:10px; padding:28px; text-align:center; cursor:pointer; background:#fafcff; }
   .drop:hover{ background:#f0f6ff; }
   .btn{ border:none; border-radius:8px; padding:9px 18px; font-size:14px; cursor:pointer; font-weight:500; }
@@ -23,14 +25,31 @@
   table{ width:100%; border-collapse:collapse; font-size:12px; }
   th{ background:#eef2f8; text-align:left; padding:6px 8px; position:sticky; top:0; }
   td{ padding:5px 8px; border-top:1px solid #eee; }
-  .r{ text-align:right; } .mut{ color:#888; }
-  .chk{ padding:10px 12px; border-radius:8px; margin:6px 0; font-size:13px; }
-  .chk.ok{ background:#e3f4e8; color:var(--ok); } .chk.err{ background:#fdeceb; color:var(--err); }
-  .chk.warn{ background:#fff3df; color:var(--warn); }
-  .gate{ max-width:520px; margin:60px auto; background:#fff; border-radius:12px; padding:28px; text-align:center; }
+  .r{ text-align:right; } .mut{ color:#888; } .mono{ font-variant-numeric:tabular-nums; }
+  /* ── mensajes por nivel: QUE / DATO / ACCION ── */
+  .msg{ border-radius:8px; margin:8px 0; padding:10px 12px 10px 14px; border-left:5px solid; font-size:13px; }
+  .msg .q{ font-weight:600; display:block; margin-bottom:3px; }
+  .msg .d{ display:block; font-family:Consolas,monospace; font-size:12px; background:rgba(0,0,0,.04);
+           padding:4px 7px; border-radius:4px; margin:4px 0; word-break:break-word; }
+  .msg .a{ display:block; font-size:12.5px; }
+  .msg .a b{ font-weight:600; }
+  .m-int{ background:#fdeceb; border-color:var(--err); color:#7a1a15; }
+  .m-cla{ background:#fff8e8; border-color:var(--warn); color:#7a4d0a; }
+  .m-avi{ background:#eef2fd; border-color:var(--info); color:#26356e; }
+  .m-ok { background:#e3f4e8; border-color:var(--ok);  color:#0f5426; }
+  .banner{ padding:14px 16px; border-radius:9px; font-size:16px; font-weight:700; margin-bottom:12px; }
+  .b-ok{ background:#e3f4e8; color:var(--ok); border:1px solid #b7e0c4; }
+  .b-no{ background:#fdeceb; color:var(--err); border:1px solid #f2c2be; }
+  .kpi{ display:flex; gap:10px; flex-wrap:wrap; margin:10px 0; }
+  .kpi div{ background:#f7f9fc; border:1px solid #e3e9f2; border-radius:8px; padding:8px 12px; min-width:130px; }
+  .kpi span{ display:block; font-size:11px; color:#667; } .kpi b{ font-size:16px; font-variant-numeric:tabular-nums; }
+  .puente{ border:2px solid var(--warn); background:#fffaf0; border-radius:10px; padding:14px; margin-bottom:14px; }
+  .puente h3{ color:var(--warn); margin:0 0 4px; }
   .pill{ display:inline-block; font-size:10px; padding:1px 7px; border-radius:9px; background:#eef2f8; color:#456; margin-left:4px; }
   .pill.vac{ background:#fff3df; color:var(--warn); } .pill.asim{ background:#e7e9fd; color:#3b3fb6; }
-  .pill.trio{ background:#e3f4e8; color:var(--ok); } .pill.nc{ background:#fdeceb; color:var(--err); }
+  .pill.trio{ background:#e3f4e8; color:var(--ok); } .pill.pue{ background:#ffe9c9; color:#8a4b00; }
+  .pill.baja{ background:#fdeceb; color:var(--err); }
+  .gate{ max-width:520px; margin:60px auto; background:#fff; border-radius:12px; padding:28px; text-align:center; }
 </style>
 </head>
 <body>
@@ -48,8 +67,9 @@
       <div>
         <label style="font-size:11px;color:#555;font-weight:600;display:block">Semana de nómina (VIE→JUE)</label>
         <input type="date" id="f-vie" style="padding:7px;border:1px solid #ccc;border-radius:7px">
-        <span class="mut" style="font-size:11px">→ jueves = <b id="f-jue">—</b> · SEM <b id="f-sem">—</b></span>
+        <span class="mut" style="font-size:11px">→ jueves = <b id="f-jue">—</b> · <b id="f-sem">—</b></span>
       </div>
+      <div class="mut" style="font-size:11px;margin-left:auto" id="cat-st">catálogo: cargando…</div>
     </div>
     <div class="drop" id="drop">
       📄 Arrastra o haz clic para elegir el Excel CONTPAQi (.xlsx)
@@ -58,18 +78,18 @@
   </div>
 
   <div id="result" style="display:none">
-    <div class="card">
-      <strong>Validaciones duras</strong>
-      <div id="checks"></div>
-    </div>
-    <div class="card">
+    <div id="banner"></div>
+    <div class="card" id="c-kpi" style="display:none"><div class="kpi" id="kpi"></div><div id="layout" class="mut" style="font-size:11px"></div></div>
+    <div id="puente-box"></div>
+    <div class="card" id="c-msgs"><h3>Revisión del archivo</h3><div id="msgs"></div></div>
+    <div class="card" id="c-tabla" style="display:none">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <strong>Roster parseado (<span id="cnt">0</span>)</strong>
+        <h3 style="margin:0">Nómina leída (<span id="cnt">0</span> empleados)</h3>
         <button class="btn btn-p" id="send" disabled>Enviar a DRY-RUN →</button>
       </div>
-      <div style="max-height:440px;overflow:auto">
+      <div style="max-height:420px;overflow:auto">
         <table>
-          <thead><tr><th>Cód</th><th>Empleado (Excel)</th><th class="r">Bruto (col 14)</th><th>Tags</th><th>Empleado Odoo</th></tr></thead>
+          <thead><tr><th>Cód</th><th>Empleado</th><th class="r">Percepciones</th><th class="r">A repartir</th><th class="r">A bolsa</th><th class="r">Puente</th><th>Notas</th></tr></thead>
           <tbody id="tb"></tbody>
         </table>
       </div>
@@ -79,252 +99,414 @@
 </main>
 
 <script>
-// ── Mapeo codigo CONTPAQi → empleado Odoo — SOLO PREVIEW/tags de la pagina ──
-// FUENTE DE VERDAD = Odoo: los workflows leen x_studio_codigo_contpaqi + x_studio_solo_bolsa
-// + x_studio_cuenta_indirecta_default en cada corrida (el mapa en memoria ya murio del lado motor).
-// Este mapa solo pinta la tabla de preview; ids verificados por read-back 2026-07-16 (29 codigos).
-// solo:true (preview) = los 3 que en Odoo llevan x_studio_solo_bolsa=true: Rissia 97, Pablo 108, Arturo 143.
-const CODE_MAP = {
- '002':{id:25,n:'Héctor Cruz'},'003':{id:68,n:'Jésus Montalvo'},'005':{id:6,n:'Leonel Cruz'},
- '006':{id:8,n:'Francisco Montalvo'},'010':{id:55,n:'Juan Manuel Sánchez'},'011':{id:48,n:'Luis Ángel García'},
- '012':{id:63,n:'Magaly Pérez'},'013':{id:62,n:'Gibrán Solís'},'014':{id:57,n:'Samuel Alcántara'},
- '016':{id:59,n:'Gerardo Lozano'},'017':{id:155,n:'Juan De La Cruz',asim:true},'018':{id:156,n:'Juana Camarillo',asim:true},
- '027':{id:75,n:'Mateo Salazar'},'028':{id:78,n:'Aldo Méndez'},'029':{id:79,n:'José Luis Romero'},
- '036':{id:97,n:'Rissia Araujo',solo:true},'038':{id:101,n:'Ana Laura Acevedo'},'044':{id:108,n:'Pablo Bayly',solo:true},
- '052':{id:121,n:'Stephany Ventura'},'056':{id:124,n:'Germán Merino'},'058':{id:127,n:'Cesar Gómez'},
- '059':{id:128,n:'Enoc Maldonado'},'061':{id:131,n:'Tomas Vázquez'},'062':{id:130,n:'Rolando Vázquez'},
- '074':{id:138,n:'Tomas Loredo'},'080':{id:143,n:'Arturo Hernández (sup com)',solo:true},
- '081':{id:149,n:'Erick Belmont'},'084':{id:153,n:'Eduardo Garza'},'085':{id:154,n:'Ramiro Segovia'}
-};
-const TRIO_NAMES = ['CARLOS','FELIPE','RICARDO'];
-const WEBHOOK = 'https://primary-production-5c3c.up.railway.app/webhook/planeacion/carga-mo';
-const WRITE_WEBHOOK = 'https://primary-production-5c3c.up.railway.app/webhook/planeacion/carga-mo-write';
-let LAST_REPORT = null;
-// columnas 0-based del layout SEM 28
-const C = { cod:0, nom:1, vac:8, primaVac:9, asim:11, bruto:13, neto:35 };
-const HEADER_ROW = 7; // fila 8 (0-based)
+'use strict';
+/* ── config ──────────────────────────────────────────────────────────────── */
+var REPO = 'yinyo1/fts-suite';
+var CAT_PATH = 'shared/operaciones/contpaqi_conceptos.json';
+var CAT_API = 'https://api.github.com/repos/' + REPO + '/contents/' + CAT_PATH + '?ref=main';
+var CAT_RAW = 'https://raw.githubusercontent.com/' + REPO + '/main/' + CAT_PATH;
+var WEBHOOK = 'https://primary-production-5c3c.up.railway.app/webhook/planeacion/carga-mo';
+var WRITE_WEBHOOK = 'https://primary-production-5c3c.up.railway.app/webhook/planeacion/carga-mo-write';
 
-let PARSED = null;
+var CAT = null, CAT_ERR = null, PARSED = null, LAST_REPORT = null;
 document.getElementById('b').textContent = window.CMO_BUILD;
 
-// ── Auth: reusa el JWT del módulo Finanzas (server-side, token en body). Sin login no se ve nada. ──
+/* ── utilidades ──────────────────────────────────────────────────────────── */
+function $(id){ return document.getElementById(id); }
+function money(n){ return '$' + (Number(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
+
+/* ── catálogo: API de GitHub (fresca al instante) con raw como respaldo ──── */
+async function cargarCatalogo(){
+  var st = $('cat-st');
+  st.textContent = 'catálogo: cargando…';
+  try{
+    var r = await fetch(CAT_API, { headers:{ 'Accept':'application/vnd.github+json' } });
+    if(!r.ok) throw new Error('API ' + r.status);
+    var j = await r.json();
+    CAT = JSON.parse(decodeURIComponent(escape(atob(j.content.replace(/\n/g,'')))));
+    CAT_ERR = null;
+    st.textContent = 'catálogo v' + CAT.version + ' · main @ ' + String(j.sha).slice(0,7);
+    return true;
+  }catch(e1){
+    try{
+      var r2 = await fetch(CAT_RAW + '?t=' + Date.now());
+      if(!r2.ok) throw new Error('raw ' + r2.status);
+      CAT = await r2.json();
+      CAT_ERR = null;
+      st.textContent = 'catálogo v' + CAT.version + ' · raw (respaldo)';
+      return true;
+    }catch(e2){
+      /* NO se grita todavia: el usuario no ha hecho nada. Un error que aparece antes
+         de que la persona actue entrena a ignorar los errores. Va discreto aqui, y el
+         banner se guarda para cuando de verdad intente cargar un archivo. */
+      CAT = null;
+      CAT_ERR = {
+        que: 'No se pudo cargar el catálogo de conceptos, así que no se puede leer ningún archivo',
+        dato: 'API: ' + e1.message + ' · raw: ' + e2.message + ' · ' + CAT_PATH,
+        accion: 'Haz clic en «reintentar» arriba a la derecha. Si sigue fallando, revisa tu conexión y recarga la página. Si aun así no carga, avisa a soporte de FTS Suite: puede que el catálogo no esté publicado.'
+      };
+      st.innerHTML = '<span style="color:#b3261e;font-weight:600">catálogo no disponible</span> · '
+                   + '<a href="#" id="cat-retry" style="color:#1a4480">reintentar</a>';
+      var lnk = $('cat-retry');
+      if(lnk) lnk.onclick = function(ev){ ev.preventDefault(); cargarCatalogo(); return false; };
+      return false;
+    }
+  }
+}
+function mostrarFallaFatal(que, dato, accion){
+  $('result').style.display = 'block';
+  $('banner').innerHTML = '<div class="banner b-no">⛔ No se puede continuar</div>';
+  $('msgs').innerHTML = renderMsg({ nivel:'INTEGRIDAD', que:que, dato:dato, accion:accion });
+  $('c-tabla').style.display = 'none'; $('c-kpi').style.display = 'none'; $('puente-box').innerHTML = '';
+}
+
+/* ── auth (reusa el JWT de Finanzas; token en el body) ───────────────────── */
 function boot(){
-  document.getElementById('gate').style.display='none';
-  document.getElementById('main').style.display='block';
-  const s=window.FinAuth&&FinAuth.getSession&&FinAuth.getSession();
-  document.getElementById('u').textContent = (s&&s.user)||'nómina';
+  $('gate').style.display='none'; $('main').style.display='block';
+  var s = window.FinAuth && FinAuth.getSession && FinAuth.getSession();
+  $('u').textContent = (s && s.user) || 'nómina';
+  cargarCatalogo();
 }
 async function doLogin(){
-  const u=(document.getElementById('lg-u').value||'').trim();
-  const p=document.getElementById('lg-p').value||'';
-  const btn=document.getElementById('lg-btn'), m=document.getElementById('lg-msg');
-  btn.disabled=true; btn.textContent='Entrando…'; m.textContent='';
-  const r=await FinAuth.login(u,p);
-  if(r&&r.ok){ boot(); }
-  else{ m.textContent=(r&&r.msg)||'No se pudo iniciar sesión.'; btn.disabled=false; btn.textContent='Entrar'; }
+  var u = ($('lg-u').value||'').trim(), p = $('lg-p').value||'';
+  var btn = $('lg-btn'), m = $('lg-msg');
+  btn.disabled = true; btn.textContent='Entrando…'; m.textContent='';
+  var r = await FinAuth.login(u,p);
+  if(r && r.ok) boot();
+  else { m.textContent = (r && r.msg) || 'No se pudo iniciar sesión.'; btn.disabled=false; btn.textContent='Entrar'; }
 }
 function showGate(){
-  const g=document.getElementById('gate'); g.style.display='block';
-  document.getElementById('main').style.display='none';
-  g.innerHTML='<h3>🔒 Acceso Nómina</h3>'
-    +'<p class="mut" style="font-size:13px">Esta pantalla muestra brutos de nómina (confidencial). Inicia sesión.</p>'
-    +'<input id="lg-u" placeholder="Usuario" autocomplete="username" style="width:100%;padding:9px;border:1px solid #ccc;border-radius:7px;margin:5px 0">'
-    +'<input id="lg-p" type="password" placeholder="Contraseña" autocomplete="current-password" style="width:100%;padding:9px;border:1px solid #ccc;border-radius:7px;margin:5px 0">'
-    +'<button class="btn btn-p" id="lg-btn" style="width:100%;margin-top:6px">Entrar</button>'
-    +'<div id="lg-msg" class="chk err" style="margin-top:8px;display:none"></div>';
-  const msg=document.getElementById('lg-msg');
-  document.getElementById('lg-btn').onclick=()=>{ msg.style.display='block'; doLogin(); };
-  document.getElementById('lg-p').addEventListener('keydown',e=>{ if(e.key==='Enter'){ msg.style.display='block'; doLogin(); } });
+  var g = $('gate'); g.style.display='block'; $('main').style.display='none';
+  g.innerHTML = '<h3>🔒 Acceso Nómina</h3>'
+    + '<p class="mut" style="font-size:13px">Esta pantalla muestra brutos de nómina (confidencial). Inicia sesión.</p>'
+    + '<input id="lg-u" placeholder="Usuario" autocomplete="username" style="width:100%;padding:9px;border:1px solid #ccc;border-radius:7px;margin:5px 0">'
+    + '<input id="lg-p" type="password" placeholder="Contraseña" autocomplete="current-password" style="width:100%;padding:9px;border:1px solid #ccc;border-radius:7px;margin:5px 0">'
+    + '<button class="btn btn-p" id="lg-btn" style="width:100%;margin-top:6px">Entrar</button>'
+    + '<div id="lg-msg" class="msg m-int" style="margin-top:8px;display:none"></div>';
+  var msg = $('lg-msg');
+  $('lg-btn').onclick = function(){ msg.style.display='block'; doLogin(); };
+  $('lg-p').addEventListener('keydown', function(e){ if(e.key==='Enter'){ msg.style.display='block'; doLogin(); } });
 }
-function gate(){
-  if(window.FinAuth && FinAuth.isValid()){ boot(); return true; }
-  showGate(); return false;
-}
-function fmt(n){ return (n||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function gate(){ if(window.FinAuth && FinAuth.isValid()){ boot(); return true; } showGate(); return false; }
 
-// semana: viernes elegido → jueves +6
-document.getElementById('f-vie').addEventListener('change', e=>{
-  const v=e.target.value; if(!v) return;
-  const d=new Date(v+'T12:00:00'); const j=new Date(d.getTime()+6*864e5);
-  document.getElementById('f-jue').textContent = j.toISOString().slice(0,10);
-  // # de semana ISO aprox
-  const oneJan=new Date(d.getFullYear(),0,1); const wk=Math.ceil((((d-oneJan)/864e5)+oneJan.getDay()+1)/7);
-  document.getElementById('f-sem').textContent = wk;
+/* ── semana ──────────────────────────────────────────────────────────────── */
+$('f-vie').addEventListener('change', function(e){
+  var v = e.target.value; if(!v) return;
+  var d = new Date(v+'T12:00:00'), j = new Date(d.getTime()+6*864e5);
+  $('f-jue').textContent = j.toISOString().slice(0,10);
+  if(PARSED) render();
 });
 
-const drop=document.getElementById('drop'), file=document.getElementById('file');
-drop.addEventListener('click',()=>file.click());
-drop.addEventListener('dragover',e=>{e.preventDefault();drop.style.background='#e8f2ff';});
-drop.addEventListener('dragleave',()=>drop.style.background='');
-drop.addEventListener('drop',e=>{e.preventDefault();drop.style.background='';if(e.dataTransfer.files[0])parse(e.dataTransfer.files[0]);});
-file.addEventListener('change',e=>{if(e.target.files[0])parse(e.target.files[0]);});
+/* ── ingesta ─────────────────────────────────────────────────────────────── */
+var drop = $('drop'), file = $('file');
+drop.addEventListener('click', function(){ file.click(); });
+drop.addEventListener('dragover', function(e){ e.preventDefault(); drop.style.background='#e8f2ff'; });
+drop.addEventListener('dragleave', function(){ drop.style.background=''; });
+drop.addEventListener('drop', function(e){ e.preventDefault(); drop.style.background=''; if(e.dataTransfer.files[0]) leer(e.dataTransfer.files[0]); });
+file.addEventListener('change', function(e){ if(e.target.files[0]) leer(e.target.files[0]); });
 
-function parse(f){
-  const rd=new FileReader();
-  rd.onload=ev=>{
-    let rows;
+function leer(f){
+  if(!CAT){
+    if(CAT_ERR) mostrarFallaFatal(CAT_ERR.que, CAT_ERR.dato, CAT_ERR.accion);
+    else mostrarFallaFatal('El catálogo de conceptos todavía está cargando', 'aún no responde',
+      'Espera unos segundos y vuelve a soltar el archivo.');
+    return;
+  }
+  var rd = new FileReader();
+  rd.onload = function(ev){
+    var rows;
     try{
-      const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array'});
-      const ws=wb.Sheets[wb.SheetNames[0]];
-      rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
-    }catch(err){ return showErr('No se pudo leer el .xlsx: '+err.message); }
-    // ── Periodo CONTPAQi (fila ~4) = FUENTE DE VERDAD de la semana e idempotencia ──
-    let periodo=null, pStart=null, pEnd=null;
-    for(let i=0;i<Math.min(8,rows.length);i++){
-      const line=(rows[i]||[]).map(c=>c==null?'':String(c)).join(' ');
-      const mm=line.match(/Periodo\s+(\d+).*?del\s+(\d{1,2})\/(\d{1,2})\/(\d{4})\s+al\s+(\d{1,2})\/(\d{1,2})\/(\d{4})/i);
-      if(mm){ periodo=parseInt(mm[1],10);
-        pStart=mm[4]+'-'+String(mm[3]).padStart(2,'0')+'-'+String(mm[2]).padStart(2,'0');
-        pEnd  =mm[7]+'-'+String(mm[6]).padStart(2,'0')+'-'+String(mm[5]).padStart(2,'0'); break; }
+      var wb = XLSX.read(new Uint8Array(ev.target.result), { type:'array' });
+      rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header:1, raw:true, defval:null });
+    }catch(err){
+      mostrarFallaFatal('No se pudo abrir el archivo', err.message,
+        'Verifica que sea un .xlsx real (no un .csv renombrado ni un PDF). Vuelve a exportarlo desde CONTPAQi.');
+      return;
     }
-    const emps=[], trio=[]; let totalGral=null;
-    for(let i=HEADER_ROW+1;i<rows.length;i++){
-      const r=rows[i]||[];
-      const nom=(r[C.nom]||'').toString().trim();
-      const codStr=(r[C.cod]==null?'':String(r[C.cod]).trim());
-      const bruto=num(r[C.bruto]);
-      if(codStr.toLowerCase().startsWith('total')||nom.toLowerCase().startsWith('total')){ totalGral=bruto; continue; }
-      const isRealCod=/^0*\d+$/.test(codStr) && parseInt(codStr,10)>0;
-      // trío (sin código, nombre CARLOS/FELIPE/RICARDO, valor en NETO)
-      if(!isRealCod && TRIO_NAMES.includes(nom.toUpperCase())){ trio.push({nombre:nom.toUpperCase(), neto:num(r[C.neto])}); continue; }
-      // fila fantasma: sin código válido (ej. "00") Y sin bruto → basura de Excel, ignorar
-      if(!isRealCod && bruto===0) continue;
-      if(isRealCod){ emps.push({ cod:codStr.padStart(3,'0'), nombre:nom, bruto:bruto,
-        vac:num(r[C.vac])+num(r[C.primaVac]), asim:num(r[C.asim]) }); }
-    }
-    PARSED={ emps, trio, totalGral, periodo, periodoStart:pStart, periodoEnd:pEnd,
-      vie:document.getElementById('f-vie').value, jue:document.getElementById('f-jue').textContent };
+    PARSED = CargaMOResolver.resolver(rows, CAT);
+    PARSED._archivo = f.name;
     render();
   };
   rd.readAsArrayBuffer(f);
 }
-function num(v){ const n=parseFloat(v); return isNaN(n)?0:Math.round(n*100)/100; }
-function showErr(m){ document.getElementById('result').style.display='block';
-  document.getElementById('checks').innerHTML='<div class="chk err">✗ '+m+'</div>'; }
 
-function render(){
-  document.getElementById('result').style.display='block';
-  const p=PARSED, checks=[];
-  // Validación 1: cruce de códigos
-  const noCruza=p.emps.filter(e=>!CODE_MAP[e.cod]);
-  if(noCruza.length===0) checks.push(['ok','✓ Todos los códigos cruzan ('+p.emps.length+' empleados)']);
-  else checks.push(['err','✗ '+noCruza.length+' código(s) SIN empleado (ABORTA): '+noCruza.map(e=>e.cod+' '+e.nombre).join(', ')]);
-  // Validación 2: suma de control
-  const sumBruto=p.emps.reduce((s,e)=>s+e.bruto,0);
-  const sumTrio=p.trio.reduce((s,t)=>s+t.neto,0);
-  if(p.totalGral!=null){
-    const diff=Math.abs(sumBruto - p.totalGral);
-    if(diff<=Math.max(0.05, p.emps.length*0.01)) checks.push(['ok','✓ Suma de control: Σ brutos '+fmt(sumBruto)+' = Total Gral '+fmt(p.totalGral)+' (Δ '+fmt(diff)+')']);
-    else checks.push(['err','✗ Suma NO cuadra: Σ brutos '+fmt(sumBruto)+' vs Total Gral '+fmt(p.totalGral)+' (Δ '+fmt(diff)+')']);
-  } else checks.push(['warn','⚠ No se encontró fila "Total Gral" — no se validó la suma.']);
-  checks.push(['ok','ℹ Trío: '+(p.trio.map(t=>t.nombre+' '+fmt(t.neto)).join(' · ')||'ninguno')+'. Total a distribuir = '+fmt(sumBruto+sumTrio)]);
-  // Validación 3: Periodo CONTPAQi (fuente de verdad de la semana) + cruce con el viernes elegido
-  let periodoOK=false;
-  if(p.periodo==null){
-    checks.push(['err','✗ No se detectó el "Periodo N ... del DD/MM al DD/MM" en la fila 4 (¿archivo equivocado?).']);
-  } else {
-    document.getElementById('f-sem').textContent = 'S'+p.periodo+'/'+(p.periodoStart||'').slice(0,4);
-    if(!p.vie){
-      checks.push(['warn','⚠ Elige el viernes de la semana para cruzarlo con el Periodo '+p.periodo+' ('+p.periodoStart+' → '+p.periodoEnd+').']);
-    } else if(p.periodoStart && p.vie!==p.periodoStart){
-      checks.push(['err','✗ Archivo equivocado: el Excel es Periodo '+p.periodo+' ('+p.periodoStart+' → '+p.periodoEnd+') pero seleccionaste el viernes '+p.vie+'.']);
-    } else {
-      periodoOK=true;
-      checks.push(['ok','✓ Periodo '+p.periodo+' ('+p.periodoStart+' → '+p.periodoEnd+') = viernes elegido. Llave: MO S'+p.periodo+'/'+(p.periodoStart||'').slice(0,4)]);
-    }
-  }
-  document.getElementById('checks').innerHTML = checks.map(c=>'<div class="chk '+c[0]+'">'+c[1]+'</div>').join('');
-  // tabla
-  document.getElementById('cnt').textContent=p.emps.length;
-  document.getElementById('tb').innerHTML = p.emps.map(e=>{
-    const m=CODE_MAP[e.cod]; const tags=[];
-    if(e.asim>0) tags.push('<span class="pill asim">asimilado→513</span>');
-    if(e.vac>0) tags.push('<span class="pill vac">vacaciones→bolsa depto</span>');
-    if(m&&m.solo) tags.push('<span class="pill">solo bolsa</span>');
-    if(!m) tags.push('<span class="pill nc">SIN empleado</span>');
-    if(m&&m.crear) tags.push('<span class="pill nc">crear en Odoo</span>');
-    return '<tr><td>'+e.cod+'</td><td>'+e.nombre+'</td><td class="r">'+fmt(e.bruto)+'</td><td>'+tags.join(' ')+'</td><td class="mut">'+(m?(m.n+(m.id?(' ('+m.id+')'):' (crear)')):'—')+'</td></tr>';
-  }).join('') + p.trio.map(t=>'<tr><td>—</td><td>'+t.nombre+'</td><td class="r">'+fmt(t.neto)+'</td><td><span class="pill trio">trío (neto)</span></td><td class="mut">factura proveedor</td></tr>').join('');
-  const canSend = noCruza.length===0 && !!p.vie && periodoOK;
-  document.getElementById('send').disabled = !canSend;
+/* ── render de un mensaje QUE / DATO / ACCION ────────────────────────────── */
+function renderMsg(m){
+  var cls = m.nivel === 'INTEGRIDAD' ? 'm-int' : (m.nivel === 'CLASIFICACION' ? 'm-cla' : 'm-avi');
+  var ico = m.nivel === 'INTEGRIDAD' ? '⛔' : (m.nivel === 'CLASIFICACION' ? '⚠️' : 'ℹ️');
+  return '<div class="msg '+cls+'">'
+       +   '<span class="q">'+ico+' '+esc(m.que)+'</span>'
+       +   '<span class="d">'+esc(m.dato)+'</span>'
+       +   '<span class="a"><b>Qué hacer:</b> '+esc(m.accion)+'</span>'
+       + '</div>';
 }
 
-document.getElementById('send').addEventListener('click', async ()=>{
-  if(!PARSED) return;
-  const btn=document.getElementById('send'); btn.disabled=true; btn.textContent='Enviando…';
-  const token=window.FinAuth&&FinAuth.getToken&&FinAuth.getToken();
-  if(!token){ showGate(); btn.textContent='Enviar a DRY-RUN →'; btn.disabled=false; return; }
-  const s=FinAuth.getSession();
-  const payload={ modo:'dry_run', token:token,
-    periodo:PARSED.periodo, periodo_start:PARSED.periodoStart, periodo_end:PARSED.periodoEnd,
-    semana_vie:PARSED.vie, semana_jue:PARSED.jue,
-    solicitante:(s&&s.user)||'', empleados:PARSED.emps, trio:PARSED.trio, total_gral:PARSED.totalGral };
-  const msg=document.getElementById('msg'); msg.style.display='block';
-  try{
-    const rsp=await fetch(WEBHOOK,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    const j=await rsp.json().catch(()=>({}));
-    LAST_REPORT=j; renderReport(j, msg);
-  }catch(err){
-    msg.innerHTML='<div class="chk err">✗ Error enviando: '+err.message+' (¿el workflow n8n está activo?)</div>';
+/* ── render principal ────────────────────────────────────────────────────── */
+function render(){
+  var P = PARSED; if(!P) return;
+  $('result').style.display = 'block';
+  var fallas = [];
+
+  /* cruce del periodo contra el viernes elegido — nivel INTEGRIDAD */
+  var vie = $('f-vie').value;
+  var periodoOk = false;
+  if(P.periodo){
+    $('f-sem').textContent = 'SEM ' + P.periodo.periodo + ' · ' + P.periodo.inicio + ' → ' + P.periodo.fin;
+    if(!vie){
+      fallas.push({ nivel:'INTEGRIDAD', que:'Falta elegir la semana de nómina',
+        dato:'el archivo es SEM '+P.periodo.periodo+' ('+P.periodo.inicio+' → '+P.periodo.fin+')',
+        accion:'Selecciona arriba el viernes '+P.periodo.inicio+' para confirmar que es la semana que quieres cargar.' });
+    } else if(vie !== P.periodo.inicio){
+      fallas.push({ nivel:'INTEGRIDAD', que:'El archivo no corresponde a la semana que elegiste',
+        dato:'elegiste el viernes '+vie+' pero el Excel es SEM '+P.periodo.periodo+', del '+P.periodo.inicio+' al '+P.periodo.fin,
+        accion:'Cambia el viernes a '+P.periodo.inicio+', o sube el Excel de la semana que corresponde al viernes '+vie+'.' });
+    } else periodoOk = true;
   }
-  btn.textContent='Enviar a DRY-RUN →'; btn.disabled=false;
+
+  fallas = fallas.concat(P.fallas.integridad, P.fallas.clasificacion, P.fallas.aviso);
+  var nInt = fallas.filter(function(f){ return f.nivel==='INTEGRIDAD'; }).length;
+  var nCla = P.fallas.clasificacion.length, nAvi = P.fallas.aviso.length;
+
+  /* ── LA REGLA: solo INTEGRIDAD bloquea ── */
+  var puedeEnviar = (nInt === 0) && !!P.totales;
+
+  $('banner').innerHTML = puedeEnviar
+    ? '<div class="banner b-ok">✓ Archivo válido — SEM '+(P.periodo?P.periodo.periodo:'?')+' lista para enviar'
+      + (nCla ? ' <span style="font-weight:400;font-size:13px">· '+nCla+' concepto(s) irán a la cuenta puente</span>' : '')
+      + '</div>'
+    : '<div class="banner b-no">⛔ El archivo no se puede cargar — '+nInt+' problema(s) que hay que resolver primero</div>';
+
+  /* KPIs + layout */
+  if(P.totales){
+    $('c-kpi').style.display = 'block';
+    var T = P.totales;
+    $('kpi').innerHTML =
+        k('Percepciones', money(T.bruto))
+      + k('Se reparte por horas', money(T.a_repartir))
+      + k('Va a bolsa', money(T.a_bolsa))
+      + k('Va al puente', money(T.puente), T.puente > 0.005 ? 'var(--warn)' : null)
+      + k('Trío (proveedor)', money(T.trio))
+      + k('Total nómina', money(T.nomina));
+    var L = P.layout;
+    $('layout').innerHTML = 'Leído: encabezados en la fila <b>'+L.header_row_humana+'</b> · '
+      + 'Total Percepciones en la columna <b>'+L.marcadores.TOTAL_PERCEPCIONES.letra+'</b> · '
+      + P.zonas.percepciones.length+' conceptos de percepciones · catálogo v'+L.catalogo_version
+      + ' · archivo <b>'+esc(P._archivo||'')+'</b>';
+  } else { $('c-kpi').style.display='none'; $('layout').innerHTML=''; }
+
+  /* ── bloque PUENTE, grande y con detalle por persona ── */
+  renderPuente(P);
+
+  /* mensajes ordenados por severidad */
+  var orden = { INTEGRIDAD:0, CLASIFICACION:1, AVISO:2 };
+  fallas.sort(function(a,b){ return orden[a.nivel]-orden[b.nivel]; });
+  $('msgs').innerHTML = fallas.length
+    ? fallas.map(renderMsg).join('')
+    : '<div class="msg m-ok"><span class="q">✓ Sin observaciones</span><span class="a">El archivo cuadra consigo mismo y todos los conceptos están catalogados.</span></div>';
+
+  /* tabla */
+  if(P.empleados && P.empleados.length){
+    $('c-tabla').style.display = 'block';
+    $('cnt').textContent = P.empleados.length;
+    var filas = P.empleados.map(function(e){
+      var pue = e.no_catalogado.reduce(function(s,x){ return s+x.monto; }, 0);
+      var bol = e.a_bolsa.reduce(function(s,x){ return s+x.monto; }, 0);
+      var tags = [];
+      e.a_bolsa.forEach(function(b){
+        var n = String(b.concepto||'').toLowerCase();
+        if(n.indexOf('vacacion')>=0 || n.indexOf('prima')>=0) tags.push('<span class="pill vac">vacaciones</span>');
+        else if(n.indexOf('asimilado')>=0) tags.push('<span class="pill asim">asimilado</span>');
+        else if(b.destino==='PUENTE') tags.push('<span class="pill pue">'+esc(b.concepto)+'→puente</span>');
+      });
+      if(e.no_catalogado.length) tags.push('<span class="pill pue">'+e.no_catalogado.length+' sin catalogar→puente</span>');
+      var dedup = tags.filter(function(v,i,a){ return a.indexOf(v)===i; });
+      return '<tr><td class="mono">'+esc(e.cod)+'</td><td>'+esc(e.nombre)+'</td>'
+        + '<td class="r mono">'+money(e.bruto)+'</td>'
+        + '<td class="r mono">'+money(e.a_repartir)+'</td>'
+        + '<td class="r mono">'+(bol>0.005?money(bol):'—')+'</td>'
+        + '<td class="r mono">'+(pue>0.005?'<b style="color:var(--warn)">'+money(pue)+'</b>':'—')+'</td>'
+        + '<td>'+dedup.join(' ')+'</td></tr>';
+    }).join('');
+    var filasTrio = P.trio.map(function(t){
+      return '<tr><td>—</td><td>'+esc(t.nombre)+'</td><td class="r mono">'+money(t.neto)+'</td>'
+        + '<td class="r mono">'+money(t.neto)+'</td><td class="r">—</td><td class="r">—</td>'
+        + '<td><span class="pill trio">trío · emp '+t.empleado_id+' · factura proveedor</span></td></tr>';
+    }).join('');
+    $('tb').innerHTML = filas + filasTrio;
+  } else { $('c-tabla').style.display='none'; }
+
+  $('send').disabled = !puedeEnviar;
+  $('send').textContent = puedeEnviar ? 'Enviar a DRY-RUN →' : 'Resuelve los problemas de arriba';
+}
+function k(label, val, color){
+  return '<div><span>'+label+'</span><b'+(color?' style="color:'+color+'"':'')+'>'+val+'</b></div>';
+}
+
+/* ── el puente: nunca un saldo sin explicación ───────────────────────────── */
+function renderPuente(P, servidor){
+  var det = [];
+  if(P && P.empleados) P.empleados.forEach(function(e){
+    e.a_bolsa.forEach(function(b){ if(b.destino==='PUENTE') det.push({ quien:e.cod+' '+e.nombre, motivo:b.header, monto:b.monto }); });
+    e.no_catalogado.forEach(function(x){ det.push({ quien:e.cod+' '+e.nombre, motivo:'concepto sin catalogar: '+x.header+' ('+x.letra+')', monto:x.monto }); });
+  });
+  if(P && P.puente_filas) P.puente_filas.forEach(function(f){
+    det.push({ quien:'(fila '+f.fila+') '+f.nombre, motivo:'fila sin código ni alias de trío', monto:f.bruto||f.neto });
+  });
+  /* lo que aporta el servidor: empleados archivados, códigos sin cruce, etc. */
+  if(servidor && servidor.length) servidor.forEach(function(s){ det.push(s); });
+
+  if(!det.length){ $('puente-box').innerHTML = ''; return; }
+  var tot = det.reduce(function(s,d){ return s+(d.monto||0); }, 0);
+  $('puente-box').innerHTML =
+      '<div class="puente">'
+    +   '<h3>🌉 Va a la cuenta puente: ' + money(tot) + '</h3>'
+    +   '<p class="mut" style="font-size:12.5px;margin:0 0 10px">Este dinero <b>sí se carga</b>, pero queda apartado en «MO · POR REASIGNAR» '
+    +   'en vez de repartirse a proyectos, porque todavía no se sabe a dónde va. '
+    +   'Cada renglón dice de quién es y por qué. Si el saldo del puente crece semana con semana, hay que reasignarlo.</p>'
+    +   '<table><thead><tr><th>Quién</th><th>Por qué</th><th class="r">Monto</th></tr></thead><tbody>'
+    +   det.sort(function(a,b){ return Math.abs(b.monto)-Math.abs(a.monto); }).map(function(d){
+          return '<tr><td>'+esc(d.quien)+'</td><td>'+esc(d.motivo)+'</td><td class="r mono">'+money(d.monto)+'</td></tr>';
+        }).join('')
+    +   '<tr style="font-weight:700;background:#fff3df"><td colspan="2">TOTAL AL PUENTE</td><td class="r mono">'+money(tot)+'</td></tr>'
+    +   '</tbody></table></div>';
+}
+
+/* ── envío al dry-run ────────────────────────────────────────────────────── */
+function armarPayload(modo){
+  var P = PARSED, s = FinAuth.getSession();
+  return {
+    modo: modo,
+    token: FinAuth.getToken(),
+    confirm_write: modo === 'write' ? true : undefined,
+    periodo: P.periodo.periodo,
+    periodo_start: P.periodo.inicio,
+    periodo_end: P.periodo.fin,
+    semana_vie: $('f-vie').value,
+    semana_jue: $('f-jue').textContent,
+    solicitante: (s && s.user) || '',
+    total_gral: P.total_gral ? P.total_gral.bruto : null,
+    /* contrato v2: procedencia del layout, para que el servidor pueda rechazar lo que no reconoce */
+    _layout: {
+      catalogo_version: P.layout.catalogo_version,
+      header_row: P.layout.header_row,
+      marcadores: P.layout.marcadores,
+      resueltas: P.layout.conceptos,
+      no_catalogadas: P.layout.no_catalogadas,
+      headers_crudos: P.layout.headers_crudos,
+      build: window.CMO_BUILD
+    },
+    /* empleados: campos legacy (bruto/vac/asim) + campos v2. El motor viejo ignora los nuevos. */
+    empleados: P.empleados.map(function(e){
+      return {
+        cod: e.cod, nombre: e.nombre,
+        bruto: e.bruto, vac: e.vac, asim: e.asim,
+        a_repartir: e.a_repartir,
+        a_bolsa: e.a_bolsa,
+        no_catalogado: e.no_catalogado,
+        _src: { col: e._src.total_percepciones_col, letra: e._src.total_percepciones_letra, fila: e.fila }
+      };
+    }),
+    trio: P.trio.map(function(t){ return { nombre: t.nombre, neto: t.neto, empleado_id: t.empleado_id }; }),
+    totales: P.totales
+  };
+}
+
+$('send').addEventListener('click', async function(){
+  if(!PARSED) return;
+  var btn = $('send'); btn.disabled = true; btn.textContent = 'Enviando…';
+  if(!FinAuth.getToken()){ showGate(); btn.textContent='Enviar a DRY-RUN →'; btn.disabled=false; return; }
+  var msg = $('msg'); msg.style.display='block'; msg.innerHTML = '<div class="mut">Consultando Odoo…</div>';
+  try{
+    var rsp = await fetch(WEBHOOK, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(armarPayload('dry_run')) });
+    var j = await rsp.json().catch(function(){ return {}; });
+    LAST_REPORT = j; renderReport(j, msg);
+  }catch(err){
+    msg.innerHTML = renderMsg({ nivel:'INTEGRIDAD', que:'No se pudo contactar al servidor',
+      dato: err.message,
+      accion:'Revisa tu conexión y vuelve a intentar. Si sigue fallando, avisa a soporte de FTS Suite: puede que el servicio esté caído.' });
+  }
+  btn.textContent='Enviar a DRY-RUN →'; btn.disabled = false;
 });
 
-// ── Semáforo de semana completa (stop duro, visible y temprano) + escritura real ──
-function money(n){ return '$'+(Number(n||0)).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+/* ── reporte del servidor ────────────────────────────────────────────────── */
 function renderReport(j, msg){
-  const sf=j.semaforo||{}; const verde = (j.listo_para_escribir===true) || (sf.verde===true);
-  const cf=j.confirmacion||{}; const exc=(j.excepciones||[]);
-  const cod=exc.filter(x=>x.motivo&&x.motivo.indexOf('codigo sin empleado')>=0);
-  let h='';
-  if(verde){
-    h+='<div class="chk ok" style="font-size:15px;font-weight:700">✓ Semana completa, lista para cargar</div>';
-  } else {
-    h+='<div class="chk err" style="font-size:15px;font-weight:700">⛔ SEMANA INCOMPLETA — el write está bloqueado</div>';
-    if(cf.dias_sin_confirmar){ h+='<div class="chk warn"><b>Días sin confirmar ('+cf.dias_sin_confirmar+'):</b> '+(cf.pendientes||[]).map(p=>p.nombre+' — '+(p.check_in||'').slice(0,16)+' ('+p.motivo+')').join(' · ')+'</div>'; }
-    if(cf.confirmados_sin_destino){ h+='<div class="chk warn"><b>Confirmados sin destino — corregir en panel ✎ ('+cf.confirmados_sin_destino+'):</b> '+(cf.sin_destino||[]).map(p=>p.nombre+' — '+(p.check_in||'').slice(0,16)+' (att '+p.att_id+')').join(' · ')+'</div>'; }
-    if(cod.length){ h+='<div class="chk err"><b>Códigos sin cruce ('+cod.length+'):</b> '+cod.map(x=>(x.cod||'')+' '+(x.nombre||'')).join(' · ')+'</div>'; }
+  var sf = j.semaforo || {}, cf = j.confirmacion || {}, exc = j.excepciones || [], ctl = j.control || {};
+  var verde = (j.listo_para_escribir === true) || (sf.verde === true);
+
+  /* el puente del servidor: archivados, códigos sin cruce, dinero sin destino resoluble */
+  var puenteSrv = (j.puente_detalle || []).map(function(p){
+    return { quien: (p.cod ? p.cod+' ' : '') + (p.nombre||''), motivo: p.motivo || 'apartado por el servidor', monto: p.monto };
+  });
+  if(puenteSrv.length) renderPuente(PARSED, puenteSrv);
+
+  var h = verde
+    ? '<div class="banner b-ok">✓ Semana completa en Odoo — lista para cargar</div>'
+    : '<div class="banner b-no">⛔ Odoo todavía no está listo para esta semana</div>';
+
+  if(!verde){
+    if(cf.dias_sin_confirmar) h += renderMsg({ nivel:'INTEGRIDAD',
+      que: 'Hay '+cf.dias_sin_confirmar+' día(s) de trabajo sin confirmar en Odoo',
+      dato: (cf.pendientes||[]).map(function(p){ return p.nombre+' — '+String(p.check_in||'').slice(0,16)+' ('+p.motivo+')'; }).join(' · '),
+      accion: 'Felipe tiene que confirmarlos en el panel Confirmar Horas, o Ana cerrar la incidencia si está en disputa. Vuelve a enviar cuando estén listos.' });
+    if(cf.confirmados_sin_destino) h += renderMsg({ nivel:'INTEGRIDAD',
+      que: 'Hay '+cf.confirmados_sin_destino+' registro(s) confirmados pero sin proyecto ni bolsa',
+      dato: (cf.sin_destino||[]).map(function(p){ return p.nombre+' — '+String(p.check_in||'').slice(0,16)+' (att '+p.att_id+')'; }).join(' · '),
+      accion: 'Felipe tiene que asignarles destino con el ✎ del panel Confirmar Horas.' });
+    var cod = exc.filter(function(x){ return x.motivo && x.motivo.indexOf('codigo sin empleado')>=0; });
+    if(cod.length) h += renderMsg({ nivel:'INTEGRIDAD',
+      que: 'Hay '+cod.length+' código(s) del Excel que no existen en Odoo',
+      dato: cod.map(function(x){ return (x.cod||'')+' '+(x.nombre||'')+(x.amount!=null?' — '+money(x.amount):''); }).join(' · '),
+      accion: 'Si la persona causó baja, sigue existiendo en Odoo archivada y su dinero puede ir al puente. Si el código no existe en ningún lado, RH tiene que darlo de alta con su código CONTPAQi antes de cargar.' });
   }
-  const ctl=j.control||{};
-  h+='<div style="margin:8px 0;font-size:13px">Σ nómina '+money(j.total_nomina)+' · Σ distribuido '+money(ctl.total_distribuido)+' · Δ <b style="color:'+(ctl.ok?'#1a7a3a':'#b3261e')+'">'+money(ctl.diferencia)+'</b> ('+(ctl.ok?'OK':'DESCUADRE')+') · periodo '+(j.periodo!=null?j.periodo:'?')+'</div>';
-  // por destino
-  if(j.por_destino&&j.por_destino.length){
-    h+='<table style="margin:6px 0"><thead><tr><th>Destino</th><th class="r">Monto</th></tr></thead><tbody>'+j.por_destino.map(d=>'<tr><td>'+d.label+'</td><td class="r">'+money(d.monto)+'</td></tr>').join('')+'</tbody></table>';
+
+  h += '<div class="kpi">'
+     + k('Σ nómina', money(j.total_nomina)) + k('Σ distribuido', money(ctl.total_distribuido))
+     + k('Δ', money(ctl.diferencia), ctl.ok ? 'var(--ok)' : 'var(--err)')
+     + k('Periodo', 'SEM ' + (j.periodo!=null?j.periodo:'?'))
+     + '</div>';
+
+  if(j.por_destino && j.por_destino.length){
+    h += '<h3 style="margin:12px 0 6px">A dónde se va el dinero</h3><table><thead><tr><th>Destino</th><th class="r">Monto</th></tr></thead><tbody>'
+       + j.por_destino.map(function(d){ return '<tr><td>'+esc(d.label)+'</td><td class="r mono">'+money(d.monto)+'</td></tr>'; }).join('')
+       + '</tbody></table>';
   }
-  if(exc.length){ h+='<div class="chk err"><b>Excepciones ('+exc.length+'):</b> '+exc.map(x=>(x.nombre||x.trio||x.cod||'?')+': '+x.motivo+(x.amount!=null?(' '+money(x.amount)):'')).join(' · ')+'</div>'; }
-  // botón de escritura real
-  h+='<div style="margin-top:12px;padding-top:12px;border-top:2px solid #eee">';
-  if(verde){
-    h+='<div class="mut" style="font-size:12px;margin-bottom:6px">Semáforo verde. Si el workflow WRITE ya está activo, puedes cargar a Odoo (irreversible salvo rollback por llave).</div>';
-    h+='<button class="btn" id="wbtn" style="background:#b3261e;color:#fff">⚠️ ESCRIBIR EN ODOO (REAL) — Periodo '+(j.periodo!=null?j.periodo:'?')+'</button>';
-  } else {
-    h+='<button class="btn" disabled style="background:#ccc;color:#666">Escritura bloqueada — resuelve el semáforo</button>';
-  }
-  h+='</div>';
-  h+='<details style="margin-top:10px"><summary class="mut" style="cursor:pointer;font-size:12px">Ver JSON completo</summary><pre style="font-size:11px;overflow:auto">'+JSON.stringify(j,null,2)+'</pre></details>';
-  msg.className='card'; msg.innerHTML=h;
-  const wb=document.getElementById('wbtn'); if(wb) wb.addEventListener('click', doWrite);
+  if(exc.length) h += renderMsg({ nivel:'CLASIFICACION',
+    que:'Hay '+exc.length+' excepción(es) que no se van a repartir a proyectos',
+    dato: exc.map(function(x){ return (x.nombre||x.trio||x.cod||'?')+': '+x.motivo+(x.amount!=null?' '+money(x.amount):''); }).join(' · '),
+    accion:'Revisa que cada una tenga sentido. Las que van al puente se cargan igual; las demás quedan fuera de esta carga.' });
+
+  h += '<div style="margin-top:14px;padding-top:12px;border-top:2px solid #eee">';
+  h += verde
+    ? '<div class="mut" style="font-size:12px;margin-bottom:6px">Escritura irreversible salvo rollback por llave. Verifica el pivote de arriba antes de continuar.</div>'
+      + '<button class="btn" id="wbtn" style="background:#b3261e;color:#fff">⚠️ ESCRIBIR EN ODOO (REAL) — SEM '+(j.periodo!=null?j.periodo:'?')+'</button>'
+    : '<button class="btn" disabled style="background:#ccc;color:#666">Escritura bloqueada</button>';
+  h += '</div>';
+  h += '<details style="margin-top:10px"><summary class="mut" style="cursor:pointer;font-size:12px">Ver respuesta completa del servidor</summary><pre style="font-size:11px;overflow:auto">'+esc(JSON.stringify(j,null,2))+'</pre></details>';
+
+  msg.className='card'; msg.innerHTML = h;
+  var wb = $('wbtn'); if(wb) wb.addEventListener('click', doWrite);
 }
+
 async function doWrite(){
   if(!PARSED || !LAST_REPORT) return;
-  if(!confirm('¿ESCRIBIR en Odoo el Periodo '+PARSED.periodo+'? Esto crea partidas analíticas reales. Requiere que el workflow WRITE esté activo. Rollback: unlink por llave "MO S'+PARSED.periodo+'/…".')) return;
-  const token=window.FinAuth&&FinAuth.getToken&&FinAuth.getToken();
-  if(!token){ showGate(); return; }
-  const wb=document.getElementById('wbtn'); if(wb){ wb.disabled=true; wb.textContent='Escribiendo…'; }
-  const s=FinAuth.getSession();
-  const payload={ modo:'write', token:token, confirm_write:true,
-    periodo:PARSED.periodo, periodo_start:PARSED.periodoStart, periodo_end:PARSED.periodoEnd,
-    semana_vie:PARSED.vie, semana_jue:PARSED.jue,
-    solicitante:(s&&s.user)||'', empleados:PARSED.emps, trio:PARSED.trio, total_gral:PARSED.totalGral };
-  const msg=document.getElementById('msg');
+  if(!confirm('¿ESCRIBIR en Odoo la SEM '+PARSED.periodo.periodo+'?\n\nCrea partidas analíticas reales.\nRollback: unlink por llave "MO S'+PARSED.periodo.periodo+'/'+String(PARSED.periodo.inicio).slice(0,4)+' ·".')) return;
+  if(!FinAuth.getToken()){ showGate(); return; }
+  var wb = $('wbtn'); if(wb){ wb.disabled = true; wb.textContent='Escribiendo…'; }
+  var msg = $('msg');
   try{
-    const rsp=await fetch(WRITE_WEBHOOK,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    const j=await rsp.json().catch(()=>({}));
-    const ok=j.modo==='ESCRITO';
-    const head=ok?('<div class="chk ok" style="font-weight:700">✓ ESCRITO: '+(j.lineas_creadas||0)+' líneas · Δ '+money((j.control||{}).diferencia)+' ('+((j.control||{}).ok?'OK':'REVISAR')+')</div>'):('<div class="chk err" style="font-weight:700">✗ NO ESCRITO: '+(j.motivo||j.msg||'ver detalle')+'</div>');
-    msg.innerHTML=head+(j.ids_creados?('<div class="mut" style="font-size:11px">IDs: '+j.ids_creados.join(', ')+' · rollback: unlink name like "'+(j.llave_prefijo||('MO '+j.semana+' ·'))+'"</div>'):'')+'<details open><summary class="mut" style="cursor:pointer;font-size:12px">Respuesta</summary><pre style="font-size:11px;overflow:auto">'+JSON.stringify(j,null,2)+'</pre></details>';
+    var rsp = await fetch(WRITE_WEBHOOK, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(armarPayload('write')) });
+    var j = await rsp.json().catch(function(){ return {}; });
+    var ok = j.modo === 'ESCRITO';
+    msg.innerHTML = (ok
+        ? '<div class="banner b-ok">✓ ESCRITO — '+(j.lineas_creadas||0)+' líneas · Δ '+money((j.control||{}).diferencia)+'</div>'
+          + '<div class="mut" style="font-size:11px">Rollback: unlink name like "'+esc(j.llave_prefijo||'')+'" · IDs: '+esc((j.ids_creados||[]).join(', '))+'</div>'
+        : renderMsg({ nivel:'INTEGRIDAD', que:'NO se escribió', dato: j.motivo || j.msg || 'sin detalle',
+            accion:'Nada se guardó en Odoo. Revisa el motivo y vuelve a intentar cuando esté resuelto.' }))
+      + '<details open style="margin-top:10px"><summary class="mut" style="cursor:pointer;font-size:12px">Respuesta</summary><pre style="font-size:11px;overflow:auto">'+esc(JSON.stringify(j,null,2))+'</pre></details>';
   }catch(err){
-    msg.innerHTML='<div class="chk err">✗ Error en write: '+err.message+' (¿el workflow WRITE está activo?)</div>';
+    msg.innerHTML = renderMsg({ nivel:'INTEGRIDAD', que:'Error al escribir', dato: err.message,
+      accion:'Verifica en Odoo si se crearon líneas antes de reintentar: busca partidas analíticas cuyo nombre empiece con "MO S'+PARSED.periodo.periodo+'/".' });
   }
 }
 
