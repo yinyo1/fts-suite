@@ -1,0 +1,642 @@
+{
+  "fecha": "2026-08-11",
+  "total": 25,
+  "por_color": {
+    "rojo": 13,
+    "amarillo": 10,
+    "verde": 2
+  },
+  "proyectos": [
+    {
+      "id": 2363,
+      "name": "SO11833 - Cooling system for Quality offices - Mission Foods, Martín Infante",
+      "stage_id": 1,
+      "stage": "To Do",
+      "grupo": "Operaciones",
+      "cliente": "Mission Foods, Martín Infante",
+      "es_materiales": false,
+      "dias_en_stage": 1,
+      "dias_sin_seguimiento": 1,
+      "color_a": "rojo",
+      "color_b": "amarillo",
+      "color": "rojo",
+      "banderas": [],
+      "sin_nota_valida": true,
+      "racha_nota": 0,
+      "sin_avance": false,
+      "en_observacion": false,
+      "color_b_nuevo": "amarillo",
+      "link_odoo": "https://serviciosfts.odoo.com/web#id=2363&model=project.project&view_type=form"
+    },
+    {
+      "id": 2362,
+      "name": "SO11842 - prensas materials - Mission Foods",
+      "stage_id": 2,
+      "stage": "In Progress",
+      "grupo": "Operaciones",
+      "cliente": "Mission Foods",
+      "es_materiales": false,
+      "dias_en_stage": 2,
+      "dias_sin_seguimiento": 1,
+      "color_a": "amarillo",
+      "color_b": "amarillo",
+      "color": "amarillo",
+      "banderas": [],
+      "sin_nota_valida": false,
+      "racha_nota": 1,
+      "sin_avance": false,
+      "en_observacion": false,
+      "color_b_nuevo": "amarillo",
+      "link_odoo": "https://serviciosfts.odoo.com/web#id=2362&model=project.project&view_type=form"
+    },
+    {
+      "id": 241,
+      "name": "🛠️ SO11290 - Test loop ingeniería mexicali nalco",
+      "stage_id": 13,
+      "stage": "En plazo de credito",
+      "grupo": "Admin",
+      "cliente": "Nalco de Mexico",
+      "es_materiales": false,
+      "dias_en_stage": 183,
+      "dias_sin_seguimiento": 3,
+      "color_a": "rojo",
+      "color_b": "verde",
+      "color": "rojo",
+      "banderas": [
+        {
+          "tipo": "ap_sin_confirmacion",
+          "detalle": "En plazo de credito SIN confirmacion AP documentada (falta log note + pantallazo)"
+        }
+      ],
+      "sin_nota_valida": false,
+      "racha_nota": 1,
+      "sin_avance": false,
+      "en_observacion": true,
+      "color_b_nuevo": "rojo",
+      "link_odoo": "https://serviciosfts.odoo.com/web#id=241&model=project.project&view_type=form"
+    },
+    {
+      "id": 2337,
+      "name": "SO11551 - Suministro y Puesta en marcha chiller 30 Tr - Juarez - QUIMITEC TRATAMIENTO DE AGUAS",
+      "stage_id": 7,
+      "stage": "Admin - In progress",
+      "grupo": "Admin",
+      "cliente": "QUIMITEC TRATAMIENTO DE AGUAS",
+      "es_materiales": false,
+      "dias_en_stage": 41,
+      "dias_sin_seguimiento": 2,
+      "color_a": "rojo",
+      "color_b": "rojo",
+      "color": "rojo",
+      "banderas": [
+        {
+          "tipo": "stage_atras",
+          "detalle": "Stage regresado En plazo de credito -> Admin - In progress por Administracion FTS-YIN",
+          "fecha": "2026-08-10 14:56:09"
+        }
+      ],
+      "sin_nota_valida": false,
+      "racha_nota": 1,
+      "sin_avance": false,
+      "en_observacion": false,
+      "color_b_nuevo": "rojo",
+      "link_odoo": "https://serviciosfts.odoo.com/web#id=2337&model=project.project&view_type=form"
+    },
+    {
+      "id": 2361,
+      "name": "SO11791 - Power and control panels updated July 2026 Calbee - Calbee America Incorporated, Omar De la Garza",
+      "stage_id": 2,
+      "stage": "In Progress",
+      "grupo": "Operaciones",
+      "cliente": "Calbee America Incorporated, Omar De la Garza",
+      "es_materiales": false,
+      "dias_en_stage": 7,
+      "dias_sin_seguimiento": 1,
+      "color_a": "verde",
+      "color_b": "amarillo",
+      "color": "amarillo",
+      "banderas": [
+        {
+          "tipo": "nota_vacia",
+          "detalle": "1 log note(s) sin contenido en el chatter - no cuentan como seguimiento"
+        }
+      ],
+      "sin_nota_valida": false,
+      "racha_nota": 1,
+      "sin_avance": false,
+      "en_observacion": false,
+      "color_b_nuevo": "amarillo",
+      "link_odoo": "https://serviciosfts.odoo.com/web#id=2361&model=project.project&view_type=form"
+    },
+    {
+      "id": 160,
+      "name": "🛠️ SO10300 - Techo de Magnekon",
+      "stage_id": 13,
+      "stage": "En plazo de credito",
+      "grupo": "Admin",
+      "cliente": "MAGNEKON S.A. DE C.V.",
+      "es_materiales": false,
+      "dias_en_stage": 310,
+      "dias_sin_seguimiento": 5,
+      "color_a": "rojo",
+      "color_b": "verde",
+      "color": "rojo",
+      "banderas": [
+        {
+          "tipo": "stage_atras",
+          "detalle": "Stage regresado Complete TOTAL (Gera) -> En plazo de credito por Administracion FTS-YIN",
+          "fecha": "2026-08-04 13:40:48"
+        },
+        {
+          "tipo": "ap_sin_confirmacion",
+          "detalle": "En plazo de credito SIN confirmacion AP documentada (falta log note + pantallazo)"
+        }
+      ],
+      "sin_nota_valida": false,
+      "racha_nota": 1,
+      "sin_avance": false,
+      "en_observacion": true,
+      "color_b_nuevo": "rojo",
+      "link_odoo": "https://serviciosfts.odoo.com/web#id=160&model=project.project&view_type=form"
+    },
+    {
+      "id": 2360,
+      "name": "SO11748 - Chiller instalation - Calbee America Incorporated, Omar De la Garza",
+      "stage_id": 2,
+      "stage": "In Progress",
+      "grupo": "Operaciones",
+      "cliente": "Calbee America Incorporated, Omar De la Garza",
+      "es_materiales": false,
+      "dias_en_stage": 9,
+      "dias_sin_seguimiento": 1,
+      "color_a": "verde",
+      "color_b": "amarillo",
+      "color": "amarillo",
+      "banderas": [],
+      "sin_nota_valida": false,
+      "racha_nota": 1,
+      "sin_avance": false,
+      "en_observacion": false,
+      "color_b_nuevo": "amarillo",
+      "link_odoo": "https://serviciosfts.odoo.com/web#id=2360&model=project.project&view_type=form"
+    },
+    {
+      "id": 2353,
+      "name": "SO11779 - Reparacion de motores de rampa - BEBIDAS PURIFICADAS",
+      "stage_id": 13,
+      "stage": "En plazo de credito",
+      "grupo": "Admin",
+      "cliente": "BEBIDAS PURIFICADAS",
+      "es_materiales": false,
+      "dias_en_stage": 33,
+      "dias_sin_seguimiento": 15,
+      "color_a": "verde",
+      "color_b": "verde",
+      "color": "verde",
+      "banderas": [
+        {
+          "tipo": "ap_sin_confirmacion",
+          "detalle": "En plazo de credito SIN confirmacion AP documentada (falta log note + pantallazo)"
+        }
+      ],
+      "sin_nota_valida": false,
+      "racha_nota": 1,
+      "sin_avance": false,
+      "en_observacion": true,
+      "color_b_nuevo": "rojo",
+      "link_odoo": "https://serviciosfts.odoo.com/web#id=2353&model=project.project&view_type=form"
+    },
+    {
+      "id": 213,
+      "name": "🛠️ SO11037 - Distribucion Electrica luminarias Cabina de Flejadoras - clarios recicladora",
+      "stage_id": 5,
+      "stage": "Hold",
+      "grupo": "Operaciones",
+      "cliente": "JOHNSON CONTROLS ENTERPRISES MEXICO",
+      "es_materiales": false,
+      "dias_en_stage": 246,
+      "dias_sin_seguimiento": 1,
+      "color_a": "rojo",
+      "color_b": "amarillo",
+      "color": "rojo",
+      "banderas": [
+        {
+          "tipo": "hold_sin_fecha_vigente",
+          "detalle": "En Hold con fecha de reactivacion VENCIDA (2026-07-30)"
+        }
+      ],
+      "sin_nota_valida": false,
+      "racha_nota": 1,
+      "sin_avance": false,
+      "en_observacion": false,
+      "color_b_nuevo": "amarillo",
+      "link_odoo": "https://serviciosfts.odoo.com/web#id=213&model=project.project&view_type=form"
+    },
+    {
+      "id": 2305,
+      "name": "SO11557 - Proyecto de instalacion de enchaquetado, pintar paredes y epoxy",
+      "stage_id": 13,
+      "stage": "En plazo de credito",
+      "grupo": "Admin",
+      "cliente": "Mission Foods, Robert Barrera",
+      "es_materiales": false,
+      "dias_en_stage": 115,
+      "dias_sin_seguimiento": 16,
+      "color_a": "rojo",
+      "color_b": "verde",
+      "color": "rojo",
+      "banderas": [
+        {
+          "tipo": "ap_sin_confirmacion",
+          "detalle": "En plazo de credito SIN confirmacion AP documentada (falta log note + pantallazo)"
+        },
+        {
+          "tipo": "nota_vacia",
+          "detalle": "1 log note(s) sin contenido en el chatter - no cuentan como seguimiento"
+        }
+      ],
+      "sin_nota_valida": false,
+      "racha_nota": 1,
+      "sin_avance": false,
+      "en_observacion": true,
+      "color_b_nuevo": "rojo",
+      "link_odoo": "https://serviciosfts.odoo.com/web#id=2305&model=project.project&view_type=form"
+    },
+    {
+      "id": 2352,
+      "name": "SO11699 - Instalacion mecanica y electrica de Sensores en ductos de Extraccion de Colector - Bridgestone México, Ruben Robledo",
+      "stage_id": 5,
+      "stage": "Hold",
+      "grupo": "Operaciones",
+      "cliente": "Bridgestone México, Ruben Robledo",
+      "es_materiales": false,
+      "dias_en_stage": 33,
+      "dias_sin_seguimiento": 1,
+      "color_a": "rojo",
+      "color_b": "amarillo",
+      "color": "rojo",
+      "banderas": [
+        {
+          "tipo": "stage_atras",
+          "detalle": "Stage regresado Hold -> En proceso por OPERACIONES FTS-YIN",
+          "fecha": "2026-07-27 13:36:22"
+        }
+      ],
+      "sin_nota_valida": false,
+      "racha_nota": 2,
+      "sin_avance": true,
+      "en_observacion": false,
+      "color_b_nuevo": "amarillo",
+      "link_odoo": "https://serviciosfts.odoo.com/web#id=2352&model=project.project&view_type=form"
+    },
+    {
+      "id": 2359,
+      "name": "SO11771 - Subestación PI Aurora - Conmet de México, S.A. de C.V.",
+      "stage_id": 2,
+      "stage": "In Progress",
+      "grupo": "Operaciones",
+      "cliente": "Conmet de México, S.A. de C.V.",
+      "es_materiales": false,
+      "dias_en_stage": 12,
+      "dias_sin_seguimiento": 1,
+      "color_a": "verde",
+      "color_b": "amarillo",
+      "color": "amarillo",
+      "banderas": [],
+      "sin_nota_valida": false,
+      "racha_nota": 1,
+      "sin_avance": false,
+      "en_observacion": false,
+      "color_b_nuevo": "amarillo",
+      "link_odoo": "https://serviciosfts.odoo.com/web#id=2359&model=project.project&view_type=form"
+    },
+    {
+      "id": 2358,
+      "name": "SO11233 - Rigging compresor - Lau Industries de Mexico",
+      "stage_id": 2,
+      "stage": "In Progress",
+      "grupo": "Operaciones",
+      "cliente": "Lau Industries de Mexico",
+      "es_materiales": false,
+      "dias_en_stage": 21,
+      "dias_sin_seguimiento": 1,
+      "color_a": "verde",
+      "color_b": "amarillo",
+      "color": "amarillo",
+      "banderas": [],
+      "sin_nota_valida": false,
+      "racha_nota": 2,
+      "sin_avance": false,
+      "en_observacion": false,
+      "color_b_nuevo": "amarillo",
+      "link_odoo": "https://serviciosfts.odoo.com/web#id=2358&model=project.project&view_type=form"
+    },
+    {
+      "id": 2357,
+      "name": "SO11789 - Suministro de Panelview HMI - GRUMA CORP DBA MISSION FOODS",
+      "stage_id": 13,
+      "stage": "En plazo de credito",
+      "grupo": "Admin",
+      "cliente": "GRUMA CORP DBA MISSION FOODS",
+      "es_materiales": false,
+      "dias_en_stage": 24,
+      "dias_sin_seguimiento": 20,
+      "color_a": "verde",
+      "color_b": "verde",
+      "color": "verde",
+      "banderas": [
+        {
+          "tipo": "ap_sin_confirmacion",
+          "detalle": "En plazo de credito SIN confirmacion AP documentada (falta log note + pantallazo)"
+        }
+      ],
+      "sin_nota_valida": false,
+      "racha_nota": 1,
+      "sin_avance": false,
+      "en_observacion": true,
+      "color_b_nuevo": "rojo",
+      "link_odoo": "https://serviciosfts.odoo.com/web#id=2357&model=project.project&view_type=form"
+    },
+    {
+      "id": 2345,
+      "name": "SO11746 - cableado para dump station dallas - Mission Foods, Ulices pastrana",
+      "stage_id": 13,
+      "stage": "En plazo de credito",
+      "grupo": "Admin",
+      "cliente": "Mission Foods, Ulices pastrana",
+      "es_materiales": false,
+      "dias_en_stage": 40,
+      "dias_sin_seguimiento": 40,
+      "color_a": "rojo",
+      "color_b": "rojo",
+      "color": "rojo",
+      "banderas": [
+        {
+          "tipo": "ap_sin_confirmacion",
+          "detalle": "En plazo de credito SIN confirmacion AP documentada (falta log note + pantallazo)"
+        },
+        {
+          "tipo": "nota_vacia",
+          "detalle": "2 log note(s) sin contenido en el chatter - no cuentan como seguimiento"
+        }
+      ],
+      "sin_nota_valida": true,
+      "racha_nota": 0,
+      "sin_avance": false,
+      "en_observacion": true,
+      "color_b_nuevo": "rojo",
+      "link_odoo": "https://serviciosfts.odoo.com/web#id=2345&model=project.project&view_type=form"
+    },
+    {
+      "id": 506,
+      "name": "🛠️ SO11492 - Instalacion de ductos de aire en area de chips, corn, flour process area & packing",
+      "stage_id": 2,
+      "stage": "In Progress",
+      "grupo": "Operaciones",
+      "cliente": "Mission Foods",
+      "es_materiales": false,
+      "dias_en_stage": 167,
+      "dias_sin_seguimiento": 1,
+      "color_a": "verde",
+      "color_b": "amarillo",
+      "color": "amarillo",
+      "banderas": [
+        {
+          "tipo": "nota_vacia",
+          "detalle": "1 log note(s) sin contenido en el chatter - no cuentan como seguimiento"
+        }
+      ],
+      "sin_nota_valida": false,
+      "racha_nota": 1,
+      "sin_avance": false,
+      "en_observacion": false,
+      "color_b_nuevo": "amarillo",
+      "link_odoo": "https://serviciosfts.odoo.com/web#id=506&model=project.project&view_type=form"
+    },
+    {
+      "id": 2327,
+      "name": "SO11511 - Valvula para lavado de botellas",
+      "stage_id": 13,
+      "stage": "En plazo de credito",
+      "grupo": "Admin",
+      "cliente": "BEBIDAS PURIFICADAS",
+      "es_materiales": false,
+      "dias_en_stage": 80,
+      "dias_sin_seguimiento": 1,
+      "color_a": "rojo",
+      "color_b": "verde",
+      "color": "rojo",
+      "banderas": [
+        {
+          "tipo": "ap_sin_confirmacion",
+          "detalle": "En plazo de credito SIN confirmacion AP documentada (falta log note + pantallazo)"
+        }
+      ],
+      "sin_nota_valida": false,
+      "racha_nota": 1,
+      "sin_avance": false,
+      "en_observacion": true,
+      "color_b_nuevo": "amarillo",
+      "link_odoo": "https://serviciosfts.odoo.com/web#id=2327&model=project.project&view_type=form"
+    },
+    {
+      "id": 343,
+      "name": "🛠️ SO11261 - Suministro e instalación de sistema de medición de flujo de 2 Etil Hexanol",
+      "stage_id": 2,
+      "stage": "In Progress",
+      "grupo": "Operaciones",
+      "cliente": "MAGNEKON S.A. DE C.V.",
+      "es_materiales": false,
+      "dias_en_stage": 179,
+      "dias_sin_seguimiento": 1,
+      "color_a": "verde",
+      "color_b": "amarillo",
+      "color": "amarillo",
+      "banderas": [
+        {
+          "tipo": "stage_atras",
+          "detalle": "Stage regresado Hold -> En proceso por OPERACIONES FTS-YIN",
+          "fecha": "2026-07-22 18:58:52"
+        },
+        {
+          "tipo": "stage_atras",
+          "detalle": "Stage regresado Admin - In progress -> Hold por OPERACIONES FTS-YIN",
+          "fecha": "2026-07-22 18:58:51"
+        },
+        {
+          "tipo": "stage_atras",
+          "detalle": "Stage regresado En plazo de credito -> Admin - In progress por OPERACIONES FTS-YIN",
+          "fecha": "2026-07-22 18:58:50"
+        },
+        {
+          "tipo": "stage_atras",
+          "detalle": "Stage regresado Complete TOTAL (Gera) -> En proceso por OPERACIONES FTS-YIN",
+          "fecha": "2026-07-21 15:10:43"
+        }
+      ],
+      "sin_nota_valida": false,
+      "racha_nota": 1,
+      "sin_avance": false,
+      "en_observacion": false,
+      "color_b_nuevo": "amarillo",
+      "link_odoo": "https://serviciosfts.odoo.com/web#id=343&model=project.project&view_type=form"
+    },
+    {
+      "id": 2349,
+      "name": "SO11762 - Mejoras a sistema TOPOCHICO, MTY. - Nalco de Mexico, Tito Everardo Ordaz",
+      "stage_id": 2,
+      "stage": "In Progress",
+      "grupo": "Operaciones",
+      "cliente": "Nalco de Mexico, Tito Everardo Ordaz",
+      "es_materiales": false,
+      "dias_en_stage": 39,
+      "dias_sin_seguimiento": 1,
+      "color_a": "verde",
+      "color_b": "amarillo",
+      "color": "amarillo",
+      "banderas": [
+        {
+          "tipo": "nota_vacia",
+          "detalle": "1 log note(s) sin contenido en el chatter - no cuentan como seguimiento"
+        }
+      ],
+      "sin_nota_valida": false,
+      "racha_nota": 1,
+      "sin_avance": false,
+      "en_observacion": false,
+      "color_b_nuevo": "amarillo",
+      "link_odoo": "https://serviciosfts.odoo.com/web#id=2349&model=project.project&view_type=form"
+    },
+    {
+      "id": 101,
+      "name": "🛠️ SO7723 - servicio de integración de sistema con sensor de nivel y pantalla HMI",
+      "stage_id": 13,
+      "stage": "En plazo de credito",
+      "grupo": "Admin",
+      "cliente": "MAGNEKON S.A. DE C.V., Juventino Hernandez",
+      "es_materiales": false,
+      "dias_en_stage": 381,
+      "dias_sin_seguimiento": 29,
+      "color_a": "rojo",
+      "color_b": "verde",
+      "color": "rojo",
+      "banderas": [
+        {
+          "tipo": "ap_sin_confirmacion",
+          "detalle": "En plazo de credito SIN confirmacion AP documentada (falta log note + pantallazo)"
+        }
+      ],
+      "sin_nota_valida": false,
+      "racha_nota": 1,
+      "sin_avance": false,
+      "en_observacion": true,
+      "color_b_nuevo": "rojo",
+      "link_odoo": "https://serviciosfts.odoo.com/web#id=101&model=project.project&view_type=form"
+    },
+    {
+      "id": 2356,
+      "name": "SO11773 - ELECTRICAL DUMP STATION DALLAS 2 - Mission Foods, Daniel Sanudo",
+      "stage_id": 2,
+      "stage": "In Progress",
+      "grupo": "Operaciones",
+      "cliente": "Mission Foods, Daniel Sanudo",
+      "es_materiales": false,
+      "dias_en_stage": 28,
+      "dias_sin_seguimiento": 1,
+      "color_a": "rojo",
+      "color_b": "amarillo",
+      "color": "rojo",
+      "banderas": [],
+      "sin_nota_valida": false,
+      "racha_nota": 3,
+      "sin_avance": true,
+      "en_observacion": false,
+      "color_b_nuevo": "amarillo",
+      "link_odoo": "https://serviciosfts.odoo.com/web#id=2356&model=project.project&view_type=form"
+    },
+    {
+      "id": 2302,
+      "name": "SO11547 - Desinstalación, Adecuación e Integración de Sistema de Filtración en planta Topo Chico",
+      "stage_id": 2,
+      "stage": "In Progress",
+      "grupo": "Operaciones",
+      "cliente": "Nalco de Mexico, Misael Constantino",
+      "es_materiales": false,
+      "dias_en_stage": 117,
+      "dias_sin_seguimiento": 2,
+      "color_a": "verde",
+      "color_b": "rojo",
+      "color": "rojo",
+      "banderas": [],
+      "sin_nota_valida": false,
+      "racha_nota": 1,
+      "sin_avance": false,
+      "en_observacion": false,
+      "color_b_nuevo": "rojo",
+      "link_odoo": "https://serviciosfts.odoo.com/web#id=2302&model=project.project&view_type=form"
+    },
+    {
+      "id": 2355,
+      "name": "SO11673 - Poliza de matto para Compresor Houston TX - Mission Foods",
+      "stage_id": 2,
+      "stage": "In Progress",
+      "grupo": "Operaciones",
+      "cliente": "Mission Foods",
+      "es_materiales": false,
+      "dias_en_stage": 28,
+      "dias_sin_seguimiento": 1,
+      "color_a": "rojo",
+      "color_b": "amarillo",
+      "color": "rojo",
+      "banderas": [],
+      "sin_nota_valida": false,
+      "racha_nota": 1,
+      "sin_avance": false,
+      "en_observacion": false,
+      "color_b_nuevo": "amarillo",
+      "link_odoo": "https://serviciosfts.odoo.com/web#id=2355&model=project.project&view_type=form"
+    },
+    {
+      "id": 121,
+      "name": "🛠️ SO9428 - INSTALACION DE SUMINISTRO DE AGUA FRIA - VERTIV 2da Fase",
+      "stage_id": 2,
+      "stage": "In Progress",
+      "grupo": "Operaciones",
+      "cliente": "Nalco de Mexico",
+      "es_materiales": false,
+      "dias_en_stage": 351,
+      "dias_sin_seguimiento": 1,
+      "color_a": "verde",
+      "color_b": "amarillo",
+      "color": "amarillo",
+      "banderas": [],
+      "sin_nota_valida": false,
+      "racha_nota": 1,
+      "sin_avance": false,
+      "en_observacion": false,
+      "color_b_nuevo": "amarillo",
+      "link_odoo": "https://serviciosfts.odoo.com/web#id=121&model=project.project&view_type=form"
+    },
+    {
+      "id": 212,
+      "name": "🛠️ SO10337 - Cortinas de seguridad 120s y 270s",
+      "stage_id": 2,
+      "stage": "In Progress",
+      "grupo": "Operaciones",
+      "cliente": "Bridgestone México",
+      "es_materiales": false,
+      "dias_en_stage": 247,
+      "dias_sin_seguimiento": 1,
+      "color_a": "verde",
+      "color_b": "amarillo",
+      "color": "amarillo",
+      "banderas": [],
+      "sin_nota_valida": false,
+      "racha_nota": 3,
+      "sin_avance": true,
+      "en_observacion": false,
+      "color_b_nuevo": "amarillo",
+      "link_odoo": "https://serviciosfts.odoo.com/web#id=212&model=project.project&view_type=form"
+    }
+  ]
+}
