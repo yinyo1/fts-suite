@@ -22,8 +22,43 @@ columna consigo misma: tanto los renglones de empleado como la fila de totales s
 del mismo índice 13. Un checksum que valida consistencia interna de una columna equivocada.
 
 > **La lección raíz, que se repitió todo el proyecto:** un control que se valida contra sí
-> mismo no es un control. Aparece tres veces en este documento con tres caras distintas
-> (§5.1, §5.4, §6.3).
+> mismo no es un control. Apareció **cinco veces en un solo día**, con cinco caras
+> distintas. Ver §1.1.
+
+### 1.1 Las cinco caras del mismo error
+
+En la construcción de este parser, el mismo defecto reapareció cinco veces en lugares que
+no se parecen entre sí:
+
+| # | Dónde | Qué hacía |
+|---|---|---|
+| 1 | La suma de control del parser v1 | comparaba la columna consigo misma: ambos lados salían del mismo índice fijo |
+| 2 | El KPI «Va al puente» | discrepaba del bloque del puente, calculados por caminos distintos |
+| 3 | `validateOnly` de `update_partial` | validaba la forma de la operación contra el MCP, sin tocar nunca el API de la instancia |
+| 4 | El control de los tres pedazos | se apagaba solo cuando había códigos abortados, justo cuando había algo que decir |
+| 5 | El verificador de expresiones n8n | evaluaba el interior de `{{ }}` en vez de la expresión completa, y daba verde a un valor que n8n iba a devolver como string |
+
+> **Las cinco se ven bien. Las cinco mienten por la misma razón: verifican una parte del
+> sistema contra sí misma, no contra la realidad que dicen representar.**
+
+Que la quinta apareciera **en la herramienta que existe para detectar las otras cuatro** es
+lo más ilustrativo: nada vacuna contra este error, ni siquiera estar cazándolo.
+
+**Las tres preguntas que lo detectan:**
+
+1. ¿Contra qué se compara este control — contra otra parte de sí mismo, o contra una fuente
+   independiente?
+2. ¿Qué hace cuando las condiciones son raras: grita, o se calla? (§5.4: un control que se
+   silencia con ruido falla exactamente cuando lo necesitas.)
+3. ¿Estoy verificando el todo, o una parte del todo que da verde por su cuenta?
+
+**Y el remedio no es la corrección puntual, es el guardia.** Cada una de estas se arregló
+dejando un assert que impide que vuelva: el smoke compara KPI contra bloque contra
+`puente_total` del servidor —las tres cifras, no dos—, el resolver emite
+`TOTALES_INCONSISTENTES`, el control degrada a `ok:null` con el delta visible, y el
+verificador de expresiones evalúa la semántica completa de n8n. La cuarta cara apareció
+*después* de arreglar la segunda, y eso fue la prueba de que el patrón necesitaba guardia y
+no parche.
 
 ---
 
@@ -371,6 +406,29 @@ baselines — no evalúa desviación y no genera falsos positivos.
 Agravante que hace esto no-reversible: si algo sensible llega a `main` y hubo PR, un
 force-push **no lo borra**. Los commits quedan pinneados y se pueden descargar por SHA. El
 remedio es un ticket a GitHub Support, no un `git revert`.
+
+### El bug que sólo aparece con el dato real
+
+Al alinear el KPI del puente con el bloque, el arreglo usaba `String.replace` con un
+reemplazo **de cadena**:
+
+```js
+k.innerHTML.replace(re, '$1' + money(total) + '$2');   // ✗
+```
+
+`money()` devuelve `"$1,234.56"`, y en un reemplazo de cadena **`$2` es una referencia al
+grupo 2 de la expresión regular**. El HTML salió partido en dos. Con cualquier valor que no
+empezara con `$` habría funcionado; con formato de dinero, nunca.
+
+```js
+k.innerHTML.replace(re, function(_m, ini, fin){ return ini + money(total) + fin; });  // ✓
+```
+
+No es la misma familia que las cinco caras de §1.1 —es escapado, no verificación circular—
+pero sí la misma moraleja operativa: **lo cazó el smoke, no la lectura del código.** Un
+`node -c` pasa, una revisión visual pasa, y el defecto sólo se manifiesta cuando el dato real
+atraviesa la función. Por eso el gate corre con los Excel de verdad y no con fixtures
+inventados.
 
 ### Alertas: señal contra ruido
 
