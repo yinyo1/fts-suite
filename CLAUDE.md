@@ -733,3 +733,13 @@ state = 'sale'  AND  x_studio_project_created = False
 4. **Log note `author_id` debe ser 3 (Esteban), NO 2** (OdooBot partner 2 archivado → CREATE falla silencioso).
 
 **Pendientes:** #4 endpoint `ops/semaforo` (webhook GET → grilla+KPI) · #5 frontend `operaciones/semaforo/` (grilla 2-semáforos) · auditar TZ otros workflows (PRIORIDAD) · confirmar log note en vivo (lunes 22-jun). **Capacitación:** 2 PDFs (`Semaforo_Operaciones.pdf` / `Semaforo_Admin.pdf`) con guía de los 2 relojes, para el equipo.
+
+---
+
+## 19. Carga MO — distribución de mano de obra (✅ EN PRODUCCIÓN 2026-08-11)
+
+**📄 Estado y punto de arranque: [`docs/operaciones/ESTADO.md`](docs/operaciones/ESTADO.md).** Leer ESO primero — trae las 3 semanas escritas con sus llaves de rollback, el saldo del puente, el build vivo, los 5 gates y los pendientes. Contexto profundo (por qué falló el parser v1, arquitectura, niveles de falla) en [`docs/operaciones/PARSER_V2.md`](docs/operaciones/PARSER_V2.md).
+
+Frontend `operaciones/carga-mo/` + catálogo `shared/operaciones/contpaqi_conceptos.json` + 2 workflows: dry-run `HV1UE5JxN5fKdC2Y` y WRITE `j0V9wfpuPTLFO9DZ` (los dos activos). SEM 30/31/32 escritas: 123 líneas, $588,570.98. Cuenta puente **3106 `MO · POR REASIGNAR`** con $8,741.90 pendientes de reasignar.
+
+⚠️ Reglas duras del módulo: (1) los gates viven en `scripts/local/` (gitignored, leen nómina real) y **ningún cambio de render mergea sin `smoke-front-cargamo`**; (2) el cuerpo del motor sale de UNA plantilla (`scripts/local/motor-v2.js`) — dry-run y WRITE difieren en 2 líneas de 182, si divergen más es que alguien editó a mano; (3) para re-escribir una semana hay que **borrar sus líneas primero** (idempotencia por prefijo `MO Sxx/2026 ·`); (4) el roster DEBE traer `active in [true,false]` — los dados de baja son justo los que alimentan el puente (§7 de ESTADO.md, `active_test` implícito).
