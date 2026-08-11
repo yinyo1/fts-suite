@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Carga MO — FTS Suite</title>
-<script>(function(){ window.CMO_BUILD = '20260811-cmo-parser-v2c'; })();</script>
+<title>Validación de Nómina y Carga de Mano de Obra — FTS Suite</title>
+<script>(function(){ window.CMO_BUILD = '20260811-cmo-ui-ulises'; })();</script>
 <script src="../../finanzas/js/auth-fin.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/resolver.js"></script>
@@ -18,14 +18,28 @@
   .wrap{ max-width:1080px; margin:0 auto; padding:16px; }
   .card{ background:#fff; border-radius:10px; padding:16px; box-shadow:0 1px 6px rgba(0,0,0,.06); margin-bottom:14px; }
   .card h3{ margin:0 0 10px; font-size:15px; }
-  .drop{ border:2px dashed #bcd; border-radius:10px; padding:28px; text-align:center; cursor:pointer; background:#fafcff; }
-  .drop:hover{ background:#f0f6ff; }
   .btn{ border:none; border-radius:8px; padding:9px 18px; font-size:14px; cursor:pointer; font-weight:500; }
-  .btn-p{ background:var(--azul); color:#fff; } .btn:disabled{ opacity:.5; cursor:not-allowed; }
+  .btn-p{ background:var(--azul); color:#fff; }
+  .btn-w{ background:var(--err); color:#fff; }
+  .btn-g{ background:#eef2f8; color:#2c3e56; border:1px solid #d5dfec; padding:7px 12px; font-size:13px; }
+  .btn:disabled{ opacity:.4; cursor:not-allowed; }
   table{ width:100%; border-collapse:collapse; font-size:12px; }
   th{ background:#eef2f8; text-align:left; padding:6px 8px; position:sticky; top:0; }
   td{ padding:5px 8px; border-top:1px solid #eee; }
   .r{ text-align:right; } .mut{ color:#888; } .mono{ font-variant-numeric:tabular-nums; }
+
+  /* ── barra de acción: fecha · archivo · los dos botones, todo en una línea ── */
+  .bar{ display:flex; align-items:flex-end; gap:14px; flex-wrap:wrap; padding:12px 16px; margin-bottom:8px;
+        position:sticky; top:0; z-index:20; }
+  .bar .fld label{ font-size:10.5px; color:#667; font-weight:600; display:block; margin-bottom:3px;
+                   text-transform:uppercase; letter-spacing:.3px; }
+  .bar .fld-in{ display:flex; align-items:center; gap:7px; font-size:12px; }
+  .bar input[type=date]{ padding:6px 8px; border:1px solid #ccc; border-radius:7px; font-size:13px; }
+  .bar .sep{ width:1px; align-self:stretch; background:#e6ebf2; }
+  .bar .acts{ display:flex; gap:8px; margin-left:auto; }
+  #fname{ max-width:190px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .catline{ font-size:11px; text-align:right; margin:-4px 2px 12px; }
+
   /* ── mensajes por nivel: QUE / DATO / ACCION ── */
   .msg{ border-radius:8px; margin:8px 0; padding:10px 12px 10px 14px; border-left:5px solid; font-size:13px; }
   .msg .q{ font-weight:600; display:block; margin-bottom:3px; }
@@ -37,64 +51,121 @@
   .m-cla{ background:#fff8e8; border-color:var(--warn); color:#7a4d0a; }
   .m-avi{ background:#eef2fd; border-color:var(--info); color:#26356e; }
   .m-ok { background:#e3f4e8; border-color:var(--ok);  color:#0f5426; }
-  .banner{ padding:14px 16px; border-radius:9px; font-size:16px; font-weight:700; margin-bottom:12px; }
+
+  /* ── banner de estado: lo primero que se lee ── */
+  .banner{ padding:14px 18px; border-radius:10px; margin-bottom:14px; }
   .b-ok{ background:#e3f4e8; color:var(--ok); border:1px solid #b7e0c4; }
   .b-no{ background:#fdeceb; color:var(--err); border:1px solid #f2c2be; }
-  .kpi{ display:flex; gap:10px; flex-wrap:wrap; margin:10px 0; }
-  .kpi div{ background:#f7f9fc; border:1px solid #e3e9f2; border-radius:8px; padding:8px 12px; min-width:130px; }
-  .kpi span{ display:block; font-size:11px; color:#667; } .kpi b{ font-size:16px; font-variant-numeric:tabular-nums; }
+  .banner .bn-t{ font-size:19px; font-weight:700; display:block; }
+  .banner .bn-s{ font-size:13px; font-weight:400; opacity:.85; display:block; margin-top:2px; }
+  .bn-facts{ display:flex; gap:26px; flex-wrap:wrap; margin-top:11px; padding-top:10px;
+             border-top:1px solid rgba(0,0,0,.10); }
+  .bn-facts div span{ display:block; font-size:10.5px; text-transform:uppercase; letter-spacing:.4px; opacity:.7; }
+  .bn-facts div b{ font-size:17px; font-variant-numeric:tabular-nums; }
+  .bn-facts div i{ font-style:normal; font-size:11px; opacity:.75; display:block; }
+
+  /* ── KPIs compactos, una sola fila ── */
+  .kpi{ display:flex; gap:8px; flex-wrap:nowrap; overflow-x:auto; margin:0; }
+  .kpi div{ background:#f7f9fc; border:1px solid #e3e9f2; border-radius:8px; padding:6px 10px; flex:1 0 auto; min-width:112px; }
+  .kpi span{ display:block; font-size:10px; color:#667; white-space:nowrap; }
+  .kpi b{ font-size:14px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+  /* ── atenuado: si el archivo no es confiable, sus números derivados tampoco ── */
+  .dim{ opacity:.42; filter:grayscale(.85); }
+  .dim-note{ font-size:11.5px; color:var(--err); font-weight:600; margin:0 0 7px; }
+
   .puente{ border:2px solid var(--warn); background:#fffaf0; border-radius:10px; padding:14px; margin-bottom:14px; }
   .puente h3{ color:var(--warn); margin:0 0 4px; }
   .pill{ display:inline-block; font-size:10px; padding:1px 7px; border-radius:9px; background:#eef2f8; color:#456; margin-left:4px; }
   .pill.vac{ background:#fff3df; color:var(--warn); } .pill.asim{ background:#e7e9fd; color:#3b3fb6; }
   .pill.trio{ background:#e3f4e8; color:var(--ok); } .pill.pue{ background:#ffe9c9; color:#8a4b00; }
   .pill.baja{ background:#fdeceb; color:var(--err); }
+
+  /* ── secciones colapsables (el detalle no estorba la decisión) ── */
+  .sec{ background:#fff; border-radius:10px; box-shadow:0 1px 6px rgba(0,0,0,.06); margin-bottom:14px; }
+  .sec>summary{ list-style:none; cursor:pointer; padding:13px 16px; font-size:14px; font-weight:600;
+                display:flex; align-items:center; gap:9px; }
+  .sec>summary::-webkit-details-marker{ display:none; }
+  .sec>summary::before{ content:'▸'; color:#8494a8; font-size:11px; }
+  .sec[open]>summary::before{ content:'▾'; }
+  .sec>summary:hover{ background:#f7f9fc; border-radius:10px; }
+  .sec .body{ padding:0 16px 14px; }
   .gate{ max-width:520px; margin:60px auto; background:#fff; border-radius:12px; padding:28px; text-align:center; }
 </style>
 </head>
 <body>
 <div class="top">
   <a href="../index.html">← Operaciones</a>
-  <div class="t">💰 Carga de Mano de Obra <span class="b" id="b"></span></div>
+  <div class="t">Validación de Nómina y Carga de Mano de Obra <span class="b" id="b"></span></div>
   <div style="font-size:13px" id="u">—</div>
 </div>
 
 <div id="gate" class="gate" style="display:none"></div>
 
 <main id="main" class="wrap" style="display:none">
-  <div class="card">
-    <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:10px">
-      <div>
-        <label style="font-size:11px;color:#555;font-weight:600;display:block">Semana de nómina (VIE→JUE)</label>
-        <input type="date" id="f-vie" style="padding:7px;border:1px solid #ccc;border-radius:7px">
-        <span class="mut" style="font-size:11px">→ jueves = <b id="f-jue">—</b> · <b id="f-sem">—</b></span>
+
+  <!-- barra de acción: todo lo que se toca, en una línea y arriba -->
+  <div class="card bar" id="bar">
+    <div class="fld">
+      <label>Semana (vie→jue)</label>
+      <div class="fld-in">
+        <input type="date" id="f-vie">
+        <span class="mut">jue <b id="f-jue">—</b></span>
+        <b id="f-sem">—</b>
       </div>
-      <div class="mut" style="font-size:11px;margin-left:auto" id="cat-st">catálogo: cargando…</div>
     </div>
-    <div class="drop" id="drop">
-      📄 Arrastra o haz clic para elegir el Excel CONTPAQi (.xlsx)
-      <input type="file" id="file" accept=".xlsx,.xls" style="display:none">
+    <div class="sep"></div>
+    <div class="fld">
+      <label>Archivo CONTPAQi</label>
+      <div class="fld-in">
+        <button class="btn btn-g" id="drop">📄 Elegir archivo…</button>
+        <span class="mut" id="fname">ninguno</span>
+        <input type="file" id="file" accept=".xlsx,.xls" style="display:none">
+      </div>
+    </div>
+    <div class="acts">
+      <button class="btn btn-p" id="send" disabled>Validar nómina</button>
+      <button class="btn btn-w" id="wbtn" disabled>Enviar a Odoo</button>
     </div>
   </div>
+  <div class="mut catline" id="cat-st">catálogo: cargando…</div>
 
   <div id="result" style="display:none">
+
+    <!-- 1 · lo primero que se lee -->
     <div id="banner"></div>
-    <div class="card" id="c-kpi" style="display:none"><div class="kpi" id="kpi"></div><div id="layout" class="mut" style="font-size:11px"></div></div>
-    <div id="puente-box"></div>
-    <div class="card" id="c-msgs"><h3>Revisión del archivo</h3><div id="msgs"></div></div>
-    <div class="card" id="c-tabla" style="display:none">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <h3 style="margin:0">Nómina leída (<span id="cnt">0</span> empleados)</h3>
-        <button class="btn btn-p" id="send" disabled>Enviar a DRY-RUN →</button>
-      </div>
-      <div style="max-height:420px;overflow:auto">
-        <table>
-          <thead><tr><th>Cód</th><th>Empleado</th><th class="r">Percepciones</th><th class="r">A repartir</th><th class="r">A bolsa</th><th class="r">Puente</th><th>Notas</th></tr></thead>
-          <tbody id="tb"></tbody>
-        </table>
-      </div>
+
+    <!-- 2 · los números, compactos -->
+    <div class="card" id="c-kpi" style="display:none">
+      <div id="kpi-dim"></div>
+      <div class="kpi" id="kpi"></div>
+      <div id="layout" class="mut" style="font-size:11px;margin-top:8px"></div>
     </div>
-    <div class="card" id="msg" style="display:none"></div>
+
+    <!-- 3 · lo que Odoo tiene que decir antes de escribir: nunca colapsado -->
+    <div id="srv-alert" style="display:none"></div>
+
+    <!-- 4 · avisos: nunca colapsados -->
+    <div class="card" id="c-msgs"><h3 id="msgs-h">Avisos</h3><div id="msgs"></div></div>
+
+    <!-- 5 · cuenta puente: nunca colapsada -->
+    <div id="puente-box"></div>
+
+    <!-- 6 · el detalle, colapsado -->
+    <details class="sec" id="c-tabla" style="display:none">
+      <summary>Nómina leída <span class="mut" style="font-weight:400">(<span id="cnt">0</span> empleados)</span></summary>
+      <div class="body">
+        <div style="max-height:420px;overflow:auto">
+          <table>
+            <thead><tr><th>Cód</th><th>Empleado</th><th class="r">Percepciones</th><th class="r">A repartir</th><th class="r">A bolsa</th><th class="r">Puente</th><th>Notas</th></tr></thead>
+            <tbody id="tb"></tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+
+    <!-- 7 · respuesta del servidor: pivote + json, colapsados -->
+    <div id="msg"></div>
   </div>
 </main>
 
@@ -109,6 +180,8 @@ var WEBHOOK = 'https://primary-production-5c3c.up.railway.app/webhook/planeacion
 var WRITE_WEBHOOK = 'https://primary-production-5c3c.up.railway.app/webhook/planeacion/carga-mo-write';
 
 var CAT = null, CAT_ERR = null, PARSED = null, LAST_REPORT = null;
+var BANNER = null;    /* estado del banner grande: lo pinta render() y lo completa renderReport() */
+var DIM = false;      /* archivo con fallas de INTEGRIDAD -> los derivados no son confiables */
 document.getElementById('b').textContent = window.CMO_BUILD;
 
 /* ── utilidades ──────────────────────────────────────────────────────────── */
@@ -156,9 +229,15 @@ async function cargarCatalogo(){
 }
 function mostrarFallaFatal(que, dato, accion){
   $('result').style.display = 'block';
-  $('banner').innerHTML = '<div class="banner b-no">⛔ No se puede continuar</div>';
+  BANNER = null;
+  $('banner').innerHTML = '<div class="banner b-no"><span class="bn-t">⛔ No se puede continuar</span></div>';
+  $('msgs-h').textContent = 'Problemas (1)';
   $('msgs').innerHTML = renderMsg({ nivel:'INTEGRIDAD', que:que, dato:dato, accion:accion });
-  $('c-tabla').style.display = 'none'; $('c-kpi').style.display = 'none'; $('puente-box').innerHTML = '';
+  $('c-tabla').style.display = 'none'; $('c-kpi').style.display = 'none';
+  $('puente-box').innerHTML = ''; $('msg').innerHTML = '';
+  $('srv-alert').style.display = 'none'; $('srv-alert').innerHTML = '';
+  invalidarReporte();
+  $('send').disabled = true;
 }
 
 /* ── auth (reusa el JWT de Finanzas; token en el body) ───────────────────── */
@@ -207,6 +286,7 @@ drop.addEventListener('drop', function(e){ e.preventDefault(); drop.style.backgr
 file.addEventListener('change', function(e){ if(e.target.files[0]) leer(e.target.files[0]); });
 
 function leer(f){
+  $('fname').textContent = f.name;
   if(!CAT){
     if(CAT_ERR) mostrarFallaFatal(CAT_ERR.que, CAT_ERR.dato, CAT_ERR.accion);
     else mostrarFallaFatal('El catálogo de conceptos todavía está cargando', 'aún no responde',
@@ -232,14 +312,96 @@ function leer(f){
 }
 
 /* ── render de un mensaje QUE / DATO / ACCION ────────────────────────────── */
+/* Acepta `dato` (una linea) o `datos` (varias): un finiquito son tres observaciones
+   de la misma persona y se leen mejor juntas que como tres tarjetas iguales. */
 function renderMsg(m){
   var cls = m.nivel === 'INTEGRIDAD' ? 'm-int' : (m.nivel === 'CLASIFICACION' ? 'm-cla' : 'm-avi');
   var ico = m.nivel === 'INTEGRIDAD' ? '⛔' : (m.nivel === 'CLASIFICACION' ? '⚠️' : 'ℹ️');
+  var datos = (m.datos && m.datos.length) ? m.datos : (m.dato != null ? [m.dato] : []);
   return '<div class="msg '+cls+'">'
        +   '<span class="q">'+ico+' '+esc(m.que)+'</span>'
-       +   '<span class="d">'+esc(m.dato)+'</span>'
+       +   datos.map(function(d){ return '<span class="d">'+esc(d)+'</span>'; }).join('')
        +   '<span class="a"><b>Qué hacer:</b> '+esc(m.accion)+'</span>'
        + '</div>';
+}
+
+/* ── un aviso por persona, no uno por concepto ────────────────────────────
+   Un finiquito dispara CONCEPTO_INUSUAL por Aguinaldo, otro por Fondo de ahorro y
+   ademas POSIBLE_BAJA: tres tarjetas casi identicas para el mismo empleado. Tres
+   tarjetas no dicen mas que una y hacen que la lista deje de leerse. Solo agrupa
+   AVISO: INTEGRIDAD y CLASIFICACION se quedan intactos, cada uno es accionable. */
+var RE_PERSONA = /^(\d{1,6})\s+([^·]+?)\s+·\s+/;
+function agruparAvisosPorPersona(lista){
+  var out = [], idx = {};
+  lista.forEach(function(m){
+    var mm = (m.nivel === 'AVISO' && m.dato != null) ? RE_PERSONA.exec(String(m.dato)) : null;
+    if(!mm){ out.push(m); return; }
+    var persona = mm[1] + ' ' + mm[2].trim();
+    var g = idx[persona];
+    if(!g){ g = idx[persona] = { _grupo:true, nivel:'AVISO', persona:persona, datos:[], ques:[], acciones:[] }; out.push(g); }
+    g.datos.push(String(m.dato).replace(RE_PERSONA, ''));
+    if(g.ques.indexOf(m.que) < 0) g.ques.push(m.que);
+    if(g.acciones.indexOf(m.accion) < 0) g.acciones.push(m.accion);
+  });
+  return out.map(function(m){
+    if(!m._grupo) return m;
+    if(m.datos.length === 1)
+      return { nivel:'AVISO', que:m.ques[0], dato:m.persona+' · '+m.datos[0], accion:m.acciones[0] };
+    var esBaja = m.ques.some(function(q){ return /finiquito/i.test(q); });
+    return { nivel:'AVISO',
+             que: (esBaja ? 'Posible finiquito · ' : m.datos.length + ' observaciones · ') + m.persona,
+             datos: m.datos,
+             accion: m.acciones.join(' ') };
+  });
+}
+
+/* ── banner de estado ────────────────────────────────────────────────────── */
+/* Una sola frase que responde «¿puedo mandar esta nómina?», y debajo los cuatro
+   numeros con los que se responde. render() lo arma; renderReport() completa el
+   veredicto de Odoo y la Δ, sin volver a calcular nada. */
+function pintarBanner(){
+  var B = BANNER; if(!B) return;
+  var ok, tit, sub;
+  if(!B.archivoOk){
+    ok = false;
+    tit = '⛔ Esta nómina no se puede cargar';
+    sub = B.nInt + ' problema(s) en el archivo que hay que resolver primero. Están abajo, en rojo.';
+  } else if(B.srvOk === false){
+    ok = false;
+    tit = '⛔ Odoo todavía no está listo para esta semana';
+    sub = 'El archivo está bien; falta trabajo en Odoo. Lo que falta está abajo, en rojo.';
+  } else if(B.srvOk === true){
+    ok = true;
+    tit = '✓ Todo listo — puedes enviar a Odoo';
+    sub = 'Revisa la cuenta puente y los avisos antes de enviar. El botón está arriba a la derecha.';
+  } else {
+    ok = true;
+    tit = '✓ Nómina leída y válida';
+    sub = 'Falta cruzarla contra Odoo: haz clic en «Validar nómina», arriba a la derecha.'
+        + (B.nCla ? ' · ' + B.nCla + ' concepto(s) irán a la cuenta puente.' : '');
+  }
+  var f = function(lab, val, sub2){
+    return '<div><span>'+lab+'</span><b>'+val+'</b>'+(sub2?'<i>'+sub2+'</i>':'')+'</div>';
+  };
+  $('banner').innerHTML =
+      '<div class="banner '+(ok?'b-ok':'b-no')+'">'
+    +   '<span class="bn-t">'+tit+'</span><span class="bn-s">'+sub+'</span>'
+    +   '<div class="bn-facts">'
+    +     f('Semana', B.sem, B.rango)
+    +     f('Total nómina', B.total==null?'—':money(B.total))
+    +     f('Empleados', B.emps==null?'—':String(B.emps))
+    +     f('Δ', B.delta==null?'—':money(B.delta), B.delta==null?'pendiente de validar':(Math.abs(B.delta)<0.011?'cuadra':'NO cuadra'))
+    +   '</div>'
+    + '</div>';
+}
+
+/* ── el reporte del servidor caduca en cuanto cambia lo que se le mandó ──── */
+function invalidarReporte(){
+  LAST_REPORT = null;
+  $('wbtn').disabled = true;
+  $('msg').innerHTML = '';
+  $('srv-alert').style.display = 'none'; $('srv-alert').innerHTML = '';
+  if(BANNER){ BANNER.srvOk = null; BANNER.delta = null; }
 }
 
 /* ── render principal ────────────────────────────────────────────────────── */
@@ -252,7 +414,7 @@ function render(){
   var vie = $('f-vie').value;
   var periodoOk = false;
   if(P.periodo){
-    $('f-sem').textContent = 'SEM ' + P.periodo.periodo + ' · ' + P.periodo.inicio + ' → ' + P.periodo.fin;
+    $('f-sem').textContent = 'SEM ' + P.periodo.periodo;
     if(!vie){
       fallas.push({ nivel:'INTEGRIDAD', que:'Falta elegir la semana de nómina',
         dato:'el archivo es SEM '+P.periodo.periodo+' ('+P.periodo.inicio+' → '+P.periodo.fin+')',
@@ -271,15 +433,31 @@ function render(){
   /* ── LA REGLA: solo INTEGRIDAD bloquea ── */
   var puedeEnviar = (nInt === 0) && !!P.totales;
 
-  $('banner').innerHTML = puedeEnviar
-    ? '<div class="banner b-ok">✓ Archivo válido — SEM '+(P.periodo?P.periodo.periodo:'?')+' lista para enviar'
-      + (nCla ? ' <span style="font-weight:400;font-size:13px">· '+nCla+' concepto(s) irán a la cuenta puente</span>' : '')
-      + '</div>'
-    : '<div class="banner b-no">⛔ El archivo no se puede cargar — '+nInt+' problema(s) que hay que resolver primero</div>';
+  /* si el archivo no es confiable, los numeros derivados de el tampoco: se atenuan.
+     Mostrarlos firmes invita a leerlos, y son justo los que no hay que creer. */
+  DIM = !puedeEnviar;
+
+  /* cualquier re-render invalida el reporte anterior: cambio el archivo o la semana,
+     asi que lo que respondio el servidor ya no describe lo que se mandaria ahora. */
+  invalidarReporte();
+
+  BANNER = {
+    archivoOk: puedeEnviar, nInt:nInt, nCla:nCla, nAvi:nAvi,
+    sem: P.periodo ? 'SEM ' + P.periodo.periodo : '—',
+    rango: P.periodo ? P.periodo.inicio + ' → ' + P.periodo.fin : '',
+    total: P.totales ? P.totales.nomina : null,
+    emps: P.empleados ? P.empleados.length : null,
+    srvOk: null, delta: null
+  };
+  pintarBanner();
 
   /* KPIs + layout */
   if(P.totales){
     $('c-kpi').style.display = 'block';
+    $('c-kpi').className = 'card' + (DIM ? ' dim' : '');
+    $('kpi-dim').innerHTML = DIM
+      ? '<p class="dim-note">Estos números salen de un archivo que no cuadra: no los uses hasta resolver los problemas de abajo.</p>'
+      : '';
     var T = P.totales;
     $('kpi').innerHTML =
         k('Percepciones', money(T.bruto))
@@ -293,16 +471,20 @@ function render(){
       + 'Total Percepciones en la columna <b>'+L.marcadores.TOTAL_PERCEPCIONES.letra+'</b> · '
       + P.zonas.percepciones.length+' conceptos de percepciones · catálogo v'+L.catalogo_version
       + ' · archivo <b>'+esc(P._archivo||'')+'</b>';
-  } else { $('c-kpi').style.display='none'; $('layout').innerHTML=''; }
+  } else { $('c-kpi').style.display='none'; $('layout').innerHTML=''; $('kpi-dim').innerHTML=''; }
 
   /* ── bloque PUENTE, grande y con detalle por persona ── */
   renderPuente(P, null);
 
-  /* mensajes ordenados por severidad */
+  /* mensajes ordenados por severidad, un aviso por persona */
   var orden = { INTEGRIDAD:0, CLASIFICACION:1, AVISO:2 };
   fallas.sort(function(a,b){ return orden[a.nivel]-orden[b.nivel]; });
-  $('msgs').innerHTML = fallas.length
-    ? fallas.map(renderMsg).join('')
+  var vista = agruparAvisosPorPersona(fallas);
+  $('msgs-h').textContent = nInt
+    ? 'Problemas y avisos (' + vista.length + ')'
+    : (vista.length ? 'Avisos (' + vista.length + ')' : 'Sin avisos');
+  $('msgs').innerHTML = vista.length
+    ? vista.map(renderMsg).join('')
     : '<div class="msg m-ok"><span class="q">✓ Sin observaciones</span><span class="a">El archivo cuadra consigo mismo y todos los conceptos están catalogados.</span></div>';
 
   /* tabla */
@@ -337,7 +519,7 @@ function render(){
   } else { $('c-tabla').style.display='none'; }
 
   $('send').disabled = !puedeEnviar;
-  $('send').textContent = puedeEnviar ? 'Enviar a DRY-RUN →' : 'Resuelve los problemas de arriba';
+  $('send').textContent = puedeEnviar ? 'Validar nómina' : 'Corrige los errores';
 }
 function k(label, val, color){
   return '<div><span>'+label+'</span><b'+(color?' style="color:'+color+'"':'')+'>'+val+'</b></div>';
@@ -393,7 +575,8 @@ function renderPuente(P, servidor, totalServidor){
   var nSrv  = det.length - nClas;
 
   $('puente-box').innerHTML =
-      '<div class="puente">'
+      '<div class="puente' + (DIM ? ' dim' : '') + '">'
+    +   (DIM ? '<p class="dim-note">El archivo no cuadra: este reparto todavía no es confiable.</p>' : '')
     +   '<h3>🌉 Va a la cuenta puente: ' + money(tot) + '</h3>'
     +   '<p class="mut" style="font-size:12.5px;margin:0 0 8px">Este dinero <b>sí se carga</b>, pero queda apartado en «MO · POR REASIGNAR» '
     +   'en vez de repartirse a proyectos, porque todavía no se sabe a dónde va. '
@@ -402,7 +585,7 @@ function renderPuente(P, servidor, totalServidor){
     +     (haySrv
             ? 'Cifras confirmadas por el servidor · <span class="pill pue">concepto</span> ' + nClas
               + ' &nbsp; <span class="pill baja">baja</span> ' + nSrv
-            : 'Estimado de la página. Al enviar a DRY-RUN el servidor confirma y puede agregar renglones por empleados dados de baja.')
+            : 'Estimado de la página. Al validar la nómina el servidor confirma y puede agregar renglones por empleados dados de baja.')
     +   '</p>'
     +   '<table><thead><tr><th>Quién</th><th>Por qué</th><th>Origen</th><th class="r">Monto</th></tr></thead><tbody>'
     +   det.sort(function(a,b){ return Math.abs(b.monto)-Math.abs(a.monto); }).map(function(d){
@@ -426,7 +609,9 @@ function actualizarKpiPuente(total){
     function(_m, ini, fin){ return ini + money(total) + fin; });
 }
 
-/* ── envío al dry-run ────────────────────────────────────────────────────── */
+/* ── envío a validación ──────────────────────────────────────────────────── */
+/* `modo` es el contrato con el motor n8n (dry_run / write) y NO cambia: es protocolo,
+   no texto de pantalla. Lo que ve Ulises es «Validar nómina» y «Enviar a Odoo». */
 function armarPayload(modo){
   var P = PARSED, s = FinAuth.getSession();
   return {
@@ -468,20 +653,27 @@ function armarPayload(modo){
 
 $('send').addEventListener('click', async function(){
   if(!PARSED) return;
-  var btn = $('send'); btn.disabled = true; btn.textContent = 'Enviando…';
-  if(!FinAuth.getToken()){ showGate(); btn.textContent='Enviar a DRY-RUN →'; btn.disabled=false; return; }
-  var msg = $('msg'); msg.style.display='block'; msg.innerHTML = '<div class="mut">Consultando Odoo…</div>';
+  var btn = $('send'); btn.disabled = true; btn.textContent = 'Validando…';
+  if(!FinAuth.getToken()){ showGate(); btn.textContent='Validar nómina'; btn.disabled=false; return; }
+  var msg = $('msg'); msg.innerHTML = '<div class="card mut">Consultando Odoo…</div>';
   try{
     var rsp = await fetch(WEBHOOK, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(armarPayload('dry_run')) });
     var j = await rsp.json().catch(function(){ return {}; });
     LAST_REPORT = j; renderReport(j, msg);
   }catch(err){
-    msg.innerHTML = renderMsg({ nivel:'INTEGRIDAD', que:'No se pudo contactar al servidor',
+    msg.innerHTML = '';
+    mostrarAlertaServidor(renderMsg({ nivel:'INTEGRIDAD', que:'No se pudo contactar al servidor',
       dato: err.message,
-      accion:'Revisa tu conexión y vuelve a intentar. Si sigue fallando, avisa a soporte de FTS Suite: puede que el servicio esté caído.' });
+      accion:'Revisa tu conexión y vuelve a intentar. Si sigue fallando, avisa a soporte de FTS Suite: puede que el servicio esté caído.' }));
   }
-  btn.textContent='Enviar a DRY-RUN →'; btn.disabled = false;
+  btn.textContent='Validar nómina'; btn.disabled = false;
 });
+
+function mostrarAlertaServidor(html){
+  var a = $('srv-alert');
+  a.innerHTML = html ? '<div class="card">' + html + '</div>' : '';
+  a.style.display = html ? 'block' : 'none';
+}
 
 /* ── reporte del servidor ────────────────────────────────────────────────── */
 function renderReport(j, msg){
@@ -499,52 +691,54 @@ function renderReport(j, msg){
     actualizarKpiPuente(j.puente_total != null ? j.puente_total : (totPuente||0));
   }
 
-  var h = verde
-    ? '<div class="banner b-ok">✓ Semana completa en Odoo — lista para cargar</div>'
-    : '<div class="banner b-no">⛔ Odoo todavía no está listo para esta semana</div>';
+  /* el veredicto y la Δ suben al banner: es donde se decide */
+  if(BANNER){
+    BANNER.srvOk = verde;
+    BANNER.delta = (ctl && ctl.diferencia != null) ? ctl.diferencia : null;
+    pintarBanner();
+  }
 
+  /* ── lo que impide escribir, siempre visible: nunca dentro de un colapsable ── */
+  var alertas = '';
   if(!verde){
-    if(cf.dias_sin_confirmar) h += renderMsg({ nivel:'INTEGRIDAD',
+    if(cf.dias_sin_confirmar) alertas += renderMsg({ nivel:'INTEGRIDAD',
       que: 'Hay '+cf.dias_sin_confirmar+' día(s) de trabajo sin confirmar en Odoo',
       dato: (cf.pendientes||[]).map(function(p){ return p.nombre+' — '+String(p.check_in||'').slice(0,16)+' ('+p.motivo+')'; }).join(' · '),
-      accion: 'Felipe tiene que confirmarlos en el panel Confirmar Horas, o Ana cerrar la incidencia si está en disputa. Vuelve a enviar cuando estén listos.' });
-    if(cf.confirmados_sin_destino) h += renderMsg({ nivel:'INTEGRIDAD',
+      accion: 'Felipe tiene que confirmarlos en el panel Confirmar Horas, o Ana cerrar la incidencia si está en disputa. Vuelve a validar cuando estén listos.' });
+    if(cf.confirmados_sin_destino) alertas += renderMsg({ nivel:'INTEGRIDAD',
       que: 'Hay '+cf.confirmados_sin_destino+' registro(s) confirmados pero sin proyecto ni bolsa',
       dato: (cf.sin_destino||[]).map(function(p){ return p.nombre+' — '+String(p.check_in||'').slice(0,16)+' (att '+p.att_id+')'; }).join(' · '),
       accion: 'Felipe tiene que asignarles destino con el ✎ del panel Confirmar Horas.' });
     var cod = exc.filter(function(x){ return x.motivo && x.motivo.indexOf('codigo sin empleado')>=0; });
-    if(cod.length) h += renderMsg({ nivel:'INTEGRIDAD',
+    if(cod.length) alertas += renderMsg({ nivel:'INTEGRIDAD',
       que: 'Hay '+cod.length+' código(s) del Excel que no existen en Odoo',
       dato: cod.map(function(x){ return (x.cod||'')+' '+(x.nombre||'')+(x.amount!=null?' — '+money(x.amount):''); }).join(' · '),
       accion: 'Si la persona causó baja, sigue existiendo en Odoo archivada y su dinero puede ir al puente. Si el código no existe en ningún lado, RH tiene que darlo de alta con su código CONTPAQi antes de cargar.' });
   }
-
-  h += '<div class="kpi">'
-     + k('Σ nómina', money(j.total_nomina)) + k('Σ distribuido', money(ctl.total_distribuido))
-     + k('Δ', money(ctl.diferencia), ctl.ok ? 'var(--ok)' : 'var(--err)')
-     + k('Periodo', 'SEM ' + (j.periodo!=null?j.periodo:'?'))
-     + '</div>';
-
-  if(j.por_destino && j.por_destino.length){
-    h += '<h3 style="margin:12px 0 6px">A dónde se va el dinero</h3><table><thead><tr><th>Destino</th><th class="r">Monto</th></tr></thead><tbody>'
-       + j.por_destino.map(function(d){ return '<tr><td>'+esc(d.label)+'</td><td class="r mono">'+money(d.monto)+'</td></tr>'; }).join('')
-       + '</tbody></table>';
-  }
-  if(exc.length) h += renderMsg({ nivel:'CLASIFICACION',
+  if(exc.length) alertas += renderMsg({ nivel:'CLASIFICACION',
     que:'Hay '+exc.length+' excepción(es) que no se van a repartir a proyectos',
     dato: exc.map(function(x){ return (x.nombre||x.trio||x.cod||'?')+': '+x.motivo+(x.amount!=null?' '+money(x.amount):''); }).join(' · '),
     accion:'Revisa que cada una tenga sentido. Las que van al puente se cargan igual; las demás quedan fuera de esta carga.' });
+  mostrarAlertaServidor(alertas);
 
-  h += '<div style="margin-top:14px;padding-top:12px;border-top:2px solid #eee">';
-  h += verde
-    ? '<div class="mut" style="font-size:12px;margin-bottom:6px">Escritura irreversible salvo rollback por llave. Verifica el pivote de arriba antes de continuar.</div>'
-      + '<button class="btn" id="wbtn" style="background:#b3261e;color:#fff">⚠️ ESCRIBIR EN ODOO (REAL) — SEM '+(j.periodo!=null?j.periodo:'?')+'</button>'
-    : '<button class="btn" disabled style="background:#ccc;color:#666">Escritura bloqueada</button>';
-  h += '</div>';
-  h += '<details style="margin-top:10px"><summary class="mut" style="cursor:pointer;font-size:12px">Ver respuesta completa del servidor</summary><pre style="font-size:11px;overflow:auto">'+esc(JSON.stringify(j,null,2))+'</pre></details>';
+  /* ── el detalle del servidor, colapsado ── */
+  var h = '';
+  if(j.por_destino && j.por_destino.length){
+    h += '<details class="sec"><summary>A dónde se va el dinero '
+       +   '<span class="mut" style="font-weight:400">('+j.por_destino.length+' destinos)</span></summary>'
+       + '<div class="body"><table><thead><tr><th>Destino</th><th class="r">Monto</th></tr></thead><tbody>'
+       + j.por_destino.map(function(d){ return '<tr><td>'+esc(d.label)+'</td><td class="r mono">'+money(d.monto)+'</td></tr>'; }).join('')
+       + '</tbody></table>'
+       + '<p class="mut" style="font-size:11.5px;margin:8px 0 0">Σ distribuido '+money(ctl.total_distribuido)
+       + ' · Σ nómina '+money(j.total_nomina)+' · Δ '+money(ctl.diferencia)+'</p></div></details>';
+  }
+  h += '<details class="sec"><summary>Respuesta del servidor '
+     +   '<span class="mut" style="font-weight:400">(detalle técnico)</span></summary>'
+     + '<div class="body"><pre style="font-size:11px;overflow:auto">'+esc(JSON.stringify(j,null,2))+'</pre></div></details>';
+  msg.className = ''; msg.innerHTML = h;
 
-  msg.className='card'; msg.innerHTML = h;
-  var wb = $('wbtn'); if(wb) wb.addEventListener('click', doWrite);
+  /* el botón de escritura vive arriba, en la barra: aquí sólo se habilita */
+  $('wbtn').disabled = !verde;
 }
 
 async function doWrite(){
@@ -557,17 +751,29 @@ async function doWrite(){
     var rsp = await fetch(WRITE_WEBHOOK, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(armarPayload('write')) });
     var j = await rsp.json().catch(function(){ return {}; });
     var ok = j.modo === 'ESCRITO';
+    if(BANNER){
+      BANNER.srvOk = ok;
+      $('banner').innerHTML = '<div class="banner '+(ok?'b-ok':'b-no')+'">'
+        + '<span class="bn-t">'+(ok ? '✓ Cargado en Odoo' : '⛔ NO se escribió en Odoo')+'</span>'
+        + '<span class="bn-s">'+(ok
+            ? (j.lineas_creadas||0)+' líneas escritas · Δ '+money((j.control||{}).diferencia)
+            : esc(j.motivo || j.msg || 'sin detalle')+' — nada se guardó.')+'</span></div>';
+    }
+    mostrarAlertaServidor(ok ? '' : renderMsg({ nivel:'INTEGRIDAD', que:'NO se escribió', dato: j.motivo || j.msg || 'sin detalle',
+      accion:'Nada se guardó en Odoo. Revisa el motivo y vuelve a intentar cuando esté resuelto.' }));
     msg.innerHTML = (ok
-        ? '<div class="banner b-ok">✓ ESCRITO — '+(j.lineas_creadas||0)+' líneas · Δ '+money((j.control||{}).diferencia)+'</div>'
-          + '<div class="mut" style="font-size:11px">Rollback: unlink name like "'+esc(j.llave_prefijo||'')+'" · IDs: '+esc((j.ids_creados||[]).join(', '))+'</div>'
-        : renderMsg({ nivel:'INTEGRIDAD', que:'NO se escribió', dato: j.motivo || j.msg || 'sin detalle',
-            accion:'Nada se guardó en Odoo. Revisa el motivo y vuelve a intentar cuando esté resuelto.' }))
-      + '<details open style="margin-top:10px"><summary class="mut" style="cursor:pointer;font-size:12px">Respuesta</summary><pre style="font-size:11px;overflow:auto">'+esc(JSON.stringify(j,null,2))+'</pre></details>';
+        ? '<div class="card"><div class="mut" style="font-size:11px">Rollback: unlink name like "'+esc(j.llave_prefijo||'')+'" · IDs: '+esc((j.ids_creados||[]).join(', '))+'</div></div>'
+        : '')
+      + '<details class="sec" open><summary>Respuesta del servidor</summary>'
+      + '<div class="body"><pre style="font-size:11px;overflow:auto">'+esc(JSON.stringify(j,null,2))+'</pre></div></details>';
+    if(wb){ wb.textContent = ok ? 'Cargado ✓' : 'Enviar a Odoo'; wb.disabled = ok; }
   }catch(err){
-    msg.innerHTML = renderMsg({ nivel:'INTEGRIDAD', que:'Error al escribir', dato: err.message,
-      accion:'Verifica en Odoo si se crearon líneas antes de reintentar: busca partidas analíticas cuyo nombre empiece con "MO S'+PARSED.periodo.periodo+'/".' });
+    mostrarAlertaServidor(renderMsg({ nivel:'INTEGRIDAD', que:'Error al escribir', dato: err.message,
+      accion:'Verifica en Odoo si se crearon líneas antes de reintentar: busca partidas analíticas cuyo nombre empiece con "MO S'+PARSED.periodo.periodo+'/".' }));
+    if(wb){ wb.textContent='Enviar a Odoo'; wb.disabled=false; }
   }
 }
+$('wbtn').addEventListener('click', doWrite);
 
 gate();
 </script>

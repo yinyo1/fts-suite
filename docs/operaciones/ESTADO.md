@@ -59,11 +59,16 @@ absorberse en silencio en alguna bolsa.
 
 Saldo actual: **$8,741.90** en 3 líneas. Es todo lo que hay — la cuenta nació ese día.
 
-| Línea | Semana | Monto | Qué es |
-|---|---|---:|---|
-| 61892 | SEM 30 | $2,833.90 | finiquito de un empleado dado de baja que SÍ trabajó parte de la semana |
-| 61930 | SEM 31 | $1,600.00 | viáticos: concepto clasificado `A_BOLSA` con destino puente |
-| 61970 | SEM 32 | $4,308.00 | finiquito de un empleado dado de baja SIN horas esa semana |
+| Línea | Semana | Qué es |
+|---|---|---|
+| 61892 | SEM 30 | finiquito de un empleado dado de baja que SÍ trabajó parte de la semana |
+| 61930 | SEM 31 | viáticos: concepto clasificado `A_BOLSA` con destino puente |
+| 61970 | SEM 32 | finiquito de un empleado dado de baja SIN horas esa semana |
+
+**Los montos por línea no van en este documento.** Dos de las tres son finiquitos, o sea
+compensación de una persona identificable, y el repo es público. El detalle vive en Odoo:
+`account.analytic.line`, cuenta 3106, o filtrando por `name like 'MO S3'`. Quien tenga que
+reasignar el dinero tiene acceso a Odoo; quien no lo tiene, no necesita las cifras.
 
 Los tres son casos de diseño, no errores. Lo que el puente **no** contiene es igual de
 importante: los sueldos de esos mismos empleados archivados por los días que sí
@@ -180,15 +185,32 @@ propósito**: un throw mataría el correo y con él el diagnóstico. Es falla du
 
 ## 6. Pendientes
 
-### UI (3 arreglos, acordados para después del WRITE)
+### UI (3 arreglos, acordados para después del WRITE) — ✅ hechos en el rediseño
 
-1. **Botón al pie.** "Enviar a DRY-RUN" está hasta abajo de la tabla; debería estar
-   arriba, junto al banner, donde ya se tomó la decisión.
-2. **KPIs y puente se pintan completos aunque haya falla de INTEGRIDAD.** Si el archivo
-   no es confiable, los números derivados tampoco: hay que atenuarlos o marcarlos como
-   no aplicables en vez de mostrarlos firmes.
-3. **Tres avisos para la misma persona.** Un finiquito genera un aviso por concepto;
-   deberían colapsarse en uno por persona.
+Rediseño para Ulises (build `20260811-cmo-ui-ulises`, **construido y con los 5 gates en
+verde; pendiente de push**). La pantalla dejó de estar pensada para quien conoce Odoo: la
+pregunta que contesta ahora es una sola, «¿puedo mandar esta nómina o no?».
+
+1. ✅ **Botón al pie.** Los dos botones subieron a la barra superior, en una línea con la
+   fecha y el selector de archivo: **Validar nómina** y **Enviar a Odoo**.
+2. ✅ **KPIs y puente se pintan completos aunque haya falla de INTEGRIDAD.** Con
+   integridad > 0 ambos bloques quedan atenuados y con la nota de que sus números salen
+   de un archivo que no cuadra.
+3. ✅ **Tres avisos para la misma persona.** Los AVISO se agrupan por persona (`cod
+   nombre` al inicio del `dato`); un finiquito es ahora una sola tarjeta con sus tres
+   líneas de detalle. INTEGRIDAD y CLASIFICACIÓN NO se agrupan: cada uno es accionable
+   por separado.
+
+Cambios de la misma iteración: título "Validación de Nómina y Carga de Mano de Obra";
+**la palabra "DRY-RUN" desapareció de la interfaz** (el `modo:'dry_run'` del payload NO
+cambió — es contrato con el motor, no texto de pantalla); banner de estado grande con
+semana, total, empleados y Δ; y todo el detalle colapsado (nómina leída, pivote por
+proyecto, respuesta del servidor) **salvo avisos y cuenta puente, que nunca se colapsan**
+porque son justo lo que hay que leer antes de mandar.
+
+⚠️ El **pivote por proyecto** queda colapsado por defecto pero visible: expone la
+estructura de costos por obra a un contador externo. Decisión de Esteban: se acepta por
+ahora; más adelante se evalúa esconderlo por rol.
 
 ### Motor / backend
 
