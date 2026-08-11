@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Validación de Nómina y Carga de Mano de Obra — FTS Suite</title>
-<script>(function(){ window.CMO_BUILD = '20260811-cmo-ui-ulises'; })();</script>
+<script>(function(){ window.CMO_BUILD = '20260811-cmo-ui-ulises4'; })();</script>
 <script src="../../finanzas/js/auth-fin.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/resolver.js"></script>
@@ -70,6 +70,10 @@
   .kpi span{ display:block; font-size:10px; color:#667; white-space:nowrap; }
   .kpi b{ font-size:14px; font-variant-numeric:tabular-nums; white-space:nowrap; }
 
+  .kpi-help{ margin-top:10px; font-size:11px; color:#66707d; line-height:1.5; }
+  .kpi-help span{ display:block; margin-bottom:2px; }
+  .kpi-help b{ color:#2c3e56; font-weight:600; }
+
   /* ── atenuado: si el archivo no es confiable, sus números derivados tampoco ── */
   .dim{ opacity:.42; filter:grayscale(.85); }
   .dim-note{ font-size:11.5px; color:var(--err); font-weight:600; margin:0 0 7px; }
@@ -125,7 +129,7 @@
     </div>
     <div class="acts">
       <button class="btn btn-p" id="send" disabled>Validar nómina</button>
-      <button class="btn btn-w" id="wbtn" disabled>Enviar a Odoo</button>
+      <button class="btn btn-w" id="wbtn" disabled>Enviar a FTS (Correo + Odoo)</button>
     </div>
   </div>
   <div class="mut catline" id="cat-st">catálogo: cargando…</div>
@@ -139,6 +143,16 @@
     <div class="card" id="c-kpi" style="display:none">
       <div id="kpi-dim"></div>
       <div class="kpi" id="kpi"></div>
+      <div class="kpi-help">
+        <span><b>Se reparte por horas</b> — se prorratea entre proyectos y bolsas según las horas confirmadas de la semana.</span>
+        <span><b>Costo indirecto (no a proyecto)</b> — no se prorratea. Vacaciones y prima vacacional van a la bolsa del
+              departamento de la persona; el sueldo asimilado va a la cuenta indirecta de esa persona. Si su
+              departamento no tiene bolsa asignada, cae en Administración.</span>
+        <span><b>Va al puente</b> — lo que todavía no se puede atribuir a nadie. Queda apartado en «MO · POR REASIGNAR».</span>
+        <span><b>Personal Externo (neto)</b> — quienes facturan como proveedor. Su monto sale de la columna
+              <b>NETO</b> del Excel, no del bruto, porque no llevan deducciones de nómina.</span>
+        <span><b>Total nómina</b> — Percepciones + Personal Externo. Mezcla un bruto y un neto, a propósito.</span>
+      </div>
       <div id="layout" class="mut" style="font-size:11px;margin-top:8px"></div>
     </div>
 
@@ -372,7 +386,7 @@ function pintarBanner(){
     sub = 'El archivo está bien; falta trabajo en Odoo. Lo que falta está abajo, en rojo.';
   } else if(B.srvOk === true){
     ok = true;
-    tit = '✓ Todo listo — puedes enviar a Odoo';
+    tit = '✓ Todo listo — puedes enviar a FTS';
     sub = 'Revisa la cuenta puente y los avisos antes de enviar. El botón está arriba a la derecha.';
   } else {
     ok = true;
@@ -462,9 +476,9 @@ function render(){
     $('kpi').innerHTML =
         k('Percepciones', money(T.bruto))
       + k('Se reparte por horas', money(T.a_repartir))
-      + k('Va a bolsa', money(T.a_bolsa))
+      + k('Costo indirecto (no a proyecto)', money(T.a_bolsa))
       + k('Va al puente', money(T.puente), T.puente > 0.005 ? 'var(--warn)' : null)
-      + k('Trío (proveedor)', money(T.trio))
+      + k('Personal Externo (neto)', money(T.trio))
       + k('Total nómina', money(T.nomina));
     var L = P.layout;
     $('layout').innerHTML = 'Leído: encabezados en la fila <b>'+L.header_row_humana+'</b> · '
@@ -513,7 +527,7 @@ function render(){
     var filasTrio = P.trio.map(function(t){
       return '<tr><td>—</td><td>'+esc(t.nombre)+'</td><td class="r mono">'+money(t.neto)+'</td>'
         + '<td class="r mono">'+money(t.neto)+'</td><td class="r">—</td><td class="r">—</td>'
-        + '<td><span class="pill trio">trío · emp '+t.empleado_id+' · factura proveedor</span></td></tr>';
+        + '<td><span class="pill trio">personal externo · emp '+t.empleado_id+' · factura proveedor · monto NETO</span></td></tr>';
     }).join('');
     $('tb').innerHTML = filas + filasTrio;
   } else { $('c-tabla').style.display='none'; }
@@ -611,7 +625,7 @@ function actualizarKpiPuente(total){
 
 /* ── envío a validación ──────────────────────────────────────────────────── */
 /* `modo` es el contrato con el motor n8n (dry_run / write) y NO cambia: es protocolo,
-   no texto de pantalla. Lo que ve Ulises es «Validar nómina» y «Enviar a Odoo». */
+   no texto de pantalla. Lo que ve Ulises es «Validar nomina» y «Enviar a FTS». */
 function armarPayload(modo){
   var P = PARSED, s = FinAuth.getSession();
   return {
@@ -766,11 +780,11 @@ async function doWrite(){
         : '')
       + '<details class="sec" open><summary>Respuesta del servidor</summary>'
       + '<div class="body"><pre style="font-size:11px;overflow:auto">'+esc(JSON.stringify(j,null,2))+'</pre></div></details>';
-    if(wb){ wb.textContent = ok ? 'Cargado ✓' : 'Enviar a Odoo'; wb.disabled = ok; }
+    if(wb){ wb.textContent = ok ? 'Cargado ✓' : 'Enviar a FTS (Correo + Odoo)'; wb.disabled = ok; }
   }catch(err){
     mostrarAlertaServidor(renderMsg({ nivel:'INTEGRIDAD', que:'Error al escribir', dato: err.message,
       accion:'Verifica en Odoo si se crearon líneas antes de reintentar: busca partidas analíticas cuyo nombre empiece con "MO S'+PARSED.periodo.periodo+'/".' }));
-    if(wb){ wb.textContent='Enviar a Odoo'; wb.disabled=false; }
+    if(wb){ wb.textContent='Enviar a FTS (Correo + Odoo)'; wb.disabled=false; }
   }
 }
 $('wbtn').addEventListener('click', doWrite);
