@@ -1,0 +1,557 @@
+{
+  "_meta": "Catalogo de conceptos CONTPAQi para Carga MO v2. Se lee de main raw EN VIVO por operaciones/carga-mo/ y por el motor n8n. Agregar un alias = PR de una linea, sin tocar HTML ni workflows. Ver docs/operaciones/PARSER_V2.md",
+  "version": "2026.3",
+  "_changelog": {
+    "2026.2": "Version inicial del catalogo por concepto. Poblada con los conceptos reales de SEM 29/30/31/32 2026 (inventario verificado por Esteban 2026-08-10).",
+    "2026.3": "Se retiran del catalogo publico los baselines por empleado y los nombres completos del trio: eran compensacion individual identificable en un repo publico. Los alias del trio se conservan porque sin ellos la fila se descarta en silencio."
+  },
+  "normalizacion": {
+    "_doc": "Aplicar EN ESTE ORDEN a cada celda de encabezado y a cada alias antes de comparar. Match SIEMPRE exacto sobre el resultado, NUNCA substring.",
+    "pasos": [
+      "reemplazar '*' por espacio",
+      "NFD + quitar diacriticos",
+      "mayusculas",
+      "quitar '.' y '·'",
+      "colapsar todo whitespace (incl. saltos de linea) a un espacio",
+      "trim"
+    ]
+  },
+  "deteccion_header": {
+    "_doc": "NO asumir la fila. Barrer las primeras N filas y quedarse con la que maximiza matches contra marcadores + campos_fijos + conceptos. hint solo desempata.",
+    "filas_a_barrer": 15,
+    "hint": 7,
+    "min_matches": 3,
+    "requiere": [
+      "cod",
+      "nom",
+      "TOTAL_PERCEPCIONES",
+      "NETO"
+    ]
+  },
+  "marcadores": {
+    "_doc": "Anclas de segmentacion. CONTPAQi los imprime SIEMPRE y en este orden. Si faltan o vienen desordenados -> ALTO TOTAL (nivel INTEGRIDAD).",
+    "orden_requerido": [
+      "OTRAS_PERCEPCIONES",
+      "TOTAL_PERCEPCIONES",
+      "OTRAS_DEDUCCIONES",
+      "TOTAL_DEDUCCIONES",
+      "NETO"
+    ],
+    "defs": {
+      "OTRAS_PERCEPCIONES": {
+        "alias": [
+          "OTRAS PERCEPCIONES"
+        ],
+        "zona": "percepciones",
+        "lleva_monto": true,
+        "si_no_cero": "PUENTE"
+      },
+      "TOTAL_PERCEPCIONES": {
+        "alias": [
+          "TOTAL PERCEPCIONES",
+          "TOTAL DE PERCEPCIONES",
+          "TOTAL PERCEPCION"
+        ],
+        "zona": "percepciones",
+        "rol": "BRUTO"
+      },
+      "OTRAS_DEDUCCIONES": {
+        "alias": [
+          "OTRAS DEDUCCIONES"
+        ],
+        "zona": "deducciones",
+        "lleva_monto": true,
+        "si_no_cero": "INFORMATIVO"
+      },
+      "TOTAL_DEDUCCIONES": {
+        "alias": [
+          "TOTAL DEDUCCIONES",
+          "TOTAL DE DEDUCCIONES"
+        ],
+        "zona": "deducciones",
+        "rol": "TOTAL_DED"
+      },
+      "NETO": {
+        "alias": [
+          "NETO",
+          "NETO A PAGAR"
+        ],
+        "zona": "neto",
+        "rol": "NETO"
+      }
+    }
+  },
+  "zonas": {
+    "_doc": "percepciones = [primera col de concepto .. idx(TOTAL_PERCEPCIONES)-1]. NO se usa un indice fijo de arranque: toda columna con encabezado no vacio en ese rango que no sea campo_fijo es columna de concepto (catalogada o no). Columnas con encabezado vacio se ignoran.",
+    "percepciones": {
+      "desde": "despues del ultimo campo_fijo",
+      "hasta_excl": "TOTAL_PERCEPCIONES"
+    },
+    "deducciones": {
+      "desde": "TOTAL_PERCEPCIONES+1",
+      "hasta_excl": "TOTAL_DEDUCCIONES"
+    },
+    "_hint_col_inicio_conceptos": 3
+  },
+  "campos_fijos": {
+    "cod": {
+      "requerido": true,
+      "tipo": "texto",
+      "alias": [
+        "CODIGO",
+        "NO EMPLEADO",
+        "NO DE EMPLEADO",
+        "NUM",
+        "NUMERO"
+      ]
+    },
+    "nom": {
+      "requerido": true,
+      "tipo": "texto",
+      "alias": [
+        "NOMBRE",
+        "NOMBRE DEL TRABAJADOR",
+        "EMPLEADO"
+      ]
+    }
+  },
+  "fila_total": {
+    "_doc": "Resolver por ETIQUETA en la columna 'nom' o 'cod', no por posicion. Su valor se toma de la columna resuelta por nombre, igual que las filas de empleado.",
+    "alias": [
+      "TOTAL GRAL",
+      "TOTAL GENERAL",
+      "TOTALES",
+      "TOTAL"
+    ]
+  },
+  "clasificaciones": {
+    "POR_HORAS": "Se suma al monto que se prorratea entre proyectos/bolsas segun horas confirmadas de la semana.",
+    "A_BOLSA": "NO se prorratea. Va completo al destino indicado en 'destino'.",
+    "INFORMATIVO": "No participa en ninguna distribucion. Solo se usa para las validaciones de integridad A2/A4."
+  },
+  "destinos": {
+    "_doc": "Ids Odoo. PUENTE lo crea Esteban (cuenta plan 2 'PUENTE MO - POR REASIGNAR') y su id se pega aqui. NUNCA hardcodear ids en el motor (anti-patron CLAUDE.md §13).",
+    "PUENTE": null,
+    "BOLSA_DEPTO": "resuelto en runtime por deptBolsa(department_id)",
+    "BOLSA_EMPLEADO": "x_studio_cuenta_indirecta_default, fallback 513"
+  },
+  "conceptos": {
+    "SUELDO": {
+      "zona": "percepciones",
+      "clase": "POR_HORAS",
+      "alias": [
+        "SUELDO"
+      ]
+    },
+    "SEPTIMO_DIA": {
+      "zona": "percepciones",
+      "clase": "POR_HORAS",
+      "alias": [
+        "SEPTIMO DIA",
+        "SEPTIMO"
+      ]
+    },
+    "HORAS_EXTRAS": {
+      "zona": "percepciones",
+      "clase": "POR_HORAS",
+      "alias": [
+        "HORAS EXTRAS",
+        "HORAS EXTRA",
+        "TIEMPO EXTRA"
+      ],
+      "_nota": "$0.00 en SEM 29-32, validado con Magaly y Ana. Catalogado y listo para cuando aparezca."
+    },
+    "DESTAJOS": {
+      "zona": "percepciones",
+      "clase": "POR_HORAS",
+      "alias": [
+        "DESTAJOS",
+        "DESTAJO"
+      ]
+    },
+    "PREMIOS_EFICIENCIA": {
+      "zona": "percepciones",
+      "clase": "POR_HORAS",
+      "alias": [
+        "PREMIOS EFICIENCIA",
+        "PREMIO EFICIENCIA",
+        "PREMIO DE EFICIENCIA"
+      ]
+    },
+    "PREMIO_ASISTENCIA_PUNTUALIDAD": {
+      "zona": "percepciones",
+      "clase": "POR_HORAS",
+      "alias": [
+        "PREMIO DE ASISTENCIA Y PUNTUALIDAD",
+        "PREMIO ASISTENCIA Y PUNTUALIDAD",
+        "PREMIO DE ASISTENCIA"
+      ],
+      "vigilar_desviacion": true
+    },
+    "AJUSTE_EN_SUELDOS": {
+      "zona": "percepciones",
+      "clase": "POR_HORAS",
+      "alias": [
+        "AJUSTE EN SUELDOS",
+        "AJUSTE EN SUELDO"
+      ],
+      "permite_negativo": true,
+      "_nota": "En SEM 32 suma $0.00 en toda la nomina y AUN ASI recorre el layout una posicion. Es el caso que prueba que el indice fijo es insostenible."
+    },
+    "BONO": {
+      "zona": "percepciones",
+      "clase": "POR_HORAS",
+      "alias": [
+        "BONO",
+        "BONOS"
+      ],
+      "_nota": "DECISION Esteban 2026-08-11: POR_HORAS confirmado. Es ~17.5% del bruto individual de cada receptor (mil netos sobre base de seis mil): no es premio discrecional, es componente de la paga semanal, probablemente entregado asi por flexibilidad fiscal. La paga de un tecnico de campo sigue sus horas al proyecto. Mandarlo a bolsa subestimaria el costo de los proyectos en 5-6% sistematico.",
+      "vigilar_desviacion": true,
+      "_desviacion": "vigilar_desviacion:true, pero el baseline lo aporta el motor n8n. Sin baseline el resolver simplemente no evalua desviacion (degrada limpio, sin falsos positivos)."
+    },
+    "VACACIONES_A_TIEMPO": {
+      "zona": "percepciones",
+      "clase": "A_BOLSA",
+      "destino": "BOLSA_DEPTO",
+      "alias": [
+        "VACACIONES A TIEMPO",
+        "VACACIONES"
+      ],
+      "mapea_a_campo_legacy": "vac"
+    },
+    "PRIMA_VACACIONAL_A_TIEMPO": {
+      "zona": "percepciones",
+      "clase": "A_BOLSA",
+      "destino": "BOLSA_DEPTO",
+      "alias": [
+        "PRIMA DE VACACIONES A TIEMPO",
+        "PRIMA VACACIONAL",
+        "PRIMA DE VACACIONES",
+        "PRIMA VAC"
+      ],
+      "mapea_a_campo_legacy": "vac"
+    },
+    "SUELDO_ASIMILADO": {
+      "zona": "percepciones",
+      "clase": "A_BOLSA",
+      "destino": "BOLSA_EMPLEADO",
+      "alias": [
+        "SUELDO ASIMILADO",
+        "ASIMILADOS",
+        "ASIMILADOS A SALARIOS"
+      ],
+      "mapea_a_campo_legacy": "asim"
+    },
+    "AGUINALDO": {
+      "zona": "percepciones",
+      "clase": "A_BOLSA",
+      "destino": "PUENTE",
+      "alias": [
+        "AGUINALDO"
+      ],
+      "firma_baja": true,
+      "alerta_si_no_cero": true
+    },
+    "FONDO_DE_AHORRO_EMPLEADO": {
+      "zona": "percepciones",
+      "clase": "A_BOLSA",
+      "destino": "PUENTE",
+      "alias": [
+        "FONDO DE AHORRO EMPLEADO"
+      ],
+      "firma_baja": true,
+      "alerta_si_no_cero": true,
+      "_nota": "OJO: match EXACTO. 'FONDO DE AHORRO' (sin EMPLEADO) es la DEDUCCION, otro concepto, otra zona."
+    },
+    "VIATICOS": {
+      "zona": "percepciones",
+      "clase": "A_BOLSA",
+      "destino": "PUENTE",
+      "alias": [
+        "VIATICOS",
+        "VIATICO"
+      ],
+      "alerta_si_no_cero": true,
+      "_nota": "Decision Esteban 2026-08-10: sin destino definido -> puente. $1,600 en SEM 31."
+    },
+    "RET_INV_Y_VIDA": {
+      "zona": "deducciones",
+      "clase": "INFORMATIVO",
+      "alias": [
+        "RET INV Y VIDA"
+      ]
+    },
+    "RET_CESANTIA": {
+      "zona": "deducciones",
+      "clase": "INFORMATIVO",
+      "alias": [
+        "RET CESANTIA"
+      ]
+    },
+    "RET_ENF_Y_MAT_OBRERO": {
+      "zona": "deducciones",
+      "clase": "INFORMATIVO",
+      "alias": [
+        "RET ENF Y MAT OBRERO"
+      ]
+    },
+    "PRESTAMO_INFONAVIT_CF": {
+      "zona": "deducciones",
+      "clase": "INFORMATIVO",
+      "alias": [
+        "PRESTAMO INFONAVIT (CF)",
+        "PRESTAMO INFONAVIT CF"
+      ]
+    },
+    "SUBS_AL_EMPLEO_ACREDITADO": {
+      "zona": "deducciones",
+      "clase": "INFORMATIVO",
+      "alias": [
+        "SUBS AL EMPLEO ACREDITADO"
+      ]
+    },
+    "SUBS_AL_EMPLEO_MES": {
+      "zona": "deducciones",
+      "clase": "INFORMATIVO",
+      "alias": [
+        "SUBS AL EMPLEO (MES)",
+        "SUBS AL EMPLEO MES"
+      ]
+    },
+    "ISR_ANTES_DE_SUBS_AL_EMPLEO": {
+      "zona": "deducciones",
+      "clase": "INFORMATIVO",
+      "alias": [
+        "ISR ANTES DE SUBS AL EMPLEO"
+      ]
+    },
+    "ISR_ART174": {
+      "zona": "deducciones",
+      "clase": "INFORMATIVO",
+      "alias": [
+        "ISR ART174",
+        "ISR ART 174"
+      ]
+    },
+    "ISR_MES": {
+      "zona": "deducciones",
+      "clase": "INFORMATIVO",
+      "alias": [
+        "ISR (MES)",
+        "ISR MES"
+      ]
+    },
+    "IMSS": {
+      "zona": "deducciones",
+      "clase": "INFORMATIVO",
+      "alias": [
+        "IMSS"
+      ]
+    },
+    "PRESTAMO_EMPRESA": {
+      "zona": "deducciones",
+      "clase": "INFORMATIVO",
+      "alias": [
+        "PRESTAMO EMPRESA"
+      ]
+    },
+    "FONDO_DE_AHORRO": {
+      "zona": "deducciones",
+      "clase": "INFORMATIVO",
+      "alias": [
+        "FONDO DE AHORRO"
+      ],
+      "_nota": "Deduccion. NO confundir con FONDO DE AHORRO EMPLEADO (percepcion)."
+    },
+    "AJUSTE_EN_SUBSIDIO_PARA_EL_EMPLEO": {
+      "zona": "deducciones",
+      "clase": "INFORMATIVO",
+      "alias": [
+        "AJUSTE EN SUBSIDIO PARA EL EMPLEO"
+      ]
+    },
+    "SUBS_ENTREGADO_QUE_NO_CORRESPONDIA": {
+      "zona": "deducciones",
+      "clase": "INFORMATIVO",
+      "alias": [
+        "SUBS ENTREGADO QUE NO CORRESPONDIA"
+      ]
+    },
+    "AJUSTE_AL_NETO": {
+      "zona": "deducciones",
+      "clase": "INFORMATIVO",
+      "alias": [
+        "AJUSTE AL NETO"
+      ]
+    },
+    "ISR_DE_AJUSTE_MENSUAL": {
+      "zona": "deducciones",
+      "clase": "INFORMATIVO",
+      "alias": [
+        "ISR DE AJUSTE MENSUAL"
+      ]
+    },
+    "ISR_AJUSTADO_POR_SUBSIDIO": {
+      "zona": "deducciones",
+      "clase": "INFORMATIVO",
+      "alias": [
+        "ISR AJUSTADO POR SUBSIDIO"
+      ]
+    },
+    "AJUSTE_AL_SUBSIDIO_CAUSADO": {
+      "zona": "deducciones",
+      "clase": "INFORMATIVO",
+      "alias": [
+        "AJUSTE AL SUBSIDIO CAUSADO"
+      ]
+    },
+    "PTMO_EMPRESA2": {
+      "zona": "deducciones",
+      "clase": "INFORMATIVO",
+      "alias": [
+        "PTMO EMPRESA2",
+        "PTMO EMPRESA 2"
+      ]
+    },
+    "INFONAVIT_CF_CORRESPONDIENTE": {
+      "zona": "deducciones",
+      "clase": "INFORMATIVO",
+      "alias": [
+        "INFONAVIT CF CORRESPONDIENTE"
+      ]
+    }
+  },
+  "concepto_no_catalogado": {
+    "_doc": "Regla de oro: un concepto de zona percepciones que no matchee NINGUN alias NO se disuelve en bruto.",
+    "zona_percepciones": {
+      "accion": "PUENTE",
+      "conserva": [
+        "nombre_columna",
+        "monto",
+        "empleado"
+      ],
+      "nivel": "CLASIFICACION"
+    },
+    "zona_deducciones": {
+      "accion": "IGNORAR",
+      "nivel": "AVISO"
+    }
+  },
+  "trio": {
+    "_doc": "Facturan como proveedor; su monto sale de la columna NETO, no del bruto. Match por alias normalizado, NUNCA por posicion de fila.",
+    "min_horas": 2,
+    "personas": {
+      "76": {
+        "alias": [
+          "CARLOS",
+          "MANZANAREZ",
+          "MANZANARES",
+          "CARLOS EDUARDO MANZANARES",
+          "CARLOS EDUARDO MANZANAREZ"
+        ],
+        "_nota": "Dos grafias del mismo apellido en el Excel (con s y con z). Ambas son la misma persona; por eso van las dos como alias."
+      },
+      "98": {
+        "alias": [
+          "RICARDO",
+          "HERNANDEZ GONZALEZ",
+          "RICARDO HERNANDEZ",
+          "RICARDO ALAN HERNANDEZ GONZALEZ"
+        ]
+      },
+      "112": {
+        "alias": [
+          "FELIPE",
+          "PEREZ GUZMAN",
+          "FELIPE PEREZ",
+          "FELIPE PEREZ GUZMAN"
+        ]
+      }
+    },
+    "reglas": {
+      "orden_filas": "IRRELEVANTE. SEM 29 arranca con RICARDO, las demas con FELIPE.",
+      "fila_ausente": {
+        "nivel": "AVISO",
+        "_doc": "NO es error: alguien del trio puede no facturar una semana."
+      },
+      "monto_anomalo": {
+        "nivel": "AVISO",
+        "umbral_pct": 50,
+        "_doc": "Baseline por persona de las ultimas 4 semanas."
+      },
+      "alias_no_reconocido": {
+        "nivel": "CLASIFICACION",
+        "accion": "PUENTE",
+        "_doc": "Fila sin codigo con monto en NETO que no matchea alias -> puente con su nombre. NUNCA descartar en silencio (bug del parser viejo)."
+      }
+    },
+    "_baselines": "Los baselines por persona NO viven aqui: este archivo es PUBLICO. La alerta DESVIACION_INDIVIDUAL se calcula del lado del motor n8n, donde el dato sensible queda detras de autenticacion. Ver docs/operaciones/PARSER_V2.md §8."
+  },
+  "formula": {
+    "_doc": "El monto que se prorratea por horas NO es 'bruto'. Es bruto menos todo lo que va a bolsa.",
+    "a_repartir_por_horas": "TOTAL_PERCEPCIONES - suma(conceptos clase A_BOLSA) - suma(columnas no catalogadas de zona percepciones)",
+    "invariante": "a_repartir_por_horas + suma(A_BOLSA) + suma(no_catalogado) == TOTAL_PERCEPCIONES  (+/-0.01)"
+  },
+  "validaciones": {
+    "_doc": "Nivel INTEGRIDAD = ALTO TOTAL, no se escribe nada, gatea el boton. Nivel CLASIFICACION = al puente y el resto se escribe. Nivel AVISO = solo se reporta.",
+    "A2": {
+      "nivel": "INTEGRIDAD",
+      "alcance": "por empleado",
+      "tolerancia": 0.01,
+      "regla": "suma(TODAS las columnas de zona percepciones, catalogadas Y NO catalogadas) == TOTAL_PERCEPCIONES",
+      "_nota": "Debe incluir las no catalogadas. Si solo suma las conocidas, un concepto nuevo dispara ALTO TOTAL cuando la regla correcta es mandarlo al puente y seguir. A2 valida la aritmetica del Excel, no el catalogo."
+    },
+    "A3": {
+      "nivel": "INTEGRIDAD",
+      "alcance": "por columna",
+      "tolerancia": "max(0.05, n*0.01)",
+      "regla": "suma(filas de empleado) == fila Total Gral"
+    },
+    "A4": {
+      "nivel": "INTEGRIDAD",
+      "alcance": "por empleado",
+      "tolerancia": 0.01,
+      "regla": "TOTAL_PERCEPCIONES - TOTAL_DEDUCCIONES == NETO"
+    },
+    "A5": {
+      "nivel": "INTEGRIDAD",
+      "alcance": "archivo",
+      "tolerancia": 0,
+      "regla": "los 5 marcadores existen Y en marcadores.orden_requerido"
+    },
+    "A6": {
+      "nivel": "INTEGRIDAD",
+      "alcance": "por empleado",
+      "tolerancia": 0.01,
+      "regla": "formula.invariante"
+    },
+    "L2": {
+      "nivel": "AVISO",
+      "alcance": "semana",
+      "umbral_pct": 15,
+      "regla": "|delta%| de suma(bruto) vs la semana previa (leida de account.analytic.line 'MO S{n-1}/{yyyy} ·')",
+      "_nota": "Es la que habria cazado el bug del parser viejo: SEM 29->30 dio -97%."
+    }
+  },
+  "alertas": {
+    "_doc": "Aprobadas por Esteban 2026-08-10. Nivel AVISO: se reportan en pantalla y en el correo, no bloquean nada.",
+    "fraccion_exacta": {
+      "nivel": "AVISO",
+      "regla": "bruto del empleado / baseline de sus ultimas 4 semanas ~= 1/5, 2/5, 3/5 o 4/5 (+/-2%)",
+      "mensaje": "posible viaje o ausencia parcial, confirmar con RH",
+      "_origen": "Cuando alguien viaja a USA, su costo lo paga FTS USA LLC y CONTPAQi YA entrega el sueldo prorrateado (p.ej. 1/5 exacto por un solo dia en Mexico). El parser NO recalcula: solo avisa para que RH confirme. Casos concretos en el reporte confidencial de la auditoria 2026-08-10."
+    },
+    "horas_sin_fila_contpaqi": {
+      "nivel": "AVISO",
+      "regla": "empleado con horas confirmadas en la ventana de la semana y SIN fila en el Excel (ni como empleado con codigo ni como trio)",
+      "mensaje": "{n} horas confirmadas sin costo asociado — pagado por FTS USA?",
+      "detalle": [
+        "empleado_id",
+        "nombre",
+        "horas_confirmadas",
+        "destinos"
+      ],
+      "_origen": "Caso real detectado en la auditoria 2026-08-10: una persona con una semana completa de horas confirmadas a una bolsa y SIN fila en el Excel de CONTPAQi. Es el hueco de FTS USA. NO bloquea: son horas sin dinero, y el motor solo se traba con dinero sin horas. Detalle en el reporte confidencial."
+    }
+  }
+}
