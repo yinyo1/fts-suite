@@ -116,8 +116,24 @@ en §6.
 
 | Workflow | id | Estado |
 |---|---|---|
-| `planeacion/carga-mo` (dry-run) | `HV1UE5JxN5fKdC2Y` | activo · motor `14d2dd11d3c25769` |
-| `planeacion/carga-mo-WRITE` | `j0V9wfpuPTLFO9DZ` | activo · motor `2c5c155d4d833f3e` · 21 nodos |
+| `planeacion/carga-mo` (dry-run) | `HV1UE5JxN5fKdC2Y` | activo · 12 nodos · motor `14d2dd11d3c25769` |
+| `planeacion/carga-mo-WRITE` | `j0V9wfpuPTLFO9DZ` | activo · 21 nodos · motor `14a5a3ac0fba5cb9` · correo `e362c891055825` |
+
+Los sha son `sha256(jsCode)` del nodo, verificados por **read-back** contra el archivo
+fuente — no por la respuesta del PUT. Completos:
+
+```
+Code - MOTOR        (dry-run)  14d2dd11d3c257699787cfce95b5d8243d8ae4d54d9a03ce5d468ed36fb0a1dd
+Code - MOTOR write  (WRITE)    14a5a3ac0fba5cb95e3c84e95b445789296f6b3e640574d97ed026c4a00fc656
+Code - Build correo (WRITE)    e362c891055825360148fd1973e74a36b9f9abd71bd0d063df16b2cfd12a663a
+```
+
+**El dry-run ya no manda correo.** Sus dos nodos de correo se eliminaron (de 14 a 12
+nodos): antes salía un correo en cada validación, incluida la que no escribe nada. Hoy el
+correo sale únicamente del WRITE y sólo desde `Code - report written`, o sea sólo cuando
+la escritura a Odoo ya ocurrió. El cuerpo vive en `scripts/local/build-correo-write.js`
+(gitignored) y **informa, no autoriza**: el asunto dice «revisa antes de dispersar», no
+«puedes dispersar», porque lo único verificado es que la escritura cuadra consigo misma.
 
 Los dos cuerpos de motor salen de la **misma plantilla** (`scripts/local/motor-v2.js`).
 Difieren en exactamente **2 líneas de 182**: el WRITE agrega `lineAgg` y el cuerpo real
@@ -169,12 +185,13 @@ de motor pasa sin sus dos tests. Un `node -c` limpio no es un gate.
    la revisión del archivo.
 3. Si hay fallas de **INTEGRIDAD**, el botón queda cerrado. CLASIFICACIÓN y AVISO no
    bloquean: lo no clasificado se va al puente y se ve.
-4. **Enviar a DRY-RUN** → el servidor responde con el pivote completo, y a partir de ahí
-   el bloque del puente se pinta desde el servidor, no desde la estimación local.
+4. **Validar nómina** → el servidor responde con el pivote completo, y a partir de ahí
+   el bloque del puente se pinta desde el servidor, no desde la estimación local. Esta
+   validación **no manda correo** y no escribe nada.
 5. Revisar: `roster_odoo` (debe ser el roster completo, hoy 132), `excepciones: []`,
    `listo_para_escribir: true`, Δ $0.00, y que los tres pedazos del control cierren en 0.
-6. Botón rojo. El WRITE repite todo el cálculo, escribe, **relee de Odoo** y compara
-   renglón por renglón.
+6. Botón rojo **Enviar a FTS (Correo + Odoo)**. El WRITE repite todo el cálculo, escribe,
+   **relee de Odoo**, compara renglón por renglón y recién entonces manda el correo.
 
 Si el read-back no cuadra, la respuesta viene con `modo:'ESCRITO_CON_DISCREPANCIA'` y
 `escritura_ok:false`, más el detalle de qué renglón difiere. **No lanza excepción a
@@ -291,6 +308,20 @@ mano. La clave del API está en `~/.claude.json` → `mcpServers['n8n-mcp'].env`
 
 Nunca toca el API. Devuelve verde sobre un workflow que jamás vio el servidor. **No es
 evidencia de nada.**
+
+### El PUT rechaza `settings.binaryMode`, que el propio GET devuelve
+
+Al aplicar un edit por PUT directo, el API contesta
+`400 request/body/settings must NOT have additional properties`. El culpable es
+`settings.binaryMode: "separate"`: **viene en la respuesta del GET** pero no está en el
+esquema del PUT. Hay que quitar esa clave del body y mandar el resto de `settings`
+intacto. El valor sobrevive del lado servidor — verificado en read-back, sigue en
+`separate`.
+
+Es la misma trampa que `customResource`, que se vacía al importar un JSON: **lo que el
+API entrega no es necesariamente lo que el API acepta de vuelta, ni lo que conserva.**
+Corolario operativo: después de cualquier PUT hay que releer y comparar campo por campo
+lo que creías estar preservando. Un 200 no dice nada sobre lo que quedó guardado.
 
 ### Y la regla que las une
 
