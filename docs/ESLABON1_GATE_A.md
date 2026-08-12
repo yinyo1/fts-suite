@@ -61,7 +61,15 @@ Los debits solo cambian de día CST si la compra cae en los ~4 segundos alrededo
 
 **Las 1,656 líneas de enero a junio se crearon TODAS en julio 2026.** Fue una carga histórica en bloque, no la ventana incremental. Por lo tanto **los gaps de marzo (−3) y mayo (−6) no pueden originarse en la ventana: la ventana nunca procesó esos meses.** Y las 7 pérdidas enumeradas ya están probadas como colisión de hash (cada una con su gemela de hash idéntico presente en Odoo).
 
-> **VEREDICTO 1.1 — el universo de pérdidas por colisión es 18. Cerrado.**
+> **VEREDICTO 1.1 (CORREGIDO 2026-08-12) — el universo de pérdidas sigue siendo 18, pero NO todas son colisión.**
+>
+> ⚠️ **Corrección posterior, con evidencia.** El veredicto original decía "las 18 son colisión de hash, cerrado". Eso era **incorrecto por sobre-extensión**: el argumento de la carga histórica prueba que **ene–jun** no pudo perder por ventana (esas 1,656 líneas entraron por backfill en bloque), pero **jul–ago SÍ corrieron por ventana incremental** y la conclusión se extendió indebidamente a ellos.
+>
+> **Reatribución probada:** los 5 gaps de julio son **4 colisiones + 1 pérdida de ventana** — el `MercadoPago $240` del `2026-07-13` (`transactionDate 2026-07-13T16:35:08Z`, `transactionPostedDate 2026-07-30T07:56:04Z`, **lag 16.64 días**). No tenía gemela: simplemente nunca entró en la ventana de consulta.
+>
+> **Prueba en terreno:** al aplicar 2.1 (ancla absoluta, `ventana_dias: 30`), la primera corrida lo insertó — línea **id 32911**, `date 2026-07-13`, `[Primary ****6831] MercadoPago`, −240.00, `create_date 2026-08-12T23:00:06Z`. El conteo del journal 61 en 2026 pasó de **1,901 → 1,902** y `amount:sum` de **+68,134.42 → +67,894.42** (delta exacto de −240.00).
+>
+> **El conteo total de 18 no cambia** — el MercadoPago ya estaba dentro (su `createdAt` cae en julio, cuenta en los 192 de Jeeves y faltaba en los 187 de Odoo). Lo que cambia es la **causa**. Y el barrido de 2.4 recupera ambas causas por igual, porque empareja por `(date, amount, payment_ref)` y no por causa.
 
 ### El hallazgo nuevo: fuga ACTIVA por liquidación tardía
 
