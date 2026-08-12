@@ -703,7 +703,38 @@ state = 'sale'  AND  x_studio_project_created = False
 ### Quirks / lecciones (NO re-descubrir)
 
 1. **Operador `greaterThan` NO existe en el nodo Odoo v1 de n8n** → llega como `None` al dominio → Odoo crashea con `'NoneType' object has no attribute 'lower'` (en `domains.py`, el operador de la tupla es None). **Usar `greaterOrEqual`** (probado). Tokens válidos: `equal`, `in`, `greaterOrEqual`, `lesserOrEqual`, `like`. (Complementa §3/§16.)
-2. **`update_full` deja el workflow ACTIVO o INACTIVO de forma no determinista** (preserva el estado previo de forma inconsistente). **SIEMPRE verificar `active` en la respuesta** y avisar a Esteban; el API de esta instancia **rechaza activar/desactivar vía MCP** (`deactivate`/`deactivateWorkflow` → "additional properties" / "Unknown operation type") → toggle a mano en la UI.
+2. **✅ RESUELTO (2026-08-12) — MÉTODO OFICIAL DE EDICIÓN DE WORKFLOWS: PUT directo al API público, NO el MCP.**
+
+   **El problema histórico:** `n8n_update_partial_workflow` vía MCP **siempre falla** con `request/body must NOT have additional properties` (verificado hasta con UNA sola operación trivial — no depende del tamaño ni del tipo de op). Y `n8n_update_full_workflow` sí escribe, pero **deja `active` en estado no determinista** — así fue como el bump `PAGE_SIZE=50→100` en `fin/captura-transacciones` desactivó el workflow y pasó ~1 día invisible.
+
+   **La causa raíz:** el API público de n8n expone solo `PUT /api/v1/workflows/{id}` y su schema acepta **exactamente** `{name, nodes, connections, settings}`. El MCP manda campos de más. Y dentro de `settings` el schema **rechaza** `binaryMode`, `timeSavedMode`, `callerPolicy` y `availableInMCP` (que el GET sí devuelve) → hay que filtrarlos. Los 4 suelen venir en su valor por defecto, así que n8n los repone igual.
+
+   **El método (preserva `active` porque el PUT nunca toca ese campo):**
+   ```bash
+   KEY=$(node -e "console.log(JSON.parse(require('fs').readFileSync(process.env.HOME+'/.claude.json','utf8')).mcpServers['n8n-mcp'].env.N8N_API_KEY)")
+   BASE=https://primary-production-5c3c.up.railway.app/api/v1/workflows
+   curl -s -H "X-N8N-API-KEY: $KEY" "$BASE/<ID>" -o cur.json   # 1. GET
+   node transform.js                                            # 2. modificar cur.json -> put_body.json
+   curl -s -X PUT -H "X-N8N-API-KEY: $KEY" -H "Content-Type: application/json" \
+        --data-binary @put_body.json "$BASE/<ID>"               # 3. PUT
+   curl -s -H "X-N8N-API-KEY: $KEY" "$BASE/<ID>" -o rb.json     # 4. READ-BACK
+   ```
+   Filtro obligatorio de settings en el paso 2:
+   ```js
+   const ALLOWED=['executionOrder','timezone','saveDataErrorExecution','saveDataSuccessExecution',
+                  'saveExecutionProgress','saveManualExecutions','executionTimeout','errorWorkflow'];
+   const st={}; for(const k of ALLOWED){ if(w.settings[k]!==undefined) st[k]=w.settings[k]; }
+   ```
+
+   **Reglas duras del método (aprendidas aplicando 2.1 y 2.2 de Eslabón 1):**
+   - **Modificar el JSON PROGRAMÁTICAMENTE desde el GET, nunca transcribiendo.** Varios workflows llevan implementaciones de SHA-256 inline; un carácter alterado cambia todos los `unique_import_id` futuros. Cero copy-paste de nodos completos.
+   - **Todo `find` se valida con conteo de ocurrencias antes de reemplazar** (`if(c.split(F).length-1!==1) throw`). Si no calza exactamente 1 vez, abortar.
+   - ⚠️ **Encadenar SIEMPRE con `&&`, nunca con saltos de línea.** Con saltos, un fallo del script de transformación **no impide** que el `curl` corra y reenvíe un `put_body.json` viejo. Ya pasó: abortó el transform y el PUT mandó el body de la edición anterior (fue no-op por suerte, no por diseño). Complemento: `rm -f put_body.json` antes de cada ciclo.
+   - **Read-back independiente tras CADA edit**, leyendo el nodo — no el `success` de la respuesta.
+   - La regla de verificar `active` al final **se queda como red**, no como necesidad: con este método se preserva. En 6 PUTs consecutivos (vc 10→15) `active:true` y `timezone America/Monterrey` sobrevivieron intactos.
+   - **Respaldar el JSON PRE en `docs/n8n-workflows/` antes de una tanda de edits**, previo escaneo de secretos (los workflows sanos solo traen referencias `$env.X`, cero literales).
+
+   Sigue vigente que **activar/desactivar** no se puede por API (`deactivate` → "additional properties") → ese toggle sí es a mano en la UI, y **lo hace Esteban**.
 3. **Campo analítico del proyecto:** el real es `account_id` ("Project Account", **stored**, lo consume budget+profitability). El campo "Analytic Account" que se ve vacío en la UI es `auto_account_id` (**computed, no-stored, vacío en TODOS los proyectos**, sanos incluidos) — era un campo de Studio en el header; NO confundir. Para mostrarlo en el form, usar `account_id` vía Studio, no `auto_account_id`.
 4. **Bloquear confirmación de SO con campos requeridos (filosofía cero-código):** un `required` de vista NO bloquea el Confirmar (el botón guarda con `state` aún en `draft`, y el write de `state=sale` no re-valida modifiers). Solución pure-Studio: poner **`invisible` en el propio botón Confirmar** condicionado a los campos. Candado duro (API/import) requiere Automation Rule + ~4 líneas Python (rollback por `raise`).
 5. **Campos sale.order del handoff (técnicos exactos):** `x_studio_proyect_description` (text, ojo "**proyect**" sin 2ª 'o'), `x_studio_fecha_inicio_deseada` + `x_studio_fecha_fin_deseada` (date), `x_studio_purchase_order_number` (char), `x_studio_purchase_order_file` (binary) + `x_studio_purchase_order_file_filename` (char).
