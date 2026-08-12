@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Validación de Nómina y Carga de Mano de Obra — FTS Suite</title>
-<script>(function(){ window.CMO_BUILD = '20260811-cmo-ui-ulises4'; })();</script>
+<script>(function(){ window.CMO_BUILD = '20260811-cmo-ui-panel'; })();</script>
 <script src="../../finanzas/js/auth-fin.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/resolver.js"></script>
@@ -73,6 +73,34 @@
   .kpi-help{ margin-top:10px; font-size:11px; color:#66707d; line-height:1.5; }
   .kpi-help span{ display:block; margin-bottom:2px; }
   .kpi-help b{ color:#2c3e56; font-weight:600; }
+
+  /* ── panel del resultado contra Odoo: el segundo testigo, y se tiene que notar ── */
+  .panel{ border-radius:10px; padding:15px 17px; margin-bottom:14px; border:1px solid; }
+  .panel-ok{ background:#f2faf4; border-color:#b7e0c4; }
+  .panel-no{ background:#fef5f4; border-color:#f2c2be; }
+  .panel-warn{ background:#fffaf0; border-color:#f0d9a8; }
+  .panel .p-t{ font-size:16px; font-weight:700; display:block; }
+  .panel-ok .p-t{ color:var(--ok); } .panel-no .p-t{ color:var(--err); } .panel-warn .p-t{ color:var(--warn); }
+  .panel .p-s{ font-size:13px; display:block; margin-top:3px; color:#3c4652; }
+  .p-cols{ display:flex; gap:26px; flex-wrap:wrap; margin-top:12px; }
+  .p-cols>div{ flex:1 1 300px; }
+  .p-cols h4{ margin:0 0 6px; font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:#66707d; }
+  .p-cols ul{ margin:0; padding:0; list-style:none; font-size:12.5px; line-height:1.55; }
+  .p-cols li{ padding-left:19px; position:relative; margin-bottom:3px; }
+  .chk li::before{ content:'✓'; position:absolute; left:0; color:var(--ok); font-weight:700; }
+  .nochk li::before{ content:'—'; position:absolute; left:0; color:#b0453d; font-weight:700; }
+  .nochk li{ color:#6b4a47; }
+  .p-dest{ margin-top:12px; padding-top:10px; border-top:1px solid rgba(0,0,0,.09); font-size:13px; }
+  .p-dest b{ font-variant-numeric:tabular-nums; }
+  .p-next{ margin-top:10px; font-size:13.5px; font-weight:600; color:var(--err); }
+  .p-motivos{ margin:10px 0 0; padding-left:20px; font-size:13px; line-height:1.6; }
+  .p-motivos b{ color:var(--err); }
+  .panel-warn ul{ margin:8px 0 0; padding-left:20px; font-size:12.5px; line-height:1.6; }
+
+  /* el siguiente paso tiene que verse: el boton late 3 veces cuando se habilita */
+  .btn-w.listo{ box-shadow:0 0 0 3px rgba(179,38,30,.28); animation:pulso 1.5s ease-in-out 3; }
+  @keyframes pulso{ 0%,100%{ box-shadow:0 0 0 3px rgba(179,38,30,.28); }
+                    50%{ box-shadow:0 0 0 8px rgba(179,38,30,.10); } }
 
   /* ── atenuado: si el archivo no es confiable, sus números derivados tampoco ── */
   .dim{ opacity:.42; filter:grayscale(.85); }
@@ -156,8 +184,8 @@
       <div id="layout" class="mut" style="font-size:11px;margin-top:8px"></div>
     </div>
 
-    <!-- 3 · lo que Odoo tiene que decir antes de escribir: nunca colapsado -->
-    <div id="srv-alert" style="display:none"></div>
+    <!-- 3 · el resultado de cruzar contra Odoo: nunca colapsado -->
+    <div id="srv-panel" style="display:none"></div>
 
     <!-- 4 · avisos: nunca colapsados -->
     <div class="card" id="c-msgs"><h3 id="msgs-h">Avisos</h3><div id="msgs"></div></div>
@@ -249,7 +277,7 @@ function mostrarFallaFatal(que, dato, accion){
   $('msgs').innerHTML = renderMsg({ nivel:'INTEGRIDAD', que:que, dato:dato, accion:accion });
   $('c-tabla').style.display = 'none'; $('c-kpi').style.display = 'none';
   $('puente-box').innerHTML = ''; $('msg').innerHTML = '';
-  $('srv-alert').style.display = 'none'; $('srv-alert').innerHTML = '';
+  $('srv-panel').style.display = 'none'; $('srv-panel').innerHTML = '';
   invalidarReporte();
   $('send').disabled = true;
 }
@@ -413,8 +441,9 @@ function pintarBanner(){
 function invalidarReporte(){
   LAST_REPORT = null;
   $('wbtn').disabled = true;
+  $('wbtn').className = 'btn btn-w';
   $('msg').innerHTML = '';
-  $('srv-alert').style.display = 'none'; $('srv-alert').innerHTML = '';
+  $('srv-panel').style.display = 'none'; $('srv-panel').innerHTML = '';
   if(BANNER){ BANNER.srvOk = null; BANNER.delta = null; }
 }
 
@@ -684,7 +713,7 @@ $('send').addEventListener('click', async function(){
 });
 
 function mostrarAlertaServidor(html){
-  var a = $('srv-alert');
+  var a = $('srv-panel');
   a.innerHTML = html ? '<div class="card">' + html + '</div>' : '';
   a.style.display = html ? 'block' : 'none';
 }
@@ -712,7 +741,110 @@ function renderReport(j, msg){
     pintarBanner();
   }
 
-  /* ── lo que impide escribir, siempre visible: nunca dentro de un colapsable ── */
+  /* ── el panel: lo que el motor comprobo contra Odoo, arriba y en claro ──
+     Al soltar el archivo ya habia corrido el resolver, que SOLO ve el Excel. Este
+     boton corre el motor contra Odoo -- roster, horas confirmadas, cascada de
+     reparto -- y es un testigo independiente. Si el resultado solo vive en el JSON
+     de abajo, para quien opera es como si no hubiera pasado nada. */
+  var pe = j.por_empleado || [];
+  var emCruz  = pe.filter(function(e){ return e.cod && e.cod !== '-'; }).length;
+  var extCruz = pe.filter(function(e){ return e.cod === '-'; }).length;
+  var emExcel = (PARSED && PARSED.empleados) ? PARSED.empleados.length : null;
+  var cuadraCruce = (emExcel == null) || (emCruz === emExcel);
+
+  /* proyecto / indirecto / puente sin hardcodear el id del puente: el servidor ya
+     manda puente_total, y el resto de las bolsas es la resta. */
+  var sumB = 0, sumP = 0, sinDest = 0;
+  (j.por_destino || []).forEach(function(d){
+    var k = String(d.dest||'');
+    /* sin 'dest' no se sabe si fue a un proyecto o a una bolsa. Meterlo en
+       "proyectos" por descarte seria inventar el desglose: se cuenta aparte. */
+    if(!k){ sinDest++; sumP += (d.monto||0); return; }
+    if(k.charAt(0) === 'B') sumB += (d.monto||0); else sumP += (d.monto||0);
+  });
+  var mPuente = j.puente_total != null ? j.puente_total : 0;
+  var mIndir  = Math.round((sumB - mPuente)*100)/100;
+  var mProy   = Math.round(sumP*100)/100;
+
+  /* motivos de bloqueo en lenguaje de quien opera, no el nombre del campo tecnico */
+  var codSin = exc.filter(function(x){ return x.motivo && x.motivo.indexOf('codigo sin empleado')>=0; });
+  var motivos = [];
+  if(cf.dias_sin_confirmar) motivos.push('Hay <b>'+cf.dias_sin_confirmar+' día(s) de trabajo</b> que nadie ha '
+    + 'confirmado todavía en Odoo. Los confirma Felipe en el panel Confirmar Horas; si alguno está en disputa, '
+    + 'Ana tiene que cerrar la incidencia.');
+  if(cf.confirmados_sin_destino) motivos.push('Hay <b>'+cf.confirmados_sin_destino+' registro(s) de asistencia</b> '
+    + 'confirmados pero sin proyecto ni bolsa, así que su costo no sabría a dónde ir. Se los asigna Felipe con '
+    + 'el ✎ del panel Confirmar Horas.');
+  if(codSin.length) motivos.push('Hay <b>'+codSin.length+' código(s) del Excel</b> que no existen en Odoo. Si la '
+    + 'persona causó baja sigue existiendo archivada y su dinero puede ir al puente; si el código no existe en '
+    + 'ningún lado, RH tiene que darlo de alta con su código CONTPAQi.');
+  if(ctl.ok === false) motivos.push('Lo que se repartiría <b>no suma el total de la nómina</b> (Δ '
+    + money(ctl.diferencia) + '). No se escribe nada con un descuadre.');
+  if(j.control_clasificacion && j.control_clasificacion.ok === false) motivos.push('La página y el servidor '
+    + '<b>no reparten igual</b>. Es un error del sistema, no de la nómina: avisa a soporte de FTS Suite.');
+  if(!verde && !motivos.length) motivos.push('El servidor no dio luz verde y no detalló el motivo. Revisa la '
+    + 'respuesta completa del servidor, abajo, y avisa a soporte de FTS Suite.');
+
+  var panel = '';
+  if(verde){
+    panel += '<div class="panel panel-ok">'
+      + '<span class="p-t">✓ LISTO PARA ENVIAR</span>'
+      + '<span class="p-s">La nómina se cruzó contra Odoo y todo lo que el sistema <i>puede</i> comprobar, cuadra.</span>'
+      + '<div class="p-cols"><div><h4>Qué se verificó</h4><ul class="chk">'
+      + (cuadraCruce
+          ? ('<li>' + (emExcel != null ? (emCruz + ' de ' + emExcel + ' empleados del Excel') : (emCruz + ' empleados'))
+            + ' existen en Odoo y cruzaron por su código CONTPAQi</li>')
+          /* verde significa que ningun codigo quedo sin empleado, asi que estos dos
+             numeros TIENEN que coincidir. Si no, el panel se estaria contradiciendo
+             a si mismo y hay que decirlo, no pintar el verde tranquilo. */
+          : ('<li style="color:#b3261e"><b>Ojo:</b> el servidor repartió ' + emCruz + ' empleados pero el '
+            + 'Excel trae ' + emExcel + '. Deberían coincidir. No cargues sin revisar la respuesta del '
+            + 'servidor, abajo, y avisa a soporte de FTS Suite.</li>'))
+      + (extCruz ? ('<li>' + extCruz + ' persona(s) de personal externo cruzadas por nombre</li>') : '')
+      + '<li>' + (j.roster_odoo != null ? j.roster_odoo : '?') + ' personas en el roster de Odoo, '
+      +   'incluidas las dadas de baja</li>'
+      + '<li>' + (j.attendances_leidas != null ? j.attendances_leidas : '?') + ' registros de asistencia '
+      +   'leídos de la semana</li>'
+      + '<li>Todas las horas de la semana están confirmadas y tienen destino</li>'
+      + '<li>Lo que se repartiría (' + money(ctl.total_distribuido) + ') suma el total de la nómina ('
+      +   money(j.total_nomina) + ') · Δ ' + money(ctl.diferencia) + '</li>'
+      + '</ul></div><div><h4>Qué NO se verificó</h4><ul class="nochk">'
+      + '<li><b>Que los montos de la nómina estén bien.</b> Nadie los revisó: el motor de reglas todavía no '
+      +   'existe. Si se capturó de más o de menos, el sistema no lo sabe.</li>'
+      + '<li>Que las horas confirmadas en Odoo correspondan a lo que de verdad se trabajó.</li>'
+      + '<li>Que no falte ni sobre gente respecto de semanas anteriores.</li>'
+      + '</ul></div></div>'
+      + (sinDest
+          ? ('<div class="p-dest">Total a repartir <b>' + money(mProy + sumB) + '</b> &nbsp;·&nbsp; '
+            + '<span class="mut">el desglose por proyecto / indirecto / puente no se puede calcular: '
+            + sinDest + ' destino(s) llegaron sin clasificar</span></div>')
+          : ('<div class="p-dest">A proyectos <b>' + money(mProy) + '</b> &nbsp;·&nbsp; a costo indirecto <b>'
+            + money(mIndir) + '</b> &nbsp;·&nbsp; a la cuenta puente <b>' + money(mPuente) + '</b></div>'))
+      + '<div class="p-next">Siguiente paso: «Enviar a FTS (Correo + Odoo)», arriba a la derecha →</div>'
+      + '</div>';
+  } else {
+    panel += '<div class="panel panel-no">'
+      + '<span class="p-t">⛔ NO SE PUEDE ENVIAR</span>'
+      + '<span class="p-s">Odoo todavía no tiene lo que hace falta para repartir esta nómina. '
+      +   motivos.length + ' cosa(s) que resolver antes de volver a validar:</span>'
+      + '<ol class="p-motivos">' + motivos.map(function(m){ return '<li>' + m + '</li>'; }).join('') + '</ol>'
+      + '</div>';
+  }
+
+  /* ambar: no frena, pero hay que leerlo antes de mandar */
+  var amb = [];
+  if(mPuente > 0.005) amb.push('<b>' + money(mPuente) + '</b> van a la cuenta puente'
+    + ((j.puente_detalle||[]).length ? (' en ' + j.puente_detalle.length + ' partida(s)') : '')
+    + '. Se cargan igual, pero quedan sin proyecto hasta que alguien los reasigne. El detalle está abajo.');
+  /* las de "codigo sin empleado" ya salieron arriba como motivo de bloqueo: contarlas
+     otra vez aqui seria decir lo mismo dos veces con dos caras distintas. */
+  var excOtras = exc.length - codSin.length;
+  if(excOtras > 0) amb.push('<b>' + excOtras + ' excepción(es)</b> no se reparten a proyectos. Revisa que cada '
+    + 'una tenga sentido: las que van al puente se cargan, las demás quedan fuera de esta carga.');
+  if(amb.length) panel += '<div class="panel panel-warn"><span class="p-t">⚠ Avisos que no frenan el envío</span>'
+    + '<ul>' + amb.map(function(m){ return '<li>' + m + '</li>'; }).join('') + '</ul></div>';
+
+  /* ── el detalle renglon por renglon, debajo del panel ── */
   var alertas = '';
   if(!verde){
     if(cf.dias_sin_confirmar) alertas += renderMsg({ nivel:'INTEGRIDAD',
@@ -723,17 +855,19 @@ function renderReport(j, msg){
       que: 'Hay '+cf.confirmados_sin_destino+' registro(s) confirmados pero sin proyecto ni bolsa',
       dato: (cf.sin_destino||[]).map(function(p){ return p.nombre+' — '+String(p.check_in||'').slice(0,16)+' (att '+p.att_id+')'; }).join(' · '),
       accion: 'Felipe tiene que asignarles destino con el ✎ del panel Confirmar Horas.' });
-    var cod = exc.filter(function(x){ return x.motivo && x.motivo.indexOf('codigo sin empleado')>=0; });
-    if(cod.length) alertas += renderMsg({ nivel:'INTEGRIDAD',
-      que: 'Hay '+cod.length+' código(s) del Excel que no existen en Odoo',
-      dato: cod.map(function(x){ return (x.cod||'')+' '+(x.nombre||'')+(x.amount!=null?' — '+money(x.amount):''); }).join(' · '),
+    if(codSin.length) alertas += renderMsg({ nivel:'INTEGRIDAD',
+      que: 'Hay '+codSin.length+' código(s) del Excel que no existen en Odoo',
+      dato: codSin.map(function(x){ return (x.cod||'')+' '+(x.nombre||'')+(x.amount!=null?' — '+money(x.amount):''); }).join(' · '),
       accion: 'Si la persona causó baja, sigue existiendo en Odoo archivada y su dinero puede ir al puente. Si el código no existe en ningún lado, RH tiene que darlo de alta con su código CONTPAQi antes de cargar.' });
   }
   if(exc.length) alertas += renderMsg({ nivel:'CLASIFICACION',
     que:'Hay '+exc.length+' excepción(es) que no se van a repartir a proyectos',
     dato: exc.map(function(x){ return (x.nombre||x.trio||x.cod||'?')+': '+x.motivo+(x.amount!=null?' '+money(x.amount):''); }).join(' · '),
     accion:'Revisa que cada una tenga sentido. Las que van al puente se cargan igual; las demás quedan fuera de esta carga.' });
-  mostrarAlertaServidor(alertas);
+
+  var pnl = $('srv-panel');
+  pnl.innerHTML = panel + (alertas ? '<div class="card">' + alertas + '</div>' : '');
+  pnl.style.display = 'block';
 
   /* ── el detalle del servidor, colapsado ── */
   var h = '';
@@ -751,8 +885,10 @@ function renderReport(j, msg){
      + '<div class="body"><pre style="font-size:11px;overflow:auto">'+esc(JSON.stringify(j,null,2))+'</pre></div></details>';
   msg.className = ''; msg.innerHTML = h;
 
-  /* el botón de escritura vive arriba, en la barra: aquí sólo se habilita */
+  /* el botón de escritura vive arriba, en la barra: aquí se habilita y se resalta,
+     para que el siguiente paso no haya que adivinarlo */
   $('wbtn').disabled = !verde;
+  $('wbtn').className = 'btn btn-w' + (verde ? ' listo' : '');
 }
 
 async function doWrite(){
