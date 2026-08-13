@@ -10,7 +10,7 @@ Este doc cubre el eslabón 1. Diagnóstico previo en [`ESLABON1_GATE_A.md`](ESLA
 | 2.2 Conteo honesto de rechazos | ⏳ **PENDIENTE DE VALIDACIÓN** |
 | 2.3 Hash de dedup v2 (llave dual) | ✅ **VALIDADO** |
 | 2.4 Barrido de recuperación 2026 | ⛔ **BLOQUEADO** por 2.2 |
-| 2.5 Watchdog de integridad | ⬜ no iniciado |
+| 2.5 Watchdog de integridad | 🔨 **CONSTRUIDO**, pendiente de activar |
 
 ---
 
@@ -135,17 +135,104 @@ No se parece al problema del nodo 3: aquél hacía `returnAll` **sin filtro** so
 
 **No arranca hasta que 2.2 esté validado de verdad** — el barrido inserta, y el contador honesto tiene que estar funcionando antes.
 
-Diseño acordado: emparejamiento voraz por multiconjunto contra `(date, amount, payment_ref)`. **NO** "aceptar hash viejo o nuevo", que preservaría el bug porque las gemelas comparten el v1. Idempotente: correrlo dos veces no duplica.
+Diseño acordado: emparejamiento voraz por multiconjunto contra **`(date, amount, refNorm(payment_ref))`** — la misma `refNorm()` del watchdog, ver el caso 30444 abajo. **No es opcional.** **NO** "aceptar hash viejo o nuevo", que preservaría el bug porque las gemelas comparten el v1. Idempotente: correrlo dos veces no duplica.
 
 **Dry-run obligatorio** con la lista exacta de lo que insertaría, para aprobación. Universo esperado ~18 (menos 1 ya recuperada por 2.1 = ~17). Con la ventana en 30 días puede arrojar más, porque ahora entra terreno que antes ni se consultaba: si pasa, **no es licencia para insertar** — se clasifica cada una por causa (colisión vs ventana) y se espera OK.
 
 ---
 
-## 2.5 — Watchdog de integridad · ⬜ no iniciado
+## 2.5 — Watchdog de integridad · 🔨 CONSTRUIDO, pendiente de activar
 
-Compara conteo y suma Jeeves vs journal 61 por día alineado a CST, corre diario, alerta ante gap. Consume además el `rechazadas: N` de 2.2 y el `lag_max_dias` de 2.1 como señales secundarias. Umbral y destinatario a proponer antes de fijarlos.
+**Workflow `fin/watchdog-captura` · id `hckccUkyaAItBmbU` · 18 nodos · `active: false`.**
+Cron `15 8 * * 1-5`, `timezone: America/Monterrey` explícito en settings.
 
-Para Chase: evaluar si `last_sync` + balance de `account.online.account` sirven como señal de frescura y cuadre. Nota previa: **el sync nativo Plaid entrega solo liquidadas y no expone pendings** — es límite del proveedor, no pendiente de construcción.
+**El watchdog ES el dry-run de 2.4 corriendo diario.** No cuenta: **empareja**. Corre el mismo matcher voraz por `(date, amount, refNorm(payment_ref))` que usará el barrido, en modo lectura. La alerta dice *qué* falta, no solo cuánto — y cuando 2.4 corra, el watchdog es la verificación independiente: debe caer a 0 solo.
+
+### Decisiones fijadas
+
+| Parámetro | Valor | Justificación |
+|---|---|---|
+| Destinatario | `estebandelacruz@fts.mx` | alarma técnica, no operativa. Canal Graph, credencial `Microsoft Graph - sales` (`Mh5kBNduMzOl3nzT`) |
+| Ruido | `[[CBWATCH]]` **siempre** + correo **solo ante alerta** | un correo diario "todo bien" se vuelve invisible en dos semanas |
+| Auto-vigilancia | alerta si >2 días hábiles sin `[[CBWATCH]]` | *un vigilante que muere en silencio es el fallo que perseguimos toda la sesión* |
+| Zona de gracia | últimos **3 días** CST excluidos de alerta | lag de liquidación p50 1.7 d · p95 2.6 d · **p99 3.9 d** |
+| `GAP_ESPERADO` | **0**, sin umbral | ver abajo |
+| Umbral lag | **≥ 20 d** | máximo observado 16.64 d sobre ventana de 30 → 10 d de colchón |
+| Chase sync rancio | > 3 días | `last_sync` es fecha, no timestamp: resolución diaria |
+| Chase delta | drift > $0.01 | ver abajo |
+
+**Por qué `GAP_ESPERADO = 0` y no 4** (decisión de Esteban, y es la correcta): un umbral que arranca en *"sabemos que hay 4"* normaliza el problema. En tres semanas nadie recuerda de dónde salió el número, y si aparece una quinta pérdida por causa nueva el conteo dice 5 y **sigue pareciendo casi normal**. Implementación: las 4 conocidas van en **cuarentena nominada** (lista `CONOCIDAS` con fecha/monto/concepto explícitos), separadas de las nuevas en el correo. Se vacían solas cuando 2.4 las recupere o cuando envejezcan fuera de la ventana de 30 días.
+
+**Chase — el control es la ESTABILIDAD del delta, no su valor.** `balance_plaid − suma_odoo = $224,977.63` = el saldo inicial nunca contabilizado. No puede ser 0. Pero si ambos lados se mueven en sincronía el delta se mantiene constante; si el sync se salta un movimiento, el banco se mueve y Odoo no → deriva. El delta se guarda en el `[[CBWATCH]]` y se compara contra la corrida anterior. Funciona sin esperar a que se contabilice la apertura, y el día que se contabilice el delta va a 0 y el mismo control sigue sirviendo.
+⚠️ **Límites del proveedor, no pendientes de construcción:** `last_sync` tiene resolución diaria; no se detectan transacciones que netean a cero; el sync nativo Plaid entrega **solo liquidadas y no expone pendings**. La cuenta `J. CALDERON` se reporta como aviso *"ofrecida por Plaid, NO vinculada"*.
+
+### Primera corrida (execution `63711`) — encontró un defecto en su estreno
+
+`status: ALERTA · faltantes_nuevas: 1 · cuarentena_conocidas: 4`. La "faltante nueva" resultó ser **falso positivo del matcher**, y de un tipo que habría hecho daño real. Ver la sección siguiente.
+
+Confirmado en esa corrida: `[[CBWATCH]]` escrito (`mail.message 2927982`), correo enviado (nodo 12, output `{}` = 202 Accepted en Graph), `active: false`.
+
+**Guardado de ejecuciones:** el watchdog queda en `saveDataSuccessExecution: "all"` — 1 corrida/día hábil, podada a 14 días ⇒ ~10 ejecuciones vivas. Despreciable, y da trazabilidad justo donde se necesita. **`captura-jeeves` se queda en `none`**: 27 corridas/día × 14 días ≈ 378 ejecuciones, cada una con el array completo de 179 transacciones.
+
+---
+
+## El caso 30444 — deriva de etiqueta, y por qué el matcher no puede comparar `payment_ref` crudo
+
+**Hallazgo de la primera corrida del watchdog.** Reportó como faltante una transacción de `2026-07-14`, `−5,987.20`, `[AJUSTE JEEVES] Credit Line`. **La línea sí existía** — id **`30444`**, misma fecha, mismo monto — pero con otro `payment_ref`.
+
+| Odoo tenía | El matcher buscaba |
+|---|---|
+| `[ADJUSTMENT debit ****] Credit Line` | `[AJUSTE JEEVES] Credit Line` |
+
+**Causa raíz, visible en los `create_date`:**
+
+| id | date | payment_ref | create_date | origen |
+|---|---|---|---|---|
+| **30444** | 2026-07-14 | `[ADJUSTMENT debit ****] Credit Line` | **2026-07-19T06:02:48Z** | captura incremental |
+| 30647 | 2026-06-14 | `[AJUSTE JEEVES] Credit Line` | 2026-07-21T22:17:25Z | carga histórica |
+| 30876 | 2026-05-14 | `[AJUSTE JEEVES] Credit Line` | 2026-07-21T22:19:35Z | carga histórica |
+| 31035 | 2026-04-30 | `[AJUSTE JEEVES] Credit Line` | 2026-07-21T22:21:05Z | carga histórica |
+| 31392 | 2026-03-31 | `[AJUSTE JEEVES] Credit Line` | 2026-07-21T22:24:28Z | carga histórica |
+
+**Entre el 19 y el 21 de julio de 2026 se le agregó al nodo 8 la rama `tag==='ADJUSTMENT'`.** Antes de ese cambio los ajustes caían al fallback genérico:
+
+```js
+else{ payment_ref='['+(tag||'?')+' '+type+' ****'+l4+'] '+(dst.name||src.name||''); ... }
+```
+
+que con `tag='ADJUSTMENT'`, `type='debit'`, `l4=''` produce literalmente `[ADJUSTMENT debit ****] Credit Line`. La línea 30444 es la **única** capturada por el incremental en esa ventana de dos días; todas las demás llegaron después con el código nuevo.
+
+**Alcance verificado:** barrido de la firma del fallback (`payment_ref` con ` debit ` o ` credit `) sobre 2026 completo → **1 solo registro**. Las categorías especiales están limpias: `[FONDEO] Credit Line` ×17 · `[AJUSTE JEEVES] Credit Line` ×16 · `[DEVOLUCIÓN ****xxxx]` ×17, todas con formato consistente.
+
+**Por qué importaba:** 2.4 usa el mismo criterio de emparejamiento. Sin corregir, el barrido habría **insertado un duplicado de −$5,987.20 en producción**. El watchdog se pagó solo en su primera corrida.
+
+### El fix: `refNorm()` — y es obligatorio que 2.4 use exactamente la misma función
+
+```js
+function refNorm(s){ return String(s==null?'':s).replace(/^\[[^\]]*\]\s*/,'').toLowerCase().trim(); }
+// clave de emparejamiento: date | amount | refNorm(payment_ref)
+```
+
+Se descarta el prefijo entre corchetes (donde vive la deriva: portador, últimos-4, y el rótulo de categoría) y se compara por comercio normalizado. Se eligió la normalización **general** sobre el parche del caso puntual porque **la deriva va a repetirse cada vez que se toque el nodo 8** — un matcher frágil a cambios cosméticos es deuda que se cobra sola. Ya pasó una vez y tardó tres semanas en verse.
+
+**Verificación en frío antes de aplicar** (mismo espíritu que la simulación de 2.3). Sobre 2026 completo: solo **11 pares `(date, amount)`** se repiten en el journal 61, y de esos **6 colapsan** al normalizar. En los 6, Jeeves tiene 2 y Odoo tiene 2:
+
+| Fecha · Monto · Comercio | Jeeves | Odoo | Tarjetas |
+|---|---|---|---|
+| 2026-03-01 · −1,579.64 · `Days` | 2 | 2 | 4197 / 8948 |
+| 2026-03-02 · −1,427.02 · `Garden` | 2 | 2 | 4197 / 8948 |
+| 2026-03-02 · −360.82 · `Circle` | 2 | 2 | 4197 / 8948 |
+| 2026-03-27 · −399.94 · `Uber` | 2 | 2 | 0802 / 4666 |
+| 2026-05-12 · −398.75 · `Ross` | 2 | 2 | 8948 / 1264 |
+| 2026-06-04 · −1,700.49 · `Infra` | 2 | 2 | 4548 / 6831 |
+
+El emparejamiento voraz los absorbe sin huérfanos ni sobrantes. **Cero superávit en Odoo**, que es la condición para que aflojar la clave no pueda enmascarar una pérdida real: el enmascaramiento exigiría que una sub-clave tuviera Odoo > Jeeves mientras otra tiene déficit, y no ocurre en ningún caso. Los 5 pares que **no** colapsan tienen comercios distintos (`Gases`/`Autelin`, `Orsan`/`OMA`, `Knights`/`Right Choice`, `Oxxoteran`/`Oxxopipila Mtynl`, `123/Undostres.com.mx Mexico City Mex`/`Undostres`).
+
+> ⚠️ **CONDICIÓN PARA 2.4:** el barrido **debe** usar esta misma `refNorm()`. Que el barrido y el watchdog compartan criterio **no es opcional** — es la condición para que el watchdog sirva de verificación independiente. Si divergen, el watchdog puede dar 0 mientras el barrido inserta duplicados, o al revés.
+
+### Fix cosmético del CBWATCH
+
+`odoo_en_ventana` (175) y `jeeves_en_rango` (173) **no eran comparables**: el primero contaba hasta hoy y el segundo hasta `hoy−4` (zona de gracia). Parecía decir *"Odoo tiene más que la fuente"*. Se agregó **`odoo_en_rango`** con el mismo corte que Jeeves: **169**. Y `173 − 169 = 4` = las colisiones conocidas, cuadrando exacto. **El matcher siempre estuvo bien** — una transacción de ≤ `rango_fin` no puede casar con una línea fechada después; lo defectuoso era el resumen.
 
 ---
 
