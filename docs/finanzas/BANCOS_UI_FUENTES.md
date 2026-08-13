@@ -320,3 +320,119 @@ funcional es `origen:'boton-refresh'` en vez de `'auto'` — que queda trazado e
 (`TOL_MONTO 0.01`), mismo cap (`CANARY_MAX 20`), mismo candado séptuple y mismo auto-revert.
 
 ⚠️ **Deuda de sincronía:** al ser clon, **todo edit a la nocturna debe replicarse aquí a mano.**
+
+---
+
+## 10. Motor v2 sobre Jeeves — **DESCARTADO** (Gate 1, 2026-08-13)
+
+> Diagnóstico read-only antes de construir. Las tres cegueras que motivaban v2 resultaron cerradas
+> por razones distintas, y **ninguna se abre tocando el matcher**. Queda escrito para que no se
+> reproponga.
+
+### La 285 NO es otra cuenta mexicana
+
+```
+17   201.01.01 Proveedores nacionales   liability_payable   company 1  SERVICIOS FTS (México)
+285  (sin code) Account Payable         liability_payable   company 6  FTS USA LLC
+```
+
+Los 22 bills abiertos de la 285 son `company_id: 6` en el **100%**, 21 de 22 en **USD**, con
+proveedores estadounidenses (Harbor Freight, Ferguson, HOME DEPOT U.S.A., Lowe's, Alameda Electrical).
+
+**Jeeves es journal 61, company 1, MXN. Odoo no concilia entre compañías.** Agregar la 285 al motor
+de Jeeves no es bajo rendimiento: es **estructuralmente imposible**. El `reconcile` los rechazaría.
+
+### Las notas de crédito ya estaban en alcance — no existen
+
+El nodo 5 del motor ya filtra `move_type in ['in_invoice','in_refund']`. Pero de los **146** bills
+abiertos en la 17, **los 146 son `in_invoice`**, y en todo 2026 hay **una sola** `in_refund` en el
+sistema entero, **cancelada**. Las 19 devoluciones no pueden casar contra notas de crédito porque
+**FTS no las usa**.
+
+### La señal "comprador" no tiene contraparte
+
+Jeeves expone `source.name` y `source.detail`, pero **no al 100%**: las transacciones `ADJUSTMENT`
+traen `source: {}` vacío. Y del lado del bill hay **cero campos** con relación a `hr.employee` en
+`account.move` / `account.move.line` — de 104 campos Studio, ninguno representa a quien compró. El
+`partner_id` es el **proveedor**: en una compra de Felipe en Oxxo, el partner es Oxxo.
+
+La jerarquía monto→fecha→comprador **no se puede construir**: el tercer eslabón no tiene con qué
+comparar. Habilitarla exige crear **y poblar** un campo en la captura de bills — cambio de proceso,
+no de matcher.
+
+### El techo no lo pone el pool
+
+**146 bills abiertos contra 1,886 líneas sin conciliar.** No se concilia contra un documento que no
+existe: el techo del motor **no es 1,886, es ~146**. Eso reencuadra el "2.1% conciliado" — el
+denominador estaba mal.
+
+---
+
+## 11. Dos frentes separados que salieron del Gate 1
+
+### 11.1 · Aflojar umbrales en Jeeves — el único lever real
+
+`VENTANA_DIAS: 5` y `TOL_MONTO: 0.01` se calibraron con el patrón de Jeeves y son estrictos.
+**Medir cuántos candidatos aparecen sobre los 146 bills con `VENTANA_DIAS 15` y `TOL_MONTO ±$1`.**
+Es barato (read-only, un cruce) y es lo único que puede mover la aguja del lado de Jeeves.
+Hoy el CBAUTO reporta `sugeridas: 61` y `sin_documento: 1850` con los umbrales actuales.
+
+### 11.2 · Los 1,029 cargos menores a $500 — decisión contable, NO backlog
+
+**1,029 de las 1,886 líneas sin conciliar son cargos de menos de $500** (suman $224,752). Son
+compras de mostrador — Oxxo, Uber, 7 Eleven — para las que **nadie levanta factura de proveedor**.
+
+**No son backlog de conciliación: son una decisión contable pendiente.** Mientras sigan contándose
+como pendientes, inflan el denominador y hacen ver al motor peor de lo que está. El motor no puede
+cerrarlas por diseño, no por ceguera.
+
+---
+
+## 12. Motor de Chase — Gate 2: **el techo son 5 bills** (2026-08-13)
+
+La geometría era la correcta —285 (22 bills, USD, company 6) ↔ journals 122/123 (473 líneas, USD,
+company 6), misma empresa, misma moneda, pool virgen—. **Pero el volumen no da.**
+
+Cruce de los 22 montos de bills contra las 473 líneas de Chase:
+
+| Bill | Monto | Línea Chase | Δ días | ¿Real? |
+|---|---|---|---|---|
+| Harbor Freight Tools USA | 431.90 | `Harbor Freight Tools` | **8** | ✓ |
+| Alameda Electrical Distributors | 589.08 | `ALAMEDA ELECTRICAL DI CA` | **7** | ✓ |
+| Consolidated Electrical Distributors | 731.24 | `(PC) 8850 CED CA` | **7** | ✓ (CED = la abreviatura) |
+| FTS LLC (reembolso intercompañía) | 16.43 | `Jack in the Box` | **0** | ✓ |
+| Medecins Sans Frontieres USA | 215.98 | `FRONTIER AI DCJI5S CO` | 4 | ✗ **coincidencia de monto** |
+
+**5 de 22, y uno es falso.** Los otros 17 bills no tienen contraparte de monto exacto en el feed.
+
+### Y con las tolerancias de Jeeves encontraría 1, no 5
+
+**Tres de los cuatro matches reales exceden `VENTANA_DIAS: 5`** (7, 7 y 8 días). El bill de Chase se
+captura ~una semana después del cargo. Con los umbrales actuales el motor vería **solo el de
+Jack in the Box** (Δ 0) y el falso positivo de Frontier (Δ 4).
+
+### El nombre tampoco salva
+
+Normalizando, de los 5: `Harbor Freight Tools` casa bien, `ALAMEDA ELECTRICAL DI` casa por prefijo,
+pero **`(PC) 8850 CED CA` no casa con `Consolidated Electrical Distributors`** (CED es abreviatura),
+**`Jack in the Box` no casa con `FTS FULL TECHNOLOGY SYSTEMS LLC`** (bill intercompañía), y
+**`FRONTIER AI` sí se parece a `Medecins Sans Frontieres`** — o sea, la señal de nombre ayuda en 2 de
+5 y **engaña activamente en 1**.
+
+### Moneda y traspasos
+
+- **Sí hay un bill en MXN dentro de la 285**: UBER $500 (`move_id` 57987, `currency_id` 33 MXN,
+  `company_id` 6). No casó con nada. Un matcher para Chase tendría que excluirlo o convertir.
+- Los **4 traspasos internos** (−$9,419.20 entre 122 y 123) **no casan con ningún monto de bill**, así
+  que hoy no contaminarían. Aun así, un motor de Chase debería excluirlos explícitamente por tipo
+  (`traspaso`), no confiar en que no coincidan.
+
+### Veredicto
+
+**No se construye.** Mismo criterio que con v2 sobre Jeeves: un motor cuyo techo son 4 conciliaciones
+reales —y que con tolerancias calibradas encontraría 1— no paga su complejidad, su superficie de
+error ni su mantenimiento. La geometría es correcta; **el volumen no existe todavía**.
+
+**Cuándo reconsiderarlo:** cuando la 285 tenga volumen sostenido (≫22 bills abiertos) y el rezago de
+captura de bills se mida y se estabilice. El número a vigilar es simplemente **cuántos bills abiertos
+tiene la 285**; hoy son 22.
