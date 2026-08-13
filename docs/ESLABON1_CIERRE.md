@@ -10,7 +10,7 @@ Este doc cubre el eslabón 1. Diagnóstico previo en [`ESLABON1_GATE_A.md`](ESLA
 | 2.2 Conteo honesto de rechazos | ⏳ **PENDIENTE DE VALIDACIÓN** |
 | 2.3 Hash de dedup v2 (llave dual) | ✅ **VALIDADO** |
 | 2.4 Barrido de recuperación 2026 | ⛔ **BLOQUEADO** por 2.2 |
-| 2.5 Watchdog de integridad | 🔨 **CONSTRUIDO**, pendiente de activar |
+| 2.5 Watchdog de integridad | ✅ **ACTIVO** |
 
 ---
 
@@ -141,10 +141,19 @@ Diseño acordado: emparejamiento voraz por multiconjunto contra **`(date, amount
 
 ---
 
-## 2.5 — Watchdog de integridad · 🔨 CONSTRUIDO, pendiente de activar
+## 2.5 — Watchdog de integridad · ✅ ACTIVO
 
-**Workflow `fin/watchdog-captura` · id `hckccUkyaAItBmbU` · 18 nodos · `active: false`.**
+**Workflow `fin/watchdog-captura` · id `hckccUkyaAItBmbU` · 18 nodos.**
 Cron `15 8 * * 1-5`, `timezone: America/Monterrey` explícito en settings.
+**Activado el 2026-08-13T00:19:48Z** — verificado en los cuatro campos, no solo en `active`:
+`active: true` · `triggerCount: 1` · `activeVersionId: 5ab3006b…` · `activeVersion: presente`
+(historial de publicación: `activated @ 2026-08-13T00:19:48.620Z`). Primera corrida programada: **jueves 2026-08-13, 08:15 CST**.
+
+> ⚠️ **Verificar `active` NO basta: hay que verificar `triggerCount` también.** En el primer intento de activación el flag no se movió y quedó `active: false` / `triggerCount: 0` / `activeVersionId: null` — el `Execute Workflow` había corrido (2 ejecuciones success) pero eso **no publica nada** (lección §18: *Manual Trigger NO activa el Schedule*). Con `triggerCount: 0` el Schedule no está registrado y el workflow no corre, aunque el resto se vea sano.
+>
+> Y la ironía que hace esto peligroso: el watchdog tiene la alerta `WATCHDOG_SIN_LATIDO` para detectar que murió en silencio, **pero esa alerta la emite él mismo**. Un vigilante que nunca arranca nunca avisa que no arrancó — es indistinguible de uno que no tiene nada que reportar.
+
+*(Deuda cosmética: el nombre del workflow todavía dice `(INACTIVO — pendiente publicar Esteban)`. Es la misma etiqueta fósil que arrastran los 8 workflows de `fin/captura-*`; el flag manda, no el nombre.)*
 
 **El watchdog ES el dry-run de 2.4 corriendo diario.** No cuenta: **empareja**. Corre el mismo matcher voraz por `(date, amount, refNorm(payment_ref))` que usará el barrido, en modo lectura. La alerta dice *qué* falta, no solo cuánto — y cuando 2.4 corra, el watchdog es la verificación independiente: debe caer a 0 solo.
 
@@ -166,11 +175,27 @@ Cron `15 8 * * 1-5`, `timezone: America/Monterrey` explícito en settings.
 **Chase — el control es la ESTABILIDAD del delta, no su valor.** `balance_plaid − suma_odoo = $224,977.63` = el saldo inicial nunca contabilizado. No puede ser 0. Pero si ambos lados se mueven en sincronía el delta se mantiene constante; si el sync se salta un movimiento, el banco se mueve y Odoo no → deriva. El delta se guarda en el `[[CBWATCH]]` y se compara contra la corrida anterior. Funciona sin esperar a que se contabilice la apertura, y el día que se contabilice el delta va a 0 y el mismo control sigue sirviendo.
 ⚠️ **Límites del proveedor, no pendientes de construcción:** `last_sync` tiene resolución diaria; no se detectan transacciones que netean a cero; el sync nativo Plaid entrega **solo liquidadas y no expone pendings**. La cuenta `J. CALDERON` se reporta como aviso *"ofrecida por Plaid, NO vinculada"*.
 
-### Primera corrida (execution `63711`) — encontró un defecto en su estreno
+### Corrida 1 (execution `63711`) — encontró un defecto en su estreno
 
-`status: ALERTA · faltantes_nuevas: 1 · cuarentena_conocidas: 4`. La "faltante nueva" resultó ser **falso positivo del matcher**, y de un tipo que habría hecho daño real. Ver la sección siguiente.
+`status: ALERTA · faltantes_nuevas: 1 · cuarentena_conocidas: 4`. La "faltante nueva" resultó ser **falso positivo del matcher**, y de un tipo que habría hecho daño real. Ver el caso 30444 abajo.
 
-Confirmado en esa corrida: `[[CBWATCH]]` escrito (`mail.message 2927982`), correo enviado (nodo 12, output `{}` = 202 Accepted en Graph), `active: false`.
+Confirmado en esa corrida: `[[CBWATCH]]` escrito (`mail.message 2927982`), correo enviado (nodo 12, output `{}` = 202 Accepted en Graph).
+
+### Corrida 2 (post-`refNorm`) — limpia · **evidencia de la activación**
+
+`[[CBWATCH]] mail.message 2927988`, 2026-08-12 18:16 CST:
+
+```json
+{"jeeves_en_rango":173,"odoo_en_rango":169,"odoo_en_ventana":175,
+ "faltantes_nuevas":0,"cuarentena_conocidas":4,
+ "cbrun":{"lag_max_dias":16.64,"rechazadas":0,"conteo_confiable":true,"horas_desde_ultimo":0.3},
+ "chase":{"cuenta":"BUS COMPLETE CHK","balance_plaid":191224.36,"suma_odoo":-33753.27,
+          "delta":224977.63,"last_sync":"2026-08-10","dias_sin_sync":2,
+          "no_vinculadas":["J. CALDERON"],"drift":0},
+ "alertas":[],"status":"ok"}
+```
+
+`faltantes_nuevas: 0` ← la prueba de que `refNorm` cerró el falso positivo · `odoo_en_rango: 169` con `173 − 169 = 4` (las colisiones conocidas) · `drift: 0` · cero alertas · **sin correo** (el nodo 12 no se ejecutó). Contrastable contra el CBWATCH anterior (`2927982`), que traía `faltantes_nuevas: 1` y `"alertas":["FALTANTES_NUEVAS"]`.
 
 **Guardado de ejecuciones:** el watchdog queda en `saveDataSuccessExecution: "all"` — 1 corrida/día hábil, podada a 14 días ⇒ ~10 ejecuciones vivas. Despreciable, y da trazabilidad justo donde se necesita. **`captura-jeeves` se queda en `none`**: 27 corridas/día × 14 días ≈ 378 ejecuciones, cada una con el array completo de 179 transacciones.
 
