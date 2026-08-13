@@ -18,7 +18,51 @@
   function init(manifest) {
     MANIFEST = manifest || { modules: [], blocks: {} };
     renderSidebar();
+    initSidebarToggle();
     navigate('dashboard');
+  }
+
+  // ── sidebar colapsable (v0.5.17) — un botón, dos estados según el viewport ──
+  // Laptop: colapsa/expande y RECUERDA la elección. Móvil: abre/cierra el drawer, y
+  // NUNCA se recuerda abierto (un drawer que arranca encima del contenido es una trampa).
+  var SB_KEY = 'fts_fin_sidebar';
+  function esMovil() { return window.matchMedia('(max-width: 900px)').matches; }
+  function shellEl() { return document.getElementById('app'); }
+  function cerrarDrawer() {
+    var sh = shellEl(); if (!sh) return;
+    sh.classList.remove('sb-open');
+    syncToggleAria();
+  }
+  function syncToggleAria() {
+    var sh = shellEl(), btn = document.getElementById('navToggle');
+    if (!sh || !btn) return;
+    var visible = esMovil() ? sh.classList.contains('sb-open') : !sh.classList.contains('sb-collapsed');
+    btn.setAttribute('aria-expanded', visible ? 'true' : 'false');
+  }
+  var sbWired = false;
+  function initSidebarToggle() {
+    var sh = shellEl(), btn = document.getElementById('navToggle'), bd = document.getElementById('sidebarBackdrop');
+    if (!sh || !btn) return;
+    // se restaura SOLO el estado de laptop
+    try { if (localStorage.getItem(SB_KEY) === 'collapsed') sh.classList.add('sb-collapsed'); } catch (e) {}
+    // Idempotente: si init() vuelve a correr, NO se registra un segundo listener. Con dos
+    // handlers, cada clic alternaba la clase dos veces y el botón dejaba de hacer nada.
+    if (sbWired) { syncToggleAria(); return; }
+    sbWired = true;
+    btn.addEventListener('click', function () {
+      if (esMovil()) {
+        sh.classList.toggle('sb-open');
+      } else {
+        var col = sh.classList.toggle('sb-collapsed');
+        try { localStorage.setItem(SB_KEY, col ? 'collapsed' : 'open'); } catch (e) {}
+      }
+      syncToggleAria();
+    });
+    if (bd) bd.addEventListener('click', cerrarDrawer);
+    document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') cerrarDrawer(); });
+    // al cruzar el breakpoint, el drawer no debe quedar "abierto" en laptop
+    window.addEventListener('resize', function () { if (!esMovil()) cerrarDrawer(); else syncToggleAria(); });
+    syncToggleAria();
   }
 
   function moduleMode(id) { return window.FinState ? window.FinState.getMode(id) : 'empty'; }
@@ -56,6 +100,10 @@
       if (typeof window.showLogin === 'function') window.showLogin();
       return;
     }
+    // El drawer móvil SE CIERRA SOLO al navegar: si no, el módulo nuevo queda pintado
+    // detrás de un menú abierto y el usuario tiene que cerrarlo a mano cada vez.
+    cerrarDrawer();
+
     var mods = MANIFEST.modules || [];
     var blocks = MANIFEST.blocks || {};
     var mod = mods.filter(function (m) { return m.id === route; })[0] || { id: route, name: route, block: null };

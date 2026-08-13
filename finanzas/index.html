@@ -7,8 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/finanzas.css?v=0.1.0">
-<link rel="stylesheet" href="css/instrumentos-pago.css?v=0.5.14">
+<link rel="stylesheet" href="css/finanzas.css?v=0.5.17">
+<link rel="stylesheet" href="css/instrumentos-pago.css?v=0.5.17">
 </head>
 <body>
 
@@ -38,7 +38,7 @@
 
 <!-- ═══ APP SHELL ═══ -->
 <div id="app" class="app-shell hidden">
-  <aside class="sidebar">
+  <aside class="sidebar" id="finSidebar">
     <div class="sidebar-brand">
       <div class="logo">F</div>
       <div class="brand-text">FTS Suite<small>Finanzas</small></div>
@@ -49,6 +49,13 @@
 
   <main class="main">
     <div class="topbar">
+      <!-- Un solo botón para los dos estados del sidebar: en laptop colapsa (y recuerda),
+           en móvil abre el drawer. Vive en el shell — beneficia a los tres módulos.
+           Mecánica aria-expanded/aria-controls tomada del hamburguesa de website/index.html. -->
+      <button class="nav-toggle" id="navToggle" aria-label="Mostrar u ocultar el menú"
+              aria-expanded="true" aria-controls="finSidebar" title="Mostrar u ocultar el menú">
+        <span class="ham-bar"></span><span class="ham-bar"></span><span class="ham-bar"></span>
+      </button>
       <div class="breadcrumb"><span class="block" id="bcBlock"></span>FTS Suite · <b id="bcCurrent">Dashboard</b></div>
       <div class="topbar-actions">
         <span class="mono" style="font-size:12px;color:var(--muted);" id="topbarDate"></span>
@@ -56,18 +63,20 @@
     </div>
     <div id="viewContainer"></div>
   </main>
+  <!-- backdrop del drawer móvil (patrón de seguridad/iperc: #chat-drawer-bg + clase .open) -->
+  <div id="sidebarBackdrop"></div>
 </div>
 
 <script src="js/auth-fin.js?v=0.1.0"></script>
 <script src="js/fin-client.js?v=0.1.0"></script>
 <!-- Paso 3: componentes + módulos (auto-registran en FinRouter al cargar) -->
 <script src="js/state.js?v=0.3.0"></script>
-<script src="js/router.js?v=0.3.0"></script>
+<script src="js/router.js?v=0.5.17"></script>
 <script src="js/company-selector.js?v=0.3.0"></script>
 <script src="js/modules/facturas-core.js?v=0.3.0"></script>
 <script src="js/modules/facturas-odoo.js?v=0.3.0"></script>
 <script src="js/modules/bills-odoo.js?v=0.3.0"></script>
-<script src="js/modules/instrumentos-pago.js?v=0.5.14"></script>
+<script src="js/modules/instrumentos-pago.js?v=0.5.17"></script>
 <script>
 /* ═══ FTS Finanzas — shell (Paso 1: auth + sidebar + empty states) ═══ */
 'use strict';

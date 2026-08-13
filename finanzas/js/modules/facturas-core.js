@@ -158,12 +158,12 @@
     function render() {
       var c = state.container; if (!c) return;
       var html = '<div class="page">';
-      html += '<span class="block-tag">B4 · Centro de transacciones</span>';
-      html += '<div class="page-header"><div>' +
-                '<div class="page-title">' + esc(cfg.title) + '</div>' +
-                '<div class="page-subtitle">' + esc(cfg.subtitle) + '</div>' +
-              '</div>' + modeToggle() + '</div>';
-      html += '<div id="fac-companies"></div>';
+      // v0.5.17 — header lean (mismo criterio que instrumentos-pago). El block-tag y el título
+      // duplicaban la topbar sticky del shell (bcBlock / bcCurrent); el subtítulo describía el
+      // módulo a quien ya está dentro. Se conservan las piezas funcionales: selector de empresas
+      // y el toggle de modo (facturas y bills SÍ siguen usando demo/real).
+      html += '<div class="page-header" style="align-items:center;margin-bottom:14px">' +
+                '<div id="fac-companies" style="flex:1"></div>' + modeToggle() + '</div>';
 
       if (state.mode === 'empty') {
         html += '<div class="empty-state"><div class="icon">▢</div><div class="title">Sin datos</div>' +
