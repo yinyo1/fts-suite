@@ -199,6 +199,30 @@ Confirmado en esa corrida: `[[CBWATCH]]` escrito (`mail.message 2927982`), corre
 
 **Guardado de ejecuciones:** el watchdog queda en `saveDataSuccessExecution: "all"` — 1 corrida/día hábil, podada a 14 días ⇒ ~10 ejecuciones vivas. Despreciable, y da trazabilidad justo donde se necesita. **`captura-jeeves` se queda en `none`**: 27 corridas/día × 14 días ≈ 378 ejecuciones, cada una con el array completo de 179 transacciones.
 
+### `no_vinculadas: ["J. CALDERON"]` — el watchdog tenía razón, NO fue falso positivo
+
+Verificado en la sesión de UI del 2026-08-12 (read-only):
+
+```
+account.journal 123 "Chase Ink Unlimited 9207"
+  account_online_account_id = [3, "J. CALDERON"]
+  write_date = 2026-08-13T04:20:43 UTC  (= 2026-08-12 22:20 CST)
+
+account.online.link 9 "Chase"
+  last_refresh = 2026-08-13T04:20:43 UTC  (= 2026-08-12 22:20 CST)   ← mismo instante
+```
+
+El CBWATCH que reportó `no_vinculadas:["J. CALDERON"]` corrió a las **18:16 CST**; la vinculación
+del journal 123 ocurrió a las **22:20 CST**, **cuatro horas después**. La cuenta estaba
+genuinamente sin vincular en el momento de la medición → **el watchdog midió bien**. El
+`write_date` idéntico en journal y link confirma además que vincular disparó un refresh.
+
+**Predicción falsable para la corrida automática de mañana 08:15 CST:** debe salir con
+`no_vinculadas: []`. Si vuelve a reportar `J. CALDERON`, entonces **sí** hay un defecto en la
+detección (leería `journal_ids` mal, o contra un dominio con `active_test` implícito), y ahí sí
+toca revisar el nodo 7 / el evaluador. Anotado aquí para que la corrida de mañana se lea como
+prueba, no como ruido.
+
 ---
 
 ## El caso 30444 — deriva de etiqueta, y por qué el matcher no puede comparar `payment_ref` crudo

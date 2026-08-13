@@ -1,0 +1,290 @@
+{
+  "_meta": {
+    "generado": "2026-08-12",
+    "proposito": "Línea base del experimento a 48h: re-leer estas 9 al liquidar y verificar si createdAt / monto / comercio mutan.",
+    "fuente": "MCP Jeeves list_transactions, transactionStatuses=[\"pending\"]",
+    "total_pendings": 9,
+    "nota_llave": "uid_v1 = hash actual en produccion (fecha|monto|tag|l4|comercio). uid_v2 = propuesta que agrega createdAt. Si al liquidar el uid_v2 recalculado difiere del aqui guardado, createdAt NO sirve como llave."
+  },
+  "pendings": [
+    {
+      "crudo": {
+        "transactionType": "debit",
+        "transactionTypeTag": "CARD",
+        "transactionStatus": "pending",
+        "transactionDate": "2026-08-12T16:23:40.000Z",
+        "transactionPostedDate": null,
+        "createdAt": "2026-08-12T16:23:43.786Z",
+        "totalBaseCurrencyAmount": "47.000000",
+        "source": {
+          "name": "Primary",
+          "detail": "6831",
+          "currency": 484,
+          "currencyAlphaCode": "MXN"
+        },
+        "destination": {
+          "name": "Oxxoteran",
+          "detail": "Miscellaneous Food Stores Convenience Stores, Markets, Specialty Stores",
+          "currency": 484,
+          "currencyAlphaCode": "MXN"
+        }
+      },
+      "derivado_hoy": {
+        "fecha_cst": "2026-08-12",
+        "amount": -47,
+        "payment_ref": "[Primary ****6831] Oxxoteran",
+        "l4": "6831",
+        "uid_v1": "jeeves-9ca5d4f1c2db0527dc9c886471389e596667228bdaecc44934a9feedcd4dd636",
+        "uid_v2": "jeeves-594c65ed71c4f7f1d3136f1c99d38a05ec5dd30adace4b4b7f613df9087b1c6a"
+      }
+    },
+    {
+      "crudo": {
+        "transactionType": "debit",
+        "transactionTypeTag": "CARD",
+        "transactionStatus": "pending",
+        "transactionDate": "2026-08-12T15:57:21.000Z",
+        "transactionPostedDate": null,
+        "createdAt": "2026-08-12T15:57:23.135Z",
+        "totalBaseCurrencyAmount": "104.550000",
+        "source": {
+          "name": "Primary",
+          "detail": "6831",
+          "currency": 484,
+          "currencyAlphaCode": "MXN"
+        },
+        "destination": {
+          "name": "PRO Ferrenl",
+          "detail": "Hardware Stores",
+          "currency": 484,
+          "currencyAlphaCode": "MXN"
+        }
+      },
+      "derivado_hoy": {
+        "fecha_cst": "2026-08-12",
+        "amount": -104.55,
+        "payment_ref": "[Primary ****6831] PRO Ferrenl",
+        "l4": "6831",
+        "uid_v1": "jeeves-88759de41bfc26977ccdce31c5a913bef0d4e3243aa3c32128cf30ef5b5636b1",
+        "uid_v2": "jeeves-72e43d07127930fd72722184e205203a8586feda8190731aeeea97476d91c6cd"
+      }
+    },
+    {
+      "crudo": {
+        "transactionType": "debit",
+        "transactionTypeTag": "CARD",
+        "transactionStatus": "pending",
+        "transactionDate": "2026-08-11T23:43:17.000Z",
+        "transactionPostedDate": null,
+        "createdAt": "2026-08-11T23:43:19.297Z",
+        "totalBaseCurrencyAmount": "1396.980000",
+        "source": {
+          "name": "Primary",
+          "detail": "6831",
+          "currency": 484,
+          "currencyAlphaCode": "MXN"
+        },
+        "destination": {
+          "name": "Mellsa Colonnl",
+          "detail": "Hardware Stores",
+          "currency": 484,
+          "currencyAlphaCode": "MXN"
+        }
+      },
+      "derivado_hoy": {
+        "fecha_cst": "2026-08-11",
+        "amount": -1396.98,
+        "payment_ref": "[Primary ****6831] Mellsa Colonnl",
+        "l4": "6831",
+        "uid_v1": "jeeves-5139735a84f3c147a9700b67783213c7aab0f52d6deeb11291624bbe1764c96c",
+        "uid_v2": "jeeves-406a9d2d235c237394fb3248c34a0457d1899c05ef2d55f1590ed5c84d34a5bf"
+      }
+    },
+    {
+      "crudo": {
+        "transactionType": "debit",
+        "transactionTypeTag": "CARD",
+        "transactionStatus": "pending",
+        "transactionDate": "2026-08-11T23:06:33.000Z",
+        "transactionPostedDate": null,
+        "createdAt": "2026-08-11T23:06:36.185Z",
+        "totalBaseCurrencyAmount": "18205.040000",
+        "source": {
+          "name": "Tarjeta gastos",
+          "detail": "4548",
+          "currency": 484,
+          "currencyAlphaCode": "MXN"
+        },
+        "destination": {
+          "name": "Ferr",
+          "detail": "Hardware Stores",
+          "currency": 484,
+          "currencyAlphaCode": "MXN"
+        }
+      },
+      "derivado_hoy": {
+        "fecha_cst": "2026-08-11",
+        "amount": -18205.04,
+        "payment_ref": "[Tarjeta gastos ****4548] Ferr",
+        "l4": "4548",
+        "uid_v1": "jeeves-97d9621da6f04b1e538ee1458c899571029c961a503c53b21ff3a862b320560c",
+        "uid_v2": "jeeves-5bbf42367b4264c53013ae2e5adbf8cfafab22f9733d195f8de4a9d7e2a7f94f"
+      }
+    },
+    {
+      "crudo": {
+        "transactionType": "debit",
+        "transactionTypeTag": "CARD",
+        "transactionStatus": "pending",
+        "transactionDate": "2026-08-11T21:01:57.000Z",
+        "transactionPostedDate": null,
+        "createdAt": "2026-08-11T21:02:00.602Z",
+        "totalBaseCurrencyAmount": "479.800000",
+        "source": {
+          "name": "Felipe Pérez",
+          "detail": "4666",
+          "currency": 484,
+          "currencyAlphaCode": "MXN"
+        },
+        "destination": {
+          "name": "Oxxo",
+          "detail": "Service Stations (with or without Ancillary Services)",
+          "currency": 484,
+          "currencyAlphaCode": "MXN"
+        }
+      },
+      "derivado_hoy": {
+        "fecha_cst": "2026-08-11",
+        "amount": -479.8,
+        "payment_ref": "[Felipe Pérez ****4666] Oxxo",
+        "l4": "4666",
+        "uid_v1": "jeeves-9cec8dd25616e19a45d014f9193d669151554c7bdad0c9eb6be751bdf22db8f5",
+        "uid_v2": "jeeves-afc55ca0dda9a7e076e440b2ca9f753717d057c9bf8ecb357fbb95b49e2fd609"
+      }
+    },
+    {
+      "crudo": {
+        "transactionType": "debit",
+        "transactionTypeTag": "CARD",
+        "transactionStatus": "pending",
+        "transactionDate": "2026-08-11T17:05:19.000Z",
+        "transactionPostedDate": null,
+        "createdAt": "2026-08-11T17:05:22.616Z",
+        "totalBaseCurrencyAmount": "47.000000",
+        "source": {
+          "name": "Tarjeta gastos",
+          "detail": "4548",
+          "currency": 484,
+          "currencyAlphaCode": "MXN"
+        },
+        "destination": {
+          "name": "Oxxoteran",
+          "detail": "Miscellaneous Food Stores Convenience Stores, Markets, Specialty Stores",
+          "currency": 484,
+          "currencyAlphaCode": "MXN"
+        }
+      },
+      "derivado_hoy": {
+        "fecha_cst": "2026-08-11",
+        "amount": -47,
+        "payment_ref": "[Tarjeta gastos ****4548] Oxxoteran",
+        "l4": "4548",
+        "uid_v1": "jeeves-7f471652d2dab51f0663efbbf34af4ef5038a03e55f62c3db57151609a868c58",
+        "uid_v2": "jeeves-75485eb59f5fd27d430586121aa4cb783aed909bf8b8e063940cbf140eeff4fd"
+      }
+    },
+    {
+      "crudo": {
+        "transactionType": "debit",
+        "transactionTypeTag": "CARD",
+        "transactionStatus": "pending",
+        "transactionDate": "2026-08-11T16:18:35.000Z",
+        "transactionPostedDate": null,
+        "createdAt": "2026-08-11T16:18:36.882Z",
+        "totalBaseCurrencyAmount": "166.600000",
+        "source": {
+          "name": "Tarjeta gastos",
+          "detail": "4548",
+          "currency": 484,
+          "currencyAlphaCode": "MXN"
+        },
+        "destination": {
+          "name": "PRO Ferrenl",
+          "detail": "Hardware Stores",
+          "currency": 484,
+          "currencyAlphaCode": "MXN"
+        }
+      },
+      "derivado_hoy": {
+        "fecha_cst": "2026-08-11",
+        "amount": -166.6,
+        "payment_ref": "[Tarjeta gastos ****4548] PRO Ferrenl",
+        "l4": "4548",
+        "uid_v1": "jeeves-df76f4772f470adc088b9b1e5906314e64b99fced4114bae6ae47c3d4cac854f",
+        "uid_v2": "jeeves-63fd6f1c203602aa5fe3c852bb706f3f17dea83dcb71e0ac3a5988d9d5050cd2"
+      }
+    },
+    {
+      "crudo": {
+        "transactionType": "debit",
+        "transactionTypeTag": "CARD",
+        "transactionStatus": "pending",
+        "transactionDate": "2026-08-11T16:17:41.000Z",
+        "transactionPostedDate": null,
+        "createdAt": "2026-08-11T16:17:44.338Z",
+        "totalBaseCurrencyAmount": "492.410000",
+        "source": {
+          "name": "Tarjeta gastos",
+          "detail": "4548",
+          "currency": 484,
+          "currencyAlphaCode": "MXN"
+        },
+        "destination": {
+          "name": "PRO Ferrenl",
+          "detail": "Hardware Stores",
+          "currency": 484,
+          "currencyAlphaCode": "MXN"
+        }
+      },
+      "derivado_hoy": {
+        "fecha_cst": "2026-08-11",
+        "amount": -492.41,
+        "payment_ref": "[Tarjeta gastos ****4548] PRO Ferrenl",
+        "l4": "4548",
+        "uid_v1": "jeeves-cb4b36fb22819aa6158aaa5cfbc74170bedff082f665bb3c7f75a1f8927d59da",
+        "uid_v2": "jeeves-267c1429b29f2732747180f5522ebe409d52528ea9315d83cf41cbfde1a415ba"
+      }
+    },
+    {
+      "crudo": {
+        "transactionType": "debit",
+        "transactionTypeTag": "CARD",
+        "transactionStatus": "pending",
+        "transactionDate": "2026-08-11T15:33:56.000Z",
+        "transactionPostedDate": null,
+        "createdAt": "2026-08-11T15:33:59.087Z",
+        "totalBaseCurrencyAmount": "2939.100000",
+        "source": {
+          "name": "Tarjeta gastos",
+          "detail": "4548",
+          "currency": 484,
+          "currencyAlphaCode": "MXN"
+        },
+        "destination": {
+          "name": "BPK",
+          "detail": "Hardware Stores",
+          "currency": 484,
+          "currencyAlphaCode": "MXN"
+        }
+      },
+      "derivado_hoy": {
+        "fecha_cst": "2026-08-11",
+        "amount": -2939.1,
+        "payment_ref": "[Tarjeta gastos ****4548] BPK",
+        "l4": "4548",
+        "uid_v1": "jeeves-a54ec22bb8ae029f0892082d4ad57b743b11039e60c929392f7a3f281cf3a419",
+        "uid_v2": "jeeves-ae9b3157fc1b67fb6eedc4a8c6df68c3c5f1f156768d65126533c0baec8ecc41"
+      }
+    }
+  ]
+}

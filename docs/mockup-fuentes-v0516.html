@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Propuesta layout fuentes · v0.5.16</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;padding:28px 32px 60px;font-family:'IBM Plex Sans',sans-serif;background:#FBFBF9;color:#1a2129;font-size:14px;line-height:1.5}
+  .ip-view{
+    --ink:#1a2129; --ip-panel:#ffffff; --ip-line:#d7dde3; --steel:#5b6875;
+    --ip-accent:#0e5fd8; --ip-ok:#12a150; --ip-warn:#e8a500; --ip-bad:#d63b2f;
+    --ip-mono:'IBM Plex Mono',monospace; color:var(--ink);
+  }
+  h1{font-family:'IBM Plex Sans Condensed';font-size:26px;margin:0 0 4px}
+  .sub{color:#5b6875;font-size:13px;margin-bottom:26px}
+  .ip-view h2{font-size:14px;text-transform:uppercase;letter-spacing:1.2px;color:var(--steel);margin:26px 0 12px;font-weight:700}
+  .lane{border:1px dashed #c9d2da;border-radius:10px;padding:18px 20px 24px;margin-bottom:34px;background:#fff}
+  .lane>.tag{display:inline-block;font-family:var(--ip-mono);font-size:10.5px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:3px 9px;border-radius:4px;margin-bottom:6px}
+  .tag.now{background:#fdeae8;color:#b32d22}
+  .tag.new{background:#e7f6ed;color:#0d7a3f}
+  .lane>.note{font-size:12.5px;color:#5b6875;margin:0 0 16px}
+
+  /* ══ ANTES (v0.5.15) ══ */
+  .srclist{display:flex;flex-direction:column;gap:8px}
+  .src{background:#fff;border:1px solid var(--ip-line);border-radius:8px;overflow:hidden}
+  .srchead{display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer}
+  .srchead .chev{font-family:var(--ip-mono);color:var(--steel);font-size:12px}
+  .srchead .nm{font-weight:700;font-size:15px}
+  .jtag{font-family:var(--ip-mono);font-size:11px;background:#eef3fa;color:#274b7a;border-radius:3px;padding:2px 6px}
+  .stchip{display:inline-flex;align-items:center;gap:6px;font-family:var(--ip-mono);font-size:11.5px;font-weight:600;border-radius:12px;padding:3px 10px}
+  .stchip.ok{background:#e7f6ed;color:#0d7a3f}
+  .srchead .sp{margin-left:auto;font-size:12px;color:var(--steel);font-family:var(--ip-mono)}
+
+  /* ══ DESPUÉS (v0.5.16) ══ */
+  .srcgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(258px,1fr));gap:10px;align-items:start}
+  .sc{background:var(--ip-panel);border:1px solid var(--ip-line);border-radius:8px;border-left:3px solid var(--ip-ok);
+      padding:11px 13px 12px;cursor:pointer;transition:box-shadow .15s,border-color .15s;position:relative}
+  .sc:hover{box-shadow:0 2px 10px rgba(26,33,41,.09)}
+  .sc.err{border-left-color:var(--ip-bad)}
+  .sc.off{border-left-color:#b6bfc8}
+  .sc-top{display:flex;align-items:center;gap:7px;margin-bottom:9px}
+  .sc-dot{width:7px;height:7px;border-radius:50%;background:var(--ip-ok);flex:none}
+  .sc.err .sc-dot{background:var(--ip-bad)} .sc.off .sc-dot{background:#b6bfc8}
+  .sc-nm{font-weight:600;font-size:13.5px;letter-spacing:-.1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sc-flag{font-family:var(--ip-mono);font-size:9.5px;font-weight:600;letter-spacing:.5px;color:var(--steel);
+           background:#eef1f4;border-radius:3px;padding:1.5px 5px;margin-left:auto;flex:none}
+  .sc-kpi{font-family:var(--ip-mono);font-size:19px;font-weight:600;color:var(--ip-bad);line-height:1.15;letter-spacing:-.4px}
+  .sc-kpi.zero{color:var(--ip-ok)}
+  .sc-kpil{font-size:10px;text-transform:uppercase;letter-spacing:.9px;color:var(--steel);margin-top:1px}
+  .sc-foot{display:flex;align-items:center;gap:6px;margin-top:10px;padding-top:9px;border-top:1px solid #eceff2;
+           font-family:var(--ip-mono);font-size:11px;color:var(--steel)}
+  .sc-j{background:#eef3fa;color:#274b7a;border-radius:3px;padding:1px 5px}
+  .sc-last{margin-left:auto;white-space:nowrap}
+  .sc-chev{position:absolute;right:11px;bottom:10px;font-size:10px;color:#aab4bd;transition:transform .18s}
+  .sc.open .sc-chev{transform:rotate(90deg)}
+  .sc-body{display:none;margin-top:11px;padding-top:11px;border-top:1px dashed var(--ip-line)}
+  .sc.open .sc-body{display:block}
+  .sc-meta{font-size:12px;color:var(--steel);line-height:1.75}
+  .sc-meta b{color:var(--ink);font-weight:600}
+  .sc-sync{display:flex;align-items:center;gap:7px;margin-top:9px;padding:6px 9px;background:#f0f6ff;
+           border:1px solid #cfe0f5;border-radius:5px;font-size:11.5px;color:#274b7a}
+  .sc-sync b{color:#0e5fd8;font-family:var(--ip-mono)}
+  .pulse{width:6px;height:6px;border-radius:50%;background:#0e5fd8;flex:none}
+  .sc-btn{margin-top:10px;width:100%;padding:7px 10px;border:1px solid var(--ip-accent);background:#fff;color:var(--ip-accent);
+          border-radius:5px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}
+  .sc-btn:hover{background:var(--ip-accent);color:#fff}
+  .sc-nobtn{margin-top:10px;font-size:11.5px;color:var(--steel);font-style:italic}
+
+  /* semáforo (sin cambios, solo reubicado) */
+  .sem{background:#fff;border:1px solid var(--ip-line);border-radius:8px;padding:14px 16px}
+  .sem .title{font-weight:700;font-size:13px;margin-bottom:10px}
+  .semrow{display:flex;align-items:center;gap:12px;padding:6px 0}
+  .semrow .jn{width:190px;font-size:13px;font-weight:600}
+  .semrow .bar{flex:1;height:8px;background:#eef1f4;border-radius:4px;overflow:hidden}
+  .semrow .bar i{display:block;height:100%}
+  .semrow .pct{width:46px;text-align:right;font-family:var(--ip-mono);font-size:12px;font-weight:600}
+  .semrow .rs{width:130px;text-align:right;font-family:var(--ip-mono);font-size:12px;color:var(--steel)}
+  .semnote{font-size:11px;color:var(--steel);margin-top:10px;border-top:1px solid #eceff2;padding-top:8px}
+  .callout{border-left:3px solid var(--ip-accent);background:#f0f6ff;padding:10px 14px;border-radius:0 6px 6px 0;font-size:12.5px;color:#274b7a;margin:14px 0 0}
+  code{font-family:var(--ip-mono);font-size:11.5px;background:#eef1f4;padding:1px 5px;border-radius:3px}
+</style>
+</head>
+<body>
+<div class="ip-view">
+  <h1>Instrumentos de pago — propuesta de layout</h1>
+  <div class="sub">v0.5.16 · datos <b>reales</b> leídos de Odoo hoy (no placeholders) · haz clic en cualquier cuadro para ver el detalle expandido</div>
+
+  <!-- ─────────── ANTES ─────────── -->
+  <div class="lane">
+    <span class="tag now">Hoy · v0.5.15</span>
+    <p class="note">Dos encabezados + tres barras a todo el ancho. Cada fuente ocupa una franja completa aunque esté colapsada. Con 3 ya cansa; el mock del módulo contempla <b>9 fuentes</b> (BBVA ×3, Payana, Monex ×2…) y así sería scroll puro.</p>
+    <h2 style="margin-top:4px">Fuentes de pago — FTS MEX</h2>
+    <div class="srclist">
+      <div class="src"><div class="srchead"><span class="chev">▶</span><span class="nm">Jeeves Tarjeta Credito</span><span class="jtag">journal 61</span><span class="stchip ok">● SYNC OK · hoy 18:00</span><span class="sp">MCP nativo</span></div></div>
+    </div>
+    <h2>Fuentes de pago — FTS USA</h2>
+    <div class="srclist">
+      <div class="src"><div class="srchead"><span class="chev">▶</span><span class="nm">Chase BUS COMPLETE CHK</span><span class="jtag">journal 122</span><span class="stchip ok">● SYNC OK · ayer</span><span class="sp">Plaid (sync nativo Odoo)</span></div></div>
+      <div class="src"><div class="srchead"><span class="chev">▶</span><span class="nm">Chase Ink Unlimited 9207</span><span class="jtag">journal 123</span><span class="stchip ok">● SYNC OK · ayer</span><span class="sp">Plaid (sync nativo Odoo)</span></div></div>
+    </div>
+  </div>
+
+  <!-- ─────────── DESPUÉS ─────────── -->
+  <div class="lane">
+    <span class="tag new">Propuesta · v0.5.16</span>
+    <p class="note">Un solo encabezado, rejilla que se reacomoda sola (<code>auto-fill minmax(258px,1fr)</code>): 3–4 cuadros por fila en pantalla ancha, 1 en móvil. El país deja de ser un <code>&lt;h2&gt;</code> y pasa a ser una etiqueta en el cuadro. <b>El número operativo (sin conciliar) es visible sin abrir nada.</b></p>
+
+    <h2 style="margin-top:4px">Instrumentos sincronizados</h2>
+    <div class="srcgrid">
+
+      <div class="sc" onclick="this.classList.toggle('open')">
+        <div class="sc-top"><span class="sc-dot"></span><span class="sc-nm">Jeeves Tarjeta Credito</span><span class="sc-flag">MEX</span></div>
+        <div class="sc-kpi">$4,621.09</div>
+        <div class="sc-kpil">sin conciliar</div>
+        <div class="sc-foot"><span class="sc-j">j·61</span><span>58 este mes</span><span class="sc-last">hoy 18:00</span></div>
+        <span class="sc-chev">▶</span>
+        <div class="sc-body">
+          <div class="sc-meta">Método: <b>MCP nativo</b><br>Movimientos hoy: <b>0</b> · este mes: <b>58</b><br>Último run: <b style="color:#12a150">OK — 0 nuevas · 179 duplicadas</b></div>
+          <div class="sc-sync"><span class="pulse"></span><span>Próximo sync en <b>00:14:22</b></span></div>
+          <button class="sc-btn" onclick="event.stopPropagation()">⟳ Sync Now</button>
+        </div>
+      </div>
+
+      <div class="sc" onclick="this.classList.toggle('open')">
+        <div class="sc-top"><span class="sc-dot"></span><span class="sc-nm">Chase BUS COMPLETE CHK</span><span class="sc-flag">USA</span></div>
+        <div class="sc-kpi">$34,962.33</div>
+        <div class="sc-kpil">sin conciliar · USD</div>
+        <div class="sc-foot"><span class="sc-j">j·122</span><span>100 este mes</span><span class="sc-last">ayer 03:00</span></div>
+        <span class="sc-chev">▶</span>
+        <div class="sc-body">
+          <div class="sc-meta">Método: <b>Plaid (sync nativo Odoo)</b><br>Movimientos hoy: <b>0</b> · este mes: <b>100</b><br>Último run: <b>Sync nativo — sin registro de corrida</b></div>
+          <div class="sc-nobtn">Sin sync manual: esta fuente la sincroniza Odoo.</div>
+        </div>
+      </div>
+
+      <div class="sc" onclick="this.classList.toggle('open')">
+        <div class="sc-top"><span class="sc-dot"></span><span class="sc-nm">Chase Ink Unlimited 9207</span><span class="sc-flag">USA</span></div>
+        <div class="sc-kpi">$2,190.41</div>
+        <div class="sc-kpil">sin conciliar · USD</div>
+        <div class="sc-foot"><span class="sc-j">j·123</span><span>75 este mes</span><span class="sc-last">ayer 03:00</span></div>
+        <span class="sc-chev">▶</span>
+        <div class="sc-body">
+          <div class="sc-meta">Método: <b>Plaid (sync nativo Odoo)</b><br>Movimientos hoy: <b>0</b> · este mes: <b>75</b><br>Último run: <b>Sync nativo — sin registro de corrida</b></div>
+          <div class="sc-nobtn">Sin sync manual: esta fuente la sincroniza Odoo.</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="callout">Así se ve con las <b>9 fuentes</b> del roadmap (BBVA General/Nómina/USD, Payana, Monex ×2): tres filas de tres, misma altura, cero scroll extra. La rejilla no cambia — solo se llena.</div>
+
+    <h2>Semáforo de conciliación — Admin</h2>
+    <div class="sem">
+      <div class="title">Control de conciliación por journal</div>
+      <div class="semrow"><span class="jn">Jeeves <span style="color:#68788a;font-family:'IBM Plex Mono';font-size:11px">(7,269/7,313)</span></span><div class="bar"><i style="width:99%;background:#e8a500"></i></div><span class="pct">99%</span><span class="rs">$4,621.09</span></div>
+      <div class="semrow"><span class="jn">Chase Cheques <span style="color:#68788a;font-family:'IBM Plex Mono';font-size:11px">(0/322)</span></span><div class="bar"><i style="width:0%;background:#d63b2f"></i></div><span class="pct">0%</span><span class="rs">$34,962.33</span></div>
+      <div class="semrow"><span class="jn">Chase Tarjeta <span style="color:#68788a;font-family:'IBM Plex Mono';font-size:11px">(0/151)</span></span><div class="bar"><i style="width:0%;background:#d63b2f"></i></div><span class="pct">0%</span><span class="rs">$2,190.41</span></div>
+      <div class="semnote">Verde = 100% conciliado y residual $0 · Amarillo ≥ 90% · Rojo &lt; 90% o residual &gt; $10,000.00</div>
+    </div>
+    <div class="callout">Cambio #2: el semáforo sube aquí, <b>pegado a las fuentes que evalúa</b>. Los dos Chase en rojo al 0% son correctos: sus 473 líneas están íntegras sin conciliar.</div>
+  </div>
+</div>
+</body>
+</html>
