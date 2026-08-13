@@ -22,7 +22,8 @@
 .ip-view h2:first-of-type{margin-top:8px}
 
 /* ---- header de la vista (título + acciones) ---- */
-.ip-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:4px}
+/* v0.5.17: una sola fila — empresas a la izquierda, engrane y badge a la derecha */
+.ip-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
 .ip-head .ip-gearwrap{margin-left:auto}
 .ip-view .ip-ver{font-family:var(--ip-mono);font-size:10.5px;font-weight:600;color:var(--steel);background:#eef1f4;border:1px solid var(--ip-line);border-radius:4px;padding:2px 7px;align-self:center;margin-left:8px;white-space:nowrap}
 
@@ -46,25 +47,47 @@
 .ip-toast{position:fixed;bottom:22px;right:22px;background:var(--ink);color:#fff;padding:12px 18px;border-radius:6px;font-size:14px;display:none;box-shadow:0 6px 20px rgba(0,0,0,.25);z-index:60}
 .ip-toast b{color:#7dd89b}
 
-/* ---- fuentes colapsables ---- */
-.ip-view .srclist{display:flex;flex-direction:column;gap:8px}
-.ip-view .src{background:var(--ip-panel);border:1px solid var(--ip-line);border-radius:8px;overflow:hidden}
-.ip-view .srchead{display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;user-select:none}
-.ip-view .srchead:hover{background:#f7f9fb}
-.ip-view .srchead .chev{font-family:var(--ip-mono);color:var(--steel);transition:transform .18s;font-size:12px}
-.ip-view .src.open .chev{transform:rotate(90deg)}
-.ip-view .srchead .nm{font-weight:700;font-size:15px}
+/* ---- fuentes: rejilla de cuadros compactos (v0.5.16) ----
+   Sustituye la lista vertical a todo el ancho. align-items:start es obligatorio: sin él,
+   abrir un cuadro estira a todos sus vecinos de la misma fila. */
+.ip-view .srcgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(258px,1fr));gap:10px;align-items:start}
+.ip-view .sc{background:var(--ip-panel);border:1px solid var(--ip-line);border-left:3px solid var(--ip-ok);
+             border-radius:8px;padding:11px 13px 12px;transition:box-shadow .15s;position:relative}
+.ip-view .sc:hover{box-shadow:0 2px 10px rgba(26,33,41,.09)}
+.ip-view .sc.err{border-left-color:var(--ip-bad)}
+.ip-view .sc.off{border-left-color:#b6bfc8}
+.ip-view .sc-hit{cursor:pointer;user-select:none}          /* zona clicable = solo lo colapsado */
+.ip-view .sc-top{display:flex;align-items:center;gap:7px;margin-bottom:9px}
+.ip-view .sc-dot{width:7px;height:7px;border-radius:50%;background:var(--ip-ok);flex:none}
+.ip-view .sc.err .sc-dot{background:var(--ip-bad)}
+.ip-view .sc.off .sc-dot{background:#b6bfc8}
+.ip-view .sc-nm{font-weight:600;font-size:13.5px;letter-spacing:-.1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ip-view .sc-flag{font-family:var(--ip-mono);font-size:9.5px;font-weight:600;letter-spacing:.5px;color:var(--steel);
+                  background:#eef1f4;border-radius:3px;padding:1.5px 5px;margin-left:auto;flex:none}
+.ip-view .sc-kpi{font-family:var(--ip-mono);font-size:19px;font-weight:600;color:var(--ip-bad);line-height:1.15;letter-spacing:-.4px}
+.ip-view .sc-kpil{font-size:10px;text-transform:uppercase;letter-spacing:.9px;color:var(--steel);margin-top:1px}
+.ip-view .sc-foot{display:flex;align-items:center;gap:6px;margin-top:10px;padding-top:9px;border-top:1px solid #eceff2;
+                  font-family:var(--ip-mono);font-size:11px;color:var(--steel)}
+.ip-view .sc-j{background:#eef3fa;color:#274b7a;border-radius:3px;padding:1px 5px}
+.ip-view .sc-last{margin-left:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ip-view .sc-kpi2{margin-top:5px;font-size:10.5px;color:var(--steel);line-height:1.4}
+.ip-view .sc-kpi2 b{font-family:var(--ip-mono);color:#48545f;font-weight:600}
+.ip-view .sc-chev{position:absolute;right:11px;bottom:10px;font-size:10px;color:#aab4bd;transition:transform .18s}
+.ip-view .sc.open .sc-chev{transform:rotate(90deg)}
+.ip-view .sc-body{display:none;margin-top:11px;padding-top:11px;border-top:1px dashed var(--ip-line)}
+.ip-view .sc.open .sc-body{display:block}
+.ip-view .sc-meta{font-size:12px;color:var(--steel);line-height:1.75}
+.ip-view .sc-meta b{color:var(--ink);font-weight:600}
+.ip-view .sc-chiprow{margin-top:9px;display:flex;flex-wrap:wrap;gap:6px}
+.ip-view .sc-body .ip-btn{width:100%;justify-content:center;margin-top:10px;padding:7px 10px;font-size:12.5px}
+.ip-view .sc-body .synced{margin-top:9px;padding:6px 9px;font-size:11.5px}
+.ip-view .sc-body .synced .schChip{font-size:10px}
 .ip-view .stchip{display:inline-flex;align-items:center;gap:6px;font-family:var(--ip-mono);font-size:11.5px;font-weight:600;border-radius:12px;padding:3px 10px}
 .ip-view .stchip.ok{background:#e7f6ed;color:#0d7a3f}
 .ip-view .stchip.err{background:#fdeae8;color:#b32d22}
 .ip-view .stchip.off{background:#eef1f4;color:#5b6875}
 .ip-view .wdbadge{display:inline-flex;align-items:center;gap:6px;background:#d63b2f;color:#fff;font-size:11.5px;font-weight:700;border-radius:12px;padding:3px 10px;margin-left:4px}
 .ip-view .wdbadge button{background:#fff;color:#b32d22;border:none;border-radius:8px;padding:1px 8px;font-size:11px;font-weight:700;cursor:pointer}
-.ip-view .srchead .sp{margin-left:auto;font-size:12px;color:var(--steel);font-family:var(--ip-mono)}
-.ip-view .srcbody{display:none;border-top:1px solid var(--ip-line);padding:16px 18px}
-.ip-view .src.open .srcbody{display:block}
-.ip-view .src .meta{font-size:13px;color:var(--steel);line-height:1.7}
-.ip-view .src .meta b{color:var(--ink);font-weight:600}
 
 /* ---- settings (agregar fuente — cosmético/demo) ---- */
 .ip-gearwrap{position:relative}
@@ -158,9 +181,23 @@
 /* ---- semáforo ---- */
 .ip-view .sem{background:var(--ink);border-radius:8px;padding:16px 18px;color:#dfe6ec}
 .ip-view .sem .title{font-size:12px;text-transform:uppercase;letter-spacing:1.4px;color:#8fa0b0;margin-bottom:12px;font-weight:700}
-.ip-view .semrow{display:grid;grid-template-columns:120px 1fr 90px 130px;gap:12px;align-items:center;padding:9px 4px;border-bottom:1px solid #2b333c;font-size:14px}
-.ip-view .semrow:last-child{border-bottom:none}
-.ip-view .semrow.total{background:#232b34;margin:8px -8px -8px;padding:12px;border-radius:6px;font-weight:700}
+/* v0.5.16 — celdas compactas en rejilla, mismo criterio que .srcgrid.
+   Antes: una fila por journal a todo el ancho, con la barra ocupando ~800px para expresar
+   un solo porcentaje. Ahora los 3 journals caben en un renglón de celdas. */
+.ip-view #ip-semrows{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
+.ip-view .semcell{background:rgba(255,255,255,.04);border:1px solid #2b333c;border-radius:6px;padding:9px 11px 10px}
+.ip-view .semcell .top{display:flex;align-items:baseline;gap:8px;margin-bottom:7px}
+.ip-view .semcell .jn{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ip-view .semcell .pct{margin-left:auto;font-size:15px;font-weight:600}
+.ip-view .semcell .foot{display:flex;align-items:center;gap:8px;margin-top:7px;font-family:var(--ip-mono);font-size:11px;color:#8fa0b0}
+.ip-view .semcell .foot .res{margin-left:auto;font-size:11.5px}
+/* TODOS (v0.5.17): mismo tamaño que una celda de journal, pero SOLA en su renglón.
+   `grid-column:1` la ancla a la primera columna; el algoritmo de autocolocación no puede
+   ponerla junto a los journals (esa columna ya está ocupada en la fila de arriba), así que
+   baja de renglón. Conserva el track minmax(210px,1fr) → mismo ancho que las demás, sin
+   estirarse. NO se usa grid-column:1/-1: eso era la barra a todo el ancho que ya quitamos. */
+.ip-view .semcell.total{grid-column:1;margin-top:6px;background:#232b34;border-color:#39434e}
+.ip-view .semcell.total .jn{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:.6px}
 .ip-view .light{width:16px;height:16px;border-radius:50%;box-shadow:0 0 0 3px rgba(255,255,255,.06);justify-self:start}
 .ip-view .light.g{background:var(--ip-ok);box-shadow:0 0 10px rgba(18,161,80,.8)}
 .ip-view .light.y{background:var(--ip-warn);box-shadow:0 0 10px rgba(232,165,0,.8)}
@@ -306,6 +343,42 @@
 }
 
 @media(max-width:700px){
-  .ip-view .semrow{grid-template-columns:26px 1fr 70px 110px}
-  .ip-view .semrow .jn{font-size:13px}
+  /* v0.5.16: .semrow desapareció (ahora son .semcell en rejilla auto-fit, que ya colapsa sola).
+     En pantalla angosta se fuerza 1 columna para que el % y el residual no se aprieten. */
+  .ip-view #ip-semrows{grid-template-columns:1fr}
+  .ip-view .srcgrid{grid-template-columns:1fr}
 }
+
+/* ---- chips de filtrado rápido (v0.5.16) — absorben el panel "Hoy" ---- */
+.ip-view .ip-chips{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:0 0 10px}
+.ip-view .ip-chip{display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid var(--ip-line);
+  border-radius:16px;padding:5px 12px;font-family:inherit;font-size:12.5px;font-weight:600;color:var(--ink);cursor:pointer;
+  transition:border-color .12s,background .12s}
+.ip-view .ip-chip:hover{background:#f4f7fa}
+.ip-view .ip-chip .ip-chipn{font-family:var(--ip-mono);font-size:11px;font-weight:600;color:var(--steel);
+  background:#eef1f4;border-radius:9px;padding:1px 7px}
+.ip-view .ip-chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.ip-view .ip-chip.on .ip-chipn{background:rgba(255,255,255,.18);color:#fff}
+.ip-view .ip-chip.red.on{background:var(--ip-bad);border-color:var(--ip-bad)}
+.ip-view .ip-chip.amber.on{background:var(--ip-warn);border-color:var(--ip-warn)}
+.ip-view .ip-chip.green.on{background:var(--ip-ok);border-color:var(--ip-ok)}
+.ip-view .ip-chip.gray.on{background:#5b6875;border-color:#5b6875}
+.ip-view .ip-chip.sm{padding:3px 10px;font-size:11.5px;font-weight:500}
+.ip-view .ip-chipsep{font-size:10.5px;text-transform:uppercase;letter-spacing:1px;color:var(--steel);margin-left:6px}
+
+/* ---- acordeón "Diagnóstico de captura" (v0.5.16) ---- */
+.ip-view .ip-diag{margin-top:26px;background:var(--ip-panel);border:1px solid var(--ip-line);border-radius:8px}
+.ip-view .ip-diag>summary{cursor:pointer;user-select:none;padding:12px 16px;font-size:13px;font-weight:700;
+  text-transform:uppercase;letter-spacing:1.1px;color:var(--steel);list-style:none;display:flex;align-items:center;gap:10px}
+.ip-view .ip-diag>summary::-webkit-details-marker{display:none}
+.ip-view .ip-diag>summary::before{content:'▶';font-size:10px;color:#aab4bd;transition:transform .18s}
+.ip-view .ip-diag[open]>summary::before{transform:rotate(90deg)}
+.ip-view .ip-diag>summary:hover{background:#f7f9fb}
+.ip-view .ip-diag-hint{margin-left:auto;font-size:11px;font-weight:500;letter-spacing:0;text-transform:none;color:#aab4bd}
+.ip-view .ip-diag-body{padding:4px 16px 18px;border-top:1px solid var(--ip-line)}
+.ip-view .ip-diag-body h3{font-size:12px;text-transform:uppercase;letter-spacing:1.1px;color:var(--steel);margin:16px 0 8px;font-weight:700}
+.ip-view .ip-diag-sub{font-size:11px;font-weight:400;letter-spacing:0;text-transform:none;color:#aab4bd;margin-left:8px}
+
+/* ---- estados nuevos del eje B ---- */
+.ip-view .ip-est.nev{color:#5b6875}
+.ip-view .ip-est.doc{color:#b07d00}

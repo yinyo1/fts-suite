@@ -8,9 +8,12 @@
 // (selector único de empresa en todo Finanzas), FinClient (webhooks JWT-en-body).
 // Sin globals: todo el wiring vía addEventListener (CSP-safe).
 //
-// Modos: empty / demo (mock JSON) / real (endpoints fin/captura-*). El modo Real
-// está GATEADO tras IP_REAL_ENABLED hasta cerrar el checklist de seguridad
-// (docs/finanzas/BANCOS_CHECKLIST_SEGURIDAD.md). Flip a true = one-liner.
+// Modo: SOLO real (endpoints fin/captura-*). Desde v0.5.16 no hay selector: los modos
+// 'empty' y 'demo' perdieron su superficie en la UI. Demo sobrevive como escotilla de
+// consola para el gate de render (ver currentMode); 'empty' se eliminó por inalcanzable.
+// El gate de seguridad IP_REAL_ENABLED se retiró: quedó sin sentido al ser Real el único
+// modo (checklist en docs/finanzas/BANCOS_CHECKLIST_SEGURIDAD.md, hardening pendiente
+// documentado ahí — el flag ya no lo representaba, estaba en true desde 2026-07-23).
 
 (function () {
   'use strict';
@@ -19,8 +22,7 @@
   // ── config ──
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
-  var IP_REAL_ENABLED = true;             // Real HABILITADO en producción (flip 2026-07-23; checklist: JWT ok, Cloudflare diferido)
-  var IP_BUILD = '0.5.14';                // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.17';                // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -137,7 +139,13 @@
     var state = {
       mode: currentMode(),
       allRows: [], sources: [], runs: [], cron: DEFAULT_CRON,
-      filters: { journal: '', estado: '', from: '2026-07-01', to: '2026-07-18', search: '' },
+      porJournal: [],          // v0.5.15: universo de journals que reporta el server (captura-status.por_journal).
+                               // El filtro y el semáforo se derivan de AQUÍ, nunca de una lista escrita a mano.
+      // v0.5.16 — ventana RODANTE (inicio del mes pasado → hoy). Antes estaba clavada en
+      // '2026-07-01'→'2026-07-18', la fecha en que se construyó el módulo: a los días empezó a
+      // ocultar todo lo nuevo, y con los chips habría sido peor — contarían sobre esa rebanada
+      // mientras la tarjeta de fuente (que no filtra por fecha) muestra el universo completo.
+      filters: { journal: '', estado: '', tipo: '', edad: '', from: defaultFrom(), to: hoyCst(), search: '' },
       sortK: 'd', sortDir: -1,
       pageSize: 100, page: 1,
       sel: {},                 // rowId -> true
@@ -154,12 +162,17 @@
       pendings: null           // A: {disponible, pendings_count, pendings_suma, ultimo_settled_date, muestra} del preview de pendings Jeeves
     };
 
+    // v0.5.16 — Real es el ÚNICO modo con superficie en la UI. Demo perdió su selector, su banner
+    // y la pantalla "Sin datos"; sobrevive como ESCOTILLA DE CONSOLA:
+    //     localStorage.setItem('fts_fin_mode_instrumentos-pago','demo')
+    // No es un adorno: el gate obligatorio de render (scripts/local/smoke-front.js) monta el módulo
+    // por esa rama. Borrarla obligaría a reescribir el harness — la red que atrapó el ReferenceError
+    // de v0.5.7 — y ese riesgo no se paga solo. Cualquier otro valor (incluido 'empty', que ya no
+    // existe como estado) cae a real.
     function currentMode() {
       var stored = null;
       try { stored = localStorage.getItem('fts_fin_mode_' + MODULE_ID); } catch (e) { stored = null; }
-      if (stored === 'real') return IP_REAL_ENABLED ? 'real' : 'demo';   // Real gateado → cae a demo
-      if (stored === 'demo' || stored === 'empty') return stored;         // respeta elección explícita del usuario
-      return 'demo';   // primera visita = demo; luego recuerda la elección (localStorage). Real habilitado NO fuerza real por default (coerción de seguridad intacta).
+      return (stored === 'demo') ? 'demo' : 'real';
     }
 
     var q  = function (s) { return container.querySelector(s); };
@@ -171,13 +184,17 @@
 
     // ── ciclo de vida ──
     function mount() {
+      // El sidebar (js/router.js) pinta un state-dot por módulo con class = FinState.getMode(id).
+      // Sin selector, este módulo dejaría de escribir su modo y el puntito diría "empty" — mentira.
+      // Se sella aquí, sin tocar state.js ni router.js (los comparten facturas y bills).
+      try { if (state.mode === 'real') window.FinState.setMode(MODULE_ID, 'real'); } catch (e) {}
       window.FinState.subscribe(function (evt) {
         if (!document.body.contains(container)) return;      // vista desmontada
-        if (evt.type === 'mode' && evt.id === MODULE_ID) { state.mode = currentMode(); state.sel = {}; render(); if (state.mode !== 'empty') load(); }
-        if (evt.type === 'companies') { if (state.mode !== 'empty') { if (state.mode === 'real') { load(); } else { renderSources(); paintTable(); } } }
+        if (evt.type === 'mode' && evt.id === MODULE_ID) { state.mode = currentMode(); state.sel = {}; render(); load(); }
+        if (evt.type === 'companies') { if (state.mode === 'real') { load(); } else { renderSources(); paintTable(); } }
       });
       render();
-      if (state.mode !== 'empty') load();
+      load();
     }
 
     // ── carga de datos ──
@@ -186,7 +203,7 @@
       if (state.mode === 'demo') {
         fetch(MOCK_PATH, { cache: 'no-store' })
           .then(function (r) { return r.json(); })
-          .then(function (data) { ingest(data.rows || [], data.sources || [], data.runs || [], data.cron || DEFAULT_CRON, { today: data.today || null, intransit: data.intransit || [], suggByRow: data.suggestions || {} }); state.preconc = data.preconc || {}; state.loading = false; try { evalSugg(); } catch (e) { if (window.console) console.warn('[ip] evalSugg demo falló (no bloquea):', e); } render(); afterData(); })
+          .then(function (data) { ingest(data.rows || [], data.sources || [], data.runs || [], data.cron || DEFAULT_CRON, { today: data.today || null, porJournal: data.por_journal || [], intransit: data.intransit || [], suggByRow: data.suggestions || {} }); state.preconc = data.preconc || {}; state.loading = false; try { evalSugg(); } catch (e) { if (window.console) console.warn('[ip] evalSugg demo falló (no bloquea):', e); } render(); afterData(); })
           .catch(function (e) { state.loading = false; state.error = 'No se pudo cargar el mock: ' + e.message; render(); });
         return;
       }
@@ -199,7 +216,7 @@
         var st = res[0] || {}, txAll = res[1] || { rows: [] };
         // captura-status.hoy es opcional (B.2 pendiente): si no llega, degrada elegante sin romper.
         var today = st.hoy || { en_transito: { disponible: false }, conciliable_pendiente: null, conciliadas_hoy: null, _degradado: true };
-        ingest(txAll.rows || [], st.sources || [], st.runs || [], st.cron || DEFAULT_CRON, { today: today, intransit: st.intransit || [], suggByRow: {} });
+        ingest(txAll.rows || [], st.sources || [], st.runs || [], st.cron || DEFAULT_CRON, { today: today, porJournal: st.por_journal || [], intransit: st.intransit || [], suggByRow: {} });
         state.loading = false; state.loadProgress = null;
         // carga parcial: nunca fingir que está completo → aviso visible; los agregados reflejan solo lo cargado.
         state.partialLoad = txAll.partial ? { loaded: (txAll.rows || []).length, total: (txAll.pagination && txAll.pagination.total_count) || null, reason: txAll.reason || null } : null;
@@ -257,6 +274,7 @@
       state.allRows = rows; state.sources = sources; state.runs = runs; state.cron = normalizeCron(cron);
       extra = extra || {};
       state.today = extra.today || null;
+      state.porJournal = extra.porJournal || [];
       state.intransit = extra.intransit || [];
       state.suggByRow = extra.suggByRow || {};
       state.expanded = null;   // reset acordeón en cada carga
@@ -368,8 +386,13 @@
     }
 
     // ── filtrado / orden (cliente) ──
-    function visibleRows() {
+    // opts.ignoreEstado: omite el eje de conciliación (estado/edad) para que los chips cuenten
+    // sobre el MISMO universo que la tabla dibuja, sin contarse a sí mismos.
+    function visibleRows(opts) {
+      opts = opts || {};
       var f = state.filters, s = (f.search || '').toLowerCase();
+      var fEstado = opts.ignoreEstado ? '' : f.estado;
+      var fEdad   = opts.ignoreEstado ? '' : f.edad;
       var cos = window.FinState.getCompanies();
       // Filtro de empresa TOLERANTE (3 niveles). El demo trae company_id (id); el endpoint real trae rs (razón social) sin id.
       // Clave: distinguir "rs RECONOCIDO pero deseleccionado" (chip apagado → ocultar, filtro legítimo) de "rs DESCONOCIDO"
@@ -390,7 +413,9 @@
         }
         return okCompany &&
           (!f.journal || t.j === f.journal) &&
-          (!f.estado || matchEstado(f.estado, t)) &&
+          (!fEstado || matchEstado(fEstado, t)) &&
+          matchEdad(fEdad, t) &&
+          (!f.tipo || rowTipo(t) === f.tipo) &&
           colFiltersPass(t) &&                                        // filtros por columna estilo Excel (se COMBINAN con los demás)
           (!s || Object.keys(t).map(function (k) { return t[k]; }).join(' ').toLowerCase().indexOf(s) >= 0) &&
           (!f.from || t.d >= f.from) && (!f.to || t.d <= f.to);
@@ -408,53 +433,67 @@
     // ── render principal (shell) ──
     function render() {
       var html = '<div class="page ip-view">';
-      html += '<span class="block-tag">B4 · Centro de transacciones</span>';
-      html += '<div class="ip-head"><div class="page-header" style="flex:1"><div>' +
-                '<div class="page-title">Instrumentos de pago</div>' +
-                '<div class="page-subtitle">Captura bancaria · fuentes de pago, transacciones y conciliación</div>' +
-              '</div></div>' +
-              gearHtml() + modeToggle() + '<span class="ip-ver" title="build desplegado">v' + IP_BUILD + '</span></div>';
-      html += '<div id="ip-companies"></div>';
+      // v0.5.17 — header lean. El block-tag y el título duplicaban LITERALMENTE la topbar del
+      // shell (bcBlock y bcCurrent), que es position:sticky: la identidad del módulo no sale
+      // nunca de la pantalla, así que repetirla debajo era costo puro. El subtítulo describía
+      // el módulo a quien ya está dentro. Quedan las tres piezas que sí sirven, en un renglón:
+      // selector de empresas (funcional), engrane (acciones) y badge de build (evidencia).
+      html += '<div class="ip-head"><div id="ip-companies" style="flex:1"></div>' +
+              gearHtml() + '<span class="ip-ver" title="build desplegado">v' + IP_BUILD + '</span></div>';
 
-      if (state.mode === 'empty') {
-        html += '<div class="empty-state"><div class="icon">▢</div><div class="title">Sin datos</div>' +
-                '<div>Activa <b>Demo</b> para ver datos de muestra' + (IP_REAL_ENABLED ? ', o <b>Real</b> para consultar captura bancaria (solo lectura).' : '. <span class="mono">(Real pendiente de checklist de seguridad)</span>') + '</div></div></div>';
-        container.innerHTML = html; wireHead(); return;
-      }
+      // v0.5.16: sin selector de modo, el estado 'empty' dejó de ser alcanzable y su pantalla se
+      // eliminó. El banner DEMO solo aparece por la escotilla de consola (ver currentMode).
       if (state.mode === 'demo') html += '<div class="demo-banner"><b>DEMO</b> · datos ficticios de muestra, no provienen de Odoo.</div>';
 
       if (state.loading) { html += '<div class="loader" id="ip-loader" style="padding:30px;text-align:center;color:var(--steel)">' + (state.loadProgress ? ('Cargando ' + state.loadProgress.loaded + ' de ' + (state.loadProgress.total || '?') + ' líneas…') : 'Cargando…') + '</div></div>'; container.innerHTML = html; wireHead(); return; }
-      if (state.error)   { html += '<div class="empty-state"><div class="icon">⚠</div><div class="title">Error</div><div class="mono">' + esc(state.error) + '</div></div></div>'; container.innerHTML = html; wireHead(); return; }
+      // Error CON salida: Demo ya no es el escape, así que la pantalla no puede ser un callejón.
+      if (state.error)   {
+        html += '<div class="empty-state"><div class="icon">⚠</div><div class="title">No se pudo cargar</div>' +
+                '<div class="mono">' + esc(state.error) + '</div>' +
+                '<div style="margin-top:16px"><button class="ip-btn" id="ip-retry">⟳ Reintentar</button></div>' +
+                '<div style="margin-top:10px;font-size:12px;color:var(--steel)">Si insiste, el backend (n8n) puede estar caído. Los datos en Odoo no se ven afectados.</div>' +
+                '</div></div>';
+        container.innerHTML = html; wireHead(); return;
+      }
       if (state.partialLoad) {
         html += '<div class="ip-partial" style="margin:12px 0;padding:10px 14px;border:1px solid #c0392b;border-radius:8px;background:rgba(192,57,43,.10);color:#c0392b;font-size:13px;font-weight:500">⚠ Carga parcial: ' + state.partialLoad.loaded + ' de ' + (state.partialLoad.total || '?') + ' líneas' + (state.partialLoad.reason ? ' — ' + esc(state.partialLoad.reason) : '') + '. Recarga para reintentar. Los agregados y el semáforo reflejan SOLO lo cargado.</div>';
       }
 
-      html += '<h2>Fuentes de pago — FTS MEX</h2><div class="srclist" id="ip-srcMEX"></div>';
-      html += '<h2>Fuentes de pago — FTS USA</h2><div class="srclist" id="ip-srcUSA"></div>';
+      html += '<h2>Instrumentos sincronizados</h2><div class="srcgrid" id="ip-srcgrid"></div>';
+
+      // v0.5.16: el semáforo sube aquí, pegado a las fuentes que evalúa (antes vivía después de "Hoy").
+      html += '<h2>Semáforo de conciliación — Admin</h2><div class="sem"><div id="ip-semrows"></div>' +
+              '<div class="semnote">Verde = 100% conciliado y residual $0 · Amarillo ≥ 90% · Rojo &lt; 90% o residual &gt; ' + money(RESIDUAL_UMBRAL_MXN) + '. El KPI incluye backlog histórico hasta su limpieza (Fase 2).</div></div>';
 
       html += '<h2>Transacciones</h2>' +
         '<div class="ip-toolbar">' +
-          '<button class="ip-refresh" id="ip-syncnow" title="Ejecuta una captura extra ahora (mismo rango/traslape/dedupe que el cron). Útil para tener info fresca sin esperar al motor nocturno.">⟳ Sincronizar transacciones</button>' +
-          '<button class="ip-refresh gated" id="ip-concilianow" disabled title="Se estrena mañana tras el forense de la noche 2 del canary — un disparo hoy se comería los matches de la corrida de las 23:00.">⟳ Autoconciliar ahora</button>' +
+          // El botón solo dispara la captura de Jeeves. Con tres fuentes en pantalla, llamarlo
+          // "Sincronizar transacciones" prometía que tocaba las tres; Chase la sincroniza Odoo.
+          '<button class="ip-refresh" id="ip-syncnow" title="Dispara una corrida extra de captura SOLO para Jeeves (mismo rango/traslape/dedupe que el cron). Chase lo sincroniza Odoo/Plaid por su cuenta.">⟳ Capturar Jeeves ahora</button>' +
+          '<button class="ip-refresh gated" id="ip-concilianow" disabled title="Pendiente de habilitar: el workflow fin/concilia-now sigue inactivo y su webhook responde 404. Ver docs/finanzas/BANCOS_UI_FUENTES.md.">⟳ Autoconciliar ahora</button>' +
           '<span class="ip-toolbar-note" id="ip-syncnote"></span>' +
           '<span class="ip-pendnote" id="ip-pendnote"></span>' +
         '</div>' +
+        '<div class="ip-chips" id="ip-chips"></div>' +
         '<div class="panel">' + filtersHtml() +
               '<div class="selbanner" id="ip-selbanner"></div>' +
               '<div id="ip-tblwrap"></div>' +
               '<div class="tfoot"><span id="ip-aggs"></span><span class="pager" id="ip-pager"></span></div></div>';
 
-      html += '<h2>Hoy</h2><div class="ip-today" id="ip-today"></div>';
-
-      html += '<h2>Semáforo de conciliación — Admin</h2><div class="sem"><div class="title">Control de conciliación por journal</div>' +
-              '<div id="ip-semrows"></div>' +
-              '<div class="semnote">Verde = 100% conciliado y residual $0 · Amarillo ≥ 90% · Rojo &lt; 90% o residual &gt; ' + money(RESIDUAL_UMBRAL_MXN) + '. El KPI incluye backlog histórico hasta su limpieza (Fase 2).</div></div>';
-
-      html += '<h2>En tránsito</h2><div class="panel" id="ip-intransit"></div>';
-
-      html += '<h2>Últimas corridas de captura</h2><div class="panel"><table class="runs">' +
-              '<thead><tr><th>Run</th><th>Origen</th><th>Rango</th><th>Nuevas</th><th>Dup.</th><th>Rech.</th><th>Status</th></tr></thead>' +
-              '<tbody id="ip-runsbody"></tbody></table></div>';
+      // v0.5.16: el panel "Hoy" se disolvió en los chips sobre la tabla (su valor era el filtrado
+      // rápido, y eso pertenece a la tabla). "En tránsito" y "Últimas corridas" bajan a un acordeón
+      // cerrado: no se borran — ambas responden "cómo se está portando el pipeline", que es
+      // diagnóstico, no trabajo pendiente. No van tras el engrane porque ese menú es de ACCIONES.
+      html += '<details class="ip-diag" id="ip-diag">' +
+                '<summary>Diagnóstico de captura <span class="ip-diag-hint">en tránsito · últimas corridas</span></summary>' +
+                '<div class="ip-diag-body">' +
+                  '<h3>En tránsito <span class="ip-diag-sub">movimientos que el banco aún no liquida — no son filas de la tabla</span></h3>' +
+                  '<div class="panel" id="ip-intransit"></div>' +
+                  '<h3>Últimas corridas de captura</h3>' +
+                  '<div class="panel"><table class="runs">' +
+                    '<thead><tr><th>Run</th><th>Origen</th><th>Rango</th><th>Nuevas</th><th>Dup.</th><th>Rech.</th><th>Status</th></tr></thead>' +
+                    '<tbody id="ip-runsbody"></tbody></table></div>' +
+                '</div></details>';
 
       html += '<div class="ip-cfpop" id="ip-cfpop" style="display:none"></div>';   // popup flotante del filtro por columna (Excel-style)
       html += '<div class="ip-toast" id="ip-toast"></div>';
@@ -468,7 +507,7 @@
       renderIntransit();
       buildColMenu();
       paintTable();
-      paintToday();
+      paintChips();
     }
 
     // ── head: gear + mode toggle + company selector ──
@@ -480,14 +519,6 @@
         '<label>Método de sync</label><select id="ip-nfMet"><option>MCP / API nativa</option><option>CAMT.053 / archivo banco</option><option>Plaid / agregador</option><option>CSV por correo (IMAP)</option><option>Extensión portal</option><option>Manual</option></select>' +
         '<button class="ip-btn" id="ip-addsrc">Agregar (demo)</button></div></div>';
     }
-    function modeToggle() {
-      function b(m, lbl) {
-        var dis = (m === 'real' && !IP_REAL_ENABLED);
-        return '<button data-mode="' + m + '"' + (state.mode === m ? ' class="active"' : '') +
-          (dis ? ' disabled title="Pendiente checklist de seguridad"' : '') + '>' + lbl + '</button>';
-      }
-      return '<div class="mode-toggle" id="ip-mode">' + b('empty', 'Vacío') + b('demo', 'Demo') + b('real', 'Real') + '</div>';
-    }
     function wireHead() {
       // cierra el popup de filtro por columna al hacer click fuera de él (una vez por render, con auto-limpieza al desmontar)
       document.addEventListener('click', function cfClose(ev) {
@@ -497,18 +528,12 @@
         closeColFilter();
       });
       var sn = q('#ip-syncnow'); if (sn) sn.addEventListener('click', syncNow);   // #4a (el botón #4b 'Autoconciliar' nace disabled — gate hasta mañana)
+      var rt = q('#ip-retry'); if (rt) rt.addEventListener('click', function () { state.error = null; render(); load(); });
       paintPendNote();   // A: repinta la nota de pendings si ya se cargó (persiste entre renders)
       var el = q('#ip-companies');
       if (el && window.FinCompanySelector) window.FinCompanySelector.mount(el, { onChange: function () {
-        if (state.mode === 'empty') return;
         if (state.mode === 'real') { load(); } else { renderSources(); paintTable(); }
       } });
-      qa('#ip-mode button').forEach(function (b) {
-        b.addEventListener('click', function () {
-          if (b.disabled) return;
-          window.FinState.setMode(MODULE_ID, b.getAttribute('data-mode'));
-        });
-      });
       var gear = q('#ip-gear'), setmenu = q('#ip-setmenu');
       if (gear && setmenu) {
         gear.addEventListener('click', function (e) { e.stopPropagation(); setmenu.classList.toggle('open'); });
@@ -528,7 +553,14 @@
       toast('Fuente <b>' + esc(nom) + '</b> agregada (demo) — configura credenciales para el primer sync');
     }
 
-    // ── fuentes colapsables ──
+    // ── fuentes: rejilla de cuadros compactos (v0.5.16) ──
+    // Antes: una franja a todo el ancho por fuente, bajo dos <h2> (MEX / USA). Con 3 fuentes ya
+    // era scroll; el roadmap contempla 9 (BBVA ×3, Payana, Monex ×2). Ahora: un solo encabezado y
+    // una rejilla auto-fill. El país baja a etiqueta dentro del cuadro.
+    // El monto sin conciliar se lee SIN abrir el cuadro — es el número por el que se entra al panel.
+    // Ganchos que NO se pueden perder (los usa código de fuera): .ip-countdown y .ip-lastsync
+    // (startCountdown), .ip-btnrun/.ip-btntxt/.spin (Sync Now), y los data-src/data-toggle/
+    // data-atender/data-demosync que cablea renderSources.
     function srcRow(s) {
       var chip = s.st === 'ok'
         ? '<span class="stchip ok">● SYNC OK · ' + esc(s.last) + '</span>'
@@ -539,28 +571,56 @@
         '<div class="synced"><span class="pulse"></span>' +
         '<span>Próximo sync en <b class="ip-countdown" style="font-family:var(--ip-mono)">—</b></span>' +
         '<span class="schChip" title="Horario de captura">' + esc(state.cron && state.cron.label || DEFAULT_CRON.label) + '</span></div>') : '';
+      // El botón "Sync Now" solo es REAL para la fuente main (Jeeves → /captura-jeeves/run).
+      // Para las demás, en modo Demo se deja el botón simulado; en modo Real NO se pinta ningún
+      // botón, porque su handler toastea un resultado inventado ("0 nuevas · 0 duplicadas") y
+      // eso sería mentirle al operador sobre una fuente de producción (Chase la sincroniza Odoo/Plaid).
       var btn = s.st === 'off' ? '' : (s.main
         ? '<button class="ip-btn ip-btnrun"><span class="spin"></span><span class="ip-btntxt">Sync Now</span></button>'
-        : '<button class="ip-btn" data-demosync="' + esc(s.id) + '">Sync Now</button>');
+        : (state.mode === 'demo'
+            ? '<button class="ip-btn" data-demosync="' + esc(s.id) + '">Sync Now</button>'
+            : '<div class="meta" style="opacity:.75">Sin sync manual: esta fuente la sincroniza Odoo.</div>'));
       var body = s.st === 'off'
-        ? '<div class="meta">Fuente no configurada — pendiente de credenciales / primer sync.</div>'
-        : '<div class="meta">Última captura: <b class="' + (s.main ? 'ip-lastsync' : '') + '">' + esc(s.last) + '</b> · schedule<br>' +
+        ? '<div class="sc-meta">Fuente no configurada — pendiente de credenciales / primer sync.</div>'
+        : '<div class="sc-meta">Método: <b>' + esc(s.met) + '</b><br>' +
+            'Última captura: <b class="' + (s.main ? 'ip-lastsync' : '') + '">' + esc(s.last) + '</b><br>' +
             'Movimientos hoy: <b>' + esc(s.movHoy) + '</b> · este mes: <b>' + esc(s.movMes) + '</b><br>' +
             'Último run: <b style="color:' + (s.st === 'ok' ? 'var(--ip-ok)' : 'var(--ip-bad)') + '">' + esc(s.run) + '</b>' +
-            (s.wd ? '<br><span style="color:var(--ip-bad);font-weight:600">⚠ ' + esc(s.wd) + '</span>' : '') + '</div>' +
+            (s.wd ? '<br><span style="color:var(--ip-bad);font-weight:600">⚠ ' + esc(s.wd) + '</span>' : '') +
+            (s.note ? '<br><span style="color:var(--steel)">' + esc(s.note) + '</span>' : '') + '</div>' +
           jeevesExtra +
-          '<div class="kpi"><div class="lbl">$ sin conciliar</div><div class="val">' + esc(s.kpi) + '</div>' + (s.note ? '<div class="note">' + esc(s.note) + '</div>' : '') + '</div>' +
+          (s.st === 'err' ? '<div class="sc-chiprow">' + chip + '</div>' : '') +
           btn;
-      return '<div class="src" data-src="' + esc(s.id) + '"><div class="srchead" data-toggle="' + esc(s.id) + '">' +
-        '<span class="chev">▶</span><span class="nm">' + esc(s.nm) + '</span><span class="jtag">' + esc(s.jt) + '</span>' +
-        chip + '<span class="sp">' + esc(s.met) + '</span></div><div class="srcbody">' + body + '</div></div>';
+      var cls = 'sc' + (s.st === 'err' ? ' err' : s.st === 'off' ? ' off' : '');
+      return '<div class="' + cls + '" data-src="' + esc(s.id) + '">' +
+        '<div class="sc-hit" data-toggle="' + esc(s.id) + '">' +
+          '<div class="sc-top"><span class="sc-dot"></span><span class="sc-nm" title="' + esc(s.nm) + '">' + esc(s.nm) + '</span>' +
+            '<span class="sc-flag">' + esc(s.pais || '—') + '</span></div>' +
+          // v0.5.16 — el protagonista es CONSUMOS POR CONCILIAR, no el neto.
+          // El neto sumaba residuales con signo: en Jeeves ~$2.99M de consumos se cancelaban
+          // contra ~$2.98M de fondeos y la tarjeta mostraba $4,621 — mil veces menos que el
+          // trabajo real. El neto sigue visible, pero abajo y con su nombre.
+          '<div class="sc-kpi">' + esc(s.kpi) + '</div>' +
+          '<div class="sc-kpil">' + esc(s.kpi_label || 'sin conciliar') + (s.kpi_n != null ? ' · ' + esc(s.kpi_n) + ' líneas' : '') + '</div>' +
+          (s.kpi_neto ? '<div class="sc-kpi2">neto con entradas <b>' + esc(s.kpi_neto) + '</b>' +
+             (s.kpi_n_entradas ? ' · ' + esc(s.kpi_n_entradas) + ' fondeos/devoluciones ' + esc(s.kpi_entradas) : '') + '</div>' : '') +
+          '<div class="sc-foot"><span class="sc-j">' + esc(String(s.jt || '').replace(/^journal\s*/i, 'j·')) + '</span>' +
+            '<span>' + esc(s.movMes) + ' este mes</span>' +
+            '<span class="sc-last">' + esc(s.last) + '</span></div>' +
+          '<span class="sc-chev">▶</span>' +
+        '</div>' +
+        '<div class="sc-body">' + body + '</div></div>';
     }
     function renderSources() {
-      var mex = q('#ip-srcMEX'), usa = q('#ip-srcUSA'); if (!mex || !usa) return;
+      var host = q('#ip-srcgrid'); if (!host) return;
       var cos = window.FinState.getCompanies();
-      var pick = function (pais) { return state.sources.filter(function (s) { return s.pais === pais && cos.indexOf(s.co) >= 0; }).map(srcRow).join(''); };
-      mex.innerHTML = pick('MEX') || '<div class="ip-empty" style="padding:14px">Sin fuentes para la empresa seleccionada.</div>';
-      usa.innerHTML = pick('USA') || '<div class="ip-empty" style="padding:14px">Sin fuentes para la empresa seleccionada.</div>';
+      // Una sola rejilla: el país ya no parte la sección en dos, viaja como etiqueta en el cuadro.
+      var vis = state.sources.filter(function (s) { return cos.indexOf(s.co) >= 0; });
+      host.innerHTML = vis.length
+        ? vis.map(srcRow).join('')
+        : '<div class="ip-empty" style="padding:14px;grid-column:1/-1">Sin fuentes para la empresa seleccionada.</div>';
+      // El clic abre/cierra el cuadro. Va sobre .sc-hit (la zona colapsada), NO sobre .sc entero:
+      // si fuera el contenedor, cualquier clic dentro del detalle abierto lo volvería a cerrar.
       qa('[data-toggle]').forEach(function (h) { h.addEventListener('click', function () { var el = q('[data-src="' + h.getAttribute('data-toggle') + '"]'); if (el) el.classList.toggle('open'); }); });
       qa('[data-atender]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); toast('Watchdog <b>' + esc(b.getAttribute('data-atender').toUpperCase()) + '</b>: reintentando sync y notificando responsable…'); }); });
       qa('[data-demosync]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); toast('Sync <b>' + esc(b.getAttribute('data-demosync').toUpperCase()) + '</b> terminado — 0 nuevas · 0 duplicadas'); }); });
@@ -577,22 +637,47 @@
       });
     }
 
+    // v0.5.15 — universo de journals DERIVADO, nunca escrito a mano.
+    // Antes había dos listas hardcodeadas (filtro y semáforo) y una apuntaba al journal 73,
+    // que tiene cero líneas: la UI prometía un Chase que no existía. Orden de preferencia:
+    //   1) por_journal del server (real)  2) labels distintos de las filas cargadas (demo/fallback).
+    // Si un journal no está en ninguno de los dos, no se pinta — no se inventa.
+    function journalList() {
+      if (state.porJournal && state.porJournal.length) {
+        return state.porJournal.map(function (p) {
+          return { label: p.label, id: p.journal, nombre: p.nombre || p.label };
+        });
+      }
+      var vistos = {}, out = [];
+      (state.allRows || []).forEach(function (r) {
+        if (r && r.j && !vistos[r.j]) { vistos[r.j] = true; out.push({ label: r.j, id: null, nombre: r.j }); }
+      });
+      return out.sort(function (a, b) { return a.label.localeCompare(b.label); });
+    }
+
     // ── filtros + menú de columnas ──
     function filtersHtml() {
       var f = state.filters;
+      var opts = journalList().map(function (j) {
+        return '<option value="' + esc(j.label) + '"' + (f.journal === j.label ? ' selected' : '') + '>' +
+          esc(j.label) + (j.id ? ' (' + j.id + ')' : '') + '</option>';
+      }).join('');
       return '<div class="filters">' +
-        '<select id="ip-fJournal"><option value="">Todos los journals</option>' +
-          '<option value="Jeeves"' + (f.journal === 'Jeeves' ? ' selected' : '') + '>Jeeves (61)</option>' +
-          '<option value="Chase"' + (f.journal === 'Chase' ? ' selected' : '') + '>Chase</option>' +
-          '<option value="BBVA"' + (f.journal === 'BBVA' ? ' selected' : '') + '>BBVA General</option></select>' +
+        '<select id="ip-fJournal"><option value="">Todos los journals</option>' + opts + '</select>' +
         '<input type="date" id="ip-fFrom" value="' + esc(f.from) + '">' +
         '<input type="date" id="ip-fTo" value="' + esc(f.to) + '">' +
-        '<select id="ip-fEstado"><option value="">Estado con Odoo: todos</option>' +
-          '<option value="liquidado"' + (f.estado === 'liquidado' ? ' selected' : '') + '>Conciliado (Liquidado)</option>' +
-          '<option value="transito"' + (f.estado === 'transito' ? ' selected' : '') + '>Conciliado (En tránsito)</option>' +
-          '<option value="sinconciliar"' + (f.estado === 'sinconciliar' ? ' selected' : '') + '>Sin conciliar</option>' +
-          '<option value="fondeo"' + (f.estado === 'fondeo' ? ' selected' : '') + '>Fondeo</option>' +
-          '<option value="devolucion"' + (f.estado === 'devolucion' ? ' selected' : '') + '>Devolución</option></select>' +
+        // EJE B (conciliación) en el dropdown; el EJE A (tipo) va en su propio select al lado.
+        '<select id="ip-fEstado"><option value="">Conciliación: todo</option>' +
+          '<option value="conciliada"' + (f.estado === 'conciliada' ? ' selected' : '') + '>Conciliada</option>' +
+          '<option value="parcial"' + (f.estado === 'parcial' ? ' selected' : '') + '>Conciliada parcial</option>' +
+          '<option value="sinconciliar"' + (f.estado === 'sinconciliar' ? ' selected' : '') + '>Sin conciliar (todas)</option>' +
+          '<option value="condoc"' + (f.estado === 'condoc' ? ' selected' : '') + '>Con documento</option>' +
+          '<option value="sindoc"' + (f.estado === 'sindoc' ? ' selected' : '') + '>Sin documento</option>' +
+          '<option value="noevaluada"' + (f.estado === 'noevaluada' ? ' selected' : '') + '>No evaluada</option></select>' +
+        '<select id="ip-fTipo"><option value="">Tipo: todos</option>' +
+          ['consumo', 'fondeo', 'devolucion', 'traspaso', 'ajuste', 'abono'].map(function (k) {
+            return '<option value="' + k + '"' + (f.tipo === k ? ' selected' : '') + '>' + TIPO_LABEL[k] + '</option>';
+          }).join('') + '</select>' +
         '<input class="grow" type="text" id="ip-fSearch" placeholder="Buscar en TODAS las columnas… (comercio, PO, folio, comprador, analítica)" value="' + esc(f.search) + '">' +
         '<button class="xlsbtn" id="ip-btnxls" title="Descarga las filas seleccionadas con las columnas visibles">⬇ Excel <span id="ip-xlscount"></span></button>' +
         '<select id="ip-fPageSize" title="Filas por página">' +
@@ -607,13 +692,14 @@
       var reload = function () {
         state.filters.journal = q('#ip-fJournal').value;
         state.filters.estado = q('#ip-fEstado').value;
+        state.filters.tipo = q('#ip-fTipo') ? q('#ip-fTipo').value : '';
         state.filters.from = q('#ip-fFrom').value;
         state.filters.to = q('#ip-fTo').value;
         state.filters.search = q('#ip-fSearch').value;
         state.page = 1;
         if (state.mode === 'real') { load(); } else { paintTable(); }
       };
-      ['#ip-fJournal', '#ip-fEstado', '#ip-fFrom', '#ip-fTo'].forEach(function (s) { var el = q(s); if (el) el.addEventListener('change', reload); });
+      ['#ip-fJournal', '#ip-fEstado', '#ip-fTipo', '#ip-fFrom', '#ip-fTo'].forEach(function (s) { var el = q(s); if (el) el.addEventListener('change', reload); });
       var srch = q('#ip-fSearch'); if (srch) srch.addEventListener('input', function () { state.filters.search = srch.value; state.page = 1; paintTable(); });
       var ps = q('#ip-fPageSize'); if (ps) ps.addEventListener('change', function () { state.pageSize = +ps.value; state.page = 1; paintTable(); });
       var cb = q('#ip-colbtn'), cm = q('#ip-colmenu');
@@ -642,15 +728,48 @@
     // las devoluciones ([DEVOLUCIÓN ****XXXX]) también son positivas y no deben caer en Fondeo (dinero mal clasificado en silencio).
     function isFondeo(r) { return /FONDEO/i.test(String(r.ref || '')); }
     function isDevolucion(r) { return /DEVOLUCI/i.test(String(r.ref || '')); }
-    // Taxonomía de Esteban: 5 estados de PRIMER NIVEL. El detalle del cerebro (candidato / sin-doc / en vuelo) es
-    // PISTA secundaria en la celda, NO un estado. 'sinconciliar' absorbe pendiente-con-sugerencia + sin-documento + evaluando + neutro.
-    function rowState(r) {
-      if (r.ok) return 'liquidado';                                  // CONCILIADO (Liquidado) — is_reconciled
+
+    // ══ TAXONOMÍA v0.5.16 — DOS EJES INDEPENDIENTES ══
+    // Antes, un solo "estado" de 5 valores mezclaba dos cosas distintas: Fondeo y Devolución no son
+    // estados de conciliación, son TIPOS de movimiento (y con signo opuesto al del consumo).
+    // El eje "estado en el banco" NO existe: captura-jeeves solo ingesta settled y Plaid no expone
+    // pendings → toda fila de esta tabla es liquidada por construcción. Un eje de un solo valor
+    // posible confunde más de lo que informa; los pendings viven en la nota de "En tránsito".
+
+    // ── EJE A · TIPO (qué es el movimiento) ──
+    // Debe ser idéntico al tipoMov() de fin/captura-status y al tipoDe() de captura-transacciones.
+    // Chase llega sin etiquetas (narrativa cruda de Plaid); solo el traspaso entre cuentas propias
+    // es reconocible por texto, y sus dos lados casan al centavo (122 −9,419.20 / 123 +9,419.20).
+    // Un positivo sin etiqueta NO se declara devolución: eso sería inferir. Va a 'abono'.
+    function rowTipo(r) {
+      var ref = String(r.ref || '');
       if (isFondeo(r)) return 'fondeo';
       if (isDevolucion(r)) return 'devolucion';
-      if (state.preconc && state.preconc[r.id]) return 'transito';   // CONCILIADO (En tránsito) — bill asignada, no cerrada (Pieza #3/#4). Reemplaza 'preconc'.
-      return 'sinconciliar';                                         // TODO lo demás
+      if (/^\[AJUSTE/i.test(ref)) return 'ajuste';
+      if (/^Payment to Chase card/i.test(ref) || /^Payment Thank You/i.test(ref)) return 'traspaso';
+      return (Number(r.amt) || 0) < 0 ? 'consumo' : 'abono';
     }
+    var TIPO_LABEL = { consumo: 'Consumo', fondeo: 'Fondeo', devolucion: 'Devolución',
+                       traspaso: 'Traspaso interno', ajuste: 'Ajuste', abono: 'Abono' };
+
+    // ── EJE B · CONCILIACIÓN (qué falta hacer) ──
+    // 'noevaluada' es un valor REAL, no un hueco: el motor tiene journal_id 61 fijo, así que las
+    // 473 líneas de Chase nunca se evaluaron. Pintarlas "sin documento" afirmaría que se buscó y
+    // no había — no se buscó. Es la diferencia entre "no hay factura" y "no sabemos".
+    function enAlcanceMotor(r) {
+      var p = (state.porJournal || []).filter(function (x) { return x.journal === r._jid; })[0];
+      return p ? p.en_motor !== false : true;   // sin info del server, no se acusa de no-evaluada
+    }
+    function rowConc(r) {
+      if (r.ok) return (Number(r.res) || 0) === 0 ? 'conciliada' : 'parcial';
+      if (!enAlcanceMotor(r)) return 'noevaluada';
+      var s = state.sugg[r._id];
+      if (s && s.cand && s.cand.candidatos && s.cand.candidatos.length) return 'condoc';
+      if (s && s.cand) return 'sindoc';
+      return 'pendiente';                        // batch en vuelo — transitorio, no es filtro
+    }
+    // Compat: rowState sigue existiendo para el filtro por columna y el export, mapeado al eje B.
+    function rowState(r) { return rowConc(r); }
     // Pista secundaria SOLO para 'sinconciliar' (no cambia el estado ni el color): candidato del cerebro, sin-doc, o nada.
     function suggHint(r) {
       var s = state.sugg[r._id];
@@ -659,27 +778,50 @@
       return { kind: 'plain' };                       // en vuelo o sin evaluar → 'Sin conciliar' a secas (sin 'evaluando' como estado)
     }
     function stateCell(r) {
-      var st = rowState(r);
-      if (st === 'liquidado') return '<span class="ip-est liq" title="Conciliado y liquidado (is_reconciled)">✓ Conciliado (Liquidado)</span>';
-      if (st === 'transito')  { var pc = state.preconc[r.id] || {}; return '<span class="ip-est tra" title="Bill asignada, aún no cerrada formalmente">◐ Conciliado (En tránsito)</span>' + (pc.bill_name ? ' <span class="ip-est-bill">' + esc(pc.bill_name) + '</span>' : ''); }
-      if (st === 'fondeo')    return '<span class="ip-est fon">◇ Fondeo</span>';
-      if (st === 'devolucion') return '<span class="ip-est dev-ret">↩ Devolución</span>';
-      // sinconciliar + pista del cerebro (no es estado)
-      var h = suggHint(r);
-      if (h.kind === 'cand') { var c = h.cand || {}; return '<span class="ip-est sinc">○ Sin conciliar</span> <span class="ip-est-bill" title="mejor candidato del cerebro (pista, no estado)">' + esc(c.bill_name || '') + ' · ' + Math.round((c.score || 0) * 100) + '</span>'; }
-      if (h.kind === 'sindoc') return '<span class="ip-est sinc">○ Sin conciliar</span> <a class="ip-est-buscar" data-buscar="' + r._id + '">buscar bill</a>';
-      return '<span class="ip-est sinc">○ Sin conciliar</span>';
+      var st = rowConc(r);
+      if (st === 'conciliada') return '<span class="ip-est liq" title="Conciliada: tiene contrapartida y residual $0">✓ Conciliada</span>';
+      if (st === 'parcial')    return '<span class="ip-est tra" title="Tiene contrapartida pero queda residual sin cerrar">◐ Conciliada parcial</span> <span class="ip-est-bill">resta ' + money(Math.abs(Number(r.res) || 0)) + '</span>';
+      if (st === 'noevaluada') return '<span class="ip-est nev" title="Fuera del alcance del motor de conciliación (journal_id 61 fijo). No es que no haya factura: no se buscó.">◌ No evaluada</span>';
+      if (st === 'condoc')     { var c = (suggHint(r).cand) || {}; return '<span class="ip-est doc" title="El motor encontró factura candidata">◆ Con documento</span> <span class="ip-est-bill">' + esc(c.bill_name || '') + ' · ' + Math.round((c.score || 0) * 100) + '</span>'; }
+      if (st === 'sindoc')     return '<span class="ip-est sinc" title="El motor evaluó y no encontró factura">○ Sin documento</span> <a class="ip-est-buscar" data-buscar="' + r._id + '">buscar bill</a>';
+      return '<span class="ip-est sinc">○ Sin conciliar</span>';   // 'pendiente' — batch en vuelo
+    }
+    // hoy en CST (UTC−6 fijo, sin DST) — mismo criterio que el server
+    // (declaraciones de función: se izan, por eso state.filters puede llamarlas en su init)
+    function hoyCst() { return new Date(Date.now() - 6 * 3600 * 1000).toISOString().slice(0, 10); }
+    // Inicio del mes ANTERIOR: ventana que siempre incluye el mes en curso completo y el previo,
+    // sin caducar nunca. Acota el volumen (el acumulador de páginas topa en 6,000 filas).
+    function defaultFrom() {
+      var h = hoyCst(), y = +h.slice(0, 4), m = +h.slice(5, 7) - 1;   // mes anterior, 1-based → -1
+      if (m < 1) { m = 12; y -= 1; }
+      return y + '-' + (m < 10 ? '0' : '') + m + '-01';
+    }
+    function diasDesde(ymd) {
+      if (!ymd) return 9999;
+      return Math.round((new Date(hoyCst() + 'T00:00:00Z').getTime() - new Date(ymd + 'T00:00:00Z').getTime()) / 86400000);
     }
     function matchEstado(f, t) {
-      var st = rowState(t);
+      var st = rowConc(t);
       switch (f) {
-        case 'liquidado': case 'ok': return st === 'liquidado';          // 'ok' = compat panel Hoy
-        case 'transito':  return st === 'transito';
-        case 'fondeo':    return st === 'fondeo';
-        case 'devolucion': return st === 'devolucion';
-        case 'sinconciliar': case 'pend': return st === 'sinconciliar';  // 'pend' = compat panel Hoy
+        case 'conciliada': case 'liquidado': case 'ok': return st === 'conciliada';   // alias viejos = compat
+        case 'parcial':     return st === 'parcial';
+        case 'condoc':      return st === 'condoc';
+        case 'sindoc':      return st === 'sindoc';
+        case 'noevaluada':  return st === 'noevaluada';
+        // familia: todo lo que sigue pendiente de conciliar, sea cual sea el motivo
+        case 'sinconciliar': case 'pend': return !t.ok;
+        case 'conchoy':     return t.ok === true && t.wd === hoyCst();   // requiere write_date del server
         default: return true;
       }
+    }
+    function matchEdad(f, t) {
+      if (!f) return true;
+      if (t.ok) return true;                       // la antigüedad solo califica lo pendiente
+      var d = diasDesde(t.d);
+      if (f === 'hoy') return d <= 0;
+      if (f === 'd1_3') return d >= 1 && d <= 3;
+      if (f === 'd3plus') return d > 3;
+      return true;
     }
     // Evalúa sugerencias de las filas cargadas → puebla state.sugg para pintar el estado (real: batch al endpoint; demo: del mock).
     function evalSugg() {
@@ -998,8 +1140,13 @@
         // baja el panel Hoy: −1 pendiente, +1 conciliada manual (botón)
         if (state.today) {
           if (state.today.conciliable_pendiente) state.today.conciliable_pendiente.total = Math.max(0, (state.today.conciliable_pendiente.total || 0) - 1);
-          if (state.today.conciliadas_hoy) { state.today.conciliadas_hoy.boton = (state.today.conciliadas_hoy.boton || 0) + 1; state.today.conciliadas_hoy.total = (state.today.conciliadas_hoy.total || 0) + 1; }
-          paintToday();
+          if (state.today.conciliadas_hoy) {
+            var _ch = state.today.conciliadas_hoy;
+            _ch.boton = (_ch.boton || 0) + 1;
+            if (_ch.manual != null) _ch.manual = _ch.manual + 1;   // v0.5.15: la vista pinta `manual`
+            _ch.total = (_ch.total || 0) + 1;
+          }
+          paintChips();
         }
         paintTable();
         toast('Conciliada' + (r.bill_name ? ' · <b>' + esc(r.bill_name) + '</b>' : ''));
@@ -1033,26 +1180,29 @@
     function barc(c) { return c === 'g' ? 'var(--ip-ok)' : c === 'y' ? 'var(--ip-warn)' : 'var(--ip-bad)'; }
     function paintSem() {
       var host = q('#ip-semrows'); if (!host) return;
-      var journals = [{ n: 'Jeeves', id: '61' }, { n: 'Chase', id: '73' }, { n: 'BBVA', id: '—' }];
+      var journals = journalList();   // v0.5.15: derivado del server, ya no una lista escrita a mano
       var base = state.allRows;   // el semáforo admin evalúa todo el universo cargado, no la vista filtrada
+      if (!journals.length) { host.innerHTML = '<div class="ip-empty" style="padding:14px">Sin journals que evaluar.</div>'; return; }
       var data = journals.map(function (x) {
-        var r = base.filter(function (t) { return t.j === x.n; });
+        var r = base.filter(function (t) { return t.j === x.label; });
         var tot = r.length, conc = r.filter(function (t) { return t.ok; }).length, res = r.reduce(function (a, t) { return a + (t.res || 0); }, 0);
-        return { n: x.n, tot: tot, conc: conc, res: res, pct: tot ? Math.round(conc / tot * 100) : null };
+        return { n: x.label, tot: tot, conc: conc, res: res, pct: tot ? Math.round(conc / tot * 100) : null };
       });
       var all = { tot: base.length, conc: base.filter(function (t) { return t.ok; }).length, res: base.reduce(function (a, t) { return a + (t.res || 0); }, 0) };
       all.pct = all.tot ? Math.round(all.conc / all.tot * 100) : null;
 
-      host.innerHTML = data.map(function (d) {
+      // v0.5.16: celdas compactas en rejilla. Mismos datos y mismos umbrales que antes —
+      // solo cambia la forma: nombre+% arriba, barra fina, conteo+residual abajo.
+      function cell(d, isTotal) {
         var c = semColor(d.pct, d.res);
-        return '<div class="semrow"><span class="jn">' + esc(d.n) + (d.pct === null ? '' : ' <span style="color:#68788a;font-family:var(--ip-mono);font-size:11px">(' + d.conc + '/' + d.tot + ')</span>') + '</span>' +
+        return '<div class="semcell' + (isTotal ? ' total' : '') + '">' +
+          '<div class="top"><span class="jn">' + (isTotal ? '<span class="light ' + c + '"></span> TODOS' : esc(d.n)) + '</span>' +
+            '<span class="pct" style="color:' + barc(c) + '">' + (d.pct === null ? '—' : d.pct + '%') + '</span></div>' +
           '<div class="bar"><i style="width:' + (d.pct || 0) + '%;background:' + barc(c) + '"></i></div>' +
-          '<span class="pct">' + (d.pct === null ? '—' : d.pct + '%') + '</span>' +
-          '<span class="res">' + (d.pct === null ? '' : money(d.res)) + '</span></div>';
-      }).join('') +
-        '<div class="semrow total"><span class="jn" style="display:flex;align-items:center;gap:10px"><span class="light ' + semColor(all.pct, all.res) + '"></span> TODOS</span>' +
-        '<div class="bar"><i style="width:' + (all.pct || 0) + '%;background:' + barc(semColor(all.pct, all.res)) + '"></i></div>' +
-        '<span class="pct">' + (all.pct === null ? '—' : all.pct + '%') + '</span><span class="res">' + money(all.res) + '</span></div>';
+          '<div class="foot"><span>' + (d.pct === null ? '—' : d.conc + '/' + d.tot) + '</span>' +
+            '<span class="res">' + (d.pct === null ? '' : money(d.res)) + '</span></div></div>';
+      }
+      host.innerHTML = data.map(function (d) { return cell(d, false); }).join('') + cell(all, true);
     }
 
     // ── corridas ──
@@ -1067,42 +1217,72 @@
       }).join('');
     }
 
-    // ── panel "Hoy" (3 cubetas) — Etapa C ──
-    function syncEstadoSelect() { var el = q('#ip-fEstado'); if (el) el.value = state.filters.estado || ''; }
-    function paintToday() {
-      var host = q('#ip-today'); if (!host) return;
-      var td = state.today;
-      if (!td) { host.innerHTML = '<div class="ip-empty" style="padding:14px">Panel del día no disponible.</div>'; return; }
-      var et = td.en_transito || {}, cp = td.conciliable_pendiente || {}, ch = td.conciliadas_hoy || {};
-      var etDisp = et.disponible !== false;
-      var estado = state.filters.estado;
-      var c1 = '<div class="ip-tcard blue" data-today="transito">' +
-        '<div class="ip-tk">🔵 En tránsito</div>' +
-        (etDisp
-          ? '<div class="ip-tn">' + money(et.suma) + ' <span class="ip-tnc">(' + (et.count || 0) + ')</span></div>'
-          : '<div class="ip-tn na">no disponible · reintenta</div>') +
-        '<div class="ip-tsub">pendings, no cuentan</div></div>';
-      var c2 = '<div class="ip-tcard red' + (estado === 'sinconciliar' ? ' active' : '') + '" data-today="sinconciliar">' +
-        '<div class="ip-tk">🔴 Sin conciliar</div>' +
-        '<div class="ip-tn">' + (cp.total || 0) + ' <span class="ip-tnc">líneas</span></div>' +
-        '<div class="ip-tsub">hoy ' + (cp.hoy || 0) + ' · 1-3d ' + (cp.d1_3 || 0) + ' · +3d ' + (cp.d3plus || 0) + ' · ' + money(cp.suma) + '</div></div>';
-      var c3 = '<div class="ip-tcard green' + (estado === 'liquidado' ? ' active' : '') + '" data-today="liquidado">' +
-        '<div class="ip-tk">🟢 Conciliadas hoy</div>' +
-        '<div class="ip-tn">' + (ch.total || 0) + '</div>' +
-        '<div class="ip-tsub">auto ' + (ch.auto || 0) + ' · manual ' + ((ch.boton || 0) + (ch.widget || 0)) + '</div></div>';
-      host.innerHTML = c1 + c2 + c3;
-      qa('#ip-today .ip-tcard').forEach(function (card) {
-        card.addEventListener('click', function () {
-          var k = card.getAttribute('data-today');
-          if (k === 'sinconciliar' || k === 'liquidado') {
-            var target = k;
-            state.filters.estado = (state.filters.estado === target) ? '' : target;   // toggle
-            state.page = 1; syncEstadoSelect(); paintTable(); paintToday();
-          } else {
-            var s = q('#ip-intransit');
-            if (s && s.scrollIntoView) s.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            else toast('Sección <b>En tránsito</b> abajo');
-          }
+    // ── chips de filtrado rápido (v0.5.16) — absorben el panel "Hoy" ──
+    // El panel tenía 3 cubetas; su valor real era filtrar la tabla con un clic, y eso pertenece a
+    // la tabla. Los conteos se calculan sobre las MISMAS filas que la tabla va a dibujar (mismo
+    // filtro de empresa/journal/fechas/búsqueda, omitiendo solo el eje que el chip representa),
+    // para que el número del chip y el de la tabla no puedan discrepar.
+    // La cubeta azul (En tránsito) NO se vuelve chip: los pendings no son filas de esta tabla —
+    // su nota vive junto al botón de captura y su detalle en el acordeón de diagnóstico.
+    function syncEstadoSelect() {
+      var e = q('#ip-fEstado'); if (e) e.value = state.filters.estado || '';
+      var t = q('#ip-fTipo');   if (t) t.value = state.filters.tipo || '';
+    }
+    function setChip(k) {
+      state.filters.estado = (state.filters.estado === k) ? '' : k;   // toggle
+      if (state.filters.estado !== 'sinconciliar' && !CHIP_PEND[state.filters.estado]) state.filters.edad = '';
+      state.page = 1; syncEstadoSelect(); paintTable(); paintChips();
+    }
+    var CHIP_PEND = { sinconciliar: 1, condoc: 1, sindoc: 1, noevaluada: 1 };
+    function paintChips() {
+      var host = q('#ip-chips'); if (!host) return;
+      var uni = visibleRows({ ignoreEstado: true });        // universo sin el eje de conciliación
+      var n = { todo: uni.length, sinconciliar: 0, condoc: 0, sindoc: 0, noevaluada: 0, conchoy: 0 };
+      var hoy = hoyCst();
+      uni.forEach(function (t) {
+        if (!t.ok) {
+          n.sinconciliar++;
+          var c = rowConc(t);
+          if (c === 'condoc') n.condoc++; else if (c === 'sindoc') n.sindoc++; else if (c === 'noevaluada') n.noevaluada++;
+        } else if (t.wd === hoy) n.conchoy++;
+      });
+      var act = state.filters.estado || '';
+      function chip(k, lbl, cls) {
+        return '<button class="ip-chip ' + (cls || '') + (act === k ? ' on' : '') + '" data-chip="' + k + '">' +
+               esc(lbl) + ' <span class="ip-chipn">' + (k === '' ? n.todo : (n[k] || 0)) + '</span></button>';
+      }
+      var html = chip('', 'Todo') +
+                 chip('sinconciliar', 'Sin conciliar', 'red') +
+                 chip('condoc', 'Con documento', 'amber') +
+                 chip('sindoc', 'Sin documento', 'red') +
+                 chip('noevaluada', 'No evaluada', 'gray') +
+                 chip('conchoy', 'Conciliadas hoy', 'green');
+      // sub-chips de antigüedad: solo tienen sentido sobre lo pendiente, y solo se muestran
+      // cuando hay un chip de esa familia activo (si no, son ruido permanente).
+      if (CHIP_PEND[act]) {
+        var e = state.filters.edad || '';
+        var cnt = { hoy: 0, d1_3: 0, d3plus: 0 };
+        uni.forEach(function (t) {
+          if (t.ok || !matchEstado(act, t)) return;
+          var d = diasDesde(t.d);
+          if (d <= 0) cnt.hoy++; else if (d <= 3) cnt.d1_3++; else cnt.d3plus++;
+        });
+        html += '<span class="ip-chipsep">antigüedad</span>' +
+          ['hoy:hoy', 'd1_3:1–3 días', 'd3plus:+3 días'].map(function (p) {
+            var k = p.split(':')[0], lbl = p.split(':')[1];
+            return '<button class="ip-chip sm' + (e === k ? ' on' : '') + '" data-edad="' + k + '">' +
+                   lbl + ' <span class="ip-chipn">' + cnt[k] + '</span></button>';
+          }).join('');
+      }
+      host.innerHTML = html;
+      qa('#ip-chips [data-chip]').forEach(function (b) {
+        b.addEventListener('click', function () { setChip(b.getAttribute('data-chip')); });
+      });
+      qa('#ip-chips [data-edad]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var k = b.getAttribute('data-edad');
+          state.filters.edad = (state.filters.edad === k) ? '' : k;
+          state.page = 1; paintTable(); paintChips();
         });
       });
     }
