@@ -436,3 +436,137 @@ error ni su mantenimiento. La geometría es correcta; **el volumen no existe tod
 **Cuándo reconsiderarlo:** cuando la 285 tenga volumen sostenido (≫22 bills abiertos) y el rezago de
 captura de bills se mida y se estabilice. El número a vigilar es simplemente **cuántos bills abiertos
 tiene la 285**; hoy son 22.
+
+---
+
+## 13. Línea de corte y método nuevo — SPEC PARA CONSTRUIR (2026-08-13)
+
+> Aprobado. **No construido todavía.** Es el punto de arranque de la próxima sesión: trae el diseño
+> final y las tres correcciones que lo moldearon, para que no se re-deriven.
+
+### La línea de corte: **2026-07-24**, por `date` de la línea bancaria
+
+No es criterio, es un hecho registrado: **el último `Manual: BILL` es del 2026-07-23** y desde
+entonces hay cero. Y el campo es `date` de la línea bancaria porque es el único de los tres
+candidatos que **no se mueve** — el bill puede crearse semanas después, la PO confirmarse antes.
+
+### Las dos métricas, que NUNCA se suman
+
+```
+A · CUMPLIMIENTO   % de lineas POSTERIORES al corte que estan conciliadas   ->  tiende a 100  arriba
+B · DEUDA          lineas + bills ANTERIORES al corte, pendientes           ->  baja a 0      abajo
+```
+
+Punto de partida medido el 2026-08-13: **A = 22.6%** (26 de 115) · **B ≈ 1,840 líneas + 79 bills**.
+
+Mientras compartan un solo contador ("1,886 pendientes"), un mes bueno del proceso nuevo queda
+invisible bajo la deuda vieja. Por eso van con **flechas de dirección opuesta** y sin totalizar.
+
+### Las cuatro piezas
+
+1. **`FECHA_CORTE = '2026-07-24'`** como constante en el `Code - config` de `fin/captura-status`,
+   con A y B derivadas de ahí. **Una sola definición**, no tres hardcodeos.
+2. **Bandera + bloqueo por fecha.** Toda línea anterior al corte se marca como *"período del método
+   anterior"* y su botón `Conciliar` nace deshabilitado.
+3. **Override explícito** con su razón visible. Reglas abajo.
+4. **Los dos marcadores** en el front, separados y con flechas opuestas.
+
+**El guard va en el server** (`fin/captura-conciliar`), no solo en el front: un bloqueo que solo vive
+en la UI se salta con una llamada directa al webhook.
+
+### Reglas del override (decididas 2026-08-13)
+
+- **Deja TRAZA obligatoria**: quién, cuándo, qué línea, contra qué bill. Si alguien concilia deuda
+  vieja por error, tiene que poder encontrarse después. Marcador al chatter, estilo `[[CONCFTS]]`.
+- **El motor automático NUNCA lo usa.** Solo el humano, y solo deliberadamente.
+  `captura-concilia-auto` debe excluir todo lo anterior al corte, sin excepción.
+- **No es un muro, es fricción con motivo.** Eduardo SÍ va a querer conciliar deuda vieja una vez
+  verificada; bloquear sin salida volvería imposible bajar las ~1,840 líneas.
+
+Mensaje del bloqueo: *"Cargo del período en que se marcaba PAID manual. Puede estar ya en gasto —
+verificar antes de conciliar, o duplicarás el gasto del proyecto."*
+
+---
+
+## 14. Tres correcciones que moldearon el diseño — NO re-proponer
+
+### 14.1 · El PAID manual y la cuenta 223: confirmado
+
+```
+223 = 102.01.007 "Jeeves Tarjeta Credito" (asset_cash) — la cuenta del journal 61
+
+8,690 apuntes posteados en la 223:
+   7,333  vienen del extracto  (statement_line_id poblado)
+   1,357  NO vienen del extracto  ->  saldo +$4,932,355.31
+          ejemplo: BNK6/2026/02423 (BILL3095) · "Manual: BILL3095" · -1,115 · MATERIALES LA ECONOMIA
+```
+
+El pago manual acredita la 223. La línea bancaria capturada **también** acredita la 223. Dos
+asientos, un hecho económico.
+
+> **El método nuevo NO automatiza el PAID: lo REEMPLAZA.** Conciliar la línea contra el bill cierra
+> el bill y consume la línea en un solo asiento. Marcar PAID *y además* conciliar es lo que duplica.
+
+### 14.2 · La bandera "el bill ya tiene pago viejo" habría sido un NO-OP
+
+```
+cuenta 17, bills 2026:  972 conciliados (cerrados)  ·  144 abiertos
+```
+
+Un `Manual: BILL` concilia contra el apunte por pagar, el bill queda **cerrado**, `reconciled=true`,
+y **el motor lo excluye del pool** (filtra `reconciled=false`).
+
+**Ningún bill candidato puede tener pago por el método viejo.** Flaggear el bill nunca se habría
+disparado, dando sensación falsa de protección. **El riesgo vive en la LÍNEA, no en el bill**, y el
+discriminador correcto es la **fecha**: los 1,357 asientos manuales son todos anteriores al corte.
+
+### 14.3 · Las transitivas NO se extienden quitando un filtro
+
+El nodo `Code - transitivas conciliadas` resuelve así:
+
+```
+linea bancaria -> su move -> apunte en cuenta 17 -> full_reconcile_id
+              -> otros apuntes con ese full_reconcile_id -> el bill
+```
+
+**Toda la cadena cuelga de `full_reconcile_id`, que solo existe si la línea YA está conciliada.**
+Quitar el filtro `SOLO is_reconciled` devuelve vacío para las no conciliadas.
+
+Para una línea NO conciliada solo existe un **candidato** del matcher. Cuando se construya el
+checklist debe nacer distinguiendo en pantalla **bill CONFIRMADO** (vía `full_reconcile_id`) de
+**bill CANDIDATO** (del matcher). **Nunca bajo el mismo ●.** Costo real ~3 h, no 1 h.
+
+---
+
+## 15. La matriz de las 4 condiciones — y qué decirle al equipo
+
+Líneas de gasto de bills de proveedor, company 1 (todas en la cuenta 32 · 601.84.01):
+
+| Condición | Últimos 3 meses | Agosto (post-corte) |
+|---|---|---|
+| **PO vinculada** (`purchase_line_id`) | 902/906 · **99.6%** | 111/111 · **100%** |
+| **Analítica poblada** | 906/906 · **100%** | 111/111 · **100%** |
+| Analítica **compuesta** | **0%** | **0%** |
+| **Bill confirmado** | 100% | 100% |
+| **Conciliado** | — | **22.6%** |
+
+> **El equipo no está haciendo nada mal en los tres primeros pasos. El único roto es el cuarto — y
+> es exactamente el que el método nuevo reemplaza.**
+>
+> **Capacitación de Eduardo: el mensaje NO es "hagan más". Es "dejen de marcar PAID — nosotros
+> cerramos el bill con la conciliación".**
+
+**Hallazgo de paso (Frente A, no de esta sesión):** la analítica está poblada al 100% pero
+**separada** al 100% — `{"1176":100,"3083":100}` en vez de `{"3083,1176":100}`. Es **R2** en vivo: el
+gasto se ve por proyecto en el panel nativo pero es **invisible al budget de 2 ejes**.
+
+---
+
+## 16. Dos preguntas abiertas, sin construir
+
+- **El hueco de mayo.** Los `Manual: BILL` van 106 · 84 · 108 · 92 · **1** · 142 · 122 · 0 por mes
+  (ene a ago). Mayo tiene **un solo asiento** entre meses de ~100, y coincide con que mayo tenga 13
+  bills abiertos mientras **abril tiene cero**. **Preguntarle a Gera qué pasó.**
+- **601.84.01 al 100%.** Desde junio, las **817** líneas de gasto de bills de company 1 caen en una
+  sola cuenta: `601.84.01 Otros gastos generales`, $2,879,237.16. **El P&L por naturaleza no
+  distingue nada.** Decisión contable, solo reportado.
