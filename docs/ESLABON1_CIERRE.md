@@ -1,5 +1,5 @@
 # Eslabón 1 — cierre: integridad de la extracción settled
-**Documento vivo.** Estado al 2026-08-13 (post-barrido). Fuente de verdad = Odoo, no el log de n8n.
+**Documento CERRADO.** Eslabón 1 cerrado el 2026-08-14, confirmado por el watchdog. Fuente de verdad = Odoo, no el log de n8n.
 
 Cadena de 5: **extracción** → motor jala → auto-concilia → concilia manual → escribe a Odoo.
 Este doc cubre el eslabón 1. Diagnóstico previo en [`ESLABON1_GATE_A.md`](ESLABON1_GATE_A.md); spec de la ventana en [`ESLABON1_2.1_SPEC_VENTANA.md`](ESLABON1_2.1_SPEC_VENTANA.md).
@@ -9,7 +9,7 @@ Este doc cubre el eslabón 1. Diagnóstico previo en [`ESLABON1_GATE_A.md`](ESLA
 | 2.1 Ventana con ancla absoluta | ✅ **VALIDADO** |
 | 2.2 Conteo honesto de rechazos | ✅ **VALIDADO** (2026-08-13, corrida con `intentadas: 7`) |
 | 2.3 Hash de dedup v2 (llave dual) | ✅ **VALIDADO** |
-| 2.4 Barrido de recuperación 2026 | ✅ **EJECUTADO** · 17 recuperadas, −$14,422.66 · pendiente el visto bueno del watchdog |
+| 2.4 Barrido de recuperación 2026 | ✅ **CERRADO** · 17 recuperadas · el watchdog confirmó cuarentena 0 |
 | 2.5 Watchdog de integridad | ✅ **ACTIVO** |
 
 ---
@@ -695,3 +695,91 @@ barrido, mantenidas aparte y que no saben que el barrido existió. Si esas cuatr
 faltantes es porque están realmente en Odoo, verificado por un tercero.
 
 Hasta esa corrida, el eslabón 1 queda como **ejecutado y verificado, pero no cerrado**.
+
+---
+
+# ESLABÓN 1 — CERRADO (2026-08-14 08:15 CST)
+
+**Lo firmó el watchdog por su cuenta**, con su lista `CONOCIDAS` propia — cuatro entradas escritas a
+mano en su config antes de que el barrido existiera, mantenidas aparte, que no saben que el barrido
+corrió. `mail.message 2929008`:
+
+```json
+{"fecha":"2026-08-14","jeeves_en_rango":156,"odoo_en_rango":156,
+ "faltantes_nuevas":0,"cuarentena_conocidas":0,
+ "cbrun":{"lag_max_dias":4.61,"rechazadas":0,"conteo_confiable":true},
+ "no_vinculadas":[],"alertas":[],"status":"ok"}
+```
+
+**`jeeves_en_rango 156 = odoo_en_rango 156`.** Los dos lados cuadran al registro. La cuarentena pasó
+de 4 a **0** sin que nadie se lo dijera: las cuatro de julio que llevaba cargando aparecieron en
+Odoo porque el barrido las insertó, y el watchdog simplemente dejó de encontrarlas faltantes.
+
+> Que el barrido dijera que se limpió a sí mismo no probaba nada — era la misma máquina evaluando su
+> propio trabajo. Esto sí: un tercero que mide con su propia lista y su propio criterio.
+
+| Paso | Estado final |
+|---|---|
+| 2.1 Ventana con ancla absoluta | ✅ VALIDADO |
+| 2.2 Conteo honesto de rechazos | ✅ VALIDADO |
+| 2.3 Hash de dedup v2 (llave dual) | ✅ VALIDADO |
+| 2.4 Barrido de recuperación 2026 | ✅ EJECUTADO · 17 líneas · $14,422.66 |
+| 2.5 Watchdog de integridad | ✅ ACTIVO · confirmó el cierre |
+
+---
+
+## El experimento de las pendings cierra 9/9 (2026-08-14)
+
+Las dos últimas del snapshot liquidaron:
+
+```
+Oxxoteran    $47.00   createdAt 2026-08-12T16:23:43.786Z  ->  settled, posted 2026-08-14T10:03:47Z
+PRO Ferrenl  $104.55  createdAt 2026-08-12T15:57:23.135Z  ->  settled, posted 2026-08-14T10:01:16Z
+```
+
+`createdAt` idéntico al milisegundo, monto idéntico, `destination.name` idéntico. **9 de 9 liquidaron,
+0 mutaron, 0 expiraron.** Lag de liquidación ~42 h, dentro del rango 34–42 h ya medido.
+
+> **El caso terminal "caducada" (pending que expira sin liquidar) sigue con CERO observaciones**, y
+> ahora de forma definitiva para esta cohorte. El estado debe existir en el almacén —un pending que
+> nunca liquida es concebible— pero **no se optimiza contra él**: no hay un solo caso que estudiar.
+
+---
+
+## Dos hallazgos del CBWATCH del 14-ago, para arreglar
+
+### El umbral de CHASE_SYNC_RANCIO mide lo que no es
+
+Chase Tarjeta reportó `dias_sin_sync: 3` y **no alertó**. La causa inmediata es el operador:
+`if(diasSync > UMBRAL_DIAS_SYNC_CHASE)` con umbral 3 — `3 > 3` es falso.
+
+**Pero el problema de fondo es la métrica, no el operador.** `account.online.account.last_sync` es
+*"la fecha hasta la que hay transacciones sincronizadas"*, **no** *"cuándo se consultó por última
+vez"*. Si la tarjeta no tuvo movimientos desde el 11-ago, `last_sync` se queda ahí aunque Plaid la
+consulte 2×/día — y `dias_sin_sync` crece solo hasta disparar una falsa alarma.
+
+Es el mismo error que **sí** se evitó en el estado de la fuente, donde `sync_nativo` se deja siempre
+en `ok` porque *ausencia de movimientos no es falla*. **La señal correcta es
+`account.online.link.last_refresh`** (cuándo Odoo consultó). Cambio de un campo; hasta entonces ese
+umbral vigila lo equivocado.
+
+### El `drift: null` de Chase Tarjeta es el puente funcionando
+
+```
+prevWatch (13-ago) = forma VIEJA:  chase:{cuenta:"BUS COMPLETE CHK", delta:224977.63}
+  BUS COMPLETE CHK  -> encuentra delta previo  -> drift 0     ✓
+  J. CALDERON       -> no existe en esa forma  -> drift null  ✓ (esperado)
+```
+
+**Se cura solo:** la corrida de mañana leerá el CBWATCH de hoy, que ya trae `cuentas_online[]` con
+J. CALDERON y su `delta: 0`. No hay nada que arreglar.
+
+### Y el invariante haciendo su trabajo
+
+```
+BUS COMPLETE CHK   balance 190,015.30 -> 205,185.30   suma -34,962.33 -> -19,792.33
+                   delta 224,977.63 -> 224,977.63     drift 0
+```
+
+Ambos lados se movieron ~15,170 **y el delta no se movió un centavo**. Entraron transacciones nuevas
+y el balance de Plaid las acompañó. Si solo se hubiera movido uno, el drift lo habría gritado.
