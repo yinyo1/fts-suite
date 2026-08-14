@@ -150,7 +150,7 @@
     {
       "id_interno": "INC-AUTO-CIERRE-124-2026-08-12T12-58-51-239Z",
       "tipo": "auto_cierre_pendiente",
-      "status": "pendiente_rh",
+      "status": "aprobada_con_ajuste",
       "fecha_creacion": "2026-08-12T12:58:52.815Z",
       "empleado_id": 124,
       "empleado_nombre": "Germán Emmanuel Merino Falcón",
@@ -160,7 +160,7 @@
       "check_out_aplicado_utc": "2026-08-11 22:34:29",
       "horas_originales": "24.01",
       "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "autoincidencia": true,
       "rh_aprobo": null,
       "rh_fecha": null,
@@ -168,7 +168,18 @@
       "department_name": null,
       "supervisor_id": null,
       "supervisor_name": null,
-      "propuestas": []
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-08-14T16:06:58.426Z",
+          "hora_propuesta_cst": "17:03",
+          "comentario": "Incidencia confirmada",
+          "accion": "ajustado"
+        }
+      ]
     },
     {
       "id_interno": "INC-AUTO-CIERRE-153-2026-08-10T13-57-19-669Z",
