@@ -82,7 +82,7 @@
     {
       "id_interno": "INC-AUTO-CIERRE-155-2026-08-13T12-38-59-462Z",
       "tipo": "auto_cierre_pendiente",
-      "status": "pendiente_rh",
+      "status": "aprobada_con_ajuste",
       "fecha_creacion": "2026-08-13T12:39:01.973Z",
       "empleado_id": 155,
       "empleado_nombre": "Juan De La Cruz Maldonado",
@@ -92,7 +92,7 @@
       "check_out_aplicado_utc": "2026-08-12 22:12:34",
       "horas_originales": "24.04",
       "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "autoincidencia": true,
       "rh_aprobo": null,
       "rh_fecha": null,
@@ -100,7 +100,18 @@
       "department_name": null,
       "supervisor_id": null,
       "supervisor_name": null,
-      "propuestas": []
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-08-14T16:06:16.775Z",
+          "hora_propuesta_cst": "12:05",
+          "comentario": "Incidencia confirmada",
+          "accion": "ajustado"
+        }
+      ]
     },
     {
       "id_interno": "INC-AUTO-CIERRE-76-2026-08-12T13-13-52-344Z",
