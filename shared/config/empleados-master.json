@@ -1,23 +1,23 @@
 {
   "_meta": {
     "version": 3,
-    "generated_at": "2026-08-14T16:17:44.556Z",
+    "generated_at": "2026-08-14T16:19:02.339Z",
     "source": "Odoo hr.employee live sync via workflow rh/empleados-master/sync",
     "auto_update_status": "auto_synced",
     "auto_update_status_explicacion": "Workflow n8n rh/empleados-master/sync ACTIVO. Cron 6am CST diario + webhook on-change POST /rh/empleados-master/refresh.",
     "fase": "3-active",
     "last_sync_event": "webhook on-change",
-    "last_sync_started_at": "2026-08-14T16:17:43.687Z",
-    "last_sync_completed_at": "2026-08-14T16:17:44.556Z",
+    "last_sync_started_at": "2026-08-14T16:19:01.500Z",
+    "last_sync_completed_at": "2026-08-14T16:19:02.339Z",
     "sync_strategy": "Cron 6am diario (Schedule Trigger) + webhook on-change desde panel admin (Fase 4 cuando exista).",
-    "total_active": 33,
-    "total_con_departamento": 32,
+    "total_active": 32,
+    "total_con_departamento": 31,
     "total_sin_departamento": 1,
-    "total_con_hora_entrada": 32,
+    "total_con_hora_entrada": 31,
     "total_sin_hora_entrada": 1,
     "total_con_categoria_explicita": 7,
-    "total_con_categoria_default": 26,
-    "total_ppa_aplica": 29,
+    "total_con_categoria_default": 25,
+    "total_ppa_aplica": 28,
     "total_ppa_no_aplica": 4,
     "distribucion_categorias_explicitas": {
       "ceo": 1,
@@ -575,23 +575,6 @@
       "x_studio_retardos_15_dias": 0,
       "x_categoria_nomina": null,
       "x_aplica_ppa": false
-    },
-    {
-      "id": 158,
-      "name": "Ricardo Torres",
-      "department_id": 3,
-      "department_name": "Operaciones",
-      "parent_id": 112,
-      "parent_name": "Felipe Pérez Guzmán",
-      "resource_calendar_id": 2,
-      "resource_calendar_name": "Horas operaciones",
-      "work_email": "ricardotorres3523@gmail.com",
-      "work_phone": null,
-      "mobile_phone": "81 2427 3507",
-      "x_studio_hora_entrada": 7,
-      "x_studio_retardos_15_dias": 0,
-      "x_categoria_nomina": null,
-      "x_aplica_ppa": true
     }
   ]
 }
