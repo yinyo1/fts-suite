@@ -783,3 +783,16 @@ BUS COMPLETE CHK   balance 190,015.30 -> 205,185.30   suma -34,962.33 -> -19,792
 
 Ambos lados se movieron ~15,170 **y el delta no se movió un centavo**. Entraron transacciones nuevas
 y el balance de Plaid las acompañó. Si solo se hubiera movido uno, el drift lo habría gritado.
+
+## El almacén de preconciliación existe (2026-08-14)
+
+El modelo `x_preconciliacion` (`ir.model` 3992) está creado, con sus 10 campos, sus 2 ACL y
+la escritura probada desde n8n con `create_uid: 2`. **Solo vive en la instancia de Odoo** —
+no hay módulo ni migración en este repo que lo describa.
+
+Esquema, valores de las selections, ACL, scripts de consola para reconstruirlo y notas de
+plataforma de Odoo 19: [`finanzas/ALMACEN_PRECONCILIACION.md`](finanzas/ALMACEN_PRECONCILIACION.md).
+
+Lo que ese doc deja fijado y no se debe re-litigar: `x_origen` es un campo propio porque
+`create_uid` **no puede** distinguir al motor de Eduardo (ambos escriben por n8n con la misma
+credencial), y las ACL no son opcionales — sin ellas ni uid 2 puede escribir.
