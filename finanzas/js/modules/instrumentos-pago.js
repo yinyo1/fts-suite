@@ -22,7 +22,7 @@
   // ── config ──
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
-  var IP_BUILD = '0.5.17';                // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.18';                // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -311,15 +311,21 @@
     function paintPendNote() {
       var el = q('#ip-pendnote'); if (!el) return;
       var p = state.pendings;
-      if (!p || !p.disponible || !p.pendings_count) { el.innerHTML = ''; return; }   // degrada a nada
-      var tip = (p.muestra || []).map(function (m) { return m.fecha + ' · ' + m.comercio + ' · ' + money(m.monto); }).join('\n');
+      // Un fallo de lectura NO se pinta igual que "no hay nada": vacío y roto se ven idénticos.
+      if (p && p._error) { el.innerHTML = '<span class="ip-pend err">◔ No se pudo consultar el banco</span>'; return; }
+      if (!p || !p.disponible || !p.pendings_count) { el.innerHTML = ''; return; }
+      var tip = (p.muestra || []).map(function (m) { return pfFecha(m) + ' · ' + pfCom(m) + ' · ' + money(pfMonto(m)); }).join('\n');
       el.innerHTML = '<span class="ip-pend" title="' + esc(tip || 'movimientos en tránsito') + '">◔ Últimos liquidados: <b>' + esc(p.ultimo_settled_date || '—') + '</b> · <b>' + p.pendings_count + '</b> en tránsito (~' + money(p.pendings_suma) + ') sin liquidar aún</span>';
     }
+    function pintarPendings() { paintPendNote(); try { renderIntransit(); } catch (e) { } }
     function loadPendings() {
-      if (state.mode !== 'real') { state.pendings = null; return; }
+      if (state.mode !== 'real') { state.pendings = null; pintarPendings(); return; }
       window.FinClient.call(EP_PENDINGS, {})
-        .then(function (data) { state.pendings = (data && typeof data === 'object' && ('disponible' in data)) ? data : { disponible: false }; paintPendNote(); })
-        .catch(function () { state.pendings = { disponible: false }; paintPendNote(); });   // endpoint inactivo/no disponible → nota vacía
+        .then(function (data) {
+          state.pendings = (data && typeof data === 'object' && ('disponible' in data)) ? data : { disponible: false, _error: true };
+          pintarPendings();
+        })
+        .catch(function () { state.pendings = { disponible: false, _error: true }; pintarPendings(); });   // el banco no contestó — se dice, no se calla
     }
 
     // ── filtros por columna estilo Excel (categóricas) ──
@@ -1287,18 +1293,45 @@
       });
     }
 
-    // ── sección "En tránsito" (movimientos no liquidados) — Etapa C ──
+    // ── sección "En tránsito" — MOTOR 1: pendings de Jeeves ──
+    // Eje aparte: estas filas NO son líneas de Odoo. No entran a state.rows, no se filtran,
+    // no se seleccionan, no se exportan y no tocan ningún contador (chips, semáforo, agregados).
+    // Toleran la forma vieja (d/ref/tarj/comp/amt) y la nueva del server (fecha/comercio/...).
+    function pfFecha(x) { return String(x.fecha || x.d || '—'); }
+    function pfCom(x) { return String(x.comercio || x.ref || '—'); }
+    function pfMonto(x) { return Number(x.monto != null ? x.monto : x.amt) || 0; }
+    function pfTarj(x) { return String(x.tarjeta || x.tarj || '—'); }
+    function pfComp(x) { return String(x.comprador || x.comp || '—'); }
+
     function renderIntransit() {
       var host = q('#ip-intransit'); if (!host) return;
-      var list = state.intransit || [];
-      if (!list.length) { host.innerHTML = '<div class="ip-empty">Sin movimientos en tránsito.</div>'; return; }
-      host.innerHTML = '<div class="ip-itnote">Movimientos autorizados aún no liquidados — no cuentan en métricas, desaparecen al liquidar.</div>' +
+      var p = state.pendings;
+      var CAB = '<div class="ip-itnote"><b>No están en Odoo.</b> Son autorizaciones que el banco todavía no liquida: ' +
+        'no se pueden conciliar y no cuentan en ningún total de esta pantalla. ' +
+        'Aparecerán como transacciones cuando el banco las liquide, normalmente en 1–2 días.</div>';
+
+      if (state.mode !== 'real') { host.innerHTML = '<div class="ip-empty">Los movimientos en tránsito solo se consultan en modo real.</div>'; return; }
+      // Falla de lectura ≠ "no hay nada". Se dice cuál de las dos es.
+      if (p && p._error) {
+        host.innerHTML = '<div class="ip-iterr">No se pudo consultar el banco — <b>no sabemos si hay movimientos en tránsito</b>. ' +
+          'Esto no afecta lo ya capturado en Odoo. <button type="button" class="ip-btn sm" id="ip-pendretry">Reintentar</button></div>';
+        var rb = q('#ip-pendretry'); if (rb) rb.addEventListener('click', function () { state.pendings = null; renderIntransit(); loadPendings(); });
+        return;
+      }
+      if (!p) { host.innerHTML = '<div class="ip-empty">Consultando movimientos en tránsito…</div>'; return; }
+      if (!p.disponible) { host.innerHTML = '<div class="ip-empty">Consulta de movimientos en tránsito no disponible.</div>'; return; }
+
+      var list = (p.muestra || []).map(function (m) { m._pending = true; return m; });
+      if (!list.length) { host.innerHTML = CAB + '<div class="ip-empty">Sin movimientos en tránsito.</div>'; return; }
+
+      host.innerHTML = CAB +
         '<div style="overflow-x:auto"><table class="ip-ittbl"><thead><tr><th>Fecha</th><th>Descripción</th><th>Tarjeta</th><th>Comprador</th><th style="text-align:right">Monto</th><th>Estado</th></tr></thead><tbody>' +
         list.map(function (x) {
-          return '<tr class="ip-itrow"><td style="font-family:var(--ip-mono);font-size:12.5px">' + esc(x.d) + '</td><td>' + esc(x.ref) + '</td><td>' + (esc(x.tarj) || '—') + '</td><td>' + (esc(x.comp) || '—') + '</td>' +
-            '<td class="amt ' + ((x.amt || 0) < 0 ? 'neg' : 'pos') + '">' + money(x.amt) + '</td>' +
-            '<td><span class="ip-itbadge">pending · no liquida</span></td></tr>';
-        }).join('') + '</tbody></table></div>';
+          return '<tr class="ip-itrow"><td style="font-family:var(--ip-mono);font-size:12.5px">' + esc(pfFecha(x)) + '</td><td>' + esc(pfCom(x)) + '</td><td>' + esc(pfTarj(x)) + '</td><td>' + esc(pfComp(x)) + '</td>' +
+            '<td class="amt ' + (pfMonto(x) < 0 ? 'neg' : 'pos') + '">' + money(pfMonto(x)) + '</td>' +
+            '<td><span class="ip-itbadge">PENDIENTE · no está en Odoo</span></td></tr>';
+        }).join('') + '</tbody></table>' +
+        '<div class="ip-itfoot">' + list.length + ' en tránsito' + (p.pendings_suma != null ? ' · ~' + money(p.pendings_suma) : '') + ' — fuera de todo contador.</div></div>';
     }
 
     // ── export XLSX (columnas visibles × filas seleccionadas) ──
