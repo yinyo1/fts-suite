@@ -143,9 +143,17 @@
 .ip-view .ip-est.fon{color:#8a94a0}               /* FONDEO */
 .ip-view .ip-est.dev-ret{color:#3a7ca5}           /* DEVOLUCIÓN */
 .ip-view .ip-est.sinc{color:#5b6875}              /* SIN CONCILIAR (absorbe pendiente/sin-doc/evaluando) */
-.ip-view .ip-sj{font-weight:600;white-space:nowrap;font-size:12.5px}   /* Status Jeeves (dimensión Jeeves) */
+.ip-view .ip-sj{font-weight:600;white-space:nowrap;font-size:12.5px}   /* Status banco = EJE BANCO de la taxonomía 3+2 */
 .ip-view .ip-sj.liq{color:var(--ip-ok)}
 .ip-view .ip-sj.tra{color:#c98a00}
+/* Columna Candidato (v0.5.19) — lo que salió del eje Odoo. '—' es mudo a propósito:
+   no afirma que se buscó y no había, solo que no hay dato. */
+.ip-view .ip-mut{color:#9aa6b2}
+.ip-view .ip-cand{font-weight:600;white-space:nowrap;font-size:12.5px}
+.ip-view .ip-cand.si{color:#c98a00}
+.ip-view .ip-cand.no{color:#9aa6b2;font-weight:500}
+/* Pre-conciliado: existe en el filtro para que se vea que viene, en gris y sin ofrecerse. */
+.ip-view select option:disabled{color:#9aa6b2}
 .ip-view .ip-est-bill{font-family:var(--ip-mono);font-size:11.5px;color:#5b6875;margin-left:4px}
 .ip-view .ip-est-buscar{color:var(--ip-accent);cursor:pointer;text-decoration:underline;font-size:12px;margin-left:6px}
 /* filtros por columna estilo Excel */

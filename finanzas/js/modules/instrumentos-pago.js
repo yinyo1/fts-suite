@@ -22,7 +22,7 @@
   // ── config ──
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
-  var IP_BUILD = '0.5.18';                // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.19';                // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -102,13 +102,26 @@
   var IP_rowState  = function (r) { return (r && r.ok) ? 'liquidado' : 'pend'; };
   var IP_stateCell = function (r) { return (r && r.ok) ? '<span class="ip-est liq">✓ Conciliado (Liquidado)</span>' : '<span class="ip-est sinc">○ Sin conciliar</span>'; };
 
-  // "Status Jeeves" = estado del movimiento EN JEEVES (dimensión distinta de Estado-vs-Odoo). Función a nivel MÓDULO
-  // (COLS es de módulo, no puede ver funciones del closure — lección regresión v0.5.7). Solo depende de `r`, sin `state`.
-  // Hoy TODO lo capturado es settled por diseño → 'Liquidado'. Pieza #4/B.2 meterá pendings a la vista → marcarán
-  // r.jeeves_status='transito' (o r.jeeves_pending) y ahí mostrará 'En tránsito'. Contrato listo por adelantado.
+  // "Status banco" = EJE BANCO de la taxonomía 3+2 (liquidado / pendiente). Se llamaba "Status Jeeves",
+  // pero ya son tres bancos. Función a nivel MÓDULO (COLS es de módulo, no puede ver funciones del
+  // closure — lección regresión v0.5.7). Solo depende de `r`, sin `state`.
+  // Hoy TODO lo capturado es settled por diseño → 'Liquidado'. Cuando el motor 1 servidor traiga las
+  // pendientes, marcarán r.jeeves_status='transito' (o r.jeeves_pending) y aquí dirá 'Pendiente'.
   function statusJeeves(r) {
     var pend = r && (r.jeeves_status === 'transito' || r.jeeves_pending === true);
-    return pend ? '<span class="ip-sj tra">◐ En tránsito</span>' : '<span class="ip-sj liq">✓ Liquidado</span>';
+    return pend ? '<span class="ip-sj tra">◐ Pendiente</span>' : '<span class="ip-sj liq">✓ Liquidado</span>';
+  }
+
+  // Columna Candidato: lo que salió del eje Odoo cuando "con/sin documento" dejó de ser un estado de
+  // conciliación. NO promete de más: si el server no manda candidatos, dice '—', no "sin documento"
+  // (que afirmaría que se buscó y no había). Módulo, solo depende de `r`.
+  function candidatoCell(r) {
+    if (!r || r.ok) return '<span class="ip-mut">—</span>';
+    var n = (typeof r.cand_n === 'number') ? r.cand_n
+          : (r.cand && typeof r.cand.length === 'number') ? r.cand.length : null;
+    if (n === null) return '<span class="ip-mut">—</span>';
+    if (n === 0) return '<span class="ip-cand no">sin candidato</span>';
+    return '<span class="ip-cand si">' + n + (n === 1 ? ' candidato' : ' candidatos') + '</span>';
   }
 
   // 17 columnas (contrato exacto del v7). vis = visible por default (8).
@@ -123,14 +136,19 @@
     { k: 'art',  lbl: 'Artículo',     vis: false, fmt: function (r) { return esc(r.art) || '—'; } },
     { k: 'ana',  lbl: 'Analítica',    vis: true,  fmt: function (r) { return r.ana ? esc(r.ana) : amber('—'); } },
     { k: 'po',   lbl: 'PO',           vis: true,  fmt: function (r) { return r.po ? esc(r.po) : amber('—'); } },
-    { k: 'bill', lbl: 'Bill',         vis: false, fmt: function (r) { return r.bill ? esc(r.bill) : amber('—'); } },
+    { k: 'bill', lbl: 'Bill',         vis: true,  fmt: function (r) { return r.bill ? esc(r.bill) : amber('—'); } },
     { k: 'sb',   lbl: 'Status bill',  vis: false, fmt: function (r) { return r.sb ? esc(r.sb) : amber('—'); } },
     { k: 'ff',   lbl: 'Folio fiscal', vis: false, fmt: function (r) { return r.ff ? '<span style="font-family:var(--ip-mono);font-size:11.5px">' + esc(r.ff) + '</span>' : amber('—'); } },
     { k: 'tk',   lbl: 'Ticket',       vis: false, fmt: function (r) { return esc(r.tk) || '—'; } },
     { k: 'mon',  lbl: 'Moneda',       vis: false, fmt: function (r) { return esc(r.mon); } },
     { k: 'amt',  lbl: 'Monto',        vis: true,  cls: function (r) { return 'class="amt ' + (r.amt < 0 ? 'neg' : 'pos') + '"'; }, fmt: function (r) { return money(r.amt); } },
     { k: 'ok',   lbl: 'Estado con Odoo', vis: true, cls: function (r) { return 'class="st est-' + IP_rowState(r) + '"'; }, fmt: function (r) { return IP_stateCell(r); } },
-    { k: 'sj',   lbl: 'Status Jeeves', vis: false, fmt: function (r) { return statusJeeves(r); } }   // dimensión Jeeves (no visible default; contrato para Pieza #4/B.2)
+    // EJE BANCO de la taxonomía 3+2. Es COLUMNA y no filtro a propósito: toda fila de esta tabla
+    // es liquidada por construcción (las pendientes viven en "En tránsito"), así que un filtro de
+    // un solo valor posible confundiría más de lo que informa.
+    { k: 'sj',   lbl: 'Status banco', vis: true,  fmt: function (r) { return statusJeeves(r); } },
+    // Sale del eje Odoo: "con/sin documento" no es un estado de conciliación, es si HAY candidato.
+    { k: 'cand', lbl: 'Candidato',    vis: false, fmt: function (r) { return candidatoCell(r); } }
   ];
   function colAttr(col, r) { return typeof col.cls === 'function' ? col.cls(r) : (col.cls || ''); }
 
@@ -263,10 +281,13 @@
     function txParams() {
       var f = state.filters;
       return {
+        // Solo lo que ACOTA EL UNIVERSO. `estado` y `search` se quitaron a propósito: filtran en
+        // cliente sobre lo ya cargado, y mandarlos al server dejaba el universo pre-recortado, que
+        // además hacía mentir a los chips (cuentan sobre el universo, no sobre lo filtrado).
         companies: window.FinState.getCompanies(),
-        journal: f.journal || null, estado: f.estado || null,
+        journal: f.journal || null,
         date_from: f.from || null, date_to: f.to || null,
-        search: f.search || null, limit: 500, offset: 0
+        limit: 500, offset: 0
       };
     }
     function ingest(rows, sources, runs, cron, extra) {
@@ -673,13 +694,15 @@
         '<input type="date" id="ip-fFrom" value="' + esc(f.from) + '">' +
         '<input type="date" id="ip-fTo" value="' + esc(f.to) + '">' +
         // EJE B (conciliación) en el dropdown; el EJE A (tipo) va en su propio select al lado.
+        // EJE ODOO de la taxonomía 3+2: conciliado / pre-conciliado / sin conciliar. Y nada más.
+        // "Conciliada parcial" y "No evaluada" salieron del eje (son matiz de la celda, no estados);
+        // "con/sin documento" salió al eje de la columna Candidato.
         '<select id="ip-fEstado"><option value="">Conciliación: todo</option>' +
-          '<option value="conciliada"' + (f.estado === 'conciliada' ? ' selected' : '') + '>Conciliada</option>' +
-          '<option value="parcial"' + (f.estado === 'parcial' ? ' selected' : '') + '>Conciliada parcial</option>' +
-          '<option value="sinconciliar"' + (f.estado === 'sinconciliar' ? ' selected' : '') + '>Sin conciliar (todas)</option>' +
-          '<option value="condoc"' + (f.estado === 'condoc' ? ' selected' : '') + '>Con documento</option>' +
-          '<option value="sindoc"' + (f.estado === 'sindoc' ? ' selected' : '') + '>Sin documento</option>' +
-          '<option value="noevaluada"' + (f.estado === 'noevaluada' ? ' selected' : '') + '>No evaluada</option></select>' +
+          '<option value="conciliado"' + (f.estado === 'conciliado' ? ' selected' : '') + '>Conciliado</option>' +
+          // gris y sin conteo hasta que el motor 2 lo pueble: existe para que se vea que viene,
+          // no para ofrecer un filtro que devolvería cero sin explicar por qué.
+          '<option value="preconciliado" disabled>Pre-conciliado — pendiente del motor</option>' +
+          '<option value="sinconciliar"' + (f.estado === 'sinconciliar' ? ' selected' : '') + '>Sin conciliar</option></select>' +
         '<select id="ip-fTipo"><option value="">Tipo: todos</option>' +
           ['consumo', 'fondeo', 'devolucion', 'traspaso', 'ajuste', 'abono'].map(function (k) {
             return '<option value="' + k + '"' + (f.tipo === k ? ' selected' : '') + '>' + TIPO_LABEL[k] + '</option>';
@@ -695,17 +718,25 @@
         '</div>';
     }
     function wireFilters() {
+      // DOS clases de filtro, y la distinción importa: journal y fechas ACOTAN EL UNIVERSO que el
+      // server debe entregar, así que cambiarlos obliga a recargar. Estado, tipo y búsqueda son
+      // subconjuntos de lo ya cargado — pedirlos al server era barrer hasta 60 páginas para no
+      // traer ni una fila nueva.
       var reload = function () {
         state.filters.journal = q('#ip-fJournal').value;
-        state.filters.estado = q('#ip-fEstado').value;
-        state.filters.tipo = q('#ip-fTipo') ? q('#ip-fTipo').value : '';
         state.filters.from = q('#ip-fFrom').value;
         state.filters.to = q('#ip-fTo').value;
-        state.filters.search = q('#ip-fSearch').value;
         state.page = 1;
         if (state.mode === 'real') { load(); } else { paintTable(); }
       };
-      ['#ip-fJournal', '#ip-fEstado', '#ip-fTipo', '#ip-fFrom', '#ip-fTo'].forEach(function (s) { var el = q(s); if (el) el.addEventListener('change', reload); });
+      var refilter = function () {
+        state.filters.estado = q('#ip-fEstado').value;
+        state.filters.tipo = q('#ip-fTipo') ? q('#ip-fTipo').value : '';
+        state.page = 1;
+        paintTable(); paintChips();
+      };
+      ['#ip-fJournal', '#ip-fFrom', '#ip-fTo'].forEach(function (s) { var el = q(s); if (el) el.addEventListener('change', reload); });
+      ['#ip-fEstado', '#ip-fTipo'].forEach(function (s) { var el = q(s); if (el) el.addEventListener('change', refilter); });
       var srch = q('#ip-fSearch'); if (srch) srch.addEventListener('input', function () { state.filters.search = srch.value; state.page = 1; paintTable(); });
       var ps = q('#ip-fPageSize'); if (ps) ps.addEventListener('change', function () { state.pageSize = +ps.value; state.page = 1; paintTable(); });
       var cb = q('#ip-colbtn'), cm = q('#ip-colmenu');
@@ -768,6 +799,9 @@
     }
     function rowConc(r) {
       if (r.ok) return (Number(r.res) || 0) === 0 ? 'conciliada' : 'parcial';
+      // EJE ODOO, valor intermedio: el motor 2 dejó decidida la conciliación pero el asiento no existe.
+      // Hoy no lo puebla nadie (state.preconc llega vacío) → el filtro y el chip salen en gris con 0.
+      if (state.preconc && (state.preconc[r._id] || state.preconc[r.id])) return 'preconciliada';
       if (!enAlcanceMotor(r)) return 'noevaluada';
       var s = state.sugg[r._id];
       if (s && s.cand && s.cand.candidatos && s.cand.candidatos.length) return 'condoc';
@@ -809,7 +843,12 @@
     function matchEstado(f, t) {
       var st = rowConc(t);
       switch (f) {
-        case 'conciliada': case 'liquidado': case 'ok': return st === 'conciliada';   // alias viejos = compat
+        // EJE ODOO (taxonomía 3+2). 'conciliado' incluye la parcial: la parcialidad es un matiz de la
+        // celda, no un estado aparte — quien filtra "conciliado" no espera que se le escondan las parciales.
+        case 'conciliado': return st === 'conciliada' || st === 'parcial';
+        case 'preconciliado': return st === 'preconciliada';   // sin filas hasta que el motor 2 escriba
+        // alias de contratos viejos (selects guardados en localStorage) — no se ofrecen ya en la UI
+        case 'conciliada': case 'liquidado': case 'ok': return st === 'conciliada';
         case 'parcial':     return st === 'parcial';
         case 'condoc':      return st === 'condoc';
         case 'sindoc':      return st === 'sindoc';
@@ -1243,14 +1282,17 @@
     function paintChips() {
       var host = q('#ip-chips'); if (!host) return;
       var uni = visibleRows({ ignoreEstado: true });        // universo sin el eje de conciliación
-      var n = { todo: uni.length, sinconciliar: 0, condoc: 0, sindoc: 0, noevaluada: 0, conchoy: 0 };
+      // Conteo sobre el EJE ODOO. Los chips viejos (con/sin documento, no evaluada) contaban estados
+      // que dependen de state.sugg, y en modo real suggByRow se ingesta vacío -> los tres salían 0
+      // permanentemente aunque hubiera filas en pantalla. No era un desajuste del universo: era contar
+      // algo que nadie poblaba.
+      var n = { todo: uni.length, conciliado: 0, preconciliado: 0, sinconciliar: 0, conchoy: 0 };
       var hoy = hoyCst();
       uni.forEach(function (t) {
-        if (!t.ok) {
-          n.sinconciliar++;
-          var c = rowConc(t);
-          if (c === 'condoc') n.condoc++; else if (c === 'sindoc') n.sindoc++; else if (c === 'noevaluada') n.noevaluada++;
-        } else if (t.wd === hoy) n.conchoy++;
+        if (rowConc(t) === 'preconciliada') { n.preconciliado++; return; }
+        if (!t.ok) { n.sinconciliar++; return; }
+        n.conciliado++;
+        if (t.wd === hoy) n.conchoy++;
       });
       var act = state.filters.estado || '';
       function chip(k, lbl, cls) {
@@ -1259,9 +1301,8 @@
       }
       var html = chip('', 'Todo') +
                  chip('sinconciliar', 'Sin conciliar', 'red') +
-                 chip('condoc', 'Con documento', 'amber') +
-                 chip('sindoc', 'Sin documento', 'red') +
-                 chip('noevaluada', 'No evaluada', 'gray') +
+                 chip('conciliado', 'Conciliado', 'green') +
+                 chip('preconciliado', 'Pre-conciliado', 'gray') +
                  chip('conchoy', 'Conciliadas hoy', 'green');
       // sub-chips de antigüedad: solo tienen sentido sobre lo pendiente, y solo se muestran
       // cuando hay un chip de esa familia activo (si no, son ruido permanente).
