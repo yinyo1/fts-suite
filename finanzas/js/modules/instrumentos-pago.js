@@ -22,7 +22,7 @@
   // ── config ──
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
-  var IP_BUILD = '0.5.22';                // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.23';                // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -978,6 +978,28 @@
       qa('input[data-cand]').forEach(function (rc) { rc.addEventListener('change', function () { var id = +rc.getAttribute('data-cand'), idx = +rc.getAttribute('data-idx'); var s = state.sugg[id]; if (s) { s.sel = idx; if (state.expanded === id) paintTable(); } }); });
       qa('button[data-conc]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); doConciliar(+b.getAttribute('data-conc'), b); }); });
       qa('button[data-reload]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); var id = +b.getAttribute('data-reload'); delete state.sugg[id]; loadSugg(state.allRows[id]); paintTable(); }); });
+      // A4 — el botón de forzar no se habilita hasta que el motivo llegue a 10 caracteres.
+      // El mínimo lo valida TAMBIÉN el server: esto es comodidad, no la garantía.
+      qa('textarea[data-ovmot]').forEach(function (ta) {
+        ta.addEventListener('click', function (e) { e.stopPropagation(); });
+        ta.addEventListener('input', function () {
+          var id = ta.getAttribute('data-ovmot');
+          var n = ta.value.trim().length;
+          var btn = q('button[data-ovgo="' + id + '"]'), hint = q('[data-ovhint="' + id + '"]');
+          if (btn) btn.disabled = n < 10;
+          if (hint) hint.textContent = n < 10 ? ('Faltan ' + (10 - n) + ' caracteres') : 'Se registrará en el historial del bill';
+        });
+      });
+      qa('button[data-ovgo]').forEach(function (b) {
+        b.addEventListener('click', function (e) {
+          e.stopPropagation();
+          var id = +b.getAttribute('data-ovgo');
+          var ta = q('textarea[data-ovmot="' + id + '"]');
+          var motivo = ta ? ta.value.trim() : '';
+          if (motivo.length < 10) return;
+          doConciliar(id, b, { motivo: motivo });
+        });
+      });
       qa('[data-buscar]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); toggleExpand(+b.getAttribute('data-buscar')); }); });   // "buscar bill" (link del estado sin-doc → abre acordeón)
       qa('[data-billsearch]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); buscarBills(+b.getAttribute('data-billsearch')); }); });   // Pieza #1: botón Buscar del acordeón
       qa('.ip-busca-in').forEach(function (inp) { inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); buscarBills(+inp.getAttribute('data-bs-folio') || +inp.getAttribute('data-bs-prov') || +inp.getAttribute('data-bs-monto') || +inp.getAttribute('data-bs-tol')); } }); });
@@ -1069,6 +1091,21 @@
       }
       // Guard humanizado (ej. BILL_NO_201 = cross-company) + código técnico en el detalle.
       var human = humanConcMsg(r.code, r.msg);
+      // A4 — override del corte. Aparece SOLO cuando el server bloqueó por pre-corte, así que
+      // no hay forma de que salga en una línea que no lo necesita: lo gobierna la respuesta,
+      // no una condición del cliente que pudiera desincronizarse del guard real.
+      if (r.code === 'PRE_CORTE_BLOQUEADA') {
+        return '<div class="ip-acc"><div class="ip-res bad">' + esc(r.msg || human) + ' <span class="ip-mono2">(' + esc(r.code) + ')</span></div>' +
+          '<div class="ip-ovbox">' +
+            '<div class="ip-ovlbl">Si aun así vas a forzarla, escribe por qué. Queda en el historial del bill, con tu nombre y la fecha.</div>' +
+            '<textarea class="ip-ovmot" data-ovmot="' + t._id + '" rows="2" placeholder="Motivo (mínimo 10 caracteres)"></textarea>' +
+            '<div class="ip-ovrow">' +
+              '<button class="ip-ovbtn" data-ovgo="' + t._id + '" disabled>Forzar conciliación</button>' +
+              '<span class="ip-ovhint" data-ovhint="' + t._id + '">Faltan 10 caracteres</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="ip-acc-actions"><button class="ip-acc-reload" data-reload="' + t._id + '">↻ Recargar sugerencias</button></div></div>';
+      }
       return '<div class="ip-acc"><div class="ip-res bad">' + esc(human) + ' <span class="ip-mono2">(' + esc(r.code || 'ERROR') + ')</span></div>' +
         '<div class="ip-acc-actions"><button class="ip-acc-reload" data-reload="' + t._id + '">↻ Recargar sugerencias</button></div></div>';
     }
@@ -1170,7 +1207,7 @@
       }
       return { ok: true, parcial: false, full_reconcile_id: 'REC-DEMO-' + cand.bill_aml_id, bill_name: cand.bill_name, monto: cand.monto_bill, msg: 'Conciliada (demo).' };
     }
-    function doConciliar(id, btn) {
+    function doConciliar(id, btn, ov) {
       var s = state.sugg[id]; if (!s || !s.cand || s.sel == null) return;
       var cand = s.cand.candidatos[s.sel]; if (!cand) return;
       if (btn) { btn.disabled = true; btn.classList.add('busy'); btn.textContent = 'Conciliando…'; }
@@ -1179,7 +1216,11 @@
         setTimeout(function () { if (!document.body.contains(container)) return; applyConcResult(id, demoOutcome(cand)); }, 700);
         return;
       }
-      window.FinClient.call(EP_CONCILIAR, { line_id: row.id, bill_aml_id: cand.bill_aml_id })
+      // El override viaja SOLO si el humano lo pidió tras ver el bloqueo (ver resultHtml).
+      // Nunca se manda por default: el server lo exige explícito y con motivo.
+      var payload = { line_id: row.id, bill_aml_id: cand.bill_aml_id };
+      if (ov && ov.motivo) { payload.override_pre_corte = true; payload.override_motivo = ov.motivo; }
+      window.FinClient.call(EP_CONCILIAR, payload)
         .then(function (r) { applyConcResult(id, r || {}); })
         .catch(function (err) { applyConcResult(id, { ok: false, code: (err && err.code) || 'ERROR', msg: (err && err.msg) || 'Error al conciliar.' }); });
     }
