@@ -22,7 +22,7 @@
   // ── config ──
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
-  var IP_BUILD = '0.5.24';                // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.25';                // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -257,7 +257,9 @@
         var st = res[0] || {}, txAll = res[1] || { rows: [] };
         // captura-status.hoy es opcional (B.2 pendiente): si no llega, degrada elegante sin romper.
         var today = st.hoy || { en_transito: { disponible: false }, conciliable_pendiente: null, conciliadas_hoy: null, _degradado: true };
-        ingest(txAll.rows || [], st.sources || [], st.runs || [], st.cron || DEFAULT_CRON, { today: today, porJournal: st.por_journal || [], intransit: st.intransit || [], suggByRow: {} });
+        // metricas/serie vienen del server: el backlog PRE-corte no está en allRows (la ventana
+        // por defecto arranca el mes pasado), así que el semáforo A no se puede calcular aquí.
+        ingest(txAll.rows || [], st.sources || [], st.runs || [], st.cron || DEFAULT_CRON, { today: today, porJournal: st.por_journal || [], intransit: st.intransit || [], suggByRow: {}, metricas: st.metricas || null, serie: st.serie || [] });
         state.loading = false; state.loadProgress = null;
         // carga parcial: nunca fingir que está completo → aviso visible; los agregados reflejan solo lo cargado.
         state.partialLoad = txAll.partial ? { loaded: (txAll.rows || []).length, total: (txAll.pagination && txAll.pagination.total_count) || null, reason: txAll.reason || null } : null;
@@ -321,6 +323,8 @@
       extra = extra || {};
       state.today = extra.today || null;
       state.porJournal = extra.porJournal || [];
+      state.metricas = extra.metricas || null;   // {fecha_corte, cumplimiento{...}, deuda{...}}
+      state.serie = extra.serie || [];           // puntos históricos del CBWATCH
       state.intransit = extra.intransit || [];
       state.suggByRow = extra.suggByRow || {};
       state.expanded = null;   // reset acordeón en cada carga
@@ -1325,7 +1329,51 @@
           '<div class="foot"><span>' + (d.pct === null ? '—' : d.conc + '/' + d.tot) + '</span>' +
             '<span class="res">' + (d.pct === null ? '' : money(d.res)) + '</span></div></div>';
       }
-      host.innerHTML = data.map(function (d) { return cell(d, false); }).join('') + cell(all, true);
+      // v0.5.25 — DOS semáforos que NUNCA se suman ni comparten contador. Son universos
+      // distintos con direcciones deseadas opuestas: B debe mantenerse ALTO, A debe SUBIR
+      // hasta vaciarse. Sumarlos escondería el cumplimiento nuevo bajo la deuda vieja.
+      var m = state.metricas || null;
+      var corte = (m && m.fecha_corte) || '2026-07-24';
+      var html = '';
+
+      // ── B · POST-CORTE. El protagonista: expandido, arriba, con hora de corte de datos. ──
+      if (m && m.cumplimiento) {
+        var bt = m.cumplimiento.post_corte_total || 0, bc = m.cumplimiento.post_corte_conciliadas || 0;
+        var bp = bt ? Math.round(bc / bt * 1000) / 10 : null;
+        var bcol = bp === null ? 'off' : (bp >= 90 ? 'g' : bp >= 60 ? 'y' : 'r');
+        html += '<div class="ip-sem2 b">' +
+          '<div class="s2head"><span class="s2ts">Datos al ' + esc(hoyCst()) + ' ' + esc(horaCst()) + ' CST</span></div>' +
+          '<div class="s2title"><span class="light ' + bcol + '"></span> Desde el corte <b>' + esc(corte) + '</b>' +
+            '<span class="s2dir" title="Debe mantenerse alto">↑ mantener</span></div>' +
+          '<div class="s2big"><b>' + bc + '</b> de <b>' + bt + '</b>' +
+            '<span class="s2pct" style="color:' + barc(bcol) + '">' + (bp === null ? '—' : bp + '%') + '</span></div>' +
+          '<div class="bar"><i style="width:' + (bp || 0) + '%;background:' + barc(bcol) + '"></i></div>' +
+          '<div class="s2trend">' + trendHtml('B') + '</div></div>';
+      }
+
+      // ── A · BACKLOG. Deuda, no operación diaria: colapsado, y el detalle por journal dentro. ──
+      var at = '', ap = '';
+      if (m && m.deuda) {
+        ap = '<b>' + (m.deuda.pre_corte_pendientes || 0) + '</b> pendientes · ' + money(m.deuda.pre_corte_monto || 0);
+        at = trendHtml('A');
+      } else { ap = 'sin datos del server'; }
+      html += '<details class="ip-sem2 a"><summary>' +
+        '<span class="s2title">Backlog — anterior a <b>' + esc(corte) + '</b>' +
+          '<span class="s2dir down" title="Debe bajar hasta cero">↓ reducir</span></span>' +
+        '<span class="s2sum">' + ap + (at ? ' · ' + at : '') + '</span></summary>' +
+        '<div class="s2body"><div class="s2note">Detalle por journal del universo cargado:</div>' +
+        '<div class="srcgrid sem">' + data.map(function (d) { return cell(d, false); }).join('') + cell(all, true) + '</div></div></details>';
+
+      host.innerHTML = html;
+    }
+    function horaCst() { var d = new Date(Date.now() - 6 * 3600 * 1000); return d.toISOString().slice(11, 16); }
+    // Tendencia desde la serie del CBWATCH. HOY no hay puntos A/B almacenados — el CBWATCH
+    // guarda los conteos del watchdog, no las métricas del corte. Se dice, no se inventa:
+    // un "sin cambio" falso sería peor que declarar que aún no hay serie.
+    function trendHtml(cual) {
+      var s = state.serie || [];
+      if (!s.length) return '<span class="s2tr none">Sin serie todavía — la tendencia aparece cuando el watchdog acumule puntos del corte</span>';
+      return '<span class="s2tr none">' + s.length + ' puntos en la serie, sin métricas del corte aún</span>';
     }
 
     // ── corridas ──
