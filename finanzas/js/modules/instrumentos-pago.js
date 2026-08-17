@@ -22,7 +22,7 @@
   // ── config ──
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
-  var IP_BUILD = '0.5.26';                // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.27';                // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -1348,24 +1348,33 @@
         var pj = (m.por_journal || []).filter(function (x) { return (x.post_total || 0) > 0; });
         pj.sort(function (a, b) { return (b.en_motor ? 1 : 0) - (a.en_motor ? 1 : 0) || (b.post_total - a.post_total); });
         var filas = pj.map(function (x) {
+          // Fuente SIN ABRIR: sin porcentaje grande, sin barra, sin rojo. Un 0% en rojo dice
+          // "fracaso" donde lo que hay es "no empezado", y esa diferencia importa para exigir.
+          // Lo que se muestra es cuántas líneas esperan — eso sí es magnitud del trabajo.
+          if (!x.en_motor) {
+            return '<div class="s2card sinabrir"><div class="s2ct">' + esc(x.label) +
+              '<span class="s2tag">sin abrir</span></div>' +
+              '<div class="s2cn"><b>' + x.post_total + '</b> líneas esperando</div>' +
+              '<div class="s2cw">El motor todavía no evalúa este journal.</div></div>';
+          }
+          // Fuente CON MOTOR: el titular es cuántas FALTAN, no el porcentaje. "Faltan 48" se
+          // puede exigir y se puede tachar; un "59.3%" solo describe.
+          var faltan = x.post_total - x.post_conc;
           var p = x.post_total ? Math.round(x.post_conc / x.post_total * 1000) / 10 : null;
           var c2 = p === null ? 'off' : (p >= 90 ? 'g' : p >= 60 ? 'y' : 'r');
-          return '<div class="s2row' + (x.en_motor ? '' : ' fuera') + '">' +
-            '<span class="light ' + c2 + '"></span>' +
-            '<span class="s2j">' + esc(x.label) + (x.en_motor ? '' : '<span class="s2tag">fuera del motor</span>') + '</span>' +
-            '<span class="s2n">' + x.post_conc + ' de ' + x.post_total + '</span>' +
-            '<span class="s2p" style="color:' + barc(c2) + '">' + (p === null ? '—' : p + '%') + '</span>' +
-            '<span class="s2bar"><i style="width:' + (p || 0) + '%;background:' + barc(c2) + '"></i></span></div>';
+          return '<div class="s2card meta"><div class="s2ct"><span class="light ' + c2 + '"></span>' + esc(x.label) + '</div>' +
+            '<div class="s2goal">' + (faltan === 0 ? '<b>Al 100%</b>' : 'Faltan <b>' + faltan + '</b> para el 100%') + '</div>' +
+            '<div class="bar"><i style="width:' + (p || 0) + '%;background:' + barc(c2) + '"></i></div>' +
+            '<div class="s2cn">' + x.post_conc + ' de ' + x.post_total + ' · ' +
+              '<span style="color:' + barc(c2) + ';font-weight:700">' + (p === null ? '—' : p + '%') + '</span></div></div>';
         }).join('');
         html += '<div class="ip-sem2 b">' +
           '<div class="s2head"><span class="s2ts">Datos al ' + esc(hoyCst()) + ' ' + esc(horaCst()) + ' CST</span></div>' +
           '<div class="s2title"><span class="light ' + bcol + '"></span> Desde el corte <b>' + esc(corte) + '</b>' +
             '<span class="s2dir" title="Debe mantenerse alto">↑ mantener</span></div>' +
           '<div class="s2rows">' + (filas || '<div class="ip-empty">Sin líneas posteriores al corte.</div>') + '</div>' +
-          '<div class="s2tot">Total de las tres fuentes: <b>' + bc + ' de ' + bt + '</b> · ' +
-            '<b style="color:' + barc(bcol) + '">' + (bp === null ? '—' : bp + '%') + '</b></div>' +
-          '<div class="s2why">El motor solo evalúa el journal 61. Las otras fuentes están en 0% porque ' +
-            'todavía no se abren, no porque el trabajo no se haga.</div>' +
+          '<div class="s2why">Cada fuente se mide sola. <b>No hay total</b>: un porcentaje global ' +
+            'nunca llegaría al 100% mientras haya fuentes sin abrir, y ese número no sirve para exigir.</div>' +
           '<div class="s2trend">' + trendHtml('B') + '</div></div>';
       }
 
@@ -1381,6 +1390,26 @@
         '<span class="s2sum">' + ap + (at ? ' · ' + at : '') + '</span></summary>' +
         '<div class="s2body"><div class="s2note">Detalle por journal del universo cargado:</div>' +
         '<div class="srcgrid sem">' + data.map(function (d) { return cell(d, false); }).join('') + cell(all, true) + '</div></div></details>';
+
+      // ── Pasivo del PAID manual. NO es trabajo pendiente de nadie: es una decisión contable. ──
+      // Cifra ESTÁTICA con su fecha de medición, no un contador vivo: el panel no tiene acceso a
+      // account.move y un número sin fecha se leería como actual. La vigilancia de que no crezca
+      // vive en el watchdog; esto solo hace visible lo acumulado.
+      html += '<details class="ip-sem2 pasivo"><summary>' +
+        '<span class="s2title">Pagos manuales acumulados <span class="s2tag">no conciliables</span></span>' +
+        '<span class="s2sum"><b>655</b> asientos · <b>$4.93M</b> en la cuenta 223</span></summary>' +
+        '<div class="s2body"><div class="s2note" style="margin-top:12px">' +
+          'Medido el <b>2026-08-17</b>. Son bills que se cerraron marcando <b>PAID a mano</b> en el journal 61 ' +
+          'en vez de conciliar la línea bancaria, así que el gasto quedó registrado <b>dos veces</b>: en el bill y en la línea.' +
+        '</div><ul class="s2list">' +
+          '<li><b>Todos son del 23-jul o anteriores</b> — verificado contra la cuenta 223.</li>' +
+          '<li><b>No pueden crecer.</b> Desde el 17-ago la regla <code>ir.rule 814</code> impide crear asientos ' +
+            'en el journal 61 sin línea bancaria. El intento falla con un error que explica qué hacer.</li>' +
+          '<li><b>No se resuelven conciliando</b> — esas líneas ya no tienen bill abierto contra el cual casar. ' +
+            'Es deuda de <b>desenredo contable</b>, no de conciliación.</li>' +
+          '<li><b>No es trabajo pendiente de la operación.</b> Necesita una decisión sobre cómo revertir la ' +
+            'duplicación, no más horas de conciliar.</li>' +
+        '</ul></div></details>';
 
       host.innerHTML = html;
     }
