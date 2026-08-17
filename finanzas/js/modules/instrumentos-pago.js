@@ -22,7 +22,7 @@
   // ── config ──
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
-  var IP_BUILD = '0.5.20';                // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.21';                // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -229,7 +229,7 @@
       var params = { companies: window.FinState.getCompanies() };
       Promise.all([
         window.FinClient.call(EP_STATUS, params),
-        loadAllTxPages()
+        loadTx()
       ]).then(function (res) {
         var st = res[0] || {}, txAll = res[1] || { rows: [] };
         // captura-status.hoy es opcional (B.2 pendiente): si no llega, degrada elegante sin romper.
@@ -249,29 +249,28 @@
         render();
       });
     }
-    // Opción A (paginación por acumulación): pide page=1..N a captura-transacciones hasta has_more=false, acumulando
-    // TODAS las filas en un solo arreglo → pager/select-all/export/agregados operan sobre el universo completo.
-    // NUNCA descarta lo ya cargado si una página falla (marca parcial + aviso). Guard duro de tope de páginas anti-loop.
-    function loadAllTxPages() {
-      var MAX_PAGES = 60;   // 60 × PAGE_SIZE(100) = 6,000 filas máx; jamás loop infinito si has_more se atora en true
+    // v0.5.20 — UNA sola llamada. Antes se pedía page=1..N acumulando hasta has_more=false, pero el
+    // server ya traía el universo COMPLETO de Odoo en cada página para devolver una rebanada:
+    // paginábamos para volver a juntar, multiplicando por 6 el mismo barrido (~4 s cada uno).
+    // El bucle acumulador y el tope de 60 páginas se ELIMINARON, no se dejaron inertes — un bucle
+    // muerto que alguien reactive después es peor que el problema que resolvía.
+    // `partial` sobrevive con significado nuevo: ahora es el tope DEL SERVER (pagination.truncado),
+    // no una página caída. El aviso rojo de carga parcial sigue funcionando sin cambios.
+    function loadTx() {
       return new Promise(function (resolve) {
-        var acc = [], page = 1, lastPag = null;
-        function step() {
-          var p = txParams(); p.page = page;
-          window.FinClient.call(EP_TX, p).then(function (tx) {
-            acc = acc.concat((tx && tx.rows) || []);
-            lastPag = (tx && tx.pagination) || null;
-            var total = (lastPag && lastPag.total_count != null) ? lastPag.total_count : acc.length;
-            setLoadProgress(acc.length, total);
-            var hasMore = !!(lastPag && lastPag.has_more === true);
-            if (hasMore && page < MAX_PAGES) { page++; step(); }
-            else if (hasMore) { resolve({ rows: acc, pagination: lastPag, partial: true, reason: 'tope de ' + MAX_PAGES + ' páginas alcanzado' }); }
-            else { resolve({ rows: acc, pagination: lastPag, partial: false }); }
-          }).catch(function (err) {
-            resolve({ rows: acc, pagination: lastPag, partial: true, reason: 'falló la página ' + page + (err && err.code ? ' (' + err.code + ')' : '') });
+        setLoadProgress(0, null);
+        window.FinClient.call(EP_TX, txParams()).then(function (tx) {
+          var rows = (tx && tx.rows) || [], pag = (tx && tx.pagination) || null;
+          setLoadProgress(rows.length, pag && pag.total_count);
+          var trunc = !!(pag && pag.truncado);
+          resolve({
+            rows: rows, pagination: pag, partial: trunc,
+            reason: trunc ? ('el rango pedido tiene ' + pag.total_count + ' líneas y el tope del server es ' + pag.cap + ' — acota las fechas') : null
           });
-        }
-        step();
+        }).catch(function (err) {
+          // Sin acumulado que preservar: si la única llamada falla, no hay nada cargado y se dice.
+          resolve({ rows: [], pagination: null, partial: true, reason: 'no se pudo cargar' + (err && err.code ? ' (' + err.code + ')' : '') });
+        });
       });
     }
     function setLoadProgress(loaded, total) {
