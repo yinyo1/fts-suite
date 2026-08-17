@@ -22,7 +22,7 @@
   // ── config ──
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
-  var IP_BUILD = '0.5.25';                // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.26';                // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -1336,18 +1336,36 @@
       var corte = (m && m.fecha_corte) || '2026-07-24';
       var html = '';
 
-      // ── B · POST-CORTE. El protagonista: expandido, arriba, con hora de corte de datos. ──
+      // ── B · POST-CORTE. Protagonista, expandido, arriba. ──
+      // El desglose POR JOURNAL va primero y el global después, a propósito: el agregado
+      // ATRIBUYE MAL. El motor tiene journal_id 61 fijo, así que 122 y 123 están al 0% por
+      // falta de alcance, no de trabajo. Un 19.6% en grande se lee como "la operación va mal"
+      // cuando lo que dice es "hay dos fuentes sin abrir".
       if (m && m.cumplimiento) {
         var bt = m.cumplimiento.post_corte_total || 0, bc = m.cumplimiento.post_corte_conciliadas || 0;
         var bp = bt ? Math.round(bc / bt * 1000) / 10 : null;
         var bcol = bp === null ? 'off' : (bp >= 90 ? 'g' : bp >= 60 ? 'y' : 'r');
+        var pj = (m.por_journal || []).filter(function (x) { return (x.post_total || 0) > 0; });
+        pj.sort(function (a, b) { return (b.en_motor ? 1 : 0) - (a.en_motor ? 1 : 0) || (b.post_total - a.post_total); });
+        var filas = pj.map(function (x) {
+          var p = x.post_total ? Math.round(x.post_conc / x.post_total * 1000) / 10 : null;
+          var c2 = p === null ? 'off' : (p >= 90 ? 'g' : p >= 60 ? 'y' : 'r');
+          return '<div class="s2row' + (x.en_motor ? '' : ' fuera') + '">' +
+            '<span class="light ' + c2 + '"></span>' +
+            '<span class="s2j">' + esc(x.label) + (x.en_motor ? '' : '<span class="s2tag">fuera del motor</span>') + '</span>' +
+            '<span class="s2n">' + x.post_conc + ' de ' + x.post_total + '</span>' +
+            '<span class="s2p" style="color:' + barc(c2) + '">' + (p === null ? '—' : p + '%') + '</span>' +
+            '<span class="s2bar"><i style="width:' + (p || 0) + '%;background:' + barc(c2) + '"></i></span></div>';
+        }).join('');
         html += '<div class="ip-sem2 b">' +
           '<div class="s2head"><span class="s2ts">Datos al ' + esc(hoyCst()) + ' ' + esc(horaCst()) + ' CST</span></div>' +
           '<div class="s2title"><span class="light ' + bcol + '"></span> Desde el corte <b>' + esc(corte) + '</b>' +
             '<span class="s2dir" title="Debe mantenerse alto">↑ mantener</span></div>' +
-          '<div class="s2big"><b>' + bc + '</b> de <b>' + bt + '</b>' +
-            '<span class="s2pct" style="color:' + barc(bcol) + '">' + (bp === null ? '—' : bp + '%') + '</span></div>' +
-          '<div class="bar"><i style="width:' + (bp || 0) + '%;background:' + barc(bcol) + '"></i></div>' +
+          '<div class="s2rows">' + (filas || '<div class="ip-empty">Sin líneas posteriores al corte.</div>') + '</div>' +
+          '<div class="s2tot">Total de las tres fuentes: <b>' + bc + ' de ' + bt + '</b> · ' +
+            '<b style="color:' + barc(bcol) + '">' + (bp === null ? '—' : bp + '%') + '</b></div>' +
+          '<div class="s2why">El motor solo evalúa el journal 61. Las otras fuentes están en 0% porque ' +
+            'todavía no se abren, no porque el trabajo no se haga.</div>' +
           '<div class="s2trend">' + trendHtml('B') + '</div></div>';
       }
 
@@ -1355,7 +1373,7 @@
       var at = '', ap = '';
       if (m && m.deuda) {
         ap = '<b>' + (m.deuda.pre_corte_pendientes || 0) + '</b> pendientes · ' + money(m.deuda.pre_corte_monto || 0);
-        at = trendHtml('A');
+        at = '';   // la tendencia vive solo en B: repetirla en A decia dos veces lo mismo
       } else { ap = 'sin datos del server'; }
       html += '<details class="ip-sem2 a"><summary>' +
         '<span class="s2title">Backlog — anterior a <b>' + esc(corte) + '</b>' +

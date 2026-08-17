@@ -436,3 +436,16 @@
 .ip-view .s2sum{margin-left:auto;font-size:12.5px;color:var(--steel)}
 .ip-view .s2body{padding:0 16px 14px;border-top:1px solid var(--ip-line)}
 .ip-view .s2note{font-size:11.5px;color:var(--steel);margin:10px 0 8px}
+
+/* B por journal (v0.5.26): el desglose primero, el global después. */
+.ip-view .s2rows{margin:10px 0 8px}
+.ip-view .s2row{display:flex;align-items:center;gap:9px;padding:5px 0;font-size:12.5px}
+.ip-view .s2row.fuera{opacity:.72}
+.ip-view .s2j{min-width:150px;font-weight:600}
+.ip-view .s2tag{margin-left:7px;font-size:10px;font-weight:600;background:#eef1f4;color:#5b6875;border-radius:8px;padding:1px 7px}
+.ip-view .s2n{color:var(--steel);min-width:78px}
+.ip-view .s2p{font-weight:700;min-width:52px;text-align:right}
+.ip-view .s2bar{flex:1;height:5px;background:#eef1f4;border-radius:3px;overflow:hidden;min-width:56px}
+.ip-view .s2bar i{display:block;height:100%}
+.ip-view .s2tot{font-size:12.5px;padding-top:8px;border-top:1px solid var(--ip-line)}
+.ip-view .s2why{font-size:11.5px;color:var(--steel);margin-top:5px;line-height:1.45}
