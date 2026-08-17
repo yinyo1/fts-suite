@@ -404,3 +404,10 @@
 .ip-view .ip-ovbtn{font-size:12.5px;font-weight:600;padding:6px 14px;border-radius:6px;border:1px solid #c0392b;background:#c0392b;color:#fff;cursor:pointer}
 .ip-view .ip-ovbtn:disabled{background:#d9d9d9;border-color:#d9d9d9;color:#8a8a8a;cursor:not-allowed}
 .ip-view .ip-ovhint{font-size:11.5px;color:#8a6a3a}
+
+/* Columna Atribución (v0.5.24). Verde = completa · gris azulado = indirecta (correcta,
+   pero no suma a proyecto) · ámbar = le falta algo. Nunca rojo: ninguno es un error. */
+.ip-view .ip-atr{font-weight:600;white-space:nowrap;font-size:12.5px;cursor:help}
+.ip-view .ip-atr.ok{color:var(--ip-ok)}
+.ip-view .ip-atr.ind{color:#5b6875}
+.ip-view .ip-atr.inc{color:#c98a00}

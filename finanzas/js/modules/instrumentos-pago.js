@@ -22,7 +22,7 @@
   // ── config ──
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
-  var IP_BUILD = '0.5.23';                // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.24';                // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -124,6 +124,28 @@
     return '<span class="ip-cand si">' + n + (n === 1 ? ' candidato' : ' candidatos') + '</span>';
   }
 
+  // Columna Atribución (v0.5.24) — si el gasto está bien imputado, visible SIN intentar conciliar.
+  // Planes: 1/18 = proyecto · 2 = centro de costo indirecto · 20 = rubro.
+  // El server manda hechos (`ana_planes`, `ana_comp`); el veredicto se arma aquí, así que cambiar
+  // la regla de negocio no obliga a tocar el workflow.
+  // ⚠ Solo llega poblado en filas YA conciliadas: el nodo de transitivas únicamente resuelve
+  // r.ok===true. En las pendientes no hay dato y se pinta '—' — ausencia, no juicio.
+  function atribCell(r) {
+    var pl = r && r.ana_planes;
+    if (!pl || !pl.length) return '<span class="ip-mut">—</span>';
+    var proyecto = pl.indexOf(1) >= 0 || pl.indexOf(18) >= 0;
+    var indirecto = pl.indexOf(2) >= 0;
+    var rubro = pl.indexOf(20) >= 0;
+    var po = !!r.po;
+    var falta = [];
+    if (!rubro) falta.push('rubro');
+    if (!po) falta.push('PO');
+    if (!proyecto && !indirecto) falta.push('proyecto');
+    if (falta.length) return '<span class="ip-atr inc" title="Le falta: ' + esc(falta.join(', ')) + '">⚠ incompleta</span>';
+    if (proyecto) return '<span class="ip-atr ok" title="Proyecto + rubro + PO' + (r.ana_comp ? '' : ' · distribución separada: no la capta el budget de 2 ejes, pero la rentabilidad por proyecto sí') + '">✓ completa</span>';
+    return '<span class="ip-atr ind" title="Centro de costo indirecto (plan 2) + rubro + PO. Correcto: no todo gasto es de proyecto — no suma a rentabilidad por proyecto.">◐ indirecta</span>';
+  }
+
   // 17 columnas (contrato exacto del v7). vis = visible por default (8).
   var COLS = [
     { k: 'd',    lbl: 'Fecha',        vis: true,  hdrTitle: 'Fecha de liquidación (settled) en Jeeves. Mañana se agrega "Fecha transacción" (la que casa con PO/Bill).', cls: 'style="font-family:var(--ip-mono);font-size:12.5px"', fmt: function (r) { return esc(r.d); } },
@@ -148,7 +170,8 @@
     // un solo valor posible confundiría más de lo que informa.
     { k: 'sj',   lbl: 'Status banco', vis: true,  fmt: function (r) { return statusJeeves(r); } },
     // Sale del eje Odoo: "con/sin documento" no es un estado de conciliación, es si HAY candidato.
-    { k: 'cand', lbl: 'Candidato',    vis: false, fmt: function (r) { return candidatoCell(r); } }
+    { k: 'cand', lbl: 'Candidato',    vis: false, fmt: function (r) { return candidatoCell(r); } },
+    { k: 'atr',  lbl: 'Atribución',   vis: true,  fmt: function (r) { return atribCell(r); } }
   ];
   function colAttr(col, r) { return typeof col.cls === 'function' ? col.cls(r) : (col.cls || ''); }
 
