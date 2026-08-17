@@ -796,3 +796,45 @@ plataforma de Odoo 19: [`finanzas/ALMACEN_PRECONCILIACION.md`](finanzas/ALMACEN_
 Lo que ese doc deja fijado y no se debe re-litigar: `x_origen` es un campo propio porque
 `create_uid` **no puede** distinguir al motor de Eduardo (ambos escriben por n8n con la misma
 credencial), y las ACL no son opcionales — sin ellas ni uid 2 puede escribir.
+
+## La línea de corte: enunciado corregido (2026-08-17)
+
+El enunciado que veníamos usando —*"todos los asientos `Manual: BILL` son ≤ 23-jul"*— **es falso**.
+El correcto, y hay que leerlo completo:
+
+> **Todos los `Manual: BILL` de JEEVES son ≤ 23-jul.**
+
+Verificado por los dos lados, read-only vía MCP:
+
+- `account.move.line` con `name like 'Manual: BILL%'` **y `account_id = 223`** (102.01.007 Jeeves
+  Tarjeta Crédito) → **554 asientos, el más reciente del 2026-07-23**.
+- `account.move.line` con `name like 'Manual: BILL%'` **y `date >= 2026-07-24`** → **34 asientos**,
+  y **ninguno** en la cuenta 223. Todos están en **316 · PAYANA** (journal `BNK8`) y
+  **38 · BBVA General MXN** (journal `BNK1`), con contraparte en 17 · Proveedores nacionales.
+  El más reciente es `Manual: BILL3212` del **2026-08-12**.
+
+**Por qué el guard sigue siendo correcto:** el motor solo toca el journal 61 / cuenta 223, y ahí la
+frontera del 24-jul sí es limpia. Lo que cambia es la explicación, no la protección.
+
+### ⚠️ Riesgo de roadmap: el método viejo sigue ACTIVO en Payana y BBVA
+
+No es un residuo histórico — es la práctica corriente en esas fuentes: **34 asientos posteriores al
+23-jul, el más reciente del 12-ago**.
+
+**Cuando el motor se extienda a Payana o BBVA, el 24-jul no protege nada ahí.** Cada fuente necesita
+medir su propia frontera —el último `Manual: BILL` de SU cuenta— **antes** de que ningún proceso
+automático toque sus líneas. Extender el motor reusando `FECHA_CORTE` sin esa medición reproduciría
+exactamente el riesgo de duplicación que el guard evita hoy en Jeeves.
+
+### Bills de las 82 post-corte del Excel de Gera: verificación completa
+
+**80 de 80 existen en Odoo y están `posted`** — el registro manual de Gera es fiel al 100%, cero
+fantasmas en 82 filas. De ellos: **53 `not_paid`** con `amount_residual == amount_total` y **27
+`paid`** con residual 0.
+
+**El chequeo de pago manual sobre los 53 sale limpio por construcción:** residual íntegro significa
+que no hay ningún pago aplicado — un pago manual conciliado los habría dejado en `paid` con residual
+0, que es justo el grupo de 27 que queda excluido.
+
+Los 27 `paid` **no son manuales**: son conciliaciones reales. `BILL3219` (OXXO $47) tiene
+`full_reconcile 9039` contra la línea 33115; `BILL3218` es el PRO FERRE de $104.55 de la PO P06964.
