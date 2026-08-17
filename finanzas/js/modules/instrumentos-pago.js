@@ -22,7 +22,7 @@
   // ── config ──
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
-  var IP_BUILD = '0.5.21';                // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.22';                // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -1045,7 +1045,11 @@
         '<span class="ip-cand-main">' +
           '<span class="ip-cand-top"><span class="ip-cand-bill">' + esc(c.bill_name) + '</span>' +
             '<span class="ip-cand-partner">' + esc(c.partner) + '</span>' +
-            (c.pre_marcado ? '<span class="ip-chip pre">pre-marcado</span>' : '') +
+            // Dice lo que afirma. El server marca este candidato por PROXIMIDAD DE FECHA
+            // (menor days_diff, empate por bill_aml_id más bajo) — NO por score, aunque la
+            // lista se ordena por score. "pre-marcado" se leía como recomendación del motor
+            // y no lo es. Renombrado, no realineado: el criterio de fecha tiene uso propio.
+            (c.pre_marcado ? '<span class="ip-chip pre" title="El server marca el candidato con la fecha más cercana al cargo (menor diferencia de días). NO es la mejor puntuación: la lista está ordenada por score, que combina similitud de comercio (60%) y proximidad de fecha (40%). También es el que viene preseleccionado.">fecha más cercana</span>' : '') +
             (c._fromSearch ? '<span class="ip-chip busca">🔎 buscado</span>' : '') +
             (c.empresa ? '<span class="ip-chip emp">' + esc(c.empresa) + '</span>' : '') +
             (c.conflicto ? '<span class="ip-chip conf">⚠ revisar</span>' : '') + '</span>' +
