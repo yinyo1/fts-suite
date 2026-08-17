@@ -22,7 +22,7 @@
   // ── config ──
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
-  var IP_BUILD = '0.5.19';                // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.20';                // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -284,8 +284,11 @@
         // Solo lo que ACOTA EL UNIVERSO. `estado` y `search` se quitaron a propósito: filtran en
         // cliente sobre lo ya cargado, y mandarlos al server dejaba el universo pre-recortado, que
         // además hacía mentir a los chips (cuentan sobre el universo, no sobre lo filtrado).
+        // Solo las FECHAS acotan el universo. `journal` salió (v0.5.20): visibleRows YA lo filtraba
+        // en cliente, así que mandarlo al server era pagar una recarga completa por un subconjunto
+        // que la tabla ya sabía calcular. Ahora el universo trae los tres journals y cambiar de
+        // journal es instantáneo.
         companies: window.FinState.getCompanies(),
-        journal: f.journal || null,
         date_from: f.from || null, date_to: f.to || null,
         limit: 500, offset: 0
       };
@@ -723,20 +726,21 @@
       // subconjuntos de lo ya cargado — pedirlos al server era barrer hasta 60 páginas para no
       // traer ni una fila nueva.
       var reload = function () {
-        state.filters.journal = q('#ip-fJournal').value;
         state.filters.from = q('#ip-fFrom').value;
         state.filters.to = q('#ip-fTo').value;
         state.page = 1;
         if (state.mode === 'real') { load(); } else { paintTable(); }
       };
       var refilter = function () {
+        state.filters.journal = q('#ip-fJournal').value;
         state.filters.estado = q('#ip-fEstado').value;
         state.filters.tipo = q('#ip-fTipo') ? q('#ip-fTipo').value : '';
         state.page = 1;
         paintTable(); paintChips();
       };
-      ['#ip-fJournal', '#ip-fFrom', '#ip-fTo'].forEach(function (s) { var el = q(s); if (el) el.addEventListener('change', reload); });
-      ['#ip-fEstado', '#ip-fTipo'].forEach(function (s) { var el = q(s); if (el) el.addEventListener('change', refilter); });
+      // Solo las FECHAS recargan. Journal, estado y tipo son subconjuntos de lo ya cargado.
+      ['#ip-fFrom', '#ip-fTo'].forEach(function (s) { var el = q(s); if (el) el.addEventListener('change', reload); });
+      ['#ip-fJournal', '#ip-fEstado', '#ip-fTipo'].forEach(function (s) { var el = q(s); if (el) el.addEventListener('change', refilter); });
       var srch = q('#ip-fSearch'); if (srch) srch.addEventListener('input', function () { state.filters.search = srch.value; state.page = 1; paintTable(); });
       var ps = q('#ip-fPageSize'); if (ps) ps.addEventListener('change', function () { state.pageSize = +ps.value; state.page = 1; paintTable(); });
       var cb = q('#ip-colbtn'), cm = q('#ip-colmenu');
@@ -1181,7 +1185,12 @@
       s.result = r;
       var row = state.allRows[id];
       if (r.ok && !r.parcial) {
-        if (row) { row.ok = true; row.res = 0; }
+        // La marca local pinta el estado al instante, pero NO trae las transitivas (PO, Bill,
+        // Status bill, Analítica, Folio fiscal): esas solo las resuelve el server siguiendo el
+        // full_reconcile_id, que acaba de nacer. Marcarla sin releer dejaba la fila diciendo
+        // "✓ Conciliada" con "—" en las cinco columnas, que es afirmar que no hay documento
+        // cuando sí lo hay. Se marca como pendiente de releer y se relee de verdad.
+        if (row) { row.ok = true; row.res = 0; row._stale = true; }
         // baja el panel Hoy: −1 pendiente, +1 conciliada manual (botón)
         if (state.today) {
           if (state.today.conciliable_pendiente) state.today.conciliable_pendiente.total = Math.max(0, (state.today.conciliable_pendiente.total || 0) - 1);
@@ -1199,7 +1208,9 @@
           if (!document.body.contains(container)) return;
           if (state.expanded === id) state.expanded = null;
           delete state.sugg[id];
-          paintTable();
+          // Releer del server: el 200 no es prueba de que el estado quedó, y las transitivas
+          // solo existen del lado de Odoo. En demo no hay a quién releerle.
+          if (state.mode === 'real') { load(); } else { paintTable(); }
         }, 1500);
         return;
       }
