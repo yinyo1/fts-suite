@@ -22,7 +22,7 @@
   // ── config ──
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
-  var IP_BUILD = '0.5.27';                // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.28';                // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -519,7 +519,9 @@
 
       // v0.5.16: el semáforo sube aquí, pegado a las fuentes que evalúa (antes vivía después de "Hoy").
       html += '<h2>Semáforo de conciliación — Admin</h2><div class="sem"><div id="ip-semrows"></div>' +
-              '<div class="semnote">Verde = 100% conciliado y residual $0 · Amarillo ≥ 90% · Rojo &lt; 90% o residual &gt; ' + money(RESIDUAL_UMBRAL_MXN) + '. El KPI incluye backlog histórico hasta su limpieza (Fase 2).</div></div>';
+              '<div class="semnote"><b>Desde el corte</b> — la meta es 100%: verde solo al llegar, amarillo desde 85%, rojo debajo. ' +
+              '<b>Backlog</b> — no tiene color: es deuda que se vacía, no una meta que se cumple. ' +
+              'Las fuentes sin motor no llevan porcentaje: el 0% diría fracaso donde hay <i>no empezado</i>.</div></div>';
 
       html += '<h2>Transacciones</h2>' +
         '<div class="ip-toolbar">' +
@@ -1361,7 +1363,10 @@
           // puede exigir y se puede tachar; un "59.3%" solo describe.
           var faltan = x.post_total - x.post_conc;
           var p = x.post_total ? Math.round(x.post_conc / x.post_total * 1000) / 10 : null;
-          var c2 = p === null ? 'off' : (p >= 90 ? 'g' : p >= 60 ? 'y' : 'r');
+          // Umbrales de META, distintos a los del semáforo viejo por journal: aquí el objetivo
+          // declarado es 100% post-corte, así que solo el 100% es verde. Amarillo desde 85%
+          // (a tiro), rojo debajo. Un 60% no puede pintar amarillo cuando faltan 47 líneas.
+          var c2 = p === null ? 'off' : (p >= 100 ? 'g' : p >= 85 ? 'y' : 'r');
           return '<div class="s2card meta"><div class="s2ct"><span class="light ' + c2 + '"></span>' + esc(x.label) + '</div>' +
             '<div class="s2goal">' + (faltan === 0 ? '<b>Al 100%</b>' : 'Faltan <b>' + faltan + '</b> para el 100%') + '</div>' +
             '<div class="bar"><i style="width:' + (p || 0) + '%;background:' + barc(c2) + '"></i></div>' +
@@ -1388,8 +1393,7 @@
         '<span class="s2title">Backlog — anterior a <b>' + esc(corte) + '</b>' +
           '<span class="s2dir down" title="Debe bajar hasta cero">↓ reducir</span></span>' +
         '<span class="s2sum">' + ap + (at ? ' · ' + at : '') + '</span></summary>' +
-        '<div class="s2body"><div class="s2note">Detalle por journal del universo cargado:</div>' +
-        '<div class="srcgrid sem">' + data.map(function (d) { return cell(d, false); }).join('') + cell(all, true) + '</div></div></details>';
+        '<div class="s2body">' + backlogDetalle(m) + '</div></details>';
 
       // ── Pasivo del PAID manual. NO es trabajo pendiente de nadie: es una decisión contable. ──
       // Cifra ESTÁTICA con su fecha de medición, no un contador vivo: el panel no tiene acceso a
@@ -1414,6 +1418,20 @@
       host.innerHTML = html;
     }
     function horaCst() { var d = new Date(Date.now() - 6 * 3600 * 1000); return d.toISOString().slice(11, 16); }
+    // El detalle del backlog viene del SERVER, no de state.allRows. allRows es la ventana rodante
+    // de la tabla (arranca el mes pasado) y mostraba 260 pendientes de Jeeves donde hay 1,846:
+    // dos universos distintos bajo el mismo título. El resumen ya venía del server; el detalle no.
+    function backlogDetalle(m) {
+      var pj = (m && m.por_journal || []).filter(function (x) { return (x.pre_pend || 0) > 0; });
+      if (!pj.length) return '<div class="s2note">Sin pendientes anteriores al corte.</div>';
+      pj.sort(function (a, b) { return b.pre_pend - a.pre_pend; });
+      return '<div class="s2note">Pendientes anteriores al corte, por fuente — universo completo:</div>' +
+        pj.map(function (x) {
+          return '<div class="s2row"><span class="s2j">' + esc(x.label) + '</span>' +
+            '<span class="s2n"><b>' + x.pre_pend + '</b> pendientes</span>' +
+            '<span class="s2p">' + money(x.pre_monto || 0) + '</span></div>';
+        }).join('');
+    }
     // Tendencia desde la serie del CBWATCH. HOY no hay puntos A/B almacenados — el CBWATCH
     // guarda los conteos del watchdog, no las métricas del corte. Se dice, no se inventa:
     // un "sin cambio" falso sería peor que declarar que aún no hay serie.
