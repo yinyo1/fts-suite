@@ -22,7 +22,7 @@
   // ── config ──
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
-  var IP_BUILD = '0.5.29';                // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.30';                // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -830,7 +830,16 @@
       return p ? p.en_motor !== false : true;   // sin info del server, no se acusa de no-evaluada
     }
     function rowConc(r) {
-      if (r.ok) return (Number(r.res) || 0) === 0 ? 'conciliada' : 'parcial';
+      // El residual que delata un descuadre es el del APUNTE de la cuenta 17 (`res_apunte`),
+      // no el de la línea (`res`). La receta mueve el suspense a la 17 y reconcilia; Odoo marca
+      // is_reconciled en cuanto no queda suspense, aunque ese apunte conserve saldo. Con `res`
+      // esta rama nunca se ejecutaba y Ferr —$334.08 abiertos— se veía idéntica a una completa.
+      // Si el server no manda el campo (build viejo), se cae al criterio anterior en vez de
+      // afirmar que todo está cuadrado.
+      if (r.ok) {
+        var _ra = (r.res_apunte != null) ? Number(r.res_apunte) : (Number(r.res) || 0);
+        return Math.abs(_ra) < 0.005 ? 'conciliada' : 'parcial';
+      }
       // EJE ODOO, valor intermedio: el motor 2 dejó decidida la conciliación pero el asiento no existe.
       // Hoy no lo puebla nadie (state.preconc llega vacío) → el filtro y el chip salen en gris con 0.
       if (state.preconc && (state.preconc[r._id] || state.preconc[r.id])) return 'preconciliada';
@@ -852,7 +861,12 @@
     function stateCell(r) {
       var st = rowConc(r);
       if (st === 'conciliada') return '<span class="ip-est liq" title="Conciliada: tiene contrapartida y residual $0">✓ Conciliada</span>';
-      if (st === 'parcial')    return '<span class="ip-est tra" title="Tiene contrapartida pero queda residual sin cerrar">◐ Conciliada parcial</span> <span class="ip-est-bill">resta ' + money(Math.abs(Number(r.res) || 0)) + '</span>';
+      if (st === 'parcial') {
+        // "quedan $X sin cerrar", NO "falta comprobante": lo unico que sabemos es que el apunte
+        // no cuadro. Afirmar que falta una factura seria inventar la causa — esa la dice Gera.
+        var _r = Math.abs(Number(r.res_apunte != null ? r.res_apunte : r.res) || 0);
+        return '<span class="ip-est tra" title="Tiene contrapartida pero el apunte de la cuenta 17 conserva saldo">◐ Conciliada parcial</span> <span class="ip-est-bill">quedan ' + money(_r) + ' sin cerrar</span>';
+      }
       if (st === 'noevaluada') return '<span class="ip-est nev" title="Fuera del alcance del motor de conciliación (journal_id 61 fijo). No es que no haya factura: no se buscó.">◌ No evaluada</span>';
       if (st === 'condoc')     { var c = (suggHint(r).cand) || {}; return '<span class="ip-est doc" title="El motor encontró factura candidata">◆ Con documento</span> <span class="ip-est-bill">' + esc(c.bill_name || '') + ' · ' + Math.round((c.score || 0) * 100) + '</span>'; }
       if (st === 'sindoc')     return '<span class="ip-est sinc" title="El motor evaluó y no encontró factura">○ Sin documento</span> <a class="ip-est-buscar" data-buscar="' + r._id + '">buscar bill</a>';
@@ -1040,6 +1054,13 @@
           if (hint) hint.textContent = n < 10 ? ('Faltan ' + (10 - n) + ' caracteres') : 'Se registrará en el historial del bill';
         });
       });
+      qa('button[data-resgo]').forEach(function (b) {
+        b.addEventListener('click', function (e) { e.stopPropagation();
+          var id = +b.getAttribute('data-resgo');
+          delete state.sugg[id].result;   // limpia el aviso para que el acordeon vuelva a candidatos
+          doConciliar(id, b, { residual_ok: true });
+        });
+      });
       qa('button[data-ovgo]').forEach(function (b) {
         b.addEventListener('click', function (e) {
           e.stopPropagation();
@@ -1144,6 +1165,16 @@
       // A4 — override del corte. Aparece SOLO cuando el server bloqueó por pre-corte, así que
       // no hay forma de que salga en una línea que no lo necesita: lo gobierna la respuesta,
       // no una condición del cliente que pudiera desincronizarse del guard real.
+      // Aviso de residual: confirmación explícita, sin motivo escrito (a diferencia del override
+      // del corte). Aquí no hay riesgo de duplicar gasto — hay riesgo de dejar un descuadre
+      // invisible, y basta con que quede constancia de que alguien lo vio y siguió.
+      if (r.code === 'DEJARA_RESIDUAL') {
+        return '<div class="ip-acc"><div class="ip-res bad">' + esc(r.msg) + '</div>' +
+          '<div class="ip-ovbox"><div class="ip-ovlbl">Puede ser correcto —el comercio cobró más que la factura— pero queda registrado que lo confirmaste.</div>' +
+          '<div class="ip-ovrow"><button class="ip-ovbtn" data-resgo="' + t._id + '">Conciliar dejando ' + money(r.residual) + ' sin cerrar</button>' +
+          '<span class="ip-ovhint">Se enviará con tu confirmación</span></div></div>' +
+          '<div class="ip-acc-actions"><button class="ip-acc-reload" data-reload="' + t._id + '">↻ Recargar sugerencias</button></div></div>';
+      }
       if (r.code === 'PRE_CORTE_BLOQUEADA') {
         return '<div class="ip-acc"><div class="ip-res bad">' + esc(r.msg || human) + ' <span class="ip-mono2">(' + esc(r.code) + ')</span></div>' +
           '<div class="ip-ovbox">' +
@@ -1266,9 +1297,23 @@
         setTimeout(function () { if (!document.body.contains(container)) return; applyConcResult(id, demoOutcome(cand)); }, 700);
         return;
       }
+      // AVISO DE RESIDUAL. Si el cargo es mayor que el bill, la conciliación deja saldo abierto
+      // en el apunte de la cuenta 17 — y hoy eso es INVISIBLE: la línea sale "conciliada" porque
+      // Odoo solo mira si queda suspense. Es lo que pasó con Ferr ($334.08 abiertos, nadie lo vio).
+      // Fricción, no bloqueo: conciliar así puede ser correcto; lo que no puede es hacerlo a ciegas.
+      var _falt = Math.round((Math.abs(Number(row.amt) || 0) - Math.abs(Number(cand.monto_bill) || 0)) * 100) / 100;
+      if (_falt > 0.005 && !(ov && ov.residual_ok)) {
+        if (btn) { btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Conciliar'; }
+        applyConcResult(id, { ok: false, code: 'DEJARA_RESIDUAL', http: 0, residual: _falt,
+          msg: 'Esto va a dejar ' + money(_falt) + ' sin cerrar en la cuenta 17. El cargo (' + money(Math.abs(row.amt)) +
+               ') es mayor que el bill (' + money(Math.abs(cand.monto_bill)) + '), así que el apunte conserva saldo ' +
+               'aunque la línea aparezca conciliada.' });
+        return;
+      }
       // El override viaja SOLO si el humano lo pidió tras ver el bloqueo (ver resultHtml).
       // Nunca se manda por default: el server lo exige explícito y con motivo.
       var payload = { line_id: row.id, bill_aml_id: cand.bill_aml_id };
+      if (ov && ov.residual_ok) { payload.residual_confirmado = _falt; payload.residual_confirmado_por = (window.FinAuth && window.FinAuth.getUser && window.FinAuth.getUser()) || 'ui'; }
       if (ov && ov.motivo) { payload.override_pre_corte = true; payload.override_motivo = ov.motivo; }
       window.FinClient.call(EP_CONCILIAR, payload)
         .then(function (r) { applyConcResult(id, r || {}); })
