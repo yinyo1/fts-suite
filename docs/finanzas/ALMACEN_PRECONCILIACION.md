@@ -263,3 +263,41 @@ Respond, activado a mano, disparado por MCP y borrado al terminar.
   Está en la configuración del servidor desplegado en Railway (repo `yinyo1/fts-mcp-odoo`).
   `x_preconciliacion` debe agregarse ahí **solo en lectura**: a este modelo, como al resto,
   se escribe únicamente por n8n.
+
+---
+
+# Anexo — Cargo mayor que la factura: qué hacer con la diferencia
+
+**Decisión pendiente de Esteban con su contador.** Aquí quedan las opciones medidas, no la decisión.
+
+## El caso
+
+Cuando el cargo bancario supera el monto del bill, la conciliación cierra la línea pero **deja
+saldo abierto en el apunte de la cuenta 17**. Y hasta v0.5.30 era **invisible**: `is_reconciled`
+no significa *"cuadrada"*, significa *"ya no está en suspense"* — la receta mueve el apunte de
+suspense a la 17, Odoo ve que no queda suspense y marca la línea conciliada aunque el apunte
+conserve saldo.
+
+**Magnitud medida el 2026-08-19:** 10 líneas, **$337.21** en total. De ellos **$334.08 son un solo
+caso** (Ferr / BILL3230); las otras nueve suman **$3.13**.
+
+## Las tres opciones
+
+| | qué hace | a favor | en contra |
+|---|---|---|---|
+| **A · Parcial visible** *(actual)* | El saldo queda abierto en la cuenta 17 | No inventa nada; se resuelve si llega la factura complementaria | **Sobrestima el pasivo** con el proveedor: dice que se le deben $X que ya se le pagaron. Si nunca llega el complemento, el saldo envejece para siempre |
+| **B · Diferencia a resultados** | La diferencia va a una cuenta de gasto al conciliar | Cuentas limpias, sin saldos fantasma | Es **gasto sin comprobante fiscal** — no deducible. Exige definir cuenta destino y probablemente aprobación por monto |
+| **C · Rechazar hasta tener documento** | No se concilia sin factura por el total | El más limpio fiscalmente | La línea queda pendiente indefinidamente si el comercio nunca emite el complemento. **Frena el cierre por diferencias de centavos** |
+
+## Recomendación: umbral mixto
+
+Los datos apuntan a que **ninguna opción sirve sola**: nueve de los diez casos son migajas ($3.13
+entre todas) y uno concentra el 99% del monto.
+
+**Un umbral por debajo del cual la diferencia va a resultados (B) y por encima del cual se exige
+documento (C).** El umbral y la cuenta destino son decisión del contador — el sistema solo debe
+aplicarlos.
+
+**Lo que sí es afirmable:** la opción A *sin visibilidad* era la peor de las tres, y eso ya está
+corregido en v0.5.30 (la fila muestra "quedan $X sin cerrar" y el panel avisa **antes** de
+conciliar, con confirmación que queda registrada en el `[[CONCFTS]]`).
