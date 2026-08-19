@@ -22,7 +22,7 @@
   // ── config ──
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
-  var IP_BUILD = '0.5.28';                // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.29';                // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -936,6 +936,22 @@
     }
 
     function paintTable() {
+      // Preservar el scroll (v0.5.29). paintTable reescribe el innerHTML de la tabla, y el
+      // navegador colapsa la altura un instante antes de volver a pintarla: la página salta
+      // arriba y hay que bajar otra vez. Se sentía en cada clic de expandir una fila.
+      // Se guarda el scroll de la PÁGINA (el contenedor no scrollea; la tabla crece hacia abajo)
+      // y se restaura tras el repintado, en el mismo frame para que no se vea el salto.
+      var _sc = null;
+      try { _sc = (window.pageYOffset != null) ? window.pageYOffset : (document.scrollingElement || document.documentElement).scrollTop; } catch (e) { }
+      var _restaurar = function () {
+        if (_sc == null) return;
+        try {
+          var el = document.scrollingElement || document.documentElement;
+          // solo si de verdad se movió: restaurar a ciegas pelearía con un scroll del usuario
+          var ahora = (window.pageYOffset != null) ? window.pageYOffset : el.scrollTop;
+          if (Math.abs(ahora - _sc) > 1) { if (window.scrollTo) window.scrollTo(0, _sc); else el.scrollTop = _sc; }
+        } catch (e) { }
+      };
       var rows = visibleRows();
       var pages = Math.max(1, Math.ceil(rows.length / state.pageSize));
       if (state.page > pages) state.page = 1;
@@ -1001,6 +1017,11 @@
       qa('th[data-sort]').forEach(function (th) { th.addEventListener('click', function () { var k = th.getAttribute('data-sort'); if (state.sortK === k) state.sortDir *= -1; else { state.sortK = k; state.sortDir = 1; } paintTable(); }); });
       qa('.ip-colfil').forEach(function (el) { el.addEventListener('click', function (e) { e.stopPropagation(); openColFilter(el.getAttribute('data-colfil'), el); }); });   // Excel-filter: icono ▾ (stopPropagation → no dispara el sort del th)
       var scr = q('.ip-tblscroll'); if (scr) scr.addEventListener('scroll', closeColFilter);   // el popup es fixed → cierra al hacer scroll para no desalinearse
+
+      // Restaurar el scroll tras repintar. Va aqui, con el DOM ya montado y el wiring hecho,
+      // no antes: si se restaura con la tabla a medio pintar, la altura aun no existe y el
+      // navegador recorta el destino al maximo disponible en ese instante.
+      _restaurar();
 
       // wiring del acordeón de sugerencias (Etapa C) — solo existe en filas expandidas
       qa('button[data-expand]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); toggleExpand(+b.getAttribute('data-expand')); }); });
