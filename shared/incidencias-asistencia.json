@@ -92,9 +92,19 @@
           "fecha": "2026-08-18T12:48:14.456Z",
           "hora_propuesta_cst": "05:05",
           "comentario": "Si cheque salida pero me al parecer no se guardo"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe Pérez Guzmán",
+          "timestamp": "2026-08-21T14:30:10.039Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Salida 5 de la tarde",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": "2026-08-18 11:05:00",
       "aplicado_en_odoo": true,
       "tag_disputa_activo": true,
