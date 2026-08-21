@@ -26,9 +26,19 @@
           "hora_propuesta_cst": "2026-08-18 08:00:00",
           "comentario": "Cómo ya había llegado tarde se me pasó por llegar a comenzar a laborar",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe Pérez Guzmán",
+          "timestamp": "2026-08-21T14:29:54.195Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Llegada 8 de la mañana",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false,
       "department_id": 3,
