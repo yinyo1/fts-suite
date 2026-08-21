@@ -136,9 +136,19 @@
           "hora_propuesta_cst": "2026-08-13 07:00:00",
           "comentario": "Olvide checar salida de ayer y después la entrada de hoy",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe Pérez Guzmán",
+          "timestamp": "2026-08-21T14:30:41.348Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Entrada 7:00 am",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false,
       "department_id": 3,
