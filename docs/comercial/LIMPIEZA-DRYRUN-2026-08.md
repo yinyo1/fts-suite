@@ -246,3 +246,11 @@ L7 (diagnóstico) — no escribe
 2. **L4** — Mission Foods (3 leads): ¿**Aldo** por cartera o **Esteban** por la hoja?
 3. **L4** — Regal Rexnord (4 leads vivos): ¿se queda sin dueño en Revisar o le asignas uno?
 4. **L6** — ¿confirmamos la hipótesis "los montos ya están en pesos" con 2-3 casos más antes del write de las 190?
+
+---
+
+## ⚠️ ACTUALIZACIÓN 2026-08-29 — L6 DETENIDO
+
+La sección **L6** de este reporte quedó invalidada. La hipótesis "los montos ya están en pesos, solo la etiqueta está mal" **se comprobó FALSA** al verificar 4 casos más del grupo B a petición de Esteban: sus facturas posteadas están **también en USD** con el mismo monto (son ventas en dólares reales, incluido un cliente canadiense). SO5989 era la excepción, no la regla.
+
+El lote NO se ejecutó y el script tiene un candado duro. Evidencia cruda y opciones: [`L6-HALLAZGO-MONEDA-2026-08-29.md`](L6-HALLAZGO-MONEDA-2026-08-29.md).

@@ -14,10 +14,10 @@
 // ⚠ Este lote toca dinero. A diferencia de los de crm.lead, un error aquí sale
 // en estados financieros. Por eso el read-back es por registro, no por lote.
 //
-// ⚠ SOLO se cambia `currency_id`. Los MONTOS NO se convierten: la evidencia
-// (SO5989 marcada USD $44,240.21 ↔ su factura posteada INV1688 en MXN por
-// exactamente 44,240.21) dice que los números ya estaban en pesos y lo único
-// equivocado es la etiqueta. Convertirlos destruiría el valor real.
+// ⚠ La cabecera original decía aquí que "los montos ya están en pesos y solo la
+// etiqueta está mal", apoyado en SO5989 ↔ INV1688. Eso resultó FALSO al verificar
+// 4 casos más (ver el bloque LOTE DETENIDO abajo). Se deja anotado porque el
+// error de razonamiento —generalizar de UNA observación— es la lección del lote.
 
 'use strict';
 
@@ -26,13 +26,37 @@ const { conectar, parseArgs, log } = require('./lib/odoo-client');
 const fs = require('fs');
 const path = require('path');
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔴 LOTE DETENIDO — 2026-08-29. NO EJECUTAR CON --write.
+//
+// La premisa de este lote ("company MX + moneda USD = error de captura, los
+// montos ya están en pesos") se comprobó FALSA contra las facturas posteadas:
+// 4 de los 5 casos del grupo B tienen su account.move posteado TAMBIEN en USD
+// con el mismo monto → son ventas en dólares REALES, no etiquetas mal puestas.
+// SO5989/INV1688 (la que originó la hipótesis) era la excepción, no la regla.
+//
+// Convertirlas habría registrado una venta de 5,015.84 USD como 5,015.84 MXN.
+//
+// Evidencia cruda: docs/comercial/L6-HALLAZGO-MONEDA-2026-08-29.md
+// Decisión pendiente de Esteban en el issue #131.
+// ═══════════════════════════════════════════════════════════════════════════
+const LOTE_DETENIDO = true;
+
 const COMPANY_MX = 1;
 const CURRENCY_USD = 2;
 const CURRENCY_MXN = 33;  // se resuelve en runtime; este es solo el fallback documentado
 
 async function main() {
   const opts = parseArgs(process.argv);
+  if (LOTE_DETENIDO && opts.write) {
+    throw new Error(
+      'L6 está DETENIDO: su premisa se comprobó falsa el 2026-08-29 (4 de 5 casos del grupo B\n' +
+      'son ventas USD reales, con factura posteada en USD). Ver docs/comercial/L6-HALLAZGO-MONEDA-2026-08-29.md.\n' +
+      'No se re-habilita sin una decisión escrita de Esteban en el issue #131.');
+  }
   log('═══ L6 · Moneda de SO MX marcadas en USD ═══');
+  if (LOTE_DETENIDO) log('⚠ LOTE DETENIDO — solo lectura. Ver L6-HALLAZGO-MONEDA-2026-08-29.md');
   log(`modo: ${opts.write ? 'ESCRITURA' : 'DRY-RUN (no escribe nada)'}`);
 
   const odoo = await conectar();
