@@ -93,6 +93,8 @@ const CARTERA = [
 ];
 
 // Excepciones explícitas de cartera (el patrón simple daría un falso positivo).
+// ⚠ Se evalúan ANTES que la hoja: por eso resuelven los conflictos hoja-vs-cartera
+// que el dry-run marcó y Esteban decidió en #131 (2026-08-29).
 const CARTERA_EXCEPCIONES = [
   // "GRUMA/Mission Foods (fuera de Hayward)" → Hayward manda sobre Mission/GRUMA.
   { si_contiene: 'hayward', dueno: 'Ricardo',
@@ -100,6 +102,15 @@ const CARTERA_EXCEPCIONES = [
   // Nalco Brasil no es la cuenta Nalco MX de Montalvo (la hoja la tenía en Rissia).
   { si_contiene: 'nalco brasil', dueno: null,
     nota: 'Nalco Brasil ≠ Nalco MX; sin dueño vigente definido → Revisar' },
+  // #131 decisión 2: la hoja pone a Esteban (1 de 6 contactos, el resto de Luis),
+  // pero manda la cartera vigente. Esteban conserva la relación a nivel cuenta;
+  // el lead lo trabaja Aldo.
+  { si_contiene: 'mission foods', dueno: 'Aldo',
+    nota: '#131 dec.2: manda la cartera vigente sobre la hoja → Aldo' },
+  // #131 decisión 3: en la hoja solo aparece con Luis (no vigente) y no cae en
+  // ninguna cartera, así que caía a Revisar sin dueño. Reversible en la revisión semanal.
+  { si_contiene: 'regal rexnord', dueno: 'Aldo',
+    nota: '#131 dec.3: asignada a Aldo en vez de Revisar; reversible en la revisión semanal' },
 ];
 
 // ── L1: motivo de pérdida ──
