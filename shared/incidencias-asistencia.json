@@ -287,7 +287,7 @@
     {
       "id_interno": "INC-AUTO-CIERRE-153-2026-08-24T13-40-12-468Z",
       "tipo": "auto_cierre_pendiente",
-      "status": "pendiente_rh",
+      "status": "aprobada_tal_cual",
       "fecha_creacion": "2026-08-24T13:40:14.226Z",
       "empleado_id": 153,
       "empleado_nombre": "Eduardo Garza",
@@ -297,7 +297,7 @@
       "check_out_aplicado_utc": "2026-08-21 22:43:33",
       "horas_originales": "72.54",
       "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "autoincidencia": true,
       "rh_aprobo": null,
       "rh_fecha": null,
@@ -305,7 +305,18 @@
       "department_name": null,
       "supervisor_id": null,
       "supervisor_name": null,
-      "propuestas": []
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "rh",
+          "user_id": 112,
+          "usuario": "Felipe Perez Guzman",
+          "timestamp": "2026-08-31T04:00:35.329Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Aprobado por Felipe Perez (Operations Manager) via WhatsApp 30-ago-2026 11:31 CST. Capturado manualmente por Esteban De La Cruz. Ref: issue #134.",
+          "accion": "aprobado"
+        }
+      ]
     },
     {
       "id_interno": "INC-OLV-62-2026-08-18T14-20-45-694Z",
