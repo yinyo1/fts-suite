@@ -129,9 +129,19 @@
           "fecha": "2026-08-28T00:09:13.047Z",
           "hora_propuesta_cst": "17:08",
           "comentario": "Se me olvidó checar salida"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe Perez Guzman",
+          "timestamp": "2026-08-31T04:00:39.206Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Aprobado por Felipe Perez (Operations Manager) via WhatsApp 30-ago-2026 11:31 CST. Capturado manualmente por Esteban De La Cruz. Ref: issue #134.",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": "2026-08-27 23:08:00",
       "aplicado_en_odoo": true,
       "tag_disputa_activo": true,
