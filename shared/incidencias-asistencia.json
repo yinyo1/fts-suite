@@ -204,9 +204,19 @@
           "hora_propuesta_cst": "07:04",
           "comentario": "Hora ESTIMADA, no declarada. check_in deducido = 07:04 CST (13:04 UTC): mediana de sus 6 dias previos, y dentro de la ventana de entrada de la cuadrilla de SO9428 ese dia (12:39 a 13:07 UTC). Su declaracion de 16:06 CST no encaja con ninguno de sus 8 dias ni con la cuadrilla. Con su salida real (23:07:58 UTC) da 10.07 h. Decision de Direccion.",
           "accion": "ajustado"
+        },
+        {
+          "paso": 3,
+          "rol": "rh",
+          "user_id": 32,
+          "usuario": "Jesus Esteban De La Cruz Calderon",
+          "timestamp": "2026-08-31T07:05:46.043Z",
+          "hora_propuesta_cst": "07:04",
+          "comentario": "RH confirma la hora ESTIMADA de 07:04 CST (13:04 UTC) con el mismo criterio del paso 1: mediana propia mas ventana de la cuadrilla de SO9428 del 27-ago. Queda aprobada_con_ajuste y no tal_cual porque la hora SI se modifico.",
+          "accion": "ajustado"
         }
       ],
-      "status": "pendiente_rh",
+      "status": "aprobada_con_ajuste",
       "hora_final_aplicada_utc": "2026-08-27 13:04:00",
       "aplicado_en_odoo": true,
       "department_id": 3,
@@ -221,7 +231,7 @@
       "rh_directo_ceo": false,
       "directo_ceo": false,
       "sin_supervisor": false,
-      "tag_disputa_activo": true
+      "tag_disputa_activo": false
     },
     {
       "id_interno": "INC-AUTO-CIERRE-155-2026-08-26T12-38-03-576Z",
