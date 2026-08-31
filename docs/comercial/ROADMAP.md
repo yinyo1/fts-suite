@@ -125,6 +125,13 @@ Cierran las preguntas abiertas de la auditoría (#130 §6) y son el alcance de l
 
 **Lo que cambia después y lo que no:** el login único de toda la suite —con roles derivados de `hr.employee` (patrón ya validado en `panel/derivar-roles`)— es un frente futuro. Cuando llegue, **solo cambia quién firma el token**; la forma de arriba y todos sus consumidores siguen igual. Por eso se define ahora y no cuando duela.
 
+## 5.3 Almacén
+
+El taller de la suite es **Postgres** (servicio `fts-suite-db` en Railway), con esquema
+por dominio. Decisión, seis reglas de fundación, esquema y el único paso manual:
+[`docs/comercial/ALMACEN.md`](ALMACEN.md). Migraciones versionadas en
+`comercial/db/migrations/`.
+
 ## 6. Referencias
 - Proceso v2 de 8 pasos y arquitectura previa: sesión 17-jul-2026 (PR #89, comercial.html, workflows comercial/watchdog-enviadas, comercial/captura, comercial/pipeline).
 - Front desk y agentes de IA: sesión 26-abr-2026.
