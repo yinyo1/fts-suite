@@ -194,11 +194,21 @@
           "hora_propuesta_cst": "2026-08-27 16:06:00",
           "comentario": "Registre entrada en mi cel pero al pareces no se registro",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 32,
+          "usuario": "Jesus Esteban De La Cruz Calderon",
+          "timestamp": "2026-08-31T07:05:40.328Z",
+          "hora_propuesta_cst": "07:04",
+          "comentario": "Hora ESTIMADA, no declarada. check_in deducido = 07:04 CST (13:04 UTC): mediana de sus 6 dias previos, y dentro de la ventana de entrada de la cuadrilla de SO9428 ese dia (12:39 a 13:07 UTC). Su declaracion de 16:06 CST no encaja con ninguno de sus 8 dias ni con la cuadrilla. Con su salida real (23:07:58 UTC) da 10.07 h. Decision de Direccion.",
+          "accion": "ajustado"
         }
       ],
-      "status": "pendiente_supervisor",
-      "hora_final_aplicada_utc": null,
-      "aplicado_en_odoo": false,
+      "status": "pendiente_rh",
+      "hora_final_aplicada_utc": "2026-08-27 13:04:00",
+      "aplicado_en_odoo": true,
       "department_id": 3,
       "department_name": "Operaciones",
       "sin_departamento": false,
