@@ -50,7 +50,7 @@
     {
       "id_interno": "INC-AUTO-CIERRE-79-2026-08-28T12-41-13-295Z",
       "tipo": "auto_cierre_pendiente",
-      "status": "pendiente_rh",
+      "status": "aprobada_tal_cual",
       "fecha_creacion": "2026-08-28T12:41:14.976Z",
       "empleado_id": 79,
       "empleado_nombre": "José Luis Romero Grados",
@@ -60,7 +60,7 @@
       "check_out_aplicado_utc": "2026-08-27 22:15:11",
       "horas_originales": "24.03",
       "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "autoincidencia": true,
       "rh_aprobo": null,
       "rh_fecha": null,
@@ -68,7 +68,18 @@
       "department_name": null,
       "supervisor_id": null,
       "supervisor_name": null,
-      "propuestas": []
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "rh",
+          "user_id": 112,
+          "usuario": "Felipe Perez Guzman",
+          "timestamp": "2026-08-31T04:00:14.305Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Aprobado por Felipe Perez (Operations Manager) via WhatsApp 30-ago-2026 11:31 CST. Capturado manualmente por Esteban De La Cruz. Ref: issue #134.",
+          "accion": "aprobado"
+        }
+      ]
     },
     {
       "id_interno": "INC-OLV-CHK-124-2026-08-28T00-09-13-047Z",
