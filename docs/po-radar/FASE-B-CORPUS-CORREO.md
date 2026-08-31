@@ -65,6 +65,57 @@ almacén.**
 **Ventana recomendada:** 12 meses. Cubre el ciclo completo de los clientes recurrentes y los cambios
 de canal (la migración de Mondelez de septiembre 2026 queda dentro).
 
+### 2.0 ⚠️ Corrección de la sesión 2: el pipeline de arriba NO es ejecutable tal cual
+
+Este diseño se escribió sin dimensionar el buzón. Medido el 2026-08-31 vía Graph:
+
+| | Medición |
+|---|---|
+| Items en Inbox | **95,129** |
+| Correos recibidos en los últimos 12 meses | **~29,000** |
+| Peso del `.eml` de un correo real con 2 adjuntos | **409 kB** |
+| Peso estimado del snapshot de 12 meses | **~11.3 GB** |
+| Llamadas a Graph que exigiría (3 por correo) | **~87,000** |
+
+**Exportar la ventana completa es inviable** y además innecesario: el 98% de esos correos no aporta
+nada al set etiquetado. El paso 4 se sustituye por el muestreo de §2.5.
+
+Y una observación que cambia el peso por un factor de diez: **el `.eml` completo no se necesita para
+etiquetar**. Sirve como evidencia de archivo, no para decidir si un correo trae una PO. Para el set
+basta con metadatos + cuerpo en texto plano + los adjuntos. Quitar el `.eml` del muestreo baja el
+peso de ~409 kB a ~30 kB por correo sin adjuntos y a ~300 kB con ellos.
+
+### 2.5 Muestreo estratificado (sustituye a la exportación total)
+
+El problema real: **las POs son menos del 2% del buzón**. Un muestreo aleatorio de 400 correos daría
+unas 6 POs — inútil para medir recall. Y sobre-muestrear positivos sin corregir después inflaría la
+precisión. La salida es estratificar con un criterio **independiente del detector** y ponderar al medir.
+
+| Estrato | Criterio de pertenencia (NO usa la etapa 1) | Qué se toma |
+|---|---|---|
+| **P — remitente candidato** | Dominio ∈ los ~20 dominios de cliente conocidos (de `po_radar.grupos_cliente`) **o** buzón de rol (`noreply`, `no_responder`, `applmgr`, `ordersender`, `extranet`, `compras`, `purchasing`…) | **Censo** de los 12 meses, o muestra grande si excede 400 |
+| **A — con adjunto, remitente externo** | Fuera de P, `hasAttachments = true`, dominio ≠ `fts.mx` | Muestra aleatoria de 150 |
+| **I — interno** | Dominio = `fts.mx` | Muestra aleatoria de 80 |
+| **R — resto** | Todo lo demás | Muestra aleatoria de 120 |
+
+**El criterio de estrato es el remitente y la existencia de adjunto: dos hechos del sobre, no del
+contenido.** El detector no participa en la selección, así que el set no queda sesgado a su favor.
+
+**Ponderación obligatoria al medir.** Cada estrato se muestrea con una fracción distinta, así que
+un conteo crudo de VP/FP no representa al buzón. Cada correo entra con peso
+`w = N_estrato / n_muestreado_estrato`, y precisión y recall se calculan con esos pesos:
+
+```
+precision = Σ w·VP / (Σ w·VP + Σ w·FP)
+recall    = Σ w·VP / (Σ w·VP + Σ w·FN)
+```
+
+Sin la ponderación, sobre-muestrear el estrato P daría una precisión optimista que no se reproduce
+en producción. **Hay que guardar `estrato`, `N_estrato` y `n_muestreado` en `corpus_correo`**, o la
+medición no se puede reconstruir después.
+
+**Volumen resultante:** ~750 correos, ~200 MB, ~2,250 llamadas a Graph. Eso sí cabe en una sesión.
+
 ### 2.1 Qué aporta `fts_correo_exportar` y qué no
 
 Lo aporta: es el único componente que trae **adjuntos reales** y el `.eml` completo, y ya está
@@ -75,12 +126,16 @@ Lo que **hay que añadirle** para FASE B, y no tiene hoy:
 | Falta | Por qué |
 |---|---|
 | Modo `solo_exportar` | Hoy siempre intenta `sendMail` si hay destinatarios. Para el corpus no se envía nada |
-| `snapshot_id` en la ruta de SharePoint | `Corpus/{snapshot_id}/{messageId}/` en vez de `Correos/{cliente}/` |
+| `snapshot_id` + `estrato` en la ruta y en la respuesta | `Corpus/{snapshot_id}/{messageId}/`, y el estrato hay que persistirlo para poder ponderar (§2.5) |
 | Devolver `sha256` por adjunto | Es la llave 2 de deduplicación y hoy no se calcula |
 | Devolver el cuerpo en texto plano | Hoy solo pasa el `.eml`; el etiquetado necesita el texto |
+| Poder **omitir el `.eml`** | Es el 90% del peso y no se usa para etiquetar (§2.0) |
 
-Son 4 cambios acotados sobre un workflow que ya funciona. **No se tocan hasta que Azure destrabe**:
-sin `Mail.Read` el paso 2 devuelve 403 y no hay nada que exportar.
+Son 5 cambios acotados sobre un workflow que ya funciona.
+
+**Estado 2026-08-31:** `Mail.Read` **ya funciona** — los 3 pasos de lectura devuelven 200 sobre el
+buzón de Esteban. Lo que ahora bloquea es el **destino**: `Sites.Selected` sobre `ComercialFTS`
+responde `403 accessDenied`, así que el paso 4 no tiene dónde escribir. Sin almacén no hay snapshot.
 
 ### 2.2 Lo que este pipeline NO debe hacer
 
@@ -279,5 +334,12 @@ Medir el sistema completo de una vez esconde dónde falla:
 6. Medición 2 (sistema completo) sobre el 40% reservado.
 7. Solo entonces, decidir si el detector se construye como está o el diseño necesita otra vuelta.
 
-**Nada de esto se puede empezar hasta que #122 esté resuelto.** El paso 1 del pipeline es un `GET`
-al buzón de Esteban, y hoy devuelve `403 ErrorAccessDenied`.
+**Estado real al 2026-08-31.** El paso 1 ya no bloquea: `Mail.Read` funciona. Quedan dos bloqueos,
+los dos de infraestructura y ninguno de diseño:
+
+1. **`Sites.Selected` sobre `ComercialFTS` da `403 accessDenied`** — no hay dónde dejar el snapshot.
+2. **No hay credencial Postgres en n8n** para `fts-suite-db` — no hay dónde dejar el manifiesto ni
+   las etiquetas.
+
+Resueltos esos dos, el orden de arriba se ejecuta con el muestreo de §2.5, no con la exportación
+total del §2.
