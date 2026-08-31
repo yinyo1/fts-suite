@@ -253,7 +253,7 @@
     {
       "id_interno": "INC-AUTO-CIERRE-63-2026-08-24T16-11-22-665Z",
       "tipo": "auto_cierre_pendiente",
-      "status": "pendiente_rh",
+      "status": "aprobada_tal_cual",
       "fecha_creacion": "2026-08-24T16:11:24.364Z",
       "empleado_id": 63,
       "empleado_nombre": "Magaly Estefanía Pérez García",
@@ -263,7 +263,7 @@
       "check_out_aplicado_utc": "2026-08-22 01:03:11",
       "horas_originales": "72.74",
       "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "autoincidencia": true,
       "rh_aprobo": null,
       "rh_fecha": null,
@@ -271,7 +271,18 @@
       "department_name": null,
       "supervisor_id": null,
       "supervisor_name": null,
-      "propuestas": []
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "rh",
+          "user_id": 112,
+          "usuario": "Felipe Perez Guzman",
+          "timestamp": "2026-08-31T04:00:31.103Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Aprobado por Felipe Perez (Operations Manager) via WhatsApp 30-ago-2026 11:31 CST. Capturado manualmente por Esteban De La Cruz. Ref: issue #134.",
+          "accion": "aprobado"
+        }
+      ]
     },
     {
       "id_interno": "INC-AUTO-CIERRE-153-2026-08-24T13-40-12-468Z",
