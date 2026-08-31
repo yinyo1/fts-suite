@@ -721,7 +721,15 @@ state = 'sale'  AND  x_studio_project_created = False
 ### Quirks / lecciones (NO re-descubrir)
 
 1. **Operador `greaterThan` NO existe en el nodo Odoo v1 de n8n** → llega como `None` al dominio → Odoo crashea con `'NoneType' object has no attribute 'lower'` (en `domains.py`, el operador de la tupla es None). **Usar `greaterOrEqual`** (probado). Tokens válidos: `equal`, `in`, `greaterOrEqual`, `lesserOrEqual`, `like`. (Complementa §3/§16.)
-2. **✅ RESUELTO (2026-08-12) — MÉTODO OFICIAL DE EDICIÓN DE WORKFLOWS: PUT directo al API público, NO el MCP.**
+2. **⚠️ SUPERSEDED (2026-08-30) — el MCP nuevo SÍ edita workflows, y preserva `active`.** Lo de abajo (PUT al API público) sigue siendo válido y queda como **camino alterno**, pero ya no es el método por defecto. La regla «editar por MCP siempre falla con `additional properties`» era del servidor **anterior** (`n8n-mcp`); el conectado hoy es **`n8n_FTS`**, con otra herramienta — `update_workflow` con un array de `operations` (`setNodeParameter` con JSON Pointer, `updateNodeParameters`, `renameNode`…). **Medido en el arreglo del resolver `Oc2ceMHX2O0L0y2X` (issue #137, 2026-08-31 03:44 UTC):** tras un `setNodeParameter /jsCode` sobre un workflow **activo de producción**, el read-back dio `active:true · triggerCount:1 · availableInMCP:true` — los tres intactos. Tabla comparativa:
+   ```
+   update_partial_workflow  (MCP viejo)   no escribe: 'additional properties'
+   update_full_workflow     (MCP viejo)   escribe · active NO DETERMINISTA  ← el bug del PAGE_SIZE
+   PUT /api/v1/workflows    (script)      escribe · preserva active · a veces pierde availableInMCP
+   update_workflow          (MCP n8n_FTS) escribe · preserva active ✓ · preserva availableInMCP ✓
+   ```
+   **La regla dura de §3 (read-back del `active` tras CUALQUIER edit) NO se relaja**: un solo caso no hace una regla.    **Lo que el MCP no evita** y el script sí: por MCP hay que mandar el `jsCode` **completo** en el parámetro,    o sea reescribirlo — contra la regla de «modificar programáticamente, nunca transcribiendo».    Mitigación validada: generar el fixed con un transform con guardas de conteo, y después del write **diferenciar el    read-back contra el original del server** exigiendo exactamente los hunks esperados (en #137: sha256 del read-back    idéntico al del fixed, y diff vs original = solo 2 hunks).    **Antes de un edit así, comprobar la llave de reversa con `get_workflow_history`**: si `versionId == activeVersionId`,    la versión guardada es la que está corriendo y `restore_workflow_version` deshace todo.
+3. **(histórico, sigue funcionando) MÉTODO POR API PÚBLICO: PUT directo, NO el MCP viejo.**
 
    **El problema histórico:** `n8n_update_partial_workflow` vía MCP **siempre falla** con `request/body must NOT have additional properties` (verificado hasta con UNA sola operación trivial — no depende del tamaño ni del tipo de op). Y `n8n_update_full_workflow` sí escribe, pero **deja `active` en estado no determinista** — así fue como el bump `PAGE_SIZE=50→100` en `fin/captura-transacciones` desactivó el workflow y pasó ~1 día invisible.
 

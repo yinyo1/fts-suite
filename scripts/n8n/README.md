@@ -2,8 +2,15 @@
 
 Scripts de edición de workflows n8n por el **API público** (método §17 quirk 2 de `CLAUDE.md`).
 
-Se corren en la **laptop de Esteban**, no en la sesión remota de Claude Code: ese contenedor
-no tiene la `N8N_API_KEY` y su proxy de salida bloquea el dominio de n8n.
+> ⚠️ **Desde 2026-08-30 esto es el camino ALTERNO, no el principal.** El servidor MCP nuevo
+> (`n8n_FTS`) **sí edita workflows** y **preserva `active`** — ver `CLAUDE.md` §17 quirk 2.
+> Claude puede aplicar el cambio solo. Estos scripts quedan para cuando el MCP no esté
+> disponible, o cuando el edit sea tan grande que reescribir el `jsCode` completo por
+> parámetro sea peor que transformarlo programáticamente.
+
+Se corren en la **laptop de Esteban**, no en la sesión remota de Claude Code. Verificado
+2026-08-30 en el contenedor: `curl` al API de n8n devuelve **error 56** (el proxy de salida
+corta la conexión) y no existe `~/.claude.json` con `mcpServers`, o sea que ahí no hay llave.
 
 Ninguno de estos scripts contiene secretos — la llave se lee en tiempo de ejecución desde
 `~/.claude.json` y nunca se imprime.
@@ -15,6 +22,26 @@ Ninguno de estos scripts contiene secretos — la llave se lee en tiempo de ejec
 Corrige el guard `limpiaTAG` de `incidencias/resolver` (`Oc2ceMHX2O0L0y2X`), que exige
 `inc.attendance_id` — campo que las incidencias `auto_cierre_pendiente` no tienen (usan
 `attendance_id_cerrado`). Por eso el TAG de disputa nunca se limpia para ese tipo: **0 de 64**.
+
+### Requisitos de ambiente
+
+**1 · La llave.** No hay que crear ninguna variable a mano: el bloque la lee en tiempo de
+ejecución de `~/.claude.json`, del bloque del MCP de n8n, y **nunca la imprime**. Confirma
+primero cómo se llama ese bloque en tu laptop:
+
+```bash
+node -e "console.log(Object.keys(JSON.parse(require('fs').readFileSync(process.env.HOME+'/.claude.json','utf8')).mcpServers))"
+```
+
+Si sale `n8n-mcp`, el bloque de abajo funciona tal cual. **Si sale otro nombre** (p.ej. `n8n_FTS`),
+cambia esa cadena en la línea del `KEY=`. Y si no sale ninguno, saca una llave nueva en n8n:
+**Settings → n8n API → Create an API key**, y úsala directo: `KEY='<la llave>'`.
+
+**2 · El shell: Git Bash, no PowerShell.** El bloque es bash — usa `$(...)`, `&&` y comillas
+simples de POSIX. En PowerShell no corre (falla en la primera línea). Abre **Git Bash** desde el
+menú inicio, o `bash` desde la terminal de VS Code.
+
+**3 · Node.** Ya está (`gh` y los scripts locales lo usan). Verifica con `node -v`.
 
 ### Encadenado completo
 
