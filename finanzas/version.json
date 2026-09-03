@@ -1,9 +1,14 @@
 {
-  "version": "V1.05",
+  "version": "V1.06",
   "fecha": "2026-09-03",
   "modulo": "finanzas",
   "esquema": "V<mayor>.<menor de dos dígitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.06",
+      "pr": null,
+      "nota": "La barra de confianza del candidato estaba rota desde que se escribio: el score viaja en escala 0-1 y scoreBar lo trataba como 0-100, asi que un 0.56 pintaba una barra del 0.56% de ancho y caia siempre en rojo — ningun score alcanza 60 en esa escala, ni un 0.91. Ahora convierte y ademas usa los umbrales del motor (pleno > 70, sugerida >= 30) en vez de unos propios de 85/60, que hacian que el color contradijera a la etiqueta de al lado."
+    },
     {
       "version": "V1.05",
       "pr": null,
