@@ -896,6 +896,120 @@ let ok = 0, mal = 0;
     console.log('   banda', r.banda, '· encabezado', r.cab, '· capturado', r.fila);
   });
 
+  // ── V1.09 · buscar y crear ───────────────────────────────────────────
+  await paso('la vista principal busca por nombre, cliente y orden', async () => {
+    await ir('#/');
+    const n0 = await p.locator('.item[href^="#/m/"]').count();
+    if (n0 < 3) throw new Error('esperaba varios machotes, hay ' + n0);
+    await p.fill('#q', 'topo chico');
+    await p.waitForTimeout(320);
+    const n1 = await p.locator('.item[href^="#/m/"]').count();
+    if (!(n1 > 0 && n1 < n0)) throw new Error('el buscador no filtró: ' + n0 + ' → ' + n1);
+    // Por número de orden tambien.
+    await p.fill('#q', 'SO11772'); await p.waitForTimeout(320);
+    const t = await p.textContent('#vista');
+    if (t.indexOf('SO11772') < 0) throw new Error('no encontró por número de orden');
+    console.log('   ', n0, 'machotes →', n1, 'con "topo chico"');
+  });
+
+  await paso('buscar no roba el foco a media palabra', async () => {
+    await ir('#/');
+    await p.click('#q');
+    await p.type('#q', 'paso', { delay: 60 });
+    await p.waitForTimeout(300);
+    const r = await p.evaluate(() => ({
+      foco: document.activeElement && document.activeElement.id,
+      valor: document.getElementById('q') ? document.getElementById('q').value : null
+    }));
+    if (r.foco !== 'q') throw new Error('el foco se fue a: ' + r.foco);
+    if (r.valor !== 'paso') throw new Error('se perdieron letras: ' + r.valor);
+  });
+
+  await paso('los filtros por estado cuentan sobre el total, no sobre lo filtrado', async () => {
+    await ir('#/');
+    const total = await p.locator('.item[href^="#/m/"]').count();
+    const antes = await p.locator('.fchip').allTextContents();
+    await p.locator('.fchip', { hasText: 'En revisión' }).first().click();
+    await p.waitForTimeout(300);
+    const desp = await p.locator('.fchip').allTextContents();
+    if (antes.join('|') !== desp.join('|'))
+      throw new Error('los contadores cambiaron al filtrar: ' + antes.join(' ') + ' → ' + desp.join(' '));
+    const enRev = await p.locator('.item[href^="#/m/"]').count();
+    if (!(enRev > 0 && enRev < total)) throw new Error('el filtro no filtró: ' + total + ' → ' + enRev);
+  });
+
+  await paso('cuando no hay resultados, dice por qué', async () => {
+    await ir('#/');
+    await p.fill('#q', 'zzzz-no-existe'); await p.waitForTimeout(320);
+    const t = await p.textContent('#vista');
+    if (t.indexOf('zzzz-no-existe') < 0)
+      throw new Error('no dice qué se buscó: ' + t.slice(0, 160));
+  });
+
+  await paso('un machote nuevo nace con DESGLOSE, una sección y todo en ceros', async () => {
+    await ir('#/');
+    await p.click('.btn.nuevo'); await p.waitForTimeout(320);
+    await p.fill('#n-nombre', 'Cotización de prueba CC');
+    await p.fill('#n-cliente', 'Cliente de prueba');
+    await p.click('#n-crear'); await p.waitForTimeout(450);
+
+    const pest = await p.locator('.pestana:not(.mas)').allTextContents();
+    if (pest.length !== 2) throw new Error('esperaba DESGLOSE + 1 sección, hay: ' + pest.join(' · '));
+    if (!/DESGLOSE/.test(pest[0])) throw new Error('la primera hoja no es el DESGLOSE: ' + pest[0]);
+
+    // El precio arranca en cero: nada capturado todavía.
+    const barra = await p.textContent('.fija');
+    if (!/\$0|\$-/.test(barra)) throw new Error('no arrancó en ceros: ' + barra.trim().slice(0, 60));
+
+    await hoja('SECCIÓN 1');
+    const r = await p.evaluate(() => {
+      const mo = document.querySelectorAll('.rejilla tbody tr:not(.grupo):not(.total)');
+      const qty = [...document.querySelectorAll('[data-cel$=":qty"]')];
+      return { filas: mo.length, qty: qty.length, conValor: qty.filter(x => x.value !== '').length,
+               capturadas: document.querySelectorAll('tr.capturada').length };
+    });
+    if (r.conValor !== 0) throw new Error(r.conValor + ' renglones nacieron con cantidad');
+    if (r.capturadas !== 0) throw new Error('nació con renglones pintados de verde');
+    console.log('   ', pest.join(' · '), '·', r.qty, 'renglones, todos en cero');
+  });
+
+  await paso('la sección nueva trae 10 de mano de obra con tarifa y 30 de materiales', async () => {
+    const r = await p.evaluate(() => {
+      const C = window.MachoteCalc;
+      const m = C.machoteNuevo({ nombre: 'x' });
+      const s = m.secciones[0];
+      return {
+        secciones: m.secciones.length,
+        mo: s.mo.length,
+        conTarifa: s.mo.filter(l => Number(l.pu) > 0).length,
+        conHoras: s.mo.filter(l => l.qty !== '' && l.qty !== null).length,
+        partidas: s.partidas.length,
+        sinTipo: s.partidas.filter(x => x.tipo === '').length,
+        costo: C.calcular(m).costo
+      };
+    });
+    if (r.secciones !== 1) throw new Error('secciones: ' + r.secciones);
+    if (r.mo !== 10) throw new Error('renglones de mano de obra: ' + r.mo);
+    if (r.conTarifa !== 10) throw new Error('sin tarifa de plantilla: ' + (10 - r.conTarifa));
+    if (r.conHoras !== 0) throw new Error('nacieron con horas: ' + r.conHoras);
+    if (r.partidas !== 30) throw new Error('renglones de materiales: ' + r.partidas);
+    if (r.sinTipo !== 30) throw new Error('el Tipo viene preelegido en ' + (30 - r.sinTipo));
+    if (r.costo !== 0) throw new Error('el costo no arranca en cero: ' + r.costo);
+    console.log('    10 mano de obra con tarifa · 30 materiales sin Tipo · costo 0');
+  });
+
+  await paso('el machote nuevo se guarda solo y aparece en la búsqueda', async () => {
+    const guardado = await p.evaluate(() => {
+      const c = localStorage.getItem('fts_machote_v1');
+      return c ? JSON.parse(c).machotes.some(m => m.nombre === 'Cotización de prueba CC') : false;
+    });
+    if (!guardado) throw new Error('no quedó en el almacén');
+    await irSuave('#/');
+    await p.fill('#q', 'prueba CC'); await p.waitForTimeout(320);
+    const t = await p.textContent('#vista');
+    if (t.indexOf('Cotización de prueba CC') < 0) throw new Error('no aparece al buscarlo');
+  });
+
   // ── El gate ──────────────────────────────────────────────────────────
   await paso('sin sesión, el libro no se alcanza a ver', async () => {
     // Pagina LIMPIA, sin la sesion sembrada: debe mandar al login.

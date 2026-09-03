@@ -65,7 +65,7 @@ versión es peor que no tener indicador.
 | `js/demo.js` | Datos de ejemplo. Lo que viene del machote real va marcado `REAL`; lo inventado, `SUPUESTO`. |
 | `js/app.js` | Vistas y ruteo. |
 | `js/almacen.js` | El autoguardado. UNA pieza entre la pantalla y donde viven los datos. |
-| `tests/pruebas-navegador.js` | 64 pruebas de navegador. |
+| `tests/pruebas-navegador.js` | 71 pruebas de navegador. |
 
 ## Cómo se calcula el precio
 
@@ -223,6 +223,33 @@ exactamente el silencio que este módulo persigue.
 ⚠️ **Enviar todavía NO escribe en Odoo.** La regla vigente del módulo es que
 Odoo sólo se consulta. El estado, el candado y la exigencia de orden ya son
 reales; la escritura espera a que Esteban levante esa regla.
+
+## Buscar, y empezar uno nuevo
+
+La pantalla de entrada es un **buscador**, no una lista: busca por nombre,
+cliente, número de orden e id, palabra por palabra —«topo chico» y «chico topo»
+encuentran lo mismo— y filtra por estado con chips que traen su cuenta. **Los
+contadores son del total, no de lo ya filtrado**: un contador que cambia al
+filtrar no sirve para saber cuántos hay. Y cuando no hay resultados, dice qué se
+buscó, porque una lista vacía sin explicación parece que perdió los machotes.
+
+**Un machote nuevo** nace con:
+
+- la hoja `DESGLOSE COTIZACIÓN`, que siempre existe y no es una sección;
+- una `SECCIÓN 1`;
+- los **diez** renglones de mano de obra con su tarifa de plantilla y **las horas
+  en cero** — la tarifa se pisa, las horas se capturan;
+- **treinta** renglones de materiales vacíos, con el `Tipo` sin elegir: Materiales
+  o Servicios se decide renglón por renglón, y es la columna que escoge el
+  multiplicador.
+
+El machote real trae **~180 renglones en blanco** por sección. Ciento ochenta
+vacíos no son fidelidad, son un muro —y en teléfono, ciento ochenta tarjetas—.
+Treinta cubren lo que se ve en el acervo y `+ partida` agrega sin límite.
+
+Un renglón en blanco **no se marca como hueco**. «Sin precio» sale sólo en uno
+que alguien empezó a llenar; en los treinta vacíos sería una alerta que aparece
+siempre, y una alerta que aparece siempre deja de leerse.
 
 ## Quién entra
 

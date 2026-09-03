@@ -51,6 +51,35 @@
 
   const TIPOS = ['Materiales', 'Servicios'];
 
+  /** ¿Alguien escribió algo en este renglón de materiales?
+   *  Definición ÚNICA: la usan el motor, las reglas y la pantalla. Estaba
+   *  escrita tres veces —dos aquí y una en `reglas.js`— y con matices distintos;
+   *  tres definiciones de lo mismo terminan divergiendo. */
+  const usadaPartida = (l) => !!l && (num(l.qty) > 0 || !vacio(l.pu) || !!l.descripcion);
+
+  /* Cuántos renglones de materiales trae una sección recién creada.
+   *
+   * El machote real trae **~180 en blanco** por sección (§2.4 del levantamiento):
+   * el capturista llena hacia abajo y el resto queda vacío. Ciento ochenta
+   * renglones vacíos en una pantalla no son fidelidad, son un muro — y en
+   * teléfono, donde cada renglón es una tarjeta, son ciento ochenta tarjetas.
+   * Treinta cubren de sobra lo que se ve en el acervo, y «+ partida» agrega
+   * más sin límite. */
+  const PARTIDAS_EN_BLANCO = 30;
+
+  /* Los equipos de la plantilla, a 0,25 cada uno = 100%. Un machote nuevo nace
+   * CUADRADO a propósito: si naciera con el reparto vacío, la regla dura de
+   * "las comisiones no suman 100%" saltaría desde el primer segundo, y una
+   * alerta que sale siempre deja de leerse. */
+  const EQUIPO_VENTA_PLANTILLA = () => ([
+    { nombre: 'ALDO',  pct: 0.25 }, { nombre: 'ANGEL', pct: 0.25 },
+    { nombre: 'DIEGO', pct: 0.25 }, { nombre: 'MONTY', pct: 0.25 }
+  ]);
+  const EQUIPO_OPS_PLANTILLA = () => ([
+    { nombre: 'SUPERVISOR FTS', pct: 0.25 }, { nombre: 'SEGURIDAD', pct: 0.25 },
+    { nombre: 'TECNICO 1', pct: 0.25 }, { nombre: 'TECNICO 2', pct: 0.25 }
+  ]);
+
   /* Las dos empresas y su moneda. Verificado contra Odoo: de las 711 órdenes
    * con machote, 594 son de SERVICIOS FTS (company 1, MXN) y 117 de FTS FULL
    * TECHNOLOGY SYSTEMS LLC (company 6, USD). La moneda del documento nace de
@@ -59,6 +88,73 @@
     { id: 1, nombre: 'Servicios FTS', corto: 'FTS México', moneda: 'MXN' },
     { id: 6, nombre: 'FTS Full Technology Systems LLC', corto: 'FTS USA', moneda: 'USD' }
   ];
+  /* ── Fábrica de machotes y secciones en blanco ─────────────────────────
+   *
+   * Vive en el MOTOR y no en los datos de ejemplo: un machote nuevo tiene que
+   * nacer con exactamente la misma forma que los que ya existen, y esa forma
+   * la define quien la consume. Si la fábrica viviera en `demo.js`, crear uno
+   * de verdad dependería del archivo de datos falsos.
+   */
+
+  /** Una sección en blanco: los diez renglones de mano de obra con su tarifa
+   *  de plantilla y las horas en cero, y `PARTIDAS_EN_BLANCO` renglones de
+   *  materiales vacíos, listos para llenar hacia abajo como en el Excel. */
+  function seccionNueva(nombre, moneda) {
+    moneda = moneda || 'MXN';
+    const mo = ROLES.map(r => ({
+      rol: r.id,
+      qty: '',          // horas: en cero, es lo que se captura
+      personas: 1,
+      pu: r.pu,         // la tarifa de plantilla, que el capturista puede pisar
+      moneda: moneda
+    }));
+    const partidas = [];
+    for (let i = 0; i < PARTIDAS_EN_BLANCO; i++) {
+      partidas.push({
+        qty: '', unidad: '', tipo: '',   // el Tipo lo elige el capturista: es
+        descripcion: '', modelo: '', marca: '',   // la columna que decide el
+        pu: null, moneda: moneda,                 // multiplicador
+        margen: null, link: '', comentario: ''
+      });
+    }
+    return { id: 's-' + Date.now() + '-' + Math.round(Math.random() * 1e6),
+             nombre: nombre || 'SECCIÓN 1', mo: mo, partidas: partidas };
+  }
+
+  /** Un machote en blanco, con su hoja DESGLOSE (que siempre existe, no es una
+   *  sección) y UNA sección lista para capturar. */
+  function machoteNuevo(d) {
+    d = d || {};
+    const empresa = EMPRESAS.find(e => e.id === Number(d.empresa_id)) || EMPRESAS[0];
+    const hoy = new Date();
+    const iso = hoy.getFullYear() + '-' +
+                String(hoy.getMonth() + 1).padStart(2, '0') + '-' +
+                String(hoy.getDate()).padStart(2, '0');
+    return {
+      id: d.id || ('M-' + Date.now()),
+      nombre: d.nombre || 'Cotización sin nombre',
+      cliente: d.cliente || '',
+      so: d.so || null,
+      estado: 'borrador',
+      analista: d.analista || '',
+      fecha: iso,
+      empresa_id: empresa.id,
+      moneda: empresa.moneda,
+      tc: 0, factor_proteccion: 0, tc_fuente: '',
+      margenes: Object.assign({}, MARGENES_PLANTILLA),
+      comision_fts: COMISION_FTS_PLANTILLA,
+      comision_cliente: 0,
+      margen_deseado: MARGEN_DESEADO_PLANTILLA,
+      escenario: 'margen_deseado',
+      reparto: Object.assign({}, REPARTO_PLANTILLA),
+      equipo_venta: EQUIPO_VENTA_PLANTILLA(),
+      equipo_operaciones: EQUIPO_OPS_PLANTILLA(),
+      equipo_cliente: [{ nombre: 'Contacto cliente 1', pct: 1 }],
+      diagnostico: { tipo: '', respuestas: {} },
+      secciones: [seccionNueva('SECCIÓN 1', empresa.moneda)]
+    };
+  }
+
   const empresaDe = (m) => EMPRESAS.find(e => e.id === Number(m && m.empresa_id)) || EMPRESAS[0];
   const monedaPorDefecto = (m) => empresaDe(m).moneda;
   const ESCENARIOS = [
@@ -127,7 +223,12 @@
     const pisado = !vacio(linea.margen) && Math.abs(num(linea.margen) - porTipo) > 0.0001;
     const mult = pisado ? num(linea.margen) : porTipo;
     return { costo, mult, porTipo, pisado,
-             conUtilidad: costo * mult, sinPrecio, sinTipo, sinLink: !linea.link };
+             conUtilidad: costo * mult, sinPrecio, sinTipo, sinLink: !linea.link,
+             // Un renglon del bloque en el que nadie ha escrito nada NO es un
+             // hueco: es un renglon sin usar, como los del Excel. La diferencia
+             // importa porque una seccion nueva trae 30 en blanco, y marcarlos
+             // como defecto convierte la alerta en ruido.
+             usada: usadaPartida(linea) };
   }
 
   function totalSeccion(s, m) {
@@ -144,8 +245,7 @@
     (s.partidas || []).forEach(l => {
       const c = costoPartida(l, m);
       costoMat += c.costo; ventaMat += c.conUtilidad;
-      const usada = num(l.qty) > 0 || !vacio(l.pu) || l.descripcion;
-      if (!usada) return;
+      if (!c.usada) return;
       if (c.sinPrecio) sinPrecio++;
       if (c.sinTipo) sinTipo++;
       if (c.pisado) pisados++;
@@ -344,6 +444,8 @@
     ROLES, ROL, GRUPOS, TIPOS, ESCENARIOS, MAX_SECCIONES,
     EMPRESAS, empresaDe, monedaPorDefecto,
     MARGENES_PLANTILLA, COMISION_FTS_PLANTILLA, MARGEN_DESEADO_PLANTILLA, REPARTO_PLANTILLA,
+    PARTIDAS_EN_BLANCO, EQUIPO_VENTA_PLANTILLA, EQUIPO_OPS_PLANTILLA, usadaPartida,
+    seccionNueva, machoteNuevo,
     tcEfectivo, margenes, costoMo, costoPartida, totalSeccion,
     calcular, precioParaMargen, repartir
   };
