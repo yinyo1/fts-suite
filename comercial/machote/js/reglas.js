@@ -35,17 +35,20 @@
   const REGLAS = [
     // ── Moneda y tipo de cambio ────────────────────────────────────────────
     {
+      destino: () => ({ tab: 'gen' }),
       id: 'moneda-sin-declarar', severidad: 'dura', area: 'Moneda',
       titulo: 'La moneda del machote no está declarada',
       evaluar: (m) => !m.moneda ? { detalle: 'Sin moneda, ningún total significa nada.' } : null
     },
     {
+      destino: () => ({ tab: 'gen' }),
       id: 'tc-sin-declarar', severidad: 'dura', area: 'Moneda',
       titulo: 'Hay partidas en USD y no hay tipo de cambio',
       evaluar: (m) => (hayUSD(m) && !(m.tc > 0))
         ? { detalle: 'Las partidas en dólares se están valuando en cero.' } : null
     },
     {
+      destino: () => ({ tab: 'gen' }),
       id: 'factor-proteccion-cero', severidad: 'blanda', area: 'Moneda',
       titulo: 'Compras en USD sin factor de protección',
       evaluar: (m) => (hayUSD(m) && m.tc > 0 && !(m.factor_proteccion > 0))
@@ -54,6 +57,7 @@
 
     // ── Material ───────────────────────────────────────────────────────────
     {
+      destino: (m) => ({ tab: 'secc', lineas: lineasBom(m).filter(x => x.l.pu == null).map(x => x.l.id) }),
       id: 'partida-sin-precio', severidad: 'dura', area: 'Material',
       titulo: 'Partidas sin precio',
       evaluar: (m) => {
@@ -63,6 +67,7 @@
       }
     },
     {
+      destino: (m) => ({ tab: 'secc', lineas: lineasBom(m).filter(x => !(x.l.cant > 0)).map(x => x.l.id) }),
       id: 'cantidad-cero', severidad: 'blanda', area: 'Material',
       titulo: 'Partidas con cantidad en cero',
       evaluar: (m) => {
@@ -72,6 +77,7 @@
       }
     },
     {
+      destino: (m) => ({ tab: 'secc', lineas: lineasBom(m).filter(x => x.l.origen === 'estimado').map(x => x.l.id) }),
       id: 'precio-baja-confianza', severidad: 'blanda', area: 'Material',
       titulo: 'Partidas con precio estimado',
       evaluar: (m) => {
@@ -81,6 +87,7 @@
       }
     },
     {
+      destino: (m) => ({ tab: 'secc', lineas: lineasBom(m).filter(x => !x.l.marca && !x.l.modelo && x.l.unidad !== 'serv' && x.l.unidad !== 'lote').map(x => x.l.id) }),
       id: 'bom-sin-marca', severidad: 'blanda', area: 'Material',
       titulo: 'Partidas sin marca ni modelo',
       evaluar: (m) => {
@@ -92,6 +99,7 @@
 
     // ── Mano de obra ───────────────────────────────────────────────────────
     {
+      destino: (m) => ({ tab: 'secc', lineas: lineasMo(m).filter(x => !x.l.oficio).map(x => x.l.id) }),
       id: 'mo-sin-oficio', severidad: 'dura', area: 'Mano de obra',
       titulo: 'Mano de obra sin oficio',
       evaluar: (m) => {
@@ -101,6 +109,7 @@
       }
     },
     {
+      destino: (m) => ({ tab: 'secc', lineas: lineasMo(m).filter(x => x.l.costo_hora == null).map(x => x.l.id) }),
       id: 'mo-sin-costo', severidad: 'dura', area: 'Mano de obra',
       titulo: 'Mano de obra sin costo por hora',
       evaluar: (m) => {
@@ -110,6 +119,7 @@
       }
     },
     {
+      destino: (m) => ({ tab: 'secc', lineas: lineasMo(m).map(x => x.l.id) }),
       id: 'mo-costo-fuera-rango', severidad: 'blanda', area: 'Mano de obra',
       titulo: 'Costo por hora fuera del rango del oficio',
       evaluar: (m) => {
@@ -124,6 +134,7 @@
       }
     },
     {
+      destino: () => ({ tab: 'diag' }),
       id: 'horas-no-caben', severidad: 'blanda', area: 'Mano de obra',
       titulo: 'Hay horas que no caben en los días de obra',
       evaluar: (m) => {
@@ -138,6 +149,7 @@
       }
     },
     {
+      destino: (m) => ({ tab: 'secc', lineas: lineasMo(m).filter(x => x.l.horas_dobles > 0 && x.l.turno === 'normal').map(x => x.l.id) }),
       id: 'horas-dobles-sin-turno', severidad: 'info', area: 'Mano de obra',
       titulo: 'Horas dobles en turno normal',
       evaluar: (m) => {
@@ -149,6 +161,7 @@
 
     // ── Obra foránea ───────────────────────────────────────────────────────
     {
+      destino: () => ({ tab: 'gen' }),
       id: 'foraneo-sin-hospedaje', severidad: 'dura', area: 'Obra foránea',
       titulo: 'Obra foránea sin hospedaje',
       evaluar: (m, c) => {
@@ -160,6 +173,7 @@
       }
     },
     {
+      destino: () => ({ tab: 'gen' }),
       id: 'foraneo-sin-viaticos', severidad: 'dura', area: 'Obra foránea',
       titulo: 'Obra foránea sin viáticos',
       evaluar: (m, c) => {
@@ -173,18 +187,21 @@
 
     // ── Generales ──────────────────────────────────────────────────────────
     {
+      destino: () => ({ tab: 'gen' }),
       id: 'sin-flete-con-material', severidad: 'blanda', area: 'Generales',
       titulo: 'Material considerable sin flete',
       evaluar: (m, c) => (c.material >= UMBRALES.flete_minimo_material && c.generales.flete === 0)
         ? { detalle: mx(c.material) + ' de material y flete en cero. ¿Entrega en sitio del proveedor?' } : null
     },
     {
+      destino: () => ({ tab: 'gen' }),
       id: 'importacion-cero-con-usd', severidad: 'blanda', area: 'Generales',
       titulo: 'Compras en USD sin renglón de importación',
       evaluar: (m, c) => (hayUSD(m) && c.generales.importacion === 0)
         ? { detalle: 'Si el equipo cruza aduana hay pedimento, agente y maniobras. Si ya viene nacionalizado, anótalo.' } : null
     },
     {
+      destino: () => ({ tab: 'gen' }),
       id: 'comision-fuera-rango', severidad: 'blanda', area: 'Generales',
       titulo: 'Comisión de broker alta',
       evaluar: (m, c) => c.comisionPct > UMBRALES.comision_maxima
@@ -194,23 +211,27 @@
 
     // ── Precio y margen ────────────────────────────────────────────────────
     {
+      destino: () => ({ tab: 'sim' }),
       id: 'sin-precio-venta', severidad: 'dura', area: 'Precio',
       titulo: 'Sin precio de venta',
       evaluar: (m, c) => !(c.precio > 0) ? { detalle: 'No hay nada que confirmar sin precio.' } : null
     },
     {
+      destino: () => ({ tab: 'sim' }),
       id: 'precio-bajo-costo', severidad: 'dura', area: 'Precio',
       titulo: 'El precio de venta está por debajo del costo',
       evaluar: (m, c) => (c.precio > 0 && c.precio < c.costoTotal)
         ? { detalle: 'Precio ' + mx(c.precio) + ' contra costo ' + mx(c.costoTotal) + '. Se vende perdiendo.' } : null
     },
     {
+      destino: () => ({ tab: 'sim' }),
       id: 'margen-bajo', severidad: 'dura', area: 'Precio',
       titulo: 'Margen por debajo del mínimo',
       evaluar: (m, c) => (c.margen !== null && c.margen < UMBRALES.margen_minimo_duro && c.precio >= c.costoTotal)
         ? { detalle: 'Margen ' + pct(c.margen) + ', mínimo ' + pct(UMBRALES.margen_minimo_duro) + '.' } : null
     },
     {
+      destino: () => ({ tab: 'sim' }),
       id: 'margen-flojo', severidad: 'blanda', area: 'Precio',
       titulo: 'Margen por debajo del objetivo',
       evaluar: (m, c) => (c.margen !== null && c.margen >= UMBRALES.margen_minimo_duro && c.margen < UMBRALES.margen_minimo_blando)
@@ -219,6 +240,7 @@
 
     // ── Diagnóstico ────────────────────────────────────────────────────────
     {
+      destino: () => ({ tab: 'diag' }),
       id: 'diagnostico-incompleto', severidad: 'dura', area: 'Diagnóstico',
       titulo: 'Preguntas críticas del diagnóstico sin responder',
       evaluar: (m) => {
@@ -230,6 +252,7 @@
       }
     },
     {
+      destino: () => ({ tab: 'diag' }),
       id: 'diagnostico-implicacion', severidad: 'blanda', area: 'Diagnóstico',
       titulo: 'Respuestas del diagnóstico que piden algo en el costeo',
       evaluar: (m) => {
@@ -241,6 +264,7 @@
       }
     },
     {
+      destino: () => ({ tab: 'diag' }),
       id: 'diagnostico-respuesta-riesgo', severidad: 'blanda', area: 'Diagnóstico',
       titulo: 'Respuestas del diagnóstico que meten riesgo al costeo',
       evaluar: (m) => {
@@ -254,6 +278,7 @@
       }
     },
     {
+      destino: () => ({ tab: 'secc' }),
       id: 'altura-sin-segurista', severidad: 'blanda', area: 'Diagnóstico',
       titulo: 'Trabajo en altura sin segurista en la cuadrilla',
       evaluar: (m) => {
@@ -265,6 +290,7 @@
       }
     },
     {
+      destino: () => ({ tab: 'diag' }),
       id: 'alcance-vacio', severidad: 'blanda', area: 'Diagnóstico',
       titulo: 'El alcance está vacío',
       evaluar: (m) => !((m.diagnostico || {}).alcance || '').trim()
@@ -273,6 +299,7 @@
 
     // ── Estructura ─────────────────────────────────────────────────────────
     {
+      destino: () => ({ tab: 'secc' }),
       id: 'seccion-sin-mo', severidad: 'blanda', area: 'Estructura',
       titulo: 'Secciones con material y sin mano de obra',
       evaluar: (m) => {
@@ -281,6 +308,7 @@
       }
     },
     {
+      destino: () => ({ tab: 'secc' }),
       id: 'seccion-sin-material', severidad: 'info', area: 'Estructura',
       titulo: 'Secciones de pura mano de obra',
       evaluar: (m) => {
@@ -299,8 +327,12 @@
       let res = null;
       try { res = r.evaluar(m, c); }
       catch (e) { res = { detalle: 'La regla falló al evaluar: ' + e.message }; }
-      if (res) hallazgos.push({ id: r.id, severidad: r.severidad, area: r.area, titulo: r.titulo,
-                                detalle: res.detalle || '', items: res.items || [] });
+      if (res) {
+        let dest = null;
+        try { dest = r.destino ? r.destino(m, c) : null; } catch (e) { dest = null; }
+        hallazgos.push({ id: r.id, severidad: r.severidad, area: r.area, titulo: r.titulo,
+                         detalle: res.detalle || '', items: res.items || [], destino: dest });
+      }
     });
     const duras  = hallazgos.filter(h => h.severidad === 'dura');
     const blandas= hallazgos.filter(h => h.severidad === 'blanda');

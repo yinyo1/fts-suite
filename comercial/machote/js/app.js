@@ -165,10 +165,29 @@
 
   function pintarMachote(m) {
     const tabs = [['diag', 'Diagnóstico'], ['secc', 'Secciones'], ['gen', 'Generales'], ['sim', 'Simulador']];
+    // El analista llega con la mitad del perfil: la herramienta le dice qué
+    // sigue en vez de esperar a que se acuerde.
+    const rv = REGLAS.revisar(m);
+    ST.ultimaRevision = { id: m.id, h: rv.hallazgos };
+    // Sin bloqueos el machote YA se puede confirmar: pintar un aviso menor en
+    // ámbar como si fuera pendiente enseña a ignorar el color.
+    const orq = ordenDe(m.id);
+    const paso = rv.duras.length
+      ? '<div class="prox"><div class="grow"><span class="pl">SIGUIENTE PASO · ' + rv.duras.length + ' BLOQUEO' + (rv.duras.length > 1 ? 'S' : '') + '</span>' +
+        '<div class="pd">' + esc(rv.duras[0].titulo) + '</div></div>' +
+        '<button class="btn mini btn-p" data-fix="' + rv.duras[0].id + '">Ir ›</button></div>'
+      : '<div class="prox ok"><div class="grow"><span class="pl">SIN BLOQUEOS</span>' +
+        '<div class="pd">' + (rv.blandas.length
+            ? 'Se puede confirmar. Quedan ' + rv.blandas.length + ' aviso' + (rv.blandas.length > 1 ? 's' : '') + ' por revisar.'
+            : 'Limpio contra las ' + REGLAS.REGLAS.length + ' reglas.') + '</div></div>' +
+        (orq && !ST.confirmadas[orq.id]
+          ? '<button class="btn mini btn-g" data-ir="#/orden/' + orq.id + '">Confirmar ›</button>'
+          : '<button class="btn mini btn-s" data-ir="#/rev/' + m.id + '">Ver ›</button>') + '</div>';
+
     $('#vista').innerHTML =
       '<div class="tab-row">' + tabs.map(t =>
         '<button class="tab' + (ST.tab === t[0] ? ' on' : '') + '" data-tab="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>' +
-      '<div id="pane"></div>';
+      paso + '<div id="pane"></div>';
     pintarPane(m);
     barraFija(m);
   }
@@ -366,7 +385,8 @@
       '<div class="fgrid c3">' +
       '<div class="f"><label>Horas / persona</label><input class="num" type="number" step="any" data-num data-bind="' + p + 'horas" value="' + l.horas + '"></div>' +
       '<div class="f"><label>Personas</label><input class="num" type="number" step="1" data-num data-bind="' + p + 'personas" value="' + l.personas + '"></div>' +
-      '<div class="f"><label>Costo / hora</label><input class="num" type="number" step="any" data-num-null data-bind="' + p + 'costo_hora" value="' + (l.costo_hora === null ? '' : l.costo_hora) + '"></div>' +
+      '<div class="f"><label>Costo / hora</label><input class="num" type="number" step="any" data-num-null data-bind="' + p + 'costo_hora" value="' + (l.costo_hora === null ? '' : l.costo_hora) + '">' +
+        (of ? '<div class="tiny">Rango ' + esc(of.nombre) + ': ' + mx(of.rango[0]) + '–' + mx(of.rango[1]) + '</div>' : '') + '</div>' +
       '<div class="f"><label>Turno</label><select data-re="' + p + 'turno">' +
         Object.keys(CALC.FACTOR_TURNO).map(t => '<option value="' + t + '"' + (t === l.turno ? ' selected' : '') + '>' + CALC.ETIQUETA_TURNO[t] + '</option>').join('') +
         '</select></div>' +
@@ -535,6 +555,7 @@
     angosto(false);
     top('Revisador', m.id + ' · ' + m.cliente, 'REVISIÓN', '#/m/' + id);
     const r = REGLAS.revisar(m);
+    ST.ultimaRevision = { id: m.id, h: r.hallazgos };
     const bloque = (lista, clase, titulo, vacio) =>
       '<h3 class="sub-t">' + titulo + ' · ' + lista.length + '</h3>' +
       (lista.length ? lista.map(h =>
@@ -543,6 +564,9 @@
         '<div class="hz-t">' + esc(h.titulo) + '</div>' +
         (h.detalle ? '<div class="hz-d">' + esc(h.detalle) + '</div>' : '') +
         (h.items.length ? '<ul>' + h.items.map(i => '<li>' + esc(i) + '</li>').join('') + '</ul>' : '') +
+        (h.destino ? '<button class="btn mini btn-s" style="margin-top:9px" data-fix="' + h.id + '">' +
+          'Ir a arreglarlo' + (h.destino.lineas && h.destino.lineas.length > 1
+            ? ' (' + h.destino.lineas.length + ')' : '') + ' ›</button>' : '') +
         '</div>').join('') : '<div class="tiny">' + vacio + '</div>');
 
     $('#vista').innerHTML = '<div class="pad">' +
@@ -814,13 +838,33 @@
   // ═══ Eventos (delegación) ═════════════════════════════════════════════════
   const idActual = () => (location.hash.split('/')[2] || '');
 
+  /** Lleva al analista al lugar exacto donde se arregla un hallazgo: abre la
+   *  pestaña correcta y despliega los renglones señalados. Antes decía qué
+   *  estaba mal y lo dejaba buscándolo a mano entre las secciones. */
+  function irAArreglar(mid, hid) {
+    const rev = ST.ultimaRevision;
+    const h = rev && rev.h.find(x => x.id === hid);
+    if (!h || !h.destino) { location.hash = '#/m/' + mid; return; }
+    ST.tab = h.destino.tab || 'secc';
+    ST.abiertos = {};
+    (h.destino.lineas || []).forEach(id => { ST.abiertos[id] = true; });
+    location.hash = '#/m/' + mid;
+    if ((h.destino.lineas || []).length) {
+      setTimeout(() => {
+        const e = document.querySelector('.lin.abierta');
+        if (e) e.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }, 120);
+    }
+  }
+
   document.addEventListener('click', (ev) => {
     const t = ev.target.closest('[data-ir],[data-tab],[data-preg],[data-del-bom],[data-del-mo],[data-del-sec],' +
-      '[data-add-bom],[data-add-mo],[data-add-sec],[data-limpiar-pp],[data-abrir],[data-cerrar],' +
+      '[data-add-bom],[data-add-mo],[data-add-sec],[data-limpiar-pp],[data-abrir],[data-cerrar],[data-fix],' +
       '#btnConf,#apOk,#apDev,#objBtn,#simAplicar');
     if (!t) return;
     const m = mach(idActual());
 
+    if (t.dataset.fix) { irAArreglar(idActual(), t.dataset.fix); return; }
     if (t.dataset.ir) { location.hash = t.dataset.ir; return; }
     if (t.dataset.tab) { ST.tab = t.dataset.tab; ST.simPrecio = null; pintarMachote(m); return; }
     if (t.dataset.limpiarPp !== undefined) { ST.portapapeles = null; pintarPane(m); return; }
