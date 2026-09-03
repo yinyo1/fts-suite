@@ -1,6 +1,14 @@
-.claude/
+# Excepcion estrecha: las skills SI se versionan (son documentacion compartida
+# del equipo). Todo lo demas de .claude/ —settings.local.json, historial,
+# credenciales de MCP— se queda fuera. ESTE REPO ES PUBLICO.
+# Ojo: tiene que ser `.claude/*` y no `.claude/`. Git no vuelve a incluir nada
+# dentro de un directorio ya excluido, asi que la negacion no se evaluaria.
+.claude/*
+!.claude/skills/
 scripts/local/
 
 # Volcados de auditoría (journals, bills, conciliación). ESTE REPO ES PÚBLICO:
 # son datos financieros reales y no deben publicarse ni por accidente con `git add -A`.
 data/
+# Playwright CLI output (may contain credentials)
+.playwright-cli/
