@@ -21,6 +21,27 @@
   --ambar: #9a6700;
   --rojo: #cf222e;
   --toque: 44px;   /* altura mínima de cualquier cosa que se toque */
+
+  /* ── Los colores del machote ──────────────────────────────────────────
+   *
+   * ⚠️ APROXIMACIÓN, no medición. El conector de SharePoint devuelve los
+   * valores y las fórmulas del libro pero NADA de estilo -se comprobó contra
+   * `SO11836`: cero información de relleno-, así que estos colores están
+   * puestos a ojo con la paleta de Office que usan esas plantillas, no
+   * leídos del archivo.
+   *
+   * Corregirlos es cambiar ESTAS ocho líneas y nada más: ningún color de
+   * tabla está escrito en otro lado. Si Esteban manda una captura o los
+   * códigos, se sustituyen aquí. */
+  --x-banda:    #1f4e79;   /* banda de bloque: COSTO MANO DE OBRA */
+  --x-banda-tx: #ffffff;
+  --x-cab:      #d9e1f2;   /* encabezado de columna */
+  --x-cab-tx:   #1f3864;
+  --x-grupo:    #ddebf7;   /* rótulo de grupo: Diseño y Programación */
+  --x-total:    #fff2cc;   /* renglones de total */
+  --x-total-bd: #bf8f00;
+  --x-fila-ok:  #e2efda;   /* renglón ya capturado (QTY ≥ 1) */
+  --x-fila-bd:  #70ad47;
 }
 
 /* ── Base ─────────────────────────────────────────────────────────────── */
@@ -405,4 +426,69 @@ table.rejilla td.acc .ico { min-width: 36px; min-height: 36px; padding: 0 6px; }
   table.rejilla.tarjetas td.acc .ico { min-width: var(--toque); min-height: var(--toque); }
   .nomsec { align-items: flex-start; }
   .accsec { margin-left: 0; }
+}
+
+
+/* ── Los colores del machote, aplicados ─────────────────────────────────
+ * Sólo tocan tablas y bandas. Las tres señales de captura contra cálculo
+ * (borde, fondo de papel, barra de fórmula) siguen mandando encima. */
+.secc-tit { background: var(--x-banda); color: var(--x-banda-tx); }
+.secc-tit .verVacios { color: var(--x-banda-tx); opacity: .9; }
+table.rejilla th { background: var(--x-cab); color: var(--x-cab-tx); }
+table.rejilla tr.grupo td { background: var(--x-grupo); color: var(--x-cab-tx); }
+table.rejilla tr.total td { background: var(--x-total); border-top: 2px solid var(--x-total-bd); }
+
+/* ── Renglón capturado ──────────────────────────────────────────────────
+ * Verde = este renglón ya tiene cantidad. Con diez renglones de mano de obra
+ * fijos por sección, distinguir de un vistazo lo capturado de lo que sigue en
+ * blanco es la diferencia entre revisar una hoja y leerla entera.
+ * El verde va en el RENGLÓN; las celdas conservan sus propias señales, que
+ * son las que dicen qué se captura y qué se calcula. */
+table.rejilla tr.capturada > td { background: var(--x-fila-ok); }
+table.rejilla tr.capturada > td.calc { background: #d7e8c8; }
+table.rejilla tr.capturada > td:first-child { box-shadow: inset 3px 0 0 var(--x-fila-bd); }
+
+/* ── Campos apagados por machote congelado ──────────────────────────────
+ * No se esconde la hoja: el documento con el que se vendió hay que poder
+ * consultarlo. Lo que se quita es la posibilidad de cambiarlo. */
+.cel.bloq, .cel:disabled { background: var(--papel); color: var(--suave);
+                           border-style: dashed; cursor: not-allowed; }
+
+/* ── Banda de estado ────────────────────────────────────────────────────*/
+.edo { display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+       border: 1px solid var(--linea); border-left: 3px solid var(--acento);
+       background: var(--papel); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; }
+.edo.cerrado { border-left-color: var(--verde); }
+.edo select { min-height: var(--toque); border: 1px solid var(--linea);
+              border-radius: 6px; padding: 0 8px; background: var(--fondo);
+              font-size: 13px; margin-left: 6px; }
+.edo label { display: flex; align-items: center; }
+
+/* ── El pulso del autoguardado ──────────────────────────────────────────
+ * Vive en la topbar porque es el único lugar visible en toda pantalla del
+ * libro. Sin él, "se guarda solo" es una promesa que el usuario tiene que
+ * creer; con él, la ve. */
+.pulso { display: flex; align-items: center; gap: 5px; font-size: 11px;
+         color: var(--suave); white-space: nowrap; margin-right: 8px; }
+.pulso i { width: 8px; height: 8px; border-radius: 50%; background: var(--suave);
+           flex: 0 0 auto; }
+.pulso.p-limpio i, .pulso.p-guardado i { background: var(--verde); }
+.pulso.p-sucio i { background: var(--ambar); }
+.pulso.p-guardando i { background: var(--ambar); animation: latir .7s ease-in-out infinite; }
+.pulso.p-sin-almacen i { background: var(--rojo); }
+.pulso.p-sin-almacen { color: var(--rojo); }
+@keyframes latir { 0%,100% { opacity: 1 } 50% { opacity: .25 } }
+@media (prefers-reduced-motion: reduce) { .pulso.p-guardando i { animation: none } }
+/* En teléfono el texto sobra: el punto de color ya dice lo que hay que saber,
+   y la topbar no tiene ancho para las dos cosas. */
+@media (max-width: 520px) { .pulso span { display: none } }
+
+@media (max-width: 719px) {
+  /* En tarjetas el renglón capturado se marca por su borde, no por el fondo:
+     un fondo verde detrás de catorce campos etiquetados no se lee. */
+  table.rejilla.tarjetas tr.capturada { border-color: var(--x-fila-bd);
+                                        box-shadow: inset 3px 0 0 var(--x-fila-bd); }
+  table.rejilla.tarjetas tr.capturada > td { background: transparent; }
+  table.rejilla.tarjetas tr.capturada > td.calc { background: var(--papel); }
+  table.rejilla.tarjetas tr.capturada > td:first-child { box-shadow: none; }
 }

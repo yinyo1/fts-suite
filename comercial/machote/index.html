@@ -16,6 +16,9 @@
     <button class="tb-back" id="btnBack" aria-label="Volver">&#8249;</button>
     <div class="tb-logo" role="img" aria-label="FTS"></div>
     <div class="tb-info"><strong id="tbT">Machote y órdenes</strong><span id="tbS">Comercial · prototipo</span></div>
+    <!-- El pulso del autoguardado. Va en la topbar a proposito: es el unico
+         lugar que sigue visible en toda pantalla del libro. -->
+    <div class="pulso" id="pulso" title="Autoguardado"><i></i><span id="pulsoTx">—</span></div>
     <div class="tb-badge" id="tbB">DEMO</div>
   </div>
   <main id="vista"></main>
@@ -23,6 +26,7 @@
 </div>
 
 <!-- calc.js primero: demo.js lee de el los roles y los margenes de plantilla. -->
+<script src="js/almacen.js"></script>
 <script src="js/calc.js"></script>
 <script src="js/demo.js"></script>
 <script src="js/reglas.js"></script>

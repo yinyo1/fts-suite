@@ -64,7 +64,8 @@ versión es peor que no tener indicador.
 | `js/reglas.js` | 30 reglas en un arreglo de configuración, separadas del motor que las corre. |
 | `js/demo.js` | Datos de ejemplo. Lo que viene del machote real va marcado `REAL`; lo inventado, `SUPUESTO`. |
 | `js/app.js` | Vistas y ruteo. |
-| `tests/pruebas-navegador.js` | 53 pruebas de navegador. |
+| `js/almacen.js` | El autoguardado. UNA pieza entre la pantalla y donde viven los datos. |
+| `tests/pruebas-navegador.js` | 60 pruebas de navegador. |
 
 ## Cómo se calcula el precio
 
@@ -161,6 +162,67 @@ Cuando se convierte hay que decir **de dónde salió el tipo de cambio** — DOF
 día, Banxico FIX, el del banco, acordado con el cliente, o texto libre. Si no se
 dice, el revisador lo levanta: en tres meses nadie puede reconstruir el precio
 sin ese dato.
+
+## Los colores
+
+⚠️ **Son una aproximación, no una medición.** El conector de SharePoint
+devuelve los valores y las fórmulas del libro pero **nada de estilo** — se
+comprobó contra `SO11836`: cero información de relleno. Así que la paleta está
+puesta a ojo con los colores de Office que usan esas plantillas, no leída del
+archivo.
+
+Corregirla es cambiar **ocho variables** al principio de `css/machote.css`
+(`--x-banda`, `--x-cab`, `--x-grupo`, `--x-total`, `--x-fila-ok`…) y nada más:
+ningún color de tabla está escrito en otro lado, y hay una prueba que lo vigila.
+El día que lleguen los colores reales, el cambio es de un minuto.
+
+## El renglón capturado
+
+**Verde = este renglón ya tiene cantidad** (`QTY ≥ 1`). Con diez renglones de
+mano de obra fijos por sección, la mayoría en blanco casi siempre, distinguir de
+un vistazo lo capturado de lo que falta es la diferencia entre revisar una hoja
+y leerla entera.
+
+En teléfono la marca es el **borde** de la tarjeta, no el fondo: un fondo verde
+detrás de catorce campos etiquetados no se lee.
+
+## Autoguardado
+
+No hay botón de guardar, y no debe haberlo. Cada cambio —una cifra, el nombre de
+una sección, agregar un renglón— programa el guardado medio segundo después de
+la última tecla; y al cambiar de pantalla, al cambiar de pestaña del navegador y
+al cerrar, lo pendiente se guarda de inmediato. Un punto de color en la barra
+superior dice en cuál de los tres estados está: **guardado**, **sin guardar**,
+**guardando**.
+
+⚠️ **Hoy guarda en el NAVEGADOR, no en un servidor.** Lo que se captura en una
+laptop no lo ve nadie más, y se pierde si se limpian los datos del sitio. Sirve
+para que el gesto sea real mientras se valida el backend. Todo eso vive detrás
+de `js/almacen.js`, que es **la única pieza que cambia** el día que entre el
+Postgres de la suite (`fts-suite-db`, issue #140) — la pantalla no sabe contra
+qué guarda. Lo que falta para ese salto está listado dentro de ese archivo.
+
+## El flujo, y el candado
+
+```
+En creación  →  En revisión  →  Enviado a Odoo
+                                 ↑ exige orden · congela
+```
+
+El machote **nace sin orden** — casi siempre nace antes que la orden — y por eso
+la SO es opcional mientras se arma. Al enviarlo a Odoo ya no: enviar **es**
+confirmar la venta, y una venta sin orden no existe. Si se intenta, el selector
+se revierte y dice por qué.
+
+Un machote enviado queda **congelado**: los campos se apagan y desaparecen los
+botones de estructura, pero la hoja se sigue viendo — es el documento con el que
+se vendió y hay que poder consultarlo. La banda de estado encabeza **todas** las
+hojas, no sólo el `DESGLOSE`: catorce campos apagados sin decir por qué son
+exactamente el silencio que este módulo persigue.
+
+⚠️ **Enviar todavía NO escribe en Odoo.** La regla vigente del módulo es que
+Odoo sólo se consulta. El estado, el candado y la exigencia de orden ya son
+reales; la escritura espera a que Esteban levante esa regla.
 
 ## Cómo correr las pruebas
 

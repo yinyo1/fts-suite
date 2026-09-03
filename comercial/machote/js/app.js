@@ -34,18 +34,80 @@
    * 2026-09-03 (por instrucción de Esteban), pero lleva el suyo aparte y va en
    * V1.00. Planeación sigue en `2.4.1` y el kiosko sólo con cadena de build;
    * a esos no se propaga. */
-  const VERSION = 'V1.06';
+  const VERSION = 'V1.07';
   const $  = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
   const clon = (x) => JSON.parse(JSON.stringify(x));
 
+  const A = G.MachoteAlmacen;
+
+  /* Lo guardado manda sobre los datos de ejemplo. Si el almacen esta vacio o
+   * corrupto se arranca con la demo, que es lo que espera quien abre la pagina
+   * por primera vez. */
+  const _guardado = A ? A.leer() : null;
   const ST = {
     verVacios: false,
-    machotes: clon(D.MACHOTES),
+    machotes: _guardado ? _guardado.machotes : clon(D.MACHOTES),
     ordenes:  clon(D.ORDENES),
-    handoff: {}, confirmadas: {},
-    hoja: 'desglose', simMargen: null
+    handoff: _guardado ? (_guardado.handoff || {}) : {},
+    confirmadas: {},
+    hoja: 'desglose', simMargen: null,
+    // 'limpio' | 'sucio' | 'guardando' | 'guardado' | 'sin-almacen'
+    pulso: (A && A.disponible()) ? 'limpio' : 'sin-almacen'
   };
+
+  /* ── Autoguardado ──────────────────────────────────────────────────────
+   *
+   * No hay boton de guardar y no debe haberlo: un capturista que pierde media
+   * hora de trabajo por no haber apretado un boton tiene razon en enojarse.
+   *
+   * El retardo es a proposito. Escribir en cada tecla pelearia con el teclado;
+   * medio segundo despues de la ultima, no. Y en cada salida -cambiar de
+   * pantalla, cambiar de pestaña del navegador, cerrar- se fuerza el guardado
+   * pendiente, que es el momento en que de verdad se pierde el trabajo. */
+  var _reloj = null;
+
+  function pintarPulso() {
+    const el = $('#pulso'), tx = $('#pulsoTx');
+    if (!el || !tx) return;
+    const T = { limpio: 'guardado', sucio: 'sin guardar', guardando: 'guardando…',
+                guardado: 'guardado', 'sin-almacen': 'sin guardar' };
+    el.className = 'pulso p-' + ST.pulso;
+    tx.textContent = T[ST.pulso] || '';
+    el.title = ST.pulso === 'sin-almacen'
+      ? 'Este navegador no deja guardar (modo privado o datos del sitio bloqueados). Lo que captures se pierde al salir.'
+      : 'Se guarda solo, en este navegador. Todavia no viaja a ningun servidor.';
+  }
+
+  /** Guarda ya, sin esperar el retardo. Devuelve si de verdad quedo. */
+  function guardarYa() {
+    if (!A || !A.disponible()) { ST.pulso = 'sin-almacen'; pintarPulso(); return false; }
+    if (_reloj) { clearTimeout(_reloj); _reloj = null; }
+    ST.pulso = 'guardando'; pintarPulso();
+    const ok = A.escribir({ machotes: ST.machotes, handoff: ST.handoff });
+    ST.pulso = ok ? 'guardado' : 'sin-almacen';
+    pintarPulso();
+    return ok;
+  }
+
+  /** Marca sucio y programa el guardado. Es lo que llama toda edicion. */
+  function tocado() {
+    if (!A || !A.disponible()) { ST.pulso = 'sin-almacen'; pintarPulso(); return; }
+    ST.pulso = 'sucio'; pintarPulso();
+    if (_reloj) clearTimeout(_reloj);
+    _reloj = setTimeout(guardarYa, 500);
+  }
+
+  // Las tres salidas por las que se pierde trabajo, cubiertas.
+  window.addEventListener('hashchange', () => { if (ST.pulso === 'sucio') guardarYa(); });
+  window.addEventListener('beforeunload', () => { if (ST.pulso === 'sucio') guardarYa(); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && ST.pulso === 'sucio') guardarYa();
+  });
+
+  /** Un machote enviado a Odoo ya no se toca: es el documento con el que se
+   *  vendio. Editarlo despues seria reescribir la historia. */
+  const congelado = (m) => !!((D.ESTADOS[m && m.estado] || {}).congelado);
 
   const esc = (s) => String(s === null || s === undefined ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -115,6 +177,7 @@
 
   /* ── Ruteo ───────────────────────────────────────────────────────────── */
   function render() {
+    pintarPulso();
     const p = (location.hash || '#/').replace(/^#\//, '').split('/');
     if (p[0] === '')      return vHome();
     if (p[0] === 'm')     return vMachote(p[1]);
@@ -207,7 +270,10 @@
    *  memoria y comparar, sin tocar el DOM vivo. */
   function hojaHTML(m, c) {
     const s = m.secciones.find(x => x.id === ST.hoja);
-    return s ? hojaSeccion(m, s, c) : hojaDesglose(m, c);
+    // La banda de estado encabeza TODA hoja. Si sólo saliera en el DESGLOSE,
+    // una hoja de sección congelada mostraría catorce campos apagados sin
+    // decir por qué — que es justo el silencio que perseguimos.
+    return bloqueEstado(m) + (s ? hojaSeccion(m, s, c) : hojaDesglose(m, c));
   }
 
   function pintarHoja(m) {
@@ -319,8 +385,12 @@
         if (i < 0) { s.mo.push({ rol: rol.id, qty: '', personas: 1, pu: rol.pu, moneda: m.moneda }); i = s.mo.length - 1; }
         const l = s.mo[i], cl = C.costoMo(l, m), p = 's:' + s.id + ':mo:' + i + ':';
         const vacia = !(Number(l.qty) > 0);
+        // Verde = este renglon ya tiene cantidad. Con diez renglones fijos por
+        // seccion, saber de un vistazo cuales estan capturados es la diferencia
+        // entre revisar una hoja y leerla entera.
+        const cls = vacia ? 'enCero' : 'capturada';
         filasMo +=
-          '<tr' + (vacia ? ' class="enCero"' : '') + '>' +
+          '<tr class="' + cls + '">' +
           '<td class="rotulo" data-l="Renglón">' + esc(rol.label) + '</td>' +
           '<td data-l="QTY (horas)">' + celNum(p + 'qty', l.qty, 'w60') + '</td>' +
           '<td class="ro solo-ancho" data-l="Unidad">Horas</td>' +
@@ -351,7 +421,7 @@
     // COSTO MATERIALES Y SERVICIOS
     const filasMat = (s.partidas || []).map((l, j) => {
       const cl = C.costoPartida(l, m), p = 's:' + s.id + ':partidas:' + j + ':';
-      return '<tr>' +
+      return '<tr' + (Number(l.qty) >= 1 ? ' class="capturada"' : '') + '>' +
         '<td data-l="Descripción">' + cel(p + 'descripcion', l.descripcion, 'desc') + '</td>' +
         '<td data-l="QTY">' + celNum(p + 'qty', l.qty, 'w60') + '</td>' +
         '<td data-l="Unidad">' + celLibre(p + 'unidad', l.unidad, 'unidades', 'w90') + '</td>' +
@@ -394,6 +464,34 @@
       D.UNIDADES.map(u => '<option value="' + esc(u) + '">').join('') + '</datalist>';
 
     return listaUnidades + cab + leyenda() + tablaMo + tablaMat;
+  }
+
+  /* ── El estado del machote ─────────────────────────────────────────────
+   *
+   * El machote NACE sin orden -casi siempre nace antes que la orden- y por eso
+   * la SO es opcional mientras se arma. Pero al enviarlo a Odoo ya no: enviar
+   * ES confirmar la venta, y una venta sin orden no existe.
+   *
+   * ⚠️ ENVIAR NO ESCRIBE EN ODOO todavia. La regla vigente de este modulo es
+   * que Odoo solo se consulta. El estado, el candado y la exigencia de orden si
+   * son reales; el envio queda esperando que Esteban levante esa regla. */
+  function bloqueEstado(m) {
+    const est = D.ESTADOS[m.estado] || D.ESTADOS.borrador;
+    const cong = congelado(m);
+    const ops = D.FLUJO.map(k =>
+      '<option value="' + k + '"' + (m.estado === k ? ' selected' : '') + '>' +
+      esc(D.ESTADOS[k].label) + '</option>').join('');
+
+    return '<div class="edo' + (cong ? ' cerrado' : '') + '">' +
+      '<span class="chip" style="background:' + est.color + '">' + esc(est.label) + '</span>' +
+      (cong
+        ? '<span class="tiny">🔒 Enviado a Odoo. Este es el documento con el que se vendió: se consulta, no se edita.</span>'
+        : '<label class="tiny">Estado <select class="cel" data-estado>' + ops + '</select></label>') +
+      '<span class="grow"></span>' +
+      '<span class="tiny">' + (m.so
+        ? 'Orden <strong>' + esc(m.so) + '</strong>'
+        : '<span class="n-warn">Sin orden ligada</span> · se puede armar así, pero no enviar') +
+      '</span></div>';
   }
 
   /* ── Hoja DESGLOSE COTIZACIÓN ────────────────────────────────────────── */
@@ -559,6 +657,22 @@
 
   /* ── Enlace de celdas ────────────────────────────────────────────────── */
   function enlazar(m) {
+    /* Un machote congelado se lee, no se edita. Se apagan los campos y se
+     * quitan los botones de estructura en vez de esconder la hoja: el
+     * documento con el que se vendio hay que poder consultarlo. */
+    if (congelado(m)) {
+      $$('[data-cel]').forEach(el => { el.disabled = true; el.classList.add('bloq'); });
+      // `data-nueva` es la pestaña `+`: vive fuera de la hoja, en la banda de
+      // pestañas, y por eso se cuela si sólo se listan los botones de la hoja.
+      $$('[data-add],[data-del],[data-dup],[data-mov],[data-delsec],[data-dupsec],' +
+         '[data-movsec],[data-nueva]').forEach(b => b.remove());
+      $$('[data-esc]').forEach(b => b.onclick = () => {
+        m.escenario = b.dataset.esc; pintarHoja(m); barra(m, C.calcular(m));
+      });
+      const vvc = $('#verVacios');
+      if (vvc) vvc.onchange = () => { ST.verVacios = vvc.checked; pintarHoja(m); };
+      return;
+    }
     $$('[data-cel]').forEach(el => {
       const esSel = el.tagName === 'SELECT';
       const aplicar = () => {
@@ -585,26 +699,43 @@
         }
         // La moneda sigue a la empresa mientras no se haya tocado a mano.
         if (antes !== null && m.moneda === antes) m.moneda = C.monedaPorDefecto(m);
+        tocado();
         pintarHoja(m); barra(m, C.calcular(m));
       };
-      if (!esSel) el.oninput = () => { aplicar(); barra(m, refrescarCalculados(m) || C.calcular(m)); };
+      if (!esSel) el.oninput = () => {
+        aplicar(); tocado();
+        barra(m, refrescarCalculados(m) || C.calcular(m));
+      };
     });
+    const sel = $('[data-estado]');
+    if (sel) sel.onchange = () => {
+      const nuevo = sel.value;
+      // Enviar a Odoo exige orden. Se revierte el selector en vez de dejarlo
+      // mintiendo: un desplegable que muestra un estado que no se aplico es
+      // peor que no dejar cambiarlo.
+      if ((D.ESTADOS[nuevo] || {}).exige_so && !m.so) {
+        sel.value = m.estado;
+        toast('No se puede enviar a Odoo sin una orden ligada.');
+        return;
+      }
+      m.estado = nuevo; tocado(); vMachote(m.id);
+    };
     const vv = $('#verVacios');
     if (vv) vv.onchange = () => { ST.verVacios = vv.checked; pintarHoja(m); };
     $$('[data-esc]').forEach(b => b.onclick = () => {
-      m.escenario = b.dataset.esc; pintarHoja(m); barra(m, C.calcular(m));
+      m.escenario = b.dataset.esc; tocado(); pintarHoja(m); barra(m, C.calcular(m));
     });
     $$('[data-add]').forEach(b => b.onclick = () => {
       const s = m.secciones.find(x => x.id === b.dataset.add); if (!s) return;
       s.partidas.push({ qty: 1, unidad: 'Pieza', tipo: 'Materiales', descripcion: '', modelo: '', marca: '',
                         pu: null, moneda: m.moneda, margen: null, link: '', comentario: '' });
-      pintarHoja(m); barra(m, C.calcular(m));
+      tocado(); pintarHoja(m); barra(m, C.calcular(m));
     });
     const seccionDe = (ref) => {
       const [sid, j] = ref.split('#');
       return { s: m.secciones.find(x => x.id === sid), j: parseInt(j, 10) };
     };
-    const refrescar = () => { pintarHoja(m); barra(m, C.calcular(m)); };
+    const refrescar = () => { tocado(); pintarHoja(m); barra(m, C.calcular(m)); };
 
     $$('[data-del]').forEach(b => b.onclick = () => {
       const { s, j } = seccionDe(b.dataset.del); if (!s) return;
@@ -628,7 +759,7 @@
     $$('[data-delsec]').forEach(b => b.onclick = () => {
       const i = m.secciones.findIndex(x => x.id === b.dataset.delsec);
       if (i < 0 || m.secciones.length < 2) return;
-      m.secciones.splice(i, 1); ST.hoja = 'desglose'; vMachote(m.id);
+      m.secciones.splice(i, 1); ST.hoja = 'desglose'; tocado(); vMachote(m.id);
     });
     $$('[data-dupsec]').forEach(b => b.onclick = () => {
       const i = m.secciones.findIndex(x => x.id === b.dataset.dupsec); if (i < 0) return;
@@ -636,7 +767,7 @@
       copia.id = 's-' + Date.now();
       copia.nombre = (copia.nombre || 'SECCIÓN') + ' (copia)';
       m.secciones.splice(i + 1, 0, copia);
-      ST.hoja = copia.id; vMachote(m.id);
+      ST.hoja = copia.id; tocado(); vMachote(m.id);
     });
     $$('[data-movsec]').forEach(b => b.onclick = () => {
       const [sid, d] = b.dataset.movsec.split('|');
@@ -646,7 +777,7 @@
       // La ranura la da la POSICIÓN, no el nombre: mover una sección cambia a
       // qué renglón del RESUMEN va a caer.
       const t = m.secciones[i]; m.secciones[i] = m.secciones[k]; m.secciones[k] = t;
-      vMachote(m.id);
+      tocado(); vMachote(m.id);
     });
   }
 
