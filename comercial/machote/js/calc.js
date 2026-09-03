@@ -1,186 +1,307 @@
 /* ═══ Machote · motor de cálculo ═══
  *
- * Todo número que se ve en pantalla sale de aquí. Ninguna vista calcula por
- * su cuenta: si el margen aparece en dos lugares, sale de la misma función.
+ * Reconstruido el 2026-09-03 sobre la estructura REAL del machote de FTS,
+ * leída de SharePoint. Ver docs/comercial/MACHOTE-ESTRUCTURA-REAL.md.
+ *
+ * La diferencia de fondo con la versión anterior: el margen NO es un
+ * porcentaje global sobre el total, es un MULTIPLICADOR por concepto que se
+ * aplica renglón por renglón. El precio se construye desde abajo.
+ *
+ * Todo número que se ve en pantalla sale de aquí.
  */
 (function (G) {
   'use strict';
 
-  // SUPUESTO: sobrecosto por turno. Inventado.
-  const FACTOR_TURNO = { normal: 1, nocturno: 1.15, fin_semana: 1.25 };
-  const ETIQUETA_TURNO = { normal: 'Normal', nocturno: 'Nocturno (+15%)', fin_semana: 'Fin de semana (+25%)' };
-
   const num = (v) => (typeof v === 'number' && isFinite(v)) ? v : 0;
+  const vacio = (v) => v === null || v === undefined || v === '';
 
-  /** Tipo de cambio con el factor de protección aplicado. */
+  /* ── Los doce renglones fijos de mano de obra ──────────────────────────
+   * Son los del machote, con sus tarifas de plantilla. El capturista pisa la
+   * tarifa; los renglones no se agregan ni se quitan.
+   * `mult` dice de qué celda de la tabla de márgenes sale el multiplicador. */
+  const ROLES = [
+    { id: 'diseno',          grupo: 'diseno', label: 'Diseño',                    pu: 200, mult: 'mano_obra' },
+    { id: 'programador',     grupo: 'diseno', label: 'Programador',               pu: 300, mult: 'programador' },
+    { id: 'supervisor_sr',   grupo: 'planta', label: 'Supervisor Sr',             pu: 200, mult: 'mano_obra' },
+    { id: 'supervisor_jr',   grupo: 'planta', label: 'Supervisor Jr · seguridad', pu: 140, mult: 'mano_obra' },
+    { id: 'tecnicos',        grupo: 'planta', label: 'Técnicos',                  pu: 140, mult: 'mano_obra' },
+    { id: 'he_supervisor',   grupo: 'extras', label: 'Horas extras supervisor',   pu: 200, mult: 'extra' },
+    { id: 'he_jr',           grupo: 'extras', label: 'Horas extras Jr · seguridad', pu: 140, mult: 'extra' },
+    { id: 'he_tecnicos',     grupo: 'extras', label: 'Horas extras técnicos',     pu: 140, mult: 'extra' },
+    { id: 'he_programador',  grupo: 'extras', label: 'Horas extras programador',  pu: 300, mult: 'extra' },
+    { id: 'he_diseno',       grupo: 'extras', label: 'Horas extras diseño',       pu: 140, mult: 'extra' }
+  ];
+  const ROL = {};
+  ROLES.forEach(r => { ROL[r.id] = r; });
+
+  const GRUPOS = [
+    { id: 'diseno', label: 'Diseño y Programación' },
+    { id: 'planta', label: 'En Planta' },
+    { id: 'extras', label: 'Extras' }
+  ];
+
+  /* Valores de la plantilla original (Machote general MXN - SO.xlsx).
+   * Programador y mano de obra no variaron en ninguno de los 8 ejemplares
+   * leídos; materiales y servicios sí, por eso son campos y no constantes. */
+  const MARGENES_PLANTILLA = { programador: 4.4, mano_obra: 2.5, materiales: 1.8, servicios: 1.7 };
+  const COMISION_FTS_PLANTILLA = 0.055;
+  const MARGEN_DESEADO_PLANTILLA = 0.40;
+  const REPARTO_PLANTILLA = { venta: 0.73, operaciones: 0.27 };
+  const MAX_SECCIONES = 10;
+
+  const TIPOS = ['Materiales', 'Servicios'];
+  const ESCENARIOS = [
+    { id: 'costo',          label: 'Costo' },
+    { id: 'con_utilidad',   label: 'Con utilidad' },
+    { id: 'margen_deseado', label: 'Margen deseado' }
+  ];
+
+  /** Tipo de cambio con el factor de protección aplicado.
+   *  Nota: el machote de Excel NO convierte — suma renglones MXN y USD como si
+   *  fueran la misma moneda. Aquí sí se convierte, y `mezclaMoneda` avisa. */
   function tcEfectivo(m) {
     return num(m.tc) * (1 + num(m.factor_proteccion));
   }
 
-  /** Costo de una línea de material, ya convertido a la moneda del machote.
-   *  Un precio null NO se trata como cero silencioso: devuelve sin_precio. */
-  function costoBom(linea, m) {
-    const sinPrecio = (linea.pu === null || linea.pu === undefined);
-    const pu = sinPrecio ? 0 : num(linea.pu);
-    const factor = (linea.moneda === 'USD') ? tcEfectivo(m) : 1;
-    return { total: num(linea.cant) * pu * factor, sinPrecio, factor };
+  function aMonedaDoc(monto, monedaLinea, m) {
+    const doc = m.moneda || 'MXN';
+    if (!monedaLinea || monedaLinea === doc) return monto;
+    if (monedaLinea === 'USD' && doc === 'MXN') return monto * tcEfectivo(m);
+    if (monedaLinea === 'MXN' && doc === 'USD') { const t = tcEfectivo(m); return t ? monto / t : 0; }
+    return monto;
   }
 
-  /** Costo de una línea de mano de obra. Las horas dobles se pagan al 200%. */
-  function costoMo(linea) {
-    const ch = num(linea.costo_hora);
-    const ft = FACTOR_TURNO[linea.turno] || 1;
-    const normales = num(linea.horas) * num(linea.personas) * ch * ft;
-    const dobles = num(linea.horas_dobles) * num(linea.personas) * ch * 2;
+  /** Los cuatro multiplicadores vigentes del machote, ya resueltos. */
+  function margenes(m) {
+    const mg = Object.assign({}, MARGENES_PLANTILLA, m.margenes || {});
+    // El multiplicador de horas extras no se captura: es el de mano de obra
+    // por dos. En el Excel es literalmente =$F$3*2.
+    mg.extra = num(mg.mano_obra) * 2;
+    return mg;
+  }
+
+  /** Una línea de mano de obra: tarifa × personas × horas.
+   *  El costo es tridimensional. Tarifa × horas se queda corto. */
+  function costoMo(linea, m) {
+    const r = ROL[linea.rol];
+    const mg = margenes(m);
+    const sinTarifa = vacio(linea.pu);
+    const pu = sinTarifa ? 0 : num(linea.pu);
+    const costo = aMonedaDoc(pu * num(linea.personas) * num(linea.qty), linea.moneda, m);
+    const mult = r ? num(mg[r.mult]) : 0;
     return {
-      total: normales + dobles,
-      horas_hombre: (num(linea.horas) + num(linea.horas_dobles)) * num(linea.personas),
-      sinOficio: !linea.oficio,
-      sinCosto: linea.costo_hora === null || linea.costo_hora === undefined
+      costo,
+      mult,
+      conUtilidad: costo * mult,
+      horas: num(linea.qty) * num(linea.personas),
+      sinTarifa,
+      sinRol: !r
     };
+  }
+
+  /** Una línea de materiales o servicios. El `tipo` elige el multiplicador:
+   *  es la columna que decide el precio. Sin tipo no hay precio. */
+  function costoPartida(linea, m) {
+    const mg = margenes(m);
+    const sinPrecio = vacio(linea.pu);
+    const pu = sinPrecio ? 0 : num(linea.pu);
+    const costo = aMonedaDoc(pu * num(linea.qty), linea.moneda, m);
+    const sinTipo = TIPOS.indexOf(linea.tipo) === -1;
+    const mult = sinTipo ? 0 : num(linea.tipo === 'Materiales' ? mg.materiales : mg.servicios);
+    return { costo, mult, conUtilidad: costo * mult, sinPrecio, sinTipo, sinLink: !linea.link };
   }
 
   function totalSeccion(s, m) {
-    let material = 0, manoObra = 0, sinPrecio = 0, horasHombre = 0;
-    (s.bom || []).forEach(l => { const c = costoBom(l, m); material += c.total; if (c.sinPrecio) sinPrecio++; });
-    (s.mo || []).forEach(l => { const c = costoMo(l); manoObra += c.total; horasHombre += c.horas_hombre; });
-    return { material, manoObra, total: material + manoObra, sinPrecio, horasHombre };
-  }
+    let costoMoTot = 0, ventaMo = 0, horas = 0, moSinTarifa = 0;
+    let costoMat = 0, ventaMat = 0, sinPrecio = 0, sinTipo = 0, sinLink = 0;
+    const monedas = {};
 
-  /** El cálculo completo del machote. Única fuente de verdad. */
-  function calcular(m) {
-    const secciones = (m.secciones || []).map(s => Object.assign({ id: s.id, nombre: s.nombre }, totalSeccion(s, m)));
-
-    const material = secciones.reduce((a, s) => a + s.material, 0);
-    const manoObra = secciones.reduce((a, s) => a + s.manoObra, 0);
-    const horasHombre = secciones.reduce((a, s) => a + s.horasHombre, 0);
-    const partidasSinPrecio = secciones.reduce((a, s) => a + s.sinPrecio, 0);
-    // Mano de obra sin tarifa: mismas consecuencias que una partida sin precio.
-    const moSinCosto = (m.secciones || []).reduce((a, s) =>
-      a + (s.mo || []).filter(l => l.costo_hora === null || l.costo_hora === undefined).length, 0);
-    const costoDirecto = material + manoObra;
-
-    const g = m.generales || {};
-    const generales = {
-      flete:       num(g.flete && g.flete.monto),
-      importacion: num(g.importacion && g.importacion.monto),
-      viaticos:    num(g.viaticos && g.viaticos.monto),
-      hospedaje:   num(g.hospedaje && g.hospedaje.monto)
-    };
-    const totalGenerales = generales.flete + generales.importacion + generales.viaticos + generales.hospedaje;
-
-    // Costo antes de comisión. La comisión es % del PRECIO DE VENTA, no del costo:
-    // por eso se calcula después y se muestra como renglón propio en pesos.
-    const costoTotal = costoDirecto + totalGenerales;
-
-    const precio = num(m.venta && m.venta.precio);
-    const comisionPct = num(g.comision_broker && g.comision_broker.pct) / 100;
-    const comisionMonto = precio * comisionPct;
-
-    const utilidad = precio - costoTotal - comisionMonto;
-    const margen = precio > 0 ? utilidad / precio : null;
-    const markup = costoTotal > 0 ? (precio - costoTotal) / costoTotal : null;
-
-    // Un costo al que le faltan renglones SIEMPRE se queda corto, así que el
-    // margen que sale de él SIEMPRE es optimista. No es un decimal de más: es
-    // la diferencia entre "ganamos 27%" y "no sabemos".
-    const huecos = partidasSinPrecio + moSinCosto;
+    (s.mo || []).forEach(l => {
+      const c = costoMo(l, m);
+      costoMoTot += c.costo; ventaMo += c.conUtilidad; horas += c.horas;
+      if (c.sinTarifa && (num(l.qty) > 0 || num(l.personas) > 0)) moSinTarifa++;
+      if (l.moneda) monedas[l.moneda] = 1;
+    });
+    (s.partidas || []).forEach(l => {
+      const c = costoPartida(l, m);
+      costoMat += c.costo; ventaMat += c.conUtilidad;
+      const usada = num(l.qty) > 0 || !vacio(l.pu) || l.descripcion;
+      if (!usada) return;
+      if (c.sinPrecio) sinPrecio++;
+      if (c.sinTipo) sinTipo++;
+      if (c.sinLink && !vacio(l.pu)) sinLink++;
+      if (l.moneda) monedas[l.moneda] = 1;
+    });
 
     return {
-      secciones, material, manoObra, horasHombre, partidasSinPrecio, moSinCosto,
-      huecos, costoIncompleto: huecos > 0,
-      costoDirecto, generales, totalGenerales, costoTotal,
-      precio, comisionPct, comisionMonto, utilidad, margen, markup,
-      tcEfectivo: tcEfectivo(m)
+      id: s.id, nombre: s.nombre,
+      costoMo: costoMoTot, costoMat, costo: costoMoTot + costoMat,
+      ventaMo, ventaMat, venta: ventaMo + ventaMat,
+      horas, moSinTarifa, sinPrecio, sinTipo, sinLink,
+      monedas: Object.keys(monedas)
     };
   }
 
-  /** Inverso del simulador: qué precio da el margen que quiero.
-   *  margen = 1 − comisión% − costo/P   ⇒   P = costo / (1 − comisión% − margen) */
-  function precioParaMargen(costoTotal, comisionPct, margenObjetivo) {
-    const den = 1 - comisionPct - margenObjetivo;
-    if (den <= 0.0001) return null;   // margen inalcanzable con esa comisión
-    return costoTotal / den;
+  /** Reparte una comisión entre las personas nombradas.
+   *  Devuelve además si los porcentajes cuadran: el machote real deja pasar
+   *  repartos que suman 1,25 y solo lo marca como FALSO en una celda. */
+  function repartir(monto, integrantes) {
+    const lista = (integrantes || []).filter(p => p && p.nombre);
+    const suma = lista.reduce((a, p) => a + num(p.pct), 0);
+    return {
+      lineas: lista.map(p => ({ nombre: p.nombre, pct: num(p.pct), monto: monto * num(p.pct) })),
+      suma,
+      cuadra: lista.length === 0 || Math.abs(suma - 1) < 0.0001
+    };
   }
 
-  // ═══ Widgets de cálculo ═══════════════════════════════════════════════════
-  // El resultado se captura como DATO en el machote. No es una hoja libre:
-  // cada widget tiene nombre, entradas nombradas y una fórmula visible.
-  const WIDGETS = {
-    perimetro_postes: {
-      nombre: 'Perímetro → postes / registros',
-      ayuda: 'Tramo abierto: se agrega un elemento al final.',
-      unidad: 'pza',
-      campos: [
-        { id: 'perimetro',  etiqueta: 'Perímetro o longitud', unidad: 'm' },
-        { id: 'separacion', etiqueta: 'Separación entre elementos', unidad: 'm' }
-      ],
-      formula: 'techo(longitud ÷ separación) + 1',
-      calcular: (p) => p.separacion > 0 ? Math.ceil(num(p.perimetro) / num(p.separacion)) + 1 : null
-    },
-    metros_cable: {
-      nombre: 'Metros → cable',
-      ayuda: 'Multiplica por número de hilos y agrega desperdicio.',
-      unidad: 'm',
-      campos: [
-        { id: 'metros',      etiqueta: 'Longitud de ruta', unidad: 'm' },
-        { id: 'hilos',       etiqueta: 'Hilos por ruta',   unidad: '' },
-        { id: 'desperdicio', etiqueta: 'Desperdicio',      unidad: '%', pct: true }
-      ],
-      formula: 'longitud × hilos × (1 + desperdicio)',
-      calcular: (p) => Math.ceil(num(p.metros) * num(p.hilos) * (1 + num(p.desperdicio)))
-    },
-    conduit_tramos: {
-      nombre: 'Metros → tramos de conduit',
-      ayuda: 'Redondea hacia arriba: no se compran medios tramos.',
-      unidad: 'tramo',
-      campos: [
-        { id: 'metros',       etiqueta: 'Longitud a canalizar', unidad: 'm' },
-        { id: 'largo_tramo',  etiqueta: 'Largo del tramo',      unidad: 'm' }
-      ],
-      formula: 'techo(longitud ÷ largo del tramo)',
-      calcular: (p) => p.largo_tramo > 0 ? Math.ceil(num(p.metros) / num(p.largo_tramo)) : null
-    },
-    area_rejilla: {
-      nombre: 'Área → rejilla / lámina',
-      ayuda: 'Superficie más desperdicio de corte.',
-      unidad: 'm²',
-      campos: [
-        { id: 'largo',       etiqueta: 'Largo',       unidad: 'm' },
-        { id: 'ancho',       etiqueta: 'Ancho',       unidad: 'm' },
-        { id: 'desperdicio', etiqueta: 'Desperdicio', unidad: '%', pct: true }
-      ],
-      formula: 'largo × ancho × (1 + desperdicio)',
-      calcular: (p) => +(num(p.largo) * num(p.ancho) * (1 + num(p.desperdicio))).toFixed(2)
-    },
-    viaticos_cuadrilla: {
-      nombre: 'Cuadrilla → viáticos',
-      ayuda: 'Alimentación y gastos por persona y día en obra foránea.',
-      unidad: 'MXN',
-      campos: [
-        { id: 'personas',   etiqueta: 'Personas',        unidad: '' },
-        { id: 'dias',       etiqueta: 'Días en obra',    unidad: 'd' },
-        { id: 'tarifa_dia', etiqueta: 'Viático por día', unidad: '$' }
-      ],
-      formula: 'personas × días × viático diario',
-      calcular: (p) => num(p.personas) * num(p.dias) * num(p.tarifa_dia)
-    },
-    hospedaje_cuadrilla: {
-      nombre: 'Cuadrilla → hospedaje',
-      ayuda: 'Cuartos redondeados hacia arriba por ocupación.',
-      unidad: 'MXN',
-      campos: [
-        { id: 'personas',     etiqueta: 'Personas',            unidad: '' },
-        { id: 'noches',       etiqueta: 'Noches',              unidad: 'n' },
-        { id: 'ocupacion',    etiqueta: 'Personas por cuarto', unidad: '' },
-        { id: 'tarifa_noche', etiqueta: 'Tarifa por cuarto',   unidad: '$' }
-      ],
-      formula: 'techo(personas ÷ ocupación) × noches × tarifa',
-      calcular: (p) => p.ocupacion > 0
-        ? Math.ceil(num(p.personas) / num(p.ocupacion)) * num(p.noches) * num(p.tarifa_noche) : null
-    }
-  };
+  /** El cálculo completo. Única fuente de verdad. */
+  function calcular(m) {
+    const mg = margenes(m);
+    const secciones = (m.secciones || []).map(s => totalSeccion(s, m));
 
-  G.CALC = { calcular, calcularSeccion: totalSeccion, costoBom, costoMo, tcEfectivo,
-             precioParaMargen, WIDGETS, FACTOR_TURNO, ETIQUETA_TURNO };
+    const costoMoTot = secciones.reduce((a, s) => a + s.costoMo, 0);
+    const costoMat   = secciones.reduce((a, s) => a + s.costoMat, 0);
+    const costo      = costoMoTot + costoMat;
+    const ventaMo    = secciones.reduce((a, s) => a + s.ventaMo, 0);
+    const ventaMat   = secciones.reduce((a, s) => a + s.ventaMat, 0);
+    const venta      = ventaMo + ventaMat;              // precio antes de comisiones
+    const horas      = secciones.reduce((a, s) => a + s.horas, 0);
+
+    const pctFts = num(m.comision_fts);
+    const pctCli = num(m.comision_cliente);
+
+    // Las comisiones van en cascada, en este orden: la del cliente se calcula
+    // sobre el precio que ya incluye la de FTS. (DESGLOSE COTIZACION D7/D8.)
+    const comFtsCU = venta * pctFts;
+    const comCliCU = (venta + comFtsCU) * pctCli;
+    const precioCU = venta + comFtsCU + comCliCU;       // escenario CON UTILIDAD
+
+    // Las comisiones como fracción del precio: es lo que el escenario de
+    // margen deseado tiene que descontar antes de repartir la utilidad.
+    const kFts = precioCU > 0 ? comFtsCU / precioCU : 0;
+    const kCli = precioCU > 0 ? comCliCU / precioCU : 0;
+
+    const margenDeseado = num(m.margen_deseado);
+    const denom = 1 - margenDeseado - kFts - kCli;
+    const precioMD = denom > 0 ? costo / denom : null;
+    const comFtsMD = precioMD === null ? 0 : precioMD * kFts;
+    const comCliMD = precioMD === null ? 0 : precioMD * kCli;
+
+    // Factor_req: cuántas veces el costo hay que cobrar para llegar al margen.
+    const dfact = 1 - margenDeseado * (1 + pctFts) * (1 + pctCli);
+    const factorReq = dfact > 0 ? 1 / dfact : null;
+
+    const esc = {
+      costo: {
+        id: 'costo', precio: costo, comisionFts: 0, comisionCliente: 0,
+        utilidad: 0, margen: 0
+      },
+      con_utilidad: {
+        id: 'con_utilidad', precio: precioCU, comisionFts: comFtsCU, comisionCliente: comCliCU,
+        utilidad: precioCU - comFtsCU - comCliCU - costo,
+        margen: precioCU > 0 ? (precioCU - comFtsCU - comCliCU - costo) / precioCU : null
+      },
+      margen_deseado: {
+        id: 'margen_deseado', precio: precioMD, comisionFts: comFtsMD, comisionCliente: comCliMD,
+        utilidad: precioMD === null ? null : precioMD - comFtsMD - comCliMD - costo,
+        margen: precioMD === null ? null : margenDeseado
+      }
+    };
+
+    const elegido = esc[m.escenario] || esc.margen_deseado;
+
+    // Bajo margen deseado el precio se reparte a prorrata del COSTO de cada
+    // sección, no por margen propio de sección. El margen es una restricción
+    // global. (DESGLOSE COTIZACION I18/J18.)
+    const detalle = secciones.map(s => {
+      const peso = costo > 0 ? s.costo / costo : 0;
+      const precioSec = elegido.precio === null ? null
+        : (elegido.id === 'con_utilidad' ? s.venta + (comFtsCU + comCliCU) * (venta > 0 ? s.venta / venta : 0)
+        : elegido.id === 'costo' ? s.costo
+        : elegido.precio * peso);
+      return Object.assign({}, s, {
+        peso,
+        precio: precioSec,
+        utilidad: precioSec === null ? null : precioSec - s.costo - (elegido.precio > 0 ? (elegido.comisionFts + elegido.comisionCliente) * peso : 0),
+        margenObtenido: s.venta > 0 ? (s.venta - s.costo) / s.venta : null
+      });
+    });
+
+    // Reparto de la comisión de FTS entre venta y operaciones.
+    const rep = Object.assign({}, REPARTO_PLANTILLA, m.reparto || {});
+    const bolsaVenta = elegido.comisionFts * num(rep.venta);
+    const bolsaOps   = elegido.comisionFts * num(rep.operaciones);
+    const venta_ = repartir(bolsaVenta, m.equipo_venta);
+    const ops_   = repartir(bolsaOps, m.equipo_operaciones);
+
+    // Bloque BUDGET ODOO: lo que se captura como presupuesto del proyecto.
+    const comisiones = venta_.lineas.concat(ops_.lineas);
+    const budget = {
+      ingreso: elegido.precio,
+      manoObra: -costoMoTot,
+      materiales: -costoMat,
+      comisiones: comisiones.map(l => ({ nombre: l.nombre, monto: -l.monto })),
+      total: (elegido.precio || 0) - costoMoTot - costoMat - comisiones.reduce((a, l) => a + l.monto, 0)
+    };
+    budget.cuadra = elegido.utilidad !== null && Math.abs(budget.total - elegido.utilidad) < 1;
+
+    // Huecos: todo lo que hace que el número de arriba no sea de fiar.
+    const sinPrecio   = secciones.reduce((a, s) => a + s.sinPrecio, 0);
+    const moSinTarifa = secciones.reduce((a, s) => a + s.moSinTarifa, 0);
+    const sinTipo     = secciones.reduce((a, s) => a + s.sinTipo, 0);
+    const sinLink     = secciones.reduce((a, s) => a + s.sinLink, 0);
+    const monedas = {};
+    secciones.forEach(s => s.monedas.forEach(x => { monedas[x] = 1; }));
+    const mezclaMoneda = Object.keys(monedas).length > 1;
+
+    const huecos = sinPrecio + moSinTarifa + sinTipo;
+
+    return {
+      margenes: mg,
+      secciones: detalle,
+      costoMo: costoMoTot, costoMat, costo,
+      ventaMo, ventaMat, venta,
+      horas,
+      pctFts, pctCli,
+      escenarios: esc,
+      escenario: elegido,
+      precio: elegido.precio,
+      utilidad: elegido.utilidad,
+      margen: elegido.margen,
+      factorReq,
+      // Peso de cada bloque en el costo: es el RESUMEN BUDGET del machote.
+      pesoMo:  costo > 0 ? costoMoTot / costo : null,
+      pesoMat: costo > 0 ? costoMat / costo : null,
+      reparto: { venta: venta_, operaciones: ops_, bolsaVenta, bolsaOps },
+      budget,
+      sinPrecio, moSinTarifa, sinTipo, sinLink, mezclaMoneda,
+      huecos, costoIncompleto: huecos > 0
+    };
+  }
+
+  /** Inverso: qué precio hace falta para un margen dado, con las comisiones
+   *  de este machote. Es el Factor_req aplicado. */
+  function precioParaMargen(costo, pctFts, pctCli, margenObjetivo) {
+    const kIter = (p) => {
+      const cf = p * pctFts, cc = (p + cf) * pctCli;
+      return { cf, cc };
+    };
+    // Punto fijo: dos iteraciones bastan, las comisiones son pequeñas.
+    let p = costo / Math.max(1 - margenObjetivo - pctFts - pctCli, 0.01);
+    for (let i = 0; i < 12; i++) {
+      const k = kIter(p);
+      const np = (costo + k.cf + k.cc) / (1 - margenObjetivo);
+      if (Math.abs(np - p) < 0.01) { p = np; break; }
+      p = np;
+    }
+    return p;
+  }
+
+  G.MachoteCalc = {
+    ROLES, ROL, GRUPOS, TIPOS, ESCENARIOS, MAX_SECCIONES,
+    MARGENES_PLANTILLA, COMISION_FTS_PLANTILLA, MARGEN_DESEADO_PLANTILLA, REPARTO_PLANTILLA,
+    tcEfectivo, margenes, costoMo, costoPartida, totalSeccion,
+    calcular, precioParaMargen, repartir
+  };
 })(window);
