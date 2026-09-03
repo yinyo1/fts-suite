@@ -151,8 +151,30 @@ let ok = 0, mal = 0;
     if (Math.abs(r - 1890) > 0.01) throw new Error('costo ' + r);
   });
 
+  // El build se escribe en dos lugares: la constante de app.js y version.json.
+  // Que se separen es el error clásico y deja la pantalla mintiendo sobre qué
+  // versión estás viendo, que es justo para lo que sirve.
+  await paso('el build se ve en pantalla y coincide con version.json', async () => {
+    const ver = JSON.parse(require('fs').readFileSync(
+      path.resolve(__dirname, '..', 'version.json'), 'utf8'));
+    if (!/^\d{8}-machote-\d+$/.test(ver.build)) throw new Error('formato: ' + ver.build);
+
+    await ir('#/');
+    const pie = (await p.textContent('.build') || '').trim();
+    if (pie.indexOf(ver.build) < 0) throw new Error('el pie dice "' + pie + '" y version.json ' + ver.build);
+
+    await ir('#/m/M-1041');
+    const barra = await p.textContent('#tbS');
+    if (barra.indexOf(ver.build) < 0) throw new Error('la barra superior dice: ' + barra);
+
+    if (!ver.historial || ver.historial[0].build !== ver.build)
+      throw new Error('el historial no encabeza con el build vigente');
+    console.log('   build', ver.build, '· visible en la lista y en la barra');
+  });
+
   // ── La hoja ──────────────────────────────────────────────────────────
   await paso('la lista carga con machotes y órdenes', async () => {
+    await ir('#/');
     const n = await p.locator('.item').count();
     if (n < 6) throw new Error('pocas tarjetas: ' + n);
   });

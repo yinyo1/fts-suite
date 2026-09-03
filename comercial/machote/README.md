@@ -14,15 +14,30 @@ Los **datos** de las cuatro cotizaciones de ejemplo sí son inventados.
 
 ---
 
+## Versión
+
+El build se ve en pantalla: al pie de la lista y en la barra superior de cada
+cotización. Sirve para una cosa concreta — distinguir *"ya lo cambié"* de
+*"estás viendo el caché"*, que sin esto no se puede sin abrir las herramientas
+de desarrollo.
+
+Convención de `CLAUDE.md` §8: `YYYYMMDD-<modulo>-<hito>`.
+
+⚠️ **El build vive en dos lugares y hay que moverlos juntos:** la constante
+`BUILD` en `js/app.js` y `version.json`. Hay una prueba que falla si se
+separan, porque una pantalla que miente sobre su versión es peor que no tener
+indicador.
+
 ## Archivos
 
 | archivo | qué es |
 |---|---|
+| `version.json` | El build vigente y su historial. |
 | `js/calc.js` | El motor. Todo número que se ve sale de aquí; ninguna vista calcula. |
 | `js/reglas.js` | 28 reglas en un arreglo de configuración, separadas del motor que las corre. |
 | `js/demo.js` | Datos de ejemplo. Lo que viene del machote real va marcado `REAL`; lo inventado, `SUPUESTO`. |
 | `js/app.js` | Vistas y ruteo. |
-| `tests/pruebas-navegador.js` | 21 pruebas de navegador. |
+| `tests/pruebas-navegador.js` | 33 pruebas de navegador. |
 
 ## Cómo se calcula el precio
 
