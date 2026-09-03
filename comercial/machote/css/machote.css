@@ -1,263 +1,303 @@
-/* ═══ Machote · estilos ═══
- * Extiende shared/fts-styles.css. Solo lo que el sistema de la suite no trae.
+/* ═══ Machote · la hoja ═══
  *
- * NOTA DE DISEÑO: la suite fija .scr a max-width 520px (mobile-first, centrado
- * en escritorio). El machote es la excepción: sus tablas de BOM no caben en
- * 520px sin volverse ilegibles. Aquí .scr crece en escritorio y se queda en
- * 520 para las pantallas de decisión (aprobación del AM), que sí son de bolsillo.
+ * Dos modos, un solo marcado:
+ *   ≥720 px  la retícula del Excel, con desplazamiento horizontal.
+ *   <720 px  cada renglón se vuelve una TARJETA con sus campos etiquetados.
+ *
+ * La retícula de catorce columnas es correcta en una laptop e inservible con
+ * el pulgar. Reproducir el Excel en un teléfono sería fidelidad mal entendida.
  */
 
-.scr { max-width: 520px; }
-@media (min-width: 760px) {
-  .scr.ancho { max-width: 920px; }
+:root {
+  --tinta: #1c1c1c;
+  --suave: #6b6b6b;
+  --linea: #dcdcdc;
+  --linea2: #ececec;
+  --fondo: #ffffff;
+  --papel: #f6f7f8;
+  --cab: #eef1f4;
+  --acento: #0969da;
+  --verde: #1a7f37;
+  --ambar: #9a6700;
+  --rojo: #cf222e;
+  --toque: 44px;   /* altura mínima de cualquier cosa que se toque */
 }
 
-/* ── Layout base ── */
-.pad { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
-.pad.tight { gap: 8px; }
+/* ── Base ─────────────────────────────────────────────────────────────── */
+.scr { background: var(--fondo); color: var(--tinta); }
+.pad { padding: 14px; }
+.mono { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+.tiny { font-size: 12px; color: var(--suave); line-height: 1.45; }
+.nota { color: var(--suave); line-height: 1.45; margin: 6px 0; font-size: 12px; }
+.oc { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px;
+      border-radius: 5px; background: var(--papel); color: var(--suave); white-space: nowrap; }
+.grow { flex: 1 1 auto; min-width: 0; }
+.right { text-align: right; flex-shrink: 0; }
 .row { display: flex; gap: 8px; align-items: center; }
-.row.wrap { flex-wrap: wrap; }
-.grow { flex: 1; min-width: 0; }
-.right { margin-left: auto; }
-.mono { font-variant-numeric: tabular-nums; }
-.tiny { font-size: 11px; color: var(--muted2); }
-.hide { display: none !important; }
+.n-ok { color: var(--verde); } .n-warn { color: var(--ambar); } .n-bad { color: var(--rojo); }
+h2 { font-size: 19px; margin: 4px 0 10px; }
+h3 { font-size: 15px; margin: 16px 0 8px; }
+h4 { font-size: 14px; margin: 0 0 8px; }
 
-h2.sec-t { font-size: 15px; font-weight: 700; margin: 4px 0 0; }
-h3.sub-t { font-size: 12px; font-weight: 700; color: var(--muted2); text-transform: uppercase;
-           letter-spacing: .6px; margin: 10px 0 2px; }
+/* ── Lista ────────────────────────────────────────────────────────────── */
+.item { display: flex; gap: 10px; align-items: center; padding: 12px;
+        border: 1px solid var(--linea); border-radius: 10px; margin-bottom: 8px;
+        text-decoration: none; color: inherit; background: var(--fondo); }
+.item:active { background: var(--papel); }
+.chip { display: inline-block; color: #fff; font-size: 10px; font-weight: 700;
+        padding: 2px 8px; border-radius: 20px; }
+.aviso { border: 1px solid var(--linea); border-left: 3px solid var(--acento);
+         background: var(--papel); padding: 10px 12px; border-radius: 8px;
+         margin: 10px 0; font-size: 13px; line-height: 1.5; }
+.aviso.bad { border-left-color: var(--rojo); }
+.aviso.ok  { border-left-color: var(--verde); }
+.vacio, .vacio2 { color: var(--suave); font-size: 13px; padding: 14px; text-align: center; }
+.wg { border: 1px solid var(--linea); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+.wg.bad  { border-left: 3px solid var(--rojo); }
+.wg.warn { border-left: 3px solid var(--ambar); }
+.wg.info { border-left: 3px solid var(--acento); }
+.kpi { display: flex; gap: 8px; margin-bottom: 12px; }
+.kpi > div { flex: 1; border: 1px solid var(--linea); border-radius: 10px; padding: 10px;
+             display: flex; flex-direction: column; gap: 2px; }
+.kpi strong { font-size: 17px; }
+.tot { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0;
+       border-bottom: 1px solid var(--linea2); font-size: 13px; }
+.tot:last-child { border-bottom: 0; }
+.tot .lb { color: var(--suave); }
 
-/* ── Chips de estado ── */
-.chip { font-size: 10px; font-weight: 800; letter-spacing: .4px; padding: 3px 9px; border-radius: 20px;
-        border: 1px solid var(--border); background: var(--d3); color: var(--muted2); white-space: nowrap; }
-.chip.verde { background: #eaf6ea; border-color: #b9e0b9; color: var(--green); }
-.chip.ambar { background: #fff6e5; border-color: #f0d49b; color: #9a6700; }
-.chip.rojo  { background: #fdecec; border-color: #f2bcbc; color: var(--red); }
-.chip.azul  { background: #e8f2fc; border-color: #b6d7f5; color: var(--blue); }
-.chip.gris  { background: var(--d3); }
+/* ── Pestañas de hoja ─────────────────────────────────────────────────── */
+.libro { padding: 0 0 12px; }
+.hojas { display: flex; gap: 2px; overflow-x: auto; padding: 8px 10px 0;
+         border-bottom: 1px solid var(--linea); background: var(--papel);
+         -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+.pestana { flex: 0 0 auto; border: 1px solid var(--linea); border-bottom: 0;
+           background: var(--cab); color: var(--suave);
+           padding: 9px 13px; font-size: 12px; font-weight: 600;
+           border-radius: 7px 7px 0 0; cursor: pointer; white-space: nowrap;
+           min-height: var(--toque); }
+.pestana.on { background: var(--fondo); color: var(--tinta); border-bottom: 1px solid var(--fondo);
+              margin-bottom: -1px; }
+.pestana.mas { font-size: 17px; padding: 6px 14px; font-weight: 400; }
 
-/* ── Tarjetas de lista ── */
-.item { background: var(--d2); border: 1px solid var(--border); border-radius: 12px; padding: 13px 14px;
-        display: flex; flex-direction: column; gap: 7px; cursor: pointer; transition: all .15s;
-        text-align: left; width: 100%; font-family: inherit; font-size: inherit; color: inherit; }
-.item:active { transform: scale(.99); border-color: var(--o); }
-.item .t1 { display: flex; align-items: flex-start; gap: 8px; }
-.item .nm { font-weight: 700; font-size: 14px; line-height: 1.3; }
-.item .cl { font-size: 12px; color: var(--muted2); }
-.item .t2 { display: flex; gap: 14px; align-items: baseline; font-size: 12px; color: var(--muted2); }
-.item .t2 b { color: var(--text); font-size: 13px; }
+/* ── Bloques de encabezado ────────────────────────────────────────────── */
+.cab, .desg-top { display: flex; flex-wrap: wrap; gap: 12px; padding: 12px; }
+.blk { flex: 1 1 320px; min-width: 0; }
+.et2 { font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--suave);
+       text-transform: uppercase; margin-bottom: 6px; }
+.escs { display: flex; gap: 6px; flex-wrap: wrap; }
+.escbtn { flex: 1 1 auto; min-height: var(--toque); border: 1px solid var(--linea);
+          background: var(--fondo); border-radius: 8px; font-size: 12px; font-weight: 700;
+          padding: 10px 12px; cursor: pointer; color: var(--suave); }
+.escbtn.on { border-color: var(--acento); color: var(--acento); background: #f0f6ff;
+             box-shadow: inset 0 0 0 1px var(--acento); }
 
-/* ── Formularios ── */
-.f { display: flex; flex-direction: column; gap: 4px; }
-.f > label { font-size: 11px; font-weight: 700; color: var(--muted2); }
-.f input, .f select, .f textarea {
-  width: 100%; padding: 9px 10px; font-size: 14px; font-family: inherit; color: var(--text);
-  background: var(--d2); border: 1px solid var(--border); border-radius: 8px; }
-.f input:focus, .f select:focus, .f textarea:focus { outline: 2px solid var(--o); outline-offset: -1px; border-color: var(--o); }
-.f textarea { resize: vertical; min-height: 70px; line-height: 1.5; }
-.f input.num { text-align: right; font-variant-numeric: tabular-nums; }
-.f input.err, .f select.err { border-color: var(--red); background: #fff8f8; }
-.fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.fgrid.c3 { grid-template-columns: 1fr 1fr 1fr; }
-@media (max-width: 420px) { .fgrid.c3 { grid-template-columns: 1fr 1fr; } }
+table.hoja2 { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.hoja2 th { background: var(--cab); text-align: left; font-size: 11px;
+                 padding: 7px 8px; border: 1px solid var(--linea); }
+table.hoja2 td { padding: 5px 8px; border: 1px solid var(--linea2); }
+table.hoja2 td.et { color: var(--suave); }
+table.hoja2 td.vl { text-align: right; white-space: nowrap; }
 
-/* ── Renglones de BOM y MO ── */
-.lin { border: 1px solid var(--border); border-radius: 10px; padding: 10px; background: var(--d2);
-       display: flex; flex-direction: column; gap: 8px; }
-.lin + .lin { margin-top: 8px; }
-.lin .lin-hd { display: flex; align-items: center; gap: 8px; }
-.lin .lin-hd .idx { font-size: 10px; font-weight: 800; color: var(--muted); flex-shrink: 0;
-                    width: 20px; text-align: center; }
-.lin .lin-tot { font-weight: 700; font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.lin .lin-tot.nd { color: var(--red); font-weight: 800; font-size: 11px; }
-.del { background: none; border: none; color: var(--muted); font-size: 17px; cursor: pointer;
-       padding: 2px 4px; line-height: 1; flex-shrink: 0; }
-.del:hover { color: var(--red); }
+.nomsec { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+          padding: 0 12px 12px; }
+.nomsec .et { font-size: 11px; font-weight: 700; color: var(--suave); letter-spacing: .04em; }
+.nomsec .cel.nombre { flex: 1 1 200px; font-weight: 700; font-size: 15px; }
 
-/* ── Origen del precio ── */
-.oc { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 5px; white-space: nowrap; }
-.oc.alta    { background: #eaf6ea; color: var(--green); }
-.oc.media   { background: #fff6e5; color: #9a6700; }
-.oc.baja    { background: #fdeee5; color: #b34700; }
-.oc.ninguna { background: #fdecec; color: var(--red); }
+.secc-tit { background: var(--cab); font-size: 11px; font-weight: 700; letter-spacing: .05em;
+            padding: 9px 12px; border-top: 1px solid var(--linea);
+            border-bottom: 1px solid var(--linea); margin-top: 6px; }
 
-/* ── Totales ── */
-.tot { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 0;
-       font-size: 13px; gap: 12px; }
-.tot + .tot { border-top: 1px dashed var(--border); }
-.tot .lb { color: var(--muted2); }
-.tot .vl { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.tot.big { font-size: 15px; padding: 10px 0; }
-.tot.big .vl { font-size: 17px; font-weight: 800; }
-.tot.pos .vl { color: var(--green); }
-.tot.neg .vl { color: var(--red); }
+/* ── Retícula ─────────────────────────────────────────────────────────── */
+.scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table.rejilla { border-collapse: collapse; font-size: 12.5px; width: 100%; }
+table.rejilla th { background: var(--cab); color: var(--suave); font-size: 10px;
+                   font-weight: 700; letter-spacing: .03em; text-align: left;
+                   padding: 7px 6px; border: 1px solid var(--linea); white-space: nowrap; }
+table.rejilla td { padding: 2px 4px; border: 1px solid var(--linea2); vertical-align: middle; }
+table.rejilla tr.grupo td { background: var(--papel); font-weight: 700; font-size: 11px;
+                            color: var(--suave); padding: 6px 8px; }
+table.rejilla tr.total td { background: var(--papel); font-weight: 700; }
+table.rejilla tr.vacia td { color: #b9b9b9; }
+table.rejilla td.vl { text-align: right; white-space: nowrap; }
+table.rejilla td.fuerte { font-weight: 700; }
+table.rejilla td.ro { color: var(--suave); }
+table.rejilla td.rotulo { font-weight: 600; white-space: nowrap; }
+table.rejilla td.acc { text-align: center; }
+table.rejilla .pctcol { color: var(--suave); text-align: right; }
+.x { border: 0; background: transparent; color: var(--rojo); font-size: 16px;
+     cursor: pointer; min-height: var(--toque); min-width: var(--toque); }
 
-/* ── Barra fija de totales (siempre visible mientras se captura) ── */
-.fija { position: sticky; bottom: 0; z-index: 40; background: rgba(255,255,255,.97);
-        backdrop-filter: blur(8px); border-top: 1px solid var(--border);
-        padding: 9px 14px; display: flex; align-items: center; gap: 12px;
-        box-shadow: 0 -2px 10px rgba(0,0,0,.05); }
-.fija .b { display: flex; flex-direction: column; line-height: 1.25; }
-.fija .b span { font-size: 9px; font-weight: 700; color: var(--muted); letter-spacing: .4px; }
-.fija .b b { font-size: 14px; font-variant-numeric: tabular-nums; }
-.fija .mg b { font-size: 18px; font-weight: 800; }
-.fija .mg.ok b { color: var(--green); }
-.fija .mg.warn b { color: #9a6700; }
-.fija .mg.bad b { color: var(--red); }
+/* ── Celdas editables ─────────────────────────────────────────────────── */
+.cel { border: 1px solid transparent; background: transparent; font: inherit;
+       color: inherit; padding: 7px 5px; border-radius: 5px; width: 100%;
+       box-sizing: border-box; min-width: 0; }
+.cel:hover { border-color: var(--linea); }
+.cel:focus { outline: 0; border-color: var(--acento); background: #fff;
+             box-shadow: 0 0 0 2px rgba(9,105,218,.15); }
+.cel.num { text-align: right; font-variant-numeric: tabular-nums; }
+.cel.pisado { background: #fff8e5; border-color: #e6c200; }
+select.cel { -webkit-appearance: none; appearance: none; padding-right: 16px;
+             background-image: linear-gradient(45deg, transparent 50%, var(--suave) 50%),
+                               linear-gradient(135deg, var(--suave) 50%, transparent 50%);
+             background-position: right 6px center, right 2px center;
+             background-size: 4px 4px, 4px 4px; background-repeat: no-repeat; }
+.w60 { width: 60px } .w70 { width: 70px } .w80 { width: 80px }
+.w90 { width: 90px } .w110 { width: 110px } .w130 { width: 130px }
+.cel.desc { min-width: 190px; }
 
-/* ── KPI grande (aprobación) ── */
-.kpi { text-align: center; padding: 20px 14px; }
-.kpi .n { font-size: 54px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -1px; }
-.kpi .n.ok { color: var(--green); } .kpi .n.warn { color: #9a6700; } .kpi .n.bad { color: var(--red); }
-.kpi .l { font-size: 12px; color: var(--muted2); margin-top: 6px; }
-.kpi .sub { font-size: 13px; color: var(--muted2); margin-top: 10px; font-variant-numeric: tabular-nums; }
+/* ── Botones y barra fija ─────────────────────────────────────────────── */
+.btn { display: inline-flex; align-items: center; justify-content: center;
+       min-height: var(--toque); padding: 10px 16px; border: 1px solid var(--linea);
+       border-radius: 9px; background: var(--fondo); color: var(--tinta);
+       font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; }
+.btn:active { background: var(--papel); }
+.btn[disabled] { opacity: .45; cursor: not-allowed; }
+.btn.del { color: var(--rojo); border-color: #f0c8cc; }
+.btnrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 10px 12px; }
+#fija { position: sticky; bottom: 0; z-index: 5; }
+.fija { display: flex; gap: 10px; align-items: center; padding: 10px 12px;
+        border-top: 1px solid var(--linea); background: var(--fondo);
+        box-shadow: 0 -3px 12px rgba(0,0,0,.06);
+        padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+.fija .mono { font-size: 15px; font-weight: 700; }
+textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--linea);
+           border-radius: 8px; padding: 9px; font: inherit; }
+.toast { position: fixed; left: 50%; bottom: 78px; transform: translate(-50%, 12px);
+         background: #222; color: #fff; padding: 10px 16px; border-radius: 20px;
+         font-size: 13px; opacity: 0; transition: .25s; z-index: 50; }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
 
-/* ── Hallazgos del revisador ── */
-.hz { border-left: 4px solid var(--border); background: var(--d2); border: 1px solid var(--border);
-      border-left-width: 4px; border-radius: 10px; padding: 11px 13px; }
-.hz.dura   { border-left-color: var(--red); }
-.hz.blanda { border-left-color: #e8a33d; }
-.hz.info   { border-left-color: var(--blue); }
-.hz .hz-t { font-weight: 700; font-size: 13px; display: flex; gap: 7px; align-items: flex-start; }
-.hz .hz-d { font-size: 12px; color: var(--muted2); margin-top: 4px; line-height: 1.5; }
-.hz ul { margin: 7px 0 0 16px; padding: 0; }
-.hz li { font-size: 12px; color: var(--muted2); margin-bottom: 3px; line-height: 1.45; }
-.hz .hz-a { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px;
-            font-weight: 700; margin-bottom: 3px; }
+/* ══ Teléfono: la retícula se vuelve tarjetas ═════════════════════════ */
+@media (max-width: 720px) {
+  .cab, .desg-top { padding: 10px; gap: 10px; }
+  .blk { flex: 1 1 100%; }
+  .escbtn { flex: 1 1 100%; }
 
-/* ── Simulador ── */
-.sim-out { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.sim-box { background: var(--d3); border: 1px solid var(--border); border-radius: 10px; padding: 12px; text-align: center; }
-.sim-box .n { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
-.sim-box .l { font-size: 10px; color: var(--muted2); text-transform: uppercase; letter-spacing: .5px; margin-top: 3px; }
-input[type=range] { width: 100%; accent-color: var(--o); height: 26px; }
+  /* Las tablas de captura dejan de ser tablas. */
+  table.rejilla.tarjetas, table.rejilla.tarjetas tbody,
+  table.rejilla.tarjetas tr, table.rejilla.tarjetas td { display: block; width: auto; }
+  table.rejilla.tarjetas thead { display: none; }
+  table.rejilla.tarjetas { border: 0; }
+  table.rejilla.tarjetas tr { border: 1px solid var(--linea); border-radius: 10px;
+                              margin: 8px 10px; padding: 4px 10px 8px; background: var(--fondo); }
+  table.rejilla.tarjetas tr.grupo { border: 0; background: transparent; margin: 14px 10px 2px;
+                                    padding: 0; }
+  table.rejilla.tarjetas tr.grupo td { background: transparent; padding: 0;
+                                       font-size: 11px; letter-spacing: .06em; }
+  table.rejilla.tarjetas tr.total { background: var(--papel); }
+  table.rejilla.tarjetas td { border: 0; border-bottom: 1px solid var(--linea2);
+                              display: flex; align-items: center; gap: 10px;
+                              padding: 4px 0; min-height: var(--toque); }
+  table.rejilla.tarjetas td:last-child { border-bottom: 0; }
+  table.rejilla.tarjetas td::before { content: attr(data-l); flex: 0 0 42%;
+                                      font-size: 11px; color: var(--suave);
+                                      text-transform: none; }
+  table.rejilla.tarjetas td.vl { justify-content: space-between; }
+  /* El nombre del renglón encabeza la tarjeta, sin etiqueta. */
+  table.rejilla.tarjetas td.rotulo { font-size: 14px; font-weight: 700;
+                                     border-bottom: 1px solid var(--linea);
+                                     padding: 8px 0 6px; }
+  table.rejilla.tarjetas td.rotulo::before { content: none; }
+  table.rejilla.tarjetas td.solo-ancho { display: none; }
+  table.rejilla.tarjetas td:empty { display: none; }
+  /* Ojo: `td[colspan]` a secas también ocultaba el título de grupo, que es
+     justo lo que ordena la tarjeta. Se ocultan sólo los rellenos. */
+  table.rejilla.tarjetas tr.total td[colspan] { display: none; }
+  table.rejilla.tarjetas tr:not(.grupo):not(.total) td[colspan] { display: none; }
+  table.rejilla.tarjetas .cel { text-align: left; }
+  table.rejilla.tarjetas .cel.num { text-align: right; }
+  table.rejilla.tarjetas .w60, table.rejilla.tarjetas .w70, table.rejilla.tarjetas .w80,
+  table.rejilla.tarjetas .w90, table.rejilla.tarjetas .w110, table.rejilla.tarjetas .w130,
+  table.rejilla.tarjetas .cel.desc { width: auto; min-width: 0; flex: 1 1 auto; }
+  table.rejilla.tarjetas .cel { border: 1px solid var(--linea); background: #fff;
+                                min-height: var(--toque); padding: 10px 8px; }
+  table.rejilla.tarjetas td.acc { justify-content: flex-end; }
+  table.rejilla.tarjetas .x { font-size: 13px; min-width: 0; padding: 0 10px;
+                              border: 1px solid #f0c8cc; border-radius: 8px; }
 
-/* ── Widgets ── */
-.wg { border: 1px dashed var(--border); border-radius: 10px; padding: 11px; background: var(--d3); }
-.wg .wg-t { font-weight: 700; font-size: 12px; }
-.wg .wg-f { font-size: 10px; color: var(--muted); font-style: italic; margin-top: 2px; }
-.wg .wg-r { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  /* Las tablas de sólo lectura siguen siendo tablas, con arrastre lateral. */
+  .scroll { padding-bottom: 2px; }
+  table.rejilla.ancha, table.rejilla.estrecha { min-width: 640px; }
+  table.rejilla.estrecha { min-width: 0; width: 100%; }
 
-/* ── Pasos de la simulación de confirmación ── */
-.pasos { display: flex; flex-direction: column; gap: 0; }
-.paso { display: flex; gap: 11px; align-items: flex-start; padding: 9px 0; }
-.paso .mk { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border);
-            flex-shrink: 0; display: flex; align-items: center; justify-content: center;
-            font-size: 11px; font-weight: 800; background: var(--d2); color: var(--muted);
-            transition: all .3s; }
-.paso.run .mk { border-color: var(--o); color: var(--o); animation: pulso 1s infinite; }
-.paso.ok .mk  { border-color: var(--green); background: var(--green); color: #fff; }
-.paso .px { flex: 1; min-width: 0; }
-.paso .pt { font-size: 13px; font-weight: 600; }
-.paso.wait .pt { color: var(--muted); }
-.paso .pr { font-size: 11px; color: var(--green); margin-top: 2px; font-variant-numeric: tabular-nums; }
-@keyframes pulso { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
-
-/* ── Avisos ── */
-.aviso { border-radius: 10px; padding: 11px 13px; font-size: 12.5px; line-height: 1.5; }
-.aviso.rojo  { background: #fdecec; border: 1px solid #f2bcbc; color: #8d2226; }
-.aviso.ambar { background: #fff6e5; border: 1px solid #f0d49b; color: #7a5200; }
-.aviso.verde { background: #eaf6ea; border: 1px solid #b9e0b9; color: #0b5e0b; }
-.aviso.azul  { background: #e8f2fc; border: 1px solid #b6d7f5; color: #0b4f86; }
-.aviso b { font-weight: 700; }
-
-.vacio { text-align: center; padding: 26px 14px; color: var(--muted); font-size: 13px; }
-.btn.sm { width: auto; padding: 8px 14px; font-size: 12px; border-radius: 7px; }
-.btn.mini { width: auto; padding: 6px 11px; font-size: 11px; border-radius: 6px; }
-.btnrow { display: flex; gap: 8px; }
-.btnrow .btn { flex: 1; }
-
-/* ── Pasada 1 · renglones plegables ──
-   Con 16 partidas por sección, ver los 7 campos de cada una hacía la pantalla
-   un muro. Cerrado se lee de un vistazo; abierto se edita. */
-button.lin { cursor: pointer; font-family: inherit; font-size: inherit; color: inherit; text-align: left;
-             width: 100%; box-sizing: border-box; }
-.lin.cerrada { padding: 9px 10px; }
-.lin.cerrada:active { background: var(--d3); }
-.lin.cerrada .lin-hd { align-items: center; gap: 9px; }
-.lin.cerrada .cd { font-size: 13px; font-weight: 600; line-height: 1.3;
-                   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lin.cerrada .cm { font-size: 11px; color: var(--muted2); margin-top: 2px;
-                   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lin.cerrada.mal { border-color: #f2bcbc; background: #fffafa; }
-.lin.abierta { border-color: var(--o); box-shadow: 0 0 0 2px rgba(216,59,1,.10); }
-.chev { color: var(--muted); font-size: 18px; flex-shrink: 0; line-height: 1; }
-
-/* El monto nunca se encoge: es el dato que el analista viene a leer.
-   Lo que se recorta es la descripción, que ya tiene su elipsis. */
-.lin .lin-tot { flex-shrink: 0; }
-.lin.cerrada .lin-tot { font-size: 12.5px; }
-.lin.cerrada .lin-hd > .grow { min-width: 0; flex: 1 1 auto; }
-@media (max-width: 400px) { .lin.cerrada .lin-tot { font-size: 12px; } }
-
-/* ── Pasada 2 · el costo incompleto se ve incompleto ── */
-.fija .b b.inc { color: #9a6700; }
-.fija .b span { white-space: nowrap; }
-/* Un botón deshabilitado no debe seguir pareciendo la acción principal:
-   en un teléfono se toca antes de leer por qué no se puede. */
-.btn[disabled], .btn:disabled {
-  background: var(--d4) !important; color: var(--muted) !important;
-  border: 1px solid var(--border) !important; opacity: 1 !important; cursor: not-allowed; }
-.btn[disabled]:active { transform: none; }
-
-/* ── Pasada 3 · el siguiente paso, siempre a la vista ── */
-.prox { display: flex; align-items: center; gap: 10px; padding: 10px 14px;
-        background: #fff6e5; border-bottom: 1px solid #f0d49b; }
-.prox.ok { background: #eaf6ea; border-bottom-color: #b9e0b9; }
-.prox .pl { font-size: 9px; font-weight: 800; letter-spacing: .6px; color: #9a6700; }
-.prox.ok .pl { color: var(--green); }
-.prox .pd { font-size: 13px; font-weight: 600; line-height: 1.3; margin-top: 1px; }
-.prox .btn { flex-shrink: 0; }
-
-/* La topbar vive dentro de .scr: en escritorio comparte su ancho en vez de
-   abarcar toda la ventana mientras el contenido va centrado. */
-.scr > .topbar { border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
-@media (max-width: 560px) { .scr > .topbar { border-left: 0; border-right: 0; } }
-.scr { background: var(--dark); }
-
-/* ── Renglón de mano de obra ────────────────────────────────────────────
- * Tres campos numéricos, una etiqueta y un total en la misma línea. A 380 px
- * la suma de anchos mínimos desbordaba 7 px: los campos necesitan poder
- * encogerse (min-width:0) y no sumar padding al ancho. */
-.row.lin-mo { gap: 6px; margin: 2px 0; }
-.row.lin-mo > .grow { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; }
-.row.lin-mo input {
-  flex: 0 1 54px; min-width: 0; width: 54px; box-sizing: border-box;
-  padding: 6px; font-size: 13px; text-align: right;
-  border: 1px solid var(--border, #d8d8d8); border-radius: 6px;
-  font-variant-numeric: tabular-nums;
-}
-.row.lin-mo .lin-tot { flex: 0 0 auto; min-width: 60px; text-align: right; }
-
-/* Ninguna fila de la estación debe poder empujar el ancho del documento. */
-.wg .row { max-width: 100%; }
-.wg .row > input, .wg .row > select { min-width: 0; box-sizing: border-box; }
-
-@media (max-width: 400px) {
-  .row.lin-mo input { flex-basis: 44px; width: 44px; padding: 6px 3px; font-size: 12px; }
-  .row.lin-mo .lin-tot { min-width: 50px; font-size: 11.5px; }
-  .row.lin-mo > .grow { font-size: 11.5px; }
+  .pestana { font-size: 11.5px; padding: 9px 11px; }
+  .nomsec { padding: 0 10px 10px; }
+  .kpi { flex-wrap: wrap; }
+  .kpi > div { flex: 1 1 45%; }
 }
 
-/* ── Filas de reparto de comisiones ─────────────────────────────────────
- * Un <input> sin flex usa su ancho intrínseco (~177 px por el size=20 que
- * traen por omisión). Dos de ellos en la misma fila empujaban el documento a
- * 859 px dentro de una ventana de 380. Se les fija base y se les deja encoger. */
-.wg .row > input { flex: 1 1 auto; min-width: 0; box-sizing: border-box; }
-.wg .row > input.num { flex: 0 1 82px; width: 82px; text-align: right; font-variant-numeric: tabular-nums; }
-.wg .row > .lin-tot { flex: 0 0 auto; min-width: 64px; text-align: right; }
+/* En pantallas anchas la retícula puede respirar. */
+@media (min-width: 721px) {
+  table.rejilla { min-width: 100%; }
+  table.rejilla.tarjetas { min-width: 900px; }
+}
 
-/* Los campos de la rejilla no deben poder crecer más que su columna. */
-.fgrid { min-width: 0; }
-.fgrid > .f { min-width: 0; }
-.fgrid > .f input, .fgrid > .f select, .fgrid > .f textarea { max-width: 100%; box-sizing: border-box; }
-.f .chip { white-space: nowrap; }
+/* ── Objetivos tocables ───────────────────────────────────────────────────
+ * Nada que se toque debe medir menos de 44 px de alto. Incluye la flecha de
+ * volver de la barra superior, que vive en shared/fts-styles.css y llega a
+ * 24 px: se corrige aquí porque esta pantalla se usa en obra, con guantes. */
+.tb-back { min-height: var(--toque); min-width: var(--toque);
+           display: inline-flex; align-items: center; justify-content: center; }
+.cel, select.cel { min-height: var(--toque); }
+input[type=checkbox] { width: 22px; height: 22px; }
+label.row { min-height: var(--toque); }
+@media (max-width: 720px) {
+  .cel, select.cel, .btn, .escbtn, .pestana { min-height: var(--toque); }
+}
 
-/* Última defensa: una etiqueta larga sin espacios no debe empujar la página. */
-.pad { min-width: 0; }
-.wg { min-width: 0; overflow-wrap: anywhere; }
+/* ── Renglones de mano de obra en cero ────────────────────────────────────
+ * El Excel siempre muestra los doce. En una laptop eso está bien; en un
+ * teléfono son doce tarjetas de las cuales siete suelen ir vacías, y el
+ * capturista pierde de vista lo que sí llenó. Se pliegan, con un interruptor
+ * que dice cuántas hay para que nadie crea que desaparecieron. */
+.verVacios { float: right; font-weight: 400; font-size: 11px; color: var(--suave);
+             display: inline-flex; align-items: center; gap: 6px; letter-spacing: 0;
+             text-transform: none; cursor: pointer; }
+.verVacios input { width: 16px; height: 16px; }
+@media (max-width: 720px) {
+  table.rejilla.tarjetas:not(.verVacios) tr.enCero { display: none; }
+}
 
-/* .oc es una PASTILLA (nowrap). Las notas explicativas largas necesitan su
- * propia clase: usar .oc para un párrafo empujaba el documento a 859 px en
- * una ventana de 380. */
-.nota { color: #6b6b6b; line-height: 1.45; margin: 2px 0 8px; }
+/* ── Ajustes de teléfono medidos en pantalla, no supuestos ────────────────
+ * La barra se partía en dos renglones ("$1,794,303 MXN ·" / "40%") y crecía a
+ * 101 px, que en un teléfono es una franja. Y las tablas de encabezado traían
+ * el espaciado de escritorio: once renglones antes de llegar a la captura. */
+@media (max-width: 720px) {
+  .fija { padding: 8px 10px; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+  .fija .mono { font-size: 14px; white-space: nowrap; overflow: hidden;
+                text-overflow: ellipsis; }
+  .fija .tiny { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fija .btn { padding: 10px 14px; flex: 0 0 auto; }
+
+  table.hoja2 { font-size: 12.5px; }
+  table.hoja2 th { padding: 6px 8px; }
+  table.hoja2 td { padding: 3px 8px; }
+  table.hoja2 td.et { line-height: 1.3; }
+  table.hoja2 .cel { padding: 6px 8px; }
+}
+
+/* ── Ancho de la hoja ─────────────────────────────────────────────────────
+ * `shared/fts-styles.css` fija `.scr` en 520 px, que es lo correcto para las
+ * pantallas de kiosko y de perfil. Para una hoja de cálculo es lo contrario
+ * de lo que se necesita: en una laptop de 1280 px el machote quedaba metido
+ * en una columna de 520 y no se veía la retícula, que es todo el punto.
+ * Se ensancha SOLO en este módulo. */
+.scr { max-width: 1500px; }
+@media (max-width: 720px) { .scr { max-width: 100%; } }
+
+/* ── Proporciones en pantalla ancha ───────────────────────────────────────
+ * Con el contenedor ensanchado, los botones que antes cabían justos pasaron a
+ * ocupar la fila entera: "Eliminar sección" quedaba como una franja roja de
+ * 1400 px y "Revisar" como una barra. Un botón destructivo del ancho de la
+ * pantalla es además una invitación al clic accidental. */
+/* `shared/fts-styles.css` define `.btn{width:100%}` para el kiosko, donde los
+ * botones son de dedo y ocupan la fila. Aquí eso hacía que "Revisar" se comiera
+ * la barra entera y el precio quedara en cero de ancho. */
+.nomsec .btn.del { margin-left: auto; flex: 0 0 auto; width: auto;
+                   font-size: 12px; padding: 8px 12px; }
+.fija .btn { flex: 0 0 auto; width: auto; min-width: 110px; }
+.fija .grow { flex: 1 1 auto; min-width: 0; }
+.btnrow .btn { width: auto; }
+
+/* En escritorio no se pliega nada, así que el interruptor no viene al caso. */
+@media (min-width: 721px) { .verVacios { display: none; } }

@@ -83,19 +83,19 @@ Comision CLIENTE 0%     (F7, = 'DESGLOSE COTIZACION'!B8)
 **El margen es un MULTIPLICADOR por concepto, no un porcentaje global.** Precio de una
 partida = costo × multiplicador.
 
-Verificado en 8 ejemplares. Lo que **no** varía:
+Verificado en 12 ejemplares, cinco de ellos cotizaciones de 2026 (SO11737, SO11738, SO11790, SO11836 y el USD de calbee). Lo que **no** varía:
 
 | concepto | valor | ejemplares |
 |---|---|---|
-| Programador | **4,4** | 8 de 8 |
-| Mano de obra | **2,5** | 8 de 8 |
-| Horas extras | **mano de obra × 2 = 5,0** (fórmula `=$F$3*2`) | 8 de 8 |
+| Programador | **4,4** | 12 de 12 |
+| Mano de obra | **2,5** | 12 de 12 |
+| Horas extras | **mano de obra × 2 = 5,0** (fórmula `=$F$3*2`) | 12 de 12 |
 
 Lo que **sí** varía por cotización — y por eso son campos, no constantes:
 
 | concepto | valores vistos |
 |---|---|
-| Materiales | 1,4 · **1,8** · 2,5 |
+| Materiales | 1,4 · 1,6 · **1,8** · 2,5 |
 | Servicios | 1,5 · **1,7** · 1,8 |
 | Comisión FTS | 0% · 5% · **5,5%** · 6% |
 | Comisión cliente | 0% · 5% · 5,2% · 5,5% · 10% |
@@ -186,6 +186,39 @@ DIEGO, MONTY, Rissia, RICARDO) con su porcentaje. En la plantilla son 0,25 cada 
 ⚠️ **Defecto real encontrado:** en `Paso de Gato MXN - SO11782.xlsx` los porcentajes de venta
 son 0,20 + 0,15 + 0,05 + 0,70 + 0,15 = **1,25**, y la celda de cuadre dice `FALSO`. El machote
 detecta el descuadre pero no lo impide. Eso es exactamente una regla dura para el revisador.
+
+---
+
+### 2.8 El margen se puede pisar renglón por renglón
+
+La columna `Margen utilidad` de materiales trae la fórmula
+`=IF(Tipo="Materiales", F4, F5)`, pero **es una celda como cualquier otra y la
+gente escribe encima**.
+
+Caso concreto: en `SO11737` la partida **"riel"** de $200, marcada como
+`Materiales` (multiplicador 1,4), tiene **1,5** escrito a mano. De ahí salían
+exactamente $20 de diferencia cuando se reconstruía el archivo suponiendo que
+el Tipo mandaba siempre. Con el margen pisado respetado, el libro cuadra al peso:
+venta de materiales 142,295 · precio con utilidad 305,839 · utilidad 136,070.
+
+El motor respeta el valor pisado **y lo marca**, porque un margen sobrescrito
+en una de cuarenta partidas no lo ve nadie leyendo la hoja.
+
+---
+
+## 2.9 Las ranuras son diez, aunque haya más secciones
+
+La tabla RESUMEN de `DESGLOSE COTIZACION` tiene **diez** filas de sección, y de
+ahí sale el precio. Pero un libro puede tener más hojas de sección: el machote
+USD de calbee de 2026 tiene **once**, más una hoja suelta `Analisis` que no es
+sección.
+
+Las hojas de sección también se renombran al alcance real y ocupan la ranura por
+posición, no por nombre: en ese mismo archivo las ranuras 1 y 2 son `MO` y
+`MATERIALS`. **Una sección más allá de la ranura diez no llega al precio y nada
+lo advierte.**
+
+Conteo de hojas de sección en los cinco machotes de 2026 revisados: 6 · 7 · 9 · 9 · 11.
 
 ---
 

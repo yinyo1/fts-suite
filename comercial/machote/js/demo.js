@@ -121,6 +121,11 @@
         ]),
         sec('Instalación en sitio', [
           p(1, 'Servicio', 'Servicios', 'Maniobra con grúa de 20 t', '', 'Subcontratado', 28000, 'MXN', 'https://proveedor.example/gruas'),
+          // REAL — el machote deja pisar el margen renglón por renglón, encima
+          // de la fórmula que lo deriva del Tipo. En SO11737 hay una partida
+          // "riel" de $200 marcada como Materiales con margen 1,5 escrito a
+          // mano: de ahí salían $20 de diferencia contra el archivo.
+          Object.assign(p(4, 'Pieza', 'Materiales', 'Riel de soporte galvanizado', '', 'Unistrut', 200, 'MXN', 'https://proveedor.example/riel'), { margen: 1.5 }),
           p(200, 'Horas', 'Materiales', 'Seguimiento durante instalación', 'Project Manager', '', 200, 'MXN', '')
         ], [
           mo('supervisor_jr', 80, 1),
