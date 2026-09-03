@@ -35,10 +35,11 @@ const HARNESS = 'file://' + (path.resolve(__dirname, 'visual-harness-bancos.html
 const OUT = process.env.SHOTS_DIR || require('os').tmpdir() + '/shots-bancos';
 fs.mkdirSync(OUT, { recursive: true });
 
-// Desborde horizontal medido en origin/main con este MISMO harness. Es PRE-EXISTENTE:
-// la tabla de 17 columnas se sale de la página. No es de esta tanda, pero se vigila que
-// no empeore.
-const BASE_DESBORDE = { 'desktop-1440': 102, 'laptop-1280': 262, 'movil-390': 902 };
+// Desbordar la página está PROHIBIDO. Hasta v0.5.35 esto valía 102/262/902 px porque
+// .main (item de grid) no podía encogerse; se arregló con .main{min-width:0} y la tabla
+// pasó a scrollear dentro de su propia caja. Cero significa cero: si vuelve a desbordar,
+// el badge de versión se sale de la pantalla otra vez.
+const BASE_DESBORDE = { 'desktop-1440': 0, 'laptop-1280': 0, 'movil-390': 0 };
 let pass = 0; const fails = []; let vp = '';
 function check(n, c, d) { if (c) { pass++; console.log('✓ [' + vp + '] ' + n); return true; }
   fails.push('[' + vp + '] ' + n + (d ? ' → ' + d : '')); console.log('✗ [' + vp + '] ' + n + (d ? ' → ' + d : '')); return false; }
@@ -93,6 +94,14 @@ const esDelEntorno = t => /ERR_CONNECTION_RESET|ERR_NAME_NOT_RESOLVED|ERR_BLOCKE
       const cd = buscaCelda('Desconciliada'); out.altoFilaDesc = cd ? Math.round(cd.closest('tr').getBoundingClientRect().height) : 0;
       const cf = buscaCelda('⊕ Fondeo');     out.altoFilaFon  = cf ? Math.round(cf.closest('tr').getBoundingClientRect().height) : 0;
       out.desbordeH = document.documentElement.scrollWidth - document.documentElement.clientWidth;
+      // El badge de versión es el elemento con el que se verifica que un deploy quedó
+      // (CLAUDE.md §8). Medir que "existe" no basta: existía, medía 60x22 px y estaba
+      // FUERA de la pantalla. Lo que importa es que caiga dentro del viewport.
+      const _v = document.querySelector('.ip-ver');
+      if (_v) { const _b = _v.getBoundingClientRect(); const _W = document.documentElement.clientWidth;
+        out.badge = { texto: _v.textContent.trim(), right: Math.round(_b.right), w: Math.round(_b.width),
+                      dentro: _b.right <= _W + 1 && _b.left >= -1 }; }
+      else out.badge = null;
       out.nChips = document.querySelectorAll('#ip-chips .ip-chip').length;
       return out;
     });
@@ -103,7 +112,9 @@ const esDelEntorno = t => /ERR_CONNECTION_RESET|ERR_NAME_NOT_RESOLVED|ERR_BLOCKE
     check('la celda Fondeo se ve', medidas.fondeo && medidas.fondeo.visible, JSON.stringify(medidas.fondeo));
     check('la barra de agregados se ve', medidas.aggs && medidas.aggs.visible, JSON.stringify(medidas.aggs));
     check('los chips se ven y aparecieron los 2 nuevos (7 en total)', medidas.chips && medidas.chips.visible && medidas.nChips === 7, 'nChips=' + medidas.nChips);
-    check('el desborde horizontal NO empeora vs main (pre-existente: 102/262/902)', medidas.desbordeH <= BASE_DESBORDE[dev.n], 'ahora ' + medidas.desbordeH + 'px vs main ' + BASE_DESBORDE[dev.n] + 'px');
+    check('la página NO desborda horizontalmente', medidas.desbordeH <= BASE_DESBORDE[dev.n], 'desborde ' + medidas.desbordeH + 'px (tope ' + BASE_DESBORDE[dev.n] + ')');
+    check('el badge de versión está DENTRO de la pantalla (' + (medidas.badge && medidas.badge.texto) + ')',
+      medidas.badge && medidas.badge.dentro && medidas.badge.w > 0, JSON.stringify(medidas.badge));
 
     // Las filas nuevas no deben ser mucho más altas que las demás (= texto envolviendo feo).
     // Tope ajustado tras la revisión visual: la versión larga de Desconciliada medía 110 px

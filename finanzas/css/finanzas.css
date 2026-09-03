@@ -55,7 +55,21 @@ html, body { font-family: 'IBM Plex Sans', sans-serif; background: var(--paper);
 .sidebar-user .logout:hover { color: white; }
 
 /* MAIN */
-.main { padding: 0; background: var(--paper); min-height: 100vh; }
+/* min-width:0 es OBLIGATORIO, no cosmético. .main es item de un grid y su min-width
+   por defecto es `auto`, o sea que NO puede encogerse por debajo del ancho de su
+   contenido: una tabla ancha estiraba la columna y empujaba TODA la página hacia la
+   derecha (102 px en 1440, 262 en 1280, 902 en 390 — medido en Chromium).
+   Dos consecuencias que se veían y no se entendían:
+     · el badge de versión del módulo quedaba FUERA de la pantalla (right 1510 con
+       ventana de 1440). Es el elemento con el que se verifica que un deploy quedó
+       (CLAUDE.md §8), así que el ritual de verificación estaba roto;
+     · los contenedores con scroll propio —.ip-tblscroll en bancos, .data-table-wrap
+       en facturas y bills— nunca se activaban: no había nada que scrollear porque la
+       página entera cedía primero.
+   Con min-width:0 la tabla scrollea DENTRO de su caja, que es para lo que se escribió
+   ese overflow. Verificado: desborde 0 en los tres anchos, tabla intacta en 1226 px,
+   cero celdas con texto en 0 px de ancho. */
+.main { padding: 0; background: var(--paper); min-height: 100vh; min-width: 0; }
 .topbar { background: white; border-bottom: 1px solid var(--rule); padding: 12px 32px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
 .breadcrumb { font-size: 12px; color: var(--muted); letter-spacing: 0.5px; text-transform: uppercase; }
 .breadcrumb b { color: var(--ink); font-weight: 600; }
