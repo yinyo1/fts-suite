@@ -27,17 +27,22 @@ Se ve al pie de la lista y en la barra superior de cada cotización. Sirve para
 distinguir *"ya lo cambié"* de *"estás viendo el caché"*, que sin esto no se
 puede sin abrir las herramientas de desarrollo.
 
-⚠️ **El esquema es de este módulo, no de la suite.** El repo tiene otros en uso
-y se decidió no tocarlos:
+⚠️ **El esquema no es de toda la suite.** El repo tiene varios conviviendo:
 
 | módulo | esquema |
 |---|---|
-| `finanzas` | `0.5.36` + cadena de build |
+| `comercial/machote` | `V1.xx` (este) |
+| `finanzas` | `V1.xx` desde el 2026-09-03 — antes `0.5.36` + cadena de build |
 | `operaciones/planeacion` | `2.4.1` + build |
 | `operaciones/kiosk`, `confirmar-horas` | sólo cadena de build |
 | siete módulos más | `1.0.0` puesto una vez y nunca movido |
 
-No propagues `V1.xx` a ninguno de esos. La decisión está en el issue #148.
+`finanzas` se pasó a `V1.xx` por instrucción directa de Esteban el 2026-09-03
+(«quiero que la versión sea de tipo V1.00 hasta V1.99 … en cada merge que
+hagamos controlarlo», sobre el módulo que iba en 5.3x). Corrige la decisión que
+había quedado escrita aquí unas horas antes en el issue #148 — que era «no
+propagar». **A los demás módulos sigue sin propagarse**: cada uno lleva su
+propio contador y el de este módulo NO es el de finanzas.
 
 ### Cómo bumpearla (obligatorio en todo merge)
 
