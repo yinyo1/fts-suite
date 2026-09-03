@@ -51,6 +51,7 @@ Los tres CSV eran **derivados**, no fuentes:
 | [`FASE-A-CALIBRACION.md`](FASE-A-CALIBRACION.md) | Sesión 1: los 486 PDF reales abiertos y medidos |
 | [`FASE-B-CORPUS-CORREO.md`](FASE-B-CORPUS-CORREO.md) | El corpus de correo: pipeline, set etiquetado y cómo se miden precisión y recall |
 | [`ESQUEMA.sql`](ESQUEMA.sql) | El DDL de los esquemas `comercial` y `po_radar`, listo para correr. Solo estructura, cero datos |
+| [`MVP-WORKFLOW.md`](MVP-WORKFLOW.md) | Sesión 3: el workflow construido, cómo se configura, qué se rompió al probarlo y la prueba en vivo |
 
 ## Estado
 
@@ -58,10 +59,16 @@ Los tres CSV eran **derivados**, no fuentes:
 - **Sesión 1** (#145) — FASE A calibrada sobre 486 documentos; SPEC a 1.1.
 - **Sesión 2** — `Mail.Read` verificado funcionando; corpus fuera del repo; FASE B dimensionada y
   detenida por tamaño.
+- **Sesión 3** — **MVP construido, probado contra correo real y activo.** Workflow
+  `po/radar-detectar (MVP)` (`sQ5GYhQTq1UHDt6Y`), cada 15 minutos, reenviando desde `sales@fts.mx`.
 
-**El workflow de producción no está construido.** Nada de esto se ha mergeado a `main`.
+**El MVP reenvía a `estebandelacruz@fts.mx`, no todavía a `newordersnotification@fts.mx`.** Es un
+solo campo del nodo `Set - config`; se cambia cuando Esteban valide lo que le llega.
 
 ## Bloqueo abierto
+
+Ninguno de los dos bloquea el MVP, que corre sin Postgres y sin SharePoint. Bloquean FASE B y la
+bitácora persistente.
 
 1. **Credencial Postgres en n8n** — el servicio `fts-suite-db` existe y corre, pero no hay credencial
    en n8n que apunte a él, y no se puede crear por API. Sin ella no se cargan los esquemas ni el corpus.
