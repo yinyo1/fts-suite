@@ -11,7 +11,7 @@
 <div class="rh-topbar">
   <a class="volver" href="../index.html">← Volver a RH</a>
   <span class="t">Nómina · Incidencias</span>
-  <span class="badge" id="ver-badge">V1.00</span>
+  <span class="badge" id="ver-badge">V1.01</span>
   <span class="badge" id="modo-badge" title="">DEMO</span>
   <span class="sp"></span>
   <span class="quien" id="quien"></span>
@@ -133,7 +133,7 @@
     var r = await window.NomAuth.login($('u').value, $('p').value);
     b.disabled = false; b.textContent = 'Entrar';
     if (!r.ok) {
-      mostrarError(r.msg + (r.retry_after_s ? ' Espera ' + r.retry_after_s + ' s.' : ''));
+      mostrarError(r.msg);   // el server ya redacta el motivo, incluidos los minutos de bloqueo
       return;
     }
     if (!window.NomAuth.tieneScope(window.NomAuth.SCOPE_MODULO)) {

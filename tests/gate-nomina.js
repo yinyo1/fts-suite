@@ -194,9 +194,69 @@ seccion('Resumen de la semana');
     Log.resumenSemana(ok, SEMANA, [{ id: 1, empleado_id: 99, abierta: true }]).disputas_abiertas === 1);
 }
 
-// ═══════════════════ 7 · RENDER EN JSDOM ═══════════════════
-seccion('Render (jsdom, sobre el index.html real)');
+// ═══════════════════ 7 · CONTRATO CON auth/suite-login ═══════════════════
+// POR QUE EXISTE ESTA SECCION. En V1.00 el login mandaba `user` (copiado de
+// finanzas/js/auth-fin.js) y el workflow espera `username`. Resultado: TODO intento
+// moria en PAYLOAD_INCOMPLETO sin llegar a comprobar la contrasena, y la pantalla
+// mostraba un generico "No se pudo iniciar sesion" que escondia el motivo.
+// Comprobado disparando el webhook en vivo (ejecuciones 85367 y 85370).
+// Estos asserts congelan la forma REAL del contrato, leida del workflow.
+seccion('Contrato con auth/suite-login');
 (async function () {
+  const { JSDOM: J2 } = require('jsdom');
+  const dom0 = new J2('<!doctype html><html><body></body></html>', { url: 'https://example.org/', runScripts: 'outside-only' });
+  const w0 = dom0.window;
+  w0.eval(fs.readFileSync(path.join(MOD, 'js', 'nom-auth.js'), 'utf8'));
+
+  let enviado = null;
+  function responder(obj) {
+    w0.fetch = function (url, opts) {
+      enviado = { url: url, body: JSON.parse(opts.body) };
+      return Promise.resolve({ status: 200, json: function () { return Promise.resolve(obj); } });
+    };
+  }
+
+  // (a) el campo se llama username
+  responder({ ok: false, error: 'CREDENCIALES_INVALIDAS', mensaje: 'Usuario o contrasena incorrectos.' });
+  const r1 = await w0.NomAuth.login('ana.acevedo', 'secreta');
+  check('el login manda `username`, no `user`',
+    enviado && enviado.body.username === 'ana.acevedo' && enviado.body.user === undefined,
+    JSON.stringify(Object.keys(enviado ? enviado.body : {})));
+  check('pega al webhook /auth/suite-login', /\/webhook\/auth\/suite-login$/.test(enviado.url), enviado.url);
+
+  // (b) el error del server llega a la pantalla con su motivo, no con un generico
+  check('propaga el codigo real del error', r1.ok === false && r1.code === 'CREDENCIALES_INVALIDAS', JSON.stringify(r1));
+  check('propaga el mensaje del server (campo `mensaje`)', /Usuario o contrasena/.test(r1.msg), r1.msg);
+
+  responder({ ok: false, error: 'PAYLOAD_INCOMPLETO', mensaje: 'Faltan username o password.' });
+  const r2 = await w0.NomAuth.login('x', 'y');
+  check('un PAYLOAD_INCOMPLETO ya no se ve como fallo de contrasena', r2.code === 'PAYLOAD_INCOMPLETO', JSON.stringify(r2));
+
+  // (c) el exito: token, scopes y caducidad desde `exp` en segundos
+  const iat = Math.floor(Date.now() / 1000);
+  const claims = { sub: 'ana.acevedo', nombre: 'Ana Laura', empleado_id: 101, scopes: ['nomina:write'], iat: iat, exp: iat + 8 * 3600 };
+  const b64 = o => Buffer.from(JSON.stringify(o)).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const tok = b64({ alg: 'HS256', typ: 'JWT' }) + '.' + b64(claims) + '.firma';
+  responder({ ok: true, token: tok, actor: 'ana.acevedo', nombre: 'Ana Laura', empleado_id: 101, scopes: ['nomina:write'], exp: claims.exp, debe_cambiar_password: false });
+  const r3 = await w0.NomAuth.login('ana.acevedo', 'buena');
+  check('un login bueno abre sesion', r3.ok === true, JSON.stringify(r3).slice(0, 120));
+  check('la sesion queda valida (caducidad desde `exp` en segundos)', w0.NomAuth.isValid() === true);
+  check('el scope nomina:write se reconoce', w0.NomAuth.tieneScope('nomina:write') === true);
+  check('un scope que no tiene NO se reconoce', w0.NomAuth.tieneScope('finanzas:write') === false);
+  check('guarda el nombre para la topbar', (w0.NomAuth.getSession() || {}).nombre === 'Ana Laura');
+
+  // (d) sin scope, la puerta no deja pasar aunque el login sea bueno
+  const claims2 = Object.assign({}, claims, { scopes: ['nomina:read'] });
+  responder({ ok: true, token: b64({ alg: 'HS256', typ: 'JWT' }) + '.' + b64(claims2) + '.firma', exp: claims2.exp, scopes: ['nomina:read'] });
+  await w0.NomAuth.login('ana.acevedo', 'buena');
+  check('con solo nomina:read la puerta sigue cerrada', w0.NomAuth.tieneScope('nomina:write') === false);
+
+  arrancarRender();
+})();
+
+// ═══════════════════ 8 · RENDER EN JSDOM ═══════════════════
+seccion('Render (jsdom, sobre el index.html real)');
+function arrancarRender() { (async function () {
   const html = fs.readFileSync(path.join(MOD, 'index.html'), 'utf8');
   const dom = new JSDOM(html, { url: 'https://example.org/modulos/rh/nomina-incidencias/', runScripts: 'outside-only', pretendToBeVisual: true });
   const w = dom.window;
@@ -279,4 +339,4 @@ seccion('Render (jsdom, sobre el index.html real)');
     process.exit(1);
   }
   console.log('GATE VERDE — ' + pass + '/' + pass + ' asserts');
-})();
+})(); }

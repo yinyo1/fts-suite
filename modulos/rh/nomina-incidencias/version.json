@@ -1,5 +1,5 @@
 {
-  "version": "V1.00",
+  "version": "V1.01",
   "fecha": "2026-09-03",
   "modulo": "rh/nomina-incidencias",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
@@ -7,8 +7,13 @@
   "historial": [
     {
       "version": "V1.00",
-      "pr": null,
+      "pr": 168,
       "nota": "Estreno del modulo. Pantalla 1 (roster de la semana con candado aritmetico y bloqueos) y pantalla 2 (captura por persona: 26 tipos en 4 grupos con campos condicionales, derivaciones visibles y estados con vigencia). Modo DEMO por defecto sobre el roster real de Odoo (30 activos de company 1 + inactivos con estado vigente); el modo REAL queda cableado y apagado hasta que existan los endpoints /nom/*. Gate de logica (36 asserts, sin DOM) y revision visual en Chromium en tres anchos."
+    },
+    {
+      "version": "V1.01",
+      "pr": null,
+      "nota": "Arreglo del login: NADIE podia entrar en V1.00. El cliente mandaba el campo `user` (copiado de finanzas/js/auth-fin.js) pero el workflow auth/suite-login espera `username`, asi que contestaba PAYLOAD_INCOMPLETO sin llegar a comprobar la contrasena. Ademas se leia la respuesta con la forma de Finanzas (_error/code/msg) en vez de la real (ok/error/mensaje), por lo que TODO fallo se veia igual: un 'No se pudo iniciar sesion.' generico que escondia el motivo. Verificado disparando el webhook en vivo con un usuario desechable (ejecuciones 85367 y 85370) para no gastarle intentos de bloqueo a nadie. El contrato queda fijado en el gate (seccion 7, 11 asserts nuevos) para que no se vuelva a romper en silencio."
     }
   ]
 }
