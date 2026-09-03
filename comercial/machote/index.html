@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>FTS Suite · Machote y órdenes</title>
+<link rel="stylesheet" href="../../shared/fts-styles.css" />
+<link rel="stylesheet" href="css/machote.css" />
+</head>
+<body>
+
+<div class="scr on ancho" id="scr">
+  <!-- La topbar va DENTRO del contenedor para que comparta su ancho: fuera,
+       en escritorio abarcaba toda la ventana mientras el contenido iba centrado. -->
+  <div class="topbar">
+    <button class="tb-back" id="btnBack" aria-label="Volver">&#8249;</button>
+    <div class="tb-logo" role="img" aria-label="FTS"></div>
+    <div class="tb-info"><strong id="tbT">Machote y órdenes</strong><span id="tbS">Comercial · prototipo</span></div>
+    <div class="tb-badge" id="tbB">DEMO</div>
+  </div>
+  <main id="vista"></main>
+  <div id="fija"></div>
+</div>
+
+<!-- calc.js primero: demo.js lee de el los roles y los margenes de plantilla. -->
+<script src="js/calc.js"></script>
+<script src="js/demo.js"></script>
+<script src="js/reglas.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
