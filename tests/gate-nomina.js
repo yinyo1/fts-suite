@@ -306,6 +306,20 @@ function arrancarRender() { (async function () {
       .filter(tr => !/--red/.test(tr.querySelector('td.st').getAttribute('style') || ''))
       .every(tr => !tr.querySelector('.porque')));
 
+  // Premio de puntualidad: la sugerencia se pinta, se distingue de una decisión
+  // humana, y el "no aplica" también se dice en vez de dejar el hueco vacío.
+  const celdaPpa = id => d.querySelector('tr[data-id="' + id + '"]').lastElementChild.textContent;
+  check('la columna del premio existe para todos',
+    Array.from(d.querySelectorAll('#tb tr[data-id]')).every(tr => tr.children.length === 7),
+    String(d.querySelector('#tb tr[data-id]').children.length));
+  check('a quien no le aplica, lo dice', /no aplica/.test(celdaPpa(101)), celdaPpa(101));
+  check('quien llegó tarde sale en no', /no/.test(celdaPpa(57)), celdaPpa(57));
+  check('quien llegó a tiempo sale en sí', /si/.test(celdaPpa(128)), celdaPpa(128));
+  check('y se marca que es sugerido, no decidido',
+    /sugerido/.test(celdaPpa(128)) && !/decidido/.test(celdaPpa(128)), celdaPpa(128));
+  check('el turno de noche pide revisar en vez de darlo por bueno',
+    /revisar/.test(celdaPpa(128)), celdaPpa(128));
+
   const filas = d.querySelectorAll('#tb tr[data-id]');
   check('el roster pinta 31 renglones (30 activos + 1 inactivo con estado vivo)', filas.length === 31, String(filas.length));
   check('cada renglón es clicable (data-id)', Array.from(filas).every(tr => tr.getAttribute('data-id')));
@@ -323,6 +337,12 @@ function arrancarRender() { (async function () {
   w.NomApp.abrir(57);
   check('el cajón se abre', d.getElementById('drawer').hasAttribute('open'));
   check('el cajón nombra a la persona', /Samuel/.test(d.getElementById('dnom').textContent));
+  check('el cajón trae la evidencia del premio, día por día',
+    !!d.querySelector('.ppa-dias tr:nth-child(2)'), (d.querySelector('.ppa-mot') || {}).textContent || '(sin motivo)');
+  check('y dice contra qué hora se comparó',
+    /07:00/.test((d.querySelector('.ppa-dias th:last-child') || {}).textContent || ''),
+    (d.querySelector('.ppa-dias th:last-child') || {}).textContent);
+
   check('el candado aritmético se pinta', /Candado aritmético/.test(d.getElementById('dbody').textContent));
   check('el campo de días de México es editable', !!d.getElementById('fmx'));
   check('la declaración de bono aparece con su faltante',

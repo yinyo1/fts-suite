@@ -147,6 +147,29 @@
     'SO11762 Nalco Topo Chico', 'SO11842 Mission Foods', 'SO11832 Gepp'
   ];
 
+  // PPA de practica. Se fingen los tres casos que hay que saber leer: el limpio,
+  // el que llego tarde un dia, y el que trabajo de noche y el sistema pide revisar.
+  var PPA_DEMO = {
+    57:  { sugerido: false, motivo: 'Llego tarde: 2026-09-01 (12 min). Tolerancia 5 min sobre 07:00.',
+           dias: [{ fecha:'2026-08-28', entrada:'06:52', retraso_min:-8, ok:true },
+                  { fecha:'2026-09-01', entrada:'07:12', retraso_min:12, ok:false },
+                  { fecha:'2026-09-02', entrada:'06:58', retraso_min:-2, ok:true }] },
+    128: { sugerido: true, revisar: true,
+           motivo: 'Llego a tiempo los 3 dias con checada, contra 07:00 con 5 min de tolerancia. ' +
+                   'OJO: 2026-09-01 a las 20:30 entro muy fuera de su horario; se leyo como otro turno y no como retardo. Si no fue turno, quitaselo.',
+           dias: [{ fecha:'2026-08-28', entrada:'07:01', retraso_min:1, ok:true },
+                  { fecha:'2026-09-01', entrada:'20:30', retraso_min:810, ok:true, otro_turno:true },
+                  { fecha:'2026-09-02', entrada:'06:55', retraso_min:-5, ok:true }] },
+    101: { aplica: false, sugerido: false, motivo: 'Su ficha en Odoo dice que no aplica PPA.', dias: [] }
+  };
+  function ppaDemo(id, dias) {
+    var p = PPA_DEMO[id];
+    if (p) return Object.assign({ aplica: true, hora_base: '07:00', evaluados: (p.dias || []).length }, p);
+    return { aplica: true, hora_base: '07:00', sugerido: true, evaluados: dias,
+             motivo: 'Llego a tiempo los ' + dias + ' dias con checada, contra 07:00 con 5 min de tolerancia.',
+             dias: [] };
+  }
+
   function semanaDemo() {
     var personas = ROSTER.map(function (r) {
       var d = DECLS_DEMO[r[0]];
@@ -156,6 +179,8 @@
         dias_mexico: d ? d.dias_mexico : (r[4] ? 0 : 5),
         dias_odoo: d ? d.odoo : (r[4] ? 0 : 5),
         capturado: !!d,
+        ppa: ppaDemo(r[0], d ? d.odoo : (r[4] ? 0 : 5)),
+        ppa_decidido: null,
         declaraciones: d ? JSON.parse(JSON.stringify(d.decls)) : [],
         estados: ESTADOS_DEMO[r[0]] ? JSON.parse(JSON.stringify(ESTADOS_DEMO[r[0]])) : []
       };
@@ -191,10 +216,14 @@
 
   // Las tres escrituras del módulo, con nombre, para que quien lea app.js vea QUÉ se
   // está guardando y no un objeto suelto con un campo 'accion'.
-  function guardarPersona(semana, p) {
+  // `ppa` viaja como 'si', 'no' o cadena vacia. Vacio NO es 'no': significa que RH
+  // no ha decidido y sigue mandando la sugerencia del sistema. Confundir los dos
+  // convertiria cada guardado de dias en una negacion silenciosa del premio.
+  function guardarPersona(semana, p, ppa) {
     return escribir({ accion: 'persona', semana: semana, empleado_id: p.id,
                      dias_mexico: Number(p.dias_mexico) || 0,
-                     declaraciones: p.declaraciones || [] });
+                     declaraciones: p.declaraciones || [],
+                     ppa: (ppa === 'si' || ppa === 'no') ? ppa : '' });
   }
   function guardarEstado(empleadoId, est, vigente) {
     return escribir({ accion: 'estado', empleado_id: empleadoId, tipo: est.tipo,

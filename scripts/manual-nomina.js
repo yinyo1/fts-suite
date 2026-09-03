@@ -43,6 +43,7 @@ const CUERPO = `
     <li><a href="#capturar">Capturar a una persona</a></li>
     <li><a href="#catalogo">Qué se puede declarar</a></li>
     <li><a href="#ejemplos">Tres semanas de ejemplo, paso a paso</a></li>
+    <li><a href="#ppa">El premio de puntualidad</a></li>
     <li><a href="#disputas">Checadas en disputa</a></li>
     <li><a href="#cerrar">Cerrar y enviar</a></li>
     <li><a href="#mal">Cuando algo sale mal</a></li>
@@ -241,8 +242,36 @@ const CUERPO = `
   </div>
 </section>
 
+<section id="ppa">
+  <h2>9 · El premio de puntualidad</h2>
+  <p>La última columna de la lista dice si a cada persona le toca el <b>Premio de
+  Puntualidad y Asistencia</b>. <b>El sistema lo sugiere; tú decides.</b></p>
+  <table>
+    <tr><th>Lo que ves</th><th>Qué significa</th></tr>
+    <tr><td><span class="chip real">✓ sí</span> con borde punteado</td><td>El sistema lo sugiere. <b>Nadie lo ha decidido.</b></td></tr>
+    <tr><td><span class="chip real">✓ sí</span> con borde sólido</td><td>Una persona lo decidió. Gana sobre la sugerencia.</td></tr>
+    <tr><td>✗ no</td><td>Llegó tarde algún día. Abre el renglón para ver cuál.</td></tr>
+    <tr><td>no aplica</td><td>Su ficha en Odoo dice que no le corresponde.</td></tr>
+    <tr><td>revisar</td><td>Hay algo raro que conviene que mires. Casi siempre, un turno de noche.</td></tr>
+  </table>
+  <p>Se cambia con un clic en la propia palomita, sin abrir el renglón. Al abrirlo,
+  el cajón te muestra <b>día por día</b> a qué hora entró y cuántos minutos antes o
+  después de su horario, para que puedas discutirlo con quien reclame.</p>
+  <h3>Cómo decide</h3>
+  <ul>
+    <li>Compara la <b>primera</b> entrada de cada día contra la hora de entrada de su ficha en Odoo.</li>
+    <li><b>Cinco minutos de tolerancia.</b> A las 7:05 sí; a las 7:06 no.</li>
+    <li><b>Sábado y domingo no cuentan.</b> Si los citaron en fin de semana, eso es trabajo extraordinario, no impuntualidad.</li>
+    <li>Una entrada <b>más de tres horas</b> después de su hora se lee como <b>otro turno</b>, no como retardo — quien trabaja de noche no puede perder el premio por eso. Cuando pasa, el renglón dice <b>revisar</b>.</li>
+  </ul>
+  <p class="aviso"><b>Lo que todavía NO hace:</b> comparar contra el plan de operaciones
+  de Felipe. Hoy compara contra el horario base de la ficha. Si un día Felipe los citó
+  más tarde entre semana, el sistema lo va a leer como retardo — por eso la decisión
+  sigue siendo tuya y por eso el detalle está a la vista.</p>
+</section>
+
 <section id="disputas">
-  <h2>9 · Checadas en disputa</h2>
+  <h2>10 · Checadas en disputa</h2>
   ${img('12-disputas', 'La pantalla de disputas')}
   <p>Son checadas del kiosko que quedaron marcadas porque algo no cuadró — normalmente alguien
   olvidó marcar su salida y el sistema la cerró solo.</p>
@@ -259,7 +288,7 @@ const CUERPO = `
 </section>
 
 <section id="cerrar">
-  <h2>10 · Cerrar y enviar</h2>
+  <h2>11 · Cerrar y enviar</h2>
   ${img('13-cierre', 'La pantalla de cierre')}
   <p>La pestaña <b>Cierre</b> te da el resumen de la semana: cuántas personas, cuántas con algo
   declarado, y el dinero partido en tres — lo que se paga, lo que se descuenta, y lo que es
@@ -272,7 +301,7 @@ const CUERPO = `
 </section>
 
 <section id="mal">
-  <h2>11 · Cuando algo sale mal</h2>
+  <h2>12 · Cuando algo sale mal</h2>
   <table>
     <tr><th>Lo que ves</th><th>Qué pasó</th><th>Qué hacer</th></tr>
     <tr><td>«Usuario o contraseña incorrectos»</td><td>Alguno de los dos está mal, o hay un espacio de más</td><td>Vuelve a teclear. A los 5 intentos se bloquea 15 minutos.</td></tr>
@@ -286,7 +315,7 @@ const CUERPO = `
 </section>
 
 <section id="no-hace">
-  <h2>12 · Lo que este módulo NO hace</h2>
+  <h2>13 · Lo que este módulo NO hace</h2>
   <ul>
     <li><b>No calcula sueldos.</b> Registra lo que pasó en la semana; el cálculo lo hace el despacho.</li>
     <li><b>No corrige checadas.</b> Para mover una hora de entrada o salida se usa el panel de incidencias.</li>

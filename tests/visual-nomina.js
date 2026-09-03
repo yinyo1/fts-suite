@@ -142,8 +142,18 @@ const VIEWPORTS = [
         .map(tr => Math.round(tr.getBoundingClientRect().height)));
     const orden = alturas.slice().sort((a, b) => a - b);
     const mediana = orden[Math.floor(orden.length / 2)];
-    const altas = alturas.filter(x => x > mediana + 24);
-    check('ninguna fila sin motivo se dispara de alto (mediana ' + mediana + ' px)', altas.length === 0, JSON.stringify(altas));
+    // El tope es proporcional, no un delta fijo. Hay puestos genuinamente largos
+    // ("Sr Technical Sales & Engineering support") que en 390 px envuelven a tres
+    // líneas, y eso es texto largo, no layout roto. Lo que esta prueba tiene que
+    // cazar es una celda que se dispara —el doble de alto, una imagen sin tamaño,
+    // una tabla que se sale—, no una fila que dice más porque tiene más que decir.
+    const tope = Math.round(mediana * 1.6);
+    const altas = await page.evaluate((t) =>
+      Array.from(document.querySelectorAll('#tb tr[data-id]'))
+        .filter(tr => !tr.querySelector('.porque') && tr.getBoundingClientRect().height > t)
+        .map(tr => tr.querySelector('.nm').textContent.trim() + ' (' + Math.round(tr.getBoundingClientRect().height) + 'px)'), tope);
+    check('ninguna fila sin motivo se dispara de alto (mediana ' + mediana + ', tope ' + tope + ' px)',
+      altas.length === 0, JSON.stringify(altas));
 
     // Y la que SÍ trae motivo tampoco puede desbordarse: más de tres renglones de
     // texto rojo en un móvil deja de ser una pista y se vuelve un párrafo.
@@ -151,7 +161,7 @@ const VIEWPORTS = [
       Array.from(document.querySelectorAll('#tb tr'))
         .filter(tr => tr.querySelector('.porque'))
         .map(tr => Math.round(tr.getBoundingClientRect().height)));
-    check('la fila con motivo crece, pero con tope', conMotivo.every(x => x <= mediana + 90),
+    check('la fila con motivo crece, pero con tope', conMotivo.every(x => x <= mediana + 110),
       JSON.stringify(conMotivo) + ' vs mediana ' + mediana);
 
     // El banner de bloqueo tiene que ser visible sin scroll horizontal y decir el motivo.

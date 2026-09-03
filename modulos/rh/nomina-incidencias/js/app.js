@@ -32,6 +32,16 @@
   }
   function nombreCorto(n) { return String(n).split(' ').slice(0, 2).join(' '); }
 
+  // Lo que vale HOY para el premio de puntualidad: la decision de RH si la hay,
+  // y si no, la sugerencia del sistema. La sugerencia NO es una decision — por eso
+  // se distinguen: una palomita puesta por una persona y una calculada no valen
+  // lo mismo cuando alguien reclama su premio tres semanas despues.
+  function ppaVale(p) {
+    if (p.ppa_decidido === true || p.ppa_decidido === false) return p.ppa_decidido;
+    return !!(p.ppa && p.ppa.sugerido);
+  }
+  function ppaDecidido(p) { return p.ppa_decidido === true || p.ppa_decidido === false; }
+
   // Aviso de guardado. Se pinta ANTES de saber el resultado solo como "guardando";
   // el "guardado" nunca se pinta hasta que el server contestó. Pintar el éxito antes
   // del POST es el anti-patrón que costó el incidente del 27-may (CLAUDE.md §14 #15).
@@ -151,6 +161,20 @@
       }
       if (!et) et = '<span style="color:var(--muted)">—</span>';
 
+      // PPA. Se pinta SIEMPRE, incluso cuando no aplica: un hueco en la columna
+      // se lee como "se me olvido", y aqui el "no aplica" es una respuesta.
+      var ppaCel;
+      if (!p.ppa || !p.ppa.aplica) {
+        ppaCel = '<span class="pill p-none">no aplica</span>';
+      } else {
+        var vale = ppaVale(p), dec = ppaDecidido(p);
+        ppaCel = '<button class="ppa ' + (vale ? 'si' : 'no') + (dec ? ' dec' : '') + '" data-ppa="' + p.id + '" ' +
+          'title="' + esc(p.ppa.motivo) + '">' +
+          (vale ? '&#10003; si' : '&#10007; no') +
+          '<span class="q">' + (dec ? 'decidido' : 'sugerido') + '</span></button>' +
+          (p.ppa.revisar && !dec ? '<span class="pill p-bad">revisar</span>' : '');
+      }
+
       var diasCel = p.inactivo
         ? '<span class="pill p-none">n/a</span>'
         : '<span class="pill ' + (c.cuadra ? 'p-ok' : 'p-bad') + '">' + c.total + ' / ' + c.esperado + '</span>';
@@ -163,9 +187,41 @@
         '<td class="num">' + diasCel + '</td>' +
         '<td><div class="tags">' + tags + '</div></td>' +
         '<td><div class="tags">' + dinero + '</div></td>' +
-        '<td><div class="tags">' + et + '</div></td></tr>';
+        '<td><div class="tags">' + et + '</div></td>' +
+        '<td><div class="tags">' + ppaCel + '</div></td></tr>';
     }
-    $('tb').innerHTML = h || '<tr><td colspan="6" class="vacio">Nadie cae en este filtro.</td></tr>';
+    $('tb').innerHTML = h || '<tr><td colspan="7" class="vacio">Nadie cae en este filtro.</td></tr>';
+
+    // El clic en la palomita NO debe abrir el cajon: son dos acciones distintas
+    // sobre el mismo renglon.
+    var ps = $('tb').querySelectorAll('[data-ppa]');
+    for (var pi = 0; pi < ps.length; pi++) {
+      ps[pi].addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        alternarPpa(Number(ev.currentTarget.getAttribute('data-ppa')));
+      });
+    }
+  }
+
+  // Cambiar el PPA de una persona es una escritura: se manda y se relee, igual que
+  // todo lo demas. No se pinta el cambio antes de que el server lo confirme.
+  async function alternarPpa(id) {
+    var p = persona(id);
+    if (!p || !p.ppa || !p.ppa.aplica) return;
+    var nuevo = !ppaVale(p);
+    if (window.NomClient.modo() === 'demo') {
+      p.ppa_decidido = nuevo; refrescar();
+      aviso('ok', 'En practica no se guarda, pero asi se veria');
+      return;
+    }
+    aviso('yendo', 'Guardando el premio de ' + nombreCorto(p.nombre) + '...');
+    try {
+      await window.NomClient.guardarPersona(S.semana.id, p, nuevo ? 'si' : 'no');
+      await recargar();
+      aviso('ok', 'Premio ' + (nuevo ? 'otorgado' : 'quitado') + ' a ' + nombreCorto(p.nombre));
+    } catch (err) {
+      aviso('mal', 'NO se guardo el premio: ' + (err && err.msg ? err.msg : 'error desconocido'));
+    }
   }
 
   // ══════════════════════════ CAJÓN DE CAPTURA ══════════════════════════
@@ -200,7 +256,8 @@
   async function guardarPersona(p, previo) {
     aviso('yendo', 'Guardando ' + nombreCorto(p.nombre) + '…');
     try {
-      await window.NomClient.guardarPersona(S.semana.id, p);
+      await window.NomClient.guardarPersona(S.semana.id, p,
+        ppaDecidido(p) ? (p.ppa_decidido ? 'si' : 'no') : '');
 
       // Los estados viven en su propia tabla porque cruzan semanas. Los nuevos se
       // abren; los que la persona quitó se CIERRAN (vigente:false) en vez de
@@ -261,6 +318,30 @@
       '</div>';
     if (p.inactivo) h += '<div class="aviso">Persona inactiva: no se le exigen días. Lo que se le declare sí se valida.</div>';
     h += '</div>';
+
+    // El premio, con la evidencia dia por dia. Una sugerencia sin el detalle de
+    // contra que se comparo no se puede discutir con quien reclama.
+    if (p.ppa && p.ppa.aplica) {
+      var vale2 = ppaVale(p);
+      h += '<div class="box"><h4>Premio de puntualidad</h4>' +
+        '<div class="ppa-cab"><button class="ppa ' + (vale2 ? 'si' : 'no') + (ppaDecidido(p) ? ' dec' : '') +
+          '" id="ppaTog">' + (vale2 ? '&#10003; se le da' : '&#10007; no se le da') + '</button>' +
+        '<span class="q">' + (ppaDecidido(p) ? 'decidido por RH' : 'sugerido por el sistema') + '</span></div>' +
+        '<div class="ppa-mot">' + esc(p.ppa.motivo) + '</div>';
+      var DD = p.ppa.dias || [];
+      if (DD.length) {
+        h += '<table class="ppa-dias"><tr><th>Día</th><th>Entró</th><th>Contra ' + esc(p.ppa.hora_base) + '</th></tr>';
+        for (var dd = 0; dd < DD.length; dd++) {
+          var x = DD[dd];
+          h += '<tr><td>' + esc(x.fecha) + '</td><td>' + esc(x.entrada) + '</td><td class="' +
+            (x.otro_turno ? 'turno' : (x.ok ? 'ok' : 'mal')) + '">' +
+            (x.otro_turno ? 'otro turno' : (x.retraso_min <= 0 ? (-x.retraso_min) + ' min antes' : x.retraso_min + ' min después')) +
+            '</td></tr>';
+        }
+        h += '</table>';
+      }
+      h += '</div>';
+    }
 
     var L = p.declaraciones || [];
     h += '<div class="box"><h4>Declaraciones de la semana</h4>';
@@ -432,6 +513,9 @@
         pintarBanner(); pintarTabla();
       });
     }
+    var pt = $('ppaTog');
+    if (pt) pt.addEventListener('click', function () { alternarPpa(ACTIVO); });
+
     var ad = $('addDecl');
     if (ad) ad.addEventListener('click', function () {
       formulario('zonaDecl', false, function (reg) {
