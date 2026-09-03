@@ -83,7 +83,8 @@
   ]);
 
   const base = (extra) => Object.assign({
-    moneda: 'MXN', tc: 18.40, factor_proteccion: 0.03,
+    empresa_id: 1,                      // Servicios FTS · MXN
+    moneda: 'MXN', tc: 18.40, factor_proteccion: 0.03, tc_fuente: 'DOF del día',
     margenes: Object.assign({}, C.MARGENES_PLANTILLA),
     comision_fts: C.COMISION_FTS_PLANTILLA,
     comision_cliente: 0,
@@ -159,7 +160,8 @@
       id: 'M-1043', nombre: 'Cooling system for maintenance offices',
       cliente: 'Calbee America Incorporated', so: null, estado: 'borrador',
       analista: 'Analista de propuestas', fecha: '2026-08-30',
-      moneda: 'USD', tc: 0, factor_proteccion: 0,
+      empresa_id: 6,                    // FTS USA · USD
+      moneda: 'USD', tc: 0, factor_proteccion: 0, tc_fuente: '',
       comision_fts: 0.06, comision_cliente: 0.05,
       diagnostico: { tipo: 'suministro', respuestas: { entrega: 'Planta Fayetteville', importado: 'Sí, equipo de EUA' } },
       secciones: [

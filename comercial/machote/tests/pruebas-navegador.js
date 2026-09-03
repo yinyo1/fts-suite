@@ -51,12 +51,25 @@ let ok = 0, mal = 0;
     try { await fn(); console.log('✓', n); ok++; }
     catch (e) { console.log('✗', n, '→', e.message); mal++; }
   };
-  // Asignar el mismo hash que ya está puesto NO dispara `hashchange`, así que
-  // la vista no se repinta y la prueba mide la pantalla anterior. Se pasa por
-  // '#/' primero para forzar el repintado.
+  /* Navegar a una ruta, con el estado LIMPIO.
+   *
+   * El estado vive en memoria y las pruebas de V1.06 mutan de verdad: agregan
+   * renglones, renombran secciones, duplican. Sin recargar, cada prueba hereda
+   * lo que hizo la anterior y los fallos se vuelven cascada — una prueba de
+   * layout terminaba fallando porque otra le había puesto once secciones al
+   * machote. Recargar aísla, y cuesta ~200 ms. */
   const ir = async (h) => {
-    await p.evaluate(() => { location.hash = '#/'; });
-    await p.waitForTimeout(80);
+    await p.goto(BASE);
+    await p.waitForTimeout(220);
+    if (h && h !== '#/') {
+      await p.evaluate(x => { location.hash = x; }, h);
+      await p.waitForTimeout(260);
+    }
+  };
+  /* Navegación SUAVE: cambia de pantalla sin recargar. La necesitan las
+   * pruebas que miden justamente lo que el estado recuerda entre pantallas —
+   * recargar borraría lo que se está midiendo. */
+  const irSuave = async (h) => {
     await p.evaluate(x => { location.hash = x; }, h);
     await p.waitForTimeout(260);
   };
@@ -315,8 +328,8 @@ let ok = 0, mal = 0;
 
   await paso('volver al mismo machote conserva la hoja donde ibas', async () => {
     await ir('#/m/M-1041'); await hoja('Instalación');
-    await ir('#/rev/M-1041');
-    await p.evaluate(() => { location.hash = '#/m/M-1041'; }); await p.waitForTimeout(260);
+    await irSuave('#/rev/M-1041');
+    await irSuave('#/m/M-1041');
     const on = await p.locator('.pestana.on').textContent();
     if (!/Instalación/.test(on)) throw new Error('cayó en: ' + on);
   });
@@ -473,6 +486,153 @@ let ok = 0, mal = 0;
     const desp = await p.textContent('.fija .mono');
     if (antes === desp) throw new Error('cambiarlo no movió el precio: ' + antes);
     console.log('   con tc=18:', antes.trim(), '→ con factor 0.10:', desp.trim());
+  });
+
+  // ══ V1.06 · edición estructural y moneda ═════════════════════════════
+
+  await paso('agregar un renglón mueve el total', async () => {
+    await ir('#/m/M-1042'); await hoja('Adecuación');
+    const antes = await p.textContent('.fija .mono');
+    const n0 = await p.locator('[data-cel$=":descripcion"]').count();
+    await p.click('[data-add]'); await p.waitForTimeout(280);
+    if (await p.locator('[data-cel$=":descripcion"]').count() !== n0 + 1)
+      throw new Error('no se agregó el renglón');
+    // El renglón nace sin precio, así que el total no cambia todavía: lo que
+    // debe cambiar es el conteo de huecos.
+    const pu = p.locator('[data-cel$=":pu"]').last();
+    await pu.fill('5000'); await pu.dispatchEvent('change');
+    await p.waitForTimeout(300);
+    const desp = await p.textContent('.fija .mono');
+    if (antes === desp) throw new Error('el total no se movió: ' + antes);
+    console.log('   ', antes.trim(), '→', desp.trim());
+  });
+
+  await paso('duplicar un renglón lo copia justo debajo', async () => {
+    await ir('#/m/M-1042'); await hoja('Adecuación');
+    const desc0 = await p.locator('[data-cel$=":descripcion"]').first().inputValue();
+    const n0 = await p.locator('[data-cel$=":descripcion"]').count();
+    await p.locator('[data-dup]').first().click(); await p.waitForTimeout(280);
+    const todas = await p.locator('[data-cel$=":descripcion"]').all();
+    if (todas.length !== n0 + 1) throw new Error('no duplicó');
+    if (await todas[1].inputValue() !== desc0)
+      throw new Error('la copia no quedó debajo del original');
+  });
+
+  await paso('subir y bajar reordena los renglones', async () => {
+    await ir('#/m/M-1042'); await hoja('Adecuación');
+    const d = () => p.locator('[data-cel$=":descripcion"]');
+    const a0 = await d().nth(0).inputValue(), a1 = await d().nth(1).inputValue();
+    if (a0 === a1) throw new Error('los dos primeros renglones son iguales, la prueba no distingue');
+    await p.locator('[data-mov$="|1"]').first().click(); await p.waitForTimeout(280);
+    if (await d().nth(0).inputValue() !== a1 || await d().nth(1).inputValue() !== a0)
+      throw new Error('bajar no reordenó');
+    await p.locator('[data-mov$="|-1"]').nth(1).click(); await p.waitForTimeout(280);
+    if (await d().nth(0).inputValue() !== a0) throw new Error('subir no lo regresó');
+  });
+
+  await paso('renombrar una sección persiste en su pestaña', async () => {
+    await ir('#/m/M-1041'); await hoja('Suministro');
+    const campo = p.locator('[data-cel^="nom:"]');
+    await campo.fill('Obra eléctrica en cortina');
+    await campo.dispatchEvent('change'); await p.waitForTimeout(300);
+    const t = await p.locator('.pestana.on').textContent();
+    if (!/Obra eléctrica/.test(t)) throw new Error('la pestaña dice: ' + t);
+    await hoja('DESGLOSE');
+    if ((await p.textContent('#hoja')).indexOf('Obra eléctrica') < 0)
+      throw new Error('no llegó al RESUMEN POR SECCIÓN');
+  });
+
+  await paso('mover una sección cambia su ranura en el RESUMEN', async () => {
+    await ir('#/m/M-1041'); await hoja('DESGLOSE');
+    // OJO: hay dos tablas `.rejilla.ancha` en el DESGLOSE. La ranura vive en la
+    // de RESUMEN POR SECCIÓN, y su segunda celda es el NOMBRE de la sección.
+    const ranura1 = () => p.locator('#porSeccion tbody tr').first().locator('td').nth(1).textContent();
+    const antes = (await ranura1()).trim();
+    await hoja('Suministro');
+    await p.locator('[data-movsec$="|1"]').first().click(); await p.waitForTimeout(320);
+    await hoja('DESGLOSE');
+    const desp = (await ranura1()).trim();
+    if (antes === desp) throw new Error('la ranura 1 no cambió: ' + antes);
+    console.log('   ranura 1:', antes, '→', desp);
+  });
+
+  await paso('duplicar una sección la deja al lado, marcada como copia', async () => {
+    await ir('#/m/M-1041');
+    const n0 = await p.locator('.pestana:not(.mas)').count();
+    await hoja('Suministro');
+    await p.click('[data-dupsec]'); await p.waitForTimeout(320);
+    if (await p.locator('.pestana:not(.mas)').count() !== n0 + 1) throw new Error('no duplicó');
+    const on = await p.locator('.pestana.on').textContent();
+    if (!/copia/.test(on)) throw new Error('la copia no se llama copia: ' + on);
+  });
+
+  // Hallazgo #5: el machote tiene diez ranuras y el USD de calbee tiene once.
+  // La herramienta DEJA pasar de diez -no le voy a impedir al negocio lo que
+  // ya hace- pero lo marca como hallazgo duro, porque el importe de la de más
+  // no llega al precio y el Excel no avisa.
+  await paso('pasar de diez secciones se permite pero bloquea', async () => {
+    await ir('#/m/M-1042');
+    for (let i = 0; i < 12; i++) {
+      if (await p.locator('.pestana:not(.mas)').count() > 11) break;
+      await p.click('[data-nueva]'); await p.waitForTimeout(90);
+    }
+    const n = await p.locator('.pestana:not(.mas)').count();
+    if (n <= 11) throw new Error('no dejó pasar de diez: ' + n);
+    if (await p.locator('.pestana.fuera').count() === 0)
+      throw new Error('no marcó la pestaña de más');
+    await irSuave('#/rev/M-1042');
+    const t = await p.textContent('#vista');
+    if (!/Más secciones de las que caben/.test(t)) throw new Error('el revisador no lo reportó');
+    if (!/ranura por POSICIÓN|por POSICIÓN/.test(t)) throw new Error('no explica por qué importa');
+    console.log('   ', n - 1, 'secciones · marcada y bloqueada');
+  });
+
+  await paso('la unidad admite catálogo y texto libre', async () => {
+    await ir('#/m/M-1042'); await hoja('Adecuación');
+    const u = p.locator('[data-cel$=":unidad"]').first();
+    if (await u.evaluate(e => e.tagName) !== 'INPUT')
+      throw new Error('sigue siendo un select: no deja escribir "tramo de 6 m"');
+    if (!await u.getAttribute('list')) throw new Error('sin catálogo sugerido');
+    await u.fill('tramo de 6 m'); await u.dispatchEvent('change'); await p.waitForTimeout(280);
+    if (await p.locator('[data-cel$=":unidad"]').first().inputValue() !== 'tramo de 6 m')
+      throw new Error('no guardó el texto libre');
+  });
+
+  await paso('cambiar la moneda de un renglón convierte el total', async () => {
+    await ir('#/m/M-1042'); await hoja('Adecuación');
+    const antes = await p.textContent('.fija .mono');
+    // Ojo: los renglones de mano de obra TAMBIÉN tienen moneda, y los que van
+    // en cero están plegados. Hay que apuntar a una partida y que sea visible.
+    const mon = p.locator('[data-cel*=":partidas:"][data-cel$=":moneda"]:visible').first();
+    await mon.selectOption('USD'); await p.waitForTimeout(320);
+    const desp = await p.textContent('.fija .mono');
+    if (antes === desp) throw new Error('no convirtió: ' + antes);
+    const n = parseFloat(antes.replace(/[^0-9.]/g, '')), d = parseFloat(desp.replace(/[^0-9.]/g, ''));
+    if (!(d > n)) throw new Error('un renglón en USD debería subir el total en MXN: ' + antes + ' → ' + desp);
+    console.log('   ', antes.trim(), '→', desp.trim());
+  });
+
+  await paso('la moneda nace de la empresa y avisa si no coincide', async () => {
+    await ir('#/m/M-1041'); await hoja('DESGLOSE');
+    const emp = p.locator('[data-cel="empresa_id"]');
+    if (await emp.count() === 0) throw new Error('no hay selector de empresa');
+    if (await p.locator('[data-cel="moneda"]').inputValue() !== 'MXN')
+      throw new Error('Servicios FTS debería nacer en MXN');
+    await emp.selectOption('6'); await p.waitForTimeout(320);
+    if (await p.locator('[data-cel="moneda"]').inputValue() !== 'USD')
+      throw new Error('al pasar a FTS USA la moneda debió seguir a la empresa');
+    await p.locator('[data-cel="moneda"]').selectOption('MXN'); await p.waitForTimeout(320);
+    if ((await p.textContent('#hoja')).indexOf('factura en USD') < 0)
+      throw new Error('no avisó que la moneda no es la de la empresa');
+  });
+
+  await paso('convertir sin decir de dónde salió el tipo de cambio se advierte', async () => {
+    await ir('#/m/M-1043'); await hoja('DESGLOSE');
+    await p.fill('[data-cel="tc"]', '18');
+    await p.dispatchEvent('[data-cel="tc"]', 'change'); await p.waitForTimeout(300);
+    await irSuave('#/rev/M-1043');
+    if (!/sin decir de dónde salió/.test(await p.textContent('#vista')))
+      throw new Error('no lo advirtió');
   });
 
   // ── Diseño ───────────────────────────────────────────────────────────

@@ -295,11 +295,41 @@
         : { detalle: 'No hay ni una partida ni un renglón de mano de obra con importe.' }
     },
     {
+      // MACHOTE — la tabla RESUMEN del Excel tiene diez filas de sección y de
+      // ahí sale el precio. El USD de calbee 2026 tiene ONCE hojas de sección:
+      // la once no llega al precio y el Excel no avisa. La herramienta SÍ deja
+      // pasar de diez -para no impedir lo que el negocio ya hace- pero lo
+      // marca como hallazgo duro, porque es dinero que se pierde en silencio.
       destino: () => ({ tab: 'secc' }),
       id: 'exceso-secciones', severidad: 'dura', area: 'Estructura',
       titulo: 'Más secciones de las que caben en el machote',
       evaluar: (m) => secs(m).length > C.MAX_SECCIONES
-        ? { detalle: 'El machote tiene ' + C.MAX_SECCIONES + ' ranuras fijas de sección y aquí hay ' + secs(m).length + '. No cabría al exportarlo.' }
+        ? { detalle: 'Hay ' + secs(m).length + ' secciones y el machote tiene ' + C.MAX_SECCIONES +
+                     ' ranuras. Las ranuras se llenan por POSICIÓN, así que a partir de la ' +
+                     (C.MAX_SECCIONES + 1) + ' el importe no llega al precio. Reordena o consolida.',
+            items: secs(m).slice(C.MAX_SECCIONES).map((x, i) =>
+              'Ranura ' + (C.MAX_SECCIONES + i + 1) + ': ' + (x.nombre || '(sin nombre)')) }
+        : null
+    },
+    {
+      // Si se convierte de moneda, hay que poder auditar de dónde salió el
+      // tipo de cambio tres meses después.
+      destino: () => ({ tab: 'gen' }),
+      id: 'tc-sin-origen', severidad: 'blanda', area: 'Moneda',
+      titulo: 'Tipo de cambio sin decir de dónde salió',
+      evaluar: (m, c) => (c.mezclaMoneda && Number(m.tc) > 0 && !m.tc_fuente)
+        ? { detalle: 'Se está convirtiendo a ' + Number(m.tc).toFixed(2) +
+                     ' y no dice si es el DOF, el FIX, el del banco o uno acordado. ' +
+                     'En tres meses nadie va a poder reconstruir el precio.' }
+        : null
+    },
+    {
+      destino: () => ({ tab: 'gen' }),
+      id: 'moneda-contra-empresa', severidad: 'info', area: 'Moneda',
+      titulo: 'La moneda no es la de la empresa',
+      evaluar: (m) => (m.moneda && m.moneda !== C.monedaPorDefecto(m))
+        ? { detalle: C.empresaDe(m).corto + ' factura en ' + C.monedaPorDefecto(m) +
+                     ' y esta cotización va en ' + m.moneda + '. Puede ser correcto; confírmalo.' }
         : null
     },
     {

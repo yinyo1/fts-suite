@@ -379,3 +379,30 @@ label.row { min-height: var(--toque); }
 .leyenda .mu-cel    { border: 1px solid var(--linea); background: var(--fondo); }
 .leyenda .mu-calc   { background: var(--papel); border-left: 2px solid #c8cdd2; }
 .leyenda .mu-pisado { background: #fff8e5; border: 1px solid #d9a800; }
+
+/* ── Acciones de renglón y de sección ─────────────────────────────────────
+ * Botones chicos pero tocables: 44 px de área aunque el glifo sea de 13. */
+.ico { border: 1px solid var(--linea); background: var(--fondo); color: var(--suave);
+       border-radius: 7px; font-size: 13px; line-height: 1; cursor: pointer;
+       min-width: var(--toque); min-height: var(--toque); width: auto;
+       padding: 0 8px; }
+.ico:hover:not([disabled]) { border-color: #b9b9b9; color: var(--tinta); }
+.ico[disabled] { opacity: .3; cursor: not-allowed; }
+.ico.peligro { color: var(--rojo); border-color: #f0c8cc; }
+.accsec { display: inline-flex; gap: 4px; margin-left: auto; flex: 0 0 auto; }
+table.rejilla td.acc { white-space: nowrap; }
+table.rejilla td.acc .ico { min-width: 36px; min-height: 36px; padding: 0 6px; }
+
+/* Una sección fuera de las diez ranuras del machote se marca en su pestaña:
+ * el USD de calbee tiene once y la de más no llega al precio. */
+.pestana.fuera { border-color: var(--rojo); color: var(--rojo); }
+.pestana.fuera::after { content: ' ⚠'; }
+
+@media (max-width: 720px) {
+  /* En tarjeta, las acciones van en una fila propia y con área completa. */
+  table.rejilla.tarjetas td.acc { justify-content: flex-end; gap: 6px;
+                                  padding-top: 8px; }
+  table.rejilla.tarjetas td.acc .ico { min-width: var(--toque); min-height: var(--toque); }
+  .nomsec { align-items: flex-start; }
+  .accsec { margin-left: 0; }
+}
