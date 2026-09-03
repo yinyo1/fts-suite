@@ -341,6 +341,140 @@ let ok = 0, mal = 0;
     await p.setViewportSize({ width: 380, height: 780 });
   });
 
+  // ══ V1.05 · captura contra cálculo ═══════════════════════════════════
+  //
+  // El hallazgo de la auditoría: la celda editable era transparente y sólo
+  // sacaba borde al pasar el mouse, que en un teléfono no existe. En el
+  // dispositivo donde más se captura, la distinción no estaba.
+
+  await paso('lo que se captura y lo que se calcula se ven distinto', async () => {
+    await ir('#/m/M-1041'); await hoja('Suministro');
+    const r = await p.evaluate(() => {
+      const cel = document.querySelector('.rejilla .cel:not(.pisado)');
+      const cal = document.querySelector('.rejilla td.calc');
+      if (!cel || !cal) return { falta: !cel ? 'celda de captura' : 'celda calculada' };
+      const a = getComputedStyle(cel), b = getComputedStyle(cal);
+      const marca = getComputedStyle(cal, '::after');
+      return { bordeCel: a.borderTopWidth, fondoCel: a.backgroundColor,
+               fondoCal: b.backgroundColor, barraCal: marca.width,
+               editableCal: !!cal.querySelector('input,select') };
+    });
+    if (r.falta) throw new Error('no encontré ' + r.falta);
+    if (r.bordeCel === '0px') throw new Error('la celda de captura no tiene borde');
+    if (r.fondoCel === r.fondoCal) throw new Error('mismo fondo: ' + r.fondoCel);
+    if (r.barraCal === '0px' || r.barraCal === 'auto')
+      throw new Error('la celda calculada no trae su marca de fórmula');
+    if (r.editableCal) throw new Error('una celda calculada tiene campo editable dentro');
+    console.log('   captura borde', r.bordeCel, '· calculado sin caja + barra de', r.barraCal);
+  });
+
+  // La distinción no puede ser sólo color: quien no los distingue tiene que
+  // ver la diferencia igual.
+  await paso('la distinción no depende sólo del color', async () => {
+    await ir('#/m/M-1041'); await hoja('Suministro');
+    const r = await p.evaluate(() => {
+      const cel = document.querySelector('.rejilla .cel:not(.pisado)');
+      const cal = document.querySelector('.rejilla td.calc');
+      return { bordeCel: getComputedStyle(cel).borderTopWidth,
+               bordeCal: getComputedStyle(cal).borderLeftWidth,
+               barra: getComputedStyle(cal, '::after').width,
+               radioCel: getComputedStyle(cel).borderTopLeftRadius };
+    });
+    // Tres señales distintas del color: caja con borde, esquinas redondeadas,
+    // y la barra de fórmula del lado izquierdo del derivado.
+    if (r.bordeCel === '0px' || r.radioCel === '0px')
+      throw new Error('la caja de captura perdió su forma');
+    if (r.barra === '0px') throw new Error('el derivado perdió su barra');
+  });
+
+  await paso('un derivado no se puede editar por accidente', async () => {
+    await ir('#/m/M-1041'); await hoja('Suministro');
+    const n = await p.locator('.rejilla td.calc input, .rejilla td.calc select').count();
+    if (n) throw new Error(n + ' celda(s) calculada(s) con campo editable dentro');
+  });
+
+  await paso('al teclear, el derivado del renglón cambia sin robar el foco', async () => {
+    await ir('#/m/M-1041'); await hoja('Suministro');
+    const campo = p.locator('.rejilla.tarjetas tr:visible [data-cel$=":qty"]').first();
+    await campo.click();
+    const antes = await p.evaluate(() => {
+      const tr = document.activeElement.closest('tr');
+      return tr.querySelector('td.calc').textContent.trim();
+    });
+    await campo.type('9');            // teclea de verdad, sin blur
+    await p.waitForTimeout(220);
+    const r = await p.evaluate(() => {
+      const foco = document.activeElement;
+      const tr = foco.closest('tr');
+      return { total: tr ? tr.querySelector('td.calc').textContent.trim() : null,
+               sigueEnfocado: foco.matches('[data-cel$=":qty"]'),
+               cursor: foco.selectionStart };
+    });
+    if (!r.sigueEnfocado) throw new Error('perdió el foco al teclear');
+    if (r.total === antes) throw new Error('el derivado no se movió: ' + antes);
+    console.log('   ', antes, '→', r.total, '· foco intacto');
+  });
+
+  await paso('el derivado que cambió parpadea, y sólo ese', async () => {
+    await ir('#/m/M-1041'); await hoja('Suministro');
+    const campo = p.locator('.rejilla.tarjetas tr:visible [data-cel$=":qty"]').first();
+    await campo.click(); await campo.type('7');
+    await p.waitForTimeout(120);
+    const n = await p.locator('td.calc.cambio').count();
+    if (n === 0) throw new Error('ninguna celda marcó el cambio');
+    const total = await p.locator('td.calc').count();
+    if (n === total) throw new Error('parpadearon todas (' + n + '), no sólo las que cambiaron');
+    console.log('   ', n, 'de', total, 'celdas derivadas marcaron el cambio');
+  });
+
+  await paso('el margen pisado se ve distinto y dice cuál le tocaría', async () => {
+    await ir('#/m/M-1041'); await hoja('Instalación');
+    const pis = p.locator('.cel.pisado').first();
+    if (await p.locator('.cel.pisado').count() === 0) throw new Error('no marcó ninguno');
+    const r = await p.evaluate(() => {
+      const a = document.querySelector('.cel.pisado');
+      const b = document.querySelector('.cel:not(.pisado)');
+      const marca = document.querySelector('.pisado-marca');
+      return { fondoPis: getComputedStyle(a).backgroundColor,
+               fondoNor: getComputedStyle(b).backgroundColor,
+               peso: getComputedStyle(a).fontWeight,
+               marca: marca ? marca.textContent.trim() : null };
+    });
+    if (r.fondoPis === r.fondoNor) throw new Error('mismo fondo que un margen normal');
+    if (!r.marca || !/≠/.test(r.marca)) throw new Error('sin marca de texto: ' + r.marca);
+    console.log('   pisado', r.fondoPis, '· marca "' + r.marca + '"');
+  });
+
+  await paso('la leyenda explica las tres señales', async () => {
+    await ir('#/m/M-1041'); await hoja('Suministro');
+    const t = await p.textContent('.leyenda');
+    for (const x of ['se captura', 'lo calcula la hoja', 'margen escrito a mano'])
+      if (t.indexOf(x) < 0) throw new Error('falta: ' + x);
+  });
+
+  // El factor de protección sólo mueve el precio si hay renglones en OTRA
+  // moneda Y hay tipo de cambio declarado. M-1043 mezcla monedas pero nace con
+  // tc = 0, que es justo lo que el revisador reporta como hallazgo duro: hay
+  // que declararlo primero.
+  await paso('el factor de protección se captura y afecta la conversión', async () => {
+    await ir('#/m/M-1043'); await hoja('DESGLOSE');
+    if (await p.locator('[data-cel="factor_proteccion"]').count() === 0)
+      throw new Error('no está en la pantalla');
+
+    await p.fill('[data-cel="tc"]', '18');
+    await p.dispatchEvent('[data-cel="tc"]', 'change');
+    await p.waitForTimeout(280);
+    const antes = await p.textContent('.fija .mono');
+    const tcAntes = await p.textContent('td.calc:near(:text("TC efectivo"))').catch(() => null);
+
+    await p.fill('[data-cel="factor_proteccion"]', '0.10');
+    await p.dispatchEvent('[data-cel="factor_proteccion"]', 'change');
+    await p.waitForTimeout(280);
+    const desp = await p.textContent('.fija .mono');
+    if (antes === desp) throw new Error('cambiarlo no movió el precio: ' + antes);
+    console.log('   con tc=18:', antes.trim(), '→ con factor 0.10:', desp.trim());
+  });
+
   // ── Diseño ───────────────────────────────────────────────────────────
   await paso('nada desborda a 380 px', async () => {
     for (const h of ['#/', '#/m/M-1041', '#/rev/M-1044', '#/orden/O-9002', '#/ap/M-1041']) {

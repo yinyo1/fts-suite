@@ -64,7 +64,7 @@ versión es peor que no tener indicador.
 | `js/reglas.js` | 28 reglas en un arreglo de configuración, separadas del motor que las corre. |
 | `js/demo.js` | Datos de ejemplo. Lo que viene del machote real va marcado `REAL`; lo inventado, `SUPUESTO`. |
 | `js/app.js` | Vistas y ruteo. |
-| `tests/pruebas-navegador.js` | 34 pruebas de navegador. |
+| `tests/pruebas-navegador.js` | 42 pruebas de navegador. |
 
 ## Cómo se calcula el precio
 
@@ -103,6 +103,27 @@ cuántos hay, y nada de lo que se toca mide menos de 44 px. En pantalla ancha
 vuelve a ser la retícula completa. Hay pruebas para las dos formas.
 
 Reproducir el Excel en un teléfono habría sido fidelidad mal entendida.
+
+## Captura contra cálculo
+
+En Excel se sabe qué celda es fórmula porque la barra la muestra. Aquí no había
+ninguna señal: la celda editable era transparente y sólo sacaba borde al pasar
+el mouse — que **en un teléfono no existe**. En el dispositivo donde más se
+captura, la distinción no estaba.
+
+Ahora se distinguen por **tres cosas a la vez**, no sólo por color, para que
+siga sirviendo sin distinguir colores:
+
+| | forma | fondo | marca |
+|---|---|---|---|
+| **se captura** | caja con borde y esquinas | blanco | — |
+| **lo calcula la hoja** | sin caja | gris papel | barra de fórmula a la izquierda |
+| **margen escrito a mano** | caja con borde ámbar | ámbar | `≠ 2.5` con el valor que le tocaría |
+
+Al teclear, los derivados del renglón **se mueven al instante y el cursor no se
+pierde**: la hoja se renderiza a un nodo suelto, se comparan las celdas `.calc`
+una a una y sólo se copian las que cambiaron. Las que cambiaron parpadean medio
+segundo, y con `prefers-reduced-motion` el parpadeo se cambia por un borde.
 
 ## Cómo correr las pruebas
 
