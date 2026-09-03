@@ -1,9 +1,14 @@
 {
-  "version": "V1.04",
+  "version": "V1.05",
   "fecha": "2026-09-03",
   "modulo": "finanzas",
   "esquema": "V<mayor>.<menor de dos dígitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.05",
+      "pr": null,
+      "nota": "Sugerencias de bill tambien en Chase Cheques y Chase Tarjeta. El motor (fin/captura-sugerencias) se abrio a los tres journals y a las dos cuentas por pagar, casando siempre dentro de la misma empresa; el panel deja de excluir esos journals al pedir sugerencias. Y rowConc pasa a decidir por el VEREDICTO real antes que por el flag en_motor: una linea con candidato ya no se rotula \"no evaluada\"."
+    },
     {
       "version": "V1.04",
       "pr": null,

@@ -27,7 +27,7 @@
   // comercial/machote y DEBE coincidir con finanzas/version.json — el gate lo verifica, porque
   // una pantalla que dice una versión y un archivo que dice otra deja de ser evidencia de nada.
   // Sustituye a la numeración 0.x.y (última: 0.5.36), conservada en version.json.
-  var IP_BUILD = 'V1.04';
+  var IP_BUILD = 'V1.05';
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -270,7 +270,11 @@
         _suggPrev = {};
         state.allRows.forEach(function (r) {
           var sg = state.sugg[r._id];
-          if (sg && sg.cand && r.id != null && r.id !== opts.dropId) _suggPrev[r.id] = sg;
+          // Se preserva también la marca `pedido` (sin candidatos): saber que YA se le preguntó
+          // al server por esa línea es tan valioso como la respuesta misma — sin eso, la
+          // recarga silenciosa post-conciliación la vuelve a pedir, que es justo el gasto que
+          // R3 vino a quitar.
+          if (sg && (sg.cand || sg.pedido) && r.id != null && r.id !== opts.dropId) _suggPrev[r.id] = sg;
         });
       }
       state.error = null; state.partialLoad = null; state.loadProgress = null;
@@ -981,10 +985,16 @@
       // un hecho del motor. Un fondeo en un journal sin motor sigue siendo un fondeo.
       if (isDevolucion(r)) return 'devolucion_pend';
       if (isFondeo(r))     return 'fondeo_pend';
-      if (!enAlcanceMotor(r)) return 'noevaluada';
+      // El VEREDICTO REAL manda sobre el flag del server (V1.05). Antes 'noevaluada' se
+      // decidía antes de mirar state.sugg, así que una línea de Chase con candidato seguía
+      // rotulada "no evaluada" — negando una evaluación que sí ocurrió. Ahora el flag solo
+      // habla cuando no hay respuesta que mostrar, que es justo lo que significa: "no sabemos".
+      // Además esto se auto-corrige: el día que captura-status marque en_motor:true para
+      // Chase, aquí no hay que tocar nada.
       var s = state.sugg[r._id];
       if (s && s.cand && s.cand.candidatos && s.cand.candidatos.length) return 'condoc';
       if (s && s.cand) return 'sindoc';
+      if (!enAlcanceMotor(r)) return 'noevaluada';
       return 'pendiente';                        // batch en vuelo — transitorio, no es filtro
     }
     // Compat: rowState sigue existiendo para el filtro por columna y el export, mapeado al eje B.
@@ -1090,19 +1100,27 @@
         });
         return Promise.resolve();
       }
-      // A quién SÍ se le pregunta. Dos exclusiones nuevas, las dos por no gastar red en algo
-      // cuya respuesta ya se conoce o no puede existir:
-      //   · las que ya traen candidatos en caché (tras una recarga que los preservó) — el guard
-      //     BILL_YA_CONCILIADO revalida en el instante del write, así que una sugerencia
-      //     cacheada no puede provocar una escritura mala, y cada fila tiene su "Recargar";
-      //   · las de un journal que el server marca en_motor:false — preguntarle al motor por un
-      //     journal que no cubre no puede devolver nada (son las ~473 líneas de Chase).
-      // enAlcanceMotor() devuelve true cuando el server no manda por_journal: sin esa
-      // información no se excluye a nadie.
+      // A quién SÍ se le pregunta. Queda UNA exclusión: las que ya traen candidatos en caché
+      // (tras una recarga que los preservó) — el guard BILL_YA_CONCILIADO revalida en el
+      // instante del write, así que una sugerencia cacheada no puede provocar una escritura
+      // mala, y cada fila tiene su "Recargar".
+      //
+      // La exclusión por `en_motor:false` SE FUE (V1.05). Existía porque el motor de
+      // sugerencias solo leía el journal 61: preguntarle por Chase no podía devolver nada.
+      // Desde el 2026-09-03 lee los tres journals (61, 122, 123) y las dos cuentas por pagar
+      // (17 y 285), así que ahora sí puede contestar. El orden importó: primero se abrió el
+      // server y solo después se quitó esta exclusión — al revés, el panel habría preguntado
+      // a un motor que no sabía responder y las líneas de Chase habrían pasado de un honesto
+      // "no evaluada" a un falso "sin documento" (§8, la mitad tolerante va primero).
+      //
+      // `en_motor` sigue vivo, pero ya solo decide el ROTULO cuando no hubo evaluación —
+      // ver rowConc(), donde bajó por debajo de la lectura de state.sugg.
+      var yaPreguntada = function (r) {
+        var s = state.sugg[r._id];
+        return !!s && (!!s.cand || s.pedido === true);
+      };
       var targets = state.allRows.filter(function (r) {
-        return !r.ok && !isFondeo(r) && !isDevolucion(r) &&
-               !(state.sugg[r._id] && state.sugg[r._id].cand) &&
-               enAlcanceMotor(r);
+        return !r.ok && !isFondeo(r) && !isDevolucion(r) && !yaPreguntada(r);
       });
       if (!targets.length) return Promise.resolve();
       var ids = targets.map(function (r) { return r.id; });
@@ -1120,7 +1138,22 @@
               });
               if (document.body.contains(container)) paintTable();     // reveal progresivo del estado
               var pag = data && data.pagination;
-              if (pag && pag.has_more && ++guard < 40) { offset += LIMIT; step(); } else resolve();
+              if (pag && pag.has_more && ++guard < 40) { offset += LIMIT; step(); }
+              else {
+                // Marcar las que se PIDIERON y el server no contestó. Sin esto se vuelven a
+                // pedir en cada pasada —y hay una pasada tras cada conciliación—, que es el
+                // desperdicio que R3 vino a quitar. El server omite una línea cuando no la
+                // tiene en su universo (ya conciliada, o fuera de los journals que lee), así
+                // que la omisión es una respuesta: "de esa no sé". Se guarda como tal, con
+                // cand null, para que el estado siga cayendo en 'no evaluada' y no se invente
+                // un "sin documento" que afirmaría que se buscó.
+                targets.forEach(function (r) {
+                  if (!state.sugg[r._id] || !state.sugg[r._id].cand) {
+                    state.sugg[r._id] = { loading: false, cand: null, pedido: true };
+                  }
+                });
+                resolve();
+              }
             })
             .catch(function () { resolve(); });   // degrada: el estado queda "● Pendiente" neutral, sin romper la tabla
         }
@@ -1730,10 +1763,10 @@
             '<div class="bar"><i style="width:' + (p || 0) + '%;background:' + barc(c2) + '"></i></div>' +
             '<div class="s2cn">' + detalle + '</div>' +
             comp.html +
-            (x.en_motor ? '' : '<div class="s2cw">Lo que falta aquí es el motor de <b>sugerencias</b>: ' +
-              'no propone bills todavía, así que cada línea se busca con <b>buscar bill</b> en su fila. ' +
-              '<b>Conciliar sí funciona</b> — el motor de conciliación ya cubre este journal ' +
-              '(primera línea cerrada el 2026-09-03).</div>') +
+            (x.en_motor ? '' : '<div class="s2cw">Este journal ya está abierto de los dos lados: ' +
+              'el motor <b>propone bills</b> al desplegar la fila y <b>conciliar funciona</b> ' +
+              '(primera línea cerrada el 2026-09-03). La etiqueta viene de un dato del server ' +
+              'que todavía no se actualiza; no significa que falte nada aquí.</div>') +
             '</div>';
         }).join('');
         html += '<div class="ip-sem2 b">' +
