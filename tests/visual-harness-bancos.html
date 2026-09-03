@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HARNESS DE PRUEBA · Bancos — datos ficticios</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../finanzas/css/finanzas.css">
+<link rel="stylesheet" href="../finanzas/css/instrumentos-pago.css">
+</head>
+<body>
+
+<div style="background:#8a1c1c;color:#fff;padding:10px 16px;font:600 13px/1.4 system-ui,sans-serif;position:relative;z-index:9999">
+  ⚠ HARNESS DE PRUEBA — no es el módulo real. Todas las cifras de esta página son
+  <b>inventadas</b> y el servidor está simulado. Sirve para revisar el layout del módulo
+  Bancos en un navegador de verdad (ver tests/visual-bancos.js). No usar para nada operativo.
+</div>
+<div id="app" class="app-shell">
+  <aside class="sidebar" id="finSidebar">
+    <div class="sidebar-brand">
+      <div class="logo">F</div>
+      <div class="brand-text">FTS Suite<small>Finanzas</small></div>
+    </div>
+    <nav id="sidebarNav"></nav>
+    <div class="sidebar-user" id="sidebarUser"></div>
+  </aside>
+  <main class="main">
+    <div class="topbar">
+      <button class="nav-toggle" id="navToggle" aria-label="Menú" aria-expanded="true" aria-controls="finSidebar">
+        <span class="ham-bar"></span><span class="ham-bar"></span><span class="ham-bar"></span>
+      </button>
+      <div class="breadcrumb"><span class="block" id="bcBlock"></span>FTS Suite · <b id="bcCurrent">Dashboard</b></div>
+      <div class="topbar-actions"><span class="mono" style="font-size:12px;color:var(--muted);" id="topbarDate"></span></div>
+    </div>
+    <div id="viewContainer"></div>
+  </main>
+  <div id="sidebarBackdrop"></div>
+</div>
+
+<script>
+// ═══ STUBS — deben existir ANTES de que carguen los módulos ═══
+var HOY = new Date(Date.now() - 6 * 3600 * 1000).toISOString().slice(0, 10);
+var FILAS = [
+  { id: 9001, company_id: 1, _jid: 61, d: '2026-08-05', j: 'Jeeves', tipo: 'Egreso', ref: '[Tarjeta gastos ****4548] Europcar',
+    amt: -3511.33, mon: 'MXN', ok: true, res: 0, res_apunte: 0, wd: HOY, po: 'PO7001', bill: 'BILL3190', sb: 'PAGADA',
+    ana: 'SO11547-TOPO CHICO', ff: 'A1B2C3D4-E5F6-7890-ABCD-EF1234567890', tarj: 'Tarjeta gastos', comp: 'Esteban',
+    rs: 'Servicios FTS', art: 'Renta de auto', tk: '', ana_planes: [1, 20], ana_comp: true },
+  { id: 9002, company_id: 1, _jid: 61, d: '2026-08-06', j: 'Jeeves', tipo: 'Egreso', ref: '[Primary ****6831] Ferr',
+    amt: -1890.80, mon: 'MXN', ok: true, res: 0, res_apunte: 334.08, wd: HOY, po: 'PO7002', bill: 'BILL3100', sb: 'PAGADA',
+    ana: 'SO11737-NALCO', ff: '', tarj: 'Primary', comp: 'Felipe', rs: 'Servicios FTS', art: 'Ferretería', tk: '',
+    ana_planes: [1], ana_comp: false },
+  { id: 9003, company_id: 1, _jid: 61, d: '2026-08-05', j: 'Jeeves', tipo: 'Egreso', ref: '[Tarjeta gastos ****4548] MercadoPago',
+    amt: -54.00, mon: 'MXN', ok: true, res: 0, res_apunte: 54.00, wd: HOY, po: '', bill: '', sb: '', ana: '', ff: '',
+    tarj: 'Tarjeta gastos', comp: 'Esteban', rs: 'Servicios FTS', art: '', tk: '' },
+  { id: 9004, company_id: 1, _jid: 61, d: '2026-08-09', j: 'Jeeves', tipo: 'Ingreso', ref: '[DEVOLUCIÓN ****Inns] Luis angel',
+    amt: 860.98, mon: 'MXN', ok: false, res: 860.98, tarj: '', comp: 'Luis angel', rs: 'Servicios FTS', art: '', ana: '',
+    po: '', bill: '', sb: '', ff: '', tk: '' },
+  { id: 9005, company_id: 1, _jid: 61, d: '2026-08-31', j: 'Jeeves', tipo: 'Ingreso', ref: '[FONDEO] Credit Line',
+    amt: 168574.45, mon: 'MXN', ok: false, res: 168574.45, tarj: '', comp: '', rs: 'Servicios FTS', art: '', ana: '',
+    po: '', bill: '', sb: '', ff: '', tk: '' },
+  { id: 9006, company_id: 1, _jid: 61, d: '2026-08-27', j: 'Jeeves', tipo: 'Egreso', ref: '[Primary ****6831] PRO Ferrenl',
+    amt: -340.96, mon: 'MXN', ok: false, res: 340.96, tarj: 'Primary', comp: 'Felipe', rs: 'Servicios FTS', art: '',
+    ana: '', po: '', bill: '', sb: '', ff: '', tk: '' },
+  { id: 9007, company_id: 1, _jid: 61, d: '2026-08-28', j: 'Jeeves', tipo: 'Egreso', ref: '[Tarjeta gastos ****4548] Waalaxy',
+    amt: -177.00, mon: 'MXN', ok: false, res: 177.00, tarj: 'Tarjeta gastos', comp: 'Esteban', rs: 'Servicios FTS',
+    art: '', ana: '', po: '', bill: '', sb: '', ff: '', tk: '' },
+  { id: 9009, company_id: 1, _jid: 61, d: '2026-08-07', j: 'Jeeves', tipo: 'Egreso', ref: '[Primary ****6831] BPK',
+    amt: -2605.60, mon: 'MXN', ok: true, res: 0, wd: HOY, po: 'PO7009', bill: 'BILL3009', sb: 'PAGADA', ana: '', ff: '',
+    tarj: 'Primary', comp: 'Felipe', rs: 'Servicios FTS', art: '', tk: '' },
+  { id: 9008, company_id: 6, _jid: 123, d: '2026-09-01', j: 'Chase Ink Unlimited 9207', tipo: 'Egreso', ref: 'DLO*UBER',
+    amt: -31.88, mon: 'USD', ok: false, res: 31.88, tarj: '', comp: '', rs: 'FTS LLC', art: '', ana: '', po: '',
+    bill: '', sb: '', ff: '', tk: '' },
+  { id: 9010, company_id: 6, _jid: 122, d: '2026-08-24', j: 'BUS COMPLETE CHK', tipo: 'Ingreso',
+    ref: 'REMOTE ONLINE DEPOSIT # 1', amt: 10700.00, mon: 'USD', ok: false, res: 10700.00, tarj: '', comp: '',
+    rs: 'FTS LLC', art: '', ana: '', po: '', bill: '', sb: '', ff: '', tk: '' }
+];
+var STATUS = {
+  sources: [
+    { id: 'jeeves', co: 1, pais: 'MEX', nm: 'Jeeves Tarjeta Crédito', jt: 'journal 61', met: 'MCP nativo', st: 'ok',
+      last: 'hace 12 min', kpi: '$167,934.02', movHoy: 4, movMes: 118, run: 'OK — 4 nuevas · 0 duplicadas', main: true },
+    { id: 'buscomp', co: 6, pais: 'USA', nm: 'BUS COMPLETE CHK', jt: 'journal 122', met: 'Plaid', st: 'ok',
+      last: 'hace 25 min', kpi: '$24,250.10 USD', movHoy: 2, movMes: 201, run: 'OK — 2 nuevas' },
+    { id: 'chaseink', co: 6, pais: 'USA', nm: 'Chase Ink Unlimited 9207', jt: 'journal 123', met: 'Plaid', st: 'ok',
+      last: 'hace 25 min', kpi: '$1,482.54 USD', movHoy: 1, movMes: 163, run: 'OK — 1 nueva' }
+  ],
+  runs: [
+    { run: '2026-09-03 07:00', origen: 'schedule', rango: '30 días', nuevas: 4, dup: 12, rech: 0, status: 'ok', status_label: 'OK' },
+    { run: '2026-09-02 07:00', origen: 'schedule', rango: '30 días', nuevas: 4, dup: 9, rech: 0, status: 'ok', status_label: 'OK' }
+  ],
+  cron: { timezone: 'America/Monterrey', rules: ['0,30 7-16 * * 1-5', '0,10,20,30,40,50 17 * * 1-5', '0 18 * * 1-5'] },
+  por_journal: [
+    { journal: 61, label: 'Jeeves Tarjeta Credito', en_motor: true, post_total: 118, pre_pend: 1846 },
+    { journal: 122, label: 'BUS COMPLETE CHK', en_motor: false, post_total: 201, pre_pend: 0 },
+    { journal: 123, label: 'Chase Ink Unlimited 9207', en_motor: false, post_total: 163, pre_pend: 0 }
+  ],
+  intransit: [],
+  hoy: { en_transito: { disponible: false }, conciliable_pendiente: { total: 5 },
+         conciliadas_hoy: { total: 3, manual: 1, boton: 0, auto: 2 } },
+  metricas: null, serie: []
+};
+window.FinAuth = {
+  isValid: function () { return true; }, getToken: function () { return 'harness'; },
+  getUser: function () { return 'finanzas'; },
+  getSession: function () { return { user: 'finanzas' }; }, logout: function () {}
+};
+window.FinClient = {
+  call: function (ep, params) {
+    if (ep === '/fin/captura-status') return Promise.resolve(JSON.parse(JSON.stringify(STATUS)));
+    if (ep === '/fin/captura-transacciones') return Promise.resolve({
+      rows: JSON.parse(JSON.stringify(FILAS)),
+      pagination: { total_count: FILAS.length, truncado: false, cap: 6000 } });
+    if (ep === '/fin/captura-sugerencias') return Promise.resolve({
+      lineas: [
+        { line_id: 9006, nivel: 'sugerida', candidatos: [
+          { bill_aml_id: 111, bill_name: 'BILL3345', partner: 'Proferre', score: 0.91, monto_bill: 340.96,
+            banda: 'alta', pre_marcado: true, fecha: '2026-08-27', days_diff: 0 }] },
+        { line_id: 9007, nivel: 'sin-documento', candidatos: [] }
+      ], pagination: { has_more: false } });
+    if (ep === '/fin/captura-pendings-status') return Promise.resolve({ disponible: false });
+    return Promise.resolve({});
+  }
+};
+</script>
+
+<script src="../finanzas/js/state.js"></script>
+<script src="../finanzas/js/router.js"></script>
+<script src="../finanzas/js/company-selector.js"></script>
+<script src="../finanzas/js/modules/instrumentos-pago.js"></script>
+<script>
+try { localStorage.setItem('fts_fin_mode_instrumentos-pago', 'real'); } catch (e) {}
+document.addEventListener('DOMContentLoaded', function () {
+  window.FinRouter.init({
+    modules: [{ id: 'instrumentos-pago', name: 'Instrumentos de pago', icon: '▤', block: 'B4' }],
+    blocks: { B4: 'Centro de transacciones' }
+  });
+  window.FinRouter.navigate('instrumentos-pago');
+});
+</script>
+</body>
+</html>

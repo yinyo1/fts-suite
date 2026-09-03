@@ -22,7 +22,7 @@
   // ── config ──
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
-  var IP_BUILD = '0.5.30';                // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.35';                // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -239,12 +239,52 @@
     }
 
     // ── carga de datos ──
-    function load() {
-      state.loading = true; state.error = null; state.partialLoad = null; state.loadProgress = null; render();
+    // load(opts)
+    //   opts.quiet     — no blanquea la pantalla con el estado de carga. La tabla vieja se
+    //                    queda visible hasta que llegan los datos nuevos. Para la relectura
+    //                    post-conciliación: el usuario acaba de trabajar, y ver desaparecer la
+    //                    tabla es el peor momento para cobrarle una pantalla de carga.
+    //   opts.keepSugg  — preserva la caché de sugerencias entre cargas.
+    //   opts.dropId    — line_id (r.id) cuya sugerencia SÍ se tira (la recién conciliada).
+    function load(opts) {
+      opts = opts || {};
+      // Snapshot de sugerencias ANTES de recargar. Se indexa por r.id (el line_id de Odoo),
+      // NUNCA por _id: _id es el índice del array que ingest() reasigna en cada carga, así que
+      // restaurar por índice pegaría las sugerencias de una línea en OTRA fila si el server
+      // devuelve distinto orden o distinto número de filas. Ese fallo sería silencioso y grave.
+      var _suggPrev = null;
+      if (opts.keepSugg) {
+        _suggPrev = {};
+        state.allRows.forEach(function (r) {
+          var sg = state.sugg[r._id];
+          if (sg && sg.cand && r.id != null && r.id !== opts.dropId) _suggPrev[r.id] = sg;
+        });
+      }
+      state.error = null; state.partialLoad = null; state.loadProgress = null;
+      if (!opts.quiet) { state.loading = true; render(); }
+      // Preservar el scroll también aquí: render() reconstruye el contenedor entero y el fix
+      // de v0.5.29 solo cubre paintTable(). Mismo mecanismo, ya probado en este archivo.
+      var _scL = null;
+      try { _scL = (window.pageYOffset != null) ? window.pageYOffset : (document.scrollingElement || document.documentElement).scrollTop; } catch (e) { }
+      var _restaurarL = function () {
+        if (_scL == null) return;
+        try {
+          var el = document.scrollingElement || document.documentElement;
+          var ahora = (window.pageYOffset != null) ? window.pageYOffset : el.scrollTop;
+          if (Math.abs(ahora - _scL) > 1) { if (window.scrollTo) window.scrollTo(0, _scL); else el.scrollTop = _scL; }
+        } catch (e) { }
+      };
+      // Re-ata las sugerencias al _id NUEVO de cada fila, casando por line_id.
+      var _restaurarSugg = function () {
+        if (!_suggPrev) return;
+        state.allRows.forEach(function (r) {
+          if (r.id != null && _suggPrev[r.id]) state.sugg[r._id] = _suggPrev[r.id];
+        });
+      };
       if (state.mode === 'demo') {
         fetch(MOCK_PATH, { cache: 'no-store' })
           .then(function (r) { return r.json(); })
-          .then(function (data) { ingest(data.rows || [], data.sources || [], data.runs || [], data.cron || DEFAULT_CRON, { today: data.today || null, porJournal: data.por_journal || [], intransit: data.intransit || [], suggByRow: data.suggestions || {} }); state.preconc = data.preconc || {}; state.loading = false; try { evalSugg(); } catch (e) { if (window.console) console.warn('[ip] evalSugg demo falló (no bloquea):', e); } render(); afterData(); })
+          .then(function (data) { ingest(data.rows || [], data.sources || [], data.runs || [], data.cron || DEFAULT_CRON, { today: data.today || null, porJournal: data.por_journal || [], intransit: data.intransit || [], suggByRow: data.suggestions || {} }); state.preconc = data.preconc || {}; state.loading = false; _restaurarSugg(); try { evalSugg(); } catch (e) { if (window.console) console.warn('[ip] evalSugg demo falló (no bloquea):', e); } render(); _restaurarL(); afterData(); })
           .catch(function (e) { state.loading = false; state.error = 'No se pudo cargar el mock: ' + e.message; render(); });
         return;
       }
@@ -261,9 +301,10 @@
         // por defecto arranca el mes pasado), así que el semáforo A no se puede calcular aquí.
         ingest(txAll.rows || [], st.sources || [], st.runs || [], st.cron || DEFAULT_CRON, { today: today, porJournal: st.por_journal || [], intransit: st.intransit || [], suggByRow: {}, metricas: st.metricas || null, serie: st.serie || [] });
         state.loading = false; state.loadProgress = null;
+        _restaurarSugg();   // antes de render() y de evalSugg(): el estado ya se pinta con lo cacheado
         // carga parcial: nunca fingir que está completo → aviso visible; los agregados reflejan solo lo cargado.
         state.partialLoad = txAll.partial ? { loaded: (txAll.rows || []).length, total: (txAll.pagination && txAll.pagination.total_count) || null, reason: txAll.reason || null } : null;
-        render(); afterData();
+        render(); _restaurarL(); afterData();
         // Pieza #2: batch de sugerencias en 2o plano. try/catch DURO: pase lo que pase, evalSugg NUNCA tumba load()
         // (la tabla ya está pintada; su fallo solo deja estados neutros).
         try { evalSugg(); } catch (e) { if (window.console) console.warn('[ip] evalSugg falló (no bloquea la tabla):', e); }
@@ -385,8 +426,18 @@
       var v = t[k];
       return (v == null || v === '') ? '—' : String(v);
     }
+    // Etiquetas del filtro por columna. Seguían siendo las del eje de 5 valores muerto en
+    // v0.5.16, mientras colValueOf('ok') ya devolvía los del eje B → ninguna llave matcheaba
+    // y el `|| v` dejaba ver las crudas: 'conciliada', 'sindoc', 'pendiente', 'noevaluada'.
     function colValLabel(k, v) {
-      if (k === 'ok') { var m = { liquidado: 'Conciliado (Liquidado)', transito: 'Conciliado (En tránsito)', fondeo: 'Fondeo', devolucion: 'Devolución', sinconciliar: 'Sin conciliar' }; return m[v] || v; }
+      if (k === 'ok') {
+        var m = {
+          conciliada: 'Conciliada', parcial: 'Conciliada parcial', preconciliada: 'Pre-conciliada',
+          desconciliada: 'Desconciliada', condoc: 'Con documento', sindoc: 'Sin documento', noevaluada: 'No evaluada',
+          devolucion_pend: 'Devolución', fondeo_pend: 'Fondeo', pendiente: 'Sin conciliar'
+        };
+        return m[v] || v;
+      }
       return v;
     }
     function colFiltersPass(t) {
@@ -402,7 +453,7 @@
     function uniqueColValues(k) {
       var seen = {}, out = [];
       state.allRows.forEach(function (t) { var v = colValueOf(k, t); if (!Object.prototype.hasOwnProperty.call(seen, v)) { seen[v] = true; out.push(v); } });
-      if (k === 'ok') { var order = ['liquidado', 'transito', 'sinconciliar', 'fondeo', 'devolucion']; out.sort(function (a, b) { return order.indexOf(a) - order.indexOf(b); }); }
+      if (k === 'ok') { var order = ['conciliada', 'parcial', 'desconciliada', 'preconciliada', 'condoc', 'sindoc', 'pendiente', 'noevaluada', 'devolucion_pend', 'fondeo_pend']; out.sort(function (a, b) { return order.indexOf(a) - order.indexOf(b); }); }
       else out.sort(function (a, b) { return String(colValLabel(k, a)).toLowerCase().localeCompare(String(colValLabel(k, b)).toLowerCase()); });
       return out;
     }
@@ -838,11 +889,36 @@
       // afirmar que todo está cuadrado.
       if (r.ok) {
         var _ra = (r.res_apunte != null) ? Number(r.res_apunte) : (Number(r.res) || 0);
-        return Math.abs(_ra) < 0.005 ? 'conciliada' : 'parcial';
+        if (Math.abs(_ra) < 0.005) return 'conciliada';
+        // DESCONCILIADA — el apunte recuperó el importe COMPLETO de la línea, no un resto.
+        // Eso solo pasa cuando la conciliación se deshizo entera: se canceló el bill (o se
+        // desató a mano) y Odoo liberó la contrapartida. Pero `is_reconciled` NO puede volver
+        // a false: la receta vació la cuenta de suspense reescribiendo account_id 184→17, y ese
+        // apunte se queda en la 17 para siempre, así que Odoo nunca ve reaparecer una suspense.
+        // Es una puerta de un solo sentido POR CONSTRUCCIÓN — por eso el veredicto no puede
+        // salir de `r.ok`, tiene que salir del apunte.
+        // Caso real: línea 32555 ($54 MercadoPago) ↔ BILL3270, cancelado el 2026-08-20; el
+        // apunte 203855 quedó reconciled:false con residual 54.00 y la línea seguía en verde.
+        // Se exige res_apunte EXPLÍCITO: sin el campo (server viejo) `_ra` cae a `res`, que en
+        // una conciliada es 0 y ya salió por 'conciliada' — nunca se acusa por falta de dato.
+        if (r.res_apunte != null && Math.abs(Math.abs(_ra) - Math.abs(Number(r.amt) || 0)) < 0.005) return 'desconciliada';
+        return 'parcial';
       }
       // EJE ODOO, valor intermedio: el motor 2 dejó decidida la conciliación pero el asiento no existe.
       // Hoy no lo puebla nadie (state.preconc llega vacío) → el filtro y el chip salen en gris con 0.
       if (state.preconc && (state.preconc[r._id] || state.preconc[r.id])) return 'preconciliada';
+      // Fondeo y devolución NO esperan una factura de proveedor, así que no pueden caer en el
+      // cubo de "sin conciliar". evalSugg() ya los excluye del motor a propósito (L~927), pero
+      // sin estado propio caían al 'pendiente' del final —cuya celda dice "○ Sin conciliar"— y
+      // ese texto afirma que les falta un documento que nunca les va a faltar:
+      //   · la devolución casa contra una NOTA DE CRÉDITO, o reduce el bill original;
+      //   · el fondeo es abono de la línea de crédito y su contrapartida es el lado BBVA, que
+      //     todavía no existe en Odoo (decisión de docs/odoo-captura-bancaria.md §215: se
+      //     capturan igual, y que queden en suspense es la evidencia de que falta ese lado).
+      // Van ANTES de enAlcanceMotor porque el TIPO es un hecho del movimiento; 'noevaluada' es
+      // un hecho del motor. Un fondeo en un journal sin motor sigue siendo un fondeo.
+      if (isDevolucion(r)) return 'devolucion_pend';
+      if (isFondeo(r))     return 'fondeo_pend';
       if (!enAlcanceMotor(r)) return 'noevaluada';
       var s = state.sugg[r._id];
       if (s && s.cand && s.cand.candidatos && s.cand.candidatos.length) return 'condoc';
@@ -867,7 +943,24 @@
         var _r = Math.abs(Number(r.res_apunte != null ? r.res_apunte : r.res) || 0);
         return '<span class="ip-est tra" title="Tiene contrapartida pero el apunte de la cuenta 17 conserva saldo">◐ Conciliada parcial</span> <span class="ip-est-bill">quedan ' + money(_r) + ' sin cerrar</span>';
       }
+      if (st === 'desconciliada') {
+        // Dice lo ÚNICO que sabemos: el apunte volvió a abrirse completo. No dice "el bill se
+        // canceló" como hecho — es la causa habitual, no la única (también se desata a mano).
+        var _rd = Math.abs(Number(r.res_apunte) || 0);
+        // Texto CORTO a propósito: la revisión visual en Chromium mostró que la versión larga
+        // ocupaba 4 renglones (110 px) contra los 2-3 de sus vecinas, y "la conciliación se
+        // deshizo" repetía lo que el propio nombre del estado ya dice. La explicación completa
+        // vive en el title, que es donde no cuesta alto de fila.
+        // NO promete que se pueda volver a conciliar desde aquí. En Odoo la línea sigue con
+        // is_reconciled=true, así que el guard LINE_YA_CONCILIADA la rechazaría: hoy esto se
+        // resuelve en Odoo, no en el panel. Por eso tampoco lleva chevron de acordeón (el
+        // chevron sale con !t.ok) — ofrecer un botón que siempre falla sería peor que no darlo.
+        return '<span class="ip-est tra" title="El apunte de la cuenta 17 recuperó el importe COMPLETO: la conciliación se deshizo entera (lo habitual es que se haya cancelado el bill, pero también pudo desatarse a mano). La línea sigue marcada conciliada en Odoo porque la receta vació la cuenta de suspense y ese flag ya no puede volver atrás. Ojo: NO se puede volver a conciliar desde este panel — el guard la rechaza por ya-conciliada. Hoy se resuelve en Odoo.">⟲ Desconciliada</span> <span class="ip-est-bill">' + money(_rd) + ' abiertos · resolver en Odoo</span>';
+      }
       if (st === 'noevaluada') return '<span class="ip-est nev" title="Fuera del alcance del motor de conciliación (journal_id 61 fijo). No es que no haya factura: no se buscó.">◌ No evaluada</span>';
+      // Ninguno de los dos va en rojo: no son un error ni trabajo atorado del equipo.
+      if (st === 'devolucion_pend') return '<span class="ip-est dev-ret" title="Una devolución no casa contra un bill de proveedor: casa contra una nota de crédito, o reduce el bill original. El motor de sugerencias no la evalúa a propósito.">↩ Devolución</span> <span class="ip-est-bill">pendiente de nota de crédito</span>';
+      if (st === 'fondeo_pend')     return '<span class="ip-est fon" title="Abono de la línea de crédito. Su contrapartida es el movimiento del lado BBVA, que aún no se captura en Odoo — por eso queda en suspense.">⊕ Fondeo</span> <span class="ip-est-bill">pendiente del lado BBVA</span>';
       if (st === 'condoc')     { var c = (suggHint(r).cand) || {}; return '<span class="ip-est doc" title="El motor encontró factura candidata">◆ Con documento</span> <span class="ip-est-bill">' + esc(c.bill_name || '') + ' · ' + Math.round((c.score || 0) * 100) + '</span>'; }
       if (st === 'sindoc')     return '<span class="ip-est sinc" title="El motor evaluó y no encontró factura">○ Sin documento</span> <a class="ip-est-buscar" data-buscar="' + r._id + '">buscar bill</a>';
       return '<span class="ip-est sinc">○ Sin conciliar</span>';   // 'pendiente' — batch en vuelo
@@ -891,23 +984,34 @@
       switch (f) {
         // EJE ODOO (taxonomía 3+2). 'conciliado' incluye la parcial: la parcialidad es un matiz de la
         // celda, no un estado aparte — quien filtra "conciliado" no espera que se le escondan las parciales.
-        case 'conciliado': return st === 'conciliada' || st === 'parcial';
+        case 'conciliado': return st === 'conciliada' || st === 'parcial';   // la desconciliada NO: su apunte está abierto
         case 'preconciliado': return st === 'preconciliada';   // sin filas hasta que el motor 2 escriba
         // alias de contratos viejos (selects guardados en localStorage) — no se ofrecen ya en la UI
         case 'conciliada': case 'liquidado': case 'ok': return st === 'conciliada';
         case 'parcial':     return st === 'parcial';
+        case 'desconciliada': return st === 'desconciliada';
         case 'condoc':      return st === 'condoc';
         case 'sindoc':      return st === 'sindoc';
         case 'noevaluada':  return st === 'noevaluada';
-        // familia: todo lo que sigue pendiente de conciliar, sea cual sea el motivo
-        case 'sinconciliar': case 'pend': return !t.ok;
+        case 'fondeo':      return st === 'fondeo_pend';
+        case 'devolucion':  return st === 'devolucion_pend';
+        // familia: lo que sigue pendiente de conciliar CONTRA UN DOCUMENTO, sea cual sea el
+        // motivo. Fondeos y devoluciones quedan FUERA: no esperan documento, y meterlos aquí
+        // inflaba el cubo con trabajo que nadie va a hacer (los fondeos solos son millones).
+        // Tienen su propio chip, así que el universo sigue cuadrando y nada se esconde.
+        // La DESCONCILIADA entra aquí aunque traiga ok:true — su apunte está abierto, o sea
+        // que vuelve a ser trabajo por conciliar. Es el punto entero del estado.
+        case 'sinconciliar': case 'pend': return st === 'desconciliada' || (!t.ok && st !== 'fondeo_pend' && st !== 'devolucion_pend');
         case 'conchoy':     return t.ok === true && t.wd === hoyCst();   // requiere write_date del server
         default: return true;
       }
     }
     function matchEdad(f, t) {
       if (!f) return true;
-      if (t.ok) return true;                       // la antigüedad solo califica lo pendiente
+      // La antigüedad solo califica lo pendiente. La desconciliada trae ok:true pero cuenta
+      // como pendiente (su apunte está abierto), así que sí debe entrar a los cubos de edad —
+      // si no, al filtrar "Sin conciliar + más de 3 días" saldría siempre, en cualquier cubo.
+      if (t.ok && rowConc(t) !== 'desconciliada') return true;
       var d = diasDesde(t.d);
       if (f === 'hoy') return d <= 0;
       if (f === 'd1_3') return d >= 1 && d <= 3;
@@ -924,7 +1028,20 @@
         });
         return Promise.resolve();
       }
-      var targets = state.allRows.filter(function (r) { return !r.ok && !isFondeo(r) && !isDevolucion(r); });
+      // A quién SÍ se le pregunta. Dos exclusiones nuevas, las dos por no gastar red en algo
+      // cuya respuesta ya se conoce o no puede existir:
+      //   · las que ya traen candidatos en caché (tras una recarga que los preservó) — el guard
+      //     BILL_YA_CONCILIADO revalida en el instante del write, así que una sugerencia
+      //     cacheada no puede provocar una escritura mala, y cada fila tiene su "Recargar";
+      //   · las de un journal que el server marca en_motor:false — preguntarle al motor por un
+      //     journal que no cubre no puede devolver nada (son las ~473 líneas de Chase).
+      // enAlcanceMotor() devuelve true cuando el server no manda por_journal: sin esa
+      // información no se excluye a nadie.
+      var targets = state.allRows.filter(function (r) {
+        return !r.ok && !isFondeo(r) && !isDevolucion(r) &&
+               !(state.sugg[r._id] && state.sugg[r._id].cand) &&
+               enAlcanceMotor(r);
+      });
       if (!targets.length) return Promise.resolve();
       var ids = targets.map(function (r) { return r.id; });
       var byLine = {}; state.allRows.forEach(function (r) { byLine[r.id] = r._id; });
@@ -997,11 +1114,45 @@
         : '<div class="ip-empty">Sin movimientos con estos filtros. Ajusta el rango o la búsqueda.</div>';
       var w = q('#ip-tblwrap'); if (w) w.innerHTML = tbl;
 
-      var cnt = { liquidado: 0, transito: 0, fondeo: 0, devolucion: 0, sinconciliar: 0 };
-      rows.forEach(function (t) { cnt[rowState(t)]++; });
-      var resid = rows.reduce(function (a, t) { return rowState(t) === 'sinconciliar' ? a + (t.res || 0) : a; }, 0);   // solo lo SIN CONCILIAR suma al residual pendiente
+      // Contadores de la barra. Hasta v0.5.30 las llaves eran las del eje de 5 valores
+      // que murió en v0.5.16 (liquidado/transito/fondeo/devolucion/sinconciliar), y
+      // rowState() —alias de rowConc()— no devuelve NINGUNA de ellas: solo produce
+      // conciliada|parcial|preconciliada|noevaluada|condoc|sindoc|pendiente. Resultado:
+      // `cnt[rowState(t)]++` escribía en llaves nuevas que nadie leía, las cinco
+      // declaradas se quedaban en 0, y `resid` comparaba contra 'sinconciliar' — que
+      // tampoco existe — así que la barra decía SIEMPRE, con cualquier dato:
+      //     "N líneas · 0 conciliadas · 0 en tránsito · 0 sin conciliar · residual $0.00"
+      // mientras los chips de arriba mostraban los conteos correctos. Dos cifras
+      // contradictorias en la misma pantalla. paintChips() sí se migró en v0.5.15–17
+      // (su comentario documenta este mismo error); la barra se quedó atrás.
+      //
+      // El criterio se alinea A PROPÓSITO con paintChips(): mismo orden, mismas ramas.
+      // Si divergen, vuelven a contradecirse.
+      var cnt = { conciliadas: 0, pendientes: 0, preconciliadas: 0, fondeo: 0, devolucion: 0 };
+      rows.forEach(function (t) {
+        var st = rowConc(t);
+        if (st === 'preconciliada') cnt.preconciliadas++;
+        else if (st === 'fondeo_pend') cnt.fondeo++;
+        else if (st === 'devolucion_pend') cnt.devolucion++;
+        else if (st === 'desconciliada') cnt.pendientes++;   // ok:true, pero el apunte está abierto
+        else if (t.ok) cnt.conciliadas++;
+        else cnt.pendientes++;
+      });
+      // Residual pendiente: solo lo NO conciliado. En una conciliada, `res` es 0 en
+      // cuanto la línea sale de suspense (por eso el residual real de una parcial vive
+      // en `res_apunte`, no aquí — ver rowConc).
+      // ⚠ Suma sin separar moneda, igual que el semáforo: en una vista con journals de
+      // más de una divisa el número mezcla MXN y USD. Se hereda, no se introduce aquí.
+      // En una parcial o una desconciliada, `res` es 0 —la línea ya salió de suspense— pero el
+      // APUNTE conserva saldo: ese dinero sigue abierto y tiene que sumar, o el residual miente
+      // por omisión justo en los dos casos que más cuesta ver.
+      var resid = rows.reduce(function (a, t) {
+        var st = rowConc(t);
+        if (st === 'parcial' || st === 'desconciliada') return a + Math.abs(Number(t.res_apunte) || 0);
+        return t.ok ? a : a + (t.res || 0);
+      }, 0);
       var nSel = rows.filter(function (t) { return state.sel[t._id]; }).length;
-      var ag = q('#ip-aggs'); if (ag) ag.textContent = rows.length + ' líneas · ' + cnt.liquidado + ' conciliadas (liquidadas) · ' + cnt.transito + ' en tránsito · ' + cnt.sinconciliar + ' sin conciliar' + (cnt.fondeo ? ' · ' + cnt.fondeo + ' fondeos' : '') + (cnt.devolucion ? ' · ' + cnt.devolucion + ' devoluciones' : '') + ' · residual ' + money(resid) + (nSel ? ' · ' + nSel + ' seleccionadas' : '');
+      var ag = q('#ip-aggs'); if (ag) ag.textContent = rows.length + ' líneas · ' + cnt.conciliadas + ' conciliadas · ' + cnt.pendientes + ' sin conciliar' + (cnt.preconciliadas ? ' · ' + cnt.preconciliadas + ' pre-conciliadas' : '') + (cnt.fondeo ? ' · ' + cnt.fondeo + (cnt.fondeo === 1 ? ' fondeo' : ' fondeos') : '') + (cnt.devolucion ? ' · ' + cnt.devolucion + (cnt.devolucion === 1 ? ' devolución' : ' devoluciones') : '') + ' · residual ' + money(resid) + (nSel ? ' · ' + nSel + ' seleccionadas' : '');
 
       var bn = q('#ip-selbanner');
       if (bn) {
@@ -1348,8 +1499,16 @@
           if (state.expanded === id) state.expanded = null;
           delete state.sugg[id];
           // Releer del server: el 200 no es prueba de que el estado quedó, y las transitivas
-          // solo existen del lado de Odoo. En demo no hay a quién releerle.
-          if (state.mode === 'real') { load(); } else { paintTable(); }
+          // solo existen del lado de Odoo. Eso NO se toca (CLAUDE.md §8).
+          // Lo que sí cambia es el PRECIO de la relectura. Antes era un load() completo:
+          // blanqueaba la tabla con la pantalla de carga, tiraba state.sugg ENTERO y volvía a
+          // pedir sugerencias para TODAS las pendientes — en producción ~1,800 líneas en lotes
+          // de 200, o sea ~9 llamadas extra por cada línea conciliada. Quien concilia veinte
+          // seguidas pagaba ese ciclo veinte veces.
+          // Ahora: silenciosa (la tabla vieja sigue en pantalla), conserva las sugerencias ya
+          // evaluadas y tira solo la de la línea recién conciliada. Mismos datos y mismo
+          // criterio de verdad, sin el impuesto.
+          if (state.mode === 'real') { load({ quiet: true, keepSugg: true, dropId: row && row.id }); } else { paintTable(); }
         }, 1500);
         return;
       }
@@ -1543,11 +1702,17 @@
       // que dependen de state.sugg, y en modo real suggByRow se ingesta vacío -> los tres salían 0
       // permanentemente aunque hubiera filas en pantalla. No era un desajuste del universo: era contar
       // algo que nadie poblaba.
-      var n = { todo: uni.length, conciliado: 0, preconciliado: 0, sinconciliar: 0, conchoy: 0 };
+      var n = { todo: uni.length, conciliado: 0, preconciliado: 0, sinconciliar: 0, conchoy: 0, fondeo: 0, devolucion: 0 };
       var hoy = hoyCst();
       uni.forEach(function (t) {
-        if (rowConc(t) === 'preconciliada') { n.preconciliado++; return; }
-        if (!t.ok) { n.sinconciliar++; return; }
+        var st = rowConc(t);
+        if (st === 'preconciliada') { n.preconciliado++; return; }
+        // Cubos propios: no esperan documento, así que no son "sin conciliar". Se cuentan
+        // aparte en vez de esconderse — los cinco cubos deben sumar `todo`.
+        if (st === 'fondeo_pend')     { n.fondeo++; return; }
+        if (st === 'devolucion_pend') { n.devolucion++; return; }
+        // La desconciliada trae ok:true pero su apunte está abierto → es trabajo pendiente.
+        if (st === 'desconciliada' || !t.ok) { n.sinconciliar++; return; }
         n.conciliado++;
         if (t.wd === hoy) n.conchoy++;
       });
@@ -1556,10 +1721,15 @@
         return '<button class="ip-chip ' + (cls || '') + (act === k ? ' on' : '') + '" data-chip="' + k + '">' +
                esc(lbl) + ' <span class="ip-chipn">' + (k === '' ? n.todo : (n[k] || 0)) + '</span></button>';
       }
+      // Fondeos y devoluciones salieron del cubo rojo (no esperan documento) y entran con
+      // chip propio en GRIS: visibles y filtrables, sin gritar que hay trabajo atorado.
+      // Solo aparecen si hay filas — un "0 devoluciones" permanente sería ruido.
       var html = chip('', 'Todo') +
                  chip('sinconciliar', 'Sin conciliar', 'red') +
                  chip('conciliado', 'Conciliado', 'green') +
                  chip('preconciliado', 'Pre-conciliado', 'gray') +
+                 (n.fondeo ? chip('fondeo', 'Fondeos', 'gray') : '') +
+                 (n.devolucion ? chip('devolucion', 'Devoluciones', 'gray') : '') +
                  chip('conchoy', 'Conciliadas hoy', 'green');
       // sub-chips de antigüedad: solo tienen sentido sobre lo pendiente, y solo se muestran
       // cuando hay un chip de esa familia activo (si no, son ruido permanente).
