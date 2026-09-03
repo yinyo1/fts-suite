@@ -55,6 +55,34 @@ let ok = 0, mal = 0;
     console.log('   Factor_req', f.factor.toFixed(9), '= celda H14 del archivo');
   });
 
+  // Segunda validación, contra un archivo DISTINTO: reproducir un solo libro
+  // no prueba que el motor sea correcto, prueba que copié bien ese libro.
+  // SO11772 tiene otra mezcla (dos comisiones, materiales 1,8) y su precio CON
+  // UTILIDAD es exactamente el amount_untaxed de la orden en Odoo: 13,362.
+  await paso('el motor cuadra renglón por renglón contra SO11772', async () => {
+    const r = await p.evaluate(() => {
+      const C = window.MachoteCalc;
+      const m = { moneda: 'MXN', tc: 0, factor_proteccion: 0,
+        margenes: { programador: 4.4, mano_obra: 2.5, materiales: 1.8, servicios: 1.7 },
+        comision_fts: 0.055, comision_cliente: 0.05, margen_deseado: 0.40, escenario: 'con_utilidad',
+        secciones: [{ id: 1, nombre: 'S1',
+          mo: [{ rol: 'supervisor_sr', qty: 8.5, personas: 1, pu: 200, moneda: 'MXN' }],
+          partidas: [{ qty: 1, tipo: 'Materiales', descripcion: 'agregado', pu: 4340, moneda: 'MXN', link: 'x' }] }] };
+      const c = C.calcular(m);
+      return { costoMo: c.costoMo, costoMat: c.costoMat, ventaMo: c.ventaMo, ventaMat: c.ventaMat,
+        comFts: c.escenarios.con_utilidad.comisionFts, comCli: c.escenarios.con_utilidad.comisionCliente,
+        precioCU: c.escenarios.con_utilidad.precio, margenCU: c.escenarios.con_utilidad.margen,
+        precioMD: c.escenarios.margen_deseado.precio, utilMD: c.escenarios.margen_deseado.utilidad };
+    });
+    const esp = { costoMo: 1700, costoMat: 4340, ventaMo: 4250, ventaMat: 7812, comFts: 663,
+                  comCli: 636, precioCU: 13362, precioMD: 12014, utilMD: 4806 };
+    Object.keys(esp).forEach(k => {
+      if (Math.abs(r[k] - esp[k]) > 1) throw new Error(k + ': ' + r[k] + ' ≠ ' + esp[k] + ' del archivo');
+    });
+    if (Math.abs(r.margenCU - 0.4507) > 0.0002) throw new Error('margen ' + r.margenCU);
+    console.log('   11 renglones cuadran · precio CON UTILIDAD 13,362 = amount_untaxed de la SO en Odoo');
+  });
+
   await paso('el multiplicador de horas extras es mano de obra × 2', async () => {
     const x = await p.evaluate(() => window.MachoteCalc.margenes({ margenes: { mano_obra: 2.5 } }).extra);
     if (x !== 5) throw new Error('extra = ' + x);
