@@ -1,13 +1,15 @@
-/* ═══ Machote · vistas y ruteo ═══
+/* ═══ Machote · la hoja ═══
  *
- * Reescrito el 2026-09-03 sobre la estructura REAL del machote.
- * Ninguna vista calcula: todo número sale de MachoteCalc.
+ * Reescrito el 2026-09-03 para que la pantalla se parezca al libro de Excel
+ * en vez de a un formulario. La retícula de abajo es la del machote real,
+ * verificada en cinco cotizaciones de 2026 (SO11737, SO11738, SO11790,
+ * SO11836 y el USD de calbee): mismos encabezados, mismas doce filas de mano
+ * de obra, mismos bloques y en el mismo orden.
  *
- * Rutas:  #/            lista
- *         #/m/:id       estación 2.0 — armar el machote
- *         #/rev/:id     revisador
- *         #/orden/:id   estación 3.0 — confirmar la orden
- *         #/ap/:id      aprobación
+ * Ninguna vista calcula. Todo número sale de MachoteCalc.
+ *
+ * Rutas:  #/  lista · #/m/:id  el libro · #/rev/:id  revisión
+ *         #/orden/:id  cierre de orden · #/ap/:id  aprobación
  */
 (function (G) {
   'use strict';
@@ -18,25 +20,29 @@
   const clon = (x) => JSON.parse(JSON.stringify(x));
 
   const ST = {
+    verVacios: false,
     machotes: clon(D.MACHOTES),
     ordenes:  clon(D.ORDENES),
-    handoff: {}, confirmadas: {}, aprobaciones: {},
-    tab: 'diag', abiertos: {}, simMargen: null
+    handoff: {}, confirmadas: {},
+    hoja: 'desglose', simMargen: null
   };
 
   const esc = (s) => String(s === null || s === undefined ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  const mx  = (x, mon) => (x === null || x === undefined || !isFinite(x))
-    ? '—' : '$' + Math.round(x).toLocaleString('es-MX') + (mon ? ' ' + mon : '');
-  const pc  = (x) => (x === null || x === undefined || !isFinite(x)) ? '—' : (x * 100).toFixed(1).replace(/\.0$/, '') + '%';
-  const nn  = (x) => (x === null || x === undefined || x === '') ? '' : x;
+
+  /** El formato del machote: $ con separador de miles y sin decimales.
+   *  Un vacío se pinta como " $-  ", igual que en la hoja. */
+  const mx = (x) => (x === null || x === undefined || !isFinite(x)) ? '—'
+    : (Math.round(x) === 0 ? '$-' : '$' + Math.round(x).toLocaleString('es-MX'));
+  const mx2 = (x) => (x === null || x === undefined || !isFinite(x)) ? '—'
+    : '$' + x.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const pc = (x) => (x === null || x === undefined || !isFinite(x)) ? '—'
+    : (x * 100).toFixed(2).replace(/\.00$/, '') + '%';
+  const nn = (x) => (x === null || x === undefined || x === '') ? '' : x;
 
   const mach  = (id) => ST.machotes.find(m => m.id === id);
   const orden = (id) => ST.ordenes.find(o => o.id === id);
-
-  /** Estado de handoff creado al vuelo: si se crea sólo al pintar, todo lo que
-   *  se escriba antes del primer repintado se pierde en silencio. */
-  const hoff = (id) => ST.handoff[id] || (ST.handoff[id] = { entregables: {}, notas: '' });
+  const hoff  = (id) => ST.handoff[id] || (ST.handoff[id] = { entregables: {}, notas: '' });
 
   function toast(txt) {
     const d = document.createElement('div');
@@ -45,15 +51,28 @@
     setTimeout(() => { d.classList.remove('on'); setTimeout(() => d.remove(), 300); }, 2200);
   }
 
-  /** Escribe en el estado por ruta. Formas admitidas:
-   *   "margenes.materiales"          campo simple anidado
-   *   "s:<sid>:partidas:<i>:pu"      renglón de sección por índice
-   *   "eq:venta:<i>:pct"             integrante de un reparto */
+  /* ── Celdas ──────────────────────────────────────────────────────────
+   * Una celda es un input sin bordes hasta que se enfoca, para que la tabla
+   * se lea como una hoja y no como un formulario. */
+  const cel = (path, val, cls, ph) =>
+    '<input class="cel ' + (cls || '') + '" data-cel="' + path + '" value="' + esc(nn(val)) + '"' +
+    (ph ? ' placeholder="' + esc(ph) + '"' : '') + '>';
+  const celNum = (path, val, cls, ph) =>
+    '<input class="cel num ' + (cls || '') + '" type="number" step="any" data-cel="' + path + '" data-num' +
+    ' value="' + esc(nn(val)) + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') + '>';
+  const celSel = (path, val, ops) =>
+    '<select class="cel" data-cel="' + path + '">' +
+    ops.map(o => '<option value="' + esc(o) + '"' + (o === val ? ' selected' : '') + '>' + esc(o || '—') + '</option>').join('') +
+    '</select>';
+
+  /** Escribe por ruta. `s:<sid>:mo:<i>:campo` · `s:<sid>:partidas:<i>:campo`
+   *  `eq:<venta|ops|cli>:<i>:campo` · `nom:<sid>` · o campo anidado. */
   function setPath(m, path, val) {
     const p = path.split(':');
+    if (p[0] === 'nom') { const s = m.secciones.find(x => x.id === p[1]); if (s) s.nombre = val; return; }
     if (p[0] === 's') {
       const s = m.secciones.find(x => x.id === p[1]); if (!s) return;
-      const arr = p[2] === 'partidas' ? s.partidas : s.mo;
+      const arr = p[2] === 'mo' ? s.mo : s.partidas;
       const l = arr[parseInt(p[3], 10)]; if (!l) return;
       l[p[4]] = val; return;
     }
@@ -68,10 +87,9 @@
     o[parts[parts.length - 1]] = val;
   }
 
-  /* ── Ruteo ──────────────────────────────────────────────────────────── */
+  /* ── Ruteo ───────────────────────────────────────────────────────────── */
   function render() {
-    const h = location.hash || '#/';
-    const p = h.replace(/^#\//, '').split('/');
+    const p = (location.hash || '#/').replace(/^#\//, '').split('/');
     if (p[0] === '')      return vHome();
     if (p[0] === 'm')     return vMachote(p[1]);
     if (p[0] === 'rev')   return vRevision(p[1]);
@@ -86,7 +104,11 @@
   }
   window.addEventListener('hashchange', render);
 
-  /* ── Lista ──────────────────────────────────────────────────────────── */
+  const nivelMargen = (mg) => mg === null ? 'warn'
+    : mg < R.UMBRALES.margen_minimo_duro ? 'bad'
+    : mg < R.UMBRALES.margen_minimo_blando ? 'warn' : 'ok';
+
+  /* ── Lista ───────────────────────────────────────────────────────────── */
   function vHome() {
     top('Machote y órdenes', 'Comercial · prototipo', 'DEMO', null);
     $('#fija').innerHTML = '';
@@ -94,364 +116,388 @@
 
     const filas = ST.machotes.map(m => {
       const rev = R.revisar(m), c = rev.calc;
-      const nivel = c.costoIncompleto ? 'warn' : nivelMargen(c.margen);
       return '<a class="item" href="#/m/' + m.id + '">' +
         '<div class="grow"><strong>' + esc(m.nombre) + '</strong>' +
         '<div class="tiny">' + esc(m.cliente) + (m.so ? ' · ' + esc(m.so) : '') + ' · ' + m.id + '</div></div>' +
         '<div class="right"><span class="chip" style="background:' + est[m.estado].color + '">' + est[m.estado].label + '</span>' +
-        '<div class="tiny mono n-' + nivel + '">' + mx(c.precio, m.moneda) + ' · ' + pc(c.margen) +
-        (c.costoIncompleto ? '*' : '') + '</div>' +
+        '<div class="tiny mono n-' + (c.costoIncompleto ? 'warn' : nivelMargen(c.margen)) + '">' +
+        mx(c.precio) + ' · ' + pc(c.margen) + (c.costoIncompleto ? '*' : '') + '</div>' +
         '<div class="tiny">' + (rev.duras.length ? '⛔ ' + rev.duras.length + ' duras' : '✓ sin duras') + '</div></div></a>';
     }).join('');
 
-    const ords = ST.ordenes.map(o => {
-      const listo = !!ST.confirmadas[o.id];
-      return '<a class="item" href="#/orden/' + o.id + '">' +
-        '<div class="grow"><strong>' + esc(o.nombre) + '</strong>' +
-        '<div class="tiny">' + esc(o.cliente) + ' · ' + esc(o.so) + '</div></div>' +
-        '<div class="right"><div class="mono">' + mx(o.monto, o.moneda) + '</div>' +
-        '<div class="tiny">' + (listo ? '✓ confirmada' : 'pendiente de confirmar') + '</div></div></a>';
-    }).join('');
+    const ords = ST.ordenes.map(o =>
+      '<a class="item" href="#/orden/' + o.id + '">' +
+      '<div class="grow"><strong>' + esc(o.nombre) + '</strong>' +
+      '<div class="tiny">' + esc(o.cliente) + ' · ' + esc(o.so) + '</div></div>' +
+      '<div class="right"><div class="mono">' + mx(o.monto) + ' ' + esc(o.moneda) + '</div>' +
+      '<div class="tiny">' + (ST.confirmadas[o.id] ? '✓ confirmada' : 'pendiente') + '</div></div></a>').join('');
 
     $('#vista').innerHTML =
-      '<div class="pad"><div class="aviso">Prototipo con datos demo. El motor de precio reproduce el machote real ' +
-      '(<code>docs/comercial/MACHOTE-ESTRUCTURA-REAL.md</code>); los datos de abajo son inventados.</div>' +
-      '<h3>Estación 2.0 · armar el machote</h3>' + filas +
+      '<div class="pad"><div class="aviso">La retícula reproduce el machote real de FTS, verificada en cinco cotizaciones de 2026. ' +
+      'Los datos de las cotizaciones de abajo son demo.</div>' +
+      '<h3>Estación 2.0 · armar la cotización</h3>' + filas +
       '<h3 style="margin-top:22px">Estación 3.0 · confirmar la orden</h3>' + ords + '</div>';
   }
 
-  const nivelMargen = (mg) => mg === null ? 'warn'
-    : mg < R.UMBRALES.margen_minimo_duro ? 'bad'
-    : mg < R.UMBRALES.margen_minimo_blando ? 'warn' : 'ok';
-
-  /* ── Estación 2.0 ───────────────────────────────────────────────────── */
-  const TABS = [
-    { id: 'diag', label: 'Diagnóstico' },
-    { id: 'secc', label: 'Secciones' },
-    { id: 'gen',  label: 'Márgenes' },
-    { id: 'com',  label: 'Comisiones' },
-    { id: 'sim',  label: 'Precio' }
-  ];
-
+  /* ── El libro ────────────────────────────────────────────────────────── */
   function vMachote(id) {
     const m = mach(id); if (!m) { location.hash = '#/'; return; }
-    top(m.cliente, m.id + ' · ' + D.ESTADOS[m.estado].label, 'MACHOTE', '#/');
+    // Al cambiar de cotización se vuelve al DESGLOSE: arrastrar la hoja
+    // abierta de la anterior deja al analista en una sección que no pidió.
+    if (ST.libroAbierto !== id) { ST.hoja = 'desglose'; ST.libroAbierto = id; }
+    const c = C.calcular(m);
+    top(m.cliente, m.id + (m.so ? ' · ' + m.so : ''), 'MACHOTE', '#/');
+
+    const hojas = [{ id: 'desglose', label: 'DESGLOSE COTIZACIÓN' }]
+      .concat(m.secciones.map(s => ({ id: s.id, label: s.nombre || 'SECCIÓN' })));
+    if (!hojas.some(h => h.id === ST.hoja)) ST.hoja = 'desglose';
+
     $('#vista').innerHTML =
-      '<div class="pad"><h2>' + esc(m.nombre) + '</h2>' +
-      '<div class="pasos" id="tabs">' + TABS.map(t =>
-        '<button class="paso' + (t.id === ST.tab ? ' on' : '') + '" data-tab="' + t.id + '">' + t.label + '</button>').join('') +
-      '</div><div id="pane"></div></div>';
-    $('#tabs').onclick = (e) => {
-      const b = e.target.closest('[data-tab]'); if (!b) return;
-      ST.tab = b.dataset.tab; vMachote(id);
+      '<div class="libro">' +
+      '<div class="hojas" id="hojas">' + hojas.map(h =>
+        '<button class="pestana' + (h.id === ST.hoja ? ' on' : '') + '" data-hoja="' + esc(h.id) + '">' +
+        esc(h.label) + '</button>').join('') +
+        (m.secciones.length < C.MAX_SECCIONES
+          ? '<button class="pestana mas" data-nueva="1" title="Nueva sección">+</button>' : '') +
+      '</div><div id="hoja"></div></div>';
+
+    $('#hojas').onclick = (e) => {
+      const b = e.target.closest('[data-hoja]');
+      if (b) { ST.hoja = b.dataset.hoja; return vMachote(id); }
+      if (e.target.closest('[data-nueva]')) {
+        m.secciones.push({ id: 's-' + Date.now(), nombre: 'SECCION ' + (m.secciones.length + 1), mo: [], partidas: [] });
+        ST.hoja = m.secciones[m.secciones.length - 1].id; return vMachote(id);
+      }
     };
-    pintarPane(m); barraFija(m); enlazar(m);
+    pintarHoja(m);
+    barra(m, c);
   }
 
-  function pintarPane(m) {
+  function pintarHoja(m) {
     const c = C.calcular(m);
-    $('#pane').innerHTML =
-      ST.tab === 'diag' ? paneDiag(m) :
-      ST.tab === 'secc' ? paneSecc(m, c) :
-      ST.tab === 'gen'  ? paneGen(m, c) :
-      ST.tab === 'com'  ? paneCom(m, c) : paneSim(m, c);
+    const s = m.secciones.find(x => x.id === ST.hoja);
+    $('#hoja').innerHTML = s ? hojaSeccion(m, s, c) : hojaDesglose(m, c);
     enlazar(m);
   }
 
-  function paneDiag(m) {
-    const t = D.TIPOS_PROYECTO.find(x => x.id === (m.diagnostico || {}).tipo);
-    const r = (m.diagnostico || {}).respuestas || {};
-    return '<div class="f"><label>Tipo de proyecto</label><select data-bind="diagnostico.tipo">' +
-      '<option value="">— elige —</option>' +
-      D.TIPOS_PROYECTO.map(x => '<option value="' + x.id + '"' + (x.id === (m.diagnostico || {}).tipo ? ' selected' : '') + '>' +
-        x.icono + ' ' + x.label + '</option>').join('') + '</select></div>' +
-      '<div class="aviso tiny">Este cuestionario es un supuesto: el machote de Excel no lo tiene. Cada pregunta apunta a un costo que suele descubrirse en obra.</div>' +
-      (!t ? '<div class="vacio">Elige el tipo para ver las preguntas.</div>' :
-        t.preguntas.map(q =>
-          '<div class="f"><label>' + (q.critica ? '<span class="chip bad">crítica</span> ' : '') + esc(q.texto) + '</label>' +
-          '<input data-bind="diagnostico.respuestas.' + q.id + '" value="' + esc(r[q.id] || '') + '" placeholder="' + esc(q.implica) + '">' +
-          '<div class="tiny">Si no se responde: ' + esc(q.riesgo_si_no) + '</div></div>').join(''));
-  }
+  /* ── Hoja de sección ─────────────────────────────────────────────────── */
+  function hojaSeccion(m, s, c) {
+    const cs = c.secciones.find(x => x.id === s.id) || {};
+    const mg = c.margenes;
 
-  function paneSecc(m, c) {
-    return m.secciones.map((s) => {
-      const cs = c.secciones.find(x => x.id === s.id) || {};
-      return '<div class="wg"><div class="row"><div class="grow">' +
-        '<input data-bind="s-nombre:' + s.id + '" value="' + esc(s.nombre) + '" style="font-weight:600">' +
-        '<div class="tiny mono">costo ' + mx(cs.costo, m.moneda) + ' · venta ' + mx(cs.venta, m.moneda) +
-        ' · ' + Math.round(cs.horas || 0) + ' h-hombre</div></div></div>' +
+    // Bloque de encabezado: las once filas de la izquierda y la tabla de
+    // márgenes de la derecha, tal como están en la hoja.
+    const izq = [
+      ['Mano de obra', mx(cs.costoMo)],
+      ['Materiales y servicio', mx(cs.costoMat)],
+      ['Costos Sumados (Mat, Servicio, Mano de obra)', mx2(cs.costo)],
+      ['', ''],
+      ['Comisiones CLIENTE', mx(cs.venta ? c.escenario.comisionFts * (cs.venta / (c.venta || 1)) : 0)],
+      ['Comisiones FTS', mx(cs.venta ? c.escenario.comisionCliente * (cs.venta / (c.venta || 1)) : 0)],
+      ['Costos totales (Cuanto le cuesta a FTS?)', mx(cs.costo + (c.escenario.comisionFts + c.escenario.comisionCliente) * (cs.venta / (c.venta || 1)))],
+      ['Precio de Venta FTS (Antes de comisiones)', mx(cs.venta)],
+      ['Precio de Venta a cliente (Despues de comisiones)', mx2(cs.esc ? cs.esc.con_utilidad.precio : null)],
+      ['Utilidad', mx2((cs.esc ? cs.esc.con_utilidad.precio : 0) - cs.costo)],
+      ['% Utilidad Obtenido', pc(cs.margenObtenido)]
+    ].map(r => '<tr><td class="et">' + esc(r[0]) + '</td><td class="vl mono">' + r[1] + '</td></tr>').join('');
 
-        '<div class="tiny" style="margin-top:10px"><strong>Mano de obra</strong> · tarifa × personas × horas</div>' +
-        C.GRUPOS.map(g => {
-          const rs = C.ROLES.filter(r => r.grupo === g.id);
-          return '<div class="tiny oc">' + g.label + '</div>' + rs.map(rol => {
-            const i = s.mo.findIndex(l => l.rol === rol.id);
-            const l = i >= 0 ? s.mo[i] : null;
-            const idx = i >= 0 ? i : null;
-            return lineaMo(rol, l, idx, s, m);
-          }).join('');
-        }).join('') +
+    const der = [
+      ['Programador', 'margenes.programador', mg.programador],
+      ['Mano de obra', 'margenes.mano_obra', mg.mano_obra],
+      ['Materiales', 'margenes.materiales', mg.materiales],
+      ['Servicios', 'margenes.servicios', mg.servicios]
+    ].map(r => '<tr><td class="et">' + r[0] + '</td><td>' + celNum(r[1], r[2], 'w70') + '</td></tr>').join('') +
+      '<tr><td class="et">Comision FTS</td><td>' + celNum('comision_fts', m.comision_fts, 'w70') + '</td></tr>' +
+      '<tr><td class="et">Comision CLIENTE</td><td>' + celNum('comision_cliente', m.comision_cliente, 'w70') + '</td></tr>';
 
-        '<div class="tiny" style="margin-top:14px"><strong>Materiales y servicios</strong></div>' +
-        (s.partidas.length ? s.partidas.map((l, j) => lineaPartida(l, s, m, j)).join('')
-                           : '<div class="tiny">Sin partidas.</div>') +
-        '<div class="btnrow"><button class="btn" data-add-part="' + s.id + '">+ partida</button></div>' +
-        '</div>';
-    }).join('') +
-    '<div class="btnrow"><button class="btn" data-add-sec="1"' +
-      (m.secciones.length >= C.MAX_SECCIONES ? ' disabled' : '') + '>+ sección (' +
-      m.secciones.length + '/' + C.MAX_SECCIONES + ')</button></div>';
-  }
+    const cab =
+      '<div class="cab">' +
+      '<div class="blk"><table class="hoja2"><thead><tr><th>Costos desglosados</th><th></th></tr></thead>' +
+      '<tbody>' + izq +
+      '<tr><td class="et">Horas sección</td><td class="vl mono">' + Math.round(cs.horas || 0) + '</td></tr>' +
+      '</tbody></table></div>' +
+      '<div class="blk"><table class="hoja2"><thead><tr><th>Concepto</th><th>Margen de utilidad</th></tr></thead>' +
+      '<tbody>' + der + '</tbody></table>' +
+      '<div class="tiny nota">Horas extras = mano de obra × 2 = <strong>' + mg.extra + '</strong>. No se captura, igual que en el Excel.</div>' +
+      '</div></div>' +
+      '<div class="nomsec"><span class="et">NOMBRE DE SECCIÓN</span>' + cel('nom:' + s.id, s.nombre, 'nombre') +
+      (m.secciones.length > 1 ? '<button class="btn del" data-delsec="' + s.id + '">Eliminar sección</button>' : '') + '</div>';
 
-  function lineaMo(rol, l, idx, s, m) {
-    const mg = C.margenes(m);
-    const mult = mg[rol.mult];
-    const cur = l ? C.costoMo(l, m) : null;
-    const base = 's:' + s.id + ':mo:' + (idx === null ? 'NEW' : idx) + ':';
-    const dis = idx === null ? ' data-mo-new="' + s.id + '|' + rol.id + '"' : '';
-    return '<div class="row lin-mo"' + dis + '>' +
-      '<div class="grow tiny">' + esc(rol.label) + ' <span class="mono oc">×' + mult + '</span></div>' +
-      '<input class="num" type="number" step="any" placeholder="h" title="Horas" ' +
-        (idx === null ? 'data-mo-init="' + s.id + '|' + rol.id + '|qty"' : 'data-num data-bind="' + base + 'qty"') +
-        ' value="' + (l ? nn(l.qty) : '') + '">' +
-      '<input class="num" type="number" step="any" placeholder="pers" title="Personas" ' +
-        (idx === null ? 'data-mo-init="' + s.id + '|' + rol.id + '|personas"' : 'data-num data-bind="' + base + 'personas"') +
-        ' value="' + (l ? nn(l.personas) : '') + '">' +
-      '<input class="num" type="number" step="any" placeholder="tarifa" title="Precio unitario" ' +
-        (idx === null ? 'data-mo-init="' + s.id + '|' + rol.id + '|pu"' : 'data-num-null data-bind="' + base + 'pu"') +
-        ' value="' + (l ? nn(l.pu) : '') + '">' +
-      '<div class="lin-tot mono tiny">' + (cur && cur.costo ? mx(cur.conUtilidad) : '—') + '</div></div>';
-  }
+    // COSTO MANO DE OBRA — los diez renglones siempre presentes, en sus tres grupos.
+    let filasMo = '';
+    C.GRUPOS.forEach(g => {
+      const roles = C.ROLES.filter(r => r.grupo === g.id);
+      // Si todos los renglones del grupo van en cero, su rótulo se pliega con
+      // ellos: un título solo, sin nada debajo, se lee como un error.
+      const grupoVacio = roles.every(rol => {
+        const l = s.mo.find(x => x.rol === rol.id);
+        return !l || !(Number(l.qty) > 0);
+      });
+      filasMo += '<tr class="grupo' + (grupoVacio ? ' enCero' : '') + '"><td colspan="9">' +
+                 esc(g.label) + '</td></tr>';
+      roles.forEach(rol => {
+        let i = s.mo.findIndex(l => l.rol === rol.id);
+        if (i < 0) { s.mo.push({ rol: rol.id, qty: '', personas: 1, pu: rol.pu, moneda: m.moneda }); i = s.mo.length - 1; }
+        const l = s.mo[i], cl = C.costoMo(l, m), p = 's:' + s.id + ':mo:' + i + ':';
+        const vacia = !(Number(l.qty) > 0);
+        filasMo +=
+          '<tr' + (vacia ? ' class="enCero"' : '') + '>' +
+          '<td class="rotulo" data-l="Renglón">' + esc(rol.label) + '</td>' +
+          '<td data-l="QTY (horas)">' + celNum(p + 'qty', l.qty, 'w60') + '</td>' +
+          '<td class="ro solo-ancho" data-l="Unidad">Horas</td>' +
+          '<td data-l="Personas">' + celNum(p + 'personas', l.personas, 'w60') + '</td>' +
+          '<td data-l="Precio unitario">' + celNum(p + 'pu', l.pu, 'w80') + '</td>' +
+          '<td class="vl mono" data-l="Precio total">' + mx(cl.costo) + '</td>' +
+          '<td data-l="Moneda">' + celSel(p + 'moneda', l.moneda, ['MXN', 'USD']) + '</td>' +
+          '<td class="ro mono" data-l="Margen">' + cl.mult + '</td>' +
+          '<td class="vl mono fuerte" data-l="Precio con utilidad">' + mx(cl.conUtilidad) + '</td></tr>';
+      });
+    });
 
-  function lineaPartida(l, s, m, j) {
-    const cur = C.costoPartida(l, m);
-    const p = 's:' + s.id + ':partidas:' + j + ':';
-    const ab = ST.abiertos[s.id + '#' + j];
-    const cab = '<button class="lin" data-open="' + s.id + '#' + j + '">' +
-      '<span class="chev">' + (ab ? '▾' : '▸') + '</span>' +
-      '<span class="grow"><strong>' + esc(l.descripcion || '(sin descripción)') + '</strong>' +
-      '<span class="tiny"> ' + (l.qty || 0) + ' ' + esc(l.unidad || '') +
-      (l.marca ? ' · ' + esc(l.marca) : '') +
-      ' · <span class="' + (cur.sinTipo ? 'n-bad' : '') + '">' + esc(l.tipo || 'sin tipo') + '</span>' +
-      ' ×' + (cur.mult || 0) +
-      (l.link ? ' · <span class="n-ok">con liga</span>' : ' · <span class="n-warn">sin liga</span>') +
-      '</span></span>' +
-      '<span class="lin-tot mono">' + (cur.sinPrecio ? '<span class="n-bad">sin precio</span>' : mx(cur.conUtilidad)) + '</span></button>';
-    if (!ab) return cab;
-    return cab + '<div class="fgrid">' +
-      '<div class="f"><label>Descripción</label><input data-bind="' + p + 'descripcion" value="' + esc(l.descripcion) + '"></div>' +
-      '<div class="f"><label>Tipo</label><select data-bind="' + p + 'tipo">' +
-        '<option value="">— elige —</option>' +
-        C.TIPOS.map(t => '<option' + (t === l.tipo ? ' selected' : '') + '>' + t + '</option>').join('') +
-        '</select><div class="tiny">Elige el multiplicador: Materiales ×' + C.margenes(m).materiales +
-        ', Servicios ×' + C.margenes(m).servicios + '.</div></div>' +
-      '<div class="f"><label>Cantidad</label><input class="num" type="number" step="any" data-num data-bind="' + p + 'qty" value="' + nn(l.qty) + '"></div>' +
-      '<div class="f"><label>Unidad</label><select data-bind="' + p + 'unidad">' +
-        D.UNIDADES.map(u => '<option' + (u === l.unidad ? ' selected' : '') + '>' + u + '</option>').join('') + '</select></div>' +
-      '<div class="f"><label>Marca</label><input data-bind="' + p + 'marca" value="' + esc(l.marca) + '"></div>' +
-      '<div class="f"><label>Modelo</label><input data-bind="' + p + 'modelo" value="' + esc(l.modelo) + '"></div>' +
-      '<div class="f"><label>Precio unitario</label><input class="num" type="number" step="any" data-num-null data-bind="' + p + 'pu" value="' + nn(l.pu) + '">' +
-        '<div class="tiny">Vacío no es cero: se reporta como hueco.</div></div>' +
-      '<div class="f"><label>Moneda</label><select data-bind="' + p + 'moneda">' +
-        ['MXN', 'USD'].map(x => '<option' + (x === l.moneda ? ' selected' : '') + '>' + x + '</option>').join('') + '</select></div>' +
-      '<div class="f grow2"><label>Liga al proveedor</label><input data-bind="' + p + 'link" value="' + esc(l.link) + '" placeholder="https://…">' +
-        '<div class="tiny">Es el respaldo del precio. Sin ella nadie puede reverificarlo después.</div></div>' +
-      '<div class="f grow2"><label>Comentario</label><input data-bind="' + p + 'comentario" value="' + esc(l.comentario) + '"></div>' +
-      '<div class="btnrow"><button class="btn del" data-del="' + s.id + '#' + j + '">Eliminar partida</button></div></div>';
-  }
-
-  function paneGen(m, c) {
-    const mg = c.margenes, base = C.MARGENES_PLANTILLA;
-    const fila = (k, label, nota) => {
-      const fuera = Math.abs(Number(mg[k]) - base[k]) > 0.001;
-      return '<div class="f"><label>' + label + (fuera ? ' <span class="chip warn">≠ plantilla ' + base[k] + '</span>' : '') + '</label>' +
-        '<input class="num" type="number" step="0.1" data-num data-bind="margenes.' + k + '" value="' + mg[k] + '">' +
-        '<div class="tiny">' + nota + '</div></div>';
-    };
-    return '<div class="wg"><h4>Multiplicadores de utilidad</h4>' +
-      '<div class="tiny nota">El precio de cada renglón es su costo × este número. No es un porcentaje.</div>' +
-      '<div class="fgrid">' +
-      fila('programador', 'Programador', 'Igual en los 8 machotes revisados: 4,4.') +
-      fila('mano_obra', 'Mano de obra', 'Igual en los 8 machotes revisados: 2,5.') +
-      fila('materiales', 'Materiales', 'Varía por cotización: se han visto 1,4 · 1,8 · 2,5.') +
-      fila('servicios', 'Servicios', 'Varía por cotización: se han visto 1,5 · 1,7 · 1,8.') +
-      '</div><div class="tot"><span class="lb">Horas extras</span><span class="vl mono">×' + mg.extra +
-      '</span></div><div class="tiny">No se captura: es mano de obra × 2, igual que en el Excel.</div></div>' +
-
-      '<div class="wg"><h4>Comisiones y moneda</h4><div class="fgrid">' +
-      '<div class="f"><label>Comisión FTS</label><input class="num" type="number" step="0.001" data-num data-bind="comision_fts" value="' + m.comision_fts + '"><div class="tiny">Plantilla 0,055. Se cobra sobre el precio con utilidad.</div></div>' +
-      '<div class="f"><label>Comisión cliente</label><input class="num" type="number" step="0.001" data-num data-bind="comision_cliente" value="' + m.comision_cliente + '"><div class="tiny">Va encima de la de FTS, en cascada.</div></div>' +
-      '<div class="f"><label>Moneda del documento</label><select data-bind="moneda">' +
-        ['MXN', 'USD'].map(x => '<option' + (x === m.moneda ? ' selected' : '') + '>' + x + '</option>').join('') + '</select></div>' +
-      '<div class="f"><label>Tipo de cambio</label><input class="num" type="number" step="any" data-num data-bind="tc" value="' + m.tc + '"></div>' +
-      '<div class="f"><label>Factor de protección</label><input class="num" type="number" step="0.01" data-num data-bind="factor_proteccion" value="' + m.factor_proteccion + '">' +
-        '<div class="tiny">TC efectivo ' + C.tcEfectivo(m).toFixed(2) + '. El machote de Excel no convierte: suma monedas distintas.</div></div>' +
-      '</div></div>';
-  }
-
-  function paneCom(m, c) {
-    const eq = (titulo, key, rep, bolsa, nota) =>
-      '<div class="wg"><h4>' + titulo + '</h4><div class="tiny nota">' + nota + '</div>' +
-      '<div class="tot"><span class="lb">Bolsa</span><span class="vl mono">' + mx(bolsa, m.moneda) + '</span></div>' +
-      (m[key] || []).map((it, i) =>
-        '<div class="row"><input class="grow" data-bind="eq:' + rep + ':' + i + ':nombre" value="' + esc(it.nombre) + '">' +
-        '<input class="num" type="number" step="0.05" data-num data-bind="eq:' + rep + ':' + i + ':pct" value="' + it.pct + '">' +
-        '<div class="lin-tot mono tiny">' + mx(bolsa * Number(it.pct), '') + '</div></div>').join('') +
-      '<div class="tot"><span class="lb">Suma de porcentajes</span><span class="vl mono n-' +
-        (Math.abs((m[key] || []).reduce((a, x) => a + Number(x.pct || 0), 0) - 1) < 0.0001 ? 'ok' : 'bad') + '">' +
-        pc((m[key] || []).reduce((a, x) => a + Number(x.pct || 0), 0)) + '</span></div></div>';
-
-    const b = c.budget;
-    return eq('Equipo de venta', 'equipo_venta', 'venta', c.reparto.bolsaVenta, pc(Number(m.reparto.venta)) + ' de la comisión de FTS.') +
-      eq('Equipo de operaciones', 'equipo_operaciones', 'ops', c.reparto.bolsaOps, pc(Number(m.reparto.operaciones)) + ' de la comisión de FTS.') +
-      eq('Lado cliente', 'equipo_cliente', 'cli', c.escenario.comisionCliente, 'Se reparte la comisión de cliente.') +
-      '<div class="wg"><h4>BUDGET ODOO</h4>' +
-      '<div class="tiny nota">Es lo que se capturaría como presupuesto del proyecto. Amarra con los rubros 1171 Ingreso / 1177 Mano de obra / 1176 Materiales que ya crea el workflow al confirmar la SO.</div>' +
-      '<div class="tot"><span class="lb">Ingreso</span><span class="vl mono">' + mx(b.ingreso, m.moneda) + '</span></div>' +
-      '<div class="tot"><span class="lb">Mano de obra</span><span class="vl mono">' + mx(b.manoObra, m.moneda) + '</span></div>' +
-      '<div class="tot"><span class="lb">Materiales y servicios</span><span class="vl mono">' + mx(b.materiales, m.moneda) + '</span></div>' +
-      b.comisiones.filter(l => l.monto).map(l =>
-        '<div class="tot"><span class="lb tiny">' + esc(l.nombre) + '</span><span class="vl mono tiny">' + mx(l.monto, '') + '</span></div>').join('') +
-      '<div class="tot"><span class="lb"><strong>Total</strong></span><span class="vl mono"><strong>' + mx(b.total, m.moneda) + '</strong></span></div>' +
-      '<div class="tot"><span class="lb">¿Coincide con la tabla?</span><span class="vl mono n-' + (b.cuadra ? 'ok' : 'bad') + '">' +
-        (b.cuadra ? 'VERDADERO' : 'FALSO') + '</span></div>' +
-      (b.cuadra ? '' : '<div class="aviso">El machote de Excel muestra este mismo FALSO y aun así deja mandar la cotización. Aquí bloquea.</div>') +
-      '</div>';
-  }
-
-  function paneSim(m, c) {
-    const e = c.escenarios;
-    const card = (id, label, x) =>
-      '<button class="paso' + (m.escenario === id ? ' on' : '') + '" data-esc="' + id + '" style="flex-direction:column;align-items:flex-start">' +
-      '<strong>' + label + '</strong><span class="mono tiny">' + mx(x.precio, '') + '</span>' +
-      '<span class="tiny">margen ' + pc(x.margen) + '</span></button>';
-
-    const sim = ST.simMargen === null ? Number(m.margen_deseado) : ST.simMargen;
-    const pSim = C.precioParaMargen(c.costo, c.pctFts, c.pctCli, sim);
-
-    return '<div class="wg"><h4>Escenario</h4>' +
-      '<div class="pasos" id="escs">' + card('costo', 'Costo', e.costo) +
-        card('con_utilidad', 'Con utilidad', e.con_utilidad) +
-        card('margen_deseado', 'Margen deseado', e.margen_deseado) + '</div>' +
-      '<div class="f"><label>Margen deseado</label><input class="num" type="number" step="0.01" data-num data-bind="margen_deseado" value="' + m.margen_deseado + '"></div>' +
-      '<div class="tot"><span class="lb">Factor_req</span><span class="vl mono">' + (c.factorReq ? c.factorReq.toFixed(6) : '—') + '</span></div>' +
-      '<div class="tiny">Cuántas veces el costo hay que cobrar para llegar al margen, ya con las comisiones dentro.</div></div>' +
-
-      '<div class="wg"><h4>Resumen</h4>' +
-      '<div class="tot"><span class="lb">Costo mano de obra</span><span class="vl mono">' + mx(c.costoMo, m.moneda) + ' · ' + pc(c.pesoMo) + '</span></div>' +
-      '<div class="tot"><span class="lb">Costo materiales y servicios</span><span class="vl mono">' + mx(c.costoMat, m.moneda) + ' · ' + pc(c.pesoMat) + '</span></div>' +
-      '<div class="tot"><span class="lb">Costo total</span><span class="vl mono">' + mx(c.costo, m.moneda) + '</span></div>' +
-      '<div class="tot"><span class="lb">Comisión FTS</span><span class="vl mono">' + mx(c.escenario.comisionFts, m.moneda) + '</span></div>' +
-      '<div class="tot"><span class="lb">Comisión cliente</span><span class="vl mono">' + mx(c.escenario.comisionCliente, m.moneda) + '</span></div>' +
-      '<div class="tot"><span class="lb"><strong>Precio</strong></span><span class="vl mono"><strong>' + mx(c.precio, m.moneda) + '</strong></span></div>' +
-      '<div class="tot"><span class="lb">Utilidad</span><span class="vl mono n-' + nivelMargen(c.margen) + '">' + mx(c.utilidad, m.moneda) + ' · ' + pc(c.margen) + '</span></div>' +
-      '<div class="tot"><span class="lb">Horas proyecto</span><span class="vl mono">' + Math.round(c.horas) + '</span></div>' +
-      (c.costoIncompleto ? '<div class="aviso">Hay ' + c.huecos + ' hueco(s) de captura. El margen de arriba es optimista: lo que falta sólo puede subir el costo.</div>' : '') +
+    const enCero = s.mo.filter(l => !(Number(l.qty) > 0)).length;
+    const tablaMo =
+      '<div class="secc-tit">COSTO MANO DE OBRA' +
+      (enCero ? '<label class="verVacios"><input type="checkbox" id="verVacios"' +
+        (ST.verVacios ? ' checked' : '') + '> ver los ' + enCero + ' en cero</label>' : '') +
       '</div>' +
+      '<div class="scroll"><table class="rejilla tarjetas' + (ST.verVacios ? ' verVacios' : '') + '">' +
+      '<thead><tr><th>DESCRIPCIÓN</th><th>QTY</th><th>UNIDAD</th><th>Personas</th>' +
+      '<th>PRECIO UNITARIO</th><th>PRECIO TOTAL</th><th>MONEDA</th><th>Margen utilidad</th>' +
+      '<th>PRECIO CON UTILIDAD</th></tr></thead><tbody>' + filasMo +
+      '<tr class="total"><td class="rotulo" data-l="">TOTAL</td><td colspan="4"></td>' +
+      '<td class="vl mono" data-l="Costo mano de obra">' + mx(cs.costoMo) +
+      '</td><td colspan="2"></td><td class="vl mono fuerte" data-l="Con utilidad">' + mx(cs.ventaMo) + '</td></tr>' +
+      '</tbody></table></div>';
 
-      '<div class="wg sim-box"><h4>¿Y si quisiera otro margen?</h4>' +
-      '<div class="f"><label>Margen objetivo</label><input class="num" type="number" step="0.01" id="simM" value="' + sim + '"></div>' +
-      '<div class="sim-out mono">Precio necesario: <strong>' + mx(pSim, m.moneda) + '</strong></div>' +
-      '<div class="tiny">No cambia la cotización. Es sólo la cuenta.</div></div>' +
+    // COSTO MATERIALES Y SERVICIOS
+    const filasMat = (s.partidas || []).map((l, j) => {
+      const cl = C.costoPartida(l, m), p = 's:' + s.id + ':partidas:' + j + ':';
+      return '<tr>' +
+        '<td data-l="Descripción">' + cel(p + 'descripcion', l.descripcion, 'desc') + '</td>' +
+        '<td data-l="QTY">' + celNum(p + 'qty', l.qty, 'w60') + '</td>' +
+        '<td data-l="Unidad">' + celSel(p + 'unidad', l.unidad, D.UNIDADES) + '</td>' +
+        '<td data-l="Tipo">' + celSel(p + 'tipo', l.tipo, [''].concat(C.TIPOS)) + '</td>' +
+        '<td data-l="Modelo">' + cel(p + 'modelo', l.modelo, 'w110') + '</td>' +
+        '<td data-l="Marca">' + cel(p + 'marca', l.marca, 'w90') + '</td>' +
+        '<td data-l="Precio unitario">' + celNum(p + 'pu', l.pu, 'w90') + '</td>' +
+        '<td data-l="Moneda">' + celSel(p + 'moneda', l.moneda, ['MXN', 'USD']) + '</td>' +
+        '<td class="vl mono' + (cl.sinPrecio ? ' n-bad' : '') + '" data-l="Precio total">' + (cl.sinPrecio ? 'sin precio' : mx(cl.costo)) + '</td>' +
+        '<td data-l="Margen">' + celNum(p + 'margen', l.margen, 'w60' + (cl.pisado ? ' pisado' : ''), String(cl.porTipo || '')) + '</td>' +
+        '<td class="vl mono fuerte" data-l="Precio con utilidad">' + mx(cl.conUtilidad) + '</td>' +
+        '<td data-l="Link">' + cel(p + 'link', l.link, 'w130', 'https://…') + '</td>' +
+        '<td data-l="Comentario">' + cel(p + 'comentario', l.comentario, 'w130') + '</td>' +
+        '<td class="acc"><button class="x" data-del="' + s.id + '#' + j + '" title="Eliminar partida">× eliminar</button></td></tr>';
+    }).join('');
 
-      '<div class="wg"><h4>Por sección</h4>' +
-      c.secciones.map(s => '<div class="tot"><span class="lb">' + esc(s.nombre) + '</span>' +
-        '<span class="vl mono">' + mx(s.precio, '') + ' · ' + pc(s.peso) + ' del costo</span></div>').join('') +
-      '<div class="tiny">En el escenario de margen deseado el precio se reparte a prorrata del costo. El margen es una restricción global, no se fija por sección.</div></div>';
+    const tablaMat =
+      '<div class="secc-tit">COSTO MATERIALES Y SERVICIOS</div>' +
+      '<div class="scroll"><table class="rejilla tarjetas">' +
+      '<thead><tr><th>DESCRIPCIÓN</th><th>QTY</th><th>UNIDAD</th><th>Tipo</th><th>MODELO</th><th>MARCA</th>' +
+      '<th>PRECIO UNITARIO</th><th>MONEDA</th><th>PRECIO TOTAL</th><th>Margen utilidad</th>' +
+      '<th>PRECIO CON UTILIDAD</th><th>Link</th><th>Comentario</th><th></th></tr></thead><tbody>' +
+      (filasMat || '<tr><td colspan="14" class="vacio2">Sin partidas.</td></tr>') +
+      '<tr class="total"><td class="rotulo" data-l="">TOTAL</td><td colspan="7"></td>' +
+      '<td class="vl mono" data-l="Costo materiales">' + mx(cs.costoMat) +
+      '</td><td></td><td class="vl mono fuerte" data-l="Con utilidad">' + mx(cs.ventaMat) + '</td><td colspan="3"></td></tr>' +
+      '</tbody></table></div>' +
+      '<div class="btnrow"><button class="btn" data-add="' + s.id + '">+ partida</button>' +
+      (cs.pisados ? '<span class="tiny n-warn">' + cs.pisados + ' margen(es) pisado(s) a mano en esta sección</span>' : '') +
+      '</div>';
+
+    return cab + tablaMo + tablaMat;
   }
 
-  function barraFija(m) {
-    const rev = R.revisar(m), c = rev.calc;
+  /* ── Hoja DESGLOSE COTIZACIÓN ────────────────────────────────────────── */
+  function hojaDesglose(m, c) {
+    const e = c.escenarios;
+    const escOps = C.ESCENARIOS.map(x =>
+      '<button class="escbtn' + (m.escenario === x.id ? ' on' : '') + '" data-esc="' + x.id + '">' +
+      x.label.toUpperCase() + '</button>').join('');
+
+    const fila = (et, p, cCosto, cUtil, cMd) =>
+      '<tr><td class="et">' + et + '</td><td class="mono pctcol">' + (p || '') + '</td>' +
+      '<td class="vl mono">' + cCosto + '</td><td class="vl mono">' + cUtil + '</td>' +
+      '<td class="vl mono">' + cMd + '</td></tr>';
+
+    const resumen =
+      '<div class="secc-tit">RESUMEN BUDGET</div>' +
+      '<div class="scroll"><table class="rejilla ancha">' +
+      '<thead><tr><th></th><th>%</th><th>COSTO</th><th>CON UTILIDAD</th><th>MARGEN DESEADO</th></tr></thead><tbody>' +
+      fila('MANO DE OBRA', pc(c.pesoMo), mx(c.costoMo), mx(c.ventaMo),
+           mx(e.margen_deseado.precio === null ? null : e.margen_deseado.precio * (c.costo ? c.costoMo / c.costo : 0))) +
+      fila('MATERIALES Y SERVICIOS', pc(c.pesoMat), mx(c.costoMat), mx(c.ventaMat),
+           mx(e.margen_deseado.precio === null ? null : e.margen_deseado.precio * (c.costo ? c.costoMat / c.costo : 0))) +
+      fila('SUMA M. DE OBRA, MATERIALES Y SERV', '', mx(c.costo), mx(c.venta),
+           mx(e.margen_deseado.precio === null ? null : e.margen_deseado.precio - e.margen_deseado.comisionFts - e.margen_deseado.comisionCliente)) +
+      fila('COMISIONES DE FTS', pc(c.pctFts), '', mx(e.con_utilidad.comisionFts), mx(e.margen_deseado.comisionFts)) +
+      fila('COMISIONES DE CLIENTE', pc(c.pctCli), '', mx(e.con_utilidad.comisionCliente), mx(e.margen_deseado.comisionCliente)) +
+      '<tr class="total"><td class="et">PRECIO DE VENTA ANTE DE IMPUESTO</td><td></td>' +
+      '<td class="vl mono">' + mx(e.costo.precio) + '</td><td class="vl mono">' + mx(e.con_utilidad.precio) + '</td>' +
+      '<td class="vl mono">' + mx(e.margen_deseado.precio) + '</td></tr>' +
+      fila('Margen', '', pc(0), pc(e.con_utilidad.margen), pc(e.margen_deseado.margen)) +
+      fila('Utilidad esperada Absoluta', '', mx(0), mx(e.con_utilidad.utilidad), mx(e.margen_deseado.utilidad)) +
+      '</tbody></table></div>';
+
+    const encabezado =
+      '<div class="desg-top">' +
+      '<div class="blk"><div class="et2">ELIGE UN ESCENARIO PARA TU COTIZACIÓN</div>' +
+      '<div class="escs">' + escOps + '</div></div>' +
+      '<div class="blk"><table class="hoja2"><tbody>' +
+      '<tr><td class="et">MARGEN DESEADO</td><td>' + celNum('margen_deseado', m.margen_deseado, 'w80') + '</td></tr>' +
+      '<tr><td class="et">HORAS PROYECTO</td><td class="vl mono">' + Math.round(c.horas) + '</td></tr>' +
+      '<tr><td class="et">Factor_req</td><td class="vl mono">' + (c.factorReq ? c.factorReq.toFixed(9) : '—') + '</td></tr>' +
+      '<tr><td class="et">Moneda</td><td>' + celSel('moneda', m.moneda, ['MXN', 'USD']) + '</td></tr>' +
+      '<tr><td class="et">Tipo de cambio</td><td>' + celNum('tc', m.tc, 'w80') + '</td></tr>' +
+      '</tbody></table></div></div>';
+
+    // RESUMEN por sección: diez ranuras fijas, tres grupos de columnas.
+    let fSec = '';
+    for (let i = 0; i < C.MAX_SECCIONES; i++) {
+      const s = c.secciones[i];
+      const v = s ? s.esc : null;
+      fSec += '<tr' + (s ? '' : ' class="vacia"') + '><td class="mono">' + (i + 1) + '</td>' +
+        '<td class="et">' + esc(s ? s.nombre : 'SECCION ' + (i + 1)) + '</td>' +
+        '<td class="vl mono">' + mx(s ? v.costo.mo : 0) + '</td>' +
+        '<td class="vl mono">' + mx(s ? v.costo.mat : 0) + '</td>' +
+        '<td class="vl mono">' + mx(s ? v.costo.precio : 0) + '</td>' +
+        '<td class="vl mono">' + mx(s ? v.con_utilidad.mo : 0) + '</td>' +
+        '<td class="vl mono">' + mx(s ? v.con_utilidad.mat : 0) + '</td>' +
+        '<td class="vl mono">' + mx(s ? v.con_utilidad.precio : 0) + '</td>' +
+        '<td class="vl mono">' + mx(s ? v.margen_deseado.mo : 0) + '</td>' +
+        '<td class="vl mono">' + mx(s ? v.margen_deseado.mat : 0) + '</td>' +
+        '<td class="vl mono">' + mx(s ? v.margen_deseado.precio : 0) + '</td>' +
+        '<td class="vl mono">' + (s ? Math.round(s.horas) : 0) + '</td></tr>';
+    }
+    const sobra = c.secciones.length > C.MAX_SECCIONES;
+
+    const porSeccion =
+      '<div class="secc-tit">RESUMEN POR SECCIÓN</div>' +
+      '<div class="scroll"><table class="rejilla ancha">' +
+      '<thead><tr><th colspan="2"></th><th colspan="3">COSTO</th><th colspan="3">CON UTILIDAD</th>' +
+      '<th colspan="3">MARGEN DESEADO</th><th></th></tr>' +
+      '<tr><th>SECCIÓN</th><th>SECCION DE COTIZACION</th>' +
+      '<th>MANO DE OBRA</th><th>MATERIALES Y SERV</th><th>COSTOS TOTALES</th>' +
+      '<th>MANO DE OBRA</th><th>MATERIALES Y SERV</th><th>PRECIO DE VENTA</th>' +
+      '<th>MANO DE OBRA</th><th>MATERIALES Y SERV</th><th>PRECIO DE VENTA</th><th>HORAS</th></tr></thead>' +
+      '<tbody>' + fSec +
+      '<tr class="total"><td></td><td class="et">SUMA</td>' +
+      '<td class="vl mono">' + mx(c.costoMo) + '</td><td class="vl mono">' + mx(c.costoMat) + '</td>' +
+      '<td class="vl mono">' + mx(c.costo) + '</td>' +
+      '<td class="vl mono">' + mx(c.ventaMo) + '</td><td class="vl mono">' + mx(c.ventaMat) + '</td>' +
+      '<td class="vl mono">' + mx(e.con_utilidad.precio) + '</td>' +
+      '<td class="vl mono">' + mx(e.margen_deseado.precio === null ? null : e.margen_deseado.precio * (c.costo ? c.costoMo / c.costo : 0)) + '</td>' +
+      '<td class="vl mono">' + mx(e.margen_deseado.precio === null ? null : e.margen_deseado.precio * (c.costo ? c.costoMat / c.costo : 0)) + '</td>' +
+      '<td class="vl mono">' + mx(e.margen_deseado.precio) + '</td>' +
+      '<td class="vl mono">' + Math.round(c.horas) + '</td></tr>' +
+      '</tbody></table></div>' +
+      (sobra ? '<div class="aviso bad">Hay ' + c.secciones.length + ' secciones y la tabla del machote sólo tiene ' +
+        C.MAX_SECCIONES + ' ranuras. Las de más no llegarían al precio.</div>' : '');
+
+    // BUDGET ODOO
+    const b = c.budget;
+    const budget =
+      '<div class="secc-tit">BUDGET ODOO</div>' +
+      '<div class="scroll"><table class="rejilla estrecha"><tbody>' +
+      '<tr><td class="et">INGRESO</td><td class="vl mono">' + mx(b.ingreso) + '</td></tr>' +
+      '<tr><td class="et">MANO DE OBRA</td><td class="vl mono">' + mx(b.manoObra) + '</td></tr>' +
+      '<tr><td class="et">MATERIALES Y SERVICIOS</td><td class="vl mono">' + mx(b.materiales) + '</td></tr>' +
+      b.comisiones.map(l => '<tr><td class="et">' + esc(l.nombre) + '</td><td class="vl mono">' + mx(l.monto) + '</td></tr>').join('') +
+      '<tr class="total"><td class="et">TOTAL (por defecto lo lanza odoo)</td><td class="vl mono">' + mx(b.total) + '</td></tr>' +
+      '<tr><td class="et">COINCIDE CON LA TABLA?</td><td class="vl mono n-' + (b.cuadra ? 'ok' : 'bad') + '">' +
+      (b.cuadra ? 'VERDADERO' : 'FALSO') + '</td></tr>' +
+      '</tbody></table></div>' +
+      (b.cuadra ? '' : '<div class="aviso bad">El machote muestra este mismo FALSO y aun así deja mandar la cotización. Aquí bloquea.</div>');
+
+    // TABLA DE COMISIONES Y BONOS
+    const eq = (titulo, key, rep, bolsa) => {
+      const suma = (m[key] || []).reduce((a, x) => a + Number(x.pct || 0), 0);
+      return '<tr class="grupo"><td colspan="3">' + titulo + ' · bolsa ' + mx(bolsa) + '</td></tr>' +
+        (m[key] || []).map((it, i) =>
+          '<tr><td>' + cel('eq:' + rep + ':' + i + ':nombre', it.nombre, 'desc') + '</td>' +
+          '<td>' + celNum('eq:' + rep + ':' + i + ':pct', it.pct, 'w70') + '</td>' +
+          '<td class="vl mono">' + mx(bolsa * Number(it.pct)) + '</td></tr>').join('') +
+        '<tr class="total"><td class="et">Suma</td><td class="vl mono n-' +
+        (Math.abs(suma - 1) < 0.0001 ? 'ok' : 'bad') + '">' + pc(suma) + '</td><td></td></tr>';
+    };
+    const comisiones =
+      '<div class="secc-tit">TABLA DE COMISIONES Y BONOS</div>' +
+      '<div class="scroll"><table class="rejilla estrecha"><tbody>' +
+      eq('EQUIPO DE VENTA (' + pc(Number(m.reparto.venta)) + ' de la comisión FTS)', 'equipo_venta', 'venta', c.reparto.bolsaVenta) +
+      eq('EQUIPO DE OPERACIONES (' + pc(Number(m.reparto.operaciones)) + ')', 'equipo_operaciones', 'ops', c.reparto.bolsaOps) +
+      eq('LADO CLIENTE', 'equipo_cliente', 'cli', c.escenario.comisionCliente) +
+      '</tbody></table></div>';
+
+    return encabezado + resumen + porSeccion + budget + comisiones;
+  }
+
+  /* ── Barra fija ──────────────────────────────────────────────────────── */
+  function barra(m, c) {
+    const rev = R.revisar(m);
     $('#fija').innerHTML = '<div class="fija"><div class="grow">' +
-      '<div class="mono ' + 'n-' + (c.costoIncompleto ? 'warn' : nivelMargen(c.margen)) + '">' +
-      mx(c.precio, m.moneda) + ' · ' + pc(c.margen) + (c.costoIncompleto ? '*' : '') + '</div>' +
-      '<div class="tiny">' + (rev.duras.length ? '⛔ ' + rev.duras.length + ' duras' : '✓ sin duras') +
-      (rev.blandas.length ? ' · ⚠ ' + rev.blandas.length : '') +
+      '<div class="mono n-' + (c.costoIncompleto ? 'warn' : nivelMargen(c.margen)) + '">' +
+      mx(c.precio) + ' ' + esc(m.moneda) + ' · ' + pc(c.margen) + (c.costoIncompleto ? '*' : '') + '</div>' +
+      '<div class="tiny">' + esc(c.escenario.id.replace('_', ' ')) +
+      (rev.duras.length ? ' · ⛔ ' + rev.duras.length + ' duras' : ' · ✓ sin duras') +
       (c.costoIncompleto ? ' · ' + c.huecos + ' huecos' : '') + '</div></div>' +
       '<a class="btn" href="#/rev/' + m.id + '">Revisar</a></div>';
   }
 
-  /** Reconstruye lo que depende de los números sin repintar el pane entero:
-   *  repintar mientras se teclea mata el foco del campo. */
-  function refrescar(m) { barraFija(m); }
-
-  /* ── Enlace de campos ───────────────────────────────────────────────── */
+  /* ── Enlace de celdas ────────────────────────────────────────────────── */
   function enlazar(m) {
-    $$('[data-bind]').forEach(el => {
-      const ev = el.tagName === 'SELECT' ? 'change' : 'input';
-      el.oninput = el.onchange = () => {
-        const path = el.dataset.bind;
+    $$('[data-cel]').forEach(el => {
+      const esSel = el.tagName === 'SELECT';
+      const aplicar = () => {
         let v = el.value;
-        if (el.hasAttribute('data-num')) v = parseFloat(v) || 0;
-        if (el.hasAttribute('data-num-null')) v = (v === '' ? null : (parseFloat(v) || 0));
-        if (path.indexOf('s-nombre:') === 0) {
-          const s = m.secciones.find(x => x.id === path.split(':')[1]); if (s) s.nombre = v;
-        } else setPath(m, path, v);
-        refrescar(m);
-        if (ev === 'change') pintarPane(m);
+        if (el.hasAttribute('data-num')) v = (v === '' ? null : (parseFloat(v) || 0));
+        setPath(m, el.dataset.cel, v);
       };
+      // Se recalcula al salir del campo, no en cada tecla: repintar la hoja
+      // mientras se escribe mata el foco a media cifra.
+      el.onchange = () => { aplicar(); pintarHoja(m); barra(m, C.calcular(m)); };
+      if (!esSel) el.oninput = () => { aplicar(); barra(m, C.calcular(m)); };
     });
-    // Primer valor en un renglón de mano de obra vacío: lo crea.
-    $$('[data-mo-init]').forEach(el => {
-      el.onchange = () => {
-        const [sid, rolId, campo] = el.dataset.moInit.split('|');
-        const s = m.secciones.find(x => x.id === sid); if (!s) return;
-        const rol = C.ROL[rolId];
-        const l = { rol: rolId, qty: 0, personas: 1, pu: rol.pu, moneda: m.moneda };
-        l[campo] = parseFloat(el.value) || 0;
-        s.mo.push(l); pintarPane(m); refrescar(m);
-      };
+    const vv = $('#verVacios');
+    if (vv) vv.onchange = () => { ST.verVacios = vv.checked; pintarHoja(m); };
+    $$('[data-esc]').forEach(b => b.onclick = () => {
+      m.escenario = b.dataset.esc; pintarHoja(m); barra(m, C.calcular(m));
     });
-    $$('[data-open]').forEach(b => b.onclick = () => {
-      const k = b.dataset.open; ST.abiertos[k] = !ST.abiertos[k]; pintarPane(m);
+    $$('[data-add]').forEach(b => b.onclick = () => {
+      const s = m.secciones.find(x => x.id === b.dataset.add); if (!s) return;
+      s.partidas.push({ qty: 1, unidad: 'Pieza', tipo: 'Materiales', descripcion: '', modelo: '', marca: '',
+                        pu: null, moneda: m.moneda, margen: null, link: '', comentario: '' });
+      pintarHoja(m); barra(m, C.calcular(m));
     });
     $$('[data-del]').forEach(b => b.onclick = () => {
       const [sid, j] = b.dataset.del.split('#');
       const s = m.secciones.find(x => x.id === sid); if (!s) return;
-      s.partidas.splice(parseInt(j, 10), 1); ST.abiertos = {}; pintarPane(m); refrescar(m);
+      s.partidas.splice(parseInt(j, 10), 1); pintarHoja(m); barra(m, C.calcular(m));
     });
-    $$('[data-add-part]').forEach(b => b.onclick = () => {
-      const s = m.secciones.find(x => x.id === b.dataset.addPart); if (!s) return;
-      s.partidas.push({ qty: 1, unidad: 'Pieza', tipo: 'Materiales', descripcion: '', modelo: '', marca: '',
-                        pu: null, moneda: m.moneda, link: '', comentario: '' });
-      ST.abiertos[s.id + '#' + (s.partidas.length - 1)] = true; pintarPane(m); refrescar(m);
+    $$('[data-delsec]').forEach(b => b.onclick = () => {
+      const i = m.secciones.findIndex(x => x.id === b.dataset.delsec);
+      if (i < 0 || m.secciones.length < 2) return;
+      m.secciones.splice(i, 1); ST.hoja = 'desglose'; vMachote(m.id);
     });
-    $$('[data-add-sec]').forEach(b => b.onclick = () => {
-      if (m.secciones.length >= C.MAX_SECCIONES) return;
-      m.secciones.push({ id: 's-' + Date.now(), nombre: 'SECCION ' + (m.secciones.length + 1), partidas: [], mo: [] });
-      pintarPane(m); refrescar(m);
-    });
-    $$('[data-esc]').forEach(b => b.onclick = () => { m.escenario = b.dataset.esc; pintarPane(m); refrescar(m); });
-    const sm = $('#simM');
-    if (sm) sm.oninput = () => {
-      ST.simMargen = parseFloat(sm.value) || 0;
-      const c = C.calcular(m);
-      const out = $('.sim-out');
-      if (out) out.innerHTML = 'Precio necesario: <strong>' +
-        mx(C.precioParaMargen(c.costo, c.pctFts, c.pctCli, ST.simMargen), m.moneda) + '</strong>';
-    };
   }
 
-  /* ── Revisador ──────────────────────────────────────────────────────── */
+  /* ── Revisión ────────────────────────────────────────────────────────── */
   function vRevision(id) {
     const m = mach(id); if (!m) { location.hash = '#/'; return; }
     const rev = R.revisar(m), c = rev.calc;
-    top('Revisión', m.id + ' · ' + esc(m.nombre), 'REVISOR', '#/m/' + id);
+    top('Revisión', m.id + ' · ' + m.nombre, 'REVISOR', '#/m/' + id);
     $('#fija').innerHTML = '<div class="fija"><div class="grow"><div class="tiny">' +
       (rev.puedeConfirmar ? '✓ Se puede mandar' : '⛔ ' + rev.duras.length + ' hallazgo(s) duro(s)') +
-      '</div></div><a class="btn" href="#/m/' + id + '">Volver a editar</a></div>';
+      '</div></div><a class="btn" href="#/m/' + id + '">Volver a la hoja</a></div>';
 
     const bloque = (t, arr, cls) => !arr.length ? '' :
       '<h3 class="' + cls + '">' + t + ' (' + arr.length + ')</h3>' + arr.map(h =>
         '<div class="wg ' + cls + '"><strong>' + esc(h.titulo) + '</strong>' +
-        '<div class="tiny oc">' + esc(h.area) + '</div>' +
-        '<div>' + esc(h.detalle) + '</div>' +
+        '<div class="tiny oc">' + esc(h.area) + '</div><div>' + esc(h.detalle) + '</div>' +
         (h.items.length ? '<ul class="tiny">' + h.items.map(i => '<li>' + esc(i) + '</li>').join('') + '</ul>' : '') +
-        (h.destino ? '<div class="btnrow"><button class="btn" data-goto="' + h.destino.tab + '">Ir a arreglarlo</button></div>' : '') +
+        '<div class="btnrow"><button class="btn" data-goto="' + esc((h.destino && h.destino.tab) || '') + '">Ir a arreglarlo</button></div>' +
         '</div>').join('');
 
     $('#vista').innerHTML = '<div class="pad">' +
-      '<div class="kpi"><div><span class="tiny">Precio</span><strong class="mono">' + mx(c.precio, m.moneda) + '</strong></div>' +
+      '<div class="kpi"><div><span class="tiny">Precio</span><strong class="mono">' + mx(c.precio) + '</strong></div>' +
       '<div><span class="tiny">Margen</span><strong class="mono n-' + nivelMargen(c.margen) + '">' + pc(c.margen) + '</strong></div>' +
       '<div><span class="tiny">Huecos</span><strong class="mono">' + c.huecos + '</strong></div></div>' +
       (rev.total === 0 ? '<div class="vacio">Sin hallazgos.</div>' : '') +
@@ -459,10 +505,14 @@
       bloque('Blandas · advierten', rev.blandas, 'warn') +
       bloque('Observaciones', rev.infos, 'info') + '</div>';
 
-    $$('[data-goto]').forEach(b => b.onclick = () => { ST.tab = b.dataset.goto; location.hash = '#/m/' + id; });
+    $$('[data-goto]').forEach(b => b.onclick = () => {
+      const t = b.dataset.goto;
+      ST.hoja = (t === 'secc' && m.secciones[0]) ? m.secciones[0].id : 'desglose';
+      location.hash = '#/m/' + id;
+    });
   }
 
-  /* ── Estación 3.0 ───────────────────────────────────────────────────── */
+  /* ── Estación 3.0 ────────────────────────────────────────────────────── */
   const ENTREGABLES = [
     { id: 'alcance',   label: 'Alcance escrito y aceptado por el cliente' },
     { id: 'po',        label: 'Orden de compra o correo de autorización' },
@@ -475,34 +525,20 @@
   function vOrden(id) {
     const o = orden(id); if (!o) { location.hash = '#/'; return; }
     const h = hoff(o.id);
-    top('Confirmar orden', o.so + ' · ' + esc(o.cliente), 'ORDEN', '#/');
-    const listo = ENTREGABLES.every(e => h.entregables[e.id]);
-    const ya = !!ST.confirmadas[o.id];
-
+    top('Confirmar orden', o.so + ' · ' + o.cliente, 'ORDEN', '#/');
     $('#vista').innerHTML = '<div class="pad"><h2>' + esc(o.nombre) + '</h2>' +
-      '<div class="tiny">Confirmada el ' + esc(o.fecha_confirmacion) + ' · ' + mx(o.monto, o.moneda) + '</div>' +
-      (ya ? '<div class="aviso ok">Handoff cerrado. Operaciones ya tiene lo que necesita.</div>' : '') +
+      '<div class="tiny">Confirmada el ' + esc(o.fecha_confirmacion) + ' · ' + mx(o.monto) + ' ' + esc(o.moneda) + '</div>' +
+      (ST.confirmadas[o.id] ? '<div class="aviso ok">Handoff cerrado. Operaciones ya tiene lo que necesita.</div>' : '') +
       '<div class="wg"><h4>Qué tiene que quedar antes de soltarla a operaciones</h4>' +
       ENTREGABLES.map(e => '<label class="row"><input type="checkbox" data-ent="' + e.id + '"' +
         (h.entregables[e.id] ? ' checked' : '') + '><span class="grow">' + esc(e.label) + '</span></label>').join('') +
-      '</div>' +
-      '<div class="wg"><h4>Notas para operaciones</h4>' +
-      '<textarea id="notas" rows="4" placeholder="Lo que no cabe en una casilla.">' + esc(h.notas) + '</textarea></div>' +
-      '</div>';
-
+      '</div><div class="wg"><h4>Notas para operaciones</h4>' +
+      '<textarea id="notas" rows="4" placeholder="Lo que no cabe en una casilla.">' + esc(h.notas) + '</textarea></div></div>';
     barraOrden(o, h);
-
-    // Repintar la vista entera en cada palomita arranca el nodo bajo el cursor
-    // (y hacía fallar el click siguiente). Sólo se refresca la barra de abajo.
-    $$('[data-ent]').forEach(cb => cb.onchange = () => {
-      h.entregables[cb.dataset.ent] = cb.checked;
-      barraOrden(o, h);
-    });
+    $$('[data-ent]').forEach(cb => cb.onchange = () => { h.entregables[cb.dataset.ent] = cb.checked; barraOrden(o, h); });
     $('#notas').oninput = (e) => { h.notas = e.target.value; };
   }
 
-  /** Barra de la estación 3.0. Vive aparte para poder refrescarla sin
-   *  reconstruir la lista de casillas. */
   function barraOrden(o, h) {
     const listo = ENTREGABLES.every(e => h.entregables[e.id]);
     const ya = !!ST.confirmadas[o.id];
@@ -515,22 +551,22 @@
     };
   }
 
-  /* ── Aprobación ─────────────────────────────────────────────────────── */
+  /* ── Aprobación ──────────────────────────────────────────────────────── */
   function vAprobar(id) {
     const m = mach(id); if (!m) { location.hash = '#/'; return; }
     const rev = R.revisar(m), c = rev.calc;
     top('Aprobación', m.id, 'DIRECCIÓN', '#/m/' + id);
     $('#fija').innerHTML = '';
     $('#vista').innerHTML = '<div class="pad"><h2>' + esc(m.nombre) + '</h2>' +
-      '<div class="kpi"><div><span class="tiny">Precio</span><strong class="mono">' + mx(c.precio, m.moneda) + '</strong></div>' +
+      '<div class="kpi"><div><span class="tiny">Precio</span><strong class="mono">' + mx(c.precio) + '</strong></div>' +
       '<div><span class="tiny">Margen</span><strong class="mono n-' + nivelMargen(c.margen) + '">' + pc(c.margen) + '</strong></div>' +
       '<div><span class="tiny">Duras</span><strong class="mono">' + rev.duras.length + '</strong></div></div>' +
       '<div class="wg"><h4>Lo que dirección tiene que ver antes de firmar</h4>' +
-      '<div class="tot"><span class="lb">Costo</span><span class="vl mono">' + mx(c.costo, m.moneda) + '</span></div>' +
-      '<div class="tot"><span class="lb">Comisiones</span><span class="vl mono">' + mx(c.escenario.comisionFts + c.escenario.comisionCliente, m.moneda) + '</span></div>' +
-      '<div class="tot"><span class="lb">Utilidad</span><span class="vl mono">' + mx(c.utilidad, m.moneda) + '</span></div>' +
+      '<div class="tot"><span class="lb">Costo</span><span class="vl mono">' + mx(c.costo) + '</span></div>' +
+      '<div class="tot"><span class="lb">Comisiones</span><span class="vl mono">' + mx(c.escenario.comisionFts + c.escenario.comisionCliente) + '</span></div>' +
+      '<div class="tot"><span class="lb">Utilidad</span><span class="vl mono">' + mx(c.utilidad) + '</span></div>' +
       '<div class="tot"><span class="lb">BUDGET ODOO cuadra</span><span class="vl mono n-' + (c.budget.cuadra ? 'ok' : 'bad') + '">' +
-        (c.budget.cuadra ? 'sí' : 'no') + '</span></div></div>' +
+      (c.budget.cuadra ? 'sí' : 'no') + '</span></div></div>' +
       (rev.duras.length ? '<div class="aviso bad">Tiene ' + rev.duras.length + ' hallazgo(s) duro(s). No debería llegar aquí.</div>'
                         : '<div class="aviso ok">Sin hallazgos duros.</div>') + '</div>';
   }

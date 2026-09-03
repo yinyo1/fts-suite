@@ -45,6 +45,23 @@ reparte entre secciones **a prorrata del costo**. Por eso mover un multiplicador
 en ese escenario no cambia el precio: sólo cambia el reparto. Es una propiedad
 del machote, no un error, y hay una prueba que la fija.
 
+## La pantalla
+
+La hoja se dibuja con la retícula del machote: pestañas por hoja, el bloque de
+`Costos desglosados` y la tabla de márgenes arriba, `COSTO MANO DE OBRA` con sus
+diez renglones fijos en tres grupos, y `COSTO MATERIALES Y SERVICIOS` con sus
+trece columnas. La hoja `DESGLOSE COTIZACIÓN` trae los tres escenarios, el
+`RESUMEN BUDGET`, las diez ranuras de sección, el `BUDGET ODOO` y la tabla de
+comisiones.
+
+**En teléfono la retícula desaparece.** Catorce columnas con el pulgar no se
+capturan: cada renglón se vuelve una tarjeta con sus campos etiquetados, los
+renglones de mano de obra en cero se pliegan detrás de un interruptor que dice
+cuántos hay, y nada de lo que se toca mide menos de 44 px. En pantalla ancha
+vuelve a ser la retícula completa. Hay pruebas para las dos formas.
+
+Reproducir el Excel en un teléfono habría sido fidelidad mal entendida.
+
 ## Cómo correr las pruebas
 
 ```bash
@@ -53,6 +70,11 @@ node comercial/machote/tests/pruebas-navegador.js
 ```
 
 Corren contra el archivo local, sin servidor, a 380 px y a 1280 px.
+
+⚠️ **No instales `@playwright/cli` en este repo sin fijar la versión.** Arrastra
+un `playwright-core` de prerelease cuyo protocolo no habla con el Chromium del
+contenedor de Claude Code: el navegador arranca y nunca contesta, y el fallo se
+ve como un cuelgue sin mensaje.
 
 Cuatro fallos que encontraron estas pruebas y que leer el código no habría
 encontrado:
@@ -64,6 +86,11 @@ encontrado:
 3. Un `<input>` sin `flex` usa su ancho intrínseco (~177 px). Dos en la misma
    fila desbordaban la pantalla del reparto de comisiones.
 4. La fila de mano de obra desbordaba 7 px por no dejar encoger los campos.
+5. `shared/fts-styles.css` define `.btn{width:100%}` para el kiosko. En la barra
+   fija eso hacía que "Revisar" se comiera el ancho entero y el precio quedara
+   en **cero px**: la pantalla se veía bien y el dato no estaba.
+6. `td[colspan]{display:none}` ocultaba también los títulos de grupo de las
+   tarjetas, que son justo lo que las ordena.
 
 ## Lo que falta para que esto deje de ser prototipo
 

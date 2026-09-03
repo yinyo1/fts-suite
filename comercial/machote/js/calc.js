@@ -15,7 +15,7 @@
   const num = (v) => (typeof v === 'number' && isFinite(v)) ? v : 0;
   const vacio = (v) => v === null || v === undefined || v === '';
 
-  /* ── Los doce renglones fijos de mano de obra ──────────────────────────
+  /* ── Los diez renglones fijos de mano de obra ──────────────────────────
    * Son los del machote, con sus tarifas de plantilla. El capturista pisa la
    * tarifa; los renglones no se agregan ni se quitan.
    * `mult` dice de qué celda de la tabla de márgenes sale el multiplicador. */
@@ -100,20 +100,28 @@
   }
 
   /** Una línea de materiales o servicios. El `tipo` elige el multiplicador:
-   *  es la columna que decide el precio. Sin tipo no hay precio. */
+   *  es la columna que decide el precio. Sin tipo no hay precio.
+   *
+   *  El machote real permite PISAR ese multiplicador renglón por renglón: en
+   *  `SO11737` hay una partida "riel" de $200 marcada como Materiales con
+   *  margen 1,5 escrito encima de la fórmula, que es de donde salían $20 de
+   *  diferencia contra el archivo. Se respeta el valor pisado y se marca. */
   function costoPartida(linea, m) {
     const mg = margenes(m);
     const sinPrecio = vacio(linea.pu);
     const pu = sinPrecio ? 0 : num(linea.pu);
     const costo = aMonedaDoc(pu * num(linea.qty), linea.moneda, m);
     const sinTipo = TIPOS.indexOf(linea.tipo) === -1;
-    const mult = sinTipo ? 0 : num(linea.tipo === 'Materiales' ? mg.materiales : mg.servicios);
-    return { costo, mult, conUtilidad: costo * mult, sinPrecio, sinTipo, sinLink: !linea.link };
+    const porTipo = sinTipo ? 0 : num(linea.tipo === 'Materiales' ? mg.materiales : mg.servicios);
+    const pisado = !vacio(linea.margen) && Math.abs(num(linea.margen) - porTipo) > 0.0001;
+    const mult = pisado ? num(linea.margen) : porTipo;
+    return { costo, mult, porTipo, pisado,
+             conUtilidad: costo * mult, sinPrecio, sinTipo, sinLink: !linea.link };
   }
 
   function totalSeccion(s, m) {
     let costoMoTot = 0, ventaMo = 0, horas = 0, moSinTarifa = 0;
-    let costoMat = 0, ventaMat = 0, sinPrecio = 0, sinTipo = 0, sinLink = 0;
+    let costoMat = 0, ventaMat = 0, sinPrecio = 0, sinTipo = 0, sinLink = 0, pisados = 0;
     const monedas = {};
 
     (s.mo || []).forEach(l => {
@@ -129,6 +137,7 @@
       if (!usada) return;
       if (c.sinPrecio) sinPrecio++;
       if (c.sinTipo) sinTipo++;
+      if (c.pisado) pisados++;
       if (c.sinLink && !vacio(l.pu)) sinLink++;
       if (l.moneda) monedas[l.moneda] = 1;
     });
@@ -137,7 +146,7 @@
       id: s.id, nombre: s.nombre,
       costoMo: costoMoTot, costoMat, costo: costoMoTot + costoMat,
       ventaMo, ventaMat, venta: ventaMo + ventaMat,
-      horas, moSinTarifa, sinPrecio, sinTipo, sinLink,
+      horas, moSinTarifa, sinPrecio, sinTipo, sinLink, pisados,
       monedas: Object.keys(monedas)
     };
   }
@@ -215,13 +224,28 @@
     // sección, no por margen propio de sección. El margen es una restricción
     // global. (DESGLOSE COTIZACION I18/J18.)
     const detalle = secciones.map(s => {
-      const peso = costo > 0 ? s.costo / costo : 0;
-      const precioSec = elegido.precio === null ? null
-        : (elegido.id === 'con_utilidad' ? s.venta + (comFtsCU + comCliCU) * (venta > 0 ? s.venta / venta : 0)
-        : elegido.id === 'costo' ? s.costo
-        : elegido.precio * peso);
+      const peso = costo > 0 ? s.costo / costo : 0;              // peso por COSTO
+      const pesoV = venta > 0 ? s.venta / venta : 0;             // peso por VENTA
+
+      // Los tres escenarios por sección: es la tabla RESUMEN del machote.
+      // Bajo margen deseado el precio se reparte a prorrata del COSTO, y el
+      // reparto entre mano de obra y materiales usa el costo de cada bloque.
+      const pMo  = costo > 0 ? s.costoMo / costo : 0;
+      const pMat = costo > 0 ? s.costoMat / costo : 0;
+      const esc = {
+        costo: { mo: s.costoMo, mat: s.costoMat, precio: s.costo },
+        con_utilidad: {
+          mo: s.ventaMo, mat: s.ventaMat,
+          precio: s.venta + (comFtsCU + comCliCU) * pesoV
+        },
+        margen_deseado: precioMD === null
+          ? { mo: null, mat: null, precio: null }
+          : { mo: precioMD * pMo, mat: precioMD * pMat, precio: precioMD * peso }
+      };
+
+      const precioSec = esc[elegido.id] ? esc[elegido.id].precio : null;
       return Object.assign({}, s, {
-        peso,
+        peso, pesoV, esc,
         precio: precioSec,
         utilidad: precioSec === null ? null : precioSec - s.costo - (elegido.precio > 0 ? (elegido.comisionFts + elegido.comisionCliente) * peso : 0),
         margenObtenido: s.venta > 0 ? (s.venta - s.costo) / s.venta : null
@@ -257,6 +281,7 @@
     const moSinTarifa = secciones.reduce((a, s) => a + s.moSinTarifa, 0);
     const sinTipo     = secciones.reduce((a, s) => a + s.sinTipo, 0);
     const sinLink     = secciones.reduce((a, s) => a + s.sinLink, 0);
+    const pisados     = secciones.reduce((a, s) => a + s.pisados, 0);
     const monedas = {};
     secciones.forEach(s => s.monedas.forEach(x => { monedas[x] = 1; }));
     const mezclaMoneda = Object.keys(monedas).length > 1;
@@ -281,7 +306,7 @@
       pesoMat: costo > 0 ? costoMat / costo : null,
       reparto: { venta: venta_, operaciones: ops_, cliente: cliente_, bolsaVenta, bolsaOps },
       budget,
-      sinPrecio, moSinTarifa, sinTipo, sinLink, mezclaMoneda,
+      sinPrecio, moSinTarifa, sinTipo, sinLink, pisados, mezclaMoneda,
       huecos, costoIncompleto: huecos > 0
     };
   }

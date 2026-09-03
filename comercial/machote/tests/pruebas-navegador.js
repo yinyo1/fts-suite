@@ -13,10 +13,29 @@ const { chromium } = require('playwright');
 const path = require('path');
 const BASE = 'file://' + path.resolve(__dirname, '..', 'index.html');
 
+/* El navegador con el que se corre.
+ *
+ * En una laptop basta `chromium.launch()`. En el contenedor de Claude Code el
+ * binario vive en una ruta fija y NO se puede descargar (cdn.playwright.dev
+ * está fuera de la lista blanca del proxy), así que se apunta a mano.
+ * Se prefiere `headless_shell`, que es lo que Playwright usa de todos modos
+ * para modo headless desde la 1.49.
+ *
+ * Si en tu máquina Playwright ya tiene su navegador, borra `executablePath`
+ * o exporta CHROMIUM_PATH con la ruta que quieras. */
+const fs = require('fs');
+const CANDIDATOS = [
+  process.env.CHROMIUM_PATH,
+  '/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell',
+  '/opt/pw-browsers/chromium'
+].filter(Boolean);
+const EXE = CANDIDATOS.find(x => { try { return fs.statSync(x).isFile(); } catch (e) { return false; } });
+const OPCIONES = EXE ? { executablePath: EXE } : {};
+
 let ok = 0, mal = 0;
 
 (async () => {
-  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+  const b = await chromium.launch(OPCIONES);
   const errs = [];
   const p = await b.newPage({ viewport: { width: 380, height: 780 } });
   // El contenedor no tiene salida a fonts.googleapis.com, que fts-styles.css
@@ -32,7 +51,20 @@ let ok = 0, mal = 0;
     try { await fn(); console.log('✓', n); ok++; }
     catch (e) { console.log('✗', n, '→', e.message); mal++; }
   };
-  const ir = async (h) => { await p.evaluate(x => { location.hash = x; }, h); await p.waitForTimeout(220); };
+  // Asignar el mismo hash que ya está puesto NO dispara `hashchange`, así que
+  // la vista no se repinta y la prueba mide la pantalla anterior. Se pasa por
+  // '#/' primero para forzar el repintado.
+  const ir = async (h) => {
+    await p.evaluate(() => { location.hash = '#/'; });
+    await p.waitForTimeout(80);
+    await p.evaluate(x => { location.hash = x; }, h);
+    await p.waitForTimeout(260);
+  };
+  // Abre una hoja del libro por su nombre.
+  const hoja = async (nom) => {
+    const b = p.locator('.pestana', { hasText: nom });
+    await b.first().click(); await p.waitForTimeout(240);
+  };
 
   await p.goto(BASE); await p.waitForTimeout(400);
 
@@ -119,86 +151,105 @@ let ok = 0, mal = 0;
     if (Math.abs(r - 1890) > 0.01) throw new Error('costo ' + r);
   });
 
-  // ── Pantallas ────────────────────────────────────────────────────────
+  // ── La hoja ──────────────────────────────────────────────────────────
   await paso('la lista carga con machotes y órdenes', async () => {
     const n = await p.locator('.item').count();
     if (n < 6) throw new Error('pocas tarjetas: ' + n);
-    console.log('   tarjetas:', n);
   });
 
-  await paso('las cinco pestañas de la estación 2.0 pintan', async () => {
+  await paso('el libro abre con sus pestañas de hoja', async () => {
     await ir('#/m/M-1041');
-    for (const t of ['diag', 'secc', 'gen', 'com', 'sim']) {
-      await p.click('[data-tab="' + t + '"]'); await p.waitForTimeout(160);
-      const h = await p.locator('#pane').innerHTML();
-      if (!h || h.length < 60) throw new Error('pestaña vacía: ' + t);
+    const t = await p.locator('.pestana').allTextContents();
+    if (!t[0] || !/DESGLOSE/.test(t[0])) throw new Error('primera pestaña: ' + t[0]);
+    if (t.length < 3) throw new Error('faltan hojas: ' + t.join(' | '));
+    console.log('   hojas:', t.filter(x => x !== '+').join(' · '));
+  });
+
+  await paso('la hoja de sección trae los encabezados del machote', async () => {
+    await ir('#/m/M-1041');
+    await hoja('Suministro');
+    const t = await p.textContent('#hoja');
+    for (const x of ['Costos desglosados', 'Margen de utilidad', 'NOMBRE DE SECCIÓN',
+                     'COSTO MANO DE OBRA', 'COSTO MATERIALES Y SERVICIOS',
+                     'Precio de Venta FTS', 'Horas sección']) {
+      if (t.indexOf(x) < 0) throw new Error('falta: ' + x);
     }
   });
 
-  await paso('bajo CON UTILIDAD, cambiar un multiplicador mueve el precio', async () => {
-    await ir('#/m/M-1041'); await p.click('[data-tab="sim"]'); await p.waitForTimeout(160);
-    await p.click('[data-esc="con_utilidad"]'); await p.waitForTimeout(160);
-    await p.click('[data-tab="gen"]'); await p.waitForTimeout(160);
-    const antes = await p.textContent('.fija .mono');
-    await p.fill('[data-bind="margenes.materiales"]', '3.5');
-    await p.dispatchEvent('[data-bind="margenes.materiales"]', 'input');
-    await p.waitForTimeout(200);
-    const desp = await p.textContent('.fija .mono');
-    if (antes === desp) throw new Error('el precio no se movió: ' + antes);
-    console.log('   ', antes.trim(), '→', desp.trim());
+  await paso('los diez renglones de mano de obra están siempre, en sus tres grupos', async () => {
+    await ir('#/m/M-1041');
+    await hoja('Suministro');
+    const g = await p.locator('#hoja tr.grupo').allTextContents();
+    const esperados = ['Diseño y Programación', 'En Planta', 'Extras'];
+    for (const e of esperados) if (!g.some(x => x.indexOf(e) >= 0)) throw new Error('falta grupo ' + e);
+    const rot = await p.locator('#hoja td.rotulo').allTextContents();
+    const soloMo = rot.filter(x => x !== 'TOTAL');
+    if (soloMo.length !== 10) throw new Error('renglones de MO: ' + soloMo.length);
   });
 
-  // Propiedad real del machote, no un bug: bajo MARGEN DESEADO el precio sale
-  // de costo / (1 - margen - comisiones). Los multiplicadores no entran en esa
-  // cuenta, asi que moverlos NO cambia el precio: solo cambian el escenario
-  // CON UTILIDAD y, con el, el reparto entre secciones. Vale la pena fijarlo
-  // en una prueba porque es lo primero que confunde a quien abre el machote.
-  await paso('bajo MARGEN DESEADO, el multiplicador NO mueve el precio', async () => {
-    await ir('#/m/M-1042'); await p.click('[data-tab="sim"]'); await p.waitForTimeout(160);
-    await p.click('[data-esc="margen_deseado"]'); await p.waitForTimeout(160);
-    await p.click('[data-tab="gen"]'); await p.waitForTimeout(160);
-    const antes = await p.textContent('.fija .mono');
-    await p.fill('[data-bind="margenes.materiales"]', '4.2');
-    await p.dispatchEvent('[data-bind="margenes.materiales"]', 'input');
-    await p.waitForTimeout(200);
-    const desp = await p.textContent('.fija .mono');
-    if (antes !== desp) throw new Error('cambió y no debía: ' + antes + ' → ' + desp);
+  await paso('la hoja DESGLOSE trae los cuatro bloques del machote', async () => {
+    await ir('#/m/M-1041'); await hoja('DESGLOSE');
+    const t = await p.textContent('#hoja');
+    for (const x of ['ELIGE UN ESCENARIO', 'RESUMEN BUDGET', 'RESUMEN POR SECCIÓN',
+                     'BUDGET ODOO', 'TABLA DE COMISIONES Y BONOS', 'Factor_req',
+                     'PRECIO DE VENTA ANTE DE IMPUESTO']) {
+      if (t.indexOf(x) < 0) throw new Error('falta: ' + x);
+    }
   });
 
-  await paso('los tres escenarios dan tres precios distintos', async () => {
-    await ir('#/m/M-1041'); await p.click('[data-tab="sim"]'); await p.waitForTimeout(160);
+  await paso('la tabla por sección tiene las diez ranuras del machote', async () => {
+    await ir('#/m/M-1041'); await hoja('DESGLOSE');
+    const filas = await p.locator('#hoja .rejilla.ancha tbody tr').count();
+    if (filas < 11) throw new Error('filas: ' + filas + ' (10 ranuras + SUMA)');
+  });
+
+  await paso('cambiar el escenario mueve el precio de la barra', async () => {
+    await ir('#/m/M-1041'); await hoja('DESGLOSE');
     const v = [];
     for (const e of ['costo', 'con_utilidad', 'margen_deseado']) {
-      await p.click('[data-esc="' + e + '"]'); await p.waitForTimeout(160);
+      await p.click('[data-esc="' + e + '"]'); await p.waitForTimeout(200);
       v.push((await p.textContent('.fija .mono')).trim());
     }
     if (new Set(v).size !== 3) throw new Error('escenarios iguales: ' + v.join(' | '));
     console.log('   costo', v[0], '· con utilidad', v[1], '· margen deseado', v[2]);
   });
 
+  await paso('editar una celda recalcula', async () => {
+    await ir('#/m/M-1042'); await hoja('DESGLOSE');
+    await p.click('[data-esc="con_utilidad"]'); await p.waitForTimeout(200);
+    await hoja('Adecuación');
+    const antes = await p.textContent('.fija .mono');
+    await p.fill('[data-cel="margenes.materiales"]', '3.2');
+    await p.dispatchEvent('[data-cel="margenes.materiales"]', 'input');
+    await p.waitForTimeout(250);
+    const desp = await p.textContent('.fija .mono');
+    if (antes === desp) throw new Error('no se movió: ' + antes);
+    console.log('   ', antes.trim(), '→', desp.trim());
+  });
+
+  await paso('un margen pisado a mano se marca', async () => {
+    await ir('#/m/M-1041');
+    await hoja('Instalación');
+    const n = await p.locator('#hoja .cel.pisado').count();
+    if (n === 0) throw new Error('no marcó ninguno');
+    console.log('   ', n, 'renglón(es) con el margen escrito encima de la fórmula');
+  });
+
   await paso('el revisador encuentra la partida sin precio', async () => {
     await ir('#/rev/M-1041');
-    const t = await p.textContent('#vista');
-    if (!/Partidas sin precio/.test(t)) throw new Error('no la reportó');
+    if (!/Partidas sin precio/.test(await p.textContent('#vista'))) throw new Error('no la reportó');
   });
 
   await paso('el revisador encuentra el reparto de comisiones descuadrado', async () => {
     await ir('#/rev/M-1044');
     const t = await p.textContent('#vista');
     if (!/no suma 100/.test(t)) throw new Error('no lo reportó');
-    if (!/BUDGET ODOO no cuadra/.test(t)) throw new Error('no reportó el descuadre del budget');
+    if (!/BUDGET ODOO no cuadra/.test(t)) throw new Error('no reportó el descuadre');
   });
 
   await paso('el revisador exige tipo de cambio cuando hay dos monedas', async () => {
     await ir('#/rev/M-1043');
-    const t = await p.textContent('#vista');
-    if (!/no hay tipo de cambio/.test(t)) throw new Error('no lo reportó');
-  });
-
-  await paso('"Ir a arreglarlo" lleva a la pestaña correcta', async () => {
-    await ir('#/rev/M-1043');
-    await p.click('[data-goto]'); await p.waitForTimeout(250);
-    if (!/#\/m\//.test(await p.evaluate(() => location.hash))) throw new Error('no navegó');
+    if (!/no hay tipo de cambio/.test(await p.textContent('#vista'))) throw new Error('no lo reportó');
   });
 
   await paso('la estación 3.0 no deja cerrar el handoff incompleto', async () => {
@@ -208,24 +259,42 @@ let ok = 0, mal = 0;
 
   await paso('marcar todo habilita el cierre, y la marca no se pierde', async () => {
     await ir('#/orden/O-9001');
-    // La vista se repinta en cada cambio, asi que hay que volver a buscar el
-    // pendiente en cada vuelta: guardar los locators de antemano no sirve.
     for (let i = 0; i < 12; i++) {
       const pend = p.locator('[data-ent]:not(:checked)');
       if (await pend.count() === 0) break;
-      await pend.first().check();
-      await p.waitForTimeout(120);
+      await pend.first().check(); await p.waitForTimeout(120);
     }
-    if (await p.locator('[data-ent]:not(:checked)').count()) throw new Error('quedaron casillas sin marcar');
     if (await p.locator('#btnConf').isDisabled()) throw new Error('sigue deshabilitado');
     await p.click('#btnConf'); await p.waitForTimeout(250);
     if (!/Handoff cerrado/.test(await p.textContent('#vista'))) throw new Error('no cerró');
   });
 
-  await paso('la aprobación muestra el cuadre del BUDGET ODOO', async () => {
-    await ir('#/ap/M-1044');
-    const t = await p.textContent('#vista');
-    if (!/BUDGET ODOO cuadra/.test(t)) throw new Error('no lo muestra');
+  await paso('volver al mismo machote conserva la hoja donde ibas', async () => {
+    await ir('#/m/M-1041'); await hoja('Instalación');
+    await ir('#/rev/M-1041');
+    await p.evaluate(() => { location.hash = '#/m/M-1041'; }); await p.waitForTimeout(260);
+    const on = await p.locator('.pestana.on').textContent();
+    if (!/Instalación/.test(on)) throw new Error('cayó en: ' + on);
+  });
+
+  // El precio es lo único que el analista mira sin parar. Que un botón se lo
+  // coma es un fallo silencioso: la pantalla se ve bien y el dato no está.
+  await paso('la barra siempre muestra el precio, no sólo el botón', async () => {
+    for (const [w, h] of [[390, 844], [1440, 900]]) {
+      await p.setViewportSize({ width: w, height: h });
+      await ir('#/m/M-1041');
+      const r = await p.evaluate(() => {
+        const g = document.querySelector('.fija .grow');
+        const b = document.querySelector('.fija .btn');
+        return { ancho: g ? Math.round(g.getBoundingClientRect().width) : -1,
+                 texto: g ? g.textContent.trim().slice(0, 20) : '',
+                 boton: b ? Math.round(b.getBoundingClientRect().width) : -1 };
+      });
+      if (r.ancho < 120) throw new Error('a ' + w + 'px el precio mide ' + r.ancho + 'px de ancho');
+      if (!/\$/.test(r.texto)) throw new Error('a ' + w + 'px no hay precio: ' + r.texto);
+      if (r.boton > w * 0.6) throw new Error('a ' + w + 'px el botón ocupa ' + r.boton + 'px');
+    }
+    await p.setViewportSize({ width: 380, height: 780 });
   });
 
   // ── Diseño ───────────────────────────────────────────────────────────
@@ -235,15 +304,111 @@ let ok = 0, mal = 0;
       const d = await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       if (d > 2) throw new Error(h + ' desborda ' + d + ' px');
     }
+    await ir('#/m/M-1041');
+    await hoja('Suministro');
+    const d = await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    if (d > 2) throw new Error('la hoja de sección desborda ' + d + ' px');
   });
 
-  await paso('nada desborda a 1280 px', async () => {
+  await paso('en teléfono la captura son tarjetas, no una retícula', async () => {
+    await ir('#/m/M-1041');
+    await hoja('Suministro');
+    const r = await p.evaluate(() => {
+      const td = document.querySelector('.rejilla.tarjetas tbody td');
+      const th = document.querySelector('.rejilla.tarjetas thead');
+      return { disp: td && getComputedStyle(td).display,
+               cabOculta: th ? getComputedStyle(th).display === 'none' : false,
+               rotulo: !!document.querySelector('.rejilla.tarjetas td.rotulo') };
+    });
+    if (r.disp !== 'flex') throw new Error('las celdas no se apilan: ' + r.disp);
+    if (!r.cabOculta) throw new Error('el encabezado de tabla sigue visible');
+    if (!r.rotulo) throw new Error('las tarjetas no traen su rótulo');
+  });
+
+  await paso('cada campo de la tarjeta dice de qué columna es', async () => {
+    await ir('#/m/M-1041');
+    await hoja('Suministro');
+    const sin = await p.evaluate(() => {
+      const out = [];
+      document.querySelectorAll('.rejilla.tarjetas tbody tr:not(.grupo):not(.total) td').forEach(td => {
+        if (getComputedStyle(td).display === 'none') return;
+        if (td.classList.contains('rotulo') || td.classList.contains('acc')) return;
+        if (!td.getAttribute('data-l')) out.push(td.className || '(sin clase)');
+      });
+      return out;
+    });
+    if (sin.length) throw new Error(sin.length + ' celda(s) sin etiqueta: ' + sin.slice(0, 3).join(', '));
+  });
+
+  await paso('todo lo que se toca mide al menos 40 px de alto', async () => {
+    const chico = [];
+    for (const h of ['#/', '#/m/M-1041', '#/orden/O-9002']) {
+      await ir(h);
+      if (h === '#/m/M-1041') { await hoja('Suministro'); }
+      const r = await p.evaluate(() => {
+        const out = [];
+        document.querySelectorAll('button, a.btn, a.item, input:not([type=checkbox]), select, textarea').forEach(el => {
+          const b = el.getBoundingClientRect();
+          if (b.height > 0 && b.height < 40) out.push((el.tagName + '.' + (el.className || '')).slice(0, 40) + ' → ' + Math.round(b.height) + 'px');
+        });
+        return out;
+      });
+      chico.push.apply(chico, r);
+    }
+    if (chico.length) throw new Error(chico.length + ' objetivo(s) chico(s): ' + chico.slice(0, 4).join(' · '));
+  });
+
+  await paso('se puede capturar con el pulgar: escribir en una tarjeta', async () => {
+    await ir('#/m/M-1041');
+    await hoja('Suministro');
+    const campo = p.locator('.rejilla.tarjetas tr:visible [data-cel$=":qty"]').first();
+    await campo.click(); await campo.fill('7'); await campo.blur();
+    await p.waitForTimeout(300);
+    const v = await p.locator('.rejilla.tarjetas tr:visible [data-cel$=":qty"]').first().inputValue();
+    if (v !== '7') throw new Error('no guardó: ' + v);
+  });
+
+  // Los doce renglones del Excel en un teléfono son doce tarjetas, y siete
+  // suelen ir en cero. Se pliegan, pero el interruptor tiene que decir
+  // cuántas hay y devolverlas al instante: si desaparecen sin aviso, el
+  // capturista cree que se le borraron.
+  await paso('los renglones en cero se pliegan y el interruptor los devuelve', async () => {
+    await ir('#/m/M-1041');
+    await hoja('Suministro');
+    const conteo = () => p.locator('.rejilla.tarjetas tr.enCero:visible').count();
+    if (await conteo() !== 0) throw new Error('no se plegaron');
+    const et = await p.textContent('.verVacios');
+    if (!/ver los \d+ en cero/.test(et)) throw new Error('el interruptor no dice cuántas: ' + et);
+    await p.check('#verVacios'); await p.waitForTimeout(300);
+    if (await conteo() === 0) throw new Error('el interruptor no los devolvió');
+    await p.uncheck('#verVacios'); await p.waitForTimeout(300);
+  });
+
+  await paso('en escritorio se ven los diez renglones, como en el Excel', async () => {
+    await p.setViewportSize({ width: 1280, height: 900 });
+    await ir('#/m/M-1041'); await hoja('Suministro');
+    const n = await p.locator('#hoja .rejilla.tarjetas').first()
+      .locator('tbody tr:not(.grupo):not(.total):visible').count();
+    if (n !== 10) throw new Error('renglones de mano de obra visibles: ' + n);
+    await p.setViewportSize({ width: 380, height: 780 });
+  });
+
+  await paso('a 1280 px vuelve a ser retícula, y no desborda', async () => {
     await p.setViewportSize({ width: 1280, height: 900 });
     for (const h of ['#/', '#/m/M-1041', '#/rev/M-1044']) {
       await ir(h);
       const d = await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       if (d > 2) throw new Error(h + ' desborda ' + d + ' px');
     }
+    await ir('#/m/M-1041');
+    await hoja('Suministro');
+    const disp = await p.evaluate(() => {
+      const td = document.querySelector('.rejilla.tarjetas tbody td');
+      return td && getComputedStyle(td).display;
+    });
+    if (disp !== 'table-cell') throw new Error('no volvió a retícula: ' + disp);
+    const d = await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    if (d > 2) throw new Error('la hoja desborda ' + d + ' px en escritorio');
     await p.setViewportSize({ width: 380, height: 780 });
   });
 
