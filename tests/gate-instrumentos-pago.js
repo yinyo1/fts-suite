@@ -319,6 +319,12 @@ async function escenarioReal() {
   has('9003 con el bill cancelado → estado propio, no "Conciliada"', html, 'Desconciliada');
   has('9003 dice por qué, sin inventar la causa', html, 'la conciliación se deshizo');
   has('9003 declara el importe que volvió a quedar abierto', html, '$54.00');
+  // No prometer lo que el motor no puede cumplir: el guard LINE_YA_CONCILIADA la rechaza,
+  // porque en Odoo sigue con is_reconciled=true.
+  has('9003 dice dónde se resuelve, en vez de prometer un botón que falla', html, 'se resuelve en Odoo');
+  check('la desconciliada NO ofrece acordeón (sería un botón que siempre falla)',
+    !view().querySelector('tr.ip-exprow') && (html.match(/data-expand="2"/g) || []).length === 0,
+    'la fila 9003 (_id 2) no debe tener botón de expandir');
   check('la desconciliada NO se pinta como conciliada limpia',
     (html.match(/✓ Conciliada</g) || []).length === 2,
     'celdas "✓ Conciliada": ' + (html.match(/✓ Conciliada</g) || []).length + ' (deben ser 2: 9001 y 9009)');

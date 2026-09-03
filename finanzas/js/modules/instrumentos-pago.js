@@ -947,7 +947,11 @@
         // Dice lo ÚNICO que sabemos: el apunte volvió a abrirse completo. No dice "el bill se
         // canceló" como hecho — es la causa habitual, no la única (también se desata a mano).
         var _rd = Math.abs(Number(r.res_apunte) || 0);
-        return '<span class="ip-est tra" title="El apunte de la cuenta 17 recuperó el importe completo: la conciliación se deshizo entera (lo normal es que se haya cancelado el bill). La línea sigue marcada conciliada en Odoo porque la receta vació la suspense y ese flag ya no puede volver atrás. Vuelve a estar disponible para conciliar.">⟲ Desconciliada</span> <span class="ip-est-bill">la conciliación se deshizo · ' + money(_rd) + ' abiertos</span>';
+        // NO promete que se pueda volver a conciliar desde aquí. En Odoo la línea sigue con
+        // is_reconciled=true, así que el guard LINE_YA_CONCILIADA la rechazaría: hoy esto se
+        // resuelve en Odoo, no en el panel. Por eso tampoco lleva chevron de acordeón (el
+        // chevron sale con !t.ok) — ofrecer un botón que siempre falla sería peor que no darlo.
+        return '<span class="ip-est tra" title="El apunte de la cuenta 17 recuperó el importe COMPLETO: la conciliación se deshizo entera (lo habitual es que se haya cancelado el bill, pero también pudo desatarse a mano). La línea sigue marcada conciliada en Odoo porque la receta vació la cuenta de suspense y ese flag ya no puede volver atrás. Ojo: NO se puede volver a conciliar desde este panel — el guard la rechaza por ya-conciliada. Hoy se resuelve en Odoo.">⟲ Desconciliada</span> <span class="ip-est-bill">la conciliación se deshizo · ' + money(_rd) + ' abiertos · se resuelve en Odoo</span>';
       }
       if (st === 'noevaluada') return '<span class="ip-est nev" title="Fuera del alcance del motor de conciliación (journal_id 61 fijo). No es que no haya factura: no se buscó.">◌ No evaluada</span>';
       // Ninguno de los dos va en rojo: no son un error ni trabajo atorado del equipo.
@@ -1000,7 +1004,10 @@
     }
     function matchEdad(f, t) {
       if (!f) return true;
-      if (t.ok) return true;                       // la antigüedad solo califica lo pendiente
+      // La antigüedad solo califica lo pendiente. La desconciliada trae ok:true pero cuenta
+      // como pendiente (su apunte está abierto), así que sí debe entrar a los cubos de edad —
+      // si no, al filtrar "Sin conciliar + más de 3 días" saldría siempre, en cualquier cubo.
+      if (t.ok && rowConc(t) !== 'desconciliada') return true;
       var d = diasDesde(t.d);
       if (f === 'hoy') return d <= 0;
       if (f === 'd1_3') return d >= 1 && d <= 3;
