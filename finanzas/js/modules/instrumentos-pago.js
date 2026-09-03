@@ -27,7 +27,7 @@
   // comercial/machote y DEBE coincidir con finanzas/version.json — el gate lo verifica, porque
   // una pantalla que dice una versión y un archivo que dice otra deja de ser evidencia de nada.
   // Sustituye a la numeración 0.x.y (última: 0.5.36), conservada en version.json.
-  var IP_BUILD = 'V1.03';
+  var IP_BUILD = 'V1.04';
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -931,9 +931,13 @@
                        traspaso: 'Traspaso interno', ajuste: 'Ajuste', abono: 'Abono' };
 
     // ── EJE B · CONCILIACIÓN (qué falta hacer) ──
-    // 'noevaluada' es un valor REAL, no un hueco: el motor tiene journal_id 61 fijo, así que las
-    // 473 líneas de Chase nunca se evaluaron. Pintarlas "sin documento" afirmaría que se buscó y
-    // no había — no se buscó. Es la diferencia entre "no hay factura" y "no sabemos".
+    // 'noevaluada' es un valor REAL, no un hueco: el motor de SUGERENCIAS no cubre los journals
+    // de Chase, así que sus líneas nunca se evaluaron. Pintarlas "sin documento" afirmaría que se
+    // buscó y no había — no se buscó. Es la diferencia entre "no hay factura" y "no sabemos".
+    // OJO (2026-09-03): esto ya NO habla del motor de CONCILIAR, que desde hoy cubre las dos
+    // empresas (P1 corregido: cuentas por company_id). Conciliar una línea de Chase funciona;
+    // lo que falta es que alguien le PROPONGA el bill. Son dos workflows distintos y el flag
+    // en_motor solo describe al de sugerencias.
     function enAlcanceMotor(r) {
       var p = (state.porJournal || []).filter(function (x) { return x.journal === r._jid; })[0];
       return p ? p.en_motor !== false : true;   // sin info del server, no se acusa de no-evaluada
@@ -1015,7 +1019,7 @@
         // chevron sale con !t.ok) — ofrecer un botón que siempre falla sería peor que no darlo.
         return '<span class="ip-est tra" title="El apunte de la cuenta 17 recuperó el importe COMPLETO: la conciliación se deshizo entera (lo habitual es que se haya cancelado el bill, pero también pudo desatarse a mano). La línea sigue marcada conciliada en Odoo porque la receta vació la cuenta de suspense y ese flag ya no puede volver atrás. Ojo: NO se puede volver a conciliar desde este panel — el guard la rechaza por ya-conciliada. Hoy se resuelve en Odoo.">⟲ Desconciliada</span> <span class="ip-est-bill">' + money(_rd) + ' abiertos · resolver en Odoo</span>';
       }
-      if (st === 'noevaluada') return '<span class="ip-est nev" title="Fuera del alcance del motor de conciliación (journal_id 61 fijo). No es que no haya factura: no se buscó.">◌ No evaluada</span>';
+      if (st === 'noevaluada') return '<span class="ip-est nev" title="El motor de sugerencias no evalúa este journal todavía, así que no hay bill propuesto. No es que no haya factura: no se buscó. Conciliar SÍ funciona — abre la fila y usa \'buscar bill\'.">◌ No evaluada</span>';
       // Ninguno de los dos va en rojo: no son un error ni trabajo atorado del equipo.
       if (st === 'devolucion_pend') return '<span class="ip-est dev-ret" title="Una devolución no casa contra un bill de proveedor: casa contra una nota de crédito, o reduce el bill original. El motor de sugerencias no la evalúa a propósito.">↩ Devolución</span> <span class="ip-est-bill">pendiente de nota de crédito</span>';
       if (st === 'fondeo_pend')     return '<span class="ip-est fon" title="Abono de la línea de crédito. Su contrapartida es el movimiento del lado BBVA, que aún no se captura en Odoo — por eso queda en suspense.">⊕ Fondeo</span> <span class="ip-est-bill">pendiente del lado BBVA</span>';
@@ -1671,9 +1675,9 @@
 
       // ── B · POST-CORTE. Protagonista, expandido, arriba. ──
       // El desglose POR JOURNAL va primero y el global después, a propósito: el agregado
-      // ATRIBUYE MAL. El motor tiene journal_id 61 fijo, así que 122 y 123 están al 0% por
-      // falta de alcance, no de trabajo. Un 19.6% en grande se lee como "la operación va mal"
-      // cuando lo que dice es "hay dos fuentes sin abrir".
+      // ATRIBUYE MAL. 122 y 123 están casi al 0% porque nadie les propone bills todavía, no
+      // porque el equipo no trabaje. Un porcentaje global en grande se lee como "la operación
+      // va mal" cuando lo que dice es "hay dos fuentes sin sugerencias".
       if (m && m.cumplimiento) {
         var pj = (m.por_journal || []).filter(function (x) { return (x.post_total || 0) > 0; });
         // El foco de la cabecera se calcula SOLO sobre las fuentes con motor (v0.5.37). Antes
@@ -1726,8 +1730,10 @@
             '<div class="bar"><i style="width:' + (p || 0) + '%;background:' + barc(c2) + '"></i></div>' +
             '<div class="s2cn">' + detalle + '</div>' +
             comp.html +
-            (x.en_motor ? '' : '<div class="s2cw">El motor todavía no evalúa este journal: hoy solo cubre Jeeves. ' +
-              'Abrirlo es un cambio en el workflow de conciliación, no en este panel.</div>') +
+            (x.en_motor ? '' : '<div class="s2cw">Lo que falta aquí es el motor de <b>sugerencias</b>: ' +
+              'no propone bills todavía, así que cada línea se busca con <b>buscar bill</b> en su fila. ' +
+              '<b>Conciliar sí funciona</b> — el motor de conciliación ya cubre este journal ' +
+              '(primera línea cerrada el 2026-09-03).</div>') +
             '</div>';
         }).join('');
         html += '<div class="ip-sem2 b">' +

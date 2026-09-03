@@ -1,9 +1,14 @@
 {
-  "version": "V1.03",
+  "version": "V1.04",
   "fecha": "2026-09-03",
   "modulo": "finanzas",
   "esquema": "V<mayor>.<menor de dos dígitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.04",
+      "pr": null,
+      "nota": "La nota de las fuentes sin abrir decia \"el motor todavia no evalua este journal\" y eso quedo falso: el 2026-09-03 se concilio la primera linea de FTS-USA (33121 Elliott / BILL/2026/08/0016, full_reconcile 9357). Son DOS motores y el panel los mezclaba: el de CONCILIAR ya cubre las dos empresas; el de SUGERENCIAS todavia no propone bills en Chase. Los textos ahora lo dicen por separado, e indican que conciliar si funciona usando buscar bill."
+    },
     {
       "version": "V1.03",
       "pr": null,
