@@ -22,7 +22,7 @@
   // ── config ──
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
-  var IP_BUILD = '0.5.30';                // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.31';                // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -997,11 +997,39 @@
         : '<div class="ip-empty">Sin movimientos con estos filtros. Ajusta el rango o la búsqueda.</div>';
       var w = q('#ip-tblwrap'); if (w) w.innerHTML = tbl;
 
-      var cnt = { liquidado: 0, transito: 0, fondeo: 0, devolucion: 0, sinconciliar: 0 };
-      rows.forEach(function (t) { cnt[rowState(t)]++; });
-      var resid = rows.reduce(function (a, t) { return rowState(t) === 'sinconciliar' ? a + (t.res || 0) : a; }, 0);   // solo lo SIN CONCILIAR suma al residual pendiente
+      // Contadores de la barra. Hasta v0.5.30 las llaves eran las del eje de 5 valores
+      // que murió en v0.5.16 (liquidado/transito/fondeo/devolucion/sinconciliar), y
+      // rowState() —alias de rowConc()— no devuelve NINGUNA de ellas: solo produce
+      // conciliada|parcial|preconciliada|noevaluada|condoc|sindoc|pendiente. Resultado:
+      // `cnt[rowState(t)]++` escribía en llaves nuevas que nadie leía, las cinco
+      // declaradas se quedaban en 0, y `resid` comparaba contra 'sinconciliar' — que
+      // tampoco existe — así que la barra decía SIEMPRE, con cualquier dato:
+      //     "N líneas · 0 conciliadas · 0 en tránsito · 0 sin conciliar · residual $0.00"
+      // mientras los chips de arriba mostraban los conteos correctos. Dos cifras
+      // contradictorias en la misma pantalla. paintChips() sí se migró en v0.5.15–17
+      // (su comentario documenta este mismo error); la barra se quedó atrás.
+      //
+      // El criterio se alinea A PROPÓSITO con paintChips(): mismo orden, mismas ramas.
+      // Si divergen, vuelven a contradecirse.
+      var cnt = { conciliadas: 0, pendientes: 0, preconciliadas: 0, fondeo: 0, devolucion: 0 };
+      rows.forEach(function (t) {
+        if (rowConc(t) === 'preconciliada') cnt.preconciliadas++;
+        else if (t.ok) cnt.conciliadas++;
+        else cnt.pendientes++;
+        // Fondeo y devolución son del EJE A (tipo), no del eje de conciliación: se
+        // cuentan con rowTipo(), y una fila puede ser devolución Y estar pendiente.
+        var tp = rowTipo(t);
+        if (tp === 'fondeo') cnt.fondeo++;
+        else if (tp === 'devolucion') cnt.devolucion++;
+      });
+      // Residual pendiente: solo lo NO conciliado. En una conciliada, `res` es 0 en
+      // cuanto la línea sale de suspense (por eso el residual real de una parcial vive
+      // en `res_apunte`, no aquí — ver rowConc).
+      // ⚠ Suma sin separar moneda, igual que el semáforo: en una vista con journals de
+      // más de una divisa el número mezcla MXN y USD. Se hereda, no se introduce aquí.
+      var resid = rows.reduce(function (a, t) { return t.ok ? a : a + (t.res || 0); }, 0);
       var nSel = rows.filter(function (t) { return state.sel[t._id]; }).length;
-      var ag = q('#ip-aggs'); if (ag) ag.textContent = rows.length + ' líneas · ' + cnt.liquidado + ' conciliadas (liquidadas) · ' + cnt.transito + ' en tránsito · ' + cnt.sinconciliar + ' sin conciliar' + (cnt.fondeo ? ' · ' + cnt.fondeo + ' fondeos' : '') + (cnt.devolucion ? ' · ' + cnt.devolucion + ' devoluciones' : '') + ' · residual ' + money(resid) + (nSel ? ' · ' + nSel + ' seleccionadas' : '');
+      var ag = q('#ip-aggs'); if (ag) ag.textContent = rows.length + ' líneas · ' + cnt.conciliadas + ' conciliadas · ' + cnt.pendientes + ' sin conciliar' + (cnt.preconciliadas ? ' · ' + cnt.preconciliadas + ' pre-conciliadas' : '') + (cnt.fondeo ? ' · ' + cnt.fondeo + (cnt.fondeo === 1 ? ' fondeo' : ' fondeos') : '') + (cnt.devolucion ? ' · ' + cnt.devolucion + (cnt.devolucion === 1 ? ' devolución' : ' devoluciones') : '') + ' · residual ' + money(resid) + (nSel ? ' · ' + nSel + ' seleccionadas' : '');
 
       var bn = q('#ip-selbanner');
       if (bn) {

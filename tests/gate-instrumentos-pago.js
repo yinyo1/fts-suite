@@ -286,11 +286,29 @@ async function escenarioReal() {
   has('la devolución se clasifica por el marcador del ref, no por el signo', html, 'Devolución');
 
   // ── Barra de agregados (#ip-aggs) ──
+  // Con los 8 fixtures: 3 conciliadas (9001 limpia, 9002 parcial, 9003 desconciliada —
+  // las tres con ok:true) y 5 pendientes. Residual = suma de `res` de las NO conciliadas:
+  // 860.98 + 168,574.45 + 340.96 + 177.00 + 31.88 = 169,985.27
   const aggs = txt('#ip-aggs');
   check('existe la barra de agregados', aggs != null, 'no se encontró #ip-aggs');
   if (aggs != null) {
     has('la barra reporta el total de líneas', aggs, '8 líneas');
+    has('la barra cuenta las conciliadas de verdad', aggs, '3 conciliadas');
+    has('la barra cuenta las pendientes de verdad', aggs, '5 sin conciliar');
+    has('la barra cuenta el fondeo', aggs, '1 fondeo');
+    has('la barra cuenta la devolución', aggs, '1 devolución');
+    has('la barra suma el residual pendiente', aggs, '169,985.27');
+    hasNot('la barra ya no puede decir "residual $0.00" con filas pendientes', aggs, 'residual $0.00');
+    // El vocabulario viejo del eje de 5 valores murió en v0.5.16; si vuelve, la barra
+    // vuelve a contar llaves que rowConc() no produce.
+    hasNot('la barra ya no habla de "en tránsito" (eje muerto en v0.5.16)', aggs, 'en tránsito');
   }
+
+  // ── Coherencia barra ↔ chips: el defecto era que se contradecían en pantalla ──
+  const chipsTxt = txt('#ip-chips') || '';
+  check('el chip "Sin conciliar" y la barra dicen el mismo 5',
+    /Sin conciliar\s*5/.test(chipsTxt.replace(/\s+/g, ' ')),
+    'chips: ' + chipsTxt.replace(/\s+/g, ' '));
 
   // ── Chips ──
   const chips = txt('#ip-chips');
