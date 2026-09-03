@@ -492,3 +492,17 @@ table.rejilla tr.capturada > td:first-child { box-shadow: inset 3px 0 0 var(--x-
   table.rejilla.tarjetas tr.capturada > td.calc { background: var(--papel); }
   table.rejilla.tarjetas tr.capturada > td:first-child { box-shadow: none; }
 }
+
+/* ── Quién entró ────────────────────────────────────────────────────────
+ * En una prueba con varias personas, no saber con qué usuario estás viendo
+ * la pantalla vuelve el input inatribuible — que es para lo que se puso el
+ * login en primer lugar. */
+.tb-user { background: transparent; border: 1px solid var(--linea); color: var(--suave);
+           font-size: 11px; font-weight: 600; border-radius: 20px; padding: 4px 10px;
+           cursor: pointer; flex-shrink: 0; max-width: 110px; overflow: hidden;
+           text-overflow: ellipsis; white-space: nowrap;
+           /* 44 px como todo lo demás que se toca. Lo cachó la prueba, no yo:
+              había puesto 28 px por que "es sólo la barra". */
+           min-height: var(--toque); }
+.tb-user:hover { color: var(--tinta); border-color: var(--suave); }
+@media (max-width: 420px) { .tb-user { max-width: 74px; } }

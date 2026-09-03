@@ -65,7 +65,7 @@ versión es peor que no tener indicador.
 | `js/demo.js` | Datos de ejemplo. Lo que viene del machote real va marcado `REAL`; lo inventado, `SUPUESTO`. |
 | `js/app.js` | Vistas y ruteo. |
 | `js/almacen.js` | El autoguardado. UNA pieza entre la pantalla y donde viven los datos. |
-| `tests/pruebas-navegador.js` | 60 pruebas de navegador. |
+| `tests/pruebas-navegador.js` | 64 pruebas de navegador. |
 
 ## Cómo se calcula el precio
 
@@ -223,6 +223,27 @@ exactamente el silencio que este módulo persigue.
 ⚠️ **Enviar todavía NO escribe en Odoo.** La regla vigente del módulo es que
 Odoo sólo se consulta. El estado, el candado y la exigencia de orden ya son
 reales; la escritura espera a que Esteban levante esa regla.
+
+## Quién entra
+
+El libro está detrás de un gate: `shared/auth-jwt.js`, cliente de
+**`auth/suite-login`** — el mismo emisor de identidad que usa RH (Fase 0 del
+issue #136). Pide el permiso `comercial:read`. Quién entró se ve en la barra
+superior y ahí mismo se cierra la sesión.
+
+⚠️ **El gate decide si la pantalla se PINTA, no si el archivo se descarga.**
+GitHub Pages es público. Sirve para saber quién está probando y que su input sea
+atribuible, no para esconder el machote. Lo que protegerá de verdad es que los
+webhooks exijan el token cuando existan datos en servidor.
+
+Cómo dar de alta a alguien, y una trampa del salt que costó un generador entero:
+[`docs/comercial/ACCESO.md`](../../docs/comercial/ACCESO.md).
+
+Las pruebas **se autentican solas** sembrando una sesión antes de cargar la
+página, en vez de que el gate traiga una excepción para `file://`: una excepción
+es un camino que puede quedarse abierto en producción sin que nadie lo note
+(CLAUDE.md §11 #14). Que el gate bloquea de verdad se prueba aparte, en páginas
+sin esa sesión — sin sesión, con sesión vencida, y con sesión sin el permiso.
 
 ## Cómo correr las pruebas
 

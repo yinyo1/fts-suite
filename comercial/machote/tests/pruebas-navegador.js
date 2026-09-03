@@ -43,7 +43,24 @@ let ok = 0, mal = 0;
    * ANTES de los scripts de la pagina en cada navegacion, asi que la app
    * siempre arranca con la demo. Cuesta cero recargas extra.
    * La persistencia se prueba aparte, en una pagina SIN este guion. */
-  await p.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
+  await p.addInitScript(() => {
+    try {
+      localStorage.clear();
+      /* El libro está detrás del gate de `shared/auth-jwt.js`. Las pruebas se
+       * autentican solas sembrando una sesión, en vez de que el gate traiga una
+       * excepción para `file://`: una excepción es un camino que puede quedarse
+       * abierto en producción sin que nadie lo note (CLAUDE.md §11 #14, el caso
+       * del reconocimiento facial en bypass silencioso durante semanas).
+       * Que el gate BLOQUEA de verdad se prueba aparte, en una página sin esto. */
+      localStorage.setItem('fts_suite_session', JSON.stringify({
+        token: 'prueba.prueba.prueba',
+        actor: 'zz.prueba', nombre: 'ZZ Prueba', empleado_id: null,
+        scopes: ['comercial:read'],
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        debe_cambiar_password: false
+      }));
+    } catch (e) {}
+  });
   // El contenedor no tiene salida a fonts.googleapis.com, que fts-styles.css
   // importa. Ese fallo es del entorno de prueba, no del prototipo: se filtra
   // por nombre y se reporta aparte, nunca callando el resto.
@@ -806,9 +823,22 @@ let ok = 0, mal = 0;
     // Pagina APARTE, sin el guion que limpia: aqui se mide justamente que lo
     // guardado persista entre cargas.
     const q = await b.newPage({ viewport: { width: 380, height: 780 } });
+    // Siembra la sesión SIN limpiar el almacén del machote: lo que se mide aquí
+    // es justamente que lo guardado sobreviva.
+    await q.addInitScript(() => {
+      try {
+        if (!localStorage.getItem('fts_suite_session')) {
+          localStorage.setItem('fts_suite_session', JSON.stringify({
+            token: 'prueba.prueba.prueba', actor: 'zz.prueba', nombre: 'ZZ Prueba',
+            empleado_id: null, scopes: ['comercial:read'],
+            exp: Math.floor(Date.now() / 1000) + 3600, debe_cambiar_password: false
+          }));
+        }
+      } catch (e) {}
+    });
     try {
       await q.goto(BASE); await q.waitForTimeout(300);
-      await q.evaluate(() => { try { localStorage.clear(); } catch (e) {} });
+      await q.evaluate(() => { try { localStorage.removeItem('fts_machote_v1'); } catch (e) {} });
       await q.goto(BASE); await q.waitForTimeout(350);
       await q.evaluate(() => { location.hash = '#/m/M-1041'; }); await q.waitForTimeout(350);
       await q.locator('.pestana', { hasText: 'Suministro' }).first().click();
@@ -864,6 +894,65 @@ let ok = 0, mal = 0;
       if (!r[k]) throw new Error('falta la variable --x-' + k);
     if (r.th === 'rgba(0, 0, 0, 0)') throw new Error('el encabezado no tomó color');
     console.log('   banda', r.banda, '· encabezado', r.cab, '· capturado', r.fila);
+  });
+
+  // ── El gate ──────────────────────────────────────────────────────────
+  await paso('sin sesión, el libro no se alcanza a ver', async () => {
+    // Pagina LIMPIA, sin la sesion sembrada: debe mandar al login.
+    const g = await b.newPage({ viewport: { width: 380, height: 780 } });
+    try {
+      await g.goto(BASE); await g.waitForTimeout(600);
+      const u = g.url();
+      if (!/login\.html$/.test(u)) throw new Error('no mandó al login, quedó en: ' + u);
+      // Y que no haya alcanzado a pintar el libro antes de irse.
+      const hayLibro = await g.evaluate(() => !!document.querySelector('.libro, .pestana'));
+      if (hayLibro) throw new Error('pintó el libro antes de redirigir');
+    } finally { await g.close(); }
+  });
+
+  await paso('la sesión dice quién entró y deja salir', async () => {
+    await ir('#/m/M-1041');
+    const t = await p.locator('#tbUser').textContent();
+    if (t.trim() !== 'zz.prueba') throw new Error('la barra dice: ' + t);
+    const vis = await p.locator('#tbUser').isVisible();
+    if (!vis) throw new Error('el botón de sesión no se ve');
+  });
+
+  await paso('una sesión vencida no vale', async () => {
+    const v = await b.newPage({ viewport: { width: 380, height: 780 } });
+    try {
+      await v.addInitScript(() => {
+        try {
+          localStorage.setItem('fts_suite_session', JSON.stringify({
+            token: 'x.y.z', actor: 'zz.vencida', scopes: ['comercial:read'],
+            exp: Math.floor(Date.now() / 1000) - 60      // venció hace un minuto
+          }));
+        } catch (e) {}
+      });
+      await v.goto(BASE); await v.waitForTimeout(600);
+      if (!/login\.html$/.test(v.url())) throw new Error('dejó pasar una sesión vencida');
+    } finally { await v.close(); }
+  });
+
+  await paso('sin el permiso de comercial no se entra, y lo dice', async () => {
+    const w = await b.newPage({ viewport: { width: 380, height: 780 } });
+    try {
+      await w.addInitScript(() => {
+        try {
+          localStorage.setItem('fts_suite_session', JSON.stringify({
+            token: 'x.y.z', actor: 'ana.rh', scopes: ['nomina:write', 'rh:read'],
+            exp: Math.floor(Date.now() / 1000) + 3600
+          }));
+        } catch (e) {}
+      });
+      await w.goto(BASE); await w.waitForTimeout(700);
+      if (!/login\.html/.test(w.url())) throw new Error('no sacó de la pantalla: ' + w.url());
+      const t = await w.textContent('body');
+      if (!/no tiene el permiso/.test(t))
+        throw new Error('no explicó por qué: ' + t.slice(0, 140));
+      if (t.indexOf('comercial:read') < 0) throw new Error('no dice qué permiso falta');
+      if (t.indexOf('ana.rh') < 0) throw new Error('no dice con qué usuario entró');
+    } finally { await w.close(); }
   });
 
   await paso('sin errores de consola propios del prototipo', async () => {

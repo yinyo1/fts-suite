@@ -14,6 +14,12 @@
 (function (G) {
   'use strict';
 
+  // El gate de `shared/auth-jwt.js` corre antes, en el <head>. Si negó el paso
+  // ya disparó la navegación al login, pero un `throw` suyo NO detiene a este
+  // script: sin esta línea, el libro alcanza a pintarse mientras el navegador
+  // se va. La marca es la que de verdad lo impide.
+  if (G.__ftsSinAcceso) return;
+
   const C = G.MachoteCalc, R = G.REGLAS, D = G.DEMO;
 
   /* Versión visible en pantalla.
@@ -34,7 +40,7 @@
    * 2026-09-03 (por instrucción de Esteban), pero lleva el suyo aparte y va en
    * V1.00. Planeación sigue en `2.4.1` y el kiosko sólo con cadena de build;
    * a esos no se propaga. */
-  const VERSION = 'V1.07';
+  const VERSION = 'V1.08';
   const $  = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
   const clon = (x) => JSON.parse(JSON.stringify(x));
@@ -176,8 +182,38 @@
   }
 
   /* ── Ruteo ───────────────────────────────────────────────────────────── */
+  /* Quién entró, y cómo salir. Sin esto, en una prueba con varias personas
+   * nadie sabe con qué usuario está viendo la pantalla — y el input que nos
+   * den deja de ser atribuible, que es justamente para lo que se puso el
+   * login. */
+  function pintarUsuario() {
+    const el = $('#tbUser');
+    if (!el) return;
+    const S = G.SuiteAuth, ses = S && S.getSession();
+    if (!ses) { el.style.display = 'none'; return; }
+    el.style.display = '';
+    el.textContent = ses.actor;
+    el.onclick = () => {
+      if (!confirm('¿Cerrar la sesión de ' + ses.actor + '?')) return;
+      S.logout();
+      location.replace('../login.html');
+    };
+  }
+
+  /* La contraseña temporal se avisa UNA vez. La columna `debe_cambiar_password`
+   * existe en la tabla pero el flujo para cambiarla NO está construido: más
+   * vale decir que está pendiente que callarlo. */
+  function avisoPassword() {
+    try {
+      if (sessionStorage.getItem('fts_suite_avisar_password') !== '1') return;
+      sessionStorage.removeItem('fts_suite_avisar_password');
+      toast('Estás usando una contraseña temporal. Pídele a Esteban que te la cambie.');
+    } catch (e) { /* sessionStorage bloqueado: no es motivo para tumbar nada */ }
+  }
+
   function render() {
     pintarPulso();
+    pintarUsuario();
     const p = (location.hash || '#/').replace(/^#\//, '').split('/');
     if (p[0] === '')      return vHome();
     if (p[0] === 'm')     return vMachote(p[1]);
@@ -874,4 +910,5 @@
   }
 
   render();
+  avisoPassword();
 })(window);

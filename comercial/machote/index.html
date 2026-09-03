@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>FTS Suite · Machote y órdenes</title>
 <link rel="stylesheet" href="../../shared/fts-styles.css" />
+<!-- Gate. Va aquí arriba, antes de pintar nada: si no hay sesión, el libro no
+     debe alcanzar a verse. Ojo: esto decide si se PINTA, no si se descarga —
+     Pages es público. Lo explica `shared/auth-jwt.js`. -->
+<script src="../../shared/auth-jwt.js"></script>
+<script>if (!window.SuiteAuth.requerir('comercial:read', '../login.html')) { throw new Error('sin sesion'); }</script>
 <link rel="stylesheet" href="css/machote.css" />
 </head>
 <body>
@@ -19,6 +24,7 @@
     <!-- El pulso del autoguardado. Va en la topbar a proposito: es el unico
          lugar que sigue visible en toda pantalla del libro. -->
     <div class="pulso" id="pulso" title="Autoguardado"><i></i><span id="pulsoTx">—</span></div>
+    <button class="tb-user" id="tbUser" type="button" title="Cerrar sesión"></button>
     <div class="tb-badge" id="tbB">DEMO</div>
   </div>
   <main id="vista"></main>
