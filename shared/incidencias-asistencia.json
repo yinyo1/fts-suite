@@ -2,9 +2,124 @@
   "version": 1,
   "incidencias": [
     {
-      "id_interno": "INC-AUTO-CIERRE-8-2026-08-28T14-58-12-321Z",
+      "id_interno": "INC-AUTO-CIERRE-155-2026-09-03T12-34-39-429Z",
       "tipo": "auto_cierre_pendiente",
       "status": "pendiente_rh",
+      "fecha_creacion": "2026-09-03T12:34:42.037Z",
+      "empleado_id": 155,
+      "empleado_nombre": "Juan De La Cruz Maldonado",
+      "attendance_id_cerrado": 15272,
+      "attendance_id_nuevo": 15298,
+      "check_in_original_utc": "2026-09-02 12:32:29",
+      "check_out_aplicado_utc": "2026-09-02 22:08:29",
+      "horas_originales": "24.04",
+      "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
+      "tag_disputa_activo": true,
+      "autoincidencia": true,
+      "rh_aprobo": null,
+      "rh_fecha": null,
+      "department_id": null,
+      "department_name": null,
+      "supervisor_id": null,
+      "supervisor_name": null,
+      "propuestas": []
+    },
+    {
+      "id_interno": "INC-AUTO-CIERRE-62-2026-09-01T13-37-41-561Z",
+      "tipo": "auto_cierre_pendiente",
+      "status": "pendiente_rh",
+      "fecha_creacion": "2026-09-01T13:37:43.255Z",
+      "empleado_id": 62,
+      "empleado_nombre": "Gilberto Gibran Solís Carrillo",
+      "attendance_id_cerrado": 15236,
+      "attendance_id_nuevo": 15262,
+      "check_in_original_utc": "2026-08-31 13:30:56",
+      "check_out_aplicado_utc": "2026-08-31 23:06:56",
+      "horas_originales": "24.11",
+      "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
+      "tag_disputa_activo": true,
+      "autoincidencia": true,
+      "rh_aprobo": null,
+      "rh_fecha": null,
+      "department_id": null,
+      "department_name": null,
+      "supervisor_id": null,
+      "supervisor_name": null,
+      "propuestas": []
+    },
+    {
+      "id_interno": "INC-AUTO-CIERRE-63-2026-08-31T16-38-23-288Z",
+      "tipo": "auto_cierre_pendiente",
+      "status": "pendiente_rh",
+      "fecha_creacion": "2026-08-31T16:38:24.952Z",
+      "empleado_id": 63,
+      "empleado_nombre": "Magaly Estefanía Pérez García",
+      "attendance_id_cerrado": 15219,
+      "attendance_id_nuevo": 15243,
+      "check_in_original_utc": "2026-08-28 15:50:15",
+      "check_out_aplicado_utc": "2026-08-29 01:26:15",
+      "horas_originales": "72.80",
+      "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
+      "tag_disputa_activo": true,
+      "autoincidencia": true,
+      "rh_aprobo": null,
+      "rh_fecha": null,
+      "department_id": null,
+      "department_name": null,
+      "supervisor_id": null,
+      "supervisor_name": null,
+      "propuestas": []
+    },
+    {
+      "id_interno": "INC-AUTO-CIERRE-108-2026-08-31T14-02-37-234Z",
+      "tipo": "auto_cierre_pendiente",
+      "status": "pendiente_rh",
+      "fecha_creacion": "2026-08-31T14:02:38.866Z",
+      "empleado_id": 108,
+      "empleado_nombre": "Pablo Bayly Fernández",
+      "attendance_id_cerrado": 15215,
+      "attendance_id_nuevo": 15239,
+      "check_in_original_utc": "2026-08-28 13:58:03",
+      "check_out_aplicado_utc": "2026-08-28 23:34:03",
+      "horas_originales": "72.08",
+      "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
+      "tag_disputa_activo": true,
+      "autoincidencia": true,
+      "rh_aprobo": null,
+      "rh_fecha": null,
+      "department_id": null,
+      "department_name": null,
+      "supervisor_id": null,
+      "supervisor_name": null,
+      "propuestas": []
+    },
+    {
+      "id_interno": "INC-AUTO-CIERRE-155-2026-08-31T12-42-48-520Z",
+      "tipo": "auto_cierre_pendiente",
+      "status": "pendiente_rh",
+      "fecha_creacion": "2026-08-31T12:42:50.136Z",
+      "empleado_id": 155,
+      "empleado_nombre": "Juan De La Cruz Maldonado",
+      "attendance_id_cerrado": 15202,
+      "attendance_id_nuevo": 15224,
+      "check_in_original_utc": "2026-08-28 12:58:08",
+      "check_out_aplicado_utc": "2026-08-28 22:34:08",
+      "horas_originales": "71.74",
+      "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
+      "tag_disputa_activo": true,
+      "autoincidencia": true,
+      "rh_aprobo": null,
+      "rh_fecha": null,
+      "department_id": null,
+      "department_name": null,
+      "supervisor_id": null,
+      "supervisor_name": null,
+      "propuestas": []
+    },
+    {
+      "id_interno": "INC-AUTO-CIERRE-8-2026-08-28T14-58-12-321Z",
+      "tipo": "auto_cierre_pendiente",
+      "status": "aprobada_tal_cual",
       "fecha_creacion": "2026-08-28T14:58:13.962Z",
       "empleado_id": 8,
       "empleado_nombre": "Francisco Montalvo Ramirez",
@@ -14,7 +129,7 @@
       "check_out_aplicado_utc": "2026-08-28 00:26:07",
       "horas_originales": "24.13",
       "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "autoincidencia": true,
       "rh_aprobo": null,
       "rh_fecha": null,
@@ -22,12 +137,23 @@
       "department_name": null,
       "supervisor_id": null,
       "supervisor_name": null,
-      "propuestas": []
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "rh",
+          "user_id": 32,
+          "usuario": "Jesus Esteban De La Cruz Calderon",
+          "timestamp": "2026-08-31T06:50:28.803Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Direccion confirma el destino CENTRO DE COSTOS VENTAS (B608) para el 27-ago, consistente con sus dias 26 y 28 y con su historico desde S31. Auto-cierre aprobado tal cual.",
+          "accion": "aprobado"
+        }
+      ]
     },
     {
       "id_interno": "INC-AUTO-CIERRE-62-2026-08-28T13-43-19-213Z",
       "tipo": "auto_cierre_pendiente",
-      "status": "pendiente_rh",
+      "status": "aprobada_tal_cual",
       "fecha_creacion": "2026-08-28T13:43:20.984Z",
       "empleado_id": 62,
       "empleado_nombre": "Gilberto Gibran Solís Carrillo",
@@ -37,7 +163,7 @@
       "check_out_aplicado_utc": "2026-08-27 23:06:21",
       "horas_originales": "24.22",
       "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "autoincidencia": true,
       "rh_aprobo": null,
       "rh_fecha": null,
@@ -45,12 +171,23 @@
       "department_name": null,
       "supervisor_id": null,
       "supervisor_name": null,
-      "propuestas": []
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "rh",
+          "user_id": 112,
+          "usuario": "Felipe Perez Guzman",
+          "timestamp": "2026-08-31T04:00:22.871Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Aprobado por Felipe Perez (Operations Manager) via WhatsApp 30-ago-2026 11:31 CST. Capturado manualmente por Esteban De La Cruz. Ref: issue #134.",
+          "accion": "aprobado"
+        }
+      ]
     },
     {
       "id_interno": "INC-AUTO-CIERRE-79-2026-08-28T12-41-13-295Z",
       "tipo": "auto_cierre_pendiente",
-      "status": "pendiente_rh",
+      "status": "aprobada_tal_cual",
       "fecha_creacion": "2026-08-28T12:41:14.976Z",
       "empleado_id": 79,
       "empleado_nombre": "José Luis Romero Grados",
@@ -60,7 +197,7 @@
       "check_out_aplicado_utc": "2026-08-27 22:15:11",
       "horas_originales": "24.03",
       "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "autoincidencia": true,
       "rh_aprobo": null,
       "rh_fecha": null,
@@ -68,7 +205,18 @@
       "department_name": null,
       "supervisor_id": null,
       "supervisor_name": null,
-      "propuestas": []
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "rh",
+          "user_id": 112,
+          "usuario": "Felipe Perez Guzman",
+          "timestamp": "2026-08-31T04:00:14.305Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Aprobado por Felipe Perez (Operations Manager) via WhatsApp 30-ago-2026 11:31 CST. Capturado manualmente por Esteban De La Cruz. Ref: issue #134.",
+          "accion": "aprobado"
+        }
+      ]
     },
     {
       "id_interno": "INC-OLV-CHK-124-2026-08-28T00-09-13-047Z",
@@ -107,12 +255,32 @@
           "fecha": "2026-08-28T00:09:13.047Z",
           "hora_propuesta_cst": "17:08",
           "comentario": "Se me olvidó checar salida"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe Perez Guzman",
+          "timestamp": "2026-08-31T04:00:39.206Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Aprobado por Felipe Perez (Operations Manager) via WhatsApp 30-ago-2026 11:31 CST. Capturado manualmente por Esteban De La Cruz. Ref: issue #134.",
+          "accion": "aprobado"
+        },
+        {
+          "paso": 3,
+          "rol": "rh",
+          "user_id": 112,
+          "usuario": "Felipe Perez Guzman",
+          "timestamp": "2026-08-31T04:00:43.167Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Aprobado por Felipe Perez (Operations Manager) via WhatsApp 30-ago-2026 11:31 CST. Capturado manualmente por Esteban De La Cruz. Ref: issue #134.",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "aprobada_tal_cual",
       "hora_final_aplicada_utc": "2026-08-27 23:08:00",
       "aplicado_en_odoo": true,
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "creada_por_modulo": "kiosk",
       "creada_por_build": "20260710-kiosk-versioncheck"
     },
@@ -141,11 +309,31 @@
           "hora_propuesta_cst": "2026-08-27 16:06:00",
           "comentario": "Registre entrada en mi cel pero al pareces no se registro",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 32,
+          "usuario": "Jesus Esteban De La Cruz Calderon",
+          "timestamp": "2026-08-31T07:05:40.328Z",
+          "hora_propuesta_cst": "07:04",
+          "comentario": "Hora ESTIMADA, no declarada. check_in deducido = 07:04 CST (13:04 UTC): mediana de sus 6 dias previos, y dentro de la ventana de entrada de la cuadrilla de SO9428 ese dia (12:39 a 13:07 UTC). Su declaracion de 16:06 CST no encaja con ninguno de sus 8 dias ni con la cuadrilla. Con su salida real (23:07:58 UTC) da 10.07 h. Decision de Direccion.",
+          "accion": "ajustado"
+        },
+        {
+          "paso": 3,
+          "rol": "rh",
+          "user_id": 32,
+          "usuario": "Jesus Esteban De La Cruz Calderon",
+          "timestamp": "2026-08-31T07:05:46.043Z",
+          "hora_propuesta_cst": "07:04",
+          "comentario": "RH confirma la hora ESTIMADA de 07:04 CST (13:04 UTC) con el mismo criterio del paso 1: mediana propia mas ventana de la cuadrilla de SO9428 del 27-ago. Queda aprobada_con_ajuste y no tal_cual porque la hora SI se modifico.",
+          "accion": "ajustado"
         }
       ],
-      "status": "pendiente_supervisor",
-      "hora_final_aplicada_utc": null,
-      "aplicado_en_odoo": false,
+      "status": "aprobada_con_ajuste",
+      "hora_final_aplicada_utc": "2026-08-27 13:04:00",
+      "aplicado_en_odoo": true,
       "department_id": 3,
       "department_name": "Operaciones",
       "sin_departamento": false,
@@ -158,12 +346,12 @@
       "rh_directo_ceo": false,
       "directo_ceo": false,
       "sin_supervisor": false,
-      "tag_disputa_activo": true
+      "tag_disputa_activo": false
     },
     {
       "id_interno": "INC-AUTO-CIERRE-155-2026-08-26T12-38-03-576Z",
       "tipo": "auto_cierre_pendiente",
-      "status": "pendiente_rh",
+      "status": "aprobada_tal_cual",
       "fecha_creacion": "2026-08-26T12:38:05.244Z",
       "empleado_id": 155,
       "empleado_nombre": "Juan De La Cruz Maldonado",
@@ -173,7 +361,7 @@
       "check_out_aplicado_utc": "2026-08-25 22:11:01",
       "horas_originales": "24.05",
       "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "autoincidencia": true,
       "rh_aprobo": null,
       "rh_fecha": null,
@@ -181,12 +369,23 @@
       "department_name": null,
       "supervisor_id": null,
       "supervisor_name": null,
-      "propuestas": []
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "rh",
+          "user_id": 112,
+          "usuario": "Felipe Perez Guzman",
+          "timestamp": "2026-08-31T04:00:27.180Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Aprobado por Felipe Perez (Operations Manager) via WhatsApp 30-ago-2026 11:31 CST. Capturado manualmente por Esteban De La Cruz. Ref: issue #134.",
+          "accion": "aprobado"
+        }
+      ]
     },
     {
       "id_interno": "INC-AUTO-CIERRE-6-2026-08-25T13-02-53-027Z",
       "tipo": "auto_cierre_pendiente",
-      "status": "pendiente_rh",
+      "status": "aprobada_tal_cual",
       "fecha_creacion": "2026-08-25T13:02:54.740Z",
       "empleado_id": 6,
       "empleado_nombre": "Leonel Cruz Cristobal",
@@ -196,7 +395,7 @@
       "check_out_aplicado_utc": "2026-08-24 22:34:29",
       "horas_originales": "24.07",
       "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "autoincidencia": true,
       "rh_aprobo": null,
       "rh_fecha": null,
@@ -204,12 +403,23 @@
       "department_name": null,
       "supervisor_id": null,
       "supervisor_name": null,
-      "propuestas": []
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "rh",
+          "user_id": 112,
+          "usuario": "Felipe Perez Guzman",
+          "timestamp": "2026-08-31T04:00:18.299Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Aprobado por Felipe Perez (Operations Manager) via WhatsApp 30-ago-2026 11:31 CST. Capturado manualmente por Esteban De La Cruz. Ref: issue #134.",
+          "accion": "aprobado"
+        }
+      ]
     },
     {
       "id_interno": "INC-AUTO-CIERRE-63-2026-08-24T16-11-22-665Z",
       "tipo": "auto_cierre_pendiente",
-      "status": "pendiente_rh",
+      "status": "aprobada_tal_cual",
       "fecha_creacion": "2026-08-24T16:11:24.364Z",
       "empleado_id": 63,
       "empleado_nombre": "Magaly Estefanía Pérez García",
@@ -219,7 +429,7 @@
       "check_out_aplicado_utc": "2026-08-22 01:03:11",
       "horas_originales": "72.74",
       "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "autoincidencia": true,
       "rh_aprobo": null,
       "rh_fecha": null,
@@ -227,12 +437,23 @@
       "department_name": null,
       "supervisor_id": null,
       "supervisor_name": null,
-      "propuestas": []
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "rh",
+          "user_id": 112,
+          "usuario": "Felipe Perez Guzman",
+          "timestamp": "2026-08-31T04:00:31.103Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Aprobado por Felipe Perez (Operations Manager) via WhatsApp 30-ago-2026 11:31 CST. Capturado manualmente por Esteban De La Cruz. Ref: issue #134.",
+          "accion": "aprobado"
+        }
+      ]
     },
     {
       "id_interno": "INC-AUTO-CIERRE-153-2026-08-24T13-40-12-468Z",
       "tipo": "auto_cierre_pendiente",
-      "status": "pendiente_rh",
+      "status": "aprobada_tal_cual",
       "fecha_creacion": "2026-08-24T13:40:14.226Z",
       "empleado_id": 153,
       "empleado_nombre": "Eduardo Garza",
@@ -242,7 +463,7 @@
       "check_out_aplicado_utc": "2026-08-21 22:43:33",
       "horas_originales": "72.54",
       "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "autoincidencia": true,
       "rh_aprobo": null,
       "rh_fecha": null,
@@ -250,7 +471,18 @@
       "department_name": null,
       "supervisor_id": null,
       "supervisor_name": null,
-      "propuestas": []
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "rh",
+          "user_id": 112,
+          "usuario": "Felipe Perez Guzman",
+          "timestamp": "2026-08-31T04:00:35.329Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Aprobado por Felipe Perez (Operations Manager) via WhatsApp 30-ago-2026 11:31 CST. Capturado manualmente por Esteban De La Cruz. Ref: issue #134.",
+          "accion": "aprobado"
+        }
+      ]
     },
     {
       "id_interno": "INC-OLV-62-2026-08-18T14-20-45-694Z",

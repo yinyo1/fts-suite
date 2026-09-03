@@ -192,7 +192,15 @@
 /* v0.5.16 — celdas compactas en rejilla, mismo criterio que .srcgrid.
    Antes: una fila por journal a todo el ancho, con la barra ocupando ~800px para expresar
    un solo porcentaje. Ahora los 3 journals caben en un renglón de celdas. */
-.ip-view #ip-semrows{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
+/* APILADO, no en rejilla. Este grid es legado del semáforo de v0.5.16, que metía celdas
+   compactas .semcell — y esa rama de paintSem() ya no se ejecuta (su cell() quedó definido
+   pero sin llamador). Hoy #ip-semrows solo contiene los tres paneles .ip-sem2, que están
+   escritos para APILARSE: llevan margin-bottom, que en una rejilla de columnas no significa
+   nada. Con auto-fit los tres quedaban en columnas de ancho igual y ALTURA igual, así que
+   los dos paneles colapsados (<details> cerrados, una línea de alto) se estiraban 450 px
+   para alcanzar al primero: dos columnas de blanco vacío al lado del contenido. Era el
+   "desordenado" que se veía. En bloque, cada panel toma su altura natural. */
+.ip-view #ip-semrows{display:block}
 .ip-view .semcell{background:rgba(255,255,255,.04);border:1px solid #2b333c;border-radius:6px;padding:9px 11px 10px}
 .ip-view .semcell .top{display:flex;align-items:baseline;gap:8px;margin-bottom:7px}
 .ip-view .semcell .jn{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -357,7 +365,7 @@
 @media(max-width:700px){
   /* v0.5.16: .semrow desapareció (ahora son .semcell en rejilla auto-fit, que ya colapsa sola).
      En pantalla angosta se fuerza 1 columna para que el % y el residual no se aprieten. */
-  .ip-view #ip-semrows{grid-template-columns:1fr}
+  /* #ip-semrows ya es display:block — no queda rejilla que colapsar. */
   .ip-view .srcgrid{grid-template-columns:1fr}
 }
 
@@ -414,13 +422,33 @@
 
 /* Dos semáforos (v0.5.25). B arriba y expandido, A colapsado. Nunca comparten contador:
    son universos distintos con direcciones deseadas opuestas. */
-.ip-view .ip-sem2{border:1px solid var(--ip-line);border-radius:9px;margin-bottom:10px;background:#fff}
+/* color:var(--ink) NO es decorativo, es la corrección de un defecto de legibilidad.
+   El semáforo v2 vive DENTRO de .sem, que es el contenedor oscuro y declara
+   `color:#dfe6ec` (gris claro) para su propio fondo. Al poner `background:#fff` aquí
+   sin resetear el color, las tarjetas quedaban con texto gris clarísimo sobre blanco:
+   contraste 1.26:1 medido en Chromium, cuando WCAG AA pide 4.5:1. Los títulos
+   —"Desde el corte", "Jeeves Tarjeta Credito", "Faltan N para el 100%"— eran casi
+   invisibles; solo se leían los números, que sí traen color propio.
+   Regla general: cuando una caja cambia de fondo, cambia de color de texto en la MISMA
+   regla. Heredar el color de un fondo que ya no aplica es como quedó esto. */
+.ip-view .ip-sem2{border:1px solid var(--ip-line);border-radius:9px;margin-bottom:10px;background:#fff;color:var(--ink)}
 .ip-view .ip-sem2.b{padding:14px 16px}
 .ip-view .s2head{display:flex;justify-content:flex-end;margin-bottom:4px}
 .ip-view .s2ts{font-size:11px;color:var(--steel)}
-.ip-view .s2title{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px}
-.ip-view .s2dir{font-size:11px;font-weight:600;color:var(--ip-ok);background:rgba(38,166,91,.10);border-radius:9px;padding:1px 8px}
-.ip-view .s2dir.down{color:#c98a00;background:rgba(201,138,0,.10)}
+.ip-view .s2title{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;
+  /* min-width:0 + flex-wrap: sin esto el título es un ítem flex con min-width:auto (= ancho
+     de su contenido), no cabe junto al marcador ▸ y se va SOLO a la línea siguiente, dejando
+     el ▸ huérfano arriba. Así se veía el semáforo a 390px. Ahora el título ocupa el espacio
+     que queda y envuelve por dentro. */
+  min-width:0;flex:1 1 auto;flex-wrap:wrap;row-gap:4px}
+/* La etiqueta y la fecha son unidades: "Desde el / corte" y "2026-07- / 24" son cortes que
+   no aportan nada y ensucian. */
+.ip-view .s2lbl,.ip-view .s2title>b{white-space:nowrap}
+/* Tonos MEDIDOS, no elegidos a ojo. Sobre su propio fondo compuesto, --ip-ok (#12a150)
+   daba 3.03:1 y #c98a00 daba 2.67:1, y son textos de 11px: WCAG AA pide 4.5:1. Los de
+   abajo dan 4.88:1 y 5.07:1. El verde #0d7a3f no es nuevo — ya lo usa .stchip.ok. */
+.ip-view .s2dir{font-size:11px;font-weight:600;color:#0d7a3f;background:rgba(38,166,91,.10);border-radius:9px;padding:1px 8px}
+.ip-view .s2dir.down{color:#8a6000;background:rgba(201,138,0,.10)}
 .ip-view .s2big{font-size:15px;margin:8px 0 6px;display:flex;align-items:baseline;gap:10px}
 .ip-view .s2big b{font-size:20px}
 .ip-view .s2pct{margin-left:auto;font-size:20px;font-weight:700}
@@ -433,7 +461,16 @@
 .ip-view details.ip-sem2 summary::-webkit-details-marker{display:none}
 .ip-view details.ip-sem2 summary::before{content:"▸";color:var(--steel);font-size:11px}
 .ip-view details.ip-sem2[open] summary::before{content:"▾"}
-.ip-view .s2sum{margin-left:auto;font-size:12.5px;color:var(--steel)}
+.ip-view .s2sum{margin-left:auto;font-size:12.5px;color:var(--steel);text-align:right}
+/* flex-basis:0 y no `auto`. Con `auto`, el reparto por líneas usa el ancho del CONTENIDO
+   del título para decidir si cabe: no cabía, se iba a la línea 2 y el ▸ quedaba solo
+   arriba. Con base 0 siempre cabe junto al marcador y crece con el espacio que sobra. */
+.ip-view details.ip-sem2 summary .s2title{flex:1 1 0}
+@media(max-width:700px){
+  /* En angosto el resumen numérico baja a su propio renglón, alineado a la derecha,
+     en vez de pelear el ancho con el título. */
+  .ip-view details.ip-sem2 summary .s2sum{flex:1 0 100%;margin-left:0}
+}
 .ip-view .s2body{padding:0 16px 14px;border-top:1px solid var(--ip-line)}
 .ip-view .s2note{font-size:11.5px;color:var(--steel);margin:10px 0 8px}
 
@@ -453,14 +490,79 @@
 /* Semáforo por instrumento (v0.5.27). Sin total: cada fuente se mide sola. */
 .ip-view .s2card{border:1px solid var(--ip-line);border-radius:8px;padding:11px 13px;margin-bottom:8px}
 .ip-view .s2card.sinabrir{background:#fafbfc;border-style:dashed}
+/* V1.02: la fuente sin motor se pinta con el MISMO formato que Jeeves (barra, porcentaje y
+   foco). El borde punteado se queda como la única señal de "esto todavía no lo evalúa nadie" —
+   suficiente para distinguirla, sin quitarle el número que Esteban necesita ver de un golpe. */
+.ip-view .s2card.sinmotor{border-style:dashed}
 .ip-view .s2ct{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px}
 .ip-view .s2goal{font-size:16px;margin:7px 0 6px}
 .ip-view .s2goal b{font-size:22px}
 .ip-view .s2cn{font-size:12.5px;color:var(--steel);margin-top:6px}
 .ip-view .s2card.sinabrir .s2cn{font-size:14px;color:var(--ink);margin-top:7px}
 .ip-view .s2cw{font-size:11.5px;color:var(--steel);margin-top:4px;font-style:italic}
+/* Enlace que lleva la tabla al mismo universo que mide el semáforo. Tono medido: #1668c2
+   da 5.34:1 sobre #fff y 5.08:1 sobre el #fafbfc de las tarjetas sin abrir. */
+.ip-view .s2ver{color:#1668c2;cursor:pointer;font-style:normal;font-weight:600;text-decoration:underline}
+.ip-view .s2ver:hover{color:#0f4e94}
 /* Pasivo del PAID manual: gris, nunca rojo — no es un fallo de la operación. */
 .ip-view details.ip-sem2.pasivo summary .s2title{color:#5b6875}
 .ip-view .s2list{margin:10px 0 0;padding-left:20px;font-size:12.5px;line-height:1.65;color:var(--steel)}
 .ip-view .s2list b{color:var(--ink)}
 .ip-view .s2list code{font-family:var(--ip-mono);font-size:11.5px;background:#eef1f4;border-radius:4px;padding:1px 5px}
+
+/* ══════════════════════════════════════════════════════════════════════════════════════
+   MÓVIL — la tabla deja de ser tabla (v0.5.37)
+   Medido en Chromium a 390 px sobre el harness: 12 columnas dentro de 324 px, con
+   scrollWidth == clientWidth. Es decir, la tabla NO se desbordaba para poder deslizarla:
+   se COMPRIMÍA. Cada fecha ocupaba tres renglones, el nombre del journal se repetía en
+   cada fila partido en tres, y la columna de estado —la única que dice qué hacer con la
+   línea— quedaba fuera del recorte sin scroll horizontal al que llegar.
+   Aquí cada fila pasa a ser una tarjeta y cada celda lleva su etiqueta (data-lbl, puesto
+   en colAttr). Sin cambiar el HTML ni la lógica: el mismo <table> se lee como lista.
+   ══════════════════════════════════════════════════════════════════════════════════════ */
+@media(max-width:700px){
+  /* max-height fuera: con tarjetas, un alto tope crea un scroll dentro de otro scroll,
+     que en táctil es justo lo que atora el gesto. */
+  .ip-view .ip-tblscroll{overflow:visible;max-height:none}
+  .ip-view #ip-tblwrap thead{display:none}
+  .ip-view #ip-tblwrap table,
+  .ip-view #ip-tblwrap tbody,
+  .ip-view #ip-tblwrap tr,
+  .ip-view #ip-tblwrap td{display:block;width:auto}
+  .ip-view #ip-tblwrap table{border:0}
+  .ip-view #ip-tblwrap tbody tr{border:1px solid var(--ip-line);border-radius:10px;
+    margin-bottom:9px;padding:9px 11px;background:#fff}
+  .ip-view #ip-tblwrap tbody tr.selrow{border-color:#1668c2;box-shadow:0 0 0 1px #1668c2 inset}
+  .ip-view #ip-tblwrap td{border:0;padding:3px 0;display:flex;gap:10px;align-items:flex-start;
+    font-size:13px;white-space:normal}
+  .ip-view #ip-tblwrap td::before{content:attr(data-lbl);flex:0 0 92px;color:var(--steel);
+    font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;padding-top:3px}
+  /* La casilla y el chevron son controles, no un dato: sin etiqueta y en su propio renglón,
+     con área táctil suficiente (los 26 px del layout de escritorio no se aciertan con el dedo). */
+  .ip-view #ip-tblwrap td.chk{justify-content:flex-end;gap:14px;padding:0 0 6px;
+    border-bottom:1px dashed var(--ip-line);margin-bottom:6px}
+  .ip-view #ip-tblwrap td.chk::before{content:none}
+  .ip-view #ip-tblwrap td.chk input[type=checkbox]{width:22px;height:22px}
+  .ip-view #ip-tblwrap td.chk .chev{min-width:34px;min-height:34px;display:inline-flex;
+    align-items:center;justify-content:center}
+  /* El monto es el dato que se busca de un vistazo: se sale de la retícula y va grande. */
+  .ip-view #ip-tblwrap td.amt{font-size:16px;font-weight:700}
+  .ip-view #ip-tblwrap td.amt::before{padding-top:5px}
+  /* Los renglones sin dato no se pintan: una tarjeta con ocho "—" entierra los tres campos
+     que sí traen algo. El <td> sigue en el DOM (export y escritorio intactos). */
+  .ip-view #ip-tblwrap td[data-vacio]{display:none}
+  .ip-view #ip-tblwrap .ip-acc-cell{display:block}
+  .ip-view #ip-tblwrap .ip-acc-cell::before{content:none}
+  .ip-view #ip-tblwrap tr.ip-acc-row{border:0;padding:0;margin:-6px 0 9px}
+  /* Filtros: dos por renglón en vez de una fila que se aprieta. */
+  .ip-view .ip-filters{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .ip-view .ip-filters>*{width:auto;min-width:0}
+  .ip-view .ip-filters #ip-fSearch,
+  .ip-view .ip-filters select#ip-fEstado{grid-column:1/-1}
+  /* Controles a tamaño de dedo (44 px es el mínimo de las guías táctiles; 40 es el piso duro). */
+  .ip-view .ip-filters input,.ip-view .ip-filters select,
+  .ip-view .ip-toolbar button,.ip-view .ip-btn{min-height:44px}
+  .ip-view .ip-toolbar{flex-wrap:wrap;gap:8px}
+  .ip-view .ip-toolbar button{flex:1 1 100%}
+  .ip-view .ip-chip{min-height:40px}
+}

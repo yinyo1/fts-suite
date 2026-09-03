@@ -801,3 +801,78 @@ state = 'sale'  AND  x_studio_project_created = False
 Frontend `operaciones/carga-mo/` + catálogo `shared/operaciones/contpaqi_conceptos.json` + 2 workflows: dry-run `HV1UE5JxN5fKdC2Y` y WRITE `j0V9wfpuPTLFO9DZ` (los dos activos). SEM 30/31/32 escritas: 123 líneas, $588,570.98. Cuenta puente **3106 `MO · POR REASIGNAR`** con $8,741.90 pendientes de reasignar.
 
 ⚠️ Reglas duras del módulo: (1) los gates viven en `scripts/local/` (gitignored, leen nómina real) y **ningún cambio de render mergea sin `smoke-front-cargamo`**; (2) el cuerpo del motor sale de UNA plantilla (`scripts/local/motor-v2.js`) — dry-run y WRITE difieren en 2 líneas de 182, si divergen más es que alguien editó a mano; (3) para re-escribir una semana hay que **borrar sus líneas primero** (idempotencia por prefijo `MO Sxx/2026 ·`); (4) el roster DEBE traer `active in [true,false]` — los dados de baja son justo los que alimentan el puente (§7 de ESTADO.md, `active_test` implícito).
+
+---
+
+## 20. Reglas transversales (ganadas en campo)
+
+Aplican a **todos** los módulos, no solo a comercial. Cada una viene de un incidente real;
+la referencia entre paréntesis es dónde ocurrió.
+
+### 1. Reportar SIEMPRE en el issue, no solo en archivos de la rama
+Un reporte que vive únicamente en un `.md` de una rama sin mergear **es un reporte que
+nadie lee**. Si la sesión produjo hallazgos, decisiones o pendientes, van como **comentario
+en el issue correspondiente** — el archivo es el respaldo, no el canal. Vale también para
+lo que se responde en la terminal: el chat se cierra, el issue queda.
+*(Origen: sesión 2 comercial. La auditoría sí se comentó en #140 y por eso Esteban pudo
+detectar que lo demás faltaba; si hubiera vivido solo en la rama, el hueco habría pasado
+inadvertido.)*
+
+### 2. Los nombres de campos de Studio mienten
+Verificar el **tipo real contra datos reales** antes de escribir. Un `x_studio_*` con
+nombre de fecha puede ser char, y uno con nombre de monto puede traer signo invertido.
+
+### 3. Un campo que parece correcto puede ser coincidencia
+Que un campo tenga el valor esperado en el registro que miraste no prueba que sea el campo
+correcto. *(Caso `x_studio_sales_order_2`, §4.)*
+
+### 4. Un solo escritor por campo
+Dos procesos escribiendo el mismo campo es una carrera silenciosa, y el que pierde no deja
+rastro. Si hace falta un segundo escritor, primero se decide quién manda.
+
+### 5. El estado propio no sustituye al del destino
+**Medir el efecto en el destino, no el reporte del proceso.** Un `success` de n8n, un `200`
+de HTTP o un `create` que devuelve id no prueban que el dato quedó: hay que releer el
+destino. *(Corolario nuevo, sesión 1 comercial: el `status` de `get_execution` puede ir con
+decenas de minutos de retraso — una ejecución cerrada a las 18:24 seguía reportando
+`running` catorce minutos después. La medida buena era el conteo en Odoo.)*
+
+### 6. Los ids en n8n van como expresión numérica, no como texto
+`fieldValue: '3'` manda el string `"3"` por JSON-RPC y Odoo va a buscar `res.partner('3',)`.
+Se escribe `={{ 3 }}`.
+⚠️ **El error de Odoo miente**: dice `MissingError: Record does not exist` cuando el
+registro **sí existe** y el problema es el tipo. Antes de creerle al mensaje, leer el
+registro. *(Sesión 1 comercial: costó una corrida y casi hace declarar stale una regla
+correcta de §18.)*
+
+### 7. Datos personales nunca a repo público
+`yinyo1/fts-suite` es **público** y sirve Pages. Correos, teléfonos y nombres de contacto
+no entran. Y **borrarlos del archivo no los borra del historial**: si ya se commitearon,
+hay que tratarlo como filtración, no como typo.
+
+### 8. Una hipótesis validada con un solo caso no es una hipótesis validada
+Antes de aplicar una corrección masiva, comprobar la premisa en **varios** casos
+independientes. *(Caso L6, §comercial: "los montos ya están en pesos" era cierto en
+SO5989 y falso en 4 de los 5 casos siguientes. Convertir habría registrado ventas en
+dólares como pesos.)*
+
+### 9. Nunca citar un SHA de memoria
+Todo hash de commit que se escriba en un issue, un PR o un documento se **lee primero**
+con `git rev-parse HEAD` (o `git log -1 --format=%H`) y se copia de esa salida. Nunca se
+teclea de memoria ni se reconstruye "de cómo se veía".
+*(Origen: sesión 2 comercial. Cité `e08d80c` en #140; el hash real era `b0e090c` y
+`e08d80c` no existe en el repo. Un SHA inventado es indetectable a simple vista —
+"parece" un hash— y deja una referencia muerta en el reporte. Es el mismo modo de falla
+de §3 anti-fantasma, en la superficie más fácil de pasar por alto.)*
+
+---
+
+### Correcciones a reglas anteriores (verificadas 2026-08-31)
+
+- **§15 #3 quedó stale.** Decía que `docs/n8n-workflows/pmo-chat-apply-code-code-validar-auth.js`
+  tiene un secreto HMAC filtrado pendiente de rotar. **Ya no**: la línea 4 dice
+  `const SECRET = '<SECRETO_HMAC_VIVE_EN_N8N_NO_COMMITEAR>'; // rotado 2026-07-17`.
+  Se rotó y redactó. La deuda está saldada.
+- **La vida del token de Finanzas es 2 h, no 8 h.** §15 y `finanzas/js/auth-fin.js` dicen
+  8 h; el Code de `auth/finanzas-login` calcula `exp = nowS + 7200` y responde
+  `expires_in: 7200`. Leído del workflow, no inferido.

@@ -22,7 +22,12 @@
   // ── config ──
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
-  var IP_BUILD = '0.5.30';                // badge de versión visible (evidencia de qué build está desplegado)
+  // Versión visible en pantalla. Esquema V<mayor>.<menor de dos dígitos>, +0.01 por cada merge
+  // a main; al pasar de .99 sube el mayor y el menor vuelve a 00. Es el mismo esquema de
+  // comercial/machote y DEBE coincidir con finanzas/version.json — el gate lo verifica, porque
+  // una pantalla que dice una versión y un archivo que dice otra deja de ser evidencia de nada.
+  // Sustituye a la numeración 0.x.y (última: 0.5.36), conservada en version.json.
+  var IP_BUILD = 'V1.05';
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -173,7 +178,15 @@
     { k: 'cand', lbl: 'Candidato',    vis: false, fmt: function (r) { return candidatoCell(r); } },
     { k: 'atr',  lbl: 'Atribución',   vis: true,  fmt: function (r) { return atribCell(r); } }
   ];
-  function colAttr(col, r) { return typeof col.cls === 'function' ? col.cls(r) : (col.cls || ''); }
+  // data-lbl viaja SIEMPRE, no solo en móvil: en pantalla angosta la tabla se convierte en
+  // tarjetas (una fila = un bloque) y cada celda necesita su propia etiqueta, porque el thead
+  // desaparece. Sin esto, en el celular se veían 12 columnas comprimidas a ~27 px cada una,
+  // con la fecha partida en tres renglones y la columna de estado —la única que dice qué
+  // hacer— fuera de pantalla y sin scroll horizontal al que llegar.
+  function colAttr(col, r) {
+    var a = typeof col.cls === 'function' ? col.cls(r) : (col.cls || '');
+    return a + ' data-lbl="' + esc(col.lbl || '') + '"';
+  }
 
   // ═══ vista ═══
   function createView(container) {
@@ -239,12 +252,56 @@
     }
 
     // ── carga de datos ──
-    function load() {
-      state.loading = true; state.error = null; state.partialLoad = null; state.loadProgress = null; render();
+    // load(opts)
+    //   opts.quiet     — no blanquea la pantalla con el estado de carga. La tabla vieja se
+    //                    queda visible hasta que llegan los datos nuevos. Para la relectura
+    //                    post-conciliación: el usuario acaba de trabajar, y ver desaparecer la
+    //                    tabla es el peor momento para cobrarle una pantalla de carga.
+    //   opts.keepSugg  — preserva la caché de sugerencias entre cargas.
+    //   opts.dropId    — line_id (r.id) cuya sugerencia SÍ se tira (la recién conciliada).
+    function load(opts) {
+      opts = opts || {};
+      // Snapshot de sugerencias ANTES de recargar. Se indexa por r.id (el line_id de Odoo),
+      // NUNCA por _id: _id es el índice del array que ingest() reasigna en cada carga, así que
+      // restaurar por índice pegaría las sugerencias de una línea en OTRA fila si el server
+      // devuelve distinto orden o distinto número de filas. Ese fallo sería silencioso y grave.
+      var _suggPrev = null;
+      if (opts.keepSugg) {
+        _suggPrev = {};
+        state.allRows.forEach(function (r) {
+          var sg = state.sugg[r._id];
+          // Se preserva también la marca `pedido` (sin candidatos): saber que YA se le preguntó
+          // al server por esa línea es tan valioso como la respuesta misma — sin eso, la
+          // recarga silenciosa post-conciliación la vuelve a pedir, que es justo el gasto que
+          // R3 vino a quitar.
+          if (sg && (sg.cand || sg.pedido) && r.id != null && r.id !== opts.dropId) _suggPrev[r.id] = sg;
+        });
+      }
+      state.error = null; state.partialLoad = null; state.loadProgress = null;
+      if (!opts.quiet) { state.loading = true; render(); }
+      // Preservar el scroll también aquí: render() reconstruye el contenedor entero y el fix
+      // de v0.5.29 solo cubre paintTable(). Mismo mecanismo, ya probado en este archivo.
+      var _scL = null;
+      try { _scL = (window.pageYOffset != null) ? window.pageYOffset : (document.scrollingElement || document.documentElement).scrollTop; } catch (e) { }
+      var _restaurarL = function () {
+        if (_scL == null) return;
+        try {
+          var el = document.scrollingElement || document.documentElement;
+          var ahora = (window.pageYOffset != null) ? window.pageYOffset : el.scrollTop;
+          if (Math.abs(ahora - _scL) > 1) { if (window.scrollTo) window.scrollTo(0, _scL); else el.scrollTop = _scL; }
+        } catch (e) { }
+      };
+      // Re-ata las sugerencias al _id NUEVO de cada fila, casando por line_id.
+      var _restaurarSugg = function () {
+        if (!_suggPrev) return;
+        state.allRows.forEach(function (r) {
+          if (r.id != null && _suggPrev[r.id]) state.sugg[r._id] = _suggPrev[r.id];
+        });
+      };
       if (state.mode === 'demo') {
         fetch(MOCK_PATH, { cache: 'no-store' })
           .then(function (r) { return r.json(); })
-          .then(function (data) { ingest(data.rows || [], data.sources || [], data.runs || [], data.cron || DEFAULT_CRON, { today: data.today || null, porJournal: data.por_journal || [], intransit: data.intransit || [], suggByRow: data.suggestions || {} }); state.preconc = data.preconc || {}; state.loading = false; try { evalSugg(); } catch (e) { if (window.console) console.warn('[ip] evalSugg demo falló (no bloquea):', e); } render(); afterData(); })
+          .then(function (data) { ingest(data.rows || [], data.sources || [], data.runs || [], data.cron || DEFAULT_CRON, { today: data.today || null, porJournal: data.por_journal || [], intransit: data.intransit || [], suggByRow: data.suggestions || {} }); state.preconc = data.preconc || {}; state.loading = false; _restaurarSugg(); try { evalSugg(); } catch (e) { if (window.console) console.warn('[ip] evalSugg demo falló (no bloquea):', e); } render(); _restaurarL(); afterData(); })
           .catch(function (e) { state.loading = false; state.error = 'No se pudo cargar el mock: ' + e.message; render(); });
         return;
       }
@@ -261,9 +318,21 @@
         // por defecto arranca el mes pasado), así que el semáforo A no se puede calcular aquí.
         ingest(txAll.rows || [], st.sources || [], st.runs || [], st.cron || DEFAULT_CRON, { today: today, porJournal: st.por_journal || [], intransit: st.intransit || [], suggByRow: {}, metricas: st.metricas || null, serie: st.serie || [] });
         state.loading = false; state.loadProgress = null;
+        _restaurarSugg();   // antes de render() y de evalSugg(): el estado ya se pinta con lo cacheado
         // carga parcial: nunca fingir que está completo → aviso visible; los agregados reflejan solo lo cargado.
         state.partialLoad = txAll.partial ? { loaded: (txAll.rows || []).length, total: (txAll.pagination && txAll.pagination.total_count) || null, reason: txAll.reason || null } : null;
-        render(); afterData();
+        render(); _restaurarL(); afterData();
+        // Un solo universo (v0.5.37). La ventana por defecto arrancaba el día 1 del mes pasado,
+        // que hoy cae DESPUÉS del corte: el semáforo medía desde el 24-jul y la tabla desde el
+        // 1-ago, así que sus números no se podían comparar aunque los dos fueran ciertos.
+        // Al conocer el corte (solo lo sabe el server) se amplía la ventana hasta él, UNA vez y
+        // solo si el usuario no tocó las fechas — si ya eligió un rango, manda el usuario.
+        if (!state._corteAplicado && state.metricas && state.metricas.fecha_corte &&
+            !state._fechasTocadas && state.filters.from > state.metricas.fecha_corte) {
+          state._corteAplicado = true;
+          state.filters.from = state.metricas.fecha_corte;
+          load();
+        }
         // Pieza #2: batch de sugerencias en 2o plano. try/catch DURO: pase lo que pase, evalSugg NUNCA tumba load()
         // (la tabla ya está pintada; su fallo solo deja estados neutros).
         try { evalSugg(); } catch (e) { if (window.console) console.warn('[ip] evalSugg falló (no bloquea la tabla):', e); }
@@ -314,7 +383,12 @@
         // journal es instantáneo.
         companies: window.FinState.getCompanies(),
         date_from: f.from || null, date_to: f.to || null,
-        limit: 500, offset: 0
+        // V1.02: 500 se quedó corto. La ventana por defecto arranca en el corte y el universo
+        // post-corte de los tres journals ya son ~565 líneas, así que la carga salía recortada
+        // y el semáforo no podía descomponer el pendiente de ninguna fuente. El tope del server
+        // es 6000 y no hace trabajo extra por página —ya trae el universo completo de Odoo para
+        // devolver una rebanada—, así que subirlo cuesta payload, no tiempo de Odoo.
+        limit: 2000, offset: 0
       };
     }
     function ingest(rows, sources, runs, cron, extra) {
@@ -385,8 +459,18 @@
       var v = t[k];
       return (v == null || v === '') ? '—' : String(v);
     }
+    // Etiquetas del filtro por columna. Seguían siendo las del eje de 5 valores muerto en
+    // v0.5.16, mientras colValueOf('ok') ya devolvía los del eje B → ninguna llave matcheaba
+    // y el `|| v` dejaba ver las crudas: 'conciliada', 'sindoc', 'pendiente', 'noevaluada'.
     function colValLabel(k, v) {
-      if (k === 'ok') { var m = { liquidado: 'Conciliado (Liquidado)', transito: 'Conciliado (En tránsito)', fondeo: 'Fondeo', devolucion: 'Devolución', sinconciliar: 'Sin conciliar' }; return m[v] || v; }
+      if (k === 'ok') {
+        var m = {
+          conciliada: 'Conciliada', parcial: 'Conciliada parcial', preconciliada: 'Pre-conciliada',
+          desconciliada: 'Desconciliada', condoc: 'Con documento', sindoc: 'Sin documento', noevaluada: 'No evaluada',
+          devolucion_pend: 'Devolución', fondeo_pend: 'Fondeo', pendiente: 'Sin conciliar'
+        };
+        return m[v] || v;
+      }
       return v;
     }
     function colFiltersPass(t) {
@@ -402,7 +486,7 @@
     function uniqueColValues(k) {
       var seen = {}, out = [];
       state.allRows.forEach(function (t) { var v = colValueOf(k, t); if (!Object.prototype.hasOwnProperty.call(seen, v)) { seen[v] = true; out.push(v); } });
-      if (k === 'ok') { var order = ['liquidado', 'transito', 'sinconciliar', 'fondeo', 'devolucion']; out.sort(function (a, b) { return order.indexOf(a) - order.indexOf(b); }); }
+      if (k === 'ok') { var order = ['conciliada', 'parcial', 'desconciliada', 'preconciliada', 'condoc', 'sindoc', 'pendiente', 'noevaluada', 'devolucion_pend', 'fondeo_pend']; out.sort(function (a, b) { return order.indexOf(a) - order.indexOf(b); }); }
       else out.sort(function (a, b) { return String(colValLabel(k, a)).toLowerCase().localeCompare(String(colValLabel(k, b)).toLowerCase()); });
       return out;
     }
@@ -495,7 +579,7 @@
       // el módulo a quien ya está dentro. Quedan las tres piezas que sí sirven, en un renglón:
       // selector de empresas (funcional), engrane (acciones) y badge de build (evidencia).
       html += '<div class="ip-head"><div id="ip-companies" style="flex:1"></div>' +
-              gearHtml() + '<span class="ip-ver" title="build desplegado">v' + IP_BUILD + '</span></div>';
+              gearHtml() + '<span class="ip-ver" title="versión desplegada">' + IP_BUILD + '</span></div>';
 
       // v0.5.16: sin selector de modo, el estado 'empty' dejó de ser alcanzable y su pantalla se
       // eliminó. El banner DEMO solo aparece por la escotilla de consola (ver currentMode).
@@ -521,7 +605,8 @@
       html += '<h2>Semáforo de conciliación — Admin</h2><div class="sem"><div id="ip-semrows"></div>' +
               '<div class="semnote"><b>Desde el corte</b> — la meta es 100%: verde solo al llegar, amarillo desde 85%, rojo debajo. ' +
               '<b>Backlog</b> — no tiene color: es deuda que se vacía, no una meta que se cumple. ' +
-              'Las fuentes sin motor no llevan porcentaje: el 0% diría fracaso donde hay <i>no empezado</i>.</div></div>';
+              'Las fuentes marcadas <b>sin abrir</b> se miden igual que las demás, y su 0% dice ' +
+              '<i>no empezado</i>, no <i>fracasado</i>: nadie ha abierto ese journal en el motor todavía.</div></div>';
 
       html += '<h2>Transacciones</h2>' +
         '<div class="ip-toolbar">' +
@@ -681,17 +766,44 @@
       // si fuera el contenedor, cualquier clic dentro del detalle abierto lo volvería a cerrar.
       qa('[data-toggle]').forEach(function (h) { h.addEventListener('click', function () { var el = q('[data-src="' + h.getAttribute('data-toggle') + '"]'); if (el) el.classList.toggle('open'); }); });
       qa('[data-atender]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); toast('Watchdog <b>' + esc(b.getAttribute('data-atender').toUpperCase()) + '</b>: reintentando sync y notificando responsable…'); }); });
-      qa('[data-demosync]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); toast('Sync <b>' + esc(b.getAttribute('data-demosync').toUpperCase()) + '</b> terminado — 0 nuevas · 0 duplicadas'); }); });
+      qa('[data-demosync]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); toast('Simulación (modo Demo) de <b>' + esc(b.getAttribute('data-demosync').toUpperCase()) + '</b> — no se llamó a ninguna captura.'); }); });
+      // Sync Now de la tarjeta Jeeves (v0.5.37 — antes MENTÍA en modo Real).
+      // El comentario de srcRow ya decía que en Real no se pinta botón simulado "porque su
+      // handler toastea un resultado inventado y eso sería mentirle al operador sobre una
+      // fuente de producción"… y este handler hacía exactamente eso para Jeeves: un
+      // setTimeout de 1.6 s, un toast fijo de "3 nuevas · 2 duplicadas · 0 rechazadas" y una
+      // fila inventada en la tabla de corridas, en modo Real igual que en Demo. Es el
+      // anti-patrón del Hallazgo #15 (CLAUDE.md §14): UI que declara éxito sin backend.
+      // Ahora en Real dispara la captura de verdad (el mismo endpoint del botón de la barra) y
+      // reporta lo que conteste el server; la simulación queda solo en Demo y se anuncia.
       var run = q('.ip-btnrun');
       if (run) run.addEventListener('click', function () {
-        run.disabled = true; run.classList.add('busy'); var tx = q('.ip-btntxt'); if (tx) tx.textContent = 'Sincronizando…';
-        setTimeout(function () {
+        var tx = q('.ip-btntxt');
+        var fin = function (msg) {
           if (!document.body.contains(container)) return;
           run.disabled = false; run.classList.remove('busy'); if (tx) tx.textContent = 'Sync Now';
-          toast('Captura Jeeves terminada — <b>3 nuevas</b> · 2 duplicadas · 0 rechazadas');
-          var rb = q('#ip-runsbody');
-          if (rb) rb.insertAdjacentHTML('afterbegin', '<tr><td>Jeeves manual ' + new Date().toTimeString().slice(0, 5) + '</td><td>manual</td><td>07-14 → 07-18</td><td>3</td><td>2</td><td>0</td><td class="st ok">OK</td></tr>');
-        }, 1600);
+          toast(msg);
+        };
+        run.disabled = true; run.classList.add('busy'); if (tx) tx.textContent = 'Sincronizando…';
+        if (state.mode !== 'real') {
+          setTimeout(function () { fin('Simulación (modo Demo) — no se llamó a la captura.'); }, 900);
+          return;
+        }
+        window.FinClient.call(EP_SYNC_NOW, { origen: 'boton-tarjeta' })
+          .then(function (data) {
+            if (!data || (data.ok !== true && data.nuevas == null && data._ran !== true)) {
+              fin('Sincronizador no disponible (endpoint sin activar) — <b>no se capturó nada</b>.'); return;
+            }
+            fin('Captura Jeeves terminada — <b>' + (data.nuevas || 0) + ' nuevas</b> · ' +
+                (data.duplicadas || 0) + ' duplicadas · ' + (data.rechazadas || 0) + ' rechazadas');
+            setTimeout(function () { if (document.body.contains(container)) load(); }, 900);
+          })
+          .catch(function (err) {
+            var code = (err && err.code) || '';
+            fin((code === 'NETWORK' || code === 'BAD_RESPONSE' || (err && err.http === 404))
+              ? 'Sincronizador no disponible (endpoint inactivo) — <b>no se capturó nada</b>.'
+              : 'Error al sincronizar: ' + esc((err && err.msg) || code || 'sin detalle'));
+          });
       });
     }
 
@@ -754,6 +866,7 @@
       // subconjuntos de lo ya cargado — pedirlos al server era barrer hasta 60 páginas para no
       // traer ni una fila nueva.
       var reload = function () {
+        state._fechasTocadas = true;   // a partir de aquí manda el usuario, no el corte
         state.filters.from = q('#ip-fFrom').value;
         state.filters.to = q('#ip-fTo').value;
         state.page = 1;
@@ -822,9 +935,13 @@
                        traspaso: 'Traspaso interno', ajuste: 'Ajuste', abono: 'Abono' };
 
     // ── EJE B · CONCILIACIÓN (qué falta hacer) ──
-    // 'noevaluada' es un valor REAL, no un hueco: el motor tiene journal_id 61 fijo, así que las
-    // 473 líneas de Chase nunca se evaluaron. Pintarlas "sin documento" afirmaría que se buscó y
-    // no había — no se buscó. Es la diferencia entre "no hay factura" y "no sabemos".
+    // 'noevaluada' es un valor REAL, no un hueco: el motor de SUGERENCIAS no cubre los journals
+    // de Chase, así que sus líneas nunca se evaluaron. Pintarlas "sin documento" afirmaría que se
+    // buscó y no había — no se buscó. Es la diferencia entre "no hay factura" y "no sabemos".
+    // OJO (2026-09-03): esto ya NO habla del motor de CONCILIAR, que desde hoy cubre las dos
+    // empresas (P1 corregido: cuentas por company_id). Conciliar una línea de Chase funciona;
+    // lo que falta es que alguien le PROPONGA el bill. Son dos workflows distintos y el flag
+    // en_motor solo describe al de sugerencias.
     function enAlcanceMotor(r) {
       var p = (state.porJournal || []).filter(function (x) { return x.journal === r._jid; })[0];
       return p ? p.en_motor !== false : true;   // sin info del server, no se acusa de no-evaluada
@@ -838,15 +955,46 @@
       // afirmar que todo está cuadrado.
       if (r.ok) {
         var _ra = (r.res_apunte != null) ? Number(r.res_apunte) : (Number(r.res) || 0);
-        return Math.abs(_ra) < 0.005 ? 'conciliada' : 'parcial';
+        if (Math.abs(_ra) < 0.005) return 'conciliada';
+        // DESCONCILIADA — el apunte recuperó el importe COMPLETO de la línea, no un resto.
+        // Eso solo pasa cuando la conciliación se deshizo entera: se canceló el bill (o se
+        // desató a mano) y Odoo liberó la contrapartida. Pero `is_reconciled` NO puede volver
+        // a false: la receta vació la cuenta de suspense reescribiendo account_id 184→17, y ese
+        // apunte se queda en la 17 para siempre, así que Odoo nunca ve reaparecer una suspense.
+        // Es una puerta de un solo sentido POR CONSTRUCCIÓN — por eso el veredicto no puede
+        // salir de `r.ok`, tiene que salir del apunte.
+        // Caso real: línea 32555 ($54 MercadoPago) ↔ BILL3270, cancelado el 2026-08-20; el
+        // apunte 203855 quedó reconciled:false con residual 54.00 y la línea seguía en verde.
+        // Se exige res_apunte EXPLÍCITO: sin el campo (server viejo) `_ra` cae a `res`, que en
+        // una conciliada es 0 y ya salió por 'conciliada' — nunca se acusa por falta de dato.
+        if (r.res_apunte != null && Math.abs(Math.abs(_ra) - Math.abs(Number(r.amt) || 0)) < 0.005) return 'desconciliada';
+        return 'parcial';
       }
       // EJE ODOO, valor intermedio: el motor 2 dejó decidida la conciliación pero el asiento no existe.
       // Hoy no lo puebla nadie (state.preconc llega vacío) → el filtro y el chip salen en gris con 0.
       if (state.preconc && (state.preconc[r._id] || state.preconc[r.id])) return 'preconciliada';
-      if (!enAlcanceMotor(r)) return 'noevaluada';
+      // Fondeo y devolución NO esperan una factura de proveedor, así que no pueden caer en el
+      // cubo de "sin conciliar". evalSugg() ya los excluye del motor a propósito (L~927), pero
+      // sin estado propio caían al 'pendiente' del final —cuya celda dice "○ Sin conciliar"— y
+      // ese texto afirma que les falta un documento que nunca les va a faltar:
+      //   · la devolución casa contra una NOTA DE CRÉDITO, o reduce el bill original;
+      //   · el fondeo es abono de la línea de crédito y su contrapartida es el lado BBVA, que
+      //     todavía no existe en Odoo (decisión de docs/odoo-captura-bancaria.md §215: se
+      //     capturan igual, y que queden en suspense es la evidencia de que falta ese lado).
+      // Van ANTES de enAlcanceMotor porque el TIPO es un hecho del movimiento; 'noevaluada' es
+      // un hecho del motor. Un fondeo en un journal sin motor sigue siendo un fondeo.
+      if (isDevolucion(r)) return 'devolucion_pend';
+      if (isFondeo(r))     return 'fondeo_pend';
+      // El VEREDICTO REAL manda sobre el flag del server (V1.05). Antes 'noevaluada' se
+      // decidía antes de mirar state.sugg, así que una línea de Chase con candidato seguía
+      // rotulada "no evaluada" — negando una evaluación que sí ocurrió. Ahora el flag solo
+      // habla cuando no hay respuesta que mostrar, que es justo lo que significa: "no sabemos".
+      // Además esto se auto-corrige: el día que captura-status marque en_motor:true para
+      // Chase, aquí no hay que tocar nada.
       var s = state.sugg[r._id];
       if (s && s.cand && s.cand.candidatos && s.cand.candidatos.length) return 'condoc';
       if (s && s.cand) return 'sindoc';
+      if (!enAlcanceMotor(r)) return 'noevaluada';
       return 'pendiente';                        // batch en vuelo — transitorio, no es filtro
     }
     // Compat: rowState sigue existiendo para el filtro por columna y el export, mapeado al eje B.
@@ -867,7 +1015,24 @@
         var _r = Math.abs(Number(r.res_apunte != null ? r.res_apunte : r.res) || 0);
         return '<span class="ip-est tra" title="Tiene contrapartida pero el apunte de la cuenta 17 conserva saldo">◐ Conciliada parcial</span> <span class="ip-est-bill">quedan ' + money(_r) + ' sin cerrar</span>';
       }
-      if (st === 'noevaluada') return '<span class="ip-est nev" title="Fuera del alcance del motor de conciliación (journal_id 61 fijo). No es que no haya factura: no se buscó.">◌ No evaluada</span>';
+      if (st === 'desconciliada') {
+        // Dice lo ÚNICO que sabemos: el apunte volvió a abrirse completo. No dice "el bill se
+        // canceló" como hecho — es la causa habitual, no la única (también se desata a mano).
+        var _rd = Math.abs(Number(r.res_apunte) || 0);
+        // Texto CORTO a propósito: la revisión visual en Chromium mostró que la versión larga
+        // ocupaba 4 renglones (110 px) contra los 2-3 de sus vecinas, y "la conciliación se
+        // deshizo" repetía lo que el propio nombre del estado ya dice. La explicación completa
+        // vive en el title, que es donde no cuesta alto de fila.
+        // NO promete que se pueda volver a conciliar desde aquí. En Odoo la línea sigue con
+        // is_reconciled=true, así que el guard LINE_YA_CONCILIADA la rechazaría: hoy esto se
+        // resuelve en Odoo, no en el panel. Por eso tampoco lleva chevron de acordeón (el
+        // chevron sale con !t.ok) — ofrecer un botón que siempre falla sería peor que no darlo.
+        return '<span class="ip-est tra" title="El apunte de la cuenta 17 recuperó el importe COMPLETO: la conciliación se deshizo entera (lo habitual es que se haya cancelado el bill, pero también pudo desatarse a mano). La línea sigue marcada conciliada en Odoo porque la receta vació la cuenta de suspense y ese flag ya no puede volver atrás. Ojo: NO se puede volver a conciliar desde este panel — el guard la rechaza por ya-conciliada. Hoy se resuelve en Odoo.">⟲ Desconciliada</span> <span class="ip-est-bill">' + money(_rd) + ' abiertos · resolver en Odoo</span>';
+      }
+      if (st === 'noevaluada') return '<span class="ip-est nev" title="El motor de sugerencias no evalúa este journal todavía, así que no hay bill propuesto. No es que no haya factura: no se buscó. Conciliar SÍ funciona — abre la fila y usa \'buscar bill\'.">◌ No evaluada</span>';
+      // Ninguno de los dos va en rojo: no son un error ni trabajo atorado del equipo.
+      if (st === 'devolucion_pend') return '<span class="ip-est dev-ret" title="Una devolución no casa contra un bill de proveedor: casa contra una nota de crédito, o reduce el bill original. El motor de sugerencias no la evalúa a propósito.">↩ Devolución</span> <span class="ip-est-bill">pendiente de nota de crédito</span>';
+      if (st === 'fondeo_pend')     return '<span class="ip-est fon" title="Abono de la línea de crédito. Su contrapartida es el movimiento del lado BBVA, que aún no se captura en Odoo — por eso queda en suspense.">⊕ Fondeo</span> <span class="ip-est-bill">pendiente del lado BBVA</span>';
       if (st === 'condoc')     { var c = (suggHint(r).cand) || {}; return '<span class="ip-est doc" title="El motor encontró factura candidata">◆ Con documento</span> <span class="ip-est-bill">' + esc(c.bill_name || '') + ' · ' + Math.round((c.score || 0) * 100) + '</span>'; }
       if (st === 'sindoc')     return '<span class="ip-est sinc" title="El motor evaluó y no encontró factura">○ Sin documento</span> <a class="ip-est-buscar" data-buscar="' + r._id + '">buscar bill</a>';
       return '<span class="ip-est sinc">○ Sin conciliar</span>';   // 'pendiente' — batch en vuelo
@@ -891,23 +1056,34 @@
       switch (f) {
         // EJE ODOO (taxonomía 3+2). 'conciliado' incluye la parcial: la parcialidad es un matiz de la
         // celda, no un estado aparte — quien filtra "conciliado" no espera que se le escondan las parciales.
-        case 'conciliado': return st === 'conciliada' || st === 'parcial';
+        case 'conciliado': return st === 'conciliada' || st === 'parcial';   // la desconciliada NO: su apunte está abierto
         case 'preconciliado': return st === 'preconciliada';   // sin filas hasta que el motor 2 escriba
         // alias de contratos viejos (selects guardados en localStorage) — no se ofrecen ya en la UI
         case 'conciliada': case 'liquidado': case 'ok': return st === 'conciliada';
         case 'parcial':     return st === 'parcial';
+        case 'desconciliada': return st === 'desconciliada';
         case 'condoc':      return st === 'condoc';
         case 'sindoc':      return st === 'sindoc';
         case 'noevaluada':  return st === 'noevaluada';
-        // familia: todo lo que sigue pendiente de conciliar, sea cual sea el motivo
-        case 'sinconciliar': case 'pend': return !t.ok;
+        case 'fondeo':      return st === 'fondeo_pend';
+        case 'devolucion':  return st === 'devolucion_pend';
+        // familia: lo que sigue pendiente de conciliar CONTRA UN DOCUMENTO, sea cual sea el
+        // motivo. Fondeos y devoluciones quedan FUERA: no esperan documento, y meterlos aquí
+        // inflaba el cubo con trabajo que nadie va a hacer (los fondeos solos son millones).
+        // Tienen su propio chip, así que el universo sigue cuadrando y nada se esconde.
+        // La DESCONCILIADA entra aquí aunque traiga ok:true — su apunte está abierto, o sea
+        // que vuelve a ser trabajo por conciliar. Es el punto entero del estado.
+        case 'sinconciliar': case 'pend': return st === 'desconciliada' || (!t.ok && st !== 'fondeo_pend' && st !== 'devolucion_pend');
         case 'conchoy':     return t.ok === true && t.wd === hoyCst();   // requiere write_date del server
         default: return true;
       }
     }
     function matchEdad(f, t) {
       if (!f) return true;
-      if (t.ok) return true;                       // la antigüedad solo califica lo pendiente
+      // La antigüedad solo califica lo pendiente. La desconciliada trae ok:true pero cuenta
+      // como pendiente (su apunte está abierto), así que sí debe entrar a los cubos de edad —
+      // si no, al filtrar "Sin conciliar + más de 3 días" saldría siempre, en cualquier cubo.
+      if (t.ok && rowConc(t) !== 'desconciliada') return true;
       var d = diasDesde(t.d);
       if (f === 'hoy') return d <= 0;
       if (f === 'd1_3') return d >= 1 && d <= 3;
@@ -924,7 +1100,28 @@
         });
         return Promise.resolve();
       }
-      var targets = state.allRows.filter(function (r) { return !r.ok && !isFondeo(r) && !isDevolucion(r); });
+      // A quién SÍ se le pregunta. Queda UNA exclusión: las que ya traen candidatos en caché
+      // (tras una recarga que los preservó) — el guard BILL_YA_CONCILIADO revalida en el
+      // instante del write, así que una sugerencia cacheada no puede provocar una escritura
+      // mala, y cada fila tiene su "Recargar".
+      //
+      // La exclusión por `en_motor:false` SE FUE (V1.05). Existía porque el motor de
+      // sugerencias solo leía el journal 61: preguntarle por Chase no podía devolver nada.
+      // Desde el 2026-09-03 lee los tres journals (61, 122, 123) y las dos cuentas por pagar
+      // (17 y 285), así que ahora sí puede contestar. El orden importó: primero se abrió el
+      // server y solo después se quitó esta exclusión — al revés, el panel habría preguntado
+      // a un motor que no sabía responder y las líneas de Chase habrían pasado de un honesto
+      // "no evaluada" a un falso "sin documento" (§8, la mitad tolerante va primero).
+      //
+      // `en_motor` sigue vivo, pero ya solo decide el ROTULO cuando no hubo evaluación —
+      // ver rowConc(), donde bajó por debajo de la lectura de state.sugg.
+      var yaPreguntada = function (r) {
+        var s = state.sugg[r._id];
+        return !!s && (!!s.cand || s.pedido === true);
+      };
+      var targets = state.allRows.filter(function (r) {
+        return !r.ok && !isFondeo(r) && !isDevolucion(r) && !yaPreguntada(r);
+      });
       if (!targets.length) return Promise.resolve();
       var ids = targets.map(function (r) { return r.id; });
       var byLine = {}; state.allRows.forEach(function (r) { byLine[r.id] = r._id; });
@@ -941,7 +1138,22 @@
               });
               if (document.body.contains(container)) paintTable();     // reveal progresivo del estado
               var pag = data && data.pagination;
-              if (pag && pag.has_more && ++guard < 40) { offset += LIMIT; step(); } else resolve();
+              if (pag && pag.has_more && ++guard < 40) { offset += LIMIT; step(); }
+              else {
+                // Marcar las que se PIDIERON y el server no contestó. Sin esto se vuelven a
+                // pedir en cada pasada —y hay una pasada tras cada conciliación—, que es el
+                // desperdicio que R3 vino a quitar. El server omite una línea cuando no la
+                // tiene en su universo (ya conciliada, o fuera de los journals que lee), así
+                // que la omisión es una respuesta: "de esa no sé". Se guarda como tal, con
+                // cand null, para que el estado siga cayendo en 'no evaluada' y no se invente
+                // un "sin documento" que afirmaría que se buscó.
+                targets.forEach(function (r) {
+                  if (!state.sugg[r._id] || !state.sugg[r._id].cand) {
+                    state.sugg[r._id] = { loading: false, cand: null, pedido: true };
+                  }
+                });
+                resolve();
+              }
             })
             .catch(function () { resolve(); });   // degrada: el estado queda "● Pendiente" neutral, sin romper la tabla
         }
@@ -987,7 +1199,15 @@
         slice.map(function (t) {
           var chev = t.ok ? '' : '<button class="ip-expbtn' + (state.expanded === t._id ? ' open' : '') + '" data-expand="' + t._id + '" title="Sugerencias de conciliación" aria-label="Ver sugerencias">▶</button>';
           var tr = '<tr class="' + (state.sel[t._id] ? 'selrow' : '') + (state.expanded === t._id ? ' ip-exprow' : '') + '"><td class="chk">' + chev + '<input type="checkbox" data-row="' + t._id + '"' + (state.sel[t._id] ? ' checked' : '') + '></td>' +
-            vis.map(function (c) { return '<td ' + colAttr(c, t) + '>' + c.fmt(t) + '</td>'; }).join('') + '</tr>';
+            vis.map(function (c) {
+              var v = c.fmt(t);
+              // data-vacio marca la celda SIN valor (vacía o un guion). En escritorio no cambia
+              // nada —la retícula necesita la celda para alinear—, pero en móvil cada fila es
+              // una tarjeta y ahí un renglón "PO —" es alto gastado en decir que no hay dato.
+              // El dato sigue en el DOM: no se oculta información, se oculta su ausencia.
+              var vacio = /^\s*(—|-|)\s*$/.test(String(v).replace(/<[^>]*>/g, ''));
+              return '<td ' + colAttr(c, t) + (vacio ? ' data-vacio="1"' : '') + '>' + v + '</td>';
+            }).join('') + '</tr>';
           if (state.expanded === t._id) {
             tr += '<tr class="ip-acc-row"><td class="ip-acc-cell" colspan="' + (vis.length + 1) + '">' + accordionHtml(t) + '</td></tr>';
           }
@@ -997,11 +1217,45 @@
         : '<div class="ip-empty">Sin movimientos con estos filtros. Ajusta el rango o la búsqueda.</div>';
       var w = q('#ip-tblwrap'); if (w) w.innerHTML = tbl;
 
-      var cnt = { liquidado: 0, transito: 0, fondeo: 0, devolucion: 0, sinconciliar: 0 };
-      rows.forEach(function (t) { cnt[rowState(t)]++; });
-      var resid = rows.reduce(function (a, t) { return rowState(t) === 'sinconciliar' ? a + (t.res || 0) : a; }, 0);   // solo lo SIN CONCILIAR suma al residual pendiente
+      // Contadores de la barra. Hasta v0.5.30 las llaves eran las del eje de 5 valores
+      // que murió en v0.5.16 (liquidado/transito/fondeo/devolucion/sinconciliar), y
+      // rowState() —alias de rowConc()— no devuelve NINGUNA de ellas: solo produce
+      // conciliada|parcial|preconciliada|noevaluada|condoc|sindoc|pendiente. Resultado:
+      // `cnt[rowState(t)]++` escribía en llaves nuevas que nadie leía, las cinco
+      // declaradas se quedaban en 0, y `resid` comparaba contra 'sinconciliar' — que
+      // tampoco existe — así que la barra decía SIEMPRE, con cualquier dato:
+      //     "N líneas · 0 conciliadas · 0 en tránsito · 0 sin conciliar · residual $0.00"
+      // mientras los chips de arriba mostraban los conteos correctos. Dos cifras
+      // contradictorias en la misma pantalla. paintChips() sí se migró en v0.5.15–17
+      // (su comentario documenta este mismo error); la barra se quedó atrás.
+      //
+      // El criterio se alinea A PROPÓSITO con paintChips(): mismo orden, mismas ramas.
+      // Si divergen, vuelven a contradecirse.
+      var cnt = { conciliadas: 0, pendientes: 0, preconciliadas: 0, fondeo: 0, devolucion: 0 };
+      rows.forEach(function (t) {
+        var st = rowConc(t);
+        if (st === 'preconciliada') cnt.preconciliadas++;
+        else if (st === 'fondeo_pend') cnt.fondeo++;
+        else if (st === 'devolucion_pend') cnt.devolucion++;
+        else if (st === 'desconciliada') cnt.pendientes++;   // ok:true, pero el apunte está abierto
+        else if (t.ok) cnt.conciliadas++;
+        else cnt.pendientes++;
+      });
+      // Residual pendiente: solo lo NO conciliado. En una conciliada, `res` es 0 en
+      // cuanto la línea sale de suspense (por eso el residual real de una parcial vive
+      // en `res_apunte`, no aquí — ver rowConc).
+      // ⚠ Suma sin separar moneda, igual que el semáforo: en una vista con journals de
+      // más de una divisa el número mezcla MXN y USD. Se hereda, no se introduce aquí.
+      // En una parcial o una desconciliada, `res` es 0 —la línea ya salió de suspense— pero el
+      // APUNTE conserva saldo: ese dinero sigue abierto y tiene que sumar, o el residual miente
+      // por omisión justo en los dos casos que más cuesta ver.
+      var resid = rows.reduce(function (a, t) {
+        var st = rowConc(t);
+        if (st === 'parcial' || st === 'desconciliada') return a + Math.abs(Number(t.res_apunte) || 0);
+        return t.ok ? a : a + (t.res || 0);
+      }, 0);
       var nSel = rows.filter(function (t) { return state.sel[t._id]; }).length;
-      var ag = q('#ip-aggs'); if (ag) ag.textContent = rows.length + ' líneas · ' + cnt.liquidado + ' conciliadas (liquidadas) · ' + cnt.transito + ' en tránsito · ' + cnt.sinconciliar + ' sin conciliar' + (cnt.fondeo ? ' · ' + cnt.fondeo + ' fondeos' : '') + (cnt.devolucion ? ' · ' + cnt.devolucion + ' devoluciones' : '') + ' · residual ' + money(resid) + (nSel ? ' · ' + nSel + ' seleccionadas' : '');
+      var ag = q('#ip-aggs'); if (ag) ag.textContent = rows.length + ' líneas · ' + cnt.conciliadas + ' conciliadas · ' + cnt.pendientes + ' sin conciliar' + (cnt.preconciliadas ? ' · ' + cnt.preconciliadas + ' pre-conciliadas' : '') + (cnt.fondeo ? ' · ' + cnt.fondeo + (cnt.fondeo === 1 ? ' fondeo' : ' fondeos') : '') + (cnt.devolucion ? ' · ' + cnt.devolucion + (cnt.devolucion === 1 ? ' devolución' : ' devoluciones') : '') + ' · residual ' + money(resid) + (nSel ? ' · ' + nSel + ' seleccionadas' : '');
 
       var bn = q('#ip-selbanner');
       if (bn) {
@@ -1161,7 +1415,7 @@
         return '<div class="ip-acc"><div class="ip-res partial">✓ Conciliada PARCIALMENTE — quedan línea <b>' + money(r.residual_linea) + '</b> / bill <b>' + money(r.residual_bill) + '</b></div></div>';
       }
       // Guard humanizado (ej. BILL_NO_201 = cross-company) + código técnico en el detalle.
-      var human = humanConcMsg(r.code, r.msg);
+      var human = humanConcMsg(r, t);
       // A4 — override del corte. Aparece SOLO cuando el server bloqueó por pre-corte, así que
       // no hay forma de que salga en una línea que no lo necesita: lo gobierna la respuesta,
       // no una condición del cliente que pudiera desincronizarse del guard real.
@@ -1190,10 +1444,44 @@
       return '<div class="ip-acc"><div class="ip-res bad">' + esc(human) + ' <span class="ip-mono2">(' + esc(r.code || 'ERROR') + ')</span></div>' +
         '<div class="ip-acc-actions"><button class="ip-acc-reload" data-reload="' + t._id + '">↻ Recargar sugerencias</button></div></div>';
     }
+    // FTS-USA = company 6. Se acepta el id o la razón social, igual que visibleRows: el endpoint
+    // real manda `rs` sin `company_id`, y el demo al revés.
+    function esUSA(t) { return !!t && (t.company_id === 6 || t.rs === 'FTS LLC'); }
+
     // Traduce códigos de guard del conciliar a lenguaje humano (el código técnico queda en el detalle).
-    function humanConcMsg(code, msg) {
+    // Recibe la RESPUESTA COMPLETA, no solo el código: desde el fix de P1 el server manda campos
+    // estructurados (cuenta_suspense, company_id, encontradas) que dicen más que cualquier texto
+    // que el panel pueda inventar.
+    function humanConcMsg(r, t) {
+      var code = r && r.code, msg = r && r.msg;
+      // NO_SUSPENSE_UNICA — el mensaje bueno depende de QUÉ VERSIÓN DEL MOTOR contestó.
+      //
+      // Hasta el 2026-09-03 el motor contaba las patas de suspense filtrando por la cuenta 184
+      // (FTS-MX). En una línea de FTS-USA encontraba cero y culpaba a la línea de estar «ya
+      // parcialmente desenredada», que era falso: la pata existía, intacta, en la 309.
+      // Comprobado sobre las líneas 33235 y 33121, las dos limpias.
+      //
+      // Ese motor ya se corrigió: elige el par de cuentas por empresa (1 → 184/17, 6 → 309/285)
+      // y su mensaje ahora dice en qué cuenta buscó y cuántas encontró. Cuando llega ese
+      // mensaje —se reconoce porque trae `cuenta_suspense`— se pasa tal cual: es más preciso
+      // que cualquier explicación de aquí, y repetir la vieja acusaría a una causa ya arreglada.
+      //
+      // El texto anterior se queda SOLO como respaldo para el motor viejo. Es la mitad tolerante
+      // (CLAUDE.md §8, regla anti-trabón): el panel entiende las dos respuestas, así que ni un
+      // rollback del workflow ni un caché viejo dejan al operador sin explicación.
+      if (code === 'NO_SUSPENSE_UNICA') {
+        if (r.cuenta_suspense != null) return msg || 'No se encontró exactamente una pata de suspense.';
+        if (esUSA(t)) {
+          return 'Esta línea es de FTS-USA y su contrapartida está en la cuenta de suspense 309. ' +
+                 'El motor que contestó todavía busca en la 184, que es la de FTS-MX, así que no la ' +
+                 'encuentra. Es una respuesta de la versión anterior del workflow. El bill no se tocó.';
+        }
+        return 'La línea no tiene exactamente una pata de suspense: ya está a medio desenredar. Se resuelve en Odoo, no desde aquí.';
+      }
       var map = {
         'BILL_NO_201': 'Este bill está cargado a otra empresa/cuenta — caso cross-company, no conciliable desde aquí por ahora.',
+        'BILL_OTRA_EMPRESA': 'El bill y la línea son de empresas distintas. No se concilia cruzado entre compañías.',
+        'EMPRESA_SIN_MAPEO': 'La empresa de esta línea no tiene cuentas de conciliación configuradas en el motor. No se tocó nada.',
         'LINE_YA_CONCILIADA': 'Esta línea ya fue conciliada (el mundo cambió). Recarga las sugerencias.',
         'BILL_YA_CONCILIADO': 'El bill ya fue conciliado por otra línea. Recarga las sugerencias.'
       };
@@ -1348,8 +1636,16 @@
           if (state.expanded === id) state.expanded = null;
           delete state.sugg[id];
           // Releer del server: el 200 no es prueba de que el estado quedó, y las transitivas
-          // solo existen del lado de Odoo. En demo no hay a quién releerle.
-          if (state.mode === 'real') { load(); } else { paintTable(); }
+          // solo existen del lado de Odoo. Eso NO se toca (CLAUDE.md §8).
+          // Lo que sí cambia es el PRECIO de la relectura. Antes era un load() completo:
+          // blanqueaba la tabla con la pantalla de carga, tiraba state.sugg ENTERO y volvía a
+          // pedir sugerencias para TODAS las pendientes — en producción ~1,800 líneas en lotes
+          // de 200, o sea ~9 llamadas extra por cada línea conciliada. Quien concilia veinte
+          // seguidas pagaba ese ciclo veinte veces.
+          // Ahora: silenciosa (la tabla vieja sigue en pantalla), conserva las sugerencias ya
+          // evaluadas y tira solo la de la línea recién conciliada. Mismos datos y mismo
+          // criterio de verdad, sin el impuesto.
+          if (state.mode === 'real') { load({ quiet: true, keepSugg: true, dropId: row && row.id }); } else { paintTable(); }
         }, 1500);
         return;
       }
@@ -1373,6 +1669,12 @@
       return 'r';
     }
     function barc(c) { return c === 'g' ? 'var(--ip-ok)' : c === 'y' ? 'var(--ip-warn)' : 'var(--ip-bad)'; }
+    // Los colores de BARRA no sirven para TEXTO. Medido en Chromium sobre blanco: --ip-warn
+    // (#e8a500) da 2.14:1 y --ip-ok (#12a150) da 3.03:1, cuando WCAG AA pide 4.5:1 a este
+    // tamaño. Salió al poner los conteos reales de Odoo en el harness: con datos inventados
+    // Jeeves caía en rojo (que sí pasa) y el amarillo nunca se pintaba. Una barra de 6 px es
+    // un gráfico y puede ir brillante; un porcentaje es texto y tiene que leerse.
+    function barcTxt(c) { return c === 'g' ? '#0d7a3f' : c === 'y' ? '#8a6000' : '#c93b2f'; }
     function paintSem() {
       var host = q('#ip-semrows'); if (!host) return;
       var journals = journalList();   // v0.5.15: derivado del server, ya no una lista escrita a mano
@@ -1406,42 +1708,70 @@
 
       // ── B · POST-CORTE. Protagonista, expandido, arriba. ──
       // El desglose POR JOURNAL va primero y el global después, a propósito: el agregado
-      // ATRIBUYE MAL. El motor tiene journal_id 61 fijo, así que 122 y 123 están al 0% por
-      // falta de alcance, no de trabajo. Un 19.6% en grande se lee como "la operación va mal"
-      // cuando lo que dice es "hay dos fuentes sin abrir".
+      // ATRIBUYE MAL. 122 y 123 están casi al 0% porque nadie les propone bills todavía, no
+      // porque el equipo no trabaje. Un porcentaje global en grande se lee como "la operación
+      // va mal" cuando lo que dice es "hay dos fuentes sin sugerencias".
       if (m && m.cumplimiento) {
-        var bt = m.cumplimiento.post_corte_total || 0, bc = m.cumplimiento.post_corte_conciliadas || 0;
-        var bp = bt ? Math.round(bc / bt * 1000) / 10 : null;
-        var bcol = bp === null ? 'off' : (bp >= 90 ? 'g' : bp >= 60 ? 'y' : 'r');
         var pj = (m.por_journal || []).filter(function (x) { return (x.post_total || 0) > 0; });
+        // El foco de la cabecera se calcula SOLO sobre las fuentes con motor (v0.5.37). Antes
+        // usaba el total global —159 de 561 = 28% → ROJO— mientras el texto de abajo dice
+        // "No hay total: un porcentaje global nunca llegaría al 100% mientras haya fuentes sin
+        // abrir". Un foco rojo es un porcentaje global disfrazado: decía justo lo que el panel
+        // se niega a decir, y acusaba a la operación por dos journals que nadie ha abierto.
+        // Sin fuentes con motor no hay nada que calificar → 'off', no rojo.
+        var conMotor = pj.filter(function (x) { return x.en_motor; });
+        var bt = conMotor.reduce(function (a2, x) { return a2 + (x.post_total || 0); }, 0);
+        var bc = conMotor.reduce(function (a2, x) { return a2 + (x.post_conc || 0); }, 0);
+        var bp = bt ? Math.round(bc / bt * 1000) / 10 : null;
+        var bcol = bp === null ? 'off' : (bp >= 100 ? 'g' : bp >= 85 ? 'y' : 'r');
         pj.sort(function (a, b) { return (b.en_motor ? 1 : 0) - (a.en_motor ? 1 : 0) || (b.post_total - a.post_total); });
+        // MISMO FORMATO PARA LAS TRES FUENTES (V1.02). Antes las fuentes sin motor se pintaban
+        // sin barra, sin porcentaje y sin foco, con el argumento de que "un 0% en rojo dice
+        // fracaso donde lo que hay es no empezado". Esteban pidió lo contrario: las tres con su
+        // barra de color y su pendiente contado desde el corte, porque lo que necesita ver de un
+        // golpe es CUÁNTO falta en cada fuente, no una taxonomía de por qué falta. El motivo no
+        // se pierde — sigue en la etiqueta "sin abrir" y en la nota de abajo —, pero deja de
+        // costar el número.
         var filas = pj.map(function (x) {
-          // Fuente SIN ABRIR: sin porcentaje grande, sin barra, sin rojo. Un 0% en rojo dice
-          // "fracaso" donde lo que hay es "no empezado", y esa diferencia importa para exigir.
-          // Lo que se muestra es cuántas líneas esperan — eso sí es magnitud del trabajo.
-          if (!x.en_motor) {
-            return '<div class="s2card sinabrir"><div class="s2ct">' + esc(x.label) +
-              '<span class="s2tag">sin abrir</span></div>' +
-              '<div class="s2cn"><b>' + x.post_total + '</b> líneas esperando</div>' +
-              '<div class="s2cw">El motor todavía no evalúa este journal.</div></div>';
-          }
-          // Fuente CON MOTOR: el titular es cuántas FALTAN, no el porcentaje. "Faltan 48" se
-          // puede exigir y se puede tachar; un "59.3%" solo describe.
-          var faltan = x.post_total - x.post_conc;
-          var p = x.post_total ? Math.round(x.post_conc / x.post_total * 1000) / 10 : null;
-          // Umbrales de META, distintos a los del semáforo viejo por journal: aquí el objetivo
-          // declarado es 100% post-corte, así que solo el 100% es verde. Amarillo desde 85%
-          // (a tiro), rojo debajo. Un 60% no puede pintar amarillo cuando faltan 47 líneas.
+          var conc = Number(x.post_conc) || 0;
+          var faltan = x.post_total - conc;
+          var p = x.post_total ? Math.round(conc / x.post_total * 1000) / 10 : null;
+          // Umbrales de META: el objetivo declarado es 100% post-corte, así que solo el 100% es
+          // verde. Amarillo desde 85% (a tiro), rojo debajo. Un 60% no puede pintar amarillo
+          // cuando faltan 47 líneas.
           var c2 = p === null ? 'off' : (p >= 100 ? 'g' : p >= 85 ? 'y' : 'r');
-          return '<div class="s2card meta"><div class="s2ct"><span class="light ' + c2 + '"></span>' + esc(x.label) + '</div>' +
-            '<div class="s2goal">' + (faltan === 0 ? '<b>Al 100%</b>' : 'Faltan <b>' + faltan + '</b> para el 100%') + '</div>' +
+          var comp = composicionFaltan(x.label, corte, faltan);
+
+          // EL TITULAR ES EL NÚMERO ACCIONABLE, no el total sin conciliar. Con 6 gastos + 2
+          // fondeos + 2 devoluciones, un "Faltan 10" se lee como diez pendientes de conciliar y
+          // solo seis lo son; los otros cuatro esperan una nota de crédito o el lado BBVA, y no
+          // hay nada que Eduardo pueda hacer con ellos. El 10 no desaparece: baja al renglón de
+          // abajo, junto al porcentaje, que es donde vive la métrica de Odoo.
+          var titular;
+          if (faltan === 0) titular = '<b>Al 100%</b>';
+          else if (comp.ok && comp.fon + comp.dev > 0) titular = '<b>' + comp.conc + '</b> por conciliar';
+          else titular = 'Faltan <b>' + faltan + '</b> para el 100%';
+
+          var detalle = conc + ' de ' + x.post_total + ' · ' +
+            '<span style="color:' + barcTxt(c2) + ';font-weight:700">' + (p === null ? '—' : p + '%') + '</span>';
+          if (comp.ok && comp.fon + comp.dev > 0) detalle += ' · ' + faltan + ' sin conciliar en total';
+
+          return '<div class="s2card meta' + (x.en_motor ? '' : ' sinmotor') + '">' +
+            '<div class="s2ct"><span class="light ' + c2 + '"></span>' + esc(x.label) +
+              (x.en_motor ? '' : '<span class="s2tag">sin abrir</span>') + '</div>' +
+            '<div class="s2goal">' + titular + '</div>' +
             '<div class="bar"><i style="width:' + (p || 0) + '%;background:' + barc(c2) + '"></i></div>' +
-            '<div class="s2cn">' + x.post_conc + ' de ' + x.post_total + ' · ' +
-              '<span style="color:' + barc(c2) + ';font-weight:700">' + (p === null ? '—' : p + '%') + '</span></div></div>';
+            '<div class="s2cn">' + detalle + '</div>' +
+            comp.html +
+            (x.en_motor ? '' : '<div class="s2cw">Este journal ya está abierto de los dos lados: ' +
+              'el motor <b>propone bills</b> al desplegar la fila y <b>conciliar funciona</b> ' +
+              '(primera línea cerrada el 2026-09-03). La etiqueta viene de un dato del server ' +
+              'que todavía no se actualiza; no significa que falte nada aquí.</div>') +
+            '</div>';
         }).join('');
         html += '<div class="ip-sem2 b">' +
           '<div class="s2head"><span class="s2ts">Datos al ' + esc(hoyCst()) + ' ' + esc(horaCst()) + ' CST</span></div>' +
-          '<div class="s2title"><span class="light ' + bcol + '"></span> Desde el corte <b>' + esc(corte) + '</b>' +
+          '<div class="s2title"><span class="light ' + bcol + '"></span> <span class="s2lbl">Desde el corte</span> <b>' + esc(corte) + '</b>' +
             '<span class="s2dir" title="Debe mantenerse alto">↑ mantener</span></div>' +
           '<div class="s2rows">' + (filas || '<div class="ip-empty">Sin líneas posteriores al corte.</div>') + '</div>' +
           '<div class="s2why">Cada fuente se mide sola. <b>No hay total</b>: un porcentaje global ' +
@@ -1452,11 +1782,23 @@
       // ── A · BACKLOG. Deuda, no operación diaria: colapsado, y el detalle por journal dentro. ──
       var at = '', ap = '';
       if (m && m.deuda) {
-        ap = '<b>' + (m.deuda.pre_corte_pendientes || 0) + '</b> pendientes · ' + money(m.deuda.pre_corte_monto || 0);
+        // Se leen los DOS nombres a propósito (v0.5.37). El detalle de abajo usa `pre_pend`
+        // por journal y el resumen usaba solo `pre_corte_pendientes`: si el server manda el
+        // primero, la tarjeta decía "0 pendientes · $0.00" con el desglose lleno debajo —
+        // dos cifras contradictorias en la misma tarjeta. Tolerar ambas es la mitad segura
+        // (CLAUDE.md §8, regla anti-trabón): sea cual sea el nombre real, la cifra sale.
+        var _dp = m.deuda.pre_corte_pendientes != null ? m.deuda.pre_corte_pendientes : m.deuda.pre_pend;
+        var _dm = m.deuda.pre_corte_monto != null ? m.deuda.pre_corte_monto : m.deuda.pre_monto;
+        // Último recurso: si la deuda no trae ninguno de los dos, se suma el desglose por
+        // journal, que es la misma cifra vista por fuente. Nunca un 0 inventado.
+        if (_dp == null) { _dp = (m.por_journal || []).reduce(function (a2, x) { return a2 + (x.pre_pend || 0); }, 0) || null; }
+        if (_dm == null) { _dm = (m.por_journal || []).reduce(function (a2, x) { return a2 + (x.pre_monto || 0); }, 0) || null; }
+        ap = _dp == null ? 'sin datos del server'
+           : '<b>' + _dp + '</b> pendientes' + (_dm == null ? '' : ' · ' + money(_dm));
         at = '';   // la tendencia vive solo en B: repetirla en A decia dos veces lo mismo
       } else { ap = 'sin datos del server'; }
       html += '<details class="ip-sem2 a"><summary>' +
-        '<span class="s2title">Backlog — anterior a <b>' + esc(corte) + '</b>' +
+        '<span class="s2title"><span class="s2lbl">Backlog — anterior a</span> <b>' + esc(corte) + '</b>' +
           '<span class="s2dir down" title="Debe bajar hasta cero">↓ reducir</span></span>' +
         '<span class="s2sum">' + ap + (at ? ' · ' + at : '') + '</span></summary>' +
         '<div class="s2body">' + backlogDetalle(m) + '</div></details>';
@@ -1466,15 +1808,24 @@
       // account.move y un número sin fecha se leería como actual. La vigilancia de que no crezca
       // vive en el watchdog; esto solo hace visible lo acumulado.
       html += '<details class="ip-sem2 pasivo"><summary>' +
-        '<span class="s2title">Pagos manuales acumulados <span class="s2tag">no conciliables</span></span>' +
+        '<span class="s2title"><span class="s2lbl">Pagos manuales acumulados</span> <span class="s2tag">no conciliables</span></span>' +
         '<span class="s2sum"><b>655</b> asientos · <b>$4.93M</b> en la cuenta 223</span></summary>' +
         '<div class="s2body"><div class="s2note" style="margin-top:12px">' +
           'Medido el <b>2026-08-17</b>. Son bills que se cerraron marcando <b>PAID a mano</b> en el journal 61 ' +
           'en vez de conciliar la línea bancaria, así que el gasto quedó registrado <b>dos veces</b>: en el bill y en la línea.' +
         '</div><ul class="s2list">' +
-          '<li><b>Todos son del 23-jul o anteriores</b> — verificado contra la cuenta 223.</li>' +
-          '<li><b>No pueden crecer.</b> Desde el 17-ago la regla <code>ir.rule 814</code> impide crear asientos ' +
-            'en el journal 61 sin línea bancaria. El intento falla con un error que explica qué hacer.</li>' +
+          '<li><b>Todos son del 23-jul o anteriores.</b> Re-verificado en Odoo el <b>2026-09-03</b>: ' +
+            'cero asientos de pago manual en el journal 61 con fecha del corte en adelante.</li>' +
+          // El texto anterior afirmaba que la regla `ir.rule 814` impide que crezcan. Es FALSO
+          // desde el 18-ago: la 814 se desactivó porque rompía la captura (4 días de 6 líneas
+          // rechazadas por corrida) y se sustituyó por la 815, que el propio registro del
+          // proyecto marca "a prueba, NO confirmada". El panel no puede leer ir.rule, así que
+          // no puede verificar cuál está viva: dice lo que sí sabe —el conteo re-medido de
+          // arriba— y manda a Odoo para el estado del candado, en vez de dar por buena una
+          // garantía que ya se cayó una vez.
+          '<li><b>Hay un candado</b> en Odoo (<code>ir.rule</code>) que rechaza crear asientos en el ' +
+            'journal 61 sin línea bancaria, con un error que explica qué hacer. Se ajustó tras romper ' +
+            'la captura en agosto (814 → 815): <b>su estado se confirma en Odoo</b>, no desde aquí.</li>' +
           '<li><b>No se resuelven conciliando</b> — esas líneas ya no tienen bill abierto contra el cual casar. ' +
             'Es deuda de <b>desenredo contable</b>, no de conciliación.</li>' +
           '<li><b>No es trabajo pendiente de la operación.</b> Necesita una decisión sobre cómo revertir la ' +
@@ -1482,6 +1833,66 @@
         '</ul></div></details>';
 
       host.innerHTML = html;
+      qa('#ip-semrows [data-vercorte]').forEach(function (el) {
+        el.addEventListener('click', function () { verDesdeCorte(el.getAttribute('data-vercorte')); });
+      });
+    }
+    // ── De qué está hecho el "Faltan N" (V1.02: devuelve datos, no solo HTML) ─────────────
+    // Origen: Esteban veía 5 sin conciliar en la tabla y 9 en el semáforo, y los dos números
+    // eran CIERTOS. El semáforo cuenta toda línea que Odoo tiene sin conciliar; la tabla saca
+    // fondeos y devoluciones del cubo "sin conciliar" (v0.5.16) porque no esperan una factura.
+    // Comprobado en Odoo el 2026-09-03 sobre journal 61 desde el corte: 9 sin conciliar = 5
+    // gastos + 2 FONDEO + 2 DEVOLUCIÓN. Dos taxonomías distintas bajo la misma palabra.
+    // Esto NO cambia el número del server: lo descompone, deja reproducirlo en la tabla, y le
+    // da a la tarjeta el número accionable para su titular.
+    // Regla de honestidad: solo se descompone si la ventana cargada cubre el corte Y el total
+    // cuadra con el `faltan` del server. Si no cuadra, se dice — nunca se pinta un desglose que
+    // contradiga en silencio al número de arriba, ni se pone en el titular un número derivado
+    // de datos incompletos.
+    function composicionFaltan(label, corte, faltan) {
+      var no = function (html) { return { ok: false, conc: 0, fon: 0, dev: 0, html: html }; };
+      if (!faltan) return no('');
+      var f = state.filters;
+      if (!f.from || f.from > corte) {
+        return no('<div class="s2cw">La tabla está cargada desde <b>' + esc(f.from || '—') + '</b>, no alcanza el corte. ' +
+          '<a class="s2ver" data-vercorte="' + esc(label) + '">cargar desde el corte</a></div>');
+      }
+      var dev = 0, fon = 0, conc = 0;
+      (state.allRows || []).forEach(function (r) {
+        if (r.j !== label || !r.d || r.d < corte || r.ok) return;
+        if (isDevolucion(r)) dev++; else if (isFondeo(r)) fon++; else conc++;
+      });
+      var local = dev + fon + conc;
+      if (local !== faltan) {
+        // Se distinguen los dos casos, porque no significan lo mismo y uno de los dos no es
+        // noticia. Ver MENOS de lo que dice el server es lo normal cuando la carga viene
+        // recortada por el tope de líneas: no hay contradicción, simplemente no alcanza para
+        // descomponer, y gritarlo en cada tarjeta es ruido permanente. Ver MÁS sí es una
+        // contradicción real —el server dice que faltan menos de las que la tabla tiene sin
+        // conciliar— y ahí conviene el aviso fuerte.
+        var link = '<a class="s2ver" data-vercorte="' + esc(label) + '">ver en la tabla</a>';
+        if (local < faltan) return no('<div class="s2cw">' + link + '</div>');
+        return no('<div class="s2cw">El desglose no cuadra con el server (' + local + ' vs ' + faltan +
+          '): la tabla ve más pendientes de las que reporta el semáforo. ' + link + '</div>');
+      }
+      var partes = [];
+      if (conc) partes.push('<b>' + conc + '</b> por conciliar');
+      if (fon) partes.push('<b>' + fon + '</b> ' + (fon === 1 ? 'fondeo' : 'fondeos'));
+      if (dev) partes.push('<b>' + dev + '</b> ' + (dev === 1 ? 'devolución' : 'devoluciones'));
+      return { ok: true, conc: conc, fon: fon, dev: dev,
+        html: '<div class="s2cw">' + partes.join(' · ') +
+          (fon + dev ? ' — fondeos y devoluciones no casan contra una factura, el motor no las cierra' : '') +
+          ' · <a class="s2ver" data-vercorte="' + esc(label) + '">ver en la tabla</a></div>' };
+    }
+    // Lleva la tabla al MISMO universo que mide el semáforo, para que los dos números se puedan
+    // comparar de verdad en vez de creerle a uno de los dos.
+    function verDesdeCorte(label) {
+      var corte = (state.metricas && state.metricas.fecha_corte) || '2026-07-24';
+      state.filters.from = corte; state.filters.to = hoyCst();
+      state.filters.journal = label; state.filters.estado = ''; state.filters.tipo = '';
+      state.page = 1;
+      if (state.mode === 'real') { load(); } else { render(); }
+      var t = q('#ip-tblwrap'); if (t && t.scrollIntoView) t.scrollIntoView({ block: 'start' });
     }
     function horaCst() { var d = new Date(Date.now() - 6 * 3600 * 1000); return d.toISOString().slice(11, 16); }
     // El detalle del backlog viene del SERVER, no de state.allRows. allRows es la ventana rodante
@@ -1543,11 +1954,17 @@
       // que dependen de state.sugg, y en modo real suggByRow se ingesta vacío -> los tres salían 0
       // permanentemente aunque hubiera filas en pantalla. No era un desajuste del universo: era contar
       // algo que nadie poblaba.
-      var n = { todo: uni.length, conciliado: 0, preconciliado: 0, sinconciliar: 0, conchoy: 0 };
+      var n = { todo: uni.length, conciliado: 0, preconciliado: 0, sinconciliar: 0, conchoy: 0, fondeo: 0, devolucion: 0 };
       var hoy = hoyCst();
       uni.forEach(function (t) {
-        if (rowConc(t) === 'preconciliada') { n.preconciliado++; return; }
-        if (!t.ok) { n.sinconciliar++; return; }
+        var st = rowConc(t);
+        if (st === 'preconciliada') { n.preconciliado++; return; }
+        // Cubos propios: no esperan documento, así que no son "sin conciliar". Se cuentan
+        // aparte en vez de esconderse — los cinco cubos deben sumar `todo`.
+        if (st === 'fondeo_pend')     { n.fondeo++; return; }
+        if (st === 'devolucion_pend') { n.devolucion++; return; }
+        // La desconciliada trae ok:true pero su apunte está abierto → es trabajo pendiente.
+        if (st === 'desconciliada' || !t.ok) { n.sinconciliar++; return; }
         n.conciliado++;
         if (t.wd === hoy) n.conchoy++;
       });
@@ -1556,10 +1973,15 @@
         return '<button class="ip-chip ' + (cls || '') + (act === k ? ' on' : '') + '" data-chip="' + k + '">' +
                esc(lbl) + ' <span class="ip-chipn">' + (k === '' ? n.todo : (n[k] || 0)) + '</span></button>';
       }
+      // Fondeos y devoluciones salieron del cubo rojo (no esperan documento) y entran con
+      // chip propio en GRIS: visibles y filtrables, sin gritar que hay trabajo atorado.
+      // Solo aparecen si hay filas — un "0 devoluciones" permanente sería ruido.
       var html = chip('', 'Todo') +
                  chip('sinconciliar', 'Sin conciliar', 'red') +
                  chip('conciliado', 'Conciliado', 'green') +
                  chip('preconciliado', 'Pre-conciliado', 'gray') +
+                 (n.fondeo ? chip('fondeo', 'Fondeos', 'gray') : '') +
+                 (n.devolucion ? chip('devolucion', 'Devoluciones', 'gray') : '') +
                  chip('conchoy', 'Conciliadas hoy', 'green');
       // sub-chips de antigüedad: solo tienen sentido sobre lo pendiente, y solo se muestran
       // cuando hay un chip de esa familia activo (si no, son ruido permanente).

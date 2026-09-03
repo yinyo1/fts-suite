@@ -1,0 +1,494 @@
+/* ═══ Machote · la hoja ═══
+ *
+ * Dos modos, un solo marcado:
+ *   ≥720 px  la retícula del Excel, con desplazamiento horizontal.
+ *   <720 px  cada renglón se vuelve una TARJETA con sus campos etiquetados.
+ *
+ * La retícula de catorce columnas es correcta en una laptop e inservible con
+ * el pulgar. Reproducir el Excel en un teléfono sería fidelidad mal entendida.
+ */
+
+:root {
+  --tinta: #1c1c1c;
+  --suave: #6b6b6b;
+  --linea: #dcdcdc;
+  --linea2: #ececec;
+  --fondo: #ffffff;
+  --papel: #f6f7f8;
+  --cab: #eef1f4;
+  --acento: #0969da;
+  --verde: #1a7f37;
+  --ambar: #9a6700;
+  --rojo: #cf222e;
+  --toque: 44px;   /* altura mínima de cualquier cosa que se toque */
+
+  /* ── Los colores del machote ──────────────────────────────────────────
+   *
+   * ⚠️ APROXIMACIÓN, no medición. El conector de SharePoint devuelve los
+   * valores y las fórmulas del libro pero NADA de estilo -se comprobó contra
+   * `SO11836`: cero información de relleno-, así que estos colores están
+   * puestos a ojo con la paleta de Office que usan esas plantillas, no
+   * leídos del archivo.
+   *
+   * Corregirlos es cambiar ESTAS ocho líneas y nada más: ningún color de
+   * tabla está escrito en otro lado. Si Esteban manda una captura o los
+   * códigos, se sustituyen aquí. */
+  --x-banda:    #1f4e79;   /* banda de bloque: COSTO MANO DE OBRA */
+  --x-banda-tx: #ffffff;
+  --x-cab:      #d9e1f2;   /* encabezado de columna */
+  --x-cab-tx:   #1f3864;
+  --x-grupo:    #ddebf7;   /* rótulo de grupo: Diseño y Programación */
+  --x-total:    #fff2cc;   /* renglones de total */
+  --x-total-bd: #bf8f00;
+  --x-fila-ok:  #e2efda;   /* renglón ya capturado (QTY ≥ 1) */
+  --x-fila-bd:  #70ad47;
+}
+
+/* ── Base ─────────────────────────────────────────────────────────────── */
+.scr { background: var(--fondo); color: var(--tinta); }
+.pad { padding: 14px; }
+.mono { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+.tiny { font-size: 12px; color: var(--suave); line-height: 1.45; }
+.nota { color: var(--suave); line-height: 1.45; margin: 6px 0; font-size: 12px; }
+.oc { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px;
+      border-radius: 5px; background: var(--papel); color: var(--suave); white-space: nowrap; }
+.grow { flex: 1 1 auto; min-width: 0; }
+.right { text-align: right; flex-shrink: 0; }
+.row { display: flex; gap: 8px; align-items: center; }
+.n-ok { color: var(--verde); } .n-warn { color: var(--ambar); } .n-bad { color: var(--rojo); }
+h2 { font-size: 19px; margin: 4px 0 10px; }
+h3 { font-size: 15px; margin: 16px 0 8px; }
+h4 { font-size: 14px; margin: 0 0 8px; }
+
+/* ── Lista ────────────────────────────────────────────────────────────── */
+.item { display: flex; gap: 10px; align-items: center; padding: 12px;
+        border: 1px solid var(--linea); border-radius: 10px; margin-bottom: 8px;
+        text-decoration: none; color: inherit; background: var(--fondo); }
+.item:active { background: var(--papel); }
+.chip { display: inline-block; color: #fff; font-size: 10px; font-weight: 700;
+        padding: 2px 8px; border-radius: 20px; }
+.aviso { border: 1px solid var(--linea); border-left: 3px solid var(--acento);
+         background: var(--papel); padding: 10px 12px; border-radius: 8px;
+         margin: 10px 0; font-size: 13px; line-height: 1.5; }
+.aviso.bad { border-left-color: var(--rojo); }
+.aviso.ok  { border-left-color: var(--verde); }
+.vacio, .vacio2 { color: var(--suave); font-size: 13px; padding: 14px; text-align: center; }
+.wg { border: 1px solid var(--linea); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+.wg.bad  { border-left: 3px solid var(--rojo); }
+.wg.warn { border-left: 3px solid var(--ambar); }
+.wg.info { border-left: 3px solid var(--acento); }
+.kpi { display: flex; gap: 8px; margin-bottom: 12px; }
+.kpi > div { flex: 1; border: 1px solid var(--linea); border-radius: 10px; padding: 10px;
+             display: flex; flex-direction: column; gap: 2px; }
+.kpi strong { font-size: 17px; }
+.tot { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0;
+       border-bottom: 1px solid var(--linea2); font-size: 13px; }
+.tot:last-child { border-bottom: 0; }
+.tot .lb { color: var(--suave); }
+
+/* ── Pestañas de hoja ─────────────────────────────────────────────────── */
+.libro { padding: 0 0 12px; }
+.hojas { display: flex; gap: 2px; overflow-x: auto; padding: 8px 10px 0;
+         border-bottom: 1px solid var(--linea); background: var(--papel);
+         -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+.pestana { flex: 0 0 auto; border: 1px solid var(--linea); border-bottom: 0;
+           background: var(--cab); color: var(--suave);
+           padding: 9px 13px; font-size: 12px; font-weight: 600;
+           border-radius: 7px 7px 0 0; cursor: pointer; white-space: nowrap;
+           min-height: var(--toque); }
+.pestana.on { background: var(--fondo); color: var(--tinta); border-bottom: 1px solid var(--fondo);
+              margin-bottom: -1px; }
+.pestana.mas { font-size: 17px; padding: 6px 14px; font-weight: 400; }
+
+/* ── Bloques de encabezado ────────────────────────────────────────────── */
+.cab, .desg-top { display: flex; flex-wrap: wrap; gap: 12px; padding: 12px; }
+.blk { flex: 1 1 320px; min-width: 0; }
+.et2 { font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--suave);
+       text-transform: uppercase; margin-bottom: 6px; }
+.escs { display: flex; gap: 6px; flex-wrap: wrap; }
+.escbtn { flex: 1 1 auto; min-height: var(--toque); border: 1px solid var(--linea);
+          background: var(--fondo); border-radius: 8px; font-size: 12px; font-weight: 700;
+          padding: 10px 12px; cursor: pointer; color: var(--suave); }
+.escbtn.on { border-color: var(--acento); color: var(--acento); background: #f0f6ff;
+             box-shadow: inset 0 0 0 1px var(--acento); }
+
+table.hoja2 { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.hoja2 th { background: var(--cab); text-align: left; font-size: 11px;
+                 padding: 7px 8px; border: 1px solid var(--linea); }
+table.hoja2 td { padding: 5px 8px; border: 1px solid var(--linea2); }
+table.hoja2 td.et { color: var(--suave); }
+table.hoja2 td.vl { text-align: right; white-space: nowrap; }
+
+.nomsec { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+          padding: 0 12px 12px; }
+.nomsec .et { font-size: 11px; font-weight: 700; color: var(--suave); letter-spacing: .04em; }
+.nomsec .cel.nombre { flex: 1 1 200px; font-weight: 700; font-size: 15px; }
+
+.secc-tit { background: var(--cab); font-size: 11px; font-weight: 700; letter-spacing: .05em;
+            padding: 9px 12px; border-top: 1px solid var(--linea);
+            border-bottom: 1px solid var(--linea); margin-top: 6px; }
+
+/* ── Retícula ─────────────────────────────────────────────────────────── */
+.scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table.rejilla { border-collapse: collapse; font-size: 12.5px; width: 100%; }
+table.rejilla th { background: var(--cab); color: var(--suave); font-size: 10px;
+                   font-weight: 700; letter-spacing: .03em; text-align: left;
+                   padding: 7px 6px; border: 1px solid var(--linea); white-space: nowrap; }
+table.rejilla td { padding: 2px 4px; border: 1px solid var(--linea2); vertical-align: middle; }
+table.rejilla tr.grupo td { background: var(--papel); font-weight: 700; font-size: 11px;
+                            color: var(--suave); padding: 6px 8px; }
+table.rejilla tr.total td { background: var(--papel); font-weight: 700; }
+table.rejilla tr.vacia td { color: #b9b9b9; }
+table.rejilla td.vl { text-align: right; white-space: nowrap; }
+table.rejilla td.fuerte { font-weight: 700; }
+table.rejilla td.ro { color: var(--suave); }
+table.rejilla td.rotulo { font-weight: 600; white-space: nowrap; }
+table.rejilla td.acc { text-align: center; }
+table.rejilla .pctcol { color: var(--suave); text-align: right; }
+.x { border: 0; background: transparent; color: var(--rojo); font-size: 16px;
+     cursor: pointer; min-height: var(--toque); min-width: var(--toque); }
+
+/* ── Captura contra cálculo ───────────────────────────────────────────────
+ * En Excel se sabe qué celda es fórmula: la barra la muestra. Aquí no había
+ * ninguna señal — la celda editable era transparente y sólo sacaba borde al
+ * pasar el mouse, que en un teléfono no existe. En el dispositivo donde más
+ * se captura, la distinción sencillamente no estaba.
+ *
+ * Ahora se distinguen por TRES cosas a la vez, no sólo por color: fondo, borde
+ * y alineación. Quien no distingue colores sigue viendo la diferencia. */
+
+/* Lo que se captura: caja blanca con borde, como un campo. */
+.cel { border: 1px solid var(--linea); background: var(--fondo); font: inherit;
+       color: inherit; padding: 7px 6px; border-radius: 6px; width: 100%;
+       box-sizing: border-box; min-width: 0; }
+.cel:hover { border-color: #b9b9b9; }
+.cel:focus { outline: 0; border-color: var(--acento); background: #fff;
+             box-shadow: 0 0 0 3px rgba(9,105,218,.16); }
+.cel.num { text-align: right; font-variant-numeric: tabular-nums; }
+.cel::placeholder { color: #b0b0b0; }
+
+/* Lo que se calcula: sin caja, sobre el papel, en versalitas tabulares. Se lee
+ * como un resultado impreso, no como algo que se pueda escribir. */
+.calc { background: var(--papel); color: var(--tinta);
+        font-variant-numeric: tabular-nums; cursor: default;
+        -webkit-user-select: text; user-select: text; }
+td.calc { position: relative; }
+/* La marca de fórmula: una barra fina a la izquierda. No es color solo. */
+td.calc::after { content: ''; position: absolute; left: 0; top: 3px; bottom: 3px;
+                 width: 2px; background: #c8cdd2; border-radius: 2px; }
+table.hoja2 td.calc { background: var(--papel); }
+
+/* El margen escrito a mano encima de la fórmula. El acervo lo hace -el caso
+ * del "riel" en SO11737- y tiene que verse distinto de uno heredado del Tipo. */
+.cel.pisado { background: #fff8e5; border-color: #d9a800; font-weight: 600; }
+.cel.pisado:focus { box-shadow: 0 0 0 3px rgba(217,168,0,.2); }
+.pisado-marca { color: #9a6700; font-size: 10px; font-weight: 700;
+                margin-left: 4px; white-space: nowrap; }
+
+/* Cuando un derivado cambia, parpadea un instante. Sobrio: un fondo que se
+ * desvanece en medio segundo, sin movimiento ni color saturado. */
+@keyframes recalculado {
+  from { background: #fff3cd; }
+  to   { background: var(--papel); }
+}
+td.calc.cambio { animation: recalculado .55s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  td.calc.cambio { animation: none; box-shadow: inset 0 0 0 1px #e6c200; }
+}
+select.cel { -webkit-appearance: none; appearance: none; padding-right: 16px;
+             background-image: linear-gradient(45deg, transparent 50%, var(--suave) 50%),
+                               linear-gradient(135deg, var(--suave) 50%, transparent 50%);
+             background-position: right 6px center, right 2px center;
+             background-size: 4px 4px, 4px 4px; background-repeat: no-repeat; }
+.w60 { width: 60px } .w70 { width: 70px } .w80 { width: 80px }
+.w90 { width: 90px } .w110 { width: 110px } .w130 { width: 130px }
+.cel.desc { min-width: 190px; }
+
+/* ── Botones y barra fija ─────────────────────────────────────────────── */
+.btn { display: inline-flex; align-items: center; justify-content: center;
+       min-height: var(--toque); padding: 10px 16px; border: 1px solid var(--linea);
+       border-radius: 9px; background: var(--fondo); color: var(--tinta);
+       font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; }
+.btn:active { background: var(--papel); }
+.btn[disabled] { opacity: .45; cursor: not-allowed; }
+.btn.del { color: var(--rojo); border-color: #f0c8cc; }
+.btnrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 10px 12px; }
+#fija { position: sticky; bottom: 0; z-index: 5; }
+.fija { display: flex; gap: 10px; align-items: center; padding: 10px 12px;
+        border-top: 1px solid var(--linea); background: var(--fondo);
+        box-shadow: 0 -3px 12px rgba(0,0,0,.06);
+        padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+.fija .mono { font-size: 15px; font-weight: 700; }
+textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--linea);
+           border-radius: 8px; padding: 9px; font: inherit; }
+.toast { position: fixed; left: 50%; bottom: 78px; transform: translate(-50%, 12px);
+         background: #222; color: #fff; padding: 10px 16px; border-radius: 20px;
+         font-size: 13px; opacity: 0; transition: .25s; z-index: 50; }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+/* ══ Teléfono: la retícula se vuelve tarjetas ═════════════════════════ */
+@media (max-width: 720px) {
+  .cab, .desg-top { padding: 10px; gap: 10px; }
+  .blk { flex: 1 1 100%; }
+  .escbtn { flex: 1 1 100%; }
+
+  /* Las tablas de captura dejan de ser tablas. */
+  table.rejilla.tarjetas, table.rejilla.tarjetas tbody,
+  table.rejilla.tarjetas tr, table.rejilla.tarjetas td { display: block; width: auto; }
+  table.rejilla.tarjetas thead { display: none; }
+  table.rejilla.tarjetas { border: 0; }
+  table.rejilla.tarjetas tr { border: 1px solid var(--linea); border-radius: 10px;
+                              margin: 8px 10px; padding: 4px 10px 8px; background: var(--fondo); }
+  table.rejilla.tarjetas tr.grupo { border: 0; background: transparent; margin: 14px 10px 2px;
+                                    padding: 0; }
+  table.rejilla.tarjetas tr.grupo td { background: transparent; padding: 0;
+                                       font-size: 11px; letter-spacing: .06em; }
+  table.rejilla.tarjetas tr.total { background: var(--papel); }
+  table.rejilla.tarjetas td { border: 0; border-bottom: 1px solid var(--linea2);
+                              display: flex; align-items: center; gap: 10px;
+                              padding: 4px 0; min-height: var(--toque); }
+  table.rejilla.tarjetas td:last-child { border-bottom: 0; }
+  table.rejilla.tarjetas td::before { content: attr(data-l); flex: 0 0 42%;
+                                      font-size: 11px; color: var(--suave);
+                                      text-transform: none; }
+  table.rejilla.tarjetas td.vl { justify-content: space-between; }
+  /* El nombre del renglón encabeza la tarjeta, sin etiqueta. */
+  table.rejilla.tarjetas td.rotulo { font-size: 14px; font-weight: 700;
+                                     border-bottom: 1px solid var(--linea);
+                                     padding: 8px 0 6px; }
+  table.rejilla.tarjetas td.rotulo::before { content: none; }
+  table.rejilla.tarjetas td.solo-ancho { display: none; }
+  table.rejilla.tarjetas td:empty { display: none; }
+  /* Ojo: `td[colspan]` a secas también ocultaba el título de grupo, que es
+     justo lo que ordena la tarjeta. Se ocultan sólo los rellenos. */
+  table.rejilla.tarjetas tr.total td[colspan] { display: none; }
+  table.rejilla.tarjetas tr:not(.grupo):not(.total) td[colspan] { display: none; }
+  table.rejilla.tarjetas .cel { text-align: left; }
+  table.rejilla.tarjetas .cel.num { text-align: right; }
+  table.rejilla.tarjetas .w60, table.rejilla.tarjetas .w70, table.rejilla.tarjetas .w80,
+  table.rejilla.tarjetas .w90, table.rejilla.tarjetas .w110, table.rejilla.tarjetas .w130,
+  table.rejilla.tarjetas .cel.desc { width: auto; min-width: 0; flex: 1 1 auto; }
+  table.rejilla.tarjetas .cel { border: 1px solid var(--linea); background: #fff;
+                                min-height: var(--toque); padding: 10px 8px; }
+  /* `table.rejilla.tarjetas .cel` gana en especificidad a `.cel.pisado`, así
+     que en teléfono BORRABA la marca del margen escrito a mano — justo en el
+     dispositivo donde más se captura. Se repone con la misma especificidad. */
+  table.rejilla.tarjetas .cel.pisado { background: #fff8e5; border-color: #d9a800; }
+
+  /* La banda del derivado llegaba pegada al borde de la tarjeta y el número
+     quedaba sin aire. Se le da respiro y esquinas, para que se lea como un
+     renglón de resultado y no como algo cortado. */
+  table.rejilla.tarjetas td.calc { padding: 8px 10px; border-radius: 6px;
+                                   margin: 2px 0; }
+  table.rejilla.tarjetas td.calc::after { left: 3px; top: 6px; bottom: 6px; }
+  table.rejilla.tarjetas td.calc::before { padding-left: 8px; }
+  table.rejilla.tarjetas td.acc { justify-content: flex-end; }
+  table.rejilla.tarjetas .x { font-size: 13px; min-width: 0; padding: 0 10px;
+                              border: 1px solid #f0c8cc; border-radius: 8px; }
+
+  /* Las tablas de sólo lectura siguen siendo tablas, con arrastre lateral. */
+  .scroll { padding-bottom: 2px; }
+  table.rejilla.ancha, table.rejilla.estrecha { min-width: 640px; }
+  table.rejilla.estrecha { min-width: 0; width: 100%; }
+
+  .pestana { font-size: 11.5px; padding: 9px 11px; }
+  .nomsec { padding: 0 10px 10px; }
+  .kpi { flex-wrap: wrap; }
+  .kpi > div { flex: 1 1 45%; }
+}
+
+/* En pantallas anchas la retícula puede respirar. */
+@media (min-width: 721px) {
+  table.rejilla { min-width: 100%; }
+  table.rejilla.tarjetas { min-width: 900px; }
+}
+
+/* ── Objetivos tocables ───────────────────────────────────────────────────
+ * Nada que se toque debe medir menos de 44 px de alto. Incluye la flecha de
+ * volver de la barra superior, que vive en shared/fts-styles.css y llega a
+ * 24 px: se corrige aquí porque esta pantalla se usa en obra, con guantes. */
+.tb-back { min-height: var(--toque); min-width: var(--toque);
+           display: inline-flex; align-items: center; justify-content: center; }
+.cel, select.cel { min-height: var(--toque); }
+input[type=checkbox] { width: 22px; height: 22px; }
+label.row { min-height: var(--toque); }
+@media (max-width: 720px) {
+  .cel, select.cel, .btn, .escbtn, .pestana { min-height: var(--toque); }
+}
+
+/* ── Renglones de mano de obra en cero ────────────────────────────────────
+ * El Excel siempre muestra los doce. En una laptop eso está bien; en un
+ * teléfono son doce tarjetas de las cuales siete suelen ir vacías, y el
+ * capturista pierde de vista lo que sí llenó. Se pliegan, con un interruptor
+ * que dice cuántas hay para que nadie crea que desaparecieron. */
+.verVacios { float: right; font-weight: 400; font-size: 11px; color: var(--suave);
+             display: inline-flex; align-items: center; gap: 6px; letter-spacing: 0;
+             text-transform: none; cursor: pointer; }
+.verVacios input { width: 16px; height: 16px; }
+@media (max-width: 720px) {
+  table.rejilla.tarjetas:not(.verVacios) tr.enCero { display: none; }
+}
+
+/* ── Ajustes de teléfono medidos en pantalla, no supuestos ────────────────
+ * La barra se partía en dos renglones ("$1,794,303 MXN ·" / "40%") y crecía a
+ * 101 px, que en un teléfono es una franja. Y las tablas de encabezado traían
+ * el espaciado de escritorio: once renglones antes de llegar a la captura. */
+@media (max-width: 720px) {
+  .fija { padding: 8px 10px; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+  .fija .mono { font-size: 14px; white-space: nowrap; overflow: hidden;
+                text-overflow: ellipsis; }
+  .fija .tiny { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fija .btn { padding: 10px 14px; flex: 0 0 auto; }
+
+  table.hoja2 { font-size: 12.5px; }
+  table.hoja2 th { padding: 6px 8px; }
+  table.hoja2 td { padding: 3px 8px; }
+  table.hoja2 td.et { line-height: 1.3; }
+  table.hoja2 .cel { padding: 6px 8px; }
+}
+
+/* ── Ancho de la hoja ─────────────────────────────────────────────────────
+ * `shared/fts-styles.css` fija `.scr` en 520 px, que es lo correcto para las
+ * pantallas de kiosko y de perfil. Para una hoja de cálculo es lo contrario
+ * de lo que se necesita: en una laptop de 1280 px el machote quedaba metido
+ * en una columna de 520 y no se veía la retícula, que es todo el punto.
+ * Se ensancha SOLO en este módulo. */
+.scr { max-width: 1500px; }
+@media (max-width: 720px) { .scr { max-width: 100%; } }
+
+/* ── Proporciones en pantalla ancha ───────────────────────────────────────
+ * Con el contenedor ensanchado, los botones que antes cabían justos pasaron a
+ * ocupar la fila entera: "Eliminar sección" quedaba como una franja roja de
+ * 1400 px y "Revisar" como una barra. Un botón destructivo del ancho de la
+ * pantalla es además una invitación al clic accidental. */
+/* `shared/fts-styles.css` define `.btn{width:100%}` para el kiosko, donde los
+ * botones son de dedo y ocupan la fila. Aquí eso hacía que "Revisar" se comiera
+ * la barra entera y el precio quedara en cero de ancho. */
+.nomsec .btn.del { margin-left: auto; flex: 0 0 auto; width: auto;
+                   font-size: 12px; padding: 8px 12px; }
+.fija .btn { flex: 0 0 auto; width: auto; min-width: 110px; }
+.fija .grow { flex: 1 1 auto; min-width: 0; }
+.btnrow .btn { width: auto; }
+
+/* En escritorio no se pliega nada, así que el interruptor no viene al caso. */
+@media (min-width: 721px) { .verVacios { display: none; } }
+
+/* ── Indicador de versión ─────────────────────────────────────────────────
+ * Discreto pero siempre visible. Sirve para distinguir "ya lo cambié" de
+ * "estás viendo el caché", que sin esto no se puede sin abrir las
+ * herramientas de desarrollo. */
+.ver { margin: 22px 0 4px; padding-top: 10px; border-top: 1px solid var(--linea2);
+         font-size: 11px; color: var(--suave); text-align: center;
+         font-variant-numeric: tabular-nums; }
+.ver strong { color: var(--tinta); font-weight: 600; }
+
+/* El subtítulo de la barra superior no debe partirse: con el build añadido se
+ * iba a dos renglones y empujaba el logotipo. */
+.tb-info span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+                display: block; max-width: 100%; }
+.tb-info { min-width: 0; }
+
+/* ── Leyenda ──────────────────────────────────────────────────────────────
+ * Un analista nuevo no tiene por qué deducir el código visual: se le dice.
+ * La muestra repite las TRES señales de cada tipo -fondo, borde y forma-, no
+ * sólo el color, para que siga sirviendo sin distinguir colores. */
+.leyenda { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 8px 12px;
+           font-size: 11px; color: var(--suave); align-items: center; }
+.leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+.leyenda i { width: 26px; height: 17px; border-radius: 4px; display: inline-block;
+             flex: 0 0 auto; }
+.leyenda .mu-cel    { border: 1px solid var(--linea); background: var(--fondo); }
+.leyenda .mu-calc   { background: var(--papel); border-left: 2px solid #c8cdd2; }
+.leyenda .mu-pisado { background: #fff8e5; border: 1px solid #d9a800; }
+
+/* ── Acciones de renglón y de sección ─────────────────────────────────────
+ * Botones chicos pero tocables: 44 px de área aunque el glifo sea de 13. */
+.ico { border: 1px solid var(--linea); background: var(--fondo); color: var(--suave);
+       border-radius: 7px; font-size: 13px; line-height: 1; cursor: pointer;
+       min-width: var(--toque); min-height: var(--toque); width: auto;
+       padding: 0 8px; }
+.ico:hover:not([disabled]) { border-color: #b9b9b9; color: var(--tinta); }
+.ico[disabled] { opacity: .3; cursor: not-allowed; }
+.ico.peligro { color: var(--rojo); border-color: #f0c8cc; }
+.accsec { display: inline-flex; gap: 4px; margin-left: auto; flex: 0 0 auto; }
+table.rejilla td.acc { white-space: nowrap; }
+table.rejilla td.acc .ico { min-width: 36px; min-height: 36px; padding: 0 6px; }
+
+/* Una sección fuera de las diez ranuras del machote se marca en su pestaña:
+ * el USD de calbee tiene once y la de más no llega al precio. */
+.pestana.fuera { border-color: var(--rojo); color: var(--rojo); }
+.pestana.fuera::after { content: ' ⚠'; }
+
+@media (max-width: 720px) {
+  /* En tarjeta, las acciones van en una fila propia y con área completa. */
+  table.rejilla.tarjetas td.acc { justify-content: flex-end; gap: 6px;
+                                  padding-top: 8px; }
+  table.rejilla.tarjetas td.acc .ico { min-width: var(--toque); min-height: var(--toque); }
+  .nomsec { align-items: flex-start; }
+  .accsec { margin-left: 0; }
+}
+
+
+/* ── Los colores del machote, aplicados ─────────────────────────────────
+ * Sólo tocan tablas y bandas. Las tres señales de captura contra cálculo
+ * (borde, fondo de papel, barra de fórmula) siguen mandando encima. */
+.secc-tit { background: var(--x-banda); color: var(--x-banda-tx); }
+.secc-tit .verVacios { color: var(--x-banda-tx); opacity: .9; }
+table.rejilla th { background: var(--x-cab); color: var(--x-cab-tx); }
+table.rejilla tr.grupo td { background: var(--x-grupo); color: var(--x-cab-tx); }
+table.rejilla tr.total td { background: var(--x-total); border-top: 2px solid var(--x-total-bd); }
+
+/* ── Renglón capturado ──────────────────────────────────────────────────
+ * Verde = este renglón ya tiene cantidad. Con diez renglones de mano de obra
+ * fijos por sección, distinguir de un vistazo lo capturado de lo que sigue en
+ * blanco es la diferencia entre revisar una hoja y leerla entera.
+ * El verde va en el RENGLÓN; las celdas conservan sus propias señales, que
+ * son las que dicen qué se captura y qué se calcula. */
+table.rejilla tr.capturada > td { background: var(--x-fila-ok); }
+table.rejilla tr.capturada > td.calc { background: #d7e8c8; }
+table.rejilla tr.capturada > td:first-child { box-shadow: inset 3px 0 0 var(--x-fila-bd); }
+
+/* ── Campos apagados por machote congelado ──────────────────────────────
+ * No se esconde la hoja: el documento con el que se vendió hay que poder
+ * consultarlo. Lo que se quita es la posibilidad de cambiarlo. */
+.cel.bloq, .cel:disabled { background: var(--papel); color: var(--suave);
+                           border-style: dashed; cursor: not-allowed; }
+
+/* ── Banda de estado ────────────────────────────────────────────────────*/
+.edo { display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+       border: 1px solid var(--linea); border-left: 3px solid var(--acento);
+       background: var(--papel); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; }
+.edo.cerrado { border-left-color: var(--verde); }
+.edo select { min-height: var(--toque); border: 1px solid var(--linea);
+              border-radius: 6px; padding: 0 8px; background: var(--fondo);
+              font-size: 13px; margin-left: 6px; }
+.edo label { display: flex; align-items: center; }
+
+/* ── El pulso del autoguardado ──────────────────────────────────────────
+ * Vive en la topbar porque es el único lugar visible en toda pantalla del
+ * libro. Sin él, "se guarda solo" es una promesa que el usuario tiene que
+ * creer; con él, la ve. */
+.pulso { display: flex; align-items: center; gap: 5px; font-size: 11px;
+         color: var(--suave); white-space: nowrap; margin-right: 8px; }
+.pulso i { width: 8px; height: 8px; border-radius: 50%; background: var(--suave);
+           flex: 0 0 auto; }
+.pulso.p-limpio i, .pulso.p-guardado i { background: var(--verde); }
+.pulso.p-sucio i { background: var(--ambar); }
+.pulso.p-guardando i { background: var(--ambar); animation: latir .7s ease-in-out infinite; }
+.pulso.p-sin-almacen i { background: var(--rojo); }
+.pulso.p-sin-almacen { color: var(--rojo); }
+@keyframes latir { 0%,100% { opacity: 1 } 50% { opacity: .25 } }
+@media (prefers-reduced-motion: reduce) { .pulso.p-guardando i { animation: none } }
+/* En teléfono el texto sobra: el punto de color ya dice lo que hay que saber,
+   y la topbar no tiene ancho para las dos cosas. */
+@media (max-width: 520px) { .pulso span { display: none } }
+
+@media (max-width: 719px) {
+  /* En tarjetas el renglón capturado se marca por su borde, no por el fondo:
+     un fondo verde detrás de catorce campos etiquetados no se lee. */
+  table.rejilla.tarjetas tr.capturada { border-color: var(--x-fila-bd);
+                                        box-shadow: inset 3px 0 0 var(--x-fila-bd); }
+  table.rejilla.tarjetas tr.capturada > td { background: transparent; }
+  table.rejilla.tarjetas tr.capturada > td.calc { background: var(--papel); }
+  table.rejilla.tarjetas tr.capturada > td:first-child { box-shadow: none; }
+}
