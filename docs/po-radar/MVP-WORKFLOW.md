@@ -41,7 +41,7 @@ Todo lo ajustable vive en el nodo `Set - config`, en texto plano, sin tocar cód
 |---|---|---|
 | `mailbox_lectura` | `estebandelacruz@fts.mx` | de qué buzón se lee |
 | `mailbox_envio` | `sales@fts.mx` | quién firma el reenvío (nunca sale del payload del correo) |
-| `destino` | `estebandelacruz@fts.mx` | a dónde llega el reenvío. **Aquí va `newordersnotification@fts.mx` cuando se abra** |
+| `destino` | `estebandelacruz@fts.mx` | a dónde llega el reenvío. **Aquí va `newordersnotification@fts.mx` cuando se cumplan los criterios de §8** |
 | `modo_envio` | `real` | `dry` arma el correo completo y **no** lo manda |
 | `ventana_min` | `90` | solape de lectura, en minutos |
 | `umbral_reenvio` | `45` | de qué precisión para abajo ya no se reenvía |
@@ -145,7 +145,24 @@ del **comprador**, que es justamente el error caro que FASE A midió y que el pr
 Las otras dos copias de esa misma orden — una del buzón automático del cliente y otra reenviada a
 mano por una persona de su equipo — quedaron como `duplicado_folio` y no se reenviaron.
 
-## 6. El latido diario
+## 6. Dos formatos de orden probados, no uno
+
+El detector no está calibrado a un solo cliente. Se probó contra los dos canales por los que llegan
+órdenes reales, y los dos salen al 96%:
+
+| Canal | Correo | Folio | Precisión | Adjuntos |
+|---|---|---|---|---|
+| ERP del cliente (GEPP) | `FYI: BEPUSA - Orden de Compra Standard 2688378, 0` | 2688378 | 96% | 2, PDF de 44,347 caracteres |
+| Plataforma de compras (Ariba/GRUMA) | `GRUMA sent a new Purchase Order 7500314675` | 7500314675 | 96% | 2, PDF de 3,290 caracteres |
+
+En la ventana de 100 correos del 10-13 de agosto, ya con el aviso de Ariba silenciado: **12
+candidatos, 1 orden reenviada, 0 probables, 0 falsos positivos.**
+
+**Lo que esto NO mide es el recall.** Sabemos que lo que reenvía está bien; no sabemos cuántas
+órdenes deja pasar. Eso solo se mide contra un conjunto etiquetado (FASE B, bloqueada) o cruzando
+contra las SO confirmadas en Odoo de la misma semana. Ver §8.
+
+## 7. El latido diario
 
 Sin esto no hay forma de saber que el radar sigue vivo: **"hoy no llegaron órdenes" y "el radar está
 muerto" se ven idénticos desde la bandeja** — en los dos casos no llega nada. Es el hallazgo #14 del
@@ -170,12 +187,40 @@ Si un día no llega, el radar está caído.
 Marca **con incidencias** en ámbar si hubo fallos de adjunto o del clasificador. A partir de aquí la
 **ausencia** del correo es la alarma, que es la única forma de que el silencio signifique algo.
 
-## 7. Lo que falta y lo que conviene vigilar
+## 8. Cuándo apuntarlo al grupo, y con qué criterio
 
-- **Un falso positivo conocido:** el digest `Confirm orders from your buyers` de Ariba se reenvía
-  como probable al 51%. Es un aviso administrativo del portal, no una orden. Se deja pasar a
-  propósito mientras el sistema es nuevo: en esta etapa conviene ver de más. Si molesta, se ataja
-  con una línea en el prompt.
+Hoy el reenvío va al buzón de Esteban. El destino final es `newordersnotification@fts.mx`, que es un
+grupo de distribución: **un falso positivo ahí no cuesta una mirada, cuesta credibilidad.** Un
+sistema nuevo que se equivoca en su primera semana se silencia y ya no se vuelve a leer — que es
+justo cómo el reconocimiento facial pasó semanas apagado sin que nadie lo notara (hallazgo #14).
+
+Lo que ya está medido, y lo que no:
+
+- **Precisión: buena.** 200 correos de dos ventanas, 2 órdenes reales detectadas al 96%, 0 falsos
+  positivos después de silenciar el aviso de Ariba.
+- **Recall: sin medir.** No sabemos cuántas órdenes deja pasar, y **esperar no lo mide**: apuntar al
+  buzón de Esteban una semana más no dice nada sobre lo que el radar no vio.
+
+Por eso el criterio para el cambio no es "que pase el tiempo" sino esto:
+
+1. **Una semana hábil de operación** con el latido diario en verde, para ver el ruido de una semana
+   normal y no solo el de las dos ventanas muestreadas.
+2. **Cruce contra Odoo**, que es la única prueba de recall al alcance sin FASE B: toda SO confirmada
+   en esa semana tuvo una orden de compra que llegó por correo. Si el radar reenvió una por cada SO
+   confirmada, el recall es bueno; las que falten nombran los formatos que faltan por cubrir.
+
+Con esas dos, el cambio es **un campo** del nodo `Set - config`.
+
+## 9. Lo que falta y lo que conviene vigilar
+
+- **El falso positivo diario de Ariba, silenciado.** El digest `Confirm orders from your buyers`
+  llega **todos los días a las 11:01 UTC** (medido: 28/29/30-jun, 9/10-jul, 11/12/13-ago…) y se
+  reenviaba como probable al 51-57%. No entrega ninguna orden: recuerda confirmar las que ya
+  existen. Las órdenes de verdad de esa misma plataforma llegan aparte y **con su folio en el
+  asunto**, así que descartarlo no pierde ninguna. Va como descarte duro en etapa 1. También se
+  agregó vocabulario de factura en inglés (`invoice`, `scheduled payment`, `remittance`): las notas
+  de Ariba pasaban etapa 1 usando el número de cuenta como folio y gastaban una llamada al
+  clasificador.
 - **No hay bitácora persistente.** El dedupe vive en `$getWorkflowStaticData`, que se pierde si el
   workflow se reimporta. Las tablas `po_radar_bitacora` (`U90obrC1LWxbEhXR`) y
   `po_radar_hilos_propios` (`k8Z8D1bcd2Z6nyBi`) están creadas y reservadas para eso.
