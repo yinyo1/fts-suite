@@ -27,7 +27,7 @@
   // comercial/machote y DEBE coincidir con finanzas/version.json — el gate lo verifica, porque
   // una pantalla que dice una versión y un archivo que dice otra deja de ser evidencia de nada.
   // Sustituye a la numeración 0.x.y (última: 0.5.36), conservada en version.json.
-  var IP_BUILD = 'V1.02';
+  var IP_BUILD = 'V1.03';
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -1378,7 +1378,7 @@
         return '<div class="ip-acc"><div class="ip-res partial">✓ Conciliada PARCIALMENTE — quedan línea <b>' + money(r.residual_linea) + '</b> / bill <b>' + money(r.residual_bill) + '</b></div></div>';
       }
       // Guard humanizado (ej. BILL_NO_201 = cross-company) + código técnico en el detalle.
-      var human = humanConcMsg(r.code, r.msg, t);
+      var human = humanConcMsg(r, t);
       // A4 — override del corte. Aparece SOLO cuando el server bloqueó por pre-corte, así que
       // no hay forma de que salga en una línea que no lo necesita: lo gobierna la respuesta,
       // no una condición del cliente que pudiera desincronizarse del guard real.
@@ -1412,32 +1412,41 @@
     function esUSA(t) { return !!t && (t.company_id === 6 || t.rs === 'FTS LLC'); }
 
     // Traduce códigos de guard del conciliar a lenguaje humano (el código técnico queda en el detalle).
-    function humanConcMsg(code, msg, t) {
-      // NO_SUSPENSE_UNICA en una línea de FTS-USA: el mensaje del server NO aplica.
+    // Recibe la RESPUESTA COMPLETA, no solo el código: desde el fix de P1 el server manda campos
+    // estructurados (cuenta_suspense, company_id, encontradas) que dicen más que cualquier texto
+    // que el panel pueda inventar.
+    function humanConcMsg(r, t) {
+      var code = r && r.code, msg = r && r.msg;
+      // NO_SUSPENSE_UNICA — el mensaje bueno depende de QUÉ VERSIÓN DEL MOTOR contestó.
       //
-      // El guard cuenta las patas de suspense filtrando por la cuenta 184, que es la de FTS-MX,
-      // y cuando encuentra 0 concluye "no hay exactamente 1" y culpa a la línea de estar «ya
-      // parcialmente desenredada». En una línea de FTS-USA eso es falso: la pata existe, está
-      // intacta, y vive en la 309 —que es la cuenta de suspense de ESA empresa—.
+      // Hasta el 2026-09-03 el motor contaba las patas de suspense filtrando por la cuenta 184
+      // (FTS-MX). En una línea de FTS-USA encontraba cero y culpaba a la línea de estar «ya
+      // parcialmente desenredada», que era falso: la pata existía, intacta, en la 309.
+      // Comprobado sobre las líneas 33235 y 33121, las dos limpias.
       //
-      // Comprobado el 2026-09-03 sobre la línea 33235 (BNK2/2026/00382, journal 122, Home Depot
-      // $63.43 del 17-ago): tiene EXACTAMENTE una pata de suspense, en la 309, sin tocar, y aun
-      // así el guard responde NO_SUSPENSE_UNICA. Es P1, no una línea a medio desenredar.
+      // Ese motor ya se corrigió: elige el par de cuentas por empresa (1 → 184/17, 6 → 309/285)
+      // y su mensaje ahora dice en qué cuenta buscó y cuántas encontró. Cuando llega ese
+      // mensaje —se reconoce porque trae `cuenta_suspense`— se pasa tal cual: es más preciso
+      // que cualquier explicación de aquí, y repetir la vieja acusaría a una causa ya arreglada.
       //
-      // Se dice sin prometer de más: si algún día el motor abre FTS-USA, este caso deja de
-      // llegar aquí porque la conciliación pasa. Y para FTS-MX el mensaje del server se respeta,
-      // porque ahí "a medio desenredar" sí es la lectura correcta.
-      if (code === 'NO_SUSPENSE_UNICA' && esUSA(t)) {
-        return 'Esta línea es de FTS-USA y su contrapartida está en la cuenta de suspense 309. ' +
-               'El motor todavía busca en la 184, que es la de FTS-MX, así que no la encuentra y ' +
-               'lo reporta como si la línea estuviera a medio desenredar. NO lo está: falta abrir ' +
-               'el motor a esta empresa (P1 del issue #150). El bill no se tocó.';
+      // El texto anterior se queda SOLO como respaldo para el motor viejo. Es la mitad tolerante
+      // (CLAUDE.md §8, regla anti-trabón): el panel entiende las dos respuestas, así que ni un
+      // rollback del workflow ni un caché viejo dejan al operador sin explicación.
+      if (code === 'NO_SUSPENSE_UNICA') {
+        if (r.cuenta_suspense != null) return msg || 'No se encontró exactamente una pata de suspense.';
+        if (esUSA(t)) {
+          return 'Esta línea es de FTS-USA y su contrapartida está en la cuenta de suspense 309. ' +
+                 'El motor que contestó todavía busca en la 184, que es la de FTS-MX, así que no la ' +
+                 'encuentra. Es una respuesta de la versión anterior del workflow. El bill no se tocó.';
+        }
+        return 'La línea no tiene exactamente una pata de suspense: ya está a medio desenredar. Se resuelve en Odoo, no desde aquí.';
       }
       var map = {
         'BILL_NO_201': 'Este bill está cargado a otra empresa/cuenta — caso cross-company, no conciliable desde aquí por ahora.',
+        'BILL_OTRA_EMPRESA': 'El bill y la línea son de empresas distintas. No se concilia cruzado entre compañías.',
+        'EMPRESA_SIN_MAPEO': 'La empresa de esta línea no tiene cuentas de conciliación configuradas en el motor. No se tocó nada.',
         'LINE_YA_CONCILIADA': 'Esta línea ya fue conciliada (el mundo cambió). Recarga las sugerencias.',
-        'BILL_YA_CONCILIADO': 'El bill ya fue conciliado por otra línea. Recarga las sugerencias.',
-        'NO_SUSPENSE_UNICA': 'La línea no tiene exactamente una pata de suspense: ya está a medio desenredar. Se resuelve en Odoo, no desde aquí.'
+        'BILL_YA_CONCILIADO': 'El bill ya fue conciliado por otra línea. Recarga las sugerencias.'
       };
       return map[code] || msg || 'No se pudo conciliar.';
     }

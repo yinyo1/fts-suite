@@ -1,9 +1,14 @@
 {
-  "version": "V1.02",
+  "version": "V1.03",
   "fecha": "2026-09-03",
   "modulo": "finanzas",
   "esquema": "V<mayor>.<menor de dos dígitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.03",
+      "pr": null,
+      "nota": "El motor de conciliacion ya elige las cuentas por empresa (P1 corregido en n8n el 2026-09-03: 1 -> 184/17, 6 -> 309/285), asi que el texto de V1.01 —que culpaba a la cuenta 184— quedo obsoleto el mismo dia. Ahora, cuando la respuesta trae `cuenta_suspense`, el panel pasa el mensaje del server tal cual: dice en que cuenta busco y cuantas patas encontro. La explicacion vieja sobrevive solo como respaldo si contesta el motor anterior (mitad tolerante). Mensajes nuevos para los guards BILL_OTRA_EMPRESA y EMPRESA_SIN_MAPEO."
+    },
     {
       "version": "V1.02",
       "pr": null,

@@ -157,9 +157,13 @@ window.FinClient = {
           { bill_aml_id: 222, bill_name: 'BILL/2026/08/0031', partner: 'HOME DEPOT U.S.A.', score: 0.95,
             monto_bill: 31.88, banda: 'alta', pre_marcado: true, fecha: '2026-09-01', days_diff: 0 }] }
       ], pagination: { has_more: false } });
-    // Respuesta LITERAL del server sobre una linea de FTS-USA (copiada de produccion).
+    // Respuesta del server DESPUES del fix de P1: ya elige la cuenta por empresa y dice cual
+    // miro y cuantas encontro. Se reconoce por `cuenta_suspense`, y el panel la pasa tal cual.
     if (ep === '/fin/captura-conciliar') return Promise.resolve({ ok: false, code: 'NO_SUSPENSE_UNICA',
-      msg: 'No hay exactamente 1 pata suspense (línea ya parcialmente desenredada) — manual v2.' });
+      cuenta_suspense: 309, company_id: 6, encontradas: 0,
+      msg: 'No hay exactamente 1 pata suspense en la cuenta 309 (empresa 6): se encontraron 0. ' +
+           'Si son 0, la linea puede estar en otra cuenta de suspense; si son 2 o mas, ya esta ' +
+           'parcialmente desenredada — manual v2.' });
     if (ep === '/fin/captura-pendings-status') return Promise.resolve({ disponible: false });
     return Promise.resolve({});
   }

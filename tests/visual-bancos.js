@@ -249,13 +249,14 @@ const esDelEntorno = t => /ERR_CONNECTION_RESET|ERR_NAME_NOT_RESOLVED|ERR_BLOCKE
         await p.waitForTimeout(400);
         const txt = (await p.locator('.ip-res.bad').first().textContent().catch(() => '')) || '';
         console.log('   guard: ' + txt.replace(/\s+/g, ' ').trim().slice(0, 150));
-        check('el guard nombra la cuenta 309 y la 184 (la causa real)',
-          txt.indexOf('309') >= 0 && txt.indexOf('184') >= 0, txt.slice(0, 120));
-        // Se busca el texto EXACTO del server. El panel sí puede usar la palabra para negarla
-        // («lo reporta como si estuviera a medio desenredar. NO lo está»); lo que no puede es
-        // dejar pasar la frase del server como si fuera el diagnóstico.
-        check('el guard NO deja pasar la frase del server («ya parcialmente desenredada»)',
-          txt.indexOf('ya parcialmente desenredada') < 0, txt.slice(0, 120));
+        // Desde el fix de P1 el server dice en qué cuenta buscó y cuántas encontró, y eso es más
+        // preciso que cualquier texto del panel: se pasa tal cual.
+        check('el guard nombra la cuenta de suspense que el motor miró (309)',
+          txt.indexOf('309') >= 0, txt.slice(0, 140));
+        check('el guard dice cuántas patas encontró', /se encontraron 0/i.test(txt), txt.slice(0, 140));
+        // Si el panel cayera al genérico, estaría tirando el detalle del server a la basura.
+        check('el guard NO cae al mensaje genérico',
+          txt.indexOf('No se pudo conciliar') < 0, txt.slice(0, 140));
         check('el guard deja ver el código técnico', txt.indexOf('NO_SUSPENSE_UNICA') >= 0, txt.slice(0, 120));
         await p.evaluate(() => { const b = document.querySelector('button[data-expand]'); if (b) b.click(); });
         await p.waitForTimeout(200);
