@@ -22,7 +22,12 @@
   // ── config ──
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
-  var IP_BUILD = '0.5.36';                // badge de versión visible (evidencia de qué build está desplegado)
+  // Versión visible en pantalla. Esquema V<mayor>.<menor de dos dígitos>, +0.01 por cada merge
+  // a main; al pasar de .99 sube el mayor y el menor vuelve a 00. Es el mismo esquema de
+  // comercial/machote y DEBE coincidir con finanzas/version.json — el gate lo verifica, porque
+  // una pantalla que dice una versión y un archivo que dice otra deja de ser evidencia de nada.
+  // Sustituye a la numeración 0.x.y (última: 0.5.36), conservada en version.json.
+  var IP_BUILD = 'V1.00';
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -173,7 +178,15 @@
     { k: 'cand', lbl: 'Candidato',    vis: false, fmt: function (r) { return candidatoCell(r); } },
     { k: 'atr',  lbl: 'Atribución',   vis: true,  fmt: function (r) { return atribCell(r); } }
   ];
-  function colAttr(col, r) { return typeof col.cls === 'function' ? col.cls(r) : (col.cls || ''); }
+  // data-lbl viaja SIEMPRE, no solo en móvil: en pantalla angosta la tabla se convierte en
+  // tarjetas (una fila = un bloque) y cada celda necesita su propia etiqueta, porque el thead
+  // desaparece. Sin esto, en el celular se veían 12 columnas comprimidas a ~27 px cada una,
+  // con la fecha partida en tres renglones y la columna de estado —la única que dice qué
+  // hacer— fuera de pantalla y sin scroll horizontal al que llegar.
+  function colAttr(col, r) {
+    var a = typeof col.cls === 'function' ? col.cls(r) : (col.cls || '');
+    return a + ' data-lbl="' + esc(col.lbl || '') + '"';
+  }
 
   // ═══ vista ═══
   function createView(container) {
@@ -305,6 +318,17 @@
         // carga parcial: nunca fingir que está completo → aviso visible; los agregados reflejan solo lo cargado.
         state.partialLoad = txAll.partial ? { loaded: (txAll.rows || []).length, total: (txAll.pagination && txAll.pagination.total_count) || null, reason: txAll.reason || null } : null;
         render(); _restaurarL(); afterData();
+        // Un solo universo (v0.5.37). La ventana por defecto arrancaba el día 1 del mes pasado,
+        // que hoy cae DESPUÉS del corte: el semáforo medía desde el 24-jul y la tabla desde el
+        // 1-ago, así que sus números no se podían comparar aunque los dos fueran ciertos.
+        // Al conocer el corte (solo lo sabe el server) se amplía la ventana hasta él, UNA vez y
+        // solo si el usuario no tocó las fechas — si ya eligió un rango, manda el usuario.
+        if (!state._corteAplicado && state.metricas && state.metricas.fecha_corte &&
+            !state._fechasTocadas && state.filters.from > state.metricas.fecha_corte) {
+          state._corteAplicado = true;
+          state.filters.from = state.metricas.fecha_corte;
+          load();
+        }
         // Pieza #2: batch de sugerencias en 2o plano. try/catch DURO: pase lo que pase, evalSugg NUNCA tumba load()
         // (la tabla ya está pintada; su fallo solo deja estados neutros).
         try { evalSugg(); } catch (e) { if (window.console) console.warn('[ip] evalSugg falló (no bloquea la tabla):', e); }
@@ -546,7 +570,7 @@
       // el módulo a quien ya está dentro. Quedan las tres piezas que sí sirven, en un renglón:
       // selector de empresas (funcional), engrane (acciones) y badge de build (evidencia).
       html += '<div class="ip-head"><div id="ip-companies" style="flex:1"></div>' +
-              gearHtml() + '<span class="ip-ver" title="build desplegado">v' + IP_BUILD + '</span></div>';
+              gearHtml() + '<span class="ip-ver" title="versión desplegada">' + IP_BUILD + '</span></div>';
 
       // v0.5.16: sin selector de modo, el estado 'empty' dejó de ser alcanzable y su pantalla se
       // eliminó. El banner DEMO solo aparece por la escotilla de consola (ver currentMode).
@@ -732,17 +756,44 @@
       // si fuera el contenedor, cualquier clic dentro del detalle abierto lo volvería a cerrar.
       qa('[data-toggle]').forEach(function (h) { h.addEventListener('click', function () { var el = q('[data-src="' + h.getAttribute('data-toggle') + '"]'); if (el) el.classList.toggle('open'); }); });
       qa('[data-atender]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); toast('Watchdog <b>' + esc(b.getAttribute('data-atender').toUpperCase()) + '</b>: reintentando sync y notificando responsable…'); }); });
-      qa('[data-demosync]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); toast('Sync <b>' + esc(b.getAttribute('data-demosync').toUpperCase()) + '</b> terminado — 0 nuevas · 0 duplicadas'); }); });
+      qa('[data-demosync]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); toast('Simulación (modo Demo) de <b>' + esc(b.getAttribute('data-demosync').toUpperCase()) + '</b> — no se llamó a ninguna captura.'); }); });
+      // Sync Now de la tarjeta Jeeves (v0.5.37 — antes MENTÍA en modo Real).
+      // El comentario de srcRow ya decía que en Real no se pinta botón simulado "porque su
+      // handler toastea un resultado inventado y eso sería mentirle al operador sobre una
+      // fuente de producción"… y este handler hacía exactamente eso para Jeeves: un
+      // setTimeout de 1.6 s, un toast fijo de "3 nuevas · 2 duplicadas · 0 rechazadas" y una
+      // fila inventada en la tabla de corridas, en modo Real igual que en Demo. Es el
+      // anti-patrón del Hallazgo #15 (CLAUDE.md §14): UI que declara éxito sin backend.
+      // Ahora en Real dispara la captura de verdad (el mismo endpoint del botón de la barra) y
+      // reporta lo que conteste el server; la simulación queda solo en Demo y se anuncia.
       var run = q('.ip-btnrun');
       if (run) run.addEventListener('click', function () {
-        run.disabled = true; run.classList.add('busy'); var tx = q('.ip-btntxt'); if (tx) tx.textContent = 'Sincronizando…';
-        setTimeout(function () {
+        var tx = q('.ip-btntxt');
+        var fin = function (msg) {
           if (!document.body.contains(container)) return;
           run.disabled = false; run.classList.remove('busy'); if (tx) tx.textContent = 'Sync Now';
-          toast('Captura Jeeves terminada — <b>3 nuevas</b> · 2 duplicadas · 0 rechazadas');
-          var rb = q('#ip-runsbody');
-          if (rb) rb.insertAdjacentHTML('afterbegin', '<tr><td>Jeeves manual ' + new Date().toTimeString().slice(0, 5) + '</td><td>manual</td><td>07-14 → 07-18</td><td>3</td><td>2</td><td>0</td><td class="st ok">OK</td></tr>');
-        }, 1600);
+          toast(msg);
+        };
+        run.disabled = true; run.classList.add('busy'); if (tx) tx.textContent = 'Sincronizando…';
+        if (state.mode !== 'real') {
+          setTimeout(function () { fin('Simulación (modo Demo) — no se llamó a la captura.'); }, 900);
+          return;
+        }
+        window.FinClient.call(EP_SYNC_NOW, { origen: 'boton-tarjeta' })
+          .then(function (data) {
+            if (!data || (data.ok !== true && data.nuevas == null && data._ran !== true)) {
+              fin('Sincronizador no disponible (endpoint sin activar) — <b>no se capturó nada</b>.'); return;
+            }
+            fin('Captura Jeeves terminada — <b>' + (data.nuevas || 0) + ' nuevas</b> · ' +
+                (data.duplicadas || 0) + ' duplicadas · ' + (data.rechazadas || 0) + ' rechazadas');
+            setTimeout(function () { if (document.body.contains(container)) load(); }, 900);
+          })
+          .catch(function (err) {
+            var code = (err && err.code) || '';
+            fin((code === 'NETWORK' || code === 'BAD_RESPONSE' || (err && err.http === 404))
+              ? 'Sincronizador no disponible (endpoint inactivo) — <b>no se capturó nada</b>.'
+              : 'Error al sincronizar: ' + esc((err && err.msg) || code || 'sin detalle'));
+          });
       });
     }
 
@@ -805,6 +856,7 @@
       // subconjuntos de lo ya cargado — pedirlos al server era barrer hasta 60 páginas para no
       // traer ni una fila nueva.
       var reload = function () {
+        state._fechasTocadas = true;   // a partir de aquí manda el usuario, no el corte
         state.filters.from = q('#ip-fFrom').value;
         state.filters.to = q('#ip-fTo').value;
         state.page = 1;
@@ -1104,7 +1156,15 @@
         slice.map(function (t) {
           var chev = t.ok ? '' : '<button class="ip-expbtn' + (state.expanded === t._id ? ' open' : '') + '" data-expand="' + t._id + '" title="Sugerencias de conciliación" aria-label="Ver sugerencias">▶</button>';
           var tr = '<tr class="' + (state.sel[t._id] ? 'selrow' : '') + (state.expanded === t._id ? ' ip-exprow' : '') + '"><td class="chk">' + chev + '<input type="checkbox" data-row="' + t._id + '"' + (state.sel[t._id] ? ' checked' : '') + '></td>' +
-            vis.map(function (c) { return '<td ' + colAttr(c, t) + '>' + c.fmt(t) + '</td>'; }).join('') + '</tr>';
+            vis.map(function (c) {
+              var v = c.fmt(t);
+              // data-vacio marca la celda SIN valor (vacía o un guion). En escritorio no cambia
+              // nada —la retícula necesita la celda para alinear—, pero en móvil cada fila es
+              // una tarjeta y ahí un renglón "PO —" es alto gastado en decir que no hay dato.
+              // El dato sigue en el DOM: no se oculta información, se oculta su ausencia.
+              var vacio = /^\s*(—|-|)\s*$/.test(String(v).replace(/<[^>]*>/g, ''));
+              return '<td ' + colAttr(c, t) + (vacio ? ' data-vacio="1"' : '') + '>' + v + '</td>';
+            }).join('') + '</tr>';
           if (state.expanded === t._id) {
             tr += '<tr class="ip-acc-row"><td class="ip-acc-cell" colspan="' + (vis.length + 1) + '">' + accordionHtml(t) + '</td></tr>';
           }
@@ -1532,6 +1592,12 @@
       return 'r';
     }
     function barc(c) { return c === 'g' ? 'var(--ip-ok)' : c === 'y' ? 'var(--ip-warn)' : 'var(--ip-bad)'; }
+    // Los colores de BARRA no sirven para TEXTO. Medido en Chromium sobre blanco: --ip-warn
+    // (#e8a500) da 2.14:1 y --ip-ok (#12a150) da 3.03:1, cuando WCAG AA pide 4.5:1 a este
+    // tamaño. Salió al poner los conteos reales de Odoo en el harness: con datos inventados
+    // Jeeves caía en rojo (que sí pasa) y el amarillo nunca se pintaba. Una barra de 6 px es
+    // un gráfico y puede ir brillante; un porcentaje es texto y tiene que leerse.
+    function barcTxt(c) { return c === 'g' ? '#0d7a3f' : c === 'y' ? '#8a6000' : '#c93b2f'; }
     function paintSem() {
       var host = q('#ip-semrows'); if (!host) return;
       var journals = journalList();   // v0.5.15: derivado del server, ya no una lista escrita a mano
@@ -1569,10 +1635,18 @@
       // falta de alcance, no de trabajo. Un 19.6% en grande se lee como "la operación va mal"
       // cuando lo que dice es "hay dos fuentes sin abrir".
       if (m && m.cumplimiento) {
-        var bt = m.cumplimiento.post_corte_total || 0, bc = m.cumplimiento.post_corte_conciliadas || 0;
-        var bp = bt ? Math.round(bc / bt * 1000) / 10 : null;
-        var bcol = bp === null ? 'off' : (bp >= 90 ? 'g' : bp >= 60 ? 'y' : 'r');
         var pj = (m.por_journal || []).filter(function (x) { return (x.post_total || 0) > 0; });
+        // El foco de la cabecera se calcula SOLO sobre las fuentes con motor (v0.5.37). Antes
+        // usaba el total global —159 de 561 = 28% → ROJO— mientras el texto de abajo dice
+        // "No hay total: un porcentaje global nunca llegaría al 100% mientras haya fuentes sin
+        // abrir". Un foco rojo es un porcentaje global disfrazado: decía justo lo que el panel
+        // se niega a decir, y acusaba a la operación por dos journals que nadie ha abierto.
+        // Sin fuentes con motor no hay nada que calificar → 'off', no rojo.
+        var conMotor = pj.filter(function (x) { return x.en_motor; });
+        var bt = conMotor.reduce(function (a2, x) { return a2 + (x.post_total || 0); }, 0);
+        var bc = conMotor.reduce(function (a2, x) { return a2 + (x.post_conc || 0); }, 0);
+        var bp = bt ? Math.round(bc / bt * 1000) / 10 : null;
+        var bcol = bp === null ? 'off' : (bp >= 100 ? 'g' : bp >= 85 ? 'y' : 'r');
         pj.sort(function (a, b) { return (b.en_motor ? 1 : 0) - (a.en_motor ? 1 : 0) || (b.post_total - a.post_total); });
         var filas = pj.map(function (x) {
           // Fuente SIN ABRIR: sin porcentaje grande, sin barra, sin rojo. Un 0% en rojo dice
@@ -1582,7 +1656,8 @@
             return '<div class="s2card sinabrir"><div class="s2ct">' + esc(x.label) +
               '<span class="s2tag">sin abrir</span></div>' +
               '<div class="s2cn"><b>' + x.post_total + '</b> líneas esperando</div>' +
-              '<div class="s2cw">El motor todavía no evalúa este journal.</div></div>';
+              '<div class="s2cw">El motor todavía no evalúa este journal: hoy solo cubre Jeeves. ' +
+              'Abrirlo es un cambio en el workflow de conciliación, no en este panel.</div></div>';
           }
           // Fuente CON MOTOR: el titular es cuántas FALTAN, no el porcentaje. "Faltan 48" se
           // puede exigir y se puede tachar; un "59.3%" solo describe.
@@ -1596,11 +1671,12 @@
             '<div class="s2goal">' + (faltan === 0 ? '<b>Al 100%</b>' : 'Faltan <b>' + faltan + '</b> para el 100%') + '</div>' +
             '<div class="bar"><i style="width:' + (p || 0) + '%;background:' + barc(c2) + '"></i></div>' +
             '<div class="s2cn">' + x.post_conc + ' de ' + x.post_total + ' · ' +
-              '<span style="color:' + barc(c2) + ';font-weight:700">' + (p === null ? '—' : p + '%') + '</span></div></div>';
+              '<span style="color:' + barcTxt(c2) + ';font-weight:700">' + (p === null ? '—' : p + '%') + '</span></div>' +
+            desgloseFaltan(x.label, corte, faltan) + '</div>';
         }).join('');
         html += '<div class="ip-sem2 b">' +
           '<div class="s2head"><span class="s2ts">Datos al ' + esc(hoyCst()) + ' ' + esc(horaCst()) + ' CST</span></div>' +
-          '<div class="s2title"><span class="light ' + bcol + '"></span> Desde el corte <b>' + esc(corte) + '</b>' +
+          '<div class="s2title"><span class="light ' + bcol + '"></span> <span class="s2lbl">Desde el corte</span> <b>' + esc(corte) + '</b>' +
             '<span class="s2dir" title="Debe mantenerse alto">↑ mantener</span></div>' +
           '<div class="s2rows">' + (filas || '<div class="ip-empty">Sin líneas posteriores al corte.</div>') + '</div>' +
           '<div class="s2why">Cada fuente se mide sola. <b>No hay total</b>: un porcentaje global ' +
@@ -1611,11 +1687,23 @@
       // ── A · BACKLOG. Deuda, no operación diaria: colapsado, y el detalle por journal dentro. ──
       var at = '', ap = '';
       if (m && m.deuda) {
-        ap = '<b>' + (m.deuda.pre_corte_pendientes || 0) + '</b> pendientes · ' + money(m.deuda.pre_corte_monto || 0);
+        // Se leen los DOS nombres a propósito (v0.5.37). El detalle de abajo usa `pre_pend`
+        // por journal y el resumen usaba solo `pre_corte_pendientes`: si el server manda el
+        // primero, la tarjeta decía "0 pendientes · $0.00" con el desglose lleno debajo —
+        // dos cifras contradictorias en la misma tarjeta. Tolerar ambas es la mitad segura
+        // (CLAUDE.md §8, regla anti-trabón): sea cual sea el nombre real, la cifra sale.
+        var _dp = m.deuda.pre_corte_pendientes != null ? m.deuda.pre_corte_pendientes : m.deuda.pre_pend;
+        var _dm = m.deuda.pre_corte_monto != null ? m.deuda.pre_corte_monto : m.deuda.pre_monto;
+        // Último recurso: si la deuda no trae ninguno de los dos, se suma el desglose por
+        // journal, que es la misma cifra vista por fuente. Nunca un 0 inventado.
+        if (_dp == null) { _dp = (m.por_journal || []).reduce(function (a2, x) { return a2 + (x.pre_pend || 0); }, 0) || null; }
+        if (_dm == null) { _dm = (m.por_journal || []).reduce(function (a2, x) { return a2 + (x.pre_monto || 0); }, 0) || null; }
+        ap = _dp == null ? 'sin datos del server'
+           : '<b>' + _dp + '</b> pendientes' + (_dm == null ? '' : ' · ' + money(_dm));
         at = '';   // la tendencia vive solo en B: repetirla en A decia dos veces lo mismo
       } else { ap = 'sin datos del server'; }
       html += '<details class="ip-sem2 a"><summary>' +
-        '<span class="s2title">Backlog — anterior a <b>' + esc(corte) + '</b>' +
+        '<span class="s2title"><span class="s2lbl">Backlog — anterior a</span> <b>' + esc(corte) + '</b>' +
           '<span class="s2dir down" title="Debe bajar hasta cero">↓ reducir</span></span>' +
         '<span class="s2sum">' + ap + (at ? ' · ' + at : '') + '</span></summary>' +
         '<div class="s2body">' + backlogDetalle(m) + '</div></details>';
@@ -1625,15 +1713,24 @@
       // account.move y un número sin fecha se leería como actual. La vigilancia de que no crezca
       // vive en el watchdog; esto solo hace visible lo acumulado.
       html += '<details class="ip-sem2 pasivo"><summary>' +
-        '<span class="s2title">Pagos manuales acumulados <span class="s2tag">no conciliables</span></span>' +
+        '<span class="s2title"><span class="s2lbl">Pagos manuales acumulados</span> <span class="s2tag">no conciliables</span></span>' +
         '<span class="s2sum"><b>655</b> asientos · <b>$4.93M</b> en la cuenta 223</span></summary>' +
         '<div class="s2body"><div class="s2note" style="margin-top:12px">' +
           'Medido el <b>2026-08-17</b>. Son bills que se cerraron marcando <b>PAID a mano</b> en el journal 61 ' +
           'en vez de conciliar la línea bancaria, así que el gasto quedó registrado <b>dos veces</b>: en el bill y en la línea.' +
         '</div><ul class="s2list">' +
-          '<li><b>Todos son del 23-jul o anteriores</b> — verificado contra la cuenta 223.</li>' +
-          '<li><b>No pueden crecer.</b> Desde el 17-ago la regla <code>ir.rule 814</code> impide crear asientos ' +
-            'en el journal 61 sin línea bancaria. El intento falla con un error que explica qué hacer.</li>' +
+          '<li><b>Todos son del 23-jul o anteriores.</b> Re-verificado en Odoo el <b>2026-09-03</b>: ' +
+            'cero asientos de pago manual en el journal 61 con fecha del corte en adelante.</li>' +
+          // El texto anterior afirmaba que la regla `ir.rule 814` impide que crezcan. Es FALSO
+          // desde el 18-ago: la 814 se desactivó porque rompía la captura (4 días de 6 líneas
+          // rechazadas por corrida) y se sustituyó por la 815, que el propio registro del
+          // proyecto marca "a prueba, NO confirmada". El panel no puede leer ir.rule, así que
+          // no puede verificar cuál está viva: dice lo que sí sabe —el conteo re-medido de
+          // arriba— y manda a Odoo para el estado del candado, en vez de dar por buena una
+          // garantía que ya se cayó una vez.
+          '<li><b>Hay un candado</b> en Odoo (<code>ir.rule</code>) que rechaza crear asientos en el ' +
+            'journal 61 sin línea bancaria, con un error que explica qué hacer. Se ajustó tras romper ' +
+            'la captura en agosto (814 → 815): <b>su estado se confirma en Odoo</b>, no desde aquí.</li>' +
           '<li><b>No se resuelven conciliando</b> — esas líneas ya no tienen bill abierto contra el cual casar. ' +
             'Es deuda de <b>desenredo contable</b>, no de conciliación.</li>' +
           '<li><b>No es trabajo pendiente de la operación.</b> Necesita una decisión sobre cómo revertir la ' +
@@ -1641,6 +1738,54 @@
         '</ul></div></details>';
 
       host.innerHTML = html;
+      qa('#ip-semrows [data-vercorte]').forEach(function (el) {
+        el.addEventListener('click', function () { verDesdeCorte(el.getAttribute('data-vercorte')); });
+      });
+    }
+    // ── De qué está hecho el "Faltan N" (v0.5.37) ─────────────────────────────────────────
+    // Origen: Esteban veía 5 sin conciliar en la tabla y 9 en el semáforo, y los dos números
+    // eran CIERTOS. El semáforo cuenta toda línea que Odoo tiene sin conciliar; la tabla saca
+    // fondeos y devoluciones del cubo "sin conciliar" (v0.5.16) porque no esperan una factura.
+    // Comprobado en Odoo el 2026-09-03 sobre journal 61 desde el corte: 9 sin conciliar = 5
+    // gastos + 2 FONDEO + 2 DEVOLUCIÓN. Dos taxonomías distintas bajo la misma palabra.
+    // Esto NO cambia el número del server: lo descompone y deja reproducirlo en la tabla.
+    // Regla de honestidad: el desglose solo se pinta si la ventana cargada cubre el corte Y su
+    // total cuadra con el `faltan` del server. Si no cuadra, se dice — nunca se pinta un
+    // desglose que contradiga en silencio al número de arriba.
+    function desgloseFaltan(label, corte, faltan) {
+      if (!faltan) return '';
+      var f = state.filters;
+      if (!f.from || f.from > corte) {
+        return '<div class="s2cw">La tabla está cargada desde <b>' + esc(f.from || '—') + '</b>, no alcanza el corte. ' +
+          '<a class="s2ver" data-vercorte="' + esc(label) + '">cargar desde el corte</a></div>';
+      }
+      var dev = 0, fon = 0, conc = 0;
+      (state.allRows || []).forEach(function (r) {
+        if (r.j !== label || !r.d || r.d < corte || r.ok) return;
+        if (isDevolucion(r)) dev++; else if (isFondeo(r)) fon++; else conc++;
+      });
+      if (dev + fon + conc !== faltan) {
+        return '<div class="s2cw">El desglose no cuadra con el server (' + (dev + fon + conc) + ' vs ' + faltan +
+          '): la ventana cargada puede estar recortada por el tope de líneas. ' +
+          '<a class="s2ver" data-vercorte="' + esc(label) + '">ver en la tabla</a></div>';
+      }
+      var partes = [];
+      if (conc) partes.push('<b>' + conc + '</b> por conciliar');
+      if (fon) partes.push('<b>' + fon + '</b> ' + (fon === 1 ? 'fondeo' : 'fondeos'));
+      if (dev) partes.push('<b>' + dev + '</b> ' + (dev === 1 ? 'devolución' : 'devoluciones'));
+      return '<div class="s2cw">' + partes.join(' · ') +
+        (fon + dev ? ' — fondeos y devoluciones no casan contra una factura, el motor no las cierra' : '') +
+        ' · <a class="s2ver" data-vercorte="' + esc(label) + '">ver en la tabla</a></div>';
+    }
+    // Lleva la tabla al MISMO universo que mide el semáforo, para que los dos números se puedan
+    // comparar de verdad en vez de creerle a uno de los dos.
+    function verDesdeCorte(label) {
+      var corte = (state.metricas && state.metricas.fecha_corte) || '2026-07-24';
+      state.filters.from = corte; state.filters.to = hoyCst();
+      state.filters.journal = label; state.filters.estado = ''; state.filters.tipo = '';
+      state.page = 1;
+      if (state.mode === 'real') { load(); } else { render(); }
+      var t = q('#ip-tblwrap'); if (t && t.scrollIntoView) t.scrollIntoView({ block: 'start' });
     }
     function horaCst() { var d = new Date(Date.now() - 6 * 3600 * 1000); return d.toISOString().slice(11, 16); }
     // El detalle del backlog viene del SERVER, no de state.allRows. allRows es la ventana rodante

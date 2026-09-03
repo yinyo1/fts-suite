@@ -42,35 +42,53 @@
 // ═══ STUBS — deben existir ANTES de que carguen los módulos ═══
 var HOY = new Date(Date.now() - 6 * 3600 * 1000).toISOString().slice(0, 10);
 var FILAS = [
-  { id: 9001, company_id: 1, _jid: 61, d: '2026-08-05', j: 'Jeeves', tipo: 'Egreso', ref: '[Tarjeta gastos ****4548] Europcar',
+  { id: 9001, company_id: 1, _jid: 61, d: '2026-08-05', j: 'Jeeves Tarjeta Credito', tipo: 'Egreso', ref: '[Tarjeta gastos ****4548] Europcar',
     amt: -3511.33, mon: 'MXN', ok: true, res: 0, res_apunte: 0, wd: HOY, po: 'PO7001', bill: 'BILL3190', sb: 'PAGADA',
     ana: 'SO11547-TOPO CHICO', ff: 'A1B2C3D4-E5F6-7890-ABCD-EF1234567890', tarj: 'Tarjeta gastos', comp: 'Esteban',
     rs: 'Servicios FTS', art: 'Renta de auto', tk: '', ana_planes: [1, 20], ana_comp: true },
-  { id: 9002, company_id: 1, _jid: 61, d: '2026-08-06', j: 'Jeeves', tipo: 'Egreso', ref: '[Primary ****6831] Ferr',
+  { id: 9002, company_id: 1, _jid: 61, d: '2026-08-06', j: 'Jeeves Tarjeta Credito', tipo: 'Egreso', ref: '[Primary ****6831] Ferr',
     amt: -1890.80, mon: 'MXN', ok: true, res: 0, res_apunte: 334.08, wd: HOY, po: 'PO7002', bill: 'BILL3100', sb: 'PAGADA',
     ana: 'SO11737-NALCO', ff: '', tarj: 'Primary', comp: 'Felipe', rs: 'Servicios FTS', art: 'Ferretería', tk: '',
     ana_planes: [1], ana_comp: false },
-  { id: 9003, company_id: 1, _jid: 61, d: '2026-08-05', j: 'Jeeves', tipo: 'Egreso', ref: '[Tarjeta gastos ****4548] MercadoPago',
+  { id: 9003, company_id: 1, _jid: 61, d: '2026-08-05', j: 'Jeeves Tarjeta Credito', tipo: 'Egreso', ref: '[Tarjeta gastos ****4548] MercadoPago',
     amt: -54.00, mon: 'MXN', ok: true, res: 0, res_apunte: 54.00, wd: HOY, po: '', bill: '', sb: '', ana: '', ff: '',
     tarj: 'Tarjeta gastos', comp: 'Esteban', rs: 'Servicios FTS', art: '', tk: '' },
-  { id: 9004, company_id: 1, _jid: 61, d: '2026-08-09', j: 'Jeeves', tipo: 'Ingreso', ref: '[DEVOLUCIÓN ****Inns] Luis angel',
+  { id: 9004, company_id: 1, _jid: 61, d: '2026-08-09', j: 'Jeeves Tarjeta Credito', tipo: 'Ingreso', ref: '[DEVOLUCIÓN ****Inns] Luis angel',
     amt: 860.98, mon: 'MXN', ok: false, res: 860.98, tarj: '', comp: 'Luis angel', rs: 'Servicios FTS', art: '', ana: '',
     po: '', bill: '', sb: '', ff: '', tk: '' },
-  { id: 9005, company_id: 1, _jid: 61, d: '2026-08-31', j: 'Jeeves', tipo: 'Ingreso', ref: '[FONDEO] Credit Line',
+  { id: 9005, company_id: 1, _jid: 61, d: '2026-08-31', j: 'Jeeves Tarjeta Credito', tipo: 'Ingreso', ref: '[FONDEO] Credit Line',
     amt: 168574.45, mon: 'MXN', ok: false, res: 168574.45, tarj: '', comp: '', rs: 'Servicios FTS', art: '', ana: '',
     po: '', bill: '', sb: '', ff: '', tk: '' },
-  { id: 9006, company_id: 1, _jid: 61, d: '2026-08-27', j: 'Jeeves', tipo: 'Egreso', ref: '[Primary ****6831] PRO Ferrenl',
+  { id: 9006, company_id: 1, _jid: 61, d: '2026-08-27', j: 'Jeeves Tarjeta Credito', tipo: 'Egreso', ref: '[Primary ****6831] PRO Ferrenl',
     amt: -340.96, mon: 'MXN', ok: false, res: 340.96, tarj: 'Primary', comp: 'Felipe', rs: 'Servicios FTS', art: '',
     ana: '', po: '', bill: '', sb: '', ff: '', tk: '' },
-  { id: 9007, company_id: 1, _jid: 61, d: '2026-08-28', j: 'Jeeves', tipo: 'Egreso', ref: '[Tarjeta gastos ****4548] Waalaxy',
+  { id: 9007, company_id: 1, _jid: 61, d: '2026-08-28', j: 'Jeeves Tarjeta Credito', tipo: 'Egreso', ref: '[Tarjeta gastos ****4548] Waalaxy',
     amt: -177.00, mon: 'MXN', ok: false, res: 177.00, tarj: 'Tarjeta gastos', comp: 'Esteban', rs: 'Servicios FTS',
     art: '', ana: '', po: '', bill: '', sb: '', ff: '', tk: '' },
-  { id: 9009, company_id: 1, _jid: 61, d: '2026-08-07', j: 'Jeeves', tipo: 'Egreso', ref: '[Primary ****6831] BPK',
+  { id: 9009, company_id: 1, _jid: 61, d: '2026-08-07', j: 'Jeeves Tarjeta Credito', tipo: 'Egreso', ref: '[Primary ****6831] BPK',
     amt: -2605.60, mon: 'MXN', ok: true, res: 0, wd: HOY, po: 'PO7009', bill: 'BILL3009', sb: 'PAGADA', ana: '', ff: '',
     tarj: 'Primary', comp: 'Felipe', rs: 'Servicios FTS', art: '', tk: '' },
   { id: 9008, company_id: 6, _jid: 123, d: '2026-09-01', j: 'Chase Ink Unlimited 9207', tipo: 'Egreso', ref: 'DLO*UBER',
     amt: -31.88, mon: 'USD', ok: false, res: 31.88, tarj: '', comp: '', rs: 'FTS LLC', art: '', ana: '', po: '',
     bill: '', sb: '', ff: '', tk: '' },
+  // Filas 9011-9015: completan el caso REAL de Odoo del 2026-09-03 (journal 61 desde el corte
+  // 2026-07-24 → 9 sin conciliar: 5 gastos, 2 FONDEO, 2 DEVOLUCIÓN). Es el caso que hizo ver
+  // 5 en la tabla y 9 en el semáforo.
+  { id: 9011, company_id: 1, _jid: 61, d: '2026-08-08', j: 'Jeeves Tarjeta Credito', tipo: 'Ingreso',
+    ref: '[DEVOLUCIÓN ****Inns] Luis angel', amt: 861.59, mon: 'MXN', ok: false, res: 861.59, tarj: '',
+    comp: 'Luis angel', rs: 'Servicios FTS', art: '', ana: '', po: '', bill: '', sb: '', ff: '', tk: '' },
+  { id: 9012, company_id: 1, _jid: 61, d: '2026-07-31', j: 'Jeeves Tarjeta Credito', tipo: 'Ingreso',
+    ref: '[FONDEO] Credit Line', amt: 175292.28, mon: 'MXN', ok: false, res: 175292.28, tarj: '', comp: '',
+    rs: 'Servicios FTS', art: '', ana: '', po: '', bill: '', sb: '', ff: '', tk: '' },
+  { id: 9013, company_id: 1, _jid: 61, d: '2026-08-31', j: 'Jeeves Tarjeta Credito', tipo: 'Egreso',
+    ref: '[Tarjeta gastos ****4548] Oxxo', amt: -48.00, mon: 'MXN', ok: false, res: 48.00,
+    tarj: 'Tarjeta gastos', comp: 'Esteban', rs: 'Servicios FTS', art: '', ana: '', po: '', bill: '', sb: '', ff: '', tk: '' },
+  { id: 9014, company_id: 1, _jid: 61, d: '2026-08-28', j: 'Jeeves Tarjeta Credito', tipo: 'Egreso',
+    ref: '[Tarjeta gastos ****4548] JT Carnesnl', amt: -2000.00, mon: 'MXN', ok: false, res: 2000.00,
+    tarj: 'Tarjeta gastos', comp: 'Esteban', rs: 'Servicios FTS', art: '', ana: '', po: '', bill: '', sb: '', ff: '', tk: '' },
+  { id: 9015, company_id: 1, _jid: 61, d: '2026-08-28', j: 'Jeeves Tarjeta Credito', tipo: 'Egreso',
+    ref: '[Felipe Pérez ****4666] Adobe', amt: -99.00, mon: 'MXN', ok: false, res: 99.00,
+    tarj: 'Felipe Pérez', comp: 'Felipe', rs: 'Servicios FTS', art: '', ana: '', po: '', bill: '', sb: '', ff: '', tk: '' },
   { id: 9010, company_id: 6, _jid: 122, d: '2026-08-24', j: 'BUS COMPLETE CHK', tipo: 'Ingreso',
     ref: 'REMOTE ONLINE DEPOSIT # 1', amt: 10700.00, mon: 'USD', ok: false, res: 10700.00, tarj: '', comp: '',
     rs: 'FTS LLC', art: '', ana: '', po: '', bill: '', sb: '', ff: '', tk: '' }
@@ -90,14 +108,30 @@ var STATUS = {
   ],
   cron: { timezone: 'America/Monterrey', rules: ['0,30 7-16 * * 1-5', '0,10,20,30,40,50 17 * * 1-5', '0 18 * * 1-5'] },
   por_journal: [
-    { journal: 61, label: 'Jeeves Tarjeta Credito', en_motor: true, post_total: 118, pre_pend: 1846 },
-    { journal: 122, label: 'BUS COMPLETE CHK', en_motor: false, post_total: 201, pre_pend: 0 },
-    { journal: 123, label: 'Chase Ink Unlimited 9207', en_motor: false, post_total: 163, pre_pend: 0 }
+    { journal: 61, label: 'Jeeves Tarjeta Credito', en_motor: true, post_total: 168, pre_pend: 1846 },
+    { journal: 122, label: 'BUS COMPLETE CHK', en_motor: false, post_total: 224, pre_pend: 199 },
+    { journal: 123, label: 'Chase Ink Unlimited 9207', en_motor: false, post_total: 169, pre_pend: 70 }
   ],
   intransit: [],
   hoy: { en_transito: { disponible: false }, conciliable_pendiente: { total: 5 },
          conciliadas_hoy: { total: 3, manual: 1, boton: 0, auto: 2 } },
-  metricas: null, serie: []
+  // Métricas REALES medidas en Odoo durante la auditoría del issue #150, para que el
+  // semáforo se vea como se ve en producción y no en su estado "sin datos".
+  // Conteos LEÍDOS de Odoo el 2026-09-03 (account.bank.statement.line agrupado por
+  // journal_id + is_reconciled, corte 2026-07-24). Jeeves: 168 post-corte, 159 conciliadas
+  // → faltan 9, que es exactamente lo que reproducen las filas 9004/9005/9006/9007/9011-9015.
+  metricas: {
+    fecha_corte: '2026-07-24',
+    cumplimiento: { post_corte_total: 561, post_corte_conciliadas: 159 },
+    por_journal: [
+      { journal: 61,  label: 'Jeeves Tarjeta Credito',   en_motor: true,  post_total: 168, post_conc: 159, pre_pend: 1846, pre_monto: 5790823 },
+      { journal: 122, label: 'BUS COMPLETE CHK',         en_motor: false, post_total: 224, post_conc: 0,   pre_pend: 199,  pre_monto: 0 },
+      { journal: 123, label: 'Chase Ink Unlimited 9207', en_motor: false, post_total: 169, post_conc: 0,   pre_pend: 70,   pre_monto: 0 }
+    ],
+    // A propósito con el nombre CORTO: es el que reprodujo el "0 pendientes · $0.00" con el
+    // desglose lleno debajo. El panel ahora tolera los dos nombres.
+    deuda: { pre_pend: 1846, pre_monto: 5790823 }
+  }, serie: []
 };
 window.FinAuth = {
   isValid: function () { return true; }, getToken: function () { return 'harness'; },
