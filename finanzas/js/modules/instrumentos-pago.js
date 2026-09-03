@@ -22,7 +22,7 @@
   // ── config ──
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
-  var IP_BUILD = '0.5.31';                // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.32';                // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -385,8 +385,18 @@
       var v = t[k];
       return (v == null || v === '') ? '—' : String(v);
     }
+    // Etiquetas del filtro por columna. Seguían siendo las del eje de 5 valores muerto en
+    // v0.5.16, mientras colValueOf('ok') ya devolvía los del eje B → ninguna llave matcheaba
+    // y el `|| v` dejaba ver las crudas: 'conciliada', 'sindoc', 'pendiente', 'noevaluada'.
     function colValLabel(k, v) {
-      if (k === 'ok') { var m = { liquidado: 'Conciliado (Liquidado)', transito: 'Conciliado (En tránsito)', fondeo: 'Fondeo', devolucion: 'Devolución', sinconciliar: 'Sin conciliar' }; return m[v] || v; }
+      if (k === 'ok') {
+        var m = {
+          conciliada: 'Conciliada', parcial: 'Conciliada parcial', preconciliada: 'Pre-conciliada',
+          condoc: 'Con documento', sindoc: 'Sin documento', noevaluada: 'No evaluada',
+          devolucion_pend: 'Devolución', fondeo_pend: 'Fondeo', pendiente: 'Sin conciliar'
+        };
+        return m[v] || v;
+      }
       return v;
     }
     function colFiltersPass(t) {
@@ -402,7 +412,7 @@
     function uniqueColValues(k) {
       var seen = {}, out = [];
       state.allRows.forEach(function (t) { var v = colValueOf(k, t); if (!Object.prototype.hasOwnProperty.call(seen, v)) { seen[v] = true; out.push(v); } });
-      if (k === 'ok') { var order = ['liquidado', 'transito', 'sinconciliar', 'fondeo', 'devolucion']; out.sort(function (a, b) { return order.indexOf(a) - order.indexOf(b); }); }
+      if (k === 'ok') { var order = ['conciliada', 'parcial', 'preconciliada', 'condoc', 'sindoc', 'pendiente', 'noevaluada', 'devolucion_pend', 'fondeo_pend']; out.sort(function (a, b) { return order.indexOf(a) - order.indexOf(b); }); }
       else out.sort(function (a, b) { return String(colValLabel(k, a)).toLowerCase().localeCompare(String(colValLabel(k, b)).toLowerCase()); });
       return out;
     }
@@ -843,6 +853,18 @@
       // EJE ODOO, valor intermedio: el motor 2 dejó decidida la conciliación pero el asiento no existe.
       // Hoy no lo puebla nadie (state.preconc llega vacío) → el filtro y el chip salen en gris con 0.
       if (state.preconc && (state.preconc[r._id] || state.preconc[r.id])) return 'preconciliada';
+      // Fondeo y devolución NO esperan una factura de proveedor, así que no pueden caer en el
+      // cubo de "sin conciliar". evalSugg() ya los excluye del motor a propósito (L~927), pero
+      // sin estado propio caían al 'pendiente' del final —cuya celda dice "○ Sin conciliar"— y
+      // ese texto afirma que les falta un documento que nunca les va a faltar:
+      //   · la devolución casa contra una NOTA DE CRÉDITO, o reduce el bill original;
+      //   · el fondeo es abono de la línea de crédito y su contrapartida es el lado BBVA, que
+      //     todavía no existe en Odoo (decisión de docs/odoo-captura-bancaria.md §215: se
+      //     capturan igual, y que queden en suspense es la evidencia de que falta ese lado).
+      // Van ANTES de enAlcanceMotor porque el TIPO es un hecho del movimiento; 'noevaluada' es
+      // un hecho del motor. Un fondeo en un journal sin motor sigue siendo un fondeo.
+      if (isDevolucion(r)) return 'devolucion_pend';
+      if (isFondeo(r))     return 'fondeo_pend';
       if (!enAlcanceMotor(r)) return 'noevaluada';
       var s = state.sugg[r._id];
       if (s && s.cand && s.cand.candidatos && s.cand.candidatos.length) return 'condoc';
@@ -868,6 +890,9 @@
         return '<span class="ip-est tra" title="Tiene contrapartida pero el apunte de la cuenta 17 conserva saldo">◐ Conciliada parcial</span> <span class="ip-est-bill">quedan ' + money(_r) + ' sin cerrar</span>';
       }
       if (st === 'noevaluada') return '<span class="ip-est nev" title="Fuera del alcance del motor de conciliación (journal_id 61 fijo). No es que no haya factura: no se buscó.">◌ No evaluada</span>';
+      // Ninguno de los dos va en rojo: no son un error ni trabajo atorado del equipo.
+      if (st === 'devolucion_pend') return '<span class="ip-est dev-ret" title="Una devolución no casa contra un bill de proveedor: casa contra una nota de crédito, o reduce el bill original. El motor de sugerencias no la evalúa a propósito.">↩ Devolución</span> <span class="ip-est-bill">pendiente de nota de crédito</span>';
+      if (st === 'fondeo_pend')     return '<span class="ip-est fon" title="Abono de la línea de crédito. Su contrapartida es el movimiento del lado BBVA, que aún no se captura en Odoo — por eso queda en suspense.">⊕ Fondeo</span> <span class="ip-est-bill">pendiente del lado BBVA</span>';
       if (st === 'condoc')     { var c = (suggHint(r).cand) || {}; return '<span class="ip-est doc" title="El motor encontró factura candidata">◆ Con documento</span> <span class="ip-est-bill">' + esc(c.bill_name || '') + ' · ' + Math.round((c.score || 0) * 100) + '</span>'; }
       if (st === 'sindoc')     return '<span class="ip-est sinc" title="El motor evaluó y no encontró factura">○ Sin documento</span> <a class="ip-est-buscar" data-buscar="' + r._id + '">buscar bill</a>';
       return '<span class="ip-est sinc">○ Sin conciliar</span>';   // 'pendiente' — batch en vuelo
@@ -899,8 +924,13 @@
         case 'condoc':      return st === 'condoc';
         case 'sindoc':      return st === 'sindoc';
         case 'noevaluada':  return st === 'noevaluada';
-        // familia: todo lo que sigue pendiente de conciliar, sea cual sea el motivo
-        case 'sinconciliar': case 'pend': return !t.ok;
+        case 'fondeo':      return st === 'fondeo_pend';
+        case 'devolucion':  return st === 'devolucion_pend';
+        // familia: lo que sigue pendiente de conciliar CONTRA UN DOCUMENTO, sea cual sea el
+        // motivo. Fondeos y devoluciones quedan FUERA: no esperan documento, y meterlos aquí
+        // inflaba el cubo con trabajo que nadie va a hacer (los fondeos solos son millones).
+        // Tienen su propio chip, así que el universo sigue cuadrando y nada se esconde.
+        case 'sinconciliar': case 'pend': return !t.ok && st !== 'fondeo_pend' && st !== 'devolucion_pend';
         case 'conchoy':     return t.ok === true && t.wd === hoyCst();   // requiere write_date del server
         default: return true;
       }
@@ -1013,14 +1043,12 @@
       // Si divergen, vuelven a contradecirse.
       var cnt = { conciliadas: 0, pendientes: 0, preconciliadas: 0, fondeo: 0, devolucion: 0 };
       rows.forEach(function (t) {
-        if (rowConc(t) === 'preconciliada') cnt.preconciliadas++;
+        var st = rowConc(t);
+        if (st === 'preconciliada') cnt.preconciliadas++;
+        else if (st === 'fondeo_pend') cnt.fondeo++;
+        else if (st === 'devolucion_pend') cnt.devolucion++;
         else if (t.ok) cnt.conciliadas++;
         else cnt.pendientes++;
-        // Fondeo y devolución son del EJE A (tipo), no del eje de conciliación: se
-        // cuentan con rowTipo(), y una fila puede ser devolución Y estar pendiente.
-        var tp = rowTipo(t);
-        if (tp === 'fondeo') cnt.fondeo++;
-        else if (tp === 'devolucion') cnt.devolucion++;
       });
       // Residual pendiente: solo lo NO conciliado. En una conciliada, `res` es 0 en
       // cuanto la línea sale de suspense (por eso el residual real de una parcial vive
@@ -1571,10 +1599,15 @@
       // que dependen de state.sugg, y en modo real suggByRow se ingesta vacío -> los tres salían 0
       // permanentemente aunque hubiera filas en pantalla. No era un desajuste del universo: era contar
       // algo que nadie poblaba.
-      var n = { todo: uni.length, conciliado: 0, preconciliado: 0, sinconciliar: 0, conchoy: 0 };
+      var n = { todo: uni.length, conciliado: 0, preconciliado: 0, sinconciliar: 0, conchoy: 0, fondeo: 0, devolucion: 0 };
       var hoy = hoyCst();
       uni.forEach(function (t) {
-        if (rowConc(t) === 'preconciliada') { n.preconciliado++; return; }
+        var st = rowConc(t);
+        if (st === 'preconciliada') { n.preconciliado++; return; }
+        // Cubos propios: no esperan documento, así que no son "sin conciliar". Se cuentan
+        // aparte en vez de esconderse — los cinco cubos deben sumar `todo`.
+        if (st === 'fondeo_pend')     { n.fondeo++; return; }
+        if (st === 'devolucion_pend') { n.devolucion++; return; }
         if (!t.ok) { n.sinconciliar++; return; }
         n.conciliado++;
         if (t.wd === hoy) n.conchoy++;
@@ -1584,10 +1617,15 @@
         return '<button class="ip-chip ' + (cls || '') + (act === k ? ' on' : '') + '" data-chip="' + k + '">' +
                esc(lbl) + ' <span class="ip-chipn">' + (k === '' ? n.todo : (n[k] || 0)) + '</span></button>';
       }
+      // Fondeos y devoluciones salieron del cubo rojo (no esperan documento) y entran con
+      // chip propio en GRIS: visibles y filtrables, sin gritar que hay trabajo atorado.
+      // Solo aparecen si hay filas — un "0 devoluciones" permanente sería ruido.
       var html = chip('', 'Todo') +
                  chip('sinconciliar', 'Sin conciliar', 'red') +
                  chip('conciliado', 'Conciliado', 'green') +
                  chip('preconciliado', 'Pre-conciliado', 'gray') +
+                 (n.fondeo ? chip('fondeo', 'Fondeos', 'gray') : '') +
+                 (n.devolucion ? chip('devolucion', 'Devoluciones', 'gray') : '') +
                  chip('conchoy', 'Conciliadas hoy', 'green');
       // sub-chips de antigüedad: solo tienen sentido sobre lo pendiente, y solo se muestran
       // cuando hay un chip de esa familia activo (si no, son ruido permanente).
