@@ -2,7 +2,7 @@
   "version": "V1.05",
   "fecha": "2026-09-03",
   "modulo": "comercial/machote",
-  "ambito": "SOLO este modulo. El repo tiene otros esquemas en uso -finanzas 0.5.36 + cadena de build, operaciones/planeacion 2.4.1, kiosk y confirmar-horas solo build, y siete modulos con un 1.0.0 puesto una vez y nunca movido-. NO propagar V1.xx a esos: se decidio dejarlos como estan (issue #148).",
+  "ambito": "El CONTADOR es solo de este modulo. finanzas tambien usa V1.xx desde el 2026-09-03 (instruccion directa de Esteban, corrige el \"no propagar\" del issue #148) pero lleva su propio contador y va en V1.00. operaciones/planeacion sigue en 2.4.1, kiosk y confirmar-horas solo con cadena de build, y siete modulos con un 1.0.0 puesto una vez: a esos no se propaga.",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
     {

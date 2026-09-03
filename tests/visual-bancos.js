@@ -40,6 +40,9 @@ fs.mkdirSync(OUT, { recursive: true });
 // pasó a scrollear dentro de su propia caja. Cero significa cero: si vuelve a desbordar,
 // el badge de versión se sale de la pantalla otra vez.
 const BASE_DESBORDE = { 'desktop-1440': 0, 'laptop-1280': 0, 'movil-390': 0 };
+// Esquema de versión: V<mayor>.<menor de dos dígitos>, +0.01 por merge a main; al pasar de
+// .99 sube el mayor y el menor vuelve a 00. Igual que comercial/machote.
+const VER = JSON.parse(fs.readFileSync(path.resolve(__dirname, '..', 'finanzas', 'version.json'), 'utf8'));
 let pass = 0; const fails = []; let vp = '';
 function check(n, c, d) { if (c) { pass++; console.log('✓ [' + vp + '] ' + n); return true; }
   fails.push('[' + vp + '] ' + n + (d ? ' → ' + d : '')); console.log('✗ [' + vp + '] ' + n + (d ? ' → ' + d : '')); return false; }
@@ -49,6 +52,16 @@ const esDelEntorno = t => /ERR_CONNECTION_RESET|ERR_NAME_NOT_RESOLVED|ERR_BLOCKE
 
 (async () => {
   console.log('Chromium: ' + (EXE || '(default)'));
+  vp = 'version';
+  check('el formato de versión es V<mayor>.<menor de dos dígitos> (' + VER.version + ')',
+    /^V\d+\.\d{2}$/.test(VER.version), VER.version);
+  check('el menor no pasa de 99',
+    (/^V\d+\.(\d{2})$/.exec(VER.version) || [])[1] <= '99', VER.version);
+  check('version.json lleva el esquema escrito y su historial',
+    !!VER.esquema && Array.isArray(VER.historial) && VER.historial.length > 0 &&
+    VER.historial[0].version === VER.version,
+    'esquema=' + !!VER.esquema + ' historial[0]=' + JSON.stringify(VER.historial && VER.historial[0]));
+
   const b = await chromium.launch(EXE ? { executablePath: EXE } : {});
 
   for (const dev of [{ n: 'desktop-1440', w: 1440, h: 900 }, { n: 'laptop-1280', w: 1280, h: 800 }, { n: 'movil-390', w: 390, h: 844 }]) {
@@ -115,15 +128,95 @@ const esDelEntorno = t => /ERR_CONNECTION_RESET|ERR_NAME_NOT_RESOLVED|ERR_BLOCKE
     check('la página NO desborda horizontalmente', medidas.desbordeH <= BASE_DESBORDE[dev.n], 'desborde ' + medidas.desbordeH + 'px (tope ' + BASE_DESBORDE[dev.n] + ')');
     check('el badge de versión está DENTRO de la pantalla (' + (medidas.badge && medidas.badge.texto) + ')',
       medidas.badge && medidas.badge.dentro && medidas.badge.w > 0, JSON.stringify(medidas.badge));
+    // La versión en pantalla tiene que ser la de version.json. Separadas, la pantalla miente
+    // sobre qué build estás viendo — que es exactamente para lo que sirve el badge.
+    check('el badge coincide con finanzas/version.json (' + VER.version + ')',
+      medidas.badge && medidas.badge.texto === VER.version,
+      'pantalla "' + (medidas.badge && medidas.badge.texto) + '" vs archivo "' + VER.version + '"');
 
     // Las filas nuevas no deben ser mucho más altas que las demás (= texto envolviendo feo).
     // Tope ajustado tras la revisión visual: la versión larga de Desconciliada medía 110 px
     // contra una mediana de 80. Con un tope generoso (mediana×2) pasaba. Ahora no.
-    const tope = medidas.altoFilaMediana + 24;
-    check('la fila Desconciliada no se dispara de alto (' + medidas.altoFilaDesc + 'px vs mediana ' + medidas.altoFilaMediana + 'px)',
-      medidas.altoFilaDesc > 0 && medidas.altoFilaDesc <= tope, 'tope ' + tope);
-    check('la fila Fondeo no se dispara de alto (' + medidas.altoFilaFon + 'px vs mediana ' + medidas.altoFilaMediana + 'px)',
-      medidas.altoFilaFon > 0 && medidas.altoFilaFon <= tope, 'tope ' + tope);
+    // Solo en anchos donde la tabla ES una tabla: bajo 700 px cada fila es una tarjeta y su
+    // alto no mide envoltura de texto, mide cuántos campos traía la línea.
+    if (dev.w > 700) {
+      const tope = medidas.altoFilaMediana + 24;
+      check('la fila Desconciliada no se dispara de alto (' + medidas.altoFilaDesc + 'px vs mediana ' + medidas.altoFilaMediana + 'px)',
+        medidas.altoFilaDesc > 0 && medidas.altoFilaDesc <= tope, 'tope ' + tope);
+      check('la fila Fondeo no se dispara de alto (' + medidas.altoFilaFon + 'px vs mediana ' + medidas.altoFilaMediana + 'px)',
+        medidas.altoFilaFon > 0 && medidas.altoFilaFon <= tope, 'tope ' + tope);
+    }
+
+    // ── Semáforo: contraste y apilado ────────────────────────────────────────────────
+    // El semáforo vive dentro de .sem, que es el contenedor OSCURO y declara color:#dfe6ec.
+    // Cuando una tarjeta blanca hereda ese color queda a 1.26:1 (WCAG AA pide 4.5:1) y el
+    // texto se vuelve casi invisible: fue el reporte de Esteban "blancos con letras grises,
+    // casi no se ve". Se mide compuesto sobre los fondos de los ancestros — sin eso, un chip
+    // con background rgba(...,.10) se mide como si fuera sólido y da un falso 1:1.
+    const sem = await p.evaluate(() => {
+      const num = c => (String(c).match(/[\d.]+/g) || []).map(Number);
+      const componer = (color, sobre) => { const m = num(color); if (m.length < 3) return sobre;
+        const a = m.length > 3 ? m[3] : 1, b = num(sobre);
+        return 'rgb(' + [0,1,2].map(i => Math.round(m[i]*a + b[i]*(1-a))).join(',') + ')'; };
+      const fondo = el => { const pila = []; let e = el;
+        while (e) { const bg = getComputedStyle(e).backgroundColor;
+          if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') pila.push(bg); e = e.parentElement; }
+        let acc = 'rgb(255,255,255)';
+        for (let i = pila.length - 1; i >= 0; i--) acc = componer(pila[i], acc); return acc; };
+      const lum = rgb => { const m = num(rgb); if (m.length < 3) return null;
+        const f = m.slice(0,3).map(v => { v /= 255; return v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4); });
+        return 0.2126*f[0] + 0.7152*f[1] + 0.0722*f[2]; };
+      const host = document.querySelector('#ip-semrows');
+      const raiz = host ? host.parentElement : null;
+      const peores = [];
+      if (raiz) raiz.querySelectorAll('*').forEach(el => {
+        const t = [...el.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent.trim()).join(' ').trim();
+        if (!t || t.length < 3) return;
+        const cs = getComputedStyle(el);
+        if (cs.visibility === 'hidden' || cs.display === 'none') return;
+        const bg = fondo(el), fg = componer(cs.color, bg);
+        const L1 = lum(fg), L2 = lum(bg); if (L1 == null || L2 == null) return;
+        const r = (Math.max(L1,L2)+0.05)/(Math.min(L1,L2)+0.05);
+        const px = parseFloat(cs.fontSize), bold = (parseInt(cs.fontWeight,10)||400) >= 700;
+        const min = (px >= 24 || (bold && px >= 18.66)) ? 3 : 4.5;
+        if (r < min) peores.push({ txt: t.slice(0,36), ratio: Math.round(r*100)/100, min, px });
+      });
+      // Apilado: los paneles del semáforo van uno debajo de otro (antes eran una rejilla de 3
+      // columnas de igual alto, que estiraba dos <details> colapsados ~450 px en blanco).
+      const paneles = [...(host ? host.children : [])].map(el => Math.round(el.getBoundingClientRect().width));
+      const anchoHost = host ? Math.round(host.getBoundingClientRect().width) : 0;
+      return { peores, nMedidos: raiz ? raiz.querySelectorAll('*').length : 0, paneles, anchoHost };
+    });
+    check('todo el texto del semáforo pasa WCAG AA', sem.peores.length === 0,
+      sem.peores.slice(0,4).map(x => x.ratio + ':1 (min ' + x.min + ') «' + x.txt + '»').join(' | '));
+    check('los paneles del semáforo van apilados a todo el ancho',
+      sem.paneles.length > 0 && sem.paneles.every(w => w >= sem.anchoHost - 2),
+      'anchos ' + JSON.stringify(sem.paneles) + ' vs host ' + sem.anchoHost);
+
+    // ── Operabilidad en celular ──────────────────────────────────────────────────────
+    // Medido antes del cambio: 12 columnas dentro de 324 px con scrollWidth == clientWidth.
+    // La tabla no se desbordaba para poder deslizarla: se comprimía, y la columna de estado
+    // —la única que dice qué hacer— quedaba fuera sin scroll al que llegar.
+    if (dev.w <= 700) {
+      const mob = await p.evaluate(() => {
+        const tr = document.querySelector('#ip-tblwrap tbody tr');
+        const td = tr ? tr.querySelector('td:not(.chk)') : null;
+        const chicos = [];
+        document.querySelectorAll('.ip-view .ip-filters input, .ip-view .ip-filters select, .ip-view .ip-toolbar button')
+          .forEach(el => { const r = el.getBoundingClientRect();
+            if (r.height > 0 && r.height < 40) chicos.push((el.id || el.tagName) + ':' + Math.round(r.height)); });
+        return {
+          theadOculto: getComputedStyle(document.querySelector('#ip-tblwrap thead')).display === 'none',
+          celdaEnBloque: td ? getComputedStyle(td).display === 'flex' : false,
+          etiqueta: td ? (td.getAttribute('data-lbl') || '') : '',
+          anchoFila: tr ? Math.round(tr.getBoundingClientRect().width) : 0,
+          chicos: chicos
+        };
+      });
+      check('la tabla se convierte en tarjetas (thead oculto)', mob.theadOculto);
+      check('cada celda lleva su etiqueta («' + mob.etiqueta + '»)', mob.celdaEnBloque && !!mob.etiqueta, JSON.stringify(mob));
+      check('los controles llegan a 40 px de alto táctil', mob.chicos.length === 0, mob.chicos.join(', '));
+    }
 
     // Capturas SIN fullPage: lo que se ve de verdad.
     await p.screenshot({ path: path.join(OUT, dev.n + '-1-arriba.png') });

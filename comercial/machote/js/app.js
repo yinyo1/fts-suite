@@ -30,9 +30,10 @@
    * separan: una pantalla que miente sobre su versión es peor que no tener
    * indicador.
    *
-   * ⚠️ El esquema es de ESTE módulo. El repo tiene otros en uso —finanzas va
-   * en `0.5.36` con cadena de build, planeación en `2.4.1`, el kiosko sólo con
-   * build— y se decidió dejarlos como están. No propagar V1.xx a esos. */
+   * ⚠️ El CONTADOR es de ESTE módulo: `finanzas` también usa V1.xx desde el
+   * 2026-09-03 (por instrucción de Esteban), pero lleva el suyo aparte y va en
+   * V1.00. Planeación sigue en `2.4.1` y el kiosko sólo con cadena de build;
+   * a esos no se propaga. */
   const VERSION = 'V1.05';
   const $  = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
