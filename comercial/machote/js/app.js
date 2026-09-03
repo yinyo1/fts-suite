@@ -16,15 +16,20 @@
 
   const C = G.MachoteCalc, R = G.REGLAS, D = G.DEMO;
 
-  /* Build visible en pantalla.
+  /* Versión visible en pantalla.
    *
-   * Convención de CLAUDE.md §8: `YYYYMMDD-<modulo>-<hito>`. Se bumpea en TODO
-   * cambio que se despliegue, y se mantiene igual al de `version.json`, que es
-   * el que queda en el repo. Sirve para una cosa concreta: abrir la página y
-   * saber de un vistazo si lo que estás viendo es lo último o el caché del
-   * navegador. Sin esto, "ya lo cambié" y "yo no lo veo" no se pueden
-   * distinguir sin abrir las herramientas de desarrollo. */
-  const BUILD = '20260903-machote-3';
+   * Esquema: `V<mayor>.<menor de dos dígitos>`. **Un incremento de 0.01 por
+   * cada merge a `main`.** Al pasar de `.99` sube el mayor y el menor vuelve
+   * a `00` (V1.99 → V2.00).
+   *
+   * Sirve para una cosa concreta: abrir la página y saber de un vistazo si lo
+   * que ves es lo último o el caché del navegador. Sin esto, "ya lo cambié" y
+   * "yo no lo veo" no se distinguen sin abrir las herramientas de desarrollo.
+   *
+   * ⚠️ Vive aquí y en `version.json`, y hay una prueba que falla si se
+   * separan: una pantalla que miente sobre su versión es peor que no tener
+   * indicador. */
+  const VERSION = 'V1.03';
   const $  = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
   const clon = (x) => JSON.parse(JSON.stringify(x));
@@ -107,9 +112,9 @@
     if (p[0] === 'ap')    return vAprobar(p[1]);
     location.hash = '#/';
   }
-  function top(t, s, b, back, sinBuild) {
+  function top(t, s, b, back, sinVersion) {
     $('#tbT').textContent = t;
-    $('#tbS').textContent = sinBuild ? s : s + ' · ' + BUILD;
+    $('#tbS').textContent = sinVersion ? s : s + ' · ' + VERSION;
     $('#tbB').textContent = b || 'DEMO';
     $('#btnBack').onclick = () => { if (back) location.hash = back; };
     $('#btnBack').style.visibility = back ? 'visible' : 'hidden';
@@ -149,7 +154,7 @@
       'Los datos de las cotizaciones de abajo son demo.</div>' +
       '<h3>Estación 2.0 · armar la cotización</h3>' + filas +
       '<h3 style="margin-top:22px">Estación 3.0 · confirmar la orden</h3>' + ords +
-      '<div class="build">build <strong>' + BUILD + '</strong></div></div>';
+      '<div class="ver">versión <strong>' + VERSION + '</strong></div></div>';
   }
 
   /* ── El libro ────────────────────────────────────────────────────────── */

@@ -151,25 +151,47 @@ let ok = 0, mal = 0;
     if (Math.abs(r - 1890) > 0.01) throw new Error('costo ' + r);
   });
 
-  // El build se escribe en dos lugares: la constante de app.js y version.json.
-  // Que se separen es el error clásico y deja la pantalla mintiendo sobre qué
-  // versión estás viendo, que es justo para lo que sirve.
-  await paso('el build se ve en pantalla y coincide con version.json', async () => {
+  // La versión se escribe en dos lugares -la constante de app.js y
+  // version.json- y que se separen deja la pantalla mintiendo sobre qué estás
+  // viendo, que es justo para lo que sirve.
+  await paso('la versión se ve en pantalla y coincide con version.json', async () => {
     const ver = JSON.parse(require('fs').readFileSync(
       path.resolve(__dirname, '..', 'version.json'), 'utf8'));
-    if (!/^\d{8}-machote-\d+$/.test(ver.build)) throw new Error('formato: ' + ver.build);
+
+    const m = /^V(\d+)\.(\d{2})$/.exec(ver.version);
+    if (!m) throw new Error('formato inválido: ' + ver.version + ' (se espera V1.00 … V1.99)');
+    if (Number(m[2]) > 99) throw new Error('el menor pasa de 99: ' + ver.version);
 
     await ir('#/');
-    const pie = (await p.textContent('.build') || '').trim();
-    if (pie.indexOf(ver.build) < 0) throw new Error('el pie dice "' + pie + '" y version.json ' + ver.build);
+    const pie = (await p.textContent('.ver') || '').trim();
+    if (pie.indexOf(ver.version) < 0) throw new Error('el pie dice "' + pie + '" y version.json ' + ver.version);
 
     await ir('#/m/M-1041');
     const barra = await p.textContent('#tbS');
-    if (barra.indexOf(ver.build) < 0) throw new Error('la barra superior dice: ' + barra);
+    if (barra.indexOf(ver.version) < 0) throw new Error('la barra superior dice: ' + barra);
+    console.log('   ', ver.version, '· visible en la lista y en la barra');
+  });
 
-    if (!ver.historial || ver.historial[0].build !== ver.build)
-      throw new Error('el historial no encabeza con el build vigente');
-    console.log('   build', ver.build, '· visible en la lista y en la barra');
+  // Un incremento de 0.01 por merge. Sin saltos ni repeticiones: si se salta
+  // un número, la versión deja de decir cuántos despliegues van.
+  await paso('el historial de versiones sube de uno en uno', async () => {
+    const ver = JSON.parse(require('fs').readFileSync(
+      path.resolve(__dirname, '..', 'version.json'), 'utf8'));
+    const h = ver.historial || [];
+    if (!h.length) throw new Error('sin historial');
+    if (h[0].version !== ver.version)
+      throw new Error('el historial encabeza con ' + h[0].version + ' y la vigente es ' + ver.version);
+
+    const aNum = (v) => { const m = /^V(\d+)\.(\d{2})$/.exec(v);
+      if (!m) throw new Error('formato inválido en el historial: ' + v);
+      return Number(m[1]) * 100 + Number(m[2]); };
+
+    for (let i = 0; i < h.length - 1; i++) {
+      const hoy = aNum(h[i].version), antes = aNum(h[i + 1].version);
+      if (hoy - antes !== 1)
+        throw new Error(h[i + 1].version + ' → ' + h[i].version + ' salta ' + (hoy - antes) + ' en vez de 1');
+    }
+    console.log('   ', h.length, 'versiones ·', h[h.length - 1].version, '→', h[0].version);
   });
 
   // ── La hoja ──────────────────────────────────────────────────────────
