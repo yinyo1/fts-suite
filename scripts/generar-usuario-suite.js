@@ -156,7 +156,12 @@ function main() {
    * Con `_writeToOutput` silenciado no se ve NADA mientras se escribe: ni
    * asteriscos, que es el comportamiento estándar de un prompt de contraseña
    * y el único que no depende de que la terminal entienda secuencias ANSI. */
-  process.stderr.write('Password para "' + username + '" (no se va a ver mientras lo escribes): ');
+  // El aviso TERMINA en salto de linea a proposito. PowerShell no suelta a
+  // pantalla una escritura a stderr que no cierra la linea: el prompt se queda
+  // en el buffer y el usuario ve la terminal colgada, sin saber que le estan
+  // pidiendo algo. Con el salto, se ve siempre y se teclea en la linea de abajo.
+  process.stderr.write('\n  Password para "' + username + '"\n' +
+    '  (no se ve mientras lo escribes; teclealo y dale Enter)\n');
   const rl = readline.createInterface({ input: process.stdin, output: process.stderr, terminal: true });
   rl.mudo = true;
   rl._writeToOutput = function (s) { if (!rl.mudo) rl.output.write(s); };
