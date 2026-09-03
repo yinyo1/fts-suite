@@ -4,3 +4,4 @@ scripts/local/
 # Volcados de auditoría (journals, bills, conciliación). ESTE REPO ES PÚBLICO:
 # son datos financieros reales y no deben publicarse ni por accidente con `git add -A`.
 data/
+node_modules/

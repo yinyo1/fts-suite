@@ -214,3 +214,50 @@ button.lin { cursor: pointer; font-family: inherit; font-size: inherit; color: i
 .scr > .topbar { border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
 @media (max-width: 560px) { .scr > .topbar { border-left: 0; border-right: 0; } }
 .scr { background: var(--dark); }
+
+/* ── Renglón de mano de obra ────────────────────────────────────────────
+ * Tres campos numéricos, una etiqueta y un total en la misma línea. A 380 px
+ * la suma de anchos mínimos desbordaba 7 px: los campos necesitan poder
+ * encogerse (min-width:0) y no sumar padding al ancho. */
+.row.lin-mo { gap: 6px; margin: 2px 0; }
+.row.lin-mo > .grow { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; }
+.row.lin-mo input {
+  flex: 0 1 54px; min-width: 0; width: 54px; box-sizing: border-box;
+  padding: 6px; font-size: 13px; text-align: right;
+  border: 1px solid var(--border, #d8d8d8); border-radius: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.row.lin-mo .lin-tot { flex: 0 0 auto; min-width: 60px; text-align: right; }
+
+/* Ninguna fila de la estación debe poder empujar el ancho del documento. */
+.wg .row { max-width: 100%; }
+.wg .row > input, .wg .row > select { min-width: 0; box-sizing: border-box; }
+
+@media (max-width: 400px) {
+  .row.lin-mo input { flex-basis: 44px; width: 44px; padding: 6px 3px; font-size: 12px; }
+  .row.lin-mo .lin-tot { min-width: 50px; font-size: 11.5px; }
+  .row.lin-mo > .grow { font-size: 11.5px; }
+}
+
+/* ── Filas de reparto de comisiones ─────────────────────────────────────
+ * Un <input> sin flex usa su ancho intrínseco (~177 px por el size=20 que
+ * traen por omisión). Dos de ellos en la misma fila empujaban el documento a
+ * 859 px dentro de una ventana de 380. Se les fija base y se les deja encoger. */
+.wg .row > input { flex: 1 1 auto; min-width: 0; box-sizing: border-box; }
+.wg .row > input.num { flex: 0 1 82px; width: 82px; text-align: right; font-variant-numeric: tabular-nums; }
+.wg .row > .lin-tot { flex: 0 0 auto; min-width: 64px; text-align: right; }
+
+/* Los campos de la rejilla no deben poder crecer más que su columna. */
+.fgrid { min-width: 0; }
+.fgrid > .f { min-width: 0; }
+.fgrid > .f input, .fgrid > .f select, .fgrid > .f textarea { max-width: 100%; box-sizing: border-box; }
+.f .chip { white-space: nowrap; }
+
+/* Última defensa: una etiqueta larga sin espacios no debe empujar la página. */
+.pad { min-width: 0; }
+.wg { min-width: 0; overflow-wrap: anywhere; }
+
+/* .oc es una PASTILLA (nowrap). Las notas explicativas largas necesitan su
+ * propia clase: usar .oc para un párrafo empujaba el documento a 859 px en
+ * una ventana de 380. */
+.nota { color: #6b6b6b; line-height: 1.45; margin: 2px 0 8px; }

@@ -228,21 +228,27 @@
       });
     });
 
-    // Reparto de la comisión de FTS entre venta y operaciones.
+    // Reparto de la comisión de FTS entre venta y operaciones, y de la del
+    // cliente entre sus contactos.
     const rep = Object.assign({}, REPARTO_PLANTILLA, m.reparto || {});
     const bolsaVenta = elegido.comisionFts * num(rep.venta);
     const bolsaOps   = elegido.comisionFts * num(rep.operaciones);
-    const venta_ = repartir(bolsaVenta, m.equipo_venta);
-    const ops_   = repartir(bolsaOps, m.equipo_operaciones);
+    const venta_   = repartir(bolsaVenta, m.equipo_venta);
+    const ops_     = repartir(bolsaOps, m.equipo_operaciones);
+    const cliente_ = repartir(elegido.comisionCliente, m.equipo_cliente);
 
     // Bloque BUDGET ODOO: lo que se captura como presupuesto del proyecto.
-    const comisiones = venta_.lineas.concat(ops_.lineas);
+    // El cuadre de abajo es el `COINCIDE CON LA TABLA?` del machote: da
+    // VERDADERO sólo si los tres repartos suman 1. Es la única defensa que
+    // tiene hoy la cotización contra un reparto mal escrito, y no bloquea.
+    const comisiones = venta_.lineas.concat(ops_.lineas, cliente_.lineas);
+    const sumaCom = comisiones.reduce((a, l) => a + l.monto, 0);
     const budget = {
       ingreso: elegido.precio,
       manoObra: -costoMoTot,
       materiales: -costoMat,
       comisiones: comisiones.map(l => ({ nombre: l.nombre, monto: -l.monto })),
-      total: (elegido.precio || 0) - costoMoTot - costoMat - comisiones.reduce((a, l) => a + l.monto, 0)
+      total: (elegido.precio || 0) - costoMoTot - costoMat - sumaCom
     };
     budget.cuadra = elegido.utilidad !== null && Math.abs(budget.total - elegido.utilidad) < 1;
 
@@ -273,7 +279,7 @@
       // Peso de cada bloque en el costo: es el RESUMEN BUDGET del machote.
       pesoMo:  costo > 0 ? costoMoTot / costo : null,
       pesoMat: costo > 0 ? costoMat / costo : null,
-      reparto: { venta: venta_, operaciones: ops_, bolsaVenta, bolsaOps },
+      reparto: { venta: venta_, operaciones: ops_, cliente: cliente_, bolsaVenta, bolsaOps },
       budget,
       sinPrecio, moSinTarifa, sinTipo, sinLink, mezclaMoneda,
       huecos, costoIncompleto: huecos > 0

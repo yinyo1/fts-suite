@@ -1,379 +1,228 @@
-/* ═══ Machote · datos y catálogos demo ═══
+/* ═══ Machote · datos demo ═══
  *
- * TODO lo de este archivo es DEMO. No hay red, no hay backend, no hay
- * localStorage: el estado vive en memoria y se reinicia al recargar.
+ * Reconstruidos sobre la estructura REAL (docs/comercial/MACHOTE-ESTRUCTURA-REAL.md).
+ * Los machotes de abajo copian la forma y los órdenes de magnitud de archivos
+ * reales de SharePoint, con los números redondeados. No son datos de producción.
  *
- * ⚠ SUPUESTO GRANDE: no tuve acceso a los machotes reales de SharePoint.
- * La estructura por secciones, los oficios, los rangos de costo-hora y los
- * renglones de generales están inventados a partir del encargo y del
- * vocabulario del negocio. Ver el reporte en el issue #148.
+ * Lo que viene del machote real va marcado REAL.
+ * Lo que sigue siendo invención mía va marcado SUPUESTO.
  */
 (function (G) {
   'use strict';
 
-  // ── Origen del precio, con nivel de confianza ─────────────────────────────
-  // Regla dura del módulo: NUNCA se inventa un precio. Si no hay dato, el
-  // precio es null y el origen es 'sin_dato'. Un cero silencioso es peor que
-  // un hueco visible.
-  const ORIGENES_PRECIO = {
-    cotizacion: { etiqueta: 'Cotización de proveedor', confianza: 'alta',    dias_vigencia: 30 },
-    lista:      { etiqueta: 'Lista de precios vigente', confianza: 'alta',   dias_vigencia: 90 },
-    historico:  { etiqueta: 'Compra anterior',          confianza: 'media',  dias_vigencia: 180 },
-    estimado:   { etiqueta: 'Estimado por el analista', confianza: 'baja',   dias_vigencia: 0 },
-    sin_dato:   { etiqueta: 'SIN DATO',                 confianza: 'ninguna',dias_vigencia: 0 }
-  };
+  const C = G.MachoteCalc;
 
-  // ── Oficios (mano de obra) ────────────────────────────────────────────────
-  // SUPUESTO: costos por hora inventados. Los rangos alimentan la regla que
-  // marca un costo-hora fuera de mercado.
-  const OFICIOS = [
-    { id: 'supervisor', nombre: 'Supervisor de obra', costo_hora: 280, rango: [220, 380] },
-    { id: 'soldador',   nombre: 'Soldador',           costo_hora: 210, rango: [160, 290] },
-    { id: 'electrico',  nombre: 'Eléctrico',          costo_hora: 195, rango: [150, 270] },
-    { id: 'mecanico',   nombre: 'Mecánico',           costo_hora: 185, rango: [140, 255] },
-    { id: 'segurista',  nombre: 'Segurista',          costo_hora: 150, rango: [110, 210] },
-    { id: 'ayudante',   nombre: 'Ayudante general',   costo_hora: 110, rango: [85, 155] }
-  ];
+  // REAL — unidades vistas en la columna UNIDAD del machote.
+  const UNIDADES = ['Pieza', 'Horas', 'Servicio', 'Lote', 'm', 'm²', 'kg', 'Rollo', 'Tramo', 'Jgo'];
 
-  const UNIDADES = ['pza', 'm', 'm²', 'kg', 'lote', 'rollo', 'tramo', 'jgo', 'serv'];
+  // REAL — los cinco roles y sus tarifas de plantilla viven en calc.js (ROLES).
+  // REAL — Tipo ∈ {Materiales, Servicios} vive en calc.js (TIPOS).
 
-  // ── Tipos de proyecto y sus preguntas de diagnóstico ──────────────────────
-  // "Que no se olvide nada": las preguntas cambian según el tipo. Las
-  // marcadas `critica` bloquean; las demás solo avisan.
+  // SUPUESTO — el cuestionario de diagnóstico es invención mía. El machote no
+  // tiene nada equivalente: el analista decide de cabeza qué preguntar. Se deja
+  // porque es lo que convierte al machote en una estación de trabajo, pero las
+  // preguntas las tiene que revisar Esteban.
   const TIPOS_PROYECTO = [
-    {
-      id: 'electrico',
-      nombre: 'Instalación eléctrica / subestación',
-      icono: '⚡',
-      preguntas: [
-        { id: 'unifilar',    texto: '¿Hay diagrama unifilar aprobado por el cliente?', tipo: 'bool', critica: true,
-          riesgo_si_no: 'Sin unifilar aprobado, el alcance eléctrico se va a mover. Cotiza con reserva o pide el plano antes.' },
-        { id: 'tension',     texto: 'Tensión de operación (V)',                        tipo: 'num',  critica: true },
-        { id: 'libranza',    texto: '¿Se requiere libranza / paro de planta?',          tipo: 'bool', critica: false,
-          implica: 'Si hay libranza, el trabajo suele caer en fin de semana o turno nocturno. Revisa turnos.' },
-        { id: 'transformador', texto: '¿Quién suministra el transformador?', tipo: 'opcion', opciones: ['FTS', 'Cliente', 'No aplica'], critica: true },
-        { id: 'cortocircuito', texto: '¿Hay estudio de cortocircuito / coordinación de protecciones?', tipo: 'bool', critica: false,
-          riesgo_si_no: 'Sin estudio de cortocircuito, las protecciones se eligen a ojo y pueden quedar mal coordinadas.' },
-        { id: 'altura',      texto: '¿Trabajo en altura mayor a 1.8 m?', tipo: 'bool', critica: false,
-          implica: 'Trabajo en altura exige segurista en la cuadrilla.' },
-        { id: 'clasificada', texto: '¿Área clasificada (Clase I Div. 2 o similar)?', tipo: 'bool', critica: true,
-          implica: 'Área clasificada cambia todo el material a prueba de explosión. El costo se dispara.' },
-        { id: 'perito',      texto: '¿Se requiere memoria de cálculo firmada por perito (DRO/UVIE)?', tipo: 'bool', critica: false }
-      ]
-    },
-    {
-      id: 'clima',
-      nombre: 'Mantenimiento a equipos de clima',
-      icono: '❄️',
-      preguntas: [
-        { id: 'equipos',     texto: '¿Cuántos equipos?',                      tipo: 'num',  critica: true },
-        { id: 'tonelaje',    texto: 'Tonelaje por equipo (TR)',               tipo: 'num',  critica: false },
-        { id: 'refrigerante',texto: '¿Requiere recuperación de refrigerante?',tipo: 'bool', critica: false,
-          implica: 'La recuperación necesita equipo certificado y disposición. No se cobra como mano de obra normal.' },
-        { id: 'acceso',      texto: '¿El acceso requiere grúa o montacargas?',tipo: 'bool', critica: false,
-          implica: 'Maniobra de izaje: va como renglón aparte, no dentro de mano de obra.' },
-        { id: 'azotea',      texto: '¿Trabajo en azotea?',                    tipo: 'bool', critica: false,
-          implica: 'Azotea = trabajo en altura. Exige segurista.' }
-      ]
-    },
-    {
-      id: 'fabricacion',
-      nombre: 'Fabricación e instalación estructural',
-      icono: '🔩',
-      preguntas: [
-        { id: 'planos',      texto: '¿Hay planos de taller aprobados?',       tipo: 'bool', critica: true,
-          riesgo_si_no: 'Fabricar sin planos aprobados es la receta del retrabajo. El costo de corregir no está en este machote.' },
-        { id: 'grado',       texto: 'Grado de acero (ej. A36, A572)',         tipo: 'texto',critica: false },
-        { id: 'peso',        texto: 'Peso total estimado (kg)',               tipo: 'num',  critica: true },
-        { id: 'acabado',     texto: '¿Requiere galvanizado o pintura especial?', tipo: 'bool', critica: false,
-          implica: 'El acabado suele ser servicio externo con tiempo de entrega propio.' },
-        { id: 'izaje',       texto: '¿Se requiere maniobra con grúa?',        tipo: 'bool', critica: false }
-      ]
-    },
-    {
-      id: 'montaje',
-      nombre: 'Montaje de equipo / prensa',
-      icono: '🏭',
-      preguntas: [
-        { id: 'peso_eq',     texto: 'Peso del equipo (kg)',                   tipo: 'num',  critica: true },
-        { id: 'cimentacion', texto: '¿Requiere cimentación nueva?',           tipo: 'bool', critica: true,
-          implica: 'Cimentación nueva mete obra civil: es otra sección completa, con fraguado en la ruta crítica.' },
-        { id: 'ruta',        texto: '¿Hay ruta de acceso confirmada en sitio?',tipo: 'bool',critica: true,
-          riesgo_si_no: 'Si el equipo no entra, la maniobra cambia por completo: puede requerir desmontar estructura o grúa mayor.' },
-        { id: 'nivelacion',  texto: '¿Nivelación con topografía?',            tipo: 'bool', critica: false }
-      ]
-    }
+    { id: 'suministro', label: 'Suministro', icono: '📦', preguntas: [
+      { id: 'entrega', critica: true,  texto: '¿Dónde se entrega y quién descarga?', implica: 'Flete y maniobra', riesgo_si_no: 'El flete se descubre en obra' },
+      { id: 'importado', critica: true, texto: '¿Algún componente es de importación?', implica: 'Arancel, tiempo y tipo de cambio', riesgo_si_no: 'Margen comido por el tipo de cambio' },
+      { id: 'garantia', critica: false, texto: '¿Qué garantía pide el cliente?', implica: 'Reserva', riesgo_si_no: 'Reclamo sin reserva' },
+      { id: 'vigencia', critica: true,  texto: '¿Cuánto tiempo se sostiene el precio?', implica: 'Vigencia de la cotización', riesgo_si_no: 'Se compra a precio nuevo y se vende al viejo' }
+    ]},
+    { id: 'instalacion', label: 'Instalación', icono: '🔧', preguntas: [
+      { id: 'ventana', critica: true,  texto: '¿Hay ventana de paro de planta?', implica: 'Horas extras y turno', riesgo_si_no: 'Se trabaja de noche sin cobrarlo' },
+      { id: 'altura', critica: true,   texto: '¿Se trabaja en altura o espacio confinado?', implica: 'Seguridad y andamio', riesgo_si_no: 'Se para la obra por seguridad' },
+      { id: 'accesos', critica: false, texto: '¿Cómo se accede al punto de trabajo?', implica: 'Maniobra', riesgo_si_no: 'Grúa no considerada' },
+      { id: 'induccion', critica: false, texto: '¿El cliente pide inducción o certificaciones?', implica: 'Horas no productivas', riesgo_si_no: 'Se pierde el primer día' },
+      { id: 'obra_civil', critica: true, texto: '¿Hay obra civil de por medio?', implica: 'Subcontrato', riesgo_si_no: 'Alcance ajeno dentro del precio' }
+    ]},
+    { id: 'servicio', label: 'Servicio', icono: '🛠️', preguntas: [
+      { id: 'alcance_horas', critica: true, texto: '¿El servicio se cobra por horas o por entregable?', implica: 'Estructura del precio', riesgo_si_no: 'Servicio sin fin' },
+      { id: 'sitio', critica: true,  texto: '¿Es en sitio del cliente o remoto?', implica: 'Viáticos', riesgo_si_no: 'Viáticos no cobrados' },
+      { id: 'repeticion', critica: false, texto: '¿Es único o recurrente?', implica: 'Póliza', riesgo_si_no: 'Se regala la recurrencia' }
+    ]},
+    { id: 'ingenieria', label: 'Ingeniería', icono: '📐', preguntas: [
+      { id: 'entregable', critica: true, texto: '¿Cuál es el entregable exacto?', implica: 'Horas de diseño y dibujo', riesgo_si_no: 'Revisiones infinitas' },
+      { id: 'revisiones', critica: true, texto: '¿Cuántas rondas de revisión incluye?', implica: 'Tope de horas', riesgo_si_no: 'Horas sin tope' },
+      { id: 'firma', critica: false, texto: '¿Requiere firma de perito o memoria de cálculo?', implica: 'Costo externo', riesgo_si_no: 'Perito no presupuestado' },
+      { id: 'as_built', critica: false, texto: '¿Se entregan planos As-Built?', implica: 'Horas de cierre', riesgo_si_no: 'Cierre documental regalado' }
+    ]}
   ];
 
   const ESTADOS = {
-    borrador:  { etiqueta: 'Borrador',           color: 'gris'  },
-    revision:  { etiqueta: 'Listo para revisión', color: 'ambar' },
-    aprobado:  { etiqueta: 'Aprobado',            color: 'verde' },
-    confirmado:{ etiqueta: 'Confirmado',          color: 'azul'  },
-    devuelto:  { etiqueta: 'Devuelto',            color: 'rojo'  }
+    borrador:   { label: 'Borrador',   color: '#8b8b8b' },
+    revision:   { label: 'En revisión', color: '#c07a00' },
+    confirmado: { label: 'Confirmado', color: '#1a7f37' },
+    orden:      { label: 'Orden',      color: '#0969da' }
   };
 
-  // ── Helpers de construcción ───────────────────────────────────────────────
   let _n = 0;
   const uid = (p) => p + '-' + (++_n);
-  const bom = (desc, marca, modelo, cant, unidad, pu, origen, moneda) => ({
-    id: uid('b'), desc, marca: marca || '', modelo: modelo || '',
-    cant, unidad, pu: (pu === null || pu === undefined) ? null : pu,
-    origen: origen || 'sin_dato', moneda: moneda || 'MXN'
-  });
-  const mo = (oficio, horas, personas, costo_hora, turno, horas_dobles) => ({
-    id: uid('m'), oficio: oficio || '', horas, personas,
-    costo_hora: costo_hora === null ? null : costo_hora,
-    turno: turno || 'normal', horas_dobles: horas_dobles || 0
-  });
-  const sec = (nombre, bomArr, moArr) => ({ id: uid('s'), nombre, bom: bomArr || [], mo: moArr || [] });
 
-  // ═══ MACHOTES DEMO ════════════════════════════════════════════════════════
+  /** Una partida de materiales o servicios. REAL: el orden de los argumentos
+   *  sigue el de las columnas del machote. */
+  const p = (qty, unidad, tipo, descripcion, modelo, marca, pu, moneda, link, comentario) =>
+    ({ qty, unidad, tipo, descripcion, modelo: modelo || '', marca: marca || '',
+       pu, moneda: moneda || 'MXN', link: link || '', comentario: comentario || '' });
+
+  /** Un renglón de mano de obra. REAL: qty son horas, personas es gente. */
+  const mo = (rol, qty, personas, pu, moneda) =>
+    ({ rol, qty, personas, pu: (pu === undefined ? C.ROL[rol].pu : pu), moneda: moneda || 'MXN' });
+
+  const sec = (nombre, partidas, moArr) =>
+    ({ id: uid('s'), nombre, partidas: partidas || [], mo: moArr || [] });
+
+  // REAL — el equipo de venta de la plantilla, a 0,25 cada uno.
+  const EQUIPO_PLANTILLA = () => ([
+    { nombre: 'ALDO',  pct: 0.25 }, { nombre: 'ANGEL', pct: 0.25 },
+    { nombre: 'DIEGO', pct: 0.25 }, { nombre: 'MONTY', pct: 0.25 }
+  ]);
+  const OPS_PLANTILLA = () => ([
+    { nombre: 'SUPERVISOR FTS', pct: 0.25 }, { nombre: 'SEGURIDAD', pct: 0.25 },
+    { nombre: 'TECNICO 1', pct: 0.25 }, { nombre: 'TECNICO 2', pct: 0.25 }
+  ]);
+
+  const base = (extra) => Object.assign({
+    moneda: 'MXN', tc: 18.40, factor_proteccion: 0.03,
+    margenes: Object.assign({}, C.MARGENES_PLANTILLA),
+    comision_fts: C.COMISION_FTS_PLANTILLA,
+    comision_cliente: 0,
+    margen_deseado: C.MARGEN_DESEADO_PLANTILLA,
+    escenario: 'margen_deseado',
+    reparto: Object.assign({}, C.REPARTO_PLANTILLA),
+    equipo_venta: EQUIPO_PLANTILLA(),
+    equipo_operaciones: OPS_PLANTILLA(),
+    // REAL — el machote tiene dos renglones nominales del lado cliente
+    // ("NOMBRE USUARIO 1/2"). Por omisión el primero se lleva todo.
+    equipo_cliente: [{ nombre: 'Contacto cliente 1', pct: 1 }]
+  }, extra);
+
   const MACHOTES = [
 
-    // ── 1 · Nalco · clima · CONFIRMADO (sano, sirve de referencia) ──────────
-    {
-      id: 'MCH-2026-041',
-      nombre: 'Mantenimiento mayor a 6 equipos de clima',
-      cliente: 'Nalco de México',
-      planta: 'Topo Chico, Monterrey',
-      estado: 'confirmado',
-      analista: 'A. Ruiz',
-      am: 'Montalvo',
-      creado: '2026-08-04',
-      moneda: 'MXN', tc: 18.90, factor_proteccion: 0.03,
-      diagnostico: {
-        tipo: 'clima',
-        alcance: 'Mantenimiento mayor a 6 unidades paquete de 10 TR: limpieza de serpentines, ' +
-                 'cambio de filtros, revisión de compresores, carga de refrigerante y pruebas de operación.',
-        respuestas: { equipos: 6, tonelaje: 10, refrigerante: true, acceso: false, azotea: true }
-      },
-      ubicacion: { ciudad: 'Monterrey', foraneo: false, dias_obra: 6, personas_cuadrilla: 4 },
+    // ── 1. Sano, con hueco de precio. Forma tomada de "Paso de Gato SO11782".
+    base({
+      id: 'M-1041', nombre: 'Paso de gato antiderrapante en acero galvanizado',
+      cliente: 'Johnson Controls Enterprises', so: null, estado: 'borrador',
+      analista: 'Analista de propuestas', fecha: '2026-08-28',
+      margenes: { programador: 4.4, mano_obra: 2.5, materiales: 2.5, servicios: 1.8 },
+      diagnostico: { tipo: 'instalacion', respuestas: { ventana: 'Sí, fin de semana', altura: 'Sí, plataforma a 4 m', obra_civil: 'No' } },
       secciones: [
-        sec('Insumos y refacciones', [
-          bom('Filtro plisado 20x25x2', 'Filtrex', 'FP-2025', 24, 'pza', 185, 'lista'),
-          bom('Refrigerante R-410A', 'Chemours', 'Opteon', 60, 'kg', 640, 'cotizacion'),
-          bom('Contactor 40 A 3P', 'Schneider', 'LC1D40', 6, 'pza', 1240, 'cotizacion'),
-          bom('Químico limpiador de serpentín', 'Nu-Calgon', 'Evap-Foam', 12, 'pza', 420, 'historico')
+        sec('Suministro y fabricación', [
+          p(1, 'Pieza', 'Servicios', 'Suministro de sistema de paso de gato antiderrapante', 'Subcontratado', '', 800000, 'MXN', 'https://proveedor.example/cotiza-4417'),
+          p(40, 'Horas', 'Materiales', 'Ingeniería de detalle (recorrido, adaptaciones, interfaz con escalera)', 'Ingeniero Senior', '', 200, 'MXN', ''),
+          p(20, 'Horas', 'Materiales', 'Elaboración y adecuación de planos de instalación', 'Ingeniero de Diseño', '', 200, 'MXN', ''),
+          p(20, 'Horas', 'Materiales', 'Memoria de cálculo', 'Ingeniero Senior', '', 200, 'MXN', ''),
+          // Hueco a propósito: partida sin precio.
+          p(8, 'Pieza', 'Materiales', 'Anclaje químico para fijación en losa', 'HIT-RE 500', 'Hilti', null, 'MXN', '')
         ], [
-          mo('mecanico', 40, 2, 185, 'normal', 0),
-          mo('electrico', 24, 1, 195, 'normal', 0),
-          mo('segurista', 40, 1, 150, 'normal', 0),
-          mo('supervisor', 20, 1, 280, 'normal', 0)
+          mo('supervisor_sr', 60, 1),
+          mo('tecnicos', 60, 3),
+          mo('he_tecnicos', 12, 3)
         ]),
-        sec('Maniobra y seguridad en azotea', [
-          bom('Renta de andamio certificado', 'Layher', '', 1, 'lote', 8600, 'cotizacion'),
-          bom('Línea de vida temporal', 'MSA', 'Latchways', 1, 'lote', 5400, 'cotizacion')
+        sec('Instalación en sitio', [
+          p(1, 'Servicio', 'Servicios', 'Maniobra con grúa de 20 t', '', 'Subcontratado', 28000, 'MXN', 'https://proveedor.example/gruas'),
+          p(200, 'Horas', 'Materiales', 'Seguimiento durante instalación', 'Project Manager', '', 200, 'MXN', '')
         ], [
-          mo('ayudante', 30, 2, 110, 'normal', 0)
+          mo('supervisor_jr', 80, 1),
+          mo('tecnicos', 80, 4)
         ])
-      ],
-      generales: {
-        flete:       { monto: 4200,  nota: 'Traslado de herramienta y andamio' },
-        importacion: { monto: 0,     nota: '' },
-        viaticos:    { monto: 0,     nota: 'Local, no aplica' },
-        hospedaje:   { monto: 0,     nota: 'Local, no aplica' },
-        comision_broker: { pct: 0,   nota: 'Venta directa' }
-      },
-      venta: { precio: 147000 },
-      widgets: [],
-      firma: { por: 'Montalvo', cuando: '2026-08-12 11:20', margen: 0.2435, costo_estimado: 111200 }
-    },
+      ]
+    }),
 
-    // ── 2 · Mission Foods · mezanine · APROBADO ─────────────────────────────
-    {
-      id: 'MCH-2026-052',
-      nombre: 'Fabricación e instalación de mezanine 12 × 8 m',
-      cliente: 'Mission Foods',
-      planta: 'Planta Escobedo',
-      estado: 'aprobado',
-      analista: 'A. Ruiz',
-      am: 'Montalvo',
-      creado: '2026-08-18',
-      moneda: 'MXN', tc: 18.90, factor_proteccion: 0.05,
-      diagnostico: {
-        tipo: 'fabricacion',
-        alcance: 'Fabricación en taller e instalación en sitio de mezanine estructural de 96 m² ' +
-                 'con escalera de acceso, barandal y rejilla Irving. Capacidad 500 kg/m².',
-        respuestas: { planos: true, grado: 'A36', peso: 9800, acabado: true, izaje: true }
-      },
-      ubicacion: { ciudad: 'Escobedo', foraneo: false, dias_obra: 25, personas_cuadrilla: 6 },
+    // ── 2. Margen por debajo del piso. Forma de "Adecuaciones toma sanitaria SO11772".
+    base({
+      id: 'M-1042', nombre: 'Adecuaciones de toma sanitaria en codo',
+      cliente: 'Nalco de México · Topo Chico', so: 'SO11772', estado: 'revision',
+      analista: 'Analista de propuestas', fecha: '2026-08-19',
+      comision_fts: 0.055, comision_cliente: 0.05,
+      margen_deseado: 0.12,
+      diagnostico: { tipo: 'instalacion', respuestas: { ventana: 'No definida', altura: 'No', obra_civil: 'No' } },
       secciones: [
-        sec('Estructura principal', [
-          bom('Viga IPR 12" × 40 lb/ft', 'Ternium', 'IPR-305', 96, 'm', 1180, 'cotizacion'),
-          bom('Placa base 12mm A36', 'Ternium', '', 340, 'kg', 38, 'lista'),
-          bom('Ángulo 3" × 1/4"', 'Ternium', '', 180, 'm', 210, 'lista'),
-          bom('Anclas químicas M16', 'Hilti', 'HIT-RE 500', 64, 'pza', 340, 'cotizacion')
+        sec('Adecuación', [
+          p(2, 'Pieza', 'Materiales', 'Codo sanitario 2" acero inoxidable 316L', 'ISO 1127', 'Sanitec', 1850, 'MXN', 'https://proveedor.example/codo-316l'),
+          p(4, 'Pieza', 'Materiales', 'Abrazadera sanitaria clamp 2"', '', 'Sanitec', 320, 'MXN', 'https://proveedor.example/clamp'),
+          p(1, 'Servicio', 'Servicios', 'Pulido sanitario y pasivado', '', 'Subcontratado', 2400, 'MXN', '')
         ], [
-          mo('soldador', 180, 3, 210, 'normal', 0),
-          mo('ayudante', 180, 3, 110, 'normal', 0),
-          mo('supervisor', 96, 1, 280, 'normal', 0)
-        ]),
-        sec('Piso, escalera y barandal', [
-          bom('Rejilla Irving 1" × 3/16"', 'Irving', 'IS-38', 96, 'm²', 1420, 'cotizacion'),
-          bom('Perfil escalera + peldaños antiderrapantes', '', '', 1, 'jgo', 24800, 'historico'),
-          bom('Barandal tubular 2" con rodapié', '', '', 40, 'm', 890, 'historico')
-        ], [
-          mo('soldador', 96, 2, 210, 'normal', 8),
-          mo('ayudante', 96, 2, 110, 'normal', 8)
-        ]),
-        sec('Acabado y montaje en sitio', [
-          bom('Galvanizado por inmersión', 'Galvak', '', 9800, 'kg', 22, 'cotizacion'),
-          bom('Renta de grúa 20 t (2 días)', '', '', 2, 'serv', 18500, 'cotizacion')
-        ], [
-          mo('mecanico', 72, 3, 185, 'normal', 0),
-          mo('segurista', 72, 1, 150, 'normal', 0)
+          mo('supervisor_sr', 4, 1),
+          mo('tecnicos', 8, 2)
         ])
-      ],
-      generales: {
-        flete:       { monto: 26000, nota: 'Taller → planta, 3 viajes con plataforma' },
-        importacion: { monto: 0,     nota: '' },
-        viaticos:    { monto: 0,     nota: 'Local' },
-        hospedaje:   { monto: 0,     nota: 'Local' },
-        comision_broker: { pct: 0,   nota: 'Venta directa' }
-      },
-      venta: { precio: 1260000 },
-      widgets: [
-        { id: 'w1', tipo: 'area_rejilla', etiqueta: 'Área de mezanine → rejilla',
-          params: { largo: 12, ancho: 8, desperdicio: 0.05 }, resultado: 100.8, unidad: 'm²' }
-      ],
-      firma: null
-    },
+      ]
+    }),
 
-    // ── 3 · Clarios · prensa · LISTO PARA REVISIÓN (con problemas a propósito) ──
-    {
-      id: 'MCH-2026-058',
-      nombre: 'Instalación de prensa hidráulica 400 t',
-      cliente: 'Clarios',
-      planta: 'Planta García',
-      estado: 'revision',
-      analista: 'A. Ruiz',
-      am: 'Montalvo',
-      creado: '2026-08-26',
-      moneda: 'MXN', tc: 18.90, factor_proteccion: 0,   // ← factor 0 con partidas USD
-      diagnostico: {
-        tipo: 'montaje',
-        alcance: 'Recepción, maniobra, nivelación y puesta en marcha de prensa hidráulica de 400 t.',
-        respuestas: { peso_eq: 42000, cimentacion: true, ruta: true, nivelacion: true }
-      },
-      ubicacion: { ciudad: 'García', foraneo: false, dias_obra: 18, personas_cuadrilla: 8 },
+    // ── 3. Mezcla de monedas sin declarar tipo de cambio. Forma de un machote USD.
+    base({
+      id: 'M-1043', nombre: 'Cooling system for maintenance offices',
+      cliente: 'Calbee America Incorporated', so: null, estado: 'borrador',
+      analista: 'Analista de propuestas', fecha: '2026-08-30',
+      moneda: 'USD', tc: 0, factor_proteccion: 0,
+      comision_fts: 0.06, comision_cliente: 0.05,
+      diagnostico: { tipo: 'suministro', respuestas: { entrega: 'Planta Fayetteville', importado: 'Sí, equipo de EUA' } },
       secciones: [
-        sec('Obra civil de cimentación', [
-          bom('Concreto f\'c 300 kg/cm² premezclado', 'Cemex', '', 68, 'm³', 3150, 'cotizacion'),
-          bom('Acero de refuerzo #8', 'Deacero', '', 5400, 'kg', 26, 'lista'),
-          bom('Anclas de sujeción 1-1/4" grado 8', '', '', 32, 'pza', null, 'sin_dato') // ← sin precio
+        sec('Equipo', [
+          p(2, 'Pieza', 'Materiales', 'Mini split 2 ton inverter', 'MSZ-GL24NA', 'Mitsubishi', 1180, 'USD', 'https://www.homedepot.com/p/example'),
+          // Renglón en otra moneda: el machote real los sumaría sin convertir.
+          p(1, 'Lote', 'Materiales', 'Tubería de cobre, aislante y soportería', '', '', 24500, 'MXN', ''),
+          p(1, 'Servicio', 'Servicios', 'Carga de refrigerante y arranque', '', '', 640, 'USD', '')
         ], [
-          mo('ayudante', 240, 4, 110, 'normal', 0),
-          mo('', 120, 2, 185, 'normal', 0)   // ← mano de obra SIN OFICIO
-        ]),
-        sec('Maniobra e izaje', [
-          bom('Grúa 120 t con operador (3 días)', '', '', 3, 'serv', 62000, 'cotizacion'),
-          bom('Patines hidráulicos y rodillos', 'Hilman', '', 1, 'lote', 4200, 'estimado')
-        ], [
-          mo('mecanico', 144, 4, 185, 'nocturno', 24),
-          mo('segurista', 144, 1, 150, 'nocturno', 24),
-          mo('supervisor', 144, 1, 280, 'nocturno', 0)
-        ]),
-        sec('Conexión eléctrica e hidráulica', [
-          bom('Cable THHN 4/0 AWG', 'Condumex', '', 320, 'm', 268, 'lista'),
-          bom('Interruptor principal 400 A', 'Square D', 'PowerPact', 1, 'pza', 4850, 'cotizacion', 'USD'),
-          bom('Manguera hidráulica alta presión', 'Parker', '', 60, 'm', 92, 'cotizacion', 'USD'),
-          bom('Tubería conduit rígido 3"', '', '', 180, 'm', null, 'sin_dato')  // ← sin precio
-        ], [
-          mo('electrico', 160, 3, 195, 'normal', 16),
-          mo('mecanico', 120, 2, 185, 'normal', 0)
+          mo('supervisor_sr', 16, 1, 200, 'USD'),
+          mo('tecnicos', 32, 2, 140, 'USD')
         ])
-      ],
-      generales: {
-        flete:       { monto: 38000, nota: 'Maniobra especial' },
-        importacion: { monto: 0,     nota: '' },        // ← hay USD y no hay importación
-        viaticos:    { monto: 0,     nota: '' },
-        hospedaje:   { monto: 0,     nota: '' },
-        comision_broker: { pct: 14,  nota: 'Broker de planta' }  // ← comisión alta
-      },
-      venta: { precio: 2380000 },
-      widgets: [],
-      firma: null
-    },
+      ]
+    }),
 
-    // ── 4 · Mondelez · subestación · BORRADOR (foráneo, muchos huecos) ──────
-    {
-      id: 'MCH-2026-063',
-      nombre: 'Subestación 500 kVA y alimentadores',
-      cliente: 'Mondelez',
-      planta: 'Planta Salinas Victoria',
-      estado: 'borrador',
-      analista: 'A. Ruiz',
-      am: 'Ricardo',
-      creado: '2026-08-29',
-      moneda: '', tc: 0, factor_proteccion: 0,   // ← moneda SIN DECLARAR
-      diagnostico: {
-        tipo: 'electrico',
-        alcance: '',                              // ← alcance vacío
-        respuestas: { unifilar: false, tension: 13800, libranza: true, transformador: 'FTS',
-                      cortocircuito: false, altura: true, clasificada: false, perito: null }
-      },
-      // Foráneo, cuadrilla 6 personas, 15 días — y CERO hospedaje/viáticos
-      ubicacion: { ciudad: 'Salinas Victoria', foraneo: true, dias_obra: 15, personas_cuadrilla: 6 },
+    // ── 4. Reparto de comisiones descuadrado: el defecto real de SO11782.
+    base({
+      id: 'M-1044', nombre: 'Modificaciones en pulidores',
+      cliente: 'Nalco de México · Topo Chico', so: 'SO11738', estado: 'revision',
+      analista: 'Analista de propuestas', fecha: '2026-08-22',
+      comision_fts: 0.06, comision_cliente: 0.05,
+      equipo_venta: [
+        { nombre: 'ALDO',  pct: 0.20 }, { nombre: 'ANGEL', pct: 0.15 },
+        { nombre: 'DIEGO', pct: 0.05 }, { nombre: 'MONTY', pct: 0.70 },
+        { nombre: 'Rissia', pct: 0.15 }
+      ],
+      diagnostico: { tipo: 'servicio', respuestas: { alcance_horas: 'Por entregable', sitio: 'En sitio' } },
       secciones: [
-        sec('Subestación', [
-          bom('Transformador 500 kVA 13.8kV-480V', 'Prolec', 'TP-500', 1, 'pza', 41500, 'cotizacion', 'USD'),
-          bom('Celda de media tensión', 'Schneider', 'SM6', 1, 'pza', null, 'sin_dato'),
-          bom('Apartarrayos 15 kV', '', '', 3, 'pza', null, 'sin_dato'),
-          bom('Malla de tierra cobre desnudo 4/0', 'Condumex', '', 240, 'm', 315, 'estimado')
+        sec('Modificación mecánica', [
+          p(3, 'Pieza', 'Materiales', 'Rodamiento lineal reforzado', 'LM25UU', 'THK', 4200, 'MXN', 'https://proveedor.example/lm25uu'),
+          p(1, 'Lote', 'Materiales', 'Placa de acero A36 y consumibles de soldadura', '', '', 38000, 'MXN', ''),
+          p(1, 'Servicio', 'Servicios', 'Maquinado externo de bujes', '', 'Taller externo', 16500, 'MXN', '')
         ], [
-          mo('electrico', 200, 3, 195, 'normal', 0),
-          mo('ayudante', 200, 3, 110, 'normal', 0)
+          mo('programador', 24, 1),
+          mo('supervisor_sr', 40, 1),
+          mo('tecnicos', 120, 3),
+          mo('he_supervisor', 16, 1)
         ]),
-        sec('Alimentadores y canalización', [
-          bom('Cable XLP 15 kV 1/0', 'Condumex', '', 620, 'm', null, 'sin_dato'),
-          bom('Charola portacables 24"', '', '', 180, 'm', 1450, 'estimado'),
-          bom('Registro tipo pozo', '', '', 6, 'pza', 8900, 'historico')
-        ], [])   // ← sección con material y CERO mano de obra
-      ],
-      generales: {
-        flete:       { monto: 0, nota: '' },
-        importacion: { monto: 0, nota: '' },
-        viaticos:    { monto: 0, nota: '' },   // ← foráneo sin viáticos
-        hospedaje:   { monto: 0, nota: '' },   // ← foráneo sin hospedaje
-        comision_broker: { pct: 0, nota: '' }
-      },
-      venta: { precio: 0 },                     // ← sin precio de venta
-      widgets: [
-        { id: 'w2', tipo: 'perimetro_postes', etiqueta: 'Perímetro de malla → registros',
-          params: { perimetro: 240, separacion: 40 }, resultado: 7, unidad: 'pza' }
-      ],
-      firma: null
+        sec('Puesta en marcha', [
+          p(1, 'Servicio', 'Servicios', 'Pruebas con producto y ajuste fino', '', '', 9800, 'MXN', '')
+        ], [
+          mo('supervisor_sr', 16, 1),
+          mo('tecnicos', 16, 2)
+        ])
+      ]
+    })
+  ];
+
+  // Órdenes ya confirmadas: lo que la estación 3.0 tiene que cerrar.
+  const ORDENES = [
+    {
+      id: 'O-9001', machote: 'M-1042', so: 'SO11772',
+      cliente: 'Nalco de México · Topo Chico',
+      nombre: 'Adecuaciones de toma sanitaria en codo',
+      fecha_confirmacion: '2026-08-19', monto: 13362, moneda: 'MXN',
+      entregables: null, handoff: null
+    },
+    {
+      id: 'O-9002', machote: null, so: 'SO11737',
+      cliente: 'Nalco de México · Topo Chico',
+      nombre: 'Adecuaciones eléctricas y de control para diferencial de presión',
+      fecha_confirmacion: '2026-08-17', monto: 305840, moneda: 'MXN',
+      entregables: null, handoff: null
     }
   ];
 
-  // ── Órdenes demo (pantalla 3) ─────────────────────────────────────────────
-  const ORDENES = [
-    { id: 'SO12043', cliente: 'Clarios', machote: 'MCH-2026-058',
-      lineas: [
-        { desc: 'Instalación de prensa hidráulica 400 t — obra civil', cant: 1, pu: 980000 },
-        { desc: 'Maniobra e izaje especializado', cant: 1, pu: 640000 },
-        { desc: 'Conexión eléctrica e hidráulica', cant: 1, pu: 760000 }
-      ], moneda: 'MXN', estado: 'borrador', fecha: '2026-09-01' },
-
-    { id: 'SO12051', cliente: 'Mission Foods', machote: 'MCH-2026-052',
-      lineas: [
-        { desc: 'Fabricación de mezanine estructural 96 m²', cant: 1, pu: 820000 },
-        { desc: 'Galvanizado por inmersión', cant: 1, pu: 215600 },
-        { desc: 'Montaje en sitio con grúa', cant: 1, pu: 144400 }
-      ], moneda: 'MXN', estado: 'borrador', fecha: '2026-09-02' },
-
-    { id: 'SO12058', cliente: 'Mondelez', machote: 'MCH-2026-063',
-      lineas: [
-        { desc: 'Subestación 500 kVA llave en mano', cant: 1, pu: 1650000 },
-        { desc: 'Alimentadores y canalización', cant: 1, pu: 480000 }
-      ], moneda: 'MXN', estado: 'borrador', fecha: '2026-09-02' },
-
-    { id: 'SO12060', cliente: 'Nalco de México', machote: null,   // ← sin machote: margen a mano
-      lineas: [
-        { desc: 'Servicio de mantenimiento correctivo — bomba centrífuga', cant: 1, pu: 96000 }
-      ], moneda: 'MXN', estado: 'borrador', fecha: '2026-09-02' }
-  ];
-
-  G.DEMO = { ORIGENES_PRECIO, OFICIOS, UNIDADES, TIPOS_PROYECTO, ESTADOS, MACHOTES, ORDENES };
+  G.DEMO = {
+    UNIDADES, TIPOS_PROYECTO, ESTADOS, MACHOTES, ORDENES,
+    ROLES: C.ROLES, GRUPOS: C.GRUPOS, TIPOS: C.TIPOS, ESCENARIOS: C.ESCENARIOS
+  };
 })(window);
