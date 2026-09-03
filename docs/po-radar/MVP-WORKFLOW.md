@@ -7,8 +7,9 @@ Lo que hace, en una frase: cada 15 minutos lee el buzón de `estebandelacruz@fts
 de los correos nuevos traen una orden de compra, y reenvía esos desde `sales@fts.mx` **con sus
 adjuntos originales**, encabezados por un resumen de folio, cliente, monto y por qué se detectó.
 
-El destino del MVP es el propio `estebandelacruz@fts.mx`. Cuando Esteban dé el visto bueno se
-cambia el campo `destino` a `newordersnotification@fts.mx` y no hay nada más que tocar.
+El reenvío tiene **dos destinos según la certeza** (§8): lo que el sistema afirma con seguridad
+(≥90%) va al grupo `newordersnotification@fts.mx`; lo dudoso se queda en el buzón de Esteban. Así el
+grupo no se quema con ruido y no se pierde nada — cambia quién lo ve, no si se ve.
 
 ---
 
@@ -23,7 +24,8 @@ Manual ─────────┴→ Set - config → Code - Ventana → HTT
               → Code - Armar prompt → HTTP - Clasificador → Code - Decidir
               → IF - reenviar?
                   · no → Code - Resumen
-                  · sí → Code - Build sendMail → IF - enviar de verdad?
+                  · sí → Code - Build sendMail (elige destino por certeza, §8)
+                     → IF - enviar de verdad?
                             · dry  → Code - Resumen
                             · real → HTTP - sendMail → Code - Resumen
 ```
@@ -41,7 +43,9 @@ Todo lo ajustable vive en el nodo `Set - config`, en texto plano, sin tocar cód
 |---|---|---|
 | `mailbox_lectura` | `estebandelacruz@fts.mx` | de qué buzón se lee |
 | `mailbox_envio` | `sales@fts.mx` | quién firma el reenvío (nunca sale del payload del correo) |
-| `destino` | `estebandelacruz@fts.mx` | a dónde llega el reenvío. **Aquí va `newordersnotification@fts.mx` cuando se cumplan los criterios de §8** |
+| `destino` | `estebandelacruz@fts.mx` | a dónde llega lo **dudoso** |
+| `destino_grupo` | `newordersnotification@fts.mx` | a dónde llega lo **cierto** (§8) |
+| `umbral_grupo` | `90` | de qué precisión para arriba se avisa al grupo |
 | `modo_envio` | `real` | `dry` arma el correo completo y **no** lo manda |
 | `ventana_min` | `90` | solape de lectura, en minutos |
 | `umbral_reenvio` | `45` | de qué precisión para abajo ya no se reenvía |
@@ -187,29 +191,42 @@ Si un día no llega, el radar está caído.
 Marca **con incidencias** en ámbar si hubo fallos de adjunto o del clasificador. A partir de aquí la
 **ausencia** del correo es la alarma, que es la única forma de que el silencio signifique algo.
 
-## 8. Cuándo apuntarlo al grupo, y con qué criterio
+## 8. Doble destino: el grupo solo ve lo cierto
 
-Hoy el reenvío va al buzón de Esteban. El destino final es `newordersnotification@fts.mx`, que es un
-grupo de distribución: **un falso positivo ahí no cuesta una mirada, cuesta credibilidad.** Un
-sistema nuevo que se equivoca en su primera semana se silencia y ya no se vuelve a leer — que es
-justo cómo el reconocimiento facial pasó semanas apagado sin que nadie lo notara (hallazgo #14).
+`newordersnotification@fts.mx` es un grupo de distribución, y ahí **un falso positivo no cuesta una
+mirada, cuesta credibilidad**: un sistema nuevo que se equivoca en su primera semana se silencia y
+ya no se vuelve a leer — que es justo cómo el reconocimiento facial pasó semanas apagado sin que
+nadie lo notara (hallazgo #14).
 
-Lo que ya está medido, y lo que no:
+La salida no fue esperar, fue **partir el destino por certeza**:
 
-- **Precisión: buena.** 200 correos de dos ventanas, 2 órdenes reales detectadas al 96%, 0 falsos
-  positivos después de silenciar el aviso de Ariba.
-- **Recall: sin medir.** No sabemos cuántas órdenes deja pasar, y **esperar no lo mide**: apuntar al
-  buzón de Esteban una semana más no dice nada sobre lo que el radar no vio.
+- **precisión ≥ 90 y el clasificador confirmó** → va al grupo.
+- **cualquier otra cosa** → se queda en el buzón de Esteban, como hasta ahora.
 
-Por eso el criterio para el cambio no es "que pase el tiempo" sino esto:
+Esto separa las dos preguntas que estaban enredadas. **La precisión decide qué ve el grupo; el
+recall no se toca**, porque nada deja de reenviarse: solo cambia quién lo recibe. El grupo falla
+hacia el silencio, el buzón de Esteban falla hacia el ruido, y cada uno tolera bien su propio error.
 
-1. **Una semana hábil de operación** con el latido diario en verde, para ver el ruido de una semana
-   normal y no solo el de las dos ventanas muestreadas.
-2. **Cruce contra Odoo**, que es la única prueba de recall al alcance sin FASE B: toda SO confirmada
-   en esa semana tuvo una orden de compra que llegó por correo. Si el radar reenvió una por cada SO
-   confirmada, el recall es bueno; las que falten nombran los formatos que faltan por cubrir.
+Los números lo respaldan: las dos órdenes reales medidas dieron **96%**, y los dos falsos positivos
+observados (el aviso diario de Ariba) dieron **51-57%**. Un corte en 90 los separa limpiamente.
 
-Con esas dos, el cambio es **un campo** del nodo `Set - config`.
+Se exige además `estado === 'enviado'`, no solo el umbral: un `error_clasificador` nunca llega al
+grupo aunque su evidencia estructural sea alta por sí sola.
+
+**Las dos ramas están verificadas con la misma orden**, no deducidas:
+
+| Corrida | `umbral_grupo` | Precisión | Destino resuelto |
+|---|---|---|---|
+| `85705` | 90 | 96% | `newordersnotification@fts.mx` |
+| `85747` | 99 | 96% | `estebandelacruz@fts.mx` |
+
+### Lo que sigue sin medirse
+
+**El recall.** No sabemos cuántas órdenes deja pasar el radar, y esperar no lo mide. La prueba al
+alcance sin FASE B es **cruzar contra Odoo**: toda SO confirmada en una semana tuvo una orden de
+compra que llegó por correo. Si el radar reenvió una por cada SO confirmada, el recall es bueno; las
+que falten nombran los formatos que faltan por cubrir. Ese cruce es el siguiente paso natural, y no
+bloquea nada de lo que ya corre.
 
 ## 9. Lo que falta y lo que conviene vigilar
 
