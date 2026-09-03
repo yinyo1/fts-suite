@@ -22,7 +22,7 @@
   // ── config ──
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
-  var IP_BUILD = '0.5.34';                // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.35';                // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -947,11 +947,15 @@
         // Dice lo ÚNICO que sabemos: el apunte volvió a abrirse completo. No dice "el bill se
         // canceló" como hecho — es la causa habitual, no la única (también se desata a mano).
         var _rd = Math.abs(Number(r.res_apunte) || 0);
+        // Texto CORTO a propósito: la revisión visual en Chromium mostró que la versión larga
+        // ocupaba 4 renglones (110 px) contra los 2-3 de sus vecinas, y "la conciliación se
+        // deshizo" repetía lo que el propio nombre del estado ya dice. La explicación completa
+        // vive en el title, que es donde no cuesta alto de fila.
         // NO promete que se pueda volver a conciliar desde aquí. En Odoo la línea sigue con
         // is_reconciled=true, así que el guard LINE_YA_CONCILIADA la rechazaría: hoy esto se
         // resuelve en Odoo, no en el panel. Por eso tampoco lleva chevron de acordeón (el
         // chevron sale con !t.ok) — ofrecer un botón que siempre falla sería peor que no darlo.
-        return '<span class="ip-est tra" title="El apunte de la cuenta 17 recuperó el importe COMPLETO: la conciliación se deshizo entera (lo habitual es que se haya cancelado el bill, pero también pudo desatarse a mano). La línea sigue marcada conciliada en Odoo porque la receta vació la cuenta de suspense y ese flag ya no puede volver atrás. Ojo: NO se puede volver a conciliar desde este panel — el guard la rechaza por ya-conciliada. Hoy se resuelve en Odoo.">⟲ Desconciliada</span> <span class="ip-est-bill">la conciliación se deshizo · ' + money(_rd) + ' abiertos · se resuelve en Odoo</span>';
+        return '<span class="ip-est tra" title="El apunte de la cuenta 17 recuperó el importe COMPLETO: la conciliación se deshizo entera (lo habitual es que se haya cancelado el bill, pero también pudo desatarse a mano). La línea sigue marcada conciliada en Odoo porque la receta vació la cuenta de suspense y ese flag ya no puede volver atrás. Ojo: NO se puede volver a conciliar desde este panel — el guard la rechaza por ya-conciliada. Hoy se resuelve en Odoo.">⟲ Desconciliada</span> <span class="ip-est-bill">' + money(_rd) + ' abiertos · resolver en Odoo</span>';
       }
       if (st === 'noevaluada') return '<span class="ip-est nev" title="Fuera del alcance del motor de conciliación (journal_id 61 fijo). No es que no haya factura: no se buscó.">◌ No evaluada</span>';
       // Ninguno de los dos va en rojo: no son un error ni trabajo atorado del equipo.

@@ -317,7 +317,10 @@ async function escenarioReal() {
   // Odoo desata la conciliación (el apunte vuelve a abrirse por el importe COMPLETO)
   // pero is_reconciled NO puede volver a false: la receta vació la suspense para siempre.
   has('9003 con el bill cancelado → estado propio, no "Conciliada"', html, 'Desconciliada');
-  has('9003 dice por qué, sin inventar la causa', html, 'la conciliación se deshizo');
+  // La explicación vive en el TOOLTIP, no en la celda: la revisión visual mostró que el
+  // texto largo se comía 4 renglones. La celda dice el saldo y a dónde ir; el title, el porqué.
+  has('el porqué vive en el tooltip, no en la celda', html, 'la conciliación se deshizo entera');
+  hasNot('la celda NO repite el porqué (era el texto de 4 renglones)', html, '>la conciliación se deshizo ·');
   has('9003 declara el importe que volvió a quedar abierto', html, '$54.00');
   // No prometer lo que el motor no puede cumplir: el guard LINE_YA_CONCILIADA la rechaza,
   // porque en Odoo sigue con is_reconciled=true.
