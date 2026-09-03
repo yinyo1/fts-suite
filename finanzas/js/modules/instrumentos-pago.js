@@ -22,7 +22,7 @@
   // ── config ──
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
-  var IP_BUILD = '0.5.32';                // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.33';                // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -392,7 +392,7 @@
       if (k === 'ok') {
         var m = {
           conciliada: 'Conciliada', parcial: 'Conciliada parcial', preconciliada: 'Pre-conciliada',
-          condoc: 'Con documento', sindoc: 'Sin documento', noevaluada: 'No evaluada',
+          desconciliada: 'Desconciliada', condoc: 'Con documento', sindoc: 'Sin documento', noevaluada: 'No evaluada',
           devolucion_pend: 'Devolución', fondeo_pend: 'Fondeo', pendiente: 'Sin conciliar'
         };
         return m[v] || v;
@@ -412,7 +412,7 @@
     function uniqueColValues(k) {
       var seen = {}, out = [];
       state.allRows.forEach(function (t) { var v = colValueOf(k, t); if (!Object.prototype.hasOwnProperty.call(seen, v)) { seen[v] = true; out.push(v); } });
-      if (k === 'ok') { var order = ['conciliada', 'parcial', 'preconciliada', 'condoc', 'sindoc', 'pendiente', 'noevaluada', 'devolucion_pend', 'fondeo_pend']; out.sort(function (a, b) { return order.indexOf(a) - order.indexOf(b); }); }
+      if (k === 'ok') { var order = ['conciliada', 'parcial', 'desconciliada', 'preconciliada', 'condoc', 'sindoc', 'pendiente', 'noevaluada', 'devolucion_pend', 'fondeo_pend']; out.sort(function (a, b) { return order.indexOf(a) - order.indexOf(b); }); }
       else out.sort(function (a, b) { return String(colValLabel(k, a)).toLowerCase().localeCompare(String(colValLabel(k, b)).toLowerCase()); });
       return out;
     }
@@ -848,7 +848,20 @@
       // afirmar que todo está cuadrado.
       if (r.ok) {
         var _ra = (r.res_apunte != null) ? Number(r.res_apunte) : (Number(r.res) || 0);
-        return Math.abs(_ra) < 0.005 ? 'conciliada' : 'parcial';
+        if (Math.abs(_ra) < 0.005) return 'conciliada';
+        // DESCONCILIADA — el apunte recuperó el importe COMPLETO de la línea, no un resto.
+        // Eso solo pasa cuando la conciliación se deshizo entera: se canceló el bill (o se
+        // desató a mano) y Odoo liberó la contrapartida. Pero `is_reconciled` NO puede volver
+        // a false: la receta vació la cuenta de suspense reescribiendo account_id 184→17, y ese
+        // apunte se queda en la 17 para siempre, así que Odoo nunca ve reaparecer una suspense.
+        // Es una puerta de un solo sentido POR CONSTRUCCIÓN — por eso el veredicto no puede
+        // salir de `r.ok`, tiene que salir del apunte.
+        // Caso real: línea 32555 ($54 MercadoPago) ↔ BILL3270, cancelado el 2026-08-20; el
+        // apunte 203855 quedó reconciled:false con residual 54.00 y la línea seguía en verde.
+        // Se exige res_apunte EXPLÍCITO: sin el campo (server viejo) `_ra` cae a `res`, que en
+        // una conciliada es 0 y ya salió por 'conciliada' — nunca se acusa por falta de dato.
+        if (r.res_apunte != null && Math.abs(Math.abs(_ra) - Math.abs(Number(r.amt) || 0)) < 0.005) return 'desconciliada';
+        return 'parcial';
       }
       // EJE ODOO, valor intermedio: el motor 2 dejó decidida la conciliación pero el asiento no existe.
       // Hoy no lo puebla nadie (state.preconc llega vacío) → el filtro y el chip salen en gris con 0.
@@ -889,6 +902,12 @@
         var _r = Math.abs(Number(r.res_apunte != null ? r.res_apunte : r.res) || 0);
         return '<span class="ip-est tra" title="Tiene contrapartida pero el apunte de la cuenta 17 conserva saldo">◐ Conciliada parcial</span> <span class="ip-est-bill">quedan ' + money(_r) + ' sin cerrar</span>';
       }
+      if (st === 'desconciliada') {
+        // Dice lo ÚNICO que sabemos: el apunte volvió a abrirse completo. No dice "el bill se
+        // canceló" como hecho — es la causa habitual, no la única (también se desata a mano).
+        var _rd = Math.abs(Number(r.res_apunte) || 0);
+        return '<span class="ip-est tra" title="El apunte de la cuenta 17 recuperó el importe completo: la conciliación se deshizo entera (lo normal es que se haya cancelado el bill). La línea sigue marcada conciliada en Odoo porque la receta vació la suspense y ese flag ya no puede volver atrás. Vuelve a estar disponible para conciliar.">⟲ Desconciliada</span> <span class="ip-est-bill">la conciliación se deshizo · ' + money(_rd) + ' abiertos</span>';
+      }
       if (st === 'noevaluada') return '<span class="ip-est nev" title="Fuera del alcance del motor de conciliación (journal_id 61 fijo). No es que no haya factura: no se buscó.">◌ No evaluada</span>';
       // Ninguno de los dos va en rojo: no son un error ni trabajo atorado del equipo.
       if (st === 'devolucion_pend') return '<span class="ip-est dev-ret" title="Una devolución no casa contra un bill de proveedor: casa contra una nota de crédito, o reduce el bill original. El motor de sugerencias no la evalúa a propósito.">↩ Devolución</span> <span class="ip-est-bill">pendiente de nota de crédito</span>';
@@ -916,11 +935,12 @@
       switch (f) {
         // EJE ODOO (taxonomía 3+2). 'conciliado' incluye la parcial: la parcialidad es un matiz de la
         // celda, no un estado aparte — quien filtra "conciliado" no espera que se le escondan las parciales.
-        case 'conciliado': return st === 'conciliada' || st === 'parcial';
+        case 'conciliado': return st === 'conciliada' || st === 'parcial';   // la desconciliada NO: su apunte está abierto
         case 'preconciliado': return st === 'preconciliada';   // sin filas hasta que el motor 2 escriba
         // alias de contratos viejos (selects guardados en localStorage) — no se ofrecen ya en la UI
         case 'conciliada': case 'liquidado': case 'ok': return st === 'conciliada';
         case 'parcial':     return st === 'parcial';
+        case 'desconciliada': return st === 'desconciliada';
         case 'condoc':      return st === 'condoc';
         case 'sindoc':      return st === 'sindoc';
         case 'noevaluada':  return st === 'noevaluada';
@@ -930,7 +950,9 @@
         // motivo. Fondeos y devoluciones quedan FUERA: no esperan documento, y meterlos aquí
         // inflaba el cubo con trabajo que nadie va a hacer (los fondeos solos son millones).
         // Tienen su propio chip, así que el universo sigue cuadrando y nada se esconde.
-        case 'sinconciliar': case 'pend': return !t.ok && st !== 'fondeo_pend' && st !== 'devolucion_pend';
+        // La DESCONCILIADA entra aquí aunque traiga ok:true — su apunte está abierto, o sea
+        // que vuelve a ser trabajo por conciliar. Es el punto entero del estado.
+        case 'sinconciliar': case 'pend': return st === 'desconciliada' || (!t.ok && st !== 'fondeo_pend' && st !== 'devolucion_pend');
         case 'conchoy':     return t.ok === true && t.wd === hoyCst();   // requiere write_date del server
         default: return true;
       }
@@ -1047,6 +1069,7 @@
         if (st === 'preconciliada') cnt.preconciliadas++;
         else if (st === 'fondeo_pend') cnt.fondeo++;
         else if (st === 'devolucion_pend') cnt.devolucion++;
+        else if (st === 'desconciliada') cnt.pendientes++;   // ok:true, pero el apunte está abierto
         else if (t.ok) cnt.conciliadas++;
         else cnt.pendientes++;
       });
@@ -1055,7 +1078,14 @@
       // en `res_apunte`, no aquí — ver rowConc).
       // ⚠ Suma sin separar moneda, igual que el semáforo: en una vista con journals de
       // más de una divisa el número mezcla MXN y USD. Se hereda, no se introduce aquí.
-      var resid = rows.reduce(function (a, t) { return t.ok ? a : a + (t.res || 0); }, 0);
+      // En una parcial o una desconciliada, `res` es 0 —la línea ya salió de suspense— pero el
+      // APUNTE conserva saldo: ese dinero sigue abierto y tiene que sumar, o el residual miente
+      // por omisión justo en los dos casos que más cuesta ver.
+      var resid = rows.reduce(function (a, t) {
+        var st = rowConc(t);
+        if (st === 'parcial' || st === 'desconciliada') return a + Math.abs(Number(t.res_apunte) || 0);
+        return t.ok ? a : a + (t.res || 0);
+      }, 0);
       var nSel = rows.filter(function (t) { return state.sel[t._id]; }).length;
       var ag = q('#ip-aggs'); if (ag) ag.textContent = rows.length + ' líneas · ' + cnt.conciliadas + ' conciliadas · ' + cnt.pendientes + ' sin conciliar' + (cnt.preconciliadas ? ' · ' + cnt.preconciliadas + ' pre-conciliadas' : '') + (cnt.fondeo ? ' · ' + cnt.fondeo + (cnt.fondeo === 1 ? ' fondeo' : ' fondeos') : '') + (cnt.devolucion ? ' · ' + cnt.devolucion + (cnt.devolucion === 1 ? ' devolución' : ' devoluciones') : '') + ' · residual ' + money(resid) + (nSel ? ' · ' + nSel + ' seleccionadas' : '');
 
@@ -1608,7 +1638,8 @@
         // aparte en vez de esconderse — los cinco cubos deben sumar `todo`.
         if (st === 'fondeo_pend')     { n.fondeo++; return; }
         if (st === 'devolucion_pend') { n.devolucion++; return; }
-        if (!t.ok) { n.sinconciliar++; return; }
+        // La desconciliada trae ok:true pero su apunte está abierto → es trabajo pendiente.
+        if (st === 'desconciliada' || !t.ok) { n.sinconciliar++; return; }
         n.conciliado++;
         if (t.wd === hoy) n.conchoy++;
       });

@@ -104,6 +104,13 @@ const ROWS_REAL = [
     amt: -177.00, mon: 'MXN', ok: false, res: 177.00, tarj: 'Tarjeta gastos', comp: 'Esteban',
     rs: 'Servicios FTS', art: '', ana: '', po: '', bill: '', sb: '', ff: '', tk: '', tipo: 'Egreso' },
 
+  // 9 · TOLERANCIA: server viejo que NO manda res_apunte. Debe seguir siendo 'conciliada';
+  //     inventar "desconciliada" por ausencia de dato sería acusar sin evidencia.
+  { id: 9009, company_id: 1, _jid: 61, d: '2026-08-07', j: 'Jeeves', ref: '[Primary ****6831] BPK',
+    amt: -2605.60, mon: 'MXN', ok: true, res: 0, wd: HOY,
+    po: 'PO7009', bill: 'BILL3009', sb: 'PAGADA', ana: '', ff: '', tarj: 'Primary',
+    comp: 'Felipe', rs: 'Servicios FTS', art: '', tk: '', tipo: 'Egreso' },
+
   // 8 · Chase: journal FUERA del alcance del motor (en_motor:false) → 'noevaluada'
   { id: 9008, company_id: 6, _jid: 123, d: '2026-09-01', j: 'Chase Ink', ref: 'DLO*UBER',
     amt: -31.88, mon: 'USD', ok: false, res: 31.88, tarj: '', comp: '', rs: 'FTS LLC',
@@ -273,6 +280,21 @@ async function escenarioReal() {
   has('9007 evaluada sin candidatos → "○ Sin documento"', html, '○ Sin documento');
   has('9008 Chase (en_motor:false) → "◌ No evaluada"', html, '◌ No evaluada');
 
+  // ── P2: la conciliación se deshizo y la línea seguía diciendo "conciliada" ──
+  // 9003 = caso real 32555 ($54 MercadoPago) ↔ BILL3270, cancelado el 2026-08-20.
+  // Odoo desata la conciliación (el apunte vuelve a abrirse por el importe COMPLETO)
+  // pero is_reconciled NO puede volver a false: la receta vació la suspense para siempre.
+  has('9003 con el bill cancelado → estado propio, no "Conciliada"', html, 'Desconciliada');
+  has('9003 dice por qué, sin inventar la causa', html, 'la conciliación se deshizo');
+  has('9003 declara el importe que volvió a quedar abierto', html, '$54.00');
+  check('la desconciliada NO se pinta como conciliada limpia',
+    (html.match(/✓ Conciliada</g) || []).length === 2,
+    'celdas "✓ Conciliada": ' + (html.match(/✓ Conciliada</g) || []).length + ' (deben ser 2: 9001 y 9009)');
+  // TOLERANCIA — la mitad que NO depende del server. Si res_apunte no llega, se calla.
+  check('sin res_apunte (server viejo) NO se acusa de desconciliada',
+    (html.match(/Desconciliada/g) || []).length === 1,
+    'celdas "Desconciliada": ' + (html.match(/Desconciliada/g) || []).length + ' (debe ser 1: solo 9003)');
+
   // ── El motor NO debe evaluar fondeos ni devoluciones ──
   check('devolución 9004 NO se mandó a captura-sugerencias',
     SUGERENCIAS_PEDIDAS.indexOf(9004) < 0, 'line_ids pedidos: ' + JSON.stringify(SUGERENCIAS_PEDIDAS));
@@ -321,15 +343,19 @@ async function escenarioReal() {
   const aggs = txt('#ip-aggs');
   check('existe la barra de agregados', aggs != null, 'no se encontró #ip-aggs');
   if (aggs != null) {
-    has('la barra reporta el total de líneas', aggs, '8 líneas');
-    has('la barra cuenta las conciliadas de verdad', aggs, '3 conciliadas');
-    // Tras el cambio de taxonomía: "sin conciliar" son las 3 que esperan documento
-    // (9006 con candidato, 9007 sin, 9008 no evaluada). Fondeo y devolución salen del
-    // cubo porque no esperan documento, y se cuentan aparte para que Todo siga cuadrando.
-    has('la barra cuenta las pendientes de verdad', aggs, '3 sin conciliar');
+    has('la barra reporta el total de líneas', aggs, '9 líneas');
+    has('la barra cuenta las conciliadas de verdad', aggs, '3 conciliadas');   // 9001 limpia, 9002 parcial, 9009 sin res_apunte
+    // "sin conciliar" = las que esperan documento: 9006 con candidato, 9007 sin, 9008 no
+    // evaluada, y 9003 DESCONCILIADA (su bill se canceló → vuelve a estar disponible).
+    // Fondeo y devolución salen del cubo porque no esperan documento, y se cuentan aparte
+    // para que Todo siga cuadrando.
+    has('la barra cuenta las pendientes de verdad', aggs, '4 sin conciliar');
     has('la barra cuenta el fondeo', aggs, '1 fondeo');
     has('la barra cuenta la devolución', aggs, '1 devolución');
-    has('la barra suma el residual pendiente', aggs, '169,985.27');
+    // Residual = todo el dinero abierto: pendientes por `res` + el saldo del APUNTE de las
+    // parciales y desconciliadas (en esas `res` es 0 porque la línea salió de suspense).
+    // 860.98 + 168,574.45 + 340.96 + 177.00 + 31.88 + 334.08 + 54.00 = 170,373.35
+    has('la barra suma el residual pendiente', aggs, '170,373.35');
     hasNot('la barra ya no puede decir "residual $0.00" con filas pendientes', aggs, 'residual $0.00');
     // El vocabulario viejo del eje de 5 valores murió en v0.5.16; si vuelve, la barra
     // vuelve a contar llaves que rowConc() no produce.
@@ -339,8 +365,8 @@ async function escenarioReal() {
   // ── Coherencia barra ↔ chips: el defecto era que se contradecían en pantalla ──
   const chipsTxt = txt('#ip-chips') || '';
   const chipsFlat = chipsTxt.replace(/\s+/g, ' ');
-  check('el chip "Sin conciliar" y la barra dicen el mismo 3',
-    /Sin conciliar 3/.test(chipsFlat), 'chips: ' + chipsFlat);
+  check('el chip "Sin conciliar" y la barra dicen el mismo 4',
+    /Sin conciliar 4/.test(chipsFlat), 'chips: ' + chipsFlat);
   check('hay chip propio de Fondeos con su conteo', /Fondeos 1/.test(chipsFlat), 'chips: ' + chipsFlat);
   check('hay chip propio de Devoluciones con su conteo', /Devoluciones 1/.test(chipsFlat), 'chips: ' + chipsFlat);
   // Nada se esconde: los cubos del eje B tienen que sumar el universo.
