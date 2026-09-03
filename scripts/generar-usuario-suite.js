@@ -2,11 +2,19 @@
 /*
  * ═══ Alta de usuario para `auth/suite-login` ═══
  *
- *   node scripts/generar-usuario-suite.js <username> "<Nombre completo>" "<scopes>" [empleado_id]
- *   node scripts/generar-usuario-suite.js aldo "Aldo Méndez" "comercial:read" 118
+ *   node scripts/generar-usuario-suite.js <username> ["<Nombre>"] ["<scopes>"] [empleado_id]
+ *
+ *   node scripts/generar-usuario-suite.js aldo.mendez
+ *   node scripts/generar-usuario-suite.js aldo.mendez "Aldo Méndez" "comercial:read" 78
  *
  * Pide el password por stdin, NO por argv: argv queda en el historial del shell.
  * Imprime `salt` y `hash` para el renglón de la Data Table `suite_usuarios`.
+ *
+ * **Sólo el username es obligatorio.** Nombre, scopes y empleado_id se pueden
+ * omitir y llenarse al insertar el renglón. No es un capricho: PowerShell de
+ * Windows destroza los acentos al pasarlos a un programa nativo, y "Méndez"
+ * llegaría como "MÃ©ndez" al renglón. Si el dato no tiene que pasar por la
+ * línea de comandos, que no pase.
  *
  * ⚠️ La SALIDA no es secreta (salt y hash no son el password) pero el PASSWORD sí:
  *    no lo escribas en el chat, ni en un issue, ni en el repo. Se lo dices a la
@@ -134,9 +142,9 @@ function autoverificar() {
 
 function main() {
   const [username, nombre, scopes, empleadoId] = process.argv.slice(2);
-  if (!username || !nombre) {
-    console.error('uso: node scripts/generar-usuario-suite.js <username> "<Nombre>" "<scopes>" [empleado_id]');
-    console.error('ej : node scripts/generar-usuario-suite.js aldo "Aldo Méndez" "comercial:read" 118');
+  if (!username) {
+    console.error('uso: node scripts/generar-usuario-suite.js <username> ["<Nombre>"] ["<scopes>"] [empleado_id]');
+    console.error('ej : node scripts/generar-usuario-suite.js aldo.mendez');
     process.exit(1);
   }
   autoverificar();
@@ -149,16 +157,19 @@ function main() {
     const hash = derivar(pw, salt);
     console.error('\n── Renglón para la Data Table `suite_usuarios` (n8n) ──');
     console.error('── El PASSWORD no va aquí y no debe ir al chat ni al repo. ──\n');
-    console.log(JSON.stringify({
+    const fila = {
       username: String(username).trim().toLowerCase(),
-      nombre: nombre,
       salt: salt,
       hash: hash,
-      scopes: scopes || 'comercial:read',
       activo: true,
-      empleado_id: empleadoId ? Number(empleadoId) : null,
       debe_cambiar_password: true
-    }, null, 2));
+    };
+    // Sólo se incluye lo que de verdad se dio. Un `nombre: undefined` en el
+    // renglón se ve igual que un nombre vacío a propósito, y no lo es.
+    if (nombre) fila.nombre = nombre;
+    if (scopes) fila.scopes = scopes;
+    if (empleadoId) fila.empleado_id = Number(empleadoId);
+    console.log(JSON.stringify(fila));
   });
 }
 
