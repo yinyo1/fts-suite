@@ -1,0 +1,129 @@
+{
+  "name": "TMP - carga manual S33S34 (issue 128) - BORRAR AL TERMINAR",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cm-carga-s33s34",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "a1000000-0000-4000-8000-00000000ce01"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f1",
+              "name": "url",
+              "type": "string",
+              "value": "https://serviciosfts.odoo.com"
+            },
+            {
+              "id": "f2",
+              "name": "db",
+              "type": "string",
+              "value": "serviciosfts"
+            },
+            {
+              "id": "f3",
+              "name": "login",
+              "type": "string",
+              "value": "estebandelacruz@fts.mx"
+            },
+            {
+              "id": "f4",
+              "name": "key",
+              "type": "string",
+              "value": "={{ $env.ODOO_RPC_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000002",
+      "name": "Set secreto RPC",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// TMP - carga manual S33/S34 (issue #128). Se borra al terminar la carga.\nconst cfg = $('Set secreto RPC').first().json;\nconst body = ($('Webhook').first().json.body) || {};\nconst action = body.action || 'ping';\nconst db = body.db || cfg.db;\n\nlet hh = null;\ntry { if (typeof $helpers !== 'undefined' && $helpers && $helpers.httpRequest) hh = $helpers; } catch (e) {}\nif (!hh) { try { if (this && this.helpers && this.helpers.httpRequest) hh = this.helpers; } catch (e) {} }\nlet doPost;\nif (hh) {\n  doPost = (p) => hh.httpRequest({ method: 'POST', url: cfg.url + '/jsonrpc', body: p, json: true });\n} else if (typeof fetch !== 'undefined') {\n  doPost = async (p) => {\n    const r = await fetch(cfg.url + '/jsonrpc', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) });\n    return r.json();\n  };\n} else {\n  throw new Error('Sin cliente HTTP en el sandbox: ni $helpers ni this.helpers ni fetch');\n}\nasync function rpc(service, method, args) {\n  const res = await doPost({ jsonrpc: '2.0', method: 'call', id: Date.now(), params: { service, method, args } });\n  if (res && res.error) {\n    const e = res.error;\n    throw new Error('RPC: ' + ((e.data && e.data.message) || e.message || JSON.stringify(e)));\n  }\n  return res.result;\n}\nconst uid = await rpc('common', 'login', [db, cfg.login, cfg.key]);\nif (!uid) throw new Error('Login fallo: revisa db/login/ODOO_RPC_KEY (db probado: ' + db + ')');\nconst kw = (model, method, args, kwargs) => rpc('object', 'execute_kw', [db, uid, cfg.key, model, method, args, kwargs || {}]);\n\nconst RUBRO = { ingreso: 1171, mo: 1177, mat: 1176, aldo: 1178, rissia: 1179, diego: 1157, luisangel: 1158, montalvo: 1156, sup: 1159, tec: 1160 };\nconst ANT_NAME = 'Anticipos y préstamos a empleados';\nconst out = { action: action, db: db, uid: uid };\n\nif (action === 'ping') {\n  const v = await rpc('common', 'version', []);\n  out.server_version = v && v.server_version;\n\n} else if (action === 'prereq') {\n  // A1 - cuenta de anticipos (plan 14)\n  const found = await kw('account.analytic.account', 'search_read', [[['name', '=', ANT_NAME], ['plan_id', '=', 14]]], { fields: ['id', 'name', 'active'], context: { active_test: false } });\n  if (found.length) {\n    out.a1 = { status: 'ya existia', record: found[0] };\n  } else {\n    const id = await kw('account.analytic.account', 'create', [{ name: ANT_NAME, plan_id: 14, company_id: 1 }]);\n    const rb = await kw('account.analytic.account', 'read', [[id], ['id', 'name', 'active', 'plan_id', 'company_id']]);\n    out.a1 = { status: 'creada', record: rb[0] };\n  }\n  // A2 - budget SO11551 (cuenta 3071)\n  const BUD = 'SO11551 - Suministro y Puesta en marcha Quimitec';\n  let budId;\n  const bfound = await kw('budget.analytic', 'search_read', [[['name', '=', BUD]]], { fields: ['id', 'state'] });\n  if (bfound.length) { budId = bfound[0].id; out.a2_header_previo = bfound[0]; }\n  else { budId = await kw('budget.analytic', 'create', [{ name: BUD, budget_type: 'both', date_from: '2026-06-09', date_to: '2027-06-09', company_id: 1 }]); }\n  const wanted = [[RUBRO.ingreso, 1148745.70], [RUBRO.mo, 0], [RUBRO.mat, 0], [RUBRO.aldo, 0], [RUBRO.rissia, 0], [RUBRO.diego, 0], [RUBRO.luisangel, 0], [RUBRO.montalvo, 0], [RUBRO.sup, 0], [RUBRO.tec, 0]];\n  const exist = await kw('budget.line', 'search_read', [[['budget_analytic_id', '=', budId]]], { fields: ['x_plan20_id'] });\n  const have = {};\n  for (const l of exist) if (l.x_plan20_id) have[l.x_plan20_id[0]] = true;\n  const newLines = [];\n  for (const w of wanted) if (!have[w[0]]) newLines.push(await kw('budget.line', 'create', [{ budget_analytic_id: budId, account_id: 3071, x_plan20_id: w[0], budget_amount: w[1], date_from: '2026-06-09', date_to: '2027-06-09' }]));\n  await kw('budget.analytic', 'write', [[budId], { state: 'confirmed' }]);\n  const hdr = await kw('budget.analytic', 'read', [[budId], ['id', 'name', 'state', 'date_from', 'date_to']]);\n  out.a2 = { header: hdr[0], lineas_creadas: newLines, lineas_total: await kw('budget.line', 'search_count', [[['budget_analytic_id', '=', budId]]]) };\n  // A4 - rubros de comision en budget 412 (SO11832, cuenta 3107)\n  const r4 = [RUBRO.aldo, RUBRO.rissia, RUBRO.diego, RUBRO.luisangel, RUBRO.montalvo, RUBRO.sup, RUBRO.tec];\n  const ex4 = await kw('budget.line', 'search_read', [[['budget_analytic_id', '=', 412]]], { fields: ['x_plan20_id'] });\n  const have4 = {};\n  for (const l of ex4) if (l.x_plan20_id) have4[l.x_plan20_id[0]] = true;\n  const new4 = [];\n  for (const r of r4) if (!have4[r]) new4.push(await kw('budget.line', 'create', [{ budget_analytic_id: 412, account_id: 3107, x_plan20_id: r, budget_amount: 0.0, date_from: '2026-08-17', date_to: '2027-08-17' }]));\n  out.a4 = { lineas_creadas: new4, lineas_total_412: await kw('budget.line', 'search_count', [[['budget_analytic_id', '=', 412]]]) };\n\n} else if (action === 'jobs') {\n  // A5 - saneamiento de puestos (issue #128)\n  const UNARCHIVE = (body.unarchive_jobs || []).concat([16, 22]);\n  const jobsPre = await kw('hr.job', 'read', [UNARCHIVE, ['id', 'name', 'active']]);\n  const toUn = jobsPre.filter((j) => !j.active).map((j) => j.id);\n  if (toUn.length) await kw('hr.job', 'write', [toUn, { active: true }]);\n  out.a51 = { antes: jobsPre, desarchivados: toUn };\n  // A5.2 - crear puestos nuevos (via body.create_jobs: [{name, emp}])\n  out.a52 = [];\n  const assigns = [[75, 22], [79, 16], [76, 22], [78, 25], [121, 29]].concat(body.extra || []);\n  for (const cj of (body.create_jobs || [])) {\n    const ex = await kw('hr.job', 'search_read', [[['name', '=', cj.name]]], { fields: ['id', 'name', 'active'], context: { active_test: false } });\n    let jobId;\n    if (ex.length) { jobId = ex[0].id; if (!ex[0].active) await kw('hr.job', 'write', [[jobId], { active: true }]); out.a52.push({ name: cj.name, status: 'ya existia', id: jobId }); }\n    else { jobId = await kw('hr.job', 'create', [{ name: cj.name }]); out.a52.push({ name: cj.name, status: 'creado', id: jobId }); }\n    if (cj.emp) assigns.push([cj.emp, jobId]);\n  }\n  // A5.3 - escribir job_id (+ job_title coherente; el write directo NO dispara el onchange de la UI)\n  const jobIds = assigns.map((a) => a[1]).filter((v, i, arr) => arr.indexOf(v) === i);\n  const jobNames = {};\n  for (const j of await kw('hr.job', 'read', [jobIds, ['id', 'name']])) jobNames[j.id] = j.name;\n  for (const a of assigns) await kw('hr.employee', 'write', [[a[0]], { job_id: a[1], job_title: jobNames[a[1]] }]);\n  // Read-back\n  const empIds = assigns.map((a) => a[0]);\n  out.a53_readback = await kw('hr.employee', 'read', [empIds, ['id', 'name', 'job_id', 'job_title']]);\n  out.a51_readback = await kw('hr.job', 'read', [UNARCHIVE, ['id', 'name', 'active']]);\n\n} else if (action === 'canary') {\n  const id = await kw('account.analytic.line', 'create', [{ name: 'CM CANARY · cuenta archivada 3071', date: '2026-08-14', amount: -0.01, account_id: 3071, company_id: 1 }]);\n  const rb = await kw('account.analytic.line', 'read', [[id], ['id', 'name', 'date', 'amount', 'account_id', 'company_id', 'currency_id']]);\n  out.canary = rb[0];\n\n} else if (action === 'canary_delete') {\n  const ids = await kw('account.analytic.line', 'search', [[['name', '=like', 'CM CANARY ·%']]]);\n  if (ids.length) await kw('account.analytic.line', 'unlink', [ids]);\n  out.borradas = ids;\n  out.restantes = await kw('account.analytic.line', 'search_count', [[['name', '=like', 'CM CANARY ·%']]]);\n\n} else if (action === 'load_s33') {\n  const PFX = 'CM S33/2026 ·';\n  const pre = await kw('account.analytic.line', 'search_count', [[['name', '=like', PFX + '%']]]);\n  if (pre > 0) throw new Error('Ya existen ' + pre + ' lineas con prefijo \"' + PFX + '\" - no se carga doble. Usa delete_cm primero si es intencional.');\n  const DEST = { SO11507: { x_plan18_id: 1139, company_id: 6 }, SO11551: { account_id: 3071, company_id: 1 }, SO11511: { account_id: 3061, company_id: 1 } };\n  const M = [\n    ['Mateo Salazar', 75, RUBRO.sup, 82.00, 'SO11507', false],\n    ['Felipe Perez', 112, RUBRO.sup, 82.00, 'SO11507', false],\n    ['Leonel Cruz', 6, RUBRO.tec, 82.00, 'SO11507', false],\n    ['Jose Luis Romero', 79, RUBRO.tec, 84.00, 'SO11507', false],\n    ['Luis Angel Garcia', 48, RUBRO.tec, 84.00, 'SO11507', false],\n    ['Gibran Solis', 62, RUBRO.tec, 4074.00, 'SO11551', false],\n    ['Tomas Vazquez', 131, RUBRO.tec, 4074.00, 'SO11551', false],\n    ['Felipe Perez', 112, RUBRO.sup, 4074.00, 'SO11551', false],\n    ['Carlos Manzanares', 76, RUBRO.sup, 4074.00, 'SO11551', false],\n    ['Felipe Perez', 112, RUBRO.sup, 713.00, 'SO11511', false],\n    ['Carlos Manzanares', 76, RUBRO.sup, 713.00, 'SO11511', false],\n    ['Jose Luis Romero', 79, RUBRO.tec, 713.00, 'SO11511', true]\n  ];\n  const ids = [];\n  for (const row of M) {\n    const n = row[0], e = row[1], r = row[2], amt = row[3], dest = row[4], dnp = row[5];\n    const vals = Object.assign({\n      name: PFX + ' bono · ' + n + ' · ' + dest + ' · ' + (dnp ? 'SIN-PAGO' : 'J96'),\n      date: '2026-08-14', amount: -amt, employee_id: e, x_plan20_id: r\n    }, DEST[dest]);\n    if (dnp) vals.ref = 'DNP-S33';\n    ids.push(await kw('account.analytic.line', 'create', [vals]));\n  }\n  const rb = await kw('account.analytic.line', 'search_read', [[['name', '=like', PFX + '%']]], { fields: ['id', 'name', 'date', 'amount', 'company_id', 'currency_id'], order: 'id asc' });\n  let usd = 0, mxn = 0;\n  for (const l of rb) { if (l.company_id && l.company_id[0] === 6) usd += l.amount; else mxn += l.amount; }\n  out.creadas = ids.length;\n  out.readback_count = rb.length;\n  out.sum_usd = Math.round(usd * 100) / 100; out.esperado_usd = -414.00;\n  out.sum_mxn = Math.round(mxn * 100) / 100; out.esperado_mxn = -18435.00;\n  out.ok = (rb.length === 12 && out.sum_usd === -414.00 && out.sum_mxn === -18435.00);\n  out.lineas = rb;\n\n} else if (action === 'load_s34') {\n  const PFX = 'CM S34/2026 ·';\n  const pre = await kw('account.analytic.line', 'search_count', [[['name', '=like', PFX + '%']]]);\n  if (pre > 0) throw new Error('Ya existen ' + pre + ' lineas \"' + PFX + '\"');\n  const ant = await kw('account.analytic.account', 'search_read', [[['name', '=', ANT_NAME], ['plan_id', '=', 14]]], { fields: ['id', 'name'], context: { active_test: false } });\n  if (!ant.length) throw new Error('No existe la cuenta de anticipos - corre action=prereq primero');\n  await kw('account.analytic.line', 'create', [{ name: PFX + ' anticipo · Leonel Cruz · ANTICIPOS · J96', date: '2026-08-21', amount: -3500.00, x_plan14_id: ant[0].id, company_id: 1, employee_id: 6 }]);\n  const rb = await kw('account.analytic.line', 'search_read', [[['name', '=like', PFX + '%']]], { fields: ['id', 'name', 'date', 'amount', 'x_plan14_id', 'employee_id', 'company_id'] });\n  out.cuenta_anticipos = ant[0];\n  out.readback = rb;\n  out.ok = (rb.length === 1 && rb[0].amount === -3500);\n\n} else if (action === 'count') {\n  const p = body.prefix;\n  if (!p) throw new Error('Falta prefix');\n  const rb = await kw('account.analytic.line', 'search_read', [[['name', '=like', p + '%']]], { fields: ['id', 'name', 'date', 'amount', 'company_id'], order: 'id asc' });\n  out.count = rb.length;\n  out.sum = Math.round(rb.reduce((a, l) => a + l.amount, 0) * 100) / 100;\n  out.lineas = rb;\n\n} else if (action === 'delete_cm') {\n  const p = body.prefix;\n  if (!p || p.indexOf('CM ') !== 0) throw new Error('prefix debe empezar con \"CM \"');\n  const rb = await kw('account.analytic.line', 'search_read', [[['name', '=like', p + '%']]], { fields: ['id', 'name', 'date', 'amount'] });\n  if (!body.confirm_ids) {\n    out.paso = '1/2 - revisa matches y reenvia el mismo POST agregando confirm_ids';\n    out.matches = rb;\n  } else {\n    const valid = rb.map((l) => l.id);\n    const toDel = body.confirm_ids.filter((i) => valid.indexOf(i) >= 0);\n    if (toDel.length !== body.confirm_ids.length) throw new Error('Algun confirm_id no esta en el match actual - aborto sin borrar');\n    if (toDel.length) await kw('account.analytic.line', 'unlink', [toDel]);\n    out.borradas = toDel;\n    out.restantes = await kw('account.analytic.line', 'search_count', [[['name', '=like', p + '%']]]);\n  }\n\n} else {\n  throw new Error('action desconocida: ' + action);\n}\n\nreturn [{ json: out }];\n"
+      },
+      "id": "a1000000-0000-4000-8000-000000000003",
+      "name": "Code - acciones CM",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000004",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        660,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Set secreto RPC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set secreto RPC": {
+      "main": [
+        [
+          {
+            "node": "Code - acciones CM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - acciones CM": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}
