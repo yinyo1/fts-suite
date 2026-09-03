@@ -1,5 +1,5 @@
 {
-  "version": "V1.01",
+  "version": "V1.03",
   "fecha": "2026-09-03",
   "modulo": "rh/nomina-incidencias",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
@@ -14,6 +14,16 @@
       "version": "V1.01",
       "pr": null,
       "nota": "Arreglo del login: NADIE podia entrar en V1.00. El cliente mandaba el campo `user` (copiado de finanzas/js/auth-fin.js) pero el workflow auth/suite-login espera `username`, asi que contestaba PAYLOAD_INCOMPLETO sin llegar a comprobar la contrasena. Ademas se leia la respuesta con la forma de Finanzas (_error/code/msg) en vez de la real (ok/error/mensaje), por lo que TODO fallo se veia igual: un 'No se pudo iniciar sesion.' generico que escondia el motivo. Verificado disparando el webhook en vivo con un usuario desechable (ejecuciones 85367 y 85370) para no gastarle intentos de bloqueo a nadie. El contrato queda fijado en el gate (seccion 7, 11 asserts nuevos) para que no se vuelva a romper en silencio."
+    },
+    {
+      "version": "V1.02",
+      "pr": 175,
+      "nota": "Modo REAL: se acabo la demostracion. Dos endpoints nuevos en n8n, los dos publicados y probados en vivo: nom/semana (w7NNmtukDvrXKkOk, 15 nodos, solo lectura) arma la semana VIE-JUE desde Odoo —roster de hr.employee, dias efectivamente trabajados contados por hr.attendance en hora CST, checadas en disputa por el TAG x_studio_horario_en_disputa y catalogo de cuentas analiticas—; nom/guardar (zlI2FiYQ6VYhxySg, 13 nodos) escribe la captura en tres tablas de datos nuevas (nom_semana_persona, nom_estado, nom_envio). Los dos exigen scope nomina:write comprobado EN EL SERVER con la cripto de fase0. El calendario esta anclado al jueves 2026-07-23 = SEM 30, que es como quedaron escritas las lineas en Odoo, no a una convencion elegida aqui. Lo capturado por RH manda sobre lo derivado de Odoo, y el conteo del kiosko se muestra al lado para que la decision se tome viendo las checadas. Al cerrar el cajon se guarda y se RELEE del server: la pantalla nunca pinta un exito que no confirmo. Las disputas de semanas anteriores no bloquean la semana en curso —eran 74, casi todas de mayo, rezago del issue #137— pero salen contadas en su propio aviso para que no se acumulen en silencio. DEMO sobrevive como modo PRACTICA, con insignia ambar y a un clic. Se corrigio de paso una colision de nombres que el gate detecto: la escritura al server se llamaba igual que el helper de localStorage y lo tapaba, y la insignia de modo tenia dos escritores."
+    },
+    {
+      "version": "V1.03",
+      "pr": null,
+      "nota": "El modo PRACTICA se alinea con el REAL: los datos de ejemplo ahora traen dias_odoo, capturado y rezago, que solo existian en el real. Sin eso, practicar enseñaba de menos — no aparecia la linea del kiosko ni el aviso de checadas viejas, que son justo las dos cosas que hay que saber leer. Samuel queda con 4 dias en el kiosko y 5 capturados a proposito, para que el desacuerdo se vea. Ademas, script scripts/capturas-nomina.js que fotografia las 13 pantallas del manual, y el manual mismo en docs/rh/manual-nomina-incidencias.html, de un solo archivo con las imagenes dentro para poder mandarlo por correo."
     }
   ]
 }

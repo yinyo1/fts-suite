@@ -269,6 +269,13 @@ function arrancarRender() { (async function () {
     w.eval(fs.readFileSync(path.join(MOD, 'js', f), 'utf8'));
   }
 
+  // El default REAL se comprueba ANTES de forzar nada: es el comportamiento que
+  // importa (desde V1.02 el módulo arranca contra Odoo, no contra el fixture).
+  check('el módulo arranca en REAL por omisión', w.NomClient.modo() === 'real', w.NomClient.modo());
+  // Y a partir de aquí se pasa a PRÁCTICA: esta sección prueba el RENDER, no la red.
+  w.NomClient.setModo('demo');
+  check('y se puede pasar a práctica', w.NomClient.modo() === 'demo');
+
   // Sesión válida con el scope. Se stubbea DESPUÉS de cargar nom-auth.js para pisar
   // sus métodos sin tocar el archivo real.
   w.NomAuth.isValid = () => true;
@@ -283,7 +290,8 @@ function arrancarRender() { (async function () {
   check('la puerta se cierra con sesión válida', d.getElementById('puerta').className.indexOf('hid') >= 0);
   check('la aplicación se muestra', d.getElementById('app').className.indexOf('hid') < 0);
   check('el badge de versión dice V1.00', d.getElementById('ver-badge').textContent === 'V1.00');
-  check('el badge de modo dice DEMO', d.getElementById('modo-badge').textContent === 'DEMO');
+  check('el badge de modo dice PRÁCTICA', d.getElementById('modo-badge').textContent === 'PRÁCTICA', d.getElementById('modo-badge').textContent);
+  check('y el badge avisa con color que no es real', /demo/.test(d.getElementById('modo-badge').className));
 
   const filas = d.querySelectorAll('#tb tr[data-id]');
   check('el roster pinta 31 renglones (30 activos + 1 inactivo con estado vivo)', filas.length === 31, String(filas.length));

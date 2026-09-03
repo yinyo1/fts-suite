@@ -21,6 +21,10 @@
   var MODO_KEY = 'fts_nomina_modo';
 
   // Mismas guardas que nom-auth.js: localStorage LANZA en varios contextos reales.
+  // OJO con el nombre: `guardar` es el de localStorage. La escritura al server se
+  // llama `escribir` justo porque llamarla `guardar` tapó a esta y setModo() acabó
+  // disparando un webhook. Lo cachó el gate; si hubiera llegado a producción, el
+  // cambio de modo habría fallado en silencio.
   function leer(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function guardar(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
   // ─── fin helper ───
@@ -30,10 +34,13 @@
     return String(url).replace(/\/$/, '');
   }
 
-  // DEMO es el default deliberado: un módulo que escribe nómina no debe arrancar
-  // apuntando a producción porque sí. A REAL se entra por decisión explícita.
+  // REAL es el default desde que existen los endpoints /nom/*. Mientras NO existían,
+  // el default era DEMO por una razón que ya no aplica: no había a dónde escribir, y
+  // arrancar apuntando a producción habría sido apuntar al vacío. Hoy DEMO sobrevive
+  // como modo de práctica —para entrenar y para las capturas del manual— y se entra a
+  // él por decisión explícita, nunca por accidente.
   function modo() {
-    return leer(MODO_KEY) === 'real' ? 'real' : 'demo';
+    return leer(MODO_KEY) === 'demo' ? 'demo' : 'real';
   }
   function setModo(m) {
     guardar(MODO_KEY, m === 'real' ? 'real' : 'demo');
@@ -109,13 +116,17 @@
   // Declaraciones de arranque de la semana demo. Se dejan CASOS INCÓMODOS a propósito
   // —un bono sin proyecto, días que no cuadran— para que la pantalla se vea haciendo
   // su trabajo en vez de verse siempre en verde.
+  // `odoo` es lo que el kiosko habria registrado. Se declara aparte de dias_mexico
+  // para que el modo practica ENSEÑE el caso que mas se va a repetir en el real:
+  // que lo checado y lo capturado NO coincidan, y haya que decidir cual vale.
   var DECLS_DEMO = {
-    76:  { dias_mexico: 3, decls: [{ tipo: 'vacaciones', valores: { dias: 2 } }] },
-    79:  { dias_mexico: 3, decls: [{ tipo: 'trabajo_usa', valores: { dias: 2, so: 'SO11842 Mission Foods' } }] },
-    57:  { dias_mexico: 5, decls: [{ tipo: 'bono_proyecto', fuente: 'J96', valores: { renglones: [{ monto: 2500, so: '' }] } }] },
-    6:   { dias_mexico: 4, decls: [{ tipo: 'permiso', valores: { dias: 1, goce: true } }] },
-    128: { dias_mexico: 5, decls: [] },
-    124: { dias_mexico: 5, decls: [] }
+    76:  { dias_mexico: 3, odoo: 3, decls: [{ tipo: 'vacaciones', valores: { dias: 2 } }] },
+    79:  { dias_mexico: 3, odoo: 3, decls: [{ tipo: 'trabajo_usa', valores: { dias: 2, so: 'SO11842 Mission Foods' } }] },
+    // Samuel: el kiosko registro 4 y la captura dice 5. Es el caso a enseñar.
+    57:  { dias_mexico: 5, odoo: 4, decls: [{ tipo: 'bono_proyecto', fuente: 'J96', valores: { renglones: [{ monto: 2500, so: '' }] } }] },
+    6:   { dias_mexico: 4, odoo: 4, decls: [{ tipo: 'permiso', valores: { dias: 1, goce: true } }] },
+    128: { dias_mexico: 5, odoo: 5, decls: [] },
+    124: { dias_mexico: 5, odoo: 5, decls: [] }
   };
 
   var ESTADOS_DEMO = {
@@ -143,6 +154,8 @@
         id: r[0], nombre: r[1], puesto: r[2], departamento: r[3],
         inactivo: !!r[4],
         dias_mexico: d ? d.dias_mexico : (r[4] ? 0 : 5),
+        dias_odoo: d ? d.odoo : (r[4] ? 0 : 5),
+        capturado: !!d,
         declaraciones: d ? JSON.parse(JSON.stringify(d.decls)) : [],
         estados: ESTADOS_DEMO[r[0]] ? JSON.parse(JSON.stringify(ESTADOS_DEMO[r[0]])) : []
       };
@@ -153,6 +166,9 @@
       disputas: JSON.parse(JSON.stringify(DISPUTAS_DEMO)),
       proyectos: SOS_DEMO.slice(),
       estado_envio: 'borrador',
+      // El rezago tambien se finge: si no, la pantalla de disputas del modo practica
+      // no enseñaria el aviso que en el real aparece todas las semanas.
+      rezago: { total: 74, desde: '2026-05-08', personas: 19 },
       origen: 'demo'
     };
   }
@@ -162,11 +178,41 @@
     return call('/nom/semana', { semana: semanaId || null });
   }
 
+  // Escribe y NO devuelve la pantalla: quien llama tiene que volver a leer la semana.
+  // Un 200 no prueba que el dato quedó (CLAUDE.md §20.5) y pintar el éxito antes de
+  // comprobarlo es el anti-patrón que costó el incidente del 27-may (§14 hallazgo #15).
+  async function escribir(payload) {
+    if (modo() === 'demo') {
+      return Promise.reject({ code: 'MODO_DEMO',
+        msg: 'Estás en modo DEMO: aquí nada se guarda. Cambia a REAL en la insignia de arriba.' });
+    }
+    return call('/nom/guardar', payload);
+  }
+
+  // Las tres escrituras del módulo, con nombre, para que quien lea app.js vea QUÉ se
+  // está guardando y no un objeto suelto con un campo 'accion'.
+  function guardarPersona(semana, p) {
+    return escribir({ accion: 'persona', semana: semana, empleado_id: p.id,
+                     dias_mexico: Number(p.dias_mexico) || 0,
+                     declaraciones: p.declaraciones || [] });
+  }
+  function guardarEstado(empleadoId, est, vigente) {
+    return escribir({ accion: 'estado', empleado_id: empleadoId, tipo: est.tipo,
+                     valores: est.valores || {}, vigente: vigente !== false });
+  }
+  function guardarEnvio(semana, resumen) {
+    return escribir({ accion: 'enviar', semana: semana, resumen: resumen || {} });
+  }
+
   window.NomClient = {
     call: call,
     modo: modo,
     setModo: setModo,
     cargarSemana: cargarSemana,
+    escribir: escribir,
+    guardarPersona: guardarPersona,
+    guardarEstado: guardarEstado,
+    guardarEnvio: guardarEnvio,
     semanaDemo: semanaDemo,
     MODO_KEY: MODO_KEY
   };

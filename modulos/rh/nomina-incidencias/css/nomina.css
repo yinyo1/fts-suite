@@ -170,3 +170,19 @@ input:focus,select:focus{outline:2px solid var(--green-l);border-color:var(--gre
   .cab h1{font-size:18px}
   .dpanel{width:100%}
 }
+
+/* ── Insignia de modo, pulsable ──
+   REAL en verde y PRÁCTICA en ámbar: el color tiene que decir por sí solo si lo que
+   estás tecleando cuenta. Un módulo que escribe nómina no puede dejar esa duda. */
+.badge.modo { cursor: pointer; border: 0; font: inherit; font-size: 11px; font-weight: 700;
+              letter-spacing: .04em; padding: 3px 9px; border-radius: 999px; }
+.badge.modo.real { background: #123d29; color: #6ee7a8; }
+.badge.modo.demo { background: #4a3410; color: #fbbf24; }
+.badge.modo:hover { filter: brightness(1.25); }
+
+/* ── Aviso de guardado ──
+   "Guardando" se pinta al salir; "Guardado" SOLO cuando el server contestó. */
+.guardado { font-size: 12px; padding: 0 6px; }
+.guardado.yendo { color: var(--muted2); }
+.guardado.ok    { color: var(--green); }
+.guardado.mal   { color: var(--red); font-weight: 700; }
