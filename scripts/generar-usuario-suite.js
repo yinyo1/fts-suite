@@ -149,13 +149,27 @@ function main() {
   }
   autoverificar();
 
+  /* ── El password NO se hace eco ──────────────────────────────────────────
+   * `readline` repite en pantalla lo que se teclea, y eso basta para que la
+   * contraseña acabe en una captura, en el scroll de la terminal o —como pasó
+   * el 2026-09-03— pegada dentro de la salida que alguien copia al chat.
+   * Con `_writeToOutput` silenciado no se ve NADA mientras se escribe: ni
+   * asteriscos, que es el comportamiento estándar de un prompt de contraseña
+   * y el único que no depende de que la terminal entienda secuencias ANSI. */
+  process.stderr.write('Password para "' + username + '" (no se va a ver mientras lo escribes): ');
   const rl = readline.createInterface({ input: process.stdin, output: process.stderr, terminal: true });
-  rl.question('Password para "' + username + '" (temporal, se lo das a la persona aparte): ', (pw) => {
+  rl.mudo = true;
+  rl._writeToOutput = function (s) { if (!rl.mudo) rl.output.write(s); };
+  rl.question('', (pw) => {
+    // Cerrar TODAVIA mudo: `close()` provoca un refresco de linea y, si ya se
+    // desilencio, ese refresco escupe los codigos de escape a la terminal.
     rl.close();
+    rl.mudo = false;
+    process.stderr.write('\n');
     if (!pw || pw.length < 8) { console.error('Password vacío o de menos de 8 caracteres. Nada que generar.'); process.exit(1); }
     const salt = crypto.randomBytes(SALT_BYTES).toString('hex');
     const hash = derivar(pw, salt);
-    console.error('\n── Renglón para la Data Table `suite_usuarios` (n8n) ──');
+    console.error('── Renglón para la Data Table `suite_usuarios` (n8n) ──');
     console.error('── El PASSWORD no va aquí y no debe ir al chat ni al repo. ──\n');
     const fila = {
       username: String(username).trim().toLowerCase(),
