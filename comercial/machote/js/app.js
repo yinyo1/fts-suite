@@ -34,7 +34,7 @@
    * 2026-09-03 (por instrucción de Esteban), pero lleva el suyo aparte y va en
    * V1.00. Planeación sigue en `2.4.1` y el kiosko sólo con cadena de build;
    * a esos no se propaga. */
-  const VERSION = 'V1.05';
+  const VERSION = 'V1.06';
   const $  = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
   const clon = (x) => JSON.parse(JSON.stringify(x));
@@ -84,6 +84,12 @@
     '<select class="cel" data-cel="' + path + '">' +
     ops.map(o => '<option value="' + esc(o) + '"' + (o === val ? ' selected' : '') + '>' + esc(o || '—') + '</option>').join('') +
     '</select>';
+
+  /** Campo con catálogo sugerido y captura libre. Un `<select>` impide
+   *  escribir "tramo de 6 m", que es de lo que está lleno el acervo. */
+  const celLibre = (path, val, lista, cls) =>
+    '<input class="cel ' + (cls || '') + '" list="' + lista + '" data-cel="' + path + '"' +
+    ' value="' + esc(nn(val)) + '" autocomplete="off">';
 
   /** Escribe por ruta. `s:<sid>:mo:<i>:campo` · `s:<sid>:partidas:<i>:campo`
    *  `eq:<venta|ops|cli>:<i>:campo` · `nom:<sid>` · o campo anidado. */
@@ -177,11 +183,12 @@
 
     $('#vista').innerHTML =
       '<div class="libro">' +
-      '<div class="hojas" id="hojas">' + hojas.map(h =>
-        '<button class="pestana' + (h.id === ST.hoja ? ' on' : '') + '" data-hoja="' + esc(h.id) + '">' +
-        esc(h.label) + '</button>').join('') +
-        (m.secciones.length < C.MAX_SECCIONES
-          ? '<button class="pestana mas" data-nueva="1" title="Nueva sección">+</button>' : '') +
+      '<div class="hojas" id="hojas">' + hojas.map((h, i) =>
+        '<button class="pestana' + (h.id === ST.hoja ? ' on' : '') +
+        (i > C.MAX_SECCIONES ? ' fuera' : '') + '" data-hoja="' + esc(h.id) + '"' +
+        (i > C.MAX_SECCIONES ? ' title="Fuera de las diez ranuras del machote: no llegaría al precio"' : '') +
+        '>' + esc(h.label) + '</button>').join('') +
+        '<button class="pestana mas" data-nueva="1" title="Nueva sección">+</button>' +
       '</div><div id="hoja"></div></div>';
 
     $('#hojas').onclick = (e) => {
@@ -246,6 +253,7 @@
   /* ── Hoja de sección ─────────────────────────────────────────────────── */
   function hojaSeccion(m, s, c) {
     const cs = c.secciones.find(x => x.id === s.id) || {};
+    const idx = m.secciones.findIndex(x => x.id === s.id);
     const mg = c.margenes;
 
     // Bloque de encabezado: las once filas de la izquierda y la tabla de
@@ -284,7 +292,15 @@
       '<div class="tiny nota">Horas extras = mano de obra × 2 = <strong>' + mg.extra + '</strong>. No se captura, igual que en el Excel.</div>' +
       '</div></div>' +
       '<div class="nomsec"><span class="et">NOMBRE DE SECCIÓN</span>' + cel('nom:' + s.id, s.nombre, 'nombre') +
-      (m.secciones.length > 1 ? '<button class="btn del" data-delsec="' + s.id + '">Eliminar sección</button>' : '') + '</div>';
+      '<span class="accsec">' +
+        (idx > 0 ? '<button class="ico" data-movsec="' + s.id + '|-1" title="Mover a la izquierda">←</button>' : '') +
+        (idx < m.secciones.length - 1 ? '<button class="ico" data-movsec="' + s.id + '|1" title="Mover a la derecha">→</button>' : '') +
+        '<button class="ico" data-dupsec="' + s.id + '" title="Duplicar sección">⧉</button>' +
+        (m.secciones.length > 1 ? '<button class="ico peligro" data-delsec="' + s.id + '" title="Eliminar sección">×</button>' : '') +
+      '</span></div>' +
+      '<div class="tiny nota">Sección ' + (idx + 1) + ' de ' + m.secciones.length +
+      (idx >= C.MAX_SECCIONES ? ' · <strong class="n-bad">fuera de las diez ranuras del machote</strong>' : '') +
+      '. Las secciones ocupan la ranura por posición, no por nombre.</div>';
 
     // COSTO MANO DE OBRA — los diez renglones siempre presentes, en sus tres grupos.
     let filasMo = '';
@@ -338,7 +354,7 @@
       return '<tr>' +
         '<td data-l="Descripción">' + cel(p + 'descripcion', l.descripcion, 'desc') + '</td>' +
         '<td data-l="QTY">' + celNum(p + 'qty', l.qty, 'w60') + '</td>' +
-        '<td data-l="Unidad">' + celSel(p + 'unidad', l.unidad, D.UNIDADES) + '</td>' +
+        '<td data-l="Unidad">' + celLibre(p + 'unidad', l.unidad, 'unidades', 'w90') + '</td>' +
         '<td data-l="Tipo">' + celSel(p + 'tipo', l.tipo, [''].concat(C.TIPOS)) + '</td>' +
         '<td data-l="Modelo">' + cel(p + 'modelo', l.modelo, 'w110') + '</td>' +
         '<td data-l="Marca">' + cel(p + 'marca', l.marca, 'w90') + '</td>' +
@@ -351,7 +367,12 @@
         '<td class="vl mono calc fuerte" data-l="Precio con utilidad">' + mx(cl.conUtilidad) + '</td>' +
         '<td data-l="Link">' + cel(p + 'link', l.link, 'w130', 'https://…') + '</td>' +
         '<td data-l="Comentario">' + cel(p + 'comentario', l.comentario, 'w130') + '</td>' +
-        '<td class="acc"><button class="x" data-del="' + s.id + '#' + j + '" title="Eliminar partida">× eliminar</button></td></tr>';
+        '<td class="acc" data-l="">' +
+          '<button class="ico" data-mov="' + s.id + '#' + j + '|-1" title="Subir"' + (j === 0 ? ' disabled' : '') + '>↑</button>' +
+          '<button class="ico" data-mov="' + s.id + '#' + j + '|1" title="Bajar"' + (j === s.partidas.length - 1 ? ' disabled' : '') + '>↓</button>' +
+          '<button class="ico" data-dup="' + s.id + '#' + j + '" title="Duplicar">⧉</button>' +
+          '<button class="ico peligro" data-del="' + s.id + '#' + j + '" title="Eliminar">×</button>' +
+        '</td></tr>';
     }).join('');
 
     const tablaMat =
@@ -369,7 +390,10 @@
       (cs.pisados ? '<span class="tiny n-warn">' + cs.pisados + ' margen(es) pisado(s) a mano en esta sección</span>' : '') +
       '</div>';
 
-    return cab + leyenda() + tablaMo + tablaMat;
+    const listaUnidades = '<datalist id="unidades">' +
+      D.UNIDADES.map(u => '<option value="' + esc(u) + '">').join('') + '</datalist>';
+
+    return listaUnidades + cab + leyenda() + tablaMo + tablaMat;
   }
 
   /* ── Hoja DESGLOSE COTIZACIÓN ────────────────────────────────────────── */
@@ -411,11 +435,24 @@
       '<tr><td class="et">MARGEN DESEADO</td><td>' + celNum('margen_deseado', m.margen_deseado, 'w80') + '</td></tr>' +
       '<tr><td class="et">HORAS PROYECTO</td><td class="vl mono calc">' + Math.round(c.horas) + '</td></tr>' +
       '<tr><td class="et">Factor_req</td><td class="vl mono calc">' + (c.factorReq ? c.factorReq.toFixed(9) : '—') + '</td></tr>' +
-      '<tr><td class="et">Moneda</td><td>' + celSel('moneda', m.moneda, ['MXN', 'USD']) + '</td></tr>' +
+      '<tr><td class="et">Empresa</td><td>' +
+        '<select class="cel" data-cel="empresa_id" data-num>' +
+        C.EMPRESAS.map(e => '<option value="' + e.id + '"' +
+          (Number(m.empresa_id) === e.id ? ' selected' : '') + '>' + esc(e.corto) + '</option>').join('') +
+        '</select></td></tr>' +
+      '<tr><td class="et">Moneda</td><td>' + celSel('moneda', m.moneda, ['MXN', 'USD']) +
+        (m.moneda !== C.monedaPorDefecto(m)
+          ? '<div class="tiny n-warn">' + esc(C.empresaDe(m).corto) + ' factura en ' +
+            C.monedaPorDefecto(m) + '.</div>' : '') + '</td></tr>' +
       '<tr><td class="et">Tipo de cambio</td><td>' + celNum('tc', m.tc, 'w80') + '</td></tr>' +
       '<tr><td class="et">Factor de protección</td><td>' + celNum('factor_proteccion', m.factor_proteccion, 'w80') + '</td></tr>' +
+      '<tr><td class="et">Origen del tipo de cambio</td><td>' +
+        celLibre('tc_fuente', m.tc_fuente, 'fuentes-tc') + '</td></tr>' +
       '<tr><td class="et">TC efectivo</td><td class="vl mono calc">' + C.tcEfectivo(m).toFixed(4) + '</td></tr>' +
       '</tbody></table></div></div>' +
+      '<datalist id="fuentes-tc">' +
+        ['DOF del día', 'Banxico FIX', 'Tipo de cambio del banco', 'Acordado con el cliente']
+          .map(x => '<option value="' + x + '">').join('') + '</datalist>' +
       leyenda();
 
     // RESUMEN por sección: diez ranuras fijas, tres grupos de columnas.
@@ -440,7 +477,7 @@
 
     const porSeccion =
       '<div class="secc-tit">RESUMEN POR SECCIÓN</div>' +
-      '<div class="scroll"><table class="rejilla ancha">' +
+      '<div class="scroll"><table class="rejilla ancha" id="porSeccion">' +
       '<thead><tr><th colspan="2"></th><th colspan="3">COSTO</th><th colspan="3">CON UTILIDAD</th>' +
       '<th colspan="3">MARGEN DESEADO</th><th></th></tr>' +
       '<tr><th>SECCIÓN</th><th>SECCION DE COTIZACION</th>' +
@@ -531,7 +568,25 @@
       };
       // Al salir del campo se repinta -puede haber cambiado la estructura-.
       // Al teclear sólo se refrescan los derivados, que no roba el foco.
-      el.onchange = () => { aplicar(); pintarHoja(m); barra(m, C.calcular(m)); };
+      el.onchange = () => {
+        const antes = el.dataset.cel === 'empresa_id' ? C.monedaPorDefecto(m) : null;
+        const esNombre = el.dataset.cel.indexOf('nom:') === 0;
+        aplicar();
+        // El nombre de la sección vive en la PESTAÑA, que se pinta fuera de la
+        // hoja. Se corrige la pestaña en su lugar, sin repintar el libro: este
+        // `change` llega durante el blur del campo, y repintar de raíz ahí
+        // arranca el nodo que el navegador todavía está soltando -eso reventaba
+        // con "the node to be removed is no longer a child of this node".
+        if (esNombre) {
+          const sid = el.dataset.cel.slice(4);
+          const pes = document.querySelector('.pestana[data-hoja="' + sid + '"]');
+          const sec = m.secciones.find(x => x.id === sid);
+          if (pes && sec) pes.textContent = sec.nombre || 'SECCIÓN';
+        }
+        // La moneda sigue a la empresa mientras no se haya tocado a mano.
+        if (antes !== null && m.moneda === antes) m.moneda = C.monedaPorDefecto(m);
+        pintarHoja(m); barra(m, C.calcular(m));
+      };
       if (!esSel) el.oninput = () => { aplicar(); barra(m, refrescarCalculados(m) || C.calcular(m)); };
     });
     const vv = $('#verVacios');
@@ -545,15 +600,53 @@
                         pu: null, moneda: m.moneda, margen: null, link: '', comentario: '' });
       pintarHoja(m); barra(m, C.calcular(m));
     });
+    const seccionDe = (ref) => {
+      const [sid, j] = ref.split('#');
+      return { s: m.secciones.find(x => x.id === sid), j: parseInt(j, 10) };
+    };
+    const refrescar = () => { pintarHoja(m); barra(m, C.calcular(m)); };
+
     $$('[data-del]').forEach(b => b.onclick = () => {
-      const [sid, j] = b.dataset.del.split('#');
-      const s = m.secciones.find(x => x.id === sid); if (!s) return;
-      s.partidas.splice(parseInt(j, 10), 1); pintarHoja(m); barra(m, C.calcular(m));
+      const { s, j } = seccionDe(b.dataset.del); if (!s) return;
+      s.partidas.splice(j, 1); refrescar();
+    });
+    $$('[data-dup]').forEach(b => b.onclick = () => {
+      const { s, j } = seccionDe(b.dataset.dup); if (!s) return;
+      // Duplicar es como se arma una lista de materiales de verdad: se copia el
+      // renglón parecido y se cambia lo que difiere.
+      s.partidas.splice(j + 1, 0, JSON.parse(JSON.stringify(s.partidas[j])));
+      refrescar();
+    });
+    $$('[data-mov]').forEach(b => b.onclick = () => {
+      const [ref, d] = b.dataset.mov.split('|');
+      const { s, j } = seccionDe(ref); if (!s) return;
+      const k = j + parseInt(d, 10);
+      if (k < 0 || k >= s.partidas.length) return;
+      const t = s.partidas[j]; s.partidas[j] = s.partidas[k]; s.partidas[k] = t;
+      refrescar();
     });
     $$('[data-delsec]').forEach(b => b.onclick = () => {
       const i = m.secciones.findIndex(x => x.id === b.dataset.delsec);
       if (i < 0 || m.secciones.length < 2) return;
       m.secciones.splice(i, 1); ST.hoja = 'desglose'; vMachote(m.id);
+    });
+    $$('[data-dupsec]').forEach(b => b.onclick = () => {
+      const i = m.secciones.findIndex(x => x.id === b.dataset.dupsec); if (i < 0) return;
+      const copia = JSON.parse(JSON.stringify(m.secciones[i]));
+      copia.id = 's-' + Date.now();
+      copia.nombre = (copia.nombre || 'SECCIÓN') + ' (copia)';
+      m.secciones.splice(i + 1, 0, copia);
+      ST.hoja = copia.id; vMachote(m.id);
+    });
+    $$('[data-movsec]').forEach(b => b.onclick = () => {
+      const [sid, d] = b.dataset.movsec.split('|');
+      const i = m.secciones.findIndex(x => x.id === sid);
+      const k = i + parseInt(d, 10);
+      if (i < 0 || k < 0 || k >= m.secciones.length) return;
+      // La ranura la da la POSICIÓN, no el nombre: mover una sección cambia a
+      // qué renglón del RESUMEN va a caer.
+      const t = m.secciones[i]; m.secciones[i] = m.secciones[k]; m.secciones[k] = t;
+      vMachote(m.id);
     });
   }
 

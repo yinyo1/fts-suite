@@ -50,6 +50,17 @@
   const MAX_SECCIONES = 10;
 
   const TIPOS = ['Materiales', 'Servicios'];
+
+  /* Las dos empresas y su moneda. Verificado contra Odoo: de las 711 órdenes
+   * con machote, 594 son de SERVICIOS FTS (company 1, MXN) y 117 de FTS FULL
+   * TECHNOLOGY SYSTEMS LLC (company 6, USD). La moneda del documento nace de
+   * la empresa; el capturista la puede cambiar, y cada renglón la suya. */
+  const EMPRESAS = [
+    { id: 1, nombre: 'Servicios FTS', corto: 'FTS México', moneda: 'MXN' },
+    { id: 6, nombre: 'FTS Full Technology Systems LLC', corto: 'FTS USA', moneda: 'USD' }
+  ];
+  const empresaDe = (m) => EMPRESAS.find(e => e.id === Number(m && m.empresa_id)) || EMPRESAS[0];
+  const monedaPorDefecto = (m) => empresaDe(m).moneda;
   const ESCENARIOS = [
     { id: 'costo',          label: 'Costo' },
     { id: 'con_utilidad',   label: 'Con utilidad' },
@@ -331,6 +342,7 @@
 
   G.MachoteCalc = {
     ROLES, ROL, GRUPOS, TIPOS, ESCENARIOS, MAX_SECCIONES,
+    EMPRESAS, empresaDe, monedaPorDefecto,
     MARGENES_PLANTILLA, COMISION_FTS_PLANTILLA, MARGEN_DESEADO_PLANTILLA, REPARTO_PLANTILLA,
     tcEfectivo, margenes, costoMo, costoPartida, totalSeccion,
     calcular, precioParaMargen, repartir

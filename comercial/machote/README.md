@@ -61,10 +61,10 @@ versión es peor que no tener indicador.
 |---|---|
 | `version.json` | La versión vigente y su historial. |
 | `js/calc.js` | El motor. Todo número que se ve sale de aquí; ninguna vista calcula. |
-| `js/reglas.js` | 28 reglas en un arreglo de configuración, separadas del motor que las corre. |
+| `js/reglas.js` | 30 reglas en un arreglo de configuración, separadas del motor que las corre. |
 | `js/demo.js` | Datos de ejemplo. Lo que viene del machote real va marcado `REAL`; lo inventado, `SUPUESTO`. |
 | `js/app.js` | Vistas y ruteo. |
-| `tests/pruebas-navegador.js` | 42 pruebas de navegador. |
+| `tests/pruebas-navegador.js` | 53 pruebas de navegador. |
 
 ## Cómo se calcula el precio
 
@@ -125,6 +125,43 @@ pierde**: la hoja se renderiza a un nodo suelto, se comparan las celdas `.calc`
 una a una y sólo se copian las que cambiaron. Las que cambiaron parpadean medio
 segundo, y con `prefers-reduced-motion` el parpadeo se cambia por un borde.
 
+## Editar la estructura
+
+El machote real no es una plantilla fija: las secciones **se renombran** al
+alcance de cada obra y los renglones se copian del parecido. La herramienta hace
+lo mismo.
+
+- **Secciones:** renombrar (la pestaña sigue al nombre), duplicar `⧉` — queda al
+  lado como "(copia)" —, reordenar `←` `→`, eliminar `×`.
+- **Renglones de materiales y servicios:** duplicar, subir, bajar, eliminar.
+- **Unidad:** captura libre con catálogo sugerido. Un `<select>` no deja escribir
+  "tramo de 6 m", que es de lo que está lleno el acervo.
+
+**Los renglones de mano de obra no aceptan filas nuevas.** Son exactamente diez
+por sección en los cinco machotes 2026 del acervo (90 = 10×9, 70 = 10×7,
+50 = 10×5). Agregar filas rompería el regreso al Excel.
+
+**Sobre las diez ranuras:** se permite pasar de diez secciones, pero queda
+marcado en tres lados — la pestaña sobrante se pinta distinta, la hoja lo dice, y
+el revisador lo levanta como hallazgo **duro** listando cuáles no llegarían al
+precio. No se bloquea porque el negocio ya lo hace (el USD de calbee 2026 tiene
+once). Lo que se bloquea es el **silencio**, que es lo que hoy cuesta dinero: las
+ranuras se llenan **por posición, no por nombre**, así que mover una sección
+cambia a qué renglón del `RESUMEN` cae.
+
+## Moneda
+
+La cotización nace en la moneda de la **empresa** — Servicios FTS en MXN, FTS
+Full Technology Systems LLC en USD — y la moneda del documento sigue a la empresa
+mientras no se toque a mano. Cada renglón puede ir en otra moneda; ahí sí se
+convierte (el Excel las suma sin convertir, y ese es uno de los hallazgos del
+acervo).
+
+Cuando se convierte hay que decir **de dónde salió el tipo de cambio** — DOF del
+día, Banxico FIX, el del banco, acordado con el cliente, o texto libre. Si no se
+dice, el revisador lo levanta: en tres meses nadie puede reconstruir el precio
+sin ese dato.
+
 ## Cómo correr las pruebas
 
 ```bash
@@ -154,6 +191,10 @@ encontrado:
    en **cero px**: la pantalla se veía bien y el dato no estaba.
 6. `td[colspan]{display:none}` ocultaba también los títulos de grupo de las
    tarjetas, que son justo lo que las ordena.
+7. Repintar el libro desde el `change` del nombre de sección reventaba con
+   *"the node to be removed is no longer a child of this node"*: ese `change`
+   llega **durante el blur** del campo, y el repintado arranca el nodo que el
+   navegador todavía está soltando. La pestaña se corrige en su lugar.
 
 ## Lo que falta para que esto deje de ser prototipo
 
