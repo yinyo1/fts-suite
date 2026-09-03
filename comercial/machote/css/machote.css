@@ -506,3 +506,40 @@ table.rejilla tr.capturada > td:first-child { box-shadow: inset 3px 0 0 var(--x-
            min-height: var(--toque); }
 .tb-user:hover { color: var(--tinta); border-color: var(--suave); }
 @media (max-width: 420px) { .tb-user { max-width: 74px; } }
+
+/* ── Buscar machotes ────────────────────────────────────────────────────
+ * La lista sin buscador servía con cuatro cotizaciones de ejemplo. Con las
+ * de verdad —711 órdenes traen machote— hay que poder encontrar una. */
+.buscador { display: flex; gap: 8px; margin: 10px 0; }
+.buscador input { flex: 1 1 auto; min-width: 0; min-height: var(--toque);
+                  border: 1px solid var(--linea); border-radius: 10px;
+                  padding: 0 12px; font-size: 16px;   /* 16px: menos hace que
+                  iOS haga zoom al enfocar y descuadre la pantalla */
+                  background: var(--fondo); color: var(--tinta); }
+.buscador input:focus { outline: 2px solid var(--acento); outline-offset: 1px; }
+.btn.nuevo { flex: 0 0 auto; width: auto; display: inline-flex; align-items: center;
+             min-height: var(--toque); padding: 0 14px; text-decoration: none;
+             white-space: nowrap; }
+
+.fchips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 10px;
+          -webkit-overflow-scrolling: touch; }
+.fchip { flex: 0 0 auto;
+         /* 44 px, como todo lo que se toca. Puse 34 "porque es un chip" y la
+            prueba lo cachó — es la segunda vez que cometo el mismo error. */
+         min-height: var(--toque); border: 1px solid var(--linea);
+         background: var(--fondo); color: var(--suave); border-radius: 20px;
+         padding: 0 12px; font-size: 12px; font-weight: 600; cursor: pointer;
+         white-space: nowrap; }
+.fchip .n { display: inline-block; margin-left: 5px; padding: 1px 6px; border-radius: 10px;
+            background: var(--papel); color: var(--suave); font-size: 11px; }
+.fchip.on { background: var(--tinta); color: #fff; border-color: var(--tinta); }
+.fchip.on .n { background: rgba(255,255,255,.22); color: #fff; }
+
+/* ── Alta de machote ────────────────────────────────────────────────────*/
+.campo { display: block; margin-bottom: 12px; }
+.campo > span { display: block; font-size: 12px; font-weight: 600; color: var(--suave);
+                margin-bottom: 5px; }
+.campo .cel { width: 100%; min-height: var(--toque); font-size: 16px; padding: 0 12px;
+              border-radius: 8px; }
+.btn.primario { background: var(--acento); color: #fff; border-color: var(--acento);
+                min-height: var(--toque); margin-top: 6px; }

@@ -40,7 +40,7 @@
    * 2026-09-03 (por instrucción de Esteban), pero lleva el suyo aparte y va en
    * V1.00. Planeación sigue en `2.4.1` y el kiosko sólo con cadena de build;
    * a esos no se propaga. */
-  const VERSION = 'V1.08';
+  const VERSION = 'V1.09';
   const $  = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
   const clon = (x) => JSON.parse(JSON.stringify(x));
@@ -58,6 +58,7 @@
     handoff: _guardado ? (_guardado.handoff || {}) : {},
     confirmadas: {},
     hoja: 'desglose', simMargen: null,
+    busca: '', filtro: 'todos',
     // 'limpio' | 'sucio' | 'guardando' | 'guardado' | 'sin-almacen'
     pulso: (A && A.disponible()) ? 'limpio' : 'sin-almacen'
   };
@@ -216,6 +217,7 @@
     pintarUsuario();
     const p = (location.hash || '#/').replace(/^#\//, '').split('/');
     if (p[0] === '')      return vHome();
+    if (p[0] === 'nuevo') return vNuevo();
     if (p[0] === 'm')     return vMachote(p[1]);
     if (p[0] === 'rev')   return vRevision(p[1]);
     if (p[0] === 'orden') return vOrden(p[1]);
@@ -236,12 +238,44 @@
     : mg < R.UMBRALES.margen_minimo_blando ? 'warn' : 'ok';
 
   /* ── Lista ───────────────────────────────────────────────────────────── */
+  /* ¿Este machote cae en lo que se está buscando?
+   * Se busca sobre lo que la gente recuerda de una cotización: el nombre, el
+   * cliente y el número de orden. El id entra también porque es lo que se
+   * copia y pega cuando alguien pregunta "¿y el M-1042?". */
+  function coincide(m, q) {
+    if (!q) return true;
+    const t = [m.nombre, m.cliente, m.so, m.id].map(x => String(x || '').toLowerCase()).join(' | ');
+    // Cada palabra por separado: "topo chico" y "chico topo" encuentran lo mismo.
+    return q.toLowerCase().split(/\s+/).filter(Boolean).every(w => t.indexOf(w) >= 0);
+  }
+
   function vHome() {
     top('Machote y órdenes', 'Comercial · prototipo', 'DEMO', null, true);
     $('#fija').innerHTML = '';
     const est = D.ESTADOS;
 
-    const filas = ST.machotes.map(m => {
+    // Los contadores salen del universo COMPLETO, no de lo ya filtrado: un
+    // contador que cambia al filtrar no sirve para saber cuántos hay.
+    const cuenta = { todos: ST.machotes.length };
+    D.FLUJO.forEach(k => { cuenta[k] = ST.machotes.filter(m => m.estado === k).length; });
+
+    const visibles = ST.machotes.filter(m =>
+      (ST.filtro === 'todos' || m.estado === ST.filtro) && coincide(m, ST.busca));
+
+    const chip = (k, etiqueta) =>
+      '<button class="fchip' + (ST.filtro === k ? ' on' : '') + '" data-filtro="' + k + '">' +
+      esc(etiqueta) + ' <span class="n">' + (cuenta[k] || 0) + '</span></button>';
+
+    const buscador =
+      '<div class="buscador">' +
+      '<input id="q" type="search" placeholder="Buscar por nombre, cliente u orden…" ' +
+      'value="' + esc(ST.busca) + '" autocomplete="off" enterkeyhint="search">' +
+      '<a class="btn nuevo" href="#/nuevo">+ Nuevo</a>' +
+      '</div>' +
+      '<div class="fchips">' + chip('todos', 'Todos') +
+      D.FLUJO.map(k => chip(k, D.ESTADOS[k].label)).join('') + '</div>';
+
+    const filas = visibles.map(m => {
       const rev = R.revisar(m), c = rev.calc;
       return '<a class="item" href="#/m/' + m.id + '">' +
         '<div class="grow"><strong>' + esc(m.nombre) + '</strong>' +
@@ -259,12 +293,72 @@
       '<div class="right"><div class="mono">' + mx(o.monto) + ' ' + esc(o.moneda) + '</div>' +
       '<div class="tiny">' + (ST.confirmadas[o.id] ? '✓ confirmada' : 'pendiente') + '</div></div></a>').join('');
 
+    // Un "no hay nada" tiene que decir POR QUÉ no hay nada: si la lista sale
+    // vacía por un filtro puesto hace un minuto y no lo dice, parece que se
+    // perdieron los machotes.
+    const vacio = ST.busca
+      ? '<div class="vacio">Ningún machote coincide con «' + esc(ST.busca) + '»' +
+        (ST.filtro !== 'todos' ? ' en ' + esc(est[ST.filtro].label).toLowerCase() : '') + '.</div>'
+      : '<div class="vacio">No hay machotes en ' + esc(est[ST.filtro] ? est[ST.filtro].label.toLowerCase() : 'este estado') + '.</div>';
+
     $('#vista').innerHTML =
       '<div class="pad"><div class="aviso">La retícula reproduce el machote real de FTS, verificada en cinco cotizaciones de 2026. ' +
       'Los datos de las cotizaciones de abajo son demo.</div>' +
-      '<h3>Estación 2.0 · armar la cotización</h3>' + filas +
+      '<h3>Estación 2.0 · armar la cotización</h3>' +
+      buscador +
+      (visibles.length ? filas : vacio) +
       '<h3 style="margin-top:22px">Estación 3.0 · confirmar la orden</h3>' + ords +
       '<div class="ver">versión <strong>' + VERSION + '</strong></div></div>';
+
+    // Se repinta sólo la lista al teclear, no la vista: repintar entera mata
+    // el foco del buscador a media palabra.
+    const q = $('#q');
+    if (q) q.oninput = () => { ST.busca = q.value; vHome(); $('#q').focus();
+                               $('#q').setSelectionRange(ST.busca.length, ST.busca.length); };
+    $$('[data-filtro]').forEach(b => b.onclick = () => { ST.filtro = b.dataset.filtro; vHome(); });
+  }
+
+  /* ── Machote nuevo ─────────────────────────────────────────────────────
+   * La orden es OPCIONAL a propósito: el machote casi siempre nace antes que
+   * la orden. Lo que no se puede es ENVIARLO a Odoo sin ella (V1.07). */
+  function vNuevo() {
+    top('Nuevo machote', 'Comercial · prototipo', 'DEMO', '#/');
+    $('#fija').innerHTML = '';
+    $('#vista').innerHTML =
+      '<div class="pad"><div class="wg">' +
+      '<h4>Datos para arrancar</h4>' +
+      '<label class="campo"><span>Nombre de la cotización</span>' +
+      '<input id="n-nombre" class="cel" placeholder="Ej. Modificación de tren de drenado"></label>' +
+      '<label class="campo"><span>Cliente</span>' +
+      '<input id="n-cliente" class="cel" placeholder="Ej. Nalco de México · Topo Chico"></label>' +
+      '<label class="campo"><span>Orden (opcional)</span>' +
+      '<input id="n-so" class="cel" placeholder="SO11836 — se puede dejar vacío"></label>' +
+      '<label class="campo"><span>Empresa</span>' +
+      '<select id="n-empresa" class="cel">' +
+      C.EMPRESAS.map(e => '<option value="' + e.id + '">' + esc(e.corto) + ' · ' + e.moneda + '</option>').join('') +
+      '</select></label>' +
+      '<div class="tiny nota">Va a nacer con la hoja <strong>DESGLOSE COTIZACIÓN</strong>, una ' +
+      '<strong>SECCIÓN 1</strong>, los diez renglones de mano de obra con su tarifa de plantilla ' +
+      'y las horas en cero, y <strong>' + C.PARTIDAS_EN_BLANCO + ' renglones de materiales</strong> ' +
+      'vacíos. El Tipo (Materiales o Servicios) se elige renglón por renglón, como en el Excel.</div>' +
+      '<button class="btn primario" id="n-crear">Crear machote</button>' +
+      '<div id="n-err" class="tiny n-bad"></div>' +
+      '</div></div>';
+
+    $('#n-crear').onclick = () => {
+      const nombre = $('#n-nombre').value.trim();
+      if (!nombre) { $('#n-err').textContent = 'Ponle un nombre: es como lo vas a encontrar después.'; return; }
+      const m = C.machoteNuevo({
+        nombre: nombre,
+        cliente: $('#n-cliente').value.trim(),
+        so: $('#n-so').value.trim() || null,
+        empresa_id: Number($('#n-empresa').value)
+      });
+      ST.machotes.unshift(m);
+      guardarYa();
+      ST.hoja = 'desglose';
+      location.hash = '#/m/' + m.id;
+    };
   }
 
   /* ── El libro ────────────────────────────────────────────────────────── */
@@ -466,7 +560,11 @@
         '<td data-l="Marca">' + cel(p + 'marca', l.marca, 'w90') + '</td>' +
         '<td data-l="Precio unitario">' + celNum(p + 'pu', l.pu, 'w90') + '</td>' +
         '<td data-l="Moneda">' + celSel(p + 'moneda', l.moneda, ['MXN', 'USD']) + '</td>' +
-        '<td class="vl mono calc' + (cl.sinPrecio ? ' n-bad' : '') + '" data-l="Precio total">' + (cl.sinPrecio ? 'sin precio' : mx(cl.costo)) + '</td>' +
+        // "sin precio" SOLO en un renglón que alguien empezó a llenar. En uno
+        // en blanco no es un hallazgo, es el estado normal del bloque — y con
+        // treinta en blanco por sección, decirlo treinta veces es ruido.
+        '<td class="vl mono calc' + (cl.sinPrecio && cl.usada ? ' n-bad' : '') + '" data-l="Precio total">' +
+        (cl.sinPrecio ? (cl.usada ? 'sin precio' : '—') : mx(cl.costo)) + '</td>' +
         '<td data-l="Margen">' + celNum(p + 'margen', l.margen, 'w60' + (cl.pisado ? ' pisado' : ''), String(cl.porTipo || '')) +
           (cl.pisado ? '<span class="pisado-marca" title="Escrito a mano encima de la fórmula. Por Tipo le tocaría ' +
             cl.porTipo + '.">≠ ' + cl.porTipo + '</span>' : '') + '</td>' +

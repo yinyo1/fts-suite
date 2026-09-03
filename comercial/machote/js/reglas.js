@@ -33,7 +33,9 @@
   const secs = (m) => (m.secciones || []);
   const partidas = (m) => secs(m).flatMap(s => (s.partidas || []).map(l => ({ s, l })));
   const renglonesMo = (m) => secs(m).flatMap(s => (s.mo || []).map(l => ({ s, l })));
-  const usada = (l) => (Number(l.qty) > 0) || (l.pu !== null && l.pu !== undefined && l.pu !== '') || !!l.descripcion;
+  // Definicion unica en el motor: estaba repetida aqui y dos veces en calc.js,
+  // con matices distintos. Tres definiciones de lo mismo terminan divergiendo.
+  const usada = (l) => C.usadaPartida(l);
   const tipoDe = (m) => (G.DEMO.TIPOS_PROYECTO.find(t => t.id === (m.diagnostico || {}).tipo) || null);
 
   const REGLAS = [

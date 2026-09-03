@@ -107,7 +107,8 @@ Lo que **sí** varía por cotización — y por eso son campos, no constantes:
 
 Columnas: `QTY | UNIDAD | Personas | DESCRIPCIÓN | PRECIO UNITARIO | PRECIO TOTAL | MONEDA | Margen utilidad | PRECIO CON UTILIDAD`
 
-Doce renglones fijos en tres grupos:
+**Diez** renglones fijos en tres grupos — 2 + 3 + 5. (Este documento decía «doce» y
+enumeraba diez; corregido el 2026-09-03 contra `calc.js`, que tiene diez.)
 
 - **Diseño y Programación** — `diseño` $200 (×2,5) · `PROGRAMADOR` $300 (×4,4)
 - **En Planta** — `Supervisor Sr` $200 · `Supervisor Jr - seguridad` $140 · `Técnicos` $140 (×2,5)
