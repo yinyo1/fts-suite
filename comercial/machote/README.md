@@ -27,6 +27,18 @@ Se ve al pie de la lista y en la barra superior de cada cotización. Sirve para
 distinguir *"ya lo cambié"* de *"estás viendo el caché"*, que sin esto no se
 puede sin abrir las herramientas de desarrollo.
 
+⚠️ **El esquema es de este módulo, no de la suite.** El repo tiene otros en uso
+y se decidió no tocarlos:
+
+| módulo | esquema |
+|---|---|
+| `finanzas` | `0.5.36` + cadena de build |
+| `operaciones/planeacion` | `2.4.1` + build |
+| `operaciones/kiosk`, `confirmar-horas` | sólo cadena de build |
+| siete módulos más | `1.0.0` puesto una vez y nunca movido |
+
+No propagues `V1.xx` a ninguno de esos. La decisión está en el issue #148.
+
 ### Cómo bumpearla (obligatorio en todo merge)
 
 1. `comercial/machote/version.json` → sube `version` en 0.01 y **antepón** la

@@ -1,12 +1,34 @@
 {
-  "version": "V1.03",
+  "version": "V1.04",
   "fecha": "2026-09-03",
   "modulo": "comercial/machote",
-  "esquema": "V<mayor>.<menor de dos dígitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
+  "ambito": "SOLO este modulo. El repo tiene otros esquemas en uso -finanzas 0.5.36 + cadena de build, operaciones/planeacion 2.4.1, kiosk y confirmar-horas solo build, y siete modulos con un 1.0.0 puesto una vez y nunca movido-. NO propagar V1.xx a esos: se decidio dejarlos como estan (issue #148).",
+  "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
-    { "version": "V1.03", "pr": null,  "nota": "Versionado V1.00–V1.99 por merge" },
-    { "version": "V1.02", "pr": 155,   "nota": "Indicador de versión en pantalla" },
-    { "version": "V1.01", "pr": 154,   "nota": "La pantalla como el libro; tarjetas en teléfono; margen pisado por renglón; aviso de ranuras" },
-    { "version": "V1.00", "pr": 149,   "nota": "Motor reconstruido sobre el machote real de SharePoint" }
+    {
+      "version": "V1.04",
+      "pr": null,
+      "nota": "Ambito de la convencion, acotado a este modulo"
+    },
+    {
+      "version": "V1.03",
+      "pr": null,
+      "nota": "Versionado V1.00–V1.99 por merge"
+    },
+    {
+      "version": "V1.02",
+      "pr": 155,
+      "nota": "Indicador de versión en pantalla"
+    },
+    {
+      "version": "V1.01",
+      "pr": 154,
+      "nota": "La pantalla como el libro; tarjetas en teléfono; margen pisado por renglón; aviso de ranuras"
+    },
+    {
+      "version": "V1.00",
+      "pr": 149,
+      "nota": "Motor reconstruido sobre el machote real de SharePoint"
+    }
   ]
 }
