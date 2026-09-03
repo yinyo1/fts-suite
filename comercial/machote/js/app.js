@@ -17,7 +17,8 @@
     aprobaciones: {},   // decisiones del account manager
     tab: 'diag',
     simPrecio: null,
-    portapapeles: null  // resultado de widget listo para usarse
+    portapapeles: null, // resultado de widget listo para usarse
+    abiertos: {}        // renglones desplegados (id -> true)
   };
   const mach = (id) => ST.machotes.find(m => m.id === id);
   const orden = (id) => ST.ordenes.find(o => o.id === id);
@@ -35,6 +36,14 @@
   const pc = (x) => x === null || x === undefined ? '—' : (x * 100).toFixed(1) + '%';
   const nivelMargen = (m) => m === null ? '' : (m < REGLAS.UMBRALES.margen_minimo_duro ? 'bad'
                             : m < REGLAS.UMBRALES.margen_minimo_blando ? 'warn' : 'ok');
+
+  /** Nivel visual del margen. Si el costo tiene huecos, NUNCA se pinta en verde:
+   *  un margen calculado sobre un costo incompleto siempre está inflado, y
+   *  pintarlo de "sano" es la forma más cara de mentirle al que aprueba. */
+  const nivelConHuecos = (c) => c.costoIncompleto ? 'warn' : nivelMargen(c.margen);
+  const pcM = (c) => c.margen === null ? '—' : pc(c.margen) + (c.costoIncompleto ? '*' : '');
+  const notaHuecos = (c) => !c.costoIncompleto ? '' :
+    '* Faltan ' + c.huecos + ' renglón(es) por costear: el margen real es MENOR.';
 
   function toast(txt) {
     const t = document.createElement('div');
@@ -110,8 +119,8 @@
         '<div class="t2"><span>' + esc(m.id) + '</span>' +
         '<span>Costo <b class="mono">' + mx(c.costoTotal) + '</b></span>' +
         '<span>Margen <b class="mono" style="color:' +
-          (c.margen === null ? 'var(--muted)' : nivelMargen(c.margen) === 'ok' ? 'var(--green)' : nivelMargen(c.margen) === 'warn' ? '#9a6700' : 'var(--red)') +
-          '">' + pc(c.margen) + '</b></span>' +
+          (c.margen === null ? 'var(--muted)' : nivelConHuecos(c) === 'ok' ? 'var(--green)' : nivelConHuecos(c) === 'warn' ? '#9a6700' : 'var(--red)') +
+          '">' + pcM(c) + '</b></span>' +
         (r.duras.length ? '<span class="right chip rojo">' + r.duras.length + ' bloqueo' + (r.duras.length > 1 ? 's' : '') + '</span>'
                         : r.blandas.length ? '<span class="right chip ambar">' + r.blandas.length + ' aviso' + (r.blandas.length > 1 ? 's' : '') + '</span>'
                         : '<span class="right chip verde">limpio</span>') +
@@ -236,6 +245,11 @@
   function paneSecc(m) {
     const c = CALC.calcular(m);
     let h = '';
+    if (c.costoIncompleto) {
+      h += '<div class="aviso rojo"><b>' + c.huecos + ' renglón(es) sin costear.</b> ' +
+        'Todo lo que ves abajo —costo, margen, utilidad— está calculado sin ellos, así que ' +
+        'el margen real es <b>menor</b> que el que aparece.</div>';
+    }
     if (ST.portapapeles) {
       h += '<div class="aviso verde row"><div class="grow">Resultado listo: <b>' + ST.portapapeles.valor + ' ' +
         esc(ST.portapapeles.unidad) + '</b> — ' + esc(ST.portapapeles.etiqueta) + '</div>' +
@@ -278,11 +292,31 @@
     const cb = CALC.costoBom(l, m);
     const o = DEMO.ORIGENES_PRECIO[l.origen] || DEMO.ORIGENES_PRECIO.sin_dato;
     const p = 's:' + s.id + ':bom:' + l.id + ':';
-    return '<div class="lin">' +
+    const ab = ST.abiertos[l.id];
+
+    // Cerrado: una sola fila legible. Con 16 partidas, ver los 7 campos de cada
+    // una vuelve la sección un muro por el que nadie quiere pasar.
+    if (!ab) {
+      const mm = [l.marca, l.modelo].filter(Boolean).join(' ');
+      return '<button class="lin cerrada" data-abrir="' + l.id + '">' +
+        '<div class="lin-hd"><span class="idx">' + idx + '</span>' +
+        '<div class="grow" style="min-width:0">' +
+        '<div class="cd">' + (esc(l.desc) || '<i style="color:var(--muted)">sin descripción</i>') + '</div>' +
+        '<div class="cm">' + (mm ? esc(mm) + ' · ' : '') +
+          (l.cant || 0).toLocaleString('es-MX') + ' ' + esc(l.unidad) +
+          (cb.sinPrecio ? '' : ' × ' + mx2(l.pu) + (l.moneda === 'USD' ? ' USD' : '')) +
+          ' <span class="oc ' + o.confianza + '">' + o.confianza + '</span></div></div>' +
+        '<span class="lin-tot' + (cb.sinPrecio ? ' nd' : ' mono') + '" data-tot-bom="' + l.id + '">' +
+          (cb.sinPrecio ? 'SIN DATO' : mx(cb.total)) + '</span>' +
+        '<span class="chev">›</span></div></button>';
+    }
+
+    return '<div class="lin abierta">' +
       '<div class="lin-hd"><span class="idx">' + idx + '</span>' +
       '<input class="grow" data-bind="' + p + 'desc" value="' + esc(l.desc) + '" placeholder="Descripción del material">' +
       '<span class="lin-tot' + (cb.sinPrecio ? ' nd' : '') + '" data-tot-bom="' + l.id + '">' +
         (cb.sinPrecio ? 'SIN DATO' : mx(cb.total)) + '</span>' +
+      '<button class="del" data-cerrar="' + l.id + '" title="Cerrar">⌃</button>' +
       '<button class="del" data-del-bom="' + s.id + '|' + l.id + '">✕</button></div>' +
       '<div class="fgrid c3">' +
       '<div class="f"><label>Marca</label><input data-bind="' + p + 'marca" value="' + esc(l.marca) + '"></div>' +
@@ -305,13 +339,29 @@
   function lineaMo(l, s, idx) {
     const cm = CALC.costoMo(l);
     const p = 's:' + s.id + ':mo:' + l.id + ':';
-    return '<div class="lin">' +
+    const ab = ST.abiertos[l.id];
+    const of = DEMO.OFICIOS.find(o => o.id === l.oficio);
+
+    if (!ab) {
+      return '<button class="lin cerrada' + (cm.sinOficio ? ' mal' : '') + '" data-abrir="' + l.id + '">' +
+        '<div class="lin-hd"><span class="idx">' + idx + '</span>' +
+        '<div class="grow" style="min-width:0">' +
+        '<div class="cd">' + (of ? esc(of.nombre) : '<span style="color:var(--red)">Sin oficio</span>') + '</div>' +
+        '<div class="cm">' + l.horas + ' h × ' + l.personas + ' = ' + Math.round(cm.horas_hombre) + ' HH' +
+          (l.horas_dobles ? ' · ' + l.horas_dobles + ' h dobles' : '') +
+          (l.turno !== 'normal' ? ' · ' + esc(CALC.ETIQUETA_TURNO[l.turno]) : '') + '</div></div>' +
+        '<span class="lin-tot mono" data-tot-mo="' + l.id + '">' + mx(cm.total) + '</span>' +
+        '<span class="chev">›</span></div></button>';
+    }
+
+    return '<div class="lin abierta">' +
       '<div class="lin-hd"><span class="idx">' + idx + '</span>' +
       '<select class="grow' + (cm.sinOficio ? ' err' : '') + '" data-re="' + p + 'oficio">' +
         '<option value="">— elige oficio —</option>' +
         DEMO.OFICIOS.map(o => '<option value="' + o.id + '"' + (o.id === l.oficio ? ' selected' : '') + '>' + esc(o.nombre) + '</option>').join('') +
         '</select>' +
       '<span class="lin-tot mono" data-tot-mo="' + l.id + '">' + mx(cm.total) + '</span>' +
+      '<button class="del" data-cerrar="' + l.id + '" title="Cerrar">⌃</button>' +
       '<button class="del" data-del-mo="' + s.id + '|' + l.id + '">✕</button></div>' +
       '<div class="fgrid c3">' +
       '<div class="f"><label>Horas / persona</label><input class="num" type="number" step="any" data-num data-bind="' + p + 'horas" value="' + l.horas + '"></div>' +
@@ -445,12 +495,13 @@
   function barraFija(m) {
     const c = CALC.calcular(m);
     const r = REGLAS.revisar(m);
-    const n = nivelMargen(c.margen);
+    const n = nivelConHuecos(c);
     $('#fija').innerHTML =
       '<div class="fija">' +
-      '<div class="b"><span>COSTO</span><b class="mono" id="fCosto">' + mx(c.costoTotal) + '</b></div>' +
+      '<div class="b"><span>COSTO' + (c.costoIncompleto ? ' (INCOMPLETO)' : '') + '</span>' +
+        '<b class="mono' + (c.costoIncompleto ? ' inc' : '') + '" id="fCosto">' + mx(c.costoTotal) + '</b></div>' +
       '<div class="b"><span>PRECIO</span><b class="mono" id="fPrecio">' + mx(c.precio) + '</b></div>' +
-      '<div class="b mg ' + n + '"><span>MARGEN</span><b class="mono" id="fMargen">' + pc(c.margen) + '</b></div>' +
+      '<div class="b mg ' + n + '"><span>MARGEN</span><b class="mono" id="fMargen">' + pcM(c) + '</b></div>' +
       '<button class="btn mini ' + (r.duras.length ? 'btn-p' : 'btn-s') + ' right" data-ir="#/rev/' + m.id + '">' +
         'Revisar' + (r.duras.length ? ' · ' + r.duras.length + '🔴' : r.blandas.length ? ' · ' + r.blandas.length + '🟡' : ' ✓') +
       '</button></div>';
@@ -459,8 +510,11 @@
   function refrescar(m) {
     const c = CALC.calcular(m);
     const set = (sel, v) => { const e = $(sel); if (e) e.textContent = v; };
-    set('#fCosto', mx(c.costoTotal)); set('#fPrecio', mx(c.precio)); set('#fMargen', pc(c.margen));
-    const mgEl = $('#fija .mg'); if (mgEl) mgEl.className = 'b mg ' + nivelMargen(c.margen);
+    set('#fCosto', mx(c.costoTotal)); set('#fPrecio', mx(c.precio)); set('#fMargen', pcM(c));
+    const mgEl = $('#fija .mg'); if (mgEl) mgEl.className = 'b mg ' + nivelConHuecos(c);
+    const cEl = $('#fCosto'); if (cEl) cEl.className = 'mono' + (c.costoIncompleto ? ' inc' : '');
+    const cLb = cEl && cEl.parentNode.querySelector('span');
+    if (cLb) cLb.textContent = 'COSTO' + (c.costoIncompleto ? ' (INCOMPLETO)' : '');
     m.secciones.forEach(s => {
       s.bom.forEach(l => {
         const e = document.querySelector('[data-tot-bom="' + l.id + '"]'); if (!e) return;
@@ -524,7 +578,8 @@
     const h = hoff(o.id);
     if (m && !h.alcance) h.alcance = m.diagnostico.alcance || '';
 
-    const costo = m ? CALC.calcular(m).costoTotal : (h.costo_manual || 0);
+    const cm = m ? CALC.calcular(m) : null;
+    const costo = cm ? cm.costoTotal : (h.costo_manual || 0);
     const margen = total > 0 ? (total - costo) / total : null;
 
     const faltan = camposFaltantes(h, m, costo);
@@ -547,9 +602,11 @@
         : '<div class="aviso ambar" style="margin-bottom:10px">Esta orden no tiene machote ligado. Captura el costo estimado a mano o no hay con qué comparar.</div>' +
           '<div class="f"><label>Costo estimado (captura manual)</label>' +
           '<input class="num" type="number" step="any" id="costoMan" value="' + (h.costo_manual || '') + '" placeholder="0"></div>') +
-      '<div class="kpi" style="padding:14px 0 6px"><div class="n mono ' + nivelMargen(margen) + '">' + pc(margen) + '</div>' +
+      '<div class="kpi" style="padding:14px 0 6px"><div class="n mono ' +
+        (cm && cm.costoIncompleto ? 'warn' : nivelMargen(margen)) + '">' + pc(margen) + (cm && cm.costoIncompleto ? '*' : '') + '</div>' +
       '<div class="l">margen sobre ' + mx(total) + '</div>' +
-      '<div class="sub">Costo ' + mx(costo) + ' · Utilidad ' + mx(total - costo) + '</div></div>' +
+      '<div class="sub">Costo ' + mx(costo) + ' · Utilidad ' + mx(total - costo) + '</div>' +
+      (cm && cm.costoIncompleto ? '<div class="sub" style="color:#9a6700">' + notaHuecos(cm) + '</div>' : '') + '</div>' +
       '</div></div>' +
 
       // ── Revisador ──
@@ -711,7 +768,7 @@
     const c = CALC.calcular(m);
     const r = REGLAS.revisar(m);
     const dec = ST.aprobaciones[m.id];
-    const n = nivelMargen(c.margen);
+    const n = nivelConHuecos(c);
 
     if (dec) {
       $('#vista').innerHTML = '<div class="pad">' +
@@ -723,10 +780,12 @@
     }
 
     $('#vista').innerHTML = '<div class="pad">' +
-      '<div class="kpi"><div class="n mono ' + n + '">' + pc(c.margen) + '</div>' +
+      '<div class="kpi"><div class="n mono ' + n + '">' + pcM(c) + '</div>' +
       '<div class="l">margen · ' + esc(m.nombre) + '</div>' +
       '<div class="sub">Precio ' + mx(c.precio) + ' &nbsp;·&nbsp; Costo ' + mx(c.costoTotal) + '</div>' +
-      '<div class="sub">Utilidad ' + mx(c.utilidad) + '</div></div>' +
+      '<div class="sub">Utilidad ' + mx(c.utilidad) + '</div>' +
+      (c.costoIncompleto ? '<div class="aviso ambar" style="margin-top:12px;text-align:left">' +
+        '<b>Este margen no es de fiar.</b> ' + notaHuecos(c).replace('* ', '') + '</div>' : '') + '</div>' +
 
       (r.duras.length
         ? '<div class="aviso rojo"><b>' + r.duras.length + ' bloqueo(s):</b><br>' + r.duras.map(h => '· ' + esc(h.titulo)).join('<br>') + '</div>'
@@ -757,13 +816,16 @@
 
   document.addEventListener('click', (ev) => {
     const t = ev.target.closest('[data-ir],[data-tab],[data-preg],[data-del-bom],[data-del-mo],[data-del-sec],' +
-      '[data-add-bom],[data-add-mo],[data-add-sec],[data-limpiar-pp],#btnConf,#apOk,#apDev,#objBtn,#simAplicar');
+      '[data-add-bom],[data-add-mo],[data-add-sec],[data-limpiar-pp],[data-abrir],[data-cerrar],' +
+      '#btnConf,#apOk,#apDev,#objBtn,#simAplicar');
     if (!t) return;
     const m = mach(idActual());
 
     if (t.dataset.ir) { location.hash = t.dataset.ir; return; }
     if (t.dataset.tab) { ST.tab = t.dataset.tab; ST.simPrecio = null; pintarMachote(m); return; }
     if (t.dataset.limpiarPp !== undefined) { ST.portapapeles = null; pintarPane(m); return; }
+    if (t.dataset.abrir)  { ST.abiertos[t.dataset.abrir] = true;  pintarPane(m); return; }
+    if (t.dataset.cerrar) { delete ST.abiertos[t.dataset.cerrar]; pintarPane(m); return; }
 
     if (t.dataset.preg) {
       m.diagnostico.respuestas[t.dataset.preg] = (t.dataset.val === 'true');
@@ -782,11 +844,13 @@
       const cant = ST.portapapeles ? ST.portapapeles.valor : 1;
       sec.bom.push({ id: 'b' + Date.now(), desc: '', marca: '', modelo: '', cant, unidad: 'pza',
                      pu: null, origen: 'sin_dato', moneda: m.moneda === 'USD' ? 'USD' : 'MXN' });
+      ST.abiertos[sec.bom[sec.bom.length - 1].id] = true;
       ST.portapapeles = null; pintarPane(m); barraFija(m); return;
     }
     if (t.dataset.addMo) {
       const sec = m.secciones.find(x => x.id === t.dataset.addMo);
       sec.mo.push({ id: 'm' + Date.now(), oficio: '', horas: 8, personas: 1, costo_hora: null, turno: 'normal', horas_dobles: 0 });
+      ST.abiertos[sec.mo[sec.mo.length - 1].id] = true;
       pintarPane(m); barraFija(m); return;
     }
     if (t.dataset.addSec !== undefined) {
@@ -859,7 +923,7 @@
       if (el.dataset.ap === 'precio') m.venta.precio = parseFloat(el.value) || 0;
       if (el.dataset.ap === 'comision') m.generales.comision_broker.pct = parseFloat(el.value) || 0;
       const c = CALC.calcular(m);
-      const k = $('.kpi .n'); if (k) { k.textContent = pc(c.margen); k.className = 'n mono ' + nivelMargen(c.margen); }
+      const k = $('.kpi .n'); if (k) { k.textContent = pcM(c); k.className = 'n mono ' + nivelConHuecos(c); }
       const subs = document.querySelectorAll('.kpi .sub');
       if (subs[0]) subs[0].innerHTML = 'Precio ' + mx(c.precio) + ' &nbsp;·&nbsp; Costo ' + mx(c.costoTotal);
       if (subs[1]) subs[1].textContent = 'Utilidad ' + mx(c.utilidad);

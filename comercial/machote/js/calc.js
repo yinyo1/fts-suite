@@ -55,6 +55,9 @@
     const manoObra = secciones.reduce((a, s) => a + s.manoObra, 0);
     const horasHombre = secciones.reduce((a, s) => a + s.horasHombre, 0);
     const partidasSinPrecio = secciones.reduce((a, s) => a + s.sinPrecio, 0);
+    // Mano de obra sin tarifa: mismas consecuencias que una partida sin precio.
+    const moSinCosto = (m.secciones || []).reduce((a, s) =>
+      a + (s.mo || []).filter(l => l.costo_hora === null || l.costo_hora === undefined).length, 0);
     const costoDirecto = material + manoObra;
 
     const g = m.generales || {};
@@ -78,8 +81,14 @@
     const margen = precio > 0 ? utilidad / precio : null;
     const markup = costoTotal > 0 ? (precio - costoTotal) / costoTotal : null;
 
+    // Un costo al que le faltan renglones SIEMPRE se queda corto, así que el
+    // margen que sale de él SIEMPRE es optimista. No es un decimal de más: es
+    // la diferencia entre "ganamos 27%" y "no sabemos".
+    const huecos = partidasSinPrecio + moSinCosto;
+
     return {
-      secciones, material, manoObra, horasHombre, partidasSinPrecio,
+      secciones, material, manoObra, horasHombre, partidasSinPrecio, moSinCosto,
+      huecos, costoIncompleto: huecos > 0,
       costoDirecto, generales, totalGenerales, costoTotal,
       precio, comisionPct, comisionMonto, utilidad, margen, markup,
       tcEfectivo: tcEfectivo(m)
