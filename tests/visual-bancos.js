@@ -74,7 +74,9 @@ const esDelEntorno = t => /ERR_CONNECTION_RESET|ERR_NAME_NOT_RESOLVED|ERR_BLOCKE
 
     await p.goto(HARNESS, { waitUntil: 'domcontentloaded' });
     await p.waitForSelector('#ip-tblwrap table tbody tr', { timeout: 15000 });
-    await p.waitForFunction(() => document.body.innerHTML.indexOf('BILL3345') >= 0, null, { timeout: 15000 });
+    // Se espera al candidato de la linea de CHASE: en Jeeves ya no queda ninguna pendiente que
+    // pueda traer sugerencia (las 4 restantes son fondeos y devoluciones, excluidas a proposito).
+    await p.waitForFunction(() => document.body.innerHTML.indexOf('BILL/2026/08/0031') >= 0, null, { timeout: 15000 });
     await p.waitForTimeout(300);
 
     check('sin errores de consola propios (' + delEntorno.length + ' del entorno, filtrados)', errs.length === 0, errs.slice(0, 3).join(' | '));
@@ -199,6 +201,25 @@ const esDelEntorno = t => /ERR_CONNECTION_RESET|ERR_NAME_NOT_RESOLVED|ERR_BLOCKE
     })));
     check('las 3 fuentes traen foco, barra y porcentaje (' + cards.length + ' tarjetas)',
       cards.length === 3 && cards.every(c => c.foco && c.barra && c.pct), JSON.stringify(cards));
+
+    // El color sigue al pendiente ACCIONABLE, no al porcentaje. Jeeves está en 168 de 172
+    // (97.7%) y las 4 que faltan son 2 fondeos y 2 devoluciones: no queda nada que conciliar,
+    // así que va VERDE aunque el porcentaje no llegue a 100. Antes pintaba amarillo y
+    // contradecía a su propio titular, que ya decía "0 por conciliar".
+    const focos = await p.evaluate(() => [...document.querySelectorAll('#ip-semrows .s2card')].map(c => {
+      const luz = c.querySelector('.light');
+      return {
+        titulo: ((c.querySelector('.s2ct') || {}).textContent || '').trim().slice(0, 28),
+        meta: ((c.querySelector('.s2goal') || {}).textContent || '').trim(),
+        clase: luz ? luz.className.replace('light', '').trim() : null
+      };
+    }));
+    const jeeves = focos.find(f => /Jeeves/.test(f.titulo));
+    check('con 0 por conciliar el foco es VERDE aunque el % no llegue a 100',
+      !!jeeves && /^0 por conciliar/.test(jeeves.meta) && jeeves.clase === 'g', JSON.stringify(jeeves));
+    check('las fuentes con pendiente NO salen verdes',
+      focos.filter(f => !/^0 por conciliar|Al 100%/.test(f.meta)).every(f => f.clase !== 'g'),
+      JSON.stringify(focos));
     check('la leyenda ya no dice que las fuentes sin motor no llevan porcentaje',
       ((await p.locator('.semnote').textContent().catch(() => '')) || '').indexOf('no llevan porcentaje') < 0);
     check('los paneles del semáforo van apilados a todo el ancho',

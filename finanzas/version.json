@@ -1,9 +1,14 @@
 {
-  "version": "V1.06",
+  "version": "V1.07",
   "fecha": "2026-09-03",
   "modulo": "finanzas",
   "esquema": "V<mayor>.<menor de dos dígitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.07",
+      "pr": null,
+      "nota": "El foco de cada fuente sale del pendiente ACCIONABLE, no del porcentaje de Odoo. Jeeves llego a 0 por conciliar y seguia en amarillo: 168 de 172 es 97.7%, pero las 4 que faltaban eran 2 fondeos y 2 devoluciones, que el motor no cierra y no son trabajo de nadie. El titular ya media lo accionable desde V1.02, asi que el color lo contradecia. El porcentaje no se toca: sigue siendo el de Odoo, en el renglon de abajo. Leyenda corregida."
+    },
     {
       "version": "V1.06",
       "pr": null,
