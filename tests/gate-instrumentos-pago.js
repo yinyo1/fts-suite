@@ -134,17 +134,39 @@ const STATUS_REAL = {
 // Sugerencias: SOLO para la 9006. La 9007 se devuelve evaluada-sin-candidatos.
 // Las 9004/9005 NO deben pedirse nunca — el gate lo verifica capturando line_ids.
 const SUGERENCIAS_PEDIDAS = [];
+// line_id -> true. Lo que el "Odoo" del stub ya dio por conciliado.
+const CONCILIADAS = {};
+// Contador por endpoint: R3 se mide en llamadas de red, no en apariencia.
+const LLAMADAS = {};
+// Latencia artificial. SIN esto el stub resuelve en microtareas y una pantalla de carga
+// dura menos que el muestreo del vigía: el assert "la tabla nunca se vacía" pasaría por la
+// razón equivocada. En producción estas llamadas tardan segundos, así que el gate tiene que
+// poder VER el blanqueo. Un test que no puede fallar no prueba nada.
+const LATENCIA_MS = 120;
+function conLatencia(v) { return new Promise(function (r) { setTimeout(function () { r(v); }, LATENCIA_MS); }); }
 
 function finClientStub(endpoint, params) {
-  if (endpoint === '/fin/captura-status') return Promise.resolve(JSON.parse(JSON.stringify(STATUS_REAL)));
+  LLAMADAS[endpoint] = (LLAMADAS[endpoint] || 0) + 1;
+  if (endpoint === '/fin/captura-conciliar') {
+    // Odoo queda conciliado, así que la SIGUIENTE relectura tiene que devolver la línea ya
+    // conciliada. Sin esto el stub mentiría y el test mediría un mundo que no existe.
+    CONCILIADAS[params.line_id] = true;
+    return Promise.resolve({ ok: true, parcial: false, full_reconcile_id: 9999,
+      bill_name: 'BILL3345', vendor_id: 7, monto: 340.96, msg: 'Conciliada.' });
+  }
+  if (endpoint === '/fin/captura-status') return conLatencia(JSON.parse(JSON.stringify(STATUS_REAL)));
   if (endpoint === '/fin/captura-transacciones') {
-    return Promise.resolve({
-      rows: JSON.parse(JSON.stringify(ROWS_REAL)),
+    return conLatencia({
+      rows: JSON.parse(JSON.stringify(ROWS_REAL)).map(function (r) {
+        if (CONCILIADAS[r.id]) { r.ok = true; r.res = 0; r.res_apunte = 0; r.bill = 'BILL3345'; r.po = 'PO7345'; r.sb = 'PAGADA'; }
+        return r;
+      }),
       pagination: { total_count: ROWS_REAL.length, truncado: false, cap: 6000 }
     });
   }
   if (endpoint === '/fin/captura-sugerencias') {
     (params.line_ids || []).forEach(function (x) { SUGERENCIAS_PEDIDAS.push(x); });
+    if (process.env.GATE_DEBUG) console.log('[sug]', Date.now() % 100000, JSON.stringify(params.line_ids));
     return Promise.resolve({
       lineas: [
         { line_id: 9006, nivel: 'sugerida', candidatos: [{ bill_aml_id: 111, bill_name: 'BILL3345', partner: 'Proferre', score: 0.91, monto_bill: 340.96, banda: 'alta', pre_marcado: true }] },
@@ -198,6 +220,7 @@ function loadScript(rel) {
 loadScript('js/state.js');
 loadScript('js/router.js');
 
+win.__GATE_DEBUG = !!process.env.GATE_DEBUG;
 win.FinAuth = { isValid: function () { return true; }, getToken: function () { return 'gate-token'; }, getUser: function () { return 'gate'; }, logout: function () {} };
 win.FinCompanySelector = { mount: function () {} };
 win.FinClient = { call: function (ep, p) { return finClientStub(ep, p); } };
@@ -220,9 +243,18 @@ async function waitFor(fn, label, timeoutMs) {
 function view() { return win.document.getElementById('viewContainer'); }
 function txt(sel) { const el = view().querySelector(sel); return el ? el.textContent : null; }
 
+// Cada escenario monta sobre un contenedor NUEVO, no sobre el mismo vaciado.
+// La vista se auto-desmonta comprobando `document.body.contains(container)`, y ese
+// container es #viewContainer: si solo se vacía su innerHTML el elemento sigue en el DOM,
+// la instancia anterior se cree viva, sigue suscrita a FinState y sus batches en vuelo
+// siguen pegándole al server. Medir llamadas de red con dos vistas activas da basura.
+// (Nota: el mismo patrón existe en producción al navegar entre módulos — apuntado en el PR.)
 function mountModule(mode) {
   win.localStorage.setItem('fts_fin_mode_instrumentos-pago', mode);
-  view().innerHTML = '';
+  const viejo = win.document.getElementById('viewContainer');
+  const nuevo = win.document.createElement('main');
+  nuevo.id = 'viewContainer';
+  viejo.parentNode.replaceChild(nuevo, viejo);
   win.FinRouter.init(MANIFEST);
   win.FinRouter.navigate('instrumentos-pago');
 }
@@ -386,12 +418,74 @@ async function escenarioReal() {
   check('existen los chips', chips != null);
 }
 
+// Escenario 3 · CONCILIAR — el costo de un clic.
+// Antes: cada conciliación disparaba load(), que blanqueaba la tabla con la pantalla de
+// carga, tiraba state.sugg ENTERO y volvía a pedir sugerencias para todas las pendientes
+// (en producción, ~1,800 líneas en lotes de 200). Se mide lo observable: llamadas de red
+// y si la tabla llegó a quedarse sin filas en algún instante.
+async function escenarioConciliar() {
+  scenario = 'CONCILIAR (recarga post-conciliación)';
+  SUGERENCIAS_PEDIDAS.length = 0;
+  for (const k in LLAMADAS) delete LLAMADAS[k];
+  mountModule('real');
+  await waitFor(function () { return view().querySelector('#ip-tblwrap table tbody tr'); }, 'tabla montada');
+  await waitFor(function () { return view().innerHTML.indexOf('BILL3345') >= 0; }, 'sugerencias aplicadas');
+
+  const sugAntes = LLAMADAS['/fin/captura-sugerencias'] || 0;
+  const statusAntes = LLAMADAS['/fin/captura-status'] || 0;
+  check('la carga inicial sí pidió sugerencias', sugAntes > 0, 'llamadas: ' + sugAntes);
+
+  // Abrir el acordeón de 9006 y disparar Conciliar.
+  // _id 5 = la 9006, la única con candidato. Se apunta explícitamente: la tabla ordena por
+  // fecha desc, así que el PRIMER botón de expandir del DOM es la de Chase (2026-09-01), que
+  // no tiene candidato ni botón Conciliar. Tomar "el primero" medía otra cosa.
+  const exp = view().querySelector('button[data-expand="5"]');
+  check('hay botón de expandir en la fila con candidato', !!exp);
+  if (exp) exp.dispatchEvent(new win.MouseEvent('click', { bubbles: true }));
+  await waitFor(function () { return view().querySelector('button[data-conc]'); }, 'acordeón abierto con botón Conciliar');
+  const btn = view().querySelector('button[data-conc]');
+  check('hay botón Conciliar', !!btn);
+  if (!btn) return;
+
+  // Vigilar la tabla mientras corre la conciliación + la recarga (el setTimeout es de 1500 ms).
+  let seQuedoVacia = false;
+  const vigia = setInterval(function () {
+    try { if (view().querySelectorAll('#ip-tblwrap table tbody tr').length === 0) seQuedoVacia = true; } catch (e) {}
+  }, 10);
+  btn.dispatchEvent(new win.MouseEvent('click', { bubbles: true }));
+  await waitFor(function () { return (LLAMADAS['/fin/captura-conciliar'] || 0) > 0; }, 'se llamó a captura-conciliar');
+  await waitFor(function () { return (LLAMADAS['/fin/captura-status'] || 0) > statusAntes; }, 'la relectura del server ocurrió', 6000);
+  await tick(400);
+  clearInterval(vigia);
+
+  // La relectura NO se toca: el 200 no prueba que el estado quedó (CLAUDE.md §8) y las
+  // transitivas (PO/Bill/Analítica/Folio) solo las resuelve el server. Eso se conserva.
+  check('sigue releyendo del server tras conciliar (no se cambia por una marca local)',
+    (LLAMADAS['/fin/captura-transacciones'] || 0) > 1, 'llamadas tx: ' + (LLAMADAS['/fin/captura-transacciones'] || 0));
+
+  // Lo que SÍ cambia: no se vuelve a preguntar por lo ya evaluado.
+  const sugDespues = LLAMADAS['/fin/captura-sugerencias'] || 0;
+  // Tras la relectura no queda NADA que preguntar: 9006 ya volvió conciliada del server,
+  // 9007 conserva su candidato en caché, y 9008 es de un journal fuera del motor. Antes se
+  // volvía a preguntar por todas las pendientes, siempre.
+  check('NO se re-piden sugerencias tras la relectura post-conciliación',
+    sugDespues === sugAntes,
+    'antes ' + sugAntes + ' → después ' + sugDespues + ' (line_ids: ' + JSON.stringify(SUGERENCIAS_PEDIDAS) + ')');
+
+  // Y la tabla no desaparece en ningún instante.
+  check('la tabla NUNCA se queda sin filas durante la recarga', !seQuedoVacia,
+    'la tabla llegó a quedarse vacía — volvió la pantalla de carga');
+
+  check('tras conciliar la fila queda conciliada', view().innerHTML.indexOf('✓ Conciliada') >= 0);
+}
+
 // ── main ─────────────────────────────────────────────────────────────────────
 (async function main() {
   const t0 = Date.now();
   try {
     await escenarioDemo();
     await escenarioReal();
+    await escenarioConciliar();
   } catch (e) {
     check('el gate corrió hasta el final', false, (e && e.stack) || String(e));
   }

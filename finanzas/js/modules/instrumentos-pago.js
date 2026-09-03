@@ -22,7 +22,7 @@
   // ── config ──
   var MODULE_ID = 'instrumentos-pago';
   var MOCK_PATH = 'data/mock/instrumentos-pago.mock.json';
-  var IP_BUILD = '0.5.33';                // badge de versión visible (evidencia de qué build está desplegado)
+  var IP_BUILD = '0.5.34';                // badge de versión visible (evidencia de qué build está desplegado)
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -239,12 +239,52 @@
     }
 
     // ── carga de datos ──
-    function load() {
-      state.loading = true; state.error = null; state.partialLoad = null; state.loadProgress = null; render();
+    // load(opts)
+    //   opts.quiet     — no blanquea la pantalla con el estado de carga. La tabla vieja se
+    //                    queda visible hasta que llegan los datos nuevos. Para la relectura
+    //                    post-conciliación: el usuario acaba de trabajar, y ver desaparecer la
+    //                    tabla es el peor momento para cobrarle una pantalla de carga.
+    //   opts.keepSugg  — preserva la caché de sugerencias entre cargas.
+    //   opts.dropId    — line_id (r.id) cuya sugerencia SÍ se tira (la recién conciliada).
+    function load(opts) {
+      opts = opts || {};
+      // Snapshot de sugerencias ANTES de recargar. Se indexa por r.id (el line_id de Odoo),
+      // NUNCA por _id: _id es el índice del array que ingest() reasigna en cada carga, así que
+      // restaurar por índice pegaría las sugerencias de una línea en OTRA fila si el server
+      // devuelve distinto orden o distinto número de filas. Ese fallo sería silencioso y grave.
+      var _suggPrev = null;
+      if (opts.keepSugg) {
+        _suggPrev = {};
+        state.allRows.forEach(function (r) {
+          var sg = state.sugg[r._id];
+          if (sg && sg.cand && r.id != null && r.id !== opts.dropId) _suggPrev[r.id] = sg;
+        });
+      }
+      state.error = null; state.partialLoad = null; state.loadProgress = null;
+      if (!opts.quiet) { state.loading = true; render(); }
+      // Preservar el scroll también aquí: render() reconstruye el contenedor entero y el fix
+      // de v0.5.29 solo cubre paintTable(). Mismo mecanismo, ya probado en este archivo.
+      var _scL = null;
+      try { _scL = (window.pageYOffset != null) ? window.pageYOffset : (document.scrollingElement || document.documentElement).scrollTop; } catch (e) { }
+      var _restaurarL = function () {
+        if (_scL == null) return;
+        try {
+          var el = document.scrollingElement || document.documentElement;
+          var ahora = (window.pageYOffset != null) ? window.pageYOffset : el.scrollTop;
+          if (Math.abs(ahora - _scL) > 1) { if (window.scrollTo) window.scrollTo(0, _scL); else el.scrollTop = _scL; }
+        } catch (e) { }
+      };
+      // Re-ata las sugerencias al _id NUEVO de cada fila, casando por line_id.
+      var _restaurarSugg = function () {
+        if (!_suggPrev) return;
+        state.allRows.forEach(function (r) {
+          if (r.id != null && _suggPrev[r.id]) state.sugg[r._id] = _suggPrev[r.id];
+        });
+      };
       if (state.mode === 'demo') {
         fetch(MOCK_PATH, { cache: 'no-store' })
           .then(function (r) { return r.json(); })
-          .then(function (data) { ingest(data.rows || [], data.sources || [], data.runs || [], data.cron || DEFAULT_CRON, { today: data.today || null, porJournal: data.por_journal || [], intransit: data.intransit || [], suggByRow: data.suggestions || {} }); state.preconc = data.preconc || {}; state.loading = false; try { evalSugg(); } catch (e) { if (window.console) console.warn('[ip] evalSugg demo falló (no bloquea):', e); } render(); afterData(); })
+          .then(function (data) { ingest(data.rows || [], data.sources || [], data.runs || [], data.cron || DEFAULT_CRON, { today: data.today || null, porJournal: data.por_journal || [], intransit: data.intransit || [], suggByRow: data.suggestions || {} }); state.preconc = data.preconc || {}; state.loading = false; _restaurarSugg(); try { evalSugg(); } catch (e) { if (window.console) console.warn('[ip] evalSugg demo falló (no bloquea):', e); } render(); _restaurarL(); afterData(); })
           .catch(function (e) { state.loading = false; state.error = 'No se pudo cargar el mock: ' + e.message; render(); });
         return;
       }
@@ -261,9 +301,10 @@
         // por defecto arranca el mes pasado), así que el semáforo A no se puede calcular aquí.
         ingest(txAll.rows || [], st.sources || [], st.runs || [], st.cron || DEFAULT_CRON, { today: today, porJournal: st.por_journal || [], intransit: st.intransit || [], suggByRow: {}, metricas: st.metricas || null, serie: st.serie || [] });
         state.loading = false; state.loadProgress = null;
+        _restaurarSugg();   // antes de render() y de evalSugg(): el estado ya se pinta con lo cacheado
         // carga parcial: nunca fingir que está completo → aviso visible; los agregados reflejan solo lo cargado.
         state.partialLoad = txAll.partial ? { loaded: (txAll.rows || []).length, total: (txAll.pagination && txAll.pagination.total_count) || null, reason: txAll.reason || null } : null;
-        render(); afterData();
+        render(); _restaurarL(); afterData();
         // Pieza #2: batch de sugerencias en 2o plano. try/catch DURO: pase lo que pase, evalSugg NUNCA tumba load()
         // (la tabla ya está pintada; su fallo solo deja estados neutros).
         try { evalSugg(); } catch (e) { if (window.console) console.warn('[ip] evalSugg falló (no bloquea la tabla):', e); }
@@ -976,7 +1017,20 @@
         });
         return Promise.resolve();
       }
-      var targets = state.allRows.filter(function (r) { return !r.ok && !isFondeo(r) && !isDevolucion(r); });
+      // A quién SÍ se le pregunta. Dos exclusiones nuevas, las dos por no gastar red en algo
+      // cuya respuesta ya se conoce o no puede existir:
+      //   · las que ya traen candidatos en caché (tras una recarga que los preservó) — el guard
+      //     BILL_YA_CONCILIADO revalida en el instante del write, así que una sugerencia
+      //     cacheada no puede provocar una escritura mala, y cada fila tiene su "Recargar";
+      //   · las de un journal que el server marca en_motor:false — preguntarle al motor por un
+      //     journal que no cubre no puede devolver nada (son las ~473 líneas de Chase).
+      // enAlcanceMotor() devuelve true cuando el server no manda por_journal: sin esa
+      // información no se excluye a nadie.
+      var targets = state.allRows.filter(function (r) {
+        return !r.ok && !isFondeo(r) && !isDevolucion(r) &&
+               !(state.sugg[r._id] && state.sugg[r._id].cand) &&
+               enAlcanceMotor(r);
+      });
       if (!targets.length) return Promise.resolve();
       var ids = targets.map(function (r) { return r.id; });
       var byLine = {}; state.allRows.forEach(function (r) { byLine[r.id] = r._id; });
@@ -1434,8 +1488,16 @@
           if (state.expanded === id) state.expanded = null;
           delete state.sugg[id];
           // Releer del server: el 200 no es prueba de que el estado quedó, y las transitivas
-          // solo existen del lado de Odoo. En demo no hay a quién releerle.
-          if (state.mode === 'real') { load(); } else { paintTable(); }
+          // solo existen del lado de Odoo. Eso NO se toca (CLAUDE.md §8).
+          // Lo que sí cambia es el PRECIO de la relectura. Antes era un load() completo:
+          // blanqueaba la tabla con la pantalla de carga, tiraba state.sugg ENTERO y volvía a
+          // pedir sugerencias para TODAS las pendientes — en producción ~1,800 líneas en lotes
+          // de 200, o sea ~9 llamadas extra por cada línea conciliada. Quien concilia veinte
+          // seguidas pagaba ese ciclo veinte veces.
+          // Ahora: silenciosa (la tabla vieja sigue en pantalla), conserva las sugerencias ya
+          // evaluadas y tira solo la de la línea recién conciliada. Mismos datos y mismo
+          // criterio de verdad, sin el impuesto.
+          if (state.mode === 'real') { load({ quiet: true, keepSugg: true, dropId: row && row.id }); } else { paintTable(); }
         }, 1500);
         return;
       }
