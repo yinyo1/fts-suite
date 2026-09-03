@@ -1,5 +1,5 @@
 {
-  "version": "V1.04",
+  "version": "V1.05",
   "fecha": "2026-09-03",
   "modulo": "rh/nomina-incidencias",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
@@ -27,8 +27,13 @@
     },
     {
       "version": "V1.04",
-      "pr": null,
+      "pr": 181,
       "nota": "Lo que salio de la primera prueba con Magaly (sesion del 2026-09-03). BUG MEDIDO: el catalogo de proyectos no traia los de USA — el nodo Odoo pedia plan_id in [1,2] y los 14 proyectos de FTS LLC viven en el plan 18. Por eso no se pudieron registrar los dias de Mateo Salazar en Estados Unidos. Corregido y publicado en nom/semana. CATALOGO: se separan falta_justificada / falta_injustificada y permiso_con_goce / permiso_sin_goce, que antes eran una casilla escondida dentro de un tipo generico — un tipo que hay que adivinar marcando un check es un tipo que no existe, y ademas la convencion del repo (CLAUDE.md §7) ya los nombraba por separado. Nuevos: dia_cumpleanos, bono_productividad y bono_condicionado. Los dos bonos nuevos NO piden proyecto: son bonos de nomina que decide RH, distintos del bono de proyecto, que es de rentabilidad y lo decide Felipe. 24 tipos declarables + 7 estados. PICKER: el selector de proyectos pasa de un desplegable de 67 opciones a un campo con buscador (datalist), porque el desplegable obligaba a saber el nombre exacto de memoria. RENGLON: un renglon en rojo ahora dice POR QUE en la propia fila. Antes habia que abrir el cajon o subir al aviso, y con treinta personas eso deja sin salida a quien captura. Fijado en el gate con tres asserts. NO reproducido: el reporte de que una disputa resuelta deja el renglon en rojo. En repro controlada el mecanismo funciona (rojo -> gris al resolver); queda pedido un caso concreto para diagnosticarlo."
+    },
+    {
+      "version": "V1.05",
+      "pr": null,
+      "nota": "Premio de Puntualidad y Asistencia sugerido por el sistema, decidido por RH. Compara la PRIMERA entrada de cada dia habil contra x_studio_hora_entrada de Odoo (float_time: 7.5 = 07:30) con 5 minutos de tolerancia — 5:00 todavia cuenta, 5:01 ya no. Sabado y domingo NO se evaluan: si Felipe los cito en fin de semana eso es trabajo extraordinario, no impuntualidad. REGLA DE OTRO TURNO: una entrada mas de 3 h despues de su hora se lee como otro turno y no como retardo. Enoc entra 07:00 en su ficha y el 1-sep checo 20:30 CST; contra la base eso da 810 minutos y le habria costado el premio. El modo de fallo se eligio a proposito (misma leccion que la ir.rule 814): equivocarse hacia 'no es tarde' cuela un premio que RH quita viendo la nota; equivocarse hacia 'es tarde' castiga cada semana a quien trabaja de noche y nadie lo nota. Se descuenta del veredicto pero se DICE en el motivo y se marca 'revisar'. La columna nueva se pinta para todos, incluido el 'no aplica' — un hueco se lee como olvido. La palomita puesta por una persona lleva borde solido y la calculada borde punteado: cuando alguien reclama su premio tres semanas despues, importa saber si alguien lo decidio o si nadie lo miro. El cajon trae la evidencia dia por dia con la hora de entrada y los minutos contra su horario. Lo que NO hace: comparar contra el plan de Felipe. Hoy compara contra el horario base de la ficha; la comparacion contra el plan queda pendiente y se dice en el manual en vez de fingir que ya esta."
     }
   ]
 }

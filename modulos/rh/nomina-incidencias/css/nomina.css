@@ -195,3 +195,28 @@ input:focus,select:focus{outline:2px solid var(--green-l);border-color:var(--gre
 
 /* ── Pista bajo el buscador de proyectos ── */
 .pista { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+/* ── Premio de puntualidad ──
+   La palomita se ve distinta cuando la puso una persona (borde sólido) que cuando
+   la calculó el sistema (borde punteado). No es cosmética: cuando alguien reclama
+   su premio tres semanas después, importa saber si alguien lo decidió o si nadie
+   lo miró. */
+.ppa { display:inline-flex; align-items:center; gap:6px; cursor:pointer; font:inherit;
+       font-size:12px; font-weight:700; padding:3px 10px; border-radius:999px;
+       border:1px dashed currentColor; background:transparent; }
+.ppa.si  { color: var(--green); }
+.ppa.no  { color: var(--muted); }
+.ppa.dec { border-style: solid; }
+.ppa:hover { filter: brightness(1.2); }
+.ppa .q { font-weight:400; font-size:10px; opacity:.75; text-transform:uppercase; letter-spacing:.04em; }
+
+.ppa-cab { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.ppa-cab .q { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+.ppa-mot { font-size:12px; color:var(--muted2); line-height:1.45; margin-bottom:9px; }
+.ppa-dias { width:100%; border-collapse:collapse; font-size:12px; }
+.ppa-dias th { text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:.05em;
+               color:var(--muted); padding:3px 6px; border-bottom:1px solid var(--border); }
+.ppa-dias td { padding:3px 6px; border-bottom:1px solid var(--border); }
+.ppa-dias td.ok    { color: var(--green); }
+.ppa-dias td.mal   { color: var(--red); font-weight:700; }
+.ppa-dias td.turno { color: #d99b20; font-weight:700; }
