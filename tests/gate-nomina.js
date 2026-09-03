@@ -99,7 +99,7 @@ seccion('Bloqueos');
     Log.bloqueos(incapSinFolio, SEMANA, []).some(x => /folio/i.test(x.texto)),
     JSON.stringify(Log.bloqueos(incapSinFolio, SEMANA, [])));
 
-  const permisoSinGoce = persona({ dias_mexico: 4, declaraciones: [{ tipo: 'permiso', valores: { dias: 1 } }] });
+  const permisoSinGoce = persona({ dias_mexico: 4, declaraciones: [{ tipo: 'permiso_sin_goce', valores: { dias: 1, motivo: 'Asunto personal' } }] });
   check('un booleano en "no" NO se reclama como faltante',
     Log.bloqueos(permisoSinGoce, SEMANA, []).length === 0,
     JSON.stringify(Log.bloqueos(permisoSinGoce, SEMANA, [])));
@@ -141,7 +141,7 @@ seccion('Derivaciones');
 seccion('Catálogo');
 {
   const decl = Cat.tiposDeclarables(), est = Cat.tiposDeEstado();
-  check('19 tipos declarables + 7 estados = 26', decl.length + est.length === 26, decl.length + '+' + est.length);
+  check('24 tipos declarables + 7 estados = 31', decl.length + est.length === 31, decl.length + '+' + est.length);
   check('meta() encuentra un tipo de cada grupo',
     Cat.meta('vacaciones').grupo === 'dias' && Cat.meta('bono_proyecto').grupo === 'dinero' &&
     Cat.meta('anticipo_sueldo').grupo === 'desc' && Cat.meta('baja').grupo === 'estado');
@@ -292,6 +292,19 @@ function arrancarRender() { (async function () {
   check('el badge de versión dice V1.00', d.getElementById('ver-badge').textContent === 'V1.00');
   check('el badge de modo dice PRÁCTICA', d.getElementById('modo-badge').textContent === 'PRÁCTICA', d.getElementById('modo-badge').textContent);
   check('y el badge avisa con color que no es real', /demo/.test(d.getElementById('modo-badge').className));
+
+  // Lo que se rompió en la prueba con RH: un renglón en rojo que no dice por qué.
+  const enRojo = Array.from(d.querySelectorAll('#tb tr[data-id]'))
+    .filter(tr => /--red/.test(tr.querySelector('td.st').getAttribute('style') || ''));
+  check('hay renglones en rojo que probar', enRojo.length > 0, String(enRojo.length));
+  check('TODO renglón en rojo dice el motivo en la propia fila',
+    enRojo.every(tr => (tr.querySelector('.porque') || {}).textContent),
+    enRojo.filter(tr => !(tr.querySelector('.porque') || {}).textContent)
+          .map(tr => tr.getAttribute('data-id')).join(',') || 'todos lo dicen');
+  check('y ningún renglón sano lo trae',
+    Array.from(d.querySelectorAll('#tb tr[data-id]'))
+      .filter(tr => !/--red/.test(tr.querySelector('td.st').getAttribute('style') || ''))
+      .every(tr => !tr.querySelector('.porque')));
 
   const filas = d.querySelectorAll('#tb tr[data-id]');
   check('el roster pinta 31 renglones (30 activos + 1 inactivo con estado vivo)', filas.length === 31, String(filas.length));

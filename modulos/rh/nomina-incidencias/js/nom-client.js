@@ -124,7 +124,7 @@
     79:  { dias_mexico: 3, odoo: 3, decls: [{ tipo: 'trabajo_usa', valores: { dias: 2, so: 'SO11842 Mission Foods' } }] },
     // Samuel: el kiosko registro 4 y la captura dice 5. Es el caso a enseñar.
     57:  { dias_mexico: 5, odoo: 4, decls: [{ tipo: 'bono_proyecto', fuente: 'J96', valores: { renglones: [{ monto: 2500, so: '' }] } }] },
-    6:   { dias_mexico: 4, odoo: 4, decls: [{ tipo: 'permiso', valores: { dias: 1, goce: true } }] },
+    6:   { dias_mexico: 4, odoo: 4, decls: [{ tipo: 'permiso_con_goce', valores: { dias: 1, motivo: 'Cita medica' } }] },
     128: { dias_mexico: 5, odoo: 5, decls: [] },
     124: { dias_mexico: 5, odoo: 5, decls: [] }
   };

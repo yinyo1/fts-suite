@@ -182,10 +182,20 @@ const CUERPO = `
   <table>
     <tr><th>Grupo</th><th>Qué va aquí</th><th>Qué hace con los días</th></tr>
     <tr><td><b>Días</b></td><td>Vacaciones, festivos, faltas, permisos, incapacidad, trabajo en Estados Unidos</td><td>Consume días de la semana</td></tr>
-    <tr><td><b>Dinero a favor</b></td><td>Bonos de proyecto, tiempo extra, gratificaciones, anticipos</td><td>No consume días</td></tr>
+    <tr><td><b>Dinero a favor</b></td><td>Bonos, tiempo extra, prima vacacional, aguinaldo, anticipos</td><td>No consume días</td></tr>
     <tr><td><b>Descuentos</b></td><td>Préstamos, INFONAVIT, pensión, faltantes de herramienta</td><td>No consume días</td></tr>
     <tr><td><b>Estado</b></td><td>Deuda, baja, incapacidad larga, suspensión</td><td>Dura varias semanas</td></tr>
   </table>
+  <h3>Los tres bonos no son lo mismo</h3>
+  <table>
+    <tr><th>Tipo</th><th>Quién lo decide</th><th>¿Pide proyecto?</th></tr>
+    <tr><td><b>Bono de proyecto</b></td><td>Operaciones (Felipe)</td><td><b>Sí.</b> Carga a la obra, es costo del proyecto</td></tr>
+    <tr><td><b>Bono de productividad</b></td><td>RH</td><td>No. Es de nómina</td></tr>
+    <tr><td><b>Bono condicionado</b></td><td>RH</td><td>No. Es como un aumento condicionado, fuera del salario diario</td></tr>
+  </table>
+  <p class="nota">Si el bono no corresponde a una obra concreta, <b>no es bono de proyecto</b>.
+  Antes había que inventarle un proyecto o dejar el renglón en rojo; ahora tiene su propio tipo.</p>
+
   <p>Cuando algo lleva dinero, la pantalla te pide la <b>fuente de pago</b> —de qué cuenta
   sale— y de ahí deriva sola la empresa y la moneda. Si eliges una cuenta de Chase, te va a
   decir FTS LLC y dólares sin que tú lo teclees.</p>
@@ -218,7 +228,9 @@ const CUERPO = `
     <ol>
       <li>Clic en su renglón. Los días quedan en 5.</li>
       <li><b>+ Agregar declaración</b> → <b>Bono de proyecto</b>.</li>
-      <li>Monto, y <b>elige el proyecto de la lista</b>.</li>
+      <li>Monto, y el <b>proyecto</b>: es un campo con buscador, escribe el número de SO
+      o parte del nombre del cliente y se va filtrando. Están los de México y los de
+      Estados Unidos.</li>
       <li>Elige la fuente de pago. La empresa y la moneda salen solas.</li>
       <li>Agregar → <b>Listo</b>.</li>
     </ol>
