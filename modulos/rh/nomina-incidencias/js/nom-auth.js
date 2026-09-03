@@ -49,7 +49,11 @@
   }
 
   async function login(user, password) {
-    var body = { user: String(user || ''), password: String(password || '') };
+    // El workflow espera `username`, NO `user`. Lo verifiqué disparando el webhook:
+    // con {user:…} contesta PAYLOAD_INCOMPLETO sin llegar a comprobar la contraseña.
+    // Copiar el payload de Finanzas sin leer ESTE workflow fue el error (§8 anti-trabón:
+    // el contrato se lee del server que lo sirve, no del vecino que se le parece).
+    var body = { username: String(user || ''), password: String(password || '') };
     var res, data;
     try {
       res = await fetch(n8nBase() + LOGIN_PATH, {
@@ -63,20 +67,28 @@
     try { data = await res.json(); } catch (e) { data = null; }
 
     if (!data) return { ok: false, code: 'BAD_RESPONSE', msg: 'Respuesta inválida del servidor.', http: res.status };
-    if (data._error || !data.token) {
+
+    // Forma real de la respuesta de `auth/suite-login`, leída del workflow y comprobada
+    // en vivo: { ok:false, error:'CODIGO', mensaje:'texto para la persona' }. Antes esto
+    // leía `_error/code/msg` (la forma de Finanzas) y por eso TODO fallo se veía igual:
+    // un "No se pudo iniciar sesión." genérico que escondía el motivo real.
+    if (data.ok === false || data._error || !data.token) {
       return {
         ok: false,
-        code: data.code || 'AUTH_FAILED',
-        msg: data.msg || 'No se pudo iniciar sesión.',
-        http: data.http || res.status,
-        retry_after_s: data.retry_after_s
+        code: data.error || data.code || 'AUTH_FAILED',
+        msg: data.mensaje || data.msg || 'No se pudo iniciar sesión.',
+        http: data.http || res.status
       };
     }
 
     var claims = decodeJwtPayload(data.token) || {};
     var session = {
       token:       data.token,
-      expires_at:  data.expires_at || (claims.exp ? new Date(claims.exp * 1000).toISOString() : null),
+      // El workflow devuelve `exp` (segundos unix). Se acepta también `expires_at` ISO
+      // y el `exp` del propio JWT, por si el emisor cambia de forma.
+      expires_at:  data.expires_at ||
+                   (data.exp ? new Date(data.exp * 1000).toISOString() : null) ||
+                   (claims.exp ? new Date(claims.exp * 1000).toISOString() : null),
       user:        String(user || ''),
       nombre:      data.nombre || claims.nombre || String(user || ''),
       empleado_id: (data.empleado_id !== undefined ? data.empleado_id : claims.empleado_id) || null,
