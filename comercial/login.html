@@ -34,6 +34,7 @@
   <main class="card">
     <h1>Comercial</h1>
     <p class="sub">FTS Suite</p>
+    <div id="falta" class="msg" role="alert"></div>
     <form id="f" autocomplete="on">
       <label for="u">Usuario</label>
       <input id="u" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" required>
@@ -42,17 +43,34 @@
       <button id="b" type="submit">Entrar</button>
       <div id="m" class="msg" role="alert" aria-live="polite"></div>
     </form>
-    <p class="pie">Sesión de 8 horas · independiente de Finanzas</p>
+    <p class="pie">Sesión de 8 horas · misma cuenta para toda la Suite</p>
   </main>
 
-<script src="js/auth-com.js"></script>
+<script src="../shared/auth-jwt.js"></script>
 <script>
 (function () {
   'use strict';
   var f = document.getElementById('f'), b = document.getElementById('b'), m = document.getElementById('m');
 
+  // Llegar aquí con `?falta=` significa que la sesión es válida pero le falta un
+  // permiso. Sin este aviso, el usuario ve el login otra vez y cree que su
+  // contraseña falló — que es exactamente lo contrario de lo que pasó.
+  var falta = new URLSearchParams(location.search).get('falta');
+  if (falta) {
+    var ses = window.SuiteAuth && SuiteAuth.getSession();
+    var quien = ses ? ses.actor : 'tu usuario';
+    var el = document.getElementById('falta');
+    el.className = 'msg err';
+    el.textContent = 'Entraste como ' + quien + ', pero esa cuenta no tiene el permiso «' +
+                     falta + '», que es el que pide esta pantalla. Pídeselo a Esteban, ' +
+                     'o entra con otra cuenta.';
+    if (window.SuiteAuth) SuiteAuth.logout();   // para que el formulario sirva de algo
+  }
+
   // Si ya hay sesión viva, no pedir de nuevo.
-  if (window.ComAuth && ComAuth.isValid()) { location.replace('index.html'); return; }
+  if (!falta && window.SuiteAuth && SuiteAuth.isValid()) {
+    location.replace(SuiteAuth.destino('index.html')); return;
+  }
 
   function error(t) { m.className = 'msg err'; m.textContent = t; }
 
@@ -60,19 +78,27 @@
     ev.preventDefault();
     m.className = 'msg'; m.textContent = '';
     b.disabled = true; b.textContent = 'Entrando…';
-    var r = await ComAuth.login(document.getElementById('u').value, document.getElementById('p').value);
-    if (r.ok) { location.replace('index.html'); return; }
+    var r = await SuiteAuth.login(document.getElementById('u').value, document.getElementById('p').value);
+    if (r.ok) {
+      // El aviso de contraseña temporal se da UNA vez, al entrar: todavía no
+      // existe la pantalla para cambiarla (la columna `debe_cambiar_password`
+      // está en la tabla, el flujo no está construido). Mejor decirlo que
+      // fingir que no está pendiente.
+      if (r.sesion.debe_cambiar_password) {
+        try { sessionStorage.setItem('fts_suite_avisar_password', '1'); } catch (e) {}
+      }
+      location.replace(SuiteAuth.destino('index.html'));
+      return;
+    }
     b.disabled = false; b.textContent = 'Entrar';
     document.getElementById('p').value = '';
-    if (r.code === 'LOCKED') {
-      var min = Math.ceil((r.retry_after_s || 900) / 60);
-      error('Demasiados intentos. Vuelve a intentar en ' + min + ' min.');
-    } else if (r.code === 'NETWORK') {
-      error(r.msg);
-    } else if (r.code === 'SERVER_MISCONFIG') {
-      error('El servidor de identidad no está configurado. Avisa a Esteban.');
+    // Los mensajes vienen del servidor: el de credenciales es deliberadamente
+    // el MISMO para usuario inexistente, inactivo y contraseña mala, para que
+    // no sirva de oráculo. No se re-escribe aquí.
+    if (r.error === 'SECRETO_NO_CONFIGURADO') {
+      error('El servidor de identidad no está configurado. Avísale a Esteban.');
     } else {
-      error('Usuario o contraseña incorrectos.');
+      error(r.mensaje || 'No se pudo iniciar sesión.');
     }
   });
 })();

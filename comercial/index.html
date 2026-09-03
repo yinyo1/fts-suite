@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>FTS Suite · Comercial</title>
 <link rel="stylesheet" href="../shared/fts-styles.css" />
+<!-- El gate va ANTES de la hoja de estilos del contenido y ANTES de pintar:
+     un panel que aparece medio segundo y luego se va a login ya se enseñó. -->
+<script src="../shared/auth-jwt.js"></script>
+<script>if (!window.SuiteAuth.requerir('comercial:read', 'login.html')) { throw new Error('sin sesion'); }</script>
 <style>
   .wrap{max-width:520px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:12px}
   .lead{color:var(--muted2);font-size:13px;margin:2px 0 10px}
