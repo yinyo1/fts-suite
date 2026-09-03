@@ -28,8 +28,12 @@
    *
    * ⚠️ Vive aquí y en `version.json`, y hay una prueba que falla si se
    * separan: una pantalla que miente sobre su versión es peor que no tener
-   * indicador. */
-  const VERSION = 'V1.03';
+   * indicador.
+   *
+   * ⚠️ El esquema es de ESTE módulo. El repo tiene otros en uso —finanzas va
+   * en `0.5.36` con cadena de build, planeación en `2.4.1`, el kiosko sólo con
+   * build— y se decidió dejarlos como están. No propagar V1.xx a esos. */
+  const VERSION = 'V1.04';
   const $  = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
   const clon = (x) => JSON.parse(JSON.stringify(x));
