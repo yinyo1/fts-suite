@@ -133,12 +133,26 @@ const VIEWPORTS = [
     check('ninguna celda con texto mide 0 px', celdasCero === 0, String(celdasCero));
 
     // Alturas de fila parejas: una celda que envuelve de más se delata contra la mediana.
+    // Se miden SÓLO las filas sin motivo. Una fila en rojo es legítimamente más alta
+    // porque carga el motivo del bloqueo — medirla contra la mediana castigaría a la
+    // fila por decir algo, que es justo lo que queremos que haga.
     const alturas = await page.evaluate(() =>
-      Array.from(document.querySelectorAll('#tb tr')).map(tr => Math.round(tr.getBoundingClientRect().height)));
+      Array.from(document.querySelectorAll('#tb tr'))
+        .filter(tr => !tr.querySelector('.porque'))
+        .map(tr => Math.round(tr.getBoundingClientRect().height)));
     const orden = alturas.slice().sort((a, b) => a - b);
     const mediana = orden[Math.floor(orden.length / 2)];
     const altas = alturas.filter(x => x > mediana + 24);
-    check('ninguna fila se dispara de alto (mediana ' + mediana + ' px)', altas.length === 0, JSON.stringify(altas));
+    check('ninguna fila sin motivo se dispara de alto (mediana ' + mediana + ' px)', altas.length === 0, JSON.stringify(altas));
+
+    // Y la que SÍ trae motivo tampoco puede desbordarse: más de tres renglones de
+    // texto rojo en un móvil deja de ser una pista y se vuelve un párrafo.
+    const conMotivo = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('#tb tr'))
+        .filter(tr => tr.querySelector('.porque'))
+        .map(tr => Math.round(tr.getBoundingClientRect().height)));
+    check('la fila con motivo crece, pero con tope', conMotivo.every(x => x <= mediana + 90),
+      JSON.stringify(conMotivo) + ' vs mediana ' + mediana);
 
     // El banner de bloqueo tiene que ser visible sin scroll horizontal y decir el motivo.
     const banner = (await page.textContent('#banner')).trim();

@@ -115,6 +115,18 @@
       }
       if (!L.length) tags = '<span class="pill p-none">sin declarar</span>';
 
+      // El motivo, en la fila. Antes habia que abrir el cajon o subir al aviso para
+      // saberlo; con treinta renglones y el aviso fuera de pantalla, "esta en rojo y
+      // no se por que" es un callejon sin salida. Se listan hasta dos y se dice
+      // cuantos faltan: si se pintan los seis, el renglon se vuelve un parrafo.
+      var porque = '';
+      if (b.length) {
+        var vistos = [];
+        for (var bz = 0; bz < b.length && bz < 2; bz++) vistos.push(esc(b[bz].texto));
+        porque = '<div class="porque">' + vistos.join(' \u00b7 ') +
+                 (b.length > 2 ? ' \u00b7 y ' + (b.length - 2) + ' mas' : '') + '</div>';
+      }
+
       var dinero = '<span style="color:var(--muted)">—</span>', partes = [];
       for (var q = 0; q < L.length; q++) {
         var m2 = Cat.meta(L[q].tipo);
@@ -147,7 +159,7 @@
         '<td class="st" style="background:' + color + '"></td>' +
         '<td><div class="nm">' + esc(p.nombre) +
           (p.inactivo ? ' <span class="pill p-warn">inactivo</span>' : '') + '</div>' +
-          '<div class="rol">' + esc(p.puesto) + ' · ' + esc(p.departamento) + '</div></td>' +
+          '<div class="rol">' + esc(p.puesto) + ' · ' + esc(p.departamento) + '</div>' + porque + '</td>' +
         '<td class="num">' + diasCel + '</td>' +
         '<td><div class="tags">' + tags + '</div></td>' +
         '<td><div class="tags">' + dinero + '</div></td>' +
@@ -395,10 +407,16 @@
   }
 
   function selectProyecto(id) {
-    var h = '<select id="' + id + '"><option value="">— elige el proyecto —</option>';
     var P = S.proyectos || [];
-    for (var i = 0; i < P.length; i++) h += '<option>' + esc(P[i]) + '</option>';
-    return h + '</select>';
+    var lista = 'dl-' + id;
+    var h = '<input id="' + id + '" list="' + lista + '" autocomplete="off" spellcheck="false" ' +
+            'placeholder="Escribe SO, cliente o parte del nombre...">';
+    h += '<datalist id="' + lista + '">';
+    for (var i = 0; i < P.length; i++) h += '<option value="' + esc(P[i]) + '"></option>';
+    h += '</datalist>';
+    h += '<div class="pista">' + P.length + ' proyectos activos, de Mexico y de USA. ' +
+         'Se escribe y se filtra solo; tambien se puede pegar el nombre completo.</div>';
+    return h;
   }
 
   function cablearCajon() {

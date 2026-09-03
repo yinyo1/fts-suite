@@ -49,7 +49,7 @@
   // ─── Cómo cuenta cada tipo contra el candado aritmético ───
   //   'usa'   → días trabajados fuera de México
   //   'vac'   → vacaciones y festivos (día pagado, no trabajado)
-  //   'falta' → falta, permiso, incapacidad
+  //   'falta' → faltas, permisos, incapacidad
   //   null    → no consume días de la semana (dinero, descuentos, descanso trabajado)
   var CATALOGO = {
     dias: {
@@ -57,9 +57,12 @@
       ayuda: 'Todo lo que consume días de la semana. La suma tiene que dar exacto.',
       items: {
         vacaciones:          { label: 'Vacaciones',           cuenta: 'vac',   campos: [['dias', 'Días', 'num']] },
-        falta:               { label: 'Falta',                cuenta: 'falta', campos: [['dias', 'Días', 'num'], ['justificada', 'Justificada', 'bool']] },
+        falta_injustificada: { label: 'Falta injustificada', cuenta: 'falta', campos: [['dias', 'Días', 'num']] },
+        falta_justificada:   { label: 'Falta justificada',   cuenta: 'falta', campos: [['dias', 'Días', 'num'], ['motivo', 'Motivo', 'txt']] },
         incapacidad:         { label: 'Incapacidad',          cuenta: 'falta', campos: [['dias', 'Días', 'num'], ['folio', 'Folio IMSS', 'txt'], ['clase', 'Tipo', ['Enfermedad general', 'Riesgo de trabajo', 'Maternidad']]] },
-        permiso:             { label: 'Permiso',              cuenta: 'falta', campos: [['dias', 'Días', 'num'], ['goce', 'Con goce de sueldo', 'bool']] },
+        permiso_con_goce:    { label: 'Permiso con goce',    cuenta: 'falta', campos: [['dias', 'Días', 'num'], ['motivo', 'Motivo', 'txt']] },
+        permiso_sin_goce:    { label: 'Permiso sin goce',    cuenta: 'falta', campos: [['dias', 'Días', 'num'], ['motivo', 'Motivo', 'txt']] },
+        dia_cumpleanos:      { label: 'Día de cumpleaños',   cuenta: 'vac',   campos: [['dias', 'Días', 'num']] },
         trabajo_usa:         { label: 'Trabajó en USA',       cuenta: 'usa',   campos: [['dias', 'Días', 'num'], ['so', 'Proyecto', 'so']] },
         dia_festivo:         { label: 'Día festivo',          cuenta: 'vac',   campos: [['dias', 'Días', 'num']] },
         descanso_trabajado:  { label: 'Descanso trabajado',   cuenta: null,    campos: [['dias', 'Días', 'num'], ['prima', 'Prima dominical', 'bool']] }
@@ -70,6 +73,8 @@
       ayuda: 'Percepciones que no son el sueldo de la semana. Todas piden fuente de pago.',
       items: {
         bono_proyecto:    { label: 'Bono de proyecto', multi: true, fuente: true, rubro: true, campos: [['monto', 'Monto', 'num'], ['so', 'Proyecto', 'so']] },
+        bono_productividad: { label: 'Bono de productividad', fuente: true, campos: [['monto', 'Monto', 'num'], ['motivo', 'Motivo', 'txt']] },
+        bono_condicionado:  { label: 'Bono condicionado',     fuente: true, campos: [['monto', 'Monto', 'num'], ['motivo', 'Condición', 'txt']] },
         prima_vacacional: { label: 'Prima vacacional', fuente: true, campos: [['monto', 'Monto', 'num']] },
         aguinaldo:        { label: 'Aguinaldo',        fuente: true, campos: [['monto', 'Monto', 'num']] },
         fondo_ahorro:     { label: 'Fondo de ahorro',  fuente: true, campos: [['monto', 'Monto', 'num']] },
