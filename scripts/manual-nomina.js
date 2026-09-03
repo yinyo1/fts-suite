@@ -254,9 +254,26 @@ const CUERPO = `
     <tr><td>no aplica</td><td>Su ficha en Odoo dice que no le corresponde.</td></tr>
     <tr><td>revisar</td><td>Hay algo raro que conviene que mires. Casi siempre, un turno de noche.</td></tr>
   </table>
-  <p>Se cambia con un clic en la propia palomita, sin abrir el renglón. Al abrirlo,
-  el cajón te muestra <b>día por día</b> a qué hora entró y cuántos minutos antes o
-  después de su horario, para que puedas discutirlo con quien reclame.</p>
+  <h3>Cómo se cambia</h3>
+  <p>Da clic en la propia palomita, sin abrir el renglón. Se abre una ventanita con
+  <b>la evidencia a la vista</b> y un campo donde tienes que escribir <b>por qué</b>
+  lo estás cambiando.</p>
+  <p class="aviso"><b>La nota es obligatoria.</b> Sin ella no se guarda — y no es un
+  capricho de la pantalla: el servidor también la exige. Cuando alguien reclame su
+  premio dentro de tres semanas, esa nota va a ser lo único que quede.</p>
+  <p>Escribe algo que se entienda solo: <i>«Felipe lo citó 08:00 el martes, no llegó
+  tarde»</i> sirve; <i>«sí»</i> no. Después la nota aparece en el renglón al pasar el
+  mouse y dentro del cajón, con tu nombre y la fecha.</p>
+  <p>Si te arrepientes, el mismo botón tiene <b>Volver a la sugerencia</b>: deja que
+  el sistema vuelva a mandar y borra tu nota, porque ya no explica nada.</p>
+  <p><b>También puedes forzarlo</b> a alguien cuya ficha en Odoo dice que no le aplica.
+  Es el mismo botón y pide la misma nota.</p>
+  <p>Al abrir el renglón, el cajón te muestra <b>día por día</b> a qué hora entró y
+  cuántos minutos antes o después de su horario, para que puedas discutirlo con quien
+  reclame.</p>
+  <p class="nota">Después de dar clic, el botón dice <b>«guardando…»</b> unos segundos
+  mientras el servidor contesta. <b>No le vuelvas a dar</b> — se guarda solo, y ya no
+  se deja pulsar dos veces.</p>
   <h3>Cómo decide</h3>
   <ul>
     <li>Compara la <b>primera</b> entrada de cada día contra la hora de entrada de su ficha en Odoo.</li>
