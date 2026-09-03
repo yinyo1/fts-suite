@@ -11,9 +11,10 @@
 <div class="rh-topbar">
   <a class="volver" href="../index.html">← Volver a RH</a>
   <span class="t">Nómina · Incidencias</span>
-  <span class="badge" id="ver-badge">V1.01</span>
-  <span class="badge" id="modo-badge" title="">DEMO</span>
+  <span class="badge" id="ver-badge">V1.02</span>
+  <button class="badge modo" id="modo-badge" title="Cambiar entre datos reales y modo práctica">REAL</button>
   <span class="sp"></span>
+  <span class="guardado" id="guardado"></span>
   <span class="quien" id="quien"></span>
   <button class="salir hid" id="salir">Salir</button>
 </div>
@@ -104,10 +105,15 @@
     $('salir').className = 'salir';
     $('quien').textContent = (s && (s.nombre || s.user)) || '';
 
+    var real = window.NomClient.modo() !== 'demo';
+    var badge = $('modo-badge');
+    badge.textContent = real ? 'REAL' : 'PRÁCTICA';
+    badge.className = 'badge modo' + (real ? ' real' : ' demo');
+
     var pie = $('pie-modo');
-    pie.innerHTML = window.NomClient.modo() === 'demo'
-      ? 'Modo <b>DEMO</b>: los datos son de demostración sobre el roster real de Odoo. <b>Nada de lo que captures se guarda.</b>'
-      : 'Modo <b>REAL</b>: conectado a los endpoints de producción.';
+    pie.innerHTML = real
+      ? 'Modo <b>REAL</b>: el roster y los días vienen de Odoo, y lo que capturas se guarda de verdad.'
+      : 'Modo <b>PRÁCTICA</b>: datos de ejemplo sobre el roster real. <b>Nada de lo que captures se guarda</b> — sirve para aprender sin miedo.';
 
     try {
       var estado = await window.NomClient.cargarSemana(null);
@@ -145,6 +151,18 @@
   });
 
   $('p').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') $('entrar').click(); });
+
+  // Cambiar de modo recarga la página entera a propósito: media pantalla con datos
+  // reales y media con datos de práctica sería la peor de las dos.
+  $('modo-badge').addEventListener('click', function () {
+    var real = window.NomClient.modo() !== 'demo';
+    var msg = real
+      ? '¿Cambiar a modo PRÁCTICA?\n\nVerás datos de ejemplo y nada de lo que captures se guardará.'
+      : '¿Volver a modo REAL?\n\nVerás el roster de Odoo y lo que captures SÍ se guarda.';
+    if (!confirm(msg)) return;
+    window.NomClient.setModo(real ? 'demo' : 'real');
+    location.reload();
+  });
 
   $('salir').addEventListener('click', function () {
     window.NomAuth.logout();

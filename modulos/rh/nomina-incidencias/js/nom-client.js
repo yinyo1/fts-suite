@@ -21,6 +21,10 @@
   var MODO_KEY = 'fts_nomina_modo';
 
   // Mismas guardas que nom-auth.js: localStorage LANZA en varios contextos reales.
+  // OJO con el nombre: `guardar` es el de localStorage. La escritura al server se
+  // llama `escribir` justo porque llamarla `guardar` tapó a esta y setModo() acabó
+  // disparando un webhook. Lo cachó el gate; si hubiera llegado a producción, el
+  // cambio de modo habría fallado en silencio.
   function leer(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function guardar(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
   // ─── fin helper ───
@@ -30,10 +34,13 @@
     return String(url).replace(/\/$/, '');
   }
 
-  // DEMO es el default deliberado: un módulo que escribe nómina no debe arrancar
-  // apuntando a producción porque sí. A REAL se entra por decisión explícita.
+  // REAL es el default desde que existen los endpoints /nom/*. Mientras NO existían,
+  // el default era DEMO por una razón que ya no aplica: no había a dónde escribir, y
+  // arrancar apuntando a producción habría sido apuntar al vacío. Hoy DEMO sobrevive
+  // como modo de práctica —para entrenar y para las capturas del manual— y se entra a
+  // él por decisión explícita, nunca por accidente.
   function modo() {
-    return leer(MODO_KEY) === 'real' ? 'real' : 'demo';
+    return leer(MODO_KEY) === 'demo' ? 'demo' : 'real';
   }
   function setModo(m) {
     guardar(MODO_KEY, m === 'real' ? 'real' : 'demo');
@@ -162,11 +169,41 @@
     return call('/nom/semana', { semana: semanaId || null });
   }
 
+  // Escribe y NO devuelve la pantalla: quien llama tiene que volver a leer la semana.
+  // Un 200 no prueba que el dato quedó (CLAUDE.md §20.5) y pintar el éxito antes de
+  // comprobarlo es el anti-patrón que costó el incidente del 27-may (§14 hallazgo #15).
+  async function escribir(payload) {
+    if (modo() === 'demo') {
+      return Promise.reject({ code: 'MODO_DEMO',
+        msg: 'Estás en modo DEMO: aquí nada se guarda. Cambia a REAL en la insignia de arriba.' });
+    }
+    return call('/nom/guardar', payload);
+  }
+
+  // Las tres escrituras del módulo, con nombre, para que quien lea app.js vea QUÉ se
+  // está guardando y no un objeto suelto con un campo 'accion'.
+  function guardarPersona(semana, p) {
+    return escribir({ accion: 'persona', semana: semana, empleado_id: p.id,
+                     dias_mexico: Number(p.dias_mexico) || 0,
+                     declaraciones: p.declaraciones || [] });
+  }
+  function guardarEstado(empleadoId, est, vigente) {
+    return escribir({ accion: 'estado', empleado_id: empleadoId, tipo: est.tipo,
+                     valores: est.valores || {}, vigente: vigente !== false });
+  }
+  function guardarEnvio(semana, resumen) {
+    return escribir({ accion: 'enviar', semana: semana, resumen: resumen || {} });
+  }
+
   window.NomClient = {
     call: call,
     modo: modo,
     setModo: setModo,
     cargarSemana: cargarSemana,
+    escribir: escribir,
+    guardarPersona: guardarPersona,
+    guardarEstado: guardarEstado,
+    guardarEnvio: guardarEnvio,
     semanaDemo: semanaDemo,
     MODO_KEY: MODO_KEY
   };

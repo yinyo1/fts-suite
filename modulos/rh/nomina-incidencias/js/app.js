@@ -15,6 +15,10 @@
   var FILTRO = 'todos';
   var ACTIVO = null;     // id de la persona abierta en el cajón
   var SUCIO = false;     // hay cambios sin enviar
+  // Copia de la persona tal como estaba AL ABRIR el cajón. Sin ella no hay forma de
+  // saber qué estado se quitó: la lista nueva solo dice lo que quedó, y un estado
+  // retirado hay que cerrarlo explícitamente en el server, no dejarlo vivo.
+  var ORIG = null;
 
   function $(id) { return document.getElementById(id); }
   function esc(s) {
@@ -27,6 +31,19 @@
     return null;
   }
   function nombreCorto(n) { return String(n).split(' ').slice(0, 2).join(' '); }
+
+  // Aviso de guardado. Se pinta ANTES de saber el resultado solo como "guardando";
+  // el "guardado" nunca se pinta hasta que el server contestó. Pintar el éxito antes
+  // del POST es el anti-patrón que costó el incidente del 27-may (CLAUDE.md §14 #15).
+  function aviso(estado, texto) {
+    var el = $('guardado');
+    if (!el) return;
+    el.className = 'guardado ' + estado;
+    el.textContent = texto;
+    if (estado === 'ok') setTimeout(function () {
+      if (el.textContent === texto) { el.className = 'guardado'; el.textContent = ''; }
+    }, 4000);
+  }
 
   // ─── Filtros del roster ───
   // "Pendientes" es el que de verdad se usa el viernes; va primero después de Todos.
@@ -146,10 +163,64 @@
     if (!p) return;
     $('dnom').textContent = p.nombre + (p.inactivo ? ' · inactivo' : '');
     $('dsub').textContent = p.puesto + ' · ' + p.departamento + ' · empleado ' + p.id;
+    ORIG = JSON.parse(JSON.stringify(p));
     pintarCajon();
     $('drawer').setAttribute('open', '');
   }
-  function cerrar() { $('drawer').removeAttribute('open'); ACTIVO = null; }
+
+  // Cerrar el cajón ES el momento de guardar: es cuando la persona termina de capturar
+  // a alguien. No hay botón "guardar" aparte porque un botón que se puede olvidar es
+  // una forma de perder trabajo.
+  async function cerrar() {
+    var p = persona(ACTIVO);
+    var previo = ORIG;
+    $('drawer').removeAttribute('open');
+    ACTIVO = null; ORIG = null;
+    if (!p || !previo) return;
+    if (window.NomClient.modo() === 'demo') return;
+    if (JSON.stringify(p) === JSON.stringify(previo)) return;   // nada cambió: no se escribe
+    await guardarPersona(p, previo);
+  }
+
+  // Guarda una persona y RELEE la semana del server. La relectura no es paranoia: es
+  // la única forma de que la pantalla muestre lo que Odoo y las tablas realmente
+  // tienen, en vez de lo que el navegador cree haber mandado (CLAUDE.md §8).
+  async function guardarPersona(p, previo) {
+    aviso('yendo', 'Guardando ' + nombreCorto(p.nombre) + '…');
+    try {
+      await window.NomClient.guardarPersona(S.semana.id, p);
+
+      // Los estados viven en su propia tabla porque cruzan semanas. Los nuevos se
+      // abren; los que la persona quitó se CIERRAN (vigente:false) en vez de
+      // borrarse, para que quede la historia de que existieron.
+      var antes = {}, ahora = {};
+      (previo.estados || []).forEach(function (e) { antes[e.tipo] = e; });
+      (p.estados || []).forEach(function (e) { ahora[e.tipo] = e; });
+      for (var t in ahora) {
+        if (JSON.stringify(ahora[t]) !== JSON.stringify(antes[t])) {
+          await window.NomClient.guardarEstado(p.id, ahora[t], true);
+        }
+      }
+      for (var t2 in antes) {
+        if (!ahora[t2]) await window.NomClient.guardarEstado(p.id, antes[t2], false);
+      }
+
+      await recargar();
+      aviso('ok', 'Guardado · ' + nombreCorto(p.nombre));
+    } catch (err) {
+      // El fallo se DICE. Un catch mudo aquí repetiría el bug #2 del kiosk: el
+      // usuario cree que quedó y no quedó.
+      aviso('mal', 'NO se guardó ' + nombreCorto(p.nombre) + ': ' + (err && err.msg ? err.msg : 'error desconocido'));
+    }
+  }
+
+  // Relee la semana del server y repinta desde ahí.
+  async function recargar() {
+    var fresca = await window.NomClient.cargarSemana(S.semana.id);
+    S = fresca;
+    SUCIO = false;
+    refrescar();
+  }
 
   function pintarCajon() {
     var p = persona(ACTIVO);
@@ -163,6 +234,13 @@
     h += '<div class="box"><h4>Candado aritmético</h4><div class="calc">' +
       '<div>Días trabajados en México</div>' +
       '<div class="v"><input type="number" min="0" max="' + S.semana.dias + '" id="fmx" value="' + c.mexico + '" ' + (p.inactivo ? 'disabled' : '') + '></div>' +
+      // Lo que Odoo registró va AL LADO del campo, no dentro: es un dato de apoyo,
+      // no la respuesta. Quien captura decide, pero decide viendo las checadas.
+      (p.dias_odoo === undefined ? '' :
+        '<div style="grid-column:1/3;font-size:12px;color:var(--muted);margin:-4px 0 6px">' +
+        'El kiosko registró <b>' + p.dias_odoo + '</b> ' + (p.dias_odoo === 1 ? 'día' : 'días') + ' con checada esta semana' +
+        (p.dias_odoo === c.mexico ? '' : ' · lo capturado dice ' + c.mexico) +
+        (p.capturado ? ' · ya capturado por RH' : '') + '</div>') +
       '<div>Días en USA</div><div class="v num">' + c.usa + '</div>' +
       '<div>Vacaciones y festivos</div><div class="v num">' + c.vac + '</div>' +
       '<div>Faltas, permisos e incapacidad</div><div class="v num">' + c.falta + '</div>' +
@@ -379,6 +457,19 @@
     var D = S.disputas || [], h = '';
     var abiertas = D.filter(function (d) { return d.abierta; });
 
+    // Rezago: checadas marcadas en disputa de semanas ANTERIORES. No frenan esta
+    // nómina —si lo hicieran, no cerraría nunca— pero tampoco se ocultan: son deuda
+    // real y su conteo tiene que doler un poco cada semana hasta que se limpie.
+    var rz = S.rezago;
+    if (rz && rz.total > 0) {
+      h += '<div class="banner warn"><span class="ico">⏳</span><div>' +
+        '<h3>' + rz.total + ' checadas en disputa de semanas anteriores</h3>' +
+        '<div style="font-size:13px;color:var(--muted2)">Tocan a ' + rz.personas +
+        ' persona' + (rz.personas === 1 ? '' : 's') + ' y la más vieja es del ' + esc(rz.desde) + '. ' +
+        'No bloquean esta semana a propósito, pero siguen abiertas en Odoo. ' +
+        'Se limpian desde el panel de incidencias, no desde aquí.</div></div></div>';
+    }
+
     if (!abiertas.length) {
       h = '<div class="banner ok"><span class="ico">✓</span><div><h3>No queda ninguna checada en disputa</h3>' +
         '<div style="font-size:13px;color:var(--muted2)">Las disputas se resuelven aquí porque es el momento en que alguien puede resolverlas: ' +
@@ -513,14 +604,11 @@
     $('semana-id').textContent = S.semana.id;
     $('semana-rango').textContent = 'del ' + S.semana.desde + ' al ' + S.semana.hasta + ' · ' + S.semana.dias + ' días';
 
-    var modo = window.NomClient ? window.NomClient.modo() : 'demo';
-    var mb = $('modo-badge');
-    if (mb) {
-      mb.textContent = modo === 'demo' ? 'DEMO' : 'REAL';
-      mb.title = modo === 'demo'
-        ? 'Datos de demostración sobre el roster real. Nada de lo que captures se guarda.'
-        : 'Conectado a los endpoints de producción.';
-    }
+    // La insignia de modo la pinta el arranque de index.html, NO aquí. Antes la
+    // escribían los dos y ganaba el último: el pie decía PRÁCTICA y la insignia
+    // decía otra cosa. Un solo escritor por campo (CLAUDE.md §20.4), y tiene que
+    // ser el arranque porque la insignia debe ser correcta aunque la semana falle
+    // al cargar y montar() nunca corra.
 
     irA(1);
 
@@ -545,14 +633,35 @@
   // El envío real llega en la fase del formato al despacho. Hasta entonces el botón
   // dice la verdad en vez de fingir que mandó algo — el anti-patrón §14 del CLAUDE.md
   // (pintar éxito antes de que el servidor confirme) es exactamente lo que no se repite.
-  function enviar() {
+  async function enviar() {
     irA(3);
     var el = $('banner');
-    el.innerHTML = '<div class="banner ok"><span class="ico">✓</span><div>' +
-      '<h3>Semana ' + esc(S.semana.id) + ' lista — el envío todavía no está conectado</h3>' +
-      '<div style="font-size:13px;color:var(--muted2)">Todo lo que el módulo puede verificar, lo verificó. ' +
-      'El envío al despacho se cablea en la fase siguiente; hasta entonces este botón no manda nada, ' +
-      'y decirlo es preferible a pintar un éxito que no ocurrió.</div></div></div>';
+    if (window.NomClient.modo() === 'demo') {
+      el.innerHTML = '<div class="banner warn"><span class="ico">⚠</span><div>' +
+        '<h3>Estás en modo práctica: esto no se envió</h3>' +
+        '<div style="font-size:13px;color:var(--muted2)">El módulo revisó todo y la semana pasa, ' +
+        'pero en DEMO nada sale de tu navegador. Cambia a REAL en la insignia de arriba para enviar de verdad.' +
+        '</div></div></div>';
+      return;
+    }
+    var r = Log.resumenSemana(S.personas, S.semana, S.disputas);
+    var t = Log.totalesDinero(S.personas);
+    aviso('yendo', 'Enviando la semana…');
+    try {
+      await window.NomClient.guardarEnvio(S.semana.id, {
+        personas: r.personas, con_bloqueo: r.con_bloqueo, bloqueos: r.bloqueos_totales,
+        con_declaracion: r.con_declaracion, disputas_abiertas: r.disputas_abiertas,
+        dinero: { percepciones: t.percepciones, descuentos: t.descuentos, no_costo: t.no_costo }
+      });
+      await recargar();
+      aviso('ok', 'Semana ' + S.semana.id + ' marcada como enviada');
+      irA(3);
+    } catch (err) {
+      aviso('mal', 'NO se envió: ' + (err && err.msg ? err.msg : 'error desconocido'));
+      el.innerHTML = '<div class="banner bad"><span class="ico">⛔</span><div>' +
+        '<h3>La semana NO se envió</h3><div style="font-size:13px;color:var(--muted2)">' +
+        esc(err && err.msg ? err.msg : 'Error desconocido') + '</div></div></div>';
+    }
   }
 
   window.NomApp = {
@@ -564,6 +673,7 @@
     estado: function () { return S; },
     filtro: function (f) { if (f !== undefined) { FILTRO = f; pintarFiltros(); pintarTabla(); } return FILTRO; },
     resolverDisputa: resolverDisputa,
+    recargar: recargar,
     sucio: function () { return SUCIO; }
   };
 })();
