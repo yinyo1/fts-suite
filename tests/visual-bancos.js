@@ -189,6 +189,18 @@ const esDelEntorno = t => /ERR_CONNECTION_RESET|ERR_NAME_NOT_RESOLVED|ERR_BLOCKE
     });
     check('todo el texto del semáforo pasa WCAG AA', sem.peores.length === 0,
       sem.peores.slice(0,4).map(x => x.ratio + ':1 (min ' + x.min + ') «' + x.txt + '»').join(' | '));
+    // Las TRES fuentes con el mismo formato (V1.02): foco, barra y porcentaje, también las que
+    // el motor no evalúa. Antes las sin-motor se pintaban sin barra ni número.
+    const cards = await p.evaluate(() => [...document.querySelectorAll('#ip-semrows .s2card')].map(c => ({
+      titulo: (c.querySelector('.s2ct') || {}).textContent || '',
+      foco: !!c.querySelector('.light'),
+      barra: !!c.querySelector('.bar i'),
+      pct: /\d+(\.\d+)?%/.test((c.querySelector('.s2cn') || {}).textContent || '')
+    })));
+    check('las 3 fuentes traen foco, barra y porcentaje (' + cards.length + ' tarjetas)',
+      cards.length === 3 && cards.every(c => c.foco && c.barra && c.pct), JSON.stringify(cards));
+    check('la leyenda ya no dice que las fuentes sin motor no llevan porcentaje',
+      ((await p.locator('.semnote').textContent().catch(() => '')) || '').indexOf('no llevan porcentaje') < 0);
     check('los paneles del semáforo van apilados a todo el ancho',
       sem.paneles.length > 0 && sem.paneles.every(w => w >= sem.anchoHost - 2),
       'anchos ' + JSON.stringify(sem.paneles) + ' vs host ' + sem.anchoHost);

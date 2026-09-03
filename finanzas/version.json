@@ -1,9 +1,14 @@
 {
-  "version": "V1.01",
+  "version": "V1.02",
   "fecha": "2026-09-03",
   "modulo": "finanzas",
   "esquema": "V<mayor>.<menor de dos dígitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.02",
+      "pr": null,
+      "nota": "Las tres fuentes del semaforo con el MISMO formato: barra roja/amarilla/verde, foco y pendiente contado desde el corte, tambien para Chase Cheques y Chase Tarjeta. Antes se pintaban sin barra ni porcentaje. Y el titular de cada tarjeta pasa a ser el numero ACCIONABLE: con 6 gastos + 2 fondeos + 2 devoluciones decia \"Faltan 10\" y solo 6 son conciliables; el 10 baja al renglon del porcentaje, que es donde vive la metrica de Odoo."
+    },
     {
       "version": "V1.01",
       "pr": null,
