@@ -180,7 +180,10 @@
         dias_odoo: d ? d.odoo : (r[4] ? 0 : 5),
         capturado: !!d,
         ppa: ppaDemo(r[0], d ? d.odoo : (r[4] ? 0 : 5)),
-        ppa_decidido: null,
+        ppa_decidido: (r[0] === 6 ? true : null),
+        ppa_nota:  (r[0] === 6 ? 'Felipe lo citó 08:00 el martes; no llegó tarde.' : ''),
+        ppa_actor: (r[0] === 6 ? 'magaly.perez' : null),
+        ppa_fecha: (r[0] === 6 ? '2026-09-03T18:20:00Z' : null),
         declaraciones: d ? JSON.parse(JSON.stringify(d.decls)) : [],
         estados: ESTADOS_DEMO[r[0]] ? JSON.parse(JSON.stringify(ESTADOS_DEMO[r[0]])) : []
       };
@@ -219,11 +222,15 @@
   // `ppa` viaja como 'si', 'no' o cadena vacia. Vacio NO es 'no': significa que RH
   // no ha decidido y sigue mandando la sugerencia del sistema. Confundir los dos
   // convertiria cada guardado de dias en una negacion silenciosa del premio.
-  function guardarPersona(semana, p, ppa) {
+  function guardarPersona(semana, p, ppa, nota) {
+    var v = (ppa === 'si' || ppa === 'no') ? ppa : '';
     return escribir({ accion: 'persona', semana: semana, empleado_id: p.id,
                      dias_mexico: Number(p.dias_mexico) || 0,
                      declaraciones: p.declaraciones || [],
-                     ppa: (ppa === 'si' || ppa === 'no') ? ppa : '' });
+                     ppa: v,
+                     // Sin decision no viaja nota: el server la limpia igual, pero
+                     // mandarla seria decir una cosa y guardar otra.
+                     ppa_nota: v === '' ? '' : ('' + (nota || '')) });
   }
   function guardarEstado(empleadoId, est, vigente) {
     return escribir({ accion: 'estado', empleado_id: empleadoId, tipo: est.tipo,

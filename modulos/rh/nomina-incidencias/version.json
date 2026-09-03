@@ -1,5 +1,5 @@
 {
-  "version": "V1.05",
+  "version": "V1.06",
   "fecha": "2026-09-03",
   "modulo": "rh/nomina-incidencias",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
@@ -32,8 +32,13 @@
     },
     {
       "version": "V1.05",
-      "pr": null,
+      "pr": 182,
       "nota": "Premio de Puntualidad y Asistencia sugerido por el sistema, decidido por RH. Compara la PRIMERA entrada de cada dia habil contra x_studio_hora_entrada de Odoo (float_time: 7.5 = 07:30) con 5 minutos de tolerancia — 5:00 todavia cuenta, 5:01 ya no. Sabado y domingo NO se evaluan: si Felipe los cito en fin de semana eso es trabajo extraordinario, no impuntualidad. REGLA DE OTRO TURNO: una entrada mas de 3 h despues de su hora se lee como otro turno y no como retardo. Enoc entra 07:00 en su ficha y el 1-sep checo 20:30 CST; contra la base eso da 810 minutos y le habria costado el premio. El modo de fallo se eligio a proposito (misma leccion que la ir.rule 814): equivocarse hacia 'no es tarde' cuela un premio que RH quita viendo la nota; equivocarse hacia 'es tarde' castiga cada semana a quien trabaja de noche y nadie lo nota. Se descuenta del veredicto pero se DICE en el motivo y se marca 'revisar'. La columna nueva se pinta para todos, incluido el 'no aplica' — un hueco se lee como olvido. La palomita puesta por una persona lleva borde solido y la calculada borde punteado: cuando alguien reclama su premio tres semanas despues, importa saber si alguien lo decidio o si nadie lo miro. El cajon trae la evidencia dia por dia con la hora de entrada y los minutos contra su horario. Lo que NO hace: comparar contra el plan de Felipe. Hoy compara contra el horario base de la ficha; la comparacion contra el plan queda pendiente y se dice en el manual en vez de fingir que ya esta."
+    },
+    {
+      "version": "V1.06",
+      "pr": null,
+      "nota": "Arreglo del premio de puntualidad + nota obligatoria. EL BUG: no era del servidor. El ciclo escribir-releer contra produccion tarda ~3.5 s y el boton no daba senal, asi que el segundo clic salia del estado VIEJO y deshacia el primero — desde fuera se veia como un boton muerto. Ahora hay candado mientras el server contesta y el boton lo dice ('guardando...'). Ademas el boton se pinta para TODOS, incluido quien su ficha de Odoo dice que no aplica: ese era justo el caso que RH necesitaba poder forzar y no tenia boton. NOTA OBLIGATORIA: dar o quitar el premio a mano abre un dialogo que exige decir por que, con la evidencia de puntualidad a la vista para decidir con ella. La exigencia vive en el SERVER (PPA_SIN_NOTA, minimo 4 caracteres), no solo en la pantalla — el frontend esta en un repo publico y exigirla ahi seria pedirla por favor. Dejarlo sin decidir no pide nota, porque no es una decision, y limpia la nota anterior para que no quede colgada. La nota se guarda con quien la escribio y cuando, y se muestra en el cajon y en el tooltip del renglon: es lo unico que queda cuando alguien reclama su premio tres semanas despues. Columna ppa_nota nueva en nom_semana_persona; nom/semana devuelve ppa_nota, ppa_actor y ppa_fecha."
     }
   ]
 }

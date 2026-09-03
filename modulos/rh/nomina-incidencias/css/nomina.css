@@ -220,3 +220,33 @@ input:focus,select:focus{outline:2px solid var(--green-l);border-color:var(--gre
 .ppa-dias td.ok    { color: var(--green); }
 .ppa-dias td.mal   { color: var(--red); font-weight:700; }
 .ppa-dias td.turno { color: #d99b20; font-weight:700; }
+
+/* ── Diálogo de la nota del premio ──
+   Dar o quitar el premio a mano exige decir por qué, y el diálogo es lo que hace
+   que la nota sea obligatoria de verdad y no un campo que se aprende a saltar.
+   De paso resuelve el bug que reportó Esteban: escribir + releer tarda segundos
+   contra producción, y sin nada que bloquee, el segundo clic deshacía el primero. */
+.modal { position: fixed; inset: 0; background: rgba(10,20,14,.55); z-index: 90;
+         display: flex; align-items: center; justify-content: center; padding: 20px; }
+.mpanel { background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+          padding: 20px 22px; width: 100%; max-width: 460px; box-shadow: 0 18px 50px rgba(0,0,0,.35); }
+.mpanel h3 { margin: 0 0 6px; font-size: 17px; }
+.msub  { font-size: 12px; color: var(--muted2); line-height: 1.45; margin-bottom: 12px; }
+.mprev { font-size: 12px; color: var(--muted); background: var(--bg2); border-radius: 8px;
+         padding: 7px 10px; margin-bottom: 12px; }
+.mpanel label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 5px; }
+.mpanel .req { font-weight: 400; color: var(--red); text-transform: uppercase;
+               font-size: 10px; letter-spacing: .05em; }
+.mpanel textarea { width: 100%; font: inherit; font-size: 14px; padding: 8px 10px;
+                   border: 1px solid var(--border); border-radius: 8px; resize: vertical;
+                   background: var(--bg2); color: var(--txt); }
+.merr { font-size: 12px; color: var(--red); font-weight: 700; margin-top: 7px; }
+.mact { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+
+/* La nota, ya guardada, en el cajón */
+.ppa-nota { font-size: 12px; background: var(--bg2); border-left: 3px solid var(--green);
+            border-radius: 0 8px 8px 0; padding: 7px 10px; margin-bottom: 10px; line-height: 1.45; }
+.ppa-nota .firma { color: var(--muted); font-size: 11px; margin-top: 3px; }
+/* Quien su ficha dice que no aplica: gris, pero PULSABLE — es el caso que RH fuerza */
+.ppa.na { color: var(--muted); opacity: .75; }
+.ppa[disabled] { opacity: .5; cursor: progress; }

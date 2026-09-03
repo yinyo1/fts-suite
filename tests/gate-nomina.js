@@ -313,12 +313,64 @@ function arrancarRender() { (async function () {
     Array.from(d.querySelectorAll('#tb tr[data-id]')).every(tr => tr.children.length === 7),
     String(d.querySelector('#tb tr[data-id]').children.length));
   check('a quien no le aplica, lo dice', /no aplica/.test(celdaPpa(101)), celdaPpa(101));
+  // …pero SÍ se puede forzar. Antes no había botón y ése era justo el caso que RH
+  // necesitaba poder cambiar: "no me deja agregárselo".
+  check('y aun así se puede pulsar para forzarlo',
+    !!d.querySelector('tr[data-id="101"] [data-ppa]'));
+  check('todas las personas tienen botón de premio, sin excepción',
+    Array.from(d.querySelectorAll('#tb tr[data-id]')).every(tr => tr.querySelector('[data-ppa]')),
+    String(Array.from(d.querySelectorAll('#tb tr[data-id]')).filter(tr => !tr.querySelector('[data-ppa]')).length) + ' sin botón');
   check('quien llegó tarde sale en no', /no/.test(celdaPpa(57)), celdaPpa(57));
   check('quien llegó a tiempo sale en sí', /si/.test(celdaPpa(128)), celdaPpa(128));
   check('y se marca que es sugerido, no decidido',
     /sugerido/.test(celdaPpa(128)) && !/decidido/.test(celdaPpa(128)), celdaPpa(128));
   check('el turno de noche pide revisar en vez de darlo por bueno',
     /revisar/.test(celdaPpa(128)), celdaPpa(128));
+
+  // ── La nota es obligatoria, y la exigencia se prueba con clics ──────────────
+  d.querySelector('tr[data-id="128"] [data-ppa]').dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+  await new Promise(r => setTimeout(r, 30));
+  check('pulsar el premio abre el diálogo en vez de cambiarlo de golpe', !!d.querySelector('.modal'));
+  check('el diálogo dice de quién se trata', /Enoc/.test((d.querySelector('.mpanel h3') || {}).textContent || ''),
+    (d.querySelector('.mpanel h3') || {}).textContent);
+  check('y trae la evidencia a la vista para decidir con ella',
+    /07:00/.test((d.querySelector('.msub') || {}).textContent || ''));
+  check('la nota se marca obligatoria', /obligatorio/.test((d.querySelector('.mpanel label') || {}).textContent || ''));
+
+  // Intento SIN nota: no debe guardar nada.
+  const antesDeIntentar = JSON.stringify(w.NomApp.estado().personas.find(p => p.id === 128).ppa_decidido);
+  d.querySelector('#ppaOk').dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+  await new Promise(r => setTimeout(r, 30));
+  check('sin nota NO se guarda', JSON.stringify(w.NomApp.estado().personas.find(p => p.id === 128).ppa_decidido) === antesDeIntentar);
+  check('y el diálogo sigue abierto diciendo qué falta', !!d.querySelector('.modal') &&
+    /Escribe por qué/.test((d.querySelector('#ppaErr') || {}).textContent || ''),
+    (d.querySelector('#ppaErr') || {}).textContent);
+  check('tres letras tampoco bastan (una nota de relleno no es una nota)', (() => {
+    d.querySelector('#ppaNota').value = 'sí';
+    d.querySelector('#ppaOk').dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+    return !!d.querySelector('.modal');
+  })());
+
+  // Con nota: sí guarda, y la nota queda pegada a la decisión.
+  d.querySelector('#ppaNota').value = 'Fue turno de noche, no un retardo.';
+  d.querySelector('#ppaOk').dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+  await new Promise(r => setTimeout(r, 60));
+  const p128 = w.NomApp.estado().personas.find(p => p.id === 128);
+  check('con nota SÍ guarda', p128.ppa_decidido === false, String(p128.ppa_decidido));
+  check('y la nota queda pegada a la decisión', /turno de noche/.test(p128.ppa_nota || ''), p128.ppa_nota);
+  check('el diálogo se cierra', !d.querySelector('.modal'));
+  check('y el renglón ya dice que lo decidió una persona', /decidido/.test(celdaPpa(128)), celdaPpa(128));
+
+  // Y la nota de quien ya tenía decisión se ve en el cajón, con su firma.
+  w.NomApp.abrir(6);
+  await new Promise(r => setTimeout(r, 30));
+  check('el cajón muestra la nota de una decisión previa',
+    /Felipe lo citó/.test((d.querySelector('.ppa-nota') || {}).textContent || ''),
+    (d.querySelector('.ppa-nota') || {}).textContent);
+  check('con quién la tomó', /magaly/.test((d.querySelector('.ppa-nota .firma') || {}).textContent || ''),
+    (d.querySelector('.ppa-nota .firma') || {}).textContent);
+  w.NomApp.cerrar();
+  await new Promise(r => setTimeout(r, 30));
 
   const filas = d.querySelectorAll('#tb tr[data-id]');
   check('el roster pinta 31 renglones (30 activos + 1 inactivo con estado vivo)', filas.length === 31, String(filas.length));

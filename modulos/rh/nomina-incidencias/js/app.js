@@ -163,17 +163,16 @@
 
       // PPA. Se pinta SIEMPRE, incluso cuando no aplica: un hueco en la columna
       // se lee como "se me olvido", y aqui el "no aplica" es una respuesta.
-      var ppaCel;
-      if (!p.ppa || !p.ppa.aplica) {
-        ppaCel = '<span class="pill p-none">no aplica</span>';
-      } else {
-        var vale = ppaVale(p), dec = ppaDecidido(p);
-        ppaCel = '<button class="ppa ' + (vale ? 'si' : 'no') + (dec ? ' dec' : '') + '" data-ppa="' + p.id + '" ' +
-          'title="' + esc(p.ppa.motivo) + '">' +
-          (vale ? '&#10003; si' : '&#10007; no') +
+      // El boton se pinta SIEMPRE, tambien para quien su ficha dice que no aplica:
+      // ese es justo el caso que RH necesita poder forzar, y sin boton no se podia.
+      var vale = ppaVale(p), dec = ppaDecidido(p);
+      var noAplica = !(p.ppa && p.ppa.aplica);
+      var ppaCel = '<button class="ppa ' + (vale ? 'si' : 'no') + (dec ? ' dec' : '') +
+          (noAplica && !dec ? ' na' : '') + '" data-ppa="' + p.id + '" ' +
+          'title="' + esc((p.ppa && p.ppa.motivo) || '') + (p.ppa_nota ? ' | Nota: ' + esc(p.ppa_nota) : '') + '">' +
+          (noAplica && !dec ? 'no aplica' : (vale ? '&#10003; si' : '&#10007; no')) +
           '<span class="q">' + (dec ? 'decidido' : 'sugerido') + '</span></button>' +
-          (p.ppa.revisar && !dec ? '<span class="pill p-bad">revisar</span>' : '');
-      }
+          (p.ppa && p.ppa.revisar && !dec ? '<span class="pill p-bad">revisar</span>' : '');
 
       var diasCel = p.inactivo
         ? '<span class="pill p-none">n/a</span>'
@@ -198,30 +197,106 @@
     for (var pi = 0; pi < ps.length; pi++) {
       ps[pi].addEventListener('click', function (ev) {
         ev.stopPropagation();
-        alternarPpa(Number(ev.currentTarget.getAttribute('data-ppa')));
+        abrirPpa(Number(ev.currentTarget.getAttribute('data-ppa')));
       });
     }
   }
 
-  // Cambiar el PPA de una persona es una escritura: se manda y se relee, igual que
-  // todo lo demas. No se pinta el cambio antes de que el server lo confirme.
-  async function alternarPpa(id) {
+  // Guarda contra el doble clic. Escribir + releer tarda varios segundos contra
+  // produccion; sin este candado, el segundo clic sale del estado VIEJO y deshace
+  // el primero — y desde fuera se ve como si el boton no sirviera. Fue exactamente
+  // lo que reporto Esteban.
+  var PPA_EN_VUELO = false;
+
+  function abrirPpa(id) {
+    if (PPA_EN_VUELO) return;
     var p = persona(id);
-    if (!p || !p.ppa || !p.ppa.aplica) return;
-    var nuevo = !ppaVale(p);
+    if (!p) return;
+    pedirNotaPpa(p);
+  }
+
+  // Cambiar el premio a mano EXIGE decir por que. La nota no es un adorno: es lo
+  // unico que queda cuando alguien reclama su premio tres semanas despues, y el
+  // server la exige tambien — aqui solo se pide bien.
+  function pedirNotaPpa(p) {
+    var vale = ppaVale(p), nuevo = !vale, dec = ppaDecidido(p);
+    var d = document.createElement('div');
+    d.className = 'modal';
+    d.innerHTML =
+      '<div class="mpanel">' +
+        '<h3>' + (nuevo ? 'Dar' : 'Quitar') + ' el premio a ' + esc(nombreCorto(p.nombre)) + '</h3>' +
+        '<div class="msub">' + esc((p.ppa && p.ppa.motivo) || 'Sin datos de puntualidad.') + '</div>' +
+        (dec && p.ppa_nota ? '<div class="mprev">Nota actual: ' + esc(p.ppa_nota) + '</div>' : '') +
+        '<label for="ppaNota">¿Por qué? <span class="req">obligatorio</span></label>' +
+        '<textarea id="ppaNota" rows="3" maxlength="500" placeholder="Ej.: Felipe lo citó 08:00 el martes, no llegó tarde."></textarea>' +
+        '<div class="merr hid" id="ppaErr"></div>' +
+        '<div class="mact">' +
+          '<button class="btn" id="ppaCancel">Cancelar</button>' +
+          '<button class="btn pri" id="ppaOk">' + (nuevo ? 'Dar el premio' : 'Quitar el premio') + '</button>' +
+          (dec ? '<button class="btn" id="ppaReset" title="Vuelve a lo que sugiere el sistema">Volver a la sugerencia</button>' : '') +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(d);
+    var ta = d.querySelector('#ppaNota');
+    ta.focus();
+
+    function cerrarModal() { if (d.parentNode) d.parentNode.removeChild(d); }
+    function fallo(msg) {
+      var e = d.querySelector('#ppaErr');
+      e.textContent = msg; e.className = 'merr';
+    }
+
+    d.querySelector('#ppaCancel').addEventListener('click', cerrarModal);
+    d.addEventListener('click', function (ev) { if (ev.target === d) cerrarModal(); });
+
+    d.querySelector('#ppaOk').addEventListener('click', async function () {
+      var nota = ta.value.trim();
+      // La condicion es dura: sin nota NO se guarda. Dejarlo pasar convertiria la
+      // nota en un campo que se aprende a saltar.
+      if (nota.length < 4) { fallo('Escribe por qué. Sin eso no se guarda el cambio.'); ta.focus(); return; }
+      cerrarModal();
+      await escribirPpa(p, nuevo ? 'si' : 'no', nota);
+    });
+
+    var rst = d.querySelector('#ppaReset');
+    if (rst) rst.addEventListener('click', async function () {
+      cerrarModal();
+      await escribirPpa(p, '', '');
+    });
+  }
+
+  // La escritura: se manda, se relee del server, y solo entonces se pinta.
+  async function escribirPpa(p, valor, nota) {
+    var comoQueda = valor === '' ? 'sin decidir' : (valor === 'si' ? 'otorgado' : 'quitado');
     if (window.NomClient.modo() === 'demo') {
-      p.ppa_decidido = nuevo; refrescar();
-      aviso('ok', 'En practica no se guarda, pero asi se veria');
+      p.ppa_decidido = valor === '' ? null : (valor === 'si');
+      p.ppa_nota = nota;
+      refrescar();
+      aviso('ok', 'En práctica no se guarda, pero así se vería');
       return;
     }
-    aviso('yendo', 'Guardando el premio de ' + nombreCorto(p.nombre) + '...');
+    PPA_EN_VUELO = true;
+    marcarPpaEnVuelo(p.id, true);
+    aviso('yendo', 'Guardando el premio de ' + nombreCorto(p.nombre) + '…');
     try {
-      await window.NomClient.guardarPersona(S.semana.id, p, nuevo ? 'si' : 'no');
+      await window.NomClient.guardarPersona(S.semana.id, p, valor, nota);
       await recargar();
-      aviso('ok', 'Premio ' + (nuevo ? 'otorgado' : 'quitado') + ' a ' + nombreCorto(p.nombre));
+      aviso('ok', 'Premio ' + comoQueda + ' · ' + nombreCorto(p.nombre));
     } catch (err) {
-      aviso('mal', 'NO se guardo el premio: ' + (err && err.msg ? err.msg : 'error desconocido'));
+      marcarPpaEnVuelo(p.id, false);
+      aviso('mal', 'NO se guardó el premio: ' + (err && err.msg ? err.msg : 'error desconocido'));
     }
+    PPA_EN_VUELO = false;
+  }
+
+  // Mientras el server contesta, el botón se apaga y lo dice. Un botón que no
+  // responde durante cuatro segundos sin decir nada se lee como un botón roto.
+  function marcarPpaEnVuelo(id, si) {
+    var b = document.querySelector('[data-ppa="' + id + '"]');
+    if (!b) return;
+    b.disabled = si;
+    if (si) { b.dataset.antes = b.innerHTML; b.innerHTML = 'guardando…'; }
+    else if (b.dataset.antes) { b.innerHTML = b.dataset.antes; }
   }
 
   // ══════════════════════════ CAJÓN DE CAPTURA ══════════════════════════
@@ -256,8 +331,11 @@
   async function guardarPersona(p, previo) {
     aviso('yendo', 'Guardando ' + nombreCorto(p.nombre) + '…');
     try {
+      // Se reenvia la decision de premio TAL COMO ESTA, con su nota. Si no, cerrar
+      // el cajon para corregir unos dias borraria de rebote una decision que nadie
+      // pidio deshacer — y el server la rechazaria por venir sin nota.
       await window.NomClient.guardarPersona(S.semana.id, p,
-        ppaDecidido(p) ? (p.ppa_decidido ? 'si' : 'no') : '');
+        ppaDecidido(p) ? (p.ppa_decidido ? 'si' : 'no') : '', p.ppa_nota || '');
 
       // Los estados viven en su propia tabla porque cruzan semanas. Los nuevos se
       // abren; los que la persona quitó se CIERRAN (vigente:false) en vez de
@@ -321,14 +399,19 @@
 
     // El premio, con la evidencia dia por dia. Una sugerencia sin el detalle de
     // contra que se comparo no se puede discutir con quien reclama.
-    if (p.ppa && p.ppa.aplica) {
-      var vale2 = ppaVale(p);
+    {
+      var vale2 = ppaVale(p), dec2 = ppaDecidido(p);
       h += '<div class="box"><h4>Premio de puntualidad</h4>' +
-        '<div class="ppa-cab"><button class="ppa ' + (vale2 ? 'si' : 'no') + (ppaDecidido(p) ? ' dec' : '') +
+        '<div class="ppa-cab"><button class="ppa ' + (vale2 ? 'si' : 'no') + (dec2 ? ' dec' : '') +
           '" id="ppaTog">' + (vale2 ? '&#10003; se le da' : '&#10007; no se le da') + '</button>' +
-        '<span class="q">' + (ppaDecidido(p) ? 'decidido por RH' : 'sugerido por el sistema') + '</span></div>' +
-        '<div class="ppa-mot">' + esc(p.ppa.motivo) + '</div>';
-      var DD = p.ppa.dias || [];
+        '<span class="q">' + (dec2 ? 'decidido por RH' : 'sugerido por el sistema') + '</span></div>' +
+        '<div class="ppa-mot">' + esc((p.ppa && p.ppa.motivo) || 'Sin datos de puntualidad.') + '</div>' +
+        (dec2 && p.ppa_nota
+          ? '<div class="ppa-nota"><b>Nota:</b> ' + esc(p.ppa_nota) +
+            '<div class="firma">' + esc(p.ppa_actor || '') +
+            (p.ppa_fecha ? ' · ' + esc(String(p.ppa_fecha).slice(0, 10)) : '') + '</div></div>'
+          : '');
+      var DD = (p.ppa && p.ppa.dias) || [];
       if (DD.length) {
         h += '<table class="ppa-dias"><tr><th>Día</th><th>Entró</th><th>Contra ' + esc(p.ppa.hora_base) + '</th></tr>';
         for (var dd = 0; dd < DD.length; dd++) {
@@ -514,7 +597,7 @@
       });
     }
     var pt = $('ppaTog');
-    if (pt) pt.addEventListener('click', function () { alternarPpa(ACTIVO); });
+    if (pt) pt.addEventListener('click', function () { abrirPpa(ACTIVO); });
 
     var ad = $('addDecl');
     if (ad) ad.addEventListener('click', function () {
