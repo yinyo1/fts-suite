@@ -1,9 +1,14 @@
 {
-  "version": "V1.00",
+  "version": "V1.01",
   "fecha": "2026-09-03",
   "modulo": "finanzas",
   "esquema": "V<mayor>.<menor de dos dígitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.01",
+      "pr": null,
+      "nota": "NO_SUSPENSE_UNICA en FTS-USA deja de acusar a la linea. El guard cuenta patas de suspense filtrando por la cuenta 184 (FTS-MX); en una linea de FTS-USA encuentra 0 y culpa a la linea de estar «ya parcialmente desenredada». Comprobado sobre la linea 33235 (BNK2/2026/00382, journal 122, Home Depot $63.43 del 17-ago): tiene EXACTAMENTE una pata de suspense, intacta, en la 309. Es P1, no una linea a medio desenredar. El panel ahora lo dice, y solo para FTS-USA."
+    },
     {
       "version": "V1.00",
       "pr": null,

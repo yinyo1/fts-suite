@@ -218,6 +218,38 @@ const esDelEntorno = t => /ERR_CONNECTION_RESET|ERR_NAME_NOT_RESOLVED|ERR_BLOCKE
       check('los controles llegan a 40 px de alto táctil', mob.chicos.length === 0, mob.chicos.join(', '));
     }
 
+    // ── NO_SUSPENSE_UNICA sobre una línea de FTS-USA ────────────────────────────────
+    // El server responde «línea ya parcialmente desenredada», y sobre una línea de FTS-USA eso
+    // es FALSO: comprobado en Odoo el 2026-09-03 que la 33235 tiene exactamente una pata de
+    // suspense, intacta, en la 309. El guard cuenta filtrando por la 184 (FTS-MX), encuentra 0,
+    // y culpa a la línea. El panel no debe repetir esa acusación.
+    if (dev.w > 700) {
+      const fila = await p.evaluate(() => {
+        const tr = [...document.querySelectorAll('#ip-tblwrap tbody tr')]
+          .find(t => t.textContent.indexOf('DLO*UBER') >= 0);
+        const b = tr ? tr.querySelector('button[data-expand]') : null;
+        if (b) b.click();
+        return !!b;
+      });
+      if (check('la línea de Chase se puede desplegar', fila)) {
+        await p.waitForSelector('button[data-conc]', { timeout: 5000 }).catch(() => {});
+        await p.evaluate(() => { const b = document.querySelector('button[data-conc]'); if (b) b.click(); });
+        await p.waitForTimeout(400);
+        const txt = (await p.locator('.ip-res.bad').first().textContent().catch(() => '')) || '';
+        console.log('   guard: ' + txt.replace(/\s+/g, ' ').trim().slice(0, 150));
+        check('el guard nombra la cuenta 309 y la 184 (la causa real)',
+          txt.indexOf('309') >= 0 && txt.indexOf('184') >= 0, txt.slice(0, 120));
+        // Se busca el texto EXACTO del server. El panel sí puede usar la palabra para negarla
+        // («lo reporta como si estuviera a medio desenredar. NO lo está»); lo que no puede es
+        // dejar pasar la frase del server como si fuera el diagnóstico.
+        check('el guard NO deja pasar la frase del server («ya parcialmente desenredada»)',
+          txt.indexOf('ya parcialmente desenredada') < 0, txt.slice(0, 120));
+        check('el guard deja ver el código técnico', txt.indexOf('NO_SUSPENSE_UNICA') >= 0, txt.slice(0, 120));
+        await p.evaluate(() => { const b = document.querySelector('button[data-expand]'); if (b) b.click(); });
+        await p.waitForTimeout(200);
+      }
+    }
+
     // Capturas SIN fullPage: lo que se ve de verdad.
     await p.screenshot({ path: path.join(OUT, dev.n + '-1-arriba.png') });
     await p.evaluate(() => { const t = document.querySelector('#ip-tblwrap'); if (t) t.scrollIntoView({ block: 'start' }); });

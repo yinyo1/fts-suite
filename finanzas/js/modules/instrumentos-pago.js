@@ -27,7 +27,7 @@
   // comercial/machote y DEBE coincidir con finanzas/version.json — el gate lo verifica, porque
   // una pantalla que dice una versión y un archivo que dice otra deja de ser evidencia de nada.
   // Sustituye a la numeración 0.x.y (última: 0.5.36), conservada en version.json.
-  var IP_BUILD = 'V1.00';
+  var IP_BUILD = 'V1.01';
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -1372,7 +1372,7 @@
         return '<div class="ip-acc"><div class="ip-res partial">✓ Conciliada PARCIALMENTE — quedan línea <b>' + money(r.residual_linea) + '</b> / bill <b>' + money(r.residual_bill) + '</b></div></div>';
       }
       // Guard humanizado (ej. BILL_NO_201 = cross-company) + código técnico en el detalle.
-      var human = humanConcMsg(r.code, r.msg);
+      var human = humanConcMsg(r.code, r.msg, t);
       // A4 — override del corte. Aparece SOLO cuando el server bloqueó por pre-corte, así que
       // no hay forma de que salga en una línea que no lo necesita: lo gobierna la respuesta,
       // no una condición del cliente que pudiera desincronizarse del guard real.
@@ -1401,12 +1401,37 @@
       return '<div class="ip-acc"><div class="ip-res bad">' + esc(human) + ' <span class="ip-mono2">(' + esc(r.code || 'ERROR') + ')</span></div>' +
         '<div class="ip-acc-actions"><button class="ip-acc-reload" data-reload="' + t._id + '">↻ Recargar sugerencias</button></div></div>';
     }
+    // FTS-USA = company 6. Se acepta el id o la razón social, igual que visibleRows: el endpoint
+    // real manda `rs` sin `company_id`, y el demo al revés.
+    function esUSA(t) { return !!t && (t.company_id === 6 || t.rs === 'FTS LLC'); }
+
     // Traduce códigos de guard del conciliar a lenguaje humano (el código técnico queda en el detalle).
-    function humanConcMsg(code, msg) {
+    function humanConcMsg(code, msg, t) {
+      // NO_SUSPENSE_UNICA en una línea de FTS-USA: el mensaje del server NO aplica.
+      //
+      // El guard cuenta las patas de suspense filtrando por la cuenta 184, que es la de FTS-MX,
+      // y cuando encuentra 0 concluye "no hay exactamente 1" y culpa a la línea de estar «ya
+      // parcialmente desenredada». En una línea de FTS-USA eso es falso: la pata existe, está
+      // intacta, y vive en la 309 —que es la cuenta de suspense de ESA empresa—.
+      //
+      // Comprobado el 2026-09-03 sobre la línea 33235 (BNK2/2026/00382, journal 122, Home Depot
+      // $63.43 del 17-ago): tiene EXACTAMENTE una pata de suspense, en la 309, sin tocar, y aun
+      // así el guard responde NO_SUSPENSE_UNICA. Es P1, no una línea a medio desenredar.
+      //
+      // Se dice sin prometer de más: si algún día el motor abre FTS-USA, este caso deja de
+      // llegar aquí porque la conciliación pasa. Y para FTS-MX el mensaje del server se respeta,
+      // porque ahí "a medio desenredar" sí es la lectura correcta.
+      if (code === 'NO_SUSPENSE_UNICA' && esUSA(t)) {
+        return 'Esta línea es de FTS-USA y su contrapartida está en la cuenta de suspense 309. ' +
+               'El motor todavía busca en la 184, que es la de FTS-MX, así que no la encuentra y ' +
+               'lo reporta como si la línea estuviera a medio desenredar. NO lo está: falta abrir ' +
+               'el motor a esta empresa (P1 del issue #150). El bill no se tocó.';
+      }
       var map = {
         'BILL_NO_201': 'Este bill está cargado a otra empresa/cuenta — caso cross-company, no conciliable desde aquí por ahora.',
         'LINE_YA_CONCILIADA': 'Esta línea ya fue conciliada (el mundo cambió). Recarga las sugerencias.',
-        'BILL_YA_CONCILIADO': 'El bill ya fue conciliado por otra línea. Recarga las sugerencias.'
+        'BILL_YA_CONCILIADO': 'El bill ya fue conciliado por otra línea. Recarga las sugerencias.',
+        'NO_SUSPENSE_UNICA': 'La línea no tiene exactamente una pata de suspense: ya está a medio desenredar. Se resuelve en Odoo, no desde aquí.'
       };
       return map[code] || msg || 'No se pudo conciliar.';
     }

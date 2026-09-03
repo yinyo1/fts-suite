@@ -149,8 +149,17 @@ window.FinClient = {
         { line_id: 9006, nivel: 'sugerida', candidatos: [
           { bill_aml_id: 111, bill_name: 'BILL3345', partner: 'Proferre', score: 0.91, monto_bill: 340.96,
             banda: 'alta', pre_marcado: true, fecha: '2026-08-27', days_diff: 0 }] },
-        { line_id: 9007, nivel: 'sin-documento', candidatos: [] }
+        { line_id: 9007, nivel: 'sin-documento', candidatos: [] },
+        // 9008 es la linea de Chase (company 6). Existe para reproducir el caso REAL del
+        // 2026-09-03: candidato bueno, y el conciliar responde NO_SUSPENSE_UNICA porque el
+        // motor busca la pata de suspense en la cuenta de la otra empresa.
+        { line_id: 9008, nivel: 'sugerida', candidatos: [
+          { bill_aml_id: 222, bill_name: 'BILL/2026/08/0031', partner: 'HOME DEPOT U.S.A.', score: 0.95,
+            monto_bill: 31.88, banda: 'alta', pre_marcado: true, fecha: '2026-09-01', days_diff: 0 }] }
       ], pagination: { has_more: false } });
+    // Respuesta LITERAL del server sobre una linea de FTS-USA (copiada de produccion).
+    if (ep === '/fin/captura-conciliar') return Promise.resolve({ ok: false, code: 'NO_SUSPENSE_UNICA',
+      msg: 'No hay exactamente 1 pata suspense (línea ya parcialmente desenredada) — manual v2.' });
     if (ep === '/fin/captura-pendings-status') return Promise.resolve({ disponible: false });
     return Promise.resolve({});
   }
