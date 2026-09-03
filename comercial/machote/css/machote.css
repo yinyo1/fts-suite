@@ -127,15 +127,53 @@ table.rejilla .pctcol { color: var(--suave); text-align: right; }
 .x { border: 0; background: transparent; color: var(--rojo); font-size: 16px;
      cursor: pointer; min-height: var(--toque); min-width: var(--toque); }
 
-/* ── Celdas editables ─────────────────────────────────────────────────── */
-.cel { border: 1px solid transparent; background: transparent; font: inherit;
-       color: inherit; padding: 7px 5px; border-radius: 5px; width: 100%;
+/* ── Captura contra cálculo ───────────────────────────────────────────────
+ * En Excel se sabe qué celda es fórmula: la barra la muestra. Aquí no había
+ * ninguna señal — la celda editable era transparente y sólo sacaba borde al
+ * pasar el mouse, que en un teléfono no existe. En el dispositivo donde más
+ * se captura, la distinción sencillamente no estaba.
+ *
+ * Ahora se distinguen por TRES cosas a la vez, no sólo por color: fondo, borde
+ * y alineación. Quien no distingue colores sigue viendo la diferencia. */
+
+/* Lo que se captura: caja blanca con borde, como un campo. */
+.cel { border: 1px solid var(--linea); background: var(--fondo); font: inherit;
+       color: inherit; padding: 7px 6px; border-radius: 6px; width: 100%;
        box-sizing: border-box; min-width: 0; }
-.cel:hover { border-color: var(--linea); }
+.cel:hover { border-color: #b9b9b9; }
 .cel:focus { outline: 0; border-color: var(--acento); background: #fff;
-             box-shadow: 0 0 0 2px rgba(9,105,218,.15); }
+             box-shadow: 0 0 0 3px rgba(9,105,218,.16); }
 .cel.num { text-align: right; font-variant-numeric: tabular-nums; }
-.cel.pisado { background: #fff8e5; border-color: #e6c200; }
+.cel::placeholder { color: #b0b0b0; }
+
+/* Lo que se calcula: sin caja, sobre el papel, en versalitas tabulares. Se lee
+ * como un resultado impreso, no como algo que se pueda escribir. */
+.calc { background: var(--papel); color: var(--tinta);
+        font-variant-numeric: tabular-nums; cursor: default;
+        -webkit-user-select: text; user-select: text; }
+td.calc { position: relative; }
+/* La marca de fórmula: una barra fina a la izquierda. No es color solo. */
+td.calc::after { content: ''; position: absolute; left: 0; top: 3px; bottom: 3px;
+                 width: 2px; background: #c8cdd2; border-radius: 2px; }
+table.hoja2 td.calc { background: var(--papel); }
+
+/* El margen escrito a mano encima de la fórmula. El acervo lo hace -el caso
+ * del "riel" en SO11737- y tiene que verse distinto de uno heredado del Tipo. */
+.cel.pisado { background: #fff8e5; border-color: #d9a800; font-weight: 600; }
+.cel.pisado:focus { box-shadow: 0 0 0 3px rgba(217,168,0,.2); }
+.pisado-marca { color: #9a6700; font-size: 10px; font-weight: 700;
+                margin-left: 4px; white-space: nowrap; }
+
+/* Cuando un derivado cambia, parpadea un instante. Sobrio: un fondo que se
+ * desvanece en medio segundo, sin movimiento ni color saturado. */
+@keyframes recalculado {
+  from { background: #fff3cd; }
+  to   { background: var(--papel); }
+}
+td.calc.cambio { animation: recalculado .55s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  td.calc.cambio { animation: none; box-shadow: inset 0 0 0 1px #e6c200; }
+}
 select.cel { -webkit-appearance: none; appearance: none; padding-right: 16px;
              background-image: linear-gradient(45deg, transparent 50%, var(--suave) 50%),
                                linear-gradient(135deg, var(--suave) 50%, transparent 50%);
@@ -211,6 +249,18 @@ textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--linea);
   table.rejilla.tarjetas .cel.desc { width: auto; min-width: 0; flex: 1 1 auto; }
   table.rejilla.tarjetas .cel { border: 1px solid var(--linea); background: #fff;
                                 min-height: var(--toque); padding: 10px 8px; }
+  /* `table.rejilla.tarjetas .cel` gana en especificidad a `.cel.pisado`, así
+     que en teléfono BORRABA la marca del margen escrito a mano — justo en el
+     dispositivo donde más se captura. Se repone con la misma especificidad. */
+  table.rejilla.tarjetas .cel.pisado { background: #fff8e5; border-color: #d9a800; }
+
+  /* La banda del derivado llegaba pegada al borde de la tarjeta y el número
+     quedaba sin aire. Se le da respiro y esquinas, para que se lea como un
+     renglón de resultado y no como algo cortado. */
+  table.rejilla.tarjetas td.calc { padding: 8px 10px; border-radius: 6px;
+                                   margin: 2px 0; }
+  table.rejilla.tarjetas td.calc::after { left: 3px; top: 6px; bottom: 6px; }
+  table.rejilla.tarjetas td.calc::before { padding-left: 8px; }
   table.rejilla.tarjetas td.acc { justify-content: flex-end; }
   table.rejilla.tarjetas .x { font-size: 13px; min-width: 0; padding: 0 10px;
                               border: 1px solid #f0c8cc; border-radius: 8px; }
@@ -316,3 +366,16 @@ label.row { min-height: var(--toque); }
 .tb-info span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
                 display: block; max-width: 100%; }
 .tb-info { min-width: 0; }
+
+/* ── Leyenda ──────────────────────────────────────────────────────────────
+ * Un analista nuevo no tiene por qué deducir el código visual: se le dice.
+ * La muestra repite las TRES señales de cada tipo -fondo, borde y forma-, no
+ * sólo el color, para que siga sirviendo sin distinguir colores. */
+.leyenda { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 8px 12px;
+           font-size: 11px; color: var(--suave); align-items: center; }
+.leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+.leyenda i { width: 26px; height: 17px; border-radius: 4px; display: inline-block;
+             flex: 0 0 auto; }
+.leyenda .mu-cel    { border: 1px solid var(--linea); background: var(--fondo); }
+.leyenda .mu-calc   { background: var(--papel); border-left: 2px solid #c8cdd2; }
+.leyenda .mu-pisado { background: #fff8e5; border: 1px solid #d9a800; }

@@ -33,7 +33,7 @@
    * ⚠️ El esquema es de ESTE módulo. El repo tiene otros en uso —finanzas va
    * en `0.5.36` con cadena de build, planeación en `2.4.1`, el kiosko sólo con
    * build— y se decidió dejarlos como están. No propagar V1.xx a esos. */
-  const VERSION = 'V1.04';
+  const VERSION = 'V1.05';
   const $  = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
   const clon = (x) => JSON.parse(JSON.stringify(x));
@@ -195,11 +195,51 @@
     barra(m, c);
   }
 
+  /** El HTML de la hoja abierta. Separado del pintado para poder renderizar a
+   *  memoria y comparar, sin tocar el DOM vivo. */
+  function hojaHTML(m, c) {
+    const s = m.secciones.find(x => x.id === ST.hoja);
+    return s ? hojaSeccion(m, s, c) : hojaDesglose(m, c);
+  }
+
   function pintarHoja(m) {
     const c = C.calcular(m);
-    const s = m.secciones.find(x => x.id === ST.hoja);
-    $('#hoja').innerHTML = s ? hojaSeccion(m, s, c) : hojaDesglose(m, c);
+    $('#hoja').innerHTML = hojaHTML(m, c);
     enlazar(m);
+  }
+
+  /** Refresca SÓLO los derivados, sin repintar.
+   *
+   *  Repintar la hoja en cada tecla mata el foco a media cifra, así que antes
+   *  los derivados no se movían hasta salir del campo: quien capturaba no veía
+   *  la consecuencia de lo que escribía donde la estaba escribiendo.
+   *
+   *  Se renderiza la hoja a un nodo suelto, se comparan las celdas `.calc` una
+   *  a una y sólo se copian las que cambiaron. Los `input` del DOM vivo no se
+   *  tocan, así que el cursor se queda donde estaba. Las que cambiaron
+   *  parpadean medio segundo.
+   *
+   *  Si el número de celdas no coincide, la estructura cambió (se agregó un
+   *  renglón, se plegó un grupo) y ahí sí toca repintar entero. */
+  function refrescarCalculados(m) {
+    const cont = $('#hoja'); if (!cont) return;
+    const c = C.calcular(m);
+    const tmp = document.createElement('div');
+    tmp.innerHTML = hojaHTML(m, c);
+
+    const vivos = $$('.calc', cont), nuevos = $$('.calc', tmp);
+    if (vivos.length !== nuevos.length) { pintarHoja(m); return c; }
+
+    vivos.forEach((el, i) => {
+      const html = nuevos[i].innerHTML;
+      if (el.innerHTML === html) return;
+      el.innerHTML = html;
+      el.className = nuevos[i].className;
+      el.classList.remove('cambio');
+      void el.offsetWidth;          // fuerza reflujo para reiniciar la animación
+      el.classList.add('cambio');
+    });
+    return c;
   }
 
   /* ── Hoja de sección ─────────────────────────────────────────────────── */
@@ -221,7 +261,7 @@
       ['Precio de Venta a cliente (Despues de comisiones)', mx2(cs.esc ? cs.esc.con_utilidad.precio : null)],
       ['Utilidad', mx2((cs.esc ? cs.esc.con_utilidad.precio : 0) - cs.costo)],
       ['% Utilidad Obtenido', pc(cs.margenObtenido)]
-    ].map(r => '<tr><td class="et">' + esc(r[0]) + '</td><td class="vl mono">' + r[1] + '</td></tr>').join('');
+    ].map(r => '<tr><td class="et">' + esc(r[0]) + '</td><td class="vl mono calc">' + r[1] + '</td></tr>').join('');
 
     const der = [
       ['Programador', 'margenes.programador', mg.programador],
@@ -236,7 +276,7 @@
       '<div class="cab">' +
       '<div class="blk"><table class="hoja2"><thead><tr><th>Costos desglosados</th><th></th></tr></thead>' +
       '<tbody>' + izq +
-      '<tr><td class="et">Horas sección</td><td class="vl mono">' + Math.round(cs.horas || 0) + '</td></tr>' +
+      '<tr><td class="et">Horas sección</td><td class="vl mono calc">' + Math.round(cs.horas || 0) + '</td></tr>' +
       '</tbody></table></div>' +
       '<div class="blk"><table class="hoja2"><thead><tr><th>Concepto</th><th>Margen de utilidad</th></tr></thead>' +
       '<tbody>' + der + '</tbody></table>' +
@@ -269,10 +309,10 @@
           '<td class="ro solo-ancho" data-l="Unidad">Horas</td>' +
           '<td data-l="Personas">' + celNum(p + 'personas', l.personas, 'w60') + '</td>' +
           '<td data-l="Precio unitario">' + celNum(p + 'pu', l.pu, 'w80') + '</td>' +
-          '<td class="vl mono" data-l="Precio total">' + mx(cl.costo) + '</td>' +
+          '<td class="vl mono calc" data-l="Precio total">' + mx(cl.costo) + '</td>' +
           '<td data-l="Moneda">' + celSel(p + 'moneda', l.moneda, ['MXN', 'USD']) + '</td>' +
-          '<td class="ro mono" data-l="Margen">' + cl.mult + '</td>' +
-          '<td class="vl mono fuerte" data-l="Precio con utilidad">' + mx(cl.conUtilidad) + '</td></tr>';
+          '<td class="ro mono calc" data-l="Margen">' + cl.mult + '</td>' +
+          '<td class="vl mono calc fuerte" data-l="Precio con utilidad">' + mx(cl.conUtilidad) + '</td></tr>';
       });
     });
 
@@ -287,8 +327,8 @@
       '<th>PRECIO UNITARIO</th><th>PRECIO TOTAL</th><th>MONEDA</th><th>Margen utilidad</th>' +
       '<th>PRECIO CON UTILIDAD</th></tr></thead><tbody>' + filasMo +
       '<tr class="total"><td class="rotulo" data-l="">TOTAL</td><td colspan="4"></td>' +
-      '<td class="vl mono" data-l="Costo mano de obra">' + mx(cs.costoMo) +
-      '</td><td colspan="2"></td><td class="vl mono fuerte" data-l="Con utilidad">' + mx(cs.ventaMo) + '</td></tr>' +
+      '<td class="vl mono calc" data-l="Costo mano de obra">' + mx(cs.costoMo) +
+      '</td><td colspan="2"></td><td class="vl mono calc fuerte" data-l="Con utilidad">' + mx(cs.ventaMo) + '</td></tr>' +
       '</tbody></table></div>';
 
     // COSTO MATERIALES Y SERVICIOS
@@ -303,9 +343,11 @@
         '<td data-l="Marca">' + cel(p + 'marca', l.marca, 'w90') + '</td>' +
         '<td data-l="Precio unitario">' + celNum(p + 'pu', l.pu, 'w90') + '</td>' +
         '<td data-l="Moneda">' + celSel(p + 'moneda', l.moneda, ['MXN', 'USD']) + '</td>' +
-        '<td class="vl mono' + (cl.sinPrecio ? ' n-bad' : '') + '" data-l="Precio total">' + (cl.sinPrecio ? 'sin precio' : mx(cl.costo)) + '</td>' +
-        '<td data-l="Margen">' + celNum(p + 'margen', l.margen, 'w60' + (cl.pisado ? ' pisado' : ''), String(cl.porTipo || '')) + '</td>' +
-        '<td class="vl mono fuerte" data-l="Precio con utilidad">' + mx(cl.conUtilidad) + '</td>' +
+        '<td class="vl mono calc' + (cl.sinPrecio ? ' n-bad' : '') + '" data-l="Precio total">' + (cl.sinPrecio ? 'sin precio' : mx(cl.costo)) + '</td>' +
+        '<td data-l="Margen">' + celNum(p + 'margen', l.margen, 'w60' + (cl.pisado ? ' pisado' : ''), String(cl.porTipo || '')) +
+          (cl.pisado ? '<span class="pisado-marca" title="Escrito a mano encima de la fórmula. Por Tipo le tocaría ' +
+            cl.porTipo + '.">≠ ' + cl.porTipo + '</span>' : '') + '</td>' +
+        '<td class="vl mono calc fuerte" data-l="Precio con utilidad">' + mx(cl.conUtilidad) + '</td>' +
         '<td data-l="Link">' + cel(p + 'link', l.link, 'w130', 'https://…') + '</td>' +
         '<td data-l="Comentario">' + cel(p + 'comentario', l.comentario, 'w130') + '</td>' +
         '<td class="acc"><button class="x" data-del="' + s.id + '#' + j + '" title="Eliminar partida">× eliminar</button></td></tr>';
@@ -319,14 +361,14 @@
       '<th>PRECIO CON UTILIDAD</th><th>Link</th><th>Comentario</th><th></th></tr></thead><tbody>' +
       (filasMat || '<tr><td colspan="14" class="vacio2">Sin partidas.</td></tr>') +
       '<tr class="total"><td class="rotulo" data-l="">TOTAL</td><td colspan="7"></td>' +
-      '<td class="vl mono" data-l="Costo materiales">' + mx(cs.costoMat) +
-      '</td><td></td><td class="vl mono fuerte" data-l="Con utilidad">' + mx(cs.ventaMat) + '</td><td colspan="3"></td></tr>' +
+      '<td class="vl mono calc" data-l="Costo materiales">' + mx(cs.costoMat) +
+      '</td><td></td><td class="vl mono calc fuerte" data-l="Con utilidad">' + mx(cs.ventaMat) + '</td><td colspan="3"></td></tr>' +
       '</tbody></table></div>' +
       '<div class="btnrow"><button class="btn" data-add="' + s.id + '">+ partida</button>' +
       (cs.pisados ? '<span class="tiny n-warn">' + cs.pisados + ' margen(es) pisado(s) a mano en esta sección</span>' : '') +
       '</div>';
 
-    return cab + tablaMo + tablaMat;
+    return cab + leyenda() + tablaMo + tablaMat;
   }
 
   /* ── Hoja DESGLOSE COTIZACIÓN ────────────────────────────────────────── */
@@ -338,8 +380,8 @@
 
     const fila = (et, p, cCosto, cUtil, cMd) =>
       '<tr><td class="et">' + et + '</td><td class="mono pctcol">' + (p || '') + '</td>' +
-      '<td class="vl mono">' + cCosto + '</td><td class="vl mono">' + cUtil + '</td>' +
-      '<td class="vl mono">' + cMd + '</td></tr>';
+      '<td class="vl mono calc">' + cCosto + '</td><td class="vl mono calc">' + cUtil + '</td>' +
+      '<td class="vl mono calc">' + cMd + '</td></tr>';
 
     const resumen =
       '<div class="secc-tit">RESUMEN BUDGET</div>' +
@@ -354,8 +396,8 @@
       fila('COMISIONES DE FTS', pc(c.pctFts), '', mx(e.con_utilidad.comisionFts), mx(e.margen_deseado.comisionFts)) +
       fila('COMISIONES DE CLIENTE', pc(c.pctCli), '', mx(e.con_utilidad.comisionCliente), mx(e.margen_deseado.comisionCliente)) +
       '<tr class="total"><td class="et">PRECIO DE VENTA ANTE DE IMPUESTO</td><td></td>' +
-      '<td class="vl mono">' + mx(e.costo.precio) + '</td><td class="vl mono">' + mx(e.con_utilidad.precio) + '</td>' +
-      '<td class="vl mono">' + mx(e.margen_deseado.precio) + '</td></tr>' +
+      '<td class="vl mono calc">' + mx(e.costo.precio) + '</td><td class="vl mono calc">' + mx(e.con_utilidad.precio) + '</td>' +
+      '<td class="vl mono calc">' + mx(e.margen_deseado.precio) + '</td></tr>' +
       fila('Margen', '', pc(0), pc(e.con_utilidad.margen), pc(e.margen_deseado.margen)) +
       fila('Utilidad esperada Absoluta', '', mx(0), mx(e.con_utilidad.utilidad), mx(e.margen_deseado.utilidad)) +
       '</tbody></table></div>';
@@ -366,11 +408,14 @@
       '<div class="escs">' + escOps + '</div></div>' +
       '<div class="blk"><table class="hoja2"><tbody>' +
       '<tr><td class="et">MARGEN DESEADO</td><td>' + celNum('margen_deseado', m.margen_deseado, 'w80') + '</td></tr>' +
-      '<tr><td class="et">HORAS PROYECTO</td><td class="vl mono">' + Math.round(c.horas) + '</td></tr>' +
-      '<tr><td class="et">Factor_req</td><td class="vl mono">' + (c.factorReq ? c.factorReq.toFixed(9) : '—') + '</td></tr>' +
+      '<tr><td class="et">HORAS PROYECTO</td><td class="vl mono calc">' + Math.round(c.horas) + '</td></tr>' +
+      '<tr><td class="et">Factor_req</td><td class="vl mono calc">' + (c.factorReq ? c.factorReq.toFixed(9) : '—') + '</td></tr>' +
       '<tr><td class="et">Moneda</td><td>' + celSel('moneda', m.moneda, ['MXN', 'USD']) + '</td></tr>' +
       '<tr><td class="et">Tipo de cambio</td><td>' + celNum('tc', m.tc, 'w80') + '</td></tr>' +
-      '</tbody></table></div></div>';
+      '<tr><td class="et">Factor de protección</td><td>' + celNum('factor_proteccion', m.factor_proteccion, 'w80') + '</td></tr>' +
+      '<tr><td class="et">TC efectivo</td><td class="vl mono calc">' + C.tcEfectivo(m).toFixed(4) + '</td></tr>' +
+      '</tbody></table></div></div>' +
+      leyenda();
 
     // RESUMEN por sección: diez ranuras fijas, tres grupos de columnas.
     let fSec = '';
@@ -379,16 +424,16 @@
       const v = s ? s.esc : null;
       fSec += '<tr' + (s ? '' : ' class="vacia"') + '><td class="mono">' + (i + 1) + '</td>' +
         '<td class="et">' + esc(s ? s.nombre : 'SECCION ' + (i + 1)) + '</td>' +
-        '<td class="vl mono">' + mx(s ? v.costo.mo : 0) + '</td>' +
-        '<td class="vl mono">' + mx(s ? v.costo.mat : 0) + '</td>' +
-        '<td class="vl mono">' + mx(s ? v.costo.precio : 0) + '</td>' +
-        '<td class="vl mono">' + mx(s ? v.con_utilidad.mo : 0) + '</td>' +
-        '<td class="vl mono">' + mx(s ? v.con_utilidad.mat : 0) + '</td>' +
-        '<td class="vl mono">' + mx(s ? v.con_utilidad.precio : 0) + '</td>' +
-        '<td class="vl mono">' + mx(s ? v.margen_deseado.mo : 0) + '</td>' +
-        '<td class="vl mono">' + mx(s ? v.margen_deseado.mat : 0) + '</td>' +
-        '<td class="vl mono">' + mx(s ? v.margen_deseado.precio : 0) + '</td>' +
-        '<td class="vl mono">' + (s ? Math.round(s.horas) : 0) + '</td></tr>';
+        '<td class="vl mono calc">' + mx(s ? v.costo.mo : 0) + '</td>' +
+        '<td class="vl mono calc">' + mx(s ? v.costo.mat : 0) + '</td>' +
+        '<td class="vl mono calc">' + mx(s ? v.costo.precio : 0) + '</td>' +
+        '<td class="vl mono calc">' + mx(s ? v.con_utilidad.mo : 0) + '</td>' +
+        '<td class="vl mono calc">' + mx(s ? v.con_utilidad.mat : 0) + '</td>' +
+        '<td class="vl mono calc">' + mx(s ? v.con_utilidad.precio : 0) + '</td>' +
+        '<td class="vl mono calc">' + mx(s ? v.margen_deseado.mo : 0) + '</td>' +
+        '<td class="vl mono calc">' + mx(s ? v.margen_deseado.mat : 0) + '</td>' +
+        '<td class="vl mono calc">' + mx(s ? v.margen_deseado.precio : 0) + '</td>' +
+        '<td class="vl mono calc">' + (s ? Math.round(s.horas) : 0) + '</td></tr>';
     }
     const sobra = c.secciones.length > C.MAX_SECCIONES;
 
@@ -403,14 +448,14 @@
       '<th>MANO DE OBRA</th><th>MATERIALES Y SERV</th><th>PRECIO DE VENTA</th><th>HORAS</th></tr></thead>' +
       '<tbody>' + fSec +
       '<tr class="total"><td></td><td class="et">SUMA</td>' +
-      '<td class="vl mono">' + mx(c.costoMo) + '</td><td class="vl mono">' + mx(c.costoMat) + '</td>' +
-      '<td class="vl mono">' + mx(c.costo) + '</td>' +
-      '<td class="vl mono">' + mx(c.ventaMo) + '</td><td class="vl mono">' + mx(c.ventaMat) + '</td>' +
-      '<td class="vl mono">' + mx(e.con_utilidad.precio) + '</td>' +
-      '<td class="vl mono">' + mx(e.margen_deseado.precio === null ? null : e.margen_deseado.precio * (c.costo ? c.costoMo / c.costo : 0)) + '</td>' +
-      '<td class="vl mono">' + mx(e.margen_deseado.precio === null ? null : e.margen_deseado.precio * (c.costo ? c.costoMat / c.costo : 0)) + '</td>' +
-      '<td class="vl mono">' + mx(e.margen_deseado.precio) + '</td>' +
-      '<td class="vl mono">' + Math.round(c.horas) + '</td></tr>' +
+      '<td class="vl mono calc">' + mx(c.costoMo) + '</td><td class="vl mono calc">' + mx(c.costoMat) + '</td>' +
+      '<td class="vl mono calc">' + mx(c.costo) + '</td>' +
+      '<td class="vl mono calc">' + mx(c.ventaMo) + '</td><td class="vl mono calc">' + mx(c.ventaMat) + '</td>' +
+      '<td class="vl mono calc">' + mx(e.con_utilidad.precio) + '</td>' +
+      '<td class="vl mono calc">' + mx(e.margen_deseado.precio === null ? null : e.margen_deseado.precio * (c.costo ? c.costoMo / c.costo : 0)) + '</td>' +
+      '<td class="vl mono calc">' + mx(e.margen_deseado.precio === null ? null : e.margen_deseado.precio * (c.costo ? c.costoMat / c.costo : 0)) + '</td>' +
+      '<td class="vl mono calc">' + mx(e.margen_deseado.precio) + '</td>' +
+      '<td class="vl mono calc">' + Math.round(c.horas) + '</td></tr>' +
       '</tbody></table></div>' +
       (sobra ? '<div class="aviso bad">Hay ' + c.secciones.length + ' secciones y la tabla del machote sólo tiene ' +
         C.MAX_SECCIONES + ' ranuras. Las de más no llegarían al precio.</div>' : '');
@@ -420,11 +465,11 @@
     const budget =
       '<div class="secc-tit">BUDGET ODOO</div>' +
       '<div class="scroll"><table class="rejilla estrecha"><tbody>' +
-      '<tr><td class="et">INGRESO</td><td class="vl mono">' + mx(b.ingreso) + '</td></tr>' +
-      '<tr><td class="et">MANO DE OBRA</td><td class="vl mono">' + mx(b.manoObra) + '</td></tr>' +
-      '<tr><td class="et">MATERIALES Y SERVICIOS</td><td class="vl mono">' + mx(b.materiales) + '</td></tr>' +
-      b.comisiones.map(l => '<tr><td class="et">' + esc(l.nombre) + '</td><td class="vl mono">' + mx(l.monto) + '</td></tr>').join('') +
-      '<tr class="total"><td class="et">TOTAL (por defecto lo lanza odoo)</td><td class="vl mono">' + mx(b.total) + '</td></tr>' +
+      '<tr><td class="et">INGRESO</td><td class="vl mono calc">' + mx(b.ingreso) + '</td></tr>' +
+      '<tr><td class="et">MANO DE OBRA</td><td class="vl mono calc">' + mx(b.manoObra) + '</td></tr>' +
+      '<tr><td class="et">MATERIALES Y SERVICIOS</td><td class="vl mono calc">' + mx(b.materiales) + '</td></tr>' +
+      b.comisiones.map(l => '<tr><td class="et">' + esc(l.nombre) + '</td><td class="vl mono calc">' + mx(l.monto) + '</td></tr>').join('') +
+      '<tr class="total"><td class="et">TOTAL (por defecto lo lanza odoo)</td><td class="vl mono calc">' + mx(b.total) + '</td></tr>' +
       '<tr><td class="et">COINCIDE CON LA TABLA?</td><td class="vl mono n-' + (b.cuadra ? 'ok' : 'bad') + '">' +
       (b.cuadra ? 'VERDADERO' : 'FALSO') + '</td></tr>' +
       '</tbody></table></div>' +
@@ -437,7 +482,7 @@
         (m[key] || []).map((it, i) =>
           '<tr><td>' + cel('eq:' + rep + ':' + i + ':nombre', it.nombre, 'desc') + '</td>' +
           '<td>' + celNum('eq:' + rep + ':' + i + ':pct', it.pct, 'w70') + '</td>' +
-          '<td class="vl mono">' + mx(bolsa * Number(it.pct)) + '</td></tr>').join('') +
+          '<td class="vl mono calc">' + mx(bolsa * Number(it.pct)) + '</td></tr>').join('') +
         '<tr class="total"><td class="et">Suma</td><td class="vl mono n-' +
         (Math.abs(suma - 1) < 0.0001 ? 'ok' : 'bad') + '">' + pc(suma) + '</td><td></td></tr>';
     };
@@ -450,6 +495,16 @@
       '</tbody></table></div>';
 
     return encabezado + resumen + porSeccion + budget + comisiones;
+  }
+
+  /** Leyenda de la hoja. Un analista nuevo no tiene por qué deducir el código
+   *  de colores: se le dice. */
+  function leyenda() {
+    return '<div class="leyenda">' +
+      '<span><i class="mu-cel"></i> se captura</span>' +
+      '<span><i class="mu-calc"></i> lo calcula la hoja</span>' +
+      '<span><i class="mu-pisado"></i> margen escrito a mano</span>' +
+      '</div>';
   }
 
   /* ── Barra fija ──────────────────────────────────────────────────────── */
@@ -473,10 +528,10 @@
         if (el.hasAttribute('data-num')) v = (v === '' ? null : (parseFloat(v) || 0));
         setPath(m, el.dataset.cel, v);
       };
-      // Se recalcula al salir del campo, no en cada tecla: repintar la hoja
-      // mientras se escribe mata el foco a media cifra.
+      // Al salir del campo se repinta -puede haber cambiado la estructura-.
+      // Al teclear sólo se refrescan los derivados, que no roba el foco.
       el.onchange = () => { aplicar(); pintarHoja(m); barra(m, C.calcular(m)); };
-      if (!esSel) el.oninput = () => { aplicar(); barra(m, C.calcular(m)); };
+      if (!esSel) el.oninput = () => { aplicar(); barra(m, refrescarCalculados(m) || C.calcular(m)); };
     });
     const vv = $('#verVacios');
     if (vv) vv.onchange = () => { ST.verVacios = vv.checked; pintarHoja(m); };
@@ -584,9 +639,9 @@
       '<div><span class="tiny">Margen</span><strong class="mono n-' + nivelMargen(c.margen) + '">' + pc(c.margen) + '</strong></div>' +
       '<div><span class="tiny">Duras</span><strong class="mono">' + rev.duras.length + '</strong></div></div>' +
       '<div class="wg"><h4>Lo que dirección tiene que ver antes de firmar</h4>' +
-      '<div class="tot"><span class="lb">Costo</span><span class="vl mono">' + mx(c.costo) + '</span></div>' +
-      '<div class="tot"><span class="lb">Comisiones</span><span class="vl mono">' + mx(c.escenario.comisionFts + c.escenario.comisionCliente) + '</span></div>' +
-      '<div class="tot"><span class="lb">Utilidad</span><span class="vl mono">' + mx(c.utilidad) + '</span></div>' +
+      '<div class="tot"><span class="lb">Costo</span><span class="vl mono calc">' + mx(c.costo) + '</span></div>' +
+      '<div class="tot"><span class="lb">Comisiones</span><span class="vl mono calc">' + mx(c.escenario.comisionFts + c.escenario.comisionCliente) + '</span></div>' +
+      '<div class="tot"><span class="lb">Utilidad</span><span class="vl mono calc">' + mx(c.utilidad) + '</span></div>' +
       '<div class="tot"><span class="lb">BUDGET ODOO cuadra</span><span class="vl mono n-' + (c.budget.cuadra ? 'ok' : 'bad') + '">' +
       (c.budget.cuadra ? 'sí' : 'no') + '</span></div></div>' +
       (rev.duras.length ? '<div class="aviso bad">Tiene ' + rev.duras.length + ' hallazgo(s) duro(s). No debería llegar aquí.</div>'

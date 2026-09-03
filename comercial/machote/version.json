@@ -1,10 +1,15 @@
 {
-  "version": "V1.04",
+  "version": "V1.05",
   "fecha": "2026-09-03",
   "modulo": "comercial/machote",
   "ambito": "SOLO este modulo. El repo tiene otros esquemas en uso -finanzas 0.5.36 + cadena de build, operaciones/planeacion 2.4.1, kiosk y confirmar-horas solo build, y siete modulos con un 1.0.0 puesto una vez y nunca movido-. NO propagar V1.xx a esos: se decidio dejarlos como estan (issue #148).",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.05",
+      "pr": null,
+      "nota": "Captura contra calculo: los derivados se ven derivados, se refrescan al teclear sin robar el foco, y el margen pisado se marca tambien en telefono"
+    },
     {
       "version": "V1.04",
       "pr": null,
