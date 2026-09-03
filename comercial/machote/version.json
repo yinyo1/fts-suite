@@ -1,11 +1,12 @@
 {
-  "build": "20260903-machote-3",
+  "version": "V1.03",
   "fecha": "2026-09-03",
   "modulo": "comercial/machote",
-  "hito": "Retícula del Excel + operable en teléfono",
+  "esquema": "V<mayor>.<menor de dos dígitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
-    { "build": "20260903-machote-3", "nota": "Indicador de build en pantalla" },
-    { "build": "20260903-machote-2", "nota": "La pantalla como el libro; tarjetas en teléfono; margen pisado por renglón; aviso de ranuras (PR #154)" },
-    { "build": "20260903-machote-1", "nota": "Motor reconstruido sobre el machote real de SharePoint (PR #149)" }
+    { "version": "V1.03", "pr": null,  "nota": "Versionado V1.00–V1.99 por merge" },
+    { "version": "V1.02", "pr": 155,   "nota": "Indicador de versión en pantalla" },
+    { "version": "V1.01", "pr": 154,   "nota": "La pantalla como el libro; tarjetas en teléfono; margen pisado por renglón; aviso de ranuras" },
+    { "version": "V1.00", "pr": 149,   "nota": "Motor reconstruido sobre el machote real de SharePoint" }
   ]
 }

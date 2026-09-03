@@ -16,28 +16,38 @@ Los **datos** de las cuatro cotizaciones de ejemplo sí son inventados.
 
 ## Versión
 
-El build se ve en pantalla: al pie de la lista y en la barra superior de cada
-cotización. Sirve para una cosa concreta — distinguir *"ya lo cambié"* de
-*"estás viendo el caché"*, que sin esto no se puede sin abrir las herramientas
-de desarrollo.
+**Esquema: `V<mayor>.<menor de dos dígitos>` — un incremento de 0.01 por cada
+merge a `main`.** Al pasar de `.99` sube el mayor y el menor vuelve a `00`:
 
-Convención de `CLAUDE.md` §8: `YYYYMMDD-<modulo>-<hito>`.
+```
+V1.00 · V1.01 · … · V1.99 · V2.00 · V2.01 · …
+```
 
-⚠️ **El build vive en dos lugares y hay que moverlos juntos:** la constante
-`BUILD` en `js/app.js` y `version.json`. Hay una prueba que falla si se
-separan, porque una pantalla que miente sobre su versión es peor que no tener
-indicador.
+Se ve al pie de la lista y en la barra superior de cada cotización. Sirve para
+distinguir *"ya lo cambié"* de *"estás viendo el caché"*, que sin esto no se
+puede sin abrir las herramientas de desarrollo.
+
+### Cómo bumpearla (obligatorio en todo merge)
+
+1. `comercial/machote/version.json` → sube `version` en 0.01 y **antepón** la
+   entrada nueva a `historial` con su número de PR.
+2. `comercial/machote/js/app.js` → la constante `VERSION`, con el mismo valor.
+
+Dos pruebas lo vigilan: una falla si los dos lugares se separan o si el formato
+no calza, y otra si el historial **salta o repite** un número. Una versión que
+salta deja de decir cuántos despliegues van, y una pantalla que miente sobre su
+versión es peor que no tener indicador.
 
 ## Archivos
 
 | archivo | qué es |
 |---|---|
-| `version.json` | El build vigente y su historial. |
+| `version.json` | La versión vigente y su historial. |
 | `js/calc.js` | El motor. Todo número que se ve sale de aquí; ninguna vista calcula. |
 | `js/reglas.js` | 28 reglas en un arreglo de configuración, separadas del motor que las corre. |
 | `js/demo.js` | Datos de ejemplo. Lo que viene del machote real va marcado `REAL`; lo inventado, `SUPUESTO`. |
 | `js/app.js` | Vistas y ruteo. |
-| `tests/pruebas-navegador.js` | 33 pruebas de navegador. |
+| `tests/pruebas-navegador.js` | 34 pruebas de navegador. |
 
 ## Cómo se calcula el precio
 
