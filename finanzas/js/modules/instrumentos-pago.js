@@ -27,7 +27,7 @@
   // comercial/machote y DEBE coincidir con finanzas/version.json — el gate lo verifica, porque
   // una pantalla que dice una versión y un archivo que dice otra deja de ser evidencia de nada.
   // Sustituye a la numeración 0.x.y (última: 0.5.36), conservada en version.json.
-  var IP_BUILD = 'V1.05';
+  var IP_BUILD = 'V1.06';
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -1380,8 +1380,16 @@
       return '<span class="ip-nivel ' + m[0] + '">' + m[1] + '</span>';
     }
     function scoreBar(sc) {
-      var v = Math.max(0, Math.min(100, +sc || 0));
-      var cls = v >= 85 ? 'g' : v >= 60 ? 'y' : 'r';
+      // El score del motor viaja en escala 0-1 y esto lo trataba como 0-100. Consecuencia:
+      // un 0.56 pintaba una barra del 0.56% de ancho — vacía a la vista — y caía SIEMPRE en
+      // rojo, porque ningún score llega jamás a 60 en esa escala. Un 0.91 se veía igual de mal.
+      // Tolerante en los dos sentidos: si algún día el server manda 0-100, se respeta.
+      var n = +sc || 0;
+      var v = Math.max(0, Math.min(100, n <= 1 ? Math.round(n * 100) : Math.round(n)));
+      // Umbrales alineados con las BANDAS DEL MOTOR (pleno > 70, sugerida >= 30), no con unos
+      // propios: con 85/60 la barra salía roja junto a una etiqueta que decía «Sugerida», o sea
+      // que el color contradecía al texto que tenía al lado.
+      var cls = v > 70 ? 'g' : v >= 30 ? 'y' : 'r';
       return '<span class="ip-score"><span class="ip-scorebar ' + cls + '"><i style="width:' + v + '%"></i></span><span class="ip-scorenum">' + v + '</span></span>';
     }
     function candHtml(t, c, i) {
