@@ -15,6 +15,16 @@
   'use strict';
 
   const C = G.MachoteCalc, R = G.REGLAS, D = G.DEMO;
+
+  /* Build visible en pantalla.
+   *
+   * Convención de CLAUDE.md §8: `YYYYMMDD-<modulo>-<hito>`. Se bumpea en TODO
+   * cambio que se despliegue, y se mantiene igual al de `version.json`, que es
+   * el que queda en el repo. Sirve para una cosa concreta: abrir la página y
+   * saber de un vistazo si lo que estás viendo es lo último o el caché del
+   * navegador. Sin esto, "ya lo cambié" y "yo no lo veo" no se pueden
+   * distinguir sin abrir las herramientas de desarrollo. */
+  const BUILD = '20260903-machote-3';
   const $  = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
   const clon = (x) => JSON.parse(JSON.stringify(x));
@@ -97,8 +107,10 @@
     if (p[0] === 'ap')    return vAprobar(p[1]);
     location.hash = '#/';
   }
-  function top(t, s, b, back) {
-    $('#tbT').textContent = t; $('#tbS').textContent = s; $('#tbB').textContent = b || 'DEMO';
+  function top(t, s, b, back, sinBuild) {
+    $('#tbT').textContent = t;
+    $('#tbS').textContent = sinBuild ? s : s + ' · ' + BUILD;
+    $('#tbB').textContent = b || 'DEMO';
     $('#btnBack').onclick = () => { if (back) location.hash = back; };
     $('#btnBack').style.visibility = back ? 'visible' : 'hidden';
   }
@@ -110,7 +122,7 @@
 
   /* ── Lista ───────────────────────────────────────────────────────────── */
   function vHome() {
-    top('Machote y órdenes', 'Comercial · prototipo', 'DEMO', null);
+    top('Machote y órdenes', 'Comercial · prototipo', 'DEMO', null, true);
     $('#fija').innerHTML = '';
     const est = D.ESTADOS;
 
@@ -136,7 +148,8 @@
       '<div class="pad"><div class="aviso">La retícula reproduce el machote real de FTS, verificada en cinco cotizaciones de 2026. ' +
       'Los datos de las cotizaciones de abajo son demo.</div>' +
       '<h3>Estación 2.0 · armar la cotización</h3>' + filas +
-      '<h3 style="margin-top:22px">Estación 3.0 · confirmar la orden</h3>' + ords + '</div>';
+      '<h3 style="margin-top:22px">Estación 3.0 · confirmar la orden</h3>' + ords +
+      '<div class="build">build <strong>' + BUILD + '</strong></div></div>';
   }
 
   /* ── El libro ────────────────────────────────────────────────────────── */

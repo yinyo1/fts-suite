@@ -301,3 +301,18 @@ label.row { min-height: var(--toque); }
 
 /* En escritorio no se pliega nada, así que el interruptor no viene al caso. */
 @media (min-width: 721px) { .verVacios { display: none; } }
+
+/* ── Indicador de build ───────────────────────────────────────────────────
+ * Discreto pero siempre visible. Sirve para distinguir "ya lo cambié" de
+ * "estás viendo el caché", que sin esto no se puede sin abrir las
+ * herramientas de desarrollo. */
+.build { margin: 22px 0 4px; padding-top: 10px; border-top: 1px solid var(--linea2);
+         font-size: 11px; color: var(--suave); text-align: center;
+         font-variant-numeric: tabular-nums; }
+.build strong { color: var(--tinta); font-weight: 600; }
+
+/* El subtítulo de la barra superior no debe partirse: con el build añadido se
+ * iba a dos renglones y empujaba el logotipo. */
+.tb-info span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+                display: block; max-width: 100%; }
+.tb-info { min-width: 0; }
