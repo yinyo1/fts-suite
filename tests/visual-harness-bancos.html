@@ -60,11 +60,11 @@ var FILAS = [
     amt: 168574.45, mon: 'MXN', ok: false, res: 168574.45, tarj: '', comp: '', rs: 'Servicios FTS', art: '', ana: '',
     po: '', bill: '', sb: '', ff: '', tk: '' },
   { id: 9006, company_id: 1, _jid: 61, d: '2026-08-27', j: 'Jeeves Tarjeta Credito', tipo: 'Egreso', ref: '[Primary ****6831] PRO Ferrenl',
-    amt: -340.96, mon: 'MXN', ok: false, res: 340.96, tarj: 'Primary', comp: 'Felipe', rs: 'Servicios FTS', art: '',
-    ana: '', po: '', bill: '', sb: '', ff: '', tk: '' },
+    amt: -340.96, mon: 'MXN', ok: true, res: 0, res_apunte: 0, wd: HOY, tarj: 'Primary', comp: 'Felipe', rs: 'Servicios FTS', art: '',
+    ana: '', po: 'PO7345', bill: 'BILL3345', sb: 'PAGADA', ff: '', tk: '' },
   { id: 9007, company_id: 1, _jid: 61, d: '2026-08-28', j: 'Jeeves Tarjeta Credito', tipo: 'Egreso', ref: '[Tarjeta gastos ****4548] Waalaxy',
-    amt: -177.00, mon: 'MXN', ok: false, res: 177.00, tarj: 'Tarjeta gastos', comp: 'Esteban', rs: 'Servicios FTS',
-    art: '', ana: '', po: '', bill: '', sb: '', ff: '', tk: '' },
+    amt: -177.00, mon: 'MXN', ok: true, res: 0, res_apunte: 0, wd: HOY, tarj: 'Tarjeta gastos', comp: 'Esteban', rs: 'Servicios FTS',
+    art: '', ana: '', po: '', bill: 'BILL3346', sb: 'PAGADA', ff: '', tk: '' },
   { id: 9009, company_id: 1, _jid: 61, d: '2026-08-07', j: 'Jeeves Tarjeta Credito', tipo: 'Egreso', ref: '[Primary ****6831] BPK',
     amt: -2605.60, mon: 'MXN', ok: true, res: 0, wd: HOY, po: 'PO7009', bill: 'BILL3009', sb: 'PAGADA', ana: '', ff: '',
     tarj: 'Primary', comp: 'Felipe', rs: 'Servicios FTS', art: '', tk: '' },
@@ -81,14 +81,14 @@ var FILAS = [
     ref: '[FONDEO] Credit Line', amt: 175292.28, mon: 'MXN', ok: false, res: 175292.28, tarj: '', comp: '',
     rs: 'Servicios FTS', art: '', ana: '', po: '', bill: '', sb: '', ff: '', tk: '' },
   { id: 9013, company_id: 1, _jid: 61, d: '2026-08-31', j: 'Jeeves Tarjeta Credito', tipo: 'Egreso',
-    ref: '[Tarjeta gastos ****4548] Oxxo', amt: -48.00, mon: 'MXN', ok: false, res: 48.00,
-    tarj: 'Tarjeta gastos', comp: 'Esteban', rs: 'Servicios FTS', art: '', ana: '', po: '', bill: '', sb: '', ff: '', tk: '' },
+    ref: '[Tarjeta gastos ****4548] Oxxo', amt: -48.00, mon: 'MXN', ok: true, res: 0, res_apunte: 0, wd: HOY,
+    tarj: 'Tarjeta gastos', comp: 'Esteban', rs: 'Servicios FTS', art: '', ana: '', po: '', bill: 'BILL3347', sb: 'PAGADA', ff: '', tk: '' },
   { id: 9014, company_id: 1, _jid: 61, d: '2026-08-28', j: 'Jeeves Tarjeta Credito', tipo: 'Egreso',
-    ref: '[Tarjeta gastos ****4548] JT Carnesnl', amt: -2000.00, mon: 'MXN', ok: false, res: 2000.00,
-    tarj: 'Tarjeta gastos', comp: 'Esteban', rs: 'Servicios FTS', art: '', ana: '', po: '', bill: '', sb: '', ff: '', tk: '' },
+    ref: '[Tarjeta gastos ****4548] JT Carnesnl', amt: -2000.00, mon: 'MXN', ok: true, res: 0, res_apunte: 0, wd: HOY,
+    tarj: 'Tarjeta gastos', comp: 'Esteban', rs: 'Servicios FTS', art: '', ana: '', po: '', bill: 'BILL3348', sb: 'PAGADA', ff: '', tk: '' },
   { id: 9015, company_id: 1, _jid: 61, d: '2026-08-28', j: 'Jeeves Tarjeta Credito', tipo: 'Egreso',
-    ref: '[Felipe Pérez ****4666] Adobe', amt: -99.00, mon: 'MXN', ok: false, res: 99.00,
-    tarj: 'Felipe Pérez', comp: 'Felipe', rs: 'Servicios FTS', art: '', ana: '', po: '', bill: '', sb: '', ff: '', tk: '' },
+    ref: '[Felipe Pérez ****4666] Adobe', amt: -99.00, mon: 'MXN', ok: true, res: 0, res_apunte: 0, wd: HOY,
+    tarj: 'Felipe Pérez', comp: 'Felipe', rs: 'Servicios FTS', art: '', ana: '', po: '', bill: 'BILL3349', sb: 'PAGADA', ff: '', tk: '' },
   { id: 9010, company_id: 6, _jid: 122, d: '2026-08-24', j: 'BUS COMPLETE CHK', tipo: 'Ingreso',
     ref: 'REMOTE ONLINE DEPOSIT # 1', amt: 10700.00, mon: 'USD', ok: false, res: 10700.00, tarj: '', comp: '',
     rs: 'FTS LLC', art: '', ana: '', po: '', bill: '', sb: '', ff: '', tk: '' }
@@ -108,7 +108,7 @@ var STATUS = {
   ],
   cron: { timezone: 'America/Monterrey', rules: ['0,30 7-16 * * 1-5', '0,10,20,30,40,50 17 * * 1-5', '0 18 * * 1-5'] },
   por_journal: [
-    { journal: 61, label: 'Jeeves Tarjeta Credito', en_motor: true, post_total: 168, pre_pend: 1846 },
+    { journal: 61, label: 'Jeeves Tarjeta Credito', en_motor: true, post_total: 172, pre_pend: 1846 },
     { journal: 122, label: 'BUS COMPLETE CHK', en_motor: false, post_total: 224, pre_pend: 199 },
     { journal: 123, label: 'Chase Ink Unlimited 9207', en_motor: false, post_total: 169, pre_pend: 70 }
   ],
@@ -122,9 +122,9 @@ var STATUS = {
   // → faltan 9, que es exactamente lo que reproducen las filas 9004/9005/9006/9007/9011-9015.
   metricas: {
     fecha_corte: '2026-07-24',
-    cumplimiento: { post_corte_total: 561, post_corte_conciliadas: 159 },
+    cumplimiento: { post_corte_total: 565, post_corte_conciliadas: 168 },
     por_journal: [
-      { journal: 61,  label: 'Jeeves Tarjeta Credito',   en_motor: true,  post_total: 168, post_conc: 159, pre_pend: 1846, pre_monto: 5790823 },
+      { journal: 61,  label: 'Jeeves Tarjeta Credito',   en_motor: true,  post_total: 172, post_conc: 168, pre_pend: 1846, pre_monto: 5790823 },
       { journal: 122, label: 'BUS COMPLETE CHK',         en_motor: false, post_total: 224, post_conc: 0,   pre_pend: 199,  pre_monto: 0 },
       { journal: 123, label: 'Chase Ink Unlimited 9207', en_motor: false, post_total: 169, post_conc: 0,   pre_pend: 70,   pre_monto: 0 }
     ],
@@ -146,10 +146,10 @@ window.FinClient = {
       pagination: { total_count: FILAS.length, truncado: false, cap: 6000 } });
     if (ep === '/fin/captura-sugerencias') return Promise.resolve({
       lineas: [
-        { line_id: 9006, nivel: 'sugerida', candidatos: [
-          { bill_aml_id: 111, bill_name: 'BILL3345', partner: 'Proferre', score: 0.91, monto_bill: 340.96,
-            banda: 'alta', pre_marcado: true, fecha: '2026-08-27', days_diff: 0 }] },
-        { line_id: 9007, nivel: 'sin-documento', candidatos: [] },
+        // 9006 y 9007 ya no piden sugerencia: quedaron CONCILIADAS al reproducir el estado real
+        // del 2026-09-03, donde lo unico pendiente en Jeeves son 2 fondeos y 2 devoluciones.
+        // Eso es justo el caso que el foco debe pintar VERDE pese a que el % no llegue a 100.
+        // La cobertura de "linea con candidato" la lleva 9008 (Chase).
         // 9008 es la linea de Chase (company 6). Existe para reproducir el caso REAL del
         // 2026-09-03: candidato bueno, y el conciliar responde NO_SUSPENSE_UNICA porque el
         // motor busca la pata de suspense en la cuenta de la otra empresa.

@@ -27,7 +27,7 @@
   // comercial/machote y DEBE coincidir con finanzas/version.json — el gate lo verifica, porque
   // una pantalla que dice una versión y un archivo que dice otra deja de ser evidencia de nada.
   // Sustituye a la numeración 0.x.y (última: 0.5.36), conservada en version.json.
-  var IP_BUILD = 'V1.06';
+  var IP_BUILD = 'V1.07';
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -603,7 +603,9 @@
 
       // v0.5.16: el semáforo sube aquí, pegado a las fuentes que evalúa (antes vivía después de "Hoy").
       html += '<h2>Semáforo de conciliación — Admin</h2><div class="sem"><div id="ip-semrows"></div>' +
-              '<div class="semnote"><b>Desde el corte</b> — la meta es 100%: verde solo al llegar, amarillo desde 85%, rojo debajo. ' +
+              '<div class="semnote"><b>Desde el corte</b> — el color mide <b>lo que falta por conciliar</b>, no el porcentaje: ' +
+              'verde cuando no queda nada que hacer (aunque el % no llegue a 100 porque hay fondeos o devoluciones), ' +
+              'amarillo a tiro, rojo lejos. ' +
               '<b>Backlog</b> — no tiene color: es deuda que se vacía, no una meta que se cumple. ' +
               'Las fuentes marcadas <b>sin abrir</b> se miden igual que las demás, y su 0% dice ' +
               '<i>no empezado</i>, no <i>fracasado</i>: nadie ha abierto ese journal en el motor todavía.</div></div>';
@@ -1744,11 +1746,21 @@
           var conc = Number(x.post_conc) || 0;
           var faltan = x.post_total - conc;
           var p = x.post_total ? Math.round(conc / x.post_total * 1000) / 10 : null;
-          // Umbrales de META: el objetivo declarado es 100% post-corte, así que solo el 100% es
-          // verde. Amarillo desde 85% (a tiro), rojo debajo. Un 60% no puede pintar amarillo
-          // cuando faltan 47 líneas.
-          var c2 = p === null ? 'off' : (p >= 100 ? 'g' : p >= 85 ? 'y' : 'r');
           var comp = composicionFaltan(x.label, corte, faltan);
+          // EL COLOR SIGUE AL PENDIENTE ACCIONABLE, no al porcentaje de Odoo (V1.07).
+          // Antes salía del porcentaje: con 168 de 172 daba 97.7% y pintaba AMARILLO aunque no
+          // quedara una sola línea por conciliar — las 4 que faltaban eran 2 fondeos y 2
+          // devoluciones, que el motor no cierra y que no son trabajo de nadie. El titular ya
+          // media lo accionable desde V1.02, así que el foco lo contradecía: decía "0 por
+          // conciliar" en grande y encendía la luz de "vas a medias".
+          // El porcentaje NO se toca: sigue siendo el de Odoo y se lee en el renglón de abajo,
+          // junto al total sin conciliar. Lo que cambia es qué pregunta responde el color:
+          // "¿queda algo por hacer?" en vez de "¿cuánto le falta al 100%?".
+          var pendienteReal = (comp.ok && comp.fon + comp.dev > 0) ? comp.conc : faltan;
+          var c2;
+          if (p === null) c2 = 'off';
+          else if (pendienteReal === 0) c2 = 'g';       // nada que conciliar = verde, aunque el % no llegue a 100
+          else c2 = (p >= 85 ? 'y' : 'r');              // amarillo a tiro, rojo lejos
 
           // EL TITULAR ES EL NÚMERO ACCIONABLE, no el total sin conciliar. Con 6 gastos + 2
           // fondeos + 2 devoluciones, un "Faltan 10" se lee como diez pendientes de conciliar y
