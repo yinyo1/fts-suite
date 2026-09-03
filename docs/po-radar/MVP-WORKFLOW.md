@@ -1,6 +1,6 @@
 # MVP — el workflow que detecta y reenvía órdenes de compra
 
-**Workflow n8n:** `po/radar-detectar (MVP)` · id **`sQ5GYhQTq1UHDt6Y`** · 18 nodos.
+**Workflow n8n:** `po/radar-detectar (MVP)` · id **`sQ5GYhQTq1UHDt6Y`** · 21 nodos.
 Issue rector: **#142**. Construido y probado contra correo real el **2026-09-03**.
 
 Lo que hace, en una frase: cada 15 minutos lee el buzón de `estebandelacruz@fts.mx`, decide cuáles
@@ -47,6 +47,7 @@ Todo lo ajustable vive en el nodo `Set - config`, en texto plano, sin tocar cód
 | `umbral_reenvio` | `45` | de qué precisión para abajo ya no se reenvía |
 | `forzar_desde` | *(vacío)* | ISO para reprocesar una ventana histórica. Solo para pruebas |
 | `reset_estado` | `false` | borra la memoria de dedupe. Solo para pruebas |
+| `hora_latido` | `18` | hora CST del corte diario (§7) |
 
 **El solape de 90 minutos es deliberado.** La dedupe absorbe lo que se repita; un hueco, en cambio,
 pierde una orden de compra para siempre. Se elige el error barato.
@@ -73,7 +74,7 @@ hacia el de perder una orden.
 
 ## 4. Lo que se rompió al probarlo
 
-Cinco corridas contra correo real. Cada una destapó algo que el diseño no había previsto:
+Seis corridas contra correo real. Cada una destapó algo que el diseño no había previsto:
 
 **El modo `dry` no era dry (corrida 85362).** No había nada entre `Code - Build sendMail` y
 `HTTP - sendMail`: la bandera `_dry` se calculaba y nadie la leía. La primera prueba "en seco" mandó
@@ -95,6 +96,14 @@ cliente, y el clasificador escribió ese nombre distinto en cada correo: `BEPUSA
 `GEPP (Gepp Mexico)`, `BEPUSA (Bebidas Purificadas...)`. Tres llaves para una sola orden.
 **El texto libre de un modelo no sirve como llave.** Ahora la llave es folio + **dominio del
 remitente**, que es un dato duro del sobre, más una marca por `conversationId` ya reenviado.
+
+**El radar tronaba entero en toda ventana tranquila (85589).** `Code - Resumen` referenciaba
+`$('Code - Decidir')` de frente, pero cuando la ventana no trae ningún candidato el
+`IF - hay candidatos?` manda el centinela por el atajo y `Code - Decidir` **nunca corre** —
+`ExpressionError: Node 'Code - Decidir' hasn't been executed`, corrida abortada. No se había visto
+porque todas las pruebas anteriores cayeron, por casualidad, en ventanas con al menos un candidato; y
+las ventanas sin candidatos son **la mayoría**. Lo destapó la prueba del latido, no una prueba del
+detector. Ahora Resumen toma Decidir dentro de un `try` y, si no corrió, lee su propio `$input`.
 
 **Los adjuntos se perdían y nadie se enteraba (85545).** El mismo correo devolvía 0 adjuntos en dos
 corridas y 2 adjuntos en otra. No era intermitencia: era **`429 ApplicationThrottled` de Graph**, y
@@ -136,7 +145,32 @@ del **comprador**, que es justamente el error caro que FASE A midió y que el pr
 Las otras dos copias de esa misma orden — una del buzón automático del cliente y otra reenviada a
 mano por una persona de su equipo — quedaron como `duplicado_folio` y no se reenviaron.
 
-## 6. Lo que falta y lo que conviene vigilar
+## 6. El latido diario
+
+Sin esto no hay forma de saber que el radar sigue vivo: **"hoy no llegaron órdenes" y "el radar está
+muerto" se ven idénticos desde la bandeja** — en los dos casos no llega nada. Es el hallazgo #14 del
+CLAUDE.md (un feature en bypass silencioso durante semanas porque a nadie le fallaba) esperando a
+repetirse.
+
+Cada corrida acumula sus conteos del día en `staticData`. En la primera corrida después de las
+**18:00 CST** sale un correo con el corte del día, **aunque no haya habido ninguna orden**:
+
+```
+[po_radar] corte del 2026-09-03 · 0 orden(es) · 9 correos
+
+po_radar — corte del 2026-09-03 (sano)
+1 corridas · 9 correos revisados · 0 pasaron el primer filtro
+0 orden(es) reenviada(s) · 0 probable(s)
+Hoy no llegó ninguna orden de compra.
+
+Este correo llega todos los días, aunque no haya órdenes.
+Si un día no llega, el radar está caído.
+```
+
+Marca **con incidencias** en ámbar si hubo fallos de adjunto o del clasificador. A partir de aquí la
+**ausencia** del correo es la alarma, que es la única forma de que el silencio signifique algo.
+
+## 7. Lo que falta y lo que conviene vigilar
 
 - **Un falso positivo conocido:** el digest `Confirm orders from your buyers` de Ariba se reenvía
   como probable al 51%. Es un aviso administrativo del portal, no una orden. Se deja pasar a
@@ -149,7 +183,9 @@ mano por una persona de su equipo — quedaron como `duplicado_folio` y no se re
 - **El Schedule ya está encendido.** Se activó con `publish_workflow` del MCP `n8n_FTS` — al
   contrario de lo que dice §17 quirk 2, que describe el servidor MCP anterior, este sí activa. El
   read-back que exige la regla dura de §3 quedó en `active: true` · `triggerCount: 1` ·
-  `activeVersionId == versionId` (`b99208d3-7039-47be-8d5f-216ad242708d`). Para apagarlo:
-  `unpublish_workflow`, o el toggle **Active** en la UI.
+  `activeVersionId == versionId` (`05dc9693-5683-4410-a98f-c98c11febe81`). Para apagarlo:
+  `unpublish_workflow`, o el toggle **Active** en la UI. El Schedule ya disparó solo: corrida
+  `85584`, `mode: trigger`, ventana `19:15:27Z → 20:45:27Z`, y descartó los correos que el propio
+  radar acababa de mandar — el candado anti-bucle probado en producción, no en teoría.
 - **Zona horaria:** el cron es cada 15 minutos, así que el desfase de TZ que sí muerde a los
   Schedule diarios (§18) aquí no aplica.
