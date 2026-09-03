@@ -26,11 +26,26 @@ no para esconder nada. Conviene tenerlo claro antes de tratarlo como una pared.
 **1 · Genera salt y hash** (en tu máquina, no aquí):
 
 ```bash
-node scripts/generar-usuario-suite.js aldo "Aldo Méndez" "comercial:read" 118
+node scripts/generar-usuario-suite.js aldo.mendez
 ```
 
 Pide la contraseña por teclado —nunca por argumento, que quedaría en el historial
 del shell— e imprime el renglón en JSON. **La contraseña no aparece en la salida.**
+
+**Sólo el username es obligatorio.** `nombre`, `scopes` y `empleado_id` se pueden
+pasar también, pero conviene llenarlos al insertar: **PowerShell de Windows
+destroza los acentos** al pasarlos a un programa nativo, y «Méndez» llegaría al
+renglón como «MÃ©ndez». Si un dato no tiene que pasar por la línea de comandos,
+que no pase.
+
+En PowerShell, para varios de un jalón:
+
+```powershell
+cd <la carpeta del repo>
+foreach ($u in @('aldo.mendez','francisco.montalvo','pablo.bayly')) {
+  node scripts\generar-usuario-suite.js $u
+}
+```
 
 **2 · Ese JSON se inserta como renglón** en la Data Table `suite_usuarios`
 (`YWCP0KoVmgxX2RzL`). Se puede desde la UI de n8n o por MCP.
