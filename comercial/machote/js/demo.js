@@ -49,12 +49,19 @@
     ]}
   ];
 
+  /* El flujo del machote, en orden. `congelado` es la propiedad que manda:
+   * un machote enviado a Odoo ya no se toca — es el documento con el que se
+   * vendio, y editarlo despues seria reescribir la historia.
+   *
+   * `exige_so`: no se puede enviar a Odoo sin orden. El machote SI puede nacer
+   * sin ella (casi siempre nace antes que la orden), pero al enviar ya no. */
   const ESTADOS = {
-    borrador:   { label: 'Borrador',   color: '#8b8b8b' },
-    revision:   { label: 'En revisión', color: '#c07a00' },
-    confirmado: { label: 'Confirmado', color: '#1a7f37' },
-    orden:      { label: 'Orden',      color: '#0969da' }
+    borrador:   { label: 'En creación', color: '#8b8b8b', congelado: false, orden: 1 },
+    revision:   { label: 'En revisión', color: '#c07a00', congelado: false, orden: 2 },
+    enviado:    { label: 'Enviado a Odoo', color: '#1a7f37', congelado: true,
+                  exige_so: true, orden: 3 }
   };
+  const FLUJO = ['borrador', 'revision', 'enviado'];
 
   let _n = 0;
   const uid = (p) => p + '-' + (++_n);
@@ -229,7 +236,7 @@
   ];
 
   G.DEMO = {
-    UNIDADES, TIPOS_PROYECTO, ESTADOS, MACHOTES, ORDENES,
+    UNIDADES, TIPOS_PROYECTO, ESTADOS, FLUJO, MACHOTES, ORDENES,
     ROLES: C.ROLES, GRUPOS: C.GRUPOS, TIPOS: C.TIPOS, ESCENARIOS: C.ESCENARIOS
   };
 })(window);

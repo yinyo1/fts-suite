@@ -38,6 +38,12 @@ let ok = 0, mal = 0;
   const b = await chromium.launch(OPCIONES);
   const errs = [];
   const p = await b.newPage({ viewport: { width: 380, height: 780 } });
+  /* El autoguardado es REAL: sin esto, cada prueba heredaria lo que guardo la
+   * anterior y volveria la cascada de fallos que resolvio el recargar. Corre
+   * ANTES de los scripts de la pagina en cada navegacion, asi que la app
+   * siempre arranca con la demo. Cuesta cero recargas extra.
+   * La persistencia se prueba aparte, en una pagina SIN este guion. */
+  await p.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
   // El contenedor no tiene salida a fonts.googleapis.com, que fts-styles.css
   // importa. Ese fallo es del entorno de prueba, no del prototipo: se filtra
   // por nombre y se reporta aparte, nunca callando el resto.
@@ -748,6 +754,116 @@ let ok = 0, mal = 0;
     const d = await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     if (d > 2) throw new Error('la hoja desborda ' + d + ' px en escritorio');
     await p.setViewportSize({ width: 380, height: 780 });
+  });
+
+  // ── V1.07 · el renglon capturado, el autoguardado y el candado ───────
+  await paso('el renglón con cantidad se pinta distinto del que sigue vacío', async () => {
+    // A ancho de escritorio: en teléfono el renglón es una tarjeta y la marca
+    // es el borde, no el fondo -un fondo verde tras catorce campos no se lee.
+    await p.setViewportSize({ width: 1280, height: 900 });
+    await ir('#/m/M-1041'); await hoja('Suministro');
+    const r = await p.evaluate(() => {
+      const tr = [...document.querySelectorAll('.rejilla.tarjetas tbody tr')];
+      const con = tr.find(x => x.classList.contains('capturada'));
+      // El rotulo de grupo tambien lleva `enCero`; se excluye para comparar
+      // renglon contra renglon y que el dato del log sea el que dice ser.
+      const sin = tr.find(x => x.classList.contains('enCero') && !x.classList.contains('grupo'));
+      const bg = (e) => e ? getComputedStyle(e.querySelector('td')).backgroundColor : null;
+      return { hayCon: !!con, haySin: !!sin, con: bg(con), sin: bg(sin) };
+    });
+    if (!r.hayCon) throw new Error('ningún renglón capturado');
+    if (r.con === r.sin) throw new Error('se ven iguales: ' + r.con);
+    console.log('   capturado', r.con, '· vacío', r.sin);
+    await p.setViewportSize({ width: 380, height: 780 });
+  });
+
+  await paso('poner cantidad en un renglón lo pinta al instante', async () => {
+    await p.setViewportSize({ width: 1280, height: 900 });
+    await ir('#/m/M-1041'); await hoja('Suministro');
+    // Un renglon de mano de obra en cero: se le pone cantidad y debe cambiar.
+    const antes = await p.locator('.rejilla tbody tr.capturada').count();
+    const vacio = p.locator('.rejilla tbody tr.enCero [data-cel$=":qty"]:visible').first();
+    await vacio.fill('8');
+    await vacio.dispatchEvent('change'); await p.waitForTimeout(320);
+    const desp = await p.locator('.rejilla tbody tr.capturada').count();
+    if (desp <= antes) throw new Error('no se pintó: ' + antes + ' → ' + desp);
+    console.log('   renglones capturados', antes, '→', desp);
+    await p.setViewportSize({ width: 380, height: 780 });
+  });
+
+  await paso('editar deja el pulso en guardado, no en sin guardar', async () => {
+    await ir('#/m/M-1041'); await hoja('Suministro');
+    const cel = p.locator('[data-cel$=":pu"]:visible').first();
+    await cel.fill('999'); await cel.dispatchEvent('change');
+    await p.waitForTimeout(900);   // el retardo del autoguardado es de 500 ms
+    const cls = await p.locator('#pulso').getAttribute('class');
+    if (!/p-guardado|p-limpio/.test(cls)) throw new Error('el pulso quedó en: ' + cls);
+    const hay = await p.evaluate(() => !!localStorage.getItem('fts_machote_v1'));
+    if (!hay) throw new Error('no escribió nada en el almacén');
+  });
+
+  await paso('lo capturado sobrevive a salir y volver a entrar', async () => {
+    // Pagina APARTE, sin el guion que limpia: aqui se mide justamente que lo
+    // guardado persista entre cargas.
+    const q = await b.newPage({ viewport: { width: 380, height: 780 } });
+    try {
+      await q.goto(BASE); await q.waitForTimeout(300);
+      await q.evaluate(() => { try { localStorage.clear(); } catch (e) {} });
+      await q.goto(BASE); await q.waitForTimeout(350);
+      await q.evaluate(() => { location.hash = '#/m/M-1041'; }); await q.waitForTimeout(350);
+      await q.locator('.pestana', { hasText: 'Suministro' }).first().click();
+      await q.waitForTimeout(300);
+      const cel = q.locator('[data-cel^="nom:"]');
+      await cel.fill('Prueba de persistencia');
+      await cel.dispatchEvent('change'); await q.waitForTimeout(900);
+      // Se sale y se vuelve a entrar, como haria cualquiera.
+      await q.goto(BASE); await q.waitForTimeout(400);
+      await q.evaluate(() => { location.hash = '#/m/M-1041'; }); await q.waitForTimeout(350);
+      const t = await q.textContent('#vista');
+      if (t.indexOf('Prueba de persistencia') < 0) throw new Error('se perdió al recargar');
+    } finally { await q.close(); }
+  });
+
+  await paso('no se puede enviar a Odoo un machote sin orden', async () => {
+    await ir('#/m/M-1041'); await hoja('DESGLOSE');   // M-1041 nace sin SO
+    const sel = p.locator('[data-estado]');
+    if (await sel.count() === 0) throw new Error('no hay selector de estado');
+    await sel.selectOption('enviado'); await p.waitForTimeout(350);
+    if (await sel.inputValue() === 'enviado') throw new Error('lo dejó enviar sin orden');
+    const t = await p.textContent('body');
+    if (!/sin una orden ligada/.test(t)) throw new Error('no dijo por qué');
+  });
+
+  await paso('un machote enviado a Odoo se consulta pero no se edita', async () => {
+    await ir('#/m/M-1042'); await hoja('DESGLOSE');   // M-1042 sí trae SO
+    await p.locator('[data-estado]').selectOption('enviado'); await p.waitForTimeout(400);
+    await hoja('Adecuación');
+    const r = await p.evaluate(() => {
+      const cs = [...document.querySelectorAll('[data-cel]')];
+      return { total: cs.length, apagados: cs.filter(c => c.disabled).length,
+               botones: document.querySelectorAll('[data-add],[data-del],[data-dupsec],[data-nueva]').length,
+               texto: document.body.textContent.indexOf('se consulta, no se edita') >= 0 };
+    });
+    if (r.total === 0) throw new Error('no pintó la hoja');
+    if (r.apagados !== r.total) throw new Error('quedaron editables: ' + (r.total - r.apagados) + ' de ' + r.total);
+    if (r.botones !== 0) throw new Error('quedaron ' + r.botones + ' botones de estructura');
+    if (!r.texto) throw new Error('no explica por qué está bloqueado');
+  });
+
+  await paso('los colores del machote salen de un solo lugar', async () => {
+    // Si un color de tabla se escribe fuera de las variables, corregir la
+    // paleta cuando lleguen los colores reales se vuelve una caceria.
+    await ir('#/m/M-1041'); await hoja('Suministro');
+    const r = await p.evaluate(() => {
+      const raiz = getComputedStyle(document.documentElement);
+      const v = (n) => raiz.getPropertyValue(n).trim();
+      return { banda: v('--x-banda'), cab: v('--x-cab'), fila: v('--x-fila-ok'),
+               th: getComputedStyle(document.querySelector('.rejilla th')).backgroundColor };
+    });
+    for (const k of ['banda', 'cab', 'fila'])
+      if (!r[k]) throw new Error('falta la variable --x-' + k);
+    if (r.th === 'rgba(0, 0, 0, 0)') throw new Error('el encabezado no tomó color');
+    console.log('   banda', r.banda, '· encabezado', r.cab, '· capturado', r.fila);
   });
 
   await paso('sin errores de consola propios del prototipo', async () => {
