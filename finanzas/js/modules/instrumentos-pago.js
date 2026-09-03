@@ -27,7 +27,7 @@
   // comercial/machote y DEBE coincidir con finanzas/version.json — el gate lo verifica, porque
   // una pantalla que dice una versión y un archivo que dice otra deja de ser evidencia de nada.
   // Sustituye a la numeración 0.x.y (última: 0.5.36), conservada en version.json.
-  var IP_BUILD = 'V1.01';
+  var IP_BUILD = 'V1.02';
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -379,7 +379,12 @@
         // journal es instantáneo.
         companies: window.FinState.getCompanies(),
         date_from: f.from || null, date_to: f.to || null,
-        limit: 500, offset: 0
+        // V1.02: 500 se quedó corto. La ventana por defecto arranca en el corte y el universo
+        // post-corte de los tres journals ya son ~565 líneas, así que la carga salía recortada
+        // y el semáforo no podía descomponer el pendiente de ninguna fuente. El tope del server
+        // es 6000 y no hace trabajo extra por página —ya trae el universo completo de Odoo para
+        // devolver una rebanada—, así que subirlo cuesta payload, no tiempo de Odoo.
+        limit: 2000, offset: 0
       };
     }
     function ingest(rows, sources, runs, cron, extra) {
@@ -596,7 +601,8 @@
       html += '<h2>Semáforo de conciliación — Admin</h2><div class="sem"><div id="ip-semrows"></div>' +
               '<div class="semnote"><b>Desde el corte</b> — la meta es 100%: verde solo al llegar, amarillo desde 85%, rojo debajo. ' +
               '<b>Backlog</b> — no tiene color: es deuda que se vacía, no una meta que se cumple. ' +
-              'Las fuentes sin motor no llevan porcentaje: el 0% diría fracaso donde hay <i>no empezado</i>.</div></div>';
+              'Las fuentes marcadas <b>sin abrir</b> se miden igual que las demás, y su 0% dice ' +
+              '<i>no empezado</i>, no <i>fracasado</i>: nadie ha abierto ese journal en el motor todavía.</div></div>';
 
       html += '<h2>Transacciones</h2>' +
         '<div class="ip-toolbar">' +
@@ -1673,31 +1679,47 @@
         var bp = bt ? Math.round(bc / bt * 1000) / 10 : null;
         var bcol = bp === null ? 'off' : (bp >= 100 ? 'g' : bp >= 85 ? 'y' : 'r');
         pj.sort(function (a, b) { return (b.en_motor ? 1 : 0) - (a.en_motor ? 1 : 0) || (b.post_total - a.post_total); });
+        // MISMO FORMATO PARA LAS TRES FUENTES (V1.02). Antes las fuentes sin motor se pintaban
+        // sin barra, sin porcentaje y sin foco, con el argumento de que "un 0% en rojo dice
+        // fracaso donde lo que hay es no empezado". Esteban pidió lo contrario: las tres con su
+        // barra de color y su pendiente contado desde el corte, porque lo que necesita ver de un
+        // golpe es CUÁNTO falta en cada fuente, no una taxonomía de por qué falta. El motivo no
+        // se pierde — sigue en la etiqueta "sin abrir" y en la nota de abajo —, pero deja de
+        // costar el número.
         var filas = pj.map(function (x) {
-          // Fuente SIN ABRIR: sin porcentaje grande, sin barra, sin rojo. Un 0% en rojo dice
-          // "fracaso" donde lo que hay es "no empezado", y esa diferencia importa para exigir.
-          // Lo que se muestra es cuántas líneas esperan — eso sí es magnitud del trabajo.
-          if (!x.en_motor) {
-            return '<div class="s2card sinabrir"><div class="s2ct">' + esc(x.label) +
-              '<span class="s2tag">sin abrir</span></div>' +
-              '<div class="s2cn"><b>' + x.post_total + '</b> líneas esperando</div>' +
-              '<div class="s2cw">El motor todavía no evalúa este journal: hoy solo cubre Jeeves. ' +
-              'Abrirlo es un cambio en el workflow de conciliación, no en este panel.</div></div>';
-          }
-          // Fuente CON MOTOR: el titular es cuántas FALTAN, no el porcentaje. "Faltan 48" se
-          // puede exigir y se puede tachar; un "59.3%" solo describe.
-          var faltan = x.post_total - x.post_conc;
-          var p = x.post_total ? Math.round(x.post_conc / x.post_total * 1000) / 10 : null;
-          // Umbrales de META, distintos a los del semáforo viejo por journal: aquí el objetivo
-          // declarado es 100% post-corte, así que solo el 100% es verde. Amarillo desde 85%
-          // (a tiro), rojo debajo. Un 60% no puede pintar amarillo cuando faltan 47 líneas.
+          var conc = Number(x.post_conc) || 0;
+          var faltan = x.post_total - conc;
+          var p = x.post_total ? Math.round(conc / x.post_total * 1000) / 10 : null;
+          // Umbrales de META: el objetivo declarado es 100% post-corte, así que solo el 100% es
+          // verde. Amarillo desde 85% (a tiro), rojo debajo. Un 60% no puede pintar amarillo
+          // cuando faltan 47 líneas.
           var c2 = p === null ? 'off' : (p >= 100 ? 'g' : p >= 85 ? 'y' : 'r');
-          return '<div class="s2card meta"><div class="s2ct"><span class="light ' + c2 + '"></span>' + esc(x.label) + '</div>' +
-            '<div class="s2goal">' + (faltan === 0 ? '<b>Al 100%</b>' : 'Faltan <b>' + faltan + '</b> para el 100%') + '</div>' +
+          var comp = composicionFaltan(x.label, corte, faltan);
+
+          // EL TITULAR ES EL NÚMERO ACCIONABLE, no el total sin conciliar. Con 6 gastos + 2
+          // fondeos + 2 devoluciones, un "Faltan 10" se lee como diez pendientes de conciliar y
+          // solo seis lo son; los otros cuatro esperan una nota de crédito o el lado BBVA, y no
+          // hay nada que Eduardo pueda hacer con ellos. El 10 no desaparece: baja al renglón de
+          // abajo, junto al porcentaje, que es donde vive la métrica de Odoo.
+          var titular;
+          if (faltan === 0) titular = '<b>Al 100%</b>';
+          else if (comp.ok && comp.fon + comp.dev > 0) titular = '<b>' + comp.conc + '</b> por conciliar';
+          else titular = 'Faltan <b>' + faltan + '</b> para el 100%';
+
+          var detalle = conc + ' de ' + x.post_total + ' · ' +
+            '<span style="color:' + barcTxt(c2) + ';font-weight:700">' + (p === null ? '—' : p + '%') + '</span>';
+          if (comp.ok && comp.fon + comp.dev > 0) detalle += ' · ' + faltan + ' sin conciliar en total';
+
+          return '<div class="s2card meta' + (x.en_motor ? '' : ' sinmotor') + '">' +
+            '<div class="s2ct"><span class="light ' + c2 + '"></span>' + esc(x.label) +
+              (x.en_motor ? '' : '<span class="s2tag">sin abrir</span>') + '</div>' +
+            '<div class="s2goal">' + titular + '</div>' +
             '<div class="bar"><i style="width:' + (p || 0) + '%;background:' + barc(c2) + '"></i></div>' +
-            '<div class="s2cn">' + x.post_conc + ' de ' + x.post_total + ' · ' +
-              '<span style="color:' + barcTxt(c2) + ';font-weight:700">' + (p === null ? '—' : p + '%') + '</span></div>' +
-            desgloseFaltan(x.label, corte, faltan) + '</div>';
+            '<div class="s2cn">' + detalle + '</div>' +
+            comp.html +
+            (x.en_motor ? '' : '<div class="s2cw">El motor todavía no evalúa este journal: hoy solo cubre Jeeves. ' +
+              'Abrirlo es un cambio en el workflow de conciliación, no en este panel.</div>') +
+            '</div>';
         }).join('');
         html += '<div class="ip-sem2 b">' +
           '<div class="s2head"><span class="s2ts">Datos al ' + esc(hoyCst()) + ' ' + esc(horaCst()) + ' CST</span></div>' +
@@ -1767,40 +1789,52 @@
         el.addEventListener('click', function () { verDesdeCorte(el.getAttribute('data-vercorte')); });
       });
     }
-    // ── De qué está hecho el "Faltan N" (v0.5.37) ─────────────────────────────────────────
+    // ── De qué está hecho el "Faltan N" (V1.02: devuelve datos, no solo HTML) ─────────────
     // Origen: Esteban veía 5 sin conciliar en la tabla y 9 en el semáforo, y los dos números
     // eran CIERTOS. El semáforo cuenta toda línea que Odoo tiene sin conciliar; la tabla saca
     // fondeos y devoluciones del cubo "sin conciliar" (v0.5.16) porque no esperan una factura.
     // Comprobado en Odoo el 2026-09-03 sobre journal 61 desde el corte: 9 sin conciliar = 5
     // gastos + 2 FONDEO + 2 DEVOLUCIÓN. Dos taxonomías distintas bajo la misma palabra.
-    // Esto NO cambia el número del server: lo descompone y deja reproducirlo en la tabla.
-    // Regla de honestidad: el desglose solo se pinta si la ventana cargada cubre el corte Y su
-    // total cuadra con el `faltan` del server. Si no cuadra, se dice — nunca se pinta un
-    // desglose que contradiga en silencio al número de arriba.
-    function desgloseFaltan(label, corte, faltan) {
-      if (!faltan) return '';
+    // Esto NO cambia el número del server: lo descompone, deja reproducirlo en la tabla, y le
+    // da a la tarjeta el número accionable para su titular.
+    // Regla de honestidad: solo se descompone si la ventana cargada cubre el corte Y el total
+    // cuadra con el `faltan` del server. Si no cuadra, se dice — nunca se pinta un desglose que
+    // contradiga en silencio al número de arriba, ni se pone en el titular un número derivado
+    // de datos incompletos.
+    function composicionFaltan(label, corte, faltan) {
+      var no = function (html) { return { ok: false, conc: 0, fon: 0, dev: 0, html: html }; };
+      if (!faltan) return no('');
       var f = state.filters;
       if (!f.from || f.from > corte) {
-        return '<div class="s2cw">La tabla está cargada desde <b>' + esc(f.from || '—') + '</b>, no alcanza el corte. ' +
-          '<a class="s2ver" data-vercorte="' + esc(label) + '">cargar desde el corte</a></div>';
+        return no('<div class="s2cw">La tabla está cargada desde <b>' + esc(f.from || '—') + '</b>, no alcanza el corte. ' +
+          '<a class="s2ver" data-vercorte="' + esc(label) + '">cargar desde el corte</a></div>');
       }
       var dev = 0, fon = 0, conc = 0;
       (state.allRows || []).forEach(function (r) {
         if (r.j !== label || !r.d || r.d < corte || r.ok) return;
         if (isDevolucion(r)) dev++; else if (isFondeo(r)) fon++; else conc++;
       });
-      if (dev + fon + conc !== faltan) {
-        return '<div class="s2cw">El desglose no cuadra con el server (' + (dev + fon + conc) + ' vs ' + faltan +
-          '): la ventana cargada puede estar recortada por el tope de líneas. ' +
-          '<a class="s2ver" data-vercorte="' + esc(label) + '">ver en la tabla</a></div>';
+      var local = dev + fon + conc;
+      if (local !== faltan) {
+        // Se distinguen los dos casos, porque no significan lo mismo y uno de los dos no es
+        // noticia. Ver MENOS de lo que dice el server es lo normal cuando la carga viene
+        // recortada por el tope de líneas: no hay contradicción, simplemente no alcanza para
+        // descomponer, y gritarlo en cada tarjeta es ruido permanente. Ver MÁS sí es una
+        // contradicción real —el server dice que faltan menos de las que la tabla tiene sin
+        // conciliar— y ahí conviene el aviso fuerte.
+        var link = '<a class="s2ver" data-vercorte="' + esc(label) + '">ver en la tabla</a>';
+        if (local < faltan) return no('<div class="s2cw">' + link + '</div>');
+        return no('<div class="s2cw">El desglose no cuadra con el server (' + local + ' vs ' + faltan +
+          '): la tabla ve más pendientes de las que reporta el semáforo. ' + link + '</div>');
       }
       var partes = [];
       if (conc) partes.push('<b>' + conc + '</b> por conciliar');
       if (fon) partes.push('<b>' + fon + '</b> ' + (fon === 1 ? 'fondeo' : 'fondeos'));
       if (dev) partes.push('<b>' + dev + '</b> ' + (dev === 1 ? 'devolución' : 'devoluciones'));
-      return '<div class="s2cw">' + partes.join(' · ') +
-        (fon + dev ? ' — fondeos y devoluciones no casan contra una factura, el motor no las cierra' : '') +
-        ' · <a class="s2ver" data-vercorte="' + esc(label) + '">ver en la tabla</a></div>';
+      return { ok: true, conc: conc, fon: fon, dev: dev,
+        html: '<div class="s2cw">' + partes.join(' · ') +
+          (fon + dev ? ' — fondeos y devoluciones no casan contra una factura, el motor no las cierra' : '') +
+          ' · <a class="s2ver" data-vercorte="' + esc(label) + '">ver en la tabla</a></div>' };
     }
     // Lleva la tabla al MISMO universo que mide el semáforo, para que los dos números se puedan
     // comparar de verdad en vez de creerle a uno de los dos.

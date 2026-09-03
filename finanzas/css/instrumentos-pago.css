@@ -490,6 +490,10 @@
 /* Semáforo por instrumento (v0.5.27). Sin total: cada fuente se mide sola. */
 .ip-view .s2card{border:1px solid var(--ip-line);border-radius:8px;padding:11px 13px;margin-bottom:8px}
 .ip-view .s2card.sinabrir{background:#fafbfc;border-style:dashed}
+/* V1.02: la fuente sin motor se pinta con el MISMO formato que Jeeves (barra, porcentaje y
+   foco). El borde punteado se queda como la única señal de "esto todavía no lo evalúa nadie" —
+   suficiente para distinguirla, sin quitarle el número que Esteban necesita ver de un golpe. */
+.ip-view .s2card.sinmotor{border-style:dashed}
 .ip-view .s2ct{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px}
 .ip-view .s2goal{font-size:16px;margin:7px 0 6px}
 .ip-view .s2goal b{font-size:22px}
