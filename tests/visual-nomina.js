@@ -76,6 +76,18 @@ const VIEWPORTS = [
   check('el menor no pasa de 99', (/^V\d+\.(\d{2})$/.exec(VER.version) || [])[1] <= '99', VER.version);
   check('version.json trae esquema e historial', !!VER.esquema && Array.isArray(VER.historial) && VER.historial.length > 0);
 
+  // El badge del HTML es el valor que se VE si el fetch de version.json no contesta
+  // (file://, Pages cacheando, red caída). Si se queda atrasado, la pantalla jura que
+  // el código es viejo cuando no lo es — un falso negativo justo en el momento en que
+  // alguien está verificando que su cambio quedó desplegado. Se bumpean los dos juntos.
+  {
+    const htmlBadge = (/id="ver-badge"[^>]*>([^<]*)</.exec(
+      require('fs').readFileSync(require('path').join(
+        __dirname, '..', 'modulos', 'rh', 'nomina-incidencias', 'index.html'), 'utf8')) || [])[1];
+    check('el badge del HTML no se quedó atrás de version.json',
+      htmlBadge === VER.version, 'html=' + htmlBadge + ' · json=' + VER.version);
+  }
+
   const srv = await servir();
   const base = 'http://127.0.0.1:' + srv.address().port + '/modulos/rh/nomina-incidencias/index.html';
   const browser = await chromium.launch(EXE ? { executablePath: EXE } : {});
