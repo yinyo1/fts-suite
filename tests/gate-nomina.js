@@ -243,8 +243,20 @@ seccion('Archivo para el despacho');
     f.horas_extra === 4 && f.imp_extra === 800, f.horas_extra + '/' + f.imp_extra);
   check('la instruccion nombra los proyectos del bono',
     /SO11547/.test(f.instruccion) && /SO6013/.test(f.instruccion), f.instruccion);
-  check('la instruccion dice de que cuenta sale el dinero',
-    /BBVA Nómina/.test(f.instruccion), f.instruccion);
+  // El assert viejo pedia el banco DENTRO de la instruccion. Se reemplaza, no se
+  // afloja: ahora se exigen las dos mitades de la regla nueva —el banco no ensucia
+  // la linea que Ulises captura, y la fuente que NO es esta nomina sigue avisando en
+  // REVISAR—. Es mas estricto que el anterior, no menos: antes nadie vigilaba que el
+  // aviso existiera.
+  check('la instruccion NO nombra el banco: eso no le dice nada a quien captura',
+    !/BBVA/.test(f.instruccion), f.instruccion);
+  const pUsd = persona({ id: 91, ppa: { aplica: false },
+    declaraciones: [{ tipo: 'aguinaldo', fuente: 'J122', valores: { monto: 5000 } }] });
+  const fUsd = Des.filas({ semana: SEMANA, personas: [pUsd], disputas: [] })[0];
+  check('pero un pago que NO sale de esta nomina sigue avisando en REVISAR',
+    /Chase Checking/.test(fUsd.revisar), fUsd.revisar);
+  check('y tampoco ensucia la instruccion con el banco',
+    !/Chase/.test(fUsd.instruccion), fUsd.instruccion);
 
   // (c) el anticipo es un prestamo: NO puede caer en descuentos ni en percepciones
   const pa = persona({ id: 78, declaraciones: [{ tipo: 'anticipo_sueldo', fuente: 'J96', valores: { monto: 2000, plazo: 4 } }] });
@@ -338,16 +350,26 @@ seccion('Archivo para el despacho');
   const pUsa2 = persona({ id: 94, dias_mexico: 2, ppa: { aplica: false },
     declaraciones: [{ tipo: 'trabajo_usa', valores: { dias: 3, so: 'SO11846' } }] });
   const fUsa2 = Des.filas({ semana: SEMANA, personas: [pUsa2], disputas: [] })[0];
-  check('cinco dias repartidos entre Mexico y USA NO se callan',
-    /2 en México, 3 en USA/.test(fUsa2.instruccion), fUsa2.instruccion);
+  // El assert viejo exigia el reparto "2 en México, 3 en USA". Se reemplaza porque
+  // ese texto contaba lo mismo dos veces: los cinco dias SI se trabajaron, lo que
+  // cambia es quien los paga, y eso ya lo dice el verbo del renglon de USA. Los
+  // asserts nuevos son mas duros: fijan la linea COMPLETA y exigen que no vuelva
+  // ninguna de las dos formas de ruido que se quitaron.
+  check('el reparto Mexico/USA NO se repite: la linea de USA ya lo dice',
+    !/en México, /.test(fUsa2.instruccion), fUsa2.instruccion);
+  check('y la semana no se anuncia completa cuando los dias cuadran',
+    !/de 5 días trabajados/.test(fUsa2.instruccion), fUsa2.instruccion);
   // Decir que trabajo 3 dias en USA NO es una instruccion: se lee igual que tres dias
   // normales de la semana y se pagan aqui, cuando los paga FTS LLC. El verbo es lo que
   // impide pagarlos dos veces, y por eso se exige junto con el motivo — sin el motivo,
   // el siguiente que lo lea puede pensar que es un error y revertirlo.
   check('los dias en USA se DESCUENTAN, con todas sus letras',
     /DESCONTAR 3 días · Trabajó en USA/.test(fUsa2.instruccion), fUsa2.instruccion);
-  check('y dice POR QUE se descuentan: no los paga esta nomina',
-    /no se pagan en México, los paga FTS LLC/.test(fUsa2.instruccion), fUsa2.instruccion);
+  // El concepto ES el motivo: "Trabajo en USA" dice por que se descuenta sin
+  // necesidad de una coletilla. Y contra que orden trabajo alla es dato de
+  // rentabilidad, no de nomina — no va en la linea que se captura.
+  check('la instruccion de USA es exactamente la linea, sin coletilla ni proyecto',
+    fUsa2.instruccion === 'DESCONTAR 3 días · Trabajó en USA.', fUsa2.instruccion);
 
   // Dinero que ya pago FTS USA: el mismo principio que los dias, en pesos.
   const pUsa3 = persona({ id: 95, dias_mexico: 5, ppa: { aplica: false },

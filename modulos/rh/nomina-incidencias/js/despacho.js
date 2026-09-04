@@ -173,7 +173,11 @@
     // normal de la semana y se termina pagando dos veces, aquí y allá. El verbo va
     // explícito y dice el motivo, que es lo que hace que nadie lo revierta por su
     // cuenta al no entenderlo.
-    trabajo_usa:         { v: 'DESCONTAR',          signo: 'resta', nota: 'no se pagan en México, los paga FTS LLC' },
+    // `escueto` = la frase se corta después del concepto: ni proyecto, ni folio, ni
+    // nota. Aquí es a propósito: contra qué orden trabajó en Estados Unidos es un
+    // dato de rentabilidad, no de nómina, y a Ulises no le dice nada al capturar.
+    // "DESCONTAR 3 días · Trabajó en USA" es la instrucción entera.
+    trabajo_usa:         { v: 'DESCONTAR',          signo: 'resta', escueto: true },
     pagado_fts_usa:      { v: 'NO PAGAR EN MÉXICO', signo: 'resta' }
   };
 
@@ -251,11 +255,16 @@
         frases.push(fraseDe(etiqueta, dec, mm, v));
       }
 
-      // La fuente se dice SIEMPRE que la haya: de dónde sale el dinero es la mitad
-      // de la instrucción. Y si esa fuente no es la nómina, se marca para revisar.
+      // La fuente NO se escribe en la instrucción. De qué banco sale el dinero no le
+      // dice nada a quien captura la nómina: "BBVA México (MXN)" pegado a cada
+      // concepto es ruido en la única línea que Ulises lee de verdad.
+      //
+      // Pero SÍ importa cuando la fuente no es esta nómina —un bono en dólares por
+      // Chase lo paga FTS LLC, y capturarlo aquí sería pagarlo dos veces—, así que
+      // ese caso no se calla: se va a REVISAR, que es la columna que contesta
+      // "¿puedo capturar este renglón ya?". La instrucción dice QUÉ hacer; REVISAR
+      // dice si todavía no. Cada dato en la columna que contesta su pregunta.
       if (mm && mm.def.fuente && dec.fuente) {
-        var fu = Log.derivarFuente(dec.fuente);
-        frases[frases.length - 1] += ' — ' + (fu ? fu.nombre + ' (' + fu.moneda + ')' : dec.fuente);
         var fuera = fuenteFueraDeNomina(dec.fuente);
         if (fuera) avisos.push(etiqueta + ' ' + fuera);
       }
@@ -299,12 +308,18 @@
     // dos terceras partes de la lista.
     if (pp.valor === 'SI') partes.push('PPA' + (pp.decidido ? ' (decidido por RH)' : ''));
 
-    // Los días solo se dicen cuando NO son la semana completa en México. Que alguien
-    // trabaje sus cinco días es la norma; anunciarlo es gastar la línea.
+    // Los días solo se dicen cuando los trabajados NO completan la semana. Trabajar
+    // los cinco es la norma y anunciarlo gasta la línea.
+    //
+    // El reparto México/USA se quitó a propósito: quien trabajó dos días aquí y tres
+    // allá ya tiene su renglón "DESCONTAR 3 días · Trabajó en USA", que es la
+    // instrucción completa. Decir además "5 de 5 días trabajados (2 en México, 3 en
+    // USA)" es contar lo mismo otra vez y de otra forma — y obliga a hacer la resta
+    // mental para saber cuántos se pagan. Los cinco días SÍ se trabajaron; lo que
+    // cambia es quién los paga, y eso ya lo dice el verbo.
     var trabajados = f.dias_mx + f.dias_usa;
-    if (f.dias_mx !== semana.dias || f.dias_usa) {
-      partes.push(trabajados + ' de ' + semana.dias + ' días trabajados' +
-        (f.dias_usa ? ' (' + f.dias_mx + ' en México, ' + f.dias_usa + ' en USA)' : ''));
+    if (trabajados !== semana.dias) {
+      partes.push(trabajados + ' de ' + semana.dias + ' días trabajados');
     }
 
     for (var z = 0; z < frases.length; z++) partes.push(frases[z]);
@@ -356,6 +371,9 @@
 
     // El detalle que hace capturable la instrucción: contra qué proyecto, con qué
     // folio, cuál pago de la serie. Sin esto Ulises tiene el monto pero no la cuenta.
+    // Salvo en los tipos marcados `escueto`, donde el detalle no aporta a la captura
+    // y solo alarga el renglón.
+    if (ef.escueto) return s;
     if (v.folio) s += ' (folio IMSS ' + v.folio + ')';
     if (v.clase) s += ' (' + v.clase + ')';
     if (v.motivo) s += ' (' + v.motivo + ')';
