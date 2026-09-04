@@ -83,6 +83,25 @@ Comision CLIENTE 0%     (F7, = 'DESGLOSE COTIZACION'!B8)
 **El margen es un MULTIPLICADOR por concepto, no un porcentaje global.** Precio de una
 partida = costo × multiplicador.
 
+**Y la tabla es DE LA HOJA DE SECCIÓN, no del libro.** Está en el rango `E1:F5` de cada
+hoja de sección, y ahí los cuatro multiplicadores son **valores literales**. Las dos
+filas de abajo no: `F6` y `F7` son **referencias** a `'DESGLOSE COTIZACION'!B7` y `!B8`.
+Esa diferencia —literal contra referencia— es la que dice qué se decide por sección y qué
+se pacta una vez para la cotización:
+
+| | dónde vive | alcance |
+|---|---|---|
+| Programador · Mano de obra · Materiales · Servicios | literal en `E1:F5` de **cada hoja** | **por sección** |
+| Comisión FTS · Comisión CLIENTE | referencia al `DESGLOSE` | **de toda la cotización** |
+
+Lo confirma también la fórmula de horas extras, `=$F$3*2`: `$F$3` es la mano de obra **de
+la misma hoja**, no del libro.
+
+⚠️ Lo que esto **no** dice: no se midió si algún ejemplar del acervo tiene de hecho
+valores distintos entre dos secciones del mismo libro. Lo verificado es dónde vive el
+dato y de qué tipo es la celda, que es lo que fija el alcance. La herramienta lo
+reproduce desde V1.15.
+
 Verificado en 12 ejemplares, cinco de ellos cotizaciones de 2026 (SO11737, SO11738, SO11790, SO11836 y el USD de calbee). Lo que **no** varía:
 
 | concepto | valor | ejemplares |

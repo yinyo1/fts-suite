@@ -67,7 +67,7 @@ versión es peor que no tener indicador.
 | `js/pegar.js` | El pegado de tablas: separador, columnas y revisión previa. |
 | `js/almacen.js` | El autoguardado. UNA pieza entre la pantalla y donde viven los datos. |
 | `js/clientes.js` | El catálogo de clientes, leído de Odoo. Guarda el id, pinta el nombre. |
-| `tests/pruebas-navegador.js` | 104 pruebas de navegador. |
+| `tests/pruebas-navegador.js` | 109 pruebas de navegador. |
 
 ## Cómo se calcula el precio
 
@@ -89,6 +89,43 @@ Bajo *margen deseado* el precio es `costo / (1 − margen − comisiones)` y se
 reparte entre secciones **a prorrata del costo**. Por eso mover un multiplicador
 en ese escenario no cambia el precio: sólo cambia el reparto. Es una propiedad
 del machote, no un error, y hay una prueba que la fija.
+
+## Los multiplicadores son de cada sección
+
+Los cuatro —programador, mano de obra, materiales, servicios— **pertenecen a la
+sección**, no a la cotización. Mover el de materiales en `Suministro` no toca el
+de `Instalación`.
+
+No es una preferencia: el suministro y la instalación no se venden con el mismo
+multiplicador, y cuando eran uno solo, **corregir una sección movía el precio de
+todas sin que nadie lo viera**. El campo estaba en la hoja de la sección, así que
+parecía de la sección; el dato estaba en el machote.
+
+**Lo único compartido son las dos comisiones**, FTS y cliente: esas se pactan una
+vez para la cotización entera. Están en la misma tabla, así que la hoja lo dice
+en una línea — dos reglas distintas pegadas una debajo de otra, si no se
+explican, se leen como una sola.
+
+Se resuelven en **tres capas: plantilla ← machote ← sección**, y la de abajo
+manda. Esa capa intermedia es la que sostiene lo ya capturado: una sección sin
+`margenes` propios lee los del machote y muestra exactamente los mismos números
+que mostraba. **No hay nada que migrar y ningún machote cambia de precio.** La
+primera vez que alguien toca un multiplicador, esa sección —y sólo esa— se
+queda con el suyo.
+
+El revisador también cambió de granularidad: los hallazgos de multiplicadores
+dicen **en qué sección**, y el botón «Ir a arreglarlo» abre esa hoja. Mientras
+fueron del machote daba igual; ahora mandar a la primera sección es mandar a la
+equivocada.
+
+**Esto no es una preferencia de diseño: es lo que hace el machote real.** La
+tabla vive en `E1:F5` de **cada hoja de sección**, y ahí los cuatro
+multiplicadores son **valores literales**; las dos comisiones, en `F6`/`F7`, son
+**referencias** a `'DESGLOSE COTIZACION'!B7` y `!B8`. Literal contra referencia
+es exactamente la línea entre «se decide por sección» y «se pacta una vez». Lo
+confirma la fórmula de horas extras, `=$F$3*2`: `$F$3` es la mano de obra **de
+la misma hoja**. Detalle en
+[`docs/comercial/MACHOTE-ESTRUCTURA-REAL.md`](../../docs/comercial/MACHOTE-ESTRUCTURA-REAL.md) §2.2.
 
 ## La pantalla
 

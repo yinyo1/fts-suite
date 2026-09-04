@@ -1,10 +1,15 @@
 {
-  "version": "V1.14",
+  "version": "V1.15",
   "fecha": "2026-09-04",
   "modulo": "comercial/machote",
   "ambito": "El CONTADOR es solo de este modulo. finanzas tambien usa V1.xx desde el 2026-09-03 (instruccion directa de Esteban, corrige el \"no propagar\" del issue #148) pero lleva su propio contador y va en V1.00. operaciones/planeacion sigue en 2.4.1, kiosk y confirmar-horas solo con cadena de build, y siete modulos con un 1.0.0 puesto una vez: a esos no se propaga.",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.15",
+      "pr": null,
+      "nota": "Los cuatro multiplicadores son de CADA SECCION, no de la cotizacion entera: mover el de materiales en Suministro ya no mueve el de Instalacion. Lo unico compartido son las dos comisiones, FTS y cliente. Los machotes ya capturados no cambian de precio: una seccion sin multiplicadores propios sigue leyendo los del machote. De paso, la pestaña + creaba secciones VACIAS, sin los diez renglones de mano de obra ni los treinta de materiales"
+    },
     {
       "version": "V1.14",
       "pr": null,
