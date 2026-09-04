@@ -27,7 +27,7 @@
   // comercial/machote y DEBE coincidir con finanzas/version.json — el gate lo verifica, porque
   // una pantalla que dice una versión y un archivo que dice otra deja de ser evidencia de nada.
   // Sustituye a la numeración 0.x.y (última: 0.5.36), conservada en version.json.
-  var IP_BUILD = 'V1.07';
+  var IP_BUILD = 'V1.08';
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -1774,7 +1774,12 @@
 
           var detalle = conc + ' de ' + x.post_total + ' · ' +
             '<span style="color:' + barcTxt(c2) + ';font-weight:700">' + (p === null ? '—' : p + '%') + '</span>';
-          if (comp.ok && comp.fon + comp.dev > 0) detalle += ' · ' + faltan + ' sin conciliar en total';
+          // "abiertas en Odoo", no "sin conciliar": el titular de arriba ya usa el verbo
+          // conciliar para el TRABAJO pendiente, y repetirlo aquí para el flag is_reconciled
+          // ponía dos cifras del mismo verbo una debajo de otra —"0 por conciliar" y "4 sin
+          // conciliar"— que se leen como una contradicción. Son dos cosas distintas y ahora
+          // se llaman distinto.
+          if (comp.ok && comp.fon + comp.dev > 0) detalle += ' · ' + faltan + ' abiertas en Odoo';
 
           return '<div class="s2card meta' + (x.en_motor ? '' : ' sinmotor') + '">' +
             '<div class="s2ct"><span class="light ' + c2 + '"></span>' + esc(x.label) +
@@ -1895,14 +1900,31 @@
         return no('<div class="s2cw">El desglose no cuadra con el server (' + local + ' vs ' + faltan +
           '): la tabla ve más pendientes de las que reporta el semáforo. ' + link + '</div>');
       }
-      var partes = [];
-      if (conc) partes.push('<b>' + conc + '</b> por conciliar');
-      if (fon) partes.push('<b>' + fon + '</b> ' + (fon === 1 ? 'fondeo' : 'fondeos'));
-      if (dev) partes.push('<b>' + dev + '</b> ' + (dev === 1 ? 'devolución' : 'devoluciones'));
+      // El desglose ya no repite el titular. Antes decía "5 por conciliar · 2 fondeos · 2
+      // devoluciones" con "5 por conciliar" también arriba en grande; y en el caso de cero
+      // dejaba al lector sumando para entender por qué el total no cuadraba con el titular.
+      // Ahora responde la pregunta que el número de arriba deja abierta: si no hay nada por
+      // conciliar, ¿qué son las que Odoo tiene abiertas?
+      var extra = fon + dev;
+      var txt = '';
+      if (extra) {
+        var comoSon = [];
+        if (fon) comoSon.push('<b>' + fon + '</b> ' + (fon === 1 ? 'fondeo' : 'fondeos'));
+        if (dev) comoSon.push('<b>' + dev + '</b> ' + (dev === 1 ? 'devolución' : 'devoluciones'));
+        var cuantas = extra === 1
+          ? (conc ? 'La otra abierta' : 'La única abierta')
+          : ((conc ? 'Las otras ' : 'Las ') + extra + ' abiertas');
+        // El motivo se dice por categoría, no por instancia: así no hay que concordar el
+        // número y además cada una explica SU razón, que no es la misma.
+        var porque = (fon && dev)
+          ? 'Ninguna casa contra una factura de proveedor: la devolución va contra una nota de crédito y el fondeo contra el lado BBVA.'
+          : (fon ? 'Un fondeo no casa contra una factura: su contrapartida es el lado BBVA, que todavía no se captura en Odoo.'
+                 : 'Una devolución no casa contra una factura: casa contra una nota de crédito, o reduce el bill original.');
+        txt = cuantas + ' no son trabajo pendiente — ' + comoSon.join(' y ') + '. ' + porque + ' ';
+      }
       return { ok: true, conc: conc, fon: fon, dev: dev,
-        html: '<div class="s2cw">' + partes.join(' · ') +
-          (fon + dev ? ' — fondeos y devoluciones no casan contra una factura, el motor no las cierra' : '') +
-          ' · <a class="s2ver" data-vercorte="' + esc(label) + '">ver en la tabla</a></div>' };
+        html: '<div class="s2cw">' + txt +
+          '<a class="s2ver" data-vercorte="' + esc(label) + '">ver en la tabla</a></div>' };
     }
     // Lleva la tabla al MISMO universo que mide el semáforo, para que los dos números se puedan
     // comparar de verdad en vez de creerle a uno de los dos.

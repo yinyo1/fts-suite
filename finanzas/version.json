@@ -1,9 +1,14 @@
 {
-  "version": "V1.07",
+  "version": "V1.08",
   "fecha": "2026-09-03",
   "modulo": "finanzas",
   "esquema": "V<mayor>.<menor de dos dígitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.08",
+      "pr": null,
+      "nota": "La tarjeta usaba el mismo verbo para dos cosas distintas: \"0 por conciliar\" (trabajo pendiente) y \"4 sin conciliar en total\" (el flag is_reconciled de Odoo), uno debajo del otro. Verificado en Odoo: las 4 son 2 FONDEO y 2 DEVOLUCION, cero gastos. El renglon del porcentaje pasa a decir \"abiertas en Odoo\", y el desglose deja de repetir el titular para responder la pregunta que ese numero deja abierta: si no hay nada por conciliar, que son las que quedan."
+    },
     {
       "version": "V1.07",
       "pr": null,
