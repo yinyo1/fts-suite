@@ -40,7 +40,7 @@
    * 2026-09-03 (por instrucción de Esteban), pero lleva el suyo aparte y va en
    * V1.00. Planeación sigue en `2.4.1` y el kiosko sólo con cadena de build;
    * a esos no se propaga. */
-  const VERSION = 'V1.12';
+  const VERSION = 'V1.13';
   const $  = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
   const clon = (x) => JSON.parse(JSON.stringify(x));
@@ -858,13 +858,15 @@
       '<textarea id="pg-txt" rows="7" placeholder="Cantidad | Descripción | Precio unitario&#10;4 | Rodamiento LM25UU | $4,200.00"></textarea>' +
       '<div id="pg-prev"></div>' +
       '<div class="modos">' +
-      '<label><input type="radio" name="pg-modo" value="sobre" checked> ' +
-      'Escribir <strong>encima</strong>, del renglón ' + (desde + 1) + ' hacia abajo' +
-      '<span class="tiny nota">Reemplaza lo que haya en esos renglones. Es lo normal cuando abajo está en blanco.</span></label>' +
-      '<label><input type="radio" name="pg-modo" value="inserta"> ' +
-      '<strong>Insertar</strong> antes del renglón ' + (desde + 1) +
-      '<span class="tiny nota">Empuja hacia abajo lo que ya estaba. Nada se pierde.</span></label>' +
+      '<label><input type="radio" name="pg-modo" value="debajo" checked> ' +
+      'Escribir <strong>debajo</strong> del renglón ' + (desde + 1) +
+      '<span class="tiny nota">Los renglones nuevos entran después de éste.</span></label>' +
+      '<label><input type="radio" name="pg-modo" value="arriba"> ' +
+      'Escribir <strong>arriba</strong> del renglón ' + (desde + 1) +
+      '<span class="tiny nota">Los renglones nuevos entran antes de éste.</span></label>' +
       '</div>' +
+      '<p class="tiny nota">En los dos casos <strong>nada se pierde</strong>: lo que ya estaba ' +
+      'se recorre, no se sobrescribe.</p>' +
       '<div class="acciones">' +
       '<button class="btn" id="pg-cancel">Cancelar</button>' +
       '<button class="btn primario" id="pg-ok" disabled>Agregar renglones</button>' +
@@ -899,14 +901,17 @@
           '<tr' + (x._avisos.length ? ' class="ojo"' : '') + '>' +
           '<td class="vl mono">' + esc(nn(x.qty)) + '</td>' +
           '<td>' + esc(x.unidad || '—') + '</td>' +
-          '<td>' + esc(x.tipo || '—') + '</td>' +
+          '<td>' + (x.tipo ? esc(x.tipo) + (x._tipoDeducido ? ' <span class="tiny n-warn">deducido</span>' : '') : '—') + '</td>' +
           '<td>' + esc(x.descripcion || '—') + '</td>' +
           '<td class="vl mono">' + (x.pu === null ? '—' : mx(x.pu)) + '</td>' +
           '<td>' + esc(x.moneda) + '</td>' +
           '<td class="tiny n-warn">' + esc(x._avisos.join(', ')) + '</td></tr>').join('') +
         '</tbody></table></div>' +
-        '<p class="tiny nota">El <strong>Tipo</strong> que no venga en la tabla queda vacío: ' +
-        'Materiales o Servicios decide el multiplicador, y adivinarlo movería el precio.</p>';
+        '<p class="tiny nota">El <strong>Tipo</strong> que no venga en la lista se ' +
+        '<strong>deduce de la descripción</strong> y sale marcado como <em>deducido</em>: ' +
+        'Materiales o Servicios elige el multiplicador, así que revísalo aquí. ' +
+        'Si no hay señal clara se queda vacío, y la <strong>Unidad</strong> que no venga ' +
+        'se hereda del renglón donde estás pegando en vez de borrarse.</p>';
     };
 
     txt.oninput = revisar;
@@ -915,28 +920,41 @@
 
     ok.onclick = () => {
       if (!ultimo || !ultimo.ok) return;
+      /* Lo que el pegado NO resolvió se hereda del renglón que estaba en ese
+       * lugar, no se deja en blanco. Si no, pegar una lista sin columna de
+       * Unidad borraba los "Pieza" y "Horas" que ya estaban capturados —
+       * reproducido: `Pieza`, `Horas` → vacío, y el Tipo igual. Un pegado que
+       * borra datos que no venía a tocar es peor que no pegar. */
+      const base = sec.partidas[desde] || {};
       const nuevos = ultimo.renglones.map(x => ({
-        qty: x.qty, unidad: x.unidad, tipo: x.tipo, descripcion: x.descripcion,
+        qty: x.qty,
+        unidad: x.unidad || base.unidad || '',
+        tipo: x.tipo || base.tipo || '',
+        descripcion: x.descripcion,
         modelo: x.modelo, marca: x.marca, pu: x.pu, moneda: x.moneda,
         margen: null, link: x.link, comentario: x.comentario
       }));
-      const modo = (document.querySelector('input[name="pg-modo"]:checked') || {}).value || 'sobre';
-      if (modo === 'inserta') {
-        // Empuja hacia abajo: nada de lo que ya estaba se pierde.
-        sec.partidas.splice.apply(sec.partidas, [desde, 0].concat(nuevos));
-      } else {
-        // Escribe encima desde el punto elegido. Si la lista es más larga que
-        // lo que queda de bloque, el resto se agrega al final.
-        nuevos.forEach((n, k) => {
-          const i = desde + k;
-          if (i < sec.partidas.length) sec.partidas[i] = n; else sec.partidas.push(n);
-        });
-      }
+      /* Arriba o debajo del renglón señalado, y en los DOS casos se recorre lo
+       * que ya estaba en vez de sobrescribirlo. Antes un modo reemplazaba y el
+       * otro no, y eso obligaba a entender la diferencia antes de pegar; ahora
+       * la única decisión es dónde va, que es la que de verdad importa. */
+      const modo = (document.querySelector('input[name="pg-modo"]:checked') || {}).value || 'debajo';
+      const en = (modo === 'arriba') ? desde : desde + 1;
+      sec.partidas.splice.apply(sec.partidas, [en, 0].concat(nuevos));
+
+      /* Y se recorta la cola de renglones vacíos que el recorrido empujó: si no,
+       * pegar diez deja treinta en blanco colgando y la hoja crece sin parar.
+       * Sólo se quitan los que nadie ha tocado, y se dejan diez para seguir
+       * capturando a mano. */
+      let cola = 0;
+      for (let i = sec.partidas.length - 1; i >= 0 && !C.usadaPartida(sec.partidas[i]); i--) cola++;
+      if (cola > 10) sec.partidas.splice(sec.partidas.length - (cola - 10), cola - 10);
+
       cerrar();
       tocado();
       pintarHoja(m); barra(m, C.calcular(m));
       toast(nuevos.length + ' renglón(es) ' +
-            (modo === 'inserta' ? 'insertado(s) antes del ' : 'escrito(s) desde el ') + (desde + 1) + '.');
+            (modo === 'arriba' ? 'arriba' : 'debajo') + ' del renglón ' + (desde + 1) + '.');
     };
     txt.focus();
   }

@@ -149,6 +149,61 @@
     comentario:  ['comentario', 'nota', 'notas', 'observaciones', 'obs']
   };
 
+  /* ── Materiales o Servicios, deducido de la descripción ────────────────
+   *
+   * Es la columna que elige el multiplicador, o sea la que decide el precio.
+   * Antes se dejaba en blanco cuando la tabla no lo traía, para no moverlo por
+   * una corazonada. Pero dejar treinta renglones sin Tipo tampoco es neutral:
+   * un renglón sin Tipo no aporta al precio y sale como hallazgo, así que el
+   * costo de callar es el mismo que el de equivocarse, sólo que más callado.
+   *
+   * Se deduce con dos listas y un marcador: gana la que tenga más señales, y
+   * si empatan o no hay ninguna, se queda VACÍO. Lo deducido se marca en la
+   * vista previa para que se corrija ahí, antes de escribir nada. */
+  const SENALES_SERVICIO = [
+    'mano de obra', 'instalacion', 'montaje', 'desmontaje', 'servicio', 'maquinado',
+    'ingenieria', 'diseno', 'supervision', 'prueba', 'puesta en marcha', 'arranque',
+    'capacitacion', 'flete', 'renta', 'alquiler', 'calibracion', 'mantenimiento',
+    'limpieza', 'acarreo', 'maniobra', 'subcontrat', 'honorarios', 'asesoria',
+    'levantamiento', 'memoria de calculo', 'plano', 'dibujo', 'comisionamiento',
+    'obra civil', 'transporte', 'viatico', 'inspeccion', 'reparacion', 'ajuste',
+    'aplicacion', 'suministro e instalacion', 'jornada', 'hora hombre', 'consultoria'
+  ];
+  const SENALES_MATERIAL = [
+    'tubo', 'tuberia', 'cable', 'placa', 'perfil', 'ptr', 'angulo', 'tornillo',
+    'tuerca', 'rondana', 'anclaje', 'valvula', 'brida', 'empaque', 'rodamiento',
+    'bomba', 'motor', 'tablero', 'gabinete', 'sensor', 'transmisor', 'manometro',
+    'conduit', 'canaleta', 'electrodo', 'lamina', 'solera', 'varilla', 'codo',
+    'tee', 'reduccion', 'niple', 'abrazadera', 'junta', 'filtro', 'ventilador',
+    'extractor', 'luminaria', 'lampara', 'breaker', 'contactor', 'variador',
+    'plc', 'hmi', 'mini split', 'minisplit', 'refrigerante', 'cemento', 'grava',
+    'arena', 'block', 'acero', 'inox', 'galvanizado', 'aluminio', 'cobre',
+    'manguera', 'conector', 'terminal', 'kit', 'equipo', 'bushing', 'buje',
+    'chumacera', 'banda', 'polea', 'engrane', 'balero', 'sello', 'oring',
+    'pintura', 'primario', 'thinner', 'silicon', 'cinta', 'herraje', 'soporte'
+  ];
+
+  /* Unidades que por sí solas ya dicen de qué lado va el renglón. */
+  const UNIDAD_SERVICIO = ['Horas', 'Servicio', 'Jornada'];
+
+  /** Devuelve 'Materiales', 'Servicios' o '' si no hay señal clara. */
+  function deducirTipo(descripcion, unidad) {
+    const t = norm(descripcion);
+    if (!t) return '';
+    /* La señal del PRINCIPIO pesa el triple. "Instalación de tubería de cobre"
+     * es un servicio aunque traiga dos sustantivos de material detrás: lo que
+     * se cotiza es la acción, y el material es su objeto. Contando parejo salía
+     * Materiales, que es exactamente al revés. */
+    const cuenta = (lista) => lista.reduce((a, k) => {
+      const i = t.indexOf(k);
+      return a + (i < 0 ? 0 : (i <= 2 ? 3 : 1));
+    }, 0);
+    let serv = cuenta(SENALES_SERVICIO), mat = cuenta(SENALES_MATERIAL);
+    if (unidad && UNIDAD_SERVICIO.indexOf(unidad) >= 0) serv += 1;
+    if (serv === mat) return '';        // empate o nada: mejor vacío que mal
+    return serv > mat ? 'Servicios' : 'Materiales';
+  }
+
   const norm = (t) => String(t || '').toLowerCase()
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -197,7 +252,14 @@
     const vivos = perfil.filter(Boolean);
     const mapa = {};
 
-    const texto = vivos.filter(c => c.pctNum < 0.4).sort((a, b) => b.largo - a.largo);
+    /* La columna de UNIDAD se busca ANTES que la descripción: si no, una
+     * columna de "PZA / MTS / KIT" compite como texto y, peor, la unidad se
+     * pierde. Se reconoce por su contenido, no por su posición. */
+    const textos = vivos.filter(c => c.pctNum < 0.4);
+    const uni = textos.find(c => pareceUnidades(filas.map(f => f[c.i])));
+    if (uni) mapa.unidad = uni.i;
+
+    const texto = textos.filter(c => c.i !== mapa.unidad).sort((a, b) => b.largo - a.largo);
     if (texto.length) mapa.descripcion = texto[0].i;
     if (texto.length > 1) {
       // La segunda columna de texto más larga suele ser marca o modelo. No se
@@ -250,8 +312,36 @@
     'hr': 'Horas', 'hrs': 'Horas', 'hora': 'Horas', 'horas': 'Horas', 'h': 'Horas',
     'lote': 'Lote', 'lotes': 'Lote', 'servicio': 'Servicio', 'juego': 'Juego',
     'rollo': 'Rollo', 'rollos': 'Rollo', 'tramo': 'Tramo', 'tramos': 'Tramo',
-    'caja': 'Caja', 'cajas': 'Caja', 'par': 'Par', 'pares': 'Par'
+    'caja': 'Caja', 'cajas': 'Caja', 'par': 'Par', 'pares': 'Par',
+    'kit': 'Kit', 'kits': 'Kit', 'jgo': 'Juego', 'jgos': 'Juego', 'juegos': 'Juego',
+    'set': 'Juego', 'serv': 'Servicio', 'srv': 'Servicio', 'servicios': 'Servicio',
+    'gbl': 'Global', 'global': 'Global', 'glb': 'Global',
+    'pto': 'Punto', 'ptos': 'Punto', 'punto': 'Punto', 'puntos': 'Punto',
+    'salida': 'Salida', 'salidas': 'Salida', 'ton': 'Tonelada', 'tons': 'Tonelada'
   };
+
+  /** Lleva una unidad escrita como sea a su forma del catálogo. Lo que no
+   *  reconoce lo devuelve TAL CUAL: el acervo está lleno de unidades propias
+   *  ("tramo de 6 m") y borrarlas por no estar en una lista sería peor. */
+  function normalizaUnidad(u) {
+    const t = String(u || '').trim();
+    if (!t) return '';
+    const k = t.toLowerCase().replace(/\./g, '');
+    return Object.prototype.hasOwnProperty.call(UNIDADES, k) ? UNIDADES[k] : t;
+  }
+
+  /** ¿Esta columna es de unidades? Lo es si la mayoría de sus valores son
+   *  unidades reconocibles. Sin esto, una tabla con su columna de UNIDAD la
+   *  perdía entera: `adivinar` sólo buscaba descripción, cantidad y precio. */
+  function pareceUnidades(vals) {
+    const v = vals.filter(x => x !== undefined && x !== '');
+    if (v.length < 2) return false;
+    const casan = v.filter(x => {
+      const k = String(x).trim().toLowerCase().replace(/\./g, '');
+      return Object.prototype.hasOwnProperty.call(UNIDADES, k);
+    }).length;
+    return (casan / v.length) >= 0.6;
+  }
 
   /* Un renglón de una LISTA, no de una tabla. Es la forma en que la gente pega
    * de verdad cuando le pide la lista a una IA o la copia de un correo:
@@ -262,6 +352,23 @@
    *
    * No hay columnas: hay una cantidad al principio, un precio al final y una
    * descripción en medio. Se extrae eso y lo demás se marca para revisar. */
+  /** ¿Este pedazo es un precio? Lo es si trae `$`, o dice `c/u`, o es un número
+   *  a solas con centavos. */
+  function esPrecio(seg) {
+    if (/[$]/.test(seg)) return true;
+    if (/\bc\/?u\b|\bc\.u\.?|\bcada uno\b|\bunitario\b/i.test(seg)) return true;
+    return /^\s*\d{1,3}(?:[,\s]\d{3})*\.\d{1,2}\s*(?:MXN|USD)?\s*$/i.test(seg);
+  }
+
+  /** ¿Y este es una cantidad con su unidad? "8 PZAS", "45 MTS", "3 ROLLOS". */
+  function esCantidad(seg) {
+    const m = String(seg).trim().match(/^(\d+(?:[.,]\d+)?)\s*([a-zA-ZáéíóúñÁÉÍÓÚÑ]{1,10})?\.?$/);
+    if (!m) return null;
+    const palabra = (m[2] || '').toLowerCase().replace(/\./g, '');
+    if (m[2] && !Object.prototype.hasOwnProperty.call(UNIDADES, palabra)) return null;
+    return { qty: aNumero(m[1]), unidad: palabra ? UNIDADES[palabra] : '' };
+  }
+
   function interpretarLinea(linea) {
     let t = String(linea)
       // Fuera viñetas y numeración: "- ", "• ", "* ", "1. ", "1) ".
@@ -270,6 +377,35 @@
     if (!t) return null;
 
     let qty = null, unidad = '', pu = null;
+
+    /* ── Renglón por CAMPOS, cuando los trae ──────────────────────────────
+     * Hay listas donde el precio va PRIMERO y la cantidad en medio:
+     *
+     *     $ 890.00 c/u - 8 PZAS - Lámpara LED industrial 150W high bay
+     *
+     * Leer por posición —cantidad al principio, precio al final— no sirve ahí:
+     * esa lista se rechazaba entera. Cuando el renglón viene partido por " - ",
+     * cada pedazo se clasifica por lo que ES, no por dónde está, y la
+     * descripción es lo que sobra. Así da igual el orden. */
+    const segs = t.split(/\s+[-–—|]\s+/).map(x => x.trim()).filter(Boolean);
+    if (segs.length >= 2) {
+      const resto = [];
+      segs.forEach(seg => {
+        const c = esCantidad(seg);
+        if (c && qty === null) { qty = c.qty; if (c.unidad) unidad = c.unidad; return; }
+        if (esPrecio(seg) && pu === null) {
+          const n = aNumero(seg.replace(/\bc\/?u\b|\bc\.u\.?|\bcada uno\b|\bunitario\b/ig, ''));
+          if (n !== null) { pu = n; return; }
+        }
+        resto.push(seg);
+      });
+      // La descripción es lo que sobró, con sus guiones de vuelta: un nombre
+      // como «Manguera liquidtight 1/2" - reforzada» no debe quedar partido.
+      const desc = resto.join(' - ').replace(/^[\s\-–—:|]+|[\s\-–—:|]+$/g, '').trim();
+      if (desc && (pu !== null || qty !== null)) return { qty, unidad, descripcion: desc, pu };
+      // Si no cuajó, se sigue por el camino de siempre.
+      qty = null; unidad = ''; pu = null;
+    }
 
     /* El PRECIO se busca al final, que es donde va. Se acepta con `$`, con
      * separador de miles o con centavos; un entero suelto al final se toma sólo
@@ -356,9 +492,12 @@
       if (qty === null && pu !== null && total !== null && pu) qty = total / pu;
 
       const tipoCrudo = norm(dame(f, 'tipo'));
-      const tipo = /servicio|mano de obra|mo|labor/.test(tipoCrudo) ? 'Servicios'
-                 : /material|equipo|suministro|insumo/.test(tipoCrudo) ? 'Materiales'
-                 : '';
+      let tipo = /servicio|mano de obra|mo|labor/.test(tipoCrudo) ? 'Servicios'
+               : /material|equipo|suministro|insumo/.test(tipoCrudo) ? 'Materiales'
+               : '';
+      // Si la tabla no lo trae, se deduce de la descripción y se MARCA.
+      let tipoDeducido = false;
+      if (!tipo) { tipo = deducirTipo(desc, normalizaUnidad(dame(f, 'unidad'))); tipoDeducido = !!tipo; }
       const monCruda = String(dame(f, 'moneda') || '').toUpperCase();
       const moneda = /USD|DLL|DOLAR/.test(monCruda) ? 'USD'
                    : /MXN|PESO/.test(monCruda) ? 'MXN'
@@ -372,8 +511,8 @@
 
       return {
         qty: qty === null ? '' : Math.abs(qty),
-        unidad: String(dame(f, 'unidad') || '').trim(),
-        tipo: tipo,
+        unidad: normalizaUnidad(dame(f, 'unidad')),
+        tipo: tipo, _tipoDeducido: tipoDeducido,
         descripcion: desc,
         modelo: String(dame(f, 'modelo') || '').trim(),
         marca: String(dame(f, 'marca') || '').trim(),
@@ -422,9 +561,10 @@
       const avisos = [];
       if (!r.descripcion) avisos.push('sin descripción');
       if (r.pu === null) avisos.push('sin precio');
+      const tipo = deducirTipo(r.descripcion, r.unidad);
       renglones.push({
         qty: r.qty === null ? '' : Math.abs(r.qty),
-        unidad: r.unidad, tipo: '', descripcion: r.descripcion,
+        unidad: r.unidad, tipo: tipo, _tipoDeducido: !!tipo, descripcion: r.descripcion,
         modelo: '', marca: '', pu: r.pu === null ? null : Math.abs(r.pu),
         moneda: /USD|usd|dll/.test(l) ? 'USD' : monedaDoc,
         margen: null, link: '', comentario: '',
@@ -446,5 +586,6 @@
              encabezado: false, mapa: {}, renglones: renglones };
   }
 
-  G.MachotePegar = { interpretar, interpretarLinea, aNumero, partir, ALIAS, UNIDADES };
+  G.MachotePegar = { interpretar, interpretarLinea, aNumero, partir, deducirTipo,
+                     normalizaUnidad, ALIAS, UNIDADES };
 })(window);

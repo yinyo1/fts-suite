@@ -1256,12 +1256,13 @@ let ok = 0, mal = 0;
     const descs = () => p.evaluate(() =>
       [...document.querySelectorAll('[data-cel$=":descripcion"]')].map(i => i.value));
     const antes = await descs();
-    // Se pega DESDE el tercer renglón: los dos de arriba no se tocan.
+    // Se pega ARRIBA del tercer renglón: los dos de arriba no se tocan.
     await p.locator('[data-pegar]').nth(2).click(); await p.waitForTimeout(300);
     const titulo = await p.textContent('.modal h3');
     if (titulo.indexOf('renglón 3') < 0) throw new Error('el modal no dice desde dónde: ' + titulo);
     await p.fill('#pg-txt', '- 4 pzas Rodamiento lineal LM25UU  $4,200.00\n- 1 Placa de acero A36  $38,000');
     await p.waitForTimeout(400);
+    await p.check('input[name="pg-modo"][value="arriba"]');
     await p.click('#pg-ok'); await p.waitForTimeout(500);
     const desp = await descs();
     if (desp[0] !== antes[0] || desp[1] !== antes[1])
@@ -1283,7 +1284,7 @@ let ok = 0, mal = 0;
     await p.locator('[data-pegar]').nth(1).click(); await p.waitForTimeout(300);
     await p.fill('#pg-txt', '- 9 Tornillo hexagonal grado 5  $12.50');
     await p.waitForTimeout(400);
-    await p.check('input[name="pg-modo"][value="inserta"]');
+    await p.check('input[name="pg-modo"][value="arriba"]');
     await p.click('#pg-ok'); await p.waitForTimeout(500);
     const desp = await descs();
     // Todas las descripciones anteriores siguen ahí, más la nueva.
@@ -1327,6 +1328,197 @@ let ok = 0, mal = 0;
       throw new Error('la coma partió los miles o el tabulador se descartó: ' + JSON.stringify(r.tabSinCab));
     if (r.prosa.ok) throw new Error('aceptó un correo de cortesía como lista');
     console.log('    listas, PDF, CSV y tabulador; prosa rechazada');
+  });
+
+  // ── V1.13 · lo que se rompía al pegar ────────────────────────────────
+  await paso('pegar NO borra la unidad ni el tipo que ya estaban', async () => {
+    await p.setViewportSize({ width: 1280, height: 900 });
+    await ir('#/m/M-1041'); await hoja('Suministro');
+    const leer = () => p.evaluate(() => ({
+      u: [...document.querySelectorAll('[data-cel*=":partidas:"][data-cel$=":unidad"]')].map(x => x.value),
+      t: [...document.querySelectorAll('[data-cel*=":partidas:"][data-cel$=":tipo"]')].map(x => x.value)
+    }));
+    const antes = await leer();
+    // Una lista SIN columna de unidad, pegada donde ya había "Pieza"/"Horas".
+    await p.locator('[data-pegar]').first().click(); await p.waitForTimeout(300);
+    await p.fill('#pg-txt', 'Rodamiento LM25UU 4200\nPlaca de acero A36 38000');
+    await p.waitForTimeout(400);
+    await p.click('#pg-ok'); await p.waitForTimeout(500);
+    const desp = await leer();
+    const vacias = desp.u.slice(0, antes.u.length).filter(v => v === '').length;
+    if (vacias > antes.u.filter(v => v === '').length)
+      throw new Error('borró unidades: ' + antes.u.slice(0, 4).join('|') + ' → ' + desp.u.slice(0, 4).join('|'));
+    if (desp.t.slice(0, 2).some(v => v === ''))
+      throw new Error('dejó el Tipo vacío: ' + desp.t.slice(0, 4).join('|'));
+    console.log('    unidades', desp.u.slice(0, 3).join('/'), '· tipos', desp.t.slice(0, 3).join('/'));
+    await p.setViewportSize({ width: 380, height: 780 });
+  });
+
+  await paso('deduce Materiales o Servicios de la descripción', async () => {
+    const r = await p.evaluate(() => {
+      const d = window.MachotePegar.deducirTipo;
+      return {
+        rodamiento: d('Rodamiento lineal LM25UU', ''),
+        instalacion: d('Instalacion de tuberia de cobre', ''),
+        ingenieria: d('Ingenieria de detalle', 'Horas'),
+        maquinado: d('Maquinado externo de bujes', ''),
+        placa: d('Placa de acero A36 y consumibles', ''),
+        desmontaje: d('Desmontaje de equipos existentes', ''),
+        raro: d('Cosa rarisima sin senales', '')
+      };
+    });
+    const esperado = { rodamiento: 'Materiales', instalacion: 'Servicios',
+                       ingenieria: 'Servicios', maquinado: 'Servicios',
+                       placa: 'Materiales', desmontaje: 'Servicios', raro: '' };
+    for (const k in esperado)
+      if (r[k] !== esperado[k])
+        throw new Error(k + ': ' + (r[k] || 'vacío') + ', esperaba ' + (esperado[k] || 'vacío'));
+    // "Instalación de tubería de cobre" es el caso que importa: dos sustantivos
+    // de material detrás de un verbo de servicio. Contando parejo salía al revés.
+    console.log('    el verbo del principio manda sobre los sustantivos');
+  });
+
+  await paso('el pegado marca lo que dedujo, para poder corregirlo', async () => {
+    await p.setViewportSize({ width: 1280, height: 900 });
+    await ir('#/m/M-1041'); await hoja('Suministro');
+    await p.locator('[data-pegar]').first().click(); await p.waitForTimeout(300);
+    await p.fill('#pg-txt', '- 4 Rodamiento lineal LM25UU  $4,200\n- 8 Instalacion de tuberia de cobre  $1,500');
+    await p.waitForTimeout(450);
+    const t = await p.textContent('#pg-prev');
+    if (t.indexOf('deducido') < 0) throw new Error('no marca lo deducido: ' + t.slice(0, 160));
+    if (t.indexOf('Materiales') < 0 || t.indexOf('Servicios') < 0)
+      throw new Error('no dedujo los dos lados: ' + t.slice(0, 200));
+    await p.click('#pg-cancel'); await p.waitForTimeout(250);
+    await p.setViewportSize({ width: 380, height: 780 });
+  });
+
+  await paso('lee una lista con el precio PRIMERO y la cantidad en medio', async () => {
+    /* La forma que reventaba: "$ 890.00 c/u - 8 PZAS - Lámpara LED…". El lector
+     * asumía cantidad al principio y precio al final, así que rechazaba la lista
+     * entera. Ahora cada pedazo se clasifica por lo que ES, no por dónde está. */
+    const r = await p.evaluate(() => {
+      const T = '$ 890.00 c/u - 8 PZAS - Lampara LED industrial 150W high bay\n' +
+                '$ 1,275.50 c/u - 3 ROLLOS - Charola portacables 4 x 3m galvanizada\n' +
+                '$ 62.00 c/u - 45 MTS - Manguera liquidtight 1/2\"\n' +
+                '$ 4,300.00 c/u - 1 PZA - Variador de frecuencia 5HP 220V\n' +
+                '$ 155.75 c/u - 20 PZAS - Terminal ponchable ojillo 6 AWG';
+      const x = window.MachotePegar.interpretar(T, { moneda: 'MXN' });
+      return { ok: x.ok, n: x.renglones.length, r: x.renglones };
+    });
+    if (!r.ok) throw new Error('la rechazó entera');
+    if (r.n !== 5) throw new Error('leyó ' + r.n + ' de 5');
+    const esperado = [
+      { qty: 8,  pu: 890,     u: 'Pieza', d: 'Lampara LED industrial 150W high bay' },
+      { qty: 3,  pu: 1275.5,  u: 'Rollo' },
+      { qty: 45, pu: 62,      u: 'Metro' },
+      { qty: 1,  pu: 4300,    u: 'Pieza' },
+      { qty: 20, pu: 155.75,  u: 'Pieza' }
+    ];
+    esperado.forEach((e, i) => {
+      const g = r.r[i];
+      if (g.qty !== e.qty) throw new Error('renglón ' + (i + 1) + ' cantidad: ' + g.qty + ' ≠ ' + e.qty);
+      if (g.pu !== e.pu) throw new Error('renglón ' + (i + 1) + ' precio: ' + g.pu + ' ≠ ' + e.pu);
+      if (g.unidad !== e.u) throw new Error('renglón ' + (i + 1) + ' unidad: ' + g.unidad + ' ≠ ' + e.u);
+      if (e.d && g.descripcion !== e.d) throw new Error('renglón 1 descripción: ' + g.descripcion);
+      if (g.tipo !== 'Materiales') throw new Error('renglón ' + (i + 1) + ' no dedujo Materiales: ' + g.tipo);
+    });
+    // Y la comilla de 1/2" no debe partir la descripción.
+    if (r.r[2].descripcion !== 'Manguera liquidtight 1/2"')
+      throw new Error('se comió parte de la descripción: ' + r.r[2].descripcion);
+    console.log('    5 de 5, con unidad y tipo deducidos');
+  });
+
+  await paso('lee las cinco formas de tabla que trajo Esteban', async () => {
+    /* Las cinco que probó en vivo, tal como las pegó. Las tres que ya
+     * funcionaban entran aquí para que NO se rompan al arreglar la que no. */
+    const r = await p.evaluate(() => {
+      const P = window.MachotePegar;
+      const casos = {
+        pipes: '5   | PZA  | Interruptor termomagnetico 3P 100A     | 2,450.00\n' +
+               '12  | MTS  | Cable THHN calibre 8 AWG negro         | 38.50\n' +
+               '2   | KIT  | Kit de montaje para gabinete NEMA 4X   | 1,180.00\n' +
+               '30  | PZA  | Conector recto tuberia 3/4             | 24.90\n' +
+               '1   | SERV | Puesta en marcha y pruebas en sitio    | 15,800.00',
+        csvRaro: 'descripcion,precio_unitario,unidad,cantidad\n' +
+               'Bomba centrifuga sanitaria 2HP acero inox,18750.00,PZA,2\n' +
+               'Sello mecanico repuesto serie 21,940.25,PZA,6\n' +
+               'Tuberia sanitaria cedula 10 tramo 6m,2310.00,TRAMO,9\n' +
+               'Abrazadera clamp con empaque EPDM,187.40,JGO,24\n' +
+               'Mano de obra soldadura orbital,650.00,HORA,40'
+      };
+      const o = {};
+      for (const k in casos) {
+        const x = P.interpretar(casos[k], { moneda: 'MXN' });
+        o[k] = { ok: x.ok, n: x.renglones.length, r: x.renglones };
+      }
+      return o;
+    });
+
+    // La de pipes NO trae encabezado: la columna de unidad hay que reconocerla
+    // por su contenido. Antes se perdia entera.
+    if (!r.pipes.ok || r.pipes.n !== 5) throw new Error('pipes: ' + JSON.stringify(r.pipes).slice(0, 120));
+    const p0 = r.pipes.r[0];
+    if (p0.qty !== 5 || p0.pu !== 2450) throw new Error('pipes fila 1: ' + JSON.stringify(p0));
+    const unidadesPipes = r.pipes.r.map(x => x.unidad);
+    if (unidadesPipes.some(u => !u)) throw new Error('perdio unidades: ' + unidadesPipes.join('|'));
+    if (unidadesPipes.join('|') !== 'Pieza|Metro|Kit|Pieza|Servicio')
+      throw new Error('no normalizo las unidades: ' + unidadesPipes.join('|'));
+    if (r.pipes.r[4].tipo !== 'Servicios')
+      throw new Error('"Puesta en marcha" no salio Servicios: ' + r.pipes.r[4].tipo);
+
+    // La CSV trae encabezado pero en OTRO orden, y con precio_unitario.
+    if (!r.csvRaro.ok || r.csvRaro.n !== 5) throw new Error('csv: ' + JSON.stringify(r.csvRaro).slice(0, 120));
+    const c0 = r.csvRaro.r[0];
+    if (c0.qty !== 2 || c0.pu !== 18750) throw new Error('csv fila 1: ' + JSON.stringify(c0));
+    if (r.csvRaro.r.map(x => x.unidad).join('|') !== 'Pieza|Pieza|Tramo|Juego|Horas')
+      throw new Error('csv unidades: ' + r.csvRaro.r.map(x => x.unidad).join('|'));
+    if (r.csvRaro.r[4].tipo !== 'Servicios')
+      throw new Error('"Mano de obra" no salio Servicios: ' + r.csvRaro.r[4].tipo);
+    console.log('    pipes sin encabezado y CSV en otro orden, con unidad normalizada');
+  });
+
+  await paso('los dos modos son arriba y debajo, y ninguno pierde nada', async () => {
+    await p.setViewportSize({ width: 1280, height: 900 });
+    await ir('#/m/M-1041'); await hoja('Suministro');
+    const usadas = () => p.evaluate(() =>
+      [...document.querySelectorAll('[data-cel$=":descripcion"]')].map(i => i.value).filter(Boolean));
+    const antes = await usadas();
+    await p.locator('[data-pegar]').nth(1).click(); await p.waitForTimeout(300);
+    const modos = await p.locator('.modos label').allTextContents();
+    if (!/debajo/.test(modos.join(' ')) || !/arriba/.test(modos.join(' ')))
+      throw new Error('los modos no dicen arriba/debajo: ' + modos.join(' | '));
+    await p.fill('#pg-txt', '- 9 Tornillo hexagonal grado 5  $12.50');
+    await p.waitForTimeout(400);
+    await p.click('#pg-ok'); await p.waitForTimeout(500);   // "debajo" es el de por defecto
+    const desp = await usadas();
+    const perdidas = antes.filter(d => desp.indexOf(d) < 0);
+    if (perdidas.length) throw new Error('se perdieron: ' + perdidas.join(' | '));
+    if (desp.indexOf('Tornillo hexagonal grado 5') !== 2)
+      throw new Error('"debajo" no lo puso después del renglón 2: ' + desp.slice(0, 4).join(' | '));
+    await p.setViewportSize({ width: 380, height: 780 });
+  });
+
+  await paso('pegar no deja la hoja creciendo con renglones vacíos', async () => {
+    const r = await p.evaluate(() => {
+      const C = window.MachoteCalc;
+      const m = C.machoteNuevo({ nombre: 'x' });
+      return { antes: m.secciones[0].partidas.length };
+    });
+    if (r.antes !== 30) throw new Error('la sección nueva no trae 30: ' + r.antes);
+    await p.setViewportSize({ width: 1280, height: 900 });
+    await ir('#/m/M-1042'); await hoja('Adecuación');
+    const cuenta = () => p.evaluate(() =>
+      document.querySelectorAll('[data-cel*=":partidas:"][data-cel$=":descripcion"]').length);
+    const antes = await cuenta();
+    await p.locator('[data-pegar]').first().click(); await p.waitForTimeout(300);
+    await p.fill('#pg-txt', '- 1 Uno  $10\n- 2 Dos  $20\n- 3 Tres  $30\n- 4 Cuatro  $40\n- 5 Cinco  $50');
+    await p.waitForTimeout(400);
+    await p.click('#pg-ok'); await p.waitForTimeout(500);
+    const desp = await cuenta();
+    // Crece porque entran cinco, pero no se dispara: la cola vacía se recorta.
+    if (desp > antes + 5) throw new Error('la hoja creció de más: ' + antes + ' → ' + desp);
+    console.log('   ', antes, '→', desp, 'renglones tras pegar 5');
+    await p.setViewportSize({ width: 380, height: 780 });
   });
 
   // ── El gate ──────────────────────────────────────────────────────────
