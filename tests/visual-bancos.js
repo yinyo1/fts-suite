@@ -226,6 +226,50 @@ const esDelEntorno = t => /ERR_CONNECTION_RESET|ERR_NAME_NOT_RESOLVED|ERR_BLOCKE
       sem.paneles.length > 0 && sem.paneles.every(w => w >= sem.anchoHost - 2),
       'anchos ' + JSON.stringify(sem.paneles) + ' vs host ' + sem.anchoHost);
 
+    // ── V1.09 · Fuentes BBVA de catálogo ─────────────────────────────────────────────
+    // El stub de STATUS NO reporta los journals 8, 96 ni 75: si aparecen es porque
+    // CATALOGO_FUENTES los aportó. Y si algún día el server los reportara, estas tarjetas
+    // deben venir del server — el gate mira que existan y que digan la verdad, no de dónde salen.
+    const bbva = await p.evaluate(() => [...document.querySelectorAll('#ip-srcgrid .sc')].map(c => ({
+      nm: (c.querySelector('.sc-nm') || {}).textContent || '',
+      j: (c.querySelector('.sc-j') || {}).textContent || '',
+      cur: (c.querySelector('.sc-cur') || {}).textContent || '',
+      last: (c.querySelector('.sc-last') || {}).textContent || '',
+      off: c.classList.contains('off'),
+      chip: (c.querySelector('.stchip') || {}).textContent || '',
+      cuerpo: (c.querySelector('.sc-body') || {}).textContent || ''
+    })).filter(c => /BBVA/.test(c.nm)));
+    check('las 3 cuentas BBVA tienen tarjeta (' + bbva.length + ')', bbva.length === 3, JSON.stringify(bbva));
+    check('cada tarjeta BBVA declara su moneda',
+      bbva.length === 3 && bbva.every(c => /^(MXN|USD)$/.test(c.cur.trim())), JSON.stringify(bbva.map(c => c.nm + '=' + c.cur)));
+    // La de dólares es la trampa: journal 75 lleva currency_id USD sobre la empresa MEXICANA.
+    // Si el panel la pintara en MXN repetiría el bug P1 de Chase (asumir moneda por empresa).
+    const usd = bbva.find(c => /USD/.test(c.nm));
+    check('BBVA USD (j·75) se muestra en USD, no en MXN', !!usd && usd.cur.trim() === 'USD' && /75/.test(usd.j),
+      JSON.stringify(usd));
+    // Honestidad del feed muerto: la tarjeta de BBVA General NO puede decir "hoy" ni "hace N min".
+    const gen = bbva.find(c => /General/.test(c.nm));
+    check('BBVA General dice que su última información es de 2025-12-26',
+      !!gen && /2025-12-26/.test(gen.last + gen.cuerpo) && !/hace \d|hoy/i.test(gen.last), JSON.stringify(gen));
+    check('las BBVA salen apagadas y NO dicen "SIN CONFIGURAR"',
+      bbva.length === 3 && bbva.every(c => c.off) && bbva.every(c => !/SIN CONFIGURAR/.test(c.chip)),
+      JSON.stringify(bbva.map(c => c.nm + '|' + c.off + '|' + c.chip.trim())));
+    // El selector de journal de la vista de conciliación tiene que ofrecerlas aunque no haya filas.
+    const opts = await p.evaluate(() => [...document.querySelectorAll('#ip-fJournal option')].map(o => o.textContent.trim()));
+    check('el filtro de journal ofrece las 3 BBVA marcadas «sin datos»',
+      ['BBVA General','BBVA Nómina','BBVA USD'].every(n => opts.some(o => o.indexOf(n) === 0 && /sin datos/.test(o))),
+      JSON.stringify(opts));
+    // El semáforo no las inventa con un 0% — las declara sin medir, con su fecha.
+    const sf = await p.evaluate(() => {
+      const d = document.querySelector('#ip-semrows details.sinfeed');
+      return d ? { sum: (d.querySelector('.s2sum') || {}).textContent || '', n: d.querySelectorAll('.s2list li').length,
+                   txt: d.textContent } : null;
+    });
+    check('el semáforo declara las 3 cuentas sin feed (no las pinta al día)',
+      !!sf && sf.n === 3 && /2025-12-26/.test(sf.txt) && /sin medir/i.test(sf.txt), JSON.stringify(sf && sf.sum));
+    check('ninguna tarjeta del semáforo B se inventó para las BBVA',
+      cards.every(c => !/BBVA/.test(c.titulo)), JSON.stringify(cards.map(c => c.titulo)));
+
     // ── Operabilidad en celular ──────────────────────────────────────────────────────
     // Medido antes del cambio: 12 columnas dentro de 324 px con scrollWidth == clientWidth.
     // La tabla no se desbordaba para poder deslizarla: se comprimía, y la columna de estado
