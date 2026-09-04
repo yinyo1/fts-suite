@@ -250,6 +250,24 @@ seccion('Archivo para el despacho');
   // aviso existiera.
   check('la instruccion NO nombra el banco: eso no le dice nada a quien captura',
     !/BBVA/.test(f.instruccion), f.instruccion);
+  // ── el codigo de CONTPAQi ──────────────────────────────────────────────────
+  // Es la llave con la que Ulises captura. Si no viaja, el archivo de RH y su lista
+  // de raya no comparten nada cruzable — y el hueco tiene que verse del lado de RH,
+  // antes de mandar, no del lado de Ulises cuando el cruce no encuentre a la persona.
+  {
+    const pCon = persona({ id: 62, ppa: { aplica: false } });
+    pCon.codigo = '013';
+    const fCon = Des.filas({ semana: SEMANA, personas: [pCon], disputas: [] })[0];
+    check('el codigo de CONTPAQi viaja al archivo', fCon.codigo === '013', String(fCon.codigo));
+    check('y no ensucia el REVISAR de quien si lo tiene', fCon.revisar === '', fCon.revisar);
+
+    const pSin = persona({ id: 32, ppa: { aplica: false } });   // sin codigo
+    const fSin = Des.filas({ semana: SEMANA, personas: [pSin], disputas: [] })[0];
+    check('quien NO tiene codigo sale con la celda vacia', fSin.codigo === '', JSON.stringify(fSin.codigo));
+    check('y se marca en REVISAR, que es donde RH lo ve antes de mandar',
+      /sin código de CONTPAQi/.test(fSin.revisar), fSin.revisar);
+  }
+
   // Exhaustivo, no un caso: TODOS los tipos que piden fuente contra TODAS las cuentas
   // del catalogo. El assert de una sola combinacion deja pasar un camino que se cuele
   // por un tipo raro; este recorre las 44 (11 tipos x 4 cuentas) y exige que ninguna
@@ -423,8 +441,12 @@ seccion('Archivo para el despacho');
   check('el encabezado ya NO trae la tabla de numeros',
     cab.indexOf('DEPARTAMENTO') < 0 && cab.indexOf('PUESTO') < 0 && cab.indexOf('BONO') < 0,
     cab.join('|'));
-  check('las cuatro columnas son las que se acordaron con Esteban',
-    cab.join('|') === 'NO EMPLEADO|EMPLEADO|INSTRUCCION|REVISAR', cab.join('|'));
+  // El CODIGO abre el archivo, y va PRIMERO a proposito: es la llave con la que
+  // Ulises captura en CONTPAQi, que no conoce los ids de Odoo. El assert fija el
+  // orden, no solo la presencia — una columna correcta en el lugar equivocado es
+  // una columna que se lee mal.
+  check('las columnas son las que se acordaron, EN ORDEN',
+    cab.join('|') === 'CODIGO|NO EMPLEADO|EMPLEADO|INSTRUCCION|REVISAR', cab.join('|'));
   check('el archivo lleva BOM para que Excel no rompa los acentos', txt.charCodeAt(0) === 0xFEFF);
   check('cierra con un renglon de totales', /TOTAL \(1 personas\)/.test(lineas[lineas.length - 2]), lineas[lineas.length - 2]);
 
@@ -484,8 +506,8 @@ seccion('El Excel de dos hojas');
   // Hoja 1: las MISMAS cuatro columnas del archivo. Si un dia se agrega una columna
   // al csv y no al Excel, lo que Magaly revisa deja de ser lo que se manda.
   const cab1 = H[0].filas[3].map(x => x.v);
-  check('la hoja 1 lleva las mismas 4 columnas del archivo',
-    cab1.join('|') === 'NO EMPLEADO|EMPLEADO|INSTRUCCION|REVISAR', cab1.join('|'));
+  check('la hoja 1 lleva las MISMAS columnas del archivo, en el mismo orden',
+    cab1.join('|') === 'CODIGO|NO EMPLEADO|EMPLEADO|INSTRUCCION|REVISAR', cab1.join('|'));
 
   // Hoja 2: el detalle que se quito del archivo. Departamento y puesto vuelven aqui
   // —estorbaban a quien captura, no a quien audita— y estan TODOS los cubos.
@@ -558,9 +580,12 @@ seccion('El Excel de dos hojas');
   // El rango se DERIVA de las filas, no se escribe fijo: un assert con el rango de
   // otro archivo pegado a mano se rompe en cuanto cambia el numero de personas, que
   // es justo lo que cambia cada semana.
-  check('la hoja 1 declara su rango ocupado, y cuadra con sus filas',
-    crudo.indexOf('<dimension ref="A1:D' + H[0].filas.length + '"/>') >= 0,
-    'esperaba A1:D' + H[0].filas.length);
+  // La ultima letra se DERIVA del numero de columnas, no se escribe fija: agregar
+  // una columna no debe romper este assert, debe moverlo solo.
+  const ultLetra = Exc.letraCol(Des.COLUMNAS.length - 1);
+  check('la hoja 1 declara su rango ocupado, y cuadra con sus filas y columnas',
+    crudo.indexOf('<dimension ref="A1:' + ultLetra + H[0].filas.length + '"/>') >= 0,
+    'esperaba A1:' + ultLetra + H[0].filas.length);
   check('y la segunda hoja se llama Detalle dentro del libro',
     /<sheet name="Detalle"/.test(crudo));
   check('el contenido viaja de verdad en el archivo (no es un ZIP vacio)',
