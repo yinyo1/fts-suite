@@ -1,5 +1,5 @@
 {
-  "version": "V1.06",
+  "version": "V1.07",
   "fecha": "2026-09-03",
   "modulo": "rh/nomina-incidencias",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
@@ -37,8 +37,13 @@
     },
     {
       "version": "V1.06",
-      "pr": null,
+      "pr": 186,
       "nota": "Arreglo del premio de puntualidad + nota obligatoria. EL BUG: no era del servidor. El ciclo escribir-releer contra produccion tarda ~3.5 s y el boton no daba senal, asi que el segundo clic salia del estado VIEJO y deshacia el primero — desde fuera se veia como un boton muerto. Ahora hay candado mientras el server contesta y el boton lo dice ('guardando...'). Ademas el boton se pinta para TODOS, incluido quien su ficha de Odoo dice que no aplica: ese era justo el caso que RH necesitaba poder forzar y no tenia boton. NOTA OBLIGATORIA: dar o quitar el premio a mano abre un dialogo que exige decir por que, con la evidencia de puntualidad a la vista para decidir con ella. La exigencia vive en el SERVER (PPA_SIN_NOTA, minimo 4 caracteres), no solo en la pantalla — el frontend esta en un repo publico y exigirla ahi seria pedirla por favor. Dejarlo sin decidir no pide nota, porque no es una decision, y limpia la nota anterior para que no quede colgada. La nota se guarda con quien la escribio y cuando, y se muestra en el cajon y en el tooltip del renglon: es lo unico que queda cuando alguien reclama su premio tres semanas despues. Columna ppa_nota nueva en nom_semana_persona; nom/semana devuelve ppa_nota, ppa_actor y ppa_fecha."
+    },
+    {
+      "version": "V1.07",
+      "pr": null,
+      "nota": "F3: las disputas se resuelven con el flujo de aprobacion de verdad, no con una marca local. Cada checada abre una ventana con las MISMAS cuatro acciones del panel de Mi Perfil (aprobar / ajustar / rechazar / escalar a Direccion), el mismo minimo de 10 caracteres en el comentario, y la misma regla de cuando se pide hora: ajustar siempre, aprobar salvo para supervisor. Las reglas estan copiadas del panel, no reinterpretadas. Escribe al MISMO resolver Oc2ceMHX2O0L0y2X con el mismo payload; se elimino la marca local que existia desde V1.00 —incluida window.NomApp.resolverDisputa— porque dos caminos para el mismo dato son una carrera silenciosa en la que el que pierde no deja rastro (CLAUDE.md §20.4). Despues de resolver se RELEE: el TAG lo limpia el resolver en Odoo y esta pantalla lee las disputas de ese TAG. El contexto de la incidencia se lee del almacen por la API de GitHub, no por el CDN raw, porque el raw cachea 5 min y aqui se decide sobre datos recien cambiados. Si el folio del TAG no existe en el almacen se dice que es un TAG huerfano y se manda a limpiarlo donde se puede, en vez de ofrecer un boton que va a fallar. Salvaguarda anti-auto-aprobacion: nadie resuelve una incidencia suya. Cual accion esta elegida es inequivoco —las otras se apagan— porque esa eleccion decide lo que pasa en Odoo. Archivo nuevo js/nom-resolver.js, para que se vea que es un puente al camino que ya existia y no uno nuevo."
     }
   ]
 }

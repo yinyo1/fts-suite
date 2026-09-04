@@ -137,9 +137,9 @@
   };
 
   var DISPUTAS_DEMO = [
-    { id: 1, empleado_id: 128, fecha: '2026-08-27', attendance_id: 15194, folio: 'INC-OLV-128-2026-08-27T23-07-09-809Z', propuesta: 'SO9428 Vertiv 2da Fase', evidencia: 'planning.slot 1306 · 9.6 h · «Conexión eléctrica y mecánica de chiller y bombas»', abierta: true },
-    { id: 2, empleado_id: 124, fecha: '2026-08-27', attendance_id: 15174, folio: 'INC-OLV-CHK-124-2026-08-28T00-09-13-047Z', propuesta: 'SO9428 Vertiv 2da Fase', evidencia: 'planning.slot 1307 · 9.6 h · «Conexión + supervisión EHS»', abierta: true },
-    { id: 3, empleado_id: 62,  fecha: '2026-09-01', attendance_id: 15236, folio: 'INC-AUTO-CIERRE-62-2026-09-01T13-37-41-561Z', propuesta: 'B3096 Admin de Operaciones', evidencia: 'Histórico 5/5 · sin slot de obra en toda la semana', abierta: true }
+    { id: 1, empleado_id: 128, empleado_nombre: 'Enoc Natanael Maldonado soto', fecha: '2026-08-27', attendance_id: 15194, folio: 'INC-OLV-128-2026-08-27T23-07-09-809Z', propuesta: 'SO9428 Vertiv 2da Fase', evidencia: 'planning.slot 1306 · 9.6 h · «Conexión eléctrica y mecánica de chiller y bombas»', abierta: true },
+    { id: 2, empleado_id: 124, empleado_nombre: 'Germán Emmanuel Merino Falcón', fecha: '2026-08-27', attendance_id: 15174, folio: 'INC-OLV-CHK-124-2026-08-28T00-09-13-047Z', propuesta: 'SO9428 Vertiv 2da Fase', evidencia: 'planning.slot 1307 · 9.6 h · «Conexión + supervisión EHS»', abierta: true },
+    { id: 3, empleado_id: 62,  empleado_nombre: 'Gilberto Gibran Solís Carrillo', fecha: '2026-09-01', attendance_id: 15236, folio: 'INC-AUTO-CIERRE-62-2026-09-01T13-37-41-561Z', propuesta: 'B3096 Admin de Operaciones', evidencia: 'Histórico 5/5 · sin slot de obra en toda la semana', abierta: true }
   ];
 
   var SOS_DEMO = [

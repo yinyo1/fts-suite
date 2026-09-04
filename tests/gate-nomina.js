@@ -265,7 +265,7 @@ function arrancarRender() { (async function () {
   // de que corra el script de arranque, que pide version.json.
   w.fetch = () => Promise.resolve({ json: () => Promise.resolve({ version: 'V1.00' }) });
 
-  for (const f of ['catalogo.js', 'logica.js', 'nom-auth.js', 'nom-client.js', 'app.js']) {
+  for (const f of ['catalogo.js', 'logica.js', 'nom-auth.js', 'nom-client.js', 'nom-resolver.js', 'app.js']) {
     w.eval(fs.readFileSync(path.join(MOD, 'js', f), 'utf8'));
   }
 
@@ -370,6 +370,69 @@ function arrancarRender() { (async function () {
   check('con quién la tomó', /magaly/.test((d.querySelector('.ppa-nota .firma') || {}).textContent || ''),
     (d.querySelector('.ppa-nota .firma') || {}).textContent);
   w.NomApp.cerrar();
+  await new Promise(r => setTimeout(r, 30));
+
+  // ── El flujo de aprobación de una checada ───────────────────────────────────
+  // Se prueba con clics, no leyendo el código: es el camino por el que RH va a
+  // escribir en Odoo y no puede depender de que "se ve bien".
+  w.NomApp.irA(2);
+  await new Promise(r => setTimeout(r, 30));
+  const btnResolver = d.querySelector('#p2 [data-acc="resolver"]');
+  check('cada disputa ofrece resolverse por el flujo, no marcarse en local', !!btnResolver);
+  check('ya no queda el atajo de "aceptar la propuesta"', !d.querySelector('#p2 [data-acc="aceptar"]'));
+  check('y la marca local desapareció del API del módulo', typeof w.NomApp.resolverDisputa === 'undefined');
+
+  btnResolver.dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+  await new Promise(r => setTimeout(r, 60));
+  const mod = d.querySelector('.modal');
+  check('pulsar abre la ventana del flujo', !!mod);
+  check('trae las cuatro acciones del panel',
+    d.querySelectorAll('[data-accion]').length === 4,
+    String(d.querySelectorAll('[data-accion]').length));
+  check('y las nombra igual que en Mi Perfil',
+    ['aprobar', 'ajustar', 'rechazar', 'escalar'].every(a => d.querySelector('[data-accion="' + a + '"]')));
+  check('la ventana dice de quién es la checada, no solo su id',
+    /Enoc/.test((d.querySelector('.mpanel h3') || {}).textContent || ''),
+    (d.querySelector('.mpanel h3') || {}).textContent);
+  check('y el contexto también trae el nombre',
+    /Enoc/.test((d.querySelector('.rctx') || {}).textContent || ''));
+  check('el contexto trae el folio, que es lo que el resolver necesita',
+    /INC-/.test((d.querySelector('.rctx .folio') || {}).textContent || ''),
+    (d.querySelector('.rctx .folio') || {}).textContent);
+
+  // Sin elegir acción no se manda nada.
+  d.querySelector('#rok').dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+  await new Promise(r => setTimeout(r, 20));
+  check('sin elegir acción, no manda', /Elige primero/.test((d.querySelector('#rerr') || {}).textContent || ''),
+    (d.querySelector('#rerr') || {}).textContent);
+
+  // Comentario corto: rechazado con el mínimo del panel.
+  d.querySelector('[data-accion="rechazar"]').dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+  await new Promise(r => setTimeout(r, 20));
+  d.querySelector('#rcom').value = 'no';
+  d.querySelector('#rok').dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+  await new Promise(r => setTimeout(r, 20));
+  check('un comentario corto se rechaza, con el mismo mínimo del panel',
+    /al menos 10/.test((d.querySelector('#rerr') || {}).textContent || ''),
+    (d.querySelector('#rerr') || {}).textContent);
+
+  // Rechazar NO pide hora; ajustar SÍ. Copiado del panel, no reinterpretado.
+  check('rechazar no pide hora', d.querySelector('#rhora').className === 'hid');
+  d.querySelector('[data-accion="ajustar"]').dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+  await new Promise(r => setTimeout(r, 20));
+  check('ajustar sí la pide', d.querySelector('#rhora').className !== 'hid');
+  check('cuál acción está elegida es inequívoco: las otras se apagan',
+    d.querySelector('[data-accion="ajustar"]').className.indexOf('sel') >= 0 &&
+    ['aprobar', 'rechazar', 'escalar'].every(a => d.querySelector('[data-accion="' + a + '"]').className.indexOf('apagada') >= 0));
+  d.querySelector('#rcom').value = 'Fue turno de noche, se ajusta la salida real.';
+  d.querySelector('#rok').dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+  await new Promise(r => setTimeout(r, 20));
+  check('ajustar sin hora no manda',
+    /hora/i.test((d.querySelector('#rerr') || {}).textContent || ''),
+    (d.querySelector('#rerr') || {}).textContent);
+
+  d.querySelector('.modal').remove();
+  w.NomApp.irA(1);
   await new Promise(r => setTimeout(r, 30));
 
   const filas = d.querySelectorAll('#tb tr[data-id]');

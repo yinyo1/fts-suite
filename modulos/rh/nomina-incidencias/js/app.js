@@ -670,8 +670,8 @@
         '<span style="font-size:12px;color:var(--muted)">asistencia ' + esc(d.attendance_id) + '</span></div>' +
         '<div class="ev"><b>Propuesta:</b> ' + esc(d.propuesta) + '<br><b>Evidencia:</b> ' + esc(d.evidencia) + '</div>';
       if (d.abierta) {
-        h += '<div class="acc"><button class="btn pri" data-acc="aceptar" data-id="' + d.id + '">Aceptar la propuesta</button>' +
-          '<button class="btn" data-acc="otro" data-id="' + d.id + '">Es otro destino</button></div>';
+        h += '<div class="acc"><button class="btn pri" data-acc="resolver" data-id="' + d.id + '">Resolver esta checada</button>' +
+          '<span class="pista">Abre el mismo flujo de aprobación del panel de incidencias.</span></div>';
       }
       h += '</div>';
     }
@@ -680,26 +680,192 @@
     var bs = $('p2').querySelectorAll('[data-acc]');
     for (var k = 0; k < bs.length; k++) {
       bs[k].addEventListener('click', function (ev) {
-        var id = Number(ev.currentTarget.getAttribute('data-id'));
-        var acc = ev.currentTarget.getAttribute('data-acc');
-        resolverDisputa(id, acc);
+        abrirResolver(Number(ev.currentTarget.getAttribute('data-id')));
       });
     }
   }
 
-  // En V1.00 la resolución es LOCAL: marca la disputa y desbloquea la semana en la
-  // pantalla. El write real llama al resolver `incidencias/resolver`, que ya existe y
-  // ya limpia el TAG — se cablea en la fase de disputas, no antes, para no estrenar un
-  // segundo camino de escritura sobre el mismo dato.
-  function resolverDisputa(id, accion) {
-    for (var i = 0; i < S.disputas.length; i++) {
-      if (S.disputas[i].id === id) {
-        S.disputas[i].abierta = false;
-        S.disputas[i].resolucion = accion;
-        SUCIO = true;
+  // ══════════════ RESOLVER UNA CHECADA · el flujo del panel ══════════════
+  // No se marca nada en local: se manda al MISMO resolver que usan supervisores y
+  // RH desde Mi Perfil, y despues se relee. Marcar aqui y escribir alla serian dos
+  // caminos para el mismo dato (CLAUDE.md §20.4), y el que pierde no deja rastro.
+
+  var RESOLVIENDO = false;
+
+  async function abrirResolver(idDisputa) {
+    if (RESOLVIENDO) return;
+    var d = null;
+    for (var i = 0; i < (S.disputas || []).length; i++) if (S.disputas[i].id === idDisputa) d = S.disputas[i];
+    if (!d) return;
+
+    var quien = persona(d.empleado_id);
+    var nombre = d.empleado_nombre || (quien && quien.nombre) || ('empleado ' + d.empleado_id);
+    var caja = modal('Resolver la checada de ' + esc(nombreCorto(nombre)),
+      '<div class="cargando">Leyendo la incidencia…</div>');
+
+    var inc = null;
+    if (window.NomClient.modo() === 'demo') {
+      inc = { id_interno: d.folio, status: 'pendiente_rh', empleado_id: d.empleado_id,
+              empleado_nombre: nombre,
+              tipo: /AUTO-CIERRE/.test(d.folio || '') ? 'auto_cierre_pendiente'
+                  : (/CHK/.test(d.folio || '') ? 'olvido_checkout' : 'olvido_entrada'),
+              propuestas: [{ rol: 'empleado', comentario: 'Olvidé marcar la salida.' }] };
+    } else {
+      try {
+        await window.NomResolver.cargarIncidencias(true);
+        inc = window.NomResolver.porFolio(d.folio);
+      } catch (err) {
+        pintarResolver(caja, d, null, err && err.msg);
+        return;
       }
     }
-    refrescar();
+    pintarResolver(caja, d, inc, null);
+  }
+
+  function modal(titulo, cuerpo) {
+    var el = document.createElement('div');
+    el.className = 'modal';
+    el.innerHTML = '<div class="mpanel ancho"><h3>' + titulo + '</h3><div class="mcuerpo"></div></div>';
+    el.querySelector('.mcuerpo').innerHTML = cuerpo;
+    el.addEventListener('click', function (ev) { if (ev.target === el && !RESOLVIENDO) cerrarModal(el); });
+    document.body.appendChild(el);
+    return el;
+  }
+  function cerrarModal(el) { if (el && el.parentNode) el.parentNode.removeChild(el); }
+
+  function pintarResolver(caja, d, inc, errorCarga) {
+    var cuerpo = caja.querySelector('.mcuerpo');
+    var ses = window.NomAuth.getSession() || {};
+    var yo = ses.empleado_id;
+
+    // Sin incidencia en el almacen no hay nada que resolver por aqui: el TAG quedo
+    // huerfano. Se dice y se manda a donde SI se puede limpiar, en vez de ofrecer
+    // un boton que va a fallar.
+    if (errorCarga || !inc) {
+      cuerpo.innerHTML =
+        '<div class="banner bad" style="margin:0"><span class="ico">⛔</span><div>' +
+        '<h3>Esta checada no se puede resolver desde aquí</h3>' +
+        '<div style="font-size:13px">' +
+        (errorCarga ? esc(errorCarga)
+                    : 'El TAG en Odoo apunta al folio <code>' + esc(d.folio) + '</code>, pero no existe ' +
+                      'ninguna incidencia con ese folio. Es un TAG huérfano: se limpia desde Odoo o desde ' +
+                      'el panel de incidencias, no desde aquí.') +
+        '</div></div></div>' +
+        '<div class="mact"><button class="btn" data-cerrar>Cerrar</button></div>';
+      cuerpo.querySelector('[data-cerrar]').addEventListener('click', function () { cerrarModal(caja); });
+      return;
+    }
+
+    // Salvaguarda anti-auto-aprobación (CLAUDE.md §3): nadie resuelve lo suyo.
+    if (yo && inc.empleado_id === yo) {
+      cuerpo.innerHTML =
+        '<div class="banner bad" style="margin:0"><span class="ico">⛔</span><div>' +
+        '<h3>Es tu propia checada</h3>' +
+        '<div style="font-size:13px">No puedes resolver una incidencia tuya. Pídesela a otra persona de RH ' +
+        'o a Dirección.</div></div></div>' +
+        '<div class="mact"><button class="btn" data-cerrar>Cerrar</button></div>';
+      cuerpo.querySelector('[data-cerrar]').addEventListener('click', function () { cerrarModal(caja); });
+      return;
+    }
+
+    var ROL = 'rh';   // este módulo es de RH; el resolver decide si el estado lo permite
+    var A = window.NomResolver.ACCIONES;
+    var ult = (inc.propuestas && inc.propuestas.length) ? inc.propuestas[inc.propuestas.length - 1] : null;
+
+    var h =
+      '<div class="rctx">' +
+        '<div><b>Empleado</b> ' + esc(inc.empleado_nombre || d.empleado_nombre ||
+            ((persona(d.empleado_id) || {}).nombre) || '—') + ' · id ' + esc(inc.empleado_id || d.empleado_id) + '</div>' +
+        '<div><b>Fecha</b> ' + esc(d.fecha) + ' · <b>asistencia</b> ' + esc(d.attendance_id) + '</div>' +
+        '<div><b>Estado</b> ' + esc(inc.status || '—') + ' · <b>tipo</b> ' + esc(inc.tipo || '—') + '</div>' +
+        '<div><b>Evidencia</b> ' + esc(d.evidencia) + '</div>' +
+        (d.propuesta ? '<div><b>Proyecto propuesto</b> ' + esc(d.propuesta) + '</div>' : '') +
+        (ult && ult.comentario ? '<div class="ult">Última nota (' + esc(ult.rol || '—') + '): «' + esc(ult.comentario) + '»</div>' : '') +
+        '<div class="folio">' + esc(inc.id_interno) + '</div>' +
+      '</div>' +
+      '<div class="racciones">';
+    for (var k in A) h += '<button class="racc ' + A[k].clase + '" data-accion="' + k + '">' + A[k].label + '</button>';
+    h +=
+      '</div>' +
+      '<div id="rdet" class="hid">' +
+        '<label for="rhora" id="rhoraLbl">Hora final <span class="req">se aplica en Odoo</span></label>' +
+        '<input id="rhora" type="time" step="60">' +
+        '<label for="rcom">Comentario <span class="req">obligatorio</span></label>' +
+        '<textarea id="rcom" rows="3" maxlength="500" placeholder="Qué se decidió y por qué. Lo va a leer quien revise esto después."></textarea>' +
+        '<div class="merr hid" id="rerr"></div>' +
+        '<div class="mact">' +
+          '<button class="btn" data-cerrar>Cancelar</button>' +
+          '<button class="btn pri" id="rok">Confirmar</button>' +
+          '<span class="pista">Actúas como <b>RH</b>.</span>' +
+        '</div>' +
+      '</div>';
+    cuerpo.innerHTML = h;
+
+    var elegida = null;
+    var det = cuerpo.querySelector('#rdet');
+    var btns = cuerpo.querySelectorAll('[data-accion]');
+    for (var b = 0; b < btns.length; b++) {
+      btns[b].addEventListener('click', function (ev) {
+        elegida = ev.currentTarget.getAttribute('data-accion');
+        // La elegida se queda viva y las demas se apagan. Cual accion esta elegida
+        // decide lo que pasa en Odoo: si hay que adivinarlo por un borde, se va a
+        // adivinar mal alguna vez.
+        for (var z = 0; z < btns.length; z++) {
+          var esta = btns[z] === ev.currentTarget;
+          btns[z].classList.toggle('sel', esta);
+          btns[z].classList.toggle('apagada', !esta);
+        }
+        det.className = '';
+        // La hora solo se pide cuando de verdad se aplica. Pedirla siempre entrena
+        // a rellenarla sin mirarla.
+        var pide = window.NomResolver.requiereHora(elegida, ROL);
+        cuerpo.querySelector('#rhora').className = pide ? '' : 'hid';
+        cuerpo.querySelector('#rhoraLbl').className = pide ? '' : 'hid';
+        cuerpo.querySelector('#rcom').focus();
+      });
+    }
+
+    cuerpo.querySelector('[data-cerrar]').addEventListener('click', function () { cerrarModal(caja); });
+
+    cuerpo.querySelector('#rok').addEventListener('click', async function () {
+      var err = cuerpo.querySelector('#rerr');
+      function fallo(m) { err.textContent = m; err.className = 'merr'; }
+      if (!elegida) return fallo('Elige primero qué vas a hacer con la checada.');
+
+      var com  = cuerpo.querySelector('#rcom').value;
+      var hora = window.NomResolver.requiereHora(elegida, ROL) ? cuerpo.querySelector('#rhora').value : null;
+      var malo = window.NomResolver.validar(elegida, ROL, com, hora);
+      if (malo) return fallo(malo);
+
+      if (window.NomClient.modo() === 'demo') {
+        cerrarModal(caja);
+        aviso('ok', 'En práctica no se manda nada al resolver');
+        return;
+      }
+
+      var ok = cuerpo.querySelector('#rok');
+      RESOLVIENDO = true;
+      ok.disabled = true; ok.textContent = 'Enviando…';
+      aviso('yendo', 'Enviando al resolver…');
+      try {
+        var r = await window.NomResolver.resolver({
+          id_interno: inc.id_interno, accion: elegida, rol: ROL,
+          actor_id: (window.NomAuth.getSession() || {}).empleado_id,
+          actor_nombre: (window.NomAuth.getSession() || {}).nombre,
+          comentario: com, hora_cst: hora
+        });
+        cerrarModal(caja);
+        // Se relee: el TAG lo limpia el resolver en Odoo, y esta pantalla lee las
+        // disputas de ese TAG. Hasta que no se relea, no sabemos que quedó.
+        await recargar();
+        aviso('ok', r.mensaje || 'Checada resuelta');
+      } catch (e2) {
+        ok.disabled = false; ok.textContent = 'Reintentar';
+        fallo((e2 && e2.msg) || 'No se pudo resolver.');
+        aviso('mal', 'NO se resolvió: ' + ((e2 && e2.msg) || 'error desconocido'));
+      }
+      RESOLVIENDO = false;
+    });
   }
 
   // ══════════════════════════ PANTALLA 3 · CIERRE ══════════════════════════
@@ -857,7 +1023,7 @@
     cerrar: cerrar,
     estado: function () { return S; },
     filtro: function (f) { if (f !== undefined) { FILTRO = f; pintarFiltros(); pintarTabla(); } return FILTRO; },
-    resolverDisputa: resolverDisputa,
+    abrirResolver: abrirResolver,
     recargar: recargar,
     sucio: function () { return SUCIO; }
   };
