@@ -140,14 +140,17 @@
     // Días que NO se pagan
     falta_injustificada: { v: 'DESCONTAR', signo: 'resta' },
     permiso_sin_goce:    { v: 'DESCONTAR', signo: 'resta' },
-    // ⚠️ CONFIRMAR CON ESTEBAN antes de que este archivo llegue a Ulises. Estos dos
-    // dependen de la política de FTS, no del código, y ponerles el verbo equivocado
-    // le cuesta dinero a una persona real:
-    //   · falta_justificada — ¿se paga (y entonces es permiso con goce) o no?
-    //   · incapacidad — la cubre el IMSS, así que la empresa no la paga; se escribe
-    //     "NO PAGAR" y no "DESCONTAR" porque no es un castigo, es otro pagador.
-    falta_justificada:   { v: 'DESCONTAR', signo: 'resta', confirmar: true },
-    incapacidad:         { v: 'NO PAGAR',  signo: 'resta', nota: 'la cubre el IMSS', confirmar: true },
+    // CONFIRMADO POR ESTEBAN (2026-09-04). Los dos dependen de la política de FTS, no
+    // del código, y ponerles el verbo equivocado le cuesta dinero a una persona real,
+    // así que estuvieron marcados `confirmar` hasta que hubo respuesta:
+    //   · falta_justificada — se descuenta. Justificada quiere decir que no se
+    //     sanciona, no que se pague; si hay que pagarla, el tipo es permiso_con_goce.
+    //   · incapacidad — se descuenta el día TAMBIÉN. El verbo es DESCONTAR y no
+    //     "NO PAGAR" porque para CONTPAQi es la misma operación: el día sale de la
+    //     nómina de FTS. La nota dice a dónde se fue el pago, que es lo que impide
+    //     que alguien lea el descuento como un error y lo revierta.
+    falta_justificada:   { v: 'DESCONTAR', signo: 'resta' },
+    incapacidad:         { v: 'DESCONTAR', signo: 'resta', nota: 'el día lo paga el IMSS, no FTS' },
     // Dinero que se agrega
     bono_proyecto:       { v: 'AGREGAR',   signo: 'suma'  },
     bono_productividad:  { v: 'AGREGAR',   signo: 'suma'  },
