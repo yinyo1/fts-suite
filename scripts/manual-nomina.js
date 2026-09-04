@@ -32,6 +32,21 @@ const CUERPO = `
   <p class="meta">Módulo ${VER.version} · manual del ${HOY} · Recursos Humanos</p>
 </header>
 
+<div class="nuevo">
+  <b>Qué cambió desde que lo probaste</b>
+  <ul>
+    <li><b>Los datos son reales.</b> El roster y los días trabajados salen de Odoo, y lo que
+    capturas se guarda de verdad.</li>
+    <li><b>Un renglón en rojo dice por qué</b> ahí mismo, sin abrirlo.</li>
+    <li><b>Tipos nuevos</b>: día de cumpleaños, falta justificada e injustificada, permiso
+    con y sin goce, y dos bonos que no piden proyecto.</li>
+    <li><b>El buscador de proyectos</b> ya trae también los de Estados Unidos.</li>
+    <li><b>El premio de puntualidad</b> lo sugiere el sistema y tú lo decides (sección 9).</li>
+    <li><b>Las checadas en disputa</b> se resuelven aquí, con el mismo flujo de aprobación
+    del panel de incidencias (sección 10).</li>
+  </ul>
+</div>
+
 <nav class="indice">
   <b>En esta guía</b>
   <ol>
@@ -42,7 +57,7 @@ const CUERPO = `
     <li><a href="#lista">Cómo se lee la lista</a></li>
     <li><a href="#capturar">Capturar a una persona</a></li>
     <li><a href="#catalogo">Qué se puede declarar</a></li>
-    <li><a href="#ejemplos">Tres semanas de ejemplo, paso a paso</a></li>
+    <li><a href="#ejemplos">Cinco casos de ejemplo, paso a paso</a></li>
     <li><a href="#ppa">El premio de puntualidad</a></li>
     <li><a href="#disputas">Checadas en disputa</a></li>
     <li><a href="#cerrar">Cerrar y enviar</a></li>
@@ -117,6 +132,20 @@ const CUERPO = `
     <li><b>Gris</b> — no tiene nada declarado y tampoco le falta nada.</li>
   </ul>
   ${img('06-tabla', 'Los renglones, con su barra de color')}
+  <p class="nota"><b>Un renglón en rojo dice por qué debajo del nombre</b>, en letra roja
+  pequeña. No tienes que abrirlo para saber qué le falta: si son varias cosas te muestra
+  las dos primeras y dice cuántas más hay.</p>
+
+  <h3>Las columnas</h3>
+  <table>
+    <tr><th>Columna</th><th>Qué te dice</th></tr>
+    <tr><td><b>Días</b></td><td>Cuántos van de los que se esperan. En verde si cuadra.</td></tr>
+    <tr><td><b>Declarado</b></td><td>Qué le declaraste esta semana.</td></tr>
+    <tr><td><b>Dinero</b></td><td>Los montos, y en rojo si a alguno le falta proyecto o fuente.</td></tr>
+    <tr><td><b>Estado vigente</b></td><td>Deudas, bajas y demás que vienen de semanas pasadas.</td></tr>
+    <tr><td><b>Premio</b></td><td>Si le toca el premio de puntualidad. Se explica en la sección 9.</td></tr>
+  </table>
+
   <h3>El aviso de arriba</h3>
   ${img('04-banner', 'El aviso que resume lo que falta')}
   <p>Resume todo lo que impide enviar la semana, <b>con nombre y motivo</b>. No dice
@@ -182,11 +211,16 @@ const CUERPO = `
   paga por una vía distinta.</p>
   <table>
     <tr><th>Grupo</th><th>Qué va aquí</th><th>Qué hace con los días</th></tr>
-    <tr><td><b>Días</b></td><td>Vacaciones, festivos, faltas, permisos, incapacidad, trabajo en Estados Unidos</td><td>Consume días de la semana</td></tr>
+    <tr><td><b>Días</b></td><td>Vacaciones, día festivo, <b>día de cumpleaños</b>, <b>falta justificada</b> e <b>injustificada</b>, <b>permiso con goce</b> y <b>sin goce</b>, incapacidad, descanso trabajado, trabajo en Estados Unidos</td><td>Consume días de la semana</td></tr>
     <tr><td><b>Dinero a favor</b></td><td>Bonos, tiempo extra, prima vacacional, aguinaldo, anticipos</td><td>No consume días</td></tr>
     <tr><td><b>Descuentos</b></td><td>Préstamos, INFONAVIT, pensión, faltantes de herramienta</td><td>No consume días</td></tr>
     <tr><td><b>Estado</b></td><td>Deuda, baja, incapacidad larga, suspensión</td><td>Dura varias semanas</td></tr>
   </table>
+  <p class="nota"><b>Las faltas y los permisos están separados por nombre, no por una
+  casilla.</b> Busca directo «Falta injustificada» o «Permiso sin goce» en la lista de
+  tipos: son tipos distintos, no un mismo tipo con un palomeo. Las dos faltas se
+  descuentan; la diferencia es para el expediente.</p>
+
   <h3>Los tres bonos no son lo mismo</h3>
   <table>
     <tr><th>Tipo</th><th>Quién lo decide</th><th>¿Pide proyecto?</th></tr>
@@ -203,7 +237,7 @@ const CUERPO = `
 </section>
 
 <section id="ejemplos">
-  <h2>8 · Tres semanas de ejemplo, paso a paso</h2>
+  <h2>8 · Cinco casos de ejemplo, paso a paso</h2>
 
   <div class="caso">
     <h3>Caso 1 · Alguien que trabajó normal</h3>
@@ -237,8 +271,36 @@ const CUERPO = `
     </ol>
     <p class="aviso"><b>El proyecto no es opcional.</b> Un bono sin proyecto deja el renglón en
     rojo, porque ese dinero tiene que cargarse a una obra. Si de verdad no corresponde a
-    ninguna, va como <b>gratificación</b>, que es otro tipo y no pide proyecto. Son cosas
-    distintas y conviene no mezclarlas.</p>
+    ninguna, va como <b>bono de productividad</b> o <b>bono condicionado</b>, que son de
+    nómina y no piden proyecto. Son cosas distintas y conviene no mezclarlas.</p>
+  </div>
+
+  <div class="caso">
+    <h3>Caso 4 · El sistema le quitó el premio y tú no estás de acuerdo</h3>
+    <p>Digamos que a alguien le sale <b>✗ no</b> porque llegó 12 minutos tarde el martes,
+    pero tú sabes que Felipe lo citó más tarde ese día.</p>
+    <ol>
+      <li>Clic en la palomita de su renglón, en la columna <b>Premio</b>.</li>
+      <li>Lee el detalle: te dice qué día, a qué hora entró y contra qué horario.</li>
+      <li>Escribe la nota: <i>«Felipe lo citó 08:00 el martes, no llegó tarde.»</i></li>
+      <li><b>Dar el premio</b>. Espera a que diga «Premio otorgado».</li>
+    </ol>
+    <p class="nota">La palomita queda con borde <b>sólido</b> —decidida por una persona— en
+    vez de punteado. Y tu nota queda ahí con tu nombre y la fecha.</p>
+  </div>
+
+  <div class="caso">
+    <h3>Caso 5 · Alguien olvidó marcar su salida</h3>
+    <p>Aparece en la pestaña <b>Disputas</b> y bloquea a esa persona en la lista.</p>
+    <ol>
+      <li>Ve a <b>Disputas</b> y busca su tarjeta.</li>
+      <li><b>Resolver esta checada</b>.</li>
+      <li>Elige qué hacer. Si la hora declarada está bien: <b>Aprobar</b>. Si hay que
+      corregirla: <b>Ajustar</b> y escribe la hora real.</li>
+      <li>Comentario (mínimo 10 caracteres) y <b>Confirmar</b>.</li>
+    </ol>
+    <p class="nota">Si la tarjeta desaparece de la lista, quedó. La pantalla vuelve a leer
+    todo desde Odoo — no hace falta que hagas nada más.</p>
   </div>
 </section>
 
@@ -254,7 +316,10 @@ const CUERPO = `
     <tr><td>no aplica</td><td>Su ficha en Odoo dice que no le corresponde.</td></tr>
     <tr><td>revisar</td><td>Hay algo raro que conviene que mires. Casi siempre, un turno de noche.</td></tr>
   </table>
+  ${img('14-premio', 'Dentro del renglón: el premio con la evidencia día por día')}
+
   <h3>Cómo se cambia</h3>
+  ${img('15-nota-premio', 'Cambiar el premio pide decir por qué')}
   <p>Da clic en la propia palomita, sin abrir el renglón. Se abre una ventanita con
   <b>la evidencia a la vista</b> y un campo donde tienes que escribir <b>por qué</b>
   lo estás cambiando.</p>
@@ -295,6 +360,7 @@ const CUERPO = `
   <p>Cada una te muestra <b>la propuesta</b> (a qué proyecto se iría) y <b>la evidencia</b> en
   la que se basa.</p>
   <h3>Cómo se resuelve</h3>
+  ${img('16-resolver', 'El flujo de aprobación: el mismo del panel de incidencias')}
   <p>Con el botón <b>Resolver esta checada</b> se abre <b>el mismo flujo de aprobación</b>
   que usan los supervisores desde Mi Perfil. No es una pantalla nueva ni un atajo: lo
   que decidas aquí es exactamente lo que se aplica en Odoo.</p>
@@ -346,7 +412,12 @@ const CUERPO = `
     <tr><td>«NO se guardó …»</td><td>La escritura falló</td><td>Vuelve a cerrar el cajón. Si insiste, avisa <b>antes</b> de seguir capturando.</td></tr>
     <tr><td>«No se pudo cargar la semana»</td><td>No hubo respuesta del servidor</td><td>Recarga la página. Si sigue, avisa.</td></tr>
     <tr><td>La pantalla sale en blanco</td><td>El navegador tiene bloqueados los datos de sitio</td><td>No uses ventana privada. Si persiste, prueba en otro navegador.</td></tr>
-    <tr><td>Un renglón sigue rojo y no sabes por qué</td><td>Ábrelo</td><td>El cajón dice el motivo exacto, y el aviso de arriba también.</td></tr>
+    <tr><td>Un renglón sigue rojo y no sabes por qué</td><td>Nada raro</td><td>El motivo está debajo del nombre, en el propio renglón.</td></tr>
+    <tr><td>«Escribe por qué. Sin eso no se guarda el cambio.»</td><td>Estás cambiando el premio a mano y falta la nota</td><td>Escríbela. Es obligatoria y el servidor también la exige.</td></tr>
+    <tr><td>El botón del premio dice «guardando…»</td><td>Está escribiendo, tarda unos segundos</td><td><b>No le vuelvas a dar.</b> Espera a que diga «Premio otorgado» o «quitado».</td></tr>
+    <tr><td>«Es tu propia checada»</td><td>No puedes resolver una incidencia tuya</td><td>Pídesela a la otra persona de RH o a Dirección.</td></tr>
+    <tr><td>«Esta checada no se puede resolver desde aquí»</td><td>TAG huérfano: la marca en Odoo no tiene incidencia detrás</td><td>Se limpia desde el panel de incidencias.</td></tr>
+    <tr><td>El resolver rechaza la acción</td><td>La incidencia no está en un estado que permita eso</td><td>El mensaje te dice el motivo. Revísala en el panel de incidencias.</td></tr>
   </table>
   <p class="aviso">Regla corta: <b>si la pantalla no te dijo «Guardado», no lo des por guardado.</b></p>
 </section>
@@ -355,7 +426,11 @@ const CUERPO = `
   <h2>13 · Lo que este módulo NO hace</h2>
   <ul>
     <li><b>No calcula sueldos.</b> Registra lo que pasó en la semana; el cálculo lo hace el despacho.</li>
-    <li><b>No corrige checadas.</b> Para mover una hora de entrada o salida se usa el panel de incidencias.</li>
+    <li><b>No inventa checadas.</b> Sí puedes <b>ajustar</b> la hora de una checada en disputa
+    (sección 10), pero no puedes crear de cero una jornada que nunca se registró — eso se
+    levanta como incidencia desde el kiosko o desde Mi Perfil.</li>
+    <li><b>No registra los días trabajados en Estados Unidos.</b> Allá todavía no hay dónde
+    checar, así que esos días se teclean a mano. Está en la lista de pendientes.</li>
     <li><b>No da de alta ni de baja gente en Odoo.</b> El alta y la baja se hacen en Odoo; aquí sólo se refleja.</li>
     <li><b>No manda correos.</b> Enviar deja la semana marcada como enviada; no notifica a nadie todavía.</li>
   </ul>
@@ -385,6 +460,11 @@ const HTML = `<!DOCTYPE html>
   h1 { font-size: 36px; margin: 6px 0 4px; letter-spacing:-.02em; }
   .bajada { font-size: 18px; color: var(--suave); margin: 0 0 10px; }
   .meta { font-size: 13px; color: var(--suave); margin: 0; }
+  .nuevo { background:#eef5f0; border:1px solid #9dc9b0; border-left:5px solid var(--verde);
+           border-radius:0 12px 12px 0; padding:16px 20px; margin-bottom:26px; }
+  .nuevo b { font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--verde); }
+  .nuevo ul { margin:9px 0 0; padding-left:20px; }
+  .nuevo li { margin:4px 0; }
   nav.indice { background: var(--caja); border:1px solid var(--linea); border-radius:12px;
                padding: 18px 22px; margin-bottom: 40px; }
   nav.indice b { font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--suave); }
