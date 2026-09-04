@@ -250,6 +250,31 @@ seccion('Archivo para el despacho');
   // aviso existiera.
   check('la instruccion NO nombra el banco: eso no le dice nada a quien captura',
     !/BBVA/.test(f.instruccion), f.instruccion);
+  // Exhaustivo, no un caso: TODOS los tipos que piden fuente contra TODAS las cuentas
+  // del catalogo. El assert de una sola combinacion deja pasar un camino que se cuele
+  // por un tipo raro; este recorre las 44 (11 tipos x 4 cuentas) y exige que ninguna
+  // meta el nombre del banco en la linea que Ulises captura.
+  {
+    const conFuente = [];
+    (function walk(o) {
+      for (const k in o) { const v = o[k];
+        if (v && typeof v === 'object') { if (v.fuente === true && v.campos) conFuente.push(k); else walk(v); } }
+    })(Cat);
+    const BANCOS = /BBVA|Chase|Monex|Payana|Jeeves/;
+    const sucios = [];
+    for (const t of conFuente) {
+      for (const j of ['J96', 'J8', 'J75', 'J122']) {
+        const fx = Des.filas({ semana: SEMANA, personas: [persona({ id: 90, ppa: { aplica: false },
+          declaraciones: [{ tipo: t, fuente: j, valores: { monto: 1000, dias: 1, horas: 1,
+            fecha: '2026-09-01', pago: 1, plazo: 4 } }] })], disputas: [] })[0];
+        if (BANCOS.test(fx.instruccion)) sucios.push(t + '/' + j);
+      }
+    }
+    check('NINGUN tipo x NINGUNA cuenta mete el banco en la instruccion',
+      conFuente.length > 0 && sucios.length === 0,
+      conFuente.length + ' tipos x 4 cuentas · sucios: ' + (sucios.join(', ') || 'ninguno'));
+  }
+
   const pUsd = persona({ id: 91, ppa: { aplica: false },
     declaraciones: [{ tipo: 'aguinaldo', fuente: 'J122', valores: { monto: 5000 } }] });
   const fUsd = Des.filas({ semana: SEMANA, personas: [pUsd], disputas: [] })[0];
