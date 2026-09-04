@@ -319,6 +319,21 @@ seccion('Archivo para el despacho');
   const fUsa2 = Des.filas({ semana: SEMANA, personas: [pUsa2], disputas: [] })[0];
   check('cinco dias repartidos entre Mexico y USA NO se callan',
     /2 en México, 3 en USA/.test(fUsa2.instruccion), fUsa2.instruccion);
+  // Decir que trabajo 3 dias en USA NO es una instruccion: se lee igual que tres dias
+  // normales de la semana y se pagan aqui, cuando los paga FTS LLC. El verbo es lo que
+  // impide pagarlos dos veces, y por eso se exige junto con el motivo — sin el motivo,
+  // el siguiente que lo lea puede pensar que es un error y revertirlo.
+  check('los dias en USA se DESCUENTAN, con todas sus letras',
+    /DESCONTAR 3 días · Trabajó en USA/.test(fUsa2.instruccion), fUsa2.instruccion);
+  check('y dice POR QUE se descuentan: no los paga esta nomina',
+    /no se pagan en México, los paga FTS LLC/.test(fUsa2.instruccion), fUsa2.instruccion);
+
+  // Dinero que ya pago FTS USA: el mismo principio que los dias, en pesos.
+  const pUsa3 = persona({ id: 95, dias_mexico: 5, ppa: { aplica: false },
+    declaraciones: [{ tipo: 'pagado_fts_usa', fuente: 'J96', valores: { monto: 4000 } }] });
+  const fUsa3 = Des.filas({ semana: SEMANA, personas: [pUsa3], disputas: [] })[0];
+  check('lo que ya pago FTS USA no se vuelve a pagar aqui',
+    /NO PAGAR EN MÉXICO \$4,000\.00 · Pagado por FTS USA/.test(fUsa3.instruccion), fUsa3.instruccion);
 
   // (g) quien esta de baja SIN nada declarado no entra; con finiquito SI
   const bajaVacia = persona({ id: 82, inactivo: true, dias_mexico: 0 });

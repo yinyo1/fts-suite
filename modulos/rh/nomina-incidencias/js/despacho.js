@@ -164,9 +164,14 @@
     compensa_deuda:      { v: 'DESCONTAR', signo: 'resta' },
     // El ajuste NO tiene verbo fijo: lo decide el signo del monto que capturó RH.
     ajuste_sueldo:       { v: null,        signo: 'porMonto' },
-    // Informativos: el número importa, pero el verbo no es de esta nómina.
-    trabajo_usa:         { v: null,        signo: 'dato'  },
-    pagado_fts_usa:      { v: null,        signo: 'dato'  }
+    // Estados Unidos. Lo que se trabaja o se paga allá NO lo paga esta nómina: lo
+    // paga FTS LLC. Hasta V1.12 estos dos iban sin verbo, como dato informativo, y
+    // ese es justo el modo de fallo caro: un día en USA sin verbo se lee como un día
+    // normal de la semana y se termina pagando dos veces, aquí y allá. El verbo va
+    // explícito y dice el motivo, que es lo que hace que nadie lo revierta por su
+    // cuenta al no entenderlo.
+    trabajo_usa:         { v: 'DESCONTAR',          signo: 'resta', nota: 'no se pagan en México, los paga FTS LLC' },
+    pagado_fts_usa:      { v: 'NO PAGAR EN MÉXICO', signo: 'resta' }
   };
 
   // Fuentes que NO son la nómina de CONTPAQi. Un bono pagado en dólares por Chase no
