@@ -965,10 +965,13 @@ let ok = 0, mal = 0;
     const r = await p.evaluate(() => {
       const mo = document.querySelectorAll('.rejilla tbody tr:not(.grupo):not(.total)');
       const qty = [...document.querySelectorAll('[data-cel$=":qty"]')];
-      return { filas: mo.length, qty: qty.length, conValor: qty.filter(x => x.value !== '').length,
+      return { filas: mo.length, qty: qty.length,
+               // Desde V1.10 los diez preparados nacen con cantidad CERO a
+               // proposito. Lo que no puede haber es una cantidad POSITIVA.
+               positivas: qty.filter(x => Number(x.value) > 0).length,
                capturadas: document.querySelectorAll('tr.capturada').length };
     });
-    if (r.conValor !== 0) throw new Error(r.conValor + ' renglones nacieron con cantidad');
+    if (r.positivas !== 0) throw new Error(r.positivas + ' renglones nacieron con cantidad positiva');
     if (r.capturadas !== 0) throw new Error('nació con renglones pintados de verde');
     console.log('   ', pest.join(' · '), '·', r.qty, 'renglones, todos en cero');
   });
@@ -993,7 +996,7 @@ let ok = 0, mal = 0;
     if (r.conTarifa !== 10) throw new Error('sin tarifa de plantilla: ' + (10 - r.conTarifa));
     if (r.conHoras !== 0) throw new Error('nacieron con horas: ' + r.conHoras);
     if (r.partidas !== 30) throw new Error('renglones de materiales: ' + r.partidas);
-    if (r.sinTipo !== 30) throw new Error('el Tipo viene preelegido en ' + (30 - r.sinTipo));
+    if (r.sinTipo !== 20) throw new Error('esperaba 20 sin Tipo y 10 preparados, hay ' + r.sinTipo + ' sin Tipo');
     if (r.costo !== 0) throw new Error('el costo no arranca en cero: ' + r.costo);
     console.log('    10 mano de obra con tarifa · 30 materiales sin Tipo · costo 0');
   });
@@ -1008,6 +1011,185 @@ let ok = 0, mal = 0;
     await p.fill('#q', 'prueba CC'); await p.waitForTimeout(320);
     const t = await p.textContent('#vista');
     if (t.indexOf('Cotización de prueba CC') < 0) throw new Error('no aparece al buscarlo');
+  });
+
+  // ── V1.10 · lo que salio de las pruebas con la gente ─────────────────
+  await paso('las comisiones de la sección traen su porcentaje', async () => {
+    await ir('#/m/M-1041'); await hoja('Suministro');
+    const t = await p.textContent('#hoja');
+    if (!/Comisiones FTS\s*[\d.]+%/.test(t)) throw new Error('sin % en Comisiones FTS');
+    if (!/Comisiones CLIENTE\s*[\d.]+%/.test(t)) throw new Error('sin % en Comisiones CLIENTE');
+  });
+
+  await paso('el nombre de la sección va arriba de las tablas', async () => {
+    await ir('#/m/M-1041'); await hoja('Suministro');
+    const r = await p.evaluate(() => {
+      const nom = document.querySelector('.nomsec');
+      const tab = document.querySelector('.cab');
+      if (!nom || !tab) return null;
+      return { nom: nom.getBoundingClientRect().top, tab: tab.getBoundingClientRect().top };
+    });
+    if (!r) throw new Error('no encontré el nombre o las tablas');
+    if (!(r.nom < r.tab)) throw new Error('el nombre quedó abajo: ' + Math.round(r.nom) + ' vs ' + Math.round(r.tab));
+  });
+
+  await paso('la columna Tipo deja ver lo que está seleccionado', async () => {
+    await p.setViewportSize({ width: 1280, height: 900 });
+    await ir('#/m/M-1041'); await hoja('Suministro');
+    const w = await p.evaluate(() => {
+      const s = document.querySelector('[data-cel$=":tipo"]');
+      return s ? Math.round(s.getBoundingClientRect().width) : -1;
+    });
+    if (w < 110) throw new Error('la columna Tipo mide ' + w + 'px, no cabe "Materiales"');
+    console.log('    Tipo mide', w, 'px');
+    await p.setViewportSize({ width: 380, height: 780 });
+  });
+
+  await paso('no deja capturar cantidades ni precios negativos', async () => {
+    await p.setViewportSize({ width: 1280, height: 900 });
+    await ir('#/m/M-1041'); await hoja('Suministro');
+    const cel = p.locator('[data-cel*=":partidas:"][data-cel$=":pu"]:visible').first();
+    await cel.fill('-500'); await cel.dispatchEvent('change');
+    await p.waitForTimeout(950);   // el autoguardado tiene 500 ms de retardo
+    const guardado = await p.evaluate(() => {
+      const c = localStorage.getItem('fts_machote_v1');
+      if (!c) return -1;
+      const m = JSON.parse(c).machotes.find(x => x.id === 'M-1041');
+      const todas = m.secciones.reduce((a, s) => a.concat(s.partidas, s.mo), []);
+      return todas.filter(l => Number(l.pu) < 0 || Number(l.qty) < 0).length;
+    });
+    if (guardado === -1) throw new Error('no alcanzó a guardar nada');
+    if (guardado !== 0) throw new Error('quedaron ' + guardado + ' valores negativos guardados');
+    const min = await cel.getAttribute('min');
+    if (min !== '0') throw new Error('el campo no declara min=0');
+    await p.setViewportSize({ width: 380, height: 780 });
+  });
+
+  await paso('el verde exige cantidad Y precio, no sólo cantidad', async () => {
+    const r = await p.evaluate(() => {
+      const C = window.MachoteCalc;
+      return {
+        soloQty:  C.capturada({ qty: 5, pu: null }),
+        soloPu:   C.capturada({ qty: '', pu: 100 }),
+        ambos:    C.capturada({ qty: 5, pu: 100 }),
+        ceroPu:   C.capturada({ qty: 5, pu: 0 })
+      };
+    });
+    if (r.soloQty) throw new Error('se pintó con sólo cantidad');
+    if (r.soloPu) throw new Error('se pintó con sólo precio');
+    if (r.ceroPu) throw new Error('se pintó con precio 0');
+    if (!r.ambos) throw new Error('no se pintó teniendo los dos');
+  });
+
+  await paso('la sección nueva trae 5 Materiales y 5 Servicios en Pieza', async () => {
+    const r = await p.evaluate(() => {
+      const s = window.MachoteCalc.machoteNuevo({ nombre: 'x' }).secciones[0];
+      const t = {}; s.partidas.forEach(x => { t[x.tipo || 'vacio'] = (t[x.tipo || 'vacio'] || 0) + 1; });
+      return { t: t, pieza: s.partidas.filter(x => x.unidad === 'Pieza').length,
+               qty0: s.partidas.filter(x => x.qty === 0).length,
+               usadas: s.partidas.filter(window.MachoteCalc.usadaPartida).length };
+    });
+    if (r.t.Materiales !== 5) throw new Error('Materiales: ' + r.t.Materiales);
+    if (r.t.Servicios !== 5) throw new Error('Servicios: ' + r.t.Servicios);
+    if (r.t.vacio !== 20) throw new Error('en blanco: ' + r.t.vacio);
+    if (r.pieza !== 10) throw new Error('en Pieza: ' + r.pieza);
+    if (r.qty0 !== 10) throw new Error('con cantidad 0: ' + r.qty0);
+    // Con cantidad 0 no cuentan como usados: no disparan hallazgos.
+    if (r.usadas !== 0) throw new Error('los preparados cuentan como usados: ' + r.usadas);
+  });
+
+  await paso('se puede borrar un machote en creación', async () => {
+    await ir('#/');
+    const antes = await p.locator('.item[href^="#/m/"]').count();
+    p.once('dialog', d => d.accept());
+    await p.locator('[data-borrar]').first().click();
+    await p.waitForTimeout(400);
+    const desp = await p.locator('.item[href^="#/m/"]').count();
+    if (desp !== antes - 1) throw new Error('no borró: ' + antes + ' → ' + desp);
+  });
+
+  await paso('un machote enviado a Odoo no se puede borrar', async () => {
+    await ir('#/m/M-1042'); await hoja('DESGLOSE');
+    await p.locator('[data-estado]').selectOption('enviado'); await p.waitForTimeout(400);
+    await irSuave('#/');
+    const r = await p.evaluate(() => {
+      const filas = [...document.querySelectorAll('.fila')];
+      const f = filas.find(x => x.textContent.indexOf('M-1042') >= 0);
+      return f ? { borrar: !!f.querySelector('[data-borrar]'), candado: !!f.querySelector('.candado') } : null;
+    });
+    if (!r) throw new Error('no encontré M-1042 en la lista');
+    if (r.borrar) throw new Error('le dejó el botón de borrar');
+    if (!r.candado) throw new Error('no muestra por qué no se puede');
+  });
+
+  // ── Pegar una tabla ──────────────────────────────────────────────────
+  await paso('el pegado entiende una tabla de Claude, de Excel y de un PDF', async () => {
+    const r = await p.evaluate(() => {
+      const P = window.MachotePegar;
+      const casos = {
+        claude: '| Cantidad | Descripción | Precio unitario |\n|---|---|---|\n| 4 | Rodamiento LM25UU | $4,200.00 |\n| 1 | Placa A36 | $38,000.00 |',
+        excel:  'QTY\tDESCRIPCION\tPRECIO UNITARIO\tMONEDA\n12\tTubo cedula 40\t1,250.50\tMXN\n3\tValvula 2in\t890\tUSD',
+        sinCab: 'Cable THW cal 12\t250\t18.50\nConduit 1/2\t80\t45.00',
+        total:  'Cant;Concepto;Importe\n5;Soporte PTR;2500',
+        pdf:    'Descripcion            Cant   Precio\nBomba 2HP     2    18500\nManometro    10      450',
+        basura: 'hola que tal\ncomo estas'
+      };
+      const out = {};
+      for (const k in casos) {
+        const x = P.interpretar(casos[k], { moneda: 'MXN' });
+        out[k] = { ok: x.ok, n: x.renglones.length, r0: x.renglones[0] || null };
+      }
+      return out;
+    });
+    if (!r.claude.ok || r.claude.n !== 2) throw new Error('markdown: ' + JSON.stringify(r.claude));
+    if (r.claude.r0.qty !== 4 || r.claude.r0.pu !== 4200) throw new Error('markdown mal: ' + JSON.stringify(r.claude.r0));
+    if (r.excel.r0.pu !== 1250.5) throw new Error('excel no leyó 1,250.50: ' + r.excel.r0.pu);
+    if (r.excel.n !== 2) throw new Error('excel: ' + r.excel.n);
+    // El caso que invertía cantidad y precio antes del arreglo por enteros.
+    if (r.sinCab.r0.qty !== 250 || r.sinCab.r0.pu !== 18.5)
+      throw new Error('sin encabezado invirtió cantidad y precio: ' + JSON.stringify(r.sinCab.r0));
+    if (r.total.r0.pu !== 500) throw new Error('no derivó el unitario del importe: ' + r.total.r0.pu);
+    if (r.pdf.r0.qty !== 2 || r.pdf.r0.pu !== 18500) throw new Error('pdf: ' + JSON.stringify(r.pdf.r0));
+    if (r.basura.ok) throw new Error('dijo que sí a texto sin tabla');
+    console.log('    6 formas de tabla entendidas, basura rechazada');
+  });
+
+  await paso('pegar enseña lo que entendió antes de escribir nada', async () => {
+    await p.setViewportSize({ width: 1280, height: 900 });
+    await ir('#/m/M-1041'); await hoja('Suministro');
+    const antes = await p.textContent('.fija .mono');
+    await p.click('[data-pegar]'); await p.waitForTimeout(300);
+    await p.fill('#pg-txt', 'Cantidad\tDescripcion\tPrecio\n7\tBrida de acero 4in\t1350.25\n2\tEmpaque espirometalico\t480');
+    await p.waitForTimeout(400);
+    const prev = await p.textContent('#pg-prev');
+    if (!/Entendí\s*2 renglón/.test(prev)) throw new Error('no dijo qué entendió: ' + prev.slice(0, 120));
+    if (prev.indexOf('Brida de acero 4in') < 0) throw new Error('no muestra los renglones');
+    // Hasta aqui NO debe haber escrito nada.
+    const durante = await p.textContent('.fija .mono');
+    if (durante !== antes) throw new Error('escribió antes de que se aprobara: ' + antes + ' → ' + durante);
+    await p.click('#pg-ok'); await p.waitForTimeout(500);
+    const desp = await p.textContent('.fija .mono');
+    if (desp === antes) throw new Error('no aplicó al aprobar');
+    // Ojo: la descripción vive en el `value` de un input; `textContent` de la
+    // hoja NUNCA la va a contener. Se busca donde de verdad está.
+    const llego = await p.evaluate(() => [...document.querySelectorAll('[data-cel$=":descripcion"]')]
+      .some(i => i.value === 'Brida de acero 4in'));
+    if (!llego) throw new Error('el renglón no llegó a la hoja');
+    console.log('   ', antes.trim(), '→', desp.trim());
+    await p.setViewportSize({ width: 380, height: 780 });
+  });
+
+  await paso('pegar texto que no es tabla lo dice, y no deja aplicar', async () => {
+    await p.setViewportSize({ width: 1280, height: 900 });
+    await ir('#/m/M-1041'); await hoja('Suministro');
+    await p.click('[data-pegar]'); await p.waitForTimeout(300);
+    await p.fill('#pg-txt', 'buenos dias\nadjunto la cotizacion');
+    await p.waitForTimeout(400);
+    if (!(await p.locator('#pg-ok').isDisabled())) throw new Error('dejó aplicar basura');
+    const t = await p.textContent('#pg-prev');
+    if (!/No encontré|No pude/.test(t)) throw new Error('no explicó: ' + t.slice(0, 100));
+    await p.click('#pg-cancel'); await p.waitForTimeout(250);
+    await p.setViewportSize({ width: 380, height: 780 });
   });
 
   // ── El gate ──────────────────────────────────────────────────────────

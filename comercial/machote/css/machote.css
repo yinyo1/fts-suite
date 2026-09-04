@@ -543,3 +543,36 @@ table.rejilla tr.capturada > td:first-child { box-shadow: inset 3px 0 0 var(--x-
               border-radius: 8px; }
 .btn.primario { background: var(--acento); color: #fff; border-color: var(--acento);
                 min-height: var(--toque); margin-top: 6px; }
+
+/* ── La columna Tipo ────────────────────────────────────────────────────
+ * Iba tan angosta que no se alcanzaba a leer si decía Materiales o Servicios
+ * — y es la columna que elige el multiplicador, o sea la que decide el precio.
+ * Un desplegable que no deja ver lo seleccionado es peor que no tenerlo. */
+.cel.wtipo { min-width: 118px; }
+
+/* ── Borrar un machote de la lista ──────────────────────────────────────*/
+.fila { display: flex; align-items: stretch; gap: 6px; margin-bottom: 8px; }
+.fila .item { flex: 1 1 auto; min-width: 0; margin-bottom: 0; }
+.fila .borrar, .fila .candado { flex: 0 0 auto; align-self: center; }
+.ico.candado { display: inline-flex; align-items: center; justify-content: center;
+               min-width: var(--toque); min-height: var(--toque); font-size: 14px;
+               opacity: .55; cursor: help; }
+
+/* ── Pegar una tabla ────────────────────────────────────────────────────*/
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100;
+         display: flex; align-items: flex-start; justify-content: center;
+         padding: 16px; overflow: auto; }
+.modal .caja { background: var(--fondo); border-radius: 14px; padding: 18px;
+               width: 100%; max-width: 880px; margin: auto; }
+.modal h3 { margin: 0 0 6px; }
+.modal textarea { width: 100%; box-sizing: border-box; font: 13px/1.5 ui-monospace,
+                  SFMono-Regular, Menlo, monospace; padding: 10px;
+                  border: 1px solid var(--linea); border-radius: 10px;
+                  background: var(--fondo); color: var(--tinta); resize: vertical; }
+.modal textarea:focus { outline: 2px solid var(--acento); outline-offset: 1px; }
+.modal .acciones { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+.modal .acciones .btn { width: auto; min-height: var(--toque); padding: 0 16px; }
+.modal .rejilla { margin-top: 4px; }
+/* El renglón que necesita una mirada no se esconde ni se descarta: se marca. */
+.modal tr.ojo > td { background: #fff8e5; }
+.aviso.warn { border-left-color: var(--ambar); }

@@ -57,6 +57,12 @@
    *  tres definiciones de lo mismo terminan divergiendo. */
   const usadaPartida = (l) => !!l && (num(l.qty) > 0 || !vacio(l.pu) || !!l.descripcion);
 
+  /** ¿Este renglón está CAPTURADO? Es lo que lo pinta de verde.
+   *  Cantidad **y** precio: con sólo la cantidad, el renglón está a medias y
+   *  no aporta un peso al total. Pintarlo verde diría "listo" de algo que
+   *  todavía no suma. Vale igual para mano de obra (horas × tarifa). */
+  const capturada = (l) => !!l && num(l.qty) > 0 && num(l.pu) > 0;
+
   /* Cuántos renglones de materiales trae una sección recién creada.
    *
    * El machote real trae **~180 en blanco** por sección (§2.4 del levantamiento):
@@ -108,12 +114,21 @@
       pu: r.pu,         // la tarifa de plantilla, que el capturista puede pisar
       moneda: moneda
     }));
+    /* Los diez primeros vienen preparados: cinco Materiales y cinco Servicios,
+     * en Pieza y con cantidad 0. No es un dato, es un ANDAMIO — arranca la
+     * captura sin obligar a elegir Tipo y Unidad diez veces antes de escribir
+     * la primera descripción. Con cantidad 0 no cuentan como usados, así que
+     * no disparan hallazgos ni se pintan de verde. Del once al treinta van
+     * completamente en blanco, como en el Excel. */
     const partidas = [];
     for (let i = 0; i < PARTIDAS_EN_BLANCO; i++) {
+      const preparada = i < 10;
       partidas.push({
-        qty: '', unidad: '', tipo: '',   // el Tipo lo elige el capturista: es
-        descripcion: '', modelo: '', marca: '',   // la columna que decide el
-        pu: null, moneda: moneda,                 // multiplicador
+        qty: preparada ? 0 : '',
+        unidad: preparada ? 'Pieza' : '',
+        tipo: preparada ? (i < 5 ? 'Materiales' : 'Servicios') : '',
+        descripcion: '', modelo: '', marca: '',
+        pu: null, moneda: moneda,
         margen: null, link: '', comentario: ''
       });
     }
@@ -444,7 +459,8 @@
     ROLES, ROL, GRUPOS, TIPOS, ESCENARIOS, MAX_SECCIONES,
     EMPRESAS, empresaDe, monedaPorDefecto,
     MARGENES_PLANTILLA, COMISION_FTS_PLANTILLA, MARGEN_DESEADO_PLANTILLA, REPARTO_PLANTILLA,
-    PARTIDAS_EN_BLANCO, EQUIPO_VENTA_PLANTILLA, EQUIPO_OPS_PLANTILLA, usadaPartida,
+    PARTIDAS_EN_BLANCO, EQUIPO_VENTA_PLANTILLA, EQUIPO_OPS_PLANTILLA,
+    usadaPartida, capturada,
     seccionNueva, machoteNuevo,
     tcEfectivo, margenes, costoMo, costoPartida, totalSeccion,
     calcular, precioParaMargen, repartir
