@@ -40,7 +40,7 @@
    * 2026-09-03 (por instrucción de Esteban), pero lleva el suyo aparte y va en
    * V1.00. Planeación sigue en `2.4.1` y el kiosko sólo con cadena de build;
    * a esos no se propaga. */
-  const VERSION = 'V1.09';
+  const VERSION = 'V1.10';
   const $  = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
   const clon = (x) => JSON.parse(JSON.stringify(x));
@@ -116,6 +116,12 @@
    *  vendio. Editarlo despues seria reescribir la historia. */
   const congelado = (m) => !!((D.ESTADOS[m && m.estado] || {}).congelado);
 
+  /** Un machote enviado a Odoo NO se borra nunca. Es el documento con el que se
+   *  vendió: si desaparece, desaparece la única explicación de por qué el
+   *  precio fue ese. Lo que se hace con él es cambiarle el estado, no borrarlo.
+   *  En creación y En revisión sí se borran: ahí todavía no hay historia. */
+  const borrable = (m) => !((D.ESTADOS[m && m.estado] || {}).sin_borrar);
+
   const esc = (s) => String(s === null || s === undefined ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -146,11 +152,16 @@
   const cel = (path, val, cls, ph) =>
     '<input class="cel ' + (cls || '') + '" data-cel="' + path + '" value="' + esc(nn(val)) + '"' +
     (ph ? ' placeholder="' + esc(ph) + '"' : '') + '>';
+  /* Los números que se capturan aquí son cantidades, personas, precios y
+   * multiplicadores. Ninguno tiene sentido en negativo, y un precio negativo
+   * no da un error: da un total más chico y nadie lo nota. `min=0` frena las
+   * flechitas y el teclado numérico del teléfono; el saneo del `setPath` frena
+   * lo que se escriba o se pegue a mano. */
   const celNum = (path, val, cls, ph) =>
-    '<input class="cel num ' + (cls || '') + '" type="number" step="any" data-cel="' + path + '" data-num' +
+    '<input class="cel num ' + (cls || '') + '" type="number" step="any" min="0" data-cel="' + path + '" data-num' +
     ' value="' + esc(nn(val)) + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') + '>';
-  const celSel = (path, val, ops) =>
-    '<select class="cel" data-cel="' + path + '">' +
+  const celSel = (path, val, ops, cls) =>
+    '<select class="cel ' + (cls || '') + '" data-cel="' + path + '">' +
     ops.map(o => '<option value="' + esc(o) + '"' + (o === val ? ' selected' : '') + '>' + esc(o || '—') + '</option>').join('') +
     '</select>';
 
@@ -159,6 +170,13 @@
   const celLibre = (path, val, lista, cls) =>
     '<input class="cel ' + (cls || '') + '" list="' + lista + '" data-cel="' + path + '"' +
     ' value="' + esc(nn(val)) + '" autocomplete="off">';
+
+  /** Ningún número de este machote tiene sentido en negativo: ni horas, ni
+   *  personas, ni precios, ni multiplicadores. Y un negativo no se ve como un
+   *  error — se ve como un total más chico, que es peor. Se corta AQUÍ, en el
+   *  único escritor, y no en cada campo: el `min=0` del input frena las
+   *  flechitas y el teclado, pero no frena escribir "-5" ni pegarlo. */
+  const sanea = (v) => (typeof v === 'number' && v < 0) ? 0 : v;
 
   /** Escribe por ruta. `s:<sid>:mo:<i>:campo` · `s:<sid>:partidas:<i>:campo`
    *  `eq:<venta|ops|cli>:<i>:campo` · `nom:<sid>` · o campo anidado. */
@@ -169,17 +187,17 @@
       const s = m.secciones.find(x => x.id === p[1]); if (!s) return;
       const arr = p[2] === 'mo' ? s.mo : s.partidas;
       const l = arr[parseInt(p[3], 10)]; if (!l) return;
-      l[p[4]] = val; return;
+      l[p[4]] = sanea(val); return;
     }
     if (p[0] === 'eq') {
       const key = p[1] === 'venta' ? 'equipo_venta' : p[1] === 'ops' ? 'equipo_operaciones' : 'equipo_cliente';
       const it = (m[key] || [])[parseInt(p[2], 10)]; if (!it) return;
-      it[p[3]] = val; return;
+      it[p[3]] = sanea(val); return;
     }
     const parts = path.split('.');
     let o = m;
     for (let i = 0; i < parts.length - 1; i++) { if (!o[parts[i]]) o[parts[i]] = {}; o = o[parts[i]]; }
-    o[parts[parts.length - 1]] = val;
+    o[parts[parts.length - 1]] = sanea(val);
   }
 
   /* ── Ruteo ───────────────────────────────────────────────────────────── */
@@ -277,13 +295,18 @@
 
     const filas = visibles.map(m => {
       const rev = R.revisar(m), c = rev.calc;
-      return '<a class="item" href="#/m/' + m.id + '">' +
+      return '<div class="fila">' +
+        '<a class="item" href="#/m/' + m.id + '">' +
         '<div class="grow"><strong>' + esc(m.nombre) + '</strong>' +
         '<div class="tiny">' + esc(m.cliente) + (m.so ? ' · ' + esc(m.so) : '') + ' · ' + m.id + '</div></div>' +
         '<div class="right"><span class="chip" style="background:' + est[m.estado].color + '">' + est[m.estado].label + '</span>' +
         '<div class="tiny mono n-' + (c.costoIncompleto ? 'warn' : nivelMargen(c.margen)) + '">' +
         mx(c.precio) + ' · ' + pc(c.margen) + (c.costoIncompleto ? '*' : '') + '</div>' +
-        '<div class="tiny">' + (rev.duras.length ? '⛔ ' + rev.duras.length + ' duras' : '✓ sin duras') + '</div></div></a>';
+        '<div class="tiny">' + (rev.duras.length ? '⛔ ' + rev.duras.length + ' duras' : '✓ sin duras') + '</div></div></a>' +
+        (borrable(m)
+          ? '<button class="ico peligro borrar" data-borrar="' + m.id + '" title="Eliminar machote">×</button>'
+          : '<span class="ico candado" title="Enviado a Odoo: no se borra, sólo cambia de estado">🔒</span>') +
+        '</div>';
     }).join('');
 
     const ords = ST.ordenes.map(o =>
@@ -316,6 +339,21 @@
     if (q) q.oninput = () => { ST.busca = q.value; vHome(); $('#q').focus();
                                $('#q').setSelectionRange(ST.busca.length, ST.busca.length); };
     $$('[data-filtro]').forEach(b => b.onclick = () => { ST.filtro = b.dataset.filtro; vHome(); });
+
+    $$('[data-borrar]').forEach(b => b.onclick = (ev) => {
+      ev.preventDefault(); ev.stopPropagation();
+      const m = mach(b.dataset.borrar);
+      if (!m) return;
+      // Segundo candado, además de no pintar el botón: si mañana alguien pinta
+      // el botón por error, esto sigue impidiendo borrar lo que ya se vendió.
+      if (!borrable(m)) { toast('Un machote enviado a Odoo no se borra.'); return; }
+      if (!confirm('¿Eliminar «' + m.nombre + '»?\n\nNo hay deshacer.')) return;
+      const i = ST.machotes.findIndex(x => x.id === m.id);
+      if (i >= 0) ST.machotes.splice(i, 1);
+      guardarYa();
+      vHome();
+      toast('Machote eliminado.');
+    });
   }
 
   /* ── Machote nuevo ─────────────────────────────────────────────────────
@@ -459,8 +497,10 @@
       ['Materiales y servicio', mx(cs.costoMat)],
       ['Costos Sumados (Mat, Servicio, Mano de obra)', mx2(cs.costo)],
       ['', ''],
-      ['Comisiones CLIENTE', mx(cs.venta ? c.escenario.comisionFts * (cs.venta / (c.venta || 1)) : 0)],
-      ['Comisiones FTS', mx(cs.venta ? c.escenario.comisionCliente * (cs.venta / (c.venta || 1)) : 0)],
+      // El porcentaje al lado del importe: sin él, "Comisiones FTS $79,108"
+      // no dice si eso es un 5% o un 15%, que es lo que se está decidiendo.
+      ['Comisiones CLIENTE ' + pc(c.pctCli), mx(cs.venta ? c.escenario.comisionCliente * (cs.venta / (c.venta || 1)) : 0)],
+      ['Comisiones FTS ' + pc(c.pctFts), mx(cs.venta ? c.escenario.comisionFts * (cs.venta / (c.venta || 1)) : 0)],
       ['Costos totales (Cuanto le cuesta a FTS?)', mx(cs.costo + (c.escenario.comisionFts + c.escenario.comisionCliente) * (cs.venta / (c.venta || 1)))],
       ['Precio de Venta FTS (Antes de comisiones)', mx(cs.venta)],
       ['Precio de Venta a cliente (Despues de comisiones)', mx2(cs.esc ? cs.esc.con_utilidad.precio : null)],
@@ -477,16 +517,7 @@
       '<tr><td class="et">Comision FTS</td><td>' + celNum('comision_fts', m.comision_fts, 'w70') + '</td></tr>' +
       '<tr><td class="et">Comision CLIENTE</td><td>' + celNum('comision_cliente', m.comision_cliente, 'w70') + '</td></tr>';
 
-    const cab =
-      '<div class="cab">' +
-      '<div class="blk"><table class="hoja2"><thead><tr><th>Costos desglosados</th><th></th></tr></thead>' +
-      '<tbody>' + izq +
-      '<tr><td class="et">Horas sección</td><td class="vl mono calc">' + Math.round(cs.horas || 0) + '</td></tr>' +
-      '</tbody></table></div>' +
-      '<div class="blk"><table class="hoja2"><thead><tr><th>Concepto</th><th>Margen de utilidad</th></tr></thead>' +
-      '<tbody>' + der + '</tbody></table>' +
-      '<div class="tiny nota">Horas extras = mano de obra × 2 = <strong>' + mg.extra + '</strong>. No se captura, igual que en el Excel.</div>' +
-      '</div></div>' +
+    const nombreSec =
       '<div class="nomsec"><span class="et">NOMBRE DE SECCIÓN</span>' + cel('nom:' + s.id, s.nombre, 'nombre') +
       '<span class="accsec">' +
         (idx > 0 ? '<button class="ico" data-movsec="' + s.id + '|-1" title="Mover a la izquierda">←</button>' : '') +
@@ -497,6 +528,20 @@
       '<div class="tiny nota">Sección ' + (idx + 1) + ' de ' + m.secciones.length +
       (idx >= C.MAX_SECCIONES ? ' · <strong class="n-bad">fuera de las diez ranuras del machote</strong>' : '') +
       '. Las secciones ocupan la ranura por posición, no por nombre.</div>';
+
+    const cab =
+      // El nombre va PRIMERO: es lo que dice en qué sección estás parado, y
+      // debajo de dos tablas de números no se lee hasta que ya te perdiste.
+      nombreSec +
+      '<div class="cab">' +
+      '<div class="blk"><table class="hoja2"><thead><tr><th>Costos desglosados</th><th></th></tr></thead>' +
+      '<tbody>' + izq +
+      '<tr><td class="et">Horas sección</td><td class="vl mono calc">' + Math.round(cs.horas || 0) + '</td></tr>' +
+      '</tbody></table></div>' +
+      '<div class="blk"><table class="hoja2"><thead><tr><th>Concepto</th><th>Margen de utilidad</th></tr></thead>' +
+      '<tbody>' + der + '</tbody></table>' +
+      '<div class="tiny nota">Horas extras = mano de obra × 2 = <strong>' + mg.extra + '</strong>. No se captura, igual que en el Excel.</div>' +
+      '</div></div>';
 
     // COSTO MANO DE OBRA — los diez renglones siempre presentes, en sus tres grupos.
     let filasMo = '';
@@ -515,10 +560,10 @@
         if (i < 0) { s.mo.push({ rol: rol.id, qty: '', personas: 1, pu: rol.pu, moneda: m.moneda }); i = s.mo.length - 1; }
         const l = s.mo[i], cl = C.costoMo(l, m), p = 's:' + s.id + ':mo:' + i + ':';
         const vacia = !(Number(l.qty) > 0);
-        // Verde = este renglon ya tiene cantidad. Con diez renglones fijos por
-        // seccion, saber de un vistazo cuales estan capturados es la diferencia
-        // entre revisar una hoja y leerla entera.
-        const cls = vacia ? 'enCero' : 'capturada';
+        // Verde = cantidad Y precio. Con sólo horas, el renglón está a medias y
+        // no aporta un peso al total; pintarlo diría "listo" de algo que todavía
+        // no suma.
+        const cls = C.capturada(l) ? 'capturada' : (vacia ? 'enCero' : '');
         filasMo +=
           '<tr class="' + cls + '">' +
           '<td class="rotulo" data-l="Renglón">' + esc(rol.label) + '</td>' +
@@ -551,11 +596,11 @@
     // COSTO MATERIALES Y SERVICIOS
     const filasMat = (s.partidas || []).map((l, j) => {
       const cl = C.costoPartida(l, m), p = 's:' + s.id + ':partidas:' + j + ':';
-      return '<tr' + (Number(l.qty) >= 1 ? ' class="capturada"' : '') + '>' +
+      return '<tr' + (C.capturada(l) ? ' class="capturada"' : '') + '>' +
         '<td data-l="Descripción">' + cel(p + 'descripcion', l.descripcion, 'desc') + '</td>' +
         '<td data-l="QTY">' + celNum(p + 'qty', l.qty, 'w60') + '</td>' +
         '<td data-l="Unidad">' + celLibre(p + 'unidad', l.unidad, 'unidades', 'w90') + '</td>' +
-        '<td data-l="Tipo">' + celSel(p + 'tipo', l.tipo, [''].concat(C.TIPOS)) + '</td>' +
+        '<td data-l="Tipo">' + celSel(p + 'tipo', l.tipo, [''].concat(C.TIPOS), 'wtipo') + '</td>' +
         '<td data-l="Modelo">' + cel(p + 'modelo', l.modelo, 'w110') + '</td>' +
         '<td data-l="Marca">' + cel(p + 'marca', l.marca, 'w90') + '</td>' +
         '<td data-l="Precio unitario">' + celNum(p + 'pu', l.pu, 'w90') + '</td>' +
@@ -591,6 +636,7 @@
       '</td><td></td><td class="vl mono calc fuerte" data-l="Con utilidad">' + mx(cs.ventaMat) + '</td><td colspan="3"></td></tr>' +
       '</tbody></table></div>' +
       '<div class="btnrow"><button class="btn" data-add="' + s.id + '">+ partida</button>' +
+      '<button class="btn" data-pegar="' + s.id + '">Pegar tabla</button>' +
       (cs.pisados ? '<span class="tiny n-warn">' + cs.pisados + ' margen(es) pisado(s) a mano en esta sección</span>' : '') +
       '</div>';
 
@@ -777,6 +823,98 @@
       '</div>';
   }
 
+  /* ── Pegar una tabla ───────────────────────────────────────────────────
+   *
+   * El proveedor ya mandó la lista escrita; volverla a teclear no es sólo lento,
+   * es donde se cuela el error de dedo en el precio, que es el dato que nadie
+   * vuelve a verificar.
+   *
+   * NADA se aplica solo. Se interpreta, se ENSEÑA lo que se entendió renglón
+   * por renglón, y se escribe cuando alguien lo aprueba mirándolo. Un parser
+   * que acierta el 90% y aplica solo mete un 10% de basura que nadie ve. */
+  function modalPegar(m, sid) {
+    const P = G.MachotePegar;
+    const cerrar = () => { const d = $('#modal'); if (d) d.remove(); };
+
+    const html =
+      '<div class="modal" id="modal"><div class="caja">' +
+      '<h3>Pegar una tabla</h3>' +
+      '<p class="tiny nota">Pega aquí una tabla de Claude, de un correo, de Excel o de una ' +
+      'cotización. Se entiende sola y <strong>te enseña qué entendió antes de escribir nada</strong>.</p>' +
+      '<textarea id="pg-txt" rows="7" placeholder="Cantidad | Descripción | Precio unitario&#10;4 | Rodamiento LM25UU | $4,200.00"></textarea>' +
+      '<div id="pg-prev"></div>' +
+      '<div class="acciones">' +
+      '<button class="btn" id="pg-cancel">Cancelar</button>' +
+      '<button class="btn primario" id="pg-ok" disabled>Agregar renglones</button>' +
+      '</div></div></div>';
+    document.body.insertAdjacentHTML('beforeend', html);
+
+    const txt = $('#pg-txt'), prev = $('#pg-prev'), ok = $('#pg-ok');
+    let ultimo = null;
+
+    const revisar = () => {
+      const r = P.interpretar(txt.value, { moneda: m.moneda });
+      ultimo = r;
+      ok.disabled = !r.ok;
+      if (!txt.value.trim()) { prev.innerHTML = ''; return; }
+      if (!r.ok) {
+        prev.innerHTML = '<div class="aviso bad">' + esc(r.motivo) +
+          '<div class="tiny">Prueba con una columna de descripción y una de precio, ' +
+          'separadas por tabulador, coma o barra.</div></div>';
+        return;
+      }
+      const conAviso = r.renglones.filter(x => x._avisos.length).length;
+      prev.innerHTML =
+        '<div class="aviso' + (conAviso ? ' warn' : ' ok') + '">Entendí <strong>' +
+        r.renglones.length + ' renglón(es)</strong> · separador: <strong>' + esc(r.sep) + '</strong> · ' +
+        (r.encabezado ? 'con encabezado' : 'sin encabezado, adiviné las columnas por su forma') +
+        (conAviso ? ' · <strong class="n-warn">' + conAviso + ' con algo que revisar</strong>' : '') +
+        '</div>' +
+        '<div class="scroll"><table class="rejilla"><thead><tr>' +
+        '<th>QTY</th><th>Unidad</th><th>Tipo</th><th>Descripción</th><th>Precio unitario</th><th>Moneda</th><th></th>' +
+        '</tr></thead><tbody>' +
+        r.renglones.map(x =>
+          '<tr' + (x._avisos.length ? ' class="ojo"' : '') + '>' +
+          '<td class="vl mono">' + esc(nn(x.qty)) + '</td>' +
+          '<td>' + esc(x.unidad || '—') + '</td>' +
+          '<td>' + esc(x.tipo || '—') + '</td>' +
+          '<td>' + esc(x.descripcion || '—') + '</td>' +
+          '<td class="vl mono">' + (x.pu === null ? '—' : mx(x.pu)) + '</td>' +
+          '<td>' + esc(x.moneda) + '</td>' +
+          '<td class="tiny n-warn">' + esc(x._avisos.join(', ')) + '</td></tr>').join('') +
+        '</tbody></table></div>' +
+        '<p class="tiny nota">El <strong>Tipo</strong> que no venga en la tabla queda vacío: ' +
+        'Materiales o Servicios decide el multiplicador, y adivinarlo movería el precio.</p>';
+    };
+
+    txt.oninput = revisar;
+    $('#pg-cancel').onclick = cerrar;
+    $('#modal').onclick = (ev) => { if (ev.target.id === 'modal') cerrar(); };
+
+    ok.onclick = () => {
+      if (!ultimo || !ultimo.ok) return;
+      const sec = m.secciones.find(x => x.id === sid);
+      if (!sec) { cerrar(); return; }
+      // Se meten donde caben: primero se rellenan los renglones en blanco que
+      // ya existen, y sólo se agregan nuevos cuando se acaban. Si no, pegar
+      // diez renglones dejaría treinta vacíos colgando debajo.
+      const nuevos = ultimo.renglones.map(x => ({
+        qty: x.qty, unidad: x.unidad, tipo: x.tipo, descripcion: x.descripcion,
+        modelo: x.modelo, marca: x.marca, pu: x.pu, moneda: x.moneda,
+        margen: null, link: x.link, comentario: x.comentario
+      }));
+      nuevos.forEach(n => {
+        const hueco = sec.partidas.findIndex(l => !C.usadaPartida(l));
+        if (hueco >= 0) sec.partidas[hueco] = n; else sec.partidas.push(n);
+      });
+      cerrar();
+      tocado();
+      pintarHoja(m); barra(m, C.calcular(m));
+      toast(nuevos.length + ' renglón(es) agregado(s).');
+    };
+    txt.focus();
+  }
+
   /* ── Barra fija ──────────────────────────────────────────────────────── */
   function barra(m, c) {
     const rev = R.revisar(m);
@@ -841,6 +979,7 @@
         barra(m, refrescarCalculados(m) || C.calcular(m));
       };
     });
+    $$('[data-pegar]').forEach(b => b.onclick = () => modalPegar(m, b.dataset.pegar));
     const sel = $('[data-estado]');
     if (sel) sel.onchange = () => {
       const nuevo = sel.value;

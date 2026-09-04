@@ -64,8 +64,9 @@ versión es peor que no tener indicador.
 | `js/reglas.js` | 30 reglas en un arreglo de configuración, separadas del motor que las corre. |
 | `js/demo.js` | Datos de ejemplo. Lo que viene del machote real va marcado `REAL`; lo inventado, `SUPUESTO`. |
 | `js/app.js` | Vistas y ruteo. |
+| `js/pegar.js` | El pegado de tablas: separador, columnas y revisión previa. |
 | `js/almacen.js` | El autoguardado. UNA pieza entre la pantalla y donde viven los datos. |
-| `tests/pruebas-navegador.js` | 71 pruebas de navegador. |
+| `tests/pruebas-navegador.js` | 82 pruebas de navegador. |
 
 ## Cómo se calcula el precio
 
@@ -250,6 +251,53 @@ Treinta cubren lo que se ve en el acervo y `+ partida` agrega sin límite.
 Un renglón en blanco **no se marca como hueco**. «Sin precio» sale sólo en uno
 que alguien empezó a llenar; en los treinta vacíos sería una alerta que aparece
 siempre, y una alerta que aparece siempre deja de leerse.
+
+## Pegar una tabla
+
+El proveedor ya mandó la lista escrita. Volverla a teclear no es sólo lento: es
+donde se cuela el error de dedo **en el precio**, que es el dato que nadie vuelve
+a verificar.
+
+`js/pegar.js` interpreta un bloque pegado —de Claude, de un correo, de Excel, de
+un PDF— y saca cantidad, unidad, tipo, descripción, modelo, marca, precio y
+moneda. Elige el separador **por consistencia, no por frecuencia**: gana el que
+produce el mismo número de columnas en la mayoría de los renglones, porque uno
+que da 3 columnas en una fila y 7 en la siguiente no es el separador, es un
+carácter que salía en el texto.
+
+Sin encabezado, adivina por la **forma** de los datos: la columna con más texto
+largo es la descripción, y de las numéricas, **la que trae enteros es la cantidad
+y la que trae decimales es el precio**. Ordenar por magnitud fallaba en cuanto la
+lista traía muchas piezas baratas — «250 cables a 18.50» ponía la cantidad del
+lado del precio.
+
+**Nada se aplica solo.** Interpreta, enseña lo que entendió renglón por renglón
+con sus avisos, y escribe cuando alguien lo aprueba mirándolo. Un parser que
+acierta el 90% y aplica solo mete un 10% de basura que nadie ve.
+
+El `Tipo` que no venga en la tabla **queda vacío**: Materiales o Servicios elige
+el multiplicador, y adivinarlo movería el precio.
+
+## Lo que decide el verde
+
+Un renglón se pinta cuando tiene **cantidad y precio**. Con sólo la cantidad está
+a medias y no aporta un peso al total; pintarlo diría «listo» de algo que todavía
+no suma.
+
+## Nada negativo
+
+Ni horas, ni personas, ni precios, ni multiplicadores. Se corta en el **único
+escritor** (`setPath`) y no en cada campo: el `min=0` del input frena las
+flechitas y el teclado, pero no frena escribir «-5» ni pegarlo. Un precio
+negativo no se ve como un error — se ve como un total más chico, que es peor.
+
+## Borrar un machote
+
+Se borra **En creación** y **En revisión**. **Enviado a Odoo no se borra nunca**:
+es el documento con el que se vendió, y si desaparece, desaparece la única
+explicación de por qué el precio fue ese. Lo que se hace con él es cambiarle el
+estado. El candado está en dos lados —no se pinta el botón, y el manejador lo
+vuelve a comprobar— porque el primero es cosmético.
 
 ## Quién entra
 

@@ -59,7 +59,7 @@
     borrador:   { label: 'En creación', color: '#8b8b8b', congelado: false, orden: 1 },
     revision:   { label: 'En revisión', color: '#c07a00', congelado: false, orden: 2 },
     enviado:    { label: 'Enviado a Odoo', color: '#1a7f37', congelado: true,
-                  exige_so: true, orden: 3 }
+                  exige_so: true, orden: 3, sin_borrar: true }
   };
   const FLUJO = ['borrador', 'revision', 'enviado'];
 
