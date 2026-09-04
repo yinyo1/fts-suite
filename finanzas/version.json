@@ -1,9 +1,14 @@
 {
-  "version": "V1.08",
-  "fecha": "2026-09-03",
+  "version": "V1.09",
+  "fecha": "2026-09-04",
   "modulo": "finanzas",
   "esquema": "V<mayor>.<menor de dos dígitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.09",
+      "pr": null,
+      "nota": "Alta de las tres cuentas BBVA (journals 8 General MXN, 96 Nomina, 75 USD) como caratula sin datos. Hasta ahora el panel no sabia nada de journals: las fuentes venian enteras de fin/captura-status, asi que una cuenta que existe en Odoo y que ningun capturador toca era invisible. Se agrega CATALOGO_FUENTES, que aporta identidad (banco, moneda, empresa, journal, metodo, ultimo dato verificado con su fecha) y NUNCA cifras, y se fusiona con lo que manda el server dandole SIEMPRE la ultima palabra al server: el dia que captura-status reporte estos journals, la entrada del catalogo se retira sola. El journal 75 lleva currency_id USD explicito sobre la empresa mexicana; la tarjeta muestra la moneda y el codigo no asume MXN ni reutiliza la cuenta de suspense de la empresa 1. El semaforo estrena un bloque 'sin feed conectado' para que BBVA General no aparezca al dia teniendo su ultima informacion en diciembre de 2025."
+    },
     {
       "version": "V1.08",
       "pr": null,
