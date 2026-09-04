@@ -1158,7 +1158,7 @@ let ok = 0, mal = 0;
     await p.setViewportSize({ width: 1280, height: 900 });
     await ir('#/m/M-1041'); await hoja('Suministro');
     const antes = await p.textContent('.fija .mono');
-    await p.click('[data-pegar]'); await p.waitForTimeout(300);
+    await p.locator('[data-pegar]').first().click(); await p.waitForTimeout(300);
     await p.fill('#pg-txt', 'Cantidad\tDescripcion\tPrecio\n7\tBrida de acero 4in\t1350.25\n2\tEmpaque espirometalico\t480');
     await p.waitForTimeout(400);
     const prev = await p.textContent('#pg-prev');
@@ -1182,14 +1182,110 @@ let ok = 0, mal = 0;
   await paso('pegar texto que no es tabla lo dice, y no deja aplicar', async () => {
     await p.setViewportSize({ width: 1280, height: 900 });
     await ir('#/m/M-1041'); await hoja('Suministro');
-    await p.click('[data-pegar]'); await p.waitForTimeout(300);
+    await p.locator('[data-pegar]').first().click(); await p.waitForTimeout(300);
     await p.fill('#pg-txt', 'buenos dias\nadjunto la cotizacion');
     await p.waitForTimeout(400);
     if (!(await p.locator('#pg-ok').isDisabled())) throw new Error('dejó aplicar basura');
-    const t = await p.textContent('#pg-prev');
-    if (!/No encontré|No pude/.test(t)) throw new Error('no explicó: ' + t.slice(0, 100));
+    // Se mide que EXPLIQUE, no la redacción exacta: fijar el texto convierte
+    // cualquier mejora del mensaje en un fallo, que es justo lo que pasó aquí.
+    const t = (await p.textContent('#pg-prev')).trim();
+    if (t.length < 25) throw new Error('no explicó nada: «' + t + '»');
+    if (!/no\s|ninguno|No\s/.test(t)) throw new Error('el mensaje no dice que no se pudo: ' + t.slice(0, 100));
     await p.click('#pg-cancel'); await p.waitForTimeout(250);
     await p.setViewportSize({ width: 380, height: 780 });
+  });
+
+  // ── V1.11 · el pegado empieza en el renglón que elijas ───────────────
+  await paso('cada renglón de materiales trae su botón de pegar', async () => {
+    await p.setViewportSize({ width: 1280, height: 900 });
+    await ir('#/m/M-1041'); await hoja('Suministro');
+    const r = await p.evaluate(() => {
+      const filas = [...document.querySelectorAll('.rejilla tbody tr')]
+        .filter(t => t.querySelector('[data-cel*=":partidas:"]'));
+      return { filas: filas.length, conBoton: filas.filter(t => t.querySelector('[data-pegar]')).length };
+    });
+    if (r.filas === 0) throw new Error('no hay renglones de materiales');
+    if (r.conBoton !== r.filas) throw new Error('sólo ' + r.conBoton + ' de ' + r.filas + ' traen botón');
+    await p.setViewportSize({ width: 380, height: 780 });
+  });
+
+  await paso('pegar respeta lo que está arriba del renglón elegido', async () => {
+    await p.setViewportSize({ width: 1280, height: 900 });
+    await ir('#/m/M-1041'); await hoja('Suministro');
+    const descs = () => p.evaluate(() =>
+      [...document.querySelectorAll('[data-cel$=":descripcion"]')].map(i => i.value));
+    const antes = await descs();
+    // Se pega DESDE el tercer renglón: los dos de arriba no se tocan.
+    await p.locator('[data-pegar]').nth(2).click(); await p.waitForTimeout(300);
+    const titulo = await p.textContent('.modal h3');
+    if (titulo.indexOf('renglón 3') < 0) throw new Error('el modal no dice desde dónde: ' + titulo);
+    await p.fill('#pg-txt', '- 4 pzas Rodamiento lineal LM25UU  $4,200.00\n- 1 Placa de acero A36  $38,000');
+    await p.waitForTimeout(400);
+    await p.click('#pg-ok'); await p.waitForTimeout(500);
+    const desp = await descs();
+    if (desp[0] !== antes[0] || desp[1] !== antes[1])
+      throw new Error('tocó lo de arriba: ' + antes.slice(0, 2).join(' | ') + ' → ' + desp.slice(0, 2).join(' | '));
+    if (desp[2] !== 'Rodamiento lineal LM25UU')
+      throw new Error('no escribió en el renglón 3: ' + desp[2]);
+    if (desp[3] !== 'Placa de acero A36')
+      throw new Error('no escribió en el renglón 4: ' + desp[3]);
+    console.log('   1-2 intactos ·', desp[2].slice(0, 26), '· 4 pzas');
+    await p.setViewportSize({ width: 380, height: 780 });
+  });
+
+  await paso('insertar empuja hacia abajo y no pierde nada', async () => {
+    await p.setViewportSize({ width: 1280, height: 900 });
+    await ir('#/m/M-1041'); await hoja('Suministro');
+    const descs = () => p.evaluate(() =>
+      [...document.querySelectorAll('[data-cel$=":descripcion"]')].map(i => i.value).filter(Boolean));
+    const antes = await descs();
+    await p.locator('[data-pegar]').nth(1).click(); await p.waitForTimeout(300);
+    await p.fill('#pg-txt', '- 9 Tornillo hexagonal grado 5  $12.50');
+    await p.waitForTimeout(400);
+    await p.check('input[name="pg-modo"][value="inserta"]');
+    await p.click('#pg-ok'); await p.waitForTimeout(500);
+    const desp = await descs();
+    // Todas las descripciones anteriores siguen ahí, más la nueva.
+    const perdidas = antes.filter(d => desp.indexOf(d) < 0);
+    if (perdidas.length) throw new Error('se perdieron: ' + perdidas.join(' | '));
+    if (desp.indexOf('Tornillo hexagonal grado 5') !== 1)
+      throw new Error('no entró en la posición 2: ' + desp.slice(0, 3).join(' | '));
+    console.log('   ', antes.length, '→', desp.length, 'descripciones, ninguna perdida');
+    await p.setViewportSize({ width: 380, height: 780 });
+  });
+
+  await paso('el pegado entiende listas y texto, no sólo tablas', async () => {
+    const r = await p.evaluate(() => {
+      const P = window.MachotePegar;
+      const casos = {
+        vinetas: '- 4 pzas Rodamiento lineal LM25UU  $4,200.00\n- 1 Placa de acero A36  $38,000',
+        numerada: '1. 12 mts Tubo cedula 40  1,250.50\n2. 3 Valvula de bola 2in  890.00',
+        corrido: '250 Cable THW cal 12 negro 18.50\n80 Tuberia conduit 1/2 45.00',
+        pdf: 'Descripcion            Cant   Precio\nBomba centrifuga 2HP     2    18500\nManometro     10      450',
+        csv: 'Cant,Descripcion,Precio\n5,Soporte PTR inox,2500\n2,Anclaje quimico,900',
+        tabSinCab: 'Cable THW cal 12\t250\t18.50\nConduit 1/2\t80\t45.00',
+        prosa: 'Buenos dias, adjunto la cotizacion.\nQuedo atento.'
+      };
+      const o = {};
+      for (const k in casos) {
+        const x = P.interpretar(casos[k], { moneda: 'MXN' });
+        o[k] = { ok: x.ok, sep: x.sep, n: x.renglones.length, r0: x.renglones[0] || null };
+      }
+      return o;
+    });
+    // La viñeta y la unidad se reconocen y NO se quedan en la descripción.
+    if (r.vinetas.r0.qty !== 4 || r.vinetas.r0.pu !== 4200) throw new Error('viñetas: ' + JSON.stringify(r.vinetas.r0));
+    if (r.vinetas.r0.unidad !== 'Pieza') throw new Error('no leyó "pzas": ' + r.vinetas.r0.unidad);
+    if (/^[-\d]/.test(r.vinetas.r0.descripcion)) throw new Error('dejó la viñeta o la cantidad en la descripción: ' + r.vinetas.r0.descripcion);
+    if (r.numerada.r0.qty !== 12 || r.numerada.r0.unidad !== 'Metro') throw new Error('numerada: ' + JSON.stringify(r.numerada.r0));
+    if (r.corrido.r0.qty !== 250 || r.corrido.r0.pu !== 18.5) throw new Error('corrido: ' + JSON.stringify(r.corrido.r0));
+    // Y las tablas siguen ganando cuando de verdad son tablas.
+    if (r.pdf.sep !== 'espacios' || r.pdf.r0.qty !== 2) throw new Error('pdf: ' + JSON.stringify(r.pdf));
+    if (r.csv.sep !== ',' || r.csv.r0.qty !== 5) throw new Error('csv: ' + JSON.stringify(r.csv));
+    if (r.tabSinCab.sep !== 'tabulador' || r.tabSinCab.r0.qty !== 250)
+      throw new Error('la coma partió los miles o el tabulador se descartó: ' + JSON.stringify(r.tabSinCab));
+    if (r.prosa.ok) throw new Error('aceptó un correo de cortesía como lista');
+    console.log('    listas, PDF, CSV y tabulador; prosa rechazada');
   });
 
   // ── El gate ──────────────────────────────────────────────────────────

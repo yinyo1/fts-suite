@@ -66,7 +66,7 @@ versión es peor que no tener indicador.
 | `js/app.js` | Vistas y ruteo. |
 | `js/pegar.js` | El pegado de tablas: separador, columnas y revisión previa. |
 | `js/almacen.js` | El autoguardado. UNA pieza entre la pantalla y donde viven los datos. |
-| `tests/pruebas-navegador.js` | 82 pruebas de navegador. |
+| `tests/pruebas-navegador.js` | 86 pruebas de navegador. |
 
 ## Cómo se calcula el precio
 
@@ -270,6 +270,30 @@ largo es la descripción, y de las numéricas, **la que trae enteros es la canti
 y la que trae decimales es el precio**. Ordenar por magnitud fallaba en cuanto la
 lista traía muchas piezas baratas — «250 cables a 18.50» ponía la cantidad del
 lado del precio.
+
+También entiende **listas y texto corrido**, no sólo tablas: viñetas, numeración,
+la unidad pegada a la cantidad («4 pzas», «12 mts») y el precio al final. Cuando
+no hay columnas, cada renglón se lee por su cuenta — cantidad al principio,
+precio al final, descripción en medio.
+
+El orden de preferencia importa y está pensado: un **separador de verdad**
+(tabulador, `|`, `;`, coma) manda siempre; si sólo hay espacios pero la primera
+fila es un encabezado reconocible, es una **tabla de PDF**; si no, se lee como
+**lista**; y los espacios a ciegas quedan de último recurso. Sin ese orden, el
+fallback por espacios se comía las listas y dejaba la viñeta y la cantidad
+dentro de la descripción.
+
+⚠️ **La coma no se acepta si partió un número.** «$4,200.00» se ve como dos
+columnas perfectas —«$4» y «200.00»— en todos los renglones, así que la prueba
+de consistencia la aprueba con honores y el resultado es basura. La comprobación
+va sólo en `,` y `;`, que son los que viven dentro de una cifra: aplicarla al
+tabulador lo descartaba en falso con una descripción que termina en dígito
+(«Tubo cédula 40»).
+
+**Empieza donde tú digas.** El botón `⇥` vive **en cada renglón**, no en la
+sección: el punto donde arranca el pegado es una decisión del capturista, y casi
+siempre hay algo capturado arriba que no se toca. Se elige entre **escribir
+encima** de ahí hacia abajo o **insertar** empujando lo que ya estaba.
 
 **Nada se aplica solo.** Interpreta, enseña lo que entendió renglón por renglón
 con sus avisos, y escribe cuando alguien lo aprueba mirándolo. Un parser que
