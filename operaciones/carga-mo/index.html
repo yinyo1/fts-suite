@@ -4,9 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Validación de Nómina y Carga de Mano de Obra — FTS Suite</title>
-<script>(function(){ window.CMO_BUILD = '20260811-cmo-ui-panel'; })();</script>
+<script>(function(){ window.CMO_BUILD = '20260904-cmo-cruce-rh'; })();</script>
 <script src="../../finanzas/js/auth-fin.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="js/cruce-rh.js?v=20260904-cmo-cruce-rh"></script>
 <script src="js/resolver.js"></script>
 <style>
   :root{ --azul:#1a4480; --ok:#1a7a3a; --warn:#BA7517; --err:#b3261e; --info:#3b5bdb; --bg:#f4f6f9; }
@@ -155,6 +156,18 @@
         <input type="file" id="file" accept=".xlsx,.xls" style="display:none">
       </div>
     </div>
+    <div class="sep"></div>
+    <!-- El archivo de RH. Va en la misma barra que el de CONTPAQi a proposito: son
+         los dos insumos de la misma decision, y separarlos haria parecer que uno es
+         opcional. Es opcional para VALIDAR, pero no para mandar con confianza. -->
+    <div class="fld">
+      <label>Archivo de RH (Magaly)</label>
+      <div class="fld-in">
+        <button class="btn btn-g" id="drop-rh">📋 Elegir archivo…</button>
+        <span class="mut" id="fname-rh">ninguno</span>
+        <input type="file" id="file-rh" accept=".csv,.xlsx,.xls" style="display:none">
+      </div>
+    </div>
     <div class="acts">
       <button class="btn btn-p" id="send" disabled>Validar nómina</button>
       <button class="btn btn-w" id="wbtn" disabled>Enviar a FTS (Correo + Odoo)</button>
@@ -186,6 +199,12 @@
 
     <!-- 3 · el resultado de cruzar contra Odoo: nunca colapsado -->
     <div id="srv-panel" style="display:none"></div>
+
+    <!-- 3.5 · el cruce contra RH: nunca colapsado.
+         Va ANTES de los avisos porque contesta otra pregunta, y la mas cara: los
+         avisos dicen si el archivo esta bien hecho; esto dice si trae lo que RH
+         pidio. Un archivo impecable puede estar mal por lo que le falta. -->
+    <div id="rh-panel"></div>
 
     <!-- 4 · avisos: nunca colapsados -->
     <div class="card" id="c-msgs"><h3 id="msgs-h">Avisos</h3><div id="msgs"></div></div>
@@ -351,6 +370,103 @@ function leer(f){
     render();
   };
   rd.readAsArrayBuffer(f);
+}
+
+/* ── el archivo que mandó RH ──────────────────────────────────────────────
+   Se acepta .csv y .xlsx porque RH manda los dos y es el MISMO archivo: el csv es
+   el acuse (lo que se congela al enviar) y el xlsx la vista. Obligar a uno solo
+   seria pedirle a Ulises que sepa cual le tocó. */
+var RH = null;
+var dropRh = $('drop-rh'), fileRh = $('file-rh');
+dropRh.addEventListener('click', function(){ fileRh.click(); });
+dropRh.addEventListener('dragover', function(e){ e.preventDefault(); dropRh.style.background='#e8f2ff'; });
+dropRh.addEventListener('dragleave', function(){ dropRh.style.background=''; });
+dropRh.addEventListener('drop', function(e){ e.preventDefault(); dropRh.style.background='';
+  if(e.dataTransfer.files[0]) leerRH(e.dataTransfer.files[0]); });
+fileRh.addEventListener('change', function(e){ if(e.target.files[0]) leerRH(e.target.files[0]); });
+
+function leerRH(f){
+  $('fname-rh').textContent = f.name;
+  var rd = new FileReader();
+  var esCsv = /\.csv$/i.test(f.name);
+  rd.onload = function(ev){
+    try{
+      if(esCsv){
+        RH = CruceRH.parseDespacho(ev.target.result);
+      }else{
+        var wb = XLSX.read(new Uint8Array(ev.target.result), { type:'array' });
+        /* La hoja que importa es la de instrucciones: es la que RH manda. La de
+           Detalle es el respaldo por concepto y no cambia el cruce. */
+        var hoja = wb.Sheets['Instrucciones'] || wb.Sheets[wb.SheetNames[0]];
+        RH = CruceRH.desdeFilas(XLSX.utils.sheet_to_json(hoja, { header:1, raw:false, defval:'' }));
+      }
+    }catch(err){
+      RH = { error: 'No se pudo abrir el archivo: ' + err.message, filas: [] };
+    }
+    /* El cruce caduca junto con el reporte: cambiar un insumo invalida lo validado. */
+    invalidarReporte();
+    if(PARSED) render(); else pintarCruceRH(null);
+  };
+  if(esCsv) rd.readAsText(f, 'utf-8'); else rd.readAsArrayBuffer(f);
+}
+
+/* ── el cruce, pintado ────────────────────────────────────────────────────
+   Devuelve cuantos hallazgos de INTEGRIDAD encontro, porque eso decide si la
+   nomina se puede mandar. Sin archivo de RH devuelve 0 y lo DICE: no se puede
+   confundir "no encontre problemas" con "no compare nada". */
+function pintarCruceRH(P){
+  var box = $('rh-panel');
+  /* Si ya hay archivo de RH, el contenedor de resultados tiene que estar visible
+     aunque todavia no haya nomina: sin esto el panel se llena y queda ESCONDIDO
+     dentro de #result, o sea que Ulises suelta el archivo de Magaly y no pasa nada.
+     Lo cazo la prueba visual, no la de logica — la logica veia el texto correcto en
+     un elemento de cero pixeles. */
+  if (RH) $('result').style.display = 'block';
+  if(!RH){
+    box.innerHTML = '<div class="card"><h3>Revisión contra lo que mandó RH</h3>'
+      + '<div class="msg m-avi"><div><b>No se cargó el archivo de RH.</b>'
+      + '<div class="mut" style="font-size:12px;margin-top:3px">La nómina se está validando'
+      + ' <b>contra sí misma</b>: que cuadre, que los conceptos estén catalogados, que los totales'
+      + ' cierren. Eso no dice si trae lo que RH pidió. Sube arriba el archivo que te mandó Magaly'
+      + ' para compararlos.</div></div></div></div>';
+    return 0;
+  }
+  var semSel = (P && P.periodo) ? ('S' + P.periodo.periodo + '/' + (new Date(P.periodo.inicio+'T12:00:00')).getFullYear()) : null;
+  var r = CruceRH.cruzar(RH, (P && P.empleados) || [], semSel);
+  var nInt = CruceRH.contar(r.hallazgos, 'INTEGRIDAD');
+  var nRev = CruceRH.contar(r.hallazgos, 'REVISION');
+
+  var cab = '<h3>Revisión contra lo que mandó RH'
+    + (RH.semana ? ' <span class="mut" style="font-weight:400">· ' + esc(RH.semana)
+        + (RH.version ? ' v' + RH.version : '') + ' · ' + r.resumen.total_rh + ' personas</span>' : '')
+    + '</h3>';
+
+  if(!r.hallazgos.length){
+    box.innerHTML = '<div class="card">' + cab
+      + '<div class="msg m-ok"><div><b>✓ La nómina coincide con lo que pidió RH.</b>'
+      + '<div class="mut" style="font-size:12px;margin-top:3px">Se cruzaron '
+      + r.resumen.cruzados + ' personas por su código de CONTPAQi'
+      + (r.resumen.con_instruccion ? ', ' + r.resumen.con_instruccion + ' con instrucción' : '')
+      + '. Ni falta nada de lo que RH pidió, ni sobra nada que RH no haya pedido.</div></div></div></div>';
+    return 0;
+  }
+
+  var orden = { INTEGRIDAD:0, REVISION:1, AVISO:2 };
+  var lista = r.hallazgos.slice().sort(function(a,b){ return orden[a.nivel]-orden[b.nivel]; });
+  var cuerpo = lista.map(function(h){
+    var cls = h.nivel==='INTEGRIDAD' ? 'm-int' : (h.nivel==='REVISION' ? 'm-cla' : 'm-avi');
+    return '<div class="msg ' + cls + '"><div><b>' + esc(h.que) + '</b>'
+      + '<div class="mono" style="font-size:12px;margin:3px 0">' + esc(h.dato) + '</div>'
+      + '<div class="mut" style="font-size:12px">→ ' + esc(h.accion) + '</div></div></div>';
+  }).join('');
+
+  box.innerHTML = '<div class="card">' + cab
+    + '<div class="mut" style="font-size:12px;margin-bottom:8px">'
+    + (nInt ? '<b style="color:var(--bad)">' + nInt + ' que impiden mandar</b> · ' : '')
+    + (nRev ? nRev + ' que hay que revisar · ' : '')
+    + r.resumen.cruzados + ' de ' + r.resumen.total_rh + ' personas cruzadas por código'
+    + '</div>' + cuerpo + '</div>';
+  return nInt;
 }
 
 /* ── render de un mensaje QUE / DATO / ACCION ────────────────────────────── */
@@ -561,8 +677,14 @@ function render(){
     $('tb').innerHTML = filas + filasTrio;
   } else { $('c-tabla').style.display='none'; }
 
+  /* El cruce contra RH puede cerrar el boton por su cuenta: una nomina que no trae
+     lo que RH pidio no se manda, aunque el archivo cuadre consigo mismo. */
+  var rhInt = pintarCruceRH(P);
+  if(rhInt > 0) puedeEnviar = false;
+
   $('send').disabled = !puedeEnviar;
-  $('send').textContent = puedeEnviar ? 'Validar nómina' : 'Corrige los errores';
+  $('send').textContent = puedeEnviar ? 'Validar nómina'
+    : (rhInt > 0 ? 'No coincide con lo que pidió RH' : 'Corrige los errores');
 }
 function k(label, val, color){
   return '<div><span>'+label+'</span><b'+(color?' style="color:'+color+'"':'')+'>'+val+'</b></div>';

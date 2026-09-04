@@ -170,12 +170,23 @@
              dias: [] };
   }
 
+  // Dos personas SIN codigo a proposito: es el caso que el archivo tiene que saber
+  // avisar ("sin codigo de CONTPAQi: el despacho no lo puede cruzar") y que en real
+  // pasa de verdad — hay gente del roster de nomina que no esta en la lista de raya.
+  var CODIGO_DEMO = { 32: '', 112: '' };
+
   function semanaDemo() {
     var personas = ROSTER.map(function (r) {
       var d = DECLS_DEMO[r[0]];
       return {
         id: r[0], nombre: r[1], puesto: r[2], departamento: r[3],
         inactivo: !!r[4],
+        // El codigo de CONTPAQi tambien en PRACTICA. Si aqui faltara, practicar
+        // enseñaria un archivo sin la columna con la que Ulises captura, y el modo
+        // practica existe justo para que no haya sorpresas al pasar a REAL.
+        // Se deriva del id para no meter la tabla real de codigos en un repo publico;
+        // lo que se practica es la FORMA de la columna, no sus valores.
+        codigo: CODIGO_DEMO[r[0]] || ('9' + ('00' + (r[0] % 100)).slice(-2)),
         dias_mexico: d ? d.dias_mexico : (r[4] ? 0 : 5),
         dias_odoo: d ? d.odoo : (r[4] ? 0 : 5),
         capturado: !!d,

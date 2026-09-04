@@ -52,6 +52,14 @@
   // dice la celda. Se conserva REVISAR aparte porque contesta otra pregunta: la
   // instrucción dice QUÉ capturar, REVISAR dice si TODAVÍA NO se debe capturar.
   var COLUMNAS = [
+    // El CODIGO va PRIMERO y no es cosmético: es la llave con la que Ulises captura.
+    // CONTPAQi no conoce los ids de Odoo — su lista de raya se ordena y se busca por
+    // este código de tres dígitos. Sin él, el archivo que le llega de RH y la lista
+    // que él tiene enfrente no comparten NINGUNA llave: el nombre no sirve porque
+    // Odoo escribe "Héctor Cruz Hernández" y CONTPAQi "CRUZ HERNANDEZ HECTOR JAVIER".
+    // El archivo que Magaly mandaba a mano SÍ traía el código —lo escribía sobre la
+    // propia lista de raya—; al generarlo nosotros se había perdido.
+    { k: 'codigo',       t: 'CODIGO',       tipo: 'txt', total: false },
     { k: 'no_empleado',  t: 'NO EMPLEADO',  tipo: 'txt', total: false },
     { k: 'nombre',       t: 'EMPLEADO',     tipo: 'txt', total: false },
     { k: 'instruccion',  t: 'INSTRUCCION',  tipo: 'txt', total: false },
@@ -214,7 +222,8 @@
   // ─── Un renglón ───
   function filaDe(persona, semana, disputas) {
     var f = { no_empleado: persona.id, nombre: persona.nombre, puesto: persona.puesto || '',
-              departamento: persona.departamento || '', dias_mx: num(persona.dias_mexico) };
+              departamento: persona.departamento || '', dias_mx: num(persona.dias_mexico),
+              codigo: persona.codigo ? ('' + persona.codigo) : '' };
     // Todo cubo arranca en cero aunque nadie declare nada: un `undefined` sumado da
     // NaN, y un NaN en una cantidad de dias es un renglon que nadie sabe leer.
     for (var i = 0; i < ACUMULADORES.length; i++) {
@@ -283,6 +292,12 @@
     // que Samuel tiene un bono sin proyecto, el archivo tiene que decir lo mismo.
     var b = Log.bloqueos(persona, semana, disputas || []);
     for (var q = 0; q < b.length; q++) avisos.push(b[q].texto.toLowerCase());
+
+    // Sin código no hay cruce posible del otro lado. Se avisa AQUÍ, en el archivo que
+    // RH revisa antes de mandar, y no se descubre en la pantalla de Ulises cuando su
+    // validación no encuentre a la persona. El hueco se arregla en Odoo (el campo
+    // x_studio_codigo_contpaqi de esa ficha), no en el archivo.
+    if (!f.codigo) avisos.push('sin código de CONTPAQi: el despacho no lo puede cruzar');
 
     // ══ La instrucción se escribe COMO LA ESCRIBE MAGALY ═══════════════════════
     // Su lista de raya lleva años funcionando con una convención muy simple: si la
