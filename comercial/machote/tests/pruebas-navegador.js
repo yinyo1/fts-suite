@@ -693,7 +693,10 @@ let ok = 0, mal = 0;
       const out = [];
       document.querySelectorAll('.rejilla.tarjetas tbody tr:not(.grupo):not(.total) td').forEach(td => {
         if (getComputedStyle(td).display === 'none') return;
-        if (td.classList.contains('rotulo') || td.classList.contains('acc')) return;
+        // Las celdas de acciones no llevan etiqueta de columna a proposito: no
+        // son un dato, son botones. `acc-ini` es la del boton de pegar.
+        if (td.classList.contains('rotulo') || td.classList.contains('acc') ||
+            td.classList.contains('acc-ini')) return;
         if (!td.getAttribute('data-l')) out.push(td.className || '(sin clase)');
       });
       return out;
@@ -1196,6 +1199,44 @@ let ok = 0, mal = 0;
   });
 
   // ── V1.11 · el pegado empieza en el renglón que elijas ───────────────
+  await paso('el botón de pegar SE VE sin arrastrar la tabla', async () => {
+    /* La prueba que faltaba. La anterior comprobaba que el botón EXISTIERA y
+     * Playwright lo alcanzaba desplazando solo, así que pasaba en verde
+     * mientras el botón caía fuera de la pantalla: medido, x=1473 con la
+     * ventana en 1440 px. Existir y poder encontrarse no son lo mismo. */
+    for (const [w, h] of [[1440, 900], [1280, 900], [390, 844]]) {
+      await p.setViewportSize({ width: w, height: h });
+      await ir('#/m/M-1041'); await hoja('Suministro');
+      const r = await p.evaluate(() => {
+        const b = document.querySelector('[data-pegar]');
+        if (!b) return { hay: false };
+        const rb = b.getBoundingClientRect();
+        return { hay: true, x: Math.round(rb.left), der: Math.round(rb.right),
+                 ancho: window.innerWidth,
+                 dentro: rb.left >= 0 && rb.right <= window.innerWidth + 1 };
+      });
+      if (!r.hay) throw new Error('no hay botón de pegar a ' + w + 'px');
+      if (!r.dentro) throw new Error('a ' + w + 'px el botón cae fuera: x=' + r.x + '–' + r.der);
+    }
+    console.log('    visible a 1440, 1280 y 390 px');
+    await p.setViewportSize({ width: 380, height: 780 });
+  });
+
+  await paso('el botón de pegar se queda fijo al desplazar en horizontal', async () => {
+    await p.setViewportSize({ width: 1280, height: 900 });
+    await ir('#/m/M-1041'); await hoja('Suministro');
+    const r = await p.evaluate(() => {
+      const b = document.querySelector('[data-pegar]');
+      const cont = b.closest('.scroll');
+      const antes = Math.round(b.getBoundingClientRect().left);
+      cont.scrollLeft = cont.scrollWidth;   // hasta el extremo derecho
+      const desp = Math.round(b.getBoundingClientRect().left);
+      return { antes, desp, movio: Math.abs(desp - antes) };
+    });
+    if (r.movio > 2) throw new Error('se fue con el desplazamiento: ' + r.antes + ' → ' + r.desp);
+    await p.setViewportSize({ width: 380, height: 780 });
+  });
+
   await paso('cada renglón de materiales trae su botón de pegar', async () => {
     await p.setViewportSize({ width: 1280, height: 900 });
     await ir('#/m/M-1041'); await hoja('Suministro');

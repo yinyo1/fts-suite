@@ -40,7 +40,7 @@
    * 2026-09-03 (por instrucción de Esteban), pero lleva el suyo aparte y va en
    * V1.00. Planeación sigue en `2.4.1` y el kiosko sólo con cadena de build;
    * a esos no se propaga. */
-  const VERSION = 'V1.11';
+  const VERSION = 'V1.12';
   const $  = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
   const clon = (x) => JSON.parse(JSON.stringify(x));
@@ -597,6 +597,13 @@
     const filasMat = (s.partidas || []).map((l, j) => {
       const cl = C.costoPartida(l, m), p = 's:' + s.id + ':partidas:' + j + ':';
       return '<tr' + (C.capturada(l) ? ' class="capturada"' : '') + '>' +
+        // Pegar DESDE aquí hacia abajo. Va en la PRIMERA columna, y fija: al
+        // final de trece columnas el botón caía fuera de la pantalla —medido:
+        // x=1473 en una ventana de 1440— y había que arrastrar la tabla para
+        // encontrarlo. Además leído de izquierda a derecha dice lo que hace:
+        // se señala el renglón donde empieza el pegado.
+        '<td class="acc-ini" data-l=""><button class="ico pegar" data-pegar="' + s.id + '#' + j + '"' +
+        ' title="Pegar una lista a partir de este renglón" aria-label="Pegar a partir del renglón ' + (j + 1) + '">⇥</button></td>' +
         '<td data-l="Descripción">' + cel(p + 'descripcion', l.descripcion, 'desc') + '</td>' +
         '<td data-l="QTY">' + celNum(p + 'qty', l.qty, 'w60') + '</td>' +
         '<td data-l="Unidad">' + celLibre(p + 'unidad', l.unidad, 'unidades', 'w90') + '</td>' +
@@ -617,10 +624,6 @@
         '<td data-l="Link">' + cel(p + 'link', l.link, 'w130', 'https://…') + '</td>' +
         '<td data-l="Comentario">' + cel(p + 'comentario', l.comentario, 'w130') + '</td>' +
         '<td class="acc" data-l="">' +
-          // Pegar DESDE aquí hacia abajo. El botón vive en el renglón porque el
-          // punto donde empieza el pegado es una decisión del capturista, no
-          // del programa: casi siempre hay algo capturado arriba que no se toca.
-          '<button class="ico" data-pegar="' + s.id + '#' + j + '" title="Pegar una lista a partir de aquí">⇥</button>' +
           '<button class="ico" data-mov="' + s.id + '#' + j + '|-1" title="Subir"' + (j === 0 ? ' disabled' : '') + '>↑</button>' +
           '<button class="ico" data-mov="' + s.id + '#' + j + '|1" title="Bajar"' + (j === s.partidas.length - 1 ? ' disabled' : '') + '>↓</button>' +
           '<button class="ico" data-dup="' + s.id + '#' + j + '" title="Duplicar">⧉</button>' +
@@ -631,11 +634,12 @@
     const tablaMat =
       '<div class="secc-tit">COSTO MATERIALES Y SERVICIOS</div>' +
       '<div class="scroll"><table class="rejilla tarjetas">' +
-      '<thead><tr><th>DESCRIPCIÓN</th><th>QTY</th><th>UNIDAD</th><th>Tipo</th><th>MODELO</th><th>MARCA</th>' +
+      '<thead><tr><th class="acc-ini" title="Pegar una lista a partir de un renglón">⇥</th>' +
+      '<th>DESCRIPCIÓN</th><th>QTY</th><th>UNIDAD</th><th>Tipo</th><th>MODELO</th><th>MARCA</th>' +
       '<th>PRECIO UNITARIO</th><th>MONEDA</th><th>PRECIO TOTAL</th><th>Margen utilidad</th>' +
       '<th>PRECIO CON UTILIDAD</th><th>Link</th><th>Comentario</th><th></th></tr></thead><tbody>' +
-      (filasMat || '<tr><td colspan="14" class="vacio2">Sin partidas.</td></tr>') +
-      '<tr class="total"><td class="rotulo" data-l="">TOTAL</td><td colspan="7"></td>' +
+      (filasMat || '<tr><td colspan="15" class="vacio2">Sin partidas.</td></tr>') +
+      '<tr class="total"><td class="acc-ini"></td><td class="rotulo" data-l="">TOTAL</td><td colspan="7"></td>' +
       '<td class="vl mono calc" data-l="Costo materiales">' + mx(cs.costoMat) +
       '</td><td></td><td class="vl mono calc fuerte" data-l="Con utilidad">' + mx(cs.ventaMat) + '</td><td colspan="3"></td></tr>' +
       '</tbody></table></div>' +

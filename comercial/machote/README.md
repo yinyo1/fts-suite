@@ -66,7 +66,7 @@ versión es peor que no tener indicador.
 | `js/app.js` | Vistas y ruteo. |
 | `js/pegar.js` | El pegado de tablas: separador, columnas y revisión previa. |
 | `js/almacen.js` | El autoguardado. UNA pieza entre la pantalla y donde viven los datos. |
-| `tests/pruebas-navegador.js` | 86 pruebas de navegador. |
+| `tests/pruebas-navegador.js` | 88 pruebas de navegador. |
 
 ## Cómo se calcula el precio
 
@@ -294,6 +294,14 @@ tabulador lo descartaba en falso con una descripción que termina en dígito
 sección: el punto donde arranca el pegado es una decisión del capturista, y casi
 siempre hay algo capturado arriba que no se toca. Se elige entre **escribir
 encima** de ahí hacia abajo o **insertar** empujando lo que ya estaba.
+
+Es la **primera columna** de la tabla, y **se queda fija** al desplazar en
+horizontal. Nació al final, después de trece columnas, y ahí quedaba **fuera de
+la pantalla**: medido, `x=1473` con la ventana en 1440 px, con 218 px de arrastre
+para dar con él. Existía y las pruebas lo alcanzaban —Playwright desplaza solo
+antes de hacer clic— así que pasaban en verde mientras nadie lo encontraba.
+**Existir y poder encontrarse no son lo mismo**, y ahora hay una prueba que mide
+que el botón caiga dentro de la ventana a 1440, 1280 y 390 px.
 
 **Nada se aplica solo.** Interpreta, enseña lo que entendió renglón por renglón
 con sus avisos, y escribe cuando alguien lo aprueba mirándolo. Un parser que
