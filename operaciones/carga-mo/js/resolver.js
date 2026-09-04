@@ -399,10 +399,21 @@
     var ded = num(fila[M.TOTAL_DEDUCCIONES]);
     var neto = num(fila[M.NETO]);
 
-    var porColumna = {}, conceptos = {}, aBolsa = [], noCatalogado = [];
+    // `conceptos` son las PERCEPCIONES (lo que se paga) y `deducciones` lo que se
+    // resta. Se mantienen separados a propósito: el reparto a proyectos solo mira
+    // percepciones, y mezclarlas cambiaría los montos. Pero el cruce contra RH sí
+    // necesita las dos —un "descuento por préstamo" que RH pidió vive del lado de
+    // las deducciones—, y sin exponerlas ese control no puede existir.
+    var porColumna = {}, conceptos = {}, deducciones = {}, aBolsa = [], noCatalogado = [];
     var sumaZona = 0, sumaBolsa = 0, sumaNoCat = 0;
     var legacy = { vac: 0, asim: 0 };
     var firmaBaja = [];
+
+    // Solo se LEEN: no entran a ninguna suma ni al reparto. Es un espejo para que
+    // el cruce contra RH pueda ver el otro lado del renglón.
+    Z.deducciones.forEach(function (d) {
+      if (d.clave) deducciones[d.clave] = num(fila[d.col]);
+    });
 
     Z.percepciones.forEach(function (p) {
       var v = num(fila[p.col]);
@@ -484,7 +495,7 @@
       bruto: bruto, deducciones: ded, neto: neto,
       a_repartir: aRepartir,
       a_bolsa: aBolsa, no_catalogado: noCatalogado,
-      conceptos: conceptos, porColumna: porColumna,
+      conceptos: conceptos, deducciones: deducciones, porColumna: porColumna,
       vac: legacy.vac, asim: legacy.asim,
       _src: { total_percepciones_col: M.TOTAL_PERCEPCIONES, total_percepciones_letra: colLetra(M.TOTAL_PERCEPCIONES) }
     };

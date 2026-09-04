@@ -15,6 +15,7 @@ const fs = require('fs');
 const RAIZ = path.join(__dirname, '..');
 const Cruce = require(path.join(RAIZ, 'operaciones', 'carga-mo', 'js', 'cruce-rh.js'));
 const Des = require(path.join(RAIZ, 'modulos', 'rh', 'nomina-incidencias', 'js', 'despacho.js'));
+const Cat = require(path.join(RAIZ, 'modulos', 'rh', 'nomina-incidencias', 'js', 'catalogo.js'));
 
 let ok = 0, fail = 0;
 function check(nombre, cond, detalle) {
@@ -195,8 +196,12 @@ seccion('El cruce · concepto por concepto');
   check('y el hallazgo dice QUE pidio, no solo que falta',
     /PAGAR 2 días · Vacaciones/.test(noCap.hallazgos.find(x => x.codigo === 'INSTRUCCION_NO_CAPTURADA').dato));
 
-  const cap = Cruce.cruzar(dVac, [emp('013', 'SOLIS', { VACACIONES_A_TIEMPO: 900 })], 'S36/2026');
-  check('capturadas → sin hallazgo', cap.hallazgos.length === 0, codigos(cap.hallazgos).join(','));
+  // Vacaciones y prima van JUNTAS en la vida real: CONTPAQi paga la prima sola en
+  // cuanto hay vacaciones. El fixture traía las vacaciones peladas, que es un estado
+  // que no existe — y por eso ahora el motor lo caza como prima faltante.
+  const cap = Cruce.cruzar(dVac,
+    [emp('013', 'SOLIS', { VACACIONES_A_TIEMPO: 900, PRIMA_VACACIONAL_A_TIEMPO: 225 })], 'S36/2026');
+  check('capturadas con su prima de ley → sin hallazgo', cap.hallazgos.length === 0, codigos(cap.hallazgos).join(','));
 
   // Movimiento que RH nunca pidio.
   const sobra = Cruce.cruzar(Cruce.parseDespacho(archivoRH([persona({ id: 62, codigo: '013', ppa: { aplica: false } })])),
@@ -210,8 +215,11 @@ seccion('El cruce · concepto por concepto');
   const pBono = persona({ id: 79, codigo: '029', ppa: { aplica: false },
     // con motivo: el catalogo lo exige y sin el la persona sale marcada en REVISAR,
     // que es un hallazgo legitimo y ensuciaria lo que este caso quiere medir.
+    // `isr` entra por la misma razón que `motivo`: el catálogo lo exige, y sin él la
+    // persona sale marcada en REVISAR y ensucia lo que este caso quiere medir.
     declaraciones: [{ tipo: 'bono_productividad', fuente: 'J96',
-                      valores: { monto: 2500, motivo: 'cierre de Topo Chico' } }] });
+                      valores: { monto: 2500, motivo: 'cierre de Topo Chico',
+                                 isr: 'Con ISR a cargo del empleado' } }] });
   const dif = Cruce.cruzar(Cruce.parseDespacho(archivoRH([pBono])),
     [emp('029', 'ROMERO', { BONO: 1500 })], 'S36/2026');
   check('capturado con OTRO monto → se dice, con los dos numeros',
@@ -223,13 +231,77 @@ seccion('El cruce · concepto por concepto');
     [emp('029', 'ROMERO', { BONO: 2500 })], 'S36/2026');
   check('capturado con el monto correcto → sin hallazgo', igual.hallazgos.length === 0, codigos(igual.hallazgos).join(','));
 
+  // ── El bono libre de impuestos ──
+  // RH escribe lo que le LLEGA al empleado; Ulises captura el BRUTO que lo produce.
+  // Exigir que fueran iguales convertía el trabajo bien hecho en siete hallazgos.
+  const FUENTE = Object.keys(Cat.JOURNALS)[0];
+  const pLibre = persona({ id: 79, codigo: '029', ppa: { aplica: false },
+    declaraciones: [{ tipo: 'bono_productividad', fuente: FUENTE,
+      valores: { monto: 1000, motivo: 'PRODUCTIVIDAD', isr: Cat.LIBRE } }] });
+  const dLibre = Cruce.parseDespacho(archivoRH([pLibre]));
+  check('el archivo dice que el bono va libre de impuestos',
+    /LIBRE DE IMPUESTOS/.test(dLibre.filas[0].instruccion), dLibre.filas[0].instruccion);
+  check('y el parser lo lee', dLibre.filas[0].conceptos.items[0].libre === true);
+
+  const brutoOk = Cruce.cruzar(dLibre, [emp('029', 'ROMERO', { BONO: 1271.62 })], 'S36/2026');
+  check('un bruto mayor coherente con el ISR no es un error',
+    Cruce.contar(brutoOk.hallazgos, 'INTEGRIDAD') === 0 && Cruce.contar(brutoOk.hallazgos, 'REVISION') === 0,
+    codigos(brutoOk.hallazgos).join(','));
+  check('y se dice la cuenta, con el ISR implícito',
+    /21\.36%/.test((brutoOk.hallazgos.find(h => h.codigo === 'BONO_LIBRE_OK') || {}).dato || ''),
+    (brutoOk.hallazgos.find(h => h.codigo === 'BONO_LIBRE_OK') || {}).dato);
+
+  // El error que esta regla SÍ tiene que cazar: capturar el neto como si fuera
+  // bruto. Al empleado le llegan ~$790 de los $1,000 que le prometieron.
+  const sinCalcular = Cruce.cruzar(dLibre, [emp('029', 'ROMERO', { BONO: 1000 })], 'S36/2026');
+  check('capturar el neto como bruto SÍ es INTEGRIDAD',
+    tiene(sinCalcular.hallazgos, 'BONO_LIBRE_SIN_CALCULAR') &&
+    sinCalcular.hallazgos.find(h => h.codigo === 'BONO_LIBRE_SIN_CALCULAR').nivel === 'INTEGRIDAD');
+
+  const absurdo = Cruce.cruzar(dLibre, [emp('029', 'ROMERO', { BONO: 10000 })], 'S36/2026');
+  check('y un factor que ninguna tasa explica también se reporta',
+    tiene(absurdo.hallazgos, 'BONO_LIBRE_DESPROPORCIONADO'));
+
+  // Con ISR al empleado, el monto es el bruto y se compara tal cual.
+  const pIsr = persona({ id: 79, codigo: '029', ppa: { aplica: false },
+    declaraciones: [{ tipo: 'bono_productividad', fuente: FUENTE,
+      valores: { monto: 1000, motivo: 'X', isr: 'Con ISR a cargo del empleado' } }] });
+  const dIsr = Cruce.parseDespacho(archivoRH([pIsr]));
+  check('con ISR al empleado el parser NO lo marca libre', dIsr.filas[0].conceptos.items[0].libre === false);
+  const isrDif = Cruce.cruzar(dIsr, [emp('029', 'ROMERO', { BONO: 1271.62 })], 'S36/2026');
+  check('y ahí un bruto distinto SÍ es diferencia de monto', tiene(isrDif.hallazgos, 'MONTO_DISTINTO'),
+    codigos(isrDif.hallazgos).join(','));
+
+  // Archivo viejo, sin la marca: no se puede saber cuál de los dos casos es. Se dice
+  // la diferencia y se pide declararla, en vez de afirmar que está mal. Es el lado
+  // TOLERANTE del contrato, que es el que debe ir primero (CLAUDE.md §8).
+  const viejo = Cruce.parseDespacho(archivoRH([pLibre]).replace(/ · LIBRE DE IMPUESTOS/g, ''));
+  check('sin la marca, el parser no inventa un valor', viejo.filas[0].conceptos.items[0].libre === null);
+  const sinMarca = Cruce.cruzar(viejo, [emp('029', 'ROMERO', { BONO: 1271.62 })], 'S36/2026');
+  check('sin la marca se pide declararlo, no se afirma que está mal',
+    tiene(sinMarca.hallazgos, 'MONTO_MAYOR_SIN_DECLARAR') &&
+    Cruce.contar(sinMarca.hallazgos, 'INTEGRIDAD') === 0);
+
   // Un concepto sin fila en la tabla NO se calla: se dice que no se pudo cruzar.
   // Es la diferencia entre "no encontre problema" y "no supe mirar".
+  // Los conceptos de DÍAS tienen su propio camino: la lista de raya no trae columna
+  // de días ni sueldo diario, así que NO se pueden verificar. Decir 'no sé compararlo'
+  // suena a que falta configurar algo; lo honesto es decir que no hay contra qué.
   const pUsa = persona({ id: 75, codigo: '027', dias_mexico: 2, ppa: { aplica: false },
     declaraciones: [{ tipo: 'trabajo_usa', valores: { dias: 3, so: 'SO1' } }] });
   const usa = Cruce.cruzar(Cruce.parseDespacho(archivoRH([pUsa])), [emp('027', 'SALAZAR', {})], 'S36/2026');
-  check('un concepto fuera de la tabla se declara NO CRUZABLE, no se calla',
-    tiene(usa.hallazgos, 'CONCEPTO_NO_CRUZABLE'), codigos(usa.hallazgos).join(','));
+  check('un ajuste de días se declara NO VERIFICABLE, no "no capturado"',
+    tiene(usa.hallazgos, 'DIAS_NO_VERIFICABLES'), codigos(usa.hallazgos).join(','));
+  check('y es AVISO: es un límite del layout, no una sospecha sobre este archivo',
+    usa.hallazgos.find(h => h.codigo === 'DIAS_NO_VERIFICABLES').nivel === 'AVISO');
+  check('y dice qué mirar a mano',
+    /Sueldo.*sueldo diario/i.test(usa.hallazgos.find(h => h.codigo === 'DIAS_NO_VERIFICABLES').accion),
+    usa.hallazgos.find(h => h.codigo === 'DIAS_NO_VERIFICABLES').accion);
+  const pFuera = persona({ id: 6, codigo: '005', ppa: { aplica: false }, fuente: Object.keys(Cat.JOURNALS)[0],
+    declaraciones: [{ tipo: 'pagado_fts_usa', fuente: Object.keys(Cat.JOURNALS)[0], valores: { monto: 800 } }] });
+  const fuera = Cruce.cruzar(Cruce.parseDespacho(archivoRH([pFuera])), [emp('005', 'X', {})], 'S36/2026');
+  check('un concepto SIN días que no está en la tabla se declara NO CRUZABLE',
+    tiene(fuera.hallazgos, 'CONCEPTO_NO_CRUZABLE'), codigos(fuera.hallazgos).join(','));
 }
 
 seccion('El cruce · lo que RH marco para revisar');
@@ -254,6 +326,87 @@ seccion('Forma de los hallazgos');
   check('los niveles son los tres del resolver',
     r.hallazgos.every(x => ['INTEGRIDAD', 'REVISION', 'AVISO'].indexOf(x.nivel) >= 0));
   check('contar() cuenta por nivel', Cruce.contar(r.hallazgos, 'INTEGRIDAD') >= 1);
+}
+
+seccion('El MAPA contra el catálogo real de nómina');
+{
+  // ⚠️ ESTE ES EL ASSERT QUE FALTABA. El MAPA decía 'Descuento DE préstamo' y
+  // 'Compensación de deuda'; el catálogo dice 'Descuento POR préstamo' y 'Compensa
+  // contra deuda'. Ninguna de las dos calzaba, así que esos conceptos NUNCA se
+  // cruzaron: RH los pedía, Ulises los capturaba bien, y la pantalla reportaba
+  // 'RH pidió algo que este cruce no sabe comparar'. Una preposición apagó un
+  // control entero y no hubo error en ningún lado.
+  const etiquetas = new Set();
+  for (const g of Object.keys(Cat.CATALOGO)) {
+    const items = (Cat.CATALOGO[g] && Cat.CATALOGO[g].items) || {};
+    for (const k of Object.keys(items)) if (items[k].label) etiquetas.add(items[k].label);
+  }
+  const rotas = Cruce.MAPA.filter(m => !etiquetas.has(m.etiqueta)).map(m => m.etiqueta);
+  check('toda etiqueta del MAPA existe LETRA POR LETRA en el catálogo de nómina',
+    rotas.length === 0, rotas.join(' | '));
+
+  // Y las claves tienen que existir del lado de CONTPAQi, o el cruce busca un
+  // concepto que el resolver nunca va a producir.
+  const cat = JSON.parse(fs.readFileSync(path.join(RAIZ, 'shared/operaciones/contpaqi_conceptos.json'), 'utf8'));
+  const claves = new Set(Object.keys(cat.conceptos || {}));
+  const sinClave = Cruce.MAPA.filter(m => !claves.has(m.clave)).map(m => m.clave);
+  check('toda clave del MAPA existe en el catálogo de CONTPAQi', sinClave.length === 0, sinClave.join(' | '));
+  check('la clave del premio también', claves.has(Cruce.CLAVE_PPA), Cruce.CLAVE_PPA);
+}
+
+seccion('Percepciones y deducciones: las dos mitades del renglón');
+{
+  // Un descuento por préstamo vive del lado de las DEDUCCIONES. El cruce solo miraba
+  // percepciones, así que lo daba por no capturado estando capturado — y con la
+  // etiqueta arreglada ese bug habría salido a la luz como un falso INTEGRIDAD.
+  const p = persona({ id: 6, codigo: '005',
+    declaraciones: [{ tipo: 'descuento_prestamo', valores: { monto: 500, pago: 2 } }] });
+  const e = emp('005', 'CRUZ CRISTOBAL LEONEL', {});
+  e.deducciones = { PRESTAMO_EMPRESA: 500 };
+  const r = Cruce.cruzar(Cruce.parseDespacho(archivoRH([p])), [e], 'S36/2026');
+  check('un descuento capturado en deducciones se ve como capturado',
+    !tiene(r.hallazgos, 'INSTRUCCION_NO_CAPTURADA'),
+    (r.hallazgos.find(h => h.codigo === 'INSTRUCCION_NO_CAPTURADA') || {}).dato || '');
+
+  const sinNada = Cruce.cruzar(Cruce.parseDespacho(archivoRH([p])), [emp('005', 'X', {})], 'S36/2026');
+  check('y si de verdad NO está, se sigue reportando',
+    tiene(sinNada.hallazgos, 'INSTRUCCION_NO_CAPTURADA'));
+}
+
+seccion('Lo que CONTPAQi paga solo porque es ley');
+{
+  // RH pide 'Vacaciones'; CONTPAQi paga vacaciones Y prima vacacional, que es el 25%
+  // de ley (LFT art. 80). Reclamar la prima como 'movimiento que RH no pidió' era
+  // exigirle a Magaly que declarara una obligación legal, y apagaba el botón de
+  // enviar con tres INTEGRIDAD sobre una nómina correcta.
+  const p = persona({ id: 25, codigo: '002', dias_mexico: 2,
+    declaraciones: [{ tipo: 'vacaciones', valores: { dias: 3 } }] });
+  const conPrima = Cruce.cruzar(Cruce.parseDespacho(archivoRH([p])),
+    [emp('002', 'CRUZ HERNANDEZ HECTOR', { VACACIONES_A_TIEMPO: 3478, PRIMA_VACACIONAL_A_TIEMPO: 869.5 })], 'S36/2026');
+  check('la prima vacacional del 25% NO se reporta como no pedida',
+    !tiene(conPrima.hallazgos, 'CAPTURA_SIN_INSTRUCCION'),
+    (conPrima.hallazgos.find(h => h.codigo === 'CAPTURA_SIN_INSTRUCCION') || {}).dato || '');
+  check('ni ningún otro hallazgo sobre esa persona', conPrima.hallazgos.length === 0,
+    conPrima.hallazgos.map(h => h.codigo).join(','));
+
+  // Pero SÍ se verifica el porcentaje: es el control que de verdad importa.
+  const corta = Cruce.cruzar(Cruce.parseDespacho(archivoRH([p])),
+    [emp('002', 'X', { VACACIONES_A_TIEMPO: 3478, PRIMA_VACACIONAL_A_TIEMPO: 500 })], 'S36/2026');
+  check('una prima por debajo del 25% de ley SÍ se reporta', tiene(corta.hallazgos, 'DERIVADO_CORTO'));
+  check('y dice el porcentaje real contra el mínimo',
+    /14\.4%.*25%/.test(corta.hallazgos.find(h => h.codigo === 'DERIVADO_CORTO').dato),
+    corta.hallazgos.find(h => h.codigo === 'DERIVADO_CORTO').dato);
+
+  const falta = Cruce.cruzar(Cruce.parseDespacho(archivoRH([p])),
+    [emp('002', 'X', { VACACIONES_A_TIEMPO: 3478 })], 'S36/2026');
+  check('vacaciones SIN prima también se reporta', tiene(falta.hallazgos, 'DERIVADO_FALTANTE'));
+
+  // Prima sin vacaciones no tiene de dónde salir: eso sigue siendo un movimiento
+  // que RH no pidió, y no se debe tapar con la regla de arriba.
+  const p2 = persona({ id: 25, codigo: '002' });
+  const huerfana = Cruce.cruzar(Cruce.parseDespacho(archivoRH([p2])),
+    [emp('002', 'X', { PRIMA_VACACIONAL_A_TIEMPO: 869.5 })], 'S36/2026');
+  check('una prima SIN vacaciones sigue siendo hallazgo', tiene(huerfana.hallazgos, 'CAPTURA_SIN_INSTRUCCION'));
 }
 
 seccion('El calendario del frontend contra el del workflow');

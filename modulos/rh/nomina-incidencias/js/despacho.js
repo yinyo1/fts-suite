@@ -256,7 +256,10 @@
         // El bono de proyecto trae varios renglones: se dice el total —que es lo que
         // se captura— y luego el desglose por proyecto, que es lo que lo justifica.
         var efB = EFECTO[dec.tipo] || { v: 'AGREGAR' };
-        frases.push((efB.v ? efB.v + ' ' : '') + pesos(suma) + ' · ' + etiqueta +
+        // Misma marca de impuestos que la rama de un solo renglón: el bono de
+        // proyecto se captura igual y el bruto depende igual de esto.
+        var impB = v.isr ? ' · ' + (v.isr === Cat.LIBRE ? 'LIBRE DE IMPUESTOS' : 'con ISR al empleado') : '';
+        frases.push((efB.v ? efB.v + ' ' : '') + pesos(suma) + impB + ' · ' + etiqueta +
           (partes.length ? ' (' + partes.join(', ') + ')' : ''));
       } else {
         f[destino.col] += num(v[destino.campo]);
@@ -381,6 +384,11 @@
       if (kc === 'dias' || kc === 'monto' || kc === 'horas') pideCantidad = true;
     }
     if (!cuanto.length && pideCantidad) cuanto.push('SIN CANTIDAD');
+
+    // Si el bono va libre, Ulises tiene que capturar un BRUTO mayor para que al
+    // empleado le llegue esta cifra. Decirlo aquí es lo que convierte un monto en
+    // una instrucción: sin esto, captura $1,000 brutos y le llegan ~$790.
+    if (v.isr) cuanto.push(v.isr === Cat.LIBRE ? 'LIBRE DE IMPUESTOS' : 'con ISR al empleado');
 
     var s = (verbo ? verbo + ' ' : '') + (cuanto.length ? cuanto.join(' · ') + ' · ' : '') + etiqueta;
 

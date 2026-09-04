@@ -1,10 +1,15 @@
 {
-  "version": "V1.16",
+  "version": "V1.17",
   "fecha": "2026-09-04",
   "modulo": "rh/nomina-incidencias",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "ambito": "El CONTADOR es solo de este modulo. finanzas, comercial/machote y operaciones/carga-mo usan el mismo esquema con contadores PROPIOS (ver sus version.json): que aqui vaya en V1.16 y carga-mo en V1.00 es lo correcto, no un desfase — son modulos distintos que avanzan por separado. operaciones/planeacion sigue en 2.4.1; kiosk y confirmar-horas solo con cadena de build.",
   "historial": [
+    {
+      "version": "V1.17",
+      "pr": null,
+      "nota": "El bono ahora declara si va LIBRE DE IMPUESTOS o con ISR a cargo del empleado. No es un dato contable: cambia el monto que Ulises captura. Cuando va libre, el bruto de CONTPAQi es mayor que la cifra prometida porque la empresa absorbe el ISR — medido en la SEM 36, $1,000 libres se capturaron como $1,271.62 o $1,353.33 segun la tasa marginal de cada persona. Sin declararlo, esa diferencia legitima se veia identica a un error de dedo y produjo 7 hallazgos falsos en la pantalla de Ulises. Va como opciones y no como casilla porque las casillas no se exigen (\"no\" es una respuesta) y aqui no contestar no es una opcion: el importe depende de esto. La marca viaja en la instruccion del despacho, pegada al monto."
+    },
     {
       "version": "V1.00",
       "pr": 168,

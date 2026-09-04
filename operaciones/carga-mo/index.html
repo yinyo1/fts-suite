@@ -9,11 +9,11 @@
      Vx.yy. Se bumpea junto con version.json y con el ?v= de cada script, y el gate
      exige que los tres digan lo mismo: un badge que anuncia una version mientras
      el navegador corre el codigo viejo miente en la peor direccion. -->
-<script>(function(){ window.CMO_VER = 'V1.00'; })();</script>
+<script>(function(){ window.CMO_VER = 'V1.01'; })();</script>
 <script src="../../finanzas/js/auth-fin.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/cruce-rh.js?v=V1.00"></script>
-<script src="js/resolver.js?v=V1.00"></script>
+<script src="js/cruce-rh.js?v=V1.01"></script>
+<script src="js/resolver.js?v=V1.01"></script>
 <style>
   :root{ --azul:#1a4480; --ok:#1a7a3a; --warn:#BA7517; --err:#b3261e; --info:#3b5bdb; --bg:#f4f6f9; }
   *{ box-sizing:border-box; }
@@ -642,7 +642,12 @@ function pintarCruceRH(P){
   }
 
   var semSel = (P && P.periodo) ? ('S' + P.periodo.periodo + '/' + (new Date(P.periodo.inicio+'T12:00:00')).getFullYear()) : null;
-  var r = CruceRH.cruzar(RH, (P && P.empleados) || [], semSel);
+  // Los externos por honorarios se pasan en dos mitades: quién ES externo (del
+  // catálogo, aunque no haya facturado esta semana) y quién facturó (lo que el
+  // resolver encontró en el Excel). Sin la primera, alguien que no facturó se
+  // reportaría como si le faltara el código de CONTPAQi.
+  var externos = { personas: (CAT && CAT.trio && CAT.trio.personas) || {}, filas: (P && P.trio) || [] };
+  var r = CruceRH.cruzar(RH, (P && P.empleados) || [], semSel, externos);
   var nInt = CruceRH.contar(r.hallazgos, 'INTEGRIDAD');
   var nRev = CruceRH.contar(r.hallazgos, 'REVISION');
 

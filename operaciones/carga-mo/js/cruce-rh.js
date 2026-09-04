@@ -50,13 +50,53 @@
     { etiqueta: 'Bono condicionado',          clave: 'BONO' },
     { etiqueta: 'Tiempo extra',               clave: 'HORAS_EXTRAS' },
     { etiqueta: 'Ajuste de sueldo',           clave: 'AJUSTE_EN_SUELDOS' },
-    { etiqueta: 'Descuento de préstamo',      clave: 'PRESTAMO_EMPRESA' },
+    { etiqueta: 'Descuento por préstamo',     clave: 'PRESTAMO_EMPRESA' },
     { etiqueta: 'Descuento de anticipo',      clave: 'PRESTAMO_EMPRESA' },
-    { etiqueta: 'Compensación de deuda',      clave: 'PRESTAMO_EMPRESA' }
+    { etiqueta: 'Compensa contra deuda',      clave: 'PRESTAMO_EMPRESA' }
   ];
+  // ⚠️ Las etiquetas de arriba tienen que existir LETRA POR LETRA en el catálogo de
+  // nómina (modulos/rh/nomina-incidencias/js/catalogo.js). Dos de ellas no existían
+  // —decían 'Descuento DE préstamo' y 'Compensación de deuda' cuando el catálogo dice
+  // 'Descuento POR préstamo' y 'Compensa contra deuda'—, así que esos dos conceptos
+  // NUNCA se cruzaron: RH pedía el descuento, Ulises lo capturaba bien, y el sistema
+  // reportaba 'RH pidió algo que este cruce no sabe comparar'. Una preposición apagó
+  // un control durante todo el tiempo que existió. El gate ahora cruza esta tabla
+  // contra el catálogo real, que es la única forma de que no vuelva a pasar callado.
   // El premio va aparte: no se declara como concepto con cantidad, abre el renglón
   // con la palabra PPA. Su columna en CONTPAQi es esta.
   var CLAVE_PPA = 'PREMIO_ASISTENCIA_PUNTUALIDAD';
+
+  // ── Conceptos que CONTPAQi paga SOLO, como consecuencia de otro ───────────
+  // RH nunca los va a pedir porque no son una decisión suya: son ley. La prima
+  // vacacional es el 25% de las vacaciones (LFT art. 80), y aparece sola en cuanto
+  // se capturan vacaciones. Reclamarla como 'movimiento que RH no pidió' es exigirle
+  // a Magaly que declare una obligación legal — y era el hallazgo que más ruido hacía:
+  // tres INTEGRIDAD que apagaban el botón de enviar una nómina correcta.
+  //
+  // No se ignora: se verifica el porcentaje, que es el control que de verdad importa.
+  // Y una prima SIN vacaciones sigue siendo hallazgo, porque ahí no hay de dónde salga.
+  var DERIVADOS = [
+    { clave: 'PRIMA_VACACIONAL_A_TIEMPO', de: 'VACACIONES_A_TIEMPO',
+      pct: 0.25, nombre: 'prima vacacional', ley: 'LFT art. 80 (25% mínimo)' }
+  ];
+
+  // ── Bono libre de impuestos ───────────────────────────────────────────────
+  // Cuando el bono va libre, la cifra que RH escribe es lo que le LLEGA al empleado y
+  // la que Ulises captura es el BRUTO que lo produce: la empresa absorbe el ISR. Los
+  // dos números son correctos y distintos, así que exigir que sean iguales convierte
+  // el trabajo bien hecho en siete hallazgos.
+  //
+  // Medido en la SEM 36: $1,000 libres se capturaron como $1,271.62 (×1.2716) y como
+  // $1,353.33 (×1.3533) según la persona; Tomás pidió $500 y se capturaron $635.81 —
+  // el MISMO factor que en los de $1,000, o sea estrictamente proporcional. Esos dos
+  // factores son 1/(1−21.36%) y 1/(1−26.1%): tasas marginales reales.
+  //
+  // La banda es deliberadamente ancha. No sirve para adivinar la tasa —eso lo hace
+  // CONTPAQi con la tabla del SAT— sino para cazar los dos errores que sí importan:
+  // capturar el neto como si fuera bruto (factor 1.00, al empleado le llega de menos)
+  // y un dedazo que multiplique el monto. Entre medio, cualquier factor es plausible.
+  var FACTOR_MIN = 1.02;   // por debajo, no se hizo el cálculo inverso
+  var FACTOR_MAX = 1.85;   // por encima, ninguna tasa marginal mexicana lo explica
 
   function norm(s) {
     return ('' + (s === undefined || s === null ? '' : s))
@@ -180,11 +220,17 @@
       var mDias = /([\d.]+)\s*d[ií]as?/i.exec(cuanto);
       var mHoras = /([\d.]+)\s*h\b/i.exec(cuanto);
       var mMonto = /\$\s*([\d,]+(?:\.\d+)?)/.exec(cuanto);
+      // 'libre': el monto es lo que le LLEGA al empleado, no lo que se captura.
+      // 'con_isr': el monto es el bruto y se captura tal cual.
+      // null: la instrucción no lo dice — archivos de antes de que RH lo declarara.
+      // Ese tercer estado NO se trata como 'con_isr': no saber no es saber que no.
+      var libre = /LIBRE DE IMPUESTOS/.test(n) ? true : (/CON ISR AL EMPLEADO/.test(n) ? false : null);
       out.items.push({
         verbo: verbo, concepto: concepto, texto: frase,
         dias:  mDias  ? num(mDias[1]) : null,
         horas: mHoras ? num(mHoras[1]) : null,
         monto: mMonto ? num(mMonto[1].replace(/,/g, '')) : null,
+        libre: libre,
         sin_cantidad: /SIN CANTIDAD/.test(n)
       });
     }
@@ -193,7 +239,18 @@
 
   // ── El cruce ──────────────────────────────────────────────────────────────
   // `empleados` son los del resolver de CONTPAQi (cod, nombre, conceptos{}).
-  function cruzar(despacho, empleados, semanaSeleccionada) {
+  // `trio` son los EXTERNOS que facturan por honorarios: no están en CONTPAQi, así
+  // que Ulises los agrega a mano al Excel con su neto y les hace un .txt aparte para
+  // dispersarles. El resolver ya los reconoce por alias de nombre y les pone su
+  // empleado_id de Odoo; aquí se cruzan por ESE id, que es el mismo `NO EMPLEADO`
+  // que trae el archivo de RH. Cruzar por nombre sería adivinar: Ulises escribe
+  // "FELIPE" y "MANZANAREZ" (con z), Odoo dice "Felipe Pérez Guzmán" y "Manzanares".
+  // `externos` = { personas: {<empleado_id>: {alias:[…]}}, filas: [<lo que el resolver
+  // encontró en el Excel>] }. Los DOS hacen falta y por razones distintas: `personas`
+  // dice quién ES externo —aunque esta semana no haya facturado— y `filas` dice quién
+  // facturó. Sin `personas`, alguien que no facturó se vería como si le faltara el
+  // código de CONTPAQi, que es justo el diagnóstico equivocado.
+  function cruzar(despacho, empleados, semanaSeleccionada, externos) {
     var hallazgos = [], i, j;
     var res = { total_rh: 0, total_contpaqi: 0, cruzados: 0, con_instruccion: 0 };
     if (!despacho || despacho.error) {
@@ -221,17 +278,57 @@
     for (i = 0; i < emps.length; i++) if (emps[i].cod) porCod[('00' + emps[i].cod).slice(-3)] = emps[i];
     var vistos = {};
 
+    // Quién es externo (del catálogo) y quién facturó (del Excel), por empleado_id.
+    var ext0 = externos || {};
+    var esExterno = {}, filaExterno = {}, externosVistos = {};
+    var conocidos = ext0.personas || {};
+    for (var k in conocidos) if (Object.prototype.hasOwnProperty.call(conocidos, k)) esExterno[String(k)] = true;
+    var filasExt = ext0.filas || [];
+    for (i = 0; i < filasExt.length; i++) {
+      if (filasExt[i] && filasExt[i].empleado_id != null) {
+        var idE = String(filasExt[i].empleado_id);
+        esExterno[idE] = true;                 // facturó: es externo aunque falte del catálogo
+        filaExterno[idE] = filasExt[i];
+      }
+    }
+
     for (i = 0; i < despacho.filas.length; i++) {
       var f = despacho.filas[i];
       var quien = (f.codigo3 || '???') + ' ' + f.nombre;
 
-      // 2 · Sin código no hay cruce. Se dice y se sigue: el resto del archivo sí
-      // se puede revisar, y esconderlo sería peor.
+      // 2 · Sin código de CONTPAQi. Hay dos razones muy distintas y confundirlas
+      // manda a Ulises a pedir un dato que nunca va a existir.
       if (!f.codigo3) {
+        var idRh = String(f.no_empleado || '');
+        var ext = esExterno[idRh] ? (filaExterno[idRh] || null) : undefined;
+
+        // (a) Externo por honorarios: NO tiene código porque no va en CONTPAQi.
+        // Cobra en esta nómina, pero por fuera: Ulises le agrega su renglón al final
+        // del Excel con el neto y le hace un .txt aparte para dispersarle. Pedir su
+        // código sería pedir algo que por definición no existe, cada semana.
+        if (ext !== undefined) {
+          externosVistos[idRh] = true;
+          if (ext) {
+            hallazgos.push({ nivel: AVISO, codigo: 'EXTERNO_FACTURO',
+              que: 'Externo por honorarios: cobra fuera de CONTPAQi y su renglón está en el Excel',
+              dato: f.nombre + ' · renglón "' + ext.nombre + '" · neto $' + num(ext.neto).toFixed(2),
+              accion: 'Verifica que ese neto sea el de su factura, y que entre en el .txt de dispersión.' });
+          } else {
+            hallazgos.push({ nivel: AVISO, codigo: 'EXTERNO_SIN_RENGLON',
+              que: 'Externo por honorarios que esta semana no tiene renglón en el Excel',
+              dato: f.nombre + ' · no aparece entre los renglones de honorarios',
+              accion: 'Si facturó, agrégale su renglón con el neto. Si no facturó esta semana, no hay nada que hacer.' });
+          }
+          continue;
+        }
+
+        // (b) Le falta el código de verdad: está en la nómina de CONTPAQi pero su
+        // ficha de Odoo no lo tiene cargado. Eso sí se arregla, y en Odoo.
         hallazgos.push({ nivel: REVISION, codigo: 'RH_SIN_CODIGO',
           que: 'RH mandó una persona sin código de CONTPAQi, no se puede cruzar',
           dato: f.nombre + (f.instruccion ? ' · ' + f.instruccion : ''),
-          accion: 'Pide a RH que le cargue el código en Odoo. Mientras, revisa esta persona a mano.' });
+          accion: 'Si cobra por CONTPAQi, pide que le carguen el código en Odoo. Si cobra por honorarios, ' +
+                  'hay que darla de alta como externa en el catálogo. Mientras, revísala a mano.' });
         continue;
       }
       vistos[f.codigo3] = true;
@@ -260,7 +357,7 @@
       if (f.instruccion && f.instruccion.trim()) res.con_instruccion++;
 
       // 5 · El premio de puntualidad, en sus dos direcciones.
-      var ppaPagado = Math.abs(num(e.conceptos && e.conceptos[CLAVE_PPA])) > 0.005;
+      var ppaPagado = Math.abs(valorDe(e, CLAVE_PPA)) > 0.005;
       if (f.conceptos.ppa && !ppaPagado) {
         hallazgos.push({ nivel: INTEGRIDAD, codigo: 'PPA_NO_PAGADO',
           que: 'RH otorgó el premio de puntualidad y la nómina no lo trae',
@@ -268,7 +365,7 @@
       } else if (!f.conceptos.ppa && ppaPagado) {
         hallazgos.push({ nivel: INTEGRIDAD, codigo: 'PPA_SIN_INSTRUCCION',
           que: 'La nómina paga premio de puntualidad y RH no lo otorgó',
-          dato: quien + ' · $' + num(e.conceptos[CLAVE_PPA]).toFixed(2),
+          dato: quien + ' · $' + valorDe(e, CLAVE_PPA).toFixed(2),
           accion: 'Quítalo o confirma con RH.' });
       }
 
@@ -278,6 +375,21 @@
         var it = f.conceptos.items[j];
         var fila = buscarMapa(it.concepto);
         if (!fila) {
+          // Días trabajados, faltas, permisos: NO tienen columna propia en la lista
+          // de raya. Se reflejan dentro del Sueldo, y el archivo no trae ni los días
+          // ni el sueldo diario, así que este cruce NO PUEDE verificarlos. Decir
+          // 'RH pidió algo que no sé comparar' suena a que falta configurar algo;
+          // lo honesto es decir que no hay contra qué compararlo y qué mirar a mano.
+          // Es AVISO y no REVISIÓN porque no es una sospecha sobre este archivo:
+          // es un límite del layout, y se repite idéntico todas las semanas.
+          if (it.dias !== null) {
+            hallazgos.push({ nivel: AVISO, codigo: 'DIAS_NO_VERIFICABLES',
+              que: 'Días que hay que revisar a mano: la lista de raya no trae columna de días',
+              dato: quien + ' · ' + it.texto,
+              accion: 'Compara el Sueldo de esta persona contra su sueldo diario. ' +
+                      'Si le pagaron la semana completa, el ajuste no se capturó.' });
+            continue;
+          }
           hallazgos.push({ nivel: REVISION, codigo: 'CONCEPTO_NO_CRUZABLE',
             que: 'RH pidió algo que este cruce no sabe comparar contra CONTPAQi',
             dato: quien + ' · ' + it.texto,
@@ -285,17 +397,15 @@
           continue;
         }
         pedido[fila.clave] = true;
-        var val = num(e.conceptos && e.conceptos[fila.clave]);
+        var val = valorDe(e, fila.clave);
         if (Math.abs(val) < 0.005) {
           hallazgos.push({ nivel: INTEGRIDAD, codigo: 'INSTRUCCION_NO_CAPTURADA',
             que: 'RH pidió un movimiento que la nómina no refleja',
             dato: quien + ' · ' + it.texto,
             accion: 'Captúralo en CONTPAQi o confirma con RH que ya no aplica.' });
-        } else if (it.monto !== null && Math.abs(Math.abs(val) - it.monto) > 0.005) {
-          hallazgos.push({ nivel: REVISION, codigo: 'MONTO_DISTINTO',
-            que: 'El monto capturado no es el que pidió RH',
-            dato: quien + ' · RH pidió $' + it.monto.toFixed(2) + ' y la nómina trae $' + Math.abs(val).toFixed(2),
-            accion: 'Corrige el monto o confirma la diferencia con RH.' });
+        } else if (it.monto !== null && (Math.abs(Math.abs(val) - it.monto) > 0.005 || it.libre === true)) {
+          var h = compararMonto(quien, it, Math.abs(val));
+          if (h) hallazgos.push(h);
         }
         if (it.sin_cantidad) {
           hallazgos.push({ nivel: REVISION, codigo: 'RH_SIN_CANTIDAD',
@@ -305,11 +415,38 @@
         }
       }
 
-      // 7 · Y al revés: dinero capturado que RH nunca pidió.
+      // 7 · Lo que CONTPAQi paga solo porque la ley lo obliga.
+      // Se verifica el porcentaje en vez de reclamar la existencia.
+      var derivado = {};
+      for (j = 0; j < DERIVADOS.length; j++) {
+        var D = DERIVADOS[j];
+        var origen = valorDe(e, D.de);
+        var monto  = valorDe(e, D.clave);
+        if (Math.abs(origen) < 0.005) continue;      // sin origen, no es derivado: cae abajo
+        derivado[D.clave] = true;
+        if (Math.abs(monto) < 0.005) {
+          hallazgos.push({ nivel: INTEGRIDAD, codigo: 'DERIVADO_FALTANTE',
+            que: 'La nómina paga ' + D.de.toLowerCase().replace(/_/g, ' ') + ' sin la ' + D.nombre + ' que le corresponde',
+            dato: quien + ' · ' + D.ley,
+            accion: 'Captura la ' + D.nombre + '. Es obligatoria, no depende de que RH la pida.' });
+          continue;
+        }
+        var esperado = r2(Math.abs(origen) * D.pct);
+        if (Math.abs(monto) < esperado - 0.02) {
+          hallazgos.push({ nivel: REVISION, codigo: 'DERIVADO_CORTO',
+            que: 'La ' + D.nombre + ' quedó por debajo del mínimo de ley',
+            dato: quien + ' · $' + Math.abs(monto).toFixed(2) + ' sobre $' + Math.abs(origen).toFixed(2) +
+                  ' es ' + (100 * Math.abs(monto) / Math.abs(origen)).toFixed(1) + '%, y el mínimo es ' +
+                  (100 * D.pct).toFixed(0) + '% (' + D.ley + ')',
+            accion: 'Corrígelo en CONTPAQi antes de mandar.' });
+        }
+      }
+
+      // 8 · Y al revés: dinero capturado que RH nunca pidió.
       for (j = 0; j < MAPA.length; j++) {
         var cl = MAPA[j].clave;
-        if (pedido[cl]) continue;
-        var v2 = num(e.conceptos && e.conceptos[cl]);
+        if (pedido[cl] || derivado[cl]) continue;
+        var v2 = valorDe(e, cl);
         if (Math.abs(v2) < 0.005) continue;
         if (yaReportado(hallazgos, quien, cl)) continue;
         hallazgos.push({ nivel: INTEGRIDAD, codigo: 'CAPTURA_SIN_INSTRUCCION',
@@ -319,7 +456,20 @@
       }
     }
 
-    // 8 · Gente en la nómina que RH nunca listó.
+    // 8b · Un externo facturó y RH no lo listó en la semana. Su monto entra al total
+    // de la nómina y se carga a proyectos igual que el de cualquiera, así que que RH
+    // no lo tenga es un hueco real, no un detalle de forma.
+    for (i = 0; i < filasExt.length; i++) {
+      var fx = filasExt[i];
+      if (!fx || fx.empleado_id == null) continue;
+      if (externosVistos[String(fx.empleado_id)]) continue;
+      hallazgos.push({ nivel: REVISION, codigo: 'EXTERNO_SIN_RH',
+        que: 'El Excel trae un renglón de honorarios de alguien que RH no incluyó en la semana',
+        dato: '"' + fx.nombre + '" · neto $' + num(fx.neto).toFixed(2) + ' (fila ' + fx.fila + ')',
+        accion: 'Confírmalo con RH antes de mandar: su monto entra al total y se carga a proyectos.' });
+    }
+
+    // 9 · Gente en la nómina que RH nunca listó.
     for (i = 0; i < emps.length; i++) {
       var c3 = ('00' + emps[i].cod).slice(-3);
       if (vistos[c3]) continue;
@@ -330,6 +480,65 @@
     }
 
     return { hallazgos: hallazgos, resumen: res };
+  }
+
+  // ── Comparar lo que RH pidió contra lo que se capturó ─────────────────────
+  // Devuelve SIEMPRE un hallazgo: la diferencia existe y se dice. Lo que cambia es
+  // el nivel y la explicación, porque no toda diferencia es un error.
+  function compararMonto(quien, it, capturado) {
+    var factor = it.monto > 0 ? capturado / it.monto : 0;
+
+    // Bono libre: la diferencia es el ISR que absorbe la empresa. Es correcto.
+    if (it.libre === true) {
+      if (factor >= FACTOR_MIN && factor <= FACTOR_MAX) {
+        return { nivel: AVISO, codigo: 'BONO_LIBRE_OK',
+          que: 'Bono libre de impuestos: el bruto capturado es mayor, como debe ser',
+          dato: quien + ' · le llegan $' + it.monto.toFixed(2) + ' y se capturaron $' + capturado.toFixed(2) +
+                ' (×' + factor.toFixed(4) + ', ISR implícito ' + (100 * (1 - 1 / factor)).toFixed(2) + '%)',
+          accion: 'Nada que hacer. Se muestra para que quede la cuenta a la vista.' };
+      }
+      if (factor < FACTOR_MIN) {
+        return { nivel: INTEGRIDAD, codigo: 'BONO_LIBRE_SIN_CALCULAR',
+          que: 'El bono era libre de impuestos y se capturó el monto tal cual',
+          dato: quien + ' · RH pidió que le llegaran $' + it.monto.toFixed(2) + ' y se capturaron $' +
+                capturado.toFixed(2) + ' brutos',
+          accion: 'Calcula el bruto para que el neto sea $' + it.monto.toFixed(2) + '. Así le llega de menos.' };
+      }
+      return { nivel: REVISION, codigo: 'BONO_LIBRE_DESPROPORCIONADO',
+        que: 'El bruto del bono libre es demasiado alto para cualquier tasa de ISR',
+        dato: quien + ' · $' + it.monto.toFixed(2) + ' libres se capturaron como $' + capturado.toFixed(2) +
+              ' (×' + factor.toFixed(4) + ')',
+        accion: 'Revisa el cálculo: ninguna tasa marginal mexicana da ese factor.' };
+    }
+
+    // Sin marca de impuestos no se puede saber cuál de los dos casos es. Se dice la
+    // diferencia y se pide que RH la declare, en vez de afirmar que está mal.
+    if (it.libre === null && capturado > it.monto) {
+      return { nivel: REVISION, codigo: 'MONTO_MAYOR_SIN_DECLARAR',
+        que: 'La nómina capturó más de lo que pidió RH y el archivo no dice si el bono va libre de impuestos',
+        dato: quien + ' · RH pidió $' + it.monto.toFixed(2) + ' y la nómina trae $' + capturado.toFixed(2) +
+              ' (×' + factor.toFixed(4) + ')',
+        accion: 'Si va libre de impuestos, la diferencia es el ISR y está bien: pide a RH que lo marque ' +
+                'en el módulo para que deje de aparecer aquí. Si no, corrige el monto.' };
+    }
+
+    if (Math.abs(capturado - it.monto) <= 0.005) return null;   // coinciden: nada que decir
+
+    return { nivel: REVISION, codigo: 'MONTO_DISTINTO',
+      que: 'El monto capturado no es el que pidió RH',
+      dato: quien + ' · RH pidió $' + it.monto.toFixed(2) + ' y la nómina trae $' + capturado.toFixed(2),
+      accion: 'Corrige el monto o confirma la diferencia con RH.' };
+  }
+
+  // Un concepto de RH puede caer en una percepción (un bono) o en una deducción (un
+  // descuento por préstamo). Buscar solo en percepciones fue lo que hizo que los tres
+  // descuentos de la SEM 36 se reportaran como "RH lo pidió y no aparece" estando
+  // capturados: el dato existía, se estaba mirando la mitad equivocada del renglón.
+  function valorDe(e, clave) {
+    if (!e) return 0;
+    var v = e.conceptos && e.conceptos[clave];
+    if (v === undefined || v === null) v = e.deducciones && e.deducciones[clave];
+    return num(v);
   }
 
   function buscarMapa(concepto) {
