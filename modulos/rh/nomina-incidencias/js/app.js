@@ -1093,8 +1093,8 @@
     // mandarlo —se lee mucho mejor que un CSV— y trae una segunda pestaña con el
     // detalle por concepto para quien quiera ver de dónde salió cada instrucción.
     h += '<div class="mact">' +
-      '<button class="btn pri" id="bajar-archivo">Descargar el archivo (.csv)</button>' +
-      '<button class="btn" id="bajar-excel">Ver la previa en Excel (2 hojas)</button>' +
+      '<button class="btn pri" id="bajar-archivo">Descargar lo que se manda (.csv)</button>' +
+      '<button class="btn" id="bajar-excel">Descargar en Excel · 2 hojas (.xlsx)</button>' +
       '</div>';
     return h + '</div>';
   }
