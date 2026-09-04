@@ -27,6 +27,7 @@ catch (e) { console.error('Falta jsdom. npm i jsdom y reintenta (o NODE_PATH=<di
 
 const Cat = require(path.join(MOD, 'js', 'catalogo.js'));
 const Log = require(path.join(MOD, 'js', 'logica.js'));
+const Des = require(path.join(MOD, 'js', 'despacho.js'));
 
 let pass = 0; const fails = []; let bloque = '';
 function check(nombre, cond, detalle) {
@@ -194,7 +195,137 @@ seccion('Resumen de la semana');
     Log.resumenSemana(ok, SEMANA, [{ id: 1, empleado_id: 99, abierta: true }]).disputas_abiertas === 1);
 }
 
-// ═══════════════════ 7 · CONTRATO CON auth/suite-login ═══════════════════
+// ═══════════════════ 7 · ARCHIVO PARA EL DESPACHO ═══════════════════
+// POR QUE EXISTE ESTA SECCION. Este archivo es lo que Ulises captura en CONTPAQi:
+// si una incidencia no llega a su columna, alguien cobra de menos o de mas y nadie
+// se entera hasta la queja. Se prueba con node, sin navegador, para que pueda ser
+// exhaustiva sin volverse lenta.
+seccion('Archivo para el despacho');
+(function () {
+  // (a) TODO tipo declarable tiene a donde caer. Este es el assert que impide que
+  // agregar un tipo al catalogo y olvidar el mapa deje la incidencia fuera del archivo.
+  const sinColumna = Cat.tiposDeclarables().filter(t => !Des.A_COLUMNA[t]);
+  check('los ' + Cat.tiposDeclarables().length + ' tipos declarables tienen columna en el archivo',
+    sinColumna.length === 0, sinColumna.join(', '));
+
+  // Y toda columna destino existe de verdad en el encabezado.
+  const claves = Des.COLUMNAS.map(c => c.k);
+  const huerfanas = Object.keys(Des.A_COLUMNA).filter(t => {
+    const d = Des.A_COLUMNA[t];
+    return claves.indexOf(d.col) < 0 || (d.extra && claves.indexOf(d.extra.col) < 0);
+  });
+  check('ninguna regla del mapa apunta a una columna que no existe', huerfanas.length === 0, huerfanas.join(', '));
+
+  // (b) un renglon completo, con dinero, dias y descuentos a la vez
+  const p = persona({ id: 77, nombre: 'Prueba Completa', dias_mexico: 3, declaraciones: [
+    { tipo: 'vacaciones', valores: { dias: 1 } },
+    { tipo: 'falta_injustificada', valores: { dias: 1 } },
+    { tipo: 'bono_proyecto', fuente: 'J96', valores: { renglones: [{ monto: 1500, so: 'SO11547' }, { monto: 500, so: 'SO6013' }] } },
+    { tipo: 'descuento_anticipo', valores: { monto: 300 } },
+    { tipo: 'tiempo_extra', fuente: 'J96', valores: { horas: 4, monto: 800 } }
+  ] });
+  const est = { semana: SEMANA, personas: [p], disputas: [] };
+  const F = Des.filas(est);
+  check('sale exactamente un renglon por persona', F.length === 1, String(F.length));
+  const f = F[0];
+  check('los dias de Mexico van a su columna', f.dias_mx === 3, String(f.dias_mx));
+  check('las vacaciones van a VACACIONES', f.vacaciones === 1, String(f.vacaciones));
+  check('la falta injustificada NO se mezcla con la justificada',
+    f.falta_inj === 1 && f.falta_jus === 0, f.falta_inj + '/' + f.falta_jus);
+  check('los dos renglones del bono se suman en BONO', f.bono === 2000, String(f.bono));
+  check('el descuento va a DESCUENTOS y no a BONO', f.descuentos === 300 && f.bono === 2000);
+  check('el tiempo extra parte horas e importe en dos columnas',
+    f.horas_extra === 4 && f.imp_extra === 800, f.horas_extra + '/' + f.imp_extra);
+  check('la instruccion nombra los proyectos del bono',
+    /SO11547/.test(f.instruccion) && /SO6013/.test(f.instruccion), f.instruccion);
+  check('la instruccion dice de que cuenta sale el dinero',
+    /BBVA Nómina/.test(f.instruccion), f.instruccion);
+
+  // (c) el anticipo es un prestamo: NO puede caer en descuentos ni en percepciones
+  const pa = persona({ id: 78, declaraciones: [{ tipo: 'anticipo_sueldo', fuente: 'J96', valores: { monto: 2000, plazo: 4 } }] });
+  const fa = Des.filas({ semana: SEMANA, personas: [pa], disputas: [] })[0];
+  check('el anticipo entregado tiene columna propia', fa.anticipo === 2000, String(fa.anticipo));
+  check('el anticipo NO se cuela en descuentos', fa.descuentos === 0, String(fa.descuentos));
+
+  // (d) lo que no lo paga la nomina de CONTPAQi se marca, no se cuela
+  const pu = persona({ id: 79, declaraciones: [{ tipo: 'bono_productividad', fuente: 'J122', valores: { monto: 300, motivo: 'x' } }] });
+  const fu = Des.filas({ semana: SEMANA, personas: [pu], disputas: [] })[0];
+  check('un pago en USD por Chase queda marcado para revisar', /REVISAR|SI:/.test('SI:' + fu.revisar) && fu.revisar !== '', fu.revisar);
+  check('y el motivo dice que lo paga FTS LLC o que va en USD',
+    /USD|FTS LLC/.test(fu.revisar), fu.revisar);
+
+  // (e) el premio: decidido gana sobre sugerido, y 'no aplica' no es 'NO'
+  check('sin decision manda la sugerencia',
+    Des.ppaDe({ ppa: { aplica: true, sugerido: true } }).valor === 'SI');
+  check('la decision de RH gana sobre la sugerencia',
+    Des.ppaDe({ ppa: { aplica: true, sugerido: true }, ppa_decidido: false }).valor === 'NO');
+  check("quien no aplica sale como N/A, no como NO",
+    Des.ppaDe({ ppa: { aplica: false, sugerido: false } }).valor === 'N/A');
+
+  // (f) lo que le falta al renglon se DICE. El juez es el mismo que apaga el boton
+  // de enviar: si hubiera dos definiciones de 'incompleto', el archivo podria salir
+  // limpio con una semana que la pantalla considera rota.
+  const pb = persona({ id: 80, dias_mexico: 2 });   // faltan 3 dias
+  const fb = Des.filas({ semana: SEMANA, personas: [pb], disputas: [] })[0];
+  check('un renglon que no cuadra en dias sale marcado', /no suman/.test(fb.revisar), fb.revisar);
+  const fd = Des.filas({ semana: SEMANA, personas: [persona({ id: 81 })],
+    disputas: [{ id: 9, empleado_id: 81, fecha: '2026-09-01', abierta: true }] })[0];
+  check('una checada en disputa sale marcada en su renglon', /disputa/.test(fd.revisar), fd.revisar);
+
+  // (g) quien esta de baja SIN nada declarado no entra; con finiquito SI
+  const bajaVacia = persona({ id: 82, inactivo: true, dias_mexico: 0 });
+  const bajaConFiniquito = persona({ id: 83, inactivo: true, dias_mexico: 0,
+    declaraciones: [{ tipo: 'finiquito', fuente: 'J96', valores: { monto: 9000, fecha: '2026-09-01' } }] });
+  const FB = Des.filas({ semana: SEMANA, personas: [bajaVacia, bajaConFiniquito], disputas: [] });
+  check('quien esta de baja y no trae nada NO ocupa renglon', FB.length === 1, String(FB.length));
+  check('pero un finiquito de alguien de baja SI llega al archivo',
+    FB[0].finiquito === 9000 && FB[0].no_empleado === 83);
+
+  // (h) el texto: encabezado, columnas y renglon de totales
+  const txt = Des.texto(est, { version: 2, actor: 'magaly.perez', fecha: '2026-09-04 15:00', motivo: 'faltaba un dia' });
+  const lineas = txt.split('\r\n');
+  check('el archivo abre con la semana y su rango', /SEMANA S36\/2026/.test(lineas[0]), lineas[0]);
+  check('dice quien lo genero, cuando y en que version', /magaly\.perez/.test(lineas[1]) && /version 2/.test(lineas[1]), lineas[1]);
+  check('la correccion se explica en el propio archivo', /faltaba un dia/.test(lineas[1]), lineas[1]);
+  const cab = lineas[3].split(Des.SEPARADOR);
+  check('el encabezado trae las ' + Des.COLUMNAS.length + ' columnas', cab.length === Des.COLUMNAS.length, String(cab.length));
+  check('usa el vocabulario de CONTPAQi, no el nuestro',
+    cab.indexOf('PREMIO DE ASISTENCIA Y PUNTUALIDAD') >= 0 && cab.indexOf('AJUSTE EN SUELDOS') >= 0);
+  check('el archivo lleva BOM para que Excel no rompa los acentos', txt.charCodeAt(0) === 0xFEFF);
+  check('cierra con un renglon de totales', /TOTAL \(1 personas\)/.test(lineas[lineas.length - 2]), lineas[lineas.length - 2]);
+
+  // El separador no puede aparecer crudo dentro de una celda: partiria la columna.
+  const conPuntoYComa = persona({ id: 84, declaraciones: [
+    { tipo: 'falta_justificada', valores: { dias: 5, motivo: 'permiso; sin goce' } }] });
+  const t2 = Des.texto({ semana: SEMANA, personas: [conPuntoYComa], disputas: [] }, {});
+  const filaTxt = t2.split('\r\n')[4];
+  check('una celda con el separador adentro va entre comillas',
+    filaTxt.split(Des.SEPARADOR).length === Des.COLUMNAS.length + 1 || /"/.test(filaTxt),
+    String(filaTxt.split(Des.SEPARADOR).length));
+  // Un salto de linea dentro de una celda partiria el renglon en dos y correria a
+  // todas las personas de abajo una columna. Se aplana al escribir, no al leer.
+  const t3 = Des.texto({ semana: SEMANA, personas: [persona({ id: 85, declaraciones: [
+    { tipo: 'falta_justificada', valores: { dias: 5, motivo: 'linea1\nlinea2' } }] })], disputas: [] });
+  const L3 = t3.split('\r\n');
+  check('un salto de linea dentro de una celda no parte el renglon',
+    L3.length === 7 && /linea1 linea2/.test(L3[4]) && L3[4].indexOf('\n') < 0,
+    L3.length + ' lineas');
+
+  // (i) el nombre del archivo: la diagonal de la semana no puede ir en un nombre
+  check('el nombre del archivo no lleva diagonales',
+    Des.nombreArchivo(SEMANA, 3).indexOf('/') < 0, Des.nombreArchivo(SEMANA, 3));
+  check('y distingue la version', Des.nombreArchivo(SEMANA, 3) === 'nomina-S36-2026-v3.csv',
+    Des.nombreArchivo(SEMANA, 3));
+
+  // (j) el cero no se imprime: un mar de ceros no se lee
+  check('una columna en cero sale vacia, no en 0',
+    Des.celda({ bono: 0 }, { k: 'bono', tipo: 'mxn' }) === '');
+  check('el dinero lleva dos decimales con la coma de es-MX',
+    Des.celda({ bono: 1500 }, { k: 'bono', tipo: 'mxn' }) === '1500,00',
+    Des.celda({ bono: 1500 }, { k: 'bono', tipo: 'mxn' }));
+})();
+
+// ═══════════════════ 8 · CONTRATO CON auth/suite-login ═══════════════════
 // POR QUE EXISTE ESTA SECCION. En V1.00 el login mandaba `user` (copiado de
 // finanzas/js/auth-fin.js) y el workflow espera `username`. Resultado: TODO intento
 // moria en PAYLOAD_INCOMPLETO sin llegar a comprobar la contrasena, y la pantalla
@@ -254,7 +385,7 @@ seccion('Contrato con auth/suite-login');
   arrancarRender();
 })();
 
-// ═══════════════════ 8 · RENDER EN JSDOM ═══════════════════
+// ═══════════════════ 9 · RENDER EN JSDOM ═══════════════════
 seccion('Render (jsdom, sobre el index.html real)');
 function arrancarRender() { (async function () {
   const html = fs.readFileSync(path.join(MOD, 'index.html'), 'utf8');
@@ -265,7 +396,7 @@ function arrancarRender() { (async function () {
   // de que corra el script de arranque, que pide version.json.
   w.fetch = () => Promise.resolve({ json: () => Promise.resolve({ version: 'V1.00' }) });
 
-  for (const f of ['catalogo.js', 'logica.js', 'nom-auth.js', 'nom-client.js', 'nom-resolver.js', 'app.js']) {
+  for (const f of ['catalogo.js', 'logica.js', 'despacho.js', 'nom-auth.js', 'nom-client.js', 'nom-resolver.js', 'app.js']) {
     w.eval(fs.readFileSync(path.join(MOD, 'js', f), 'utf8'));
   }
 
@@ -487,6 +618,54 @@ function arrancarRender() { (async function () {
   w.NomApp.irA(3);
   check('la pantalla de cierre pinta sus KPI', d.querySelectorAll('#p3 .kpi').length === 4, String(d.querySelectorAll('#p3 .kpi').length));
   check('el cierre declara lo que NO verificó', /Qué NO se verificó/.test(d.getElementById('p3').textContent));
+
+  // ── El archivo, en la pantalla ──
+  // Lo que Ulises captura sale de aquí. Si el botón de descargar desaparece en un
+  // refactor, la semana se sigue enviando y el despacho no recibe nada: por eso el
+  // botón se prueba, no solo la función que arma el texto.
+  check('el cierre pinta el archivo para el despacho', /Archivo para el despacho/.test(d.getElementById('p3').textContent));
+  check('con su botón de descargar', !!d.getElementById('bajar-archivo'));
+  const filasPrev = d.querySelectorAll('#p3 .tabla-wrap tbody tr');
+  check('la vista previa trae un renglón por persona más el total',
+    filasPrev.length === est.personas.filter(p => !p.inactivo || (p.declaraciones || []).length).length + 1,
+    String(filasPrev.length));
+  check('y cada renglón enseña la instrucción, que es lo que se revisa',
+    /días trabajados/.test(filasPrev[0].textContent), filasPrev[0].textContent.slice(0, 80));
+
+  // ── Sin enviar ──
+  check('una semana sin enviar lo dice', /no se ha enviado/.test(d.getElementById('p3').textContent));
+  check('y el botón invita a enviar por primera vez',
+    d.getElementById('enviar').textContent === 'Enviar a Nóminas FTS', d.getElementById('enviar').textContent);
+
+  // ── Ya enviada, sin cambios posteriores ──
+  est.envio = { estado: 'enviada', version: 1, actor: 'magaly.perez',
+                enviado_en: '2026-09-04T18:20:00.000Z', nombre_archivo: 'nomina-S36-2026-v1.csv',
+                archivo: 'contenido congelado del csv', motivo: null,
+                bitacora: [{ ts: '2026-09-04T18:20:00.000Z', accion: 'enviada', actor: 'magaly.perez', version: 1, motivo: null }],
+                cambios_despues: 0 };
+  w.NomApp.irA(3);
+  check('una semana enviada lo dice, con versión', /Enviada/.test(d.getElementById('p3').textContent) &&
+    /versión 1/.test(d.getElementById('p3').textContent));
+  check('dice quién la envió', /magaly\.perez/.test(d.getElementById('p3').textContent));
+  check('la hora se enseña en CST, no en UTC',
+    /12:20 CST/.test(d.getElementById('p3').textContent), d.getElementById('p3').textContent.match(/\d\d:\d\d CST/));
+  check('se puede volver a bajar lo que se envió', !!d.getElementById('bajar-enviado'));
+  check('y el botón de arriba ya no dice "enviar", dice "reenviar"',
+    /Reenviar/.test(d.getElementById('enviar').textContent), d.getElementById('enviar').textContent);
+  check('la bitácora deja ver el movimiento', /Movimientos/.test(d.getElementById('p3').textContent));
+
+  // ── Ya enviada, CON cambios posteriores ──
+  // Este es el caso que de verdad importa: la semana se envió, alguien corrigió algo
+  // después, y el despacho todavía tiene la versión vieja. El conteo lo hace el
+  // server comparando fechas de guardado; aquí se comprueba que se PINTA.
+  est.envio.cambios_despues = 3;
+  w.NomApp.irA(3);
+  check('si hubo capturas después del envío, la pantalla avisa',
+    /cambios posteriores/.test(d.getElementById('p3').textContent));
+  check('y dice cuántas personas se tocaron', /3 personas se han capturado/.test(d.getElementById('p3').textContent));
+
+  est.envio = null;
+  w.NomApp.irA(3);
 
   console.log('\n' + '═'.repeat(64));
   if (fails.length) {

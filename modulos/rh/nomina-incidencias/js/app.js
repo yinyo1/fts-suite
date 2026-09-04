@@ -9,7 +9,7 @@
 (function () {
   'use strict';
 
-  var Cat, Log;
+  var Cat, Log, Des;
   var S = null;          // estado de la semana cargado
   var PANTALLA = 1;      // 1 roster · 2 disputas · 3 cierre
   var FILTRO = 'todos';
@@ -41,6 +41,51 @@
     return !!(p.ppa && p.ppa.sugerido);
   }
   function ppaDecidido(p) { return p.ppa_decidido === true || p.ppa_decidido === false; }
+
+  // ─── El envío de la semana ───
+  // Siempre se lee del estado que vino del SERVER. Nunca hay una marca local de
+  // "ya lo mandé": el 200 no prueba que quedó y una marca local sobrevive a un
+  // fallo que el server nunca vio (CLAUDE.md §8, la UI no es fuente de verdad).
+  var ENVIO_VACIO = { estado: 'borrador', version: 0, actor: null, enviado_en: null,
+                      nombre_archivo: null, archivo: null, motivo: null,
+                      bitacora: [], cambios_despues: 0 };
+  function envio() { return (S && S.envio) || ENVIO_VACIO; }
+  function yaEnviada() { var e = envio(); return e.estado === 'enviada' && Number(e.version) > 0; }
+
+  // Odoo y las tablas guardan UTC; la gente lee CST. La conversión se hace SIEMPRE
+  // al pintar y nunca al guardar, para que no haya dos husos en la misma columna.
+  function fechaHoraCst(iso) {
+    if (!iso) return '—';
+    var ms = Date.parse(iso);
+    if (isNaN(ms)) return String(iso);
+    var d = new Date(ms - 6 * 3600000);
+    function p(n) { return (n < 10 ? '0' : '') + n; }
+    return p(d.getUTCDate()) + '/' + p(d.getUTCMonth() + 1) + '/' + d.getUTCFullYear() +
+           ' ' + p(d.getUTCHours()) + ':' + p(d.getUTCMinutes()) + ' CST';
+  }
+
+  // La descarga sale del navegador, sin pasar por el server: los datos ya están
+  // aquí y un viaje de ida y vuelta solo agrega una forma más de fallar.
+  function descargar(nombre, texto) {
+    var blob = new Blob([texto], { type: 'text/csv;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = nombre;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+  }
+
+  // El archivo con lo que hay AHORA en pantalla. La versión que le toca es la
+  // siguiente a la del último envío: así el nombre del archivo distingue la
+  // corrección del original en la carpeta de descargas de Ulises.
+  function archivoDeAhora() {
+    var v = (Number(envio().version) || 0) + 1;
+    var ses = window.NomAuth.getSession() || {};
+    return { version: v,
+             nombre: Des.nombreArchivo(S.semana, v),
+             texto: Des.texto(S, { version: v, actor: ses.user || ses.nombre || 'RH',
+                                   fecha: new Date().toISOString().slice(0, 16).replace('T', ' ') }) };
+  }
 
   // Aviso de guardado. Se pinta ANTES de saber el resultado solo como "guardando";
   // el "guardado" nunca se pinta hasta que el server contestó. Pintar el éxito antes
@@ -78,7 +123,7 @@
         '<div style="font-size:13px;color:var(--muted2)">' + r.personas +
         ' personas en el roster, todas con sus días cuadrados, sin declaraciones incompletas y sin checadas en disputa.</div>' +
         '</div></div>';
-      if (btn) { btn.disabled = false; btn.textContent = 'Enviar a Nóminas FTS'; }
+      if (btn) { btn.disabled = false; btn.textContent = etiquetaBoton(); }
       return r;
     }
 
@@ -92,8 +137,15 @@
       '<h3>No se puede enviar: ' + r.bloqueos_totales + ' cosa' + (r.bloqueos_totales > 1 ? 's' : '') +
       ' abierta' + (r.bloqueos_totales > 1 ? 's' : '') + ' en ' + r.con_bloqueo +
       ' persona' + (r.con_bloqueo > 1 ? 's' : '') + '</h3><ul>' + li + '</ul></div></div>';
-    if (btn) { btn.disabled = true; btn.textContent = 'Enviar a Nóminas FTS (' + r.bloqueos_totales + ' pendientes)'; }
+    if (btn) { btn.disabled = true; btn.textContent = etiquetaBoton() + ' (' + r.bloqueos_totales + ' pendientes)'; }
     return r;
+  }
+
+  // Una semana ya enviada NO se cierra: se puede seguir capturando y volver a
+  // mandar. Lo que cambia es el nombre del botón, para que nadie crea que está
+  // mandando por primera vez algo que el despacho ya recibió.
+  function etiquetaBoton() {
+    return yaEnviada() ? 'Reenviar corregida a Nóminas FTS' : 'Enviar a Nóminas FTS';
   }
 
   // ══════════════════════════ PANTALLA 1 ══════════════════════════
@@ -881,6 +933,9 @@
       kpi('Préstamos (no es costo)', '$' + Log.moneda(t.no_costo), 'anticipos: se recuperan') +
       '</div>';
 
+    h += cajaEnvio();
+    h += cajaArchivo();
+
     h += '<div class="box" style="background:var(--card)"><h4>Qué se verificó</h4>' +
       chk(r.bloqueos_totales === 0, 'Los días de cada persona suman ' + S.semana.dias) +
       chk(r.bloqueos_totales === 0, 'Ninguna declaración quedó sin fuente de pago ni sin proyecto') +
@@ -891,7 +946,7 @@
       '<div style="font-size:13px;line-height:1.7;color:var(--muted2)">' +
       '· Que los montos sean los correctos: el módulo verifica que estén completos, no que estén bien.<br>' +
       '· Que las horas del kiosko cuadren con lo declarado: eso lo hace la carga de mano de obra, después.<br>' +
-      '· Que el despacho reciba lo que se manda: hasta que exista el acuse, el envío es de ida.' +
+      '· Que el despacho capture lo que se manda: el archivo sale de aquí, pero el acuse de Ulises todavía no existe. El envío es de ida.' +
       '</div></div>';
 
     if (Object.keys(t.por_fuente).length) {
@@ -904,7 +959,109 @@
       h += '</div></div>';
     }
     $('p3').innerHTML = h;
+
+    var bA = $('bajar-archivo');
+    if (bA) bA.addEventListener('click', function () {
+      var a = archivoDeAhora();
+      descargar(a.nombre, a.texto);
+      aviso('ok', 'Archivo descargado: ' + a.nombre);
+    });
+    // Lo que se ENVIÓ y lo que hay AHORA son dos archivos distintos en cuanto
+    // alguien corrige un día. Por eso son dos botones y no uno: el de arriba baja
+    // el congelado, tal como salió; el de abajo baja lo de este momento.
+    var bE = $('bajar-enviado');
+    if (bE) bE.addEventListener('click', function () {
+      var e = envio();
+      descargar(e.nombre_archivo || Des.nombreArchivo(S.semana, e.version), e.archivo || '');
+      aviso('ok', 'Descargado lo que se envió (v' + e.version + ')');
+    });
   }
+  // ─── Estado del envío ───
+  // Es lo primero que hay que ver al volver a una semana: si ya se mandó, cuándo,
+  // quién, en qué versión, y —lo que de verdad importa— si hay capturas posteriores
+  // que el despacho todavía no tiene. Ese conteo lo hace el SERVER comparando fechas
+  // de guardado contra la del envío; la pantalla solo lo pinta.
+  function cajaEnvio() {
+    var e = envio();
+    if (!yaEnviada()) {
+      return '<div class="box" style="background:var(--card)"><h4>Estado del envío</h4>' +
+        '<div style="font-size:13px;color:var(--muted2)">Esta semana todavía <b>no se ha enviado</b>. ' +
+        'Puedes bajar el archivo de aquí abajo las veces que quieras para revisarlo antes de mandarlo.</div></div>';
+    }
+    var atrasado = Number(e.cambios_despues) > 0;
+    var h = '<div class="box" style="background:' + (atrasado ? 'var(--amber-l)' : 'var(--green-l)') + '">' +
+      '<h4>Estado del envío</h4>' +
+      '<div style="font-size:14px;font-weight:700;margin-bottom:5px">' +
+      (atrasado ? '⚠ Enviada, pero con cambios posteriores' : '✓ Enviada') +
+      ' · versión ' + esc(e.version) + '</div>' +
+      '<div style="font-size:13px;line-height:1.7;color:var(--muted2)">' +
+      'El ' + esc(fechaHoraCst(e.enviado_en)) + ' por <b>' + esc(e.actor || '—') + '</b>' +
+      (e.nombre_archivo ? ' · archivo <code>' + esc(e.nombre_archivo) + '</code>' : '') +
+      (e.motivo ? '<br>Última corrección: ' + esc(e.motivo) : '') +
+      '</div>';
+
+    if (atrasado) {
+      h += '<div style="font-size:13px;line-height:1.6;margin-top:9px">' +
+        '<b>' + esc(e.cambios_despues) + ' persona' + (Number(e.cambios_despues) > 1 ? 's se han capturado' : ' se ha capturado') +
+        ' después del envío.</b> Lo que tiene el despacho es la versión ' + esc(e.version) +
+        '; para que le llegue lo corregido hay que <b>reenviar</b>.</div>';
+    }
+
+    h += '<div class="mact" style="margin-top:12px">' +
+      (e.archivo ? '<button class="btn" id="bajar-enviado">Bajar lo que se envió (v' + esc(e.version) + ')</button>' : '') +
+      '</div>';
+
+    // La bitácora: quién mandó qué y por qué, en orden. Es lo único que queda cuando
+    // alguien pregunta tres semanas después por qué la nómina de esa semana cambió.
+    var B = e.bitacora || [];
+    if (B.length) {
+      h += '<div style="margin-top:12px"><h4 style="margin-bottom:6px">Movimientos</h4>' +
+        '<div style="font-size:12px;line-height:1.8;color:var(--muted2)">';
+      for (var i = B.length - 1; i >= 0; i--) {
+        h += '· v' + esc(B[i].version) + ' ' + esc(B[i].accion) + ' — ' + esc(fechaHoraCst(B[i].ts)) +
+          ' por ' + esc(B[i].actor || '—') + (B[i].motivo ? ' · ' + esc(B[i].motivo) : '') + '<br>';
+      }
+      h += '</div></div>';
+    }
+    return h + '</div>';
+  }
+
+  // ─── El archivo para el despacho ───
+  // La vista previa NO enseña las 28 columnas: enseña la que se lee. La columna
+  // INSTRUCCION es una frase en español con todo lo que hay que hacerle a esa
+  // persona, y es ahí donde Magaly cacha un error antes de mandarlo — no en una
+  // rejilla de veintiocho celdas casi todas vacías.
+  function cajaArchivo() {
+    var F = Des.filas(S), T = Des.totales(F);
+    var h = '<div class="box" style="background:var(--card)"><h4>Archivo para el despacho</h4>' +
+      '<div style="font-size:13px;color:var(--muted2);line-height:1.6;margin-bottom:11px">' +
+      'Un renglón por persona con la instrucción de qué hacerle. ' +
+      '<b>' + F.length + ' renglones</b> y ' + Des.COLUMNAS.length + ' columnas, con los nombres de concepto ' +
+      'que Ulises ya lee en CONTPAQi. Aquí abajo se ven las columnas que se leen; el archivo trae todas.' +
+      '</div>';
+
+    h += '<div class="tabla-wrap" style="margin-bottom:11px"><table><thead><tr>' +
+      '<th>#</th><th>Persona</th><th>Días</th><th>Premio</th><th>Instrucción</th></tr></thead><tbody>';
+    for (var i = 0; i < F.length; i++) {
+      var f = F[i];
+      h += '<tr' + (f.revisar ? ' style="background:var(--amber-l)"' : '') + '>' +
+        '<td class="num">' + esc(f.no_empleado) + '</td>' +
+        '<td>' + esc(nombreCorto(f.nombre)) + '</td>' +
+        '<td class="num">' + esc(f.dias_mx + f.dias_usa) + '</td>' +
+        '<td>' + esc(f.ppa) + '</td>' +
+        '<td style="font-size:12px;line-height:1.55">' + esc(f.instruccion) +
+        (f.revisar ? '<div style="color:var(--amber);font-weight:700;margin-top:3px">⚠ ' + esc(f.revisar) + '</div>' : '') +
+        '</td></tr>';
+    }
+    h += '<tr><td></td><td><b>' + esc(T.nombre) + '</b></td>' +
+      '<td class="num"><b>' + esc(T.dias_mx + T.dias_usa) + '</b></td>' +
+      '<td><b>' + esc(T.ppa) + '</b></td><td></td></tr>';
+    h += '</tbody></table></div>';
+
+    h += '<div class="mact"><button class="btn pri" id="bajar-archivo">Descargar el archivo (.csv)</button></div>';
+    return h + '</div>';
+  }
+
   function kpi(k, v, s) {
     return '<div class="kpi"><div class="k">' + esc(k) + '</div><div class="v num">' + esc(v) +
       '</div><div class="s">' + esc(s) + '</div></div>';
@@ -950,7 +1107,7 @@
   }
 
   function montar(estado) {
-    Cat = window.NomCatalogo; Log = window.NomLogica;
+    Cat = window.NomCatalogo; Log = window.NomLogica; Des = window.NomDespacho;
     S = estado;
     $('semana-id').textContent = S.semana.id;
     $('semana-rango').textContent = 'del ' + S.semana.desde + ' al ' + S.semana.hasta + ' · ' + S.semana.dias + ' días';
@@ -981,38 +1138,108 @@
     return S;
   }
 
-  // El envío real llega en la fase del formato al despacho. Hasta entonces el botón
-  // dice la verdad en vez de fingir que mandó algo — el anti-patrón §14 del CLAUDE.md
-  // (pintar éxito antes de que el servidor confirme) es exactamente lo que no se repite.
+  // ══════════════════════════ ENVIAR ══════════════════════════
+  // Enviar hace DOS cosas y ninguna se puede quedar a medias: genera el archivo que
+  // Ulises captura en CONTPAQi, y deja la semana marcada como enviada. El archivo se
+  // manda al server y ahí se congela, para que 'bajar lo que se envió' devuelva los
+  // mismos bytes aunque mañana se corrija un día.
+  //
+  // El éxito NUNCA se pinta antes de que el server conteste, y después del OK se
+  // RELEE la semana: el 200 no prueba que quedó (CLAUDE.md §20.5), y el anti-patrón
+  // que costó el incidente del 27-may fue exactamente pintar el ✓ antes del POST.
+  var ENVIANDO = false;
+
   async function enviar() {
+    if (ENVIANDO) return;
     irA(3);
     var el = $('banner');
     if (window.NomClient.modo() === 'demo') {
       el.innerHTML = '<div class="banner warn"><span class="ico">⚠</span><div>' +
         '<h3>Estás en modo práctica: esto no se envió</h3>' +
         '<div style="font-size:13px;color:var(--muted2)">El módulo revisó todo y la semana pasa, ' +
-        'pero en DEMO nada sale de tu navegador. Cambia a REAL en la insignia de arriba para enviar de verdad.' +
+        'y el archivo de aquí abajo se puede bajar para verlo. Pero en PRÁCTICA nada sale de tu ' +
+        'navegador: cambia a REAL en la insignia de arriba para enviar de verdad.' +
         '</div></div></div>';
       return;
     }
+
+    // Reenviar una semana ya enviada exige decir qué se corrigió. El server lo vuelve
+    // a exigir (REENVIO_SIN_MOTIVO): preguntarlo aquí es para que la persona no se
+    // tope con el rechazo después de haber apretado el botón.
+    var motivo = '';
+    if (yaEnviada()) {
+      motivo = await pedirMotivoCorreccion();
+      if (motivo === null) return;      // se arrepintió
+    }
+    await mandar(motivo);
+  }
+
+  async function mandar(motivo) {
+    ENVIANDO = true;
+    var el = $('banner'), btn = $('enviar');
+    if (btn) { btn.disabled = true; btn.textContent = 'Enviando…'; }
     var r = Log.resumenSemana(S.personas, S.semana, S.disputas);
     var t = Log.totalesDinero(S.personas);
+    var arch = archivoDeAhora();
     aviso('yendo', 'Enviando la semana…');
     try {
       await window.NomClient.guardarEnvio(S.semana.id, {
         personas: r.personas, con_bloqueo: r.con_bloqueo, bloqueos: r.bloqueos_totales,
         con_declaracion: r.con_declaracion, disputas_abiertas: r.disputas_abiertas,
+        renglones: Des.filas(S).length,
         dinero: { percepciones: t.percepciones, descuentos: t.descuentos, no_costo: t.no_costo }
-      });
+      }, arch.texto, arch.nombre, motivo || '');
       await recargar();
-      aviso('ok', 'Semana ' + S.semana.id + ' marcada como enviada');
+      aviso('ok', 'Semana ' + S.semana.id + ' enviada (v' + arch.version + ')');
       irA(3);
+      // La descarga sale sola: el archivo es el producto del envío, y obligar a un
+      // clic más es la forma de que alguien mande la semana y se le olvide bajarlo.
+      descargar(arch.nombre, arch.texto);
     } catch (err) {
       aviso('mal', 'NO se envió: ' + (err && err.msg ? err.msg : 'error desconocido'));
       el.innerHTML = '<div class="banner bad"><span class="ico">⛔</span><div>' +
         '<h3>La semana NO se envió</h3><div style="font-size:13px;color:var(--muted2)">' +
-        esc(err && err.msg ? err.msg : 'Error desconocido') + '</div></div></div>';
+        esc(err && err.msg ? err.msg : 'Error desconocido') +
+        (err && err.code ? ' (' + esc(err.code) + ')' : '') + '</div></div></div>';
+    } finally {
+      ENVIANDO = false;
+      pintarBanner();
     }
+  }
+
+  // Diálogo del motivo de la corrección. Devuelve el texto, o null si se cancela.
+  function pedirMotivoCorreccion() {
+    return new Promise(function (resolve) {
+      var e = envio();
+      var caja = modal('Corregir una semana ya enviada',
+        '<div class="msub">La semana ' + esc(S.semana.id) + ' se envió el ' + esc(fechaHoraCst(e.enviado_en)) +
+        ' por ' + esc(e.actor || '—') + ' (versión ' + esc(e.version) + '). ' +
+        'Vas a mandar la <b>versión ' + (Number(e.version) + 1) + '</b>, que reemplaza a la anterior ' +
+        'ante el despacho.</div>' +
+        '<div class="mprev">Lo que se envió antes NO se borra: queda guardado y se puede volver a bajar.</div>' +
+        '<label for="mot">¿Qué se corrigió? <span class="req">obligatorio</span></label>' +
+        '<textarea id="mot" rows="3" placeholder="Ej.: a Pedro le faltaba 1 día de incapacidad con folio"></textarea>' +
+        '<div id="moterr"></div>' +
+        '<div class="mact"><button class="btn pri" id="motok">Reenviar corregida</button>' +
+        '<button class="btn" data-cerrar>Cancelar</button></div>');
+      var cuerpo = caja.querySelector('.mpanel');
+      var listo = false;
+      function cerrar(valor) { if (listo) return; listo = true; cerrarModal(caja); resolve(valor); }
+      caja.addEventListener('click', function (ev) { if (ev.target === caja) cerrar(null); });
+      cuerpo.querySelector('[data-cerrar]').addEventListener('click', function () { cerrar(null); });
+      cuerpo.querySelector('#motok').addEventListener('click', function () {
+        var v = ('' + cuerpo.querySelector('#mot').value).trim();
+        if (v.length < 4) {
+          var err = cuerpo.querySelector('#moterr');
+          err.textContent = 'Escribe qué se corrigió: el server no acepta un reenvío sin motivo.';
+          err.className = 'merr';
+          return;
+        }
+        cerrar(v);
+      });
+      var ta = cuerpo.querySelector('#mot');
+      if (ta && ta.focus) ta.focus();
+    });
   }
 
   window.NomApp = {

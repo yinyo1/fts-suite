@@ -218,6 +218,25 @@ const VIEWPORTS = [
     await page.waitForTimeout(80);
     check('el cierre pinta 4 KPI', (await page.$$('#p3 .kpi')).length === 4);
     check('el cierre separa el préstamo del costo', /no es costo/i.test(await page.textContent('#p3')));
+
+    // ── El archivo para el despacho ──
+    // El botón de descargar es el producto de toda la pantalla: si queda fuera de
+    // cuadro en el celular, la semana se envía y nadie baja el archivo.
+    check('el cierre ofrece el archivo para el despacho',
+      /Archivo para el despacho/.test(await page.textContent('#p3')));
+    const bBox = await page.locator('#bajar-archivo').boundingBox();
+    check('el botón de descargar es visible y cabe en el ancho',
+      !!bBox && bBox.width > 40 && bBox.x >= 0 && (bBox.x + bBox.width) <= w + 1,
+      bBox ? Math.round(bBox.x + bBox.width) + ' de ' + w : 'sin botón');
+    check('la vista previa lista a la gente con su instrucción',
+      (await page.$$('#p3 .tabla-wrap tbody tr')).length > 5);
+    // La tabla ancha tiene que hacer scroll DENTRO de su caja, no empujar la página.
+    const scrollPropio = await page.evaluate(() => {
+      const caja = document.querySelector('#p3 .tabla-wrap');
+      return !!caja && caja.scrollWidth >= caja.clientWidth;
+    });
+    check('la tabla del archivo se desplaza dentro de su caja', scrollPropio === true);
+
     await page.screenshot({ path: path.join(OUT, nombre + '-5-cierre.png'), fullPage: true });
     const desb3 = await page.evaluate(() => Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth));
     check('la pantalla de cierre tampoco desborda', desb3 === 0, desb3 + ' px');

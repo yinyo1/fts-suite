@@ -59,6 +59,10 @@ html,body{margin:0;padding:0;min-height:100%;background:var(--bg);color:var(--te
 .banner{border-radius:12px;padding:14px 16px;display:flex;gap:12px;margin-bottom:14px;border:1px solid}
 .banner.ok{background:var(--green-l);border-color:#b5dcb5}
 .banner.bad{background:var(--red-l);border-color:#f3c0bc}
+/* El aviso de modo PRACTICA al 'enviar' usaba esta clase desde V1.02 y nunca existio:
+   el recuadro salia sin fondo ni borde, o sea el aviso mas importante de DEMO se veia
+   como texto suelto. */
+.banner.warn{background:var(--amber-l);border-color:#f0dfa8}
 .banner .ico{font-size:20px;line-height:1.2}
 .banner h3{margin:0 0 4px;font-size:15px}
 .banner ul{margin:6px 0 0;padding-left:18px;font-size:13px;line-height:1.65}

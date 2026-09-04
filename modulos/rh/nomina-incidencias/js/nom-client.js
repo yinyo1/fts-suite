@@ -194,6 +194,12 @@
       disputas: JSON.parse(JSON.stringify(DISPUTAS_DEMO)),
       proyectos: SOS_DEMO.slice(),
       estado_envio: 'borrador',
+      // El envio de practica arranca en borrador para que se pueda ensayar el ciclo
+      // completo —generar el archivo, mandarlo, verlo marcado y corregirlo— sin tocar
+      // la semana real. `enviar()` en DEMO no escribe nada: solo lo dice.
+      envio: { estado: 'borrador', version: 0, actor: null, enviado_en: null,
+               nombre_archivo: null, archivo: null, motivo: null,
+               bitacora: [], cambios_despues: 0 },
       // El rezago tambien se finge: si no, la pantalla de disputas del modo practica
       // no enseñaria el aviso que en el real aparece todas las semanas.
       rezago: { total: 74, desde: '2026-05-08', personas: 19 },
@@ -236,8 +242,16 @@
     return escribir({ accion: 'estado', empleado_id: empleadoId, tipo: est.tipo,
                      valores: est.valores || {}, vigente: vigente !== false });
   }
-  function guardarEnvio(semana, resumen) {
-    return escribir({ accion: 'enviar', semana: semana, resumen: resumen || {} });
+  // El archivo viaja CON el envio y el server lo congela tal cual. Regenerarlo al
+  // volver a bajarlo daria un archivo distinto en cuanto alguien corrigiera un dia:
+  // "lo que se envio" tiene que poder releerse byte por byte, o no es un acuse.
+  // `motivo` solo hace falta al REENVIAR (version >= 2); el server lo exige, no la
+  // pantalla — este repo es publico y ahi las reglas se piden, no se imponen.
+  function guardarEnvio(semana, resumen, archivo, nombreArchivo, motivo) {
+    return escribir({ accion: 'enviar', semana: semana, resumen: resumen || {},
+                      archivo: '' + (archivo || ''),
+                      nombre_archivo: '' + (nombreArchivo || ''),
+                      motivo: '' + (motivo || '') });
   }
 
   window.NomClient = {
