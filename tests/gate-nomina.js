@@ -272,6 +272,46 @@ seccion('Archivo para el despacho');
     disputas: [{ id: 9, empleado_id: 81, fecha: '2026-09-01', abierta: true }] })[0];
   check('una checada en disputa sale marcada en su renglon', /disputa/.test(fd.revisar), fd.revisar);
 
+  // (f2) LA CONVENCION DE MAGALY: en blanco cuando la semana es normal.
+  // Su lista de raya lleva años funcionando asi —renglon vacio = nada que hacer, y lo
+  // excepcional dicho en la linea de esa persona— y Ulises ya lee de esa forma. Antes
+  // esta columna decia algo SIEMPRE ("5 de 5 dias trabajados. Premio de asistencia:
+  // NO..."), que es lo contrario: treinta renglones con texto obligan a leerlos todos
+  // para descubrir que veintitantos no dicen nada. Lo repetido esconde lo excepcional.
+  // Se fija aqui para que nadie lo "complete" de vuelta creyendo que ayuda.
+  const pNorm = persona({ id: 90, dias_mexico: 5, ppa: { aplica: false } });
+  const fNorm = Des.filas({ semana: SEMANA, personas: [pNorm], disputas: [] })[0];
+  check('una semana normal deja la instruccion EN BLANCO', fNorm.instruccion === '', JSON.stringify(fNorm.instruccion));
+  check('pero su columna de dias SI trae el numero', fNorm.dias_mx === 5, String(fNorm.dias_mx));
+
+  // El premio se calla cuando es NO: la columna ya lo dice, y escribirlo llenaria de
+  // ruido las dos terceras partes de la lista.
+  const pNo = persona({ id: 91, dias_mexico: 5, ppa: { aplica: true, sugerido: false } });
+  const fNo = Des.filas({ semana: SEMANA, personas: [pNo], disputas: [] })[0];
+  check('un premio en NO no se escribe en la instruccion', fNo.instruccion === '', JSON.stringify(fNo.instruccion));
+  check('y aun asi la columna del premio dice NO', fNo.ppa === 'NO', fNo.ppa);
+
+  // Cuando SI toca, abre el renglon — igual que en el archivo de Magaly ("PPA Y ...").
+  const pSi = persona({ id: 92, dias_mexico: 5, ppa: { aplica: true, sugerido: true } });
+  const fSi = Des.filas({ semana: SEMANA, personas: [pSi], disputas: [] })[0];
+  check('un premio en SI abre la instruccion con PPA', /^PPA/.test(fSi.instruccion), fSi.instruccion);
+
+  // Los dias solo se dicen cuando NO son la semana completa en Mexico.
+  const pDias = persona({ id: 93, dias_mexico: 3,
+    declaraciones: [{ tipo: 'vacaciones', valores: { dias: 2 } }], ppa: { aplica: false } });
+  const fDias = Des.filas({ semana: SEMANA, personas: [pDias], disputas: [] })[0];
+  check('una semana incompleta SI dice los dias', /3 de 5 días trabajados/.test(fDias.instruccion), fDias.instruccion);
+  check('y dice que fue lo que ocupo los otros', /Vacaciones: 2 días/.test(fDias.instruccion), fDias.instruccion);
+  check('la instruccion cabe en un renglon, no en un parrafo', fDias.instruccion.length < 90, String(fDias.instruccion.length));
+
+  // Trabajo en USA no es semana incompleta, pero si hay que decirlo: son 5 dias
+  // trabajados repartidos en dos paises, y el despacho los paga distinto.
+  const pUsa2 = persona({ id: 94, dias_mexico: 2, ppa: { aplica: false },
+    declaraciones: [{ tipo: 'trabajo_usa', valores: { dias: 3, so: 'SO11846' } }] });
+  const fUsa2 = Des.filas({ semana: SEMANA, personas: [pUsa2], disputas: [] })[0];
+  check('cinco dias repartidos entre Mexico y USA NO se callan',
+    /2 en México, 3 en USA/.test(fUsa2.instruccion), fUsa2.instruccion);
+
   // (g) quien esta de baja SIN nada declarado no entra; con finiquito SI
   const bajaVacia = persona({ id: 82, inactivo: true, dias_mexico: 0 });
   const bajaConFiniquito = persona({ id: 83, inactivo: true, dias_mexico: 0,
@@ -676,8 +716,16 @@ function arrancarRender() { (async function () {
   check('la vista previa trae un renglón por persona más el total',
     filasPrev.length === est.personas.filter(p => !p.inactivo || (p.declaraciones || []).length).length + 1,
     String(filasPrev.length));
+  // La vista previa enseña la instrucción TAL CUAL va en el archivo, con la convención
+  // de Magaly: la excepción en la línea de su persona. Antes este assert exigía "días
+  // trabajados" en el primer renglón, porque la columna hablaba siempre; ahora eso
+  // sería exigir el ruido que se quitó a propósito. Lo que se fija es lo que importa:
+  // que la excepción de verdad llegue a la pantalla.
   check('y cada renglón enseña la instrucción, que es lo que se revisa',
-    /días trabajados/.test(filasPrev[0].textContent), filasPrev[0].textContent.slice(0, 80));
+    /PPA/.test(filasPrev[0].textContent), filasPrev[0].textContent.slice(0, 80));
+  check('y la instrucción de la vista previa es la MISMA que va al archivo',
+    filasPrev[0].textContent.indexOf(Des.filas(est)[0].instruccion) >= 0,
+    Des.filas(est)[0].instruccion);
 
   // ── Sin enviar ──
   check('una semana sin enviar lo dice', /no se ha enviado/.test(d.getElementById('p3').textContent));

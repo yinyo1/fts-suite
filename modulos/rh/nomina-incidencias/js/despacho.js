@@ -185,19 +185,11 @@
       }
     }
 
-    // El premio va siempre, aunque nadie haya declarado nada: es la columna que
-    // Ulises tiene que capturar o dejar en blanco cada semana para todos.
+    // El premio SÍ va siempre en su COLUMNA: es la que Ulises captura o deja en
+    // blanco cada semana para todos. En la instrucción es otra cosa — ver abajo.
     var pp = ppaDe(persona);
     f.ppa = pp.valor;
-    var comoSeDecidio = pp.valor === 'N/A' ? 'no le aplica'
-      : (pp.decidido ? 'decidido por RH' : 'sugerido por el sistema');
-    frases.unshift('Premio de asistencia: ' + pp.valor + ' (' + comoSeDecidio + ')');
-    if (persona.ppa_nota) frases.push('Nota del premio: ' + persona.ppa_nota);
     if (pp.revisar) avisos.push('el premio salió de un cálculo que pide revisión');
-
-    var trabajados = f.dias_mx + f.dias_usa;
-    frases.unshift(trabajados + ' de ' + semana.dias + ' días trabajados' +
-      (f.dias_usa ? ' (' + f.dias_mx + ' en México, ' + f.dias_usa + ' en USA)' : ''));
 
     // Lo que le falta al renglón se manda igual, pero DICIÉNDOLO. El archivo se puede
     // bajar antes de enviar para revisarlo, y ahí es justo donde tiene que verse.
@@ -206,10 +198,44 @@
     // que Samuel tiene un bono sin proyecto, el archivo tiene que decir lo mismo.
     var b = Log.bloqueos(persona, semana, disputas || []);
     for (var q = 0; q < b.length; q++) avisos.push(b[q].texto.toLowerCase());
-    if (persona.inactivo) frases.push('DADO DE BAJA en Odoo: solo trae lo declarado.');
+
+    // ══ La instrucción se escribe COMO LA ESCRIBE MAGALY ═══════════════════════
+    // Su lista de raya lleva años funcionando con una convención muy simple: si la
+    // semana de alguien es normal, su renglón va EN BLANCO; si hay algo que hacer, va
+    // dicho ahí mismo, en la línea de esa persona ("PPA + 1,000.00 BONO Y DESCONTAR
+    // 500 DE PRESTAMO"). Ulises ya lee así, y el ojo entrenado a saltarse los blancos
+    // encuentra las excepciones sin leer treinta renglones.
+    //
+    // Antes esta columna decía algo SIEMPRE —"5 de 5 días trabajados. Premio de
+    // asistencia: NO (sugerido por el sistema)."— y eso es exactamente lo contrario:
+    // treinta renglones con texto son treinta renglones que hay que leer para
+    // descubrir que veintitantos no dicen nada. Lo repetido esconde lo excepcional.
+    //
+    // Las COLUMNAS no cambian: los días, el premio y los montos siguen ahí con su
+    // número exacto. La instrucción es el resumen para leer, no el dato para capturar.
+    var partes = [];
+
+    // PPA primero, que es como abre su renglón. Solo cuando toca: un "NO" no se
+    // escribe, se calla — la columna ya lo dice, y escribirlo llenaría de ruido las
+    // dos terceras partes de la lista.
+    if (pp.valor === 'SI') partes.push('PPA' + (pp.decidido ? ' (decidido por RH)' : ''));
+
+    // Los días solo se dicen cuando NO son la semana completa en México. Que alguien
+    // trabaje sus cinco días es la norma; anunciarlo es gastar la línea.
+    var trabajados = f.dias_mx + f.dias_usa;
+    if (f.dias_mx !== semana.dias || f.dias_usa) {
+      partes.push(trabajados + ' de ' + semana.dias + ' días trabajados' +
+        (f.dias_usa ? ' (' + f.dias_mx + ' en México, ' + f.dias_usa + ' en USA)' : ''));
+    }
+
+    for (var z = 0; z < frases.length; z++) partes.push(frases[z]);
+    if (persona.ppa_nota) partes.push('Nota del premio: ' + persona.ppa_nota);
+    if (persona.inactivo) partes.push('DADO DE BAJA en Odoo: solo trae lo declarado.');
 
     f.revisar = avisos.length ? ('SI: ' + avisos.join('; ')) : '';
-    f.instruccion = frases.join('. ') + '.';
+    // Vacío = semana normal, nada que hacer. Es el caso más común y por eso es el que
+    // tiene que costar cero leer.
+    f.instruccion = partes.length ? (partes.join('. ') + '.') : '';
     return f;
   }
 
