@@ -114,10 +114,35 @@ async function foto(target, nombre, nota) {
   await pg.evaluate(() => window.NomApp.cerrar());
   await pg.waitForTimeout(300);
 
+  // ── El premio de puntualidad, y la ventana que pide la nota ────────────
+  await pg.evaluate(() => window.NomApp.abrir(57));   // Samuel: llegó tarde un día
+  await pg.waitForTimeout(350);
+  await foto(pg.locator('.dbody .box').nth(1), '14-premio', 'El premio, con la evidencia día por día');
+  await pg.evaluate(() => window.NomApp.cerrar());
+  await pg.waitForTimeout(250);
+
+  await pg.click('tr[data-id="57"] [data-ppa]');
+  await pg.waitForTimeout(300);
+  await pg.fill('#ppaNota', 'Felipe lo citó 08:00 el martes, no llegó tarde.');
+  await foto(pg.locator('.mpanel'), '15-nota-premio', 'Cambiar el premio pide decir por qué');
+  await pg.evaluate(() => { const m = document.querySelector('.modal'); if (m) m.remove(); });
+  await pg.waitForTimeout(200);
+
   // ── Disputas ───────────────────────────────────────────────────────────
   await pg.evaluate(() => window.NomApp.irA(2));
   await pg.waitForTimeout(400);
   await foto(pg, '12-disputas', 'Las checadas en disputa');
+
+  // La ventana del flujo de aprobación, con una acción ya elegida.
+  await pg.click('#p2 [data-acc="resolver"]');
+  await pg.waitForTimeout(400);
+  await pg.click('[data-accion="ajustar"]');
+  await pg.waitForTimeout(200);
+  await pg.fill('#rhora', '23:05');
+  await pg.fill('#rcom', 'Fue turno de noche; la salida real fue 23:05.');
+  await foto(pg.locator('.mpanel'), '16-resolver', 'El flujo de aprobación, el mismo del panel de incidencias');
+  await pg.evaluate(() => { const m = document.querySelector('.modal'); if (m) m.remove(); });
+  await pg.waitForTimeout(200);
 
   // ── Cierre ─────────────────────────────────────────────────────────────
   await pg.evaluate(() => window.NomApp.irA(3));
