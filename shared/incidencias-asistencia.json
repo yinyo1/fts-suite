@@ -4691,9 +4691,19 @@
           "hora_propuesta_cst": "2026-05-18 10:00:00",
           "comentario": "Tiempo por tiempo del día sábado 16de mayo / se acudio a los departamentos de santa con técnico de climas para el k5.",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "direccion",
+          "user_id": 32,
+          "usuario": "Jesus Esteban De La Cruz Calderon",
+          "timestamp": "2026-09-04T17:58:57.800Z",
+          "hora_propuesta_cst": "10:00",
+          "comentario": "Aprobado aprobado",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_direccion",
+      "status": "aprobada_por_direccion",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false,
       "department_id": 9,
@@ -4708,7 +4718,7 @@
       "rh_directo_ceo": true,
       "directo_ceo": false,
       "sin_supervisor": false,
-      "tag_disputa_activo": true
+      "tag_disputa_activo": false
     },
     {
       "id_interno": "INC-OLV-137-2026-05-18T14-18-01-463Z",
