@@ -1041,8 +1041,10 @@
     var h = '<div class="box" style="background:var(--card)"><h4>Archivo para el despacho</h4>' +
       '<div style="font-size:13px;color:var(--muted2);line-height:1.6;margin-bottom:11px">' +
       'Un renglón por persona con la instrucción de qué hacerle. ' +
-      '<b>' + F.length + ' renglones</b> y ' + Des.COLUMNAS.length + ' columnas, con los nombres de concepto ' +
-      'que Ulises ya lee en CONTPAQi. Aquí abajo se ven las columnas que se leen; el archivo trae todas.' +
+      '<b>' + F.length + ' renglones</b> y ' + Des.COLUMNAS.length + ' columnas: ' +
+      Des.COLUMNAS.map(function (c) { return c.t.toLowerCase(); }).join(', ') + '. ' +
+      'El renglón de quien tiene una semana normal va <b>en blanco</b>, igual que en la lista ' +
+      'de raya de Magaly: solo se escribe lo que hay que hacer, con su cantidad y su concepto.' +
       '</div>';
 
     h += '<div class="tabla-wrap" style="margin-bottom:11px"><table><thead><tr>' +

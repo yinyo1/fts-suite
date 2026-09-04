@@ -44,11 +44,26 @@
   // `tipo` decide cómo se imprime la celda:
   //   'txt'  tal cual        'dias' número de días (vacío si 0)
   //   'num'  cantidad simple 'mxn'  dinero con dos decimales (vacío si 0)
+  // ── LO QUE SE IMPRIME ─────────────────────────────────────────────────────
+  // Cuatro columnas. El archivo ES la instrucción: departamento y puesto no le dicen
+  // nada a quien captura, y las veintitantas columnas de números eran una segunda
+  // forma de decir lo mismo que ya dice la instrucción — dos fuentes para el mismo
+  // dato, que es como se cuelan las diferencias entre lo que dice el renglón y lo que
+  // dice la celda. Se conserva REVISAR aparte porque contesta otra pregunta: la
+  // instrucción dice QUÉ capturar, REVISAR dice si TODAVÍA NO se debe capturar.
   var COLUMNAS = [
-    { k: 'no_empleado',  t: 'NO EMPLEADO',                        tipo: 'txt',  total: false },
-    { k: 'nombre',       t: 'NOMBRE',                             tipo: 'txt',  total: false },
-    { k: 'puesto',       t: 'PUESTO',                             tipo: 'txt',  total: false },
-    { k: 'departamento', t: 'DEPARTAMENTO',                       tipo: 'txt',  total: false },
+    { k: 'no_empleado',  t: 'NO EMPLEADO',  tipo: 'txt', total: false },
+    { k: 'nombre',       t: 'EMPLEADO',     tipo: 'txt', total: false },
+    { k: 'instruccion',  t: 'INSTRUCCION',  tipo: 'txt', total: false },
+    { k: 'revisar',      t: 'REVISAR',      tipo: 'txt', total: false }
+  ];
+
+  // ── LO QUE SE ACUMULA (interno, ya no se imprime) ─────────────────────────
+  // Los conceptos siguen sumándose en su cubo: de ahí sale el candado aritmético, el
+  // cuadre de la semana y las cantidades que la instrucción escribe. Que dejen de
+  // imprimirse no significa que dejen de calcularse — significa que la instrucción es
+  // ahora su único vocero.
+  var ACUMULADORES = [
     { k: 'dias_mx',      t: 'DIAS TRABAJADOS MX',                 tipo: 'dias', total: true  },
     { k: 'dias_usa',     t: 'DIAS TRABAJADOS USA',                tipo: 'dias', total: true  },
     { k: 'vacaciones',   t: 'VACACIONES',                         tipo: 'dias', total: true  },
@@ -70,9 +85,7 @@
     { k: 'finiquito',    t: 'FINIQUITO',                          tipo: 'mxn',  total: true  },
     { k: 'descuentos',   t: 'DESCUENTOS',                         tipo: 'mxn',  total: true  },
     { k: 'anticipo',     t: 'ANTICIPO ENTREGADO',                 tipo: 'mxn',  total: true  },
-    { k: 'fts_usa',      t: 'PAGADO POR FTS USA',                 tipo: 'mxn',  total: true  },
-    { k: 'revisar',      t: 'REVISAR',                            tipo: 'txt',  total: false },
-    { k: 'instruccion',  t: 'INSTRUCCION',                        tipo: 'txt',  total: false }
+    { k: 'fts_usa',      t: 'PAGADO POR FTS USA',                 tipo: 'mxn',  total: true  }
   ];
 
   // A qué columna va cada tipo del catálogo. Vivir aquí y no repartido por el código
@@ -105,6 +118,55 @@
     descuento_prestamo:  { col: 'descuentos', campo: 'monto' },
     anticipo_sueldo:     { col: 'anticipo',   campo: 'monto' },
     pagado_fts_usa:      { col: 'fts_usa',    campo: 'monto' }
+  };
+
+  // ── Qué le hace cada concepto al pago ─────────────────────────────────────
+  // El catálogo NO trae el signo: dice qué campos captura cada tipo, no si suma o
+  // resta. Mientras el archivo tenía columnas eso bastaba —el número caía en la
+  // columna DESCUENTOS o en BONO y el signo se leía del encabezado—, pero ahora la
+  // instrucción es lo único que Ulises lee, y "1 día de falta injustificada" no dice
+  // por sí solo que hay que descontarlo. El verbo va escrito.
+  //
+  // 'suma'  agrega al pago      'resta'  se le quita
+  // 'dato'  ni suma ni resta: es información que el despacho necesita para capturar
+  //         bien, pero el verbo lo decide otra cosa (quién paga, qué empresa).
+  var EFECTO = {
+    // Días que SÍ se pagan
+    vacaciones:          { v: 'PAGAR',     signo: 'suma'  },
+    dia_cumpleanos:      { v: 'PAGAR',     signo: 'suma'  },
+    dia_festivo:         { v: 'PAGAR',     signo: 'suma'  },
+    permiso_con_goce:    { v: 'PAGAR',     signo: 'suma'  },
+    descanso_trabajado:  { v: 'PAGAR',     signo: 'suma'  },
+    // Días que NO se pagan
+    falta_injustificada: { v: 'DESCONTAR', signo: 'resta' },
+    permiso_sin_goce:    { v: 'DESCONTAR', signo: 'resta' },
+    // ⚠️ CONFIRMAR CON ESTEBAN antes de que este archivo llegue a Ulises. Estos dos
+    // dependen de la política de FTS, no del código, y ponerles el verbo equivocado
+    // le cuesta dinero a una persona real:
+    //   · falta_justificada — ¿se paga (y entonces es permiso con goce) o no?
+    //   · incapacidad — la cubre el IMSS, así que la empresa no la paga; se escribe
+    //     "NO PAGAR" y no "DESCONTAR" porque no es un castigo, es otro pagador.
+    falta_justificada:   { v: 'DESCONTAR', signo: 'resta', confirmar: true },
+    incapacidad:         { v: 'NO PAGAR',  signo: 'resta', nota: 'la cubre el IMSS', confirmar: true },
+    // Dinero que se agrega
+    bono_proyecto:       { v: 'AGREGAR',   signo: 'suma'  },
+    bono_productividad:  { v: 'AGREGAR',   signo: 'suma'  },
+    bono_condicionado:   { v: 'AGREGAR',   signo: 'suma'  },
+    prima_vacacional:    { v: 'AGREGAR',   signo: 'suma'  },
+    aguinaldo:           { v: 'AGREGAR',   signo: 'suma'  },
+    fondo_ahorro:        { v: 'AGREGAR',   signo: 'suma'  },
+    finiquito:           { v: 'AGREGAR',   signo: 'suma'  },
+    tiempo_extra:        { v: 'AGREGAR',   signo: 'suma'  },
+    anticipo_sueldo:     { v: 'AGREGAR',   signo: 'suma'  },
+    // Dinero que se descuenta
+    descuento_anticipo:  { v: 'DESCONTAR', signo: 'resta' },
+    descuento_prestamo:  { v: 'DESCONTAR', signo: 'resta' },
+    compensa_deuda:      { v: 'DESCONTAR', signo: 'resta' },
+    // El ajuste NO tiene verbo fijo: lo decide el signo del monto que capturó RH.
+    ajuste_sueldo:       { v: null,        signo: 'porMonto' },
+    // Informativos: el número importa, pero el verbo no es de esta nómina.
+    trabajo_usa:         { v: null,        signo: 'dato'  },
+    pagado_fts_usa:      { v: null,        signo: 'dato'  }
   };
 
   // Fuentes que NO son la nómina de CONTPAQi. Un bono pagado en dólares por Chase no
@@ -141,8 +203,10 @@
   function filaDe(persona, semana, disputas) {
     var f = { no_empleado: persona.id, nombre: persona.nombre, puesto: persona.puesto || '',
               departamento: persona.departamento || '', dias_mx: num(persona.dias_mexico) };
-    for (var i = 0; i < COLUMNAS.length; i++) {
-      if (f[COLUMNAS[i].k] === undefined) f[COLUMNAS[i].k] = (COLUMNAS[i].tipo === 'txt' ? '' : 0);
+    // Todo cubo arranca en cero aunque nadie declare nada: un `undefined` sumado da
+    // NaN, y un NaN en una cantidad de dias es un renglon que nadie sabe leer.
+    for (var i = 0; i < ACUMULADORES.length; i++) {
+      if (f[ACUMULADORES[i].k] === undefined) f[ACUMULADORES[i].k] = (ACUMULADORES[i].tipo === 'txt' ? '' : 0);
     }
 
     var frases = [], avisos = [];
@@ -168,7 +232,11 @@
           partes.push((R[r].so || 'SIN PROYECTO') + ' ' + pesos(R[r].monto));
         }
         f[destino.col] += suma;
-        frases.push(etiqueta + ' ' + pesos(suma) + (partes.length ? ' (' + partes.join(', ') + ')' : ''));
+        // El bono de proyecto trae varios renglones: se dice el total —que es lo que
+        // se captura— y luego el desglose por proyecto, que es lo que lo justifica.
+        var efB = EFECTO[dec.tipo] || { v: 'AGREGAR' };
+        frases.push((efB.v ? efB.v + ' ' : '') + pesos(suma) + ' · ' + etiqueta +
+          (partes.length ? ' (' + partes.join(', ') + ')' : ''));
       } else {
         f[destino.col] += num(v[destino.campo]);
         if (destino.extra) f[destino.extra.col] += num(v[destino.extra.campo]);
@@ -211,8 +279,11 @@
     // treinta renglones con texto son treinta renglones que hay que leer para
     // descubrir que veintitantos no dicen nada. Lo repetido esconde lo excepcional.
     //
-    // Las COLUMNAS no cambian: los días, el premio y los montos siguen ahí con su
-    // número exacto. La instrucción es el resumen para leer, no el dato para capturar.
+    // Desde V1.12 la instrucción NO es un resumen de las columnas: ES el dato. Las
+    // columnas de números se quitaron porque decían lo mismo dos veces, y dos fuentes
+    // del mismo dato es como se cuela una diferencia entre la celda y el renglón. Por
+    // eso cada concepto va con su VERBO, su CANTIDAD y su CONCEPTO — sin las tres, la
+    // instrucción obliga a preguntar.
     var partes = [];
 
     // PPA primero, que es como abre su renglón. Solo cuando toca: un "NO" no se
@@ -240,19 +311,52 @@
   }
 
   // La frase de una declaración, con los datos que hacen falta para capturarla.
+  // ── La frase de una declaración ───────────────────────────────────────────
+  // Forma fija: VERBO · CUÁNTO · DE QUÉ CONCEPTO. Las tres partes van siempre y en
+  // ese orden, porque las tres hacen falta para capturar sin preguntar: cuánto se
+  // descuenta o se agrega, y bajo qué concepto. Antes la frase decía el concepto y la
+  // cantidad pero NO el verbo — el signo se leía de la columna donde caía el número, y
+  // esa columna ya no se imprime.
   function fraseDe(etiqueta, dec, mm, v) {
-    var s = etiqueta;
-    if (v.dias !== undefined && num(v.dias)) s += ': ' + num(v.dias) + (num(v.dias) === 1 ? ' día' : ' días');
-    if (v.horas !== undefined && num(v.horas)) s += ': ' + num(v.horas) + ' h';
-    if (v.monto !== undefined && num(v.monto)) s += ' ' + pesos(v.monto);
-    if (v.folio) s += ' · folio IMSS ' + v.folio;
-    if (v.clase) s += ' · ' + v.clase;
-    if (v.motivo) s += ' · ' + v.motivo;
-    if (v.so) s += ' · ' + v.so;
-    if (v.plazo) s += ' · a ' + num(v.plazo) + ' semanas';
-    if (v.pago) s += ' · pago ' + num(v.pago);
-    if (v.fecha) s += ' · baja ' + v.fecha;
-    if (v.prima === true) s += ' · con prima dominical';
+    var ef = EFECTO[dec.tipo] || { v: null, signo: 'dato' };
+    var verbo = ef.v;
+    // El ajuste de sueldo lo decide el signo de lo que capturó RH: +500 se agrega,
+    // −500 se quita. Es el único concepto que puede ir para los dos lados.
+    if (ef.signo === 'porMonto') verbo = num(v.monto) < 0 ? 'DESCONTAR' : 'AGREGAR';
+
+    var cuanto = [];
+    if (v.dias !== undefined && num(v.dias)) {
+      cuanto.push(num(v.dias) + (num(v.dias) === 1 ? ' día' : ' días'));
+    }
+    if (v.horas !== undefined && num(v.horas)) cuanto.push(num(v.horas) + ' h');
+    if (v.monto !== undefined && num(v.monto)) cuanto.push(pesos(Math.abs(num(v.monto))));
+
+    // Un concepto que PIDE cantidad y llega sin ella no se puede escribir como si
+    // estuviera completo: "PAGAR Vacaciones" no dice cuántos días, y quien lo lea va a
+    // tener que preguntar o —peor— adivinar. Se dice que falta, con todas sus letras.
+    // El renglón ya sale marcado en REVISAR por el mismo hueco; esto es para que
+    // tambien se vea en la línea que Ulises captura.
+    var pideCantidad = false;
+    var defs = (mm && mm.def && mm.def.campos) || [];
+    for (var c = 0; c < defs.length; c++) {
+      var kc = defs[c][0];
+      if (kc === 'dias' || kc === 'monto' || kc === 'horas') pideCantidad = true;
+    }
+    if (!cuanto.length && pideCantidad) cuanto.push('SIN CANTIDAD');
+
+    var s = (verbo ? verbo + ' ' : '') + (cuanto.length ? cuanto.join(' · ') + ' · ' : '') + etiqueta;
+
+    // El detalle que hace capturable la instrucción: contra qué proyecto, con qué
+    // folio, cuál pago de la serie. Sin esto Ulises tiene el monto pero no la cuenta.
+    if (v.folio) s += ' (folio IMSS ' + v.folio + ')';
+    if (v.clase) s += ' (' + v.clase + ')';
+    if (v.motivo) s += ' (' + v.motivo + ')';
+    if (v.so) s += ' (' + v.so + ')';
+    if (v.plazo) s += ' (a ' + num(v.plazo) + ' semanas)';
+    if (v.pago) s += ' (pago ' + num(v.pago) + ')';
+    if (v.fecha) s += ' (baja ' + v.fecha + ')';
+    if (v.prima === true) s += ' (con prima dominical)';
+    if (ef.nota) s += ' — ' + ef.nota;
     return s;
   }
 
@@ -272,10 +376,12 @@
   // Renglón de totales. Existe para que Magaly cuadre de un vistazo que no se perdió
   // a nadie ni un peso entre la pantalla y el archivo.
   function totales(filasArr) {
-    var t = { no_empleado: '', nombre: 'TOTAL (' + filasArr.length + ' personas)', puesto: '',
-              departamento: '', ppa: '', revisar: '', instruccion: '' };
-    for (var i = 0; i < COLUMNAS.length; i++) {
-      var c = COLUMNAS[i];
+    var t = { no_empleado: '', nombre: 'TOTAL (' + filasArr.length + ' personas)',
+              ppa: '', revisar: '', instruccion: '' };
+    // Los totales se siguen calculando sobre los CUBOS aunque el archivo ya no los
+    // imprima: son el cuadre de la semana, y quien lo audite los quiere.
+    for (var i = 0; i < ACUMULADORES.length; i++) {
+      var c = ACUMULADORES[i];
       if (!c.total) continue;
       var s = 0;
       for (var j = 0; j < filasArr.length; j++) s += num(filasArr[j][c.k]);
@@ -284,6 +390,20 @@
     var conPremio = 0;
     for (var k = 0; k < filasArr.length; k++) if (filasArr[k].ppa === 'SI') conPremio++;
     t.ppa = conPremio + ' con premio';
+
+    // El cuadre de la semana, en la línea del total. Antes se leía sumando las
+    // columnas con la vista; sin columnas hay que escribirlo, o el renglón de totales
+    // se queda diciendo solo cuántas personas — que es la mitad de para lo que existe.
+    // Solo se nombra lo que tuvo movimiento: un cuadre lleno de ceros no se lee.
+    var resumen = [];
+    for (var q = 0; q < ACUMULADORES.length; q++) {
+      var a = ACUMULADORES[q];
+      if (!a.total || !num(t[a.k])) continue;
+      var v = num(t[a.k]);
+      resumen.push((a.tipo === 'mxn' ? pesos(v) : String(v)) + ' ' + a.t.toLowerCase());
+    }
+    resumen.push(conPremio + ' con premio');
+    t.instruccion = resumen.join(' · ') + '.';
     return t;
   }
 
@@ -344,6 +464,8 @@
 
   return {
     COLUMNAS: COLUMNAS,
+    ACUMULADORES: ACUMULADORES,
+    EFECTO: EFECTO,
     A_COLUMNA: A_COLUMNA,
     SEPARADOR: SEPARADOR,
     filas: filas,

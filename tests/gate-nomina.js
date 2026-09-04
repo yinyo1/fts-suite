@@ -208,8 +208,12 @@ seccion('Archivo para el despacho');
   check('los ' + Cat.tiposDeclarables().length + ' tipos declarables tienen columna en el archivo',
     sinColumna.length === 0, sinColumna.join(', '));
 
-  // Y toda columna destino existe de verdad en el encabezado.
-  const claves = Des.COLUMNAS.map(c => c.k);
+  // Y todo destino del mapa existe de verdad como CUBO. Desde V1.12 los cubos y las
+  // columnas impresas son dos listas distintas: el archivo imprime cuatro columnas,
+  // pero los conceptos se siguen acumulando en sus veintitantos cubos, y de ahi salen
+  // las cantidades que escribe la instruccion. El assert vigila los cubos, que es
+  // donde de verdad puede perderse un concepto.
+  const claves = Des.ACUMULADORES.map(c => c.k);
   const huerfanas = Object.keys(Des.A_COLUMNA).filter(t => {
     const d = Des.A_COLUMNA[t];
     return claves.indexOf(d.col) < 0 || (d.extra && claves.indexOf(d.extra.col) < 0);
@@ -301,7 +305,11 @@ seccion('Archivo para el despacho');
     declaraciones: [{ tipo: 'vacaciones', valores: { dias: 2 } }], ppa: { aplica: false } });
   const fDias = Des.filas({ semana: SEMANA, personas: [pDias], disputas: [] })[0];
   check('una semana incompleta SI dice los dias', /3 de 5 días trabajados/.test(fDias.instruccion), fDias.instruccion);
-  check('y dice que fue lo que ocupo los otros', /Vacaciones: 2 días/.test(fDias.instruccion), fDias.instruccion);
+  check('y dice que fue lo que ocupo los otros', /Vacaciones/.test(fDias.instruccion), fDias.instruccion);
+  // El VERBO es lo que se agrego en V1.12: sin el, "2 dias de vacaciones" no dice si
+  // se pagan o se descuentan, y el archivo ya no tiene columnas donde leer el signo.
+  check('y dice el VERBO: que hay que hacer con esos dias',
+    /PAGAR 2 días · Vacaciones/.test(fDias.instruccion), fDias.instruccion);
   check('la instruccion cabe en un renglon, no en un parrafo', fDias.instruccion.length < 90, String(fDias.instruccion.length));
 
   // Trabajo en USA no es semana incompleta, pero si hay que decirlo: son 5 dias
@@ -329,8 +337,11 @@ seccion('Archivo para el despacho');
   check('la correccion se explica en el propio archivo', /faltaba un dia/.test(lineas[1]), lineas[1]);
   const cab = lineas[3].split(Des.SEPARADOR);
   check('el encabezado trae las ' + Des.COLUMNAS.length + ' columnas', cab.length === Des.COLUMNAS.length, String(cab.length));
-  check('usa el vocabulario de CONTPAQi, no el nuestro',
-    cab.indexOf('PREMIO DE ASISTENCIA Y PUNTUALIDAD') >= 0 && cab.indexOf('AJUSTE EN SUELDOS') >= 0);
+  check('el encabezado ya NO trae la tabla de numeros',
+    cab.indexOf('DEPARTAMENTO') < 0 && cab.indexOf('PUESTO') < 0 && cab.indexOf('BONO') < 0,
+    cab.join('|'));
+  check('las cuatro columnas son las que se acordaron con Esteban',
+    cab.join('|') === 'NO EMPLEADO|EMPLEADO|INSTRUCCION|REVISAR', cab.join('|'));
   check('el archivo lleva BOM para que Excel no rompa los acentos', txt.charCodeAt(0) === 0xFEFF);
   check('cierra con un renglon de totales', /TOTAL \(1 personas\)/.test(lineas[lineas.length - 2]), lineas[lineas.length - 2]);
 
