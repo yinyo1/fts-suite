@@ -16,7 +16,7 @@
        que se ve si el fetch de version.json no contesta (abrir el archivo por file://,
        Pages cacheando, red caída). Dejarlo atrasado convierte el badge en un falso
        negativo: el código es nuevo y la pantalla jura que es viejo. -->
-  <span class="badge" id="ver-badge">V1.14</span>
+  <span class="badge" id="ver-badge">V1.15</span>
   <button class="badge modo" id="modo-badge" title="Cambiar entre datos reales y modo práctica">REAL</button>
   <span class="sp"></span>
   <span class="guardado" id="guardado"></span>
@@ -103,15 +103,20 @@
   </div>
 </div>
 
-<script src="js/catalogo.js"></script>
-<script src="js/logica.js"></script>
-<script src="js/despacho.js"></script>
-<script src="js/excel.js"></script>
-<script src="js/indice.js"></script>
-<script src="js/nom-auth.js"></script>
-<script src="js/nom-client.js"></script>
-<script src="js/nom-resolver.js"></script>
-<script src="js/app.js"></script>
+<!-- El `?v=` NO es decoracion: sin el, el navegador sirve estos nueve archivos de
+     cache mientras version.json —que si se pide con ?t=— refresca el badge. El
+     resultado es un badge que dice la version nueva corriendo el codigo viejo, y
+     eso manda a buscar los bugs al lugar equivocado. El valor es el MISMO de
+     version.json y del badge, y el gate exige que los tres coincidan. -->
+<script src="js/catalogo.js?v=V1.15"></script>
+<script src="js/logica.js?v=V1.15"></script>
+<script src="js/despacho.js?v=V1.15"></script>
+<script src="js/excel.js?v=V1.15"></script>
+<script src="js/indice.js?v=V1.15"></script>
+<script src="js/nom-auth.js?v=V1.15"></script>
+<script src="js/nom-client.js?v=V1.15"></script>
+<script src="js/nom-resolver.js?v=V1.15"></script>
+<script src="js/app.js?v=V1.15"></script>
 <script>
 (function () {
   'use strict';

@@ -86,6 +86,21 @@ const VIEWPORTS = [
         __dirname, '..', 'modulos', 'rh', 'nomina-incidencias', 'index.html'), 'utf8')) || [])[1];
     check('el badge del HTML no se quedó atrás de version.json',
       htmlBadge === VER.version, 'html=' + htmlBadge + ' · json=' + VER.version);
+
+    // Y el CÓDIGO tampoco puede quedarse atrás del badge. Sin `?v=` en los scripts, el
+    // navegador sirve el JS de caché mientras version.json —que sí se pide con ?t=—
+    // refresca el badge: la pantalla dice la versión nueva corriendo la vieja. Eso es
+    // peor que un badge atrasado, porque manda a buscar los bugs al lugar equivocado.
+    // Pasó de verdad: se buscó dos veces en despacho.js un texto que despacho.js ya no
+    // escribía. Los tres valores —badge, version.json y el ?v= de CADA script— se
+    // amarran aquí a uno solo.
+    const html = require('fs').readFileSync(require('path').join(
+      __dirname, '..', 'modulos', 'rh', 'nomina-incidencias', 'index.html'), 'utf8');
+    const tags = html.match(/<script src="js\/[^"]*"><\/script>/g) || [];
+    const sinV = tags.filter(t => t.indexOf('?v=' + VER.version + '"') < 0);
+    check('cada script lleva ?v= con la versión de version.json',
+      tags.length > 0 && sinV.length === 0,
+      tags.length + ' scripts · sin marcar: ' + (sinV.join(' ') || 'ninguno'));
   }
 
   const srv = await servir();
