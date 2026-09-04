@@ -66,7 +66,7 @@ versión es peor que no tener indicador.
 | `js/app.js` | Vistas y ruteo. |
 | `js/pegar.js` | El pegado de tablas: separador, columnas y revisión previa. |
 | `js/almacen.js` | El autoguardado. UNA pieza entre la pantalla y donde viven los datos. |
-| `tests/pruebas-navegador.js` | 88 pruebas de navegador. |
+| `tests/pruebas-navegador.js` | 95 pruebas de navegador. |
 
 ## Cómo se calcula el precio
 
@@ -293,7 +293,9 @@ tabulador lo descartaba en falso con una descripción que termina en dígito
 **Empieza donde tú digas.** El botón `⇥` vive **en cada renglón**, no en la
 sección: el punto donde arranca el pegado es una decisión del capturista, y casi
 siempre hay algo capturado arriba que no se toca. Se elige entre **escribir
-encima** de ahí hacia abajo o **insertar** empujando lo que ya estaba.
+**escribir debajo** o **escribir arriba** del renglón señalado. En los dos
+casos lo que ya estaba **se recorre, no se sobrescribe**: la única decisión es
+dónde va, que es la que de verdad importa.
 
 Es la **primera columna** de la tabla, y **se queda fija** al desplazar en
 horizontal. Nació al final, después de trece columnas, y ahí quedaba **fuera de
@@ -302,6 +304,30 @@ para dar con él. Existía y las pruebas lo alcanzaban —Playwright desplaza so
 antes de hacer clic— así que pasaban en verde mientras nadie lo encontraba.
 **Existir y poder encontrarse no son lo mismo**, y ahora hay una prueba que mide
 que el botón caiga dentro de la ventana a 1440, 1280 y 390 px.
+
+**No depende del orden de las columnas.** Hay listas donde el precio va primero
+y la cantidad en medio (`$ 890.00 c/u - 8 PZAS - Lámpara LED…`). Leer por
+posición rechazaba esa lista entera; ahora cada pedazo del renglón se clasifica
+por **lo que es** —un precio trae `$` o dice `c/u`; una cantidad es un número con
+su unidad— y la descripción es lo que sobra.
+
+**La columna de unidad se reconoce por su contenido**, no por su encabezado: una
+tabla de `5 | PZA | … | 2,450.00` no dice en ningún lado que la segunda columna
+sean unidades, y antes se perdía entera. `PZA`, `MTS`, `JGO`, `HORA` se llevan a
+`Pieza`, `Metro`, `Juego`, `Horas`; lo que no está en el catálogo **se queda tal
+cual**, porque el acervo tiene unidades propias y borrarlas sería peor.
+
+**El Tipo se deduce de la descripción** cuando la lista no lo trae, y sale
+marcado como *deducido* en la vista previa. La señal del **principio pesa el
+triple**: «Instalación de tubería de cobre» es un servicio aunque traiga dos
+sustantivos de material detrás — lo que se cotiza es la acción, y el material es
+su objeto. Contando parejo salía Materiales, que es exactamente al revés. Si no
+hay señal clara, se queda vacío.
+
+⚠️ **Lo que el pegado no resuelve, no lo borra.** Se hereda del renglón donde
+estás pegando. Antes, pegar una lista sin columna de Unidad dejaba en blanco los
+`Pieza` y `Horas` ya capturados — reproducido y medido. Un pegado que borra datos
+que no venía a tocar es peor que no pegar.
 
 **Nada se aplica solo.** Interpreta, enseña lo que entendió renglón por renglón
 con sus avisos, y escribe cuando alguien lo aprueba mirándolo. Un parser que
