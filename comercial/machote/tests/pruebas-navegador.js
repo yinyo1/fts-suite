@@ -60,6 +60,28 @@ let ok = 0, mal = 0;
         debe_cambiar_password: false
       }));
     } catch (e) {}
+
+    /* El catálogo de clientes se finge. Dos razones:
+     *   - Determinismo: la prueba no puede depender de lo que haya hoy en Odoo.
+     *   - El contenedor no alcanza Railway (403 del proxy), así que un fetch
+     *     real ensucia la consola con un error que NO es del prototipo.
+     * Se intercepta SÓLO la URL del catálogo; cualquier otro fetch pasa. */
+    const original = window.fetch;
+    window.fetch = function (u, o) {
+      if (String(u).indexOf('/comercial/clientes') >= 0) {
+        return Promise.resolve({
+          ok: true,
+          json: function () {
+            return Promise.resolve({ ok: true, total: 3, clientes: [
+              { id: 49,   nombre: 'ABINSA SA DE CV' },
+              { id: 1247, nombre: 'BBVA México' },
+              { id: 385,  nombre: 'Abamex Ingeniería, SA de CV' }
+            ] });
+          }
+        });
+      }
+      return original.apply(this, arguments);
+    };
   });
   // El contenedor no tiene salida a fonts.googleapis.com, que fts-styles.css
   // importa. Ese fallo es del entorno de prueba, no del prototipo: se filtra
@@ -503,12 +525,22 @@ let ok = 0, mal = 0;
     const antes = await p.textContent('.fija .mono');
     const tcAntes = await p.textContent('td.calc:near(:text("TC efectivo"))').catch(() => null);
 
-    await p.fill('[data-cel="factor_proteccion"]', '0.10');
+    // Desde V1.14 se teclea en PORCENTAJE: 10, no 0.10.
+    await p.fill('[data-cel="factor_proteccion"]', '10');
     await p.dispatchEvent('[data-cel="factor_proteccion"]', 'change');
     await p.waitForTimeout(280);
     const desp = await p.textContent('.fija .mono');
     if (antes === desp) throw new Error('cambiarlo no movió el precio: ' + antes);
-    console.log('   con tc=18:', antes.trim(), '→ con factor 0.10:', desp.trim());
+    // Y lo guardado sigue siendo la RAZÓN, no el porcentaje.
+    const guardado = await p.evaluate(() => {
+      const c = localStorage.getItem('fts_machote_v1');
+      if (!c) return null;
+      const m = JSON.parse(c).machotes.find(x => x.id === 'M-1043');
+      return m ? m.factor_proteccion : null;
+    });
+    if (guardado !== null && Math.abs(guardado - 0.10) > 1e-6)
+      throw new Error('guardó ' + guardado + ', esperaba 0.10');
+    console.log('   con tc=18:', antes.trim(), '→ con factor 10%:', desp.trim());
   });
 
   // ══ V1.06 · edición estructural y moneda ═════════════════════════════
@@ -1521,6 +1553,285 @@ let ok = 0, mal = 0;
     await p.setViewportSize({ width: 380, height: 780 });
   });
 
+  // ── V1.14 · lo que pidió Montalvo ────────────────────────────────────
+  await paso('las comisiones se capturan en % y se guardan como razón', async () => {
+    await p.setViewportSize({ width: 1280, height: 900 });
+    await ir('#/m/M-1041'); await hoja('Suministro');
+    const campo = p.locator('[data-cel="comision_fts"]');
+    if (await campo.count() === 0) throw new Error('no está el campo de comisión');
+    // 0.055 por dentro se ve como 5.5 en pantalla.
+    const enPantalla = await campo.inputValue();
+    if (Math.abs(Number(enPantalla) - 5.5) > 1e-6)
+      throw new Error('en pantalla dice ' + enPantalla + ', esperaba 5.5');
+    if (!await campo.evaluate(e => e.hasAttribute('data-pct')))
+      throw new Error('el campo no se declara de porcentaje');
+    // Y al teclear 8 se guarda 0.08, no 8.
+    await campo.fill('8'); await campo.dispatchEvent('change');
+    await p.waitForTimeout(900);
+    const guardado = await p.evaluate(() => {
+      const c = localStorage.getItem('fts_machote_v1');
+      if (!c) return null;
+      const m = JSON.parse(c).machotes.find(x => x.id === 'M-1041');
+      return m ? m.comision_fts : null;
+    });
+    if (guardado === null) throw new Error('no alcanzó a guardar');
+    if (Math.abs(guardado - 0.08) > 1e-8) throw new Error('guardó ' + guardado + ', esperaba 0.08');
+    console.log('    pantalla 5.5% · almacén 0.055 · tecleado 8% → 0.08');
+    await p.setViewportSize({ width: 380, height: 780 });
+  });
+
+  await paso('la tabla de materiales ya no trae Modelo ni Marca', async () => {
+    await p.setViewportSize({ width: 1440, height: 900 });
+    await ir('#/m/M-1041'); await hoja('Suministro');
+    const r = await p.evaluate(() => ({
+      modelo: document.querySelectorAll('[data-cel*=":partidas:"][data-cel$=":modelo"]').length,
+      marca: document.querySelectorAll('[data-cel*=":partidas:"][data-cel$=":marca"]').length,
+      desc: document.querySelectorAll('[data-cel*=":partidas:"][data-cel$=":descripcion"]').length
+    }));
+    if (r.modelo || r.marca) throw new Error('siguen ' + r.modelo + ' modelo y ' + r.marca + ' marca');
+    if (!r.desc) throw new Error('se llevó también la descripción');
+    await p.setViewportSize({ width: 380, height: 780 });
+  });
+
+  await paso('la fila de materiales cabe en pantalla, y borrar siempre se alcanza', async () => {
+    /* Montalvo: "la línea está muy larga, no se ve completa para tener la
+     * opción de borrar" y "tenemos que hacer scroll horizontal". Se mide lo
+     * uno y lo otro: que a 1440 no sobre ancho, y que los botones queden
+     * DENTRO de la ventana a cualquier tamaño. */
+    for (const w of [1440, 1280, 1024]) {
+      await p.setViewportSize({ width: w, height: 900 });
+      await ir('#/m/M-1041'); await hoja('Suministro');
+      const r = await p.evaluate(() => {
+        const t = [...document.querySelectorAll('.rejilla')]
+          .find(x => x.querySelector('[data-cel*=":partidas:"]'));
+        const c = t.closest('.scroll');
+        const acc = t.querySelector('td.acc'), ini = t.querySelector('td.acc-ini');
+        const rb = acc.getBoundingClientRect(), ri = ini.getBoundingClientRect();
+        return { sobra: Math.round(c.scrollWidth - c.clientWidth),
+                 borrarDentro: rb.left >= 0 && rb.right <= window.innerWidth + 1,
+                 pegarDentro: ri.left >= 0 && ri.right <= window.innerWidth + 1 };
+      });
+      if (!r.borrarDentro) throw new Error('a ' + w + 'px los botones caen fuera');
+      if (!r.pegarDentro) throw new Error('a ' + w + 'px el botón de pegar cae fuera');
+      if (w === 1440 && r.sobra > 2) throw new Error('a 1440px la tabla desborda ' + r.sobra + 'px');
+    }
+    console.log('    cabe a 1440; a 1024 los botones siguen fijos a los bordes');
+    await p.setViewportSize({ width: 380, height: 780 });
+  });
+
+  await paso('una tabla de Claude con negritas no mete el encabezado como renglón', async () => {
+    const r = await p.evaluate(() => {
+      const T = [
+        '| #  | Concepto              | Especificacion                         |     Cant. | P.U. anterior | **P.U. +8%** | **Importe +8%** |',
+        '| -- | --------------------- | -------------------------------------- | --------: | ------------: | -----------: | --------------: |',
+        '| A1 | Interruptor principal | Schneider PowerPact M 400 A, 3P, 600 V |     1 pza |       $70,721 |  **$76,379** |     **$76,379** |',
+        '| A2 | Cable de fuerza       | Cu THW-LS 4/0 AWG                      |     240 m |          $607 |     **$656** |    **$157,440** |',
+        '| A9 | Mano de obra          | Instalacion charola y tendido          |    1 lote |       $18,000 |  **$19,440** |     **$19,440** |'
+      ].join('\n');
+      const x = window.MachotePegar.interpretar(T, { moneda: 'MXN' });
+      return { ok: x.ok, sep: x.sep, enc: x.encabezado, n: x.renglones.length, r: x.renglones };
+    });
+    if (!r.ok) throw new Error('la rechazó');
+    if (r.sep !== '|') throw new Error('no la leyó como tabla, se fue por: ' + r.sep);
+    if (!r.enc) throw new Error('no reconoció el encabezado');
+    if (r.n !== 3) throw new Error('leyó ' + r.n + ' renglones; el encabezado se coló');
+    if (r.r.some(x => /Concepto|Especificacion/i.test(x.descripcion)))
+      throw new Error('un renglón trae el texto del encabezado');
+    // El precio bueno es el NUEVO, no el "anterior".
+    if (r.r[0].pu !== 76379) throw new Error('tomó el precio viejo: ' + r.r[0].pu);
+    if (r.r[1].pu !== 656) throw new Error('renglón 2 precio: ' + r.r[1].pu);
+    // La cantidad venía pegada a la unidad.
+    if (r.r[0].qty !== 1 || r.r[0].unidad !== 'Pieza')
+      throw new Error('no leyó "1 pza": ' + JSON.stringify({ q: r.r[0].qty, u: r.r[0].unidad }));
+    if (r.r[1].qty !== 240 || r.r[1].unidad !== 'Metro')
+      throw new Error('no leyó "240 m": ' + JSON.stringify({ q: r.r[1].qty, u: r.r[1].unidad }));
+    // Y la especificación entró a la descripción en vez de perderse.
+    if (r.r[0].descripcion.indexOf('Schneider') < 0)
+      throw new Error('perdió la especificación: ' + r.r[0].descripcion);
+    if (r.r[2].tipo !== 'Servicios') throw new Error('"Mano de obra" no salió Servicios');
+    console.log('    encabezado fuera · precio nuevo · unidad de "1 pza" · especificación dentro');
+  });
+
+  // ── El cliente, desde Odoo ───────────────────────────────────────────
+  await paso('al crear, el cliente sale de una lista leída de Odoo', async () => {
+    await ir('#/nuevo');
+    await p.waitForTimeout(320);
+    const r = await p.evaluate(() => {
+      const dl = document.querySelector('#n-clientes');
+      const est = document.querySelector('#n-cliente-est');
+      const inp = document.querySelector('#n-cliente');
+      return {
+        opciones: dl ? [...dl.querySelectorAll('option')].map(o => o.value) : null,
+        estado: est ? est.textContent : null,
+        lista: inp ? inp.getAttribute('list') : null,
+        aviso: est ? est.className : null
+      };
+    });
+    if (r.lista !== 'n-clientes') throw new Error('el campo no está ligado a la lista');
+    if (!r.opciones || r.opciones.length !== 3)
+      throw new Error('opciones: ' + JSON.stringify(r.opciones));
+    if (r.opciones.indexOf('BBVA México') < 0) throw new Error('falta un cliente del catálogo');
+    if (!/3 clientes de Odoo/.test(r.estado || '')) throw new Error('el aviso dice: ' + r.estado);
+    if (/n-warn/.test(r.aviso || '')) throw new Error('marcó aviso de fallo con el catálogo cargado');
+    console.log('    3 clientes en la lista · aviso: ' + (r.estado || '').slice(0, 40) + '…');
+  });
+
+  await paso('lo que se guarda es el ID de Odoo, no el nombre', async () => {
+    /* El fondo del cambio que pidió Esteban: "publicamente grabe el ID … lo
+     * dinamico sea la lectura en odoo". Si se guardara el nombre, cambiarle
+     * la razón social a un cliente dejaría todas las cotizaciones viejas con
+     * el nombre de ayer — y este repo es público. */
+    await ir('#/nuevo');
+    await p.waitForTimeout(320);
+    await p.fill('#n-nombre', 'ZZ prueba de cliente');
+    await p.fill('#n-cliente', 'BBVA México');
+    await p.click('#n-crear');
+    await p.waitForTimeout(320);
+    const r = await p.evaluate(() => {
+      const m = JSON.parse(localStorage.getItem('fts_machote_v1') || '{}')
+        .machotes.find(x => x.nombre === 'ZZ prueba de cliente');
+      return { id: m && m.cliente_id, txt: m && m.cliente,
+               barra: (document.querySelector('#tbT') || {}).textContent };
+    });
+    if (r.id !== 1247) throw new Error('cliente_id guardado: ' + JSON.stringify(r.id));
+    if (r.barra !== 'BBVA México') throw new Error('la barra muestra: ' + r.barra);
+    console.log('    guardó cliente_id 1247 · la pantalla dice "' + r.barra + '"');
+  });
+
+  await paso('el nombre se lee de Odoo, no del texto guardado', async () => {
+    /* Un machote guardado con el nombre VIEJO debe pintarse con el nombre
+     * vivo. Es la prueba de que el id manda sobre el respaldo — y de que el
+     * repintado tras la lectura de Odoo de verdad ocurre.
+     *
+     * Página aparte, SIN el guion que limpia el almacén: aquí hay que escribir
+     * en localStorage y volver a cargar, y el guion global lo borraría en la
+     * navegación siguiente. (Ya pasó al escribir esta prueba.) */
+    const o = await b.newPage({ viewport: { width: 380, height: 780 } });
+    await o.addInitScript(() => {
+      try {
+        localStorage.setItem('fts_suite_session', JSON.stringify({
+          token: 'prueba.prueba.prueba', actor: 'zz.prueba', nombre: 'ZZ Prueba',
+          empleado_id: null, scopes: ['comercial:read'],
+          exp: Math.floor(Date.now() / 1000) + 3600, debe_cambiar_password: false
+        }));
+      } catch (e) {}
+      const original = window.fetch;
+      window.fetch = function (u) {
+        if (String(u).indexOf('/comercial/clientes') >= 0) {
+          return Promise.resolve({ ok: true, json: function () {
+            return Promise.resolve({ ok: true, total: 1, clientes: [
+              { id: 1247, nombre: 'BBVA México' }
+            ] });
+          } });
+        }
+        return original.apply(this, arguments);
+      };
+    });
+    try {
+      /* El almacén sólo se escribe cuando algo CAMBIA — cargar la demo no
+       * guarda nada—, así que primero se crea un machote de verdad. Eso
+       * dispara el guardado y deja el archivo en localStorage para sembrarlo.
+       * (Suponer que ya estaba escrito fue el primer intento, y falló.) */
+      await o.goto(BASE); await o.waitForTimeout(400);
+      await o.evaluate(() => { location.hash = '#/nuevo'; });
+      await o.waitForTimeout(400);
+      await o.fill('#n-nombre', 'ZZ nombre viejo');
+      await o.fill('#n-cliente', 'BANCOMER (nombre viejo)');   // no está en el catálogo
+      await o.click('#n-crear');
+      await o.waitForTimeout(400);
+
+      const sembro = await o.evaluate(() => {
+        const crudo = localStorage.getItem('fts_machote_v1');
+        if (!crudo) return false;
+        const d = JSON.parse(crudo);
+        const m = d.machotes.find(x => x.nombre === 'ZZ nombre viejo');
+        if (!m) return false;
+        // El id de Odoo entra a mano; el texto guardado se queda VIEJO a
+        // propósito: es lo que no debe ganarle a la lectura de Odoo.
+        m.cliente_id = 1247;
+        localStorage.setItem('fts_machote_v1', JSON.stringify(d));
+        return true;
+      });
+      if (!sembro) throw new Error('el almacén no tenía nada que sembrar');
+      await o.goto(BASE); await o.waitForTimeout(1100);  // el catálogo llega y repinta
+      // El recién creado va al principio de la lista (`unshift`).
+      const t = await o.evaluate(() => document.querySelector('.fila .tiny').textContent);
+      if (t.indexOf('BBVA México') < 0)
+        throw new Error('siguió mostrando el nombre guardado: ' + t);
+      if (t.indexOf('BANCOMER') >= 0) throw new Error('mostró el nombre viejo: ' + t);
+      console.log('    guardado "BANCOMER (nombre viejo)" → pinta "BBVA México"');
+    } finally { await o.close(); }
+  });
+
+  await paso('un cliente que no está en Odoo se guarda igual, como texto', async () => {
+    await ir('#/nuevo');
+    await p.waitForTimeout(320);
+    await p.fill('#n-nombre', 'ZZ prospecto');
+    await p.fill('#n-cliente', 'Prospecto que nadie ha dado de alta');
+    await p.click('#n-crear');
+    await p.waitForTimeout(300);
+    const r = await p.evaluate(() => {
+      const m = JSON.parse(localStorage.getItem('fts_machote_v1') || '{}')
+        .machotes.find(x => x.nombre === 'ZZ prospecto');
+      return { id: m && m.cliente_id, txt: m && m.cliente,
+               barra: (document.querySelector('#tbT') || {}).textContent };
+    });
+    if (r.id !== null) throw new Error('inventó un id: ' + JSON.stringify(r.id));
+    if (r.txt !== 'Prospecto que nadie ha dado de alta')
+      throw new Error('perdió el texto: ' + r.txt);
+    if (r.barra !== 'Prospecto que nadie ha dado de alta')
+      throw new Error('no lo pinta: ' + r.barra);
+  });
+
+  await paso('si Odoo no contesta, el cliente se captura a mano y se dice', async () => {
+    /* La mitad TOLERANTE del contrato (§8 anti-trabón): el webhook puede no
+     * existir todavía, o n8n estar caído. Crear un machote no se bloquea por
+     * eso — y el aviso explica por qué la lista está vacía, en vez de dejar
+     * un campo mudo que parece roto. */
+    const f = await b.newPage({ viewport: { width: 380, height: 780 } });
+    try {
+      await f.addInitScript(() => {
+        try {
+          localStorage.clear();
+          localStorage.setItem('fts_suite_session', JSON.stringify({
+            token: 'x.y.z', actor: 'zz.prueba', nombre: 'ZZ Prueba',
+            scopes: ['comercial:read'], exp: Math.floor(Date.now() / 1000) + 3600
+          }));
+        } catch (e) {}
+        const original = window.fetch;
+        window.fetch = function (u) {
+          if (String(u).indexOf('/comercial/clientes') >= 0) {
+            return Promise.reject(new Error('n8n caído'));
+          }
+          return original.apply(this, arguments);
+        };
+      });
+      await f.goto(BASE); await f.waitForTimeout(400);
+      await f.evaluate(() => { location.hash = '#/nuevo'; });
+      await f.waitForTimeout(500);
+      const est = await f.evaluate(() => {
+        const e = document.querySelector('#n-cliente-est');
+        return { txt: e && e.textContent, cls: e && e.className };
+      });
+      if (!/no se pudo leer el catálogo/i.test(est.txt || ''))
+        throw new Error('no avisó: ' + est.txt);
+      if (!/n-warn/.test(est.cls || '')) throw new Error('el aviso no se marca');
+      if (!/se guarda igual/.test(est.txt || ''))
+        throw new Error('no dice que igual se puede capturar: ' + est.txt);
+
+      await f.fill('#n-nombre', 'ZZ sin odoo');
+      await f.fill('#n-cliente', 'Cliente a mano');
+      await f.click('#n-crear');
+      await f.waitForTimeout(300);
+      const m = await f.evaluate(() => JSON.parse(localStorage.getItem('fts_machote_v1'))
+        .machotes.find(x => x.nombre === 'ZZ sin odoo'));
+      if (!m) throw new Error('no dejó crear el machote sin catálogo');
+      if (m.cliente !== 'Cliente a mano') throw new Error('perdió el cliente: ' + m.cliente);
+      if (m.cliente_id !== null) throw new Error('inventó un id sin catálogo');
+      console.log('    catálogo caído → se avisa, y el machote se crea igual');
+    } finally { await f.close(); }
+  });
+
   // ── El gate ──────────────────────────────────────────────────────────
   await paso('sin sesión, el libro no se alcanza a ver', async () => {
     // Pagina LIMPIA, sin la sesion sembrada: debe mandar al login.
@@ -1535,10 +1846,15 @@ let ok = 0, mal = 0;
     } finally { await g.close(); }
   });
 
-  await paso('la sesión dice quién entró y deja salir', async () => {
+  await paso('la sesión dice quién entró, por su nombre, y deja salir', async () => {
+    /* Montalvo pidió ver al usuario. `zz.prueba` truncado no dice quién es;
+     * el NOMBRE sí. El usuario exacto queda en el title, para cuando haga
+     * falta el dato literal. */
     await ir('#/m/M-1041');
     const t = await p.locator('#tbUser').textContent();
-    if (t.trim() !== 'zz.prueba') throw new Error('la barra dice: ' + t);
+    if (t.trim() !== 'ZZ Prueba') throw new Error('la barra dice: ' + t);
+    const tit = await p.locator('#tbUser').getAttribute('title');
+    if (tit !== 'zz.prueba') throw new Error('el title no trae el usuario: ' + tit);
     const vis = await p.locator('#tbUser').isVisible();
     if (!vis) throw new Error('el botón de sesión no se ve');
   });

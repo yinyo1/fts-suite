@@ -148,7 +148,11 @@
     return {
       id: d.id || ('M-' + Date.now()),
       nombre: d.nombre || 'Cotización sin nombre',
+      // `cliente_id` es LO QUE MANDA: el nombre se lee de Odoo al pintar.
+      // `cliente` queda como respaldo para cuando Odoo no conteste, y como
+      // el único dato de los machotes que nacieron antes del catálogo.
       cliente: d.cliente || '',
+      cliente_id: (typeof d.cliente_id === 'number') ? d.cliente_id : null,
       so: d.so || null,
       estado: 'borrador',
       analista: d.analista || '',

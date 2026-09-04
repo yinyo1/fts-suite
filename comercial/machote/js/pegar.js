@@ -117,17 +117,26 @@
      * camino decidiera solo, se comería las listas y dejaría la viñeta y la
      * cantidad dentro de la descripción. Quién gana lo decide `interpretar`. */
     if (!mejor) {
-      const filas = lineas.map(l => l.split(/\s{2,}/).map(x => x.trim()));
+      const filas = lineas.map(l => l.split(/\s{2,}/).map(x => sinAdornos(x)));
       if (Math.max.apply(null, filas.map(f => f.length)) < 2) return { sep: null, filas: [], debil: false };
       return { sep: 'espacios', filas: filas, debil: true };
     }
     return { sep: mejor.sep, filas: lineas.map(l => trocear(l, mejor.sep)), debil: false };
   }
 
+  /* Fuera el maquillaje de Markdown. Claude escribe las tablas con negritas
+   * —`**$76,379**`— y ese asterisco convierte el precio en texto ilegible: el
+   * renglón queda sin precio, la tabla entera se cae al camino de lista y el
+   * encabezado acaba entrando como si fuera un material. */
+  const sinAdornos = (t) => String(t)
+    .replace(/\*\*|__|`/g, '')
+    .replace(/^\s*[*_]\s*|\s*[*_]\s*$/g, '')
+    .trim();
+
   function trocear(linea, sep) {
     let l = linea;
     if (sep === '|') l = l.replace(/^\s*\|/, '').replace(/\|\s*$/, '');
-    return l.split(sep).map(x => x.trim());
+    return l.split(sep).map(x => sinAdornos(x));
   }
 
   /* Cómo se llama cada columna cuando la tabla trae encabezado. Se compara sin
@@ -139,9 +148,12 @@
     tipo:        ['tipo', 'clase'],
     descripcion: ['descripcion', 'description', 'concepto', 'partida', 'articulo',
                   'producto', 'material', 'detalle', 'item'],
+    // La especificación no es una columna aparte del machote: se suma a la
+    // descripción, igual que el modelo y la marca desde V1.14.
+    especificacion: ['especificacion', 'especificaciones', 'spec', 'caracteristicas'],
     modelo:      ['modelo', 'model', 'no parte', 'num parte', 'numero de parte', 'sku', 'codigo', 'clave'],
     marca:       ['marca', 'brand', 'fabricante'],
-    pu:          ['precio unitario', 'p unitario', 'precio', 'unitario', 'costo unitario',
+    pu:          ['precio unitario', 'p unitario', 'p u', 'precio', 'unitario', 'costo unitario',
                   'costo', 'pu', 'importe unitario', 'unit price', 'price'],
     total:       ['precio total', 'importe', 'total', 'subtotal', 'monto', 'amount'],
     moneda:      ['moneda', 'divisa', 'currency'],
@@ -180,7 +192,13 @@
     'arena', 'block', 'acero', 'inox', 'galvanizado', 'aluminio', 'cobre',
     'manguera', 'conector', 'terminal', 'kit', 'equipo', 'bushing', 'buje',
     'chumacera', 'banda', 'polea', 'engrane', 'balero', 'sello', 'oring',
-    'pintura', 'primario', 'thinner', 'silicon', 'cinta', 'herraje', 'soporte'
+    'pintura', 'primario', 'thinner', 'silicon', 'cinta', 'herraje', 'soporte',
+    // Eléctrico, que es la mitad de lo que cotiza FTS y no estaba.
+    'interruptor', 'termomagnetico', 'pastilla', 'centro de carga', 'transformador',
+    'arrancador', 'guardamotor', 'relevador', 'fusible', 'portafusible', 'charola',
+    'zapata', 'ojillo', 'ponchable', 'liquidtight', 'thhn', 'thw', 'nema',
+    'tornilleria', 'cincho', 'consumible', 'mufa', 'registro', 'apagador',
+    'contacto', 'clavija', 'balastro', 'reflector', 'led', 'aisl'
   ];
 
   /* Unidades que por sí solas ya dicen de qué lado va el renglón. */
@@ -211,6 +229,11 @@
   /** ¿La primera fila es un encabezado? Lo es si NINGUNA de sus celdas es un
    *  número y al menos una casa con un alias conocido. Una fila de puros textos
    *  que no casa con nada puede ser perfectamente el primer material. */
+  /* Un encabezado que dice "anterior", "previo" o "antes" es el precio VIEJO.
+   * Tomarlo cotizaría con el precio de la lista pasada, que es exactamente el
+   * error que nadie detectaría mirando la pantalla. */
+  const esColumnaVieja = (n) => /\banterior\b|\bprevio\b|\bantes\b|\bold\b|\boriginal\b/.test(n);
+
   function mapearEncabezado(fila) {
     if (!fila || fila.length < 2) return null;
     if (fila.some(esNumero)) return null;
@@ -218,6 +241,7 @@
     fila.forEach((celda, i) => {
       const n = norm(celda);
       if (!n) return;
+      if (esColumnaVieja(n)) return;
       for (const campo in ALIAS) {
         if (ALIAS[campo].indexOf(n) >= 0 ||
             ALIAS[campo].some(a => n === a || n.indexOf(a) === 0)) {
@@ -370,7 +394,7 @@
   }
 
   function interpretarLinea(linea) {
-    let t = String(linea)
+    let t = sinAdornos(String(linea))
       // Fuera viñetas y numeración: "- ", "• ", "* ", "1. ", "1) ".
       .replace(/^\s*(?:[-*•·—]|\d{1,3}[.)])\s+/, '')
       .trim();
@@ -482,8 +506,29 @@
     const monedaDoc = opciones.moneda || 'MXN';
 
     const renglones = cuerpo.map(f => {
-      const desc = String(dame(f, 'descripcion') || '').trim();
-      let qty = aNumero(dame(f, 'qty'));
+      /* La descripción se ARMA: especificación, modelo y marca se suman a ella
+       * en vez de perderse. Desde V1.14 la tabla del machote no tiene columnas
+       * de Modelo ni Marca —van dentro de la descripción, como pidió Montalvo—
+       * así que una tabla pegada que sí las trae tiene que fundirlas aquí o el
+       * dato desaparece sin que nadie lo note. */
+      const desc = [dame(f, 'descripcion'), dame(f, 'especificacion'),
+                    dame(f, 'modelo'), dame(f, 'marca')]
+        .map(x => String(x || '').trim()).filter(Boolean)
+        .filter((x, i, a) => a.indexOf(x) === i)      // sin repetir
+        .join(' · ');
+
+      /* Una celda de cantidad suele traer la unidad pegada: "1 pza", "240 m",
+       * "10 juegos". `aNumero` la rechaza entera y la unidad se pierde. */
+      const celdaQty = String(dame(f, 'qty') || '').trim();
+      let qty = aNumero(celdaQty), unidadDeQty = '';
+      if (qty === null && celdaQty) {
+        const mq = celdaQty.match(/^(\d+(?:[.,]\d+)?)\s*([a-zA-ZáéíóúñÁÉÍÓÚÑ]{1,10})\.?$/);
+        if (mq) {
+          qty = aNumero(mq[1]);
+          const k = mq[2].toLowerCase();
+          if (Object.prototype.hasOwnProperty.call(UNIDADES, k)) unidadDeQty = UNIDADES[k];
+        }
+      }
       let pu  = aNumero(dame(f, 'pu'));
       const total = aNumero(dame(f, 'total'));
       // Si vino el total y no el unitario, se deriva. Es el caso de las tablas
@@ -496,8 +541,9 @@
                : /material|equipo|suministro|insumo/.test(tipoCrudo) ? 'Materiales'
                : '';
       // Si la tabla no lo trae, se deduce de la descripción y se MARCA.
+      const unidad = normalizaUnidad(dame(f, 'unidad')) || unidadDeQty;
       let tipoDeducido = false;
-      if (!tipo) { tipo = deducirTipo(desc, normalizaUnidad(dame(f, 'unidad'))); tipoDeducido = !!tipo; }
+      if (!tipo) { tipo = deducirTipo(desc, unidad); tipoDeducido = !!tipo; }
       const monCruda = String(dame(f, 'moneda') || '').toUpperCase();
       const moneda = /USD|DLL|DOLAR/.test(monCruda) ? 'USD'
                    : /MXN|PESO/.test(monCruda) ? 'MXN'
@@ -511,11 +557,10 @@
 
       return {
         qty: qty === null ? '' : Math.abs(qty),
-        unidad: normalizaUnidad(dame(f, 'unidad')),
+        unidad: unidad,
         tipo: tipo, _tipoDeducido: tipoDeducido,
         descripcion: desc,
-        modelo: String(dame(f, 'modelo') || '').trim(),
-        marca: String(dame(f, 'marca') || '').trim(),
+        modelo: '', marca: '',      // fundidos en la descripción, arriba
         pu: pu === null ? null : Math.abs(pu),
         moneda: moneda,
         margen: null,

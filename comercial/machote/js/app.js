@@ -40,7 +40,7 @@
    * 2026-09-03 (por instrucción de Esteban), pero lleva el suyo aparte y va en
    * V1.00. Planeación sigue en `2.4.1` y el kiosko sólo con cadena de build;
    * a esos no se propaga. */
-  const VERSION = 'V1.13';
+  const VERSION = 'V1.14';
   const $  = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
   const clon = (x) => JSON.parse(JSON.stringify(x));
@@ -160,6 +160,22 @@
   const celNum = (path, val, cls, ph) =>
     '<input class="cel num ' + (cls || '') + '" type="number" step="any" min="0" data-cel="' + path + '" data-num' +
     ' value="' + esc(nn(val)) + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') + '>';
+  /* Un campo que por dentro es una RAZÓN (0.055) pero que la gente lee y
+   * escribe en PORCENTAJE (5.5%). Se guarda igual que siempre —dividido entre
+   * cien— para no tocar el motor ni lo ya guardado; lo único que cambia es en
+   * qué unidad se ve y se teclea. Montalvo: "que las comisiones aparezcan en %
+   * y no en decimales".
+   *
+   * El redondeo a seis decimales es a propósito: 5.5/100 en coma flotante da
+   * 0.055000000000000004, y ese ruido acaba escrito en el almacén. */
+  const celPct = (path, val, cls) => {
+    const v = (val === null || val === undefined || val === '') ? '' :
+              +(Number(val) * 100).toFixed(6);
+    return '<span class="pctwrap"><input class="cel num ' + (cls || 'w70') +
+      '" type="number" step="any" min="0" data-cel="' + path + '" data-num data-pct' +
+      ' value="' + esc(nn(v)) + '"><i>%</i></span>';
+  };
+
   const celSel = (path, val, ops, cls) =>
     '<select class="cel ' + (cls || '') + '" data-cel="' + path + '">' +
     ops.map(o => '<option value="' + esc(o) + '"' + (o === val ? ' selected' : '') + '>' + esc(o || '—') + '</option>').join('') +
@@ -211,9 +227,13 @@
     const S = G.SuiteAuth, ses = S && S.getSession();
     if (!ses) { el.style.display = 'none'; return; }
     el.style.display = '';
-    el.textContent = ses.actor;
+    // El NOMBRE, no el usuario: `esteban.delacruz` truncado a `esteban.delac…`
+    // no le dice a nadie quién está capturando. El usuario queda en el título
+    // para cuando haga falta el dato exacto.
+    el.textContent = ses.nombre || ses.actor;
+    el.title = ses.actor;
     el.onclick = () => {
-      if (!confirm('¿Cerrar la sesión de ' + ses.actor + '?')) return;
+      if (!confirm('¿Cerrar la sesión de ' + (ses.nombre || ses.actor) + '?')) return;
       S.logout();
       location.replace('../login.html');
     };
@@ -251,6 +271,12 @@
   }
   window.addEventListener('hashchange', render);
 
+  /* El nombre del cliente sale de UNA sola función. Con el catálogo cargado
+   * gana Odoo; sin él, el respaldo que quedó guardado. Que esté en un solo
+   * lugar es lo que evita que media pantalla muestre el nombre vivo y la otra
+   * media el congelado. */
+  const cli = (m) => (G.Clientes ? G.Clientes.nombre(m) : (m && m.cliente) || '');
+
   const nivelMargen = (mg) => mg === null ? 'warn'
     : mg < R.UMBRALES.margen_minimo_duro ? 'bad'
     : mg < R.UMBRALES.margen_minimo_blando ? 'warn' : 'ok';
@@ -262,7 +288,10 @@
    * copia y pega cuando alguien pregunta "¿y el M-1042?". */
   function coincide(m, q) {
     if (!q) return true;
-    const t = [m.nombre, m.cliente, m.so, m.id].map(x => String(x || '').toLowerCase()).join(' | ');
+    // El id de Odoo entra a la búsqueda a propósito: es lo que se guarda, y
+    // quien lo tenga a la mano debe poder encontrar la cotización con él.
+    const t = [m.nombre, cli(m), m.cliente, m.so, m.id, m.cliente_id]
+      .map(x => String(x || '').toLowerCase()).join(' | ');
     // Cada palabra por separado: "topo chico" y "chico topo" encuentran lo mismo.
     return q.toLowerCase().split(/\s+/).filter(Boolean).every(w => t.indexOf(w) >= 0);
   }
@@ -298,7 +327,7 @@
       return '<div class="fila">' +
         '<a class="item" href="#/m/' + m.id + '">' +
         '<div class="grow"><strong>' + esc(m.nombre) + '</strong>' +
-        '<div class="tiny">' + esc(m.cliente) + (m.so ? ' · ' + esc(m.so) : '') + ' · ' + m.id + '</div></div>' +
+        '<div class="tiny">' + esc(cli(m)) + (m.so ? ' · ' + esc(m.so) : '') + ' · ' + m.id + '</div></div>' +
         '<div class="right"><span class="chip" style="background:' + est[m.estado].color + '">' + est[m.estado].label + '</span>' +
         '<div class="tiny mono n-' + (c.costoIncompleto ? 'warn' : nivelMargen(c.margen)) + '">' +
         mx(c.precio) + ' · ' + pc(c.margen) + (c.costoIncompleto ? '*' : '') + '</div>' +
@@ -368,7 +397,10 @@
       '<label class="campo"><span>Nombre de la cotización</span>' +
       '<input id="n-nombre" class="cel" placeholder="Ej. Modificación de tren de drenado"></label>' +
       '<label class="campo"><span>Cliente</span>' +
-      '<input id="n-cliente" class="cel" placeholder="Ej. Nalco de México · Topo Chico"></label>' +
+      '<input id="n-cliente" class="cel" list="n-clientes" autocomplete="off" ' +
+      'placeholder="Escribe para buscar en Odoo…">' +
+      '<datalist id="n-clientes"></datalist>' +
+      '<span id="n-cliente-est" class="tiny">Leyendo el catálogo de Odoo…</span></label>' +
       '<label class="campo"><span>Orden (opcional)</span>' +
       '<input id="n-so" class="cel" placeholder="SO11836 — se puede dejar vacío"></label>' +
       '<label class="campo"><span>Empresa</span>' +
@@ -386,9 +418,16 @@
     $('#n-crear').onclick = () => {
       const nombre = $('#n-nombre').value.trim();
       if (!nombre) { $('#n-err').textContent = 'Ponle un nombre: es como lo vas a encontrar después.'; return; }
+      // El id es lo que se guarda; el texto queda como respaldo para pintar
+      // cuando Odoo no conteste. Si lo tecleado no casa con ningún cliente
+      // —un prospecto que todavía no está dado de alta— se guarda tal cual y
+      // `cliente_id` queda en null: NUNCA se bloquea por eso.
+      const txtCliente = $('#n-cliente').value.trim();
+      const hit = G.Clientes ? G.Clientes.resolver(txtCliente) : null;
       const m = C.machoteNuevo({
         nombre: nombre,
-        cliente: $('#n-cliente').value.trim(),
+        cliente: hit ? hit.nombre : txtCliente,
+        cliente_id: hit ? hit.id : null,
         so: $('#n-so').value.trim() || null,
         empresa_id: Number($('#n-empresa').value)
       });
@@ -397,6 +436,31 @@
       ST.hoja = 'desglose';
       location.hash = '#/m/' + m.id;
     };
+
+    poblarClientes();
+  }
+
+  /* Llena la lista del campo Cliente. La pantalla YA está pintada cuando esto
+   * corre: si Odoo tarda o no contesta, el campo se queda como texto libre y
+   * el aviso lo dice — no se traba la creación (regla anti-trabón §8). */
+  function poblarClientes() {
+    const est = $('#n-cliente-est'), dl = $('#n-clientes');
+    if (!est || !dl || !G.Clientes) return;
+    G.Clientes.cargar().then(r => {
+      // La vista pudo cambiar mientras la red iba y venía.
+      if (!document.body.contains(est)) return;
+      if (!r.ok) {
+        est.className = 'tiny n-warn';
+        est.textContent = 'No se pudo leer el catálogo de Odoo (' + r.error +
+          '). Escribe el nombre del cliente: se guarda igual.';
+        return;
+      }
+      dl.innerHTML = r.clientes
+        .map(c => '<option value="' + esc(c.nombre) + '"></option>').join('');
+      est.className = 'tiny';
+      est.textContent = r.clientes.length + ' clientes de Odoo. Si el tuyo no está, ' +
+        'escríbelo: se guarda como texto hasta que lo den de alta.';
+    });
   }
 
   /* ── El libro ────────────────────────────────────────────────────────── */
@@ -406,7 +470,7 @@
     // abierta de la anterior deja al analista en una sección que no pidió.
     if (ST.libroAbierto !== id) { ST.hoja = 'desglose'; ST.libroAbierto = id; }
     const c = C.calcular(m);
-    top(m.cliente, m.id + (m.so ? ' · ' + m.so : ''), 'MACHOTE', '#/');
+    top(cli(m), m.id + (m.so ? ' · ' + m.so : ''), 'MACHOTE', '#/');
 
     const hojas = [{ id: 'desglose', label: 'DESGLOSE COTIZACIÓN' }]
       .concat(m.secciones.map(s => ({ id: s.id, label: s.nombre || 'SECCIÓN' })));
@@ -514,8 +578,8 @@
       ['Materiales', 'margenes.materiales', mg.materiales],
       ['Servicios', 'margenes.servicios', mg.servicios]
     ].map(r => '<tr><td class="et">' + r[0] + '</td><td>' + celNum(r[1], r[2], 'w70') + '</td></tr>').join('') +
-      '<tr><td class="et">Comision FTS</td><td>' + celNum('comision_fts', m.comision_fts, 'w70') + '</td></tr>' +
-      '<tr><td class="et">Comision CLIENTE</td><td>' + celNum('comision_cliente', m.comision_cliente, 'w70') + '</td></tr>';
+      '<tr><td class="et">Comision FTS</td><td>' + celPct('comision_fts', m.comision_fts) + '</td></tr>' +
+      '<tr><td class="et">Comision CLIENTE</td><td>' + celPct('comision_cliente', m.comision_cliente) + '</td></tr>';
 
     const nombreSec =
       '<div class="nomsec"><span class="et">NOMBRE DE SECCIÓN</span>' + cel('nom:' + s.id, s.nombre, 'nombre') +
@@ -604,14 +668,15 @@
         // se señala el renglón donde empieza el pegado.
         '<td class="acc-ini" data-l=""><button class="ico pegar" data-pegar="' + s.id + '#' + j + '"' +
         ' title="Pegar una lista a partir de este renglón" aria-label="Pegar a partir del renglón ' + (j + 1) + '">⇥</button></td>' +
-        '<td data-l="Descripción">' + cel(p + 'descripcion', l.descripcion, 'desc') + '</td>' +
+        // Modelo y Marca se fueron: van DENTRO de la descripción. Eran dos
+        // columnas de 200 px que empujaban la fila fuera de la pantalla y le
+        // robaban ancho justo a la descripción, que es lo que hay que leer.
+        '<td class="descol" data-l="Descripción">' + cel(p + 'descripcion', l.descripcion, 'desc') + '</td>' +
         '<td data-l="QTY">' + celNum(p + 'qty', l.qty, 'w60') + '</td>' +
-        '<td data-l="Unidad">' + celLibre(p + 'unidad', l.unidad, 'unidades', 'w90') + '</td>' +
+        '<td data-l="Unidad">' + celLibre(p + 'unidad', l.unidad, 'unidades', 'w80') + '</td>' +
         '<td data-l="Tipo">' + celSel(p + 'tipo', l.tipo, [''].concat(C.TIPOS), 'wtipo') + '</td>' +
-        '<td data-l="Modelo">' + cel(p + 'modelo', l.modelo, 'w110') + '</td>' +
-        '<td data-l="Marca">' + cel(p + 'marca', l.marca, 'w90') + '</td>' +
-        '<td data-l="Precio unitario">' + celNum(p + 'pu', l.pu, 'w90') + '</td>' +
-        '<td data-l="Moneda">' + celSel(p + 'moneda', l.moneda, ['MXN', 'USD']) + '</td>' +
+        '<td data-l="Precio unitario">' + celNum(p + 'pu', l.pu, 'w80') + '</td>' +
+        '<td data-l="Moneda">' + celSel(p + 'moneda', l.moneda, ['MXN', 'USD'], 'wmon') + '</td>' +
         // "sin precio" SOLO en un renglón que alguien empezó a llenar. En uno
         // en blanco no es un hallazgo, es el estado normal del bloque — y con
         // treinta en blanco por sección, decirlo treinta veces es ruido.
@@ -621,8 +686,8 @@
           (cl.pisado ? '<span class="pisado-marca" title="Escrito a mano encima de la fórmula. Por Tipo le tocaría ' +
             cl.porTipo + '.">≠ ' + cl.porTipo + '</span>' : '') + '</td>' +
         '<td class="vl mono calc fuerte" data-l="Precio con utilidad">' + mx(cl.conUtilidad) + '</td>' +
-        '<td data-l="Link">' + cel(p + 'link', l.link, 'w130', 'https://…') + '</td>' +
-        '<td data-l="Comentario">' + cel(p + 'comentario', l.comentario, 'w130') + '</td>' +
+        '<td data-l="Link">' + cel(p + 'link', l.link, 'w80', 'https://…') + '</td>' +
+        '<td data-l="Comentario">' + cel(p + 'comentario', l.comentario, 'w80') + '</td>' +
         '<td class="acc" data-l="">' +
           '<button class="ico" data-mov="' + s.id + '#' + j + '|-1" title="Subir"' + (j === 0 ? ' disabled' : '') + '>↑</button>' +
           '<button class="ico" data-mov="' + s.id + '#' + j + '|1" title="Bajar"' + (j === s.partidas.length - 1 ? ' disabled' : '') + '>↓</button>' +
@@ -635,11 +700,12 @@
       '<div class="secc-tit">COSTO MATERIALES Y SERVICIOS</div>' +
       '<div class="scroll"><table class="rejilla tarjetas">' +
       '<thead><tr><th class="acc-ini" title="Pegar una lista a partir de un renglón">⇥</th>' +
-      '<th>DESCRIPCIÓN</th><th>QTY</th><th>UNIDAD</th><th>Tipo</th><th>MODELO</th><th>MARCA</th>' +
-      '<th>PRECIO UNITARIO</th><th>MONEDA</th><th>PRECIO TOTAL</th><th>Margen utilidad</th>' +
-      '<th>PRECIO CON UTILIDAD</th><th>Link</th><th>Comentario</th><th></th></tr></thead><tbody>' +
-      (filasMat || '<tr><td colspan="15" class="vacio2">Sin partidas.</td></tr>') +
-      '<tr class="total"><td class="acc-ini"></td><td class="rotulo" data-l="">TOTAL</td><td colspan="7"></td>' +
+      '<th class="descol">DESCRIPCIÓN <span class="hint">(incluye modelo y marca)</span></th>' +
+      '<th>QTY</th><th>UNIDAD</th><th>Tipo</th>' +
+      '<th>P. UNITARIO</th><th>MON.</th><th>P. TOTAL</th><th>Margen</th>' +
+      '<th>CON UTILIDAD</th><th>Link</th><th>Coment.</th><th class="acc"></th></tr></thead><tbody>' +
+      (filasMat || '<tr><td colspan="13" class="vacio2">Sin partidas.</td></tr>') +
+      '<tr class="total"><td class="acc-ini"></td><td class="rotulo descol" data-l="">TOTAL</td><td colspan="5"></td>' +
       '<td class="vl mono calc" data-l="Costo materiales">' + mx(cs.costoMat) +
       '</td><td></td><td class="vl mono calc fuerte" data-l="Con utilidad">' + mx(cs.ventaMat) + '</td><td colspan="3"></td></tr>' +
       '</tbody></table></div>' +
@@ -718,7 +784,7 @@
       '<div class="blk"><div class="et2">ELIGE UN ESCENARIO PARA TU COTIZACIÓN</div>' +
       '<div class="escs">' + escOps + '</div></div>' +
       '<div class="blk"><table class="hoja2"><tbody>' +
-      '<tr><td class="et">MARGEN DESEADO</td><td>' + celNum('margen_deseado', m.margen_deseado, 'w80') + '</td></tr>' +
+      '<tr><td class="et">MARGEN DESEADO</td><td>' + celPct('margen_deseado', m.margen_deseado, 'w80') + '</td></tr>' +
       '<tr><td class="et">HORAS PROYECTO</td><td class="vl mono calc">' + Math.round(c.horas) + '</td></tr>' +
       '<tr><td class="et">Factor_req</td><td class="vl mono calc">' + (c.factorReq ? c.factorReq.toFixed(9) : '—') + '</td></tr>' +
       '<tr><td class="et">Empresa</td><td>' +
@@ -731,7 +797,7 @@
           ? '<div class="tiny n-warn">' + esc(C.empresaDe(m).corto) + ' factura en ' +
             C.monedaPorDefecto(m) + '.</div>' : '') + '</td></tr>' +
       '<tr><td class="et">Tipo de cambio</td><td>' + celNum('tc', m.tc, 'w80') + '</td></tr>' +
-      '<tr><td class="et">Factor de protección</td><td>' + celNum('factor_proteccion', m.factor_proteccion, 'w80') + '</td></tr>' +
+      '<tr><td class="et">Factor de protección</td><td>' + celPct('factor_proteccion', m.factor_proteccion, 'w80') + '</td></tr>' +
       '<tr><td class="et">Origen del tipo de cambio</td><td>' +
         celLibre('tc_fuente', m.tc_fuente, 'fuentes-tc') + '</td></tr>' +
       '<tr><td class="et">TC efectivo</td><td class="vl mono calc">' + C.tcEfectivo(m).toFixed(4) + '</td></tr>' +
@@ -805,7 +871,7 @@
       return '<tr class="grupo"><td colspan="3">' + titulo + ' · bolsa ' + mx(bolsa) + '</td></tr>' +
         (m[key] || []).map((it, i) =>
           '<tr><td>' + cel('eq:' + rep + ':' + i + ':nombre', it.nombre, 'desc') + '</td>' +
-          '<td>' + celNum('eq:' + rep + ':' + i + ':pct', it.pct, 'w70') + '</td>' +
+          '<td>' + celPct('eq:' + rep + ':' + i + ':pct', it.pct) + '</td>' +
           '<td class="vl mono calc">' + mx(bolsa * Number(it.pct)) + '</td></tr>').join('') +
         '<tr class="total"><td class="et">Suma</td><td class="vl mono n-' +
         (Math.abs(suma - 1) < 0.0001 ? 'ok' : 'bad') + '">' + pc(suma) + '</td><td></td></tr>';
@@ -994,6 +1060,9 @@
       const aplicar = () => {
         let v = el.value;
         if (el.hasAttribute('data-num')) v = (v === '' ? null : (parseFloat(v) || 0));
+        // Lo que se teclea en % se guarda como razón: el motor y lo ya guardado
+        // siguen hablando en 0.055, y sólo la pantalla habla en 5.5.
+        if (v !== null && el.hasAttribute('data-pct')) v = +(v / 100).toFixed(8);
         setPath(m, el.dataset.cel, v);
       };
       // Al salir del campo se repinta -puede haber cambiado la estructura-.
@@ -1192,4 +1261,12 @@
 
   render();
   avisoPassword();
+
+  /* El catálogo se pide UNA vez al arrancar, en segundo plano. La pantalla no
+   * lo espera: se pinta con el nombre de respaldo y se repinta sola cuando
+   * Odoo contesta. Sólo se repinta si de verdad hay algo que cambiar —un
+   * machote con `cliente_id`—, para no parpadear de gratis. */
+  if (G.Clientes && ST.machotes.some(m => m.cliente_id)) {
+    G.Clientes.cargar().then(r => { if (r.ok) render(); });
+  }
 })(window);

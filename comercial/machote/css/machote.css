@@ -618,3 +618,40 @@ table.rejilla tr.total > td.acc-ini { background: var(--x-total); }
   table.rejilla.tarjetas td.acc-ini::before { content: none; }
   table.rejilla.tarjetas tr.total > td.acc-ini { display: none; }
 }
+
+/* ── Que la fila quepa en la pantalla ───────────────────────────────────
+ * Montalvo: "la línea está muy larga, no se ve completa para tener la opción
+ * de borrar" y "tenemos que hacer scroll horizontal".
+ *
+ * Dos medidas, y las dos hacen falta:
+ *   1. Menos columnas — Modelo y Marca se fueron dentro de la descripción.
+ *   2. Los botones se quedan FIJOS al borde derecho, como el de pegar al
+ *      izquierdo. Aunque un día vuelva a sobrar ancho, borrar se alcanza. */
+table.rejilla th.acc, table.rejilla td.acc {
+  position: sticky; right: 0; z-index: 2; background: var(--fondo);
+  box-shadow: -1px 0 0 var(--linea2); white-space: nowrap; padding: 2px;
+}
+table.rejilla th.acc { background: var(--x-cab); }
+table.rejilla tr.capturada > td.acc { background: var(--x-fila-ok); }
+table.rejilla tr.total > td.acc { background: var(--x-total); }
+/* Los botones angostan de ancho pero NO de alto: la regla de 44 px es de
+   altura, que es lo que se toca con el pulgar. */
+td.acc .ico { min-width: 32px; padding: 0 2px; }
+
+/* La descripción se lleva el ancho que soltaron Modelo y Marca. */
+table.rejilla th.descol, table.rejilla td.descol { min-width: 260px; width: 40%; }
+table.rejilla td.descol .cel { width: 100%; }
+th .hint { font-weight: 400; text-transform: none; opacity: .75; }
+.cel.wmon { min-width: 64px; }
+.cel.w80 { width: 80px; }
+
+/* ── Porcentajes ────────────────────────────────────────────────────────
+ * El signo va pegado al campo para que no se lea "5.5" y se entienda 5.5
+ * veces. Es el mismo dato de siempre: por dentro sigue siendo 0.055. */
+.pctwrap { display: inline-flex; align-items: center; gap: 3px; }
+.pctwrap i { font-style: normal; color: var(--suave); font-size: 12px; }
+@media (max-width: 719px) {
+  /* En tarjetas nada es fijo: no hay columnas de donde salirse. */
+  table.rejilla.tarjetas td.acc, table.rejilla.tarjetas th.acc { position: static; }
+  table.rejilla.tarjetas td.descol, table.rejilla.tarjetas th.descol { min-width: 0; width: auto; }
+}
