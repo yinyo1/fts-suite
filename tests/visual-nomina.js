@@ -279,6 +279,23 @@ const VIEWPORTS = [
     check('el botón de descargar es visible y cabe en el ancho',
       !!bBox && bBox.width > 40 && bBox.x >= 0 && (bBox.x + bBox.width) <= w + 1,
       bBox ? Math.round(bBox.x + bBox.width) + ' de ' + w : 'sin botón');
+    // El segundo boton es el que Magaly usa para REVISAR antes de mandar. Vive en la
+    // misma fila que el del csv, y en 390px una fila de dos botones es justo donde
+    // uno se sale de cuadro sin que nadie lo note.
+    const xBox = await page.locator('#bajar-excel').boundingBox();
+    check('el botón de la previa en Excel también cabe',
+      !!xBox && xBox.width > 40 && xBox.x >= 0 && (xBox.x + xBox.width) <= w + 1,
+      xBox ? Math.round(xBox.x + xBox.width) + ' de ' + w : 'sin botón');
+    // Y de verdad produce un archivo: se llama a la funcion que cuelga del boton y se
+    // miden los bytes. Un boton que existe pero baja cero bytes se ve igual de bien.
+    const bytesXlsx = await page.evaluate(() => {
+      const S = window.NomApp && window.NomApp.estado ? window.NomApp.estado() : null;
+      if (!S) return -1;
+      const b = window.NomExcel.libro(window.NomDespacho.hojas(S, { version: 1 }));
+      return (b[0] === 0x50 && b[1] === 0x4B) ? b.length : -2;
+    });
+    check('y el Excel que genera pesa algo y empieza con la firma PK',
+      bytesXlsx > 2000, String(bytesXlsx));
     check('la vista previa lista a la gente con su instrucción',
       (await page.$$('#p3 .tabla-wrap tbody tr')).length > 5);
     // La tabla ancha tiene que hacer scroll DENTRO de su caja, no empujar la página.

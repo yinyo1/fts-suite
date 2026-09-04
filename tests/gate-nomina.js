@@ -28,6 +28,7 @@ catch (e) { console.error('Falta jsdom. npm i jsdom y reintenta (o NODE_PATH=<di
 const Cat = require(path.join(MOD, 'js', 'catalogo.js'));
 const Log = require(path.join(MOD, 'js', 'logica.js'));
 const Des = require(path.join(MOD, 'js', 'despacho.js'));
+const Exc = require(path.join(MOD, 'js', 'excel.js'));
 
 let pass = 0; const fails = []; let bloque = '';
 function check(nombre, cond, detalle) {
@@ -391,6 +392,99 @@ seccion('Archivo para el despacho');
     Des.celda({ bono: 1500 }, { k: 'bono', tipo: 'mxn' }));
 })();
 
+// ═══════════════════ 7b · EL EXCEL DE DOS HOJAS ═══════════════════
+// POR QUE EXISTE ESTA SECCION. El .csv es el archivo que se manda; el .xlsx es la
+// vista con la que Magaly lo revisa ANTES de mandarlo y con la que Ulises puede
+// profundizar. Las dos salen del MISMO filas()/totales(), y esta seccion existe para
+// que sigan saliendo de ahi: si un dia alguien arma el Excel por su cuenta, aqui se
+// cae. El escritor de xlsx es nuestro (js/excel.js, sin librerias, ver el comentario
+// de ese archivo), asi que tambien se comprueba que lo que escribe sea un ZIP de
+// verdad y traiga las dos hojas dentro.
+seccion('El Excel de dos hojas');
+(function () {
+  const est = { semana: SEMANA, disputas: [], personas: [
+    persona({ id: 78, dias_mexico: 5 }),
+    persona({ id: 101, dias_mexico: 3, declaraciones: [{ tipo: 'vacaciones', valores: { dias: 2 } }] }),
+    persona({ id: 75, dias_mexico: 2, ppa: { aplica: false },
+      declaraciones: [{ tipo: 'trabajo_usa', valores: { dias: 3, so: 'SO11846' } }] })
+  ] };
+  const H = Des.hojas(est, { version: 1, actor: 'magaly.perez', fecha: '2026-09-04 15:20' });
+
+  check('el libro trae DOS hojas', H.length === 2, String(H.length));
+  check('la primera es la de instrucciones', H[0].nombre === 'Instrucciones', H[0].nombre);
+  check('la segunda es la del detalle', H[1].nombre === 'Detalle', H[1].nombre);
+
+  // Hoja 1: las MISMAS cuatro columnas del archivo. Si un dia se agrega una columna
+  // al csv y no al Excel, lo que Magaly revisa deja de ser lo que se manda.
+  const cab1 = H[0].filas[3].map(x => x.v);
+  check('la hoja 1 lleva las mismas 4 columnas del archivo',
+    cab1.join('|') === 'NO EMPLEADO|EMPLEADO|INSTRUCCION|REVISAR', cab1.join('|'));
+
+  // Hoja 2: el detalle que se quito del archivo. Departamento y puesto vuelven aqui
+  // —estorbaban a quien captura, no a quien audita— y estan TODOS los cubos.
+  const cab2 = H[1].filas[3].map(x => x.v);
+  check('la hoja 2 devuelve departamento y puesto',
+    cab2.indexOf('DEPARTAMENTO') > 0 && cab2.indexOf('PUESTO') > 0, cab2.slice(0, 6).join('|'));
+  const faltantes = Des.ACUMULADORES.filter(a => cab2.indexOf(a.t) < 0).map(a => a.t);
+  check('y NINGUN concepto se queda fuera del detalle', faltantes.length === 0, faltantes.join(', '));
+
+  // Los numeros van como numeros. Si salieran como texto, Ulises no podria sumarlos,
+  // que es la unica razon por la que esta hoja existe.
+  const iVac = cab2.indexOf('VACACIONES');
+  const filaAna = H[1].filas.find(f => String(f[0]) === '101');
+  const celdaVac = filaAna && filaAna[iVac];
+  check('los numeros del detalle son NUMEROS, no texto',
+    celdaVac && celdaVac.n === true && celdaVac.v === 2, JSON.stringify(celdaVac));
+
+  // El renglon de TOTAL tambien va como numero. Este assert existe porque el bug
+  // ocurrio: la celda del total se envolvia dos veces —{ v: { v, n }, s }— y Excel
+  // imprimia "[object Object]". En la hoja 1 no se veia porque ahi todo es texto, o
+  // sea que el error vivia escondido detras de un tipo de dato. Se descubrio abriendo
+  // el .xlsx con un lector independiente, no con este gate; por eso el assert.
+  const totalDet = H[1].filas[H[1].filas.length - 1];
+  const iMx = cab2.indexOf('DIAS TRABAJADOS MX');
+  check('el TOTAL del detalle tambien es un numero, no un objeto envuelto',
+    totalDet[iMx] && totalDet[iMx].n === true && typeof totalDet[iMx].v === 'number',
+    JSON.stringify(totalDet[iMx]));
+  check('y suma de verdad los dias de las tres personas',
+    totalDet[iMx].v === 10, String(totalDet[iMx] && totalDet[iMx].v));
+  check('ninguna celda del libro quedo envuelta dos veces',
+    H.every(h => h.filas.every(f => f.every(cl =>
+      !(cl && typeof cl === 'object' && cl.v && typeof cl.v === 'object')))));
+
+  // Las dos hojas cuentan lo mismo: mismas personas, mismos renglones.
+  check('las dos hojas traen a la misma gente',
+    H[0].filas.length === H[1].filas.length, H[0].filas.length + ' vs ' + H[1].filas.length);
+
+  // ── El archivo mismo ──
+  const bytes = Exc.libro(H);
+  check('el .xlsx es un ZIP de verdad (firma PK)',
+    bytes[0] === 0x50 && bytes[1] === 0x4B && bytes[2] === 3 && bytes[3] === 4,
+    [bytes[0], bytes[1], bytes[2], bytes[3]].join(','));
+  // El ZIP se escribe SIN comprimir, asi que el XML de cada hoja viaja tal cual
+  // dentro de los bytes: se puede buscar sin implementar un lector.
+  const crudo = Buffer.from(bytes).toString('utf8');
+  for (const parte of ['[Content_Types].xml', 'xl/workbook.xml', 'xl/styles.xml',
+                       'xl/worksheets/sheet1.xml', 'xl/worksheets/sheet2.xml']) {
+    check('el paquete trae ' + parte, crudo.indexOf(parte) >= 0);
+  }
+  check('y la segunda hoja se llama Detalle dentro del libro',
+    /<sheet name="Detalle"/.test(crudo));
+  check('el contenido viaja de verdad en el archivo (no es un ZIP vacio)',
+    crudo.indexOf('DESCONTAR 3 días') >= 0);
+  check('los acentos sobreviven al ZIP', crudo.indexOf('DIAS TRABAJADOS USA') >= 0);
+
+  // El nombre distingue una version de otra en la carpeta de descargas.
+  check('el nombre del Excel lleva semana y version',
+    Des.nombreExcel(SEMANA, 2) === 'nomina-S36-2026-v2.xlsx', Des.nombreExcel(SEMANA, 2));
+
+  // Una pestaña de Excel no admite / ni mas de 31 caracteres: si el nombre pasa tal
+  // cual, Excel declara el archivo dañado y no dice por que.
+  check('un nombre de hoja invalido se sanea', Exc.nombreHoja('a/b:c*d', 0) === 'a-b-c-d',
+    Exc.nombreHoja('a/b:c*d', 0));
+  check('y uno larguisimo se recorta a 31', Exc.nombreHoja('x'.repeat(60), 0).length === 31);
+})();
+
 // ═══════════════════ 8 · CONTRATO CON auth/suite-login ═══════════════════
 // POR QUE EXISTE ESTA SECCION. En V1.00 el login mandaba `user` (copiado de
 // finanzas/js/auth-fin.js) y el workflow espera `username`. Resultado: TODO intento
@@ -462,7 +556,7 @@ function arrancarRender() { (async function () {
   // de que corra el script de arranque, que pide version.json.
   w.fetch = () => Promise.resolve({ json: () => Promise.resolve({ version: 'V1.00' }) });
 
-  for (const f of ['catalogo.js', 'logica.js', 'despacho.js', 'indice.js', 'nom-auth.js', 'nom-client.js', 'nom-resolver.js', 'app.js']) {
+  for (const f of ['catalogo.js', 'logica.js', 'despacho.js', 'excel.js', 'indice.js', 'nom-auth.js', 'nom-client.js', 'nom-resolver.js', 'app.js']) {
     w.eval(fs.readFileSync(path.join(MOD, 'js', f), 'utf8'));
   }
 
@@ -738,6 +832,8 @@ function arrancarRender() { (async function () {
   // botón se prueba, no solo la función que arma el texto.
   check('el cierre pinta el archivo para el despacho', /Archivo para el despacho/.test(d.getElementById('p3').textContent));
   check('con su botón de descargar', !!d.getElementById('bajar-archivo'));
+  check('y con el de la previa en Excel, para revisarla antes de mandarla',
+    !!d.getElementById('bajar-excel'));
   const filasPrev = d.querySelectorAll('#p3 .tabla-wrap tbody tr');
   check('la vista previa trae un renglón por persona más el total',
     filasPrev.length === est.personas.filter(p => !p.inactivo || (p.declaraciones || []).length).length + 1,

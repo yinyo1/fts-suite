@@ -467,6 +467,106 @@
     return 'nomina-' + id + '-v' + (version || 1) + '.csv';
   }
 
+  // ═══ Las dos hojas del Excel ═══════════════════════════════════════════════
+  // MISMA FUENTE, DOS VISTAS. Las dos hojas salen de `filas()` y `totales()`, los
+  // mismos que escriben el CSV. No hay un segundo cálculo que pueda desviarse: si la
+  // instrucción dice "DESCONTAR 2 días", el cubo del detalle trae 2 porque es el
+  // mismo objeto leído dos veces.
+  //
+  // HOJA 1 — Instrucciones: idéntica al archivo que se manda. Es la que se revisa.
+  // HOJA 2 — Detalle: los veintitantos cubos con su número, más departamento y
+  //   puesto. Se quitaron del archivo porque estorbaban a quien captura, pero quien
+  //   AUDITA sí los quiere: es la diferencia entre "qué hago" y "de dónde salió".
+  //   Aquí los números van como NÚMEROS, no como texto, para que se puedan sumar.
+  //
+  // El CSV sigue siendo el acuse —es lo que se congela al enviar— y el Excel es la
+  // vista. Un binario no se guarda en la tabla de datos ni se compara de un vistazo.
+  function celdaExcel(fila, col) {
+    var v = fila[col.k];
+    if (col.tipo === 'txt') return (v === undefined || v === null) ? '' : String(v);
+    var n = num(v);
+    return n ? { v: n, n: true } : '';      // el 0 se calla, igual que en el CSV
+  }
+
+  // Ponerle estilo a una celda SIN aplastarla. Una celda numérica ya es un objeto
+  // { v, n }, y envolverla otra vez —{ v: { v, n }, s }— la imprime como
+  // "[object Object]". Pasó de verdad en el renglón de TOTAL de la hoja Detalle: en
+  // la hoja 1 no se vio porque ahí todas las columnas son texto, o sea que el error
+  // estaba desde el primer minuto y escondido detrás de un tipo de dato.
+  function conEstilo(cel, s) {
+    if (cel === '' || cel === undefined || cel === null) return { v: '', s: s };
+    if (typeof cel === 'object') return { v: cel.v, n: cel.n, s: s };
+    return { v: cel, s: s };
+  }
+
+  function hojas(estado, meta) {
+    meta = meta || {};
+    var F = filas(estado), T = totales(F), sem = estado.semana, i, k;
+
+    var titulo = 'NOMINA FTS · SEMANA ' + sem.id + ' · del ' + sem.desde + ' al ' + sem.hasta +
+      ' · ' + sem.dias + ' dias';
+    var sello = 'Generado ' + (meta.fecha || new Date().toISOString().slice(0, 16).replace('T', ' ')) +
+      ' UTC por ' + (meta.actor || 'RH') + ' · version ' + (meta.version || 1) +
+      (meta.motivo ? ' · corregida: ' + meta.motivo : '');
+
+    // -- Hoja 1 --
+    var h1 = [[{ v: titulo, s: 2 }], [sello], [], []];
+    for (i = 0; i < COLUMNAS.length; i++) h1[3].push({ v: COLUMNAS[i].t, s: 1 });
+    for (i = 0; i < F.length; i++) {
+      var r1 = [];
+      for (k = 0; k < COLUMNAS.length; k++) {
+        var val = celdaExcel(F[i], COLUMNAS[k]);
+        // La instrucción y el aviso se ajustan al alto de la celda: son las dos
+        // columnas largas, y sin esto el renglón se corta a la mitad de la frase.
+        r1.push((COLUMNAS[k].k === 'instruccion' || COLUMNAS[k].k === 'revisar')
+          ? conEstilo(val, 3) : val);
+      }
+      h1.push(r1);
+    }
+    var t1 = [];
+    for (k = 0; k < COLUMNAS.length; k++) t1.push(conEstilo(celdaExcel(T, COLUMNAS[k]), 2));
+    h1.push(t1);
+
+    // -- Hoja 2 --
+    var COLS2 = [{ k: 'no_empleado', t: 'NO EMPLEADO', tipo: 'txt' },
+                 { k: 'nombre',      t: 'EMPLEADO',    tipo: 'txt' },
+                 { k: 'departamento',t: 'DEPARTAMENTO',tipo: 'txt' },
+                 { k: 'puesto',      t: 'PUESTO',      tipo: 'txt' }]
+      .concat(ACUMULADORES)
+      .concat([{ k: 'revisar', t: 'REVISAR', tipo: 'txt' }]);
+
+    var h2 = [[{ v: titulo + ' · DETALLE', s: 2 }],
+              ['Los mismos renglones de la hoja Instrucciones, abiertos por concepto. ' +
+               'Los números son números: se pueden sumar y filtrar.'], [], []];
+    for (i = 0; i < COLS2.length; i++) h2[3].push({ v: COLS2[i].t, s: 1 });
+    for (i = 0; i < F.length; i++) {
+      var r2 = [];
+      for (k = 0; k < COLS2.length; k++) r2.push(celdaExcel(F[i], COLS2[k]));
+      h2.push(r2);
+    }
+    var t2 = [];
+    for (k = 0; k < COLS2.length; k++) {
+      // El TOTAL no repite la instrucción de cuadre aquí: en esta hoja el cuadre son
+      // las sumas de cada columna, que es justo lo que se viene a ver.
+      t2.push(conEstilo((COLS2[k].k === 'revisar') ? '' : celdaExcel(T, COLS2[k]), 2));
+    }
+    h2.push(t2);
+
+    var anchos2 = [13, 32, 20, 26];
+    for (i = 0; i < ACUMULADORES.length; i++) anchos2.push(ACUMULADORES[i].tipo === 'mxn' ? 16 : 13);
+    anchos2.push(44);
+
+    return [
+      { nombre: 'Instrucciones', congelar: 4, anchos: [13, 34, 96, 46], filas: h1 },
+      { nombre: 'Detalle',       congelar: 4, anchos: anchos2,          filas: h2 }
+    ];
+  }
+
+  function nombreExcel(semana, version) {
+    var id = String((semana && semana.id) || 'semana').replace('/', '-');
+    return 'nomina-' + id + '-v' + (version || 1) + '.xlsx';
+  }
+
   return {
     COLUMNAS: COLUMNAS,
     ACUMULADORES: ACUMULADORES,
@@ -478,7 +578,9 @@
     totales: totales,
     celda: celda,
     texto: texto,
+    hojas: hojas,
     nombreArchivo: nombreArchivo,
+    nombreExcel: nombreExcel,
     ppaDe: ppaDe,
     fuenteFueraDeNomina: fuenteFueraDeNomina
   };
