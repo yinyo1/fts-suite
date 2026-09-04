@@ -484,10 +484,36 @@ seccion('El Excel de dos hojas');
   // El ZIP se escribe SIN comprimir, asi que el XML de cada hoja viaja tal cual
   // dentro de los bytes: se puede buscar sin implementar un lector.
   const crudo = Buffer.from(bytes).toString('utf8');
-  for (const parte of ['[Content_Types].xml', 'xl/workbook.xml', 'xl/styles.xml',
+  // La lista de partes es la MISMA que emite un generador de fabrica. Se compara
+  // entera porque el sintoma de que falte una no es un error: es que el lector decide
+  // reparar el archivo, y al repararlo tira el formato — se abre y se ve plano.
+  for (const parte of ['[Content_Types].xml', '_rels/.rels', 'xl/workbook.xml',
+                       'xl/_rels/workbook.xml.rels', 'xl/styles.xml',
+                       'xl/theme/theme1.xml', 'docProps/core.xml', 'docProps/app.xml',
                        'xl/worksheets/sheet1.xml', 'xl/worksheets/sheet2.xml']) {
     check('el paquete trae ' + parte, crudo.indexOf(parte) >= 0);
   }
+
+  // Fecha DOS de la primera entrada: bytes 10-13 del local header (hora + fecha).
+  // Cero ahi es el dia 0 del mes 0, una fecha que NO existe, y es motivo suficiente
+  // para que un lector estricto repare el archivo. Este assert existe porque paso.
+  check('las entradas del ZIP llevan fecha valida, no cero',
+    (bytes[10] | bytes[11] | bytes[12] | bytes[13]) !== 0,
+    [bytes[10], bytes[11], bytes[12], bytes[13]].join(','));
+
+  // El esquema fija el orden de los hijos de styleSheet; si se cuela uno fuera de
+  // sitio el lector descarta TODO el styles.xml y el archivo se ve sin formato.
+  check('styles.xml lleva sus tres bloques vacios de rigor',
+    /<numFmts count="0"\/>/.test(crudo) && /<dxfs count="0"\/>/.test(crudo) &&
+    /<tableStyles /.test(crudo));
+  check('y el encabezado se pinta blanco sobre azul, con borde',
+    /<fgColor rgb="FF1F3864"\/>/.test(crudo) && /applyBorder="1"/.test(crudo));
+  // El rango se DERIVA de las filas, no se escribe fijo: un assert con el rango de
+  // otro archivo pegado a mano se rompe en cuanto cambia el numero de personas, que
+  // es justo lo que cambia cada semana.
+  check('la hoja 1 declara su rango ocupado, y cuadra con sus filas',
+    crudo.indexOf('<dimension ref="A1:D' + H[0].filas.length + '"/>') >= 0,
+    'esperaba A1:D' + H[0].filas.length);
   check('y la segunda hoja se llama Detalle dentro del libro',
     /<sheet name="Detalle"/.test(crudo));
   check('el contenido viaja de verdad en el archivo (no es un ZIP vacio)',
