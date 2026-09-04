@@ -66,7 +66,8 @@ versión es peor que no tener indicador.
 | `js/app.js` | Vistas y ruteo. |
 | `js/pegar.js` | El pegado de tablas: separador, columnas y revisión previa. |
 | `js/almacen.js` | El autoguardado. UNA pieza entre la pantalla y donde viven los datos. |
-| `tests/pruebas-navegador.js` | 95 pruebas de navegador. |
+| `js/clientes.js` | El catálogo de clientes, leído de Odoo. Guarda el id, pinta el nombre. |
+| `tests/pruebas-navegador.js` | 104 pruebas de navegador. |
 
 ## Cómo se calcula el precio
 
@@ -98,7 +99,7 @@ trece columnas. La hoja `DESGLOSE COTIZACIÓN` trae los tres escenarios, el
 `RESUMEN BUDGET`, las diez ranuras de sección, el `BUDGET ODOO` y la tabla de
 comisiones.
 
-**En teléfono la retícula desaparece.** Catorce columnas con el pulgar no se
+**En teléfono la retícula desaparece.** Trece columnas con el pulgar no se
 capturan: cada renglón se vuelve una tarjeta con sus campos etiquetados, los
 renglones de mano de obra en cero se pliegan detrás de un interruptor que dice
 cuántos hay, y nada de lo que se toca mide menos de 44 px. En pantalla ancha
@@ -185,7 +186,7 @@ un vistazo lo capturado de lo que falta es la diferencia entre revisar una hoja
 y leerla entera.
 
 En teléfono la marca es el **borde** de la tarjeta, no el fondo: un fondo verde
-detrás de catorce campos etiquetados no se lee.
+detrás de once campos etiquetados no se lee.
 
 ## Autoguardado
 
@@ -218,7 +219,8 @@ se revierte y dice por qué.
 Un machote enviado queda **congelado**: los campos se apagan y desaparecen los
 botones de estructura, pero la hoja se sigue viendo — es el documento con el que
 se vendió y hay que poder consultarlo. La banda de estado encabeza **todas** las
-hojas, no sólo el `DESGLOSE`: catorce campos apagados sin decir por qué son
+hojas, no sólo el `DESGLOSE`: una hoja entera de campos apagados sin decir por
+qué es
 exactamente el silencio que este módulo persigue.
 
 ⚠️ **Enviar todavía NO escribe en Odoo.** La regla vigente del módulo es que
@@ -228,7 +230,8 @@ reales; la escritura espera a que Esteban levante esa regla.
 ## Buscar, y empezar uno nuevo
 
 La pantalla de entrada es un **buscador**, no una lista: busca por nombre,
-cliente, número de orden e id, palabra por palabra —«topo chico» y «chico topo»
+cliente —el vivo de Odoo y el guardado—, número de orden, id del machote e **id
+del cliente en Odoo**, palabra por palabra —«topo chico» y «chico topo»
 encuentran lo mismo— y filtra por estado con chips que traen su cuenta. **Los
 contadores son del total, no de lo ya filtrado**: un contador que cambia al
 filtrar no sirve para saber cuántos hay. Y cuando no hay resultados, dice qué se
@@ -259,8 +262,9 @@ donde se cuela el error de dedo **en el precio**, que es el dato que nadie vuelv
 a verificar.
 
 `js/pegar.js` interpreta un bloque pegado —de Claude, de un correo, de Excel, de
-un PDF— y saca cantidad, unidad, tipo, descripción, modelo, marca, precio y
-moneda. Elige el separador **por consistencia, no por frecuencia**: gana el que
+un PDF— y saca cantidad, unidad, tipo, descripción, precio y moneda. Si la
+tabla trae la especificación, el modelo o la marca en columnas aparte, los
+**suma a la descripción** separados por `·`, que es donde viven ahora. Elige el separador **por consistencia, no por frecuencia**: gana el que
 produce el mismo número de columnas en la mayoría de los renglones, porque uno
 que da 3 columnas en una fila y 7 en la siguiente no es el separador, es un
 carácter que salía en el texto.
@@ -293,7 +297,7 @@ tabulador lo descartaba en falso con una descripción que termina en dígito
 **Empieza donde tú digas.** El botón `⇥` vive **en cada renglón**, no en la
 sección: el punto donde arranca el pegado es una decisión del capturista, y casi
 siempre hay algo capturado arriba que no se toca. Se elige entre **escribir
-**escribir debajo** o **escribir arriba** del renglón señalado. En los dos
+debajo** o **escribir arriba** del renglón señalado. En los dos
 casos lo que ya estaba **se recorre, no se sobrescribe**: la única decisión es
 dónde va, que es la que de verdad importa.
 
@@ -303,7 +307,8 @@ la pantalla**: medido, `x=1473` con la ventana en 1440 px, con 218 px de arrastr
 para dar con él. Existía y las pruebas lo alcanzaban —Playwright desplaza solo
 antes de hacer clic— así que pasaban en verde mientras nadie lo encontraba.
 **Existir y poder encontrarse no son lo mismo**, y ahora hay una prueba que mide
-que el botón caiga dentro de la ventana a 1440, 1280 y 390 px.
+que los dos botones fijos —pegar y borrar— caigan dentro de la ventana a 1440,
+1280 y 1024 px, y que a 1440 la tabla no desborde ni un píxel.
 
 **No depende del orden de las columnas.** Hay listas donde el precio va primero
 y la cantidad en medio (`$ 890.00 c/u - 8 PZAS - Lámpara LED…`). Leer por
@@ -329,12 +334,92 @@ estás pegando. Antes, pegar una lista sin columna de Unidad dejaba en blanco lo
 `Pieza` y `Horas` ya capturados — reproducido y medido. Un pegado que borra datos
 que no venía a tocar es peor que no pegar.
 
+### Las tablas que escribe Claude
+
+Vienen en Markdown, y traían **tres trampas a la vez** que las tiraban enteras a
+la lectura por lista —el encabezado terminaba convertido en un renglón, que es
+justo lo que se reportó—:
+
+- **El maquillaje.** Claude pone los precios en negritas, `**$76,379**`. El
+  asterisco convertía el precio en texto ilegible, así que la fila del
+  encabezado dejaba de parecerse a un encabezado. Se quitan `**`, `__` y las
+  comillas invertidas antes de mirar nada.
+- **La unidad dentro de la cantidad.** La celda dice `1 pza`, `240 m`,
+  `10 juegos`. Si la columna de unidad no viene aparte, se parte ahí: número a
+  `QTY`, palabra a `Unidad`.
+- **La columna del precio viejo.** Un encabezado que diga `anterior`, `previo`,
+  `antes` u `original` es el precio de la cotización pasada, y ganaba por estar
+  primero. Ahora se descarta a propósito: el que entra es el **nuevo**.
+
 **Nada se aplica solo.** Interpreta, enseña lo que entendió renglón por renglón
 con sus avisos, y escribe cuando alguien lo aprueba mirándolo. Un parser que
 acierta el 90% y aplica solo mete un 10% de basura que nadie ve.
 
 El `Tipo` que no venga en la tabla **queda vacío**: Materiales o Servicios elige
 el multiplicador, y adivinarlo movería el precio.
+
+## El cliente sale de Odoo
+
+Al crear un machote, el cliente se elige de una **lista leída de Odoo en vivo**
+—escribiendo se filtra— y lo que se **guarda es el id** (`1247`), no el nombre.
+El nombre se lee de Odoo cada vez que se pinta.
+
+No es un detalle de forma. Si a un cliente le cambian la razón social, las
+cotizaciones viejas la muestran corregida solas; con el nombre copiado se
+quedarían con la versión del día que se capturaron. Y **este repo es público**:
+el día que los machotes salgan del navegador, lo que viaje es un número, no la
+cartera de clientes.
+
+**El catálogo no se guarda en el repo ni en `localStorage`** — vive en Odoo y se
+cachea en memoria mientras la pestaña está abierta. Sólo llegan al navegador las
+**empresas** (`is_company`): los otros 483 registros con `customer_rank > 0` son
+los **contactos persona** de cada cliente, con nombre y apellido de gente real.
+Y de cada uno sale únicamente `id` y `nombre`: ni correo, ni teléfono, ni RFC.
+
+**Si Odoo no contesta, el campo sigue siendo texto libre y se guarda igual**, con
+un aviso que dice por qué la lista está vacía. Un prospecto que todavía no está
+dado de alta también se acepta, como texto y sin id. Nunca se bloquea crear un
+machote porque el catálogo no llegó — el machote casi siempre nace antes que la
+orden, y a veces antes que el cliente.
+
+Detalle completo, con el endpoint y lo que quedó sin verificar, en
+[`docs/comercial/CLIENTES-DESDE-ODOO.md`](../../docs/comercial/CLIENTES-DESDE-ODOO.md).
+
+## Porcentajes en la pantalla, razones en el archivo
+
+Las comisiones y el margen deseado se **escriben y se leen en por ciento** —
+`5.5`, `40`— con el `%` a la derecha del campo. Adentro siguen siendo razones
+(`0.055`, `0.4`), que es lo que el motor multiplica y lo que el machote real
+guarda.
+
+La conversión vive en **dos lugares y nada más**: `celPct()` al pintar (×100) y
+`aplicar()` al guardar (÷100, redondeado a ocho decimales para que `5.5 %` no
+vuelva como `0.055000000000000005`). Nadie pedía calcular con `0.055` a mano:
+la gente que cotiza piensa en 5.5 %, y verlo en decimales era leerlo mal a la
+primera.
+
+**Los multiplicadores no llevan `%`.** `2.5` es «dos veces y media el costo»,
+no «dos y medio por ciento»; ponerles el signo habría sido peor que no
+convertirlos.
+
+## Que la fila quepa
+
+La tabla de materiales cabe en la pantalla **sin arrastre horizontal**, medido a
+1440, 1280 y 1024 px.
+
+Tres cosas la metieron adentro:
+
+- **Fuera `Marca` y `Modelo`.** Eran dos columnas de 200 px que se llevaban el
+  ancho que necesita la descripción, que es lo que en realidad se lee. Van
+  **dentro de la descripción** —el encabezado lo dice— y el pegado las une ahí
+  solo cuando la tabla que se pega las trae por separado.
+- **La descripción se queda con el ancho** (`min-width: 260px; width: 40%`) y el
+  resto de los campos se acortó a lo que su contenido necesita.
+- **Las dos columnas de acciones se fijan a los bordes**: pegar `⇥` a la
+  izquierda, y mover/duplicar/borrar a la derecha. Aunque un día la tabla vuelva
+  a desbordarse por una descripción larguísima, **el botón de borrar sigue
+  visible** — que es exactamente lo que se reportó desde las pruebas con la
+  gente.
 
 ## Lo que decide el verde
 
@@ -361,8 +446,10 @@ vuelve a comprobar— porque el primero es cosmético.
 
 El libro está detrás de un gate: `shared/auth-jwt.js`, cliente de
 **`auth/suite-login`** — el mismo emisor de identidad que usa RH (Fase 0 del
-issue #136). Pide el permiso `comercial:read`. Quién entró se ve en la barra
-superior y ahí mismo se cierra la sesión.
+issue #136). Pide el permiso `comercial:read`. El **nombre** de quien entró se
+ve en la barra superior —no su usuario: `esteban.delacruz` truncado a
+`esteban.delac…` no dice quién está capturando; el usuario exacto queda en el
+`title`— y ahí mismo se cierra la sesión.
 
 ⚠️ **El gate decide si la pantalla se PINTA, no si el archivo se descarga.**
 GitHub Pages es público. Sirve para saber quién está probando y que su input sea
@@ -420,3 +507,6 @@ encontrado:
   cotizaciones grandes **las secciones se renombran** al alcance real.
 - Los umbrales de `reglas.js` marcados `SUPUESTO` necesitan números de FTS.
 - El cuestionario de diagnóstico es invención: el machote no lo tiene.
+- **Activar el webhook `comercial/clientes`** (`RyeFlCTdLu301Gjz`) en la UI de
+  n8n: el API no deja activarlo por MCP. Mientras esté apagado, el campo de
+  cliente funciona como texto libre y lo avisa.
