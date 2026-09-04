@@ -194,6 +194,12 @@
       disputas: JSON.parse(JSON.stringify(DISPUTAS_DEMO)),
       proyectos: SOS_DEMO.slice(),
       estado_envio: 'borrador',
+      // El envio de practica arranca en borrador para que se pueda ensayar el ciclo
+      // completo —generar el archivo, mandarlo, verlo marcado y corregirlo— sin tocar
+      // la semana real. `enviar()` en DEMO no escribe nada: solo lo dice.
+      envio: { estado: 'borrador', version: 0, actor: null, enviado_en: null,
+               nombre_archivo: null, archivo: null, motivo: null,
+               bitacora: [], cambios_despues: 0 },
       // El rezago tambien se finge: si no, la pantalla de disputas del modo practica
       // no enseñaria el aviso que en el real aparece todas las semanas.
       rezago: { total: 74, desde: '2026-05-08', personas: 19 },
@@ -204,6 +210,44 @@
   async function cargarSemana(semanaId) {
     if (modo() === 'demo') return Promise.resolve(semanaDemo());
     return call('/nom/semana', { semana: semanaId || null });
+  }
+
+  // ─── El índice de semanas ───
+  // Es lo primero que se carga, antes que ninguna semana. No toca Odoo (el server
+  // solo lee las tablas de datos), así que abre de inmediato: la lista de semanas no
+  // necesita saber quién trabajó, solo qué se mandó.
+  //
+  // POR QUÉ EXISTE. El módulo abría directo en una semana, y esa semana era la que
+  // contiene HOY. Como la semana corre VIE→JUE, un viernes eso es una semana de un
+  // día: el 4-sep-2026 abría en S37 —el primer día— mientras S36 tenía las cinco
+  // jornadas de 28 personas esperando. No había forma de llegar a otra semana ni de
+  // ver cuáles ya se habían mandado.
+  function semanasDemo() {
+    // Se fingen tres: la que corre, la que toca (con captura empezada) y una ya
+    // enviada. Sin la enviada, el modo práctica no enseñaría cómo se ve una semana
+    // cerrada, que es justo lo que hay que saber leer para no remandarla sin querer.
+    return {
+      hoy: '2026-09-04',
+      sugerida: 'S36/2026',
+      semanas: [
+        { id: 'S37/2026', desde: '2026-09-04', hasta: '2026-09-10', dias: 5, en_curso: true,
+          estado: 'borrador', version: 0, enviado_en: null, actor: null, nombre_archivo: null,
+          motivo: null, movimientos: 0, personas_capturadas: 0, cambios_despues: 0 },
+        { id: 'S36/2026', desde: '2026-08-28', hasta: '2026-09-03', dias: 5, en_curso: false,
+          estado: 'borrador', version: 0, enviado_en: null, actor: null, nombre_archivo: null,
+          motivo: null, movimientos: 0, personas_capturadas: 7, cambios_despues: 0 },
+        { id: 'S35/2026', desde: '2026-08-21', hasta: '2026-08-27', dias: 5, en_curso: false,
+          estado: 'enviada', version: 2, enviado_en: '2026-08-28T16:12:00.000Z', actor: 'magaly',
+          nombre_archivo: 'nomina-S35-2026-v2.csv', motivo: 'faltaba un día de incapacidad de Samuel',
+          movimientos: 2, personas_capturadas: 30, cambios_despues: 1 }
+      ],
+      origen: 'demo'
+    };
+  }
+
+  async function cargarSemanas() {
+    if (modo() === 'demo') return Promise.resolve(semanasDemo());
+    return call('/nom/semanas', {});
   }
 
   // Escribe y NO devuelve la pantalla: quien llama tiene que volver a leer la semana.
@@ -236,8 +280,16 @@
     return escribir({ accion: 'estado', empleado_id: empleadoId, tipo: est.tipo,
                      valores: est.valores || {}, vigente: vigente !== false });
   }
-  function guardarEnvio(semana, resumen) {
-    return escribir({ accion: 'enviar', semana: semana, resumen: resumen || {} });
+  // El archivo viaja CON el envio y el server lo congela tal cual. Regenerarlo al
+  // volver a bajarlo daria un archivo distinto en cuanto alguien corrigiera un dia:
+  // "lo que se envio" tiene que poder releerse byte por byte, o no es un acuse.
+  // `motivo` solo hace falta al REENVIAR (version >= 2); el server lo exige, no la
+  // pantalla — este repo es publico y ahi las reglas se piden, no se imponen.
+  function guardarEnvio(semana, resumen, archivo, nombreArchivo, motivo) {
+    return escribir({ accion: 'enviar', semana: semana, resumen: resumen || {},
+                      archivo: '' + (archivo || ''),
+                      nombre_archivo: '' + (nombreArchivo || ''),
+                      motivo: '' + (motivo || '') });
   }
 
   window.NomClient = {
@@ -245,11 +297,13 @@
     modo: modo,
     setModo: setModo,
     cargarSemana: cargarSemana,
+    cargarSemanas: cargarSemanas,
     escribir: escribir,
     guardarPersona: guardarPersona,
     guardarEstado: guardarEstado,
     guardarEnvio: guardarEnvio,
     semanaDemo: semanaDemo,
+    semanasDemo: semanasDemo,
     MODO_KEY: MODO_KEY
   };
 })();

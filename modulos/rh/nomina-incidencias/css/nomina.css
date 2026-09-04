@@ -59,6 +59,10 @@ html,body{margin:0;padding:0;min-height:100%;background:var(--bg);color:var(--te
 .banner{border-radius:12px;padding:14px 16px;display:flex;gap:12px;margin-bottom:14px;border:1px solid}
 .banner.ok{background:var(--green-l);border-color:#b5dcb5}
 .banner.bad{background:var(--red-l);border-color:#f3c0bc}
+/* El aviso de modo PRACTICA al 'enviar' usaba esta clase desde V1.02 y nunca existio:
+   el recuadro salia sin fondo ni borde, o sea el aviso mas importante de DEMO se veia
+   como texto suelto. */
+.banner.warn{background:var(--amber-l);border-color:#f0dfa8}
 .banner .ico{font-size:20px;line-height:1.2}
 .banner h3{margin:0 0 4px;font-size:15px}
 .banner ul{margin:6px 0 0;padding-left:18px;font-size:13px;line-height:1.65}
@@ -278,3 +282,40 @@ input:focus,select:focus{outline:2px solid var(--green-l);border-color:var(--gre
 #rdet label { display: block; font-size: 12px; font-weight: 700; margin: 10px 0 5px; }
 #rdet input[type=time] { font: inherit; font-size: 15px; padding: 7px 10px; border-radius: 8px;
                          border: 1px solid var(--border); background: var(--bg2); color: var(--txt); }
+
+/* ═══ Pantalla 0 · el índice de semanas ═══════════════════════════════════
+   Renglones grandes y clicables: son trece a lo mucho, y la decisión que se toma
+   aquí (en qué semana trabajo) merece más espacio que una lista apretada. */
+.volver{padding:6px 12px;font-size:13px;align-self:center}
+.sem-lista{display:flex;flex-direction:column;gap:10px}
+.sem{background:var(--card);border:1px solid var(--border);border-radius:14px;
+     padding:14px 16px;display:flex;align-items:center;gap:14px;cursor:pointer;
+     text-align:left;width:100%;font:inherit;color:inherit}
+.sem:hover{border-color:var(--green)}
+.sem:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.sem .idm{min-width:104px}
+.sem .idm b{display:block;font-size:17px}
+.sem .idm .f{color:var(--muted2);font-size:12px;margin-top:2px}
+.sem .med{flex:1 1 auto;min-width:0;font-size:13px;color:var(--muted2);line-height:1.6}
+.sem .med .cap{color:var(--text)}
+/* La sugerida lleva borde verde y no solo una etiqueta: con trece renglones
+   iguales, un color se encuentra antes que un texto. */
+.sem.sug{border-color:var(--green);box-shadow:0 0 0 1px var(--green) inset}
+.sem.curso{background:#fbfbfb}
+.eti{display:inline-block;border-radius:999px;padding:2px 9px;font-size:11px;
+     font-weight:700;letter-spacing:.02em;white-space:nowrap}
+.eti.env{background:var(--green-l);color:var(--green-d);border:1px solid #b5dcb5}
+.eti.bor{background:#f0f0f0;color:var(--muted2);border:1px solid var(--border)}
+.eti.cur{background:var(--blue-l);color:var(--blue);border:1px solid #bcd8f0}
+.eti.ojo{background:var(--amber-l);color:var(--amber);border:1px solid #f0dfa8}
+.eti.sugeti{background:var(--green);color:#fff;border:1px solid var(--green)}
+.sem .etis{display:flex;flex-direction:column;gap:5px;align-items:flex-end}
+@media(max-width:560px){
+  .sem{flex-wrap:wrap;gap:8px}
+  .sem .idm{min-width:0}
+  /* En angosto los tres bloques van apilados, cada uno en su renglón. Sin el
+     flex-basis, un resumen corto se acomoda junto al id y uno largo baja — y la
+     lista queda con renglones que no alinean entre sí sin razón visible. */
+  .sem .idm,.sem .med,.sem .etis{flex:1 1 100%}
+  .sem .etis{flex-direction:row;flex-wrap:wrap;align-items:center}
+}

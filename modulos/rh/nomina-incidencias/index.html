@@ -12,7 +12,11 @@
   <a class="volver" href="../index.html">← Volver a RH</a>
   <a class="volver" href="../../../docs/rh/manual-nomina-incidencias.html" target="_blank" rel="noopener">Manual ↗</a>
   <span class="t">Nómina · Incidencias</span>
-  <span class="badge" id="ver-badge">V1.08</span>
+  <!-- Este número se bumpea JUNTO con version.json, y el gate lo exige. Es el valor
+       que se ve si el fetch de version.json no contesta (abrir el archivo por file://,
+       Pages cacheando, red caída). Dejarlo atrasado convierte el badge en un falso
+       negativo: el código es nuevo y la pantalla jura que es viejo. -->
+  <span class="badge" id="ver-badge">V1.10</span>
   <button class="badge modo" id="modo-badge" title="Cambiar entre datos reales y modo práctica">REAL</button>
   <span class="sp"></span>
   <span class="guardado" id="guardado"></span>
@@ -37,9 +41,25 @@
 </div>
 
 <!-- ── Aplicación ── -->
+<!-- Pantalla 0: cuál semana. Va ANTES del roster porque "en qué semana estoy
+     trabajando" es una decisión, no un default: la semana corre VIE→JUE y la que
+     toca cerrar casi nunca es la que contiene hoy. -->
+<div class="wrap hid" id="indice">
+  <div class="top">
+    <div>
+      <h1>Semanas de nómina</h1>
+      <div class="rango" id="indice-hoy">—</div>
+    </div>
+  </div>
+  <div id="indice-aviso"></div>
+  <div id="indice-lista"></div>
+  <div class="pie" id="pie-modo-idx"></div>
+</div>
+
 <div class="wrap hid" id="app">
 
   <div class="cab">
+    <button class="btn volver" id="volver" title="Volver a la lista de semanas">‹ Semanas</button>
     <div>
       <h1>Semana <span id="semana-id">—</span></h1>
       <div class="rango" id="semana-rango">—</div>
@@ -85,6 +105,8 @@
 
 <script src="js/catalogo.js"></script>
 <script src="js/logica.js"></script>
+<script src="js/despacho.js"></script>
+<script src="js/indice.js"></script>
 <script src="js/nom-auth.js"></script>
 <script src="js/nom-client.js"></script>
 <script src="js/nom-resolver.js"></script>
@@ -100,10 +122,62 @@
     e.className = 'err';
   }
 
+  function errorEn(donde, titulo, err) {
+    $(donde).innerHTML = '<div class="banner bad"><span class="ico">⛔</span><div>' +
+      '<h3>' + titulo + '</h3><div style="font-size:13px">' +
+      (err && err.msg ? err.msg : 'Error desconocido') +
+      ' (' + (err && err.code ? err.code : '—') + ')</div></div></div>';
+  }
+
+  function verIndice() { $('indice').className = 'wrap'; $('app').className = 'wrap hid'; }
+  function verSemana() { $('indice').className = 'wrap hid'; $('app').className = 'wrap'; }
+
+  // Abre una semana concreta. `elegida` es el renglón del índice: se conserva para
+  // comprobar que el server devolvió el mismo rango de fechas que se prometió en la
+  // lista. Si no coinciden, se para — capturar cinco días contra las fechas
+  // equivocadas es peor que no capturar.
+  async function abrirSemana(elegida) {
+    verSemana();
+    $('banner').innerHTML = '<div class="banner"><span class="ico">⏳</span><div>' +
+      '<h3>Cargando la semana ' + elegida.id + '…</h3></div></div>';
+    try {
+      var estado = await window.NomClient.cargarSemana(elegida.id);
+      if (!window.NomIndice.mismasFechas(elegida, estado.semana)) {
+        $('banner').innerHTML = '<div class="banner bad"><span class="ico">⛔</span><div>' +
+          '<h3>Las fechas no coinciden</h3><div style="font-size:13px">' +
+          'La lista dice que ' + elegida.id + ' va del ' + elegida.desde + ' al ' + elegida.hasta +
+          ', pero el servidor la cargó del ' + estado.semana.desde + ' al ' + estado.semana.hasta +
+          '. No captures nada y avísale a Esteban: los dos calendarios del servidor se ' +
+          'separaron.</div></div></div>';
+        return;
+      }
+      window.NomApp.montar(estado);
+    } catch (err) {
+      errorEn('banner', 'No se pudo cargar la semana ' + elegida.id, err);
+    }
+  }
+
+  // El índice es lo primero que se ve. Se relee cada vez que se vuelve a él —no se
+  // guarda en memoria— porque su único contenido es estado que cambia: qué se
+  // capturó y qué se mandó. Un índice en caché diría "sin enviar" de una semana que
+  // se acaba de mandar, que es justo el error que la pantalla existe para evitar.
+  async function mostrarIndice() {
+    verIndice();
+    $('indice-lista').innerHTML = '<div class="banner"><span class="ico">⏳</span><div>' +
+      '<h3>Cargando las semanas…</h3></div></div>';
+    $('indice-aviso').innerHTML = '';
+    try {
+      var datos = await window.NomClient.cargarSemanas();
+      window.NomIndice.pintar(datos, abrirSemana);
+    } catch (err) {
+      $('indice-lista').innerHTML = '';
+      errorEn('indice-aviso', 'No se pudieron cargar las semanas', err);
+    }
+  }
+
   async function arrancar() {
     var s = window.NomAuth.getSession();
     $('puerta').className = 'login hid';
-    $('app').className = 'wrap';
     $('salir').className = 'salir';
     $('quien').textContent = (s && (s.nombre || s.user)) || '';
 
@@ -112,20 +186,16 @@
     badge.textContent = real ? 'REAL' : 'PRÁCTICA';
     badge.className = 'badge modo' + (real ? ' real' : ' demo');
 
-    var pie = $('pie-modo');
-    pie.innerHTML = real
+    var txt = real
       ? 'Modo <b>REAL</b>: el roster y los días vienen de Odoo, y lo que capturas se guarda de verdad.'
       : 'Modo <b>PRÁCTICA</b>: datos de ejemplo sobre el roster real. <b>Nada de lo que captures se guarda</b> — sirve para aprender sin miedo.';
+    $('pie-modo').innerHTML = txt;
+    $('pie-modo-idx').innerHTML = txt;
 
-    try {
-      var estado = await window.NomClient.cargarSemana(null);
-      window.NomApp.montar(estado);
-    } catch (err) {
-      $('banner').innerHTML = '<div class="banner bad"><span class="ico">⛔</span><div>' +
-        '<h3>No se pudo cargar la semana</h3><div style="font-size:13px">' +
-        (err && err.msg ? err.msg : 'Error desconocido') + ' (' + (err && err.code ? err.code : '—') + ')</div></div></div>';
-    }
+    mostrarIndice();
   }
+
+  $('volver').addEventListener('click', mostrarIndice);
 
   // Fetch de la versión para el badge: si falla, el badge se queda con lo que trae el
   // HTML. Un badge que miente es peor que uno viejo, así que solo se pisa con un valor

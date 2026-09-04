@@ -76,6 +76,18 @@ const VIEWPORTS = [
   check('el menor no pasa de 99', (/^V\d+\.(\d{2})$/.exec(VER.version) || [])[1] <= '99', VER.version);
   check('version.json trae esquema e historial', !!VER.esquema && Array.isArray(VER.historial) && VER.historial.length > 0);
 
+  // El badge del HTML es el valor que se VE si el fetch de version.json no contesta
+  // (file://, Pages cacheando, red caída). Si se queda atrasado, la pantalla jura que
+  // el código es viejo cuando no lo es — un falso negativo justo en el momento en que
+  // alguien está verificando que su cambio quedó desplegado. Se bumpean los dos juntos.
+  {
+    const htmlBadge = (/id="ver-badge"[^>]*>([^<]*)</.exec(
+      require('fs').readFileSync(require('path').join(
+        __dirname, '..', 'modulos', 'rh', 'nomina-incidencias', 'index.html'), 'utf8')) || [])[1];
+    check('el badge del HTML no se quedó atrás de version.json',
+      htmlBadge === VER.version, 'html=' + htmlBadge + ' · json=' + VER.version);
+  }
+
   const srv = await servir();
   const base = 'http://127.0.0.1:' + srv.address().port + '/modulos/rh/nomina-incidencias/index.html';
   const browser = await chromium.launch(EXE ? { executablePath: EXE } : {});
@@ -104,7 +116,46 @@ const VIEWPORTS = [
     const consola = [];
     page.on('console', m => { if (m.type() === 'error') consola.push(m.text()); });
     await page.goto(base, { waitUntil: 'networkidle' });
+
+    // ── Pantalla 0: la lista de semanas ──────────────────────────────────────
+    // El módulo abre aquí, no en una semana: la que toca cerrar casi nunca es la que
+    // contiene hoy (la nómina corre VIE→JUE). Se revisa que la lista se vea bien en
+    // este ancho ANTES de entrar, porque es la primera pantalla que ve RH.
+    await page.waitForSelector('#indice-lista [data-sem]', { timeout: 8000 });
+    const desbordeIdx = await page.evaluate(() =>
+      Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth));
+    check('la lista de semanas no desborda a lo ancho', desbordeIdx === 0, desbordeIdx + ' px');
+
+    const semanas = await page.$$('#indice-lista [data-sem]');
+    check('la lista pinta las semanas disponibles', semanas.length === 3, String(semanas.length));
+
+    // Cada renglón tiene que ser clicable de verdad: alto suficiente y dentro del ancho.
+    const cajas = [];
+    for (const s of semanas) cajas.push(await s.boundingBox());
+    check('cada semana es un blanco clicable (≥44 px de alto)',
+      cajas.every(b => b && b.height >= 44), JSON.stringify(cajas.map(b => b && Math.round(b.height))));
+    check('ningún renglón de semana se sale del ancho',
+      cajas.every(b => b && b.x >= 0 && b.x + b.width <= w + 1),
+      JSON.stringify(cajas.map(b => b && Math.round(b.x + b.width))));
+
+    check('la semana que toca se distingue por color, no solo por texto',
+      await page.evaluate(() => {
+        const s = document.querySelector('#indice-lista .sem.sug');
+        if (!s) return false;
+        const otra = document.querySelector('#indice-lista .sem:not(.sug)');
+        return !!otra && getComputedStyle(s).borderColor !== getComputedStyle(otra).borderColor;
+      }));
+    check('la pantalla dice por qué no abre en la semana de hoy',
+      /viernes a jueves/.test(await page.textContent('#indice-aviso')));
+
+    await page.screenshot({ path: path.join(OUT, nombre + '-0-semanas.png'), fullPage: true });
+
+    // Se entra a la semana que toca, y de ahí siguen las pruebas del roster.
+    await page.click('#indice-lista [data-sem="S36/2026"]');
     await page.waitForSelector('#tb tr[data-id]', { timeout: 8000 });
+    check('al elegir una semana se entra a ella',
+      await page.isVisible('#semana-id') && (await page.textContent('#semana-id')) === 'S36/2026');
+    check('el botón de volver a la lista es visible', await page.isVisible('#volver'));
 
     // ── Desbordar la página está PROHIBIDO. Cero significa cero. ──
     const desborde = await page.evaluate(() =>
@@ -218,6 +269,25 @@ const VIEWPORTS = [
     await page.waitForTimeout(80);
     check('el cierre pinta 4 KPI', (await page.$$('#p3 .kpi')).length === 4);
     check('el cierre separa el préstamo del costo', /no es costo/i.test(await page.textContent('#p3')));
+
+    // ── El archivo para el despacho ──
+    // El botón de descargar es el producto de toda la pantalla: si queda fuera de
+    // cuadro en el celular, la semana se envía y nadie baja el archivo.
+    check('el cierre ofrece el archivo para el despacho',
+      /Archivo para el despacho/.test(await page.textContent('#p3')));
+    const bBox = await page.locator('#bajar-archivo').boundingBox();
+    check('el botón de descargar es visible y cabe en el ancho',
+      !!bBox && bBox.width > 40 && bBox.x >= 0 && (bBox.x + bBox.width) <= w + 1,
+      bBox ? Math.round(bBox.x + bBox.width) + ' de ' + w : 'sin botón');
+    check('la vista previa lista a la gente con su instrucción',
+      (await page.$$('#p3 .tabla-wrap tbody tr')).length > 5);
+    // La tabla ancha tiene que hacer scroll DENTRO de su caja, no empujar la página.
+    const scrollPropio = await page.evaluate(() => {
+      const caja = document.querySelector('#p3 .tabla-wrap');
+      return !!caja && caja.scrollWidth >= caja.clientWidth;
+    });
+    check('la tabla del archivo se desplaza dentro de su caja', scrollPropio === true);
+
     await page.screenshot({ path: path.join(OUT, nombre + '-5-cierre.png'), fullPage: true });
     const desb3 = await page.evaluate(() => Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth));
     check('la pantalla de cierre tampoco desborda', desb3 === 0, desb3 + ' px');
