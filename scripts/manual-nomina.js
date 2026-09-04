@@ -293,7 +293,27 @@ const CUERPO = `
   <p>Son checadas del kiosko que quedaron marcadas porque algo no cuadró — normalmente alguien
   olvidó marcar su salida y el sistema la cerró solo.</p>
   <p>Cada una te muestra <b>la propuesta</b> (a qué proyecto se iría) y <b>la evidencia</b> en
-  la que se basa. Puedes aceptar la propuesta o decir que es otro destino.</p>
+  la que se basa.</p>
+  <h3>Cómo se resuelve</h3>
+  <p>Con el botón <b>Resolver esta checada</b> se abre <b>el mismo flujo de aprobación</b>
+  que usan los supervisores desde Mi Perfil. No es una pantalla nueva ni un atajo: lo
+  que decidas aquí es exactamente lo que se aplica en Odoo.</p>
+  <table>
+    <tr><th>Acción</th><th>Qué hace</th><th>¿Pide hora?</th></tr>
+    <tr><td><b>✓ Aprobar</b></td><td>Da por buena la hora declarada</td><td><b>Sí.</b> Es la que se escribe en Odoo</td></tr>
+    <tr><td><b>✎ Ajustar</b></td><td>La aprueba pero con OTRA hora</td><td><b>Sí</b>, siempre</td></tr>
+    <tr><td><b>✕ Rechazar</b></td><td>No procede</td><td>No</td></tr>
+    <tr><td><b>⬆ Escalar</b></td><td>La pasa a Dirección</td><td>No</td></tr>
+  </table>
+  <p class="aviso"><b>El comentario es obligatorio, mínimo 10 caracteres.</b> No es un
+  trámite: es lo que va a leer quien revise esa checada después, y queda en el historial
+  de la incidencia con tu nombre.</p>
+  <p>Al confirmar, la pantalla vuelve a leer todo. Si la checada desaparece de la lista,
+  es que el resolver ya limpió la marca en Odoo — no hace falta que hagas nada más.</p>
+  <p class="nota"><b>No puedes resolver una checada tuya.</b> Si te toca la tuya, pídesela
+  a la otra persona de RH o a Dirección.<br>
+  Y si te dice que el folio no existe, es un <b>TAG huérfano</b> —una marca vieja en Odoo
+  sin incidencia detrás—: ésa se limpia desde el panel de incidencias, no desde aquí.</p>
   <p class="aviso"><b>Una checada en disputa abierta bloquea a esa persona</b>, y por lo tanto
   bloquea el envío de la semana. Es a propósito: se resuelven aquí porque es el momento en que
   alguien puede resolverlas.</p>
