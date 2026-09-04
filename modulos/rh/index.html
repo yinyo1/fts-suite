@@ -6,7 +6,7 @@
 <title>Módulo RH — FTS Suite</title>
 <script>
   (function(){
-    const BUILD_DATE = '20260903-rh-hub-nomina';
+    const BUILD_DATE = '20260904-rh-hub-cargamo';
     window.BUILD_DATE = BUILD_DATE;
   })();
 </script>
@@ -75,6 +75,19 @@
   .rh-card-title{font-size:17px;font-weight:700;color:var(--green)}
   .rh-card-sub{font-size:13px;color:var(--muted2);line-height:1.5}
 
+  /* Tarjeta que sale de RH: otro módulo, otra llave. Se ve distinta a propósito —
+     azul en vez de verde y con un sello de acceso— porque si se viera igual que las
+     otras cuatro, quien no tenga la cuenta de Finanzas la clickearía esperando
+     entrar y leería la pantalla de login como si algo estuviera roto. */
+  .rh-card.rh-card-fuera{border-style:dashed}
+  .rh-card.rh-card-fuera:active{border-color:var(--blue)}
+  .rh-card-fuera .rh-card-title{color:var(--blue)}
+  .rh-sello{
+    display:inline-flex;align-items:center;gap:5px;align-self:flex-start;margin-top:auto;
+    font-size:11px;font-weight:700;color:var(--blue);
+    background:#eef3fb;border:1px solid #d4e2f5;border-radius:20px;padding:3px 9px;
+  }
+
   .rh-footer{text-align:center;font-size:11px;color:var(--muted);margin-top:28px}
 </style>
 </head>
@@ -84,7 +97,7 @@
   <a class="rh-back" href="../../index.html">← Volver a Suite</a>
   <div class="rh-title-wrap">
     <span class="rh-title">👥 Módulo RH</span>
-    <span class="rh-build">build 20260424-rh-hub-v1</span>
+    <span class="rh-build" id="rh-build"></span>
   </div>
   <div class="rh-user">
     <span class="rh-user-name" id="rh-user-name">—</span>
@@ -119,6 +132,13 @@
       <div class="rh-card-icon">👤</div>
       <div class="rh-card-title">Alta / Baja de empleados</div>
       <div class="rh-card-sub">Crear empleados nuevos, archivar bajas y reactivar. Escribe en Odoo.</div>
+    </a>
+    <a class="rh-card rh-card-fuera" href="../../operaciones/carga-mo/index.html">
+      <div class="rh-card-icon">📊</div>
+      <div class="rh-card-title">Validación de Nómina y Carga MO</div>
+      <div class="rh-card-sub">La pantalla de Ulises: valida el archivo de CONTPAQi contra lo que
+        RH envió esa semana, y carga la mano de obra a Odoo. Desde aquí se ve el otro lado del envío.</div>
+      <span class="rh-sello">🔑 se entra con la cuenta de Finanzas</span>
     </a>
   </div>
 
@@ -162,6 +182,7 @@ document.addEventListener('DOMContentLoaded', function(){
   const session = rh_check_auth();
   if (!session) return;
   const nom = session.nombre || session.username || '—';
+  document.getElementById('rh-build').textContent = 'build ' + BUILD_DATE;
   document.getElementById('rh-user-name').textContent = '👤 ' + nom;
   document.getElementById('rh-welcome-sub').textContent =
     'Hola, ' + nom + '. Selecciona qué deseas consultar.';
