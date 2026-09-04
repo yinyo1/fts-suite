@@ -40,7 +40,7 @@
    * 2026-09-03 (por instrucción de Esteban), pero lleva el suyo aparte y va en
    * V1.00. Planeación sigue en `2.4.1` y el kiosko sólo con cadena de build;
    * a esos no se propaga. */
-  const VERSION = 'V1.10';
+  const VERSION = 'V1.11';
   const $  = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
   const clon = (x) => JSON.parse(JSON.stringify(x));
@@ -617,6 +617,10 @@
         '<td data-l="Link">' + cel(p + 'link', l.link, 'w130', 'https://…') + '</td>' +
         '<td data-l="Comentario">' + cel(p + 'comentario', l.comentario, 'w130') + '</td>' +
         '<td class="acc" data-l="">' +
+          // Pegar DESDE aquí hacia abajo. El botón vive en el renglón porque el
+          // punto donde empieza el pegado es una decisión del capturista, no
+          // del programa: casi siempre hay algo capturado arriba que no se toca.
+          '<button class="ico" data-pegar="' + s.id + '#' + j + '" title="Pegar una lista a partir de aquí">⇥</button>' +
           '<button class="ico" data-mov="' + s.id + '#' + j + '|-1" title="Subir"' + (j === 0 ? ' disabled' : '') + '>↑</button>' +
           '<button class="ico" data-mov="' + s.id + '#' + j + '|1" title="Bajar"' + (j === s.partidas.length - 1 ? ' disabled' : '') + '>↓</button>' +
           '<button class="ico" data-dup="' + s.id + '#' + j + '" title="Duplicar">⧉</button>' +
@@ -636,7 +640,7 @@
       '</td><td></td><td class="vl mono calc fuerte" data-l="Con utilidad">' + mx(cs.ventaMat) + '</td><td colspan="3"></td></tr>' +
       '</tbody></table></div>' +
       '<div class="btnrow"><button class="btn" data-add="' + s.id + '">+ partida</button>' +
-      '<button class="btn" data-pegar="' + s.id + '">Pegar tabla</button>' +
+
       (cs.pisados ? '<span class="tiny n-warn">' + cs.pisados + ' margen(es) pisado(s) a mano en esta sección</span>' : '') +
       '</div>';
 
@@ -832,17 +836,31 @@
    * NADA se aplica solo. Se interpreta, se ENSEÑA lo que se entendió renglón
    * por renglón, y se escribe cuando alguien lo aprueba mirándolo. Un parser
    * que acierta el 90% y aplica solo mete un 10% de basura que nadie ve. */
-  function modalPegar(m, sid) {
+  function modalPegar(m, ref) {
     const P = G.MachotePegar;
+    const [sid, jTxt] = String(ref).split('#');
+    const desde = parseInt(jTxt, 10) || 0;
+    const sec = m.secciones.find(x => x.id === sid);
+    if (!sec) return;
     const cerrar = () => { const d = $('#modal'); if (d) d.remove(); };
 
     const html =
       '<div class="modal" id="modal"><div class="caja">' +
-      '<h3>Pegar una tabla</h3>' +
-      '<p class="tiny nota">Pega aquí una tabla de Claude, de un correo, de Excel o de una ' +
-      'cotización. Se entiende sola y <strong>te enseña qué entendió antes de escribir nada</strong>.</p>' +
+      '<h3>Pegar una lista a partir del renglón ' + (desde + 1) + '</h3>' +
+      '<p class="tiny nota">Pega aquí una lista de Claude, de un correo, de Excel o de una ' +
+      'cotización — tabla, lista o texto corrido. Se entiende sola y ' +
+      '<strong>te enseña qué entendió antes de escribir nada</strong>. ' +
+      'Lo que esté <strong>arriba del renglón ' + (desde + 1) + ' no se toca</strong>.</p>' +
       '<textarea id="pg-txt" rows="7" placeholder="Cantidad | Descripción | Precio unitario&#10;4 | Rodamiento LM25UU | $4,200.00"></textarea>' +
       '<div id="pg-prev"></div>' +
+      '<div class="modos">' +
+      '<label><input type="radio" name="pg-modo" value="sobre" checked> ' +
+      'Escribir <strong>encima</strong>, del renglón ' + (desde + 1) + ' hacia abajo' +
+      '<span class="tiny nota">Reemplaza lo que haya en esos renglones. Es lo normal cuando abajo está en blanco.</span></label>' +
+      '<label><input type="radio" name="pg-modo" value="inserta"> ' +
+      '<strong>Insertar</strong> antes del renglón ' + (desde + 1) +
+      '<span class="tiny nota">Empuja hacia abajo lo que ya estaba. Nada se pierde.</span></label>' +
+      '</div>' +
       '<div class="acciones">' +
       '<button class="btn" id="pg-cancel">Cancelar</button>' +
       '<button class="btn primario" id="pg-ok" disabled>Agregar renglones</button>' +
@@ -893,24 +911,28 @@
 
     ok.onclick = () => {
       if (!ultimo || !ultimo.ok) return;
-      const sec = m.secciones.find(x => x.id === sid);
-      if (!sec) { cerrar(); return; }
-      // Se meten donde caben: primero se rellenan los renglones en blanco que
-      // ya existen, y sólo se agregan nuevos cuando se acaban. Si no, pegar
-      // diez renglones dejaría treinta vacíos colgando debajo.
       const nuevos = ultimo.renglones.map(x => ({
         qty: x.qty, unidad: x.unidad, tipo: x.tipo, descripcion: x.descripcion,
         modelo: x.modelo, marca: x.marca, pu: x.pu, moneda: x.moneda,
         margen: null, link: x.link, comentario: x.comentario
       }));
-      nuevos.forEach(n => {
-        const hueco = sec.partidas.findIndex(l => !C.usadaPartida(l));
-        if (hueco >= 0) sec.partidas[hueco] = n; else sec.partidas.push(n);
-      });
+      const modo = (document.querySelector('input[name="pg-modo"]:checked') || {}).value || 'sobre';
+      if (modo === 'inserta') {
+        // Empuja hacia abajo: nada de lo que ya estaba se pierde.
+        sec.partidas.splice.apply(sec.partidas, [desde, 0].concat(nuevos));
+      } else {
+        // Escribe encima desde el punto elegido. Si la lista es más larga que
+        // lo que queda de bloque, el resto se agrega al final.
+        nuevos.forEach((n, k) => {
+          const i = desde + k;
+          if (i < sec.partidas.length) sec.partidas[i] = n; else sec.partidas.push(n);
+        });
+      }
       cerrar();
       tocado();
       pintarHoja(m); barra(m, C.calcular(m));
-      toast(nuevos.length + ' renglón(es) agregado(s).');
+      toast(nuevos.length + ' renglón(es) ' +
+            (modo === 'inserta' ? 'insertado(s) antes del ' : 'escrito(s) desde el ') + (desde + 1) + '.');
     };
     txt.focus();
   }

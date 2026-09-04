@@ -576,3 +576,15 @@ table.rejilla tr.capturada > td:first-child { box-shadow: inset 3px 0 0 var(--x-
 /* El renglón que necesita una mirada no se esconde ni se descarta: se marca. */
 .modal tr.ojo > td { background: #fff8e5; }
 .aviso.warn { border-left-color: var(--ambar); }
+
+/* ── Modo del pegado ────────────────────────────────────────────────────
+ * Escribir encima o insertar empujando es una decisión con consecuencias
+ * distintas —una reemplaza, la otra no pierde nada— así que se elige antes,
+ * a la vista, y no se adivina. */
+.modal .modos { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.modal .modos label { flex: 1 1 240px; display: block; border: 1px solid var(--linea);
+                      border-radius: 10px; padding: 10px 12px; font-size: 13px;
+                      cursor: pointer; min-height: var(--toque); }
+.modal .modos label:has(input:checked) { border-color: var(--acento);
+                                         box-shadow: inset 0 0 0 1px var(--acento); }
+.modal .modos .nota { display: block; margin: 4px 0 0; }
