@@ -396,7 +396,7 @@ function arrancarRender() { (async function () {
   // de que corra el script de arranque, que pide version.json.
   w.fetch = () => Promise.resolve({ json: () => Promise.resolve({ version: 'V1.00' }) });
 
-  for (const f of ['catalogo.js', 'logica.js', 'despacho.js', 'nom-auth.js', 'nom-client.js', 'nom-resolver.js', 'app.js']) {
+  for (const f of ['catalogo.js', 'logica.js', 'despacho.js', 'indice.js', 'nom-auth.js', 'nom-client.js', 'nom-resolver.js', 'app.js']) {
     w.eval(fs.readFileSync(path.join(MOD, 'js', f), 'utf8'));
   }
 
@@ -419,6 +419,53 @@ function arrancarRender() { (async function () {
 
   const d = w.document;
   check('la puerta se cierra con sesión válida', d.getElementById('puerta').className.indexOf('hid') >= 0);
+
+  // ── 9b · pantalla 0: cuál semana ──────────────────────────────────────────
+  // El módulo YA NO abre en una semana. Abre en la lista, porque la que toca cerrar
+  // casi nunca es la que contiene hoy: la nómina corre VIE→JUE y un viernes la de hoy
+  // lleva un día. Esto se fija en el gate para que nadie lo "simplifique" de vuelta.
+  check('el módulo abre en la lista de semanas, no en una semana',
+    d.getElementById('indice').className.indexOf('hid') < 0 &&
+    d.getElementById('app').className.indexOf('hid') >= 0);
+
+  const filasSem = Array.from(d.querySelectorAll('#indice-lista [data-sem]'));
+  check('la lista trae las semanas', filasSem.length === 3, String(filasSem.length));
+  check('la semana que toca viene marcada',
+    filasSem.filter(b => /\bsug\b/.test(b.className)).length === 1);
+  check('y NO es la que contiene hoy',
+    (filasSem.find(b => /\bsug\b/.test(b.className)) || {}).getAttribute('data-sem') === 'S36/2026');
+  check('la semana en curso se marca como en curso',
+    /EN CURSO/.test((filasSem.find(b => b.getAttribute('data-sem') === 'S37/2026') || {}).textContent || ''));
+  check('una semana enviada dice que ya se envió, con versión',
+    /ENVIADA v2/.test((filasSem.find(b => b.getAttribute('data-sem') === 'S35/2026') || {}).textContent || ''));
+  check('y quién la envió y cuándo',
+    /magaly/.test((filasSem.find(b => b.getAttribute('data-sem') === 'S35/2026') || {}).textContent || ''));
+  check('una semana con captura a medias dice cuántas van',
+    /7 personas capturadas/.test((filasSem.find(b => b.getAttribute('data-sem') === 'S36/2026') || {}).textContent || ''));
+  check('una semana sin enviar lo dice',
+    /SIN ENVIAR/.test((filasSem.find(b => b.getAttribute('data-sem') === 'S36/2026') || {}).textContent || ''));
+  check('si hubo capturas después del envío, la lista avisa',
+    /CAMBIÓ DESPUÉS/.test((filasSem.find(b => b.getAttribute('data-sem') === 'S35/2026') || {}).textContent || ''));
+  check('la pantalla explica por qué no abre en la semana de hoy',
+    /viernes a jueves/.test(d.getElementById('indice-aviso').textContent));
+
+  // El guardia contra que los dos calendarios del server se separen.
+  check('mismasFechas acepta un rango que coincide',
+    w.NomIndice.mismasFechas({ desde: '2026-08-28', hasta: '2026-09-03' },
+                             { desde: '2026-08-28', hasta: '2026-09-03' }) === true);
+  check('y RECHAZA uno que no',
+    w.NomIndice.mismasFechas({ desde: '2026-08-28', hasta: '2026-09-03' },
+                             { desde: '2026-08-21', hasta: '2026-08-27' }) === false);
+
+  // Se entra a la semana que toca, que es lo que haría quien abre el módulo.
+  filasSem.find(b => b.getAttribute('data-sem') === 'S36/2026').dispatchEvent(new w.Event('click'));
+  await new Promise(r => setTimeout(r, 60));
+
+  check('al elegir una semana se entra a ella', d.getElementById('app').className.indexOf('hid') < 0);
+  check('y la lista se quita de en medio', d.getElementById('indice').className.indexOf('hid') >= 0);
+  check('la cabecera dice qué semana se abrió', d.getElementById('semana-id').textContent === 'S36/2026');
+  check('hay botón para volver a la lista', !!d.getElementById('volver'));
+
   check('la aplicación se muestra', d.getElementById('app').className.indexOf('hid') < 0);
   check('el badge de versión dice V1.00', d.getElementById('ver-badge').textContent === 'V1.00');
   check('el badge de modo dice PRÁCTICA', d.getElementById('modo-badge').textContent === 'PRÁCTICA', d.getElementById('modo-badge').textContent);

@@ -212,6 +212,44 @@
     return call('/nom/semana', { semana: semanaId || null });
   }
 
+  // ─── El índice de semanas ───
+  // Es lo primero que se carga, antes que ninguna semana. No toca Odoo (el server
+  // solo lee las tablas de datos), así que abre de inmediato: la lista de semanas no
+  // necesita saber quién trabajó, solo qué se mandó.
+  //
+  // POR QUÉ EXISTE. El módulo abría directo en una semana, y esa semana era la que
+  // contiene HOY. Como la semana corre VIE→JUE, un viernes eso es una semana de un
+  // día: el 4-sep-2026 abría en S37 —el primer día— mientras S36 tenía las cinco
+  // jornadas de 28 personas esperando. No había forma de llegar a otra semana ni de
+  // ver cuáles ya se habían mandado.
+  function semanasDemo() {
+    // Se fingen tres: la que corre, la que toca (con captura empezada) y una ya
+    // enviada. Sin la enviada, el modo práctica no enseñaría cómo se ve una semana
+    // cerrada, que es justo lo que hay que saber leer para no remandarla sin querer.
+    return {
+      hoy: '2026-09-04',
+      sugerida: 'S36/2026',
+      semanas: [
+        { id: 'S37/2026', desde: '2026-09-04', hasta: '2026-09-10', dias: 5, en_curso: true,
+          estado: 'borrador', version: 0, enviado_en: null, actor: null, nombre_archivo: null,
+          motivo: null, movimientos: 0, personas_capturadas: 0, cambios_despues: 0 },
+        { id: 'S36/2026', desde: '2026-08-28', hasta: '2026-09-03', dias: 5, en_curso: false,
+          estado: 'borrador', version: 0, enviado_en: null, actor: null, nombre_archivo: null,
+          motivo: null, movimientos: 0, personas_capturadas: 7, cambios_despues: 0 },
+        { id: 'S35/2026', desde: '2026-08-21', hasta: '2026-08-27', dias: 5, en_curso: false,
+          estado: 'enviada', version: 2, enviado_en: '2026-08-28T16:12:00.000Z', actor: 'magaly',
+          nombre_archivo: 'nomina-S35-2026-v2.csv', motivo: 'faltaba un día de incapacidad de Samuel',
+          movimientos: 2, personas_capturadas: 30, cambios_despues: 1 }
+      ],
+      origen: 'demo'
+    };
+  }
+
+  async function cargarSemanas() {
+    if (modo() === 'demo') return Promise.resolve(semanasDemo());
+    return call('/nom/semanas', {});
+  }
+
   // Escribe y NO devuelve la pantalla: quien llama tiene que volver a leer la semana.
   // Un 200 no prueba que el dato quedó (CLAUDE.md §20.5) y pintar el éxito antes de
   // comprobarlo es el anti-patrón que costó el incidente del 27-may (§14 hallazgo #15).
@@ -259,11 +297,13 @@
     modo: modo,
     setModo: setModo,
     cargarSemana: cargarSemana,
+    cargarSemanas: cargarSemanas,
     escribir: escribir,
     guardarPersona: guardarPersona,
     guardarEstado: guardarEstado,
     guardarEnvio: guardarEnvio,
     semanaDemo: semanaDemo,
+    semanasDemo: semanasDemo,
     MODO_KEY: MODO_KEY
   };
 })();

@@ -19,6 +19,11 @@
   // saber qué estado se quitó: la lista nueva solo dice lo que quedó, y un estado
   // retirado hay que cerrarlo explícitamente en el server, no dejarlo vivo.
   var ORIG = null;
+  // montar() dejó de correr una sola vez: desde que hay pantalla de semanas se puede
+  // entrar y salir de una semana cuantas veces se quiera. Los listeners se enganchan
+  // UNA vez y nunca más — engancharlos en cada montaje haría que el segundo clic en
+  // "Enviar" mandara la semana dos veces, y el cajón se abriría por duplicado.
+  var CABLEADO = false;
 
   function $(id) { return document.getElementById(id); }
   function esc(s) {
@@ -1118,7 +1123,16 @@
     // ser el arranque porque la insignia debe ser correcta aunque la semana falle
     // al cargar y montar() nunca corra.
 
+    // Cada semana se abre limpia: en el roster y sin filtro. Heredar la pestaña de
+    // cierre o el filtro "pendientes" de la semana anterior haría que la nueva
+    // pareciera vacía sin decir por qué.
+    FILTRO = 'todos';
+    ACTIVO = null;
+    SUCIO = false;
     irA(1);
+
+    if (CABLEADO) return S;
+    CABLEADO = true;
 
     $('tb').addEventListener('click', function (ev) {
       var tr = ev.target.closest ? ev.target.closest('tr[data-id]') : null;

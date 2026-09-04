@@ -104,7 +104,46 @@ const VIEWPORTS = [
     const consola = [];
     page.on('console', m => { if (m.type() === 'error') consola.push(m.text()); });
     await page.goto(base, { waitUntil: 'networkidle' });
+
+    // ── Pantalla 0: la lista de semanas ──────────────────────────────────────
+    // El módulo abre aquí, no en una semana: la que toca cerrar casi nunca es la que
+    // contiene hoy (la nómina corre VIE→JUE). Se revisa que la lista se vea bien en
+    // este ancho ANTES de entrar, porque es la primera pantalla que ve RH.
+    await page.waitForSelector('#indice-lista [data-sem]', { timeout: 8000 });
+    const desbordeIdx = await page.evaluate(() =>
+      Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth));
+    check('la lista de semanas no desborda a lo ancho', desbordeIdx === 0, desbordeIdx + ' px');
+
+    const semanas = await page.$$('#indice-lista [data-sem]');
+    check('la lista pinta las semanas disponibles', semanas.length === 3, String(semanas.length));
+
+    // Cada renglón tiene que ser clicable de verdad: alto suficiente y dentro del ancho.
+    const cajas = [];
+    for (const s of semanas) cajas.push(await s.boundingBox());
+    check('cada semana es un blanco clicable (≥44 px de alto)',
+      cajas.every(b => b && b.height >= 44), JSON.stringify(cajas.map(b => b && Math.round(b.height))));
+    check('ningún renglón de semana se sale del ancho',
+      cajas.every(b => b && b.x >= 0 && b.x + b.width <= w + 1),
+      JSON.stringify(cajas.map(b => b && Math.round(b.x + b.width))));
+
+    check('la semana que toca se distingue por color, no solo por texto',
+      await page.evaluate(() => {
+        const s = document.querySelector('#indice-lista .sem.sug');
+        if (!s) return false;
+        const otra = document.querySelector('#indice-lista .sem:not(.sug)');
+        return !!otra && getComputedStyle(s).borderColor !== getComputedStyle(otra).borderColor;
+      }));
+    check('la pantalla dice por qué no abre en la semana de hoy',
+      /viernes a jueves/.test(await page.textContent('#indice-aviso')));
+
+    await page.screenshot({ path: path.join(OUT, nombre + '-0-semanas.png'), fullPage: true });
+
+    // Se entra a la semana que toca, y de ahí siguen las pruebas del roster.
+    await page.click('#indice-lista [data-sem="S36/2026"]');
     await page.waitForSelector('#tb tr[data-id]', { timeout: 8000 });
+    check('al elegir una semana se entra a ella',
+      await page.isVisible('#semana-id') && (await page.textContent('#semana-id')) === 'S36/2026');
+    check('el botón de volver a la lista es visible', await page.isVisible('#volver'));
 
     // ── Desbordar la página está PROHIBIDO. Cero significa cero. ──
     const desborde = await page.evaluate(() =>
