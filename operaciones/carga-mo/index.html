@@ -4,18 +4,25 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Validación de Nómina y Carga de Mano de Obra — FTS Suite</title>
-<script>(function(){ window.CMO_BUILD = '20260904-cmo-cruce-rh'; })();</script>
+<!-- La version de ESTE modulo. Su contador es propio: no lo comparte con
+     rh/nomina-incidencias ni con finanzas, aunque los tres usen el mismo esquema
+     Vx.yy. Se bumpea junto con version.json y con el ?v= de cada script, y el gate
+     exige que los tres digan lo mismo: un badge que anuncia una version mientras
+     el navegador corre el codigo viejo miente en la peor direccion. -->
+<script>(function(){ window.CMO_VER = 'V1.00'; })();</script>
 <script src="../../finanzas/js/auth-fin.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/cruce-rh.js?v=20260904-cmo-cruce-rh"></script>
-<script src="js/resolver.js"></script>
+<script src="js/cruce-rh.js?v=V1.00"></script>
+<script src="js/resolver.js?v=V1.00"></script>
 <style>
   :root{ --azul:#1a4480; --ok:#1a7a3a; --warn:#BA7517; --err:#b3261e; --info:#3b5bdb; --bg:#f4f6f9; }
   *{ box-sizing:border-box; }
   body{ margin:0; font-family:'Segoe UI',Arial,sans-serif; background:var(--bg); color:#1c1c1c; }
   .top{ display:flex; align-items:center; gap:14px; background:var(--azul); color:#fff; padding:10px 16px; }
   .top a{ color:#fff; text-decoration:none; font-size:14px; opacity:.9; }
-  .top .t{ font-weight:600; flex:1; } .top .b{ font-size:10px; opacity:.6; }
+  .top .t{ font-weight:600; flex:1; }
+  .top .b{ font-size:12px; font-weight:700; letter-spacing:.3px; background:rgba(255,255,255,.18);
+           border-radius:20px; padding:2px 10px; margin-left:8px; }
   .wrap{ max-width:1080px; margin:0 auto; padding:16px; }
   .card{ background:#fff; border-radius:10px; padding:16px; box-shadow:0 1px 6px rgba(0,0,0,.06); margin-bottom:14px; }
   .card h3{ margin:0 0 10px; font-size:15px; }
@@ -157,15 +164,14 @@
       </div>
     </div>
     <div class="sep"></div>
-    <!-- El archivo de RH. Va en la misma barra que el de CONTPAQi a proposito: son
-         los dos insumos de la misma decision, y separarlos haria parecer que uno es
-         opcional. Es opcional para VALIDAR, pero no para mandar con confianza. -->
+    <!-- Lo que mando RH ya NO se sube: se trae del sistema al elegir la semana.
+         Aqui solo se ve su estado. Pedirle a Ulises el Excel de Magaly era pedirle
+         que consiguiera por correo un dato que el sistema ya tiene guardado —y de
+         paso abria la puerta a que cruzara contra un archivo viejo o editado. -->
     <div class="fld">
-      <label>Archivo de RH (Magaly)</label>
+      <label>Lo que mandó RH</label>
       <div class="fld-in">
-        <button class="btn btn-g" id="drop-rh">📋 Elegir archivo…</button>
-        <span class="mut" id="fname-rh">ninguno</span>
-        <input type="file" id="file-rh" accept=".csv,.xlsx,.xls" style="display:none">
+        <span id="rh-est" class="mut">elige la semana…</span>
       </div>
     </div>
     <div class="acts">
@@ -174,6 +180,13 @@
     </div>
   </div>
   <div class="mut catline" id="cat-st">catálogo: cargando…</div>
+
+  <!-- La nómina que RH envió, tal cual la mandó. Va AQUÍ, fuera de #result y pegada
+       al selector, porque se puede leer sin haber subido nada: es la instrucción que
+       Ulises va a capturar, y verla antes de capturar es la mitad del trabajo. El
+       cruce contra el CONTPAQi vive mas abajo, dentro de #result, y contesta otra
+       pregunta: si lo que capturó coincide con esto. -->
+  <div id="despacho-panel"></div>
 
   <div id="result" style="display:none">
 
@@ -243,7 +256,16 @@ var WRITE_WEBHOOK = 'https://primary-production-5c3c.up.railway.app/webhook/plan
 var CAT = null, CAT_ERR = null, PARSED = null, LAST_REPORT = null;
 var BANNER = null;    /* estado del banner grande: lo pinta render() y lo completa renderReport() */
 var DIM = false;      /* archivo con fallas de INTEGRIDAD -> los derivados no son confiables */
-document.getElementById('b').textContent = window.CMO_BUILD;
+document.getElementById('b').textContent = window.CMO_VER;
+/* version.json manda; el literal de arriba es solo el respaldo para cuando el fetch
+   no contesta (Pages cacheando, red caida, abrir por file://). Si difieren, gana el
+   archivo y se DICE en consola: un badge atrasado es como no tener badge. */
+fetch('version.json?t=' + Date.now()).then(function(r){ return r.json(); }).then(function(v){
+  if(v && v.version){
+    document.getElementById('b').textContent = v.version;
+    if(v.version !== window.CMO_VER) console.warn('carga-mo: version.json dice ' + v.version + ' y el html ' + window.CMO_VER);
+  }
+}).catch(function(){});
 
 /* ── utilidades ──────────────────────────────────────────────────────────── */
 function $(id){ return document.getElementById(id); }
@@ -307,6 +329,26 @@ function boot(){
   var s = window.FinAuth && FinAuth.getSession && FinAuth.getSession();
   $('u').textContent = (s && s.user) || 'nómina';
   cargarCatalogo();
+  arrancarSemana();
+}
+
+/* La semana que se propone al abrir es la ÚLTIMA CERRADA, no la de hoy.
+   La semana corre VIE→JUE: un viernes la semana "actual" lleva un día de vida y no
+   hay nada que capturar en ella. Lo que se procesa un viernes es la semana que
+   acaba de terminar. Es la misma regla que usa nom/semana del lado de RH, y tiene
+   que ser la misma o las dos pantallas hablarían de semanas distintas.
+   Es una PROPUESTA: si el Excel de CONTPAQi es de otra semana, el cruce de más
+   abajo lo marca como falla de integridad y no deja mandar. */
+function arrancarSemana(){
+  var hoy = new Date();
+  var d = Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  var jue = d + ((4 - new Date(d).getUTCDay() + 7) % 7) * 864e5;
+  if(jue >= d) jue -= 7*864e5;                 /* la de hoy sigue abierta */
+  var vie = new Date(jue - 6*864e5).toISOString().slice(0,10);
+  $('f-vie').value = vie;
+  $('f-jue').textContent = new Date(jue).toISOString().slice(0,10);
+  $('f-sem').textContent = semanaDeViernes(vie) || '—';
+  cargarDespacho();
 }
 async function doLogin(){
   var u = ($('lg-u').value||'').trim(), p = $('lg-p').value||'';
@@ -335,6 +377,10 @@ $('f-vie').addEventListener('change', function(e){
   var v = e.target.value; if(!v) return;
   var d = new Date(v+'T12:00:00'), j = new Date(d.getTime()+6*864e5);
   $('f-jue').textContent = j.toISOString().slice(0,10);
+  $('f-sem').textContent = semanaDeViernes(v) || '—';
+  /* Elegir la semana es el gesto que trae lo de RH. Antes habia que ir por el Excel
+     de Magaly al correo; ahora ya esta aqui cuando Ulises suelta el CONTPAQi. */
+  cargarDespacho();
   if(PARSED) render();
 });
 
@@ -372,42 +418,173 @@ function leer(f){
   rd.readAsArrayBuffer(f);
 }
 
-/* ── el archivo que mandó RH ──────────────────────────────────────────────
-   Se acepta .csv y .xlsx porque RH manda los dos y es el MISMO archivo: el csv es
-   el acuse (lo que se congela al enviar) y el xlsx la vista. Obligar a uno solo
-   seria pedirle a Ulises que sepa cual le tocó. */
-var RH = null;
-var dropRh = $('drop-rh'), fileRh = $('file-rh');
-dropRh.addEventListener('click', function(){ fileRh.click(); });
-dropRh.addEventListener('dragover', function(e){ e.preventDefault(); dropRh.style.background='#e8f2ff'; });
-dropRh.addEventListener('dragleave', function(){ dropRh.style.background=''; });
-dropRh.addEventListener('drop', function(e){ e.preventDefault(); dropRh.style.background='';
-  if(e.dataTransfer.files[0]) leerRH(e.dataTransfer.files[0]); });
-fileRh.addEventListener('change', function(e){ if(e.target.files[0]) leerRH(e.target.files[0]); });
+/* ── lo que mandó RH, traído del sistema ──────────────────────────────────
+   Ulises ya no sube nada de RH. Al elegir la semana se le pide a nom/despacho el
+   archivo CONGELADO del envío —los mismos bytes que RH mandó, no una regeneración
+   con los datos de hoy— y contra eso se evalúa el CONTPAQi.
 
-function leerRH(f){
-  $('fname-rh').textContent = f.name;
-  var rd = new FileReader();
-  var esCsv = /\.csv$/i.test(f.name);
-  rd.onload = function(ev){
-    try{
-      if(esCsv){
-        RH = CruceRH.parseDespacho(ev.target.result);
-      }else{
-        var wb = XLSX.read(new Uint8Array(ev.target.result), { type:'array' });
-        /* La hoja que importa es la de instrucciones: es la que RH manda. La de
-           Detalle es el respaldo por concepto y no cambia el cruce. */
-        var hoja = wb.Sheets['Instrucciones'] || wb.Sheets[wb.SheetNames[0]];
-        RH = CruceRH.desdeFilas(XLSX.utils.sheet_to_json(hoja, { header:1, raw:false, defval:'' }));
-      }
-    }catch(err){
-      RH = { error: 'No se pudo abrir el archivo: ' + err.message, filas: [] };
+   RH_EST distingue tres cosas que en la version anterior se veian igual:
+     'nada'   — todavia no se ha elegido semana
+     'falta'  — el sistema contesto y RH NO ha enviado esa semana
+     'error'  — no se pudo preguntar (red, sesion, servidor)
+   La diferencia importa: 'falta' es un pendiente de Magaly y 'error' es un problema
+   nuestro. Fundirlos en un solo mensaje gris manda a Ulises a hablar con la persona
+   equivocada. */
+var RH = null;
+var RH_EST = { estado:'nada', msg:'' };
+var RH_SEM = null;          /* la semana que se pidio, para no pintar una respuesta vieja */
+var DESPACHO_WEBHOOK = 'https://primary-production-5c3c.up.railway.app/webhook/nom/despacho';
+
+/* El viernes elegido -> el id de semana 'Snn/aaaa'.
+   El ancla es la misma de toda la nomina: el jueves 2026-07-23 es la SEM 30 porque
+   asi quedaron escritas las lineas en Odoo (docs/operaciones/ESTADO.md §1). Es el
+   mismo numero que trae el Excel de CONTPAQi en su periodo, y por eso el cruce de
+   semanas de mas abajo puede compararlos de tu a tu. */
+function semanaDeViernes(vie){
+  if(!vie) return null;
+  var v = new Date(vie + 'T12:00:00Z');
+  if(isNaN(v.getTime())) return null;
+  var jue = new Date(v.getTime() + 6*864e5);
+  var ancla = Date.UTC(2026, 6, 23);
+  var n = 30 + Math.round((Date.UTC(jue.getUTCFullYear(), jue.getUTCMonth(), jue.getUTCDate()) - ancla) / (7*864e5));
+  return 'S' + n + '/' + jue.getUTCFullYear();
+}
+
+function pintarEstadoRh(){
+  var el = $('rh-est'); if(!el) return;
+  if(RH_EST.estado === 'cargando'){ el.className = 'mut'; el.textContent = 'consultando…'; return; }
+  if(RH_EST.estado === 'ok'){
+    el.className = ''; el.style.color = 'var(--ok)'; el.style.fontWeight = '600';
+    el.textContent = '✓ ' + (RH.semana || RH_SEM) + (RH.version ? ' v' + RH.version : '');
+    return;
+  }
+  el.className = 'mut'; el.style.fontWeight = '600';
+  el.style.color = RH_EST.estado === 'error' ? 'var(--err)' : 'var(--warn)';
+  el.textContent = RH_EST.estado === 'error' ? '⚠️ no se pudo consultar'
+                 : RH_EST.estado === 'falta' ? 'aún no la envían'
+                 : 'elige la semana…';
+}
+
+async function cargarDespacho(){
+  var semId = semanaDeViernes($('f-vie').value);
+  RH = null; RH_SEM = semId;
+  if(!semId){ RH_EST = { estado:'nada', msg:'' }; pintarEstadoRh(); refrescarCruce(); return; }
+
+  RH_EST = { estado:'cargando', msg:'' }; pintarEstadoRh();
+  var pedida = semId;
+  try{
+    var r = await fetch(DESPACHO_WEBHOOK, {
+      method:'POST', headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ semana: semId, token: (window.FinAuth && FinAuth.getToken && FinAuth.getToken()) || '' })
+    });
+    var j = await r.json();
+    /* Si mientras respondia el server Ulises cambio de semana, esta respuesta ya no
+       es la buena. Pintarla seria mostrarle la semana pasada creyendo que ve la que
+       acaba de elegir — el peor error posible en una pantalla que decide dinero. */
+    if(pedida !== RH_SEM) return;
+
+    if(!r.ok || j._error || j.ok === false){
+      RH_EST = { estado:'error', msg: (j && j.msg) || ('el servidor contestó ' + r.status) };
+    }else if(!j.enviada){
+      RH_EST = { estado:'falta', msg: j.msg || 'RH todavía no ha enviado esta semana.' };
+    }else{
+      RH = CruceRH.parseDespacho(j.archivo);
+      RH.version = j.version || RH.version;
+      RH.enviado_por = j.enviado_por || null;
+      RH.enviado_en = j.enviado_en || null;
+      RH.cambios_despues = Number(j.cambios_despues) || 0;
+      RH_EST = { estado:'ok', msg:'' };
     }
-    /* El cruce caduca junto con el reporte: cambiar un insumo invalida lo validado. */
-    invalidarReporte();
-    if(PARSED) render(); else pintarCruceRH(null);
-  };
-  if(esCsv) rd.readAsText(f, 'utf-8'); else rd.readAsArrayBuffer(f);
+  }catch(e){
+    if(pedida !== RH_SEM) return;
+    RH_EST = { estado:'error', msg: 'no se pudo consultar el envío de RH: ' + e.message };
+  }
+  pintarEstadoRh();
+  refrescarCruce();
+}
+
+/* Cambiar un insumo invalida lo validado: el cruce caduca junto con el reporte. */
+function refrescarCruce(){
+  invalidarReporte();
+  pintarDespacho();
+  if(PARSED) render(); else pintarCruceRH(null);
+}
+
+/* ── la previa de lo que mandó RH ─────────────────────────────────────────
+   Es una VISTA de lo que ya está en el sistema, no un insumo que Ulises aporte.
+   Muestra las mismas columnas del archivo que RH manda —código, número, persona,
+   instrucción y qué revisar— porque la instrucción ES el producto: no hay un total
+   que cuadrar aquí, hay renglones que capturar.
+
+   Solo se pinta cuando la semana viene ENVIADA. Un borrador no se enseña: mientras
+   Magaly no oprima enviar, esos números todavía pueden cambiar y ponerlos en la
+   pantalla de Ulises lo pondría a cuadrar contra algo que se mueve. */
+function pintarDespacho(){
+  var box = $('despacho-panel'); if(!box) return;
+
+  if(!RH){
+    /* Con 'nada' se queda callado a proposito: la barra de arriba ya dice 'elige la
+       semana' y repetirlo en una tarjeta grande es ruido. Los otros dos SÍ se
+       pintan, porque son un pendiente concreto de alguien. */
+    if(RH_EST.estado === 'error'){
+      box.innerHTML = '<div class="card"><h3>La nómina que envió RH</h3>'
+        + '<div class="msg m-int"><div><b>No se pudo consultar.</b>'
+        + '<div class="mono" style="font-size:12px;margin:3px 0">' + esc(RH_EST.msg) + '</div>'
+        + '<div class="mut" style="font-size:12px">→ Vuelve a elegir la semana para reintentar.</div></div></div></div>';
+    }else if(RH_EST.estado === 'falta'){
+      box.innerHTML = '<div class="card"><h3>La nómina que envió RH</h3>'
+        + '<div class="msg m-avi"><div><b>La ' + esc(RH_SEM || 'semana') + ' todavía no la envían.</b>'
+        + '<div class="mut" style="font-size:12px;margin-top:3px">En cuanto Magaly la mande, aparece aquí sola.'
+        + '</div></div></div></div>';
+    }else{
+      box.innerHTML = '';
+    }
+    return;
+  }
+
+  if(RH.error){
+    box.innerHTML = '<div class="card"><h3>La nómina que envió RH</h3>'
+      + '<div class="msg m-int"><div><b>El archivo que mandó RH no se pudo leer.</b>'
+      + '<div class="mono" style="font-size:12px;margin:3px 0">' + esc(RH.error) + '</div>'
+      + '<div class="mut" style="font-size:12px">→ Avísale a Magaly: el envío quedó guardado con un'
+      + ' formato que esta pantalla no reconoce.</div></div></div></div>';
+    return;
+  }
+
+  var conIns = 0, conRev = 0;
+  for(var i=0;i<RH.filas.length;i++){
+    if(String(RH.filas[i].instruccion||'').trim()) conIns++;
+    if(String(RH.filas[i].revisar||'').trim()) conRev++;
+  }
+
+  /* Se listan TODAS las personas, no solo las que traen instrucción: que alguien
+     aparezca sin nada que hacer es información —significa 'a esta persona no le
+     toca ajuste'— y esconderla dejaría a Ulises sin saber si se le olvidó o si de
+     verdad no había nada. Las que sí traen instrucción van resaltadas. */
+  var cuerpo = RH.filas.map(function(f){
+    var ins = String(f.instruccion||'').trim();
+    var rev = String(f.revisar||'').trim();
+    return '<tr' + (ins ? ' style="background:#fbfcff"' : '') + '>'
+      + '<td class="mono">' + esc(f.codigo || '—') + '</td>'
+      + '<td class="mono">' + esc(f.no_empleado || '') + '</td>'
+      + '<td>' + esc(f.nombre) + '</td>'
+      + '<td>' + (ins ? esc(ins) : '<span class="mut">sin ajustes</span>') + '</td>'
+      + '<td>' + (rev ? '<span style="color:var(--warn)">' + esc(rev) + '</span>' : '') + '</td>'
+      + '</tr>';
+  }).join('');
+
+  box.innerHTML = '<div class="card">'
+    + '<h3>La nómina que envió RH <span class="mut" style="font-weight:400">· ' + esc(RH.semana)
+    + (RH.version ? ' v' + RH.version : '')
+    + (RH.enviado_en ? ' · enviada ' + esc(String(RH.enviado_en).slice(0,10)) : '')
+    + (RH.enviado_por ? ' por ' + esc(RH.enviado_por) : '') + '</span></h3>'
+    + '<div class="mut" style="font-size:12px;margin-bottom:8px">'
+    + RH.filas.length + ' personas · <b>' + conIns + ' con instrucción</b>'
+    + (conRev ? ' · ' + conRev + ' con algo que revisar' : '')
+    + ' — esto es lo que hay que capturar en CONTPAQi.</div>'
+    + '<div style="overflow-x:auto"><table><thead><tr>'
+    + '<th>Código</th><th>No.</th><th>Empleado</th><th>Instrucción</th><th>Revisar</th>'
+    + '</tr></thead><tbody>' + cuerpo + '</tbody></table></div></div>';
 }
 
 /* ── el cruce, pintado ────────────────────────────────────────────────────
@@ -421,16 +598,49 @@ function pintarCruceRH(P){
      dentro de #result, o sea que Ulises suelta el archivo de Magaly y no pasa nada.
      Lo cazo la prueba visual, no la de logica — la logica veia el texto correcto en
      un elemento de cero pixeles. */
-  if (RH) $('result').style.display = 'block';
+  if (RH || RH_EST.estado === 'falta' || RH_EST.estado === 'error') $('result').style.display = 'block';
   if(!RH){
-    box.innerHTML = '<div class="card"><h3>Revisión contra lo que mandó RH</h3>'
-      + '<div class="msg m-avi"><div><b>No se cargó el archivo de RH.</b>'
-      + '<div class="mut" style="font-size:12px;margin-top:3px">La nómina se está validando'
-      + ' <b>contra sí misma</b>: que cuadre, que los conceptos estén catalogados, que los totales'
-      + ' cierren. Eso no dice si trae lo que RH pidió. Sube arriba el archivo que te mandó Magaly'
-      + ' para compararlos.</div></div></div></div>';
+    /* Los tres 'no hay nada que cruzar' NO son el mismo problema y no se le dicen
+       igual a Ulises: uno lo resuelve el eligiendo semana, otro lo resuelve Magaly
+       enviando, y el tercero lo resolvemos nosotros. En los tres casos se dice
+       ademas que NO se comparo nada, para que un panel sin hallazgos no se lea como
+       un visto bueno. */
+    var cuerpo;
+    if(RH_EST.estado === 'error'){
+      cuerpo = '<div class="msg m-int"><div><b>No se pudo traer lo que mandó RH.</b>'
+        + '<div class="mono" style="font-size:12px;margin:3px 0">' + esc(RH_EST.msg) + '</div>'
+        + '<div class="mut" style="font-size:12px">→ La nómina de abajo está validada'
+        + ' <b>contra sí misma</b>, pero <b>nadie comparó</b> si trae lo que RH pidió.'
+        + ' Vuelve a elegir la semana para reintentar; si sigue fallando, avisa antes de mandar.</div></div></div>';
+    }else if(RH_EST.estado === 'falta'){
+      cuerpo = '<div class="msg m-avi"><div><b>RH todavía no ha enviado la ' + esc(RH_SEM || 'semana') + '.</b>'
+        + '<div class="mut" style="font-size:12px;margin-top:3px">Puedes validar el archivo de CONTPAQi'
+        + ' <b>contra sí mismo</b> —que cuadre, que los conceptos estén catalogados, que los totales'
+        + ' cierren—, pero hasta que Magaly envíe no hay contra qué comparar lo que trae.</div></div></div>';
+    }else{
+      cuerpo = '<div class="msg m-avi"><div><b>Elige arriba la semana.</b>'
+        + '<div class="mut" style="font-size:12px;margin-top:3px">Al elegirla se trae sola la nómina'
+        + ' que RH envió, y con ella se compara el archivo de CONTPAQi.</div></div></div>';
+    }
+    box.innerHTML = '<div class="card"><h3>Revisión contra lo que mandó RH</h3>' + cuerpo + '</div>';
     return 0;
   }
+  /* Sin nomina de CONTPAQi NO se cruza. Cruzar contra una lista vacia da un hallazgo
+     de INTEGRIDAD por cada persona —"RH la incluyo y no aparece"— que es cierto en lo
+     literal y falso en lo que importa: no falta nadie, falta el archivo. Antes esto
+     casi no se veia porque el cruce solo corria cuando Ulises subia a mano el archivo
+     de RH; ahora que llega solo al elegir la semana, la pantalla abriria con tres
+     alarmas rojas y cero nomina cargada. Una alarma que suena sola es una alarma que
+     se aprende a ignorar, y despues no suena la de verdad. */
+  if(!P || !P.empleados){
+    box.innerHTML = '<div class="card"><h3>Revisión contra lo que mandó RH</h3>'
+      + '<div class="msg m-avi"><div><b>Falta la otra mitad: la nómina de CONTPAQi.</b>'
+      + '<div class="mut" style="font-size:12px;margin-top:3px">Arriba ya está lo que pidió RH.'
+      + ' En cuanto subas el archivo de CONTPAQi se comparan renglón por renglón:'
+      + ' qué pidió RH que no capturaste, y qué capturaste que RH no pidió.</div></div></div></div>';
+    return 0;
+  }
+
   var semSel = (P && P.periodo) ? ('S' + P.periodo.periodo + '/' + (new Date(P.periodo.inicio+'T12:00:00')).getFullYear()) : null;
   var r = CruceRH.cruzar(RH, (P && P.empleados) || [], semSel);
   var nInt = CruceRH.contar(r.hallazgos, 'INTEGRIDAD');
@@ -438,8 +648,23 @@ function pintarCruceRH(P){
 
   var cab = '<h3>Revisión contra lo que mandó RH'
     + (RH.semana ? ' <span class="mut" style="font-weight:400">· ' + esc(RH.semana)
-        + (RH.version ? ' v' + RH.version : '') + ' · ' + r.resumen.total_rh + ' personas</span>' : '')
+        + (RH.version ? ' v' + RH.version : '') + ' · ' + r.resumen.total_rh + ' personas'
+        + (RH.enviado_en ? ' · enviada ' + esc(String(RH.enviado_en).slice(0,10)) : '')
+        + (RH.enviado_por ? ' por ' + esc(RH.enviado_por) : '')
+        + '</span>' : '')
     + '</h3>';
+
+  /* Lo que se cruza es el archivo CONGELADO del envio. Si RH movio capturas
+     despues de mandarlo, lo de aqui sigue siendo lo correcto contra que validar
+     —es lo que se mando— pero ya no es lo ultimo que RH sabe, y eso se DICE en vez
+     de servir callado un dato que quiza esta por cambiar. */
+  if(RH.cambios_despues > 0){
+    cab += '<div class="msg m-cla"><div><b>RH movió ' + RH.cambios_despues
+        + (RH.cambios_despues === 1 ? ' captura' : ' capturas') + ' después de enviar.</b>'
+        + '<div class="mut" style="font-size:12px;margin-top:3px">Abajo se compara contra'
+        + ' <b>lo que se envió</b>, que es lo correcto. Pero antes de cargar a Odoo, pregúntale'
+        + ' a Magaly si va a reenviar la semana.</div></div></div>';
+  }
 
   if(!r.hallazgos.length){
     box.innerHTML = '<div class="card">' + cab
@@ -798,7 +1023,7 @@ function armarPayload(modo){
       resueltas: P.layout.conceptos,
       no_catalogadas: P.layout.no_catalogadas,
       headers_crudos: P.layout.headers_crudos,
-      build: window.CMO_BUILD
+      build: window.CMO_VER
     },
     /* empleados: campos legacy (bruto/vac/asim) + campos v2. El motor viejo ignora los nuevos. */
     empleados: P.empleados.map(function(e){
