@@ -11,6 +11,7 @@
 
 'use strict';
 const path = require('path');
+const fs = require('fs');
 const RAIZ = path.join(__dirname, '..');
 const Cruce = require(path.join(RAIZ, 'operaciones', 'carga-mo', 'js', 'cruce-rh.js'));
 const Des = require(path.join(RAIZ, 'modulos', 'rh', 'nomina-incidencias', 'js', 'despacho.js'));
@@ -253,6 +254,92 @@ seccion('Forma de los hallazgos');
   check('los niveles son los tres del resolver',
     r.hallazgos.every(x => ['INTEGRIDAD', 'REVISION', 'AVISO'].indexOf(x.nivel) >= 0));
   check('contar() cuenta por nivel', Cruce.contar(r.hallazgos, 'INTEGRIDAD') >= 1);
+}
+
+seccion('El calendario del frontend contra el del workflow');
+{
+  // Carga MO le pide una semana a nom/despacho por su id 'Snn/aaaa'. Si el frontend
+  // y el workflow numeran distinto, Ulises pide una semana y RH le contesta con
+  // otra — y las dos pantallas se ven perfectamente bien mientras hablan de cosas
+  // distintas. Por eso el calculo del html se lee del html y se compara contra el
+  // del workflow, no contra una copia de este archivo.
+  const html = fs.readFileSync(path.join(RAIZ, 'operaciones/carga-mo/index.html'), 'utf8');
+  const m = /function semanaDeViernes\(vie\)\{[\s\S]*?\n\}/.exec(html);
+  check('el html define semanaDeViernes', !!m);
+  const semanaDeViernes = new Function('return ' + String(m[0]).replace('function semanaDeViernes', 'function'))();
+
+  const ANCLA = Date.UTC(2026, 6, 23), MS = 864e5;
+  const idDelWorkflow = jue => 'S' + (30 + Math.round((jue - ANCLA) / (7 * MS))) + '/' + new Date(jue).getUTCFullYear();
+
+  check('el ancla: el viernes 17-jul-2026 es la S30/2026', semanaDeViernes('2026-07-17') === 'S30/2026');
+
+  let divergen = 0, primera = null;
+  for (let k = -60; k <= 60; k++) {
+    const jue = ANCLA + k * 7 * MS;
+    const vie = new Date(jue - 6 * MS).toISOString().slice(0, 10);
+    if (semanaDeViernes(vie) !== idDelWorkflow(jue)) { divergen++; if (!primera) primera = vie; }
+  }
+  check('120 semanas seguidas dan el mismo id que el workflow', divergen === 0,
+    divergen ? divergen + ' divergen, la primera el ' + primera : '');
+
+  // El anio del id sale del JUEVES que cierra, no del viernes que abre: el workflow
+  // rechaza el id si el anio no cuadra, asi que equivocarse aqui es un 400.
+  check('en el cruce de anio manda el jueves', /\/2027$/.test(semanaDeViernes('2027-01-01')));
+  check('entrada vacia no truena', semanaDeViernes('') === null);
+  check('entrada basura no truena', semanaDeViernes('no-es-fecha') === null);
+
+  // La semana que se propone al abrir es la ULTIMA CERRADA. Un viernes la semana en
+  // curso lleva un dia de vida y no hay nada que capturar en ella; lo que se procesa
+  // es la que acaba de cerrar. Tiene que ser la MISMA regla que usa nom/semana del
+  // lado de RH, o las dos pantallas abren en semanas distintas.
+  const m2 = /function arrancarSemana\(\)\{[\s\S]*?\n\}/.exec(html);
+  check('el html define arrancarSemana', !!m2);
+  check('arrancarSemana retrocede cuando la semana sigue abierta', /jue >= d\) jue -= 7\*864e5/.test(String(m2[0])));
+
+  const propuesta = hoyIso => {
+    const hoy = new Date(hoyIso + 'T12:00:00');
+    const d = Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    let jue = d + ((4 - new Date(d).getUTCDay() + 7) % 7) * 864e5;
+    if (jue >= d) jue -= 7 * 864e5;
+    return new Date(jue - 6 * 864e5).toISOString().slice(0, 10);
+  };
+  const semanaDelViernes4 = ['2026-09-04', '2026-09-05', '2026-09-07', '2026-09-10']
+    .every(dia => propuesta(dia) === '2026-08-28');
+  check('del vie 4-sep al jue 10-sep se propone la semana que cerro el 3-sep', semanaDelViernes4);
+  check('el viernes siguiente ya salta a la que cerro', propuesta('2026-09-11') === '2026-09-04');
+  check('la propuesta del 4-sep es la S36/2026', semanaDeViernes(propuesta('2026-09-04')) === 'S36/2026');
+}
+
+seccion('Contrato con nom/despacho');
+{
+  // El endpoint devuelve el TEXTO del csv congelado, y el motor lo lee con el mismo
+  // parseDespacho que antes leia el archivo subido a mano. Que siga siendo el mismo
+  // camino es lo que hace que quitar el drop manual no cambie el resultado.
+  const html = fs.readFileSync(path.join(RAIZ, 'operaciones/carga-mo/index.html'), 'utf8');
+  check('la pantalla ya NO pide el archivo de RH a mano',
+    !/id="file-rh"/.test(html) && !/id="drop-rh"/.test(html));
+  check('lo que llega del endpoint se lee con parseDespacho',
+    /RH = CruceRH\.parseDespacho\(j\.archivo\)/.test(html));
+  check('se manda el token de Finanzas en el body, no en un header',
+    /body: JSON\.stringify\(\{ semana: semId, token:/.test(html));
+  check('una respuesta de una semana vieja se descarta',
+    /if\(pedida !== RH_SEM\) return;/.test(html));
+  check('un borrador no se pinta como enviado', /if\(!j\.enviada\)/.test(html));
+
+  // Los tres 'no hay nada que cruzar' NO son el mismo problema: uno lo resuelve
+  // Ulises, otro Magaly y el tercero nosotros. Fundirlos manda a Ulises a hablar con
+  // la persona equivocada.
+  check('el estado distingue falta de RH y falla nuestra',
+    /RH_EST = \{ estado:'falta'/.test(html) && /RH_EST = \{ estado:'error'/.test(html));
+  check('cuando no se pudo consultar, se DICE que no se comparo nada',
+    /nadie comparó<\/b> si trae lo que RH pidió/.test(html));
+
+  // El texto que devuelve el endpoint es el mismo que produce el generador de RH,
+  // asi que el parser tiene que sacarle la semana y la version igual que siempre.
+  const comoDelEndpoint = Cruce.parseDespacho(archivoRH([persona({ id: 62, codigo: '013' })]));
+  check('del texto del endpoint sale la semana', comoDelEndpoint.semana === 'S36/2026', comoDelEndpoint.semana);
+  check('y sale sin error', !comoDelEndpoint.error, comoDelEndpoint.error || '');
+  check('y salen las personas', comoDelEndpoint.filas.length === 1);
 }
 
 console.log('\n' + '═'.repeat(64));

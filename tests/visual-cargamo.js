@@ -109,7 +109,7 @@ function archivoRH() {
 (async () => {
   console.log('Chromium: ' + (EXE || '(default)'));
   const tmpCsv = path.join(OUT, 'rh-S36.csv');
-  fs.writeFileSync(tmpCsv, archivoRH(), 'utf8');
+  fs.writeFileSync(tmpCsv, archivoRH(), 'utf8');   // solo para inspeccionarlo al depurar
   const tmpXls = path.join(OUT, 'contpaqi-S36.xlsx');
   fs.writeFileSync(tmpXls, archivoContpaqi());
 
@@ -122,7 +122,8 @@ function archivoRH() {
     const ctx = await navegador.newContext({ viewport: { width: w, height: h } });
     const page = await ctx.newPage();
     const errores = [];
-    page.on('pageerror', e => errores.push(String(e)));
+    const excepciones = [];                       // excepciones NO atrapadas: nunca son aceptables
+    page.on('pageerror', e => { excepciones.push(String(e)); errores.push(String(e)); });
     page.on('console', m => { if (m.type() === 'error') errores.push(m.text()); });
 
     // Se siembra la sesión REAL que lee la página (fts_fin_session con expires_at
@@ -153,43 +154,104 @@ function archivoRH() {
         body: JSON.stringify({ content: catRaw.toString('base64'), sha: 'prueba' }) }));
     await page.route('**/raw.githubusercontent.com/**contpaqi_conceptos.json**', r =>
       r.fulfill({ status: 200, contentType: 'application/json', body: catRaw }));
+    // version.json se sirve del disco por el mismo servidor estatico, no hace falta ruta.
+
+    // El endpoint nom/despacho: lo que antes era un archivo que Ulises subia ahora
+    // llega del sistema. Se responde con el archivo generado por el MISMO codigo que
+    // lo genera en produccion (Des.texto), en el mismo sobre que manda el workflow,
+    // para que el camino de lectura de la pagina sea el real.
+    // `despachoModo` deja que cada tramo de la prueba cambie la respuesta sin
+    // reinstalar la ruta: asi se ejercitan enviada / borrador / caida.
+    let despachoModo = 'enviada';
+    await page.route('**/webhook/nom/despacho', r => {
+      if (despachoModo === 'caida') return r.fulfill({ status: 500, contentType: 'application/json',
+        body: JSON.stringify({ ok: false, _error: true, code: 'BOOM', msg: 'el servidor tronó' }) });
+      if (despachoModo === 'borrador') return r.fulfill({ status: 200, contentType: 'application/json',
+        body: JSON.stringify({ ok: true, semana: { id: 'S36/2026' }, enviada: false, estado: 'borrador',
+                               msg: 'RH tiene esta semana en borrador; todavia no la manda.' }) });
+      return r.fulfill({ status: 200, contentType: 'application/json',
+        body: JSON.stringify({ ok: true, semana: { id: 'S36/2026' }, enviada: true, estado: 'enviada',
+                               version: 2, enviado_por: 'magaly.perez',
+                               enviado_en: '2026-09-04T15:00:00.000Z',
+                               nombre_archivo: 'rh-S36.csv', archivo: archivoRH(),
+                               cambios_despues: 0 }) });
+    });
     await page.goto(base, { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(400);
+    await page.waitForTimeout(600);
 
     check('la puerta deja pasar con sesión válida',
       await page.locator('#main').isVisible());
 
-    // ── la barra: los DOS archivos ────────────────────────────────────────
+    // ── la versión, arriba y legible ──────────────────────────────────────
+    // El badge es lo que Esteban mira para saber que su cambio se desplegó. Que sea
+    // legible es parte del contrato, no cosmética: un badge de 10px al 60% de
+    // opacidad no se lee, y uno que miente es peor que ninguno.
+    const badge = await page.locator('#b').textContent();
+    check('el badge dice la versión, no una cadena de build', /^V\d+\.\d\d$/.test((badge || '').trim()), badge);
+    const tam = await page.locator('#b').evaluate(el => parseFloat(getComputedStyle(el).fontSize));
+    check('el badge se puede leer (≥12px)', tam >= 12, tam + 'px');
+    const vj = JSON.parse(fs.readFileSync(path.join(RAIZ, 'operaciones/carga-mo/version.json'), 'utf8'));
+    check('el badge coincide con version.json', (badge || '').trim() === vj.version, badge + ' vs ' + vj.version);
+    const html = fs.readFileSync(path.join(RAIZ, 'operaciones/carga-mo/index.html'), 'utf8');
+    const vs = [...html.matchAll(/\bsrc="js\/[^"]*\?v=([^"]+)"/g)].map(m => m[1]);
+    check('todos los scripts traen ?v= de esa misma versión',
+      vs.length >= 2 && vs.every(x => x === vj.version), vs.join(', ') || 'ninguno');
+
+    // ── la barra: un solo archivo, el de Ulises ───────────────────────────
     check('la barra ofrece el archivo de CONTPAQi', await page.locator('#drop').isVisible());
-    check('y el archivo de RH, en la misma barra',  await page.locator('#drop-rh').isVisible());
-    const bRh = await page.locator('#drop-rh').boundingBox();
-    check('el selector de RH cabe en el ancho',
-      !!bRh && bRh.x >= 0 && (bRh.x + bRh.width) <= w + 1,
-      bRh ? Math.round(bRh.x + bRh.width) + ' de ' + w : 'sin botón');
+    check('y ya NO pide el archivo de RH', await page.locator('#drop-rh').count() === 0);
 
-    // ── nómina cargada, SIN archivo de RH: la pantalla lo DICE ────────────
-    // Es el assert que impide el peor mensaje posible: una validación en verde que
-    // en realidad no comparó nada contra lo que RH pidió.
+    // ── la semana se propone sola, y con ella llega lo de RH ──────────────
+    check('al abrir ya hay una semana propuesta',
+      /^\d{4}-\d{2}-\d{2}$/.test(await page.locator('#f-vie').inputValue()),
+      await page.locator('#f-vie').inputValue());
+
     await page.fill('#f-vie', '2026-08-28');
+    await page.dispatchEvent('#f-vie', 'change');
+    await page.waitForTimeout(600);
+
+    check('la barra dice que la semana de RH ya llegó',
+      /S36\/2026/.test(await page.locator('#rh-est').textContent()),
+      await page.locator('#rh-est').textContent());
+
+    // ── la previa: se ve ANTES de subir nada ──────────────────────────────
+    // Es el corazón de lo que pidió Esteban: al elegir la semana, el resumen se
+    // carga ahí mismo. Si esto solo apareciera después del Excel de CONTPAQi, el
+    // cambio no serviría de nada.
+    const prev = await page.locator('#despacho-panel');
+    check('la previa de lo que mandó RH se ve SIN haber subido el CONTPAQi',
+      await prev.isVisible() && (await prev.textContent()).length > 50);
+    const tPrev = await prev.textContent();
+    check('la previa dice de qué semana es', /S36\/2026/.test(tPrev), tPrev.slice(0, 80));
+    check('y su versión y quién la envió', /v2/.test(tPrev) && /magaly/.test(tPrev), tPrev.slice(0, 120));
+    check('lista a las personas de la semana', /3 personas/.test(tPrev), tPrev.slice(0, 160));
+    check('y trae los nombres, no solo el conteo', /Leonel/.test(tPrev), tPrev.slice(0, 200));
+    check('la previa se lee ARRIBA, antes del resultado', await page.evaluate(() => {
+      const a = document.getElementById('despacho-panel'), b = document.getElementById('result');
+      return !!(a && b) && !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }));
+    const bPrev = await prev.boundingBox();
+    check('la previa cabe en el ancho',
+      !!bPrev && bPrev.x >= 0 && (bPrev.x + bPrev.width) <= w + 1,
+      bPrev ? Math.round(bPrev.x + bPrev.width) + ' de ' + w : 'sin previa');
+
+    // Con la nómina de RH cargada pero SIN el CONTPAQi, el cruce no debe inventar
+    // alarmas: comparar contra una lista vacía haría que TODOS salgan como faltantes,
+    // y la pantalla abriría en rojo sin que nadie haya hecho nada mal.
+    const tSinNom = await page.locator('#rh-panel').textContent();
+    check('sin el CONTPAQi, el cruce NO marca a todos como faltantes',
+      !/impiden mandar/.test(tSinNom), tSinNom.slice(0, 120));
+    check('y dice que lo que falta es el archivo, no la gente',
+      /Falta la otra mitad/.test(tSinNom), tSinNom.slice(0, 100));
+    check('el botón de validar sigue cerrado sin nómina',
+      await page.locator('#send').isDisabled());
+
+    await page.screenshot({ path: path.join(OUT, nombre + '-1-previa-rh.png'), fullPage: true });
+
+    // ── ahora sí, el Excel de CONTPAQi ────────────────────────────────────
     await page.setInputFiles('#file', tmpXls);
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(600);
     check('el Excel de CONTPAQi se leyó', await page.locator('#c-kpi').isVisible());
-
-    const txtVacio = await page.locator('#rh-panel').textContent();
-    check('con nómina y sin archivo de RH, la pantalla avisa que no se comparó nada',
-      /No se cargó el archivo de RH/.test(txtVacio), (txtVacio || '').slice(0, 70));
-    check('y explica que la nómina se validó contra sí misma',
-      /contra sí misma/.test(txtVacio));
-
-    await page.screenshot({ path: path.join(OUT, nombre + '-1-sin-rh.png'), fullPage: true });
-
-    // ── se carga el archivo de RH ─────────────────────────────────────────
-    await page.setInputFiles('#file-rh', tmpCsv);
-    await page.waitForTimeout(500);
-
-    check('el nombre del archivo de RH aparece en la barra',
-      /rh-S36\.csv/.test(await page.locator('#fname-rh').textContent()),
-      await page.locator('#fname-rh').textContent());
 
     const txt = await page.locator('#rh-panel').textContent();
     check('el panel dice de qué semana es el archivo de RH', /S36\/2026/.test(txt), txt.slice(0, 80));
@@ -229,12 +291,56 @@ function archivoRH() {
 
     await page.screenshot({ path: path.join(OUT, nombre + '-2-con-rh.png'), fullPage: true });
 
+    // ── borrador: se ve distinto que "enviada" y NO se pinta la previa ─────
+    // Un borrador todavía puede cambiar. Enseñarlo pondría a Ulises a cuadrar contra
+    // números que Magaly aún mueve, y a reclamar diferencias que no existen.
+    despachoModo = 'borrador';
+    await page.fill('#f-vie', '2026-08-21');
+    await page.dispatchEvent('#f-vie', 'change');
+    await page.waitForTimeout(600);
+    const tBorr = await page.locator('#despacho-panel').textContent();
+    check('un borrador NO se pinta como nómina enviada',
+      !/3 personas/.test(tBorr) && /todavía no la envían/.test(tBorr), tBorr.slice(0, 100));
+    check('y la barra lo dice sin sonar a falla nuestra',
+      /aún no la envían/.test(await page.locator('#rh-est').textContent()),
+      await page.locator('#rh-est').textContent());
+    const tCruceBorr = await page.locator('#rh-panel').textContent();
+    check('con la semana sin enviar, el cruce dice que no comparó nada',
+      /contra sí mismo/.test(tCruceBorr), tCruceBorr.slice(0, 120));
+
+    // ── el servidor caído se ve DISTINTO de "RH no ha mandado" ─────────────
+    // Uno lo resuelve Magaly y el otro lo resolvemos nosotros. Fundirlos en un
+    // mensaje gris manda a Ulises a hablar con la persona equivocada.
+    const erroresAntesDeTirarlo = errores.filter(t => !esDelEntorno(t)).length;
+    despachoModo = 'caida';
+    await page.fill('#f-vie', '2026-08-14');
+    await page.dispatchEvent('#f-vie', 'change');
+    await page.waitForTimeout(600);
+    const tCaida = await page.locator('#despacho-panel').textContent();
+    check('una falla del servidor NO se lee como "RH no ha mandado"',
+      /No se pudo consultar/.test(tCaida) && !/todavía no la envían/.test(tCaida), tCaida.slice(0, 100));
+    check('y el cruce avisa que NADIE comparó',
+      /nadie comparó/.test(await page.locator('#rh-panel').textContent()));
+    check('la barra marca la falla en rojo',
+      /no se pudo consultar/.test(await page.locator('#rh-est').textContent()),
+      await page.locator('#rh-est').textContent());
+
+    await page.screenshot({ path: path.join(OUT, nombre + '-3-sin-envio.png'), fullPage: true });
+
     const desb = await page.evaluate(() =>
       Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth));
     check('la página no desborda a lo ancho', desb <= 1, desb + 'px');
 
+    // Dos medidas distintas, a propósito:
+    //  · hasta antes de tirar el servidor a mano, CERO errores propios;
+    //  · y en TODO el recorrido, cero excepciones no atrapadas — porque el 500 que la
+    //    prueba provoca debe salir por el camino de error de la página, no reventarla.
+    // Filtrar los 500 en general escondería uno de verdad.
     const propios = errores.filter(t => !esDelEntorno(t));
-    check('cero errores de JavaScript propios', propios.length === 0, propios.slice(0, 2).join(' | '));
+    check('cero errores de JavaScript propios antes de la caída provocada',
+      erroresAntesDeTirarlo === 0, propios.slice(0, 2).join(' | '));
+    check('el servidor caído se maneja sin reventar la página',
+      excepciones.length === 0, excepciones.slice(0, 2).join(' | '));
 
     await ctx.close();
   }
