@@ -313,6 +313,26 @@ seccion('Archivo para el despacho');
     /PAGAR 2 días · Vacaciones/.test(fDias.instruccion), fDias.instruccion);
   check('la instruccion cabe en un renglon, no en un parrafo', fDias.instruccion.length < 90, String(fDias.instruccion.length));
 
+  // Los dos verbos que Esteban confirmo el 4-sep. Se fijan aqui porque NO son una
+  // decision de codigo sino de politica de FTS, y porque el costo de equivocarse lo
+  // paga una persona: un dia de mas o de menos en su raya. Si alguien los cambia,
+  // que sea a proposito y con una respuesta nueva, no de pasada.
+  const pFal = persona({ id: 96, dias_mexico: 4, ppa: { aplica: false },
+    declaraciones: [{ tipo: 'falta_justificada', valores: { dias: 1 } }] });
+  const fFal = Des.filas({ semana: SEMANA, personas: [pFal], disputas: [] })[0];
+  check('la falta justificada se DESCUENTA (confirmado 4-sep)',
+    /DESCONTAR 1 día · Falta justificada/.test(fFal.instruccion), fFal.instruccion);
+
+  const pInc = persona({ id: 99, dias_mexico: 3, ppa: { aplica: false },
+    declaraciones: [{ tipo: 'incapacidad', valores: { dias: 2, folio: 'ABC123' } }] });
+  const fInc = Des.filas({ semana: SEMANA, personas: [pInc], disputas: [] })[0];
+  check('la incapacidad tambien se DESCUENTA (confirmado 4-sep)',
+    /DESCONTAR 2 días · Incapacidad/.test(fInc.instruccion), fInc.instruccion);
+  check('y dice a donde se fue el pago, para que nadie revierta el descuento',
+    /el día lo paga el IMSS, no FTS/.test(fInc.instruccion), fInc.instruccion);
+  check('sin perder el folio, que es lo que hace capturable la incapacidad',
+    /folio IMSS ABC123/.test(fInc.instruccion), fInc.instruccion);
+
   // Trabajo en USA no es semana incompleta, pero si hay que decirlo: son 5 dias
   // trabajados repartidos en dos paises, y el despacho los paga distinto.
   const pUsa2 = persona({ id: 94, dias_mexico: 2, ppa: { aplica: false },
