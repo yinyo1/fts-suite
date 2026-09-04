@@ -27,7 +27,7 @@
   // comercial/machote y DEBE coincidir con finanzas/version.json — el gate lo verifica, porque
   // una pantalla que dice una versión y un archivo que dice otra deja de ser evidencia de nada.
   // Sustituye a la numeración 0.x.y (última: 0.5.36), conservada en version.json.
-  var IP_BUILD = 'V1.08';
+  var IP_BUILD = 'V1.09';
   var RESIDUAL_UMBRAL_MXN = 10000;        // coherente con fin/captura-status
   var SHEETJS_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
   // Endpoints reales (contrato construido en la sesión de backend; verificar nombres de
@@ -38,6 +38,88 @@
   var EP_BUSCAR = '/fin/captura-buscar-bills';   // Pieza #1: buscador manual de bills (17+285). Degrada si el workflow está inactivo.
   var EP_SYNC_NOW = '/captura-jeeves/run';       // #4a: webhook NATIVO de captura-jeeves (dual-trigger, origen='manual', CBRUN). Cero clon. ⚠️ sin scope-check → hardening backlog (Cloudflare post-canary).
   var EP_CONCILIA_NOW = '/fin/concilia-now';     // #4b: autoconciliar on-demand (lógica de D). Botón gateado hasta mañana.
+
+  // ═══ CATÁLOGO DE FUENTES (V1.09) ══════════════════════════════════════════════════════
+  // Hasta V1.08 el panel no sabía NADA de journals: `state.sources` se asignaba entero desde
+  // `fin/captura-status` (ingest, L~396) y `journalList()` se derivaba de `por_journal`. Eso es
+  // lo correcto para una fuente VIVA — el server es dueño de las cifras — pero deja fuera a las
+  // cuentas que existen en Odoo y que el capturador todavía no toca: si el server no las
+  // reporta, para el panel no existen.
+  //
+  // Este catálogo aporta IDENTIDAD, nunca cifras: banco, moneda, empresa, journal, método y el
+  // último dato verificado a mano en Odoo (con su fecha de medición, igual que el bloque de
+  // pagos manuales del semáforo). Se fusiona con lo que manda el server en `fuentesConCatalogo()`
+  // y el SERVER SIEMPRE GANA: en cuanto `captura-status` reporte uno de estos journals en
+  // `sources`/`por_journal`, la entrada del catálogo se retira sola y la tarjeta cobra vida sin
+  // tocar una línea de front. Por eso el catálogo no lleva contadores: un número escrito aquí
+  // se volvería mentira el día que llegue el feed, y hoy sería un número sin fecha.
+  //
+  // NO se listan aquí las fuentes vivas (Jeeves 61, Chase 122/123): las manda el server y
+  // duplicarlas sería dos escritores para el mismo campo (CLAUDE.md §20.4).
+  var CATALOGO_FUENTES = [
+    { id: 'bbva-general', journal: 8, label: 'BBVA General', co: 1, pais: 'MEX', nm: 'BBVA General MXN', banco: 'BBVA',
+      moneda: 'MXN', met: 'Importación de archivo', jt: 'journal 8',
+      feed: 'apagado', stlbl: 'SIN FEED',
+      last: '2025-12-26',
+      note: 'Sin feed conectado. La última línea bancaria registrada en Odoo es del 2025-12-26; ' +
+            'el panel no tiene información posterior a esa fecha y no puede tenerla hasta que ' +
+            'exista una captura para este journal.',
+      medido: '2026-09-04', backlog: '301 líneas históricas, 153 sin conciliar' },
+    { id: 'bbva-nomina', journal: 96, label: 'BBVA Nómina', co: 1, pais: 'MEX', nm: 'BBVA Nómina MXN', banco: 'BBVA',
+      moneda: 'MXN', met: 'Importación de archivo', jt: 'journal 96',
+      feed: 'apagado', stlbl: 'SIN MOVIMIENTOS',
+      last: null,
+      note: 'La cuenta existe en Odoo pero no tiene ni una sola línea bancaria registrada. ' +
+            'No hay nada que conciliar todavía.',
+      medido: '2026-09-04', backlog: '0 líneas' },
+    // ⚠️ MONEDA: este journal lleva `currency_id = USD` EXPLÍCITO sobre una empresa cuya moneda
+    // es MXN (company 1). No es el mismo mecanismo que Chase 122/123, que tienen `currency_id`
+    // vacío y heredan el USD de su empresa (company 6). Nada de este módulo puede asumir que
+    // company 1 ⇒ MXN, ni reutilizar para el journal 75 la cuenta de suspense de los journals
+    // MXN de la empresa 1 — es la misma clase de suposición que produjo el bug P1 de Chase
+    // (cuentas 17/184 fijas para las dos empresas). El motor de conciliación NO cubre este
+    // journal hoy; cuando se abra, la cuenta de suspense se resuelve por journal, no por empresa.
+    { id: 'bbva-usd', journal: 75, label: 'BBVA USD', co: 1, pais: 'MEX', nm: 'BBVA USD', banco: 'BBVA',
+      moneda: 'USD', met: 'Importación de archivo', jt: 'journal 75',
+      feed: 'apagado', stlbl: 'SIN FEED',
+      last: '2025-03-20',
+      note: 'Cuenta en DÓLARES dentro de la empresa mexicana. Sin feed conectado: la única ' +
+            'línea registrada en Odoo es del 2025-03-20.',
+      medido: '2026-09-04', backlog: '1 línea, sin conciliar' }
+  ];
+
+  // Número de journal de una fuente del server. El contrato de `captura-status` no trae un campo
+  // numérico: la referencia viaja como texto en `jt` ("journal 61"). Se acepta `journal` numérico
+  // si algún día llega, y si no se extrae del texto. Si no hay ninguno de los dos, devuelve null
+  // y la fuente sencillamente no participa del cruce (no se descarta, no se duplica).
+  function journalDe(s) {
+    if (!s) return null;
+    if (typeof s.journal === 'number') return s.journal;
+    var m = /(\d+)/.exec(String(s.jt || ''));
+    return m ? +m[1] : null;
+  }
+
+  // Fusión catálogo ← server. Aditiva y tolerante (CLAUDE.md §8, mitad tolerante):
+  //   · toda fuente del server pasa TAL CUAL, sin tocar un solo campo;
+  //   · solo se agregan las del catálogo cuyo journal el server no reporta ni en `sources`
+  //     ni en `por_journal` (basta que aparezca en cualquiera de los dos para cederle el turno).
+  // El resultado es el único lugar donde se construyen tarjetas de fuente.
+  function fuentesConCatalogo(serverSources, porJournal) {
+    var vivos = {};
+    (serverSources || []).forEach(function (s) { var j = journalDe(s); if (j != null) vivos[j] = true; });
+    (porJournal || []).forEach(function (p) { if (p && p.journal != null) vivos[p.journal] = true; });
+    var extra = CATALOGO_FUENTES.filter(function (c) { return !vivos[c.journal]; }).map(function (c) {
+      return {
+        id: c.id, co: c.co, pais: c.pais, nm: c.nm, jt: c.jt, met: c.met,
+        banco: c.banco, moneda: c.moneda, journal: c.journal,
+        st: 'off', stlbl: c.stlbl, note: c.note, medido: c.medido, backlog: c.backlog,
+        last: c.last || 'sin movimientos',
+        kpi: '—', kpi_label: 'sin datos en el panel',
+        movHoy: '—', movMes: '—', run: '—', _catalogo: true
+      };
+    });
+    return (serverSources || []).concat(extra);
+  }
   var EP_PENDINGS = '/fin/captura-pendings-status';   // A: preview honesto de pendings Jeeves (Pieza #4 lite). Degrada a nada si inactivo/no disponible.
 
   var DEFAULT_CRON = { days: [1, 2, 3, 4, 5], start_hour: 7, regular_end_hour: 16, regular_interval_min: 30, peak_hour: 17, peak_interval_min: 10, close_hour: 18, label: 'L–V 7–18h · 30 min · pico 10 min' };
@@ -192,7 +274,7 @@
   function createView(container) {
     var state = {
       mode: currentMode(),
-      allRows: [], sources: [], runs: [], cron: DEFAULT_CRON,
+      allRows: [], sources: [], sourcesServer: [], runs: [], cron: DEFAULT_CRON,
       porJournal: [],          // v0.5.15: universo de journals que reporta el server (captura-status.por_journal).
                                // El filtro y el semáforo se derivan de AQUÍ, nunca de una lista escrita a mano.
       // v0.5.16 — ventana RODANTE (inicio del mes pasado → hoy). Antes estaba clavada en
@@ -393,10 +475,15 @@
     }
     function ingest(rows, sources, runs, cron, extra) {
       rows.forEach(function (r, i) { r._id = i; });
-      state.allRows = rows; state.sources = sources; state.runs = runs; state.cron = normalizeCron(cron);
+      state.allRows = rows; state.runs = runs; state.cron = normalizeCron(cron);
+      // V1.09 — las fuentes que el server reporta pasan intactas; el catálogo solo rellena
+      // los journals que todavía no reporta nadie. Se resuelve DESPUÉS de porJournal porque
+      // la fusión mira las dos listas para decidir a quién le toca el turno.
+      state.sourcesServer = sources || [];
       extra = extra || {};
       state.today = extra.today || null;
       state.porJournal = extra.porJournal || [];
+      state.sources = fuentesConCatalogo(state.sourcesServer, state.porJournal);
       state.metricas = extra.metricas || null;   // {fecha_corte, cumplimiento{...}, deuda{...}}
       state.serie = extra.serie || [];           // puntos históricos del CBWATCH
       state.intransit = extra.intransit || [];
@@ -710,7 +797,11 @@
       var chip = s.st === 'ok'
         ? '<span class="stchip ok">● SYNC OK · ' + esc(s.last) + '</span>'
         : s.st === 'off'
-          ? '<span class="stchip off">○ SIN CONFIGURAR</span>'
+          // V1.09 — la etiqueta del estado apagado es del dato, no una constante. "SIN CONFIGURAR"
+          // es falso para BBVA General: la cuenta está configurada en Odoo y tiene 301 líneas; lo
+          // que no hay es feed. Y para Nómina lo cierto es que no hay ni un movimiento. Decir
+          // "sin configurar" en los tres casos manda a buscar unas credenciales que no faltan.
+          ? '<span class="stchip off">○ ' + esc(s.stlbl || 'SIN CONFIGURAR') + '</span>'
           : '<span class="stchip err">▲ SYNC ERROR · ' + esc(s.last) + '</span><span class="wdbadge">WATCHDOG <button data-atender="' + esc(s.id) + '">Atender</button></span>';
       var jeevesExtra = s.main ? (
         '<div class="synced"><span class="pulse"></span>' +
@@ -726,7 +817,16 @@
             ? '<button class="ip-btn" data-demosync="' + esc(s.id) + '">Sync Now</button>'
             : '<div class="meta" style="opacity:.75">Sin sync manual: esta fuente la sincroniza Odoo.</div>'));
       var body = s.st === 'off'
-        ? '<div class="sc-meta">Fuente no configurada — pendiente de credenciales / primer sync.</div>'
+        ? '<div class="sc-chiprow">' + chip + '</div>' +
+          '<div class="sc-meta">' + esc(s.note || 'Fuente no configurada — pendiente de credenciales / primer sync.') +
+            (s.met ? '<br>Método: <b>' + esc(s.met) + '</b>' : '') +
+            (s.moneda ? '<br>Moneda: <b>' + esc(s.moneda) + '</b>' : '') +
+            // El backlog va con su FECHA DE MEDICIÓN, igual que el bloque de pagos manuales del
+            // semáforo: es una lectura a mano de Odoo, no un contador vivo, y sin fecha se leería
+            // como actual. El panel no puede refrescarlo mientras no exista captura para el journal.
+            (s.backlog ? '<br><span style="color:var(--steel)">En Odoo: <b>' + esc(s.backlog) + '</b>' +
+               (s.medido ? ' · medido el ' + esc(s.medido) : '') + '</span>' : '') +
+            '</div>'
         : '<div class="sc-meta">Método: <b>' + esc(s.met) + '</b><br>' +
             'Última captura: <b class="' + (s.main ? 'ip-lastsync' : '') + '">' + esc(s.last) + '</b><br>' +
             'Movimientos hoy: <b>' + esc(s.movHoy) + '</b> · este mes: <b>' + esc(s.movMes) + '</b><br>' +
@@ -750,6 +850,10 @@
           (s.kpi_neto ? '<div class="sc-kpi2">neto con entradas <b>' + esc(s.kpi_neto) + '</b>' +
              (s.kpi_n_entradas ? ' · ' + esc(s.kpi_n_entradas) + ' fondeos/devoluciones ' + esc(s.kpi_entradas) : '') + '</div>' : '') +
           '<div class="sc-foot"><span class="sc-j">' + esc(String(s.jt || '').replace(/^journal\s*/i, 'j·')) + '</span>' +
+            // V1.09 — la moneda solo se pinta si la fuente la declara. Las que manda el server no
+            // traen el campo, así que su pie queda EXACTAMENTE igual que antes; el journal 75 es en
+            // dólares dentro de la empresa mexicana y sin este dato la tarjeta se leería en pesos.
+            (s.moneda ? '<span class="sc-cur">' + esc(s.moneda) + '</span>' : '') +
             '<span>' + esc(s.movMes) + ' este mes</span>' +
             '<span class="sc-last">' + esc(s.last) + '</span></div>' +
           '<span class="sc-chev">▶</span>' +
@@ -814,7 +918,7 @@
     // que tiene cero líneas: la UI prometía un Chase que no existía. Orden de preferencia:
     //   1) por_journal del server (real)  2) labels distintos de las filas cargadas (demo/fallback).
     // Si un journal no está en ninguno de los dos, no se pinta — no se inventa.
-    function journalList() {
+    function journalListServer() {
       if (state.porJournal && state.porJournal.length) {
         return state.porJournal.map(function (p) {
           return { label: p.label, id: p.journal, nombre: p.nombre || p.label };
@@ -826,13 +930,33 @@
       });
       return out.sort(function (a, b) { return a.label.localeCompare(b.label); });
     }
+    // V1.09 — el universo del FILTRO suma el catálogo. Un journal que existe en Odoo y todavía no
+    // tiene captura no puede ser invisible en el selector: al elegirlo la tabla sale vacía, que es
+    // exactamente lo que hay, y eso es información. Elegir uno de estos no rompe nada: `journal`
+    // es un filtro de la vista (visibleRows compara `t.j === f.journal`), no un parámetro de la
+    // consulta al server — desde v0.5.20 el journal salió de `txParams()`.
+    // Lo que NO se toca es el semáforo, que sigue leyendo `journalListServer()`: sus cifras salen
+    // de `metricas.por_journal` y una fuente sin datos no puede aparecer ahí con un 0 calculado.
+    function journalList() {
+      var base = journalListServer();
+      var vistos = {};
+      base.forEach(function (j) { if (j.id != null) vistos[j.id] = true; vistos['l:' + j.label] = true; });
+      CATALOGO_FUENTES.forEach(function (c) {
+        if (vistos[c.journal] || vistos['l:' + c.label]) return;
+        base.push({ label: c.label, id: c.journal, nombre: c.nm, sinDatos: true });
+      });
+      return base;
+    }
 
     // ── filtros + menú de columnas ──
     function filtersHtml() {
       var f = state.filters;
       var opts = journalList().map(function (j) {
         return '<option value="' + esc(j.label) + '"' + (f.journal === j.label ? ' selected' : '') + '>' +
-          esc(j.label) + (j.id ? ' (' + j.id + ')' : '') + '</option>';
+          esc(j.label) + (j.id ? ' (' + j.id + ')' : '') +
+          // V1.09 — el sufijo avisa ANTES de elegir que esa fuente no tiene líneas capturadas, para
+          // que una tabla vacía no se lea como un filtro roto.
+          (j.sinDatos ? ' — sin datos' : '') + '</option>';
       }).join('');
       return '<div class="filters">' +
         '<select id="ip-fJournal"><option value="">Todos los journals</option>' + opts + '</select>' +
@@ -1216,7 +1340,15 @@
           return tr;
         }).join('') +
         '</tbody></table></div>'
-        : '<div class="ip-empty">Sin movimientos con estos filtros. Ajusta el rango o la búsqueda.</div>';
+        // V1.09 — si el journal elegido es uno del catálogo (existe en Odoo, sin captura), la tabla
+        // vacía no es un filtro mal puesto: es que no hay líneas que traer. Decirlo evita que
+        // Eduardo ande moviendo fechas buscando datos que ningún proceso ha escrito.
+        : '<div class="ip-empty">' + (function () {
+            var c = CATALOGO_FUENTES.filter(function (x) { return x.label === state.filters.journal; })[0];
+            if (c) return 'La cuenta <b>' + esc(c.nm) + '</b> (j·' + c.journal + ') todavía no tiene captura: ' +
+              'no hay movimientos que mostrar en ningún rango de fechas. ' + esc(c.note);
+            return 'Sin movimientos con estos filtros. Ajusta el rango o la búsqueda.';
+          })() + '</div>';
       var w = q('#ip-tblwrap'); if (w) w.innerHTML = tbl;
 
       // Contadores de la barra. Hasta v0.5.30 las llaves eran las del eje de 5 valores
@@ -1687,7 +1819,8 @@
     function barcTxt(c) { return c === 'g' ? '#0d7a3f' : c === 'y' ? '#8a6000' : '#c93b2f'; }
     function paintSem() {
       var host = q('#ip-semrows'); if (!host) return;
-      var journals = journalList();   // v0.5.15: derivado del server, ya no una lista escrita a mano
+      var journals = journalListServer();   // v0.5.15: derivado del server, ya no una lista escrita a mano.
+      // V1.09: explícitamente la del SERVER — el catálogo entra al filtro, no al semáforo.
       var base = state.allRows;   // el semáforo admin evalúa todo el universo cargado, no la vista filtrada
       if (!journals.length) { host.innerHTML = '<div class="ip-empty" style="padding:14px">Sin journals que evaluar.</div>'; return; }
       var data = journals.map(function (x) {
@@ -1802,6 +1935,37 @@
           '<div class="s2why">Cada fuente se mide sola. <b>No hay total</b>: un porcentaje global ' +
             'nunca llegaría al 100% mientras haya fuentes sin abrir, y ese número no sirve para exigir.</div>' +
           '<div class="s2trend">' + trendHtml('B') + '</div></div>';
+      }
+
+      // ── SIN FEED (V1.09). Cuentas que existen en Odoo y que ningún capturador toca todavía. ──
+      // No entran a las tarjetas de arriba porque no tienen post_total y un 0% calculado sobre
+      // cero líneas se lee como "va mal" cuando lo que hay es "no hay datos". Pero tampoco pueden
+      // faltar: BBVA General lleva 301 líneas en Odoo y su última información es de diciembre de
+      // 2025 — no aparecer en ningún lado se lee como "al día". Un renglón por cuenta, con la
+      // fecha del último dato y su medición, sin porcentaje ni foco que no se puedan sostener.
+      var vivosSem = {};
+      ((m && m.por_journal) || []).forEach(function (x) { if (x && x.journal != null) vivosSem[x.journal] = true; });
+      (state.sourcesServer || []).forEach(function (x) { var j = journalDe(x); if (j != null) vivosSem[j] = true; });
+      var sinFeed = CATALOGO_FUENTES.filter(function (c) { return !vivosSem[c.journal]; });
+      if (sinFeed.length) {
+        html += '<details class="ip-sem2 sinfeed"><summary>' +
+          '<span class="s2title"><span class="light off"></span><span class="s2lbl">Sin feed conectado</span>' +
+            '<span class="s2tag">no medibles</span></span>' +
+          '<span class="s2sum"><b>' + sinFeed.length + '</b> cuenta' + (sinFeed.length === 1 ? '' : 's') +
+            ' sin captura</span></summary>' +
+          '<div class="s2body"><div class="s2note" style="margin-top:12px">' +
+            'Estas cuentas existen en Odoo pero <b>ningún proceso captura sus movimientos</b>, así que el ' +
+            'panel no puede calcularles ni porcentaje ni pendiente. No están al día: están <b>sin medir</b>.' +
+          '</div><ul class="s2list">' +
+          sinFeed.map(function (c) {
+            return '<li><b>' + esc(c.nm) + '</b> <span class="s2tag">j·' + c.journal + '</span> ' +
+              '<span class="s2tag">' + esc(c.moneda) + '</span><br>' +
+              (c.last
+                 ? 'Última información: <b>' + esc(c.last) + '</b>. '
+                 : 'Sin ningún movimiento registrado. ') +
+              esc(c.backlog) + ' · medido el ' + esc(c.medido) + '.</li>';
+          }).join('') +
+          '</ul></div></details>';
       }
 
       // ── A · BACKLOG. Deuda, no operación diaria: colapsado, y el detalle por journal dentro. ──

@@ -69,6 +69,10 @@
 .ip-view .sc-foot{display:flex;align-items:center;gap:6px;margin-top:10px;padding-top:9px;border-top:1px solid #eceff2;
                   font-family:var(--ip-mono);font-size:11px;color:var(--steel)}
 .ip-view .sc-j{background:#eef3fa;color:#274b7a;border-radius:3px;padding:1px 5px}
+/* Moneda de la cuenta (V1.09). Solo se pinta si la fuente la declara: el journal 75 es en
+   dólares dentro de la empresa mexicana y el pie no tenía dónde decirlo. #4a5a2f sobre #f0f4e9
+   da 6.9:1. */
+.ip-view .sc-cur{background:#f0f4e9;color:#4a5a2f;border-radius:3px;padding:1px 5px;font-weight:600}
 .ip-view .sc-last{margin-left:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ip-view .sc-kpi2{margin-top:5px;font-size:10.5px;color:var(--steel);line-height:1.4}
 .ip-view .sc-kpi2 b{font-family:var(--ip-mono);color:#48545f;font-weight:600}
@@ -218,6 +222,10 @@
 .ip-view .light.g{background:var(--ip-ok);box-shadow:0 0 10px rgba(18,161,80,.8)}
 .ip-view .light.y{background:var(--ip-warn);box-shadow:0 0 10px rgba(232,165,0,.8)}
 .ip-view .light.r{background:var(--ip-bad);box-shadow:0 0 10px rgba(214,59,47,.8)}
+/* Foco APAGADO (V1.09). `semColor` y la cabecera del semáforo B ya devolvían 'off' cuando no
+   hay nada que calificar, pero la clase no existía: el foco salía transparente y se leía como un
+   hueco de maquetación. Gris explícito = "sin medir", que es distinto de verde. */
+.ip-view .light.off{background:#b6bfc8;box-shadow:none}
 .ip-view .bar{height:7px;background:#2b333c;border-radius:4px;overflow:hidden}
 .ip-view .bar i{display:block;height:100%;border-radius:4px}
 .ip-view .pct{font-family:var(--ip-mono);font-size:14px;text-align:right}
@@ -506,6 +514,9 @@
 .ip-view .s2ver:hover{color:#0f4e94}
 /* Pasivo del PAID manual: gris, nunca rojo — no es un fallo de la operación. */
 .ip-view details.ip-sem2.pasivo summary .s2title{color:#5b6875}
+/* Cuentas sin feed: gris como el pasivo — tampoco son un fallo de la operación, son ausencia
+   de dato. Nunca verde: un verde aquí diría "al día" sobre cuentas que nadie está midiendo. */
+.ip-view details.ip-sem2.sinfeed summary .s2title{color:#5b6875}
 .ip-view .s2list{margin:10px 0 0;padding-left:20px;font-size:12.5px;line-height:1.65;color:var(--steel)}
 .ip-view .s2list b{color:var(--ink)}
 .ip-view .s2list code{font-family:var(--ip-mono);font-size:11.5px;background:#eef1f4;border-radius:4px;padding:1px 5px}
