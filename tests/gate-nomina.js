@@ -28,6 +28,7 @@ catch (e) { console.error('Falta jsdom. npm i jsdom y reintenta (o NODE_PATH=<di
 const Cat = require(path.join(MOD, 'js', 'catalogo.js'));
 const Log = require(path.join(MOD, 'js', 'logica.js'));
 const Des = require(path.join(MOD, 'js', 'despacho.js'));
+const Exc = require(path.join(MOD, 'js', 'excel.js'));
 
 let pass = 0; const fails = []; let bloque = '';
 function check(nombre, cond, detalle) {
@@ -208,8 +209,12 @@ seccion('Archivo para el despacho');
   check('los ' + Cat.tiposDeclarables().length + ' tipos declarables tienen columna en el archivo',
     sinColumna.length === 0, sinColumna.join(', '));
 
-  // Y toda columna destino existe de verdad en el encabezado.
-  const claves = Des.COLUMNAS.map(c => c.k);
+  // Y todo destino del mapa existe de verdad como CUBO. Desde V1.12 los cubos y las
+  // columnas impresas son dos listas distintas: el archivo imprime cuatro columnas,
+  // pero los conceptos se siguen acumulando en sus veintitantos cubos, y de ahi salen
+  // las cantidades que escribe la instruccion. El assert vigila los cubos, que es
+  // donde de verdad puede perderse un concepto.
+  const claves = Des.ACUMULADORES.map(c => c.k);
   const huerfanas = Object.keys(Des.A_COLUMNA).filter(t => {
     const d = Des.A_COLUMNA[t];
     return claves.indexOf(d.col) < 0 || (d.extra && claves.indexOf(d.extra.col) < 0);
@@ -272,6 +277,65 @@ seccion('Archivo para el despacho');
     disputas: [{ id: 9, empleado_id: 81, fecha: '2026-09-01', abierta: true }] })[0];
   check('una checada en disputa sale marcada en su renglon', /disputa/.test(fd.revisar), fd.revisar);
 
+  // (f2) LA CONVENCION DE MAGALY: en blanco cuando la semana es normal.
+  // Su lista de raya lleva años funcionando asi —renglon vacio = nada que hacer, y lo
+  // excepcional dicho en la linea de esa persona— y Ulises ya lee de esa forma. Antes
+  // esta columna decia algo SIEMPRE ("5 de 5 dias trabajados. Premio de asistencia:
+  // NO..."), que es lo contrario: treinta renglones con texto obligan a leerlos todos
+  // para descubrir que veintitantos no dicen nada. Lo repetido esconde lo excepcional.
+  // Se fija aqui para que nadie lo "complete" de vuelta creyendo que ayuda.
+  const pNorm = persona({ id: 90, dias_mexico: 5, ppa: { aplica: false } });
+  const fNorm = Des.filas({ semana: SEMANA, personas: [pNorm], disputas: [] })[0];
+  check('una semana normal deja la instruccion EN BLANCO', fNorm.instruccion === '', JSON.stringify(fNorm.instruccion));
+  check('pero su columna de dias SI trae el numero', fNorm.dias_mx === 5, String(fNorm.dias_mx));
+
+  // El premio se calla cuando es NO: la columna ya lo dice, y escribirlo llenaria de
+  // ruido las dos terceras partes de la lista.
+  const pNo = persona({ id: 91, dias_mexico: 5, ppa: { aplica: true, sugerido: false } });
+  const fNo = Des.filas({ semana: SEMANA, personas: [pNo], disputas: [] })[0];
+  check('un premio en NO no se escribe en la instruccion', fNo.instruccion === '', JSON.stringify(fNo.instruccion));
+  check('y aun asi la columna del premio dice NO', fNo.ppa === 'NO', fNo.ppa);
+
+  // Cuando SI toca, abre el renglon — igual que en el archivo de Magaly ("PPA Y ...").
+  const pSi = persona({ id: 92, dias_mexico: 5, ppa: { aplica: true, sugerido: true } });
+  const fSi = Des.filas({ semana: SEMANA, personas: [pSi], disputas: [] })[0];
+  check('un premio en SI abre la instruccion con PPA', /^PPA/.test(fSi.instruccion), fSi.instruccion);
+
+  // Los dias solo se dicen cuando NO son la semana completa en Mexico.
+  const pDias = persona({ id: 93, dias_mexico: 3,
+    declaraciones: [{ tipo: 'vacaciones', valores: { dias: 2 } }], ppa: { aplica: false } });
+  const fDias = Des.filas({ semana: SEMANA, personas: [pDias], disputas: [] })[0];
+  check('una semana incompleta SI dice los dias', /3 de 5 días trabajados/.test(fDias.instruccion), fDias.instruccion);
+  check('y dice que fue lo que ocupo los otros', /Vacaciones/.test(fDias.instruccion), fDias.instruccion);
+  // El VERBO es lo que se agrego en V1.12: sin el, "2 dias de vacaciones" no dice si
+  // se pagan o se descuentan, y el archivo ya no tiene columnas donde leer el signo.
+  check('y dice el VERBO: que hay que hacer con esos dias',
+    /PAGAR 2 días · Vacaciones/.test(fDias.instruccion), fDias.instruccion);
+  check('la instruccion cabe en un renglon, no en un parrafo', fDias.instruccion.length < 90, String(fDias.instruccion.length));
+
+  // Trabajo en USA no es semana incompleta, pero si hay que decirlo: son 5 dias
+  // trabajados repartidos en dos paises, y el despacho los paga distinto.
+  const pUsa2 = persona({ id: 94, dias_mexico: 2, ppa: { aplica: false },
+    declaraciones: [{ tipo: 'trabajo_usa', valores: { dias: 3, so: 'SO11846' } }] });
+  const fUsa2 = Des.filas({ semana: SEMANA, personas: [pUsa2], disputas: [] })[0];
+  check('cinco dias repartidos entre Mexico y USA NO se callan',
+    /2 en México, 3 en USA/.test(fUsa2.instruccion), fUsa2.instruccion);
+  // Decir que trabajo 3 dias en USA NO es una instruccion: se lee igual que tres dias
+  // normales de la semana y se pagan aqui, cuando los paga FTS LLC. El verbo es lo que
+  // impide pagarlos dos veces, y por eso se exige junto con el motivo — sin el motivo,
+  // el siguiente que lo lea puede pensar que es un error y revertirlo.
+  check('los dias en USA se DESCUENTAN, con todas sus letras',
+    /DESCONTAR 3 días · Trabajó en USA/.test(fUsa2.instruccion), fUsa2.instruccion);
+  check('y dice POR QUE se descuentan: no los paga esta nomina',
+    /no se pagan en México, los paga FTS LLC/.test(fUsa2.instruccion), fUsa2.instruccion);
+
+  // Dinero que ya pago FTS USA: el mismo principio que los dias, en pesos.
+  const pUsa3 = persona({ id: 95, dias_mexico: 5, ppa: { aplica: false },
+    declaraciones: [{ tipo: 'pagado_fts_usa', fuente: 'J96', valores: { monto: 4000 } }] });
+  const fUsa3 = Des.filas({ semana: SEMANA, personas: [pUsa3], disputas: [] })[0];
+  check('lo que ya pago FTS USA no se vuelve a pagar aqui',
+    /NO PAGAR EN MÉXICO \$4,000\.00 · Pagado por FTS USA/.test(fUsa3.instruccion), fUsa3.instruccion);
+
   // (g) quien esta de baja SIN nada declarado no entra; con finiquito SI
   const bajaVacia = persona({ id: 82, inactivo: true, dias_mexico: 0 });
   const bajaConFiniquito = persona({ id: 83, inactivo: true, dias_mexico: 0,
@@ -289,8 +353,11 @@ seccion('Archivo para el despacho');
   check('la correccion se explica en el propio archivo', /faltaba un dia/.test(lineas[1]), lineas[1]);
   const cab = lineas[3].split(Des.SEPARADOR);
   check('el encabezado trae las ' + Des.COLUMNAS.length + ' columnas', cab.length === Des.COLUMNAS.length, String(cab.length));
-  check('usa el vocabulario de CONTPAQi, no el nuestro',
-    cab.indexOf('PREMIO DE ASISTENCIA Y PUNTUALIDAD') >= 0 && cab.indexOf('AJUSTE EN SUELDOS') >= 0);
+  check('el encabezado ya NO trae la tabla de numeros',
+    cab.indexOf('DEPARTAMENTO') < 0 && cab.indexOf('PUESTO') < 0 && cab.indexOf('BONO') < 0,
+    cab.join('|'));
+  check('las cuatro columnas son las que se acordaron con Esteban',
+    cab.join('|') === 'NO EMPLEADO|EMPLEADO|INSTRUCCION|REVISAR', cab.join('|'));
   check('el archivo lleva BOM para que Excel no rompa los acentos', txt.charCodeAt(0) === 0xFEFF);
   check('cierra con un renglon de totales', /TOTAL \(1 personas\)/.test(lineas[lineas.length - 2]), lineas[lineas.length - 2]);
 
@@ -323,6 +390,99 @@ seccion('Archivo para el despacho');
   check('el dinero lleva dos decimales con la coma de es-MX',
     Des.celda({ bono: 1500 }, { k: 'bono', tipo: 'mxn' }) === '1500,00',
     Des.celda({ bono: 1500 }, { k: 'bono', tipo: 'mxn' }));
+})();
+
+// ═══════════════════ 7b · EL EXCEL DE DOS HOJAS ═══════════════════
+// POR QUE EXISTE ESTA SECCION. El .csv es el archivo que se manda; el .xlsx es la
+// vista con la que Magaly lo revisa ANTES de mandarlo y con la que Ulises puede
+// profundizar. Las dos salen del MISMO filas()/totales(), y esta seccion existe para
+// que sigan saliendo de ahi: si un dia alguien arma el Excel por su cuenta, aqui se
+// cae. El escritor de xlsx es nuestro (js/excel.js, sin librerias, ver el comentario
+// de ese archivo), asi que tambien se comprueba que lo que escribe sea un ZIP de
+// verdad y traiga las dos hojas dentro.
+seccion('El Excel de dos hojas');
+(function () {
+  const est = { semana: SEMANA, disputas: [], personas: [
+    persona({ id: 78, dias_mexico: 5 }),
+    persona({ id: 101, dias_mexico: 3, declaraciones: [{ tipo: 'vacaciones', valores: { dias: 2 } }] }),
+    persona({ id: 75, dias_mexico: 2, ppa: { aplica: false },
+      declaraciones: [{ tipo: 'trabajo_usa', valores: { dias: 3, so: 'SO11846' } }] })
+  ] };
+  const H = Des.hojas(est, { version: 1, actor: 'magaly.perez', fecha: '2026-09-04 15:20' });
+
+  check('el libro trae DOS hojas', H.length === 2, String(H.length));
+  check('la primera es la de instrucciones', H[0].nombre === 'Instrucciones', H[0].nombre);
+  check('la segunda es la del detalle', H[1].nombre === 'Detalle', H[1].nombre);
+
+  // Hoja 1: las MISMAS cuatro columnas del archivo. Si un dia se agrega una columna
+  // al csv y no al Excel, lo que Magaly revisa deja de ser lo que se manda.
+  const cab1 = H[0].filas[3].map(x => x.v);
+  check('la hoja 1 lleva las mismas 4 columnas del archivo',
+    cab1.join('|') === 'NO EMPLEADO|EMPLEADO|INSTRUCCION|REVISAR', cab1.join('|'));
+
+  // Hoja 2: el detalle que se quito del archivo. Departamento y puesto vuelven aqui
+  // —estorbaban a quien captura, no a quien audita— y estan TODOS los cubos.
+  const cab2 = H[1].filas[3].map(x => x.v);
+  check('la hoja 2 devuelve departamento y puesto',
+    cab2.indexOf('DEPARTAMENTO') > 0 && cab2.indexOf('PUESTO') > 0, cab2.slice(0, 6).join('|'));
+  const faltantes = Des.ACUMULADORES.filter(a => cab2.indexOf(a.t) < 0).map(a => a.t);
+  check('y NINGUN concepto se queda fuera del detalle', faltantes.length === 0, faltantes.join(', '));
+
+  // Los numeros van como numeros. Si salieran como texto, Ulises no podria sumarlos,
+  // que es la unica razon por la que esta hoja existe.
+  const iVac = cab2.indexOf('VACACIONES');
+  const filaAna = H[1].filas.find(f => String(f[0]) === '101');
+  const celdaVac = filaAna && filaAna[iVac];
+  check('los numeros del detalle son NUMEROS, no texto',
+    celdaVac && celdaVac.n === true && celdaVac.v === 2, JSON.stringify(celdaVac));
+
+  // El renglon de TOTAL tambien va como numero. Este assert existe porque el bug
+  // ocurrio: la celda del total se envolvia dos veces —{ v: { v, n }, s }— y Excel
+  // imprimia "[object Object]". En la hoja 1 no se veia porque ahi todo es texto, o
+  // sea que el error vivia escondido detras de un tipo de dato. Se descubrio abriendo
+  // el .xlsx con un lector independiente, no con este gate; por eso el assert.
+  const totalDet = H[1].filas[H[1].filas.length - 1];
+  const iMx = cab2.indexOf('DIAS TRABAJADOS MX');
+  check('el TOTAL del detalle tambien es un numero, no un objeto envuelto',
+    totalDet[iMx] && totalDet[iMx].n === true && typeof totalDet[iMx].v === 'number',
+    JSON.stringify(totalDet[iMx]));
+  check('y suma de verdad los dias de las tres personas',
+    totalDet[iMx].v === 10, String(totalDet[iMx] && totalDet[iMx].v));
+  check('ninguna celda del libro quedo envuelta dos veces',
+    H.every(h => h.filas.every(f => f.every(cl =>
+      !(cl && typeof cl === 'object' && cl.v && typeof cl.v === 'object')))));
+
+  // Las dos hojas cuentan lo mismo: mismas personas, mismos renglones.
+  check('las dos hojas traen a la misma gente',
+    H[0].filas.length === H[1].filas.length, H[0].filas.length + ' vs ' + H[1].filas.length);
+
+  // ── El archivo mismo ──
+  const bytes = Exc.libro(H);
+  check('el .xlsx es un ZIP de verdad (firma PK)',
+    bytes[0] === 0x50 && bytes[1] === 0x4B && bytes[2] === 3 && bytes[3] === 4,
+    [bytes[0], bytes[1], bytes[2], bytes[3]].join(','));
+  // El ZIP se escribe SIN comprimir, asi que el XML de cada hoja viaja tal cual
+  // dentro de los bytes: se puede buscar sin implementar un lector.
+  const crudo = Buffer.from(bytes).toString('utf8');
+  for (const parte of ['[Content_Types].xml', 'xl/workbook.xml', 'xl/styles.xml',
+                       'xl/worksheets/sheet1.xml', 'xl/worksheets/sheet2.xml']) {
+    check('el paquete trae ' + parte, crudo.indexOf(parte) >= 0);
+  }
+  check('y la segunda hoja se llama Detalle dentro del libro',
+    /<sheet name="Detalle"/.test(crudo));
+  check('el contenido viaja de verdad en el archivo (no es un ZIP vacio)',
+    crudo.indexOf('DESCONTAR 3 días') >= 0);
+  check('los acentos sobreviven al ZIP', crudo.indexOf('DIAS TRABAJADOS USA') >= 0);
+
+  // El nombre distingue una version de otra en la carpeta de descargas.
+  check('el nombre del Excel lleva semana y version',
+    Des.nombreExcel(SEMANA, 2) === 'nomina-S36-2026-v2.xlsx', Des.nombreExcel(SEMANA, 2));
+
+  // Una pestaña de Excel no admite / ni mas de 31 caracteres: si el nombre pasa tal
+  // cual, Excel declara el archivo dañado y no dice por que.
+  check('un nombre de hoja invalido se sanea', Exc.nombreHoja('a/b:c*d', 0) === 'a-b-c-d',
+    Exc.nombreHoja('a/b:c*d', 0));
+  check('y uno larguisimo se recorta a 31', Exc.nombreHoja('x'.repeat(60), 0).length === 31);
 })();
 
 // ═══════════════════ 8 · CONTRATO CON auth/suite-login ═══════════════════
@@ -396,7 +556,7 @@ function arrancarRender() { (async function () {
   // de que corra el script de arranque, que pide version.json.
   w.fetch = () => Promise.resolve({ json: () => Promise.resolve({ version: 'V1.00' }) });
 
-  for (const f of ['catalogo.js', 'logica.js', 'despacho.js', 'indice.js', 'nom-auth.js', 'nom-client.js', 'nom-resolver.js', 'app.js']) {
+  for (const f of ['catalogo.js', 'logica.js', 'despacho.js', 'excel.js', 'indice.js', 'nom-auth.js', 'nom-client.js', 'nom-resolver.js', 'app.js']) {
     w.eval(fs.readFileSync(path.join(MOD, 'js', f), 'utf8'));
   }
 
@@ -672,12 +832,22 @@ function arrancarRender() { (async function () {
   // botón se prueba, no solo la función que arma el texto.
   check('el cierre pinta el archivo para el despacho', /Archivo para el despacho/.test(d.getElementById('p3').textContent));
   check('con su botón de descargar', !!d.getElementById('bajar-archivo'));
+  check('y con el de la previa en Excel, para revisarla antes de mandarla',
+    !!d.getElementById('bajar-excel'));
   const filasPrev = d.querySelectorAll('#p3 .tabla-wrap tbody tr');
   check('la vista previa trae un renglón por persona más el total',
     filasPrev.length === est.personas.filter(p => !p.inactivo || (p.declaraciones || []).length).length + 1,
     String(filasPrev.length));
+  // La vista previa enseña la instrucción TAL CUAL va en el archivo, con la convención
+  // de Magaly: la excepción en la línea de su persona. Antes este assert exigía "días
+  // trabajados" en el primer renglón, porque la columna hablaba siempre; ahora eso
+  // sería exigir el ruido que se quitó a propósito. Lo que se fija es lo que importa:
+  // que la excepción de verdad llegue a la pantalla.
   check('y cada renglón enseña la instrucción, que es lo que se revisa',
-    /días trabajados/.test(filasPrev[0].textContent), filasPrev[0].textContent.slice(0, 80));
+    /PPA/.test(filasPrev[0].textContent), filasPrev[0].textContent.slice(0, 80));
+  check('y la instrucción de la vista previa es la MISMA que va al archivo',
+    filasPrev[0].textContent.indexOf(Des.filas(est)[0].instruccion) >= 0,
+    Des.filas(est)[0].instruccion);
 
   // ── Sin enviar ──
   check('una semana sin enviar lo dice', /no se ha enviado/.test(d.getElementById('p3').textContent));

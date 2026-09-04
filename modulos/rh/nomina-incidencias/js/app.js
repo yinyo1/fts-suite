@@ -80,16 +80,33 @@
     setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
   }
 
+  // Lo mismo, pero para bytes. El .xlsx no es texto: si se le pasa a Blob como
+  // cadena, el navegador lo re-codifica en UTF-8 y Excel abre un archivo corrupto.
+  function descargarBytes(nombre, bytes) {
+    var blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = nombre;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+  }
+
   // El archivo con lo que hay AHORA en pantalla. La versión que le toca es la
   // siguiente a la del último envío: así el nombre del archivo distingue la
   // corrección del original en la carpeta de descargas de Ulises.
   function archivoDeAhora() {
     var v = (Number(envio().version) || 0) + 1;
     var ses = window.NomAuth.getSession() || {};
+    var meta = { version: v, actor: ses.user || ses.nombre || 'RH',
+                 fecha: new Date().toISOString().slice(0, 16).replace('T', ' ') };
+    // El CSV y el Excel salen del MISMO estado y la MISMA meta, en la misma llamada.
+    // Si se armaran en dos momentos, una captura entre uno y otro los separaría y el
+    // Excel que Magaly revisa no sería el archivo que se manda.
     return { version: v,
              nombre: Des.nombreArchivo(S.semana, v),
-             texto: Des.texto(S, { version: v, actor: ses.user || ses.nombre || 'RH',
-                                   fecha: new Date().toISOString().slice(0, 16).replace('T', ' ') }) };
+             texto: Des.texto(S, meta),
+             nombre_excel: Des.nombreExcel(S.semana, v),
+             hojas: Des.hojas(S, meta) };
   }
 
   // Aviso de guardado. Se pinta ANTES de saber el resultado solo como "guardando";
@@ -971,6 +988,12 @@
       descargar(a.nombre, a.texto);
       aviso('ok', 'Archivo descargado: ' + a.nombre);
     });
+    var bX = $('bajar-excel');
+    if (bX) bX.addEventListener('click', function () {
+      var a = archivoDeAhora();
+      descargarBytes(a.nombre_excel, window.NomExcel.libro(a.hojas));
+      aviso('ok', 'Previa en Excel: ' + a.nombre_excel);
+    });
     // Lo que se ENVIÓ y lo que hay AHORA son dos archivos distintos en cuanto
     // alguien corrige un día. Por eso son dos botones y no uno: el de arriba baja
     // el congelado, tal como salió; el de abajo baja lo de este momento.
@@ -1041,8 +1064,10 @@
     var h = '<div class="box" style="background:var(--card)"><h4>Archivo para el despacho</h4>' +
       '<div style="font-size:13px;color:var(--muted2);line-height:1.6;margin-bottom:11px">' +
       'Un renglón por persona con la instrucción de qué hacerle. ' +
-      '<b>' + F.length + ' renglones</b> y ' + Des.COLUMNAS.length + ' columnas, con los nombres de concepto ' +
-      'que Ulises ya lee en CONTPAQi. Aquí abajo se ven las columnas que se leen; el archivo trae todas.' +
+      '<b>' + F.length + ' renglones</b> y ' + Des.COLUMNAS.length + ' columnas: ' +
+      Des.COLUMNAS.map(function (c) { return c.t.toLowerCase(); }).join(', ') + '. ' +
+      'El renglón de quien tiene una semana normal va <b>en blanco</b>, igual que en la lista ' +
+      'de raya de Magaly: solo se escribe lo que hay que hacer, con su cantidad y su concepto.' +
       '</div>';
 
     h += '<div class="tabla-wrap" style="margin-bottom:11px"><table><thead><tr>' +
@@ -1063,7 +1088,14 @@
       '<td><b>' + esc(T.ppa) + '</b></td><td></td></tr>';
     h += '</tbody></table></div>';
 
-    h += '<div class="mact"><button class="btn pri" id="bajar-archivo">Descargar el archivo (.csv)</button></div>';
+    // Dos botones, dos usos. El .csv es EL ARCHIVO: es lo que se congela al enviar y
+    // lo que el despacho captura. El .xlsx es la VISTA para revisarlo antes de
+    // mandarlo —se lee mucho mejor que un CSV— y trae una segunda pestaña con el
+    // detalle por concepto para quien quiera ver de dónde salió cada instrucción.
+    h += '<div class="mact">' +
+      '<button class="btn pri" id="bajar-archivo">Descargar el archivo (.csv)</button>' +
+      '<button class="btn" id="bajar-excel">Ver la previa en Excel (2 hojas)</button>' +
+      '</div>';
     return h + '</div>';
   }
 
