@@ -588,3 +588,33 @@ table.rejilla tr.capturada > td:first-child { box-shadow: inset 3px 0 0 var(--x-
 .modal .modos label:has(input:checked) { border-color: var(--acento);
                                          box-shadow: inset 0 0 0 1px var(--acento); }
 .modal .modos .nota { display: block; margin: 4px 0 0; }
+
+/* ── El botón de pegar, donde se ve ─────────────────────────────────────
+ * Estaba al final de trece columnas. Medido: quedaba en x=1473 con la ventana
+ * en 1440 px — FUERA de la pantalla, y había que arrastrar la tabla 218 px
+ * para dar con él. Existía y Playwright lo alcanzaba (por eso las pruebas
+ * pasaban), pero una persona no lo encontraba.
+ *
+ * Ahora es la PRIMERA columna y se queda fija al desplazar en horizontal, que
+ * es donde además se lee bien: se señala el renglón donde empieza el pegado. */
+table.rejilla th.acc-ini, table.rejilla td.acc-ini {
+  position: sticky; left: 0; z-index: 2; width: 1%; white-space: nowrap;
+  padding: 2px 4px; text-align: center; background: var(--fondo);
+  box-shadow: 1px 0 0 var(--linea2);
+}
+table.rejilla th.acc-ini { background: var(--x-cab); color: var(--x-cab-tx); }
+table.rejilla tr.capturada > td.acc-ini { background: var(--x-fila-ok); }
+table.rejilla tr.total > td.acc-ini { background: var(--x-total); }
+.ico.pegar { color: var(--acento); font-weight: 700; }
+.ico.pegar:hover { background: var(--papel); }
+
+@media (max-width: 719px) {
+  /* En tarjetas no hay columnas que se salgan, así que el botón deja de ser
+     una celda fija y pasa a ser el encabezado de la tarjeta: la acción de
+     "pegar a partir de aquí" sigue apuntando a este renglón. */
+  table.rejilla.tarjetas td.acc-ini { position: static; width: auto;
+        display: flex; justify-content: flex-end; background: transparent;
+        box-shadow: none; padding: 4px 10px 0; }
+  table.rejilla.tarjetas td.acc-ini::before { content: none; }
+  table.rejilla.tarjetas tr.total > td.acc-ini { display: none; }
+}
