@@ -51,6 +51,15 @@
   //   'vac'   → vacaciones y festivos (día pagado, no trabajado)
   //   'falta' → faltas, permisos, incapacidad
   //   null    → no consume días de la semana (dinero, descuentos, descanso trabajado)
+  // ── ¿El monto del bono es lo que le llega, o lo que se carga a la nómina? ──
+  // Ulises captura en CONTPAQi el BRUTO. Cuando el bono va libre, hace el cálculo
+  // inverso para que al empleado le llegue exactamente lo prometido: $1,000 libres
+  // se capturan como $1,271.62 o $1,353.33 según la tasa marginal de esa persona.
+  // Si RH no dice cuál de los dos es, Ulises adivina y el cruce no puede comparar:
+  // una diferencia legítima del ISR se ve idéntica a un error de dedo.
+  var IMPUESTOS = ['Libre de impuestos (le llega el monto completo)', 'Con ISR a cargo del empleado'];
+  var LIBRE = IMPUESTOS[0];
+
   var CATALOGO = {
     dias: {
       titulo: 'Días y ausencias',
@@ -72,9 +81,9 @@
       titulo: 'Dinero adicional',
       ayuda: 'Percepciones que no son el sueldo de la semana. Todas piden fuente de pago.',
       items: {
-        bono_proyecto:    { label: 'Bono de proyecto', multi: true, fuente: true, rubro: true, campos: [['monto', 'Monto', 'num'], ['so', 'Proyecto', 'so']] },
-        bono_productividad: { label: 'Bono de productividad', fuente: true, campos: [['monto', 'Monto', 'num'], ['motivo', 'Motivo', 'txt']] },
-        bono_condicionado:  { label: 'Bono condicionado',     fuente: true, campos: [['monto', 'Monto', 'num'], ['motivo', 'Condición', 'txt']] },
+        bono_proyecto:    { label: 'Bono de proyecto', multi: true, fuente: true, rubro: true, campos: [['monto', 'Monto', 'num'], ['so', 'Proyecto', 'so'], ['isr', 'Impuestos', IMPUESTOS]] },
+        bono_productividad: { label: 'Bono de productividad', fuente: true, campos: [['monto', 'Monto', 'num'], ['motivo', 'Motivo', 'txt'], ['isr', 'Impuestos', IMPUESTOS]] },
+        bono_condicionado:  { label: 'Bono condicionado',     fuente: true, campos: [['monto', 'Monto', 'num'], ['motivo', 'Condición', 'txt'], ['isr', 'Impuestos', IMPUESTOS]] },
         prima_vacacional: { label: 'Prima vacacional', fuente: true, campos: [['monto', 'Monto', 'num']] },
         aguinaldo:        { label: 'Aguinaldo',        fuente: true, campos: [['monto', 'Monto', 'num']] },
         fondo_ahorro:     { label: 'Fondo de ahorro',  fuente: true, campos: [['monto', 'Monto', 'num']] },
@@ -138,6 +147,11 @@
     JOURNALS: JOURNALS,
     PUESTOS_SUPERVISION: PUESTOS_SUPERVISION,
     CATALOGO: CATALOGO,
+    // Se exportan para que el generador del despacho y el gate hablen del MISMO
+    // texto. Repetir el literal en tres archivos es la forma de que un dia digan
+    // cosas distintas y nadie lo note.
+    IMPUESTOS: IMPUESTOS,
+    LIBRE: LIBRE,
     meta: meta,
     rubroBono: rubroBono,
     tiposDeclarables: tiposDeclarables,

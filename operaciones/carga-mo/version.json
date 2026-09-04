@@ -1,10 +1,15 @@
 {
-  "version": "V1.00",
+  "version": "V1.01",
   "fecha": "2026-09-04",
   "modulo": "operaciones/carga-mo",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "ambito": "El CONTADOR es SOLO de este modulo y arranca en V1.00 aunque el modulo lleve meses en produccion: antes se versionaba con una cadena de build (la ultima fue 20260904-cmo-cruce-rh) y esa numeracion no se puede continuar. rh/nomina-incidencias, finanzas y comercial/machote usan el MISMO esquema con contadores PROPIOS — que aqui diga V1.00 y alla V1.16 es lo correcto, no un desfase.",
   "historial": [
+    {
+      "version": "V1.01",
+      "pr": null,
+      "nota": "Cinco fuentes de falsos positivos, medidas contra la SEM 36 real (30 personas de RH contra 26 renglones de CONTPAQi): 21 hallazgos, 4 de ellos bloqueando el envio de una nomina correcta. Quedaron 15, con UN solo bloqueo y real. (1) El MAPA decia 'Descuento DE prestamo' y 'Compensacion de deuda' cuando el catalogo dice 'Descuento POR prestamo' y 'Compensa contra deuda': dos conceptos que NUNCA se cruzaron. Una preposicion apago un control entero sin un solo error. (2) El resolver solo exponia percepciones, asi que un descuento capturado del lado de las deducciones se daba por no capturado. Ahora expone las dos mitades del renglon. (3) La prima vacacional se reclamaba como 'movimiento que RH no pidio' siendo el 25% de ley (LFT art. 80) que CONTPAQi paga solo: ahora se verifica el porcentaje en vez de exigir que Magaly declare una obligacion legal. (4) El bono libre de impuestos: RH escribe lo que le LLEGA al empleado y Ulises captura el BRUTO; exigir que coincidieran convertia el trabajo bien hecho en 7 hallazgos. (5) Los ajustes de dias no se pueden verificar —la lista de raya no trae ni columna de dias ni sueldo diario— y decirlo es mas util que afirmar que no se capturaron. Ademas: los externos por honorarios se cruzan contra la tabla del trio por el id de Odoo, que el archivo de RH ya trae, en vez de pedir un codigo de CONTPAQi que por definicion no existe; y Esteban (32) se agrego a esa tabla, donde faltaba."
+    },
     {
       "version": "V1.00",
       "pr": null,
