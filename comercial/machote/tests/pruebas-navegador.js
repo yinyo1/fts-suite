@@ -175,6 +175,11 @@ let ok = 0, mal = 0;
 
   await paso('el multiplicador de horas extras es mano de obra × 2', async () => {
     const x = await p.evaluate(() => window.MachoteCalc.margenes({ margenes: { mano_obra: 2.5 } }).extra);
+    /* Y con la sección pisando al machote, el de horas extras sigue la de la
+     * sección: es mano de obra × 2, sea de donde sea que salga. */
+    const y = await p.evaluate(() => window.MachoteCalc.margenes(
+      { margenes: { mano_obra: 2.5 } }, { margenes: { mano_obra: 3 } }).extra);
+    if (y !== 6) throw new Error('con sección debía dar 6, dio ' + y);
     if (x !== 5) throw new Error('extra = ' + x);
   });
 
@@ -321,8 +326,9 @@ let ok = 0, mal = 0;
     await p.click('[data-esc="con_utilidad"]'); await p.waitForTimeout(200);
     await hoja('Adecuación');
     const antes = await p.textContent('.fija .mono');
-    await p.fill('[data-cel="margenes.materiales"]', '3.2');
-    await p.dispatchEvent('[data-cel="margenes.materiales"]', 'input');
+    const celMat = '[data-cel^="mg:"][data-cel$=":materiales"]';
+    await p.fill(celMat, '3.2');
+    await p.dispatchEvent(celMat, 'input');
     await p.waitForTimeout(250);
     const desp = await p.textContent('.fija .mono');
     if (antes === desp) throw new Error('no se movió: ' + antes);
@@ -1650,6 +1656,130 @@ let ok = 0, mal = 0;
       throw new Error('perdió la especificación: ' + r.r[0].descripcion);
     if (r.r[2].tipo !== 'Servicios') throw new Error('"Mano de obra" no salió Servicios');
     console.log('    encabezado fuera · precio nuevo · unidad de "1 pza" · especificación dentro');
+  });
+
+  // ── Los multiplicadores, por sección ─────────────────────────────────
+  await paso('mover un multiplicador en una sección NO toca a las demás', async () => {
+    /* Lo que reportó Esteban: "si modifico uno, se modifican en TODAS las
+     * demas secciones". La causa era que vivían en `m.margenes`, uno solo
+     * para toda la cotización. Ahora cada sección tiene los suyos.
+     *
+     * Se mide en el ALMACÉN, no en la pantalla: que otra hoja pinte otro
+     * número podría ser un repintado perezoso; que el archivo tenga dos
+     * valores distintos no se puede fingir. */
+    await ir('#/m/M-1041');
+    const hojas = await p.evaluate(() =>
+      [...document.querySelectorAll('.pestana[data-hoja]')].map(x => x.dataset.hoja));
+    const secs = hojas.filter(h => h !== 'desglose');
+    if (secs.length < 2) throw new Error('el machote de prueba no tiene dos secciones');
+
+    // Sección 1: materiales a 3.9. La pestaña 0 es el DESGLOSE.
+    await p.locator('.pestana').nth(1).click(); await p.waitForTimeout(300);
+    const cel = '[data-cel^="mg:"][data-cel$=":materiales"]';
+    await p.fill(cel, '3.9');
+    await p.dispatchEvent(cel, 'change');
+    await p.waitForTimeout(900);
+
+    // Sección 2: lo que muestra la pantalla
+    await p.locator('.pestana').nth(2).click(); await p.waitForTimeout(350);
+    const enDos = await p.inputValue(cel);
+    if (Number(enDos) === 3.9)
+      throw new Error('la sección 2 se movió con la 1: ' + enDos);
+
+    // Y el almacén, que es la prueba dura
+    const guardado = await p.evaluate(() => {
+      const d = JSON.parse(localStorage.getItem('fts_machote_v1'));
+      const m = d.machotes.find(x => x.id === 'M-1041');
+      return m.secciones.map(s => (s.margenes || {}).materiales === undefined
+        ? 'hereda' : s.margenes.materiales);
+    });
+    if (Number(guardado[0]) !== 3.9)
+      throw new Error('la sección 1 no guardó lo suyo: ' + JSON.stringify(guardado));
+    if (Number(guardado[1]) === 3.9)
+      throw new Error('la sección 2 quedó con el mismo valor: ' + JSON.stringify(guardado));
+    console.log('    sección 1 → 3.9 · sección 2 → ' + enDos + ' · almacén ' + JSON.stringify(guardado));
+  });
+
+  await paso('las comisiones SÍ son de toda la cotización', async () => {
+    /* La otra mitad de lo que pidió: "lo unico compartido es la comision de
+     * fts y del usuario". Una prueba que sólo mirara la separación dejaría
+     * pasar que se separara TAMBIÉN esto, que es justo lo que no debe pasar. */
+    await ir('#/m/M-1041');
+    await p.locator('.pestana').nth(1).click(); await p.waitForTimeout(300);
+    await p.fill('[data-cel="comision_fts"]', '9');
+    await p.dispatchEvent('[data-cel="comision_fts"]', 'change');
+    await p.waitForTimeout(900);
+    await p.locator('.pestana').nth(2).click(); await p.waitForTimeout(350);
+    const enDos = await p.inputValue('[data-cel="comision_fts"]');
+    if (Number(enDos) !== 9)
+      throw new Error('la comisión no se compartió entre secciones: ' + enDos);
+    const guardado = await p.evaluate(() => {
+      const d = JSON.parse(localStorage.getItem('fts_machote_v1'));
+      return d.machotes.find(x => x.id === 'M-1041').comision_fts;
+    });
+    if (Math.abs(Number(guardado) - 0.09) > 1e-9)
+      throw new Error('en el almacén quedó ' + guardado + ', se esperaba 0.09');
+    console.log('    9 % en las dos secciones · almacén 0.09, una sola vez');
+  });
+
+  await paso('el precio de una sección se mueve con SU multiplicador', async () => {
+    /* Que el número quede guardado aparte no basta: tiene que llegar al
+     * precio de esa sección y no al de la otra. Es la diferencia entre
+     * separar el campo y separar el cálculo. */
+    const r = await p.evaluate(() => {
+      const C = window.MachoteCalc;
+      const base = { moneda: 'MXN', margenes: { materiales: 2, servicios: 1.7, mano_obra: 2.5, programador: 4.4 } };
+      const part = () => ([{ qty: 1, pu: 100, tipo: 'Materiales', moneda: 'MXN' }]);
+      const m = Object.assign({}, base, { secciones: [
+        { id: 'a', nombre: 'A', margenes: { materiales: 3 }, mo: [], partidas: part() },
+        { id: 'b', nombre: 'B', mo: [], partidas: part() }
+      ] });
+      const c = C.calcular(m);
+      return { a: c.secciones[0].ventaMat, b: c.secciones[1].ventaMat, total: c.ventaMat };
+    });
+    if (r.a !== 300) throw new Error('la sección con 3 debía vender 300, vendió ' + r.a);
+    if (r.b !== 200) throw new Error('la sección que hereda 2 debía vender 200, vendió ' + r.b);
+    if (r.total !== 500) throw new Error('el total no suma las dos: ' + r.total);
+    console.log('    A (3) → 300 · B (hereda 2) → 200 · total 500');
+  });
+
+  await paso('una sección sin multiplicadores propios hereda los del machote', async () => {
+    /* Los machotes capturados ANTES de este cambio no tienen `margenes` en la
+     * sección. Si heredar fallara, todos mostrarían la plantilla de golpe y
+     * cambiarían de precio solos. Es la prueba de que no hay que migrar nada. */
+    const r = await p.evaluate(() => {
+      const C = window.MachoteCalc;
+      const viejo = { margenes: { materiales: 1.67, servicios: 1.7, mano_obra: 2.5, programador: 4.4 } };
+      const mg = C.margenes(viejo, { nombre: 'sin margenes propios' });
+      return { mat: mg.materiales, ser: mg.servicios };
+    });
+    if (r.mat !== 1.67) throw new Error('no heredó materiales: ' + r.mat);
+    if (r.ser !== 1.7) throw new Error('no heredó servicios: ' + r.ser);
+    console.log('    machote 1.67/1.7 → la sección sin propios muestra 1.67/1.7');
+  });
+
+  await paso('una sección nueva nace completa y con sus multiplicadores', async () => {
+    /* La pestaña `+` armaba la sección a mano y la creaba VACÍA: sin los diez
+     * renglones de mano de obra ni los treinta de materiales. Se descubrió al
+     * hacer los multiplicadores por sección. */
+    await ir('#/m/M-1041');
+    // 900 ms, no 400: el autoguardado espera medio segundo desde la última
+    // tecla. Con 400 el archivo todavía no existía y el `JSON.parse` reventaba
+    // contra un null — la prueba fallaba por la espera, no por la sección.
+    await p.locator('.pestana.mas').click(); await p.waitForTimeout(900);
+    const r = await p.evaluate(() => {
+      const crudo = localStorage.getItem('fts_machote_v1');
+      if (!crudo) throw new Error('el autoguardado no alcanzó a escribir');
+      const d = JSON.parse(crudo);
+      const m = d.machotes.find(x => x.id === 'M-1041');
+      const s = m.secciones[m.secciones.length - 1];
+      return { mo: (s.mo || []).length, part: (s.partidas || []).length,
+               mg: s.margenes ? s.margenes.materiales : null };
+    });
+    if (r.mo !== 10) throw new Error('nació con ' + r.mo + ' renglones de mano de obra, no 10');
+    if (r.part !== 30) throw new Error('nació con ' + r.part + ' partidas, no 30');
+    if (r.mg === null) throw new Error('nació sin multiplicadores propios');
+    console.log('    10 de mano de obra · 30 partidas · materiales ' + r.mg);
   });
 
   // ── El cliente, desde Odoo ───────────────────────────────────────────

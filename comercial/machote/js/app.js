@@ -40,7 +40,7 @@
    * 2026-09-03 (por instrucción de Esteban), pero lleva el suyo aparte y va en
    * V1.00. Planeación sigue en `2.4.1` y el kiosko sólo con cadena de build;
    * a esos no se propaga. */
-  const VERSION = 'V1.14';
+  const VERSION = 'V1.15';
   const $  = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
   const clon = (x) => JSON.parse(JSON.stringify(x));
@@ -199,6 +199,15 @@
   function setPath(m, path, val) {
     const p = path.split(':');
     if (p[0] === 'nom') { const s = m.secciones.find(x => x.id === p[1]); if (s) s.nombre = val; return; }
+    /* Los multiplicadores son DE LA SECCIÓN, no del machote: `mg:<id>:<clave>`.
+     * Antes se escribían en `m.margenes` y por eso mover uno en una sección
+     * los movía en todas. Lo único que sigue siendo del machote entero son las
+     * dos comisiones, FTS y cliente. */
+    if (p[0] === 'mg') {
+      const s = m.secciones.find(x => x.id === p[1]); if (!s) return;
+      if (!s.margenes) s.margenes = {};
+      s.margenes[p[2]] = sanea(val); return;
+    }
     if (p[0] === 's') {
       const s = m.secciones.find(x => x.id === p[1]); if (!s) return;
       const arr = p[2] === 'mo' ? s.mo : s.partidas;
@@ -490,8 +499,18 @@
       const b = e.target.closest('[data-hoja]');
       if (b) { ST.hoja = b.dataset.hoja; return vMachote(id); }
       if (e.target.closest('[data-nueva]')) {
-        m.secciones.push({ id: 's-' + Date.now(), nombre: 'SECCION ' + (m.secciones.length + 1), mo: [], partidas: [] });
-        ST.hoja = m.secciones[m.secciones.length - 1].id; return vMachote(id);
+        /* Por el motor, no a mano. La sección que armaba esta línea nacía
+         * VACÍA —sin los diez renglones de mano de obra ni los treinta de
+         * materiales— cuando el machote real tiene exactamente diez por
+         * sección; y ahora, además, tiene que nacer con sus propios
+         * multiplicadores. Se descubrió al hacerlos por sección.
+         *
+         * Arranca con los del machote, que es lo que se ve en las demás, y
+         * desde ahí se mueve sin tocar a nadie. */
+        const base = Object.assign({}, C.MARGENES_PLANTILLA, m.margenes || {});
+        const nueva = C.seccionNueva('SECCIÓN ' + (m.secciones.length + 1), m.moneda, base);
+        m.secciones.push(nueva);
+        ST.hoja = nueva.id; tocado(); return vMachote(id);
       }
     };
     pintarHoja(m);
@@ -552,7 +571,10 @@
   function hojaSeccion(m, s, c) {
     const cs = c.secciones.find(x => x.id === s.id) || {};
     const idx = m.secciones.findIndex(x => x.id === s.id);
-    const mg = c.margenes;
+    // Los de ESTA sección, resueltos por el motor. No `c.margenes`, que es la
+    // capa de arranque del machote y era lo que hacía que las cuatro cajas se
+    // vieran iguales en todas las hojas.
+    const mg = cs.margenes || c.margenes;
 
     // Bloque de encabezado: las once filas de la izquierda y la tabla de
     // márgenes de la derecha, tal como están en la hoja.
@@ -572,12 +594,17 @@
       ['% Utilidad Obtenido', pc(cs.margenObtenido)]
     ].map(r => '<tr><td class="et">' + esc(r[0]) + '</td><td class="vl mono calc">' + r[1] + '</td></tr>').join('');
 
+    const mgp = 'mg:' + s.id + ':';
     const der = [
-      ['Programador', 'margenes.programador', mg.programador],
-      ['Mano de obra', 'margenes.mano_obra', mg.mano_obra],
-      ['Materiales', 'margenes.materiales', mg.materiales],
-      ['Servicios', 'margenes.servicios', mg.servicios]
+      ['Programador', mgp + 'programador', mg.programador],
+      ['Mano de obra', mgp + 'mano_obra', mg.mano_obra],
+      ['Materiales', mgp + 'materiales', mg.materiales],
+      ['Servicios', mgp + 'servicios', mg.servicios]
     ].map(r => '<tr><td class="et">' + r[0] + '</td><td>' + celNum(r[1], r[2], 'w70') + '</td></tr>').join('') +
+      // Las comisiones SÍ son del machote entero: se pactan una vez para la
+      // cotización. Por eso siguen sin el prefijo de sección, y por eso se
+      // dice en la pantalla — dos tablas pegadas con reglas distintas, si no
+      // se explica, se leen como una sola.
       '<tr><td class="et">Comision FTS</td><td>' + celPct('comision_fts', m.comision_fts) + '</td></tr>' +
       '<tr><td class="et">Comision CLIENTE</td><td>' + celPct('comision_cliente', m.comision_cliente) + '</td></tr>';
 
@@ -604,7 +631,9 @@
       '</tbody></table></div>' +
       '<div class="blk"><table class="hoja2"><thead><tr><th>Concepto</th><th>Margen de utilidad</th></tr></thead>' +
       '<tbody>' + der + '</tbody></table>' +
-      '<div class="tiny nota">Horas extras = mano de obra × 2 = <strong>' + mg.extra + '</strong>. No se captura, igual que en el Excel.</div>' +
+      '<div class="tiny nota">Los cuatro multiplicadores son <strong>de esta sección</strong>; ' +
+      'las dos comisiones son de toda la cotización.<br>' +
+      'Horas extras = mano de obra × 2 = <strong>' + mg.extra + '</strong>. No se captura, igual que en el Excel.</div>' +
       '</div></div>';
 
     // COSTO MANO DE OBRA — los diez renglones siempre presentes, en sus tres grupos.
@@ -1181,7 +1210,8 @@
         '<div class="wg ' + cls + '"><strong>' + esc(h.titulo) + '</strong>' +
         '<div class="tiny oc">' + esc(h.area) + '</div><div>' + esc(h.detalle) + '</div>' +
         (h.items.length ? '<ul class="tiny">' + h.items.map(i => '<li>' + esc(i) + '</li>').join('') + '</ul>' : '') +
-        '<div class="btnrow"><button class="btn" data-goto="' + esc((h.destino && h.destino.tab) || '') + '">Ir a arreglarlo</button></div>' +
+        '<div class="btnrow"><button class="btn" data-goto="' + esc((h.destino && h.destino.tab) || '') + '"' +
+        ' data-sec="' + esc((h.destino && h.destino.seccion) || '') + '">Ir a arreglarlo</button></div>' +
         '</div>').join('');
 
     $('#vista').innerHTML = '<div class="pad">' +
@@ -1195,7 +1225,12 @@
 
     $$('[data-goto]').forEach(b => b.onclick = () => {
       const t = b.dataset.goto;
-      ST.hoja = (t === 'secc' && m.secciones[0]) ? m.secciones[0].id : 'desglose';
+      // La regla ya sabe EN QUÉ sección está el problema: se abre esa, no la
+      // primera. Con los multiplicadores por sección, "la primera" es casi
+      // siempre la equivocada. Si no la dice, se cae a la primera como antes.
+      const pedida = b.dataset.sec && m.secciones.some(x => x.id === b.dataset.sec)
+        ? b.dataset.sec : (m.secciones[0] && m.secciones[0].id);
+      ST.hoja = (t === 'secc' && pedida) ? pedida : 'desglose';
       location.hash = '#/m/' + id;
     });
   }

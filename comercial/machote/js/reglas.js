@@ -38,19 +38,43 @@
   const usada = (l) => C.usadaPartida(l);
   const tipoDe = (m) => (G.DEMO.TIPOS_PROYECTO.find(t => t.id === (m.diagnostico || {}).tipo) || null);
 
+  /* La primera sección donde un multiplicador cumple `mal`. Sirve para que el
+   * botón "Ir a arreglarlo" abra la hoja correcta: desde que los
+   * multiplicadores son por sección, mandar al DESGLOSE es mandar a una
+   * pantalla donde no está el campo que hay que tocar. */
+  function seccionConMargen(m, mal) {
+    const base = C.MARGENES_PLANTILLA;
+    const s = (m.secciones || []).find(sec => {
+      const mg = C.margenes(m, sec);
+      return Object.keys(base).some(k => mal(Number(mg[k]), base[k]));
+    });
+    return { tab: 'secc', seccion: s ? s.id : null };
+  }
+
   const REGLAS = [
 
     // ── Márgenes: la tabla que gobierna todo el precio ─────────────────────
     {
       // MACHOTE — programador 4,4 y mano de obra 2,5 no variaron en ninguno de
       // los 8 ejemplares leídos. Si alguien los mueve, es a propósito o es error.
-      destino: () => ({ tab: 'gen' }),
+      destino: (m) => seccionConMargen(m, (v, b) => Math.abs(v - b) > 0.001),
       id: 'margen-fuera-de-plantilla', severidad: 'blanda', area: 'Márgenes',
       titulo: 'Un multiplicador se movió de su valor de plantilla',
+      // Los multiplicadores son POR SECCIÓN, así que se revisan sección por
+      // sección y el hallazgo dice en cuál. Mirar sólo los del machote dejaba
+      // de ver justo el caso que importa: una sección movida y las demás no.
       evaluar: (m) => {
-        const mg = C.margenes(m), base = C.MARGENES_PLANTILLA;
-        const dif = Object.keys(base).filter(k => Math.abs(Number(mg[k]) - base[k]) > 0.001)
-          .map(k => k.replace('_', ' ') + ': ' + mg[k] + ' (plantilla ' + base[k] + ')');
+        const base = C.MARGENES_PLANTILLA;
+        const dif = [];
+        (m.secciones || []).forEach((s, i) => {
+          const mg = C.margenes(m, s);
+          Object.keys(base).forEach(k => {
+            if (Math.abs(Number(mg[k]) - base[k]) > 0.001) {
+              dif.push((s.nombre || ('Sección ' + (i + 1))) + ' · ' +
+                       k.replace('_', ' ') + ': ' + mg[k] + ' (plantilla ' + base[k] + ')');
+            }
+          });
+        });
         if (!dif.length) return null;
         const duros = dif.filter(d => /programador|mano obra/.test(d));
         return { detalle: duros.length
@@ -60,13 +84,20 @@
       }
     },
     {
-      destino: () => ({ tab: 'gen' }),
+      destino: (m) => seccionConMargen(m, (v) => v < 1),
       id: 'margen-invertido', severidad: 'dura', area: 'Márgenes',
       titulo: 'Un multiplicador está por debajo de 1',
       evaluar: (m) => {
-        const mg = C.margenes(m);
-        const mal = Object.keys(C.MARGENES_PLANTILLA).filter(k => Number(mg[k]) < 1)
-          .map(k => k.replace('_', ' ') + ' = ' + mg[k]);
+        const mal = [];
+        (m.secciones || []).forEach((s, i) => {
+          const mg = C.margenes(m, s);
+          Object.keys(C.MARGENES_PLANTILLA).forEach(k => {
+            if (Number(mg[k]) < 1) {
+              mal.push((s.nombre || ('Sección ' + (i + 1))) + ' · ' +
+                       k.replace('_', ' ') + ' = ' + mg[k]);
+            }
+          });
+        });
         return mal.length ? { detalle: 'Un multiplicador menor a 1 vende por debajo del costo.', items: mal } : null;
       }
     },

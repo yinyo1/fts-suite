@@ -105,7 +105,7 @@
   /** Una sección en blanco: los diez renglones de mano de obra con su tarifa
    *  de plantilla y las horas en cero, y `PARTIDAS_EN_BLANCO` renglones de
    *  materiales vacíos, listos para llenar hacia abajo como en el Excel. */
-  function seccionNueva(nombre, moneda) {
+  function seccionNueva(nombre, moneda, base) {
     moneda = moneda || 'MXN';
     const mo = ROLES.map(r => ({
       rol: r.id,
@@ -133,7 +133,11 @@
       });
     }
     return { id: 's-' + Date.now() + '-' + Math.round(Math.random() * 1e6),
-             nombre: nombre || 'SECCIÓN 1', mo: mo, partidas: partidas };
+             nombre: nombre || 'SECCIÓN 1',
+             // COPIA, no referencia: dos secciones que compartieran el mismo
+             // objeto volverían al bug que este cambio arregla, y en silencio.
+             margenes: Object.assign({}, MARGENES_PLANTILLA, base || {}),
+             mo: mo, partidas: partidas };
   }
 
   /** Un machote en blanco, con su hoja DESGLOSE (que siempre existe, no es una
@@ -170,7 +174,7 @@
       equipo_operaciones: EQUIPO_OPS_PLANTILLA(),
       equipo_cliente: [{ nombre: 'Contacto cliente 1', pct: 1 }],
       diagnostico: { tipo: '', respuestas: {} },
-      secciones: [seccionNueva('SECCIÓN 1', empresa.moneda)]
+      secciones: [seccionNueva('SECCIÓN 1', empresa.moneda, MARGENES_PLANTILLA)]
     };
   }
 
@@ -197,9 +201,25 @@
     return monto;
   }
 
-  /** Los cuatro multiplicadores vigentes del machote, ya resueltos. */
-  function margenes(m) {
-    const mg = Object.assign({}, MARGENES_PLANTILLA, m.margenes || {});
+  /** Los cuatro multiplicadores vigentes de UNA SECCIÓN, ya resueltos.
+   *
+   *  Se resuelven en tres capas: plantilla ← machote ← sección. Cada sección
+   *  manda sobre las de arriba, así que **mover un multiplicador en una
+   *  sección NO toca a las demás**: es una decisión de esa parte de la obra
+   *  —el suministro no se vende con el mismo multiplicador que la instalación—
+   *  y compartirlos hacía que corregir una sección moviera el precio de todas
+   *  sin que nadie lo viera.
+   *
+   *  Lo que sí es del machote entero son las dos COMISIONES (FTS y cliente):
+   *  esas se pactan una vez para la cotización, no por sección.
+   *
+   *  La capa del machote se queda como el valor de arranque, y es lo que
+   *  mantiene en pie a los machotes capturados ANTES de este cambio: una
+   *  sección sin `margenes` propios sigue leyendo los del machote y muestra
+   *  exactamente los mismos números que mostraba. Nada que migrar. */
+  function margenes(m, s) {
+    const mg = Object.assign({}, MARGENES_PLANTILLA,
+                             (m && m.margenes) || {}, (s && s.margenes) || {});
     // El multiplicador de horas extras no se captura: es el de mano de obra
     // por dos. En el Excel es literalmente =$F$3*2.
     mg.extra = num(mg.mano_obra) * 2;
@@ -208,9 +228,9 @@
 
   /** Una línea de mano de obra: tarifa × personas × horas.
    *  El costo es tridimensional. Tarifa × horas se queda corto. */
-  function costoMo(linea, m) {
+  function costoMo(linea, m, s) {
     const r = ROL[linea.rol];
-    const mg = margenes(m);
+    const mg = margenes(m, s);
     const sinTarifa = vacio(linea.pu);
     const pu = sinTarifa ? 0 : num(linea.pu);
     const costo = aMonedaDoc(pu * num(linea.personas) * num(linea.qty), linea.moneda, m);
@@ -232,8 +252,8 @@
    *  `SO11737` hay una partida "riel" de $200 marcada como Materiales con
    *  margen 1,5 escrito encima de la fórmula, que es de donde salían $20 de
    *  diferencia contra el archivo. Se respeta el valor pisado y se marca. */
-  function costoPartida(linea, m) {
-    const mg = margenes(m);
+  function costoPartida(linea, m, s) {
+    const mg = margenes(m, s);
     const sinPrecio = vacio(linea.pu);
     const pu = sinPrecio ? 0 : num(linea.pu);
     const costo = aMonedaDoc(pu * num(linea.qty), linea.moneda, m);
@@ -251,18 +271,19 @@
   }
 
   function totalSeccion(s, m) {
+    const mgSec = margenes(m, s);
     let costoMoTot = 0, ventaMo = 0, horas = 0, moSinTarifa = 0;
     let costoMat = 0, ventaMat = 0, sinPrecio = 0, sinTipo = 0, sinLink = 0, pisados = 0;
     const monedas = {};
 
     (s.mo || []).forEach(l => {
-      const c = costoMo(l, m);
+      const c = costoMo(l, m, s);
       costoMoTot += c.costo; ventaMo += c.conUtilidad; horas += c.horas;
       if (c.sinTarifa && (num(l.qty) > 0 || num(l.personas) > 0)) moSinTarifa++;
       if (l.moneda) monedas[l.moneda] = 1;
     });
     (s.partidas || []).forEach(l => {
-      const c = costoPartida(l, m);
+      const c = costoPartida(l, m, s);
       costoMat += c.costo; ventaMat += c.conUtilidad;
       if (!c.usada) return;
       if (c.sinPrecio) sinPrecio++;
@@ -274,6 +295,10 @@
 
     return {
       id: s.id, nombre: s.nombre,
+      // Los multiplicadores de ESTA sección. La pantalla los pinta de aquí, no
+      // de los del machote: si los resolviera por su cuenta habría dos lugares
+      // decidiendo el mismo número (§20 regla 4, un solo escritor).
+      margenes: mgSec,
       costoMo: costoMoTot, costoMat, costo: costoMoTot + costoMat,
       ventaMo, ventaMat, venta: ventaMo + ventaMat,
       horas, moSinTarifa, sinPrecio, sinTipo, sinLink, pisados,
@@ -296,6 +321,8 @@
 
   /** El cálculo completo. Única fuente de verdad. */
   function calcular(m) {
+    // Los del MACHOTE, que es la capa de arranque. Los que gobiernan el precio
+    // son los de cada sección, y viajan dentro de `secciones[i].margenes`.
     const mg = margenes(m);
     const secciones = (m.secciones || []).map(s => totalSeccion(s, m));
 
