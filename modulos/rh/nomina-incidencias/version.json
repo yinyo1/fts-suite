@@ -1,10 +1,15 @@
 {
-  "version": "V1.17",
-  "fecha": "2026-09-04",
+  "version": "V1.18",
+  "fecha": "2026-09-05",
   "modulo": "rh/nomina-incidencias",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "ambito": "El CONTADOR es solo de este modulo. finanzas, comercial/machote y operaciones/carga-mo usan el mismo esquema con contadores PROPIOS (ver sus version.json): que aqui vaya en V1.16 y carga-mo en V1.00 es lo correcto, no un desfase — son modulos distintos que avanzan por separado. operaciones/planeacion sigue en 2.4.1; kiosk y confirmar-horas solo con cadena de build.",
   "historial": [
+    {
+      "version": "V1.18",
+      "pr": null,
+      "nota": "Editar una declaracion ya capturada. Antes solo se podia QUITAR y volver a capturar: para cambiar un solo campo —la clasificacion de impuestos que estreno la V1.17, por ejemplo— habia que tirar el monto, el motivo y la fuente ya escritos y teclearlos de nuevo. Ahora cada renglon ofrece 'editar' junto a 'quitar', el formulario abre DEBAJO del renglon que se corrige (no al final de la lista, donde no se sabria cual se esta tocando), ese renglon queda resaltado, y los campos arrancan llenos con la derivacion de la fuente ya a la vista. Es el MISMO formulario del alta, no una copia: una sola definicion de como se captura cada tipo. El tipo queda FIJO al editar —cambiarlo no es corregir, es capturar otra cosa, y los campos de un tipo no significan lo mismo en otro. Se reemplaza en su lugar para no mandar el renglon corregido al final del archivo del despacho, solo hay un editor abierto a la vez, y en un bono de proyecto con varios renglones se conservan los que el formulario no captura."
+    },
     {
       "version": "V1.17",
       "pr": null,
