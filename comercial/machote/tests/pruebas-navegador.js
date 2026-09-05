@@ -1700,6 +1700,120 @@ let ok = 0, mal = 0;
     console.log('    sección 1 → 3.9 · sección 2 → ' + enDos + ' · almacén ' + JSON.stringify(guardado));
   });
 
+  await paso('el multiplicador de la sección llega a los RENGLONES, no sólo al total', async () => {
+    /* El bug de V1.15: `hojaSeccion` llamaba al motor por renglón SIN pasarle
+     * la sección, así que cada línea se calculaba con los multiplicadores del
+     * machote mientras el total de arriba ya usaba los de la sección. La hoja
+     * mostraba DOS VERDADES a la vez y ninguna prueba lo veía, porque todas
+     * miraban el motor o el almacén — nunca lo pintado.
+     *
+     * La comprobación es una invariante que no depende de qué multiplicador
+     * toca a cada renglón: **la suma de los renglones tiene que dar el total
+     * de su propia sección**. Si las líneas usan otro multiplicador, no cuadra. */
+    await ir('#/m/M-1041');
+    await p.locator('.pestana').nth(1).click(); await p.waitForTimeout(300);
+    const cel = '[data-cel^="mg:"][data-cel$=":materiales"]';
+    await p.fill(cel, '3.9');
+    await p.dispatchEvent(cel, 'change');
+    await p.waitForTimeout(600);
+
+    const r = await p.evaluate(() => {
+      const num = (t) => Number(String(t || '').replace(/[^0-9.-]/g, '')) || 0;
+      /* Las DOS tablas de la hoja son `.rejilla.tarjetas` —mano de obra y
+       * materiales—, así que la clase no distingue: hay que buscarlas por lo
+       * que contienen. Pedir sólo la clase agarraba la de mano de obra y la
+       * prueba se caía con "no encontré un renglón de Materiales". */
+      const tabla = (marca) => [...document.querySelectorAll('.rejilla')]
+        .find(t => t.querySelector('[data-cel*=":' + marca + ':"]'));
+
+      const leer = (t) => {
+        const filas = [...t.querySelectorAll('tbody tr')].filter(x => !x.classList.contains('total'));
+        const suma = filas.reduce((a, f) => {
+          const c = f.querySelector('[data-l="Precio con utilidad"]');
+          return a + (c ? num(c.textContent) : 0);
+        }, 0);
+        const tr = t.querySelector('tr.total');
+        const tot = tr.querySelector('[data-l="Con utilidad"]');
+        return { suma: Math.round(suma), total: Math.round(num(tot && tot.textContent)) };
+      };
+
+      // Un renglón de materiales con precio, para leer su multiplicador pintado.
+      const mat = tabla('partidas');
+      if (!mat) return { error: 'no está la tabla de materiales' };
+      let mult = null, linea = null;
+      for (const f of mat.querySelectorAll('tbody tr')) {
+        if (f.classList.contains('total')) continue;
+        const tipo = f.querySelector('[data-cel$=":tipo"]');
+        const pu = f.querySelector('[data-cel$=":pu"]');
+        const pt = f.querySelector('[data-l="Precio total"]');
+        const cu = f.querySelector('[data-l="Precio con utilidad"]');
+        if (tipo && tipo.value === 'Materiales' && pu && num(pu.value) > 0) {
+          const mg = f.querySelector('[data-l="Margen"] input');
+          mult = mg ? (mg.value || mg.placeholder) : null;
+          linea = { costo: num(pt.textContent), conUtilidad: num(cu.textContent) };
+          break;
+        }
+      }
+      return { mat: leer(mat), mult: mult, linea: linea };
+    });
+
+    if (r.error) throw new Error(r.error);
+    if (!r.linea) throw new Error('no encontré un renglón de Materiales con precio');
+    if (Number(r.mult) !== 3.9)
+      throw new Error('el renglón pinta el multiplicador ' + r.mult + ', la sección tiene 3.9');
+    const esperado = Math.round(r.linea.costo * 3.9);
+    if (Math.abs(r.linea.conUtilidad - esperado) > 2)
+      throw new Error('el renglón vende ' + r.linea.conUtilidad + ', con 3.9 debía dar ' + esperado);
+    if (Math.abs(r.mat.suma - r.mat.total) > 2)
+      throw new Error('los renglones suman ' + r.mat.suma + ' y el total dice ' + r.mat.total +
+                      ': la hoja muestra dos verdades');
+    console.log('    renglón × 3.9 = ' + r.linea.conUtilidad +
+                ' · renglones ' + r.mat.suma + ' = total ' + r.mat.total);
+  });
+
+  await paso('en mano de obra el multiplicador pintado también es el de la sección', async () => {
+    /* La otra tabla, por la misma vía y con el mismo descuido: `costoMo`
+     * también se llamaba sin la sección. Aquí el multiplicador se pinta como
+     * texto, no como campo, así que se lee distinto — y por eso se prueba
+     * aparte en vez de confiar en que "es lo mismo". */
+    await ir('#/m/M-1041');
+    await p.locator('.pestana').nth(1).click(); await p.waitForTimeout(300);
+    const cel = '[data-cel^="mg:"][data-cel$=":mano_obra"]';
+    await p.fill(cel, '3.1');
+    await p.dispatchEvent(cel, 'change');
+    await p.waitForTimeout(600);
+
+    const r = await p.evaluate(() => {
+      const num = (t) => Number(String(t || '').replace(/[^0-9.-]/g, '')) || 0;
+      const t = [...document.querySelectorAll('.rejilla')]
+        .find(x => x.querySelector('[data-cel*=":mo:"]'));
+      const filas = [...t.querySelectorAll('tbody tr')]
+        .filter(x => !x.classList.contains('total') && x.querySelector('[data-cel*=":mo:"]'));
+      const mults = [...new Set(filas.map(f => {
+        const c = f.querySelector('[data-l="Margen"]');
+        return c ? c.textContent.trim() : null;
+      }).filter(Boolean))];
+      const suma = filas.reduce((a, f) => {
+        const c = f.querySelector('[data-l="Precio con utilidad"]');
+        return a + (c ? num(c.textContent) : 0);
+      }, 0);
+      const tr = t.querySelector('tr.total');
+      const tds = tr ? [...tr.querySelectorAll('td')].map(x => num(x.textContent)) : [];
+      return { mults, suma: Math.round(suma), tot: Math.max.apply(null, tds.concat([0])) };
+    });
+
+    // Mano de obra 3.1 → horas extras 6.2, y el programador sigue en el suyo.
+    if (r.mults.indexOf('3.1') < 0)
+      throw new Error('ningún renglón pinta 3.1; pinta: ' + JSON.stringify(r.mults));
+    if (r.mults.indexOf('6.2') < 0)
+      throw new Error('las horas extras no siguieron a mano de obra (3.1 × 2 = 6.2): ' +
+                      JSON.stringify(r.mults));
+    if (Math.abs(r.suma - r.tot) > 2)
+      throw new Error('los renglones suman ' + r.suma + ' y el total dice ' + r.tot);
+    console.log('    multiplicadores pintados ' + JSON.stringify(r.mults) +
+                ' · renglones ' + r.suma + ' = total ' + r.tot);
+  });
+
   await paso('las comisiones SÍ son de toda la cotización', async () => {
     /* La otra mitad de lo que pidió: "lo unico compartido es la comision de
      * fts y del usuario". Una prueba que sólo mirara la separación dejaría

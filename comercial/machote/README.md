@@ -67,7 +67,7 @@ versión es peor que no tener indicador.
 | `js/pegar.js` | El pegado de tablas: separador, columnas y revisión previa. |
 | `js/almacen.js` | El autoguardado. UNA pieza entre la pantalla y donde viven los datos. |
 | `js/clientes.js` | El catálogo de clientes, leído de Odoo. Guarda el id, pinta el nombre. |
-| `tests/pruebas-navegador.js` | 109 pruebas de navegador. |
+| `tests/pruebas-navegador.js` | 111 pruebas de navegador. |
 
 ## Cómo se calcula el precio
 
@@ -117,6 +117,18 @@ El revisador también cambió de granularidad: los hallazgos de multiplicadores
 dicen **en qué sección**, y el botón «Ir a arreglarlo» abre esa hoja. Mientras
 fueron del machote daba igual; ahora mandar a la primera sección es mandar a la
 equivocada.
+
+⚠️ **El multiplicador de la sección tiene que llegar a los RENGLONES, no sólo al
+total.** En V1.15 no llegaba: la hoja pintaba cada línea llamando al motor **sin
+pasarle la sección**, así que el encabezado sumaba con el multiplicador de la
+sección y las líneas de abajo con el del machote. Dos verdades en la misma
+pantalla, y ninguna prueba lo veía porque todas miraban el motor o el almacén —
+nunca **lo pintado**.
+
+La prueba que lo fija no compara contra un número esperado, sino contra una
+**invariante**: *la suma de los renglones tiene que dar el total de su sección*.
+No necesita saber qué multiplicador le toca a cada renglón, y por eso sigue
+sirviendo cuando la tabla cambie.
 
 **Esto no es una preferencia de diseño: es lo que hace el machote real.** La
 tabla vive en `E1:F5` de **cada hoja de sección**, y ahí los cuatro
