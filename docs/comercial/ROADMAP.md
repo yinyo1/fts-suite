@@ -95,9 +95,23 @@ Cierran las preguntas abiertas de la auditoría (#130 §6) y son el alcance de l
 
 1. **Etapas: consolidar 12 → 6.** Prospecto · Por cotizar · Cotización enviada · Revisar · Ganado (`is_won`) · Perdido (lost). Las variantes por cliente ("Adiccionales Topo (Monty)", "Cot Enviada Mdlz") se absorben con **tag por cliente, no etapa**. "Proyecto Ganado - Con PO" se fusiona a Ganado.
    > Precisión de implementación (sesión 1): en Odoo "Perdido" **no es una etapa**, es `active=false` + `lost_reason_id`. Son **5 filas de `crm.stage` + el mecanismo lost**, no 6 etapas.
+   >
+   > **Corrección (sesión 3, 4-sep-2026): el mapeo vivo es de 5 etapas de pipeline, no de 4.** La corrida del 30-ago dejó 4 etapas con leads vivos porque fusionó *Qualified* en *Por cotizar* y archivó *Proyecto Ganado*. Montalvo confirmó que **Qualified tiene uso real de proceso**, así que vuelve como etapa propia, y la reversión de L3 devuelve *Proyecto Ganado* a activo. **Este es el mapeo sobre el que se construye la hoja del CRM 1.0** (`sequence` es el orden real en Odoo, no el orden en que se listan aquí):
+   >
+   > | # | Etapa | `stage_id` | `sequence` | Papel |
+   > |---|---|---:|---:|---|
+   > | 1 | Prospecto Lead | 17 | 0 | pipeline |
+   > | 2 | Lead Calificado/Por cotizar | 15 | 1 | pipeline |
+   > | 3 | Cotizacion Enviada | 5 | 2 | pipeline |
+   > | 4 | Qualified | 21 | 3 | pipeline |
+   > | 5 | Revisar | 18 | 9 | pipeline (bandeja de triage) |
+   > | — | Proyecto Ganado | 8 | 5 | **terminal ganado** (`is_won`), activo — no es pipeline vivo |
+   > | — | *Perdido* | — | — | **no es etapa**: `active=false` + `lost_reason_id` (los cancelados conservan `stage_id=9` archivados) |
+   >
+   > Son **5 etapas de pipeline + Ganado + el mecanismo lost**. *Proyecto Ganado* es la única fila con `is_won=true`. Las etapas fusionadas (3, 4, 12, 14, 20) siguen existiendo vacías; ninguna se borró.
 2. **Leads de ex-FTS: reasignar por cartera.** La hoja `06_Clientes-Usuarios` del tracker de SharePoint es la tabla de dueño por cuenta (`comercial/data/clientes-usuarios.csv`). Dueños **vigentes**: Aldo, Montalvo, Esteban. Dueños **no vigentes** en la hoja (Diego, Luis, Rissia) → reparto por cartera vigente (26-ago-2026): Aldo → Magnekon, GRUMA/Mission Foods (fuera de Hayward), Corporate USA, Bridgestone, ABB, GEPP, Budenheim · Montalvo → Nalco, Vertiv, Topo Chico, Johnson Controls/Clarios, Chemtreat, Quimitec, Mondelez, Forza · Ricardo → Hayward y Calbee · Esteban → Robert Barrera y corporativos. Sin dueño vigente ni cartera → etapa Revisar, `dndole` vacío. **Decisión reversible**: se corrige en la primera revisión semanal.
    > Hallazgo de la sesión 1: el universo real son **50 leads**, no 331 — los otros 281 están en CANCELADO o Ganado y los archivan L1/L3.
-3. **Los "Proyecto Ganado" activos se archivan** (won cerrado). La hoja solo muestra pipeline vivo.
+3. ~~**Los "Proyecto Ganado" activos se archivan** (won cerrado). La hoja solo muestra pipeline vivo.~~ **REVERTIDA (sesión 3, 4-sep-2026).** Los 532 leads que L3 archivó se desarchivaron; se quedan **activos** en la etapa *Proyecto Ganado*. Dos razones: (a) se desviaba de la convención de Odoo —lo ganado se queda activo, lo cancelado se archiva— y nosotros archivábamos ambos; (b) los ganados son el histórico que el asistente del machote ([#148](https://github.com/yinyo1/fts-suite/issues/148)) necesita consultar, y archivado los vuelve más difíciles de alcanzar. La intención original —que la hoja muestre solo pipeline vivo— sigue en pie, pero se resuelve en la vista, no en el estado global del registro: ver §5.4.
 4. **Login comercial separado de Finanzas: sí.** Usuarios iniciales: Esteban, Aldo, Montalvo, Ricardo, Pablo. Se construye en sesión 2 (ver §5.2).
 5. **Carpetas:** el módulo se queda en `comercial/` con `core/` y `crm/`. `app/` se reserva para una migración general del Suite.
 6. **`x_studio_dndole` se queda como selection en 1.0.** Se depura (fuera ex-FTS) y se agregan los valores faltantes de los 5 usuarios.
@@ -105,6 +119,16 @@ Cierran las preguntas abiertas de la auditoría (#130 §6) y son el alcance de l
 8. **Watchdog al equipo hasta la sesión 5.** Antes, watchdog v2 (señal `mail.message`, no `write_date`) en canary solo a Esteban.
 9. **Las `sale.order` de FTS MX marcadas en USD se corrigen en la sesión 1**, universo histórico completo (las no canceladas), como lote aparte con dry-run.
    > Hallazgo de la sesión 1: **solo la etiqueta de moneda está mal, los montos ya están en pesos** (SO5989 marcada USD $44,240.21 ↔ su factura posteada INV1688 en MXN por exactamente 44,240.21). La corrección cambia `currency_id` y **no convierte montos**. La causa raíz (de dónde sale el default USD) sigue abierta y el problema está acelerando: 76 de 190 casos son de 2026.
+
+## 5.4 Regla: la etapa decide qué se ve; el archivado se reserva para cancelados
+
+Establecida en la sesión 3 (4-sep-2026) al revertir L3. Aplica a todo `crm.lead`:
+
+- **La etapa es lo que decide qué se ve.** El estado de un lead se expresa con `stage_id` (y con `is_won` para el terminal ganado), no apagándolo.
+- **El archivado (`active=false`) se reserva para cancelados**, junto con `lost_reason_id`. Es el mecanismo *lost* de Odoo y no debe usarse como filtro de visibilidad.
+- **Filtrar pipeline vivo es trabajo de la vista**, no del registro. La hoja del CRM 1.0 excluye *Proyecto Ganado* con un filtro por etapa; el lead sigue activo y consultable por cualquier otro consumidor.
+
+El costo de romper esta regla ya se pagó: archivar los ganados los sacó del alcance del histórico que consulta el asistente del machote (#148), a cambio de una limpieza visual que la vista podía dar gratis. **Un registro se archiva por lo que le pasó, no por quién no quiere verlo.**
 
 ## 5.2 Punto transversal: identidad
 
