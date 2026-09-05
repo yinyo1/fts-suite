@@ -40,7 +40,7 @@
    * 2026-09-03 (por instrucción de Esteban), pero lleva el suyo aparte y va en
    * V1.00. Planeación sigue en `2.4.1` y el kiosko sólo con cadena de build;
    * a esos no se propaga. */
-  const VERSION = 'V1.15';
+  const VERSION = 'V1.16';
   const $  = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
   const clon = (x) => JSON.parse(JSON.stringify(x));
@@ -651,7 +651,10 @@
       roles.forEach(rol => {
         let i = s.mo.findIndex(l => l.rol === rol.id);
         if (i < 0) { s.mo.push({ rol: rol.id, qty: '', personas: 1, pu: rol.pu, moneda: m.moneda }); i = s.mo.length - 1; }
-        const l = s.mo[i], cl = C.costoMo(l, m), p = 's:' + s.id + ':mo:' + i + ':';
+        // La SECCIÓN va al motor. Sin ella el renglón se calcula con los
+        // multiplicadores del machote y la hoja muestra dos verdades: el total
+        // de arriba con el de la sección, y la línea de abajo con el viejo.
+        const l = s.mo[i], cl = C.costoMo(l, m, s), p = 's:' + s.id + ':mo:' + i + ':';
         const vacia = !(Number(l.qty) > 0);
         // Verde = cantidad Y precio. Con sólo horas, el renglón está a medias y
         // no aporta un peso al total; pintarlo diría "listo" de algo que todavía
@@ -688,7 +691,7 @@
 
     // COSTO MATERIALES Y SERVICIOS
     const filasMat = (s.partidas || []).map((l, j) => {
-      const cl = C.costoPartida(l, m), p = 's:' + s.id + ':partidas:' + j + ':';
+      const cl = C.costoPartida(l, m, s), p = 's:' + s.id + ':partidas:' + j + ':';
       return '<tr' + (C.capturada(l) ? ' class="capturada"' : '') + '>' +
         // Pegar DESDE aquí hacia abajo. Va en la PRIMERA columna, y fija: al
         // final de trece columnas el botón caía fuera de la pantalla —medido:
