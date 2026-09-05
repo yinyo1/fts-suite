@@ -542,29 +542,49 @@
     }
     if (mm.def.no_costo) det.push('no es costo del proyecto: es un préstamo');
 
+    // Editar va ANTES de quitar y en gris: corregir un campo es lo de todos los días
+    // y borrar es lo excepcional. Sin esto, cambiar un solo dato —la clasificación de
+    // impuestos de un bono, por ejemplo— obligaba a borrar el renglón y volver a
+    // capturarlo entero, tirando el motivo, la fuente y el monto ya escritos.
+    var e = esEstado ? '1' : '';
     return '<div class="item"><div class="cuerpo"><div class="tit">' + esc(mm.def.label) + '</div>' +
       '<div class="det">' + esc(det.join(' · ')) + '</div></div>' +
-      '<button class="quitar" data-quitar="' + idx + '" data-est="' + (esEstado ? '1' : '') + '">quitar</button></div>';
+      '<div class="acciones">' +
+      '<button class="editar" data-editar="' + idx + '" data-est="' + e + '">editar</button>' +
+      '<button class="quitar" data-quitar="' + idx + '" data-est="' + e + '">quitar</button></div></div>';
   }
 
   // Formulario de alta: los campos cambian con el tipo elegido. Un formulario fijo con
   // todos los campos de los 26 tipos sería ilegible y pediría datos que no aplican.
-  function formulario(zonaId, soloEstados, alAgregar) {
+  // `previo` (opcional) es la declaración que se está corrigiendo. Cuando viene, el
+  // formulario es el MISMO —una sola definición de cómo se captura cada tipo— pero
+  // arranca lleno y el tipo queda fijo: cambiar el tipo no es editar, es capturar otra
+  // cosa, y los campos de un tipo no significan lo mismo en otro.
+  function formulario(zonaId, soloEstados, alAgregar, previo) {
     var zona = $(zonaId);
     if (!zona) return;
+    var editando = !!previo;
     var opts = '';
     for (var g in Cat.CATALOGO) {
       var G = Cat.CATALOGO[g];
       if (!!G.es_estado !== !!soloEstados) continue;
       opts += '<optgroup label="' + esc(G.titulo) + '">';
-      for (var t in G.items) opts += '<option value="' + t + '">' + esc(G.items[t].label) + '</option>';
+      for (var t in G.items) {
+        var sel = (editando && t === previo.tipo) ? ' selected' : '';
+        opts += '<option value="' + t + '"' + sel + '>' + esc(G.items[t].label) + '</option>';
+      }
       opts += '</optgroup>';
     }
+    var mmP = editando ? Cat.meta(previo.tipo) : null;
     zona.innerHTML = '<div class="box" style="margin-top:9px;border-color:var(--green)">' +
-      '<label for="ntipo">Tipo</label><select id="ntipo">' + opts + '</select>' +
+      (editando
+        ? '<label>Tipo</label><div class="derv" style="margin-top:0">Corrigiendo <b>' +
+          esc((mmP && mmP.def.label) || previo.tipo) + '</b>. Para cambiar de tipo, quita el renglón y captura el nuevo.</div>' +
+          '<select id="ntipo" style="display:none">' + opts + '</select>'
+        : '<label for="ntipo">Tipo</label><select id="ntipo">' + opts + '</select>') +
       '<div id="ncampos"></div>' +
       '<div style="display:flex;gap:8px;margin-top:12px">' +
-      '<button class="btn pri" id="nok">Agregar</button>' +
+      '<button class="btn pri" id="nok">' + (editando ? 'Guardar cambios' : 'Agregar') + '</button>' +
       '<button class="btn" id="ncancel">Cancelar</button></div></div>';
 
     function pintarCampos() {
@@ -607,28 +627,61 @@
       }
       $('ncampos').innerHTML = h;
 
+      // Precarga. Va aquí y no dentro del armado del HTML porque los campos se
+      // repintan cada vez que cambia el tipo, y el valor tiene que sobrevivir a eso.
+      // Solo se precarga si el tipo sigue siendo el de la declaración que se edita:
+      // si el usuario cambiara de tipo, los campos son otros y no hay qué precargar.
+      if (editando && tipo === previo.tipo) {
+        var V = previo.valores || {};
+        if (mm.def.multi) {
+          var R0 = (V.renglones || [])[0] || {};
+          if ($('c_monto')) $('c_monto').value = (R0.monto !== undefined && R0.monto !== null) ? R0.monto : '';
+          if ($('c_so')) $('c_so').value = R0.so || '';
+        } else {
+          var CC = mm.def.campos || [];
+          for (var q = 0; q < CC.length; q++) {
+            var nq = CC[q][0], tq = CC[q][2], eq = $('c_' + nq), vq = V[nq];
+            if (!eq || vq === undefined || vq === null) continue;
+            eq.value = (tq === 'bool') ? (vq === true ? '1' : '') : String(vq);
+          }
+        }
+        if ($('c_fuente') && previo.fuente) $('c_fuente').value = previo.fuente;
+      }
+
       var sel = $('c_fuente');
       if (sel) {
-        sel.addEventListener('change', function () {
+        var pintarDerv = function () {
           var d = Log.derivarFuente(sel.value);
           $('derv').innerHTML = d
             ? 'Empresa: <b>' + esc(d.empresa) + '</b> · Moneda: <b>' + esc(d.moneda) + '</b>'
             : 'La empresa y la moneda se derivan de la fuente.';
-        });
+        };
+        sel.addEventListener('change', pintarDerv);
+        pintarDerv();   // al editar, la fuente ya viene puesta: su derivación se ve desde el inicio
       }
     }
 
     $('ntipo').addEventListener('change', pintarCampos);
     pintarCampos();
 
-    $('ncancel').addEventListener('click', function () { zona.innerHTML = ''; });
+    function cerrarFormulario() {
+      zona.innerHTML = '';
+      if (zona.classList.contains('zona-edicion') && zona.parentNode) zona.parentNode.removeChild(zona);
+      var marcado = $('dbody') && $('dbody').querySelector('.item.editando');
+      if (marcado) marcado.classList.remove('editando');
+    }
+    $('ncancel').addEventListener('click', cerrarFormulario);
     $('nok').addEventListener('click', function () {
       var tipo = $('ntipo').value, mm = Cat.meta(tipo);
       if (!mm) return;
       var reg = { tipo: tipo, valores: {} };
 
       if (mm.def.multi) {
-        reg.valores.renglones = [{ monto: Number($('c_monto').value) || 0, so: $('c_so').value || '' }];
+        // El formulario captura UN renglón. Si la declaración traía más, los demás se
+        // conservan intactos: editar el primero no puede borrar en silencio los otros.
+        var resto = (editando && previo.tipo === tipo)
+          ? ((previo.valores && previo.valores.renglones) || []).slice(1) : [];
+        reg.valores.renglones = [{ monto: Number($('c_monto').value) || 0, so: $('c_so').value || '' }].concat(resto);
       } else {
         var C = mm.def.campos || [];
         for (var i = 0; i < C.length; i++) {
@@ -639,7 +692,7 @@
         }
       }
       if (mm.def.fuente) reg.fuente = $('c_fuente') ? $('c_fuente').value : '';
-      zona.innerHTML = '';
+      cerrarFormulario();
       alAgregar(reg);
     });
   }
@@ -693,6 +746,43 @@
         var p = persona(ACTIVO);
         (est ? p.estados : p.declaraciones).splice(idx, 1);
         SUCIO = true; pintarCajon(); refrescar();
+      });
+    }
+
+    // Editar: el formulario se abre DEBAJO del renglón que se corrige y ese renglón
+    // se resalta. Abrirlo al final de la lista, como el de alta, dejaría a Magaly
+    // adivinando cuál de los cinco bonos está tocando.
+    var es = $('dbody').querySelectorAll('[data-editar]');
+    for (var k = 0; k < es.length; k++) {
+      es[k].addEventListener('click', function (ev) {
+        var idx = Number(ev.currentTarget.getAttribute('data-editar'));
+        var est = ev.currentTarget.getAttribute('data-est') === '1';
+        var p = persona(ACTIVO);
+        var lista = est ? p.estados : p.declaraciones;
+        var previo = lista[idx];
+        if (!previo) return;
+
+        var item = ev.currentTarget.closest('.item');
+        // Un solo editor abierto a la vez: dos formularios llenos con datos de dos
+        // renglones distintos es la forma de guardar uno encima del otro.
+        var abierto = $('dbody').querySelector('.zona-edicion');
+        if (abierto) abierto.parentNode.removeChild(abierto);
+        var previoResaltado = $('dbody').querySelector('.item.editando');
+        if (previoResaltado) previoResaltado.classList.remove('editando');
+
+        var zona = document.createElement('div');
+        zona.id = 'zonaEdit';
+        zona.className = 'zona-edicion';
+        item.parentNode.insertBefore(zona, item.nextSibling);
+        item.classList.add('editando');
+
+        formulario('zonaEdit', est, function (reg) {
+          // Se reemplaza EN SU LUGAR: el orden de los renglones es el que Magaly
+          // capturó y el que sale en el archivo del despacho. Quitar y volver a
+          // agregar mandaría el renglón corregido al final.
+          lista[idx] = reg;
+          SUCIO = true; pintarCajon(); refrescar();
+        }, previo);
       });
     }
   }

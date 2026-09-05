@@ -265,6 +265,61 @@ const VIEWPORTS = [
     check('y se marca que no es costo del proyecto', /no es costo/.test(await page.textContent('#dbody')));
     await page.screenshot({ path: path.join(OUT, nombre + '-3-declarado.png') });
 
+    // ── Editar la declaración que se acaba de capturar ──
+    // Sin esto, corregir UN campo obligaba a borrar el renglón y volver a capturarlo
+    // entero: se tiraba el monto, el plazo y la fuente para cambiar una sola cosa.
+    // Samuel YA traía declaraciones antes de esta prueba, así que el anticipo recién
+    // capturado es el ÚLTIMO renglón, no el índice 0. Apuntar al 0 editaría el bono
+    // que ya tenía — que es justo el error que este botón debe hacer imposible.
+    const nItems = (await page.$$('#dbody .item')).length;
+    const ultimo = String(nItems - 1);
+    check('cada renglón capturado ofrece editar', await page.isVisible('[data-editar="' + ultimo + '"]'));
+    await page.click('[data-editar="' + ultimo + '"]');
+    await page.waitForSelector('#zonaEdit #ntipo', { state: 'attached' });
+
+    check('el editor arranca con el monto ya puesto',
+      (await page.inputValue('#c_monto')) === '3500', await page.inputValue('#c_monto'));
+    check('y con el plazo', (await page.inputValue('#c_plazo')) === '4', await page.inputValue('#c_plazo'));
+    check('y con la fuente que se eligió', (await page.inputValue('#c_fuente')) === 'J122',
+      await page.inputValue('#c_fuente'));
+    check('la derivación de la fuente se ve desde que abre, sin tocar nada',
+      /FTS LLC/.test(await page.textContent('#derv')), await page.textContent('#derv'));
+    check('el tipo queda fijo: corregir no es cambiar de concepto',
+      !(await page.isVisible('#zonaEdit select#ntipo')) &&
+      /Corrigiendo/.test(await page.textContent('#zonaEdit')));
+    check('el botón dice guardar, no agregar',
+      /Guardar cambios/.test(await page.textContent('#zonaEdit #nok')),
+      await page.textContent('#zonaEdit #nok'));
+    check('el renglón que se edita queda resaltado', await page.isVisible('.item.editando'));
+
+    const antesEdit = (await page.$$('#dbody .item')).length;
+    await page.screenshot({ path: path.join(OUT, nombre + '-3b-editando.png') });
+
+    // Cancelar no debe dejar rastro ni tocar el dato.
+    await page.click('#ncancel');
+    await page.waitForTimeout(60);
+    check('cancelar cierra el editor sin dejar hueco', !(await page.$('#zonaEdit')));
+    check('ni renglones resaltados', !(await page.$('.item.editando')));
+    check('y no cambió nada', /3500/.test(await page.textContent('#dbody')),
+      (await page.textContent('#dbody')).slice(0, 90));
+
+    // Ahora sí: corregir el monto y guardar.
+    await page.click('[data-editar="' + ultimo + '"]');
+    await page.waitForSelector('#c_monto');
+    await page.fill('#c_monto', '4200');
+    await page.click('#zonaEdit #nok');
+    await page.waitForTimeout(80);
+    const dTxt = await page.textContent('#dbody');
+    check('el monto corregido queda guardado', /4200/.test(dTxt), dTxt.slice(0, 120));
+    check('y el viejo ya no está', !/3500/.test(dTxt));
+    check('sigue siendo UN renglón, no se duplicó',
+      (await page.$$('#dbody .item')).length === antesEdit,
+      (await page.$$('#dbody .item')).length + ' vs ' + antesEdit);
+    check('el resto del renglón se conservó (plazo y fuente)',
+      /4 semanas|Semanas para pagarlo: 4/.test(dTxt) && /J122/.test(dTxt), dTxt.slice(0, 200));
+    check('el editor se cerró solo al guardar', !(await page.$('#zonaEdit')));
+    await page.screenshot({ path: path.join(OUT, nombre + '-3c-editado.png') });
+
     await page.click('#dcerrar');
     await page.waitForTimeout(60);
     check('el cajón se cierra', !(await page.$('#drawer[open]')));

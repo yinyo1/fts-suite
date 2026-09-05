@@ -133,7 +133,11 @@ input:focus,select:focus{outline:2px solid var(--green-l);border-color:var(--gre
 .item .cuerpo{flex:1 1 auto;min-width:0}
 .item .tit{font-weight:600;font-size:14px}
 .item .det{font-size:12px;color:var(--muted2);margin-top:2px;line-height:1.5}
+.item .acciones{display:flex;gap:2px;flex:0 0 auto}
+.item .editar{background:transparent;border:0;color:var(--muted2);cursor:pointer;font-size:12px;padding:2px 4px}
+.item .editar:hover{color:var(--green-d);text-decoration:underline}
 .item .quitar{background:transparent;border:0;color:var(--red);cursor:pointer;font-size:12px;padding:2px 4px}
+.item.editando{border-color:var(--green);background:var(--green-l)}
 .add{width:100%;border:1px dashed var(--border);background:#fff;border-radius:10px;padding:9px;
   font-size:13px;color:var(--green-d);cursor:pointer}
 .add:hover{border-color:var(--green);background:var(--green-l)}
