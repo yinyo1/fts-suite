@@ -1,0 +1,198 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Prototipo · respaldo del machote (V1.17)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --tinta:#1f2430; --gris:#5b6472; --linea:#e3e6eb; --fondo:#fff;
+          --azul:#1f4e79; --verde:#2e7d32; --ambar:#b26a00; --rojo:#b3261e; }
+  * { box-sizing:border-box }
+  body { margin:0; font:15px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;
+         color:var(--tinta); background:#f6f7f9 }
+  .caja { max-width:760px; margin:0 auto; padding:18px }
+  h1 { font-size:19px; margin:0 0 4px }
+  h2 { font-size:15px; margin:22px 0 8px; padding-top:16px; border-top:1px solid var(--linea) }
+  .sub { color:var(--gris); font-size:13px; margin:0 0 16px }
+  .tarjeta { background:var(--fondo); border:1px solid var(--linea); border-radius:10px;
+             padding:14px; margin-bottom:12px }
+  .btnrow { display:flex; gap:8px; flex-wrap:wrap }
+  button { min-height:44px; padding:0 16px; border-radius:8px; border:1px solid var(--linea);
+           background:var(--fondo); color:var(--tinta); font:inherit; cursor:pointer }
+  button.primario { background:var(--azul); border-color:var(--azul); color:#fff; font-weight:600 }
+  button:disabled { opacity:.5; cursor:not-allowed }
+  .tiny { font-size:12.5px; color:var(--gris) }
+  .n-ok { color:var(--verde) } .n-warn { color:var(--ambar) } .n-bad { color:var(--rojo) }
+  pre { background:#f2f4f7; border:1px solid var(--linea); border-radius:8px; padding:10px;
+        overflow:auto; font-size:12px; margin:8px 0 0 }
+  table { border-collapse:collapse; width:100%; font-size:13.5px; margin-top:8px }
+  th,td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--linea) }
+  th { background:#f2f4f7; font-size:12px; text-transform:uppercase; letter-spacing:.03em }
+  .cp { background:#fff8e1 }
+  .aviso { border-left:3px solid var(--ambar); background:#fffbf0; padding:10px 12px;
+           border-radius:0 8px 8px 0; font-size:13.5px; margin:10px 0 }
+  .bloq { border-left:3px solid var(--rojo); background:#fdf2f1 }
+  label.arch { display:inline-flex; align-items:center; min-height:44px; padding:0 16px;
+               border:1px solid var(--linea); border-radius:8px; background:var(--fondo); cursor:pointer }
+  input[type=file] { display:none }
+</style>
+
+<div class="caja">
+  <h1>Prototipo · respaldo del machote</h1>
+  <p class="sub">V1.17 · issue #213. Archivo suelto, sin servidor: se abre con doble clic y no toca
+  el machote real. Los datos de abajo son de mentiras, para probar el gesto.</p>
+
+  <div class="tarjeta">
+    <strong>Lo que hay ahora mismo</strong>
+    <div id="estado" class="tiny"></div>
+    <table id="tabla"></table>
+  </div>
+
+  <h2>1 · Exportar</h2>
+  <div class="tarjeta">
+    <p class="tiny">Baja un <code>.json</code> con todo lo capturado, más quién exportó y cuándo.
+    Un clic, un archivo. Es lo que cada quien manda por Teams.</p>
+    <div class="btnrow"><button class="primario" id="bExp">Exportar todo</button></div>
+    <div id="expOut"></div>
+  </div>
+
+  <h2>2 · Importar</h2>
+  <div class="tarjeta">
+    <p class="tiny">Fusiona por <code>id</code> y <strong>nunca pisa</strong>: si el id ya existe,
+    entra como <em>copia</em> marcada. Importar no puede destruir nada.</p>
+    <div class="btnrow">
+      <label class="arch">Elegir archivo…<input type="file" id="fImp" accept="application/json,.json"></label>
+      <button id="bDup">Probar: importar lo mismo otra vez</button>
+    </div>
+    <div id="impOut"></div>
+  </div>
+
+  <h2>3 · Subir al servidor</h2>
+  <div class="tarjeta">
+    <div class="aviso bloq"><strong>Bloqueado, y no se construyó.</strong> La credencial de
+    Microsoft Graph de n8n <strong>no tiene permiso de SharePoint</strong>: contestó
+    <code>403 accessDenied</code> al intentar leer el sitio. El token OAuth sí se obtuvo, así que
+    no es la credencial — es el permiso de la app. Detalle y qué falta en Azure, en el issue #213.</div>
+    <div class="btnrow"><button disabled>Subir al servidor</button></div>
+    <p class="tiny">Mientras tanto, <strong>Exportar</strong> ya resuelve el respaldo: baja el
+    archivo y mándalo por Teams. Esto solo convierte dos pasos en uno.</p>
+  </div>
+
+  <h2>4 · Cuando el guardado falla</h2>
+  <div class="tarjeta">
+    <p class="tiny">Hoy el pulso se queda en «sin guardar» y es fácil no verlo mientras se captura.
+    Así se ve el aviso nuevo:</p>
+    <div class="btnrow"><button id="bFalla">Simular que el navegador ya no deja guardar</button></div>
+  </div>
+</div>
+
+<script>
+/* ── El demo. Nada de esto toca el machote real: vive en memoria. ── */
+var SESION = { actor: 'montalvo', nombre: 'Francisco Montalvo' };
+var datos = { v:1, guardado_at:new Date().toISOString(), handoff:{}, machotes:[
+  { id:'M-1041', nombre:'Paso de gato antiderrapante', cliente:'Cliente A',
+    creado_por:'montalvo', creado_por_nombre:'Francisco Montalvo', estado:'borrador' },
+  { id:'M-1042', nombre:'Adecuaciones de toma sanitaria', cliente:'Cliente B',
+    creado_por:'montalvo', creado_por_nombre:'Francisco Montalvo', estado:'revision' },
+  { id:'M-0900', nombre:'Capturado antes de V1.17', cliente:'Cliente C',
+    creado_por:'', creado_por_nombre:'', estado:'borrador' }
+]};
+
+function pintar(){
+  document.getElementById('estado').textContent =
+    datos.machotes.length + ' machotes en memoria.';
+  var f = datos.machotes.map(function(m){
+    return '<tr' + (m._copia_de ? ' class="cp"' : '') + '><td><code>' + m.id + '</code></td><td>' +
+      m.nombre + '</td><td>' + (m.creado_por_nombre ||
+        '<span class="n-warn">— sin autor —</span>') + '</td><td class="tiny">' +
+      (m._copia_de ? 'copia de ' + m._copia_de : '') + '</td></tr>';
+  }).join('');
+  document.getElementById('tabla').innerHTML =
+    '<tr><th>id</th><th>nombre</th><th>capturó</th><th></th></tr>' + f;
+}
+
+/* ── EXPORTAR ── el sobre lleva quién y cuándo; el contenido va tal cual. ── */
+function sobre(){
+  return { formato:'fts-machote-respaldo', v:1,
+           exportado_at:new Date().toISOString(),
+           exportado_por:SESION.actor, exportado_por_nombre:SESION.nombre,
+           navegador:navigator.userAgent, datos:datos };
+}
+function nombreArchivo(){
+  var d = new Date(), p = function(n){ return String(n).padStart(2,'0'); };
+  return 'machotes-' + (SESION.actor||'sin-usuario') + '-' + d.getFullYear() +
+         p(d.getMonth()+1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + '.json';
+}
+document.getElementById('bExp').onclick = function(){
+  var txt = JSON.stringify(sobre(), null, 2);
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([txt], {type:'application/json'}));
+  a.download = nombreArchivo();
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+  document.getElementById('expOut').innerHTML =
+    '<p class="tiny n-ok">Bajó <strong>' + a.download + '</strong> · ' +
+    datos.machotes.length + ' machotes · ' + txt.length.toLocaleString() + ' bytes</p>' +
+    '<pre>' + txt.slice(0,340).replace(/</g,'&lt;') + '\n…</pre>';
+};
+
+/* ── IMPORTAR ── fusión que NUNCA pisa. ──
+ * Si el id ya existe se le da uno nuevo y se marca de dónde vino. Nada se
+ * reemplaza y nada se borra: en el peor caso quedan dos y alguien decide. */
+function fusionar(entrantes){
+  var vivos = {}, n = { nuevos:0, copias:0 };
+  datos.machotes.forEach(function(m){ vivos[m.id] = true; });
+  entrantes.forEach(function(m){
+    if (vivos[m.id]) {
+      var c = JSON.parse(JSON.stringify(m));
+      c._copia_de = m.id;
+      c.id = m.id + '-imp' + Date.now().toString(36).slice(-4) + (n.copias || '');
+      c.nombre = (c.nombre || 'Sin nombre') + ' (importado)';
+      datos.machotes.push(c); vivos[c.id] = true; n.copias++;
+    } else { datos.machotes.push(m); vivos[m.id] = true; n.nuevos++; }
+  });
+  return n;
+}
+function importar(txt){
+  var out = document.getElementById('impOut');
+  try {
+    var s = JSON.parse(txt);
+    var lista = (s && s.datos && s.datos.machotes) || (s && s.machotes);
+    if (!Array.isArray(lista)) throw new Error('el archivo no trae una lista de machotes');
+    var antes = datos.machotes.length, n = fusionar(lista);
+    pintar();
+    out.innerHTML = '<p class="tiny n-ok">' + antes + ' → ' + datos.machotes.length +
+      ' · <strong>' + n.nuevos + '</strong> nuevos, <strong>' + n.copias +
+      '</strong> como copia. Nada se pisó.</p>';
+  } catch(e){
+    out.innerHTML = '<p class="tiny n-bad">No se pudo leer: ' + String(e.message) +
+      '. <strong>No se tocó nada.</strong></p>';
+  }
+}
+document.getElementById('fImp').onchange = function(ev){
+  var f = ev.target.files && ev.target.files[0]; if (!f) return;
+  var r = new FileReader();
+  r.onload = function(){ importar(String(r.result)); };
+  r.readAsText(f); ev.target.value = '';
+};
+document.getElementById('bDup').onclick = function(){
+  importar(JSON.stringify(sobre()));
+};
+
+/* ── EL AVISO cuando ya no se puede guardar ── */
+document.getElementById('bFalla').onclick = function(){
+  if (document.getElementById('barraFalla')) return;
+  var b = document.createElement('div');
+  b.id = 'barraFalla';
+  b.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99;background:#b3261e;' +
+    'color:#fff;padding:12px 14px;font-size:14px;display:flex;gap:10px;align-items:center;' +
+    'justify-content:space-between;flex-wrap:wrap';
+  b.innerHTML = '<span><strong>No se está guardando.</strong> Este navegador ya no acepta ' +
+    'guardar. Exporta ahora para no perder lo capturado.</span>' +
+    '<span style="display:flex;gap:8px"><button id="bfExp" style="min-height:40px">Exportar ahora</button>' +
+    '<button id="bfX" style="min-height:40px;background:transparent;color:#fff;border-color:#fff">Entendido</button></span>';
+  document.body.appendChild(b);
+  document.getElementById('bfExp').onclick = function(){ document.getElementById('bExp').click(); };
+  document.getElementById('bfX').onclick = function(){ b.remove(); };
+};
+
+pintar();
+</script>

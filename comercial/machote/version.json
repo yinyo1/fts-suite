@@ -1,10 +1,15 @@
 {
-  "version": "V1.16",
-  "fecha": "2026-09-04",
+  "version": "V1.17",
+  "fecha": "2026-09-06",
   "modulo": "comercial/machote",
   "ambito": "El CONTADOR es solo de este modulo. finanzas tambien usa V1.xx desde el 2026-09-03 (instruccion directa de Esteban, corrige el \"no propagar\" del issue #148) pero lleva su propio contador y va en V1.00. operaciones/planeacion sigue en 2.4.1, kiosk y confirmar-horas solo con cadena de build, y siete modulos con un 1.0.0 puesto una vez: a esos no se propaga.",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.17",
+      "pr": null,
+      "nota": "Respaldo: lo capturado deja de poder perderse. Exportar baja un .json con todo mas quien exporto y cuando; importar fusiona por id y NUNCA pisa -lo que ya existe se queda y el entrante entra al lado como copia marcada-; el machote nuevo estampa quien lo capturo, del token, que hasta V1.16 quedaba vacio en todo machote real; y cuando el navegador deja de guardar aparece una barra que tapa el pie de la pantalla con Exportar al lado, en vez de un punto de color facil de ignorar. Subir al servidor NO se construyo: la credencial de Graph de n8n no tiene permiso de SharePoint -403 accessDenied-, ver issue #213"
+    },
     {
       "version": "V1.16",
       "pr": null,
