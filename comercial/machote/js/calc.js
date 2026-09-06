@@ -156,6 +156,16 @@
       // `cliente` queda como respaldo para cuando Odoo no conteste, y como
       // el único dato de los machotes que nacieron antes del catálogo.
       cliente: d.cliente || '',
+      /* QUIÉN lo capturó, del token de la sesión. Hasta V1.16 esto quedaba
+       * vacío en TODO machote real —`vNuevo()` no lo pasaba— y por eso lo
+       * capturado hoy no dice de quién es. Es requisito del almacén
+       * compartido: sin autor, Postgres no sabe de quién es cada machote.
+       *
+       * A los que ya nacieron sin él NO se les inventa uno: quedan vacíos y
+       * se resuelven al importar, donde sí se sabe quién mandó el archivo. */
+      creado_por: d.creado_por || '',
+      creado_por_nombre: d.creado_por_nombre || '',
+      creado_at: d.creado_at || new Date().toISOString(),
       cliente_id: (typeof d.cliente_id === 'number') ? d.cliente_id : null,
       so: d.so || null,
       estado: 'borrador',

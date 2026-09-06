@@ -40,7 +40,7 @@
    * 2026-09-03 (por instrucción de Esteban), pero lleva el suyo aparte y va en
    * V1.00. Planeación sigue en `2.4.1` y el kiosko sólo con cadena de build;
    * a esos no se propaga. */
-  const VERSION = 'V1.16';
+  const VERSION = 'V1.17';
   const $  = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
   const clon = (x) => JSON.parse(JSON.stringify(x));
@@ -86,14 +86,40 @@
       : 'Se guarda solo, en este navegador. Todavia no viaja a ningun servidor.';
   }
 
+  /* El pulso es un punto de color: dice la verdad, pero se puede mirar sin
+   * verlo mientras se captura. Cuando el guardado DEJA de funcionar eso no
+   * alcanza — a partir de ahí todo lo que se teclee se pierde al cerrar, y
+   * quien captura no tiene por qué adivinarlo.
+   *
+   * Esta barra tapa parte de la pantalla a propósito y no se va sola. Trae el
+   * exportar al lado porque avisar sin dar salida es solo asustar. */
+  function avisarNoGuarda() {
+    if ($('#noGuarda')) return;                       // ya está puesta
+    const b = document.createElement('div');
+    b.id = 'noGuarda'; b.className = 'nogda';
+    b.setAttribute('role', 'alert');
+    b.innerHTML =
+      '<span><strong>No se está guardando.</strong> Este navegador ya no acepta guardar ' +
+      '(modo privado, o se llenó el espacio). Lo que captures se pierde al cerrar.</span>' +
+      '<span class="nogda-b"><button class="btn" id="ngExp">Exportar ahora</button>' +
+      '<button class="btn fantasma" id="ngX">Entendido</button></span>';
+    document.body.appendChild(b);
+    $('#ngExp').onclick = () => exportarRespaldo();
+    $('#ngX').onclick = () => b.remove();
+  }
+  function quitarAvisoNoGuarda() { const b = $('#noGuarda'); if (b) b.remove(); }
+
   /** Guarda ya, sin esperar el retardo. Devuelve si de verdad quedo. */
   function guardarYa() {
-    if (!A || !A.disponible()) { ST.pulso = 'sin-almacen'; pintarPulso(); return false; }
+    if (!A || !A.disponible()) { ST.pulso = 'sin-almacen'; pintarPulso(); avisarNoGuarda(); return false; }
     if (_reloj) { clearTimeout(_reloj); _reloj = null; }
     ST.pulso = 'guardando'; pintarPulso();
     const ok = A.escribir({ machotes: ST.machotes, handoff: ST.handoff });
     ST.pulso = ok ? 'guardado' : 'sin-almacen';
     pintarPulso();
+    // Se avisa al fallar y se retira al volver a funcionar: una alerta que se
+    // queda cuando el problema pasó enseña a ignorarla.
+    if (ok) quitarAvisoNoGuarda(); else avisarNoGuarda();
     return ok;
   }
 
@@ -305,6 +331,52 @@
     return q.toLowerCase().split(/\s+/).filter(Boolean).every(w => t.indexOf(w) >= 0);
   }
 
+  /* El respaldo va al PIE de la pantalla de inicio, no arriba: no es lo que
+   * alguien viene a hacer, pero tiene que estar donde se encuentre sin
+   * preguntar. Y dice en una línea por qué existe, porque un botón de exportar
+   * sin explicación parece opcional. */
+  function respaldoHTML() {
+    const n = ST.machotes.length;
+    return '<h3 style="margin-top:22px">Respaldo</h3>' +
+      '<div class="wg respaldo">' +
+      '<div class="tiny nota">Lo capturado vive <strong>sólo en este navegador</strong>: no lo ve ' +
+      'nadie más y se pierde si se limpian los datos del sitio. <strong>Exporta y manda el ' +
+      'archivo</strong> hasta que el machote guarde en el servidor.</div>' +
+      '<div class="btnrow">' +
+      '<button class="btn primario" id="bExportar">Exportar todo (' + n + ')</button>' +
+      '<label class="btn archivo">Importar…<input type="file" id="fImportar" ' +
+      'accept="application/json,.json"></label>' +
+      '</div>' +
+      '<div class="tiny">Importar <strong>nunca pisa</strong>: si un machote ya existe, el del ' +
+      'archivo entra al lado marcado como copia.</div></div>';
+  }
+
+  /** Baja el respaldo y lo dice. Vive aquí y no en `respaldo.js` porque
+   *  necesita la sesión y el toast, que son de la pantalla. */
+  function exportarRespaldo() {
+    const S = G.SuiteAuth, ses = (S && S.getSession()) || {};
+    const r = G.MachoteRespaldo.exportar(ses);
+    if (!r.ok) { toast('No se pudo exportar: ' + (r.error || 'desconocido')); return; }
+    toast('Bajó ' + r.nombre + ' · ' + r.machotes + ' machote(s)');
+  }
+
+  /** Importa un archivo elegido por la persona. NUNCA pisa: lo que ya existe
+   *  se queda, y el entrante entra al lado marcado como copia. */
+  function importarRespaldo(archivo) {
+    const lector = new FileReader();
+    lector.onload = () => {
+      const r = G.MachoteRespaldo.importarTexto(String(lector.result), ST.machotes);
+      if (!r.ok) { toast(r.error); return; }
+      ST.machotes = r.lista;
+      guardarYa();
+      render();
+      const de = r.de ? ' de ' + r.de : '';
+      toast(r.nuevos + ' nuevo(s) y ' + r.copias + ' copia(s)' + de + '. No se pisó nada.');
+    };
+    lector.onerror = () => toast('No se pudo leer el archivo.');
+    lector.readAsText(archivo);
+  }
+
   function vHome() {
     top('Machote y órdenes', 'Comercial · prototipo', 'DEMO', null, true);
     $('#fija').innerHTML = '';
@@ -369,7 +441,18 @@
       buscador +
       (visibles.length ? filas : vacio) +
       '<h3 style="margin-top:22px">Estación 3.0 · confirmar la orden</h3>' + ords +
+      respaldoHTML() +
       '<div class="ver">versión <strong>' + VERSION + '</strong></div></div>';
+
+    $('#bExportar').onclick = () => exportarRespaldo();
+    $('#fImportar').onchange = (e) => {
+      const f = e.target.files && e.target.files[0];
+      // Se limpia el input para que elegir DOS VECES el mismo archivo vuelva
+      // a disparar el evento; si no, el segundo intento no hace nada y parece
+      // que la importación falló.
+      e.target.value = '';
+      if (f) importarRespaldo(f);
+    };
 
     // Se repinta sólo la lista al teclear, no la vista: repintar entera mata
     // el foco del buscador a media palabra.
@@ -433,10 +516,17 @@
       // `cliente_id` queda en null: NUNCA se bloquea por eso.
       const txtCliente = $('#n-cliente').value.trim();
       const hit = G.Clientes ? G.Clientes.resolver(txtCliente) : null;
+      /* QUIÉN lo captura, del token. Ojo con el nombre del campo: del lado
+       * del navegador la sesión lo llama `actor`, no `sub` — es el mismo dato
+       * (`auth/suite-login` firma `sub` y responde `actor`), pero buscar
+       * `ses.sub` devolvería undefined sin fallar. */
+      const S = G.SuiteAuth, ses = (S && S.getSession()) || {};
       const m = C.machoteNuevo({
         nombre: nombre,
         cliente: hit ? hit.nombre : txtCliente,
         cliente_id: hit ? hit.id : null,
+        creado_por: ses.actor || '',
+        creado_por_nombre: ses.nombre || ses.actor || '',
         so: $('#n-so').value.trim() || null,
         empresa_id: Number($('#n-empresa').value)
       });

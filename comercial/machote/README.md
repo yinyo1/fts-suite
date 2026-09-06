@@ -67,7 +67,8 @@ versión es peor que no tener indicador.
 | `js/pegar.js` | El pegado de tablas: separador, columnas y revisión previa. |
 | `js/almacen.js` | El autoguardado. UNA pieza entre la pantalla y donde viven los datos. |
 | `js/clientes.js` | El catálogo de clientes, leído de Odoo. Guarda el id, pinta el nombre. |
-| `tests/pruebas-navegador.js` | 111 pruebas de navegador. |
+| `js/respaldo.js` | Exportar e importar. La fusión que nunca pisa. |
+| `tests/pruebas-navegador.js` | 117 pruebas de navegador. |
 
 ## Cómo se calcula el precio
 
@@ -237,6 +238,62 @@ y leerla entera.
 En teléfono la marca es el **borde** de la tarjeta, no el fondo: un fondo verde
 detrás de once campos etiquetados no se lee.
 
+## Respaldo
+
+**Lo capturado vive sólo en el navegador de cada quien.** Nadie más lo ve, y se pierde si
+se limpian los datos del sitio. Hasta que el machote guarde en el servidor (#140), la
+protección es exportar.
+
+Al pie de la pantalla de inicio, dos gestos:
+
+- **Exportar todo** — baja `machotes-<persona>-<fecha>-<hora>.json` con el almacén completo
+  más quién exportó, cuándo y desde qué navegador. Un clic, un archivo, sin herramientas de
+  desarrollador. Persona y momento van en el nombre para que dos exportaciones del mismo
+  día no se confundan al juntarlas.
+- **Importar** — vuelve a meter ese archivo.
+
+### Importar no puede destruir
+
+**Si un `id` ya existe, el entrante NO lo pisa:** entra al lado como copia marcada
+(`_copia_de`, y «(importado)» en el nombre) y alguien decide después.
+
+No es prudencia de más. Un importador que reemplaza convierte un respaldo en un arma:
+basta equivocarse de archivo para perder el trabajo del día, y quien lo aprieta cree que
+se está protegiendo. En el peor caso quedan dos machotes y sobra uno — eso se arregla; lo
+otro no.
+
+Y un archivo que no se entiende **no toca nada**: se rechaza entero y se dice por qué.
+Aplicar la mitad de un archivo roto deja un estado que nadie pidió.
+
+⚠️ **El sobre del respaldo no es el formato del almacén.** `fts_machote_v1` y su
+`{v, guardado_at, machotes, handoff}` no se tocaron: hay capturas reales adentro y
+cambiarlos las orfanaría. El archivo que se descarga es un envoltorio aparte que lleva el
+almacén tal cual en `datos`.
+
+### Quién capturó
+
+El machote nuevo estampa `creado_por` y `creado_por_nombre` **del token de la sesión**.
+Hasta V1.16 el campo existía y quedaba vacío en **todo** machote real, así que lo capturado
+no decía de quién era — y sin autor, el almacén compartido no sabe de quién es cada
+machote.
+
+⚠️ Del lado del navegador la sesión llama al usuario **`actor`**, no `sub`. Es el mismo
+dato —`auth/suite-login` firma `sub` y responde `actor`— pero buscar `ses.sub` devuelve
+`undefined` sin fallar.
+
+A los machotes que ya nacieron sin autor **no se les inventa uno**: quedan vacíos y se
+resuelven al importar, donde sí se sabe quién mandó el archivo.
+
+### Subir al servidor: no se construyó
+
+Un tercer botón mandaría el archivo solo, sin elegirlo a mano, a SharePoint por n8n.
+**Está bloqueado:** la credencial de Microsoft Graph de n8n **no tiene permiso de
+SharePoint** — contestó `403 accessDenied` al intentar leer el sitio, con el token OAuth ya
+obtenido, así que no es la credencial sino el permiso de la app. Falta `Sites.Selected` o
+`Sites.ReadWrite.All` con admin consent. Detalle en el issue #213.
+
+Mientras tanto **Exportar ya resuelve el respaldo**; subir sólo convierte dos pasos en uno.
+
 ## Autoguardado
 
 No hay botón de guardar, y no debe haberlo. Cada cambio —una cifra, el nombre de
@@ -245,6 +302,12 @@ la última tecla; y al cambiar de pantalla, al cambiar de pestaña del navegador
 al cerrar, lo pendiente se guarda de inmediato. Un punto de color en la barra
 superior dice en cuál de los tres estados está: **guardado**, **sin guardar**,
 **guardando**.
+
+**Y cuando deja de poder guardar, lo dice fuerte.** El punto de color es honesto pero se
+puede mirar sin verlo mientras se captura; a partir del momento en que el navegador ya no
+acepta guardar, todo lo que se teclee se pierde al cerrar. Por eso aparece una barra que
+tapa el pie de la pantalla, con **Exportar ahora** al lado —avisar sin dar salida es sólo
+asustar— y que se retira sola cuando el guardado vuelve a funcionar.
 
 ⚠️ **Hoy guarda en el NAVEGADOR, no en un servidor.** Lo que se captura en una
 laptop no lo ve nadie más, y se pierde si se limpian los datos del sitio. Sirve

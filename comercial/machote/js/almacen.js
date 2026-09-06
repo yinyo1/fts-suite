@@ -74,11 +74,47 @@
     try { localStorage.removeItem(LLAVE); } catch (e) { /* nada que hacer */ }
   }
 
+  /* ── El sobre del respaldo ────────────────────────────────────────────
+   *
+   * ⚠️ NO es el formato del almacén. `fts_machote_v1` y su sobre
+   * `{v, guardado_at, machotes, handoff}` **no se tocan** — hay capturas
+   * reales adentro y cambiarlos las orfanaría. Esto es un envoltorio APARTE,
+   * para el archivo que se descarga: lleva el almacén tal cual en `datos` y
+   * le agrega quién lo exportó, que es lo que el archivo necesita saber y el
+   * almacén no.
+   *
+   * Por qué el navegador va dentro: si alguien capturó en la laptop y en el
+   * teléfono son dos archivos parciales, y al juntarlos hay que poder decir
+   * cuál vino de dónde. */
+  function sobre(sesion) {
+    return {
+      formato: 'fts-machote-respaldo',
+      v: 1,
+      exportado_at: new Date().toISOString(),
+      exportado_por: (sesion && sesion.actor) || '',
+      exportado_por_nombre: (sesion && sesion.nombre) || '',
+      navegador: (typeof navigator !== 'undefined' && navigator.userAgent) || '',
+      datos: leer() || { v: 1, machotes: [], handoff: {} }
+    };
+  }
+
+  /** Saca la lista de machotes de un archivo. Acepta el sobre de exportar y
+   *  también el crudo del almacén, porque quien pegue un respaldo a mano no
+   *  tiene por qué saber la diferencia. */
+  function machotesDe(obj) {
+    if (!obj) return null;
+    if (obj.datos && Array.isArray(obj.datos.machotes)) return obj.datos.machotes;
+    if (Array.isArray(obj.machotes)) return obj.machotes;
+    return null;
+  }
+
   G.MachoteAlmacen = {
     nombre: 'navegador',
     disponible: function () { return VIVO; },
     leer: leer,
     escribir: escribir,
-    olvidar: olvidar
+    olvidar: olvidar,
+    sobre: sobre,
+    machotesDe: machotesDe
   };
 })(window);

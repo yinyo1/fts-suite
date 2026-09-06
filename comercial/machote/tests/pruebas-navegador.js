@@ -2076,6 +2076,187 @@ let ok = 0, mal = 0;
     } finally { await f.close(); }
   });
 
+  // ── Respaldo (V1.17) ─────────────────────────────────────────────────
+  await paso('el autor se estampa al crear, del token', async () => {
+    /* Hasta V1.16 `analista` quedaba vacío en TODO machote real porque
+     * `vNuevo()` no lo pasaba: lo capturado no decía de quién era. Es
+     * requisito del almacén compartido, no un adorno. */
+    await ir('#/nuevo');
+    await p.waitForTimeout(320);
+    await p.fill('#n-nombre', 'ZZ con autor');
+    await p.click('#n-crear');
+    await p.waitForTimeout(900);
+    const m = await p.evaluate(() => JSON.parse(localStorage.getItem('fts_machote_v1'))
+      .machotes.find(x => x.nombre === 'ZZ con autor'));
+    if (!m) throw new Error('no se creó');
+    if (m.creado_por !== 'zz.prueba')
+      throw new Error('creado_por: ' + JSON.stringify(m.creado_por));
+    if (m.creado_por_nombre !== 'ZZ Prueba')
+      throw new Error('creado_por_nombre: ' + JSON.stringify(m.creado_por_nombre));
+    if (!m.creado_at) throw new Error('sin creado_at');
+    console.log('    ' + m.creado_por + ' · ' + m.creado_por_nombre);
+  });
+
+  await paso('exportar y reimportar el mismo archivo no duplica ni pierde', async () => {
+    /* La prueba central del rescate. Se exporta, se vuelve a importar EL MISMO
+     * contenido, y tiene que dar copias marcadas — no duplicados silenciosos
+     * ni, peor, un reemplazo. Se mide sobre el motor de fusión, que es donde
+     * vive la regla; el botón se prueba aparte. */
+    /* El almacén tiene que TENER algo, o esto fusiona cero contra cero y pasa
+     * en vacío — un `0 → 0` se ve idéntico a un éxito (CLAUDE.md §9). Se crea
+     * un machote de verdad primero, que además dispara el autoguardado. */
+    await ir('#/nuevo');
+    await p.waitForTimeout(320);
+    await p.fill('#n-nombre', 'ZZ para exportar');
+    await p.click('#n-crear');
+    await p.waitForTimeout(900);
+    await p.evaluate(() => { location.hash = '#/'; });
+    await p.waitForTimeout(300);
+
+    const r = await p.evaluate(() => {
+      const R = window.MachoteRespaldo, A = window.MachoteAlmacen;
+      const sobre = A.sobre({ actor: 'zz.prueba', nombre: 'ZZ Prueba' });
+      const actuales = sobre.datos.machotes;
+      const entrantes = A.machotesDe(sobre);
+      const f = R.fusionar(actuales, entrantes);
+      // Ninguno de los originales puede haber cambiado de id ni desaparecido.
+      const idsAntes = actuales.map(m => m.id);
+      const sobreviven = idsAntes.every(id => f.lista.some(m => m.id === id));
+      return { antes: actuales.length, despues: f.lista.length,
+               nuevos: f.nuevos, copias: f.copias, sobreviven,
+               idsUnicos: new Set(f.lista.map(m => m.id)).size === f.lista.length };
+    });
+    if (!(r.antes > 0))
+      throw new Error('el almacén estaba vacío: la prueba habría pasado en vacío');
+    if (!r.sobreviven) throw new Error('se perdió un machote original');
+    if (r.nuevos !== 0) throw new Error('contó ' + r.nuevos + ' como nuevos; eran los mismos');
+    if (r.copias !== r.antes) throw new Error('copias ' + r.copias + ' ≠ ' + r.antes);
+    if (r.despues !== r.antes * 2) throw new Error('total ' + r.despues);
+    if (!r.idsUnicos) throw new Error('generó ids repetidos');
+    console.log('    ' + r.antes + ' → ' + r.despues + ' · ' + r.copias +
+                ' copias, 0 perdidos, ids únicos');
+  });
+
+  await paso('importar un id existente crea copia y NO pisa', async () => {
+    /* La regla dura: importar no puede destruir. Se importa un machote con un
+     * id que ya existe pero con el nombre cambiado; el original tiene que
+     * seguir intacto y el entrante entrar al lado. */
+    await ir('#/');
+    const r = await p.evaluate(() => {
+      const R = window.MachoteRespaldo;
+      const actuales = [
+        { id: 'M-X', nombre: 'EL BUENO', cliente: 'A' },
+        { id: 'M-Y', nombre: 'otro', cliente: 'B' }
+      ];
+      const entrantes = [
+        { id: 'M-X', nombre: 'EL DEL ARCHIVO', cliente: 'Z' },
+        { id: 'M-NUEVO', nombre: 'no existía', cliente: 'C' }
+      ];
+      const f = R.fusionar(actuales, entrantes);
+      const orig = f.lista.find(m => m.id === 'M-X');
+      const copia = f.lista.find(m => m._copia_de === 'M-X');
+      return { total: f.lista.length, nuevos: f.nuevos, copias: f.copias,
+               origNombre: orig && orig.nombre, origCliente: orig && orig.cliente,
+               copiaId: copia && copia.id, copiaNombre: copia && copia.nombre,
+               tieneNuevo: f.lista.some(m => m.id === 'M-NUEVO') };
+    });
+    if (r.origNombre !== 'EL BUENO')
+      throw new Error('PISÓ el original: ahora dice ' + r.origNombre);
+    if (r.origCliente !== 'A') throw new Error('cambió el cliente del original');
+    if (!r.copia_id && !r.copiaId) throw new Error('no creó la copia');
+    if (r.copiaId === 'M-X') throw new Error('la copia reusó el id');
+    if (!/importado/.test(r.copiaNombre || '')) throw new Error('la copia no está marcada');
+    if (!r.tieneNuevo) throw new Error('perdió el que sí era nuevo');
+    if (r.nuevos !== 1 || r.copias !== 1) throw new Error(JSON.stringify(r));
+    console.log('    original intacto "' + r.origNombre + '" · copia ' + r.copiaId);
+  });
+
+  await paso('un archivo que no se entiende no toca nada', async () => {
+    /* Aplicar la mitad de un archivo roto deja un estado que nadie pidió. */
+    await ir('#/');
+    const r = await p.evaluate(() => {
+      const R = window.MachoteRespaldo;
+      const actuales = [{ id: 'M-X', nombre: 'intacto' }];
+      return {
+        basura: R.importarTexto('esto no es json', actuales),
+        jsonAjeno: R.importarTexto('{"hola":1}', actuales),
+        siguen: actuales.length
+      };
+    });
+    if (r.basura.ok) throw new Error('aceptó basura');
+    if (r.jsonAjeno.ok) throw new Error('aceptó un JSON sin machotes');
+    if (!/JSON válido/.test(r.basura.error)) throw new Error('no explica: ' + r.basura.error);
+    if (!/lista de machotes/.test(r.jsonAjeno.error)) throw new Error('no explica: ' + r.jsonAjeno.error);
+    if (r.siguen !== 1) throw new Error('tocó la lista');
+    console.log('    rechaza y explica, sin tocar nada');
+  });
+
+  await paso('los dos botones de respaldo están y se alcanzan', async () => {
+    await ir('#/');
+    const r = await p.evaluate(() => {
+      const b = document.querySelector('#bExportar');
+      const f = document.querySelector('#fImportar');
+      const lab = f && f.closest('label');
+      const rb = b && b.getBoundingClientRect();
+      const rl = lab && lab.getBoundingClientRect();
+      return { hayB: !!b, hayF: !!f, txt: b && b.textContent,
+               altoB: rb && Math.round(rb.height), altoL: rl && Math.round(rl.height),
+               acepta: f && f.getAttribute('accept') };
+    });
+    if (!r.hayB || !r.hayF) throw new Error('faltan los controles');
+    if (!/Exportar todo \(\d+\)/.test(r.txt || '')) throw new Error('el botón dice: ' + r.txt);
+    if (r.altoB < 44 || r.altoL < 44)
+      throw new Error('no se alcanzan con el pulgar: ' + r.altoB + ' / ' + r.altoL + ' px');
+    if (!/json/.test(r.acepta || '')) throw new Error('el input no filtra .json');
+    console.log('    ' + r.txt + ' · ' + r.altoB + ' y ' + r.altoL + ' px de alto');
+  });
+
+  await paso('cuando el guardado falla, el aviso tapa y no se puede ignorar', async () => {
+    /* El pulso dice la verdad pero se puede no ver. Esto no. */
+    const q = await b.newPage({ viewport: { width: 380, height: 780 } });
+    try {
+      await q.addInitScript(() => {
+        try {
+          localStorage.clear();
+          localStorage.setItem('fts_suite_session', JSON.stringify({
+            token: 'x.y.z', actor: 'zz.prueba', nombre: 'ZZ Prueba',
+            scopes: ['comercial:read'], exp: Math.floor(Date.now() / 1000) + 3600
+          }));
+        } catch (e) {}
+        const o = window.fetch;
+        window.fetch = function (u) {
+          if (String(u).indexOf('/comercial/clientes') >= 0) {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, clientes: [] }) });
+          }
+          return o.apply(this, arguments);
+        };
+      });
+      await q.goto(BASE); await q.waitForTimeout(400);
+      // El almacén deja de aceptar, como en modo privado o al llenarse.
+      await q.evaluate(() => { localStorage.setItem = function () { throw new Error('QuotaExceeded'); }; });
+      await q.evaluate(() => { location.hash = '#/nuevo'; }); await q.waitForTimeout(400);
+      await q.fill('#n-nombre', 'ZZ sin almacen');
+      await q.click('#n-crear');
+      await q.waitForTimeout(700);
+      const r = await q.evaluate(() => {
+        const n = document.querySelector('#noGuarda');
+        if (!n) return { hay: false };
+        const c = n.getBoundingClientRect();
+        return { hay: true, rol: n.getAttribute('role'), txt: n.textContent,
+                 abajo: Math.round(c.bottom) >= window.innerHeight - 2,
+                 ancho: Math.round(c.width) >= window.innerWidth - 2,
+                 exporta: !!document.querySelector('#ngExp') };
+      });
+      if (!r.hay) throw new Error('no avisó nada');
+      if (r.rol !== 'alert') throw new Error('no se anuncia como alerta');
+      if (!/No se está guardando/.test(r.txt)) throw new Error('no lo dice: ' + r.txt.slice(0, 80));
+      if (!/se pierde/.test(r.txt)) throw new Error('no dice la consecuencia');
+      if (!r.abajo || !r.ancho) throw new Error('no tapa: no llega a los bordes');
+      if (!r.exporta) throw new Error('avisa pero no da salida');
+      console.log('    barra a lo ancho, con "Exportar ahora" al lado');
+    } finally { await q.close(); }
+  });
+
   // ── El gate ──────────────────────────────────────────────────────────
   await paso('sin sesión, el libro no se alcanza a ver', async () => {
     // Pagina LIMPIA, sin la sesion sembrada: debe mandar al login.

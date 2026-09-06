@@ -655,3 +655,38 @@ th .hint { font-weight: 400; text-transform: none; opacity: .75; }
   table.rejilla.tarjetas td.acc, table.rejilla.tarjetas th.acc { position: static; }
   table.rejilla.tarjetas td.descol, table.rejilla.tarjetas th.descol { min-width: 0; width: auto; }
 }
+
+/* ── Respaldo (V1.17) ─────────────────────────────────────────────────────
+ * El bloque del pie de la lista, y la barra que aparece cuando el navegador
+ * deja de guardar. */
+.wg.respaldo .btnrow { padding: 10px 0; }
+
+/* `Importar` es un <label> que envuelve un <input type=file>: el input nativo
+ * no se puede estilar y se ve distinto en cada sistema. El label le da la
+ * misma forma que a los demás botones, y el input queda oculto pero
+ * ALCANZABLE con el teclado — `display:none` lo sacaría del tabulador. */
+.btn.archivo { position: relative; overflow: hidden; }
+.btn.archivo input[type="file"] {
+  position: absolute; inset: 0; opacity: 0; width: 100%; cursor: pointer;
+}
+
+/* No se está guardando. Tapa el pie de la pantalla a propósito: es lo único
+ * de la interfaz que se pone encima del trabajo, porque a partir de aquí todo
+ * lo que se teclee se pierde. */
+.nogda {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+  background: var(--rojo); color: #fff;
+  padding: 12px 14px; font-size: 13.5px; line-height: 1.45;
+  display: flex; gap: 12px; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; box-shadow: 0 -6px 18px rgba(0, 0, 0, .18);
+}
+.nogda-b { display: flex; gap: 8px; flex-shrink: 0; }
+.nogda .btn { background: #fff; border-color: #fff; color: var(--rojo); }
+.nogda .btn.fantasma { background: transparent; color: #fff; }
+
+@media (max-width: 560px) {
+  /* En teléfono el texto y los botones apilados: en una fila los botones
+   * quedarían de 40 px y el aviso se leería a medias. */
+  .nogda { flex-direction: column; align-items: stretch; }
+  .nogda-b .btn { flex: 1; }
+}
