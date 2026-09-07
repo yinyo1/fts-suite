@@ -56,13 +56,32 @@ lo que siga entran igual, cada uno con su rol. Lo único en `public` es
 `schema_migrations`, que es de toda la suite.
 
 ### 2. Migraciones versionadas en git, desde el archivo cero
-Cada cambio de estructura es un `.sql` numerado en `comercial/db/migrations/`, aplicado en
+Cada cambio de estructura es un `.sql` numerado en `db/migrations/<dominio>/`, aplicado en
 orden y registrado en `public.schema_migrations` con el **sha256 real del archivo**.
 **La base nunca se toca a mano ni con DDL improvisado desde un nodo.** Debe poder
 recrearse desde cero corriendo los archivos en orden.
 
 > El renglón de bitácora lo inserta el runner, no el propio `.sql`: un archivo no puede
 > contener su propio hash, y un checksum inventado es peor que no tenerlo.
+
+**Las migraciones viven en `db/` en la raíz, no dentro del módulo** (decisión de Esteban,
+6-sep): la base es un recurso de **toda la suite**, no del módulo comercial. Un `.sql` de
+`rrhh` no puede vivir bajo `comercial/` sin mentir sobre a quién pertenece.
+
+```
+db/
+  README.md                    ← cómo se aplican, y las dos credenciales
+  migrations/
+    comercial/                 ← 001, 002, 003
+    rrhh/                      ← cuando exista
+    proyectos/                 ← cuando exista
+```
+
+**La numeración es GLOBAL, no por carpeta.** El siguiente archivo de cualquier dominio
+toma el número que sigue al más alto que exista en todo `db/migrations/`. La carpeta dice
+de qué dominio es; el número dice en qué orden se aplicó a **esta** base, que es una sola.
+Numerar por carpeta produciría dos `004` distintos y un orden de aplicación ambiguo.
+El detalle operativo completo está en [`db/README.md`](../../db/README.md).
 
 ### 3. Llaves primarias propias (UUID), no ids de Odoo
 Toda tabla tiene `id uuid DEFAULT gen_random_uuid()`. El id de Odoo entra como
@@ -81,7 +100,20 @@ que depende de que cada escritura lo recuerde, tarde o temprano no se pone.
 ### 5. Un rol por aplicación, permisos mínimos
 n8n entra como **`comercial_app`**: `USAGE` en el esquema `comercial` y `SELECT`/`INSERT`/
 `UPDATE` en sus tablas. Nunca superusuario, nunca el dueño del esquema (`fts_admin`).
-La credencial vive **solo** en n8n.
+La credencial vive **solo** en n8n. Cada dominio que entre trae su propio rol
+(`rrhh_app`, `proyectos_app`), con permisos **solo sobre su esquema**.
+
+**Dos credenciales, no una** — la separación es lo que hace real el "permisos mínimos":
+
+| Credencial n8n | Rol | Para qué | Quién la usa |
+|---|---|---|---|
+| `fts-suite-db · fts_admin` | `fts_admin` (dueño) | **DDL**: crear esquemas, tablas, roles | **solo** `comercial/db-migrate` |
+| `fts-suite-db · comercial_app` | `comercial_app` | **datos**: leer y escribir las tablas de `comercial` | los webhooks de la aplicación |
+
+`comercial_app` **no puede aplicar migraciones aunque se le pida**: `001` a propósito no le
+da `CREATE` sobre el esquema. Y al revés, ningún webhook de aplicación toca la credencial
+de `fts_admin`. Un webhook comprometido no puede alterar la estructura; el runner de
+migraciones no anda leyendo datos de nadie.
 
 ### 6. No espejees Odoo
 Postgres guarda **únicamente** lo que Odoo no modela. Nada de copiar clientes, leads,
@@ -94,6 +126,7 @@ de la sesión 1 acaba de resolver. Se referencia por `odoo_lead_id`, no se dupli
 
 `001_fundacion.sql` — esquema, rol, bitácora y el trigger de auditoría.
 `002_evidencia_propuesta_expediente.sql` — las tres tablas.
+`003_machote.sql` — el machote y su historial de versiones (abajo, sección propia).
 
 | Tabla | Qué guarda | Regla que hace cumplir el esquema |
 |---|---|---|
@@ -113,40 +146,116 @@ Detalles que valen la pena:
 
 ---
 
-## El único paso que no está en git, a propósito
+## El machote y su historial (`003_machote.sql`)
 
-El rol `comercial_app` se crea **`NOLOGIN` y sin contraseña**. Ponerle una en un `.sql`
-versionado sería meter un secreto al repo.
+Dos tablas. La forma sale de una decisión de Esteban (#140, 6-sep): **jsonb para el
+documento congelado, más columnas para lo que se consulta**. El machote va a cambiar de
+forma varias veces este año; columnas rígidas obligarían a una migración cada vez. Y a la
+vez, filtrar por total o por margen leyendo jsonb en cada renglón no se sostiene.
 
-Un humano corre esto **una sola vez**, contra `fts_suite`:
+| Tabla | Qué guarda |
+|---|---|
+| `comercial.machote` | la identidad: de quién es, contra qué lead/SO/cliente de Odoo va, y en qué estado está |
+| `comercial.machote_version` | **una fila por versión guardada, para siempre** |
 
-```sql
-ALTER ROLE comercial_app WITH LOGIN PASSWORD '<generada, no reusada de otro lado>';
-```
+### El historial se comporta como el de SharePoint, con dos diferencias
 
-Y luego crea en n8n una credencial Postgres con:
+Cualquier versión anterior se abre y se ve **completa tal como estaba** — por eso el
+documento entero viaja congelado en `documento jsonb`, no un diff. Las diferencias:
+
+1. **Ver no es restaurar.** No hay vuelta atrás: la orden se confirma con la última, y ésa
+   queda como definitiva para crear las analíticas. En la pantalla eso significa que el
+   botón de restaurar **no existe** — no está deshabilitado, no está. Prototipo:
+   [`prototipos/historial-versiones.html`](prototipos/historial-versiones.html).
+2. **El motivo es obligatorio cuando cambian las comisiones o el margen.** El caso real que
+   lo motivó: un machote modificado al final para cambiar el reparto de comisión, sin que
+   quedara rastro de por qué.
+
+### Lo que hace cumplir el esquema, no el código
+
+- **`mv_exige_motivo`** — trigger `BEFORE INSERT`: compara contra la versión anterior y si
+  cambió `comision_fts`, `comision_cliente` o `margen` sin `motivo`, rechaza el `INSERT`
+  nombrando qué cambió. Un frontend que se le olvide pedirlo no puede colar el cambio.
+- **`mv_version_consecutiva`** — la versión nueva tiene que ser exactamente la última + 1.
+  Junto con `UNIQUE (machote_id, version)` da el bloqueo optimista: dos personas guardando
+  encima de la misma versión leída, la segunda choca en vez de pisar a la primera.
+- **Append-only por permisos, no por disciplina.** A `comercial_app` se le dan `SELECT` e
+  `INSERT` sobre `machote_version`, y se le **revoca `UPDATE`** explícitamente (`001` da
+  `UPDATE` por default a todas las tablas futuras del esquema — sin ese `REVOKE` el
+  append-only se rompería en silencio). Una versión guardada no se puede modificar ni
+  borrar desde la aplicación. Ni con un bug, ni a propósito.
+
+Las tres cosas están **probadas contra un Postgres de verdad**, no leídas del `.sql`: 10
+pruebas de comportamiento (motivo exigido y aceptado, choque de concurrencia, salto de
+versión, y `UPDATE`/`DELETE` rebotando con `permission denied`).
+
+---
+
+## Los dos pasos que no están en git, a propósito
+
+Ninguna contraseña entra al repo, así que las dos credenciales las crea un humano a mano,
+una sola vez. **El orden importa: sin la primera, el runner no se puede conectar y no
+aplica ni la migración `001`.**
+
+### Paso 1 — la credencial de DDL (`fts_admin`)
+
+`fts_admin` **ya existe** (lo crea Railway al levantar el servicio) y su contraseña vive en
+la variable `POSTGRES_PASSWORD` del servicio. No hay nada que crear en la base: solo hay
+que darle esa contraseña a n8n, en una credencial Postgres llamada
+**`fts-suite-db · fts_admin`**:
 
 ```
 host      fts-suite-db.railway.internal
 port      5432
 database  fts_suite
-user      comercial_app
-password  <la de arriba>
+user      fts_admin
+password  el valor de POSTGRES_PASSWORD del servicio fts-suite-db
 SSL       deshabilitado (red privada de Railway)
 ```
 
-La contraseña no pasa por el repo, ni por un issue, ni por el chat.
+⚠️ Ese valor se copia **desde la pestaña Variables del servicio en Railway directo a n8n**.
+No pasa por el chat, ni por un issue, ni por un archivo.
+
+### Paso 2 — la credencial de aplicación (`comercial_app`)
+
+El rol `comercial_app` lo crea la migración `001`, **`NOLOGIN` y sin contraseña**: ponerle
+una en un `.sql` versionado sería meter un secreto al repo. Así que **después de aplicar
+`001`**, en la Console del servicio `fts-suite-db`:
+
+```
+PGPASSWORD=$POSTGRES_PASSWORD psql -U fts_admin -d fts_suite
+\password comercial_app        ← la pide dos veces y NO la muestra en pantalla
+ALTER ROLE comercial_app WITH LOGIN;
+```
+
+`\password` se usa en vez de `ALTER ROLE … PASSWORD '…'` a propósito: el segundo dejaría
+la contraseña en claro en el historial de `psql` y en los logs del servidor.
+
+Y con ella, la segunda credencial en n8n, **`fts-suite-db · comercial_app`**: los mismos
+`host`/`port`/`database`/`SSL` de arriba, con `user comercial_app` y esa contraseña.
 
 ---
 
 ## Cómo se aplican las migraciones
 
-Por el workflow n8n `comercial/db-migrate`, que lee los `.sql` del repo **por SHA fijo**
-(no por rama), verifica el `sha256`, los aplica en orden dentro de una transacción y
-escribe el renglón de `public.schema_migrations`. Mismo patrón que
+Por el workflow n8n **`comercial/db-migrate`** (id `4hyzXjkr31h8DPPS`), que lee los `.sql`
+del repo **por SHA fijo** (no por rama), verifica el `sha256`, los aplica dentro de una
+transacción y escribe el renglón de `public.schema_migrations`. Mismo patrón que
 `comercial/limpieza-2026-08`: n8n ejecuta un artefacto congelado, no improvisa.
 
-Nace INACTIVO y se dispara a mano.
+Nace INACTIVO y se dispara a mano. Usa la credencial **`fts-suite-db · fts_admin`** — es el
+único workflow que la toca.
+
+Cómo se comporta, y por qué así:
+
+- **Aplica UNA migración por corrida.** Se le dice cuál. Un runner que aplica "todas las
+  pendientes" convierte un error en la 003 en un estado a medias que nadie pidió.
+- **Se niega si hay un hueco.** Si le piden la 003 y la 002 no está aplicada, para.
+- **Detecta el archivo editado.** Si el `sha256` de un `.sql` ya aplicado no coincide con
+  el de la bitácora, responde `CHECKSUM_DISTINTO` y no hace nada. Una migración aplicada
+  no se edita: se escribe otra.
+- **Reporta desde un read-back contra la base**, no desde el `success` del nodo — la misma
+  regla de §8 de `CLAUDE.md`: el estado del proceso no sustituye al del destino.
 
 ---
 

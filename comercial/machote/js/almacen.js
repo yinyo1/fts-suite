@@ -11,7 +11,7 @@
  * autoguardado sea REAL mientras se valida el backend, no para operar.
  *
  * Lo que falta para mover esto a Postgres, escrito para no re-investigarlo:
- *   1. `comercial/db/migrations/003_machote.sql` — las tablas.
+ *   1. `db/migrations/comercial/003_machote.sql` — las tablas.
  *   2. El workflow `comercial/db-migrate` (DISEÑADO en docs/comercial/ALMACEN.md,
  *      NO CONSTRUIDO todavía) para aplicarla.
  *   3. Un humano corre una vez `ALTER ROLE comercial_app WITH LOGIN PASSWORD`

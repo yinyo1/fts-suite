@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS public.schema_migrations (
   aplicada_por text        NOT NULL DEFAULT current_user
 );
 COMMENT ON TABLE public.schema_migrations IS
-  'Una fila por archivo de comercial/db/migrations/ aplicado. La base debe poder recrearse corriendo los archivos en orden.';
+  'Una fila por archivo de db/migrations/ aplicado, de cualquier dominio. La base debe poder recrearse corriendo los archivos en orden.';
 
 -- ── Esquema por dominio (regla 1) ──
 -- Nada vive en public salvo la bitácora. operaciones/, rrhh/ entran igual el día que toque.
@@ -23,10 +23,12 @@ CREATE SCHEMA IF NOT EXISTS comercial;
 COMMENT ON SCHEMA comercial IS 'Taller del módulo comercial: lo que Odoo NO modela. Nunca duplica Odoo (regla 6).';
 
 -- ── Rol de aplicación con permisos mínimos (regla 5) ──
--- NOLOGIN a propósito: la contraseña NO vive en git. El único paso manual del
--- almacén es que un humano corra, una vez:
---     ALTER ROLE comercial_app WITH LOGIN PASSWORD '<generada en Railway>';
--- Ver docs/comercial/ALMACEN.md §"El único paso que no está en git".
+-- NOLOGIN a propósito: la contraseña NO vive en git. Después de aplicar esta
+-- migración, un humano corre una vez, en la Console de fts-suite-db:
+--     PGPASSWORD=$POSTGRES_PASSWORD psql -U fts_admin -d fts_suite
+--     \password comercial_app      <- la pide sin mostrarla ni dejarla en el historial
+--     ALTER ROLE comercial_app WITH LOGIN;
+-- Ver docs/comercial/ALMACEN.md §"Los dos pasos que no están en git".
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'comercial_app') THEN

@@ -1,0 +1,132 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Prototipo · historial de versiones del machote</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --tinta:#1f2430; --gris:#5b6472; --linea:#e3e6eb; --fondo:#fff; --papel:#f6f7f9;
+          --azul:#1f4e79; --verde:#2e7d32; --ambar:#b26a00; --rojo:#b3261e; }
+  * { box-sizing:border-box }
+  body { margin:0; font:15px/1.55 -apple-system,Segoe UI,Roboto,sans-serif; color:var(--tinta); background:var(--papel) }
+  .caja { max-width:960px; margin:0 auto; padding:18px }
+  h1 { font-size:19px; margin:0 0 4px } h2 { font-size:15px; margin:20px 0 8px }
+  .sub { color:var(--gris); font-size:13px; margin:0 0 16px }
+  .cols { display:grid; grid-template-columns:340px 1fr; gap:14px; align-items:start }
+  @media (max-width:760px){ .cols { grid-template-columns:1fr } }
+  .tarjeta { background:var(--fondo); border:1px solid var(--linea); border-radius:10px; padding:14px }
+  .v { border:1px solid var(--linea); border-radius:9px; padding:10px 12px; margin-bottom:8px;
+       cursor:pointer; background:var(--fondo) }
+  .v:hover { border-color:var(--azul) } .v.on { border-color:var(--azul); box-shadow:0 0 0 2px #1f4e7922 }
+  .v .n { font-weight:700 } .v .meta { font-size:12.5px; color:var(--gris) }
+  .v .motivo { font-size:13px; margin-top:5px; padding-left:9px; border-left:3px solid var(--ambar) }
+  .chip { font-size:11px; padding:2px 8px; border-radius:99px; background:var(--papel);
+          border:1px solid var(--linea); color:var(--gris) }
+  .chip.ult { background:#e6f4ea; border-color:#b7dfc3; color:var(--verde); font-weight:600 }
+  table { border-collapse:collapse; width:100%; font-size:13.5px }
+  th,td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--linea) }
+  th { background:var(--papel); font-size:11.5px; text-transform:uppercase; letter-spacing:.03em; color:var(--gris) }
+  td.num { text-align:right; font-variant-numeric:tabular-nums }
+  .lectura { background:#fffbf0; border-left:3px solid var(--ambar); padding:10px 12px;
+             border-radius:0 8px 8px 0; font-size:13.5px; margin-bottom:12px }
+  .dif { background:#fff3cd }
+  .tiny { font-size:12.5px; color:var(--gris) }
+  pre { background:var(--papel); border:1px solid var(--linea); border-radius:8px; padding:10px;
+        overflow:auto; font-size:12px; max-height:220px }
+</style>
+
+<div class="caja">
+  <h1>Prototipo · historial de versiones</h1>
+  <p class="sub">Como el historial de SharePoint: se abre cualquier versión y se ve completa
+  tal como estaba. Con dos diferencias — <strong>ver no es restaurar</strong>, y el
+  <strong>motivo es obligatorio</strong> cuando cambian comisiones o margen.</p>
+
+  <div class="cols">
+    <div>
+      <h2>Versiones</h2>
+      <div id="lista"></div>
+      <p class="tiny">La orden se confirma con la <strong>última</strong>, y ésa queda como
+      definitiva contra la que se crean las analíticas.</p>
+    </div>
+
+    <div>
+      <h2 id="tit">Versión</h2>
+      <div class="tarjeta">
+        <div id="aviso"></div>
+        <div id="cuerpo"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Datos de mentiras con la forma REAL de comercial.machote_version. */
+var V = [
+  { version:1, autor:'montalvo', autor_nombre:'Francisco Montalvo', creada_at:'2026-09-02T16:04:00Z',
+    estado:'borrador', motivo:null, total:1598200, margen:0.40, comision_fts:0.055,
+    comision_cliente:0, moneda:'MXN', tc:17.35, tc_fuente:'DOF del día',
+    documento:{ secciones:[{nombre:'Suministro y fabricación', partidas:12}], nota:'captura inicial' } },
+  { version:2, autor:'montalvo', autor_nombre:'Francisco Montalvo', creada_at:'2026-09-03T11:22:00Z',
+    estado:'borrador', motivo:null, total:1620600, margen:0.40, comision_fts:0.055,
+    comision_cliente:0, moneda:'MXN', tc:17.35, tc_fuente:'DOF del día',
+    documento:{ secciones:[{nombre:'Suministro y fabricación', partidas:14}], nota:'se agregaron 2 partidas' } },
+  { version:3, autor:'ricardo', autor_nombre:'Ricardo Hernández', creada_at:'2026-09-04T19:47:00Z',
+    estado:'revision', motivo:'Se renegoció el reparto con el cliente: baja la de FTS y entra 2% para el contacto.',
+    total:1620600, margen:0.40, comision_fts:0.035, comision_cliente:0.02,
+    moneda:'MXN', tc:17.35, tc_fuente:'DOF del día',
+    documento:{ secciones:[{nombre:'Suministro y fabricación', partidas:14}], nota:'sin cambios de alcance' } }
+];
+
+var sel = V.length - 1;
+var mx = function(n){ return n==null ? '—' : '$' + Number(n).toLocaleString('es-MX',{maximumFractionDigits:0}); };
+var pc = function(n){ return n==null ? '—' : (Number(n)*100).toFixed(2).replace(/\.?0+$/,'') + '%'; };
+var fecha = function(s){ var d=new Date(s); return d.toLocaleDateString('es-MX',{day:'2-digit',month:'short'}) +
+  ' ' + d.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}); };
+
+function pintarLista(){
+  document.getElementById('lista').innerHTML = V.slice().reverse().map(function(v){
+    var ult = v.version === V.length;
+    return '<div class="v' + (v.version===V[sel].version?' on':'') + '" data-v="' + v.version + '">' +
+      '<div><span class="n">Versión ' + v.version + '</span> ' +
+      (ult ? '<span class="chip ult">la última</span>' : '<span class="chip">' + v.estado + '</span>') + '</div>' +
+      '<div class="meta">' + v.autor_nombre + ' · ' + fecha(v.creada_at) + '</div>' +
+      (v.motivo ? '<div class="motivo">' + v.motivo + '</div>' : '') +
+      '</div>';
+  }).join('');
+  [].forEach.call(document.querySelectorAll('.v'), function(el){
+    el.onclick = function(){ sel = Number(el.dataset.v) - 1; pintar(); };
+  });
+}
+
+function pintar(){
+  pintarLista();
+  var v = V[sel], ant = sel > 0 ? V[sel-1] : null, ult = v.version === V.length;
+  document.getElementById('tit').textContent = 'Versión ' + v.version + (ult ? ' · la última' : '');
+
+  /* Ver no es restaurar. Se dice en la pantalla, y NO hay botón de restaurar:
+   * un botón que no debe apretarse no se pone y se deshabilita — se omite. */
+  document.getElementById('aviso').innerHTML = ult ? '' :
+    '<div class="lectura"><strong>Estás viendo una versión anterior, en modo lectura.</strong> ' +
+    'No se puede volver a ella: la orden se confirma con la última. Esto es para entender ' +
+    'qué cambió y por qué.</div>';
+
+  /* Devuelve la clase, no el atributo entero: pegar un segundo class="dif" junto
+   * al class="num" que ya trae la celda hace que el navegador se quede con el
+   * PRIMERO y tire el segundo en silencio — la fila cambiada se pintaba igual
+   * que las demás. Salió al correr el prototipo, leyendo el HTML se ve bien. */
+  var dif = function(campo){ return ant && ant[campo] !== v[campo] ? ' dif' : ''; };
+  document.getElementById('cuerpo').innerHTML =
+    '<table>' +
+    '<tr><th>Concepto</th><th>Esta versión</th><th>' + (ant ? 'Versión ' + ant.version : '—') + '</th></tr>' +
+    '<tr><td>Total</td><td class="num' + dif('total') + '">' + mx(v.total) + '</td><td class="num tiny">' + (ant?mx(ant.total):'—') + '</td></tr>' +
+    '<tr><td>Margen</td><td class="num' + dif('margen') + '">' + pc(v.margen) + '</td><td class="num tiny">' + (ant?pc(ant.margen):'—') + '</td></tr>' +
+    '<tr><td>Comisión FTS</td><td class="num' + dif('comision_fts') + '">' + pc(v.comision_fts) + '</td><td class="num tiny">' + (ant?pc(ant.comision_fts):'—') + '</td></tr>' +
+    '<tr><td>Comisión cliente</td><td class="num' + dif('comision_cliente') + '">' + pc(v.comision_cliente) + '</td><td class="num tiny">' + (ant?pc(ant.comision_cliente):'—') + '</td></tr>' +
+    '<tr><td>Moneda</td><td class="num">' + v.moneda + '</td><td class="num tiny">' + (ant?ant.moneda:'—') + '</td></tr>' +
+    '<tr><td>Tipo de cambio <span class="tiny">(' + v.tc_fuente + ')</span></td><td class="num' + dif('tc') + '">' + v.tc + '</td><td class="num tiny">' + (ant?ant.tc:'—') + '</td></tr>' +
+    '</table>' +
+    '<p class="tiny" style="margin-top:10px">Lo resaltado cambió respecto de la versión anterior. ' +
+    'El tipo de cambio y los precios quedaron <strong>congelados</strong> tal como estaban.</p>' +
+    '<h2 style="font-size:13px">El documento congelado</h2>' +
+    '<pre>' + JSON.stringify(v.documento, null, 2) + '</pre>';
+}
+pintar();
+</script>
