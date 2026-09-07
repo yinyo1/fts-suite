@@ -70,7 +70,7 @@
    *  (`-imp<algo>-1`, `-2`…) en vez de `Date.now()` por renglón: importar
    *  cincuenta en el mismo milisegundo generaría ids repetidos, que es
    *  exactamente el problema que se está evitando. */
-  function fusionar(actuales, entrantes, sello) {
+  function fusionar(actuales, entrantes, sello, autorArchivo) {
     var lista = (actuales || []).slice();
     var vivos = {}, i;
     for (i = 0; i < lista.length; i++) vivos[lista[i].id] = true;
@@ -81,10 +81,10 @@
     for (i = 0; i < (entrantes || []).length; i++) {
       var m = entrantes[i];
       if (!m || !m.id) continue;                    // sin id no se puede fusionar
-      if (!vivos[m.id]) { lista.push(m); vivos[m.id] = true; nuevos++; continue; }
+      if (!vivos[m.id]) { lista.push(resolverAutor(m, autorArchivo)); vivos[m.id] = true; nuevos++; continue; }
 
       // Ya existe: entra AL LADO, marcado, sin tocar al que estaba.
-      var c = JSON.parse(JSON.stringify(m));
+      var c = resolverAutor(JSON.parse(JSON.stringify(m)), autorArchivo);
       copias++;
       c._copia_de = m.id;
       c._importado_at = new Date().toISOString();
@@ -95,6 +95,30 @@
       lista.push(c); vivos[c.id] = true;
     }
     return { lista: lista, nuevos: nuevos, copias: copias };
+  }
+
+  /* ── Autoría de lo importado (#140) ──────────────────────────────────────
+   *
+   * Los machotes capturados antes de V1.17 nacieron SIN autor: `vNuevo()` no
+   * pasaba `creado_por` y el campo quedaba vacío en todo machote real. Ahora
+   * el almacén compartido necesita saber de quién es cada uno — en Postgres el
+   * dueño decide quién lo ve y quién puede guardarlo.
+   *
+   * A un machote sin autor NO se le inventa uno. Se le pone **el de quien
+   * exportó el archivo**, que es el único dato de autoría que existe de
+   * verdad: ese archivo salió de SU navegador, así que lo de adentro es suyo.
+   * Y queda dicho que se resolvió al importar (`_autor_resuelto`), para que
+   * dentro de un año se pueda distinguir un autor capturado de uno deducido.
+   *
+   * Si el archivo tampoco dice quién lo exportó, el machote se queda sin
+   * autor. Vacío es un dato honesto; un nombre inventado, no. */
+  function resolverAutor(m, autorArchivo) {
+    if (!m || !autorArchivo || !autorArchivo.actor) return m;
+    if (m.creado_por) return m;                    // ya trae el suyo: no se toca
+    m.creado_por = autorArchivo.actor;
+    m.creado_por_nombre = autorArchivo.nombre || autorArchivo.actor;
+    m._autor_resuelto = 'al importar';
+    return m;
   }
 
   /** Lee el texto de un archivo y lo fusiona. Nunca lanza: devuelve el porqué.
@@ -111,9 +135,22 @@
       return { ok: false, error: 'El archivo no trae una lista de machotes. ' +
                '¿Es el .json que bajó "Exportar todo"?' };
     }
-    var r = fusionar(actuales, entrantes);
+    /* El sobre dice quién exportó. Es lo que resuelve la autoría de los
+     * machotes que nacieron sin ella (ver `resolverAutor`). */
+    var autorArchivo = obj.exportado_por
+      ? { actor: obj.exportado_por, nombre: obj.exportado_por_nombre || obj.exportado_por }
+      : null;
+
+    var sinAutor = 0;
+    for (var i = 0; i < entrantes.length; i++) {
+      if (entrantes[i] && !entrantes[i].creado_por) sinAutor++;
+    }
+
+    var r = fusionar(actuales, entrantes, null, autorArchivo);
     return { ok: true, lista: r.lista, nuevos: r.nuevos, copias: r.copias,
              total: entrantes.length,
+             sin_autor: sinAutor,
+             autor_resuelto: autorArchivo ? sinAutor : 0,
              de: obj.exportado_por_nombre || obj.exportado_por || '' };
   }
 

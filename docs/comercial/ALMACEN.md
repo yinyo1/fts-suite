@@ -185,9 +185,47 @@ documento entero viaja congelado en `documento jsonb`, no un diff. Las diferenci
   append-only se rompería en silencio). Una versión guardada no se puede modificar ni
   borrar desde la aplicación. Ni con un bug, ni a propósito.
 
-Las tres cosas están **probadas contra un Postgres de verdad**, no leídas del `.sql`: 10
-pruebas de comportamiento (motivo exigido y aceptado, choque de concurrencia, salto de
-versión, y `UPDATE`/`DELETE` rebotando con `permission denied`).
+Las tres cosas están **probadas contra la base real**, entrando como `comercial_app` —el
+rol que de verdad escribe— y no sólo contra un Postgres local: motivo exigido y aceptado,
+choque de concurrencia, y `UPDATE`/`DELETE` rebotando con `permission denied`.
+
+> ⚠️ **En estos `.sql` no se usa `$$` para citar un cuerpo de función.** Se usan etiquetas
+> con nombre (`$rol$`, `$touch$`, `$motivo$`, `$consec$`) porque el runner mete el archivo
+> en el nodo con `={{ $json.sql }}` y **en esa sustitución `$$` se colapsa a un solo `$`**.
+> El archivo sale bien del repo y llega mutilado a Postgres. Medido aplicando la `001`.
+> El detalle y los otros patrones que muerden igual (`$1`, `$&`, `` $` ``, `$'`) están en
+> [`db/README.md`](../../db/README.md), regla 4.
+
+---
+
+## Estado: EN PRODUCCIÓN desde el 7-sep-2026
+
+Las tres migraciones están aplicadas contra `fts_suite` y verificadas con read-back:
+
+```
+migraciones       001, 002, 003
+esquemas          comercial, public
+tablas comercial  evidencia, expediente, machote, machote_version, propuesta
+roles             comercial_app (LOGIN, sin CREATE sobre el esquema), fts_admin
+```
+
+Y los dos endpoints de la aplicación, **INACTIVOS** hasta que Esteban dé el va:
+
+| workflow | id | qué hace |
+|---|---|---|
+| `comercial/machotes-leer` | `Lze4jmkW9pg7Tvad` | sin `machote_id`: la última versión de cada machote · con `machote_id`: todas las de ése |
+| `comercial/machote-guardar` | `18FIeK835R6h96K3` | crea o reusa la identidad por `id_local` y **agrega UNA versión** |
+
+Los dos usan `fts-suite-db · comercial_app`. **El dueño sale del token (`ses.actor`),
+nunca del cuerpo**, y guardar sobre el machote de otra persona se rechaza con
+`MACHOTE_DE_OTRA_PERSONA` — probado, no supuesto.
+
+> ⚠️ **Los webhooks exigen `comercial:read`, no `comercial:write`.** Hoy **ninguno** de los
+> seis usuarios del módulo tiene scope de escritura (leído de `suite_usuarios`). Exigirlo
+> dejaría a los capturistas sin poder guardar desde el primer día — el lado estricto
+> desplegado primero, que es lo que prohíbe la regla anti-trabón de `CLAUDE.md` §8. Lo que
+> protege no es el scope sino la propiedad. Para separar lectura de escritura el orden es:
+> **primero** agregar el scope a las filas, **después** endurecer el webhook.
 
 ---
 

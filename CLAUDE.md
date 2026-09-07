@@ -865,6 +865,28 @@ teclea de memoria ni se reconstruye "de cómo se veía".
 "parece" un hash— y deja una referencia muerta en el reporte. Es el mismo modo de falla
 de §3 anti-fantasma, en la superficie más fácil de pasar por alto.)*
 
+### 10. El archivo puede estar bien y el camino mal
+Probar un artefacto **en el disco** no prueba que sobreviva el viaje. Todo lo que viaje
+por una **expresión de n8n** (`={{ $json.x }}`) pasa por una sustitución tipo
+`String.replace`, y ahí **`$$` se colapsa a un solo `$`** — igual que `$1`…`$99`, `$&`,
+`` $` `` y `$'`, que son patrones de reemplazo de JavaScript.
+*(Origen: 7-sep-2026, issue #140. La migración `001_fundacion.sql` traía `DO $$` y Postgres
+recibió `DO $`: `Syntax error at line 28 near "$"`. Las 10 pruebas locales con `psql` no lo
+podían ver, porque `psql` lee del disco y nunca pasa por n8n. El `.sql` era correcto y el
+**camino** no.)*
+**Regla operativa:** en un `.sql` que viaje así, etiquetas de dólar **con nombre**
+(`$rol$`, `$motivo$`). Y para datos de usuario —el texto de un machote puede traer `$$`—
+**parámetros de consulta (`$1`, `$2`), nunca SQL concatenado**: aparte de inyección, es lo
+único que garantiza que el contenido llegue intacto. Detalle en `db/README.md` regla 4.
+
+### 11. Un `[]` de un endpoint nuevo no prueba que la consulta sirva
+Una lista vacía se ve idéntica cuando la consulta funciona y no hay filas, y cuando la
+consulta está mal. Es la misma trampa que `insertadas: 0` (§9): **para dar por buena una
+lectura hay que probarla con al menos una fila que deba salir.**
+*(7-sep-2026: `comercial/machotes-leer` devolvió `machotes: []` en la primera prueba y se
+veía correcto; sólo al guardar un machote y volver a preguntar quedó probado que la
+consulta y el mapeo servían.)*
+
 ---
 
 ### Correcciones a reglas anteriores (verificadas 2026-08-31)

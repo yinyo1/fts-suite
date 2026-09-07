@@ -40,7 +40,7 @@
    * 2026-09-03 (por instrucción de Esteban), pero lleva el suyo aparte y va en
    * V1.00. Planeación sigue en `2.4.1` y el kiosko sólo con cadena de build;
    * a esos no se propaga. */
-  const VERSION = 'V1.17';
+  const VERSION = 'V1.18';
   const $  = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
   const clon = (x) => JSON.parse(JSON.stringify(x));
@@ -77,13 +77,20 @@
   function pintarPulso() {
     const el = $('#pulso'), tx = $('#pulsoTx');
     if (!el || !tx) return;
+    /* 'pendiente' es un estado NUEVO y es el honesto: está en este navegador
+     * pero todavía no en el servidor. Antes no existía porque no había
+     * servidor; ahora fingir que 'guardado' y 'guardado en el servidor' son
+     * lo mismo sería el anti-patrón del kiosko (CLAUDE.md hallazgo #15). */
     const T = { limpio: 'guardado', sucio: 'sin guardar', guardando: 'guardando…',
-                guardado: 'guardado', 'sin-almacen': 'sin guardar' };
+                guardado: 'guardado', pendiente: 'guardado aquí',
+                'sin-almacen': 'sin guardar' };
     el.className = 'pulso p-' + ST.pulso;
     tx.textContent = T[ST.pulso] || '';
     el.title = ST.pulso === 'sin-almacen'
       ? 'Este navegador no deja guardar (modo privado o datos del sitio bloqueados). Lo que captures se pierde al salir.'
-      : 'Se guarda solo, en este navegador. Todavia no viaja a ningun servidor.';
+      : ST.pulso === 'pendiente'
+      ? 'Guardado en este navegador, pero todavía no en el servidor. Se reintenta solo; no cierres sin conexión si puedes evitarlo.'
+      : 'Guardado en el servidor.';
   }
 
   /* El pulso es un punto de color: dice la verdad, pero se puede mirar sin
@@ -109,18 +116,71 @@
   }
   function quitarAvisoNoGuarda() { const b = $('#noGuarda'); if (b) b.remove(); }
 
-  /** Guarda ya, sin esperar el retardo. Devuelve si de verdad quedo. */
+  /** Guarda ya, sin esperar el retardo.
+   *
+   *  Devuelve si quedó EN ESTE NAVEGADOR, que es síncrono y es lo que importa
+   *  para no perder lo tecleado — por eso `beforeunload` puede seguir
+   *  llamándolo y confiar en el valor. La subida al servidor va después y
+   *  actualiza el pulso cuando conteste; el pulso NO dice 'guardado' hasta
+   *  que el servidor lo confirmó. */
   function guardarYa() {
     if (!A || !A.disponible()) { ST.pulso = 'sin-almacen'; pintarPulso(); avisarNoGuarda(); return false; }
     if (_reloj) { clearTimeout(_reloj); _reloj = null; }
     ST.pulso = 'guardando'; pintarPulso();
-    const ok = A.escribir({ machotes: ST.machotes, handoff: ST.handoff });
-    ST.pulso = ok ? 'guardado' : 'sin-almacen';
-    pintarPulso();
-    // Se avisa al fallar y se retira al volver a funcionar: una alerta que se
-    // queda cuando el problema pasó enseña a ignorarla.
-    if (ok) quitarAvisoNoGuarda(); else avisarNoGuarda();
-    return ok;
+
+    const local = A.escribirLocal({ machotes: ST.machotes, handoff: ST.handoff });
+    if (!local) { ST.pulso = 'sin-almacen'; pintarPulso(); avisarNoGuarda(); return false; }
+    quitarAvisoNoGuarda();
+
+    // Ya está a salvo aquí. Lo de arriba fue síncrono a propósito.
+    ST.pulso = 'pendiente'; pintarPulso();
+
+    A.empujar(ST.machotes).then(r => {
+      if (r && r.ok && r.subidos >= 0) {
+        ST.pulso = A.pendientes(ST.machotes) === 0 ? 'guardado' : 'pendiente';
+      } else {
+        ST.pulso = 'pendiente';
+        avisarPendiente(r);
+      }
+      pintarPulso();
+    });
+
+    return true;
+  }
+
+  /* Sin red no se traba nada: lo capturado está en el navegador y sube solo
+   * al siguiente guardado. Se avisa igual —y una sola vez— porque quien
+   * captura tiene derecho a saber que su trabajo todavía no salió de aquí.
+   * La excepción es el choque de versión: eso NO se arregla solo y hay que
+   * decirlo con todas sus letras. */
+  function avisarPendiente(r) {
+    const fallos = (r && r.fallos) || [];
+    const choque = fallos.find(f => f.error === 'CONFLICTO_DE_VERSION');
+    const motivo = fallos.find(f => f.error === 'MOTIVO_REQUERIDO');
+
+    /* Un choque de versión NO se arregla solo y pide una acción concreta, así
+     * que va en barra fija y no en un toast de dos segundos. Lo mismo el
+     * motivo faltante: son las dos cosas que la base rechaza a propósito. */
+    if (choque || motivo) {
+      const viejo = $('#avPend'); if (viejo) viejo.remove();
+      const b = document.createElement('div');
+      b.id = 'avPend'; b.className = 'nogda';
+      b.setAttribute('role', 'alert');
+      b.innerHTML = '<span>' + (choque
+        ? '<strong>Otra persona guardó "' + esc(choque.nombre || 'un machote') +
+          '" mientras lo editabas.</strong> Tu cambio sigue en este navegador y NO se perdió, ' +
+          'pero no se subió para no pisar el suyo. Vuelve a abrirlo antes de seguir.'
+        : '<strong>Falta decir por qué.</strong> ' + esc(motivo.mensaje)) +
+        '</span><span class="nogda-b"><button class="btn" id="apExp">Exportar</button>' +
+        '<button class="btn fantasma" id="apX">Entendido</button></span>';
+      document.body.appendChild(b);
+      $('#apExp').onclick = () => exportarRespaldo();
+      $('#apX').onclick = () => b.remove();
+      return;
+    }
+
+    // Lo demás (sin red, sin sesión) se reintenta solo: basta un aviso ligero.
+    toast('Guardado aquí. Todavía no subió al servidor — se reintenta solo.');
   }
 
   /** Marca sucio y programa el guardado. Es lo que llama toda edicion. */
@@ -413,6 +473,7 @@
         '<div class="tiny mono n-' + (c.costoIncompleto ? 'warn' : nivelMargen(c.margen)) + '">' +
         mx(c.precio) + ' · ' + pc(c.margen) + (c.costoIncompleto ? '*' : '') + '</div>' +
         '<div class="tiny">' + (rev.duras.length ? '⛔ ' + rev.duras.length + ' duras' : '✓ sin duras') + '</div></div></a>' +
+        '<button class="ico" data-hist="' + m.id + '" title="Ver el historial de versiones">🕘</button>' +
         (borrable(m)
           ? '<button class="ico peligro borrar" data-borrar="' + m.id + '" title="Eliminar machote">×</button>'
           : '<span class="ico candado" title="Enviado a Odoo: no se borra, sólo cambia de estado">🔒</span>') +
@@ -460,6 +521,15 @@
     if (q) q.oninput = () => { ST.busca = q.value; vHome(); $('#q').focus();
                                $('#q').setSelectionRange(ST.busca.length, ST.busca.length); };
     $$('[data-filtro]').forEach(b => b.onclick = () => { ST.filtro = b.dataset.filtro; vHome(); });
+
+    /* El historial se abre desde la lista y NO desde adentro del machote: se
+     * consulta para entender qué pasó con una cotización, casi siempre sin
+     * querer editarla. */
+    $$('[data-hist]').forEach(b => b.onclick = (ev) => {
+      ev.preventDefault(); ev.stopPropagation();
+      const m = mach(b.dataset.hist);
+      if (m && G.MachoteHistorial) G.MachoteHistorial.abrir(m);
+    });
 
     $$('[data-borrar]').forEach(b => b.onclick = (ev) => {
       ev.preventDefault(); ev.stopPropagation();
@@ -1389,6 +1459,58 @@
 
   render();
   avisoPassword();
+
+  /* ── El arranque, en dos tiempos ────────────────────────────────────────
+   *
+   * Primero se pinta con la caché de ESTE navegador, que es síncrona: la
+   * pantalla abre al instante y funciona sin red. Después se pide al servidor
+   * y se repinta si trajo algo.
+   *
+   * Se hace en este orden a propósito. Un arranque que espera a la red deja
+   * la pantalla en blanco cuando el wifi de la planta está malo, y deja de
+   * funcionar del todo sin conexión — que es justo cuando alguien está
+   * capturando en sitio. La caché no es un atajo: es el modo de operar.
+   *
+   * `bajar()` nunca pisa un machote con cambios sin subir; eso lo garantiza
+   * el almacén, no esta llamada. */
+  /* Si NUNCA se ha guardado nada en este navegador, lo que está en pantalla es
+   * la DEMO — datos de ejemplo, no trabajo de nadie. Eso no se sube ni se
+   * pisa: subirla llenaría Postgres de cotizaciones de mentiras a nombre de
+   * quien abrió la página por primera vez. */
+  const _hayCaptura = !!_guardado;
+
+  if (A && A.bajar) {
+    A.bajar().then(r => {
+      if (!r || !r.ok) {
+        // Sin servidor se sigue trabajando con lo local. Sólo se dice si hay
+        // sesión: sin sesión el gate de la página ya mandó al login.
+        if (r && r.error && r.error !== 'SIN_SESION' && _hayCaptura) {
+          ST.pulso = A.pendientes(ST.machotes) ? 'pendiente' : ST.pulso;
+          pintarPulso();
+        }
+        return;
+      }
+
+      /* Sólo se reemplaza lo de pantalla si hay algo real que poner: o el
+       * servidor trajo machotes, o esta persona ya tenía capturado aquí. Si
+       * las dos están vacías, se queda la demo — que es lo que espera quien
+       * abre la página por primera vez. */
+      if (Array.isArray(r.machotes) && (r.machotes.length || _hayCaptura)) {
+        ST.machotes = r.machotes;
+        ST.handoff = r.handoff || ST.handoff;
+        render();
+      }
+
+      if (!_hayCaptura && !(r.machotes || []).length) return;   // sigue la demo: nada que subir
+
+      ST.pulso = A.pendientes(ST.machotes) === 0 ? 'guardado' : 'pendiente';
+      pintarPulso();
+      if (r.nuevos) toast('Se bajaron ' + r.nuevos + ' machote(s) del servidor.');
+      // Lo que quedó pendiente de subir (de una sesión anterior sin red) sale
+      // ahora, sin que nadie tenga que acordarse de tocar algo.
+      if (A.pendientes(ST.machotes)) guardarYa();
+    });
+  }
 
   /* El catálogo se pide UNA vez al arrancar, en segundo plano. La pantalla no
    * lo espera: se pinta con el nombre de respaldo y se repinta sola cuando
