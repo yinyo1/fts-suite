@@ -32,7 +32,18 @@ lo único que garantiza que la base se pueda recrear.
    `sha256` real de cada uno; editar uno aplicado hace que el checksum deje de cuadrar, que
    es justo la alarma que se quiere.
 3. **Idempotentes** (`IF NOT EXISTS`): correr dos veces no rompe nada.
-4. **Sin contraseñas.** Este repo es público. Los roles nacen `NOLOGIN` y sin contraseña;
+4. **Nunca `$$` para citar un cuerpo de función.** Se usa una etiqueta con
+   nombre — `$rol$`, `$touch$`, `$motivo$` — aunque `$$` sea lo idiomático en
+   Postgres. **Por qué:** el runner mete el `.sql` en el nodo con una expresión
+   `={{ $json.sql }}`, y en esa sustitución **`$$` se colapsa a un solo `$`**
+   (es la regla de los patrones de reemplazo de JavaScript, donde `$$` significa
+   "un `$` literal"). El archivo sale bien del repo y llega mutilado a Postgres:
+   `Syntax error at line 28 near "$"`. Medido el 7-sep-2026 aplicando la `001`
+   — el cuerpo crudo del HTTP traía `$$` y el `Failed query` traía `$`. Una
+   etiqueta con nombre no tiene dos `$` juntos y pasa intacta. Por lo mismo,
+   cuidado con `$1`, `$&`, `` $` `` y `$'` dentro de un `.sql`: son patrones de
+   reemplazo igual de silenciosos.
+5. **Sin contraseñas.** Este repo es público. Los roles nacen `NOLOGIN` y sin contraseña;
    un humano les pone una después, fuera de git.
 
 ## Cómo se aplican

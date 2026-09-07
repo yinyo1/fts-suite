@@ -29,13 +29,13 @@ COMMENT ON SCHEMA comercial IS 'Taller del módulo comercial: lo que Odoo NO mod
 --     \password comercial_app      <- la pide sin mostrarla ni dejarla en el historial
 --     ALTER ROLE comercial_app WITH LOGIN;
 -- Ver docs/comercial/ALMACEN.md §"Los dos pasos que no están en git".
-DO $$
+DO $rol$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'comercial_app') THEN
     CREATE ROLE comercial_app NOLOGIN;
   END IF;
 END
-$$;
+$rol$;
 
 GRANT USAGE ON SCHEMA comercial TO comercial_app;
 
@@ -53,12 +53,12 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA comercial
 -- depende de que cada INSERT/UPDATE se acuerde de ponerlo, tarde o temprano
 -- no se pone.
 CREATE OR REPLACE FUNCTION comercial.touch_updated_at()
-RETURNS trigger LANGUAGE plpgsql AS $$
+RETURNS trigger LANGUAGE plpgsql AS $touch$
 BEGIN
   NEW.updated_at := now();
   RETURN NEW;
 END
-$$;
+$touch$;
 
 -- El renglon de public.schema_migrations lo inserta el runner, con el sha256
 -- REAL del archivo. Un archivo no puede contener su propio hash, y un

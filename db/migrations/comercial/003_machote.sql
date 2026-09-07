@@ -148,7 +148,7 @@ CREATE INDEX IF NOT EXISTS mv_autor_idx
 -- de descripción o de cantidad no pide motivo: pedirlo en cada tecleo
 -- convertiría el campo en un trámite que se llena con un punto.
 CREATE OR REPLACE FUNCTION comercial.mv_exige_motivo()
-RETURNS trigger LANGUAGE plpgsql AS $$
+RETURNS trigger LANGUAGE plpgsql AS $motivo$
 DECLARE
   ant comercial.machote_version%ROWTYPE;
   cambio text[] := '{}';
@@ -183,7 +183,7 @@ BEGIN
 
   RETURN NEW;
 END
-$$;
+$motivo$;
 
 DROP TRIGGER IF EXISTS mv_exige_motivo_tg ON comercial.machote_version;
 CREATE TRIGGER mv_exige_motivo_tg BEFORE INSERT ON comercial.machote_version
@@ -195,7 +195,7 @@ CREATE TRIGGER mv_exige_motivo_tg BEFORE INSERT ON comercial.machote_version
 -- escribir la 7 cuando va la 3: un hueco en el historial es un hueco en la
 -- explicación de por qué el precio fue ese.
 CREATE OR REPLACE FUNCTION comercial.mv_version_consecutiva()
-RETURNS trigger LANGUAGE plpgsql AS $$
+RETURNS trigger LANGUAGE plpgsql AS $consec$
 DECLARE
   ultima integer;
 BEGIN
@@ -211,7 +211,7 @@ BEGIN
 
   RETURN NEW;
 END
-$$;
+$consec$;
 
 DROP TRIGGER IF EXISTS mv_version_consecutiva_tg ON comercial.machote_version;
 CREATE TRIGGER mv_version_consecutiva_tg BEFORE INSERT ON comercial.machote_version
