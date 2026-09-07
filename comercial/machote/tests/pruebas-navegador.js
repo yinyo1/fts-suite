@@ -2861,10 +2861,13 @@ let ok = 0, mal = 0;
       await q.goto(BASE + href); await q.waitForTimeout(900);
       await q.click('#btnOrden'); await q.waitForTimeout(400);
 
-      // El total del cascarón tiene que ser el del motor para ese machote.
+      /* El machote sale de `window.DEMO`, NO de `leerLocal()`: en el primer
+       * arranque la demo vive sólo en memoria y no se escribe en el navegador
+       * hasta que alguien toca algo, así que `leerLocal()` devuelve null. Es
+       * la misma fuente de la que la app clona su estado. */
       const esperado = await q.evaluate(() => {
         const id = location.hash.split('/')[2];
-        const m = window.MachoteAlmacen.leerLocal().machotes.find(x => x.id === id);
+        const m = window.DEMO.MACHOTES.find(x => x.id === id);
         return window.MachoteCalc.calcular(m).precio;
       });
       const texto = await q.textContent('#or-total');
@@ -2875,7 +2878,7 @@ let ok = 0, mal = 0;
       // Una línea por sección, ni una más.
       const secciones = await q.evaluate(() => {
         const id = location.hash.split('/')[2];
-        return window.MachoteAlmacen.leerLocal().machotes.find(x => x.id === id).secciones.length;
+        return window.DEMO.MACHOTES.find(x => x.id === id).secciones.length;
       });
       const filas = (await q.$$('.or-t tbody tr')).length;
       if (filas !== secciones) throw new Error(filas + ' renglones para ' + secciones + ' secciones');
@@ -2924,10 +2927,13 @@ let ok = 0, mal = 0;
     try {
       await q.goto(BASE); await q.waitForTimeout(900);
       const href = await q.$eval('.fila a.item', a => a.getAttribute('href'));
-      const id = href.split('/')[2];
       await q.goto(BASE + href); await q.waitForTimeout(900);
-      const antes = await q.evaluate((i) =>
-        JSON.stringify(window.MachoteAlmacen.leerLocal().machotes.find(x => x.id === i)), id);
+      /* Se compara TODO lo que el navegador tiene guardado, no un machote:
+       * si algún día el cascarón marcara la cotización, tendría que
+       * persistirlo, y eso aparecería aquí. En el primer arranque esto es
+       * `null` —la demo vive en memoria— y seguir siendo `null` después del
+       * clic es exactamente lo que se quiere probar. */
+      const antes = await q.evaluate(() => JSON.stringify(window.MachoteAlmacen.leerLocal()));
 
       await q.click('#btnOrden'); await q.waitForTimeout(400);
       await q.click('#or-siguiente'); await q.waitForTimeout(400);
@@ -2939,10 +2945,10 @@ let ok = 0, mal = 0;
       if (!/sigue sin marcarse como enviada/i.test(t))
         throw new Error('no dice que NO se marcó: ' + t.slice(0, 140));
 
-      const despues = await q.evaluate((i) =>
-        JSON.stringify(window.MachoteAlmacen.leerLocal().machotes.find(x => x.id === i)), id);
-      if (antes !== despues) throw new Error('el machote cambió al apretar Enviar');
-      console.log('    la pantalla lo dice y el machote guardado no cambió');
+      const despues = await q.evaluate(() => JSON.stringify(window.MachoteAlmacen.leerLocal()));
+      if (antes !== despues) throw new Error('se guardó algo al apretar Enviar');
+      console.log('    la pantalla lo dice y no se guardó nada (antes y después: ' +
+        (antes === 'null' ? 'sin escribir' : 'idéntico') + ')');
     } finally { await q.close(); }
   });
 
@@ -2991,7 +2997,7 @@ let ok = 0, mal = 0;
       await q.goto(BASE + href); await q.waitForTimeout(900);
       const costos = await q.evaluate(() => {
         const id = location.hash.split('/')[2];
-        const m = window.MachoteAlmacen.leerLocal().machotes.find(x => x.id === id);
+        const m = window.DEMO.MACHOTES.find(x => x.id === id);
         const c = window.MachoteCalc.calcular(m);
         return [c.costo, c.costoMo, c.costoMat].map(n => Math.round(n));
       });
