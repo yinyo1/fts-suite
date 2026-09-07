@@ -942,3 +942,18 @@ th .hint { font-weight: 400; text-transform: none; opacity: .75; }
 .ctrl-pie { display: flex; align-items: center; justify-content: space-between; gap: 10px;
             flex-wrap: wrap; margin-top: 10px; }
 .ctrl-pie .btn.f-min { width: auto; padding: 0 12px; min-height: 30px; font-size: 12.5px; }
+
+/* ── El botón chico deja de ser chico en el teléfono ─────────────────────
+ * `.f-min` existe para que la franja y el tablero no griten en escritorio:
+ * 32 px con el ratón es discreto y se aprieta bien. Con el pulgar no. La
+ * regla del módulo es 40 px (`--toque`) para todo lo que se toca, y estos
+ * tres botones se la estaban saltando: la prueba
+ * `todo lo que se toca mide al menos 40 px de alto` los cazó a 380 px.
+ *
+ * Va al final del archivo A PROPÓSITO, después de las tres reglas que pone
+ * en su sitio, para no depender de qué media query venga antes. */
+@media (max-width: 640px) {
+  .franja .btn.f-min,
+  .corr .btn.f-min,
+  .ctrl-pie .btn.f-min { min-height: var(--toque); }
+}
