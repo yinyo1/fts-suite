@@ -40,7 +40,7 @@
    * 2026-09-03 (por instrucción de Esteban), pero lleva el suyo aparte y va en
    * V1.00. Planeación sigue en `2.4.1` y el kiosko sólo con cadena de build;
    * a esos no se propaga. */
-  const VERSION = 'V1.18';
+  const VERSION = 'V1.19';
   const $  = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
   const clon = (x) => JSON.parse(JSON.stringify(x));
@@ -153,6 +153,7 @@
    * captura tiene derecho a saber que su trabajo todavía no salió de aquí.
    * La excepción es el choque de versión: eso NO se arregla solo y hay que
    * decirlo con todas sus letras. */
+  let _avisoPend = 0;
   function avisarPendiente(r) {
     const fallos = (r && r.fallos) || [];
     const choque = fallos.find(f => f.error === 'CONFLICTO_DE_VERSION');
@@ -179,7 +180,14 @@
       return;
     }
 
-    // Lo demás (sin red, sin sesión) se reintenta solo: basta un aviso ligero.
+    /* Lo demás (sin red, sin sesión) se reintenta solo, así que basta un aviso
+     * ligero — y UNO. El autoguardado dispara medio segundo después de la
+     * última tecla: sin este freno, capturar con el servidor caído sería un
+     * desfile de toasts que enseña a ignorarlos. El punto del pulso es
+     * justamente que no haga falta un aviso en cada guardado. */
+    const ahora = Date.now();
+    if (ahora - _avisoPend < 120000) return;
+    _avisoPend = ahora;
     toast('Guardado aquí. Todavía no subió al servidor — se reintenta solo.');
   }
 
@@ -355,6 +363,7 @@
     if (p[0] === 'rev')   return vRevision(p[1]);
     if (p[0] === 'orden') return vOrden(p[1]);
     if (p[0] === 'ap')    return vAprobar(p[1]);
+    if (p[0] === 'control') return vControl();
     location.hash = '#/';
   }
   function top(t, s, b, back, sinVersion) {
@@ -437,10 +446,33 @@
     lector.readAsText(archivo);
   }
 
+  /* El tablero de dirección (#140 · B). Vive en su propio archivo
+   * `js/control.js`; aquí sólo se le da el hueco y el encabezado. Se puede
+   * abrir siempre por la URL —para que Esteban entre esta noche sin esperar
+   * el permiso—: sin la llave la pantalla lo dice y enseña una demostración,
+   * en vez de rebotar a la lista. */
+  function vControl() {
+    top('Control', 'Comercial · dirección', 'DEMO', '#/');
+    $('#fija').innerHTML = '';
+    $('#vista').innerHTML = '';
+    if (!G.MachoteControl) {
+      $('#vista').innerHTML = '<div class="pad"><div class="aviso bad">' +
+        'No cargó la vista de control.</div></div>';
+      return;
+    }
+    G.MachoteControl.montar($('#vista'));
+  }
+
   function vHome() {
     top('Machote y órdenes', 'Comercial · prototipo', 'DEMO', null, true);
     $('#fija').innerHTML = '';
+    /* `D.ESTADOS[m.estado]` con un estado desconocido devuelve undefined, y
+     * leerle `.color` tumbaba TODA la lista — pantalla en blanco por un solo
+     * machote raro. Pasa de verdad durante la transición: un documento viejo,
+     * uno importado a mano, o uno que bajó del servidor sin `estado` dentro.
+     * La línea 941 ya lo hacía bien; la lista no. */
     const est = D.ESTADOS;
+    const edo = (m) => D.ESTADOS[m && m.estado] || D.ESTADOS.borrador;
 
     // Los contadores salen del universo COMPLETO, no de lo ya filtrado: un
     // contador que cambia al filtrar no sirve para saber cuántos hay.
@@ -454,22 +486,42 @@
       '<button class="fchip' + (ST.filtro === k ? ' on' : '') + '" data-filtro="' + k + '">' +
       esc(etiqueta) + ' <span class="n">' + (cuenta[k] || 0) + '</span></button>';
 
+    /* La entrada al tablero de dirección sólo se ofrece a quien tiene la
+     * llave. Un enlace visible para todos, que a casi todos les contestara
+     * "no tienes permiso", sería ruido: la puerta se ve si se puede abrir.
+     *
+     * Va ANTES de `buscador`, que es quien lo usa. Estaba después, y un
+     * `const` leído antes de su línea no es `undefined`: TIRA la función
+     * entera. Resultado: la lista en blanco para quien tuviera el permiso —
+     * justo para Esteban, el único que iba a tenerlo. Lo cazó mirar la
+     * captura, no leer el código. */
+    const esDireccion = !!(G.SuiteAuth && G.SuiteAuth.tieneScope &&
+                           G.MachoteControl && G.SuiteAuth.tieneScope(G.MachoteControl.SCOPE));
+    const enlaceControl = esDireccion
+      ? '<a class="btn fantasma f-min" href="#/control" style="margin-left:auto">Control</a>' : '';
+
     const buscador =
       '<div class="buscador">' +
       '<input id="q" type="search" placeholder="Buscar por nombre, cliente u orden…" ' +
       'value="' + esc(ST.busca) + '" autocomplete="off" enterkeyhint="search">' +
       '<a class="btn nuevo" href="#/nuevo">+ Nuevo</a>' +
+      enlaceControl +
       '</div>' +
       '<div class="fchips">' + chip('todos', 'Todos') +
-      D.FLUJO.map(k => chip(k, D.ESTADOS[k].label)).join('') + '</div>';
+      D.FLUJO.map(k => chip(k, D.ESTADOS[k].label)).join('') + '</div>' +
+      /* La franja de sincronización vive AQUÍ: en el encabezado de la lista,
+       * arriba de las tarjetas, no en una pantalla aparte. Es transitoria —
+       * `js/franja-sync.js` explica cómo se quita cuando termine el cambio. */
+      '<div id="franjaHost"></div>';
+
 
     const filas = visibles.map(m => {
       const rev = R.revisar(m), c = rev.calc;
-      return '<div class="fila">' +
+      return '<div class="fila" data-mid="' + esc(m.id) + '">' +
         '<a class="item" href="#/m/' + m.id + '">' +
         '<div class="grow"><strong>' + esc(m.nombre) + '</strong>' +
         '<div class="tiny">' + esc(cli(m)) + (m.so ? ' · ' + esc(m.so) : '') + ' · ' + m.id + '</div></div>' +
-        '<div class="right"><span class="chip" style="background:' + est[m.estado].color + '">' + est[m.estado].label + '</span>' +
+        '<div class="right"><span class="chip" style="background:' + edo(m).color + '">' + esc(edo(m).label) + '</span>' +
         '<div class="tiny mono n-' + (c.costoIncompleto ? 'warn' : nivelMargen(c.margen)) + '">' +
         mx(c.precio) + ' · ' + pc(c.margen) + (c.costoIncompleto ? '*' : '') + '</div>' +
         '<div class="tiny">' + (rev.duras.length ? '⛔ ' + rev.duras.length + ' duras' : '✓ sin duras') + '</div></div></a>' +
@@ -521,6 +573,10 @@
     if (q) q.oninput = () => { ST.busca = q.value; vHome(); $('#q').focus();
                                $('#q').setSelectionRange(ST.busca.length, ST.busca.length); };
     $$('[data-filtro]').forEach(b => b.onclick = () => { ST.filtro = b.dataset.filtro; vHome(); });
+
+    /* La franja transitoria de sincronización. Se le pasan los machotes de la
+     * pantalla y el toast; ella pregunta al servidor y se pinta sola. */
+    if (G.MachoteFranja) G.MachoteFranja.montar(ST.machotes, toast);
 
     /* El historial se abre desde la lista y NO desde adentro del machote: se
      * consulta para entender qué pasó con una cotización, casi siempre sin
@@ -1226,7 +1282,15 @@
       '<div class="tiny">' + esc(c.escenario.id.replace('_', ' ')) +
       (rev.duras.length ? ' · ⛔ ' + rev.duras.length + ' duras' : ' · ✓ sin duras') +
       (c.costoIncompleto ? ' · ' + c.huecos + ' huecos' : '') + '</div></div>' +
+      /* El paso siguiente al machote: pasarlo a orden. Es un CASCARÓN —lo
+       * dice en su propia cabecera— y por eso el botón va en secundario, al
+       * lado de Revisar, sin robarle el lugar al que sí hace algo. */
+      (G.MachoteOrden
+        ? '<button class="btn fantasma" id="btnOrden" title="Ver cómo se pasaría a orden de venta">Pasar a orden</button>'
+        : '') +
       '<a class="btn" href="#/rev/' + m.id + '">Revisar</a></div>';
+    const bo = $('#btnOrden');
+    if (bo) bo.onclick = () => G.MachoteOrden.abrir(m);
   }
 
   /* ── Enlace de celdas ────────────────────────────────────────────────── */
@@ -1509,6 +1573,8 @@
       // Lo que quedó pendiente de subir (de una sesión anterior sin red) sale
       // ahora, sin que nadie tenga que acordarse de tocar algo.
       if (A.pendientes(ST.machotes)) guardarYa();
+      // La franja pregunta de nuevo: acaba de cambiar lo que el servidor tiene.
+      if (G.MachoteFranja) G.MachoteFranja.refrescar(true);
     });
   }
 

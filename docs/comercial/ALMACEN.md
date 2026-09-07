@@ -304,3 +304,59 @@ salida independiente del proveedor, `pg_dump` contra la red privada.
 
 ⚠️ **Pendiente:** no hay respaldo programado propio todavía. Mientras el almacén esté
 vacío no urge; **antes de que entre el primer dato real, sí.**
+
+---
+
+## El tablero de dirección (`comercial/machotes-control`)
+
+**Workflow `PLAw9IYGgMh0PRPL`. INACTIVO** — lo activa Esteban en la UI, como los otros dos.
+
+Contesta una pregunta distinta de la de `machotes-leer`, y por eso es otra puerta:
+
+| | `machotes-leer` | `machotes-control` |
+|---|---|---|
+| pregunta | ¿qué hay **de lo mío**? | ¿cuánto hay **de cada quien**? |
+| scope | `comercial:read` | `comercial:admin` |
+| devuelve | los machotes con su documento | sólo conteos y fechas |
+
+**No devuelve ni un documento, ni un nombre de cotización, ni un monto.** Un tablero de
+dirección no necesita el contenido, y no mandarlo es la diferencia entre «cuántos llevas»
+y «déjame leer lo tuyo».
+
+La suma la hace Postgres con un `group by dueno`; el navegador no podría calcularla porque
+sólo conoce lo suyo.
+
+### El permiso que hoy no tiene nadie
+
+`comercial:admin` no está en ninguna fila de `suite_usuarios`. Fue a propósito: **primero
+la puerta, después la llave**. Mientras tanto la pantalla no es un callejón — dice qué
+falta y enseña, marcado como demostración, cómo se va a ver.
+
+Dárselo a Esteban es un campo:
+
+```sql
+UPDATE comercial.suite_usuario
+   SET scopes = scopes || '{comercial:admin}'
+ WHERE actor = '‹el usuario de Esteban›';
+```
+
+No va en una migración porque es un **permiso**, no una estructura.
+
+### Verificado en vivo contra la base real (7-sep-2026)
+
+| ejecución | token | resultado |
+|---|---|---|
+| `89656` | con `comercial:admin` | `ok:true` · 1 machote · 2 versiones · 1 persona — que es exactamente lo que hay |
+| `89719` | sólo `comercial:read` | `NO_AUTORIZADO`; **el nodo de Postgres ni siquiera corrió** |
+| `89653` | token vencido | `TOKEN_EXPIRADO` — y no `FIRMA_INVALIDA`, que es la prueba de que la firma se verificó bien |
+
+Ese tercer renglón es el que vale doble: la cripto del workflow tuvo que viajar por el
+MCP como texto, y un solo carácter cambiado en el SHA-256 habría dado `FIRMA_INVALIDA`.
+Que diga `TOKEN_EXPIRADO` prueba que el HMAC calcula el valor correcto.
+
+### Límite honesto
+
+Sólo aparece **quien ya subió algo**: quien nunca ha subido no tiene última vez. El
+endpoint no conoce la lista del equipo, así que «4 personas» nunca quiere decir «el equipo
+son 4». La pantalla lo dice con esas palabras.
+

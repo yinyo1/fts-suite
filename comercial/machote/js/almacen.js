@@ -130,6 +130,28 @@
     return h1.toString(16) + '-' + h2.toString(16) + '-' + s.length;
   }
 
+  /* Huella CANÓNICA: igual que `huella` pero con las llaves ordenadas, a todas
+   * las profundidades.
+   *
+   * Hace falta una segunda porque **Postgres `jsonb` no conserva el orden de
+   * las llaves**: lo que sube como `{nombre, secciones, nota}` vuelve como
+   * `{nota, nombre, secciones}`. Con `JSON.stringify` normal, un documento
+   * idéntico da huellas distintas de ida y de vuelta, y la franja diría
+   * "pendiente" de algo que ya está a salvo.
+   *
+   * `huella` se queda para comparar local contra local —el orden es estable
+   * ahí, y cambiarla invalidaría la libreta de sincronización de todos, que
+   * volvería a subir todo—; ésta es sólo para comparar contra el servidor. */
+  function canonico(x) {
+    if (x === null || typeof x !== 'object') return x;
+    if (Array.isArray(x)) return x.map(canonico);
+    var llaves = Object.keys(x).sort(), o = {}, i;
+    for (i = 0; i < llaves.length; i++) o[llaves[i]] = canonico(x[llaves[i]]);
+    return o;
+  }
+
+  function huellaCanonica(obj) { return huella(canonico(obj)); }
+
   /** Cuántos machotes están escritos aquí pero todavía no en el servidor. */
   function pendientes(machotes) {
     var lista = machotes || ((leerLocal() || {}).machotes) || [];
@@ -322,8 +344,7 @@
         var fila = r.machotes[i];
         if (!fila || !fila.id_local || !fila.documento) continue;
 
-        var doc = fila.documento;
-        doc.id = fila.id_local;               // la identidad local no se pierde
+        var doc = machoteDesdeFila(fila);
 
         var pos = porId[fila.id_local];
         if (pos === undefined) {
@@ -357,6 +378,92 @@
       return { ok: true, bajados: r.machotes.length, nuevos: nuevos,
                refrescados: refrescados, conservados: conservados,
                machotes: lista, handoff: local.handoff || {}, cache_ok: quedo };
+    });
+  }
+
+  /* Convierte una fila del servidor en un machote de los de aquí.
+   *
+   * Vive en UN solo lugar a propósito: la usan `bajar()` —para traerlo— y
+   * `estadoServidor()` —para compararlo—. Cuando estaban separadas, `bajar`
+   * reponía `estado` desde la columna y la comparación no, así que un machote
+   * recién bajado se veía distinto de sí mismo y la franja decía "por subir"
+   * de algo que acababa de llegar del servidor. Un solo escritor por regla,
+   * también cuando la regla es una conversión (CLAUDE.md §20 #4). */
+  /* El CONTENIDO tal como el servidor lo guardó, con lo único que el servidor
+   * no mete dentro del documento: el id local. Esto es lo que se compara
+   * contra lo de aquí para saber si está a salvo. */
+  function documentoDeFila(fila) {
+    var doc = JSON.parse(JSON.stringify(fila.documento || {}));
+    doc.id = fila.id_local;
+    return doc;
+  }
+
+  /* Lo mismo, ya listo para PINTARSE. La diferencia es una reparación: si el
+   * documento no trae `estado` —uno viejo, o guardado por otra versión— se
+   * repone desde la columna del servidor, que es la que manda.
+   *
+   * Y por eso son dos y no una: la reparación no puede entrar en la
+   * comparación. Si entrara, un machote legado se vería distinto de sí mismo
+   * y la franja diría "por subir" de algo que acaba de bajar del servidor. */
+  function machoteDesdeFila(fila) {
+    var doc = documentoDeFila(fila);
+    if (!doc.estado && fila.estado) doc.estado = fila.estado;
+    return doc;
+  }
+
+  /** Qué tiene el SERVIDOR de esta persona, comparado con lo que hay aquí.
+   *
+   *  Ésta es la fuente de la franja de sincronización, y por eso pregunta al
+   *  servidor en vez de leer la libreta local. La diferencia importa justo en
+   *  el caso que estamos resolviendo: si alguien limpia los datos del sitio,
+   *  la libreta desaparece y diría "nada subido" cuando en realidad está todo
+   *  a salvo. El servidor no se equivoca en eso.
+   *
+   *  Resuelve SIEMPRE. Sin red devuelve `ok:false` con lo que se sabe de aquí,
+   *  para que la franja pueda decir "no se pudo confirmar" en vez de mentir en
+   *  cualquiera de las dos direcciones. */
+  function estadoServidor(machotes) {
+    var lista = machotes || ((leerLocal() || {}).machotes) || [];
+    var ses = sesion();
+
+    if (!ses) {
+      return Promise.resolve({ ok: false, error: 'SIN_SESION', total: lista.length,
+        subidos: 0, pendientes: lista.length, ids_pendientes: lista.map(function (m) { return m.id; }),
+        mensaje: 'No hay sesión, así que no se puede confirmar qué hay en el servidor.' });
+    }
+
+    return postear(URL_LEER, { token: ses.token }).then(function (r) {
+      if (!r || r.ok !== true || !Array.isArray(r.machotes)) {
+        return { ok: false, error: (r && r.error) || 'DESCONOCIDO',
+          mensaje: (r && r.mensaje) || 'No se pudo preguntar al servidor.',
+          total: lista.length, subidos: 0, pendientes: lista.length,
+          ids_pendientes: lista.map(function (m) { return m.id; }) };
+      }
+
+      var enServidor = {}, i;
+      for (i = 0; i < r.machotes.length; i++) {
+        var f = r.machotes[i];
+        if (f && f.id_local) enServidor[f.id_local] = f;
+      }
+
+      var ids = [], subidos = 0, desfasados = 0;
+      for (i = 0; i < lista.length; i++) {
+        var m = lista[i];
+        if (!m || !m.id) continue;
+        var fila = enServidor[m.id];
+        if (!fila) { ids.push(m.id); continue; }                  // no llegó nunca
+        var doc = documentoDeFila(fila);          // el contenido, sin reparaciones
+        if (huellaCanonica(doc) !== huellaCanonica(m)) {
+          ids.push(m.id); desfasados++;                           // llegó, pero lo de aquí cambió después
+          continue;
+        }
+        subidos++;
+      }
+
+      return { ok: true, total: lista.length, subidos: subidos,
+        pendientes: ids.length, desfasados: desfasados, ids_pendientes: ids,
+        en_servidor_total: r.machotes.length, actor: r.actor,
+        leido_at: new Date().toISOString() };
     });
   }
 
@@ -453,6 +560,8 @@
     historial: historial,
 
     pendientes: pendientes,
+    estadoServidor: estadoServidor,
+    huellaCanonica: huellaCanonica,
     olvidar: olvidar,
     sobre: sobre,
     machotesDe: machotesDe
