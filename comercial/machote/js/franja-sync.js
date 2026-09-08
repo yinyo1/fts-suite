@@ -113,9 +113,16 @@
       host.innerHTML = '<div class="evi"><div class="pie tiny">Preguntando al servidor…</div></div>';
       return;
     }
+    /* Sin respuesta no se puede comprobar nada. El PORQUÉ ya está escrito en la
+     * franja, un renglón más arriba: repetirlo aquí era la misma frase dos
+     * veces seguidas. Lo que sí falta —y sólo se puede decir aquí— es QUÉ va a
+     * enseñar este panel cuando el servidor conteste; si no, quien lo abre en
+     * mal momento se queda sin saber para qué sirve el botón. */
     if (!e.ok) {
       host.innerHTML = '<div class="evi"><div class="pie tiny">' +
-        'No se puede comprobar ahora mismo: ' + esc(frase(e)) + '</div></div>';
+        'No se puede comprobar mientras el servidor no conteste. Cuando conteste, ' +
+        'aquí sale renglón por renglón qué versión tiene de cada cotización y si ' +
+        'coincide letra por letra con la de este navegador.</div></div>';
       return;
     }
     var filas = (e.detalle || []).map(function (d) {
