@@ -373,3 +373,71 @@ Sólo aparece **quien ya subió algo**: quien nunca ha subido no tiene última v
 endpoint no conoce la lista del equipo, así que «4 personas» nunca quiere decir «el equipo
 son 4». La pantalla lo dice con esas palabras.
 
+
+
+---
+
+## La sesión que no puede mentir (V1.21, 8-sep-2026)
+
+**El defecto.** Esteban rotó `SUITE_JWT_SECRET`. A partir de ahí el navegador siguió
+mandando el token viejo —que vive en `localStorage` y **no se borra con Ctrl+Shift+R**—, el
+servidor lo rechazó con `FIRMA_INVALIDA`, y la franja dijo **«No se pudo confirmar con el
+servidor»**.
+
+Ese mensaje era falso y además el peor de los tres posibles: «no se pudo confirmar» invita
+a esperar y reintentar, cuando lo que hacía falta era volver a entrar — y reintentar con un
+token muerto no arregla nada. Se resolvió borrando la llave desde la consola del navegador.
+Nadie más del equipo sabe hacer eso.
+
+**Los tres casos, que antes decían lo mismo:**
+
+| caso | qué pasó | qué hacer |
+|---|---|---|
+| **sesión** | el servidor contestó y dijo que la credencial no vale | volver a entrar. Reintentar NUNCA sirve |
+| **red** | no hubo respuesta: sin internet, servidor caído, tiempo agotado | esperar. Lo capturado sigue aquí |
+| **servidor** | contestó, con un error suyo | no es tu sesión; ni entrar de nuevo lo arregla |
+
+`comercial/machote/js/sesion.js` los clasifica y les pone un texto distinto a cada uno.
+
+**La regla dura:** al caducar se borra **SÓLO** `fts_suite_session`. Nunca `fts_machote_v1`
+ni `fts_machote_sync_v1` — ahí hay captura real de tres personas, y una sesión vencida no
+es motivo para perder trabajo. No queda al cuidado de quien escriba el código:
+
+- las dos llaves están declaradas como `LLAVES_INTOCABLES`;
+- antes de borrar se comprueba que la llave de sesión no coincide con ninguna, y si
+  coincidiera **no borra nada** y lo dice por consola;
+- hay una prueba que siembra las dos, caduca la sesión y exige que sigan **idénticas**.
+
+**Dónde se engancha, y por qué ahí.** En `postear()` de `almacen.js` y en el `postear()` de
+`cotizacion.js` — el único punto por el que pasa toda respuesta del servidor. En cada
+llamador se habría olvidado en el primer endpoint nuevo; ahí no se puede.
+
+---
+
+## La demo no se sincroniza (V1.21)
+
+El 8-sep se colaron **cuatro demostraciones a la base de producción** con `id_local`
+`M-1041` … `M-1044`: la aplicación arranca con ellas en memoria, alguien tocó «Subir ahora»
+y subieron como si fueran captura.
+
+- **La marca va en ORIGEN**: `_demo: true` en los cuatro de `demo.js`.
+- **El filtro va en `empujar()`** de `almacen.js` —el único sitio por donde sube todo—, más
+  un segundo candado en `empujarUno()` por si alguien lo llama directo.
+- **La franja las descuenta antes de contar.** Si las contara diría «4 por subir» para
+  siempre y «Subir ahora» nunca podría bajar el número: un pendiente que no se puede
+  resolver es peor que no avisar.
+- Se conserva al editar: capturar encima de una demo la deja siendo demo. Para que deje de
+  serlo hay que crear un machote nuevo — así nadie convierte por accidente un ejemplo en la
+  cotización de un cliente.
+
+**Cómo se identificaron con certeza, antes de borrar nada.** El `id_local` de los cuatro es
+el **literal escrito a mano en `demo.js`** (`M-1041`…`M-1044`); la aplicación genera
+`M-<epoch en milisegundos>` para toda captura real, así que ningún machote de verdad puede
+llamarse así. Además los nombres coinciden carácter por carácter con `demo.js` y los cuatro
+se crearon **en 1.7 segundos** (04:14:33.998 → 04:14:35.243), que es una subida en lote, no
+alguien tecleando.
+
+**Borrado lógico aplicado** (ejecución `90758`): 8 machotes visibles → 4. Los cuatro
+borrados son los cuatro demos, todos de `esteban.delacruz`. **Los dos de
+`ricardo.hernandez` no se tocaron**, ni el «Suministro de Pantalla HMI» ni el «Machote de
+prueba Lifter robert» de Esteban — ésos son captura real y en la duda no se borra.

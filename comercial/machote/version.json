@@ -1,10 +1,15 @@
 {
-  "version": "V1.20",
+  "version": "V1.21",
   "fecha": "2026-09-08",
   "modulo": "comercial/machote",
   "ambito": "El CONTADOR es solo de este modulo. finanzas tambien usa V1.xx desde el 2026-09-03 (instruccion directa de Esteban, corrige el \"no propagar\" del issue #148) pero lleva su propio contador y va en V1.00. operaciones/planeacion sigue en 2.4.1, kiosk y confirmar-horas solo con cadena de build, y siete modulos con un 1.0.0 puesto una vez: a esos no se propaga.",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.21",
+      "pr": null,
+      "nota": "Rediseño de la lista y una sesión que ya no puede mentir. La sesión: hasta hoy la aplicación confundia 'tu credencial no vale' con 'no hay red' y dejaba a la persona reintentando con un token muerto -paso de verdad al rotar el secreto, y se resolvio borrando una llave desde la consola del navegador-. Ahora son tres casos distintos con tres mensajes y tres acciones, y cuando el servidor rechaza la credencial se borra SOLO la llave de sesion: los machotes capturados nunca se tocan, con prueba dedicada. La lista: encabezado de una sola linea con boton de volver -antes no habia salida-, tabla con columnas en escritorio y tarjetas con el pulgar, filtros como desplegables en vez de una fila de pildoras, filtro por persona que arranca en los propios, y exportar e importar arriba junto a lo demas en vez de al fondo. La franja de sincronizacion estrena 'Comprobar': ensena renglon por renglon que version tiene el servidor de cada machote y las dos huellas del mismo documento calculadas por separado, que es la evidencia que hacia falta para poder quitar la franja. Y la demo ya no puede sincronizarse: se marca en origen y el unico punto por donde sube todo la respeta"
+    },
     {
       "version": "V1.20",
       "pr": null,

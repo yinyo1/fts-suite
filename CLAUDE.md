@@ -914,6 +914,36 @@ lectura hay que probarla con al menos una fila que deba salir.**
 veía correcto; sólo al guardar un machote y volver a preguntar quedó probado que la
 consulta y el mapeo servían.)*
 
+### 12b. Una llave de sesión muerta no es «no hay red»
+Un servidor que **contesta** para decir que la credencial no vale, un servidor que **no
+contesta**, y un servidor que contesta **con un error suyo** son tres cosas distintas que
+llevan a tres acciones distintas: volver a entrar, esperar, y avisar. Si la aplicación las
+junta en un solo mensaje, elige el peor de los tres por omisión.
+*(Origen: 8-sep-2026, #140. Al rotar `SUITE_JWT_SECRET`, el navegador siguió mandando el
+token viejo —`localStorage` no se limpia con Ctrl+Shift+R— y la pantalla dijo «no se pudo
+confirmar con el servidor», que invita a reintentar. Reintentar con un token muerto no
+arregla nada. Se resolvió borrando la llave desde la consola, que no es algo que el equipo
+sepa hacer.)*
+**Regla operativa:** el cliente clasifica la respuesta en `sesion` / `red` / `servidor` en
+**un solo lugar** —el punto por donde pasan todas las respuestas, no en cada llamador— y
+ante `sesion` **borra la llave de sesión y sólo ésa**. Las llaves de datos se declaran
+intocables, se comprueba en tiempo de ejecución que no coincidan con la de sesión, y hay
+una prueba que las siembra y exige que sobrevivan. Rotar un secreto es una operación
+normal: la aplicación tiene que sobrevivirla sin que nadie abra la consola.
+
+### 12c. Lo que la aplicación trae de ejemplo tiene que estar marcado en ORIGEN
+Un dato de demostración que no se distingue de uno real acaba en producción el día que
+alguien toque «subir». No basta con que la pantalla sepa cuál es cuál: la marca va en el
+dato, y el filtro en el **único punto por donde sale todo** —no en cada camino, porque el
+camino nuevo se olvida—.
+*(Origen: 8-sep-2026, #140. Cuatro machotes de `window.DEMO` acabaron en la base de
+producción, con los ids literales `M-1041`…`M-1044` que están escritos a mano en `demo.js`.
+Nada los distinguía de una captura real.)*
+**Corolario para identificarlos después:** lo que salva es que los ids inventados a mano y
+los generados por la aplicación tengan **formas distintas** (`M-1041` contra
+`M-<epoch>`). Si se hubieran parecido, no habría forma de borrar los de ejemplo con
+certeza — y borrar trabajo de alguien es el error que no tiene vuelta.
+
 ### 12. Una pantalla se revisa MIRÁNDOLA, no leyendo su código
 Dos bugs de la misma sesión (7-sep-2026, #140), los dos **invisibles al releer el
 diff** y los dos evidentes en la primera captura:

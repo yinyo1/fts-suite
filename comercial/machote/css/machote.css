@@ -963,3 +963,206 @@ th .hint { font-weight: 400; text-transform: none; opacity: .75; }
   .corr .btn.f-min,
   .ctrl-pie .btn.f-min { min-height: var(--toque); }
 }
+
+/* ── Sesión vencida (V1.21) ───────────────────────────────────────────────
+ * Tapa la pantalla a propósito: sin sesión válida nada se guarda en el
+ * servidor, y dejar seguir capturando como si sí es el anti-patrón del
+ * kiosko. Lo capturado NO se pierde y el aviso lo dice, porque si no se
+ * dice la gente supone lo contrario. */
+.sesion-muerta { position: fixed; inset: 0; z-index: 900; display: grid; place-items: center;
+                 background: rgba(28,28,28,.42); padding: 18px; }
+.sesion-muerta .sm-caja { background: var(--fondo); border-radius: 12px; padding: 20px;
+                 max-width: 360px; width: 100%; box-shadow: 0 10px 40px rgba(0,0,0,.18); }
+.sesion-muerta .sm-t { display: block; font-size: 16px; margin-bottom: 6px; }
+.sesion-muerta .sm-p { font-size: 13px; color: var(--suave); line-height: 1.5; margin: 0 0 14px; }
+.sesion-muerta .btn { width: 100%; }
+
+/* ═══ V1.21 · el encabezado y la lista ═══════════════════════════════════
+ *
+ * QUÉ SE ESTABA RESOLVIENDO. En palabras de Esteban, la pantalla se veía
+ * «hechiza, de primaria, nada minimalista». Los defectos concretos:
+ *   · el encabezado ocupaba todo el ancho sin jerarquía y llevaba una
+ *     insignia «DEMO» que ya era falsa;
+ *   · no había forma de volver a la pantalla anterior;
+ *   · los filtros eran una fila de píldoras preseleccionadas que parecían
+ *     pestañas a medio hacer y no escalaban a filtrar por persona;
+ *   · exportar e importar vivían al fondo, después de todo.
+ *
+ * EL CRITERIO. Mucho aire, poca caja, poca línea, poco color. La jerarquía
+ * la hacen el tamaño y el peso de la letra, no los recuadros. Una sola cosa
+ * sólida por pantalla —el botón de acción principal— y todo lo demás en
+ * texto. Sin zebra ni bordes verticales en la tabla: una línea de 1 px entre
+ * renglones es lo que evita que ocho columnas se lean como una reja.
+ * (Prototipo con las dos propuestas: docs/comercial/prototipos/v121-lista.html) */
+
+.topbar { height: 52px; padding: 0 10px; gap: 10px; align-items: center;
+          border-bottom: 1px solid var(--linea); background: var(--fondo); }
+.topbar .tb-back { width: 34px; min-width: 34px; height: 34px; min-height: 34px;
+          border-radius: 7px; color: var(--suave); font-size: 19px; text-decoration: none;
+          border: 0; background: transparent; }
+.topbar .tb-back:hover { background: var(--papel); color: var(--tinta); }
+/* El título y el rastro en la MISMA línea, alineados por la base de la letra.
+   Uno debajo del otro pedía dos renglones y hacía ver la barra pesada. */
+.tb-info { display: flex; align-items: baseline; gap: 9px; min-width: 0; }
+.tb-info strong { font-size: 15px; font-weight: 600; letter-spacing: -.01em; white-space: nowrap; }
+.tb-info span { font-size: 12px; color: var(--suave); display: inline; }
+.topbar .pulso { margin-left: auto; }
+@media (max-width: 480px) { .tb-info span { display: none } }
+
+/* ── Encabezado de la lista ───────────────────────────────────────────── */
+.enc { display: flex; align-items: flex-end; gap: 12px; margin: 2px 0 14px; }
+.enc h2 { margin: 0; font-size: 21px; font-weight: 600; letter-spacing: -.02em; }
+.enc .cuenta { font-size: 12.5px; color: var(--suave); padding-bottom: 3px; }
+.enc .acc { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.enc .acc .btn { width: auto; }
+@media (max-width: 620px) {
+  /* Con el pulgar se APILA: el título con su cuenta arriba, los botones en su
+     propia línea y a todo lo ancho. En una sola fila la cuenta se partía en
+     tres renglones. */
+  .enc { flex-wrap: wrap; align-items: baseline; }
+  .enc .cuenta { order: 2; }
+  .enc .acc { order: 3; width: 100%; margin: 10px 0 0; }
+  .enc .acc .btn, .enc .acc .archivo { flex: 1 1 auto; justify-content: center; }
+}
+
+/* ── Barra de filtros ──────────────────────────────────────────────────── */
+.tb2 { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+.tb2 .bus { flex: 1 1 220px; min-width: 0; position: relative; }
+.tb2 .bus input { width: 100%; height: 36px; min-height: 36px; padding: 0 10px 0 30px;
+        border: 1px solid var(--linea); border-radius: 8px; font: inherit; font-size: 13px;
+        background: var(--fondo); color: var(--tinta); }
+.tb2 .bus input:focus { outline: 2px solid var(--acento); outline-offset: -1px; border-color: transparent; }
+.tb2 .bus::before { content: '⌕'; position: absolute; left: 10px; top: 7px;
+        color: var(--suave); font-size: 15px; pointer-events: none; }
+.fsel { position: relative; display: inline-flex; }
+.fsel select { appearance: none; -webkit-appearance: none; height: 36px; min-height: 36px;
+        padding: 0 26px 0 10px; border: 1px solid var(--linea); border-radius: 8px;
+        font: inherit; font-size: 13px; background: var(--fondo); color: var(--tinta); cursor: pointer; }
+.fsel::after { content: '⌄'; position: absolute; right: 9px; top: 5px; color: var(--suave);
+        pointer-events: none; font-size: 13px; }
+.fsel select:focus { outline: 2px solid var(--acento); outline-offset: -1px; }
+/* Un filtro puesto se nota: si no, la lista se ve corta y parece que faltan
+   machotes. Es el mismo motivo por el que el vacío dice por qué está vacío. */
+.fsel.puesto select { border-color: var(--tinta); }
+@media (max-width: 620px) {
+  .tb2 .bus input, .fsel select { height: var(--toque); min-height: var(--toque); }
+  .tb2 .bus::before { top: 11px; } .fsel::after { top: 11px; }
+  .fsel { flex: 1 1 140px; } .fsel select { width: 100%; }
+}
+
+/* ── La tabla ─────────────────────────────────────────────────────────── */
+.tw { border: 1px solid var(--linea); border-radius: 10px; overflow: hidden; background: var(--fondo); }
+table.lista { width: 100%; border-collapse: collapse; }
+table.lista th { text-align: left; font-weight: 500; font-size: 11px; letter-spacing: .045em;
+        text-transform: uppercase; color: var(--suave); padding: 10px 12px;
+        border-bottom: 1px solid var(--linea); white-space: nowrap; }
+table.lista th.num, table.lista td.num { text-align: right; }
+table.lista td { padding: 11px 12px; border-bottom: 1px solid var(--linea2); vertical-align: middle; }
+table.lista tr:last-child td { border-bottom: 0; }
+table.lista tbody tr:hover { background: var(--papel); }
+table.lista .nm a { color: inherit; text-decoration: none; font-weight: 500; }
+table.lista .nm a:hover { text-decoration: underline; }
+table.lista .sub { font-size: 12px; color: var(--suave); margin-top: 2px; }
+.pill { display: inline-block; font-size: 11.5px; padding: 2px 8px; border-radius: 99px;
+        background: var(--papel); color: var(--suave); white-space: nowrap; }
+/* Las acciones se ven SIEMPRE, sólo apagadas. Esconderlas hasta el hover es
+   elegante en una captura y un problema real: quien no sepa que están, no las
+   encuentra — y el historial es justo lo que se consulta sin querer editar. */
+/* .5 los dejaba de adorno: en la captura de 1280 el reloj y la × apenas se
+   adivinan sobre el blanco, y una acción que no se ve no existe —que es el
+   problema que la pasada 2 vino a arreglar sacándolas del hover, no a medias—.
+   Siguen atenuadas para no competir con el nombre, pero se leen quietas. */
+.acts { display: flex; gap: 2px; justify-content: flex-end; opacity: .8; }
+tr:hover .acts, tr:focus-within .acts { opacity: 1; }
+/* 30 px es a propósito y NO contradice la regla de los 44: la tabla sólo existe
+   arriba de 720 px, o sea con ratón. Donde hay dedo están las tarjetas, y ahí
+   los mismos botones miden `--toque`. Lo que sí sube es el tamaño de la glifa:
+   a 13 px el reloj y la × se leían como manchas. */
+.lista .ico { width: 30px; height: 30px; min-height: 30px; padding: 0; border: 0;
+        background: transparent; border-radius: 6px; color: var(--suave); font-size: 14px; }
+.lista .ico:hover { background: var(--papel); color: var(--tinta); }
+
+/* Tarjetas con el pulgar. La tabla desaparece y las tarjetas la sustituyen:
+   una tabla de siete columnas en 380 px es fidelidad mal entendida. */
+.cards { display: none; }
+@media (max-width: 720px) {
+  .tw { border: 0; border-radius: 0; background: transparent; overflow: visible; }
+  table.lista { display: none; }
+  .cards { display: block; }
+}
+
+/* ── La evidencia de sincronización (V1.21) ───────────────────────────────
+ * «Comprobar» despliega, renglón por renglón, qué versión tiene el servidor
+ * de cada machote y las dos huellas del mismo documento calculadas por
+ * separado. Un número pide fe; esto se puede comprobar — y de poder
+ * enseñarlo depende quitar la franja en la versión que viene. */
+.evi { border: 1px solid var(--linea); border-top: 0; border-radius: 0 0 10px 10px;
+       margin: -11px 0 12px; background: var(--fondo); overflow: hidden; }
+.evi table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.evi th { text-align: left; font-weight: 500; color: var(--suave); padding: 7px 12px;
+       border-bottom: 1px solid var(--linea2); font-size: 10.5px;
+       text-transform: uppercase; letter-spacing: .045em; }
+.evi td { padding: 7px 12px; border-bottom: 1px solid var(--linea2); vertical-align: top; }
+.evi tr:last-child td { border-bottom: 0; }
+.evi .hu { font-size: 11px; color: var(--suave); }
+.evi .pie { padding: 9px 12px; border-top: 1px solid var(--linea2); }
+
+/* El renglón de la TABLA es `.rw`, no `.fila`: `.fila` es `display:flex` —la
+   tarjeta del teléfono— y en un `<tr>` desmonta el reparto de columnas. */
+table.lista tr.rw.solo-aqui { background: #fffaf0; }
+table.lista tr.rw.solo-aqui td:first-child { box-shadow: inset 2px 0 0 var(--ambar); }
+/* El nombre del responsable en UNA línea: con «Jesus Esteban De La Cruz» se
+   partía en cuatro renglones y estiraba todo el renglón de la tabla. */
+table.lista td.quien-td { font-size: 13px; color: var(--suave); max-width: 150px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Los dos botones de la TARJETA (teléfono). Sin esto heredan el alto del
+   renglón —`.fila` es `align-items:stretch`— y salen como dos cajas altas que
+   se comen un tercio del ancho. Se vio en la captura a 380, no en el diff. */
+@media (max-width: 720px) {
+  /* Cuadrados y centrados, no estirados: sin `align-self` heredaban el alto
+     del renglón y se comían un tercio del ancho de la tarjeta. El TAMAÑO,
+     en cambio, es 44 px como todo lo que se toca — lo bajé a 34 "porque es
+     un icono" y la prueba lo cachó, igual que con los chips de arriba. */
+  /* El nombre a TODO el ancho, y los datos debajo.
+     En fila —nombre a la izquierda, cifras a la derecha— la captura de 380 px
+     partía «Paso de gato antiderrapante en acero galvanizado» en CUATRO
+     renglones contra una columna de cifras medio vacía: el dato por el que se
+     busca era el peor tratado de la tarjeta. Apilar no cuesta alto (lo que
+     crece el bloque de abajo lo devuelve el título) y deja el estado, el
+     precio y el margen leídos de corrido en un renglón. */
+  .cards .item { flex-direction: column; align-items: stretch; gap: 4px; }
+  .cards .item > .right { text-align: left; display: flex; flex-wrap: wrap;
+        align-items: baseline; gap: 4px 10px; }
+
+  .cards .fila > .ico { align-self: center; width: var(--toque); min-width: var(--toque);
+        height: var(--toque); min-height: var(--toque);
+        padding: 0; display: grid; place-items: center; }
+  /* Con cuatro acciones arriba, dos por renglón en vez de cuatro apretadas. */
+  .enc .acc { flex-wrap: wrap; }
+  .enc .acc .btn, .enc .acc .archivo { flex: 1 1 44%; }
+}
+
+/* ── Desglose por sección (V1.21) ─────────────────────────────────────────
+ * La casilla vive pegada al renglón que abre, no en una preferencia general:
+ * el desglose es la EXCEPCIÓN que pide un cliente, y una preferencia global
+ * se vuelve costumbre en dos semanas. */
+.desg-sw { display: flex; align-items: center; gap: 6px; margin-top: 6px;
+           font-size: 11.5px; color: var(--suave); cursor: pointer; }
+.desg-sw input { width: 15px; height: 15px; margin: 0; }
+tr.desg-fila td { background: var(--papel); border-top: 0; }
+tr.desg-fila .desg-nm { padding-left: 22px; font-size: 12.5px; color: var(--tinta); }
+tr.desg-fila .desg-nm::before { content: '└'; color: var(--linea); margin-right: 6px; }
+/* El cuadre en VERDE no es decoración: es la única regla dura del desglose.
+   Ámbar cuando no cuadra, porque se arregla moviendo un número — no es un
+   error del sistema. */
+tr.desg-cuadre td { background: var(--papel); font-size: 11.5px; padding-top: 2px;
+                    padding-bottom: 8px; border-top: 0; }
+tr.desg-cuadre.ok td { color: var(--verde); }
+tr.desg-cuadre.mal td { color: var(--ambar); }
+tr.desg-cuadre .malo { color: var(--rojo); font-weight: 700; }
+/* La versión en la barra: presente y callada. Es como Esteban comprueba en
+   pantalla que su cambio se desplegó, así que no puede esconderse en ningún
+   ancho — pero tampoco compite con el título. */
+.tb-ver { font-size: 10.5px; color: var(--suave); font-variant-numeric: tabular-nums;
+          flex: 0 0 auto; letter-spacing: .01em; }

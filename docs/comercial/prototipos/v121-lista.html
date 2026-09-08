@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Machote V1.21 · dos propuestas para la lista</title>
+<!--
+  PROTOTIPO. No habla con nada: los datos son inventados y los botones no hacen
+  nada salvo filtrar la tabla de aquí. Existe para que Esteban lo abra, lo mire
+  y diga cuál de las dos, antes de que se toque el módulo.
+
+  QUÉ SE ESTÁ RESOLVIENDO
+  El acomodo actual se ve, en sus palabras, «hechizo, de primaria, nada
+  minimalista». Los tres defectos concretos:
+    1. El encabezado ocupa todo el ancho sin jerarquía y lleva una insignia
+       «DEMO» que ya no dice nada.
+    2. Los filtros son botones preseleccionados —una fila de píldoras— que
+       parecen pestañas a medio hacer y no escalan a filtrar por persona.
+    3. Exportar e importar viven al fondo, después de todo, cuando son la red
+       de seguridad y deberían estar donde se ven.
+  Y uno que no se ve pero se siente: no hay forma de volver a la pantalla
+  anterior.
+
+  LO QUE COMPARTEN LAS DOS PROPUESTAS
+  Encabezado de una sola línea con botón de volver · filtro por persona que
+  arranca en «los míos» · exportar/importar arriba · tabla con columnas en
+  escritorio y tarjetas con el pulgar · la franja de sincronización con
+  evidencia a un clic, no sólo un número.
+
+  EN QUÉ SE DIFERENCIAN
+    A · Barra de herramientas.  Los filtros son tres desplegables en una barra
+        sobre la tabla. Se ven aunque no se busquen. Más ancho vertical.
+    B · Filtros en la cabecera.  Los desplegables VIVEN en la fila de títulos
+        de la tabla, como el autofiltro de Excel. Más denso y más parecido a
+        la herramienta de la que vienen los analistas; a cambio, hay que saber
+        que están ahí.
+-->
+<style>
+:root{
+  --tinta:#1c1c1c; --suave:#6b6b6b; --tenue:#8e8e8e;
+  --linea:#e8e8e6; --linea2:#f1f1ef;
+  --fondo:#fff; --papel:#faf9f7; --papel2:#f4f3f0;
+  --acento:#2a5db0; --verde:#1a7f37; --ambar:#9a6700; --rojo:#cf222e;
+  --toque:44px; --r:8px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--papel);color:var(--tinta);
+     font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+     -webkit-font-smoothing:antialiased}
+.mono{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+/* ── El selector de propuesta. No es parte del diseño: es del prototipo. ── */
+.sw{position:sticky;top:0;z-index:50;display:flex;gap:0;background:#1c1c1c;color:#fff;
+    padding:0 12px;align-items:center;font-size:12.5px}
+.sw b{margin-right:auto;font-weight:600;letter-spacing:.01em;padding:10px 0}
+.sw button{appearance:none;background:transparent;border:0;color:#a9a9a9;padding:10px 14px;
+           font:inherit;cursor:pointer;border-bottom:2px solid transparent}
+.sw button.on{color:#fff;border-bottom-color:#fff}
+
+/* ── Marco ─────────────────────────────────────────────────────────────── */
+.app{max-width:1120px;margin:0 auto;background:var(--fondo);min-height:100vh;
+     border-left:1px solid var(--linea);border-right:1px solid var(--linea)}
+
+/* ── Encabezado ────────────────────────────────────────────────────────────
+   Una sola línea, 52 px. Jerarquía por TAMAÑO y PESO, no por cajas: el nombre
+   de la pantalla en 15/600 y el rastro de migas en 12 gris al lado, no debajo.
+   Sin insignia de DEMO: etiquetar de mentiras una pantalla que ya guarda en un
+   servidor de verdad enseña a no creerle a las etiquetas. */
+.hd{position:sticky;top:38px;z-index:20;display:flex;align-items:center;gap:10px;
+    height:52px;padding:0 12px;background:rgba(255,255,255,.92);
+    backdrop-filter:saturate(180%) blur(8px);border-bottom:1px solid var(--linea)}
+.hd .volver{flex:0 0 auto;width:32px;height:32px;display:grid;place-items:center;
+            border:0;background:transparent;border-radius:6px;color:var(--suave);
+            font-size:19px;line-height:1;cursor:pointer;text-decoration:none}
+.hd .volver:hover{background:var(--papel2);color:var(--tinta)}
+.hd .tit{display:flex;align-items:baseline;gap:9px;min-width:0}
+.hd .tit strong{font-size:15px;font-weight:600;letter-spacing:-.01em;white-space:nowrap}
+.hd .tit span{font-size:12px;color:var(--tenue);white-space:nowrap;overflow:hidden;
+              text-overflow:ellipsis}
+.hd .der{margin-left:auto;display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.pulso{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--suave)}
+.pulso i{width:7px;height:7px;border-radius:50%;background:var(--verde);flex:0 0 auto}
+.quien{display:flex;align-items:center;gap:7px;padding:4px 4px 4px 8px;border-radius:99px;
+       border:1px solid var(--linea);background:var(--fondo);cursor:pointer;font:inherit;
+       font-size:12.5px;color:var(--suave);height:32px}
+.quien:hover{border-color:var(--tenue);color:var(--tinta)}
+.quien .av{width:22px;height:22px;border-radius:50%;background:var(--papel2);
+           color:var(--suave);display:grid;place-items:center;font-size:10.5px;font-weight:700}
+@media(max-width:560px){.pulso span{display:none} .quien .nm{display:none} .quien{padding:4px}}
+
+/* ── Cuerpo ───────────────────────────────────────────────────────────── */
+.cuerpo{padding:18px 14px 40px}
+.enc{display:flex;align-items:flex-end;gap:12px;margin:0 0 14px}
+@media(max-width:620px){
+  /* Con el pulgar el encabezado se APILA: el título con su cuenta arriba y los
+     tres botones en su propia línea. En una sola fila, «3 de 6» se partía en
+     tres renglones y los botones quedaban apretados contra el borde. */
+  .enc{flex-wrap:wrap;align-items:baseline}
+  .enc .n{order:2}
+  .enc .acc{order:3;width:100%;margin-left:0;margin-top:10px}
+  .enc .acc .b{flex:1 1 auto;justify-content:center}
+}
+.enc h1{font-size:21px;font-weight:600;letter-spacing:-.02em;margin:0}
+.enc .n{font-size:12.5px;color:var(--tenue);padding-bottom:3px}
+.enc .acc{margin-left:auto;display:flex;gap:8px}
+
+/* Botones: uno sólido, el resto texto. Poca caja. */
+.b{appearance:none;font:inherit;font-size:13px;border-radius:var(--r);cursor:pointer;
+   min-height:34px;padding:0 12px;display:inline-flex;align-items:center;gap:6px;
+   border:1px solid var(--linea);background:var(--fondo);color:var(--tinta);white-space:nowrap}
+.b:hover{border-color:var(--tenue)}
+.b.p{background:var(--tinta);border-color:var(--tinta);color:#fff}
+.b.p:hover{background:#000}
+.b.f{border-color:transparent;background:transparent;color:var(--suave)}
+.b.f:hover{background:var(--papel2);color:var(--tinta)}
+@media(max-width:560px){.b{min-height:var(--toque)}}
+
+/* ── Franja de sincronización ──────────────────────────────────────────────
+   Lo nuevo es «Comprobar»: despliega la evidencia renglón por renglón —qué
+   versión tiene el servidor de cada uno y a qué hora se confirmó— en vez de
+   pedir que se le crea a un número. De esa evidencia depende poder quitar
+   este paso en la versión siguiente. */
+.fr{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--r);
+    background:var(--papel);border:1px solid var(--linea);font-size:13px;margin-bottom:14px}
+.fr .pt{width:7px;height:7px;border-radius:50%;background:var(--verde);flex:0 0 auto}
+.fr.pend .pt{background:var(--ambar)}
+.fr .bs{margin-left:auto;display:flex;gap:6px}
+.ev{border:1px solid var(--linea);border-top:0;border-radius:0 0 var(--r) var(--r);
+    margin:-15px 0 14px;background:var(--fondo);overflow:hidden}
+.ev table{width:100%;border-collapse:collapse;font-size:12.5px}
+.ev th{text-align:left;font-weight:500;color:var(--tenue);padding:8px 12px;
+       border-bottom:1px solid var(--linea2);font-size:11.5px;text-transform:uppercase;
+       letter-spacing:.04em}
+.ev td{padding:8px 12px;border-bottom:1px solid var(--linea2);vertical-align:top}
+.ev tr:last-child td{border-bottom:0}
+.ev .hu{font-size:11px;color:var(--tenue)}
+
+/* ── Barra de filtros (propuesta A) ───────────────────────────────────── */
+.tb{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.bus{flex:1 1 220px;min-width:0;position:relative}
+.bus input{width:100%;height:34px;padding:0 10px 0 30px;border:1px solid var(--linea);
+           border-radius:var(--r);font:inherit;font-size:13px;background:var(--fondo);color:var(--tinta)}
+.bus input:focus{outline:2px solid var(--acento);outline-offset:-1px;border-color:transparent}
+.bus::before{content:'⌕';position:absolute;left:10px;top:7px;color:var(--tenue);font-size:15px}
+.sel{position:relative;display:inline-flex}
+.sel select{appearance:none;height:34px;padding:0 26px 0 10px;border:1px solid var(--linea);
+            border-radius:var(--r);font:inherit;font-size:13px;background:var(--fondo);
+            color:var(--tinta);cursor:pointer}
+.sel::after{content:'⌄';position:absolute;right:9px;top:4px;color:var(--tenue);pointer-events:none}
+.sel select:focus{outline:2px solid var(--acento);outline-offset:-1px}
+@media(max-width:560px){.tb .sel select,.bus input{height:var(--toque)} .sel::after{top:10px}}
+
+/* ── Tabla ────────────────────────────────────────────────────────────────
+   Sin bordes verticales y sin zebra: sólo una línea de 1 px entre renglones.
+   Es lo que hace que una tabla de 8 columnas no se lea como una reja. */
+.tw{border:1px solid var(--linea);border-radius:var(--r);overflow:hidden;background:var(--fondo)}
+table.t{width:100%;border-collapse:collapse}
+table.t th{text-align:left;font-weight:500;font-size:11.5px;letter-spacing:.04em;
+           text-transform:uppercase;color:var(--tenue);padding:10px 12px;
+           border-bottom:1px solid var(--linea);white-space:nowrap;background:var(--fondo)}
+table.t th.num,table.t td.num{text-align:right}
+table.t td{padding:11px 12px;border-bottom:1px solid var(--linea2);vertical-align:middle}
+table.t tr:last-child td{border-bottom:0}
+table.t tbody tr:hover{background:var(--papel)}
+.nm{font-weight:500}
+.nm a{color:inherit;text-decoration:none}
+.nm a:hover{text-decoration:underline}
+.sub{font-size:12px;color:var(--tenue);margin-top:2px}
+.pill{display:inline-block;font-size:11.5px;padding:2px 8px;border-radius:99px;
+      background:var(--papel2);color:var(--suave);white-space:nowrap}
+.pill.rev{background:#fdf3dd;color:var(--ambar)}
+.pill.env{background:#e6f4ea;color:var(--verde)}
+.ok{color:var(--verde)} .wr{color:var(--ambar)} .bd{color:var(--rojo)}
+ /* Visibles SIEMPRE, sólo apagadas. Esconderlas hasta el hover es elegante en
+    una captura y un problema real: quien no sepa que están, no las encuentra —
+    y el historial es justo lo que se consulta sin querer editar. */
+.acts{display:flex;gap:2px;justify-content:flex-end;opacity:.45;transition:opacity .1s}
+tr:hover .acts,tr:focus-within .acts{opacity:1}
+.ico{width:28px;height:28px;display:grid;place-items:center;border:0;background:transparent;
+     border-radius:6px;color:var(--tenue);cursor:pointer;font-size:13px}
+.ico:hover{background:var(--papel2);color:var(--tinta)}
+.marca{position:relative}
+.marca::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--ambar)}
+@media(max-width:560px){.acts{opacity:1}}
+
+/* Filtros DENTRO de la cabecera (propuesta B) */
+table.t th .sel select{height:26px;font-size:12px;padding:0 22px 0 7px;
+                       text-transform:none;letter-spacing:0;color:var(--suave);
+                       border-color:transparent;background:var(--papel)}
+table.t th .sel select:hover{border-color:var(--linea)}
+table.t th .sel::after{top:0}
+table.t th .cab{display:block;margin-bottom:5px}
+
+/* ── Tarjetas, con el pulgar ──────────────────────────────────────────── */
+.cards{display:none}
+@media(max-width:720px){
+  .tw{border:0;border-radius:0;background:transparent}
+  table.t{display:none}
+  .cards{display:block}
+  .cd{background:var(--fondo);border:1px solid var(--linea);border-radius:var(--r);
+      padding:12px;margin-bottom:8px;display:block;text-decoration:none;color:inherit}
+  .cd .l1{display:flex;gap:8px;align-items:flex-start}
+  .cd .l2{display:flex;gap:10px;align-items:center;margin-top:8px;font-size:12.5px}
+  .cd .l2 .num{margin-left:auto;text-align:right}
+  .cd.marca{border-left:2px solid var(--ambar)}
+}
+.vacio{padding:34px 12px;text-align:center;color:var(--tenue);font-size:13.5px}
+.pie{margin-top:16px;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--tenue)}
+.pie .der{margin-left:auto}
+.nota{font-size:12px;color:var(--tenue);line-height:1.5}
+.oculto{display:none !important}
+</style>
+</head>
+<body>
+
+<div class="sw">
+  <b>Prototipo · Machote V1.21</b>
+  <button id="tA" class="on" onclick="ver('A')">A · barra de filtros</button>
+  <button id="tB" onclick="ver('B')">B · filtros en la cabecera</button>
+</div>
+
+<div class="app">
+  <!-- ENCABEZADO: idéntico en las dos propuestas -->
+  <div class="hd">
+    <a class="volver" href="#" title="Volver a Comercial" aria-label="Volver">&#8249;</a>
+    <div class="tit"><strong>Machotes</strong><span>Comercial</span></div>
+    <div class="der">
+      <div class="pulso"><i></i><span>guardado</span></div>
+      <button class="quien"><span class="av">FM</span><span class="nm">Francisco Montalvo</span></button>
+    </div>
+  </div>
+
+  <div class="cuerpo">
+    <div class="enc">
+      <h1>Machotes</h1>
+      <div class="n" id="cuenta">6 cotizaciones</div>
+      <div class="acc">
+        <button class="b f" title="Baja un archivo con todo lo capturado">Exportar</button>
+        <button class="b f" title="Nunca pisa lo que ya existe">Importar</button>
+        <button class="b p">+ Nuevo</button>
+      </div>
+    </div>
+
+    <!-- FRANJA: igual en las dos. Lo nuevo es «Comprobar». -->
+    <div class="fr" id="fr">
+      <span class="pt"></span>
+      <span id="frTx">6 de 6 a salvo en el servidor</span>
+      <span class="bs">
+        <button class="b f" onclick="ev()">Comprobar</button>
+      </span>
+    </div>
+    <div class="ev oculto" id="evi">
+      <table>
+        <thead><tr><th>Cotización</th><th>Aquí</th><th>En el servidor</th><th>Confirmado</th></tr></thead>
+        <tbody id="evb"></tbody>
+      </table>
+      <div style="padding:9px 12px;border-top:1px solid var(--linea2)">
+        <span class="nota">Las dos huellas son del mismo documento calculadas por separado: si coinciden,
+        lo que está aquí y lo que está allá son idénticos carácter por carácter. Ésta es la evidencia
+        que hace falta para poder quitar esta franja.</span>
+      </div>
+    </div>
+
+    <!-- PROPUESTA A: barra de herramientas -->
+    <div class="tb" id="barraA">
+      <div class="bus"><input id="qA" type="search" placeholder="Buscar por nombre, cliente u orden…"
+        oninput="pintar()" autocomplete="off"></div>
+      <label class="sel"><select id="pA" onchange="pintar()">
+        <option value="yo">Míos</option><option value="">Todos</option>
+        <option value="Francisco Montalvo">Francisco Montalvo</option>
+        <option value="Ricardo Hernández">Ricardo Hernández</option>
+        <option value="Aldo Méndez">Aldo Méndez</option></select></label>
+      <label class="sel"><select id="eA" onchange="pintar()">
+        <option value="">Todos los estados</option><option>En creación</option>
+        <option>En revisión</option><option>Enviado</option></select></label>
+      <label class="sel"><select id="mA" onchange="pintar()">
+        <option value="">Toda moneda</option><option>MXN</option><option>USD</option></select></label>
+    </div>
+
+    <!-- PROPUESTA B: sólo la búsqueda arriba; los filtros van en la cabecera -->
+    <div class="tb oculto" id="barraB">
+      <div class="bus"><input id="qB" type="search" placeholder="Buscar por nombre, cliente u orden…"
+        oninput="pintar()" autocomplete="off"></div>
+      <span class="nota" style="align-self:center;flex:0 1 auto">Los filtros van en los títulos ↓</span>
+    </div>
+
+    <div class="tw">
+      <table class="t">
+        <thead>
+          <tr>
+            <th style="width:40%">Cotización</th>
+            <th id="thP">Responsable</th>
+            <th id="thE">Estado</th>
+            <th class="num">Precio</th>
+            <th class="num">Margen</th>
+            <th>Revisión</th>
+            <th style="width:70px"></th>
+          </tr>
+        </thead>
+        <tbody id="tb"></tbody>
+      </table>
+      <div class="cards" id="cards"></div>
+      <div class="vacio oculto" id="vacio"></div>
+    </div>
+
+    <div class="nota" id="veredicto" style="margin-top:16px;padding:10px 12px;
+         background:var(--papel);border:1px solid var(--linea);border-radius:8px"></div>
+
+    <div class="pie">
+      <span id="pie"></span>
+      <span class="der">V1.21 · prototipo</span>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Datos inventados. La forma sí es la real: nombre, cliente, orden, dueño,
+   estado, precio, margen y cuántas observaciones duras trae la revisión. */
+var YO = 'Francisco Montalvo';
+var D = [
+ {n:'Paso de gato antiderrapante en acero galvanizado',c:'Bridgestone México',so:'SO11498',
+  d:'Francisco Montalvo',e:'En creación',p:1794303,mo:'MXN',mg:.40,du:1,sync:1,v:3,h:'a91c…'},
+ {n:'Suministro de pantalla HMI Automation Direct',c:'Clarios',so:'',
+  d:'Francisco Montalvo',e:'En revisión',p:18400,mo:'USD',mg:.22,du:0,sync:1,v:1,h:'4d02…'},
+ {n:'Adecuaciones de toma sanitaria en codo',c:'Mondelez',so:'SO11772',
+  d:'Francisco Montalvo',e:'Enviado',p:227792,mo:'MXN',mg:.31,du:0,sync:1,v:5,h:'77be…'},
+ {n:'Cooling system for maintenance offices',c:'Hayward',so:'',
+  d:'Ricardo Hernández',e:'En creación',p:41200,mo:'USD',mg:.11,du:2,sync:0,v:0,h:'—'},
+ {n:'Modificaciones en pulidores',c:'GRUMA',so:'SO11782',
+  d:'Ricardo Hernández',e:'En revisión',p:983040,mo:'MXN',mg:.45,du:0,sync:1,v:2,h:'0b3f…'},
+ {n:'Baggers replacement — MF Rancho',c:'Mission Foods',so:'',
+  d:'Aldo Méndez',e:'En creación',p:126500,mo:'USD',mg:.28,du:1,sync:1,v:1,h:'e5a7…'}
+];
+var MODO='A';
+
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function mx(v,m){return (m==='USD'?'US$':'$')+v.toLocaleString('es-MX',{minimumFractionDigits:0});}
+function pc(v){return (v*100).toFixed(0)+'%';}
+function nvl(m){return m<.15?'bd':m<.25?'wr':'ok';}
+function ini(s){return s.split(' ').map(function(x){return x[0];}).slice(0,2).join('');}
+
+function ver(m){
+  MODO=m;
+  document.getElementById('tA').className = m==='A'?'on':'';
+  document.getElementById('tB').className = m==='B'?'on':'';
+  document.getElementById('barraA').classList.toggle('oculto', m!=='A');
+  document.getElementById('barraB').classList.toggle('oculto', m!=='B');
+  /* En B los desplegables se inyectan DENTRO de los títulos de la tabla. */
+  document.getElementById('thP').innerHTML = m==='B'
+    ? '<span class="cab">Responsable</span><label class="sel"><select id="pB" onchange="pintar()">' +
+      '<option value="yo">Míos</option><option value="">Todos</option>' +
+      '<option value="Francisco Montalvo">F. Montalvo</option>' +
+      '<option value="Ricardo Hernández">R. Hernández</option>' +
+      '<option value="Aldo Méndez">A. Méndez</option></select></label>'
+    : 'Responsable';
+  document.getElementById('thE').innerHTML = m==='B'
+    ? '<span class="cab">Estado</span><label class="sel"><select id="eB" onchange="pintar()">' +
+      '<option value="">Todos</option><option>En creación</option>' +
+      '<option>En revisión</option><option>Enviado</option></select></label>'
+    : 'Estado';
+  pintar();
+}
+
+function crit(){
+  var q  = (document.getElementById(MODO==='A'?'qA':'qB')||{}).value || '';
+  var pe = document.getElementById(MODO==='A'?'pA':'pB');
+  var es = document.getElementById(MODO==='A'?'eA':'eB');
+  var mo = document.getElementById('mA');
+  return { q:q.toLowerCase(),
+           p: pe?pe.value:'yo',
+           e: es?es.value:'',
+           m: (MODO==='A'&&mo)?mo.value:'' };
+}
+
+function pintar(){
+  var c = crit();
+  var f = D.filter(function(x){
+    if (c.p==='yo' && x.d!==YO) return false;
+    if (c.p && c.p!=='yo' && x.d!==c.p) return false;
+    if (c.e && x.e!==c.e) return false;
+    if (c.m && x.mo!==c.m) return false;
+    if (c.q){ var t=(x.n+' '+x.c+' '+x.so).toLowerCase();
+      if(!c.q.split(/\s+/).filter(Boolean).every(function(w){return t.indexOf(w)>=0;})) return false; }
+    return true;
+  });
+
+  document.getElementById('tb').innerHTML = f.map(function(x){
+    return '<tr class="'+(x.sync?'':'marca')+'">'+
+      '<td><div class="nm"><a href="#">'+esc(x.n)+'</a></div>'+
+        '<div class="sub">'+esc(x.c)+(x.so?' · '+esc(x.so):'')+'</div></td>'+
+      '<td><span class="sub" style="font-size:13px;color:var(--suave)">'+esc(x.d)+'</span></td>'+
+      '<td><span class="pill '+(x.e==='En revisión'?'rev':x.e==='Enviado'?'env':'')+'">'+esc(x.e)+'</span></td>'+
+      '<td class="num mono">'+mx(x.p,x.mo)+'</td>'+
+      '<td class="num mono '+nvl(x.mg)+'">'+pc(x.mg)+'</td>'+
+      '<td>'+(x.du?'<span class="bd">'+x.du+' dura'+(x.du>1?'s':'')+'</span>':'<span class="sub">sin duras</span>')+'</td>'+
+      '<td><div class="acts"><button class="ico" title="Historial">🕘</button>'+
+        '<button class="ico" title="Eliminar">×</button></div></td></tr>';
+  }).join('');
+
+  document.getElementById('cards').innerHTML = f.map(function(x){
+    return '<a class="cd '+(x.sync?'':'marca')+'" href="#">'+
+      '<div class="l1"><div class="grow"><div class="nm">'+esc(x.n)+'</div>'+
+      '<div class="sub">'+esc(x.c)+(x.so?' · '+esc(x.so):'')+'</div></div>'+
+      '<span class="pill '+(x.e==='En revisión'?'rev':x.e==='Enviado'?'env':'')+'">'+esc(x.e)+'</span></div>'+
+      '<div class="l2"><span class="sub">'+esc(x.d)+'</span>'+
+      '<span class="num mono">'+mx(x.p,x.mo)+' · <span class="'+nvl(x.mg)+'">'+pc(x.mg)+'</span></span></div></a>';
+  }).join('');
+
+  var v = document.getElementById('vacio');
+  v.classList.toggle('oculto', f.length>0);
+  v.textContent = c.q ? 'Ninguna cotización coincide con «'+c.q+'».'
+                      : 'No hay cotizaciones con estos filtros.';
+  document.getElementById('cuenta').textContent =
+    f.length===D.length ? D.length+' cotizaciones' : f.length+' de '+D.length;
+  var pend = D.filter(function(x){return !x.sync;}).length;
+  document.getElementById('fr').className = 'fr'+(pend?' pend':'');
+  document.getElementById('frTx').textContent = pend
+    ? pend+' por subir · '+(D.length-pend)+' de '+D.length+' a salvo'
+    : D.length+' de '+D.length+' a salvo en el servidor';
+  document.getElementById('pie').textContent =
+    c.p==='yo' ? 'Viendo sólo lo tuyo. Cambia «Míos» por «Todos» para ver el resto.' : '';
+}
+
+function ev(){
+  var e = document.getElementById('evi');
+  var abierto = !e.classList.contains('oculto');
+  e.classList.toggle('oculto', abierto);
+  if (abierto) return;
+  document.getElementById('evb').innerHTML = D.map(function(x){
+    return '<tr><td>'+esc(x.n.slice(0,44))+(x.n.length>44?'…':'')+'</td>'+
+      '<td class="hu mono">'+(x.sync?x.h:'—')+'</td>'+
+      '<td class="hu mono">'+(x.sync?x.h+' · v'+x.v:'<span class="wr">no ha llegado</span>')+'</td>'+
+      '<td class="hu">'+(x.sync?'hoy 06:12':'—')+'</td></tr>';
+  }).join('');
+}
+
+/* El veredicto, escrito en la pantalla y no sólo en el issue: quien abra esto
+   sin haber leído nada tiene que poder decidir con lo que ve. */
+function veredicto(){
+  document.getElementById('veredicto').innerHTML = MODO==='A'
+    ? '<strong>Ésta es la que recomiendo.</strong> Los filtros se ven sin buscarlos, caben tres '+
+      '(persona, estado y moneda) y —lo que decide— <strong>siguen existiendo con el pulgar</strong>, '+
+      'donde la tabla se vuelve tarjetas.'
+    : '<strong>Más densa, pero tiene un hueco que no se arregla.</strong> Con el pulgar la tabla se '+
+      'vuelve tarjetas y la fila de títulos desaparece: <strong>los filtros se van con ella</strong>. '+
+      'Habría que duplicarlos en una barra para el teléfono, y entonces ya es la propuesta A con '+
+      'un rodeo. Se deja para que se vea la comparación, no para elegirla.';
+}
+var _ver = ver;
+ver = function(m){ _ver(m); veredicto(); };
+ver('A');
+</script>
+</body>
+</html>
