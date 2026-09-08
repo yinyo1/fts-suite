@@ -2801,7 +2801,16 @@ let ok = 0, mal = 0;
       const cls = await q.getAttribute('#franjaSync', 'class');
       if (/a salvo en el servidor/.test(t))
         throw new Error('afirmó que está a salvo sin poder preguntar: ' + t);
-      if (!/No se pudo confirmar/.test(t)) throw new Error('dice: ' + t);
+      /* El texto cambió en V1.21 y el cambio es el punto: «No se pudo confirmar
+       * con el servidor» era la frase que juntaba los tres mundos —sesión, red
+       * y error del servidor— y por omisión elegía el peor de los tres. Aquí el
+       * `fetch` se rechaza, o sea NO hay respuesta, así que tiene que decir que
+       * no hay conexión y que lo capturado sigue aquí. */
+      if (!/[Ss]in conexión con el servidor/.test(t)) throw new Error('dice: ' + t);
+      if (!/sigue|siguen/.test(t))
+        throw new Error('no dice que lo capturado sigue en el navegador: ' + t);
+      if (/sesión expiró|[Vv]uelve a entrar/.test(t))
+        throw new Error('confundió falta de red con sesión muerta: ' + t);
       if (!/f-duda/.test(cls)) throw new Error('tono: ' + cls);
       console.log('    "' + t.replace(/Cuáles.*/, '') + '"');
     } finally { await q.close(); }
