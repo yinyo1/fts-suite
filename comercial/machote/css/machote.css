@@ -913,6 +913,12 @@ th .hint { font-weight: 400; text-transform: none; opacity: .75; }
  * no existe. Ámbar, no rojo. */
 .envio.parado { border: 1px solid #e6c98a; background: #fffaf0; }
 .envio.parado p { margin: 4px 0 0; }
+/* Verde SÓLO cuando el servidor confirmó. Nunca al apretar el botón: es
+   justo el color que en el kiosko hizo creer a la gente que había checado
+   salida sin haberlo hecho (CLAUDE.md hallazgo #15). */
+.envio.ok { border: 1px solid #a7d3a7; background: #f3fbf3; }
+.envio.ok p { margin: 4px 0 0; }
+.envio .nota { opacity: .7; }
 
 @media (max-width: 720px) {
   .or-grid { grid-template-columns: 1fr 1fr; }

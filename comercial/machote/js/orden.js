@@ -401,24 +401,32 @@
 
     cascaron(
       '<div class="or-cab">' +
-        '<div><h3>Mandarla al cliente <span class="chip demo">demostración</span></h3>' +
+        /* El chip decía "demostración" a secas y ya es media mentira: el paso 1
+         * baja un PDF de verdad de Odoo. Un cartel de "esto es de mentiras"
+         * encima de algo que sí funciona es tan malo como el contrario —
+         * enseña a no creerle a los carteles. Se acota a lo que sigue en
+         * obra, que es el envío. */
+        '<div><h3>Mandarla al cliente <span class="chip demo">envío pendiente</span></h3>' +
         '<div class="tiny nota">' + esc(m.nombre) + ' · ' + mx(total, p.moneda) + ' ' + esc(p.moneda) + '</div></div>' +
         '<button class="btn fantasma" id="or-x">Cerrar</button>' +
       '</div>' +
 
-      '<div class="aviso"><strong>No se manda ningún correo desde aquí.</strong> ' +
-      'Ni de prueba. Lo que se ve es el camino y, sobre todo, dónde se atora.</div>' +
+      '<div class="aviso"><strong>De esta pantalla no sale ningún correo todavía.</strong> ' +
+      'El PDF sí es real —lo trae de Odoo—. El envío ya está construido y probado ' +
+      'del lado del servidor, pero su webhook está apagado y con candado de prueba.</div>' +
 
       /* El indicador del correo. Se dice el estado REAL y el porqué: un
        * "no vinculado" sin explicación manda al vendedor a buscar un ajuste
        * que no existe. */
       '<div class="corr ' + (cor.vinculado ? 'ok' : 'pend') + '">' +
         '<div class="corr-t"><strong>' +
-          (cor.vinculado ? 'Tu correo está vinculado' : 'Tu correo NO está vinculado') +
+          (cor.vinculado ? 'Tu correo está vinculado' : 'Sale de la casilla común, no de la tuya') +
         '</strong></div>' +
-        '<p class="tiny">Hoy la suite sólo puede mandar como <code>' + esc(cor.buzon_unico) +
-        '</code>. ' + esc(cor.motivo) + ' Mandar como tú exige <strong>permisos nuevos en ' +
-        'Azure que todavía no existen</strong> — no es código, es una decisión.</p>' +
+        '<p class="tiny">Esteban eligió el <strong>camino A</strong> el 8-sep: el correo sale ' +
+        'de <code>' + esc(cor.buzon_unico) + '</code> y tu dirección va en <strong>«responder ' +
+        'a»</strong>, así que el cliente te contesta a ti. ' + esc(cor.motivo) + ' ' +
+        'Mandar <em>como</em> tú queda para después: exige permisos nuevos en Azure, y eso ' +
+        'no es código sino una decisión.</p>' +
         '<div class="corr-bs">' +
           '<button class="btn fantasma f-min" id="or-vincular">Vincular mi correo</button>' +
           '<button class="btn fantasma f-min" id="or-caminos">¿Qué hace falta?</button>' +
@@ -430,9 +438,19 @@
       '<div class="or-pasos">' +
         '<div class="paso"><span class="np">1</span><div>' +
           '<strong>Bajarla en PDF</strong>' +
-          '<p class="tiny">Abre la cotización lista para imprimir; desde ahí, ' +
-          '«Guardar como PDF». No es un botón de mentiras: eso sí funciona hoy.</p>' +
-          '<button class="btn fantasma f-min" id="or-pdf">Ver la cotización para imprimir</button>' +
+          /* Dos botones que hacen cosas DISTINTAS, y la diferencia importa:
+           * el de la izquierda arma aquí una hoja con lo capturado; el de la
+           * derecha trae el documento que Odoo le genera al cliente —el
+           * mismo, byte por byte, que vería si le mandaran el enlace—. El
+           * segundo sólo existe cuando la cotización ya es orden en Odoo. */
+          '<p class="tiny">De aquí sale una hoja armada con lo capturado. ' +
+          'El PDF <strong>oficial</strong> lo genera Odoo, y ése sólo existe ' +
+          'cuando la cotización ya se volvió orden allá.</p>' +
+          '<div class="corr-bs">' +
+            '<button class="btn fantasma f-min" id="or-pdf">Ver la cotización para imprimir</button>' +
+            '<button class="btn fantasma f-min" id="or-pdf-odoo">Traer el PDF de Odoo</button>' +
+          '</div>' +
+          '<div id="or-pdf-estado"></div>' +
         '</div></div>' +
         '<div class="paso"><span class="np">2</span><div>' +
           '<strong>Mandarla y marcarla como enviada</strong>' +
@@ -478,6 +496,79 @@
         '</div>';
     };
 
+    /* ── El PDF de Odoo. Esto SÍ es real ──────────────────────────────────
+     * Llama a `comercial/cotizacion`, que baja el documento de Odoo y lo
+     * devuelve. Los tres desenlaces se pintan distinto a propósito:
+     *
+     *   · bajado      → el archivo se guarda y se dice de qué orden salió.
+     *   · SIN_ORDEN   → NO es una falla. Es un machote que todavía no es
+     *                   orden en Odoo, que es el estado normal mientras se
+     *                   cotiza. Se explica en vez de enseñar un error rojo.
+     *   · lo demás    → el mensaje del servidor, tal cual. Inventar aquí una
+     *                   frase amable escondería la causa.
+     *
+     * Y el éxito se pinta DESPUÉS de que el servidor contesta, nunca al
+     * apretar (CLAUDE.md hallazgo #15). */
+    document.getElementById('or-pdf-odoo').onclick = function () {
+      var b = this, caja = document.getElementById('or-pdf-estado');
+      var Q = window.MachoteCotizacion;
+      if (!Q) {
+        caja.innerHTML = '<div class="envio parado tiny">No cargó el módulo que habla ' +
+          'con el servidor. Recarga la página.</div>';
+        return;
+      }
+      /* El modal es alto y a 380 px la respuesta cae justo en el borde de
+       * abajo: se aprieta el botón y no se ve qué contestó. Se lleva a la
+       * vista SIEMPRE —al pedir y al contestar—, que es más barato que
+       * rediseñar el modal y arregla el caso que se vio en la captura. */
+      function verla() {
+        try { caja.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {}
+      }
+      b.disabled = true; b.textContent = 'Trayendo…';
+      caja.innerHTML = '<div class="envio esperando tiny">Pidiéndole el documento a Odoo…</div>';
+      verla();
+
+      Q.pdf(_st.machote).then(function (r) {
+        b.disabled = false; b.textContent = 'Traer el PDF de Odoo';
+
+        if (r && r.ok === true && r.archivo) {
+          var guardado = Q.bajar(r.archivo);
+          var o = r.orden || {};
+          caja.innerHTML = guardado
+            ? ('<div class="envio ok tiny"><strong>Bajado de Odoo.</strong> ' +
+               esc(r.archivo.nombre) + ' · ' + Math.round((r.archivo.bytes || 0) / 1024) + ' KB' +
+               (o.nombre ? (' · orden ' + esc(o.nombre)) : '') +
+               (o.cliente ? (' · ' + esc(o.cliente)) : '') + '</div>')
+            : ('<div class="envio parado tiny"><strong>Llegó, pero el navegador no ' +
+               'pudo guardarlo.</strong> Revisa si está bloqueando descargas.</div>');
+          verla();
+          return;
+        }
+
+        var err = (r && r.error) || 'FALLO';
+        var msg = (r && r.mensaje) || 'No se pudo traer el documento.';
+
+        if (err === 'SIN_ORDEN') {
+          caja.innerHTML = '<div class="envio parado tiny">' +
+            '<strong>Todavía no hay PDF que traer.</strong>' +
+            '<p class="tiny">' + esc(msg) + ' El documento oficial lo genera Odoo a ' +
+            'partir de la orden; mientras la cotización viva sólo aquí, no existe. ' +
+            'Usa la hoja para imprimir de al lado.</p></div>';
+          verla();
+          return;
+        }
+        if (err === 'NUNCA_SUBIDO') {
+          caja.innerHTML = '<div class="envio parado tiny">' +
+            '<strong>Falta subirlo.</strong><p class="tiny">' + esc(msg) + '</p></div>';
+          verla();
+          return;
+        }
+        caja.innerHTML = '<div class="envio parado tiny"><strong>No se pudo.</strong> ' +
+          esc(msg) + ' <span class="nota">(' + esc(err) + ')</span></div>';
+        verla();
+      });
+    };
+
     /* El envío. Cuatro estados y el tercero NUNCA llega solo: llega cuando el
      * servidor contesta. Aquí no hay servidor, así que se queda en el segundo
      * y lo dice. Eso ES la demostración. */
@@ -490,13 +581,15 @@
         caja.innerHTML =
           '<div class="envio parado">' +
           '<strong>Aquí se para, y a propósito.</strong>' +
-          '<p class="tiny">No hay a quién preguntarle: el webhook de envío no existe y ' +
-          'el permiso de correo tampoco. La cotización <strong>sigue sin marcarse como ' +
-          'enviada</strong> — que es exactamente lo correcto, porque no se envió.</p>' +
-          '<p class="tiny">Cuando exista, el orden es: el servidor manda → Graph ' +
-          'contesta <code>202</code> con el id del mensaje → el servidor escribe la marca ' +
-          'y la devuelve → la pantalla la pinta <strong>releyendo</strong>, no recordando ' +
-          'que se apretó el botón.</p>' +
+          '<p class="tiny">El webhook <code>comercial/cotizacion</code> ya existe y ya mandó ' +
+          'un correo de verdad: Graph contestó <code>202</code> con el PDF adjunto. Pero ' +
+          '<strong>nace apagado</strong> —lo enciende Esteban— y trae un candado que sólo ' +
+          'deja mandar a <code>sales@fts.mx</code>. Por eso este botón todavía no lo llama.</p>' +
+          '<p class="tiny">La cotización <strong>sigue sin marcarse como enviada</strong>, y eso ' +
+          'es lo correcto: no se envió. Cuando se encienda, el orden es el servidor manda → ' +
+          'Graph contesta <code>202</code> → el servidor escribe la marca → la pantalla la pinta ' +
+          '<strong>releyendo</strong>, no recordando que se apretó el botón. Escribir la marca ' +
+          'es lo único que falta, y falta porque nadie ha decidido si va también a Odoo.</p>' +
           '</div>';
       }, 900);
     };

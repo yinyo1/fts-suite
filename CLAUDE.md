@@ -305,6 +305,12 @@ Pendiente F4: usar este mapeo al guardar planes operativos.
 - ⚠️ **Un `create` que devuelve id NO prueba que los campos se guardaron (regla dura, 2026-08-17).** Odoo acepta el `create`, devuelve el id, y **descarta en silencio** los campos que no puede escribir — `readonly`, computados, o de funcionalidad reestructurada. **Releer el campo después de crear, igual que se hace el read-back de un workflow tras un PUT.** **Origen:** el proceso que sembró los alias creó 15 `account.reconcile.model` con `mapped_partner_id`; los 15 ids volvieron bien y el reporte dijo "15 creados", pero **las 15 quedaron con `mapped_partner_id: false`** porque ese campo es `readonly:true`. Reglas con nombre de alias, sin partner, inservibles — y peor, con apariencia de trabajo hecho. Es la misma lección que el `200` que no prueba la escritura (§8) y que el `success:true` que no prueba el `active` (§3), en una superficie nueva: **el ORM.**
 - ⚠️ **El historial de ejecuciones NO prueba ausencia de corridas (regla dura, 2026-08-17).** Los workflows de alta frecuencia llevan `saveDataSuccessExecution: 'none'` **por diseño** (`captura-jeeves` corre ~27 veces/día; guardarlas llenaría la base). En esos, `n8n_executions` solo muestra los **errores** guardados, así que la "última ejecución" que reporta puede ser de hace días aunque el workflow esté corriendo cada 30 min. **Evidencia válida de que corrió:** el **chatter** (`CBRUN` se escribe siempre) o el **`create_date` de las líneas** que insertó. **Origen:** se leyó `captura-jeeves` con última ejecución del 12-ago y se declaró un incidente de captura muerta; las líneas tenían `create_date 2026-08-14 13:00 UTC` (07:00 CST del viernes) y el sistema estaba sano. **Y segundo error del mismo caso:** los Schedule corren **L–V en CST**; antes de concluir que "hoy no ha corrido", convertir la hora actual a CST (UTC−6) y verificar que el día hábil ya empezó — 05:38 UTC del lunes son las 23:38 CST del **domingo**.
 - ⚠️ **Al leer ejecuciones de n8n, filtrar por nodos de LÓGICA; NUNCA pedir el output de un nodo que materializa un secreto (regla dura, 2026-08-17).** `n8n_executions` con `mode:filtered` devuelve el output del nodo **en claro**, así que pedir un nodo `Set` que resuelve `$env.X` trae la credencial al contexto de la sesión. **Origen:** al depurar el runner TMP de cruce Excel↔Odoo se pidió `nodeNames:["Cruce","Set secreto RPC"]` y el segundo devolvió la `ODOO_RPC_KEY` de producción en texto plano — hubo que rotarla. La intención era ver por qué fallaba el nodo de lógica; el nodo de secreto no aportaba nada al diagnóstico. **Regla operativa:** listar en `nodeNames` solo los nodos que se están depurando, y ante la duda usar `mode:preview` (da estructura y tamaños, no valores). Es el mismo criterio que ya aplicamos a la API key de n8n, que se lee a una variable de shell y nunca se imprime.
+- 🔴 **El filtro `nodeNames` NO protege en la ruta de ERROR: si un nodo truena, n8n devuelve su ENTRADA (regla dura, 2026-09-08).** Cuando una ejecución falla, el payload trae `nodeExecutionStack`, y ahí va el **input** del nodo que falló — **aunque se haya filtrado por `nodeNames` pidiendo otro nodo**. Si ese nodo colgaba de un `Set` que resuelve `$env.X`, su input ES el secreto, en claro. **Origen:** ejecución `90281` del 8-sep-2026: se pidió el output de un nodo de lógica, el nodo de Postgres de al lado falló, y `SUITE_JWT_SECRET` de producción acabó en el transcript de la sesión — **con el filtro de §9 puesto**. Hubo que rotarla. La regla de arriba se cumplió y no bastó: sólo cubre el camino feliz.
+  **Las dos defensas, y son de DISEÑO, no de lectura:**
+  1. **Ningún nodo que pueda lanzar debe tener como entrada directa un nodo que materializa un secreto.** El nodo que consume el `Set` va **entero en `try/catch`** y devuelve el fallo como DATO (`{ok:false, error:'FALLO_X'}`), sin tocar el item de entrada. Un nodo que no lanza no produce payload de error.
+  2. **Poner el `Set` del secreto lo más tarde posible** en la cadena, y que el primer nodo que lo consume devuelva un objeto NUEVO — así el secreto no viaja aguas abajo.
+  ⚠️ **`onError: continueRegularOutput` NO sirve aquí: es peor.** Pasa el input del nodo que falló hacia adelante, o sea manda el secreto río abajo, posiblemente hasta la respuesta. Sirve para nodos que NO ven secretos (un HTTP externo, por ejemplo).
+  Aplicado en `comercial/cotizacion` (`dahVXA1NyF1AXfc4`): `Code - Verificar` y `Code - Preparar` van los dos en `try/catch` total, con el porqué escrito en el propio nodo.
 - Webhook secrets HMAC: pendientes de implementar (Bloque A pending).
 - **Pendiente HMAC (B4 Carga MO, 2026-07-06):** los webhooks nuevos `planeacion/horas-dia` (lectura) y `planeacion/confirmar-horas` (UPDATE hr.attendance) heredan el modelo sin secreto. `confirmar-horas` **escribe a producción** (`x_studio_manager_approval` + `x_studio_sales_order_2`) → priorizar HMAC/token cuando se aborde el hardening de webhooks. Gate actual: solo frontend (auth Felipe/master).
 
@@ -878,6 +884,27 @@ podían ver, porque `psql` lee del disco y nunca pasa por n8n. El `.sql` era cor
 (`$rol$`, `$motivo$`). Y para datos de usuario —el texto de un machote puede traer `$$`—
 **parámetros de consulta (`$1`, `$2`), nunca SQL concatenado**: aparte de inyección, es lo
 único que garantiza que el contenido llegue intacto. Detalle en `db/README.md` regla 4.
+
+⚠️ **Corrección de ALCANCE, medida el 8-sep-2026 (ejecuciones `90310` y `90312`).** El
+mecanismo tal como está escrito arriba —«todo lo que viaje por una expresión de n8n pasa
+por un `String.replace` y ahí `$$` se colapsa»— **no se reprodujo**. Se probó con
+`A$$B $1 C $& D $` + "`" + ` E $' F $<x> G` (los cinco patrones de reemplazo de JavaScript, más
+`$<n>`) por un nodo `Set`, de dos formas:
+
+| forma | resultado |
+|---|---|
+| la expresión ES todo el valor: `={{ $json.raro }}` | **idéntico**, 31/31 caracteres |
+| la expresión va incrustada: `=PRE {{ $json.raro }} POST` | **idéntico**, 40/40 caracteres |
+| dentro de `={{ JSON.stringify($json.sobre) }}` y parseado del otro lado | **idéntico** |
+
+O sea: **la ruta `Set` → expresión no colapsa nada**, ni entera ni incrustada. El incidente
+del `.sql` fue real y el archivo era correcto, pero **la causa que se escribió no es la
+que se midió**, así que sigue sin identificarse: pudo estar en el nodo de Postgres, en el
+armado del SQL, o en otro tramo del camino. **La regla operativa se queda tal cual**
+(etiquetas con nombre y parámetros de consulta son buena práctica por su cuenta), pero
+**no se puede citar el mecanismo como si estuviera probado**, y quien vuelva a toparse con
+esto tiene que medir SU tramo, no dar por hecho éste. Es la misma exigencia de §8:
+verificado = ejecutado y observado — que vale igual para las reglas que escribimos nosotros.
 
 ### 11. Un `[]` de un endpoint nuevo no prueba que la consulta sirva
 Una lista vacía se ve idéntica cuando la consulta funciona y no hay filas, y cuando la

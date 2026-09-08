@@ -76,6 +76,43 @@ La prueba `cascarón: la cotización para imprimir NO lleva costos internos` vig
 ningún costo se cuele en la hoja del cliente. Es la peor falla posible de esta pantalla y
 no la cazaría ninguna revisión de «se ve bien».
 
+### La salvedad: cuando el cliente pide desglose para armar su PO
+
+Esteban aprobó la línea por sección **con una condición** (8-sep-2026): hay clientes que
+exigen desglose para poder armar su orden de compra, así que tiene que poder **abrirse UNA
+sección a detalle cuando el cliente lo pida** — sin que sea lo normal, y sin que eso
+exponga precios de compra.
+
+Las dos cosas parecen reñidas y no lo están, porque **desglose y costo no son lo mismo**.
+El renglón que el cliente necesita para su PO es *«Tablero de control 480 V · 1 pieza ·
+$X»*; el precio de compra es lo que a FTS le costó ese tablero. Lo que hoy vive en el
+machote es el costo, y el precio de venta del renglón **no está capturado en ningún lado**:
+sólo existe el precio de la sección.
+
+Propuesta —**no está construido, y no debería construirse sin que Esteban confirme el
+punto 2**:
+
+1. **Una casilla por sección, apagada por omisión**, en la pantalla de pasar a orden:
+   *«Desglosar esta sección en la orden»*. Apagada por omisión es lo que hace que siga
+   siendo la excepción; una preferencia global se volvería la costumbre en dos semanas.
+   Que sea **por sección y no por cotización** es justo lo que pidió Esteban: se abre la
+   que el cliente necesita, no todas.
+2. **El precio de cada renglón sale a prorrata del costo dentro de su sección** — la misma
+   regla con la que el motor ya reparte el precio entre secciones
+   (`calcular(m).secciones[i].precio`), un nivel más abajo. Tiene una consecuencia que hay
+   que decir en voz alta: **el margen queda implícito, uniforme dentro de la sección**. Un
+   cliente que compare el precio unitario contra su propia referencia de mercado puede
+   deducir por dónde anda el margen. No es el costo, pero tampoco es opaco. *Ésta es la
+   decisión que falta, y es de negocio, no técnica.*
+3. **La suma de los renglones desglosados tiene que dar exactamente el precio de la
+   sección.** Con una prueba que lo vigile, del mismo tipo que la de V1.16 —invariante, no
+   número esperado—: es la única forma de que abrir el desglose no cambie el total.
+4. **El costo nunca sale.** Ni `costo`, ni `costoMo`, ni `costoMat`, ni la tarifa de mano de
+   obra, ni el multiplicador. La prueba que ya existe (`NO lleva costos internos`) se
+   extiende al caso desglosado, que es donde de verdad puede colarse.
+
+Coste estimado: ~2 h, la mitad en la prueba. **Pendiente de la decisión del punto 2.**
+
 ---
 
 ## El cuerpo
@@ -140,24 +177,35 @@ de Odoo tal cual).
 
 ---
 
-## El envío al cliente — el tapón real
+## El envío al cliente — CAMINO A, construido y probado (8-sep-2026)
 
-El cascarón tiene una segunda pantalla (**Mandarla al cliente**) y ahí está el bloqueo
-que ningún código resuelve:
+Esteban eligió el **camino A**. Lo demás de esta sección queda como estaba porque la
+disyuntiva sigue viva para más adelante.
 
-**La aplicación de Microsoft Graph que ya usa la suite (`n8n-mail-sender`) tiene una
-Application Access Policy que la limita a UN buzón: `sales@fts.mx`.** Mandar como
-Montalvo o como Ricardo exige permisos nuevos en Azure que hoy no existen.
+**El correo sale de `sales@fts.mx` con el vendedor en «responder a».** El cliente le
+contesta a quien debe; el remitente no es la persona. Cero cambios en Azure. Mandar *como*
+cada vendedor (camino B: ampliar la Application Access Policy, o `Mail.Send` delegado con
+autorización de cada quien) queda para cuando Esteban quiera pagar ese permiso — es dar
+permiso de mandar correo **en nombre de una persona**, y no se pide a la ligera.
 
-Dos caminos, y hay que elegir uno antes de construir:
+El correo del vendedor se resuelve **en el servidor**, no en la pantalla:
+`token.empleado_id` → `hr.employee.work_email`. Va firmado dentro del token, así que nadie
+puede poner el correo de otro como suyo mandando un cuerpo distinto. Si el empleado no
+tiene `work_email` en Odoo, el endpoint **no falla**: manda sin «responder a» y devuelve el
+aviso de que la respuesta llegaría a la casilla común.
 
-- **A · Desde el buzón de siempre.** Sale de `sales@fts.mx` con el vendedor en «responder
-  a». Cero cambios en Azure. El cliente le contesta a quien debe, pero el remitente no es
-  la persona.
-- **B · Como cada vendedor.** Ampliar la Application Access Policy a los buzones de
-  comercial, o dar `Mail.Send` delegado y que cada quien autorice su cuenta. Requiere a
-  Esteban en Azure. Es lo que se ve natural, y también es dar permiso de mandar correo en
-  nombre de una persona.
+### El candado de pruebas
+
+Mientras `MODO_PRUEBA` esté en `true` dentro de `Code - Preparar`, el endpoint **sólo
+acepta `sales@fts.mx`** y contesta `DESTINO_NO_PERMITIDO` a cualquier otro destinatario.
+El candado vive en el **servidor**, no en la pantalla, porque la pantalla se salta con un
+`fetch` a mano. Abrirlo es un cambio deliberado de una línea, con nombre, que se ve en el
+diff.
+
+Probado en vivo el 8-sep (ejecución `90414`): correo a `sales@fts.mx`, PDF de 204 KB
+adjunto, Graph contestó **`202`**, «responder a» = `estebandelacruz@fts.mx`. Y el candado
+probado por el lado que importa (ejecución `90412`): un destinatario inventado de cliente
+devolvió `DESTINO_NO_PERMITIDO` **sin mandar nada**.
 
 ### La regla que gobierna la marca de «enviada»
 
@@ -185,6 +233,62 @@ machote guardado antes y después de apretar y exige que no haya cambiado.
 
 ## Lo que sí funciona hoy
 
-**Bajar la cotización en PDF.** El botón abre una hoja lista para imprimir, y desde ahí
+**La hoja para imprimir.** El botón abre una hoja lista para imprimir, y desde ahí
 «Guardar como PDF» del navegador. No depende de ningún permiso ni de ninguna librería, y
 la hoja lleva sello de DEMOSTRACIÓN mientras no haya folio de Odoo.
+
+**El PDF oficial de Odoo.** Botón *«Traer el PDF de Odoo»* → webhook
+`comercial/cotizacion` en modo `pdf` → el documento que Odoo le genera al cliente, bajado
+como archivo. Es el mismo, byte por byte, que vería el cliente si le mandaran el enlace de
+portal.
+
+### Cómo se baja, y los dos caminos que NO sirven
+
+Se midieron tres el 8-sep-2026:
+
+| camino | resultado |
+|---|---|
+| `POST /web/session/authenticate` con la llave de API | **`Access Denied`** (ejec. `90300`). Las llaves de API de Odoo valen para JSON-RPC, **no** para el login web. |
+| `ir.actions.report.render_qweb_pdf` por RPC | **no existe** en este Odoo; el privado `_render_qweb_pdf` lo rechaza: *«Private methods … cannot be called remotely»*. |
+| **enlace de portal**: `GET /my/orders/<id>?access_token=…&report_type=pdf&download=true` | **200 · `application/pdf` · `%PDF-`** (ejec. `90304`, SO11498). ✅ |
+
+**El `access_token` es una llave de capacidad**: quien la tenga ve la orden completa sin
+entrar a Odoo. Por eso el servidor baja los bytes y devuelve los bytes; **el navegador
+nunca ve el token**. Si el enlace se armara en el navegador, la llave quedaría en el
+historial, en el portapapeles y en cualquier captura de pantalla.
+
+### El campo que liga el machote con la orden
+
+**`comercial.machote.odoo_so_id`** (migración `003_machote.sql`). Es una referencia externa
+**sin llave foránea**, a propósito: el día que un dominio salga de Odoo, el machote no queda
+apuntando a un id que dejó de existir.
+
+**Y cuando está vacío, no hay PDF que traer.** Ése es el estado *normal* de un machote
+recién capturado, no un error: la cotización todavía no se volvió orden en Odoo, así que el
+documento oficial no existe. El endpoint contesta `SIN_ORDEN` con su frase y la pantalla la
+pinta en ámbar —no en rojo— y manda a la hoja para imprimir. Probado (ejec. `90405`).
+
+Los otros desenlaces, todos probados el 8-sep:
+
+| situación | respuesta | ejec. |
+|---|---|---|
+| orden real | `ok` + PDF 204 KB, `%PDF-` | `90404` |
+| machote sin `odoo_so_id` | `SIN_ORDEN` | `90405` |
+| machote **de otra persona** (existe) | `MACHOTE_NO_ENCONTRADO` | `90406` |
+| token vencido | `TOKEN_EXPIRADO` | `90407` |
+| sin `comercial:read` | `SCOPE_INSUFICIENTE` | `90408` |
+| token basura | `TOKEN_MALFORMADO` | `90409` |
+| sin decir cuál | `FALTA_QUE_COTIZACION` | `90410` |
+| orden inexistente | `ORDEN_NO_ENCONTRADA` | `90411` |
+
+El renglón de `TOKEN_EXPIRADO` vale doble, por la misma razón que en `ALMACEN.md`: la
+cripto tuvo que viajar por el MCP como texto, y un solo carácter cambiado habría dado
+`FIRMA_INVALIDA`. Que diga `TOKEN_EXPIRADO` prueba que el HMAC calcula bien.
+
+**El machote de otra persona** se probó contra una fila que **sí existe** — un uuid
+inventado habría dado el mismo `MACHOTE_NO_ENCONTRADO` sin probar nada. Se contestan igual
+a propósito: distinguirlos convertiría el endpoint en un oráculo que confirma qué ids
+existen.
+
+> **El endpoint nace INACTIVO.** Lo enciende Esteban en la UI de n8n. Mientras tanto los
+> botones de la pantalla que lo llaman contestan que no hay servidor — que es la verdad.

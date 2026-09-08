@@ -467,6 +467,18 @@
     });
   }
 
+  /** El id que el SERVIDOR le puso a este machote, o null si nunca ha subido.
+   *
+   *  Existe porque el navegador y el servidor nombran la misma cotización de
+   *  dos maneras: aquí es `id_local` ('M-1757…', único por navegador), allá
+   *  es un uuid. Todo lo que le pregunte algo del machote al servidor
+   *  —historial, PDF, envío— necesita el uuid, y `null` es una respuesta
+   *  legítima que significa «todavía no llega allá», no un error. */
+  function idServidor(idLocal) {
+    var meta = leerSync()[idLocal];
+    return (meta && meta.machote_id) ? meta.machote_id : null;
+  }
+
   /** El historial completo de un machote, del servidor. Para la pantalla de
    *  versiones: la caché del navegador sólo tiene la última. */
   function historial(idLocal) {
@@ -558,6 +570,7 @@
     bajar: bajar,
     empujar: empujar,
     historial: historial,
+    idServidor: idServidor,
 
     pendientes: pendientes,
     estadoServidor: estadoServidor,

@@ -1,10 +1,15 @@
 {
-  "version": "V1.19",
-  "fecha": "2026-09-07",
+  "version": "V1.20",
+  "fecha": "2026-09-08",
   "modulo": "comercial/machote",
   "ambito": "El CONTADOR es solo de este modulo. finanzas tambien usa V1.xx desde el 2026-09-03 (instruccion directa de Esteban, corrige el \"no propagar\" del issue #148) pero lleva su propio contador y va en V1.00. operaciones/planeacion sigue en 2.4.1, kiosk y confirmar-horas solo con cadena de build, y siete modulos con un 1.0.0 puesto una vez: a esos no se propaga.",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.20",
+      "pr": null,
+      "nota": "El PDF oficial de la cotizacion se trae de Odoo. Boton 'Traer el PDF de Odoo' en la pantalla de envio: el servidor le pide a Odoo el documento que le genera al cliente -el mismo, byte por byte, que veria si le mandaran el enlace de portal- y devuelve el archivo. La llave de ese enlace (access_token) NUNCA baja al navegador: quien la tenga ve la orden sin entrar a Odoo, asi que los bytes los baja el servidor. Cuando la cotizacion todavia no es orden en Odoo no hay PDF que traer, y la pantalla lo DICE en ambar y manda a la hoja para imprimir, en vez de enseñar un error: ese es el estado normal mientras se cotiza. El campo que liga las dos cosas es machote.odoo_so_id. Ademas el envio real por correo quedo construido y probado del lado del servidor -sale de sales@fts.mx con el vendedor en 'responder a', decision de Esteban- pero su webhook nace apagado y con candado que solo deja mandar a sales@fts.mx, y la marca de enviada sigue SIN escribirse: la dispara la confirmacion de Graph, nunca el clic, y falta decidir si tambien va a Odoo"
+    },
     {
       "version": "V1.19",
       "pr": null,
