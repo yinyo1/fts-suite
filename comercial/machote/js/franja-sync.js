@@ -27,7 +27,12 @@
   var CAJA = 'franjaSync';
   var _ultimo = null;      // último estado leído del servidor
   var _cargando = false;
-  var _resaltando = false;
+  /* Arranca en `true`: los que faltan se marcan solos en cuanto se sabe cuáles
+   * son. Antes había que apretar «Cuáles faltan» para verlos, y eso es pedirle
+   * a alguien que pregunte por un problema que ya existe. El botón se queda
+   * para poder QUITAR la marca cuando estorba. */
+  var _resaltando = true;
+  var _evidencia = false;    // ¿está desplegada la tabla de comprobación?
 
   function $(s) { return document.querySelector(s); }
 
@@ -42,11 +47,32 @@
   function frase(e) {
     if (!e) return 'Consultando el servidor…';
     if (!e.ok) {
-      if (e.error === 'SIN_SESION') return 'Sin sesión: no se puede confirmar qué hay en el servidor.';
-      return 'No se pudo confirmar con el servidor. ' + e.total +
-             ' machote(s) siguen guardados en este navegador.';
+      /* TRES casos, no uno. Decían todos «no se pudo confirmar», que invita a
+       * esperar y reintentar — y con la sesión vencida reintentar no arregla
+       * nada, porque el token muerto sigue ahí. Es el defecto que se vio al
+       * rotar el secreto el 8-sep. La clasificación vive en `sesion.js`. */
+      var S = G.MachoteSesion;
+      var caso = S ? S.clasificar(e) : (e.error === 'SIN_SESION' ? 'sesion' : 'servidor');
+      if (caso === 'sesion') {
+        return (S ? S.motivo(e) : 'Tu sesión expiró. Vuelve a entrar.') +
+               ' Lo capturado sigue aquí.';
+      }
+      if (caso === 'red') {
+        return e.total
+          ? 'Sin conexión con el servidor. ' + e.total +
+            ' machote(s) siguen guardados en este navegador.'
+          : 'Sin conexión con el servidor. En pantalla sólo hay ejemplos, que no suben nunca.';
+      }
+      return 'El servidor contestó con un error (' + esc(e.error || 'desconocido') + '). ' +
+             'No es tu sesión; vuelve a intentar en un rato.';
     }
-    if (e.total === 0) return 'No hay machotes que subir.';
+    /* «0 machotes» a secas confunde cuando la pantalla enseña cuatro: los que
+     * se ven son los ejemplos que trae la aplicación, y ésos no suben nunca.
+     * Decir el motivo evita que alguien reporte como fallo lo que es diseño. */
+    if (e.total === 0) {
+      return e.demos ? 'Sólo hay ejemplos en pantalla: no hay nada que subir.'
+                     : 'No hay machotes que subir.';
+    }
     if (e.pendientes === 0) {
       return e.total === 1 ? '1 de 1 a salvo en el servidor'
                            : e.total + ' de ' + e.total + ' a salvo en el servidor';
@@ -57,9 +83,68 @@
 
   function tono(e) {
     if (!e) return 'cargando';
-    if (!e.ok) return 'duda';
+    if (!e.ok) {
+      /* La sesión vencida se pinta como ALGO QUE HACER (ámbar), no como duda
+       * gris: hay una acción concreta y es del usuario. La falta de red y el
+       * error del servidor sí son duda: no hay nada que hacer más que esperar. */
+      var S = G.MachoteSesion;
+      return (S && S.clasificar(e) === 'sesion') ? 'pend' : 'duda';
+    }
     if (e.total === 0 || e.pendientes === 0) return 'ok';
     return 'pend';
+  }
+
+  /* ── La comprobación ──────────────────────────────────────────────────
+   * Renglón por renglón: qué versión tiene el servidor de cada machote y las
+   * DOS huellas del mismo documento calculadas por separado —una sobre lo de
+   * aquí, otra sobre lo que devolvió el servidor—. Si coinciden, los dos
+   * documentos son idénticos carácter por carácter; no es una marca que
+   * alguien puso, es una comparación que se puede repetir.
+   *
+   * Esto es lo que pidió Esteban: «que se pueda comprobar de verdad que están
+   * sincronizados, no sólo leer un número». */
+  function pintarEvidencia() {
+    var host = document.getElementById('franjaEvi');
+    if (!host) return;
+    if (!_evidencia) { host.innerHTML = ''; return; }
+
+    var e = _ultimo;
+    if (_cargando || !e) {
+      host.innerHTML = '<div class="evi"><div class="pie tiny">Preguntando al servidor…</div></div>';
+      return;
+    }
+    if (!e.ok) {
+      host.innerHTML = '<div class="evi"><div class="pie tiny">' +
+        'No se puede comprobar ahora mismo: ' + esc(frase(e)) + '</div></div>';
+      return;
+    }
+    var filas = (e.detalle || []).map(function (d) {
+      var alla = d.estado === 'nunca'
+        ? '<span style="color:var(--ambar)">no ha llegado</span>'
+        : esc(String(d.huella_servidor || '').slice(0, 8)) + ' · v' + esc(d.version);
+      var cuando = d.confirmado_at ? esc(String(d.confirmado_at).replace('T', ' ').slice(0, 16)) : '—';
+      var mismo = d.estado === 'igual';
+      return '<tr><td>' + esc(String(d.nombre || d.id).slice(0, 48)) +
+        (String(d.nombre || '').length > 48 ? '…' : '') +
+        (mismo ? '' : ' <span style="color:var(--ambar)">·</span>') + '</td>' +
+        '<td class="hu mono">' + esc(String(d.huella_aqui || '').slice(0, 8)) + '</td>' +
+        '<td class="hu mono">' + alla + '</td>' +
+        '<td class="hu">' + cuando + '</td></tr>';
+    }).join('');
+
+    var demos = e.demos
+      ? ' No se cuentan ' + e.demos + ' ejemplo(s) que trae la aplicación: ésos no suben nunca.'
+      : '';
+
+    host.innerHTML = '<div class="evi">' +
+      (filas
+        ? '<table><thead><tr><th>Cotización</th><th>Aquí</th><th>En el servidor</th>' +
+          '<th>Guardada</th></tr></thead><tbody>' + filas + '</tbody></table>'
+        : '') +
+      '<div class="pie tiny nota">Las dos huellas son del <strong>mismo documento</strong> ' +
+      'calculadas por separado —una sobre lo de este navegador y otra sobre lo que acaba de ' +
+      'devolver el servidor—: si coinciden, son idénticos carácter por carácter.' + esc(demos) +
+      '</div></div>';
   }
 
   function pintar() {
@@ -78,7 +163,13 @@
           ? '<button class="btn fantasma f-min" id="fjMarcar">' +
               (_resaltando ? 'Quitar marca' : 'Cuáles faltan') + '</button>' +
             '<button class="btn f-min" id="fjSubir">Subir ahora</button>'
-          : '<button class="btn fantasma f-min" id="fjRevisar">Revisar</button>') +
+          : '') +
+        /* «Comprobar» está SIEMPRE, falten machotes o no. Justo cuando la
+         * franja dice que todo está a salvo es cuando hace falta poder
+         * verificarlo: un número en verde pide fe, y de poder enseñar la
+         * evidencia depende quitar esta franja en la versión que viene. */
+        '<button class="btn fantasma f-min" id="fjComprobar">' +
+          (_evidencia ? 'Ocultar' : 'Comprobar') + '</button>' +
       '</span>';
 
     if (hayPend) {
@@ -86,11 +177,14 @@
       if (bm) bm.onclick = function () { _resaltando = !_resaltando; aplicarMarca(); pintar(); };
       var bs = document.getElementById('fjSubir');
       if (bs) bs.onclick = subirAhora;
-    } else {
-      var br = document.getElementById('fjRevisar');
-      if (br) br.onclick = function () { refrescar(true); };
     }
+    var bc = document.getElementById('fjComprobar');
+    if (bc) bc.onclick = function () {
+      _evidencia = !_evidencia;
+      if (_evidencia) refrescar(true); else { pintarEvidencia(); pintar(); }
+    };
 
+    pintarEvidencia();
     aplicarMarca();
   }
 

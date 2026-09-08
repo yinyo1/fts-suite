@@ -111,7 +111,37 @@ punto 2**:
    obra, ni el multiplicador. La prueba que ya existe (`NO lleva costos internos`) se
    extiende al caso desglosado, que es donde de verdad puede colarse.
 
-Coste estimado: ~2 h, la mitad en la prueba. **Pendiente de la decisión del punto 2.**
+### ✅ CONSTRUIDO en V1.21, con la corrección de Esteban
+
+Esteban aprobó la propuesta **cambiando el punto 2**, y el cambio es de fondo:
+
+> «La prorrata es el **valor de arranque**, no el resultado: el analista puede ajustar el
+> precio de cada renglón desglosado a mano, y la única regla dura es que la suma cuadre
+> exactamente con el precio de la sección. Quien decide qué ve el cliente es la persona,
+> no una fórmula.»
+
+Eso disuelve la objeción que la propuesta traía escrita. Con la fórmula sola, el margen
+quedaba implícito y **uniforme** dentro de la sección, y un cliente que comparara un
+unitario contra su referencia de mercado podía deducir por dónde anda. Pudiendo moverlos,
+el analista carga el margen donde quiera y el desglose deja de ser una radiografía.
+
+Lo construido, en `comercial/machote/js/orden.js`:
+
+| pieza | qué hace |
+|---|---|
+| `desgloseDe(m, sec, precio)` | arma un renglón por partida capturada y reparte el precio de la sección **a prorrata del costo**; el último absorbe el residuo para que la suma dé exacto sin depender del redondeo |
+| casilla por sección | *«Desglosar esta sección para el cliente»*, **apagada por omisión** y pegada al renglón que abre |
+| `cuadra(filas, precio)` | la regla dura, al centavo (`< 0.005`) |
+| renglón de cuadre | en vivo: verde cuando cuadra, ámbar con la diferencia exacta cuando no |
+| `estorbos()` | un desglose descuadrado **impide crear la orden**, y aparece en la lista de «lo que hoy impediría» |
+
+**El costo no sale ni así**: `_peso` —el costo con el que se reparte— se borra del renglón
+antes de que salga de la función. Lo vigila una prueba que busca `costo_mo`, `costo_mat`,
+`costoMo`, `costoMat` y `_peso` en el HTML de la tabla que ve el cliente.
+
+Un detalle que salió al mirarlo: los renglones de mano de obra salían con el **id interno**
+del motor (`supervisor_sr`, `he_tecnicos`). En una orden de compra tienen que decir
+«Supervisor Sr» y «Horas extras técnicos», así que ahora se resuelven contra `C.ROL`.
 
 ---
 
@@ -207,7 +237,59 @@ adjunto, Graph contestó **`202`**, «responder a» = `estebandelacruz@fts.mx`. 
 probado por el lado que importa (ejecución `90412`): un destinatario inventado de cliente
 devolvió `DESTINO_NO_PERMITIDO` **sin mandar nada**.
 
-### La regla que gobierna la marca de «enviada»
+### ✅ La marca de «enviada» ya se escribe — en NUESTRA base, no en Odoo (V1.21)
+
+**Decisión de Esteban, 8-sep-2026:**
+
+> «Marca de enviada: SOLO en nuestra base por ahora. NO se escribe en Odoo. Marcar como
+> enviada una orden que la suite todavía no crea sería cerrar medio ciclo.»
+
+Es la decisión correcta y conviene dejar escrito por qué: la marca en Odoo sólo tiene
+sentido cuando la suite sea quien crea la orden. Ponerla antes deja los dos sistemas
+discrepando —Odoo diciendo «enviada» de algo que él no emitió— sin que nadie se entere.
+
+### Cómo quedó
+
+En `comercial/cotizacion` (`dahVXA1NyF1AXfc4`), dos nodos nuevos entre Graph y la respuesta:
+
+```
+HTTP - Enviar (Graph) → Code - Decidir marca → Postgres - Marcar enviada → Code - Resultado envio
+```
+
+`Code - Decidir marca` es el que manda: **sólo un `202` de Graph pone `marca_pendiente` en
+`true`**. Si no procede, manda el id del machote en `null`, y entonces la consulta —que
+filtra por ese id— no encuentra nada y no inserta. **No hay una rama aparte** que pueda
+desincronizarse con la decisión: es el mismo camino con un id vacío.
+
+La consulta escribe una **versión nueva** (append-only, la anterior no se toca) copiando el
+documento de la última, con `estado = 'enviado'`, el autor y el motivo con la hora y la
+confirmación de Graph.
+
+### Probado, no supuesto (ejecución `91340`)
+
+Contra un machote de **demostración ya borrado lógicamente** —la fila nueva no la ve ninguna
+consulta del módulo, todas filtran `deleted_at IS NULL`, y no toca captura de nadie:
+
+| rama | resultado |
+|---|---|
+| con machote | `v1 borrador` → **`v2 enviado`**, `documento.estado = 'enviado'`, motivo con la hora ✅ |
+| con id nulo | **no insertó nada**: el machote se quedó en 2 versiones ✅ |
+
+> ⚠️ **Quirk anotado.** El nodo Postgres con `alwaysOutputData` devuelve `{success: true}`
+> cuando la consulta afecta **cero filas** — no una lista vacía. Mi primera aserción contó
+> eso como «insertó una fila» y reportó un fallo que no existía; el read-back del machote
+> (2 versiones, no 3) fue lo que lo desmintió. El código de producción sí lo lee bien
+> (`filter(x => x && x.version)`), pero conviene saberlo: **`{success:true}` no es una fila**.
+
+### Lo que NO está probado
+
+El camino completo —pantalla → Graph → `202` → marca— **no se ejercitó esta noche**: el
+endpoint nace apagado y no se podía mandar correo. Lo verificado es la consulta y el
+cableado; falta una corrida de punta a punta cuando Esteban encienda el webhook.
+
+---
+
+## La regla que gobierna la marca de «enviada»
 
 > **La marca de enviada la dispara el envío confirmado, nunca el clic.**
 

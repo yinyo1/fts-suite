@@ -83,6 +83,116 @@
   /* ── El prellenado: TODO sale del motor ─────────────────────────────────
    * Ni un número escrito a mano. Si el machote cambia, esto cambia — que es
    * justo lo que hay que poder ver antes de construir el puente de verdad. */
+  /* ── EL DESGLOSE POR SECCIÓN (V1.21) ──────────────────────────────────
+   * Esteban aprobó la línea por sección con una condición: hay clientes que
+   * exigen desglose para armar su orden de compra, así que tiene que poder
+   * abrirse UNA sección a detalle cuando lo pidan — sin que sea lo normal y
+   * sin exponer precios de compra.
+   *
+   * ── LO QUE CAMBIÓ RESPECTO A LA PROPUESTA ORIGINAL ────────────────────
+   * La propuesta decía que el precio de cada renglón SALÍA de la prorrata del
+   * costo. Esteban lo corrigió: **la prorrata es el valor de arranque, no el
+   * resultado.** El analista puede mover el precio de cada renglón a mano, y
+   * la única regla dura es que la suma cuadre EXACTAMENTE con el precio de la
+   * sección. Quien decide qué ve el cliente es la persona, no una fórmula.
+   *
+   * Es una corrección de fondo, no de detalle: con la fórmula sola, el margen
+   * quedaba implícito y uniforme dentro de la sección, y un cliente que
+   * comparara un unitario contra su referencia de mercado podía deducir por
+   * dónde anda. Pudiendo moverlos, el analista carga el margen donde quiera.
+   *
+   * ── LO QUE NO SE MUEVE ────────────────────────────────────────────────
+   *   · Apagado por omisión, y POR SECCIÓN. Una preferencia global se vuelve
+   *     costumbre en dos semanas; se abre la que el cliente necesita.
+   *   · El COSTO jamás sale: ni `costo`, ni la tarifa, ni el multiplicador.
+   *     Lo vigila una prueba, que es donde de verdad puede colarse.
+   *   · La suma tiene que dar el precio de la sección al centavo. Si no
+   *     cuadra, se dice y no se deja seguir.
+   */
+
+  /* Cuánto vale cada renglón capturado de una sección, de arranque.
+   * Reparte el precio de la sección a prorrata del COSTO de cada renglón —la
+   * misma regla con la que el motor ya reparte el precio entre secciones, un
+   * nivel más abajo—, y cuadra el último centavo contra el residuo para que
+   * la suma dé exacto sin depender de cómo redondee el navegador. */
+  function desgloseDe(m, sec, precioSeccion) {
+    var filas = [];
+    (sec.mo || []).forEach(function (l) {
+      var c = C.costoMo(l, m, sec);
+      if (!(c.horas > 0) && !(c.costo > 0)) return;      // renglón vacío, no viaja
+      /* El nombre que ve el CLIENTE, no el id interno. `supervisor_sr` y
+       * `he_tecnicos` son claves del motor; en una orden de compra tienen que
+       * decir «Supervisor Sr» y «Horas extras técnicos». */
+      var rol = C.ROL[l.rol] || C.ROL[l.id] || null;
+      filas.push({ clave: 'mo:' + (l.id || l.rol || filas.length),
+                   nombre: l.nombre || (rol && rol.label) || l.rol || 'Mano de obra',
+                   cantidad: c.horas || 1, unidad: c.horas ? 'Horas' : 'Servicio',
+                   _peso: c.costo });
+    });
+    (sec.partidas || []).forEach(function (l) {
+      if (!C.usadaPartida(l)) return;
+      var c = C.costoPartida(l, m, sec);
+      filas.push({ clave: 'mat:' + (l.id || filas.length),
+                   nombre: l.nombre || l.descripcion || 'Partida',
+                   cantidad: Number(l.qty) || 1, unidad: l.unidad || 'Pieza',
+                   _peso: c.costo });
+    });
+
+    var suma = filas.reduce(function (a, f) { return a + (f._peso || 0); }, 0);
+    var P = Number(precioSeccion) || 0;
+
+    /* Sin costo capturado no hay a prorrata de qué repartir: se parte en
+     * partes iguales. Es arbitrario y por eso es sólo el arranque — la
+     * pantalla deja moverlo. */
+    var acumulado = 0;
+    filas.forEach(function (f, i) {
+      var v;
+      if (i === filas.length - 1) v = Math.round((P - acumulado) * 100) / 100;   // el residuo
+      else {
+        v = suma > 0 ? (P * (f._peso / suma)) : (P / filas.length);
+        v = Math.round(v * 100) / 100;
+        acumulado += v;
+      }
+      f.precio = v;
+      f.importe = v;
+      delete f._peso;                 // el COSTO no sale de aquí. Nunca.
+    });
+    return filas;
+  }
+
+  /** ¿Cuadra el desglose contra el precio de su sección?
+   *  Al centavo. Es la única regla dura del desglose, y por eso se comprueba
+   *  aquí y no confiando en que la suma "se ve bien". */
+  function cuadra(filas, precioSeccion) {
+    var suma = filas.reduce(function (a, f) { return a + (Number(f.precio) || 0); }, 0);
+    var dif = Math.round((suma - (Number(precioSeccion) || 0)) * 100) / 100;
+    return { suma: suma, dif: dif, ok: Math.abs(dif) < 0.005 };
+  }
+
+  /* Para meter una clave en un selector CSS sin que un carácter raro lo rompa.
+   * Las claves las arma `desgloseDe` a partir de ids del machote, que vienen
+   * de captura: no se puede suponer que sean seguras. */
+  function cssEsc(v) {
+    return String(v).replace(/["\\]/g, '\\$&');
+  }
+
+  /* El renglón de cuadre. Vive en su propia función porque se repinta solo,
+   * en sitio, cada vez que se mueve un precio. */
+  function filaCuadre(i, l, q, moneda) {
+    return '<tr class="desg-cuadre ' + (q.ok ? 'ok' : 'mal') + '" data-cuadre="' + i + '">' +
+      '<td class="ln"></td><td colspan="2" class="tiny">' +
+        (q.ok
+          ? 'Los ' + l.desglose.length + ' renglones suman exactamente el precio de la sección.'
+          : '<strong>No cuadra.</strong> Los renglones suman ' + mx(q.suma, moneda) +
+            ', que es ' + (q.dif > 0 ? 'de más' : 'de menos') + ' por ' +
+            mx(Math.abs(q.dif), moneda) + '. Ajusta hasta que dé el precio de la sección: ' +
+            'lo que ve el cliente no puede sumar distinto que lo que se cotizó.') +
+      '</td>' +
+      '<td class="num mono tiny">' + mx(q.suma, moneda) + '</td>' +
+      '<td class="num tiny">' + (q.ok ? '✓' : '<span class="malo">≠</span>') + '</td>' +
+    '</tr>';
+  }
+
   function prellenar(m) {
     var c = C.calcular(m);
     var emp = C.empresaDe(m);
@@ -92,7 +202,12 @@
      * renglón (ahí van los precios de compra). La sección es la unidad que el
      * cliente reconoce y la que el machote ya sabe valuar por sí sola. */
     var lineas = c.secciones.map(function (s, i) {
-      return {
+      /* `_st` todavía es null la primera vez que se abre el cascarón: `abrir()`
+       * llama a `prellenar` ANTES de armarlo. Sin esta guarda, abrir la
+       * pantalla tiraba un TypeError y no pintaba nada. */
+      var abierta = !!(_st && _st.desglose && _st.desglose[i]);
+      var cruda = (m.secciones || [])[i] || {};
+      var linea = {
         n: i + 1,
         nombre: s.nombre || ('SECCIÓN ' + (i + 1)),
         cantidad: 1,
@@ -105,6 +220,24 @@
           horas: s.horas, partidas: (s.partidas_usadas === undefined ? null : s.partidas_usadas)
         }
       };
+      if (abierta) {
+        /* Lo ya editado a mano se conserva; lo que falte se arranca a
+         * prorrata. Repintar la pantalla no puede borrar lo que alguien
+         * acaba de teclear. */
+        var guardado = _st && _st.desgloseEdit && _st.desgloseEdit[i];
+        var filas = desgloseDe(m, cruda, s.precio);
+        if (guardado) {
+          filas.forEach(function (f) {
+            if (guardado[f.clave] !== undefined && guardado[f.clave] !== null) {
+              f.precio = Number(guardado[f.clave]);
+              f.importe = f.precio;
+            }
+          });
+        }
+        linea.desglose = filas;
+        linea.cuadre = cuadra(filas, s.precio);
+      }
+      return linea;
     });
 
     return {
@@ -136,7 +269,11 @@
   function cerrar() { var d = document.getElementById('modalOrden'); if (d) d.remove(); }
 
   function cascaron(cuerpo) {
-    var viejo = document.getElementById('modalOrden'); if (viejo) viejo.remove();
+    var viejo = document.getElementById('modalOrden');
+    // Defensivo: si el nodo ya no cuelga de su padre —pasa cuando se repinta
+    // desde un manejador de `blur`— `remove()` truena. Repintar la pantalla
+    // nunca debe poder tirar la pantalla.
+    if (viejo) { try { viejo.remove(); } catch (e) {} }
     document.body.insertAdjacentHTML('beforeend',
       '<div class="modal" id="modalOrden"><div class="caja orden">' + cuerpo + '</div></div>');
     var d = document.getElementById('modalOrden');
@@ -184,6 +321,17 @@
      * (CLAUDE.md §17)—. Lo que no existe es la DECISIÓN de que la suite emita
      * órdenes de venta, ni el workflow que lo haga. Decir «no hay permiso»
      * sería inventar un impedimento técnico donde hay uno de criterio. */
+    /* Un desglose que no cuadra es un estorbo DE CAPTURA, no del sistema: lo
+     * arregla quien está capturando, moviendo un número. Y tiene que impedir
+     * seguir, porque mandarle al cliente renglones que suman distinto de lo
+     * cotizado es peor que no desglosar. */
+    (pre.lineas || []).forEach(function (l) {
+      if (l.cuadre && !l.cuadre.ok) {
+        de_captura.push('El desglose de «' + esc(l.nombre) + '» no cuadra con el precio de su ' +
+          'sección: sobra o falta ' + mx(Math.abs(l.cuadre.dif), pre.moneda) + '.');
+      }
+    });
+
     de_sistema.push('Nadie ha decidido todavía que la suite EMITA órdenes de venta. ' +
       'La credencial de Odoo en n8n sí escribe (ya crea proyectos y presupuestos), ' +
       'pero crear una venta es otra cosa y la decide Esteban.');
@@ -201,7 +349,12 @@
         arr.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul></div>';
     };
     if (!e.de_captura.length && !e.de_sistema.length) return '';
-    return '<details class="estorbos"' + (e.de_captura.length ? ' open' : '') + '>' +
+    /* Abierta en escritorio, CERRADA con el pulgar. Con tres estorbos ocupaba
+     * media pantalla de teléfono y empujaba fuera de vista todo lo demás —
+     * incluida la tabla que se viene a ver. El resumen del `summary` ya dice
+     * cuántos hay, que es lo que se necesita saber sin abrirla. */
+    var angosta = (typeof window !== 'undefined' && window.innerWidth <= 620);
+    return '<details class="estorbos"' + ((e.de_captura.length && !angosta) ? ' open' : '') + '>' +
       '<summary>Lo que hoy impediría crear esta orden' +
       (e.de_captura.length ? ' · <strong>' + e.de_captura.length + ' de captura</strong>' : '') +
       '</summary>' +
@@ -215,14 +368,45 @@
     var faltaCliente = !p.cliente.odoo_partner_id;
 
     var filas = p.lineas.map(function (l, i) {
-      return '<tr>' +
+      var abierta = !!l.desglose;
+      var tr = '<tr>' +
         '<td class="ln">' + l.n + '</td>' +
-        '<td><input class="cel" data-ln="' + i + '" data-campo="nombre" value="' + esc(l.nombre) + '"></td>' +
+        '<td><input class="cel" data-ln="' + i + '" data-campo="nombre" value="' + esc(l.nombre) + '">' +
+          /* La casilla del desglose, APAGADA por omisión y por sección. Vive
+           * pegada al renglón que abre, no en una preferencia general: una
+           * preferencia global se vuelve costumbre en dos semanas y entonces
+           * el desglose deja de ser la excepción que pidió Esteban. */
+          '<label class="desg-sw"><input type="checkbox" data-desg="' + i + '"' +
+            (abierta ? ' checked' : '') + '> Desglosar esta sección para el cliente</label>' +
+        '</td>' +
         '<td class="num"><input class="cel n" data-ln="' + i + '" data-campo="cantidad" ' +
-          'type="number" min="0" step="0.01" value="' + esc(l.cantidad) + '"></td>' +
+          'type="number" min="0" step="0.01" value="' + esc(l.cantidad) +
+          '"' + (abierta ? ' disabled title="Con la sección desglosada, la cantidad la llevan los renglones"' : '') + '></td>' +
         '<td class="num mono">' + mx(l.precio, p.moneda) + '</td>' +
         '<td class="num mono imp" data-imp="' + i + '">' + mx(l.importe, p.moneda) + '</td>' +
       '</tr>';
+      if (!abierta) return tr;
+
+      /* Los renglones del desglose. El precio se ARRANCA a prorrata del costo
+       * y se puede mover: la prorrata es el punto de partida, no el resultado
+       * (decisión de Esteban, 8-sep). Lo único que no se negocia es que la
+       * suma dé el precio de la sección al centavo. */
+      var q = l.cuadre;
+      tr += l.desglose.map(function (d, j) {
+        return '<tr class="desg-fila">' +
+          '<td class="ln"></td>' +
+          '<td class="desg-nm">' + esc(d.nombre) + '</td>' +
+          '<td class="num mono tiny">' + esc(d.cantidad) + ' ' + esc(d.unidad) + '</td>' +
+          '<td class="num"><input class="cel n desg-p" data-desg-ln="' + i + '" ' +
+            'data-desg-clave="' + esc(d.clave) + '" type="number" min="0" step="0.01" ' +
+            'value="' + esc(d.precio) + '"></td>' +
+          '<td class="num mono tiny desg-imp" data-desg-ln="' + i + '" ' +
+            'data-desg-clave="' + esc(d.clave) + '">' + mx(d.importe, p.moneda) + '</td>' +
+        '</tr>';
+      }).join('');
+
+      tr += filaCuadre(i, l, q, p.moneda);
+      return tr;
     }).join('');
 
     var campos = A_MANO.map(function (f) {
@@ -254,7 +438,7 @@
       'dibujado para poder verlo antes de construirlo. Los renglones y los importes ' +
       'de abajo <strong>sí son reales</strong>: salen del motor de este machote.</div>' +
 
-      bloqueEstorbos() +
+      '<div id="or-estorbos">' + bloqueEstorbos() + '</div>' +
 
       '<div class="or-grid">' +
         '<div class="or-dato"><span>Empresa</span><strong>' + esc(p.empresa.corto) + '</strong>' +
@@ -275,8 +459,10 @@
       '</div>' +
 
       '<h4 class="or-h">Renglones de la orden</h4>' +
-      '<p class="tiny nota">Una línea por sección. El detalle de materiales es costeo ' +
-      'interno y no se le manda al cliente renglón por renglón: ahí van los precios de compra.</p>' +
+      '<p class="tiny nota">Una línea por sección, que es lo normal: el detalle de materiales ' +
+      'es costeo interno y no se le manda al cliente renglón por renglón. Cuando un cliente ' +
+      'exija desglose para armar su orden de compra, ábrelo <strong>en la sección que lo pida</strong> ' +
+      'con la casilla de su renglón. El costo no sale ni así.</p>' +
       '<div class="tabla-wrap"><table class="or-t">' +
         '<thead><tr><th>#</th><th>Concepto</th><th class="num">Cant.</th>' +
         '<th class="num">P. unitario</th><th class="num">Importe</th></tr></thead>' +
@@ -319,6 +505,77 @@
         if (el.dataset.campo === 'cantidad') recalcular();
       };
     });
+    /* La casilla de desglose. Al prenderla se recalcula el prellenado entero
+     * —porque las líneas cambian de forma— y se repinta. Al apagarla se
+     * OLVIDA lo tecleado a propósito: dejarlo guardado invisible haría que
+     * volver a prenderla resucitara precios de una negociación anterior. */
+    Array.prototype.forEach.call(document.querySelectorAll('[data-desg]'), function (el) {
+      el.onchange = function () {
+        var i = Number(el.dataset.desg);
+        _st.desglose = _st.desglose || {};
+        _st.desgloseEdit = _st.desgloseEdit || {};
+        if (el.checked) _st.desglose[i] = true;
+        else { delete _st.desglose[i]; delete _st.desgloseEdit[i]; }
+        _st.pre = prellenar(_st.machote);
+        _st.pre.aMano = _st.aMano;
+        pintarConfigurador();
+        /* Los renglones nuevos aparecen DEBAJO, y en un teléfono eso es fuera
+         * de la pantalla: se prendía la casilla y no pasaba nada visible.
+         * Mismo problema que tenía el botón del PDF, misma solución. */
+        if (el.checked) {
+          var primera = document.querySelector('.desg-fila');
+          if (primera) { try { primera.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {} }
+        }
+      };
+    });
+
+    /* El precio de un renglón desglosado. Se guarda lo tecleado y se vuelve a
+     * pintar para que el cuadre se actualice EN VIVO: si el aviso de «no
+     * cuadra» sólo apareciera al final, alguien ajustaría a ciegas. */
+    /* El precio de un renglón desglosado. Se actualiza EN SITIO —el importe de
+     * la fila y el renglón de cuadre— en vez de repintar el cascarón entero.
+     *
+     * Repintar era lo primero que escribí y estaba mal por dos razones: se
+     * perdía el foco a media cifra, y sobre todo `cascaron()` arrancaba el
+     * modal del DOM mientras el campo enfocado estaba dentro, así que el
+     * navegador tiraba «The node to be removed is no longer a child of this
+     * node» en cada tecla. Lo cazó el `pageerror` de la captura, no el diff. */
+    var refrescarCuadre = function (i) {
+      var l = _st.pre.lineas[i];
+      if (!l || !l.desglose) return;
+      var q = cuadra(l.desglose, l.precio);
+      l.cuadre = q;
+      l.desglose.forEach(function (d) {
+        var celda = document.querySelector('.desg-imp[data-desg-ln="' + i + '"][data-desg-clave="' +
+          cssEsc(d.clave) + '"]');
+        if (celda) celda.textContent = mx(d.importe, _st.pre.moneda);
+      });
+      var fila = document.querySelector('.desg-cuadre[data-cuadre="' + i + '"]');
+      if (fila) fila.outerHTML = filaCuadre(i, l, q, _st.pre.moneda);
+      /* Y la lista de lo que impide crear la orden, que ahora incluye el
+       * desglose descuadrado. Sin esto se quedaba con la cuenta del último
+       * repintado y decía «3 de captura» mientras el desglose ya no cuadraba:
+       * un bloqueo que no se entera de que existe no bloquea nada. */
+      var host = document.getElementById('or-estorbos');
+      if (host) host.innerHTML = bloqueEstorbos();
+    };
+
+    Array.prototype.forEach.call(document.querySelectorAll('.desg-p'), function (el) {
+      el.oninput = function () {
+        var i = Number(el.dataset.desgLn);
+        var clave = el.dataset.desgClave;
+        var v = (el.value === '' ? 0 : parseFloat(el.value) || 0);
+        _st.desgloseEdit = _st.desgloseEdit || {};
+        _st.desgloseEdit[i] = _st.desgloseEdit[i] || {};
+        _st.desgloseEdit[i][clave] = v;
+        var l = _st.pre.lineas[i];
+        if (l && l.desglose) {
+          l.desglose.forEach(function (d) { if (d.clave === clave) { d.precio = v; d.importe = v; } });
+        }
+        refrescarCuadre(i);
+      };
+    });
+
     Array.prototype.forEach.call(document.querySelectorAll('[data-mano]'), function (el) {
       el.onchange = function () { _st.aMano[el.dataset.mano] = el.value; };
       el.oninput  = function () { _st.aMano[el.dataset.mano] = el.value; };
@@ -587,9 +844,12 @@
           'deja mandar a <code>sales@fts.mx</code>. Por eso este botón todavía no lo llama.</p>' +
           '<p class="tiny">La cotización <strong>sigue sin marcarse como enviada</strong>, y eso ' +
           'es lo correcto: no se envió. Cuando se encienda, el orden es el servidor manda → ' +
-          'Graph contesta <code>202</code> → el servidor escribe la marca → la pantalla la pinta ' +
-          '<strong>releyendo</strong>, no recordando que se apretó el botón. Escribir la marca ' +
-          'es lo único que falta, y falta porque nadie ha decidido si va también a Odoo.</p>' +
+          'Graph contesta <code>202</code> → <strong>el servidor escribe una versión nueva con ' +
+          'estado «enviado»</strong>, con quién y cuándo → la pantalla la pinta <strong>releyendo' +
+          '</strong>, no recordando que se apretó el botón.</p>' +
+          '<p class="tiny">Esa marca va <strong>sólo en nuestra base</strong> (decisión de Esteban, ' +
+          '8-sep). En Odoo no: marcar como enviada una orden que la suite todavía no crea sería ' +
+          'cerrar medio ciclo y dejar los dos sistemas discrepando.</p>' +
           '</div>';
       }, 900);
     };
@@ -666,6 +926,10 @@
     A_MANO.forEach(function (f) { aMano[f.id] = f.valor; });
     if (!aMano.validez_hasta) aMano.validez_hasta = hoyMas(30);
     _st = {
+      /* Qué secciones se abrieron a detalle y los precios que se movieron a
+       * mano. Viven en el estado del cascarón y no en el machote: el desglose
+       * es de ESTA orden, no del costeo. */
+      desglose: {}, desgloseEdit: {},
       machote: m, pre: pre, aMano: aMano,
       clienteNombre: G.Clientes ? G.Clientes.nombre(m) : (m.cliente || '')
     };

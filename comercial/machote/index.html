@@ -17,21 +17,32 @@
 <div class="scr on ancho" id="scr">
   <!-- La topbar va DENTRO del contenedor para que comparta su ancho: fuera,
        en escritorio abarcaba toda la ventana mientras el contenido iba centrado. -->
+  <!-- ENCABEZADO V1.21. Una sola línea de 52 px.
+       La jerarquía es por TAMAÑO y PESO, no por cajas: el nombre de la
+       pantalla en 15/600 y el rastro al lado en 12 gris, no debajo. Antes
+       ocupaba todo el ancho sin jerarquía y cargaba una insignia «DEMO» que
+       ya era falsa —la pantalla guarda en un servidor de verdad—; etiquetar
+       de mentiras algo que funciona enseña a no creerle a las etiquetas.
+       El botón de volver ya no es decorativo: en la lista sale del módulo. -->
   <div class="topbar">
-    <button class="tb-back" id="btnBack" aria-label="Volver">&#8249;</button>
-    <div class="tb-logo" role="img" aria-label="FTS"></div>
-    <div class="tb-info"><strong id="tbT">Machote y órdenes</strong><span id="tbS">Comercial · prototipo</span></div>
-    <!-- El pulso del autoguardado. Va en la topbar a proposito: es el unico
+    <a class="tb-back" id="btnBack" href="../index.html" aria-label="Volver">&#8249;</a>
+    <div class="tb-info"><strong id="tbT">Machotes</strong><span id="tbS">Comercial</span></div>
+    <!-- El pulso del autoguardado. Va aquí a proposito: es el unico
          lugar que sigue visible en toda pantalla del libro. -->
     <div class="pulso" id="pulso" title="Autoguardado"><i></i><span id="pulsoTx">—</span></div>
     <button class="tb-user" id="tbUser" type="button" title="Cerrar sesión"></button>
-    <div class="tb-badge" id="tbB">DEMO</div>
+    <!-- La versión se queda en la barra, muy discreta. Al compactar el
+         encabezado se cayó, y Esteban verifica EN PANTALLA que su cambio se
+         desplegó (CLAUDE.md §8): dejarla sólo en el pie de la lista la
+         escondía en las demás pantallas. Cinco caracteres. -->
+    <span class="tb-ver" id="tbV" title="Versión del módulo"></span>
   </div>
   <main id="vista"></main>
   <div id="fija"></div>
 </div>
 
 <!-- calc.js primero: demo.js lee de el los roles y los margenes de plantilla. -->
+<script src="js/sesion.js"></script>
 <script src="js/almacen.js"></script>
 <script src="js/calc.js"></script>
 <script src="js/demo.js"></script>

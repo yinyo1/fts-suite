@@ -53,6 +53,9 @@
           return { ok: false, error: 'RESPUESTA_ILEGIBLE',
             mensaje: 'El servidor contestó algo que no se entiende.' };
         }
+        // Mismo vigilante que en almacen.js: una credencial muerta caduca la
+        // sesión aquí también, no sólo al guardar.
+        if (G.MachoteSesion) G.MachoteSesion.vigilar(d);
         return d;
       })
       .catch(function (e) {

@@ -152,13 +152,16 @@
 
   function huellaCanonica(obj) { return huella(canonico(obj)); }
 
-  /** Cuántos machotes están escritos aquí pero todavía no en el servidor. */
+  /** Cuántos machotes están escritos aquí pero todavía no en el servidor.
+   *  Los ejemplos NO cuentan: nunca se van a subir (`empujarUno` los rechaza),
+   *  así que contarlos dejaría el pulso en «sin guardar» para siempre. */
   function pendientes(machotes) {
     var lista = machotes || ((leerLocal() || {}).machotes) || [];
     var s = leerSync(), n = 0;
     for (var i = 0; i < lista.length; i++) {
       var m = lista[i];
       if (!m || !m.id) continue;
+      if (esDemo(m)) continue;
       var meta = s[m.id];
       if (!meta || meta.huella !== huella(m)) n++;
     }
@@ -199,7 +202,16 @@
                mensaje: 'No se pudo contactar al servidor. Lo capturado sigue en este navegador.' };
     }).then(function (d) {
       if (reloj) clearTimeout(reloj);
-      return d || { ok: false, error: 'RESPUESTA_VACIA' };
+      var r = d || { ok: false, error: 'RESPUESTA_VACIA' };
+      /* TODA respuesta pasa por aquí. Si el servidor dice que la credencial no
+       * vale, la sesión caduca en el acto: se borra SÓLO la llave de sesión y
+       * se manda al login. Reintentar con un token muerto no arregla nada y
+       * es exactamente lo que pasó al rotar el secreto el 8-sep.
+       *
+       * Va en el POST y no en cada llamador para que un endpoint nuevo no
+       * pueda olvidarse de manejarlo. */
+      if (G.MachoteSesion) G.MachoteSesion.vigilar(r);
+      return r;
     });
   }
 
@@ -230,7 +242,24 @@
 
   /** Sube UN machote. El servidor agrega una versión nueva al historial; no
    *  reescribe nada. Resuelve `{ok, error, mensaje, version}`. */
+  /* ── LA DEMO NUNCA SUBE (V1.21) ────────────────────────────────────────
+   * `demo.js` marca sus cuatro machotes con `_demo: true`. El 8-sep se
+   * colaron cuatro demostraciones a la base de producción con id `M-1041` a
+   * `M-1044` porque nada las distinguía de una captura real.
+   *
+   * El filtro vive AQUÍ y no en la pantalla por la misma razón que el
+   * vigilante de sesión vive en el POST: es el único sitio por donde pasa
+   * todo lo que sube, así que un camino nuevo no puede olvidarse de aplicarlo.
+   * Se comprueba con una prueba dedicada. */
+  function esDemo(m) { return !!(m && m._demo === true); }
+
   function empujarUno(m, ses, motivo) {
+    /* Segundo candado, además de no meterla en la lista: si mañana alguien
+     * llama a `empujarUno` directo, la demo sigue sin llegar al servidor. */
+    if (esDemo(m)) {
+      return Promise.resolve({ ok: false, error: 'ES_DEMO',
+        mensaje: 'Los machotes de demostración no se suben al servidor.' });
+    }
     var s = leerSync();
     var meta = s[m.id] || { version: 0 };
     return postear(URL_GUARDAR, {
@@ -285,6 +314,7 @@
     for (var i = 0; i < lista.length; i++) {
       var m = lista[i];
       if (!m || !m.id) continue;
+      if (esDemo(m)) continue;                       // la demo no viaja
       var meta = s[m.id];
       if (!meta || meta.huella !== huella(m)) falta.push(m);
     }
@@ -423,11 +453,16 @@
    *  para que la franja pueda decir "no se pudo confirmar" en vez de mentir en
    *  cualquiera de las dos direcciones. */
   function estadoServidor(machotes) {
-    var lista = machotes || ((leerLocal() || {}).machotes) || [];
+    /* La demo se descuenta ANTES de contar. Si entrara, la franja diría «4 por
+     * subir» eternamente y «Subir ahora» nunca podría bajar el número — un
+     * pendiente que no se puede resolver es peor que no avisar. */
+    var todos = machotes || ((leerLocal() || {}).machotes) || [];
+    var lista = todos.filter(function (m) { return !esDemo(m); });
+    var demos = todos.length - lista.length;
     var ses = sesion();
 
     if (!ses) {
-      return Promise.resolve({ ok: false, error: 'SIN_SESION', total: lista.length,
+      return Promise.resolve({ ok: false, error: 'SIN_SESION', total: lista.length, demos: demos,
         subidos: 0, pendientes: lista.length, ids_pendientes: lista.map(function (m) { return m.id; }),
         mensaje: 'No hay sesión, así que no se puede confirmar qué hay en el servidor.' });
     }
@@ -436,7 +471,7 @@
       if (!r || r.ok !== true || !Array.isArray(r.machotes)) {
         return { ok: false, error: (r && r.error) || 'DESCONOCIDO',
           mensaje: (r && r.mensaje) || 'No se pudo preguntar al servidor.',
-          total: lista.length, subidos: 0, pendientes: lista.length,
+          total: lista.length, demos: demos, subidos: 0, pendientes: lista.length,
           ids_pendientes: lista.map(function (m) { return m.id; }) };
       }
 
@@ -446,23 +481,44 @@
         if (f && f.id_local) enServidor[f.id_local] = f;
       }
 
-      var ids = [], subidos = 0, desfasados = 0;
+      var ids = [], subidos = 0, desfasados = 0, detalle = [];
       for (i = 0; i < lista.length; i++) {
         var m = lista[i];
         if (!m || !m.id) continue;
         var fila = enServidor[m.id];
-        if (!fila) { ids.push(m.id); continue; }                  // no llegó nunca
+        var hAqui = huellaCanonica(m);
+        if (!fila) {                                              // no llegó nunca
+          ids.push(m.id);
+          detalle.push({ id: m.id, nombre: m.nombre, estado: 'nunca',
+                         huella_aqui: hAqui, huella_servidor: null,
+                         version: null, confirmado_at: null });
+          continue;
+        }
         var doc = documentoDeFila(fila);          // el contenido, sin reparaciones
-        if (huellaCanonica(doc) !== huellaCanonica(m)) {
+        var hAlla = huellaCanonica(doc);
+        if (hAlla !== hAqui) {
           ids.push(m.id); desfasados++;                           // llegó, pero lo de aquí cambió después
+          detalle.push({ id: m.id, nombre: m.nombre, estado: 'desfasado',
+                         huella_aqui: hAqui, huella_servidor: hAlla,
+                         version: fila.version, confirmado_at: fila.guardada_at || null });
           continue;
         }
         subidos++;
+        detalle.push({ id: m.id, nombre: m.nombre, estado: 'igual',
+                       huella_aqui: hAqui, huella_servidor: hAlla,
+                       version: fila.version, confirmado_at: fila.guardada_at || null });
       }
 
-      return { ok: true, total: lista.length, subidos: subidos,
+      return { ok: true, total: lista.length, demos: demos, subidos: subidos,
         pendientes: ids.length, desfasados: desfasados, ids_pendientes: ids,
         en_servidor_total: r.machotes.length, actor: r.actor,
+        /* La EVIDENCIA, renglón por renglón. Un número pide fe; esto se puede
+         * comprobar: las dos huellas son del MISMO documento calculadas por
+         * separado —una sobre lo de aquí, otra sobre lo que devolvió el
+         * servidor—, así que si coinciden son idénticos carácter por carácter.
+         * De poder enseñar esto depende quitar la franja en la versión que
+         * viene. */
+        detalle: detalle,
         leido_at: new Date().toISOString() };
     });
   }
@@ -571,6 +627,7 @@
     empujar: empujar,
     historial: historial,
     idServidor: idServidor,
+    esDemo: esDemo,
 
     pendientes: pendientes,
     estadoServidor: estadoServidor,

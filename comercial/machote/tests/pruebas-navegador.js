@@ -255,9 +255,18 @@ let ok = 0, mal = 0;
     const pie = (await p.textContent('.ver') || '').trim();
     if (pie.indexOf(ver.version) < 0) throw new Error('el pie dice "' + pie + '" y version.json ' + ver.version);
 
+    /* En V1.21 la versión salió del subtítulo —el encabezado se compactó— y
+     * vive en su propio hueco de la barra. Lo que se sigue exigiendo es lo
+     * mismo: que se vea SIN salir de la pantalla del machote, porque es como
+     * Esteban comprueba que su cambio se desplegó. */
     await ir('#/m/M-1041');
-    const barra = await p.textContent('#tbS');
-    if (barra.indexOf(ver.version) < 0) throw new Error('la barra superior dice: ' + barra);
+    const barra = (await p.textContent('#tbV') || '').trim();
+    if (barra.indexOf(ver.version) < 0) throw new Error('la barra superior dice: «' + barra + '»');
+    const visible = await p.$eval('#tbV', el => {
+      const r = el.getBoundingClientRect();
+      return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden';
+    });
+    if (!visible) throw new Error('la versión está en el DOM pero no se ve');
     console.log('   ', ver.version, '· visible en la lista y en la barra');
   });
 
@@ -992,17 +1001,40 @@ let ok = 0, mal = 0;
     if (r.valor !== 'paso') throw new Error('se perdieron letras: ' + r.valor);
   });
 
-  await paso('los filtros por estado cuentan sobre el total, no sobre lo filtrado', async () => {
+  await paso('el filtro de estado filtra, y la cuenta dice sobre cuántos', async () => {
+    /* En V1.21 los filtros dejaron de ser una fila de píldoras y son
+     * desplegables: las píldoras no escalaban a filtrar por persona, que es
+     * lo que hacía falta con siete capturando. Lo que se sigue exigiendo es
+     * lo mismo: que filtre de verdad y que se vea sobre cuántos filtró. */
     await ir('#/');
-    const total = await p.locator('.item[href^="#/m/"]').count();
-    const antes = await p.locator('.fchip').allTextContents();
-    await p.locator('.fchip', { hasText: 'En revisión' }).first().click();
-    await p.waitForTimeout(300);
-    const desp = await p.locator('.fchip').allTextContents();
-    if (antes.join('|') !== desp.join('|'))
-      throw new Error('los contadores cambiaron al filtrar: ' + antes.join(' ') + ' → ' + desp.join(' '));
-    const enRev = await p.locator('.item[href^="#/m/"]').count();
+    /* Se cuentan los renglones de la TABLA, no `[data-hist]`: cada machote se
+     * pinta dos veces en el DOM —tabla y tarjetas— y sólo una de las dos está
+     * visible según el ancho. Contar el botón daba el doble. */
+    const total = await p.$$eval('tr.rw', e => e.length);
+    await p.selectOption('#fEstado', 'revision'); await p.waitForTimeout(320);
+    const enRev = await p.$$eval('tr.rw', e => e.length);
     if (!(enRev > 0 && enRev < total)) throw new Error('el filtro no filtró: ' + total + ' → ' + enRev);
+    const cuenta = (await p.textContent('.enc .cuenta')).replace(/\s+/g, ' ');
+    if (cuenta.indexOf('de ' + total) < 0)
+      throw new Error('la cuenta no dice sobre cuántos: ' + cuenta);
+    console.log('    ' + total + ' → ' + enRev + ' · «' + cuenta + '»');
+  });
+
+  await paso('al entrar, el filtro de persona arranca en los propios', async () => {
+    /* Es lo que alguien quiere ver al abrir. Y como es un filtro PUESTO que
+     * nadie eligió, la pantalla tiene que decirlo: si no, se ve una lista
+     * corta y parece que faltan machotes. */
+    await ir('#/');
+    const v = await p.$eval('#fPersona', el => el.value);
+    if (v !== 'zz.prueba') throw new Error('no arrancó en el usuario de la sesión: «' + v + '»');
+    const t = (await p.textContent('#vista')).replace(/\s+/g, ' ');
+    if (!/Viendo sólo lo tuyo/i.test(t)) throw new Error('no avisa que hay un filtro puesto');
+    // Y se puede quitar: «Todas las personas» devuelve la lista completa.
+    const propios = await p.$$eval('[data-hist]', e => e.length);
+    await p.selectOption('#fPersona', ''); await p.waitForTimeout(320);
+    const todos = await p.$$eval('[data-hist]', e => e.length);
+    if (todos < propios) throw new Error('quitar el filtro enseñó MENOS: ' + propios + ' → ' + todos);
+    console.log('    míos ' + propios + ' · todos ' + todos);
   });
 
   await paso('cuando no hay resultados, dice por qué', async () => {
@@ -1179,10 +1211,17 @@ let ok = 0, mal = 0;
     await ir('#/m/M-1042'); await hoja('DESGLOSE');
     await p.locator('[data-estado]').selectOption('enviado'); await p.waitForTimeout(400);
     await irSuave('#/');
+    /* Se engancha por `[data-mid]`, que es el mismo en las DOS pinturas —el
+     * renglón de la tabla y la tarjeta del teléfono— y se exige en ambas: el
+     * candado tiene que estar donde sea que la persona esté mirando. */
     const r = await p.evaluate(() => {
-      const filas = [...document.querySelectorAll('.fila')];
-      const f = filas.find(x => x.textContent.indexOf('M-1042') >= 0);
-      return f ? { borrar: !!f.querySelector('[data-borrar]'), candado: !!f.querySelector('.candado') } : null;
+      const filas = [...document.querySelectorAll('[data-mid="M-1042"]')];
+      if (!filas.length) return null;
+      return {
+        n: filas.length,
+        borrar: filas.some(f => f.querySelector('[data-borrar]')),
+        candado: filas.every(f => f.querySelector('.candado'))
+      };
     });
     if (!r) throw new Error('no encontré M-1042 en la lista');
     if (r.borrar) throw new Error('le dejó el botón de borrar');
@@ -3091,6 +3130,194 @@ let ok = 0, mal = 0;
       if (c.der > 380) throw new Error('se sale de la pantalla: llega a x=' + c.der);
       console.log('    ' + c.alto + ' px de alto, dentro de la pantalla');
     } finally { await q.close(); }
+  });
+
+  /* ══ La sesión no puede mentir (V1.21) ═══════════════════════════════
+   * El 8-sep, al rotar el secreto, la aplicación dijo «no se pudo confirmar
+   * con el servidor» —que invita a esperar— cuando lo que hacía falta era
+   * volver a entrar. Y el token muerto se quedaba en el navegador, así que
+   * reintentar no arreglaba nada. Se resolvió a mano desde la consola. */
+
+  await paso('sesión rechazada: se borra la llave de sesión y NADA MÁS', async () => {
+    /* La prueba que más importa de esta tanda. Dentro de `fts_machote_v1` hay
+     * captura real de tres personas: una sesión vencida no es motivo para
+     * perder trabajo. */
+    const q = await cdPagina(['comercial:read']);
+    try {
+      await q.goto(BASE); await q.waitForTimeout(900);
+      // Se siembran las dos llaves de datos con algo reconocible.
+      await q.evaluate(() => {
+        localStorage.setItem('fts_machote_v1', JSON.stringify({ machotes: [{ id: 'M-X', nombre: 'no me borres' }] }));
+        localStorage.setItem('fts_machote_sync_v1', JSON.stringify({ 'M-X': { version: 3 } }));
+      });
+      const antes = await q.evaluate(() => ({
+        sesion: !!localStorage.getItem('fts_suite_session'),
+        datos:  localStorage.getItem('fts_machote_v1'),
+        sync:   localStorage.getItem('fts_machote_sync_v1')
+      }));
+      if (!antes.sesion || !antes.datos) throw new Error('no quedó sembrado el escenario');
+
+      await q.evaluate(() => window.MachoteSesion.caducar({ ok: false, error: 'FIRMA_INVALIDA' }));
+
+      const desp = await q.evaluate(() => ({
+        sesion: !!localStorage.getItem('fts_suite_session'),
+        datos:  localStorage.getItem('fts_machote_v1'),
+        sync:   localStorage.getItem('fts_machote_sync_v1'),
+        aviso:  !!document.getElementById('sesionMuerta'),
+        texto:  (document.getElementById('sesionMuerta') || {}).textContent || ''
+      }));
+      if (desp.sesion) throw new Error('NO borró la llave de sesión');
+      if (desp.datos !== antes.datos) throw new Error('¡borró los machotes capturados!');
+      if (desp.sync !== antes.sync) throw new Error('¡borró la libreta de sincronización!');
+      if (!desp.aviso) throw new Error('no avisó nada');
+      if (!/sesión expiró/i.test(desp.texto)) throw new Error('el aviso no dice qué pasó: ' + desp.texto.slice(0, 90));
+      if (!/no se perdió/i.test(desp.texto)) throw new Error('no dice que lo capturado sigue ahí');
+      console.log('    llave de sesión fuera · machotes y libreta intactos · aviso con la razón');
+    } finally { await q.close(); }
+  });
+
+  await paso('los tres casos se distinguen: sesión, red y error del servidor', async () => {
+    /* Hoy los tres decían lo mismo y llevan a acciones distintas. */
+    const q = await cdPagina(['comercial:read']);
+    try {
+      await q.goto(BASE); await q.waitForTimeout(700);
+      const r = await q.evaluate(() => {
+        const S = window.MachoteSesion;
+        const c = (e) => ({ caso: S.clasificar(e), texto: S.motivo(e) });
+        return {
+          expirado: c({ ok: false, error: 'TOKEN_EXPIRADO' }),
+          firma:    c({ ok: false, error: 'FIRMA_INVALIDA' }),
+          scope:    c({ ok: false, error: 'SCOPE_INSUFICIENTE' }),
+          red:      c({ ok: false, error: 'SIN_RED' }),
+          servidor: c({ ok: false, error: 'BASE_CAIDA' }),
+          bien:     c({ ok: true })
+        };
+      });
+      if (r.expirado.caso !== 'sesion' || r.firma.caso !== 'sesion')
+        throw new Error('un token muerto no se reconoce como sesión: ' + JSON.stringify(r));
+      if (r.red.caso !== 'red') throw new Error('la falta de red no se reconoce');
+      if (r.servidor.caso !== 'servidor') throw new Error('un error del servidor se confunde');
+      if (r.bien.caso !== 'ok') throw new Error('una respuesta buena se marca como fallo');
+      // Y los textos tienen que ser DISTINTOS: si dicen lo mismo, no sirve de nada.
+      const t = [r.expirado.texto, r.red.texto, r.servidor.texto];
+      if (new Set(t).size !== 3) throw new Error('dos casos dicen lo mismo: ' + t.join(' / '));
+      if (!/entrar/i.test(r.expirado.texto)) throw new Error('la sesión vencida no nombra la acción');
+      if (!/conexión/i.test(r.red.texto)) throw new Error('la falta de red no la nombra');
+      if (r.scope.texto === r.expirado.texto) throw new Error('«sin permiso» y «sesión vencida» dicen lo mismo');
+      console.log('    ' + t.map(x => x.slice(0, 34)).join(' | '));
+    } finally { await q.close(); }
+  });
+
+  /* ══ La demo nunca llega al servidor (V1.21) ═════════════════════════════
+   * El 8-sep se colaron cuatro demostraciones a la base de producción, con
+   * id M-1041 a M-1044, porque nada las distinguía de una captura real. */
+
+  await paso('un machote de demo NUNCA se manda al servidor', async () => {
+    await ir('#/');
+    {
+      const q = p;
+      const r = await q.evaluate(async () => {
+        const A = window.MachoteAlmacen;
+        // 1. Todos los de `window.DEMO` vienen marcados en ORIGEN.
+        const sinMarca = window.DEMO.MACHOTES.filter(m => !A.esDemo(m)).map(m => m.id);
+        // 2. Y `empujar` los descarta aunque se le pasen a la cara.
+        const antes = window.__guardadosAlServidor || 0;
+        const res = await A.empujar(window.DEMO.MACHOTES.map(m => JSON.parse(JSON.stringify(m))));
+        return { sinMarca: sinMarca, subidos: res.subidos,
+                 llamadas: (window.__guardadosAlServidor || 0) - antes,
+                 cuantos: window.DEMO.MACHOTES.length };
+      });
+      if (r.sinMarca.length) throw new Error('sin marcar en demo.js: ' + r.sinMarca.join(', '));
+      if (r.subidos) throw new Error('subió ' + r.subidos + ' machote(s) de demo');
+      if (r.llamadas) throw new Error('llamó ' + r.llamadas + ' vez/veces al servidor con la demo');
+      console.log('    ' + r.cuantos + ' de demo marcados · 0 subidos · 0 llamadas al servidor');
+    }
+  });
+
+  await paso('la demo no se cuenta como pendiente en la franja', async () => {
+    /* Si se contara, la franja diría «4 por subir» para siempre y «Subir
+     * ahora» nunca podría bajar el número: un pendiente que no se puede
+     * resolver es peor que no avisar. */
+    await ir('#/'); await p.waitForTimeout(400);
+    {
+      const q = p;
+      const e = await q.evaluate(() => window.MachoteAlmacen.estadoServidor(window.DEMO.MACHOTES));
+      if (e.total !== 0) throw new Error('cuenta ' + e.total + ' machote(s) que no son de nadie');
+      if (!e.demos) throw new Error('no reporta cuántos ejemplos descontó');
+      const t = (await q.textContent('#franjaSync')) || '';
+      if (/por subir/i.test(t)) throw new Error('la franja pide subir la demo: ' + t.slice(0, 90));
+      console.log('    0 contados · ' + e.demos + ' ejemplos descontados · «' + t.replace(/\s+/g, ' ').trim().slice(0, 60) + '»');
+    }
+  });
+
+  /* ══ El encabezado y el desglose (V1.21) ════════════════════════════════ */
+
+  await paso('el encabezado tiene salida y ya no se etiqueta de mentiras', async () => {
+    await ir('#/');
+    const r = await p.evaluate(() => {
+      const b = document.getElementById('btnBack');
+      return { href: b && b.getAttribute('href'),
+               alto: Math.round(document.querySelector('.topbar').getBoundingClientRect().height),
+               insignia: !!document.getElementById('tbB'),
+               texto: document.querySelector('.topbar').textContent };
+    });
+    if (!r.href || r.href.charAt(0) === '#') throw new Error('la flecha no sale del módulo: ' + r.href);
+    if (r.insignia) throw new Error('sigue la insignia DEMO en una pantalla que guarda de verdad');
+    if (/DEMO/.test(r.texto)) throw new Error('el encabezado sigue diciendo DEMO');
+    if (r.alto > 60) throw new Error('el encabezado mide ' + r.alto + ' px: no se compactó');
+    console.log('    ' + r.alto + ' px · vuelve a ' + r.href + ' · sin insignia');
+  });
+
+  await paso('desglose: arranca a prorrata, se puede mover y la suma debe cuadrar', async () => {
+    const ctx = await b.newContext({ viewport: { width: 1000, height: 900 } });
+    const q = await ctx.newPage();
+    await q.addInitScript(() => {
+      try {
+        localStorage.clear();
+        localStorage.setItem('fts_suite_session', JSON.stringify({
+          token: 'prueba.prueba.prueba', actor: 'zz.prueba', nombre: 'ZZ Prueba',
+          empleado_id: null, scopes: ['comercial:read'],
+          exp: Math.floor(Date.now() / 1000) + 3600, debe_cambiar_password: false }));
+      } catch (e) {}
+    });
+    try {
+      await q.goto(BASE); await q.waitForTimeout(900);
+      const href = await q.$eval('[data-hist]', el => '#/m/' + el.getAttribute('data-hist'));
+      await q.goto(BASE + href); await q.waitForTimeout(900);
+      await q.click('#btnOrden'); await q.waitForTimeout(400);
+
+      // Apagado por omisión: es la excepción, no la costumbre.
+      if (await q.$eval('[data-desg="0"]', el => el.checked))
+        throw new Error('el desglose viene prendido de fábrica');
+      if (await q.$('.desg-p')) throw new Error('hay renglones desglosados sin haberlo pedido');
+
+      await q.check('[data-desg="0"]'); await q.waitForTimeout(400);
+      const n = await q.$$eval('.desg-p', e => e.length);
+      if (n < 2) throw new Error('el desglose trajo ' + n + ' renglón(es)');
+
+      // De arranque cuadra al centavo.
+      const cuadre = () => q.evaluate(() => {
+        const f = document.querySelector('.desg-cuadre');
+        return { ok: f.className.indexOf('ok') >= 0, txt: f.textContent.replace(/\s+/g, ' ').trim() };
+      });
+      const c1 = await cuadre();
+      if (!c1.ok) throw new Error('la prorrata no cuadra de arranque: ' + c1.txt);
+
+      // Se puede mover a mano —la prorrata es el arranque, no el resultado—
+      // y al descuadrar lo DICE y bloquea la orden.
+      await q.fill('.desg-p', '1'); await q.waitForTimeout(400);
+      const c2 = await cuadre();
+      if (c2.ok) throw new Error('descuadrado y sigue diciendo que cuadra');
+      if (!/No cuadra/i.test(c2.txt)) throw new Error('no lo dice: ' + c2.txt.slice(0, 90));
+      const est = (await q.textContent('#or-estorbos')) || '';
+      if (!/desglose de/i.test(est)) throw new Error('un desglose descuadrado no impide crear la orden');
+
+      // Y el COSTO no sale ni así: es lo peor que podría colarse.
+      const html = await q.innerHTML('.or-t');
+      for (const p2 of ['costo_mo', 'costo_mat', 'costoMo', 'costoMat', '_peso'])
+        if (html.indexOf(p2) >= 0) throw new Error('se coló el costo en la tabla del cliente: ' + p2);
+      console.log('    ' + n + ' renglones · cuadra de arranque · descuadrar avisa y bloquea · sin costo');
+    } finally { await ctx.close(); }
   });
 
   await paso('sin errores de consola propios del prototipo', async () => {

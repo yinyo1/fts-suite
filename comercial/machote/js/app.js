@@ -40,7 +40,7 @@
    * 2026-09-03 (por instrucción de Esteban), pero lleva el suyo aparte y va en
    * V1.00. Planeación sigue en `2.4.1` y el kiosko sólo con cadena de build;
    * a esos no se propaga. */
-  const VERSION = 'V1.20';
+  const VERSION = 'V1.21';
   const $  = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
   const clon = (x) => JSON.parse(JSON.stringify(x));
@@ -58,7 +58,24 @@
     handoff: _guardado ? (_guardado.handoff || {}) : {},
     confirmadas: {},
     hoja: 'desglose', simMargen: null,
-    busca: '', filtro: 'todos',
+    busca: '',
+    /* Los filtros de la lista (V1.21). Sustituyen al `filtro: 'todos'` de las
+     * píldoras, que sólo sabía de estado.
+     *
+     * `persona` ARRANCA EN QUIEN ENTRÓ. Es lo que alguien quiere ver al abrir,
+     * y lo de los demás queda a un clic — con el pie diciéndolo, porque un
+     * filtro puesto que no se anuncia hace creer que faltan machotes.
+     * Si no hay sesión arranca vacío: filtrar por un nombre que no existe
+     * dejaría la lista en blanco sin explicación. */
+    filtros: {
+      persona: (function () {
+        try {
+          var sx = G.SuiteAuth && G.SuiteAuth.getSession();
+          return (sx && sx.actor) || '';
+        } catch (e) { return ''; }
+      })(),
+      estado: '', moneda: ''
+    },
     // 'limpio' | 'sucio' | 'guardando' | 'guardado' | 'sin-almacen'
     pulso: (A && A.disponible()) ? 'limpio' : 'sin-almacen'
   };
@@ -366,12 +383,28 @@
     if (p[0] === 'control') return vControl();
     location.hash = '#/';
   }
-  function top(t, s, b, back, sinVersion) {
+  /* El encabezado. `back` es a dónde vuelve la flecha:
+   *   · un hash ('#/')       → dentro del libro,
+   *   · una ruta ('../…')    → fuera del módulo.
+   * Nunca se oculta: hasta V1.20 la lista no tenía salida y había que
+   * teclear la URL para volver a Comercial.
+   *
+   * La insignia «DEMO» se quitó en V1.21. Decía «esto es de mentiras» encima
+   * de una pantalla que ya guarda en un servidor de verdad; un cartel falso
+   * enseña a no creerle a los carteles. La versión se ve en el pie. */
+  function top(t, s, b, back) {
     $('#tbT').textContent = t;
-    $('#tbS').textContent = sinVersion ? s : s + ' · ' + VERSION;
-    $('#tbB').textContent = b || 'DEMO';
-    $('#btnBack').onclick = () => { if (back) location.hash = back; };
-    $('#btnBack').style.visibility = back ? 'visible' : 'hidden';
+    $('#tbS').textContent = s;
+    const v = $('#tbV'); if (v) v.textContent = VERSION;
+    const bb = $('#btnBack');
+    const destino = back || '../index.html';
+    if (destino.charAt(0) === '#') {
+      bb.setAttribute('href', destino);
+      bb.title = 'Volver';
+    } else {
+      bb.setAttribute('href', destino);
+      bb.title = 'Volver a Comercial';
+    }
   }
   window.addEventListener('hashchange', render);
 
@@ -452,7 +485,7 @@
    * el permiso—: sin la llave la pantalla lo dice y enseña una demostración,
    * en vez de rebotar a la lista. */
   function vControl() {
-    top('Control', 'Comercial · dirección', 'DEMO', '#/');
+    top('Control', 'Comercial · dirección', null, '#/');
     $('#fija').innerHTML = '';
     $('#vista').innerHTML = '';
     if (!G.MachoteControl) {
@@ -463,74 +496,189 @@
     G.MachoteControl.montar($('#vista'));
   }
 
+  /* ── La lista ─────────────────────────────────────────────────────────
+   * Rediseñada en V1.21. Lo que cambió y por qué:
+   *
+   *   · TABLA con columnas en escritorio, TARJETAS con el pulgar. Antes eran
+   *     tarjetas siempre; en una laptop desperdiciaban el ancho y obligaban a
+   *     leer cada renglón para comparar precios o márgenes entre cotizaciones.
+   *   · FILTROS como desplegables, no como una fila de píldoras. Las píldoras
+   *     no escalaban: con siete personas capturando hacían falta siete más, y
+   *     ya se veían como pestañas a medio hacer.
+   *   · Filtro POR PERSONA, que arranca en «los míos». Es lo que alguien
+   *     quiere ver al entrar; lo de los demás está a un clic. El pie lo dice
+   *     con todas sus letras, porque un filtro puesto que no se anuncia hace
+   *     creer que faltan machotes.
+   *   · EXPORTAR e IMPORTAR arriba, junto a la acción principal. Eran la red
+   *     de seguridad y vivían al fondo, después de todo.
+   *   · Fuera los dos textos del encabezado. Lo que había que decir sobre los
+   *     datos demo ya no hace falta: la demo se marca sola en la lista y no
+   *     se sincroniza (`_demo` en demo.js).
+   *
+   * Se prototipó primero: docs/comercial/prototipos/v121-lista.html, con dos
+   * propuestas. Ésta es la A. */
   function vHome() {
-    top('Machote y órdenes', 'Comercial · prototipo', 'DEMO', null, true);
+    top('Machotes', 'Comercial', null, '../index.html');
     $('#fija').innerHTML = '';
     /* `D.ESTADOS[m.estado]` con un estado desconocido devuelve undefined, y
      * leerle `.color` tumbaba TODA la lista — pantalla en blanco por un solo
      * machote raro. Pasa de verdad durante la transición: un documento viejo,
-     * uno importado a mano, o uno que bajó del servidor sin `estado` dentro.
-     * La línea 941 ya lo hacía bien; la lista no. */
-    const est = D.ESTADOS;
+     * uno importado a mano, o uno que bajó del servidor sin `estado` dentro. */
     const edo = (m) => D.ESTADOS[m && m.estado] || D.ESTADOS.borrador;
+    const A2 = G.MachoteAlmacen;
+    const esDemo = (m) => !!(A2 && A2.esDemo ? A2.esDemo(m) : (m && m._demo === true));
 
-    // Los contadores salen del universo COMPLETO, no de lo ya filtrado: un
-    // contador que cambia al filtrar no sirve para saber cuántos hay.
-    const cuenta = { todos: ST.machotes.length };
-    D.FLUJO.forEach(k => { cuenta[k] = ST.machotes.filter(m => m.estado === k).length; });
+    /* Quién es el dueño de un machote. Hasta que el documento traiga autor
+     * propio, el dueño es quien lo capturó (`autor`) y, si no lo trae, quien
+     * está en sesión: es lo que hace el servidor al guardarlo. */
+    const ses = (G.SuiteAuth && G.SuiteAuth.getSession()) || null;
+    const yo = (ses && ses.actor) || '';
+    const yoNom = (ses && ses.nombre) || yo;
+    const duenoDe = (m) => (m && (m.autor || m.dueno)) || yo;
+    const nombreDe = (a) => (a === yo ? yoNom : a);
 
-    const visibles = ST.machotes.filter(m =>
-      (ST.filtro === 'todos' || m.estado === ST.filtro) && coincide(m, ST.busca));
+    /* El universo de personas sale de los DATOS, no de una lista escrita a
+     * mano: el día que entre alguien nuevo aparece solo. */
+    const personas = [];
+    ST.machotes.forEach(m => {
+      const d = duenoDe(m);
+      if (d && personas.indexOf(d) < 0) personas.push(d);
+    });
+    personas.sort();
 
-    const chip = (k, etiqueta) =>
-      '<button class="fchip' + (ST.filtro === k ? ' on' : '') + '" data-filtro="' + k + '">' +
-      esc(etiqueta) + ' <span class="n">' + (cuenta[k] || 0) + '</span></button>';
+    const f = ST.filtros;
+    const pasa = (m) =>
+      (f.persona === '' || duenoDe(m) === f.persona) &&
+      (f.estado === '' || m.estado === f.estado) &&
+      (f.moneda === '' || (m.moneda || 'MXN') === f.moneda) &&
+      coincide(m, ST.busca);
+
+    const visibles = ST.machotes.filter(pasa);
 
     /* La entrada al tablero de dirección sólo se ofrece a quien tiene la
      * llave. Un enlace visible para todos, que a casi todos les contestara
-     * "no tienes permiso", sería ruido: la puerta se ve si se puede abrir.
-     *
-     * Va ANTES de `buscador`, que es quien lo usa. Estaba después, y un
-     * `const` leído antes de su línea no es `undefined`: TIRA la función
-     * entera. Resultado: la lista en blanco para quien tuviera el permiso —
-     * justo para Esteban, el único que iba a tenerlo. Lo cazó mirar la
-     * captura, no leer el código. */
+     * "no tienes permiso", sería ruido: la puerta se ve si se puede abrir. */
     const esDireccion = !!(G.SuiteAuth && G.SuiteAuth.tieneScope &&
                            G.MachoteControl && G.SuiteAuth.tieneScope(G.MachoteControl.SCOPE));
-    const enlaceControl = esDireccion
-      ? '<a class="btn fantasma f-min" href="#/control" style="margin-left:auto">Control</a>' : '';
 
-    const buscador =
-      '<div class="buscador">' +
-      '<input id="q" type="search" placeholder="Buscar por nombre, cliente u orden…" ' +
-      'value="' + esc(ST.busca) + '" autocomplete="off" enterkeyhint="search">' +
-      '<a class="btn nuevo" href="#/nuevo">+ Nuevo</a>' +
-      enlaceControl +
+    const opc = (v, txt, sel) =>
+      '<option value="' + esc(v) + '"' + (sel === v ? ' selected' : '') + '>' + esc(txt) + '</option>';
+
+    const encabezado =
+      '<div class="enc">' +
+        '<h2>Machotes</h2>' +
+        '<div class="cuenta">' + (visibles.length === ST.machotes.length
+          ? ST.machotes.length + (ST.machotes.length === 1 ? ' cotización' : ' cotizaciones')
+          : visibles.length + ' de ' + ST.machotes.length) + '</div>' +
+        '<div class="acc">' +
+          (esDireccion ? '<a class="btn fantasma" href="#/control">Control</a>' : '') +
+          '<button class="btn fantasma" id="bExportar" title="Baja un archivo con todo lo capturado">Exportar</button>' +
+          '<label class="btn fantasma archivo" title="Nunca pisa lo que ya existe">Importar' +
+            '<input type="file" id="fImportar" accept="application/json,.json"></label>' +
+          '<a class="btn nuevo" href="#/nuevo">+ Nuevo</a>' +
+        '</div>' +
+      '</div>';
+
+    const filtros =
+      '<div class="tb2">' +
+        '<div class="bus"><input id="q" type="search" ' +
+          'placeholder="Buscar por nombre, cliente u orden…" value="' + esc(ST.busca) + '" ' +
+          'autocomplete="off" enterkeyhint="search"></div>' +
+        '<label class="fsel' + (f.persona ? ' puesto' : '') + '"><select id="fPersona">' +
+          opc('', 'Todas las personas', f.persona) +
+          /* El propio se llama «Míos» a secas: con «Míos · Jesus Esteban De La
+           * Cruz» el desplegable se cortaba a media palabra en un teléfono. */
+          personas.map(pp => opc(pp, pp === yo ? 'Míos' : nombreDe(pp), f.persona)).join('') +
+        '</select></label>' +
+        '<label class="fsel' + (f.estado ? ' puesto' : '') + '"><select id="fEstado">' +
+          opc('', 'Todos los estados', f.estado) +
+          D.FLUJO.map(k => opc(k, D.ESTADOS[k].label, f.estado)).join('') +
+        '</select></label>' +
+        '<label class="fsel' + (f.moneda ? ' puesto' : '') + '"><select id="fMoneda">' +
+          opc('', 'Toda moneda', f.moneda) + opc('MXN', 'MXN', f.moneda) + opc('USD', 'USD', f.moneda) +
+        '</select></label>' +
       '</div>' +
-      '<div class="fchips">' + chip('todos', 'Todos') +
-      D.FLUJO.map(k => chip(k, D.ESTADOS[k].label)).join('') + '</div>' +
-      /* La franja de sincronización vive AQUÍ: en el encabezado de la lista,
-       * arriba de las tarjetas, no en una pantalla aparte. Es transitoria —
-       * `js/franja-sync.js` explica cómo se quita cuando termine el cambio. */
-      '<div id="franjaHost"></div>';
+      /* La franja de sincronización vive AQUÍ, arriba de la tabla, no en una
+       * pantalla aparte. Es transitoria — `js/franja-sync.js` explica cómo se
+       * quita cuando termine el cambio. */
+      '<div id="franjaHost"></div><div id="franjaEvi"></div>';
 
-
-    const filas = visibles.map(m => {
+    /* Un renglón. La demo se marca y se dice por qué en el título: sin eso,
+     * alguien la toma por una cotización que no sube y reporta un fallo. */
+    const fila = (m) => {
       const rev = R.revisar(m), c = rev.calc;
+      const dm = esDemo(m);
+      /* OJO: la clase es `rw`, NO `fila`. En este módulo `.fila` ya significa
+       * `display:flex` —es la tarjeta del teléfono— y ponérsela a un `<tr>`
+       * destruye el reparto de columnas de la tabla: la cabecera se va a un
+       * lado y el cuerpo al otro. Lo cazó la captura, no el diff (§20 #12).
+       * El resaltado de la franja engancha por `[data-mid]`, no por la clase,
+       * así que sigue funcionando. */
+      return '<tr class="rw" data-mid="' + esc(m.id) + '">' +
+        '<td><div class="nm"><a href="#/m/' + esc(m.id) + '">' + esc(m.nombre) + '</a>' +
+          (dm ? ' <span class="pill" title="Ejemplo que trae la aplicación. No se guarda en el servidor.">ejemplo</span>' : '') +
+          '</div><div class="sub">' + esc(cli(m)) + (m.so ? ' · ' + esc(m.so) : '') + ' · ' + esc(m.id) + '</div></td>' +
+        '<td class="quien-td sub" title="' + esc(nombreDe(duenoDe(m))) + '">' +
+          esc(nombreDe(duenoDe(m))) + '</td>' +
+        '<td><span class="pill" style="background:' + edo(m).color + '20;color:' + edo(m).color + '">' +
+          esc(edo(m).label) + '</span></td>' +
+        '<td class="num mono">' + mx(c.precio) + '</td>' +
+        '<td class="num mono n-' + (c.costoIncompleto ? 'warn' : nivelMargen(c.margen)) + '">' +
+          pc(c.margen) + (c.costoIncompleto ? '*' : '') + '</td>' +
+        '<td class="sub">' + (rev.duras.length
+          ? '<span class="n-bad">' + rev.duras.length + ' dura' + (rev.duras.length > 1 ? 's' : '') + '</span>'
+          : 'sin duras') + '</td>' +
+        '<td><div class="acts">' +
+          '<button class="ico" data-hist="' + esc(m.id) + '" title="Ver el historial de versiones">🕘</button>' +
+          (borrable(m)
+            ? '<button class="ico" data-borrar="' + esc(m.id) + '" title="Eliminar machote">×</button>'
+            : '<span class="ico candado" title="Enviado a Odoo: no se borra, sólo cambia de estado">🔒</span>') +
+        '</div></td></tr>';
+    };
+
+    const tarjeta = (m) => {
+      const rev = R.revisar(m), c = rev.calc;
+      const dm = esDemo(m);
       return '<div class="fila" data-mid="' + esc(m.id) + '">' +
-        '<a class="item" href="#/m/' + m.id + '">' +
+        '<a class="item" href="#/m/' + esc(m.id) + '">' +
         '<div class="grow"><strong>' + esc(m.nombre) + '</strong>' +
-        '<div class="tiny">' + esc(cli(m)) + (m.so ? ' · ' + esc(m.so) : '') + ' · ' + m.id + '</div></div>' +
-        '<div class="right"><span class="chip" style="background:' + edo(m).color + '">' + esc(edo(m).label) + '</span>' +
+          (dm ? ' <span class="pill">ejemplo</span>' : '') +
+          '<div class="tiny">' + esc(cli(m)) + (m.so ? ' · ' + esc(m.so) : '') + ' · ' +
+          esc(nombreDe(duenoDe(m))) + '</div></div>' +
+        '<div class="right"><span class="chip" style="background:' + edo(m).color + '">' +
+          esc(edo(m).label) + '</span>' +
         '<div class="tiny mono n-' + (c.costoIncompleto ? 'warn' : nivelMargen(c.margen)) + '">' +
-        mx(c.precio) + ' · ' + pc(c.margen) + (c.costoIncompleto ? '*' : '') + '</div>' +
-        '<div class="tiny">' + (rev.duras.length ? '⛔ ' + rev.duras.length + ' duras' : '✓ sin duras') + '</div></div></a>' +
-        '<button class="ico" data-hist="' + m.id + '" title="Ver el historial de versiones">🕘</button>' +
+          mx(c.precio) + ' · ' + pc(c.margen) + (c.costoIncompleto ? '*' : '') + '</div>' +
+        '<div class="tiny">' + (rev.duras.length
+          ? '⛔ ' + rev.duras.length + ' dura' + (rev.duras.length > 1 ? 's' : '')
+          : '✓ sin duras') +
+          '</div></div></a>' +
+        '<button class="ico" data-hist="' + esc(m.id) + '" title="Ver el historial de versiones">🕘</button>' +
         (borrable(m)
-          ? '<button class="ico peligro borrar" data-borrar="' + m.id + '" title="Eliminar machote">×</button>'
+          ? '<button class="ico peligro borrar" data-borrar="' + esc(m.id) + '" title="Eliminar machote">×</button>'
           : '<span class="ico candado" title="Enviado a Odoo: no se borra, sólo cambia de estado">🔒</span>') +
         '</div>';
-    }).join('');
+    };
+
+    // Un "no hay nada" tiene que decir POR QUÉ no hay nada: si la lista sale
+    // vacía por un filtro puesto hace un minuto y no lo dice, parece que se
+    // perdieron los machotes.
+    const porQue = [];
+    if (ST.busca) porQue.push('«' + esc(ST.busca) + '»');
+    if (f.persona) porQue.push(esc(nombreDe(f.persona)));
+    if (f.estado && D.ESTADOS[f.estado]) porQue.push(esc(D.ESTADOS[f.estado].label).toLowerCase());
+    if (f.moneda) porQue.push(esc(f.moneda));
+    const vacio = '<div class="vacio">' +
+      (porQue.length ? 'Ninguna cotización coincide con ' + porQue.join(' · ') + '.'
+                     : 'Todavía no hay cotizaciones. Empieza con «+ Nuevo».') + '</div>';
+
+    const tabla = visibles.length
+      ? '<div class="tw"><table class="lista"><thead><tr>' +
+          '<th style="width:38%">Cotización</th><th>Responsable</th><th>Estado</th>' +
+          '<th class="num">Precio</th><th class="num">Margen</th><th>Revisión</th><th style="width:72px"></th>' +
+        '</tr></thead><tbody>' + visibles.map(fila).join('') + '</tbody></table>' +
+        '<div class="cards">' + visibles.map(tarjeta).join('') + '</div></div>'
+      : '<div class="tw">' + vacio + '</div>';
 
     const ords = ST.ordenes.map(o =>
       '<a class="item" href="#/orden/' + o.id + '">' +
@@ -539,40 +687,37 @@
       '<div class="right"><div class="mono">' + mx(o.monto) + ' ' + esc(o.moneda) + '</div>' +
       '<div class="tiny">' + (ST.confirmadas[o.id] ? '✓ confirmada' : 'pendiente') + '</div></div></a>').join('');
 
-    // Un "no hay nada" tiene que decir POR QUÉ no hay nada: si la lista sale
-    // vacía por un filtro puesto hace un minuto y no lo dice, parece que se
-    // perdieron los machotes.
-    const vacio = ST.busca
-      ? '<div class="vacio">Ningún machote coincide con «' + esc(ST.busca) + '»' +
-        (ST.filtro !== 'todos' ? ' en ' + esc(est[ST.filtro].label).toLowerCase() : '') + '.</div>'
-      : '<div class="vacio">No hay machotes en ' + esc(est[ST.filtro] ? est[ST.filtro].label.toLowerCase() : 'este estado') + '.</div>';
+    const pieFiltro = (f.persona === yo && yo)
+      ? '<div class="tiny nota">Viendo sólo lo tuyo. Cambia el filtro de persona para ver el resto.</div>'
+      : '';
 
     $('#vista').innerHTML =
-      '<div class="pad"><div class="aviso">La retícula reproduce el machote real de FTS, verificada en cinco cotizaciones de 2026. ' +
-      'Los datos de las cotizaciones de abajo son demo.</div>' +
-      '<h3>Estación 2.0 · armar la cotización</h3>' +
-      buscador +
-      (visibles.length ? filas : vacio) +
-      '<h3 style="margin-top:22px">Estación 3.0 · confirmar la orden</h3>' + ords +
-      respaldoHTML() +
+      '<div class="pad">' + encabezado + filtros + tabla + pieFiltro +
+      '<h3 style="margin-top:26px">Confirmar la orden</h3>' + ords +
       '<div class="ver">versión <strong>' + VERSION + '</strong></div></div>';
 
     $('#bExportar').onclick = () => exportarRespaldo();
     $('#fImportar').onchange = (e) => {
-      const f = e.target.files && e.target.files[0];
+      const ff = e.target.files && e.target.files[0];
       // Se limpia el input para que elegir DOS VECES el mismo archivo vuelva
       // a disparar el evento; si no, el segundo intento no hace nada y parece
       // que la importación falló.
       e.target.value = '';
-      if (f) importarRespaldo(f);
+      if (ff) importarRespaldo(ff);
     };
 
-    // Se repinta sólo la lista al teclear, no la vista: repintar entera mata
-    // el foco del buscador a media palabra.
+    // Se repinta sólo al teclear, y se devuelve el foco al final del texto:
+    // repintar entera mata el foco del buscador a media palabra.
     const q = $('#q');
-    if (q) q.oninput = () => { ST.busca = q.value; vHome(); $('#q').focus();
-                               $('#q').setSelectionRange(ST.busca.length, ST.busca.length); };
-    $$('[data-filtro]').forEach(b => b.onclick = () => { ST.filtro = b.dataset.filtro; vHome(); });
+    if (q) q.oninput = () => { ST.busca = q.value; vHome(); const n = $('#q');
+                               n.focus(); n.setSelectionRange(ST.busca.length, ST.busca.length); };
+    const enlazarFiltro = (id, campo) => {
+      const el = $(id);
+      if (el) el.onchange = () => { ST.filtros[campo] = el.value; vHome(); };
+    };
+    enlazarFiltro('#fPersona', 'persona');
+    enlazarFiltro('#fEstado', 'estado');
+    enlazarFiltro('#fMoneda', 'moneda');
 
     /* La franja transitoria de sincronización. Se le pasan los machotes de la
      * pantalla y el toast; ella pregunta al servidor y se pinta sola. */
@@ -581,6 +726,20 @@
     /* El historial se abre desde la lista y NO desde adentro del machote: se
      * consulta para entender qué pasó con una cotización, casi siempre sin
      * querer editarla. */
+    /* En una tabla se espera que el RENGLÓN ENTERO abra, no sólo el nombre.
+     * Con tarjetas daba igual —la tarjeta era el enlace—; con columnas, dar
+     * en un pixel de texto es un blanco de 200 px de ancho en una fila de
+     * 1200. Los botones de acción paran la propagación, así que borrar sigue
+     * sin abrir nada por error. */
+    $$('tr.rw').forEach(tr => {
+      tr.style.cursor = 'pointer';
+      tr.onclick = (ev) => {
+        if (ev.target.closest('a,button,input,label')) return;
+        const id = tr.dataset.mid;
+        if (id) location.hash = '#/m/' + id;
+      };
+    });
+
     $$('[data-hist]').forEach(b => b.onclick = (ev) => {
       ev.preventDefault(); ev.stopPropagation();
       const m = mach(b.dataset.hist);
@@ -607,7 +766,7 @@
    * La orden es OPCIONAL a propósito: el machote casi siempre nace antes que
    * la orden. Lo que no se puede es ENVIARLO a Odoo sin ella (V1.07). */
   function vNuevo() {
-    top('Nuevo machote', 'Comercial · prototipo', 'DEMO', '#/');
+    top('Nuevo machote', 'Comercial', null, '#/');
     $('#fija').innerHTML = '';
     $('#vista').innerHTML =
       '<div class="pad"><div class="wg">' +
@@ -695,7 +854,7 @@
     // abierta de la anterior deja al analista en una sección que no pidió.
     if (ST.libroAbierto !== id) { ST.hoja = 'desglose'; ST.libroAbierto = id; }
     const c = C.calcular(m);
-    top(cli(m), m.id + (m.so ? ' · ' + m.so : ''), 'MACHOTE', '#/');
+    top(cli(m), m.id + (m.so ? ' · ' + m.so : ''), null, '#/');
 
     const hojas = [{ id: 'desglose', label: 'DESGLOSE COTIZACIÓN' }]
       .concat(m.secciones.map(s => ({ id: s.id, label: s.nombre || 'SECCIÓN' })));
@@ -1427,7 +1586,7 @@
   function vRevision(id) {
     const m = mach(id); if (!m) { location.hash = '#/'; return; }
     const rev = R.revisar(m), c = rev.calc;
-    top('Revisión', m.id + ' · ' + m.nombre, 'REVISOR', '#/m/' + id);
+    top('Revisión', m.id + ' · ' + m.nombre, null, '#/m/' + id);
     $('#fija').innerHTML = '<div class="fija"><div class="grow"><div class="tiny">' +
       (rev.puedeConfirmar ? '✓ Se puede mandar' : '⛔ ' + rev.duras.length + ' hallazgo(s) duro(s)') +
       '</div></div><a class="btn" href="#/m/' + id + '">Volver a la hoja</a></div>';
@@ -1475,7 +1634,7 @@
   function vOrden(id) {
     const o = orden(id); if (!o) { location.hash = '#/'; return; }
     const h = hoff(o.id);
-    top('Confirmar orden', o.so + ' · ' + o.cliente, 'ORDEN', '#/');
+    top('Confirmar orden', o.so + ' · ' + o.cliente, null, '#/');
     $('#vista').innerHTML = '<div class="pad"><h2>' + esc(o.nombre) + '</h2>' +
       '<div class="tiny">Confirmada el ' + esc(o.fecha_confirmacion) + ' · ' + mx(o.monto) + ' ' + esc(o.moneda) + '</div>' +
       (ST.confirmadas[o.id] ? '<div class="aviso ok">Handoff cerrado. Operaciones ya tiene lo que necesita.</div>' : '') +
@@ -1505,7 +1664,7 @@
   function vAprobar(id) {
     const m = mach(id); if (!m) { location.hash = '#/'; return; }
     const rev = R.revisar(m), c = rev.calc;
-    top('Aprobación', m.id, 'DIRECCIÓN', '#/m/' + id);
+    top('Aprobación', m.id, null, '#/m/' + id);
     $('#fija').innerHTML = '';
     $('#vista').innerHTML = '<div class="pad"><h2>' + esc(m.nombre) + '</h2>' +
       '<div class="kpi"><div><span class="tiny">Precio</span><strong class="mono">' + mx(c.precio) + '</strong></div>' +

@@ -105,11 +105,26 @@
     equipo_cliente: [{ nombre: 'Contacto cliente 1', pct: 1 }]
   }, extra);
 
+  /* ── LA DEMO NO SE SINCRONIZA (V1.21) ─────────────────────────────────
+   * Los cuatro machotes de abajo se subieron solos al servidor el 8-sep: el
+   * navegador arranca con ellos en memoria, alguien tocó «Subir ahora» y
+   * cuatro demostraciones acabaron en la base de producción con id `M-1041`
+   * a `M-1044`.
+   *
+   * `_demo: true` es la marca en ORIGEN. `almacen.js` la respeta en el único
+   * lugar por donde pasa todo lo que sube (`empujar`), y la franja la
+   * descuenta de sus cuentas. Marcarlo aquí y no en cada consumidor es lo
+   * que hace que un camino nuevo no pueda saltárselo por olvido.
+   *
+   * Se conserva al editar: si alguien abre una demo y captura encima, sigue
+   * siendo demo. Para que deje de serlo hay que crear un machote nuevo, que
+   * es exactamente lo correcto — así nadie convierte por accidente un
+   * ejemplo en la cotización de un cliente. */
   const MACHOTES = [
 
     // ── 1. Sano, con hueco de precio. Forma tomada de "Paso de Gato SO11782".
     base({
-      id: 'M-1041', nombre: 'Paso de gato antiderrapante en acero galvanizado',
+      _demo: true, id: 'M-1041', nombre: 'Paso de gato antiderrapante en acero galvanizado',
       cliente: 'Johnson Controls Enterprises', so: null, estado: 'borrador',
       analista: 'Analista de propuestas', fecha: '2026-08-28',
       margenes: { programador: 4.4, mano_obra: 2.5, materiales: 2.5, servicios: 1.8 },
@@ -144,7 +159,7 @@
 
     // ── 2. Margen por debajo del piso. Forma de "Adecuaciones toma sanitaria SO11772".
     base({
-      id: 'M-1042', nombre: 'Adecuaciones de toma sanitaria en codo',
+      _demo: true, id: 'M-1042', nombre: 'Adecuaciones de toma sanitaria en codo',
       cliente: 'Nalco de México · Topo Chico', so: 'SO11772', estado: 'revision',
       analista: 'Analista de propuestas', fecha: '2026-08-19',
       comision_fts: 0.055, comision_cliente: 0.05,
@@ -164,7 +179,7 @@
 
     // ── 3. Mezcla de monedas sin declarar tipo de cambio. Forma de un machote USD.
     base({
-      id: 'M-1043', nombre: 'Cooling system for maintenance offices',
+      _demo: true, id: 'M-1043', nombre: 'Cooling system for maintenance offices',
       cliente: 'Calbee America Incorporated', so: null, estado: 'borrador',
       analista: 'Analista de propuestas', fecha: '2026-08-30',
       empresa_id: 6,                    // FTS USA · USD
@@ -186,7 +201,7 @@
 
     // ── 4. Reparto de comisiones descuadrado: el defecto real de SO11782.
     base({
-      id: 'M-1044', nombre: 'Modificaciones en pulidores',
+      _demo: true, id: 'M-1044', nombre: 'Modificaciones en pulidores',
       cliente: 'Nalco de México · Topo Chico', so: 'SO11738', estado: 'revision',
       analista: 'Analista de propuestas', fecha: '2026-08-22',
       comision_fts: 0.06, comision_cliente: 0.05,
