@@ -209,7 +209,20 @@
   }
 
   /** Marca sucio y programa el guardado. Es lo que llama toda edicion. */
-  function tocado() {
+  /** Algo cambió: guarda pronto y pinta el pulso.
+   *
+   *  Recibe el machote que se tocó para poder QUITARLE la marca de ejemplo.
+   *  Un ejemplo que la aplicación trae de fábrica no se sincroniza —ésa es la
+   *  puerta que se cerró en V1.21— pero en cuanto una persona TECLEA encima,
+   *  eso ya es trabajo suyo y tiene que salvarse como cualquier otro. Dejarlo
+   *  marcado sería lo contrario de lo que se quería: su cotización se quedaría
+   *  en el navegador para siempre, sin subir y sin avisar, que es exactamente
+   *  el fallo silencioso del kiosko (CLAUDE.md hallazgo #15).
+   *
+   *  La garantía de D no se afloja: cubre los ejemplos TAL COMO VIENEN. Lo que
+   *  nadie tocó no sale de aquí; lo que alguien escribió, sí. */
+  function tocado(m) {
+    if (m && m._demo) delete m._demo;
     if (!A || !A.disponible()) { ST.pulso = 'sin-almacen'; pintarPulso(); return; }
     ST.pulso = 'sucio'; pintarPulso();
     if (_reloj) clearTimeout(_reloj);
@@ -872,7 +885,7 @@
         const base = Object.assign({}, C.MARGENES_PLANTILLA, m.margenes || {});
         const nueva = C.seccionNueva('SECCIÓN ' + (m.secciones.length + 1), m.moneda, base);
         m.secciones.push(nueva);
-        ST.hoja = nueva.id; tocado(); return vMachote(id);
+        ST.hoja = nueva.id; tocado(m); return vMachote(id);
       }
     };
     pintarHoja(m);
@@ -1411,7 +1424,7 @@
       if (cola > 10) sec.partidas.splice(sec.partidas.length - (cola - 10), cola - 10);
 
       cerrar();
-      tocado();
+      tocado(m);
       pintarHoja(m); barra(m, C.calcular(m));
       toast(nuevos.length + ' renglón(es) ' +
             (modo === 'arriba' ? 'arriba' : 'debajo') + ' del renglón ' + (desde + 1) + '.');
@@ -1486,11 +1499,11 @@
         }
         // La moneda sigue a la empresa mientras no se haya tocado a mano.
         if (antes !== null && m.moneda === antes) m.moneda = C.monedaPorDefecto(m);
-        tocado();
+        tocado(m);
         pintarHoja(m); barra(m, C.calcular(m));
       };
       if (!esSel) el.oninput = () => {
-        aplicar(); tocado();
+        aplicar(); tocado(m);
         barra(m, refrescarCalculados(m) || C.calcular(m));
       };
     });
@@ -1506,24 +1519,24 @@
         toast('No se puede enviar a Odoo sin una orden ligada.');
         return;
       }
-      m.estado = nuevo; tocado(); vMachote(m.id);
+      m.estado = nuevo; tocado(m); vMachote(m.id);
     };
     const vv = $('#verVacios');
     if (vv) vv.onchange = () => { ST.verVacios = vv.checked; pintarHoja(m); };
     $$('[data-esc]').forEach(b => b.onclick = () => {
-      m.escenario = b.dataset.esc; tocado(); pintarHoja(m); barra(m, C.calcular(m));
+      m.escenario = b.dataset.esc; tocado(m); pintarHoja(m); barra(m, C.calcular(m));
     });
     $$('[data-add]').forEach(b => b.onclick = () => {
       const s = m.secciones.find(x => x.id === b.dataset.add); if (!s) return;
       s.partidas.push({ qty: 1, unidad: 'Pieza', tipo: 'Materiales', descripcion: '', modelo: '', marca: '',
                         pu: null, moneda: m.moneda, margen: null, link: '', comentario: '' });
-      tocado(); pintarHoja(m); barra(m, C.calcular(m));
+      tocado(m); pintarHoja(m); barra(m, C.calcular(m));
     });
     const seccionDe = (ref) => {
       const [sid, j] = ref.split('#');
       return { s: m.secciones.find(x => x.id === sid), j: parseInt(j, 10) };
     };
-    const refrescar = () => { tocado(); pintarHoja(m); barra(m, C.calcular(m)); };
+    const refrescar = () => { tocado(m); pintarHoja(m); barra(m, C.calcular(m)); };
 
     $$('[data-del]').forEach(b => b.onclick = () => {
       const { s, j } = seccionDe(b.dataset.del); if (!s) return;
@@ -1547,7 +1560,7 @@
     $$('[data-delsec]').forEach(b => b.onclick = () => {
       const i = m.secciones.findIndex(x => x.id === b.dataset.delsec);
       if (i < 0 || m.secciones.length < 2) return;
-      m.secciones.splice(i, 1); ST.hoja = 'desglose'; tocado(); vMachote(m.id);
+      m.secciones.splice(i, 1); ST.hoja = 'desglose'; tocado(m); vMachote(m.id);
     });
     $$('[data-dupsec]').forEach(b => b.onclick = () => {
       const i = m.secciones.findIndex(x => x.id === b.dataset.dupsec); if (i < 0) return;
@@ -1555,7 +1568,7 @@
       copia.id = 's-' + Date.now();
       copia.nombre = (copia.nombre || 'SECCIÓN') + ' (copia)';
       m.secciones.splice(i + 1, 0, copia);
-      ST.hoja = copia.id; tocado(); vMachote(m.id);
+      ST.hoja = copia.id; tocado(m); vMachote(m.id);
     });
     $$('[data-movsec]').forEach(b => b.onclick = () => {
       const [sid, d] = b.dataset.movsec.split('|');
@@ -1565,7 +1578,7 @@
       // La ranura la da la POSICIÓN, no el nombre: mover una sección cambia a
       // qué renglón del RESUMEN va a caer.
       const t = m.secciones[i]; m.secciones[i] = m.secciones[k]; m.secciones[k] = t;
-      tocado(); vMachote(m.id);
+      tocado(m); vMachote(m.id);
     });
   }
 

@@ -2720,16 +2720,24 @@ let ok = 0, mal = 0;
     const q = await frPagina([FR_IGUAL, { id: 'M-SOLO-AQUI', nombre: 'Nunca subió' }], false);
     try {
       const urlAntes = q.url();
-      await q.click('#fjMarcar'); await q.waitForTimeout(200);
+      /* Desde V1.21 la marca YA ESTÁ al cargar: no hay que apretar nada.
+       * Antes había que pedirla, y eso es pedirle a alguien que pregunte por
+       * un problema que ya existe. El botón pasó a servir para QUITARLA. */
       const marcadas = await q.$$eval('.fila.solo-aqui', els => els.map(e => e.getAttribute('data-mid')));
-      if (q.url() !== urlAntes) throw new Error('cambió de vista');
       if (JSON.stringify(marcadas) !== JSON.stringify(['M-SOLO-AQUI']))
-        throw new Error('marcó: ' + JSON.stringify(marcadas));
+        throw new Error('no marcó sola al cargar, marcó: ' + JSON.stringify(marcadas));
       if (!/Quitar/.test(await q.textContent('#fjMarcar')))
         throw new Error('el botón no ofrece quitar la marca');
-      await q.click('#fjMarcar'); await q.waitForTimeout(150);
+
+      // Y se puede quitar, y volver a poner, sin salir de la lista.
+      await q.click('#fjMarcar'); await q.waitForTimeout(200);
       if ((await q.$$('.fila.solo-aqui')).length) throw new Error('no quitó la marca');
-      console.log('    marcó ' + JSON.stringify(marcadas) + ' y la quita al volver a apretar');
+      await q.click('#fjMarcar'); await q.waitForTimeout(200);
+      const otraVez = await q.$$eval('.fila.solo-aqui', els => els.map(e => e.getAttribute('data-mid')));
+      if (JSON.stringify(otraVez) !== JSON.stringify(['M-SOLO-AQUI']))
+        throw new Error('no volvió a marcar: ' + JSON.stringify(otraVez));
+      if (q.url() !== urlAntes) throw new Error('cambió de vista');
+      console.log('    marcó ' + JSON.stringify(marcadas) + ' sola, y se quita y se repone');
     } finally { await q.close(); }
   });
 
