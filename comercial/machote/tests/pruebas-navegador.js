@@ -1201,7 +1201,12 @@ let ok = 0, mal = 0;
     await ir('#/');
     const antes = await p.locator('.item[href^="#/m/"]').count();
     p.once('dialog', d => d.accept());
-    await p.locator('[data-borrar]').first().click();
+    /* `:visible` NO es un adorno. Desde V1.21 cada machote se pinta DOS veces
+     * —el renglón de la tabla y la tarjeta— y sólo una de las dos se ve según
+     * el ancho. A 380 px la primera coincidencia es el botón de la tabla, que
+     * está oculto, y `click()` se queda esperando a que aparezca hasta agotar
+     * el tiempo. Hay que apretar el que la persona ve. */
+    await p.locator('[data-borrar]:visible').first().click();
     await p.waitForTimeout(400);
     const desp = await p.locator('.item[href^="#/m/"]').count();
     if (desp !== antes - 1) throw new Error('no borró: ' + antes + ' → ' + desp);
