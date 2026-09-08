@@ -433,25 +433,6 @@
     return q.toLowerCase().split(/\s+/).filter(Boolean).every(w => t.indexOf(w) >= 0);
   }
 
-  /* El respaldo va al PIE de la pantalla de inicio, no arriba: no es lo que
-   * alguien viene a hacer, pero tiene que estar donde se encuentre sin
-   * preguntar. Y dice en una línea por qué existe, porque un botón de exportar
-   * sin explicación parece opcional. */
-  function respaldoHTML() {
-    const n = ST.machotes.length;
-    return '<h3 style="margin-top:22px">Respaldo</h3>' +
-      '<div class="wg respaldo">' +
-      '<div class="tiny nota">Lo capturado vive <strong>sólo en este navegador</strong>: no lo ve ' +
-      'nadie más y se pierde si se limpian los datos del sitio. <strong>Exporta y manda el ' +
-      'archivo</strong> hasta que el machote guarde en el servidor.</div>' +
-      '<div class="btnrow">' +
-      '<button class="btn primario" id="bExportar">Exportar todo (' + n + ')</button>' +
-      '<label class="btn archivo">Importar…<input type="file" id="fImportar" ' +
-      'accept="application/json,.json"></label>' +
-      '</div>' +
-      '<div class="tiny">Importar <strong>nunca pisa</strong>: si un machote ya existe, el del ' +
-      'archivo entra al lado marcado como copia.</div></div>';
-  }
 
   /** Baja el respaldo y lo dice. Vive aquí y no en `respaldo.js` porque
    *  necesita la sesión y el toast, que son de la pantalla. */
@@ -572,7 +553,13 @@
           : visibles.length + ' de ' + ST.machotes.length) + '</div>' +
         '<div class="acc">' +
           (esDireccion ? '<a class="btn fantasma" href="#/control">Control</a>' : '') +
-          '<button class="btn fantasma" id="bExportar" title="Baja un archivo con todo lo capturado">Exportar</button>' +
+          /* Dice «todo» y dice CUÁNTOS a propósito. Con filtros en pantalla —y el
+           * de persona puesto de arranque— «Exportar» a secas se lee como «exporta
+           * lo que estoy viendo», que es justo lo que NO hace. El número es la
+           * comprobación de un vistazo de que el respaldo lleva todo. */
+          '<button class="btn fantasma" id="bExportar" title="Baja un archivo con TODO lo '
+            + 'capturado, no sólo lo que muestran los filtros">Exportar todo ('
+            + ST.machotes.length + ')</button>' +
           '<label class="btn fantasma archivo" title="Nunca pisa lo que ya existe">Importar' +
             '<input type="file" id="fImportar" accept="application/json,.json"></label>' +
           '<a class="btn nuevo" href="#/nuevo">+ Nuevo</a>' +
