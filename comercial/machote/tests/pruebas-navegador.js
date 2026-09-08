@@ -2961,8 +2961,13 @@ let ok = 0, mal = 0;
       await q.click('#btnOrden'); await q.waitForTimeout(400);
       await q.click('#or-siguiente'); await q.waitForTimeout(400);
       const t = (await q.textContent('.corr')).replace(/\s+/g, ' ');
-      if (!/NO está vinculado/.test(t)) throw new Error('no dice el estado: ' + t.slice(0, 120));
+      /* Cambió la copia el 8-sep al elegirse el camino A: ya no es "no está
+       * vinculado" (que sonaba a ajuste pendiente del usuario) sino de dónde
+       * sale el correo y a quién le contesta el cliente. Lo que la prueba
+       * exige es lo mismo de antes: el estado, el buzón, y qué falta. */
+      if (!/no de la tuya|NO está vinculado/.test(t)) throw new Error('no dice el estado: ' + t.slice(0, 120));
       if (!/sales@fts\.mx/.test(t)) throw new Error('no dice cuál es el único buzón');
+      if (!/responder a/i.test(t)) throw new Error('no dice que el cliente le contesta al vendedor');
       if (!/Azure/.test(t)) throw new Error('no dice qué falta');
       // Y "Vincular" no puede fingir que vinculó.
       await q.click('#or-vincular'); await q.waitForTimeout(250);
@@ -3016,6 +3021,76 @@ let ok = 0, mal = 0;
       console.log('    sin costos internos · sellada como demostración');
       await hoja.close();
     } finally { await ctx.close(); }
+  });
+
+  /* ══ El PDF de Odoo (V1.20) ═══════════════════════════════════════════ */
+
+  await paso('el PDF de Odoo: el navegador NUNCA arma el enlace de portal', async () => {
+    /* El `access_token` de una orden es una LLAVE DE CAPACIDAD: quien lo tenga
+     * ve la orden completa sin entrar a Odoo. Si el enlace se armara aquí,
+     * la llave acabaría en el historial, en el portapapeles y en cualquier
+     * captura de pantalla. El servidor baja los bytes y devuelve los bytes.
+     *
+     * Es una prueba ESTÁTICA a propósito: el día que alguien "simplifique"
+     * llamando a Odoo desde el navegador, esto truena aunque la pantalla se
+     * vea igual — que es justo cuando no se nota. */
+    const src = fs.readFileSync(path.resolve(__dirname, '..', 'js', 'cotizacion.js'), 'utf8');
+    const cuerpo = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    for (const prohibido of ['access_token', 'serviciosfts.odoo.com', '/my/orders']) {
+      if (cuerpo.indexOf(prohibido) >= 0)
+        throw new Error('el módulo del navegador toca Odoo directo: ' + prohibido);
+    }
+    if (cuerpo.indexOf('/comercial/cotizacion') < 0)
+      throw new Error('no llama al webhook que debe');
+    console.log('    ni access_token ni el dominio de Odoo en el código del navegador');
+  });
+
+  await paso('el PDF de Odoo: sin haber subido el machote lo DICE, no truena', async () => {
+    /* El caso normal del primer día: la cotización vive sólo aquí, así que el
+     * servidor no sabe de qué le hablan. Tiene que explicarlo antes de gastar
+     * una llamada, y sin pintar un error rojo — no hay nada roto. */
+    const q = await cdPagina(['comercial:read']);
+    try {
+      await q.goto(BASE); await q.waitForTimeout(900);
+      const href = await q.$eval('.fila a.item', a => a.getAttribute('href'));
+      await q.goto(BASE + href); await q.waitForTimeout(900);
+      const antes = await q.evaluate(() => JSON.stringify(window.MachoteAlmacen.leerLocal()));
+
+      await q.click('#btnOrden'); await q.waitForTimeout(400);
+      await q.click('#or-siguiente'); await q.waitForTimeout(400);
+      if (!(await q.$('#or-pdf-odoo'))) throw new Error('no existe el botón de traer el PDF');
+      await q.click('#or-pdf-odoo'); await q.waitForTimeout(700);
+
+      const t = (await q.textContent('#or-pdf-estado')).replace(/\s+/g, ' ');
+      if (!/Falta subirlo|todavía no llega al servidor/i.test(t))
+        throw new Error('no explica por qué no puede: ' + t.slice(0, 140));
+      if (/Bajado de Odoo/i.test(t))
+        throw new Error('dijo que bajó un PDF que nunca pidió');
+
+      /* Y no puede haber guardado nada: traer un documento es una LECTURA. */
+      const despues = await q.evaluate(() => JSON.stringify(window.MachoteAlmacen.leerLocal()));
+      if (antes !== despues) throw new Error('se guardó algo al pedir el PDF');
+      console.log('    lo explica, no finge, y no escribió nada');
+    } finally { await q.close(); }
+  });
+
+  await paso('el PDF de Odoo: el botón cabe y se toca a 380 px', async () => {
+    const q = await cdPagina(['comercial:read']);
+    try {
+      await q.setViewportSize({ width: 380, height: 780 });
+      await q.goto(BASE); await q.waitForTimeout(900);
+      const href = await q.$eval('.fila a.item', a => a.getAttribute('href'));
+      await q.goto(BASE + href); await q.waitForTimeout(900);
+      await q.click('#btnOrden'); await q.waitForTimeout(400);
+      await q.click('#or-siguiente'); await q.waitForTimeout(400);
+      const c = await q.$eval('#or-pdf-odoo', el => {
+        const r = el.getBoundingClientRect();
+        return { alto: Math.round(r.height), der: Math.round(r.right) };
+      });
+      if (c.alto < 40) throw new Error('mide ' + c.alto + ' px de alto, menos de los 40 del módulo');
+      if (c.der > 380) throw new Error('se sale de la pantalla: llega a x=' + c.der);
+      console.log('    ' + c.alto + ' px de alto, dentro de la pantalla');
+    } finally { await q.close(); }
   });
 
   await paso('sin errores de consola propios del prototipo', async () => {

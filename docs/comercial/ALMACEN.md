@@ -326,21 +326,34 @@ y «déjame leer lo tuyo».
 La suma la hace Postgres con un `group by dueno`; el navegador no podría calcularla porque
 sólo conoce lo suyo.
 
-### El permiso que hoy no tiene nadie
+### El permiso, y dónde vive de verdad
 
-`comercial:admin` no está en ninguna fila de `suite_usuarios`. Fue a propósito: **primero
-la puerta, después la llave**. Mientras tanto la pantalla no es un callejón — dice qué
-falta y enseña, marcado como demostración, cómo se va a ver.
+`comercial:admin` nació sin dueño a propósito: **primero la puerta, después la llave**.
+Mientras tanto la pantalla no era un callejón — decía qué faltaba y enseñaba, marcado como
+demostración, cómo se iba a ver.
 
-Dárselo a Esteban es un campo:
+> ⚠️ **Corrección (8-sep-2026).** Aquí decía que el permiso se daba con
+> `UPDATE comercial.suite_usuario SET scopes = …`. **Esa tabla no existe** — no la crea
+> ninguna migración, y el SQL nunca se ejecutó. Los usuarios de la suite **no viven en
+> Postgres**: viven en una *Data Table* de n8n llamada `suite_usuarios`
+> (`YWCP0KoVmgxX2RzL`, proyecto `eWfPdSbGqqG91Eja`), que es de donde `auth/suite-login` las
+> lee. La columna `scopes` es **una cadena separada por comas**, no un arreglo de Postgres.
 
-```sql
-UPDATE comercial.suite_usuario
-   SET scopes = scopes || '{comercial:admin}'
- WHERE actor = '‹el usuario de Esteban›';
-```
+Dárselo sigue siendo un campo, pero se edita en la Data Table:
 
-No va en una migración porque es un **permiso**, no una estructura.
+| columna | antes | después |
+|---|---|---|
+| `scopes` de `esteban.delacruz` | `comercial:read` | `comercial:read,comercial:admin` |
+
+El MCP de n8n **no tiene herramienta para editar una fila** de una Data Table (sólo crear y
+leer), así que el cambio se hace desde la UI de n8n o con un workflow que use el nodo
+`Data Table` (`resource: row`, `operation: update`, que además trae `dryRun`).
+
+**Aplicado el 8-sep-2026, sólo a Esteban** (`updatedAt 2026-09-08T03:20:44Z`, leído de vuelta).
+Los otros siete usuarios siguen sin `comercial:admin`.
+
+No va en una migración porque es un **permiso**, no una estructura — y porque la estructura
+está en otro sistema.
 
 ### Verificado en vivo contra la base real (7-sep-2026)
 

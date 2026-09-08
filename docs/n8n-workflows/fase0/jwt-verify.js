@@ -84,6 +84,13 @@ function verifyJWT(token, secret, scopeRequerido) {
   if (scopeRequerido && scopes.indexOf(scopeRequerido) < 0) {
     return { ok:false, error:'SCOPE_INSUFICIENTE', requerido:scopeRequerido, tiene:scopes };
   }
-  return { ok:true, actor: payload.sub || payload.username || null, scopes: scopes, exp: payload.exp };
+  /* `nombre` y `empleado_id` vienen FIRMADOS dentro del token (auth/suite-login los
+   * mete en el payload). Se devuelven aquí para que ningún endpoint tenga que
+   * volver a leerlos de una tabla —ni, peor, aceptarlos del cuerpo de la petición,
+   * que es como alguien pondría el correo de otro como suyo. */
+  return { ok:true, actor: payload.sub || payload.username || null,
+    nombre: payload.nombre || null,
+    empleado_id: (typeof payload.empleado_id === 'number') ? payload.empleado_id : null,
+    scopes: scopes, exp: payload.exp };
 }
 module.exports = { sha256Bytes, hmacSha256, b64urlFromBytes, verifyJWT, strBytes };
