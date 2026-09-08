@@ -130,7 +130,7 @@ Cierran las preguntas abiertas de la auditoría (#130 §6) y son el alcance de l
 El taller de la suite es **Postgres** (servicio `fts-suite-db` en Railway), con esquema
 por dominio. Decisión, seis reglas de fundación, esquema y el único paso manual:
 [`docs/comercial/ALMACEN.md`](ALMACEN.md). Migraciones versionadas en
-`comercial/db/migrations/`.
+`db/migrations/comercial/`.
 
 ## 6. Referencias
 - Proceso v2 de 8 pasos y arquitectura previa: sesión 17-jul-2026 (PR #89, comercial.html, workflows comercial/watchdog-enviadas, comercial/captura, comercial/pipeline).

@@ -477,6 +477,12 @@ table.rejilla tr.capturada > td:first-child { box-shadow: inset 3px 0 0 var(--x-
 .pulso.p-guardando i { background: var(--ambar); animation: latir .7s ease-in-out infinite; }
 .pulso.p-sin-almacen i { background: var(--rojo); }
 .pulso.p-sin-almacen { color: var(--rojo); }
+/* 'pendiente' = está en este navegador pero todavía no en el servidor. Anillo
+   verde HUECO, no relleno: de un vistazo se distingue del verde sólido de
+   "ya está en el servidor" sin tener que leer el texto, que en teléfono ni
+   siquiera se muestra. Verde porque el trabajo NO está en riesgo —está
+   guardado— y hueco porque el viaje no terminó. */
+.pulso.p-pendiente i { background: transparent; box-shadow: inset 0 0 0 2px var(--verde); }
 @keyframes latir { 0%,100% { opacity: 1 } 50% { opacity: .25 } }
 @media (prefers-reduced-motion: reduce) { .pulso.p-guardando i { animation: none } }
 /* En teléfono el texto sobra: el punto de color ya dice lo que hay que saber,
@@ -689,4 +695,265 @@ th .hint { font-weight: 400; text-transform: none; opacity: .75; }
    * quedarían de 40 px y el aviso se leería a medias. */
   .nogda { flex-direction: column; align-items: stretch; }
   .nogda-b .btn { flex: 1; }
+}
+
+/* ── Historial de versiones (#140) ──────────────────────────────────────
+ * Mismo lenguaje que el prototipo validado en
+ * docs/comercial/prototipos/historial-versiones.html. */
+.modal .caja.hist { max-width: 940px; width: 100%; }
+.hist-cab { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.hist-cab h3 { margin: 0; }
+.hist-cab .btn { width: auto; padding: 0 14px; flex: 0 0 auto; }
+.hist-cols { display: grid; grid-template-columns: 320px 1fr; gap: 14px;
+             align-items: start; margin-top: 12px; }
+@media (max-width: 760px) { .hist-cols { grid-template-columns: 1fr } }
+.hist-cols .v { border: 1px solid var(--linea); border-radius: 9px; padding: 9px 11px;
+                margin-bottom: 7px; cursor: pointer; background: var(--fondo); }
+.hist-cols .v:hover { border-color: var(--acento); }
+.hist-cols .v:focus-visible { outline: 2px solid var(--acento); outline-offset: 1px; }
+.hist-cols .v.on { border-color: var(--acento); box-shadow: 0 0 0 2px rgba(31,78,121,.13); }
+.hist-cols .v .n { font-weight: 700; }
+.hist-cols .v .meta { font-size: 12px; color: var(--suave); }
+/* El motivo lleva barra al costado: es lo único que explica POR QUÉ cambió el
+   dinero, y tiene que saltar sin leer todo el renglón. */
+.hist-cols .v .motivo { font-size: 12.5px; margin-top: 5px; padding-left: 9px;
+                        border-left: 3px solid var(--ambar); }
+.hist-cols .chip { font-size: 10.5px; padding: 2px 8px; border-radius: 99px;
+                   background: var(--papel); border: 1px solid var(--linea); color: var(--suave); }
+.hist-cols .chip.ult { background: #e6f4ea; border-color: #b7dfc3; color: var(--verde); font-weight: 600; }
+.hist-cols table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.hist-cols th, .hist-cols td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--linea); }
+.hist-cols th { background: var(--papel); font-size: 11px; text-transform: uppercase;
+                letter-spacing: .03em; color: var(--suave); }
+.hist-cols td.num { text-align: right; font-variant-numeric: tabular-nums; }
+/* Lo que cambió respecto de la versión anterior. */
+.hist-cols td.dif { background: #fff3cd; }
+.hist-cols .lectura { background: #fffbf0; border-left: 3px solid var(--ambar);
+                      padding: 9px 11px; border-radius: 0 8px 8px 0; font-size: 13px;
+                      margin-bottom: 11px; }
+.hist-doc { background: var(--papel); border: 1px solid var(--linea); border-radius: 8px;
+            padding: 10px; overflow: auto; font-size: 11.5px; max-height: 240px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre; }
+
+/* ── Franja de sincronización (#140) · PIEZA TRANSITORIA ────────────────
+ * Se quita entera cuando termine el cambio a Postgres. El cómo está escrito
+ * en la cabecera de `js/franja-sync.js`; este bloque es el punto 2. */
+.franja { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+          border: 1px solid var(--linea); border-radius: 10px;
+          padding: 8px 12px; margin: 10px 0 4px; font-size: 13px;
+          background: var(--fondo); }
+.franja .f-punto { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto;
+                   background: var(--suave); }
+.franja .f-txt { flex: 1 1 auto; min-width: 0; }
+.franja .f-bs { display: flex; gap: 6px; flex: 0 0 auto; }
+.franja .btn.f-min { width: auto; padding: 0 12px; min-height: 32px; font-size: 12.5px; }
+/* Cuando todo está a salvo la franja se hace a un lado: sin color, texto
+   tenue, un solo botón discreto. No hay nada que atender. */
+.franja.f-ok { border-color: var(--linea); color: var(--suave); background: transparent; }
+.franja.f-ok .f-punto { background: var(--verde); }
+/* Cuando falta algo, se nota: fondo ámbar y borde del mismo tono. */
+.franja.f-pend { border-color: #e6c98a; background: #fffaf0; color: var(--tinta); }
+.franja.f-pend .f-punto { background: var(--ambar); }
+/* Y cuando NO se pudo preguntar al servidor, se dice — ni verde ni ámbar:
+   afirmar cualquiera de los dos sería inventar. */
+.franja.f-duda { border-color: #e3b7b4; background: #fff6f5; }
+.franja.f-duda .f-punto { background: var(--rojo); }
+.franja.f-cargando .f-punto { background: var(--suave); animation: latir .7s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .franja.f-cargando .f-punto { animation: none } }
+@media (max-width: 520px) { .franja { font-size: 12.5px } .franja .f-bs { width: 100%; } 
+                            .franja .btn.f-min { flex: 1 1 0 } }
+/* La marca "sólo en este navegador" se pinta DENTRO de la lista, sobre el
+   renglón que ya está en pantalla — no en otra vista que obligue a comparar
+   de memoria. */
+.fila.solo-aqui { outline: 2px solid var(--ambar); outline-offset: -1px;
+                  border-radius: 10px; background: #fffaf0; }
+.fila.solo-aqui::after { content: 'sólo en este navegador'; position: absolute;
+                         right: 8px; bottom: 2px; font-size: 10px; color: var(--ambar);
+                         font-weight: 600; letter-spacing: .02em; }
+.fila.solo-aqui { position: relative; }
+
+/* ═══ Vista de control (#140 · B) ═══
+ * OJO con los nombres: `.kpi` YA EXISTE en este módulo (línea ~80) y significa
+ * otra cosa —una fila de cajitas con borde propio—. Reusarlo aquí metía un
+ * borde alrededor del número, de la etiqueta y de la nota: tres cajas donde
+ * debía haber una. Por eso estos van con prefijo `ctrl-`. Se vio en la
+ * captura; leyendo el CSS nuevo no se puede ver, porque el choque está en
+ * otro archivo del mismo archivo.
+ * Un tablero se lee de un vistazo o no sirve: tres números grandes arriba y
+ * una tabla corta abajo. Nada de gráficas — con seis personas, una gráfica
+ * ocupa el triple y dice lo mismo. */
+.ctrl-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 12px 0 18px; }
+.ctrl-kpi { border: 1px solid var(--linea); border-radius: 12px; padding: 12px 14px;
+       background: #fff; min-width: 0; }
+.ctrl-kpi-n { font-size: 30px; font-weight: 700; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.ctrl-kpi-e { font-size: 12.5px; color: var(--tinta); margin-top: 2px; }
+.ctrl-kpi-x { color: var(--suave); margin-top: 4px; }
+
+/* La tabla se desplaza DENTRO de su caja. Que la página entera se mueva de
+ * lado por una tabla es justo lo que reportó Montalvo en V1.14. */
+.tabla-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch;
+              border: 1px solid var(--linea); border-radius: 12px; background: #fff; }
+.ctrl-t { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ctrl-t th, .ctrl-t td { padding: 9px 12px; text-align: left; vertical-align: top;
+                         border-bottom: 1px solid var(--linea); }
+.ctrl-t thead th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em;
+                   color: var(--suave); font-weight: 600; background: var(--fondo2, #fafafa); }
+.ctrl-t tbody tr:last-child td { border-bottom: 0; }
+.ctrl-t .num { text-align: right; font-variant-numeric: tabular-nums; }
+/* "Frío" = más de una semana sin subir nada. Es un dato, no una acusación:
+ * gris apagado, no rojo. */
+.ctrl-t td.frio { color: var(--suave); }
+.chip.demo { background: var(--suave); color: #fff; font-size: 11px; padding: 2px 8px;
+             border-radius: 999px; vertical-align: middle; margin-left: 6px; }
+/* En teléfono la tabla deja de ser tabla: cuatro columnas en 380 px parten el
+ * encabezado en cuatro renglones y cortan las fechas. Cada fila pasa a ser una
+ * tarjeta y cada celda dice de qué columna era, con el `data-th`. Es lo que ya
+ * hace la lista de machotes desde V1.01 — misma pantalla, misma solución. */
+@media (max-width: 640px) {
+  .ctrl-t thead { position: absolute; width: 1px; height: 1px; overflow: hidden;
+                  clip: rect(0 0 0 0); white-space: nowrap; }
+  .ctrl-t, .ctrl-t tbody, .ctrl-t tr, .ctrl-t td { display: block; width: auto; }
+  .ctrl-t tr { padding: 10px 12px; border-bottom: 1px solid var(--linea); }
+  .ctrl-t tr:last-child { border-bottom: 0; }
+  .ctrl-t td { border: 0; padding: 2px 0; display: flex; justify-content: space-between;
+               align-items: baseline; gap: 12px; text-align: right; }
+  .ctrl-t td::before { content: attr(data-th); color: var(--suave); font-size: 11.5px;
+                       text-transform: uppercase; letter-spacing: .04em; text-align: left;
+                       flex: 0 0 auto; }
+  /* La persona es el título de la tarjeta, no un par etiqueta-valor. */
+  .ctrl-t td[data-th="Persona"] { display: block; text-align: left; margin-bottom: 4px; }
+  .ctrl-t td[data-th="Persona"]::before { content: none; }
+  .ctrl-t td .tiny { text-align: right; }
+  .ctrl-t td[data-th="Persona"] .tiny { text-align: left; }
+  .tabla-wrap { overflow-x: visible; }
+}
+
+@media (max-width: 520px) {
+  .ctrl-kpis { grid-template-columns: 1fr; gap: 8px; }
+  .ctrl-kpi { display: flex; align-items: baseline; gap: 10px; padding: 10px 12px; }
+  .ctrl-kpi-n { font-size: 24px; }
+  .ctrl-kpi-e { margin-top: 0; }
+  .ctrl-kpi-x { display: none; }        /* en teléfono estorba más de lo que aclara */
+}
+
+/* ═══ Cascarón: pasar a orden y mandar al cliente (#140 · C y D) ═══
+ * Marcado como demostración en la propia cabecera de cada pantalla, no sólo
+ * aquí: quien lo abre tiene que saber a la primera que nada de esto llega a
+ * Odoo. */
+.modal .caja.orden { max-width: 960px; width: 100%; }
+.or-cab { display: flex; align-items: flex-start; justify-content: space-between;
+          gap: 12px; margin-bottom: 10px; }
+.or-cab h3 { margin: 0; }
+.or-cab .btn { width: auto; padding: 0 14px; flex: 0 0 auto; }
+.or-h { margin: 18px 0 4px; font-size: 14px; }
+.or-h5 { margin: 14px 0 4px; font-size: 12.5px; color: var(--suave);
+         text-transform: uppercase; letter-spacing: .04em; }
+
+/* Los cuatro datos que vienen del machote: se leen, no se editan. Que sean
+ * de sólo lectura es el punto — si aquí se pudiera cambiar la empresa, la
+ * orden dejaría de corresponder a la cotización. */
+.or-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0; }
+.or-dato { border: 1px solid var(--linea); border-radius: 10px; padding: 8px 10px;
+           background: #fff; min-width: 0; }
+.or-dato > span { display: block; font-size: 11px; text-transform: uppercase;
+                  letter-spacing: .04em; color: var(--suave); }
+.or-dato > strong { display: block; font-size: 14px; margin: 1px 0; overflow-wrap: anywhere; }
+.or-dato > em { display: block; color: var(--suave); font-style: normal; }
+.or-dato .falta { color: var(--rojo); }
+
+.or-t { width: 100%; border-collapse: collapse; font-size: 13px; }
+.or-t th, .or-t td { padding: 7px 10px; border-bottom: 1px solid var(--linea); text-align: left; }
+.or-t thead th { font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+                 color: var(--suave); background: var(--fondo2, #fafafa); }
+.or-t .num { text-align: right; font-variant-numeric: tabular-nums; }
+.or-t .ln { color: var(--suave); width: 28px; }
+.or-t tfoot td { font-weight: 700; border-bottom: 0; border-top: 2px solid var(--tinta); }
+.or-t .cel { width: 100%; min-height: 34px; font-size: 14px; padding: 0 8px;
+             border: 1px solid var(--linea); border-radius: 6px; background: #fff; }
+.or-t .cel.n { text-align: right; max-width: 90px; }
+.or-t.chico td, .or-t.chico th { padding: 5px 8px; font-size: 12px; }
+
+.or-campos { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+.or-campos .campo { margin-bottom: 10px; }
+.or-campos .campo .nota { display: block; margin-top: 2px; }
+.or-campos textarea { min-height: 54px; }
+
+.or-pie { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;
+          flex-wrap: wrap; }
+.or-pie .btn { width: auto; padding: 0 16px; }
+.contrato { margin-top: 14px; border-top: 1px solid var(--linea); padding-top: 12px; }
+
+/* El estado del correo del vendedor. Ámbar y no rojo a propósito: no está
+ * roto, está pendiente de una decisión. */
+.corr { border: 1px solid var(--linea); border-radius: 12px; padding: 12px 14px;
+        margin: 12px 0; background: #fff; }
+.corr.pend { border-color: #e6c98a; background: #fffaf0; }
+.corr.ok { border-color: #a7d3ae; background: #f4fbf5; }
+.corr-t { margin-bottom: 4px; }
+.corr-bs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.corr .btn.f-min { width: auto; padding: 0 12px; min-height: 32px; font-size: 12.5px; }
+.caminos { margin-top: 10px; display: grid; gap: 8px; }
+.cam { border: 1px solid var(--linea); border-radius: 10px; padding: 8px 10px; background: #fff; }
+.cam strong { font-size: 13px; }
+.cam p { margin: 2px 0 0; }
+
+.or-pasos { display: grid; gap: 10px; margin-top: 6px; }
+.paso { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--linea);
+        border-radius: 12px; padding: 10px 12px; background: #fff; }
+.paso .np { flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%;
+            background: var(--tinta); color: #fff; font-size: 12px; font-weight: 700;
+            display: grid; place-items: center; margin-top: 1px; }
+.paso p { margin: 2px 0 8px; }
+.paso .btn { width: auto; padding: 0 14px; }
+
+.envio { margin-top: 8px; border-radius: 10px; padding: 8px 10px; font-size: 12.5px; }
+.envio.esperando { border: 1px solid var(--linea); background: var(--fondo2, #fafafa);
+                   color: var(--suave); }
+/* "Parado" no es un error: es el resultado correcto de un camino que todavía
+ * no existe. Ámbar, no rojo. */
+.envio.parado { border: 1px solid #e6c98a; background: #fffaf0; }
+.envio.parado p { margin: 4px 0 0; }
+
+@media (max-width: 720px) {
+  .or-grid { grid-template-columns: 1fr 1fr; }
+  .or-campos { grid-template-columns: 1fr; }
+}
+@media (max-width: 520px) {
+  .or-grid { grid-template-columns: 1fr; }
+  .or-cab { flex-wrap: wrap; }
+  .or-pie { flex-direction: column-reverse; }
+  .or-pie .btn { width: 100%; }
+}
+
+/* Los estorbos del cascarón. Los de captura se abren solos porque son los que
+ * el analista puede quitar hoy; los del sistema van debajo, porque saberlos es
+ * útil y perseguirlos no le toca a quien cotiza. */
+.estorbos { border: 1px solid #e6c98a; background: #fffaf0; border-radius: 12px;
+            padding: 8px 12px; margin: 10px 0; font-size: 13px; }
+.estorbos > summary { cursor: pointer; font-weight: 600; padding: 2px 0; }
+.estorbos > summary::marker { color: var(--ambar); }
+.est { margin-top: 6px; }
+.est > strong { font-size: 12px; text-transform: uppercase; letter-spacing: .04em;
+                color: var(--suave); }
+.est ul { margin: 4px 0 0; padding-left: 18px; }
+.est li { margin-bottom: 3px; }
+.est.sistema { opacity: .82; }
+.est.sistema li { color: var(--tinta); }
+.ctrl-pie { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+            flex-wrap: wrap; margin-top: 10px; }
+.ctrl-pie .btn.f-min { width: auto; padding: 0 12px; min-height: 30px; font-size: 12.5px; }
+
+/* ── El botón chico deja de ser chico en el teléfono ─────────────────────
+ * `.f-min` existe para que la franja y el tablero no griten en escritorio:
+ * 32 px con el ratón es discreto y se aprieta bien. Con el pulgar no. La
+ * regla del módulo es 40 px (`--toque`) para todo lo que se toca, y estos
+ * tres botones se la estaban saltando: la prueba
+ * `todo lo que se toca mide al menos 40 px de alto` los cazó a 380 px.
+ *
+ * Va al final del archivo A PROPÓSITO, después de las tres reglas que pone
+ * en su sitio, para no depender de qué media query venga antes. */
+@media (max-width: 640px) {
+  .franja .btn.f-min,
+  .corr .btn.f-min,
+  .ctrl-pie .btn.f-min { min-height: var(--toque); }
 }

@@ -865,6 +865,54 @@ teclea de memoria ni se reconstruye "de cómo se veía".
 "parece" un hash— y deja una referencia muerta en el reporte. Es el mismo modo de falla
 de §3 anti-fantasma, en la superficie más fácil de pasar por alto.)*
 
+### 10. El archivo puede estar bien y el camino mal
+Probar un artefacto **en el disco** no prueba que sobreviva el viaje. Todo lo que viaje
+por una **expresión de n8n** (`={{ $json.x }}`) pasa por una sustitución tipo
+`String.replace`, y ahí **`$$` se colapsa a un solo `$`** — igual que `$1`…`$99`, `$&`,
+`` $` `` y `$'`, que son patrones de reemplazo de JavaScript.
+*(Origen: 7-sep-2026, issue #140. La migración `001_fundacion.sql` traía `DO $$` y Postgres
+recibió `DO $`: `Syntax error at line 28 near "$"`. Las 10 pruebas locales con `psql` no lo
+podían ver, porque `psql` lee del disco y nunca pasa por n8n. El `.sql` era correcto y el
+**camino** no.)*
+**Regla operativa:** en un `.sql` que viaje así, etiquetas de dólar **con nombre**
+(`$rol$`, `$motivo$`). Y para datos de usuario —el texto de un machote puede traer `$$`—
+**parámetros de consulta (`$1`, `$2`), nunca SQL concatenado**: aparte de inyección, es lo
+único que garantiza que el contenido llegue intacto. Detalle en `db/README.md` regla 4.
+
+### 11. Un `[]` de un endpoint nuevo no prueba que la consulta sirva
+Una lista vacía se ve idéntica cuando la consulta funciona y no hay filas, y cuando la
+consulta está mal. Es la misma trampa que `insertadas: 0` (§9): **para dar por buena una
+lectura hay que probarla con al menos una fila que deba salir.**
+*(7-sep-2026: `comercial/machotes-leer` devolvió `machotes: []` en la primera prueba y se
+veía correcto; sólo al guardar un machote y volver a preguntar quedó probado que la
+consulta y el mapeo servían.)*
+
+### 12. Una pantalla se revisa MIRÁNDOLA, no leyendo su código
+Dos bugs de la misma sesión (7-sep-2026, #140), los dos **invisibles al releer el
+diff** y los dos evidentes en la primera captura:
+
+- **Un `const` usado antes de su línea no vale `undefined`: TIRA la función entera.**
+  Se agregó un enlace al principio de `vHome()` y su `const` quedó declarado más
+  abajo. Resultado: `ReferenceError` y **la lista de machotes en blanco** — y sólo
+  para quien tuviera el permiso nuevo, o sea exactamente para la única persona que
+  iba a tenerlo. El código «se lee bien»: las dos líneas son correctas por separado.
+- **Un nombre de clase CSS que ya existe en el módulo significa otra cosa.** `.kpi`
+  ya estaba definido (una fila de cajitas con borde propio); reusarlo para el tablero
+  nuevo metió un borde alrededor del número, de la etiqueta y de la nota — tres cajas
+  donde debía haber una. El CSS nuevo es correcto; el choque está en otra parte del
+  mismo archivo.
+
+**Regla operativa:** toda pantalla nueva o modificada se abre en el navegador y se
+**mira la captura** a los dos anchos antes de dar por hecho que quedó, aunque el
+cambio sea de tres líneas. Y como red, un `pageerror` en la consola durante las
+pruebas es un fallo, no ruido: los dos bugs de arriba lo emitían.
+
+Es el mismo principio que «verificado = ejecutado y observado» (§8) y que «el `200`
+no prueba la escritura», aplicado a la superficie donde más fácil se cuela: **el
+render**. Complementa §20 #10 — allá el archivo estaba bien y el camino mal; aquí el
+código está bien línea por línea y el resultado mal.
+
+
 ---
 
 ### Correcciones a reglas anteriores (verificadas 2026-08-31)
