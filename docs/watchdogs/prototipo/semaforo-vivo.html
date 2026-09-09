@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototipo · Semáforo en vivo (datos DEMO)</title>
+<style>
+:root{
+  --azul:#0078D4; --azul-osc:#005a9e;
+  --rojo:#c62828; --amarillo:#b35900; --verde:#2e7d32; --morado:#8e24aa; --teal:#00695c;
+  --tinta:#1f2328; --tinta2:#57606a; --linea:#d8dee4; --fondo:#f6f8fa; --papel:#fff;
+}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+     color:var(--tinta);background:var(--fondo)}
+a{color:var(--azul)}
+
+/* ── aviso de demo: tiene que ser imposible de confundir con producción ── */
+#demoBar{background:#4a148c;color:#fff;padding:7px 14px;font-size:12.5px;
+         display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#demoBar b{background:#fff;color:#4a148c;padding:1px 7px;border-radius:3px;font-size:11px;letter-spacing:.4px}
+
+header{background:var(--papel);border-bottom:1px solid var(--linea);padding:12px 14px}
+.hrow{display:flex;gap:14px;align-items:baseline;flex-wrap:wrap}
+h1{font-size:17px;margin:0;font-weight:650}
+.sub{font-size:12px;color:var(--tinta2)}
+
+/* ── vistas ── */
+nav.vistas{display:flex;gap:2px;margin-top:11px;border-bottom:2px solid var(--linea)}
+nav.vistas button{background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-2px;
+  padding:8px 15px;font:inherit;font-weight:600;color:var(--tinta2);cursor:pointer;border-radius:4px 4px 0 0}
+nav.vistas button:hover{background:var(--fondo)}
+nav.vistas button[aria-selected="true"]{color:var(--azul);border-bottom-color:var(--azul)}
+nav.vistas .cnt{font-weight:400;color:var(--tinta2);font-size:12px}
+
+/* ── KPI ── */
+.kpis{display:flex;gap:9px;flex-wrap:wrap;margin:13px 14px 0}
+.k{background:var(--papel);border:1px solid var(--linea);border-radius:7px;padding:9px 13px;min-width:96px}
+.k .n{font-size:21px;font-weight:680;line-height:1.1}
+.k .l{font-size:11px;color:var(--tinta2);text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
+.k.r .n{color:var(--rojo)} .k.a .n{color:var(--amarillo)} .k.v .n{color:var(--verde)}
+.k.clic{cursor:pointer} .k.clic:hover{border-color:var(--azul)}
+.k[aria-pressed="true"]{border-color:var(--azul);box-shadow:inset 0 0 0 1px var(--azul)}
+
+/* ── filtros ── */
+.filtros{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:13px 14px}
+.filtros input[type=search],.filtros select{font:inherit;padding:6px 9px;border:1px solid var(--linea);
+  border-radius:6px;background:var(--papel);color:var(--tinta)}
+.filtros input[type=search]{min-width:210px}
+.chk{display:inline-flex;gap:6px;align-items:center;font-size:12.5px;color:var(--tinta2);
+     background:var(--papel);border:1px solid var(--linea);border-radius:6px;padding:6px 9px;cursor:pointer}
+.limpiar{background:none;border:0;color:var(--azul);font:inherit;cursor:pointer;padding:6px}
+
+/* ── layout lista + detalle ── */
+.panes{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:13px;padding:0 14px 26px;align-items:start}
+@media(max-width:1000px){.panes{grid-template-columns:1fr}}
+.caja{background:var(--papel);border:1px solid var(--linea);border-radius:8px;overflow:hidden}
+
+/* ── tabla ── */
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--tinta2);
+   padding:8px 10px;border-bottom:1px solid var(--linea);background:var(--fondo);
+   position:sticky;top:0;white-space:nowrap;cursor:pointer;user-select:none}
+th:hover{color:var(--azul)}
+th .ord{color:var(--azul)}
+td{padding:8px 10px;border-bottom:1px solid #eef1f4;vertical-align:top}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:#f2f7fd}
+tbody tr[aria-selected="true"]{background:#e3f0fc;box-shadow:inset 3px 0 0 var(--azul)}
+.pt{font-weight:600}
+.pc{color:var(--tinta2);font-size:12px}
+.dias{font-variant-numeric:tabular-nums;font-weight:650;text-align:right;white-space:nowrap}
+.punto{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:baseline}
+.p-rojo{background:var(--rojo)} .p-amarillo{background:var(--amarillo)} .p-verde{background:var(--verde)}
+.tag{display:inline-block;font-size:10.5px;padding:1px 6px;border-radius:9px;border:1px solid;margin-right:4px;white-space:nowrap}
+.t-flag{color:var(--morado);border-color:var(--morado);background:#f9f2fc}
+.t-rep{color:var(--morado);border-color:var(--morado);background:#f9f2fc}
+.t-mat{color:var(--teal);border-color:var(--teal);background:#effaf8}
+.vacio{padding:26px 14px;text-align:center;color:var(--tinta2)}
+
+/* ── detalle ── */
+.det{padding:14px}
+.det .cerrar{float:right;background:none;border:0;font-size:19px;color:var(--tinta2);cursor:pointer;line-height:1}
+.det h2{font-size:15px;margin:0 0 3px;padding-right:22px}
+.det .meta{color:var(--tinta2);font-size:12.5px;margin-bottom:12px}
+.det dl{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;margin:0;font-size:13px}
+.det dt{color:var(--tinta2)}
+.det dd{margin:0;font-weight:550}
+.det h3{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--tinta2);
+        margin:16px 0 6px;padding-top:12px;border-top:1px solid var(--linea)}
+.det ul{margin:0;padding-left:17px;font-size:13px}
+.det li{margin-bottom:5px}
+.acc{background:#fff8e6;border:1px solid #f0d795;border-radius:6px;padding:9px 11px;font-size:12.5px;margin-top:13px}
+.acc.ok{background:#eefaf0;border-color:#a8ddb5}
+.det .nada{color:var(--tinta2);font-style:italic;font-size:12.5px}
+.hint{padding:26px 14px;color:var(--tinta2);text-align:center;font-size:13px}
+
+/* ── avisos ── */
+.nota{margin:0 14px 13px;padding:9px 12px;border-radius:7px;font-size:12.5px;
+      background:#eef6fd;border:1px solid #b9daf5;color:#0b4a7a}
+.nota.warn{background:#fff8e6;border-color:#f0d795;color:#6b4a00}
+footer{padding:16px 14px 30px;color:var(--tinta2);font-size:11.5px;border-top:1px solid var(--linea);
+       margin-top:6px;background:var(--papel)}
+code{background:var(--fondo);padding:1px 4px;border-radius:3px;font-size:12px}
+</style>
+</head>
+<body>
+
+<div id="demoBar">
+  <b>DEMO</b>
+  <span>Prototipo sin backend. Los nombres de proyecto, cliente y SO son <strong>inventados</strong>:
+  la estructura y la forma de los números vienen del snapshot real del 8-sep-2026, todo lo
+  identificable está sustituido. <strong>No es el estado de la operación.</strong></span>
+</div>
+
+<header>
+  <div class="hrow">
+    <h1>Semáforo en vivo</h1>
+    <span class="sub" id="hdrFecha"></span>
+  </div>
+  <nav class="vistas" role="tablist" id="tabs"></nav>
+</header>
+
+<div class="kpis" id="kpis"></div>
+<div class="nota" id="notaVista"></div>
+
+<div class="filtros">
+  <input type="search" id="q" placeholder="Buscar proyecto, SO o cliente…" aria-label="Buscar">
+  <select id="fStage" aria-label="Filtrar por etapa"><option value="">Todas las etapas</option></select>
+  <label class="chk"><input type="checkbox" id="fFlag"> Solo con banderas</label>
+  <label class="chk"><input type="checkbox" id="fRep"> Solo nota repetida</label>
+  <button class="limpiar" id="limpiar">Limpiar filtros</button>
+</div>
+
+<div class="panes">
+  <div class="caja">
+    <div class="tw">
+      <table>
+        <thead><tr id="thr"></tr></thead>
+        <tbody id="tb"></tbody>
+      </table>
+    </div>
+    <div class="vacio" id="vacio" hidden>Ningún proyecto cumple los filtros.</div>
+  </div>
+  <div class="caja" id="detCaja">
+    <div class="hint" id="hint">Elige un proyecto de la lista para ver su detalle.</div>
+    <div class="det" id="det" hidden></div>
+  </div>
+</div>
+
+<footer>
+  Prototipo del submódulo <strong>Watchdog</strong>. El correo diario NO se retira: esta pantalla es
+  adicional y lee <em>la misma medición</em>. Diseño de la fuente de datos y del gate de acceso en
+  <code>docs/watchdogs/VIVO-AUDITORIA.md</code>. Auditoría original: issue #220.
+</footer>
+
+<script>
+/* ══ DATOS DEMO ══════════════════════════════════════════════════════════════
+   Estructura y forma de los números tomadas del snapshot real 2026-09-08.
+   Nombres de proyecto, cliente, SO e ids: SUSTITUIDOS. Ver el generador en la
+   sesión que creó este archivo; nada de cliente real vive aquí.            */
+const DATA = {"_demo":true,"_nota":"DATOS DE DEMOSTRACION. Estructura y forma de los numeros tomadas del snapshot real 2026-09-08; nombres de proyecto, cliente, SO e ids SUSTITUIDOS. Ningun dato de cliente real aparece aqui. Se retiraron las banderas ap_sin_confirmacion: S1 (issue #223) apago esa regla, y un prototipo que sirve para decidir no debe mostrar una regla retirada.","fecha":"2026-09-08","total":35,"por_color":{"verde":11,"rojo":24},"_diag":[{"nodo":"Odoo - getAll msg94","problema":"devolvio 0 filas utilizables (llave \"res_id\" ausente)","items_crudos":1,"critico":true}],"proyectos":[{"id":900,"so":"SO9100","name":"SO9100 - Instalacion electrica","cliente":"Cliente A","stage_id":2,"stage":"In Progress","grupo":"Operaciones","es_materiales":false,"dias_en_stage":5,"color_a":"verde","color_a_rep":"verde","tramo_a":"1-5","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[]},{"id":901,"so":"SO9107","name":"SO9107 - Suministro de materiales","cliente":"Cliente B","stage_id":13,"stage":"En plazo de credito","grupo":"Admin","es_materiales":false,"dias_en_stage":29,"color_a":"verde","color_a_rep":"verde","tramo_a":"16-30","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[]},{"id":902,"so":"SO9114","name":"SO9114 - Adecuacion de linea","cliente":"Cliente B","stage_id":3,"stage":"Done Operations","grupo":"Admin","es_materiales":false,"dias_en_stage":7,"color_a":"rojo","color_a_rep":"rojo","tramo_a":"6-15","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[]},{"id":903,"so":"SO9121","name":"SO9121 - Montaje mecanico","cliente":"Cliente C","stage_id":1,"stage":"To Do","grupo":"Operaciones","es_materiales":false,"dias_en_stage":2,"color_a":"rojo","color_a_rep":"rojo","tramo_a":"1-5","racha_nota":0,"sin_avance":false,"sin_nota_valida":true,"project_date":null,"banderas":[]},{"id":904,"so":"SO9128","name":"SO9128 - Servicio de mantenimiento","cliente":"Cliente A","stage_id":2,"stage":"In Progress","grupo":"Operaciones","es_materiales":false,"dias_en_stage":53,"color_a":"verde","color_a_rep":"verde","tramo_a":">30","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[{"tipo":"stage_atras","detalle":"Stage regresado Hold -> En proceso por Usuario Interno"},{"tipo":"fecha_fin","detalle":"Fecha fin movida por Usuario Interno"}]},{"id":905,"so":"SO9135","name":"SO9135 - Ingenieria de detalle","cliente":"Cliente D","stage_id":13,"stage":"En plazo de credito","grupo":"Admin","es_materiales":false,"dias_en_stage":16,"color_a":"verde","color_a_rep":"verde","tramo_a":"16-30","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[]},{"id":906,"so":"SO9142","name":"SO9142 - Cortinas de seguridad","cliente":"Cliente B","stage_id":3,"stage":"Done Operations","grupo":"Admin","es_materiales":false,"dias_en_stage":7,"color_a":"rojo","color_a_rep":"rojo","tramo_a":"6-15","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[]},{"id":907,"so":"SO9149","name":"SO9149 - Distribucion electrica","cliente":"Cliente C","stage_id":3,"stage":"Done Operations","grupo":"Admin","es_materiales":false,"dias_en_stage":7,"color_a":"rojo","color_a_rep":"rojo","tramo_a":"6-15","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[]},{"id":908,"so":"SO9156","name":"SO9156 - Suministro de tablero","cliente":"Cliente E","stage_id":2,"stage":"In Progress","grupo":"Operaciones","es_materiales":false,"dias_en_stage":7,"color_a":"verde","color_a_rep":"verde","tramo_a":"6-15","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[]},{"id":909,"so":"SO9163","name":"SO9163 - Integracion de sistema","cliente":"Cliente F","stage_id":5,"stage":"Hold","grupo":"Operaciones","es_materiales":false,"dias_en_stage":266,"color_a":"rojo","color_a_rep":"rojo","tramo_a":">30","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[{"tipo":"hold_sin_fecha_vigente","detalle":"En Hold con fecha de reactivacion VENCIDA (2026-07-30)"}]},{"id":910,"so":"SO9170","name":"SO9170 - Fabricacion de soporte","cliente":"Cliente G","stage_id":13,"stage":"En plazo de credito","grupo":"Admin","es_materiales":false,"dias_en_stage":203,"color_a":"rojo","color_a_rep":"rojo","tramo_a":">30","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[]},{"id":911,"so":"SO9177","name":"SO9177 - Rigging de equipo","cliente":"Cliente C","stage_id":3,"stage":"Done Operations","grupo":"Admin","es_materiales":false,"dias_en_stage":7,"color_a":"rojo","color_a_rep":"rojo","tramo_a":"6-15","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[]},{"id":912,"so":"SO9184","name":"SO9184 - Instalacion electrica","cliente":"Cliente E","stage_id":2,"stage":"In Progress","grupo":"Operaciones","es_materiales":false,"dias_en_stage":7,"color_a":"verde","color_a_rep":"verde","tramo_a":"6-15","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[]},{"id":913,"so":"SO9191","name":"SO9191 - Suministro de materiales","cliente":"Cliente E","stage_id":13,"stage":"En plazo de credito","grupo":"Admin","es_materiales":false,"dias_en_stage":330,"color_a":"rojo","color_a_rep":"rojo","tramo_a":">30","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[{"tipo":"nota_vacia","detalle":"1 log note(s) sin contenido en el chatter - no cuentan como seguimiento"}]},{"id":914,"so":"SO9198","name":"SO9198 - Adecuacion de linea","cliente":"Cliente D","stage_id":13,"stage":"En plazo de credito","grupo":"Admin","es_materiales":false,"dias_en_stage":53,"color_a":"rojo","color_a_rep":"rojo","tramo_a":">30","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[]},{"id":915,"so":"SO9205","name":"SO9205 - Montaje mecanico","cliente":"Cliente B","stage_id":5,"stage":"Hold","grupo":"Operaciones","es_materiales":false,"dias_en_stage":27,"color_a":"verde","color_a_rep":"verde","tramo_a":"16-30","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[{"tipo":"nota_vacia","detalle":"1 log note(s) sin contenido en el chatter - no cuentan como seguimiento"},{"tipo":"hold_sin_fecha_vigente","detalle":"En Hold con fecha de reactivacion VENCIDA (2026-08-21)"}]},{"id":916,"so":"SO9212","name":"SO9212 - Servicio de mantenimiento","cliente":"Cliente C","stage_id":2,"stage":"In Progress","grupo":"Operaciones","es_materiales":false,"dias_en_stage":21,"color_a":"rojo","color_a_rep":"rojo","tramo_a":"16-30","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[]},{"id":917,"so":"SO9219","name":"SO9219 - Ingenieria de detalle","cliente":"Cliente C","stage_id":3,"stage":"Done Operations","grupo":"Admin","es_materiales":false,"dias_en_stage":7,"color_a":"rojo","color_a_rep":"rojo","tramo_a":"6-15","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[]},{"id":918,"so":"SO9226","name":"SO9226 - Cortinas de seguridad","cliente":"Cliente D","stage_id":13,"stage":"En plazo de credito","grupo":"Admin","es_materiales":false,"dias_en_stage":100,"color_a":"rojo","color_a_rep":"rojo","tramo_a":">30","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[]},{"id":919,"so":"SO9233","name":"SO9233 - Distribucion electrica","cliente":"Cliente G","stage_id":3,"stage":"Done Operations","grupo":"Admin","es_materiales":false,"dias_en_stage":14,"color_a":"rojo","color_a_rep":"rojo","tramo_a":"6-15","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[]},{"id":920,"so":"SO9240","name":"SO9240 - Suministro de tablero","cliente":"Cliente H","stage_id":13,"stage":"En plazo de credito","grupo":"Admin","es_materiales":false,"dias_en_stage":44,"color_a":"rojo","color_a_rep":"rojo","tramo_a":">30","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[]},{"id":921,"so":"SO9247","name":"SO9247 - Integracion de sistema","cliente":"Cliente C","stage_id":2,"stage":"In Progress","grupo":"Operaciones","es_materiales":false,"dias_en_stage":22,"color_a":"rojo","color_a_rep":"rojo","tramo_a":"16-30","racha_nota":2,"sin_avance":true,"sin_nota_valida":false,"project_date":null,"banderas":[]},{"id":922,"so":"SO9254","name":"SO9254 - Fabricacion de soporte","cliente":"Cliente G","stage_id":3,"stage":"Done Operations","grupo":"Admin","es_materiales":false,"dias_en_stage":16,"color_a":"rojo","color_a_rep":"rojo","tramo_a":"16-30","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[]},{"id":923,"so":"SO9261","name":"SO9261 - Rigging de equipo","cliente":"Cliente I","stage_id":2,"stage":"In Progress","grupo":"Operaciones","es_materiales":false,"dias_en_stage":32,"color_a":"verde","color_a_rep":"verde","tramo_a":">30","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[]},{"id":924,"so":"SO9268","name":"SO9268 - Instalacion electrica","cliente":"Cliente E","stage_id":13,"stage":"En plazo de credito","grupo":"Admin","es_materiales":false,"dias_en_stage":401,"color_a":"rojo","color_a_rep":"rojo","tramo_a":">30","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[]},{"id":925,"so":"SO9275","name":"SO9275 - Suministro de materiales","cliente":"Cliente J","stage_id":2,"stage":"In Progress","grupo":"Operaciones","es_materiales":false,"dias_en_stage":41,"color_a":"verde","color_a_rep":"verde","tramo_a":">30","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[{"tipo":"fecha_fin","detalle":"Fecha fin movida por Usuario Interno"}]},{"id":926,"so":"SO9282","name":"SO9282 - Adecuacion de linea","cliente":"Cliente G","stage_id":3,"stage":"Done Operations","grupo":"Admin","es_materiales":false,"dias_en_stage":14,"color_a":"rojo","color_a_rep":"rojo","tramo_a":"6-15","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[]},{"id":927,"so":"SO9289","name":"SO9289 - Montaje mecanico","cliente":"Cliente C","stage_id":2,"stage":"In Progress","grupo":"Operaciones","es_materiales":false,"dias_en_stage":187,"color_a":"verde","color_a_rep":"verde","tramo_a":">30","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[{"tipo":"nota_vacia","detalle":"1 log note(s) sin contenido en el chatter - no cuentan como seguimiento"}]},{"id":928,"so":"SO9296","name":"SO9296 - Servicio de mantenimiento","cliente":"Cliente E","stage_id":2,"stage":"In Progress","grupo":"Operaciones","es_materiales":false,"dias_en_stage":199,"color_a":"verde","color_a_rep":"verde","tramo_a":">30","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[]},{"id":929,"so":"SO9303","name":"SO9303 - Ingenieria de detalle","cliente":"Cliente G","stage_id":2,"stage":"In Progress","grupo":"Operaciones","es_materiales":false,"dias_en_stage":59,"color_a":"rojo","color_a_rep":"rojo","tramo_a":">30","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[{"tipo":"nota_vacia","detalle":"1 log note(s) sin contenido en el chatter - no cuentan como seguimiento"}]},{"id":930,"so":"SO9310","name":"SO9310 - Cortinas de seguridad","cliente":"Cliente C","stage_id":2,"stage":"In Progress","grupo":"Operaciones","es_materiales":false,"dias_en_stage":48,"color_a":"rojo","color_a_rep":"rojo","tramo_a":">30","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[]},{"id":931,"so":"SO9317","name":"SO9317 - Distribucion electrica","cliente":"Cliente G","stage_id":2,"stage":"In Progress","grupo":"Operaciones","es_materiales":false,"dias_en_stage":137,"color_a":"rojo","color_a_rep":"rojo","tramo_a":">30","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[]},{"id":932,"so":"SO9324","name":"SO9324 - Suministro de tablero","cliente":"Cliente C","stage_id":2,"stage":"In Progress","grupo":"Operaciones","es_materiales":false,"dias_en_stage":48,"color_a":"rojo","color_a_rep":"rojo","tramo_a":">30","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[]},{"id":933,"so":"SO9331","name":"SO9331 - Integracion de sistema","cliente":"Cliente G","stage_id":2,"stage":"In Progress","grupo":"Operaciones","es_materiales":false,"dias_en_stage":371,"color_a":"rojo","color_a_rep":"rojo","tramo_a":">30","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[]},{"id":934,"so":"SO9338","name":"SO9338 - Fabricacion de soporte","cliente":"Cliente A","stage_id":2,"stage":"In Progress","grupo":"Operaciones","es_materiales":false,"dias_en_stage":267,"color_a":"rojo","color_a_rep":"rojo","tramo_a":">30","racha_nota":1,"sin_avance":false,"sin_nota_valida":false,"project_date":null,"banderas":[]}]};
+
+/* ══ estado de la vista ══ */
+const VISTAS = [
+  { id:'Operaciones', label:'Operaciones',
+    nota:'Reloj: <strong>tiempo en la etapa</strong>. La pregunta es si el proyecto avanza.' },
+  { id:'Admin', label:'Administración',
+    nota:'Reloj HOY: tiempo en la etapa. <strong>S3 lo cambia al vencimiento real de la factura</strong> ' +
+         '(<code>invoice_date_due</code>) — issue #225 midió que hoy el número y el vencimiento coinciden en 1 de 9 casos. ' +
+         'Esta vista es la que más va a cambiar.' }
+];
+const ORD_COL = { rojo:0, amarillo:1, verde:2 };
+let vista = 'Operaciones', sel = null, colorF = '';
+let orden = { col:'dias', dir:-1 };
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ⚠️ El nombre de la clase CSS y el orden de declaración de const importan:
+   ver CLAUDE.md §20 #12. Todo const usado en una función se declara antes. */
+
+$('#hdrFecha').textContent = 'Medición del ' + DATA.fecha + ' · ' + DATA.total + ' proyectos vigilados';
+
+/* ── pestañas ── */
+$('#tabs').innerHTML = VISTAS.map(v => {
+  const n = DATA.proyectos.filter(r => r.grupo === v.id).length;
+  return '<button role="tab" data-v="' + v.id + '" aria-selected="' + (v.id===vista) + '">' +
+         esc(v.label) + ' <span class="cnt">' + n + '</span></button>';
+}).join('');
+$('#tabs').addEventListener('click', e => {
+  const b = e.target.closest('button[data-v]'); if(!b) return;
+  vista = b.dataset.v; sel = null; colorF = '';
+  [...$('#tabs').children].forEach(x => x.setAttribute('aria-selected', x.dataset.v===vista));
+  pintar();
+});
+
+/* ── etapas del selector, solo las que existen ── */
+function llenarStages(){
+  const st = [...new Set(DATA.proyectos.filter(r=>r.grupo===vista).map(r=>r.stage))].sort();
+  const sv = $('#fStage').value;
+  $('#fStage').innerHTML = '<option value="">Todas las etapas</option>' +
+    st.map(s => '<option' + (s===sv?' selected':'') + '>' + esc(s) + '</option>').join('');
+}
+
+/* ── filtrado ── */
+function filas(){
+  const q = $('#q').value.trim().toLowerCase();
+  const st = $('#fStage').value, ff = $('#fFlag').checked, fr = $('#fRep').checked;
+  let out = DATA.proyectos.filter(r => r.grupo === vista);
+  if(colorF) out = out.filter(r => r.color_a_rep === colorF);
+  if(st)     out = out.filter(r => r.stage === st);
+  if(ff)     out = out.filter(r => (r.banderas||[]).length > 0);
+  if(fr)     out = out.filter(r => r.sin_avance || (r.racha_nota||0) >= 2);
+  if(q)      out = out.filter(r =>
+    (r.name+' '+r.cliente+' '+r.so+' '+r.stage).toLowerCase().includes(q));
+  const dir = orden.dir;
+  return out.sort((a,b) => {
+    let d;
+    if(orden.col === 'dias')   d = (a.dias_en_stage||0) - (b.dias_en_stage||0);
+    else if(orden.col==='color') d = ORD_COL[a.color_a_rep] - ORD_COL[b.color_a_rep];
+    else if(orden.col==='stage') d = a.stage.localeCompare(b.stage);
+    else if(orden.col==='cli')   d = a.cliente.localeCompare(b.cliente);
+    else                         d = a.name.localeCompare(b.name);
+    return d !== 0 ? d*dir : (a.dias_en_stage||0) - (b.dias_en_stage||0);
+  });
+}
+
+/* ── KPI, clicables como filtro de color ── */
+function pintarKpis(){
+  const g = DATA.proyectos.filter(r => r.grupo === vista);
+  const c = k => g.filter(r => r.color_a_rep === k).length;
+  const pct = g.length ? Math.round(c('verde')/g.length*100) : 0;
+  const box = (cls,val,lab,key) =>
+    '<div class="k ' + cls + (key!==undefined?' clic':'') + '"' +
+    (key!==undefined ? ' role="button" tabindex="0" data-c="' + key + '" aria-pressed="' + (colorF===key) + '"' : '') +
+    '><div class="n">' + val + '</div><div class="l">' + lab + '</div></div>';
+  $('#kpis').innerHTML =
+    box('', g.length, 'vigilados', '') +
+    box('r', c('rojo'), 'rojo', 'rojo') +
+    box('a', c('amarillo'), 'amarillo', 'amarillo') +
+    box('v', c('verde'), 'verde', 'verde') +
+    box('', pct + '%', 'verde · meta 90%');
+}
+$('#kpis').addEventListener('click', e => {
+  const k = e.target.closest('.k.clic'); if(!k) return;
+  colorF = (colorF === k.dataset.c) ? '' : k.dataset.c; sel = null; pintar();
+});
+$('#kpis').addEventListener('keydown', e => {
+  if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); e.target.closest('.k.clic')?.click(); }
+});
+
+/* ── tabla ── */
+const COLS = [
+  { k:'color', t:'' }, { k:'name', t:'Proyecto' }, { k:'cli', t:'Cliente' },
+  { k:'stage', t:'Etapa' }, { k:'dias', t:'Días' }, { k:'señales', t:'Señales' }
+];
+function pintarTabla(rows){
+  $('#thr').innerHTML = COLS.map(c =>
+    '<th data-k="' + c.k + '">' + esc(c.t) +
+    (orden.col===c.k ? ' <span class="ord">' + (orden.dir<0?'▾':'▴') + '</span>' : '') + '</th>').join('');
+  $('#tb').innerHTML = rows.map(r => {
+    const sig = [];
+    if(r.es_materiales)                     sig.push('<span class="tag t-mat">materiales</span>');
+    if(r.sin_avance || (r.racha_nota||0)>=2) sig.push('<span class="tag t-rep">nota repetida ×' + (r.racha_nota||0) + '</span>');
+    if((r.banderas||[]).length)             sig.push('<span class="tag t-flag">' + r.banderas.length + ' bandera' + (r.banderas.length>1?'s':'') + '</span>');
+    return '<tr data-id="' + r.id + '" aria-selected="' + (sel===r.id) + '">' +
+      '<td><span class="punto p-' + r.color_a_rep + '" title="' + r.color_a_rep + '"></span></td>' +
+      '<td><div class="pt">' + esc(r.name) + '</div></td>' +
+      '<td class="pc">' + esc(r.cliente) + '</td>' +
+      '<td class="pc">' + esc(r.stage) + '</td>' +
+      '<td class="dias">' + (r.dias_en_stage==null?'?':r.dias_en_stage) + 'd</td>' +
+      '<td>' + (sig.join('') || '<span class="pc">—</span>') + '</td></tr>';
+  }).join('');
+  $('#vacio').hidden = rows.length > 0;
+}
+$('#thr').addEventListener('click', e => {
+  const th = e.target.closest('th[data-k]'); if(!th || th.dataset.k==='señales') return;
+  if(orden.col === th.dataset.k) orden.dir *= -1;
+  else orden = { col:th.dataset.k, dir: th.dataset.k==='dias' ? -1 : 1 };
+  pintar();
+});
+$('#tb').addEventListener('click', e => {
+  const tr = e.target.closest('tr[data-id]'); if(!tr) return;
+  const id = +tr.dataset.id;
+  sel = (sel === id) ? null : id;
+  pintar();
+});
+
+/* ── detalle ── */
+const ACC = {
+  rojo:     'Avanza de etapa, o documenta en un log note por qué sigue aquí.',
+  amarillo: 'Se acerca al límite: mueve la etapa o documenta.',
+  verde:    'Dentro de umbral. No requiere acción.'
+};
+function pintarDetalle(){
+  const r = DATA.proyectos.find(x => x.id === sel);
+  if(!r){ $('#det').hidden = true; $('#hint').hidden = false; return; }
+  $('#hint').hidden = true; $('#det').hidden = false;
+  const bs = r.banderas || [];
+  $('#det').innerHTML =
+    '<button class="cerrar" id="cerrarDet" aria-label="Cerrar detalle">×</button>' +
+    '<h2>' + esc(r.name) + '</h2>' +
+    '<div class="meta">' + esc(r.cliente) + ' · ' + esc(r.so) + '</div>' +
+    '<dl>' +
+      '<dt>Etapa</dt><dd>' + esc(r.stage) + '</dd>' +
+      '<dt>Semáforo</dt><dd><span class="punto p-' + r.color_a_rep + '"></span>' + esc(r.color_a_rep) + '</dd>' +
+      '<dt>Días en etapa</dt><dd>' + (r.dias_en_stage==null?'?':r.dias_en_stage) + ' (tramo ' + esc(r.tramo_a) + ')</dd>' +
+      (r.project_date ? '<dt>Fecha compromiso</dt><dd>' + esc(String(r.project_date).slice(0,10)) + '</dd>' : '') +
+      '<dt>Notas seguidas iguales</dt><dd>' + (r.racha_nota||0) + '</dd>' +
+      '<dt>Grupo</dt><dd>' + esc(r.grupo) + '</dd>' +
+    '</dl>' +
+    '<h3>Banderas</h3>' +
+    (bs.length ? '<ul>' + bs.map(f => '<li>' + esc(f.detalle) + '</li>').join('') + '</ul>'
+               : '<div class="nada">Ninguna.</div>') +
+    '<div class="acc' + (r.color_a_rep==='verde'?' ok':'') + '">' + esc(ACC[r.color_a_rep]) + '</div>' +
+    '<h3>Cómo se midió</h3>' +
+    '<ul><li>El contador sale de <code>create_date</code>, no de la entrada a la etapa: ' +
+    '<strong>hoy es la EDAD del proyecto</strong>. Es el error #1 del issue #220 y se corrige en S6.</li>' +
+    (r.grupo === 'Admin'
+      ? '<li>Con S3 el reloj de esta vista pasa a ser el <strong>vencimiento de la factura</strong>, no la edad.</li>'
+      : '') +
+    '</ul>';
+  $('#cerrarDet').addEventListener('click', () => { sel = null; pintar(); });
+}
+
+/* ── render ── */
+function pintar(){
+  llenarStages();
+  pintarKpis();
+  $('#notaVista').innerHTML = VISTAS.find(v => v.id === vista).nota;
+  pintarTabla(filas());
+  pintarDetalle();
+}
+['#q','#fStage','#fFlag','#fRep'].forEach(s =>
+  $(s).addEventListener('input', () => { sel = null; pintar(); }));
+$('#limpiar').addEventListener('click', () => {
+  $('#q').value=''; $('#fStage').value=''; $('#fFlag').checked=false; $('#fRep').checked=false;
+  colorF=''; sel=null; pintar();
+});
+pintar();
+</script>
+</body>
+</html>
