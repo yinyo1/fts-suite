@@ -543,7 +543,12 @@
     /* En un ajeno el dueño lo dice el servidor (`_dueno`), no el documento:
      * el `autor` de adentro es de quien guardó esa versión, que puede ser otro. */
     const duenoDe = (m) => (m && (m._dueno || m.autor || m.dueno)) || yo;
-    const nombreDe = (a) => (a === yo ? yoNom : a);
+    /* El nombre REAL, no el usuario. La columna se llama «Responsable» y para
+     * los ajenos salía `francisco.montalvo` — justo las personas que dirección
+     * necesita identificar de un vistazo. El servidor manda `dueno_nombre`. */
+    const nombresAjenos = {};
+    (ST.ajenos || []).forEach(m => { if (m._dueno) nombresAjenos[m._dueno] = m._dueno_nombre || m._dueno; });
+    const nombreDe = (a) => (a === yo ? yoNom : (nombresAjenos[a] || a));
 
     /* El universo de personas sale de los DATOS, no de una lista escrita a
      * mano: el día que entre alguien nuevo aparece solo. */
@@ -579,8 +584,14 @@
     const encabezado =
       '<div class="enc">' +
         '<h2>Machotes</h2>' +
+        /* Con ajenos en pantalla la cuenta dice CUÁNTAS SON TUYAS. Sin eso,
+         * «4 cotizaciones» al lado de «Exportar todo (1)» se lee como un error
+         * de la aplicación en vez de como lo que es: el respaldo se lleva lo
+         * tuyo, y tuya hay una. */
         '<div class="cuenta">' + (visibles.length === universo.length
-          ? universo.length + (universo.length === 1 ? ' cotización' : ' cotizaciones')
+          ? universo.length + (universo.length === 1 ? ' cotización' : ' cotizaciones') +
+            ((ST.ajenos || []).length ? ' · ' + ST.machotes.length + ' tuya' +
+              (ST.machotes.length === 1 ? '' : 's') : '')
           : visibles.length + ' de ' + universo.length) + '</div>' +
         '<div class="acc">' +
           (esDireccion ? '<a class="btn fantasma" href="#/control">Control</a>' : '') +
@@ -656,7 +667,9 @@
           '<button class="ico" data-hist="' + esc(m.id) + '" title="Ver el historial de versiones">🕘</button>' +
           (borrable(m)
             ? '<button class="ico" data-borrar="' + esc(m.id) + '" title="Eliminar machote">×</button>'
-            : '<span class="ico candado" title="Enviado a Odoo: no se borra, sólo cambia de estado">🔒</span>') +
+            : '<span class="ico candado" title="' + (ajeno(m)
+                ? 'Es de otra persona: se puede ver, no borrar.'
+                : 'Enviado a Odoo: no se borra, sólo cambia de estado') + '">🔒</span>') +
         '</div></td></tr>';
     };
 
@@ -681,7 +694,9 @@
         '<button class="ico" data-hist="' + esc(m.id) + '" title="Ver el historial de versiones">🕘</button>' +
         (borrable(m)
           ? '<button class="ico peligro borrar" data-borrar="' + esc(m.id) + '" title="Eliminar machote">×</button>'
-          : '<span class="ico candado" title="Enviado a Odoo: no se borra, sólo cambia de estado">🔒</span>') +
+          : '<span class="ico candado" title="' + (ajeno(m)
+              ? 'Es de otra persona: se puede ver, no borrar.'
+              : 'Enviado a Odoo: no se borra, sólo cambia de estado') + '">🔒</span>') +
         '</div>';
     };
 
@@ -1503,7 +1518,12 @@
       /* El paso siguiente al machote: pasarlo a orden. Es un CASCARÓN —lo
        * dice en su propia cabecera— y por eso el botón va en secundario, al
        * lado de Revisar, sin robarle el lugar al que sí hace algo. */
-      (G.MachoteOrden
+      /* «Pasar a orden» NO se ofrece sobre trabajo ajeno. La barra vive FUERA
+       * de `#hoja`, así que `trabarSiEsAjeno` no la alcanza —lo cazó la
+       * captura, no el diff—: quedaba un botón vivo para convertir en orden la
+       * cotización de otro. «Revisar» sí se queda: es de sólo lectura y es
+       * justo para lo que dirección abre un machote ajeno. */
+      (G.MachoteOrden && !ajeno(m)
         ? '<button class="btn fantasma" id="btnOrden" title="Ver cómo se pasaría a orden de venta">Pasar a orden</button>'
         : '') +
       '<a class="btn" href="#/rev/' + m.id + '">Revisar</a></div>';

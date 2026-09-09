@@ -3458,10 +3458,18 @@ let ok = 0, mal = 0;
         return {
           avisa: !!document.querySelector('.aviso-ajeno'),
           campos: campos.length,
-          sueltos: campos.filter(c => !c.disabled).length
+          sueltos: campos.filter(c => !c.disabled).length,
+          /* La barra fija vive FUERA de `#hoja`: se comprueba aparte porque el
+           * trabado de la hoja no la alcanza. */
+          pasar_a_orden: !!document.querySelector('#btnOrden'),
+          revisar: !!document.querySelector('.fija a[href^="#/rev/"]')
         };
       });
       if (!r.avisa) throw new Error('no avisa que es de otra persona');
+      if (r.pasar_a_orden)
+        throw new Error('deja «Pasar a orden» sobre trabajo ajeno');
+      if (!r.revisar)
+        throw new Error('quitó «Revisar», que es justo para lo que se abre uno ajeno');
       if (!r.campos) throw new Error('no pintó la hoja: la prueba no probaría nada');
       if (r.sueltos) throw new Error(r.sueltos + ' de ' + r.campos + ' campos siguen editables');
 
