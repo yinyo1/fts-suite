@@ -36,6 +36,20 @@
 
   var LLAVE = 'fts_machote_v1';        // la caché de trabajo · NO CAMBIAR
   var LLAVE_SYNC = 'fts_machote_sync_v1';  // qué se subió y en qué versión
+  /* ── LA LÁPIDA (V1.23) ──────────────────────────────────────────────────
+   * Los `id_local` que se borraron EN ESTE NAVEGADOR. Sin esto, borrar no
+   * servía de nada: `bajar()` ve una fila del servidor cuyo `id_local` ya no
+   * está en la lista local, no tiene forma de distinguir «nunca llegó aquí»
+   * de «se borró aquí», y la vuelve a meter. Al recargar reaparece, cada vez.
+   *
+   * Es lo que reportó Esteban de los ejemplos, y NO era sólo de los ejemplos:
+   * le pasaba a CUALQUIER machote ya subido. Los ejemplos se notaron porque
+   * son los que todo el mundo borra el primer día.
+   *
+   * Es POR NAVEGADOR a propósito: borrar aquí no borra en el servidor —para
+   * eso hace falta una decisión de más peso, y un borrado que se propague sin
+   * pedirlo es el error que no tiene vuelta. */
+  var LLAVE_BORRADOS = 'fts_machote_borrados_v1';
 
   var BASE = 'https://primary-production-5c3c.up.railway.app/webhook';
   var URL_LEER = BASE + '/comercial/machotes-leer';
@@ -94,12 +108,38 @@
     try {
       localStorage.removeItem(LLAVE);
       localStorage.removeItem(LLAVE_SYNC);
+      /* Y las lápidas. `olvidar` significa «este navegador no sabe nada»: si
+       * las lápidas sobrevivieran, la siguiente bajada saltaría machotes que
+       * están en el servidor y nadie entendería por qué faltan. */
+      localStorage.removeItem(LLAVE_BORRADOS);
     } catch (e) { /* nada que hacer */ }
   }
 
   // ── La libreta de sincronización ─────────────────────────────────────────
   // Por machote: en qué versión quedó en el servidor y con qué contenido, para
   // saber cuáles hay que subir sin volver a subirlos todos cada vez.
+
+  /** Los `id_local` sepultados en este navegador, como diccionario para que
+   *  preguntar sea O(1) dentro del bucle de `bajar()`. */
+  function leerBorrados() {
+    if (!VIVO) return {};
+    try {
+      var d = JSON.parse(localStorage.getItem(LLAVE_BORRADOS) || '{}');
+      return (d && typeof d === 'object' && !Array.isArray(d)) ? d : {};
+    } catch (e) { return {}; }
+  }
+
+  /** Sepulta un `id_local`. Se llama AL BORRAR, no al bajar: la lápida es un
+   *  hecho de este navegador, y tiene que quedar aunque no haya red. */
+  function marcarBorrado(idLocal) {
+    if (!VIVO || !idLocal) return false;
+    try {
+      var d = leerBorrados();
+      d[idLocal] = new Date().toISOString();
+      localStorage.setItem(LLAVE_BORRADOS, JSON.stringify(d));
+      return true;
+    } catch (e) { return false; }
+  }
 
   function leerSync() {
     if (!VIVO) return {};
@@ -297,14 +337,23 @@
     }).then(function (r) {
       if (r && r.ok === true) {
         var s2 = leerSync();
+        var previo = s[m.id] || {};
         s2[m.id] = {
           version: r.version,
           huella: huella(m),
           machote_id: r.machote_id,
+          /* El folio lo asigna el servidor la PRIMERA vez que este machote
+           * llega allá, así que la respuesta del guardado es el momento más
+           * temprano en que se puede saber. Si esta respuesta no lo trae
+           * —servidor viejo— se conserva el que ya hubiera: perder el folio
+           * por una respuesta incompleta sería peor que no tenerlo. */
+          folio: (r.folio !== undefined && r.folio !== null) ? r.folio : (previo.folio || null),
+          folio_txt: r.folio_txt || previo.folio_txt || null,
           empujado_at: new Date().toISOString()
         };
         escribirSync(s2);
-        return { ok: true, version: r.version, machote_id: r.machote_id };
+        return { ok: true, version: r.version, machote_id: r.machote_id,
+                 folio: s2[m.id].folio, folio_txt: s2[m.id].folio_txt };
       }
       /* Choque de versión: alguien más guardó. NO se pisa y NO se reintenta en
        * silencio — se avisa, porque resolverlo es una decisión de persona. */
@@ -391,7 +440,8 @@
       var porId = {}, i;
       for (i = 0; i < lista.length; i++) if (lista[i] && lista[i].id) porId[lista[i].id] = i;
 
-      var nuevos = 0, refrescados = 0, conservados = 0;
+      var enterrados = leerBorrados();
+      var nuevos = 0, refrescados = 0, conservados = 0, resucitados = 0;
       /* Lo AJENO se aparta aquí y no vuelve a tocar el almacén local. Va en su
        * propia lista, en memoria, y la pantalla la pinta al lado de la propia.
        * El porqué está en `esAjeno`. */
@@ -400,6 +450,17 @@
       for (i = 0; i < r.machotes.length; i++) {
         var fila = r.machotes[i];
         if (!fila || !fila.id_local || !fila.documento) continue;
+
+        /* SEPULTADO AQUÍ: no vuelve. Sin esta línea, borrar un machote ya
+         * subido no servía — reaparecía en la siguiente bajada, cada vez.
+         *
+         * ⚠️ La lápida NO aplica a lo AJENO, y es a propósito: las lápidas van
+         * por `id_local`, y dos personas pueden tener el mismo (Ricardo tenía
+         * un `M-1041` y Esteban otro). Sin esta condición, borrar el propio
+         * M-1041 escondería el de Ricardo — trabajo de alguien más
+         * desapareciendo de la pantalla de dirección sin que nadie lo pidiera.
+         * Lo ajeno además no se puede borrar, así que nunca hay lápida suya. */
+        if (enterrados[fila.id_local] && fila.ajeno !== true) { resucitados++; continue; }
 
         var doc = machoteDesdeFila(fila);
 
@@ -412,6 +473,8 @@
           doc._dueno = fila.dueno || null;
           doc._dueno_nombre = fila.dueno_nombre || null;
           doc._version_servidor = fila.version;
+          doc._folio = fila.folio || null;
+          doc._folio_txt = fila.folio_txt || null;
           ajenos.push(doc);
           continue;
         }
@@ -438,6 +501,13 @@
           version: fila.version,
           huella: huella(doc),
           machote_id: fila.id,
+          /* El folio vive AQUÍ y no dentro del machote. Metido en el machote
+           * entraría en `huella(m)` y la franja diría «por subir» de algo que
+           * acaba de bajar — el mismo modo de falla que obligó a separar
+           * `documentoDeFila` de `machoteDesdeFila`. La libreta ya es donde
+           * viven los datos que el servidor pone y el documento no lleva. */
+          folio: fila.folio || null,
+          folio_txt: fila.folio_txt || null,
           empujado_at: new Date().toISOString()
         };
       }
@@ -447,6 +517,7 @@
 
       return { ok: true, bajados: r.machotes.length, nuevos: nuevos,
                refrescados: refrescados, conservados: conservados,
+               enterrados: resucitados,
                es_admin: r.es_admin === true, ajenos: ajenos,
                machotes: lista, handoff: local.handoff || {}, cache_ok: quedo };
     });
@@ -582,6 +653,19 @@
     return (meta && meta.machote_id) ? meta.machote_id : null;
   }
 
+  /** El folio de un machote, o `null` si todavía no tiene.
+   *
+   *  `null` NO es un error: significa «este machote no ha llegado al
+   *  servidor», que es quien reparte los folios. La pantalla lo dice con esas
+   *  palabras en vez de inventar un número — un folio propuesto por el
+   *  navegador chocaría con el de otra persona capturando a la vez, y el
+   *  choque saldría justo al subir. */
+  function folio(idLocal) {
+    var meta = leerSync()[idLocal];
+    if (!meta || !meta.folio) return null;
+    return { folio: meta.folio, folio_txt: meta.folio_txt || null };
+  }
+
   /** El historial completo de un machote, del servidor. Para la pantalla de
    *  versiones: la caché del navegador sólo tiene la última. */
   function historial(idLocal) {
@@ -665,6 +749,9 @@
     // Síncrono: la caché de este navegador. Es con lo que arranca la pantalla,
     // para que abra al instante y funcione sin red.
     leer: leerLocal,
+    folio: folio,
+    marcarBorrado: marcarBorrado,
+    leerBorrados: leerBorrados,
     leerLocal: leerLocal,
     escribirLocal: escribirLocal,
 

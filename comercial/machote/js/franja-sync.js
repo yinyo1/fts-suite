@@ -74,11 +74,17 @@
                      : 'No hay machotes que subir.';
     }
     if (e.pendientes === 0) {
-      return e.total === 1 ? '1 de 1 a salvo en el servidor'
-                           : e.total + ' de ' + e.total + ' a salvo en el servidor';
+      /* «TUYAS» no es adorno. Desde V1.22 la lista de dirección enseña también
+       * el trabajo del equipo, así que «2 de 2 a salvo» al lado de siete
+       * renglones se lee como un fallo de la aplicación. La franja SÓLO habla
+       * de lo propio —lo ajeno no le toca subirlo a nadie más— y tiene que
+       * decirlo. Lo cazó la captura, no el diff (CLAUDE.md §20 #12), igual que
+       * el «4 cotizaciones» al lado de «Exportar todo (1)» de V1.22. */
+      return e.total === 1 ? '1 de 1 tuya a salvo en el servidor'
+                           : e.total + ' de ' + e.total + ' tuyas a salvo en el servidor';
     }
     if (e.subidos === 0) return '0 de ' + e.total + ' subidos';
-    return e.pendientes + ' por subir · ' + e.subidos + ' de ' + e.total + ' a salvo';
+    return e.pendientes + ' por subir · ' + e.subidos + ' de ' + e.total + ' tuyas a salvo';
   }
 
   function tono(e) {

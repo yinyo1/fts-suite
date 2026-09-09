@@ -127,6 +127,13 @@ de la sesión 1 acaba de resolver. Se referencia por `odoo_lead_id`, no se dupli
 `001_fundacion.sql` — esquema, rol, bitácora y el trigger de auditoría.
 `002_evidencia_propuesta_expediente.sql` — las tres tablas.
 `003_machote.sql` — el machote y su historial de versiones (abajo, sección propia).
+`004_folio.sql` — el folio con el que se habla de una cotización (`COT-0042`).
+Lo reparte una **secuencia** como `DEFAULT` de la columna, así que ningún código
+tiene que acordarse de pedirlo y dos personas capturando a la vez no pueden
+llevarse el mismo número. La forma legible es una **columna generada**
+(`folio_txt`), para que el panel, el correo y el PDF no puedan citar folios
+distintos del mismo machote. Diseño completo y decisiones abiertas en
+[`FOLIO.md`](FOLIO.md).
 
 | Tabla | Qué guarda | Regla que hace cumplir el esquema |
 |---|---|---|
