@@ -2,7 +2,8 @@
   "_meta": "Config de comercial/watchdog-enviadas. Se lee de GitHub raw main EN VIVO: editar + push a main, sin re-importar ni re-activar el workflow. Mismo patron que shared/operaciones/watchdogs_mo.json.",
   "_doc": "comercial/baseline.md §5 + comercial/SUPUESTOS.md §T2",
 
-  "activo": true,
+  "activo": false,
+  "_activo_nota": "Puesto en false el 2026-09-09 (auditoria #220 Bloque 0). El workflow hJNTUd8E57W4rfjU esta INACTIVO en n8n (triggerCount 0) desde su creacion; la config decia true y contradecia a la realidad. NO prender sin rehacer la medicion sobre chatter: hoy mide desde write_date y 60 ordenes comparten el mismo write_date de una escritura masiva, asi que cualquier script que toque sale.order en masa resetea todos los semaforos a verde. Ver comercial/ROADMAP.md (watchdog v2).",
   "canary": true,
   "_canary_nota": "canary=true => el digest va SOLO a recipients.esteban. Poner en false y llenar recipients.equipo[] es la decision manual de rollout al equipo. Ver CHECKLIST-MANUAL.md.",
 
