@@ -1,10 +1,15 @@
 {
-  "version": "V1.21",
-  "fecha": "2026-09-08",
+  "version": "V1.22",
+  "fecha": "2026-09-09",
   "modulo": "comercial/machote",
   "ambito": "El CONTADOR es solo de este modulo. finanzas tambien usa V1.xx desde el 2026-09-03 (instruccion directa de Esteban, corrige el \"no propagar\" del issue #148) pero lleva su propio contador y va en V1.00. operaciones/planeacion sigue en 2.4.1, kiosk y confirmar-horas solo con cadena de build, y siete modulos con un 1.0.0 puesto una vez: a esos no se propaga.",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.22",
+      "pr": null,
+      "nota": "Direccion ve los machotes del equipo, y los ve en SOLO LECTURA. Hasta hoy comercial/machotes-leer devolvia unicamente los del dueno del token, asi que el filtro de persona de V1.21 prometia algo que no podia cumplir: Montalvo y Ricardo habian subido 9 machotes que Esteban no veia. Ahora, con el scope comercial:admin, la lectura abarca a todos y cada renglon dice de quien es. El ALCANCE sale del TOKEN, nunca del cuerpo: un usuario normal que mande dueno o es_admin en el cuerpo recibe exactamente lo mismo que sin mandarlos, y cambiar el payload del token invalida la firma. El trabajo ajeno NO se guarda en fts_machote_v1 -esa llave significa lo mio-: vive solo en memoria, no cuenta como pendiente, no se exporta y no se puede subir, porque el servidor le pondria de dueno a quien manda. Se abre con la hoja trabada y un aviso que dice de quien es. Ademas: el sincronizador de configuracion deja de barrer todas las llaves fts_ y pasa a lista blanca, asi que la captura comercial ya no puede acabar en el repo publico; y el ciclo de envio quedo cerrado de punta a punta contra Graph."
+    },
     {
       "version": "V1.21",
       "pr": null,

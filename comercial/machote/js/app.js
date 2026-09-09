@@ -40,7 +40,7 @@
    * 2026-09-03 (por instrucción de Esteban), pero lleva el suyo aparte y va en
    * V1.00. Planeación sigue en `2.4.1` y el kiosko sólo con cadena de build;
    * a esos no se propaga. */
-  const VERSION = 'V1.21';
+  const VERSION = 'V1.22';
   const $  = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
   const clon = (x) => JSON.parse(JSON.stringify(x));
@@ -54,6 +54,10 @@
   const ST = {
     verVacios: false,
     machotes: _guardado ? _guardado.machotes : clon(D.MACHOTES),
+    /* Trabajo de OTRAS personas, en memoria y nada más. Llega sólo con el
+     * scope `comercial:admin` y nunca se escribe en `fts_machote_v1`. */
+    ajenos: [],
+    esAdmin: false,
     ordenes:  clon(D.ORDENES),
     handoff: _guardado ? (_guardado.handoff || {}) : {},
     confirmadas: {},
@@ -244,7 +248,10 @@
    *  vendió: si desaparece, desaparece la única explicación de por qué el
    *  precio fue ese. Lo que se hace con él es cambiarle el estado, no borrarlo.
    *  En creación y En revisión sí se borran: ahí todavía no hay historia. */
-  const borrable = (m) => !((D.ESTADOS[m && m.estado] || {}).sin_borrar);
+  /* Un machote AJENO no se borra ni se edita: dirección revisa, no reescribe
+   * el trabajo de otro. Si quiere partir de él, que lo duplique a su nombre. */
+  const borrable = (m) => !((D.ESTADOS[m && m.estado] || {}).sin_borrar) &&
+                          !(m && m._ajeno === true);
 
   const esc = (s) => String(s === null || s === undefined ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -259,7 +266,12 @@
     : (x * 100).toFixed(2).replace(/\.00$/, '') + '%';
   const nn = (x) => (x === null || x === undefined || x === '') ? '' : x;
 
-  const mach  = (id) => ST.machotes.find(m => m.id === id);
+  /* Busca en las dos listas: la propia (que vive en el navegador) y la de
+   * trabajo AJENO (que sólo vive en memoria, y sólo si quien mira tiene el
+   * scope de dirección). Ver `esAjeno` en almacen.js. */
+  const mach  = (id) => ST.machotes.find(m => m.id === id) ||
+                        ST.ajenos.find(m => m.id === id);
+  const ajeno = (m) => !!(m && m._ajeno === true);
   const orden = (id) => ST.ordenes.find(o => o.id === id);
   const hoff  = (id) => ST.handoff[id] || (ST.handoff[id] = { entregables: {}, notas: '' });
 
@@ -528,13 +540,19 @@
     const ses = (G.SuiteAuth && G.SuiteAuth.getSession()) || null;
     const yo = (ses && ses.actor) || '';
     const yoNom = (ses && ses.nombre) || yo;
-    const duenoDe = (m) => (m && (m.autor || m.dueno)) || yo;
+    /* En un ajeno el dueño lo dice el servidor (`_dueno`), no el documento:
+     * el `autor` de adentro es de quien guardó esa versión, que puede ser otro. */
+    const duenoDe = (m) => (m && (m._dueno || m.autor || m.dueno)) || yo;
     const nombreDe = (a) => (a === yo ? yoNom : a);
 
     /* El universo de personas sale de los DATOS, no de una lista escrita a
      * mano: el día que entre alguien nuevo aparece solo. */
+    /* El universo de la lista son los PROPIOS más los AJENOS. Los ajenos sólo
+     * existen con el scope de dirección; sin él la lista es la de siempre. */
+    const universo = ST.machotes.concat(ST.ajenos || []);
+
     const personas = [];
-    ST.machotes.forEach(m => {
+    universo.forEach(m => {
       const d = duenoDe(m);
       if (d && personas.indexOf(d) < 0) personas.push(d);
     });
@@ -547,7 +565,7 @@
       (f.moneda === '' || (m.moneda || 'MXN') === f.moneda) &&
       coincide(m, ST.busca);
 
-    const visibles = ST.machotes.filter(pasa);
+    const visibles = universo.filter(pasa);
 
     /* La entrada al tablero de dirección sólo se ofrece a quien tiene la
      * llave. Un enlace visible para todos, que a casi todos les contestara
@@ -561,17 +579,21 @@
     const encabezado =
       '<div class="enc">' +
         '<h2>Machotes</h2>' +
-        '<div class="cuenta">' + (visibles.length === ST.machotes.length
-          ? ST.machotes.length + (ST.machotes.length === 1 ? ' cotización' : ' cotizaciones')
-          : visibles.length + ' de ' + ST.machotes.length) + '</div>' +
+        '<div class="cuenta">' + (visibles.length === universo.length
+          ? universo.length + (universo.length === 1 ? ' cotización' : ' cotizaciones')
+          : visibles.length + ' de ' + universo.length) + '</div>' +
         '<div class="acc">' +
           (esDireccion ? '<a class="btn fantasma" href="#/control">Control</a>' : '') +
           /* Dice «todo» y dice CUÁNTOS a propósito. Con filtros en pantalla —y el
            * de persona puesto de arranque— «Exportar» a secas se lee como «exporta
            * lo que estoy viendo», que es justo lo que NO hace. El número es la
            * comprobación de un vistazo de que el respaldo lleva todo. */
+          /* Cuenta `ST.machotes`, NO el universo: el respaldo se lleva lo TUYO.
+           * Meter en tu archivo el trabajo de otros sería sacarlo de donde su
+           * dueño lo puede gobernar. Por eso este número puede ser menor que
+           * el del encabezado cuando se está viendo con el scope de dirección. */
           '<button class="btn fantasma" id="bExportar" title="Baja un archivo con TODO lo '
-            + 'capturado, no sólo lo que muestran los filtros">Exportar todo ('
+            + 'capturado POR TI, no sólo lo que muestran los filtros">Exportar todo ('
             + ST.machotes.length + ')</button>' +
           '<label class="btn fantasma archivo" title="Nunca pisa lo que ya existe">Importar' +
             '<input type="file" id="fImportar" accept="application/json,.json"></label>' +
@@ -617,7 +639,9 @@
       return '<tr class="rw" data-mid="' + esc(m.id) + '">' +
         '<td><div class="nm"><a href="#/m/' + esc(m.id) + '">' + esc(m.nombre) + '</a>' +
           (dm ? ' <span class="pill" title="Ejemplo que trae la aplicación. No se guarda en el servidor.">ejemplo</span>' : '') +
-          '</div><div class="sub">' + esc(cli(m)) + (m.so ? ' · ' + esc(m.so) : '') + ' · ' + esc(m.id) + '</div></td>' +
+          (ajeno(m) ? ' <span class="pill aj" title="Trabajo de otra persona. Se abre en lectura: no se edita ni se borra.">sólo lectura</span>' : '') +
+          '</div><div class="sub">' + esc(cli(m)) + (m.so ? ' · ' + esc(m.so) : '') +
+          (ajeno(m) ? '' : ' · ' + esc(m.id)) + '</div></td>' +
         '<td class="quien-td sub" title="' + esc(nombreDe(duenoDe(m))) + '">' +
           esc(nombreDe(duenoDe(m))) + '</td>' +
         '<td><span class="pill" style="background:' + edo(m).color + '20;color:' + edo(m).color + '">' +
@@ -643,6 +667,7 @@
         '<a class="item" href="#/m/' + esc(m.id) + '">' +
         '<div class="grow"><strong>' + esc(m.nombre) + '</strong>' +
           (dm ? ' <span class="pill">ejemplo</span>' : '') +
+          (ajeno(m) ? ' <span class="pill aj">sólo lectura</span>' : '') +
           '<div class="tiny">' + esc(cli(m)) + (m.so ? ' · ' + esc(m.so) : '') + ' · ' +
           esc(nombreDe(duenoDe(m))) + '</div></div>' +
         '<div class="right"><span class="chip" style="background:' + edo(m).color + '">' +
@@ -854,14 +879,27 @@
     // abierta de la anterior deja al analista en una sección que no pidió.
     if (ST.libroAbierto !== id) { ST.hoja = 'desglose'; ST.libroAbierto = id; }
     const c = C.calcular(m);
-    top(cli(m), m.id + (m.so ? ' · ' + m.so : ''), null, '#/');
+    const soloLectura = ajeno(m);
+    top(cli(m), soloLectura
+      ? ('de ' + (m._dueno_nombre || m._dueno || 'otra persona'))
+      : (m.id + (m.so ? ' · ' + m.so : '')), null, '#/');
 
     const hojas = [{ id: 'desglose', label: 'DESGLOSE COTIZACIÓN' }]
       .concat(m.secciones.map(s => ({ id: s.id, label: s.nombre || 'SECCIÓN' })));
     if (!hojas.some(h => h.id === ST.hoja)) ST.hoja = 'desglose';
 
+    /* AVISO ARRIBA, ANTES DE LA HOJA. Un machote ajeno se ve igual que el
+     * propio, así que si no se dice, alguien teclea encima creyendo que es
+     * suyo y pierde el rato: los campos están bloqueados y no va a entender
+     * por qué. El aviso dice de quién es y qué puede hacer en su lugar. */
     $('#vista').innerHTML =
-      '<div class="libro">' +
+      (soloLectura
+        ? '<div class="aviso-ajeno">Esta cotización es de <strong>' +
+          esc(m._dueno_nombre || m._dueno || 'otra persona') + '</strong>. ' +
+          'La estás viendo en <strong>sólo lectura</strong>: se puede revisar, no editar. ' +
+          'Si quieres partir de ella, duplícala a tu nombre.</div>'
+        : '') +
+      '<div class="libro' + (soloLectura ? ' solo-lectura' : '') + '">' +
       '<div class="hojas" id="hojas">' + hojas.map((h, i) =>
         '<button class="pestana' + (h.id === ST.hoja ? ' on' : '') +
         (i > C.MAX_SECCIONES ? ' fuera' : '') + '" data-hoja="' + esc(h.id) + '"' +
@@ -906,6 +944,27 @@
     const c = C.calcular(m);
     $('#hoja').innerHTML = hojaHTML(m, c);
     enlazar(m);
+    trabarSiEsAjeno(m);
+  }
+
+  /* Traba la hoja cuando el machote es de otra persona.
+   *
+   * Va AQUÍ y no en cada sitio que pinta porque `pintarHoja` es el único punto
+   * por el que pasa toda la hoja — el mismo criterio que el filtro de la demo
+   * en `empujar`. Un camino nuevo que repinte queda cubierto solo.
+   *
+   * Esto NO es la seguridad: la seguridad es que el servidor no deja guardar
+   * un machote ajeno (`empujarUno` lo rechaza, y de todos modos el dueño lo
+   * pone el token). Esto es para que nadie pierda el rato tecleando encima de
+   * algo que no se va a guardar. */
+  function trabarSiEsAjeno(m) {
+    if (!m || m._ajeno !== true) return;
+    const hoja = $('#hoja'); if (!hoja) return;
+    hoja.querySelectorAll('input, select, textarea, button').forEach(el => {
+      el.disabled = true;
+      el.setAttribute('aria-disabled', 'true');
+      if (!el.title) el.title = 'Es de otra persona: sólo lectura.';
+    });
   }
 
   /** Refresca SÓLO los derivados, sin repintar.
@@ -1718,7 +1777,14 @@
        * servidor trajo machotes, o esta persona ya tenía capturado aquí. Si
        * las dos están vacías, se queda la demo — que es lo que espera quien
        * abre la página por primera vez. */
-      if (Array.isArray(r.machotes) && (r.machotes.length || _hayCaptura)) {
+      /* Lo ajeno entra aparte y NO se persiste. Si el servidor todavía no
+       * manda `ajenos` —la versión publicada vieja— esto queda en [] y la
+       * pantalla se comporta exactamente como antes. Tolerante primero: es la
+       * regla anti-trabón de CLAUDE.md §8. */
+      ST.ajenos = Array.isArray(r.ajenos) ? r.ajenos : [];
+      ST.esAdmin = r.es_admin === true;
+
+      if (Array.isArray(r.machotes) && (r.machotes.length || _hayCaptura || ST.ajenos.length)) {
         ST.machotes = r.machotes;
         ST.handoff = r.handoff || ST.handoff;
         render();

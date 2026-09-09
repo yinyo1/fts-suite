@@ -1166,3 +1166,23 @@ tr.desg-cuadre .malo { color: var(--rojo); font-weight: 700; }
    ancho — pero tampoco compite con el título. */
 .tb-ver { font-size: 10.5px; color: var(--suave); font-variant-numeric: tabular-nums;
           flex: 0 0 auto; letter-spacing: .01em; }
+
+/* ── Trabajo AJENO · sólo lectura (V1.22) ─────────────────────────────────
+ * Dirección ve los machotes del equipo, y los ve SIN poder editarlos. Lo que
+ * de verdad lo impide vive en el servidor —el dueño sale del token, y
+ * `empujarUno` rechaza lo ajeno—; esto es para que se NOTE, porque una
+ * pantalla idéntica a la editable invita a teclear encima. */
+.pill.aj { background: #eef2ff; color: #3730a3; }
+
+.aviso-ajeno { margin: -4px 0 12px; padding: 10px 12px; border-radius: 10px;
+               background: #eef2ff; border: 1px solid #c7d2fe; color: #1e1b4b;
+               font-size: 13px; line-height: 1.5; }
+
+/* La hoja trabada: los campos ya van `disabled` desde JS —esto sólo lo hace
+   visible—. El cursor de «no» es lo que contesta «¿por qué no puedo escribir?»
+   antes de que la persona lo pregunte. */
+.libro.solo-lectura .hoja, .libro.solo-lectura #hoja { opacity: .92; }
+.libro.solo-lectura input:disabled,
+.libro.solo-lectura select:disabled,
+.libro.solo-lectura textarea:disabled { background: var(--papel); cursor: not-allowed; }
+.libro.solo-lectura .pestana { opacity: 1; }   /* moverse entre hojas SÍ se puede */

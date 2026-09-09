@@ -104,24 +104,79 @@
 
     // Recolecta todas las keys ops_*, key_* y fts_* del localStorage
     // Excluye keys de auth/sesión locales que NO deben subirse a GitHub
-    collectOpsKeys(){
-      const config = {};
-      const EXCLUDE = new Set([
-        'ops_sync_password',  // password local, no se cifra a sí mismo
-        'ops_last_sync',      // timestamp local
-        'fts_session',        // sesión activa (auth-suite)
-        'fts_master_hash'     // hash temporal del primer login master
-      ]);
+    /* ── LISTA BLANCA. Antes era lista negra, y por eso había que cambiarla.
+     *
+     * Hasta el 9-sep-2026 esto barría TODA llave `ops_*`, `key_*` y `fts_*` y
+     * excluía cuatro. El archivo que produce, `shared/ops-config.json`, está
+     * COMMITEADO en un repo PÚBLICO. O sea: cada llave nueva que estrenara
+     * cualquier módulo del Suite entraba sola, cifrada, al repo público — sin
+     * que nadie lo decidiera.
+     *
+     * Y ya había pasado: `fts_machote_v1` (las cotizaciones del equipo, con
+     * costos y comisiones), `fts_suite_session` (el JWT), `fts_fin_session`,
+     * `fts_mi_perfil_session`, `fts_comercial_hmac` y `fts_employees` NO
+     * estaban excluidas. Nada se filtró todavía —el blob es del 18-abr-2026 y
+     * el machote no existía hasta el 3-sep— pero la siguiente sincronización
+     * se lo llevaba.
+     *
+     * El cifrado es honesto (AES-256-GCM + PBKDF2-SHA256 100k). El problema no
+     * era el cifrado: era el ALCANCE. Una contraseña elegida por una persona
+     * protegiendo, en un archivo público y PARA SIEMPRE, la captura comercial
+     * de tres personas.
+     *
+     * Con lista blanca el modo de fallo se invierte, que es lo único que
+     * importa: olvidar una llave de configuración cuesta volver a teclearla en
+     * el otro dispositivo; olvidar una de datos costaba publicarla. Se rompe
+     * hacia el lado soportable (CLAUDE.md §9).
+     *
+     * PARA AGREGAR UNA LLAVE: métela abajo, en su grupo, y sólo si es
+     * CONFIGURACIÓN del panel de operaciones. Nunca datos de trabajo, ni
+     * sesiones, ni PINes de personas, ni nada que identifique a alguien.
+     * `sinSincronizar()` te dice qué se está quedando fuera. */
+    PERMITIDAS: [
+      // Dónde vive el backend
+      'ops_n8n_url', 'ops_odoo_url', 'ops_odoo_db', 'ops_demo_mode', 'ops_migrated',
+      // Kiosko: geocercas y ajustes de la pantalla
+      'ops_kiosk_geolocations', 'ops_geo_sync_timestamp', 'ops_kiosk_stages',
+      'ops_kiosk_company_id', 'ops_kiosk_face_enabled', 'ops_kiosk_face_required',
+      'ops_kiosk_face_threshold', 'ops_kiosk_face_models_url', 'ops_kiosk_field_photo',
+      'ops_kiosk_notify_email', 'ops_kiosk_notify_email_fallback',
+      'ops_kiosk_notify_wa', 'ops_kiosk_notify_wa_webhook',
+      // Tablero y planeación: umbrales y horarios
+      'ops_dash_refresh', 'ops_dash_alerta_sin_checar', 'ops_dash_alerta_fuera_zona',
+      'ops_dash_alerta_extra', 'ops_plan_hora_entrada', 'ops_plan_hora_salida',
+      'ops_plan_hora_limite', 'ops_plan_recordatorio', 'ops_plan_wa_webhook',
+      // Llaves de API que este panel administra a propósito
+      'key_claude', 'key_groq', 'key_openrouter', 'key_gemini',
+      'key_github_token', 'key_odoo_api', 'ops_github_token'
+    ],
+
+    /* Lo que HAY en este navegador y NO se sincroniza. No es un aviso de
+     * error: es la lista de lo que se queda aquí a propósito. Se enseña al
+     * guardar para que el cambio no sea invisible — una lista blanca que
+     * silenciosamente deja de llevar algo es igual de mala que la negra. */
+    sinSincronizar(){
+      const fuera = [];
+      const ok = new Set(this.PERMITIDAS);
       for(let i = 0; i < localStorage.length; i++){
         const key = localStorage.key(i);
         if(!key) continue;
-        if(EXCLUDE.has(key)) continue;
-        const isOps = key.indexOf('ops_') === 0;
-        const isKey = key.indexOf('key_') === 0;
-        const isFts = key.indexOf('fts_') === 0;
-        if(isOps || isKey || isFts){
-          config[key] = localStorage.getItem(key);
+        if(ok.has(key)) continue;
+        if(key.indexOf('ops_') === 0 || key.indexOf('key_') === 0 || key.indexOf('fts_') === 0){
+          fuera.push(key);
         }
+      }
+      return fuera.sort();
+    },
+
+    collectOpsKeys(){
+      const config = {};
+      /* Nada de recorrer `localStorage`: se pide EXACTAMENTE lo permitido. Es
+       * la diferencia entre «todo menos esto» y «sólo esto», y es toda la
+       * corrección. */
+      for(const key of this.PERMITIDAS){
+        const v = localStorage.getItem(key);
+        if(v !== null) config[key] = v;
       }
       return config;
     },
@@ -129,6 +184,14 @@
     // Guardar toda la config cifrada en GitHub
     async save(token, password){
       const config = this.collectOpsKeys();
+      /* Lo que se queda fuera se DICE, no se calla. Una lista blanca que deja
+       * de llevar algo en silencio es tan mala como la lista negra que se
+       * llevaba de más: en los dos casos nadie se entera. */
+      const fuera = this.sinSincronizar();
+      if(fuera.length){
+        try{ console.info('[config-sync] NO se sincronizan ' + fuera.length +
+          ' llave(s), se quedan en este navegador: ' + fuera.join(', ')); }catch(e){}
+      }
       // Incluir el token cifrado para poder recuperarlo en otros dispositivos
       config['_github_token'] = token;
 
