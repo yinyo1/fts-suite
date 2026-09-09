@@ -53,6 +53,11 @@ Todo lo ajustable vive en el nodo `Set - config`, en texto plano, sin tocar cód
 | `reset_estado` | `false` | borra la memoria de dedupe. Solo para pruebas |
 | `hora_latido` | `18` | hora CST del corte diario (§7) |
 
+Los pesos de etapa 1 y las señales negativas están en el nodo `Code - Etapa 1`; cada una lleva su
+comentario con la corrida que la originó. La regla que las ordena: **una frase de entrega explícita
+gana aunque el correo hable de facturas; el encabezado por asunto cede ante cualquier negativa** —
+el porqué está en §5.6.
+
 **El solape de 90 minutos es deliberado.** La dedupe absorbe lo que se repita; un hueco, en cambio,
 pierde una orden de compra para siempre. Se elige el error barato.
 
@@ -78,7 +83,8 @@ hacia el de perder una orden.
 
 ## 4. Lo que se rompió al probarlo
 
-Seis corridas contra correo real. Cada una destapó algo que el diseño no había previsto:
+Seis corridas de prueba contra correo real, más el primer fallo real en operación (§5.6). Cada una
+destapó algo que el diseño no había previsto:
 
 **El modo `dry` no era dry (corrida 85362).** No había nada entre `Code - Build sendMail` y
 `HTTP - sendMail`: la bandera `_dry` se calculaba y nadie la leía. La primera prueba "en seco" mandó
@@ -108,6 +114,46 @@ remitente**, que es un dato duro del sobre, más una marca por `conversationId` 
 porque todas las pruebas anteriores cayeron, por casualidad, en ventanas con al menos un candidato; y
 las ventanas sin candidatos son **la mayoría**. Lo destapó la prueba del latido, no una prueba del
 detector. Ahora Resumen toma Decidir dentro de un `try` y, si no corrió, lee su propio `$input`.
+
+**Una orden real de Calbee salió al 72% y no llegó al grupo (corrida 91585, 8-sep).** Es el primer
+fallo detectado por el uso, no por una prueba, y son **dos** defectos del scorer sumados. El desglose
+crudo de etapa 1 fue `score: 30 · senales: [buzon_rol, folio, adjunto, externo, neg_factura]`, y con
+`confianza 0.96` eso da `0.6×96 + 0.4×35 = 72`. Para cruzar 90 con esa confianza hacía falta un
+score de **81**; tenía 35.
+
+*Defecto 1 — el pie de página de la orden la castigó.* El cuerpo decía, literal: `Please remit all
+invoice to ap@calbeeamerica.com`. Eso indica **a dónde mandar la factura de FTS** y es texto estándar
+de casi toda orden de compra; el `\binvoice\b` que se había agregado para callar los avisos de Ariba
+lo mordió y restó 25. **Mencionar una factura no es ser una factura.** Ahora ese pie se recorta antes
+de evaluar las señales negativas, con el verbo por delante y con `\b`, para que `Sent - Invoice
+INV171` y `has been submitted` —que sí son avisos de factura— sigan penalizados.
+
+*Defecto 2 — el asunto de portal no contaba como entrega.* `FTS Full Technology Systems LLC Purchase
+Order 2989 for Calbee America` es un encabezado con folio y **sin verbo**: no matchea ninguna frase
+de `ENTREGA`, que es una lista de actos de entrega (*"sent a new purchase order"*, *"orden de compra
+standard"*). Cuando la orden la emite un ERP o un portal, **el asunto ES el acto de entrega**. Nueva
+señal `acto_entrega_asunto` (+35), que exige la forma deletreada más el folio — un `PO` suelto es
+demasiado común en respuestas y facturas que solo citan el número.
+
+*Y el freno que el arreglo necesitaba.* La primera versión del parche regaló los +35 a una `Factura
+A-123 de la Orden de Compra 4567` y a una `Remision - Purchase Order 8899`: ambas traen el folio en
+el asunto sin ser órdenes. Por eso `acto_entrega_asunto` **cede ante cualquier señal negativa**,
+mientras que una frase de entrega explícita gana igual (una orden real sí habla de facturas). Lo
+destapó el arnés, no el diseño.
+
+**Una prueba en `dry` se tragaba los correos (9-sep).** La memoria de dedupe se escribía **siempre**,
+también en seco. O sea que un correo que llegara durante una prueba quedaba marcado como visto y **no
+se reenviaba nunca**. Demostrado encadenando Etapa 1 → clasificador → Decidir con `staticData`
+compartido y dos corridas seguidas: antes, en `dry`, la primera corrida veía la orden de Calbee al
+96% sin mandarla y **la segunda ya la descartaba**.
+
+Son **tres** caminos, no uno: `st.vistos` y `st.folios`/`st.hilos_enviados` en Decidir, y el avance
+de `st.ultimo_corte` en Etapa 1 — este último haría que la siguiente corrida real empezara *después*
+de la ventana probada y no volviera a mirar esos correos. Los tres quedan condicionados a
+`modo_envio: real`. En `real` el comportamiento es idéntico al de antes.
+
+Importa porque **todas las pruebas en seco de este documento se corrieron sobre la instancia viva**:
+cualquier orden que hubiera llegado durante una de ellas se habría perdido en silencio.
 
 **Los adjuntos se perdían y nadie se enteraba (85545).** El mismo correo devolvía 0 adjuntos en dos
 corridas y 2 adjuntos en otra. No era intermitencia: era **`429 ApplicationThrottled` de Graph**, y
@@ -149,7 +195,7 @@ del **comprador**, que es justamente el error caro que FASE A midió y que el pr
 Las otras dos copias de esa misma orden — una del buzón automático del cliente y otra reenviada a
 mano por una persona de su equipo — quedaron como `duplicado_folio` y no se reenviaron.
 
-## 6. Dos formatos de orden probados, no uno
+## 6. Tres formatos de orden probados, no uno
 
 El detector no está calibrado a un solo cliente. Se probó contra los dos canales por los que llegan
 órdenes reales, y los dos salen al 96%:
@@ -158,6 +204,7 @@ El detector no está calibrado a un solo cliente. Se probó contra los dos canal
 |---|---|---|---|---|
 | ERP del cliente (GEPP) | `FYI: BEPUSA - Orden de Compra Standard 2688378, 0` | 2688378 | 96% | 2, PDF de 44,347 caracteres |
 | Plataforma de compras (Ariba/GRUMA) | `GRUMA sent a new Purchase Order 7500314675` | 7500314675 | 96% | 2, PDF de 3,290 caracteres |
+| Portal Concur (Calbee) | `FTS Full Technology Systems LLC Purchase Order 2989 for Calbee America` | 2989 | 96% *(tras el arreglo de §5.6; salió al 72%)* | 4 |
 
 En la ventana de 100 correos del 10-13 de agosto, ya con el aviso de Ariba silenciado: **12
 candidatos, 1 orden reenviada, 0 probables, 0 falsos positivos.**
@@ -220,13 +267,34 @@ grupo aunque su evidencia estructural sea alta por sí sola.
 | `85705` | 90 | 96% | `newordersnotification@fts.mx` |
 | `85747` | 99 | 96% | `estebandelacruz@fts.mx` |
 
-### Lo que sigue sin medirse
+### El recall: lo que el cruce contra Odoo pudo y no pudo medir (9-sep)
 
-**El recall.** No sabemos cuántas órdenes deja pasar el radar, y esperar no lo mide. La prueba al
-alcance sin FASE B es **cruzar contra Odoo**: toda SO confirmada en una semana tuvo una orden de
-compra que llegó por correo. Si el radar reenvió una por cada SO confirmada, el recall es bueno; las
-que falten nombran los formatos que faltan por cubrir. Ese cruce es el siguiente paso natural, y no
-bloquea nada de lo que ya corre.
+Se corrió. **El resultado útil no fue el número, fue descubrir que el método no se sostiene todavía.**
+
+**Hallazgo del método — la llave del cruce no existe.** La idea era casar cada SO confirmada con su
+orden de compra por `x_studio_purchase_order_number`. Ese campo está **vacío en 12 de las 15 SOs
+confirmadas desde el 1-ago** (solo `151440`, `151441` y `7500314675` lo traen). Entre las vacías está
+**SO11832 · BEBIDAS PURIFICADAS · $86,452.48**, cuyo monto y cliente coinciden exactos con la orden
+`2688378` de GEPP que el radar sí detectó al 96%. O sea: **el radar conoce folios que Odoo no tiene
+registrados.** Mientras ese campo siga vacío, el cruce no se puede automatizar.
+
+**Lo que sí se pudo medir, y es poco.** Desde que el radar entró en operación (3-sep 20:00 UTC) se ha
+confirmado **una sola SO**: `SO11860` (Mission Foods, $7,500, 4-sep 19:47 UTC). Su orden de compra
+—`4501730831` de `aztecamilling`, *"Attached is the purchase order for Mission Foods"*— llegó el
+**2-sep 16:17 UTC, 28 horas antes de que el radar existiera**. No es una falla: no estaba corriendo.
+
+Barriendo la bandeja del periodo por "purchase order" / "orden de compra", la única orden de compra
+real que llegó con el radar vivo fue la de **Calbee 2989**, y la detectó. **Recall medido: 1 de 1** —
+una muestra de uno, que no autoriza a decir que el recall es bueno.
+
+*(Verificación de método: `date_order` sí es la hora de confirmación — `SO11498` la tiene en
+`2026-09-02 05:48:37` y el correo `[Nuevo Proyecto Confirmado] SO11498` salió a las `05:51:14`, tres
+minutos después.)*
+
+**Para que el cruce sirva de verdad hacen falta dos cosas:** que pasen suficientes semanas para tener
+más de una SO confirmada en ventana, y que `x_studio_purchase_order_number` se llene. Lo segundo el
+radar podría hacerlo solo —ya extrae folio, cliente, monto y moneda del PDF— pero eso es un frente
+nuevo, no una extensión de éste.
 
 ## 9. Lo que falta y lo que conviene vigilar
 
