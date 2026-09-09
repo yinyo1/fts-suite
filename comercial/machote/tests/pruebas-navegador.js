@@ -3342,6 +3342,187 @@ let ok = 0, mal = 0;
     } finally { await ctx.close(); }
   });
 
+  /* ── V1.22 · dirección ve el trabajo del equipo, en sólo lectura ───────
+   *
+   * El servidor decide el ALCANCE (con `comercial:admin` devuelve los de
+   * todos) y eso se prueba contra la base, no aquí. Lo que se prueba aquí es
+   * lo otro: que la pantalla trate el trabajo ajeno como AJENO — que no lo
+   * meta en el almacén de uno, que no lo suba, y que no deje teclearlo. */
+  const paginaConAjenos = async () => {
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    await q.addInitScript(() => {
+      try {
+        localStorage.setItem('fts_suite_session', JSON.stringify({
+          token: 'prueba.prueba.prueba', actor: 'esteban.delacruz',
+          nombre: 'Jesus Esteban De La Cruz', empleado_id: 32,
+          scopes: ['comercial:read', 'comercial:admin'],
+          exp: Math.floor(Date.now() / 1000) + 3600, debe_cambiar_password: false }));
+        localStorage.removeItem('fts_machote_v1');
+        localStorage.removeItem('fts_machote_sync_v1');
+      } catch (e) {}
+      /* El documento se clona de la DEMO —que es un machote válido y completo—
+       * y sólo se le cambia el nombre. Un machote inventado a mano aquí pinta
+       * una hoja sin campos, y entonces la prueba de «está trabado» no probaría
+       * nada: no habría nada que trabar. Se evalúa perezosamente porque
+       * `window.DEMO` todavía no existe cuando corre este guion. */
+      const doc = (nom) => {
+        const base = (window.DEMO && window.DEMO.MACHOTES && window.DEMO.MACHOTES[0]) || null;
+        const d = base ? JSON.parse(JSON.stringify(base))
+                       : { estado: 'borrador', moneda: 'MXN', margenes: {}, secciones: [] };
+        d.nombre = nom; d.estado = 'borrador';
+        delete d._demo;          // llega del servidor: ya no es un ejemplo
+        return d;
+      };
+      window.__guard = [];
+      const orig = window.fetch;
+      window.fetch = function (u, o) {
+        const s = String(u);
+        if (s.indexOf('/comercial/machotes-leer') >= 0) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({
+            ok: true, modo: 'lista', actor: 'esteban.delacruz', es_admin: true,
+            total: 2, duenos: ['esteban.delacruz', 'ricardo.hernandez'],
+            machotes: [
+              { id: 'uuid-mio', id_local: 'M-MIO-1', documento: doc('Lo mio'),
+                dueno: 'esteban.delacruz', dueno_nombre: 'Jesus Esteban De La Cruz',
+                ajeno: false, version: 1, versiones: 1, estado: 'borrador' },
+              { id: 'uuid-de-ricardo', id_local: 'M-1041', documento: doc('Lo de Ricardo'),
+                dueno: 'ricardo.hernandez', dueno_nombre: 'Ricardo Alan Hernandez',
+                ajeno: true, version: 3, versiones: 3, estado: 'revision' }
+            ] }) });
+        }
+        if (s.indexOf('/comercial/machote-guardar') >= 0) {
+          var c = {}; try { c = JSON.parse((o && o.body) || '{}'); } catch (e) {}
+          window.__guard.push(c);
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({
+            ok: true, machote_id: 'x', id_local: c.id_local, dueno: 'esteban.delacruz',
+            version: 1, versiones: 1, autor: 'esteban.delacruz' }) });
+        }
+        if (s.indexOf('/comercial/clientes') >= 0) return new Promise(function () {});
+        return orig.apply(this, arguments);
+      };
+    });
+    await q.goto(BASE); await q.waitForTimeout(1600);
+    return q;
+  };
+
+  await paso('dirección ve el trabajo del equipo, marcado y sin poder tocarlo', async () => {
+    const q = await paginaConAjenos();
+    try {
+      /* Al entrar se ve SÓLO lo propio, también con el scope de dirección: es
+       * la decisión de Esteban y el pie lo anuncia. Lo de los demás está a un
+       * clic, y ese clic es el que se da aquí. */
+      const alEntrar = await q.$$eval('tr.rw', f => f.map(x => x.textContent.indexOf('Lo de Ricardo') >= 0));
+      if (alEntrar.some(Boolean))
+        throw new Error('al entrar ya enseñaba lo de otro: el filtro propio no se respetó');
+      const pie = (await q.textContent('#vista')).replace(/\s+/g, ' ');
+      if (!/Viendo sólo lo tuyo/i.test(pie))
+        throw new Error('no avisa que hay un filtro puesto');
+
+      await q.selectOption('#fPersona', ''); await q.waitForTimeout(320);
+
+      const r = await q.evaluate(() => {
+        const filas = [...document.querySelectorAll('tr.rw')];
+        const busca = (t) => filas.find(f => f.textContent.indexOf(t) >= 0);
+        const mio = busca('Lo mio'), aj = busca('Lo de Ricardo');
+        return {
+          salen_los_dos: !!mio && !!aj,
+          el_ajeno_se_marca: !!(aj && aj.querySelector('.pill.aj')),
+          el_ajeno_no_se_borra: !!(aj && !aj.querySelector('[data-borrar]')),
+          el_mio_si_se_borra: !!(mio && mio.querySelector('[data-borrar]')),
+          dice_de_quien: !!(aj && /Ricardo/.test(aj.textContent)),
+          /* LO IMPORTANTE: el trabajo de otro NO entra al almacén de uno. */
+          en_el_almacen: (JSON.parse(localStorage.getItem('fts_machote_v1') || '{"machotes":[]}')
+            .machotes || []).map(m => m.nombre)
+        };
+      });
+      if (!r.salen_los_dos) throw new Error('no salieron los dos machotes');
+      if (!r.el_ajeno_se_marca) throw new Error('el ajeno no se distingue del propio');
+      if (!r.el_ajeno_no_se_borra) throw new Error('le dejó el botón de borrar al ajeno');
+      if (!r.el_mio_si_se_borra) throw new Error('se llevó de más: el propio ya no se borra');
+      if (!r.dice_de_quien) throw new Error('no dice de quién es');
+      if (r.en_el_almacen.indexOf('Lo de Ricardo') >= 0)
+        throw new Error('GUARDÓ trabajo ajeno en fts_machote_v1: ' + JSON.stringify(r.en_el_almacen));
+      if (r.en_el_almacen.indexOf('Lo mio') < 0)
+        throw new Error('perdió lo propio: ' + JSON.stringify(r.en_el_almacen));
+      console.log('    en el almacén sólo ' + JSON.stringify(r.en_el_almacen));
+    } finally { await q.close(); }
+  });
+
+  await paso('el machote ajeno se abre TRABADO y nunca se sube', async () => {
+    const q = await paginaConAjenos();
+    try {
+      await q.evaluate(() => { location.hash = '#/m/uuid-de-ricardo'; });
+      await q.waitForTimeout(500);
+      const r = await q.evaluate(() => {
+        const campos = [...document.querySelectorAll('#hoja input, #hoja select, #hoja textarea')];
+        return {
+          avisa: !!document.querySelector('.aviso-ajeno'),
+          campos: campos.length,
+          sueltos: campos.filter(c => !c.disabled).length,
+          /* La barra fija vive FUERA de `#hoja`: se comprueba aparte porque el
+           * trabado de la hoja no la alcanza. */
+          pasar_a_orden: !!document.querySelector('#btnOrden'),
+          revisar: !!document.querySelector('.fija a[href^="#/rev/"]')
+        };
+      });
+      if (!r.avisa) throw new Error('no avisa que es de otra persona');
+      if (r.pasar_a_orden)
+        throw new Error('deja «Pasar a orden» sobre trabajo ajeno');
+      if (!r.revisar)
+        throw new Error('quitó «Revisar», que es justo para lo que se abre uno ajeno');
+      if (!r.campos) throw new Error('no pintó la hoja: la prueba no probaría nada');
+      if (r.sueltos) throw new Error(r.sueltos + ' de ' + r.campos + ' campos siguen editables');
+
+      // Y aunque se fuerce el empujón, no viaja.
+      const g = await q.evaluate(async () => {
+        const A = window.MachoteAlmacen;
+        const aj = { id: 'uuid-de-ricardo', nombre: 'Lo de Ricardo', _ajeno: true,
+                     secciones: [], margenes: {} };
+        const r1 = await A.empujar([aj]);
+        const r2 = await A.empujarUno(aj, { token: 't' }, null).catch(e => ({ error: 'lanzó' }));
+        return { subidos: r1 && r1.subidos, uno: r2 && r2.error,
+                 llamadas: (window.__guard || []).length };
+      });
+      if (g.llamadas) throw new Error('llamó al servidor ' + g.llamadas + ' vez(ces) con lo ajeno');
+      if (g.uno !== 'ES_AJENO') throw new Error('empujarUno no lo rechazó: ' + g.uno);
+      console.log('    hoja trabada · ' + r.campos + ' campos · 0 llamadas al servidor · ' + g.uno);
+    } finally { await q.close(); }
+  });
+
+  await paso('el sincronizador de configuración NO se lleva lo del machote', async () => {
+    /* La fuga que esto cierra: `shared/ops-config.json` está COMMITEADO en un
+     * repo público, y hasta hoy el sincronizador barría toda llave `fts_*`.
+     * La captura comercial de tres personas se iba en la siguiente subida. */
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    try {
+      /* Se carga el archivo REAL —no una copia— en una página en blanco y se
+       * ejerce su API. Si alguien cambia la lista, esto lo caza. */
+      await q.goto(BASE);
+      await q.addScriptTag({ path: path.resolve(__dirname, '..', '..', '..', 'shared', 'config-sync.js') });
+      const r = await q.evaluate(() => {
+        const sensibles = ['fts_machote_v1', 'fts_machote_sync_v1', 'fts_suite_session',
+          'fts_fin_session', 'fts_mi_perfil_session', 'fts_comercial_hmac', 'fts_employees',
+          'fts_session', 'ops_sync_password', 'ops_kiosk_master_pin', 'ops_kiosk_field_pin'];
+        sensibles.forEach(k => localStorage.setItem(k, 'SECRETO-' + k));
+        localStorage.setItem('ops_n8n_url', 'https://n8n.example');
+        localStorage.setItem('key_claude', 'sk-de-mentiras');
+        const cfg = window.ConfigSync.collectOpsKeys();
+        return { llaves: Object.keys(cfg).sort(),
+                 coladas: sensibles.filter(k => k in cfg),
+                 trae_config: ('ops_n8n_url' in cfg) && ('key_claude' in cfg),
+                 fuera: window.ConfigSync.sinSincronizar() };
+      });
+      if (r.coladas.length)
+        throw new Error('se colaron al repo público: ' + r.coladas.join(', '));
+      if (!r.trae_config)
+        throw new Error('se llevó de más: dejó de sincronizar la configuración real');
+      if (r.fuera.indexOf('fts_machote_v1') < 0)
+        throw new Error('no reporta que el machote se queda fuera');
+      console.log('    sincroniza ' + r.llaves.length + ' · deja fuera ' + r.fuera.length +
+                  ' (incluido fts_machote_v1)');
+    } finally { await q.close(); }
+  });
+
   await paso('sin errores de consola propios del prototipo', async () => {
     if (errs.length) throw new Error(errs.slice(0, 4).join(' | '));
     if (delEntorno.length) console.log('   (' + delEntorno.length +

@@ -154,14 +154,15 @@
 
   /** Cuántos machotes están escritos aquí pero todavía no en el servidor.
    *  Los ejemplos NO cuentan: nunca se van a subir (`empujarUno` los rechaza),
-   *  así que contarlos dejaría el pulso en «sin guardar» para siempre. */
+   *  así que contarlos dejaría el pulso en «sin guardar» para siempre. Lo
+   *  AJENO tampoco: no es de quien mira y no le toca a él guardarlo. */
   function pendientes(machotes) {
     var lista = machotes || ((leerLocal() || {}).machotes) || [];
     var s = leerSync(), n = 0;
     for (var i = 0; i < lista.length; i++) {
       var m = lista[i];
       if (!m || !m.id) continue;
-      if (esDemo(m)) continue;
+      if (esDemo(m) || esAjeno(m)) continue;
       var meta = s[m.id];
       if (!meta || meta.huella !== huella(m)) n++;
     }
@@ -253,12 +254,34 @@
    * Se comprueba con una prueba dedicada. */
   function esDemo(m) { return !!(m && m._demo === true); }
 
+  /* Un machote AJENO es de otra persona y llegó porque quien mira tiene el
+   * scope `comercial:admin`. Dirección revisa, no edita el trabajo de otro.
+   *
+   * NO SE GUARDA EN `fts_machote_v1`. Esa llave significa «lo mío», y meter
+   * ahí lo de los demás rompería tres cosas a la vez:
+   *   · el `id_local` choca —Ricardo también tiene un M-1041— y el de otro
+   *     pisaría el propio al fundirse;
+   *   · `empujarUno` lo volvería a subir, y el servidor le pone de dueño a
+   *     QUIEN MANDA, así que el trabajo de Ricardo acabaría a nombre de
+   *     Esteban;
+   *   · se quedaría ahí para siempre, también el día que a alguien le quiten
+   *     el scope.
+   * Por eso los ajenos viven SÓLO en memoria, mientras dura la pantalla. */
+  function esAjeno(m) { return !!(m && m._ajeno === true); }
+
   function empujarUno(m, ses, motivo) {
     /* Segundo candado, además de no meterla en la lista: si mañana alguien
      * llama a `empujarUno` directo, la demo sigue sin llegar al servidor. */
     if (esDemo(m)) {
       return Promise.resolve({ ok: false, error: 'ES_DEMO',
         mensaje: 'Los machotes de demostración no se suben al servidor.' });
+    }
+    /* Mismo candado para el trabajo ajeno. No debería llegar aquí —ni entra a
+     * la lista local ni lo recorre `empujar`— pero el día que alguien llame a
+     * esto directo, subirlo lo pondría a nombre de quien manda. */
+    if (esAjeno(m)) {
+      return Promise.resolve({ ok: false, error: 'ES_AJENO',
+        mensaje: 'Ese machote es de otra persona: se puede ver, no guardar.' });
     }
     var s = leerSync();
     var meta = s[m.id] || { version: 0 };
@@ -314,7 +337,7 @@
     for (var i = 0; i < lista.length; i++) {
       var m = lista[i];
       if (!m || !m.id) continue;
-      if (esDemo(m)) continue;                       // la demo no viaja
+      if (esDemo(m) || esAjeno(m)) continue;         // ni la demo ni lo de otro viajan
       var meta = s[m.id];
       if (!meta || meta.huella !== huella(m)) falta.push(m);
     }
@@ -369,12 +392,29 @@
       for (i = 0; i < lista.length; i++) if (lista[i] && lista[i].id) porId[lista[i].id] = i;
 
       var nuevos = 0, refrescados = 0, conservados = 0;
+      /* Lo AJENO se aparta aquí y no vuelve a tocar el almacén local. Va en su
+       * propia lista, en memoria, y la pantalla la pinta al lado de la propia.
+       * El porqué está en `esAjeno`. */
+      var ajenos = [];
 
       for (i = 0; i < r.machotes.length; i++) {
         var fila = r.machotes[i];
         if (!fila || !fila.id_local || !fila.documento) continue;
 
         var doc = machoteDesdeFila(fila);
+
+        if (fila.ajeno === true) {
+          /* El id de PANTALLA de un ajeno es el uuid del servidor, no su
+           * `id_local`: dos personas pueden tener el mismo `M-1041` y con el
+           * id_local se abrirían una a la otra. */
+          doc.id = fila.id;
+          doc._ajeno = true;
+          doc._dueno = fila.dueno || null;
+          doc._dueno_nombre = fila.dueno_nombre || null;
+          doc._version_servidor = fila.version;
+          ajenos.push(doc);
+          continue;
+        }
 
         var pos = porId[fila.id_local];
         if (pos === undefined) {
@@ -407,6 +447,7 @@
 
       return { ok: true, bajados: r.machotes.length, nuevos: nuevos,
                refrescados: refrescados, conservados: conservados,
+               es_admin: r.es_admin === true, ajenos: ajenos,
                machotes: lista, handoff: local.handoff || {}, cache_ok: quedo };
     });
   }
@@ -457,7 +498,7 @@
      * subir» eternamente y «Subir ahora» nunca podría bajar el número — un
      * pendiente que no se puede resolver es peor que no avisar. */
     var todos = machotes || ((leerLocal() || {}).machotes) || [];
-    var lista = todos.filter(function (m) { return !esDemo(m); });
+    var lista = todos.filter(function (m) { return !esDemo(m) && !esAjeno(m); });
     var demos = todos.length - lista.length;
     var ses = sesion();
 
@@ -475,9 +516,15 @@
           ids_pendientes: lista.map(function (m) { return m.id; }) };
       }
 
+      /* Los AJENOS se descartan antes de indexar. La franja habla de LO MÍO, y
+       * el índice va por `id_local`, que NO es único entre personas: Ricardo
+       * también tiene un `M-1041`. Sin este filtro, con el scope de dirección
+       * el machote de otro casaría con el propio y la franja diría «a salvo»
+       * de algo que en el servidor está a nombre de alguien más. */
       var enServidor = {}, i;
       for (i = 0; i < r.machotes.length; i++) {
         var f = r.machotes[i];
+        if (f && f.ajeno === true) continue;
         if (f && f.id_local) enServidor[f.id_local] = f;
       }
 
@@ -624,7 +671,12 @@
     // Asíncrono: el servidor.
     escribir: escribir,
     bajar: bajar,
+    esAjeno: esAjeno,
     empujar: empujar,
+    /* Se exporta para que la prueba pueda apretar el SEGUNDO candado —el de
+     * `empujarUno`— sin pasar por la lista. Un candado que no se puede probar
+     * por separado es un candado que nadie sabe si sigue puesto. */
+    empujarUno: empujarUno,
     historial: historial,
     idServidor: idServidor,
     esDemo: esDemo,
