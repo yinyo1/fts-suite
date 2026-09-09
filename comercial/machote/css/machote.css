@@ -1186,3 +1186,36 @@ tr.desg-cuadre .malo { color: var(--rojo); font-weight: 700; }
 .libro.solo-lectura select:disabled,
 .libro.solo-lectura textarea:disabled { background: var(--papel); cursor: not-allowed; }
 .libro.solo-lectura .pestana { opacity: 1; }   /* moverse entre hojas SÍ se puede */
+
+/* ── El folio (V1.23) ──────────────────────────────────────────────────────
+   El número con el que se habla de una cotización. Va monoespaciado porque se
+   lee dígito por dígito al dictarlo, y en color de acento para que salte en
+   una línea gris de cliente y orden.
+
+   `.sin` es el caso «todavía no ha subido»: mismo hueco, sin color y con el
+   porqué en el `title`. Que ocupe el mismo lugar importa — si desapareciera,
+   la lista se desalinearía entre un machote y el de al lado. */
+.folio { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+         font-size: 12px; font-weight: 600; color: var(--acento);
+         letter-spacing: .2px; }
+.folio.sin { color: var(--suave); font-weight: 400; }
+
+/* El del encabezado sí es un botón: se copia de un toque. Alto de --toque
+   para que se pueda picar con el dedo sin apuntar. */
+.cab-folio { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+             margin: -2px 0 12px; }
+.folio.grande { font-size: 15px; padding: 8px 12px; border-radius: 8px;
+                border: 1px solid var(--linea); background: var(--papel);
+                min-height: 36px; cursor: pointer; }
+button.folio.grande:hover { border-color: var(--acento); background: #eef4fd; }
+button.folio.grande:active { transform: translateY(1px); }
+span.folio.grande.sin { cursor: default; border-style: dashed; }
+.cab-nombre { font-size: 14px; font-weight: 600; color: var(--tinta);
+              flex: 1 1 220px; min-width: 0; }
+
+@media (max-width: 560px) {
+  /* En el teléfono el nombre baja: apretarlo al lado del folio lo parte en
+     tres renglones de dos palabras. */
+  .cab-folio { gap: 6px; }
+  .cab-nombre { flex-basis: 100%; }
+}

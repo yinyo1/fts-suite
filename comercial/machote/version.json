@@ -1,10 +1,15 @@
 {
-  "version": "V1.22",
+  "version": "V1.23",
   "fecha": "2026-09-09",
   "modulo": "comercial/machote",
   "ambito": "El CONTADOR es solo de este modulo. finanzas tambien usa V1.xx desde el 2026-09-03 (instruccion directa de Esteban, corrige el \"no propagar\" del issue #148) pero lleva su propio contador y va en V1.00. operaciones/planeacion sigue en 2.4.1, kiosk y confirmar-horas solo con cadena de build, y siete modulos con un 1.0.0 puesto una vez: a esos no se propaga.",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.23",
+      "pr": null,
+      "nota": "El folio de la cotizacion, y los ejemplos que por fin se dejan borrar. EL FOLIO: un machote tenia dos identificadores y ninguno servia para hablar de el -el id que inventa el navegador (M-1788841740067) y el uuid del servidor-. Ahora tiene COT-0003: corto, dictable por telefono y distinto de un folio de Odoo al verlo y al decirlo. Lo asigna el SERVIDOR al crear la identidad, via una secuencia de Postgres como DEFAULT de la columna, asi que ningun codigo tiene que acordarse de pedirlo y dos personas capturando a la vez no pueden llevarse el mismo numero (medido: 20 conexiones simultaneas, 20 folios distintos). Mientras un machote no ha subido NO tiene folio y la pantalla lo dice con esas palabras, en vez de inventar uno que chocaria justo al subir. Sin anio y sin reinicio -con reinicio el anio seria obligatorio para desambiguar; sin reinicio seria adorno que la gente deja de decir- y un numero no se reusa nunca: borrar no lo libera. La forma vive en la BASE como columna generada, para que el panel, el correo y el PDF no puedan citar folios distintos del mismo machote. Se ve en la tabla, en la tarjeta del telefono y en el encabezado, donde se copia de un toque, y se busca tecleando COT-0003 o 3. LOS EJEMPLOS: borrarlos y verlos reaparecer al recargar era un defecto real, y no era de los ejemplos: le pasaba a CUALQUIER machote ya subido. bajar() veia una fila del servidor cuyo id_local ya no estaba aqui, no podia distinguir 'nunca llego' de 'se borro aqui', y la volvia a meter. Ahora borrar deja una lapida por navegador y lo borrado no vuelve; un navegador nuevo sigue viendo los ejemplos la primera vez. Y los cuatro ejemplos que Ricardo tenia en el servidor se borraron logicamente tras comprobar, campo por campo, que eran identicos a demo.js."
+    },
     {
       "version": "V1.22",
       "pr": null,

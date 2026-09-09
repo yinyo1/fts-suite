@@ -3384,10 +3384,12 @@ let ok = 0, mal = 0;
             machotes: [
               { id: 'uuid-mio', id_local: 'M-MIO-1', documento: doc('Lo mio'),
                 dueno: 'esteban.delacruz', dueno_nombre: 'Jesus Esteban De La Cruz',
-                ajeno: false, version: 1, versiones: 1, estado: 'borrador' },
+                ajeno: false, version: 1, versiones: 1, estado: 'borrador',
+                folio: 1, folio_txt: 'COT-0001' },
               { id: 'uuid-de-ricardo', id_local: 'M-1041', documento: doc('Lo de Ricardo'),
                 dueno: 'ricardo.hernandez', dueno_nombre: 'Ricardo Alan Hernandez',
-                ajeno: true, version: 3, versiones: 3, estado: 'revision' }
+                ajeno: true, version: 3, versiones: 3, estado: 'revision',
+                folio: 7, folio_txt: 'COT-0007' }
             ] }) });
         }
         if (s.indexOf('/comercial/machote-guardar') >= 0) {
@@ -3520,6 +3522,136 @@ let ok = 0, mal = 0;
         throw new Error('no reporta que el machote se queda fuera');
       console.log('    sincroniza ' + r.llaves.length + ' · deja fuera ' + r.fuera.length +
                   ' (incluido fts_machote_v1)');
+    } finally { await q.close(); }
+  });
+
+  /* ── V1.23 ────────────────────────────────────────────────────────────────
+   * Un montaje donde el servidor SÍ tiene el machote. Es la situación real de
+   * Esteban: los ejemplos se habían subido antes de que V1.21 los marcara en
+   * origen, así que para el servidor eran machotes normales. */
+  const paginaConServidor = async (filas) => {
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    await q.addInitScript((f) => {
+      try {
+        localStorage.setItem('fts_suite_session', JSON.stringify({
+          token: 'prueba.prueba.prueba', actor: 'esteban.delacruz',
+          nombre: 'Jesus Esteban De La Cruz', empleado_id: 32,
+          scopes: ['comercial:read'],
+          exp: Math.floor(Date.now() / 1000) + 3600, debe_cambiar_password: false }));
+        localStorage.removeItem('fts_machote_v1');
+        localStorage.removeItem('fts_machote_sync_v1');
+      } catch (e) {}
+      const orig = window.fetch;
+      window.fetch = function (u) {
+        const s = String(u);
+        if (s.indexOf('/comercial/machotes-leer') >= 0) {
+          const doc = (nom) => {
+            const base = (window.DEMO && window.DEMO.MACHOTES && window.DEMO.MACHOTES[0]) || null;
+            const d = base ? JSON.parse(JSON.stringify(base)) : { estado: 'borrador', secciones: [] };
+            d.nombre = nom; d.estado = 'borrador'; delete d._demo;
+            return d;
+          };
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({
+            ok: true, modo: 'lista', actor: 'esteban.delacruz', es_admin: false,
+            total: f.length, duenos: ['esteban.delacruz'],
+            machotes: f.map(x => Object.assign({
+              dueno: 'esteban.delacruz', dueno_nombre: 'Jesus Esteban De La Cruz',
+              ajeno: false, version: 1, versiones: 1, estado: 'borrador',
+              documento: doc(x.nombre)
+            }, x)) }) });
+        }
+        if (s.indexOf('/comercial/machote-guardar') >= 0) return new Promise(function () {});
+        if (s.indexOf('/comercial/clientes') >= 0) return new Promise(function () {});
+        return orig.apply(this, arguments);
+      };
+    }, filas);
+    await q.goto(BASE); await q.waitForTimeout(1600);
+    return q;
+  };
+
+  await paso('un ejemplo borrado NO vuelve al recargar', async () => {
+    /* El defecto que reportó Esteban, y su causa real: `bajar()` veía una fila
+     * del servidor cuyo `id_local` ya no estaba en la lista local, no podía
+     * distinguir «nunca llegó» de «se borró aquí», y la volvía a meter. No era
+     * de los ejemplos: le pasaba a CUALQUIER machote ya subido. Los ejemplos
+     * se notaron porque son los que todo el mundo borra el primer día. */
+    const q = await paginaConServidor([
+      { id: 'uuid-1041', id_local: 'M-1041', nombre: 'Ejemplo que estorba', folio: 3, folio_txt: 'COT-0003' },
+      { id: 'uuid-otro', id_local: 'M-OTRO', nombre: 'Uno que se queda', folio: 4, folio_txt: 'COT-0004' }
+    ]);
+    try {
+      const hay = async () => q.$$eval('tr.rw', f => f.map(x => x.textContent));
+      const antes = await hay();
+      if (!antes.some(t => t.indexOf('Ejemplo que estorba') >= 0))
+        throw new Error('el montaje no sirve: el ejemplo no llegó a pintarse');
+
+      q.once('dialog', d => d.accept());
+      await q.click('tr.rw:has-text("Ejemplo que estorba") [data-borrar]');
+      await q.waitForTimeout(500);
+      if ((await hay()).some(t => t.indexOf('Ejemplo que estorba') >= 0))
+        throw new Error('no se borró ni siquiera en pantalla');
+
+      // LO QUE IMPORTA: recargar, con el servidor todavía sirviéndolo.
+      await q.reload(); await q.waitForTimeout(1800);
+      const despues = await hay();
+      if (despues.some(t => t.indexOf('Ejemplo que estorba') >= 0))
+        throw new Error('VOLVIÓ al recargar: la lápida no lo detuvo');
+      if (!despues.some(t => t.indexOf('Uno que se queda') >= 0))
+        throw new Error('se llevó de más: desapareció el que NO se borró');
+
+      const lapida = await q.evaluate(() => {
+        try { return JSON.parse(localStorage.getItem('fts_machote_borrados_v1') || '{}'); }
+        catch (e) { return {}; }
+      });
+      if (!lapida['M-1041']) throw new Error('no quedó lápida de M-1041');
+      if (lapida['M-OTRO']) throw new Error('sepultó uno que nadie borró');
+      console.log('    borrado, recargado y no volvió · lápidas: ' + Object.keys(lapida).join(', '));
+    } finally { await q.close(); }
+  });
+
+  await paso('el folio se ve, se copia, y sin folio se dice', async () => {
+    const q = await paginaConServidor([
+      { id: 'uuid-con', id_local: 'M-CON', nombre: 'Con folio', folio: 42, folio_txt: 'COT-0042' }
+    ]);
+    try {
+      const lista = (await q.textContent('#vista')).replace(/\s+/g, ' ');
+      if (lista.indexOf('COT-0042') < 0)
+        throw new Error('el folio no salió en la lista: ' + lista.slice(0, 200));
+
+      // Se busca por folio, que es lo que la gente va a teclear.
+      await q.fill('#q', 'COT-0042'); await q.waitForTimeout(400);
+      if ((await q.$$('tr.rw')).length !== 1)
+        throw new Error('buscar por folio no encontró la cotización');
+      await q.fill('#q', '42'); await q.waitForTimeout(400);
+      if ((await q.$$('tr.rw')).length !== 1)
+        throw new Error('buscar por el número suelto no encontró la cotización');
+      await q.fill('#q', ''); await q.waitForTimeout(300);
+
+      // Abierto: el folio arriba, en un botón que se puede copiar.
+      await q.click('tr.rw:has-text("Con folio") a');
+      await q.waitForTimeout(700);
+      const btn = await q.$('.cab-folio [data-copiar]');
+      if (!btn) throw new Error('no hay botón de copiar el folio en el encabezado');
+      if ((await btn.textContent()).trim() !== 'COT-0042')
+        throw new Error('el botón no dice el folio');
+      const alto = await btn.evaluate(e => e.getBoundingClientRect().height);
+      if (alto < 30) throw new Error('el botón de copiar mide ' + alto + 'px: no se pica con el dedo');
+
+      /* Y el caso que la tensión del diseño obliga a resolver: un machote que
+       * TODAVÍA no ha subido no tiene folio, y la pantalla tiene que decirlo
+       * en vez de inventar uno. */
+      await q.goto(BASE); await q.waitForTimeout(1200);
+      await q.evaluate(() => { location.hash = '#/nuevo'; });
+      await q.waitForTimeout(400);
+      await q.fill('#n-nombre', 'Recien capturada');
+      await q.click('#n-crear');
+      await q.waitForTimeout(900);
+      const cab = await q.textContent('.cab-folio');
+      if (cab.indexOf('sin folio') < 0)
+        throw new Error('un machote sin subir no dice «sin folio», dice: ' + cab.trim().slice(0, 80));
+      if (await q.$('.cab-folio [data-copiar]'))
+        throw new Error('ofrece copiar un folio que no existe');
+      console.log('    COT-0042 en lista, buscable, copiable · sin subir dice «sin folio»');
     } finally { await q.close(); }
   });
 

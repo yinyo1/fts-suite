@@ -40,7 +40,7 @@
    * 2026-09-03 (por instrucción de Esteban), pero lleva el suyo aparte y va en
    * V1.00. Planeación sigue en `2.4.1` y el kiosko sólo con cadena de build;
    * a esos no se propaga. */
-  const VERSION = 'V1.22';
+  const VERSION = 'V1.23';
   const $  = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
   const clon = (x) => JSON.parse(JSON.stringify(x));
@@ -272,6 +272,24 @@
   const mach  = (id) => ST.machotes.find(m => m.id === id) ||
                         ST.ajenos.find(m => m.id === id);
   const ajeno = (m) => !!(m && m._ajeno === true);
+
+  /* ── El folio (V1.23) ────────────────────────────────────────────────────
+   * El número con el que se habla de una cotización: `COT-0003`. Lo reparte
+   * el SERVIDOR al crear la identidad; mientras el machote no ha subido, no
+   * tiene, y eso se dice con esas palabras en vez de inventar uno.
+   *
+   * Sale de DOS sitios según de quién sea el machote, y por eso hay una sola
+   * función: lo ajeno vive en memoria y trae el folio encima; lo propio lo
+   * tiene la libreta de sincronización, porque meterlo en el machote lo
+   * metería en su huella y la franja diría «por subir» de algo ya guardado.
+   * Devuelve la cadena ya formateada por la base, nunca armada aquí. */
+  function folioDe(m) {
+    if (!m) return null;
+    if (m._ajeno === true) return m._folio_txt || null;
+    if (!A || !A.folio) return null;
+    const f = A.folio(m.id);
+    return f ? f.folio_txt : null;
+  }
   const orden = (id) => ST.ordenes.find(o => o.id === id);
   const hoff  = (id) => ST.handoff[id] || (ST.handoff[id] = { entregables: {}, notas: '' });
 
@@ -452,7 +470,11 @@
     if (!q) return true;
     // El id de Odoo entra a la búsqueda a propósito: es lo que se guarda, y
     // quien lo tenga a la mano debe poder encontrar la cotización con él.
-    const t = [m.nombre, cli(m), m.cliente, m.so, m.id, m.cliente_id]
+    // El FOLIO entra a la búsqueda antes que nada: es el número que la gente
+    // va a tener apuntado y a teclear. Se busca tanto 'COT-0003' como '3'.
+    const fl = folioDe(m);
+    const t = [m.nombre, cli(m), m.cliente, m.so, m.id, m.cliente_id,
+               fl, fl ? String(parseInt(String(fl).replace(/\D/g, ''), 10)) : '']
       .map(x => String(x || '').toLowerCase()).join(' | ');
     // Cada palabra por separado: "topo chico" y "chico topo" encuentran lo mismo.
     return q.toLowerCase().split(/\s+/).filter(Boolean).every(w => t.indexOf(w) >= 0);
@@ -615,7 +637,7 @@
     const filtros =
       '<div class="tb2">' +
         '<div class="bus"><input id="q" type="search" ' +
-          'placeholder="Buscar por nombre, cliente u orden…" value="' + esc(ST.busca) + '" ' +
+          'placeholder="Buscar por folio, nombre, cliente u orden…" value="' + esc(ST.busca) + '" ' +
           'autocomplete="off" enterkeyhint="search"></div>' +
         '<label class="fsel' + (f.persona ? ' puesto' : '') + '"><select id="fPersona">' +
           opc('', 'Todas las personas', f.persona) +
@@ -638,6 +660,26 @@
 
     /* Un renglón. La demo se marca y se dice por qué en el título: sin eso,
      * alguien la toma por una cotización que no sube y reporta un fallo. */
+    /* El folio como se ve en la lista. UNA función para la tabla y para la
+     * tarjeta: si fueran dos, un cambio de forma se aplicaría a una y no a la
+     * otra, y el mismo machote se leería distinto según el ancho.
+     *
+     * Sin folio se muestra el id del navegador, que es lo único que hay para
+     * referirse a un machote que todavía no sube — pero apagado y con el
+     * porqué en el título, para que no se confunda con un folio de verdad. */
+    const folioChip = (m) => {
+      const f = folioDe(m);
+      if (f) return '<span class="folio" title="Folio de la cotización">' + esc(f) + '</span> · ';
+      /* Sin folio y AJENO: nada. El `id` de un machote ajeno es el uuid del
+       * servidor —se usa así a propósito, porque dos personas pueden tener el
+       * mismo `id_local`— y enseñar un uuid de treinta y seis caracteres en la
+       * lista es ruido puro. Pasa mientras el servidor no publique el cambio
+       * que manda el folio: el frontend tiene que verse bien igual. */
+      if (ajeno(m)) return '';
+      return '<span class="folio sin" title="Todavía no ha subido al servidor, que es quien reparte los folios.">' +
+        esc(m.id) + '</span> · ';
+    };
+
     const fila = (m) => {
       const rev = R.revisar(m), c = rev.calc;
       const dm = esDemo(m);
@@ -651,8 +693,8 @@
         '<td><div class="nm"><a href="#/m/' + esc(m.id) + '">' + esc(m.nombre) + '</a>' +
           (dm ? ' <span class="pill" title="Ejemplo que trae la aplicación. No se guarda en el servidor.">ejemplo</span>' : '') +
           (ajeno(m) ? ' <span class="pill aj" title="Trabajo de otra persona. Se abre en lectura: no se edita ni se borra.">sólo lectura</span>' : '') +
-          '</div><div class="sub">' + esc(cli(m)) + (m.so ? ' · ' + esc(m.so) : '') +
-          (ajeno(m) ? '' : ' · ' + esc(m.id)) + '</div></td>' +
+          '</div><div class="sub">' + folioChip(m) + esc(cli(m)) +
+          (m.so ? ' · ' + esc(m.so) : '') + '</div></td>' +
         '<td class="quien-td sub" title="' + esc(nombreDe(duenoDe(m))) + '">' +
           esc(nombreDe(duenoDe(m))) + '</td>' +
         '<td><span class="pill" style="background:' + edo(m).color + '20;color:' + edo(m).color + '">' +
@@ -681,7 +723,8 @@
         '<div class="grow"><strong>' + esc(m.nombre) + '</strong>' +
           (dm ? ' <span class="pill">ejemplo</span>' : '') +
           (ajeno(m) ? ' <span class="pill aj">sólo lectura</span>' : '') +
-          '<div class="tiny">' + esc(cli(m)) + (m.so ? ' · ' + esc(m.so) : '') + ' · ' +
+          '<div class="tiny">' + folioChip(m) + esc(cli(m)) +
+          (m.so ? ' · ' + esc(m.so) : '') + ' · ' +
           esc(nombreDe(duenoDe(m))) + '</div></div>' +
         '<div class="right"><span class="chip" style="background:' + edo(m).color + '">' +
           esc(edo(m).label) + '</span>' +
@@ -796,6 +839,13 @@
       if (!confirm('¿Eliminar «' + m.nombre + '»?\n\nNo hay deshacer.')) return;
       const i = ST.machotes.findIndex(x => x.id === m.id);
       if (i >= 0) ST.machotes.splice(i, 1);
+      /* LA LÁPIDA (V1.23). Sin esto, quitarlo de la lista no alcanzaba: la
+       * siguiente bajada veía la fila en el servidor, no la encontraba aquí,
+       * y la volvía a meter. Al recargar reaparecía — cada vez. Es el defecto
+       * que reportó Esteban de los ejemplos, y le pasaba a cualquier machote
+       * ya subido. Se sepulta ANTES de guardar: si `guardarYa` falla por
+       * almacenamiento lleno, la lápida ya quedó. */
+      if (A && A.marcarBorrado) A.marcarBorrado(m.id);
       guardarYa();
       vHome();
       toast('Machote eliminado.');
@@ -895,9 +945,10 @@
     if (ST.libroAbierto !== id) { ST.hoja = 'desglose'; ST.libroAbierto = id; }
     const c = C.calcular(m);
     const soloLectura = ajeno(m);
+    const fol = folioDe(m);
     top(cli(m), soloLectura
       ? ('de ' + (m._dueno_nombre || m._dueno || 'otra persona'))
-      : (m.id + (m.so ? ' · ' + m.so : '')), null, '#/');
+      : ((fol || m.id) + (m.so ? ' · ' + m.so : '')), null, '#/');
 
     const hojas = [{ id: 'desglose', label: 'DESGLOSE COTIZACIÓN' }]
       .concat(m.secciones.map(s => ({ id: s.id, label: s.nombre || 'SECCIÓN' })));
@@ -907,7 +958,21 @@
      * propio, así que si no se dice, alguien teclea encima creyendo que es
      * suyo y pierde el rato: los campos están bloqueados y no va a entender
      * por qué. El aviso dice de quién es y qué puede hacer en su lugar. */
-    $('#vista').innerHTML =
+    /* EL FOLIO, ARRIBA Y JUNTO AL NOMBRE. Es lo que alguien dicta por
+     * teléfono, así que se puede copiar de un toque: pedirle a un vendedor
+     * que seleccione texto con el dedo en un renglón de ocho caracteres es
+     * pedirle que copie mal. */
+    const cabecera =
+      '<div class="cab-folio">' +
+        (fol
+          ? '<button class="folio grande" data-copiar="' + esc(fol) + '" ' +
+            'title="Copiar el folio">' + esc(fol) + '</button>'
+          : '<span class="folio grande sin" title="El folio lo asigna el servidor al guardar. ' +
+            'Mientras tanto esta cotización se identifica por su id de captura.">sin folio</span>') +
+        '<span class="cab-nombre">' + esc(m.nombre || 'Sin nombre') + '</span>' +
+      '</div>';
+
+    $('#vista').innerHTML = cabecera +
       (soloLectura
         ? '<div class="aviso-ajeno">Esta cotización es de <strong>' +
           esc(m._dueno_nombre || m._dueno || 'otra persona') + '</strong>. ' +
@@ -941,8 +1006,36 @@
         ST.hoja = nueva.id; tocado(m); return vMachote(id);
       }
     };
+    /* Copiar de un toque. `navigator.clipboard` no existe fuera de un origen
+     * seguro ni en navegadores viejos, así que hay respaldo con un textarea
+     * y `execCommand` — está obsoleto y funciona, que es lo que importa
+     * cuando alguien está en el celular a media planta. Y si las dos fallan,
+     * se dice; un botón que no hace nada y no avisa es peor que no tenerlo. */
+    const btnFolio = $('[data-copiar]');
+    if (btnFolio) btnFolio.onclick = () => {
+      const txt = btnFolio.dataset.copiar;
+      const listo = () => toast('Folio ' + txt + ' copiado.');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(txt).then(listo, () => respaldoCopiar(txt, listo));
+      } else respaldoCopiar(txt, listo);
+    };
+
     pintarHoja(m);
     barra(m, c);
+  }
+
+  function respaldoCopiar(txt, listo) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = txt;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (ok) listo(); else toast('No se pudo copiar. El folio es ' + txt);
+    } catch (e) { toast('No se pudo copiar. El folio es ' + txt); }
   }
 
   /** El HTML de la hoja abierta. Separado del pintado para poder renderizar a
