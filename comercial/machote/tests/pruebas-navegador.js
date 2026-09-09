@@ -3360,10 +3360,19 @@ let ok = 0, mal = 0;
         localStorage.removeItem('fts_machote_v1');
         localStorage.removeItem('fts_machote_sync_v1');
       } catch (e) {}
-      const doc = (nom) => ({
-        nombre: nom, cliente: 'Cliente X', estado: 'borrador', moneda: 'MXN',
-        margenes: {}, secciones: [{ id: 's1', nombre: 'SECCIÓN 1', mo: [], partidas: [] }]
-      });
+      /* El documento se clona de la DEMO —que es un machote válido y completo—
+       * y sólo se le cambia el nombre. Un machote inventado a mano aquí pinta
+       * una hoja sin campos, y entonces la prueba de «está trabado» no probaría
+       * nada: no habría nada que trabar. Se evalúa perezosamente porque
+       * `window.DEMO` todavía no existe cuando corre este guion. */
+      const doc = (nom) => {
+        const base = (window.DEMO && window.DEMO.MACHOTES && window.DEMO.MACHOTES[0]) || null;
+        const d = base ? JSON.parse(JSON.stringify(base))
+                       : { estado: 'borrador', moneda: 'MXN', margenes: {}, secciones: [] };
+        d.nombre = nom; d.estado = 'borrador';
+        delete d._demo;          // llega del servidor: ya no es un ejemplo
+        return d;
+      };
       window.__guard = [];
       const orig = window.fetch;
       window.fetch = function (u, o) {
@@ -3399,6 +3408,18 @@ let ok = 0, mal = 0;
   await paso('dirección ve el trabajo del equipo, marcado y sin poder tocarlo', async () => {
     const q = await paginaConAjenos();
     try {
+      /* Al entrar se ve SÓLO lo propio, también con el scope de dirección: es
+       * la decisión de Esteban y el pie lo anuncia. Lo de los demás está a un
+       * clic, y ese clic es el que se da aquí. */
+      const alEntrar = await q.$$eval('tr.rw', f => f.map(x => x.textContent.indexOf('Lo de Ricardo') >= 0));
+      if (alEntrar.some(Boolean))
+        throw new Error('al entrar ya enseñaba lo de otro: el filtro propio no se respetó');
+      const pie = (await q.textContent('#vista')).replace(/\s+/g, ' ');
+      if (!/Viendo sólo lo tuyo/i.test(pie))
+        throw new Error('no avisa que hay un filtro puesto');
+
+      await q.selectOption('#fPersona', ''); await q.waitForTimeout(320);
+
       const r = await q.evaluate(() => {
         const filas = [...document.querySelectorAll('tr.rw')];
         const busca = (t) => filas.find(f => f.textContent.indexOf(t) >= 0);
