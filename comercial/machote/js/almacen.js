@@ -673,6 +673,10 @@
     bajar: bajar,
     esAjeno: esAjeno,
     empujar: empujar,
+    /* Se exporta para que la prueba pueda apretar el SEGUNDO candado —el de
+     * `empujarUno`— sin pasar por la lista. Un candado que no se puede probar
+     * por separado es un candado que nadie sabe si sigue puesto. */
+    empujarUno: empujarUno,
     historial: historial,
     idServidor: idServidor,
     esDemo: esDemo,
