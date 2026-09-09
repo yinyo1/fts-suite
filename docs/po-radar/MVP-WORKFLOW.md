@@ -141,6 +141,20 @@ el asunto sin ser órdenes. Por eso `acto_entrega_asunto` **cede ante cualquier 
 mientras que una frase de entrega explícita gana igual (una orden real sí habla de facturas). Lo
 destapó el arnés, no el diseño.
 
+**Una prueba en `dry` se tragaba los correos (9-sep).** La memoria de dedupe se escribía **siempre**,
+también en seco. O sea que un correo que llegara durante una prueba quedaba marcado como visto y **no
+se reenviaba nunca**. Demostrado encadenando Etapa 1 → clasificador → Decidir con `staticData`
+compartido y dos corridas seguidas: antes, en `dry`, la primera corrida veía la orden de Calbee al
+96% sin mandarla y **la segunda ya la descartaba**.
+
+Son **tres** caminos, no uno: `st.vistos` y `st.folios`/`st.hilos_enviados` en Decidir, y el avance
+de `st.ultimo_corte` en Etapa 1 — este último haría que la siguiente corrida real empezara *después*
+de la ventana probada y no volviera a mirar esos correos. Los tres quedan condicionados a
+`modo_envio: real`. En `real` el comportamiento es idéntico al de antes.
+
+Importa porque **todas las pruebas en seco de este documento se corrieron sobre la instancia viva**:
+cualquier orden que hubiera llegado durante una de ellas se habría perdido en silencio.
+
 **Los adjuntos se perdían y nadie se enteraba (85545).** El mismo correo devolvía 0 adjuntos en dos
 corridas y 2 adjuntos en otra. No era intermitencia: era **`429 ApplicationThrottled` de Graph**, y
 `neverError: true` lo convertía en un 200 vacío — un reenvío sin el PDF se veía idéntico a un correo
@@ -253,13 +267,34 @@ grupo aunque su evidencia estructural sea alta por sí sola.
 | `85705` | 90 | 96% | `newordersnotification@fts.mx` |
 | `85747` | 99 | 96% | `estebandelacruz@fts.mx` |
 
-### Lo que sigue sin medirse
+### El recall: lo que el cruce contra Odoo pudo y no pudo medir (9-sep)
 
-**El recall.** No sabemos cuántas órdenes deja pasar el radar, y esperar no lo mide. La prueba al
-alcance sin FASE B es **cruzar contra Odoo**: toda SO confirmada en una semana tuvo una orden de
-compra que llegó por correo. Si el radar reenvió una por cada SO confirmada, el recall es bueno; las
-que falten nombran los formatos que faltan por cubrir. Ese cruce es el siguiente paso natural, y no
-bloquea nada de lo que ya corre.
+Se corrió. **El resultado útil no fue el número, fue descubrir que el método no se sostiene todavía.**
+
+**Hallazgo del método — la llave del cruce no existe.** La idea era casar cada SO confirmada con su
+orden de compra por `x_studio_purchase_order_number`. Ese campo está **vacío en 12 de las 15 SOs
+confirmadas desde el 1-ago** (solo `151440`, `151441` y `7500314675` lo traen). Entre las vacías está
+**SO11832 · BEBIDAS PURIFICADAS · $86,452.48**, cuyo monto y cliente coinciden exactos con la orden
+`2688378` de GEPP que el radar sí detectó al 96%. O sea: **el radar conoce folios que Odoo no tiene
+registrados.** Mientras ese campo siga vacío, el cruce no se puede automatizar.
+
+**Lo que sí se pudo medir, y es poco.** Desde que el radar entró en operación (3-sep 20:00 UTC) se ha
+confirmado **una sola SO**: `SO11860` (Mission Foods, $7,500, 4-sep 19:47 UTC). Su orden de compra
+—`4501730831` de `aztecamilling`, *"Attached is the purchase order for Mission Foods"*— llegó el
+**2-sep 16:17 UTC, 28 horas antes de que el radar existiera**. No es una falla: no estaba corriendo.
+
+Barriendo la bandeja del periodo por "purchase order" / "orden de compra", la única orden de compra
+real que llegó con el radar vivo fue la de **Calbee 2989**, y la detectó. **Recall medido: 1 de 1** —
+una muestra de uno, que no autoriza a decir que el recall es bueno.
+
+*(Verificación de método: `date_order` sí es la hora de confirmación — `SO11498` la tiene en
+`2026-09-02 05:48:37` y el correo `[Nuevo Proyecto Confirmado] SO11498` salió a las `05:51:14`, tres
+minutos después.)*
+
+**Para que el cruce sirva de verdad hacen falta dos cosas:** que pasen suficientes semanas para tener
+más de una SO confirmada en ventana, y que `x_studio_purchase_order_number` se llene. Lo segundo el
+radar podría hacerlo solo —ya extrae folio, cliente, monto y moneda del PDF— pero eso es un frente
+nuevo, no una extensión de éste.
 
 ## 9. Lo que falta y lo que conviene vigilar
 
