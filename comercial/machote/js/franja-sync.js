@@ -84,7 +84,7 @@
                            : e.total + ' de ' + e.total + ' tuyas a salvo en el servidor';
     }
     if (e.subidos === 0) return '0 de ' + e.total + ' subidos';
-    return e.pendientes + ' por subir · ' + e.subidos + ' de ' + e.total + ' a salvo';
+    return e.pendientes + ' por subir · ' + e.subidos + ' de ' + e.total + ' tuyas a salvo';
   }
 
   function tono(e) {

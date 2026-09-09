@@ -2680,7 +2680,7 @@ let ok = 0, mal = 0;
     const q = await frPagina([FR_IGUAL]);
     try {
       const t = (await q.textContent('#franjaSync')).trim();
-      if (!/1 de 1 a salvo/.test(t)) throw new Error('dice: ' + t);
+      if (!/1 de 1 tuya a salvo/.test(t)) throw new Error('dice: ' + t);
       const cls = await q.getAttribute('#franjaSync', 'class');
       if (!/f-ok/.test(cls)) throw new Error('no está en tono discreto: ' + cls);
       console.log('    "' + t + '" · ' + cls);
@@ -2691,7 +2691,7 @@ let ok = 0, mal = 0;
     const q = await frPagina([FR_VOLTEADO]);
     try {
       const t = (await q.textContent('#franjaSync')).trim();
-      if (!/1 de 1 a salvo/.test(t)) throw new Error('lo dio por pendiente sólo por el orden: ' + t);
+      if (!/1 de 1 tuya a salvo/.test(t)) throw new Error('lo dio por pendiente sólo por el orden: ' + t);
       console.log('    con las llaves al revés sigue diciendo: "' + t + '"');
     } finally { await q.close(); }
   });
@@ -2700,7 +2700,7 @@ let ok = 0, mal = 0;
     const q = await frPagina([FR_IGUAL, { id: 'M-SOLO-AQUI', nombre: 'Nunca subió' }], false);
     try {
       const t = (await q.textContent('#franjaSync')).trim();
-      if (!/1 por subir/.test(t) || !/1 de 2 a salvo/.test(t)) throw new Error('dice: ' + t);
+      if (!/1 por subir/.test(t) || !/1 de 2 tuyas a salvo/.test(t)) throw new Error('dice: ' + t);
       const cls = await q.getAttribute('#franjaSync', 'class');
       if (!/f-pend/.test(cls)) throw new Error('no se nota: ' + cls);
       console.log('    "' + t + '" · ' + cls);
