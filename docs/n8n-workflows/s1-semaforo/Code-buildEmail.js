@@ -6,7 +6,7 @@
 //   1. SEMAFORO B RETIRADO DEL REPORTE. Llevaba 11 corridas en 0% verde contra una meta
 //      impresa de >=90%, y su verde es inalcanzable por construccion: rojo_dias=2 =>
 //      amarillo=1 => verde exige dias_sin_seguimiento=0, o sea una nota escrita hoy antes
-//      de las 08:00, que es cuando sale el correo. Ademas med?a el dia de la semana: los
+//      de las 08:00, que es cuando sale el correo. Ademas media el dia de la semana: los
 //      19 renglones de Operaciones del 8-sep traian "2d" identico. Se sigue CALCULANDO en
 //      Code - MAIN (viaja en color_b) pero no se reporta.
 //   2. SOLO EL DELTA. Firma por proyecto en staticData; un renglon sin cambio no se
@@ -16,8 +16,15 @@
 //      En proceso"; 18 de un solo cambio de fecha). Ahora cada evento se reporta el dia
 //      que se ve y se recuerda en staticData.
 //   4. GUARDA DE VACIO visible: si un search vino vacio, el correo lo dice.
-//   5. La seccion de integridad se llama CAMBIOS FUERA DE COMERCIAL, no "posible
-//      manipulacion": lo que marca es trabajo normal de Operaciones y Administracion.
+//   5. Las banderas se reparten por NATURALEZA: autoria (fecha_fin / stage_atras) va a
+//      CAMBIOS FUERA DE COMERCIAL -no "posible manipulacion", que acusa a quien hace el
+//      trabajo-; calidad de dato (nota_vacia / hold_sin_fecha_vigente) va a DATOS QUE NO
+//      CUADRAN, que es lo que realmente son.
+//   6. DIGEST DE LUNES (adicion a S1). El delta esconde lo que esta mal y no cambia:
+//      en la prueba quedaron 14 proyectos "sin cambio" contados solo al pie, y ahi iba
+//      MAGNEKON con $1.28M vencidos, el renglon que motivo la auditoria. Los lunes sale
+//      ademas el ESTADO COMPLETO de todos los vigilados. Mismo workflow, misma metrica,
+//      mismos umbrales: solo cambia QUE se imprime segun el dia.
 const _cf = $('HTTP - load config').first().json;
 const cfg = (_cf && _cf.config) ? _cf : JSON.parse(_cf.data || _cf.body || (typeof _cf==='string'?_cf:JSON.stringify(_cf)));
 const C = cfg.config;
@@ -112,7 +119,14 @@ const semana = sd.history.filter(h=> new Date(h.fecha) >= mondayOf(today));
 const aPctNow = rows.length?Math.round(aAll.V/rows.length*100):0;
 function pctV(list,k){ if(!list.length) return 0; return Math.round(list.reduce((a,h)=>a+(h.total?(h[k]/h.total):0),0)/list.length*100); }
 const kpiSem = (semana.length<4) ? {modo:'simple', aPct:aPctNow, dias:semana.length} : {modo:'prom', aPct:pctV(semana,'aV'), dias:semana.length};
-const esLunes = today.getDay()===1;
+// Dia(s) en que sale el digest de estado completo. Sale de la config VIVA para poder
+// ejercitarlo un dia cualquiera sin tocar codigo (asi se probo antes de publicar), y
+// para que Esteban pueda pedirlo otro dia editando el JSON. Si la config no trae la
+// llave -que es el caso de main hoy- el default es LUNES: el lado tolerante primero
+// (regla anti-trabon), la config vieja sigue funcionando sin cambios.
+// getDay(): 0=domingo, 1=lunes ... 6=sabado.
+const DIGEST_DIAS = Array.isArray(C.digest_dias) ? C.digest_dias : [1];
+const esLunes = DIGEST_DIAS.includes(today.getDay());
 
 // ---- render -----------------------------------------------------------------
 const ACC = { rojo:'&#8627; Avanza de stage o documenta por que sigue aqui (Log note)',
@@ -165,6 +179,36 @@ function secResueltos(arr){
   for(const r of arr) h+='<li>&#9989; '+escN(r.name)+' &middot; salio de la lista</li>';
   return h+'</ul>';
 }
+// ---- DIGEST DE LUNES --------------------------------------------------------
+// Reportar solo el delta tiene un costo: lo que esta mal pero NO cambia desaparece del
+// correo. En la corrida de prueba quedaron 14 proyectos "sin cambio" contados solo al
+// pie, y ahi iba MAGNEKON con $1.28M vencidos - el renglon que motivo la auditoria #220.
+// Con delta puro se vuelve a sepultar, ahora por silencio en vez de por ruido. Por eso
+// los LUNES sale ademas el estado COMPLETO de todos los proyectos vigilados. No cambia
+// ningun calculo ni ningun umbral: es la misma metrica, solo cambia QUE se imprime segun
+// el dia de la semana.
+function secDigest(subset){
+  let h='<h3 style="color:#0078D4;margin:18px 0 4px">&#128203; ESTADO COMPLETO DE LA SEMANA ['+subset.length+']</h3>';
+  h+='<p style="margin:2px 0;font-size:12px;color:#666">Todos los proyectos vigilados, hayan cambiado o no. De martes a viernes el correo trae solo lo que cambio.</p>';
+  if(!subset.length) return h+'<p style="color:#888;margin:2px 0">- ninguno -</p>';
+  const GR=[['rojo','&#128308;','#c62828','Rojo'],['amarillo','&#128993;','#b35900','Amarillo'],['verde','&#128994;','#2e7d32','Verde']];
+  for(const g of GR){
+    const arr=subset.filter(r=>r.color_a_rep===g[0]).slice().sort((x,y)=>(y.dias_en_stage||0)-(x.dias_en_stage||0));
+    h+='<p style="margin:10px 0 2px;color:'+g[2]+'"><b>'+g[1]+' '+g[3]+' ['+arr.length+']</b></p>';
+    if(!arr.length){ h+='<p style="color:#888;margin:2px 0;font-size:13px">- ninguno -</p>'; continue; }
+    h+='<ul style="font-size:13px;margin:2px 0;padding-left:18px">';
+    for(const r of arr){
+      h+='<li style="margin-bottom:3px"><b>'+escN(r.name,45)+'</b> ('+escN(r.cliente,28)+') &middot; '+esc(r.stage)+
+         ' &middot; <b>'+dE(r)+'d</b>'+
+         (r.project_date?(' &middot; compromiso '+esc(String(r.project_date).slice(0,10))):'')+
+         (r.sin_avance?' &middot; <span style="color:#8e24aa">&#128260; nota repetida</span>':'')+
+         ((r.banderas||[]).length?(' &middot; <span style="color:#8e24aa">&#128681;'+r.banderas.length+'</span>'):'')+
+         ' &middot; '+lnk(r)+'</li>';
+    }
+    h+='</ul>';
+  }
+  return h;
+}
 function buildMsg(subset, grupoLabel, to){
   const nu=NUEVO.filter(r=>r.grupo===grupoLabel), em=EMPEORO.filter(r=>r.grupo===grupoLabel);
   const me=MEJORO.filter(r=>r.grupo===grupoLabel), ig=IGUAL.filter(r=>r.grupo===grupoLabel);
@@ -179,10 +223,10 @@ function buildMsg(subset, grupoLabel, to){
   const res=RESUELTOS.filter(x=>x.grupo===grupoLabel || x.grupo===null);
   const aC=cntA(subset);
   const hay = nu.length||em.length||me.length||sa.length||flg.length||flgDato.length||res.length||diagNuevo;
-  // GUARDA DE VACIO. Sin nada que decir no se manda correo... salvo el LUNES, que sale un
-  // latido corto con el KPI. Asi el silencio nunca es ambiguo (un watchdog que muere en
-  // silencio es el Hallazgo #14) sin volver al correo diario que nadie lee. La alerta de
-  // latido perdido propiamente dicha es S7.
+  // GUARDA DE VACIO. Sin nada que decir no se manda correo... salvo el LUNES, que
+  // SIEMPRE sale con el digest de estado completo. Asi el silencio nunca es ambiguo (un
+  // watchdog que muere en silencio es el Hallazgo #14) sin volver al correo diario que
+  // nadie lee. La alerta de latido perdido propiamente dicha es S7.
   if(!hay && !esLunes) return null;
   const soloLatido = !hay;
   let html='<meta charset="utf-8"><div style="font-family:Arial,sans-serif;color:#222;font-size:14px">';
@@ -190,16 +234,18 @@ function buildMsg(subset, grupoLabel, to){
   html+='<div style="background:#f4f6f8;border-radius:8px;padding:8px 12px;margin:8px 0">';
   html+='<p style="margin:0 0 4px"><b>'+subset.length+' proyectos vigilados</b> &middot; '+
         '&#128309; ESTANCAMIENTO EN STAGE: &#128994; '+aC.V+' verde &middot; &#128993; '+aC.A+' amarillo &middot; &#128308; '+aC.R+' rojo</p>';
-  html+='<p style="margin:0;font-size:12px;color:#666">Este correo reporta <b>lo que cambio</b> desde el correo anterior. '+
-        'Los '+ig.length+' renglones sin cambio no se imprimen: se cuentan al pie.</p></div>';
+  html+= esLunes
+    ? '<p style="margin:0;font-size:12px;color:#666"><b>Lunes:</b> ademas del delta va el <b>estado completo</b> de los '+subset.length+' proyectos vigilados, mas abajo.</p></div>'
+    : '<p style="margin:0;font-size:12px;color:#666">Este correo reporta <b>lo que cambio</b> desde el correo anterior. Los '+ig.length+' renglones sin cambio no se imprimen: se cuentan al pie. El <b>lunes</b> sale el estado completo.</p></div>';
   if(soloLatido){
     html+='<p style="margin:10px 0"><b>Sin cambios</b> desde el correo anterior: ningun proyecto entro, empeoro ni se resolvio, y no hay banderas nuevas.</p>';
+    html+=secDigest(subset);
     html+=secDatos(subset, []);
     html+='<hr style="margin:16px 0 8px"><p style="font-size:12px;color:#666"><b>'+ig.length+' proyectos en condicion estable.</b><br>';
     html+='&#128202; <b>KPI semanal</b> ('+(kpiSem.modo==='simple'?('arranque, dia '+kpiSem.dias):('promedio '+kpiSem.dias+' dias'))+'): estancamiento <b>'+kpiSem.aPct+'%</b> verde (meta &ge;90%)<br>';
     html+='Latido: corrida '+esc(fechaStr)+' 08:00 CST.</p></div>';
     const toL = Array.isArray(to) ? to : String(to).split(',').map(x=>x.trim()).filter(Boolean);
-    return { message:{ subject:'[Semaforo '+grupoLabel+'] '+fb+' - sin cambios', body:{contentType:'HTML',content:html}, toRecipients: toL.map(a=>({emailAddress:{address:a}})) }, saveToSentItems:true };
+    return { message:{ subject:'[Semaforo '+grupoLabel+'] '+fb+' - estado semanal (sin cambios)', body:{contentType:'HTML',content:html}, toRecipients: toL.map(a=>({emailAddress:{address:a}})) }, saveToSentItems:true };
   }
   html+=sec('&#127381; NUEVO HOY','#c62828',nu,'&#127381;');
   html+=sec('&#128200; EMPEORO (cruzo de tramo)','#e65100',em,'&#128200;');
@@ -212,6 +258,7 @@ function buildMsg(subset, grupoLabel, to){
     for(const x of flg) html+='<li>&#128681; <b>'+escN(x.r.name,50)+'</b>: '+esc(x.f.detalle)+'</li>';
     html+='</ul>'; }
   html+=secDatos(subset, flgDato);
+  if(esLunes) html+=secDigest(subset);
   html+='<hr style="margin:16px 0 8px"><p style="font-size:12px;color:#666">';
   html+='<b>'+ig.length+' proyectos en condicion estable</b> (sin cambio de tramo ni banderas nuevas) - no se imprimen para que lo que cambio se vea.<br>';
   if(esLunes) html+='&#128202; <b>KPI semanal</b> ('+(kpiSem.modo==='simple'?('arranque, dia '+kpiSem.dias):('promedio '+kpiSem.dias+' dias'))+'): estancamiento <b>'+kpiSem.aPct+'%</b> verde (meta &ge;90%)<br>';
@@ -224,6 +271,7 @@ function buildMsg(subset, grupoLabel, to){
   if(res.length) partes.push(res.length+' resuelto'+(res.length>1?'s':''));
   if(flg.length) partes.push(flg.length+' cambio'+(flg.length>1?'s':'')+' fuera de Comercial');
   if(flgDato.length) partes.push(flgDato.length+' dato'+(flgDato.length>1?'s':'')+' por revisar');
+  if(esLunes) partes.push('estado semanal');
   if(diag.length) partes.push('REVISAR MEDICION');
   const subj='[Semaforo '+grupoLabel+'] '+fb+' - '+(partes.length?partes.join(' '+E(183)+' '):'sin cambios');
   const toList = Array.isArray(to) ? to : String(to).split(',').map(s=>s.trim()).filter(Boolean);
