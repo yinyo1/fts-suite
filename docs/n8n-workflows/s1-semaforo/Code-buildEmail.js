@@ -41,10 +41,76 @@ else {
 }
 if (_falta.length) { throw new Error("Config del semaforo incompleta o no cargada - faltan: " + _falta.join(", ") + ". El correo NO se envio. Revisa HTTP - load config (lee sla_stages.json en vivo del repo)."); }
 
+// --- MODO EFECTIVO (S3, 2026-09-10) ------------------------------------------
+// La corrida MANUAL es PISO, no opcion. Se deriva de $execution.mode y va en OR con
+// la config: modo_prueba:true sigue forzando prueba en el cron, y una corrida a mano
+// NO puede mandarle a los dos grupos aunque la config sea la de produccion. Mandar a
+// la lista completa exige venir del cron.
+// Origen: el 9-sep se dispararon a mano dos correos reales a 7 personas, 15:49 CST.
+// Con esto ya no hace falta repuntar HTTP - load config al archivo de prueba para
+// probar -- que era la maniobra riesgosa, porque su paso de limpieza es silencioso.
+// FALLA HACIA EL LADO SEGURO a proposito: si $execution.mode no existiera,
+// (undefined !== 'production') da true -> modo prueba -> UN correo a Esteban, en vez
+// de silencio o de un envio masivo. Y el pie del correo IMPRIME el modo, asi que un
+// error se anuncia solo en la primera corrida en vez de esconderse.
+let ES_MANUAL = true;
+try { ES_MANUAL = ($execution && $execution.mode) !== 'production'; } catch(e) { ES_MANUAL = true; }
+const MODO_PRUEBA = (C.modo_prueba === true) || ES_MANUAL;
+
 const todo = $('Code - MAIN').all().map(i=>i.json);
 const soloDiag = todo.length===1 && todo[0]._solo_diag;
 const rows = soloDiag ? [] : todo;
 const diag = (todo[0] && todo[0]._diag) ? todo[0]._diag : [];
+// --- GUARDA DE ESCRITURA (S2, 2026-09-10) -----------------------------------
+// La guarda de vacio de S1 cubre los nodos de LECTURA. Estos son los de
+// ESCRITURA, y traen el MISMO onError:continueRegularOutput: un fallo viaja
+// como DATO y el nodo reporta success. Medido: 'Odoo - CREATE log note'
+// llevaba desde el go-live del 19-jun devolviendo MissingError en verde
+// (author_id iba como string "3"), y el correo nunca lo dijo. Este bloque
+// existe para que una escritura fallida SALGA en el correo, y para que
+// obligue a mandarlo incluso en un dia sin cambios: una escritura muerta en
+// un dia silencioso es justo donde el fallo se queda a vivir.
+// Se apoya en un hecho MEDIDO (ejecucion 93268): las tres ramas que salen de
+// 'Code - col-main' corren en SERIE -- buildLogNotes, CREATE log note,
+// buildSnapshot, PUT snapshot y al final buildEmail. Por eso aqui ya se puede
+// leer el resultado de las escrituras sin re-cablear nada.
+const wdiag = [];
+function _items(nodo){ try { return { ok:true, all:$(nodo).all() }; } catch(e){ return { ok:false, err:String(e.message).slice(0,120) }; } }
+(function guardaLogNote(){
+  const NODO='Odoo - CREATE log note';
+  const prev=_items('Code - buildLogNotes');
+  const esperadas = prev.ok ? prev.all.filter(i=>i.json && !i.json._vacio).length : null;
+  const r=_items(NODO);
+  if(!r.ok){
+    // si no habia nada que escribir, que el nodo no corra es lo correcto, no un fallo
+    if(esperadas===0) return;
+    wdiag.push({nodo:NODO, problema:'no corrio o no se pudo leer su salida', detalle:r.err, critico:true});
+    return;
+  }
+  const malas=[];
+  r.all.forEach(function(it,i){
+    const j=(it&&it.json)||{};
+    if(j.error) malas.push({i:i, motivo:String(j.error).slice(0,160)});
+    else if(j.id===undefined || j.id===null || j.id===false) malas.push({i:i, motivo:'Odoo no devolvio id'});
+  });
+  if(malas.length) wdiag.push({nodo:NODO, problema:malas.length+' de '+r.all.length+' notas al chatter NO se escribieron', casos:malas.slice(0,5), critico:true});
+})();
+(function guardaSnapshot(){
+  const NODO='HTTP - PUT snapshot (GitHub)';
+  const r=_items(NODO);
+  if(!r.ok) return;   // rama opcional: si no corrio, no se inventa un fallo
+  const malas=[];
+  r.all.forEach(function(it,i){
+    const j=(it&&it.json)||{};
+    if(j.content && j.content.sha) return;                       // creado
+    const m=String(j.message||'');
+    // 422 "already exists": es el caso NORMAL al re-correr el mismo dia (el PUT
+    // sin sha solo puede CREAR). No es un fallo y no debe gritar.
+    if(/already exists|sha/i.test(m)) return;
+    malas.push({i:i, motivo:m?m.slice(0,160):'sin commit de vuelta'});
+  });
+  if(malas.length) wdiag.push({nodo:NODO, problema:'el snapshot del dia NO se guardo', casos:malas.slice(0,3), critico:false});
+})();
 const hoy = $('Set - hoy').first().json.hoy;
 const today = new Date(hoy);
 const fechaStr = hoy.slice(0,10);
@@ -127,153 +193,169 @@ const kpiSem = (semana.length<4) ? {modo:'simple', aPct:aPctNow, dias:semana.len
 // getDay(): 0=domingo, 1=lunes ... 6=sabado.
 const DIGEST_DIAS = Array.isArray(C.digest_dias) ? C.digest_dias : [1];
 const esLunes = DIGEST_DIAS.includes(today.getDay());
-
-// ---- render -----------------------------------------------------------------
-const ACC = { rojo:'&#8627; Avanza de stage o documenta por que sigue aqui (Log note)',
-              amarillo:'&#8627; Se acerca al limite: mueve el stage o documenta' };
-function fila(r, prefijo){
-  let h='<li style="margin-bottom:7px">'+prefijo+' <b>'+escN(r.name)+'</b> ('+escN(r.cliente,40)+') &middot; '+esc(r.stage);
-  h+='<br>'+(r.color_a_rep==='rojo'?'&#128308;':'&#128993;')+' en stage <b>'+dE(r)+'d</b> (tramo '+esc(r.tramo_a)+')';
-  if(r.project_date) h+=' &middot; fecha compromiso '+esc(String(r.project_date).slice(0,10));
-  h+=' &middot; '+lnk(r);
-  if((r._flagsNuevas||[]).length){ h+='<br>'; for(const f of r._flagsNuevas) h+='<span style="color:#8e24aa">&#128681; '+esc(f.detalle)+'</span><br>'; }
-  else h+='<br>';
-  h+='<span style="color:'+(r.color_a_rep==='rojo'?'#c62828':'#b35900')+'">'+ACC[r.color_a_rep==='rojo'?'rojo':'amarillo']+'</span></li>';
-  return h;
-}
-function sec(titulo, color, arr, prefijo){
-  let h='<h3 style="color:'+color+';margin:14px 0 4px">'+titulo+' ['+arr.length+']</h3>';
-  if(!arr.length) return h+'<p style="color:#888;margin:2px 0">- ninguno -</p>';
-  arr=arr.slice().sort((x,y)=>(y.dias_en_stage||0)-(x.dias_en_stage||0));
-  h+='<ul style="font-size:13px;margin:4px 0;padding-left:18px">';
-  for(const r of arr) h+=fila(r,prefijo);
-  return h+'</ul>';
-}
-function secSinAvance(arr){
-  let h='<h3 style="color:#8e24aa;margin:14px 0 4px">&#128260; SEGUIMIENTO SIN AVANCE (la nota se repite) ['+arr.length+']</h3>';
-  if(!arr.length) return h+'<p style="color:#888;margin:2px 0">- ninguno -</p>';
-  h+='<ul style="font-size:13px;margin:4px 0;padding-left:18px">';
-  for(const r of arr.slice().sort((x,y)=>(y.racha_nota||0)-(x.racha_nota||0)))
-    h+='<li style="margin-bottom:6px"><b>'+escN(r.name)+'</b> ('+escN(r.cliente,40)+') &middot; '+esc(r.stage)+
-       '<br>&#128260; <b>'+(r.racha_nota||0)+' notas seguidas practicamente iguales</b> &middot; en stage <b>'+dE(r)+'d</b> &middot; '+lnk(r)+
-       '<br><span style="color:#8e24aa">&#8627; La nota se esta repitiendo: documenta que CAMBIO o mueve el stage</span></li>';
-  return h+'</ul>';
-}
+// ---- render (S3, rediseno del formato - issue #230) --------------------------
+// UN SOLO EJE. El correo viejo seccionaba por TRES a la vez (severidad, novedad y
+// tipo de hallazgo) y un proyecto tiene valor en los tres, asi que aparecia hasta 3
+// veces: 21 menciones para 13 proyectos, medido sobre el correo del 9-sep. Aqui la
+// unica pregunta que decide seccion es "?pide algo o no?"; la novedad y el tipo de
+// bandera bajan a etiquetas del renglon, donde no multiplican menciones.
+//
+// UN SOLO SISTEMA DE COLOR. Con el semaforo B fuera del reporte, el color significa
+// una sola cosa: que tan tarde va el proyecto EN SU ETAPA. Los titulos de seccion,
+// las banderas y la novedad dejan de usar color y usan posicion, peso y etiqueta.
+// Y el punto VERDE existe: el renglon viejo hacia `rojo ? rojo : amarillo`, asi que
+// un proyecto en tiempo salia pintado de amarillo con el encabezado diciendo
+// "amarillo: 0".
 const ES_AUTORIA = t => t==='fecha_fin' || t==='stage_atras';
-function secDatos(subset, flagsDato){
+const PUNTO = { rojo:'&#128308;', amarillo:'&#128993;', verde:'&#128994;' };
+const ACC = { rojo:'Avanza de stage o documenta por que sigue aqui (Log note)',
+              amarillo:'Se acerca al limite: mueve el stage o documenta' };
+function chip(txt, tono){
+  const c = tono==='fuerte' ? '#444' : '#777';
+  return '<span style="font-size:11px;color:'+c+';border:1px solid #ccc;border-radius:3px;padding:0 4px;margin-left:4px">'+esc(txt)+'</span>';
+}
+// UN renglon, UNA vez, con todo lo suyo encima: color, dias, novedad y banderas.
+// Las banderas se imprimian dos veces (en linea y otra vez en su seccion): aqui no.
+function fila(r, etiqueta, compacto){
+  const col = r.color_a_rep;
+  let h='<li style="margin-bottom:'+(compacto?'3px':'7px')+'">';
+  h+= PUNTO[col] + ' <b>'+escN(r.name,45)+'</b> ('+escN(r.cliente,32)+') &middot; '+esc(r.stage);
+  h+= ' &middot; <b>'+dE(r)+(dE(r)===1?' dia':' dias')+'</b> en la etapa';
+  if(r.project_date) h+=' &middot; compromiso '+esc(String(r.project_date).slice(0,10));
+  if(etiqueta) h+= chip(etiqueta,'fuerte');
+  h+=' &middot; '+lnk(r);
+  if(compacto){
+    // En compacto NO se imprime el detalle, pero SI el motivo: un renglon verde en
+    // "siguen pendientes" sin pista de por que esta ahi se lee como un error de
+    // clasificacion. El color dice el retraso; esto dice que es lo que pide.
+    const motivos=[];
+    if(r.sin_avance) motivos.push("nota repetida");
+    if((r.banderas||[]).length) motivos.push(r.banderas.length+" bandera"+(r.banderas.length>1?"s":""));
+    if(motivos.length) h+= chip(motivos.join(" + "));
+  }
+  if(!compacto){
+    for(const f of (r._flagsNuevas||[])){
+      h+='<br><span style="color:#555">&#128681; '+esc(f.detalle)+chip(ES_AUTORIA(f.tipo)?'cambio fuera de Comercial':'dato por revisar')+'</span>';
+    }
+    if(r.sin_avance) h+='<br><span style="color:#555">&#128260; '+(r.racha_nota||0)+' notas seguidas practicamente iguales: documenta que CAMBIO o mueve el stage</span>';
+    if(col!=='verde') h+='<br><span style="color:#666">&#8627; '+ACC[col]+'</span>';
+  }
+  return h+'</li>';
+}
+function bloque(titulo, criterio, arr, etiquetaDe, compacto){
+  let h='<h3 style="margin:16px 0 2px;font-size:15px">'+titulo+' ['+arr.length+']</h3>';
+  h+='<p style="margin:0 0 6px;font-size:12px;color:#777">'+criterio+'</p>';
+  if(!arr.length) return h+'<p style="color:#888;margin:2px 0;font-size:13px">- ninguno -</p>';
+  const ord = arr.slice().sort((x,y)=>(y.dias_en_stage||0)-(x.dias_en_stage||0));
+  h+='<ul style="font-size:13px;margin:4px 0;padding-left:18px">';
+  for(const r of ord) h+=fila(r, etiquetaDe?etiquetaDe(r):'', compacto);
+  return h+'</ul>';
+}
+// Problemas DEL REPORTE, no de los proyectos: lecturas vacias, ESCRITURAS FALLIDAS,
+// banderas de calidad de dato y la advertencia de que el contador mide otra cosa.
+function secReporte(subset, resueltos){
   const items=[];
-  for(const x of (flagsDato||[])) items.push('<b>'+escN(x.r.name,50)+'</b>: '+esc(x.f.detalle));
-  for(const d of diag) items.push('<b>'+esc(d.nodo)+'</b>: '+esc(d.problema)+(d.critico?' <b style="color:#c62828">(CRITICO)</b>':''));
+  for(const d of wdiag) items.push('<b>ESCRITURA FALLIDA &mdash; '+esc(d.nodo)+'</b>: '+esc(d.problema)+(d.casos&&d.casos.length?(' &mdash; '+esc(d.casos.map(x=>x.motivo).join(' | '))):''));
+  for(const d of diag) items.push('<b>'+esc(d.nodo)+'</b>: '+esc(d.problema)+(d.critico?' <b>(CRITICO)</b>':''));
   const nCd = subset.filter(r=>r.fuente_a==='create_date').length;
-  if(nCd) items.push('<b>'+nCd+' de '+subset.length+' proyectos</b> miden "dias en stage" desde <code>create_date</code>, no desde la entrada al stage: no hay ningun <code>mail.message</code> con <code>subtype_id=94</code>. <b>El numero de arriba es la EDAD del proyecto.</b> Ver issue #220 error #1 - se corrige en S6.');
-  let h='<h3 style="color:#00695c;margin:14px 0 4px">&#128295; DATOS QUE NO CUADRAN / NO SE PUDO MEDIR ['+items.length+']</h3>';
-  if(!items.length) return h+'<p style="color:#888;margin:2px 0">- nada -</p>';
+  if(nCd) items.push('<b>'+nCd+' de '+subset.length+' proyectos</b> miden los dias desde <code>create_date</code>, no desde la entrada a la etapa: no hay ningun <code>mail.message</code> con <code>subtype_id=94</code>. <b>Ese numero es la EDAD del proyecto.</b> Causa raiz en el issue #229.');
+  let h='<h3 style="margin:16px 0 2px;font-size:15px">&#128295; Problemas del propio reporte ['+items.length+']</h3>';
+  h+='<p style="margin:0 0 6px;font-size:12px;color:#777">Fallas de medicion o de escritura del watchdog. No son proyectos atrasados: son cosas que este correo no pudo hacer o no pudo medir.</p>';
+  if(!items.length) return h+'<p style="color:#888;margin:2px 0;font-size:13px">- nada -</p>';
   h+='<ul style="font-size:13px;margin:4px 0;padding-left:18px">';
   for(const t of items) h+='<li style="margin-bottom:4px">'+t+'</li>';
   return h+'</ul>';
 }
-function secResueltos(arr){
-  let h='<h3 style="color:#2e7d32;margin:14px 0 4px">&#9989; SE RESOLVIO desde el correo anterior ['+arr.length+']</h3>';
-  if(!arr.length) return h+'<p style="color:#888;margin:2px 0">- ninguno -</p>';
-  h+='<ul style="font-size:13px;margin:4px 0;padding-left:18px">';
-  for(const r of arr) h+='<li>&#9989; '+escN(r.name)+' &middot; salio de la lista</li>';
-  return h+'</ul>';
-}
-// ---- DIGEST DE LUNES --------------------------------------------------------
-// Reportar solo el delta tiene un costo: lo que esta mal pero NO cambia desaparece del
-// correo. En la corrida de prueba quedaron 14 proyectos "sin cambio" contados solo al
-// pie, y ahi iba MAGNEKON con $1.28M vencidos - el renglon que motivo la auditoria #220.
-// Con delta puro se vuelve a sepultar, ahora por silencio en vez de por ruido. Por eso
-// los LUNES sale ademas el estado COMPLETO de todos los proyectos vigilados. No cambia
-// ningun calculo ni ningun umbral: es la misma metrica, solo cambia QUE se imprime segun
-// el dia de la semana.
-function secDigest(subset){
-  let h='<h3 style="color:#0078D4;margin:18px 0 4px">&#128203; ESTADO COMPLETO DE LA SEMANA ['+subset.length+']</h3>';
-  h+='<p style="margin:2px 0;font-size:12px;color:#666">Todos los proyectos vigilados, hayan cambiado o no. De martes a viernes el correo trae solo lo que cambio.</p>';
-  if(!subset.length) return h+'<p style="color:#888;margin:2px 0">- ninguno -</p>';
-  const GR=[['rojo','&#128308;','#c62828','Rojo'],['amarillo','&#128993;','#b35900','Amarillo'],['verde','&#128994;','#2e7d32','Verde']];
-  for(const g of GR){
-    const arr=subset.filter(r=>r.color_a_rep===g[0]).slice().sort((x,y)=>(y.dias_en_stage||0)-(x.dias_en_stage||0));
-    h+='<p style="margin:10px 0 2px;color:'+g[2]+'"><b>'+g[1]+' '+g[3]+' ['+arr.length+']</b></p>';
-    if(!arr.length){ h+='<p style="color:#888;margin:2px 0;font-size:13px">- ninguno -</p>'; continue; }
-    h+='<ul style="font-size:13px;margin:2px 0;padding-left:18px">';
-    for(const r of arr){
-      h+='<li style="margin-bottom:3px"><b>'+escN(r.name,45)+'</b> ('+escN(r.cliente,28)+') &middot; '+esc(r.stage)+
-         ' &middot; <b>'+dE(r)+'d</b>'+
-         (r.project_date?(' &middot; compromiso '+esc(String(r.project_date).slice(0,10))):'')+
-         (r.sin_avance?' &middot; <span style="color:#8e24aa">&#128260; nota repetida</span>':'')+
-         ((r.banderas||[]).length?(' &middot; <span style="color:#8e24aa">&#128681;'+r.banderas.length+'</span>'):'')+
-         ' &middot; '+lnk(r)+'</li>';
-    }
-    h+='</ul>';
-  }
-  return h;
-}
-function buildMsg(subset, grupoLabel, to){
-  const nu=NUEVO.filter(r=>r.grupo===grupoLabel), em=EMPEORO.filter(r=>r.grupo===grupoLabel);
-  const me=MEJORO.filter(r=>r.grupo===grupoLabel), ig=IGUAL.filter(r=>r.grupo===grupoLabel);
-  const sa=nu.concat(em).filter(r=>r.sin_avance);
-  // separa por NATURALEZA de la bandera, no por novedad:
-  //   autoria (fecha_fin / stage_atras) -> CAMBIOS FUERA DE COMERCIAL
-  //   calidad de dato (nota_vacia / hold_sin_fecha_vigente) -> DATOS QUE NO CUADRAN
-  const flg=[], flgDato=[];
-  for(const r of subset) for(const f of (r._flagsNuevas||[])){
-    if(ES_AUTORIA(f.tipo)) flg.push({r:r,f:f}); else flgDato.push({r:r,f:f});
-  }
-  const res=RESUELTOS.filter(x=>x.grupo===grupoLabel || x.grupo===null);
-  const aC=cntA(subset);
-  const hay = nu.length||em.length||me.length||sa.length||flg.length||flgDato.length||res.length||diagNuevo;
-  // GUARDA DE VACIO. Sin nada que decir no se manda correo... salvo el dia del DIGEST,
-  // que SIEMPRE sale con el estado completo. Asi el silencio nunca es ambiguo (un
-  // watchdog que muere en silencio es el Hallazgo #14) sin volver al correo diario que
-  // nadie lee. La alerta de latido perdido propiamente dicha es S7.
+function buildMsg(subset, grupoLabel, to, esGlobal){
+  const pide = subset.filter(enLista);
+  const noPide = subset.filter(r=>!enLista(r));
+  // Se filtra por PERTENENCIA al subset, no por igualdad de grupo. En modo prueba el
+  // label es "Operaciones + Admin", que ningun proyecto tiene, asi que comparar por
+  // grupo dejaba nu/em/me SIEMPRE vacios: el delta estaba muerto en toda corrida de
+  // prueba y el correo decia "sin cambios" aunque hubiera movimiento. Con el gate de
+  // modo (toda corrida manual es prueba) eso habria roto cualquier verificacion.
+  const idsSub = new Set(subset.map(r=>r.id));
+  const enSub = r => idsSub.has(r.id);
+  const nu=NUEVO.filter(enSub), em=EMPEORO.filter(enSub), me=MEJORO.filter(enSub);
+  const res=RESUELTOS.filter(x=>esGlobal || x.grupo===grupoLabel || x.grupo===null);
+  // Una bandera nueva ES un cambio: el proyecto entra a "lo que cambio" aunque su
+  // color no se haya movido. Asi la bandera vive en el renglon y no necesita seccion
+  // propia -- que era la fuente de la doble impresion.
+  const idsCambio = new Set(nu.concat(em).concat(me).map(r=>r.id));
+  const porBandera = pide.filter(r=>!idsCambio.has(r.id) && (r._flagsNuevas||[]).length);
+  const cambiaron = nu.concat(em).concat(me).concat(porBandera);
+  const idsImpresos = new Set(cambiaron.map(r=>r.id));
+  const siguen = pide.filter(r=>!idsImpresos.has(r.id));
+  const etiquetaDe = r => idsCambio.has(r.id)
+      ? (nu.includes(r)?'nuevo':(em.includes(r)?'empeoro':'mejoro'))
+      : 'bandera nueva';
+  const hay = cambiaron.length||res.length||wdiag.length||diagNuevo;
+  // wdiag entra en `hay` a proposito: si una ESCRITURA fallo, el correo sale aunque no
+  // haya ningun cambio en los proyectos. Sin esto, un dia quieto se traga el fallo.
   if(!hay && !esLunes) return null;
-  const soloLatido = !hay;
+  const aC=cntA(subset);
+
   let html='<meta charset="utf-8"><div style="font-family:Arial,sans-serif;color:#222;font-size:14px">';
-  html+='<h2 style="color:#0078D4;margin:0">Semaforo '+esc(grupoLabel)+' - '+fb+'</h2>';
-  html+='<div style="background:#f4f6f8;border-radius:8px;padding:8px 12px;margin:8px 0">';
-  html+='<p style="margin:0 0 4px"><b>'+subset.length+' proyectos vigilados</b> &middot; '+
-        '&#128309; ESTANCAMIENTO EN STAGE: &#128994; '+aC.V+' verde &middot; &#128993; '+aC.A+' amarillo &middot; &#128308; '+aC.R+' rojo</p>';
-  html+= esLunes
-    ? '<p style="margin:0;font-size:12px;color:#666"><b>Estado semanal:</b> ademas del delta va el <b>estado completo</b> de los '+subset.length+' proyectos vigilados, mas abajo.</p></div>'
-    : '<p style="margin:0;font-size:12px;color:#666">Este correo reporta <b>lo que cambio</b> desde el correo anterior. Los '+ig.length+' renglones sin cambio no se imprimen: se cuentan al pie. El <b>lunes</b> sale el estado completo.</p></div>';
-  if(soloLatido){
-    html+='<p style="margin:10px 0"><b>Sin cambios</b> desde el correo anterior: ningun proyecto entro, empeoro ni se resolvio, y no hay banderas nuevas.</p>';
-    html+=secDigest(subset);
-    html+=secDatos(subset, []);
-    html+='<hr style="margin:16px 0 8px"><p style="font-size:12px;color:#666"><b>'+ig.length+' proyectos en condicion estable.</b><br>';
-    html+='&#128202; <b>KPI semanal</b> ('+(kpiSem.modo==='simple'?('arranque, dia '+kpiSem.dias):('promedio '+kpiSem.dias+' dias'))+'): estancamiento <b>'+kpiSem.aPct+'%</b> verde (meta &ge;90%)<br>';
-    html+='Latido: corrida '+esc(fechaStr)+' 08:00 CST.</p></div>';
-    const toL = Array.isArray(to) ? to : String(to).split(',').map(x=>x.trim()).filter(Boolean);
-    return { message:{ subject:'[Semaforo '+grupoLabel+'] '+fb+' - estado semanal (sin cambios)', body:{contentType:'HTML',content:html}, toRecipients: toL.map(a=>({emailAddress:{address:a}})) }, saveToSentItems:true };
+  html+='<h2 style="margin:0;font-size:19px">Semaforo '+esc(grupoLabel)+' &middot; '+fb+'</h2>';
+  html+='<div style="background:#f4f6f8;border-radius:8px;padding:10px 12px;margin:10px 0">';
+  html+='<p style="margin:0 0 4px"><b>'+subset.length+' proyectos vigilados</b> &middot; retraso en la etapa: '+
+        PUNTO.verde+' '+aC.V+' &middot; '+PUNTO.amarillo+' '+aC.A+' &middot; '+PUNTO.rojo+' '+aC.R+'</p>';
+  html+='<p style="margin:0;font-size:12px;color:#666">El color dice UNA sola cosa: que tan tarde va el proyecto en su etapa. '+
+        (esLunes ? 'Hoy el correo trae el <b>estado completo</b>.' : 'Hoy el correo trae <b>lo que cambio</b>; abajo se dice cuantos no cambiaron.')+'</p></div>';
+
+  if(!cambiaron.length && !res.length){
+    html+='<h3 style="margin:16px 0 2px;font-size:15px">Lo que cambio desde el correo anterior [0]</h3>';
+    html+='<p style="margin:0 0 6px;font-size:12px;color:#777">Proyectos que entraron, empeoraron, mejoraron o estrenaron bandera desde el correo anterior.</p>';
+    html+='<p style="color:#888;margin:2px 0;font-size:13px">- ningun cambio -</p>';
+  } else {
+    html+=bloque('Lo que cambio desde el correo anterior',
+      'Proyectos que entraron, empeoraron, mejoraron o estrenaron bandera desde el correo anterior.',
+      cambiaron, etiquetaDe, false);
+    if(res.length){
+      html+='<p style="margin:8px 0 2px;font-size:13px"><b>Salieron de la lista ['+res.length+']</b>: ';
+      html+=res.map(x=>esc(x.name)).join(' &middot; ')+'</p>';
+    }
   }
-  html+=sec('&#127381; NUEVO HOY','#c62828',nu,'&#127381;');
-  html+=sec('&#128200; EMPEORO (cruzo de tramo)','#e65100',em,'&#128200;');
-  html+=secResueltos(res);
-  if(me.length) html+=sec('&#128201; MEJORO (sigue en la lista)','#2e7d32',me,'&#128201;');
-  html+=secSinAvance(sa);
-  html+='<h3 style="margin:14px 0 4px">&#128681; CAMBIOS FUERA DE COMERCIAL ['+flg.length+']</h3>';
-  if(!flg.length) html+='<p style="color:#888;margin:2px 0">- ninguno nuevo -</p>';
-  else { html+='<p style="margin:2px 0;font-size:12px;color:#666">Cada evento se reporta <b>una sola vez</b>, el dia que se detecta. No es una acusacion de manipulacion: es un cambio de fecha o de stage hecho por alguien fuera de Comercial.</p><ul style="font-size:13px;margin:4px 0;padding-left:18px">';
-    for(const x of flg) html+='<li>&#128681; <b>'+escN(x.r.name,50)+'</b>: '+esc(x.f.detalle)+'</li>';
-    html+='</ul>'; }
-  html+=secDatos(subset, flgDato);
-  if(esLunes) html+=secDigest(subset);
-  html+='<hr style="margin:16px 0 8px"><p style="font-size:12px;color:#666">';
-  html+='<b>'+ig.length+' proyectos en condicion estable</b> (sin cambio de tramo ni banderas nuevas) - no se imprimen para que lo que cambio se vea.<br>';
-  if(esLunes) html+='&#128202; <b>KPI semanal</b> ('+(kpiSem.modo==='simple'?('arranque, dia '+kpiSem.dias):('promedio '+kpiSem.dias+' dias'))+'): estancamiento <b>'+kpiSem.aPct+'%</b> verde (meta &ge;90%)<br>';
-  html+='El semaforo de <b>falta de seguimiento</b> se retiro del reporte en S1 (issue #220): llevaba 11 corridas en 0% verde y su verde era inalcanzable por construccion. Se sigue calculando.<br>';
-  html+='Latido: corrida '+esc(fechaStr)+' 08:00 CST.</p></div>';
-  const E=String.fromCodePoint;
+
+  // Seccion 2: lo que pide algo y ya lo pedia. El lunes se despliega; el resto de la
+  // semana va contada. Esto es lo que S1 dejaba solo en el pie -- y ahi se escondio
+  // MAGNEKON con $1.28M vencidos, el renglon que motivo la auditoria #220.
+  if(esLunes){
+    html+=bloque('Siguen pendientes, sin cambio',
+      'Piden algo y ya lo pedian en el correo anterior. Se despliegan hoy porque es el dia del estado completo.',
+      siguen, ()=>'', true);
+  } else {
+    html+='<h3 style="margin:16px 0 2px;font-size:15px">Siguen pendientes, sin cambio ['+siguen.length+']</h3>';
+    html+='<p style="margin:0 0 6px;font-size:12px;color:#777">Piden algo y ya lo pedian en el correo anterior. No se despliegan hoy para que se vea lo que cambio; el lunes salen completos.</p>';
+  }
+
+  html+='<h3 style="margin:16px 0 2px;font-size:15px">Ya no piden nada ['+noPide.length+']</h3>';
+  html+='<p style="margin:0 0 6px;font-size:12px;color:#777">En tiempo en su etapa, sin banderas y con seguimiento al dia. No requieren accion.</p>';
+
+  html+=secReporte(subset, res);
+
+  // PIE QUE RECONCILIA. El pie viejo decia "0 proyectos en condicion estable" teniendo
+  // 9 verdes, porque contaba otra cosa con un nombre que sonaba igual. Este pie cierra
+  // la cuenta contra el encabezado, y si algun dia no cierra se VE.
+  const suma = cambiaron.length + siguen.length + noPide.length;
+  html+='<hr style="margin:18px 0 8px"><p style="font-size:12px;color:#666">';
+  html+='<b>La cuenta:</b> '+subset.length+' vigilados = '+cambiaron.length+' con cambio + '+siguen.length+
+        ' pendientes sin cambio + '+noPide.length+' que no piden nada'+
+        (suma===subset.length?'. Cuadra.':' = '+suma+'. <b>NO CUADRA</b> - avisar.')+'<br>';
+  if(esLunes) html+='&#128202; <b>KPI semanal</b> ('+(kpiSem.modo==='simple'?('arranque, dia '+kpiSem.dias):('promedio '+kpiSem.dias+' dias'))+'): <b>'+kpiSem.aPct+'%</b> en tiempo (meta &ge;90%)<br>';
+  html+='El semaforo de <b>falta de seguimiento</b> se retiro del reporte en S1 (#220): llevaba 11 corridas en 0% verde y su verde era inalcanzable por construccion. Se sigue calculando.<br>';
+  html+='Corrida '+esc(fechaStr)+' 08:00 CST &middot; modo <b>'+(MODO_PRUEBA?'PRUEBA':'produccion')+'</b>'+(ES_MANUAL?' (disparo manual)':'')+'.</p></div>';
+
   const partes=[];
   if(nu.length) partes.push(nu.length+' nuevo'+(nu.length>1?'s':''));
   if(em.length) partes.push(em.length+' empeoro');
-  if(res.length) partes.push(res.length+' resuelto'+(res.length>1?'s':''));
-  if(flg.length) partes.push(flg.length+' cambio'+(flg.length>1?'s':'')+' fuera de Comercial');
-  if(flgDato.length) partes.push(flgDato.length+' dato'+(flgDato.length>1?'s':'')+' por revisar');
-  if(esLunes) partes.push('estado semanal');
+  if(me.length) partes.push(me.length+' mejoro');
+  if(porBandera.length) partes.push(porBandera.length+' bandera'+(porBandera.length>1?'s':''));
+  if(res.length) partes.push(res.length+' salio'+(res.length>1?'... ':''));
+  if(esLunes) partes.push('estado completo');
   if(diag.length) partes.push('REVISAR MEDICION');
-  const subj='[Semaforo '+grupoLabel+'] '+fb+' - '+(partes.length?partes.join(' '+E(183)+' '):'sin cambios');
+  if(wdiag.length) partes.push('ESCRITURA FALLIDA');
+  const subj='[Semaforo '+grupoLabel+'] '+fb+' - '+(partes.length?partes.join(' · '):'sin cambios');
   const toList = Array.isArray(to) ? to : String(to).split(',').map(s=>s.trim()).filter(Boolean);
   return { message:{ subject:subj, body:{ contentType:'HTML', content:html }, toRecipients: toList.map(a=>({ emailAddress:{ address:a } })) }, saveToSentItems:true };
 }
@@ -281,9 +363,8 @@ function buildMsg(subset, grupoLabel, to){
 sd.s1_prevA = nextA; sd.s1_prevEv = nextEv; sd.s1_nombres = nextNombres; sd.s1_grupos = nextGrupos;
 sd.s1_diagFirma = diagFirma;
 const out=[];
-if (C.modo_prueba) { const m=buildMsg(rows, "Operaciones + Admin", C.alert_recipient_default); if(m) out.push({json:m}); }
+if (MODO_PRUEBA) { const m=buildMsg(rows, "Operaciones + Admin", C.alert_recipient_default, true); if(m) out.push({json:m}); }
 else { for (const g of ["Operaciones","Admin"]) { const sub = rows.filter(r => r.grupo === g);
   const to = (C.recipients_por_grupo || {})[g] || C.alert_recipient_default;
   const m = buildMsg(sub, g, to); if(m) out.push({json:m}); } }
 return out;
-
