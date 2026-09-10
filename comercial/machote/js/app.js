@@ -8,8 +8,11 @@
  *
  * Ninguna vista calcula. Todo número sale de MachoteCalc.
  *
- * Rutas:  #/  lista · #/m/:id  el libro · #/rev/:id  revisión
- *         #/orden/:id  cierre de orden · #/ap/:id  aprobación
+ * Rutas:  #/  lista · #/nuevo  crear · #/m/:id  el libro
+ *         #/rev/:id  revisión · #/ap/:id  aprobación · #/control  tablero
+ *
+ * `#/orden/:id` se retiró en V1.25 con `vOrden` (ver más abajo, y
+ * `docs/comercial/ANDAMIO.md`). Un hash desconocido cae al `#/` de `render()`.
  */
 (function (G) {
   'use strict';

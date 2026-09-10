@@ -416,22 +416,21 @@ let ok = 0, mal = 0;
     if (!/no hay tipo de cambio/.test(await p.textContent('#vista'))) throw new Error('no lo reportó');
   });
 
-  await paso('la estación 3.0 no deja cerrar el handoff incompleto', async () => {
-    await ir('#/orden/O-9001');
-    if (!(await p.locator('#btnConf').isDisabled())) throw new Error('el botón estaba habilitado');
-  });
-
-  await paso('marcar todo habilita el cierre, y la marca no se pierde', async () => {
-    await ir('#/orden/O-9001');
-    for (let i = 0; i < 12; i++) {
-      const pend = p.locator('[data-ent]:not(:checked)');
-      if (await pend.count() === 0) break;
-      await pend.first().check(); await p.waitForTimeout(120);
-    }
-    if (await p.locator('#btnConf').isDisabled()) throw new Error('sigue deshabilitado');
-    await p.click('#btnConf'); await p.waitForTimeout(250);
-    if (!/Handoff cerrado/.test(await p.textContent('#vista'))) throw new Error('no cerró');
-  });
+  /* ── V1.25 · dos pruebas RETIRADAS aquí ───────────────────────────────────
+   * Eran «la estación 3.0 no deja cerrar el handoff incompleto» y «marcar todo
+   * habilita el cierre, y la marca no se pierde». Las dos abrían
+   * `#/orden/O-9001` y ejercían `vOrden`, la pantalla de cierre de handoff.
+   *
+   * Se van porque la pantalla se fue: corría sobre `D.ORDENES` —datos de
+   * ejemplo, nunca del servidor— y marcaba «confirmada» en un estado de
+   * memoria; su único enlace era la sección «Confirmar la orden» que se retiró
+   * en V1.24, así que llevaba una versión alcanzable sólo tecleando el hash.
+   *
+   * No se sustituyen por nada, y es a propósito: no cubrían una regla del
+   * negocio que siga viva en otro lado, cubrían el comportamiento de un
+   * andamio. El camino de verdad a una orden es «Pasar a orden» desde el
+   * machote abierto (`js/orden.js`), que sigue enlazado y tiene sus pruebas
+   * aparte. El porqué del retiro está en `docs/comercial/ANDAMIO.md`. */
 
   await paso('volver al mismo machote conserva la hoja donde ibas', async () => {
     await ir('#/m/M-1041'); await hoja('Instalación');
@@ -754,7 +753,11 @@ let ok = 0, mal = 0;
 
   // ── Diseño ───────────────────────────────────────────────────────────
   await paso('nada desborda a 380 px', async () => {
-    for (const h of ['#/', '#/m/M-1041', '#/rev/M-1044', '#/orden/O-9002', '#/ap/M-1041']) {
+    /* V1.25: `#/orden/O-9002` salió de esta lista al retirarse `vOrden`. Un
+     * hash desconocido cae al `#/` de `render()`, así que la prueba habría
+     * seguido pasando midiendo la lista dos veces — verde sin mirar nada.
+     * Entra `#/nuevo`, que sí existe y no estaba cubierta a este ancho. */
+    for (const h of ['#/', '#/nuevo', '#/m/M-1041', '#/rev/M-1044', '#/ap/M-1041']) {
       await ir(h);
       const d = await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       if (d > 2) throw new Error(h + ' desborda ' + d + ' px');
@@ -800,7 +803,7 @@ let ok = 0, mal = 0;
 
   await paso('todo lo que se toca mide al menos 40 px de alto', async () => {
     const chico = [];
-    for (const h of ['#/', '#/m/M-1041', '#/orden/O-9002']) {
+    for (const h of ['#/', '#/nuevo', '#/m/M-1041']) {   // V1.25: sale #/orden, entra #/nuevo
       await ir(h);
       if (h === '#/m/M-1041') { await hoja('Suministro'); }
       const r = await p.evaluate(() => {
