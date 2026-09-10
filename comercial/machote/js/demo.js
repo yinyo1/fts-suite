@@ -232,26 +232,12 @@
     })
   ];
 
-  // Órdenes ya confirmadas: lo que la estación 3.0 tiene que cerrar.
-  const ORDENES = [
-    {
-      id: 'O-9001', machote: 'M-1042', so: 'SO11772',
-      cliente: 'Nalco de México · Topo Chico',
-      nombre: 'Adecuaciones de toma sanitaria en codo',
-      fecha_confirmacion: '2026-08-19', monto: 13362, moneda: 'MXN',
-      entregables: null, handoff: null
-    },
-    {
-      id: 'O-9002', machote: null, so: 'SO11737',
-      cliente: 'Nalco de México · Topo Chico',
-      nombre: 'Adecuaciones eléctricas y de control para diferencial de presión',
-      fecha_confirmacion: '2026-08-17', monto: 305840, moneda: 'MXN',
-      entregables: null, handoff: null
-    }
-  ];
+  /* `ORDENES` se retiró en V1.25 junto con `vOrden`, la pantalla que las
+   * consumía. Eran dos órdenes de ejemplo que sólo servían para poblar el
+   * cierre de handoff; nada más en el módulo las leía. */
 
   G.DEMO = {
-    UNIDADES, TIPOS_PROYECTO, ESTADOS, FLUJO, MACHOTES, ORDENES,
+    UNIDADES, TIPOS_PROYECTO, ESTADOS, FLUJO, MACHOTES,
     ROLES: C.ROLES, GRUPOS: C.GRUPOS, TIPOS: C.TIPOS, ESCENARIOS: C.ESCENARIOS
   };
 })(window);

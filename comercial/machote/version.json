@@ -1,10 +1,15 @@
 {
-  "version": "V1.24",
+  "version": "V1.25",
   "fecha": "2026-09-10",
   "modulo": "comercial/machote",
   "ambito": "El CONTADOR es solo de este modulo. finanzas tambien usa V1.xx desde el 2026-09-03 (instruccion directa de Esteban, corrige el \"no propagar\" del issue #148) pero lleva su propio contador y va en V1.00. operaciones/planeacion sigue en 2.4.1, kiosk y confirmar-horas solo con cadena de build, y siete modulos con un 1.0.0 puesto una vez: a esos no se propaga.",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.25",
+      "pr": null,
+      "nota": "El prestamo temporal de escritura, la lista que arranca en todas las personas, y lo ultimo del andamio. EL PRESTAMO (idea de Ricardo): el dueno de una cotizacion le presta la ESCRITURA a otra persona por un plazo que el elige, con tope de 24 horas que impone la BASE con un CHECK -no la pantalla, que cualquiera salta con la consola abierta-. Mientras dura, esa persona guarda como guardaria el dueno y cada version suya queda con SU nombre en el historial: es el caso de las comisiones que motivo el historico, y el dato ya era verdad en la base desde el primer dia porque machote_version.autor sale del token verificado. Lo que faltaba era poder VERLO, y ahora las versiones que no escribio el dueno salen marcadas y con esas palabras. Solo el dueno presta, se recoge con un boton, se avisa quince minutos antes de que venza, y borrar y mandar a Odoo siguen siendo del dueno: se presta la escritura, no la propiedad. LO QUE SOSTIENE TODO: un rechazo del servidor NUNCA cuesta lo tecleado. Lo escrito sobre un prestado se guarda en un cajon aparte de este navegador ANTES de cualquier llamada, sobrevive al rechazo y a recargar, y el aviso distingue las tres causas -permiso vencido, permiso recogido, y alguien mas guardo primero- porque llevan a tres cosas distintas. LA CONCURRENCIA se ejercio contra la base real con dos escritores simultaneos sobre la misma version: paso uno, el otro se fue con CONFLICTO_DE_VERSION, y la version que el prestatario escribio quedo a su nombre. LA LISTA arranca en TODAS las personas: abrir la lectura a todo el modulo en V1.24 y luego esconderlo detras de un filtro que nadie eligio era abrir una puerta y dejarla cerrada. El encabezado sigue diciendo cuantas son tuyas y el respaldo sigue llevandose solo lo tuyo. EL ANDAMIO: se retiro vOrden, la pantalla de cierre de handoff, que corria sobre datos de ejemplo y cuyo unico enlace se habia ido en V1.24 -solo se alcanzaba tecleando el hash-. Y dos defectos que solo se vieron MIRANDO la pantalla: el historial borraba la marca de 'no es el dueno' de todos los renglones cada vez que se seleccionaba una version, y un endpoint todavia sin publicar contestaba 'no se pudo' en vez de decir que falta encenderlo."
+    },
     {
       "version": "V1.24",
       "pr": null,

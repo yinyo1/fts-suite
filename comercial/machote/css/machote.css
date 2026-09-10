@@ -715,6 +715,15 @@ th .hint { font-weight: 400; text-transform: none; opacity: .75; }
 .hist-cols { display: grid; grid-template-columns: 320px 1fr; gap: 14px;
              align-items: start; margin-top: 12px; }
 @media (max-width: 760px) { .hist-cols { grid-template-columns: 1fr } }
+/* Las dos columnas del historial son celdas de grid, y una celda de grid trae
+ * `min-width: auto`: puede CRECER más que su carril si su contenido no cabe.
+ * El documento congelado es un `<pre>` con `white-space: pre`, así que medía
+ * 700 px y empujaba la columna — se salía 113 px del recuadro en escritorio y
+ * 368 px en teléfono, o sea que la caja del JSON colgaba fuera de la pantalla.
+ * Con `min-width: 0` la celda respeta su carril y el `overflow:auto` que el
+ * `<pre>` ya tenía por fin sirve para algo. Se vio en la captura, no en el
+ * diff (CLAUDE.md §20 #12). */
+.hist-cols > div { min-width: 0; }
 .hist-cols .v { border: 1px solid var(--linea); border-radius: 9px; padding: 9px 11px;
                 margin-bottom: 7px; cursor: pointer; background: var(--fondo); }
 .hist-cols .v:hover { border-color: var(--acento); }
@@ -964,6 +973,48 @@ tr.marcado td { background: #fffaf0; }
   .corr .btn.f-min,
   .ctrl-pie .btn.f-min,
   .aviso.pend .btn.chico { min-height: var(--toque); }
+}
+
+/* ══ El préstamo temporal de escritura (V1.25) ═══════════════════════════
+ * Tres piezas: la franja de arriba del machote, la píldora de la lista y el
+ * modal de prestar. Todas cuelgan de nombres con prefijo `presta-` porque
+ * `.modal` y `.caja` YA significan otra cosa en este archivo — reusarlos para
+ * el fondo y la tarjeta es correcto; inventar variantes suyas, no. */
+
+/* La franja. Ámbar cuando falta poco, rojo cuando ya venció, y en el caso del
+ * dueño un tono neutro: para él es información, no una alarma. */
+.presta-fr { border: 1px solid var(--linea); border-left: 3px solid var(--acento);
+             border-radius: 10px; padding: 10px 12px; margin: -4px 0 12px;
+             font-size: 13px; background: var(--papel);
+             display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.presta-fr .grow { flex: 1 1 240px; min-width: 0; }
+.presta-fr.dueno { border-left-color: var(--suave); color: var(--tinta); }
+.presta-fr.pronto { border-left-color: var(--ambar); background: #fffaf0; }
+.presta-fr.vencido { border-left-color: var(--rojo); background: #fff6f5; }
+.presta-fr .btn.chico { width: auto; padding: 0 12px; min-height: 32px; font-size: 12.5px; }
+
+/* La píldora de la lista. Verde apagado: dice «puedes escribir aquí», que es
+ * lo contrario de `.pill.aj` («sólo lectura») y tiene que leerse distinto de
+ * un vistazo, no sólo distinto de cerca. */
+.pill.presta { background: #e7f4ec; color: #1d6b3f; }
+
+/* El modal de prestar. */
+.presta-caja { max-width: 460px; }
+.pm-l { display: block; margin: 12px 0 0; font-size: 13px; color: var(--tinta); }
+.pm-l select { display: block; width: 100%; box-sizing: border-box; margin-top: 4px;
+               min-height: var(--toque); border: 1px solid var(--linea);
+               border-radius: 10px; padding: 0 10px; background: var(--fondo);
+               color: var(--tinta); font: inherit; }
+
+/* En el historial, la versión que NO escribió el dueño. Es el caso de las
+ * comisiones: tiene que verse sin conocer de memoria de quién es cada
+ * cotización. Se marca el renglón entero, no sólo la etiqueta, para que se
+ * distinga al recorrer la columna con la vista. */
+.hist .v.ajena, .v.ajena { border-left: 3px solid var(--ambar); }
+.chip.otro { background: var(--ambar); color: #4a3200; }
+
+@media (max-width: 640px) {
+  .presta-fr .btn.chico { min-height: var(--toque); }
 }
 
 /* ── Sesión vencida (V1.21) ───────────────────────────────────────────────

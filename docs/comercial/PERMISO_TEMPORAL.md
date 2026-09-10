@@ -1,24 +1,28 @@
-# Permiso temporal de escritura — propuesta
+# Permiso temporal de escritura
 
-**Estado: PROPUESTA ABIERTA, con la mitad de abajo ya construida.** Idea
-original de Ricardo; el encargo es de la sesión V1.24 del issue #140.
+**Estado: CONSTRUIDO COMPLETO en V1.25 (2026-09-10), con las cinco decisiones
+de §2 aprobadas por Esteban tal como estaban escritas.** Idea original de
+Ricardo; el encargo salió de la sesión V1.24 del issue #140.
+
+> Lo que sigue después de este cuadro es **la propuesta como se escribió**, sin
+> retocar: es el razonamiento que sostiene cada decisión y por eso se conserva
+> tal cual. Lo construido y cómo se comprobó está en **§6 y §7**.
 
 | | qué | estado |
 |---|---|---|
-| **construido** | la tabla `comercial.machote_prestamo` con el tope de 24 h | ✅ migración `005`, aplicada a producción |
-| **construido** | el candado del guardado: «¿es suyo, **o hay préstamo vigente**?» | ✅ en `machote-guardar`, guardado — **falta publicar** |
-| **abierto** | el endpoint para prestar y recoger | ✖ no construido |
-| **abierto** | la pantalla: prestar, ver a quién, recoger, el aviso de los 15 min | ✖ no construido |
-| **abierto** | la marca en el historial «versión escrita por quien no es el dueño» | ✖ no construido |
+| la tabla `comercial.machote_prestamo` con el tope de 24 h | migración `005` | ✅ aplicada a producción |
+| el candado del guardado: «¿es suyo, **o hay préstamo vigente**?» | `machote-guardar` | ✅ **publicado y vivo** |
+| el endpoint para prestar y recoger | `comercial/machote-prestar` | ✅ construido · ⏳ **falta publicar** |
+| la lista con los préstamos vigentes | `comercial/machotes-leer` | ✅ escrito · ⏳ **falta publicar** |
+| la pantalla: prestar, ver a quién, recoger, el aviso de los 15 min | `js/prestamo.js` | ✅ |
+| la marca en el historial «versión escrita por quien no es el dueño» | `js/historial.js` | ✅ |
 
-**El corte no es arbitrario: se construyó lo que ninguna de las cinco decisiones
-de §2 puede invalidar** —una tabla con un tope, y una condición en el candado—
-y se dejó abierto todo lo que depende de tus respuestas. Mientras no exista el
-endpoint no puede existir ningún préstamo, así que lo construido **no cambia
-nada de lo que se ve hoy**: es infraestructura inerte esperando la decisión.
-
-Si rechazas la idea entera, lo construido se retira con una migración que borra
-una tabla vacía y un `setNodeParameter` que devuelve el candado a `dueno = actor`.
+⚠️ **Los dos workflows con ⏳ los publica una persona en la UI de n8n.** El
+frontend está hecho para tolerar que todavía no lo estén: sin la columna
+`prestamos` no aparece ningún préstamo y la pantalla se comporta como en V1.24,
+y si alguien aprieta «Prestar» antes de tiempo, la respuesta dice **que falta
+encender el endpoint**, no «no se pudo». Es el lado tolerante primero, como
+exige la regla anti-trabón de CLAUDE.md §8.
 
 > El dueño de un machote le da permiso de edición a otra persona, con vigencia,
 > con tope de 24 horas, para los casos en que alguien más tenga que meterle mano.
@@ -270,6 +274,124 @@ los seis casos que puede recibir:
 Esa última fila importa: el candado nuevo **no puede romper la creación de un
 machote**, que es el camino que usa todo el mundo todos los días.
 
-⚠️ **Lo que sigue SIN comprobar** es la concurrencia con dos escritores
-simultáneos de verdad (§0). Está razonada desde el mecanismo, no ejercida — y
+⚠️ **Lo que seguía SIN comprobar** era la concurrencia con dos escritores
+simultáneos de verdad (§0): estaba razonada desde el mecanismo, no ejercida — y
 ésa es exactamente la distinción que CLAUDE.md §8 pide no borrar.
+**Ya se ejerció: §7.1.**
+
+---
+
+## 7. V1.25 · lo que faltaba, y cómo se comprobó
+
+Esta sección cierra el ⚠️ de §6.
+
+### 7.1 La concurrencia, ejercida contra la base real
+
+Dos escritores de verdad sobre la **misma versión** del mismo machote, en el
+Postgres de producción, por el endpoint vivo `comercial/machote-guardar`
+(ejecución `93425` del runner temporal, `success`, `2026-09-10T05:30:40Z`
+= 23:30:40 CST del 9-sep).
+
+El **read-back contra la base**, leído aparte y después (ejecución `93777`,
+`2026-09-10T13:35:28Z` = 07:35 CST), tal como salió del `SELECT`:
+
+```
+COT-0008 · id_local M-V125-CONCURRENCIA · dueno zz.prueba.v125.duenio
+
+ tipo      version  autor                    motivo                                  creada_at (UTC)
+ version   1        zz.prueba.v125.duenio    —                                       2026-09-10 05:28:49
+ version   2        zz.prueba.v125.duenio    concurrencia V1.25 · control-duenio      2026-09-10 05:30:40
+ version   3        zz.prueba.v125.presta    concurrencia V1.25 · control-presta      2026-09-10 05:30:41
+ version   4        zz.prueba.v125.presta    concurrencia V1.25 · simultanea-presta   2026-09-10 05:30:41
+
+ prestamo  para zz.prueba.v125.presta · otorgado_por zz.prueba.v125.duenio
+           vence_at 2026-09-10 07:28:49 UTC (= 01:28 CST del 10-sep) · revocado_at: vivo
+```
+
+Cuatro versiones, **no cinco**. Las dos últimas escrituras se mandaron las dos
+sobre la versión 3: pasó la del prestatario (quedó como 4) y la del dueño fue
+rechazada con
+
+> `CONFLICTO_DE_VERSION` — «La versión que sigue es la 5, no la 4. Alguien más
+> guardó mientras tanto: vuelve a abrir el machote.»
+
+Que en la base no exista una quinta fila es la prueba: no es que el mensaje se
+haya pintado bonito, es que **el renglón no se escribió**. Lo hace el índice
+único `mv_machote_version_uq (machote_id, version)` de la migración 003 — la
+regla mira **sobre qué versión** se escribe, no quién escribe, y por eso dos
+personas con derecho se comportan igual que una persona con dos pestañas.
+
+Y la **versión 3 quedó a nombre del prestatario con el dueño intacto**: ése es,
+textualmente, el caso de las comisiones que motivó el histórico.
+
+Las fases de control (2 y 3, una escritura de cada quien por separado) existen
+a propósito: sin ellas, una cripto rota o un token mal armado habrían dado el
+mismo «rechazado» y se habría leído como que el candado funciona.
+
+### 7.2 Qué ve el que pierde
+
+Lo que la base rechaza no puede costarle a nadie lo que tecleó. Cómo se
+sostiene, en orden:
+
+1. Lo escrito sobre un machote prestado se guarda en un cajón aparte de este
+   navegador (`fts_machote_prestado_v1`), **síncrono y antes de llamar al
+   servidor** — no después, ni «si todo sale bien».
+2. El rechazo pinta un aviso que **distingue las tres causas** —permiso
+   vencido, permiso recogido, y alguien más guardó primero— porque llevan a
+   tres cosas distintas: pedirlo otra vez, hablar con el dueño, o volver a
+   abrir el machote. Es la misma exigencia de CLAUDE.md §20 #12b.
+3. Todos los avisos terminan igual: «Lo que escribiste sigue en este navegador
+   y no se perdió», con un botón **Copiar lo mío** al lado. Sin el botón, la
+   frase es amable y no se puede actuar sobre ella.
+4. Al recargar, `bajar()` recupera del cajón lo que no subió y lo vuelve a
+   poner en pantalla — mientras el permiso siga vivo. Sin permiso el machote
+   vuelve a ser de sólo lectura y lo tecleado se recupera desde el aviso, no
+   pisando la pantalla.
+
+El cajón es **una llave distinta** de `fts_machote_v1` a propósito: esa llave
+significa «lo mío», dos personas pueden tener el mismo `id_local` (Ricardo
+tenía un `M-1041` y Esteban otro), y mezclarlas haría que el machote prestado
+subiera como propio en el siguiente empujón.
+
+### 7.3 Las pruebas que quedaron
+
+Ocho pruebas de navegador nuevas, todas en `tests/pruebas-navegador.js`:
+
+| prueba | qué cierra |
+|---|---|
+| prestar: sale la orden al servidor y el dueño ve que está prestada | el cuerpo NO lleva identidad — dueño y otorgante salen del token |
+| prestar y guardar: el prestatario escribe, y guarda con la identidad del DUEÑO | `id_local` del dueño y `version_leida` del servidor; si fuera el suyo, crearía un machote nuevo a su nombre |
+| préstamo VENCIDO | el aviso lo dice con esas palabras · lo tecleado sigue en el cajón |
+| permiso RECOGIDO | el dueño lo recoge · al prestatario se lo dicen **distinto** de «venció» |
+| EXTRAÑO sin préstamo | lo lee, no lo edita, no lo presta y **no entra al empuje** |
+| crear una cotización nueva sigue funcionando para cualquiera | el préstamo no le puso una puerta al camino de todos los días |
+| el historial DICE quién escribió cada versión | la marca «no es el dueño», y que NO se pinte en las del dueño |
+| si el endpoint todavía no está publicado, lo DICE | el hueco del despliegue: el frontend mergea antes de que alguien publique |
+| (A) el que PIERDE el choque conserva lo tecleado | sobrevive al rechazo, a recargar, y vuelve a la pantalla |
+
+### 7.4 Tres defectos que sólo se vieron MIRANDO la pantalla
+
+Ninguno se veía releyendo el diff, y los tres son de la superficie que entrega
+esta sesión:
+
+1. **El historial borraba su propia marca.** `marcar()` —que corre también al
+   abrir, para seleccionar la última versión— reescribía el `className` entero
+   de cada renglón, y con eso se llevaba `ajena`. La marca de «no es el dueño»
+   moría antes de verse nunca; quedaba sólo el texto. Regla que deja: *una
+   función que pinta UN estado no reescribe el `className`, toca SU clase.*
+2. **El documento congelado se salía del recuadro.** Las dos columnas del
+   historial son celdas de grid, y una celda de grid trae `min-width: auto`:
+   crece más que su carril si su contenido no cabe. El `<pre>` medía 700 px y
+   colgaba **113 px fuera en escritorio y 368 px en teléfono**. Un
+   `min-width: 0` lo arregla y hace que el `overflow:auto` que el `<pre>` ya
+   tenía por fin sirva de algo.
+3. **«hasta las 10:13 a.m..»** — `toLocaleTimeString('es-MX')` ya trae punto.
+
+Y uno más que no se vio en la pantalla sino en la **suite completa**: la
+primera versión de `puedeEscribir()` devolvía `false` para los machotes de
+DEMOSTRACIÓN, y con eso trababa la hoja de los cuatro ejemplos que la
+aplicación trae de fábrica — o sea, lo primero que ve quien abre por primera
+vez. Lo cazaron **41 pruebas**, ninguna de ellas del préstamo. Un ejemplo sí se
+escribe: en cuanto alguien teclea encima deja de ser un ejemplo (`tocado()` le
+quita el `_demo`); lo que no puede hacer es subir, y eso lo impiden dos
+candados distintos que no son éste.

@@ -51,9 +51,74 @@
    * pedirlo es el error que no tiene vuelta. */
   var LLAVE_BORRADOS = 'fts_machote_borrados_v1';
 
+  /* ── El cajón de lo PRESTADO (V1.25) ─────────────────────────────────────
+   * Un machote que otra persona me prestó es editable, así que lo que teclee
+   * tiene que sobrevivir una recarga. Pero NO puede vivir en `fts_machote_v1`:
+   * esa llave significa «lo mío» y meter ahí lo de otro rompe dos cosas
+   * concretas —el `id_local` de Ricardo puede chocar con uno mío, y `empujar`
+   * lo subiría como propio, que es cómo el servidor le pondría de dueño a
+   * quien manda—. Una prueba dedicada vigila que `fts_machote_v1` nunca
+   * contenga trabajo ajeno.
+   *
+   * Así que van a un cajón aparte, indexado por el UUID DEL SERVIDOR —que es
+   * como se nombra lo ajeno en pantalla— y con su propia contabilidad de
+   * versiones. Cada renglón:
+   *     { id_local, version_leida, documento, guardado_at }
+   * `id_local` es el REAL, el del dueño: es lo que el servidor necesita para
+   * saber sobre qué identidad está agregando una versión. Mandar el uuid en
+   * su lugar crearía un machote nuevo. */
+  var LLAVE_PRESTADO = 'fts_machote_prestado_v1';
+
+  function leerPrestados() {
+    try { return JSON.parse(localStorage.getItem(LLAVE_PRESTADO) || '{}') || {}; }
+    catch (e) { return {}; }
+  }
+  function escribirPrestados(o) {
+    try { localStorage.setItem(LLAVE_PRESTADO, JSON.stringify(o)); return true; }
+    catch (e) { return false; }
+  }
+
+  /** Guarda EN ESTE NAVEGADOR lo que se está tecleando sobre un prestado.
+   *  Síncrono y sin red, igual que `escribirLocal` para lo propio: es lo que
+   *  garantiza que un rechazo del servidor no cueste el trabajo. */
+  function guardarPrestadoLocal(m) {
+    if (!m || !m.id) return false;
+    var todos = leerPrestados();
+    var previo = todos[m.id] || {};
+    todos[m.id] = {
+      id_local: m._id_local || previo.id_local || null,
+      version_leida: (m._version_servidor !== undefined && m._version_servidor !== null)
+        ? m._version_servidor : (previo.version_leida || 0),
+      documento: documentoDeMachote(m),
+      guardado_at: new Date().toISOString()
+    };
+    return escribirPrestados(todos);
+  }
+
+  /** Lo deja de seguir: se subió, o se acabó el préstamo y ya no hay nada que
+   *  recuperar. NO se llama al vencer un permiso con cambios sin subir — ahí
+   *  justamente es cuando hace falta conservarlo. */
+  function olvidarPrestado(uuid) {
+    var todos = leerPrestados();
+    if (todos[uuid]) { delete todos[uuid]; escribirPrestados(todos); }
+  }
+
+  /* El documento limpio, sin los campos que le cuelga la pantalla a lo ajeno
+   * (`_ajeno`, `_dueno`, `_folio`…). Van con guion bajo por esto mismo. */
+  function documentoDeMachote(m) {
+    var o = {};
+    for (var k in m) {
+      if (!Object.prototype.hasOwnProperty.call(m, k)) continue;
+      if (k.charAt(0) === '_') continue;
+      o[k] = m[k];
+    }
+    return o;
+  }
+
   var BASE = 'https://primary-production-5c3c.up.railway.app/webhook';
   var URL_LEER = BASE + '/comercial/machotes-leer';
   var URL_GUARDAR = BASE + '/comercial/machote-guardar';
+  var URL_PRESTAR = BASE + '/comercial/machote-prestar';
   var TIMEOUT_MS = 12000;
 
   /* Que exista el objeto no basta: en modo privado de Safari `localStorage`
@@ -112,6 +177,7 @@
        * las lápidas sobrevivieran, la siguiente bajada saltaría machotes que
        * están en el servidor y nadie entendería por qué faltan. */
       localStorage.removeItem(LLAVE_BORRADOS);
+      localStorage.removeItem(LLAVE_PRESTADO);
     } catch (e) { /* nada que hacer */ }
   }
 
@@ -262,6 +328,31 @@
        * Va en el POST y no en cada llamador para que un endpoint nuevo no
        * pueda olvidarse de manejarlo. */
       if (G.MachoteSesion) G.MachoteSesion.vigilar(r);
+
+      /* ── Una respuesta que NO es nuestra ──────────────────────────────────
+       * Un webhook de n8n que existe pero todavía no está publicado contesta
+       * un 404 con JSON PROPIO de n8n (`{code, message, hint}`) — no lleva
+       * `ok`, así que sin esto cae en el «no se pudo» genérico y quien lo lee
+       * concluye que su cotización tiene algo malo.
+       *
+       * Se traduce AQUÍ, en el único punto por donde pasan todas las
+       * respuestas, por lo mismo que la sesión caduca aquí: un endpoint nuevo
+       * no puede olvidarse de manejarlo. Es la exigencia de §20 #12b —causas
+       * distintas, remedios distintos, dichas con palabras distintas—
+       * aplicada al caso «la mitad del servidor todavía no está encendida». */
+      if (r && r.ok === undefined && (typeof r.code === 'number' || r.message)) {
+        var apagado = /not registered|no est[áa] registrad/i.test(String(r.message || ''));
+        return {
+          ok: false,
+          error: apagado ? 'ENDPOINT_APAGADO' : 'RESPUESTA_NO_NUESTRA',
+          mensaje: apagado
+            ? 'Esta función todavía no está encendida en el servidor. No es un ' +
+              'problema de tu cotización: falta publicar el endpoint. Avísale a ' +
+              'quien administra la suite.'
+            : 'El servidor contestó algo que no es de este módulo. Vuelve a ' +
+              'intentarlo; si sigue, avísale a quien administra la suite.'
+        };
+      }
       return r;
     });
   }
@@ -319,6 +410,44 @@
    * Por eso los ajenos viven SÓLO en memoria, mientras dura la pantalla. */
   function esAjeno(m) { return !!(m && m._ajeno === true); }
 
+  /** ¿Tengo permiso VIGENTE para escribir en este machote ajeno?
+   *
+   *  Esto es para la PANTALLA —desbloquear los campos, no hacerle perder el
+   *  rato a nadie—, NO es la seguridad. La seguridad es que el servidor
+   *  comprueba el préstamo contra la base en cada guardado, con su propio
+   *  reloj: el del navegador puede ir adelantado, atrasado o movido a mano.
+   *
+   *  Por eso el vencimiento se mira aquí de forma OPTIMISTA (deja escribir
+   *  hasta que el servidor diga que no) en vez de trabar la hoja al segundo
+   *  exacto. Trabar a alguien a media frase por un reloj que no es el bueno
+   *  es peor que dejarlo terminar la frase y que el guardado lo diga. */
+  function prestadoAMi(m) {
+    if (!m || m._ajeno !== true) return false;
+    var p = m._prestamo_para_mi;
+    if (!p || !p.vence_at) return false;
+    var t = Date.parse(p.vence_at);
+    return isFinite(t) && t > Date.now();
+  }
+
+  /** ¿Puede esta persona escribir en este machote? Propio, o prestado vigente.
+   *
+   *  ⚠️ Un machote de DEMOSTRACIÓN sí se escribe, y es a propósito: en cuanto
+   *  alguien teclea encima deja de ser un ejemplo y pasa a ser su trabajo
+   *  (`tocado()` le quita el `_demo` en ese mismo momento). Lo que la demo no
+   *  puede hacer es SUBIR, y eso lo impiden dos candados distintos —no entra a
+   *  la lista de `empujar`, y `empujarUno` la rechaza aparte—.
+   *
+   *  La primera versión de esto devolvía `false` para la demo, y con eso
+   *  trababa la hoja de los cuatro ejemplos que trae la aplicación: cualquiera
+   *  que abriera la pantalla por primera vez se encontraba una cotización que
+   *  no se deja escribir. Lo cazaron 41 pruebas de la suite completa, ninguna
+   *  de ellas del préstamo — que es exactamente para lo que sirve correrla
+   *  entera antes de mergear. */
+  function puedeEscribir(m) {
+    if (!m) return false;
+    return !esAjeno(m) || prestadoAMi(m);
+  }
+
   function empujarUno(m, ses, motivo) {
     /* Segundo candado, además de no meterla en la lista: si mañana alguien
      * llama a `empujarUno` directo, la demo sigue sin llegar al servidor. */
@@ -329,9 +458,17 @@
     /* Mismo candado para el trabajo ajeno. No debería llegar aquí —ni entra a
      * la lista local ni lo recorre `empujar`— pero el día que alguien llame a
      * esto directo, subirlo lo pondría a nombre de quien manda. */
+    /* Un ajeno CON PRÉSTAMO VIGENTE sí sube, y por un camino aparte: su
+     * identidad en el servidor es la del dueño (`_id_local`), no un id de
+     * este navegador, y su contabilidad de versiones vive en el cajón de
+     * prestados y no en la libreta de lo mío. Mezclarlas era la forma de que
+     * el `M-1041` de Ricardo pisara el mío. */
     if (esAjeno(m)) {
-      return Promise.resolve({ ok: false, error: 'ES_AJENO',
-        mensaje: 'Ese machote es de otra persona: se puede ver, no guardar.' });
+      if (!prestadoAMi(m)) {
+        return Promise.resolve({ ok: false, error: 'ES_AJENO',
+          mensaje: 'Ese machote es de otra persona: se puede ver, no guardar.' });
+      }
+      return empujarPrestado(m, ses, motivo);
     }
     var s = leerSync();
     var meta = s[m.id] || { version: 0 };
@@ -368,6 +505,46 @@
       /* Choque de versión: alguien más guardó. NO se pisa y NO se reintenta en
        * silencio — se avisa, porque resolverlo es una decisión de persona. */
       return { ok: false, error: (r && r.error) || 'DESCONOCIDO',
+               mensaje: (r && r.mensaje) || 'No se pudo guardar en el servidor.' };
+    });
+  }
+
+  /** Sube un machote PRESTADO. Mismo endpoint y mismas reglas que lo propio
+   *  —el servidor decide si el préstamo sigue vivo— pero con la identidad y
+   *  la versión sacadas del cajón de prestados.
+   *
+   *  Pase lo que pase, lo tecleado se queda en el cajón: si el servidor
+   *  rechaza (permiso vencido, permiso recogido, choque de versión), la
+   *  persona conserva su trabajo y puede copiarlo o pedir el permiso de
+   *  nuevo. El sistema puede negarse a guardar; no puede tirar trabajo. */
+  function empujarPrestado(m, ses, motivo) {
+    var idLocal = m._id_local;
+    if (!idLocal) {
+      return Promise.resolve({ ok: false, error: 'SIN_ID_LOCAL',
+        mensaje: 'No se sabe con qué identidad guardar este machote prestado.' });
+    }
+    guardarPrestadoLocal(m);
+    var cajon = leerPrestados();
+    var leida = (cajon[m.id] && cajon[m.id].version_leida) || 0;
+
+    return postear(URL_GUARDAR, {
+      token: ses.token,
+      id_local: idLocal,
+      cliente_odoo_id: (typeof m.cliente_id === 'number') ? m.cliente_id : null,
+      version_leida: Number(leida) || 0,
+      estado: m.estado || 'borrador',
+      motivo: motivo || null,
+      documento: documentoDeMachote(m),
+      resumen: resumenDe(m)
+    }).then(function (r) {
+      if (r && r.ok === true) {
+        var c2 = leerPrestados();
+        if (c2[m.id]) { c2[m.id].version_leida = r.version; escribirPrestados(c2); }
+        m._version_servidor = r.version;
+        return { ok: true, version: r.version, machote_id: r.machote_id, prestado: true };
+      }
+      return { ok: false, prestado: true,
+               error: (r && r.error) || 'DESCONOCIDO',
                mensaje: (r && r.mensaje) || 'No se pudo guardar en el servidor.' };
     });
   }
@@ -457,6 +634,8 @@
        * El porqué está en `esAjeno`. */
       var ajenos = [];
 
+      var prestados = leerPrestados();
+
       for (i = 0; i < r.machotes.length; i++) {
         var fila = r.machotes[i];
         if (!fila || !fila.id_local || !fila.documento) continue;
@@ -480,11 +659,47 @@
            * id_local se abrirían una a la otra. */
           doc.id = fila.id;
           doc._ajeno = true;
+          doc._id_local = fila.id_local;      // el del DUEÑO: con él se guarda
           doc._dueno = fila.dueno || null;
           doc._dueno_nombre = fila.dueno_nombre || null;
           doc._version_servidor = fila.version;
           doc._folio = fila.folio || null;
           doc._folio_txt = fila.folio_txt || null;
+
+          /* Los préstamos VIGENTES que el servidor decidió enseñarme: los que
+           * yo otorgué (si el machote es mío) o el mío (si soy prestatario).
+           * El servidor decide cuáles; aquí sólo se separa el que me habilita
+           * a escribir de los que sólo son cortesía para el dueño. */
+          doc._prestamos = Array.isArray(fila.prestamos) ? fila.prestamos : [];
+          doc._prestamo_para_mi = doc._prestamos.filter(function (x) {
+            return x && x.para === r.actor;
+          })[0] || null;
+
+          /* LO TECLEADO SIN SUBIR MANDA sobre lo que trae el servidor. Es la
+           * misma regla que para lo propio (`bajar` nunca pisa un machote con
+           * cambios pendientes), aplicada al cajón de prestados: si el permiso
+           * venció con trabajo a medias, ese trabajo tiene que seguir ahí al
+           * recargar. Sólo se toma si además sigo teniendo permiso; sin
+           * permiso el machote vuelve a ser de sólo lectura y lo tecleado se
+           * recupera desde el aviso, no pisando la pantalla. */
+          var enCajon = prestados[fila.id];
+          if (enCajon && enCajon.documento && doc._prestamo_para_mi) {
+            var recuperado = machoteDesdeFila({ documento: enCajon.documento,
+              id_local: fila.id_local, estado: enCajon.documento.estado || fila.estado });
+            recuperado.id = fila.id;
+            recuperado._ajeno = true;
+            recuperado._id_local = fila.id_local;
+            recuperado._dueno = doc._dueno;
+            recuperado._dueno_nombre = doc._dueno_nombre;
+            recuperado._version_servidor = fila.version;
+            recuperado._folio = doc._folio;
+            recuperado._folio_txt = doc._folio_txt;
+            recuperado._prestamos = doc._prestamos;
+            recuperado._prestamo_para_mi = doc._prestamo_para_mi;
+            recuperado._sin_subir = true;
+            doc = recuperado;
+          }
+
           ajenos.push(doc);
           continue;
         }
@@ -507,10 +722,15 @@
           refrescados++;
         }
 
+        /* La cortesía del dueño: a quién le presté esto y hasta cuándo. Va en
+         * la libreta y no dentro del machote por lo mismo que el folio —
+         * metido en el documento entraría en su huella y la pantalla diría
+         * «por subir» de algo que sólo cambió allá. */
         s[fila.id_local] = {
           version: fila.version,
           huella: huella(doc),
           machote_id: fila.id,
+          prestamos: Array.isArray(fila.prestamos) ? fila.prestamos : [],
           /* El folio vive AQUÍ y no dentro del machote. Metido en el machote
            * entraría en `huella(m)` y la franja diría «por subir» de algo que
            * acaba de bajar — el mismo modo de falla que obligó a separar
@@ -742,6 +962,56 @@
     });
   }
 
+  /* ── Prestar y recoger ───────────────────────────────────────────────────
+   * Los dos van por `comercial/machote-prestar`, que comprueba contra la base
+   * que quien otorga es el DUEÑO. Aquí no se decide nada: el `actor` sale del
+   * token, igual que en todo lo demás, y el tope de 24 horas es un CHECK de
+   * la base — no una validación de esta pantalla, que cualquiera puede saltar
+   * con la consola abierta. */
+
+  /** Presta un machote a otra persona por `horas` (tope 24, lo fuerza la base). */
+  function prestar(machoteIdPantalla, para, horas) {
+    var ses = sesion();
+    if (!ses) {
+      return Promise.resolve({ ok: false, error: 'SIN_SESION',
+        mensaje: 'No hay sesión: vuelve a entrar para prestar.' });
+    }
+    var uuid = idServidor(machoteIdPantalla);
+    if (!uuid) {
+      return Promise.resolve({ ok: false, error: 'NUNCA_SUBIDO',
+        mensaje: 'Esta cotización todavía no llega al servidor, así que no se ' +
+                 'puede prestar. Súbela primero.' });
+    }
+    return postear(URL_PRESTAR, { token: ses.token, accion: 'prestar',
+      machote_id: uuid, para: para, horas: horas });
+  }
+
+  /** Recoge un préstamo antes de que venza. */
+  function recoger(machoteIdPantalla, para) {
+    var ses = sesion();
+    if (!ses) {
+      return Promise.resolve({ ok: false, error: 'SIN_SESION',
+        mensaje: 'No hay sesión: vuelve a entrar para recoger el permiso.' });
+    }
+    var uuid = idServidor(machoteIdPantalla);
+    if (!uuid) {
+      return Promise.resolve({ ok: false, error: 'NUNCA_SUBIDO',
+        mensaje: 'Esta cotización no está en el servidor.' });
+    }
+    return postear(URL_PRESTAR, { token: ses.token, accion: 'recoger',
+      machote_id: uuid, para: para });
+  }
+
+  /** Los préstamos VIGENTES de un machote, como los dejó la última bajada.
+   *  Sale de la libreta para lo propio y del objeto en memoria para lo ajeno,
+   *  que es la misma partición que el folio: lo ajeno no toca la libreta. */
+  function prestamosDe(m) {
+    if (!m) return [];
+    if (m._ajeno === true) return Array.isArray(m._prestamos) ? m._prestamos : [];
+    var meta = leerSync()[m.id];
+    return (meta && Array.isArray(meta.prestamos)) ? meta.prestamos : [];
+  }
+
   /** Guarda: navegador primero (síncrono, nunca falla por red), servidor
    *  después. Resuelve `{local, servidor, pendientes, fallos}`.
    *
@@ -824,6 +1094,16 @@
      * por separado es un candado que nadie sabe si sigue puesto. */
     empujarUno: empujarUno,
     historial: historial,
+
+    // El préstamo temporal (V1.25).
+    prestar: prestar,
+    recoger: recoger,
+    prestamosDe: prestamosDe,
+    puedeEscribir: puedeEscribir,
+    prestadoAMi: prestadoAMi,
+    guardarPrestadoLocal: guardarPrestadoLocal,
+    leerPrestados: leerPrestados,
+    olvidarPrestado: olvidarPrestado,
     idServidor: idServidor,
     esDemo: esDemo,
 
