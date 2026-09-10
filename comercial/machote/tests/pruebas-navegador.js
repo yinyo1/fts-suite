@@ -371,15 +371,39 @@ await sembrarGeo(p);
     }
   });
 
-  await paso('los diez renglones de mano de obra están siempre, en sus tres grupos', async () => {
+  await paso('los diez renglones del Excel siguen enteros, y el viaje va aparte', async () => {
+    /* V1.26 · esta prueba decía «los diez renglones están siempre, en sus tres
+     * grupos» y afirmaba `soloMo.length === 10`. Ahora son 13, porque entraron
+     * los de viaje.
+     *
+     * NO se cambió el 10 por un 13: eso habría tirado justo lo que la prueba
+     * protegía —que la retícula verificada contra los archivos de FTS sigue
+     * completa— a cambio de un número que no dice nada. Se afirma lo que
+     * importa: **los diez del Excel, uno por uno, en sus tres grupos**, y los
+     * tres nuevos en un grupo propio, que es como se distinguen de un vistazo. */
     await ir('#/m/M-1041');
     await hoja('Suministro');
     const g = await p.locator('#hoja tr.grupo').allTextContents();
-    const esperados = ['Diseño y Programación', 'En Planta', 'Extras'];
-    for (const e of esperados) if (!g.some(x => x.indexOf(e) >= 0)) throw new Error('falta grupo ' + e);
-    const rot = await p.locator('#hoja td.rotulo').allTextContents();
-    const soloMo = rot.filter(x => x !== 'TOTAL');
-    if (soloMo.length !== 10) throw new Error('renglones de MO: ' + soloMo.length);
+    for (const e of ['Diseño y Programación', 'En Planta', 'Extras'])
+      if (!g.some(x => x.indexOf(e) >= 0)) throw new Error('falta grupo del Excel: ' + e);
+    if (!g.some(x => x.indexOf('Viaje y trabajo foráneo') >= 0))
+      throw new Error('los renglones de viaje no tienen grupo propio');
+
+    const rot = (await p.locator('#hoja td.rotulo').allTextContents()).filter(x => x !== 'TOTAL');
+    const DEL_EXCEL = ['Diseño', 'Programador', 'Supervisor Sr', 'Supervisor Jr · seguridad',
+      'Técnicos', 'Horas extras supervisor', 'Horas extras Jr · seguridad',
+      'Horas extras técnicos', 'Horas extras programador', 'Horas extras diseño'];
+    const faltan = DEL_EXCEL.filter(x => rot.indexOf(x) < 0);
+    if (faltan.length) throw new Error('se perdieron renglones del Excel: ' + faltan.join(', '));
+
+    const DE_VIAJE = ['Días de viaje', 'Horas en fin de semana', 'Horas en día festivo'];
+    const sinViaje = DE_VIAJE.filter(x => rot.indexOf(x) < 0);
+    if (sinViaje.length) throw new Error('faltan renglones de viaje: ' + sinViaje.join(', '));
+
+    if (rot.length !== DEL_EXCEL.length + DE_VIAJE.length)
+      throw new Error('hay renglones de más: ' + rot.filter(x =>
+        DEL_EXCEL.indexOf(x) < 0 && DE_VIAJE.indexOf(x) < 0).join(', '));
+    console.log('    los 10 del Excel + los 3 de viaje, cada grupo en su sitio');
   });
 
   await paso('la hoja DESGLOSE trae los cuatro bloques del machote', async () => {
@@ -880,9 +904,13 @@ await sembrarGeo(p);
   await paso('en escritorio se ven los diez renglones, como en el Excel', async () => {
     await p.setViewportSize({ width: 1280, height: 900 });
     await ir('#/m/M-1041'); await hoja('Suministro');
-    const n = await p.locator('#hoja .rejilla.tarjetas').first()
-      .locator('tbody tr:not(.grupo):not(.total):visible').count();
-    if (n !== 10) throw new Error('renglones de mano de obra visibles: ' + n);
+    /* V1.26 · eran 10; con los de viaje son 13. Lo que se sigue exigiendo es
+     * que en escritorio se vean TODOS sin desplegar nada, que es lo que la
+     * prueba defendía: en el Excel están a la vista. */
+    const filas = p.locator('#hoja .rejilla.tarjetas').first()
+      .locator('tbody tr:not(.grupo):not(.total):visible');
+    const n = await filas.count();
+    if (n !== 13) throw new Error('renglones de mano de obra visibles: ' + n + ' (10 del Excel + 3 de viaje)');
     await p.setViewportSize({ width: 380, height: 780 });
   });
 
@@ -1162,8 +1190,15 @@ await sembrarGeo(q);
       };
     });
     if (r.secciones !== 1) throw new Error('secciones: ' + r.secciones);
-    if (r.mo !== 10) throw new Error('renglones de mano de obra: ' + r.mo);
-    if (r.conTarifa !== 10) throw new Error('sin tarifa de plantilla: ' + (10 - r.conTarifa));
+    /* V1.26 · 13 renglones, pero **sólo los 10 del Excel traen tarifa de
+     * plantilla**. Los tres de viaje nacen SIN tarifa a propósito: un día de
+     * viaje no vale 140 ni 200, lo decide quien cotiza, y un número de relleno
+     * se cobraría solo sin que nadie lo revisara. Que `conTarifa` siga siendo
+     * 10 es la prueba de que no se les inventó ninguna. */
+    if (r.mo !== 13) throw new Error('renglones de mano de obra: ' + r.mo + ' (10 + 3 de viaje)');
+    if (r.conTarifa !== 10)
+      throw new Error('con tarifa de plantilla: ' + r.conTarifa + ' — deben ser los 10 del Excel, ' +
+                      'y los 3 de viaje SIN tarifa');
     if (r.conHoras !== 0) throw new Error('nacieron con horas: ' + r.conHoras);
     if (r.partidas !== 30) throw new Error('renglones de materiales: ' + r.partidas);
     if (r.sinTipo !== 20) throw new Error('esperaba 20 sin Tipo y 10 preparados, hay ' + r.sinTipo + ' sin Tipo');
@@ -2031,10 +2066,11 @@ await sembrarGeo(q);
       return { mo: (s.mo || []).length, part: (s.partidas || []).length,
                mg: s.margenes ? s.margenes.materiales : null };
     });
-    if (r.mo !== 10) throw new Error('nació con ' + r.mo + ' renglones de mano de obra, no 10');
+    // V1.26 · 10 del Excel + 3 de viaje.
+    if (r.mo !== 13) throw new Error('nació con ' + r.mo + ' renglones de mano de obra, no 13');
     if (r.part !== 30) throw new Error('nació con ' + r.part + ' partidas, no 30');
     if (r.mg === null) throw new Error('nació sin multiplicadores propios');
-    console.log('    10 de mano de obra · 30 partidas · materiales ' + r.mg);
+    console.log('    13 de mano de obra (10 del Excel + 3 de viaje) · 30 partidas · materiales ' + r.mg);
   });
 
   // ── El cliente, desde Odoo ───────────────────────────────────────────
