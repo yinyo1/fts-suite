@@ -19,9 +19,27 @@ const BASE = 'file://' + path.resolve(__dirname, '..', 'index.html');
  * libre) y estaríamos midiendo el respaldo en vez de la pantalla. Se lee del
  * archivo real del repo, no de una copia: si el catálogo cambia, las pruebas
  * ven el cambio. */
-/** Siembra el catálogo en una página. Se llama en TODAS: una página sin él
- *  correría en modo degradado sin decirlo, que es la trampa de §20 #11. */
-const sembrarGeo = (pg) => pg.addInitScript((g) => { window.__GEO = g; }, GEO_JSON);
+/** Siembra el catálogo en una página, Y lo sirve.
+ *
+ *  ⚠️ Las dos cosas, y por eso vive aquí y no en cada montaje: **`fetch` de
+ *  `file://` está bloqueado en Chromium**, así que sin interceptarlo la página
+ *  corre en modo DEGRADADO —los tres campos del lugar como texto libre— y las
+ *  pruebas medirían el respaldo creyendo que miden la pantalla. Es la trampa de
+ *  CLAUDE.md §20 #11: el modo degradado se ve igual que «todavía no carga».
+ *
+ *  Se engancha ANTES que cualquier otro `addInitScript` de la página, así que
+ *  los montajes que envuelven `fetch` después reciben éste como el original y
+ *  la cadena funciona sola. */
+const sembrarGeo = (pg) => pg.addInitScript((g) => {
+  window.__GEO = g;
+  const orig = window.fetch;
+  window.fetch = function (u) {
+    if (String(u).indexOf('geo.json') >= 0) {
+      return Promise.resolve({ ok: true, json: function () { return Promise.resolve(g); } });
+    }
+    return orig.apply(this, arguments);
+  };
+}, GEO_JSON);
 
 const GEO_JSON = JSON.parse(require('fs').readFileSync(
   path.resolve(__dirname, '..', '..', '..', 'shared', 'comercial', 'geo.json'), 'utf8'));
@@ -4453,9 +4471,12 @@ await sembrarGeo(q);
     await ir('#/m/M-1041');
     await p.click('[data-frec*="Dallas"]');
     await p.waitForTimeout(600);
+    /* OJO con el selector: el estado del documento NO es una celda del
+     * machote, es su propio control (`[data-estado]`, en `bloqueEstado`). Que
+     * sean dos cosas distintas es precisamente lo que este defecto confundió. */
     const est = await p.evaluate(() => {
-      const s = document.querySelector('[data-cel="estado"]');
-      return s ? s.value : '(no hay campo estado)';
+      const s = document.querySelector('[data-estado]');
+      return s ? s.value : '(no hay control de estado)';
     });
     if (!/borrador|creacion|creación/i.test(est))
       throw new Error('el estado del documento quedó en: «' + est + '»');
@@ -4487,10 +4508,17 @@ await sembrarGeo(q);
     // Agregar UNO desbloquea, y el renglón entra como Viaje.
     await p.click('[data-concepto*="vuelos"]');
     await p.waitForTimeout(700);
+    /* ⚠️ `textContent` NO ve el valor de un `<input>`, y la descripción de una
+     * partida es un campo, no texto. Buscar «Vuelos» con `:has-text` o con
+     * `textContent` no encuentra nada aunque el renglón esté ahí — que es
+     * exactamente lo que pasó la primera vez que corrió esta prueba. */
     const r = await p.evaluate(() => {
       const filas = [...document.querySelectorAll('table.rejilla tbody tr')];
-      const f = filas.find(x => /Vuelos/.test(x.textContent));
-      const sel = f && f.querySelector('select');
+      const f = filas.find(x => {
+        const d = x.querySelector('[data-cel$=":descripcion"]');
+        return d && /Vuelos/i.test(d.value);
+      });
+      const sel = f && f.querySelector('[data-cel$=":tipo"]');
       return { hay: !!f, tipo: sel ? sel.value : null,
                sigue_avisando: !!document.querySelector('.viaje-blk .aviso.bad') };
     });
@@ -4553,9 +4581,16 @@ await sembrarGeo(q);
     if (await p.$('[data-consul]'))
       throw new Error('pide la fecha de consulta antes de que haya precio');
 
-    const fila = 'table.rejilla tbody tr:has-text("Vuelos")';
-    await p.fill(fila + ' [data-cel$=":pu"]', '18500');
-    await p.dispatchEvent(fila + ' [data-cel$=":pu"]', 'change');
+    /* Se localiza el renglón por el VALOR del campo de descripción, no por el
+     * texto de la fila: un `<input>` no tiene texto. */
+    const ruta = await p.evaluate(() => {
+      const d = [...document.querySelectorAll('[data-cel$=":descripcion"]')]
+        .find(x => /Vuelos/i.test(x.value));
+      return d ? d.dataset.cel.replace(/descripcion$/, 'pu') : null;
+    });
+    if (!ruta) throw new Error('no se encontró el renglón de vuelos recién agregado');
+    await p.fill('[data-cel="' + ruta + '"]', '18500');
+    await p.dispatchEvent('[data-cel="' + ruta + '"]', 'change');
     await p.waitForTimeout(700);
 
     const b = await p.$('[data-consul]');
