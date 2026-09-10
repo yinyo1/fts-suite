@@ -454,11 +454,31 @@ prueba Lifter robert» de Esteban — ésos son captura real y en la duda no se 
 
 ---
 
-## `005` — no existe todavía
+## `005_prestamo.sql` — el permiso temporal de escritura
 
-La migración que haría falta para el **permiso temporal de escritura** está
-propuesta, no escrita: ver `docs/comercial/PERMISO_TEMPORAL.md` §3. Se
-construye cuando Esteban corrija esa propuesta.
+`sha256 ba5b828eb89f51918217a8063847a3a57f6a906e22c458e30b922ea7321b8144`.
+Aplicada a producción el 2026-09-10 por `comercial/db-migrate`, tras ensayo en
+seco; el read-back del runner devolvió `migraciones: 001, 002, 003, 004, 005`.
+
+Una tabla, `comercial.machote_prestamo`: quién presta un machote, a quién,
+desde cuándo y hasta cuándo, y si se recogió antes de tiempo.
+
+**El tope de 24 horas es un `CHECK` de la base**, no una validación de pantalla
+ni de workflow — misma razón que el folio: una regla en un solo lugar es una
+regla que ningún camino nuevo puede saltarse por olvido. Hay dos `CHECK` más
+(vencer después de otorgar; nadie se presta a sí mismo) y un índice único
+parcial que impide dos préstamos vivos del mismo machote a la misma persona.
+Los tres se ejercieron contra un clúster local antes de aplicar; el detalle
+está en `docs/comercial/PERMISO_TEMPORAL.md` §6.
+
+**Sin `DELETE`,** como el resto del esquema: un préstamo no se borra, se
+recoge. `revocado_at` es la marca; la traza de que existió es parte de lo que
+hace auditable el permiso.
+
+⚠️ La tabla existe y el candado de `machote-guardar` ya la consulta, pero
+**todavía no hay manera de crear un préstamo** —el endpoint no está construido,
+a la espera de las cinco decisiones abiertas de la propuesta— así que hoy la
+tabla está vacía y el candado se comporta exactamente como antes.
 
 ## Cambios de V1.24 sin migración
 

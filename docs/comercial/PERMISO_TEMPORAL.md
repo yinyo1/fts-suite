@@ -1,8 +1,24 @@
 # Permiso temporal de escritura — propuesta
 
-**Estado: PROPUESTA. Nada de esto está construido.** Es para que Esteban la
-corrija antes de que exista código. Idea original de Ricardo; el encargo es de
-la sesión V1.24 del issue #140.
+**Estado: PROPUESTA ABIERTA, con la mitad de abajo ya construida.** Idea
+original de Ricardo; el encargo es de la sesión V1.24 del issue #140.
+
+| | qué | estado |
+|---|---|---|
+| **construido** | la tabla `comercial.machote_prestamo` con el tope de 24 h | ✅ migración `005`, aplicada a producción |
+| **construido** | el candado del guardado: «¿es suyo, **o hay préstamo vigente**?» | ✅ en `machote-guardar`, guardado — **falta publicar** |
+| **abierto** | el endpoint para prestar y recoger | ✖ no construido |
+| **abierto** | la pantalla: prestar, ver a quién, recoger, el aviso de los 15 min | ✖ no construido |
+| **abierto** | la marca en el historial «versión escrita por quien no es el dueño» | ✖ no construido |
+
+**El corte no es arbitrario: se construyó lo que ninguna de las cinco decisiones
+de §2 puede invalidar** —una tabla con un tope, y una condición en el candado—
+y se dejó abierto todo lo que depende de tus respuestas. Mientras no exista el
+endpoint no puede existir ningún préstamo, así que lo construido **no cambia
+nada de lo que se ve hoy**: es infraestructura inerte esperando la decisión.
+
+Si rechazas la idea entera, lo construido se retira con una migración que borra
+una tabla vacía y un `setNodeParameter` que devuelve el candado a `dueno = actor`.
 
 > El dueño de un machote le da permiso de edición a otra persona, con vigencia,
 > con tope de 24 horas, para los casos en que alguien más tenga que meterle mano.
@@ -212,3 +228,48 @@ nodo que ya existe.
 
 Nada de esto es grande. Lo caro de este trabajo no es construirlo: es acordar
 las cinco decisiones de §2, que es para lo que existe este documento.
+
+---
+
+## 6. Lo construido, y cómo se comprobó
+
+**La migración `005`** se aplicó a producción por `comercial/db-migrate` tras un
+ensayo en seco. El read-back del runner contra la base:
+
+```
+aplicada: 005 · sha256 ba5b828e…
+migraciones:      001, 002, 003, 004, 005
+tablas_comercial: evidencia, expediente, machote, machote_prestamo,
+                  machote_version, propuesta
+```
+
+Antes de eso se **ejercieron las reglas** contra un clúster local — no basta con
+que aplique, tiene que impedir lo que dice que impide:
+
+| se intentó | resultado |
+|---|---|
+| prestar por 23 h 59 min | pasa |
+| prestar por 24 h 01 min | **rechazado** por `prestamo_tope_24h` |
+| vencer antes de otorgar | **rechazado** por `prestamo_vence_despues` |
+| prestarse a sí mismo | **rechazado** por `prestamo_no_a_si_mismo` |
+| dos préstamos vivos a la misma persona | **rechazado** por `machote_prestamo_vivo_uq` |
+| prestar de nuevo tras recoger | pasa |
+
+**El candado** se probó con la consulta exacta que quedó en el workflow, contra
+los seis casos que puede recibir:
+
+| quién pregunta | `puede_escribir` | `prestamo_pasado` | qué le dice la pantalla |
+|---|---|---|---|
+| el dueño | `t` | — | (guarda) |
+| con préstamo vivo | `t` | — | (guarda) |
+| con préstamo vencido | `f` | `vencido` | «Tu permiso venció. Pídelo de nuevo.» |
+| un extraño | `f` | — | «Ese machote es de alguien más.» |
+| tras recogerle el préstamo | `f` | `recogido` | «El dueño recogió el permiso.» |
+| un `id_local` nuevo | `t` (`origen: creado`) | — | (crea y guarda) |
+
+Esa última fila importa: el candado nuevo **no puede romper la creación de un
+machote**, que es el camino que usa todo el mundo todos los días.
+
+⚠️ **Lo que sigue SIN comprobar** es la concurrencia con dos escritores
+simultáneos de verdad (§0). Está razonada desde el mecanismo, no ejercida — y
+ésa es exactamente la distinción que CLAUDE.md §8 pide no borrar.

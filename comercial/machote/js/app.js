@@ -149,16 +149,16 @@
    *  actualiza el pulso cuando conteste; el pulso NO dice 'guardado' hasta
    *  que el servidor lo confirmó. */
   function guardarYa() {
-    if (!A || !A.disponible()) { ST.pulso = 'sin-almacen'; pintarPulso(); avisarNoGuarda(); return false; }
+    if (!A || !A.disponible()) { ST.pulso = 'sin-almacen'; pintarPulso(); pintarPendientes(); avisarNoGuarda(); return false; }
     if (_reloj) { clearTimeout(_reloj); _reloj = null; }
-    ST.pulso = 'guardando'; pintarPulso();
+    ST.pulso = 'guardando'; pintarPulso(); pintarPendientes();
 
     const local = A.escribirLocal({ machotes: ST.machotes, handoff: ST.handoff });
-    if (!local) { ST.pulso = 'sin-almacen'; pintarPulso(); avisarNoGuarda(); return false; }
+    if (!local) { ST.pulso = 'sin-almacen'; pintarPulso(); pintarPendientes(); avisarNoGuarda(); return false; }
     quitarAvisoNoGuarda();
 
     // Ya está a salvo aquí. Lo de arriba fue síncrono a propósito.
-    ST.pulso = 'pendiente'; pintarPulso();
+    ST.pulso = 'pendiente'; pintarPulso(); pintarPendientes();
 
     A.empujar(ST.machotes).then(r => {
       if (r && r.ok && r.subidos >= 0) {
@@ -167,7 +167,7 @@
         ST.pulso = 'pendiente';
         avisarPendiente(r);
       }
-      pintarPulso();
+      pintarPulso(); pintarPendientes();
     });
 
     return true;
@@ -231,8 +231,8 @@
    *  nadie tocó no sale de aquí; lo que alguien escribió, sí. */
   function tocado(m) {
     if (m && m._demo) delete m._demo;
-    if (!A || !A.disponible()) { ST.pulso = 'sin-almacen'; pintarPulso(); return; }
-    ST.pulso = 'sucio'; pintarPulso();
+    if (!A || !A.disponible()) { ST.pulso = 'sin-almacen'; pintarPulso(); pintarPendientes(); return; }
+    ST.pulso = 'sucio'; pintarPulso(); pintarPendientes();
     if (_reloj) clearTimeout(_reloj);
     _reloj = setTimeout(guardarYa, 500);
   }
@@ -419,7 +419,7 @@
   }
 
   function render() {
-    pintarPulso();
+    pintarPulso(); pintarPendientes();
     pintarUsuario();
     const p = (location.hash || '#/').replace(/^#\//, '').split('/');
     if (p[0] === '')      return vHome();
@@ -821,14 +821,16 @@
      *
      * Y dice CUÁLES, no sólo cuántas: un aviso que no se puede accionar es
      * ruido. Marca los renglones por `[data-mid]`, igual que hacía la franja. */
-    const pend = (A && A.pendientes) ? A.pendientes(ST.machotes) : 0;
-    const avisoPend = pend
-      ? '<div class="aviso pend" id="avPend">' +
-          '<strong>' + pend + (pend === 1 ? ' cotización tuya no ha subido' : ' cotizaciones tuyas no han subido')
-          + '</strong> al servidor. Siguen guardadas en este navegador y se reintenta solo. ' +
-          '<button class="btn fantasma chico" id="bVerPend">Cuáles son</button>' +
-        '</div>'
-      : '';
+    /* Va en un HOST vacío que `pintarPendientes()` rellena, y NO se pinta
+     * aquí. La razón la cazó la prueba: el aviso se rendía una vez, con lo
+     * pendiente de ese instante, y cuando la subida terminaba unos segundos
+     * después nadie lo volvía a mirar — quedaba en pantalla «1 sin subir» con
+     * `pendientes()` ya en 0, la libreta escrita y el pulso en «guardado».
+     *
+     * Un aviso rancio es peor que no avisar: enseña a no creerle. La franja no
+     * tenía este problema porque volvía a preguntar; ésta vuelve a MIRAR, que
+     * es lo mismo por dentro. */
+    const avisoPend = '<div id="avPendHost"></div>';
 
     /* El respaldo, al pie y en chico. Sigue existiendo porque es la única
      * salida cuando el guardado deja de funcionar —`avisarNoGuarda()` lo
@@ -851,17 +853,7 @@
 
     $('#bExportar').onclick = () => exportarRespaldo();
 
-    /* «Cuáles son»: marca los renglones que no han subido y lleva al primero.
-     * Es lo único que la franja hacía y el pulso no podía hacer. */
-    const bp = $('#bVerPend');
-    if (bp) bp.onclick = () => {
-      const sinSubir = ST.machotes.filter(m => A && A.pendienteUno && A.pendienteUno(m));
-      if (!sinSubir.length) { toast('Ya subieron todas.'); vHome(); return; }
-      $$('[data-mid]').forEach(el => el.classList.remove('marcado'));
-      sinSubir.forEach(m => $$('[data-mid="' + m.id + '"]').forEach(el => el.classList.add('marcado')));
-      const primero = $('[data-mid="' + sinSubir[0].id + '"]');
-      if (primero && primero.scrollIntoView) primero.scrollIntoView({ block: 'center' });
-    };
+
 
     // Se repinta sólo al teclear, y se devuelve el foco al final del texto:
     // repintar entera mata el foco del buscador a media palabra.
@@ -893,6 +885,7 @@
       };
     });
 
+    pintarPendientes();
     enlazarCopiar();
 
     $$('[data-hist]').forEach(b => b.onclick = (ev) => {
@@ -1082,6 +1075,39 @@
 
     pintarHoja(m);
     barra(m, c);
+  }
+
+  /** Repinta el aviso de «lo que no ha subido», si la lista está en pantalla.
+   *
+   *  Se llama al pintar la lista Y cada vez que cambia el pulso, porque el
+   *  pulso y esto miden LO MISMO —`pendientes()`, la comparación contra la
+   *  libreta— y tenerlos desincronizados es tener dos verdades en pantalla: el
+   *  punto en «guardado» y el aviso diciendo que falta algo.
+   *
+   *  Toca sólo su propio hueco, nunca repinta la lista: repintarla entera
+   *  mataría el foco de quien esté tecleando en el buscador. */
+  function pintarPendientes() {
+    const host = $('#avPendHost');
+    if (!host) return;                       // no estamos en la lista
+    const n = (A && A.pendientes) ? A.pendientes(ST.machotes) : 0;
+    if (!n) { host.innerHTML = ''; return; }
+
+    host.innerHTML = '<div class="aviso pend" id="avPend">' +
+      '<strong>' + n + (n === 1 ? ' cotización tuya no ha subido' : ' cotizaciones tuyas no han subido') +
+      '</strong> al servidor. Siguen guardadas en este navegador y se reintenta solo. ' +
+      '<button class="btn fantasma chico" id="bVerPend">Cuáles son</button></div>';
+
+    /* «Cuáles son»: marca los renglones que no han subido y lleva al primero.
+     * Es lo único que la franja hacía y el pulso no podía hacer. */
+    const bp = $('#bVerPend');
+    if (bp) bp.onclick = () => {
+      const sinSubir = ST.machotes.filter(m => A && A.pendienteUno && A.pendienteUno(m));
+      if (!sinSubir.length) { pintarPendientes(); return; }
+      $$('[data-mid]').forEach(el => el.classList.remove('marcado'));
+      sinSubir.forEach(m => $$('[data-mid="' + m.id + '"]').forEach(el => el.classList.add('marcado')));
+      const primero = $('[data-mid="' + sinSubir[0].id + '"]');
+      if (primero && primero.scrollIntoView) primero.scrollIntoView({ block: 'center' });
+    };
   }
 
   /** Engancha TODO `[data-copiar]` que haya en pantalla.
@@ -1966,7 +1992,7 @@
         // sesión: sin sesión el gate de la página ya mandó al login.
         if (r && r.error && r.error !== 'SIN_SESION' && _hayCaptura) {
           ST.pulso = A.pendientes(ST.machotes) ? 'pendiente' : ST.pulso;
-          pintarPulso();
+          pintarPulso(); pintarPendientes();
         }
         return;
       }
@@ -1990,7 +2016,7 @@
       if (!_hayCaptura && !(r.machotes || []).length) return;   // sigue la demo: nada que subir
 
       ST.pulso = A.pendientes(ST.machotes) === 0 ? 'guardado' : 'pendiente';
-      pintarPulso();
+      pintarPulso(); pintarPendientes();
       if (r.nuevos) toast('Se bajaron ' + r.nuevos + ' machote(s) del servidor.');
       // Lo que quedó pendiente de subir (de una sesión anterior sin red) sale
       // ahora, sin que nadie tenga que acordarse de tocar algo.

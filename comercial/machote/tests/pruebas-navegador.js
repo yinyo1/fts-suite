@@ -2743,9 +2743,25 @@ let ok = 0, mal = 0;
      * marca DENTRO de la lista, sin cambiar de vista. */
     const limpia = await frPagina([FR_IGUAL]);
     try {
-      if (await limpia.$('#avPend'))
-        throw new Error('avisa de pendientes cuando no hay ninguno');
-      console.log('    con todo a salvo: sin aviso (el silencio es la respuesta)');
+      /* Con todo a salvo NO hay aviso. Y se comprueba DESPUÉS de que la subida
+       * de arranque termina, porque ahí está el defecto que esto cierra: el
+       * aviso se pintaba una vez y se quedaba rancio — «1 sin subir» con
+       * `pendientes()` ya en 0 y el pulso en «guardado». Un aviso que no se
+       * actualiza es peor que no avisar: enseña a no creerle. */
+      await limpia.waitForTimeout(1500);
+      const est = await limpia.evaluate(() => ({
+        pendientes: window.MachoteAlmacen.pendientes(),
+        aviso: !!document.querySelector('#avPend'),
+        pulso: (document.querySelector('#pulso') || {}).className || ''
+      }));
+      if (est.pendientes !== 0)
+        throw new Error('el montaje no sirve: quedó pendiente ' + JSON.stringify(est));
+      if (est.aviso)
+        throw new Error('aviso RANCIO: dice que falta subir algo con pendientes=0 · ' +
+                        JSON.stringify(est));
+      if (!/p-guardado/.test(est.pulso))
+        throw new Error('el pulso no llegó a guardado: ' + est.pulso);
+      console.log('    con todo a salvo: sin aviso y pulso en guardado (el silencio es la respuesta)');
     } finally { await limpia.close(); }
 
     const q = await frPagina([FR_IGUAL, { id: 'M-SOLO-AQUI', nombre: 'Nunca subió' }], false);
@@ -3661,6 +3677,13 @@ let ok = 0, mal = 0;
         version: 15, versiones: 15 }
     ], { versiones: 15 });
     try {
+      /* El filtro de persona arranca en «Míos» —diseño de V1.21, lo tuyo
+       * primero— así que un ajeno no está en pantalla hasta quitarlo. Es lo
+       * mismo que hace Esteban antes de ver el trabajo del equipo. */
+      await q.selectOption('#fPersona', '');
+      await q.waitForTimeout(400);
+      /* `:visible` porque hay DOS con ese `data-hist` —el renglón de la tabla
+       * y la tarjeta del teléfono— y sólo uno se pinta según el ancho. */
       await q.locator('[data-hist="6948c433-0000-4000-8000-000000000003"]:visible')
              .first().click();
       await q.waitForTimeout(700);
