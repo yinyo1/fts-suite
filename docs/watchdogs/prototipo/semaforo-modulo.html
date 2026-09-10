@@ -1,0 +1,127 @@
+<!doctype html><meta charset="utf-8">
+<title>Semaforo - prototipo del modulo</title>
+<style>
+ :root{--rojo:#c62828;--amar:#b35900;--verde:#2e7d32;--tinta:#222;--gris:#777;--linea:#e3e6ea}
+ *{box-sizing:border-box}
+ body{margin:0;background:#f6f7f9;color:var(--tinta);font:14px/1.45 -apple-system,Segoe UI,Arial,sans-serif}
+ .wrap{max-width:980px;margin:0 auto;padding:16px}
+ .aviso{background:#fff8e1;border:1px solid #f0d38a;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:13px}
+ .aviso b{color:#8a6100}
+ header.app{background:#fff;border:1px solid var(--linea);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+ .fila1{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+ h1{font-size:18px;margin:0}
+ .sesion{font-size:12px;color:var(--gris)}
+ .btn{background:#0b6bcb;color:#fff;border:0;border-radius:6px;padding:8px 14px;font-size:13px;cursor:pointer}
+ .btn:disabled{background:#9bb8d6;cursor:default}
+ .tabs{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+ .tab{border:1px solid var(--linea);background:#fff;border-radius:999px;padding:6px 14px;font-size:13px;cursor:pointer}
+ .tab[aria-selected=true]{background:var(--tinta);color:#fff;border-color:var(--tinta)}
+ .kpis{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;font-size:13px}
+ .kpi{background:#f4f6f8;border-radius:6px;padding:6px 12px}
+ section{background:#fff;border:1px solid var(--linea);border-radius:10px;padding:14px 16px;margin-bottom:12px}
+ h2{font-size:15px;margin:0 0 2px}
+ .criterio{font-size:12px;color:var(--gris);margin:0 0 10px}
+ ul{list-style:none;margin:0;padding:0}
+ li.row{border-top:1px solid var(--linea);padding:9px 0}
+ li.row:first-child{border-top:0}
+ .nom{font-weight:600}
+ .meta{color:#555;font-size:13px}
+ .chip{display:inline-block;font-size:11px;color:#666;border:1px solid #ccc;border-radius:3px;padding:0 5px;margin-left:5px;white-space:nowrap}
+ .band{display:block;color:#555;font-size:12.5px;margin-top:3px}
+ .vacio{color:#999;font-size:13px}
+ .pie{font-size:12px;color:var(--gris);padding:10px 2px 24px}
+ .cuenta{background:#fff;border:1px solid var(--linea);border-radius:10px;padding:12px 16px;font-size:13px}
+ .ok{color:var(--verde);font-weight:600}
+ @media(max-width:520px){.fila1{align-items:flex-start;flex-direction:column}}
+</style>
+<div class="wrap">
+<div class="aviso">
+ <b>PROTOTIPO — no es el modulo.</b> Sirve para acordar el formato y el modelo de acceso antes de construir.
+ Los datos son <b>reales</b>: los 35 proyectos vigilados del snapshot del 2026-09-10, con los dias y colores
+ <b>ya corregidos</b> por el arreglo del <code>msg94</code> (medidos en la ejecucion 93816). El boton de refresh
+ aqui no llama a ningun endpoint: solo re-pinta.
+</div>
+
+<header class="app">
+ <div class="fila1">
+  <div>
+   <h1>Semaforo</h1>
+   <div class="sesion">esteban.delacruz &middot; scope <code>semaforo:read</code> &middot; token valido 7h 41m</div>
+  </div>
+  <div style="text-align:right">
+   <button class="btn" id="ref">Actualizar</button>
+   <div class="sesion" id="ts" style="margin-top:6px">datos del 10/Sep/2026 08:00 CST</div>
+  </div>
+ </div>
+ <div class="tabs" role="tablist">
+  <button class="tab" role="tab" data-g="Operaciones" aria-selected="true">Operaciones</button>
+  <button class="tab" role="tab" data-g="Admin" aria-selected="false">Admin</button>
+ </div>
+ <div class="kpis" id="kpis"></div>
+</header>
+
+<div id="cuerpo"></div>
+<div class="cuenta" id="cuenta"></div>
+<p class="pie">Mismo dato que el correo de las 8:00: los dos leen <b>el mismo snapshot</b>. Si la pantalla y el
+correo difirieran, uno de los dos estaria recalculando por su cuenta &mdash; que es justo lo que este diseno evita.</p>
+</div>
+<script>
+const FILAS = [{"id":2375,"name":"SO11498 - Ingeniería conceptual para el diseño del desbobinadora de carretes Bridgestone e - Bridgestone México","stage":"In Progress","grupo":"Operaciones","cliente":"Bridgestone México","dias":6,"color":"verde","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"6-15","compromiso":"2026-09-30","link":"https://serviciosfts.odoo.com/web#id=2375&model=project.project&view_type=form"},{"id":2360,"name":"SO11748 - Chiller instalation - Calbee America Incorporated, Omar De la Garza","stage":"En plazo de credito","grupo":"Admin","cliente":"Calbee America Incorporated","dias":16,"color":"verde","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"16-30","compromiso":null,"link":"https://serviciosfts.odoo.com/web#id=2360&model=project.project&view_type=form"},{"id":2372,"name":"SO11838 - Tools for Calbee - Calbee America Incorporated, Omar De la Garza","stage":"Done Operations","grupo":"Admin","cliente":"Calbee America Incorporated","dias":8,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"6-15","compromiso":"2026-07-30","link":"https://serviciosfts.odoo.com/web#id=2372&model=project.project&view_type=form"},{"id":2376,"name":"SO11860 - VIP Service - Mission HQ - Mission Foods, Robert Barrera","stage":"To Do","grupo":"Operaciones","cliente":"Mission Foods","dias":4,"color":"rojo","banderas":[],"sin_avance":false,"racha":0,"fuente":"stage_msg","tramo":"1-5","compromiso":"2026-08-28","link":"https://serviciosfts.odoo.com/web#id=2376&model=project.project&view_type=form"},{"id":2352,"name":"SO11699 - Instalacion mecanica y electrica de Sensores en ductos de Extraccion de Colector - Bridgestone México, Ruben Robledo","stage":"In Progress","grupo":"Operaciones","cliente":"Bridgestone México","dias":7,"color":"verde","banderas":["Stage regresado Hold -> En proceso por OPERACIONES FTS-YIN"],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-12-31","link":"https://serviciosfts.odoo.com/web#id=2352&model=project.project&view_type=form"},{"id":2364,"name":"SO11832 - Servicio de ajuste de velocidad en embotelladora GEPP - BEBIDAS PURIFICADAS","stage":"En plazo de credito","grupo":"Admin","cliente":"BEBIDAS PURIFICADAS","dias":13,"color":"verde","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"16-30","compromiso":"2026-08-31","link":"https://serviciosfts.odoo.com/web#id=2364&model=project.project&view_type=form"},{"id":2374,"name":"SO11851 - Materials for aluminium jacketing - Calbee America Incorporated, Omar De la Garza","stage":"Done Operations","grupo":"Admin","cliente":"Calbee America Incorporated","dias":8,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"6-15","compromiso":"2026-08-17","link":"https://serviciosfts.odoo.com/web#id=2374&model=project.project&view_type=form"},{"id":2373,"name":"SO11846 - supply of SS materials for Press DALLAS - Mission Foods","stage":"Done Operations","grupo":"Admin","cliente":"Mission Foods","dias":8,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"6-15","compromiso":"2026-08-05","link":"https://serviciosfts.odoo.com/web#id=2373&model=project.project&view_type=form"},{"id":2369,"name":"SO11862 - Cubierta de acero Inoxidable 304 para reactor quimico #2 - MAGNEKON S.A. DE C.V.","stage":"In Progress","grupo":"Operaciones","cliente":"MAGNEKON S.A. DE C.V.","dias":9,"color":"verde","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"6-15","compromiso":"2026-12-31","link":"https://serviciosfts.odoo.com/web#id=2369&model=project.project&view_type=form"},{"id":213,"name":"🛠️ SO11037 - Distribucion Electrica luminarias Cabina de Flejadoras - clarios recicladora","stage":"Hold","grupo":"Operaciones","cliente":"JOHNSON CONTROLS ENTERPRISES MEXICO","dias":50,"color":"rojo","banderas":["En Hold con fecha de reactivacion VENCIDA (2026-07-30)"],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-07-30","link":"https://serviciosfts.odoo.com/web#id=213&model=project.project&view_type=form"},{"id":241,"name":"🛠️ SO11290 - Test loop ingeniería mexicali nalco","stage":"En plazo de credito","grupo":"Admin","cliente":"Nalco de Mexico","dias":23,"color":"verde","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-07-30","link":"https://serviciosfts.odoo.com/web#id=241&model=project.project&view_type=form"},{"id":2371,"name":"SO11849 - supply of breaker - Mission Foods","stage":"Done Operations","grupo":"Admin","cliente":"Mission Foods","dias":8,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"6-15","compromiso":"2026-08-14","link":"https://serviciosfts.odoo.com/web#id=2371&model=project.project&view_type=form"},{"id":2368,"name":"SO11861 - Cubierta de acero Inoxidable 304 para reactor quimico #1 - MAGNEKON S.A. DE C.V.","stage":"In Progress","grupo":"Operaciones","cliente":"MAGNEKON S.A. DE C.V.","dias":9,"color":"verde","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"6-15","compromiso":"2026-12-31","link":"https://serviciosfts.odoo.com/web#id=2368&model=project.project&view_type=form"},{"id":160,"name":"🛠️ SO10300 - Techo de Magnekon","stage":"En plazo de credito","grupo":"Admin","cliente":"MAGNEKON S.A. DE C.V.","dias":27,"color":"verde","banderas":["1 log note(s) sin contenido en el chatter - no cuentan como seguimiento"],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-07-31","link":"https://serviciosfts.odoo.com/web#id=160&model=project.project&view_type=form"},{"id":2353,"name":"SO11779 - Reparacion de motores de rampa - BEBIDAS PURIFICADAS","stage":"En plazo de credito","grupo":"Admin","cliente":"BEBIDAS PURIFICADAS","dias":36,"color":"amarillo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-06-30","link":"https://serviciosfts.odoo.com/web#id=2353&model=project.project&view_type=form"},{"id":2361,"name":"SO11791 - Power and control panels updated July 2026 Calbee - Calbee America Incorporated, Omar De la Garza","stage":"Hold","grupo":"Operaciones","cliente":"Calbee America Incorporated","dias":18,"color":"verde","banderas":["1 log note(s) sin contenido en el chatter - no cuentan como seguimiento","En Hold con fecha de reactivacion VENCIDA (2026-08-21)"],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"16-30","compromiso":"2026-08-21","link":"https://serviciosfts.odoo.com/web#id=2361&model=project.project&view_type=form"},{"id":2363,"name":"SO11833 - Cooling system for Quality offices - Mission Foods, Martín Infante","stage":"In Progress","grupo":"Operaciones","cliente":"Mission Foods","dias":22,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"16-30","compromiso":"2026-08-15","link":"https://serviciosfts.odoo.com/web#id=2363&model=project.project&view_type=form"},{"id":2370,"name":"SO11850 - supply of ss pipe 1 1/2 and liquid tight - Mission Foods","stage":"Done Operations","grupo":"Admin","cliente":"Mission Foods","dias":8,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"6-15","compromiso":"2026-08-12","link":"https://serviciosfts.odoo.com/web#id=2370&model=project.project&view_type=form"},{"id":2327,"name":"SO11511 - Valvula para lavado de botellas","stage":"En plazo de credito","grupo":"Admin","cliente":"BEBIDAS PURIFICADAS","dias":60,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-03-18","link":"https://serviciosfts.odoo.com/web#id=2327&model=project.project&view_type=form"},{"id":2366,"name":"SO11772 - Suministro e instalación de injerto de drenado sanitario de 3\" sobre codo - Nalco de Mexico, Tito Everardo Ordaz","stage":"Done Operations","grupo":"Admin","cliente":"Nalco de Mexico","dias":12,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"6-15","compromiso":"2026-08-28","link":"https://serviciosfts.odoo.com/web#id=2366&model=project.project&view_type=form"},{"id":2357,"name":"SO11789 - Suministro de Panelview HMI - GRUMA CORP DBA MISSION FOODS","stage":"En plazo de credito","grupo":"Admin","cliente":"GRUMA CORP DBA MISSION FOODS","dias":42,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-07-13","link":"https://serviciosfts.odoo.com/web#id=2357&model=project.project&view_type=form"},{"id":2362,"name":"SO11842 - prensas materials - Mission Foods","stage":"In Progress","grupo":"Operaciones","cliente":"Mission Foods","dias":24,"color":"rojo","banderas":[],"sin_avance":true,"racha":2,"fuente":"stage_msg","tramo":"16-30","compromiso":"2026-08-14","link":"https://serviciosfts.odoo.com/web#id=2362&model=project.project&view_type=form"},{"id":2365,"name":"SO11737 - Adecuaciones electricas y de control para diferencial de precion - Nalco de Mexico, Tito Everardo Ordaz","stage":"Done Operations","grupo":"Admin","cliente":"Nalco de Mexico","dias":12,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"16-30","compromiso":"2026-08-31","link":"https://serviciosfts.odoo.com/web#id=2365&model=project.project&view_type=form"},{"id":2359,"name":"SO11771 - Subestación PI Aurora - Conmet de México, S.A. de C.V.","stage":"In Progress","grupo":"Operaciones","cliente":"CONMET DE MEXICO","dias":33,"color":"verde","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-12-31","link":"https://serviciosfts.odoo.com/web#id=2359&model=project.project&view_type=form"},{"id":101,"name":"🛠️ SO7723 - servicio de integración de sistema con sensor de nivel y pantalla HMI","stage":"En plazo de credito","grupo":"Admin","cliente":"MAGNEKON S.A. DE C.V.","dias":61,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2025-12-23","link":"https://serviciosfts.odoo.com/web#id=101&model=project.project&view_type=form"},{"id":2358,"name":"SO11233 - Rigging compresor - Lau Industries de Mexico","stage":"In Progress","grupo":"Operaciones","cliente":"Lau Industries de Mexico","dias":42,"color":"verde","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-09-30","link":"https://serviciosfts.odoo.com/web#id=2358&model=project.project&view_type=form"},{"id":2367,"name":"SO11718 - Fabricación e instalación de toma para saneamiento de planta en zona de arreglo  - Nalco de Mexico, Tito Everardo Ordaz","stage":"Done Operations","grupo":"Admin","cliente":"Nalco de Mexico","dias":12,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"6-15","compromiso":"2026-08-28","link":"https://serviciosfts.odoo.com/web#id=2367&model=project.project&view_type=form"},{"id":506,"name":"🛠️ SO11492 - Instalacion de ductos de aire en area de chips, corn, flour process area & packing","stage":"In Progress","grupo":"Operaciones","cliente":"Mission Foods","dias":46,"color":"verde","banderas":["1 log note(s) sin contenido en el chatter - no cuentan como seguimiento"],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-09-30","link":"https://serviciosfts.odoo.com/web#id=506&model=project.project&view_type=form"},{"id":343,"name":"🛠️ SO11261 - Suministro e instalación de sistema de medición de flujo de 2 Etil Hexanol","stage":"In Progress","grupo":"Operaciones","cliente":"MAGNEKON S.A. DE C.V.","dias":36,"color":"verde","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-10-30","link":"https://serviciosfts.odoo.com/web#id=343&model=project.project&view_type=form"},{"id":2349,"name":"SO11762 - Mejoras a sistema TOPOCHICO, MTY. - Nalco de Mexico, Tito Everardo Ordaz","stage":"In Progress","grupo":"Operaciones","cliente":"Nalco de Mexico","dias":51,"color":"rojo","banderas":["1 log note(s) sin contenido en el chatter - no cuentan como seguimiento"],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-08-31","link":"https://serviciosfts.odoo.com/web#id=2349&model=project.project&view_type=form"},{"id":2356,"name":"SO11773 - ELECTRICAL DUMP STATION DALLAS 2 - Mission Foods, Daniel Sanudo","stage":"In Progress","grupo":"Operaciones","cliente":"Mission Foods","dias":50,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-07-31","link":"https://serviciosfts.odoo.com/web#id=2356&model=project.project&view_type=form"},{"id":2302,"name":"SO11547 - Desinstalación, Adecuación e Integración de Sistema de Filtración en planta Topo Chico","stage":"In Progress","grupo":"Operaciones","cliente":"Nalco de Mexico","dias":117,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-08-31","link":"https://serviciosfts.odoo.com/web#id=2302&model=project.project&view_type=form"},{"id":2355,"name":"SO11673 - Poliza de matto para Compresor Houston TX - Mission Foods","stage":"In Progress","grupo":"Operaciones","cliente":"Mission Foods","dias":50,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-07-31","link":"https://serviciosfts.odoo.com/web#id=2355&model=project.project&view_type=form"},{"id":121,"name":"🛠️ SO9428 - INSTALACION DE SUMINISTRO DE AGUA FRIA - VERTIV 2da Fase","stage":"In Progress","grupo":"Operaciones","cliente":"Nalco de Mexico","dias":147,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-08-31","link":"https://serviciosfts.odoo.com/web#id=121&model=project.project&view_type=form"},{"id":212,"name":"🛠️ SO10337 - Cortinas de seguridad 120s y 270s","stage":"In Progress","grupo":"Operaciones","cliente":"Bridgestone México","dias":246,"color":"rojo","banderas":[],"sin_avance":true,"racha":2,"fuente":"stage_msg","tramo":">30","compromiso":"2026-08-31","link":"https://serviciosfts.odoo.com/web#id=212&model=project.project&view_type=form"}];
+const PUNTO = {rojo:"\u{1F534}", amarillo:"\u{1F7E1}", verde:"\u{1F7E2}"};
+const ACC = {rojo:"Avanza de etapa o documenta por que sigue aqui (Log note)",
+             amarillo:"Se acerca al limite: mueve la etapa o documenta"};
+let grupo = "Operaciones";
+const pide = f => f.color!=="verde" || f.sin_avance || f.banderas.length>0;
+const esc = s => String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+
+function renglon(f, compacto){
+  const motivos=[];
+  if(f.sin_avance) motivos.push(f.racha+" notas seguidas casi iguales");
+  if(f.banderas.length) motivos.push(f.banderas.length+" bandera"+(f.banderas.length>1?"s":""));
+  let h = "<li class=\"row\">" + PUNTO[f.color] + " <span class=\"nom\">" + esc(f.name.slice(0,70)) + "</span>";
+  h += " <span class=\"meta\">(" + esc(f.cliente.slice(0,32)) + ") &middot; " + esc(f.stage);
+  h += " &middot; <b>" + f.dias + (f.dias===1?" dia":" dias") + "</b> en la etapa";
+  if(f.compromiso) h += " &middot; compromiso " + esc(f.compromiso.slice(0,10));
+  h += " &middot; <a href=\"" + f.link + "\" target=\"_blank\" rel=\"noopener\">abrir</a></span>";
+  if(compacto && motivos.length) h += "<span class=\"chip\">" + esc(motivos.join(" + ")) + "</span>";
+  if(!compacto){
+    for(const b of f.banderas) h += "<span class=\"band\">\u{1F6A9} " + esc(b) + "</span>";
+    if(f.sin_avance) h += "<span class=\"band\">\u{1F504} " + f.racha + " notas seguidas practicamente iguales</span>";
+    if(f.color!=="verde") h += "<span class=\"band\">\u21B3 " + ACC[f.color] + "</span>";
+  }
+  return h + "</li>";
+}
+function seccion(titulo, criterio, arr, compacto){
+  let h = "<section><h2>" + titulo + " [" + arr.length + "]</h2><p class=\"criterio\">" + criterio + "</p>";
+  if(!arr.length) return h + "<p class=\"vacio\">- ninguno -</p></section>";
+  h += "<ul>" + arr.slice().sort((a,b)=>b.dias-a.dias).map(f=>renglon(f,compacto)).join("") + "</ul>";
+  return h + "</section>";
+}
+function pintar(){
+  const sub = FILAS.filter(f=>f.grupo===grupo);
+  const p = sub.filter(pide), np = sub.filter(f=>!pide(f));
+  const c = {verde:0,amarillo:0,rojo:0}; sub.forEach(f=>c[f.color]++);
+  document.getElementById("kpis").innerHTML =
+    "<span class=\"kpi\"><b>" + sub.length + "</b> vigilados</span>" +
+    "<span class=\"kpi\">" + PUNTO.verde + " " + c.verde + "</span>" +
+    "<span class=\"kpi\">" + PUNTO.amarillo + " " + c.amarillo + "</span>" +
+    "<span class=\"kpi\">" + PUNTO.rojo + " " + c.rojo + "</span>";
+  document.getElementById("cuerpo").innerHTML =
+    seccion("Piden algo", "Fuera de tiempo en su etapa, con bandera, o con el seguimiento repetido. Ordenados por dias.", p, false) +
+    seccion("Ya no piden nada", "En tiempo en su etapa, sin banderas y con seguimiento al dia. No requieren accion.", np, true);
+  document.getElementById("cuenta").innerHTML =
+    "<b>La cuenta:</b> " + sub.length + " vigilados = " + p.length + " que piden algo + " + np.length +
+    " que no piden nada. " + (p.length+np.length===sub.length ? "<span class=\"ok\">Cuadra.</span>" : "<b>NO CUADRA</b>");
+}
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
+  grupo=t.dataset.g;
+  document.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-selected", String(x===t)));
+  pintar();
+});
+document.getElementById("ref").onclick=e=>{
+  const b=e.target; b.disabled=true; b.textContent="Actualizando...";
+  setTimeout(()=>{ b.disabled=false; b.textContent="Actualizar";
+    document.getElementById("ts").textContent="datos del 10/Sep/2026 08:00 CST (sin cambios)"; pintar(); }, 700);
+};
+pintar();
+</script>
