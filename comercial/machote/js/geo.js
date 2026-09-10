@@ -70,9 +70,21 @@
 
   function tieneEstados(codigo) { return estados(codigo).length > 0; }
 
+  /** Las ciudades frecuentes, filtradas al país que se esté viendo. Salen del
+   *  JSON y NO de este archivo: van a cambiar conforme FTS abra plantas, y
+   *  agregar una no debe obligar a tocar la pantalla. El orden del arreglo es
+   *  el orden en que se pintan. */
+  function frecuentes(codigoPais) {
+    var f = (_datos && _datos.frecuentes) || [];
+    if (!codigoPais) return f;
+    var c = String(codigoPais).toUpperCase();
+    return f.filter(function (x) { return x.pais === c; });
+  }
+
   G.MachoteGeo = {
     cargar: cargar, datos: datos,
     paises: paises, pais: pais,
-    estados: estados, tieneEstados: tieneEstados
+    estados: estados, tieneEstados: tieneEstados,
+    frecuentes: frecuentes
   };
 })(window);

@@ -237,7 +237,7 @@
        * A los machotes que nacieron ANTES de este campo no se les rellena:
        * llegan sin `pais` y la regla dura los manda a escribirlo. */
       pais: d.pais || SEDE.pais,
-      estado: d.estado || SEDE.estado,
+      region: d.region || SEDE.region,
       ciudad: d.ciudad || SEDE.ciudad,
       viaje: {
         // «No se ocupan conceptos de viaje», la salida explícita del bloqueo.
@@ -264,7 +264,16 @@
    * falta el dato, y así lo trata todo lo de abajo. Los 8 que ya existen
    * nacieron antes de este campo y **no se les inventa un valor**; la regla
    * dura `sin-lugar-ejecucion` los manda a escribirlo, que es un clic. */
-  const SEDE = { pais: 'MX', estado: 'Nuevo León', ciudad: 'Monterrey' };
+  /* ⚠️ La subdivisión se llama `region`, NO `estado`. `m.estado` ya existe en
+   * el machote desde V1.07 y significa OTRA COSA: borrador / en revisión /
+   * enviado a Odoo. La primera versión de esto usó `estado` y en la captura se
+   * vio el campo diciendo «borrador» — y peor, elegir «Texas» habría puesto el
+   * machote en estado «Texas» y roto el flujo entero, en silencio.
+   *
+   * Es el mismo choque que el de `.kpi` en V1.22 (CLAUDE.md §20 #12), pero en
+   * un campo de DATOS en vez de una clase de CSS. La etiqueta en pantalla sigue
+   * diciendo «Estado», que es como se le llama; el campo se llama distinto. */
+  const SEDE = { pais: 'MX', region: 'Nuevo León', ciudad: 'Monterrey' };
 
   /** Sin acentos, sin mayúsculas y sin espacios de sobra. «MONTERREY  » y
    *  «Montérrey» son la misma ciudad, y quien captura no tiene por qué saber
@@ -657,7 +666,7 @@
       horas, dias,
       // El lugar de ejecución, resuelto una vez para que la pantalla y las
       // reglas no lo deduzcan cada quien por su lado (§20 regla 4).
-      lugar: { pais: (m && m.pais) || '', estado: (m && m.estado) || '', ciudad: (m && m.ciudad) || '',
+      lugar: { pais: (m && m.pais) || '', region: (m && m.region) || '', ciudad: (m && m.ciudad) || '',
                tiene: tieneLugar(m), foraneo: esForaneo(m), eua: esEUA(m) },
       viaje: viajeDe(m),
       renglonesViaje: secciones.reduce((a, s) => a + s.renglonesViaje, 0),

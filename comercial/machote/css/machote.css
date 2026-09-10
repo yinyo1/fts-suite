@@ -1298,3 +1298,62 @@ span.folio.grande.sin { cursor: default; border-style: dashed; }
   .cab-folio { gap: 6px; }
   .cab-nombre { flex-basis: 100%; }
 }
+
+/* ══ V1.26 · viaje y trabajo foráneo ══════════════════════════════════════
+ *
+ * ⚠️ Nombres NUEVOS a propósito. `.kpi` ya significaba otra cosa en este mismo
+ * archivo y reusarlo metió tres cajas donde debía haber una (CLAUDE.md §20
+ * #12). Antes de agregar una clase aquí, buscarla arriba.                    */
+
+/* Dónde se ejecuta */
+.lugar { border-left: 3px solid var(--linea); }
+.lugar.foraneo { border-left-color: #b8860b; }
+.lugar select.cel { width: 100%; max-width: 260px; }
+
+.frec { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0 10px; }
+.chip-frec { border: 1px solid var(--linea); background: #fff; border-radius: 99px;
+             padding: 6px 12px; font-size: 12.5px; cursor: pointer; min-height: 34px; }
+.chip-frec:hover { border-color: var(--acento); }
+.chip-frec.on { background: var(--acento); border-color: var(--acento); color: #fff; font-weight: 600; }
+.chip-frec.sede { font-weight: 600; }
+
+.lugar-veredicto { margin-top: 8px; padding: 8px 10px; border-radius: 8px; font-size: 12.5px; }
+.lugar-veredicto.sede  { background: #e6f4ea; color: #14532d; }
+.lugar-veredicto.fuera { background: #fff3cd; color: #6b4d00; }
+.lugar-veredicto.falta { background: #fdecea; color: #7f1d1d; }
+
+.viaje-cfg { margin-top: 10px; border-top: 1px dashed var(--linea); padding-top: 10px; }
+.viaje-na { display: flex; gap: 8px; align-items: flex-start; font-size: 13px;
+            min-height: 34px; cursor: pointer; }
+.viaje-na input { margin-top: 3px; }
+
+/* El bloque de conceptos, dentro de la sección */
+.viaje-blk { margin: 14px 0 6px; }
+.viaje-blk.falta { border-left: 3px solid #c0392b; padding-left: 10px; }
+.viaje-btns { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 4px; }
+.chip-viaje { border: 1px dashed var(--linea); background: #fff; border-radius: 8px;
+              padding: 8px 12px; font-size: 12.5px; cursor: pointer; min-height: 40px;
+              color: inherit; text-decoration: none; display: inline-flex; align-items: center; }
+.chip-viaje:hover { border-color: var(--acento); border-style: solid; }
+.chip-viaje.on, .chip-viaje[disabled] { opacity: .5; cursor: default; border-style: solid; }
+.chip-viaje.kiwi { border-style: solid; border-color: var(--acento); color: var(--acento);
+                   font-weight: 600; margin-left: auto; }
+
+/* El recargo, debajo de la tarifa */
+.recargo { color: #6b4d00; font-weight: 600; }
+
+/* Cuándo se consultó el precio de un vuelo */
+.consul-fecha { color: var(--suave); margin-top: 2px; }
+.consul-fecha.viejo { color: #b45309; font-weight: 600; }
+button.lnk.consul { font-size: 11px; }
+
+/* ══ V1.26 · «¿está todo lo mío en el servidor?» ══════════════════════════ */
+.comprob { font-size: 12.5px; padding: 7px 10px; border-radius: 8px; margin-bottom: 8px; }
+.comprob.bien    { background: #e6f4ea; color: #14532d; }
+.comprob.falta   { background: #fff3cd; color: #6b4d00; }
+.comprob.no-sabe { background: var(--papel); color: var(--suave); }
+
+@media (max-width: 640px) {
+  .chip-viaje.kiwi { margin-left: 0; width: 100%; justify-content: center; }
+  .lugar select.cel { max-width: none; }
+}

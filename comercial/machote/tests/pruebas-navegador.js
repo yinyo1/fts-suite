@@ -13,6 +13,19 @@ const { chromium } = require('playwright');
 const path = require('path');
 const BASE = 'file://' + path.resolve(__dirname, '..', 'index.html');
 
+/* ⚠️ El catálogo de países se pide con `fetch`, y **`fetch` de `file://` está
+ * bloqueado en Chromium**. Sin servirlo desde aquí, cada montaje de estas
+ * pruebas correría en el modo DEGRADADO (los tres campos del lugar como texto
+ * libre) y estaríamos midiendo el respaldo en vez de la pantalla. Se lee del
+ * archivo real del repo, no de una copia: si el catálogo cambia, las pruebas
+ * ven el cambio. */
+/** Siembra el catálogo en una página. Se llama en TODAS: una página sin él
+ *  correría en modo degradado sin decirlo, que es la trampa de §20 #11. */
+const sembrarGeo = (pg) => pg.addInitScript((g) => { window.__GEO = g; }, GEO_JSON);
+
+const GEO_JSON = JSON.parse(require('fs').readFileSync(
+  path.resolve(__dirname, '..', '..', '..', 'shared', 'comercial', 'geo.json'), 'utf8'));
+
 /* El navegador con el que se corre.
  *
  * En una laptop basta `chromium.launch()`. En el contenedor de Claude Code el
@@ -38,6 +51,7 @@ let ok = 0, mal = 0;
   const b = await chromium.launch(OPCIONES);
   const errs = [];
   const p = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(p);
   /* El autoguardado es REAL: sin esto, cada prueba heredaria lo que guardo la
    * anterior y volveria la cascada de fallos que resolvio el recargar. Corre
    * ANTES de los scripts de la pagina en cada navegacion, asi que la app
@@ -923,6 +937,7 @@ let ok = 0, mal = 0;
     // Pagina APARTE, sin el guion que limpia: aqui se mide justamente que lo
     // guardado persista entre cargas.
     const q = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(q);
     // Siembra la sesión SIN limpiar el almacén del machote: lo que se mide aquí
     // es justamente que lo guardado sobreviva.
     await q.addInitScript(() => {
@@ -2059,6 +2074,7 @@ let ok = 0, mal = 0;
      * en localStorage y volver a cargar, y el guion global lo borraría en la
      * navegación siguiente. (Ya pasó al escribir esta prueba.) */
     const o = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(o);
     await o.addInitScript(() => {
       try {
         localStorage.setItem('fts_suite_session', JSON.stringify({
@@ -2141,6 +2157,7 @@ let ok = 0, mal = 0;
      * eso — y el aviso explica por qué la lista está vacía, en vez de dejar
      * un campo mudo que parece roto. */
     const f = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(f);
     try {
       await f.addInitScript(() => {
         try {
@@ -2329,6 +2346,7 @@ let ok = 0, mal = 0;
   await paso('cuando el guardado falla, el aviso tapa y no se puede ignorar', async () => {
     /* El pulso dice la verdad pero se puede no ver. Esto no. */
     const q = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(q);
     try {
       await q.addInitScript(() => {
         try {
@@ -2376,6 +2394,7 @@ let ok = 0, mal = 0;
   await paso('sin sesión, el libro no se alcanza a ver', async () => {
     // Pagina LIMPIA, sin la sesion sembrada: debe mandar al login.
     const g = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(g);
     try {
       await g.goto(BASE); await g.waitForTimeout(600);
       const u = g.url();
@@ -2401,6 +2420,7 @@ let ok = 0, mal = 0;
 
   await paso('una sesión vencida no vale', async () => {
     const v = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(v);
     try {
       await v.addInitScript(() => {
         try {
@@ -2417,6 +2437,7 @@ let ok = 0, mal = 0;
 
   await paso('sin el permiso de comercial no se entra, y lo dice', async () => {
     const w = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(w);
     try {
       await w.addInitScript(() => {
         try {
@@ -2457,6 +2478,7 @@ let ok = 0, mal = 0;
     /* Página propia, sin el guion que limpia: aquí se mide justo lo contrario
      * —que lo tecleado sobreviva— y con el servidor sin contestar. */
     const q = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(q);
     await q.addInitScript(() => {
       try {
         localStorage.setItem('fts_suite_session', JSON.stringify({
@@ -2502,6 +2524,7 @@ let ok = 0, mal = 0;
 
   await paso('al reconectar sube lo pendiente solo, y sin dueño en el cuerpo', async () => {
     const q = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(q);
     await q.addInitScript(() => {
       try {
         localStorage.setItem('fts_suite_session', JSON.stringify({
@@ -2535,6 +2558,7 @@ let ok = 0, mal = 0;
           return Promise.resolve({ ok: true, json: () => Promise.resolve({
             ok: true, modo: 'lista', actor: 'zz.prueba', machotes: [], total: 0 }) });
         }
+        if (s.indexOf('geo.json') >= 0) return Promise.resolve({ ok: true, json: () => Promise.resolve(window.__GEO) });
         if (s.indexOf('/comercial/clientes') >= 0) return new Promise(() => {});
         return orig.apply(this, arguments);
       };
@@ -2687,6 +2711,7 @@ let ok = 0, mal = 0;
    *  `permitirGuardar` false = el servidor rechaza los guardados (caído). */
   const frPagina = async (machotes, permitirGuardar) => {
     const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+await sembrarGeo(q);
     await q.addInitScript((cfg) => {
       try {
         localStorage.setItem('fts_suite_session', JSON.stringify({
@@ -2719,6 +2744,7 @@ let ok = 0, mal = 0;
         }
         // El catálogo de clientes se queda colgado a propósito: no es el tema
         // de estas pruebas y un fetch real ensucia la consola.
+        if (s.indexOf('geo.json') >= 0) return Promise.resolve({ ok: true, json: function () { return Promise.resolve(window.__GEO); } });
         if (s.indexOf('/comercial/clientes') >= 0) return new Promise(function () {});
         return orig.apply(this, arguments);
       };
@@ -2841,6 +2867,7 @@ let ok = 0, mal = 0;
 
   const cdPagina = async (scopes, respuesta) => {
     const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+await sembrarGeo(q);
     await q.addInitScript((cfg) => {
       try {
         localStorage.setItem('fts_suite_session', JSON.stringify({
@@ -3375,6 +3402,7 @@ let ok = 0, mal = 0;
    * del viejo. */
   const paginaConAjenos = async () => {
     const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+await sembrarGeo(q);
     await q.addInitScript(() => {
       try {
         localStorage.setItem('fts_suite_session', JSON.stringify({
@@ -3424,6 +3452,7 @@ let ok = 0, mal = 0;
             ok: true, machote_id: 'x', id_local: c.id_local, dueno: 'esteban.delacruz',
             version: 1, versiones: 1, autor: 'esteban.delacruz' }) });
         }
+        if (s.indexOf('geo.json') >= 0) return Promise.resolve({ ok: true, json: function () { return Promise.resolve(window.__GEO); } });
         if (s.indexOf('/comercial/clientes') >= 0) return new Promise(function () {});
         return orig.apply(this, arguments);
       };
@@ -3563,6 +3592,7 @@ let ok = 0, mal = 0;
      * repo público, y hasta hoy el sincronizador barría toda llave `fts_*`.
      * La captura comercial de tres personas se iba en la siguiente subida. */
     const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+await sembrarGeo(q);
     try {
       /* Se carga el archivo REAL —no una copia— en una página en blanco y se
        * ejerce su API. Si alguien cambia la lista, esto lo caza. */
@@ -3598,6 +3628,7 @@ let ok = 0, mal = 0;
    * origen, así que para el servidor eran machotes normales. */
   const paginaConServidor = async (filas, opciones) => {
     const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+await sembrarGeo(q);
     await q.addInitScript((cfg) => {
       const f = cfg.filas;
       window.__opciones = cfg.opciones || {};
@@ -3712,6 +3743,7 @@ let ok = 0, mal = 0;
           }
           return Promise.resolve({ ok: true, json: () => Promise.resolve(rp) });
         }
+        if (s.indexOf('geo.json') >= 0) return Promise.resolve({ ok: true, json: function () { return Promise.resolve(window.__GEO); } });
         if (s.indexOf('/comercial/clientes') >= 0) return new Promise(function () {});
         return orig.apply(this, arguments);
       };
@@ -4376,6 +4408,166 @@ let ok = 0, mal = 0;
         throw new Error('el trabajo está en el cajón pero la pantalla no lo trae de vuelta');
       console.log('    perdió el choque, se lo dijeron sin confundirlo, y su trabajo volvió a pantalla');
     } finally { await q.close(); }
+  });
+
+  /* ══ V1.26 · viaje y trabajo foráneo ═══════════════════════════════════
+   *
+   * El CÁLCULO de todo esto se ejercita en `tests/pruebas-motor.js`, que corre
+   * en menos de un segundo. Aquí va sólo lo que NO se puede comprobar sin
+   * mirar la pantalla: que el bloqueo se vea y se entienda, que las chips
+   * pongan los tres campos de un toque, y que el atajo a Kiwi lleve a donde
+   * dice. */
+
+  await paso('V1.26 · una chip pone país, estado y ciudad de un toque', async () => {
+    await ir('#/m/M-1041');
+    const antes = await p.evaluate(() => {
+      const m = window.MachoteApp && window.MachoteApp._m; return null;
+    });
+    /* Las chips salen del JSON de configuración, no del código: si alguien
+     * agrega una ciudad ahí, esta prueba la ve sin tocarse. */
+    const chips = await p.$$eval('[data-frec]', e => e.map(x => x.dataset.frec));
+    if (!chips.some(c => /San Antonio/.test(c)))
+      throw new Error('no salieron las frecuentes: ' + JSON.stringify(chips));
+    if (!chips.some(c => /Monterrey/.test(c)))
+      throw new Error('falta Monterrey, que es la sede');
+
+    await p.click('[data-frec*="San Antonio"]');
+    await p.waitForTimeout(600);
+    const r = await p.evaluate(() => {
+      const sel = (q) => { const e = document.querySelector(q); return e ? e.value : null; };
+      return { pais: sel('[data-cel="pais"]'), region: sel('[data-cel="region"]'),
+               ciudad: sel('[data-cel="ciudad"]'),
+               veredicto: (document.querySelector('.lugar-veredicto') || {}).textContent || '' };
+    });
+    if (r.pais !== 'US') throw new Error('país quedó en: ' + r.pais);
+    if (r.region !== 'Texas') throw new Error('estado quedó en: ' + r.region);
+    if (r.ciudad !== 'San Antonio') throw new Error('ciudad quedó en: ' + r.ciudad);
+    if (!/for[áa]nea/i.test(r.veredicto)) throw new Error('no dice que es foránea: ' + r.veredicto);
+    console.log('    un toque → US · Texas · San Antonio · «' + r.veredicto.trim().slice(0, 46) + '…»');
+  });
+
+  await paso('V1.26 · el lugar NO pisa el estado del documento', async () => {
+    /* El defecto que esto cierra, y que sólo se vio EN LA CAPTURA: la primera
+     * versión llamó `estado` a la subdivisión, y el campo salió diciendo
+     * «borrador». Elegir «Texas» habría puesto el machote en estado «Texas». */
+    await ir('#/m/M-1041');
+    await p.click('[data-frec*="Dallas"]');
+    await p.waitForTimeout(600);
+    const est = await p.evaluate(() => {
+      const s = document.querySelector('[data-cel="estado"]');
+      return s ? s.value : '(no hay campo estado)';
+    });
+    if (!/borrador|creacion|creación/i.test(est))
+      throw new Error('el estado del documento quedó en: «' + est + '»');
+    console.log('    la cotización sigue en «' + est + '» con el lugar en Dallas');
+  });
+
+  await paso('V1.26 · foránea sin viaje: se ve el bloqueo y se dice qué hacer', async () => {
+    await ir('#/m/M-1041');
+    await p.click('[data-frec*="San Antonio"]');
+    await p.waitForTimeout(500);
+    await hoja('Suministro');
+    await p.waitForTimeout(500);
+
+    const t = (await p.textContent('.viaje-blk')).replace(/\s+/g, ' ');
+    if (!/no la deja terminar/i.test(t))
+      throw new Error('no dice que bloquea: ' + t.slice(0, 160));
+    if (!/San Antonio/.test(t)) throw new Error('no dice dónde se ejecuta: ' + t.slice(0, 160));
+    if (!/marca arriba que no se ocupa/i.test(t))
+      throw new Error('no ofrece la salida explícita: ' + t.slice(0, 160));
+
+    // Y los cinco conceptos, elegibles: no aparecen todos puestos, se agregan.
+    const chips = await p.$$eval('[data-concepto]', e => e.map(x => x.textContent.trim()));
+    if (chips.length !== 5) throw new Error('conceptos ofrecidos: ' + JSON.stringify(chips));
+
+    // La barra tiene que contarlo como dura.
+    const barra = (await p.textContent('.fija')).replace(/\s+/g, ' ');
+    if (!/duras/.test(barra)) throw new Error('la barra no cuenta duras: ' + barra);
+
+    // Agregar UNO desbloquea, y el renglón entra como Viaje.
+    await p.click('[data-concepto*="vuelos"]');
+    await p.waitForTimeout(700);
+    const r = await p.evaluate(() => {
+      const filas = [...document.querySelectorAll('table.rejilla tbody tr')];
+      const f = filas.find(x => /Vuelos/.test(x.textContent));
+      const sel = f && f.querySelector('select');
+      return { hay: !!f, tipo: sel ? sel.value : null,
+               sigue_avisando: !!document.querySelector('.viaje-blk .aviso.bad') };
+    });
+    if (!r.hay) throw new Error('no entró el renglón de vuelos');
+    if (r.tipo !== 'Viaje') throw new Error('entró con tipo: ' + r.tipo);
+    if (r.sigue_avisando) throw new Error('sigue avisando después de agregarlo');
+    console.log('    bloquea, dice dónde y qué hacer · «+ Vuelos» lo resuelve y entra como Viaje');
+  });
+
+  await paso('V1.26 · una cotización de Monterrey no pide nada de viaje', async () => {
+    await ir('#/m/M-1041');
+    await p.click('[data-frec*="Monterrey"]');
+    await p.waitForTimeout(500);
+    const ver = (await p.textContent('.lugar-veredicto')).replace(/\s+/g, ' ');
+    if (!/en la sede/i.test(ver)) throw new Error('no dice que está en la sede: ' + ver);
+    if (await p.$('.viaje-cfg')) throw new Error('enseña la configuración de viaje en una local');
+    await hoja('Suministro');
+    await p.waitForTimeout(500);
+    if (await p.$('.viaje-blk'))
+      throw new Error('enseña el bloque de viaje en una cotización de Monterrey');
+    console.log('    Monterrey: sin bloque de viaje, sin recargos, sin bloqueo');
+  });
+
+  await paso('V1.26 · el atajo a Kiwi abre fuera, con origen y destino', async () => {
+    /* NO se incrusta, y no es capricho: Kiwi manda
+     * `frame-ancestors 'self' kiwi.com *.kiwi.com …` y nuestro dominio no está,
+     * así que un iframe saldría EN BLANCO. Medido contra el sitio en vivo el
+     * 2026-09-10. Un recuadro vacío se lee como aplicación rota. */
+    await ir('#/m/M-1041');
+    await p.click('[data-frec*="San Antonio"]');
+    await p.waitForTimeout(500);
+    await hoja('Suministro');
+    await p.waitForTimeout(500);
+    const a = await p.evaluate(() => {
+      const e = document.querySelector('.chip-viaje.kiwi');
+      return e ? { href: e.getAttribute('href'), target: e.getAttribute('target'),
+                   rel: e.getAttribute('rel'), txt: e.textContent.trim() } : null;
+    });
+    if (!a) throw new Error('no hay atajo a Kiwi');
+    if (!/^https:\/\/www\.kiwi\.com\//.test(a.href)) throw new Error('apunta a: ' + a.href);
+    if (a.href.indexOf('monterrey') < 0) throw new Error('sin origen: ' + a.href);
+    if (a.href.indexOf('san-antonio') < 0) throw new Error('sin destino: ' + a.href);
+    if (a.target !== '_blank') throw new Error('no abre en pestaña nueva');
+    if (!/noopener/.test(a.rel || '')) throw new Error('sin rel=noopener');
+    if (await p.$('iframe[src*="kiwi"]'))
+      throw new Error('hay un iframe de Kiwi: Kiwi lo prohíbe y saldría en blanco');
+    console.log('    ' + a.href.slice(0, 92));
+  });
+
+  await paso('V1.26 · el precio de un vuelo dice de cuándo es', async () => {
+    await ir('#/m/M-1041');
+    await p.click('[data-frec*="San Antonio"]');
+    await p.waitForTimeout(500);
+    await hoja('Suministro');
+    await p.waitForTimeout(500);
+    await p.click('[data-concepto*="vuelos"]');
+    await p.waitForTimeout(700);
+
+    // Sin precio todavía no pregunta nada: no hay número que fechar.
+    if (await p.$('[data-consul]'))
+      throw new Error('pide la fecha de consulta antes de que haya precio');
+
+    const fila = 'table.rejilla tbody tr:has-text("Vuelos")';
+    await p.fill(fila + ' [data-cel$=":pu"]', '18500');
+    await p.dispatchEvent(fila + ' [data-cel$=":pu"]', 'change');
+    await p.waitForTimeout(700);
+
+    const b = await p.$('[data-consul]');
+    if (!b) throw new Error('con precio puesto, no ofrece anotar de cuándo es');
+    if (!/de cu[áa]ndo es/i.test(await b.textContent()))
+      throw new Error('el botón no dice para qué sirve: ' + (await b.textContent()));
+    await b.click();
+    await p.waitForTimeout(600);
+    const t = (await p.textContent('.consul-fecha')).replace(/\s+/g, ' ');
+    if (!/consultado/.test(t)) throw new Error('no quedó la fecha: ' + t);
+    if (!/hoy/.test(t)) throw new Error('no dice que es de hoy: ' + t);
+    console.log('    «' + t.trim() + '» — una cotización se manda semanas antes de volar');
   });
 
   await paso('sin errores de consola propios del prototipo', async () => {

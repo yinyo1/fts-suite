@@ -742,6 +742,10 @@
         };
       }
 
+      /* CUÁNDO contestó el servidor. Es lo que permite decir «comprobado a
+       * las 9:41» en vez de afirmar a secas que todo está a salvo: una
+       * comprobación sin hora es una promesa sin fecha. */
+      s.__visto_at = new Date().toISOString();
       escribirSync(s);
       var quedo = escribirLocal({ machotes: lista, handoff: local.handoff || {} });
 
@@ -1002,6 +1006,41 @@
       machote_id: uuid, para: para });
   }
 
+  /** ¿Está todo lo mío en el servidor? Contestado SIN pedir nada: con lo que
+   *  la última bajada ya trajo.
+   *
+   *  ── POR QUÉ ESTO SÍ PUEDE AFIRMARLO Y EL AVISO DE «SIN SUBIR» NO ────────
+   *  Una marca local no puede probar que algo llegó al servidor — por eso el
+   *  aviso de pendientes sólo afirma lo que puede demostrar, que algo NO ha
+   *  salido de aquí. Esto es distinto: la libreta guarda, por machote, la
+   *  VERSIÓN Y LA HUELLA que el servidor devolvió en la última bajada. Eso es
+   *  evidencia del servidor, no una marca nuestra.
+   *
+   *  Lo que sí tiene es FECHA, y por eso la respuesta siempre la lleva: si la
+   *  última bajada fue hace dos horas, lo que se afirma es «hace dos horas
+   *  estaba todo», no «está todo». Sin bajada, se dice que no se ha podido
+   *  comprobar — que NO es lo mismo que decir que falta algo.
+   *
+   *  No pide permiso nuevo ni endpoint nuevo: el dato ya viaja en
+   *  `comercial/machotes-leer`, que es el mismo que pinta la lista. */
+  function comprobacion(machotes) {
+    var todos = machotes || ((leerLocal() || {}).machotes) || [];
+    var mios = todos.filter(function (m) { return !esDemo(m) && !esAjeno(m); });
+    var s = leerSync();
+    var visto = s.__visto_at || null;
+
+    var faltan = mios.filter(function (m) { return pendienteUno(m); });
+    return {
+      // `null` cuando nunca se ha podido bajar: es «no sé», no «todas bien».
+      comprobado_at: visto,
+      total: mios.length,
+      en_servidor: mios.length - faltan.length,
+      faltan: faltan.length,
+      ids_faltan: faltan.map(function (m) { return m.id; }),
+      demos: todos.length - mios.length
+    };
+  }
+
   /** Los préstamos VIGENTES de un machote, como los dejó la última bajada.
    *  Sale de la libreta para lo propio y del objeto en memoria para lo ajeno,
    *  que es la misma partición que el folio: lo ajeno no toca la libreta. */
@@ -1109,6 +1148,7 @@
 
     pendientes: pendientes,
     pendienteUno: pendienteUno,
+    comprobacion: comprobacion,
     estadoServidor: estadoServidor,
     huellaCanonica: huellaCanonica,
     olvidar: olvidar,

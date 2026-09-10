@@ -43,7 +43,7 @@
    * 2026-09-03 (por instrucción de Esteban), pero lleva el suyo aparte y va en
    * V1.00. Planeación sigue en `2.4.1` y el kiosko sólo con cadena de build;
    * a esos no se propaga. */
-  const VERSION = 'V1.25';
+  const VERSION = 'V1.26';
   const $  = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
   const clon = (x) => JSON.parse(JSON.stringify(x));
@@ -1194,9 +1194,50 @@
     const host = $('#avPendHost');
     if (!host) return;                       // no estamos en la lista
     const n = (A && A.pendientes) ? A.pendientes(ST.machotes) : 0;
-    if (!n) { host.innerHTML = ''; return; }
 
-    host.innerHTML = '<div class="aviso pend" id="avPend">' +
+    /* ── «¿ESTÁ TODO LO MÍO EN EL SERVIDOR?» (V1.26) ──────────────────────
+     * La pregunta le toca a CADA QUIEN sobre lo suyo. Que hasta ahora sólo la
+     * pudiera hacer quien tuviera `comercial:admin` era un accidente de
+     * historia: Control fue el primero que le preguntó al servidor y la
+     * pregunta se quedó viviendo ahí.
+     *
+     * Se contesta sin permiso nuevo y sin endpoint nuevo, comparando lo que la
+     * última bajada YA trajo contra lo que este navegador sabe sin subir.
+     *
+     * Y se contesta CON FECHA, siempre. «Todas están en el servidor» a secas
+     * es una promesa sin plazo; «las 7 estaban a las 9:41» es una medición. */
+    const comp = (A && A.comprobacion) ? A.comprobacion(ST.machotes) : null;
+    const reloj = (iso) => {
+      const t = Date.parse(iso);
+      if (!isFinite(t)) return '';
+      const d = new Date(t), hoy = new Date();
+      const hora = d.toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit' });
+      const mismo = d.toDateString() === hoy.toDateString();
+      return mismo ? ('a las ' + hora)
+                   : (d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) + ' ' + hora);
+    };
+
+    let linea = '';
+    if (comp && comp.total > 0) {
+      if (!comp.comprobado_at) {
+        /* NO se ha podido preguntar. Eso NO es «falta algo» ni «está todo»:
+         * es no saber, y decirlo así es la única respuesta honesta. */
+        linea = '<div class="comprob no-sabe">Todavía no se ha podido comprobar con el ' +
+          'servidor qué hay de lo tuyo. Lo capturado sigue guardado en este navegador.</div>';
+      } else if (comp.faltan === 0) {
+        linea = '<div class="comprob bien">Tus <strong>' + comp.total + '</strong> ' +
+          (comp.total === 1 ? 'cotización estaba' : 'cotizaciones estaban') +
+          ' en el servidor <strong>' + esc(reloj(comp.comprobado_at)) + '</strong>.</div>';
+      } else {
+        linea = '<div class="comprob falta"><strong>' + comp.en_servidor + ' de ' + comp.total +
+          '</strong> cotizaciones tuyas estaban en el servidor ' +
+          esc(reloj(comp.comprobado_at)) + '.</div>';
+      }
+    }
+
+    if (!n) { host.innerHTML = linea; return; }
+
+    host.innerHTML = linea + '<div class="aviso pend" id="avPend">' +
       '<strong>' + n + (n === 1 ? ' cotización tuya no ha subido' : ' cotizaciones tuyas no han subido') +
       '</strong> al servidor. Siguen guardadas en este navegador y se reintenta solo. ' +
       '<button class="btn fantasma chico" id="bVerPend">Cuáles son</button></div>';
@@ -1282,16 +1323,40 @@
       : cel('pais', m.pais, 'w80') + '<span class="tiny nota"> cargando países…</span>';
 
     const selEstado = conEstados
-      ? '<select class="cel" data-cel="estado">' +
-          '<option value=""' + (m.estado ? '' : ' selected') + '>Elige el estado…</option>' +
+      ? '<select class="cel" data-cel="region">' +
+          '<option value=""' + (m.region ? '' : ' selected') + '>Elige el estado…</option>' +
           g.estados(cod).map(e => '<option value="' + esc(e) + '"' +
-            (m.estado === e ? ' selected' : '') + '>' + esc(e) + '</option>').join('') +
+            (m.region === e ? ' selected' : '') + '>' + esc(e) + '</option>').join('') +
         '</select>'
-      : cel('estado', m.estado, 'desc');
+      : cel('region', m.region, 'desc');
 
     const v = c.viaje;
+    /* ── FRECUENTES ARRIBA ────────────────────────────────────────────────
+     * Nadie tiene que buscar en una lista de 249 países lo que usa todos los
+     * días. Un toque pone país, estado y ciudad de una vez.
+     *
+     * Se pintan TODAS, no sólo las del país elegido: la gracia es cambiar de
+     * Monterrey a San Antonio de un toque, y filtrar por el país actual
+     * escondería justo la que se quiere. Salen del JSON de configuración, así
+     * que agregar una ciudad no toca este archivo. */
+    const frec = (g && g.frecuentes && g.frecuentes()) || [];
+    const chips = frec.length
+      ? '<div class="frec">' +
+          '<span class="tiny nota">Frecuentes:</span>' +
+          frec.map(f => {
+            const puesta = C.llano(m.ciudad) === C.llano(f.ciudad) &&
+                           C.llano(m.pais) === C.llano(f.pais);
+            return '<button class="chip-frec' + (puesta ? ' on' : '') + (f.sede ? ' sede' : '') + '"' +
+              ' data-frec="' + esc(f.pais + '|' + f.region + '|' + f.ciudad) + '"' +
+              ' title="' + esc((f.nota || '') + ' ' + f.region + ', ' + paisNom(f.pais)).trim() + '">' +
+              esc(f.ciudad) + (f.sede ? ' ★' : '') + '</button>';
+          }).join('') +
+        '</div>'
+      : '';
+
     return '<div class="blk lugar' + (foraneo ? ' foraneo' : '') + '">' +
       '<div class="et2">DÓNDE SE EJECUTA</div>' +
+      chips +
       '<table class="hoja2"><tbody>' +
       '<tr><td class="et">País</td><td>' + selPais + '</td></tr>' +
       '<tr><td class="et">Estado</td><td>' + selEstado +
@@ -1352,6 +1417,75 @@
       '</td></tr>' +
       '</tbody></table></div>';
   }
+
+  /* ── ATAJO A KIWI (V1.26) ────────────────────────────────────────────────
+   *
+   * ⚠️ NO se incrusta en un recuadro, y no es una decisión de estilo: **Kiwi lo
+   * prohíbe**. Su cabecera dice
+   *   `frame-ancestors 'self' kiwi.com *.kiwi.com skypicker.com *.skypicker.com`
+   * y `yinyo1.github.io` no está en esa lista, así que un iframe saldría en
+   * blanco — medido el 2026-09-10 contra el sitio en vivo, no supuesto. Un
+   * recuadro vacío se lee como aplicación rota; una pestaña nueva, no.
+   *
+   * Y NO trae el precio: la persona lo consulta y lo captura. Esto es un
+   * atajo, no una integración, y decirlo evita que alguien espere que el
+   * número se actualice solo.
+   *
+   * El enlace se arma con lo que el machote YA sabe. Si el nombre de la ciudad
+   * no le cuadra a Kiwi, su propia pantalla deja corregirlo: llegar con la
+   * búsqueda a medio armar es mejor que llegar en blanco. */
+  function kiwiURL(m) {
+    const g = G.MachoteGeo;
+    const trozo = (ciudad, estado, pais) => {
+      const p = g && g.pais(pais);
+      return [ciudad, estado, (p && p.nombre) || pais]
+        .filter(Boolean).join('-')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    };
+    const origen = trozo(C.SEDE.ciudad, C.SEDE.estado, C.SEDE.pais);
+    const destino = trozo(m.ciudad, m.region, m.pais);
+    if (!destino) return null;
+    // Las fechas si las hay. Kiwi acepta el rango en la ruta; sin fechas
+    // manda a la búsqueda con origen y destino puestos, que ya es el 80%.
+    const f = [m.fecha_viaje_ida, m.fecha_viaje_vuelta].filter(Boolean);
+    return 'https://www.kiwi.com/es/search/results/' + origen + '/' + destino +
+           (f.length ? '/' + f.join('/') : '');
+  }
+
+  function kiwiBoton(m, c) {
+    const u = kiwiURL(m);
+    if (!u) return '';
+    return '<a class="chip-viaje kiwi" href="' + esc(u) + '" target="_blank" rel="noopener noreferrer"' +
+      ' title="Abre Kiwi en otra pestaña con la búsqueda ya armada. El precio se consulta ahí y se captura aquí: ' +
+      'no se trae solo.">✈ Consultar vuelos en Kiwi ↗</a>';
+  }
+
+  /** Cuántos días lleva un precio consultado, y cómo se ve. */
+  function consultadoHTML(l, p) {
+    const hoy = new Date();
+    const iso = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') +
+                       '-' + String(d.getDate()).padStart(2, '0');
+    if (!l.consultado_at) {
+      return '<button class="lnk consul" data-consul="' + esc(p) + '|' + iso(hoy) + '"' +
+        ' title="Deja anotado que este precio se consultó hoy">¿de cuándo es?</button>';
+    }
+    const t = Date.parse(l.consultado_at + 'T12:00:00');
+    const dias = isFinite(t) ? Math.round((hoy - t) / 86400000) : null;
+    const viejo = dias !== null && dias > 21;
+    return '<div class="tiny consul-fecha' + (viejo ? ' viejo' : '') + '"' +
+      (viejo ? ' title="Más de tres semanas. Los precios de vuelo se mueven; conviene volver a consultar."' : '') +
+      '>consultado ' + esc(fechaCorta(l.consultado_at)) +
+      (dias === null ? '' : (dias <= 0 ? ' · hoy' : ' · hace ' + dias + ' día' + (dias === 1 ? '' : 's'))) +
+      ' <button class="lnk" data-consul="' + esc(p) + '|' + iso(hoy) + '" title="Vuelve a marcar hoy">↻</button>' +
+      '</div>';
+  }
+
+  const fechaCorta = (iso) => {
+    const MES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    const p = String(iso || '').split('-');
+    return p.length === 3 ? (Number(p[2]) + '-' + (MES[Number(p[1]) - 1] || '?')) : String(iso || '');
+  };
 
   function hojaHTML(m, c) {
     const s = m.secciones.find(x => x.id === ST.hoja);
@@ -1562,6 +1696,38 @@
       '</td><td colspan="2"></td><td class="vl mono calc fuerte" data-l="Con utilidad">' + mx(cs.ventaMo) + '</td></tr>' +
       '</tbody></table></div>';
 
+    /* ── CONCEPTOS DE VIAJE (V1.26) ───────────────────────────────────────
+     * Sólo aparece cuando la cotización es foránea: en una de Monterrey sería
+     * un bloque de ruido permanente.
+     *
+     * Los conceptos se ELIGEN. Meter los cinco siempre dejaría cinco renglones
+     * vacíos de vuelos y hotel en cada cotización, y renglones vacíos que
+     * nadie llena son exactamente lo que enseña a ignorar la pantalla. */
+    const yaPuestos = {};
+    (s.partidas || []).forEach(l => {
+      if (l.tipo === C.TIPO_VIAJE && l.descripcion) yaPuestos[C.llano(l.descripcion)] = true;
+    });
+    const bloqueViaje = c.lugar.foraneo
+      ? '<div class="viaje-blk' + (c.renglonesViaje === 0 && !c.viaje.no_aplica ? ' falta' : '') + '">' +
+          '<div class="secc-tit">VIAJE' +
+            '<span class="tiny nota"> · se cobra a costo, sin utilidad</span></div>' +
+          (c.renglonesViaje === 0 && !c.viaje.no_aplica
+            ? '<div class="aviso bad">Esta cotización se ejecuta en ' +
+              esc([m.ciudad, paisNom(m.pais)].filter(Boolean).join(', ')) +
+              ' y no trae nada de viaje. <strong>El revisador no la deja terminar así.</strong> ' +
+              'Agrega lo que aplique, o marca arriba que no se ocupa.</div>'
+            : '') +
+          '<div class="viaje-btns">' +
+            C.CONCEPTOS_VIAJE.map(x =>
+              '<button class="chip-viaje' + (yaPuestos[C.llano(x.label)] ? ' on' : '') + '"' +
+              ' data-concepto="' + esc(s.id + '|' + x.id) + '"' +
+              (yaPuestos[C.llano(x.label)] ? ' disabled title="Ya está en la lista"' : '') + '>+ ' +
+              esc(x.label) + '</button>').join('') +
+            kiwiBoton(m, c) +
+          '</div>' +
+        '</div>'
+      : '';
+
     // COSTO MATERIALES Y SERVICIOS
     const filasMat = (s.partidas || []).map((l, j) => {
       const cl = C.costoPartida(l, m, s), p = 's:' + s.id + ':partidas:' + j + ':';
@@ -1580,7 +1746,13 @@
         '<td data-l="QTY">' + celNum(p + 'qty', l.qty, 'w60') + '</td>' +
         '<td data-l="Unidad">' + celLibre(p + 'unidad', l.unidad, 'unidades', 'w80') + '</td>' +
         '<td data-l="Tipo">' + celSel(p + 'tipo', l.tipo, [''].concat(C.TIPOS), 'wtipo') + '</td>' +
-        '<td data-l="Precio unitario">' + celNum(p + 'pu', l.pu, 'w80') + '</td>' +
+        '<td data-l="Precio unitario">' + celNum(p + 'pu', l.pu, 'w80') +
+          /* CUÁNDO SE CONSULTÓ. Sólo en renglones de viaje, y sólo cuando ya
+           * hay precio. Una cotización se manda semanas antes de volar, y el
+           * precio de hoy no es el que se va a pagar: sin la fecha, el número
+           * se lee como si fuera firme. Con ella, quien revisa sabe de cuándo
+           * es y puede volver a consultar. */
+          (cl.esViaje && !cl.sinPrecio ? consultadoHTML(l, p) : '') + '</td>' +
         '<td data-l="Moneda">' + celSel(p + 'moneda', l.moneda, ['MXN', 'USD'], 'wmon') + '</td>' +
         // "sin precio" SOLO en un renglón que alguien empezó a llenar. En uno
         // en blanco no es un hallazgo, es el estado normal del bloque — y con
@@ -1622,7 +1794,7 @@
     const listaUnidades = '<datalist id="unidades">' +
       D.UNIDADES.map(u => '<option value="' + esc(u) + '">').join('') + '</datalist>';
 
-    return listaUnidades + cab + leyenda() + tablaMo + tablaMat;
+    return listaUnidades + cab + leyenda() + tablaMo + bloqueViaje + tablaMat;
   }
 
   /* ── El estado del machote ─────────────────────────────────────────────
@@ -2005,6 +2177,46 @@
     /* La salida explícita del bloqueo por cotización foránea. Es un checkbox
      * y no una celda porque no es un dato del costo: es una DECISIÓN, y el
      * revisador la registra como tal. */
+    /* Una chip pone los TRES campos de una vez. Es el atajo entero: quien
+     * cotiza en San Antonio no debería tener que elegir país, buscar Texas y
+     * escribir la ciudad tres veces por semana. */
+    /* Agregar un concepto de viaje: se mete como partida de tipo Viaje, en el
+     * primer renglón libre. Reusa la retícula de captura que ya existe en vez
+     * de inventar una segunda forma de capturar un gasto. */
+    $$('[data-consul]').forEach(el => {
+      el.onclick = () => {
+        const [ruta, hoy] = el.dataset.consul.split('|');
+        setPath(m, ruta + 'consultado_at', hoy);
+        tocado(m);
+        pintarHoja(m); barra(m, C.calcular(m));
+      };
+    });
+    $$('[data-concepto]').forEach(el => {
+      el.onclick = () => {
+        const [sid, cid] = el.dataset.concepto.split('|');
+        const sec = (m.secciones || []).find(x => x.id === sid);
+        const cpt = C.CONCEPTOS_VIAJE.find(x => x.id === cid);
+        if (!sec || !cpt) return;
+        let i = (sec.partidas || []).findIndex(l => !C.usadaPartida(l));
+        if (i < 0) { sec.partidas.push({ qty: '', unidad: '', tipo: '', descripcion: '',
+          pu: null, moneda: m.moneda, margen: null, link: '', comentario: '' });
+          i = sec.partidas.length - 1; }
+        const l = sec.partidas[i];
+        l.tipo = C.TIPO_VIAJE; l.descripcion = cpt.label; l.unidad = cpt.unidad;
+        l.qty = l.qty || 1;
+        tocado(m);
+        pintarHoja(m); barra(m, C.calcular(m));
+        toast(cpt.label + ' agregado. Captura cantidad y precio.');
+      };
+    });
+    $$('[data-frec]').forEach(el => {
+      el.onclick = () => {
+        const [pais, region, ciudad] = el.dataset.frec.split('|');
+        m.pais = pais; m.region = region; m.ciudad = ciudad;
+        tocado(m);
+        pintarHoja(m); barra(m, C.calcular(m));
+      };
+    });
     $$('[data-viaje]').forEach(el => {
       el.onchange = () => {
         if (!m.viaje) m.viaje = {};

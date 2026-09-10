@@ -36,6 +36,7 @@
   // Definicion unica en el motor: estaba repetida aqui y dos veces en calc.js,
   // con matices distintos. Tres definiciones de lo mismo terminan divergiendo.
   const usada = (l) => C.usadaPartida(l);
+  const vacioPU = (l) => l.pu === null || l.pu === undefined || l.pu === '';
   const tipoDe = (m) => (G.DEMO.TIPOS_PROYECTO.find(t => t.id === (m.diagnostico || {}).tipo) || null);
 
   /* El nombre del país para leerlo en un hallazgo: «Estados Unidos», no «US».
@@ -431,7 +432,7 @@
         if (!c.lugar.foraneo) return null;
         if (c.viaje.no_aplica) return null;            // alguien lo decidió a mano
         if (c.renglonesViaje > 0 || c.dias > 0) return null;
-        const donde = [m.ciudad, m.estado, paisNombre(m.pais)].filter(Boolean).join(', ');
+        const donde = [m.ciudad, m.region, paisNombre(m.pais)].filter(Boolean).join(', ');
         return {
           detalle: 'Mover gente cuesta, y ese costo se descubre tarde: es lo que pasó ' +
                    'con el presupuesto de Albuquerque. Agrega los conceptos de viaje que ' +
@@ -475,6 +476,41 @@
                           'así que se están cobrando a tarifa normal. Lo del 30% es de ' +
                           'fin de semana; lo de festivos NO se ha confirmado con nadie. ' +
                           'Escribe el que aplique o deja las horas donde corresponda.' };
+      }
+    },
+
+    {
+      destino: () => ({ tab: 'secc' }),
+      id: 'precio-viaje-sin-fecha', severidad: 'blanda', area: 'Viaje',
+      titulo: 'Precios de viaje sin decir de cuándo son',
+      evaluar: (m) => {
+        const f = partidas(m).filter(x => x.l.tipo === C.TIPO_VIAJE && usada(x.l) &&
+                                          !vacioPU(x.l) && !x.l.consultado_at);
+        return f.length ? {
+          detalle: 'Una cotización se manda semanas antes de volar y el precio de hoy no ' +
+                   'es el que se va a pagar. Sin la fecha de consulta, el número se lee ' +
+                   'como si fuera firme. Está a un clic, al lado del precio.',
+          items: f.map(x => x.l.descripcion || '(sin descripción)')
+        } : null;
+      }
+    },
+    {
+      destino: () => ({ tab: 'secc' }),
+      id: 'precio-viaje-viejo', severidad: 'blanda', area: 'Viaje',
+      titulo: 'Precios de viaje consultados hace más de tres semanas',
+      evaluar: (m) => {
+        const hoy = Date.now();
+        const f = partidas(m).filter(x => {
+          if (x.l.tipo !== C.TIPO_VIAJE || !usada(x.l) || !x.l.consultado_at) return false;
+          const t = Date.parse(x.l.consultado_at + 'T12:00:00');
+          return isFinite(t) && (hoy - t) / 86400000 > 21;
+        });
+        return f.length ? {
+          detalle: 'Los vuelos se mueven, y hacia arriba conforme se acerca la fecha. ' +
+                   'Vuelve a consultar antes de mandar la cotización, o dile al cliente ' +
+                   'hasta cuándo se sostiene el precio.',
+          items: f.map(x => (x.l.descripcion || '(sin descripción)') + ' · consultado ' + x.l.consultado_at)
+        } : null;
       }
     },
 

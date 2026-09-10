@@ -144,5 +144,37 @@ const conMargen = JSON.parse(JSON.stringify(conVuelo));
 conMargen.secciones[0].partidas[0].margen = 1.8;
 es(tieneBlanda(conMargen, 'viaje-con-margen'), true, 'regla · un margen sobre viaje se señala');
 
+// ── El campo del lugar NO pisa el estado del documento ─────────────────────
+// La primera versión de esto llamó `estado` a la subdivisión. `m.estado` ya
+// existía desde V1.07 y significa borrador / en revisión / enviado a Odoo: se
+// vio en la captura diciendo «Estado: borrador», y elegir «Texas» habría
+// puesto el machote en estado «Texas» y roto el flujo entero, en silencio.
+// Es el choque de `.kpi` de V1.22, pero en un campo de datos.
+const col = C.machoteNuevo({ nombre: 'colisión' });
+es(col.estado, 'borrador', 'colisión · el machote nace en estado borrador');
+es(col.region, 'Nuevo León', 'colisión · y la subdivisión vive en `region`');
+col.region = 'Texas'; col.pais = 'US'; col.ciudad = 'San Antonio';
+es(col.estado, 'borrador', 'colisión · mover el lugar NO toca el estado del documento');
+es(C.esForaneo(col), true, 'colisión · y el lugar sí se lee de `region`/`ciudad`');
+
+// ── Los 8 machotes que ya existen: ni se rompen ni ganan campos ────────────
+// «No los rompas ni les inventes valores», textual. Un documento viejo tiene
+// que seguir calculando igual Y seguir sin los campos nuevos: si el motor se
+// los rellenara, el machote diría que se ejecuta en Monterrey sin que nadie lo
+// haya dicho, y eso es peor que no tener el dato.
+const vj = C.machoteNuevo({ nombre: 'de antes' });
+delete vj.pais; delete vj.region; delete vj.ciudad; delete vj.viaje;
+vj.secciones[0].mo.find(l => l.rol === 'tecnicos').qty = 50;
+const antes = JSON.stringify(vj);
+const cvj = C.calcular(vj);
+es(JSON.stringify(vj), antes, 'viejos · calcular NO modifica el documento');
+es('pais' in vj, false, 'viejos · sigue sin `pais`: no se le inventa Monterrey');
+es('viaje' in vj, false, 'viejos · sigue sin bloque `viaje`');
+eq(cvj.costoMo, 50 * 140, 'viejos · y da exactamente los mismos números');
+eq(cvj.costoViaje, 0, 'viejos · con el viaje en cero');
+// Y el revisador les pide el dato, en vez de suponerlo.
+es(tieneDura(vj, 'sin-lugar-ejecucion'), true, 'viejos · el revisador pide el lugar');
+es(tieneDura(vj, 'foranea-sin-viaje'), false, 'viejos · pero no los trata como foráneos');
+
 console.log('\n' + ok + ' pasaron, ' + mal + ' fallaron.');
 process.exit(mal ? 1 : 0);

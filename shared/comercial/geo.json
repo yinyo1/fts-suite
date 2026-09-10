@@ -5,7 +5,9 @@
     "subdivisiones_origen": "Escritas a mano solo para MX (32 estados) y US (50 + Distrito de Columbia), que es donde FTS ejecuta. Para cualquier otro pais el estado va en TEXTO LIBRE y la pantalla lo dice.",
     "generado": "2026-09-10",
     "issue": 140,
-    "version": "V1.26"
+    "version": "V1.26",
+    "frecuentes_origen": "Dictadas por Esteban (V1.26). Es configuracion: agregar una ciudad NO requiere tocar codigo. El orden del arreglo es el orden en pantalla.",
+    "campo_region": "La subdivision se llama REGION, no estado: machote.estado ya existe y significa borrador/enviado."
   },
   "paises": [
     {
@@ -1093,5 +1095,34 @@
       "Wisconsin",
       "Wyoming"
     ]
-  }
+  },
+  "frecuentes": [
+    {
+      "pais": "MX",
+      "region": "Nuevo León",
+      "ciudad": "Monterrey",
+      "sede": true,
+      "nota": "La sede. Preseleccionada en cotizaciones nuevas."
+    },
+    {
+      "pais": "US",
+      "region": "Texas",
+      "ciudad": "San Antonio"
+    },
+    {
+      "pais": "US",
+      "region": "Texas",
+      "ciudad": "Dallas"
+    },
+    {
+      "pais": "US",
+      "region": "California",
+      "ciudad": "Hayward"
+    },
+    {
+      "pais": "US",
+      "region": "California",
+      "ciudad": "Fairfield"
+    }
+  ]
 }
