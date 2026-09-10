@@ -1,0 +1,87 @@
+--- /tmp/claude-0/-home-user/6ee8c8b2-794f-5967-8b91-12aacb058da4/scratchpad/t2/pub-buildEmail.js	2026-09-10 01:28:52.515747950 +0000
++++ /tmp/claude-0/-home-user/6ee8c8b2-794f-5967-8b91-12aacb058da4/scratchpad/t2/fixed-buildEmail.js	2026-09-10 01:29:56.375750771 +0000
+@@ -45,6 +45,56 @@
+ const soloDiag = todo.length===1 && todo[0]._solo_diag;
+ const rows = soloDiag ? [] : todo;
+ const diag = (todo[0] && todo[0]._diag) ? todo[0]._diag : [];
++// --- GUARDA DE ESCRITURA (S2, 2026-09-10) -----------------------------------
++// La guarda de vacio de S1 cubre los nodos de LECTURA. Estos son los de
++// ESCRITURA, y traen el MISMO onError:continueRegularOutput: un fallo viaja
++// como DATO y el nodo reporta success. Medido: 'Odoo - CREATE log note'
++// llevaba desde el go-live del 19-jun devolviendo MissingError en verde
++// (author_id iba como string "3"), y el correo nunca lo dijo. Este bloque
++// existe para que una escritura fallida SALGA en el correo, y para que
++// obligue a mandarlo incluso en un dia sin cambios: una escritura muerta en
++// un dia silencioso es justo donde el fallo se queda a vivir.
++// Se apoya en un hecho MEDIDO (ejecucion 93268): las tres ramas que salen de
++// 'Code - col-main' corren en SERIE -- buildLogNotes, CREATE log note,
++// buildSnapshot, PUT snapshot y al final buildEmail. Por eso aqui ya se puede
++// leer el resultado de las escrituras sin re-cablear nada.
++const wdiag = [];
++function _items(nodo){ try { return { ok:true, all:$(nodo).all() }; } catch(e){ return { ok:false, err:String(e.message).slice(0,120) }; } }
++(function guardaLogNote(){
++  const NODO='Odoo - CREATE log note';
++  const prev=_items('Code - buildLogNotes');
++  const esperadas = prev.ok ? prev.all.filter(i=>i.json && !i.json._vacio).length : null;
++  const r=_items(NODO);
++  if(!r.ok){
++    // si no habia nada que escribir, que el nodo no corra es lo correcto, no un fallo
++    if(esperadas===0) return;
++    wdiag.push({nodo:NODO, problema:'no corrio o no se pudo leer su salida', detalle:r.err, critico:true});
++    return;
++  }
++  const malas=[];
++  r.all.forEach(function(it,i){
++    const j=(it&&it.json)||{};
++    if(j.error) malas.push({i:i, motivo:String(j.error).slice(0,160)});
++    else if(j.id===undefined || j.id===null || j.id===false) malas.push({i:i, motivo:'Odoo no devolvio id'});
++  });
++  if(malas.length) wdiag.push({nodo:NODO, problema:malas.length+' de '+r.all.length+' notas al chatter NO se escribieron', casos:malas.slice(0,5), critico:true});
++})();
++(function guardaSnapshot(){
++  const NODO='HTTP - PUT snapshot (GitHub)';
++  const r=_items(NODO);
++  if(!r.ok) return;   // rama opcional: si no corrio, no se inventa un fallo
++  const malas=[];
++  r.all.forEach(function(it,i){
++    const j=(it&&it.json)||{};
++    if(j.content && j.content.sha) return;                       // creado
++    const m=String(j.message||'');
++    // 422 "already exists": es el caso NORMAL al re-correr el mismo dia (el PUT
++    // sin sha solo puede CREAR). No es un fallo y no debe gritar.
++    if(/already exists|sha/i.test(m)) return;
++    malas.push({i:i, motivo:m?m.slice(0,160):'sin commit de vuelta'});
++  });
++  if(malas.length) wdiag.push({nodo:NODO, problema:'el snapshot del dia NO se guardo', casos:malas.slice(0,3), critico:false});
++})();
+ const hoy = $('Set - hoy').first().json.hoy;
+ const today = new Date(hoy);
+ const fechaStr = hoy.slice(0,10);
+@@ -164,6 +214,8 @@
+   const items=[];
+   for(const x of (flagsDato||[])) items.push('<b>'+escN(x.r.name,50)+'</b>: '+esc(x.f.detalle));
+   for(const d of diag) items.push('<b>'+esc(d.nodo)+'</b>: '+esc(d.problema)+(d.critico?' <b style="color:#c62828">(CRITICO)</b>':''));
++  // escrituras fallidas: mismo concepto (problemas del reporte, no de los proyectos)
++  for(const d of wdiag) items.push('<b>ESCRITURA FALLIDA - '+esc(d.nodo)+'</b>: '+esc(d.problema)+(d.casos&&d.casos.length?(' &mdash; '+esc(d.casos.map(x=>x.motivo).join(' | '))):'')+(d.critico?' <b style="color:#c62828">(CRITICO)</b>':''));
+   const nCd = subset.filter(r=>r.fuente_a==='create_date').length;
+   if(nCd) items.push('<b>'+nCd+' de '+subset.length+' proyectos</b> miden "dias en stage" desde <code>create_date</code>, no desde la entrada al stage: no hay ningun <code>mail.message</code> con <code>subtype_id=94</code>. <b>El numero de arriba es la EDAD del proyecto.</b> Ver issue #220 error #1 - se corrige en S6.');
+   let h='<h3 style="color:#00695c;margin:14px 0 4px">&#128295; DATOS QUE NO CUADRAN / NO SE PUDO MEDIR ['+items.length+']</h3>';
+@@ -222,7 +274,9 @@
+   }
+   const res=RESUELTOS.filter(x=>x.grupo===grupoLabel || x.grupo===null);
+   const aC=cntA(subset);
+-  const hay = nu.length||em.length||me.length||sa.length||flg.length||flgDato.length||res.length||diagNuevo;
++  // wdiag entra en `hay` a proposito: si una ESCRITURA fallo, el correo sale aunque
++  // no haya ningun cambio en los proyectos. Sin esto, un dia quieto se traga el fallo.
++  const hay = nu.length||em.length||me.length||sa.length||flg.length||flgDato.length||res.length||diagNuevo||wdiag.length;
+   // GUARDA DE VACIO. Sin nada que decir no se manda correo... salvo el dia del DIGEST,
+   // que SIEMPRE sale con el estado completo. Asi el silencio nunca es ambiguo (un
+   // watchdog que muere en silencio es el Hallazgo #14) sin volver al correo diario que
+@@ -273,6 +327,7 @@
+   if(flgDato.length) partes.push(flgDato.length+' dato'+(flgDato.length>1?'s':'')+' por revisar');
+   if(esLunes) partes.push('estado semanal');
+   if(diag.length) partes.push('REVISAR MEDICION');
++  if(wdiag.length) partes.push('ESCRITURA FALLIDA');
+   const subj='[Semaforo '+grupoLabel+'] '+fb+' - '+(partes.length?partes.join(' '+E(183)+' '):'sin cambios');
+   const toList = Array.isArray(to) ? to : String(to).split(',').map(s=>s.trim()).filter(Boolean);
+   return { message:{ subject:subj, body:{ contentType:'HTML', content:html }, toRecipients: toList.map(a=>({ emailAddress:{ address:a } })) }, saveToSentItems:true };
