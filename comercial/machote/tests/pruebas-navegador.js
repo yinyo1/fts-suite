@@ -293,10 +293,22 @@ let ok = 0, mal = 0;
   });
 
   // ── La hoja ──────────────────────────────────────────────────────────
-  await paso('la lista carga con machotes y órdenes', async () => {
+  await paso('la lista carga con sus machotes', async () => {
+    /* Contaba SEIS `.item`: cuatro machotes de ejemplo más los dos enlaces de
+     * la sección «Confirmar la orden». Esa sección se retiró en V1.24 —listaba
+     * órdenes de ejemplo debajo de cotizaciones reales— así que el seis dejó
+     * de significar nada. Lo que sigue significando algo es que la lista traiga
+     * un renglón por machote, y eso es lo que se cuenta ahora.
+     *
+     * Se cuenta contra `D.MACHOTES` y no contra un número escrito a mano: un
+     * literal aquí volvería a quedarse viejo el día que cambie la demo. */
     await ir('#/');
-    const n = await p.locator('.item').count();
-    if (n < 6) throw new Error('pocas tarjetas: ' + n);
+    const esperados = await p.evaluate(() => window.DEMO.MACHOTES.length);
+    const n = await p.locator('.cards .fila').count();
+    if (n !== esperados) throw new Error('pinta ' + n + ' de ' + esperados + ' machotes');
+    if (await p.$('a[href^="#/orden/"]'))
+      throw new Error('sigue la sección de confirmar la orden');
+    console.log('    ' + n + ' machotes · sin sección de orden');
   });
 
   await paso('el libro abre con sus pestañas de hoja', async () => {
