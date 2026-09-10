@@ -127,6 +127,11 @@ table.hoja2 td.vl { text-align: right; white-space: nowrap; }
 .secc-tit { background: var(--cab); font-size: 11px; font-weight: 700; letter-spacing: .05em;
             padding: 9px 12px; border-top: 1px solid var(--linea);
             border-bottom: 1px solid var(--linea); margin-top: 6px; }
+/* La coletilla del título va DENTRO de la banda, así que hereda su color y sólo
+ * se atenúa. NO se usa `.nota`: ese gris está pensado para fondo claro y sobre
+ * la banda oscura queda ilegible — se vio en la captura, no en el código. */
+.secc-tit .secc-sub { font-weight: 400; letter-spacing: 0; text-transform: none;
+                      opacity: .75; }
 
 /* ── Retícula ─────────────────────────────────────────────────────────── */
 .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -137,6 +142,12 @@ table.rejilla th { background: var(--cab); color: var(--suave); font-size: 10px;
 table.rejilla td { padding: 2px 4px; border: 1px solid var(--linea2); vertical-align: middle; }
 table.rejilla tr.grupo td { background: var(--papel); font-weight: 700; font-size: 11px;
                             color: var(--suave); padding: 6px 8px; }
+/* La coletilla de un grupo NO puede heredar el `font-weight:700` del rótulo: en
+ * negritas y del mismo color se lee como parte del título. Y `.nota` tampoco
+ * sirve aquí — su gris está pensado para fondo blanco, no para la banda del
+ * grupo. Clase propia, como ya hace `.secc-tit .verVacios`. */
+table.rejilla tr.grupo td .grupo-sub { font-weight: 400; letter-spacing: 0;
+                                       text-transform: none; opacity: .8; }
 table.rejilla tr.total td { background: var(--papel); font-weight: 700; }
 table.rejilla tr.vacia td { color: #b9b9b9; }
 table.rejilla td.vl { text-align: right; white-space: nowrap; }
@@ -242,7 +253,10 @@ textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--linea);
   table.rejilla.tarjetas tr.grupo { border: 0; background: transparent; margin: 14px 10px 2px;
                                     padding: 0; }
   table.rejilla.tarjetas tr.grupo td { background: transparent; padding: 0;
-                                       font-size: 11px; letter-spacing: .06em; }
+                                       font-size: 11px; letter-spacing: .06em;
+                                       display: block; }
+  table.rejilla.tarjetas tr.grupo td::before { content: none; }
+  table.rejilla.tarjetas tr.grupo td .grupo-sub { display: block; margin-top: 2px; }
   table.rejilla.tarjetas tr.total { background: var(--papel); }
   table.rejilla.tarjetas td { border: 0; border-bottom: 1px solid var(--linea2);
                               display: flex; align-items: center; gap: 10px;
@@ -434,6 +448,7 @@ table.rejilla td.acc .ico { min-width: 36px; min-height: 36px; padding: 0 6px; }
  * (borde, fondo de papel, barra de fórmula) siguen mandando encima. */
 .secc-tit { background: var(--x-banda); color: var(--x-banda-tx); }
 .secc-tit .verVacios { color: var(--x-banda-tx); opacity: .9; }
+.secc-tit .secc-sub { color: var(--x-banda-tx); opacity: .9; }
 table.rejilla th { background: var(--x-cab); color: var(--x-cab-tx); }
 table.rejilla tr.grupo td { background: var(--x-grupo); color: var(--x-cab-tx); }
 table.rejilla tr.total td { background: var(--x-total); border-top: 2px solid var(--x-total-bd); }

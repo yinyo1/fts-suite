@@ -30,6 +30,13 @@ const BASE = 'file://' + path.resolve(__dirname, '..', 'index.html');
  *  Se engancha ANTES que cualquier otro `addInitScript` de la página, así que
  *  los montajes que envuelven `fetch` después reciben éste como el original y
  *  la cadena funciona sola. */
+/* El catálogo va ANTES de quien lo usa. Funcionaba al revés porque el valor
+ * sólo se lee al llamar a `sembrarGeo`, pero un `const` citado más arriba de su
+ * línea es justo la trampa de CLAUDE.md §20 #12: el día que alguien lo lea en
+ * la definición, revienta la función entera y no se ve en el diff. */
+const GEO_JSON = JSON.parse(require('fs').readFileSync(
+  path.resolve(__dirname, '..', '..', '..', 'shared', 'comercial', 'geo.json'), 'utf8'));
+
 const sembrarGeo = (pg) => pg.addInitScript((g) => {
   window.__GEO = g;
   const orig = window.fetch;
@@ -40,9 +47,6 @@ const sembrarGeo = (pg) => pg.addInitScript((g) => {
     return orig.apply(this, arguments);
   };
 }, GEO_JSON);
-
-const GEO_JSON = JSON.parse(require('fs').readFileSync(
-  path.resolve(__dirname, '..', '..', '..', 'shared', 'comercial', 'geo.json'), 'utf8'));
 
 /* El navegador con el que se corre.
  *
@@ -4639,6 +4643,81 @@ await sembrarGeo(q);
     if (!/consultado/.test(t)) throw new Error('no quedó la fecha: ' + t);
     if (!/hoy/.test(t)) throw new Error('no dice que es de hoy: ' + t);
     console.log('    «' + t.trim() + '» — una cotización se manda semanas antes de volar');
+  });
+
+  await paso('V1.26 · «¿está todo lo mío en el servidor?» contesta CON HORA', async () => {
+    /* El renglón de la tarea D no tenía ninguna prueba, y mirándolo apareció un
+     * defecto de los que no se ven en el diff: `toLocaleTimeString('es-MX')`
+     * devuelve «6:06 p.m.» —con punto— así que la frase terminaba en «p.m..».
+     * Es el MISMO bug que ya se había arreglado en la franja de préstamo. */
+    const q = await paginaConServidor([
+      { id: '7000c433-0000-4000-8000-0000000c0mp1', id_local: 'M-MIO-COMP',
+        nombre: 'Rack de tuberías · planta 2', folio: 41, folio_txt: 'COT-0041',
+        dueno: 'esteban.delacruz', dueno_nombre: 'Jesus Esteban De La Cruz' }
+    ]);
+    try {
+      await q.waitForTimeout(1600);
+      const t = (await q.$eval('.comprob', e => e.className + '||' + e.textContent)
+                        .catch(() => null));
+      if (!t) throw new Error('tras bajar del servidor no se pinta la comprobación');
+      const [clase, texto] = t.split('||');
+      const limpio = texto.replace(/\s+/g, ' ').trim();
+
+      if (clase.indexOf('bien') < 0)
+        throw new Error('lo bajado del servidor no se cuenta como estando allá: ' + limpio);
+      // CON HORA: una comprobación sin fecha es una promesa sin plazo.
+      if (!/\d{1,2}:\d{2}/.test(limpio))
+        throw new Error('contesta sin hora: ' + limpio);
+      if (/\.\./.test(limpio))
+        throw new Error('el punto sale duplicado («p.m..»): ' + limpio);
+      console.log('    «' + limpio + '»');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.26 · sin bajada NO dice «todo bien» ni «falta algo»: dice que no sabe', async () => {
+    /* Los tres estados son distintos a propósito (§20 #12b): no haber podido
+     * preguntar no es una respuesta buena ni mala, y confundirlo con
+     * cualquiera de las dos es exactamente el modo de falla que perseguimos. */
+    const q = await b.newPage({ viewport: { width: 380, height: 780 } });
+    await sembrarGeo(q);
+    await q.addInitScript(() => {
+      try {
+        localStorage.setItem('fts_suite_session', JSON.stringify({
+          token: 'prueba.prueba.prueba', actor: 'esteban.delacruz',
+          nombre: 'Jesus Esteban De La Cruz', empleado_id: 32,
+          scopes: ['comercial:read'],
+          exp: Math.floor(Date.now() / 1000) + 3600, debe_cambiar_password: false }));
+        localStorage.removeItem('fts_machote_sync_v1');
+        // Un machote PROPIO: los de ejemplo no cuentan, no son de nadie.
+        localStorage.setItem('fts_machote_v1', JSON.stringify({ machotes: [
+          { id: 'M-1757500000000', nombre: 'Rack de tuberías · planta 2',
+            cliente: 'Nalco de México', dueno: 'esteban.delacruz',
+            dueno_nombre: 'Jesus Esteban De La Cruz', estado: 'borrador',
+            moneda: 'MXN', tc: 18.4, secciones: [] }
+        ] }));
+      } catch (e) {}
+      const orig = window.fetch;
+      window.fetch = function (u) {
+        // El servidor NO contesta: es el caso de «todavía no se sabe».
+        if (String(u).indexOf('/webhook/comercial/') >= 0) return new Promise(function () {});
+        return orig.apply(this, arguments);
+      };
+    });
+    try {
+      await q.goto(BASE); await q.waitForTimeout(1600);
+      const t = await q.$eval('.comprob', e => e.className + '||' + e.textContent)
+                       .catch(() => null);
+      if (!t) throw new Error('sin bajada no dice nada de lo propio');
+      const [clase, texto] = t.split('||');
+      const limpio = texto.replace(/\s+/g, ' ').trim();
+      if (clase.indexOf('no-sabe') < 0)
+        throw new Error('sin bajada contesta como si supiera: ' + clase + ' · ' + limpio);
+      if (/todas? est/i.test(limpio) || /\bde \d/.test(limpio))
+        throw new Error('afirma un conteo que no pudo comprobar: ' + limpio);
+      if (!/guardado en este navegador/i.test(limpio))
+        throw new Error('no dice dónde quedó lo capturado: ' + limpio);
+      console.log('    «' + limpio + '»');
+    } finally { await q.close(); }
   });
 
   await paso('sin errores de consola propios del prototipo', async () => {

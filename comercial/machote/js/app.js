@@ -1224,14 +1224,23 @@
          * es no saber, y decirlo así es la única respuesta honesta. */
         linea = '<div class="comprob no-sabe">Todavía no se ha podido comprobar con el ' +
           'servidor qué hay de lo tuyo. Lo capturado sigue guardado en este navegador.</div>';
-      } else if (comp.faltan === 0) {
-        linea = '<div class="comprob bien">Tus <strong>' + comp.total + '</strong> ' +
-          (comp.total === 1 ? 'cotización estaba' : 'cotizaciones estaban') +
-          ' en el servidor <strong>' + esc(reloj(comp.comprobado_at)) + '</strong>.</div>';
       } else {
-        linea = '<div class="comprob falta"><strong>' + comp.en_servidor + ' de ' + comp.total +
-          '</strong> cotizaciones tuyas estaban en el servidor ' +
-          esc(reloj(comp.comprobado_at)) + '.</div>';
+        /* Un punto al final, pero SIN duplicarlo: `toLocaleTimeString('es-MX')`
+         * ya devuelve «6:06 p.m.» con punto, así que concatenar otro daba
+         * «p.m..». Es el MISMO bug que ya se arregló en la franja de préstamo
+         * (`prestamo.js` · `punto()`), reaparecido en una superficie nueva —y
+         * otra vez sólo se vio en la captura, no en el diff. */
+        const rel = esc(reloj(comp.comprobado_at));
+        const fin = /[.!?…]$/.test(rel) ? '' : '.';
+        linea = comp.faltan === 0
+          ? '<div class="comprob bien">' +
+            // «Tus 1 cotización» no lo dice nadie. En singular cambia el artículo.
+            (comp.total === 1
+              ? 'Tu cotización estaba'
+              : 'Tus <strong>' + comp.total + '</strong> cotizaciones estaban') +
+            ' en el servidor <strong>' + rel + '</strong>' + fin + '</div>'
+          : '<div class="comprob falta"><strong>' + comp.en_servidor + ' de ' + comp.total +
+            '</strong> cotizaciones tuyas estaban en el servidor ' + rel + fin + '</div>';
       }
     }
 
@@ -1359,7 +1368,7 @@
       chips +
       '<table class="hoja2"><tbody>' +
       '<tr><td class="et">País</td><td>' + selPais + '</td></tr>' +
-      '<tr><td class="et">Estado</td><td>' + selEstado +
+      '<tr><td class="et">Estado / Provincia</td><td>' + selEstado +
         (cod && !conEstados
           ? '<div class="tiny nota">Sin catálogo de estados para ' + esc(paisNom(cod)) +
             '. Escríbelo como venga.</div>'
@@ -1642,7 +1651,7 @@
                  /* El grupo de viaje se explica solo: quien nunca ha cotizado
                   * fuera no sabe que existe ni para qué. */
                  (g.id === 'viaje'
-                   ? '<span class="tiny nota"> · los días de vuelo y las horas de fin de ' +
+                   ? '<span class="grupo-sub"> · los días de vuelo y las horas de fin de ' +
                      'semana. Se pagan distinto, pero salen de la misma cuenta.</span>'
                    : '') + '</td></tr>';
       roles.forEach(rol => {
@@ -1710,7 +1719,7 @@
     const bloqueViaje = c.lugar.foraneo
       ? '<div class="viaje-blk' + (c.renglonesViaje === 0 && !c.viaje.no_aplica ? ' falta' : '') + '">' +
           '<div class="secc-tit">VIAJE' +
-            '<span class="tiny nota"> · se cobra a costo, sin utilidad</span></div>' +
+            '<span class="secc-sub"> · se cobra a costo, sin utilidad</span></div>' +
           (c.renglonesViaje === 0 && !c.viaje.no_aplica
             ? '<div class="aviso bad">Esta cotización se ejecuta en ' +
               esc([m.ciudad, paisNom(m.pais)].filter(Boolean).join(', ')) +
