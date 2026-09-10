@@ -388,8 +388,10 @@ son 4». La pantalla lo dice con esas palabras.
 
 **El defecto.** Esteban rotó `SUITE_JWT_SECRET`. A partir de ahí el navegador siguió
 mandando el token viejo —que vive en `localStorage` y **no se borra con Ctrl+Shift+R**—, el
-servidor lo rechazó con `FIRMA_INVALIDA`, y la franja dijo **«No se pudo confirmar con el
-servidor»**.
+servidor lo rechazó con `FIRMA_INVALIDA`, y la franja de entonces dijo **«No se pudo
+confirmar con el servidor»**. (La franja se retiró en V1.24 — ver
+`docs/comercial/ANDAMIO.md`; la clasificación sesión/red/servidor que salió de este
+incidente se quedó, y vive en `js/sesion.js`.)
 
 Ese mensaje era falso y además el peor de los tres posibles: «no se pudo confirmar» invita
 a esperar y reintentar, cuando lo que hacía falta era volver a entrar — y reintentar con un
@@ -430,9 +432,10 @@ y subieron como si fueran captura.
 - **La marca va en ORIGEN**: `_demo: true` en los cuatro de `demo.js`.
 - **El filtro va en `empujar()`** de `almacen.js` —el único sitio por donde sube todo—, más
   un segundo candado en `empujarUno()` por si alguien lo llama directo.
-- **La franja las descuenta antes de contar.** Si las contara diría «4 por subir» para
-  siempre y «Subir ahora» nunca podría bajar el número: un pendiente que no se puede
-  resolver es peor que no avisar.
+- **Se descuentan antes de contar**, tanto en `estadoServidor()` como en `pendientes()`.
+  Si entraran, el aviso de la lista diría «4 sin subir» para siempre y nada podría bajar el
+  número —los ejemplos no se suben—: un pendiente que no se puede resolver es peor que no
+  avisar.
 - Se conserva al editar: capturar encima de una demo la deja siendo demo. Para que deje de
   serlo hay que crear un machote nuevo — así nadie convierte por accidente un ejemplo en la
   cotización de un cliente.
@@ -448,3 +451,29 @@ alguien tecleando.
 borrados son los cuatro demos, todos de `esteban.delacruz`. **Los dos de
 `ricardo.hernandez` no se tocaron**, ni el «Suministro de Pantalla HMI» ni el «Machote de
 prueba Lifter robert» de Esteban — ésos son captura real y en la duda no se borra.
+
+---
+
+## `005` — no existe todavía
+
+La migración que haría falta para el **permiso temporal de escritura** está
+propuesta, no escrita: ver `docs/comercial/PERMISO_TEMPORAL.md` §3. Se
+construye cuando Esteban corrija esa propuesta.
+
+## Cambios de V1.24 sin migración
+
+Ninguno de estos tocó el esquema:
+
+- **La lectura se abrió a todo el módulo.** `comercial/machotes-leer` dejó de
+  filtrar por `dueno` y de mirar `comercial:admin`: cualquiera con
+  `comercial:read` recibe los machotes de todos. El `actor` sigue saliendo del
+  token y es lo único que marca qué filas son ajenas.
+- **La traducción `id de pantalla -> uuid` acepta las dos formas.**
+  `idServidor()` reconoce un uuid y lo devuelve tal cual, en vez de buscarlo
+  siempre en la libreta de sincronización —que está indexada por `id_local` y
+  sólo guarda lo propio—. Era la causa de que el historial de un machote ajeno
+  contestara que no había subido.
+- **La autoría ya estaba separada de la propiedad** y sigue igual:
+  `machote.dueno` es de quién es, `machote_version.autor` es quién escribió esa
+  versión, y el segundo sale del token. Vale la pena saberlo porque es la mitad
+  del permiso temporal, ya construida.

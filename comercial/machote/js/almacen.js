@@ -192,19 +192,29 @@
 
   function huellaCanonica(obj) { return huella(canonico(obj)); }
 
-  /** Cuántos machotes están escritos aquí pero todavía no en el servidor.
+  /** ¿ESTE machote está escrito aquí pero todavía no en el servidor?
+   *
    *  Los ejemplos NO cuentan: nunca se van a subir (`empujarUno` los rechaza),
    *  así que contarlos dejaría el pulso en «sin guardar» para siempre. Lo
-   *  AJENO tampoco: no es de quien mira y no le toca a él guardarlo. */
+   *  AJENO tampoco: no es de quien mira y no le toca a él guardarlo.
+   *
+   *  Está separado de `pendientes()` porque desde V1.24 la lista no sólo dice
+   *  CUÁNTOS faltan sino CUÁLES —hay que poder marcarlos—, y tener dos
+   *  criterios de «pendiente» en dos sitios es la forma segura de que el
+   *  aviso diga «1 sin subir» y no logre señalar ninguno. */
+  function pendienteUno(m) {
+    if (!m || !m.id) return false;
+    if (esDemo(m) || esAjeno(m)) return false;
+    var meta = leerSync()[m.id];
+    return !meta || meta.huella !== huella(m);
+  }
+
+  /** Cuántos machotes están escritos aquí pero todavía no en el servidor. */
   function pendientes(machotes) {
     var lista = machotes || ((leerLocal() || {}).machotes) || [];
-    var s = leerSync(), n = 0;
+    var n = 0;
     for (var i = 0; i < lista.length; i++) {
-      var m = lista[i];
-      if (!m || !m.id) continue;
-      if (esDemo(m) || esAjeno(m)) continue;
-      var meta = s[m.id];
-      if (!meta || meta.huella !== huella(m)) n++;
+      if (pendienteUno(lista[i])) n++;
     }
     return n;
   }
@@ -555,15 +565,21 @@
 
   /** Qué tiene el SERVIDOR de esta persona, comparado con lo que hay aquí.
    *
-   *  Ésta es la fuente de la franja de sincronización, y por eso pregunta al
-   *  servidor en vez de leer la libreta local. La diferencia importa justo en
-   *  el caso que estamos resolviendo: si alguien limpia los datos del sitio,
-   *  la libreta desaparece y diría "nada subido" cuando en realidad está todo
-   *  a salvo. El servidor no se equivoca en eso.
+   *  Pregunta al SERVIDOR en vez de leer la libreta local, y la diferencia
+   *  importa: si alguien limpia los datos del sitio, la libreta desaparece y
+   *  diría "nada subido" cuando en realidad está todo a salvo. El servidor no
+   *  se equivoca en eso.
+   *
+   *  Ésta era la fuente de la franja de sincronización. Con la franja retirada
+   *  (V1.24) sus lectores son la vista de CONTROL y las pruebas del bloque
+   *  «estado contra el servidor». Sigue siendo la ÚNICA manera de contestar
+   *  «¿está TODO lo mío allá?»: el aviso de pendientes de la lista compara
+   *  contra la libreta, así que puede probar que algo NO ha salido de aquí,
+   *  nunca que todo llegó.
    *
    *  Resuelve SIEMPRE. Sin red devuelve `ok:false` con lo que se sabe de aquí,
-   *  para que la franja pueda decir "no se pudo confirmar" en vez de mentir en
-   *  cualquiera de las dos direcciones. */
+   *  para poder decir "no se pudo confirmar" en vez de mentir en cualquiera de
+   *  las dos direcciones. */
   function estadoServidor(machotes) {
     /* La demo se descuenta ANTES de contar. Si entrara, la franja diría «4 por
      * subir» eternamente y «Subir ahora» nunca podría bajar el número — un
@@ -634,12 +650,16 @@
          * comprobar: las dos huellas son del MISMO documento calculadas por
          * separado —una sobre lo de aquí, otra sobre lo que devolvió el
          * servidor—, así que si coinciden son idénticos carácter por carácter.
-         * De poder enseñar esto depende quitar la franja en la versión que
-         * viene. */
+         * Poder enseñar esto era la condición para retirar la franja, y se
+         * retiró en V1.24. */
         detalle: detalle,
         leido_at: new Date().toISOString() };
     });
   }
+
+  /* La forma de un uuid. Sirve para saber si un id de pantalla YA es el del
+   * servidor, sin preguntarle a nadie. */
+  var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
   /** El id que el SERVIDOR le puso a este machote, o null si nunca ha subido.
    *
@@ -647,9 +667,22 @@
    *  dos maneras: aquí es `id_local` ('M-1757…', único por navegador), allá
    *  es un uuid. Todo lo que le pregunte algo del machote al servidor
    *  —historial, PDF, envío— necesita el uuid, y `null` es una respuesta
-   *  legítima que significa «todavía no llega allá», no un error. */
-  function idServidor(idLocal) {
-    var meta = leerSync()[idLocal];
+   *  legítima que significa «todavía no llega allá», no un error.
+   *
+   *  ⚠️ Recibe el id DE PANTALLA, que no siempre es un `id_local`: un machote
+   *  AJENO se nombra aquí con el uuid del servidor a propósito —dos personas
+   *  pueden tener el mismo `M-1041` y con el id_local se abrirían una a la
+   *  otra—, y además no tiene renglón en la libreta de sincronización, porque
+   *  esa libreta es de lo que YO subo. Buscarlo ahí no fallaba con un error:
+   *  devolvía null, y quien preguntaba lo leía como «no ha subido». Así fue
+   *  como el historial de una cotización con nueve versiones en el servidor
+   *  contestaba que todavía no llegaba allá (V1.24, #140). Por eso la
+   *  traducción vive AQUÍ y no en cada llamador: el PDF y el envío hacían la
+   *  misma pregunta y les pasaba lo mismo. */
+  function idServidor(id) {
+    if (!id) return null;
+    if (UUID.test(id)) return id;
+    var meta = leerSync()[id];
     return (meta && meta.machote_id) ? meta.machote_id : null;
   }
 
@@ -667,20 +700,46 @@
   }
 
   /** El historial completo de un machote, del servidor. Para la pantalla de
-   *  versiones: la caché del navegador sólo tiene la última. */
-  function historial(idLocal) {
+   *  versiones: la caché del navegador sólo tiene la última.
+   *
+   *  TRES respuestas distintas, y son tres cosas distintas:
+   *
+   *    NUNCA_SUBIDO   — no hay uuid: esta cotización no ha llegado al
+   *                     servidor. No tiene historial porque no puede tenerlo.
+   *    ok:true        — llegó y aquí están sus versiones.
+   *    NO_CONSULTABLE — SÍ llegó (tenemos su uuid) pero el servidor no
+   *                     devolvió ninguna versión. Eso no es «no ha subido»:
+   *                     es «ahora mismo no se puede ver», y se dice así.
+   *
+   *  Juntarlas fue el defecto: quien abría el reloj de un machote ajeno leía
+   *  «todavía no llega al servidor» de algo que llevaba nueve versiones allá.
+   *  Es el mismo modo de falla de la sesión muerta (CLAUDE.md §20 #12b): tres
+   *  causas con tres remedios distintos colapsadas en un solo mensaje, y el
+   *  mensaje elegido invitaba a la acción equivocada. */
+  function historial(id) {
     var ses = sesion();
     if (!ses) {
       return Promise.resolve({ ok: false, error: 'SIN_SESION',
         mensaje: 'No hay sesión: el historial vive en el servidor.' });
     }
-    var s = leerSync();
-    var meta = s[idLocal];
-    if (!meta || !meta.machote_id) {
+    var uuid = idServidor(id);
+    if (!uuid) {
       return Promise.resolve({ ok: false, error: 'NUNCA_SUBIDO',
         mensaje: 'Este machote todavía no llega al servidor, así que no tiene historial.' });
     }
-    return postear(URL_LEER, { token: ses.token, machote_id: meta.machote_id });
+    return postear(URL_LEER, { token: ses.token, machote_id: uuid }).then(function (r) {
+      /* El endpoint contesta la lista VACÍA tanto si el machote no existe
+       * como si existe y no se puede ver — a propósito, para no volverse un
+       * oráculo que confirme qué ids hay. Aquí sabemos algo que él no: que
+       * este machote SÍ subió, porque tenemos su uuid. Así que un vacío
+       * significa «no se pudo traer», nunca «no ha subido». */
+      if (r && r.ok === true && Array.isArray(r.versiones) && r.versiones.length === 0) {
+        return { ok: false, error: 'NO_CONSULTABLE', machote_id: uuid,
+          mensaje: 'Esta cotización sí está en el servidor, pero ahora mismo no se ' +
+                   'pudo traer su historial. Vuelve a intentarlo en un momento.' };
+      }
+      return r;
+    });
   }
 
   /** Guarda: navegador primero (síncrono, nunca falla por red), servidor
@@ -769,6 +828,7 @@
     esDemo: esDemo,
 
     pendientes: pendientes,
+    pendienteUno: pendienteUno,
     estadoServidor: estadoServidor,
     huellaCanonica: huellaCanonica,
     olvidar: olvidar,

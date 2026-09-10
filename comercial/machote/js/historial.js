@@ -161,13 +161,26 @@
       if (!r || r.ok !== true) {
         /* Que no haya historial NO es un error de la pantalla y se dice sin
          * alarmar: lo normal es que un machote recién capturado, o capturado
-         * sin red, todavía no haya llegado al servidor. */
-        var suave = r && (r.error === 'NUNCA_SUBIDO' || r.error === 'SIN_RED' || r.error === 'SIN_SESION');
+         * sin red, todavía no haya llegado al servidor.
+         *
+         * Los casos se dicen SEPARADOS porque llevan a acciones distintas:
+         * «no ha subido» se arregla subiéndolo, «no se pudo traer» se arregla
+         * reintentando, y la sesión se arregla volviendo a entrar. Antes los
+         * tres decían lo mismo y el mensaje mandaba a subir algo que ya
+         * estaba subido (#140, V1.24). */
+        var err = (r && r.error) || '';
+        var suave = err === 'NUNCA_SUBIDO' || err === 'NO_CONSULTABLE' ||
+                    err === 'SIN_RED' || err === 'SIN_SESION';
+        var cola = '';
+        if (err === 'NUNCA_SUBIDO') {
+          cola = ' <span class="tiny">En cuanto suba, cada guardado deja aquí su versión.</span>';
+        } else if (err === 'NO_CONSULTABLE') {
+          cola = ' <span class="tiny">Sus versiones no se han perdido: siguen en el servidor.</span>';
+        } else if (err === 'SIN_RED') {
+          cola = ' <span class="tiny">Lo capturado sigue a salvo en este navegador.</span>';
+        }
         carga.innerHTML = '<div class="aviso ' + (suave ? '' : 'bad') + '">' +
-          esc((r && r.mensaje) || 'No se pudo leer el historial.') +
-          (r && r.error === 'NUNCA_SUBIDO'
-            ? ' <span class="tiny">En cuanto suba, cada guardado deja aquí su versión.</span>' : '') +
-          '</div>';
+          esc((r && r.mensaje) || 'No se pudo leer el historial.') + cola + '</div>';
         return;
       }
 

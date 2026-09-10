@@ -2261,25 +2261,32 @@ let ok = 0, mal = 0;
     console.log('    rechaza y explica, sin tocar nada');
   });
 
-  await paso('los dos botones de respaldo están y se alcanzan', async () => {
+  await paso('el respaldo se queda al pie; importar ya no está', async () => {
+    /* V1.24. Importar se retiró: existía para meter a mano lo que vivía suelto
+     * en el navegador de cada quien mientras no había servidor, y con los
+     * machotes ya en Postgres su único efecto posible era crear duplicados.
+     * Exportar se queda porque es la única salida cuando el guardado se rompe
+     * —`avisarNoGuarda()` lo ofrece ahí mismo— pero baja de botón a enlace.
+     *
+     * Se comprueba que NO quedó el input de archivo, no sólo que no se vea:
+     * un `<input type=file>` escondido sigue siendo alcanzable. */
     await ir('#/');
     const r = await p.evaluate(() => {
       const b = document.querySelector('#bExportar');
-      const f = document.querySelector('#fImportar');
-      const lab = f && f.closest('label');
       const rb = b && b.getBoundingClientRect();
-      const rl = lab && lab.getBoundingClientRect();
-      return { hayB: !!b, hayF: !!f, txt: b && b.textContent,
-               altoB: rb && Math.round(rb.height), altoL: rl && Math.round(rl.height),
-               acepta: f && f.getAttribute('accept') };
+      return { hayB: !!b, txt: b && b.textContent,
+               altoB: rb && Math.round(rb.height),
+               hayImport: !!document.querySelector('#fImportar'),
+               hayInputArchivo: document.querySelectorAll('input[type=file]').length };
     });
-    if (!r.hayB || !r.hayF) throw new Error('faltan los controles');
-    if (!/Exportar todo \(\d+\)/.test(r.txt || '')) throw new Error('el botón dice: ' + r.txt);
-    if (r.altoB < 44 || r.altoL < 44)
-      throw new Error('no se alcanzan con el pulgar: ' + r.altoB + ' / ' + r.altoL + ' px');
-    if (!/json/.test(r.acepta || '')) throw new Error('el input no filtra .json');
-    console.log('    ' + r.txt + ' · ' + r.altoB + ' y ' + r.altoL + ' px de alto');
+    if (!r.hayB) throw new Error('se llevó también el respaldo');
+    if (r.hayImport || r.hayInputArchivo)
+      throw new Error('sigue habiendo por dónde importar: ' + JSON.stringify(r));
+    if (!/respaldo de lo mío \(\d+\)/.test(r.txt || '')) throw new Error('dice: ' + r.txt);
+    if (r.altoB < 44) throw new Error('no se alcanza con el pulgar: ' + r.altoB + ' px');
+    console.log('    "' + (r.txt || '').trim() + '" · ' + r.altoB + ' px · 0 entradas de archivo');
   });
+
 
   await paso('cuando el guardado falla, el aviso tapa y no se puede ignorar', async () => {
     /* El pulso dice la verdad pero se puede no ver. Esto no. */
@@ -2609,7 +2616,19 @@ let ok = 0, mal = 0;
     await p.evaluate(() => window.MachoteHistorial.cerrar());
   });
 
-  /* ── La franja de sincronización (#140 · A) ────────────────────────────
+  /* ── El estado contra el servidor (#140 · A) ──────────────────────────
+   *
+   * V1.24: la FRANJA se retiró (era andamio del rescate y así estaba
+   * documentada). Estas pruebas eran ocho y probaban la franja; quedan
+   * tres, y prueban lo que la franja probaba y sigue siendo verdad: la
+   * COMPARACIÓN contra el servidor. El sujeto cambió de `#franjaSync` a
+   * `A.estadoServidor()`, que es donde vivía la lógica todo el tiempo.
+   *
+   * Las cinco que se fueron probaban botones que ya no existen («Subir
+   * ahora», «Comprobar») o el texto de la propia franja. La que decía que
+   * sin poder preguntar al servidor lo DICE se fue de aquí porque quien
+   * clasifica sesión/red/servidor es `sesion.js`, y eso tiene sus pruebas
+   * en su bloque: la franja sólo pintaba el resultado.
    *
    * Estas pruebas NO usan un servidor inventado: usan la RESPUESTA LITERAL
    * que el webhook `comercial/machotes-leer` devolvió contra la base real
@@ -2676,143 +2695,59 @@ let ok = 0, mal = 0;
   const FR_IGUAL = { id: 'M-PRUEBA-140-H', nombre: 'Cotizacion historial v2' };
   const FR_VOLTEADO = { nombre: 'Cotizacion historial v2', id: 'M-PRUEBA-140-H' };
 
-  await paso('franja: "a salvo" cuando lo local coincide con el servidor real', async () => {
+  await paso('estado: "a salvo" cuando lo local coincide con el servidor real', async () => {
     const q = await frPagina([FR_IGUAL]);
     try {
-      const t = (await q.textContent('#franjaSync')).trim();
-      if (!/1 de 1 tuya a salvo/.test(t)) throw new Error('dice: ' + t);
-      const cls = await q.getAttribute('#franjaSync', 'class');
-      if (!/f-ok/.test(cls)) throw new Error('no está en tono discreto: ' + cls);
-      console.log('    "' + t + '" · ' + cls);
+      const r = await q.evaluate(() => window.MachoteAlmacen.estadoServidor());
+      const e = await r;
+      if (!e || e.ok !== true) throw new Error('no pudo preguntar: ' + JSON.stringify(e));
+      if (e.pendientes !== 0) throw new Error('lo dio por pendiente: ' + JSON.stringify(e));
+      if (e.subidos !== 1 || e.total !== 1) throw new Error('cuenta mal: ' + JSON.stringify(e));
+      console.log('    ' + e.subidos + ' de ' + e.total + ' a salvo · 0 pendientes');
     } finally { await q.close(); }
   });
 
-  await paso('franja: el orden de las llaves NO cuenta como cambio (la trampa de jsonb)', async () => {
+  await paso('estado: el orden de las llaves NO cuenta como cambio (la trampa de jsonb)', async () => {
+    /* La razón de que estas pruebas usen la respuesta LITERAL del webhook
+     * contra la base y no un servidor inventado a mano: Postgres guarda
+     * `jsonb` sin conservar el orden de las llaves, así que el documento
+     * vuelve reordenado y una comparación ingenua lo daría por cambiado para
+     * siempre — la franja habría dicho «por subir» de todo, para siempre, y
+     * hoy lo diría el aviso de pendientes. */
     const q = await frPagina([FR_VOLTEADO]);
     try {
-      const t = (await q.textContent('#franjaSync')).trim();
-      if (!/1 de 1 tuya a salvo/.test(t)) throw new Error('lo dio por pendiente sólo por el orden: ' + t);
-      console.log('    con las llaves al revés sigue diciendo: "' + t + '"');
+      const e = await q.evaluate(() => window.MachoteAlmacen.estadoServidor());
+      if (!e || e.ok !== true) throw new Error('no pudo preguntar: ' + JSON.stringify(e));
+      if (e.pendientes !== 0)
+        throw new Error('lo dio por pendiente sólo por el orden de las llaves: ' + JSON.stringify(e));
+      console.log('    con las llaves al revés sigue a salvo');
     } finally { await q.close(); }
   });
 
-  await paso('franja: uno que el servidor NO tiene sale como por subir', async () => {
+  await paso('lo que NO subió se avisa, se cuenta y se puede señalar', async () => {
+    /* Esto es lo que reemplaza a la franja, y la diferencia está probada
+     * abajo: con todo a salvo NO hay aviso —el silencio es la respuesta—, y
+     * con algo atorado el aviso aparece, dice cuántas, y «Cuáles son» las
+     * marca DENTRO de la lista, sin cambiar de vista. */
+    const limpia = await frPagina([FR_IGUAL]);
+    try {
+      if (await limpia.$('#avPend'))
+        throw new Error('avisa de pendientes cuando no hay ninguno');
+      console.log('    con todo a salvo: sin aviso (el silencio es la respuesta)');
+    } finally { await limpia.close(); }
+
     const q = await frPagina([FR_IGUAL, { id: 'M-SOLO-AQUI', nombre: 'Nunca subió' }], false);
     try {
-      const t = (await q.textContent('#franjaSync')).trim();
-      if (!/1 por subir/.test(t) || !/1 de 2 tuyas a salvo/.test(t)) throw new Error('dice: ' + t);
-      const cls = await q.getAttribute('#franjaSync', 'class');
-      if (!/f-pend/.test(cls)) throw new Error('no se nota: ' + cls);
-      console.log('    "' + t + '" · ' + cls);
-    } finally { await q.close(); }
-  });
-
-  await paso('franja: editar lo ya subido vuelve a ponerlo por subir', async () => {
-    const q = await frPagina([{ id: 'M-PRUEBA-140-H', nombre: 'Cotizacion historial v2 EDITADA' }], false);
-    try {
-      const t = (await q.textContent('#franjaSync')).trim();
-      if (!/0 de 1 subidos/.test(t)) throw new Error('dice: ' + t);
-      console.log('    "' + t + '"');
-    } finally { await q.close(); }
-  });
-
-  await paso('franja: "Cuáles faltan" marca DENTRO de la lista, sin cambiar de vista', async () => {
-    const q = await frPagina([FR_IGUAL, { id: 'M-SOLO-AQUI', nombre: 'Nunca subió' }], false);
-    try {
-      const urlAntes = q.url();
-      /* Desde V1.21 la marca YA ESTÁ al cargar: no hay que apretar nada.
-       * Antes había que pedirla, y eso es pedirle a alguien que pregunte por
-       * un problema que ya existe. El botón pasó a servir para QUITARLA. */
-      const marcadas = await q.$$eval('.fila.solo-aqui', els => els.map(e => e.getAttribute('data-mid')));
-      if (JSON.stringify(marcadas) !== JSON.stringify(['M-SOLO-AQUI']))
-        throw new Error('no marcó sola al cargar, marcó: ' + JSON.stringify(marcadas));
-      if (!/Quitar/.test(await q.textContent('#fjMarcar')))
-        throw new Error('el botón no ofrece quitar la marca');
-
-      // Y se puede quitar, y volver a poner, sin salir de la lista.
-      await q.click('#fjMarcar'); await q.waitForTimeout(200);
-      if ((await q.$$('.fila.solo-aqui')).length) throw new Error('no quitó la marca');
-      await q.click('#fjMarcar'); await q.waitForTimeout(200);
-      const otraVez = await q.$$eval('.fila.solo-aqui', els => els.map(e => e.getAttribute('data-mid')));
-      if (JSON.stringify(otraVez) !== JSON.stringify(['M-SOLO-AQUI']))
-        throw new Error('no volvió a marcar: ' + JSON.stringify(otraVez));
-      if (q.url() !== urlAntes) throw new Error('cambió de vista');
-      console.log('    marcó ' + JSON.stringify(marcadas) + ' sola, y se quita y se repone');
-    } finally { await q.close(); }
-  });
-
-  await paso('franja: "Subir ahora" rescata al rezagado que el arranque no pudo subir', async () => {
-    /* El botón es para cuando el rescate automático del arranque NO alcanzó
-     * —servidor caído en ese momento—. Así que el servidor rechaza mientras
-     * carga y se cura justo antes de apretar. */
-    const q = await frPagina([FR_IGUAL, { id: 'M-REZAGADO', nombre: 'No pudo subir al arrancar' }], false);
-    try {
-      const antes = await q.evaluate(() => window.__guard.length);
-      if (antes) throw new Error('subió con el servidor caído: ' + antes);
-      const t1 = (await q.textContent('#franjaSync')).trim();
-      if (!/1 por subir/.test(t1)) throw new Error('la franja no lo ve pendiente: ' + t1);
-
-      await q.evaluate(() => { window.__permitir = true; });
-      await q.click('#fjSubir'); await q.waitForTimeout(2000);
-
-      const ids = await q.evaluate(() => window.__guard.map(x => x.id_local));
-      if (ids.indexOf('M-REZAGADO') < 0) throw new Error('no rescató al rezagado: ' + JSON.stringify(ids));
-      if (new Set(ids).size !== ids.length) throw new Error('lo subió dos veces: ' + JSON.stringify(ids));
-      console.log('    con el servidor caído: 0 subidas · tras el botón subió ' + JSON.stringify(ids));
-    } finally { await q.close(); }
-  });
-
-  await paso('franja: subir dos veces NO duplica — el servidor reconcilia por id_local', async () => {
-    const q = await frPagina([{ id: 'M-DOBLE', nombre: 'Se sube dos veces' }]);
-    try {
-      // El arranque ya lo subió una vez. Se aprieta el botón dos veces más.
-      const b1 = await q.$('#fjSubir'); if (b1) { await b1.click(); await q.waitForTimeout(900); }
-      const b2 = await q.$('#fjSubir'); if (b2) { await b2.click(); await q.waitForTimeout(900); }
-      const ids = await q.evaluate(() => window.__guard.map(x => x.id_local));
-      const veces = ids.filter(x => x === 'M-DOBLE').length;
-      if (veces !== 1) throw new Error('mandó M-DOBLE ' + veces + ' veces (debía ser 1)');
-      console.log('    un solo envío de M-DOBLE aunque se apretó de más · ' + JSON.stringify(ids));
-    } finally { await q.close(); }
-  });
-
-  await paso('franja: sin poder preguntar al servidor lo DICE, no lo inventa', async () => {
-    /* El modo de fallo que esto cierra: una franja que ante un servidor mudo
-     * asuma "todo bien". Diría "a salvo" justo el día que no lo está. */
-    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
-    await q.addInitScript(() => {
-      try {
-        localStorage.setItem('fts_suite_session', JSON.stringify({
-          token: 'prueba.prueba.prueba', actor: 'zz.prueba.140', nombre: 'ZZ',
-          empleado_id: null, scopes: ['comercial:read'],
-          exp: Math.floor(Date.now() / 1000) + 3600, debe_cambiar_password: false }));
-        localStorage.setItem('fts_machote_v1', JSON.stringify({
-          v: 1, guardado_at: new Date().toISOString(), handoff: {},
-          machotes: [{ id: 'M-X', nombre: 'algo' }] }));
-      } catch (e) {}
-      const o = window.fetch;
-      window.fetch = function (u) {
-        if (String(u).indexOf('/comercial/') >= 0) return Promise.reject(new Error('sin red'));
-        return o.apply(this, arguments);
-      };
-    });
-    try {
-      await q.goto(BASE); await q.waitForTimeout(1600);
-      const t = (await q.textContent('#franjaSync')).trim();
-      const cls = await q.getAttribute('#franjaSync', 'class');
-      if (/a salvo en el servidor/.test(t))
-        throw new Error('afirmó que está a salvo sin poder preguntar: ' + t);
-      /* El texto cambió en V1.21 y el cambio es el punto: «No se pudo confirmar
-       * con el servidor» era la frase que juntaba los tres mundos —sesión, red
-       * y error del servidor— y por omisión elegía el peor de los tres. Aquí el
-       * `fetch` se rechaza, o sea NO hay respuesta, así que tiene que decir que
-       * no hay conexión y que lo capturado sigue aquí. */
-      if (!/[Ss]in conexión con el servidor/.test(t)) throw new Error('dice: ' + t);
-      if (!/sigue|siguen/.test(t))
-        throw new Error('no dice que lo capturado sigue en el navegador: ' + t);
-      if (/sesión expiró|[Vv]uelve a entrar/.test(t))
-        throw new Error('confundió falta de red con sesión muerta: ' + t);
-      if (!/f-duda/.test(cls)) throw new Error('tono: ' + cls);
-      console.log('    "' + t.replace(/Cuáles.*/, '') + '"');
+      const t = (await q.textContent('#avPend') || '').replace(/\s+/g, ' ').trim();
+      if (!/1 cotización tuya no ha subido/.test(t)) throw new Error('dice: ' + t);
+      await q.click('#bVerPend');
+      await q.waitForTimeout(300);
+      const marcados = await q.$$eval('[data-mid].marcado',
+        f => f.map(x => x.getAttribute('data-mid')));
+      const unicos = marcados.filter((x, i, a) => a.indexOf(x) === i);
+      if (unicos.length !== 1 || unicos[0] !== 'M-SOLO-AQUI')
+        throw new Error('marcó: ' + JSON.stringify(unicos));
+      console.log('    "' + t.replace(/ Siguen.*/, '') + '" · señala a ' + unicos[0]);
     } finally { await q.close(); }
   });
 
@@ -3256,20 +3191,23 @@ let ok = 0, mal = 0;
     }
   });
 
-  await paso('la demo no se cuenta como pendiente en la franja', async () => {
-    /* Si se contara, la franja diría «4 por subir» para siempre y «Subir
-     * ahora» nunca podría bajar el número: un pendiente que no se puede
-     * resolver es peor que no avisar. */
+  await paso('la demo no se cuenta como pendiente', async () => {
+    /* Si se contara, el aviso diría «4 sin subir» para siempre y nada podría
+     * bajar el número —los ejemplos no se suben, `empujarUno` los rechaza—:
+     * un pendiente que no se puede resolver es peor que no avisar.
+     *
+     * Se prueba en los DOS sitios que cuentan pendientes: el que pregunta al
+     * servidor y el que compara contra la libreta. Tener dos criterios de
+     * «pendiente» es justo como se llega a un aviso que dice «1 sin subir» y
+     * no logra señalar ninguno. */
     await ir('#/'); await p.waitForTimeout(400);
-    {
-      const q = p;
-      const e = await q.evaluate(() => window.MachoteAlmacen.estadoServidor(window.DEMO.MACHOTES));
-      if (e.total !== 0) throw new Error('cuenta ' + e.total + ' machote(s) que no son de nadie');
-      if (!e.demos) throw new Error('no reporta cuántos ejemplos descontó');
-      const t = (await q.textContent('#franjaSync')) || '';
-      if (/por subir/i.test(t)) throw new Error('la franja pide subir la demo: ' + t.slice(0, 90));
-      console.log('    0 contados · ' + e.demos + ' ejemplos descontados · «' + t.replace(/\s+/g, ' ').trim().slice(0, 60) + '»');
-    }
+    const e = await p.evaluate(() => window.MachoteAlmacen.estadoServidor(window.DEMO.MACHOTES));
+    if (e.total !== 0) throw new Error('cuenta ' + e.total + ' machote(s) que no son de nadie');
+    if (!e.demos) throw new Error('no reporta cuántos ejemplos descontó');
+    const n = await p.evaluate(() => window.MachoteAlmacen.pendientes(window.DEMO.MACHOTES));
+    if (n !== 0) throw new Error('pendientes() cuenta ' + n + ' ejemplo(s)');
+    if (await p.$('#avPend')) throw new Error('la lista avisa de pendientes con sólo la demo');
+    console.log('    0 contados · ' + e.demos + ' ejemplos descontados · sin aviso en la lista');
   });
 
   /* ══ El encabezado y el desglose (V1.21) ════════════════════════════════ */
@@ -3342,12 +3280,18 @@ let ok = 0, mal = 0;
     } finally { await ctx.close(); }
   });
 
-  /* ── V1.22 · dirección ve el trabajo del equipo, en sólo lectura ───────
+  /* ── V1.22 → V1.24 · todos ven el trabajo del equipo, en sólo lectura ──
    *
-   * El servidor decide el ALCANCE (con `comercial:admin` devuelve los de
-   * todos) y eso se prueba contra la base, no aquí. Lo que se prueba aquí es
-   * lo otro: que la pantalla trate el trabajo ajeno como AJENO — que no lo
-   * meta en el almacén de uno, que no lo suba, y que no deje teclearlo. */
+   * El servidor decide el ALCANCE y eso se prueba contra la base, no aquí. Lo
+   * que se prueba aquí es lo otro: que la pantalla trate el trabajo ajeno como
+   * AJENO — que no lo meta en el almacén de uno, que no lo suba, y que no deje
+   * teclearlo.
+   *
+   * V1.24: la sesión de estas pruebas ya NO trae `comercial:admin`. Era la
+   * llave de la lectura en V1.22 y dejó de serlo: cualquiera del módulo ve lo
+   * de todos. Quitarlo de aquí es lo que hace que estas pruebas sigan
+   * significando algo — con el scope puesto no distinguirían el mundo nuevo
+   * del viejo. */
   const paginaConAjenos = async () => {
     const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
     await q.addInitScript(() => {
@@ -3355,7 +3299,7 @@ let ok = 0, mal = 0;
         localStorage.setItem('fts_suite_session', JSON.stringify({
           token: 'prueba.prueba.prueba', actor: 'esteban.delacruz',
           nombre: 'Jesus Esteban De La Cruz', empleado_id: 32,
-          scopes: ['comercial:read', 'comercial:admin'],
+          scopes: ['comercial:read'],
           exp: Math.floor(Date.now() / 1000) + 3600, debe_cambiar_password: false }));
         localStorage.removeItem('fts_machote_v1');
         localStorage.removeItem('fts_machote_sync_v1');
@@ -3450,6 +3394,52 @@ let ok = 0, mal = 0;
     } finally { await q.close(); }
   });
 
+  await paso('el cuerpo NO decide de quién es nada: sólo el token', async () => {
+    /* La prueba del ataque, re-apuntada para V1.24.
+     *
+     * En V1.22 el ataque interesante era «mandar `es_admin:true` en el cuerpo
+     * para ver lo de todos». Ese ataque ya no tiene premio: todos ven todo. Lo
+     * que SÍ sigue en pie —y es lo único que separa lo propio de lo ajeno— es
+     * que el `actor` sale del token verificado. Si el cuerpo pudiera cambiarlo,
+     * cualquiera se declararía dueño del machote de otro y la pantalla se lo
+     * abriría para editar.
+     *
+     * Se prueba de este lado lo que se puede probar de este lado: que el
+     * cliente NUNCA manda un actor, un dueño ni una bandera de alcance en el
+     * cuerpo. Lo otro —que el servidor los ignoraría si llegaran— vive en el
+     * `Code - Verificar token` del webhook y se comprueba contra la base. */
+    const q = await paginaConAjenos();
+    try {
+      const cuerpos = await q.evaluate(async () => {
+        const vistos = [];
+        const orig = window.fetch;
+        window.fetch = function (u, o) {
+          if (String(u).indexOf('/comercial/') >= 0) {
+            try { vistos.push({ url: String(u), cuerpo: JSON.parse((o && o.body) || '{}') }); }
+            catch (e) { vistos.push({ url: String(u), cuerpo: 'ILEGIBLE' }); }
+          }
+          return orig.apply(this, arguments);
+        };
+        await window.MachoteAlmacen.bajar();
+        await window.MachoteAlmacen.historial('uuid-de-ricardo');
+        return vistos;
+      });
+      if (!cuerpos.length) throw new Error('no se observó ninguna llamada');
+      const prohibidos = ['actor', 'dueno', 'es_admin', 'scopes', 'admin', 'usuario'];
+      for (const c of cuerpos) {
+        if (c.cuerpo === 'ILEGIBLE') throw new Error('cuerpo ilegible en ' + c.url);
+        const colados = Object.keys(c.cuerpo).filter(k => prohibidos.indexOf(k) >= 0);
+        if (colados.length)
+          throw new Error('el cliente manda en el cuerpo ' + JSON.stringify(colados) +
+                          ' a ' + c.url + ' — eso lo decide el token');
+        if (!('token' in c.cuerpo))
+          throw new Error('llamada sin token a ' + c.url + ': ' + JSON.stringify(Object.keys(c.cuerpo)));
+      }
+      console.log('    ' + cuerpos.length + ' llamada(s) · todas con token · ninguna con ' +
+                  prohibidos.join('/'));
+    } finally { await q.close(); }
+  });
+
   await paso('el machote ajeno se abre TRABADO y nunca se sube', async () => {
     const q = await paginaConAjenos();
     try {
@@ -3529,13 +3519,18 @@ let ok = 0, mal = 0;
    * Un montaje donde el servidor SÍ tiene el machote. Es la situación real de
    * Esteban: los ejemplos se habían subido antes de que V1.21 los marcara en
    * origen, así que para el servidor eran machotes normales. */
-  const paginaConServidor = async (filas) => {
+  const paginaConServidor = async (filas, opciones) => {
     const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
-    await q.addInitScript((f) => {
+    await q.addInitScript((cfg) => {
+      const f = cfg.filas;
+      window.__opciones = cfg.opciones || {};
       try {
         localStorage.setItem('fts_suite_session', JSON.stringify({
           token: 'prueba.prueba.prueba', actor: 'esteban.delacruz',
           nombre: 'Jesus Esteban De La Cruz', empleado_id: 32,
+          /* SIN `comercial:admin` a propósito: desde V1.24 la lectura de lo
+           * ajeno no depende de ese scope. Si alguien lo vuelve a exigir en el
+           * servidor, estas pruebas se caen — que es lo que se quiere. */
           scopes: ['comercial:read'],
           exp: Math.floor(Date.now() / 1000) + 3600, debe_cambiar_password: false }));
         localStorage.removeItem('fts_machote_v1');
@@ -3551,9 +3546,32 @@ let ok = 0, mal = 0;
             d.nombre = nom; d.estado = 'borrador'; delete d._demo;
             return d;
           };
+          /* Modo HISTORIAL. Se sirve aquí porque V1.24 lo necesita para probar
+           * los tres casos, y porque el número de versiones tiene que poder
+           * ser CERO: «el servidor contestó bien y no trajo ninguna» es
+           * exactamente el caso que antes se confundía con «no ha subido». */
+          let cuerpo = {};
+          try { cuerpo = JSON.parse((arguments[1] && arguments[1].body) || '{}'); } catch (e) {}
+          if (cuerpo.machote_id) {
+            const n = (window.__opciones && typeof window.__opciones.versiones === 'number')
+              ? window.__opciones.versiones : 1;
+            const f0 = f.find(x => x.id === cuerpo.machote_id) || {};
+            const vs = [];
+            for (let i = n; i >= 1; i--) vs.push({
+              id: f0.id, version: i, autor: f0.dueno || 'esteban.delacruz',
+              autor_nombre: f0.dueno_nombre || 'Jesus Esteban De La Cruz',
+              guardada_at: new Date(Date.now() - i * 3600e3).toISOString(),
+              estado: 'borrador', motivo: 'guardado automatico',
+              documento: doc(f0.nombre || 'x') });
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({
+              ok: true, modo: 'historial', actor: 'esteban.delacruz', es_admin: false,
+              machote_id: cuerpo.machote_id, versiones: vs, total: vs.length }) });
+          }
           return Promise.resolve({ ok: true, json: () => Promise.resolve({
             ok: true, modo: 'lista', actor: 'esteban.delacruz', es_admin: false,
-            total: f.length, duenos: ['esteban.delacruz'],
+            total: f.length,
+            duenos: f.map(x => x.dueno || 'esteban.delacruz')
+                     .filter((d, i, a) => a.indexOf(d) === i),
             machotes: f.map(x => Object.assign({
               dueno: 'esteban.delacruz', dueno_nombre: 'Jesus Esteban De La Cruz',
               ajeno: false, version: 1, versiones: 1, estado: 'borrador',
@@ -3564,7 +3582,7 @@ let ok = 0, mal = 0;
         if (s.indexOf('/comercial/clientes') >= 0) return new Promise(function () {});
         return orig.apply(this, arguments);
       };
-    }, filas);
+    }, { filas: filas, opciones: opciones || {} });
     await q.goto(BASE); await q.waitForTimeout(1600);
     return q;
   };
@@ -3609,6 +3627,69 @@ let ok = 0, mal = 0;
     } finally { await q.close(); }
   });
 
+  /* ── V1.24 · A · el historial de un machote que SÍ está en el servidor ──
+   *
+   * El defecto que esto cierra, con nombre y apellido: Esteban abrió el reloj
+   * de «Lifter leveling - VIP Service» —de Ricardo, quince versiones en la
+   * base— y el panel contestó que el machote todavía no llegaba al servidor.
+   *
+   * La causa no estaba en el historial sino en la TRADUCCIÓN del id: un
+   * machote ajeno se nombra en pantalla con el uuid del servidor (a propósito,
+   * porque dos personas pueden tener el mismo `M-1041`), y la traducción lo
+   * buscaba en la libreta de sincronización, que está indexada por `id_local`
+   * y sólo guarda lo propio. No lo hallaba, y «no lo hallé» salía como «no
+   * está subido» — que es el mismo modo de falla que la sesión muerta
+   * (CLAUDE.md §20 #12b): causas distintas con remedios distintos, dichas con
+   * una sola frase, y la frase elegida invita a la acción equivocada. */
+  await paso('el historial de un AJENO que sí subió abre y lista sus versiones', async () => {
+    const q = await paginaConServidor([
+      { id: '6948c433-0000-4000-8000-000000000003', id_local: 'M-DE-RICARDO',
+        nombre: 'Lifter leveling - VIP Service', folio: 3, folio_txt: 'COT-0003',
+        dueno: 'ricardo.hernandez', dueno_nombre: 'Ricardo Hernández', ajeno: true,
+        version: 15, versiones: 15 }
+    ], { versiones: 15 });
+    try {
+      await q.locator('[data-hist="6948c433-0000-4000-8000-000000000003"]:visible')
+             .first().click();
+      await q.waitForTimeout(700);
+      const t = (await q.textContent('body')).replace(/\s+/g, ' ');
+      if (/todav[ií]a no llega al servidor/.test(t))
+        throw new Error('sigue diciendo que no ha subido algo que SÍ está en el servidor');
+      const vs = await q.$$eval('.v', e => e.length);
+      if (vs !== 15) throw new Error('listó ' + vs + ' versión(es) de 15');
+      if (!/Versión 15/.test(t)) throw new Error('no pinta la última versión');
+      console.log('    abre y lista las 15 versiones del machote de otra persona');
+    } finally { await q.close(); }
+  });
+
+  await paso('los tres casos del historial se dicen distinto', async () => {
+    /* Sin subir, subido y consultable, y subido pero no consultable ahora.
+     * Antes los tres decían lo mismo. Se prueba en el ALMACÉN y no en la
+     * pantalla porque es ahí donde se decide cuál es cuál. */
+    const q = await paginaConServidor([
+      { id: 'aaaaaaaa-0000-4000-8000-00000000000a', id_local: 'M-SUBIDO',
+        nombre: 'Ya subió', folio: 9, folio_txt: 'COT-0009' }
+    ], { versiones: 0 });
+    try {
+      const r = await q.evaluate(async () => {
+        const A = window.MachoteAlmacen;
+        const sinSubir = await A.historial('M-QUE-NUNCA-SUBIO');
+        const noConsultable = await A.historial('aaaaaaaa-0000-4000-8000-00000000000a');
+        return { sinSubir: sinSubir.error, msgSin: sinSubir.mensaje,
+                 noCons: noConsultable.error, msgNo: noConsultable.mensaje };
+      });
+      if (r.sinSubir !== 'NUNCA_SUBIDO')
+        throw new Error('el que nunca subió da: ' + r.sinSubir);
+      if (r.noCons !== 'NO_CONSULTABLE')
+        throw new Error('el que sí subió pero no se pudo traer da: ' + r.noCons);
+      if (r.msgSin === r.msgNo)
+        throw new Error('los dos casos dicen exactamente lo mismo: ' + r.msgSin);
+      if (/no llega al servidor/.test(r.msgNo))
+        throw new Error('al no consultable le dice que no ha subido: ' + r.msgNo);
+      console.log('    NUNCA_SUBIDO ≠ NO_CONSULTABLE, y cada uno lo dice con sus palabras');
+    } finally { await q.close(); }
+  });
+
   await paso('el folio se ve, se copia, y sin folio se dice', async () => {
     const q = await paginaConServidor([
       { id: 'uuid-con', id_local: 'M-CON', nombre: 'Con folio', folio: 42, folio_txt: 'COT-0042' }
@@ -3617,6 +3698,28 @@ let ok = 0, mal = 0;
       const lista = (await q.textContent('#vista')).replace(/\s+/g, ' ');
       if (lista.indexOf('COT-0042') < 0)
         throw new Error('el folio no salió en la lista: ' + lista.slice(0, 200));
+
+      /* V1.24 · COLUMNA PROPIA, no escondido dentro del renglón del nombre.
+       * Se comprueba que la primera columna es la del folio y que la celda
+       * trae SÓLO el folio: metido junto al cliente no se puede recorrer con
+       * la vista, que es toda la razón de que la columna exista. */
+      const col = await q.evaluate(() => {
+        const th = [].map.call(document.querySelectorAll('table.lista thead th'),
+                               e => e.textContent.trim());
+        const td = document.querySelector('table.lista tbody tr.rw td');
+        return { encabezados: th, primera: td && td.className,
+                 texto: td && td.textContent.trim() };
+      });
+      if (col.encabezados[0] !== 'Folio')
+        throw new Error('la primera columna no es el folio: ' + JSON.stringify(col.encabezados));
+      if (col.texto !== 'COT-0042')
+        throw new Error('la celda del folio trae otra cosa: «' + col.texto + '»');
+      if (col.encabezados.indexOf('Revisión') >= 0)
+        throw new Error('sigue la columna de revisión, que se fue con la sección de orden');
+
+      // Y se copia de un toque DESDE LA LISTA, no sólo desde el encabezado.
+      const enLista = await q.$('table.lista tbody tr.rw td.folio-td [data-copiar]');
+      if (!enLista) throw new Error('el folio de la lista no se puede copiar');
 
       // Se busca por folio, que es lo que la gente va a teclear.
       await q.fill('#q', 'COT-0042'); await q.waitForTimeout(400);

@@ -1,10 +1,15 @@
 {
-  "version": "V1.23",
-  "fecha": "2026-09-09",
+  "version": "V1.24",
+  "fecha": "2026-09-10",
   "modulo": "comercial/machote",
   "ambito": "El CONTADOR es solo de este modulo. finanzas tambien usa V1.xx desde el 2026-09-03 (instruccion directa de Esteban, corrige el \"no propagar\" del issue #148) pero lleva su propio contador y va en V1.00. operaciones/planeacion sigue en 2.4.1, kiosk y confirmar-horas solo con cadena de build, y siete modulos con un 1.0.0 puesto una vez: a esos no se propaga.",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.24",
+      "pr": null,
+      "nota": "El historial que mentia, la lectura abierta a todo el modulo, el folio en columna propia, y el andamio retirado. EL HISTORIAL: abrir el reloj de una cotizacion ajena contestaba que 'todavia no llega al servidor', de un machote con QUINCE versiones alla. La causa: historial() traducia el id de pantalla a uuid buscando en la libreta de sincronizacion, que esta indexada por id_local y solo guarda LO PROPIO; un ajeno se nombra en pantalla con el uuid del servidor -a proposito, porque dos personas pueden tener el mismo M-1041- asi que la busqueda fallaba y 'no lo halle' se reportaba como 'no esta subido'. La traduccion se movio a idServidor(), que ahora acepta las dos formas, y con eso quedaron arreglados de paso el PDF y el envio, que preguntaban lo mismo por el mismo camino. Y los tres casos se dicen separados porque llevan a acciones distintas: sin subir todavia se arregla subiendolo, no consultable ahora se arregla reintentando, y la sesion se arregla volviendo a entrar. TODOS VEN TODO: cualquiera con comercial:read ve los machotes de todos, en lectura; comercial:admin deja de decidir el alcance y se queda solo como llave del tablero de Control. Lo que no cambio es que el actor sale del TOKEN y nunca del cuerpo: es lo unico que marca que filas son ajenas. Lo ajeno se sigue abriendo trabado, no entra a fts_machote_v1 y no se exporta; el encabezado sigue diciendo cuantas son tuyas y el respaldo sigue llevandose solo lo tuyo. EL FOLIO: COT- y cuatro digitos, ahora en COLUMNA PROPIA en la tabla de escritorio, en linea propia arriba del nombre en el telefono, y en el encabezado al abrir. Se copia de un toque desde cualquiera de los tres y se busca tecleando COT-0003 o 3. Los siete machotes vivos ya traen folio (COT-0001 a COT-0007, leido de la base); uno recien creado no tiene y la pantalla dice 'sin folio' en vez de inventar uno. EL ANDAMIO: se fue Importar -existia para meter a mano lo que vivia suelto en cada navegador y hoy solo podria crear duplicados-, se fue la franja de sincronizacion siguiendo su propio instructivo, se fue la seccion de Confirmar la orden -listaba ordenes de ejemplo debajo de cotizaciones reales- y con ella la columna de Revision, que contaba las validaciones que impedian crear la orden desde la lista. Exportar se queda, pero como enlace discreto al pie. En lugar de la franja hay un aviso que SOLO aparece cuando algo no ha subido, dice cuantas y las senala con 'Cuales son'; el silencio ya no afirma 'todo a salvo', que es algo que una marca local no puede probar -para eso esta Control, que si le pregunta al servidor-. Se midio en pantalla que el pulso solo no alcanzaba: a 380 px es un punto de 8x8 sin texto."
+    },
     {
       "version": "V1.23",
       "pr": null,

@@ -557,8 +557,16 @@ table.rejilla tr.capturada > td:first-child { box-shadow: inset 3px 0 0 var(--x-
 .cel.wtipo { min-width: 118px; }
 
 /* ── Borrar un machote de la lista ──────────────────────────────────────*/
-.fila { display: flex; align-items: stretch; gap: 6px; margin-bottom: 8px; }
-.fila .item { flex: 1 1 auto; min-width: 0; margin-bottom: 0; }
+/* `flex-wrap` desde V1.24: la tarjeta lleva el folio en una línea propia
+   arriba (`.tarj-folio`, que ocupa el 100%) y el resto —contenido, reloj,
+   borrar— sigue en una sola fila debajo. Sin el wrap, el folio se metía como
+   una columna más a la izquierda del nombre. */
+.fila { display: flex; flex-wrap: wrap; align-items: stretch; gap: 6px; margin-bottom: 8px; }
+/* `flex-basis: 0` y no `auto`: con `auto` el item pide el ancho de su
+   contenido, y como `.fila` ahora envuelve (V1.24, por la línea del folio)
+   se quedaba con el renglón entero y empujaba el reloj y la × a un tercer
+   renglón, sueltos bajo la tarjeta. Lo cazó la captura a 380 px. */
+.fila .item { flex: 1 1 0; min-width: 0; margin-bottom: 0; }
 .fila .borrar, .fila .candado { flex: 0 0 auto; align-self: center; }
 .ico.candado { display: inline-flex; align-items: center; justify-content: center;
                min-width: var(--toque); min-height: var(--toque); font-size: 14px;
@@ -735,42 +743,35 @@ th .hint { font-weight: 400; text-transform: none; opacity: .75; }
             padding: 10px; overflow: auto; font-size: 11.5px; max-height: 240px;
             font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre; }
 
-/* ── Franja de sincronización (#140) · PIEZA TRANSITORIA ────────────────
- * Se quita entera cuando termine el cambio a Postgres. El cómo está escrito
- * en la cabecera de `js/franja-sync.js`; este bloque es el punto 2. */
-.franja { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-          border: 1px solid var(--linea); border-radius: 10px;
-          padding: 8px 12px; margin: 10px 0 4px; font-size: 13px;
-          background: var(--fondo); }
-.franja .f-punto { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto;
-                   background: var(--suave); }
-.franja .f-txt { flex: 1 1 auto; min-width: 0; }
-.franja .f-bs { display: flex; gap: 6px; flex: 0 0 auto; }
-.franja .btn.f-min { width: auto; padding: 0 12px; min-height: 32px; font-size: 12.5px; }
-/* Cuando todo está a salvo la franja se hace a un lado: sin color, texto
-   tenue, un solo botón discreto. No hay nada que atender. */
-.franja.f-ok { border-color: var(--linea); color: var(--suave); background: transparent; }
-.franja.f-ok .f-punto { background: var(--verde); }
-/* Cuando falta algo, se nota: fondo ámbar y borde del mismo tono. */
-.franja.f-pend { border-color: #e6c98a; background: #fffaf0; color: var(--tinta); }
-.franja.f-pend .f-punto { background: var(--ambar); }
-/* Y cuando NO se pudo preguntar al servidor, se dice — ni verde ni ámbar:
-   afirmar cualquiera de los dos sería inventar. */
-.franja.f-duda { border-color: #e3b7b4; background: #fff6f5; }
-.franja.f-duda .f-punto { background: var(--rojo); }
-.franja.f-cargando .f-punto { background: var(--suave); animation: latir .7s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { .franja.f-cargando .f-punto { animation: none } }
-@media (max-width: 520px) { .franja { font-size: 12.5px } .franja .f-bs { width: 100%; } 
-                            .franja .btn.f-min { flex: 1 1 0 } }
-/* La marca "sólo en este navegador" se pinta DENTRO de la lista, sobre el
-   renglón que ya está en pantalla — no en otra vista que obligue a comparar
-   de memoria. */
-.fila.solo-aqui { outline: 2px solid var(--ambar); outline-offset: -1px;
-                  border-radius: 10px; background: #fffaf0; }
-.fila.solo-aqui::after { content: 'sólo en este navegador'; position: absolute;
-                         right: 8px; bottom: 2px; font-size: 10px; color: var(--ambar);
-                         font-weight: 600; letter-spacing: .02em; }
-.fila.solo-aqui { position: relative; }
+/* ── Lo que NO ha subido (V1.24) ──────────────────────────────────────────
+ * Sustituye a la franja de sincronización, que era andamio del rescate y se
+ * retiró entera siguiendo su propio instructivo. La diferencia de fondo: la
+ * franja hablaba SIEMPRE —incluso para decir «todo a salvo»—, y esto sólo
+ * aparece cuando hay algo atorado. Una marca local no puede probar que todo
+ * llegó al servidor; sí puede probar que algo no ha salido de aquí.
+ *
+ * El ámbar es el mismo que usaba la franja para «falta algo»: quien ya se
+ * acostumbró a ese color en esta pantalla lo sigue leyendo igual. */
+.aviso.pend { border-left-color: var(--ambar); background: #fffaf0; }
+.aviso.pend .btn.chico { width: auto; padding: 0 12px; min-height: 32px;
+                         font-size: 12.5px; margin-left: 6px; }
+
+/* El renglón señalado por «Cuáles son». Sirve para tabla y para tarjeta: las
+   dos cuelgan de `[data-mid]`, igual que hacía la franja. */
+.marcado { outline: 2px solid var(--ambar); outline-offset: -1px;
+           background: #fffaf0 !important; }
+tr.marcado td { background: #fffaf0; }
+
+/* El respaldo, al pie y como enlace. Deja de ser un botón con conteo al lado
+   de «+ Nuevo»: sigue existiendo —es la única salida cuando el guardado se
+   rompe— pero ya no compite por la atención con la acción principal. */
+.pie-resp { margin: 10px 0 0; }
+.lnk { border: 0; background: none; padding: 4px 0; cursor: pointer;
+       font: inherit; color: var(--suave); text-decoration: underline;
+       text-underline-offset: 2px; }
+.lnk:hover { color: var(--acento); }
+@media (max-width: 640px) { .lnk { min-height: var(--toque); } }
+
 
 /* ═══ Vista de control (#140 · B) ═══
  * OJO con los nombres: `.kpi` YA EXISTE en este módulo (línea ~80) y significa
@@ -950,18 +951,19 @@ th .hint { font-weight: 400; text-transform: none; opacity: .75; }
 .ctrl-pie .btn.f-min { width: auto; padding: 0 12px; min-height: 30px; font-size: 12.5px; }
 
 /* ── El botón chico deja de ser chico en el teléfono ─────────────────────
- * `.f-min` existe para que la franja y el tablero no griten en escritorio:
- * 32 px con el ratón es discreto y se aprieta bien. Con el pulgar no. La
- * regla del módulo es 40 px (`--toque`) para todo lo que se toca, y estos
- * tres botones se la estaban saltando: la prueba
+ * `.f-min` existe para que el tablero y las correcciones no griten en
+ * escritorio: 32 px con el ratón es discreto y se aprieta bien. Con el pulgar
+ * no. La regla del módulo es 40 px (`--toque`) para todo lo que se toca, y
+ * estos botones se la estaban saltando: la prueba
  * `todo lo que se toca mide al menos 40 px de alto` los cazó a 380 px.
+ * El `.chico` del aviso de pendientes entra por la misma puerta.
  *
  * Va al final del archivo A PROPÓSITO, después de las tres reglas que pone
  * en su sitio, para no depender de qué media query venga antes. */
 @media (max-width: 640px) {
-  .franja .btn.f-min,
   .corr .btn.f-min,
-  .ctrl-pie .btn.f-min { min-height: var(--toque); }
+  .ctrl-pie .btn.f-min,
+  .aviso.pend .btn.chico { min-height: var(--toque); }
 }
 
 /* ── Sesión vencida (V1.21) ───────────────────────────────────────────────
@@ -1094,8 +1096,10 @@ tr:hover .acts, tr:focus-within .acts { opacity: 1; }
 /* ── La evidencia de sincronización (V1.21) ───────────────────────────────
  * «Comprobar» despliega, renglón por renglón, qué versión tiene el servidor
  * de cada machote y las dos huellas del mismo documento calculadas por
- * separado. Un número pide fe; esto se puede comprobar — y de poder
- * enseñarlo depende quitar la franja en la versión que viene. */
+ * separado. Un número pide fe; esto se puede comprobar.
+ *
+ * V1.24: la franja se retiró y con ella el botón que desplegaba esto desde la
+ * lista. El bloque se queda porque la vista de control lo reusa. */
 .evi { border: 1px solid var(--linea); border-top: 0; border-radius: 0 0 10px 10px;
        margin: -11px 0 12px; background: var(--fondo); overflow: hidden; }
 .evi table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
@@ -1108,9 +1112,10 @@ tr:hover .acts, tr:focus-within .acts { opacity: 1; }
 .evi .pie { padding: 9px 12px; border-top: 1px solid var(--linea2); }
 
 /* El renglón de la TABLA es `.rw`, no `.fila`: `.fila` es `display:flex` —la
-   tarjeta del teléfono— y en un `<tr>` desmonta el reparto de columnas. */
-table.lista tr.rw.solo-aqui { background: #fffaf0; }
-table.lista tr.rw.solo-aqui td:first-child { box-shadow: inset 2px 0 0 var(--ambar); }
+   tarjeta del teléfono— y en un `<tr>` desmonta el reparto de columnas.
+   V1.24: la clase de marcado se llama `.marcado` (la ponía la franja como
+   `.solo-aqui`; ahora la pone «Cuáles son» del aviso de pendientes). */
+table.lista tr.rw.marcado td:first-child { box-shadow: inset 2px 0 0 var(--ambar); }
 /* El nombre del responsable en UNA línea: con «Jesus Esteban De La Cruz» se
    partía en cuatro renglones y estiraba todo el renglón de la tabla. */
 table.lista td.quien-td { font-size: 13px; color: var(--suave); max-width: 150px;
@@ -1199,6 +1204,29 @@ tr.desg-cuadre .malo { color: var(--rojo); font-weight: 700; }
          font-size: 12px; font-weight: 600; color: var(--acento);
          letter-spacing: .2px; }
 .folio.sin { color: var(--suave); font-weight: 400; }
+
+/* En la lista el folio es un BOTÓN, pero no debe parecerlo hasta que se
+   apunte: una columna de once botones azules compite con el nombre, que es lo
+   que se lee primero. Sin borde ni fondo en reposo; el subrayado punteado
+   dice «esto hace algo» sin gritarlo. */
+button.folio { border: 0; background: none; padding: 2px 0; cursor: pointer;
+               font-family: inherit; letter-spacing: .2px;
+               border-bottom: 1px dotted transparent; }
+button.folio:hover { border-bottom-color: var(--acento); }
+button.folio:active { transform: translateY(1px); }
+button.folio:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px;
+                             border-radius: 3px; }
+
+/* La celda de la columna. `tabular-nums` para que COT-0007 y COT-0012 tengan
+   los dígitos en la misma vertical: es toda la razón de que exista la columna
+   —poder recorrerla con la vista— y con cifras de ancho variable se pierde. */
+.folio-td { white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* En el teléfono el folio va en su propia línea, ARRIBA del nombre. */
+.tarj-folio { flex: 0 0 100%; padding: 0 0 2px 12px;
+              font-variant-numeric: tabular-nums; }
+.tarj-folio button.folio { min-height: var(--toque); display: inline-flex;
+                           align-items: center; padding: 0 4px; }
 
 /* El del encabezado sí es un botón: se copia de un toque. Alto de --toque
    para que se pueda picar con el dedo sin apuntar. */
