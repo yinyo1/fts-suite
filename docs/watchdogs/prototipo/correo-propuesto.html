@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Semáforo · formato de correo propuesto</title>
+<style>
+:root{
+  --rojo:#c0392b; --ambar:#b7791f; --verde:#2f855a;
+  --tinta:#1a1d21; --gris:#5b6470; --gris2:#8a929c;
+  --linea:#dfe3e8; --fondo:#eef1f4; --papel:#fff;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--tinta);
+     font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
+.wrap{max-width:1500px;margin:0 auto;padding:18px}
+
+/* ---- cabecera de la página (no del correo) ---- */
+.doc{background:var(--papel);border:1px solid var(--linea);border-radius:10px;padding:18px 20px;margin-bottom:16px}
+.doc h1{font-size:19px;margin:0 0 4px}
+.doc .lead{color:var(--gris);font-size:13px;margin:0 0 14px}
+.doc h2{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--gris2);
+        margin:18px 0 8px;font-weight:700}
+table.aud{border-collapse:collapse;width:100%;font-size:12.5px}
+table.aud th{text-align:left;padding:6px 9px;border-bottom:2px solid var(--linea);color:var(--gris);font-weight:600;white-space:nowrap}
+table.aud td{padding:6px 9px;border-bottom:1px solid #f0f2f5;vertical-align:top}
+table.aud td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.mal{color:var(--rojo);font-weight:600}
+.bien{color:var(--verde);font-weight:600}
+code{background:#f2f4f7;padding:1px 5px;border-radius:3px;font-size:12px}
+
+/* ---- switcher de modo ---- */
+.modos{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:16px 0 6px}
+.modos b{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--gris2)}
+.modos button{font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:7px;
+  border:1px solid var(--linea);background:var(--papel);color:var(--gris);cursor:pointer}
+.modos button[aria-pressed="true"]{background:var(--tinta);border-color:var(--tinta);color:#fff}
+.modos .nota{font-size:12.5px;color:var(--gris);margin-left:4px}
+
+/* ---- los dos correos lado a lado ---- */
+.par{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+@media(max-width:1100px){.par{grid-template-columns:1fr}}
+.sobre{background:var(--papel);border:1px solid var(--linea);border-radius:10px;overflow:hidden}
+.sobre .asunto{background:#f7f9fb;border-bottom:1px solid var(--linea);padding:9px 14px;font-size:12px;color:var(--gris)}
+.sobre .asunto b{color:var(--tinta);font-size:12.5px}
+.sobre .asunto .para{display:block;margin-top:3px;color:var(--gris2);font-size:11.5px}
+
+/* ═══ EL CORREO ═══ estilos deliberadamente email-safe (inline-equivalentes) */
+.mail{padding:18px 20px 22px;font-size:14px}
+.mail .titulo{font-size:17px;font-weight:700;margin:0 0 2px}
+.mail .fecha{color:var(--gris);font-size:12.5px;margin:0 0 14px}
+
+/* recuento: la única tabla de números, y cuadra */
+.recuento{border:1px solid var(--linea);border-radius:8px;overflow:hidden;margin-bottom:6px}
+.recuento .fila{display:flex;justify-content:space-between;gap:10px;padding:7px 12px;font-size:13px;border-bottom:1px solid #f0f2f5}
+.recuento .fila:last-child{border-bottom:0}
+.recuento .fila.tot{background:#f7f9fb;font-weight:700}
+.recuento .fila.sub{color:var(--gris);font-size:12.5px;padding-left:26px}
+.recuento .n{font-variant-numeric:tabular-nums;font-weight:700}
+.cuadra{font-size:11.5px;color:var(--gris2);margin:0 0 16px;padding-left:2px}
+
+.mail h3{font-size:12px;text-transform:uppercase;letter-spacing:.7px;color:var(--gris2);
+         margin:20px 0 3px;font-weight:700;border-top:1px solid var(--linea);padding-top:14px}
+.mail h3:first-of-type{border-top:0;padding-top:0}
+.mail .criterio{font-size:12px;color:var(--gris);margin:0 0 10px}
+
+/* fila de proyecto: el color vive AQUI y en ningun otro lado */
+.p{display:flex;gap:9px;padding:9px 0;border-bottom:1px solid #f2f4f7}
+.p:last-child{border-bottom:0}
+.dot{flex:0 0 auto;width:9px;height:9px;border-radius:50%;margin-top:6px}
+.d-rojo{background:var(--rojo)} .d-ambar{background:var(--ambar)} .d-verde{background:var(--verde)}
+.p .cuerpo{min-width:0;flex:1}
+.p .n1{font-weight:650;font-size:13.5px}
+.p .n2{color:var(--gris);font-size:12.5px;margin-top:1px}
+.p .n2 .sep{color:var(--linea);margin:0 5px}
+.dias{font-variant-numeric:tabular-nums;font-weight:700}
+.chips{margin-top:5px;display:flex;gap:5px;flex-wrap:wrap}
+.chip{font-size:11px;padding:1px 7px;border-radius:10px;border:1px solid var(--linea);
+      color:var(--gris);background:#fafbfc;white-space:nowrap}
+.chip.ev{border-color:#c8d4e0;background:#f0f5fa;color:#31577d;font-weight:600}
+.p .revisar{font-size:12.5px;color:var(--gris);margin-top:5px;padding-left:10px;border-left:2px solid var(--linea)}
+.p .accion{font-size:12.5px;margin-top:5px;font-weight:550}
+.a-rojo{color:var(--rojo)} .a-ambar{color:var(--ambar)}
+
+.siguen{font-size:12.5px;color:var(--gris);line-height:1.65;margin:10px 0 0}
+.siguen b{color:var(--tinta)}
+.nada{color:var(--gris2);font-style:italic;font-size:13px;margin:2px 0 0}
+
+.medicion{margin-top:22px;border-top:1px solid var(--linea);padding-top:14px}
+.medicion ul{margin:6px 0 0;padding-left:17px;font-size:12.5px;color:var(--gris)}
+.medicion li{margin-bottom:5px}
+.pie{margin-top:18px;padding-top:12px;border-top:1px solid var(--linea);font-size:11.5px;color:var(--gris2)}
+
+/* leyenda */
+.leyenda{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:6px}
+.leyenda .bloq{font-size:12.5px}
+.leyenda .bloq b{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--gris2);margin-bottom:5px}
+.leyenda .l{display:flex;gap:8px;align-items:baseline;margin-bottom:3px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="doc">
+  <h1>Semáforo · formato de correo propuesto</h1>
+  <p class="lead">
+    Maqueta para revisar el <b>formato</b> antes de tocar el renderizador. Datos <b>reales</b> del snapshot
+    del 9-sep-2026 (35 proyectos), con el delta real contra el snapshot del 8-sep. El campo cliente va
+    cortado en la coma, como ya lo hace el snapshot desde S1. <b>El workflow no se tocó.</b>
+  </p>
+
+  <h2>Los descuadres medidos en los correos reales de las 15:49 CST (ejecución 92951)</h2>
+  <table class="aud">
+    <tr><th>#</th><th>Qué</th><th>Operaciones</th><th>Admin</th></tr>
+    <tr><td>1</td>
+        <td><b>El encabezado no cuadra con el cuerpo.</b> El encabezado cuenta los 3 colores; el cuerpo imprime otra cosa y nunca dice por qué.</td>
+        <td class="num">encabezado <code>9 verde · 0 amarillo · 10 rojo</code><br>cuerpo <span class="mal">13 renglones</span></td>
+        <td class="num">encabezado <code>2 verde · 0 amarillo · 14 rojo</code><br>cuerpo <span class="mal">14 renglones</span></td></tr>
+    <tr><td>2</td>
+        <td><b>Hay verdes impresos y pintados de amarillo.</b> El renglón usa <code>rojo ? 🔴 : 🟡</code> — <b>no existe el punto verde</b>. Un proyecto en tiempo con una bandera sale amarillo y con el texto «se acerca al límite».</td>
+        <td class="num"><span class="mal">3 verdes pintados 🟡</span><br>con el encabezado diciendo «amarillo: 0»</td>
+        <td class="num">0 (sus 2 verdes ni se imprimieron)</td></tr>
+    <tr><td>3</td>
+        <td><b>Verdes invisibles.</b> Un verde entra o desaparece según tenga banderas, que no tienen relación con su color.</td>
+        <td class="num">6 de 9 verdes no aparecen</td>
+        <td class="num">los 2 verdes desaparecieron al apagarse <code>ap_confirmacion</code></td></tr>
+    <tr><td>4</td>
+        <td><b>El mismo proyecto se menciona hasta 3 veces</b>, en secciones distintas, con formato distinto.</td>
+        <td class="num"><span class="mal">21 menciones</span> para 13 proyectos<br>SO11699 y SO11791: 3× cada uno</td>
+        <td class="num">15 menciones para 14 proyectos</td></tr>
+    <tr><td>5</td>
+        <td><b>Las banderas se imprimen dos veces</b>: en línea dentro del renglón y otra vez en su propia sección.</td>
+        <td class="num"><span class="mal">6 de 6</span> duplicadas</td>
+        <td class="num"><span class="mal">1 de 1</span> duplicada</td></tr>
+    <tr><td>6</td>
+        <td><b>El pie contradice al encabezado.</b> Dijo «0 proyectos en condición estable» teniendo 9 y 2 verdes respectivamente — porque cuenta otra cosa (los que no cambiaron), con un nombre que suena a lo mismo.</td>
+        <td class="num"><span class="mal">«0 estables»</span> vs 9 verdes</td>
+        <td class="num"><span class="mal">«0 estables»</span> vs 2 verdes</td></tr>
+  </table>
+
+  <h2>El vocabulario de hoy: 6 nombres para el reloj, 4 para «cambió», 4 para «bandera»</h2>
+  <table class="aud">
+    <tr><th>Concepto</th><th>Cómo se llama hoy, en el mismo correo</th><th>Propuesto</th></tr>
+    <tr><td>El reloj</td><td>«ESTANCAMIENTO EN STAGE» · «en stage 372d» · «tramo &gt;30» · «días en stage» · «cruzó de tramo» · «condición estable»</td><td><b>«lleva N días en la etapa»</b> y nada más</td></tr>
+    <tr><td>Lo que cambió</td><td>«NUEVO HOY» · «EMPEORÓ» · «SE RESOLVIÓ» · «sin cambio» — como <b>secciones</b></td><td>una <b>etiqueta en el renglón</b>: Nuevo · Empeoró · Mejoró</td></tr>
+    <tr><td>Bandera</td><td>«banderas» · «integridad» · «CAMBIOS FUERA DE COMERCIAL» · «DATOS QUE NO CUADRAN»</td><td><b>«Por revisar»</b> (dato) y <b>«Movido por otra área»</b> (autoría)</td></tr>
+    <tr><td>Fallo de medición</td><td>«DATOS QUE NO CUADRAN / NO SE PUDO MEDIR» · «REVISAR MEDICIÓN» · «Latido» — mezclado con proyectos</td><td><b>«Sobre esta medición»</b>, bloque aparte, nunca con proyectos</td></tr>
+  </table>
+
+  <h2>Los colores: hoy hay cuatro sistemas conviviendo</h2>
+  <table class="aud">
+    <tr><th>Color</th><th>Significados que tiene HOY, todos en el mismo correo</th><th>Propuesto</th></tr>
+    <tr><td><span class="mal">Rojo</span></td><td>(a) proyecto atrasado en el encabezado · (b) título de «NUEVO HOY» · (c) el punto del renglón · (d) la acción sugerida · (e) «(CRÍTICO)» de un fallo de <i>medición</i></td><td><b>solo (a)</b>: proyecto atrasado</td></tr>
+    <tr><td><span class="bien">Verde</span></td><td>(a) proyecto en tiempo en el encabezado · (b) título de «SE RESOLVIÓ»</td><td><b>solo (a)</b>: proyecto en tiempo — <b>y con punto propio</b></td></tr>
+    <tr><td style="color:#8e24aa;font-weight:600">Morado</td><td>(a) toda bandera · (b) título de «SEGUIMIENTO SIN AVANCE»</td><td><b>se elimina</b>: las banderas son texto, no color</td></tr>
+    <tr><td style="color:#e65100;font-weight:600">Naranja</td><td>solo el título de «EMPEORÓ»</td><td><b>se elimina</b></td></tr>
+    <tr><td style="color:#00695c;font-weight:600">Teal</td><td>solo el título de «DATOS QUE NO CUADRAN»</td><td><b>se elimina</b></td></tr>
+  </table>
+  <p class="lead" style="margin-top:10px">
+    <b>Con el semáforo B fuera del reporte, el color solo puede significar una cosa: qué tan tarde va el
+    proyecto en su etapa.</b> Todo lo demás — sección, tipo de bandera, novedad — deja de usar color y pasa
+    a usar posición, peso y etiqueta.
+  </p>
+
+  <h2>Cómo llegó a esto: cada capa dejó su sección, ninguna quitó la anterior</h2>
+  <table class="aud">
+    <tr><th>Capa</th><th>Qué agregó al correo</th><th>Hoy es</th></tr>
+    <tr><td>v1.0 · go-live 19-jun</td><td>Encabezado con los <b>dos</b> semáforos, secciones por color, KPI ≥90%</td><td>el encabezado sobrevivió con un solo semáforo, y quedó de un tamaño que ya no le corresponde</td></tr>
+    <tr><td>v1.1 · bizDays</td><td>«tramo» como concepto interno del cálculo</td><td><span class="mal">residuo</span>: se filtró a la vista («tramo &gt;30») sin ser accionable</td></tr>
+    <tr><td>v1.2 · recalibración</td><td>banderas <code>nota_vacia</code> y <code>hold_sin_fecha</code>, sección «SEGUIMIENTO SIN AVANCE», bloque «EN OBSERVACIÓN»</td><td>intencional, pero cada una estrenó sección propia</td></tr>
+    <tr><td>S1 · #223</td><td>Semáforo B fuera; secciones <b>NUEVO / EMPEORÓ / SE RESOLVIÓ</b>; banderas partidas en dos secciones por naturaleza</td><td><span class="mal">aquí nace el problema</span>: el delta pasó a ser el <b>eje de secciones</b>, y un proyecto empezó a caer en varias</td></tr>
+    <tr><td>S1+ · digest de lunes</td><td>Sección «ESTADO COMPLETO DE LA SEMANA»</td><td>intencional; con el rediseño deja de ser una sección y pasa a ser un <b>modo</b></td></tr>
+  </table>
+  <p class="lead" style="margin-top:10px">
+    <b>El diagnóstico de fondo:</b> el correo secciona por <i>tres ejes a la vez</i> — severidad, novedad y
+    tipo de hallazgo — y un proyecto tiene valor en los tres. Por eso aparece tres veces.
+    <b>La propuesta usa un solo eje para seccionar (¿pide algo o no?) y baja los otros dos a etiquetas del renglón.</b>
+  </p>
+</div>
+
+<div class="modos">
+  <b>Modo:</b>
+  <button data-m="diario" aria-pressed="true">Diario (delta)</button>
+  <button data-m="lunes" aria-pressed="false">Lunes (estado completo)</button>
+  <button data-m="quieto" aria-pressed="false">Día sin novedad</button>
+  <span class="nota" id="notaModo"></span>
+</div>
+
+<div class="par">
+  <div class="sobre"><div class="asunto" id="asuntoOps"></div><div class="mail" id="mailOps"></div></div>
+  <div class="sobre"><div class="asunto" id="asuntoAdm"></div><div class="mail" id="mailAdm"></div></div>
+</div>
+
+<div class="doc" style="margin-top:16px">
+  <h2>Leyenda del formato propuesto</h2>
+  <div class="leyenda">
+    <div class="bloq"><b>Color — un solo significado</b>
+      <div class="l"><span class="dot d-rojo" style="margin-top:7px"></span><span><b>Atrasado</b> · pasó el umbral de su etapa</span></div>
+      <div class="l"><span class="dot d-ambar" style="margin-top:7px"></span><span><b>Por vencer</b> · a un día del umbral</span></div>
+      <div class="l"><span class="dot d-verde" style="margin-top:7px"></span><span><b>En tiempo</b> · dentro del umbral</span></div>
+    </div>
+    <div class="bloq"><b>Etiquetas del renglón — sin color</b>
+      <div class="l"><span class="chip ev">Nuevo</span><span>entró a la lista desde el correo anterior</span></div>
+      <div class="l"><span class="chip ev">Empeoró</span><span>cruzó a peor color o a más días</span></div>
+      <div class="l"><span class="chip">materiales</span><span>umbral más agresivo (MRO)</span></div>
+      <div class="l"><span class="chip">nota repetida ×2</span><span>el chatter se está copiando</span></div>
+    </div>
+    <div class="bloq"><b>Qué NO lleva color</b>
+      <div class="l"><span>·</span><span>los títulos de sección</span></div>
+      <div class="l"><span>·</span><span>las banderas («Por revisar»)</span></div>
+      <div class="l"><span>·</span><span>el bloque de medición</span></div>
+      <div class="l"><span>·</span><span>la novedad (Nuevo / Empeoró)</span></div>
+    </div>
+  </div>
+
+  <h2>Qué cambia entre Operaciones y Admin, y por qué</h2>
+  <table class="aud">
+    <tr><th></th><th>Operaciones</th><th>Admin</th></tr>
+    <tr><td>Etapas</td><td>To Do · In Progress · Hold</td><td>Done Operations · Admin - In progress · En plazo de crédito</td></tr>
+    <tr><td>El reloj</td><td><b>días en la etapa</b> — la pregunta es si el proyecto avanza</td><td>hoy igual; <b>con S3 pasa a días respecto al vencimiento de la factura</b> (issue #225: hoy coinciden en 1 de 9 casos)</td></tr>
+    <tr><td>La acción</td><td>«avanza de etapa o documenta por qué sigue aquí»</td><td>«cobra o documenta el compromiso del cliente»</td></tr>
+    <tr><td>Esqueleto</td><td colspan="2"><b>idéntico</b> — mismas secciones, mismos colores, mismo vocabulario. Un supervisor que lee los dos no aprende dos formatos.</td></tr>
+  </table>
+</div>
+
+</div>
+
+<script>
+const DATOS = {"fecha":"2026-09-07","prev":"2026-09-04","proyectos":[{"id":2375,"name":"SO11498 - Ingeniería conceptual para el diseño del desbobinadora de carretes Bridgestone e - Bridgestone México","cliente":"Bridgestone México","stage":"In Progress","grupo":"Operaciones","dias":4,"color":"verde","cambio":"igual","pide":false,"sin_avance":false,"racha":1,"mat":false,"banderas":[]},{"id":2360,"name":"SO11748 - Chiller instalation - Calbee America Incorporated, Omar De la Garza","cliente":"Calbee America Incorporated","stage":"En plazo de credito","grupo":"Admin","dias":28,"color":"verde","cambio":"igual","pide":false,"sin_avance":false,"racha":1,"mat":false,"banderas":[]},{"id":2372,"name":"SO11838 - Tools for Calbee - Calbee America Incorporated, Omar De la Garza","cliente":"Calbee America Incorporated","stage":"Done Operations","grupo":"Admin","dias":6,"color":"rojo","cambio":"empeoro","pide":true,"sin_avance":false,"racha":1,"mat":false,"banderas":[]},{"id":2376,"name":"SO11860 - VIP Service - Mission HQ - Mission Foods, Robert Barrera","cliente":"Mission Foods","stage":"To Do","grupo":"Operaciones","dias":1,"color":"rojo","cambio":"nuevo","pide":true,"sin_avance":false,"racha":0,"mat":false,"banderas":[]},{"id":2352,"name":"SO11699 - Instalacion mecanica y electrica de Sensores en ductos de Extraccion de Colector - Bridgestone México, Ruben Robledo","cliente":"Bridgestone México","stage":"In Progress","grupo":"Operaciones","dias":52,"color":"verde","cambio":"igual","pide":true,"sin_avance":false,"racha":1,"mat":false,"banderas":[{"tipo":"stage_atras","detalle":"Stage regresado Hold -> En proceso por Operaciones"},{"tipo":"fecha_fin","detalle":"Fecha fin movida por Operaciones"}]},{"id":2364,"name":"SO11832 - Servicio de ajuste de velocidad en embotelladora GEPP - BEBIDAS PURIFICADAS","cliente":"BEBIDAS PURIFICADAS","stage":"En plazo de credito","grupo":"Admin","dias":15,"color":"verde","cambio":"igual","pide":false,"sin_avance":false,"racha":1,"mat":false,"banderas":[]},{"id":2374,"name":"SO11851 - Materials for aluminium jacketing - Calbee America Incorporated, Omar De la Garza","cliente":"Calbee America Incorporated","stage":"Done Operations","grupo":"Admin","dias":6,"color":"rojo","cambio":"empeoro","pide":true,"sin_avance":false,"racha":1,"mat":false,"banderas":[]},{"id":2373,"name":"SO11846 - supply of SS materials for Press DALLAS - Mission Foods","cliente":"Mission Foods","stage":"Done Operations","grupo":"Admin","dias":6,"color":"rojo","cambio":"empeoro","pide":true,"sin_avance":false,"racha":1,"mat":false,"banderas":[]},{"id":2369,"name":"SO11862 - Cubierta de acero Inoxidable 304 para reactor quimico #2 - MAGNEKON S.A. DE C.V.","cliente":"MAGNEKON S.A. DE C.V.","stage":"In Progress","grupo":"Operaciones","dias":6,"color":"verde","cambio":"igual","pide":false,"sin_avance":false,"racha":1,"mat":false,"banderas":[]},{"id":213,"name":"🛠️ SO11037 - Distribucion Electrica luminarias Cabina de Flejadoras - clarios recicladora","cliente":"JOHNSON CONTROLS ENTERPRISES MEXICO","stage":"Hold","grupo":"Operaciones","dias":265,"color":"rojo","cambio":"igual","pide":true,"sin_avance":false,"racha":1,"mat":false,"banderas":[{"tipo":"hold_sin_fecha_vigente","detalle":"En Hold con fecha de reactivacion VENCIDA (2026-07-30)"}]},{"id":241,"name":"🛠️ SO11290 - Test loop ingeniería mexicali nalco","cliente":"Nalco de Mexico","stage":"En plazo de credito","grupo":"Admin","dias":202,"color":"rojo","cambio":"igual","pide":true,"sin_avance":false,"racha":1,"mat":false,"banderas":[]},{"id":2371,"name":"SO11849 - supply of breaker - Mission Foods","cliente":"Mission Foods","stage":"Done Operations","grupo":"Admin","dias":6,"color":"rojo","cambio":"empeoro","pide":true,"sin_avance":false,"racha":1,"mat":false,"banderas":[]},{"id":2368,"name":"SO11861 - Cubierta de acero Inoxidable 304 para reactor quimico #1 - MAGNEKON S.A. DE C.V.","cliente":"MAGNEKON S.A. DE C.V.","stage":"In Progress","grupo":"Operaciones","dias":6,"color":"verde","cambio":"igual","pide":false,"sin_avance":false,"racha":1,"mat":false,"banderas":[]},{"id":160,"name":"🛠️ SO10300 - Techo de Magnekon","cliente":"MAGNEKON S.A. DE C.V.","stage":"En plazo de credito","grupo":"Admin","dias":329,"color":"rojo","cambio":"igual","pide":true,"sin_avance":false,"racha":1,"mat":false,"banderas":[{"tipo":"nota_vacia","detalle":"1 log note(s) sin contenido en el chatter - no cuentan como seguimiento"}]},{"id":2353,"name":"SO11779 - Reparacion de motores de rampa - BEBIDAS PURIFICADAS","cliente":"BEBIDAS PURIFICADAS","stage":"En plazo de credito","grupo":"Admin","dias":52,"color":"rojo","cambio":"igual","pide":true,"sin_avance":false,"racha":1,"mat":false,"banderas":[]},{"id":2361,"name":"SO11791 - Power and control panels updated July 2026 Calbee - Calbee America Incorporated, Omar De la Garza","cliente":"Calbee America Incorporated","stage":"Hold","grupo":"Operaciones","dias":26,"color":"verde","cambio":"igual","pide":true,"sin_avance":false,"racha":1,"mat":false,"banderas":[{"tipo":"nota_vacia","detalle":"1 log note(s) sin contenido en el chatter - no cuentan como seguimiento"},{"tipo":"hold_sin_fecha_vigente","detalle":"En Hold con fecha de reactivacion VENCIDA (2026-08-21)"}]},{"id":2363,"name":"SO11833 - Cooling system for Quality offices - Mission Foods, Martín Infante","cliente":"Mission Foods","stage":"In Progress","grupo":"Operaciones","dias":20,"color":"rojo","cambio":"igual","pide":true,"sin_avance":false,"racha":1,"mat":false,"banderas":[]},{"id":2370,"name":"SO11850 - supply of ss pipe 1 1/2 and liquid tight - Mission Foods","cliente":"Mission Foods","stage":"Done Operations","grupo":"Admin","dias":6,"color":"rojo","cambio":"empeoro","pide":true,"sin_avance":false,"racha":1,"mat":false,"banderas":[]},{"id":2327,"name":"SO11511 - Valvula para lavado de botellas","cliente":"BEBIDAS PURIFICADAS","stage":"En plazo de credito","grupo":"Admin","dias":99,"color":"rojo","cambio":"igual","pide":true,"sin_avance":false,"racha":1,"mat":false,"banderas":[]},{"id":2366,"name":"SO11772 - Suministro e instalación de injerto de drenado sanitario de 3\" sobre codo - Nalco de Mexico, Tito Everardo Ordaz","cliente":"Nalco de Mexico","stage":"Done Operations","grupo":"Admin","dias":13,"color":"rojo","cambio":"igual","pide":true,"sin_avance":false,"racha":1,"mat":false,"banderas":[]},{"id":2357,"name":"SO11789 - Suministro de Panelview HMI - GRUMA CORP DBA MISSION FOODS","cliente":"GRUMA CORP DBA MISSION FOODS","stage":"En plazo de credito","grupo":"Admin","dias":43,"color":"rojo","cambio":"igual","pide":true,"sin_avance":false,"racha":1,"mat":false,"banderas":[]},{"id":2362,"name":"SO11842 - prensas materials - Mission Foods","cliente":"Mission Foods","stage":"In Progress","grupo":"Operaciones","dias":21,"color":"rojo","cambio":"igual","pide":true,"sin_avance":true,"racha":2,"mat":false,"banderas":[]},{"id":2365,"name":"SO11737 - Adecuaciones electricas y de control para diferencial de precion - Nalco de Mexico, Tito Everardo Ordaz","cliente":"Nalco de Mexico","stage":"Done Operations","grupo":"Admin","dias":15,"color":"rojo","cambio":"igual","pide":true,"sin_avance":false,"racha":1,"mat":false,"banderas":[]},{"id":2359,"name":"SO11771 - Subestación PI Aurora - Conmet de México, S.A. de C.V.","cliente":"CONMET DE MEXICO","stage":"In Progress","grupo":"Operaciones","dias":31,"color":"verde","cambio":"igual","pide":false,"sin_avance":false,"racha":1,"mat":false,"banderas":[]},{"id":101,"name":"🛠️ SO7723 - servicio de integración de sistema con sensor de nivel y pantalla HMI","cliente":"MAGNEKON S.A. DE C.V.","stage":"En plazo de credito","grupo":"Admin","dias":400,"color":"rojo","cambio":"igual","pide":true,"sin_avance":false,"racha":1,"mat":false,"banderas":[]},{"id":2358,"name":"SO11233 - Rigging compresor - Lau Industries de Mexico","cliente":"Lau Industries de Mexico","stage":"In Progress","grupo":"Operaciones","dias":40,"color":"verde","cambio":"igual","pide":true,"sin_avance":false,"racha":1,"mat":false,"banderas":[{"tipo":"fecha_fin","detalle":"Fecha fin movida por Operaciones"}]},{"id":2367,"name":"SO11718 - Fabricación e instalación de toma para saneamiento de planta en zona de arreglo  - Nalco de Mexico, Tito Everardo Ordaz","cliente":"Nalco de Mexico","stage":"Done Operations","grupo":"Admin","dias":13,"color":"rojo","cambio":"igual","pide":true,"sin_avance":false,"racha":1,"mat":false,"banderas":[]},{"id":506,"name":"🛠️ SO11492 - Instalacion de ductos de aire en area de chips, corn, flour process area & packing","cliente":"Mission Foods","stage":"In Progress","grupo":"Operaciones","dias":186,"color":"verde","cambio":"igual","pide":true,"sin_avance":false,"racha":1,"mat":false,"banderas":[{"tipo":"nota_vacia","detalle":"1 log note(s) sin contenido en el chatter - no cuentan como seguimiento"}]},{"id":343,"name":"🛠️ SO11261 - Suministro e instalación de sistema de medición de flujo de 2 Etil Hexanol","cliente":"MAGNEKON S.A. DE C.V.","stage":"In Progress","grupo":"Operaciones","dias":198,"color":"verde","cambio":"igual","pide":false,"sin_avance":false,"racha":1,"mat":false,"banderas":[]},{"id":2349,"name":"SO11762 - Mejoras a sistema TOPOCHICO, MTY. - Nalco de Mexico, Tito Everardo Ordaz","cliente":"Nalco de Mexico","stage":"In Progress","grupo":"Operaciones","dias":58,"color":"rojo","cambio":"igual","pide":true,"sin_avance":false,"racha":1,"mat":false,"banderas":[{"tipo":"nota_vacia","detalle":"1 log note(s) sin contenido en el chatter - no cuentan como seguimiento"}]},{"id":2356,"name":"SO11773 - ELECTRICAL DUMP STATION DALLAS 2 - Mission Foods, Daniel Sanudo","cliente":"Mission Foods","stage":"In Progress","grupo":"Operaciones","dias":47,"color":"rojo","cambio":"igual","pide":true,"sin_avance":false,"racha":1,"mat":false,"banderas":[]},{"id":2302,"name":"SO11547 - Desinstalación, Adecuación e Integración de Sistema de Filtración en planta Topo Chico","cliente":"Nalco de Mexico","stage":"In Progress","grupo":"Operaciones","dias":136,"color":"rojo","cambio":"igual","pide":true,"sin_avance":false,"racha":1,"mat":false,"banderas":[]},{"id":2355,"name":"SO11673 - Poliza de matto para Compresor Houston TX - Mission Foods","cliente":"Mission Foods","stage":"In Progress","grupo":"Operaciones","dias":47,"color":"rojo","cambio":"igual","pide":true,"sin_avance":false,"racha":1,"mat":false,"banderas":[]},{"id":121,"name":"🛠️ SO9428 - INSTALACION DE SUMINISTRO DE AGUA FRIA - VERTIV 2da Fase","cliente":"Nalco de Mexico","stage":"In Progress","grupo":"Operaciones","dias":370,"color":"rojo","cambio":"igual","pide":true,"sin_avance":false,"racha":1,"mat":false,"banderas":[]},{"id":212,"name":"🛠️ SO10337 - Cortinas de seguridad 120s y 270s","cliente":"Bridgestone México","stage":"In Progress","grupo":"Operaciones","dias":266,"color":"rojo","cambio":"igual","pide":true,"sin_avance":false,"racha":1,"mat":false,"banderas":[]}],"resueltos":[]};
+
+const ACC = {
+  Operaciones: { rojo:'Avanza de etapa, o escribe un log note diciendo por qué sigue aquí.',
+                 ambar:'A un día del límite: mueve la etapa o documenta.',
+                 verde:'Sin acción.' },
+  Admin:       { rojo:'Cobra, o documenta en un log note el compromiso del cliente.',
+                 ambar:'A un día del límite: cobra o documenta.',
+                 verde:'Sin acción.' }
+};
+const RELOJ = { Operaciones:'en la etapa', Admin:'en la etapa' };
+const TITULO = { Operaciones:'Semáforo Operaciones', Admin:'Semáforo Administración' };
+const DEST = {
+  Operaciones:'felipe@fts.mx · gibran@fts.mx · mateo@fts.mx · estebandelacruz@fts.mx',
+  Admin:'erick@fts.mx · gerardo@fts.mx · carolina@fts.mx · estebandelacruz@fts.mx'
+};
+const ETQ = { rojo:'Atrasado', ambar:'Por vencer', verde:'En tiempo' };
+const norm = c => c==='amarillo' ? 'ambar' : c;
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const corta = (s,n) => { s=String(s||''); return s.length>n ? s.slice(0,n)+'…' : s; };
+
+const AUTORIA = t => t==='fecha_fin' || t==='stage_atras';
+const pideAlgo = r => r.pide;
+
+let modo='diario';
+
+function filaHTML(r){
+  const c = norm(r.color);
+  let h = '<div class="p"><span class="dot d-'+c+'"></span><div class="cuerpo">';
+  h += '<div class="n1">'+esc(corta(r.name,58))+'</div>';
+  h += '<div class="n2">'+esc(r.cliente)+'<span class="sep">|</span>'+esc(r.stage)+
+       '<span class="sep">|</span><span class="dias">'+(r.dias==null?'?':r.dias)+(r.dias===1?' día':' días')+'</span> '+RELOJ[r.grupo]+'</div>';
+
+  const chips = [];
+  if(modo!=='lunes' && (r.cambio==='nuevo'||r.cambio==='empeoro'||r.cambio==='mejoro'))
+    chips.push('<span class="chip ev">'+{nuevo:'Nuevo',empeoro:'Empeoró',mejoro:'Mejoró'}[r.cambio]+'</span>');
+  if(modo==='lunes' && r.cambio!=='igual')
+    chips.push('<span class="chip ev">'+{nuevo:'Nuevo',empeoro:'Empeoró',mejoro:'Mejoró'}[r.cambio]+'</span>');
+  chips.push('<span class="chip">'+ETQ[c]+'</span>');
+  if(r.mat) chips.push('<span class="chip">materiales</span>');
+  if(r.sin_avance||r.racha>=2) chips.push('<span class="chip">nota repetida ×'+r.racha+'</span>');
+  h += '<div class="chips">'+chips.join('')+'</div>';
+
+  // banderas: UNA sola vez, aquí, en el renglón de su proyecto
+  for(const f of r.banderas){
+    const et = AUTORIA(f.tipo) ? 'Movido por otra área' : 'Por revisar';
+    h += '<div class="revisar"><b>'+et+':</b> '+esc(f.detalle)+'</div>';
+  }
+  if(c!=='verde') h += '<div class="accion a-'+c+'">'+ACC[r.grupo][c]+'</div>';
+  return h+'</div></div>';
+}
+
+function correo(grupo){
+  const todos = DATOS.proyectos.filter(r=>r.grupo===grupo);
+  const n = k => todos.filter(r=>norm(r.color)===k).length;
+  const piden = todos.filter(pideAlgo);
+  const callados = todos.filter(r=>!pideAlgo(r));
+  const cambiaron = piden.filter(r=>r.cambio!=='igual');
+  const igualesQuePiden = piden.filter(r=>r.cambio==='igual');
+
+  let imprime, callan;
+  if(modo==='lunes'){ imprime = todos.slice(); callan = []; }
+  else if(modo==='quieto'){ imprime = []; callan = piden.slice(); }   // dia sin novedad: nada cambio
+  else { imprime = cambiaron.slice(); callan = igualesQuePiden.slice(); }
+  imprime.sort((a,b)=>{const o={rojo:0,ambar:1,verde:2};
+    return (o[norm(a.color)]-o[norm(b.color)]) || ((b.dias||0)-(a.dias||0));});
+
+  // ── recuento que CUADRA renglón por renglón ──
+  let h = '<div class="titulo">'+TITULO[grupo]+'</div>';
+  h += '<div class="fecha">Medición del lunes 7 de septiembre, 8:00 CST</div>';
+  h += '<div class="recuento">';
+  h += '<div class="fila tot"><span>Proyectos vigilados</span><span class="n">'+todos.length+'</span></div>';
+  h += '<div class="fila"><span><span class="dot d-rojo" style="display:inline-block;margin:0 6px 1px 0"></span>Atrasados</span><span class="n">'+n('rojo')+'</span></div>';
+  h += '<div class="fila"><span><span class="dot d-ambar" style="display:inline-block;margin:0 6px 1px 0"></span>Por vencer</span><span class="n">'+n('ambar')+'</span></div>';
+  h += '<div class="fila"><span><span class="dot d-verde" style="display:inline-block;margin:0 6px 1px 0"></span>En tiempo</span><span class="n">'+n('verde')+'</span></div>';
+  h += '<div class="fila tot" style="border-top:1px solid #dfe3e8"><span>'+
+       (modo==='lunes'?'Se imprimen abajo (todos)':'Se imprimen abajo')+'</span><span class="n">'+imprime.length+'</span></div>';
+  if(modo!=='lunes'){
+    h += '<div class="fila sub"><span>siguen pendientes, sin cambio desde ayer</span><span class="n">'+callan.length+'</span></div>';
+    h += '<div class="fila sub"><span>en tiempo y sin nada que revisar</span><span class="n">'+callados.length+'</span></div>';
+  }
+  h += '</div>';
+  h += '<p class="cuadra">'+
+       (modo==='lunes'
+         ? todos.length+' = '+imprime.length+' impresos. El lunes se imprime el estado completo.'
+         : todos.length+' = '+imprime.length+' + '+callan.length+' + '+callados.length+'. La cuenta cierra.')+
+       '</p>';
+
+  if(modo==='quieto'){
+    h += '<h3>Ningún cambio</h3>';
+    h += '<p class="criterio">Desde el correo anterior no entró, empeoró ni se resolvió ningún proyecto, y no hay nada nuevo que revisar.</p>';
+    h += '<p class="siguen"><b>'+piden.length+' proyectos siguen pendientes</b> en el mismo estado de ayer. '+
+         'El lunes sale el estado completo de los '+todos.length+'.</p>';
+  } else {
+    h += '<h3>'+(modo==='lunes' ? 'Todos los proyectos vigilados' : 'Lo que cambió desde el correo anterior')+'</h3>';
+    h += '<p class="criterio">'+(modo==='lunes'
+        ? 'Los '+todos.length+' proyectos vigilados, hayan cambiado o no. De martes a viernes solo salen los que cambiaron.'
+        : 'Proyectos que entraron a la lista, empeoraron, mejoraron, o estrenaron algo por revisar.')+'</p>';
+    h += imprime.length ? imprime.map(filaHTML).join('') : '<p class="nada">Ninguno.</p>';
+
+    if(modo!=='lunes' && callan.length){
+      h += '<h3>Siguen pendientes, sin cambio</h3>';
+      h += '<p class="criterio">Ya estaban así en el correo anterior. Se nombran para que no desaparezcan, sin repetir su ficha.</p>';
+      const orden = callan.slice().sort((a,b)=>(b.dias||0)-(a.dias||0));
+      h += '<p class="siguen">'+orden.map(r=>
+        '<span class="dot d-'+norm(r.color)+'" style="display:inline-block;margin:0 5px 1px 0"></span><b>'+
+        esc(corta(r.name.replace(/ - .*$/,''),34))+'</b> '+(r.dias==null?'?':r.dias)+'d').join(' &nbsp;·&nbsp; ')+'</p>';
+    }
+  }
+
+  // resueltos
+  const res = DATOS.resueltos.filter(r=>r.grupo===grupo);
+  h += '<h3>Ya no piden nada</h3>';
+  h += '<p class="criterio">Estaban en la lista en el correo anterior y hoy ya no: se resolvieron o entraron en tiempo.</p>';
+  h += res.length
+     ? '<p class="siguen">'+res.map(r=>'<span class="dot d-verde" style="display:inline-block;margin:0 5px 1px 0"></span><b>'+esc(corta(r.name.replace(/ - .*$/,''),34))+'</b>').join(' &nbsp;·&nbsp; ')+'</p>'
+     : '<p class="nada">Ninguno.</p>';
+
+  // medición — nunca mezclada con proyectos
+  h += '<div class="medicion"><h3 style="border-top:0;padding-top:0">Sobre esta medición</h3>';
+  h += '<p class="criterio">Esto no habla de ningún proyecto: habla de qué tan confiable es el número de arriba.</p>';
+  h += '<ul>';
+  h += '<li><b>Los días son la EDAD del proyecto, no el tiempo en la etapa.</b> Odoo no está registrando el cambio de etapa en el chatter, así que el contador arranca desde que se creó el proyecto. Aplica a los '+todos.length+'. Se corrige en S6 — issue #220.</li>';
+  h += '<li>2 consultas a Odoo volvieron vacías: <code>msg94</code> (es la causa de lo anterior) y <code>attachments</code>.</li>';
+  h += '</ul></div>';
+
+  h += '<div class="pie">Corrida de las 8:00 CST · '+(modo==='lunes'?'estado completo del lunes':'delta contra el correo anterior')+
+       ' · el semáforo de falta de seguimiento se retiró del reporte en S1 y se sigue calculando.</div>';
+  return h;
+}
+
+function asunto(grupo){
+  const todos = DATOS.proyectos.filter(r=>r.grupo===grupo);
+  const piden = todos.filter(pideAlgo);
+  const cambiaron = piden.filter(r=>r.cambio!=='igual');
+  const n = todos.filter(r=>norm(r.color)==='rojo').length;
+  let s;
+  if(modo==='lunes') s = 'estado completo · '+n+' atrasados de '+todos.length;
+  else if(modo==='quieto') s = 'sin cambios · '+n+' atrasados siguen pendientes';
+  else s = cambiaron.length+' con cambio · '+n+' atrasados en total';
+  return '<b>[Semáforo '+(grupo==='Admin'?'Administración':'Operaciones')+'] 07/Sep/2026 — '+s+'</b>'+
+         '<span class="para">para: '+DEST[grupo]+'</span>';
+}
+
+function pinta(){
+  document.getElementById('asuntoOps').innerHTML = asunto('Operaciones');
+  document.getElementById('asuntoAdm').innerHTML = asunto('Admin');
+  document.getElementById('mailOps').innerHTML = correo('Operaciones');
+  document.getElementById('mailAdm').innerHTML = correo('Admin');
+  document.getElementById('notaModo').textContent = {
+    diario:'De martes a viernes. Solo lo que cambió, más una línea con los que siguen pendientes.',
+    lunes:'Una vez por semana. Los 35 proyectos, con la misma estructura.',
+    quieto:'Cuando no cambió nada. Mismo esqueleto, cero fichas — nunca un correo con otra forma.'
+  }[modo];
+  document.querySelectorAll('.modos button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.m===modo));
+}
+document.querySelector('.modos').addEventListener('click', e=>{
+  const b=e.target.closest('button[data-m]'); if(!b) return; modo=b.dataset.m; pinta();
+});
+pinta();
+</script>
+</body>
+</html>
