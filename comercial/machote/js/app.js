@@ -1255,6 +1255,104 @@
 
   /** El HTML de la hoja abierta. Separado del pintado para poder renderizar a
    *  memoria y comparar, sin tocar el DOM vivo. */
+  /* ── DÓNDE SE EJECUTA (V1.26) ────────────────────────────────────────────
+   *
+   * Va en el DESGLOSE, junto a empresa y moneda, porque es del MACHOTE: una
+   * cotización se ejecuta en un lugar. Los COSTOS de viaje, en cambio, van en
+   * la sección, con el resto del costo.
+   *
+   * El país manda sobre lo demás: si hay catálogo de estados para ese país se
+   * ofrece la lista; si no, texto libre — y se DICE, en vez de enseñar un
+   * desplegable vacío que se lee como «no hay estados». */
+  function lugarHTML(m, c) {
+    const g = G.MachoteGeo;
+    const cat = g && g.datos();
+    const cod = (m.pais || '').toUpperCase();
+    const conEstados = !!(g && g.tieneEstados(cod));
+    const foraneo = c.lugar.foraneo;
+
+    const selPais = cat
+      ? '<select class="cel" data-cel="pais">' +
+          '<option value=""' + (m.pais ? '' : ' selected') + '>Elige el país…</option>' +
+          g.paises().map(p => '<option value="' + esc(p.codigo) + '"' +
+            (cod === p.codigo ? ' selected' : '') + '>' + esc(p.nombre) + '</option>').join('') +
+        '</select>'
+      /* Mientras el catálogo no llega, texto libre con lo que ya haya. No se
+       * bloquea la captura por esperar a la red. */
+      : cel('pais', m.pais, 'w80') + '<span class="tiny nota"> cargando países…</span>';
+
+    const selEstado = conEstados
+      ? '<select class="cel" data-cel="estado">' +
+          '<option value=""' + (m.estado ? '' : ' selected') + '>Elige el estado…</option>' +
+          g.estados(cod).map(e => '<option value="' + esc(e) + '"' +
+            (m.estado === e ? ' selected' : '') + '>' + esc(e) + '</option>').join('') +
+        '</select>'
+      : cel('estado', m.estado, 'desc');
+
+    const v = c.viaje;
+    return '<div class="blk lugar' + (foraneo ? ' foraneo' : '') + '">' +
+      '<div class="et2">DÓNDE SE EJECUTA</div>' +
+      '<table class="hoja2"><tbody>' +
+      '<tr><td class="et">País</td><td>' + selPais + '</td></tr>' +
+      '<tr><td class="et">Estado</td><td>' + selEstado +
+        (cod && !conEstados
+          ? '<div class="tiny nota">Sin catálogo de estados para ' + esc(paisNom(cod)) +
+            '. Escríbelo como venga.</div>'
+          : '') + '</td></tr>' +
+      '<tr><td class="et">Ciudad</td><td>' + cel('ciudad', m.ciudad, 'desc') + '</td></tr>' +
+      '</tbody></table>' +
+      (c.lugar.tiene
+        ? '<div class="lugar-veredicto ' + (foraneo ? 'fuera' : 'sede') + '">' +
+            (foraneo
+              ? '<strong>Cotización foránea.</strong> Hay que cobrar el traslado: ' +
+                'vuelos, hotel, viáticos y los días de viaje en mano de obra. ' +
+                'El revisador no la deja terminar sin eso.'
+              : '<strong>En la sede.</strong> No hace falta nada de viaje.') +
+          '</div>'
+        : '<div class="lugar-veredicto falta"><strong>Falta decir dónde se ejecuta.</strong> ' +
+          'De ahí sale si hay que cobrar traslado.</div>') +
+      (foraneo ? bloqueViajeHTML(m, c, v) : '') +
+      '</div>';
+  }
+
+  const paisNom = (cod) => {
+    const g = G.MachoteGeo, p = g && g.pais(cod);
+    return (p && p.nombre) || cod || '';
+  };
+
+  /* Lo que sólo tiene sentido cuando la cotización es foránea: la salida
+   * explícita del bloqueo, los recargos y quién paga los días. */
+  function bloqueViajeHTML(m, c, v) {
+    const eua = c.lugar.eua;
+    return '<div class="viaje-cfg">' +
+      '<label class="viaje-na"><input type="checkbox" data-viaje="no_aplica"' +
+        (v.no_aplica ? ' checked' : '') + '> ' +
+        '<span>No se ocupan conceptos de viaje en esta cotización</span></label>' +
+      '<div class="tiny nota">Márcalo sólo si el cliente pone el traslado o la gente ya ' +
+      'está en sitio. Queda anotado como decisión, no como olvido.</div>' +
+      '<table class="hoja2"><tbody>' +
+      '<tr><td class="et">Recargo fin de semana</td><td>' +
+        (eua
+          ? celPct('viaje.recargo_fin_semana', v.recargo_fin_semana, 'w80')
+          : '<span class="tiny nota">No aplica: es regla de Estados Unidos.</span>') +
+      '</td></tr>' +
+      '<tr><td class="et">Recargo día festivo</td><td>' +
+        (eua
+          ? celPct('viaje.recargo_festivo', v.recargo_festivo, 'w80') +
+            '<div class="tiny n-warn">Sin confirmar. Vacío = tarifa normal.</div>'
+          : '<span class="tiny nota">No aplica: es regla de Estados Unidos.</span>') +
+      '</td></tr>' +
+      '<tr><td class="et">Quién paga los días de viaje</td><td>' +
+        '<select class="cel" data-cel="viaje.paga_dias">' +
+        C.PAGA_DIAS.map(o => '<option value="' + esc(o.id) + '"' +
+          (v.paga_dias === o.id ? ' selected' : '') + '>' + esc(o.label) + '</option>').join('') +
+        '</select>' +
+        '<div class="tiny nota">Decisión de negocio abierta. El machote no la resuelve: ' +
+        'la registra, para que se sepa cuál se usó.</div>' +
+      '</td></tr>' +
+      '</tbody></table></div>';
+  }
+
   function hojaHTML(m, c) {
     const s = m.secciones.find(x => x.id === ST.hoja);
     // La banda de estado encabeza TODA hoja. Si sólo saliera en el DESGLOSE,
@@ -1406,7 +1504,13 @@
         return !l || !(Number(l.qty) > 0);
       });
       filasMo += '<tr class="grupo' + (grupoVacio ? ' enCero' : '') + '"><td colspan="9">' +
-                 esc(g.label) + '</td></tr>';
+                 esc(g.label) +
+                 /* El grupo de viaje se explica solo: quien nunca ha cotizado
+                  * fuera no sabe que existe ni para qué. */
+                 (g.id === 'viaje'
+                   ? '<span class="tiny nota"> · los días de vuelo y las horas de fin de ' +
+                     'semana. Se pagan distinto, pero salen de la misma cuenta.</span>'
+                   : '') + '</td></tr>';
       roles.forEach(rol => {
         let i = s.mo.findIndex(l => l.rol === rol.id);
         if (i < 0) { s.mo.push({ rol: rol.id, qty: '', personas: 1, pu: rol.pu, moneda: m.moneda }); i = s.mo.length - 1; }
@@ -1414,6 +1518,11 @@
         // multiplicadores del machote y la hoja muestra dos verdades: el total
         // de arriba con el de la sección, y la línea de abajo con el viejo.
         const l = s.mo[i], cl = C.costoMo(l, m, s), p = 's:' + s.id + ':mo:' + i + ':';
+        /* La unidad la dice el ROL, no la columna: los días de viaje se
+         * capturan en DÍAS. Poner «Horas» ahí haría que cinco días de vuelo se
+         * leyeran como cinco horas — y el motor ya los cuenta aparte, así que
+         * la pantalla tiene que decir lo mismo que la cuenta. */
+        const rec = cl.recargo;
         const vacia = !(Number(l.qty) > 0);
         // Verde = cantidad Y precio. Con sólo horas, el renglón está a medias y
         // no aporta un peso al total; pintarlo diría "listo" de algo que todavía
@@ -1422,10 +1531,15 @@
         filasMo +=
           '<tr class="' + cls + '">' +
           '<td class="rotulo" data-l="Renglón">' + esc(rol.label) + '</td>' +
-          '<td data-l="QTY (horas)">' + celNum(p + 'qty', l.qty, 'w60') + '</td>' +
-          '<td class="ro solo-ancho" data-l="Unidad">Horas</td>' +
+          '<td data-l="QTY (' + esc(cl.unidad.toLowerCase()) + ')">' + celNum(p + 'qty', l.qty, 'w60') + '</td>' +
+          '<td class="ro solo-ancho" data-l="Unidad">' + esc(cl.unidad) + '</td>' +
           '<td data-l="Personas">' + celNum(p + 'personas', l.personas, 'w60') + '</td>' +
-          '<td data-l="Precio unitario">' + celNum(p + 'pu', l.pu, 'w80') + '</td>' +
+          '<td data-l="Precio unitario">' + celNum(p + 'pu', l.pu, 'w80') +
+            (rec.aplica
+              ? '<div class="tiny recargo">+' + Math.round(rec.pct * 100) + '% → ' +
+                mx(cl.puEfectivo) + '</div>'
+              : (rec.motivo ? '<div class="tiny nota">' + esc(rec.motivo) + '</div>' : '')) +
+          '</td>' +
           '<td class="vl mono calc" data-l="Precio total">' + mx(cl.costo) + '</td>' +
           '<td data-l="Moneda">' + celSel(p + 'moneda', l.moneda, ['MXN', 'USD']) + '</td>' +
           '<td class="ro mono calc" data-l="Margen">' + cl.mult + '</td>' +
@@ -1592,7 +1706,9 @@
       '<tr><td class="et">Origen del tipo de cambio</td><td>' +
         celLibre('tc_fuente', m.tc_fuente, 'fuentes-tc') + '</td></tr>' +
       '<tr><td class="et">TC efectivo</td><td class="vl mono calc">' + C.tcEfectivo(m).toFixed(4) + '</td></tr>' +
-      '</tbody></table></div></div>' +
+      '</tbody></table></div>' +
+      lugarHTML(m, c) +
+      '</div>' +
       '<datalist id="fuentes-tc">' +
         ['DOF del día', 'Banxico FIX', 'Tipo de cambio del banco', 'Acordado con el cliente']
           .map(x => '<option value="' + x + '">').join('') + '</datalist>' +
@@ -1886,6 +2002,17 @@
       if (vvc) vvc.onchange = () => { ST.verVacios = vvc.checked; pintarHoja(m); };
       return;
     }
+    /* La salida explícita del bloqueo por cotización foránea. Es un checkbox
+     * y no una celda porque no es un dato del costo: es una DECISIÓN, y el
+     * revisador la registra como tal. */
+    $$('[data-viaje]').forEach(el => {
+      el.onchange = () => {
+        if (!m.viaje) m.viaje = {};
+        m.viaje[el.dataset.viaje] = !!el.checked;
+        tocado(m);
+        pintarHoja(m); barra(m, C.calcular(m));
+      };
+    });
     $$('[data-cel]').forEach(el => {
       const esSel = el.tagName === 'SELECT';
       const aplicar = () => {
@@ -2152,5 +2279,15 @@
    * machote con `cliente_id`—, para no parpadear de gratis. */
   if (G.Clientes && ST.machotes.some(m => m.cliente_id)) {
     G.Clientes.cargar().then(r => { if (r.ok) render(); });
+  }
+
+  /* El catálogo de países, igual: en segundo plano y sin bloquear. Mientras no
+   * llega, los tres campos del lugar son texto libre y se puede capturar; en
+   * cuanto llega se repinta con los desplegables.
+   *
+   * Se pide SIEMPRE, no sólo cuando hace falta: es un archivo del repo, no una
+   * llamada a Odoo, y el campo lo pide el revisador en cada machote. */
+  if (G.MachoteGeo) {
+    G.MachoteGeo.cargar().then(() => { render(); });
   }
 })(window);

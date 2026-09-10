@@ -38,6 +38,14 @@
   const usada = (l) => C.usadaPartida(l);
   const tipoDe = (m) => (G.DEMO.TIPOS_PROYECTO.find(t => t.id === (m.diagnostico || {}).tipo) || null);
 
+  /* El nombre del país para leerlo en un hallazgo: «Estados Unidos», no «US».
+   * Sale del catálogo si ya cargó; si no, del código, que sigue siendo cierto. */
+  function paisNombre(codigo) {
+    const g = G.MachoteGeo;
+    const p = g && g.pais ? g.pais(codigo) : null;
+    return (p && p.nombre) || codigo || '';
+  }
+
   /* La primera sección donde un multiplicador cumple `mal`. Sirve para que el
    * botón "Ir a arreglarlo" abra la hoja correcta: desde que los
    * multiplicadores son por sección, mandar al DESGLOSE es mandar a una
@@ -391,6 +399,82 @@
         const f = secs(m).filter(s => !s.nombre || /^SECCION\s*\d+$/i.test(s.nombre.trim()));
         return f.length ? { detalle: 'En las cotizaciones grandes las secciones se renombran al alcance real. "SECCION 3" no le dice nada a quien la ejecute.',
                             items: f.map(s => s.nombre || '(vacía)') } : null;
+      }
+    },
+
+    // ── Viaje y trabajo foráneo (V1.26) ────────────────────────────────────
+    //
+    // El origen: Ricardo ha cobrado el trabajo de proyectos en Estados Unidos
+    // pero NUNCA los días de vuelo, y el presupuesto de Albuquerque salió sin
+    // viáticos ni hotel. No fue un cálculo mal hecho — el concepto no existía.
+    //
+    // La pieza que lo cierra es de Esteban, y es la razón de que esto sea una
+    // regla DURA y no un recordatorio: «si a alguien se le olvida el vuelo,
+    // también se le va a olvidar marcar que es foráneo». Que lo detecte el
+    // sistema, a partir de un dato que sí se captura siempre: dónde se ejecuta.
+    {
+      destino: () => ({ tab: 'desglose' }),
+      id: 'sin-lugar-ejecucion', severidad: 'dura', area: 'Viaje',
+      titulo: 'No se dijo dónde se ejecuta',
+      evaluar: (m) => C.tieneLugar(m) ? null : {
+        detalle: 'País y ciudad son obligatorios: de ahí sale si la cotización es ' +
+                 'foránea, y con eso si hay que cobrar vuelos, hotel y días de viaje. ' +
+                 'Monterrey viene preseleccionado en las cotizaciones nuevas; ésta es ' +
+                 'anterior al campo, por eso está vacío.'
+      }
+    },
+    {
+      destino: () => ({ tab: 'secc' }),
+      id: 'foranea-sin-viaje', severidad: 'dura', area: 'Viaje',
+      titulo: 'Se ejecuta fuera de Monterrey y no trae nada de viaje',
+      evaluar: (m, c) => {
+        if (!c.lugar.foraneo) return null;
+        if (c.viaje.no_aplica) return null;            // alguien lo decidió a mano
+        if (c.renglonesViaje > 0 || c.dias > 0) return null;
+        const donde = [m.ciudad, m.estado, paisNombre(m.pais)].filter(Boolean).join(', ');
+        return {
+          detalle: 'Mover gente cuesta, y ese costo se descubre tarde: es lo que pasó ' +
+                   'con el presupuesto de Albuquerque. Agrega los conceptos de viaje que ' +
+                   'apliquen —vuelos, hotel, viáticos, taxis, gasolina— y los días de ' +
+                   'viaje en mano de obra. Si de verdad no se ocupa nada, márcalo: la ' +
+                   'casilla está al lado, y así queda dicho que fue una decisión.',
+          items: ['Se ejecuta en: ' + (donde || '(sin decir)')]
+        };
+      }
+    },
+    {
+      destino: () => ({ tab: 'secc' }),
+      id: 'viaje-marcado-no-aplica', severidad: 'blanda', area: 'Viaje',
+      titulo: 'Cotización foránea marcada como «sin conceptos de viaje»',
+      evaluar: (m, c) => (c.lugar.foraneo && c.viaje.no_aplica && c.renglonesViaje === 0 && c.dias === 0)
+        ? { detalle: 'Queda constancia de que alguien lo decidió, no de que se olvidó. ' +
+                     'Confirma que el cliente pone el traslado o que la gente ya está en sitio.' }
+        : null
+    },
+    {
+      destino: () => ({ tab: 'secc' }),
+      id: 'viaje-con-margen', severidad: 'blanda', area: 'Viaje',
+      titulo: 'Se escribió un margen sobre un renglón de viaje',
+      evaluar: (m, c) => c.viajeConMargen ? {
+        detalle: 'El viaje se cobra a costo, multiplicador 1: es regla del negocio, no ' +
+                 'una opción. El motor IGNORÓ el margen escrito —el precio no subió— pero ' +
+                 'conviene borrarlo para que el renglón no diga una cosa y valga otra.',
+        items: [c.viajeConMargen + ' renglón(es)']
+      } : null
+    },
+    {
+      destino: () => ({ tab: 'desglose' }),
+      id: 'festivo-sin-confirmar', severidad: 'info', area: 'Viaje',
+      titulo: 'El recargo de días festivos sigue sin confirmarse',
+      evaluar: (m, c) => {
+        if (!c.lugar.eua) return null;
+        const usa = (m.secciones || []).some(s => (s.mo || [])
+          .some(l => l.rol === 'hrs_festivo' && Number(l.qty) > 0));
+        if (!usa || c.viaje.recargo_festivo !== null) return null;
+        return { detalle: 'Hay horas capturadas en día festivo y el recargo está vacío, ' +
+                          'así que se están cobrando a tarifa normal. Lo del 30% es de ' +
+                          'fin de semana; lo de festivos NO se ha confirmado con nadie. ' +
+                          'Escribe el que aplique o deja las horas donde corresponda.' };
       }
     },
 

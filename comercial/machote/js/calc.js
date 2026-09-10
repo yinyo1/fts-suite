@@ -29,7 +29,30 @@
     { id: 'he_jr',           grupo: 'extras', label: 'Horas extras Jr · seguridad', pu: 140, mult: 'extra' },
     { id: 'he_tecnicos',     grupo: 'extras', label: 'Horas extras técnicos',     pu: 140, mult: 'extra' },
     { id: 'he_programador',  grupo: 'extras', label: 'Horas extras programador',  pu: 300, mult: 'extra' },
-    { id: 'he_diseno',       grupo: 'extras', label: 'Horas extras diseño',       pu: 140, mult: 'extra' }
+    { id: 'he_diseno',       grupo: 'extras', label: 'Horas extras diseño',       pu: 140, mult: 'extra' },
+
+    /* ── V1.26 · viaje y trabajo foráneo (petición de Ricardo) ────────────
+     * Ricardo ha cobrado el trabajo de proyectos en Estados Unidos pero NUNCA
+     * los días de vuelo, porque no existía dónde ponerlos. No era un cálculo
+     * mal hecho: era un concepto que el machote no tenía.
+     *
+     * Los tres van en mano de obra y con el multiplicador de mano de obra
+     * —«salen de la misma cuenta», dijo Ricardo— y lo que cambia es la TARIFA,
+     * que se captura renglón por renglón como cualquier otra.
+     *
+     * `pu: null` a propósito en los tres: **no se inventa una tarifa**. Un día
+     * de viaje no vale 140 ni 200; lo decide quien cotiza, y mientras no lo
+     * escriba la regla `mo-sin-tarifa` lo reclama, que es justo lo que debe
+     * pasar. Poner un número de relleno sería peor que no tener el renglón. */
+    { id: 'dias_viaje',   grupo: 'viaje', label: 'Días de viaje',           pu: null, mult: 'mano_obra',
+      unidad: 'Días', dias: true,
+      ayuda: 'El día de vuelo o traslado. Se paga distinto del día trabajado; la tarifa y la moneda se capturan aquí.' },
+    { id: 'hrs_finde',    grupo: 'viaje', label: 'Horas en fin de semana',  pu: null, mult: 'mano_obra',
+      recargo: 'fin_semana',
+      ayuda: 'Sábado y domingo. El recargo SOLO se aplica cuando se ejecuta en Estados Unidos.' },
+    { id: 'hrs_festivo',  grupo: 'viaje', label: 'Horas en día festivo',    pu: null, mult: 'mano_obra',
+      recargo: 'festivo',
+      ayuda: 'El recargo de días festivos NO está confirmado: nace en cero y quien cotiza lo escribe.' }
   ];
   const ROL = {};
   ROLES.forEach(r => { ROL[r.id] = r; });
@@ -37,7 +60,8 @@
   const GRUPOS = [
     { id: 'diseno', label: 'Diseño y Programación' },
     { id: 'planta', label: 'En Planta' },
-    { id: 'extras', label: 'Extras' }
+    { id: 'extras', label: 'Extras' },
+    { id: 'viaje',  label: 'Viaje y trabajo foráneo' }
   ];
 
   /* Valores de la plantilla original (Machote general MXN - SO.xlsx).
@@ -49,7 +73,26 @@
   const REPARTO_PLANTILLA = { venta: 0.73, operaciones: 0.27 };
   const MAX_SECCIONES = 10;
 
-  const TIPOS = ['Materiales', 'Servicios'];
+  /* `Viaje` entra en V1.26 como TERCER tipo, no como un bloque aparte: reusa
+   * la misma retícula de captura (descripción, unidad, moneda, fuente) que
+   * los otros dos, y así no hay una segunda forma de capturar un gasto.
+   *
+   * Lo que lo distingue es el multiplicador: **siempre 1**. Hotel, gasolina,
+   * taxis y vuelos se cobran a costo. Es regla del negocio, no una opción, y
+   * por eso vive en el motor y no en un campo que alguien pueda mover. */
+  const TIPOS = ['Materiales', 'Servicios', 'Viaje'];
+  const TIPO_VIAJE = 'Viaje';
+
+  /** Los conceptos de viaje que se ofrecen al elegir. Se ELIGEN: no aparecen
+   *  todos siempre, porque una cotización local no tiene por qué cargar cinco
+   *  renglones vacíos de vuelos y hotel. */
+  const CONCEPTOS_VIAJE = [
+    { id: 'vuelos',   label: 'Vuelos',            unidad: 'Vuelo' },
+    { id: 'hotel',    label: 'Hotel',             unidad: 'Noche' },
+    { id: 'viaticos', label: 'Viáticos',          unidad: 'Día' },
+    { id: 'taxis',    label: 'Taxis y traslados', unidad: 'Servicio' },
+    { id: 'gasolina', label: 'Gasolina',          unidad: 'Servicio' }
+  ];
 
   /** ¿Alguien escribió algo en este renglón de materiales?
    *  Definición ÚNICA: la usan el motor, las reglas y la pantalla. Estaba
@@ -184,8 +227,108 @@
       equipo_operaciones: EQUIPO_OPS_PLANTILLA(),
       equipo_cliente: [{ nombre: 'Contacto cliente 1', pct: 1 }],
       diagnostico: { tipo: '', respuestas: {} },
+      /* ── Dónde se ejecuta (V1.26) ────────────────────────────────────────
+       * Monterrey PRESELECCIONADO, que es la decisión de Esteban: es la sede y
+       * es el caso de la enorme mayoría. Lo que NO se hace es preseleccionarlo
+       * en la pantalla dejando el dato vacío por dentro — eso sería enseñar
+       * «Monterrey» y guardar nada. Nace escrito, y quien cotice en otro lado
+       * lo cambia.
+       *
+       * A los machotes que nacieron ANTES de este campo no se les rellena:
+       * llegan sin `pais` y la regla dura los manda a escribirlo. */
+      pais: d.pais || SEDE.pais,
+      estado: d.estado || SEDE.estado,
+      ciudad: d.ciudad || SEDE.ciudad,
+      viaje: {
+        // «No se ocupan conceptos de viaje», la salida explícita del bloqueo.
+        no_aplica: false,
+        recargo_fin_semana: 0.30,   // ~30%, dicho por Ricardo; editable
+        recargo_festivo: null,      // SIN CONFIRMAR: nace vacío a propósito
+        paga_dias: 'mx'             // hoy; la decisión está abierta
+      },
       secciones: [seccionNueva('SECCIÓN 1', empresa.moneda, MARGENES_PLANTILLA)]
     };
+  }
+
+  /* ── DÓNDE SE EJECUTA (V1.26) ───────────────────────────────────────────
+   *
+   * La pieza que amarra todo lo de viaje, propuesta por Esteban: el machote
+   * OBLIGA a decir país y ciudad, y de ahí sale solo si la cotización es
+   * foránea. La razón, textual: «si a alguien se le olvida el vuelo, también
+   * se le va a olvidar marcar que es foráneo». Que lo detecte el sistema.
+   *
+   * Monterrey es la sede. Cualquier otra ciudad —Guadalajara igual que
+   * Albuquerque— es foránea: mover gente cuesta, dentro y fuera del país.
+   *
+   * ⚠️ Un machote SIN lugar no es foráneo ni local: es un machote al que le
+   * falta el dato, y así lo trata todo lo de abajo. Los 8 que ya existen
+   * nacieron antes de este campo y **no se les inventa un valor**; la regla
+   * dura `sin-lugar-ejecucion` los manda a escribirlo, que es un clic. */
+  const SEDE = { pais: 'MX', estado: 'Nuevo León', ciudad: 'Monterrey' };
+
+  /** Sin acentos, sin mayúsculas y sin espacios de sobra. «MONTERREY  » y
+   *  «Montérrey» son la misma ciudad, y quien captura no tiene por qué saber
+   *  cuál de las dos escribió. */
+  function llano(x) {
+    return String(x === null || x === undefined ? '' : x)
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .trim().toLowerCase();
+  }
+
+  const tieneLugar = (m) => !!(m && llano(m.pais) && llano(m.ciudad));
+
+  /** ¿Se ejecuta fuera de Monterrey? `false` cuando falta el dato — la falta
+   *  la reclama su propia regla, y suponer «foránea» por un campo vacío
+   *  bloquearía a los 8 machotes viejos por algo que nadie escribió. */
+  function esForaneo(m) {
+    if (!tieneLugar(m)) return false;
+    return llano(m.pais) !== llano(SEDE.pais) || llano(m.ciudad) !== llano(SEDE.ciudad);
+  }
+
+  const esEUA = (m) => llano(m && m.pais) === 'us';
+
+  /** El bloque de viaje del machote, con sus valores por omisión. */
+  function viajeDe(m) {
+    const v = (m && m.viaje) || {};
+    return {
+      no_aplica: v.no_aplica === true,
+      // 30% es lo que dijo Ricardo («alrededor de 30% más la hora»). Es un
+      // valor de arranque editable, no una constante del motor.
+      recargo_fin_semana: (v.recargo_fin_semana === undefined || v.recargo_fin_semana === null)
+        ? 0.30 : num(v.recargo_fin_semana),
+      // NULL A PROPÓSITO: lo de días festivos NO está confirmado. Nace en cero
+      // y quien cotiza lo escribe; inventarle un número sería cobrarle al
+      // cliente una regla que nadie acordó.
+      recargo_festivo: (v.recargo_festivo === undefined || v.recargo_festivo === null)
+        ? null : num(v.recargo_festivo),
+      // Quién paga los días de viaje. DECISIÓN DE NEGOCIO ABIERTA (ver
+      // docs/comercial/VIAJE.md): hoy es pago mexicano; Esteban planteó que
+      // debería pagarlos la LLC, con tarifa más básica pero en dólares. El
+      // machote NO decide eso: lo REGISTRA, para que se sepa cuál se usó.
+      paga_dias: v.paga_dias || 'mx'
+    };
+  }
+
+  const PAGA_DIAS = [
+    { id: 'mx',  label: 'Servicios FTS (México)', nota: 'Como se ha pagado hasta hoy.' },
+    { id: 'llc', label: 'FTS USA (LLC)',          nota: 'Propuesta de Esteban: es quien mueve a la gente.' }
+  ];
+
+  /** El recargo que le toca a un renglón, y por qué. Devuelve el porqué junto
+   *  con el número para que la pantalla pueda decir «no aplica: es regla de
+   *  Estados Unidos» en vez de enseñar un cero sin explicación. */
+  function recargoDe(rol, m) {
+    if (!rol || !rol.recargo) return { pct: 0, aplica: false, motivo: null };
+    if (!esEUA(m)) {
+      return { pct: 0, aplica: false, motivo: 'Sólo aplica cuando se ejecuta en Estados Unidos.' };
+    }
+    const v = viajeDe(m);
+    if (rol.recargo === 'festivo') {
+      return v.recargo_festivo === null
+        ? { pct: 0, aplica: false, motivo: 'Sin confirmar: escribe el recargo de días festivos.' }
+        : { pct: v.recargo_festivo, aplica: v.recargo_festivo > 0, motivo: null };
+    }
+    return { pct: v.recargo_fin_semana, aplica: v.recargo_fin_semana > 0, motivo: null };
   }
 
   const empresaDe = (m) => EMPRESAS.find(e => e.id === Number(m && m.empresa_id)) || EMPRESAS[0];
@@ -236,20 +379,39 @@
     return mg;
   }
 
-  /** Una línea de mano de obra: tarifa × personas × horas.
-   *  El costo es tridimensional. Tarifa × horas se queda corto. */
+  /** Una línea de mano de obra: tarifa × personas × cantidad.
+   *  El costo es tridimensional. Tarifa × horas se queda corto.
+   *
+   *  V1.26 agrega dos cosas, y las dos mueven dinero:
+   *
+   *  1. **El recargo** de fin de semana o día festivo, que sube la TARIFA
+   *     efectiva. Sólo aplica en Estados Unidos (ver `recargoDe`).
+   *  2. **Días que no son horas.** El renglón de días de viaje se captura en
+   *     días, así que su cantidad NO puede sumarse a «HORAS PROYECTO»: cinco
+   *     días de vuelo entrarían como cinco horas de trabajo y el número de
+   *     arriba mentiría en silencio. Se cuentan aparte. */
   function costoMo(linea, m, s) {
     const r = ROL[linea.rol];
     const mg = margenes(m, s);
     const sinTarifa = vacio(linea.pu);
-    const pu = sinTarifa ? 0 : num(linea.pu);
+    const puBase = sinTarifa ? 0 : num(linea.pu);
+    const rec = recargoDe(r, m);
+    const pu = puBase * (1 + num(rec.pct));
     const costo = aMonedaDoc(pu * num(linea.personas) * num(linea.qty), linea.moneda, m);
     const mult = r ? num(mg[r.mult]) : 0;
+    const cantidad = num(linea.qty) * num(linea.personas);
+    const enDias = !!(r && r.dias);
     return {
       costo,
       mult,
       conUtilidad: costo * mult,
-      horas: num(linea.qty) * num(linea.personas),
+      // `horas` deja fuera lo que se captura en días. `cantidad` es lo crudo.
+      horas: enDias ? 0 : cantidad,
+      dias: enDias ? cantidad : 0,
+      cantidad,
+      enDias,
+      unidad: (r && r.unidad) || 'Horas',
+      puBase, puEfectivo: pu, recargo: rec,
       sinTarifa,
       sinRol: !r
     };
@@ -268,10 +430,20 @@
     const pu = sinPrecio ? 0 : num(linea.pu);
     const costo = aMonedaDoc(pu * num(linea.qty), linea.moneda, m);
     const sinTipo = TIPOS.indexOf(linea.tipo) === -1;
-    const porTipo = sinTipo ? 0 : num(linea.tipo === 'Materiales' ? mg.materiales : mg.servicios);
-    const pisado = !vacio(linea.margen) && Math.abs(num(linea.margen) - porTipo) > 0.0001;
+    const esViaje = linea.tipo === TIPO_VIAJE;
+    /* VIAJE = multiplicador 1, SIEMPRE. Hotel, gasolina, taxis y vuelos se
+     * cobran a costo: es regla del negocio, no una opción, así que ni sale de
+     * la tabla de multiplicadores ni se deja pisar renglón por renglón. Si
+     * alguien escribió un margen encima, el motor lo IGNORA y lo marca
+     * (`viajeConMargen`) para que la regla lo diga en voz alta — anularlo en
+     * silencio sería el mismo fallo que perseguimos en todo lo demás. */
+    const porTipo = esViaje ? 1
+      : (sinTipo ? 0 : num(linea.tipo === 'Materiales' ? mg.materiales : mg.servicios));
+    const intentoPisar = !vacio(linea.margen) && Math.abs(num(linea.margen) - porTipo) > 0.0001;
+    const pisado = intentoPisar && !esViaje;
     const mult = pisado ? num(linea.margen) : porTipo;
-    return { costo, mult, porTipo, pisado,
+    return { costo, mult, porTipo, pisado, esViaje,
+             viajeConMargen: esViaje && intentoPisar,
              conUtilidad: costo * mult, sinPrecio, sinTipo, sinLink: !linea.link,
              // Un renglon del bloque en el que nadie ha escrito nada NO es un
              // hueco: es un renglon sin usar, como los del Excel. La diferencia
@@ -282,19 +454,29 @@
 
   function totalSeccion(s, m) {
     const mgSec = margenes(m, s);
-    let costoMoTot = 0, ventaMo = 0, horas = 0, moSinTarifa = 0;
+    let costoMoTot = 0, ventaMo = 0, horas = 0, dias = 0, moSinTarifa = 0;
     let costoMat = 0, ventaMat = 0, sinPrecio = 0, sinTipo = 0, sinLink = 0, pisados = 0;
+    /* V1.26 · el viaje se cuenta APARTE de materiales. Si se sumara ahí, la
+     * línea «Materiales» del BUDGET ODOO diría que se compraron materiales por
+     * el valor de los vuelos, y el peso de cada bloque en el costo saldría
+     * torcido. Son gastos de otra naturaleza y se ven como tales. */
+    let costoViaje = 0, viajeConMargen = 0, renglonesViaje = 0;
     const monedas = {};
 
     (s.mo || []).forEach(l => {
       const c = costoMo(l, m, s);
-      costoMoTot += c.costo; ventaMo += c.conUtilidad; horas += c.horas;
+      costoMoTot += c.costo; ventaMo += c.conUtilidad; horas += c.horas; dias += c.dias;
       if (c.sinTarifa && (num(l.qty) > 0 || num(l.personas) > 0)) moSinTarifa++;
       if (l.moneda) monedas[l.moneda] = 1;
     });
     (s.partidas || []).forEach(l => {
       const c = costoPartida(l, m, s);
-      costoMat += c.costo; ventaMat += c.conUtilidad;
+      if (c.esViaje) {
+        costoViaje += c.costo;
+        if (c.usada) { renglonesViaje++; if (c.viajeConMargen) viajeConMargen++; }
+      } else {
+        costoMat += c.costo; ventaMat += c.conUtilidad;
+      }
       if (!c.usada) return;
       if (c.sinPrecio) sinPrecio++;
       if (c.sinTipo) sinTipo++;
@@ -309,9 +491,14 @@
       // de los del machote: si los resolviera por su cuenta habría dos lugares
       // decidiendo el mismo número (§20 regla 4, un solo escritor).
       margenes: mgSec,
-      costoMo: costoMoTot, costoMat, costo: costoMoTot + costoMat,
-      ventaMo, ventaMat, venta: ventaMo + ventaMat,
-      horas, moSinTarifa, sinPrecio, sinTipo, sinLink, pisados,
+      costoMo: costoMoTot, costoMat, costoViaje,
+      costo: costoMoTot + costoMat + costoViaje,
+      ventaMo, ventaMat,
+      // El viaje se vende a lo que cuesta: multiplicador 1, cero utilidad.
+      ventaViaje: costoViaje,
+      venta: ventaMo + ventaMat + costoViaje,
+      horas, dias, moSinTarifa, sinPrecio, sinTipo, sinLink, pisados,
+      viajeConMargen, renglonesViaje,
       monedas: Object.keys(monedas)
     };
   }
@@ -338,11 +525,15 @@
 
     const costoMoTot = secciones.reduce((a, s) => a + s.costoMo, 0);
     const costoMat   = secciones.reduce((a, s) => a + s.costoMat, 0);
-    const costo      = costoMoTot + costoMat;
+    const costoViaje = secciones.reduce((a, s) => a + s.costoViaje, 0);
+    const costo      = costoMoTot + costoMat + costoViaje;
     const ventaMo    = secciones.reduce((a, s) => a + s.ventaMo, 0);
     const ventaMat   = secciones.reduce((a, s) => a + s.ventaMat, 0);
-    const venta      = ventaMo + ventaMat;              // precio antes de comisiones
+    const ventaViaje = costoViaje;                      // a costo, por regla
+    const venta      = ventaMo + ventaMat + ventaViaje; // precio antes de comisiones
     const horas      = secciones.reduce((a, s) => a + s.horas, 0);
+    // Días de viaje: se cuentan aparte de las horas a propósito (ver costoMo).
+    const dias       = secciones.reduce((a, s) => a + s.dias, 0);
 
     const pctFts = num(m.comision_fts);
     const pctCli = num(m.comision_cliente);
@@ -399,15 +590,17 @@
       // reparto entre mano de obra y materiales usa el costo de cada bloque.
       const pMo  = costo > 0 ? s.costoMo / costo : 0;
       const pMat = costo > 0 ? s.costoMat / costo : 0;
+      const pVia = costo > 0 ? s.costoViaje / costo : 0;
       const esc = {
-        costo: { mo: s.costoMo, mat: s.costoMat, precio: s.costo },
+        costo: { mo: s.costoMo, mat: s.costoMat, viaje: s.costoViaje, precio: s.costo },
         con_utilidad: {
-          mo: s.ventaMo, mat: s.ventaMat,
+          mo: s.ventaMo, mat: s.ventaMat, viaje: s.ventaViaje,
           precio: s.venta + (comFtsCU + comCliCU) * pesoV
         },
         margen_deseado: precioMD === null
-          ? { mo: null, mat: null, precio: null }
-          : { mo: precioMD * pMo, mat: precioMD * pMat, precio: precioMD * peso }
+          ? { mo: null, mat: null, viaje: null, precio: null }
+          : { mo: precioMD * pMo, mat: precioMD * pMat, viaje: precioMD * pVia,
+              precio: precioMD * peso }
       };
 
       const precioSec = esc[elegido.id] ? esc[elegido.id].precio : null;
@@ -438,8 +631,9 @@
       ingreso: elegido.precio,
       manoObra: -costoMoTot,
       materiales: -costoMat,
+      viaje: -costoViaje,
       comisiones: comisiones.map(l => ({ nombre: l.nombre, monto: -l.monto })),
-      total: (elegido.precio || 0) - costoMoTot - costoMat - sumaCom
+      total: (elegido.precio || 0) - costoMoTot - costoMat - costoViaje - sumaCom
     };
     budget.cuadra = elegido.utilidad !== null && Math.abs(budget.total - elegido.utilidad) < 1;
 
@@ -458,9 +652,16 @@
     return {
       margenes: mg,
       secciones: detalle,
-      costoMo: costoMoTot, costoMat, costo,
-      ventaMo, ventaMat, venta,
-      horas,
+      costoMo: costoMoTot, costoMat, costoViaje, costo,
+      ventaMo, ventaMat, ventaViaje, venta,
+      horas, dias,
+      // El lugar de ejecución, resuelto una vez para que la pantalla y las
+      // reglas no lo deduzcan cada quien por su lado (§20 regla 4).
+      lugar: { pais: (m && m.pais) || '', estado: (m && m.estado) || '', ciudad: (m && m.ciudad) || '',
+               tiene: tieneLugar(m), foraneo: esForaneo(m), eua: esEUA(m) },
+      viaje: viajeDe(m),
+      renglonesViaje: secciones.reduce((a, s) => a + s.renglonesViaje, 0),
+      viajeConMargen: secciones.reduce((a, s) => a + s.viajeConMargen, 0),
       pctFts, pctCli,
       escenarios: esc,
       escenario: elegido,
@@ -471,6 +672,7 @@
       // Peso de cada bloque en el costo: es el RESUMEN BUDGET del machote.
       pesoMo:  costo > 0 ? costoMoTot / costo : null,
       pesoMat: costo > 0 ? costoMat / costo : null,
+      pesoViaje: costo > 0 ? costoViaje / costo : null,
       reparto: { venta: venta_, operaciones: ops_, cliente: cliente_, bolsaVenta, bolsaOps },
       budget,
       sinPrecio, moSinTarifa, sinTipo, sinLink, pisados, mezclaMoneda,
@@ -497,7 +699,9 @@
   }
 
   G.MachoteCalc = {
-    ROLES, ROL, GRUPOS, TIPOS, ESCENARIOS, MAX_SECCIONES,
+    ROLES, ROL, GRUPOS, TIPOS, TIPO_VIAJE, CONCEPTOS_VIAJE, ESCENARIOS, MAX_SECCIONES,
+    SEDE, PAGA_DIAS,
+    llano, tieneLugar, esForaneo, esEUA, viajeDe, recargoDe,
     EMPRESAS, empresaDe, monedaPorDefecto,
     MARGENES_PLANTILLA, COMISION_FTS_PLANTILLA, MARGEN_DESEADO_PLANTILLA, REPARTO_PLANTILLA,
     PARTIDAS_EN_BLANCO, EQUIPO_VENTA_PLANTILLA, EQUIPO_OPS_PLANTILLA,
