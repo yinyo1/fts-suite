@@ -13,6 +13,41 @@ const { chromium } = require('playwright');
 const path = require('path');
 const BASE = 'file://' + path.resolve(__dirname, '..', 'index.html');
 
+/* ⚠️ El catálogo de países se pide con `fetch`, y **`fetch` de `file://` está
+ * bloqueado en Chromium**. Sin servirlo desde aquí, cada montaje de estas
+ * pruebas correría en el modo DEGRADADO (los tres campos del lugar como texto
+ * libre) y estaríamos midiendo el respaldo en vez de la pantalla. Se lee del
+ * archivo real del repo, no de una copia: si el catálogo cambia, las pruebas
+ * ven el cambio. */
+/** Siembra el catálogo en una página, Y lo sirve.
+ *
+ *  ⚠️ Las dos cosas, y por eso vive aquí y no en cada montaje: **`fetch` de
+ *  `file://` está bloqueado en Chromium**, así que sin interceptarlo la página
+ *  corre en modo DEGRADADO —los tres campos del lugar como texto libre— y las
+ *  pruebas medirían el respaldo creyendo que miden la pantalla. Es la trampa de
+ *  CLAUDE.md §20 #11: el modo degradado se ve igual que «todavía no carga».
+ *
+ *  Se engancha ANTES que cualquier otro `addInitScript` de la página, así que
+ *  los montajes que envuelven `fetch` después reciben éste como el original y
+ *  la cadena funciona sola. */
+/* El catálogo va ANTES de quien lo usa. Funcionaba al revés porque el valor
+ * sólo se lee al llamar a `sembrarGeo`, pero un `const` citado más arriba de su
+ * línea es justo la trampa de CLAUDE.md §20 #12: el día que alguien lo lea en
+ * la definición, revienta la función entera y no se ve en el diff. */
+const GEO_JSON = JSON.parse(require('fs').readFileSync(
+  path.resolve(__dirname, '..', '..', '..', 'shared', 'comercial', 'geo.json'), 'utf8'));
+
+const sembrarGeo = (pg) => pg.addInitScript((g) => {
+  window.__GEO = g;
+  const orig = window.fetch;
+  window.fetch = function (u) {
+    if (String(u).indexOf('geo.json') >= 0) {
+      return Promise.resolve({ ok: true, json: function () { return Promise.resolve(g); } });
+    }
+    return orig.apply(this, arguments);
+  };
+}, GEO_JSON);
+
 /* El navegador con el que se corre.
  *
  * En una laptop basta `chromium.launch()`. En el contenedor de Claude Code el
@@ -38,6 +73,7 @@ let ok = 0, mal = 0;
   const b = await chromium.launch(OPCIONES);
   const errs = [];
   const p = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(p);
   /* El autoguardado es REAL: sin esto, cada prueba heredaria lo que guardo la
    * anterior y volveria la cascada de fallos que resolvio el recargar. Corre
    * ANTES de los scripts de la pagina en cada navegacion, asi que la app
@@ -339,15 +375,39 @@ let ok = 0, mal = 0;
     }
   });
 
-  await paso('los diez renglones de mano de obra están siempre, en sus tres grupos', async () => {
+  await paso('los diez renglones del Excel siguen enteros, y el viaje va aparte', async () => {
+    /* V1.26 · esta prueba decía «los diez renglones están siempre, en sus tres
+     * grupos» y afirmaba `soloMo.length === 10`. Ahora son 13, porque entraron
+     * los de viaje.
+     *
+     * NO se cambió el 10 por un 13: eso habría tirado justo lo que la prueba
+     * protegía —que la retícula verificada contra los archivos de FTS sigue
+     * completa— a cambio de un número que no dice nada. Se afirma lo que
+     * importa: **los diez del Excel, uno por uno, en sus tres grupos**, y los
+     * tres nuevos en un grupo propio, que es como se distinguen de un vistazo. */
     await ir('#/m/M-1041');
     await hoja('Suministro');
     const g = await p.locator('#hoja tr.grupo').allTextContents();
-    const esperados = ['Diseño y Programación', 'En Planta', 'Extras'];
-    for (const e of esperados) if (!g.some(x => x.indexOf(e) >= 0)) throw new Error('falta grupo ' + e);
-    const rot = await p.locator('#hoja td.rotulo').allTextContents();
-    const soloMo = rot.filter(x => x !== 'TOTAL');
-    if (soloMo.length !== 10) throw new Error('renglones de MO: ' + soloMo.length);
+    for (const e of ['Diseño y Programación', 'En Planta', 'Extras'])
+      if (!g.some(x => x.indexOf(e) >= 0)) throw new Error('falta grupo del Excel: ' + e);
+    if (!g.some(x => x.indexOf('Viaje y trabajo foráneo') >= 0))
+      throw new Error('los renglones de viaje no tienen grupo propio');
+
+    const rot = (await p.locator('#hoja td.rotulo').allTextContents()).filter(x => x !== 'TOTAL');
+    const DEL_EXCEL = ['Diseño', 'Programador', 'Supervisor Sr', 'Supervisor Jr · seguridad',
+      'Técnicos', 'Horas extras supervisor', 'Horas extras Jr · seguridad',
+      'Horas extras técnicos', 'Horas extras programador', 'Horas extras diseño'];
+    const faltan = DEL_EXCEL.filter(x => rot.indexOf(x) < 0);
+    if (faltan.length) throw new Error('se perdieron renglones del Excel: ' + faltan.join(', '));
+
+    const DE_VIAJE = ['Días de viaje', 'Horas en fin de semana', 'Horas en día festivo'];
+    const sinViaje = DE_VIAJE.filter(x => rot.indexOf(x) < 0);
+    if (sinViaje.length) throw new Error('faltan renglones de viaje: ' + sinViaje.join(', '));
+
+    if (rot.length !== DEL_EXCEL.length + DE_VIAJE.length)
+      throw new Error('hay renglones de más: ' + rot.filter(x =>
+        DEL_EXCEL.indexOf(x) < 0 && DE_VIAJE.indexOf(x) < 0).join(', '));
+    console.log('    los 10 del Excel + los 3 de viaje, cada grupo en su sitio');
   });
 
   await paso('la hoja DESGLOSE trae los cuatro bloques del machote', async () => {
@@ -772,13 +832,24 @@ let ok = 0, mal = 0;
     await ir('#/m/M-1041');
     await hoja('Suministro');
     const r = await p.evaluate(() => {
-      const td = document.querySelector('.rejilla.tarjetas tbody td');
+      /* La celda que se mide tiene que ser una de CAPTURA. Antes se tomaba la
+       * primera del `tbody`, que es la del rótulo de GRUPO — un encabezado, no
+       * una tarjeta; daba `flex` de casualidad y dejó de darlo cuando el grupo
+       * pasó a bloque para poder llevar su explicación debajo. Se mide lo que
+       * la prueba quería medir, y de paso el grupo, que ahora sí tiene forma
+       * propia. */
+      const td = document.querySelector('.rejilla.tarjetas tbody tr:not(.grupo):not(.total) td');
+      const tdG = document.querySelector('.rejilla.tarjetas tbody tr.grupo td');
       const th = document.querySelector('.rejilla.tarjetas thead');
       return { disp: td && getComputedStyle(td).display,
+               dispGrupo: tdG && getComputedStyle(tdG).display,
                cabOculta: th ? getComputedStyle(th).display === 'none' : false,
                rotulo: !!document.querySelector('.rejilla.tarjetas td.rotulo') };
     });
-    if (r.disp !== 'flex') throw new Error('las celdas no se apilan: ' + r.disp);
+    if (r.disp !== 'flex') throw new Error('las celdas de captura no se apilan: ' + r.disp);
+    if (r.dispGrupo !== 'block')
+      throw new Error('el rótulo de grupo no es un bloque (' + r.dispGrupo +
+                      '): su explicación se parte en dos columnas');
     if (!r.cabOculta) throw new Error('el encabezado de tabla sigue visible');
     if (!r.rotulo) throw new Error('las tarjetas no traen su rótulo');
   });
@@ -848,9 +919,13 @@ let ok = 0, mal = 0;
   await paso('en escritorio se ven los diez renglones, como en el Excel', async () => {
     await p.setViewportSize({ width: 1280, height: 900 });
     await ir('#/m/M-1041'); await hoja('Suministro');
-    const n = await p.locator('#hoja .rejilla.tarjetas').first()
-      .locator('tbody tr:not(.grupo):not(.total):visible').count();
-    if (n !== 10) throw new Error('renglones de mano de obra visibles: ' + n);
+    /* V1.26 · eran 10; con los de viaje son 13. Lo que se sigue exigiendo es
+     * que en escritorio se vean TODOS sin desplegar nada, que es lo que la
+     * prueba defendía: en el Excel están a la vista. */
+    const filas = p.locator('#hoja .rejilla.tarjetas').first()
+      .locator('tbody tr:not(.grupo):not(.total):visible');
+    const n = await filas.count();
+    if (n !== 13) throw new Error('renglones de mano de obra visibles: ' + n + ' (10 del Excel + 3 de viaje)');
     await p.setViewportSize({ width: 380, height: 780 });
   });
 
@@ -923,6 +998,7 @@ let ok = 0, mal = 0;
     // Pagina APARTE, sin el guion que limpia: aqui se mide justamente que lo
     // guardado persista entre cargas.
     const q = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(q);
     // Siembra la sesión SIN limpiar el almacén del machote: lo que se mide aquí
     // es justamente que lo guardado sobreviva.
     await q.addInitScript(() => {
@@ -1129,8 +1205,15 @@ let ok = 0, mal = 0;
       };
     });
     if (r.secciones !== 1) throw new Error('secciones: ' + r.secciones);
-    if (r.mo !== 10) throw new Error('renglones de mano de obra: ' + r.mo);
-    if (r.conTarifa !== 10) throw new Error('sin tarifa de plantilla: ' + (10 - r.conTarifa));
+    /* V1.26 · 13 renglones, pero **sólo los 10 del Excel traen tarifa de
+     * plantilla**. Los tres de viaje nacen SIN tarifa a propósito: un día de
+     * viaje no vale 140 ni 200, lo decide quien cotiza, y un número de relleno
+     * se cobraría solo sin que nadie lo revisara. Que `conTarifa` siga siendo
+     * 10 es la prueba de que no se les inventó ninguna. */
+    if (r.mo !== 13) throw new Error('renglones de mano de obra: ' + r.mo + ' (10 + 3 de viaje)');
+    if (r.conTarifa !== 10)
+      throw new Error('con tarifa de plantilla: ' + r.conTarifa + ' — deben ser los 10 del Excel, ' +
+                      'y los 3 de viaje SIN tarifa');
     if (r.conHoras !== 0) throw new Error('nacieron con horas: ' + r.conHoras);
     if (r.partidas !== 30) throw new Error('renglones de materiales: ' + r.partidas);
     if (r.sinTipo !== 20) throw new Error('esperaba 20 sin Tipo y 10 preparados, hay ' + r.sinTipo + ' sin Tipo');
@@ -1998,10 +2081,11 @@ let ok = 0, mal = 0;
       return { mo: (s.mo || []).length, part: (s.partidas || []).length,
                mg: s.margenes ? s.margenes.materiales : null };
     });
-    if (r.mo !== 10) throw new Error('nació con ' + r.mo + ' renglones de mano de obra, no 10');
+    // V1.26 · 10 del Excel + 3 de viaje.
+    if (r.mo !== 13) throw new Error('nació con ' + r.mo + ' renglones de mano de obra, no 13');
     if (r.part !== 30) throw new Error('nació con ' + r.part + ' partidas, no 30');
     if (r.mg === null) throw new Error('nació sin multiplicadores propios');
-    console.log('    10 de mano de obra · 30 partidas · materiales ' + r.mg);
+    console.log('    13 de mano de obra (10 del Excel + 3 de viaje) · 30 partidas · materiales ' + r.mg);
   });
 
   // ── El cliente, desde Odoo ───────────────────────────────────────────
@@ -2059,6 +2143,7 @@ let ok = 0, mal = 0;
      * en localStorage y volver a cargar, y el guion global lo borraría en la
      * navegación siguiente. (Ya pasó al escribir esta prueba.) */
     const o = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(o);
     await o.addInitScript(() => {
       try {
         localStorage.setItem('fts_suite_session', JSON.stringify({
@@ -2141,6 +2226,7 @@ let ok = 0, mal = 0;
      * eso — y el aviso explica por qué la lista está vacía, en vez de dejar
      * un campo mudo que parece roto. */
     const f = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(f);
     try {
       await f.addInitScript(() => {
         try {
@@ -2329,6 +2415,7 @@ let ok = 0, mal = 0;
   await paso('cuando el guardado falla, el aviso tapa y no se puede ignorar', async () => {
     /* El pulso dice la verdad pero se puede no ver. Esto no. */
     const q = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(q);
     try {
       await q.addInitScript(() => {
         try {
@@ -2376,6 +2463,7 @@ let ok = 0, mal = 0;
   await paso('sin sesión, el libro no se alcanza a ver', async () => {
     // Pagina LIMPIA, sin la sesion sembrada: debe mandar al login.
     const g = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(g);
     try {
       await g.goto(BASE); await g.waitForTimeout(600);
       const u = g.url();
@@ -2401,6 +2489,7 @@ let ok = 0, mal = 0;
 
   await paso('una sesión vencida no vale', async () => {
     const v = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(v);
     try {
       await v.addInitScript(() => {
         try {
@@ -2417,6 +2506,7 @@ let ok = 0, mal = 0;
 
   await paso('sin el permiso de comercial no se entra, y lo dice', async () => {
     const w = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(w);
     try {
       await w.addInitScript(() => {
         try {
@@ -2457,6 +2547,7 @@ let ok = 0, mal = 0;
     /* Página propia, sin el guion que limpia: aquí se mide justo lo contrario
      * —que lo tecleado sobreviva— y con el servidor sin contestar. */
     const q = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(q);
     await q.addInitScript(() => {
       try {
         localStorage.setItem('fts_suite_session', JSON.stringify({
@@ -2502,6 +2593,7 @@ let ok = 0, mal = 0;
 
   await paso('al reconectar sube lo pendiente solo, y sin dueño en el cuerpo', async () => {
     const q = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(q);
     await q.addInitScript(() => {
       try {
         localStorage.setItem('fts_suite_session', JSON.stringify({
@@ -2535,6 +2627,7 @@ let ok = 0, mal = 0;
           return Promise.resolve({ ok: true, json: () => Promise.resolve({
             ok: true, modo: 'lista', actor: 'zz.prueba', machotes: [], total: 0 }) });
         }
+        if (s.indexOf('geo.json') >= 0) return Promise.resolve({ ok: true, json: () => Promise.resolve(window.__GEO) });
         if (s.indexOf('/comercial/clientes') >= 0) return new Promise(() => {});
         return orig.apply(this, arguments);
       };
@@ -2687,6 +2780,7 @@ let ok = 0, mal = 0;
    *  `permitirGuardar` false = el servidor rechaza los guardados (caído). */
   const frPagina = async (machotes, permitirGuardar) => {
     const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+await sembrarGeo(q);
     await q.addInitScript((cfg) => {
       try {
         localStorage.setItem('fts_suite_session', JSON.stringify({
@@ -2719,6 +2813,7 @@ let ok = 0, mal = 0;
         }
         // El catálogo de clientes se queda colgado a propósito: no es el tema
         // de estas pruebas y un fetch real ensucia la consola.
+        if (s.indexOf('geo.json') >= 0) return Promise.resolve({ ok: true, json: function () { return Promise.resolve(window.__GEO); } });
         if (s.indexOf('/comercial/clientes') >= 0) return new Promise(function () {});
         return orig.apply(this, arguments);
       };
@@ -2841,6 +2936,7 @@ let ok = 0, mal = 0;
 
   const cdPagina = async (scopes, respuesta) => {
     const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+await sembrarGeo(q);
     await q.addInitScript((cfg) => {
       try {
         localStorage.setItem('fts_suite_session', JSON.stringify({
@@ -3375,6 +3471,7 @@ let ok = 0, mal = 0;
    * del viejo. */
   const paginaConAjenos = async () => {
     const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+await sembrarGeo(q);
     await q.addInitScript(() => {
       try {
         localStorage.setItem('fts_suite_session', JSON.stringify({
@@ -3424,6 +3521,7 @@ let ok = 0, mal = 0;
             ok: true, machote_id: 'x', id_local: c.id_local, dueno: 'esteban.delacruz',
             version: 1, versiones: 1, autor: 'esteban.delacruz' }) });
         }
+        if (s.indexOf('geo.json') >= 0) return Promise.resolve({ ok: true, json: function () { return Promise.resolve(window.__GEO); } });
         if (s.indexOf('/comercial/clientes') >= 0) return new Promise(function () {});
         return orig.apply(this, arguments);
       };
@@ -3563,6 +3661,7 @@ let ok = 0, mal = 0;
      * repo público, y hasta hoy el sincronizador barría toda llave `fts_*`.
      * La captura comercial de tres personas se iba en la siguiente subida. */
     const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+await sembrarGeo(q);
     try {
       /* Se carga el archivo REAL —no una copia— en una página en blanco y se
        * ejerce su API. Si alguien cambia la lista, esto lo caza. */
@@ -3598,6 +3697,7 @@ let ok = 0, mal = 0;
    * origen, así que para el servidor eran machotes normales. */
   const paginaConServidor = async (filas, opciones) => {
     const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+await sembrarGeo(q);
     await q.addInitScript((cfg) => {
       const f = cfg.filas;
       window.__opciones = cfg.opciones || {};
@@ -3712,6 +3812,7 @@ let ok = 0, mal = 0;
           }
           return Promise.resolve({ ok: true, json: () => Promise.resolve(rp) });
         }
+        if (s.indexOf('geo.json') >= 0) return Promise.resolve({ ok: true, json: function () { return Promise.resolve(window.__GEO); } });
         if (s.indexOf('/comercial/clientes') >= 0) return new Promise(function () {});
         return orig.apply(this, arguments);
       };
@@ -4375,6 +4476,258 @@ let ok = 0, mal = 0;
       if (!enPantalla)
         throw new Error('el trabajo está en el cajón pero la pantalla no lo trae de vuelta');
       console.log('    perdió el choque, se lo dijeron sin confundirlo, y su trabajo volvió a pantalla');
+    } finally { await q.close(); }
+  });
+
+  /* ══ V1.26 · viaje y trabajo foráneo ═══════════════════════════════════
+   *
+   * El CÁLCULO de todo esto se ejercita en `tests/pruebas-motor.js`, que corre
+   * en menos de un segundo. Aquí va sólo lo que NO se puede comprobar sin
+   * mirar la pantalla: que el bloqueo se vea y se entienda, que las chips
+   * pongan los tres campos de un toque, y que el atajo a Kiwi lleve a donde
+   * dice. */
+
+  await paso('V1.26 · una chip pone país, estado y ciudad de un toque', async () => {
+    await ir('#/m/M-1041');
+    const antes = await p.evaluate(() => {
+      const m = window.MachoteApp && window.MachoteApp._m; return null;
+    });
+    /* Las chips salen del JSON de configuración, no del código: si alguien
+     * agrega una ciudad ahí, esta prueba la ve sin tocarse. */
+    const chips = await p.$$eval('[data-frec]', e => e.map(x => x.dataset.frec));
+    if (!chips.some(c => /San Antonio/.test(c)))
+      throw new Error('no salieron las frecuentes: ' + JSON.stringify(chips));
+    if (!chips.some(c => /Monterrey/.test(c)))
+      throw new Error('falta Monterrey, que es la sede');
+
+    await p.click('[data-frec*="San Antonio"]');
+    await p.waitForTimeout(600);
+    const r = await p.evaluate(() => {
+      const sel = (q) => { const e = document.querySelector(q); return e ? e.value : null; };
+      return { pais: sel('[data-cel="pais"]'), region: sel('[data-cel="region"]'),
+               ciudad: sel('[data-cel="ciudad"]'),
+               veredicto: (document.querySelector('.lugar-veredicto') || {}).textContent || '' };
+    });
+    if (r.pais !== 'US') throw new Error('país quedó en: ' + r.pais);
+    if (r.region !== 'Texas') throw new Error('estado quedó en: ' + r.region);
+    if (r.ciudad !== 'San Antonio') throw new Error('ciudad quedó en: ' + r.ciudad);
+    if (!/for[áa]nea/i.test(r.veredicto)) throw new Error('no dice que es foránea: ' + r.veredicto);
+    console.log('    un toque → US · Texas · San Antonio · «' + r.veredicto.trim().slice(0, 46) + '…»');
+  });
+
+  await paso('V1.26 · el lugar NO pisa el estado del documento', async () => {
+    /* El defecto que esto cierra, y que sólo se vio EN LA CAPTURA: la primera
+     * versión llamó `estado` a la subdivisión, y el campo salió diciendo
+     * «borrador». Elegir «Texas» habría puesto el machote en estado «Texas». */
+    await ir('#/m/M-1041');
+    await p.click('[data-frec*="Dallas"]');
+    await p.waitForTimeout(600);
+    /* OJO con el selector: el estado del documento NO es una celda del
+     * machote, es su propio control (`[data-estado]`, en `bloqueEstado`). Que
+     * sean dos cosas distintas es precisamente lo que este defecto confundió. */
+    const est = await p.evaluate(() => {
+      const s = document.querySelector('[data-estado]');
+      return s ? s.value : '(no hay control de estado)';
+    });
+    if (!/borrador|creacion|creación/i.test(est))
+      throw new Error('el estado del documento quedó en: «' + est + '»');
+    console.log('    la cotización sigue en «' + est + '» con el lugar en Dallas');
+  });
+
+  await paso('V1.26 · foránea sin viaje: se ve el bloqueo y se dice qué hacer', async () => {
+    await ir('#/m/M-1041');
+    await p.click('[data-frec*="San Antonio"]');
+    await p.waitForTimeout(500);
+    await hoja('Suministro');
+    await p.waitForTimeout(500);
+
+    const t = (await p.textContent('.viaje-blk')).replace(/\s+/g, ' ');
+    if (!/no la deja terminar/i.test(t))
+      throw new Error('no dice que bloquea: ' + t.slice(0, 160));
+    if (!/San Antonio/.test(t)) throw new Error('no dice dónde se ejecuta: ' + t.slice(0, 160));
+    if (!/marca arriba que no se ocupa/i.test(t))
+      throw new Error('no ofrece la salida explícita: ' + t.slice(0, 160));
+
+    // Y los cinco conceptos, elegibles: no aparecen todos puestos, se agregan.
+    const chips = await p.$$eval('[data-concepto]', e => e.map(x => x.textContent.trim()));
+    if (chips.length !== 5) throw new Error('conceptos ofrecidos: ' + JSON.stringify(chips));
+
+    // La barra tiene que contarlo como dura.
+    const barra = (await p.textContent('.fija')).replace(/\s+/g, ' ');
+    if (!/duras/.test(barra)) throw new Error('la barra no cuenta duras: ' + barra);
+
+    // Agregar UNO desbloquea, y el renglón entra como Viaje.
+    await p.click('[data-concepto*="vuelos"]');
+    await p.waitForTimeout(700);
+    /* ⚠️ `textContent` NO ve el valor de un `<input>`, y la descripción de una
+     * partida es un campo, no texto. Buscar «Vuelos» con `:has-text` o con
+     * `textContent` no encuentra nada aunque el renglón esté ahí — que es
+     * exactamente lo que pasó la primera vez que corrió esta prueba. */
+    const r = await p.evaluate(() => {
+      const filas = [...document.querySelectorAll('table.rejilla tbody tr')];
+      const f = filas.find(x => {
+        const d = x.querySelector('[data-cel$=":descripcion"]');
+        return d && /Vuelos/i.test(d.value);
+      });
+      const sel = f && f.querySelector('[data-cel$=":tipo"]');
+      return { hay: !!f, tipo: sel ? sel.value : null,
+               sigue_avisando: !!document.querySelector('.viaje-blk .aviso.bad') };
+    });
+    if (!r.hay) throw new Error('no entró el renglón de vuelos');
+    if (r.tipo !== 'Viaje') throw new Error('entró con tipo: ' + r.tipo);
+    if (r.sigue_avisando) throw new Error('sigue avisando después de agregarlo');
+    console.log('    bloquea, dice dónde y qué hacer · «+ Vuelos» lo resuelve y entra como Viaje');
+  });
+
+  await paso('V1.26 · una cotización de Monterrey no pide nada de viaje', async () => {
+    await ir('#/m/M-1041');
+    await p.click('[data-frec*="Monterrey"]');
+    await p.waitForTimeout(500);
+    const ver = (await p.textContent('.lugar-veredicto')).replace(/\s+/g, ' ');
+    if (!/en la sede/i.test(ver)) throw new Error('no dice que está en la sede: ' + ver);
+    if (await p.$('.viaje-cfg')) throw new Error('enseña la configuración de viaje en una local');
+    await hoja('Suministro');
+    await p.waitForTimeout(500);
+    if (await p.$('.viaje-blk'))
+      throw new Error('enseña el bloque de viaje en una cotización de Monterrey');
+    console.log('    Monterrey: sin bloque de viaje, sin recargos, sin bloqueo');
+  });
+
+  await paso('V1.26 · el atajo a Kiwi abre fuera, con origen y destino', async () => {
+    /* NO se incrusta, y no es capricho: Kiwi manda
+     * `frame-ancestors 'self' kiwi.com *.kiwi.com …` y nuestro dominio no está,
+     * así que un iframe saldría EN BLANCO. Medido contra el sitio en vivo el
+     * 2026-09-10. Un recuadro vacío se lee como aplicación rota. */
+    await ir('#/m/M-1041');
+    await p.click('[data-frec*="San Antonio"]');
+    await p.waitForTimeout(500);
+    await hoja('Suministro');
+    await p.waitForTimeout(500);
+    const a = await p.evaluate(() => {
+      const e = document.querySelector('.chip-viaje.kiwi');
+      return e ? { href: e.getAttribute('href'), target: e.getAttribute('target'),
+                   rel: e.getAttribute('rel'), txt: e.textContent.trim() } : null;
+    });
+    if (!a) throw new Error('no hay atajo a Kiwi');
+    if (!/^https:\/\/www\.kiwi\.com\//.test(a.href)) throw new Error('apunta a: ' + a.href);
+    if (a.href.indexOf('monterrey') < 0) throw new Error('sin origen: ' + a.href);
+    if (a.href.indexOf('san-antonio') < 0) throw new Error('sin destino: ' + a.href);
+    if (a.target !== '_blank') throw new Error('no abre en pestaña nueva');
+    if (!/noopener/.test(a.rel || '')) throw new Error('sin rel=noopener');
+    if (await p.$('iframe[src*="kiwi"]'))
+      throw new Error('hay un iframe de Kiwi: Kiwi lo prohíbe y saldría en blanco');
+    console.log('    ' + a.href.slice(0, 92));
+  });
+
+  await paso('V1.26 · el precio de un vuelo dice de cuándo es', async () => {
+    await ir('#/m/M-1041');
+    await p.click('[data-frec*="San Antonio"]');
+    await p.waitForTimeout(500);
+    await hoja('Suministro');
+    await p.waitForTimeout(500);
+    await p.click('[data-concepto*="vuelos"]');
+    await p.waitForTimeout(700);
+
+    // Sin precio todavía no pregunta nada: no hay número que fechar.
+    if (await p.$('[data-consul]'))
+      throw new Error('pide la fecha de consulta antes de que haya precio');
+
+    /* Se localiza el renglón por el VALOR del campo de descripción, no por el
+     * texto de la fila: un `<input>` no tiene texto. */
+    const ruta = await p.evaluate(() => {
+      const d = [...document.querySelectorAll('[data-cel$=":descripcion"]')]
+        .find(x => /Vuelos/i.test(x.value));
+      return d ? d.dataset.cel.replace(/descripcion$/, 'pu') : null;
+    });
+    if (!ruta) throw new Error('no se encontró el renglón de vuelos recién agregado');
+    await p.fill('[data-cel="' + ruta + '"]', '18500');
+    await p.dispatchEvent('[data-cel="' + ruta + '"]', 'change');
+    await p.waitForTimeout(700);
+
+    const b = await p.$('[data-consul]');
+    if (!b) throw new Error('con precio puesto, no ofrece anotar de cuándo es');
+    if (!/de cu[áa]ndo es/i.test(await b.textContent()))
+      throw new Error('el botón no dice para qué sirve: ' + (await b.textContent()));
+    await b.click();
+    await p.waitForTimeout(600);
+    const t = (await p.textContent('.consul-fecha')).replace(/\s+/g, ' ');
+    if (!/consultado/.test(t)) throw new Error('no quedó la fecha: ' + t);
+    if (!/hoy/.test(t)) throw new Error('no dice que es de hoy: ' + t);
+    console.log('    «' + t.trim() + '» — una cotización se manda semanas antes de volar');
+  });
+
+  await paso('V1.26 · «¿está todo lo mío en el servidor?» contesta CON HORA', async () => {
+    /* El renglón de la tarea D no tenía ninguna prueba, y mirándolo apareció un
+     * defecto de los que no se ven en el diff: `toLocaleTimeString('es-MX')`
+     * devuelve «6:06 p.m.» —con punto— así que la frase terminaba en «p.m..».
+     * Es el MISMO bug que ya se había arreglado en la franja de préstamo. */
+    const q = await paginaConServidor([
+      { id: '7000c433-0000-4000-8000-0000000c0mp1', id_local: 'M-MIO-COMP',
+        nombre: 'Rack de tuberías · planta 2', folio: 41, folio_txt: 'COT-0041',
+        dueno: 'esteban.delacruz', dueno_nombre: 'Jesus Esteban De La Cruz' }
+    ]);
+    try {
+      await q.waitForTimeout(1600);
+      const t = (await q.$eval('.comprob', e => e.className + '||' + e.textContent)
+                        .catch(() => null));
+      if (!t) throw new Error('tras bajar del servidor no se pinta la comprobación');
+      const [clase, texto] = t.split('||');
+      const limpio = texto.replace(/\s+/g, ' ').trim();
+
+      if (clase.indexOf('bien') < 0)
+        throw new Error('lo bajado del servidor no se cuenta como estando allá: ' + limpio);
+      // CON HORA: una comprobación sin fecha es una promesa sin plazo.
+      if (!/\d{1,2}:\d{2}/.test(limpio))
+        throw new Error('contesta sin hora: ' + limpio);
+      if (/\.\./.test(limpio))
+        throw new Error('el punto sale duplicado («p.m..»): ' + limpio);
+      console.log('    «' + limpio + '»');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.26 · sin bajada NO dice «todo bien» ni «falta algo»: dice que no sabe', async () => {
+    /* Los tres estados son distintos a propósito (§20 #12b): no haber podido
+     * preguntar no es una respuesta buena ni mala, y confundirlo con
+     * cualquiera de las dos es exactamente el modo de falla que perseguimos. */
+    const q = await b.newPage({ viewport: { width: 380, height: 780 } });
+    await sembrarGeo(q);
+    await q.addInitScript(() => {
+      try {
+        localStorage.setItem('fts_suite_session', JSON.stringify({
+          token: 'prueba.prueba.prueba', actor: 'esteban.delacruz',
+          nombre: 'Jesus Esteban De La Cruz', empleado_id: 32,
+          scopes: ['comercial:read'],
+          exp: Math.floor(Date.now() / 1000) + 3600, debe_cambiar_password: false }));
+        localStorage.removeItem('fts_machote_sync_v1');
+        // Un machote PROPIO: los de ejemplo no cuentan, no son de nadie.
+        localStorage.setItem('fts_machote_v1', JSON.stringify({ machotes: [
+          { id: 'M-1757500000000', nombre: 'Rack de tuberías · planta 2',
+            cliente: 'Nalco de México', dueno: 'esteban.delacruz',
+            dueno_nombre: 'Jesus Esteban De La Cruz', estado: 'borrador',
+            moneda: 'MXN', tc: 18.4, secciones: [] }
+        ] }));
+      } catch (e) {}
+      const orig = window.fetch;
+      window.fetch = function (u) {
+        // El servidor NO contesta: es el caso de «todavía no se sabe».
+        if (String(u).indexOf('/webhook/comercial/') >= 0) return new Promise(function () {});
+        return orig.apply(this, arguments);
+      };
+    });
+    try {
+      await q.goto(BASE); await q.waitForTimeout(1600);
+      const t = await q.$eval('.comprob', e => e.className + '||' + e.textContent)
+                       .catch(() => null);
+      if (!t) throw new Error('sin bajada no dice nada de lo propio');
+      const [clase, texto] = t.split('||');
+      const limpio = texto.replace(/\s+/g, ' ').trim();
+      if (clase.indexOf('no-sabe') < 0)
+        throw new Error('sin bajada contesta como si supiera: ' + clase + ' · ' + limpio);
+      if (/todas? est/i.test(limpio) || /\bde \d/.test(limpio))
+        throw new Error('afirma un conteo que no pudo comprobar: ' + limpio);
+      if (!/guardado en este navegador/i.test(limpio))
+        throw new Error('no dice dónde quedó lo capturado: ' + limpio);
+      console.log('    «' + limpio + '»');
     } finally { await q.close(); }
   });
 
