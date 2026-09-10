@@ -65,7 +65,14 @@ try {
   const modo = ($execution && $execution.mode);
   ES_MANUAL = !(porCron || modo === 'production');
 } catch(e) { ES_MANUAL = true; }
-const MODO_PRUEBA = (C.modo_prueba === true) || ES_MANUAL;
+// SEPARADAS A PROPOSITO, porque son dos cosas distintas:
+//   MODO_PRUEBA  (de la config) COLAPSA los dos correos en uno solo.
+//   ES_MANUAL    (de la forma)  NO colapsa nada: FUERZA el destinatario.
+// La primera version las fusionaba, y eso hacia imposible ver como queda cada
+// correo de grupo sin mandarselo al grupo. Lo que hay que impedir no es que una
+// corrida manual produzca dos correos, es que ALCANCE al equipo.
+const MODO_PRUEBA = (C.modo_prueba === true);
+const destinoDe = to => ES_MANUAL ? C.alert_recipient_default : to;
 
 const todo = $('Code - MAIN').all().map(i=>i.json);
 const soloDiag = todo.length===1 && todo[0]._solo_diag;
@@ -354,7 +361,7 @@ function buildMsg(subset, grupoLabel, to, esGlobal){
         (suma===subset.length?'. Cuadra.':' = '+suma+'. <b>NO CUADRA</b> - avisar.')+'<br>';
   if(esLunes) html+='&#128202; <b>KPI semanal</b> ('+(kpiSem.modo==='simple'?('arranque, dia '+kpiSem.dias):('promedio '+kpiSem.dias+' dias'))+'): <b>'+kpiSem.aPct+'%</b> en tiempo (meta &ge;90%)<br>';
   html+='El semaforo de <b>falta de seguimiento</b> se retiro del reporte en S1 (#220): llevaba 11 corridas en 0% verde y su verde era inalcanzable por construccion. Se sigue calculando.<br>';
-  html+='Corrida '+esc(fechaStr)+' 08:00 CST &middot; modo <b>'+(MODO_PRUEBA?'PRUEBA':'produccion')+'</b>'+(ES_MANUAL?' (disparo manual)':'')+'.</p></div>';
+  html+='Corrida '+esc(fechaStr)+' 08:00 CST &middot; modo <b>'+(MODO_PRUEBA?'PRUEBA':'produccion')+'</b>'+(ES_MANUAL?(' &middot; <b>disparo MANUAL: destinatarios forzados a '+esc(C.alert_recipient_default)+'</b>'):'')+'.</p></div>';
 
   const partes=[];
   if(nu.length) partes.push(nu.length+' nuevo'+(nu.length>1?'s':''));
@@ -373,8 +380,8 @@ function buildMsg(subset, grupoLabel, to, esGlobal){
 sd.s1_prevA = nextA; sd.s1_prevEv = nextEv; sd.s1_nombres = nextNombres; sd.s1_grupos = nextGrupos;
 sd.s1_diagFirma = diagFirma;
 const out=[];
-if (MODO_PRUEBA) { const m=buildMsg(rows, "Operaciones + Admin", C.alert_recipient_default, true); if(m) out.push({json:m}); }
+if (MODO_PRUEBA) { const m=buildMsg(rows, "Operaciones + Admin", destinoDe(C.alert_recipient_default), true); if(m) out.push({json:m}); }
 else { for (const g of ["Operaciones","Admin"]) { const sub = rows.filter(r => r.grupo === g);
-  const to = (C.recipients_por_grupo || {})[g] || C.alert_recipient_default;
+  const to = destinoDe((C.recipients_por_grupo || {})[g] || C.alert_recipient_default);
   const m = buildMsg(sub, g, to); if(m) out.push({json:m}); } }
 return out;
