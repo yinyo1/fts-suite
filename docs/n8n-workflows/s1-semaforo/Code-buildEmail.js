@@ -53,8 +53,18 @@ if (_falta.length) { throw new Error("Config del semaforo incompleta o no cargad
 // (undefined !== 'production') da true -> modo prueba -> UN correo a Esteban, en vez
 // de silencio o de un envio masivo. Y el pie del correo IMPRIME el modo, asi que un
 // error se anuncia solo en la primera corrida en vez de esconderse.
+// DOS senales independientes, y basta UNA para considerarlo corrida de cron:
+//   (a) $execution.mode === 'production'
+//   (b) el Schedule realmente se ejecuto en esta corrida
+// Si (a) no existiera en el sandbox de Code, (b) sola sostiene el envio normal, y al
+// reves. Cualquier throw cae al catch y deja ES_MANUAL=true, que es el lado seguro.
 let ES_MANUAL = true;
-try { ES_MANUAL = ($execution && $execution.mode) !== 'production'; } catch(e) { ES_MANUAL = true; }
+try {
+  let porCron = false;
+  try { porCron = $('Schedule (Lun-Vie 8am CST)').isExecuted === true; } catch(e) {}
+  const modo = ($execution && $execution.mode);
+  ES_MANUAL = !(porCron || modo === 'production');
+} catch(e) { ES_MANUAL = true; }
 const MODO_PRUEBA = (C.modo_prueba === true) || ES_MANUAL;
 
 const todo = $('Code - MAIN').all().map(i=>i.json);
@@ -351,7 +361,7 @@ function buildMsg(subset, grupoLabel, to, esGlobal){
   if(em.length) partes.push(em.length+' empeoro');
   if(me.length) partes.push(me.length+' mejoro');
   if(porBandera.length) partes.push(porBandera.length+' bandera'+(porBandera.length>1?'s':''));
-  if(res.length) partes.push(res.length+' salio'+(res.length>1?'... ':''));
+  if(res.length) partes.push(res.length+(res.length>1?' salieron':' salio'));
   if(esLunes) partes.push('estado completo');
   if(diag.length) partes.push('REVISAR MEDICION');
   if(wdiag.length) partes.push('ESCRITURA FALLIDA');
