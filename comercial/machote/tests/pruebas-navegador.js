@@ -2764,18 +2764,45 @@ let ok = 0, mal = 0;
       console.log('    con todo a salvo: sin aviso y pulso en guardado (el silencio es la respuesta)');
     } finally { await limpia.close(); }
 
+    /* El servidor RECHAZA guardar en este montaje, así que lo pendiente se
+     * queda pendiente y el aviso tiene algo que decir.
+     *
+     * Se exige el INVARIANTE, no un número escrito a mano: que el aviso diga
+     * exactamente lo que cuenta `pendientes()`, y que «Cuáles son» señale
+     * exactamente esos renglones. Un literal aquí probaría el montaje, no el
+     * código — y de hecho la primera versión de esta prueba decía «1» porque
+     * asumí que el otro machote estaba a salvo. Con el servidor caído no lo
+     * está: nunca se confirmó su subida, y no poder confirmarla es
+     * precisamente lo que el aviso reporta. */
     const q = await frPagina([FR_IGUAL, { id: 'M-SOLO-AQUI', nombre: 'Nunca subió' }], false);
     try {
+      const n = await q.evaluate(() => window.MachoteAlmacen.pendientes());
+      if (n < 1) throw new Error('el montaje no sirve: no quedó nada pendiente');
+
       const t = (await q.textContent('#avPend') || '').replace(/\s+/g, ' ').trim();
-      if (!/1 cotización tuya no ha subido/.test(t)) throw new Error('dice: ' + t);
+      const dice = Number((t.match(/^(\d+) cotizaci/) || [])[1]);
+      if (dice !== n)
+        throw new Error('el aviso dice ' + dice + ' y pendientes() cuenta ' + n + ': ' + t);
+      if (!/no ha[n]? subido al servidor/.test(t)) throw new Error('dice: ' + t);
+      if (!/Siguen guardadas en este navegador/.test(t))
+        throw new Error('no dice que lo capturado sigue aquí: ' + t);
+
       await q.click('#bVerPend');
       await q.waitForTimeout(300);
       const marcados = await q.$$eval('[data-mid].marcado',
         f => f.map(x => x.getAttribute('data-mid')));
-      const unicos = marcados.filter((x, i, a) => a.indexOf(x) === i);
-      if (unicos.length !== 1 || unicos[0] !== 'M-SOLO-AQUI')
-        throw new Error('marcó: ' + JSON.stringify(unicos));
-      console.log('    "' + t.replace(/ Siguen.*/, '') + '" · señala a ' + unicos[0]);
+      const unicos = marcados.filter((x, i, a) => a.indexOf(x) === i).sort();
+      const esperados = await q.evaluate(() =>
+        (window.MachoteAlmacen.leer().machotes || [])
+          .filter(m => window.MachoteAlmacen.pendienteUno(m))
+          .map(m => m.id).sort());
+      if (JSON.stringify(unicos) !== JSON.stringify(esperados))
+        throw new Error('marcó ' + JSON.stringify(unicos) + ' y lo pendiente es ' +
+                        JSON.stringify(esperados));
+      if (esperados.indexOf('M-SOLO-AQUI') < 0)
+        throw new Error('el que nunca subió no salió pendiente: ' + JSON.stringify(esperados));
+      console.log('    avisa ' + dice + ' · señala los mismos ' + unicos.length + ': ' +
+                  unicos.join(', '));
     } finally { await q.close(); }
   });
 
