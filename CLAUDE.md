@@ -980,6 +980,27 @@ render**. Complementa §20 #10 — allá el archivo estaba bien y el camino mal;
 código está bien línea por línea y el resultado mal.
 
 
+### 13. Un índice que sólo cubre parte del universo contesta «no» por lo que no cubre
+Una tabla de traducción construida para un subconjunto —«mis cosas», «lo de esta
+empresa», «lo del turno de hoy»— devuelve **vacío** para todo lo demás. Y el vacío
+casi nunca se distingue del «no existe»: quien pregunta recibe `null` y lo lee como
+la respuesta legítima que sí es… para el subconjunto.
+*(Origen: 9-sep-2026, #140. `idServidor()` traducía el id de pantalla a uuid buscando
+en la libreta de sincronización, que está indexada por `id_local` y guarda **sólo lo
+propio**. Un machote ajeno se nombra en pantalla con el uuid del servidor y no tiene
+renglón ahí, así que la búsqueda devolvía `null` y el historial reportaba «todavía no
+llega al servidor» de una cotización con quince versiones allá. El mismo `null` lo
+consumían el PDF y el envío, con el mismo resultado y sin que nadie lo hubiera
+reportado.)*
+**Regla operativa:** cuando una traducción pueda recibir llaves de **dos espacios de
+nombres** (aquí `id_local` y uuid), que lo reconozca por la **forma** de la llave
+antes de ir al índice, y que viva en **un solo lugar** — si cada llamador traduce por
+su cuenta, el arreglo se aplica a uno y los otros siguen mintiendo. Y donde el vacío
+del índice signifique dos cosas distintas, **devolver dos respuestas distintas**: es
+la misma exigencia de §20 #12b (sesión / red / servidor) y de §20 #11 (un `[]` no
+prueba que la consulta sirva), en la superficie de la resolución de identidad.
+
+
 ---
 
 ### Correcciones a reglas anteriores (verificadas 2026-08-31)
