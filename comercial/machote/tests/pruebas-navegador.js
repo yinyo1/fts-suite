@@ -832,13 +832,24 @@ await sembrarGeo(p);
     await ir('#/m/M-1041');
     await hoja('Suministro');
     const r = await p.evaluate(() => {
-      const td = document.querySelector('.rejilla.tarjetas tbody td');
+      /* La celda que se mide tiene que ser una de CAPTURA. Antes se tomaba la
+       * primera del `tbody`, que es la del rótulo de GRUPO — un encabezado, no
+       * una tarjeta; daba `flex` de casualidad y dejó de darlo cuando el grupo
+       * pasó a bloque para poder llevar su explicación debajo. Se mide lo que
+       * la prueba quería medir, y de paso el grupo, que ahora sí tiene forma
+       * propia. */
+      const td = document.querySelector('.rejilla.tarjetas tbody tr:not(.grupo):not(.total) td');
+      const tdG = document.querySelector('.rejilla.tarjetas tbody tr.grupo td');
       const th = document.querySelector('.rejilla.tarjetas thead');
       return { disp: td && getComputedStyle(td).display,
+               dispGrupo: tdG && getComputedStyle(tdG).display,
                cabOculta: th ? getComputedStyle(th).display === 'none' : false,
                rotulo: !!document.querySelector('.rejilla.tarjetas td.rotulo') };
     });
-    if (r.disp !== 'flex') throw new Error('las celdas no se apilan: ' + r.disp);
+    if (r.disp !== 'flex') throw new Error('las celdas de captura no se apilan: ' + r.disp);
+    if (r.dispGrupo !== 'block')
+      throw new Error('el rótulo de grupo no es un bloque (' + r.dispGrupo +
+                      '): su explicación se parte en dos columnas');
     if (!r.cabOculta) throw new Error('el encabezado de tabla sigue visible');
     if (!r.rotulo) throw new Error('las tarjetas no traen su rótulo');
   });
