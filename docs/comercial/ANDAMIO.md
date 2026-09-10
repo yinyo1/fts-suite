@@ -118,8 +118,63 @@ servidor y compara. Ahí es donde vive ahora esa respuesta.
 
 ### Deuda que esto deja apuntada
 
-Control hoy pide `comercial:admin`, **que no tiene nadie**. O sea que la
-pregunta «¿está todo lo mío allá?» hoy no la puede hacer ninguna persona del
-módulo. No bloquea nada —el aviso cubre el caso que de verdad ocurre, que es
-un guardado atorado— pero conviene resolverlo: o se le da la llave a alguien, o
-Control deja de pedirla para la parte de «lo mío». **Anotado, no perseguido.**
+Control pide `comercial:admin`.
+
+> ⚠️ **Corrección (V1.25, 2026-09-10).** Aquí decía «que no tiene nadie». Eso
+> ya era falso al escribirlo: la llave está puesta a `esteban.delacruz` desde el
+> **8-sep**, en la *Data Table* `suite_usuarios` de n8n. Leído de vuelta hoy:
+> `scopes: "comercial:read,comercial:admin"`, `updatedAt 2026-09-08T03:20:44Z`,
+> y los otros **siete** usuarios sólo con `comercial:read`. La frase se copió
+> del estado de V1.19, cuando el scope nació sin dueño a propósito («primero la
+> puerta, después la llave»), y nadie la volvió a leer.
+
+**La deuda de fondo sí sigue, y no es del permiso sino de la pregunta.**
+«¿Está TODO lo mío en el servidor?» hoy sólo la puede hacer quien tenga
+`comercial:admin`, o sea Esteban — y es una pregunta que le toca a **cada
+quien sobre lo suyo**, no a dirección sobre todos. Que dependa de la llave del
+tablero es un accidente: Control fue el primero que le preguntó al servidor, y
+la pregunta se quedó viviendo ahí.
+
+**Cómo se resolvería** (propuesto en V1.25, *no construido* — abre una decisión
+que le toca a Esteban):
+
+- **(a) Un renglón en la propia lista, sin llave.** «De tus N cotizaciones, N
+  están en el servidor» — el dato ya viaja: `machotes-leer` devuelve para cada
+  fila su `version` del servidor, y el navegador ya sabe cuáles tiene sin
+  subir. Es comparar dos cosas que la pantalla YA tiene, y no necesita endpoint
+  nuevo ni permiso nuevo. Es lo más barato y contesta la pregunta entera.
+- **(b) Abrir Control «lo mío» a `comercial:read`.** Un modo del tablero que
+  cuenta **sólo lo tuyo**. Más caro (toca el workflow, que hoy es un
+  `group by dueno` de todos) y deja la respuesta en otra pantalla, no donde
+  está el trabajo.
+- **(c) Dejarlo como está.** Defendible: el aviso de «sin subir» ya cubre el
+  caso que de verdad ocurre —un guardado atorado— y el silencio nunca afirma
+  «todo a salvo».
+
+La recomendación es **(a)**, y no se construyó porque decide dónde vive una
+respuesta, no cómo se calcula. **Anotado, no perseguido** (CLAUDE.md §8).
+
+---
+
+## Lo que se retiró en V1.25
+
+**`vOrden`, la pantalla de cierre de handoff.** Era una lista de entregables y
+un botón «Cerrar handoff» que marcaba la orden como confirmada en un estado en
+memoria. Corría sobre `D.ORDENES` —datos de ejemplo, **nunca del servidor**— y
+su único enlace era la sección «Confirmar la orden», que se retiró en V1.24.
+O sea que desde entonces sólo se alcanzaba tecleando el hash `#/orden/:id`.
+
+Se fue con ella todo lo que colgaba: la ruta `#/orden/:id`, `barraOrden`, la
+lista `ENTREGABLES`, los helpers `orden()` y `hoff()`, en el estado
+`ST.ordenes`, `ST.handoff` y `ST.confirmadas`, y en `demo.js` el bloque
+`ORDENES`.
+
+**Lo que NO se tocó, a propósito:**
+
+- La llave `handoff` del sobre de `fts_machote_v1`. Es formato de almacenamiento
+  **ya escrito en los navegadores del equipo**, y quitarla sería reescribirles
+  el archivo para ahorrar un objeto vacío.
+- `js/orden.js` (`MachoteOrden`), que es **otra cosa**: el modal «Pasar a
+  orden», al que se llega desde la barra del machote abierto. Sigue siendo un
+  cascarón y lo dice en su propia cabecera, pero **está enlazado y se usa** —
+  no es andamio huérfano.

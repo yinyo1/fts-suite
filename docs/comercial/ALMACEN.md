@@ -316,7 +316,9 @@ vacío no urge; **antes de que entre el primer dato real, sí.**
 
 ## El tablero de dirección (`comercial/machotes-control`)
 
-**Workflow `PLAw9IYGgMh0PRPL`. INACTIVO** — lo activa Esteban en la UI, como los otros dos.
+**Workflow `PLAw9IYGgMh0PRPL`. ACTIVO** (leído el 2026-09-10: `active:true`,
+`triggerCount:1`). Nació inactivo y Esteban lo encendió; este renglón decía
+«INACTIVO» de más.
 
 Contesta una pregunta distinta de la de `machotes-leer`, y por eso es otra puerta:
 
@@ -358,6 +360,13 @@ leer), así que el cambio se hace desde la UI de n8n o con un workflow que use e
 
 **Aplicado el 8-sep-2026, sólo a Esteban** (`updatedAt 2026-09-08T03:20:44Z`, leído de vuelta).
 Los otros siete usuarios siguen sin `comercial:admin`.
+
+> **Re-leído el 2026-09-10** (V1.25 pedía otorgarlo; ya estaba). Crudo de la
+> Data Table, fila 8: `username esteban.delacruz` ·
+> `scopes "comercial:read,comercial:admin"` · `activo true` ·
+> `updatedAt 2026-09-08T03:20:44.040Z`. Las otras siete filas traen
+> `comercial:read` sola o `nomina:write,rh:read`; **ninguna trae
+> `comercial:admin`**. No hizo falta escribir nada.
 
 No va en una migración porque es un **permiso**, no una estructura — y porque la estructura
 está en otro sistema.
@@ -475,10 +484,40 @@ está en `docs/comercial/PERMISO_TEMPORAL.md` §6.
 recoge. `revocado_at` es la marca; la traza de que existió es parte de lo que
 hace auditable el permiso.
 
-⚠️ La tabla existe y el candado de `machote-guardar` ya la consulta, pero
-**todavía no hay manera de crear un préstamo** —el endpoint no está construido,
-a la espera de las cinco decisiones abiertas de la propuesta— así que hoy la
-tabla está vacía y el candado se comporta exactamente como antes.
+### V1.25 · la tabla ya se usa
+
+El endpoint existe y la tabla tiene filas. Lo que se agregó, sin tocar el
+esquema:
+
+- **`comercial/machote-prestar`** (id `6FYwu04ow0ie3Kcr`, **INACTIVO — falta
+  publicar**). Un solo endpoint para las dos acciones. Quien otorga sale del
+  **token**, nunca del cuerpo, y que sea el dueño lo comprueba **la consulta
+  contra la base**, no un `if` del workflow. El tope de 24 h no se valida aquí
+  a propósito: ya lo impone el `CHECK`, y duplicarlo sería tener la regla en
+  dos sitios que pueden discrepar.
+- **`comercial/machotes-leer`** devuelve, por machote, los **préstamos
+  vigentes que le tocan a quien pregunta**: si es el dueño, los que otorgó; si
+  es prestatario, el suyo; si no es ninguno de los dos, ninguno. La consulta ya
+  filtra —el `Code` no vuelve a filtrar, porque filtrar en la pantalla sería
+  poder ver el resto abriendo la consola—.
+
+  ⚠️ La columna nueva va **al final de las DOS ramas del `UNION ALL`**: la
+  consulta termina en `ORDER BY 9 DESC, 10 DESC`, que es ordenar **por
+  posición**. Meter una columna a media lista cambia en silencio por qué se
+  ordena.
+
+**La concurrencia se ejerció contra esta base**, con dos escritores de verdad
+sobre la misma versión: pasó uno, el otro se fue con `CONFLICTO_DE_VERSION`, y
+en la base quedaron **cuatro** versiones y no cinco. El crudo del read-back,
+con sus fechas en UTC y su conversión, está en `PERMISO_TEMPORAL.md` §7.1.
+
+⚠️ **Dato de prueba que quedó vivo en producción:** el machote **`COT-0008`**
+(`id_local M-V125-CONCURRENCIA`, dueño `zz.prueba.v125.duenio`) con sus cuatro
+versiones y un préstamo a `zz.prueba.v125.presta` ya **vencido**
+(`vence_at 2026-09-10 07:28:49 UTC` = 01:28 CST) y sin revocar. Los dos actores
+son usuarios inventados para la prueba: no existen en `suite_usuarios` y no
+tocan trabajo de nadie. Se puede borrar lógicamente (`deleted_at`) cuando
+estorbe; no estorba hoy.
 
 ## Cambios de V1.24 sin migración
 

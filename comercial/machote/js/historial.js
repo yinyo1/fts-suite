@@ -117,18 +117,49 @@
     if (lista) {
       var items = lista.querySelectorAll('.v');
       for (var k = 0; k < items.length; k++) {
-        items[k].className = 'v' + (Number(items[k].getAttribute('data-i')) === i ? ' on' : '');
+        /* Se ENCIENDE Y APAGA sólo `on`. Antes esto reescribía el `className`
+         * entero, y con eso borraba `ajena` —la marca de «esta versión la
+         * escribió alguien que no es el dueño»— en TODOS los renglones. Y como
+         * `marcar()` corre también al abrir, para seleccionar la última, la
+         * marca de color moría antes de verse nunca: quedaba sólo el texto.
+         *
+         * El código se leía bien renglón por renglón; lo cazó la captura, no
+         * el diff (CLAUDE.md §20 #12). Regla que deja: una función que pinta
+         * UN estado no reescribe el `className`, toca SU clase. */
+        items[k].classList.toggle('on', Number(items[k].getAttribute('data-i')) === i);
       }
     }
   }
 
+  /* ── Quién escribió cada versión ─────────────────────────────────────────
+   * El autor SIEMPRE se pintó aquí; lo que faltaba era distinguir cuándo NO
+   * es el dueño de la cotización. Y esa distinción no es cosmética: es la
+   * razón por la que existe el histórico.
+   *
+   * El caso concreto que lo motivó son las comisiones. Si alguien con permiso
+   * prestado cambia el reparto, la versión queda con SU nombre — y eso ya era
+   * verdad en la base desde el primer día, porque `machote_version.autor` sale
+   * del token verificado y no del cuerpo de la petición. Lo que no era verdad
+   * es que se pudiera VER de un vistazo: había que conocer de memoria de quién
+   * es cada cotización para notar que el autor no cuadraba.
+   *
+   * `v.dueno` viene del servidor en cada renglón del historial: es el dueño
+   * ACTUAL de la identidad, no el de aquel momento. Con préstamos —que no
+   * cambian de dueño— eso es exactamente lo que hace falta. */
   function pintarLista(vs, sel) {
     return vs.map(function (v, i) {
-      return '<div class="v' + (i === sel ? ' on' : '') + '" data-i="' + i + '" tabindex="0">' +
+      var quien = v.autor_nombre || v.autor || 'sin autor';
+      var deOtro = !!(v.dueno && v.autor && v.autor !== v.dueno);
+      return '<div class="v' + (i === sel ? ' on' : '') + (deOtro ? ' ajena' : '') +
+        '" data-i="' + i + '" tabindex="0">' +
         '<div><span class="n">Versión ' + v.version + '</span> ' +
         (i === 0 ? '<span class="chip ult">la última</span>'
                  : '<span class="chip">' + esc(v.estado) + '</span>') + '</div>' +
-        '<div class="meta">' + esc(v.autor_nombre || v.autor || 'sin autor') +
+        '<div class="meta">' + esc(quien) +
+        (deOtro
+          ? ' <span class="chip otro" title="La escribió alguien que no es el dueño de esta ' +
+            'cotización, con un permiso temporal.">no es el dueño</span>'
+          : '') +
         ' · ' + esc(fecha(v.guardada_at)) + '</div>' +
         (v.motivo ? '<div class="motivo">' + esc(v.motivo) + '</div>' : '') +
         '</div>';

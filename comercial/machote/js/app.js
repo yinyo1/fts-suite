@@ -40,7 +40,7 @@
    * 2026-09-03 (por instrucción de Esteban), pero lleva el suyo aparte y va en
    * V1.00. Planeación sigue en `2.4.1` y el kiosko sólo con cadena de build;
    * a esos no se propaga. */
-  const VERSION = 'V1.24';
+  const VERSION = 'V1.25';
   const $  = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
   const clon = (x) => JSON.parse(JSON.stringify(x));
@@ -62,28 +62,29 @@
      * que se abre trabado y no se puede guardar — eso lo decide el servidor
      * por el token, no esta pantalla. */
     ajenos: [],
-    ordenes:  clon(D.ORDENES),
-    handoff: _guardado ? (_guardado.handoff || {}) : {},
-    confirmadas: {},
+    /* V1.25: se fueron `ordenes`, `handoff` y `confirmadas`. Sólo existían
+     * para `vOrden`, la pantalla de cierre de handoff, que quedó huérfana al
+     * retirar la sección «Confirmar la orden» en V1.24 y corría sobre datos
+     * de ejemplo. La llave `handoff` del sobre de `fts_machote_v1` SE QUEDA
+     * en `almacen.js` a propósito: es formato de almacenamiento ya escrito en
+     * los navegadores del equipo, y quitarla de ahí sería reescribirles el
+     * archivo para ahorrar un objeto vacío. */
     hoja: 'desglose', simMargen: null,
     busca: '',
     /* Los filtros de la lista (V1.21). Sustituyen al `filtro: 'todos'` de las
      * píldoras, que sólo sabía de estado.
      *
-     * `persona` ARRANCA EN QUIEN ENTRÓ. Es lo que alguien quiere ver al abrir,
-     * y lo de los demás queda a un clic — con el pie diciéndolo, porque un
-     * filtro puesto que no se anuncia hace creer que faltan machotes.
-     * Si no hay sesión arranca vacío: filtrar por un nombre que no existe
-     * dejaría la lista en blanco sin explicación. */
-    filtros: {
-      persona: (function () {
-        try {
-          var sx = G.SuiteAuth && G.SuiteAuth.getSession();
-          return (sx && sx.actor) || '';
-        } catch (e) { return ''; }
-      })(),
-      estado: '', moneda: ''
-    },
+     * `persona` ARRANCA VACÍO — o sea en «Todas las personas» (V1.25).
+     * Hasta V1.24 arrancaba en quien entró, que tenía sentido cuando cada
+     * quien sólo veía lo suyo. Con la lectura abierta pasó a ser un filtro
+     * puesto de fábrica que escondía justo lo que se acababa de abrir: quien
+     * entraba veía 2 de 7 y tenía que descubrir el desplegable para ver el
+     * resto. Con siete machotes no hay ruido que filtrar; cuando el equipo
+     * crezca se revisa.
+     *
+     * Lo que NO cambia por esto: el encabezado sigue diciendo cuántas son
+     * TUYAS, y el respaldo sigue llevándose sólo lo tuyo. Ver `vHome`. */
+    filtros: { persona: '', estado: '', moneda: '' },
     // 'limpio' | 'sucio' | 'guardando' | 'guardado' | 'sin-almacen'
     pulso: (A && A.disponible()) ? 'limpio' : 'sin-almacen'
   };
@@ -153,8 +154,16 @@
     if (_reloj) { clearTimeout(_reloj); _reloj = null; }
     ST.pulso = 'guardando'; pintarPulso(); pintarPendientes();
 
-    const local = A.escribirLocal({ machotes: ST.machotes, handoff: ST.handoff });
+    const local = A.escribirLocal({ machotes: ST.machotes });
     if (!local) { ST.pulso = 'sin-almacen'; pintarPulso(); pintarPendientes(); avisarNoGuarda(); return false; }
+
+    /* Lo PRESTADO se guarda en su propio cajón, síncrono y antes de cualquier
+     * red — es la promesa que sostiene todo el préstamo: el servidor puede
+     * negarse a guardar (permiso vencido, permiso recogido, choque de
+     * versión), pero no puede costarle a nadie lo que tecleó. */
+    (ST.ajenos || []).forEach(m => {
+      if (A.prestadoAMi && A.prestadoAMi(m) && A.guardarPrestadoLocal) A.guardarPrestadoLocal(m);
+    });
     quitarAvisoNoGuarda();
 
     // Ya está a salvo aquí. Lo de arriba fue síncrono a propósito.
@@ -170,7 +179,85 @@
       pintarPulso(); pintarPendientes();
     });
 
+    /* Y los prestados suben por separado: `empujar` recorre `ST.machotes`, que
+     * es lo mío, y lo ajeno nunca entra ahí a propósito. */
+    empujarPrestados();
+
     return true;
+  }
+
+  /** Sube los machotes prestados que estén abiertos y con permiso vigente.
+   *
+   *  Va uno por uno y NO se mezcla con `empujar`: son dos contabilidades de
+   *  versiones distintas (la libreta para lo mío, el cajón para lo prestado)
+   *  y juntarlas es cómo el `M-1041` de Ricardo acabaría pisando el propio. */
+  function empujarPrestados() {
+    if (!A || !A.empujarUno || !A.prestadoAMi) return;
+    const ses = (G.SuiteAuth && G.SuiteAuth.getToken && G.SuiteAuth.getToken()) ? true : false;
+    if (!ses) return;
+    (ST.ajenos || []).forEach(m => {
+      if (!A.prestadoAMi(m)) return;
+      A.empujarUno(m, { token: G.SuiteAuth.getToken() },
+                   'editado con permiso de ' + (m._dueno_nombre || m._dueno || 'su dueño'))
+        .then(r => {
+          if (r && r.ok === true) {
+            if (A.olvidarPrestado) A.olvidarPrestado(m.id);
+            m._sin_subir = false;
+            return;
+          }
+          /* Rechazado. Lo tecleado se queda en el cajón —`empujarPrestado` lo
+           * escribe ANTES de llamar al servidor— y se dice con todas sus
+           * letras cuál de las tres causas fue. */
+          m._sin_subir = true;
+          avisarPrestadoRechazado(m, r);
+        });
+    });
+  }
+
+  /* Las tres causas por las que un prestado no se guarda llevan a tres cosas
+   * distintas: pedir el permiso otra vez, hablar con el dueño, o volver a
+   * abrir el machote. Decirlas con una sola frase manda a la acción
+   * equivocada — es la misma lección del historial y de la sesión muerta. */
+  let _avisoPrestado = 0;
+  function avisarPrestadoRechazado(m, r) {
+    const err = (r && r.error) || '';
+    /* Sin red no se alarma: eso se reintenta solo y ya lo dice el pulso. */
+    if (err === 'SIN_RED' || err === 'SIN_SESION') return;
+    const ahora = Date.now();
+    if (ahora - _avisoPrestado < 20000) return;
+    _avisoPrestado = ahora;
+
+    const viejo = $('#avPrestado'); if (viejo) viejo.remove();
+    const b = document.createElement('div');
+    b.id = 'avPrestado'; b.className = 'nogda'; b.setAttribute('role', 'alert');
+    const cola = ' <strong>Lo que escribiste sigue en este navegador y no se perdió.</strong>';
+    b.innerHTML = '<span>' + (
+      err === 'PRESTAMO_VENCIDO'
+        ? 'Tu permiso sobre «' + esc(m.nombre || 'esa cotización') + '» venció, así que ' +
+          'ya no se pudo guardar.' + cola + ' Pídele el permiso de nuevo a ' +
+          esc(m._dueno_nombre || m._dueno || 'su dueño') + '.'
+      : err === 'PRESTAMO_RECOGIDO'
+        ? esc(m._dueno_nombre || m._dueno || 'El dueño') + ' recogió tu permiso sobre «' +
+          esc(m.nombre || 'esa cotización') + '», así que ya no se pudo guardar.' + cola
+      : err === 'CONFLICTO_DE_VERSION'
+        ? 'Otra persona guardó «' + esc(m.nombre || 'esa cotización') + '» mientras la ' +
+          'editabas.' + cola + ' Vuelve a abrirla antes de seguir, para no pisar su cambio.'
+        : esc((r && r.mensaje) || 'No se pudo guardar esa cotización prestada.') + cola
+    ) + '</span><span class="nogda-b">' +
+      '<button class="btn" id="apCopiar">Copiar lo mío</button>' +
+      '<button class="btn fantasma" id="apCerrar">Entendido</button></span>';
+    document.body.appendChild(b);
+
+    /* «Copiar lo mío» es la salida concreta: sin ella, «tu trabajo no se
+     * perdió» es una frase amable sin manera de actuar. */
+    $('#apCopiar').onclick = () => {
+      const txt = JSON.stringify(m, null, 2);
+      const listo = () => toast('Copiado. Pégalo donde lo necesites.');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(txt).then(listo, () => respaldoCopiar(txt, listo));
+      } else respaldoCopiar(txt, listo);
+    };
+    $('#apCerrar').onclick = () => b.remove();
   }
 
   /* Sin red no se traba nada: lo capturado está en el navegador y sube solo
@@ -277,6 +364,13 @@
   const mach  = (id) => ST.machotes.find(m => m.id === id) ||
                         ST.ajenos.find(m => m.id === id);
   const ajeno = (m) => !!(m && m._ajeno === true);
+  /* Ajeno ya no implica sólo lectura: con un préstamo vigente se edita.
+   * La decisión de verdad la toma el SERVIDOR en cada guardado, contra la
+   * base y con su propio reloj; esto es para no hacerle perder el rato a
+   * quien sí tiene permiso. Vive en el almacén para que la pantalla y el
+   * empuje no puedan discrepar. */
+  const puedoEscribir = (m) => !!(A && A.puedeEscribir ? A.puedeEscribir(m) : !ajeno(m));
+  const prestadoAMi = (m) => !!(A && A.prestadoAMi && A.prestadoAMi(m));
 
   /* ── El folio (V1.23) ────────────────────────────────────────────────────
    * El número con el que se habla de una cotización: `COT-0003`. Lo reparte
@@ -295,8 +389,6 @@
     const f = A.folio(m.id);
     return f ? f.folio_txt : null;
   }
-  const orden = (id) => ST.ordenes.find(o => o.id === id);
-  const hoff  = (id) => ST.handoff[id] || (ST.handoff[id] = { entregables: {}, notas: '' });
 
   function toast(txt) {
     const d = document.createElement('div');
@@ -426,7 +518,6 @@
     if (p[0] === 'nuevo') return vNuevo();
     if (p[0] === 'm')     return vMachote(p[1]);
     if (p[0] === 'rev')   return vRevision(p[1]);
-    if (p[0] === 'orden') return vOrden(p[1]);
     if (p[0] === 'ap')    return vAprobar(p[1]);
     if (p[0] === 'control') return vControl();
     location.hash = '#/';
@@ -711,7 +802,9 @@
         '<td class="folio-td">' + folioChip(m) + '</td>' +
         '<td><div class="nm"><a href="#/m/' + esc(m.id) + '">' + esc(m.nombre) + '</a>' +
           (dm ? ' <span class="pill" title="Ejemplo que trae la aplicación. No se guarda en el servidor.">ejemplo</span>' : '') +
-          (ajeno(m) ? ' <span class="pill aj" title="Trabajo de otra persona. Se abre en lectura: no se edita ni se borra.">sólo lectura</span>' : '') +
+          (ajeno(m) ? (prestadoAMi(m)
+            ? ' <span class="pill presta" title="Su dueño te prestó la escritura. Se edita hasta que venza el permiso; borrar sigue siendo suyo.">prestada</span>'
+            : ' <span class="pill aj" title="Trabajo de otra persona. Se abre en lectura: no se edita ni se borra.">sólo lectura</span>') : '') +
           '</div><div class="sub">' + esc(cli(m)) +
           (m.so ? ' · ' + esc(m.so) : '') + '</div></td>' +
         '<td class="quien-td sub" title="' + esc(nombreDe(duenoDe(m))) + '">' +
@@ -750,7 +843,9 @@
         '<a class="item" href="#/m/' + esc(m.id) + '">' +
         '<div class="grow"><strong>' + esc(m.nombre) + '</strong>' +
           (dm ? ' <span class="pill">ejemplo</span>' : '') +
-          (ajeno(m) ? ' <span class="pill aj">sólo lectura</span>' : '') +
+          (ajeno(m) ? (prestadoAMi(m)
+            ? ' <span class="pill presta">prestada</span>'
+            : ' <span class="pill aj">sólo lectura</span>') : '') +
           '<div class="tiny">' + esc(cli(m)) +
           (m.so ? ' · ' + esc(m.so) : '') + ' · ' +
           esc(nombreDe(duenoDe(m))) + '</div></div>' +
@@ -1009,7 +1104,7 @@
     // abierta de la anterior deja al analista en una sección que no pidió.
     if (ST.libroAbierto !== id) { ST.hoja = 'desglose'; ST.libroAbierto = id; }
     const c = C.calcular(m);
-    const soloLectura = ajeno(m);
+    const soloLectura = !puedoEscribir(m);
     const fol = folioDe(m);
     top(cli(m), soloLectura
       ? ('de ' + (m._dueno_nombre || m._dueno || 'otra persona'))
@@ -1044,6 +1139,12 @@
           'La estás viendo en <strong>sólo lectura</strong>: se puede revisar, no editar. ' +
           'Si quieres partir de ella, duplícala a tu nombre.</div>'
         : '') +
+      /* La franja del préstamo. Dos caras del mismo dato: al PRESTATARIO le
+       * dice hasta cuándo puede escribir; al DUEÑO, a quién le prestó y hasta
+       * cuándo, con el botón de recoger. Es cortesía, no seguridad —saber que
+       * el otro está adentro evita la mayoría de los choques sin candados—,
+       * y por eso vive arriba, donde se ve sin buscarla. */
+      (G.MachotePrestamo ? G.MachotePrestamo.franja(m) : '') +
       '<div class="libro' + (soloLectura ? ' solo-lectura' : '') + '">' +
       '<div class="hojas" id="hojas">' + hojas.map((h, i) =>
         '<button class="pestana' + (h.id === ST.hoja ? ' on' : '') +
@@ -1163,21 +1264,23 @@
     const c = C.calcular(m);
     $('#hoja').innerHTML = hojaHTML(m, c);
     enlazar(m);
-    trabarSiEsAjeno(m);
+    trabarSiNoPuedoEscribir(m);
+    if (G.MachotePrestamo) G.MachotePrestamo.montar(m, vMachote);
   }
 
-  /* Traba la hoja cuando el machote es de otra persona.
+  /* Traba la hoja cuando no se puede escribir en ella: es de otra persona y
+   * no me la prestó, o el préstamo ya venció.
    *
    * Va AQUÍ y no en cada sitio que pinta porque `pintarHoja` es el único punto
    * por el que pasa toda la hoja — el mismo criterio que el filtro de la demo
    * en `empujar`. Un camino nuevo que repinte queda cubierto solo.
    *
-   * Esto NO es la seguridad: la seguridad es que el servidor no deja guardar
-   * un machote ajeno (`empujarUno` lo rechaza, y de todos modos el dueño lo
-   * pone el token). Esto es para que nadie pierda el rato tecleando encima de
-   * algo que no se va a guardar. */
-  function trabarSiEsAjeno(m) {
-    if (!m || m._ajeno !== true) return;
+   * Esto NO es la seguridad: la seguridad es que el servidor comprueba el
+   * préstamo contra la base en cada guardado, con su propio reloj, y rechaza
+   * con el motivo exacto. Esto es para que nadie pierda el rato tecleando
+   * encima de algo que no se va a guardar. */
+  function trabarSiNoPuedoEscribir(m) {
+    if (!m || puedoEscribir(m)) return;
     const hoja = $('#hoja'); if (!hoja) return;
     hoja.querySelectorAll('input, select, textarea, button').forEach(el => {
       el.disabled = true;
@@ -1727,12 +1830,39 @@
        * captura, no el diff—: quedaba un botón vivo para convertir en orden la
        * cotización de otro. «Revisar» sí se queda: es de sólo lectura y es
        * justo para lo que dirección abre un machote ajeno. */
-      (G.MachoteOrden && !ajeno(m)
+      (G.MachoteOrden && !ajeno(m)   /* pasar a orden es del DUEÑO, no de quien tiene prestado */
         ? '<button class="btn fantasma" id="btnOrden" title="Ver cómo se pasaría a orden de venta">Pasar a orden</button>'
+        : '') +
+      /* PRESTAR es del dueño y sólo del dueño (decisión 1 de la propuesta:
+       * quien sabe que no puede meterle mano ahora es él). Y sólo tiene
+       * sentido si la cotización ya llegó al servidor: prestar algo que
+       * todavía vive en este navegador no le daría acceso a nadie. */
+      (G.MachotePrestamo && !ajeno(m) && A && A.idServidor && A.idServidor(m.id)
+        ? '<button class="btn fantasma" id="btnPrestar" title="Dejar que otra persona edite esta cotización por un rato">Prestar</button>'
         : '') +
       '<a class="btn" href="#/rev/' + m.id + '">Revisar</a></div>';
     const bo = $('#btnOrden');
     if (bo) bo.onclick = () => G.MachoteOrden.abrir(m);
+    const bp = $('#btnPrestar');
+    if (bp) bp.onclick = () => G.MachotePrestamo.abrir(m, personasDelEquipo(), vMachote);
+  }
+
+  /** A quién se le puede prestar: las personas que el servidor ya nombró en
+   *  la lista, menos uno mismo.
+   *
+   *  Sale de los DATOS y no de una lista escrita a mano, por lo mismo que el
+   *  filtro de persona: el día que entre alguien nuevo aparece solo. Su
+   *  límite honesto es que sólo conoce a quien ya tiene algún machote — quien
+   *  no ha capturado nada todavía no sale. Cuando exista un directorio del
+   *  módulo, esto se cambia por él. */
+  function personasDelEquipo() {
+    const ses = (G.SuiteAuth && G.SuiteAuth.getSession()) || null;
+    const yo = (ses && ses.actor) || '';
+    const vistos = {};
+    (ST.ajenos || []).forEach(m => {
+      if (m && m._dueno && m._dueno !== yo) vistos[m._dueno] = m._dueno_nombre || m._dueno;
+    });
+    return Object.keys(vistos).sort().map(a => ({ actor: a, nombre: vistos[a] }));
   }
 
   /* ── Enlace de celdas ────────────────────────────────────────────────── */
@@ -1905,43 +2035,18 @@
   }
 
   /* ── Estación 3.0 ────────────────────────────────────────────────────── */
-  const ENTREGABLES = [
-    { id: 'alcance',   label: 'Alcance escrito y aceptado por el cliente' },
-    { id: 'po',        label: 'Orden de compra o correo de autorización' },
-    { id: 'contacto',  label: 'Contacto de sitio con teléfono' },
-    { id: 'fechas',    label: 'Fecha de inicio y fin acordadas' },
-    { id: 'accesos',   label: 'Requisitos de acceso y seguridad de la planta' },
-    { id: 'facturaci', label: 'Datos de facturación confirmados' }
-  ];
-
-  function vOrden(id) {
-    const o = orden(id); if (!o) { location.hash = '#/'; return; }
-    const h = hoff(o.id);
-    top('Confirmar orden', o.so + ' · ' + o.cliente, null, '#/');
-    $('#vista').innerHTML = '<div class="pad"><h2>' + esc(o.nombre) + '</h2>' +
-      '<div class="tiny">Confirmada el ' + esc(o.fecha_confirmacion) + ' · ' + mx(o.monto) + ' ' + esc(o.moneda) + '</div>' +
-      (ST.confirmadas[o.id] ? '<div class="aviso ok">Handoff cerrado. Operaciones ya tiene lo que necesita.</div>' : '') +
-      '<div class="wg"><h4>Qué tiene que quedar antes de soltarla a operaciones</h4>' +
-      ENTREGABLES.map(e => '<label class="row"><input type="checkbox" data-ent="' + e.id + '"' +
-        (h.entregables[e.id] ? ' checked' : '') + '><span class="grow">' + esc(e.label) + '</span></label>').join('') +
-      '</div><div class="wg"><h4>Notas para operaciones</h4>' +
-      '<textarea id="notas" rows="4" placeholder="Lo que no cabe en una casilla.">' + esc(h.notas) + '</textarea></div></div>';
-    barraOrden(o, h);
-    $$('[data-ent]').forEach(cb => cb.onchange = () => { h.entregables[cb.dataset.ent] = cb.checked; barraOrden(o, h); });
-    $('#notas').oninput = (e) => { h.notas = e.target.value; };
-  }
-
-  function barraOrden(o, h) {
-    const listo = ENTREGABLES.every(e => h.entregables[e.id]);
-    const ya = !!ST.confirmadas[o.id];
-    $('#fija').innerHTML = '<div class="fija"><div class="grow"><div class="tiny">' +
-      (listo ? '✓ Completo' : ENTREGABLES.filter(e => !h.entregables[e.id]).length + ' pendiente(s)') + '</div></div>' +
-      '<button class="btn" id="btnConf"' + (listo && !ya ? '' : ' disabled') + '>Cerrar handoff</button></div>';
-    $('#btnConf').onclick = () => {
-      ST.confirmadas[o.id] = { fecha: new Date().toISOString() };
-      toast('Handoff cerrado'); vOrden(o.id);
-    };
-  }
+  /* ── vOrden se retiró en V1.25 ──────────────────────────────────────────
+   * Era la pantalla de cierre de handoff: una lista de entregables y un botón
+   * «Cerrar handoff» que marcaba la orden como confirmada en un estado en
+   * memoria. Corría sobre `D.ORDENES` —datos de ejemplo, nunca del servidor—
+   * y su único enlace era la sección «Confirmar la orden» que se retiró en
+   * V1.24, así que llevaba una versión alcanzable sólo tecleando el hash.
+   *
+   * Se fue con ella: la ruta `#/orden/:id`, `barraOrden`, la lista
+   * `ENTREGABLES`, los helpers `orden()` y `hoff()`, y en el estado
+   * `ST.ordenes`, `ST.handoff` y `ST.confirmadas`. En `demo.js` se fue
+   * `ORDENES`. Lo que NO se tocó es la llave `handoff` del sobre de
+   * `fts_machote_v1`: es formato ya escrito en los navegadores del equipo. */
 
   /* ── Aprobación ──────────────────────────────────────────────────────── */
   function vAprobar(id) {
@@ -1962,6 +2067,21 @@
       (rev.duras.length ? '<div class="aviso bad">Tiene ' + rev.duras.length + ' hallazgo(s) duro(s). No debería llegar aquí.</div>'
                         : '<div class="aviso ok">Sin hallazgos duros.</div>') + '</div>';
   }
+
+  /* Lo mínimo que otro archivo necesita de la aplicación. Se expone SÓLO
+   * `guardarYa` —lo usa el aviso de «tu permiso está por vencer» para su
+   * botón «Guardar ahora»— en vez de colgar `ST` entero de `window`: un
+   * estado global que cualquiera puede escribir es cómo se llega a dos
+   * verdades sobre lo que hay en pantalla. */
+  G.MachoteApp = {
+    guardarYa: guardarYa,
+    /* Y el directorio de gente, para que la franja del préstamo pueda decir
+     * «Ricardo Hernández» donde el servidor sólo manda «ricardo.hernandez».
+     * El nombre NO viaja en `machote_prestamo` a propósito: no hay tabla de
+     * usuarios en el esquema `comercial` (migración 005) y no se va a crear
+     * una para una etiqueta. Aquí ya se conoce, porque la lista lo trae. */
+    personas: personasDelEquipo
+  };
 
   render();
   avisoPassword();
@@ -2009,7 +2129,6 @@
 
       if (Array.isArray(r.machotes) && (r.machotes.length || _hayCaptura || ST.ajenos.length)) {
         ST.machotes = r.machotes;
-        ST.handoff = r.handoff || ST.handoff;
         render();
       }
 

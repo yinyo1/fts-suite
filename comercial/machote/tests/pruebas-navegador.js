@@ -118,7 +118,16 @@ let ok = 0, mal = 0;
     (esDelEntorno(m.text()) ? delEntorno : errs).push('CONSOLE: ' + m.text()); });
   p.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
 
+  /* Correr UNA sola prueba: `SOLO='pr[eé]stamo' node tests/pruebas-navegador.js`.
+   * La suite entera tarda ~55 minutos y eso vuelve carísimo iterar sobre una
+   * pantalla nueva —se acaba mirando el diff en vez de la pantalla, que es
+   * justo el modo de falla de CLAUDE.md §20 #12—. El filtro no cambia lo que
+   * hace ninguna prueba: sólo deja saltarse las que no se están tocando.
+   * ⚠️ La ENTREGA se mide siempre con la suite completa, sin `SOLO`. */
+  const SOLO = process.env.SOLO ? new RegExp(process.env.SOLO, 'i') : null;
+  let saltadas = 0;
   const paso = async (n, fn) => {
+    if (SOLO && !SOLO.test(n)) { saltadas++; return; }
     try { await fn(); console.log('✓', n); ok++; }
     catch (e) { console.log('✗', n, '→', e.message); mal++; }
   };
@@ -1032,21 +1041,35 @@ let ok = 0, mal = 0;
     console.log('    ' + total + ' → ' + enRev + ' · «' + cuenta + '»');
   });
 
-  await paso('al entrar, el filtro de persona arranca en los propios', async () => {
-    /* Es lo que alguien quiere ver al abrir. Y como es un filtro PUESTO que
-     * nadie eligió, la pantalla tiene que decirlo: si no, se ve una lista
-     * corta y parece que faltan machotes. */
+  await paso('al entrar, la lista arranca en TODAS las personas', async () => {
+    /* V1.25 · decisión de Esteban. SUSTITUYE a «el filtro de persona arranca
+     * en los propios» (V1.21), que probaba lo contrario: que al abrir se veía
+     * sólo lo tuyo y un pie avisaba del filtro puesto.
+     *
+     * Se cambió porque abrir la lectura a todos (V1.24) y luego esconderlo
+     * detrás de un filtro que nadie eligió es abrir una puerta y dejarla
+     * cerrada: con siete machotes no hay ruido que filtrar, y ver el trabajo
+     * del equipo era el punto. Cuando el equipo crezca se revisa.
+     *
+     * Lo que NO cambió, y por eso se sigue probando aquí: «Míos» sigue
+     * existiendo, y cuando se elige, la pantalla lo dice — un filtro puesto
+     * que no se anuncia se lee como machotes que faltan. */
     await ir('#/');
     const v = await p.$eval('#fPersona', el => el.value);
-    if (v !== 'zz.prueba') throw new Error('no arrancó en el usuario de la sesión: «' + v + '»');
-    const t = (await p.textContent('#vista')).replace(/\s+/g, ' ');
-    if (!/Viendo sólo lo tuyo/i.test(t)) throw new Error('no avisa que hay un filtro puesto');
-    // Y se puede quitar: «Todas las personas» devuelve la lista completa.
-    const propios = await p.$$eval('[data-hist]', e => e.length);
+    if (v !== '') throw new Error('no arrancó en «Todas las personas»: «' + v + '»');
+    const t0 = (await p.textContent('#vista')).replace(/\s+/g, ' ');
+    if (/Viendo sólo lo tuyo/i.test(t0))
+      throw new Error('avisa de un filtro puesto sin haber puesto ninguno');
+
+    const todos = await p.$$eval('tr.rw', e => e.length);
+    await p.selectOption('#fPersona', 'zz.prueba'); await p.waitForTimeout(320);
+    const propios = await p.$$eval('tr.rw', e => e.length);
+    if (propios > todos) throw new Error('«Míos» enseñó MÁS que todos: ' + todos + ' → ' + propios);
+    const t1 = (await p.textContent('#vista')).replace(/\s+/g, ' ');
+    if (!/Viendo sólo lo tuyo/i.test(t1))
+      throw new Error('con «Míos» puesto no lo dice');
     await p.selectOption('#fPersona', ''); await p.waitForTimeout(320);
-    const todos = await p.$$eval('[data-hist]', e => e.length);
-    if (todos < propios) throw new Error('quitar el filtro enseñó MENOS: ' + propios + ' → ' + todos);
-    console.log('    míos ' + propios + ' · todos ' + todos);
+    console.log('    arranca en todas (' + todos + ') · «Míos» filtra (' + propios + ') y lo anuncia');
   });
 
   await paso('cuando no hay resultados, dice por qué', async () => {
@@ -3409,17 +3432,13 @@ let ok = 0, mal = 0;
   await paso('dirección ve el trabajo del equipo, marcado y sin poder tocarlo', async () => {
     const q = await paginaConAjenos();
     try {
-      /* Al entrar se ve SÓLO lo propio, también con el scope de dirección: es
-       * la decisión de Esteban y el pie lo anuncia. Lo de los demás está a un
-       * clic, y ese clic es el que se da aquí. */
+      /* V1.25: al entrar YA se ve el trabajo del equipo, sin tocar el filtro.
+       * Antes aquí se comprobaba lo contrario —que al entrar sólo salía lo
+       * propio— y luego se daba el clic; hoy el clic sobra, así que lo que se
+       * comprueba es que sale de entrada. */
       const alEntrar = await q.$$eval('tr.rw', f => f.map(x => x.textContent.indexOf('Lo de Ricardo') >= 0));
-      if (alEntrar.some(Boolean))
-        throw new Error('al entrar ya enseñaba lo de otro: el filtro propio no se respetó');
-      const pie = (await q.textContent('#vista')).replace(/\s+/g, ' ');
-      if (!/Viendo sólo lo tuyo/i.test(pie))
-        throw new Error('no avisa que hay un filtro puesto');
-
-      await q.selectOption('#fPersona', ''); await q.waitForTimeout(320);
+      if (!alEntrar.some(Boolean))
+        throw new Error('al entrar NO enseñaba lo de otro: la lista no arrancó en todas');
 
       const r = await q.evaluate(() => {
         const filas = [...document.querySelectorAll('tr.rw')];
@@ -3579,10 +3598,17 @@ let ok = 0, mal = 0;
     await q.addInitScript((cfg) => {
       const f = cfg.filas;
       window.__opciones = cfg.opciones || {};
+      /* Quién está sentado frente a la pantalla. Por omisión Esteban, que es
+       * lo que asumían las pruebas de V1.23/V1.24; el préstamo obliga a poder
+       * ser OTRO —el prestatario, o un extraño— porque casi todo lo que hay
+       * que probar de él sólo se ve desde ese lado. */
+      const YO = (cfg.opciones && cfg.opciones.actor) || 'esteban.delacruz';
+      const NOMBRE = (cfg.opciones && cfg.opciones.nombre) || 'Jesus Esteban De La Cruz';
+      window.__llamadas = { guardar: [], prestar: [] };
       try {
         localStorage.setItem('fts_suite_session', JSON.stringify({
-          token: 'prueba.prueba.prueba', actor: 'esteban.delacruz',
-          nombre: 'Jesus Esteban De La Cruz', empleado_id: 32,
+          token: 'prueba.prueba.prueba', actor: YO,
+          nombre: NOMBRE, empleado_id: 32,
           /* SIN `comercial:admin` a propósito: desde V1.24 la lectura de lo
            * ajeno no depende de ese scope. Si alguien lo vuelve a exigir en el
            * servidor, estas pruebas se caen — que es lo que se quiere. */
@@ -3612,18 +3638,32 @@ let ok = 0, mal = 0;
               ? window.__opciones.versiones : 1;
             const f0 = f.find(x => x.id === cuerpo.machote_id) || {};
             const vs = [];
-            for (let i = n; i >= 1; i--) vs.push({
-              id: f0.id, version: i, autor: f0.dueno || 'esteban.delacruz',
-              autor_nombre: f0.dueno_nombre || 'Jesus Esteban De La Cruz',
-              guardada_at: new Date(Date.now() - i * 3600e3).toISOString(),
-              estado: 'borrador', motivo: 'guardado automatico',
-              documento: doc(f0.nombre || 'x') });
+            /* `dueno` va en CADA versión porque así lo manda el endpoint real
+             * (la consulta del historial selecciona `m.dueno`), y es lo que
+             * deja comparar contra `autor` para marcar las que escribió
+             * alguien más. `opciones.autores` permite que no todas sean del
+             * dueño, que es justo el caso del préstamo. */
+            const dueno0 = f0.dueno || 'esteban.delacruz';
+            const otros = (window.__opciones && window.__opciones.autores) || {};
+            for (let i = n; i >= 1; i--) {
+              const a = otros[i] || null;
+              vs.push({
+                id: f0.id, version: i, dueno: dueno0,
+                autor: a ? a.actor : dueno0,
+                autor_nombre: a ? a.nombre
+                                : (f0.dueno_nombre || 'Jesus Esteban De La Cruz'),
+                guardada_at: new Date(Date.now() - i * 3600e3).toISOString(),
+                estado: 'borrador',
+                motivo: a ? ('editado con permiso de ' + (f0.dueno_nombre || dueno0))
+                          : 'guardado automatico',
+                documento: doc(f0.nombre || 'x') });
+            }
             return Promise.resolve({ ok: true, json: () => Promise.resolve({
-              ok: true, modo: 'historial', actor: 'esteban.delacruz', es_admin: false,
+              ok: true, modo: 'historial', actor: YO, es_admin: false,
               machote_id: cuerpo.machote_id, versiones: vs, total: vs.length }) });
           }
           return Promise.resolve({ ok: true, json: () => Promise.resolve({
-            ok: true, modo: 'lista', actor: 'esteban.delacruz', es_admin: false,
+            ok: true, modo: 'lista', actor: YO, es_admin: false,
             total: f.length,
             duenos: f.map(x => x.dueno || 'esteban.delacruz')
                      .filter((d, i, a) => a.indexOf(d) === i),
@@ -3633,7 +3673,42 @@ let ok = 0, mal = 0;
               documento: doc(x.nombre)
             }, x)) }) });
         }
-        if (s.indexOf('/comercial/machote-guardar') >= 0) return new Promise(function () {});
+        /* GUARDAR y PRESTAR. Por omisión se quedan colgados —es lo que hacían
+         * antes, y las pruebas viejas cuentan con ello— pero el montaje puede
+         * darles una respuesta. Se apunta CADA llamada con su cuerpo: en el
+         * préstamo, la mitad de lo que hay que probar es CON QUÉ IDENTIDAD se
+         * guarda (el `id_local` del DUEÑO, no el de quien teclea), y eso no se
+         * ve en la pantalla: sólo en lo que sale por el cable. */
+        if (s.indexOf('/comercial/machote-guardar') >= 0) {
+          let c = {}; try { c = JSON.parse((arguments[1] && arguments[1].body) || '{}'); } catch (e) {}
+          window.__llamadas.guardar.push(c);
+          const rg = window.__opciones.guardar;
+          if (!rg) return new Promise(function () {});
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(rg) });
+        }
+        if (s.indexOf('/comercial/machote-prestar') >= 0) {
+          let c = {}; try { c = JSON.parse((arguments[1] && arguments[1].body) || '{}'); } catch (e) {}
+          window.__llamadas.prestar.push(c);
+          const rp = window.__opciones.prestar || { ok: true };
+          /* El servidor de mentiras APUNTA el préstamo, para que la siguiente
+           * bajada lo traiga. Sin esto, «prestar» sólo probaría que sale la
+           * llamada; con esto se prueba lo que le importa al dueño: que al
+           * volver de prestar, su pantalla dice que la cotización está
+           * prestada y le ofrece recogerla. */
+          if (rp.ok === true) {
+            const fila = f.find(x => x.id === c.machote_id);
+            if (fila) {
+              fila.prestamos = (fila.prestamos || []).filter(x => x.para !== c.para);
+              /* SIN `para_nombre`: la consulta real (`machotes-leer`) no lo
+               * manda, porque la 005 no guarda nombres. Inventarlo aquí
+               * habría hecho pasar una prueba que en producción falla. */
+              if (c.accion === 'prestar') fila.prestamos.push({
+                para: c.para, otorgado_por: YO,
+                vence_at: new Date(Date.now() + (Number(c.horas) || 4) * 3600e3).toISOString() });
+            }
+          }
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(rp) });
+        }
         if (s.indexOf('/comercial/clientes') >= 0) return new Promise(function () {});
         return orig.apply(this, arguments);
       };
@@ -3820,13 +3895,494 @@ let ok = 0, mal = 0;
     } finally { await q.close(); }
   });
 
+  /* ══ V1.25 · EL PRÉSTAMO TEMPORAL ═══════════════════════════════════════
+   *
+   * Qué se prueba aquí y por qué en el navegador: el préstamo tiene DOS
+   * mitades, y la de la base ya se ejerció contra Postgres real (dos
+   * escritores sobre la misma versión, uno pasa y el otro se va con
+   * CONFLICTO_DE_VERSION). Lo que falta —y sólo se ve aquí— es la mitad de
+   * quien está sentado frente a la pantalla: que el prestatario pueda
+   * escribir, que guarde CON LA IDENTIDAD DEL DUEÑO, que un rechazo le diga
+   * cuál de las tres causas fue, y sobre todo que NUNCA le cueste lo que
+   * tecleó. Esa última es la promesa que sostiene todo lo demás.
+   *
+   * El montaje puede sentar a cualquiera frente a la pantalla (`opciones.actor`),
+   * que es indispensable: casi nada del préstamo se ve desde el lado del dueño. */
+
+  /** El primer campo de texto de la hoja que de verdad se puede escribir.
+   *  Que exista YA ES media prueba: sobre lo ajeno sin permiso están todos
+   *  deshabilitados por `trabarSiNoPuedoEscribir`. */
+  const celdaEscribible = async (q) => {
+    const sel = '#hoja input.cel:not([disabled]):not([type="number"])';
+    const el = await q.$(sel);
+    return el;
+  };
+
+  await paso('C · con todo a la vista, el encabezado y el respaldo siguen diciendo qué es TUYO', async () => {
+    /* La tensión que abre la decisión 1: si lo primero que se ve es el trabajo
+     * de todos, «3 cotizaciones» al lado de «respaldo de lo mío (1)» se lee
+     * como un error de la aplicación — a menos que la pantalla diga cuántas
+     * son tuyas. Y el respaldo NO puede llevarse lo ajeno: sacaría el trabajo
+     * de otro de donde su dueño lo gobierna. */
+    const q = await paginaConServidor([
+      { id: '7000c433-0000-4000-8000-00000000cc01', id_local: 'M-MIO',
+        nombre: 'Bombas para Clarios', folio: 11, folio_txt: 'COT-0011' },
+      { id: '7000c433-0000-4000-8000-00000000cc02', id_local: 'M-DE-RICARDO',
+        nombre: 'Lifter leveling', folio: 12, folio_txt: 'COT-0012',
+        dueno: 'ricardo.hernandez', dueno_nombre: 'Ricardo Hernández', ajeno: true },
+      { id: '7000c433-0000-4000-8000-00000000cc03', id_local: 'M-DE-PABLO',
+        nombre: 'Tanque de servicio', folio: 13, folio_txt: 'COT-0013',
+        dueno: 'pablo.bayly', dueno_nombre: 'Pablo Bayly', ajeno: true }
+    ]);
+    try {
+      if ((await q.$eval('#fPersona', el => el.value)) !== '')
+        throw new Error('no arrancó en «Todas las personas»');
+      const filas = await q.$$eval('tr.rw', e => e.length);
+      if (filas !== 3) throw new Error('no salieron las tres de entrada: ' + filas);
+
+      const cuenta = (await q.textContent('.enc .cuenta')).replace(/\s+/g, ' ').trim();
+      if (!/3 cotizaciones/.test(cuenta)) throw new Error('el encabezado no cuenta todo: ' + cuenta);
+      if (!/1 tuya\b/.test(cuenta))
+        throw new Error('el encabezado no dice cuántas son tuyas: ' + cuenta);
+
+      const resp = (await q.textContent('.pie-resp')).replace(/\s+/g, ' ');
+      if (!/respaldo de lo m[ií]o \(1\)/i.test(resp))
+        throw new Error('el respaldo no cuenta sólo lo tuyo: ' + resp);
+
+      const enAlmacen = await q.evaluate(() => {
+        try { return (JSON.parse(localStorage.getItem('fts_machote_v1') || '{"machotes":[]}')
+                        .machotes || []).map(m => m.nombre); } catch (e) { return ['ERROR']; }
+      });
+      if (enAlmacen.some(n => /Lifter|Tanque/.test(n)))
+        throw new Error('el trabajo ajeno entró al almacén propio: ' + JSON.stringify(enAlmacen));
+      console.log('    «' + cuenta + '» · respaldo de 1 · el almacén sólo trae ' +
+                  JSON.stringify(enAlmacen));
+    } finally { await q.close(); }
+  });
+
+  await paso('B · el historial DICE quién escribió cada versión, y marca las que no son del dueño', async () => {
+    /* El caso de las comisiones, que es la razón por la que existe el
+     * histórico: si alguien con permiso prestado mueve el reparto, la versión
+     * queda con SU nombre. En la base eso ya era verdad desde el primer día
+     * —`machote_version.autor` sale del token verificado, nunca del cuerpo—;
+     * lo que faltaba era poder VERLO sin conocer de memoria de quién es cada
+     * cotización. */
+    const q = await paginaConServidor([
+      { id: '7000c433-0000-4000-8000-00000000hi01', id_local: 'M-MIO',
+        nombre: 'Bombas para Clarios', folio: 11, folio_txt: 'COT-0011',
+        version: 4, versiones: 4 }
+    ], { versiones: 4,
+         autores: { 3: { actor: 'ricardo.hernandez', nombre: 'Ricardo Hernández' } } });
+    try {
+      /* Es un machote PROPIO, así que su id de pantalla es el `id_local`, no
+       * el uuid — la traducción a uuid la hace `idServidor()` al pedir el
+       * historial (V1.24). */
+      await q.locator('[data-hist="M-MIO"]:visible').first().click();
+      await q.waitForTimeout(800);
+
+      const vs = await q.$$eval('.v', e => e.map(x => ({
+        txt: x.textContent.replace(/\s+/g, ' '), ajena: x.classList.contains('ajena') })));
+      if (vs.length !== 4) throw new Error('listó ' + vs.length + ' versiones de 4');
+
+      const deOtro = vs.filter(v => v.ajena);
+      if (deOtro.length !== 1)
+        throw new Error('marcó ' + deOtro.length + ' versiones como de otro, debía ser 1');
+      if (deOtro[0].txt.indexOf('Ricardo Hernández') < 0)
+        throw new Error('la marcada no dice quién la escribió: ' + deOtro[0].txt);
+      if (deOtro[0].txt.indexOf('no es el dueño') < 0)
+        throw new Error('no lo dice CON PALABRAS, sólo con color: ' + deOtro[0].txt);
+      if (deOtro[0].txt.indexOf('Versión 3') < 0)
+        throw new Error('marcó la versión equivocada: ' + deOtro[0].txt);
+
+      /* Y las del dueño NO se marcan: si se marcaran todas, la marca no
+       * distinguiría nada. */
+      const propias = vs.filter(v => !v.ajena);
+      if (propias.some(v => v.txt.indexOf('no es el dueño') >= 0))
+        throw new Error('marcó como ajena una versión del propio dueño');
+      if (!propias.every(v => v.txt.indexOf('Jesus Esteban De La Cruz') >= 0))
+        throw new Error('las del dueño no dicen su nombre');
+      console.log('    4 versiones · la 3 marcada «no es el dueño» (Ricardo) · las otras 3 limpias');
+    } finally { await q.close(); }
+  });
+
+  await paso('B · prestar: sale la orden al servidor y el dueño ve que está prestada', async () => {
+    const q = await paginaConServidor([
+      { id: '7000c433-0000-4000-8000-00000000ma01', id_local: 'M-MIO',
+        nombre: 'Bombas para Clarios', folio: 11, folio_txt: 'COT-0011' },
+      { id: '7000c433-0000-4000-8000-00000000ri01', id_local: 'M-DE-RICARDO',
+        nombre: 'Lifter leveling', folio: 12, folio_txt: 'COT-0012',
+        dueno: 'ricardo.hernandez', dueno_nombre: 'Ricardo Hernández', ajeno: true }
+    ], { prestar: { ok: true } });
+    try {
+      await q.click('tr.rw:has-text("Bombas para Clarios") a');
+      await q.waitForTimeout(800);
+
+      if (!(await q.$('#btnPrestar')))
+        throw new Error('no hay botón de prestar sobre una cotización propia ya subida');
+      await q.click('#btnPrestar');
+      await q.waitForTimeout(400);
+      if (!(await q.$('#prestaModal'))) throw new Error('no abrió el modal de prestar');
+
+      /* A quién se puede prestar sale de los DATOS —quien ya tiene machotes en
+       * el servidor— no de una lista escrita a mano. */
+      const opciones = await q.$$eval('#pm-para option', e => e.map(x => x.value));
+      if (opciones.indexOf('ricardo.hernandez') < 0)
+        throw new Error('Ricardo no aparece en la lista: ' + JSON.stringify(opciones));
+      if (opciones.indexOf('esteban.delacruz') >= 0)
+        throw new Error('se ofrece prestarse la cotización a uno mismo');
+
+      await q.selectOption('#pm-para', 'ricardo.hernandez');
+      await q.selectOption('#pm-horas', '4');
+      await q.click('#pm-ok');
+      await q.waitForTimeout(1400);
+
+      const ll = await q.evaluate(() => window.__llamadas.prestar);
+      if (ll.length !== 1) throw new Error('llamadas al endpoint de préstamo: ' + ll.length);
+      const c = ll[0];
+      if (c.accion !== 'prestar') throw new Error('acción: ' + c.accion);
+      if (c.machote_id !== '7000c433-0000-4000-8000-00000000ma01')
+        throw new Error('presta OTRO machote: ' + c.machote_id);
+      if (c.para !== 'ricardo.hernandez') throw new Error('se lo presta a: ' + c.para);
+      if (Number(c.horas) !== 4) throw new Error('horas: ' + c.horas);
+      /* Ni el dueño ni el otorgante viajan en el cuerpo: los pone el servidor
+       * desde el token. Si algún día viajaran, cualquiera podría prestar lo
+       * ajeno diciendo que es suyo. */
+      if (c.dueno || c.otorgado_por || c.actor)
+        throw new Error('el cuerpo lleva identidad que debe salir del token: ' + JSON.stringify(c));
+
+      if (await q.$('#prestaModal')) throw new Error('el modal no se cerró tras prestar');
+
+      // Y la cortesía: el dueño ve que está prestada, y con qué recogerla.
+      const fr = await q.textContent('.presta-fr');
+      if (!/Prestada/.test(fr)) throw new Error('la franja del dueño no dice que está prestada: ' + fr);
+      if (fr.indexOf('Ricardo') < 0) throw new Error('no dice a quién: ' + fr);
+      if (!(await q.$('[data-recoger="ricardo.hernandez"]')))
+        throw new Error('no hay botón de recoger el permiso');
+      console.log('    prestada 4 h a Ricardo · el dueño la ve prestada y puede recogerla');
+    } finally { await q.close(); }
+  });
+
+  await paso('B · si el endpoint todavía no está publicado, lo DICE en vez de culpar a la cotización', async () => {
+    /* El hueco real del despliegue: el frontend se mergea y el workflow se
+     * publica después, con un clic humano que puede tardar. En medio, el botón
+     * de prestar existe y el endpoint contesta el 404 PROPIO de n8n —un JSON
+     * con `code`/`message` y sin `ok`— que caía en el «no se pudo» genérico.
+     * Quien lo leyera concluiría que su cotización tiene algo malo. */
+    const q = await paginaConServidor([
+      { id: '7000c433-0000-4000-8000-00000000ap01', id_local: 'M-MIO',
+        nombre: 'Bombas para Clarios', folio: 11, folio_txt: 'COT-0011' },
+      { id: '7000c433-0000-4000-8000-00000000ap02', id_local: 'M-DE-RICARDO',
+        nombre: 'Lifter leveling', folio: 12, folio_txt: 'COT-0012',
+        dueno: 'ricardo.hernandez', dueno_nombre: 'Ricardo Hernández', ajeno: true }
+    ], { prestar: { code: 404,
+                    message: 'The requested webhook "POST comercial/machote-prestar" is not registered.' } });
+    try {
+      await q.click('tr.rw:has-text("Bombas para Clarios") a');
+      await q.waitForTimeout(800);
+      await q.click('#btnPrestar');
+      await q.waitForTimeout(400);
+      await q.selectOption('#pm-para', 'ricardo.hernandez');
+      await q.click('#pm-ok');
+      await q.waitForTimeout(1200);
+      const t = (await q.textContent('#pm-err')).replace(/\s+/g, ' ');
+      if (!/todav[ií]a no est[áa] encendida/i.test(t))
+        throw new Error('no dice que falta publicar el endpoint: ' + t);
+      if (!/No es un problema de tu cotizaci[oó]n/i.test(t))
+        throw new Error('no descarta lo que la persona va a suponer: ' + t);
+      if (await q.$('#prestaModal') === null)
+        throw new Error('cerró el modal como si hubiera prestado');
+      console.log('    404 de webhook sin publicar → «falta publicar», no «no se pudo»');
+    } finally { await q.close(); }
+  });
+
+  await paso('B · prestar y guardar: el prestatario escribe, y guarda con la identidad del DUEÑO', async () => {
+    /* Lo que de verdad se comprueba aquí no está en la pantalla sino en lo que
+     * sale por el cable: `id_local` es el del DUEÑO —si fuera el de quien
+     * teclea, el servidor crearía un machote NUEVO a su nombre en vez de una
+     * versión del de Ricardo— y `version_leida` es la del servidor, que es lo
+     * que permite detectar el choque de dos escritores. */
+    const vence = new Date(Date.now() + 4 * 3600e3).toISOString();
+    const q = await paginaConServidor([
+      { id: '7000c433-0000-4000-8000-00000000ri02', id_local: 'M-DE-RICARDO',
+        nombre: 'Lifter leveling', folio: 12, folio_txt: 'COT-0012',
+        dueno: 'ricardo.hernandez', dueno_nombre: 'Ricardo Hernández', ajeno: true,
+        version: 7, versiones: 7,
+        prestamos: [{ para: 'esteban.delacruz', para_nombre: 'Jesus Esteban De La Cruz',
+                      otorgado_por: 'ricardo.hernandez', vence_at: vence }] }
+    ], { guardar: { ok: true, version: 8, machote_id: '7000c433-0000-4000-8000-00000000ri02' } });
+    try {
+      await q.click('tr.rw:has-text("Lifter leveling") a');
+      await q.waitForTimeout(800);
+
+      const fr = await q.textContent('.presta-fr');
+      if (!/te prest[oó]/i.test(fr)) throw new Error('la franja del prestatario no lo dice: ' + fr);
+      if (!/Borrarla y mandarla a Odoo siguen siendo suyas/.test(fr))
+        throw new Error('no dice qué NO se presta: ' + fr);
+
+      const cel = await celdaEscribible(q);
+      if (!cel) throw new Error('con permiso vigente la hoja sigue trabada: no hay dónde escribir');
+      await cel.fill('CAMBIO DEL PRESTATARIO');
+      await q.waitForTimeout(1600);
+
+      const g = await q.evaluate(() => window.__llamadas.guardar);
+      if (!g.length) throw new Error('no salió ningún guardado al servidor');
+      const c = g[g.length - 1];
+      if (c.id_local !== 'M-DE-RICARDO')
+        throw new Error('guardó con OTRA identidad (crearía un machote nuevo): ' + c.id_local);
+      if (Number(c.version_leida) !== 7)
+        throw new Error('version_leida no es la del servidor: ' + c.version_leida);
+      if (!c.documento || JSON.stringify(c.documento).indexOf('CAMBIO DEL PRESTATARIO') < 0)
+        throw new Error('lo tecleado no viajó en el documento');
+      if (JSON.stringify(c.documento).indexOf('_ajeno') >= 0)
+        throw new Error('se colaron los campos de pantalla (_ajeno…) al documento del servidor');
+      console.log('    escribe con permiso · id_local del dueño · version_leida 7 · documento limpio');
+    } finally { await q.close(); }
+  });
+
+  await paso('B · préstamo VENCIDO: lo rechaza, lo dice con esas palabras, y no cuesta lo tecleado', async () => {
+    /* El permiso se comprueba AL GUARDAR, así que se puede estar tecleando
+     * cuando vence: la pantalla es optimista a propósito (un reloj de
+     * navegador puede ir movido) y el servidor es quien dice que no. Lo que
+     * NO puede pasar es que ese «no» se lleve el trabajo. */
+    const vence = new Date(Date.now() + 4 * 3600e3).toISOString();
+    const q = await paginaConServidor([
+      { id: '7000c433-0000-4000-8000-00000000ve01', id_local: 'M-DE-RICARDO',
+        nombre: 'Lifter leveling', folio: 12, folio_txt: 'COT-0012',
+        dueno: 'ricardo.hernandez', dueno_nombre: 'Ricardo Hernández', ajeno: true,
+        version: 7, versiones: 7,
+        prestamos: [{ para: 'esteban.delacruz', otorgado_por: 'ricardo.hernandez',
+                      vence_at: vence }] }
+    ], { guardar: { ok: false, error: 'PRESTAMO_VENCIDO',
+                    mensaje: 'El permiso temporal sobre este machote venció.' } });
+    try {
+      await q.click('tr.rw:has-text("Lifter leveling") a');
+      await q.waitForTimeout(800);
+      const cel = await celdaEscribible(q);
+      if (!cel) throw new Error('no hay dónde escribir con permiso vigente');
+      await cel.fill('LO QUE NO SE PUEDE PERDER');
+      await q.waitForTimeout(1800);
+
+      const t = (await q.textContent('#avPrestado')).replace(/\s+/g, ' ');
+      if (!/venci[oó]/i.test(t)) throw new Error('el aviso no dice que venció: ' + t);
+      if (!/sigue en este navegador y no se perdi[oó]/i.test(t))
+        throw new Error('no promete que el trabajo sigue aquí: ' + t);
+      if (!/P[ií]dele el permiso de nuevo/i.test(t))
+        throw new Error('no dice qué hacer (pedirlo otra vez): ' + t);
+      if (!(await q.$('#apCopiar'))) throw new Error('no ofrece copiar lo tecleado');
+
+      // Y la promesa, medida donde vive: el cajón de este navegador.
+      const cajon = await q.evaluate(() => {
+        try { return JSON.parse(localStorage.getItem('fts_machote_prestado_v1') || '{}'); }
+        catch (e) { return {}; }
+      });
+      const guardado = cajon['7000c433-0000-4000-8000-00000000ve01'];
+      if (!guardado) throw new Error('el rechazo se llevó lo tecleado: el cajón está vacío');
+      if (JSON.stringify(guardado.documento).indexOf('LO QUE NO SE PUEDE PERDER') < 0)
+        throw new Error('el cajón guardó otra cosa');
+      if (guardado.id_local !== 'M-DE-RICARDO')
+        throw new Error('el cajón anotó otra identidad: ' + guardado.id_local);
+      console.log('    rechazado por vencido · el aviso lo distingue · lo tecleado sigue en el cajón');
+    } finally { await q.close(); }
+  });
+
+  await paso('B · permiso RECOGIDO: el dueño lo recoge, y al prestatario se lo dicen distinto', async () => {
+    const vence = new Date(Date.now() + 4 * 3600e3).toISOString();
+
+    // ── Lado del DUEÑO: recoger sale al servidor con la acción correcta.
+    const d = await paginaConServidor([
+      { id: '7000c433-0000-4000-8000-00000000re01', id_local: 'M-MIO',
+        nombre: 'Bombas para Clarios', folio: 11, folio_txt: 'COT-0011',
+        prestamos: [{ para: 'ricardo.hernandez', para_nombre: 'Ricardo Hernández',
+                      otorgado_por: 'esteban.delacruz', vence_at: vence }] }
+    ], { prestar: { ok: true, recogidos: 1 } });
+    try {
+      await d.click('tr.rw:has-text("Bombas para Clarios") a');
+      await d.waitForTimeout(800);
+      if (!(await d.$('[data-recoger="ricardo.hernandez"]')))
+        throw new Error('el dueño no ve con qué recoger un permiso vivo');
+      d.once('dialog', x => x.accept());
+      await d.click('[data-recoger="ricardo.hernandez"]');
+      await d.waitForTimeout(1400);
+      const ll = await d.evaluate(() => window.__llamadas.prestar);
+      if (!ll.length) throw new Error('recoger no llamó al servidor');
+      if (ll[0].accion !== 'recoger') throw new Error('acción: ' + ll[0].accion);
+      if (ll[0].para !== 'ricardo.hernandez') throw new Error('recoge el de otro: ' + ll[0].para);
+      if (await d.$('.presta-fr'))
+        throw new Error('sigue diciendo que está prestada después de recogerla');
+    } finally { await d.close(); }
+
+    // ── Lado del PRESTATARIO: guarda con el permiso ya recogido.
+    const q = await paginaConServidor([
+      { id: '7000c433-0000-4000-8000-00000000re02', id_local: 'M-DE-RICARDO',
+        nombre: 'Lifter leveling', folio: 12, folio_txt: 'COT-0012',
+        dueno: 'ricardo.hernandez', dueno_nombre: 'Ricardo Hernández', ajeno: true,
+        version: 7, versiones: 7,
+        prestamos: [{ para: 'esteban.delacruz', otorgado_por: 'ricardo.hernandez',
+                      vence_at: vence }] }
+    ], { guardar: { ok: false, error: 'PRESTAMO_RECOGIDO',
+                    mensaje: 'El dueño recogió el permiso.' } });
+    try {
+      await q.click('tr.rw:has-text("Lifter leveling") a');
+      await q.waitForTimeout(800);
+      const cel = await celdaEscribible(q);
+      await cel.fill('ESCRITO JUSTO ANTES');
+      await q.waitForTimeout(1800);
+      const t = (await q.textContent('#avPrestado')).replace(/\s+/g, ' ');
+      if (!/recogi[oó] tu permiso/i.test(t))
+        throw new Error('no dice que se lo recogieron: ' + t);
+      if (/venci[oó]/i.test(t))
+        throw new Error('confunde recogido con vencido, que llevan a cosas distintas: ' + t);
+      if (!/no se perdi[oó]/i.test(t)) throw new Error('no promete el trabajo: ' + t);
+      const cajon = await q.evaluate(() => {
+        try { return JSON.parse(localStorage.getItem('fts_machote_prestado_v1') || '{}'); }
+        catch (e) { return {}; }
+      });
+      if (JSON.stringify(cajon).indexOf('ESCRITO JUSTO ANTES') < 0)
+        throw new Error('recoger el permiso se llevó lo que ya estaba escrito');
+      console.log('    el dueño recoge · al prestatario se lo dicen distinto de «venció» · nada se pierde');
+    } finally { await q.close(); }
+  });
+
+  await paso('B · EXTRAÑO sin préstamo: lo ve, no lo escribe, y no intenta guardarlo', async () => {
+    /* La lectura abierta de V1.24 no es escritura. Y el candado que importa no
+     * es el de la pantalla —ése sólo evita perder el rato— sino que el machote
+     * ajeno NO entre al empuje: si entrara, el servidor lo rechazaría, pero
+     * estaríamos mandando trabajo de otro a nombre de quien no debe. */
+    const q = await paginaConServidor([
+      { id: '7000c433-0000-4000-8000-00000000ex01', id_local: 'M-DE-RICARDO',
+        nombre: 'Lifter leveling', folio: 12, folio_txt: 'COT-0012',
+        dueno: 'ricardo.hernandez', dueno_nombre: 'Ricardo Hernández', ajeno: true,
+        version: 7, versiones: 7, prestamos: [] },
+      { id: '7000c433-0000-4000-8000-00000000ex02', id_local: 'M-MIO',
+        nombre: 'Bombas para Clarios', folio: 11, folio_txt: 'COT-0011' }
+    ], { guardar: { ok: true, version: 2, machote_id: '7000c433-0000-4000-8000-00000000ex02' } });
+    try {
+      await q.click('tr.rw:has-text("Lifter leveling") a');
+      await q.waitForTimeout(800);
+
+      if (await q.$('.presta-fr')) throw new Error('pinta franja de préstamo sin préstamo');
+      if (await q.$('#btnPrestar'))
+        throw new Error('ofrece PRESTAR una cotización que no es suya');
+      if (await celdaEscribible(q))
+        throw new Error('deja escribir sobre trabajo ajeno sin permiso');
+
+      const r = await q.evaluate(() => {
+        const A = window.MachoteAlmacen;
+        return { puede: A.puedeEscribir({ id: 'x', _ajeno: true, _prestamos: [] }),
+                 prestado: A.prestadoAMi({ id: 'x', _ajeno: true, _prestamo_para_mi: null }) };
+      });
+      if (r.puede !== false) throw new Error('el almacén dice que SÍ puede escribir lo ajeno');
+      if (r.prestado !== false) throw new Error('el almacén se inventa un préstamo');
+
+      // Y el empuje: se fuerza uno y no puede salir nada con la identidad ajena.
+      await q.evaluate(() => window.MachoteApp.guardarYa());
+      await q.waitForTimeout(1400);
+      const g = await q.evaluate(() => window.__llamadas.guardar);
+      if (g.some(c => c.id_local === 'M-DE-RICARDO'))
+        throw new Error('mandó al servidor el machote ajeno: ' + JSON.stringify(g.map(c => c.id_local)));
+      console.log('    lo lee, no lo edita, no lo presta y no lo sube · guardados: ' +
+                  JSON.stringify(g.map(c => c.id_local)));
+    } finally { await q.close(); }
+  });
+
+  await paso('B · crear una cotización nueva sigue funcionando para cualquiera', async () => {
+    /* La prueba de que el préstamo no le puso una puerta al camino normal.
+     * Se hace desde una persona que NO es Esteban y que no tiene nada en el
+     * servidor: si crear dependiera de ser dueño de algo, o de un scope, aquí
+     * se caería. */
+    const q = await paginaConServidor([
+      { id: '7000c433-0000-4000-8000-00000000nu01', id_local: 'M-DE-ESTEBAN',
+        nombre: 'Bombas para Clarios', folio: 11, folio_txt: 'COT-0011',
+        dueno: 'esteban.delacruz', dueno_nombre: 'Jesus Esteban De La Cruz', ajeno: true }
+    ], { actor: 'magaly.perez', nombre: 'Magaly Pérez',
+         guardar: { ok: true, version: 1, folio: 30, folio_txt: 'COT-0030',
+                    machote_id: '7000c433-0000-4000-8000-0000000000ma' } });
+    try {
+      await q.evaluate(() => { location.hash = '#/nuevo'; });
+      await q.waitForTimeout(500);
+      await q.fill('#n-nombre', 'Cotización de Magaly');
+      await q.click('#n-crear');
+      await q.waitForTimeout(1400);
+
+      if (await q.$('.presta-fr')) throw new Error('una cotización recién creada sale como prestada');
+      const cel = await celdaEscribible(q);
+      if (!cel) throw new Error('no puede escribir en la cotización que acaba de crear');
+      await cel.fill('LO QUE CAPTURÓ MAGALY');
+      await q.waitForTimeout(1600);
+
+      const g = await q.evaluate(() => window.__llamadas.guardar);
+      const mio = g.filter(c => /^M-\d/.test(String(c.id_local || '')));
+      if (!mio.length)
+        throw new Error('no subió la cotización nueva: ' + JSON.stringify(g.map(c => c.id_local)));
+      if (mio.some(c => c.id_local === 'M-DE-ESTEBAN'))
+        throw new Error('la confundió con la ajena');
+      console.log('    Magaly crea, escribe y sube lo suyo · id_local ' + mio[0].id_local);
+    } finally { await q.close(); }
+  });
+
+  await paso('A · el que PIERDE el choque conserva lo tecleado y lo puede recuperar', async () => {
+    /* La otra mitad de la concurrencia. Contra la base real ya se ejerció que
+     * de dos escritores sobre la misma versión pasa uno y el otro se va con
+     * CONFLICTO_DE_VERSION. Lo que faltaba —y es lo que le pasa a una persona—
+     * es qué ve el que perdió: tiene que poder recuperar lo suyo, y tiene que
+     * seguir ahí después de recargar, que es lo primero que uno hace cuando
+     * algo sale mal. */
+    const vence = new Date(Date.now() + 4 * 3600e3).toISOString();
+    const q = await paginaConServidor([
+      { id: '7000c433-0000-4000-8000-00000000cf01', id_local: 'M-DE-RICARDO',
+        nombre: 'Lifter leveling', folio: 12, folio_txt: 'COT-0012',
+        dueno: 'ricardo.hernandez', dueno_nombre: 'Ricardo Hernández', ajeno: true,
+        version: 7, versiones: 7,
+        prestamos: [{ para: 'esteban.delacruz', otorgado_por: 'ricardo.hernandez',
+                      vence_at: vence }] }
+    ], { guardar: { ok: false, error: 'CONFLICTO_DE_VERSION',
+                    mensaje: 'La versión que sigue es la 9, no la 8. Alguien más guardó ' +
+                             'mientras tanto: vuelve a abrir el machote.' } });
+    try {
+      await q.click('tr.rw:has-text("Lifter leveling") a');
+      await q.waitForTimeout(800);
+      const cel = await celdaEscribible(q);
+      await cel.fill('MEDIA HORA DE TRABAJO');
+      await q.waitForTimeout(1800);
+
+      const t = (await q.textContent('#avPrestado')).replace(/\s+/g, ' ');
+      if (!/Otra persona guard[oó]/i.test(t))
+        throw new Error('no dice que alguien más guardó: ' + t);
+      if (/venci[oó]|recogi[oó]/i.test(t))
+        throw new Error('confunde el choque con el permiso: ' + t);
+      if (!/Vuelve a abrirla/i.test(t)) throw new Error('no dice qué hacer: ' + t);
+      if (!(await q.$('#apCopiar'))) throw new Error('no hay manera de recuperar lo tecleado');
+
+      // RECARGAR: es lo primero que hace cualquiera cuando algo falla.
+      await q.reload(); await q.waitForTimeout(2000);
+      const cajon = await q.evaluate(() => {
+        try { return JSON.parse(localStorage.getItem('fts_machote_prestado_v1') || '{}'); }
+        catch (e) { return {}; }
+      });
+      if (JSON.stringify(cajon).indexOf('MEDIA HORA DE TRABAJO') < 0)
+        throw new Error('recargar se llevó lo tecleado');
+
+      // Y vuelve a la PANTALLA, no sólo al cajón: si hay que abrir la consola
+      // para recuperarlo, no está recuperado.
+      await q.click('tr.rw:has-text("Lifter leveling") a');
+      await q.waitForTimeout(900);
+      const enPantalla = await q.evaluate(() =>
+        [].some.call(document.querySelectorAll('#hoja input.cel'),
+                     e => String(e.value).indexOf('MEDIA HORA DE TRABAJO') >= 0));
+      if (!enPantalla)
+        throw new Error('el trabajo está en el cajón pero la pantalla no lo trae de vuelta');
+      console.log('    perdió el choque, se lo dijeron sin confundirlo, y su trabajo volvió a pantalla');
+    } finally { await q.close(); }
+  });
+
   await paso('sin errores de consola propios del prototipo', async () => {
     if (errs.length) throw new Error(errs.slice(0, 4).join(' | '));
     if (delEntorno.length) console.log('   (' + delEntorno.length +
       ' fallo(s) de red del sandbox, filtrados: fts-styles.css importa Google Fonts)');
   });
 
-  console.log('\n' + ok + ' pasaron, ' + mal + ' fallaron.');
+  console.log('\n' + ok + ' pasaron, ' + mal + ' fallaron.' +
+              (saltadas ? '  (' + saltadas + ' saltadas por SOLO=' + process.env.SOLO + ')' : ''));
   if (errs.length) { console.log('\nErrores de consola:'); errs.slice(0, 10).forEach(e => console.log('  ' + e)); }
   await b.close();
   process.exit(mal ? 1 : 0);
