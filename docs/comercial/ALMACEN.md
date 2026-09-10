@@ -388,8 +388,10 @@ son 4». La pantalla lo dice con esas palabras.
 
 **El defecto.** Esteban rotó `SUITE_JWT_SECRET`. A partir de ahí el navegador siguió
 mandando el token viejo —que vive en `localStorage` y **no se borra con Ctrl+Shift+R**—, el
-servidor lo rechazó con `FIRMA_INVALIDA`, y la franja dijo **«No se pudo confirmar con el
-servidor»**.
+servidor lo rechazó con `FIRMA_INVALIDA`, y la franja de entonces dijo **«No se pudo
+confirmar con el servidor»**. (La franja se retiró en V1.24 — ver
+`docs/comercial/ANDAMIO.md`; la clasificación sesión/red/servidor que salió de este
+incidente se quedó, y vive en `js/sesion.js`.)
 
 Ese mensaje era falso y además el peor de los tres posibles: «no se pudo confirmar» invita
 a esperar y reintentar, cuando lo que hacía falta era volver a entrar — y reintentar con un
@@ -430,9 +432,10 @@ y subieron como si fueran captura.
 - **La marca va en ORIGEN**: `_demo: true` en los cuatro de `demo.js`.
 - **El filtro va en `empujar()`** de `almacen.js` —el único sitio por donde sube todo—, más
   un segundo candado en `empujarUno()` por si alguien lo llama directo.
-- **La franja las descuenta antes de contar.** Si las contara diría «4 por subir» para
-  siempre y «Subir ahora» nunca podría bajar el número: un pendiente que no se puede
-  resolver es peor que no avisar.
+- **Se descuentan antes de contar**, tanto en `estadoServidor()` como en `pendientes()`.
+  Si entraran, el aviso de la lista diría «4 sin subir» para siempre y nada podría bajar el
+  número —los ejemplos no se suben—: un pendiente que no se puede resolver es peor que no
+  avisar.
 - Se conserva al editar: capturar encima de una demo la deja siendo demo. Para que deje de
   serlo hay que crear un machote nuevo — así nadie convierte por accidente un ejemplo en la
   cotización de un cliente.
@@ -448,3 +451,49 @@ alguien tecleando.
 borrados son los cuatro demos, todos de `esteban.delacruz`. **Los dos de
 `ricardo.hernandez` no se tocaron**, ni el «Suministro de Pantalla HMI» ni el «Machote de
 prueba Lifter robert» de Esteban — ésos son captura real y en la duda no se borra.
+
+---
+
+## `005_prestamo.sql` — el permiso temporal de escritura
+
+`sha256 ba5b828eb89f51918217a8063847a3a57f6a906e22c458e30b922ea7321b8144`.
+Aplicada a producción el 2026-09-10 por `comercial/db-migrate`, tras ensayo en
+seco; el read-back del runner devolvió `migraciones: 001, 002, 003, 004, 005`.
+
+Una tabla, `comercial.machote_prestamo`: quién presta un machote, a quién,
+desde cuándo y hasta cuándo, y si se recogió antes de tiempo.
+
+**El tope de 24 horas es un `CHECK` de la base**, no una validación de pantalla
+ni de workflow — misma razón que el folio: una regla en un solo lugar es una
+regla que ningún camino nuevo puede saltarse por olvido. Hay dos `CHECK` más
+(vencer después de otorgar; nadie se presta a sí mismo) y un índice único
+parcial que impide dos préstamos vivos del mismo machote a la misma persona.
+Los tres se ejercieron contra un clúster local antes de aplicar; el detalle
+está en `docs/comercial/PERMISO_TEMPORAL.md` §6.
+
+**Sin `DELETE`,** como el resto del esquema: un préstamo no se borra, se
+recoge. `revocado_at` es la marca; la traza de que existió es parte de lo que
+hace auditable el permiso.
+
+⚠️ La tabla existe y el candado de `machote-guardar` ya la consulta, pero
+**todavía no hay manera de crear un préstamo** —el endpoint no está construido,
+a la espera de las cinco decisiones abiertas de la propuesta— así que hoy la
+tabla está vacía y el candado se comporta exactamente como antes.
+
+## Cambios de V1.24 sin migración
+
+Ninguno de estos tocó el esquema:
+
+- **La lectura se abrió a todo el módulo.** `comercial/machotes-leer` dejó de
+  filtrar por `dueno` y de mirar `comercial:admin`: cualquiera con
+  `comercial:read` recibe los machotes de todos. El `actor` sigue saliendo del
+  token y es lo único que marca qué filas son ajenas.
+- **La traducción `id de pantalla -> uuid` acepta las dos formas.**
+  `idServidor()` reconoce un uuid y lo devuelve tal cual, en vez de buscarlo
+  siempre en la libreta de sincronización —que está indexada por `id_local` y
+  sólo guarda lo propio—. Era la causa de que el historial de un machote ajeno
+  contestara que no había subido.
+- **La autoría ya estaba separada de la propiedad** y sigue igual:
+  `machote.dueno` es de quién es, `machote_version.autor` es quién escribió esa
+  versión, y el segundo sale del token. Vale la pena saberlo porque es la mitad
+  del permiso temporal, ya construida.

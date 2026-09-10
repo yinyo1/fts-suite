@@ -40,7 +40,7 @@
    * 2026-09-03 (por instrucción de Esteban), pero lleva el suyo aparte y va en
    * V1.00. Planeación sigue en `2.4.1` y el kiosko sólo con cadena de build;
    * a esos no se propaga. */
-  const VERSION = 'V1.23';
+  const VERSION = 'V1.24';
   const $  = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
   const clon = (x) => JSON.parse(JSON.stringify(x));
@@ -54,10 +54,14 @@
   const ST = {
     verVacios: false,
     machotes: _guardado ? _guardado.machotes : clon(D.MACHOTES),
-    /* Trabajo de OTRAS personas, en memoria y nada más. Llega sólo con el
-     * scope `comercial:admin` y nunca se escribe en `fts_machote_v1`. */
+    /* Trabajo de OTRAS personas, en memoria y nada más. Nunca se escribe en
+     * `fts_machote_v1`: el respaldo de cada quien lleva lo suyo.
+     *
+     * V1.24: llega para TODOS. Antes hacía falta `comercial:admin`; hoy
+     * cualquiera del módulo ve lo de todos, en lectura. Lo que no cambió es
+     * que se abre trabado y no se puede guardar — eso lo decide el servidor
+     * por el token, no esta pantalla. */
     ajenos: [],
-    esAdmin: false,
     ordenes:  clon(D.ORDENES),
     handoff: _guardado ? (_guardado.handoff || {}) : {},
     confirmadas: {},
@@ -145,16 +149,16 @@
    *  actualiza el pulso cuando conteste; el pulso NO dice 'guardado' hasta
    *  que el servidor lo confirmó. */
   function guardarYa() {
-    if (!A || !A.disponible()) { ST.pulso = 'sin-almacen'; pintarPulso(); avisarNoGuarda(); return false; }
+    if (!A || !A.disponible()) { ST.pulso = 'sin-almacen'; pintarPulso(); pintarPendientes(); avisarNoGuarda(); return false; }
     if (_reloj) { clearTimeout(_reloj); _reloj = null; }
-    ST.pulso = 'guardando'; pintarPulso();
+    ST.pulso = 'guardando'; pintarPulso(); pintarPendientes();
 
     const local = A.escribirLocal({ machotes: ST.machotes, handoff: ST.handoff });
-    if (!local) { ST.pulso = 'sin-almacen'; pintarPulso(); avisarNoGuarda(); return false; }
+    if (!local) { ST.pulso = 'sin-almacen'; pintarPulso(); pintarPendientes(); avisarNoGuarda(); return false; }
     quitarAvisoNoGuarda();
 
     // Ya está a salvo aquí. Lo de arriba fue síncrono a propósito.
-    ST.pulso = 'pendiente'; pintarPulso();
+    ST.pulso = 'pendiente'; pintarPulso(); pintarPendientes();
 
     A.empujar(ST.machotes).then(r => {
       if (r && r.ok && r.subidos >= 0) {
@@ -163,7 +167,7 @@
         ST.pulso = 'pendiente';
         avisarPendiente(r);
       }
-      pintarPulso();
+      pintarPulso(); pintarPendientes();
     });
 
     return true;
@@ -227,8 +231,8 @@
    *  nadie tocó no sale de aquí; lo que alguien escribió, sí. */
   function tocado(m) {
     if (m && m._demo) delete m._demo;
-    if (!A || !A.disponible()) { ST.pulso = 'sin-almacen'; pintarPulso(); return; }
-    ST.pulso = 'sucio'; pintarPulso();
+    if (!A || !A.disponible()) { ST.pulso = 'sin-almacen'; pintarPulso(); pintarPendientes(); return; }
+    ST.pulso = 'sucio'; pintarPulso(); pintarPendientes();
     if (_reloj) clearTimeout(_reloj);
     _reloj = setTimeout(guardarYa, 500);
   }
@@ -248,8 +252,10 @@
    *  vendió: si desaparece, desaparece la única explicación de por qué el
    *  precio fue ese. Lo que se hace con él es cambiarle el estado, no borrarlo.
    *  En creación y En revisión sí se borran: ahí todavía no hay historia. */
-  /* Un machote AJENO no se borra ni se edita: dirección revisa, no reescribe
-   * el trabajo de otro. Si quiere partir de él, que lo duplique a su nombre. */
+  /* Un machote AJENO no se borra ni se edita: se consulta. Quien quiera
+   * partir de uno, que lo duplique a su nombre. (V1.24: esto ya no es «lo que
+   * ve dirección» sino lo que ve cualquiera — por eso importa más que antes
+   * que el candado se vea y se entienda de un vistazo.) */
   const borrable = (m) => !((D.ESTADOS[m && m.estado] || {}).sin_borrar) &&
                           !(m && m._ajeno === true);
 
@@ -267,8 +273,7 @@
   const nn = (x) => (x === null || x === undefined || x === '') ? '' : x;
 
   /* Busca en las dos listas: la propia (que vive en el navegador) y la de
-   * trabajo AJENO (que sólo vive en memoria, y sólo si quien mira tiene el
-   * scope de dirección). Ver `esAjeno` en almacen.js. */
+   * trabajo AJENO (que sólo vive en memoria). Ver `esAjeno` en almacen.js. */
   const mach  = (id) => ST.machotes.find(m => m.id === id) ||
                         ST.ajenos.find(m => m.id === id);
   const ajeno = (m) => !!(m && m._ajeno === true);
@@ -414,7 +419,7 @@
   }
 
   function render() {
-    pintarPulso();
+    pintarPulso(); pintarPendientes();
     pintarUsuario();
     const p = (location.hash || '#/').replace(/^#\//, '').split('/');
     if (p[0] === '')      return vHome();
@@ -490,22 +495,18 @@
     toast('Bajó ' + r.nombre + ' · ' + r.machotes + ' machote(s)');
   }
 
-  /** Importa un archivo elegido por la persona. NUNCA pisa: lo que ya existe
-   *  se queda, y el entrante entra al lado marcado como copia. */
-  function importarRespaldo(archivo) {
-    const lector = new FileReader();
-    lector.onload = () => {
-      const r = G.MachoteRespaldo.importarTexto(String(lector.result), ST.machotes);
-      if (!r.ok) { toast(r.error); return; }
-      ST.machotes = r.lista;
-      guardarYa();
-      render();
-      const de = r.de ? ' de ' + r.de : '';
-      toast(r.nuevos + ' nuevo(s) y ' + r.copias + ' copia(s)' + de + '. No se pisó nada.');
-    };
-    lector.onerror = () => toast('No se pudo leer el archivo.');
-    lector.readAsText(archivo);
-  }
+  /* IMPORTAR se retiró en V1.24 junto con su botón. Existía para meter a mano
+   * lo que vivía suelto en el navegador de cada quien mientras no había
+   * servidor; con los machotes ya en Postgres su único efecto posible era
+   * crear duplicados. `MachoteRespaldo.importarTexto` se queda en su archivo
+   * —es una función pura, con sus pruebas, y fusionar sin pisar es la parte
+   * difícil de esto— pero ya no hay camino desde la pantalla.
+   *
+   * Nota para quien lea esto y se pregunte si el respaldo sigue siendo un
+   * respaldo: sí, pero de otra clase. Ya no es «de aquí se restaura», porque
+   * de donde se restaura es del servidor; es «me llevo lo mío» — para revisar
+   * fuera, para archivar, o para tener algo cuando el guardado se rompe. */
+
 
   /* El tablero de dirección (#140 · B). Vive en su propio archivo
    * `js/control.js`; aquí sólo se le da el hueco y el encabezado. Se puede
@@ -574,8 +575,8 @@
 
     /* El universo de personas sale de los DATOS, no de una lista escrita a
      * mano: el día que entre alguien nuevo aparece solo. */
-    /* El universo de la lista son los PROPIOS más los AJENOS. Los ajenos sólo
-     * existen con el scope de dirección; sin él la lista es la de siempre. */
+    /* El universo de la lista son los PROPIOS más los AJENOS. Desde V1.24 los
+     * ajenos le llegan a cualquiera del módulo: todos ven todo, en lectura. */
     const universo = ST.machotes.concat(ST.ajenos || []);
 
     const personas = [];
@@ -623,13 +624,15 @@
            * comprobación de un vistazo de que el respaldo lleva todo. */
           /* Cuenta `ST.machotes`, NO el universo: el respaldo se lleva lo TUYO.
            * Meter en tu archivo el trabajo de otros sería sacarlo de donde su
-           * dueño lo puede gobernar. Por eso este número puede ser menor que
-           * el del encabezado cuando se está viendo con el scope de dirección. */
-          '<button class="btn fantasma" id="bExportar" title="Baja un archivo con TODO lo '
-            + 'capturado POR TI, no sólo lo que muestran los filtros">Exportar todo ('
-            + ST.machotes.length + ')</button>' +
-          '<label class="btn fantasma archivo" title="Nunca pisa lo que ya existe">Importar' +
-            '<input type="file" id="fImportar" accept="application/json,.json"></label>' +
+           * dueño lo puede gobernar. Por eso este número es casi siempre menor
+           * que el del encabezado: desde V1.24 la lista enseña lo de todos. */
+          /* IMPORTAR se fue en V1.24. Existía para meter a mano lo que vivía
+           * en el navegador de cada quien mientras no había servidor; los 17
+           * machotes ya están en Postgres y hoy el botón sólo ofrece una
+           * manera de crear duplicados con `id_local` repetido. */
+          /* EXPORTAR se queda, pero discreto: deja de ser un botón con conteo
+           * al lado de «+ Nuevo» y pasa a un enlace pequeño al pie de la lista.
+           * El porqué está en `docs/comercial/ANDAMIO.md`. */
           '<a class="btn nuevo" href="#/nuevo">+ Nuevo</a>' +
         '</div>' +
       '</div>';
@@ -653,10 +656,7 @@
           opc('', 'Toda moneda', f.moneda) + opc('MXN', 'MXN', f.moneda) + opc('USD', 'USD', f.moneda) +
         '</select></label>' +
       '</div>' +
-      /* La franja de sincronización vive AQUÍ, arriba de la tabla, no en una
-       * pantalla aparte. Es transitoria — `js/franja-sync.js` explica cómo se
-       * quita cuando termine el cambio. */
-      '<div id="franjaHost"></div><div id="franjaEvi"></div>';
+      '';
 
     /* Un renglón. La demo se marca y se dice por qué en el título: sin eso,
      * alguien la toma por una cotización que no sube y reporta un fallo. */
@@ -667,17 +667,30 @@
      * Sin folio se muestra el id del navegador, que es lo único que hay para
      * referirse a un machote que todavía no sube — pero apagado y con el
      * porqué en el título, para que no se confunda con un folio de verdad. */
+    /* El folio como se ve en la lista. UNA función para la columna de la tabla
+     * y para la tarjeta del teléfono: si fueran dos, un cambio de forma se
+     * aplicaría a una y no a la otra, y el mismo machote se leería distinto
+     * según el ancho.
+     *
+     * Se copia de un toque. En un teléfono seleccionar `COT-0003` a dedo para
+     * pegarlo en un correo es un pulso fino sobre once caracteres; el botón
+     * lo vuelve un toque. En escritorio da igual, pero tener DOS maneras de
+     * copiar el mismo dato según el ancho es peor que tener una. */
     const folioChip = (m) => {
       const f = folioDe(m);
-      if (f) return '<span class="folio" title="Folio de la cotización">' + esc(f) + '</span> · ';
+      if (f) return '<button class="folio" type="button" data-copiar="' + esc(f) + '" ' +
+        'title="Folio de la cotización. Tócalo para copiarlo.">' + esc(f) + '</button>';
       /* Sin folio y AJENO: nada. El `id` de un machote ajeno es el uuid del
        * servidor —se usa así a propósito, porque dos personas pueden tener el
        * mismo `id_local`— y enseñar un uuid de treinta y seis caracteres en la
-       * lista es ruido puro. Pasa mientras el servidor no publique el cambio
-       * que manda el folio: el frontend tiene que verse bien igual. */
-      if (ajeno(m)) return '';
-      return '<span class="folio sin" title="Todavía no ha subido al servidor, que es quien reparte los folios.">' +
-        esc(m.id) + '</span> · ';
+       * lista es ruido puro. */
+      if (ajeno(m)) return '<span class="folio sin" title="Sin folio.">—</span>';
+      /* Sin folio y PROPIO: no se inventa un número. El folio lo reparte el
+       * servidor al crear la identidad, y un folio propuesto aquí chocaría
+       * con el de otra persona capturando al mismo tiempo. Se dice que aún no
+       * sube, que es la verdad y además es accionable. */
+      return '<span class="folio sin" title="Todavía no ha subido al servidor, ' +
+        'que es quien reparte los folios.">sin folio</span>';
     };
 
     const fila = (m) => {
@@ -690,10 +703,16 @@
        * El resaltado de la franja engancha por `[data-mid]`, no por la clase,
        * así que sigue funcionando. */
       return '<tr class="rw" data-mid="' + esc(m.id) + '">' +
+        /* El folio en COLUMNA PROPIA (V1.24). Antes iba dentro del renglón del
+         * nombre, entre el cliente y la orden, y ahí no se podía recorrer con
+         * la vista: para encontrar COT-0005 en una lista había que leer siete
+         * líneas de texto en vez de bajar por una columna de once caracteres
+         * alineados. Es el dato con el que la gente se habla por teléfono. */
+        '<td class="folio-td">' + folioChip(m) + '</td>' +
         '<td><div class="nm"><a href="#/m/' + esc(m.id) + '">' + esc(m.nombre) + '</a>' +
           (dm ? ' <span class="pill" title="Ejemplo que trae la aplicación. No se guarda en el servidor.">ejemplo</span>' : '') +
           (ajeno(m) ? ' <span class="pill aj" title="Trabajo de otra persona. Se abre en lectura: no se edita ni se borra.">sólo lectura</span>' : '') +
-          '</div><div class="sub">' + folioChip(m) + esc(cli(m)) +
+          '</div><div class="sub">' + esc(cli(m)) +
           (m.so ? ' · ' + esc(m.so) : '') + '</div></td>' +
         '<td class="quien-td sub" title="' + esc(nombreDe(duenoDe(m))) + '">' +
           esc(nombreDe(duenoDe(m))) + '</td>' +
@@ -702,9 +721,12 @@
         '<td class="num mono">' + mx(c.precio) + '</td>' +
         '<td class="num mono n-' + (c.costoIncompleto ? 'warn' : nivelMargen(c.margen)) + '">' +
           pc(c.margen) + (c.costoIncompleto ? '*' : '') + '</td>' +
-        '<td class="sub">' + (rev.duras.length
-          ? '<span class="n-bad">' + rev.duras.length + ' dura' + (rev.duras.length > 1 ? 's' : '') + '</span>'
-          : 'sin duras') + '</td>' +
+        /* La columna «Revisión» («1 dura», «3 duras») se fue con la sección de
+         * confirmar la orden: contaba las validaciones que impedían crear la
+         * orden desde aquí, y ese camino ya no sale de la lista. Las duras no
+         * desaparecieron —siguen dentro del machote, junto al campo que las
+         * causa, que es donde se arreglan—; lo que desapareció es un número
+         * suelto en una tabla, sin manera de saber a qué se refería. */
         '<td><div class="acts">' +
           '<button class="ico" data-hist="' + esc(m.id) + '" title="Ver el historial de versiones">🕘</button>' +
           (borrable(m)
@@ -719,21 +741,36 @@
       const rev = R.revisar(m), c = rev.calc;
       const dm = esDemo(m);
       return '<div class="fila" data-mid="' + esc(m.id) + '">' +
+        /* En el teléfono el folio va ARRIBA del nombre, en su propia línea. No
+         * hay columnas donde ponerlo, y metido en la línea gris de abajo
+         * quedaba tercero detrás del cliente y la orden —con nombres de
+         * cliente largos, fuera de pantalla—. Arriba se recorre igual que la
+         * columna del escritorio. */
+        '<div class="tarj-folio">' + folioChip(m) + '</div>' +
         '<a class="item" href="#/m/' + esc(m.id) + '">' +
         '<div class="grow"><strong>' + esc(m.nombre) + '</strong>' +
           (dm ? ' <span class="pill">ejemplo</span>' : '') +
           (ajeno(m) ? ' <span class="pill aj">sólo lectura</span>' : '') +
-          '<div class="tiny">' + folioChip(m) + esc(cli(m)) +
+          '<div class="tiny">' + esc(cli(m)) +
           (m.so ? ' · ' + esc(m.so) : '') + ' · ' +
           esc(nombreDe(duenoDe(m))) + '</div></div>' +
         '<div class="right"><span class="chip" style="background:' + edo(m).color + '">' +
           esc(edo(m).label) + '</span>' +
         '<div class="tiny mono n-' + (c.costoIncompleto ? 'warn' : nivelMargen(c.margen)) + '">' +
           mx(c.precio) + ' · ' + pc(c.margen) + (c.costoIncompleto ? '*' : '') + '</div>' +
-        '<div class="tiny">' + (rev.duras.length
-          ? '⛔ ' + rev.duras.length + ' dura' + (rev.duras.length > 1 ? 's' : '')
-          : '✓ sin duras') +
-          '</div></div></a>' +
+        /* El conteo de duras se fue de la tarjeta igual que de la columna de
+         * la tabla, y por la misma razón: contaba lo que impedía crear la
+         * orden desde la lista, y ese camino ya no sale de aquí. Las duras
+         * siguen dentro del machote, junto al campo que las causa.
+         *
+         * OJO con los cierres: aquí van DOS, no tres. El `<div class="tiny">`
+         * que se quitó traía pegado su propio `</div>`, y al borrar la línea
+         * entera quedó un cierre de sobra que cerraba `.fila` antes de tiempo.
+         * El navegador entonces sacaba las tarjetas de `.cards` —que es quien
+         * las esconde en escritorio— y aparecían debajo de la tabla, con los
+         * botones sueltos. Invisible releyendo el diff; evidente en la
+         * captura de 1280 (CLAUDE.md §20 #12). */
+        '</div></a>' +
         '<button class="ico" data-hist="' + esc(m.id) + '" title="Ver el historial de versiones">🕘</button>' +
         (borrable(m)
           ? '<button class="ico peligro borrar" data-borrar="' + esc(m.id) + '" title="Eliminar machote">×</button>'
@@ -757,37 +794,66 @@
 
     const tabla = visibles.length
       ? '<div class="tw"><table class="lista"><thead><tr>' +
-          '<th style="width:38%">Cotización</th><th>Responsable</th><th>Estado</th>' +
-          '<th class="num">Precio</th><th class="num">Margen</th><th>Revisión</th><th style="width:72px"></th>' +
+          '<th style="width:92px">Folio</th>' +
+          '<th style="width:34%">Cotización</th><th>Responsable</th><th>Estado</th>' +
+          '<th class="num">Precio</th><th class="num">Margen</th><th style="width:72px"></th>' +
         '</tr></thead><tbody>' + visibles.map(fila).join('') + '</tbody></table>' +
         '<div class="cards">' + visibles.map(tarjeta).join('') + '</div></div>'
       : '<div class="tw">' + vacio + '</div>';
-
-    const ords = ST.ordenes.map(o =>
-      '<a class="item" href="#/orden/' + o.id + '">' +
-      '<div class="grow"><strong>' + esc(o.nombre) + '</strong>' +
-      '<div class="tiny">' + esc(o.cliente) + ' · ' + esc(o.so) + '</div></div>' +
-      '<div class="right"><div class="mono">' + mx(o.monto) + ' ' + esc(o.moneda) + '</div>' +
-      '<div class="tiny">' + (ST.confirmadas[o.id] ? '✓ confirmada' : 'pendiente') + '</div></div></a>').join('');
 
     const pieFiltro = (f.persona === yo && yo)
       ? '<div class="tiny nota">Viendo sólo lo tuyo. Cambia el filtro de persona para ver el resto.</div>'
       : '';
 
+    /* ── Lo que NO ha subido (V1.24, reemplaza a la franja) ───────────────
+     * La franja de sincronización era andamio del rescate y así quedó
+     * documentada. Lo que la sustituye es esto, y la diferencia importa:
+     *
+     *   la franja HABLABA SIEMPRE, incluso para decir «todo a salvo»;
+     *   esto sólo habla cuando hay algo atorado.
+     *
+     * Es deliberado. Una marca local NUNCA puede probar que todo llegó al
+     * servidor —por eso la franja preguntaba allá—, pero sí puede probar que
+     * algo NO ha salido de aquí. Así que este aviso sólo afirma lo que puede
+     * demostrar; el silencio no dice «todo a salvo», dice «nada pendiente que
+     * yo sepa», y la pregunta «¿está TODO lo mío allá?» se contesta en
+     * Control, que sí le pregunta al servidor.
+     *
+     * Y dice CUÁLES, no sólo cuántas: un aviso que no se puede accionar es
+     * ruido. Marca los renglones por `[data-mid]`, igual que hacía la franja. */
+    /* Va en un HOST vacío que `pintarPendientes()` rellena, y NO se pinta
+     * aquí. La razón la cazó la prueba: el aviso se rendía una vez, con lo
+     * pendiente de ese instante, y cuando la subida terminaba unos segundos
+     * después nadie lo volvía a mirar — quedaba en pantalla «1 sin subir» con
+     * `pendientes()` ya en 0, la libreta escrita y el pulso en «guardado».
+     *
+     * Un aviso rancio es peor que no avisar: enseña a no creerle. La franja no
+     * tenía este problema porque volvía a preguntar; ésta vuelve a MIRAR, que
+     * es lo mismo por dentro. */
+    const avisoPend = '<div id="avPendHost"></div>';
+
+    /* El respaldo, al pie y en chico. Sigue existiendo porque es la única
+     * salida cuando el guardado deja de funcionar —`avisarNoGuarda()` lo
+     * ofrece ahí mismo— y porque llevarse lo propio no le quita nada a
+     * nadie. Lo que se le quitó es el rango de botón principal. */
+    const pieRespaldo = '<div class="tiny nota pie-resp">' +
+      '<button class="lnk" id="bExportar" title="Baja un archivo con TODO lo capturado POR TI, ' +
+      'no sólo lo que muestran los filtros">Descargar un respaldo de lo mío (' +
+      ST.machotes.length + ')</button></div>';
+
+    /* La sección «Confirmar la orden» se fue en V1.24. Listaba órdenes de
+     * `D.ORDENES` —datos de ejemplo, nunca del servidor— debajo de una lista
+     * de cotizaciones reales, y marcaba «confirmada» en un estado de memoria
+     * que no le importa a nadie. Era andamio del prototipo. El camino de
+     * verdad a una orden es el de la cotización: abrirla y «Pasar a orden». */
     $('#vista').innerHTML =
-      '<div class="pad">' + encabezado + filtros + tabla + pieFiltro +
-      '<h3 style="margin-top:26px">Confirmar la orden</h3>' + ords +
+      '<div class="pad">' + encabezado + filtros + avisoPend + tabla + pieFiltro +
+      pieRespaldo +
       '<div class="ver">versión <strong>' + VERSION + '</strong></div></div>';
 
     $('#bExportar').onclick = () => exportarRespaldo();
-    $('#fImportar').onchange = (e) => {
-      const ff = e.target.files && e.target.files[0];
-      // Se limpia el input para que elegir DOS VECES el mismo archivo vuelva
-      // a disparar el evento; si no, el segundo intento no hace nada y parece
-      // que la importación falló.
-      e.target.value = '';
-      if (ff) importarRespaldo(ff);
-    };
+
+
 
     // Se repinta sólo al teclear, y se devuelve el foco al final del texto:
     // repintar entera mata el foco del buscador a media palabra.
@@ -801,10 +867,6 @@
     enlazarFiltro('#fPersona', 'persona');
     enlazarFiltro('#fEstado', 'estado');
     enlazarFiltro('#fMoneda', 'moneda');
-
-    /* La franja transitoria de sincronización. Se le pasan los machotes de la
-     * pantalla y el toast; ella pregunta al servidor y se pinta sola. */
-    if (G.MachoteFranja) G.MachoteFranja.montar(ST.machotes, toast);
 
     /* El historial se abre desde la lista y NO desde adentro del machote: se
      * consulta para entender qué pasó con una cotización, casi siempre sin
@@ -822,6 +884,9 @@
         if (id) location.hash = '#/m/' + id;
       };
     });
+
+    pintarPendientes();
+    enlazarCopiar();
 
     $$('[data-hist]').forEach(b => b.onclick = (ev) => {
       ev.preventDefault(); ev.stopPropagation();
@@ -1006,24 +1071,70 @@
         ST.hoja = nueva.id; tocado(m); return vMachote(id);
       }
     };
-    /* Copiar de un toque. `navigator.clipboard` no existe fuera de un origen
-     * seguro ni en navegadores viejos, así que hay respaldo con un textarea
-     * y `execCommand` — está obsoleto y funciona, que es lo que importa
-     * cuando alguien está en el celular a media planta. Y si las dos fallan,
-     * se dice; un botón que no hace nada y no avisa es peor que no tenerlo. */
-    const btnFolio = $('[data-copiar]');
-    if (btnFolio) btnFolio.onclick = () => {
-      const txt = btnFolio.dataset.copiar;
-      const listo = () => toast('Folio ' + txt + ' copiado.');
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(txt).then(listo, () => respaldoCopiar(txt, listo));
-      } else respaldoCopiar(txt, listo);
-    };
+    enlazarCopiar();
 
     pintarHoja(m);
     barra(m, c);
   }
 
+  /** Repinta el aviso de «lo que no ha subido», si la lista está en pantalla.
+   *
+   *  Se llama al pintar la lista Y cada vez que cambia el pulso, porque el
+   *  pulso y esto miden LO MISMO —`pendientes()`, la comparación contra la
+   *  libreta— y tenerlos desincronizados es tener dos verdades en pantalla: el
+   *  punto en «guardado» y el aviso diciendo que falta algo.
+   *
+   *  Toca sólo su propio hueco, nunca repinta la lista: repintarla entera
+   *  mataría el foco de quien esté tecleando en el buscador. */
+  function pintarPendientes() {
+    const host = $('#avPendHost');
+    if (!host) return;                       // no estamos en la lista
+    const n = (A && A.pendientes) ? A.pendientes(ST.machotes) : 0;
+    if (!n) { host.innerHTML = ''; return; }
+
+    host.innerHTML = '<div class="aviso pend" id="avPend">' +
+      '<strong>' + n + (n === 1 ? ' cotización tuya no ha subido' : ' cotizaciones tuyas no han subido') +
+      '</strong> al servidor. Siguen guardadas en este navegador y se reintenta solo. ' +
+      '<button class="btn fantasma chico" id="bVerPend">Cuáles son</button></div>';
+
+    /* «Cuáles son»: marca los renglones que no han subido y lleva al primero.
+     * Es lo único que la franja hacía y el pulso no podía hacer. */
+    const bp = $('#bVerPend');
+    if (bp) bp.onclick = () => {
+      const sinSubir = ST.machotes.filter(m => A && A.pendienteUno && A.pendienteUno(m));
+      if (!sinSubir.length) { pintarPendientes(); return; }
+      $$('[data-mid]').forEach(el => el.classList.remove('marcado'));
+      sinSubir.forEach(m => $$('[data-mid="' + m.id + '"]').forEach(el => el.classList.add('marcado')));
+      const primero = $('[data-mid="' + sinSubir[0].id + '"]');
+      if (primero && primero.scrollIntoView) primero.scrollIntoView({ block: 'center' });
+    };
+  }
+
+  /** Engancha TODO `[data-copiar]` que haya en pantalla.
+   *
+   *  Vive aquí y no dentro de cada vista porque desde V1.24 hay muchos —uno
+   *  por renglón de la lista, más el del encabezado del machote— y la versión
+   *  anterior enganchaba `$('[data-copiar]')`, que es el PRIMERO. En la lista
+   *  eso habría dejado un botón vivo y todos los demás muertos: se ven igual,
+   *  y sólo el primero copia. */
+  function enlazarCopiar() {
+    $$('[data-copiar]').forEach(b => {
+      b.onclick = (ev) => {
+        ev.preventDefault(); ev.stopPropagation();
+        const txt = b.dataset.copiar;
+        const listo = () => toast('Folio ' + txt + ' copiado.');
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(txt).then(listo, () => respaldoCopiar(txt, listo));
+        } else respaldoCopiar(txt, listo);
+      };
+    });
+  }
+
+  /* `navigator.clipboard` no existe fuera de un origen seguro ni en
+   * navegadores viejos, así que hay respaldo con un textarea y `execCommand`
+   * — está obsoleto y funciona, que es lo que importa cuando alguien está en
+   * el celular a media planta. Y si las dos fallan, se dice; un botón que no
+   * hace nada y no avisa es peor que no tenerlo. */
   function respaldoCopiar(txt, listo) {
     try {
       const ta = document.createElement('textarea');
@@ -1881,7 +1992,7 @@
         // sesión: sin sesión el gate de la página ya mandó al login.
         if (r && r.error && r.error !== 'SIN_SESION' && _hayCaptura) {
           ST.pulso = A.pendientes(ST.machotes) ? 'pendiente' : ST.pulso;
-          pintarPulso();
+          pintarPulso(); pintarPendientes();
         }
         return;
       }
@@ -1895,7 +2006,6 @@
        * pantalla se comporta exactamente como antes. Tolerante primero: es la
        * regla anti-trabón de CLAUDE.md §8. */
       ST.ajenos = Array.isArray(r.ajenos) ? r.ajenos : [];
-      ST.esAdmin = r.es_admin === true;
 
       if (Array.isArray(r.machotes) && (r.machotes.length || _hayCaptura || ST.ajenos.length)) {
         ST.machotes = r.machotes;
@@ -1906,13 +2016,11 @@
       if (!_hayCaptura && !(r.machotes || []).length) return;   // sigue la demo: nada que subir
 
       ST.pulso = A.pendientes(ST.machotes) === 0 ? 'guardado' : 'pendiente';
-      pintarPulso();
+      pintarPulso(); pintarPendientes();
       if (r.nuevos) toast('Se bajaron ' + r.nuevos + ' machote(s) del servidor.');
       // Lo que quedó pendiente de subir (de una sesión anterior sin red) sale
       // ahora, sin que nadie tenga que acordarse de tocar algo.
       if (A.pendientes(ST.machotes)) guardarYa();
-      // La franja pregunta de nuevo: acaba de cambiar lo que el servidor tiene.
-      if (G.MachoteFranja) G.MachoteFranja.refrescar(true);
     });
   }
 
