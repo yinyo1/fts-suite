@@ -3,17 +3,18 @@
     "doc": "docs/operaciones/SEMAFORO_WATCHDOG.md",
     "_ATENCION": "ARCHIVO DE PRUEBA. Identico a sla_stages.json salvo modo_prueba:true, que manda UN correo unico a alert_recipient_default y silencia los log notes. Existe para ejercitar el renderizador contra el camino real de produccion (workflow -> Graph -> sales@fts.mx) sin escribirle al equipo. El workflow NUNCA debe quedar apuntado aqui: se apunta, se dispara a mano, y se regresa a sla_stages.json en main.",
     "descripcion": "Config del semáforo/watchdog operativo. Umbrales por stage (project.project.stage_id) para 2 métricas: A=tiempo en stage (chatter subtype 94), B=tiempo sin seguimiento (chatter comment no-bot). 🟡 = max(🔴 - 1, 1). Días = HÁBILES (excluye sáb/dom) contados en hora de Monterrey. Todo read-only en Odoo salvo el log note al chatter.",
-    "version": "1.4-TEST-digest",
+    "version": "1.5-TEST-lognote",
     "fecha": "2026-09-09",
     "_cambios_v1_3": "S1 de la auditoria #220 (2026-09-09). NINGUN UMBRAL SE MOVIO. Cambios de config: (1) comercial_whitelist_partner_ids 306 -> [306,12,996,3]; (2) ap_confirmacion.aplica_stages [13] -> []; (3) observacion.stages [13] -> [] (caduco el 24-ago); (4) info_comercialFTS fuera de los dos grupos. En el codigo (Code - MAIN y Code - buildEmail): semaforo B retirado del REPORTE pero sigue calculandose, reporte solo del delta contra la corrida previa, banderas una vez por evento, guarda de vacio en los 9 nodos Odoo, guarda de vacio del correo con latido de lunes. Medido sobre el correo del 8-sep: Operaciones 28 lineas -> 0 (no se manda), Admin 25 -> 2.",
     "_cambios_v1_2": "Recalibración a política de captura DIARIA (Mundo A: el run se queda a las 8:00 CST). Semáforo B uniformado a rojo_dias=2 / amarillo=1 en TODOS los stages activos — a las 8:00, 1d significa 'escribió el día hábil anterior y aún no hoy' (normal para quien cumple) y solo 2d es un día hábil perdido; con rojo_dias=1 el semáforo marcaba rojo a gente que sí cumplía (caso real: proy 241, 09-ago). Stage 13 entra en observación hasta 2026-08-24 (ver bloque 'observacion'). Nuevos: guard de nota vacía, detección de nota repetida, bloque SEGUIMIENTO SIN AVANCE y bandera hold_sin_fecha_vigente.",
     "_cambios_v1_1": "bizDays reescrito: días hábiles TRANSCURRIDOS desde la nota (hoy=0, ayer hábil=1), con granularidad de día en hora de Monterrey. Antes contaba el día de la nota Y el día en curso, y operaba en la TZ del contenedor (UTC), lo que hacía que una nota de ayer 07:26 CST leyera '2d' y saliera roja al día siguiente. Umbrales SIN recalibrar todavía — cambiaron de significado.",
-    "_cambios_v1_4": "Copia de prueba con digest_dias [3] (miercoles) para ejercitar el render del digest en vivo antes de publicar, y modo_prueba true. Difiere de sla_stages.json SOLO en modo_prueba, digest_dias y _meta.version. El workflow NUNCA debe quedar apuntado aqui."
+    "_cambios_v1_4": "Copia de prueba con digest_dias [3] (miercoles) para ejercitar el render del digest en vivo antes de publicar, y modo_prueba true. Difiere de sla_stages.json SOLO en modo_prueba, digest_dias y _meta.version. El workflow NUNCA debe quedar apuntado aqui.",
+    "_cambios_v1_5": "log_note_silenciar_en_prueba pasa a FALSE en el archivo de PRUEBA. Con true, modo_prueba silenciaba los log notes y era imposible verificar el arreglo del author_id: el unico camino para comprobar que la nota se escribe es un correo unico a Esteban (modo_prueba true) CON los log notes activos. Escribe al chatter de Odoo de verdad; es una escritura pedida explicitamente para esta verificacion."
   },
   "config": {
     "alert_recipient_default": "estebandelacruz@fts.mx",
     "modo_prueba": true,
-    "log_note_silenciar_en_prueba": true,
+    "log_note_silenciar_en_prueba": false,
     "_recipients_nota": "S1 2026-09-09 (#220): se saco info_comercialFTS@fts.mx de los DOS grupos. Es un buzon compartido que recibia ~114 correos por trimestre y no acciona ninguno de los renglones; un buzon de grupo en copia diaria es donde la alerta muere sin dueno. Si Comercial necesita visibilidad, va por el digest semanal (S3+).",
     "recipients_por_grupo": {
       "Operaciones": "felipe@fts.mx, gibran@fts.mx, mateo@fts.mx, estebandelacruz@fts.mx",
@@ -63,7 +64,7 @@
       "cierre": "mensual"
     },
     "digest_dias": [
-      3
+      1
     ],
     "_digest_dias_nota": "Dias en que el correo trae ademas el ESTADO COMPLETO de todos los proyectos vigilados (el resto de la semana es solo delta). getDay(): 0=domingo, 1=lunes ... 6=sabado. Produccion = [1] (lunes). Si la llave falta, el codigo asume [1]."
   },
