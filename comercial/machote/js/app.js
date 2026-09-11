@@ -2503,7 +2503,18 @@
       el.onchange = () => {
         const antes = el.dataset.cel === 'empresa_id' ? C.monedaPorDefecto(m) : null;
         const esNombre = el.dataset.cel.indexOf('nom:') === 0;
+        /* ⚠️ V1.27 · al cambiar de PAÍS se limpian estado y ciudad.
+         *
+         * Sin esto quedaban lugares que no existen, y no es hipotético: en las
+         * pruebas de Montalvo del 10-sep hay versiones guardadas con
+         * «Estados Unidos · Nuevo León · Monterrey» y «México · Ciudad de
+         * México · Monterrey» (COT-0013, versiones 7, 8 y 16). Eso viaja al PDF
+         * del cliente. Y desde V1.27 el ESTADO decide si hay viáticos, así que
+         * un estado que no es de ese país no es sólo feo: decide mal. */
+        const cambiaPais = el.dataset.cel === 'pais' &&
+          C.llano(el.value) !== C.llano(m.pais);
         aplicar();
+        if (cambiaPais) { m.region = ''; m.ciudad = ''; }
         // El nombre de la sección vive en la PESTAÑA, que se pinta fuera de la
         // hoja. Se corrige la pestaña en su lugar, sin repintar el libro: este
         // `change` llega durante el blur del campo, y repintar de raíz ahí

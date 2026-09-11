@@ -5004,6 +5004,33 @@ await sembrarMachotes(q);
     console.log('    «' + ver.replace(/\s+/g, ' ').trim().slice(0, 90) + '»');
   });
 
+  await paso('V1.27 · E · cambiar de país limpia el estado y la ciudad', async () => {
+    /* No es hipotético: en las pruebas de Montalvo del 10-sep hay versiones
+     * guardadas con «Estados Unidos · Nuevo León · Monterrey» (COT-0013 v7) y
+     * «México · Ciudad de México · Monterrey» (v16). Eso viaja al PDF del
+     * cliente — y desde V1.27 el ESTADO decide si hay viáticos, así que un
+     * estado que no es de ese país decide mal. */
+    await ir('#/m/M-1041');
+    await p.click('[data-frec*="Monterrey"]');
+    await p.waitForTimeout(600);
+    const antes = await p.evaluate(() => ({
+      pais: document.querySelector('[data-cel="pais"]').value,
+      region: (document.querySelector('[data-cel="region"]') || {}).value || '',
+      ciudad: (document.querySelector('[data-cel="ciudad"]') || {}).value || '' }));
+    if (antes.region !== 'Nuevo León') throw new Error('no partió de Nuevo León: ' + JSON.stringify(antes));
+
+    await p.selectOption('[data-cel="pais"]', 'US');
+    await p.waitForTimeout(700);
+    const desp = await p.evaluate(() => ({
+      pais: document.querySelector('[data-cel="pais"]').value,
+      region: (document.querySelector('[data-cel="region"]') || {}).value || '',
+      ciudad: (document.querySelector('[data-cel="ciudad"]') || {}).value || '' }));
+    if (desp.pais !== 'US') throw new Error('no cambió el país: ' + JSON.stringify(desp));
+    if (desp.region) throw new Error('se quedó con un estado de otro país: ' + JSON.stringify(desp));
+    if (desp.ciudad) throw new Error('se quedó con la ciudad de otro país: ' + JSON.stringify(desp));
+    console.log('    MX/Nuevo León/Monterrey → US/(vacío)/(vacío)');
+  });
+
   await paso('V1.27 · G · los cinco conceptos salen SOLOS, en cero, y bloquean hasta decidirlos', async () => {
     await ir('#/m/M-1041');
     await p.click('[data-frec*="San Antonio"]');
