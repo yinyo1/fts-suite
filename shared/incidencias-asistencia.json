@@ -106,9 +106,19 @@
           "fecha": "2026-09-08T23:46:55.688Z",
           "hora_propuesta_cst": "17:04",
           "comentario": "Falla del sistema, yo cheque y ise todo el proceso,"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe Pérez Guzmán",
+          "timestamp": "2026-09-11T17:08:57.006Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Entro 7:00 am, salio 5:00 pm",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": "2026-09-08 23:04:00",
       "aplicado_en_odoo": true,
       "tag_disputa_activo": true,
