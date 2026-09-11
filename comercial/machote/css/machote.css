@@ -382,6 +382,25 @@ label.row { min-height: var(--toque); }
                    font-size: 12px; padding: 8px 12px; }
 .fija .btn { flex: 0 0 auto; width: auto; min-width: 110px; }
 .fija .grow { flex: 1 1 auto; min-width: 0; }
+
+/* ── V1.27 · la barra con TRES botones ──────────────────────────────────
+ * Un machote propio y ya subido trae tres: «Pasar a orden», «Prestar» y
+ * «Revisar». Tres × 110 px mínimos = 330, y en un teléfono de 390 al precio
+ * le quedaban CUATRO PÍXELES: el número más importante de la pantalla,
+ * invisible.
+ *
+ * No se había visto porque hasta V1.26 la pantalla arrancaba con los cuatro
+ * ejemplos, y un ejemplo no se puede prestar — así que la prueba medía una
+ * barra de dos botones. Al retirar los ejemplos (V1.27 · B) salió el caso
+ * real, que es el que vive el equipo desde que todos tienen trabajo propio.
+ *
+ * El precio se lleva su propio renglón cuando no cabe. Los botones bajan; el
+ * número se queda arriba y entero. */
+@media (max-width: 560px) {
+  .fija { flex-wrap: wrap; }
+  .fija .grow { flex: 1 1 100%; order: -1; }
+  .fija .btn { flex: 1 1 auto; min-width: 0; }
+}
 .btnrow .btn { width: auto; }
 
 /* En escritorio no se pliega nada, así que el interruptor no viene al caso. */

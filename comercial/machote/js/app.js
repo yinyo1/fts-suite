@@ -1534,10 +1534,12 @@
       (c.lugar.tiene
         ? '<div class="lugar-veredicto ' + (foraneo ? 'fuera' : 'sede') + '">' +
             (foraneo
-              ? '<strong>Cotización foránea.</strong> Hay que cobrar el traslado: ' +
-                'vuelos, hotel, viáticos y los días de viaje en mano de obra. ' +
-                'El revisador no la deja terminar sin eso.'
-              : '<strong>En la sede.</strong> No hace falta nada de viaje.') +
+              ? '<strong>Cotización foránea:</strong> se ejecuta fuera de Nuevo León, ' +
+                'así que hay traslado que cobrar. En cada sección con trabajo salen ' +
+                'los cinco conceptos —vuelos, hotel, viáticos, taxis y gasolina— y ' +
+                'cada uno necesita una decisión: su importe, o «no se ocupa». ' +
+                'Los días de viaje van en mano de obra.'
+              : '<strong>En la sede.</strong> Nuevo León es local: no hace falta nada de viaje.') +
           '</div>'
         : '<div class="lugar-veredicto falta"><strong>Falta decir dónde se ejecuta.</strong> ' +
           'De ahí sale si hay que cobrar traslado.</div>') +
@@ -1891,7 +1893,7 @@
      *
      * ⚠️ Sólo cuando es foránea. Un machote de Nuevo León no gana renglones
      * que nadie pidió, y los ocho viejos no se tocan. */
-    const cptsViaje = c.lugar.foraneo ? C.conceptosViaje(m, s) : [];
+    let cptsViaje = c.lugar.foraneo ? C.conceptosViaje(m, s) : [];
     if (c.lugar.foraneo) {
       cptsViaje.forEach(x => {
         if (x.existe) return;
@@ -1905,6 +1907,12 @@
         l.tipo = C.TIPO_VIAJE; l.descripcion = x.label; l.unidad = x.unidad;
         l.concepto = x.id;
       });
+      /* ⚠️ Se vuelve a preguntar DESPUÉS de sembrar. La lista de arriba se
+       * calculó cuando los renglones todavía no existían, así que traía
+       * `idx: -1` para todos los que se acababan de crear — y con `idx:-1` la
+       * fila se pinta sin sus campos de cantidad y precio. Se vio en la
+       * captura a 380 px, no en el diff. */
+      cptsViaje = C.conceptosViaje(m, s);
     }
 
     /* Un renglón de viaje, como se ve en el bloque: su importe y el botón de

@@ -571,9 +571,15 @@ await sembrarMachotes(p);
         const b = document.querySelector('.fija .btn');
         return { ancho: g ? Math.round(g.getBoundingClientRect().width) : -1,
                  texto: g ? g.textContent.trim().slice(0, 20) : '',
+                 botones: document.querySelectorAll('.fija .btn').length,
                  boton: b ? Math.round(b.getBoundingClientRect().width) : -1 };
       });
-      if (r.ancho < 120) throw new Error('a ' + w + 'px el precio mide ' + r.ancho + 'px de ancho');
+      /* ⚠️ V1.27 · con TRES botones (propio y ya subido: pasar a orden, prestar
+       * y revisar) al precio le quedaban 4 px en un teléfono de 390. No se veía
+       * porque la fixture eran los ejemplos, y un ejemplo no se puede prestar.
+       * Se afirma el caso real. */
+      if (r.ancho < 120) throw new Error('a ' + w + 'px el precio mide ' + r.ancho +
+        'px de ancho, con ' + r.botones + ' botones');
       if (!/\$/.test(r.texto)) throw new Error('a ' + w + 'px no hay precio: ' + r.texto);
       if (r.boton > w * 0.6) throw new Error('a ' + w + 'px el botón ocupa ' + r.boton + 'px');
     }
@@ -4893,12 +4899,18 @@ await sembrarMachotes(q);
 
   await paso('V1.27 · E · Nuevo León NO pide viáticos, y el estado de al lado SÍ', async () => {
     await ir('#/m/M-1041');
-    // Otra ciudad del mismo estado: sigue siendo local.
-    await p.evaluate(() => {
-      const m = window.__ST && window.__ST.machotes ? null : null; return m;
+    /* ⚠️ Aquí había un `selectOption('#lugPais', …).catch(() => {})`. Ese id no
+     * existe —los desplegables se nombran con `data-cel`— y el `.catch` vacío
+     * se tragaba el fallo: la prueba pasaba midiendo nada. Es exactamente el
+     * modo de falla de §20 #11. Ahora se comprueba que el desplegable EXISTE
+     * y que trae los tres países donde FTS ejecuta. */
+    const opciones = await p.$$eval('[data-cel="pais"] option', els =>
+      els.map(e => e.textContent.trim()));
+    if (opciones.length < 200)
+      throw new Error('el catálogo de países no cargó: ' + opciones.length + ' opciones');
+    ['México', 'Estados Unidos', 'Brasil'].forEach(x => {
+      if (opciones.indexOf(x) < 0) throw new Error('falta ' + x + ' en el desplegable');
     });
-    await p.selectOption('#lugPais', 'MX').catch(() => {});
-    await p.waitForTimeout(300);
 
     const estado = async (region, ciudad) => p.evaluate(([r, c]) => {
       const C = window.MachoteCalc;
