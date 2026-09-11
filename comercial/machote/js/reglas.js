@@ -426,20 +426,37 @@
     },
     {
       destino: () => ({ tab: 'secc' }),
-      id: 'foranea-sin-viaje', severidad: 'dura', area: 'Viaje',
-      titulo: 'Se ejecuta fuera de Monterrey y no trae nada de viaje',
+      /* ── V1.27 · el candado cambió de forma, y es MÁS estricto ──────────
+       *
+       * Antes exigía «que exista algún renglón de viaje». Con los cinco
+       * conceptos ya puestos en cero (V1.27) esa exigencia se cumple sola y no
+       * protege de nada — pero es que tampoco protegía antes: se conformaba
+       * con UNO. Un vuelo capturado la satisfacía y el hotel olvidado pasaba
+       * igual, que es **literalmente** lo que ocurrió con Albuquerque.
+       *
+       * Ahora exige una DECISIÓN por cada concepto: un importe, o un «no se
+       * ocupa» explícito. Lo que no se puede es dejarlo sin mirar. */
+      id: 'viaje-sin-resolver', severidad: 'dura', area: 'Viaje',
+      titulo: 'Hay conceptos de viaje sin decidir',
       evaluar: (m, c) => {
         if (!c.lugar.foraneo) return null;
         if (c.viaje.no_aplica) return null;            // alguien lo decidió a mano
-        if (c.renglonesViaje > 0 || c.dias > 0) return null;
+        if (!c.viajePorResolver) return null;
         const donde = [m.ciudad, m.region, paisNombre(m.pais)].filter(Boolean).join(', ');
+        // Se nombran LOS QUE FALTAN, no «faltan 3»: la lista es la acción.
+        const faltan = [];
+        (c.secciones || []).forEach(sec => {
+          (sec.conceptosViaje || []).forEach(x => {
+            if (!x.resuelto && faltan.indexOf(x.label) < 0) faltan.push(x.label);
+          });
+        });
         return {
-          detalle: 'Mover gente cuesta, y ese costo se descubre tarde: es lo que pasó ' +
-                   'con el presupuesto de Albuquerque. Agrega los conceptos de viaje que ' +
-                   'apliquen —vuelos, hotel, viáticos, taxis, gasolina— y los días de ' +
-                   'viaje en mano de obra. Si de verdad no se ocupa nada, márcalo: la ' +
-                   'casilla está al lado, y así queda dicho que fue una decisión.',
+          detalle: 'Se ejecuta fuera de Nuevo León, así que hay traslado que cobrar. ' +
+                   'Cada concepto necesita una decisión: escríbele el importe, o márcalo ' +
+                   'como que no se ocupa. Lo que no se vale es dejarlo sin mirar — el ' +
+                   'presupuesto de Albuquerque salió con el trabajo cobrado y el hotel no.',
           items: ['Se ejecuta en: ' + (donde || '(sin decir)')]
+            .concat(faltan.map(x => 'Sin decidir: ' + x))
         };
       }
     },

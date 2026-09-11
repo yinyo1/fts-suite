@@ -43,7 +43,52 @@
    * 2026-09-03 (por instrucción de Esteban), pero lleva el suyo aparte y va en
    * V1.00. Planeación sigue en `2.4.1` y el kiosko sólo con cadena de build;
    * a esos no se propaga. */
-  const VERSION = 'V1.26';
+  /* ── La versión, que ya no se puede AFIRMAR: se LEE ──────────────────
+   *
+   * Antes era una constante suelta, y una constante suelta describe el archivo
+   * que la contiene — no el juego de archivos que el navegador acabó cargando.
+   * Con `max-age=600` y sin versión en la URL (medido el 10-sep, ejecución
+   * 94341) cada archivo se cacheaba por su cuenta, así que se podía correr
+   * `app.js` de una versión con `calc.js` de otra y el pie describía la mitad.
+   *
+   * Ahora hay tres lecturas y las tres tienen que coincidir:
+   *   1. la constante de ESTE archivo,
+   *   2. el `?v=` de la URL con la que el navegador lo bajó,
+   *   3. la que declara cada pieza que se carga aparte (hoy el motor).
+   * Si discrepan, la pantalla lo DICE en vez de correr a medias. */
+  const VERSION_ARCHIVO = 'V1.27';
+
+  const VERSION_URL = (function () {
+    try {
+      const src = (document.currentScript && document.currentScript.src) || '';
+      const m = src.match(/[?&]v=([^&]+)/);
+      return m ? decodeURIComponent(m[1]) : null;
+    } catch (e) { return null; }
+  })();
+
+  /* Las piezas que se cargan por separado y declaran la suya. Se listan por
+   * NOMBRE DE ARCHIVO porque el aviso lo va a leer una persona, no un log. */
+  const PIEZAS = { 'calc.js': (C && C.VERSION) || null };
+
+  const MEZCLA = (function () {
+    const out = [];
+    if (VERSION_URL && VERSION_URL !== VERSION_ARCHIVO) {
+      out.push('app.js se pidió como ' + VERSION_URL + ' y el archivo dice ' + VERSION_ARCHIVO);
+    }
+    Object.keys(PIEZAS).forEach(function (k) {
+      if (PIEZAS[k] && PIEZAS[k] !== VERSION_ARCHIVO) {
+        out.push(k + ' es ' + PIEZAS[k] + ' y app.js es ' + VERSION_ARCHIVO);
+      }
+    });
+    return out;
+  })();
+
+  const VERSION = MEZCLA.length ? (VERSION_ARCHIVO + ' ⚠ mezcla') : VERSION_ARCHIVO;
+
+  /* Para `shared/version-check.js` (el del kiosko, adoptado tal cual): compara
+   * esto contra `version.json` y recarga una vez si el navegador quedó atrás.
+   * Se publica lo que DE VERDAD corre, no lo que se pidió. */
+  G.MACHOTE_BUILD = VERSION_ARCHIVO;
   const $  = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
   const clon = (x) => JSON.parse(JSON.stringify(x));
@@ -537,7 +582,15 @@
   function top(t, s, b, back) {
     $('#tbT').textContent = t;
     $('#tbS').textContent = s;
-    const v = $('#tbV'); if (v) v.textContent = VERSION;
+    const v = $('#tbV');
+    if (v) {
+      v.textContent = VERSION;
+      // Media versión no es un detalle de pie de página: se marca donde se mira.
+      v.className = MEZCLA.length ? 'tb-ver mezcla' : 'tb-ver';
+      v.title = MEZCLA.length
+        ? 'La pantalla está corriendo archivos de dos versiones: ' + MEZCLA.join(' · ')
+        : 'Versión del módulo';
+    }
     const bb = $('#btnBack');
     const destino = back || '../index.html';
     if (destino.charAt(0) === '#') {
@@ -548,6 +601,35 @@
       bb.title = 'Volver a Comercial';
     }
   }
+  /* ── El aviso de MEDIA VERSIÓN ────────────────────────────────────────
+   *
+   * No es un `console.warn`: nadie abre la consola. Si la pantalla está
+   * corriendo archivos de dos versiones, los números pueden salir de un motor
+   * que no es el que esta pantalla espera — y eso NO se puede dejar pasar en
+   * silencio, que es justo el modo de falla que perseguimos en todo lo demás.
+   *
+   * Dice QUÉ está desfasado y ofrece la única acción que sirve: recargar
+   * saltándose el caché. */
+  function avisarMezcla() {
+    if (!MEZCLA.length || document.getElementById('avMezcla')) return;
+    const b = document.createElement('div');
+    b.id = 'avMezcla';
+    b.className = 'nogda mezcla';
+    b.setAttribute('role', 'alert');
+    b.innerHTML = '<span><strong>Esta pantalla está corriendo dos versiones a la vez.</strong> ' +
+      esc(MEZCLA.join('; ')) + '. Los números pueden no ser los de esta versión. ' +
+      'Recarga antes de seguir capturando.</span>' +
+      '<span class="nogda-b"><button class="btn" id="mzRecargar">Recargar</button></span>';
+    document.body.appendChild(b);
+    const bt = document.getElementById('mzRecargar');
+    if (bt) bt.addEventListener('click', function () {
+      /* El `?v=` del documento lo busta; los subrecursos ya van versionados,
+       * así que la recarga trae el juego completo y coherente. */
+      try { location.replace(location.pathname + '?v=' + encodeURIComponent(VERSION_ARCHIVO) + location.hash); }
+      catch (e) { location.reload(); }
+    });
+  }
+
   window.addEventListener('hashchange', render);
 
   /* El nombre del cliente sale de UNA sola función. Con el catálogo cargado
@@ -2435,6 +2517,10 @@
   };
 
   render();
+  /* PRIMERO el aviso de media versión, antes que cualquier otro: si la pantalla
+   * está corriendo dos versiones, eso manda sobre todo lo demás que se pueda
+   * decir. */
+  avisarMezcla();
   avisoPassword();
 
   /* ── El arranque, en dos tiempos ────────────────────────────────────────

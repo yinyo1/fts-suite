@@ -1372,3 +1372,12 @@ button.lnk.consul { font-size: 11px; }
   .chip-viaje.kiwi { margin-left: 0; width: 100%; justify-content: center; }
   .lugar select.cel { max-width: none; }
 }
+
+/* ── V1.27 · media versión ──────────────────────────────────────────────
+ * Rojo y arriba de todo. Si la pantalla corre archivos de dos versiones, los
+ * números pueden salir de un motor que no es el que esta pantalla espera: es
+ * lo más grave que se puede decir aquí, y se ve como tal. */
+.nogda.mezcla { background: #7a1414; color: #fff; border-color: #5c0f0f; }
+.nogda.mezcla .btn { background: #fff; color: #7a1414; border-color: #fff; }
+.tb-ver.mezcla { color: #ffd7d7; background: #7a1414; border-radius: 5px;
+                 padding: 1px 6px; font-weight: 700; }

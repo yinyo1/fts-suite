@@ -86,12 +86,37 @@ eq(C.calcular(w).costoMo, 1000, 'festivo · sin confirmar = sin recargo, no se i
 w.viaje.recargo_festivo = 0.4;
 eq(C.calcular(w).costoMo, 1400, 'festivo · escrito por quien cotiza, sí se aplica');
 
-// ── Foráneo ────────────────────────────────────────────────────────────────
-es(C.esForaneo(C.machoteNuevo({})), false, 'foráneo · Monterrey no lo es');
-es(C.esForaneo({ pais: 'MX', ciudad: 'MONTERREY  ' }), false, 'foráneo · ni con mayúsculas y espacios');
-es(C.esForaneo({ pais: 'MX', ciudad: 'Montérrey' }), false, 'foráneo · ni con un acento de más');
-es(C.esForaneo({ pais: 'MX', ciudad: 'Guadalajara' }), true, 'foráneo · Guadalajara SÍ (mover gente cuesta)');
-es(C.esForaneo({ pais: 'US', ciudad: 'Albuquerque' }), true, 'foráneo · Albuquerque también');
+/* ── Foráneo ───────────────────────────────────────────────────────────────
+ * V1.27 · LA SEDE ES EL ESTADO, no la ciudad (corrección de Montalvo). Lo que
+ * decide es Nuevo León; la ciudad se captura pero no juzga. */
+const NL = { pais: 'MX', region: 'Nuevo León' };
+es(C.esForaneo(C.machoteNuevo({})), false, 'foráneo · la sede no lo es');
+es(C.esForaneo({ pais: 'MX', region: 'NUEVO LEON  ', ciudad: 'Monterrey' }), false,
+   'foráneo · ni con mayúsculas, espacios y sin acento');
+es(C.esForaneo({ pais: 'MX', region: 'Nuévo León', ciudad: 'Monterrey' }), false,
+   'foráneo · ni con un acento de más');
+
+// El corazón de la corrección: otra CIUDAD del mismo estado sigue siendo local.
+es(C.esForaneo(Object.assign({ ciudad: 'Santa Catarina' }, NL)), false,
+   'foráneo · Santa Catarina es Nuevo León: NO lleva viáticos');
+es(C.esForaneo(Object.assign({ ciudad: 'García' }, NL)), false,
+   'foráneo · García tampoco');
+// Y el estado de al lado sí, aunque quede cerca.
+es(C.esForaneo({ pais: 'MX', region: 'Coahuila', ciudad: 'Saltillo' }), true,
+   'foráneo · Saltillo es Coahuila: SÍ lleva viáticos, aunque quede cerca');
+es(C.esForaneo({ pais: 'MX', region: 'Jalisco', ciudad: 'Guadalajara' }), true,
+   'foráneo · Guadalajara SÍ (mover gente cuesta)');
+es(C.esForaneo({ pais: 'US', region: 'Nuevo México', ciudad: 'Albuquerque' }), true,
+   'foráneo · Albuquerque también');
+es(C.esForaneo({ pais: 'BR', region: 'São Paulo', ciudad: 'São Paulo' }), true,
+   'foráneo · Brasil también (operación nueva, V1.27)');
+
+// Sin ESTADO no se puede juzgar: antes «MX + Saltillo» se leía como local
+// porque sólo se comparaba la ciudad contra Monterrey.
+es(C.esForaneo({ pais: 'MX', ciudad: 'Saltillo' }), false,
+   'foráneo · sin estado NO se juzga (lo reclama su propia regla)');
+es(C.tieneLugar({ pais: 'MX', ciudad: 'Saltillo' }), false,
+   'lugar · sin estado el lugar está incompleto');
 
 // ── El REVISADOR: lo que bloquea y lo que no ───────────────────────────────
 // Se carga aquí abajo porque `reglas.js` necesita a `DEMO` para el cuestionario
@@ -102,45 +127,73 @@ const R = window.MachoteReglas;
 const tieneDura = (m, id) => R.revisar(m).duras.some(h => h.id === id);
 const tieneBlanda = (m, id) => R.revisar(m).blandas.some(h => h.id === id);
 
-// Un machote de Monterrey NO pide nada de viaje.
+// Un machote en la SEDE no pide nada de viaje.
 const local = C.machoteNuevo({ nombre: 'local' });
-es(tieneDura(local, 'foranea-sin-viaje'), false, 'regla · Monterrey no pide nada de viaje');
+es(tieneDura(local, 'viaje-sin-resolver'), false, 'regla · Nuevo León no pide nada de viaje');
 es(tieneDura(local, 'sin-lugar-ejecucion'), false, 'regla · y nace CON lugar, no lo reclama');
 
-// Uno foráneo SIN nada de viaje: bloquea.
+// Otra ciudad del MISMO estado tampoco. Es la corrección de Montalvo.
+const mismoEstado = C.machoteNuevo({ nombre: 'Santa Catarina' });
+mismoEstado.ciudad = 'Santa Catarina';
+es(tieneDura(mismoEstado, 'viaje-sin-resolver'), false,
+   'regla · Santa Catarina es Nuevo León: sigue sin pedir viáticos');
+
+/* Uno foráneo sin decidir nada: BLOQUEA.
+ * V1.27 · la regla cambió de «que exista algún renglón» a «que cada uno de los
+ * cinco conceptos esté decidido». Es más estricta, no menos. */
 const fuera = C.machoteNuevo({ nombre: 'foráneo' });
-fuera.pais = 'US'; fuera.estado = 'Nuevo México'; fuera.ciudad = 'Albuquerque';
-es(tieneDura(fuera, 'foranea-sin-viaje'), true, 'regla · foráneo sin viaje BLOQUEA');
+fuera.pais = 'US'; fuera.region = 'Nuevo México'; fuera.ciudad = 'Albuquerque';
+es(tieneDura(fuera, 'viaje-sin-resolver'), true, 'regla · foráneo sin decidir BLOQUEA');
 es(R.revisar(fuera).puedeConfirmar, false, 'regla · y por eso no se deja terminar');
+eq(C.calcular(fuera).viajePorResolver, 5, 'regla · los cinco conceptos sin decidir');
 
-// Basta UN concepto de viaje para desbloquear.
-const conVuelo = JSON.parse(JSON.stringify(fuera));
-conVuelo.secciones[0].partidas[0].tipo = 'Viaje';
-conVuelo.secciones[0].partidas[0].qty = 2;
-conVuelo.secciones[0].partidas[0].pu = 9000;
-conVuelo.secciones[0].partidas[0].descripcion = 'Vuelos';
-es(tieneDura(conVuelo, 'foranea-sin-viaje'), false, 'regla · con vuelos capturados, ya no bloquea');
+/* ⚠️ LO QUE ANTES DESBLOQUEABA Y AHORA NO. Con la regla vieja bastaba UN
+ * renglón de viaje: capturar el vuelo la satisfacía y el hotel olvidado pasaba
+ * igual — que es exactamente lo que ocurrió con Albuquerque. */
+const soloVuelo = JSON.parse(JSON.stringify(fuera));
+soloVuelo.secciones[0].partidas[0].tipo = 'Viaje';
+soloVuelo.secciones[0].partidas[0].qty = 2;
+soloVuelo.secciones[0].partidas[0].pu = 9000;
+soloVuelo.secciones[0].partidas[0].descripcion = 'Vuelos';
+es(tieneDura(soloVuelo, 'viaje-sin-resolver'), true,
+   'regla · SOLO el vuelo ya NO desbloquea: es el caso Albuquerque');
+eq(C.calcular(soloVuelo).viajePorResolver, 4, 'regla · quedan cuatro sin decidir');
 
-// O los días de viaje solos.
-const conDias = JSON.parse(JSON.stringify(fuera));
-const ldv = conDias.secciones[0].mo.find(l => l.rol === 'dias_viaje');
-ldv.qty = 2; ldv.pu = 1500;
-es(tieneDura(conDias, 'foranea-sin-viaje'), false, 'regla · o con días de viaje, tampoco');
+// Lo que desbloquea: decidir los cinco. Con importe, o marcando que no se ocupa.
+const resuelto = JSON.parse(JSON.stringify(soloVuelo));
+['Hotel', 'Viáticos', 'Taxis y traslados', 'Gasolina'].forEach((etiqueta, i) => {
+  const l = resuelto.secciones[0].partidas[i + 1];
+  l.tipo = 'Viaje'; l.descripcion = etiqueta; l.no_aplica = true;
+});
+eq(C.calcular(resuelto).viajePorResolver, 0, 'regla · los cinco decididos');
+es(tieneDura(resuelto, 'viaje-sin-resolver'), false, 'regla · y ya no bloquea');
+/* Lo que se afirma es que el candado DEL VIAJE se abrió, no que el machote
+ * entero esté listo: sigue sin tarifas de mano de obra y sin tipo de proyecto,
+ * que son otras dos reglas duras y no tienen nada que ver con esto. */
+es(R.revisar(resuelto).duras.some(h => h.area === 'Viaje'), false,
+   'regla · ya no queda ninguna dura de Viaje');
+// Y marcar «no se ocupa» NO deja el renglón como capturado a medias: si lo
+// dejara, cambiaríamos un bloqueo por otro (`partida-sin-precio`).
+es(tieneDura(resuelto, 'partida-sin-precio'), false,
+   'regla · un «no se ocupa» no dispara «partida sin precio»');
 
-// O marcarlo explícitamente. Y entonces queda DICHO, no olvidado.
+// Un «no se ocupa» NO es un importe: el viaje sigue costando cero.
+eq(C.calcular(resuelto).costoViaje, 18000, 'regla · marcar en cero no inventa costo');
+
+// O marcarlo todo de una vez. Y entonces queda DICHO, no olvidado.
 const marcado = JSON.parse(JSON.stringify(fuera));
 marcado.viaje.no_aplica = true;
-es(tieneDura(marcado, 'foranea-sin-viaje'), false, 'regla · marcar «no se ocupan» desbloquea');
+es(tieneDura(marcado, 'viaje-sin-resolver'), false, 'regla · marcar «no se ocupan» desbloquea');
 es(tieneBlanda(marcado, 'viaje-marcado-no-aplica'), true, 'regla · pero deja constancia visible');
 
 // Un machote VIEJO, sin el campo: se le reclama el lugar, no se le supone.
 const antiguo = C.machoteNuevo({ nombre: 'antiguo' });
-delete antiguo.pais; delete antiguo.ciudad;
+delete antiguo.pais; delete antiguo.region; delete antiguo.ciudad;
 es(tieneDura(antiguo, 'sin-lugar-ejecucion'), true, 'regla · sin lugar, lo reclama');
-es(tieneDura(antiguo, 'foranea-sin-viaje'), false, 'regla · pero NO lo trata como foráneo');
+es(tieneDura(antiguo, 'viaje-sin-resolver'), false, 'regla · pero NO lo trata como foráneo');
 
 // El margen sobre un renglón de viaje se dice en voz alta.
-const conMargen = JSON.parse(JSON.stringify(conVuelo));
+const conMargen = JSON.parse(JSON.stringify(soloVuelo));
 conMargen.secciones[0].partidas[0].margen = 1.8;
 es(tieneBlanda(conMargen, 'viaje-con-margen'), true, 'regla · un margen sobre viaje se señala');
 
