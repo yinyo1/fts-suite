@@ -116,10 +116,20 @@
    * descuenta de sus cuentas. Marcarlo aquí y no en cada consumidor es lo
    * que hace que un camino nuevo no pueda saltárselo por olvido.
    *
-   * Se conserva al editar: si alguien abre una demo y captura encima, sigue
-   * siendo demo. Para que deje de serlo hay que crear un machote nuevo, que
-   * es exactamente lo correcto — así nadie convierte por accidente un
-   * ejemplo en la cotización de un cliente. */
+   * ⚠️ ESTO QUEDÓ STALE Y COSTÓ CARO. Decía que la marca «se conserva al
+   * editar». No: `tocado()` (app.js) le quita el `_demo` en cuanto alguien
+   * teclea encima, a propósito, para no atrapar trabajo real dentro de un
+   * ejemplo. O sea que abrir un ejemplo y escribir algo lo convierte en una
+   * cotización que sube — y eso volvió a pasar el 8-sep (Esteban), el 8-sep
+   * (Ricardo) y el 10-sep (Montalvo, folios COT-0009 a COT-0012).
+   *
+   * V1.27 · LOS EJEMPLOS YA NO SE PINTAN AL ENTRAR. La lista arranca vacía
+   * para un navegador nuevo, con su mensaje de «empieza con + Nuevo». Este
+   * arreglo sigue exportado porque lo usan las pruebas y los ejemplos del
+   * pegado, pero no siembra la pantalla. El porqué, en `app.js` junto a `ST`.
+   *
+   * La marca y el candado de `empujar` se quedan como defensa en profundidad
+   * para lo que ya esté guardado en algún navegador. */
   const MACHOTES = [
 
     // ── 1. Sano, con hueco de precio. Forma tomada de "Paso de Gato SO11782".

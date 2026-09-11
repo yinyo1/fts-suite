@@ -382,6 +382,25 @@ label.row { min-height: var(--toque); }
                    font-size: 12px; padding: 8px 12px; }
 .fija .btn { flex: 0 0 auto; width: auto; min-width: 110px; }
 .fija .grow { flex: 1 1 auto; min-width: 0; }
+
+/* ── V1.27 · la barra con TRES botones ──────────────────────────────────
+ * Un machote propio y ya subido trae tres: «Pasar a orden», «Prestar» y
+ * «Revisar». Tres × 110 px mínimos = 330, y en un teléfono de 390 al precio
+ * le quedaban CUATRO PÍXELES: el número más importante de la pantalla,
+ * invisible.
+ *
+ * No se había visto porque hasta V1.26 la pantalla arrancaba con los cuatro
+ * ejemplos, y un ejemplo no se puede prestar — así que la prueba medía una
+ * barra de dos botones. Al retirar los ejemplos (V1.27 · B) salió el caso
+ * real, que es el que vive el equipo desde que todos tienen trabajo propio.
+ *
+ * El precio se lleva su propio renglón cuando no cabe. Los botones bajan; el
+ * número se queda arriba y entero. */
+@media (max-width: 560px) {
+  .fija { flex-wrap: wrap; }
+  .fija .grow { flex: 1 1 100%; order: -1; }
+  .fija .btn { flex: 1 1 auto; min-width: 0; }
+}
 .btnrow .btn { width: auto; }
 
 /* En escritorio no se pliega nada, así que el interruptor no viene al caso. */
@@ -1372,3 +1391,33 @@ button.lnk.consul { font-size: 11px; }
   .chip-viaje.kiwi { margin-left: 0; width: 100%; justify-content: center; }
   .lugar select.cel { max-width: none; }
 }
+
+/* ── V1.27 · media versión ──────────────────────────────────────────────
+ * Rojo y arriba de todo. Si la pantalla corre archivos de dos versiones, los
+ * números pueden salir de un motor que no es el que esta pantalla espera: es
+ * lo más grave que se puede decir aquí, y se ve como tal. */
+.nogda.mezcla { background: #7a1414; color: #fff; border-color: #5c0f0f; }
+.nogda.mezcla .btn { background: #fff; color: #7a1414; border-color: #fff; }
+.tb-ver.mezcla { color: #ffd7d7; background: #7a1414; border-radius: 5px;
+                 padding: 1px 6px; font-weight: 700; }
+
+/* ── V1.27 · los cinco conceptos de viaje ───────────────────────────────
+ * Se ven SIEMPRE que la cotización sea foránea, y el que falta por decidir
+ * se distingue del que ya se decidió. El renglón «sin decidir» es el que
+ * bloquea, así que es el que tiene que saltar a la vista. */
+.viaje-tbl tr.pendiente td { background: #fff8e5; }
+.viaje-tbl tr.resuelto td { background: transparent; }
+.cpt-falta { color: #8a6100; font-weight: 700; }
+.cpt-cero  { color: var(--suave); font-style: italic; }
+.cpt-ok    { font-weight: 700; }
+.chip-viaje.mini { padding: 5px 9px; font-size: 11.5px; min-height: 32px; }
+.viaje-blk .aviso.ok { background: #edf7ed; border-color: #b7ddb7; color: #1e5720; }
+
+/* El nombre de la cotización, editable en su sitio: se ve igual que antes
+ * hasta que alguien lo toca. Un campo que grita «edítame» arriba del folio
+ * invita a renombrar sin querer. */
+input.cab-nombre { border: 1px solid transparent; background: transparent;
+                   font: inherit; color: inherit; padding: 2px 6px;
+                   border-radius: 6px; min-width: 0; flex: 1 1 240px; }
+input.cab-nombre:hover { border-color: var(--linea); }
+input.cab-nombre:focus { border-color: var(--acento); background: #fff; outline: none; }

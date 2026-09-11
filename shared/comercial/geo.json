@@ -2,12 +2,14 @@
   "_meta": {
     "que": "Catalogo generico de paises y subdivisiones para el lugar de ejecucion del machote comercial.",
     "paises_origen": "Derivados de ICU (Intl.DisplayNames en es) filtrando las pseudo-regiones de CLDR que no son ISO 3166-1. Son 249, que es el numero exacto de codigos alpha-2 asignados de la norma: la lista de exclusion queda comprobada por aritmetica.",
-    "subdivisiones_origen": "Escritas a mano solo para MX (32 estados) y US (50 + Distrito de Columbia), que es donde FTS ejecuta. Para cualquier otro pais el estado va en TEXTO LIBRE y la pantalla lo dice.",
+    "subdivisiones_origen": "Escritas a mano solo para MX (32 estados), US (50 + Distrito de Columbia) y BR (26 estados + Distrito Federal, ISO 3166-2:BR), que es donde FTS ejecuta. Para cualquier otro pais el estado va en TEXTO LIBRE y la pantalla lo dice.",
     "generado": "2026-09-10",
     "issue": 140,
     "version": "V1.26",
     "frecuentes_origen": "Dictadas por Esteban (V1.26). Es configuracion: agregar una ciudad NO requiere tocar codigo. El orden del arreglo es el orden en pantalla.",
-    "campo_region": "La subdivision se llama REGION, no estado: machote.estado ya existe y significa borrador/enviado."
+    "campo_region": "La subdivision se llama REGION, no estado: machote.estado ya existe y significa borrador/enviado.",
+    "actualizado": "2026-09-11",
+    "nota_v127": "Brasil entra en V1.27 porque ya hay operacion ahi (Montalvo). Sao Paulo queda en frecuentes. Y la SEDE pasa a ser el ESTADO de Nuevo Leon, no la ciudad de Monterrey: cualquier otro estado de Mexico lleva viaticos."
   },
   "paises": [
     {
@@ -1094,6 +1096,35 @@
       "Washington",
       "Wisconsin",
       "Wyoming"
+    ],
+    "BR": [
+      "Acre",
+      "Alagoas",
+      "Amapá",
+      "Amazonas",
+      "Bahia",
+      "Ceará",
+      "Distrito Federal",
+      "Espírito Santo",
+      "Goiás",
+      "Maranhão",
+      "Mato Grosso",
+      "Mato Grosso do Sul",
+      "Minas Gerais",
+      "Pará",
+      "Paraíba",
+      "Paraná",
+      "Pernambuco",
+      "Piauí",
+      "Rio de Janeiro",
+      "Rio Grande do Norte",
+      "Rio Grande do Sul",
+      "Rondônia",
+      "Roraima",
+      "Santa Catarina",
+      "São Paulo",
+      "Sergipe",
+      "Tocantins"
     ]
   },
   "frecuentes": [
@@ -1123,6 +1154,12 @@
       "pais": "US",
       "region": "California",
       "ciudad": "Fairfield"
+    },
+    {
+      "pais": "BR",
+      "region": "São Paulo",
+      "ciudad": "São Paulo",
+      "nota": "Operación en Brasil. Pedida por Montalvo el 11-sep."
     }
   ]
 }

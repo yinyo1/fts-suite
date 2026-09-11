@@ -503,9 +503,37 @@
                  folio: s2[m.id].folio, folio_txt: s2[m.id].folio_txt };
       }
       /* Choque de versión: alguien más guardó. NO se pisa y NO se reintenta en
-       * silencio — se avisa, porque resolverlo es una decisión de persona. */
+       * silencio — se avisa, porque resolverlo es una decisión de persona.
+       *
+       * ⚠️ V1.27 · EL RECHAZO ENSEÑA. Un cliente puede chocar precisamente
+       * porque su libreta no tenía la versión ni el folio; si el rechazo los
+       * trae, se anotan aquí mismo y el siguiente intento ya parte del dato
+       * bueno. Lo que NO se toca es la `huella`: el documento local sigue sin
+       * subir y tiene que seguir marcado como pendiente. */
+      if (r && (r.folio !== undefined || r.version_actual !== undefined || r.machote_id)) {
+        try {
+          var s3 = leerSync();
+          var ant = s3[m.id] || {};
+          s3[m.id] = {
+            version: (r.version_actual === null || r.version_actual === undefined)
+              ? (ant.version || 0) : Number(r.version_actual),
+            // La huella se conserva: lo local sigue pendiente de subir.
+            huella: ant.huella || null,
+            machote_id: r.machote_id || ant.machote_id || null,
+            prestamos: ant.prestamos || [],
+            folio: (r.folio !== undefined && r.folio !== null) ? r.folio : (ant.folio || null),
+            folio_txt: r.folio_txt || ant.folio_txt || null,
+            empujado_at: ant.empujado_at || null
+          };
+          escribirSync(s3);
+        } catch (e) { /* si la libreta no se deja escribir, el aviso igual sale */ }
+      }
       return { ok: false, error: (r && r.error) || 'DESCONOCIDO',
-               mensaje: (r && r.mensaje) || 'No se pudo guardar en el servidor.' };
+               mensaje: (r && r.mensaje) || 'No se pudo guardar en el servidor.',
+               autor: (r && r.autor) || null,
+               autor_nombre: (r && r.autor_nombre) || null,
+               version_actual: (r && r.version_actual) || null,
+               folio_txt: (r && r.folio_txt) || null };
     });
   }
 
@@ -586,7 +614,10 @@
       cadena = cadena.then(function () {
         return empujarUno(m, ses, motivos && motivos[m.id]).then(function (r) {
           if (r.ok) subidos++;
-          else fallos.push({ id: m.id, nombre: m.nombre, error: r.error, mensaje: r.mensaje });
+          else fallos.push({ id: m.id, nombre: m.nombre, error: r.error, mensaje: r.mensaje,
+            // V1.27 · quién guardó, para que el aviso lo pueda decir.
+            autor: r.autor || null, autor_nombre: r.autor_nombre || null,
+            version_actual: r.version_actual || null, folio_txt: r.folio_txt || null });
         });
       });
     });
@@ -714,12 +745,32 @@
           var meta = s[fila.id_local];
           var pendiente = !meta || meta.huella !== huella(mio);
           if (pendiente) {
-            // Lo mío no ha subido: no se pisa. Sube en el siguiente empujón.
+            /* Lo mío no ha subido: NO SE PISA EL DOCUMENTO. Eso sigue igual.
+             *
+             * ⚠️ V1.27 · pero ANTES este `continue` también se saltaba el
+             * registro de la METADATA de abajo —`machote_id`, la versión y el
+             * FOLIO—, que no estaba en disputa. De ahí salían dos síntomas que
+             * parecían contradecirse y eran el mismo defecto:
+             *
+             *   · la pantalla decía «sin folio» de algo que SÍ está en el
+             *     servidor (el folio vive en la libreta, y nunca se escribió);
+             *   · y el siguiente guardado mandaba `version_leida: 0` contra una
+             *     versión 1 del servidor, así que la base lo rechazaba con
+             *     CONFLICTO_DE_VERSION. El conflicto era real y el servidor
+             *     tenía razón: el cliente llegaba sin saber lo que ya sabía.
+             *
+             * Lo reportó Montalvo con «Cooling system for maintenance offices»
+             * (COT-0011): sin folio en pantalla y con conflicto al guardar.
+             *
+             * Se separa una cosa de la otra: el DOCUMENTO se conserva, la
+             * METADATA se registra. El machote sigue marcado como pendiente
+             * —su huella local difiere de la del servidor, que es justo lo que
+             * lo marca—, pero ya con folio y con la versión correcta. */
             conservados++;
-            continue;
+          } else {
+            lista[pos] = doc;
+            refrescados++;
           }
-          lista[pos] = doc;
-          refrescados++;
         }
 
         /* La cortesía del dueño: a quién le presté esto y hasta cuándo. Va en

@@ -12,6 +12,14 @@
 (function (G) {
   'use strict';
 
+  /* El motor DECLARA su versión, y no por documentación: es lo que permite
+   * detectar que la pantalla está corriendo media versión. `app.js` la compara
+   * con la suya y, si no coinciden, lo dice en vez de calcular con un motor
+   * que no es el que espera. Se bumpea junto con `const VERSION_ARCHIVO` de
+   * `app.js`, el `?v=` de `index.html` y `version.json` — hay una prueba que
+   * falla si los cuatro se separan. */
+  const VERSION = 'V1.27';
+
   const num = (v) => (typeof v === 'number' && isFinite(v)) ? v : 0;
   const vacio = (v) => v === null || v === undefined || v === '';
 
@@ -94,11 +102,64 @@
     { id: 'gasolina', label: 'Gasolina',          unidad: 'Servicio' }
   ];
 
+  /* ── V1.27 · los cinco conceptos de viaje, SIEMPRE a la vista ─────────
+   *
+   * Antes había que AGREGARLOS con un botón, y lo que hay que agregar es
+   * exactamente lo que se olvida: en Albuquerque se cobró el trabajo y no el
+   * hotel ni los viáticos. Un renglón en cero que se ve es un recordatorio;
+   * uno que hay que agregar es una omisión esperando.
+   *
+   * El cambio obliga a mover el candado, y es la parte importante: con los
+   * cinco puestos, el revisador ya NO puede exigir «que existan» —existen
+   * siempre—. Lo que exige ahora es que cada uno esté RESUELTO: con importe, o
+   * marcado explícitamente como que no se ocupa.
+   *
+   * Es más estricto que antes, no menos. La regla vieja se conformaba con UN
+   * renglón de viaje: un vuelo capturado la satisfacía y el hotel olvidado
+   * pasaba igual — que es literalmente lo que ocurrió en Albuquerque.
+   *
+   * ⚠️ Esta función NO muta el documento: el motor no escribe. Un concepto que
+   * todavía no existe como renglón cuenta como NO resuelto, así que la regla
+   * es correcta desde antes de que la pantalla siembre los renglones. */
+  function conceptosViaje(m, s) {
+    const porId = {};
+    (s && s.partidas || []).forEach((l, i) => {
+      if (!l || l.tipo !== TIPO_VIAJE) return;
+      // `concepto` es de V1.27. Los renglones que V1.26 creó con el botón sólo
+      // traen la etiqueta, así que se reconocen por ella.
+      const id = l.concepto || null;
+      const porTexto = CONCEPTOS_VIAJE.filter(c => llano(c.label) === llano(l.descripcion))[0];
+      const k = id || (porTexto && porTexto.id);
+      if (k && porId[k] === undefined) porId[k] = i;
+    });
+
+    return CONCEPTOS_VIAJE.map(cpt => {
+      const idx = porId[cpt.id];
+      const l = (idx === undefined) ? null : s.partidas[idx];
+      const tieneValor = !!(l && num(l.qty) > 0 && !vacio(l.pu) && num(l.pu) !== 0);
+      const confirmado = !!(l && l.no_aplica === true);
+      return {
+        id: cpt.id, label: cpt.label, unidad: cpt.unidad,
+        idx: (idx === undefined) ? -1 : idx,
+        existe: !!l, tieneValor, confirmado,
+        // Resuelto = alguien decidió. Con importe o con un «no se ocupa».
+        resuelto: tieneValor || confirmado
+      };
+    });
+  }
+
   /** ¿Alguien escribió algo en este renglón de materiales?
    *  Definición ÚNICA: la usan el motor, las reglas y la pantalla. Estaba
    *  escrita tres veces —dos aquí y una en `reglas.js`— y con matices distintos;
    *  tres definiciones de lo mismo terminan divergiendo. */
-  const usadaPartida = (l) => !!l && (num(l.qty) > 0 || !vacio(l.pu) || !!l.descripcion);
+  /* ⚠️ V1.27 · un renglón marcado «no se ocupa» NO está capturado a medias:
+   * está DECIDIDO. Sin esta salvedad, marcar los conceptos de viaje en cero
+   * cambiaba un bloqueo por otro —`partida-sin-precio` y `partida-sin-tipo`
+   * se disparaban sobre el renglón que acababa de resolverse—, y un candado
+   * que sólo se puede satisfacer inventando un importe enseña a inventar
+   * importes. */
+  const usadaPartida = (l) => !!l && l.no_aplica !== true &&
+    (num(l.qty) > 0 || !vacio(l.pu) || !!l.descripcion);
 
   /** ¿Este renglón está CAPTURADO? Es lo que lo pinta de verde.
    *  Cantidad **y** precio: con sólo la cantidad, el renglón está a medias y
@@ -257,8 +318,14 @@
    * foránea. La razón, textual: «si a alguien se le olvida el vuelo, también
    * se le va a olvidar marcar que es foráneo». Que lo detecte el sistema.
    *
-   * Monterrey es la sede. Cualquier otra ciudad —Guadalajara igual que
-   * Albuquerque— es foránea: mover gente cuesta, dentro y fuera del país.
+   * ⚠️ V1.27 · LA SEDE ES NUEVO LEÓN, NO MONTERREY. Corrección de Montalvo
+   * sobre el uso real: lo local es el ESTADO. Santa Catarina, García y Apodaca
+   * son locales aunque no sean Monterrey; Saltillo es foráneo aunque quede más
+   * cerca que varios municipios del área metropolitana. Cualquier otro estado
+   * de México —y cualquier otro país— lleva viáticos.
+   *
+   * La ciudad se sigue capturando y se sigue usando (nombra el lugar en los
+   * avisos y arma la búsqueda de vuelos), pero **no decide**.
    *
    * ⚠️ Un machote SIN lugar no es foráneo ni local: es un machote al que le
    * falta el dato, y así lo trata todo lo de abajo. Los 8 que ya existen
@@ -284,14 +351,23 @@
       .trim().toLowerCase();
   }
 
-  const tieneLugar = (m) => !!(m && llano(m.pais) && llano(m.ciudad));
+  /* ⚠️ V1.27 · para decidir si es foránea hace falta el ESTADO, no la ciudad.
+   * Corrección de Montalvo: lo local es Nuevo León entero, no Monterrey. Sin
+   * estado no se puede juzgar, así que el estado entra en `tieneLugar` — si
+   * no, un machote con «México / (vacío) / Saltillo» se leería como local. */
+  const tieneLugar = (m) => !!(m && llano(m.pais) && llano(m.region) && llano(m.ciudad));
 
-  /** ¿Se ejecuta fuera de Monterrey? `false` cuando falta el dato — la falta
-   *  la reclama su propia regla, y suponer «foránea» por un campo vacío
-   *  bloquearía a los 8 machotes viejos por algo que nadie escribió. */
+  /** ¿Se ejecuta fuera de la sede? La sede es **el estado de Nuevo León**, no
+   *  la ciudad de Monterrey (corrección de Montalvo, 11-sep): un trabajo en
+   *  Santa Catarina o en García no lleva viáticos, y uno en Saltillo sí,
+   *  aunque esté más cerca que algunos municipios del área metropolitana.
+   *
+   *  `false` cuando falta el dato — la falta la reclama su propia regla, y
+   *  suponer «foránea» por un campo vacío bloquearía a los machotes viejos por
+   *  algo que nadie escribió. */
   function esForaneo(m) {
     if (!tieneLugar(m)) return false;
-    return llano(m.pais) !== llano(SEDE.pais) || llano(m.ciudad) !== llano(SEDE.ciudad);
+    return llano(m.pais) !== llano(SEDE.pais) || llano(m.region) !== llano(SEDE.region);
   }
 
   const esEUA = (m) => llano(m && m.pais) === 'us';
@@ -437,7 +513,12 @@
     const mg = margenes(m, s);
     const sinPrecio = vacio(linea.pu);
     const pu = sinPrecio ? 0 : num(linea.pu);
-    const costo = aMonedaDoc(pu * num(linea.qty), linea.moneda, m);
+    /* V1.27 · «no se ocupa» cuesta CERO, aunque el renglón traiga un importe
+     * capturado antes. El importe se conserva en el documento a propósito —
+     * quitar la marca lo devuelve, y borrarlo al marcar sería tirar trabajo
+     * por un clic— pero no suma mientras la marca esté puesta. */
+    const noAplica = linea.no_aplica === true;
+    const costo = noAplica ? 0 : aMonedaDoc(pu * num(linea.qty), linea.moneda, m);
     const sinTipo = TIPOS.indexOf(linea.tipo) === -1;
     const esViaje = linea.tipo === TIPO_VIAJE;
     /* VIAJE = multiplicador 1, SIEMPRE. Hotel, gasolina, taxis y vuelos se
@@ -470,6 +551,8 @@
      * el valor de los vuelos, y el peso de cada bloque en el costo saldría
      * torcido. Son gastos de otra naturaleza y se ven como tales. */
     let costoViaje = 0, viajeConMargen = 0, renglonesViaje = 0;
+    // V1.27 · el estado de los cinco conceptos de viaje de ESTA sección.
+    const cptsViaje = conceptosViaje(m, s);
     const monedas = {};
 
     (s.mo || []).forEach(l => {
@@ -494,6 +577,17 @@
       if (l.moneda) monedas[l.moneda] = 1;
     });
 
+    /* Cuántos conceptos de viaje siguen sin decisión.
+     *
+     * Sólo cuenta en una sección que TENGA ALGO. Una sección en blanco no
+     * aporta nada a la cotización, y exigirle que decida sus cinco conceptos
+     * convertiría el candado en ruido — y un candado que es ruido se aprende a
+     * saltar. Con trabajo capturado, la exigencia es real: ahí es donde se va
+     * la gente, y donde se olvida el hotel. */
+    const seccionConAlgo = costoMoTot > 0 || costoMat > 0 || costoViaje > 0;
+    const viajePorResolver = (esForaneo(m) && !viajeDe(m).no_aplica && seccionConAlgo)
+      ? cptsViaje.filter(x => !x.resuelto).length : 0;
+
     return {
       id: s.id, nombre: s.nombre,
       // Los multiplicadores de ESTA sección. La pantalla los pinta de aquí, no
@@ -508,6 +602,7 @@
       venta: ventaMo + ventaMat + costoViaje,
       horas, dias, moSinTarifa, sinPrecio, sinTipo, sinLink, pisados,
       viajeConMargen, renglonesViaje,
+      conceptosViaje: cptsViaje, viajePorResolver,
       monedas: Object.keys(monedas)
     };
   }
@@ -671,6 +766,9 @@
       viaje: viajeDe(m),
       renglonesViaje: secciones.reduce((a, s) => a + s.renglonesViaje, 0),
       viajeConMargen: secciones.reduce((a, s) => a + s.viajeConMargen, 0),
+      // V1.27 · cuántos conceptos de viaje siguen sin decisión, en todo el
+      // machote. Es lo que bloquea ahora, en lugar de «que exista alguno».
+      viajePorResolver: secciones.reduce((a, s) => a + s.viajePorResolver, 0),
       pctFts, pctCli,
       escenarios: esc,
       escenario: elegido,
@@ -708,9 +806,10 @@
   }
 
   G.MachoteCalc = {
+    VERSION,
     ROLES, ROL, GRUPOS, TIPOS, TIPO_VIAJE, CONCEPTOS_VIAJE, ESCENARIOS, MAX_SECCIONES,
     SEDE, PAGA_DIAS,
-    llano, tieneLugar, esForaneo, esEUA, viajeDe, recargoDe,
+    llano, tieneLugar, esForaneo, esEUA, viajeDe, recargoDe, conceptosViaje,
     EMPRESAS, empresaDe, monedaPorDefecto,
     MARGENES_PLANTILLA, COMISION_FTS_PLANTILLA, MARGEN_DESEADO_PLANTILLA, REPARTO_PLANTILLA,
     PARTIDAS_EN_BLANCO, EQUIPO_VENTA_PLANTILLA, EQUIPO_OPS_PLANTILLA,

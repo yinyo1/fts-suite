@@ -10,7 +10,16 @@
      Pages es público. Lo explica `shared/auth-jwt.js`. -->
 <script src="../../shared/auth-jwt.js"></script>
 <script>if (!window.SuiteAuth.requerir('comercial:read', '../login.html')) { throw new Error('sin sesion'); }</script>
-<link rel="stylesheet" href="css/machote.css" />
+<link rel="stylesheet" href="css/machote.css?v=V1.27" />
+<!-- ⚠️ LA VERSIÓN VA EN LA URL DE CADA ARCHIVO, y no es cosmético.
+     GitHub Pages sirve TODO con `Cache-Control: max-age=600` (medido el
+     10-sep, ejecución 94341), y sin versión en la URL cada archivo se
+     cachea por su cuenta: un navegador puede acabar con `app.js` de una
+     versión y `calc.js` de otra, y entonces el pie describe la MITAD de
+     lo que corre. Con la versión en la URL, un `index.html` dado pide
+     siempre un juego COHERENTE: o todo viejo, o todo nuevo.
+     Al bumpear la versión hay que bumpear estos `?v=` — y hay una prueba
+     que falla si no coinciden con `const VERSION` y con `version.json`. -->
 </head>
 <body>
 
@@ -42,20 +51,29 @@
 </div>
 
 <!-- calc.js primero: demo.js lee de el los roles y los margenes de plantilla. -->
-<script src="js/sesion.js"></script>
-<script src="js/almacen.js"></script>
-<script src="js/calc.js"></script>
-<script src="js/geo.js"></script>
-<script src="js/demo.js"></script>
-<script src="js/reglas.js"></script>
-<script src="js/pegar.js"></script>
-<script src="js/clientes.js"></script>
-<script src="js/respaldo.js"></script>
-<script src="js/historial.js"></script>
-<script src="js/prestamo.js"></script>
-<script src="js/control.js"></script>
-<script src="js/cotizacion.js"></script>
-<script src="js/orden.js"></script>
-<script src="js/app.js"></script>
+<script src="js/sesion.js?v=V1.27"></script>
+<script src="js/almacen.js?v=V1.27"></script>
+<script src="js/calc.js?v=V1.27"></script>
+<script src="js/geo.js?v=V1.27"></script>
+<script src="js/demo.js?v=V1.27"></script>
+<script src="js/reglas.js?v=V1.27"></script>
+<script src="js/pegar.js?v=V1.27"></script>
+<script src="js/clientes.js?v=V1.27"></script>
+<script src="js/respaldo.js?v=V1.27"></script>
+<script src="js/historial.js?v=V1.27"></script>
+<script src="js/prestamo.js?v=V1.27"></script>
+<script src="js/control.js?v=V1.27"></script>
+<script src="js/cotizacion.js?v=V1.27"></script>
+<script src="js/orden.js?v=V1.27"></script>
+<script src="js/app.js?v=V1.27"></script>
+<!-- El vigilante de versión del kiosko, tal cual: compara `version.json`
+     contra lo que corre y, si el navegador quedó con un bundle viejo,
+     recarga UNA vez. Escrito en su día por esta misma causa; el módulo
+     comercial no lo había adoptado. Va al final: necesita `MACHOTE_BUILD`,
+     que publica `app.js`. -->
+<script src="../../shared/version-check.js?v=V1.27"></script>
+<script>if (window.FTSVersionCheck && window.MACHOTE_BUILD) {
+  FTSVersionCheck.run({ versionUrl: 'version.json', localBuild: window.MACHOTE_BUILD, tag: 'machote' });
+}</script>
 </body>
 </html>

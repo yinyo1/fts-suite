@@ -43,7 +43,52 @@
    * 2026-09-03 (por instrucción de Esteban), pero lleva el suyo aparte y va en
    * V1.00. Planeación sigue en `2.4.1` y el kiosko sólo con cadena de build;
    * a esos no se propaga. */
-  const VERSION = 'V1.26';
+  /* ── La versión, que ya no se puede AFIRMAR: se LEE ──────────────────
+   *
+   * Antes era una constante suelta, y una constante suelta describe el archivo
+   * que la contiene — no el juego de archivos que el navegador acabó cargando.
+   * Con `max-age=600` y sin versión en la URL (medido el 10-sep, ejecución
+   * 94341) cada archivo se cacheaba por su cuenta, así que se podía correr
+   * `app.js` de una versión con `calc.js` de otra y el pie describía la mitad.
+   *
+   * Ahora hay tres lecturas y las tres tienen que coincidir:
+   *   1. la constante de ESTE archivo,
+   *   2. el `?v=` de la URL con la que el navegador lo bajó,
+   *   3. la que declara cada pieza que se carga aparte (hoy el motor).
+   * Si discrepan, la pantalla lo DICE en vez de correr a medias. */
+  const VERSION_ARCHIVO = 'V1.27';
+
+  const VERSION_URL = (function () {
+    try {
+      const src = (document.currentScript && document.currentScript.src) || '';
+      const m = src.match(/[?&]v=([^&]+)/);
+      return m ? decodeURIComponent(m[1]) : null;
+    } catch (e) { return null; }
+  })();
+
+  /* Las piezas que se cargan por separado y declaran la suya. Se listan por
+   * NOMBRE DE ARCHIVO porque el aviso lo va a leer una persona, no un log. */
+  const PIEZAS = { 'calc.js': (C && C.VERSION) || null };
+
+  const MEZCLA = (function () {
+    const out = [];
+    if (VERSION_URL && VERSION_URL !== VERSION_ARCHIVO) {
+      out.push('app.js se pidió como ' + VERSION_URL + ' y el archivo dice ' + VERSION_ARCHIVO);
+    }
+    Object.keys(PIEZAS).forEach(function (k) {
+      if (PIEZAS[k] && PIEZAS[k] !== VERSION_ARCHIVO) {
+        out.push(k + ' es ' + PIEZAS[k] + ' y app.js es ' + VERSION_ARCHIVO);
+      }
+    });
+    return out;
+  })();
+
+  const VERSION = MEZCLA.length ? (VERSION_ARCHIVO + ' ⚠ mezcla') : VERSION_ARCHIVO;
+
+  /* Para `shared/version-check.js` (el del kiosko, adoptado tal cual): compara
+   * esto contra `version.json` y recarga una vez si el navegador quedó atrás.
+   * Se publica lo que DE VERDAD corre, no lo que se pidió. */
+  G.MACHOTE_BUILD = VERSION_ARCHIVO;
   const $  = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
   const clon = (x) => JSON.parse(JSON.stringify(x));
@@ -54,9 +99,48 @@
    * corrupto se arranca con la demo, que es lo que espera quien abre la pagina
    * por primera vez. */
   const _guardado = A ? A.leer() : null;
+
+  /* ── V1.27 · LOS EJEMPLOS SALEN DE LA LISTA ──────────────────────────────
+   *
+   * Se conservaban para el navegador nuevo. Ese caso ya no existe: las cinco
+   * personas del módulo tienen trabajo real, y lo que los ejemplos producen
+   * hoy es daño. Van TRES veces:
+   *
+   *   Esteban   8-sep  → M-1041…M-1044 en producción (borrados después)
+   *   Ricardo   8-sep  → los mismos cuatro otra vez (borrados después)
+   *   Montalvo 10-sep  → otra vez, y estos siguen vivos: quemaron los folios
+   *                      COT-0009 a COT-0012
+   *
+   * El mecanismo no es un descuido, es el diseño: `tocado()` le quita el
+   * `_demo` en cuanto alguien teclea encima —a propósito, para no atrapar
+   * trabajo real dentro de un ejemplo—. Así que basta con ABRIR un ejemplo y
+   * escribir algo para convertirlo en una cotización que sube. Y los ejemplos
+   * salían al entrar, o sea que el camino estaba servido.
+   *
+   * La marca `_demo` y el candado de `empujar` se QUEDAN: son defensa en
+   * profundidad para lo que ya esté guardado en algún navegador. Lo que se
+   * retira es la puerta.
+   *
+   * `D.MACHOTES` sigue exportado: lo usan las pruebas y los ejemplos del
+   * pegado. Lo que deja de hacer es sembrar la pantalla. */
+  const _limpiado = (function () {
+    if (!_guardado || !Array.isArray(_guardado.machotes)) return null;
+    /* Se quitan SÓLO los que siguen marcados como ejemplo, o sea los que
+     * nadie tocó. En cuanto alguien escribió encima dejaron de ser ejemplo y
+     * son trabajo suyo — eso NO se borra, ni aquí ni en ningún lado. */
+    const sinDemo = _guardado.machotes.filter(m => !(m && m._demo === true));
+    if (sinDemo.length === _guardado.machotes.length) return _guardado.machotes;
+    // Se persiste para que no reaparezcan en la siguiente carga.
+    try { if (A) A.escribirLocal({ machotes: sinDemo, handoff: _guardado.handoff || {} }); }
+    catch (e) { /* si no se deja escribir, al menos no se pintan */ }
+    return sinDemo;
+  })();
+
   const ST = {
     verVacios: false,
-    machotes: _guardado ? _guardado.machotes : clon(D.MACHOTES),
+    // Por qué cambió cada machote, para el historial. Se vacía al guardar.
+    motivos: {},
+    machotes: _limpiado || [],
     /* Trabajo de OTRAS personas, en memoria y nada más. Nunca se escribe en
      * `fts_machote_v1`: el respaldo de cada quien lleva lo suyo.
      *
@@ -172,7 +256,13 @@
     // Ya está a salvo aquí. Lo de arriba fue síncrono a propósito.
     ST.pulso = 'pendiente'; pintarPulso(); pintarPendientes();
 
-    A.empujar(ST.machotes).then(r => {
+    /* Los motivos que esta pantalla tenga anotados —hoy sólo el renombrado—
+     * viajan con el empujón: es lo que hace que el historial diga POR QUÉ
+     * cambió una versión y no sólo que cambió. Se limpian al salir, hayan
+     * subido o no: si el guardado falló, el nombre nuevo sigue local y el
+     * siguiente intento lo vuelve a mandar con su motivo. */
+    const motivos = ST.motivos; ST.motivos = {};
+    A.empujar(ST.machotes, motivos).then(r => {
       if (r && r.ok && r.subidos >= 0) {
         ST.pulso = A.pendientes(ST.machotes) === 0 ? 'guardado' : 'pendiente';
       } else {
@@ -243,8 +333,16 @@
         ? esc(m._dueno_nombre || m._dueno || 'El dueño') + ' recogió tu permiso sobre «' +
           esc(m.nombre || 'esa cotización') + '», así que ya no se pudo guardar.' + cola
       : err === 'CONFLICTO_DE_VERSION'
-        ? 'Otra persona guardó «' + esc(m.nombre || 'esa cotización') + '» mientras la ' +
-          'editabas.' + cola + ' Vuelve a abrirla antes de seguir, para no pisar su cambio.'
+        /* V1.27 · CON NOMBRE cuando el servidor lo manda. «Otra persona» es un
+         * misterio; «Ricardo Hernández» es una conversación. El servidor lo
+         * sabe desde siempre (`machote_version.autor`, del token verificado).
+         * Se conserva la frase vieja como respaldo: mientras el cambio del
+         * servidor no esté publicado, esto sigue funcionando igual (regla
+         * anti-trabón, CLAUDE.md §8 — el lado tolerante va primero). */
+        ? esc((r && (r.autor_nombre || r.autor)) || 'Otra persona') + ' guardó «' +
+          esc(m.nombre || 'esa cotización') + '» mientras la editabas.' +
+          ((r && r.version_actual) ? ' Va en la versión ' + esc(r.version_actual) + '.' : '') +
+          cola + ' Vuelve a abrirla antes de seguir, para no pisar su cambio.'
         : esc((r && r.mensaje) || 'No se pudo guardar esa cotización prestada.') + cola
     ) + '</span><span class="nogda-b">' +
       '<button class="btn" id="apCopiar">Copiar lo mío</button>' +
@@ -282,9 +380,18 @@
       const b = document.createElement('div');
       b.id = 'avPend'; b.className = 'nogda';
       b.setAttribute('role', 'alert');
+      /* V1.27 · el nombre de quien guardó, si el servidor lo mandó. Ver el
+       * aviso del prestado, arriba: mismo criterio y mismo respaldo. */
+      const quien = choque ? ((choque.autor_nombre || choque.autor) || null) : null;
+      const enVersion = (choque && choque.version_actual)
+        ? ' Va en la versión ' + esc(choque.version_actual) + '.' : '';
+      const conFolio = (choque && choque.folio_txt)
+        ? ' (' + esc(choque.folio_txt) + ')' : '';
       b.innerHTML = '<span>' + (choque
-        ? '<strong>Otra persona guardó "' + esc(choque.nombre || 'un machote') +
-          '" mientras lo editabas.</strong> Tu cambio sigue en este navegador y NO se perdió, ' +
+        ? '<strong>' + esc(quien || 'Otra persona') + ' guardó "' +
+          esc(choque.nombre || 'un machote') + '"' + conFolio +
+          ' mientras lo editabas.</strong>' + enVersion +
+          ' Tu cambio sigue en este navegador y NO se perdió, ' +
           'pero no se subió para no pisar el suyo. Vuelve a abrirlo antes de seguir.'
         : '<strong>Falta decir por qué.</strong> ' + esc(motivo.mensaje)) +
         '</span><span class="nogda-b"><button class="btn" id="apExp">Exportar</button>' +
@@ -537,7 +644,15 @@
   function top(t, s, b, back) {
     $('#tbT').textContent = t;
     $('#tbS').textContent = s;
-    const v = $('#tbV'); if (v) v.textContent = VERSION;
+    const v = $('#tbV');
+    if (v) {
+      v.textContent = VERSION;
+      // Media versión no es un detalle de pie de página: se marca donde se mira.
+      v.className = MEZCLA.length ? 'tb-ver mezcla' : 'tb-ver';
+      v.title = MEZCLA.length
+        ? 'La pantalla está corriendo archivos de dos versiones: ' + MEZCLA.join(' · ')
+        : 'Versión del módulo';
+    }
     const bb = $('#btnBack');
     const destino = back || '../index.html';
     if (destino.charAt(0) === '#') {
@@ -548,6 +663,35 @@
       bb.title = 'Volver a Comercial';
     }
   }
+  /* ── El aviso de MEDIA VERSIÓN ────────────────────────────────────────
+   *
+   * No es un `console.warn`: nadie abre la consola. Si la pantalla está
+   * corriendo archivos de dos versiones, los números pueden salir de un motor
+   * que no es el que esta pantalla espera — y eso NO se puede dejar pasar en
+   * silencio, que es justo el modo de falla que perseguimos en todo lo demás.
+   *
+   * Dice QUÉ está desfasado y ofrece la única acción que sirve: recargar
+   * saltándose el caché. */
+  function avisarMezcla() {
+    if (!MEZCLA.length || document.getElementById('avMezcla')) return;
+    const b = document.createElement('div');
+    b.id = 'avMezcla';
+    b.className = 'nogda mezcla';
+    b.setAttribute('role', 'alert');
+    b.innerHTML = '<span><strong>Esta pantalla está corriendo dos versiones a la vez.</strong> ' +
+      esc(MEZCLA.join('; ')) + '. Los números pueden no ser los de esta versión. ' +
+      'Recarga antes de seguir capturando.</span>' +
+      '<span class="nogda-b"><button class="btn" id="mzRecargar">Recargar</button></span>';
+    document.body.appendChild(b);
+    const bt = document.getElementById('mzRecargar');
+    if (bt) bt.addEventListener('click', function () {
+      /* El `?v=` del documento lo busta; los subrecursos ya van versionados,
+       * así que la recarga trae el juego completo y coherente. */
+      try { location.replace(location.pathname + '?v=' + encodeURIComponent(VERSION_ARCHIVO) + location.hash); }
+      catch (e) { location.reload(); }
+    });
+  }
+
   window.addEventListener('hashchange', render);
 
   /* El nombre del cliente sale de UNA sola función. Con el catálogo cargado
@@ -1132,7 +1276,19 @@
             'title="Copiar el folio">' + esc(fol) + '</button>'
           : '<span class="folio grande sin" title="El folio lo asigna el servidor al guardar. ' +
             'Mientras tanto esta cotización se identifica por su id de captura.">sin folio</span>') +
-        '<span class="cab-nombre">' + esc(m.nombre || 'Sin nombre') + '</span>' +
+        /* ── V1.27 · RENOMBRAR (pedido de Montalvo) ─────────────────────
+         * El dueño puede, en cualquier momento y sin ceremonia: un nombre no
+         * cambia ni el precio ni el permiso, y hoy la única forma de corregir
+         * un «test monty usd» era crear otra cotización.
+         *
+         * Queda en el HISTORIAL con el nombre viejo y el nuevo, que es lo que
+         * lo hace reversible: sin eso, renombrar borraría de qué se hablaba en
+         * el correo de la semana pasada. */
+        (soloLectura
+          ? '<span class="cab-nombre">' + esc(m.nombre || 'Sin nombre') + '</span>'
+          : '<input class="cab-nombre cel" data-nombre value="' + esc(m.nombre || '') + '" ' +
+            'placeholder="Sin nombre" title="El nombre de la cotización. Se puede cambiar; ' +
+            'el cambio queda en el historial.">') +
       '</div>';
 
     $('#vista').innerHTML = cabecera +
@@ -1378,10 +1534,12 @@
       (c.lugar.tiene
         ? '<div class="lugar-veredicto ' + (foraneo ? 'fuera' : 'sede') + '">' +
             (foraneo
-              ? '<strong>Cotización foránea.</strong> Hay que cobrar el traslado: ' +
-                'vuelos, hotel, viáticos y los días de viaje en mano de obra. ' +
-                'El revisador no la deja terminar sin eso.'
-              : '<strong>En la sede.</strong> No hace falta nada de viaje.') +
+              ? '<strong>Cotización foránea:</strong> se ejecuta fuera de Nuevo León, ' +
+                'así que hay traslado que cobrar. En cada sección con trabajo salen ' +
+                'los cinco conceptos —vuelos, hotel, viáticos, taxis y gasolina— y ' +
+                'cada uno necesita una decisión: su importe, o «no se ocupa». ' +
+                'Los días de viaje van en mano de obra.'
+              : '<strong>En la sede.</strong> Nuevo León es local: no hace falta nada de viaje.') +
           '</div>'
         : '<div class="lugar-veredicto falta"><strong>Falta decir dónde se ejecuta.</strong> ' +
           'De ahí sale si hay que cobrar traslado.</div>') +
@@ -1405,16 +1563,25 @@
       '<div class="tiny nota">Márcalo sólo si el cliente pone el traslado o la gente ya ' +
       'está en sitio. Queda anotado como decisión, no como olvido.</div>' +
       '<table class="hoja2"><tbody>' +
+      /* ── F · EL RECARGO SIGUE SIENDO SÓLO DE ESTADOS UNIDOS ────────────
+       * Montalvo propuso que aplicara fuera de Monterrey. NO se cambió: es una
+       * regla LABORAL de allá, no una consecuencia de viajar — un trabajo en
+       * Ciudad Juárez es foráneo y no necesariamente la lleva. La decisión es
+       * de Esteban con Ricardo y Montalvo, y está puesta en el issue.
+       * Lo que sí cambia aquí es el TEXTO: «No aplica» a secas se leía como
+       * «no se puede», y de ahí salió la propuesta. */
       '<tr><td class="et">Recargo fin de semana</td><td>' +
         (eua
           ? celPct('viaje.recargo_fin_semana', v.recargo_fin_semana, 'w80')
-          : '<span class="tiny nota">No aplica: es regla de Estados Unidos.</span>') +
+          : '<span class="tiny nota">Sólo en Estados Unidos: es una regla laboral de allá, ' +
+            'no un costo de viajar. Fuera de EUA el fin de semana va a tarifa normal.</span>') +
       '</td></tr>' +
       '<tr><td class="et">Recargo día festivo</td><td>' +
         (eua
           ? celPct('viaje.recargo_festivo', v.recargo_festivo, 'w80') +
-            '<div class="tiny n-warn">Sin confirmar. Vacío = tarifa normal.</div>'
-          : '<span class="tiny nota">No aplica: es regla de Estados Unidos.</span>') +
+            '<div class="tiny n-warn">Sin confirmar con nadie. Vacío = tarifa normal.</div>'
+          : '<span class="tiny nota">Sólo en Estados Unidos, por lo mismo que el de fin ' +
+            'de semana.</span>') +
       '</td></tr>' +
       '<tr><td class="et">Quién paga los días de viaje</td><td>' +
         '<select class="cel" data-cel="viaje.paga_dias">' +
@@ -1705,35 +1872,97 @@
       '</td><td colspan="2"></td><td class="vl mono calc fuerte" data-l="Con utilidad">' + mx(cs.ventaMo) + '</td></tr>' +
       '</tbody></table></div>';
 
-    /* ── CONCEPTOS DE VIAJE (V1.26) ───────────────────────────────────────
-     * Sólo aparece cuando la cotización es foránea: en una de Monterrey sería
-     * un bloque de ruido permanente.
+    /* ⚠️ V1.26 decía aquí que «los conceptos se ELIGEN», porque meter los cinco
+     * dejaría renglones vacíos que enseñan a ignorar la pantalla. Montalvo lo
+     * midió al revés en el uso real, y tiene razón: lo que hay que ELEGIR es
+     * lo que se olvida. Un renglón en cero se mira; uno que no está, no.
+     * El razonamiento viejo se queda escrito porque el nuevo lo contesta: los
+     * cinco renglones no se pueden ignorar, porque hasta que no se decidan el
+     * revisador no deja terminar. */
+    /* ── V1.27 · LOS CINCO CONCEPTOS, PUESTOS Y EN CERO ──────────────────
      *
-     * Los conceptos se ELIGEN. Meter los cinco siempre dejaría cinco renglones
-     * vacíos de vuelos y hotel en cada cotización, y renglones vacíos que
-     * nadie llena son exactamente lo que enseña a ignorar la pantalla. */
-    const yaPuestos = {};
-    (s.partidas || []).forEach(l => {
-      if (l.tipo === C.TIPO_VIAJE && l.descripcion) yaPuestos[C.llano(l.descripcion)] = true;
-    });
+     * Antes había que agregarlos con un botón. Lo que hay que agregar es
+     * exactamente lo que se olvida: el presupuesto de Albuquerque salió con el
+     * trabajo cobrado y sin hotel ni viáticos. Un renglón en cero que se ve es
+     * un recordatorio; uno que hay que agregar es una omisión esperando.
+     *
+     * La retícula se AUTOCURA, igual que la de mano de obra: se pinta desde
+     * `CONCEPTOS_VIAJE` y lo que falte se empuja a `s.partidas`. Por eso no
+     * hace falta migrar nada — un machote viejo que se vuelve foráneo estrena
+     * los cinco al abrirlo.
+     *
+     * ⚠️ Sólo cuando es foránea. Un machote de Nuevo León no gana renglones
+     * que nadie pidió, y los ocho viejos no se tocan. */
+    let cptsViaje = c.lugar.foraneo ? C.conceptosViaje(m, s) : [];
+    if (c.lugar.foraneo) {
+      cptsViaje.forEach(x => {
+        if (x.existe) return;
+        let i = (s.partidas || []).findIndex(l => !C.usadaPartida(l) && l.no_aplica !== true);
+        if (i < 0) {
+          s.partidas.push({ qty: '', unidad: '', tipo: '', descripcion: '',
+            pu: null, moneda: m.moneda, margen: null, link: '', comentario: '' });
+          i = s.partidas.length - 1;
+        }
+        const l = s.partidas[i];
+        l.tipo = C.TIPO_VIAJE; l.descripcion = x.label; l.unidad = x.unidad;
+        l.concepto = x.id;
+      });
+      /* ⚠️ Se vuelve a preguntar DESPUÉS de sembrar. La lista de arriba se
+       * calculó cuando los renglones todavía no existían, así que traía
+       * `idx: -1` para todos los que se acababan de crear — y con `idx:-1` la
+       * fila se pinta sin sus campos de cantidad y precio. Se vio en la
+       * captura a 380 px, no en el diff. */
+      cptsViaje = C.conceptosViaje(m, s);
+    }
+
+    /* Un renglón de viaje, como se ve en el bloque: su importe y el botón de
+     * «no se ocupa». Se pinta desde los conceptos, no desde las partidas, para
+     * que el orden sea SIEMPRE el mismo — vuelos, hotel, viáticos, taxis,
+     * gasolina — y no el del último que alguien agregó. */
+    const filaCpt = (x) => {
+      const l = (x.idx >= 0) ? s.partidas[x.idx] : null;
+      const p = 's:' + s.id + ':partidas:' + x.idx + ':';
+      const cl = l ? C.costoPartida(l, m, s) : null;
+      const estado = x.confirmado
+        ? '<span class="cpt-cero">no se ocupa</span>'
+        : (x.tieneValor ? '<span class="cpt-ok">' + mx((cl && cl.costo) || 0) + '</span>'
+                        : '<span class="cpt-falta">sin decidir</span>');
+      return '<tr class="cpt' + (x.resuelto ? ' resuelto' : ' pendiente') + '">' +
+        '<td class="rotulo" data-l="Concepto">' + esc(x.label) + '</td>' +
+        '<td data-l="QTY (' + esc((x.unidad || '').toLowerCase()) + ')">' +
+          (l ? celNum(p + 'qty', l.qty, 'w60') : '') + '</td>' +
+        '<td data-l="Precio unitario">' + (l ? celNum(p + 'pu', l.pu, 'w80') : '') + '</td>' +
+        '<td data-l="Importe" class="calc">' + estado + '</td>' +
+        '<td data-l="">' +
+          '<button class="chip-viaje mini' + (x.confirmado ? ' on' : '') + '"' +
+          ' data-cero="' + esc(s.id + '|' + x.id) + '"' +
+          ' title="' + (x.confirmado
+            ? 'Marcado como que no se ocupa. Tócalo para deshacer.'
+            : 'Marca que este concepto no se ocupa en esta cotización.') + '">' +
+          (x.confirmado ? '✓ no se ocupa' : 'no se ocupa') + '</button>' +
+        '</td></tr>';
+    };
+
+    const porResolver = cptsViaje.filter(x => !x.resuelto).length;
     const bloqueViaje = c.lugar.foraneo
-      ? '<div class="viaje-blk' + (c.renglonesViaje === 0 && !c.viaje.no_aplica ? ' falta' : '') + '">' +
+      ? '<div class="viaje-blk' + (porResolver && !c.viaje.no_aplica ? ' falta' : '') + '">' +
           '<div class="secc-tit">VIAJE' +
             '<span class="secc-sub"> · se cobra a costo, sin utilidad</span></div>' +
-          (c.renglonesViaje === 0 && !c.viaje.no_aplica
-            ? '<div class="aviso bad">Esta cotización se ejecuta en ' +
-              esc([m.ciudad, paisNom(m.pais)].filter(Boolean).join(', ')) +
-              ' y no trae nada de viaje. <strong>El revisador no la deja terminar así.</strong> ' +
-              'Agrega lo que aplique, o marca arriba que no se ocupa.</div>'
-            : '') +
-          '<div class="viaje-btns">' +
-            C.CONCEPTOS_VIAJE.map(x =>
-              '<button class="chip-viaje' + (yaPuestos[C.llano(x.label)] ? ' on' : '') + '"' +
-              ' data-concepto="' + esc(s.id + '|' + x.id) + '"' +
-              (yaPuestos[C.llano(x.label)] ? ' disabled title="Ya está en la lista"' : '') + '>+ ' +
-              esc(x.label) + '</button>').join('') +
-            kiwiBoton(m, c) +
-          '</div>' +
+          (c.viaje.no_aplica
+            ? '<div class="aviso">Marcado como que <strong>no se ocupan conceptos de viaje</strong> ' +
+              'en esta cotización. Queda anotado como decisión.</div>'
+            : (porResolver
+              ? '<div class="aviso bad">Se ejecuta en ' +
+                esc([m.ciudad, m.region, paisNom(m.pais)].filter(Boolean).join(', ')) +
+                ', fuera de Nuevo León. <strong>Faltan ' + porResolver +
+                (porResolver === 1 ? ' concepto' : ' conceptos') + ' por decidir.</strong> ' +
+                'Escríbele el importe, o márcalo como que no se ocupa. El revisador no la ' +
+                'deja terminar con conceptos sin mirar.</div>'
+              : '<div class="aviso ok">Los cinco conceptos están decididos.</div>')) +
+          '<div class="scroll"><table class="rejilla tarjetas viaje-tbl"><thead><tr>' +
+            '<th>Concepto</th><th>QTY</th><th>Precio unitario</th><th>Importe</th><th></th>' +
+          '</tr></thead><tbody>' + cptsViaje.map(filaCpt).join('') + '</tbody></table></div>' +
+          '<div class="viaje-btns">' + kiwiBoton(m, c) + '</div>' +
         '</div>'
       : '';
 
@@ -2192,6 +2421,22 @@
     /* Agregar un concepto de viaje: se mete como partida de tipo Viaje, en el
      * primer renglón libre. Reusa la retícula de captura que ya existe en vez
      * de inventar una segunda forma de capturar un gasto. */
+    /* V1.27 · renombrar. Se anota el motivo ANTES de tocar, con el nombre
+     * viejo todavía en la mano: después ya no hay de dónde sacarlo. */
+    $$('[data-nombre]').forEach(el => {
+      el.onchange = () => {
+        const antes = (m.nombre || '').trim();
+        const ahora = (el.value || '').trim();
+        if (ahora === antes) return;
+        if (!ahora) { el.value = antes; toast('El nombre no puede quedar vacío.'); return; }
+        m.nombre = ahora;
+        ST.motivos[m.id] = 'Renombrada: «' + (antes || 'sin nombre') + '» → «' + ahora + '»';
+        tocado(m);
+        render();
+        toast('Renombrada. El cambio queda en el historial.');
+      };
+    });
+
     $$('[data-consul]').forEach(el => {
       el.onclick = () => {
         const [ruta, hoy] = el.dataset.consul.split('|');
@@ -2200,22 +2445,31 @@
         pintarHoja(m); barra(m, C.calcular(m));
       };
     });
-    $$('[data-concepto]').forEach(el => {
+    /* V1.27 · «no se ocupa». Sustituye al botón de AGREGAR: los cinco ya
+     * están, así que lo que falta no es meterlos, es DECIDIRLOS. Marcar es
+     * reversible de un toque — si fuera irreversible, marcar de más costaría
+     * una cotización. */
+    $$('[data-cero]').forEach(el => {
       el.onclick = () => {
-        const [sid, cid] = el.dataset.concepto.split('|');
+        const [sid, cid] = el.dataset.cero.split('|');
         const sec = (m.secciones || []).find(x => x.id === sid);
         const cpt = C.CONCEPTOS_VIAJE.find(x => x.id === cid);
         if (!sec || !cpt) return;
-        let i = (sec.partidas || []).findIndex(l => !C.usadaPartida(l));
-        if (i < 0) { sec.partidas.push({ qty: '', unidad: '', tipo: '', descripcion: '',
-          pu: null, moneda: m.moneda, margen: null, link: '', comentario: '' });
-          i = sec.partidas.length - 1; }
-        const l = sec.partidas[i];
-        l.tipo = C.TIPO_VIAJE; l.descripcion = cpt.label; l.unidad = cpt.unidad;
-        l.qty = l.qty || 1;
+        const x = C.conceptosViaje(m, sec).find(y => y.id === cid);
+        if (!x || x.idx < 0) return;
+        const l = sec.partidas[x.idx];
+        if (l.no_aplica === true) {
+          delete l.no_aplica;
+          toast(cpt.label + ': vuelve a estar sin decidir.');
+        } else {
+          /* Marcar «no se ocupa» NO borra lo capturado: si alguien puso un
+           * importe y luego marca, el importe sigue ahí y vuelve al quitarlo.
+           * Borrarlo sería tirar trabajo por un clic. */
+          l.no_aplica = true;
+          toast(cpt.label + ': marcado como que no se ocupa.');
+        }
         tocado(m);
         pintarHoja(m); barra(m, C.calcular(m));
-        toast(cpt.label + ' agregado. Captura cantidad y precio.');
       };
     });
     $$('[data-frec]').forEach(el => {
@@ -2249,7 +2503,18 @@
       el.onchange = () => {
         const antes = el.dataset.cel === 'empresa_id' ? C.monedaPorDefecto(m) : null;
         const esNombre = el.dataset.cel.indexOf('nom:') === 0;
+        /* ⚠️ V1.27 · al cambiar de PAÍS se limpian estado y ciudad.
+         *
+         * Sin esto quedaban lugares que no existen, y no es hipotético: en las
+         * pruebas de Montalvo del 10-sep hay versiones guardadas con
+         * «Estados Unidos · Nuevo León · Monterrey» y «México · Ciudad de
+         * México · Monterrey» (COT-0013, versiones 7, 8 y 16). Eso viaja al PDF
+         * del cliente. Y desde V1.27 el ESTADO decide si hay viáticos, así que
+         * un estado que no es de ese país no es sólo feo: decide mal. */
+        const cambiaPais = el.dataset.cel === 'pais' &&
+          C.llano(el.value) !== C.llano(m.pais);
         aplicar();
+        if (cambiaPais) { m.region = ''; m.ciudad = ''; }
         // El nombre de la sección vive en la PESTAÑA, que se pinta fuera de la
         // hoja. Se corrige la pestaña en su lugar, sin repintar el libro: este
         // `change` llega durante el blur del campo, y repintar de raíz ahí
@@ -2435,6 +2700,10 @@
   };
 
   render();
+  /* PRIMERO el aviso de media versión, antes que cualquier otro: si la pantalla
+   * está corriendo dos versiones, eso manda sobre todo lo demás que se pueda
+   * decir. */
+  avisarMezcla();
   avisoPassword();
 
   /* ── El arranque, en dos tiempos ────────────────────────────────────────
