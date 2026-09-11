@@ -68,6 +68,11 @@ const MACHOTES_FIXTURE = (function () {
 const sembrarMachotes = (pg) => pg.addInitScript((lista) => {
   const sembrar = function () {
     try {
+      /* ⚠️ SÓLO si no hay nada. Sembrar encima pisaría lo que la prueba acaba
+       * de capturar — y hay pruebas que miden justamente que lo capturado
+       * sobreviva a recargar. La fixture es el punto de partida, no un estado
+       * que se reimponga en cada navegación. */
+      if (localStorage.getItem('fts_machote_v1')) return;
       localStorage.setItem('fts_machote_v1', JSON.stringify({
         v: 1, guardado_at: new Date().toISOString(), machotes: lista, handoff: {}
       }));
@@ -718,14 +723,24 @@ await sembrarMachotes(p);
     await p.waitForTimeout(280);
     const desp = await p.textContent('.fija .mono');
     if (antes === desp) throw new Error('cambiarlo no movió el precio: ' + antes);
-    // Y lo guardado sigue siendo la RAZÓN, no el porcentaje.
+
+    /* Y lo guardado sigue siendo la RAZÓN, no el porcentaje.
+     *
+     * ⚠️ Hay que ESPERAR al autoguardado (500 ms de rebote). Antes esta lectura
+     * caía a los 280 ms y encontraba el almacén todavía vacío, así que
+     * `guardado` era `null` y la comprobación de abajo —que está escrita para
+     * saltarse el caso -no se llegó a guardar-— no comprobaba nada. Pasaba en
+     * verde sin medir. Es la trampa de §20 #11: un vacío se ve igual que un
+     * acierto. */
+    await p.waitForTimeout(900);
     const guardado = await p.evaluate(() => {
       const c = localStorage.getItem('fts_machote_v1');
       if (!c) return null;
       const m = JSON.parse(c).machotes.find(x => x.id === 'M-1043');
       return m ? m.factor_proteccion : null;
     });
-    if (guardado !== null && Math.abs(guardado - 0.10) > 1e-6)
+    if (guardado === null) throw new Error('no llegó a guardarse nada');
+    if (Math.abs(guardado - 0.10) > 1e-6)
       throw new Error('guardó ' + guardado + ', esperaba 0.10');
     console.log('   con tc=18:', antes.trim(), '→ con factor 10%:', desp.trim());
   });
@@ -2604,16 +2619,54 @@ await sembrarMachotes(w);
    * sin red, que lo local nunca se pierde, y que el pulso no miente. Que el
    * servidor hace cumplir sus reglas ya se probó contra la base real. */
 
-  await paso('la DEMO no se sube al servidor: no es trabajo de nadie', async () => {
-    await ir('#/');                      // localStorage limpio => en pantalla va la demo
-    await p.evaluate(() => { window.__guardadosAlServidor = 0; });
-    await p.reload(); await p.waitForTimeout(1200);
-    const n = await p.evaluate(() => window.__guardadosAlServidor || 0);
-    if (n) throw new Error('subió ' + n + ' machote(s) de ejemplo al servidor');
-    // Y la pantalla sigue mostrando la demo, no una lista vacía.
-    const filas = await p.$$eval('[data-hist]', els => els.length);
-    if (!filas) throw new Error('se quedó sin machotes: borró la demo');
-    console.log('    0 subidas · ' + filas + ' machote(s) de ejemplo intactos en pantalla');
+  await paso('un machote MARCADO como ejemplo no llega a la lista ni al servidor', async () => {
+    /* V1.27 · la premisa de esta prueba cambió. Decía «localStorage limpio =>
+     * en pantalla va la demo», y ya no: los ejemplos se retiraron de la lista
+     * porque tres veces acabaron en producción.
+     *
+     * Lo que sigue habiendo —y es lo que se afirma aquí— son las DOS defensas
+     * en profundidad para lo que ya esté guardado en algún navegador: el
+     * ejemplo marcado no se pinta, y aunque se pintara, `empujar` lo rechaza. */
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    await sembrarGeo(q);
+    await q.addInitScript(() => {
+      try {
+        localStorage.clear();
+        localStorage.setItem('fts_suite_session', JSON.stringify({
+          token: 'prueba.prueba.prueba', actor: 'zz.prueba', nombre: 'ZZ Prueba',
+          empleado_id: null, scopes: ['comercial:read'],
+          exp: Math.floor(Date.now() / 1000) + 3600, debe_cambiar_password: false }));
+        localStorage.setItem('fts_machote_v1', JSON.stringify({ v: 1,
+          guardado_at: new Date().toISOString(), handoff: {}, machotes: [
+            { _demo: true, id: 'M-1041', nombre: 'Ejemplo de fábrica',
+              estado: 'borrador', moneda: 'MXN', secciones: [] }
+          ] }));
+      } catch (e) {}
+      window.__guardadosAlServidor = 0;
+      const orig = window.fetch;
+      window.fetch = function (u, o) {
+        const s = String(u);
+        if (s.indexOf('/comercial/machote-guardar') >= 0) {
+          window.__guardadosAlServidor++;
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, version: 1 }) });
+        }
+        if (s.indexOf('/webhook/comercial/') >= 0) return new Promise(function () {});
+        return orig.apply(this, arguments);
+      };
+    });
+    try {
+      await q.goto(BASE); await q.waitForTimeout(1400);
+      const n = await q.evaluate(() => window.__guardadosAlServidor || 0);
+      if (n) throw new Error('subió ' + n + ' machote(s) de ejemplo al servidor');
+      const filas = await q.$$eval('table.lista tbody tr', els => els.length);
+      if (filas !== 0) throw new Error('el ejemplo marcado se pintó igual: ' + filas + ' renglón(es)');
+      // Y el candado de `empujar`, por si un día vuelve a la lista.
+      const r = await q.evaluate(() => window.MachoteAlmacen.pendientes([
+        { _demo: true, id: 'M-1041', nombre: 'x' }
+      ]));
+      if (r !== 0) throw new Error('`pendientes` cuenta un ejemplo como por subir: ' + r);
+      console.log('    0 subidas · 0 en la lista · el candado de empujar sigue puesto');
+    } finally { await q.close(); }
   });
 
   await paso('con el servidor colgado: se guarda aquí y el pulso NO miente', async () => {
@@ -2629,7 +2682,12 @@ await sembrarMachotes(q);
           empleado_id: null, scopes: ['comercial:read'],
           exp: Math.floor(Date.now() / 1000) + 3600, debe_cambiar_password: false
         }));
-        localStorage.removeItem('fts_machote_v1');
+        /* ⚠️ V1.27 · ya NO se borra `fts_machote_v1`. Antes daba igual —la
+         * aplicación arrancaba con los cuatro ejemplos— pero los ejemplos se
+         * retiraron, así que borrarlo dejaba esta prueba sin nada que teclear.
+         * La fixture la siembra `sembrarMachotes`, que es de dónde tiene que
+         * salir. Sí se borra la libreta de sincronización: lo que se mide es
+         * que lo tecleado quede PENDIENTE de subir. */
         localStorage.removeItem('fts_machote_sync_v1');
       } catch (e) {}
       const orig = window.fetch;
@@ -3233,6 +3291,8 @@ await sembrarMachotes(q);
      * pantalla, y no lo cazaría ninguna prueba de que "se ve bien". */
     const ctx = await b.newContext({ viewport: { width: 1000, height: 900 } });
     const q = await ctx.newPage();
+    await sembrarGeo(q);
+    await sembrarMachotes(q);
     await q.addInitScript(() => {
       try {
         localStorage.setItem('fts_suite_session', JSON.stringify({
@@ -3485,6 +3545,8 @@ await sembrarMachotes(q);
   await paso('desglose: arranca a prorrata, se puede mover y la suma debe cuadrar', async () => {
     const ctx = await b.newContext({ viewport: { width: 1000, height: 900 } });
     const q = await ctx.newPage();
+    await sembrarGeo(q);
+    await sembrarMachotes(q);
     await q.addInitScript(() => {
       try {
         localStorage.clear();
@@ -4614,49 +4676,59 @@ await sembrarMachotes(q);
     console.log('    la cotización sigue en «' + est + '» con el lugar en Dallas');
   });
 
-  await paso('V1.26 · foránea sin viaje: se ve el bloqueo y se dice qué hacer', async () => {
+  await paso('V1.27 · foránea sin decidir: se ve el bloqueo, dice dónde y cuántos faltan', async () => {
+    /* Era la prueba de V1.26 «foránea sin viaje». Cambió porque cambió la
+     * regla: ya no se AGREGAN conceptos con un botón —los cinco están puestos—
+     * y lo que el revisador exige es que cada uno esté DECIDIDO. Lo que se
+     * sigue afirmando es lo mismo de siempre: que el bloqueo se VE, que dice
+     * dónde se ejecuta, y que ofrece la salida. */
     await ir('#/m/M-1041');
     await p.click('[data-frec*="San Antonio"]');
     await p.waitForTimeout(500);
     await hoja('Suministro');
-    await p.waitForTimeout(500);
+    await p.waitForTimeout(600);
 
     const t = (await p.textContent('.viaje-blk')).replace(/\s+/g, ' ');
     if (!/no la deja terminar/i.test(t))
       throw new Error('no dice que bloquea: ' + t.slice(0, 160));
     if (!/San Antonio/.test(t)) throw new Error('no dice dónde se ejecuta: ' + t.slice(0, 160));
-    if (!/marca arriba que no se ocupa/i.test(t))
+    if (!/no se ocupa/i.test(t))
       throw new Error('no ofrece la salida explícita: ' + t.slice(0, 160));
-
-    // Y los cinco conceptos, elegibles: no aparecen todos puestos, se agregan.
-    const chips = await p.$$eval('[data-concepto]', e => e.map(x => x.textContent.trim()));
-    if (chips.length !== 5) throw new Error('conceptos ofrecidos: ' + JSON.stringify(chips));
+    if (!/Faltan 5 conceptos por decidir/i.test(t))
+      throw new Error('no dice CUÁNTOS faltan: ' + t.slice(0, 200));
 
     // La barra tiene que contarlo como dura.
     const barra = (await p.textContent('.fija')).replace(/\s+/g, ' ');
     if (!/duras/.test(barra)) throw new Error('la barra no cuenta duras: ' + barra);
 
-    // Agregar UNO desbloquea, y el renglón entra como Viaje.
-    await p.click('[data-concepto*="vuelos"]');
-    await p.waitForTimeout(700);
-    /* ⚠️ `textContent` NO ve el valor de un `<input>`, y la descripción de una
-     * partida es un campo, no texto. Buscar «Vuelos» con `:has-text` o con
-     * `textContent` no encuentra nada aunque el renglón esté ahí — que es
-     * exactamente lo que pasó la primera vez que corrió esta prueba. */
-    const r = await p.evaluate(() => {
-      const filas = [...document.querySelectorAll('table.rejilla tbody tr')];
-      const f = filas.find(x => {
-        const d = x.querySelector('[data-cel$=":descripcion"]');
-        return d && /Vuelos/i.test(d.value);
-      });
-      const sel = f && f.querySelector('[data-cel$=":tipo"]');
-      return { hay: !!f, tipo: sel ? sel.value : null,
-               sigue_avisando: !!document.querySelector('.viaje-blk .aviso.bad') };
+    /* Capturar UNO ya no desbloquea —ése era justo el agujero de Albuquerque—
+     * pero sí baja la cuenta y el renglón entra como Viaje.
+     *
+     * ⚠️ `textContent` NO ve el valor de un `<input>`, y la descripción de una
+     * partida es un campo, no texto: se busca por `.value`. */
+    const ruta = await p.evaluate(() => {
+      const d = [...document.querySelectorAll('[data-cel$=":descripcion"]')]
+        .find(x => /^Vuelos$/i.test(x.value));
+      return d ? d.dataset.cel.replace(/descripcion$/, '') : null;
     });
-    if (!r.hay) throw new Error('no entró el renglón de vuelos');
-    if (r.tipo !== 'Viaje') throw new Error('entró con tipo: ' + r.tipo);
-    if (r.sigue_avisando) throw new Error('sigue avisando después de agregarlo');
-    console.log('    bloquea, dice dónde y qué hacer · «+ Vuelos» lo resuelve y entra como Viaje');
+    if (!ruta) throw new Error('el renglón de Vuelos no salió solo');
+    await p.fill('[data-cel="' + ruta + 'qty"]', '2');
+    await p.dispatchEvent('[data-cel="' + ruta + 'qty"]', 'change');
+    await p.fill('[data-cel="' + ruta + 'pu"]', '9000');
+    await p.dispatchEvent('[data-cel="' + ruta + 'pu"]', 'change');
+    await p.waitForTimeout(800);
+
+    const r = await p.evaluate((rt) => {
+      const tipo = document.querySelector('[data-cel="' + rt + 'tipo"]');
+      const av = document.querySelector('.viaje-blk .aviso.bad');
+      return { tipo: tipo ? tipo.value : null,
+               aviso: av ? av.textContent.replace(/\s+/g, ' ') : null };
+    }, ruta);
+    if (r.tipo !== 'Viaje') throw new Error('el renglón no es de tipo Viaje: ' + r.tipo);
+    if (!r.aviso) throw new Error('con UN concepto capturado ya dejó de avisar: es el caso Albuquerque');
+    if (!/Faltan 4 conceptos/i.test(r.aviso))
+      throw new Error('no bajó la cuenta a 4: ' + r.aviso);
+    console.log('    bloquea, dice dónde y cuántos · un vuelo capturado baja a 4, NO desbloquea');
   });
 
   await paso('V1.26 · una cotización de Monterrey no pide nada de viaje', async () => {
@@ -4704,8 +4776,9 @@ await sembrarMachotes(q);
     await p.click('[data-frec*="San Antonio"]');
     await p.waitForTimeout(500);
     await hoja('Suministro');
-    await p.waitForTimeout(500);
-    await p.click('[data-concepto*="vuelos"]');
+    /* V1.27 · ya no hay botón «+ Vuelos»: el renglón sale solo, en cero. Lo que
+     * esta prueba mide sigue igual —que el precio diga de cuándo es— sólo que
+     * ahora empieza desde un renglón que ya está ahí. */
     await p.waitForTimeout(700);
 
     // Sin precio todavía no pregunta nada: no hay número que fechar.
