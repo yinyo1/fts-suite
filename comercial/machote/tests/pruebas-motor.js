@@ -143,6 +143,11 @@ es(tieneDura(mismoEstado, 'viaje-sin-resolver'), false,
  * cinco conceptos esté decidido». Es más estricta, no menos. */
 const fuera = C.machoteNuevo({ nombre: 'foráneo' });
 fuera.pais = 'US'; fuera.region = 'Nuevo México'; fuera.ciudad = 'Albuquerque';
+/* Con TRABAJO capturado. Una sección en blanco no exige decidir el viaje —no
+ * aporta nada a la cotización y el candado sería ruido—; en cuanto hay gente
+ * que mover, la exigencia es real. */
+const moFuera = fuera.secciones[0].mo.find(l => l.rol === 'tecnicos');
+moFuera.qty = 40; moFuera.personas = 2; moFuera.pu = 140;
 es(tieneDura(fuera, 'viaje-sin-resolver'), true, 'regla · foráneo sin decidir BLOQUEA');
 es(R.revisar(fuera).puedeConfirmar, false, 'regla · y por eso no se deja terminar');
 eq(C.calcular(fuera).viajePorResolver, 5, 'regla · los cinco conceptos sin decidir');
@@ -179,6 +184,13 @@ es(tieneDura(resuelto, 'partida-sin-precio'), false,
 
 // Un «no se ocupa» NO es un importe: el viaje sigue costando cero.
 eq(C.calcular(resuelto).costoViaje, 18000, 'regla · marcar en cero no inventa costo');
+
+// Una sección EN BLANCO no exige nada: no hay gente que mover.
+const vacioFuera = C.machoteNuevo({ nombre: 'foráneo en blanco' });
+vacioFuera.pais = 'US'; vacioFuera.region = 'Nuevo México'; vacioFuera.ciudad = 'Albuquerque';
+eq(C.calcular(vacioFuera).viajePorResolver, 0,
+   'regla · una sección sin nada capturado no exige decidir el viaje');
+es(tieneDura(vacioFuera, 'viaje-sin-resolver'), false, 'regla · y por eso no bloquea');
 
 // O marcarlo todo de una vez. Y entonces queda DICHO, no olvidado.
 const marcado = JSON.parse(JSON.stringify(fuera));

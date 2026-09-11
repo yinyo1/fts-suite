@@ -513,7 +513,12 @@
     const mg = margenes(m, s);
     const sinPrecio = vacio(linea.pu);
     const pu = sinPrecio ? 0 : num(linea.pu);
-    const costo = aMonedaDoc(pu * num(linea.qty), linea.moneda, m);
+    /* V1.27 · «no se ocupa» cuesta CERO, aunque el renglón traiga un importe
+     * capturado antes. El importe se conserva en el documento a propósito —
+     * quitar la marca lo devuelve, y borrarlo al marcar sería tirar trabajo
+     * por un clic— pero no suma mientras la marca esté puesta. */
+    const noAplica = linea.no_aplica === true;
+    const costo = noAplica ? 0 : aMonedaDoc(pu * num(linea.qty), linea.moneda, m);
     const sinTipo = TIPOS.indexOf(linea.tipo) === -1;
     const esViaje = linea.tipo === TIPO_VIAJE;
     /* VIAJE = multiplicador 1, SIEMPRE. Hotel, gasolina, taxis y vuelos se
@@ -546,11 +551,8 @@
      * el valor de los vuelos, y el peso de cada bloque en el costo saldría
      * torcido. Son gastos de otra naturaleza y se ven como tales. */
     let costoViaje = 0, viajeConMargen = 0, renglonesViaje = 0;
-    /* V1.27 · cuántos de los cinco conceptos siguen sin decisión. Sólo importa
-     * cuando la cotización es foránea y no se marcó que el viaje no aplica. */
+    // V1.27 · el estado de los cinco conceptos de viaje de ESTA sección.
     const cptsViaje = conceptosViaje(m, s);
-    const viajePorResolver = (esForaneo(m) && !viajeDe(m).no_aplica)
-      ? cptsViaje.filter(x => !x.resuelto).length : 0;
     const monedas = {};
 
     (s.mo || []).forEach(l => {
@@ -574,6 +576,17 @@
       if (c.sinLink && !vacio(l.pu)) sinLink++;
       if (l.moneda) monedas[l.moneda] = 1;
     });
+
+    /* Cuántos conceptos de viaje siguen sin decisión.
+     *
+     * Sólo cuenta en una sección que TENGA ALGO. Una sección en blanco no
+     * aporta nada a la cotización, y exigirle que decida sus cinco conceptos
+     * convertiría el candado en ruido — y un candado que es ruido se aprende a
+     * saltar. Con trabajo capturado, la exigencia es real: ahí es donde se va
+     * la gente, y donde se olvida el hotel. */
+    const seccionConAlgo = costoMoTot > 0 || costoMat > 0 || costoViaje > 0;
+    const viajePorResolver = (esForaneo(m) && !viajeDe(m).no_aplica && seccionConAlgo)
+      ? cptsViaje.filter(x => !x.resuelto).length : 0;
 
     return {
       id: s.id, nombre: s.nombre,
