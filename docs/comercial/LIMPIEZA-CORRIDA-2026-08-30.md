@@ -5,11 +5,19 @@ Ejecución de los lotes L1–L4 autorizados en el issue #131, con el workflow
 
 **Resultado: 1,859 leads → 154 vivos.** 1,705 archivados, ninguno borrado.
 
+> ⚠️ **Dos decisiones de esta corrida se revirtieron el 4-sep-2026.** Los ganados
+> volvieron a estar activos y *Qualified* volvió a ser etapa propia. Lo de abajo
+> queda como el registro de lo que pasó el 30-ago; el estado vigente está en
+> [Reversiones — 4-sep-2026](#reversiones--4-sep-2026), al final.
+
 ---
 
 ## Conteos por etapa
 
 De **12 etapas a 4**. Ninguna se borró: las fusionadas quedan vacías.
+
+> Vigente desde el 4-sep-2026: **5 etapas de pipeline + Ganado**. *Qualified* (21)
+> volvió y *Proyecto Ganado* (8) volvió a activo. Ver las reversiones al final.
 
 | Etapa | Antes | Después | Qué pasó |
 |---|---:|---:|---|
@@ -107,3 +115,127 @@ updates mientras las notas siguen pendientes — no confundir "el conteo ya cuad
   por dándole, con el invariante escrito: *estaban `active=true`; restaurar =
   `active:true` + `stage_id` del grupo + `dndole` del grupo + `lost_reason_id:false`*.
 - `dump-pre-limpieza-so-usd-20260829.json.gz` — las 231 SO del universo de L6.
+
+---
+
+## Reversiones — 4-sep-2026
+
+Dos decisiones del 30-ago se revirtieron. Ninguna toca los 1,185 de CANCELADO,
+que se quedan archivados.
+
+### R3 · Se desarchivan los 532 "Proyecto Ganado"
+
+**Qué se revirtió.** El lote L3 archivó 532 leads en etapa *Proyecto Ganado*
+(los 530 que ya estaban ahí más los 2 que L2 fusionó desde *Proyecto Ganado -
+Con PO*). Vuelven a `active=true`, en la misma etapa.
+
+**Por qué.**
+
+1. **Se desviaba de la convención de Odoo:** lo ganado se queda activo, lo
+   cancelado se archiva. Nosotros archivábamos ambos, con lo que el archivado
+   dejó de significar "esto se canceló" y pasó a significar "esto no quiero
+   verlo en la hoja".
+2. **Los ganados son el histórico** que el asistente del machote
+   ([#148](https://github.com/yinyo1/fts-suite/issues/148)) necesita consultar.
+   Archivado los vuelve más difíciles de alcanzar: todo consumidor tiene que
+   acordarse de pedir `active in [true, false]` — el mismo `active_test`
+   implícito que ya mordió en Carga MO (§19 de `CLAUDE.md`).
+
+**La regla que queda.** La etapa decide qué se ve; el archivado se reserva para
+cancelados; **filtrar pipeline vivo es trabajo de la vista**, no del estado
+global del registro. Queda escrita en el ROADMAP (§5.4).
+
+**Cómo se ejecutó.** Por el mismo workflow `comercial/limpieza-2026-08`
+(`buJ1oxU7OpwVCxlk`), con un lote nuevo **`R3`** que **reusa la misma lista
+congelada** `L3.ids` del JSON pineado por SHA `5127bedd` — no re-deriva nada, y
+la acción es la inversa exacta: `active=true`. No toca `stage_id`, ni
+`x_studio_dndole`, ni `lost_reason_id`.
+
+**Verificación previa (antes de escribir).** Los ids salieron del respaldo en
+SharePoint (`rollback-estado-previo-leads-20260829.json`), no de una derivación
+nueva: `por_etapa["8"]` = 530 ids **+** `por_etapa["4"]` = 2 ids (48 y 1398) =
+**532**, idénticos id por id a la lista congelada. Contra Odoo, los 532 estaban
+`active=false` en stage 8 — un solo grupo, sin sobrantes ni faltantes.
+
+**Ejecución.** `87421`, manual, `success`, 00:09:12 → 00:15:55 UTC (6m43s).
+532 desarchivados + 532 notas de chatter. Antes, un dry-run (`87408`) confirmó
+532 ids planeados, una sola nota distinta y **solo tres claves por operación**
+(`_ruta`, `lead_id`, `nota`) — o sea, ningún otro campo en el payload.
+
+Nota de chatter en cada uno:
+
+> `[reversion-2026-09] L3 los había archivado; se desarchivan porque lo ganado se`
+> `queda activo en Odoo y el historial debe seguir consultable.`
+
+### Qualified (21) vuelve como etapa propia
+
+L2 la había fusionado en *Lead Calificado/Por cotizar* (15). Montalvo confirmó
+que **tiene uso real de proceso**, así que vuelve. **Esteban ya había movido los
+leads a mano** antes de esta corrida (`write_date` 2026-09-04 23:32–23:34 UTC =
+17:32 CST): los 9 de la lista —1879, 2080, 2128, 2134, 2153, 2190, 2197, 2198,
+2200— **más un décimo, el 2189** ("Enchaquetado de reactores quimicos"), que
+venía de la etapa 15. CC no escribió nada aquí: solo verificó y reporta.
+
+En Odoo *Qualified* tiene `sequence=3`, o sea va **después** de *Cotizacion
+Enviada* (`sequence=2`), no antes.
+
+### Conteos medidos contra Odoo
+
+Medidos con `odoo_agrupar` sobre `crm.lead`, no leídos del reporte del workflow.
+"Antes" = 2026-09-04 ~23:40 UTC, justo antes de escribir.
+
+| Etapa | Activos antes | Activos después | Archivados antes | Archivados después |
+|---|---:|---:|---:|---:|
+| Prospecto Lead (17) | 23 | 23 | 0 | 0 |
+| Lead Calificado/Por cotizar (15) | 34 | **35** | 0 | 0 |
+| Cotizacion Enviada (5) | 54 | 54 | 2 | 2 |
+| Qualified (21) | 10 | 10 | 0 | 0 |
+| Proyecto Ganado (8) | 0 | **532** | 532 | **0** |
+| Revisar (18) | 44 | 44 | 0 | 0 |
+| CANCELADO (9) | 0 | 0 | 1,185 | 1,185 |
+| **Total** | **165** | **698** | **1,719** | **1,187** |
+
+Los archivados quedan en **1,187**: los 1,185 de CANCELADO más 2 sueltos en
+*Cotizacion Enviada*. Es el número esperado.
+
+**El +1 de la etapa 15 no es de esta corrida.** Es el lead **2224**
+("Reubicación de Chillers entre Posiciones"), creado a las 23:56:37 UTC, en
+medio de la ventana. Se anota para que el delta no quede sin explicar: R3 solo
+tocó ids de la etapa 8.
+
+**Estado de los 532 después** (read-back independiente): los 532 en un solo
+grupo `stage_id=8, active=true`; **`lost_reason_id` vacío en los 532**;
+`x_studio_dndole` intacto (29 Aldo · 40 Angel · 11 Diego · 4 Esteban · 26
+Montalvo · 26 Yusti · 396 sin valor — los valores de ex-FTS siguen ahí porque L4
+solo tocó los leads vivos, no los ganados).
+
+Crudo de tres de ellos, incluidos los 2 que venían de la etapa 4:
+
+```
+id   name                                  active stage_id        dndole  lost_reason_id  write_date (UTC)
+48   Tope de puerta Merik Cedis guadalupe  si     Proyecto Ganado                         2026-09-05 00:09:16
+1398 5S in the Warehouse                   si     Proyecto Ganado  Yusti                  2026-09-05 00:11:47
+2195 Suministro e instalación de injerto…   si     Proyecto Ganado                        2026-09-05 00:12:36
+```
+
+**Lo único no verificado contra Odoo: las notas de chatter.** El MCP de Odoo
+tiene `mail.message` en denylist dura, así que no se pueden leer desde CC. La
+evidencia es el reporte del workflow —el nodo `Odoo - Nota chatter` entregó
+**532 items**, ejecución en `success`, sin error— que es el reporte del proceso,
+no la medición del destino. Spot check para Esteban: abrir el lead 48 en Odoo y
+ver la nota `[reversion-2026-09]` en el chatter.
+
+### Cambio en el workflow
+
+`comercial/limpieza-2026-08` pasó de 13 a 14 nodos. El diff se verificó
+server-side (`get_workflow_versions_diff`) y son exactamente tres cosas:
+
+- nodo nuevo `Odoo - R3 desarchivar` (`crm.lead` update, `active` = `={{ true }}`);
+- `Code - Plan`: dos hunks — `'R3'` agregado a `LOTES` y la rama `R3`. El resto
+  del código quedó byte a byte igual, incluidas las seis reglas del Switch;
+- séptima salida del Switch para `R3`; el fallback `SinEscribir` pasó al índice 7.
+
+Llave de reversa: versión `66d15ff6-5dbc-4962-8971-ce96893d8d61` (la del 30-ago),
+restaurable con `restore_workflow_version`. El workflow sigue **inactivo y sin
+versión publicada** — por eso R3 corrió en modo manual, igual que los lotes del
+30-ago.
