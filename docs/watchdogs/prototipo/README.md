@@ -36,3 +36,29 @@ lo mismo porque leen el mismo snapshot y ninguna recalcula nada.
 `correo-lunes.png` · `correo-diario.png` · `correo-escritura-fallida.png` — del renderizador
 del correo tal como está desplegado hoy, que todavía **no** tiene las cinco secciones: eso
 entra con el edit grande.
+
+## 🏗️ `plataforma-paneles.html` — el canónico DENTRO del armazón
+
+Prototipo de la decisión de arquitectura (`docs/arquitectura/PLATAFORMA_PANELES.md`,
+enlazado a #226). Trae el semáforo **tal cual** —su CSS y su JS salieron de
+`semaforo-modulo.html` extraídos programáticamente, no transcritos— montado en el
+armazón de paneles: menú de paneles a la izquierda (visible **aunque sólo haya uno**),
+cabecera con quién entró y a qué se refiere el número, botón *Actualizar*, salvedades y
+pie con la leyenda de color.
+
+Incluye un segundo panel, **Rentabilidad**, que es una **maqueta de contrato con números
+inventados** y lo dice en pantalla. No es un diseño: está para comprobar que el sobre y
+las piezas comunes no quedaron hechos a la medida del semáforo — alcance de **periodo**
+en vez de instante, tabla **jerárquica con sumas**, y una **leyenda de color** que
+significa otra cosa.
+
+Dos casillas simulan los permisos (`semaforo:read` / `rentabilidad:read`) para ver las
+tres situaciones, incluida la de quien no carga ningún panel.
+
+Capturas: `plat-1440-semaforo.png` · `plat-430-semaforo.png` ·
+`plat-1440-rentabilidad.png` · `plat-430-rentabilidad.png` · `plat-1440-sin-acceso.png`.
+Revisado mirándolo a los dos anchos: cero `pageerror`, cero `console.error`, cero scroll
+horizontal de página.
+
+**El canónico del FORMATO del semáforo sigue siendo `semaforo-modulo.html`.** Éste no lo
+sustituye: lo enmarca.

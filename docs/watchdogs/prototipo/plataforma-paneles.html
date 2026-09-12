@@ -1,5 +1,47 @@
-<!doctype html><meta charset="utf-8"><title>Semaforo - prototipo canonico</title>
+<!doctype html><meta charset="utf-8"><title>Plataforma de paneles - prototipo</title>
 <style>
+/* ══ ARMAZON (comun a todos los paneles) — nada de aqui sabe que existe el semaforo ══ */
+ .app-top{background:#1f2328;color:#fff;padding:10px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+ .app-top .marca{font-weight:700;font-size:14px;letter-spacing:.3px}
+ .app-top .quien{margin-left:auto;font-size:12px;color:#c9cdd3;text-align:right;line-height:1.5}
+ .app-top .quien code{background:#33383f;border-radius:3px;padding:0 4px}
+ .layout{display:flex;gap:14px;max-width:1180px;margin:0 auto;padding:14px 16px;align-items:flex-start}
+ .rail{flex:0 0 196px;background:#fff;border:1px solid var(--linea);border-radius:10px;padding:10px;position:sticky;top:14px}
+ .rail h3{font-size:10.5px;letter-spacing:.9px;color:var(--gris);margin:2px 0 8px;text-transform:uppercase}
+ .pitem{display:block;width:100%;text-align:left;border:0;background:transparent;border-radius:7px;
+        padding:8px 10px;font:inherit;font-size:13px;cursor:pointer;color:var(--tinta);line-height:1.3}
+ .pitem:hover{background:#f1f3f6}
+ .pitem[aria-current=page]{background:var(--tinta);color:#fff;font-weight:600}
+ .pitem .sub{display:block;font-size:11px;color:var(--gris);margin-top:1px}
+ .pitem[aria-current=page] .sub{color:#b9bec6}
+ .rail .nota{font-size:11px;color:var(--gris);border-top:1px solid var(--linea);margin-top:9px;padding-top:8px;line-height:1.45}
+ .main{flex:1 1 auto;min-width:0}
+ .pcab{background:#fff;border:1px solid var(--linea);border-radius:10px;padding:13px 16px;margin-bottom:10px}
+ .pcab .r1{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+ .pcab h1{font-size:19px;margin:0}
+ .pcab .lema{font-size:12.5px;color:var(--gris);margin-top:2px}
+ .alcance{font-size:12px;color:#4b5563;background:#f4f6f8;border-radius:7px;padding:7px 10px;margin-top:10px}
+ .alcance b{font-variant-numeric:tabular-nums}
+ .salv{background:#fff8e1;border:1px solid #f0d38a;border-radius:10px;padding:11px 14px;font-size:12.5px;margin-bottom:10px}
+ .salv b{display:block;margin-bottom:3px}
+ .salv ul{margin:0;padding-left:0}
+ .salv li{list-style:none;border-top:1px solid #f0d38a;padding:5px 0}
+ .salv li:first-child{border-top:0}
+ .leyenda{font-size:12px;color:var(--gris);padding:2px 2px 22px;line-height:1.6}
+ .sim{background:#ede7f6;border:1px solid #c3b0e0;border-radius:8px;padding:9px 12px;font-size:12.5px;margin-bottom:12px}
+ .sim label{margin-right:14px;cursor:pointer}
+ /* tabla reagrupable: la usan los DOS paneles, y las columnas llegan en la respuesta */
+ table.rg{width:100%;border-collapse:collapse;font-size:13px;background:#fff}
+ table.rg th,table.rg td{border-bottom:1px solid var(--linea);padding:7px 9px;text-align:left;vertical-align:top}
+ table.rg th{font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:var(--gris);cursor:pointer;white-space:nowrap}
+ table.rg td.num,table.rg th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+ table.rg tr.grp td{background:#f4f6f8;font-weight:600}
+ table.rg tr.tot td{background:#eef1f4;font-weight:700;border-top:2px solid #cfd5dc}
+ .rgbar{font-size:12px;color:var(--gris);margin:0 0 6px}
+ .rgbar select{font:inherit;font-size:12px}
+ .caja{background:#fff;border:1px solid var(--linea);border-radius:10px;padding:12px 14px;margin-bottom:10px;overflow-x:auto}
+ @media(max-width:820px){.layout{flex-direction:column;align-items:stretch}.rail{position:static;flex-basis:auto;width:100%}.main{width:100%}}
+/* ══ FIN ARMAZON · abajo empieza el CSS PROPIO del panel semaforo (sin tocar) ══ */
  :root{--rojo:#c62828;--amar:#b35900;--verde:#2e7d32;--tinta:#1f2328;--gris:#6b7280;--linea:#e3e6ea;--urg:#8a1c1c}
  *{box-sizing:border-box}
  body{margin:0;background:#f6f7f9;color:var(--tinta);font:14px/1.45 -apple-system,Segoe UI,Arial,sans-serif}
@@ -37,17 +79,54 @@
  .ok{color:var(--verde);font-weight:600}
  @media(max-width:560px){.fila1{flex-direction:column}}
 </style>
-<div class="wrap">
-<div class="aviso"><b>PROTOTIPO CANONICO — un solo formato para el correo Y para el modulo.</b>
-Cinco secciones. Datos <b>reales</b>: los 35 proyectos vigilados con dias y colores ya corregidos por el fix
-del <code>msg94</code>, las 9 cuentas por cobrar vivas leidas de Odoo, y el "antes" tomado del snapshot que
-escribio el cron de las 08:00 <b>con el bug todavia puesto</b>. El boton Actualizar aqui solo re-pinta.</div>
+<div class="app-top">
+  <span class="marca">FTS Suite</span>
+  <span style="font-size:12px;color:#9aa1a9">plataforma de paneles</span>
+  <span class="quien">
+    esteban.delacruz &middot; sesion valida 7h 41m<br>
+    <span id="misScopes"></span>
+  </span>
+</div>
+
+<div class="layout">
+  <nav class="rail" aria-label="Paneles">
+    <h3>Paneles</h3>
+    <div id="rail"></div>
+    <p class="nota" id="railNota"></p>
+  </nav>
+
+  <div class="main">
+    <div class="sim">
+      <b>PROTOTIPO.</b> El armazon es real; el panel <b>Semaforo</b> trae datos reales del 10/Sep;
+      el panel <b>Rentabilidad</b> es una <b>maqueta de contrato</b> con numeros inventados &mdash;
+      esta aqui unicamente para comprobar que el sobre y lo comun no quedaron hechos a la medida del semaforo.
+      <div style="margin-top:7px">
+        Simular permisos:
+        <label><input type="checkbox" id="scSem" checked> <code>semaforo:read</code></label>
+        <label><input type="checkbox" id="scRent"> <code>rentabilidad:read</code></label>
+      </div>
+    </div>
+
+    <div class="pcab">
+      <div class="r1">
+        <div><h1 id="pTitulo"></h1><div class="lema" id="pLema"></div></div>
+        <div style="text-align:right">
+          <button class="btn" id="ref">Actualizar</button>
+          <div class="sesion" style="margin-top:6px" id="pRefresco"></div>
+        </div>
+      </div>
+      <div class="alcance" id="pAlcance"></div>
+    </div>
+
+    <div id="salvedades"></div>
+    <div id="panel"></div>
+    <p class="leyenda" id="pLeyenda"></p>
+  </div>
+</div>
+
+<!-- ══ plantilla del panel SEMAFORO: lo suyo son las pestanas, el recuento y las secciones ══ -->
+<template id="tplSemaforo">
 <header class="app">
- <div class="fila1">
-  <div><h1>Semaforo</h1><div class="sesion">esteban.delacruz &middot; scope <code>semaforo:read</code> &middot; token valido 7h 41m</div></div>
-  <div style="text-align:right"><button class="btn" id="ref">Actualizar</button>
-   <div class="sesion" style="margin-top:6px">datos del 10/Sep/2026 08:00 CST</div></div>
- </div>
  <div class="tabs" role="tablist">
   <button class="tab" role="tab" data-g="Operaciones" aria-selected="true">Operaciones</button>
   <button class="tab" role="tab" data-g="Admin" aria-selected="false">Admin</button>
@@ -56,8 +135,159 @@ escribio el cron de las 08:00 <b>con el bug todavia puesto</b>. El boton Actuali
 </header>
 <div id="cuerpo"></div>
 <p class="pie">Mismo dato que el correo de las 8:00: los dos leen el mismo snapshot y la pantalla no recalcula nada.</p>
-</div>
+</template>
 <script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   ARMAZON. Nada de este bloque menciona proyectos, dias, etapas ni presupuesto.
+   Lo unico que sabe es: (1) que paneles carga esta persona, (2) como leer el
+   SOBRE de una respuesta, (3) como pintar una tabla cuyas columnas llegan en
+   la respuesta. Lo demas lo pone cada panel.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* --- lo que devolveria auth/suite-login; aqui se simula con los checkboxes --- */
+const SESION = { actor:"esteban.delacruz", scopes:new Set(["semaforo:read"]) };
+
+/* --- registro de paneles. Un panel = un id, un scope, un titulo y un render. --- */
+/* utilerias comunes (el panel puede traer las suyas; van en su propio ambito) */
+const esc=s=>String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const money=n=>Math.round(Number(n)||0).toLocaleString("en-US");
+
+const PANELES = [];
+function registrarPanel(p){ PANELES.push(p); }
+
+/* --- el SOBRE. Identico para todos; `datos` es lo unico propio. --- */
+function leerSobre(r){
+  if(!r || r.ok!==true) throw new Error("sobre invalido");
+  return r;
+}
+/* Traduce el `alcance` del sobre a una frase. Es la razon por la que el alcance
+   NO puede ser un instante fijo: el semaforo mide EN un momento y rentabilidad
+   acumula DURANTE un periodo. Si el sobre solo supiera de instantes, la cabecera
+   comun no le serviria al segundo panel. */
+function fraseAlcance(a){
+  if(a.tipo==="instante")
+    return "Medicion del <b>"+a.en+"</b>. La pantalla no recalcula: pinta exactamente el numero con el que se armo el correo.";
+  if(a.tipo==="periodo")
+    return "Acumulado del <b>"+a.desde+"</b> al <b>"+a.hasta+"</b>. Leido de Odoo hace "+a.leido_hace+"; vuelve a moverse en cuanto alguien postee un gasto.";
+  return "Alcance no declarado.";
+}
+function pintarSalvedades(lista){
+  const el=document.getElementById("salvedades");
+  if(!lista || !lista.length){ el.innerHTML=""; return; }
+  el.innerHTML='<div class="salv"><b>Lo que este numero NO cubre ('+lista.length+')</b><ul>'+
+    lista.map(s=>'<li><code>'+esc(s.codigo)+'</code> &middot; '+esc(s.dice)+'</li>').join("")+'</ul></div>';
+}
+
+/* --- tabla reagrupable. Columnas y filas vienen del panel, agrupacion del usuario. --- */
+function tablaReagrupable(cont, t){
+  const cols=t.columnas, agrupables=cols.filter(c=>c.agrupable);
+  let porId = t.agrupar_por || (agrupables[0]&&agrupables[0].id) || null;
+  let ordId = t.ordenar_por || cols[0].id, ordDir = -1;
+  function pintar(){
+    const filas=t.filas.slice().sort((a,b)=>{
+      const x=a[ordId], y=b[ordId];
+      if(typeof x==="number"&&typeof y==="number") return (x-y)*ordDir;
+      return String(x==null?"":x).localeCompare(String(y==null?"":y))*ordDir;
+    });
+    const grupos=new Map();
+    for(const f of filas){ const k = porId ? String(f[porId]==null?"(sin dato)":f[porId]) : "__todo__";
+      if(!grupos.has(k)) grupos.set(k,[]); grupos.get(k).push(f); }
+    const sumables=cols.filter(c=>c.suma);
+    const celda=(c,f)=>'<td class="'+(c.kind==="num"?"num":"")+'">'+
+      (c.kind==="num" ? (f[c.id]==null?"&mdash;":money(f[c.id])) : esc(f[c.id]==null?"":f[c.id]))+'</td>';
+    const subt=(arr,etq,cls)=>'<tr class="'+cls+'">'+cols.map((c,i)=>
+      i===0 ? '<td>'+esc(etq)+'</td>'
+            : (c.suma ? '<td class="num">'+money(arr.reduce((s,f)=>s+(Number(f[c.id])||0),0))+'</td>'
+                      : '<td class="'+(c.kind==="num"?"num":"")+'"></td>')).join("")+'</tr>';
+    let h='<p class="rgbar">Agrupar por: <select id="rgSel">'+
+      '<option value="">(sin agrupar)</option>'+
+      agrupables.map(c=>'<option value="'+c.id+'"'+(c.id===porId?" selected":"")+'>'+esc(c.label)+'</option>').join("")+
+      '</select> &middot; clic en un encabezado para ordenar &middot; '+t.filas.length+' renglones'+
+      (sumables.length?' &middot; los totales son de lo que se ve, no de lo que existe':'')+'</p>';
+    h+='<table class="rg"><thead><tr>'+cols.map(c=>'<th class="'+(c.kind==="num"?"num":"")+'" data-c="'+c.id+'">'+
+      esc(c.label)+(c.id===ordId?(ordDir<0?" ▼":" ▲"):"")+'</th>').join("")+'</tr></thead><tbody>';
+    for(const [k,arr] of grupos){
+      if(porId) h+=subt(arr, k+"  ("+arr.length+")", "grp");
+      for(const f of arr) h+='<tr>'+cols.map(c=>celda(c,f)).join("")+'</tr>';
+    }
+    if(sumables.length) h+=subt(t.filas,"TOTAL de lo mostrado","tot");
+    cont.innerHTML=h+'</tbody></table>';
+    const sel=cont.querySelector("#rgSel");
+    sel.onchange=()=>{ porId=sel.value||null; pintar(); };
+    cont.querySelectorAll("th[data-c]").forEach(th=>th.onclick=()=>{
+      const id=th.dataset.c; if(id===ordId) ordDir=-ordDir; else { ordId=id; ordDir=-1; } pintar(); });
+  }
+  pintar();
+}
+
+/* --- navegacion + cabecera. El menu se pinta SIEMPRE, aunque haya un solo panel. --- */
+let actual=null;
+function visibles(){ return PANELES.filter(p=>SESION.scopes.has(p.scope)); }
+function pintarRail(){
+  const vis=visibles(), cont=document.getElementById("rail");
+  document.getElementById("misScopes").innerHTML="scopes: "+
+    (SESION.scopes.size ? [...SESION.scopes].map(s=>"<code>"+esc(s)+"</code>").join(" ") : "<i>ninguno</i>");
+  cont.innerHTML = vis.length
+    ? vis.map(p=>'<button class="pitem" data-p="'+p.id+'"'+(p.id===(actual&&actual.id)?' aria-current="page"':'')+'>'+
+        esc(p.nombre)+'<span class="sub">'+esc(p.unidad)+'</span></button>').join("")
+    : '<p style="font-size:12px;color:var(--gris);margin:0">Esta cuenta no carga ningun panel.</p>';
+  cont.querySelectorAll(".pitem").forEach(b=>b.onclick=()=>abrir(b.dataset.p));
+  document.getElementById("railNota").innerHTML = vis.length+" de "+PANELES.length+
+    " paneles. <b>Aqui solo aparecen los que esta persona carga</b> &mdash; el menu existe desde el primero, no desde el segundo.";
+}
+function abrir(id){
+  const p=visibles().filter(x=>x.id===id)[0] || visibles()[0] || null;
+  actual=p;
+  const cont=document.getElementById("panel");
+  if(!p){ document.getElementById("pTitulo").textContent="Sin acceso";
+    document.getElementById("pLema").textContent="Pide el permiso a quien administra la suite.";
+    document.getElementById("pAlcance").textContent=""; document.getElementById("pLeyenda").textContent="";
+    pintarSalvedades([]); cont.innerHTML=""; pintarRail(); return; }
+  const r=leerSobre(p.pedir());
+  document.getElementById("pTitulo").textContent=p.nombre;
+  document.getElementById("pLema").textContent=p.lema;
+  document.getElementById("pRefresco").textContent="respuesta de "+r.alcance.respondido;
+  document.getElementById("pAlcance").innerHTML=fraseAlcance(r.alcance);
+  document.getElementById("pLeyenda").innerHTML="<b>Que significa el color en este panel:</b> "+r.datos.leyenda;
+  pintarSalvedades(r.salvedades);
+  cont.innerHTML=""; p.render(cont, r.datos);
+  pintarRail();
+}
+document.getElementById("ref").onclick=e=>{const b=e.target;b.disabled=true;b.textContent="Actualizando...";
+  setTimeout(()=>{b.disabled=false;b.textContent="Actualizar";abrir(actual&&actual.id);},600);};
+function sincScopes(){
+  SESION.scopes = new Set();
+  if(document.getElementById("scSem").checked)  SESION.scopes.add("semaforo:read");
+  if(document.getElementById("scRent").checked) SESION.scopes.add("rentabilidad:read");
+  const sigue = actual && SESION.scopes.has(actual.scope);
+  abrir(sigue ? actual.id : null);
+}
+document.getElementById("scSem").onchange=sincScopes;
+document.getElementById("scRent").onchange=sincScopes;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PANEL 1 · SEMAFORO — PROCESO. La unidad es el TIEMPO.
+   Lo suyo: sus pestanas, su recuento, sus cinco secciones, sus umbrales y su
+   idea de anomalia. El armazon no sabe nada de esto.
+   ═══════════════════════════════════════════════════════════════════════════ */
+registrarPanel({
+  id:"semaforo", scope:"semaforo:read", nombre:"Semaforo", unidad:"proceso · tiempo",
+  lema:"Cuanto lleva cada proyecto donde esta, y si se movio.",
+  /* Esto es lo que devolveria el webhook ops/semaforo. El SOBRE es comun; `datos` es propio. */
+  pedir(){ return {
+    ok:true, panel:"semaforo", contrato:1,
+    alcance:{ tipo:"instante", en:"10/Sep/2026 08:00 CST", respondido:"hoy 09:12 CST",
+              fuente:"watchdog-semaforo · corrida de produccion" },
+    actor:{ nombre:"esteban.delacruz", scopes:["semaforo:read"] },
+    salvedades:[
+      { codigo:"SIN_LINEA_BASE", dice:"3 proyectos no traen nota en la ventana de 90 dias: de esos NO se puede decir si empeoraron o mejoraron, solo en que estado estan hoy." },
+      { codigo:"CONTADOR_RECALIBRADO", dice:"Hoy el contador paso de medir la EDAD del proyecto a medir el tiempo en la ETAPA (#229). Los movimientos de dias de hoy son de medicion, no de avance." }
+    ],
+    datos:{ leyenda:"que tan tarde va ese proyecto <b>en su etapa</b> contra el plazo de la etapa. No dice nada de dinero.",
+            /* las filas van dentro del propio panel, como en el canonico */ }
+  };},
+  render(cont, datos){
+    cont.appendChild(document.getElementById("tplSemaforo").content.cloneNode(true));
 const FILAS=[{"id":2375,"name":"SO11498 - Ingeniería conceptual para el diseño del desbobinadora de carretes Bridgestone e - Bridgestone México","stage":"In Progress","grupo":"Operaciones","cliente":"Bridgestone México","dias":6,"color":"verde","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"6-15","compromiso":"2026-09-30","link":"https://serviciosfts.odoo.com/web#id=2375&model=project.project&view_type=form","antes":{"dias":6,"color":"verde","fuente":"create_date","pide":false}},{"id":2360,"name":"SO11748 - Chiller instalation - Calbee America Incorporated","stage":"En plazo de credito","grupo":"Admin","cliente":"Calbee America Incorporated","dias":16,"color":"verde","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"16-30","compromiso":null,"link":"https://serviciosfts.odoo.com/web#id=2360&model=project.project&view_type=form","cxc":{"inv":"INV176","cur":"USD","nat":4469,"mxn":77537.15000000001,"due":"2026-08-18","d":23},"antes":{"dias":30,"color":"verde","fuente":"create_date","pide":false}},{"id":2372,"name":"SO11838 - Tools for Calbee - Calbee America Incorporated","stage":"Done Operations","grupo":"Admin","cliente":"Calbee America Incorporated","dias":8,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"6-15","compromiso":"2026-07-30","link":"https://serviciosfts.odoo.com/web#id=2372&model=project.project&view_type=form","antes":{"dias":8,"color":"rojo","fuente":"create_date","pide":true}},{"id":2376,"name":"SO11860 - VIP Service - Mission HQ - Mission Foods","stage":"To Do","grupo":"Operaciones","cliente":"Mission Foods","dias":4,"color":"rojo","banderas":[],"sin_avance":false,"racha":0,"fuente":"stage_msg","tramo":"1-5","compromiso":"2026-08-28","link":"https://serviciosfts.odoo.com/web#id=2376&model=project.project&view_type=form","cxc":{"inv":"INV177","cur":"USD","nat":7500,"mxn":130125.00000000001,"due":"2026-09-19","d":-9},"antes":{"dias":3,"color":"rojo","fuente":"create_date","pide":true}},{"id":2352,"name":"SO11699 - Instalacion mecanica y electrica de Sensores en ductos de Extraccion de Colector - Bridgestone México","stage":"In Progress","grupo":"Operaciones","cliente":"Bridgestone México","dias":7,"color":"verde","banderas":["Stage regresado Hold -> En proceso por OPERACIONES FTS-YIN"],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-12-31","link":"https://serviciosfts.odoo.com/web#id=2352&model=project.project&view_type=form","antes":{"dias":54,"color":"verde","fuente":"create_date","pide":true}},{"id":2364,"name":"SO11832 - Servicio de ajuste de velocidad en embotelladora GEPP - BEBIDAS PURIFICADAS","stage":"En plazo de credito","grupo":"Admin","cliente":"BEBIDAS PURIFICADAS","dias":13,"color":"verde","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"16-30","compromiso":"2026-08-31","link":"https://serviciosfts.odoo.com/web#id=2364&model=project.project&view_type=form","cxc":{"inv":"INV2022","cur":"MXN","nat":86452.48,"mxn":86452.48,"due":"2026-12-16","d":-97},"antes":{"dias":17,"color":"verde","fuente":"create_date","pide":false}},{"id":2374,"name":"SO11851 - Materials for aluminium jacketing - Calbee America Incorporated","stage":"Done Operations","grupo":"Admin","cliente":"Calbee America Incorporated","dias":8,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"6-15","compromiso":"2026-08-17","link":"https://serviciosfts.odoo.com/web#id=2374&model=project.project&view_type=form","antes":{"dias":8,"color":"rojo","fuente":"create_date","pide":true}},{"id":2373,"name":"SO11846 - supply of SS materials for Press DALLAS - Mission Foods","stage":"Done Operations","grupo":"Admin","cliente":"Mission Foods","dias":8,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"6-15","compromiso":"2026-08-05","link":"https://serviciosfts.odoo.com/web#id=2373&model=project.project&view_type=form","antes":{"dias":8,"color":"rojo","fuente":"create_date","pide":true}},{"id":2369,"name":"SO11862 - Cubierta de acero Inoxidable 304 para reactor quimico #2 - MAGNEKON S.A. DE C.V.","stage":"In Progress","grupo":"Operaciones","cliente":"MAGNEKON S.A. DE C.V.","dias":9,"color":"verde","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"6-15","compromiso":"2026-12-31","link":"https://serviciosfts.odoo.com/web#id=2369&model=project.project&view_type=form","antes":{"dias":8,"color":"verde","fuente":"create_date","pide":false}},{"id":213,"name":"🛠️ SO11037 - Distribucion Electrica luminarias Cabina de Flejadoras - clarios recicladora","stage":"Hold","grupo":"Operaciones","cliente":"JOHNSON CONTROLS ENTERPRISES MEXICO","dias":50,"color":"rojo","banderas":["En Hold con fecha de reactivacion VENCIDA (2026-07-30)"],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-07-30","link":"https://serviciosfts.odoo.com/web#id=213&model=project.project&view_type=form","antes":{"dias":267,"color":"rojo","fuente":"create_date","pide":true}},{"id":241,"name":"🛠️ SO11290 - Test loop ingeniería mexicali nalco","stage":"En plazo de credito","grupo":"Admin","cliente":"Nalco de Mexico","dias":23,"color":"verde","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-07-30","link":"https://serviciosfts.odoo.com/web#id=241&model=project.project&view_type=form","cxc":{"inv":"INV2013","cur":"MXN","nat":184126.8,"mxn":184126.8,"due":"2026-10-04","d":-24},"antes":{"dias":204,"color":"rojo","fuente":"create_date","pide":true}},{"id":2371,"name":"SO11849 - supply of breaker - Mission Foods","stage":"Done Operations","grupo":"Admin","cliente":"Mission Foods","dias":8,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"6-15","compromiso":"2026-08-14","link":"https://serviciosfts.odoo.com/web#id=2371&model=project.project&view_type=form","antes":{"dias":8,"color":"rojo","fuente":"create_date","pide":true}},{"id":2368,"name":"SO11861 - Cubierta de acero Inoxidable 304 para reactor quimico #1 - MAGNEKON S.A. DE C.V.","stage":"In Progress","grupo":"Operaciones","cliente":"MAGNEKON S.A. DE C.V.","dias":9,"color":"verde","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"6-15","compromiso":"2026-12-31","link":"https://serviciosfts.odoo.com/web#id=2368&model=project.project&view_type=form","antes":{"dias":8,"color":"verde","fuente":"create_date","pide":false}},{"id":160,"name":"🛠️ SO10300 - Techo de Magnekon","stage":"En plazo de credito","grupo":"Admin","cliente":"MAGNEKON S.A. DE C.V.","dias":27,"color":"verde","banderas":["1 log note(s) sin contenido en el chatter - no cuentan como seguimiento"],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-07-31","link":"https://serviciosfts.odoo.com/web#id=160&model=project.project&view_type=form","cxc":{"inv":"INV2021","cur":"MXN","nat":1834540,"mxn":1834540,"due":"2026-09-23","d":-13},"antes":{"dias":331,"color":"rojo","fuente":"create_date","pide":true}},{"id":2353,"name":"SO11779 - Reparacion de motores de rampa - BEBIDAS PURIFICADAS","stage":"En plazo de credito","grupo":"Admin","cliente":"BEBIDAS PURIFICADAS","dias":36,"color":"amarillo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-06-30","link":"https://serviciosfts.odoo.com/web#id=2353&model=project.project&view_type=form","cxc":{"inv":"INV2006","cur":"MXN","nat":14469.84,"mxn":14469.84,"due":"2026-11-17","d":-68},"antes":{"dias":54,"color":"rojo","fuente":"create_date","pide":true}},{"id":2361,"name":"SO11791 - Power and control panels updated July 2026 Calbee - Calbee America Incorporated","stage":"Hold","grupo":"Operaciones","cliente":"Calbee America Incorporated","dias":18,"color":"verde","banderas":["1 log note(s) sin contenido en el chatter - no cuentan como seguimiento","En Hold con fecha de reactivacion VENCIDA (2026-08-21)"],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"16-30","compromiso":"2026-08-21","link":"https://serviciosfts.odoo.com/web#id=2361&model=project.project&view_type=form","cxc":{"inv":"INV174","cur":"USD","nat":64625.63,"mxn":1121254.6805,"due":"2026-07-31","d":41},"antes":{"dias":28,"color":"verde","fuente":"create_date","pide":true}},{"id":2363,"name":"SO11833 - Cooling system for Quality offices - Mission Foods","stage":"In Progress","grupo":"Operaciones","cliente":"Mission Foods","dias":22,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"16-30","compromiso":"2026-08-15","link":"https://serviciosfts.odoo.com/web#id=2363&model=project.project&view_type=form","antes":{"dias":22,"color":"rojo","fuente":"create_date","pide":true}},{"id":2370,"name":"SO11850 - supply of ss pipe 1 1/2 and liquid tight - Mission Foods","stage":"Done Operations","grupo":"Admin","cliente":"Mission Foods","dias":8,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"6-15","compromiso":"2026-08-12","link":"https://serviciosfts.odoo.com/web#id=2370&model=project.project&view_type=form","antes":{"dias":8,"color":"rojo","fuente":"create_date","pide":true}},{"id":2327,"name":"SO11511 - Valvula para lavado de botellas","stage":"En plazo de credito","grupo":"Admin","cliente":"BEBIDAS PURIFICADAS","dias":60,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-03-18","link":"https://serviciosfts.odoo.com/web#id=2327&model=project.project&view_type=form","antes":{"dias":101,"color":"rojo","fuente":"create_date","pide":true}},{"id":2366,"name":"SO11772 - Suministro e instalación de injerto de drenado sanitario de 3\" sobre codo - Nalco de Mexico","stage":"Done Operations","grupo":"Admin","cliente":"Nalco de Mexico","dias":12,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"6-15","compromiso":"2026-08-28","link":"https://serviciosfts.odoo.com/web#id=2366&model=project.project&view_type=form","antes":{"dias":15,"color":"rojo","fuente":"create_date","pide":true}},{"id":2357,"name":"SO11789 - Suministro de Panelview HMI - GRUMA CORP DBA MISSION FOODS","stage":"En plazo de credito","grupo":"Admin","cliente":"GRUMA CORP DBA MISSION FOODS","dias":42,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-07-13","link":"https://serviciosfts.odoo.com/web#id=2357&model=project.project&view_type=form","antes":{"dias":45,"color":"rojo","fuente":"create_date","pide":true}},{"id":2362,"name":"SO11842 - prensas materials - Mission Foods","stage":"In Progress","grupo":"Operaciones","cliente":"Mission Foods","dias":24,"color":"rojo","banderas":[],"sin_avance":true,"racha":2,"fuente":"stage_msg","tramo":"16-30","compromiso":"2026-08-14","link":"https://serviciosfts.odoo.com/web#id=2362&model=project.project&view_type=form","antes":{"dias":23,"color":"rojo","fuente":"create_date","pide":true}},{"id":2365,"name":"SO11737 - Adecuaciones electricas y de control para diferencial de precion - Nalco de Mexico","stage":"Done Operations","grupo":"Admin","cliente":"Nalco de Mexico","dias":12,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"16-30","compromiso":"2026-08-31","link":"https://serviciosfts.odoo.com/web#id=2365&model=project.project&view_type=form","antes":{"dias":17,"color":"rojo","fuente":"create_date","pide":true}},{"id":2359,"name":"SO11771 - Subestación PI Aurora - Conmet de México, S.A. de C.V.","stage":"In Progress","grupo":"Operaciones","cliente":"CONMET DE MEXICO","dias":33,"color":"verde","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-12-31","link":"https://serviciosfts.odoo.com/web#id=2359&model=project.project&view_type=form","antes":{"dias":33,"color":"verde","fuente":"create_date","pide":false}},{"id":101,"name":"🛠️ SO7723 - servicio de integración de sistema con sensor de nivel y pantalla HMI","stage":"En plazo de credito","grupo":"Admin","cliente":"MAGNEKON S.A. DE C.V.","dias":61,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2025-12-23","link":"https://serviciosfts.odoo.com/web#id=101&model=project.project&view_type=form","antes":{"dias":402,"color":"rojo","fuente":"create_date","pide":true}},{"id":2358,"name":"SO11233 - Rigging compresor - Lau Industries de Mexico","stage":"In Progress","grupo":"Operaciones","cliente":"Lau Industries de Mexico","dias":42,"color":"verde","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-09-30","link":"https://serviciosfts.odoo.com/web#id=2358&model=project.project&view_type=form","antes":{"dias":42,"color":"verde","fuente":"create_date","pide":false}},{"id":2367,"name":"SO11718 - Fabricación e instalación de toma para saneamiento de planta en zona de arreglo  - Nalco de Mexico","stage":"Done Operations","grupo":"Admin","cliente":"Nalco de Mexico","dias":12,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":"6-15","compromiso":"2026-08-28","link":"https://serviciosfts.odoo.com/web#id=2367&model=project.project&view_type=form","antes":{"dias":15,"color":"rojo","fuente":"create_date","pide":true}},{"id":506,"name":"🛠️ SO11492 - Instalacion de ductos de aire en area de chips, corn, flour process area & packing","stage":"In Progress","grupo":"Operaciones","cliente":"Mission Foods","dias":46,"color":"verde","banderas":["1 log note(s) sin contenido en el chatter - no cuentan como seguimiento"],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-09-30","link":"https://serviciosfts.odoo.com/web#id=506&model=project.project&view_type=form","antes":{"dias":188,"color":"verde","fuente":"create_date","pide":true}},{"id":343,"name":"🛠️ SO11261 - Suministro e instalación de sistema de medición de flujo de 2 Etil Hexanol","stage":"In Progress","grupo":"Operaciones","cliente":"MAGNEKON S.A. DE C.V.","dias":36,"color":"verde","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-10-30","link":"https://serviciosfts.odoo.com/web#id=343&model=project.project&view_type=form","antes":{"dias":200,"color":"verde","fuente":"create_date","pide":false}},{"id":2349,"name":"SO11762 - Mejoras a sistema TOPOCHICO, MTY. - Nalco de Mexico","stage":"In Progress","grupo":"Operaciones","cliente":"Nalco de Mexico","dias":51,"color":"rojo","banderas":["1 log note(s) sin contenido en el chatter - no cuentan como seguimiento"],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-08-31","link":"https://serviciosfts.odoo.com/web#id=2349&model=project.project&view_type=form","cxc":{"inv":"INV2014","cur":"MXN","nat":1396808.9,"mxn":1396808.9,"due":"2026-10-06","d":-26},"antes":{"dias":60,"color":"rojo","fuente":"create_date","pide":true}},{"id":2356,"name":"SO11773 - ELECTRICAL DUMP STATION DALLAS 2 - Mission Foods","stage":"In Progress","grupo":"Operaciones","cliente":"Mission Foods","dias":50,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-07-31","link":"https://serviciosfts.odoo.com/web#id=2356&model=project.project&view_type=form","antes":{"dias":49,"color":"rojo","fuente":"create_date","pide":true}},{"id":2302,"name":"SO11547 - Desinstalación, Adecuación e Integración de Sistema de Filtración en planta Topo Chico","stage":"In Progress","grupo":"Operaciones","cliente":"Nalco de Mexico","dias":117,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-08-31","link":"https://serviciosfts.odoo.com/web#id=2302&model=project.project&view_type=form","antes":{"dias":138,"color":"rojo","fuente":"create_date","pide":true}},{"id":2355,"name":"SO11673 - Poliza de matto para Compresor Houston TX - Mission Foods","stage":"In Progress","grupo":"Operaciones","cliente":"Mission Foods","dias":50,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-07-31","link":"https://serviciosfts.odoo.com/web#id=2355&model=project.project&view_type=form","antes":{"dias":49,"color":"rojo","fuente":"create_date","pide":true}},{"id":121,"name":"🛠️ SO9428 - INSTALACION DE SUMINISTRO DE AGUA FRIA - VERTIV 2da Fase","stage":"In Progress","grupo":"Operaciones","cliente":"Nalco de Mexico","dias":147,"color":"rojo","banderas":[],"sin_avance":false,"racha":1,"fuente":"stage_msg","tramo":">30","compromiso":"2026-08-31","link":"https://serviciosfts.odoo.com/web#id=121&model=project.project&view_type=form","antes":{"dias":372,"color":"rojo","fuente":"create_date","pide":true}},{"id":212,"name":"🛠️ SO10337 - Cortinas de seguridad 120s y 270s","stage":"In Progress","grupo":"Operaciones","cliente":"Bridgestone México","dias":246,"color":"rojo","banderas":[],"sin_avance":true,"racha":2,"fuente":"stage_msg","tramo":">30","compromiso":"2026-08-31","link":"https://serviciosfts.odoo.com/web#id=212&model=project.project&view_type=form","cxc":{"inv":"INV2018","cur":"USD","nat":11310,"mxn":194752.55,"due":"2026-09-10","d":0},"antes":{"dias":268,"color":"rojo","fuente":"create_date","pide":true}}];
 const PUNTO={rojo:"\u{1F534}",amarillo:"\u{1F7E1}",verde:"\u{1F7E2}"};
 const ACC={rojo:"Avanza de etapa o documenta por que sigue aqui (Log note)",amarillo:"Se acerca al limite: mueve la etapa o documenta"};
@@ -151,6 +381,71 @@ function pintar(){
 }
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{grupo=t.dataset.g;
   document.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-selected",String(x===t)));pintar();});
-document.getElementById("ref").onclick=e=>{const b=e.target;b.disabled=true;b.textContent="Actualizando...";
-  setTimeout(()=>{b.disabled=false;b.textContent="Actualizar";pintar();},600);};
-pintar();</script>
+pintar();  }
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PANEL 2 · RENTABILIDAD — DINERO. La unidad es la ACUMULACION contra presupuesto.
+   NO SE DISENA AQUI. Esta maqueta existe para una sola cosa: probar que el sobre
+   y las piezas comunes le quedan a un panel que no se parece al semaforo.
+   Numeros INVENTADOS. Lo unico que se esta afirmando es la FORMA.
+   Las tres diferencias que obligaron a que el sobre no fuera a la medida:
+     1. su alcance es un PERIODO, no un instante;
+     2. su tabla es JERARQUICA (proyecto -> rubro) y con SUMAS;
+     3. su color significa margen, no retraso.
+   ═══════════════════════════════════════════════════════════════════════════ */
+registrarPanel({
+  id:"rentabilidad", scope:"rentabilidad:read", nombre:"Rentabilidad", unidad:"dinero · acumulado",
+  lema:"Cuanto se presupuesto, cuanto se ha gastado y que margen queda, por proyecto.",
+  pedir(){ return {
+    ok:true, panel:"rentabilidad", contrato:1,
+    alcance:{ tipo:"periodo", desde:"01/Ene/2026", hasta:"12/Sep/2026", leido_hace:"8 s",
+              respondido:"hoy 09:12 CST", fuente:"Odoo · lectura en vivo" },
+    actor:{ nombre:"esteban.delacruz", scopes:["semaforo:read","rentabilidad:read"] },
+    salvedades:[
+      { codigo:"COSTO_SIN_PROYECTO", dice:"59% del gasto de proveedor del periodo no trae proyecto en su analitica (medido en A0). Todo costo de esta tabla es un PISO, no un total: el margen que se ve es el mejor caso." },
+      { codigo:"PRESUPUESTO_ESQUELETO", dice:"Algunos presupuestos se crearon con monto -1 como marcador. Donde el presupuesto dice 0 o 1, no hay presupuesto real contra el que comparar." },
+      { codigo:"MONEDA_MEZCLADA", dice:"Los totales estan en MXN al tipo de cambio del dia de cada factura. Un proyecto de FTS USA facturado en USD se ve convertido, no nativo." }
+    ],
+    datos:{
+      leyenda:"margen contra el esperado del tipo de trabajo. Verde = margen &ge; 20%, amarillo = 5&ndash;20%, rojo = bajo 5% o costo por encima del presupuesto. <b>Nada que ver con el verde del semaforo</b>, que habla de dias.",
+      tabla:{
+        agrupar_por:"proyecto", ordenar_por:"real",
+        columnas:[
+          { id:"proyecto",     label:"Proyecto",    agrupable:true },
+          { id:"empresa",      label:"Empresa",     agrupable:true },
+          { id:"rubro",        label:"Rubro",       agrupable:true },
+          { id:"presupuesto",  label:"Presupuesto", kind:"num", suma:true },
+          { id:"comprometido", label:"Comprometido",kind:"num", suma:true },
+          { id:"real",         label:"Real",        kind:"num", suma:true },
+          { id:"disponible",   label:"Disponible",  kind:"num", suma:true }
+        ],
+        filas:[
+          {proyecto:"SO11547 Topo Chico",  empresa:"FTS-MX", rubro:"Ingreso",      presupuesto:4200000, comprometido:0,      real:4200000, disponible:0},
+          {proyecto:"SO11547 Topo Chico",  empresa:"FTS-MX", rubro:"Materiales",   presupuesto:1850000, comprometido:210000, real:1602000, disponible:38000},
+          {proyecto:"SO11547 Topo Chico",  empresa:"FTS-MX", rubro:"Mano de obra", presupuesto:640000,  comprometido:0,      real:588570,  disponible:51430},
+          {proyecto:"SO11492 Ductos",      empresa:"FTS-MX", rubro:"Ingreso",      presupuesto:2750000, comprometido:0,      real:2750000, disponible:0},
+          {proyecto:"SO11492 Ductos",      empresa:"FTS-MX", rubro:"Materiales",   presupuesto:1100000, comprometido:95000,  real:1342000, disponible:-337000},
+          {proyecto:"SO11492 Ductos",      empresa:"FTS-MX", rubro:"Mano de obra", presupuesto:420000,  comprometido:0,      real:311200,  disponible:108800},
+          {proyecto:"SO11791 Calbee",      empresa:"FTS-USA",rubro:"Ingreso",      presupuesto:1121254, comprometido:0,      real:1121254, disponible:0},
+          {proyecto:"SO11791 Calbee",      empresa:"FTS-USA",rubro:"Materiales",   presupuesto:520000,  comprometido:180000, real:96000,   disponible:244000},
+          {proyecto:"SO11791 Calbee",      empresa:"FTS-USA",rubro:"Mano de obra", presupuesto:150000,  comprometido:0,      real:0,       disponible:150000}
+        ]
+      }
+    }
+  };},
+  render(cont, datos){
+    const caja=document.createElement("div"); caja.className="caja";
+    cont.appendChild(caja);
+    tablaReagrupable(caja, datos.tabla);
+    const p=document.createElement("p"); p.className="pie";
+    p.innerHTML="El renglon <b>SO11492 Ductos &middot; Materiales</b> esta en <b>-337,000</b>: gasto por encima del presupuesto. "+
+      "Es el caso que este panel existe para encontrar, y es la razon de que la tabla tenga que sumar y agrupar &mdash; "+
+      "el semaforo nunca suma nada.";
+    cont.appendChild(p);
+  }
+});
+
+/* arranque */
+sincScopes();
+</script>
