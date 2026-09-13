@@ -5230,6 +5230,325 @@ await sembrarMachotes(q);
     console.log('    renombrada a «' + r.nombre + '» · el vacío se rechaza');
   });
 
+
+  /* ══ V1.28 · EL RECARGO ES DE LA SECCIÓN, Y ES DE ESTADOS UNIDOS ════════
+   *
+   * Dos reglas que se leían como una sola. Montalvo entendió que el recargo
+   * dependía de VIAJAR y propuso extenderlo fuera de Monterrey; estaban en la
+   * misma tabla, bajo el mismo título. Estas pruebas afirman que ya no. */
+
+  await paso('V1.28 · Ciudad Juárez pide viaje y NO ofrece el recargo; Dallas pide las dos', async () => {
+    await ir('#/m/M-1041');
+    // Juárez: foránea de verdad, y no es Estados Unidos.
+    await p.selectOption('[data-cel="pais"]', 'MX');
+    await p.dispatchEvent('[data-cel="pais"]', 'change');
+    await p.waitForTimeout(400);
+    /* ⚠️ `region` es un `<select>` cuando el país tiene catálogo —México y
+     * Estados Unidos lo tienen— y un campo de texto para los demás. `fill`
+     * revienta contra un `<select>`, así que se mira QUÉ es antes de escribir.
+     * Es el mismo error de V1.27 con `#lugPais`: inventar el selector en vez
+     * de mirar la pantalla. */
+    const escribir = async (campo, valor) => {
+      const sel = '[data-cel="' + campo + '"]';
+      const tag = await p.$eval(sel, e => e.tagName);
+      if (tag === 'SELECT') await p.selectOption(sel, { label: valor });
+      else await p.fill(sel, valor);
+      await p.dispatchEvent(sel, 'change');
+    };
+    await escribir('region', 'Chihuahua');
+    await p.waitForTimeout(300);
+    await escribir('ciudad', 'Ciudad Juárez');
+    await p.waitForTimeout(600);
+
+    const ver = (await p.textContent('.lugar-veredicto')).replace(/\s+/g, ' ');
+    if (!/foránea|fuera de Nuevo León/i.test(ver))
+      throw new Error('Juárez no se leyó como foránea: ' + ver);
+
+    await hoja('Suministro'); await p.waitForTimeout(600);
+    if (!(await p.$('.viaje-blk')))
+      throw new Error('Juárez es foránea y no salió el bloque de viaje');
+    if (await p.$('.rec-sec'))
+      throw new Error('OFRECE el recargo en Ciudad Juárez: es regla laboral de EUA, no de viajar');
+
+    // Dallas: las dos cosas. Las ciudades frecuentes viven en DESGLOSE, y
+    // venimos de la hoja de sección: hay que volver antes de tocarlas.
+    await hoja('DESGLOSE'); await p.waitForTimeout(400);
+    await p.click('[data-frec*="Dallas"]');
+    await p.waitForTimeout(600);
+    await hoja('Suministro'); await p.waitForTimeout(600);
+    if (!(await p.$('.viaje-blk'))) throw new Error('Dallas no pidió viaje');
+    const rec = await p.$('.rec-sec');
+    if (!rec) throw new Error('Dallas NO ofreció el recargo');
+    const t = (await p.textContent('.rec-sec')).replace(/\s+/g, ' ');
+    if (!/Estados Unidos/i.test(t)) throw new Error('el bloque no dice por qué aparece: ' + t.slice(0, 140));
+    console.log('    Juárez: viaje sí, recargo no · Dallas: las dos');
+  });
+
+  await paso('V1.28 · las dos reglas se leen por separado, no como una sola', async () => {
+    /* El texto es el encargo, no un detalle: de leerlas juntas salió la
+     * propuesta de extender el recargo a todo lo foráneo. */
+    await ir('#/m/M-1041');
+    await p.click('[data-frec*="Dallas"]');
+    await p.waitForTimeout(600);
+    const t = (await p.textContent('.viaje-reglas')).replace(/\s+/g, ' ');
+    if (!/dos reglas distintas/i.test(t)) throw new Error('no las separa: ' + t.slice(0, 140));
+    if (!/fuera de Nuevo León/i.test(t))
+      throw new Error('no dice de dónde salen los gastos de viaje: ' + t.slice(0, 200));
+    if (!/en Estados Unidos/i.test(t))
+      throw new Error('no dice de dónde sale el recargo: ' + t.slice(0, 200));
+    if (!/en cada sección/i.test(t))
+      throw new Error('no dice dónde se captura ahora: ' + t.slice(0, 240));
+    // Y la celda del machote se retiró: dos escritores del mismo número, no.
+    if (await p.$('[data-cel="viaje.recargo_fin_semana"]'))
+      throw new Error('sigue la celda del recargo a nivel machote: dos escritores');
+    console.log('    «' + t.slice(0, 100) + '…»');
+  });
+
+  await paso('V1.28 · cambiar el recargo en una sección NO toca a la otra', async () => {
+    await ir('#/m/M-1041');
+    await p.click('[data-frec*="Dallas"]');
+    await p.waitForTimeout(600);
+    await hoja('Suministro'); await p.waitForTimeout(500);
+
+    // Dos secciones. La segunda se agrega con el botón real de la pantalla.
+    const sid = await p.evaluate(() => {
+      const e = document.querySelector('.rec-sec [data-cel*=":fin_semana"]');
+      return e ? e.dataset.cel.split(':')[1] : null;
+    });
+    if (!sid) throw new Error('no se encontró la celda del recargo de la sección');
+
+    const antes = await p.inputValue('[data-cel="rec:' + sid + ':fin_semana"]');
+    if (Number(antes) !== 30) throw new Error('no arranca en 30%: ' + antes);
+
+    await p.fill('[data-cel="rec:' + sid + ':fin_semana"]', '50');
+    await p.dispatchEvent('[data-cel="rec:' + sid + ':fin_semana"]', 'change');
+    await p.waitForTimeout(900);
+
+    const g = await p.evaluate((id) => {
+      const m = JSON.parse(localStorage.getItem('fts_machote_v1')).machotes
+        .find(x => x.id === 'M-1041');
+      return {
+        secciones: m.secciones.map(s => ({ id: s.id, rec: s.recargos || null })),
+        machote: m.viaje ? m.viaje.recargo_fin_semana : undefined,
+        tocada: id
+      };
+    }, sid);
+
+    const laQueSeMovio = g.secciones.find(s => s.id === sid);
+    if (!laQueSeMovio || !laQueSeMovio.rec || laQueSeMovio.rec.fin_semana !== 0.5)
+      throw new Error('no se guardó en la sección: ' + JSON.stringify(laQueSeMovio));
+    const otras = g.secciones.filter(s => s.id !== sid);
+    if (!otras.length) throw new Error('el machote de prueba tiene UNA sola sección: no ejerce el caso');
+    otras.forEach(s => {
+      if (s.rec && s.rec.fin_semana !== undefined)
+        throw new Error('se propagó a la sección ' + s.id + ': ' + JSON.stringify(s.rec));
+    });
+    if (g.machote !== undefined)
+      throw new Error('se subió al machote: ' + g.machote);
+
+    // Y en pantalla: la marca de apartado aparece SÓLO donde se movió.
+    const marcas = await p.evaluate(() => {
+      const out = [];
+      document.querySelectorAll('.rec-sec').forEach(b => {
+        out.push({ apartado: b.classList.contains('apartado'),
+                   marca: !!b.querySelector('.rec-marca') });
+      });
+      return out;
+    });
+    if (!marcas.length || !marcas[0].apartado || !marcas[0].marca)
+      throw new Error('no se ve que se apartó: ' + JSON.stringify(marcas));
+    console.log('    sección ' + sid.slice(0, 12) + ' al 50% · ' + otras.length +
+                ' sección(es) intactas · el machote no se tocó');
+  });
+
+  await paso('V1.28 · un machote nuevo arranca en 30% aunque el anterior se haya movido', async () => {
+    /* El machote del paso anterior quedó con una sección al 50%. El siguiente
+     * NO hereda nada: el recargo es del tramo de trabajo, no del sistema. */
+    await ir('#/');
+    await p.waitForTimeout(300);
+    const nuevo = await p.$('[data-nuevo], #btnNuevo, .btn-nuevo');
+    if (nuevo) { await nuevo.click(); await p.waitForTimeout(700); }
+    else {
+      await p.evaluate(() => { location.hash = '#/nuevo'; });
+      await p.waitForTimeout(700);
+    }
+    const r = await p.evaluate(() => {
+      const C = window.MachoteCalc;
+      const m = C.machoteNuevo({ nombre: 'prueba V1.28' });
+      m.pais = 'US'; m.region = 'Texas'; m.ciudad = 'Dallas';
+      m.secciones.push(C.seccionNueva('SECCIÓN 2', 'MXN', C.MARGENES_PLANTILLA));
+      return {
+        propio: m.viaje.recargo_fin_semana,
+        porSeccion: m.secciones.map(s => C.recargosDe(m, s).fin_semana.pct),
+        apartados: m.secciones.map(s => C.recargosDe(m, s).fin_semana.apartado),
+        plantilla: C.RECARGOS_PLANTILLA.fin_semana
+      };
+    });
+    if (r.propio !== undefined && r.propio !== null)
+      throw new Error('el machote nuevo trae número propio: ' + r.propio);
+    if (r.porSeccion.some(x => x !== 0.30))
+      throw new Error('alguna sección no arrancó en 30%: ' + JSON.stringify(r.porSeccion));
+    if (r.apartados.some(Boolean))
+      throw new Error('un machote nuevo se marca como apartado: ' + JSON.stringify(r.apartados));
+    if (r.plantilla !== 0.30) throw new Error('el valor por defecto se movió: ' + r.plantilla);
+    console.log('    nuevo: 30% en sus ' + r.porSeccion.length + ' secciones, sin marcas');
+  });
+
+  await paso('V1.28 · los que YA existen: el recargo a nivel machote no se rompe', async () => {
+    /* Hay captura real de tres personas. Un machote de V1.27 lleva el número
+     * en `m.viaje` y tiene que valer EXACTAMENTE lo mismo — sin migrarlo, y
+     * sin que le caiga un valor inventado encima de lo que alguien decidió. */
+    await ir('#/m/M-1041');
+    const r = await p.evaluate(() => {
+      const C = window.MachoteCalc;
+      // Así se guardaba antes de V1.28: el recargo, del machote entero.
+      const m = C.machoteNuevo({ nombre: 'capturado en V1.27' });
+      m.pais = 'US'; m.region = 'Texas'; m.ciudad = 'Dallas';
+      m.viaje.recargo_fin_semana = 0.45;
+      m.secciones.push(C.seccionNueva('SECCIÓN 2', 'MXN', C.MARGENES_PLANTILLA));
+      m.secciones.forEach(s => {
+        const l = s.mo.find(x => x.rol === 'hrs_finde');
+        l.qty = 10; l.personas = 1; l.pu = 100;
+      });
+      const c = C.calcular(m);
+      return {
+        costos: c.secciones.map(s => s.costoMo),
+        origen: m.secciones.map(s => C.recargosDe(m, s).fin_semana.origen),
+        escritoEnSeccion: m.secciones.map(s => s.recargos === undefined),
+        sigueEnMachote: m.viaje.recargo_fin_semana
+      };
+    });
+    if (r.costos.some(x => Math.round(x) !== 1450))
+      throw new Error('los números cambiaron: ' + JSON.stringify(r.costos));
+    if (r.origen.some(x => x !== 'machote'))
+      throw new Error('no lee la capa del machote: ' + JSON.stringify(r.origen));
+    if (r.escritoEnSeccion.some(x => !x))
+      throw new Error('se le escribió un recargo inventado a la sección');
+    if (r.sigueEnMachote !== 0.45) throw new Error('le movieron el dato: ' + r.sigueEnMachote);
+    console.log('    45% del machote, respetado en sus 2 secciones · nada escrito encima');
+  });
+
+  await paso('V1.28 · mover el recargo queda DICHO en el historial, no sólo guardado', async () => {
+    /* El valor viaja dentro del documento, así que el historial lo guarda de
+     * todos modos. Lo que se afirma aquí es que la versión lo DIGA: un cambio
+     * que hay que salir a buscar comparando dos documentos es, en la práctica,
+     * un cambio que nadie encuentra — y éste mueve el margen.
+     *
+     * Se mide en EL CUERPO QUE SALE AL SERVIDOR, no en una variable interna
+     * de la pantalla: un motivo que se arma bien y no viaja no sirve de nada,
+     * y una prueba que mira el estado privado no distinguiría los dos casos. */
+    await ir('#/m/M-1041');
+    await p.click('[data-frec*="Dallas"]');
+    await p.waitForTimeout(600);
+    await hoja('Suministro'); await p.waitForTimeout(500);
+
+    const sid = await p.evaluate(() => {
+      const e = document.querySelector('.rec-sec [data-cel*=":fin_semana"]');
+      return e ? e.dataset.cel.split(':')[1] : null;
+    });
+    if (!sid) throw new Error('no salió el bloque del recargo');
+
+    await p.fill('[data-cel="rec:' + sid + ':fin_semana"]', '45');
+    await p.dispatchEvent('[data-cel="rec:' + sid + ':fin_semana"]', 'change');
+    await p.waitForTimeout(900);
+
+    /* El autoguardado real (500 ms) ya empujó: no se dispara nada a mano,
+     * porque lo que se quiere medir es lo que SALE por el camino de siempre. */
+    const r = await p.evaluate(() => {
+      const alm = JSON.parse(localStorage.getItem('fts_machote_v1'));
+      const m = alm.machotes.find(x => x.id === 'M-1041');
+      return { cuerpo: window.__ultimoGuardado || null,
+               enDocumento: (m.secciones.filter(s2 => s2.recargos)[0] || {}).recargos || null };
+    });
+
+    if (!r.enDocumento || r.enDocumento.fin_semana !== 0.45)
+      throw new Error('el 45% no quedó en el documento: ' + JSON.stringify(r.enDocumento));
+    if (!r.cuerpo) throw new Error('el autoguardado no empujó nada al servidor');
+    const motivo = r.cuerpo.motivo || '';
+    if (!/45%/.test(motivo) || !/30%/.test(motivo))
+      throw new Error('el motivo que viaja no dice de cuánto a cuánto: «' + motivo + '»');
+    if (!/recargo/i.test(motivo))
+      throw new Error('el motivo no dice de qué se trata: «' + motivo + '»');
+    console.log('    viaja al servidor: «' + motivo + '»');
+  });
+
+  await paso('V1.28 · la sección con el recargo no desborda a 380 ni a 1280', async () => {
+    /* ⚠️ Con DATOS QUE EJERCEN EL CASO, no los más fáciles de montar. La barra
+     * del precio quedó en 4 px durante semanas porque la fixture eran ejemplos
+     * y un ejemplo no se puede prestar: la prueba miraba una pantalla que
+     * nunca tenía los tres botones. Aquí eso significa un machote en Dallas,
+     * con horas de fin de semana capturadas y el recargo APARTADO — que es
+     * cuando el bloque lleva su marca, su nota y el borde, o sea cuando más
+     * ancho ocupa. */
+    for (const w of [380, 1280]) {
+      await p.setViewportSize({ width: w, height: 900 });
+      await ir('#/m/M-1041');
+      await p.click('[data-frec*="Dallas"]');
+      await p.waitForTimeout(600);
+      await hoja('Suministro'); await p.waitForTimeout(500);
+
+      const sid = await p.evaluate(() => {
+        const e = document.querySelector('.rec-sec [data-cel*=":fin_semana"]');
+        return e ? e.dataset.cel.split(':')[1] : null;
+      });
+      if (!sid) throw new Error(w + 'px · no salió el bloque del recargo');
+
+      // Horas de fin de semana capturadas + el recargo movido: el caso real.
+      await p.evaluate((id) => {
+        const set = (sel, val) => {
+          const e = document.querySelector(sel);
+          if (!e) return;
+          e.value = val;
+          e.dispatchEvent(new Event('change', { bubbles: true }));
+        };
+        const fila = [...document.querySelectorAll('[data-cel$=":qty"]')]
+          .find(x => /:mo:/.test(x.dataset.cel) &&
+                     /Horas en fin de semana/.test(x.closest('tr').textContent));
+        if (fila) {
+          const base = fila.dataset.cel.replace(/qty$/, '');
+          set('[data-cel="' + base + 'qty"]', '16');
+          set('[data-cel="' + base + 'pu"]', '120');
+        }
+        set('[data-cel="rec:' + id + ':fin_semana"]', '45');
+      }, sid);
+      await p.waitForTimeout(900);
+
+      const r = await p.evaluate(() => {
+        const b = document.querySelector('.rec-sec');
+        if (!b) return { falta: true };
+        const cel = b.querySelector('input[data-cel*=":fin_semana"]');
+        const cr = cel.getBoundingClientRect();
+        const marca = b.querySelector('.rec-marca');
+        // La tarifa efectiva, que es lo que el recargo mueve, se ve en la fila.
+        const efect = [...document.querySelectorAll('.rejilla .tiny.recargo')]
+          .map(e => e.textContent.replace(/\s+/g, ' ').trim());
+        return {
+          desbordeDoc: document.documentElement.scrollWidth > window.innerWidth + 1,
+          anchoCelda: Math.round(cr.width),
+          celdaVisible: cr.width > 40 && cr.height > 20,
+          apartado: b.classList.contains('apartado'),
+          marca: !!marca,
+          nota: (b.querySelector('.n-warn') || {}).textContent || '',
+          efect: efect,
+          alto: Math.round(b.getBoundingClientRect().height)
+        };
+      });
+      if (r.falta) throw new Error(w + 'px · desapareció el bloque del recargo');
+      if (r.desbordeDoc) throw new Error(w + 'px · la página desborda a lo ancho');
+      if (!r.celdaVisible)
+        throw new Error(w + 'px · la celda del recargo quedó en ' + r.anchoCelda + ' px');
+      if (!r.apartado || !r.marca)
+        throw new Error(w + 'px · el 45% no se ve como apartado del 30%');
+      if (!/30%/.test(r.nota))
+        throw new Error(w + 'px · la nota no dice de cuánto era el arranque: «' + r.nota + '»');
+      if (!r.efect.some(x => /\+45%/.test(x)))
+        throw new Error(w + 'px · la fila no muestra la tarifa con el 45%: ' + JSON.stringify(r.efect));
+      console.log('    ' + w + 'px · celda ' + r.anchoCelda + ' px · bloque ' + r.alto +
+                  ' px · fila «' + (r.efect.find(x => /\+45%/.test(x)) || '') + '»');
+    }
+    await p.setViewportSize({ width: 1280, height: 900 });
+  });
+
   await paso('sin errores de consola propios del prototipo', async () => {
     if (errs.length) throw new Error(errs.slice(0, 4).join(' | '));
     if (delEntorno.length) console.log('   (' + delEntorno.length +

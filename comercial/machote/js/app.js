@@ -56,7 +56,7 @@
    *   2. el `?v=` de la URL con la que el navegador lo bajó,
    *   3. la que declara cada pieza que se carga aparte (hoy el motor).
    * Si discrepan, la pantalla lo DICE en vez de correr a medias. */
-  const VERSION_ARCHIVO = 'V1.27';
+  const VERSION_ARCHIVO = 'V1.28';
 
   const VERSION_URL = (function () {
     try {
@@ -568,6 +568,18 @@
       const s = m.secciones.find(x => x.id === p[1]); if (!s) return;
       if (!s.margenes) s.margenes = {};
       s.margenes[p[2]] = sanea(val); return;
+    }
+    /* V1.28 · el recargo es DE LA SECCIÓN: `rec:<sid>:<fin_semana|festivo>`.
+     * Vaciar la celda BORRA el campo en vez de escribir cero, y la diferencia
+     * importa: cero es «el fin de semana no se cobra más caro» y ausente es
+     * «lo que diga la plantilla». Si vaciar escribiera cero, quien quisiera
+     * volver al 30% tendría que acordarse del número. */
+    if (p[0] === 'rec') {
+      const s = m.secciones.find(x => x.id === p[1]); if (!s) return;
+      if (!s.recargos) s.recargos = {};
+      if (val === null || val === undefined || val === '') delete s.recargos[p[2]];
+      else s.recargos[p[2]] = sanea(val);
+      return;
     }
     if (p[0] === 's') {
       const s = m.secciones.find(x => x.id === p[1]); if (!s) return;
@@ -1562,27 +1574,36 @@
         '<span>No se ocupan conceptos de viaje en esta cotización</span></label>' +
       '<div class="tiny nota">Márcalo sólo si el cliente pone el traslado o la gente ya ' +
       'está en sitio. Queda anotado como decisión, no como olvido.</div>' +
+      /* ── V1.28 · DOS REGLAS DISTINTAS, Y SE DICEN POR SEPARADO ──────────
+       *
+       * Montalvo entendió que el recargo dependía de VIAJAR, y propuso que
+       * aplicara fuera de Monterrey. No es una mala lectura: estaban en la
+       * misma tabla, bajo el mismo título de viaje, una debajo de la otra.
+       *
+       *   · Los GASTOS DE VIAJE salen de ejecutar fuera de Nuevo León.
+       *   · El RECARGO sale de ejecutar en Estados Unidos, y es una regla
+       *     laboral de allá — un trabajo en Ciudad Juárez es foráneo y no la
+       *     lleva; uno en Dallas lleva las dos.
+       *
+       * Por eso el recargo ya NO se captura aquí: se captura EN LA SECCIÓN,
+       * junto a la mano de obra que encarece, que además es su alcance real
+       * (decisión de Esteban, 11-sep). Aquí sólo queda dicho dónde está y por
+       * qué es otra cosa — si se dejara también la celda del machote habría
+       * dos escritores del mismo número (§20 regla 4). */
+      '<div class="viaje-reglas' + (eua ? ' eua' : '') + '">' +
+        '<strong>Los gastos de viaje y el recargo de fin de semana son dos reglas distintas.</strong> ' +
+        'Lo de arriba —vuelos, hotel, viáticos, taxis, gasolina— sale de ejecutar fuera de ' +
+        'Nuevo León, y por eso está aquí. El recargo de fin de semana y de día festivo sale de ' +
+        'ejecutar <strong>en Estados Unidos</strong>: es una regla laboral de allá, no un costo ' +
+        'de viajar. ' +
+        (eua
+          ? 'Como este trabajo se ejecuta en Estados Unidos, el recargo se captura ' +
+            '<strong>en cada sección</strong>, junto a la mano de obra que encarece — ahí es ' +
+            'donde se decide, porque una sección puede trabajarse en fin de semana y otra no.'
+          : 'Este trabajo no se ejecuta en Estados Unidos, así que el fin de semana va a ' +
+            'tarifa normal y no hay recargo que capturar.') +
+      '</div>' +
       '<table class="hoja2"><tbody>' +
-      /* ── F · EL RECARGO SIGUE SIENDO SÓLO DE ESTADOS UNIDOS ────────────
-       * Montalvo propuso que aplicara fuera de Monterrey. NO se cambió: es una
-       * regla LABORAL de allá, no una consecuencia de viajar — un trabajo en
-       * Ciudad Juárez es foráneo y no necesariamente la lleva. La decisión es
-       * de Esteban con Ricardo y Montalvo, y está puesta en el issue.
-       * Lo que sí cambia aquí es el TEXTO: «No aplica» a secas se leía como
-       * «no se puede», y de ahí salió la propuesta. */
-      '<tr><td class="et">Recargo fin de semana</td><td>' +
-        (eua
-          ? celPct('viaje.recargo_fin_semana', v.recargo_fin_semana, 'w80')
-          : '<span class="tiny nota">Sólo en Estados Unidos: es una regla laboral de allá, ' +
-            'no un costo de viajar. Fuera de EUA el fin de semana va a tarifa normal.</span>') +
-      '</td></tr>' +
-      '<tr><td class="et">Recargo día festivo</td><td>' +
-        (eua
-          ? celPct('viaje.recargo_festivo', v.recargo_festivo, 'w80') +
-            '<div class="tiny n-warn">Sin confirmar con nadie. Vacío = tarifa normal.</div>'
-          : '<span class="tiny nota">Sólo en Estados Unidos, por lo mismo que el de fin ' +
-            'de semana.</span>') +
-      '</td></tr>' +
       '<tr><td class="et">Quién paga los días de viaje</td><td>' +
         '<select class="cel" data-cel="viaje.paga_dias">' +
         C.PAGA_DIAS.map(o => '<option value="' + esc(o.id) + '"' +
@@ -1802,6 +1823,66 @@
       'las dos comisiones son de toda la cotización.<br>' +
       'Horas extras = mano de obra × 2 = <strong>' + mg.extra + '</strong>. No se captura, igual que en el Excel.</div>' +
       '</div></div>';
+
+    /* ── V1.28 · EL RECARGO DE ESTA SECCIÓN ───────────────────────────────
+     *
+     * Va pegado a la mano de obra porque es lo que encarece: la tarifa de las
+     * horas de fin de semana y de día festivo de ESTA sección. Estaba en el
+     * panel de viaje del machote, y ahí se leía como un costo de viajar y
+     * valía para toda la cotización — las dos cosas mal (decisión de Esteban,
+     * 11-sep).
+     *
+     * **Sólo se ofrece cuando se ejecuta en Estados Unidos.** En Ciudad Juárez
+     * no aparece: no hay nada que decidir, y una celda que no mueve un peso
+     * enseña a llenar celdas sin mirar.
+     *
+     * Que se haya apartado del valor de arranque SE VE, igual que un margen
+     * escrito a mano encima de la fórmula. El recargo mueve el margen, y un
+     * número movido que no se nota es exactamente el caso de las comisiones
+     * que obligó a construir el histórico. */
+    const recSec = cs.recargos || C.recargosDe(m, s);
+    const filaRec = (clave, rotulo, ayuda) => {
+      const r = recSec[clave];
+      const porDef = (r.porDefecto === null) ? 'vacío' : Math.round(r.porDefecto * 100) + '%';
+      /* La marca es `≠ 30%`, no un icono: es EXACTAMENTE el lenguaje con el
+       * que ya se señala un margen escrito a mano encima de la fórmula
+       * (`≠ 1.8`), así que quien aprendió a leer uno lee el otro sin que
+       * nadie se lo explique. Un lápiz, además, lo pinta el sistema como
+       * emoji a color y grita más que el dato. */
+      const nota = r.apartado
+        ? 'Apartado en esta sección. De arranque: ' + porDef + '. Sólo cambia aquí.'
+        : (r.origen === 'machote'
+          ? 'Viene del machote, capturado antes de que el recargo fuera por sección. ' +
+            'Escribe otro y cambia sólo en esta sección.'
+          // Con `porDefecto` en null —el festivo— «valor de arranque» no dice
+          // nada: el arranque es que está VACÍO, y eso lo explica la ayuda.
+          : (r.porDefecto === null
+            ? 'Sin valor de arranque. Escribe uno y cambia sólo en esta sección.'
+            : 'Valor de arranque. Escribe otro y cambia sólo en esta sección.'));
+      return '<tr><td class="et">' + esc(rotulo) +
+        (r.apartado ? '<span class="rec-marca" title="Apartado del valor de arranque (' +
+          porDef + ') en esta sección.">≠ ' + porDef + '</span>' : '') + '</td>' +
+        '<td>' + celPct('rec:' + s.id + ':' + clave, r.pct, 'w80' + (r.apartado ? ' pisado' : '')) +
+          '<div class="tiny ' + (r.apartado ? 'n-warn' : 'nota') + '">' + nota + '</div>' +
+          (ayuda ? '<div class="tiny nota">' + ayuda + '</div>' : '') +
+        '</td></tr>';
+    };
+    const bloqueRecargo = c.lugar.eua
+      ? '<div class="rec-sec' + (cs.recargosApartados ? ' apartado' : '') + '">' +
+          '<div class="secc-tit">RECARGO DE ESTA SECCIÓN' +
+            '<span class="secc-sub"> · porque se ejecuta en Estados Unidos, no porque se viaje' +
+            '</span></div>' +
+          '<div class="tiny nota">Encarece las <strong>horas en fin de semana</strong> y las ' +
+          '<strong>horas en día festivo</strong> de abajo. Es del tramo de trabajo, no del ' +
+          'proyecto: otra sección puede tener otro, y un machote nuevo arranca otra vez en el ' +
+          'valor de plantilla.</div>' +
+          '<table class="hoja2"><tbody>' +
+            filaRec('fin_semana', 'Recargo fin de semana', 'Sábado y domingo.') +
+            filaRec('festivo', 'Recargo día festivo',
+              'Sin confirmar con nadie. Vacío = tarifa normal.') +
+          '</tbody></table>' +
+        '</div>'
+      : '';
 
     // COSTO MANO DE OBRA — los diez renglones siempre presentes, en sus tres grupos.
     let filasMo = '';
@@ -2032,7 +2113,7 @@
     const listaUnidades = '<datalist id="unidades">' +
       D.UNIDADES.map(u => '<option value="' + esc(u) + '">').join('') + '</datalist>';
 
-    return listaUnidades + cab + leyenda() + tablaMo + bloqueViaje + tablaMat;
+    return listaUnidades + cab + leyenda() + bloqueRecargo + tablaMo + bloqueViaje + tablaMat;
   }
 
   /* ── El estado del machote ─────────────────────────────────────────────
@@ -2513,7 +2594,44 @@
          * un estado que no es de ese país no es sólo feo: decide mal. */
         const cambiaPais = el.dataset.cel === 'pais' &&
           C.llano(el.value) !== C.llano(m.pais);
+        /* ── V1.28 · mover el recargo QUEDA DICHO en el historial ──────────
+         * Esteban: «como mueve el margen, registra por sección cuándo se
+         * apartó del valor por defecto y hazlo visible, igual que con el
+         * margen sobrescrito a mano. Es el mismo caso de las comisiones que
+         * motivó el histórico».
+         *
+         * El valor ya viaja DENTRO del documento, así que el historial lo
+         * guarda de todos modos y con su fecha y su autor. Lo que se agrega
+         * aquí es que la versión lo DIGA en su motivo: un cambio que hay que
+         * salir a buscar comparando dos documentos es, en la práctica, un
+         * cambio que nadie encuentra. Mismo mecanismo que el renombrado. */
+        const recAntes = /^rec:/.test(el.dataset.cel)
+          ? (function () {
+              const p2 = el.dataset.cel.split(':');
+              const sx = (m.secciones || []).find(x => x.id === p2[1]);
+              /* ⚠️ El valor ANTERIOR sale de `defaultValue`, NO del documento.
+               * Leerlo del documento aquí da el valor NUEVO y el motivo sale
+               * «45% → 45%»: cuando este `change` llega, el `input` de al lado
+               * YA escribió —al teclear se refrescan los derivados sin esperar
+               * al blur—, así que el documento hace rato que dejó de tener el
+               * valor viejo. `defaultValue` es el atributo `value` tal como lo
+               * pintó el último render, y eso sí es el de antes de editar.
+               * Medido: el primer intento reportaba 0.45 → 0.45 y el motivo
+               * salía vacío. */
+              return sx ? { nombre: sx.nombre, clave: p2[2], txt: el.defaultValue } : null;
+            })()
+          : null;
         aplicar();
+        if (recAntes) {
+          const pc2 = (x) => (x === '' || x === null || x === undefined)
+            ? 'vacío' : Math.round(Number(x)) + '%';
+          const antesTxt = pc2(recAntes.txt), ahoraTxt = pc2(el.value);
+          if (antesTxt !== ahoraTxt) {
+            ST.motivos[m.id] = 'Recargo ' +
+              (recAntes.clave === 'festivo' ? 'de día festivo' : 'de fin de semana') +
+              ' en «' + recAntes.nombre + '»: ' + antesTxt + ' → ' + ahoraTxt;
+          }
+        }
         if (cambiaPais) { m.region = ''; m.ciudad = ''; }
         // El nombre de la sección vive en la PESTAÑA, que se pinta fuera de la
         // hoja. Se corrige la pestaña en su lugar, sin repintar el libro: este

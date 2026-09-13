@@ -18,7 +18,7 @@
    * que no es el que espera. Se bumpea junto con `const VERSION_ARCHIVO` de
    * `app.js`, el `?v=` de `index.html` y `version.json` — hay una prueba que
    * falla si los cuatro se separan. */
-  const VERSION = 'V1.27';
+  const VERSION = 'V1.28';
 
   const num = (v) => (typeof v === 'number' && isFinite(v)) ? v : 0;
   const vacio = (v) => v === null || v === undefined || v === '';
@@ -76,6 +76,23 @@
    * Programador y mano de obra no variaron en ninguno de los 8 ejemplares
    * leídos; materiales y servicios sí, por eso son campos y no constantes. */
   const MARGENES_PLANTILLA = { programador: 4.4, mano_obra: 2.5, materiales: 1.8, servicios: 1.7 };
+
+  /* ── V1.28 · LOS RECARGOS DE ARRANQUE ─────────────────────────────────────
+   *
+   * El 30% vivía incrustado DOS veces en el código (en `machoteNuevo` y en el
+   * respaldo de `viajeDe`). Sale aquí por lo mismo que los multiplicadores:
+   * un valor de arranque que alguien va a querer mover con el tiempo tiene
+   * que estar en un solo lugar y a la vista, no repartido entre funciones.
+   *
+   * `fin_semana: 0.30` — «alrededor de 30% más la hora», dicho por Ricardo.
+   * `festivo: null`    — SIN CONFIRMAR, a propósito. Nace vacío y quien cotiza
+   *                      lo escribe; inventarle un número sería cobrarle al
+   *                      cliente una regla que nadie acordó.
+   *
+   * Los dos SÓLO aplican cuando el trabajo se ejecuta en Estados Unidos: es
+   * una regla laboral de allá, no una consecuencia de viajar (ver `recargoDe`).
+   * El alcance de lo que se captura encima es LA SECCIÓN, no el machote. */
+  const RECARGOS_PLANTILLA = { fin_semana: 0.30, festivo: null };
   const COMISION_FTS_PLANTILLA = 0.055;
   const MARGEN_DESEADO_PLANTILLA = 0.40;
   const REPARTO_PLANTILLA = { venta: 0.73, operaciones: 0.27 };
@@ -303,8 +320,15 @@
       viaje: {
         // «No se ocupan conceptos de viaje», la salida explícita del bloqueo.
         no_aplica: false,
-        recargo_fin_semana: 0.30,   // ~30%, dicho por Ricardo; editable
-        recargo_festivo: null,      // SIN CONFIRMAR: nace vacío a propósito
+        /* ⚠️ V1.28 · los recargos YA NO se escriben aquí. Vivían en este objeto
+         * como 0.30 y null, y eso los ataba al machote entero. Ahora el valor
+         * de arranque está en `RECARGOS_PLANTILLA` y lo que se captura encima
+         * es de LA SECCIÓN (ver `recargosDe`). Un machote nuevo no trae número
+         * propio: lee el de plantilla, igual en todas sus secciones.
+         *
+         * Esta capa se sigue LEYENDO —los machotes capturados antes de V1.28
+         * sí traen su `recargo_fin_semana` aquí y tienen que seguir valiendo—
+         * pero ya nadie la escribe. */
         paga_dias: 'mx'             // hoy; la decisión está abierta
       },
       secciones: [seccionNueva('SECCIÓN 1', empresa.moneda, MARGENES_PLANTILLA)]
@@ -377,15 +401,15 @@
     const v = (m && m.viaje) || {};
     return {
       no_aplica: v.no_aplica === true,
-      // 30% es lo que dijo Ricardo («alrededor de 30% más la hora»). Es un
-      // valor de arranque editable, no una constante del motor.
+      /* ⚠️ V1.28 · estos dos ya NO son la respuesta: son la CAPA DEL MACHOTE.
+       * Lo que vale es lo que devuelve `recargosDe(m, s)`, que los resuelve
+       * contra la sección. Se dejan aquí, crudos y sin valor de relleno, para
+       * que esa función los lea — y `undefined` significa «este machote no
+       * trae número propio», que es distinto de «trae cero». */
       recargo_fin_semana: (v.recargo_fin_semana === undefined || v.recargo_fin_semana === null)
-        ? 0.30 : num(v.recargo_fin_semana),
-      // NULL A PROPÓSITO: lo de días festivos NO está confirmado. Nace en cero
-      // y quien cotiza lo escribe; inventarle un número sería cobrarle al
-      // cliente una regla que nadie acordó.
+        ? undefined : num(v.recargo_fin_semana),
       recargo_festivo: (v.recargo_festivo === undefined || v.recargo_festivo === null)
-        ? null : num(v.recargo_festivo),
+        ? undefined : num(v.recargo_festivo),
       // Quién paga los días de viaje. DECISIÓN DE NEGOCIO ABIERTA (ver
       // docs/comercial/VIAJE.md): hoy es pago mexicano; Esteban planteó que
       // debería pagarlos la LLC, con tarifa más básica pero en dólares. El
@@ -399,21 +423,67 @@
     { id: 'llc', label: 'FTS USA (LLC)',          nota: 'Propuesta de Esteban: es quien mueve a la gente.' }
   ];
 
+  /** ── V1.28 · LOS RECARGOS DE UNA SECCIÓN, YA RESUELTOS ──────────────────
+   *
+   *  Tres capas, **las mismas que los multiplicadores**: plantilla ← machote
+   *  ← sección. No es una simetría decorativa; es lo que hace que este cambio
+   *  no rompa nada. Un machote capturado antes de V1.28 trae su número en
+   *  `m.viaje.recargo_fin_semana` y lo sigue leyendo en todas sus secciones,
+   *  exactamente igual que antes. Nada que migrar, y ningún valor inventado
+   *  cayendo encima de lo que alguien ya decidió.
+   *
+   *  **La sección manda y NO se propaga.** Mover el recargo en una sección no
+   *  toca a las demás, ni al machote, ni al valor de arranque: es del tramo de
+   *  trabajo, no del proyecto. Un mismo proyecto puede tener una sección que
+   *  se trabaja en fin de semana y otra que no.
+   *
+   *  `apartado` dice si el número vigente se separó del de plantilla. Como el
+   *  recargo mueve el margen, esa separación tiene que VERSE —igual que un
+   *  margen escrito a mano encima de la fórmula—, y no basta con guardarla.
+   *  Se compara el VALOR contra la plantilla y no la mera presencia del campo:
+   *  un machote de V1.27 trae 0.30 escrito, y eso no es haberse apartado de
+   *  nada. */
+  function recargosDe(m, s) {
+    const v = viajeDe(m);
+    const sec = (s && s.recargos) || {};
+    function capa(clave, delMachote) {
+      const deSeccion = sec[clave];
+      let pct, origen;
+      if (deSeccion !== undefined && deSeccion !== null) { pct = num(deSeccion); origen = 'seccion'; }
+      else if (delMachote !== undefined && delMachote !== null) { pct = num(delMachote); origen = 'machote'; }
+      else { pct = RECARGOS_PLANTILLA[clave]; origen = 'plantilla'; }
+      const base = RECARGOS_PLANTILLA[clave];
+      return {
+        pct: pct,
+        origen: origen,
+        porDefecto: base,
+        // `null` (festivo sin confirmar) contra un número SÍ es apartarse.
+        apartado: (pct === null || base === null) ? (pct !== base) : (num(pct) !== num(base))
+      };
+    }
+    return { fin_semana: capa('fin_semana', v.recargo_fin_semana),
+             festivo:    capa('festivo',    v.recargo_festivo) };
+  }
+
   /** El recargo que le toca a un renglón, y por qué. Devuelve el porqué junto
    *  con el número para que la pantalla pueda decir «no aplica: es regla de
-   *  Estados Unidos» en vez de enseñar un cero sin explicación. */
-  function recargoDe(rol, m) {
-    if (!rol || !rol.recargo) return { pct: 0, aplica: false, motivo: null };
+   *  Estados Unidos» en vez de enseñar un cero sin explicación.
+   *
+   *  V1.28 recibe la SECCIÓN. Sin ella resuelve con machote+plantilla, que es
+   *  lo que hacía antes: los llamadores viejos siguen dando el mismo número. */
+  function recargoDe(rol, m, s) {
+    if (!rol || !rol.recargo) return { pct: 0, aplica: false, motivo: null, apartado: false };
     if (!esEUA(m)) {
-      return { pct: 0, aplica: false, motivo: 'Sólo aplica cuando se ejecuta en Estados Unidos.' };
+      return { pct: 0, aplica: false, apartado: false,
+        motivo: 'Sólo aplica cuando se ejecuta en Estados Unidos.' };
     }
-    const v = viajeDe(m);
-    if (rol.recargo === 'festivo') {
-      return v.recargo_festivo === null
-        ? { pct: 0, aplica: false, motivo: 'Sin confirmar: escribe el recargo de días festivos.' }
-        : { pct: v.recargo_festivo, aplica: v.recargo_festivo > 0, motivo: null };
+    const r = recargosDe(m, s)[rol.recargo === 'festivo' ? 'festivo' : 'fin_semana'];
+    if (r.pct === null) {
+      return { pct: 0, aplica: false, apartado: false,
+        motivo: 'Sin confirmar: escribe el recargo de días festivos.' };
     }
-    return { pct: v.recargo_fin_semana, aplica: v.recargo_fin_semana > 0, motivo: null };
+    return { pct: r.pct, aplica: num(r.pct) > 0, motivo: null,
+             origen: r.origen, apartado: r.apartado, porDefecto: r.porDefecto };
   }
 
   const empresaDe = (m) => EMPRESAS.find(e => e.id === Number(m && m.empresa_id)) || EMPRESAS[0];
@@ -480,7 +550,7 @@
     const mg = margenes(m, s);
     const sinTarifa = vacio(linea.pu);
     const puBase = sinTarifa ? 0 : num(linea.pu);
-    const rec = recargoDe(r, m);
+    const rec = recargoDe(r, m, s);
     const pu = puBase * (1 + num(rec.pct));
     const costo = aMonedaDoc(pu * num(linea.personas) * num(linea.qty), linea.moneda, m);
     const mult = r ? num(mg[r.mult]) : 0;
@@ -553,6 +623,8 @@
     let costoViaje = 0, viajeConMargen = 0, renglonesViaje = 0;
     // V1.27 · el estado de los cinco conceptos de viaje de ESTA sección.
     const cptsViaje = conceptosViaje(m, s);
+    // V1.28 · los recargos vigentes de ESTA sección, con su procedencia.
+    const recSec = recargosDe(m, s);
     const monedas = {};
 
     (s.mo || []).forEach(l => {
@@ -603,6 +675,15 @@
       horas, dias, moSinTarifa, sinPrecio, sinTipo, sinLink, pisados,
       viajeConMargen, renglonesViaje,
       conceptosViaje: cptsViaje, viajePorResolver,
+      /* V1.28 · el recargo vigente AQUÍ y si se apartó del de plantilla. La
+       * pantalla lo pinta de esto y no lo resuelve por su cuenta: dos lugares
+       * decidiendo el mismo número es cómo empezó el bug de los márgenes
+       * compartidos (§20 regla 4, un solo escritor). Sólo cuenta como apartado
+       * donde el recargo APLICA —fuera de Estados Unidos el número no mueve un
+       * peso, y marcarlo ahí sería una alarma sobre algo que no pasa. */
+      recargos: recSec,
+      recargosApartados: esEUA(m)
+        ? ['fin_semana', 'festivo'].filter(k => recSec[k].apartado).length : 0,
       monedas: Object.keys(monedas)
     };
   }
@@ -809,9 +890,9 @@
     VERSION,
     ROLES, ROL, GRUPOS, TIPOS, TIPO_VIAJE, CONCEPTOS_VIAJE, ESCENARIOS, MAX_SECCIONES,
     SEDE, PAGA_DIAS,
-    llano, tieneLugar, esForaneo, esEUA, viajeDe, recargoDe, conceptosViaje,
+    llano, tieneLugar, esForaneo, esEUA, viajeDe, recargoDe, recargosDe, conceptosViaje,
     EMPRESAS, empresaDe, monedaPorDefecto,
-    MARGENES_PLANTILLA, COMISION_FTS_PLANTILLA, MARGEN_DESEADO_PLANTILLA, REPARTO_PLANTILLA,
+    MARGENES_PLANTILLA, RECARGOS_PLANTILLA, COMISION_FTS_PLANTILLA, MARGEN_DESEADO_PLANTILLA, REPARTO_PLANTILLA,
     PARTIDAS_EN_BLANCO, EQUIPO_VENTA_PLANTILLA, EQUIPO_OPS_PLANTILLA,
     usadaPartida, capturada,
     seccionNueva, machoteNuevo,
