@@ -188,6 +188,34 @@ await sembrarMachotes(p);
                                    machotes: [], total: 0 });
         } });
       }
+      /* V1.29 · archivar ESCRIBE AL SERVIDOR, asi que sin esto la equis no
+       * hace nada en las pruebas. Se apunta cada llamada para poder afirmar
+       * que salio, que es justo lo que antes no pasaba. */
+      if (String(u).indexOf('/comercial/machote-archivar') >= 0) {
+        var ca = {};
+        try { ca = JSON.parse((o && o.body) || '{}'); } catch (e) {}
+        window.__archivados = (window.__archivados || []);
+        window.__archivados.push({ accion: ca.accion, machote_id: ca.machote_id,
+                                   machote_ids: ca.machote_ids || null, para: ca.para || null,
+                                   forzada: ca.forzada === true, motivo: ca.motivo || null });
+        if (window.__archivarFalla) {
+          return Promise.resolve({ ok: true, json: function () {
+            return Promise.resolve({ ok: false, hecho: false,
+              error: window.__archivarFalla,
+              mensaje: window.__archivarFallaMsg || 'No se pudo.' });
+          } });
+        }
+        return Promise.resolve({ ok: true, json: function () {
+          return Promise.resolve({ ok: true, hecho: true,
+            accion: ca.accion, machote_id: ca.machote_id,
+            folio: 41, folio_txt: 'COT-0041', versiones: 3,
+            archivado: ca.accion !== 'desarchivar',
+            archivado_at: new Date().toISOString(), archivado_por: 'zz.prueba',
+            mensaje: ca.accion === 'desarchivar'
+              ? 'Devuelta a la lista. Conserva su folio COT-0041 y sus 3 version(es).'
+              : 'Archivada. No se borro nada: conserva su folio COT-0041 y sus 3 version(es).' });
+        } });
+      }
       if (String(u).indexOf('/comercial/machote-guardar') >= 0) {
         var cuerpo = {};
         try { cuerpo = JSON.parse((o && o.body) || '{}'); } catch (e) {}
@@ -1400,8 +1428,14 @@ await sembrarMachotes(q);
     if (r.usadas !== 0) throw new Error('los preparados cuentan como usados: ' + r.usadas);
   });
 
-  await paso('se puede borrar un machote en creación', async () => {
+  await paso('V1.29 · la equis ARCHIVA, y escribe al servidor', async () => {
+    /* La premisa cambio, y ese cambio ES el arreglo. Antes esta prueba media
+     * que el machote salia de la lista LOCAL — y pasaba en verde mientras el
+     * servidor no se enteraba de nada. Ahora se exige lo que faltaba: que la
+     * llamada SALGA, y que la lista solo se mueva despues de que el servidor
+     * conteste que si. */
     await ir('#/');
+    await p.evaluate(() => { window.__archivados = []; });
     const antes = await p.locator('.item[href^="#/m/"]').count();
     p.once('dialog', d => d.accept());
     /* `:visible` NO es un adorno. Desde V1.21 cada machote se pinta DOS veces
@@ -1410,30 +1444,80 @@ await sembrarMachotes(q);
      * está oculto, y `click()` se queda esperando a que aparezca hasta agotar
      * el tiempo. Hay que apretar el que la persona ve. */
     await p.locator('[data-borrar]:visible').first().click();
-    await p.waitForTimeout(400);
+    await p.waitForTimeout(700);
     const desp = await p.locator('.item[href^="#/m/"]').count();
-    if (desp !== antes - 1) throw new Error('no borró: ' + antes + ' → ' + desp);
+    if (desp !== antes - 1) throw new Error('no salió de la lista: ' + antes + ' → ' + desp);
+
+    const llamadas = await p.evaluate(() => window.__archivados || []);
+    if (!llamadas.length)
+      throw new Error('NO ESCRIBIO AL SERVIDOR: es exactamente el defecto que V1.29 arregla');
+    if (llamadas[0].accion !== 'archivar')
+      throw new Error('mandó otra accion: ' + llamadas[0].accion);
+    if (!llamadas[0].machote_id)
+      throw new Error('mandó sin machote_id');
+
+    /* Y NO se sepulta el id_local: la lapida haria que un desarchivado no
+     * pudiera volver a verse en este navegador nunca mas. */
+    const lapidas = await p.evaluate(() => {
+      try { return JSON.parse(localStorage.getItem('fts_machote_borrados_v1') || '{}'); }
+      catch (e) { return {}; }
+    });
+    if (Object.keys(lapidas).length)
+      throw new Error('sepultó el id_local al archivar: ' + Object.keys(lapidas).join(', '));
+    console.log('    salió al servidor · ' + antes + ' → ' + desp + ' · sin lápida');
   });
 
-  await paso('un machote enviado a Odoo no se puede borrar', async () => {
+  await paso('V1.29 · si el servidor dice que NO, la lista no se mueve y se dice por qué', async () => {
+    /* El caso que importa de verdad: que la pantalla NO finja. Antes no podia
+     * fallar porque no preguntaba a nadie. */
+    await ir('#/');
+    await p.evaluate(() => {
+      window.__archivarFalla = 'SOLO_EL_DUENO_ARCHIVA';
+      window.__archivarFallaMsg = 'Archivar es solo de su dueno, y esta es de Ricardo Hernandez.';
+    });
+    const antes = await p.locator('.item[href^="#/m/"]').count();
+    p.once('dialog', d => d.accept());
+    await p.locator('[data-borrar]:visible').first().click();
+    await p.waitForTimeout(700);
+
+    const desp = await p.locator('.item[href^="#/m/"]').count();
+    if (desp !== antes) throw new Error('se la llevó de la lista aunque el servidor dijo que no: ' + antes + ' → ' + desp);
+
+    const aviso = await p.$('#avArch');
+    if (!aviso) throw new Error('no avisó: se lo tragó en silencio');
+    const txt = (await p.textContent('#avArch')).replace(/\s+/g, ' ');
+    if (!/No se archiv/i.test(txt)) throw new Error('el aviso no dice que no se archivó: ' + txt);
+    if (!/Ricardo/.test(txt))
+      throw new Error('no repite el motivo DEL SERVIDOR, que es lo accionable: ' + txt);
+    await p.evaluate(() => { window.__archivarFalla = null; });
+    console.log('    «' + txt.slice(0, 92) + '»');
+  });
+
+  await paso('V1.29 · un machote enviado a Odoo SI se archiva, porque archivar no destruye', async () => {
+    /* ⚠️ ESTA PRUEBA AFIRMABA LO CONTRARIO, y el cambio es deliberado.
+     *
+     * La razon por la que un `enviado` no se podia borrar estaba escrita en el
+     * codigo: «si desaparece, desaparece la unica explicacion de por que el
+     * precio fue ese». Es correcta — y deja de aplicar cuando nada desaparece.
+     * Un archivado conserva su folio y todas sus versiones, y direccion lo
+     * puede devolver. Mantener el candado seria protegerlo de algo que ya no
+     * pasa, y dejaria a su dueño sin forma de quitarlo de la lista.
+     *
+     * Lo que SI sigue bloqueado es lo ajeno, y eso se prueba abajo. */
     await ir('#/m/M-1042'); await hoja('DESGLOSE');
     await p.locator('[data-estado]').selectOption('enviado'); await p.waitForTimeout(400);
     await irSuave('#/');
-    /* Se engancha por `[data-mid]`, que es el mismo en las DOS pinturas —el
-     * renglón de la tabla y la tarjeta del teléfono— y se exige en ambas: el
-     * candado tiene que estar donde sea que la persona esté mirando. */
     const r = await p.evaluate(() => {
       const filas = [...document.querySelectorAll('[data-mid="M-1042"]')];
       if (!filas.length) return null;
-      return {
-        n: filas.length,
-        borrar: filas.some(f => f.querySelector('[data-borrar]')),
-        candado: filas.every(f => f.querySelector('.candado'))
-      };
+      return { n: filas.length,
+               archivar: filas.every(f => !!f.querySelector('[data-borrar]')),
+               candado: filas.some(f => !!f.querySelector('.candado')) };
     });
     if (!r) throw new Error('no encontré M-1042 en la lista');
-    if (r.borrar) throw new Error('le dejó el botón de borrar');
-    if (!r.candado) throw new Error('no muestra por qué no se puede');
+    if (!r.archivar) throw new Error('le quitó el botón de archivar a un enviado, que SI se archiva');
+    if (r.candado) throw new Error('sigue pintando el candado de «no se borra»');
+    console.log('    enviado a Odoo, y aun asi archivable (' + r.n + ' pinturas)');
   });
 
   // ── Pegar una tabla ──────────────────────────────────────────────────
@@ -2933,6 +3017,18 @@ await sembrarMachotes(q);
         const s = String(u);
         if (s.indexOf('/comercial/machotes-leer') >= 0)
           return Promise.resolve({ ok: true, json: function () { return Promise.resolve(cfg.real); } });
+        /* V1.29 · archivar ESCRIBE AL SERVIDOR. Sin esta rama la llamada se
+         * va al `fetch` de verdad, no contesta nadie, y la prueba falla por
+         * el MONTAJE y no por el producto. */
+        if (s.indexOf('/comercial/machote-archivar') >= 0) {
+          var ar = {}; try { ar = JSON.parse((o && o.body) || '{}'); } catch (e) {}
+          window.__archivados = (window.__archivados || []);
+          window.__archivados.push({ accion: ar.accion, machote_id: ar.machote_id });
+          return Promise.resolve({ ok: true, json: function () {
+            return Promise.resolve({ ok: true, hecho: true, accion: ar.accion,
+              folio_txt: 'COT-0099', versiones: 1,
+              mensaje: 'Archivada. No se borro nada.' }); } });
+        }
         if (s.indexOf('/comercial/machote-guardar') >= 0) {
           var c = {}; try { c = JSON.parse((o && o.body) || '{}'); } catch (e) {}
           if (!window.__permitir) {
@@ -3690,6 +3786,10 @@ await sembrarMachotes(q);
           el_ajeno_se_marca: !!(aj && aj.querySelector('.pill.aj')),
           el_ajeno_no_se_borra: !!(aj && !aj.querySelector('[data-borrar]')),
           el_mio_si_se_borra: !!(mio && mio.querySelector('[data-borrar]')),
+          /* V1.29 · y el candado dice que archivar es del DUEÑO, no que
+           * «no se borra»: ya nada se borra. */
+          por_que: aj ? ((aj.querySelector('.candado') || {}).getAttribute
+                          ? aj.querySelector('.candado').getAttribute('title') : '') : '',
           dice_de_quien: !!(aj && /Ricardo/.test(aj.textContent)),
           /* LO IMPORTANTE: el trabajo de otro NO entra al almacén de uno. */
           en_el_almacen: (JSON.parse(localStorage.getItem('fts_machote_v1') || '{"machotes":[]}')
@@ -3698,7 +3798,9 @@ await sembrarMachotes(q);
       });
       if (!r.salen_los_dos) throw new Error('no salieron los dos machotes');
       if (!r.el_ajeno_se_marca) throw new Error('el ajeno no se distingue del propio');
-      if (!r.el_ajeno_no_se_borra) throw new Error('le dejó el botón de borrar al ajeno');
+      if (!r.el_ajeno_no_se_borra) throw new Error('le dejó el botón de archivar al ajeno');
+      if (!/due/i.test(r.por_que || ''))
+        throw new Error('el candado del ajeno no dice que archivar es del dueño: ' + r.por_que);
       if (!r.el_mio_si_se_borra) throw new Error('se llevó de más: el propio ya no se borra');
       if (!r.dice_de_quien) throw new Error('no dice de quién es');
       if (r.en_el_almacen.indexOf('Lo de Ricardo') >= 0)
@@ -3865,6 +3967,20 @@ await sembrarMachotes(q);
       const orig = window.fetch;
       window.fetch = function (u) {
         const s = String(u);
+        /* V1.29 · archivar ESCRIBE AL SERVIDOR. Sin esta rama la llamada se va
+         * al `fetch` de verdad, no contesta nadie, y la prueba falla por el
+         * MONTAJE y no por el producto. Ojo: aqui el body va en
+         * `arguments[1]`, porque esta funcion sólo declara `u`. */
+        if (s.indexOf('/comercial/machote-archivar') >= 0) {
+          let ar = {};
+          try { ar = JSON.parse((arguments[1] && arguments[1].body) || '{}'); } catch (e) {}
+          window.__archivados = (window.__archivados || []);
+          window.__archivados.push({ accion: ar.accion, machote_id: ar.machote_id });
+          return Promise.resolve({ ok: true, json: function () {
+            return Promise.resolve({ ok: true, hecho: true, accion: ar.accion,
+              folio_txt: 'COT-0003', versiones: 1,
+              mensaje: 'Archivada. No se borro nada.' }); } });
+        }
         if (s.indexOf('/comercial/machotes-leer') >= 0) {
           const doc = (nom) => {
             const base = (window.DEMO && window.DEMO.MACHOTES && window.DEMO.MACHOTES[0]) || null;
@@ -3979,27 +4095,46 @@ await sembrarMachotes(q);
       if (!antes.some(t => t.indexOf('Ejemplo que estorba') >= 0))
         throw new Error('el montaje no sirve: el ejemplo no llegó a pintarse');
 
+      /* ⚠️ V1.29 · LA PREMISA CAMBIO, y es el arreglo de esta version.
+       *
+       * Esta prueba nacio para vigilar la LAPIDA: como borrar no le decia
+       * nada al servidor, la siguiente bajada volvia a meter la fila y al
+       * recargar reaparecia. La lapida tapaba ese agujero POR NAVEGADOR.
+       *
+       * Ahora archivar ESCRIBE AL SERVIDOR y el servidor deja de servirlo, asi
+       * que la lapida sobra — y ademas estorbaba: sepultar el `id_local` haria
+       * que un desarchivado no pudiera volver a verse aqui nunca. Lo que se
+       * exige ahora es lo que de verdad importaba: que SALGA la llamada, y que
+       * al recargar no vuelva PORQUE EL SERVIDOR YA NO LO MANDA. */
+      await q.evaluate(() => { window.__archivados = []; });
       q.once('dialog', d => d.accept());
       await q.click('tr.rw:has-text("Ejemplo que estorba") [data-borrar]');
-      await q.waitForTimeout(500);
+      await q.waitForTimeout(700);
       if ((await hay()).some(t => t.indexOf('Ejemplo que estorba') >= 0))
-        throw new Error('no se borró ni siquiera en pantalla');
+        throw new Error('no salió de la lista ni siquiera en pantalla');
 
-      // LO QUE IMPORTA: recargar, con el servidor todavía sirviéndolo.
+      const llamadas = await q.evaluate(() => window.__archivados || []);
+      if (!llamadas.length || llamadas[0].accion !== 'archivar')
+        throw new Error('no le dijo al servidor que lo archivara: ' + JSON.stringify(llamadas));
+
+      /* El servidor de esta pagina SIGUE sirviendolo (el montaje no cambia),
+       * asi que al recargar vuelve. Eso NO es un fallo: es la mitad del
+       * servidor sin publicar, y la prueba lo deja dicho en vez de tapar el
+       * hueco con una lapida que despues no se puede quitar. */
       await q.reload(); await q.waitForTimeout(1800);
       const despues = await hay();
-      if (despues.some(t => t.indexOf('Ejemplo que estorba') >= 0))
-        throw new Error('VOLVIÓ al recargar: la lápida no lo detuvo');
+      const volvio = despues.some(t => t.indexOf('Ejemplo que estorba') >= 0);
       if (!despues.some(t => t.indexOf('Uno que se queda') >= 0))
-        throw new Error('se llevó de más: desapareció el que NO se borró');
+        throw new Error('se llevó de más: desapareció el que NO se archivó');
 
       const lapida = await q.evaluate(() => {
         try { return JSON.parse(localStorage.getItem('fts_machote_borrados_v1') || '{}'); }
         catch (e) { return {}; }
       });
-      if (!lapida['M-1041']) throw new Error('no quedó lápida de M-1041');
-      if (lapida['M-OTRO']) throw new Error('sepultó uno que nadie borró');
-      console.log('    borrado, recargado y no volvió · lápidas: ' + Object.keys(lapida).join(', '));
+      if (Object.keys(lapida).length)
+        throw new Error('volvió a sepultar el id_local: ' + Object.keys(lapida).join(', '));
+      console.log('    archivado en el servidor · sin lápida · al recargar ' +
+                  (volvio ? 'vuelve, porque este montaje lo sigue sirviendo' : 'no vuelve'));
     } finally { await q.close(); }
   });
 
@@ -5547,6 +5682,304 @@ await sembrarMachotes(q);
                   ' px · fila «' + (r.efect.find(x => /\+45%/.test(x)) || '') + '»');
     }
     await p.setViewportSize({ width: 1280, height: 900 });
+  });
+
+
+  /* ══ V1.29 · B · LA LISTA ANUNCIA SU FILTRO ═══════════════════════════ */
+
+  await paso('V1.29 · B · la lista arranca en ACTIVOS y lo dice, sin filtro puesto', async () => {
+    await ir('#/');
+    await p.waitForTimeout(400);
+    const r = await p.evaluate(() => {
+      const pie = [...document.querySelectorAll('.tiny.nota')]
+        .map(e => e.textContent.replace(/\s+/g, ' ').trim())
+        .filter(t => /archivad/i.test(t))[0] || '';
+      return { pie: pie, puesto: !!document.querySelector('.filtro-puesto'),
+               estado: (document.querySelector('#fEstado') || {}).value,
+               persona: (document.querySelector('#fPersona') || {}).value };
+    });
+    if (r.estado !== '') throw new Error('arrancó filtrada por estado: ' + r.estado);
+    if (r.persona !== '') throw new Error('arrancó filtrada por persona: ' + r.persona);
+    if (r.puesto) throw new Error('anuncia un filtro que nadie puso');
+    if (!/archivad/i.test(r.pie))
+      throw new Error('no dice que los archivados no salen aquí: «' + r.pie + '»');
+    console.log('    «' + r.pie.slice(0, 96) + '»');
+  });
+
+  await paso('V1.29 · B · con un filtro puesto lo ANUNCIA aunque la lista NO esté vacía', async () => {
+    /* El caso que muerde no es la lista vacía —esa se nota— sino la lista
+     * CORTA: se ven cuatro de doce y nadie dice que hay un filtro. Antes esto
+     * sólo hablaba con la lista vacía. */
+    await ir('#/');
+    await p.waitForTimeout(300);
+    const total = await p.locator('.item[href^="#/m/"]').count();
+    await p.selectOption('#fEstado', 'revision');
+    await p.waitForTimeout(500);
+
+    const r = await p.evaluate(() => {
+      const b = document.querySelector('.filtro-puesto');
+      const cuenta = (document.querySelector('.cuenta') || {}).textContent || '';
+      return { hay: !!b, txt: b ? b.textContent.replace(/\s+/g, ' ').trim() : '',
+               cuenta: cuenta.replace(/\s+/g, ' ').trim(),
+               visibles: document.querySelectorAll('.item[href^="#/m/"]').length,
+               limpiar: !!document.querySelector('#limpiarFiltros') };
+    });
+    if (!r.visibles) throw new Error('el montaje no sirve: con ese filtro no quedó ninguna visible');
+    if (r.visibles === total) throw new Error('el montaje no sirve: el filtro no quitó ninguna');
+    if (!r.hay) throw new Error('NO anuncia el filtro con la lista corta: es el fallo que se arregla');
+    if (!/En revisión/i.test(r.txt)) throw new Error('no dice QUÉ filtro: ' + r.txt);
+    if (!r.limpiar) throw new Error('no ofrece quitarlo');
+
+    /* El conteo tiene que cuadrar con lo que se VE, no con el total. */
+    const m = r.cuenta.match(/^(\d+)\s+de\s+(\d+)/);
+    if (!m) throw new Error('el conteo no dice «X de Y» con filtro: «' + r.cuenta + '»');
+    if (Number(m[1]) !== r.visibles)
+      throw new Error('el conteo dice ' + m[1] + ' y se ven ' + r.visibles);
+    console.log('    «' + r.txt.slice(0, 80) + '» · conteo ' + r.cuenta + ' · visibles ' + r.visibles);
+
+    // Y «Ver todo» los quita.
+    await p.click('#limpiarFiltros'); await p.waitForTimeout(500);
+    const desp = await p.locator('.item[href^="#/m/"]').count();
+    if (desp !== total) throw new Error('«Ver todo» no devolvió todo: ' + desp + ' vs ' + total);
+  });
+
+  /* ══ V1.29 · A · LA VISTA DE DIRECCIÓN ════════════════════════════════ */
+
+  await paso('V1.29 · A · sin dirección, la vista de archivados NO enseña nada y lo explica', async () => {
+    /* Y NO se conforma con que la lista salga vacía: el endpoint contesta
+     * SOLO_DIRECCION y la pantalla lo dice. Una vista de archivados que
+     * enseñara los activos en silencio se leería como «no hay archivados». */
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    await sembrarGeo(q); await sembrarMachotes(q);
+    await q.addInitScript(() => {
+      try {
+        localStorage.setItem('fts_suite_session', JSON.stringify({
+          token: 'a.b.c', actor: 'zz.nodireccion', nombre: 'ZZ Sin dirección',
+          scopes: ['comercial:read'], exp: Math.floor(Date.now() / 1000) + 3600 }));
+      } catch (e) {}
+      const orig = window.fetch;
+      window.fetch = function (u, o) {
+        const s2 = String(u);
+        if (s2.indexOf('/comercial/machotes-leer') >= 0) {
+          let c = {}; try { c = JSON.parse((o && o.body) || '{}'); } catch (e) {}
+          if (c.archivados === true) {
+            window.__pidioArchivados = true;
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({
+              ok: false, error: 'SOLO_DIRECCION',
+              mensaje: 'La vista de archivados es de direccion.', machotes: null }) });
+          }
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({
+            ok: true, modo: 'lista', actor: 'zz.nodireccion', machotes: [], total: 0 }) });
+        }
+        return orig.apply(this, arguments);
+      };
+    });
+    try {
+      await q.goto(BASE); await q.waitForTimeout(400);
+      await q.evaluate(() => { location.hash = '#/archivados'; });
+      await q.waitForTimeout(900);
+      const txt = (await q.textContent('#vista')).replace(/\s+/g, ' ');
+      if (!/direcci/i.test(txt))
+        throw new Error('no explica que es de dirección: ' + txt.slice(0, 140));
+      if (/Archivó|Cuándo/.test(txt)) throw new Error('pintó la tabla de archivados sin permiso');
+      // Y el atajo no se le ofrece en la lista.
+      await q.evaluate(() => { location.hash = '#/'; }); await q.waitForTimeout(600);
+      if (await q.$('a[href="#/archivados"]'))
+        throw new Error('le ofrece el atajo a alguien sin dirección');
+      console.log('    «' + txt.trim().slice(0, 96) + '»');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.29 · A · con dirección se ven, con quién archivó y cuándo, y se devuelven', async () => {
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    await sembrarGeo(q); await sembrarMachotes(q);
+    await q.addInitScript(() => {
+      try {
+        localStorage.setItem('fts_suite_session', JSON.stringify({
+          token: 'a.b.c', actor: 'esteban.delacruz', nombre: 'Esteban De La Cruz',
+          scopes: ['comercial:read', 'comercial:admin'],
+          exp: Math.floor(Date.now() / 1000) + 3600 }));
+      } catch (e) {}
+      window.__desarchivados = [];
+      const orig = window.fetch;
+      window.fetch = function (u, o) {
+        const s2 = String(u);
+        let c = {}; try { c = JSON.parse((o && o.body) || '{}'); } catch (e) {}
+        if (s2.indexOf('/comercial/machotes-leer') >= 0 && c.archivados === true) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({
+            ok: true, modo: 'archivados', actor: 'esteban.delacruz', es_admin: true, total: 1,
+            machotes: [{ id: '11111111-2222-4333-8444-555555555555',
+              id_local: 'M-1043', folio: 11, folio_txt: 'COT-0011',
+              dueno: 'francisco.montalvo', dueno_nombre: 'Francisco Montalvo Ramirez',
+              versiones: 7, archivado: true,
+              archivado_at: '2026-09-13 18:20:00+00', archivado_por: 'francisco.montalvo',
+              documento: { nombre: 'Cooling system for maintenance offices' } }] }) });
+        }
+        if (s2.indexOf('/comercial/machotes-leer') >= 0) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({
+            ok: true, modo: 'lista', actor: 'esteban.delacruz', es_admin: true,
+            machotes: [], total: 0 }) });
+        }
+        if (s2.indexOf('/comercial/machote-archivar') >= 0) {
+          window.__desarchivados.push({ accion: c.accion, machote_id: c.machote_id });
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({
+            ok: true, hecho: true, accion: 'desarchivar', folio_txt: 'COT-0011', versiones: 7,
+            archivado: false,
+            mensaje: 'Devuelta a la lista. Conserva su folio COT-0011 y sus 7 version(es).' }) });
+        }
+        return orig.apply(this, arguments);
+      };
+    });
+    try {
+      await q.goto(BASE); await q.waitForTimeout(400);
+      await q.evaluate(() => { location.hash = '#/archivados'; });
+      await q.waitForTimeout(900);
+
+      const txt = (await q.textContent('#vista')).replace(/\s+/g, ' ');
+      for (const x of ['COT-0011', 'Francisco Montalvo', 'francisco.montalvo', 'Cooling system']) {
+        if (txt.indexOf(x) < 0) throw new Error('la vista no muestra «' + x + '»: ' + txt.slice(0, 200));
+      }
+      if (!/7/.test(txt)) throw new Error('no dice cuántas versiones conserva');
+      if (!/no se borraron|no se recicla/i.test(txt))
+        throw new Error('no deja claro que no se borró nada: ' + txt.slice(0, 160));
+
+      // Devolver: manda 'desarchivar' con el uuid DEL SERVIDOR, no un id de pantalla.
+      q.once('dialog', d => d.accept());
+      await q.click('[data-desarch]');
+      await q.waitForTimeout(800);
+      const ll = await q.evaluate(() => window.__desarchivados || []);
+      if (!ll.length) throw new Error('no mandó nada al devolver');
+      if (ll[0].accion !== 'desarchivar') throw new Error('mandó ' + ll[0].accion);
+      if (ll[0].machote_id !== '11111111-2222-4333-8444-555555555555')
+        throw new Error('no mandó el uuid del servidor: ' + ll[0].machote_id);
+      console.log('    COT-0011 · archivó francisco.montalvo · 7 versiones · devuelta por uuid');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.29 · la lista y los archivados no desbordan a 380 ni a 1280', async () => {
+    /* Con datos que EJERCEN el caso: un filtro puesto (que pinta la banda de
+     * aviso) y la tabla de archivados con nombres largos de verdad. */
+    for (const w of [380, 1280]) {
+      await p.setViewportSize({ width: w, height: 900 });
+      await ir('#/');
+      await p.waitForTimeout(400);
+      await p.selectOption('#fEstado', 'revision');
+      await p.waitForTimeout(500);
+      const r = await p.evaluate(() => ({
+        desborda: document.documentElement.scrollWidth > window.innerWidth + 1,
+        banda: !!document.querySelector('.filtro-puesto'),
+        alto: document.querySelector('.filtro-puesto')
+          ? Math.round(document.querySelector('.filtro-puesto').getBoundingClientRect().height) : 0
+      }));
+      if (r.desborda) throw new Error(w + 'px · la lista desborda con el aviso de filtro');
+      if (!r.banda) throw new Error(w + 'px · no salió el aviso de filtro');
+      console.log('    ' + w + 'px · aviso de filtro ' + r.alto + ' px · sin desborde');
+    }
+    await p.setViewportSize({ width: 1280, height: 900 });
+  });
+
+
+  /* ══ V1.29 · A2 · CEDER LA PROPIEDAD ══════════════════════════════════ */
+
+  await paso('V1.29 · A2 · la cesión voluntaria y la forzada dejan rastro DISTINTO', async () => {
+    /* Lo que se mide es el CUERPO que sale al servidor, no lo que pinta el
+     * diálogo: un rastro que se arma bien y no viaja no sirve de nada. */
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    await sembrarGeo(q); await sembrarMachotes(q);
+    await q.addInitScript(() => {
+      try {
+        localStorage.setItem('fts_suite_session', JSON.stringify({
+          token: 'a.b.c', actor: 'esteban.delacruz', nombre: 'Esteban De La Cruz',
+          scopes: ['comercial:read', 'comercial:admin'],
+          exp: Math.floor(Date.now() / 1000) + 3600 }));
+        localStorage.setItem('fts_machote_sync_v1', JSON.stringify({
+          'M-1041': { machote_id: 'aaaaaaaa-1111-4111-8111-111111111111', version: 1, huella: 'x' } }));
+      } catch (e) {}
+      window.__cesiones = [];
+      const orig = window.fetch;
+      window.fetch = function (u, o) {
+        const s2 = String(u);
+        let c = {}; try { c = JSON.parse((o && o.body) || '{}'); } catch (e) {}
+        if (s2.indexOf('/comercial/machote-archivar') >= 0) {
+          window.__cesiones.push({ accion: c.accion, ids: c.machote_ids, para: c.para,
+                                   forzada: c.forzada === true, motivo: c.motivo || null });
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({
+            ok: true, hecho: true, accion: 'ceder', forzada: c.forzada === true,
+            cedidos: (c.machote_ids || []).length, prestamos_revocados: c.forzada ? 2 : 1,
+            mensaje: (c.forzada ? 'Reasignada' : 'Cedida') + ' 1 cotizacion. ' +
+                     'Se recogieron permisos prestados: los dio el dueno anterior.' }) });
+        }
+        if (s2.indexOf('/comercial/machotes-leer') >= 0) {
+          /* Tiene que venir un AJENO: `personasDelEquipo()` sale de la lista
+           * que trajo el servidor, asi que con la lista vacia no hay a quien
+           * ceder y la prueba mediria una pantalla que nadie tiene. */
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({
+            ok: true, modo: 'lista', actor: 'esteban.delacruz', es_admin: true,
+            total: 1, duenos: ['ricardo.hernandez'],
+            machotes: [{ id: 'cccccccc-3333-4333-8333-333333333333',
+              id_local: 'M-AJENO-129', dueno: 'ricardo.hernandez',
+              dueno_nombre: 'Ricardo Alan Hernandez Gonzalez', ajeno: true,
+              version: 1, versiones: 1, autor: 'ricardo.hernandez',
+              estado: 'borrador', total: 1000, moneda: 'MXN',
+              documento: { id: 'M-AJENO-129', nombre: 'De Ricardo', estado: 'borrador',
+                           empresa_id: 1, moneda: 'MXN', secciones: [] },
+              prestamos: [], archivado: false }] }) });
+        }
+        return orig.apply(this, arguments);
+      };
+    });
+    try {
+      await q.goto(BASE); await q.waitForTimeout(1400);
+      await q.evaluate(() => { location.hash = '#/m/M-1041'; }); await q.waitForTimeout(900);
+
+      const bot = await q.$('#btnCeder');
+      if (!bot) throw new Error('no hay botón de Ceder');
+      await bot.click(); await q.waitForTimeout(400);
+
+      // 1 · VOLUNTARIA: sin marcar «ya no está», no pide motivo.
+      if (!(await q.$('#cesPara'))) throw new Error('no abrió el diálogo');
+      if (!(await q.$('#cesForz'))) throw new Error('a dirección no le ofrece la reasignación forzada');
+      const motVisible = await q.evaluate(() =>
+        !document.querySelector('#cesMotivoL').hidden);
+      if (motVisible) throw new Error('pide motivo en una cesión voluntaria');
+
+      const ops = await q.$$eval('#cesPara option', els =>
+        els.map(e => e.value).filter(Boolean));
+      if (!ops.length) throw new Error('el montaje no sirve: no hay a quién ceder');
+      await q.selectOption('#cesPara', ops[0]);
+      await q.click('#cesOk'); await q.waitForTimeout(700);
+
+      let c = await q.evaluate(() => window.__cesiones || []);
+      if (c.length !== 1) throw new Error('no salió la cesión: ' + JSON.stringify(c));
+      if (c[0].accion !== 'ceder') throw new Error('mandó ' + c[0].accion);
+      if (c[0].forzada !== false) throw new Error('marcó como forzada una voluntaria');
+      if (c[0].motivo) throw new Error('le inventó un motivo a una voluntaria');
+
+      // 2 · FORZADA: exige motivo, y lo manda marcado.
+      await q.evaluate(() => { window.__cesiones = []; location.hash = '#/m/M-1041'; });
+      await q.waitForTimeout(700);
+      await q.click('#btnCeder'); await q.waitForTimeout(400);
+      await q.selectOption('#cesPara', ops[0]);
+      await q.check('#cesForz'); await q.waitForTimeout(200);
+      if (await q.evaluate(() => document.querySelector('#cesMotivoL').hidden))
+        throw new Error('marcó forzada y NO pide motivo');
+
+      // Sin motivo NO deja pasar, y lo dice.
+      await q.click('#cesOk'); await q.waitForTimeout(400);
+      let c2 = await q.evaluate(() => window.__cesiones || []);
+      if (c2.length) throw new Error('mandó una forzada SIN motivo');
+      const av = (await q.textContent('#cesAviso') || '').replace(/\s+/g, ' ');
+      if (!/motivo/i.test(av)) throw new Error('no dice que falta el motivo: ' + av);
+
+      await q.fill('#cesMotivo', 'Salida de FTS el 12-sep');
+      await q.click('#cesOk'); await q.waitForTimeout(700);
+      c2 = await q.evaluate(() => window.__cesiones || []);
+      if (c2.length !== 1) throw new Error('no salió la forzada: ' + JSON.stringify(c2));
+      if (c2[0].forzada !== true) throw new Error('NO la marcó como forzada: el rastro sería igual al voluntario');
+      if (!/Salida de FTS/.test(c2[0].motivo || ''))
+        throw new Error('no mandó el motivo: ' + c2[0].motivo);
+      console.log('    voluntaria forzada=false sin motivo · forzada=true con «' + c2[0].motivo + '»');
+    } finally { await q.close(); }
   });
 
   await paso('sin errores de consola propios del prototipo', async () => {

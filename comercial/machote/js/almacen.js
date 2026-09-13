@@ -119,6 +119,7 @@
   var URL_LEER = BASE + '/comercial/machotes-leer';
   var URL_GUARDAR = BASE + '/comercial/machote-guardar';
   var URL_PRESTAR = BASE + '/comercial/machote-prestar';
+  var URL_ARCHIVAR = BASE + '/comercial/machote-archivar';
   var TIMEOUT_MS = 12000;
 
   /* Que exista el objeto no basta: en modo privado de Safari `localStorage`
@@ -1057,6 +1058,109 @@
       machote_id: uuid, para: para });
   }
 
+
+  /* ══ V1.29 · ARCHIVAR, DESARCHIVAR Y CEDER ═══════════════════════════════
+   *
+   * NADA SE BORRA. Lo que antes era la equis ahora archiva, y archivar ESCRIBE
+   * AL SERVIDOR — que es la diferencia de fondo con lo que había.
+   *
+   * Lo que había: la equis sacaba el machote de la lista local y escribía una
+   * lápida en ESTE navegador. No mandaba nada. La fila seguía en Postgres, y
+   * desde V1.24 la seguía viendo TODO el equipo. Montalvo creyó que había
+   * borrado cuatro ejemplos y todos los seguían viendo: una pantalla que
+   * miente, del mismo tipo que el «✓ SALIDA» del kiosko antes del POST.
+   *
+   * Aquí no se decide NADA de permisos: quién puede archivar lo resuelve el
+   * SQL del endpoint contra la base, con el actor del token. Esta pantalla
+   * sólo pinta lo que el servidor contestó.
+   */
+
+  /** Archiva (o desarchiva) por el uuid DEL SERVIDOR.
+   *
+   *  Existe aparte de `archivar` por lo aprendido en §20 #13: `idServidor`
+   *  traduce buscando en la libreta de sincronización, que guarda SÓLO LO
+   *  PROPIO. Un archivado ajeno —que es justo lo que ve dirección— no tiene
+   *  renglón ahí, así que traducirlo devolvería `null` y la pantalla diría
+   *  «todavía no llega al servidor» de algo que lleva meses allá. Cuando ya
+   *  se tiene el uuid, no se traduce: se usa. */
+  function archivarPorUuid(uuid, desarchivar) {
+    var ses = sesion();
+    if (!ses) {
+      return Promise.resolve({ ok: false, error: 'SIN_SESION',
+        mensaje: 'No hay sesión: vuelve a entrar para archivar.' });
+    }
+    if (!uuid) {
+      return Promise.resolve({ ok: false, error: 'FALTA_MACHOTE',
+        mensaje: 'No se dijo sobre cuál cotización.' });
+    }
+    return postear(URL_ARCHIVAR, { token: ses.token,
+      accion: desarchivar ? 'desarchivar' : 'archivar', machote_id: uuid });
+  }
+
+  /** Archiva (o desarchiva) un machote de la LISTA, por su id de pantalla. */
+  function archivar(machoteIdPantalla, desarchivar) {
+    var ses = sesion();
+    if (!ses) {
+      return Promise.resolve({ ok: false, error: 'SIN_SESION',
+        mensaje: 'No hay sesión: vuelve a entrar para archivar.' });
+    }
+    var uuid = idServidor(machoteIdPantalla);
+    if (!uuid) {
+      /* Nunca subió, así que no hay nada que archivar en el servidor. Se dice
+       * con todas sus letras en vez de fingir que se archivó: es el caso de
+       * una cotización recién capturada sin red. */
+      return Promise.resolve({ ok: false, error: 'NUNCA_SUBIDO',
+        mensaje: 'Esta cotización todavía no llega al servidor, así que no hay ' +
+                 'nada que archivar allá. Súbela primero.' });
+    }
+    return archivarPorUuid(uuid, desarchivar);
+  }
+
+  /** Cede la propiedad de uno o varios machotes.
+   *
+   *  `forzada` es la reasignación de dirección para quien ya no está en FTS, y
+   *  exige motivo. El servidor la vuelve a exigir —scope y CHECK de la base—:
+   *  esto de aquí es para no hacer un viaje que ya se sabe que falla, no un
+   *  permiso. */
+  function ceder(ids, para, paraNombre, forzada, motivo) {
+    var ses = sesion();
+    if (!ses) {
+      return Promise.resolve({ ok: false, error: 'SIN_SESION',
+        mensaje: 'No hay sesión: vuelve a entrar para ceder.' });
+    }
+    var lista = (Array.isArray(ids) ? ids : [ids])
+      .map(function (x) { return idServidor(x) || null; })
+      .filter(function (x) { return x; });
+    if (!lista.length) {
+      return Promise.resolve({ ok: false, error: 'NUNCA_SUBIDO',
+        mensaje: 'Ninguna de esas cotizaciones está en el servidor.' });
+    }
+    return postear(URL_ARCHIVAR, { token: ses.token, accion: 'ceder',
+      machote_ids: lista, para: para, para_nombre: paraNombre || null,
+      forzada: forzada === true, motivo: motivo || null });
+  }
+
+  /** La vista de dirección: SÓLO lo archivado, con quién archivó y cuándo.
+   *
+   *  Va por el MISMO endpoint que la lista, con una bandera. El permiso no lo
+   *  da esta bandera: el WHERE del servidor exige `comercial:admin`, así que
+   *  pedirlo sin el scope no devuelve una sola fila — y el endpoint además lo
+   *  dice en vez de contestar la lista normal en silencio. */
+  function bajarArchivados() {
+    var ses = sesion();
+    if (!ses) {
+      return Promise.resolve({ ok: false, error: 'SIN_SESION',
+        mensaje: 'No hay sesión: vuelve a entrar.' });
+    }
+    return postear(URL_LEER, { token: ses.token, archivados: true })
+      .then(function (r) {
+        if (!r || !r.ok) return r;
+        return { ok: true, modo: 'archivados',
+                 machotes: Array.isArray(r.machotes) ? r.machotes : [],
+                 total: Number(r.total || 0), leido: new Date().toISOString() };
+      });
+  }
+
   /** ¿Está todo lo mío en el servidor? Contestado SIN pedir nada: con lo que
    *  la última bajada ya trajo.
    *
@@ -1170,6 +1274,10 @@
     leer: leerLocal,
     folio: folio,
     marcarBorrado: marcarBorrado,
+    archivar: archivar,
+    archivarPorUuid: archivarPorUuid,
+    ceder: ceder,
+    bajarArchivados: bajarArchivados,
     leerBorrados: leerBorrados,
     leerLocal: leerLocal,
     escribirLocal: escribirLocal,
