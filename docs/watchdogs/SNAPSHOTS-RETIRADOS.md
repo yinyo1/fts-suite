@@ -117,3 +117,94 @@ de proyecto vuelve a publicar contactos**. Hoy el correo diario los imprime, y e
 panel los vuelve a publicar — y el próximo panel siempre llega. Un solo lugar recorta
 `, Persona` del `name` antes de que salga, y **las dos superficies —correo y endpoint—
 quedan limpias por construcción**, no por disciplina.
+
+---
+
+## APLICADO (2026-09-13): el recorte vive en el motor
+
+Nodo nuevo **`Code - recorte contacto`**, el **último** de `ops/semaforo-motor`
+(`RtP77DIATk4nogR5`). Por ser el último, todo lo que salga del motor —hoy y lo que se
+conecte después— sale recortado; no hay forma de añadir un consumidor que se lo salte.
+
+### Eran DOS campos, no uno
+
+El corte que existía vivía en `Code - buildSnapshot` del padre y cortaba **sólo `cliente`**.
+Medido sobre el snapshot público del 13-sep (commit `0172c20`):
+
+```
+name    con contacto:  12 de 36
+cliente con contacto:   0 de 36   <- ya lo cortaba buildSnapshot
+```
+
+Y `Code - buildEmail` **no tiene redacción de ninguna clase**, así que los contactos no sólo
+estaban en el snapshot: **salían en el correo diario al equipo**. Son **tres** superficies
+—snapshot, correo, futuro endpoint— y por eso el corte tenía que ir aguas arriba de las tres.
+
+### Por qué NO se corta en la primera coma
+
+Era el camino obvio y es el equivocado. Dos casos reales del mismo corte de 36 proyectos
+lo prueban, y los dos **sobrevivieron intactos** con el mecanismo que se eligió:
+
+| proyecto | campo | valor | qué habría hecho el corte por coma |
+|---|---|---|---|
+| 2349 | `name` | `SO11762 - Mejoras a sistema TOPOCHICO, MTY. - Nalco de Mexico` | truncar en `…TOPOCHICO` |
+| 2359 | `name` | `SO11771 - Subestación PI Aurora - Conmet de México, S.A. de C.V.` | truncar el `S.A. de C.V.` |
+
+`EMPRESA, S.A. DE C.V.` es un nombre legal normal, y el nombre de un proyecto puede traer
+comas legítimas. **En vez de adivinar, se le pregunta a Odoo:**
+`res.partner.commercial_company_name` ya trae la empresa limpia, y está poblado **tanto
+para un contacto como para un partner que ES empresa** (medido en los dos casos). La coma
+queda sólo como último recurso si ese campo no llega — y ese recurso **también recorta**, o
+sea que si el nodo de partners viniera vacío la fuga seguiría cerrada. Falla hacia el lado
+tolerable, que es el criterio de §9 de `CLAUDE.md`.
+
+Para `name` el recorte **no trunca**: sustituye la aparición literal del `display_name`
+completo por la parte de empresa. Si el partner ya es la empresa (`display_name` ==
+`commercial_company_name`), el nodo **no toca nada**.
+
+### Verificación (ejecución `97445` del motor, 2026-09-13 16:19 UTC = 10:19 CST)
+
+36 filas, `lastNodeExecuted: Code - recorte contacto`, **cero nombres de persona**. Y la
+equivalencia de cálculo se sostiene: `racha_nota:2` + `sin_avance:true` en los proyectos
+2362 y 212 —el canario que exige que sigan corriendo los bigramas y los diacríticos
+invisibles del `Code - MAIN`—, más `fuente_a`, banderas con su `ev` y `_diag` idénticos.
+
+`Code - MAIN` **no se tocó**: sus 13 KB traen dos regex con diacríticos combinantes
+invisibles (`[̀-ͯ]`) y editarlo por MCP obliga a reenviar el cuerpo completo, o
+sea a transcribirlo. Un nodo nuevo no transcribe nada.
+
+### Cuántas personas: 8 hoy, y la cuenta PUEDE CRECER
+
+**8 personas identificadas** en los 14 proyectos cuyo partner es un contacto (7 medidas por
+`res.partner` + la contacto de MAGNEKON). **La cuenta no es una lista: es un patrón de
+captura.** Cada vez que alguien elija el contacto en vez de la empresa al crear la SO,
+aparece uno nuevo — y el recorte lo cubre sin que nadie lo agregue a ningún lado, porque no
+depende de conocer los nombres.
+
+> Aviso de método: partner `2035` tiene el mismo nombre de persona que el `1907` pero sin
+> empresa padre, y **no lo usa ninguno de los 36**. Apareció sólo por buscar por nombre.
+> Un duplicado así es justo cómo un conteo por nombre se infla.
+
+### Hallazgo operativo para Esteban (NO es una propuesta de cambio)
+
+**La causa real está en Odoo: el partner de estos proyectos es el CONTACTO, no la empresa.**
+Mientras eso siga así, **el recorte es un parche permanente** — correcto, en un solo lugar,
+pero permanente. Clientes donde ocurre hoy:
+
+```
+Nalco de Mexico              6 proyectos
+Calbee America Incorporated  4
+Mission Foods                3
+Bridgestone México           1
+MAGNEKON S.A. DE C.V.        1
+```
+
+No se propone aquí ningún cambio en Odoo: no es decisión de esta sesión.
+
+### Backlog anotado (no se persigue)
+
+- `redactCliente()` de `Code - buildSnapshot` queda **redundante** y corta por coma: el día
+  que exista un cliente llamado `EMPRESA, S.A. DE C.V.` lo truncaría en el snapshot.
+  Cosmético, y ya no es la defensa de nada. Retirarlo cuando se toque el padre.
+- `buildSnapshot` **no tiene compuerta de modo**: cualquier corrida manual commitea al repo
+  público. Es lo que hizo el snapshot del 13-sep.
