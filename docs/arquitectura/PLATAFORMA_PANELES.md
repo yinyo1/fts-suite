@@ -307,6 +307,28 @@ forma de entrada declarada**. Un panel cuya vista principal no sea una tabla
 simplemente no manda `tabla`. Confundir las dos cosas es otra manera de hacer el sobre
 a la medida.
 
+#### Límite explícito: qué viaja en `columnas` y qué NO
+
+Las columnas viajan porque el armazón **no puede** saber las de rentabilidad. Pero viaja
+sólo lo que el servidor es el único que sabe:
+
+| viaja | no viaja |
+|---|---|
+| **qué columnas hay** (`id`) | ancho |
+| **cómo se llaman** (`label`) | orden preferido de despliegue |
+| **de qué tipo son** (`kind`: texto o número) | colores |
+| si se puede agrupar por ella (`agrupable`) y si se suma (`suma`) — porque eso es del **dato**, no de la vista | qué va colapsado |
+
+**Esto es un límite, no un criterio**, y la razón es concreta: si el ancho y el orden
+también viajaran, **el armazón se vuelve títere del servidor y habría que tocar backend
+para mover una columna**. Ancho, orden, color y colapso son del cliente, y el usuario los
+cambia en su navegador sin que nadie despliegue nada.
+
+`agrupable` y `suma` caen del lado del servidor por una razón que no es de presentación:
+decir que una columna **se puede sumar** es una afirmación sobre el dato (que es aditivo, y
+que sumarlo significa algo), no sobre cómo se ve. Sumar «días en la etapa» daría un número
+sin sentido; sumar «real» da el costo del grupo. Sólo el motor sabe cuál es cuál.
+
 ---
 
 ## PASO 3 · El reparto
