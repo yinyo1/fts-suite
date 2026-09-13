@@ -1447,3 +1447,35 @@ input.cab-nombre:focus { border-color: var(--acento); background: #fff; outline:
 .rec-sec td.et { white-space: normal; }
 .rec-marca { color: #9a6700; font-size: 11px; font-weight: 700;
              margin-left: 5px; white-space: nowrap; }
+
+/* ── V1.29 · archivar, y el filtro que se anuncia ────────────────────────
+ *
+ * El icono de archivar NO es rojo y NO es una equis. La equis roja decía
+ * «esto destruye», y era verdad mientras borraba; ahora conserva el folio y
+ * todas las versiones, y dirección lo puede devolver. Un color de peligro
+ * sobre una acción reversible enseña a temerle a la acción equivocada — y de
+ * paso a ignorar el rojo cuando de verdad importa. */
+.ico.archivar { color: var(--suave); }
+.ico.archivar:hover { color: var(--tinta); background: var(--papel); }
+
+/* El anuncio del filtro puesto. Va en ámbar y no en gris: gris es una nota
+ * que se puede no leer, y esto explica por qué faltan renglones. */
+.filtro-puesto { background: #fff8e5; border: 1px solid #e3cf8a; color: #6b4d00;
+                 border-radius: 8px; padding: 7px 10px; margin-top: 8px; }
+.btn-liga { background: none; border: none; padding: 0; font: inherit;
+            color: var(--acento); text-decoration: underline; cursor: pointer; }
+.btn-liga:hover { text-decoration: none; }
+
+/* ── V1.29 · ceder la propiedad ──────────────────────────────────────────
+ * Angosto a propósito: es una decisión de una línea —a quién— y no una hoja
+ * de captura. El ancho de 880 px del modal de pegar invitaría a llenarlo. */
+.cesion-caja { max-width: 460px; }
+.cesion-l { display: block; margin-top: 12px; font-size: 13px; }
+.cesion-l .cel { width: 100%; box-sizing: border-box; margin-top: 4px; }
+/* La casilla de «ya no está en FTS» se separa: es la que cambia el significado
+ * del acto, y leerla pegada a «a quién» la convierte en un detalle. */
+.cesion-forz { display: flex; gap: 8px; align-items: flex-start;
+               border-top: 1px dashed var(--linea); padding-top: 12px; margin-top: 14px; }
+.cesion-forz input { margin-top: 3px; }
+.cesion-lote { background: var(--papel); border-radius: 8px; padding: 8px 10px;
+               margin-top: 8px; word-break: break-word; }

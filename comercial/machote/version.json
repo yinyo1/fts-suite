@@ -1,11 +1,16 @@
 {
-  "version": "V1.28",
-  "build": "V1.28",
-  "fecha": "2026-09-12",
+  "version": "V1.29",
+  "build": "V1.29",
+  "fecha": "2026-09-13",
   "modulo": "comercial/machote",
   "ambito": "El CONTADOR es solo de este modulo. finanzas tambien usa V1.xx desde el 2026-09-03 (instruccion directa de Esteban, corrige el \"no propagar\" del issue #148) pero lleva su propio contador y va en V1.00. operaciones/planeacion sigue en 2.4.1, kiosk y confirmar-horas solo con cadena de build, y siete modulos con un 1.0.0 puesto una vez: a esos no se propaga.",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.29",
+      "pr": null,
+      "nota": "Archivar en vez de borrar, ceder la propiedad, y la lista que anuncia su filtro. AUDITORIA PREVIA, y de aqui salio el diseno: la equis NO escribia al servidor. Sacaba el machote de la lista local y escribia una lapida en ESE navegador; la fila seguia en Postgres con deleted_at NULL y, desde V1.24, la seguia viendo todo el equipo. Montalvo creyo que habia borrado cuatro ejemplos y todos los siguieron viendo: una pantalla que miente, de la familia del check de SALIDA antes del POST. EL HALLAZGO QUE DECIDE LA MIGRACION: deleted_at NO sirve para archivar, porque machote_id_local_uq es parcial sobre deleted_at IS NULL y por tanto borrar LIBERA el id_local. Medido en produccion: M-1041 existe cuatro veces, una viva (COT-0009 de Montalvo) y tres borradas. Si archivar pusiera deleted_at, desarchivar seria imposible en cuanto otra fila viva ocupara ese id_local. Un archivado que no se puede desarchivar no es un archivado. Por eso 006 agrega archivado_at + archivado_por, con CHECK de que van las dos o ninguna, y deja deleted_at como lo que ya era de hecho: la herramienta de mantenimiento. El folio no se recicla y no hubo que hacer nada: lo asigna la secuencia de la 004. A2 CESION: tabla nueva machote_cesion, no machote_prestamo. Un prestamo es un permiso con vigencia que se revoca; una cesion es instantanea y definitiva, y compartir tabla obligaria a un vence_at sin significado. Se reusa el PATRON (append-only, actor del token, permiso resuelto en SQL). Sin aceptacion del receptor: el prestamo ya funciona asi, una aceptacion pendiente dejaria el machote en limbo, y el riesgo real no es recibir trabajo sino perderlo. forzada se GUARDA explicita y no se deduce de cedido_por <> de, para que el renglon se lea solo dentro de un anio; motivo obligatorio por CHECK. Los prestamos vivos MUEREN con el cambio de dueno, en la misma transaccion: los dio el dueno anterior. Y en lote con lote_id, porque el caso real es limpiar la cartera de quien se fue (331 leads de cuatro personas en la limpieza de Odoo de agosto), no un machote suelto. EL CANDADO SALE DEL TOKEN Y DEL SQL, no de un if del navegador, y se ejercio contra filas reales dentro de BEGIN...ROLLBACK: el dueno archiva lo suyo (1/1/1), un ajeno no (1/0/0), un PRESTATARIO CON PERMISO VIVO no (1/0/0 con prestamos vivos 1), la cesion voluntaria revoca el prestamo (1 revocado), la forzada sin admin no toca nada (1/0/0) y con admin si, con forzada=true y su motivo. Read-back despues: cero archivados, cero cesiones, cero revocados. B LA LISTA: arranca en ACTIVOS y En creacion queda como filtro elegible. La razon es que el estado cambia SOLO conforme avanza el trabajo, asi que arrancar filtrado por estado haria desaparecer un machote sin ninguna accion del usuario que lo explique: el fallo del filtro de persona pero sin filtro visible al que culpar. Archivar si es un acto deliberado del dueno, asi que su ausencia es esperada. La pantalla ANUNCIA cualquier filtro puesto SIEMPRE, no solo con la lista vacia: el caso que muerde no es la lista vacia -esa se nota- sino la lista corta. Con boton de Ver todo al lado del anuncio."
+    },
     {
       "version": "V1.28",
       "pr": null,

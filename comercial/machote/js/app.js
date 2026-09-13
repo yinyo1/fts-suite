@@ -56,7 +56,7 @@
    *   2. el `?v=` de la URL con la que el navegador lo bajó,
    *   3. la que declara cada pieza que se carga aparte (hoy el motor).
    * Si discrepan, la pantalla lo DICE en vez de correr a medias. */
-  const VERSION_ARCHIVO = 'V1.28';
+  const VERSION_ARCHIVO = 'V1.29';
 
   const VERSION_URL = (function () {
     try {
@@ -453,8 +453,20 @@
    * partir de uno, que lo duplique a su nombre. (V1.24: esto ya no es «lo que
    * ve dirección» sino lo que ve cualquiera — por eso importa más que antes
    * que el candado se vea y se entienda de un vistazo.) */
-  const borrable = (m) => !((D.ESTADOS[m && m.estado] || {}).sin_borrar) &&
-                          !(m && m._ajeno === true);
+  /* ── V1.29 · ARCHIVAR, NUNCA BORRAR ───────────────────────────────────
+   * `sin_borrar` del estado `enviado` se RETIRA como candado: un machote
+   * enviado a Odoo se puede archivar, porque archivar NO lo destruye —
+   * conserva su folio y todas sus versiones, y dirección lo puede devolver.
+   * La razón por la que no se podía borrar («si desaparece, desaparece la
+   * única explicación de por qué el precio fue ese») deja de aplicar cuando
+   * nada desaparece.
+   *
+   * Lo que SÍ sigue: sólo el DUEÑO. Y no se decide aquí — esto sólo evita
+   * pintar un botón que el servidor va a rechazar. El candado de verdad es
+   * el SQL de `comercial/machote-archivar`, que resuelve `dueno = actor` con
+   * el actor del token. Un prestatario tiene permiso de ESCRITURA y aun así
+   * no archiva: probado contra la base con un préstamo vivo. */
+  const archivable = (m) => !(m && m._ajeno === true);
 
   const esc = (s) => String(s === null || s === undefined ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -498,6 +510,25 @@
     if (!A || !A.folio) return null;
     const f = A.folio(m.id);
     return f ? f.folio_txt : null;
+  }
+
+  /** ── V1.29 · archivar no se pudo ──────────────────────────────────────
+   *  Un `toast` de dos segundos es demasiado poco para «no se archivó»: se va
+   *  solo y quien no lo vio se queda creyendo que sí. Se usa la misma banda
+   *  persistente que los otros rechazos (`.nogda`), con el texto DEL SERVIDOR
+   *  y no uno inventado aquí: las causas llevan a cosas distintas —pedírsela
+   *  al dueño, publicar el endpoint, o subirla primero— y un mensaje genérico
+   *  las junta todas en «algo salió mal» (§20 #12b). */
+  function avisarArchivoRechazado(mensaje) {
+    const viejo = $('#avArch'); if (viejo) viejo.remove();
+    const b = document.createElement('div');
+    b.id = 'avArch'; b.className = 'nogda'; b.setAttribute('role', 'alert');
+    b.innerHTML = '<span><strong>No se archivó.</strong> ' + esc(mensaje) +
+      ' Nada cambió: la cotización sigue en la lista.</span>' +
+      '<span class="nogda-b"><button class="btn fantasma" id="aaCerrar">Entendido</button></span>';
+    document.body.appendChild(b);
+    const cerrar = $('#aaCerrar');
+    if (cerrar) cerrar.onclick = () => b.remove();
   }
 
   function toast(txt) {
@@ -603,6 +634,16 @@
    * nadie sabe con qué usuario está viendo la pantalla — y el input que nos
    * den deja de ser atribuible, que es justamente para lo que se puso el
    * login. */
+  /** ¿Quien esta viendo tiene direccion? SOLO para decidir si se PINTA el
+   *  atajo a los archivados. El permiso de verdad lo aplica el WHERE del
+   *  servidor: quitar este `if` desde la consola no enseña una sola fila. */
+  const soyDireccion = () => {
+    try {
+      const S = G.SuiteAuth, ses = S && S.getSession();
+      return !!(ses && Array.isArray(ses.scopes) && ses.scopes.indexOf('comercial:admin') >= 0);
+    } catch (e) { return false; }
+  };
+
   function pintarUsuario() {
     const el = $('#tbUser');
     if (!el) return;
@@ -642,6 +683,7 @@
     if (p[0] === 'rev')   return vRevision(p[1]);
     if (p[0] === 'ap')    return vAprobar(p[1]);
     if (p[0] === 'control') return vControl();
+    if (p[0] === 'archivados') return vArchivados();
     location.hash = '#/';
   }
   /* El encabezado. `back` es a dónde vuelve la flecha:
@@ -757,6 +799,92 @@
    * de donde se restaura es del servidor; es «me llevo lo mío» — para revisar
    * fuera, para archivar, o para tener algo cuando el guardado se rompe. */
 
+
+
+  /* ── V1.29 · LA VISTA DE DIRECCIÓN: LOS ARCHIVADOS ──────────────────────
+   *
+   * Los archivados NO salen en la lista de nadie, ni siquiera de su dueño:
+   * ése es el punto de archivar. Aquí es el único sitio donde se ven, y el
+   * permiso NO lo da esta pantalla — la consulta del servidor exige
+   * `comercial:admin` en su propio WHERE. Abrir esta URL sin la llave no
+   * devuelve una sola fila, y el endpoint lo DICE en vez de contestar la
+   * lista normal en silencio: una pantalla que enseña activos cuando le
+   * pidieron archivados se lee como «no hay archivados», que es mentir.
+   *
+   * Se puede abrir siempre por la URL, igual que el tablero de control: sin
+   * permiso la pantalla lo explica en vez de rebotar a la lista, porque
+   * rebotar sin decir nada se lee como una aplicación rota. */
+  async function vArchivados() {
+    top('Archivados', 'Comercial · dirección', null, '#/');
+    $('#fija').innerHTML = '';
+    $('#vista').innerHTML = '<div class="tw"><div class="vacio">Consultando al servidor…</div></div>';
+
+    const r = await A.bajarArchivados();
+
+    if (!r || !r.ok) {
+      const esPermiso = r && r.error === 'SOLO_DIRECCION';
+      $('#vista').innerHTML =
+        '<div class="tw"><div class="vacio">' +
+          (esPermiso
+            ? '<strong>La vista de archivados es de dirección.</strong><br>' +
+              'Si necesitas devolver una cotización archivada, pídeselo a dirección: ' +
+              'no se borró, sigue entera con su folio y sus versiones.'
+            : '<strong>No se pudo consultar.</strong><br>' + esc((r && r.mensaje) || 'Sin detalle.')) +
+        '</div></div>';
+      return;
+    }
+
+    const filas = r.machotes || [];
+    const fecha = (x) => {
+      if (!x) return '—';
+      const d = new Date(String(x).replace(' ', 'T'));
+      return isNaN(d) ? String(x) : d.toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' });
+    };
+
+    $('#vista').innerHTML =
+      '<div class="tiny nota">Estas cotizaciones <strong>no se borraron</strong>: conservan su folio ' +
+      'y todas sus versiones, y el folio no se recicla. No salen en la lista de nadie. ' +
+      'Desarchivar las devuelve a la lista de su dueño.</div>' +
+      '<div class="cuenta">' + filas.length +
+        (filas.length === 1 ? ' archivada' : ' archivadas') + '</div>' +
+      (filas.length
+        ? '<div class="tw"><table class="lista"><thead><tr>' +
+            '<th style="width:92px">Folio</th><th style="width:30%">Cotización</th>' +
+            '<th>Dueño</th><th>Archivó</th><th>Cuándo</th>' +
+            '<th class="num">Versiones</th><th style="width:120px"></th>' +
+          '</tr></thead><tbody>' +
+          filas.map(m =>
+            '<tr>' +
+            '<td class="mono">' + esc(m.folio_txt || '—') + '</td>' +
+            '<td>' + esc((m.documento && m.documento.nombre) || m.id_local || '(sin nombre)') + '</td>' +
+            '<td>' + esc(m.dueno_nombre || m.dueno || '—') + '</td>' +
+            '<td>' + esc(m.archivado_por || '—') + '</td>' +
+            '<td class="tiny">' + esc(fecha(m.archivado_at)) + '</td>' +
+            '<td class="num mono">' + Number(m.versiones || 0) + '</td>' +
+            '<td><button class="btn fantasma" data-desarch="' + esc(m.id) + '">Devolver</button></td>' +
+            '</tr>').join('') +
+          '</tbody></table></div>'
+        : '<div class="tw"><div class="vacio">Todavía no hay ninguna archivada.</div></div>');
+
+    $$('[data-desarch]').forEach(b => b.onclick = async () => {
+      const uuid = b.dataset.desarch;
+      const fila = filas.filter(x => x.id === uuid)[0] || {};
+      if (!confirm('¿Devolver ' + (fila.folio_txt || 'esta cotización') + ' a la lista de ' +
+                   (fila.dueno_nombre || fila.dueno || 'su dueño') + '?')) return;
+      b.disabled = true;
+      /* Se manda el uuid del SERVIDOR tal cual: aquí no hay copia local que
+       * traducir, y `idServidor` sólo sabe de lo propio — un archivado ajeno
+       * no tiene renglón en la libreta de sincronización (§20 #13). */
+      const res = await A.archivarPorUuid(uuid, true);
+      b.disabled = false;
+      if (!res || !res.ok) {
+        avisarArchivoRechazado((res && res.mensaje) || 'No se pudo devolver.');
+        return;
+      }
+      toast(res.mensaje || 'Devuelta a la lista.');
+      vArchivados();
+    });
+  }
 
   /* El tablero de dirección (#140 · B). Vive en su propio archivo
    * `js/control.js`; aquí sólo se le da el hueco y el encabezado. Se puede
@@ -981,11 +1109,9 @@
          * suelto en una tabla, sin manera de saber a qué se refería. */
         '<td><div class="acts">' +
           '<button class="ico" data-hist="' + esc(m.id) + '" title="Ver el historial de versiones">🕘</button>' +
-          (borrable(m)
-            ? '<button class="ico" data-borrar="' + esc(m.id) + '" title="Eliminar machote">×</button>'
-            : '<span class="ico candado" title="' + (ajeno(m)
-                ? 'Es de otra persona: se puede ver, no borrar.'
-                : 'Enviado a Odoo: no se borra, sólo cambia de estado') + '">🔒</span>') +
+          (archivable(m)
+            ? '<button class="ico" data-borrar="' + esc(m.id) + '" title="Archivar: sale de la lista, no se borra nada">🗄</button>'
+            : '<span class="ico candado" title="Es de otra persona: se puede ver, no archivar. Archivar es de su dueño.">🔒</span>') +
         '</div></td></tr>';
     };
 
@@ -1026,11 +1152,9 @@
          * captura de 1280 (CLAUDE.md §20 #12). */
         '</div></a>' +
         '<button class="ico" data-hist="' + esc(m.id) + '" title="Ver el historial de versiones">🕘</button>' +
-        (borrable(m)
-          ? '<button class="ico peligro borrar" data-borrar="' + esc(m.id) + '" title="Eliminar machote">×</button>'
-          : '<span class="ico candado" title="' + (ajeno(m)
-              ? 'Es de otra persona: se puede ver, no borrar.'
-              : 'Enviado a Odoo: no se borra, sólo cambia de estado') + '">🔒</span>') +
+        (archivable(m)
+          ? '<button class="ico archivar" data-borrar="' + esc(m.id) + '" title="Archivar: sale de la lista, no se borra nada">🗄</button>'
+          : '<span class="ico candado" title="Es de otra persona: se puede ver, no archivar. Archivar es de su dueño.">🔒</span>') +
         '</div>';
     };
 
@@ -1055,9 +1179,36 @@
         '<div class="cards">' + visibles.map(tarjeta).join('') + '</div></div>'
       : '<div class="tw">' + vacio + '</div>';
 
-    const pieFiltro = (f.persona === yo && yo)
-      ? '<div class="tiny nota">Viendo sólo lo tuyo. Cambia el filtro de persona para ver el resto.</div>'
-      : '';
+    /* ── V1.29 · LA PANTALLA ANUNCIA EL FILTRO PUESTO, SIEMPRE ───────────
+     *
+     * Antes esto sólo hablaba en un caso (filtro de persona = yo) y el resto
+     * del tiempo callaba; el «por qué no hay nada» sólo salía con la lista
+     * VACÍA. Pero el caso que muerde no es la lista vacía —esa se nota— sino
+     * la lista CORTA: doce cotizaciones, se ven cuatro, y nadie dice que hay
+     * un filtro puesto. Se lee como machotes que faltan.
+     *
+     * Por eso la decisión de arrancar en ACTIVOS y no en «en creación»: el
+     * estado cambia SOLO conforme el trabajo avanza, así que arrancar
+     * filtrado por estado haría desaparecer un machote sin ninguna acción del
+     * usuario que lo explique. Es el fallo del filtro de persona, pero sin un
+     * filtro visible al que culpar. Archivar, en cambio, es un acto
+     * deliberado de su dueño: que un archivado no salga es lo esperado, y por
+     * eso «activos» no se anuncia como filtro sino como lo que la lista es. */
+    const puestos = [];
+    if (f.persona) puestos.push(f.persona === yo ? 'sólo lo tuyo' : 'sólo de ' + esc(nombreDe(f.persona)));
+    if (f.estado && D.ESTADOS[f.estado]) puestos.push('sólo «' + esc(D.ESTADOS[f.estado].label) + '»');
+    if (f.moneda) puestos.push('sólo en ' + esc(f.moneda));
+    if (ST.busca) puestos.push('que digan «' + esc(ST.busca) + '»');
+
+    const pieFiltro = puestos.length
+      ? '<div class="tiny nota filtro-puesto"><strong>Estás viendo ' + puestos.join(' · ') +
+        '.</strong> ' + (visibles.length === universo.length ? '' :
+          ('Quedan fuera ' + (universo.length - visibles.length) + ' de ' + universo.length + '. ')) +
+        '<button class="btn-liga" id="limpiarFiltros">Ver todo</button></div>'
+      : '<div class="tiny nota">Los <strong>archivados</strong> no salen aquí: los archiva su dueño y ' +
+        'sólo dirección los ve. Nada se borra.' +
+        (soyDireccion() ? ' <a class="btn-liga" href="#/archivados">Ver archivados</a>' : '') +
+        '</div>';
 
     /* ── Lo que NO ha subido (V1.24, reemplaza a la franja) ───────────────
      * La franja de sincronización era andamio del rescate y así quedó
@@ -1122,6 +1273,16 @@
     enlazarFiltro('#fEstado', 'estado');
     enlazarFiltro('#fMoneda', 'moneda');
 
+    /* Quitar los filtros de un toque. Va pegado al anuncio y no en la barra:
+     * el sitio donde alguien lee «estás viendo sólo X» es el sitio donde
+     * quiere dejar de verlo. */
+    const limpiar = $('#limpiarFiltros');
+    if (limpiar) limpiar.onclick = () => {
+      ST.filtros = { persona: '', estado: '', moneda: '' };
+      ST.busca = '';
+      vHome();
+    };
+
     /* El historial se abre desde la lista y NO desde adentro del machote: se
      * consulta para entender qué pasó con una cotización, casi siempre sin
      * querer editarla. */
@@ -1148,26 +1309,43 @@
       if (m && G.MachoteHistorial) G.MachoteHistorial.abrir(m);
     });
 
-    $$('[data-borrar]').forEach(b => b.onclick = (ev) => {
+    /* ── V1.29 · LA EQUIS ARCHIVA, Y ESCRIBE AL SERVIDOR ─────────────────
+     *
+     * Lo que hacía antes: sacarlo de la lista local y escribir una lápida en
+     * ESTE navegador. NO mandaba nada. La fila seguía en Postgres y, desde
+     * V1.24, la seguía viendo todo el equipo — Montalvo creyó que había
+     * borrado cuatro ejemplos y todos los siguieron viendo. Una pantalla que
+     * miente, de la misma familia que el «✓ SALIDA» antes del POST.
+     *
+     * Ahora se espera la confirmación del servidor ANTES de tocar la lista.
+     * Si el servidor dice que no, la lista no se mueve y se dice por qué.
+     * La lápida ya NO se usa: sepultar el `id_local` haría que un machote
+     * desarchivado no pudiera volver a verse en este navegador nunca. */
+    $$('[data-borrar]').forEach(b => b.onclick = async (ev) => {
       ev.preventDefault(); ev.stopPropagation();
       const m = mach(b.dataset.borrar);
       if (!m) return;
-      // Segundo candado, además de no pintar el botón: si mañana alguien pinta
-      // el botón por error, esto sigue impidiendo borrar lo que ya se vendió.
-      if (!borrable(m)) { toast('Un machote enviado a Odoo no se borra.'); return; }
-      if (!confirm('¿Eliminar «' + m.nombre + '»?\n\nNo hay deshacer.')) return;
+      if (!archivable(m)) { toast('Esta cotización es de otra persona.'); return; }
+      if (!confirm('¿Archivar «' + m.nombre + '»?\n\n' +
+                   'No se borra nada: conserva su folio y todas sus versiones, ' +
+                   'y dirección la puede devolver.')) return;
+
+      b.disabled = true;
+      const r = await A.archivar(m.id, false);
+      b.disabled = false;
+
+      if (!r || !r.ok) {
+        /* Se dice lo que contestó el servidor, tal cual. Un mensaje inventado
+         * aquí escondería la causa real — y las causas llevan a cosas
+         * distintas: pedirle al dueño, publicar el endpoint, o subirla. */
+        avisarArchivoRechazado((r && r.mensaje) || 'No se pudo archivar.');
+        return;
+      }
       const i = ST.machotes.findIndex(x => x.id === m.id);
       if (i >= 0) ST.machotes.splice(i, 1);
-      /* LA LÁPIDA (V1.23). Sin esto, quitarlo de la lista no alcanzaba: la
-       * siguiente bajada veía la fila en el servidor, no la encontraba aquí,
-       * y la volvía a meter. Al recargar reaparecía — cada vez. Es el defecto
-       * que reportó Esteban de los ejemplos, y le pasaba a cualquier machote
-       * ya subido. Se sepulta ANTES de guardar: si `guardarYa` falla por
-       * almacenamiento lleno, la lápida ya quedó. */
-      if (A && A.marcarBorrado) A.marcarBorrado(m.id);
       guardarYa();
       vHome();
-      toast('Machote eliminado.');
+      toast(r.mensaje || 'Archivada.');
     });
   }
 
@@ -2450,11 +2628,30 @@
       (G.MachotePrestamo && !ajeno(m) && A && A.idServidor && A.idServidor(m.id)
         ? '<button class="btn fantasma" id="btnPrestar" title="Dejar que otra persona edite esta cotización por un rato">Prestar</button>'
         : '') +
+      /* CEDER (V1.29). Es del dueño, igual que prestar — y además dirección
+       * puede reasignar lo de quien ya no está, cosa que se decide en el
+       * diálogo y la comprueba el servidor. Se ofrece a dirección aunque la
+       * cotización sea ajena: ése es justamente el caso que existe para
+       * resolver (limpiar la cartera de alguien que se fue). */
+      (G.MachoteCesion && A && A.idServidor && A.idServidor(m.id) &&
+       (!ajeno(m) || G.MachoteCesion.soyDireccion())
+        ? '<button class="btn fantasma" id="btnCeder" title="Pasarle la propiedad a otra persona. No es un préstamo: no vence.">Ceder</button>'
+        : '') +
       '<a class="btn" href="#/rev/' + m.id + '">Revisar</a></div>';
     const bo = $('#btnOrden');
     if (bo) bo.onclick = () => G.MachoteOrden.abrir(m);
     const bp = $('#btnPrestar');
     if (bp) bp.onclick = () => G.MachotePrestamo.abrir(m, personasDelEquipo(), vMachote);
+    const bc = $('#btnCeder');
+    if (bc) bc.onclick = () => G.MachoteCesion.abrir(m, personasDelEquipo(), (r) => {
+      /* Cedido = ya no es mío. Se recarga desde el servidor en vez de
+       * adivinar el estado nuevo aquí: quién es el dueño ahora lo dice la
+       * base, y esta pantalla no tiene por qué tener una segunda opinión
+       * (§20 regla 4, un solo escritor). */
+      toast(r.mensaje || 'Cedida.');
+      if (A && A.bajar) A.bajar().then(() => { location.hash = '#/'; render(); });
+      else { location.hash = '#/'; }
+    });
   }
 
   /** A quién se le puede prestar: las personas que el servidor ya nombró en
