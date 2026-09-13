@@ -484,18 +484,56 @@
       destino: () => ({ tab: 'desglose' }),
       id: 'festivo-sin-confirmar', severidad: 'info', area: 'Viaje',
       titulo: 'El recargo de días festivos sigue sin confirmarse',
+      /* V1.28 · se mira POR SECCIÓN, porque el recargo ya es de la sección.
+       * Antes leía el del machote; con el recargo por sección, una sección con
+       * horas de festivo y el recargo vacío quedaría tapada por otra que sí lo
+       * tuviera escrito — justo al revés de lo que la regla busca. */
       evaluar: (m, c) => {
         if (!c.lugar.eua) return null;
-        const usa = (m.secciones || []).some(s => (s.mo || [])
-          .some(l => l.rol === 'hrs_festivo' && Number(l.qty) > 0));
-        if (!usa || c.viaje.recargo_festivo !== null) return null;
+        const flojas = (m.secciones || []).filter(s => {
+          const usa = (s.mo || []).some(l => l.rol === 'hrs_festivo' && Number(l.qty) > 0);
+          return usa && C.recargosDe(m, s).festivo.pct === null;
+        });
+        if (!flojas.length) return null;
         return { detalle: 'Hay horas capturadas en día festivo y el recargo está vacío, ' +
                           'así que se están cobrando a tarifa normal. Lo del 30% es de ' +
                           'fin de semana; lo de festivos NO se ha confirmado con nadie. ' +
-                          'Escribe el que aplique o deja las horas donde corresponda.' };
+                          'Escribe el que aplique o deja las horas donde corresponda.',
+                 items: flojas.map(s => s.nombre) };
       }
     },
 
+    {
+      destino: () => ({ tab: 'secc' }),
+      id: 'recargo-apartado', severidad: 'info', area: 'Viaje',
+      titulo: 'El recargo se apartó del valor de arranque',
+      /* No es un hallazgo de algo MAL: apartarse es justamente lo que el
+       * campo permite, y en una sección que se trabaja en fin de semana con
+       * otras condiciones es lo correcto. Se anota porque MUEVE EL MARGEN, y
+       * un número movido que no se nota es el caso de las comisiones que
+       * obligó a construir el histórico. Se dice en qué sección y de cuánto a
+       * cuánto, que es lo que alguien necesita para darlo por bueno. */
+      evaluar: (m, c) => {
+        if (!c.lugar.eua) return null;
+        const pct = (x) => x === null ? 'vacío' : Math.round(Number(x) * 100) + '%';
+        const items = [];
+        (m.secciones || []).forEach(s => {
+          const r = C.recargosDe(m, s);
+          [['fin_semana', 'fin de semana'], ['festivo', 'día festivo']].forEach(par => {
+            const x = r[par[0]];
+            if (!x.apartado) return;
+            items.push(s.nombre + ' · ' + par[1] + ': ' + pct(x.pct) +
+                       ' (de arranque ' + pct(x.porDefecto) + ')' +
+                       (x.origen === 'machote' ? ', capturado antes de que fuera por sección' : ''));
+          });
+        });
+        if (!items.length) return null;
+        return { detalle: 'El recargo encarece la mano de obra de esa sección, así que mueve ' +
+                          'el margen. Sólo cambia donde se escribió: las demás secciones y los ' +
+                          'machotes nuevos siguen en el valor de arranque.',
+                 items: items };
+      }
+    },
     {
       destino: () => ({ tab: 'secc' }),
       id: 'precio-viaje-sin-fecha', severidad: 'blanda', area: 'Viaje',

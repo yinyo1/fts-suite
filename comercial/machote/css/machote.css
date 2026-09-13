@@ -1421,3 +1421,29 @@ input.cab-nombre { border: 1px solid transparent; background: transparent;
                    border-radius: 6px; min-width: 0; flex: 1 1 240px; }
 input.cab-nombre:hover { border-color: var(--linea); }
 input.cab-nombre:focus { border-color: var(--acento); background: #fff; outline: none; }
+
+/* ── V1.28 · el recargo, que es de la SECCIÓN y de Estados Unidos ─────────
+ *
+ * Dos cosas se pintan aquí, y las dos vienen de que Montalvo leyó el recargo
+ * como un costo de viajar:
+ *
+ *   1. `.viaje-reglas` separa las dos reglas EN EL PANEL DE VIAJE, que es
+ *      donde se confundieron: los gastos salen de dejar Nuevo León, el
+ *      recargo de ejecutar en Estados Unidos.
+ *   2. `.rec-sec` es el bloque de la sección, pegado a la mano de obra que
+ *      encarece. Sólo existe cuando el trabajo se ejecuta en EUA.
+ *
+ * Apartarse del valor de arranque se ve con el MISMO lenguaje que un margen
+ * escrito a mano encima de la fórmula (`.cel.pisado`, ámbar): quien ya
+ * aprendió a leer uno lee el otro sin que nadie se lo explique. */
+.viaje-reglas { margin: 10px 0 4px; padding: 10px 12px; border-radius: 8px;
+                background: #f1f5f9; border: 1px solid #d7e0ea; color: #24323f;
+                font-size: 12.5px; line-height: 1.5; }
+.viaje-reglas.eua { background: #fff3cd; border-color: #e3cf8a; color: #6b4d00; }
+
+.rec-sec { margin: 14px 0 6px; }
+.rec-sec.apartado { border-left: 3px solid #d9a800; padding-left: 10px; }
+.rec-sec table.hoja2 { max-width: 520px; }
+.rec-sec td.et { white-space: normal; }
+.rec-marca { color: #9a6700; font-size: 11px; font-weight: 700;
+             margin-left: 5px; white-space: nowrap; }

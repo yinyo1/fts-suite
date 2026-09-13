@@ -86,6 +86,137 @@ eq(C.calcular(w).costoMo, 1000, 'festivo · sin confirmar = sin recargo, no se i
 w.viaje.recargo_festivo = 0.4;
 eq(C.calcular(w).costoMo, 1400, 'festivo · escrito por quien cotiza, sí se aplica');
 
+
+/* ── V1.28 · EL RECARGO ES DE LA SECCIÓN ───────────────────────────────────
+ *
+ * Decisión de Esteban (11-sep): el porcentaje deja de ser fijo y su alcance
+ * es LA SECCIÓN, porque un mismo proyecto puede tener una sección que se
+ * trabaja en fin de semana y otra que no. Lo que se prueba aquí es lo que
+ * puede romperse: que NO se propague, y que los machotes ya capturados con el
+ * recargo a nivel machote sigan valiendo exactamente lo mismo. */
+(function () {   // en su propio ámbito: el archivo es plano y los nombres chocan
+
+
+// El 30% vive en el arreglo de configuración, no incrustado en el código.
+eq(C.RECARGOS_PLANTILLA.fin_semana, 0.30, 'recargo · el valor de arranque está en la configuración');
+es(C.RECARGOS_PLANTILLA.festivo, null, 'recargo · y el de festivos sigue vacío a propósito');
+
+// Un machote nuevo NO se escribe el número encima: lo lee de la plantilla.
+const rn = C.machoteNuevo({ nombre: 'recargo nuevo' });
+es(rn.viaje.recargo_fin_semana, undefined, 'recargo · un machote nuevo no trae número propio');
+rn.pais = 'US'; rn.region = 'Texas'; rn.ciudad = 'Dallas';
+const rn1 = rn.secciones[0];
+const lrn = rn1.mo.find(l => l.rol === 'hrs_finde');
+lrn.qty = 10; lrn.personas = 1; lrn.pu = 100;
+eq(C.calcular(rn).costoMo, 1300, 'recargo · y aun así cobra el 30% de arranque');
+
+// DOS SECCIONES: mover una NO toca la otra.
+const dos = C.machoteNuevo({ nombre: 'dos tramos' });
+dos.pais = 'US'; dos.region = 'Texas'; dos.ciudad = 'Dallas';
+dos.secciones.push(C.seccionNueva('SECCIÓN 2', 'MXN', C.MARGENES_PLANTILLA));
+const [A, B] = dos.secciones;
+[A, B].forEach(sx => { const l = sx.mo.find(y => y.rol === 'hrs_finde');
+                       l.qty = 10; l.personas = 1; l.pu = 100; });
+eq(C.calcular(dos).costoMo, 2600, 'sección · las dos arrancan en 30%: 1300 + 1300');
+A.recargos = { fin_semana: 0.50 };
+const cdos = C.calcular(dos);
+eq(cdos.secciones[0].costoMo, 1500, 'sección · la que se movió cobra 50%');
+eq(cdos.secciones[1].costoMo, 1300, 'sección · Y LA OTRA NO SE ENTERA: sigue en 30%');
+es(B.recargos, undefined, 'sección · no se le escribió nada a la sección de al lado');
+es(dos.viaje.recargo_fin_semana, undefined, 'sección · ni se subió al machote');
+
+// NO SE PROPAGA A MACHOTES NUEVOS: el siguiente arranca otra vez en 30%.
+const sig = C.machoteNuevo({ nombre: 'el siguiente' });
+sig.pais = 'US'; sig.region = 'Texas'; sig.ciudad = 'Dallas';
+sig.secciones.push(C.seccionNueva('SECCIÓN 2', 'MXN', C.MARGENES_PLANTILLA));
+sig.secciones.forEach(sx => { const l = sx.mo.find(y => y.rol === 'hrs_finde');
+                              l.qty = 10; l.personas = 1; l.pu = 100; });
+eq(C.calcular(sig).costoMo, 2600, 'nuevo · un machote nuevo arranca en 30% en TODAS sus secciones');
+eq(C.RECARGOS_PLANTILLA.fin_semana, 0.30, 'nuevo · y el valor por defecto no se movió');
+
+/* ── LOS QUE YA EXISTEN ────────────────────────────────────────────────────
+ * Hay captura real de tres personas. Un machote capturado ANTES de V1.28 trae
+ * su recargo en `m.viaje` y tiene que dar EXACTAMENTE los mismos números, sin
+ * recibir un valor inventado al pasar a nivel sección. */
+const v127 = {
+  id: 'M-v127', nombre: 'capturado en V1.27', empresa_id: 1, moneda: 'MXN',
+  escenario: 'con_utilidad', factor_proteccion: 0, tc: 17,
+  pais: 'US', region: 'Texas', ciudad: 'Dallas',
+  // así se guardaban: el número a nivel MACHOTE
+  viaje: { no_aplica: false, recargo_fin_semana: 0.45, recargo_festivo: null, paga_dias: 'mx' },
+  margenes: Object.assign({}, C.MARGENES_PLANTILLA),
+  secciones: [C.seccionNueva('SECCIÓN 1', 'MXN', C.MARGENES_PLANTILLA),
+              C.seccionNueva('SECCIÓN 2', 'MXN', C.MARGENES_PLANTILLA)]
+};
+v127.secciones.forEach(sx => { const l = sx.mo.find(y => y.rol === 'hrs_finde');
+                                l.qty = 10; l.personas = 1; l.pu = 100; });
+const cv = C.calcular(v127);
+eq(cv.secciones[0].costoMo, 1450, 'v127 · el 45% del machote se respeta en la sección 1');
+eq(cv.secciones[1].costoMo, 1450, 'v127 · y en la sección 2: mismo número que antes');
+es(v127.secciones[0].recargos, undefined, 'v127 · NO se le escribió un recargo a la sección');
+es(v127.viaje.recargo_fin_semana, 0.45, 'v127 · ni se le tocó el del machote');
+es(C.recargosDe(v127, v127.secciones[0]).fin_semana.origen, 'machote',
+   'v127 · y el motor dice de dónde sale el número');
+
+// Y la sección manda sobre el machote v127, sin pisarle el dato.
+v127.secciones[1].recargos = { fin_semana: 0.10 };
+const cv2 = C.calcular(v127);
+eq(cv2.secciones[0].costoMo, 1450, 'v127 · la sección 1 sigue con el 45% heredado');
+eq(cv2.secciones[1].costoMo, 1100, 'v127 · la sección 2 manda sobre el machote');
+es(v127.viaje.recargo_fin_semana, 0.45, 'v127 · y el machote sigue intacto');
+
+/* Un machote de V1.27 con el 0.30 escrito —que es lo que `machoteNuevo`
+ * escribía— NO se marca como apartado: tener el número escrito no es haberse
+ * separado de nada. Se compara el VALOR, no la presencia del campo. */
+const treinta = JSON.parse(JSON.stringify(v127));
+treinta.viaje.recargo_fin_semana = 0.30;
+delete treinta.secciones[1].recargos;
+es(C.recargosDe(treinta, treinta.secciones[0]).fin_semana.apartado, false,
+   'v127 · un 30% escrito a mano no cuenta como apartarse del 30%');
+es(C.recargosDe(v127, v127.secciones[1]).fin_semana.apartado, true,
+   'apartado · un 10% sí, y se marca');
+
+// Vaciar la sección devuelve el mando a la capa de arriba.
+delete v127.secciones[1].recargos.fin_semana;
+eq(C.calcular(v127).secciones[1].costoMo, 1450, 'apartado · vaciar la sección vuelve a heredar');
+
+/* ── CIUDAD JUÁREZ CONTRA DALLAS ───────────────────────────────────────────
+ * Son DOS REGLAS, y ésta es la prueba de que no se volvieron una sola: los
+ * gastos de viaje salen de dejar Nuevo León; el recargo, de ejecutar en
+ * Estados Unidos. Juárez es foráneo y NO lleva recargo. */
+function conFinde(pais, region, ciudad) {
+  const x = C.machoteNuevo({ nombre: ciudad });
+  x.pais = pais; x.region = region; x.ciudad = ciudad;
+  const l = x.secciones[0].mo.find(y => y.rol === 'hrs_finde');
+  l.qty = 10; l.personas = 1; l.pu = 100;
+  return x;
+}
+const jz = conFinde('MX', 'Chihuahua', 'Ciudad Juárez');
+const cjz = C.calcular(jz);
+es(cjz.lugar.foraneo, true, 'Juárez · es foránea: pide viaje');
+es(cjz.lugar.eua, false, 'Juárez · pero no se ejecuta en Estados Unidos');
+eq(cjz.costoMo, 1000, 'Juárez · así que el fin de semana va a tarifa normal');
+es(C.recargoDe(C.ROL.hrs_finde, jz, jz.secciones[0]).aplica, false,
+   'Juárez · el recargo no aplica');
+es(cjz.secciones[0].recargosApartados, 0, 'Juárez · y no hay nada que marcar');
+// Y ni escribiéndole uno a la sección se cobra: la regla es de allá.
+jz.secciones[0].recargos = { fin_semana: 0.50 };
+eq(C.calcular(jz).costoMo, 1000, 'Juárez · ni escribiéndole un 50% se cobra de más');
+
+const dl = conFinde('US', 'Texas', 'Dallas');
+const cdl = C.calcular(dl);
+es(cdl.lugar.foraneo, true, 'Dallas · es foránea: pide viaje');
+es(cdl.lugar.eua, true, 'Dallas · y se ejecuta en Estados Unidos');
+eq(cdl.costoMo, 1300, 'Dallas · lleva las dos cosas: viaje Y recargo');
+
+// El motor no ensucia el documento al resolver los recargos.
+const limpio = C.machoteNuevo({ nombre: 'limpio' });
+limpio.pais = 'US'; limpio.region = 'Texas'; limpio.ciudad = 'Dallas';
+const antesLimpio = JSON.stringify(limpio);
+C.calcular(limpio);
+es(JSON.stringify(limpio), antesLimpio, 'recargo · calcular NO escribe recargos en el documento');
+})();
+
 /* ── Foráneo ───────────────────────────────────────────────────────────────
  * V1.27 · LA SEDE ES EL ESTADO, no la ciudad (corrección de Montalvo). Lo que
  * decide es Nuevo León; la ciudad se captura pero no juzga. */
