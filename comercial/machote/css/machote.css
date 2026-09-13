@@ -1479,3 +1479,6 @@ input.cab-nombre:focus { border-color: var(--acento); background: #fff; outline:
 .cesion-forz input { margin-top: 3px; }
 .cesion-lote { background: var(--papel); border-radius: 8px; padding: 8px 10px;
                margin-top: 8px; word-break: break-word; }
+/* El folio no se parte en dos renglones: «COT-» arriba y «0011» abajo se lee
+ * como dos cosas. Visto en la captura de la vista de archivados. */
+table.lista td.mono { white-space: nowrap; }

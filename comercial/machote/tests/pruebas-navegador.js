@@ -3017,6 +3017,18 @@ await sembrarMachotes(q);
         const s = String(u);
         if (s.indexOf('/comercial/machotes-leer') >= 0)
           return Promise.resolve({ ok: true, json: function () { return Promise.resolve(cfg.real); } });
+        /* V1.29 · archivar ESCRIBE AL SERVIDOR. Sin esta rama la llamada se
+         * va al `fetch` de verdad, no contesta nadie, y la prueba falla por
+         * el MONTAJE y no por el producto. */
+        if (s.indexOf('/comercial/machote-archivar') >= 0) {
+          var ar = {}; try { ar = JSON.parse((o && o.body) || '{}'); } catch (e) {}
+          window.__archivados = (window.__archivados || []);
+          window.__archivados.push({ accion: ar.accion, machote_id: ar.machote_id });
+          return Promise.resolve({ ok: true, json: function () {
+            return Promise.resolve({ ok: true, hecho: true, accion: ar.accion,
+              folio_txt: 'COT-0099', versiones: 1,
+              mensaje: 'Archivada. No se borro nada.' }); } });
+        }
         if (s.indexOf('/comercial/machote-guardar') >= 0) {
           var c = {}; try { c = JSON.parse((o && o.body) || '{}'); } catch (e) {}
           if (!window.__permitir) {
@@ -3955,6 +3967,20 @@ await sembrarMachotes(q);
       const orig = window.fetch;
       window.fetch = function (u) {
         const s = String(u);
+        /* V1.29 · archivar ESCRIBE AL SERVIDOR. Sin esta rama la llamada se va
+         * al `fetch` de verdad, no contesta nadie, y la prueba falla por el
+         * MONTAJE y no por el producto. Ojo: aqui el body va en
+         * `arguments[1]`, porque esta funcion sólo declara `u`. */
+        if (s.indexOf('/comercial/machote-archivar') >= 0) {
+          let ar = {};
+          try { ar = JSON.parse((arguments[1] && arguments[1].body) || '{}'); } catch (e) {}
+          window.__archivados = (window.__archivados || []);
+          window.__archivados.push({ accion: ar.accion, machote_id: ar.machote_id });
+          return Promise.resolve({ ok: true, json: function () {
+            return Promise.resolve({ ok: true, hecho: true, accion: ar.accion,
+              folio_txt: 'COT-0003', versiones: 1,
+              mensaje: 'Archivada. No se borro nada.' }); } });
+        }
         if (s.indexOf('/comercial/machotes-leer') >= 0) {
           const doc = (nom) => {
             const base = (window.DEMO && window.DEMO.MACHOTES && window.DEMO.MACHOTES[0]) || null;
@@ -5884,16 +5910,27 @@ await sembrarMachotes(q);
                      'Se recogieron permisos prestados: los dio el dueno anterior.' }) });
         }
         if (s2.indexOf('/comercial/machotes-leer') >= 0) {
+          /* Tiene que venir un AJENO: `personasDelEquipo()` sale de la lista
+           * que trajo el servidor, asi que con la lista vacia no hay a quien
+           * ceder y la prueba mediria una pantalla que nadie tiene. */
           return Promise.resolve({ ok: true, json: () => Promise.resolve({
             ok: true, modo: 'lista', actor: 'esteban.delacruz', es_admin: true,
-            machotes: [], total: 0 }) });
+            total: 1, duenos: ['ricardo.hernandez'],
+            machotes: [{ id: 'cccccccc-3333-4333-8333-333333333333',
+              id_local: 'M-AJENO-129', dueno: 'ricardo.hernandez',
+              dueno_nombre: 'Ricardo Alan Hernandez Gonzalez', ajeno: true,
+              version: 1, versiones: 1, autor: 'ricardo.hernandez',
+              estado: 'borrador', total: 1000, moneda: 'MXN',
+              documento: { id: 'M-AJENO-129', nombre: 'De Ricardo', estado: 'borrador',
+                           empresa_id: 1, moneda: 'MXN', secciones: [] },
+              prestamos: [], archivado: false }] }) });
         }
         return orig.apply(this, arguments);
       };
     });
     try {
-      await q.goto(BASE); await q.waitForTimeout(500);
-      await q.evaluate(() => { location.hash = '#/m/M-1041'; }); await q.waitForTimeout(800);
+      await q.goto(BASE); await q.waitForTimeout(1400);
+      await q.evaluate(() => { location.hash = '#/m/M-1041'; }); await q.waitForTimeout(900);
 
       const bot = await q.$('#btnCeder');
       if (!bot) throw new Error('no hay botón de Ceder');

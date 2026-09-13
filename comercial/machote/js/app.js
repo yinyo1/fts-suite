@@ -835,10 +835,20 @@
     }
 
     const filas = r.machotes || [];
+    /* ⚠️ Postgres devuelve `2026-09-13 18:20:00+00`, y eso NO lo parsea `Date`:
+     * el desplazamiento tiene que ser `+00:00`. Con `replace(' ','T')` a secas
+     * daba NaN y la tabla enseñaba la cadena cruda —visto en la captura de
+     * 1280, invisible releyendo el diff—. Es la familia del §11 #1: los
+     * datetimes de la base no vienen listos para JS.
+     * Sin zona horaria se asume UTC, que es lo que la base guarda. */
     const fecha = (x) => {
       if (!x) return '—';
-      const d = new Date(String(x).replace(' ', 'T'));
-      return isNaN(d) ? String(x) : d.toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' });
+      let t = String(x).trim().replace(' ', 'T');
+      if (/[+-]\d{2}$/.test(t)) t += ':00';          // +00  → +00:00
+      else if (!/[zZ]|[+-]\d{2}:\d{2}$/.test(t)) t += 'Z'; // sin zona → UTC
+      const d = new Date(t);
+      return isNaN(d.getTime()) ? String(x)
+        : d.toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' });
     };
 
     $('#vista').innerHTML =
@@ -1170,6 +1180,12 @@
       (porQue.length ? 'Ninguna cotización coincide con ' + porQue.join(' · ') + '.'
                      : 'Todavía no hay cotizaciones. Empieza con «+ Nuevo».') + '</div>';
 
+    /* ⚠️ El anuncio va ARRIBA de la tabla y no en el pie. Visto en la captura:
+     * debajo de la lista, con doce machotes y cuatro visibles, hay que pasar
+     * por los cuatro antes de leer por qué faltan los otros ocho — y el sitio
+     * donde uno mira cuando se pregunta eso es justo debajo de los filtros.
+     * El de V1.24 vivía en el pie porque sólo hablaba de un caso; éste habla
+     * siempre que haya un filtro, así que tiene que verse siempre. */
     const tabla = visibles.length
       ? '<div class="tw"><table class="lista"><thead><tr>' +
           '<th style="width:92px">Folio</th>' +
@@ -1252,7 +1268,7 @@
      * que no le importa a nadie. Era andamio del prototipo. El camino de
      * verdad a una orden es el de la cotización: abrirla y «Pasar a orden». */
     $('#vista').innerHTML =
-      '<div class="pad">' + encabezado + filtros + avisoPend + tabla + pieFiltro +
+      '<div class="pad">' + encabezado + filtros + avisoPend + pieFiltro + tabla +
       pieRespaldo +
       '<div class="ver">versión <strong>' + VERSION + '</strong></div></div>';
 
