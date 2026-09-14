@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FTS Suite · Rentabilidad por proyecto (prototipo)</title>
+<!--
+  PROTOTIPO del panel de rentabilidad por proyecto. Issue #240, plataforma #237.
+
+  ABRE SOLO, A PROPOSITO: cero dependencias externas. Ni fuentes de Google, ni
+  CDN, ni modulos, ni fetch al cargar. Se abre con doble clic desde el disco
+  (file://) sin servidor y sin red. Los cuatro intentos anteriores de abrir un
+  prototipo fallaron; esto elimina la clase entera de causas.
+
+  LOS DATOS DE ESTA PANTALLA SON DE DEMOSTRACION Y ESTAN MARCADOS EN ORIGEN:
+  cada fila trae _demo:true y los ids tienen forma D-nnn, distinta de los ids
+  reales de Odoo, que son enteros. Es la regla 12c de CLAUDE.md — un dato de
+  ejemplo que no se distingue de uno real acaba en produccion. Y es la razon de
+  que este archivo NO traiga datos reales: el repo es PUBLICO (regla 20 #7).
+
+  Los numeros REALES medidos hoy contra Odoo viven en el issue #240, y aqui
+  aparecen solo agregados en la banda de arriba: se puede comparar la proporcion
+  sin publicar un solo nombre de cliente.
+-->
+<style>
+  :root{
+    --bg:#0f1216; --panel:#161b22; --panel2:#1c232c; --linea:#2a333f;
+    --tinta:#e6edf3; --tinta2:#9aa7b4; --tinta3:#6b7785;
+    --verde:#2ea043; --ambar:#d29922; --rojo:#da3633;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tinta);font:14px/1.5 var(--sans)}
+  .wrap{max-width:1400px;margin:0 auto;padding:0 16px}
+
+  header{border-bottom:1px solid var(--linea);background:var(--panel);position:sticky;top:0;z-index:20}
+  .hd{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:12px 0}
+  .hd h1{font-size:17px;margin:0;font-weight:600;letter-spacing:-.2px}
+  .hd .sub{color:var(--tinta3);font-size:12px}
+  .spacer{flex:1 1 auto}
+  .demo-tag{background:#3b2f00;color:#ffd666;border:1px solid #6b5500;
+            font:600 11px/1 var(--sans);padding:5px 9px;border-radius:5px;letter-spacing:.3px}
+  button{font:inherit;color:var(--tinta);background:var(--panel2);border:1px solid var(--linea);
+         border-radius:6px;padding:7px 12px;cursor:pointer}
+  button:hover{border-color:var(--tinta3)}
+  button.pri{background:#1f6feb;border-color:#1f6feb;color:#fff}
+  .jalon{font:12px/1.4 var(--mono);color:var(--tinta3)}
+
+  .banda{background:#10243a;border:1px solid #1d4a7a;border-radius:8px;
+         padding:10px 14px;margin:14px 0;font-size:13px;color:#c9e2ff}
+  .banda b{color:#fff}
+
+  .kpis{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin:14px 0}
+  .kpi{background:var(--panel);border:1px solid var(--linea);border-radius:8px;padding:12px 14px}
+  .kpi .n{font:600 24px/1.15 var(--mono);letter-spacing:-.5px}
+  .kpi .l{color:var(--tinta2);font-size:12px;margin-top:4px}
+  .kpi .n2{color:var(--tinta3);font-size:11px;margin-top:6px;font-family:var(--mono)}
+  .kpi.ok .n{color:var(--verde)} .kpi.warn .n{color:var(--ambar)}
+  .kpi.bad .n{color:var(--rojo)} .kpi.neu .n{color:var(--tinta)}
+
+  details.salv{background:var(--panel);border:1px solid var(--linea);border-radius:8px;margin:14px 0}
+  details.salv>summary{cursor:pointer;padding:11px 14px;font-weight:600;font-size:13px}
+  details.salv .cuerpo{padding:0 14px 12px}
+  .salv-item{border-top:1px solid var(--linea);padding:10px 0;font-size:13px;color:var(--tinta2)}
+  .salv-item code{color:var(--ambar);font:600 12px var(--mono)}
+
+  .barra{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:14px 0}
+  select,input[type=search]{font:inherit;background:var(--panel2);color:var(--tinta);
+    border:1px solid var(--linea);border-radius:6px;padding:7px 9px}
+  label.f{font-size:12px;color:var(--tinta2);display:flex;gap:6px;align-items:center}
+
+  .tablabox{overflow-x:auto;border:1px solid var(--linea);border-radius:8px;background:var(--panel)}
+  table{border-collapse:collapse;width:100%;font-size:13px;min-width:900px}
+  th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--linea);white-space:nowrap}
+  th{background:var(--panel2);color:var(--tinta2);font-weight:600;font-size:12px;
+     position:sticky;top:0;cursor:pointer;user-select:none}
+  th.num,td.num{text-align:right;font-family:var(--mono)}
+  tbody tr:hover{background:#1a2129}
+  tr.grupo{background:#1a2530;font-weight:600}
+  tr.grupo td{color:#cfe3ff}
+  .proj{display:inline-block;max-width:380px;overflow:hidden;text-overflow:ellipsis;
+        white-space:nowrap;cursor:pointer;color:#79c0ff;vertical-align:bottom}
+  .proj:hover{text-decoration:underline}
+
+  .chip{display:inline-block;font:600 11px/1 var(--sans);padding:4px 7px;border-radius:4px}
+  .c-completo{background:#0d2a14;color:#56d364;border:1px solid #1c5a2b}
+  .c-parcial{background:#2b2200;color:#e3b341;border:1px solid #6b5200}
+  .c-sin{background:#26292e;color:#9aa7b4;border:1px solid #3d4450}
+  .raya{color:var(--tinta3)}
+  .falta{color:var(--tinta3);font-size:11px;white-space:normal;max-width:260px}
+  .al{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+  .al-rojo{background:var(--rojo)} .al-amarillo{background:var(--ambar)}
+  .pct-bad{color:var(--rojo);font-weight:600}
+  .pct-warn{color:var(--ambar);font-weight:600}
+
+  .vista{display:none} .vista.on{display:block}
+  .volver{color:#79c0ff;cursor:pointer;font-size:13px;display:inline-block;margin:14px 0 6px}
+  h2{font-size:16px;margin:6px 0 2px} .h2sub{color:var(--tinta3);font-size:12px;margin-bottom:10px}
+  .nota{background:var(--panel);border:1px solid var(--linea);border-left:3px solid var(--ambar);
+        border-radius:6px;padding:10px 12px;font-size:12px;color:var(--tinta2);margin:12px 0}
+  footer{color:var(--tinta3);font-size:12px;padding:22px 0;border-top:1px solid var(--linea);margin-top:26px}
+  @media (max-width:640px){ .hd h1{font-size:15px} .kpi .n{font-size:20px} }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap hd">
+    <div>
+      <h1>Rentabilidad por proyecto</h1>
+      <div class="sub">FTS Suite · panel · contrato 1</div>
+    </div>
+    <span class="demo-tag">DATOS DE DEMOSTRACIÓN</span>
+    <div class="spacer"></div>
+    <span class="jalon" id="jalon">último jalón: —</span>
+    <button class="pri" id="btnRefresh">Actualizar</button>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="banda">
+    <b>Corrida real contra Odoo de hoy (13-sep-2026), ejecución 97646 del motor:</b>
+    216 proyectos activos · <b>72 completos</b> · <b>53 parciales</b> · <b>91 sin presupuesto</b> ·
+    22 con alerta de umbral · tipo de cambio 16.9722 (rate del 12-sep).
+    Los renglones de abajo son <b>de demostración</b> y guardan esa proporción;
+    ni un nombre de cliente real sale a este archivo, porque el repo es público.
+  </div>
+
+  <!-- ══════════ PORTADA ══════════ -->
+  <section class="vista on" id="vPortada">
+
+    <div class="kpis" id="kpis"></div>
+
+    <details class="salv">
+      <summary>Salvedades — qué <em>no</em> cubre este número</summary>
+      <div class="cuerpo" id="salvCuerpo"></div>
+    </details>
+
+    <div class="barra">
+      <label class="f">Estado
+        <select id="fEstado">
+          <option value="">todos</option>
+          <option value="completo">completo</option>
+          <option value="parcial">parcial</option>
+          <option value="sin_presupuesto">sin presupuesto</option>
+        </select>
+      </label>
+      <label class="f">Agrupar por
+        <select id="fGrupo"><option value="">(sin agrupar)</option></select>
+      </label>
+      <label class="f"><input type="checkbox" id="fAlerta"> sólo con alerta</label>
+      <input type="search" id="fBusca" placeholder="buscar proyecto o cliente…" style="min-width:200px">
+      <div class="spacer"></div>
+      <span class="jalon" id="conteo"></span>
+    </div>
+
+    <div class="tablabox">
+      <table id="tabla"><thead></thead><tbody></tbody></table>
+    </div>
+
+    <div class="nota">
+      <b>Un proyecto sin presupuesto no es un proyecto con margen cero.</b>
+      Los que no tienen dato muestran <span class="raya">—</span> y dicen qué les falta,
+      y no entran en los totales de arriba. Las columnas y sus tipos los manda el
+      servidor; el ancho, el orden y los colores son de esta pantalla.
+    </div>
+  </section>
+
+  <!-- ══════════ DETALLE ══════════ -->
+  <section class="vista" id="vDetalle">
+    <span class="volver" id="volver">← volver a la portada</span>
+    <h2 id="dTitulo">—</h2>
+    <div class="h2sub" id="dSub">—</div>
+
+    <div class="kpis" id="dKpis"></div>
+
+    <div class="barra">
+      <label class="f">Agrupar por <select id="dGrupo"></select></label>
+      <label class="f">Después por <select id="dGrupo2"><option value="">(nada)</option></select></label>
+      <div class="spacer"></div>
+      <span class="jalon" id="dConteo"></span>
+    </div>
+
+    <div class="tablabox">
+      <table id="dTabla"><thead></thead><tbody></tbody></table>
+    </div>
+
+    <div class="nota" id="dNota"></div>
+  </section>
+
+  <footer>
+    Prototipo · issue #240 · plataforma #237 ·
+    <span class="jalon">sin capa de datos y sin snapshots: nada se guarda, nada se commitea</span>
+  </footer>
+</div>
+
+<script>
+'use strict';
+/* ───────────────────────────────────────────────────────────────────────────
+   DATOS DE DEMOSTRACION, MARCADOS EN ORIGEN.
+   Cada fila trae _demo:true y su id tiene forma "D-nnn". Los ids reales de Odoo
+   son enteros, asi que las dos formas no se confunden — que es justo lo que
+   salvo el borrado de los machotes de ejemplo (CLAUDE.md 20 #12c).
+   La FORMA del sobre es la del contrato real; lo unico inventado son los
+   valores. Cuando exista el endpoint, cargar() cambia de DEMO a fetch y nada
+   mas de esta pantalla se mueve: el sobre es el mismo.
+   ─────────────────────────────────────────────────────────────────────────── */
+var DEMO = (function () {
+  var C = [
+    {id:'proyecto',    label:'Proyecto',         kind:'texto',  agrupable:false, suma:false},
+    {id:'cliente',     label:'Cliente',          kind:'texto',  agrupable:true,  suma:false},
+    {id:'etapa',       label:'Etapa',            kind:'texto',  agrupable:true,  suma:false},
+    {id:'empresa',     label:'Empresa',          kind:'texto',  agrupable:true,  suma:false},
+    {id:'estado_dato', label:'Estado del dato',  kind:'texto',  agrupable:true,  suma:false},
+    {id:'ingreso_pres',label:'Ingreso plan',     kind:'dinero', agrupable:false, suma:true},
+    {id:'ingreso_real',label:'Ingreso real',     kind:'dinero', agrupable:false, suma:true},
+    {id:'costo_pres',  label:'Costo plan',       kind:'dinero', agrupable:false, suma:true},
+    {id:'costo_real',  label:'Costo real',       kind:'dinero', agrupable:false, suma:true},
+    {id:'margen_real', label:'Margen real',      kind:'dinero', agrupable:false, suma:true},
+    {id:'margen_pct',  label:'Margen %',         kind:'pct',    agrupable:false, suma:false},
+    {id:'consumo_mat', label:'Materiales cons.', kind:'pct',    agrupable:false, suma:false},
+    {id:'consumo_mo',  label:'MO consumida',     kind:'pct',    agrupable:false, suma:false},
+    {id:'horas_plan',  label:'Horas plan',       kind:'numero', agrupable:false, suma:true}
+  ];
+  function f(id,proy,cli,eta,emp,est,falta,ip,ir,cp,cr,cmat,cmo,hp,mon){
+    var hayReal=(ir>0||cr>0);
+    var mr=hayReal?(ir-cr):null;
+    var mp=(hayReal&&ir>0)?((ir-cr)/ir*100):null;
+    var al=[];
+    function u(v,q){ if(v===null||v===undefined)return;
+      if(v>=100)al.push({nivel:'rojo',dice:q+' SOBRE presupuesto ('+v.toFixed(0)+'%)'});
+      else if(v>=90)al.push({nivel:'rojo',dice:q+' al '+v.toFixed(0)+'% del presupuesto'});
+      else if(v>=70)al.push({nivel:'amarillo',dice:q+' al '+v.toFixed(0)+'% del presupuesto'}); }
+    u(cmat,'Materiales'); u(cmo,'Mano de obra');
+    if(mp!==null&&mp<0)al.push({nivel:'rojo',dice:'Margen real negativo'});
+    return {_demo:true,id:id,proyecto:proy,cliente:cli,etapa:eta,empresa:emp,moneda:mon||'MXN',
+      estado_dato:est,falta:falta,ingreso_pres:ip,ingreso_real:ir,costo_pres:cp,costo_real:cr,
+      margen_real:mr,margen_pct:mp,consumo_mat:cmat,consumo_mo:cmo,horas_plan:hp,alertas:al};
+  }
+  var SIN3=['presupuesto de ingreso','presupuesto de mano de obra','presupuesto de materiales'];
+  var F = [
+    /* completos CON alerta: el caso para el que existe el panel */
+    f('D-101','SO-DEMO-41 · Instalación mecánica línea 3','Cliente Alfa','In Progress','FTS MX','completo',[],1850000,1120000,1240000,1310000,147,81,960),
+    f('D-102','SO-DEMO-52 · Subestación y acometida','Cliente Bravo','In Progress','FTS MX','completo',[],2400000,1700000,1680000,1590000,118,124,1420),
+    f('D-103','SO-DEMO-58 · Cubierta inoxidable reactor','Cliente Charlie','In Progress','FTS MX','completo',[],640000,610000,430000,486000,186,64,380),
+    /* completo con margen NEGATIVO */
+    f('D-108','SO-DEMO-70 · Rigging y montaje de prensa','Cliente Foxtrot','In Progress','FTS MX','completo',[],760000,760000,520000,845000,163,158,520),
+    /* completos sanos */
+    f('D-104','SO-DEMO-60 · Ductos área de empaque','Cliente Delta','Done Operations','FTS MX','completo',[],980000,980000,655000,402000,52,47,610),
+    f('D-105','SO-DEMO-63 · Póliza de mantenimiento compresor','Cliente Alfa','En plazo de credito','FTS MX','completo',[],320000,320000,190000,96000,41,38,240),
+    f('D-106','SO-DEMO-64 · Chiller replacement','Cliente Echo','In Progress','FTS USA','completo',[],84000,31000,57000,19400,33,36,210,'USD'),
+    f('D-107','SO-DEMO-67 · Panel de control HMI','Cliente Bravo','Done Operations','FTS MX','completo',[],412000,412000,268000,191000,68,72,300),
+    /* parciales: hay ingreso, falta costo planeado -> el margen se ve mejor */
+    f('D-201','SO-DEMO-71 · Ingeniería conceptual desbobinadora','Cliente Charlie','In Progress','FTS MX','parcial',['presupuesto de materiales'],157420,0,76800,0,null,0,null),
+    f('D-202','SO-DEMO-73 · Adecuaciones eléctricas','Cliente Delta','Done Operations','FTS MX','parcial',['presupuesto de mano de obra'],890000,640000,410000,288000,70,null,null),
+    f('D-203','SO-DEMO-75 · Suministro de tubería sanitaria','Cliente Golf','Admin - In progress','FTS MX','parcial',['presupuesto de mano de obra'],268000,268000,205000,96000,47,null,null),
+    f('D-204','SO-DEMO-78 · Valvulería para lavado','Cliente Hotel','En plazo de credito','FTS MX','parcial',['presupuesto de materiales'],1100000,1100000,380000,407000,null,107,640),
+    f('D-205','SO-DEMO-80 · Materiales para chaqueta de aluminio','Cliente Echo','Done Operations','FTS USA','parcial',['presupuesto de mano de obra'],22000,22000,14500,9100,63,null,null,'USD'),
+    f('D-206','SO-DEMO-82 · Mejoras a sistema de filtración','Cliente Golf','In Progress','FTS MX','parcial',['presupuesto de ingreso'],0,0,940000,612000,65,74,880),
+    /* sin presupuesto: NO son margen cero, y dicen que les falta */
+    f('D-301','SO-DEMO-84 · Cortinas de seguridad 120s','Cliente Charlie','In Progress','FTS MX','sin_presupuesto',SIN3,0,0,0,0,null,null,null),
+    f('D-302','SO-DEMO-86 · Servicio de diagnóstico','Cliente Hotel','To Do','FTS MX','sin_presupuesto',SIN3,0,0,0,0,null,null,null),
+    f('D-303','SO-DEMO-88 · Reparación de motores de rampa','Cliente Hotel','En plazo de credito','FTS MX','sin_presupuesto',SIN3,0,0,0,0,null,null,null),
+    f('D-304','SO-DEMO-90 · Suministro de interruptor','Cliente Delta','Done Operations','FTS MX','sin_presupuesto',SIN3,0,0,0,0,null,null,null),
+    f('D-305','SO-DEMO-92 · VIP service HQ','Cliente Delta','To Do','FTS MX','sin_presupuesto',SIN3,0,0,0,0,null,null,null),
+    f('D-306','SO-DEMO-94 · Techo de nave 2','Cliente Alfa','En plazo de credito','FTS MX','sin_presupuesto',SIN3,0,0,0,0,null,null,null),
+    f('D-307','SO-DEMO-96 · Test loop ingeniería','Cliente Golf','In Progress','FTS MX','sin_presupuesto',SIN3,0,0,0,0,null,null,null),
+    f('D-308','SO-DEMO-98 · Tools y consumibles','Cliente Echo','Done Operations','FTS USA','sin_presupuesto',SIN3,0,0,0,0,null,null,null,'USD'),
+    f('D-309','SO-DEMO-99 · Distribución eléctrica luminarias','Cliente Foxtrot','Hold','FTS MX','sin_presupuesto',SIN3,0,0,0,0,null,null,null),
+    f('D-310','SO-DEMO-100 · Integración con sensor de nivel','Cliente Bravo','En plazo de credito','FTS MX','sin_presupuesto',SIN3,0,0,0,0,null,null,null)
+  ];
+  var RATE=16.9722;
+  F.forEach(function(r){
+    var k=(r.moneda==='USD')?RATE:1;
+    r.mxn={ingreso_pres:r.ingreso_pres*k,ingreso_real:r.ingreso_real*k,
+           costo_pres:r.costo_pres*k,costo_real:r.costo_real*k,
+           margen_real:r.margen_real===null?null:r.margen_real*k};
+    r.link_odoo=null;   /* demo: no apunta a ningun registro real */
+  });
+  var res={total:F.length,completo:0,parcial:0,sin_presupuesto:0,
+           ingreso_real_mxn:0,costo_real_mxn:0,con_alerta:0};
+  F.forEach(function(r){
+    res[r.estado_dato]++;
+    if(r.alertas.length)res.con_alerta++;
+    if(r.estado_dato!=='sin_presupuesto'){
+      res.ingreso_real_mxn+=r.mxn.ingreso_real||0;
+      res.costo_real_mxn+=r.mxn.costo_real||0;
+    }
+  });
+  res.margen_real_mxn=res.ingreso_real_mxn-res.costo_real_mxn;
+  res.margen_pct=res.ingreso_real_mxn>0?(res.margen_real_mxn/res.ingreso_real_mxn*100):null;
+
+  var DCOLS=[
+    {id:'mes',     label:'Mes',       kind:'texto', agrupable:true,  suma:false},
+    {id:'fecha',   label:'Fecha',     kind:'texto', agrupable:true,  suma:false},
+    {id:'rubro',   label:'Rubro',     kind:'texto', agrupable:true,  suma:false},
+    {id:'cuenta',  label:'Cuenta GL', kind:'texto', agrupable:true,  suma:false},
+    {id:'concepto',label:'Concepto',  kind:'texto', agrupable:false, suma:false},
+    {id:'monto',   label:'Monto',     kind:'dinero',agrupable:false, suma:true},
+    {id:'cantidad',label:'Cantidad',  kind:'numero',agrupable:false, suma:true}
+  ];
+  function d(id,fecha,rubro,cuenta,concepto,monto,cant){
+    return {_demo:true,id:id,fecha:fecha,mes:fecha.slice(0,7),rubro:rubro,cuenta:cuenta,
+            concepto:concepto,monto:monto,cantidad:cant};
+  }
+  var GL='601.84.01 Otros gastos generales', GLM='601.10.02 Materiales de obra';
+  var DET={'D-101':{project_id:'D-101',proyecto:'SO-DEMO-41 · Instalación mecánica línea 3',
+    columnas:DCOLS,horas_plan:960,filas:[
+      d('L-1','2026-09-08','2.1 Mano de Obra',GL,'MO S36/2026 · cuadrilla C2',-186400,0),
+      d('L-2','2026-09-08','2.2 Materiales',GLM,'Perfil PTR 2 pulg cal 14',-94200,120),
+      d('L-3','2026-09-04','(sin rubro)',GL,'Abrazadera tipo clip 3B',-16700,150),
+      d('L-4','2026-09-04','(sin rubro)',GL,'Condulet tipo LB',-10320,10),
+      d('L-5','2026-09-01','2.2 Materiales',GLM,'Tubería conduit pared gruesa',-132800,220),
+      d('L-6','2026-08-28','2.1 Mano de Obra',GL,'MO S35/2026 · cuadrilla C2',-204100,0),
+      d('L-7','2026-08-22','(sin rubro)',GL,'Flete de material a planta',-18900,1),
+      d('L-8','2026-08-18','2.2 Materiales',GLM,'Soldadura 7018 y consumibles',-41500,85),
+      d('L-9','2026-08-11','2.1 Mano de Obra',GL,'MO S33/2026 · cuadrilla C1',-158700,0),
+      d('L-10','2026-08-04','(sin rubro)',GL,'Renta de andamio',-26400,4),
+      d('L-11','2026-07-28','2.2 Materiales',GLM,'Placa A36 3/8 pulg',-208900,60),
+      d('L-12','2026-07-21','2.1 Mano de Obra',GL,'MO S30/2026 · cuadrilla C1',-171300,0),
+      d('L-13','2026-07-14','(sin rubro)',GL,'Consumibles de corte',-12800,30),
+      d('L-14','2026-07-07','2.2 Materiales',GLM,'Tornillería y anclas',-27900,400)
+    ]}};
+  var dd=DET['D-101'];
+  dd.gasto_total_en_cuenta=dd.filas.reduce(function(s,r){return s+Math.abs(r.monto<0?r.monto:0);},0);
+  var sr=dd.filas.filter(function(r){return r.rubro==='(sin rubro)';});
+  dd.lineas_sin_rubro=sr.length;
+  dd.monto_sin_rubro=sr.reduce(function(s,r){return s+Math.abs(r.monto);},0);
+
+  return {
+    ok:true, panel:'rentabilidad', contrato:1, _demo:true,
+    alcance:{tipo:'periodo',desde:null,hasta:'2026-09-13',en:'2026-09-13',
+             fuente:'DEMO — la corrida real lee odoo:project.project + budget.line + account.analytic.line',
+             respondido:new Date().toISOString()},
+    actor:{nombre:'(demo)',scopes:['rentabilidad:read']},
+    salvedades:[
+      {codigo:'SIN_PRESUPUESTO',dice:res.sin_presupuesto+' proyectos no tienen presupuesto en cuentas analíticas. NO tienen margen cero: no tienen margen. Quedan FUERA de los totales.'},
+      {codigo:'PRESUPUESTO_PARCIAL',dice:res.parcial+' proyectos tienen presupuesto incompleto (les falta al menos un rubro). Su margen se ve MEJOR que el real, porque falta costo planeado.'},
+      {codigo:'PRESUPUESTO_PLACEHOLDER',dice:'En la corrida real, 19 de 216 proyectos traen líneas con el centinela de 1 peso que sembró el A1. Se cuentan como AUSENTES, no como presupuesto de 1 peso: si no, el consumo sale en 150,000% y la alerta roja no significa nada.'},
+      {codigo:'MARGEN_SUBESTIMA_COSTO',dice:'El costo real sale de achieved_amount del budget, que sólo ve el gasto codificado COMPUESTO (proyecto Y rubro en la misma línea). El A0 midió que el 59% del gasto de proveedor llega con rubro pero SIN proyecto, y al abrir un proyecto se ve el mismo efecto dentro de su cuenta. Este margen sale MEJOR que el real: sirve para comparar proyectos entre sí y para las alertas de umbral, NO como utilidad contable.'},
+      {codigo:'HORAS_REALES_NO_DISPONIBLES',dice:'Hay horas PLAN pero NO hay horas reales: unit_amount de la línea analítica trae PIEZAS en las líneas de material y 0 en las de mano de obra (medido en la corrida real). La alerta "llevo 80 de 100 horas" necesita otra fuente — timesheets o Carga MO — y no se finge con este campo.'},
+      {codigo:'TIPO_CAMBIO',dice:'Los totales consolidan USD a MXN a 16.9722 (rate del 2026-09-12). Las columnas nativas de cada fila NO están convertidas.'}
+    ],
+    datos:{moneda_presentacion:'MXN',
+      tipo_cambio:{usd_mxn:RATE,fecha:'2026-09-12',fuente:'res.currency.rate.inverse_company_rate'},
+      resumen:res, columnas:C, filas:F, detalle:null},
+    _det:DET
+  };
+})();
+
+/* ─────────────────────── estado de la pantalla ─────────────────────── */
+var S={sobre:null,orden:{col:'margen_pct',dir:1},det:null,dgrupo:'rubro',dgrupo2:''};
+
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function nfm(v){ if(v===null||v===undefined)return '—';
+  return Number(v).toLocaleString('es-MX',{maximumFractionDigits:0}); }
+function dinero(v,mon){ if(v===null||v===undefined)return '<span class="raya">—</span>';
+  return (mon==='USD'?'US$':'$')+nfm(v); }
+function pct(v){ if(v===null||v===undefined)return '<span class="raya">—</span>';
+  var c=v>=100?'pct-bad':(v>=70?'pct-warn':'');
+  return c?('<span class="'+c+'">'+v.toFixed(0)+'%</span>'):(v.toFixed(0)+'%'); }
+
+/* ─────────────────────── carga: REFRESH MANUAL, nunca automatico ─────────────────────── */
+function cargar(){
+  /* Cuando el endpoint este vivo, aqui va:
+       SuiteAuth.getToken() -> POST /webhook/fin/rentabilidad {token, modo:'portada'}
+     y nada mas de esta pantalla cambia, porque el sobre es el mismo. No hay
+     temporizador a proposito: el usuario decide cuando volver a preguntar, y la
+     hora del ultimo jalon queda a la vista. */
+  S.sobre=JSON.parse(JSON.stringify(DEMO));
+  var t=new Date();
+  document.getElementById('jalon').textContent='último jalón: '+
+    t.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',second:'2-digit'})+' · demo';
+  pintarPortada();
+}
+
+/* ─────────────────────── portada ─────────────────────── */
+function kpi(cl,n,l,n2){
+  return '<div class="kpi '+cl+'"><div class="n">'+esc(n)+'</div><div class="l">'+esc(l)+
+         '</div><div class="n2">'+esc(n2||'')+'</div></div>';
+}
+function pintarPortada(){
+  var d=S.sobre.datos, r=d.resumen;
+  document.getElementById('kpis').innerHTML=
+    kpi('neu',r.total,'proyectos activos','el universo del panel')+
+    kpi('ok',r.completo,'con presupuesto completo','éstos muestran margen')+
+    kpi('warn',r.parcial,'presupuesto parcial','margen optimista: falta costo plan')+
+    kpi('neu',r.sin_presupuesto,'sin presupuesto','no tienen margen · fuera de totales')+
+    kpi('bad',r.con_alerta,'con alerta de umbral','contra presupuesto, no contra el pasado')+
+    kpi(r.margen_pct===null?'neu':(r.margen_pct<0?'bad':'ok'),
+        (r.margen_pct===null?'—':r.margen_pct.toFixed(1)+'%'),
+        'margen de los que sí tienen dato','$'+nfm(r.margen_real_mxn)+' MXN · ver salvedades');
+
+  document.getElementById('salvCuerpo').innerHTML=S.sobre.salvedades.map(function(s){
+    return '<div class="salv-item"><code>'+esc(s.codigo)+'</code> — '+esc(s.dice)+'</div>';}).join('');
+
+  var gsel=document.getElementById('fGrupo');
+  if(gsel.options.length<=1){
+    d.columnas.filter(function(c){return c.agrupable;}).forEach(function(c){
+      var o=document.createElement('option');o.value=c.id;o.textContent=c.label;gsel.appendChild(o);});
+  }
+  pintarTabla();
+}
+
+function visibles(){
+  var f=S.sobre.datos.filas.slice();
+  var e=document.getElementById('fEstado').value;
+  var q=document.getElementById('fBusca').value.trim().toLowerCase();
+  var soloAl=document.getElementById('fAlerta').checked;
+  if(e)f=f.filter(function(r){return r.estado_dato===e;});
+  if(soloAl)f=f.filter(function(r){return r.alertas.length;});
+  if(q)f=f.filter(function(r){return (r.proyecto+' '+r.cliente).toLowerCase().indexOf(q)>=0;});
+  var c=S.orden.col,dir=S.orden.dir;
+  f.sort(function(a,b){
+    var x=a[c],y=b[c];
+    /* los que no tienen dato van SIEMPRE al final, en los dos sentidos: no son
+       "el peor" ni "el mejor", es que no hay numero que ordenar. */
+    if(x===null||x===undefined)return 1;
+    if(y===null||y===undefined)return -1;
+    if(typeof x==='string')return dir*x.localeCompare(y,'es');
+    return dir*(x-y);
+  });
+  return f;
+}
+
+function pintarTabla(){
+  var cols=S.sobre.datos.columnas, f=visibles();
+  document.querySelector('#tabla thead').innerHTML='<tr>'+cols.map(function(c){
+    var s=S.orden.col===c.id?(S.orden.dir>0?' ▲':' ▼'):'';
+    return '<th class="'+(c.kind==='texto'?'':'num')+'" data-col="'+c.id+'">'+esc(c.label)+s+'</th>';
+  }).join('')+'</tr>';
+
+  var g=document.getElementById('fGrupo').value;
+  var html='';
+  if(g){
+    var mapa={},orden=[];
+    f.forEach(function(r){ var k=r[g]==null?'(vacío)':String(r[g]);
+      if(!mapa[k]){mapa[k]=[];orden.push(k);} mapa[k].push(r); });
+    orden.sort(function(a,b){return a.localeCompare(b,'es');}).forEach(function(k){
+      html+=filaGrupo(cols,k,mapa[k]);
+      mapa[k].forEach(function(r){ html+=fila(cols,r); });
+    });
+  } else {
+    f.forEach(function(r){ html+=fila(cols,r); });
+  }
+  document.querySelector('#tabla tbody').innerHTML=html||
+    '<tr><td colspan="'+cols.length+'" style="color:#6b7785">Sin proyectos con ese filtro.</td></tr>';
+  document.getElementById('conteo').textContent=f.length+' de '+S.sobre.datos.filas.length+' proyectos';
+
+  Array.prototype.forEach.call(document.querySelectorAll('#tabla th'),function(el){
+    el.onclick=function(){ var c=el.getAttribute('data-col');
+      if(S.orden.col===c)S.orden.dir*=-1; else {S.orden.col=c;S.orden.dir=1;}
+      pintarTabla(); };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('#tabla .proj'),function(el){
+    el.onclick=function(){ abrirDetalle(el.getAttribute('data-id')); };
+  });
+}
+
+function filaGrupo(cols,k,rs){
+  /* SOLO se suma lo que el servidor declaro sumable, y SOLO de los que tienen
+     dato: meter los sin_presupuesto como 0 falsearia el subtotal, que es la
+     misma mentira que la regla prohibe en el total general. */
+  var conDato=rs.filter(function(r){return r.estado_dato!=='sin_presupuesto';});
+  var sinDato=rs.length-conDato.length;
+  return '<tr class="grupo">'+cols.map(function(c,i){
+    if(i===0)return '<td>'+esc(k)+' · '+rs.length+(sinDato?(' <span class="falta">('+sinDato+' sin dato, fuera del subtotal)</span>'):'')+'</td>';
+    if(!c.suma)return '<td></td>';
+    var s=conDato.reduce(function(a,r){var v=r[c.id];return a+(typeof v==='number'?v:0);},0);
+    return '<td class="num">'+(c.kind==='dinero'?dinero(s):nfm(s))+'</td>';
+  }).join('')+'</tr>';
+}
+
+function fila(cols,r){
+  var chip={completo:'c-completo',parcial:'c-parcial',sin_presupuesto:'c-sin'}[r.estado_dato];
+  var etq={completo:'completo',parcial:'parcial',sin_presupuesto:'sin presupuesto'}[r.estado_dato];
+  /* LA REGLA, APLICADA EN LA CELDA: un proyecto sin presupuesto no muestra CERO
+     en ninguna columna de numero. El motor ya manda null, pero esto no depende de
+     eso: un 0 que llegue por cualquier via se sigue pintando como raya. Se
+     descubrio MIRANDO la pantalla — la comprobacion automatica solo revisaba la
+     columna de margen, y las otras cuatro decian $0 tan tranquilas (regla 20 #12). */
+  var sinDato=(r.estado_dato==='sin_presupuesto');
+  return '<tr>'+cols.map(function(c){
+    var v=r[c.id];
+    if(c.id==='proyecto'){
+      var al=r.alertas.length?('<span class="al al-'+r.alertas[0].nivel+'" title="'+
+        esc(r.alertas.map(function(a){return a.dice;}).join(' · '))+'"></span>'):'';
+      return '<td>'+al+'<span class="proj" data-id="'+esc(r.id)+'" title="'+esc(r.proyecto)+'">'+
+             esc(r.proyecto)+'</span></td>';
+    }
+    if(c.id==='estado_dato'){
+      /* El detalle de que falta solo se lista en PARCIAL, que es donde dice algo
+         accionable (que rubro capturar). En sin_presupuesto faltan los tres por
+         definicion, y listarlos hacia cada fila cinco veces mas alta. */
+      var ex=(r.estado_dato==='parcial'&&r.falta&&r.falta.length)
+        ? '<div class="falta">falta: '+esc(r.falta.join(', ').replace(/presupuesto de /g,''))+'</div>' : '';
+      return '<td><span class="chip '+chip+'" title="'+esc((r.falta||[]).join(' · '))+'">'+etq+'</span>'+ex+'</td>';
+    }
+    if(sinDato&&(c.kind==='dinero'||c.kind==='pct'||c.kind==='numero'))
+      return '<td class="num"><span class="raya">—</span></td>';
+    if(c.kind==='dinero')return '<td class="num">'+dinero(v,r.moneda)+'</td>';
+    if(c.kind==='pct')   return '<td class="num">'+pct(v)+'</td>';
+    if(c.kind==='numero')return '<td class="num">'+(v===null||v===undefined?'<span class="raya">—</span>':nfm(v))+'</td>';
+    return '<td>'+esc(v)+'</td>';
+  }).join('')+'</tr>';
+}
+
+/* ─────────────────────── detalle + tabla dinamica en el NAVEGADOR ─────────────────────── */
+function abrirDetalle(id){
+  var det=S.sobre._det&&S.sobre._det[id];
+  var fil=S.sobre.datos.filas.filter(function(r){return r.id===id;})[0];
+  document.getElementById('vPortada').classList.remove('on');
+  document.getElementById('vDetalle').classList.add('on');
+  window.scrollTo(0,0);
+  document.getElementById('dTitulo').textContent=fil?fil.proyecto:id;
+  document.getElementById('dSub').textContent=fil?
+    (fil.cliente+' · '+fil.etapa+' · '+fil.empresa+' · '+fil.moneda):'';
+
+  if(!det){
+    document.getElementById('dKpis').innerHTML=
+      kpi('neu','—','sin desglose en la demo','en la corrida real se jala al abrir');
+    document.querySelector('#dTabla thead').innerHTML='';
+    document.querySelector('#dTabla tbody').innerHTML=
+      '<tr><td style="color:#6b7785;white-space:normal">Este proyecto de demostración no trae '+
+      'desglose. Abre <b>SO-DEMO-41</b> (el primero de la lista) para ver la tabla dinámica.</td></tr>';
+    document.getElementById('dConteo').textContent='';
+    document.getElementById('dNota').innerHTML='El desglose se pide <b>bajo demanda</b>: la '+
+      'portada no lo trae, y sólo se jala el del proyecto que se abre.';
+    return;
+  }
+  S.det=det;
+  var sel=document.getElementById('dGrupo'), sel2=document.getElementById('dGrupo2');
+  sel.innerHTML=''; while(sel2.options.length>1)sel2.remove(1);
+  det.columnas.filter(function(c){return c.agrupable;}).forEach(function(c){
+    var o=document.createElement('option');o.value=c.id;o.textContent=c.label;sel.appendChild(o);
+    var o2=document.createElement('option');o2.value=c.id;o2.textContent=c.label;sel2.appendChild(o2);
+  });
+  sel.value=S.dgrupo;
+  document.getElementById('dKpis').innerHTML=
+    kpi('neu','$'+nfm(det.gasto_total_en_cuenta),'gasto en la cuenta del proyecto','todo lo cargado, con rubro o sin él')+
+    kpi('warn',det.lineas_sin_rubro+' de '+det.filas.length,'líneas SIN rubro','$'+nfm(det.monto_sin_rubro)+' que el budget no ve')+
+    kpi('neu',det.horas_plan===null?'—':nfm(det.horas_plan),'horas plan','no hay horas reales en esta fuente');
+  document.getElementById('dNota').innerHTML=
+    '<b>El desglose ve más costo que la portada.</b> Aquí está todo lo cargado a la cuenta '+
+    'analítica del proyecto; la portada sólo ve lo codificado <i>compuesto</i> (proyecto Y rubro '+
+    'en la misma línea). Esa diferencia — '+det.lineas_sin_rubro+' de '+det.filas.length+
+    ' líneas sin rubro — es exactamente la fuga del Frente A, y por eso el margen de la portada '+
+    'sale mejor que el real. La tabla de abajo <b>se reagrupa en tu navegador</b>: el servidor '+
+    'mandó las líneas y dijo qué se puede agrupar y qué se puede sumar, no cómo se ve.';
+  pintarDetalle();
+}
+function etiq(cols,id){var c=cols.filter(function(x){return x.id===id;})[0];return c?c.label:id;}
+function pintarDetalle(){
+  var det=S.det, cols=det.columnas;
+  var g=document.getElementById('dGrupo').value||'rubro';
+  var g2=document.getElementById('dGrupo2').value;
+  S.dgrupo=g; S.dgrupo2=g2;
+  var sumables=cols.filter(function(c){return c.suma;});
+  document.querySelector('#dTabla thead').innerHTML='<tr><th>'+esc(etiq(cols,g))+'</th>'+
+    (g2?'<th>'+esc(etiq(cols,g2))+'</th>':'')+'<th class="num">Líneas</th>'+
+    sumables.map(function(c){return '<th class="num">'+esc(c.label)+'</th>';}).join('')+'</tr>';
+
+  var mapa={},orden=[];
+  det.filas.forEach(function(r){
+    var k=String(r[g]==null?'(vacío)':r[g]);
+    var k2=g2?String(r[g2]==null?'(vacío)':r[g2]):'';
+    var kk=k+' >> '+k2;
+    if(!mapa[kk]){mapa[kk]={k:k,k2:k2,n:0,sum:{}};orden.push(kk);}
+    mapa[kk].n++;
+    sumables.forEach(function(c){ mapa[kk].sum[c.id]=(mapa[kk].sum[c.id]||0)+(Number(r[c.id])||0); });
+  });
+  orden.sort(function(a,b){return Math.abs(mapa[b].sum.monto||0)-Math.abs(mapa[a].sum.monto||0);});
+  var html=orden.map(function(kk){
+    var m=mapa[kk];
+    return '<tr><td>'+esc(m.k)+'</td>'+(g2?'<td>'+esc(m.k2)+'</td>':'')+
+      '<td class="num">'+m.n+'</td>'+
+      sumables.map(function(c){var v=m.sum[c.id];
+        return '<td class="num">'+(c.kind==='dinero'?dinero(v):nfm(v))+'</td>';}).join('')+'</tr>';
+  }).join('');
+  var tot={};
+  sumables.forEach(function(c){tot[c.id]=det.filas.reduce(function(a,r){return a+(Number(r[c.id])||0);},0);});
+  html+='<tr class="grupo"><td>TOTAL</td>'+(g2?'<td></td>':'')+
+    '<td class="num">'+det.filas.length+'</td>'+
+    sumables.map(function(c){return '<td class="num">'+
+      (c.kind==='dinero'?dinero(tot[c.id]):nfm(tot[c.id]))+'</td>';}).join('')+'</tr>';
+  document.querySelector('#dTabla tbody').innerHTML=html;
+  document.getElementById('dConteo').textContent=orden.length+' grupos · '+det.filas.length+' líneas';
+}
+
+/* ─────────────────────── cableado ─────────────────────── */
+document.getElementById('btnRefresh').onclick=cargar;
+['fEstado','fGrupo','fAlerta'].forEach(function(id){
+  document.getElementById(id).onchange=pintarTabla;});
+document.getElementById('fBusca').oninput=pintarTabla;
+document.getElementById('volver').onclick=function(){
+  document.getElementById('vDetalle').classList.remove('on');
+  document.getElementById('vPortada').classList.add('on');
+  window.scrollTo(0,0);
+};
+document.getElementById('dGrupo').onchange=pintarDetalle;
+document.getElementById('dGrupo2').onchange=pintarDetalle;
+cargar();
+</script>
+</body>
+</html>

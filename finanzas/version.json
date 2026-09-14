@@ -1,9 +1,14 @@
 {
-  "version": "V1.09",
-  "fecha": "2026-09-04",
+  "version": "V1.10",
+  "fecha": "2026-09-14",
   "modulo": "finanzas",
   "esquema": "V<mayor>.<menor de dos dígitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.10",
+      "pr": null,
+      "nota": "Primer panel de la plataforma de paneles (#237): Rentabilidad por proyecto, en finanzas/rentabilidad/, con dos entradas a la MISMA direccion (la seccion lateral de Finanzas y la tarjeta de Operaciones) — un solo panel, no dos copias. El panel no trae datos, ni de ejemplo ni reales: si el endpoint no contesta lo DICE, y distingue las tres causas (sesion / red / servidor) en un solo lugar, porque juntarlas elige el peor de los tres por omision. La regla que no se negocia: un proyecto SIN presupuesto no se ve como uno con margen cero — muestra raya, dice que le falta y no entra en los totales ni en los subtotales; de 216 proyectos medidos, 91 estan asi y 53 a medias, o sea que la mitad del panel el primer dia es lista de trabajo, no error. Sale ademas el ARMAZON de los paneles (shared/panel/): cabecera con el usuario y la hora del ultimo jalon, refresh MANUAL, avisos, tabla reagrupable con subtotales, colores y pie. El objetivo del armazon es que el SEGUNDO panel cueste poco; rentabilidad se verifico render contra render antes y despues de extraerlo, con datos reales y cero diferencias. Y el login deja de decir «Comercial»: pasa a shared/login.html, neutral, porque los usuarios de rentabilidad son de Finanzas y de Operaciones."
+    },
     {
       "version": "V1.09",
       "pr": null,

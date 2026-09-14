@@ -658,7 +658,7 @@
     el.onclick = () => {
       if (!confirm('¿Cerrar la sesión de ' + (ses.nombre || ses.actor) + '?')) return;
       S.logout();
-      location.replace('../login.html');
+      location.replace('../../shared/login.html');
     };
   }
 

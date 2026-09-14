@@ -128,7 +128,7 @@
   }
 
   function irAlLogin() {
-    try { location.href = '../login.html'; } catch (e) {}
+    try { location.href = '../../shared/login.html'; } catch (e) {}
   }
 
   /** Caduca la sesión: borra SÓLO la llave, avisa y manda al login.

@@ -123,6 +123,20 @@
         <span>Centro de comando en tiempo real</span>
       </div>
     </a>
+    <!-- Rentabilidad por proyecto (#240). MISMA direccion que la entrada de
+         Finanzas: un solo panel con dos entradas, no dos copias.
+         No lleva id en SUBMOD_CARDS a proposito: el permiso de verdad lo exige
+         el ENDPOINT (scope rentabilidad:read, verificado contra la firma del
+         JWT en el servidor). Esconder la tarjeta aqui seria un gate de pintado
+         sobre otro gate de pintado; quien no tenga el permiso entra y el panel
+         se lo dice con todas sus letras. -->
+    <a id="card-rentabilidad" href="../finanzas/rentabilidad/index.html" class="op-card">
+      <div class="op-icon">📈</div>
+      <div class="op-info">
+        <strong>Rentabilidad por proyecto</strong>
+        <span>Ingreso, costo y margen contra presupuesto</span>
+      </div>
+    </a>
   </div>
 
 </div>

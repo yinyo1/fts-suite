@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rentabilidad por proyecto · FTS Suite</title>
+<!--
+  PANEL DE RENTABILIDAD POR PROYECTO · issue #240 · plataforma #237
+
+  DIRECCION PROPIA Y REAL: finanzas/rentabilidad/. Las dos entradas —la seccion
+  lateral de Finanzas y la tarjeta de Operaciones— apuntan AQUI. Un solo panel,
+  una sola direccion: sin ella terminas con dos copias que se separan.
+
+  ESTE ARCHIVO NO TRAE DATOS. Ni de demostracion ni reales. Los datos viven en
+  Odoo y NUNCA bajan al repo; el codigo si puede ser publico. Si el endpoint no
+  contesta, esta pantalla lo DICE — nunca rellena con ejemplos.
+
+  SIN SNAPSHOTS Y SIN CAPA DE DATOS: nada se guarda, nada se commitea. Las
+  alertas son de UMBRAL contra presupuesto, se contestan con el estado de hoy,
+  y por eso no hace falta guardar historia.
+
+  MONTADO SOBRE EL ARMAZON (`shared/panel/`): la cabecera, el boton de refresh,
+  la hora del ultimo jalon, la clasificacion de la respuesta, los avisos, la
+  tabla reagrupable, los colores y el pie son de ahi. Aqui queda SOLO lo que es
+  de rentabilidad: sus KPIs, sus filtros, el vocabulario de los tres estados del
+  dato, la regla de la celda sin linea base, y la vista de detalle.
+  El objetivo del armazon es que el SEGUNDO panel cueste poco.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<script src="../../shared/auth-jwt.js"></script>
+<script>
+  /* EL GATE. Corre en el <head>, antes de pintar nada, y va INLINE a proposito:
+     si viniera del armazon habria que esperar un archivo, y media pantalla
+     pintada es media pantalla ensenada.
+     Ojo con lo que este gate NO es: GitHub Pages es publico, asi que esto decide
+     si se PINTA la pantalla, no si se puede DESCARGAR. Lo que de verdad protege
+     es que `fin/rentabilidad` exija el scope y valide la firma EN EL SERVIDOR.
+     Lo dice `shared/auth-jwt.js` en su propia cabecera. */
+  if (!window.SuiteAuth.requerir('rentabilidad:read', '../../shared/login.html')) {
+    throw new Error('sin sesion');
+  }
+</script>
+<link rel="stylesheet" href="../../shared/panel/panel.css">
+<style>
+  /* Lo UNICO propio de este panel: los tres estados del dato. Es vocabulario de
+     rentabilidad —«tiene presupuesto completo / parcial / no tiene»— y por eso no
+     subio al armazon. La pieza generica (`.chip`) si esta alla. */
+  .c-completo{background:#0d2a14;color:#56d364;border:1px solid #1c5a2b}
+  .c-parcial{background:#2b2200;color:#e3b341;border:1px solid #6b5200}
+  .c-sin{background:#26292e;color:#9aa7b4;border:1px solid #3d4450}
+</style>
+</head>
+<body>
+
+<!-- La cabecera la LLENA el armazón (título, quién está dentro, hora del último
+     jalón, botón Actualizar, enlace de vuelta). Aquí sólo va el hueco. -->
+<header><div class="wrap hd"></div></header>
+
+<div class="wrap">
+  <div id="aviso"></div>
+
+  <section class="vista" id="vPortada">
+    <div class="kpis" id="kpis"></div>
+    <details class="salv"><summary>Salvedades — qué <em>no</em> cubre este número</summary>
+      <div class="cuerpo" id="salvCuerpo"></div></details>
+    <div class="barra">
+      <label class="f">Estado
+        <select id="fEstado">
+          <option value="">todos</option>
+          <option value="completo">completo</option>
+          <option value="parcial">parcial</option>
+          <option value="sin_presupuesto">sin presupuesto</option>
+        </select>
+      </label>
+      <label class="f">Agrupar por <select id="fGrupo"><option value="">(sin agrupar)</option></select></label>
+      <label class="f"><input type="checkbox" id="fAlerta"> sólo con alerta</label>
+      <input type="search" id="fBusca" placeholder="buscar proyecto o cliente…" style="min-width:200px">
+      <div class="spacer"></div>
+      <span class="jalon" id="conteo"></span>
+    </div>
+    <div class="tablabox"><table id="tabla"><thead></thead><tbody></tbody></table></div>
+    <div class="nota">
+      <b>Un proyecto sin presupuesto no es un proyecto con margen cero.</b>
+      Los que no tienen dato muestran <span class="raya">—</span> y dicen qué les falta,
+      y no entran en los totales. Esto no es un error del panel: es la lista de trabajo.
+      Las columnas y sus tipos los manda el servidor; el ancho, el orden y los colores
+      son de esta pantalla.
+    </div>
+  </section>
+
+  <section class="vista" id="vDetalle">
+    <span class="volver" id="volver">← volver a la portada</span>
+    <h2 id="dTitulo">—</h2>
+    <div class="h2sub" id="dSub">—</div>
+    <div class="kpis" id="dKpis"></div>
+    <div class="barra">
+      <label class="f">Agrupar por <select id="dGrupo"></select></label>
+      <label class="f">Después por <select id="dGrupo2"><option value="">(nada)</option></select></label>
+      <div class="spacer"></div>
+      <span class="jalon" id="dConteo"></span>
+    </div>
+    <div class="tablabox"><table id="dTabla"><thead></thead><tbody></tbody></table></div>
+    <div class="nota" id="dNota"></div>
+  </section>
+
+  <footer></footer>
+</div>
+
+<script src="../../shared/panel/panel-shell.js"></script>
+<script src="../../shared/panel/panel-tabla.js"></script>
+<script>
+'use strict';
+
+/* ═══ el panel, montado sobre el armazón ════════════════════════════════ */
+var P = Panel.montar({
+  ruta: '/webhook/fin/rentabilidad',
+  titulo: 'Rentabilidad por proyecto',
+  sub: 'FTS Suite · panel · contrato 1',
+  volver: { href: '../index.html', txt: '← Finanzas' },
+  login: '../../shared/login.html',
+  /* Este panel NO guarda nada en el navegador. La lista vacía es la declaración,
+     no un olvido: si algún día guarda algo, su llave va aquí y `caducarSesion`
+     comprueba que no se confunda con la de sesión. */
+  intocables: [],
+  pie: 'Panel de rentabilidad · <span class="jalon">sin capa de datos y sin snapshots: ' +
+       'nada se guarda, nada se commitea · los datos viven en Odoo</span>'
+});
+
+var esc = Panel.esc, nfm = Panel.nfm, dinero = Panel.dinero, pct = Panel.pct;
+var S = { sobre:null, orden:{col:'margen_pct',dir:1}, det:null, dgrupo:'rubro', dgrupo2:'' };
+
+/* ═══ carga: REFRESH MANUAL, nunca automatico ═══════════════════════════ */
+async function cargar(){
+  P.ocupado(true);
+  var r = await P.pedir({ modo:'portada' });
+  P.ocupado(false);
+
+  if(Panel.clasificar(r) !== 'ok'){
+    /* El camino de error entero lo lleva el armazón: las tres clases, el borrado
+       de SOLO la llave de sesión, y el caso propio del webhook sin publicar. Lo
+       que este panel aporta son los nombres concretos. */
+    P.avisarFallo(r, cargar, { scope:'rentabilidad:read',
+      workflow:'fin/rentabilidad', workflowId:'Q71Qqumnq5r3tDFU' });
+    return;
+  }
+  P.limpiarAviso();
+  S.sobre = r;
+  P.jalado();
+  P.vista('vPortada');
+  pintarPortada();
+}
+
+/* ═══ portada ═══════════════════════════════════════════════════════════ */
+function pintarPortada(){
+  var d=S.sobre.datos, r=d.resumen;
+  document.getElementById('kpis').innerHTML=
+    P.kpi('neu',r.total,'proyectos activos','el universo del panel','')+
+    P.kpi('ok',r.completo,'con presupuesto completo','éstos muestran margen','completo')+
+    P.kpi('warn',r.parcial,'presupuesto parcial','margen optimista: falta costo plan','parcial')+
+    P.kpi('neu',r.sin_presupuesto,'sin presupuesto','lista de trabajo, no error','sin_presupuesto')+
+    P.kpi('bad',r.con_alerta,'con alerta de umbral','contra presupuesto, no contra el pasado','')+
+    P.kpi(r.margen_pct===null?'neu':(r.margen_pct<0?'bad':'ok'),
+        (r.margen_pct===null?'—':r.margen_pct.toFixed(1)+'%'),
+        'margen de los que sí tienen dato','$'+nfm(r.margen_real_mxn)+' MXN · ver salvedades','');
+
+  document.getElementById('salvCuerpo').innerHTML=(S.sobre.salvedades||[]).map(function(s){
+    return '<div class="salv-item"><code>'+esc(s.codigo)+'</code> — '+esc(s.dice)+'</div>';}).join('');
+
+  var gsel=document.getElementById('fGrupo');
+  if(gsel.options.length<=1){
+    d.columnas.filter(function(c){return c.agrupable;}).forEach(function(c){
+      var o=document.createElement('option');o.value=c.id;o.textContent=c.label;gsel.appendChild(o);});
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('#kpis .kpi.clic'),function(el){
+    el.onclick=function(){ document.getElementById('fEstado').value=el.getAttribute('data-filtro');
+      pintarTabla(); };
+  });
+  pintarTabla();
+}
+
+/* Qué filas se ven es del panel; el orden y el agrupado los lleva el armazón. */
+function visibles(){
+  var f=S.sobre.datos.filas;
+  var e=document.getElementById('fEstado').value;
+  var q=document.getElementById('fBusca').value.trim().toLowerCase();
+  var soloAl=document.getElementById('fAlerta').checked;
+  if(e)f=f.filter(function(r){return r.estado_dato===e;});
+  if(soloAl)f=f.filter(function(r){return r.alertas.length;});
+  if(q)f=f.filter(function(r){return (r.proyecto+' '+r.cliente).toLowerCase().indexOf(q)>=0;});
+  return f;
+}
+
+/* LA REGLA, EN LA CELDA: un proyecto sin presupuesto no muestra CERO en las
+   columnas que SALEN del presupuesto. El endpoint ya manda null, pero esto no
+   depende de eso — un 0 que llegue por cualquier via se sigue pintando raya.
+   `horas_real` queda FUERA de la lista a proposito: no sale del presupuesto,
+   sale del kiosko. Un proyecto sin presupuesto puede tener 500 horas reales, y
+   taparlas seria ocultar un dato cierto — el error opuesto, y del mismo tamano. */
+var DEL_PRESUPUESTO = { ingreso_pres:1, ingreso_real:1, costo_pres:1, costo_real:1,
+                        margen_real:1, margen_pct:1, consumo_mat:1, consumo_mo:1,
+                        horas_plan:1, consumo_horas:1 };
+
+/* Devuelve el <td> cuando esta pantalla tiene algo que decir, y `null` cuando
+   se lo deja al armazón (que pinta por el `kind` que declaró el servidor). */
+function celda(c,r){
+  var sinDato=(r.estado_dato==='sin_presupuesto');
+  /* La guarda va ARRIBA de todo lo numerico: si va despues de una rama
+     especifica, esa rama se la salta. Paso con `consumo_horas`, que pintaba
+     0% en las filas sin presupuesto. El armazón respeta este orden porque
+     llama a esta función ANTES de mirar el `kind`. */
+  if(sinDato && DEL_PRESUPUESTO[c.id])
+    return '<td class="num"><span class="raya">—</span></td>';
+  if(c.id==='proyecto'){
+    var al=r.alertas.length?('<span class="al al-'+r.alertas[0].nivel+'" title="'+
+      esc(r.alertas.map(function(a){return a.dice;}).join(' · '))+'"></span>'):'';
+    return '<td>'+al+'<span class="proj" data-id="'+esc(r.id)+'" title="'+esc(r.proyecto)+'">'+
+           esc(r.proyecto)+'</span></td>';
+  }
+  if(c.id==='estado_dato'){
+    var chip={completo:'c-completo',parcial:'c-parcial',sin_presupuesto:'c-sin'}[r.estado_dato];
+    var etq={completo:'completo',parcial:'parcial',sin_presupuesto:'sin presupuesto'}[r.estado_dato];
+    var ex=(r.estado_dato==='parcial'&&r.falta&&r.falta.length)
+      ? '<div class="falta">falta: '+esc(r.falta.join(', ').replace(/presupuesto de /g,''))+'</div>' : '';
+    return '<td><span class="chip '+chip+'" title="'+esc((r.falta||[]).join(' · '))+'">'+etq+'</span>'+ex+'</td>';
+  }
+  /* Las horas NO llevan color de umbral: medido, el 100% de los que tienen
+     plan creible sale sobre el plan, asi que un rojo ahi no informa de nada.
+     Se muestra el numero en azul, que es "dato", no "alarma". */
+  if(c.id==='consumo_horas') return '<td class="num">'+pct(r[c.id],'info')+'</td>';
+  return null;
+}
+
+function pintarTabla(){
+  var n = Panel.tabla({
+    tabla: '#tabla',
+    columnas: S.sobre.datos.columnas,
+    filas: visibles(),
+    orden: S.orden,
+    grupo: document.getElementById('fGrupo').value,
+    celda: celda,
+    /* Quién entra a los subtotales. El armazón no sabe cómo se llama «no tener
+       línea base» en este panel, así que lo pregunta. */
+    enSubtotal: function(r){ return r.estado_dato !== 'sin_presupuesto'; },
+    vacio: 'Sin proyectos con ese filtro.',
+    repintar: pintarTabla,
+    alClic: { sel:'.proj', fn:function(el){ abrirDetalle(Number(el.getAttribute('data-id'))); } }
+  });
+  document.getElementById('conteo').textContent=n+' de '+S.sobre.datos.filas.length+' proyectos';
+}
+
+/* ═══ detalle: se pide BAJO DEMANDA y se reagrupa en el NAVEGADOR ═══════
+ * Esta tabla NO es la del armazón: no pinta las columnas del servidor una por
+ * una, sino grupos (uno o dos niveles) con sus sumas. Es forma propia de este
+ * panel; si un segundo panel la pide igual, entonces sube. */
+async function abrirDetalle(id){
+  var fil=S.sobre.datos.filas.filter(function(r){return r.id===id;})[0];
+  P.vista('vDetalle');
+  document.getElementById('dTitulo').textContent=fil?fil.proyecto:('Proyecto '+id);
+  document.getElementById('dSub').textContent=fil?
+    (fil.cliente+' · '+fil.etapa+' · '+fil.empresa+' · '+fil.moneda):'';
+  document.getElementById('dKpis').innerHTML=P.kpi('neu','…','jalando el desglose','','');
+  document.querySelector('#dTabla thead').innerHTML='';
+  document.querySelector('#dTabla tbody').innerHTML='';
+
+  var r = await P.pedir({ modo:'detalle', project_id:id });
+  if(Panel.clasificar(r) !== 'ok' || !r.datos || !r.datos.detalle){
+    document.getElementById('dKpis').innerHTML='';
+    document.getElementById('dNota').innerHTML=
+      '<b>No se pudo traer el desglose.</b> ' + esc((r && (r.error||r.mensaje)) || 'sin detalle');
+    return;
+  }
+  var det=r.datos.detalle;
+  S.det=det;
+  var sel=document.getElementById('dGrupo'), sel2=document.getElementById('dGrupo2');
+  sel.innerHTML=''; while(sel2.options.length>1)sel2.remove(1);
+  det.columnas.filter(function(c){return c.agrupable;}).forEach(function(c){
+    var o=document.createElement('option');o.value=c.id;o.textContent=c.label;sel.appendChild(o);
+    var o2=document.createElement('option');o2.value=c.id;o2.textContent=c.label;sel2.appendChild(o2);
+  });
+  sel.value=S.dgrupo;
+  var hz = (det.horas_real ? (nfm(det.horas_real)+' h') : '—');
+  var hzPlan = (det.horas_plan ? (nfm(det.horas_plan)+' h plan') : 'sin plan creíble');
+  document.getElementById('dKpis').innerHTML=
+    P.kpi('neu','$'+nfm(det.gasto_total_en_cuenta),'gasto en la cuenta del proyecto','todo lo cargado, con rubro o sin él','')+
+    P.kpi('warn',det.lineas_sin_rubro+' de '+det.filas.length,'líneas SIN rubro','$'+nfm(det.monto_sin_rubro)+' que el budget no ve','')+
+    P.kpi('neu',hz,'horas reales del kiosko',hzPlan+(det.consumo_horas!==null&&det.consumo_horas!==undefined?(' · '+det.consumo_horas.toFixed(0)+'%'):''),'');
+  document.getElementById('dNota').innerHTML=
+    '<b>El desglose ve más costo que la portada.</b> Aquí está todo lo cargado a la cuenta '+
+    'analítica del proyecto; la portada sólo ve lo codificado <i>compuesto</i> (proyecto Y rubro '+
+    'en la misma línea). Esa diferencia — '+det.lineas_sin_rubro+' de '+det.filas.length+
+    ' líneas sin rubro — es la fuga del Frente A, y por eso el margen de la portada sale mejor '+
+    'que el real. La tabla de abajo <b>se reagrupa en tu navegador</b>: el servidor mandó las '+
+    'líneas y dijo qué se puede agrupar y qué se puede sumar, no cómo se ve.';
+  pintarDetalle();
+}
+function etiq(cols,id){var c=cols.filter(function(x){return x.id===id;})[0];return c?c.label:id;}
+function pintarDetalle(){
+  var det=S.det, cols=det.columnas;
+  var g=document.getElementById('dGrupo').value||'rubro';
+  var g2=document.getElementById('dGrupo2').value;
+  S.dgrupo=g; S.dgrupo2=g2;
+  var sumables=cols.filter(function(c){return c.suma;});
+  document.querySelector('#dTabla thead').innerHTML='<tr><th>'+esc(etiq(cols,g))+'</th>'+
+    (g2?'<th>'+esc(etiq(cols,g2))+'</th>':'')+'<th class="num">Líneas</th>'+
+    sumables.map(function(c){return '<th class="num">'+esc(c.label)+'</th>';}).join('')+'</tr>';
+
+  var mapa={},orden=[];
+  det.filas.forEach(function(r){
+    var k=String(r[g]==null?'(vacío)':r[g]);
+    var k2=g2?String(r[g2]==null?'(vacío)':r[g2]):'';
+    var kk=k+' >> '+k2;
+    if(!mapa[kk]){mapa[kk]={k:k,k2:k2,n:0,sum:{}};orden.push(kk);}
+    mapa[kk].n++;
+    sumables.forEach(function(c){ mapa[kk].sum[c.id]=(mapa[kk].sum[c.id]||0)+(Number(r[c.id])||0); });
+  });
+  orden.sort(function(a,b){return Math.abs(mapa[b].sum.monto||0)-Math.abs(mapa[a].sum.monto||0);});
+  var html=orden.map(function(kk){ var m=mapa[kk];
+    return '<tr><td>'+esc(m.k)+'</td>'+(g2?'<td>'+esc(m.k2)+'</td>':'')+
+      '<td class="num">'+m.n+'</td>'+
+      sumables.map(function(c){var v=m.sum[c.id];
+        return '<td class="num">'+(c.kind==='dinero'?dinero(v):nfm(v))+'</td>';}).join('')+'</tr>';
+  }).join('');
+  var tot={};
+  sumables.forEach(function(c){tot[c.id]=det.filas.reduce(function(a,r){return a+(Number(r[c.id])||0);},0);});
+  html+='<tr class="grupo"><td>TOTAL</td>'+(g2?'<td></td>':'')+
+    '<td class="num">'+det.filas.length+'</td>'+
+    sumables.map(function(c){return '<td class="num">'+
+      (c.kind==='dinero'?dinero(tot[c.id]):nfm(tot[c.id]))+'</td>';}).join('')+'</tr>';
+  document.querySelector('#dTabla tbody').innerHTML=html;
+  document.getElementById('dConteo').textContent=orden.length+' grupos · '+det.filas.length+' líneas';
+}
+
+/* ═══ cableado ═════════════════════════════════════════════════════════ */
+P.alRefrescar(cargar);
+['fEstado','fGrupo','fAlerta'].forEach(function(id){
+  document.getElementById(id).onchange=pintarTabla;});
+document.getElementById('fBusca').oninput=pintarTabla;
+document.getElementById('volver').onclick=function(){ P.vista('vPortada'); };
+document.getElementById('dGrupo').onchange=pintarDetalle;
+document.getElementById('dGrupo2').onchange=pintarDetalle;
+cargar();
+</script>
+</body>
+</html>
