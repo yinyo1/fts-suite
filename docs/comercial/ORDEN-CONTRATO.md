@@ -380,3 +380,117 @@ existen.
 
 > **El endpoint nace INACTIVO.** Lo enciende Esteban en la UI de n8n. Mientras tanto los
 > botones de la pantalla que lo llaman contestan que no hay servidor — que es la verdad.
+
+---
+
+## ⚠️ Lo que la Estación 3 rompió sin tocarlo: el enlace de portal
+
+Medido el **14-sep-2026**, sobre las órdenes que ya nacen en la suite.
+
+Todo lo de arriba se probó el 8-sep contra **SO11498**, una orden nacida en Odoo. Desde la
+Estación 3 las órdenes nacen **aquí**, por JSON-RPC, y ahí aparece un eslabón que antes
+nunca se ejercía: **una orden recién creada no tiene `access_token`**, y sin él el camino
+del PDF contesta `ORDEN_SIN_ENLACE`.
+
+Las 5 órdenes de prueba, crudo (ejec. `97969`):
+
+```
+leidas: 5 · con_enlace: 0 · sin_enlace: 5 · el_pdf_puede_salir: false
+  12085 SO11886 draft  tiene_enlace:false  USD  1,566,510.73
+  12086 SO11887 draft  tiene_enlace:false  MXN  1,500 + 240 = 1,740
+  12087 SO11888 draft  tiene_enlace:false  USD  1,500 + 240 = 1,740
+  12088 SO11889 draft  tiene_enlace:false  MXN  1,500 + 240 = 1,740
+  12089 SO11890 draft  tiene_enlace:false  USD  1,500 + 240 = 1,740
+```
+
+### Pero NO es culpa de la suite, y medirlo cambió el arreglo
+
+Cinco casos de un solo grupo no distinguen «las órdenes de la suite nacen sin enlace» de
+«casi ninguna orden tiene enlace hasta que alguien lo pide» (§20 #8). Así que se leyeron
+**las 185 órdenes recientes** (ejec. `97970`):
+
+| grupo | total | con enlace |
+|---|---|---|
+| nacidas en la suite | 5 | **0** |
+| nacidas en Odoo · `sent` | 12 | **12** |
+| nacidas en Odoo · `draft` | 137 | 29 |
+| nacidas en Odoo · `sale` | 25 | 7 |
+| nacidas en Odoo · `cancel` | 6 | 1 |
+
+El patrón no es «quién la creó», es **«a quién se la mandaron»**: las `sent` lo tienen
+todas, los borradores casi ninguno. Odoo genera el token **perezosamente**, cuando algo
+necesita el enlace — y a un borrador nuevo nadie se lo ha pedido todavía. Nuestras órdenes
+no son un caso raro: **son borradores nuevos**, y hay 108 borradores nacidos en Odoo
+exactamente igual.
+
+Eso mueve el arreglo de sitio. Si fuera cosa de la suite, el parche iría en
+`comercial/orden-crear` —minar el token al crear—. Como es de **todo borrador nuevo**, ahí
+sólo arreglaría una de las dos poblaciones: el camino del PDF seguiría roto para los 108
+borradores de Odoo. **El arreglo va donde se necesita el enlace, no donde nace la orden.**
+(Es la lección de §20 #13: el arreglo vive en el único punto por donde pasa todo, no en la
+rama que cubre «lo mío».)
+
+### El arreglo, medido
+
+`_portal_ensure_token` es privado y no se puede llamar de fuera —lo mismo que tumbó el
+camino de `_render_qweb_pdf`—, pero **`get_portal_url` sí es público** y por dentro llama a
+`_portal_ensure_token`. Probado por JSON-RPC sobre SO11890 (ejec. `97979`):
+
+```
+antes:            { nombre: SO11890, estado: draft, tiene_enlace: false, largo: 0 }
+get_portal_url:   { funciono: true, devolvio_ruta: true, trae_token_pegado: true }
+despues:          { nombre: SO11890, estado: draft, tiene_enlace: true,  largo: 36 }
+```
+
+Y el camino completo, con el enlace ya puesto (ejec. `97981`) — que es lo único que prueba
+que sirve, porque leer el diseño no es verificar (§8):
+
+```
+orden: { id: 12089, nombre: SO11890, estado: draft, total: 1740 }
+pdf:   { http: 200, empieza_con: "%PDF-", es_pdf: true, kb: 143 }
+el_pdf_sale: true
+```
+
+**Un borrador nacido en la suite sí entrega su PDF.** Lo único que faltaba era pedir el
+enlace.
+
+### El parche exacto — PENDIENTE, lo aplica Esteban
+
+Va en **`comercial/cotizacion`** (`dahVXA1NyF1AXfc4`), nodo **`Code - Preparar`**, en el
+bloque «2 · Odoo, de solo lectura», **justo antes** del `read` que trae `access_token`:
+
+```js
+/* El token de portal lo genera Odoo PEREZOSAMENTE: un borrador nuevo no lo
+ * trae (medido 14-sep: 0/5 de las nacidas aquí y 108/137 de las nacidas en
+ * Odoo). `_portal_ensure_token` es privado, pero `get_portal_url` es público
+ * y por dentro lo llama. Si ya hay token, devuelve el mismo: es idempotente.
+ * Sin esto, toda cotización recién creada contesta ORDEN_SIN_ENLACE. */
+await rpc({ service: 'object', method: 'execute_kw',
+  args: [DB, uid, '' + sec.okey, 'sale.order', 'get_portal_url', [[so]]] });
+```
+
+Con eso, la rama `ORDEN_SIN_ENLACE` de más abajo deja de dispararse en el caso normal y
+queda como red para lo que no se previó — que es lo que tiene que ser.
+
+⚠️ **Ojo: `get_portal_url` ESCRIBE en la orden** (graba el token). Es la única escritura de
+un endpoint que hasta hoy era de sólo lectura. Es escritura de infraestructura, no de
+negocio —no toca importes, estado ni líneas—, pero hay que saberlo antes de aplicarlo.
+
+**Por qué no lo aplicó esta sesión:** `comercial/cotizacion` está **activo en producción**,
+y un `update_workflow` sobre un workflow encendido deja la versión **guardada pero no
+publicada** (§17 quirk 2b) — el webhook seguiría sirviendo la vieja, y el read-back del
+`active` no lo delataría. Publicar es un clic humano en la UI, y esta sesión tiene
+prohibido activar o publicar. Se reporta como bloqueo en vez de resolverse por cuenta
+propia, que es justo lo que manda esa regla.
+
+### Y un texto que quedó stale el mismo día
+
+En `Code - Resultado envio` del mismo workflow, la respuesta lleva escrito:
+
+> `en_odoo.por_que_no`: *«Decisión de Esteban (8-sep-2026): la suite todavía no crea la
+> orden en Odoo, así que marcar allá sería cerrar medio ciclo»*
+
+**La suite ya crea la orden.** La decisión de no marcar en Odoo puede seguir siendo la
+buena —eso lo decide Esteban—, pero **la razón que da ya no es cierta**, y es una frase que
+viaja en cada respuesta de envío. Se anota aquí y no se persigue (§8): no bloquea, y tocar
+ese workflow tiene el mismo candado de publicación que el parche de arriba.
