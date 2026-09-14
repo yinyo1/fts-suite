@@ -1115,5 +1115,11 @@
     pintarConfigurador();
   }
 
-  G.MachoteOrden = { abrir: abrir, cerrar: cerrar, _prellenar: prellenar, _A_MANO: A_MANO };
+  /* `_lineasParaOdoo` y `_desgloseDe` se exportan para poder MEDIR lo que
+   * viaja a Odoo sin pasar por la red. La regla dura del desglose —que la
+   * suma dé exactamente el precio de la sección— no se puede vigilar desde
+   * fuera de otra forma. */
+  G.MachoteOrden = { abrir: abrir, cerrar: cerrar, _prellenar: prellenar,
+                     _A_MANO: A_MANO, _lineasParaOdoo: lineasParaOdoo,
+                     _desgloseDe: desgloseDe };
 })(window);

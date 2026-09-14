@@ -2326,16 +2326,36 @@
       '<option value="' + k + '"' + (m.estado === k ? ' selected' : '') + '>' +
       esc(D.ESTADOS[k].label) + '</option>').join('');
 
+  /** El letrero de la orden ligada.
+   *
+   *  ⚠️ V1.30 · SON DOS COSAS DISTINTAS Y SE DICEN DISTINTO. Hasta V1.29 esto
+   *  salía sólo de `m.so`, que es un campo que alguien TECLEA. Desde que la
+   *  suite crea la orden de verdad, un machote puede tener su SO en Odoo y
+   *  `m.so` vacío — y el letrero decía «Sin orden ligada · no se puede enviar»
+   *  de algo que sí existe allá. Es la misma familia que el ✓ de SALIDA antes
+   *  del POST: la pantalla afirmando un estado que no fue a buscar.
+   *
+   *  Manda la REAL, la que devolvió el servidor al crearla. Lo tecleado se
+   *  sigue enseñando cuando es lo único que hay, pero dice que es de captura
+   *  para que nadie lo confunda con una orden que existe. */
+  function ligadaTxt(m) {
+    var real = (A && A.ordenDe) ? A.ordenDe(m.id) : null;
+    if (real && real.nombre) {
+      return 'Orden <strong>' + esc(real.nombre) + '</strong> · en Odoo';
+    }
+    if (m.so) {
+      return 'Orden <strong>' + esc(m.so) + '</strong> · capturada a mano';
+    }
+    return '<span class="n-warn">Sin orden ligada</span> · se puede armar así, pero no enviar';
+  }
+
     return '<div class="edo' + (cong ? ' cerrado' : '') + '">' +
       '<span class="chip" style="background:' + est.color + '">' + esc(est.label) + '</span>' +
       (cong
         ? '<span class="tiny">🔒 Enviado a Odoo. Este es el documento con el que se vendió: se consulta, no se edita.</span>'
         : '<label class="tiny">Estado <select class="cel" data-estado>' + ops + '</select></label>') +
       '<span class="grow"></span>' +
-      '<span class="tiny">' + (m.so
-        ? 'Orden <strong>' + esc(m.so) + '</strong>'
-        : '<span class="n-warn">Sin orden ligada</span> · se puede armar así, pero no enviar') +
-      '</span></div>';
+      '<span class="tiny">' + ligadaTxt(m) + '</span></div>';
   }
 
   /* ── Hoja DESGLOSE COTIZACIÓN ────────────────────────────────────────── */

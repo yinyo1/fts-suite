@@ -3316,10 +3316,200 @@ await sembrarMachotes(q);
       await q.goto(BASE + href); await q.waitForTimeout(900);
       await q.click('#btnOrden'); await q.waitForTimeout(400);
       const t = (await q.textContent('.estorbos')).replace(/\s+/g, ' ');
-      // El webhook que no existe SIEMPRE tiene que estar: es el tapón de fondo.
-      if (!/orden-crear/.test(t)) throw new Error('no dice que el webhook no existe: ' + t.slice(0, 120));
+      /* ⚠️ V1.30 · ESTA ASERCIÓN SE DIO LA VUELTA, y por una razón: hasta
+       * V1.29 exigía que la lista dijera que `comercial/orden-crear` NO
+       * existe —era el tapón de fondo, y era verdad—. El webhook ya existe y
+       * está probado, así que seguir diciéndolo convertiría el tapón en una
+       * mentira. Ahora se exige lo contrario: que NO lo diga.
+       *
+       * Y tampoco se cambió por otra adivinanza. La pantalla no puede saber
+       * si el endpoint está ENCENDIDO sin preguntar, así que no lo afirma en
+       * ningún sentido: se entera al apretar. Lo prueba el paso de abajo. */
+      if (/orden-crear/.test(t) || /webhook/i.test(t))
+        throw new Error('sigue afirmando algo del webhook que ya no puede saber: ' + t.slice(0, 140));
       if (!/No se arregla aquí/i.test(t)) throw new Error('no separa lo que no toca al analista');
+      if (!/comercial:orden/.test(t))
+        throw new Error('no nombra el permiso que de verdad falta hoy: ' + t.slice(0, 140));
       console.log('    ' + t.slice(0, 100) + '…');
+    } finally { await q.close(); }
+  });
+
+  /* ══ V1.30 · LA ORDEN DE VERDAD ═══════════════════════════════════════════
+   *
+   * Hasta V1.29 esta pantalla era un cascarón y sus pruebas medían que NO
+   * hiciera nada. Ahora hay un webhook detrás, así que lo que hay que medir es
+   * lo contrario y es más delicado: que la pantalla **no dé nada por hecho**.
+   *
+   * La regla es la del kiosko (hallazgo #15) y la misma que ya gobierna la
+   * marca de «enviada»: lo que se pinta sale del SERVIDOR, nunca del recuerdo
+   * de haber apretado. Las tres pruebas de aquí abajo atacan esa regla desde
+   * los tres lados por donde se rompe: el servidor dice que no, el servidor
+   * dice que ya existía, y el servidor devuelve números distintos de los que
+   * la pantalla tenía. */
+  const ordPagina = async (respuestaOrden) => {
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    await sembrarGeo(q);
+    await sembrarMachotes(q);
+    await q.addInitScript((cfg) => {
+      const poner = function () {
+        try {
+          localStorage.setItem('fts_suite_session', JSON.stringify({
+            token: 'prueba.prueba.prueba', actor: 'zz.prueba', nombre: 'ZZ Prueba',
+            empleado_id: null, scopes: ['comercial:read', 'comercial:orden'],
+            exp: Math.floor(Date.now() / 1000) + 3600, debe_cambiar_password: false }));
+          /* La libreta de sincronización: sin un uuid y una versión, `crearOrden`
+           * ni siquiera sale a la red —y con razón, porque la orden se emite
+           * desde la versión guardada en el servidor—. Sembrarla es lo que hace
+           * que estas pruebas midan el camino y no el atajo. */
+          localStorage.setItem('fts_machote_sync_v1', JSON.stringify({
+            'M-1041': { version: 3, huella: 'x',
+                        machote_id: '11111111-2222-3333-4444-555555555555' }
+          }));
+        } catch (e) {}
+      };
+      poner();
+      const limpiar = localStorage.clear.bind(localStorage);
+      localStorage.clear = function () { limpiar(); poner(); };
+
+      const orig = window.fetch;
+      window.fetch = function (u) {
+        const s = String(u);
+        if (s.indexOf('/comercial/orden-crear') >= 0) {
+          return Promise.resolve({ ok: true,
+            json: function () { return Promise.resolve(cfg.r); } });
+        }
+        if (s.indexOf('/comercial/') >= 0) return new Promise(function () {});
+        return orig.apply(this, arguments);
+      };
+    }, { r: respuestaOrden });
+    return q;
+  };
+
+  /** Abre el cascarón de orden sobre el primer machote de la lista. */
+  const abrirOrden = async (q) => {
+    await q.goto(BASE); await q.waitForTimeout(900);
+    const href = await q.$eval('.fila a.item', a => a.getAttribute('href'));
+    await q.goto(BASE + href); await q.waitForTimeout(900);
+    await q.click('#btnOrden'); await q.waitForTimeout(400);
+  };
+
+  await paso('V1.30 · el botón NO da por creada la orden: si el servidor no contesta que sí, no se dice que sí', async () => {
+    /* El servidor apagado contesta el 404 PROPIO de n8n —`{code, message,
+     * hint}`, sin `ok`—, que es el caso real mientras Esteban no encienda el
+     * webhook. Lo que se mide: que la pantalla lo diga con SUS palabras y que
+     * NO aparezca por ningún lado la pantalla de «Orden creada». */
+    const q = await ordPagina({ code: 404, message: 'The requested webhook is not registered.' });
+    try {
+      await abrirOrden(q);
+      await q.click('#or-crear'); await q.waitForTimeout(900);
+
+      const t = (await q.textContent('#modalOrden')).replace(/\s+/g, ' ');
+      if (/Orden creada/i.test(t))
+        throw new Error('pintó la orden como creada sin que el servidor lo dijera: ' + t.slice(0, 140));
+      if (!/no est[áa] encendid/i.test(t))
+        throw new Error('no dice que el servidor está apagado: ' + t.slice(0, 200));
+      /* Y el botón tiene que volver a estar disponible: dejarlo muerto
+       * obligaría a recargar para reintentar algo que sí se puede reintentar. */
+      if (await q.$eval('#or-crear', el => el.disabled))
+        throw new Error('dejó el botón inservible después de un fallo recuperable');
+      console.log('    ' + t.slice(t.indexOf('No se creó'), t.indexOf('No se creó') + 96) + '…');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.30 · la pantalla pinta lo que el SERVIDOR releyó de Odoo, no sus propios números', async () => {
+    /* El servidor devuelve un subtotal DISTINTO del que la pantalla calculó.
+     * Es el caso que importa: si la pantalla pintara lo suyo, un descuadre
+     * real sería invisible justo cuando hace falta verlo. */
+    const q = await ordPagina({
+      ok: true, orden_creada: true, odoo_so_id: 99001, odoo_so_name: 'SO-PRUEBA-1',
+      estado: 'draft', moneda: 'MXN', lista_precios: 'Public Pricelist (MXN)',
+      empresa: 'SERVICIOS FTS', subtotal: 12345.67, impuesto: 1975.31, total: 14320.98,
+      total_machote: 99999.99, cuadra: false, moneda_correcta: true,
+      ligada_en_la_base: true, vence_el: '2026-10-14',
+      avisos: ['El subtotal de la orden (12345.67) no cuadra con el machote (99999.99).'],
+      mensaje: 'La orden SO-PRUEBA-1 se creo, pero hay que mirarla.'
+    });
+    try {
+      await abrirOrden(q);
+      await q.click('#or-crear'); await q.waitForTimeout(900);
+
+      const t = (await q.textContent('#modalOrden')).replace(/\s+/g, ' ');
+      if (!/Orden creada/i.test(t)) throw new Error('no pintó la pantalla de creada: ' + t.slice(0, 140));
+      if (!/SO-PRUEBA-1/.test(t)) throw new Error('no pintó el nombre que dio el servidor');
+      if (!/12,345\.67/.test(t))
+        throw new Error('no pintó el subtotal del SERVIDOR: ' + t.slice(0, 220));
+      if (!/no cuadra/i.test(t))
+        throw new Error('no avisó del descuadre, que es lo único que hacía falta ver');
+      if (!/99,999\.99/.test(t))
+        throw new Error('no dice contra qué no cuadra');
+      console.log('    subtotal del servidor 12,345.67 · avisa que no cuadra contra 99,999.99');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.30 · si la orden ya existía, lleva al mismo sitio y NO inventa importes', async () => {
+    /* Apretar dos veces tiene que terminar donde termina apretar una. Y como
+     * esta respuesta no trae importes, la pantalla NO puede rellenarlos con
+     * los suyos: sería un read-back que no hubo. */
+    const q = await ordPagina({
+      ok: true, ya_existia: true, orden_creada: false,
+      odoo_so_id: 12088, odoo_so_name: 'SO11889',
+      mensaje: 'Esta cotizacion ya tiene su orden en Odoo: SO11889.'
+    });
+    try {
+      await abrirOrden(q);
+      await q.click('#or-crear'); await q.waitForTimeout(900);
+
+      const t = (await q.textContent('#modalOrden')).replace(/\s+/g, ' ');
+      if (!/Orden creada/i.test(t)) throw new Error('no llevó al mismo sitio: ' + t.slice(0, 140));
+      if (!/SO11889/.test(t)) throw new Error('no dice cuál es la orden que ya existía');
+      if (!/ya ten[ií]a su orden/i.test(t))
+        throw new Error('no avisa que no se creó otra: ' + t.slice(0, 200));
+      /* Lo que NO puede pasar: que aparezca el total del machote disfrazado de
+       * subtotal de Odoo. El subtotal tiene que salir vacío. */
+      const sub = await q.$eval('#modalOrden .or-t tbody tr:first-child td:last-child',
+        el => el.textContent.trim());
+      if (sub !== '—')
+        throw new Error('inventó un subtotal que el servidor no dio: ' + sub);
+      console.log('    mismo destino · subtotal «—» en vez de un número inventado');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.30 · el desglose viaja SIN romper el cuadre al centavo, y sin costos', async () => {
+    /* La regla dura del desglose: la suma de los renglones tiene que dar
+     * exactamente el precio de la sección. Mandarlos como unitario × cantidad
+     * la rompe, porque Odoo guarda `price_unit` con dos decimales. Aquí se
+     * mide lo que SALE de `lineasParaOdoo`, que es lo que viaja. */
+    const q = await ordPagina({ ok: true });
+    try {
+      await abrirOrden(q);
+      const r = await q.evaluate(() => {
+        const m = window.MachoteAlmacen.leerLocal().machotes[0];
+        const pre = window.MachoteOrden._prellenar(m);
+        /* Se abre el desglose de la primera sección a mano, como lo haría la
+         * casilla, y se pide el reparto a prorrata. */
+        const crudo = (m.secciones || [])[0] || {};
+        const filas = window.MachoteOrden._desgloseDe(m, crudo, pre.lineas[0].precio);
+        pre.lineas[0].desglose = filas;
+        const salen = window.MachoteOrden._lineasParaOdoo(pre);
+        const dePrimera = salen.slice(0, filas.length);
+        return {
+          precioSeccion: pre.lineas[0].precio,
+          suma: dePrimera.reduce((a, l) => a + l.cantidad * l.precio, 0),
+          cantidades: dePrimera.map(l => l.cantidad),
+          texto: JSON.stringify(salen)
+        };
+      });
+
+      if (!r.cantidades.length) throw new Error('el desglose salió vacío: no se midió nada');
+      if (r.cantidades.some(c => c !== 1))
+        throw new Error('un renglón desglosado salió con cantidad distinta de 1: ' + r.cantidades.join(','));
+      if (Math.abs(r.suma - r.precioSeccion) >= 0.005)
+        throw new Error('el desglose NO cuadra al centavo: ' + r.suma + ' vs ' + r.precioSeccion);
+      /* Y el costo no se cuela por aquí tampoco. */
+      if (/_peso|costo_mo|costo_mat|costoMo|costoMat/.test(r.texto))
+        throw new Error('se coló un costo interno en lo que viaja a Odoo');
+      console.log('    ' + r.cantidades.length + ' renglones · suman ' + r.suma.toFixed(2) +
+                  ' = ' + Number(r.precioSeccion).toFixed(2) + ' · sin costos');
     } finally { await q.close(); }
   });
 
