@@ -36,7 +36,16 @@
   // Definicion unica en el motor: estaba repetida aqui y dos veces en calc.js,
   // con matices distintos. Tres definiciones de lo mismo terminan divergiendo.
   const usada = (l) => C.usadaPartida(l);
+  const vacioPU = (l) => l.pu === null || l.pu === undefined || l.pu === '';
   const tipoDe = (m) => (G.DEMO.TIPOS_PROYECTO.find(t => t.id === (m.diagnostico || {}).tipo) || null);
+
+  /* El nombre del país para leerlo en un hallazgo: «Estados Unidos», no «US».
+   * Sale del catálogo si ya cargó; si no, del código, que sigue siendo cierto. */
+  function paisNombre(codigo) {
+    const g = G.MachoteGeo;
+    const p = g && g.pais ? g.pais(codigo) : null;
+    return (p && p.nombre) || codigo || '';
+  }
 
   /* La primera sección donde un multiplicador cumple `mal`. Sirve para que el
    * botón "Ir a arreglarlo" abra la hoja correcta: desde que los
@@ -391,6 +400,172 @@
         const f = secs(m).filter(s => !s.nombre || /^SECCION\s*\d+$/i.test(s.nombre.trim()));
         return f.length ? { detalle: 'En las cotizaciones grandes las secciones se renombran al alcance real. "SECCION 3" no le dice nada a quien la ejecute.',
                             items: f.map(s => s.nombre || '(vacía)') } : null;
+      }
+    },
+
+    // ── Viaje y trabajo foráneo (V1.26) ────────────────────────────────────
+    //
+    // El origen: Ricardo ha cobrado el trabajo de proyectos en Estados Unidos
+    // pero NUNCA los días de vuelo, y el presupuesto de Albuquerque salió sin
+    // viáticos ni hotel. No fue un cálculo mal hecho — el concepto no existía.
+    //
+    // La pieza que lo cierra es de Esteban, y es la razón de que esto sea una
+    // regla DURA y no un recordatorio: «si a alguien se le olvida el vuelo,
+    // también se le va a olvidar marcar que es foráneo». Que lo detecte el
+    // sistema, a partir de un dato que sí se captura siempre: dónde se ejecuta.
+    {
+      destino: () => ({ tab: 'desglose' }),
+      id: 'sin-lugar-ejecucion', severidad: 'dura', area: 'Viaje',
+      titulo: 'No se dijo dónde se ejecuta',
+      evaluar: (m) => C.tieneLugar(m) ? null : {
+        detalle: 'País y ciudad son obligatorios: de ahí sale si la cotización es ' +
+                 'foránea, y con eso si hay que cobrar vuelos, hotel y días de viaje. ' +
+                 'Monterrey viene preseleccionado en las cotizaciones nuevas; ésta es ' +
+                 'anterior al campo, por eso está vacío.'
+      }
+    },
+    {
+      destino: () => ({ tab: 'secc' }),
+      /* ── V1.27 · el candado cambió de forma, y es MÁS estricto ──────────
+       *
+       * Antes exigía «que exista algún renglón de viaje». Con los cinco
+       * conceptos ya puestos en cero (V1.27) esa exigencia se cumple sola y no
+       * protege de nada — pero es que tampoco protegía antes: se conformaba
+       * con UNO. Un vuelo capturado la satisfacía y el hotel olvidado pasaba
+       * igual, que es **literalmente** lo que ocurrió con Albuquerque.
+       *
+       * Ahora exige una DECISIÓN por cada concepto: un importe, o un «no se
+       * ocupa» explícito. Lo que no se puede es dejarlo sin mirar. */
+      id: 'viaje-sin-resolver', severidad: 'dura', area: 'Viaje',
+      titulo: 'Hay conceptos de viaje sin decidir',
+      evaluar: (m, c) => {
+        if (!c.lugar.foraneo) return null;
+        if (c.viaje.no_aplica) return null;            // alguien lo decidió a mano
+        if (!c.viajePorResolver) return null;
+        const donde = [m.ciudad, m.region, paisNombre(m.pais)].filter(Boolean).join(', ');
+        // Se nombran LOS QUE FALTAN, no «faltan 3»: la lista es la acción.
+        const faltan = [];
+        (c.secciones || []).forEach(sec => {
+          (sec.conceptosViaje || []).forEach(x => {
+            if (!x.resuelto && faltan.indexOf(x.label) < 0) faltan.push(x.label);
+          });
+        });
+        return {
+          detalle: 'Se ejecuta fuera de Nuevo León, así que hay traslado que cobrar. ' +
+                   'Cada concepto necesita una decisión: escríbele el importe, o márcalo ' +
+                   'como que no se ocupa. Lo que no se vale es dejarlo sin mirar — el ' +
+                   'presupuesto de Albuquerque salió con el trabajo cobrado y el hotel no.',
+          items: ['Se ejecuta en: ' + (donde || '(sin decir)')]
+            .concat(faltan.map(x => 'Sin decidir: ' + x))
+        };
+      }
+    },
+    {
+      destino: () => ({ tab: 'secc' }),
+      id: 'viaje-marcado-no-aplica', severidad: 'blanda', area: 'Viaje',
+      titulo: 'Cotización foránea marcada como «sin conceptos de viaje»',
+      evaluar: (m, c) => (c.lugar.foraneo && c.viaje.no_aplica && c.renglonesViaje === 0 && c.dias === 0)
+        ? { detalle: 'Queda constancia de que alguien lo decidió, no de que se olvidó. ' +
+                     'Confirma que el cliente pone el traslado o que la gente ya está en sitio.' }
+        : null
+    },
+    {
+      destino: () => ({ tab: 'secc' }),
+      id: 'viaje-con-margen', severidad: 'blanda', area: 'Viaje',
+      titulo: 'Se escribió un margen sobre un renglón de viaje',
+      evaluar: (m, c) => c.viajeConMargen ? {
+        detalle: 'El viaje se cobra a costo, multiplicador 1: es regla del negocio, no ' +
+                 'una opción. El motor IGNORÓ el margen escrito —el precio no subió— pero ' +
+                 'conviene borrarlo para que el renglón no diga una cosa y valga otra.',
+        items: [c.viajeConMargen + ' renglón(es)']
+      } : null
+    },
+    {
+      destino: () => ({ tab: 'desglose' }),
+      id: 'festivo-sin-confirmar', severidad: 'info', area: 'Viaje',
+      titulo: 'El recargo de días festivos sigue sin confirmarse',
+      /* V1.28 · se mira POR SECCIÓN, porque el recargo ya es de la sección.
+       * Antes leía el del machote; con el recargo por sección, una sección con
+       * horas de festivo y el recargo vacío quedaría tapada por otra que sí lo
+       * tuviera escrito — justo al revés de lo que la regla busca. */
+      evaluar: (m, c) => {
+        if (!c.lugar.eua) return null;
+        const flojas = (m.secciones || []).filter(s => {
+          const usa = (s.mo || []).some(l => l.rol === 'hrs_festivo' && Number(l.qty) > 0);
+          return usa && C.recargosDe(m, s).festivo.pct === null;
+        });
+        if (!flojas.length) return null;
+        return { detalle: 'Hay horas capturadas en día festivo y el recargo está vacío, ' +
+                          'así que se están cobrando a tarifa normal. Lo del 30% es de ' +
+                          'fin de semana; lo de festivos NO se ha confirmado con nadie. ' +
+                          'Escribe el que aplique o deja las horas donde corresponda.',
+                 items: flojas.map(s => s.nombre) };
+      }
+    },
+
+    {
+      destino: () => ({ tab: 'secc' }),
+      id: 'recargo-apartado', severidad: 'info', area: 'Viaje',
+      titulo: 'El recargo se apartó del valor de arranque',
+      /* No es un hallazgo de algo MAL: apartarse es justamente lo que el
+       * campo permite, y en una sección que se trabaja en fin de semana con
+       * otras condiciones es lo correcto. Se anota porque MUEVE EL MARGEN, y
+       * un número movido que no se nota es el caso de las comisiones que
+       * obligó a construir el histórico. Se dice en qué sección y de cuánto a
+       * cuánto, que es lo que alguien necesita para darlo por bueno. */
+      evaluar: (m, c) => {
+        if (!c.lugar.eua) return null;
+        const pct = (x) => x === null ? 'vacío' : Math.round(Number(x) * 100) + '%';
+        const items = [];
+        (m.secciones || []).forEach(s => {
+          const r = C.recargosDe(m, s);
+          [['fin_semana', 'fin de semana'], ['festivo', 'día festivo']].forEach(par => {
+            const x = r[par[0]];
+            if (!x.apartado) return;
+            items.push(s.nombre + ' · ' + par[1] + ': ' + pct(x.pct) +
+                       ' (de arranque ' + pct(x.porDefecto) + ')' +
+                       (x.origen === 'machote' ? ', capturado antes de que fuera por sección' : ''));
+          });
+        });
+        if (!items.length) return null;
+        return { detalle: 'El recargo encarece la mano de obra de esa sección, así que mueve ' +
+                          'el margen. Sólo cambia donde se escribió: las demás secciones y los ' +
+                          'machotes nuevos siguen en el valor de arranque.',
+                 items: items };
+      }
+    },
+    {
+      destino: () => ({ tab: 'secc' }),
+      id: 'precio-viaje-sin-fecha', severidad: 'blanda', area: 'Viaje',
+      titulo: 'Precios de viaje sin decir de cuándo son',
+      evaluar: (m) => {
+        const f = partidas(m).filter(x => x.l.tipo === C.TIPO_VIAJE && usada(x.l) &&
+                                          !vacioPU(x.l) && !x.l.consultado_at);
+        return f.length ? {
+          detalle: 'Una cotización se manda semanas antes de volar y el precio de hoy no ' +
+                   'es el que se va a pagar. Sin la fecha de consulta, el número se lee ' +
+                   'como si fuera firme. Está a un clic, al lado del precio.',
+          items: f.map(x => x.l.descripcion || '(sin descripción)')
+        } : null;
+      }
+    },
+    {
+      destino: () => ({ tab: 'secc' }),
+      id: 'precio-viaje-viejo', severidad: 'blanda', area: 'Viaje',
+      titulo: 'Precios de viaje consultados hace más de tres semanas',
+      evaluar: (m) => {
+        const hoy = Date.now();
+        const f = partidas(m).filter(x => {
+          if (x.l.tipo !== C.TIPO_VIAJE || !usada(x.l) || !x.l.consultado_at) return false;
+          const t = Date.parse(x.l.consultado_at + 'T12:00:00');
+          return isFinite(t) && (hoy - t) / 86400000 > 21;
+        });
+        return f.length ? {
+          detalle: 'Los vuelos se mueven, y hacia arriba conforme se acerca la fecha. ' +
+                   'Vuelve a consultar antes de mandar la cotización, o dile al cliente ' +
+                   'hasta cuándo se sostiene el precio.',
+          items: f.map(x => (x.l.descripcion || '(sin descripción)') + ' · consultado ' + x.l.consultado_at)
+        } : null;
       }
     },
 

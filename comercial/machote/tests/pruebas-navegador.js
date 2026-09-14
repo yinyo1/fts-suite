@@ -13,6 +13,98 @@ const { chromium } = require('playwright');
 const path = require('path');
 const BASE = 'file://' + path.resolve(__dirname, '..', 'index.html');
 
+/* ⚠️ El catálogo de países se pide con `fetch`, y **`fetch` de `file://` está
+ * bloqueado en Chromium**. Sin servirlo desde aquí, cada montaje de estas
+ * pruebas correría en el modo DEGRADADO (los tres campos del lugar como texto
+ * libre) y estaríamos midiendo el respaldo en vez de la pantalla. Se lee del
+ * archivo real del repo, no de una copia: si el catálogo cambia, las pruebas
+ * ven el cambio. */
+/** Siembra el catálogo en una página, Y lo sirve.
+ *
+ *  ⚠️ Las dos cosas, y por eso vive aquí y no en cada montaje: **`fetch` de
+ *  `file://` está bloqueado en Chromium**, así que sin interceptarlo la página
+ *  corre en modo DEGRADADO —los tres campos del lugar como texto libre— y las
+ *  pruebas medirían el respaldo creyendo que miden la pantalla. Es la trampa de
+ *  CLAUDE.md §20 #11: el modo degradado se ve igual que «todavía no carga».
+ *
+ *  Se engancha ANTES que cualquier otro `addInitScript` de la página, así que
+ *  los montajes que envuelven `fetch` después reciben éste como el original y
+ *  la cadena funciona sola. */
+/* El catálogo va ANTES de quien lo usa. Funcionaba al revés porque el valor
+ * sólo se lee al llamar a `sembrarGeo`, pero un `const` citado más arriba de su
+ * línea es justo la trampa de CLAUDE.md §20 #12: el día que alguien lo lea en
+ * la definición, revienta la función entera y no se ve en el diff. */
+const GEO_JSON = JSON.parse(require('fs').readFileSync(
+  path.resolve(__dirname, '..', '..', '..', 'shared', 'comercial', 'geo.json'), 'utf8'));
+
+/* Los cuatro machotes de ejemplo, leídos del propio `demo.js` y SIN `_demo`.
+ * Se cargan en un `vm` mínimo para no duplicar aquí doscientas líneas de
+ * fixture que se separarían del original a la primera. */
+const MACHOTES_FIXTURE = (function () {
+  const vm = require('vm');
+  const src = require('fs').readFileSync(
+    path.resolve(__dirname, '..', 'js', 'calc.js'), 'utf8') + '\n' +
+    require('fs').readFileSync(path.resolve(__dirname, '..', 'js', 'demo.js'), 'utf8');
+  const ctx = { window: {}, console: console };
+  ctx.window.window = ctx.window;
+  vm.createContext(ctx);
+  vm.runInContext(src, ctx);
+  return JSON.parse(JSON.stringify(ctx.window.DEMO.MACHOTES)).map(function (m) {
+    delete m._demo; return m;
+  });
+})();
+
+/* ── V1.27 · las pruebas SIEMBRAN sus datos ──────────────────────────────
+ *
+ * Hasta V1.26 la pantalla arrancaba con los cuatro ejemplos de `demo.js` y las
+ * pruebas se colgaban de ellos. Los ejemplos se retiraron (tres veces acabaron
+ * en producción: Esteban, Ricardo y Montalvo, quemando COT-0009 a COT-0012),
+ * así que ahora la fixture es explícita — que además es como debió estar
+ * siempre: una prueba que depende de datos que la aplicación trae de regalo
+ * mide dos cosas a la vez.
+ *
+ * Se siembran SIN la marca `_demo`: para la aplicación son cotizaciones como
+ * cualquier otra, que es exactamente lo que las pruebas quieren ejercitar. */
+const sembrarMachotes = (pg) => pg.addInitScript((lista) => {
+  const sembrar = function () {
+    try {
+      /* ⚠️ SÓLO si no hay nada. Sembrar encima pisaría lo que la prueba acaba
+       * de capturar — y hay pruebas que miden justamente que lo capturado
+       * sobreviva a recargar. La fixture es el punto de partida, no un estado
+       * que se reimponga en cada navegación. */
+      if (localStorage.getItem('fts_machote_v1')) return;
+      localStorage.setItem('fts_machote_v1', JSON.stringify({
+        v: 1, guardado_at: new Date().toISOString(), machotes: lista, handoff: {}
+      }));
+    } catch (e) {}
+  };
+  /* ⚠️ La suite llama `localStorage.clear()` en SU propio guion de arranque
+   * —a propósito, para que cada prueba parta limpia— y ese guion se registra
+   * DESPUÉS que éste, así que se lleva la fixture por delante. En vez de pelear
+   * con el orden de registro en dieciséis sitios, la fixture se vuelve a poner
+   * después de cada `clear()`.
+   *
+   * `removeItem` NO se toca: las páginas que quieren arrancar SIN nada local
+   * (las que traen su propio servidor fingido) lo usan para decirlo, y tienen
+   * que seguir pudiendo decirlo. */
+  try {
+    const clearOriginal = localStorage.clear.bind(localStorage);
+    localStorage.clear = function () { clearOriginal(); sembrar(); };
+  } catch (e) {}
+  sembrar();
+}, MACHOTES_FIXTURE);
+
+const sembrarGeo = (pg) => pg.addInitScript((g) => {
+  window.__GEO = g;
+  const orig = window.fetch;
+  window.fetch = function (u) {
+    if (String(u).indexOf('geo.json') >= 0) {
+      return Promise.resolve({ ok: true, json: function () { return Promise.resolve(g); } });
+    }
+    return orig.apply(this, arguments);
+  };
+}, GEO_JSON);
+
 /* El navegador con el que se corre.
  *
  * En una laptop basta `chromium.launch()`. En el contenedor de Claude Code el
@@ -38,6 +130,8 @@ let ok = 0, mal = 0;
   const b = await chromium.launch(OPCIONES);
   const errs = [];
   const p = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(p);
+await sembrarMachotes(p);
   /* El autoguardado es REAL: sin esto, cada prueba heredaria lo que guardo la
    * anterior y volveria la cascada de fallos que resolvio el recargar. Corre
    * ANTES de los scripts de la pagina en cada navegacion, asi que la app
@@ -94,6 +188,34 @@ let ok = 0, mal = 0;
                                    machotes: [], total: 0 });
         } });
       }
+      /* V1.29 · archivar ESCRIBE AL SERVIDOR, asi que sin esto la equis no
+       * hace nada en las pruebas. Se apunta cada llamada para poder afirmar
+       * que salio, que es justo lo que antes no pasaba. */
+      if (String(u).indexOf('/comercial/machote-archivar') >= 0) {
+        var ca = {};
+        try { ca = JSON.parse((o && o.body) || '{}'); } catch (e) {}
+        window.__archivados = (window.__archivados || []);
+        window.__archivados.push({ accion: ca.accion, machote_id: ca.machote_id,
+                                   machote_ids: ca.machote_ids || null, para: ca.para || null,
+                                   forzada: ca.forzada === true, motivo: ca.motivo || null });
+        if (window.__archivarFalla) {
+          return Promise.resolve({ ok: true, json: function () {
+            return Promise.resolve({ ok: false, hecho: false,
+              error: window.__archivarFalla,
+              mensaje: window.__archivarFallaMsg || 'No se pudo.' });
+          } });
+        }
+        return Promise.resolve({ ok: true, json: function () {
+          return Promise.resolve({ ok: true, hecho: true,
+            accion: ca.accion, machote_id: ca.machote_id,
+            folio: 41, folio_txt: 'COT-0041', versiones: 3,
+            archivado: ca.accion !== 'desarchivar',
+            archivado_at: new Date().toISOString(), archivado_por: 'zz.prueba',
+            mensaje: ca.accion === 'desarchivar'
+              ? 'Devuelta a la lista. Conserva su folio COT-0041 y sus 3 version(es).'
+              : 'Archivada. No se borro nada: conserva su folio COT-0041 y sus 3 version(es).' });
+        } });
+      }
       if (String(u).indexOf('/comercial/machote-guardar') >= 0) {
         var cuerpo = {};
         try { cuerpo = JSON.parse((o && o.body) || '{}'); } catch (e) {}
@@ -109,16 +231,32 @@ let ok = 0, mal = 0;
       return original.apply(this, arguments);
     };
   });
-  // El contenedor no tiene salida a fonts.googleapis.com, que fts-styles.css
-  // importa. Ese fallo es del entorno de prueba, no del prototipo: se filtra
-  // por nombre y se reporta aparte, nunca callando el resto.
+  /* El contenedor no tiene salida a fonts.googleapis.com, que fts-styles.css
+   * importa. Ese fallo es del entorno de prueba, no del prototipo: se filtra
+   * por nombre y se reporta aparte, nunca callando el resto.
+   *
+   * V1.27 · se suma `version.json`: el vigilante de versión lo pide con
+   * `fetch`, y `fetch` de `file://` está bloqueado en Chromium (la misma razón
+   * por la que el catálogo de países se siembra). En el dominio sí carga —eso
+   * se comprueba aparte, contra Pages— y el vigilante ya trata el fallo como
+   * no-op silencioso, que es justo lo que debe hacer sin red. */
   const delEntorno = [];
-  const esDelEntorno = (t) => /ERR_CONNECTION_RESET|ERR_NAME_NOT_RESOLVED|fonts\.googleapis|fonts\.gstatic/.test(t);
+  const esDelEntorno = (t) => /ERR_CONNECTION_RESET|ERR_NAME_NOT_RESOLVED|fonts\.googleapis|fonts\.gstatic/.test(t)
+    || (/version\.json/.test(t) && /file/.test(t));
   p.on('console', m => { if (m.type() !== 'error') return;
     (esDelEntorno(m.text()) ? delEntorno : errs).push('CONSOLE: ' + m.text()); });
   p.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
 
+  /* Correr UNA sola prueba: `SOLO='pr[eé]stamo' node tests/pruebas-navegador.js`.
+   * La suite entera tarda ~55 minutos y eso vuelve carísimo iterar sobre una
+   * pantalla nueva —se acaba mirando el diff en vez de la pantalla, que es
+   * justo el modo de falla de CLAUDE.md §20 #12—. El filtro no cambia lo que
+   * hace ninguna prueba: sólo deja saltarse las que no se están tocando.
+   * ⚠️ La ENTREGA se mide siempre con la suite completa, sin `SOLO`. */
+  const SOLO = process.env.SOLO ? new RegExp(process.env.SOLO, 'i') : null;
+  let saltadas = 0;
   const paso = async (n, fn) => {
+    if (SOLO && !SOLO.test(n)) { saltadas++; return; }
     try { await fn(); console.log('✓', n); ok++; }
     catch (e) { console.log('✗', n, '→', e.message); mal++; }
   };
@@ -293,10 +431,22 @@ let ok = 0, mal = 0;
   });
 
   // ── La hoja ──────────────────────────────────────────────────────────
-  await paso('la lista carga con machotes y órdenes', async () => {
+  await paso('la lista carga con sus machotes', async () => {
+    /* Contaba SEIS `.item`: cuatro machotes de ejemplo más los dos enlaces de
+     * la sección «Confirmar la orden». Esa sección se retiró en V1.24 —listaba
+     * órdenes de ejemplo debajo de cotizaciones reales— así que el seis dejó
+     * de significar nada. Lo que sigue significando algo es que la lista traiga
+     * un renglón por machote, y eso es lo que se cuenta ahora.
+     *
+     * Se cuenta contra `D.MACHOTES` y no contra un número escrito a mano: un
+     * literal aquí volvería a quedarse viejo el día que cambie la demo. */
     await ir('#/');
-    const n = await p.locator('.item').count();
-    if (n < 6) throw new Error('pocas tarjetas: ' + n);
+    const esperados = await p.evaluate(() => window.DEMO.MACHOTES.length);
+    const n = await p.locator('.cards .fila').count();
+    if (n !== esperados) throw new Error('pinta ' + n + ' de ' + esperados + ' machotes');
+    if (await p.$('a[href^="#/orden/"]'))
+      throw new Error('sigue la sección de confirmar la orden');
+    console.log('    ' + n + ' machotes · sin sección de orden');
   });
 
   await paso('el libro abre con sus pestañas de hoja', async () => {
@@ -318,15 +468,39 @@ let ok = 0, mal = 0;
     }
   });
 
-  await paso('los diez renglones de mano de obra están siempre, en sus tres grupos', async () => {
+  await paso('los diez renglones del Excel siguen enteros, y el viaje va aparte', async () => {
+    /* V1.26 · esta prueba decía «los diez renglones están siempre, en sus tres
+     * grupos» y afirmaba `soloMo.length === 10`. Ahora son 13, porque entraron
+     * los de viaje.
+     *
+     * NO se cambió el 10 por un 13: eso habría tirado justo lo que la prueba
+     * protegía —que la retícula verificada contra los archivos de FTS sigue
+     * completa— a cambio de un número que no dice nada. Se afirma lo que
+     * importa: **los diez del Excel, uno por uno, en sus tres grupos**, y los
+     * tres nuevos en un grupo propio, que es como se distinguen de un vistazo. */
     await ir('#/m/M-1041');
     await hoja('Suministro');
     const g = await p.locator('#hoja tr.grupo').allTextContents();
-    const esperados = ['Diseño y Programación', 'En Planta', 'Extras'];
-    for (const e of esperados) if (!g.some(x => x.indexOf(e) >= 0)) throw new Error('falta grupo ' + e);
-    const rot = await p.locator('#hoja td.rotulo').allTextContents();
-    const soloMo = rot.filter(x => x !== 'TOTAL');
-    if (soloMo.length !== 10) throw new Error('renglones de MO: ' + soloMo.length);
+    for (const e of ['Diseño y Programación', 'En Planta', 'Extras'])
+      if (!g.some(x => x.indexOf(e) >= 0)) throw new Error('falta grupo del Excel: ' + e);
+    if (!g.some(x => x.indexOf('Viaje y trabajo foráneo') >= 0))
+      throw new Error('los renglones de viaje no tienen grupo propio');
+
+    const rot = (await p.locator('#hoja td.rotulo').allTextContents()).filter(x => x !== 'TOTAL');
+    const DEL_EXCEL = ['Diseño', 'Programador', 'Supervisor Sr', 'Supervisor Jr · seguridad',
+      'Técnicos', 'Horas extras supervisor', 'Horas extras Jr · seguridad',
+      'Horas extras técnicos', 'Horas extras programador', 'Horas extras diseño'];
+    const faltan = DEL_EXCEL.filter(x => rot.indexOf(x) < 0);
+    if (faltan.length) throw new Error('se perdieron renglones del Excel: ' + faltan.join(', '));
+
+    const DE_VIAJE = ['Días de viaje', 'Horas en fin de semana', 'Horas en día festivo'];
+    const sinViaje = DE_VIAJE.filter(x => rot.indexOf(x) < 0);
+    if (sinViaje.length) throw new Error('faltan renglones de viaje: ' + sinViaje.join(', '));
+
+    if (rot.length !== DEL_EXCEL.length + DE_VIAJE.length)
+      throw new Error('hay renglones de más: ' + rot.filter(x =>
+        DEL_EXCEL.indexOf(x) < 0 && DE_VIAJE.indexOf(x) < 0).join(', '));
+    console.log('    los 10 del Excel + los 3 de viaje, cada grupo en su sitio');
   });
 
   await paso('la hoja DESGLOSE trae los cuatro bloques del machote', async () => {
@@ -395,22 +569,21 @@ let ok = 0, mal = 0;
     if (!/no hay tipo de cambio/.test(await p.textContent('#vista'))) throw new Error('no lo reportó');
   });
 
-  await paso('la estación 3.0 no deja cerrar el handoff incompleto', async () => {
-    await ir('#/orden/O-9001');
-    if (!(await p.locator('#btnConf').isDisabled())) throw new Error('el botón estaba habilitado');
-  });
-
-  await paso('marcar todo habilita el cierre, y la marca no se pierde', async () => {
-    await ir('#/orden/O-9001');
-    for (let i = 0; i < 12; i++) {
-      const pend = p.locator('[data-ent]:not(:checked)');
-      if (await pend.count() === 0) break;
-      await pend.first().check(); await p.waitForTimeout(120);
-    }
-    if (await p.locator('#btnConf').isDisabled()) throw new Error('sigue deshabilitado');
-    await p.click('#btnConf'); await p.waitForTimeout(250);
-    if (!/Handoff cerrado/.test(await p.textContent('#vista'))) throw new Error('no cerró');
-  });
+  /* ── V1.25 · dos pruebas RETIRADAS aquí ───────────────────────────────────
+   * Eran «la estación 3.0 no deja cerrar el handoff incompleto» y «marcar todo
+   * habilita el cierre, y la marca no se pierde». Las dos abrían
+   * `#/orden/O-9001` y ejercían `vOrden`, la pantalla de cierre de handoff.
+   *
+   * Se van porque la pantalla se fue: corría sobre `D.ORDENES` —datos de
+   * ejemplo, nunca del servidor— y marcaba «confirmada» en un estado de
+   * memoria; su único enlace era la sección «Confirmar la orden» que se retiró
+   * en V1.24, así que llevaba una versión alcanzable sólo tecleando el hash.
+   *
+   * No se sustituyen por nada, y es a propósito: no cubrían una regla del
+   * negocio que siga viva en otro lado, cubrían el comportamiento de un
+   * andamio. El camino de verdad a una orden es «Pasar a orden» desde el
+   * machote abierto (`js/orden.js`), que sigue enlazado y tiene sus pruebas
+   * aparte. El porqué del retiro está en `docs/comercial/ANDAMIO.md`. */
 
   await paso('volver al mismo machote conserva la hoja donde ibas', async () => {
     await ir('#/m/M-1041'); await hoja('Instalación');
@@ -431,9 +604,15 @@ let ok = 0, mal = 0;
         const b = document.querySelector('.fija .btn');
         return { ancho: g ? Math.round(g.getBoundingClientRect().width) : -1,
                  texto: g ? g.textContent.trim().slice(0, 20) : '',
+                 botones: document.querySelectorAll('.fija .btn').length,
                  boton: b ? Math.round(b.getBoundingClientRect().width) : -1 };
       });
-      if (r.ancho < 120) throw new Error('a ' + w + 'px el precio mide ' + r.ancho + 'px de ancho');
+      /* ⚠️ V1.27 · con TRES botones (propio y ya subido: pasar a orden, prestar
+       * y revisar) al precio le quedaban 4 px en un teléfono de 390. No se veía
+       * porque la fixture eran los ejemplos, y un ejemplo no se puede prestar.
+       * Se afirma el caso real. */
+      if (r.ancho < 120) throw new Error('a ' + w + 'px el precio mide ' + r.ancho +
+        'px de ancho, con ' + r.botones + ' botones');
       if (!/\$/.test(r.texto)) throw new Error('a ' + w + 'px no hay precio: ' + r.texto);
       if (r.boton > w * 0.6) throw new Error('a ' + w + 'px el botón ocupa ' + r.boton + 'px');
     }
@@ -572,14 +751,24 @@ let ok = 0, mal = 0;
     await p.waitForTimeout(280);
     const desp = await p.textContent('.fija .mono');
     if (antes === desp) throw new Error('cambiarlo no movió el precio: ' + antes);
-    // Y lo guardado sigue siendo la RAZÓN, no el porcentaje.
+
+    /* Y lo guardado sigue siendo la RAZÓN, no el porcentaje.
+     *
+     * ⚠️ Hay que ESPERAR al autoguardado (500 ms de rebote). Antes esta lectura
+     * caía a los 280 ms y encontraba el almacén todavía vacío, así que
+     * `guardado` era `null` y la comprobación de abajo —que está escrita para
+     * saltarse el caso -no se llegó a guardar-— no comprobaba nada. Pasaba en
+     * verde sin medir. Es la trampa de §20 #11: un vacío se ve igual que un
+     * acierto. */
+    await p.waitForTimeout(900);
     const guardado = await p.evaluate(() => {
       const c = localStorage.getItem('fts_machote_v1');
       if (!c) return null;
       const m = JSON.parse(c).machotes.find(x => x.id === 'M-1043');
       return m ? m.factor_proteccion : null;
     });
-    if (guardado !== null && Math.abs(guardado - 0.10) > 1e-6)
+    if (guardado === null) throw new Error('no llegó a guardarse nada');
+    if (Math.abs(guardado - 0.10) > 1e-6)
       throw new Error('guardó ' + guardado + ', esperaba 0.10');
     console.log('   con tc=18:', antes.trim(), '→ con factor 10%:', desp.trim());
   });
@@ -733,7 +922,11 @@ let ok = 0, mal = 0;
 
   // ── Diseño ───────────────────────────────────────────────────────────
   await paso('nada desborda a 380 px', async () => {
-    for (const h of ['#/', '#/m/M-1041', '#/rev/M-1044', '#/orden/O-9002', '#/ap/M-1041']) {
+    /* V1.25: `#/orden/O-9002` salió de esta lista al retirarse `vOrden`. Un
+     * hash desconocido cae al `#/` de `render()`, así que la prueba habría
+     * seguido pasando midiendo la lista dos veces — verde sin mirar nada.
+     * Entra `#/nuevo`, que sí existe y no estaba cubierta a este ancho. */
+    for (const h of ['#/', '#/nuevo', '#/m/M-1041', '#/rev/M-1044', '#/ap/M-1041']) {
       await ir(h);
       const d = await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       if (d > 2) throw new Error(h + ' desborda ' + d + ' px');
@@ -748,13 +941,24 @@ let ok = 0, mal = 0;
     await ir('#/m/M-1041');
     await hoja('Suministro');
     const r = await p.evaluate(() => {
-      const td = document.querySelector('.rejilla.tarjetas tbody td');
+      /* La celda que se mide tiene que ser una de CAPTURA. Antes se tomaba la
+       * primera del `tbody`, que es la del rótulo de GRUPO — un encabezado, no
+       * una tarjeta; daba `flex` de casualidad y dejó de darlo cuando el grupo
+       * pasó a bloque para poder llevar su explicación debajo. Se mide lo que
+       * la prueba quería medir, y de paso el grupo, que ahora sí tiene forma
+       * propia. */
+      const td = document.querySelector('.rejilla.tarjetas tbody tr:not(.grupo):not(.total) td');
+      const tdG = document.querySelector('.rejilla.tarjetas tbody tr.grupo td');
       const th = document.querySelector('.rejilla.tarjetas thead');
       return { disp: td && getComputedStyle(td).display,
+               dispGrupo: tdG && getComputedStyle(tdG).display,
                cabOculta: th ? getComputedStyle(th).display === 'none' : false,
                rotulo: !!document.querySelector('.rejilla.tarjetas td.rotulo') };
     });
-    if (r.disp !== 'flex') throw new Error('las celdas no se apilan: ' + r.disp);
+    if (r.disp !== 'flex') throw new Error('las celdas de captura no se apilan: ' + r.disp);
+    if (r.dispGrupo !== 'block')
+      throw new Error('el rótulo de grupo no es un bloque (' + r.dispGrupo +
+                      '): su explicación se parte en dos columnas');
     if (!r.cabOculta) throw new Error('el encabezado de tabla sigue visible');
     if (!r.rotulo) throw new Error('las tarjetas no traen su rótulo');
   });
@@ -779,7 +983,7 @@ let ok = 0, mal = 0;
 
   await paso('todo lo que se toca mide al menos 40 px de alto', async () => {
     const chico = [];
-    for (const h of ['#/', '#/m/M-1041', '#/orden/O-9002']) {
+    for (const h of ['#/', '#/nuevo', '#/m/M-1041']) {   // V1.25: sale #/orden, entra #/nuevo
       await ir(h);
       if (h === '#/m/M-1041') { await hoja('Suministro'); }
       const r = await p.evaluate(() => {
@@ -824,9 +1028,13 @@ let ok = 0, mal = 0;
   await paso('en escritorio se ven los diez renglones, como en el Excel', async () => {
     await p.setViewportSize({ width: 1280, height: 900 });
     await ir('#/m/M-1041'); await hoja('Suministro');
-    const n = await p.locator('#hoja .rejilla.tarjetas').first()
-      .locator('tbody tr:not(.grupo):not(.total):visible').count();
-    if (n !== 10) throw new Error('renglones de mano de obra visibles: ' + n);
+    /* V1.26 · eran 10; con los de viaje son 13. Lo que se sigue exigiendo es
+     * que en escritorio se vean TODOS sin desplegar nada, que es lo que la
+     * prueba defendía: en el Excel están a la vista. */
+    const filas = p.locator('#hoja .rejilla.tarjetas').first()
+      .locator('tbody tr:not(.grupo):not(.total):visible');
+    const n = await filas.count();
+    if (n !== 13) throw new Error('renglones de mano de obra visibles: ' + n + ' (10 del Excel + 3 de viaje)');
     await p.setViewportSize({ width: 380, height: 780 });
   });
 
@@ -899,6 +1107,8 @@ let ok = 0, mal = 0;
     // Pagina APARTE, sin el guion que limpia: aqui se mide justamente que lo
     // guardado persista entre cargas.
     const q = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(q);
+await sembrarMachotes(q);
     // Siembra la sesión SIN limpiar el almacén del machote: lo que se mide aquí
     // es justamente que lo guardado sobreviva.
     await q.addInitScript(() => {
@@ -1020,21 +1230,35 @@ let ok = 0, mal = 0;
     console.log('    ' + total + ' → ' + enRev + ' · «' + cuenta + '»');
   });
 
-  await paso('al entrar, el filtro de persona arranca en los propios', async () => {
-    /* Es lo que alguien quiere ver al abrir. Y como es un filtro PUESTO que
-     * nadie eligió, la pantalla tiene que decirlo: si no, se ve una lista
-     * corta y parece que faltan machotes. */
+  await paso('al entrar, la lista arranca en TODAS las personas', async () => {
+    /* V1.25 · decisión de Esteban. SUSTITUYE a «el filtro de persona arranca
+     * en los propios» (V1.21), que probaba lo contrario: que al abrir se veía
+     * sólo lo tuyo y un pie avisaba del filtro puesto.
+     *
+     * Se cambió porque abrir la lectura a todos (V1.24) y luego esconderlo
+     * detrás de un filtro que nadie eligió es abrir una puerta y dejarla
+     * cerrada: con siete machotes no hay ruido que filtrar, y ver el trabajo
+     * del equipo era el punto. Cuando el equipo crezca se revisa.
+     *
+     * Lo que NO cambió, y por eso se sigue probando aquí: «Míos» sigue
+     * existiendo, y cuando se elige, la pantalla lo dice — un filtro puesto
+     * que no se anuncia se lee como machotes que faltan. */
     await ir('#/');
     const v = await p.$eval('#fPersona', el => el.value);
-    if (v !== 'zz.prueba') throw new Error('no arrancó en el usuario de la sesión: «' + v + '»');
-    const t = (await p.textContent('#vista')).replace(/\s+/g, ' ');
-    if (!/Viendo sólo lo tuyo/i.test(t)) throw new Error('no avisa que hay un filtro puesto');
-    // Y se puede quitar: «Todas las personas» devuelve la lista completa.
-    const propios = await p.$$eval('[data-hist]', e => e.length);
+    if (v !== '') throw new Error('no arrancó en «Todas las personas»: «' + v + '»');
+    const t0 = (await p.textContent('#vista')).replace(/\s+/g, ' ');
+    if (/Viendo sólo lo tuyo/i.test(t0))
+      throw new Error('avisa de un filtro puesto sin haber puesto ninguno');
+
+    const todos = await p.$$eval('tr.rw', e => e.length);
+    await p.selectOption('#fPersona', 'zz.prueba'); await p.waitForTimeout(320);
+    const propios = await p.$$eval('tr.rw', e => e.length);
+    if (propios > todos) throw new Error('«Míos» enseñó MÁS que todos: ' + todos + ' → ' + propios);
+    const t1 = (await p.textContent('#vista')).replace(/\s+/g, ' ');
+    if (!/Viendo sólo lo tuyo/i.test(t1))
+      throw new Error('con «Míos» puesto no lo dice');
     await p.selectOption('#fPersona', ''); await p.waitForTimeout(320);
-    const todos = await p.$$eval('[data-hist]', e => e.length);
-    if (todos < propios) throw new Error('quitar el filtro enseñó MENOS: ' + propios + ' → ' + todos);
-    console.log('    míos ' + propios + ' · todos ' + todos);
+    console.log('    arranca en todas (' + todos + ') · «Míos» filtra (' + propios + ') y lo anuncia');
   });
 
   await paso('cuando no hay resultados, dice por qué', async () => {
@@ -1091,8 +1315,15 @@ let ok = 0, mal = 0;
       };
     });
     if (r.secciones !== 1) throw new Error('secciones: ' + r.secciones);
-    if (r.mo !== 10) throw new Error('renglones de mano de obra: ' + r.mo);
-    if (r.conTarifa !== 10) throw new Error('sin tarifa de plantilla: ' + (10 - r.conTarifa));
+    /* V1.26 · 13 renglones, pero **sólo los 10 del Excel traen tarifa de
+     * plantilla**. Los tres de viaje nacen SIN tarifa a propósito: un día de
+     * viaje no vale 140 ni 200, lo decide quien cotiza, y un número de relleno
+     * se cobraría solo sin que nadie lo revisara. Que `conTarifa` siga siendo
+     * 10 es la prueba de que no se les inventó ninguna. */
+    if (r.mo !== 13) throw new Error('renglones de mano de obra: ' + r.mo + ' (10 + 3 de viaje)');
+    if (r.conTarifa !== 10)
+      throw new Error('con tarifa de plantilla: ' + r.conTarifa + ' — deben ser los 10 del Excel, ' +
+                      'y los 3 de viaje SIN tarifa');
     if (r.conHoras !== 0) throw new Error('nacieron con horas: ' + r.conHoras);
     if (r.partidas !== 30) throw new Error('renglones de materiales: ' + r.partidas);
     if (r.sinTipo !== 20) throw new Error('esperaba 20 sin Tipo y 10 preparados, hay ' + r.sinTipo + ' sin Tipo');
@@ -1197,8 +1428,14 @@ let ok = 0, mal = 0;
     if (r.usadas !== 0) throw new Error('los preparados cuentan como usados: ' + r.usadas);
   });
 
-  await paso('se puede borrar un machote en creación', async () => {
+  await paso('V1.29 · la equis ARCHIVA, y escribe al servidor', async () => {
+    /* La premisa cambio, y ese cambio ES el arreglo. Antes esta prueba media
+     * que el machote salia de la lista LOCAL — y pasaba en verde mientras el
+     * servidor no se enteraba de nada. Ahora se exige lo que faltaba: que la
+     * llamada SALGA, y que la lista solo se mueva despues de que el servidor
+     * conteste que si. */
     await ir('#/');
+    await p.evaluate(() => { window.__archivados = []; });
     const antes = await p.locator('.item[href^="#/m/"]').count();
     p.once('dialog', d => d.accept());
     /* `:visible` NO es un adorno. Desde V1.21 cada machote se pinta DOS veces
@@ -1207,30 +1444,80 @@ let ok = 0, mal = 0;
      * está oculto, y `click()` se queda esperando a que aparezca hasta agotar
      * el tiempo. Hay que apretar el que la persona ve. */
     await p.locator('[data-borrar]:visible').first().click();
-    await p.waitForTimeout(400);
+    await p.waitForTimeout(700);
     const desp = await p.locator('.item[href^="#/m/"]').count();
-    if (desp !== antes - 1) throw new Error('no borró: ' + antes + ' → ' + desp);
+    if (desp !== antes - 1) throw new Error('no salió de la lista: ' + antes + ' → ' + desp);
+
+    const llamadas = await p.evaluate(() => window.__archivados || []);
+    if (!llamadas.length)
+      throw new Error('NO ESCRIBIO AL SERVIDOR: es exactamente el defecto que V1.29 arregla');
+    if (llamadas[0].accion !== 'archivar')
+      throw new Error('mandó otra accion: ' + llamadas[0].accion);
+    if (!llamadas[0].machote_id)
+      throw new Error('mandó sin machote_id');
+
+    /* Y NO se sepulta el id_local: la lapida haria que un desarchivado no
+     * pudiera volver a verse en este navegador nunca mas. */
+    const lapidas = await p.evaluate(() => {
+      try { return JSON.parse(localStorage.getItem('fts_machote_borrados_v1') || '{}'); }
+      catch (e) { return {}; }
+    });
+    if (Object.keys(lapidas).length)
+      throw new Error('sepultó el id_local al archivar: ' + Object.keys(lapidas).join(', '));
+    console.log('    salió al servidor · ' + antes + ' → ' + desp + ' · sin lápida');
   });
 
-  await paso('un machote enviado a Odoo no se puede borrar', async () => {
+  await paso('V1.29 · si el servidor dice que NO, la lista no se mueve y se dice por qué', async () => {
+    /* El caso que importa de verdad: que la pantalla NO finja. Antes no podia
+     * fallar porque no preguntaba a nadie. */
+    await ir('#/');
+    await p.evaluate(() => {
+      window.__archivarFalla = 'SOLO_EL_DUENO_ARCHIVA';
+      window.__archivarFallaMsg = 'Archivar es solo de su dueno, y esta es de Ricardo Hernandez.';
+    });
+    const antes = await p.locator('.item[href^="#/m/"]').count();
+    p.once('dialog', d => d.accept());
+    await p.locator('[data-borrar]:visible').first().click();
+    await p.waitForTimeout(700);
+
+    const desp = await p.locator('.item[href^="#/m/"]').count();
+    if (desp !== antes) throw new Error('se la llevó de la lista aunque el servidor dijo que no: ' + antes + ' → ' + desp);
+
+    const aviso = await p.$('#avArch');
+    if (!aviso) throw new Error('no avisó: se lo tragó en silencio');
+    const txt = (await p.textContent('#avArch')).replace(/\s+/g, ' ');
+    if (!/No se archiv/i.test(txt)) throw new Error('el aviso no dice que no se archivó: ' + txt);
+    if (!/Ricardo/.test(txt))
+      throw new Error('no repite el motivo DEL SERVIDOR, que es lo accionable: ' + txt);
+    await p.evaluate(() => { window.__archivarFalla = null; });
+    console.log('    «' + txt.slice(0, 92) + '»');
+  });
+
+  await paso('V1.29 · un machote enviado a Odoo SI se archiva, porque archivar no destruye', async () => {
+    /* ⚠️ ESTA PRUEBA AFIRMABA LO CONTRARIO, y el cambio es deliberado.
+     *
+     * La razon por la que un `enviado` no se podia borrar estaba escrita en el
+     * codigo: «si desaparece, desaparece la unica explicacion de por que el
+     * precio fue ese». Es correcta — y deja de aplicar cuando nada desaparece.
+     * Un archivado conserva su folio y todas sus versiones, y direccion lo
+     * puede devolver. Mantener el candado seria protegerlo de algo que ya no
+     * pasa, y dejaria a su dueño sin forma de quitarlo de la lista.
+     *
+     * Lo que SI sigue bloqueado es lo ajeno, y eso se prueba abajo. */
     await ir('#/m/M-1042'); await hoja('DESGLOSE');
     await p.locator('[data-estado]').selectOption('enviado'); await p.waitForTimeout(400);
     await irSuave('#/');
-    /* Se engancha por `[data-mid]`, que es el mismo en las DOS pinturas —el
-     * renglón de la tabla y la tarjeta del teléfono— y se exige en ambas: el
-     * candado tiene que estar donde sea que la persona esté mirando. */
     const r = await p.evaluate(() => {
       const filas = [...document.querySelectorAll('[data-mid="M-1042"]')];
       if (!filas.length) return null;
-      return {
-        n: filas.length,
-        borrar: filas.some(f => f.querySelector('[data-borrar]')),
-        candado: filas.every(f => f.querySelector('.candado'))
-      };
+      return { n: filas.length,
+               archivar: filas.every(f => !!f.querySelector('[data-borrar]')),
+               candado: filas.some(f => !!f.querySelector('.candado')) };
     });
     if (!r) throw new Error('no encontré M-1042 en la lista');
-    if (r.borrar) throw new Error('le dejó el botón de borrar');
-    if (!r.candado) throw new Error('no muestra por qué no se puede');
+    if (!r.archivar) throw new Error('le quitó el botón de archivar a un enviado, que SI se archiva');
+    if (r.candado) throw new Error('sigue pintando el candado de «no se borra»');
+    console.log('    enviado a Odoo, y aun asi archivable (' + r.n + ' pinturas)');
   });
 
   // ── Pegar una tabla ──────────────────────────────────────────────────
@@ -1960,10 +2247,11 @@ let ok = 0, mal = 0;
       return { mo: (s.mo || []).length, part: (s.partidas || []).length,
                mg: s.margenes ? s.margenes.materiales : null };
     });
-    if (r.mo !== 10) throw new Error('nació con ' + r.mo + ' renglones de mano de obra, no 10');
+    // V1.26 · 10 del Excel + 3 de viaje.
+    if (r.mo !== 13) throw new Error('nació con ' + r.mo + ' renglones de mano de obra, no 13');
     if (r.part !== 30) throw new Error('nació con ' + r.part + ' partidas, no 30');
     if (r.mg === null) throw new Error('nació sin multiplicadores propios');
-    console.log('    10 de mano de obra · 30 partidas · materiales ' + r.mg);
+    console.log('    13 de mano de obra (10 del Excel + 3 de viaje) · 30 partidas · materiales ' + r.mg);
   });
 
   // ── El cliente, desde Odoo ───────────────────────────────────────────
@@ -2021,6 +2309,8 @@ let ok = 0, mal = 0;
      * en localStorage y volver a cargar, y el guion global lo borraría en la
      * navegación siguiente. (Ya pasó al escribir esta prueba.) */
     const o = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(o);
+await sembrarMachotes(o);
     await o.addInitScript(() => {
       try {
         localStorage.setItem('fts_suite_session', JSON.stringify({
@@ -2103,6 +2393,8 @@ let ok = 0, mal = 0;
      * eso — y el aviso explica por qué la lista está vacía, en vez de dejar
      * un campo mudo que parece roto. */
     const f = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(f);
+await sembrarMachotes(f);
     try {
       await f.addInitScript(() => {
         try {
@@ -2261,29 +2553,38 @@ let ok = 0, mal = 0;
     console.log('    rechaza y explica, sin tocar nada');
   });
 
-  await paso('los dos botones de respaldo están y se alcanzan', async () => {
+  await paso('el respaldo se queda al pie; importar ya no está', async () => {
+    /* V1.24. Importar se retiró: existía para meter a mano lo que vivía suelto
+     * en el navegador de cada quien mientras no había servidor, y con los
+     * machotes ya en Postgres su único efecto posible era crear duplicados.
+     * Exportar se queda porque es la única salida cuando el guardado se rompe
+     * —`avisarNoGuarda()` lo ofrece ahí mismo— pero baja de botón a enlace.
+     *
+     * Se comprueba que NO quedó el input de archivo, no sólo que no se vea:
+     * un `<input type=file>` escondido sigue siendo alcanzable. */
     await ir('#/');
     const r = await p.evaluate(() => {
       const b = document.querySelector('#bExportar');
-      const f = document.querySelector('#fImportar');
-      const lab = f && f.closest('label');
       const rb = b && b.getBoundingClientRect();
-      const rl = lab && lab.getBoundingClientRect();
-      return { hayB: !!b, hayF: !!f, txt: b && b.textContent,
-               altoB: rb && Math.round(rb.height), altoL: rl && Math.round(rl.height),
-               acepta: f && f.getAttribute('accept') };
+      return { hayB: !!b, txt: b && b.textContent,
+               altoB: rb && Math.round(rb.height),
+               hayImport: !!document.querySelector('#fImportar'),
+               hayInputArchivo: document.querySelectorAll('input[type=file]').length };
     });
-    if (!r.hayB || !r.hayF) throw new Error('faltan los controles');
-    if (!/Exportar todo \(\d+\)/.test(r.txt || '')) throw new Error('el botón dice: ' + r.txt);
-    if (r.altoB < 44 || r.altoL < 44)
-      throw new Error('no se alcanzan con el pulgar: ' + r.altoB + ' / ' + r.altoL + ' px');
-    if (!/json/.test(r.acepta || '')) throw new Error('el input no filtra .json');
-    console.log('    ' + r.txt + ' · ' + r.altoB + ' y ' + r.altoL + ' px de alto');
+    if (!r.hayB) throw new Error('se llevó también el respaldo');
+    if (r.hayImport || r.hayInputArchivo)
+      throw new Error('sigue habiendo por dónde importar: ' + JSON.stringify(r));
+    if (!/respaldo de lo mío \(\d+\)/.test(r.txt || '')) throw new Error('dice: ' + r.txt);
+    if (r.altoB < 44) throw new Error('no se alcanza con el pulgar: ' + r.altoB + ' px');
+    console.log('    "' + (r.txt || '').trim() + '" · ' + r.altoB + ' px · 0 entradas de archivo');
   });
+
 
   await paso('cuando el guardado falla, el aviso tapa y no se puede ignorar', async () => {
     /* El pulso dice la verdad pero se puede no ver. Esto no. */
     const q = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(q);
+await sembrarMachotes(q);
     try {
       await q.addInitScript(() => {
         try {
@@ -2331,6 +2632,8 @@ let ok = 0, mal = 0;
   await paso('sin sesión, el libro no se alcanza a ver', async () => {
     // Pagina LIMPIA, sin la sesion sembrada: debe mandar al login.
     const g = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(g);
+await sembrarMachotes(g);
     try {
       await g.goto(BASE); await g.waitForTimeout(600);
       const u = g.url();
@@ -2356,6 +2659,8 @@ let ok = 0, mal = 0;
 
   await paso('una sesión vencida no vale', async () => {
     const v = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(v);
+await sembrarMachotes(v);
     try {
       await v.addInitScript(() => {
         try {
@@ -2372,6 +2677,8 @@ let ok = 0, mal = 0;
 
   await paso('sin el permiso de comercial no se entra, y lo dice', async () => {
     const w = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(w);
+await sembrarMachotes(w);
     try {
       await w.addInitScript(() => {
         try {
@@ -2396,22 +2703,62 @@ let ok = 0, mal = 0;
    * sin red, que lo local nunca se pierde, y que el pulso no miente. Que el
    * servidor hace cumplir sus reglas ya se probó contra la base real. */
 
-  await paso('la DEMO no se sube al servidor: no es trabajo de nadie', async () => {
-    await ir('#/');                      // localStorage limpio => en pantalla va la demo
-    await p.evaluate(() => { window.__guardadosAlServidor = 0; });
-    await p.reload(); await p.waitForTimeout(1200);
-    const n = await p.evaluate(() => window.__guardadosAlServidor || 0);
-    if (n) throw new Error('subió ' + n + ' machote(s) de ejemplo al servidor');
-    // Y la pantalla sigue mostrando la demo, no una lista vacía.
-    const filas = await p.$$eval('[data-hist]', els => els.length);
-    if (!filas) throw new Error('se quedó sin machotes: borró la demo');
-    console.log('    0 subidas · ' + filas + ' machote(s) de ejemplo intactos en pantalla');
+  await paso('un machote MARCADO como ejemplo no llega a la lista ni al servidor', async () => {
+    /* V1.27 · la premisa de esta prueba cambió. Decía «localStorage limpio =>
+     * en pantalla va la demo», y ya no: los ejemplos se retiraron de la lista
+     * porque tres veces acabaron en producción.
+     *
+     * Lo que sigue habiendo —y es lo que se afirma aquí— son las DOS defensas
+     * en profundidad para lo que ya esté guardado en algún navegador: el
+     * ejemplo marcado no se pinta, y aunque se pintara, `empujar` lo rechaza. */
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    await sembrarGeo(q);
+    await q.addInitScript(() => {
+      try {
+        localStorage.clear();
+        localStorage.setItem('fts_suite_session', JSON.stringify({
+          token: 'prueba.prueba.prueba', actor: 'zz.prueba', nombre: 'ZZ Prueba',
+          empleado_id: null, scopes: ['comercial:read'],
+          exp: Math.floor(Date.now() / 1000) + 3600, debe_cambiar_password: false }));
+        localStorage.setItem('fts_machote_v1', JSON.stringify({ v: 1,
+          guardado_at: new Date().toISOString(), handoff: {}, machotes: [
+            { _demo: true, id: 'M-1041', nombre: 'Ejemplo de fábrica',
+              estado: 'borrador', moneda: 'MXN', secciones: [] }
+          ] }));
+      } catch (e) {}
+      window.__guardadosAlServidor = 0;
+      const orig = window.fetch;
+      window.fetch = function (u, o) {
+        const s = String(u);
+        if (s.indexOf('/comercial/machote-guardar') >= 0) {
+          window.__guardadosAlServidor++;
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, version: 1 }) });
+        }
+        if (s.indexOf('/webhook/comercial/') >= 0) return new Promise(function () {});
+        return orig.apply(this, arguments);
+      };
+    });
+    try {
+      await q.goto(BASE); await q.waitForTimeout(1400);
+      const n = await q.evaluate(() => window.__guardadosAlServidor || 0);
+      if (n) throw new Error('subió ' + n + ' machote(s) de ejemplo al servidor');
+      const filas = await q.$$eval('table.lista tbody tr', els => els.length);
+      if (filas !== 0) throw new Error('el ejemplo marcado se pintó igual: ' + filas + ' renglón(es)');
+      // Y el candado de `empujar`, por si un día vuelve a la lista.
+      const r = await q.evaluate(() => window.MachoteAlmacen.pendientes([
+        { _demo: true, id: 'M-1041', nombre: 'x' }
+      ]));
+      if (r !== 0) throw new Error('`pendientes` cuenta un ejemplo como por subir: ' + r);
+      console.log('    0 subidas · 0 en la lista · el candado de empujar sigue puesto');
+    } finally { await q.close(); }
   });
 
   await paso('con el servidor colgado: se guarda aquí y el pulso NO miente', async () => {
     /* Página propia, sin el guion que limpia: aquí se mide justo lo contrario
      * —que lo tecleado sobreviva— y con el servidor sin contestar. */
     const q = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(q);
+await sembrarMachotes(q);
     await q.addInitScript(() => {
       try {
         localStorage.setItem('fts_suite_session', JSON.stringify({
@@ -2419,7 +2766,12 @@ let ok = 0, mal = 0;
           empleado_id: null, scopes: ['comercial:read'],
           exp: Math.floor(Date.now() / 1000) + 3600, debe_cambiar_password: false
         }));
-        localStorage.removeItem('fts_machote_v1');
+        /* ⚠️ V1.27 · ya NO se borra `fts_machote_v1`. Antes daba igual —la
+         * aplicación arrancaba con los cuatro ejemplos— pero los ejemplos se
+         * retiraron, así que borrarlo dejaba esta prueba sin nada que teclear.
+         * La fixture la siembra `sembrarMachotes`, que es de dónde tiene que
+         * salir. Sí se borra la libreta de sincronización: lo que se mide es
+         * que lo tecleado quede PENDIENTE de subir. */
         localStorage.removeItem('fts_machote_sync_v1');
       } catch (e) {}
       const orig = window.fetch;
@@ -2457,6 +2809,8 @@ let ok = 0, mal = 0;
 
   await paso('al reconectar sube lo pendiente solo, y sin dueño en el cuerpo', async () => {
     const q = await b.newPage({ viewport: { width: 380, height: 780 } });
+await sembrarGeo(q);
+await sembrarMachotes(q);
     await q.addInitScript(() => {
       try {
         localStorage.setItem('fts_suite_session', JSON.stringify({
@@ -2490,6 +2844,7 @@ let ok = 0, mal = 0;
           return Promise.resolve({ ok: true, json: () => Promise.resolve({
             ok: true, modo: 'lista', actor: 'zz.prueba', machotes: [], total: 0 }) });
         }
+        if (s.indexOf('geo.json') >= 0) return Promise.resolve({ ok: true, json: () => Promise.resolve(window.__GEO) });
         if (s.indexOf('/comercial/clientes') >= 0) return new Promise(() => {});
         return orig.apply(this, arguments);
       };
@@ -2609,7 +2964,19 @@ let ok = 0, mal = 0;
     await p.evaluate(() => window.MachoteHistorial.cerrar());
   });
 
-  /* ── La franja de sincronización (#140 · A) ────────────────────────────
+  /* ── El estado contra el servidor (#140 · A) ──────────────────────────
+   *
+   * V1.24: la FRANJA se retiró (era andamio del rescate y así estaba
+   * documentada). Estas pruebas eran ocho y probaban la franja; quedan
+   * tres, y prueban lo que la franja probaba y sigue siendo verdad: la
+   * COMPARACIÓN contra el servidor. El sujeto cambió de `#franjaSync` a
+   * `A.estadoServidor()`, que es donde vivía la lógica todo el tiempo.
+   *
+   * Las cinco que se fueron probaban botones que ya no existen («Subir
+   * ahora», «Comprobar») o el texto de la propia franja. La que decía que
+   * sin poder preguntar al servidor lo DICE se fue de aquí porque quien
+   * clasifica sesión/red/servidor es `sesion.js`, y eso tiene sus pruebas
+   * en su bloque: la franja sólo pintaba el resultado.
    *
    * Estas pruebas NO usan un servidor inventado: usan la RESPUESTA LITERAL
    * que el webhook `comercial/machotes-leer` devolvió contra la base real
@@ -2630,6 +2997,8 @@ let ok = 0, mal = 0;
    *  `permitirGuardar` false = el servidor rechaza los guardados (caído). */
   const frPagina = async (machotes, permitirGuardar) => {
     const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+await sembrarGeo(q);
+await sembrarMachotes(q);
     await q.addInitScript((cfg) => {
       try {
         localStorage.setItem('fts_suite_session', JSON.stringify({
@@ -2648,6 +3017,18 @@ let ok = 0, mal = 0;
         const s = String(u);
         if (s.indexOf('/comercial/machotes-leer') >= 0)
           return Promise.resolve({ ok: true, json: function () { return Promise.resolve(cfg.real); } });
+        /* V1.29 · archivar ESCRIBE AL SERVIDOR. Sin esta rama la llamada se
+         * va al `fetch` de verdad, no contesta nadie, y la prueba falla por
+         * el MONTAJE y no por el producto. */
+        if (s.indexOf('/comercial/machote-archivar') >= 0) {
+          var ar = {}; try { ar = JSON.parse((o && o.body) || '{}'); } catch (e) {}
+          window.__archivados = (window.__archivados || []);
+          window.__archivados.push({ accion: ar.accion, machote_id: ar.machote_id });
+          return Promise.resolve({ ok: true, json: function () {
+            return Promise.resolve({ ok: true, hecho: true, accion: ar.accion,
+              folio_txt: 'COT-0099', versiones: 1,
+              mensaje: 'Archivada. No se borro nada.' }); } });
+        }
         if (s.indexOf('/comercial/machote-guardar') >= 0) {
           var c = {}; try { c = JSON.parse((o && o.body) || '{}'); } catch (e) {}
           if (!window.__permitir) {
@@ -2662,6 +3043,7 @@ let ok = 0, mal = 0;
         }
         // El catálogo de clientes se queda colgado a propósito: no es el tema
         // de estas pruebas y un fetch real ensucia la consola.
+        if (s.indexOf('geo.json') >= 0) return Promise.resolve({ ok: true, json: function () { return Promise.resolve(window.__GEO); } });
         if (s.indexOf('/comercial/clientes') >= 0) return new Promise(function () {});
         return orig.apply(this, arguments);
       };
@@ -2676,143 +3058,102 @@ let ok = 0, mal = 0;
   const FR_IGUAL = { id: 'M-PRUEBA-140-H', nombre: 'Cotizacion historial v2' };
   const FR_VOLTEADO = { nombre: 'Cotizacion historial v2', id: 'M-PRUEBA-140-H' };
 
-  await paso('franja: "a salvo" cuando lo local coincide con el servidor real', async () => {
+  await paso('estado: "a salvo" cuando lo local coincide con el servidor real', async () => {
     const q = await frPagina([FR_IGUAL]);
     try {
-      const t = (await q.textContent('#franjaSync')).trim();
-      if (!/1 de 1 tuya a salvo/.test(t)) throw new Error('dice: ' + t);
-      const cls = await q.getAttribute('#franjaSync', 'class');
-      if (!/f-ok/.test(cls)) throw new Error('no está en tono discreto: ' + cls);
-      console.log('    "' + t + '" · ' + cls);
+      const r = await q.evaluate(() => window.MachoteAlmacen.estadoServidor());
+      const e = await r;
+      if (!e || e.ok !== true) throw new Error('no pudo preguntar: ' + JSON.stringify(e));
+      if (e.pendientes !== 0) throw new Error('lo dio por pendiente: ' + JSON.stringify(e));
+      if (e.subidos !== 1 || e.total !== 1) throw new Error('cuenta mal: ' + JSON.stringify(e));
+      console.log('    ' + e.subidos + ' de ' + e.total + ' a salvo · 0 pendientes');
     } finally { await q.close(); }
   });
 
-  await paso('franja: el orden de las llaves NO cuenta como cambio (la trampa de jsonb)', async () => {
+  await paso('estado: el orden de las llaves NO cuenta como cambio (la trampa de jsonb)', async () => {
+    /* La razón de que estas pruebas usen la respuesta LITERAL del webhook
+     * contra la base y no un servidor inventado a mano: Postgres guarda
+     * `jsonb` sin conservar el orden de las llaves, así que el documento
+     * vuelve reordenado y una comparación ingenua lo daría por cambiado para
+     * siempre — la franja habría dicho «por subir» de todo, para siempre, y
+     * hoy lo diría el aviso de pendientes. */
     const q = await frPagina([FR_VOLTEADO]);
     try {
-      const t = (await q.textContent('#franjaSync')).trim();
-      if (!/1 de 1 tuya a salvo/.test(t)) throw new Error('lo dio por pendiente sólo por el orden: ' + t);
-      console.log('    con las llaves al revés sigue diciendo: "' + t + '"');
+      const e = await q.evaluate(() => window.MachoteAlmacen.estadoServidor());
+      if (!e || e.ok !== true) throw new Error('no pudo preguntar: ' + JSON.stringify(e));
+      if (e.pendientes !== 0)
+        throw new Error('lo dio por pendiente sólo por el orden de las llaves: ' + JSON.stringify(e));
+      console.log('    con las llaves al revés sigue a salvo');
     } finally { await q.close(); }
   });
 
-  await paso('franja: uno que el servidor NO tiene sale como por subir', async () => {
+  await paso('lo que NO subió se avisa, se cuenta y se puede señalar', async () => {
+    /* Esto es lo que reemplaza a la franja, y la diferencia está probada
+     * abajo: con todo a salvo NO hay aviso —el silencio es la respuesta—, y
+     * con algo atorado el aviso aparece, dice cuántas, y «Cuáles son» las
+     * marca DENTRO de la lista, sin cambiar de vista. */
+    const limpia = await frPagina([FR_IGUAL]);
+    try {
+      /* Con todo a salvo NO hay aviso. Y se comprueba DESPUÉS de que la subida
+       * de arranque termina, porque ahí está el defecto que esto cierra: el
+       * aviso se pintaba una vez y se quedaba rancio — «1 sin subir» con
+       * `pendientes()` ya en 0 y el pulso en «guardado». Un aviso que no se
+       * actualiza es peor que no avisar: enseña a no creerle. */
+      await limpia.waitForTimeout(1500);
+      const est = await limpia.evaluate(() => ({
+        pendientes: window.MachoteAlmacen.pendientes(),
+        aviso: !!document.querySelector('#avPend'),
+        pulso: (document.querySelector('#pulso') || {}).className || ''
+      }));
+      if (est.pendientes !== 0)
+        throw new Error('el montaje no sirve: quedó pendiente ' + JSON.stringify(est));
+      if (est.aviso)
+        throw new Error('aviso RANCIO: dice que falta subir algo con pendientes=0 · ' +
+                        JSON.stringify(est));
+      if (!/p-guardado/.test(est.pulso))
+        throw new Error('el pulso no llegó a guardado: ' + est.pulso);
+      console.log('    con todo a salvo: sin aviso y pulso en guardado (el silencio es la respuesta)');
+    } finally { await limpia.close(); }
+
+    /* El servidor RECHAZA guardar en este montaje, así que lo pendiente se
+     * queda pendiente y el aviso tiene algo que decir.
+     *
+     * Se exige el INVARIANTE, no un número escrito a mano: que el aviso diga
+     * exactamente lo que cuenta `pendientes()`, y que «Cuáles son» señale
+     * exactamente esos renglones. Un literal aquí probaría el montaje, no el
+     * código — y de hecho la primera versión de esta prueba decía «1» porque
+     * asumí que el otro machote estaba a salvo. Con el servidor caído no lo
+     * está: nunca se confirmó su subida, y no poder confirmarla es
+     * precisamente lo que el aviso reporta. */
     const q = await frPagina([FR_IGUAL, { id: 'M-SOLO-AQUI', nombre: 'Nunca subió' }], false);
     try {
-      const t = (await q.textContent('#franjaSync')).trim();
-      if (!/1 por subir/.test(t) || !/1 de 2 tuyas a salvo/.test(t)) throw new Error('dice: ' + t);
-      const cls = await q.getAttribute('#franjaSync', 'class');
-      if (!/f-pend/.test(cls)) throw new Error('no se nota: ' + cls);
-      console.log('    "' + t + '" · ' + cls);
-    } finally { await q.close(); }
-  });
+      const n = await q.evaluate(() => window.MachoteAlmacen.pendientes());
+      if (n < 1) throw new Error('el montaje no sirve: no quedó nada pendiente');
 
-  await paso('franja: editar lo ya subido vuelve a ponerlo por subir', async () => {
-    const q = await frPagina([{ id: 'M-PRUEBA-140-H', nombre: 'Cotizacion historial v2 EDITADA' }], false);
-    try {
-      const t = (await q.textContent('#franjaSync')).trim();
-      if (!/0 de 1 subidos/.test(t)) throw new Error('dice: ' + t);
-      console.log('    "' + t + '"');
-    } finally { await q.close(); }
-  });
+      const t = (await q.textContent('#avPend') || '').replace(/\s+/g, ' ').trim();
+      const dice = Number((t.match(/^(\d+) cotizaci/) || [])[1]);
+      if (dice !== n)
+        throw new Error('el aviso dice ' + dice + ' y pendientes() cuenta ' + n + ': ' + t);
+      if (!/no ha[n]? subido al servidor/.test(t)) throw new Error('dice: ' + t);
+      if (!/Siguen guardadas en este navegador/.test(t))
+        throw new Error('no dice que lo capturado sigue aquí: ' + t);
 
-  await paso('franja: "Cuáles faltan" marca DENTRO de la lista, sin cambiar de vista', async () => {
-    const q = await frPagina([FR_IGUAL, { id: 'M-SOLO-AQUI', nombre: 'Nunca subió' }], false);
-    try {
-      const urlAntes = q.url();
-      /* Desde V1.21 la marca YA ESTÁ al cargar: no hay que apretar nada.
-       * Antes había que pedirla, y eso es pedirle a alguien que pregunte por
-       * un problema que ya existe. El botón pasó a servir para QUITARLA. */
-      const marcadas = await q.$$eval('.fila.solo-aqui', els => els.map(e => e.getAttribute('data-mid')));
-      if (JSON.stringify(marcadas) !== JSON.stringify(['M-SOLO-AQUI']))
-        throw new Error('no marcó sola al cargar, marcó: ' + JSON.stringify(marcadas));
-      if (!/Quitar/.test(await q.textContent('#fjMarcar')))
-        throw new Error('el botón no ofrece quitar la marca');
-
-      // Y se puede quitar, y volver a poner, sin salir de la lista.
-      await q.click('#fjMarcar'); await q.waitForTimeout(200);
-      if ((await q.$$('.fila.solo-aqui')).length) throw new Error('no quitó la marca');
-      await q.click('#fjMarcar'); await q.waitForTimeout(200);
-      const otraVez = await q.$$eval('.fila.solo-aqui', els => els.map(e => e.getAttribute('data-mid')));
-      if (JSON.stringify(otraVez) !== JSON.stringify(['M-SOLO-AQUI']))
-        throw new Error('no volvió a marcar: ' + JSON.stringify(otraVez));
-      if (q.url() !== urlAntes) throw new Error('cambió de vista');
-      console.log('    marcó ' + JSON.stringify(marcadas) + ' sola, y se quita y se repone');
-    } finally { await q.close(); }
-  });
-
-  await paso('franja: "Subir ahora" rescata al rezagado que el arranque no pudo subir', async () => {
-    /* El botón es para cuando el rescate automático del arranque NO alcanzó
-     * —servidor caído en ese momento—. Así que el servidor rechaza mientras
-     * carga y se cura justo antes de apretar. */
-    const q = await frPagina([FR_IGUAL, { id: 'M-REZAGADO', nombre: 'No pudo subir al arrancar' }], false);
-    try {
-      const antes = await q.evaluate(() => window.__guard.length);
-      if (antes) throw new Error('subió con el servidor caído: ' + antes);
-      const t1 = (await q.textContent('#franjaSync')).trim();
-      if (!/1 por subir/.test(t1)) throw new Error('la franja no lo ve pendiente: ' + t1);
-
-      await q.evaluate(() => { window.__permitir = true; });
-      await q.click('#fjSubir'); await q.waitForTimeout(2000);
-
-      const ids = await q.evaluate(() => window.__guard.map(x => x.id_local));
-      if (ids.indexOf('M-REZAGADO') < 0) throw new Error('no rescató al rezagado: ' + JSON.stringify(ids));
-      if (new Set(ids).size !== ids.length) throw new Error('lo subió dos veces: ' + JSON.stringify(ids));
-      console.log('    con el servidor caído: 0 subidas · tras el botón subió ' + JSON.stringify(ids));
-    } finally { await q.close(); }
-  });
-
-  await paso('franja: subir dos veces NO duplica — el servidor reconcilia por id_local', async () => {
-    const q = await frPagina([{ id: 'M-DOBLE', nombre: 'Se sube dos veces' }]);
-    try {
-      // El arranque ya lo subió una vez. Se aprieta el botón dos veces más.
-      const b1 = await q.$('#fjSubir'); if (b1) { await b1.click(); await q.waitForTimeout(900); }
-      const b2 = await q.$('#fjSubir'); if (b2) { await b2.click(); await q.waitForTimeout(900); }
-      const ids = await q.evaluate(() => window.__guard.map(x => x.id_local));
-      const veces = ids.filter(x => x === 'M-DOBLE').length;
-      if (veces !== 1) throw new Error('mandó M-DOBLE ' + veces + ' veces (debía ser 1)');
-      console.log('    un solo envío de M-DOBLE aunque se apretó de más · ' + JSON.stringify(ids));
-    } finally { await q.close(); }
-  });
-
-  await paso('franja: sin poder preguntar al servidor lo DICE, no lo inventa', async () => {
-    /* El modo de fallo que esto cierra: una franja que ante un servidor mudo
-     * asuma "todo bien". Diría "a salvo" justo el día que no lo está. */
-    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
-    await q.addInitScript(() => {
-      try {
-        localStorage.setItem('fts_suite_session', JSON.stringify({
-          token: 'prueba.prueba.prueba', actor: 'zz.prueba.140', nombre: 'ZZ',
-          empleado_id: null, scopes: ['comercial:read'],
-          exp: Math.floor(Date.now() / 1000) + 3600, debe_cambiar_password: false }));
-        localStorage.setItem('fts_machote_v1', JSON.stringify({
-          v: 1, guardado_at: new Date().toISOString(), handoff: {},
-          machotes: [{ id: 'M-X', nombre: 'algo' }] }));
-      } catch (e) {}
-      const o = window.fetch;
-      window.fetch = function (u) {
-        if (String(u).indexOf('/comercial/') >= 0) return Promise.reject(new Error('sin red'));
-        return o.apply(this, arguments);
-      };
-    });
-    try {
-      await q.goto(BASE); await q.waitForTimeout(1600);
-      const t = (await q.textContent('#franjaSync')).trim();
-      const cls = await q.getAttribute('#franjaSync', 'class');
-      if (/a salvo en el servidor/.test(t))
-        throw new Error('afirmó que está a salvo sin poder preguntar: ' + t);
-      /* El texto cambió en V1.21 y el cambio es el punto: «No se pudo confirmar
-       * con el servidor» era la frase que juntaba los tres mundos —sesión, red
-       * y error del servidor— y por omisión elegía el peor de los tres. Aquí el
-       * `fetch` se rechaza, o sea NO hay respuesta, así que tiene que decir que
-       * no hay conexión y que lo capturado sigue aquí. */
-      if (!/[Ss]in conexión con el servidor/.test(t)) throw new Error('dice: ' + t);
-      if (!/sigue|siguen/.test(t))
-        throw new Error('no dice que lo capturado sigue en el navegador: ' + t);
-      if (/sesión expiró|[Vv]uelve a entrar/.test(t))
-        throw new Error('confundió falta de red con sesión muerta: ' + t);
-      if (!/f-duda/.test(cls)) throw new Error('tono: ' + cls);
-      console.log('    "' + t.replace(/Cuáles.*/, '') + '"');
+      await q.click('#bVerPend');
+      await q.waitForTimeout(300);
+      const marcados = await q.$$eval('[data-mid].marcado',
+        f => f.map(x => x.getAttribute('data-mid')));
+      const unicos = marcados.filter((x, i, a) => a.indexOf(x) === i).sort();
+      const esperados = await q.evaluate(() =>
+        (window.MachoteAlmacen.leer().machotes || [])
+          .filter(m => window.MachoteAlmacen.pendienteUno(m))
+          .map(m => m.id).sort());
+      if (JSON.stringify(unicos) !== JSON.stringify(esperados))
+        throw new Error('marcó ' + JSON.stringify(unicos) + ' y lo pendiente es ' +
+                        JSON.stringify(esperados));
+      if (esperados.indexOf('M-SOLO-AQUI') < 0)
+        throw new Error('el que nunca subió no salió pendiente: ' + JSON.stringify(esperados));
+      console.log('    avisa ' + dice + ' · señala los mismos ' + unicos.length + ': ' +
+                  unicos.join(', '));
     } finally { await q.close(); }
   });
 
@@ -2825,6 +3166,8 @@ let ok = 0, mal = 0;
 
   const cdPagina = async (scopes, respuesta) => {
     const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+await sembrarGeo(q);
+await sembrarMachotes(q);
     await q.addInitScript((cfg) => {
       try {
         localStorage.setItem('fts_suite_session', JSON.stringify({
@@ -2973,10 +3316,347 @@ let ok = 0, mal = 0;
       await q.goto(BASE + href); await q.waitForTimeout(900);
       await q.click('#btnOrden'); await q.waitForTimeout(400);
       const t = (await q.textContent('.estorbos')).replace(/\s+/g, ' ');
-      // El webhook que no existe SIEMPRE tiene que estar: es el tapón de fondo.
-      if (!/orden-crear/.test(t)) throw new Error('no dice que el webhook no existe: ' + t.slice(0, 120));
+      /* ⚠️ V1.30 · ESTA ASERCIÓN SE DIO LA VUELTA, y por una razón: hasta
+       * V1.29 exigía que la lista dijera que `comercial/orden-crear` NO
+       * existe —era el tapón de fondo, y era verdad—. El webhook ya existe y
+       * está probado, así que seguir diciéndolo convertiría el tapón en una
+       * mentira. Ahora se exige lo contrario: que NO lo diga.
+       *
+       * Y tampoco se cambió por otra adivinanza. La pantalla no puede saber
+       * si el endpoint está ENCENDIDO sin preguntar, así que no lo afirma en
+       * ningún sentido: se entera al apretar. Lo prueba el paso de abajo. */
+      if (/orden-crear/.test(t) || /webhook/i.test(t))
+        throw new Error('sigue afirmando algo del webhook que ya no puede saber: ' + t.slice(0, 140));
       if (!/No se arregla aquí/i.test(t)) throw new Error('no separa lo que no toca al analista');
+      if (!/comercial:orden/.test(t))
+        throw new Error('no nombra el permiso que de verdad falta hoy: ' + t.slice(0, 140));
       console.log('    ' + t.slice(0, 100) + '…');
+    } finally { await q.close(); }
+  });
+
+  /* ══ V1.30 · LA ORDEN DE VERDAD ═══════════════════════════════════════════
+   *
+   * Hasta V1.29 esta pantalla era un cascarón y sus pruebas medían que NO
+   * hiciera nada. Ahora hay un webhook detrás, así que lo que hay que medir es
+   * lo contrario y es más delicado: que la pantalla **no dé nada por hecho**.
+   *
+   * La regla es la del kiosko (hallazgo #15) y la misma que ya gobierna la
+   * marca de «enviada»: lo que se pinta sale del SERVIDOR, nunca del recuerdo
+   * de haber apretado. Las tres pruebas de aquí abajo atacan esa regla desde
+   * los tres lados por donde se rompe: el servidor dice que no, el servidor
+   * dice que ya existía, y el servidor devuelve números distintos de los que
+   * la pantalla tenía. */
+  const ordPagina = async (respuestaOrden) => {
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    await sembrarGeo(q);
+    await sembrarMachotes(q);
+    await q.addInitScript((cfg) => {
+      const poner = function () {
+        try {
+          localStorage.setItem('fts_suite_session', JSON.stringify({
+            token: 'prueba.prueba.prueba', actor: 'zz.prueba', nombre: 'ZZ Prueba',
+            empleado_id: null, scopes: ['comercial:read', 'comercial:orden'],
+            exp: Math.floor(Date.now() / 1000) + 3600, debe_cambiar_password: false }));
+          /* La libreta de sincronización: sin un uuid y una versión, `crearOrden`
+           * ni siquiera sale a la red —y con razón, porque la orden se emite
+           * desde la versión guardada en el servidor—. Sembrarla es lo que hace
+           * que estas pruebas midan el camino y no el atajo. */
+          localStorage.setItem('fts_machote_sync_v1', JSON.stringify({
+            'M-1041': { version: 3, huella: 'x',
+                        machote_id: '11111111-2222-3333-4444-555555555555' }
+          }));
+        } catch (e) {}
+      };
+      poner();
+      const limpiar = localStorage.clear.bind(localStorage);
+      localStorage.clear = function () { limpiar(); poner(); };
+
+      const orig = window.fetch;
+      window.fetch = function (u) {
+        const s = String(u);
+        if (s.indexOf('/comercial/orden-crear') >= 0) {
+          return Promise.resolve({ ok: true,
+            json: function () { return Promise.resolve(cfg.r); } });
+        }
+        if (s.indexOf('/comercial/') >= 0) return new Promise(function () {});
+        return orig.apply(this, arguments);
+      };
+    }, { r: respuestaOrden });
+    return q;
+  };
+
+  /** Abre el cascarón de orden sobre el primer machote de la lista. */
+  const abrirOrden = async (q) => {
+    await q.goto(BASE); await q.waitForTimeout(900);
+    const href = await q.$eval('.fila a.item', a => a.getAttribute('href'));
+    await q.goto(BASE + href); await q.waitForTimeout(900);
+    await q.click('#btnOrden'); await q.waitForTimeout(400);
+  };
+
+  await paso('V1.30 · el botón NO da por creada la orden: si el servidor no contesta que sí, no se dice que sí', async () => {
+    /* El servidor apagado contesta el 404 PROPIO de n8n —`{code, message,
+     * hint}`, sin `ok`—, que es el caso real mientras Esteban no encienda el
+     * webhook. Lo que se mide: que la pantalla lo diga con SUS palabras y que
+     * NO aparezca por ningún lado la pantalla de «Orden creada». */
+    const q = await ordPagina({ code: 404, message: 'The requested webhook is not registered.' });
+    try {
+      await abrirOrden(q);
+      await q.click('#or-crear'); await q.waitForTimeout(900);
+
+      const t = (await q.textContent('#modalOrden')).replace(/\s+/g, ' ');
+      if (/Orden creada/i.test(t))
+        throw new Error('pintó la orden como creada sin que el servidor lo dijera: ' + t.slice(0, 140));
+      if (!/no est[áa] encendid/i.test(t))
+        throw new Error('no dice que el servidor está apagado: ' + t.slice(0, 200));
+      /* Y el botón tiene que volver a estar disponible: dejarlo muerto
+       * obligaría a recargar para reintentar algo que sí se puede reintentar. */
+      if (await q.$eval('#or-crear', el => el.disabled))
+        throw new Error('dejó el botón inservible después de un fallo recuperable');
+      console.log('    ' + t.slice(t.indexOf('No se creó'), t.indexOf('No se creó') + 96) + '…');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.30 · la pantalla pinta lo que el SERVIDOR releyó de Odoo, no sus propios números', async () => {
+    /* El servidor devuelve un subtotal DISTINTO del que la pantalla calculó.
+     * Es el caso que importa: si la pantalla pintara lo suyo, un descuadre
+     * real sería invisible justo cuando hace falta verlo. */
+    const q = await ordPagina({
+      ok: true, orden_creada: true, odoo_so_id: 99001, odoo_so_name: 'SO-PRUEBA-1',
+      estado: 'draft', moneda: 'MXN', lista_precios: 'Public Pricelist (MXN)',
+      empresa: 'SERVICIOS FTS', subtotal: 12345.67, impuesto: 1975.31, total: 14320.98,
+      total_machote: 99999.99, cuadra: false, moneda_correcta: true,
+      ligada_en_la_base: true, vence_el: '2026-10-14',
+      avisos: ['El subtotal de la orden (12345.67) no cuadra con el machote (99999.99).'],
+      mensaje: 'La orden SO-PRUEBA-1 se creo, pero hay que mirarla.'
+    });
+    try {
+      await abrirOrden(q);
+      await q.click('#or-crear'); await q.waitForTimeout(900);
+
+      const t = (await q.textContent('#modalOrden')).replace(/\s+/g, ' ');
+      if (!/Orden creada/i.test(t)) throw new Error('no pintó la pantalla de creada: ' + t.slice(0, 140));
+      if (!/SO-PRUEBA-1/.test(t)) throw new Error('no pintó el nombre que dio el servidor');
+      if (!/12,345\.67/.test(t))
+        throw new Error('no pintó el subtotal del SERVIDOR: ' + t.slice(0, 220));
+      if (!/no cuadra/i.test(t))
+        throw new Error('no avisó del descuadre, que es lo único que hacía falta ver');
+      if (!/99,999\.99/.test(t))
+        throw new Error('no dice contra qué no cuadra');
+      console.log('    subtotal del servidor 12,345.67 · avisa que no cuadra contra 99,999.99');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.30 · si la orden ya existía, lleva al mismo sitio y NO inventa importes', async () => {
+    /* Apretar dos veces tiene que terminar donde termina apretar una. Y como
+     * esta respuesta no trae importes, la pantalla NO puede rellenarlos con
+     * los suyos: sería un read-back que no hubo. */
+    const q = await ordPagina({
+      ok: true, ya_existia: true, orden_creada: false,
+      odoo_so_id: 12088, odoo_so_name: 'SO11889',
+      mensaje: 'Esta cotizacion ya tiene su orden en Odoo: SO11889.'
+    });
+    try {
+      await abrirOrden(q);
+      await q.click('#or-crear'); await q.waitForTimeout(900);
+
+      const t = (await q.textContent('#modalOrden')).replace(/\s+/g, ' ');
+      if (!/Orden creada/i.test(t)) throw new Error('no llevó al mismo sitio: ' + t.slice(0, 140));
+      if (!/SO11889/.test(t)) throw new Error('no dice cuál es la orden que ya existía');
+      if (!/ya ten[ií]a su orden/i.test(t))
+        throw new Error('no avisa que no se creó otra: ' + t.slice(0, 200));
+      /* Lo que NO puede pasar: que aparezca el total del machote disfrazado de
+       * subtotal de Odoo. El subtotal tiene que salir vacío. */
+      const sub = await q.$eval('#modalOrden .or-t tbody tr:first-child td:last-child',
+        el => el.textContent.trim());
+      if (sub !== '—')
+        throw new Error('inventó un subtotal que el servidor no dio: ' + sub);
+      console.log('    mismo destino · subtotal «—» en vez de un número inventado');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.30 · el desglose viaja SIN romper el cuadre al centavo, y sin costos', async () => {
+    /* La regla dura del desglose: la suma de los renglones tiene que dar
+     * exactamente el precio de la sección. Mandarlos como unitario × cantidad
+     * la rompe, porque Odoo guarda `price_unit` con dos decimales. Aquí se
+     * mide lo que SALE de `lineasParaOdoo`, que es lo que viaja. */
+    const q = await ordPagina({ ok: true });
+    try {
+      await abrirOrden(q);
+      const r = await q.evaluate(() => {
+        const m = window.MachoteAlmacen.leerLocal().machotes[0];
+        const pre = window.MachoteOrden._prellenar(m);
+        /* Se abre el desglose de la primera sección a mano, como lo haría la
+         * casilla, y se pide el reparto a prorrata. */
+        const crudo = (m.secciones || [])[0] || {};
+        const filas = window.MachoteOrden._desgloseDe(m, crudo, pre.lineas[0].precio);
+        pre.lineas[0].desglose = filas;
+        const salen = window.MachoteOrden._lineasParaOdoo(pre);
+        const dePrimera = salen.slice(0, filas.length);
+        return {
+          precioSeccion: pre.lineas[0].precio,
+          suma: dePrimera.reduce((a, l) => a + l.cantidad * l.precio, 0),
+          cantidades: dePrimera.map(l => l.cantidad),
+          texto: JSON.stringify(salen)
+        };
+      });
+
+      if (!r.cantidades.length) throw new Error('el desglose salió vacío: no se midió nada');
+      if (r.cantidades.some(c => c !== 1))
+        throw new Error('un renglón desglosado salió con cantidad distinta de 1: ' + r.cantidades.join(','));
+      if (Math.abs(r.suma - r.precioSeccion) >= 0.005)
+        throw new Error('el desglose NO cuadra al centavo: ' + r.suma + ' vs ' + r.precioSeccion);
+      /* Y el costo no se cuela por aquí tampoco. */
+      if (/_peso|costo_mo|costo_mat|costoMo|costoMat/.test(r.texto))
+        throw new Error('se coló un costo interno en lo que viaja a Odoo');
+      console.log('    ' + r.cantidades.length + ' renglones · suman ' + r.suma.toFixed(2) +
+                  ' = ' + Number(r.precioSeccion).toFixed(2) + ' · sin costos');
+    } finally { await q.close(); }
+  });
+
+
+  /* ══ V1.30 · EL PANEL DE APROBADORES ══════════════════════════════════════
+   *
+   * La política de la Compuerta 1 vive en la base y se edita desde esta
+   * pantalla. Lo que hay que medir NO es que pinte bonito, sino las dos
+   * decisiones que la gobiernan:
+   *
+   *   1 · la ABRE cualquiera (ver con qué regla te miden no es un privilegio),
+   *       pero EDITAR exige `comercial:admin`;
+   *   2 · el margen viaja como FRACCIÓN. Un `35` tecleado donde va `0.35` es
+   *       3500%, se ve perfectamente bien y nadie lo notaría — así que la
+   *       pantalla tiene que pararlo ANTES de que salga a la red.
+   *
+   * El candado de verdad está en el servidor; estas pruebas miden que la
+   * pantalla no ofrezca un botón que ya se sabe que va a fallar, que es cosa
+   * distinta y también hace falta. */
+  const polPagina = async (scopes, niveles) => {
+    const q = await b.newPage({ viewport: { width: 1280, height: 1000 } });
+    await sembrarGeo(q);
+    await sembrarMachotes(q);
+    await q.addInitScript((cfg) => {
+      const poner = function () {
+        try {
+          localStorage.setItem('fts_suite_session', JSON.stringify({
+            token: 'prueba.prueba.prueba', actor: 'zz.prueba', nombre: 'ZZ Prueba',
+            empleado_id: null, scopes: cfg.scopes,
+            exp: Math.floor(Date.now() / 1000) + 3600, debe_cambiar_password: false }));
+        } catch (e) {}
+      };
+      poner();
+      const limpiar = localStorage.clear.bind(localStorage);
+      localStorage.clear = function () { limpiar(); poner(); };
+
+      /* Se apunta TODO lo que sale hacia la compuerta para poder exigir, en la
+       * prueba del margen, que no haya salido nada. */
+      window.__compuerta = [];
+      const orig = window.fetch;
+      window.fetch = function (u, o) {
+        const s = String(u);
+        if (s.indexOf('/comercial/compuerta') >= 0) {
+          var cuerpo = {};
+          try { cuerpo = JSON.parse((o && o.body) || '{}'); } catch (e) {}
+          window.__compuerta.push(cuerpo);
+          if (cuerpo.modo === 'guardar') {
+            return Promise.resolve({ ok: true, json: function () {
+              return Promise.resolve({ ok: true, modo: 'guardar',
+                guardados: (cuerpo.niveles || []).length,
+                niveles: cfg.niveles, puede_editar: true }); } });
+          }
+          return Promise.resolve({ ok: true, json: function () {
+            return Promise.resolve({ ok: true, modo: 'leer', niveles: cfg.niveles,
+              total: cfg.niveles.length,
+              puede_editar: cfg.scopes.indexOf('comercial:admin') >= 0 }); } });
+        }
+        if (s.indexOf('/comercial/') >= 0) return new Promise(function () {});
+        return orig.apply(this, arguments);
+      };
+    }, { scopes: scopes, niveles: niveles });
+    return q;
+  };
+
+  /** Los dos niveles de julio, que son los que sembró la migración 007. */
+  const NIVELES_JULIO = [
+    { nivel: 1, nombre: 'Revision de direccion', monto_desde: 500000, margen_bajo: 0.35,
+      aprobador: null, aprobador_nombre: null, solo_marca: true, activo: true,
+      updated_at: '2026-09-14 03:08:16.808284+00', updated_by: 'migracion-007' },
+    { nivel: 2, nombre: 'Visto bueno del gerente', monto_desde: 100000, margen_bajo: null,
+      aprobador: 'francisco.montalvo', aprobador_nombre: 'Francisco Montalvo',
+      solo_marca: false, activo: true,
+      updated_at: '2026-09-14 04:52:11.290283+00', updated_by: 'esteban.delacruz' }
+  ];
+
+  await paso('V1.30 · la política la VE cualquiera, pero sin dirección no ofrece guardarla', async () => {
+    const q = await polPagina(['comercial:read'], NIVELES_JULIO);
+    try {
+      await q.goto(BASE + '#/politica'); await q.waitForTimeout(1100);
+      const t = (await q.textContent('#vista')).replace(/\s+/g, ' ');
+
+      /* Lo primero: la ve. Si rebotara a la lista, quien sale marcado nunca
+       * sabría por qué lo marcaron. */
+      if (!/Revision de direccion/.test(t) || !/Francisco Montalvo/.test(t))
+        throw new Error('no enseñó la política a quien sólo lee: ' + t.slice(0, 200));
+      if (!/500,000|500000/.test(t)) throw new Error('no enseñó el monto del nivel 1');
+
+      /* Y lo segundo: ni un control de escritura. El candado de verdad está en
+       * el servidor; esto es no ofrecer un botón que ya se sabe que falla. */
+      const controles = await q.evaluate(() =>
+        document.querySelectorAll('#vista input, #vista select, #vista textarea').length);
+      if (controles) throw new Error('ofreció ' + controles + ' control(es) de captura a quien sólo lee');
+      const botones = await q.evaluate(() => Array.prototype.map.call(
+        document.querySelectorAll('#vista button'), b => (b.textContent || '').trim()));
+      if (botones.some(x => /guardar|agregar/i.test(x)))
+        throw new Error('ofreció escribir sin dirección: ' + botones.join(' · '));
+      console.log('    lee los 2 niveles · 0 campos de captura · botones: ' +
+                  (botones.join(' · ') || '(ninguno)'));
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.30 · con dirección sí edita, y lo que manda son FRACCIONES, no porcentajes', async () => {
+    const q = await polPagina(['comercial:read', 'comercial:admin'], NIVELES_JULIO);
+    try {
+      await q.goto(BASE + '#/politica'); await q.waitForTimeout(1100);
+      const campos = await q.evaluate(() =>
+        document.querySelectorAll('#vista input').length);
+      if (!campos) throw new Error('no dio campos a dirección');
+
+      await q.click('#pol-guardar'); await q.waitForTimeout(700);
+      const salidas = await q.evaluate(() => window.__compuerta || []);
+      const g = salidas.filter(x => x.modo === 'guardar');
+      if (g.length !== 1) throw new Error('mandó ' + g.length + ' guardados, esperaba 1');
+      const n1 = (g[0].niveles || []).filter(x => Number(x.nivel) === 1)[0];
+      if (!n1) throw new Error('no mandó el nivel 1: ' + JSON.stringify(g[0]).slice(0, 200));
+      if (Math.abs(Number(n1.margen_bajo) - 0.35) > 1e-9)
+        throw new Error('el margen salió como ' + n1.margen_bajo + ', no como fracción 0.35');
+      if (Number(n1.monto_desde) !== 500000)
+        throw new Error('el monto salió como ' + n1.monto_desde);
+      console.log('    guardó nivel 1 con margen_bajo=' + n1.margen_bajo +
+                  ' y monto_desde=' + n1.monto_desde);
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.30 · un 35 tecleado donde va 0.35 NO sale a la red: se para y se dice', async () => {
+    /* El error que nadie notaría: «35» se ve bien escrito en la casilla de
+     * margen, y significa 3500%. Si sale, la compuerta deja de dispararse
+     * nunca — y la pantalla seguiría viéndose igual de correcta. */
+    const q = await polPagina(['comercial:read', 'comercial:admin'], NIVELES_JULIO);
+    try {
+      await q.goto(BASE + '#/politica'); await q.waitForTimeout(1100);
+      await q.evaluate(() => { window.__compuerta = []; });
+
+      const sel = '#vista input[data-pol="margen_bajo"]';
+      const hay = await q.$$(sel);
+      if (!hay.length) throw new Error('no encontré la casilla del margen (data-pol)');
+      await hay[0].fill('35');
+      await q.click('#pol-guardar'); await q.waitForTimeout(700);
+
+      const g = (await q.evaluate(() => window.__compuerta || []))
+        .filter(x => x.modo === 'guardar');
+      if (g.length) throw new Error('mandó un margen de 3500% a la base: ' +
+                                    JSON.stringify(g[0].niveles).slice(0, 200));
+      const av = (await q.textContent('#vista')).replace(/\s+/g, ' ');
+      if (!/fracci[óo]n|entre 0 y 1|0\.35/i.test(av))
+        throw new Error('no explica que va como fracción: ' + av.slice(0, 240));
+      console.log('    nada salió a la red · la pantalla explica la fracción');
     } finally { await q.close(); }
   });
 
@@ -3044,6 +3724,8 @@ let ok = 0, mal = 0;
      * pantalla, y no lo cazaría ninguna prueba de que "se ve bien". */
     const ctx = await b.newContext({ viewport: { width: 1000, height: 900 } });
     const q = await ctx.newPage();
+    await sembrarGeo(q);
+    await sembrarMachotes(q);
     await q.addInitScript(() => {
       try {
         localStorage.setItem('fts_suite_session', JSON.stringify({
@@ -3256,20 +3938,23 @@ let ok = 0, mal = 0;
     }
   });
 
-  await paso('la demo no se cuenta como pendiente en la franja', async () => {
-    /* Si se contara, la franja diría «4 por subir» para siempre y «Subir
-     * ahora» nunca podría bajar el número: un pendiente que no se puede
-     * resolver es peor que no avisar. */
+  await paso('la demo no se cuenta como pendiente', async () => {
+    /* Si se contara, el aviso diría «4 sin subir» para siempre y nada podría
+     * bajar el número —los ejemplos no se suben, `empujarUno` los rechaza—:
+     * un pendiente que no se puede resolver es peor que no avisar.
+     *
+     * Se prueba en los DOS sitios que cuentan pendientes: el que pregunta al
+     * servidor y el que compara contra la libreta. Tener dos criterios de
+     * «pendiente» es justo como se llega a un aviso que dice «1 sin subir» y
+     * no logra señalar ninguno. */
     await ir('#/'); await p.waitForTimeout(400);
-    {
-      const q = p;
-      const e = await q.evaluate(() => window.MachoteAlmacen.estadoServidor(window.DEMO.MACHOTES));
-      if (e.total !== 0) throw new Error('cuenta ' + e.total + ' machote(s) que no son de nadie');
-      if (!e.demos) throw new Error('no reporta cuántos ejemplos descontó');
-      const t = (await q.textContent('#franjaSync')) || '';
-      if (/por subir/i.test(t)) throw new Error('la franja pide subir la demo: ' + t.slice(0, 90));
-      console.log('    0 contados · ' + e.demos + ' ejemplos descontados · «' + t.replace(/\s+/g, ' ').trim().slice(0, 60) + '»');
-    }
+    const e = await p.evaluate(() => window.MachoteAlmacen.estadoServidor(window.DEMO.MACHOTES));
+    if (e.total !== 0) throw new Error('cuenta ' + e.total + ' machote(s) que no son de nadie');
+    if (!e.demos) throw new Error('no reporta cuántos ejemplos descontó');
+    const n = await p.evaluate(() => window.MachoteAlmacen.pendientes(window.DEMO.MACHOTES));
+    if (n !== 0) throw new Error('pendientes() cuenta ' + n + ' ejemplo(s)');
+    if (await p.$('#avPend')) throw new Error('la lista avisa de pendientes con sólo la demo');
+    console.log('    0 contados · ' + e.demos + ' ejemplos descontados · sin aviso en la lista');
   });
 
   /* ══ El encabezado y el desglose (V1.21) ════════════════════════════════ */
@@ -3293,6 +3978,8 @@ let ok = 0, mal = 0;
   await paso('desglose: arranca a prorrata, se puede mover y la suma debe cuadrar', async () => {
     const ctx = await b.newContext({ viewport: { width: 1000, height: 900 } });
     const q = await ctx.newPage();
+    await sembrarGeo(q);
+    await sembrarMachotes(q);
     await q.addInitScript(() => {
       try {
         localStorage.clear();
@@ -3342,20 +4029,28 @@ let ok = 0, mal = 0;
     } finally { await ctx.close(); }
   });
 
-  /* ── V1.22 · dirección ve el trabajo del equipo, en sólo lectura ───────
+  /* ── V1.22 → V1.24 · todos ven el trabajo del equipo, en sólo lectura ──
    *
-   * El servidor decide el ALCANCE (con `comercial:admin` devuelve los de
-   * todos) y eso se prueba contra la base, no aquí. Lo que se prueba aquí es
-   * lo otro: que la pantalla trate el trabajo ajeno como AJENO — que no lo
-   * meta en el almacén de uno, que no lo suba, y que no deje teclearlo. */
+   * El servidor decide el ALCANCE y eso se prueba contra la base, no aquí. Lo
+   * que se prueba aquí es lo otro: que la pantalla trate el trabajo ajeno como
+   * AJENO — que no lo meta en el almacén de uno, que no lo suba, y que no deje
+   * teclearlo.
+   *
+   * V1.24: la sesión de estas pruebas ya NO trae `comercial:admin`. Era la
+   * llave de la lectura en V1.22 y dejó de serlo: cualquiera del módulo ve lo
+   * de todos. Quitarlo de aquí es lo que hace que estas pruebas sigan
+   * significando algo — con el scope puesto no distinguirían el mundo nuevo
+   * del viejo. */
   const paginaConAjenos = async () => {
     const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+await sembrarGeo(q);
+await sembrarMachotes(q);
     await q.addInitScript(() => {
       try {
         localStorage.setItem('fts_suite_session', JSON.stringify({
           token: 'prueba.prueba.prueba', actor: 'esteban.delacruz',
           nombre: 'Jesus Esteban De La Cruz', empleado_id: 32,
-          scopes: ['comercial:read', 'comercial:admin'],
+          scopes: ['comercial:read'],
           exp: Math.floor(Date.now() / 1000) + 3600, debe_cambiar_password: false }));
         localStorage.removeItem('fts_machote_v1');
         localStorage.removeItem('fts_machote_sync_v1');
@@ -3399,6 +4094,7 @@ let ok = 0, mal = 0;
             ok: true, machote_id: 'x', id_local: c.id_local, dueno: 'esteban.delacruz',
             version: 1, versiones: 1, autor: 'esteban.delacruz' }) });
         }
+        if (s.indexOf('geo.json') >= 0) return Promise.resolve({ ok: true, json: function () { return Promise.resolve(window.__GEO); } });
         if (s.indexOf('/comercial/clientes') >= 0) return new Promise(function () {});
         return orig.apply(this, arguments);
       };
@@ -3410,17 +4106,13 @@ let ok = 0, mal = 0;
   await paso('dirección ve el trabajo del equipo, marcado y sin poder tocarlo', async () => {
     const q = await paginaConAjenos();
     try {
-      /* Al entrar se ve SÓLO lo propio, también con el scope de dirección: es
-       * la decisión de Esteban y el pie lo anuncia. Lo de los demás está a un
-       * clic, y ese clic es el que se da aquí. */
+      /* V1.25: al entrar YA se ve el trabajo del equipo, sin tocar el filtro.
+       * Antes aquí se comprobaba lo contrario —que al entrar sólo salía lo
+       * propio— y luego se daba el clic; hoy el clic sobra, así que lo que se
+       * comprueba es que sale de entrada. */
       const alEntrar = await q.$$eval('tr.rw', f => f.map(x => x.textContent.indexOf('Lo de Ricardo') >= 0));
-      if (alEntrar.some(Boolean))
-        throw new Error('al entrar ya enseñaba lo de otro: el filtro propio no se respetó');
-      const pie = (await q.textContent('#vista')).replace(/\s+/g, ' ');
-      if (!/Viendo sólo lo tuyo/i.test(pie))
-        throw new Error('no avisa que hay un filtro puesto');
-
-      await q.selectOption('#fPersona', ''); await q.waitForTimeout(320);
+      if (!alEntrar.some(Boolean))
+        throw new Error('al entrar NO enseñaba lo de otro: la lista no arrancó en todas');
 
       const r = await q.evaluate(() => {
         const filas = [...document.querySelectorAll('tr.rw')];
@@ -3431,6 +4123,10 @@ let ok = 0, mal = 0;
           el_ajeno_se_marca: !!(aj && aj.querySelector('.pill.aj')),
           el_ajeno_no_se_borra: !!(aj && !aj.querySelector('[data-borrar]')),
           el_mio_si_se_borra: !!(mio && mio.querySelector('[data-borrar]')),
+          /* V1.29 · y el candado dice que archivar es del DUEÑO, no que
+           * «no se borra»: ya nada se borra. */
+          por_que: aj ? ((aj.querySelector('.candado') || {}).getAttribute
+                          ? aj.querySelector('.candado').getAttribute('title') : '') : '',
           dice_de_quien: !!(aj && /Ricardo/.test(aj.textContent)),
           /* LO IMPORTANTE: el trabajo de otro NO entra al almacén de uno. */
           en_el_almacen: (JSON.parse(localStorage.getItem('fts_machote_v1') || '{"machotes":[]}')
@@ -3439,7 +4135,9 @@ let ok = 0, mal = 0;
       });
       if (!r.salen_los_dos) throw new Error('no salieron los dos machotes');
       if (!r.el_ajeno_se_marca) throw new Error('el ajeno no se distingue del propio');
-      if (!r.el_ajeno_no_se_borra) throw new Error('le dejó el botón de borrar al ajeno');
+      if (!r.el_ajeno_no_se_borra) throw new Error('le dejó el botón de archivar al ajeno');
+      if (!/due/i.test(r.por_que || ''))
+        throw new Error('el candado del ajeno no dice que archivar es del dueño: ' + r.por_que);
       if (!r.el_mio_si_se_borra) throw new Error('se llevó de más: el propio ya no se borra');
       if (!r.dice_de_quien) throw new Error('no dice de quién es');
       if (r.en_el_almacen.indexOf('Lo de Ricardo') >= 0)
@@ -3447,6 +4145,52 @@ let ok = 0, mal = 0;
       if (r.en_el_almacen.indexOf('Lo mio') < 0)
         throw new Error('perdió lo propio: ' + JSON.stringify(r.en_el_almacen));
       console.log('    en el almacén sólo ' + JSON.stringify(r.en_el_almacen));
+    } finally { await q.close(); }
+  });
+
+  await paso('el cuerpo NO decide de quién es nada: sólo el token', async () => {
+    /* La prueba del ataque, re-apuntada para V1.24.
+     *
+     * En V1.22 el ataque interesante era «mandar `es_admin:true` en el cuerpo
+     * para ver lo de todos». Ese ataque ya no tiene premio: todos ven todo. Lo
+     * que SÍ sigue en pie —y es lo único que separa lo propio de lo ajeno— es
+     * que el `actor` sale del token verificado. Si el cuerpo pudiera cambiarlo,
+     * cualquiera se declararía dueño del machote de otro y la pantalla se lo
+     * abriría para editar.
+     *
+     * Se prueba de este lado lo que se puede probar de este lado: que el
+     * cliente NUNCA manda un actor, un dueño ni una bandera de alcance en el
+     * cuerpo. Lo otro —que el servidor los ignoraría si llegaran— vive en el
+     * `Code - Verificar token` del webhook y se comprueba contra la base. */
+    const q = await paginaConAjenos();
+    try {
+      const cuerpos = await q.evaluate(async () => {
+        const vistos = [];
+        const orig = window.fetch;
+        window.fetch = function (u, o) {
+          if (String(u).indexOf('/comercial/') >= 0) {
+            try { vistos.push({ url: String(u), cuerpo: JSON.parse((o && o.body) || '{}') }); }
+            catch (e) { vistos.push({ url: String(u), cuerpo: 'ILEGIBLE' }); }
+          }
+          return orig.apply(this, arguments);
+        };
+        await window.MachoteAlmacen.bajar();
+        await window.MachoteAlmacen.historial('uuid-de-ricardo');
+        return vistos;
+      });
+      if (!cuerpos.length) throw new Error('no se observó ninguna llamada');
+      const prohibidos = ['actor', 'dueno', 'es_admin', 'scopes', 'admin', 'usuario'];
+      for (const c of cuerpos) {
+        if (c.cuerpo === 'ILEGIBLE') throw new Error('cuerpo ilegible en ' + c.url);
+        const colados = Object.keys(c.cuerpo).filter(k => prohibidos.indexOf(k) >= 0);
+        if (colados.length)
+          throw new Error('el cliente manda en el cuerpo ' + JSON.stringify(colados) +
+                          ' a ' + c.url + ' — eso lo decide el token');
+        if (!('token' in c.cuerpo))
+          throw new Error('llamada sin token a ' + c.url + ': ' + JSON.stringify(Object.keys(c.cuerpo)));
+      }
+      console.log('    ' + cuerpos.length + ' llamada(s) · todas con token · ninguna con ' +
+                  prohibidos.join('/'));
     } finally { await q.close(); }
   });
 
@@ -3496,6 +4240,8 @@ let ok = 0, mal = 0;
      * repo público, y hasta hoy el sincronizador barría toda llave `fts_*`.
      * La captura comercial de tres personas se iba en la siguiente subida. */
     const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+await sembrarGeo(q);
+await sembrarMachotes(q);
     try {
       /* Se carga el archivo REAL —no una copia— en una página en blanco y se
        * ejerce su API. Si alguien cambia la lista, esto lo caza. */
@@ -3529,13 +4275,27 @@ let ok = 0, mal = 0;
    * Un montaje donde el servidor SÍ tiene el machote. Es la situación real de
    * Esteban: los ejemplos se habían subido antes de que V1.21 los marcara en
    * origen, así que para el servidor eran machotes normales. */
-  const paginaConServidor = async (filas) => {
+  const paginaConServidor = async (filas, opciones) => {
     const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
-    await q.addInitScript((f) => {
+await sembrarGeo(q);
+await sembrarMachotes(q);
+    await q.addInitScript((cfg) => {
+      const f = cfg.filas;
+      window.__opciones = cfg.opciones || {};
+      /* Quién está sentado frente a la pantalla. Por omisión Esteban, que es
+       * lo que asumían las pruebas de V1.23/V1.24; el préstamo obliga a poder
+       * ser OTRO —el prestatario, o un extraño— porque casi todo lo que hay
+       * que probar de él sólo se ve desde ese lado. */
+      const YO = (cfg.opciones && cfg.opciones.actor) || 'esteban.delacruz';
+      const NOMBRE = (cfg.opciones && cfg.opciones.nombre) || 'Jesus Esteban De La Cruz';
+      window.__llamadas = { guardar: [], prestar: [] };
       try {
         localStorage.setItem('fts_suite_session', JSON.stringify({
-          token: 'prueba.prueba.prueba', actor: 'esteban.delacruz',
-          nombre: 'Jesus Esteban De La Cruz', empleado_id: 32,
+          token: 'prueba.prueba.prueba', actor: YO,
+          nombre: NOMBRE, empleado_id: 32,
+          /* SIN `comercial:admin` a propósito: desde V1.24 la lectura de lo
+           * ajeno no depende de ese scope. Si alguien lo vuelve a exigir en el
+           * servidor, estas pruebas se caen — que es lo que se quiere. */
           scopes: ['comercial:read'],
           exp: Math.floor(Date.now() / 1000) + 3600, debe_cambiar_password: false }));
         localStorage.removeItem('fts_machote_v1');
@@ -3544,6 +4304,20 @@ let ok = 0, mal = 0;
       const orig = window.fetch;
       window.fetch = function (u) {
         const s = String(u);
+        /* V1.29 · archivar ESCRIBE AL SERVIDOR. Sin esta rama la llamada se va
+         * al `fetch` de verdad, no contesta nadie, y la prueba falla por el
+         * MONTAJE y no por el producto. Ojo: aqui el body va en
+         * `arguments[1]`, porque esta funcion sólo declara `u`. */
+        if (s.indexOf('/comercial/machote-archivar') >= 0) {
+          let ar = {};
+          try { ar = JSON.parse((arguments[1] && arguments[1].body) || '{}'); } catch (e) {}
+          window.__archivados = (window.__archivados || []);
+          window.__archivados.push({ accion: ar.accion, machote_id: ar.machote_id });
+          return Promise.resolve({ ok: true, json: function () {
+            return Promise.resolve({ ok: true, hecho: true, accion: ar.accion,
+              folio_txt: 'COT-0003', versiones: 1,
+              mensaje: 'Archivada. No se borro nada.' }); } });
+        }
         if (s.indexOf('/comercial/machotes-leer') >= 0) {
           const doc = (nom) => {
             const base = (window.DEMO && window.DEMO.MACHOTES && window.DEMO.MACHOTES[0]) || null;
@@ -3551,20 +4325,93 @@ let ok = 0, mal = 0;
             d.nombre = nom; d.estado = 'borrador'; delete d._demo;
             return d;
           };
+          /* Modo HISTORIAL. Se sirve aquí porque V1.24 lo necesita para probar
+           * los tres casos, y porque el número de versiones tiene que poder
+           * ser CERO: «el servidor contestó bien y no trajo ninguna» es
+           * exactamente el caso que antes se confundía con «no ha subido». */
+          let cuerpo = {};
+          try { cuerpo = JSON.parse((arguments[1] && arguments[1].body) || '{}'); } catch (e) {}
+          if (cuerpo.machote_id) {
+            const n = (window.__opciones && typeof window.__opciones.versiones === 'number')
+              ? window.__opciones.versiones : 1;
+            const f0 = f.find(x => x.id === cuerpo.machote_id) || {};
+            const vs = [];
+            /* `dueno` va en CADA versión porque así lo manda el endpoint real
+             * (la consulta del historial selecciona `m.dueno`), y es lo que
+             * deja comparar contra `autor` para marcar las que escribió
+             * alguien más. `opciones.autores` permite que no todas sean del
+             * dueño, que es justo el caso del préstamo. */
+            const dueno0 = f0.dueno || 'esteban.delacruz';
+            const otros = (window.__opciones && window.__opciones.autores) || {};
+            for (let i = n; i >= 1; i--) {
+              const a = otros[i] || null;
+              vs.push({
+                id: f0.id, version: i, dueno: dueno0,
+                autor: a ? a.actor : dueno0,
+                autor_nombre: a ? a.nombre
+                                : (f0.dueno_nombre || 'Jesus Esteban De La Cruz'),
+                guardada_at: new Date(Date.now() - i * 3600e3).toISOString(),
+                estado: 'borrador',
+                motivo: a ? ('editado con permiso de ' + (f0.dueno_nombre || dueno0))
+                          : 'guardado automatico',
+                documento: doc(f0.nombre || 'x') });
+            }
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({
+              ok: true, modo: 'historial', actor: YO, es_admin: false,
+              machote_id: cuerpo.machote_id, versiones: vs, total: vs.length }) });
+          }
           return Promise.resolve({ ok: true, json: () => Promise.resolve({
-            ok: true, modo: 'lista', actor: 'esteban.delacruz', es_admin: false,
-            total: f.length, duenos: ['esteban.delacruz'],
+            ok: true, modo: 'lista', actor: YO, es_admin: false,
+            total: f.length,
+            duenos: f.map(x => x.dueno || 'esteban.delacruz')
+                     .filter((d, i, a) => a.indexOf(d) === i),
             machotes: f.map(x => Object.assign({
               dueno: 'esteban.delacruz', dueno_nombre: 'Jesus Esteban De La Cruz',
               ajeno: false, version: 1, versiones: 1, estado: 'borrador',
               documento: doc(x.nombre)
             }, x)) }) });
         }
-        if (s.indexOf('/comercial/machote-guardar') >= 0) return new Promise(function () {});
+        /* GUARDAR y PRESTAR. Por omisión se quedan colgados —es lo que hacían
+         * antes, y las pruebas viejas cuentan con ello— pero el montaje puede
+         * darles una respuesta. Se apunta CADA llamada con su cuerpo: en el
+         * préstamo, la mitad de lo que hay que probar es CON QUÉ IDENTIDAD se
+         * guarda (el `id_local` del DUEÑO, no el de quien teclea), y eso no se
+         * ve en la pantalla: sólo en lo que sale por el cable. */
+        if (s.indexOf('/comercial/machote-guardar') >= 0) {
+          let c = {}; try { c = JSON.parse((arguments[1] && arguments[1].body) || '{}'); } catch (e) {}
+          window.__llamadas.guardar.push(c);
+          const rg = window.__opciones.guardar;
+          if (!rg) return new Promise(function () {});
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(rg) });
+        }
+        if (s.indexOf('/comercial/machote-prestar') >= 0) {
+          let c = {}; try { c = JSON.parse((arguments[1] && arguments[1].body) || '{}'); } catch (e) {}
+          window.__llamadas.prestar.push(c);
+          const rp = window.__opciones.prestar || { ok: true };
+          /* El servidor de mentiras APUNTA el préstamo, para que la siguiente
+           * bajada lo traiga. Sin esto, «prestar» sólo probaría que sale la
+           * llamada; con esto se prueba lo que le importa al dueño: que al
+           * volver de prestar, su pantalla dice que la cotización está
+           * prestada y le ofrece recogerla. */
+          if (rp.ok === true) {
+            const fila = f.find(x => x.id === c.machote_id);
+            if (fila) {
+              fila.prestamos = (fila.prestamos || []).filter(x => x.para !== c.para);
+              /* SIN `para_nombre`: la consulta real (`machotes-leer`) no lo
+               * manda, porque la 005 no guarda nombres. Inventarlo aquí
+               * habría hecho pasar una prueba que en producción falla. */
+              if (c.accion === 'prestar') fila.prestamos.push({
+                para: c.para, otorgado_por: YO,
+                vence_at: new Date(Date.now() + (Number(c.horas) || 4) * 3600e3).toISOString() });
+            }
+          }
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(rp) });
+        }
+        if (s.indexOf('geo.json') >= 0) return Promise.resolve({ ok: true, json: function () { return Promise.resolve(window.__GEO); } });
         if (s.indexOf('/comercial/clientes') >= 0) return new Promise(function () {});
         return orig.apply(this, arguments);
       };
-    }, filas);
+    }, { filas: filas, opciones: opciones || {} });
     await q.goto(BASE); await q.waitForTimeout(1600);
     return q;
   };
@@ -3585,27 +4432,116 @@ let ok = 0, mal = 0;
       if (!antes.some(t => t.indexOf('Ejemplo que estorba') >= 0))
         throw new Error('el montaje no sirve: el ejemplo no llegó a pintarse');
 
+      /* ⚠️ V1.29 · LA PREMISA CAMBIO, y es el arreglo de esta version.
+       *
+       * Esta prueba nacio para vigilar la LAPIDA: como borrar no le decia
+       * nada al servidor, la siguiente bajada volvia a meter la fila y al
+       * recargar reaparecia. La lapida tapaba ese agujero POR NAVEGADOR.
+       *
+       * Ahora archivar ESCRIBE AL SERVIDOR y el servidor deja de servirlo, asi
+       * que la lapida sobra — y ademas estorbaba: sepultar el `id_local` haria
+       * que un desarchivado no pudiera volver a verse aqui nunca. Lo que se
+       * exige ahora es lo que de verdad importaba: que SALGA la llamada, y que
+       * al recargar no vuelva PORQUE EL SERVIDOR YA NO LO MANDA. */
+      await q.evaluate(() => { window.__archivados = []; });
       q.once('dialog', d => d.accept());
       await q.click('tr.rw:has-text("Ejemplo que estorba") [data-borrar]');
-      await q.waitForTimeout(500);
+      await q.waitForTimeout(700);
       if ((await hay()).some(t => t.indexOf('Ejemplo que estorba') >= 0))
-        throw new Error('no se borró ni siquiera en pantalla');
+        throw new Error('no salió de la lista ni siquiera en pantalla');
 
-      // LO QUE IMPORTA: recargar, con el servidor todavía sirviéndolo.
+      const llamadas = await q.evaluate(() => window.__archivados || []);
+      if (!llamadas.length || llamadas[0].accion !== 'archivar')
+        throw new Error('no le dijo al servidor que lo archivara: ' + JSON.stringify(llamadas));
+
+      /* El servidor de esta pagina SIGUE sirviendolo (el montaje no cambia),
+       * asi que al recargar vuelve. Eso NO es un fallo: es la mitad del
+       * servidor sin publicar, y la prueba lo deja dicho en vez de tapar el
+       * hueco con una lapida que despues no se puede quitar. */
       await q.reload(); await q.waitForTimeout(1800);
       const despues = await hay();
-      if (despues.some(t => t.indexOf('Ejemplo que estorba') >= 0))
-        throw new Error('VOLVIÓ al recargar: la lápida no lo detuvo');
+      const volvio = despues.some(t => t.indexOf('Ejemplo que estorba') >= 0);
       if (!despues.some(t => t.indexOf('Uno que se queda') >= 0))
-        throw new Error('se llevó de más: desapareció el que NO se borró');
+        throw new Error('se llevó de más: desapareció el que NO se archivó');
 
       const lapida = await q.evaluate(() => {
         try { return JSON.parse(localStorage.getItem('fts_machote_borrados_v1') || '{}'); }
         catch (e) { return {}; }
       });
-      if (!lapida['M-1041']) throw new Error('no quedó lápida de M-1041');
-      if (lapida['M-OTRO']) throw new Error('sepultó uno que nadie borró');
-      console.log('    borrado, recargado y no volvió · lápidas: ' + Object.keys(lapida).join(', '));
+      if (Object.keys(lapida).length)
+        throw new Error('volvió a sepultar el id_local: ' + Object.keys(lapida).join(', '));
+      console.log('    archivado en el servidor · sin lápida · al recargar ' +
+                  (volvio ? 'vuelve, porque este montaje lo sigue sirviendo' : 'no vuelve'));
+    } finally { await q.close(); }
+  });
+
+  /* ── V1.24 · A · el historial de un machote que SÍ está en el servidor ──
+   *
+   * El defecto que esto cierra, con nombre y apellido: Esteban abrió el reloj
+   * de «Lifter leveling - VIP Service» —de Ricardo, quince versiones en la
+   * base— y el panel contestó que el machote todavía no llegaba al servidor.
+   *
+   * La causa no estaba en el historial sino en la TRADUCCIÓN del id: un
+   * machote ajeno se nombra en pantalla con el uuid del servidor (a propósito,
+   * porque dos personas pueden tener el mismo `M-1041`), y la traducción lo
+   * buscaba en la libreta de sincronización, que está indexada por `id_local`
+   * y sólo guarda lo propio. No lo hallaba, y «no lo hallé» salía como «no
+   * está subido» — que es el mismo modo de falla que la sesión muerta
+   * (CLAUDE.md §20 #12b): causas distintas con remedios distintos, dichas con
+   * una sola frase, y la frase elegida invita a la acción equivocada. */
+  await paso('el historial de un AJENO que sí subió abre y lista sus versiones', async () => {
+    const q = await paginaConServidor([
+      { id: '6948c433-0000-4000-8000-000000000003', id_local: 'M-DE-RICARDO',
+        nombre: 'Lifter leveling - VIP Service', folio: 3, folio_txt: 'COT-0003',
+        dueno: 'ricardo.hernandez', dueno_nombre: 'Ricardo Hernández', ajeno: true,
+        version: 15, versiones: 15 }
+    ], { versiones: 15 });
+    try {
+      /* El filtro de persona arranca en «Míos» —diseño de V1.21, lo tuyo
+       * primero— así que un ajeno no está en pantalla hasta quitarlo. Es lo
+       * mismo que hace Esteban antes de ver el trabajo del equipo. */
+      await q.selectOption('#fPersona', '');
+      await q.waitForTimeout(400);
+      /* `:visible` porque hay DOS con ese `data-hist` —el renglón de la tabla
+       * y la tarjeta del teléfono— y sólo uno se pinta según el ancho. */
+      await q.locator('[data-hist="6948c433-0000-4000-8000-000000000003"]:visible')
+             .first().click();
+      await q.waitForTimeout(700);
+      const t = (await q.textContent('body')).replace(/\s+/g, ' ');
+      if (/todav[ií]a no llega al servidor/.test(t))
+        throw new Error('sigue diciendo que no ha subido algo que SÍ está en el servidor');
+      const vs = await q.$$eval('.v', e => e.length);
+      if (vs !== 15) throw new Error('listó ' + vs + ' versión(es) de 15');
+      if (!/Versión 15/.test(t)) throw new Error('no pinta la última versión');
+      console.log('    abre y lista las 15 versiones del machote de otra persona');
+    } finally { await q.close(); }
+  });
+
+  await paso('los tres casos del historial se dicen distinto', async () => {
+    /* Sin subir, subido y consultable, y subido pero no consultable ahora.
+     * Antes los tres decían lo mismo. Se prueba en el ALMACÉN y no en la
+     * pantalla porque es ahí donde se decide cuál es cuál. */
+    const q = await paginaConServidor([
+      { id: 'aaaaaaaa-0000-4000-8000-00000000000a', id_local: 'M-SUBIDO',
+        nombre: 'Ya subió', folio: 9, folio_txt: 'COT-0009' }
+    ], { versiones: 0 });
+    try {
+      const r = await q.evaluate(async () => {
+        const A = window.MachoteAlmacen;
+        const sinSubir = await A.historial('M-QUE-NUNCA-SUBIO');
+        const noConsultable = await A.historial('aaaaaaaa-0000-4000-8000-00000000000a');
+        return { sinSubir: sinSubir.error, msgSin: sinSubir.mensaje,
+                 noCons: noConsultable.error, msgNo: noConsultable.mensaje };
+      });
+      if (r.sinSubir !== 'NUNCA_SUBIDO')
+        throw new Error('el que nunca subió da: ' + r.sinSubir);
+      if (r.noCons !== 'NO_CONSULTABLE')
+        throw new Error('el que sí subió pero no se pudo traer da: ' + r.noCons);
+      if (r.msgSin === r.msgNo)
+        throw new Error('los dos casos dicen exactamente lo mismo: ' + r.msgSin);
+      if (/no llega al servidor/.test(r.msgNo))
+        throw new Error('al no consultable le dice que no ha subido: ' + r.msgNo);
+      console.log('    NUNCA_SUBIDO ≠ NO_CONSULTABLE, y cada uno lo dice con sus palabras');
     } finally { await q.close(); }
   });
 
@@ -3617,6 +4553,28 @@ let ok = 0, mal = 0;
       const lista = (await q.textContent('#vista')).replace(/\s+/g, ' ');
       if (lista.indexOf('COT-0042') < 0)
         throw new Error('el folio no salió en la lista: ' + lista.slice(0, 200));
+
+      /* V1.24 · COLUMNA PROPIA, no escondido dentro del renglón del nombre.
+       * Se comprueba que la primera columna es la del folio y que la celda
+       * trae SÓLO el folio: metido junto al cliente no se puede recorrer con
+       * la vista, que es toda la razón de que la columna exista. */
+      const col = await q.evaluate(() => {
+        const th = [].map.call(document.querySelectorAll('table.lista thead th'),
+                               e => e.textContent.trim());
+        const td = document.querySelector('table.lista tbody tr.rw td');
+        return { encabezados: th, primera: td && td.className,
+                 texto: td && td.textContent.trim() };
+      });
+      if (col.encabezados[0] !== 'Folio')
+        throw new Error('la primera columna no es el folio: ' + JSON.stringify(col.encabezados));
+      if (col.texto !== 'COT-0042')
+        throw new Error('la celda del folio trae otra cosa: «' + col.texto + '»');
+      if (col.encabezados.indexOf('Revisión') >= 0)
+        throw new Error('sigue la columna de revisión, que se fue con la sección de orden');
+
+      // Y se copia de un toque DESDE LA LISTA, no sólo desde el encabezado.
+      const enLista = await q.$('table.lista tbody tr.rw td.folio-td [data-copiar]');
+      if (!enLista) throw new Error('el folio de la lista no se puede copiar');
 
       // Se busca por folio, que es lo que la gente va a teclear.
       await q.fill('#q', 'COT-0042'); await q.waitForTimeout(400);
@@ -3655,13 +4613,1721 @@ let ok = 0, mal = 0;
     } finally { await q.close(); }
   });
 
+  /* ══ V1.25 · EL PRÉSTAMO TEMPORAL ═══════════════════════════════════════
+   *
+   * Qué se prueba aquí y por qué en el navegador: el préstamo tiene DOS
+   * mitades, y la de la base ya se ejerció contra Postgres real (dos
+   * escritores sobre la misma versión, uno pasa y el otro se va con
+   * CONFLICTO_DE_VERSION). Lo que falta —y sólo se ve aquí— es la mitad de
+   * quien está sentado frente a la pantalla: que el prestatario pueda
+   * escribir, que guarde CON LA IDENTIDAD DEL DUEÑO, que un rechazo le diga
+   * cuál de las tres causas fue, y sobre todo que NUNCA le cueste lo que
+   * tecleó. Esa última es la promesa que sostiene todo lo demás.
+   *
+   * El montaje puede sentar a cualquiera frente a la pantalla (`opciones.actor`),
+   * que es indispensable: casi nada del préstamo se ve desde el lado del dueño. */
+
+  /** El primer campo de texto de la hoja que de verdad se puede escribir.
+   *  Que exista YA ES media prueba: sobre lo ajeno sin permiso están todos
+   *  deshabilitados por `trabarSiNoPuedoEscribir`. */
+  const celdaEscribible = async (q) => {
+    const sel = '#hoja input.cel:not([disabled]):not([type="number"])';
+    const el = await q.$(sel);
+    return el;
+  };
+
+  await paso('C · con todo a la vista, el encabezado y el respaldo siguen diciendo qué es TUYO', async () => {
+    /* La tensión que abre la decisión 1: si lo primero que se ve es el trabajo
+     * de todos, «3 cotizaciones» al lado de «respaldo de lo mío (1)» se lee
+     * como un error de la aplicación — a menos que la pantalla diga cuántas
+     * son tuyas. Y el respaldo NO puede llevarse lo ajeno: sacaría el trabajo
+     * de otro de donde su dueño lo gobierna. */
+    const q = await paginaConServidor([
+      { id: '7000c433-0000-4000-8000-00000000cc01', id_local: 'M-MIO',
+        nombre: 'Bombas para Clarios', folio: 11, folio_txt: 'COT-0011' },
+      { id: '7000c433-0000-4000-8000-00000000cc02', id_local: 'M-DE-RICARDO',
+        nombre: 'Lifter leveling', folio: 12, folio_txt: 'COT-0012',
+        dueno: 'ricardo.hernandez', dueno_nombre: 'Ricardo Hernández', ajeno: true },
+      { id: '7000c433-0000-4000-8000-00000000cc03', id_local: 'M-DE-PABLO',
+        nombre: 'Tanque de servicio', folio: 13, folio_txt: 'COT-0013',
+        dueno: 'pablo.bayly', dueno_nombre: 'Pablo Bayly', ajeno: true }
+    ]);
+    try {
+      if ((await q.$eval('#fPersona', el => el.value)) !== '')
+        throw new Error('no arrancó en «Todas las personas»');
+      const filas = await q.$$eval('tr.rw', e => e.length);
+      if (filas !== 3) throw new Error('no salieron las tres de entrada: ' + filas);
+
+      const cuenta = (await q.textContent('.enc .cuenta')).replace(/\s+/g, ' ').trim();
+      if (!/3 cotizaciones/.test(cuenta)) throw new Error('el encabezado no cuenta todo: ' + cuenta);
+      if (!/1 tuya\b/.test(cuenta))
+        throw new Error('el encabezado no dice cuántas son tuyas: ' + cuenta);
+
+      const resp = (await q.textContent('.pie-resp')).replace(/\s+/g, ' ');
+      if (!/respaldo de lo m[ií]o \(1\)/i.test(resp))
+        throw new Error('el respaldo no cuenta sólo lo tuyo: ' + resp);
+
+      const enAlmacen = await q.evaluate(() => {
+        try { return (JSON.parse(localStorage.getItem('fts_machote_v1') || '{"machotes":[]}')
+                        .machotes || []).map(m => m.nombre); } catch (e) { return ['ERROR']; }
+      });
+      if (enAlmacen.some(n => /Lifter|Tanque/.test(n)))
+        throw new Error('el trabajo ajeno entró al almacén propio: ' + JSON.stringify(enAlmacen));
+      console.log('    «' + cuenta + '» · respaldo de 1 · el almacén sólo trae ' +
+                  JSON.stringify(enAlmacen));
+    } finally { await q.close(); }
+  });
+
+  await paso('B · el historial DICE quién escribió cada versión, y marca las que no son del dueño', async () => {
+    /* El caso de las comisiones, que es la razón por la que existe el
+     * histórico: si alguien con permiso prestado mueve el reparto, la versión
+     * queda con SU nombre. En la base eso ya era verdad desde el primer día
+     * —`machote_version.autor` sale del token verificado, nunca del cuerpo—;
+     * lo que faltaba era poder VERLO sin conocer de memoria de quién es cada
+     * cotización. */
+    const q = await paginaConServidor([
+      { id: '7000c433-0000-4000-8000-00000000hi01', id_local: 'M-MIO',
+        nombre: 'Bombas para Clarios', folio: 11, folio_txt: 'COT-0011',
+        version: 4, versiones: 4 }
+    ], { versiones: 4,
+         autores: { 3: { actor: 'ricardo.hernandez', nombre: 'Ricardo Hernández' } } });
+    try {
+      /* Es un machote PROPIO, así que su id de pantalla es el `id_local`, no
+       * el uuid — la traducción a uuid la hace `idServidor()` al pedir el
+       * historial (V1.24). */
+      await q.locator('[data-hist="M-MIO"]:visible').first().click();
+      await q.waitForTimeout(800);
+
+      const vs = await q.$$eval('.v', e => e.map(x => ({
+        txt: x.textContent.replace(/\s+/g, ' '), ajena: x.classList.contains('ajena') })));
+      if (vs.length !== 4) throw new Error('listó ' + vs.length + ' versiones de 4');
+
+      const deOtro = vs.filter(v => v.ajena);
+      if (deOtro.length !== 1)
+        throw new Error('marcó ' + deOtro.length + ' versiones como de otro, debía ser 1');
+      if (deOtro[0].txt.indexOf('Ricardo Hernández') < 0)
+        throw new Error('la marcada no dice quién la escribió: ' + deOtro[0].txt);
+      if (deOtro[0].txt.indexOf('no es el dueño') < 0)
+        throw new Error('no lo dice CON PALABRAS, sólo con color: ' + deOtro[0].txt);
+      if (deOtro[0].txt.indexOf('Versión 3') < 0)
+        throw new Error('marcó la versión equivocada: ' + deOtro[0].txt);
+
+      /* Y las del dueño NO se marcan: si se marcaran todas, la marca no
+       * distinguiría nada. */
+      const propias = vs.filter(v => !v.ajena);
+      if (propias.some(v => v.txt.indexOf('no es el dueño') >= 0))
+        throw new Error('marcó como ajena una versión del propio dueño');
+      if (!propias.every(v => v.txt.indexOf('Jesus Esteban De La Cruz') >= 0))
+        throw new Error('las del dueño no dicen su nombre');
+      console.log('    4 versiones · la 3 marcada «no es el dueño» (Ricardo) · las otras 3 limpias');
+    } finally { await q.close(); }
+  });
+
+  await paso('B · prestar: sale la orden al servidor y el dueño ve que está prestada', async () => {
+    const q = await paginaConServidor([
+      { id: '7000c433-0000-4000-8000-00000000ma01', id_local: 'M-MIO',
+        nombre: 'Bombas para Clarios', folio: 11, folio_txt: 'COT-0011' },
+      { id: '7000c433-0000-4000-8000-00000000ri01', id_local: 'M-DE-RICARDO',
+        nombre: 'Lifter leveling', folio: 12, folio_txt: 'COT-0012',
+        dueno: 'ricardo.hernandez', dueno_nombre: 'Ricardo Hernández', ajeno: true }
+    ], { prestar: { ok: true } });
+    try {
+      await q.click('tr.rw:has-text("Bombas para Clarios") a');
+      await q.waitForTimeout(800);
+
+      if (!(await q.$('#btnPrestar')))
+        throw new Error('no hay botón de prestar sobre una cotización propia ya subida');
+      await q.click('#btnPrestar');
+      await q.waitForTimeout(400);
+      if (!(await q.$('#prestaModal'))) throw new Error('no abrió el modal de prestar');
+
+      /* A quién se puede prestar sale de los DATOS —quien ya tiene machotes en
+       * el servidor— no de una lista escrita a mano. */
+      const opciones = await q.$$eval('#pm-para option', e => e.map(x => x.value));
+      if (opciones.indexOf('ricardo.hernandez') < 0)
+        throw new Error('Ricardo no aparece en la lista: ' + JSON.stringify(opciones));
+      if (opciones.indexOf('esteban.delacruz') >= 0)
+        throw new Error('se ofrece prestarse la cotización a uno mismo');
+
+      await q.selectOption('#pm-para', 'ricardo.hernandez');
+      await q.selectOption('#pm-horas', '4');
+      await q.click('#pm-ok');
+      await q.waitForTimeout(1400);
+
+      const ll = await q.evaluate(() => window.__llamadas.prestar);
+      if (ll.length !== 1) throw new Error('llamadas al endpoint de préstamo: ' + ll.length);
+      const c = ll[0];
+      if (c.accion !== 'prestar') throw new Error('acción: ' + c.accion);
+      if (c.machote_id !== '7000c433-0000-4000-8000-00000000ma01')
+        throw new Error('presta OTRO machote: ' + c.machote_id);
+      if (c.para !== 'ricardo.hernandez') throw new Error('se lo presta a: ' + c.para);
+      if (Number(c.horas) !== 4) throw new Error('horas: ' + c.horas);
+      /* Ni el dueño ni el otorgante viajan en el cuerpo: los pone el servidor
+       * desde el token. Si algún día viajaran, cualquiera podría prestar lo
+       * ajeno diciendo que es suyo. */
+      if (c.dueno || c.otorgado_por || c.actor)
+        throw new Error('el cuerpo lleva identidad que debe salir del token: ' + JSON.stringify(c));
+
+      if (await q.$('#prestaModal')) throw new Error('el modal no se cerró tras prestar');
+
+      // Y la cortesía: el dueño ve que está prestada, y con qué recogerla.
+      const fr = await q.textContent('.presta-fr');
+      if (!/Prestada/.test(fr)) throw new Error('la franja del dueño no dice que está prestada: ' + fr);
+      if (fr.indexOf('Ricardo') < 0) throw new Error('no dice a quién: ' + fr);
+      if (!(await q.$('[data-recoger="ricardo.hernandez"]')))
+        throw new Error('no hay botón de recoger el permiso');
+      console.log('    prestada 4 h a Ricardo · el dueño la ve prestada y puede recogerla');
+    } finally { await q.close(); }
+  });
+
+  await paso('B · si el endpoint todavía no está publicado, lo DICE en vez de culpar a la cotización', async () => {
+    /* El hueco real del despliegue: el frontend se mergea y el workflow se
+     * publica después, con un clic humano que puede tardar. En medio, el botón
+     * de prestar existe y el endpoint contesta el 404 PROPIO de n8n —un JSON
+     * con `code`/`message` y sin `ok`— que caía en el «no se pudo» genérico.
+     * Quien lo leyera concluiría que su cotización tiene algo malo. */
+    const q = await paginaConServidor([
+      { id: '7000c433-0000-4000-8000-00000000ap01', id_local: 'M-MIO',
+        nombre: 'Bombas para Clarios', folio: 11, folio_txt: 'COT-0011' },
+      { id: '7000c433-0000-4000-8000-00000000ap02', id_local: 'M-DE-RICARDO',
+        nombre: 'Lifter leveling', folio: 12, folio_txt: 'COT-0012',
+        dueno: 'ricardo.hernandez', dueno_nombre: 'Ricardo Hernández', ajeno: true }
+    ], { prestar: { code: 404,
+                    message: 'The requested webhook "POST comercial/machote-prestar" is not registered.' } });
+    try {
+      await q.click('tr.rw:has-text("Bombas para Clarios") a');
+      await q.waitForTimeout(800);
+      await q.click('#btnPrestar');
+      await q.waitForTimeout(400);
+      await q.selectOption('#pm-para', 'ricardo.hernandez');
+      await q.click('#pm-ok');
+      await q.waitForTimeout(1200);
+      const t = (await q.textContent('#pm-err')).replace(/\s+/g, ' ');
+      if (!/todav[ií]a no est[áa] encendida/i.test(t))
+        throw new Error('no dice que falta publicar el endpoint: ' + t);
+      if (!/No es un problema de tu cotizaci[oó]n/i.test(t))
+        throw new Error('no descarta lo que la persona va a suponer: ' + t);
+      if (await q.$('#prestaModal') === null)
+        throw new Error('cerró el modal como si hubiera prestado');
+      console.log('    404 de webhook sin publicar → «falta publicar», no «no se pudo»');
+    } finally { await q.close(); }
+  });
+
+  await paso('B · prestar y guardar: el prestatario escribe, y guarda con la identidad del DUEÑO', async () => {
+    /* Lo que de verdad se comprueba aquí no está en la pantalla sino en lo que
+     * sale por el cable: `id_local` es el del DUEÑO —si fuera el de quien
+     * teclea, el servidor crearía un machote NUEVO a su nombre en vez de una
+     * versión del de Ricardo— y `version_leida` es la del servidor, que es lo
+     * que permite detectar el choque de dos escritores. */
+    const vence = new Date(Date.now() + 4 * 3600e3).toISOString();
+    const q = await paginaConServidor([
+      { id: '7000c433-0000-4000-8000-00000000ri02', id_local: 'M-DE-RICARDO',
+        nombre: 'Lifter leveling', folio: 12, folio_txt: 'COT-0012',
+        dueno: 'ricardo.hernandez', dueno_nombre: 'Ricardo Hernández', ajeno: true,
+        version: 7, versiones: 7,
+        prestamos: [{ para: 'esteban.delacruz', para_nombre: 'Jesus Esteban De La Cruz',
+                      otorgado_por: 'ricardo.hernandez', vence_at: vence }] }
+    ], { guardar: { ok: true, version: 8, machote_id: '7000c433-0000-4000-8000-00000000ri02' } });
+    try {
+      await q.click('tr.rw:has-text("Lifter leveling") a');
+      await q.waitForTimeout(800);
+
+      const fr = await q.textContent('.presta-fr');
+      if (!/te prest[oó]/i.test(fr)) throw new Error('la franja del prestatario no lo dice: ' + fr);
+      if (!/Borrarla y mandarla a Odoo siguen siendo suyas/.test(fr))
+        throw new Error('no dice qué NO se presta: ' + fr);
+
+      const cel = await celdaEscribible(q);
+      if (!cel) throw new Error('con permiso vigente la hoja sigue trabada: no hay dónde escribir');
+      await cel.fill('CAMBIO DEL PRESTATARIO');
+      await q.waitForTimeout(1600);
+
+      const g = await q.evaluate(() => window.__llamadas.guardar);
+      if (!g.length) throw new Error('no salió ningún guardado al servidor');
+      const c = g[g.length - 1];
+      if (c.id_local !== 'M-DE-RICARDO')
+        throw new Error('guardó con OTRA identidad (crearía un machote nuevo): ' + c.id_local);
+      if (Number(c.version_leida) !== 7)
+        throw new Error('version_leida no es la del servidor: ' + c.version_leida);
+      if (!c.documento || JSON.stringify(c.documento).indexOf('CAMBIO DEL PRESTATARIO') < 0)
+        throw new Error('lo tecleado no viajó en el documento');
+      if (JSON.stringify(c.documento).indexOf('_ajeno') >= 0)
+        throw new Error('se colaron los campos de pantalla (_ajeno…) al documento del servidor');
+      console.log('    escribe con permiso · id_local del dueño · version_leida 7 · documento limpio');
+    } finally { await q.close(); }
+  });
+
+  await paso('B · préstamo VENCIDO: lo rechaza, lo dice con esas palabras, y no cuesta lo tecleado', async () => {
+    /* El permiso se comprueba AL GUARDAR, así que se puede estar tecleando
+     * cuando vence: la pantalla es optimista a propósito (un reloj de
+     * navegador puede ir movido) y el servidor es quien dice que no. Lo que
+     * NO puede pasar es que ese «no» se lleve el trabajo. */
+    const vence = new Date(Date.now() + 4 * 3600e3).toISOString();
+    const q = await paginaConServidor([
+      { id: '7000c433-0000-4000-8000-00000000ve01', id_local: 'M-DE-RICARDO',
+        nombre: 'Lifter leveling', folio: 12, folio_txt: 'COT-0012',
+        dueno: 'ricardo.hernandez', dueno_nombre: 'Ricardo Hernández', ajeno: true,
+        version: 7, versiones: 7,
+        prestamos: [{ para: 'esteban.delacruz', otorgado_por: 'ricardo.hernandez',
+                      vence_at: vence }] }
+    ], { guardar: { ok: false, error: 'PRESTAMO_VENCIDO',
+                    mensaje: 'El permiso temporal sobre este machote venció.' } });
+    try {
+      await q.click('tr.rw:has-text("Lifter leveling") a');
+      await q.waitForTimeout(800);
+      const cel = await celdaEscribible(q);
+      if (!cel) throw new Error('no hay dónde escribir con permiso vigente');
+      await cel.fill('LO QUE NO SE PUEDE PERDER');
+      await q.waitForTimeout(1800);
+
+      const t = (await q.textContent('#avPrestado')).replace(/\s+/g, ' ');
+      if (!/venci[oó]/i.test(t)) throw new Error('el aviso no dice que venció: ' + t);
+      if (!/sigue en este navegador y no se perdi[oó]/i.test(t))
+        throw new Error('no promete que el trabajo sigue aquí: ' + t);
+      if (!/P[ií]dele el permiso de nuevo/i.test(t))
+        throw new Error('no dice qué hacer (pedirlo otra vez): ' + t);
+      if (!(await q.$('#apCopiar'))) throw new Error('no ofrece copiar lo tecleado');
+
+      // Y la promesa, medida donde vive: el cajón de este navegador.
+      const cajon = await q.evaluate(() => {
+        try { return JSON.parse(localStorage.getItem('fts_machote_prestado_v1') || '{}'); }
+        catch (e) { return {}; }
+      });
+      const guardado = cajon['7000c433-0000-4000-8000-00000000ve01'];
+      if (!guardado) throw new Error('el rechazo se llevó lo tecleado: el cajón está vacío');
+      if (JSON.stringify(guardado.documento).indexOf('LO QUE NO SE PUEDE PERDER') < 0)
+        throw new Error('el cajón guardó otra cosa');
+      if (guardado.id_local !== 'M-DE-RICARDO')
+        throw new Error('el cajón anotó otra identidad: ' + guardado.id_local);
+      console.log('    rechazado por vencido · el aviso lo distingue · lo tecleado sigue en el cajón');
+    } finally { await q.close(); }
+  });
+
+  await paso('B · permiso RECOGIDO: el dueño lo recoge, y al prestatario se lo dicen distinto', async () => {
+    const vence = new Date(Date.now() + 4 * 3600e3).toISOString();
+
+    // ── Lado del DUEÑO: recoger sale al servidor con la acción correcta.
+    const d = await paginaConServidor([
+      { id: '7000c433-0000-4000-8000-00000000re01', id_local: 'M-MIO',
+        nombre: 'Bombas para Clarios', folio: 11, folio_txt: 'COT-0011',
+        prestamos: [{ para: 'ricardo.hernandez', para_nombre: 'Ricardo Hernández',
+                      otorgado_por: 'esteban.delacruz', vence_at: vence }] }
+    ], { prestar: { ok: true, recogidos: 1 } });
+    try {
+      await d.click('tr.rw:has-text("Bombas para Clarios") a');
+      await d.waitForTimeout(800);
+      if (!(await d.$('[data-recoger="ricardo.hernandez"]')))
+        throw new Error('el dueño no ve con qué recoger un permiso vivo');
+      d.once('dialog', x => x.accept());
+      await d.click('[data-recoger="ricardo.hernandez"]');
+      await d.waitForTimeout(1400);
+      const ll = await d.evaluate(() => window.__llamadas.prestar);
+      if (!ll.length) throw new Error('recoger no llamó al servidor');
+      if (ll[0].accion !== 'recoger') throw new Error('acción: ' + ll[0].accion);
+      if (ll[0].para !== 'ricardo.hernandez') throw new Error('recoge el de otro: ' + ll[0].para);
+      if (await d.$('.presta-fr'))
+        throw new Error('sigue diciendo que está prestada después de recogerla');
+    } finally { await d.close(); }
+
+    // ── Lado del PRESTATARIO: guarda con el permiso ya recogido.
+    const q = await paginaConServidor([
+      { id: '7000c433-0000-4000-8000-00000000re02', id_local: 'M-DE-RICARDO',
+        nombre: 'Lifter leveling', folio: 12, folio_txt: 'COT-0012',
+        dueno: 'ricardo.hernandez', dueno_nombre: 'Ricardo Hernández', ajeno: true,
+        version: 7, versiones: 7,
+        prestamos: [{ para: 'esteban.delacruz', otorgado_por: 'ricardo.hernandez',
+                      vence_at: vence }] }
+    ], { guardar: { ok: false, error: 'PRESTAMO_RECOGIDO',
+                    mensaje: 'El dueño recogió el permiso.' } });
+    try {
+      await q.click('tr.rw:has-text("Lifter leveling") a');
+      await q.waitForTimeout(800);
+      const cel = await celdaEscribible(q);
+      await cel.fill('ESCRITO JUSTO ANTES');
+      await q.waitForTimeout(1800);
+      const t = (await q.textContent('#avPrestado')).replace(/\s+/g, ' ');
+      if (!/recogi[oó] tu permiso/i.test(t))
+        throw new Error('no dice que se lo recogieron: ' + t);
+      if (/venci[oó]/i.test(t))
+        throw new Error('confunde recogido con vencido, que llevan a cosas distintas: ' + t);
+      if (!/no se perdi[oó]/i.test(t)) throw new Error('no promete el trabajo: ' + t);
+      const cajon = await q.evaluate(() => {
+        try { return JSON.parse(localStorage.getItem('fts_machote_prestado_v1') || '{}'); }
+        catch (e) { return {}; }
+      });
+      if (JSON.stringify(cajon).indexOf('ESCRITO JUSTO ANTES') < 0)
+        throw new Error('recoger el permiso se llevó lo que ya estaba escrito');
+      console.log('    el dueño recoge · al prestatario se lo dicen distinto de «venció» · nada se pierde');
+    } finally { await q.close(); }
+  });
+
+  await paso('B · EXTRAÑO sin préstamo: lo ve, no lo escribe, y no intenta guardarlo', async () => {
+    /* La lectura abierta de V1.24 no es escritura. Y el candado que importa no
+     * es el de la pantalla —ése sólo evita perder el rato— sino que el machote
+     * ajeno NO entre al empuje: si entrara, el servidor lo rechazaría, pero
+     * estaríamos mandando trabajo de otro a nombre de quien no debe. */
+    const q = await paginaConServidor([
+      { id: '7000c433-0000-4000-8000-00000000ex01', id_local: 'M-DE-RICARDO',
+        nombre: 'Lifter leveling', folio: 12, folio_txt: 'COT-0012',
+        dueno: 'ricardo.hernandez', dueno_nombre: 'Ricardo Hernández', ajeno: true,
+        version: 7, versiones: 7, prestamos: [] },
+      { id: '7000c433-0000-4000-8000-00000000ex02', id_local: 'M-MIO',
+        nombre: 'Bombas para Clarios', folio: 11, folio_txt: 'COT-0011' }
+    ], { guardar: { ok: true, version: 2, machote_id: '7000c433-0000-4000-8000-00000000ex02' } });
+    try {
+      await q.click('tr.rw:has-text("Lifter leveling") a');
+      await q.waitForTimeout(800);
+
+      if (await q.$('.presta-fr')) throw new Error('pinta franja de préstamo sin préstamo');
+      if (await q.$('#btnPrestar'))
+        throw new Error('ofrece PRESTAR una cotización que no es suya');
+      if (await celdaEscribible(q))
+        throw new Error('deja escribir sobre trabajo ajeno sin permiso');
+
+      const r = await q.evaluate(() => {
+        const A = window.MachoteAlmacen;
+        return { puede: A.puedeEscribir({ id: 'x', _ajeno: true, _prestamos: [] }),
+                 prestado: A.prestadoAMi({ id: 'x', _ajeno: true, _prestamo_para_mi: null }) };
+      });
+      if (r.puede !== false) throw new Error('el almacén dice que SÍ puede escribir lo ajeno');
+      if (r.prestado !== false) throw new Error('el almacén se inventa un préstamo');
+
+      // Y el empuje: se fuerza uno y no puede salir nada con la identidad ajena.
+      await q.evaluate(() => window.MachoteApp.guardarYa());
+      await q.waitForTimeout(1400);
+      const g = await q.evaluate(() => window.__llamadas.guardar);
+      if (g.some(c => c.id_local === 'M-DE-RICARDO'))
+        throw new Error('mandó al servidor el machote ajeno: ' + JSON.stringify(g.map(c => c.id_local)));
+      console.log('    lo lee, no lo edita, no lo presta y no lo sube · guardados: ' +
+                  JSON.stringify(g.map(c => c.id_local)));
+    } finally { await q.close(); }
+  });
+
+  await paso('B · crear una cotización nueva sigue funcionando para cualquiera', async () => {
+    /* La prueba de que el préstamo no le puso una puerta al camino normal.
+     * Se hace desde una persona que NO es Esteban y que no tiene nada en el
+     * servidor: si crear dependiera de ser dueño de algo, o de un scope, aquí
+     * se caería. */
+    const q = await paginaConServidor([
+      { id: '7000c433-0000-4000-8000-00000000nu01', id_local: 'M-DE-ESTEBAN',
+        nombre: 'Bombas para Clarios', folio: 11, folio_txt: 'COT-0011',
+        dueno: 'esteban.delacruz', dueno_nombre: 'Jesus Esteban De La Cruz', ajeno: true }
+    ], { actor: 'magaly.perez', nombre: 'Magaly Pérez',
+         guardar: { ok: true, version: 1, folio: 30, folio_txt: 'COT-0030',
+                    machote_id: '7000c433-0000-4000-8000-0000000000ma' } });
+    try {
+      await q.evaluate(() => { location.hash = '#/nuevo'; });
+      await q.waitForTimeout(500);
+      await q.fill('#n-nombre', 'Cotización de Magaly');
+      await q.click('#n-crear');
+      await q.waitForTimeout(1400);
+
+      if (await q.$('.presta-fr')) throw new Error('una cotización recién creada sale como prestada');
+      const cel = await celdaEscribible(q);
+      if (!cel) throw new Error('no puede escribir en la cotización que acaba de crear');
+      await cel.fill('LO QUE CAPTURÓ MAGALY');
+      await q.waitForTimeout(1600);
+
+      const g = await q.evaluate(() => window.__llamadas.guardar);
+      const mio = g.filter(c => /^M-\d/.test(String(c.id_local || '')));
+      if (!mio.length)
+        throw new Error('no subió la cotización nueva: ' + JSON.stringify(g.map(c => c.id_local)));
+      if (mio.some(c => c.id_local === 'M-DE-ESTEBAN'))
+        throw new Error('la confundió con la ajena');
+      console.log('    Magaly crea, escribe y sube lo suyo · id_local ' + mio[0].id_local);
+    } finally { await q.close(); }
+  });
+
+  await paso('A · el que PIERDE el choque conserva lo tecleado y lo puede recuperar', async () => {
+    /* La otra mitad de la concurrencia. Contra la base real ya se ejerció que
+     * de dos escritores sobre la misma versión pasa uno y el otro se va con
+     * CONFLICTO_DE_VERSION. Lo que faltaba —y es lo que le pasa a una persona—
+     * es qué ve el que perdió: tiene que poder recuperar lo suyo, y tiene que
+     * seguir ahí después de recargar, que es lo primero que uno hace cuando
+     * algo sale mal. */
+    const vence = new Date(Date.now() + 4 * 3600e3).toISOString();
+    const q = await paginaConServidor([
+      { id: '7000c433-0000-4000-8000-00000000cf01', id_local: 'M-DE-RICARDO',
+        nombre: 'Lifter leveling', folio: 12, folio_txt: 'COT-0012',
+        dueno: 'ricardo.hernandez', dueno_nombre: 'Ricardo Hernández', ajeno: true,
+        version: 7, versiones: 7,
+        prestamos: [{ para: 'esteban.delacruz', otorgado_por: 'ricardo.hernandez',
+                      vence_at: vence }] }
+    ], { guardar: { ok: false, error: 'CONFLICTO_DE_VERSION',
+                    mensaje: 'La versión que sigue es la 9, no la 8. Alguien más guardó ' +
+                             'mientras tanto: vuelve a abrir el machote.' } });
+    try {
+      await q.click('tr.rw:has-text("Lifter leveling") a');
+      await q.waitForTimeout(800);
+      const cel = await celdaEscribible(q);
+      await cel.fill('MEDIA HORA DE TRABAJO');
+      await q.waitForTimeout(1800);
+
+      const t = (await q.textContent('#avPrestado')).replace(/\s+/g, ' ');
+      if (!/Otra persona guard[oó]/i.test(t))
+        throw new Error('no dice que alguien más guardó: ' + t);
+      if (/venci[oó]|recogi[oó]/i.test(t))
+        throw new Error('confunde el choque con el permiso: ' + t);
+      if (!/Vuelve a abrirla/i.test(t)) throw new Error('no dice qué hacer: ' + t);
+      if (!(await q.$('#apCopiar'))) throw new Error('no hay manera de recuperar lo tecleado');
+
+      // RECARGAR: es lo primero que hace cualquiera cuando algo falla.
+      await q.reload(); await q.waitForTimeout(2000);
+      const cajon = await q.evaluate(() => {
+        try { return JSON.parse(localStorage.getItem('fts_machote_prestado_v1') || '{}'); }
+        catch (e) { return {}; }
+      });
+      if (JSON.stringify(cajon).indexOf('MEDIA HORA DE TRABAJO') < 0)
+        throw new Error('recargar se llevó lo tecleado');
+
+      // Y vuelve a la PANTALLA, no sólo al cajón: si hay que abrir la consola
+      // para recuperarlo, no está recuperado.
+      await q.click('tr.rw:has-text("Lifter leveling") a');
+      await q.waitForTimeout(900);
+      const enPantalla = await q.evaluate(() =>
+        [].some.call(document.querySelectorAll('#hoja input.cel'),
+                     e => String(e.value).indexOf('MEDIA HORA DE TRABAJO') >= 0));
+      if (!enPantalla)
+        throw new Error('el trabajo está en el cajón pero la pantalla no lo trae de vuelta');
+      console.log('    perdió el choque, se lo dijeron sin confundirlo, y su trabajo volvió a pantalla');
+    } finally { await q.close(); }
+  });
+
+  /* ══ V1.26 · viaje y trabajo foráneo ═══════════════════════════════════
+   *
+   * El CÁLCULO de todo esto se ejercita en `tests/pruebas-motor.js`, que corre
+   * en menos de un segundo. Aquí va sólo lo que NO se puede comprobar sin
+   * mirar la pantalla: que el bloqueo se vea y se entienda, que las chips
+   * pongan los tres campos de un toque, y que el atajo a Kiwi lleve a donde
+   * dice. */
+
+  await paso('V1.26 · una chip pone país, estado y ciudad de un toque', async () => {
+    await ir('#/m/M-1041');
+    const antes = await p.evaluate(() => {
+      const m = window.MachoteApp && window.MachoteApp._m; return null;
+    });
+    /* Las chips salen del JSON de configuración, no del código: si alguien
+     * agrega una ciudad ahí, esta prueba la ve sin tocarse. */
+    const chips = await p.$$eval('[data-frec]', e => e.map(x => x.dataset.frec));
+    if (!chips.some(c => /San Antonio/.test(c)))
+      throw new Error('no salieron las frecuentes: ' + JSON.stringify(chips));
+    if (!chips.some(c => /Monterrey/.test(c)))
+      throw new Error('falta Monterrey, que es la sede');
+
+    await p.click('[data-frec*="San Antonio"]');
+    await p.waitForTimeout(600);
+    const r = await p.evaluate(() => {
+      const sel = (q) => { const e = document.querySelector(q); return e ? e.value : null; };
+      return { pais: sel('[data-cel="pais"]'), region: sel('[data-cel="region"]'),
+               ciudad: sel('[data-cel="ciudad"]'),
+               veredicto: (document.querySelector('.lugar-veredicto') || {}).textContent || '' };
+    });
+    if (r.pais !== 'US') throw new Error('país quedó en: ' + r.pais);
+    if (r.region !== 'Texas') throw new Error('estado quedó en: ' + r.region);
+    if (r.ciudad !== 'San Antonio') throw new Error('ciudad quedó en: ' + r.ciudad);
+    if (!/for[áa]nea/i.test(r.veredicto)) throw new Error('no dice que es foránea: ' + r.veredicto);
+    console.log('    un toque → US · Texas · San Antonio · «' + r.veredicto.trim().slice(0, 46) + '…»');
+  });
+
+  await paso('V1.26 · el lugar NO pisa el estado del documento', async () => {
+    /* El defecto que esto cierra, y que sólo se vio EN LA CAPTURA: la primera
+     * versión llamó `estado` a la subdivisión, y el campo salió diciendo
+     * «borrador». Elegir «Texas» habría puesto el machote en estado «Texas». */
+    await ir('#/m/M-1041');
+    await p.click('[data-frec*="Dallas"]');
+    await p.waitForTimeout(600);
+    /* OJO con el selector: el estado del documento NO es una celda del
+     * machote, es su propio control (`[data-estado]`, en `bloqueEstado`). Que
+     * sean dos cosas distintas es precisamente lo que este defecto confundió. */
+    const est = await p.evaluate(() => {
+      const s = document.querySelector('[data-estado]');
+      return s ? s.value : '(no hay control de estado)';
+    });
+    if (!/borrador|creacion|creación/i.test(est))
+      throw new Error('el estado del documento quedó en: «' + est + '»');
+    console.log('    la cotización sigue en «' + est + '» con el lugar en Dallas');
+  });
+
+  await paso('V1.27 · foránea sin decidir: se ve el bloqueo, dice dónde y cuántos faltan', async () => {
+    /* Era la prueba de V1.26 «foránea sin viaje». Cambió porque cambió la
+     * regla: ya no se AGREGAN conceptos con un botón —los cinco están puestos—
+     * y lo que el revisador exige es que cada uno esté DECIDIDO. Lo que se
+     * sigue afirmando es lo mismo de siempre: que el bloqueo se VE, que dice
+     * dónde se ejecuta, y que ofrece la salida. */
+    await ir('#/m/M-1041');
+    await p.click('[data-frec*="San Antonio"]');
+    await p.waitForTimeout(500);
+    await hoja('Suministro');
+    await p.waitForTimeout(600);
+
+    const t = (await p.textContent('.viaje-blk')).replace(/\s+/g, ' ');
+    if (!/no la deja terminar/i.test(t))
+      throw new Error('no dice que bloquea: ' + t.slice(0, 160));
+    if (!/San Antonio/.test(t)) throw new Error('no dice dónde se ejecuta: ' + t.slice(0, 160));
+    if (!/no se ocupa/i.test(t))
+      throw new Error('no ofrece la salida explícita: ' + t.slice(0, 160));
+    if (!/Faltan 5 conceptos por decidir/i.test(t))
+      throw new Error('no dice CUÁNTOS faltan: ' + t.slice(0, 200));
+
+    // La barra tiene que contarlo como dura.
+    const barra = (await p.textContent('.fija')).replace(/\s+/g, ' ');
+    if (!/duras/.test(barra)) throw new Error('la barra no cuenta duras: ' + barra);
+
+    /* Capturar UNO ya no desbloquea —ése era justo el agujero de Albuquerque—
+     * pero sí baja la cuenta y el renglón entra como Viaje.
+     *
+     * ⚠️ `textContent` NO ve el valor de un `<input>`, y la descripción de una
+     * partida es un campo, no texto: se busca por `.value`. */
+    const ruta = await p.evaluate(() => {
+      const d = [...document.querySelectorAll('[data-cel$=":descripcion"]')]
+        .find(x => /^Vuelos$/i.test(x.value));
+      return d ? d.dataset.cel.replace(/descripcion$/, '') : null;
+    });
+    if (!ruta) throw new Error('el renglón de Vuelos no salió solo');
+    await p.fill('[data-cel="' + ruta + 'qty"]', '2');
+    await p.dispatchEvent('[data-cel="' + ruta + 'qty"]', 'change');
+    await p.fill('[data-cel="' + ruta + 'pu"]', '9000');
+    await p.dispatchEvent('[data-cel="' + ruta + 'pu"]', 'change');
+    await p.waitForTimeout(800);
+
+    const r = await p.evaluate((rt) => {
+      const tipo = document.querySelector('[data-cel="' + rt + 'tipo"]');
+      const av = document.querySelector('.viaje-blk .aviso.bad');
+      return { tipo: tipo ? tipo.value : null,
+               aviso: av ? av.textContent.replace(/\s+/g, ' ') : null };
+    }, ruta);
+    if (r.tipo !== 'Viaje') throw new Error('el renglón no es de tipo Viaje: ' + r.tipo);
+    if (!r.aviso) throw new Error('con UN concepto capturado ya dejó de avisar: es el caso Albuquerque');
+    if (!/Faltan 4 conceptos/i.test(r.aviso))
+      throw new Error('no bajó la cuenta a 4: ' + r.aviso);
+    console.log('    bloquea, dice dónde y cuántos · un vuelo capturado baja a 4, NO desbloquea');
+  });
+
+  await paso('V1.26 · una cotización de Monterrey no pide nada de viaje', async () => {
+    await ir('#/m/M-1041');
+    await p.click('[data-frec*="Monterrey"]');
+    await p.waitForTimeout(500);
+    const ver = (await p.textContent('.lugar-veredicto')).replace(/\s+/g, ' ');
+    if (!/en la sede/i.test(ver)) throw new Error('no dice que está en la sede: ' + ver);
+    if (await p.$('.viaje-cfg')) throw new Error('enseña la configuración de viaje en una local');
+    await hoja('Suministro');
+    await p.waitForTimeout(500);
+    if (await p.$('.viaje-blk'))
+      throw new Error('enseña el bloque de viaje en una cotización de Monterrey');
+    console.log('    Monterrey: sin bloque de viaje, sin recargos, sin bloqueo');
+  });
+
+  await paso('V1.26 · el atajo a Kiwi abre fuera, con origen y destino', async () => {
+    /* NO se incrusta, y no es capricho: Kiwi manda
+     * `frame-ancestors 'self' kiwi.com *.kiwi.com …` y nuestro dominio no está,
+     * así que un iframe saldría EN BLANCO. Medido contra el sitio en vivo el
+     * 2026-09-10. Un recuadro vacío se lee como aplicación rota. */
+    await ir('#/m/M-1041');
+    await p.click('[data-frec*="San Antonio"]');
+    await p.waitForTimeout(500);
+    await hoja('Suministro');
+    await p.waitForTimeout(500);
+    const a = await p.evaluate(() => {
+      const e = document.querySelector('.chip-viaje.kiwi');
+      return e ? { href: e.getAttribute('href'), target: e.getAttribute('target'),
+                   rel: e.getAttribute('rel'), txt: e.textContent.trim() } : null;
+    });
+    if (!a) throw new Error('no hay atajo a Kiwi');
+    if (!/^https:\/\/www\.kiwi\.com\//.test(a.href)) throw new Error('apunta a: ' + a.href);
+    if (a.href.indexOf('monterrey') < 0) throw new Error('sin origen: ' + a.href);
+    if (a.href.indexOf('san-antonio') < 0) throw new Error('sin destino: ' + a.href);
+    if (a.target !== '_blank') throw new Error('no abre en pestaña nueva');
+    if (!/noopener/.test(a.rel || '')) throw new Error('sin rel=noopener');
+    if (await p.$('iframe[src*="kiwi"]'))
+      throw new Error('hay un iframe de Kiwi: Kiwi lo prohíbe y saldría en blanco');
+    console.log('    ' + a.href.slice(0, 92));
+  });
+
+  await paso('V1.26 · el precio de un vuelo dice de cuándo es', async () => {
+    await ir('#/m/M-1041');
+    await p.click('[data-frec*="San Antonio"]');
+    await p.waitForTimeout(500);
+    await hoja('Suministro');
+    /* V1.27 · ya no hay botón «+ Vuelos»: el renglón sale solo, en cero. Lo que
+     * esta prueba mide sigue igual —que el precio diga de cuándo es— sólo que
+     * ahora empieza desde un renglón que ya está ahí. */
+    await p.waitForTimeout(700);
+
+    // Sin precio todavía no pregunta nada: no hay número que fechar.
+    if (await p.$('[data-consul]'))
+      throw new Error('pide la fecha de consulta antes de que haya precio');
+
+    /* Se localiza el renglón por el VALOR del campo de descripción, no por el
+     * texto de la fila: un `<input>` no tiene texto. */
+    const ruta = await p.evaluate(() => {
+      const d = [...document.querySelectorAll('[data-cel$=":descripcion"]')]
+        .find(x => /Vuelos/i.test(x.value));
+      return d ? d.dataset.cel.replace(/descripcion$/, 'pu') : null;
+    });
+    if (!ruta) throw new Error('no se encontró el renglón de vuelos recién agregado');
+    await p.fill('[data-cel="' + ruta + '"]', '18500');
+    await p.dispatchEvent('[data-cel="' + ruta + '"]', 'change');
+    await p.waitForTimeout(700);
+
+    const b = await p.$('[data-consul]');
+    if (!b) throw new Error('con precio puesto, no ofrece anotar de cuándo es');
+    if (!/de cu[áa]ndo es/i.test(await b.textContent()))
+      throw new Error('el botón no dice para qué sirve: ' + (await b.textContent()));
+    await b.click();
+    await p.waitForTimeout(600);
+    const t = (await p.textContent('.consul-fecha')).replace(/\s+/g, ' ');
+    if (!/consultado/.test(t)) throw new Error('no quedó la fecha: ' + t);
+    if (!/hoy/.test(t)) throw new Error('no dice que es de hoy: ' + t);
+    console.log('    «' + t.trim() + '» — una cotización se manda semanas antes de volar');
+  });
+
+  await paso('V1.26 · «¿está todo lo mío en el servidor?» contesta CON HORA', async () => {
+    /* El renglón de la tarea D no tenía ninguna prueba, y mirándolo apareció un
+     * defecto de los que no se ven en el diff: `toLocaleTimeString('es-MX')`
+     * devuelve «6:06 p.m.» —con punto— así que la frase terminaba en «p.m..».
+     * Es el MISMO bug que ya se había arreglado en la franja de préstamo. */
+    const q = await paginaConServidor([
+      { id: '7000c433-0000-4000-8000-0000000c0mp1', id_local: 'M-MIO-COMP',
+        nombre: 'Rack de tuberías · planta 2', folio: 41, folio_txt: 'COT-0041',
+        dueno: 'esteban.delacruz', dueno_nombre: 'Jesus Esteban De La Cruz' }
+    ]);
+    try {
+      await q.waitForTimeout(1600);
+      const t = (await q.$eval('.comprob', e => e.className + '||' + e.textContent)
+                        .catch(() => null));
+      if (!t) throw new Error('tras bajar del servidor no se pinta la comprobación');
+      const [clase, texto] = t.split('||');
+      const limpio = texto.replace(/\s+/g, ' ').trim();
+
+      if (clase.indexOf('bien') < 0)
+        throw new Error('lo bajado del servidor no se cuenta como estando allá: ' + limpio);
+      // CON HORA: una comprobación sin fecha es una promesa sin plazo.
+      if (!/\d{1,2}:\d{2}/.test(limpio))
+        throw new Error('contesta sin hora: ' + limpio);
+      if (/\.\./.test(limpio))
+        throw new Error('el punto sale duplicado («p.m..»): ' + limpio);
+      console.log('    «' + limpio + '»');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.26 · sin bajada NO dice «todo bien» ni «falta algo»: dice que no sabe', async () => {
+    /* Los tres estados son distintos a propósito (§20 #12b): no haber podido
+     * preguntar no es una respuesta buena ni mala, y confundirlo con
+     * cualquiera de las dos es exactamente el modo de falla que perseguimos. */
+    const q = await b.newPage({ viewport: { width: 380, height: 780 } });
+    await sembrarGeo(q);
+    await sembrarMachotes(q);
+    await q.addInitScript(() => {
+      try {
+        localStorage.setItem('fts_suite_session', JSON.stringify({
+          token: 'prueba.prueba.prueba', actor: 'esteban.delacruz',
+          nombre: 'Jesus Esteban De La Cruz', empleado_id: 32,
+          scopes: ['comercial:read'],
+          exp: Math.floor(Date.now() / 1000) + 3600, debe_cambiar_password: false }));
+        localStorage.removeItem('fts_machote_sync_v1');
+        // Un machote PROPIO: los de ejemplo no cuentan, no son de nadie.
+        localStorage.setItem('fts_machote_v1', JSON.stringify({ machotes: [
+          { id: 'M-1757500000000', nombre: 'Rack de tuberías · planta 2',
+            cliente: 'Nalco de México', dueno: 'esteban.delacruz',
+            dueno_nombre: 'Jesus Esteban De La Cruz', estado: 'borrador',
+            moneda: 'MXN', tc: 18.4, secciones: [] }
+        ] }));
+      } catch (e) {}
+      const orig = window.fetch;
+      window.fetch = function (u) {
+        // El servidor NO contesta: es el caso de «todavía no se sabe».
+        if (String(u).indexOf('/webhook/comercial/') >= 0) return new Promise(function () {});
+        return orig.apply(this, arguments);
+      };
+    });
+    try {
+      await q.goto(BASE); await q.waitForTimeout(1600);
+      const t = await q.$eval('.comprob', e => e.className + '||' + e.textContent)
+                       .catch(() => null);
+      if (!t) throw new Error('sin bajada no dice nada de lo propio');
+      const [clase, texto] = t.split('||');
+      const limpio = texto.replace(/\s+/g, ' ').trim();
+      if (clase.indexOf('no-sabe') < 0)
+        throw new Error('sin bajada contesta como si supiera: ' + clase + ' · ' + limpio);
+      if (/todas? est/i.test(limpio) || /\bde \d/.test(limpio))
+        throw new Error('afirma un conteo que no pudo comprobar: ' + limpio);
+      if (!/guardado en este navegador/i.test(limpio))
+        throw new Error('no dice dónde quedó lo capturado: ' + limpio);
+      console.log('    «' + limpio + '»');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.27 · H · la pantalla DETECTA que corre media versión y lo dice', async () => {
+    /* El caso que motivó todo: con `max-age=600` y sin versión en la URL, un
+     * navegador puede acabar con `app.js` de una versión y `calc.js` de otra.
+     * Aquí se fabrica exactamente eso —se le cambia la versión al motor antes
+     * de que arranque la pantalla— y se exige que lo DIGA en vez de calcular
+     * con un motor que no es el que espera. */
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    await sembrarGeo(q);
+    await sembrarMachotes(q);
+    await q.addInitScript(() => {
+      try {
+        localStorage.setItem('fts_suite_session', JSON.stringify({
+          token: 'prueba.prueba.prueba', actor: 'esteban.delacruz',
+          nombre: 'Jesus Esteban De La Cruz', empleado_id: 32,
+          scopes: ['comercial:read'],
+          exp: Math.floor(Date.now() / 1000) + 3600, debe_cambiar_password: false }));
+      } catch (e) {}
+      const orig = window.fetch;
+      window.fetch = function (u) {
+        if (String(u).indexOf('/webhook/comercial/') >= 0) return new Promise(function () {});
+        return orig.apply(this, arguments);
+      };
+      /* El motor se carga ANTES que la pantalla. En cuanto exista, se le
+       * desfasa la versión: es lo mismo que habría hecho un caché con dos
+       * archivos de distinta edad. */
+      let real = null;
+      Object.defineProperty(window, 'MachoteCalc', {
+        configurable: true,
+        get: function () { return real; },
+        set: function (v) { real = v; if (real) real.VERSION = 'V1.25'; }
+      });
+    });
+    try {
+      await q.goto(BASE); await q.waitForTimeout(1200);
+
+      const aviso = await q.$('#avMezcla');
+      if (!aviso) throw new Error('corrió media versión y no dijo nada');
+      const t = (await aviso.textContent()).replace(/\s+/g, ' ');
+      if (!/dos versiones a la vez/i.test(t)) throw new Error('el aviso no dice qué pasa: ' + t);
+      if (t.indexOf('calc.js') < 0) throw new Error('no dice QUÉ está desfasado: ' + t);
+      if (t.indexOf('V1.25') < 0) throw new Error('no dice con qué versión: ' + t);
+      if (!(await q.$('#mzRecargar'))) throw new Error('no ofrece la única acción que sirve');
+
+      // Y el pie lo marca, porque es donde la gente mira la versión.
+      const pie = await q.$eval('#tbV', e => e.className + '||' + e.textContent);
+      if (pie.indexOf('mezcla') < 0) throw new Error('el pie no marca la mezcla: ' + pie);
+      console.log('    «' + t.slice(0, 120) + '…»');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.27 · H · sin mezcla no molesta, y el pie dice la versión de version.json', async () => {
+    /* La otra mitad: el aviso NO puede salir cuando todo está en orden, o se
+     * vuelve ruido que se aprende a ignorar. Y la versión que se ve tiene que
+     * ser la misma que declara `version.json` — son dos archivos distintos y
+     * separarlos es cómo se llega a un pie que miente. */
+    await ir('#/');
+    if (await p.$('#avMezcla')) throw new Error('avisa de mezcla sin haberla');
+    const ver = JSON.parse(require('fs').readFileSync(
+      path.resolve(__dirname, '..', 'version.json'), 'utf8'));
+    const pie = (await p.textContent('#tbV')).trim();
+    if (pie !== ver.version) throw new Error('el pie dice "' + pie + '" y version.json ' + ver.version);
+    if (ver.build !== ver.version)
+      throw new Error('version.json: build ' + ver.build + ' ≠ version ' + ver.version);
+    // Y el contrato con el vigilante del kiosko: publica lo que corre.
+    const build = await p.evaluate(() => window.MACHOTE_BUILD);
+    if (build !== ver.version) throw new Error('MACHOTE_BUILD ' + build + ' ≠ ' + ver.version);
+  });
+
+  await paso('V1.27 · H · los scripts se piden CON la versión en la URL', async () => {
+    /* Sin esto, cada archivo se cachea por su cuenta y la mezcla de arriba es
+     * posible de verdad. Con la versión en la URL, un index.html dado pide
+     * siempre un juego coherente. */
+    const malos = await p.evaluate(() => {
+      const out = [];
+      [].slice.call(document.querySelectorAll('script[src], link[rel="stylesheet"]')).forEach(e => {
+        const u = e.getAttribute('src') || e.getAttribute('href') || '';
+        // Sólo los archivos DEL MÓDULO: los compartidos llevan su propio ciclo.
+        if (!/^(js|css)\//.test(u)) return;
+        if (u.indexOf('?v=') < 0) out.push(u);
+      });
+      return out;
+    });
+    if (malos.length) throw new Error('sin versión en la URL: ' + malos.join(', '));
+  });
+
+  await paso('V1.27 · E · Nuevo León NO pide viáticos, y el estado de al lado SÍ', async () => {
+    await ir('#/m/M-1041');
+    /* ⚠️ Aquí había un `selectOption('#lugPais', …).catch(() => {})`. Ese id no
+     * existe —los desplegables se nombran con `data-cel`— y el `.catch` vacío
+     * se tragaba el fallo: la prueba pasaba midiendo nada. Es exactamente el
+     * modo de falla de §20 #11. Ahora se comprueba que el desplegable EXISTE
+     * y que trae los tres países donde FTS ejecuta. */
+    const opciones = await p.$$eval('[data-cel="pais"] option', els =>
+      els.map(e => e.textContent.trim()));
+    if (opciones.length < 200)
+      throw new Error('el catálogo de países no cargó: ' + opciones.length + ' opciones');
+    ['México', 'Estados Unidos', 'Brasil'].forEach(x => {
+      if (opciones.indexOf(x) < 0) throw new Error('falta ' + x + ' en el desplegable');
+    });
+
+    const estado = async (region, ciudad) => p.evaluate(([r, c]) => {
+      const C = window.MachoteCalc;
+      return C.esForaneo({ pais: 'MX', region: r, ciudad: c });
+    }, [region, ciudad]);
+
+    if (await estado('Nuevo León', 'Santa Catarina'))
+      throw new Error('Santa Catarina se leyó como foránea');
+    if (!(await estado('Coahuila', 'Saltillo')))
+      throw new Error('Saltillo NO se leyó como foránea');
+
+    // Y en pantalla: una chip de São Paulo deja la cotización en foránea.
+    const sp = await p.$('[data-frec*="São Paulo"]');
+    if (!sp) throw new Error('Brasil no salió en las ciudades frecuentes');
+    await sp.click(); await p.waitForTimeout(600);
+    const ver = await p.textContent('.lugar-veredicto');
+    if (!/fuera|foránea/i.test(ver)) throw new Error('São Paulo no se marcó como foránea: ' + ver);
+    console.log('    «' + ver.replace(/\s+/g, ' ').trim().slice(0, 90) + '»');
+  });
+
+  await paso('V1.27 · E · cambiar de país limpia el estado y la ciudad', async () => {
+    /* No es hipotético: en las pruebas de Montalvo del 10-sep hay versiones
+     * guardadas con «Estados Unidos · Nuevo León · Monterrey» (COT-0013 v7) y
+     * «México · Ciudad de México · Monterrey» (v16). Eso viaja al PDF del
+     * cliente — y desde V1.27 el ESTADO decide si hay viáticos, así que un
+     * estado que no es de ese país decide mal. */
+    await ir('#/m/M-1041');
+    await p.click('[data-frec*="Monterrey"]');
+    await p.waitForTimeout(600);
+    const antes = await p.evaluate(() => ({
+      pais: document.querySelector('[data-cel="pais"]').value,
+      region: (document.querySelector('[data-cel="region"]') || {}).value || '',
+      ciudad: (document.querySelector('[data-cel="ciudad"]') || {}).value || '' }));
+    if (antes.region !== 'Nuevo León') throw new Error('no partió de Nuevo León: ' + JSON.stringify(antes));
+
+    await p.selectOption('[data-cel="pais"]', 'US');
+    await p.waitForTimeout(700);
+    const desp = await p.evaluate(() => ({
+      pais: document.querySelector('[data-cel="pais"]').value,
+      region: (document.querySelector('[data-cel="region"]') || {}).value || '',
+      ciudad: (document.querySelector('[data-cel="ciudad"]') || {}).value || '' }));
+    if (desp.pais !== 'US') throw new Error('no cambió el país: ' + JSON.stringify(desp));
+    if (desp.region) throw new Error('se quedó con un estado de otro país: ' + JSON.stringify(desp));
+    if (desp.ciudad) throw new Error('se quedó con la ciudad de otro país: ' + JSON.stringify(desp));
+    console.log('    MX/Nuevo León/Monterrey → US/(vacío)/(vacío)');
+  });
+
+  await paso('V1.27 · G · los cinco conceptos salen SOLOS, en cero, y bloquean hasta decidirlos', async () => {
+    await ir('#/m/M-1041');
+    await p.click('[data-frec*="San Antonio"]');
+    await p.waitForTimeout(500);
+    await hoja('Suministro');
+    await p.waitForTimeout(600);
+
+    const etiquetas = await p.$$eval('.viaje-tbl td.rotulo', els => els.map(e => e.textContent.trim()));
+    const ESPERADAS = ['Vuelos', 'Hotel', 'Viáticos', 'Taxis y traslados', 'Gasolina'];
+    const faltan = ESPERADAS.filter(x => etiquetas.indexOf(x) < 0);
+    if (faltan.length) throw new Error('no salieron solos: ' + faltan.join(', '));
+
+    // Todos sin decidir, y el bloque lo dice con el número.
+    const aviso = (await p.textContent('.viaje-blk .aviso')).replace(/\s+/g, ' ');
+    if (!/Faltan 5 conceptos por decidir/i.test(aviso))
+      throw new Error('no dice cuántos faltan: ' + aviso);
+
+    /* Marcar «no se ocupa» los resuelve, sin inventar importes. Se recorren
+     * TODAS las hojas de sección: el viaje se decide donde está el trabajo, y
+     * este machote trae dos. */
+    const hojas = await p.$$eval('.pestana', els =>
+      els.map(e => e.textContent.trim()).filter(t => !/DESGLOSE|^\+$/.test(t)));
+    for (const h of hojas) {
+      await hoja(h);
+      await p.waitForTimeout(400);
+      const botones = await p.$$('[data-cero]');
+      for (let i = 0; i < botones.length; i++) {
+        const bs = await p.$$('[data-cero]');
+        if (!bs[i]) break;
+        const yaEsta = await bs[i].evaluate(e => e.className.indexOf('on') >= 0);
+        if (!yaEsta) { await bs[i].click(); await p.waitForTimeout(240); }
+      }
+    }
+    await hoja(hojas[0]);
+    await p.waitForTimeout(400);
+    const ok = (await p.textContent('.viaje-blk .aviso')).replace(/\s+/g, ' ');
+    if (!/cinco conceptos están decididos/i.test(ok)) throw new Error('no se dio por resuelto: ' + ok);
+
+    const r = await p.evaluate(() => {
+      const C = window.MachoteCalc;
+      const m = JSON.parse(localStorage.getItem('fts_machote_v1')).machotes.find(x => x.id === 'M-1041');
+      const c = C.calcular(m);
+      return { porResolver: c.viajePorResolver, costoViaje: c.costoViaje,
+               duras: window.MachoteReglas.revisar(m).duras.map(h => h.id) };
+    });
+    if (r.porResolver !== 0) throw new Error('quedan ' + r.porResolver + ' sin resolver');
+    if (r.costoViaje !== 0) throw new Error('marcar en cero inventó un costo: ' + r.costoViaje);
+    if (r.duras.indexOf('viaje-sin-resolver') >= 0) throw new Error('sigue bloqueando');
+    console.log('    cinco puestos solos · «' + ok.trim().slice(0, 60) + '»');
+  });
+
+  await paso('V1.27 · A · el aviso de conflicto dice QUIÉN guardó', async () => {
+    /* El dato existe desde siempre en `machote_version.autor` y sale del token
+     * verificado. Decir «otra persona» cuando el sistema sabe el nombre
+     * convierte algo accionable en un misterio. */
+    const q = await paginaConServidor([
+      { id: '7000c433-0000-4000-8000-00000000cf01', id_local: 'M-CHOQUE',
+        nombre: 'Bombas para Clarios', folio: 41, folio_txt: 'COT-0041',
+        dueno: 'esteban.delacruz', dueno_nombre: 'Jesus Esteban De La Cruz' }
+    ], { guardar: { ok: false, error: 'CONFLICTO_DE_VERSION',
+                    mensaje: 'Ricardo Alán Hernández González guardó este machote mientras lo editabas. Va en la versión 7.',
+                    autor: 'ricardo.hernandez', autor_nombre: 'Ricardo Alán Hernández González',
+                    version_actual: 7, machote_id: '7000c433-0000-4000-8000-00000000cf01',
+                    folio: 41, folio_txt: 'COT-0041' } });
+    try {
+      await q.waitForTimeout(1400);
+      await q.evaluate(() => { location.hash = '#/m/M-CHOQUE'; });
+      await q.waitForTimeout(700);
+      const cel = await celdaEscribible(q);
+      if (!cel) throw new Error('no se pudo escribir para provocar el guardado');
+      await cel.fill('PROVOCA EL CHOQUE');
+      await q.waitForTimeout(1800);
+
+      const av = await q.$('#avPend');
+      if (!av) throw new Error('el choque no avisó nada');
+      const t = (await av.textContent()).replace(/\s+/g, ' ');
+      if (t.indexOf('Ricardo Alán Hernández González') < 0)
+        throw new Error('no dice quién guardó: ' + t);
+      if (/Otra persona/i.test(t)) throw new Error('sigue diciendo «otra persona»: ' + t);
+      if (t.indexOf('versión 7') < 0) throw new Error('no dice en qué versión va: ' + t);
+      if (!/NO se perdió/i.test(t)) throw new Error('ya no dice que el trabajo está a salvo: ' + t);
+
+      /* Y la otra mitad: el rechazo ENSEÑA. La libreta se queda con el folio y
+       * la versión que no tenía, que es lo que rompía el círculo de «sin folio
+       * y con conflicto» que reportó Montalvo. */
+      const libro = await q.evaluate(() => {
+        const s = JSON.parse(localStorage.getItem('fts_machote_sync_v1') || '{}');
+        return s['M-CHOQUE'] || null;
+      });
+      if (!libro) throw new Error('el rechazo no dejó nada anotado');
+      if (libro.folio_txt !== 'COT-0041')
+        throw new Error('no anotó el folio que le faltaba: ' + JSON.stringify(libro));
+      if (Number(libro.version) !== 7)
+        throw new Error('no anotó la versión del servidor: ' + JSON.stringify(libro));
+      console.log('    «' + t.slice(0, 110) + '…» · libreta con ' + libro.folio_txt);
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.27 · B · los ejemplos YA NO salen al entrar', async () => {
+    /* Tres veces acabaron en producción. Un navegador nuevo arranca vacío y lo
+     * dice; lo que ya esté guardado y TOCADO no se borra — eso es trabajo de
+     * alguien. */
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    await sembrarGeo(q);
+    await q.addInitScript(() => {
+      try {
+        localStorage.clear();
+        localStorage.setItem('fts_suite_session', JSON.stringify({
+          token: 'prueba.prueba.prueba', actor: 'zz.prueba', nombre: 'ZZ Prueba',
+          empleado_id: null, scopes: ['comercial:read'],
+          exp: Math.floor(Date.now() / 1000) + 3600, debe_cambiar_password: false }));
+      } catch (e) {}
+      const orig = window.fetch;
+      window.fetch = function (u) {
+        if (String(u).indexOf('/webhook/comercial/') >= 0) return new Promise(function () {});
+        return orig.apply(this, arguments);
+      };
+    });
+    try {
+      await q.goto(BASE); await q.waitForTimeout(1100);
+      const filas = await q.$$eval('table.lista tbody tr', e => e.length);
+      if (filas !== 0) throw new Error('salieron ' + filas + ' cotizaciones de la nada');
+      const vacio = (await q.textContent('.tw')).replace(/\s+/g, ' ');
+      if (!/Todav[ií]a no hay cotizaciones/i.test(vacio))
+        throw new Error('la lista vacía no se explica: ' + vacio);
+      console.log('    «' + vacio.trim().slice(0, 70) + '»');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.27 · B · pero un ejemplo TOCADO es trabajo de alguien y NO se borra', async () => {
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    await sembrarGeo(q);
+    await q.addInitScript(() => {
+      try {
+        localStorage.clear();
+        localStorage.setItem('fts_suite_session', JSON.stringify({
+          token: 'prueba.prueba.prueba', actor: 'zz.prueba', nombre: 'ZZ Prueba',
+          empleado_id: null, scopes: ['comercial:read'],
+          exp: Math.floor(Date.now() / 1000) + 3600, debe_cambiar_password: false }));
+        // Uno SIN tocar (marca intacta) y otro TOCADO (sin marca).
+        localStorage.setItem('fts_machote_v1', JSON.stringify({ v: 1,
+          guardado_at: new Date().toISOString(), handoff: {}, machotes: [
+            { _demo: true, id: 'M-1041', nombre: 'Ejemplo sin tocar', estado: 'borrador',
+              moneda: 'MXN', secciones: [] },
+            { id: 'M-1043', nombre: 'Cooling system for maintenance offices',
+              estado: 'borrador', moneda: 'MXN', secciones: [] }
+          ] }));
+      } catch (e) {}
+      const orig = window.fetch;
+      window.fetch = function (u) {
+        if (String(u).indexOf('/webhook/comercial/') >= 0) return new Promise(function () {});
+        return orig.apply(this, arguments);
+      };
+    });
+    try {
+      await q.goto(BASE); await q.waitForTimeout(1100);
+      const nombres = await q.$$eval('table.lista tbody tr', els =>
+        els.map(e => e.textContent.replace(/\s+/g, ' ')));
+      if (nombres.some(x => /Ejemplo sin tocar/.test(x)))
+        throw new Error('el ejemplo intacto sigue en la lista');
+      if (!nombres.some(x => /Cooling system/.test(x)))
+        throw new Error('BORRÓ trabajo de alguien: el ejemplo tocado desapareció');
+      // Y no reaparece al recargar.
+      await q.reload(); await q.waitForTimeout(900);
+      const n2 = await q.$$eval('table.lista tbody tr', e => e.length);
+      if (n2 !== 1) throw new Error('tras recargar hay ' + n2 + ' renglones, no 1');
+      console.log('    el intacto se va, el tocado se queda');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.27 · C · el dueño renombra, y el cambio va al historial', async () => {
+    await ir('#/m/M-1041');
+    const campo = await p.$('[data-nombre]');
+    if (!campo) throw new Error('el nombre no se puede editar');
+    await campo.fill('Paso de gato · planta 2');
+    await campo.dispatchEvent('change');
+    await p.waitForTimeout(900);
+
+    const r = await p.evaluate(() => {
+      const m = JSON.parse(localStorage.getItem('fts_machote_v1')).machotes.find(x => x.id === 'M-1041');
+      return { nombre: m.nombre, cab: (document.querySelector('.cab-nombre') || {}).value || null };
+    });
+    if (r.nombre !== 'Paso de gato · planta 2') throw new Error('no se guardó: ' + r.nombre);
+    if (r.cab !== 'Paso de gato · planta 2') throw new Error('la pantalla no lo refleja: ' + r.cab);
+
+    /* Vacío NO: un machote sin nombre no se puede nombrar por teléfono.
+     * Ojo: el `render()` del renombrado re-crea el campo, así que el handle
+     * anterior quedó suelto — se vuelve a pedir. */
+    const campo2 = await p.$('[data-nombre]');
+    if (!campo2) throw new Error('el campo desapareció tras renombrar');
+    await campo2.fill('');
+    await campo2.dispatchEvent('change');
+    await p.waitForTimeout(500);
+    const tras = await p.evaluate(() => JSON.parse(localStorage.getItem('fts_machote_v1'))
+      .machotes.find(x => x.id === 'M-1041').nombre);
+    if (!tras) throw new Error('dejó el nombre vacío');
+    console.log('    renombrada a «' + r.nombre + '» · el vacío se rechaza');
+  });
+
+
+  /* ══ V1.28 · EL RECARGO ES DE LA SECCIÓN, Y ES DE ESTADOS UNIDOS ════════
+   *
+   * Dos reglas que se leían como una sola. Montalvo entendió que el recargo
+   * dependía de VIAJAR y propuso extenderlo fuera de Monterrey; estaban en la
+   * misma tabla, bajo el mismo título. Estas pruebas afirman que ya no. */
+
+  await paso('V1.28 · Ciudad Juárez pide viaje y NO ofrece el recargo; Dallas pide las dos', async () => {
+    await ir('#/m/M-1041');
+    // Juárez: foránea de verdad, y no es Estados Unidos.
+    await p.selectOption('[data-cel="pais"]', 'MX');
+    await p.dispatchEvent('[data-cel="pais"]', 'change');
+    await p.waitForTimeout(400);
+    /* ⚠️ `region` es un `<select>` cuando el país tiene catálogo —México y
+     * Estados Unidos lo tienen— y un campo de texto para los demás. `fill`
+     * revienta contra un `<select>`, así que se mira QUÉ es antes de escribir.
+     * Es el mismo error de V1.27 con `#lugPais`: inventar el selector en vez
+     * de mirar la pantalla. */
+    const escribir = async (campo, valor) => {
+      const sel = '[data-cel="' + campo + '"]';
+      const tag = await p.$eval(sel, e => e.tagName);
+      if (tag === 'SELECT') await p.selectOption(sel, { label: valor });
+      else await p.fill(sel, valor);
+      await p.dispatchEvent(sel, 'change');
+    };
+    await escribir('region', 'Chihuahua');
+    await p.waitForTimeout(300);
+    await escribir('ciudad', 'Ciudad Juárez');
+    await p.waitForTimeout(600);
+
+    const ver = (await p.textContent('.lugar-veredicto')).replace(/\s+/g, ' ');
+    if (!/foránea|fuera de Nuevo León/i.test(ver))
+      throw new Error('Juárez no se leyó como foránea: ' + ver);
+
+    await hoja('Suministro'); await p.waitForTimeout(600);
+    if (!(await p.$('.viaje-blk')))
+      throw new Error('Juárez es foránea y no salió el bloque de viaje');
+    if (await p.$('.rec-sec'))
+      throw new Error('OFRECE el recargo en Ciudad Juárez: es regla laboral de EUA, no de viajar');
+
+    // Dallas: las dos cosas. Las ciudades frecuentes viven en DESGLOSE, y
+    // venimos de la hoja de sección: hay que volver antes de tocarlas.
+    await hoja('DESGLOSE'); await p.waitForTimeout(400);
+    await p.click('[data-frec*="Dallas"]');
+    await p.waitForTimeout(600);
+    await hoja('Suministro'); await p.waitForTimeout(600);
+    if (!(await p.$('.viaje-blk'))) throw new Error('Dallas no pidió viaje');
+    const rec = await p.$('.rec-sec');
+    if (!rec) throw new Error('Dallas NO ofreció el recargo');
+    const t = (await p.textContent('.rec-sec')).replace(/\s+/g, ' ');
+    if (!/Estados Unidos/i.test(t)) throw new Error('el bloque no dice por qué aparece: ' + t.slice(0, 140));
+    console.log('    Juárez: viaje sí, recargo no · Dallas: las dos');
+  });
+
+  await paso('V1.28 · las dos reglas se leen por separado, no como una sola', async () => {
+    /* El texto es el encargo, no un detalle: de leerlas juntas salió la
+     * propuesta de extender el recargo a todo lo foráneo. */
+    await ir('#/m/M-1041');
+    await p.click('[data-frec*="Dallas"]');
+    await p.waitForTimeout(600);
+    const t = (await p.textContent('.viaje-reglas')).replace(/\s+/g, ' ');
+    if (!/dos reglas distintas/i.test(t)) throw new Error('no las separa: ' + t.slice(0, 140));
+    if (!/fuera de Nuevo León/i.test(t))
+      throw new Error('no dice de dónde salen los gastos de viaje: ' + t.slice(0, 200));
+    if (!/en Estados Unidos/i.test(t))
+      throw new Error('no dice de dónde sale el recargo: ' + t.slice(0, 200));
+    if (!/en cada sección/i.test(t))
+      throw new Error('no dice dónde se captura ahora: ' + t.slice(0, 240));
+    // Y la celda del machote se retiró: dos escritores del mismo número, no.
+    if (await p.$('[data-cel="viaje.recargo_fin_semana"]'))
+      throw new Error('sigue la celda del recargo a nivel machote: dos escritores');
+    console.log('    «' + t.slice(0, 100) + '…»');
+  });
+
+  await paso('V1.28 · cambiar el recargo en una sección NO toca a la otra', async () => {
+    await ir('#/m/M-1041');
+    await p.click('[data-frec*="Dallas"]');
+    await p.waitForTimeout(600);
+    await hoja('Suministro'); await p.waitForTimeout(500);
+
+    // Dos secciones. La segunda se agrega con el botón real de la pantalla.
+    const sid = await p.evaluate(() => {
+      const e = document.querySelector('.rec-sec [data-cel*=":fin_semana"]');
+      return e ? e.dataset.cel.split(':')[1] : null;
+    });
+    if (!sid) throw new Error('no se encontró la celda del recargo de la sección');
+
+    const antes = await p.inputValue('[data-cel="rec:' + sid + ':fin_semana"]');
+    if (Number(antes) !== 30) throw new Error('no arranca en 30%: ' + antes);
+
+    await p.fill('[data-cel="rec:' + sid + ':fin_semana"]', '50');
+    await p.dispatchEvent('[data-cel="rec:' + sid + ':fin_semana"]', 'change');
+    await p.waitForTimeout(900);
+
+    const g = await p.evaluate((id) => {
+      const m = JSON.parse(localStorage.getItem('fts_machote_v1')).machotes
+        .find(x => x.id === 'M-1041');
+      return {
+        secciones: m.secciones.map(s => ({ id: s.id, rec: s.recargos || null })),
+        machote: m.viaje ? m.viaje.recargo_fin_semana : undefined,
+        tocada: id
+      };
+    }, sid);
+
+    const laQueSeMovio = g.secciones.find(s => s.id === sid);
+    if (!laQueSeMovio || !laQueSeMovio.rec || laQueSeMovio.rec.fin_semana !== 0.5)
+      throw new Error('no se guardó en la sección: ' + JSON.stringify(laQueSeMovio));
+    const otras = g.secciones.filter(s => s.id !== sid);
+    if (!otras.length) throw new Error('el machote de prueba tiene UNA sola sección: no ejerce el caso');
+    otras.forEach(s => {
+      if (s.rec && s.rec.fin_semana !== undefined)
+        throw new Error('se propagó a la sección ' + s.id + ': ' + JSON.stringify(s.rec));
+    });
+    if (g.machote !== undefined)
+      throw new Error('se subió al machote: ' + g.machote);
+
+    // Y en pantalla: la marca de apartado aparece SÓLO donde se movió.
+    const marcas = await p.evaluate(() => {
+      const out = [];
+      document.querySelectorAll('.rec-sec').forEach(b => {
+        out.push({ apartado: b.classList.contains('apartado'),
+                   marca: !!b.querySelector('.rec-marca') });
+      });
+      return out;
+    });
+    if (!marcas.length || !marcas[0].apartado || !marcas[0].marca)
+      throw new Error('no se ve que se apartó: ' + JSON.stringify(marcas));
+    console.log('    sección ' + sid.slice(0, 12) + ' al 50% · ' + otras.length +
+                ' sección(es) intactas · el machote no se tocó');
+  });
+
+  await paso('V1.28 · un machote nuevo arranca en 30% aunque el anterior se haya movido', async () => {
+    /* El machote del paso anterior quedó con una sección al 50%. El siguiente
+     * NO hereda nada: el recargo es del tramo de trabajo, no del sistema. */
+    await ir('#/');
+    await p.waitForTimeout(300);
+    const nuevo = await p.$('[data-nuevo], #btnNuevo, .btn-nuevo');
+    if (nuevo) { await nuevo.click(); await p.waitForTimeout(700); }
+    else {
+      await p.evaluate(() => { location.hash = '#/nuevo'; });
+      await p.waitForTimeout(700);
+    }
+    const r = await p.evaluate(() => {
+      const C = window.MachoteCalc;
+      const m = C.machoteNuevo({ nombre: 'prueba V1.28' });
+      m.pais = 'US'; m.region = 'Texas'; m.ciudad = 'Dallas';
+      m.secciones.push(C.seccionNueva('SECCIÓN 2', 'MXN', C.MARGENES_PLANTILLA));
+      return {
+        propio: m.viaje.recargo_fin_semana,
+        porSeccion: m.secciones.map(s => C.recargosDe(m, s).fin_semana.pct),
+        apartados: m.secciones.map(s => C.recargosDe(m, s).fin_semana.apartado),
+        plantilla: C.RECARGOS_PLANTILLA.fin_semana
+      };
+    });
+    if (r.propio !== undefined && r.propio !== null)
+      throw new Error('el machote nuevo trae número propio: ' + r.propio);
+    if (r.porSeccion.some(x => x !== 0.30))
+      throw new Error('alguna sección no arrancó en 30%: ' + JSON.stringify(r.porSeccion));
+    if (r.apartados.some(Boolean))
+      throw new Error('un machote nuevo se marca como apartado: ' + JSON.stringify(r.apartados));
+    if (r.plantilla !== 0.30) throw new Error('el valor por defecto se movió: ' + r.plantilla);
+    console.log('    nuevo: 30% en sus ' + r.porSeccion.length + ' secciones, sin marcas');
+  });
+
+  await paso('V1.28 · los que YA existen: el recargo a nivel machote no se rompe', async () => {
+    /* Hay captura real de tres personas. Un machote de V1.27 lleva el número
+     * en `m.viaje` y tiene que valer EXACTAMENTE lo mismo — sin migrarlo, y
+     * sin que le caiga un valor inventado encima de lo que alguien decidió. */
+    await ir('#/m/M-1041');
+    const r = await p.evaluate(() => {
+      const C = window.MachoteCalc;
+      // Así se guardaba antes de V1.28: el recargo, del machote entero.
+      const m = C.machoteNuevo({ nombre: 'capturado en V1.27' });
+      m.pais = 'US'; m.region = 'Texas'; m.ciudad = 'Dallas';
+      m.viaje.recargo_fin_semana = 0.45;
+      m.secciones.push(C.seccionNueva('SECCIÓN 2', 'MXN', C.MARGENES_PLANTILLA));
+      m.secciones.forEach(s => {
+        const l = s.mo.find(x => x.rol === 'hrs_finde');
+        l.qty = 10; l.personas = 1; l.pu = 100;
+      });
+      const c = C.calcular(m);
+      return {
+        costos: c.secciones.map(s => s.costoMo),
+        origen: m.secciones.map(s => C.recargosDe(m, s).fin_semana.origen),
+        escritoEnSeccion: m.secciones.map(s => s.recargos === undefined),
+        sigueEnMachote: m.viaje.recargo_fin_semana
+      };
+    });
+    if (r.costos.some(x => Math.round(x) !== 1450))
+      throw new Error('los números cambiaron: ' + JSON.stringify(r.costos));
+    if (r.origen.some(x => x !== 'machote'))
+      throw new Error('no lee la capa del machote: ' + JSON.stringify(r.origen));
+    if (r.escritoEnSeccion.some(x => !x))
+      throw new Error('se le escribió un recargo inventado a la sección');
+    if (r.sigueEnMachote !== 0.45) throw new Error('le movieron el dato: ' + r.sigueEnMachote);
+    console.log('    45% del machote, respetado en sus 2 secciones · nada escrito encima');
+  });
+
+  await paso('V1.28 · mover el recargo queda DICHO en el historial, no sólo guardado', async () => {
+    /* El valor viaja dentro del documento, así que el historial lo guarda de
+     * todos modos. Lo que se afirma aquí es que la versión lo DIGA: un cambio
+     * que hay que salir a buscar comparando dos documentos es, en la práctica,
+     * un cambio que nadie encuentra — y éste mueve el margen.
+     *
+     * Se mide en EL CUERPO QUE SALE AL SERVIDOR, no en una variable interna
+     * de la pantalla: un motivo que se arma bien y no viaja no sirve de nada,
+     * y una prueba que mira el estado privado no distinguiría los dos casos. */
+    await ir('#/m/M-1041');
+    await p.click('[data-frec*="Dallas"]');
+    await p.waitForTimeout(600);
+    await hoja('Suministro'); await p.waitForTimeout(500);
+
+    const sid = await p.evaluate(() => {
+      const e = document.querySelector('.rec-sec [data-cel*=":fin_semana"]');
+      return e ? e.dataset.cel.split(':')[1] : null;
+    });
+    if (!sid) throw new Error('no salió el bloque del recargo');
+
+    await p.fill('[data-cel="rec:' + sid + ':fin_semana"]', '45');
+    await p.dispatchEvent('[data-cel="rec:' + sid + ':fin_semana"]', 'change');
+    await p.waitForTimeout(900);
+
+    /* El autoguardado real (500 ms) ya empujó: no se dispara nada a mano,
+     * porque lo que se quiere medir es lo que SALE por el camino de siempre. */
+    const r = await p.evaluate(() => {
+      const alm = JSON.parse(localStorage.getItem('fts_machote_v1'));
+      const m = alm.machotes.find(x => x.id === 'M-1041');
+      return { cuerpo: window.__ultimoGuardado || null,
+               enDocumento: (m.secciones.filter(s2 => s2.recargos)[0] || {}).recargos || null };
+    });
+
+    if (!r.enDocumento || r.enDocumento.fin_semana !== 0.45)
+      throw new Error('el 45% no quedó en el documento: ' + JSON.stringify(r.enDocumento));
+    if (!r.cuerpo) throw new Error('el autoguardado no empujó nada al servidor');
+    const motivo = r.cuerpo.motivo || '';
+    if (!/45%/.test(motivo) || !/30%/.test(motivo))
+      throw new Error('el motivo que viaja no dice de cuánto a cuánto: «' + motivo + '»');
+    if (!/recargo/i.test(motivo))
+      throw new Error('el motivo no dice de qué se trata: «' + motivo + '»');
+    console.log('    viaja al servidor: «' + motivo + '»');
+  });
+
+  await paso('V1.28 · la sección con el recargo no desborda a 380 ni a 1280', async () => {
+    /* ⚠️ Con DATOS QUE EJERCEN EL CASO, no los más fáciles de montar. La barra
+     * del precio quedó en 4 px durante semanas porque la fixture eran ejemplos
+     * y un ejemplo no se puede prestar: la prueba miraba una pantalla que
+     * nunca tenía los tres botones. Aquí eso significa un machote en Dallas,
+     * con horas de fin de semana capturadas y el recargo APARTADO — que es
+     * cuando el bloque lleva su marca, su nota y el borde, o sea cuando más
+     * ancho ocupa. */
+    for (const w of [380, 1280]) {
+      await p.setViewportSize({ width: w, height: 900 });
+      await ir('#/m/M-1041');
+      await p.click('[data-frec*="Dallas"]');
+      await p.waitForTimeout(600);
+      await hoja('Suministro'); await p.waitForTimeout(500);
+
+      const sid = await p.evaluate(() => {
+        const e = document.querySelector('.rec-sec [data-cel*=":fin_semana"]');
+        return e ? e.dataset.cel.split(':')[1] : null;
+      });
+      if (!sid) throw new Error(w + 'px · no salió el bloque del recargo');
+
+      // Horas de fin de semana capturadas + el recargo movido: el caso real.
+      await p.evaluate((id) => {
+        const set = (sel, val) => {
+          const e = document.querySelector(sel);
+          if (!e) return;
+          e.value = val;
+          e.dispatchEvent(new Event('change', { bubbles: true }));
+        };
+        const fila = [...document.querySelectorAll('[data-cel$=":qty"]')]
+          .find(x => /:mo:/.test(x.dataset.cel) &&
+                     /Horas en fin de semana/.test(x.closest('tr').textContent));
+        if (fila) {
+          const base = fila.dataset.cel.replace(/qty$/, '');
+          set('[data-cel="' + base + 'qty"]', '16');
+          set('[data-cel="' + base + 'pu"]', '120');
+        }
+        set('[data-cel="rec:' + id + ':fin_semana"]', '45');
+      }, sid);
+      await p.waitForTimeout(900);
+
+      const r = await p.evaluate(() => {
+        const b = document.querySelector('.rec-sec');
+        if (!b) return { falta: true };
+        const cel = b.querySelector('input[data-cel*=":fin_semana"]');
+        const cr = cel.getBoundingClientRect();
+        const marca = b.querySelector('.rec-marca');
+        // La tarifa efectiva, que es lo que el recargo mueve, se ve en la fila.
+        const efect = [...document.querySelectorAll('.rejilla .tiny.recargo')]
+          .map(e => e.textContent.replace(/\s+/g, ' ').trim());
+        return {
+          desbordeDoc: document.documentElement.scrollWidth > window.innerWidth + 1,
+          anchoCelda: Math.round(cr.width),
+          celdaVisible: cr.width > 40 && cr.height > 20,
+          apartado: b.classList.contains('apartado'),
+          marca: !!marca,
+          nota: (b.querySelector('.n-warn') || {}).textContent || '',
+          efect: efect,
+          alto: Math.round(b.getBoundingClientRect().height)
+        };
+      });
+      if (r.falta) throw new Error(w + 'px · desapareció el bloque del recargo');
+      if (r.desbordeDoc) throw new Error(w + 'px · la página desborda a lo ancho');
+      if (!r.celdaVisible)
+        throw new Error(w + 'px · la celda del recargo quedó en ' + r.anchoCelda + ' px');
+      if (!r.apartado || !r.marca)
+        throw new Error(w + 'px · el 45% no se ve como apartado del 30%');
+      if (!/30%/.test(r.nota))
+        throw new Error(w + 'px · la nota no dice de cuánto era el arranque: «' + r.nota + '»');
+      if (!r.efect.some(x => /\+45%/.test(x)))
+        throw new Error(w + 'px · la fila no muestra la tarifa con el 45%: ' + JSON.stringify(r.efect));
+      console.log('    ' + w + 'px · celda ' + r.anchoCelda + ' px · bloque ' + r.alto +
+                  ' px · fila «' + (r.efect.find(x => /\+45%/.test(x)) || '') + '»');
+    }
+    await p.setViewportSize({ width: 1280, height: 900 });
+  });
+
+
+  /* ══ V1.29 · B · LA LISTA ANUNCIA SU FILTRO ═══════════════════════════ */
+
+  await paso('V1.29 · B · la lista arranca en ACTIVOS y lo dice, sin filtro puesto', async () => {
+    await ir('#/');
+    await p.waitForTimeout(400);
+    const r = await p.evaluate(() => {
+      const pie = [...document.querySelectorAll('.tiny.nota')]
+        .map(e => e.textContent.replace(/\s+/g, ' ').trim())
+        .filter(t => /archivad/i.test(t))[0] || '';
+      return { pie: pie, puesto: !!document.querySelector('.filtro-puesto'),
+               estado: (document.querySelector('#fEstado') || {}).value,
+               persona: (document.querySelector('#fPersona') || {}).value };
+    });
+    if (r.estado !== '') throw new Error('arrancó filtrada por estado: ' + r.estado);
+    if (r.persona !== '') throw new Error('arrancó filtrada por persona: ' + r.persona);
+    if (r.puesto) throw new Error('anuncia un filtro que nadie puso');
+    if (!/archivad/i.test(r.pie))
+      throw new Error('no dice que los archivados no salen aquí: «' + r.pie + '»');
+    console.log('    «' + r.pie.slice(0, 96) + '»');
+  });
+
+  await paso('V1.29 · B · con un filtro puesto lo ANUNCIA aunque la lista NO esté vacía', async () => {
+    /* El caso que muerde no es la lista vacía —esa se nota— sino la lista
+     * CORTA: se ven cuatro de doce y nadie dice que hay un filtro. Antes esto
+     * sólo hablaba con la lista vacía. */
+    await ir('#/');
+    await p.waitForTimeout(300);
+    const total = await p.locator('.item[href^="#/m/"]').count();
+    await p.selectOption('#fEstado', 'revision');
+    await p.waitForTimeout(500);
+
+    const r = await p.evaluate(() => {
+      const b = document.querySelector('.filtro-puesto');
+      const cuenta = (document.querySelector('.cuenta') || {}).textContent || '';
+      return { hay: !!b, txt: b ? b.textContent.replace(/\s+/g, ' ').trim() : '',
+               cuenta: cuenta.replace(/\s+/g, ' ').trim(),
+               visibles: document.querySelectorAll('.item[href^="#/m/"]').length,
+               limpiar: !!document.querySelector('#limpiarFiltros') };
+    });
+    if (!r.visibles) throw new Error('el montaje no sirve: con ese filtro no quedó ninguna visible');
+    if (r.visibles === total) throw new Error('el montaje no sirve: el filtro no quitó ninguna');
+    if (!r.hay) throw new Error('NO anuncia el filtro con la lista corta: es el fallo que se arregla');
+    if (!/En revisión/i.test(r.txt)) throw new Error('no dice QUÉ filtro: ' + r.txt);
+    if (!r.limpiar) throw new Error('no ofrece quitarlo');
+
+    /* El conteo tiene que cuadrar con lo que se VE, no con el total. */
+    const m = r.cuenta.match(/^(\d+)\s+de\s+(\d+)/);
+    if (!m) throw new Error('el conteo no dice «X de Y» con filtro: «' + r.cuenta + '»');
+    if (Number(m[1]) !== r.visibles)
+      throw new Error('el conteo dice ' + m[1] + ' y se ven ' + r.visibles);
+    console.log('    «' + r.txt.slice(0, 80) + '» · conteo ' + r.cuenta + ' · visibles ' + r.visibles);
+
+    // Y «Ver todo» los quita.
+    await p.click('#limpiarFiltros'); await p.waitForTimeout(500);
+    const desp = await p.locator('.item[href^="#/m/"]').count();
+    if (desp !== total) throw new Error('«Ver todo» no devolvió todo: ' + desp + ' vs ' + total);
+  });
+
+  /* ══ V1.29 · A · LA VISTA DE DIRECCIÓN ════════════════════════════════ */
+
+  await paso('V1.29 · A · sin dirección, la vista de archivados NO enseña nada y lo explica', async () => {
+    /* Y NO se conforma con que la lista salga vacía: el endpoint contesta
+     * SOLO_DIRECCION y la pantalla lo dice. Una vista de archivados que
+     * enseñara los activos en silencio se leería como «no hay archivados». */
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    await sembrarGeo(q); await sembrarMachotes(q);
+    await q.addInitScript(() => {
+      try {
+        localStorage.setItem('fts_suite_session', JSON.stringify({
+          token: 'a.b.c', actor: 'zz.nodireccion', nombre: 'ZZ Sin dirección',
+          scopes: ['comercial:read'], exp: Math.floor(Date.now() / 1000) + 3600 }));
+      } catch (e) {}
+      const orig = window.fetch;
+      window.fetch = function (u, o) {
+        const s2 = String(u);
+        if (s2.indexOf('/comercial/machotes-leer') >= 0) {
+          let c = {}; try { c = JSON.parse((o && o.body) || '{}'); } catch (e) {}
+          if (c.archivados === true) {
+            window.__pidioArchivados = true;
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({
+              ok: false, error: 'SOLO_DIRECCION',
+              mensaje: 'La vista de archivados es de direccion.', machotes: null }) });
+          }
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({
+            ok: true, modo: 'lista', actor: 'zz.nodireccion', machotes: [], total: 0 }) });
+        }
+        return orig.apply(this, arguments);
+      };
+    });
+    try {
+      await q.goto(BASE); await q.waitForTimeout(400);
+      await q.evaluate(() => { location.hash = '#/archivados'; });
+      await q.waitForTimeout(900);
+      const txt = (await q.textContent('#vista')).replace(/\s+/g, ' ');
+      if (!/direcci/i.test(txt))
+        throw new Error('no explica que es de dirección: ' + txt.slice(0, 140));
+      if (/Archivó|Cuándo/.test(txt)) throw new Error('pintó la tabla de archivados sin permiso');
+      // Y el atajo no se le ofrece en la lista.
+      await q.evaluate(() => { location.hash = '#/'; }); await q.waitForTimeout(600);
+      if (await q.$('a[href="#/archivados"]'))
+        throw new Error('le ofrece el atajo a alguien sin dirección');
+      console.log('    «' + txt.trim().slice(0, 96) + '»');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.29 · A · con dirección se ven, con quién archivó y cuándo, y se devuelven', async () => {
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    await sembrarGeo(q); await sembrarMachotes(q);
+    await q.addInitScript(() => {
+      try {
+        localStorage.setItem('fts_suite_session', JSON.stringify({
+          token: 'a.b.c', actor: 'esteban.delacruz', nombre: 'Esteban De La Cruz',
+          scopes: ['comercial:read', 'comercial:admin'],
+          exp: Math.floor(Date.now() / 1000) + 3600 }));
+      } catch (e) {}
+      window.__desarchivados = [];
+      const orig = window.fetch;
+      window.fetch = function (u, o) {
+        const s2 = String(u);
+        let c = {}; try { c = JSON.parse((o && o.body) || '{}'); } catch (e) {}
+        if (s2.indexOf('/comercial/machotes-leer') >= 0 && c.archivados === true) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({
+            ok: true, modo: 'archivados', actor: 'esteban.delacruz', es_admin: true, total: 1,
+            machotes: [{ id: '11111111-2222-4333-8444-555555555555',
+              id_local: 'M-1043', folio: 11, folio_txt: 'COT-0011',
+              dueno: 'francisco.montalvo', dueno_nombre: 'Francisco Montalvo Ramirez',
+              versiones: 7, archivado: true,
+              archivado_at: '2026-09-13 18:20:00+00', archivado_por: 'francisco.montalvo',
+              documento: { nombre: 'Cooling system for maintenance offices' } }] }) });
+        }
+        if (s2.indexOf('/comercial/machotes-leer') >= 0) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({
+            ok: true, modo: 'lista', actor: 'esteban.delacruz', es_admin: true,
+            machotes: [], total: 0 }) });
+        }
+        if (s2.indexOf('/comercial/machote-archivar') >= 0) {
+          window.__desarchivados.push({ accion: c.accion, machote_id: c.machote_id });
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({
+            ok: true, hecho: true, accion: 'desarchivar', folio_txt: 'COT-0011', versiones: 7,
+            archivado: false,
+            mensaje: 'Devuelta a la lista. Conserva su folio COT-0011 y sus 7 version(es).' }) });
+        }
+        return orig.apply(this, arguments);
+      };
+    });
+    try {
+      await q.goto(BASE); await q.waitForTimeout(400);
+      await q.evaluate(() => { location.hash = '#/archivados'; });
+      await q.waitForTimeout(900);
+
+      const txt = (await q.textContent('#vista')).replace(/\s+/g, ' ');
+      for (const x of ['COT-0011', 'Francisco Montalvo', 'francisco.montalvo', 'Cooling system']) {
+        if (txt.indexOf(x) < 0) throw new Error('la vista no muestra «' + x + '»: ' + txt.slice(0, 200));
+      }
+      if (!/7/.test(txt)) throw new Error('no dice cuántas versiones conserva');
+      if (!/no se borraron|no se recicla/i.test(txt))
+        throw new Error('no deja claro que no se borró nada: ' + txt.slice(0, 160));
+
+      // Devolver: manda 'desarchivar' con el uuid DEL SERVIDOR, no un id de pantalla.
+      q.once('dialog', d => d.accept());
+      await q.click('[data-desarch]');
+      await q.waitForTimeout(800);
+      const ll = await q.evaluate(() => window.__desarchivados || []);
+      if (!ll.length) throw new Error('no mandó nada al devolver');
+      if (ll[0].accion !== 'desarchivar') throw new Error('mandó ' + ll[0].accion);
+      if (ll[0].machote_id !== '11111111-2222-4333-8444-555555555555')
+        throw new Error('no mandó el uuid del servidor: ' + ll[0].machote_id);
+      console.log('    COT-0011 · archivó francisco.montalvo · 7 versiones · devuelta por uuid');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.29 · la lista y los archivados no desbordan a 380 ni a 1280', async () => {
+    /* Con datos que EJERCEN el caso: un filtro puesto (que pinta la banda de
+     * aviso) y la tabla de archivados con nombres largos de verdad. */
+    for (const w of [380, 1280]) {
+      await p.setViewportSize({ width: w, height: 900 });
+      await ir('#/');
+      await p.waitForTimeout(400);
+      await p.selectOption('#fEstado', 'revision');
+      await p.waitForTimeout(500);
+      const r = await p.evaluate(() => ({
+        desborda: document.documentElement.scrollWidth > window.innerWidth + 1,
+        banda: !!document.querySelector('.filtro-puesto'),
+        alto: document.querySelector('.filtro-puesto')
+          ? Math.round(document.querySelector('.filtro-puesto').getBoundingClientRect().height) : 0
+      }));
+      if (r.desborda) throw new Error(w + 'px · la lista desborda con el aviso de filtro');
+      if (!r.banda) throw new Error(w + 'px · no salió el aviso de filtro');
+      console.log('    ' + w + 'px · aviso de filtro ' + r.alto + ' px · sin desborde');
+    }
+    await p.setViewportSize({ width: 1280, height: 900 });
+  });
+
+
+  /* ══ V1.29 · A2 · CEDER LA PROPIEDAD ══════════════════════════════════ */
+
+  await paso('V1.29 · A2 · la cesión voluntaria y la forzada dejan rastro DISTINTO', async () => {
+    /* Lo que se mide es el CUERPO que sale al servidor, no lo que pinta el
+     * diálogo: un rastro que se arma bien y no viaja no sirve de nada. */
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    await sembrarGeo(q); await sembrarMachotes(q);
+    await q.addInitScript(() => {
+      try {
+        localStorage.setItem('fts_suite_session', JSON.stringify({
+          token: 'a.b.c', actor: 'esteban.delacruz', nombre: 'Esteban De La Cruz',
+          scopes: ['comercial:read', 'comercial:admin'],
+          exp: Math.floor(Date.now() / 1000) + 3600 }));
+        localStorage.setItem('fts_machote_sync_v1', JSON.stringify({
+          'M-1041': { machote_id: 'aaaaaaaa-1111-4111-8111-111111111111', version: 1, huella: 'x' } }));
+      } catch (e) {}
+      window.__cesiones = [];
+      const orig = window.fetch;
+      window.fetch = function (u, o) {
+        const s2 = String(u);
+        let c = {}; try { c = JSON.parse((o && o.body) || '{}'); } catch (e) {}
+        if (s2.indexOf('/comercial/machote-archivar') >= 0) {
+          window.__cesiones.push({ accion: c.accion, ids: c.machote_ids, para: c.para,
+                                   forzada: c.forzada === true, motivo: c.motivo || null });
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({
+            ok: true, hecho: true, accion: 'ceder', forzada: c.forzada === true,
+            cedidos: (c.machote_ids || []).length, prestamos_revocados: c.forzada ? 2 : 1,
+            mensaje: (c.forzada ? 'Reasignada' : 'Cedida') + ' 1 cotizacion. ' +
+                     'Se recogieron permisos prestados: los dio el dueno anterior.' }) });
+        }
+        if (s2.indexOf('/comercial/machotes-leer') >= 0) {
+          /* Tiene que venir un AJENO: `personasDelEquipo()` sale de la lista
+           * que trajo el servidor, asi que con la lista vacia no hay a quien
+           * ceder y la prueba mediria una pantalla que nadie tiene. */
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({
+            ok: true, modo: 'lista', actor: 'esteban.delacruz', es_admin: true,
+            total: 1, duenos: ['ricardo.hernandez'],
+            machotes: [{ id: 'cccccccc-3333-4333-8333-333333333333',
+              id_local: 'M-AJENO-129', dueno: 'ricardo.hernandez',
+              dueno_nombre: 'Ricardo Alan Hernandez Gonzalez', ajeno: true,
+              version: 1, versiones: 1, autor: 'ricardo.hernandez',
+              estado: 'borrador', total: 1000, moneda: 'MXN',
+              documento: { id: 'M-AJENO-129', nombre: 'De Ricardo', estado: 'borrador',
+                           empresa_id: 1, moneda: 'MXN', secciones: [] },
+              prestamos: [], archivado: false }] }) });
+        }
+        return orig.apply(this, arguments);
+      };
+    });
+    try {
+      await q.goto(BASE); await q.waitForTimeout(1400);
+      await q.evaluate(() => { location.hash = '#/m/M-1041'; }); await q.waitForTimeout(900);
+
+      const bot = await q.$('#btnCeder');
+      if (!bot) throw new Error('no hay botón de Ceder');
+      await bot.click(); await q.waitForTimeout(400);
+
+      // 1 · VOLUNTARIA: sin marcar «ya no está», no pide motivo.
+      if (!(await q.$('#cesPara'))) throw new Error('no abrió el diálogo');
+      if (!(await q.$('#cesForz'))) throw new Error('a dirección no le ofrece la reasignación forzada');
+      const motVisible = await q.evaluate(() =>
+        !document.querySelector('#cesMotivoL').hidden);
+      if (motVisible) throw new Error('pide motivo en una cesión voluntaria');
+
+      const ops = await q.$$eval('#cesPara option', els =>
+        els.map(e => e.value).filter(Boolean));
+      if (!ops.length) throw new Error('el montaje no sirve: no hay a quién ceder');
+      await q.selectOption('#cesPara', ops[0]);
+      await q.click('#cesOk'); await q.waitForTimeout(700);
+
+      let c = await q.evaluate(() => window.__cesiones || []);
+      if (c.length !== 1) throw new Error('no salió la cesión: ' + JSON.stringify(c));
+      if (c[0].accion !== 'ceder') throw new Error('mandó ' + c[0].accion);
+      if (c[0].forzada !== false) throw new Error('marcó como forzada una voluntaria');
+      if (c[0].motivo) throw new Error('le inventó un motivo a una voluntaria');
+
+      // 2 · FORZADA: exige motivo, y lo manda marcado.
+      await q.evaluate(() => { window.__cesiones = []; location.hash = '#/m/M-1041'; });
+      await q.waitForTimeout(700);
+      await q.click('#btnCeder'); await q.waitForTimeout(400);
+      await q.selectOption('#cesPara', ops[0]);
+      await q.check('#cesForz'); await q.waitForTimeout(200);
+      if (await q.evaluate(() => document.querySelector('#cesMotivoL').hidden))
+        throw new Error('marcó forzada y NO pide motivo');
+
+      // Sin motivo NO deja pasar, y lo dice.
+      await q.click('#cesOk'); await q.waitForTimeout(400);
+      let c2 = await q.evaluate(() => window.__cesiones || []);
+      if (c2.length) throw new Error('mandó una forzada SIN motivo');
+      const av = (await q.textContent('#cesAviso') || '').replace(/\s+/g, ' ');
+      if (!/motivo/i.test(av)) throw new Error('no dice que falta el motivo: ' + av);
+
+      await q.fill('#cesMotivo', 'Salida de FTS el 12-sep');
+      await q.click('#cesOk'); await q.waitForTimeout(700);
+      c2 = await q.evaluate(() => window.__cesiones || []);
+      if (c2.length !== 1) throw new Error('no salió la forzada: ' + JSON.stringify(c2));
+      if (c2[0].forzada !== true) throw new Error('NO la marcó como forzada: el rastro sería igual al voluntario');
+      if (!/Salida de FTS/.test(c2[0].motivo || ''))
+        throw new Error('no mandó el motivo: ' + c2[0].motivo);
+      console.log('    voluntaria forzada=false sin motivo · forzada=true con «' + c2[0].motivo + '»');
+    } finally { await q.close(); }
+  });
+
   await paso('sin errores de consola propios del prototipo', async () => {
     if (errs.length) throw new Error(errs.slice(0, 4).join(' | '));
     if (delEntorno.length) console.log('   (' + delEntorno.length +
-      ' fallo(s) de red del sandbox, filtrados: fts-styles.css importa Google Fonts)');
+      ' fallo(s) de red del sandbox, filtrados: Google Fonts y el version.json ' +
+      'del vigilante, que no se puede pedir por file://)');
   });
 
-  console.log('\n' + ok + ' pasaron, ' + mal + ' fallaron.');
+  console.log('\n' + ok + ' pasaron, ' + mal + ' fallaron.' +
+              (saltadas ? '  (' + saltadas + ' saltadas por SOLO=' + process.env.SOLO + ')' : ''));
   if (errs.length) { console.log('\nErrores de consola:'); errs.slice(0, 10).forEach(e => console.log('  ' + e)); }
   await b.close();
   process.exit(mal ? 1 : 0);

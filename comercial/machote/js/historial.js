@@ -117,18 +117,49 @@
     if (lista) {
       var items = lista.querySelectorAll('.v');
       for (var k = 0; k < items.length; k++) {
-        items[k].className = 'v' + (Number(items[k].getAttribute('data-i')) === i ? ' on' : '');
+        /* Se ENCIENDE Y APAGA sólo `on`. Antes esto reescribía el `className`
+         * entero, y con eso borraba `ajena` —la marca de «esta versión la
+         * escribió alguien que no es el dueño»— en TODOS los renglones. Y como
+         * `marcar()` corre también al abrir, para seleccionar la última, la
+         * marca de color moría antes de verse nunca: quedaba sólo el texto.
+         *
+         * El código se leía bien renglón por renglón; lo cazó la captura, no
+         * el diff (CLAUDE.md §20 #12). Regla que deja: una función que pinta
+         * UN estado no reescribe el `className`, toca SU clase. */
+        items[k].classList.toggle('on', Number(items[k].getAttribute('data-i')) === i);
       }
     }
   }
 
+  /* ── Quién escribió cada versión ─────────────────────────────────────────
+   * El autor SIEMPRE se pintó aquí; lo que faltaba era distinguir cuándo NO
+   * es el dueño de la cotización. Y esa distinción no es cosmética: es la
+   * razón por la que existe el histórico.
+   *
+   * El caso concreto que lo motivó son las comisiones. Si alguien con permiso
+   * prestado cambia el reparto, la versión queda con SU nombre — y eso ya era
+   * verdad en la base desde el primer día, porque `machote_version.autor` sale
+   * del token verificado y no del cuerpo de la petición. Lo que no era verdad
+   * es que se pudiera VER de un vistazo: había que conocer de memoria de quién
+   * es cada cotización para notar que el autor no cuadraba.
+   *
+   * `v.dueno` viene del servidor en cada renglón del historial: es el dueño
+   * ACTUAL de la identidad, no el de aquel momento. Con préstamos —que no
+   * cambian de dueño— eso es exactamente lo que hace falta. */
   function pintarLista(vs, sel) {
     return vs.map(function (v, i) {
-      return '<div class="v' + (i === sel ? ' on' : '') + '" data-i="' + i + '" tabindex="0">' +
+      var quien = v.autor_nombre || v.autor || 'sin autor';
+      var deOtro = !!(v.dueno && v.autor && v.autor !== v.dueno);
+      return '<div class="v' + (i === sel ? ' on' : '') + (deOtro ? ' ajena' : '') +
+        '" data-i="' + i + '" tabindex="0">' +
         '<div><span class="n">Versión ' + v.version + '</span> ' +
         (i === 0 ? '<span class="chip ult">la última</span>'
                  : '<span class="chip">' + esc(v.estado) + '</span>') + '</div>' +
-        '<div class="meta">' + esc(v.autor_nombre || v.autor || 'sin autor') +
+        '<div class="meta">' + esc(quien) +
+        (deOtro
+          ? ' <span class="chip otro" title="La escribió alguien que no es el dueño de esta ' +
+            'cotización, con un permiso temporal.">no es el dueño</span>'
+          : '') +
         ' · ' + esc(fecha(v.guardada_at)) + '</div>' +
         (v.motivo ? '<div class="motivo">' + esc(v.motivo) + '</div>' : '') +
         '</div>';
@@ -161,13 +192,26 @@
       if (!r || r.ok !== true) {
         /* Que no haya historial NO es un error de la pantalla y se dice sin
          * alarmar: lo normal es que un machote recién capturado, o capturado
-         * sin red, todavía no haya llegado al servidor. */
-        var suave = r && (r.error === 'NUNCA_SUBIDO' || r.error === 'SIN_RED' || r.error === 'SIN_SESION');
+         * sin red, todavía no haya llegado al servidor.
+         *
+         * Los casos se dicen SEPARADOS porque llevan a acciones distintas:
+         * «no ha subido» se arregla subiéndolo, «no se pudo traer» se arregla
+         * reintentando, y la sesión se arregla volviendo a entrar. Antes los
+         * tres decían lo mismo y el mensaje mandaba a subir algo que ya
+         * estaba subido (#140, V1.24). */
+        var err = (r && r.error) || '';
+        var suave = err === 'NUNCA_SUBIDO' || err === 'NO_CONSULTABLE' ||
+                    err === 'SIN_RED' || err === 'SIN_SESION';
+        var cola = '';
+        if (err === 'NUNCA_SUBIDO') {
+          cola = ' <span class="tiny">En cuanto suba, cada guardado deja aquí su versión.</span>';
+        } else if (err === 'NO_CONSULTABLE') {
+          cola = ' <span class="tiny">Sus versiones no se han perdido: siguen en el servidor.</span>';
+        } else if (err === 'SIN_RED') {
+          cola = ' <span class="tiny">Lo capturado sigue a salvo en este navegador.</span>';
+        }
         carga.innerHTML = '<div class="aviso ' + (suave ? '' : 'bad') + '">' +
-          esc((r && r.mensaje) || 'No se pudo leer el historial.') +
-          (r && r.error === 'NUNCA_SUBIDO'
-            ? ' <span class="tiny">En cuanto suba, cada guardado deja aquí su versión.</span>' : '') +
-          '</div>';
+          esc((r && r.mensaje) || 'No se pudo leer el historial.') + cola + '</div>';
         return;
       }
 

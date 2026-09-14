@@ -316,7 +316,9 @@ vacío no urge; **antes de que entre el primer dato real, sí.**
 
 ## El tablero de dirección (`comercial/machotes-control`)
 
-**Workflow `PLAw9IYGgMh0PRPL`. INACTIVO** — lo activa Esteban en la UI, como los otros dos.
+**Workflow `PLAw9IYGgMh0PRPL`. ACTIVO** (leído el 2026-09-10: `active:true`,
+`triggerCount:1`). Nació inactivo y Esteban lo encendió; este renglón decía
+«INACTIVO» de más.
 
 Contesta una pregunta distinta de la de `machotes-leer`, y por eso es otra puerta:
 
@@ -359,6 +361,13 @@ leer), así que el cambio se hace desde la UI de n8n o con un workflow que use e
 **Aplicado el 8-sep-2026, sólo a Esteban** (`updatedAt 2026-09-08T03:20:44Z`, leído de vuelta).
 Los otros siete usuarios siguen sin `comercial:admin`.
 
+> **Re-leído el 2026-09-10** (V1.25 pedía otorgarlo; ya estaba). Crudo de la
+> Data Table, fila 8: `username esteban.delacruz` ·
+> `scopes "comercial:read,comercial:admin"` · `activo true` ·
+> `updatedAt 2026-09-08T03:20:44.040Z`. Las otras siete filas traen
+> `comercial:read` sola o `nomina:write,rh:read`; **ninguna trae
+> `comercial:admin`**. No hizo falta escribir nada.
+
 No va en una migración porque es un **permiso**, no una estructura — y porque la estructura
 está en otro sistema.
 
@@ -388,8 +397,10 @@ son 4». La pantalla lo dice con esas palabras.
 
 **El defecto.** Esteban rotó `SUITE_JWT_SECRET`. A partir de ahí el navegador siguió
 mandando el token viejo —que vive en `localStorage` y **no se borra con Ctrl+Shift+R**—, el
-servidor lo rechazó con `FIRMA_INVALIDA`, y la franja dijo **«No se pudo confirmar con el
-servidor»**.
+servidor lo rechazó con `FIRMA_INVALIDA`, y la franja de entonces dijo **«No se pudo
+confirmar con el servidor»**. (La franja se retiró en V1.24 — ver
+`docs/comercial/ANDAMIO.md`; la clasificación sesión/red/servidor que salió de este
+incidente se quedó, y vive en `js/sesion.js`.)
 
 Ese mensaje era falso y además el peor de los tres posibles: «no se pudo confirmar» invita
 a esperar y reintentar, cuando lo que hacía falta era volver a entrar — y reintentar con un
@@ -430,9 +441,10 @@ y subieron como si fueran captura.
 - **La marca va en ORIGEN**: `_demo: true` en los cuatro de `demo.js`.
 - **El filtro va en `empujar()`** de `almacen.js` —el único sitio por donde sube todo—, más
   un segundo candado en `empujarUno()` por si alguien lo llama directo.
-- **La franja las descuenta antes de contar.** Si las contara diría «4 por subir» para
-  siempre y «Subir ahora» nunca podría bajar el número: un pendiente que no se puede
-  resolver es peor que no avisar.
+- **Se descuentan antes de contar**, tanto en `estadoServidor()` como en `pendientes()`.
+  Si entraran, el aviso de la lista diría «4 sin subir» para siempre y nada podría bajar el
+  número —los ejemplos no se suben—: un pendiente que no se puede resolver es peor que no
+  avisar.
 - Se conserva al editar: capturar encima de una demo la deja siendo demo. Para que deje de
   serlo hay que crear un machote nuevo — así nadie convierte por accidente un ejemplo en la
   cotización de un cliente.
@@ -448,3 +460,79 @@ alguien tecleando.
 borrados son los cuatro demos, todos de `esteban.delacruz`. **Los dos de
 `ricardo.hernandez` no se tocaron**, ni el «Suministro de Pantalla HMI» ni el «Machote de
 prueba Lifter robert» de Esteban — ésos son captura real y en la duda no se borra.
+
+---
+
+## `005_prestamo.sql` — el permiso temporal de escritura
+
+`sha256 ba5b828eb89f51918217a8063847a3a57f6a906e22c458e30b922ea7321b8144`.
+Aplicada a producción el 2026-09-10 por `comercial/db-migrate`, tras ensayo en
+seco; el read-back del runner devolvió `migraciones: 001, 002, 003, 004, 005`.
+
+Una tabla, `comercial.machote_prestamo`: quién presta un machote, a quién,
+desde cuándo y hasta cuándo, y si se recogió antes de tiempo.
+
+**El tope de 24 horas es un `CHECK` de la base**, no una validación de pantalla
+ni de workflow — misma razón que el folio: una regla en un solo lugar es una
+regla que ningún camino nuevo puede saltarse por olvido. Hay dos `CHECK` más
+(vencer después de otorgar; nadie se presta a sí mismo) y un índice único
+parcial que impide dos préstamos vivos del mismo machote a la misma persona.
+Los tres se ejercieron contra un clúster local antes de aplicar; el detalle
+está en `docs/comercial/PERMISO_TEMPORAL.md` §6.
+
+**Sin `DELETE`,** como el resto del esquema: un préstamo no se borra, se
+recoge. `revocado_at` es la marca; la traza de que existió es parte de lo que
+hace auditable el permiso.
+
+### V1.25 · la tabla ya se usa
+
+El endpoint existe y la tabla tiene filas. Lo que se agregó, sin tocar el
+esquema:
+
+- **`comercial/machote-prestar`** (id `6FYwu04ow0ie3Kcr`, **INACTIVO — falta
+  publicar**). Un solo endpoint para las dos acciones. Quien otorga sale del
+  **token**, nunca del cuerpo, y que sea el dueño lo comprueba **la consulta
+  contra la base**, no un `if` del workflow. El tope de 24 h no se valida aquí
+  a propósito: ya lo impone el `CHECK`, y duplicarlo sería tener la regla en
+  dos sitios que pueden discrepar.
+- **`comercial/machotes-leer`** devuelve, por machote, los **préstamos
+  vigentes que le tocan a quien pregunta**: si es el dueño, los que otorgó; si
+  es prestatario, el suyo; si no es ninguno de los dos, ninguno. La consulta ya
+  filtra —el `Code` no vuelve a filtrar, porque filtrar en la pantalla sería
+  poder ver el resto abriendo la consola—.
+
+  ⚠️ La columna nueva va **al final de las DOS ramas del `UNION ALL`**: la
+  consulta termina en `ORDER BY 9 DESC, 10 DESC`, que es ordenar **por
+  posición**. Meter una columna a media lista cambia en silencio por qué se
+  ordena.
+
+**La concurrencia se ejerció contra esta base**, con dos escritores de verdad
+sobre la misma versión: pasó uno, el otro se fue con `CONFLICTO_DE_VERSION`, y
+en la base quedaron **cuatro** versiones y no cinco. El crudo del read-back,
+con sus fechas en UTC y su conversión, está en `PERMISO_TEMPORAL.md` §7.1.
+
+⚠️ **Dato de prueba que quedó vivo en producción:** el machote **`COT-0008`**
+(`id_local M-V125-CONCURRENCIA`, dueño `zz.prueba.v125.duenio`) con sus cuatro
+versiones y un préstamo a `zz.prueba.v125.presta` ya **vencido**
+(`vence_at 2026-09-10 07:28:49 UTC` = 01:28 CST) y sin revocar. Los dos actores
+son usuarios inventados para la prueba: no existen en `suite_usuarios` y no
+tocan trabajo de nadie. Se puede borrar lógicamente (`deleted_at`) cuando
+estorbe; no estorba hoy.
+
+## Cambios de V1.24 sin migración
+
+Ninguno de estos tocó el esquema:
+
+- **La lectura se abrió a todo el módulo.** `comercial/machotes-leer` dejó de
+  filtrar por `dueno` y de mirar `comercial:admin`: cualquiera con
+  `comercial:read` recibe los machotes de todos. El `actor` sigue saliendo del
+  token y es lo único que marca qué filas son ajenas.
+- **La traducción `id de pantalla -> uuid` acepta las dos formas.**
+  `idServidor()` reconoce un uuid y lo devuelve tal cual, en vez de buscarlo
+  siempre en la libreta de sincronización —que está indexada por `id_local` y
+  sólo guarda lo propio—. Era la causa de que el historial de un machote ajeno
+  contestara que no había subido.
+- **La autoría ya estaba separada de la propiedad** y sigue igual:
+  `machote.dueno` es de quién es, `machote_version.autor` es quién escribió esa
+  versión, y el segundo sale del token. Vale la pena saberlo porque es la mitad
+  del permiso temporal, ya construida.
