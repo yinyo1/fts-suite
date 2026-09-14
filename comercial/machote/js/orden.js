@@ -36,6 +36,12 @@
 
   var C = null;                        // MachoteCalc, se toma al abrir
 
+  /* El almacén se toma PEREZOSAMENTE y no al cargar el archivo: el orden de
+   * los <script> no está garantizado, y una referencia tomada demasiado
+   * pronto queda en `undefined` para siempre. Se pide cada vez, que cuesta
+   * nada, en vez de guardarla mal una vez. */
+  function alm() { return G.MachoteAlmacen || null; }
+
   function esc(s) {
     return String(s === null || s === undefined ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -314,13 +320,18 @@
       }
     }
 
-    de_sistema.push('El webhook `comercial/orden-crear` NO existe. Es lo que faltaría ' +
-      'construir; el contrato de abajo es su especificación.');
-    /* Ojo con cómo se dice esto: la credencial de Odoo en n8n SÍ escribe —ya
-     * crea proyectos, cuentas analíticas y presupuestos al confirmar una SO
-     * (CLAUDE.md §17)—. Lo que no existe es la DECISIÓN de que la suite emita
-     * órdenes de venta, ni el workflow que lo haga. Decir «no hay permiso»
-     * sería inventar un impedimento técnico donde hay uno de criterio. */
+    /* ── LO QUE YA NO SE DICE AQUÍ ────────────────────────────────────────
+     * Hasta V1.29 esta lista afirmaba que el webhook «NO existe» y que nadie
+     * había decidido que la suite emitiera órdenes. Las dos cosas cambiaron:
+     * `comercial/orden-crear` existe y está probado. Lo que la pantalla NO
+     * puede saber sin preguntar es si está ENCENDIDO — y adivinarlo sería
+     * inventar un impedimento o negarlo, que es el mismo error en los dos
+     * sentidos. Si está apagado, se entera al apretar y lo dice entonces. */
+    var _a = alm();
+    if (!_a || !_a.versionDe || !_a.versionDe(m.id)) {
+      de_captura.push('Esta cotización todavía no ha subido al servidor. La orden se ' +
+        'emite desde la versión guardada allá, así que hay que subirla primero.');
+    }
     /* Un desglose que no cuadra es un estorbo DE CAPTURA, no del sistema: lo
      * arregla quien está capturando, moviendo un número. Y tiene que impedir
      * seguir, porque mandarle al cliente renglones que suman distinto de lo
@@ -332,9 +343,9 @@
       }
     });
 
-    de_sistema.push('Nadie ha decidido todavía que la suite EMITA órdenes de venta. ' +
-      'La credencial de Odoo en n8n sí escribe (ya crea proyectos y presupuestos), ' +
-      'pero crear una venta es otra cosa y la decide Esteban.');
+    de_sistema.push('Emitir la orden pide el permiso `comercial:orden`, aparte del de ' +
+      'cotizar. Hoy no lo tiene nadie: lo reparte Esteban. Quien no lo tenga puede ' +
+      'capturar y cotizar igual, pero el botón le contestará que no.');
 
     return { de_captura: de_captura, de_sistema: de_sistema };
   }
@@ -429,14 +440,15 @@
 
     cascaron(
       '<div class="or-cab">' +
-        '<div><h3>Pasar a orden de venta <span class="chip demo">demostración</span></h3>' +
+        '<div><h3>Pasar a orden de venta</h3>' +
         '<div class="tiny nota">' + esc(m.nombre) + ' · ' + esc(m.id) + '</div></div>' +
         '<button class="btn fantasma" id="or-x">Cerrar</button>' +
       '</div>' +
 
-      '<div class="aviso"><strong>Nada de esto llega a Odoo.</strong> Es el camino ' +
-      'dibujado para poder verlo antes de construirlo. Los renglones y los importes ' +
-      'de abajo <strong>sí son reales</strong>: salen del motor de este machote.</div>' +
+      '<div class="aviso"><strong>Esto sí crea la orden en Odoo</strong>, en ' +
+      'BORRADOR y a nombre de la empresa y la moneda de este machote. No la ' +
+      'confirma: confirmar es otro paso y lo hace una persona. Los renglones y ' +
+      'los importes de abajo salen del motor de esta cotización.</div>' +
 
       '<div id="or-estorbos">' + bloqueEstorbos() + '</div>' +
 
@@ -478,7 +490,8 @@
 
       '<div class="or-pie">' +
         '<button class="btn fantasma" id="or-contrato">Ver el contrato de salida</button>' +
-        '<button class="btn" id="or-siguiente">Siguiente: mandarla al cliente ›</button>' +
+        '<button class="btn fantasma" id="or-siguiente">Mandarla al cliente ›</button>' +
+        '<button class="btn" id="or-crear">Crear la orden en Odoo</button>' +
       '</div>' +
       '<div id="or-contrato-caja"></div>');
 
@@ -583,6 +596,7 @@
 
     document.getElementById('or-contrato').onclick = pintarContrato;
     document.getElementById('or-siguiente').onclick = pintarEnvio;
+    document.getElementById('or-crear').onclick = crearLaOrden;
   }
 
   /* El contrato de salida, a la vista y no enterrado en un documento. Lo que
@@ -636,6 +650,171 @@
       'es el que ata la cotización a la orden — y sin él la pantalla no puede decir ' +
       '«enviada», por la misma razón que no puede decirlo por un clic.</p>' +
       '</div>';
+  }
+
+  /* ══ CREAR LA ORDEN ═════════════════════════════════════════════════════ */
+
+  /** Las líneas tal como viajan al servidor.
+   *
+   *  ── POR QUÉ LOS RENGLONES DESGLOSADOS VAN CON CANTIDAD 1 ──
+   *  En el desglose, `precio` es el IMPORTE del renglón, no un unitario: así
+   *  lo reparte `desgloseDe`, y así cuadra al centavo contra el precio de la
+   *  sección, que es la única regla dura que tiene el desglose.
+   *
+   *  Mandarlo como unitario × cantidad la rompería, y de la forma más difícil
+   *  de ver: Odoo guarda `price_unit` con dos decimales, así que
+   *  `7 × (333.33 / 7)` vuelve como `333.34`. Un centavo, en silencio, en el
+   *  documento que ve el cliente. Se manda cantidad 1 con el importe, y la
+   *  cantidad se dice en el CONCEPTO — el cliente la sigue viendo para armar
+   *  su orden de compra, y la suma sigue siendo exacta.
+   *
+   *  El COSTO no viaja por aquí: `desgloseDe` ya borró `_peso` antes de que el
+   *  renglón saliera de su función, y aquí sólo se leen nombre, cantidad y
+   *  precio. */
+  function lineasParaOdoo(pre) {
+    var out = [];
+    (pre.lineas || []).forEach(function (l) {
+      if (l.desglose && l.desglose.length) {
+        l.desglose.forEach(function (d) {
+          var q = Number(d.cantidad);
+          var etiqueta = d.nombre;
+          if (isFinite(q) && q > 0 && (q !== 1 || d.unidad)) {
+            etiqueta += ' · ' + (Math.round(q * 100) / 100) + (d.unidad ? ' ' + d.unidad : '');
+          }
+          out.push({ nombre: etiqueta, cantidad: 1, precio: Number(d.precio) || 0 });
+        });
+      } else {
+        out.push({ nombre: l.nombre,
+                   cantidad: Number(l.cantidad) || 1,
+                   precio: Number(l.precio) || 0 });
+      }
+    });
+    return out;
+  }
+
+  /** Lo que se pinta cuando el SERVIDOR contesta. Nunca se pinta por haber
+   *  apretado: es la lección del kiosko (hallazgo #15) y la misma regla que ya
+   *  gobierna la marca de «enviada». */
+  function pintarOrdenCreada(r) {
+    var m = _st.machote;
+    var avisos = (r.avisos && r.avisos.length)
+      ? '<div class="aviso amb"><strong>Hay que mirarla.</strong><ul>' +
+        r.avisos.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') +
+        '</ul></div>'
+      : '';
+    var num = function (v, mon) {
+      return (v === null || v === undefined) ? '—' : mx(v, mon);
+    };
+
+    cascaron(
+      '<div class="or-cab">' +
+        '<div><h3>Orden creada</h3>' +
+        '<div class="tiny nota">' + esc(m.nombre) + '</div></div>' +
+        '<button class="btn fantasma" id="or-x">Cerrar</button>' +
+      '</div>' +
+
+      '<div class="aviso ok"><strong>' + esc(r.odoo_so_name || 'La orden') + '</strong> existe ' +
+      'en Odoo, en <strong>borrador</strong>. Nadie la ha confirmado: confirmarla es otro ' +
+      'paso y lo hace una persona.</div>' +
+
+      avisos +
+
+      '<div class="or-grid">' +
+        '<div class="or-dato"><span>Orden</span><strong>' + esc(r.odoo_so_name || '—') + '</strong>' +
+          '<em class="tiny">id ' + esc(r.odoo_so_id) + ' de Odoo</em></div>' +
+        '<div class="or-dato"><span>Empresa</span><strong>' + esc(r.empresa || '—') + '</strong>' +
+          '<em class="tiny">la que factura</em></div>' +
+        '<div class="or-dato"><span>Moneda</span><strong>' + esc(r.moneda || '—') + '</strong>' +
+          '<em class="tiny">' + esc(r.lista_precios || 'sin lista') + '</em></div>' +
+        '<div class="or-dato"><span>Estado</span><strong>' + esc(r.estado || '—') + '</strong>' +
+          '<em class="tiny">' + (r.vence_el ? 'vence el ' + esc(r.vence_el) : 'sin vigencia') + '</em></div>' +
+      '</div>' +
+
+      '<h4 class="or-h">Lo que quedó en Odoo</h4>' +
+      '<p class="tiny nota">Estos números NO son los que mandó esta pantalla: son los que ' +
+      'el servidor volvió a leer de Odoo después de crearla. Es la única forma de saber que ' +
+      'quedó lo que se pidió.</p>' +
+      '<div class="tabla-wrap"><table class="or-t">' +
+        '<tbody>' +
+          '<tr><td>Subtotal</td><td class="num mono">' + num(r.subtotal, r.moneda) + '</td></tr>' +
+          '<tr><td>Impuesto</td><td class="num mono">' + num(r.impuesto, r.moneda) + '</td></tr>' +
+          '<tr><td><strong>Total</strong></td><td class="num mono"><strong>' +
+            num(r.total, r.moneda) + '</strong></td></tr>' +
+          '<tr><td>Contra el machote</td><td class="num">' +
+            (r.cuadra ? '<span class="ok-t">cuadra</span>'
+                      : '<span class="falta">no cuadra · el machote dice ' +
+                        num(r.total_machote, r.moneda) + '</span>') + '</td></tr>' +
+        '</tbody>' +
+      '</table></div>' +
+
+      '<div class="or-pie">' +
+        '<button class="btn" id="or-a-envio">Mandarla al cliente ›</button>' +
+      '</div>');
+
+    document.getElementById('or-x').onclick = cerrar;
+    document.getElementById('or-a-envio').onclick = pintarEnvio;
+  }
+
+  /** El camino completo, y el ORDEN importa:
+   *    la pantalla pide → el servidor crea en Odoo → el servidor RELEE de Odoo
+   *    → devuelve lo leído → la pantalla pinta ESO.
+   *  En ningún punto la pantalla da algo por hecho porque se acuerde de haber
+   *  apretado el botón. */
+  function crearLaOrden() {
+    var b = document.getElementById('or-crear');
+    if (!b) return;
+    var _a = alm();
+    if (!_a || !_a.crearOrden) {
+      avisarNoSeCreo({ mensaje: 'El almacén no está disponible en esta pantalla.' });
+      return;
+    }
+    var texto = b.textContent;
+    b.disabled = true;
+    b.textContent = 'Creándola en Odoo…';
+
+    _a.crearOrden(_st.machote.id, lineasParaOdoo(_st.pre), _st.aMano, _st.machote.lead_id || null)
+      .then(function (r) {
+        b.disabled = false;
+        b.textContent = texto;
+        if (!r || r.ok !== true) { avisarNoSeCreo(r); return; }
+        if (r.ya_existia) {
+          /* No es un error y no se pinta como tal: apretar dos veces tiene que
+           * llevar al mismo sitio que apretar una. Los importes van vacíos a
+           * propósito — esta respuesta no los trae, y rellenarlos con los de
+           * la pantalla sería inventar un read-back que no hubo. */
+          pintarOrdenCreada({
+            odoo_so_id: r.odoo_so_id, odoo_so_name: r.odoo_so_name,
+            estado: null, moneda: _st.pre.moneda, empresa: _st.pre.empresa.corto,
+            lista_precios: null, subtotal: null, impuesto: null, total: null,
+            total_machote: _st.pre.totales.total, cuadra: true, vence_el: null,
+            avisos: ['Esta cotización ya tenía su orden: no se creó otra.']
+          });
+          return;
+        }
+        pintarOrdenCreada(r);
+      });
+  }
+
+  /** Un rechazo se dice con SU motivo, no con un «no se pudo» genérico. Los
+   *  que más van a salir tienen remedio distinto, y confundirlos manda a la
+   *  persona a hacer lo que no es (CLAUDE.md §20 #12b). */
+  function avisarNoSeCreo(r) {
+    var e = (r && r.error) || 'DESCONOCIDO';
+    var msg = (r && r.mensaje) || 'No se pudo crear la orden.';
+    if (e === 'ENDPOINT_APAGADO') {
+      msg = 'El servidor que crea órdenes todavía no está encendido. Lo enciende ' +
+            'Esteban; mientras tanto la cotización no se pierde.';
+    }
+    var host = document.getElementById('or-estorbos');
+    if (host) {
+      host.insertAdjacentHTML('afterbegin',
+        '<div class="aviso amb" id="or-rechazo"><strong>No se creó la orden.</strong> ' +
+        esc(msg) + '</div>');
+      var caja = document.getElementById('or-rechazo');
+      if (caja && caja.scrollIntoView) caja.scrollIntoView({ block: 'nearest' });
+    } else {
+      alert(msg);
+    }
   }
 
   /* ══ PANTALLA 2 · mandarla al cliente ═══════════════════════════════════ */

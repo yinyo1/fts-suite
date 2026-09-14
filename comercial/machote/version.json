@@ -1,11 +1,16 @@
 {
-  "version": "V1.29",
-  "build": "V1.29",
-  "fecha": "2026-09-13",
+  "version": "V1.30",
+  "build": "V1.30",
+  "fecha": "2026-09-14",
   "modulo": "comercial/machote",
   "ambito": "El CONTADOR es solo de este modulo. finanzas tambien usa V1.xx desde el 2026-09-03 (instruccion directa de Esteban, corrige el \"no propagar\" del issue #148) pero lleva su propio contador y va en V1.00. operaciones/planeacion sigue en 2.4.1, kiosk y confirmar-horas solo con cadena de build, y siete modulos con un 1.0.0 puesto una vez: a esos no se propaga.",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.30",
+      "pr": null,
+      "nota": "ESTACION 3 (#244), sesion 1: la cotizacion deja de ser un documento y se vuelve una ORDEN en Odoo. AUDITORIA PREVIA, y de ahi salieron tres cosas que cambian el diseno. (1) El enlace que el rector daba por existente no es el que parece: x_studio_nombre_archivo_xlsx guarda una URL de SharePoint al Excel viejo, no un folio COT, asi que machote<->SO de la suite habia que crearlo entero. Nuestra mitad ya existia vacia desde la 003 (odoo_lead_id, odoo_so_id, odoo_partner_id). (2) Una linea de orden SIN product_id SI se acepta (probado, linea 26996), que es lo que hace viable 'una linea por seccion' — pero entonces NO lleva impuesto: tax_ids sale vacio y el PDF al cliente iria sin IVA. (3) Y la trampa de la moneda: una orden creada sin pricelist_id explicito nacio en USD para SERVICIOS FTS (SO11886), porque hay dos listas con sequence 1 y gana la que no tiene empresa. LA REGLA DE ESTEBAN, y son DOS reglas que no se mezclan: la moneda la manda el MACHOTE y el pricelist se elige por esa moneda (FTS Mexico cotiza en dolares mas seguido que en pesos: 112 contra 101 en 2026); el IMPUESTO lo decide la EMPRESA que factura, no la moneda — una venta en dolares dentro de Mexico SI lleva IVA 16% (SO11699: 2,583.20 sobre 16,145.00). IDEMPOTENCIA POR RESERVA, NO POR BOTON: un boton gris no sabe nada de la otra pestana, del doble clic ni del reintento tras un timeout que si llego. La reserva vive en la base (odoo_so_claim_at, migracion 007) y caduca a los 2 minutos para que un proceso muerto no trabe el machote. Probado: la segunda corrida devuelve la MISMA orden y no crea otra. Y NO HAY 'A MEDIAS': la orden se crea con sus lineas en UNA sola llamada, asi que o Odoo la acepta entera o no crea nada — que ademas conviene, porque borrar esta prohibido. La pantalla no pinta nada por haber apretado: pinta lo que el servidor volvio a LEER de Odoo."
+    },
     {
       "version": "V1.29",
       "pr": null,

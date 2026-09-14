@@ -120,6 +120,7 @@
   var URL_GUARDAR = BASE + '/comercial/machote-guardar';
   var URL_PRESTAR = BASE + '/comercial/machote-prestar';
   var URL_ARCHIVAR = BASE + '/comercial/machote-archivar';
+  var URL_ORDEN = BASE + '/comercial/orden-crear';
   var TIMEOUT_MS = 12000;
 
   /* Que exista el objeto no basta: en modo privado de Safari `localStorage`
@@ -1265,6 +1266,79 @@
     return null;
   }
 
+  /** La versión que el SERVIDOR tiene de este machote, según la libreta de
+   *  sincronización. `null` no es cero: es «este machote no ha llegado allá».
+   *
+   *  La libreta está indexada por `id_local` y guarda SÓLO lo propio, así que
+   *  para un machote ajeno esto devuelve `null` — y está bien: emitir la orden
+   *  de una cotización ajena tampoco se puede (lo impide el servidor, no esta
+   *  función). Es la misma advertencia de `idServidor` (CLAUDE.md §20 #13):
+   *  un índice que cubre parte del universo contesta «no» por lo que no cubre.
+   */
+  function versionDe(idPantalla) {
+    var meta = leerSync()[idPantalla];
+    return (meta && meta.version) ? Number(meta.version) : null;
+  }
+
+  /** La orden de Odoo de este machote, si ya se creó. `null` = todavía no.
+   *  Sale de la libreta, que sólo la escribe con lo que el SERVIDOR devolvió. */
+  function ordenDe(idPantalla) {
+    var meta = leerSync()[idPantalla];
+    if (!meta || !meta.odoo_so_id) return null;
+    return { id: meta.odoo_so_id, nombre: meta.odoo_so_name || null };
+  }
+
+  /** Crea la orden de venta en Odoo desde este machote.
+   *
+   *  ── LO QUE ESTA FUNCIÓN NO HACE ──
+   *  No decide si se puede. El dueño, la versión, el cliente y el cuadre los
+   *  vuelve a comprobar el SERVIDOR contra la base; lo de aquí es para no
+   *  hacer un viaje que ya se sabe que falla, no un permiso.
+   *
+   *  Y NO marca nada por haber apretado: la orden se da por creada sólo si el
+   *  servidor devuelve su `odoo_so_id`, que él leyó de vuelta de Odoo. Es la
+   *  misma regla que gobierna la marca de «enviada» — el clic no es prueba
+   *  (hallazgo #15, el ✓ antes del POST). */
+  function crearOrden(idPantalla, lineas, aMano, leadId) {
+    var ses = sesion();
+    if (!ses) {
+      return Promise.resolve({ ok: false, error: 'SIN_SESION',
+        mensaje: 'No hay sesión: vuelve a entrar para emitir la orden.' });
+    }
+    var uuid = idServidor(idPantalla);
+    var version = versionDe(idPantalla);
+    if (!uuid || !version) {
+      return Promise.resolve({ ok: false, error: 'NUNCA_SUBIDO',
+        mensaje: 'Esta cotización todavía no llega al servidor, así que no hay ' +
+                 'de dónde emitir la orden. Súbela primero.' });
+    }
+    return postear(URL_ORDEN, {
+      token: ses.token,
+      machote_id: uuid,
+      version_leida: version,
+      lineas: Array.isArray(lineas) ? lineas : [],
+      a_mano: aMano || {},
+      /* El enlace con la oportunidad. Va si lo hay y no se exige: la mitad de
+       * Odoo todavía no existe, y el lado tolerante va primero (CLAUDE.md §8). */
+      lead_id: (leadId === 0 || leadId) ? Number(leadId) : null
+    }).then(function (r) {
+      /* Se anota lo que el SERVIDOR devolvió, nunca lo que se pidió. Si la
+       * respuesta no trae orden, la libreta no se toca: una marca local de
+       * algo que no pasó es exactamente la pantalla que miente. */
+      if (r && r.ok === true && r.odoo_so_id) {
+        try {
+          var s = leerSync();
+          var ant = s[idPantalla] || {};
+          ant.odoo_so_id = r.odoo_so_id;
+          ant.odoo_so_name = r.odoo_so_name || ant.odoo_so_name || null;
+          s[idPantalla] = ant;
+          escribirSync(s);
+        } catch (e) { /* sin libreta el aviso igual sale */ }
+      }
+      return r;
+    });
+  }
+
   G.MachoteAlmacen = {
     nombre: 'postgres+cache',
     disponible: function () { return VIVO; },
@@ -1303,6 +1377,9 @@
     leerPrestados: leerPrestados,
     olvidarPrestado: olvidarPrestado,
     idServidor: idServidor,
+    versionDe: versionDe,
+    ordenDe: ordenDe,
+    crearOrden: crearOrden,
     esDemo: esDemo,
 
     pendientes: pendientes,

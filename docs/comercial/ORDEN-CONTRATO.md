@@ -1,8 +1,14 @@
 # De la cotización a la orden — el contrato de salida
 
-**Estado: DISEÑO. No hay una sola línea de esto en producción.** El webhook
-`comercial/orden-crear` no existe, y nadie tiene todavía permiso de escribir órdenes en
-Odoo desde la suite.
+**Estado: CONSTRUIDO Y PROBADO, pendiente de encender (14-sep-2026, #244).** El webhook
+`comercial/orden-crear` existe (`0jun4SLxAPTtIkHf`, 20 nodos) y **nace INACTIVO**: lo
+enciende Esteban. Se probó de punta a punta contra Odoo y Postgres de producción sin
+encenderlo, firmando el token dentro de n8n; el detalle está en §«Lo construido».
+
+> ⚠️ **Tres cosas de este documento quedaron desmentidas por la medición** y están
+> corregidas abajo, en su sitio: la moneda **no** se deriva de la empresa, una línea sin
+> producto **no** lleva impuesto por sí sola, y la orden **sí** se puede crear con sus
+> líneas en una sola llamada.
 
 Lo que sí existe es un **cascarón recorrible** en el módulo del machote
 (`comercial/machote/js/orden.js`): se abre desde cualquier cotización con el botón
@@ -40,7 +46,7 @@ porque son de la **negociación**. Nadie las puede derivar: se preguntan.
 | `machote_id` | `m.id` | la identidad de la cotización |
 | `version_leida` | la versión que la pantalla está mirando | el servidor rechaza si otro ya guardó encima — mismo bloqueo optimista que el historial |
 | `empresa_id` | `m.empresa_id` | 1 = Servicios FTS (MXN) · 6 = FTS USA (USD) |
-| `moneda` | se deriva de la empresa | no se elige aparte: la empresa la decide |
+| `moneda` | `m.moneda` | ⚠️ **la manda el MACHOTE, siempre explícita.** Sigue a la empresa sólo mientras nadie la toca. FTS México cotiza en dólares más seguido que en pesos —112 contra 101 órdenes en 2026—, así que «la empresa la decide» era falso |
 | `tc` · `tc_fuente` | `C.tcEfectivo(m)` · `m.tc_fuente` | congelados, como en cada versión del historial |
 | `partner_id` | `m.cliente_id` | **el id de Odoo**, no el nombre. Si el machote nació antes del catálogo, esto viene vacío y la orden no se puede crear |
 | `lineas[]` | del **motor**, una por sección | ver abajo |
