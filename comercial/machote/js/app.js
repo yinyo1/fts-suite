@@ -10,6 +10,7 @@
  *
  * Rutas:  #/  lista · #/nuevo  crear · #/m/:id  el libro
  *         #/rev/:id  revisión · #/ap/:id  aprobación · #/control  tablero
+ *         #/confirmar  las órdenes vivas y su confirmación
  *
  * `#/orden/:id` se retiró en V1.25 con `vOrden` (ver más abajo, y
  * `docs/comercial/ANDAMIO.md`). Un hash desconocido cae al `#/` de `render()`.
@@ -56,7 +57,7 @@
    *   2. el `?v=` de la URL con la que el navegador lo bajó,
    *   3. la que declara cada pieza que se carga aparte (hoy el motor).
    * Si discrepan, la pantalla lo DICE en vez de correr a medias. */
-  const VERSION_ARCHIVO = 'V1.31';
+  const VERSION_ARCHIVO = 'V1.32';
 
   const VERSION_URL = (function () {
     try {
@@ -685,6 +686,7 @@
     if (p[0] === 'control') return vControl();
     if (p[0] === 'archivados') return vArchivados();
     if (p[0] === 'politica') return vPolitica();
+    if (p[0] === 'confirmar') return vConfirmar();
     location.hash = '#/';
   }
   /* El encabezado. `back` es a dónde vuelve la flecha:
@@ -920,6 +922,21 @@
     G.MachotePolitica.montar($('#vista'));
   }
 
+  /* La confirmación. La abre cualquiera del módulo: ver en qué va cada orden
+   * no es un privilegio, y quien no pueda confirmar se topa con el candado del
+   * servidor, no con una pantalla escondida. */
+  function vConfirmar() {
+    top('Confirmar órdenes', 'Comercial · Compuerta 2', null, '#/');
+    $('#fija').innerHTML = '';
+    $('#vista').innerHTML = '';
+    if (!G.MachoteConfirmar) {
+      $('#vista').innerHTML = '<div class="pad"><div class="aviso bad">' +
+        'No cargó la vista de confirmación.</div></div>';
+      return;
+    }
+    G.MachoteConfirmar.montar($('#vista'));
+  }
+
   function vControl() {
     top('Control', 'Comercial · dirección', null, '#/');
     $('#fija').innerHTML = '';
@@ -1028,6 +1045,7 @@
           /* La politica la ve CUALQUIERA, no solo direccion: es la regla con la
            * que se mide su trabajo. Quien no sea direccion la ve en lectura. */
           '<a class="btn fantasma" href="#/politica">Política</a>' +
+          '<a class="btn fantasma" href="#/confirmar">Confirmar</a>' +
           /* Dice «todo» y dice CUÁNTOS a propósito. Con filtros en pantalla —y el
            * de persona puesto de arranque— «Exportar» a secas se lee como «exporta
            * lo que estoy viendo», que es justo lo que NO hace. El número es la

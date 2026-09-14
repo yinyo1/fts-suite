@@ -122,6 +122,7 @@
   var URL_ARCHIVAR = BASE + '/comercial/machote-archivar';
   var URL_ORDEN = BASE + '/comercial/orden-crear';
   var URL_COMPUERTA = BASE + '/comercial/compuerta';
+  var URL_CONFIRMAR = BASE + '/comercial/confirmar';
   var TIMEOUT_MS = 12000;
 
   /* Que exista el objeto no basta: en modo privado de Safari `localStorage`
@@ -1385,6 +1386,62 @@
     return postear(URL_COMPUERTA, { token: ses.token, modo: 'evaluar', machote_id: uuid });
   }
 
+  /* ── La confirmación ───────────────────────────────────────────────────
+   *
+   * Cuatro modos de un mismo endpoint, y están separados a propósito: leer y
+   * evaluar NO escriben nada, capturar el handoff escribe sólo en nuestra
+   * base, y confirmar es el único que toca Odoo. Quien lee el código tiene
+   * que poder ver de un vistazo cuál de los cuatro puede romper algo.
+   *
+   * Ninguno pinta nada por haber contestado 200: la pantalla repinta con lo
+   * que el servidor volvió a LEER (CLAUDE.md §8). */
+
+  /** Las órdenes vivas, con su estado leído de Odoo en este momento. */
+  function ordenesVivas() {
+    var ses = sesion();
+    if (!ses) {
+      return Promise.resolve({ ok: false, error: 'SIN_SESION',
+        mensaje: 'No hay sesión: vuelve a entrar.' });
+    }
+    return postear(URL_CONFIRMAR, { token: ses.token, modo: 'leer' });
+  }
+
+  /** Guarda el handoff. Es un borrador de captura: se puede editar cuantas
+   *  veces haga falta HASTA que se confirma, y después ya no. */
+  function guardarHandoff(uuid, handoff) {
+    var ses = sesion();
+    if (!ses) {
+      return Promise.resolve({ ok: false, error: 'SIN_SESION',
+        mensaje: 'No hay sesión: vuelve a entrar.' });
+    }
+    return postear(URL_CONFIRMAR, { token: ses.token, modo: 'handoff',
+      machote_id: uuid, handoff: handoff || {} });
+  }
+
+  /** El veredicto de la Compuerta 2: qué se va a escribir y sobre qué ejes,
+   *  ANTES de escribir nada. */
+  function evaluarConfirmacion(uuid) {
+    var ses = sesion();
+    if (!ses) {
+      return Promise.resolve({ ok: false, error: 'SIN_SESION',
+        mensaje: 'No hay sesión: vuelve a entrar.' });
+    }
+    return postear(URL_CONFIRMAR, { token: ses.token, modo: 'evaluar', machote_id: uuid });
+  }
+
+  /** Confirmar. `version_leida` es la versión que la pantalla tenía delante:
+   *  confirmar es congelar números, y si el machote se movió debajo, los
+   *  números que se congelarían no son los que quien aprieta está viendo. */
+  function confirmar(uuid, versionLeida) {
+    var ses = sesion();
+    if (!ses) {
+      return Promise.resolve({ ok: false, error: 'SIN_SESION',
+        mensaje: 'No hay sesión: vuelve a entrar.' });
+    }
+    return postear(URL_CONFIRMAR, { token: ses.token, modo: 'confirmar',
+      machote_id: uuid, version_leida: versionLeida });
+  }
+
   G.MachoteAlmacen = {
     nombre: 'postgres+cache',
     disponible: function () { return VIVO; },
@@ -1429,6 +1486,10 @@
     politica: politica,
     guardarPolitica: guardarPolitica,
     evaluarCompuerta: evaluarCompuerta,
+    ordenesVivas: ordenesVivas,
+    guardarHandoff: guardarHandoff,
+    evaluarConfirmacion: evaluarConfirmacion,
+    confirmar: confirmar,
     esDemo: esDemo,
 
     pendientes: pendientes,

@@ -1492,3 +1492,73 @@ input.cab-nombre:focus { border-color: var(--acento); background: #fff; outline:
 /* El folio no se parte en dos renglones: «COT-» arriba y «0011» abajo se lee
  * como dos cosas. Visto en la captura de la vista de archivados. */
 table.lista td.mono { white-space: nowrap; }
+
+/* ═══ Confirmar órdenes · Compuerta 2 (#244) ═══════════════════════════════
+ * Prefijo `cf-` a propósito: `.kpi` ya significaba otra cosa en este mismo
+ * archivo y reusarlo metió una caja donde no iba (§20 #12). Lo único que se
+ * reusa aquí es lo que YA es del módulo: `.tabla-wrap` + `.ctrl-t`, que trae
+ * gratis el modo tarjeta del teléfono con `data-th`. */
+/* `.pill` existia SIN variantes: `ok`/`warn`/`bad` no pintaban nada y las tres
+ * insignias salian del mismo gris — «a medias» se veia igual que «sin handoff».
+ * Se vio en la captura, no en el diff (§20 #12). */
+.pill.ok   { background: #e7f4ec; color: #1d6b3f; }
+.pill.warn { background: #fdf3e0; color: #8a5a00; }
+.pill.bad  { background: #fdeaea; color: #a11; font-weight: 600; }
+
+.cf-filtros { margin: 10px 0; }
+.cf-filtros select { margin-left: 6px; }
+
+/* La línea recta: cotización → orden → oportunidad → proyecto. Es el hilo que
+ * hoy hay que reconstruir a mano abriendo Odoo, así que se ve entero de un
+ * vistazo. Lo que FALTA se ve distinto de lo que hay — en gris y en cursiva —
+ * porque "sin oportunidad" es un dato, no un hueco de carga. */
+.hilo { margin-top: 5px; font-size: 11.5px; line-height: 1.7; }
+.hilo-n { color: var(--tinta, #222); }
+.hilo-f { color: var(--suave); margin: 0 1px; }
+.hilo-x { color: var(--suave); font-style: italic; }
+
+.cf-caja { max-width: 860px; width: 100%; }
+.cf-h { margin: 18px 0 6px; font-size: 14px; }
+.cf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+.cf-grid label { display: block; font-size: 12.5px; }
+.cf-rubros { margin-top: 6px; }
+.cf-rubros td { vertical-align: middle; }
+.cf-signo { display: inline-block; width: 12px; color: var(--suave); }
+.cf-rubros input.cel { width: 140px; display: inline-block; }
+
+/* Las cifras del veredicto. Fila propia, sin borde por cifra: son cinco datos
+ * de la MISMA orden, no cinco tarjetas independientes. */
+.cf-cifras { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;
+             margin: 10px 0 14px; padding: 10px 12px;
+             border: 1px solid var(--linea); border-radius: 10px; background: #fafafa; }
+.cf-cifras div { display: flex; flex-direction: column; gap: 2px; }
+.cf-cifras strong { font-size: 15px; font-variant-numeric: tabular-nums; }
+
+.cf-lista { margin: 6px 0 0; padding-left: 20px; font-size: 13px; line-height: 1.7; }
+.cf-lista code { font-size: 12px; background: #f1f1f1; padding: 1px 5px; border-radius: 4px; }
+.cf-pasos { list-style: none; padding-left: 0; font-variant-numeric: tabular-nums; }
+
+/* El botón que detona. Separado y a lo ancho: es el único de esta pantalla que
+ * hace algo irreversible, y no puede verse como un botón más de la fila. */
+.cf-detonar { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--linea); }
+.cf-detonar .btn { width: 100%; }
+
+@media (max-width: 640px) {
+  .cf-grid { grid-template-columns: 1fr; }
+  .cf-cifras { grid-template-columns: 1fr 1fr; }
+  .cf-rubros input.cel { width: 110px; }
+  /* En teléfono el hilo se parte en renglones en vez de irse de ancho. */
+  .hilo { line-height: 1.9; }
+  /* La cotización es el TÍTULO de la tarjeta, no un par etiqueta-valor: sin
+   * esto el nombre, el cliente y el hilo se reparten en tres columnas de 90 px
+   * y se leen en vertical. Es la misma excepción que el módulo ya hacía con
+   * `data-th="Persona"` en el tablero de control. */
+  .cf-tabla td[data-th="Cotización"] { display: block; text-align: left; margin-bottom: 6px; }
+  .cf-tabla td[data-th="Cotización"]::before { content: none; }
+  .cf-tabla td[data-th="Cotización"] .tiny { text-align: left; }
+  .cf-tabla .hilo { text-align: left; }
+  /* La celda del botón no lleva etiqueta: un `data-th` vacío deja un hueco. */
+  .cf-tabla td[data-th=""]::before { content: none; }
+  .cf-tabla td[data-th=""] { display: block; }
+  .cf-tabla td[data-th=""] .btn { width: 100%; }
+}
