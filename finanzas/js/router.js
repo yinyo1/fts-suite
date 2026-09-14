@@ -84,6 +84,22 @@
         currentBlock = '__none__';
       }
       var mode = moduleMode(m.id);
+      // ── Módulos con DIRECCIÓN PROPIA (#242) ─────────────────────────────────
+      // Si el manifest declara `url`, el renglón es un <a href> de verdad en vez
+      // de un onclick que sólo cambia el innerHTML. Es ADITIVO: un módulo sin
+      // `url` sigue exactamente igual que antes, así que esto NO migra el ruteo
+      // existente — permite migrar de uno en uno. El primero es `rent-proy`.
+      // Por qué importa: sin dirección no hay enlace profundo, ni marcador, ni
+      // botón atrás, y un panel con dos entradas (Finanzas y Operaciones) no se
+      // puede expresar sin ella — terminarías con dos copias que se separan.
+      if (m.url) {
+        html += '<a class="nav-item" data-route="' + esc(m.id) + '" href="' + esc(m.url) + '">' +
+                  '<span class="state-dot ' + mode + '" title="' + mode + '"></span>' +
+                  '<span class="icon">' + esc(m.icon || '') + '</span>' +
+                  '<span>' + esc(m.name) + '</span>' +
+                '</a>';
+        return;
+      }
       html += '<div class="nav-item" data-route="' + esc(m.id) + '" onclick="FinRouter.navigate(\'' + esc(m.id) + '\')">' +
                 '<span class="state-dot ' + mode + '" title="' + mode + '"></span>' +
                 '<span class="icon">' + esc(m.icon || '') + '</span>' +

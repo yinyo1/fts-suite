@@ -1,7 +1,7 @@
 {
   "app": "finanzas",
-  "version": "0.3.0",
-  "note": "Paso 3: facturas-odoo + bills-odoo conectados a Odoo (real-readonly, webhook poblado). El resto sigue en 'empty'. El estado activo (empty/demo/real) vive en localStorage['fts_fin_mode_<id>']; aquí se declara la CAPACIDAD máxima. SAT requiere descarga masiva (asunto aparte).",
+  "version": "0.4.0",
+  "note": "Paso 3: facturas-odoo + bills-odoo conectados a Odoo (real-readonly, webhook poblado). El resto sigue en 'empty'. El estado activo (empty/demo/real) vive en localStorage['fts_fin_mode_<id>']; aquí se declara la CAPACIDAD máxima. SAT requiere descarga masiva (asunto aparte). rent-proy estrena DIRECCION PROPIA (campo `url`): es el primer modulo que no vive dentro del shell y el ejemplo de como migrar los otros 22 (#242); un modulo sin `url` se sigue pintando igual que siempre.",
   "modules": [
     { "id": "dashboard",             "name": "Dashboard",                "block": null, "icon": "▦", "status": "empty", "webhook": null },
 
@@ -14,7 +14,7 @@
     { "id": "concil-sat",            "name": "Conciliación SAT ↔ Odoo",  "block": "B1", "icon": "⇄", "status": "empty", "webhook": null },
 
     { "id": "rent-emp",              "name": "Rentabilidad empresa",     "block": "B2", "icon": "⌬", "status": "empty", "webhook": null },
-    { "id": "rent-proy",             "name": "Rentabilidad proyectos",   "block": "B2", "icon": "▤", "status": "empty", "webhook": null },
+    { "id": "rent-proy",             "name": "Rentabilidad proyectos",   "block": "B2", "icon": "▤", "status": "real-readonly", "webhook": "/fin/rentabilidad", "url": "rentabilidad/index.html" },
     { "id": "det-fantasma",          "name": "Detector fantasma",        "block": "B2", "icon": "◎", "status": "empty", "webhook": null },
     { "id": "det-mo",                "name": "Detector MO",              "block": "B2", "icon": "⏱", "status": "empty", "webhook": null },
 
