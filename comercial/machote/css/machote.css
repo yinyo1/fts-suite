@@ -847,6 +847,11 @@ tr.marcado td { background: #fffaf0; }
 /* "Frío" = más de una semana sin subir nada. Es un dato, no una acusación:
  * gris apagado, no rojo. */
 .ctrl-t td.frio { color: var(--suave); }
+/* Un nivel de la politica que esta apagado. Se ve apagado y ademas lo dice en
+ * su columna: el color solo no basta (misma regla que "lo que se captura y lo
+ * que se calcula se ven distinto", que no depende solo del color). */
+.ctrl-t tr.apagado { opacity: .55; }
+.ctrl-t tr.apagado strong { font-weight: 500; }
 .chip.demo { background: var(--suave); color: #fff; font-size: 11px; padding: 2px 8px;
              border-radius: 999px; vertical-align: middle; margin-left: 6px; }
 /* En teléfono la tabla deja de ser tabla: cuatro columnas en 380 px parten el

@@ -684,6 +684,7 @@
     if (p[0] === 'ap')    return vAprobar(p[1]);
     if (p[0] === 'control') return vControl();
     if (p[0] === 'archivados') return vArchivados();
+    if (p[0] === 'politica') return vPolitica();
     location.hash = '#/';
   }
   /* El encabezado. `back` es a dónde vuelve la flecha:
@@ -901,6 +902,24 @@
    * abrir siempre por la URL —para que Esteban entre esta noche sin esperar
    * el permiso—: sin la llave la pantalla lo dice y enseña una demostración,
    * en vez de rebotar a la lista. */
+  /* El panel de aprobadores de la Compuerta 1.
+   *
+   * Lo puede ABRIR cualquiera del modulo, no solo direccion: ver con que regla
+   * te van a medir no es un privilegio, y esconderlo solo consigue que quien
+   * sale marcado no entienda por que. El candado de EDITAR vive en el servidor
+   * y la pantalla se limita a no ofrecer un boton que ya se sabe que falla. */
+  function vPolitica() {
+    top('Política de aprobación', 'Comercial · Compuerta 1', null, '#/');
+    $('#fija').innerHTML = '';
+    $('#vista').innerHTML = '';
+    if (!G.MachotePolitica) {
+      $('#vista').innerHTML = '<div class="pad"><div class="aviso bad">' +
+        'No cargó la vista de política.</div></div>';
+      return;
+    }
+    G.MachotePolitica.montar($('#vista'));
+  }
+
   function vControl() {
     top('Control', 'Comercial · dirección', null, '#/');
     $('#fija').innerHTML = '';
@@ -1006,6 +1025,9 @@
           : visibles.length + ' de ' + universo.length) + '</div>' +
         '<div class="acc">' +
           (esDireccion ? '<a class="btn fantasma" href="#/control">Control</a>' : '') +
+          /* La politica la ve CUALQUIERA, no solo direccion: es la regla con la
+           * que se mide su trabajo. Quien no sea direccion la ve en lectura. */
+          '<a class="btn fantasma" href="#/politica">Política</a>' +
           /* Dice «todo» y dice CUÁNTOS a propósito. Con filtros en pantalla —y el
            * de persona puesto de arranque— «Exportar» a secas se lee como «exporta
            * lo que estoy viendo», que es justo lo que NO hace. El número es la

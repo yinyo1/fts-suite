@@ -121,6 +121,7 @@
   var URL_PRESTAR = BASE + '/comercial/machote-prestar';
   var URL_ARCHIVAR = BASE + '/comercial/machote-archivar';
   var URL_ORDEN = BASE + '/comercial/orden-crear';
+  var URL_COMPUERTA = BASE + '/comercial/compuerta';
   var TIMEOUT_MS = 12000;
 
   /* Que exista el objeto no basta: en modo privado de Safari `localStorage`
@@ -1339,6 +1340,51 @@
     });
   }
 
+  /** La política de aprobación de la Compuerta 1.
+   *
+   *  LEERLA la puede cualquiera del módulo, a propósito: ver con qué regla te
+   *  van a medir no es un privilegio, y esconderla sólo consigue que la gente
+   *  no entienda por qué la marcaron. EDITARLA es sólo de dirección, y eso lo
+   *  vuelve a comprobar el servidor — lo de aquí no es el candado. */
+  function politica() {
+    var ses = sesion();
+    if (!ses) {
+      return Promise.resolve({ ok: false, error: 'SIN_SESION',
+        mensaje: 'No hay sesión: vuelve a entrar.' });
+    }
+    return postear(URL_COMPUERTA, { token: ses.token, modo: 'leer' });
+  }
+
+  /** Guarda los niveles. Un nivel NO se borra: se apaga con `activo`, igual
+   *  que un machote no se borra sino que se archiva. */
+  function guardarPolitica(niveles) {
+    var ses = sesion();
+    if (!ses) {
+      return Promise.resolve({ ok: false, error: 'SIN_SESION',
+        mensaje: 'No hay sesión: vuelve a entrar.' });
+    }
+    return postear(URL_COMPUERTA, { token: ses.token, modo: 'guardar',
+      niveles: Array.isArray(niveles) ? niveles : [] });
+  }
+
+  /** El veredicto de la Compuerta 1 sobre una cotización, contra su orden
+   *  REAL de Odoo. Devuelve `se_puede_enviar`, que hoy sólo es falso cuando la
+   *  orden y la cotización no dicen lo mismo: fuera de política se marca y se
+   *  manda igual. */
+  function evaluarCompuerta(idPantalla) {
+    var ses = sesion();
+    if (!ses) {
+      return Promise.resolve({ ok: false, error: 'SIN_SESION',
+        mensaje: 'No hay sesión: vuelve a entrar.' });
+    }
+    var uuid = idServidor(idPantalla);
+    if (!uuid) {
+      return Promise.resolve({ ok: false, error: 'NUNCA_SUBIDO',
+        mensaje: 'Esta cotización todavía no llega al servidor.' });
+    }
+    return postear(URL_COMPUERTA, { token: ses.token, modo: 'evaluar', machote_id: uuid });
+  }
+
   G.MachoteAlmacen = {
     nombre: 'postgres+cache',
     disponible: function () { return VIVO; },
@@ -1380,6 +1426,9 @@
     versionDe: versionDe,
     ordenDe: ordenDe,
     crearOrden: crearOrden,
+    politica: politica,
+    guardarPolitica: guardarPolitica,
+    evaluarCompuerta: evaluarCompuerta,
     esDemo: esDemo,
 
     pendientes: pendientes,
