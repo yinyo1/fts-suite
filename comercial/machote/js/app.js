@@ -56,7 +56,7 @@
    *   2. el `?v=` de la URL con la que el navegador lo bajó,
    *   3. la que declara cada pieza que se carga aparte (hoy el motor).
    * Si discrepan, la pantalla lo DICE en vez de correr a medias. */
-  const VERSION_ARCHIVO = 'V1.30';
+  const VERSION_ARCHIVO = 'V1.31';
 
   const VERSION_URL = (function () {
     try {
@@ -1532,6 +1532,12 @@
        * el otro está adentro evita la mayoría de los choques sin candados—,
        * y por eso vive arriba, donde se ve sin buscarla. */
       (G.MachotePrestamo ? G.MachotePrestamo.franja(m) : '') +
+      /* EL CLIENTE QUE FALTA. Doce de trece cotizaciones vivas lo tienen en
+       * texto y no ligado a Odoo, así que hoy doce no podrían emitir orden.
+       * La franja lo pide la próxima vez que alguien abra la cotización —que
+       * es justo lo que pidió Esteban— y no cuesta nada de lo capturado:
+       * ponerlo sólo escribe `cliente_id`. */
+      (G.ClienteFalta ? G.ClienteFalta.franja(m) : '') +
       '<div class="libro' + (soloLectura ? ' solo-lectura' : '') + '">' +
       '<div class="hojas" id="hojas">' + hojas.map((h, i) =>
         '<button class="pestana' + (h.id === ST.hoja ? ' on' : '') +
@@ -1560,6 +1566,18 @@
       }
     };
     enlazarCopiar();
+
+    /* El botón de la franja de arriba. Al elegir se guarda y se repinta: el
+     * `cliente_id` es lo único que cambia, y el nombre se vuelve a leer de
+     * Odoo en el siguiente render. */
+    if (G.ClienteFalta) {
+      G.ClienteFalta.enlazar(m, (hit) => {
+        m.cliente_id = hit.id;
+        m.cliente = hit.nombre;
+        tocado(m);
+        vMachote(id);
+      });
+    }
 
     pintarHoja(m);
     barra(m, c);
@@ -2697,7 +2715,10 @@
         : '') +
       '<a class="btn" href="#/rev/' + m.id + '">Revisar</a></div>';
     const bo = $('#btnOrden');
-    if (bo) bo.onclick = () => G.MachoteOrden.abrir(m);
+    /* El segundo argumento es cómo se GUARDA. La pantalla de la orden puede
+     * cambiar el cliente cuando falta, y sin esto ese cambio se quedaría en
+     * memoria: `tocado` es lo que lo marca para subir. */
+    if (bo) bo.onclick = () => G.MachoteOrden.abrir(m, (mm) => tocado(mm));
     const bp = $('#btnPrestar');
     if (bp) bp.onclick = () => G.MachotePrestamo.abrir(m, personasDelEquipo(), vMachote);
     const bc = $('#btnCeder');

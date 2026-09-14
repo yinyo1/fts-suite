@@ -983,6 +983,11 @@ tr.marcado td { background: #fffaf0; }
 /* Los estorbos del cascarón. Los de captura se abren solos porque son los que
  * el analista puede quitar hoy; los del sistema van debajo, porque saberlos es
  * útil y perseguirlos no le toca a quien cotiza. */
+/* El botón de arreglar el cliente, dentro de la lista de estorbos. Va con
+ * sangría para que se lea como parte del renglón que lo explica y no como una
+ * acción suelta de la pantalla. */
+.est-fix { margin: 6px 0 10px 18px; }
+.est-fix .btn { width: auto; padding: 0 14px; min-height: 34px; }
 .estorbos { border: 1px solid #e6c98a; background: #fffaf0; border-radius: 12px;
             padding: 8px 12px; margin: 10px 0; font-size: 13px; }
 .estorbos > summary { cursor: pointer; font-weight: 600; padding: 2px 0; }

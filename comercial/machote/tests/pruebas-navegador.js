@@ -6319,6 +6319,167 @@ await sembrarMachotes(q);
     } finally { await q.close(); }
   });
 
+  /* ══ V1.31 · EL CLIENTE QUE FALTA ═════════════════════════════════════════
+   *
+   * Doce de trece cotizaciones vivas tienen el cliente en TEXTO y sin ligar a
+   * Odoo, así que hoy doce contestarían `SIN_CLIENTE` al crear la orden.
+   * Esteban pidió las dos mitades, y son dos cosas distintas: que no se pueda
+   * llegar al final sin cliente real, y que las que ya existen lo pidan la
+   * próxima vez que alguien las abra SIN PERDER NADA.
+   *
+   * Esa última mitad es la delicada: son cotizaciones de meses, algunas en la
+   * versión 29. La prueba de abajo mide justamente que ponerle el cliente no
+   * les quita un solo número. */
+  const CATALOGO = { ok: true, clientes: [
+    { id: 1630, nombre: 'ACME Industrial de México' },
+    { id: 991,  nombre: 'Bombas y Sellos del Norte' }
+  ]};
+
+  /** Una pantalla con UN machote sin `cliente_id` — el caso de los doce. */
+  const cliPagina = async () => {
+    const q = await b.newPage({ viewport: { width: 1280, height: 1000 } });
+    await sembrarGeo(q);
+    await q.addInitScript((cfg) => {
+      const poner = function () {
+        try {
+          localStorage.setItem('fts_suite_session', JSON.stringify({
+            token: 'prueba.prueba.prueba', actor: 'zz.prueba', nombre: 'ZZ Prueba',
+            empleado_id: null, scopes: ['comercial:read', 'comercial:orden'],
+            exp: Math.floor(Date.now() / 1000) + 3600, debe_cambiar_password: false }));
+          if (localStorage.getItem('fts_machote_v1')) return;
+          const m = JSON.parse(JSON.stringify(cfg.uno));
+          m.cliente = 'Bombas y Sellos del Norte SA';  // tecleado a mano…
+          m.cliente_id = null;                          // …y sin ligar
+          localStorage.setItem('fts_machote_v1', JSON.stringify({
+            v: 1, guardado_at: new Date().toISOString(), machotes: [m], handoff: {} }));
+        } catch (e) {}
+      };
+      poner();
+      const limpiar = localStorage.clear.bind(localStorage);
+      localStorage.clear = function () { limpiar(); poner(); };
+      const orig = window.fetch;
+      window.fetch = function (u) {
+        const s = String(u);
+        if (s.indexOf('/comercial/clientes') >= 0) {
+          return Promise.resolve({ ok: true,
+            json: function () { return Promise.resolve(cfg.cat); } });
+        }
+        if (s.indexOf('/comercial/') >= 0) return new Promise(function () {});
+        return orig.apply(this, arguments);
+      };
+    }, { uno: MACHOTES_FIXTURE[0], cat: CATALOGO });
+    return q;
+  };
+
+  const abrirElPrimero = async (q) => {
+    await q.goto(BASE); await q.waitForTimeout(900);
+    const href = await q.$eval('.fila a.item', a => a.getAttribute('href'));
+    await q.goto(BASE + href); await q.waitForTimeout(900);
+  };
+
+  await paso('V1.31 · una cotización sin cliente de Odoo lo PIDE al abrirla, y lo dice con el texto que tenía', async () => {
+    const q = await cliPagina();
+    try {
+      await abrirElPrimero(q);
+      const t = (await q.textContent('#vista')).replace(/\s+/g, ' ');
+      if (!/falta el cliente de Odoo/i.test(t))
+        throw new Error('no pidió el cliente: ' + t.slice(0, 160));
+      /* Que enseñe LO QUE ESTABA ESCRITO importa: sin eso, quien lo abre no
+       * sabe qué buscar en el catálogo. */
+      if (!/Bombas y Sellos del Norte SA/.test(t))
+        throw new Error('no dice qué texto tenía capturado');
+      if (!await q.$('#cliElegir')) throw new Error('no ofrece cómo arreglarlo');
+      console.log('    pide el cliente y enseña el texto que había');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.31 · sin cliente NO se puede crear la orden, y el arreglo está en la misma pantalla', async () => {
+    const q = await cliPagina();
+    try {
+      await abrirElPrimero(q);
+      await q.click('#btnOrden'); await q.waitForTimeout(600);
+
+      if (!await q.$eval('#or-crear', el => el.disabled))
+        throw new Error('dejó apretar «Crear la orden» sin cliente de Odoo');
+      /* Y el porqué tiene que estar dicho, no sólo el botón gris. */
+      const t = (await q.textContent('#modalOrden')).replace(/\s+/g, ' ');
+      if (!/partner_id|cliente del catálogo/i.test(t))
+        throw new Error('botón gris sin explicación: ' + t.slice(0, 200));
+      if (!await q.$('#or-cliente'))
+        throw new Error('no ofrece elegirlo sin salir de la pantalla');
+      console.log('    botón bloqueado · el porqué dicho · el arreglo a la mano');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.31 · elegir el cliente destraba la orden y NO pierde nada de lo capturado', async () => {
+    /* La mitad que da miedo: estas cotizaciones llevan meses. Se mide que
+     * después de ponerle el cliente siga TODO — secciones, renglones y el
+     * total — y que lo único que cambió sea `cliente_id`. */
+    const q = await cliPagina();
+    try {
+      await abrirElPrimero(q);
+      const antes = await q.evaluate(() => {
+        const m = JSON.parse(localStorage.getItem('fts_machote_v1')).machotes[0];
+        return { secciones: m.secciones.length,
+                 renglones: m.secciones.reduce((a, s) => a + (s.partidas || []).length, 0),
+                 nombre: m.nombre, id: m.id };
+      });
+
+      await q.click('#btnOrden'); await q.waitForTimeout(600);
+      await q.evaluate(() => {
+        const d = document.querySelector('details.estorbos'); if (d) d.open = true;
+      });
+      await q.click('#or-cliente'); await q.waitForTimeout(700);
+      await q.fill('#cliBuscar', 'Bombas y Sellos del Norte');
+      await q.click('#cliOk'); await q.waitForTimeout(800);
+
+      if (await q.$eval('#or-crear', el => el.disabled))
+        throw new Error('eligió el cliente y el botón siguió bloqueado');
+
+      const despues = await q.evaluate(() => {
+        const m = JSON.parse(localStorage.getItem('fts_machote_v1')).machotes[0];
+        return { secciones: m.secciones.length,
+                 renglones: m.secciones.reduce((a, s) => a + (s.partidas || []).length, 0),
+                 nombre: m.nombre, id: m.id, cliente_id: m.cliente_id };
+      });
+      if (despues.cliente_id !== 991)
+        throw new Error('no guardó el id del catálogo: ' + despues.cliente_id);
+      if (despues.secciones !== antes.secciones || despues.renglones !== antes.renglones)
+        throw new Error('PERDIÓ captura: ' + JSON.stringify({ antes: antes, despues: despues }));
+      if (despues.nombre !== antes.nombre || despues.id !== antes.id)
+        throw new Error('cambió algo que no debía: ' + JSON.stringify(despues));
+      console.log('    cliente_id 991 · ' + despues.secciones + ' secciones y ' +
+                  despues.renglones + ' renglones intactos');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.31 · un texto que NO casa con el catálogo no se guarda como si fuera un cliente', async () => {
+    /* La diferencia con la pantalla de capturar: ahí el texto libre es
+     * correcto (un prospecto sin dar de alta). Aquí el diálogo existe para
+     * poner el ID que falta, así que un texto que no resuelve no sirve — y
+     * guardarlo otra vez sería dejar el problema igual con cara de arreglado. */
+    const q = await cliPagina();
+    try {
+      await abrirElPrimero(q);
+      await q.click('#btnOrden'); await q.waitForTimeout(600);
+      await q.evaluate(() => {
+        const d = document.querySelector('details.estorbos'); if (d) d.open = true;
+      });
+      await q.click('#or-cliente'); await q.waitForTimeout(700);
+      await q.fill('#cliBuscar', 'Ferretería que no existe en Odoo');
+      await q.click('#cliOk'); await q.waitForTimeout(500);
+
+      if (!await q.$('#cliCaja')) throw new Error('cerró el diálogo con un cliente que no existe');
+      const av = (await q.textContent('#cliAviso') || '').replace(/\s+/g, ' ');
+      if (!/no casa con ningún cliente/i.test(av))
+        throw new Error('no explica por qué no lo tomó: ' + av);
+      const cid = await q.evaluate(() => JSON.parse(
+        localStorage.getItem('fts_machote_v1')).machotes[0].cliente_id);
+      if (cid) throw new Error('guardó un cliente_id inventado: ' + cid);
+      console.log('    no lo toma, lo explica, y no guarda nada');
+    } finally { await q.close(); }
+  });
+
   await paso('sin errores de consola propios del prototipo', async () => {
     if (errs.length) throw new Error(errs.slice(0, 4).join(' | '));
     if (delEntorno.length) console.log('   (' + delEntorno.length +
