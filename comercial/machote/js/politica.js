@@ -207,6 +207,23 @@
       return;
     }
 
+    /* El error que NADIE notaría: «35» donde va «0.35». Se ve perfectamente
+     * bien escrito y significa 3500%, o sea que ese nivel no se dispara nunca
+     * más — sin que la pantalla cambie de aspecto. La base tiene su CHECK
+     * (`margen_bajo > 0 AND margen_bajo < 1`), así que no se cuela; pero lo que
+     * volvería es un error de constraint, y eso no le dice a nadie qué teclear.
+     * Aquí se para con las palabras que sí lo dicen. */
+    var malMargen = _st.niveles.filter(function (n) {
+      return n.margen_bajo !== null &&
+             (!isFinite(n.margen_bajo) || n.margen_bajo <= 0 || n.margen_bajo >= 1);
+    });
+    if (malMargen.length) {
+      decir('El margen del nivel ' + malMargen[0].nivel + ' va como fracción entre 0 y 1: ' +
+            '0.35 es 35%. Tal como está (' + malMargen[0].margen_bajo + ') sería ' +
+            (malMargen[0].margen_bajo * 100) + '%.', true);
+      return;
+    }
+
     var b = document.getElementById('pol-guardar');
     if (b) { b.disabled = true; b.textContent = 'Guardando…'; }
     decir('Guardando…');

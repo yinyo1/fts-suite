@@ -3513,6 +3513,153 @@ await sembrarMachotes(q);
     } finally { await q.close(); }
   });
 
+
+  /* ══ V1.30 · EL PANEL DE APROBADORES ══════════════════════════════════════
+   *
+   * La política de la Compuerta 1 vive en la base y se edita desde esta
+   * pantalla. Lo que hay que medir NO es que pinte bonito, sino las dos
+   * decisiones que la gobiernan:
+   *
+   *   1 · la ABRE cualquiera (ver con qué regla te miden no es un privilegio),
+   *       pero EDITAR exige `comercial:admin`;
+   *   2 · el margen viaja como FRACCIÓN. Un `35` tecleado donde va `0.35` es
+   *       3500%, se ve perfectamente bien y nadie lo notaría — así que la
+   *       pantalla tiene que pararlo ANTES de que salga a la red.
+   *
+   * El candado de verdad está en el servidor; estas pruebas miden que la
+   * pantalla no ofrezca un botón que ya se sabe que va a fallar, que es cosa
+   * distinta y también hace falta. */
+  const polPagina = async (scopes, niveles) => {
+    const q = await b.newPage({ viewport: { width: 1280, height: 1000 } });
+    await sembrarGeo(q);
+    await sembrarMachotes(q);
+    await q.addInitScript((cfg) => {
+      const poner = function () {
+        try {
+          localStorage.setItem('fts_suite_session', JSON.stringify({
+            token: 'prueba.prueba.prueba', actor: 'zz.prueba', nombre: 'ZZ Prueba',
+            empleado_id: null, scopes: cfg.scopes,
+            exp: Math.floor(Date.now() / 1000) + 3600, debe_cambiar_password: false }));
+        } catch (e) {}
+      };
+      poner();
+      const limpiar = localStorage.clear.bind(localStorage);
+      localStorage.clear = function () { limpiar(); poner(); };
+
+      /* Se apunta TODO lo que sale hacia la compuerta para poder exigir, en la
+       * prueba del margen, que no haya salido nada. */
+      window.__compuerta = [];
+      const orig = window.fetch;
+      window.fetch = function (u, o) {
+        const s = String(u);
+        if (s.indexOf('/comercial/compuerta') >= 0) {
+          var cuerpo = {};
+          try { cuerpo = JSON.parse((o && o.body) || '{}'); } catch (e) {}
+          window.__compuerta.push(cuerpo);
+          if (cuerpo.modo === 'guardar') {
+            return Promise.resolve({ ok: true, json: function () {
+              return Promise.resolve({ ok: true, modo: 'guardar',
+                guardados: (cuerpo.niveles || []).length,
+                niveles: cfg.niveles, puede_editar: true }); } });
+          }
+          return Promise.resolve({ ok: true, json: function () {
+            return Promise.resolve({ ok: true, modo: 'leer', niveles: cfg.niveles,
+              total: cfg.niveles.length,
+              puede_editar: cfg.scopes.indexOf('comercial:admin') >= 0 }); } });
+        }
+        if (s.indexOf('/comercial/') >= 0) return new Promise(function () {});
+        return orig.apply(this, arguments);
+      };
+    }, { scopes: scopes, niveles: niveles });
+    return q;
+  };
+
+  /** Los dos niveles de julio, que son los que sembró la migración 007. */
+  const NIVELES_JULIO = [
+    { nivel: 1, nombre: 'Revision de direccion', monto_desde: 500000, margen_bajo: 0.35,
+      aprobador: null, aprobador_nombre: null, solo_marca: true, activo: true,
+      updated_at: '2026-09-14 03:08:16.808284+00', updated_by: 'migracion-007' },
+    { nivel: 2, nombre: 'Visto bueno del gerente', monto_desde: 100000, margen_bajo: null,
+      aprobador: 'francisco.montalvo', aprobador_nombre: 'Francisco Montalvo',
+      solo_marca: false, activo: true,
+      updated_at: '2026-09-14 04:52:11.290283+00', updated_by: 'esteban.delacruz' }
+  ];
+
+  await paso('V1.30 · la política la VE cualquiera, pero sin dirección no ofrece guardarla', async () => {
+    const q = await polPagina(['comercial:read'], NIVELES_JULIO);
+    try {
+      await q.goto(BASE + '#/politica'); await q.waitForTimeout(1100);
+      const t = (await q.textContent('#vista')).replace(/\s+/g, ' ');
+
+      /* Lo primero: la ve. Si rebotara a la lista, quien sale marcado nunca
+       * sabría por qué lo marcaron. */
+      if (!/Revision de direccion/.test(t) || !/Francisco Montalvo/.test(t))
+        throw new Error('no enseñó la política a quien sólo lee: ' + t.slice(0, 200));
+      if (!/500,000|500000/.test(t)) throw new Error('no enseñó el monto del nivel 1');
+
+      /* Y lo segundo: ni un control de escritura. El candado de verdad está en
+       * el servidor; esto es no ofrecer un botón que ya se sabe que falla. */
+      const controles = await q.evaluate(() =>
+        document.querySelectorAll('#vista input, #vista select, #vista textarea').length);
+      if (controles) throw new Error('ofreció ' + controles + ' control(es) de captura a quien sólo lee');
+      const botones = await q.evaluate(() => Array.prototype.map.call(
+        document.querySelectorAll('#vista button'), b => (b.textContent || '').trim()));
+      if (botones.some(x => /guardar|agregar/i.test(x)))
+        throw new Error('ofreció escribir sin dirección: ' + botones.join(' · '));
+      console.log('    lee los 2 niveles · 0 campos de captura · botones: ' +
+                  (botones.join(' · ') || '(ninguno)'));
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.30 · con dirección sí edita, y lo que manda son FRACCIONES, no porcentajes', async () => {
+    const q = await polPagina(['comercial:read', 'comercial:admin'], NIVELES_JULIO);
+    try {
+      await q.goto(BASE + '#/politica'); await q.waitForTimeout(1100);
+      const campos = await q.evaluate(() =>
+        document.querySelectorAll('#vista input').length);
+      if (!campos) throw new Error('no dio campos a dirección');
+
+      await q.click('#pol-guardar'); await q.waitForTimeout(700);
+      const salidas = await q.evaluate(() => window.__compuerta || []);
+      const g = salidas.filter(x => x.modo === 'guardar');
+      if (g.length !== 1) throw new Error('mandó ' + g.length + ' guardados, esperaba 1');
+      const n1 = (g[0].niveles || []).filter(x => Number(x.nivel) === 1)[0];
+      if (!n1) throw new Error('no mandó el nivel 1: ' + JSON.stringify(g[0]).slice(0, 200));
+      if (Math.abs(Number(n1.margen_bajo) - 0.35) > 1e-9)
+        throw new Error('el margen salió como ' + n1.margen_bajo + ', no como fracción 0.35');
+      if (Number(n1.monto_desde) !== 500000)
+        throw new Error('el monto salió como ' + n1.monto_desde);
+      console.log('    guardó nivel 1 con margen_bajo=' + n1.margen_bajo +
+                  ' y monto_desde=' + n1.monto_desde);
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.30 · un 35 tecleado donde va 0.35 NO sale a la red: se para y se dice', async () => {
+    /* El error que nadie notaría: «35» se ve bien escrito en la casilla de
+     * margen, y significa 3500%. Si sale, la compuerta deja de dispararse
+     * nunca — y la pantalla seguiría viéndose igual de correcta. */
+    const q = await polPagina(['comercial:read', 'comercial:admin'], NIVELES_JULIO);
+    try {
+      await q.goto(BASE + '#/politica'); await q.waitForTimeout(1100);
+      await q.evaluate(() => { window.__compuerta = []; });
+
+      const sel = '#vista input[data-pol="margen_bajo"]';
+      const hay = await q.$$(sel);
+      if (!hay.length) throw new Error('no encontré la casilla del margen (data-pol)');
+      await hay[0].fill('35');
+      await q.click('#pol-guardar'); await q.waitForTimeout(700);
+
+      const g = (await q.evaluate(() => window.__compuerta || []))
+        .filter(x => x.modo === 'guardar');
+      if (g.length) throw new Error('mandó un margen de 3500% a la base: ' +
+                                    JSON.stringify(g[0].niveles).slice(0, 200));
+      const av = (await q.textContent('#vista')).replace(/\s+/g, ' ');
+      if (!/fracci[óo]n|entre 0 y 1|0\.35/i.test(av))
+        throw new Error('no explica que va como fracción: ' + av.slice(0, 240));
+      console.log('    nada salió a la red · la pantalla explica la fracción');
+    } finally { await q.close(); }
+  });
+
   await paso('cascarón de envío: apretar el botón NO marca la cotización como enviada', async () => {
     /* La regla dura del brief, y la lección del kiosko: la marca la dispara el
      * envío confirmado, nunca el clic. Aquí no hay envío, así que no puede
