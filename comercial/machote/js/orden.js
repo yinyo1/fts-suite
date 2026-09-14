@@ -370,6 +370,15 @@
       (e.de_captura.length ? ' · <strong>' + e.de_captura.length + ' de captura</strong>' : '') +
       '</summary>' +
       lista('Se arregla capturando', e.de_captura, 'captura') +
+      /* El cliente es el ÚNICO estorbo que se puede arreglar sin salir de
+       * aquí, así que su botón va pegado a la explicación que ya existía —no
+       * en una franja aparte que dijera lo mismo por segunda vez—. Los otros
+       * estorbos se arreglan en el costeo o en Revisar, y para esos mandar a
+       * otra pantalla es lo correcto. */
+      (!_st.pre.cliente.odoo_partner_id
+        ? '<div class="est-fix"><button class="btn fantasma" id="or-cliente">' +
+          'Elegir el cliente del catálogo</button></div>'
+        : '') +
       lista('No se arregla aquí', e.de_sistema, 'sistema') +
       '</details>';
   }
@@ -491,7 +500,8 @@
       '<div class="or-pie">' +
         '<button class="btn fantasma" id="or-contrato">Ver el contrato de salida</button>' +
         '<button class="btn fantasma" id="or-siguiente">Mandarla al cliente ›</button>' +
-        '<button class="btn" id="or-crear">Crear la orden en Odoo</button>' +
+        '<button class="btn" id="or-crear"' + (faltaCliente ? ' disabled' : '') + '>' +
+          'Crear la orden en Odoo</button>' +
       '</div>' +
       '<div id="or-contrato-caja"></div>');
 
@@ -597,6 +607,23 @@
     document.getElementById('or-contrato').onclick = pintarContrato;
     document.getElementById('or-siguiente').onclick = pintarEnvio;
     document.getElementById('or-crear').onclick = crearLaOrden;
+
+    /* Elegirlo aquí mismo. Se escribe en el machote, se vuelve a prellenar la
+     * pantalla desde él y el botón se destraba solo — sin salir, sin perder
+     * los campos de la negociación que ya se hubieran capturado. */
+    var bCli = document.getElementById('or-cliente');
+    if (bCli && G.ClienteFalta) {
+      bCli.onclick = function () {
+        G.ClienteFalta.abrir(_st.machote, function (hit) {
+          _st.machote.cliente_id = hit.id;
+          _st.machote.cliente = hit.nombre;
+          if (typeof _st.alGuardar === 'function') _st.alGuardar(_st.machote);
+          _st.pre = prellenar(_st.machote);
+          _st.clienteNombre = hit.nombre;
+          pintarConfigurador();
+        });
+      };
+    }
   }
 
   /* El contrato de salida, a la vista y no enterrado en un documento. Lo que
@@ -1096,8 +1123,14 @@
     w.document.close();
   }
 
-  /** Abre el cascarón sobre un machote. */
-  function abrir(m) {
+  /** Abre el cascarón sobre un machote.
+   *
+   *  `alGuardar(m)` lo pone quien llama, y es lo único de aquí que puede
+   *  PERSISTIR: esta pantalla no sabe cómo se guarda un machote —eso vive en
+   *  `app.js`— y no tiene por qué saberlo. Hace falta desde que se puede
+   *  elegir el cliente sin salir: sin guardador, el cliente elegido se
+   *  quedaría en memoria y se perdería al cambiar de pantalla. */
+  function abrir(m, alGuardar) {
     C = G.MachoteCalc;
     if (!C || !m) return;
     var pre = prellenar(m);
@@ -1110,6 +1143,7 @@
        * es de ESTA orden, no del costeo. */
       desglose: {}, desgloseEdit: {},
       machote: m, pre: pre, aMano: aMano,
+      alGuardar: (typeof alGuardar === 'function') ? alGuardar : null,
       clienteNombre: G.Clientes ? G.Clientes.nombre(m) : (m.cliente || '')
     };
     pintarConfigurador();

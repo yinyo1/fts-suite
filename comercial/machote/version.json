@@ -1,11 +1,21 @@
 {
-  "version": "V1.30",
-  "build": "V1.30",
+  "version": "V1.32",
+  "build": "V1.32",
   "fecha": "2026-09-14",
   "modulo": "comercial/machote",
   "ambito": "El CONTADOR es solo de este modulo. finanzas tambien usa V1.xx desde el 2026-09-03 (instruccion directa de Esteban, corrige el \"no propagar\" del issue #148) pero lleva su propio contador y va en V1.00. operaciones/planeacion sigue en 2.4.1, kiosk y confirmar-horas solo con cadena de build, y siete modulos con un 1.0.0 puesto una vez: a esos no se propaga.",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.32",
+      "pr": null,
+      "nota": "ESTACION 3 (#244), sesion 2 · C: LA CONFIRMACION MANDA DESDE LA SUITE. Pantalla nueva #/confirmar: lista de ordenes vivas con la LINEA RECTA visible (cotizacion -> orden -> oportunidad -> proyecto) y el estado LEIDO DE ODOO en cada carga --cuando Odoo no contesta la columna sale vacia y lo dice, porque 'en borrador' y 'no se pudo preguntar' son cosas distintas--; captura del handoff (fechas de obra, responsable, alcance, entregables y presupuesto por rubro); Compuerta 2, que ensena TODO lo que se va a escribir ANTES de escribirlo, incluido el EJE ANALITICO (el plan y la COLUMNA), porque escribir la cuenta en la columna de otro plan no da error: deja un numero que se ve bien y esta mal. Servidor: workflow comercial/confirmar (Cyapm1EfPPbTxSi5, 21 nodos, NACE INACTIVO) con cuatro modos. Al confirmar hace SIETE escrituras en orden, con lo UNICO irreversible --confirmar la orden-- AL FINAL y la bandera del radar ANTES: el radar busca ordenes en 'sale' con la bandera en falso, asi que confirmar primero abriria una ventana de 5 minutos para que creara un SEGUNDO proyecto. PROBADO EJECUTANDO sobre SO11889: el primer intento murio de verdad en el paso 6 y dejo la orden en BORRADOR con lo creado apuntado; el segundo REUSO analitica 3123 / proyecto 2378 / presupuesto 427 y creo 0 lineas nuevas. HALLAZGO QUE CONTRADICE LA SESION 1: una linea sin product_id SI se crea y NO se confirma ('Some order lines are missing a product'), asi que ninguna orden emitida por la suite se puede confirmar hasta que orden-crear mande product_id --el arreglo va en un workflow ACTIVO y queda para Esteban--. Y de paso: tres pruebas de V1.30 llevaban rotas desde la V1.31 porque el boton de crear la orden nace bloqueado sin cliente; salieron al correr la suite COMPLETA, no la filtrada."
+    },
+    {
+      "version": "V1.31",
+      "pr": null,
+      "nota": "ESTACION 3 (#244), sesion 2: la confirmacion empieza a mandar desde la suite. MIGRACION 008 (handoff + bitacora de confirmacion + columnas de lo que produce), y el CLIENTE DEL CATALOGO SE VUELVE OBLIGATORIO para poder crear la orden. Doce de trece cotizaciones vivas tenian el cliente en TEXTO y no ligado a Odoo, asi que hoy doce contestarian SIN_CLIENTE: ahora la franja lo pide la proxima vez que alguien las abra --sin perder nada de lo capturado, solo escribe cliente_id-- y el boton de crear la orden nace bloqueado con el arreglo al lado, no en otra pantalla. La pregunta '¿le falta el cliente?' vive en UN solo archivo (cliente-falta.js) porque se hace desde dos pantallas y va a hacerse desde una tercera (§20 #13). AUDITORIA: los 3 desbloqueos verificados TOCANDO (3 webhooks 200/TOKEN_AUSENTE; el PDF real de SO11890, 143 KB, que antes del parche daba ORDEN_SIN_ENLACE; el campo x_studio_machote_folio leido de crm.lead). Y dos hallazgos medidos: el radar escribe el eje de proyecto de USA en account_id --la columna del plan 1-- con x_plan18_id VACIO, y Odoo no dice nada; y si la suite confirmara antes de marcar la bandera, el radar crearia un SEGUNDO proyecto en menos de 5 minutos. Por eso el orden de escritura pone lo irreversible (confirmar) AL FINAL y la bandera ANTES."
+    },
     {
       "version": "V1.30",
       "pr": null,

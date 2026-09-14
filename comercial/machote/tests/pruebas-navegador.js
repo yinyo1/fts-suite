@@ -241,7 +241,14 @@ await sembrarMachotes(p);
    * se comprueba aparte, contra Pages— y el vigilante ya trata el fallo como
    * no-op silencioso, que es justo lo que debe hacer sin red. */
   const delEntorno = [];
-  const esDelEntorno = (t) => /ERR_CONNECTION_RESET|ERR_NAME_NOT_RESOLVED|fonts\.googleapis|fonts\.gstatic/.test(t)
+  /* V1.32 · se suma `ERR_CERT_AUTHORITY_INVALID`. El proxy del sandbox
+   * intercepta TLS con su propia CA, y Chromium la rechaza — el mensaje de
+   * consola llega SIN url, así que no se puede filtrar por dominio. Medido
+   * antes de agregarlo, con `requestfailed`, que sí trae la url:
+   *   net::ERR_CERT_AUTHORITY_INVALID  https://fonts.googleapis.com/css2?family=Inter…
+   * O sea la MISMA petición que ya se filtraba por nombre, fallando de otra
+   * forma. Es del entorno, no del módulo: en el dominio la fuente carga. */
+  const esDelEntorno = (t) => /ERR_CONNECTION_RESET|ERR_NAME_NOT_RESOLVED|ERR_CERT_AUTHORITY_INVALID|fonts\.googleapis|fonts\.gstatic/.test(t)
     || (/version\.json/.test(t) && /file/.test(t));
   p.on('console', m => { if (m.type() !== 'error') return;
     (esDelEntorno(m.text()) ? delEntorno : errs).push('CONSOLE: ' + m.text()); });
@@ -3365,6 +3372,19 @@ await sembrarMachotes(q);
             'M-1041': { version: 3, huella: 'x',
                         machote_id: '11111111-2222-3333-4444-555555555555' }
           }));
+          /* Desde V1.31 el botón de crear la orden NACE BLOQUEADO si el machote
+           * no tiene cliente del catálogo. Estas pruebas miden OTRA cosa —qué
+           * hace la pantalla con lo que contesta el servidor—, así que el
+           * fixture tiene que tener el cliente puesto o se quedan esperando un
+           * botón que nunca se habilita. Lo del cliente que falta lo cubren las
+           * cuatro pruebas de V1.31, que para eso están. */
+          const d = JSON.parse(localStorage.getItem('fts_machote_v1') || 'null');
+          if (d && d.machotes && d.machotes.length) {
+            d.machotes.forEach(function (m) {
+              if (!m.cliente_id) { m.cliente_id = 991; m.cliente = 'ZZ Cliente de prueba'; }
+            });
+            localStorage.setItem('fts_machote_v1', JSON.stringify(d));
+          }
         } catch (e) {}
       };
       poner();
@@ -6316,6 +6336,367 @@ await sembrarMachotes(q);
       if (!/Salida de FTS/.test(c2[0].motivo || ''))
         throw new Error('no mandó el motivo: ' + c2[0].motivo);
       console.log('    voluntaria forzada=false sin motivo · forzada=true con «' + c2[0].motivo + '»');
+    } finally { await q.close(); }
+  });
+
+  /* ══ V1.31 · EL CLIENTE QUE FALTA ═════════════════════════════════════════
+   *
+   * Doce de trece cotizaciones vivas tienen el cliente en TEXTO y sin ligar a
+   * Odoo, así que hoy doce contestarían `SIN_CLIENTE` al crear la orden.
+   * Esteban pidió las dos mitades, y son dos cosas distintas: que no se pueda
+   * llegar al final sin cliente real, y que las que ya existen lo pidan la
+   * próxima vez que alguien las abra SIN PERDER NADA.
+   *
+   * Esa última mitad es la delicada: son cotizaciones de meses, algunas en la
+   * versión 29. La prueba de abajo mide justamente que ponerle el cliente no
+   * les quita un solo número. */
+  const CATALOGO = { ok: true, clientes: [
+    { id: 1630, nombre: 'ACME Industrial de México' },
+    { id: 991,  nombre: 'Bombas y Sellos del Norte' }
+  ]};
+
+  /** Una pantalla con UN machote sin `cliente_id` — el caso de los doce. */
+  const cliPagina = async () => {
+    const q = await b.newPage({ viewport: { width: 1280, height: 1000 } });
+    await sembrarGeo(q);
+    await q.addInitScript((cfg) => {
+      const poner = function () {
+        try {
+          localStorage.setItem('fts_suite_session', JSON.stringify({
+            token: 'prueba.prueba.prueba', actor: 'zz.prueba', nombre: 'ZZ Prueba',
+            empleado_id: null, scopes: ['comercial:read', 'comercial:orden'],
+            exp: Math.floor(Date.now() / 1000) + 3600, debe_cambiar_password: false }));
+          if (localStorage.getItem('fts_machote_v1')) return;
+          const m = JSON.parse(JSON.stringify(cfg.uno));
+          m.cliente = 'Bombas y Sellos del Norte SA';  // tecleado a mano…
+          m.cliente_id = null;                          // …y sin ligar
+          localStorage.setItem('fts_machote_v1', JSON.stringify({
+            v: 1, guardado_at: new Date().toISOString(), machotes: [m], handoff: {} }));
+        } catch (e) {}
+      };
+      poner();
+      const limpiar = localStorage.clear.bind(localStorage);
+      localStorage.clear = function () { limpiar(); poner(); };
+      const orig = window.fetch;
+      window.fetch = function (u) {
+        const s = String(u);
+        if (s.indexOf('/comercial/clientes') >= 0) {
+          return Promise.resolve({ ok: true,
+            json: function () { return Promise.resolve(cfg.cat); } });
+        }
+        if (s.indexOf('/comercial/') >= 0) return new Promise(function () {});
+        return orig.apply(this, arguments);
+      };
+    }, { uno: MACHOTES_FIXTURE[0], cat: CATALOGO });
+    return q;
+  };
+
+  const abrirElPrimero = async (q) => {
+    await q.goto(BASE); await q.waitForTimeout(900);
+    const href = await q.$eval('.fila a.item', a => a.getAttribute('href'));
+    await q.goto(BASE + href); await q.waitForTimeout(900);
+  };
+
+  await paso('V1.31 · una cotización sin cliente de Odoo lo PIDE al abrirla, y lo dice con el texto que tenía', async () => {
+    const q = await cliPagina();
+    try {
+      await abrirElPrimero(q);
+      const t = (await q.textContent('#vista')).replace(/\s+/g, ' ');
+      if (!/falta el cliente de Odoo/i.test(t))
+        throw new Error('no pidió el cliente: ' + t.slice(0, 160));
+      /* Que enseñe LO QUE ESTABA ESCRITO importa: sin eso, quien lo abre no
+       * sabe qué buscar en el catálogo. */
+      if (!/Bombas y Sellos del Norte SA/.test(t))
+        throw new Error('no dice qué texto tenía capturado');
+      if (!await q.$('#cliElegir')) throw new Error('no ofrece cómo arreglarlo');
+      console.log('    pide el cliente y enseña el texto que había');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.31 · sin cliente NO se puede crear la orden, y el arreglo está en la misma pantalla', async () => {
+    const q = await cliPagina();
+    try {
+      await abrirElPrimero(q);
+      await q.click('#btnOrden'); await q.waitForTimeout(600);
+
+      if (!await q.$eval('#or-crear', el => el.disabled))
+        throw new Error('dejó apretar «Crear la orden» sin cliente de Odoo');
+      /* Y el porqué tiene que estar dicho, no sólo el botón gris. */
+      const t = (await q.textContent('#modalOrden')).replace(/\s+/g, ' ');
+      if (!/partner_id|cliente del catálogo/i.test(t))
+        throw new Error('botón gris sin explicación: ' + t.slice(0, 200));
+      if (!await q.$('#or-cliente'))
+        throw new Error('no ofrece elegirlo sin salir de la pantalla');
+      console.log('    botón bloqueado · el porqué dicho · el arreglo a la mano');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.31 · elegir el cliente destraba la orden y NO pierde nada de lo capturado', async () => {
+    /* La mitad que da miedo: estas cotizaciones llevan meses. Se mide que
+     * después de ponerle el cliente siga TODO — secciones, renglones y el
+     * total — y que lo único que cambió sea `cliente_id`. */
+    const q = await cliPagina();
+    try {
+      await abrirElPrimero(q);
+      const antes = await q.evaluate(() => {
+        const m = JSON.parse(localStorage.getItem('fts_machote_v1')).machotes[0];
+        return { secciones: m.secciones.length,
+                 renglones: m.secciones.reduce((a, s) => a + (s.partidas || []).length, 0),
+                 nombre: m.nombre, id: m.id };
+      });
+
+      await q.click('#btnOrden'); await q.waitForTimeout(600);
+      await q.evaluate(() => {
+        const d = document.querySelector('details.estorbos'); if (d) d.open = true;
+      });
+      await q.click('#or-cliente'); await q.waitForTimeout(700);
+      await q.fill('#cliBuscar', 'Bombas y Sellos del Norte');
+      await q.click('#cliOk'); await q.waitForTimeout(800);
+
+      if (await q.$eval('#or-crear', el => el.disabled))
+        throw new Error('eligió el cliente y el botón siguió bloqueado');
+
+      const despues = await q.evaluate(() => {
+        const m = JSON.parse(localStorage.getItem('fts_machote_v1')).machotes[0];
+        return { secciones: m.secciones.length,
+                 renglones: m.secciones.reduce((a, s) => a + (s.partidas || []).length, 0),
+                 nombre: m.nombre, id: m.id, cliente_id: m.cliente_id };
+      });
+      if (despues.cliente_id !== 991)
+        throw new Error('no guardó el id del catálogo: ' + despues.cliente_id);
+      if (despues.secciones !== antes.secciones || despues.renglones !== antes.renglones)
+        throw new Error('PERDIÓ captura: ' + JSON.stringify({ antes: antes, despues: despues }));
+      if (despues.nombre !== antes.nombre || despues.id !== antes.id)
+        throw new Error('cambió algo que no debía: ' + JSON.stringify(despues));
+      console.log('    cliente_id 991 · ' + despues.secciones + ' secciones y ' +
+                  despues.renglones + ' renglones intactos');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.31 · un texto que NO casa con el catálogo no se guarda como si fuera un cliente', async () => {
+    /* La diferencia con la pantalla de capturar: ahí el texto libre es
+     * correcto (un prospecto sin dar de alta). Aquí el diálogo existe para
+     * poner el ID que falta, así que un texto que no resuelve no sirve — y
+     * guardarlo otra vez sería dejar el problema igual con cara de arreglado. */
+    const q = await cliPagina();
+    try {
+      await abrirElPrimero(q);
+      await q.click('#btnOrden'); await q.waitForTimeout(600);
+      await q.evaluate(() => {
+        const d = document.querySelector('details.estorbos'); if (d) d.open = true;
+      });
+      await q.click('#or-cliente'); await q.waitForTimeout(700);
+      await q.fill('#cliBuscar', 'Ferretería que no existe en Odoo');
+      await q.click('#cliOk'); await q.waitForTimeout(500);
+
+      if (!await q.$('#cliCaja')) throw new Error('cerró el diálogo con un cliente que no existe');
+      const av = (await q.textContent('#cliAviso') || '').replace(/\s+/g, ' ');
+      if (!/no casa con ningún cliente/i.test(av))
+        throw new Error('no explica por qué no lo tomó: ' + av);
+      const cid = await q.evaluate(() => JSON.parse(
+        localStorage.getItem('fts_machote_v1')).machotes[0].cliente_id);
+      if (cid) throw new Error('guardó un cliente_id inventado: ' + cid);
+      console.log('    no lo toma, lo explica, y no guarda nada');
+    } finally { await q.close(); }
+  });
+
+  /* ── V1.32 · la confirmación ─────────────────────────────────────────────
+   * Lo que se comprueba aquí es lo que sólo se ve MIRANDO la pantalla, no
+   * leyendo el servidor: que el estado salga de Odoo y no del navegador, que
+   * «no se pudo preguntar» no se disfrace de «borrador», que una confirmación
+   * a medias se distinga de una orden intacta, y que el botón que detona no
+   * aparezca cuando el servidor dijo que no se puede. */
+  const ORD_BASE = {
+    machote_id: 'id-A', folio: 15, nombre: 'ZZ Confirmación A',
+    dueno: 'zz.prueba', dueno_nombre: 'ZZ Prueba', es_mio: true,
+    version: 1, moneda: 'MXN', tc: 18.95, total_machote: 1500, margen: 0.4,
+    cliente_nombre: 'ZZ-PRUEBA A3', odoo_so_id: 12088, odoo_so_name: 'SO11889',
+    odoo_lead_id: null, odoo_partner_id: 2260, orden_creada_at: '2026-09-14T03:38:49Z',
+    estado: 'draft', subtotal_odoo: 1500, impuesto_odoo: 240, total_odoo: 1740,
+    moneda_odoo: 'MXN', empresa_odoo: 'SERVICIOS FTS', cliente_odoo: 'ZZ-PRUEBA A3',
+    oportunidad_id: null, oportunidad_nombre: null,
+    proyecto_odoo_id: null, proyecto_odoo_nombre: null, bandera_radar: false,
+    odoo_project_id: null, odoo_analytic_id: null, odoo_budget_id: null,
+    confirmada_at: null, confirmada_por: null,
+    handoff: { hay: false, fecha_inicio: null, fecha_fin: null, responsable_id: null,
+               responsable_nombre: null, alcance: null, entregables: null,
+               presupuesto: [], actualizado_at: null },
+    ultimo_intento: null, a_medias: false
+  };
+
+  const cfPagina = async (cfg) => {
+    const q = await b.newPage({ viewport: { width: 1280, height: 1000 } });
+    await sembrarGeo(q);
+    await q.addInitScript((c) => {
+      try {
+        localStorage.setItem('fts_suite_session', JSON.stringify({
+          token: 'prueba.prueba.prueba', actor: 'zz.prueba', nombre: 'ZZ Prueba',
+          empleado_id: null, scopes: ['comercial:read', 'comercial:orden'],
+          exp: Math.floor(Date.now() / 1000) + 3600, debe_cambiar_password: false }));
+      } catch (e) {}
+      window.__cf = { pedidos: [] };
+      const orig = window.fetch;
+      window.fetch = function (u, o) {
+        const s = String(u);
+        if (s.indexOf('/comercial/confirmar') >= 0) {
+          let body = {};
+          try { body = JSON.parse((o && o.body) || '{}'); } catch (e) {}
+          window.__cf.pedidos.push(body);
+          let r;
+          if (body.modo === 'leer') {
+            r = { ok: true, modo: 'leer', ordenes: c.ordenes, total: c.ordenes.length,
+                  por_confirmar: c.ordenes.length, a_medias: 0,
+                  odoo_leido: !c.sinOdoo, avisos: c.sinOdoo ? ['ECONNREFUSED'] : [] };
+          } else if (body.modo === 'handoff') {
+            r = { ok: true, modo: 'handoff', machote_id: body.machote_id,
+                  handoff: body.handoff, mensaje: 'Handoff guardado.' };
+          } else if (body.modo === 'evaluar') {
+            r = c.veredicto;
+          } else { r = { ok: false, confirmo: false, mensaje: 'no' }; }
+          return Promise.resolve({ ok: true, json: function () { return Promise.resolve(r); } });
+        }
+        if (s.indexOf('/comercial/') >= 0) return new Promise(function () {});
+        return orig.apply(this, arguments);
+      };
+    }, cfg);
+    await q.goto(BASE + '#/confirmar');
+    await q.waitForTimeout(800);
+    return q;
+  };
+
+  await paso('V1.32 · la lista enseña la línea recta y el estado LEÍDO de Odoo', async () => {
+    const q = await cfPagina({ ordenes: [ORD_BASE], sinOdoo: false, veredicto: {} });
+    try {
+      const txt = (await q.textContent('.cf-tabla') || '').replace(/\s+/g, ' ');
+      if (!/COT-15/.test(txt) || !/SO11889/.test(txt))
+        throw new Error('no pinta el hilo cotización→orden: ' + txt.slice(0, 160));
+      if (!/sin oportunidad/.test(txt) || !/sin proyecto/.test(txt))
+        throw new Error('no dice qué falta del hilo: ' + txt.slice(0, 160));
+      if (!/Borrador/.test(txt)) throw new Error('no pinta el estado de Odoo: ' + txt.slice(0, 160));
+      console.log('    COT-15 → SO11889 → sin oportunidad → sin proyecto · Borrador');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.32 · si Odoo no contesta, NO se disfraza de «borrador»', async () => {
+    /* El modo de falla que esto mata: pintar «en borrador» cuando en realidad
+     * no se pudo preguntar. Son dos cosas distintas y llevan a decisiones
+     * distintas (§20 #12b). */
+    const sin = JSON.parse(JSON.stringify(ORD_BASE)); sin.estado = null;
+    const q = await cfPagina({ ordenes: [sin], sinOdoo: true, veredicto: {} });
+    try {
+      const txt = (await q.textContent('.pad') || '').replace(/\s+/g, ' ');
+      if (!/Odoo no contestó/.test(txt))
+        throw new Error('no avisa que Odoo no contestó: ' + txt.slice(0, 200));
+      if (/Borrador/.test(await q.textContent('.cf-tabla')))
+        throw new Error('pintó «Borrador» sin haber podido preguntar');
+      if (!/no se pudo leer/.test(await q.textContent('.cf-tabla')))
+        throw new Error('no dice que no se pudo leer');
+      console.log('    dice «no se pudo leer», no «Borrador»');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.32 · una confirmación a medias se ve distinta, y dice en qué paso', async () => {
+    const med = JSON.parse(JSON.stringify(ORD_BASE));
+    med.a_medias = true;
+    med.odoo_project_id = 2378; med.odoo_analytic_id = 3123;
+    med.ultimo_intento = { at: '2026-09-14T21:38:41Z', paso: 4, completa: false,
+                           error: 'El presupuesto quedó sin líneas.' };
+    const q = await cfPagina({ ordenes: [med], sinOdoo: false, veredicto: {} });
+    try {
+      const pill = await q.textContent('.cf-tabla .pill.bad');
+      if (!/paso 4 de 7/.test(pill || ''))
+        throw new Error('la insignia no dice el paso: ' + pill);
+      await q.click('.cf-abrir'); await q.waitForTimeout(400);
+      const caja = (await q.textContent('#cfCaja') || '').replace(/\s+/g, ' ');
+      if (!/se quedó en el paso 4 de 7/.test(caja))
+        throw new Error('el diálogo no explica el intento previo: ' + caja.slice(0, 200));
+      if (!/se reusa/.test(caja))
+        throw new Error('no dice que lo creado se reusa: ' + caja.slice(0, 200));
+      console.log('    insignia «paso 4 de 7» + el diálogo lo explica');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.32 · sin fechas de obra no se llega ni a revisar', async () => {
+    const q = await cfPagina({ ordenes: [ORD_BASE], sinOdoo: false, veredicto: {} });
+    try {
+      await q.click('.cf-abrir'); await q.waitForTimeout(400);
+      await q.fill('#cfIni', ''); await q.fill('#cfFin', '');
+      await q.click('#cfRevisar'); await q.waitForTimeout(400);
+      const av = (await q.textContent('#cfAviso') || '').replace(/\s+/g, ' ');
+      if (!/Faltan las fechas/.test(av)) throw new Error('no reclama las fechas: ' + av);
+      const pedidos = await q.evaluate(() => window.__cf.pedidos.map(p => p.modo));
+      if (pedidos.indexOf('evaluar') >= 0)
+        throw new Error('llamó a evaluar sin fechas: ' + JSON.stringify(pedidos));
+      console.log('    lo dice y no llama al servidor');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.32 · si el servidor dice que NO se puede, no hay botón que detone', async () => {
+    /* La pantalla no es el candado —el servidor vuelve a comprobarlo todo—
+     * pero ofrecer un botón que ya se sabe que va a fallar es enseñar a no
+     * creerle a los botones. */
+    const ver = {
+      ok: true, modo: 'evaluar', machote_id: 'id-A', folio: 15, version: 1,
+      odoo_so_id: 12088, odoo_so_name: 'SO11889', estado_orden: 'draft',
+      moneda: 'MXN', moneda_odoo: 'MXN', moneda_correcta: true,
+      total_machote: 1500, subtotal_odoo: 1499, impuesto_odoo: 240, total_odoo: 1739,
+      margen: 0.4, cuadra: false, renglones: [], secciones: [],
+      dentro_politica: true, niveles_disparados: [], politica_vigente: [],
+      motivos: ['El subtotal de la orden (1499) no cuadra con la cotizacion (1500).'],
+      handoff: { completo: true, falta: [], avisos: [], fecha_inicio: '2026-09-22',
+                 fecha_fin: '2026-10-31', presupuesto: [] },
+      destino: { plan_id: 1, plan_nombre: 'Gasto Directo a proyectos',
+                 columna_eje: 'account_id', plan_base: 1,
+                 ya_creado: { analitica: null, proyecto: null, presupuesto: null } },
+      se_puede_confirmar: false,
+      por_que_no: 'La orden y la cotizacion no dicen lo mismo.'
+    };
+    const q = await cfPagina({ ordenes: [ORD_BASE], sinOdoo: false, veredicto: ver });
+    try {
+      await q.click('.cf-abrir'); await q.waitForTimeout(400);
+      await q.fill('#cfIni', '2026-09-22'); await q.fill('#cfFin', '2026-10-31');
+      await q.click('#cfRevisar'); await q.waitForTimeout(700);
+      const v = (await q.textContent('#cfVeredicto') || '').replace(/\s+/g, ' ');
+      if (!/No se puede confirmar todavía/.test(v))
+        throw new Error('no dice que no se puede: ' + v.slice(0, 200));
+      if (await q.$('#cfConfirmar'))
+        throw new Error('ofreció el botón de confirmar con se_puede_confirmar:false');
+      console.log('    lo explica y NO ofrece el botón');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.32 · el veredicto enseña el EJE analítico antes de escribir', async () => {
+    /* Escribir la cuenta en la columna del plan equivocado no da error: deja
+     * un número que se ve bien y está mal. Si no se puede ver antes, nadie lo
+     * va a ver nunca. */
+    const ver = {
+      ok: true, modo: 'evaluar', machote_id: 'id-A', folio: 15, version: 1,
+      odoo_so_id: 12088, odoo_so_name: 'SO11889', estado_orden: 'draft',
+      moneda: 'MXN', moneda_odoo: 'MXN', moneda_correcta: true,
+      total_machote: 1500, subtotal_odoo: 1500, impuesto_odoo: 240, total_odoo: 1740,
+      margen: 0.4, cuadra: true, renglones: [], secciones: [],
+      dentro_politica: true, niveles_disparados: [], politica_vigente: [], motivos: [],
+      handoff: { completo: true, falta: [], avisos: [], fecha_inicio: '2026-09-22',
+                 fecha_fin: '2026-10-31',
+                 presupuesto: [{ rubro_id: 1171, rubro_nombre: '1. Ingreso',
+                                 existe_en_odoo: true, monto: 1500, signo: 1 }] },
+      destino: { plan_id: 18, plan_nombre: 'Gasto directo a proyectos USA',
+                 columna_eje: 'x_plan18_id', plan_base: 1,
+                 ya_creado: { analitica: null, proyecto: null, presupuesto: null } },
+      se_puede_confirmar: true, por_que_no: null
+    };
+    const q = await cfPagina({ ordenes: [ORD_BASE], sinOdoo: false, veredicto: ver });
+    try {
+      await q.click('.cf-abrir'); await q.waitForTimeout(400);
+      await q.fill('#cfIni', '2026-09-22'); await q.fill('#cfFin', '2026-10-31');
+      await q.click('#cfRevisar'); await q.waitForTimeout(700);
+      const v = (await q.textContent('#cfVeredicto') || '').replace(/\s+/g, ' ');
+      if (!/x_plan18_id/.test(v)) throw new Error('no enseña la columna del eje: ' + v.slice(0, 250));
+      if (!/plan 18/.test(v)) throw new Error('no enseña el plan: ' + v.slice(0, 250));
+      if (!/único que no se deshace/.test(v))
+        throw new Error('no avisa qué es lo irreversible: ' + v.slice(0, 250));
+      if (!await q.$('#cfConfirmar')) throw new Error('no ofreció confirmar pudiendo');
+      console.log('    plan 18 · columna x_plan18_id · dice qué es lo irreversible');
     } finally { await q.close(); }
   });
 
