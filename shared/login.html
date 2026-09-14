@@ -41,6 +41,7 @@
   button[disabled] { opacity:.6; cursor:default; }
   .msg { margin-top:14px; font-size:13px; padding:10px 12px; border-radius:8px; display:none; }
   .msg.err { display:block; background:color-mix(in srgb, var(--err) 12%, transparent); color:var(--err); }
+  .msg.err a { color:inherit; font-weight:600; }
   .pie { margin-top:18px; font-size:11px; color:var(--mut); text-align:center; }
 </style>
 </head>
@@ -73,6 +74,13 @@
   var AREAS = { comercial:'Comercial', rentabilidad:'Rentabilidad por proyecto',
                 finanzas:'Finanzas', semaforo:'Semáforo operativo', nomina:'Nómina',
                 bancos:'Bancos', usuarios:'Configuración de usuarios' };
+  // Hace falta desde que el aviso arma HTML: `falta` viene de la URL, o sea de
+  // quien haya escrito el enlace, y `quien` del almacén del navegador.
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
   function areaDe(scope) {
     var pref = String(scope || '').split(':')[0];
     return AREAS[pref] || (pref ? (pref.charAt(0).toUpperCase() + pref.slice(1)) : 'esa pantalla');
@@ -84,14 +92,32 @@
   var falta = new URLSearchParams(location.search).get('falta');
   if (falta) {
     var ses = window.SuiteAuth && SuiteAuth.getSession();
-    var quien = ses ? ses.actor : 'tu usuario';
     var el = document.getElementById('falta');
     el.className = 'msg err';
-    el.textContent = 'Entraste como ' + quien + ', pero esa cuenta no tiene el permiso «' +
-                     falta + '», que es el que pide ' + areaDe(falta) + '. Pídeselo a Esteban, ' +
-                     'o entra con otra cuenta.';
+    // Dos mensajes, porque son dos situaciones distintas. Con sesión: «la tuya no
+    // alcanza». Sin sesión —o justo después de cerrarla a propósito— decirle a
+    // alguien «entraste como tu usuario» es hablarle de una sesión que no tiene.
+    el.innerHTML = ses
+      ? ('Entraste como <b>' + esc(ses.actor) + '</b>, pero esa cuenta no tiene el permiso «' +
+         esc(falta) + '», que es el que pide ' + esc(areaDe(falta)) +
+         '. Pídeselo a Esteban, o <a href="#" id="otra">entra con otra cuenta</a>.')
+      : ('Esta pantalla pide el permiso «' + esc(falta) + '» (' + esc(areaDe(falta)) +
+         '). Entra con una cuenta que lo tenga, o pídeselo a Esteban.');
     document.getElementById('sub').textContent = 'Acceso a ' + areaDe(falta);
-    if (window.SuiteAuth) SuiteAuth.logout();   // para que el formulario sirva de algo
+
+    // NO se cierra la sesión aquí, y es deliberado. Antes sí se cerraba «para que
+    // el formulario sirva de algo», y no hacía falta: `login()` sobrescribe la
+    // sesión igual. Lo que sí hacía era TIRAR la sesión buena de quien sólo se
+    // asomó a un panel que no le tocaba — alguien de Comercial que le da clic a
+    // la tarjeta de Rentabilidad desde Operaciones perdía su sesión de Comercial
+    // sin haber pedido nada. Faltarte UN permiso no es motivo para sacarte de
+    // toda la Suite.
+    var otra = document.getElementById('otra');
+    if (otra) otra.onclick = function (ev) {
+      ev.preventDefault();
+      SuiteAuth.logout();                       // ahora sí: lo pidió la persona
+      location.replace(location.pathname + location.search);
+    };
   }
 
   // El destino por defecto es la portada de la Suite (la raíz del repo), no la de
