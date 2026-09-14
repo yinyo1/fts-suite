@@ -18,11 +18,20 @@
   SIN SNAPSHOTS Y SIN CAPA DE DATOS: nada se guarda, nada se commitea. Las
   alertas son de UMBRAL contra presupuesto, se contestan con el estado de hoy,
   y por eso no hace falta guardar historia.
+
+  MONTADO SOBRE EL ARMAZON (`shared/panel/`): la cabecera, el boton de refresh,
+  la hora del ultimo jalon, la clasificacion de la respuesta, los avisos, la
+  tabla reagrupable, los colores y el pie son de ahi. Aqui queda SOLO lo que es
+  de rentabilidad: sus KPIs, sus filtros, el vocabulario de los tres estados del
+  dato, la regla de la celda sin linea base, y la vista de detalle.
+  El objetivo del armazon es que el SEGUNDO panel cueste poco.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <script src="../../shared/auth-jwt.js"></script>
 <script>
-  /* EL GATE. Corre en el <head>, antes de pintar nada.
+  /* EL GATE. Corre en el <head>, antes de pintar nada, y va INLINE a proposito:
+     si viniera del armazon habria que esperar un archivo, y media pantalla
+     pintada es media pantalla ensenada.
      Ojo con lo que este gate NO es: GitHub Pages es publico, asi que esto decide
      si se PINTA la pantalla, no si se puede DESCARGAR. Lo que de verdad protege
      es que `fin/rentabilidad` exija el scope y valide la firma EN EL SERVIDOR.
@@ -31,108 +40,21 @@
     throw new Error('sin sesion');
   }
 </script>
+<link rel="stylesheet" href="../../shared/panel/panel.css">
 <style>
-  :root{
-    --bg:#0f1216; --panel:#161b22; --panel2:#1c232c; --linea:#2a333f;
-    --tinta:#e6edf3; --tinta2:#9aa7b4; --tinta3:#6b7785;
-    --verde:#2ea043; --ambar:#d29922; --rojo:#da3633;
-    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--tinta);font:14px/1.5 var(--sans)}
-  .wrap{max-width:1400px;margin:0 auto;padding:0 16px}
-
-  header{border-bottom:1px solid var(--linea);background:var(--panel);position:sticky;top:0;z-index:20}
-  .hd{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:12px 0}
-  .hd h1{font-size:17px;margin:0;font-weight:600;letter-spacing:-.2px}
-  .hd .sub{color:var(--tinta3);font-size:12px}
-  .spacer{flex:1 1 auto}
-  a.volver-suite{color:var(--tinta2);text-decoration:none;font-size:12px;border:1px solid var(--linea);
-    border-radius:6px;padding:6px 10px}
-  a.volver-suite:hover{border-color:var(--tinta3);color:var(--tinta)}
-  button{font:inherit;color:var(--tinta);background:var(--panel2);border:1px solid var(--linea);
-         border-radius:6px;padding:7px 12px;cursor:pointer}
-  button:hover{border-color:var(--tinta3)}
-  button.pri{background:#1f6feb;border-color:#1f6feb;color:#fff}
-  button[disabled]{opacity:.55;cursor:default}
-  .jalon{font:12px/1.4 var(--mono);color:var(--tinta3)}
-
-  .kpis{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin:14px 0}
-  .kpi{background:var(--panel);border:1px solid var(--linea);border-radius:8px;padding:12px 14px}
-  .kpi .n{font:600 24px/1.15 var(--mono);letter-spacing:-.5px}
-  .kpi .l{color:var(--tinta2);font-size:12px;margin-top:4px}
-  .kpi .n2{color:var(--tinta3);font-size:11px;margin-top:6px;font-family:var(--mono)}
-  .kpi.ok .n{color:var(--verde)} .kpi.warn .n{color:var(--ambar)}
-  .kpi.bad .n{color:var(--rojo)} .kpi.neu .n{color:var(--tinta)}
-  .kpi.clic{cursor:pointer} .kpi.clic:hover{border-color:var(--tinta3)}
-
-  details.salv{background:var(--panel);border:1px solid var(--linea);border-radius:8px;margin:14px 0}
-  details.salv>summary{cursor:pointer;padding:11px 14px;font-weight:600;font-size:13px}
-  details.salv .cuerpo{padding:0 14px 12px}
-  .salv-item{border-top:1px solid var(--linea);padding:10px 0;font-size:13px;color:var(--tinta2)}
-  .salv-item code{color:var(--ambar);font:600 12px var(--mono)}
-
-  .barra{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:14px 0}
-  select,input[type=search]{font:inherit;background:var(--panel2);color:var(--tinta);
-    border:1px solid var(--linea);border-radius:6px;padding:7px 9px}
-  label.f{font-size:12px;color:var(--tinta2);display:flex;gap:6px;align-items:center}
-
-  .tablabox{overflow-x:auto;border:1px solid var(--linea);border-radius:8px;background:var(--panel)}
-  table{border-collapse:collapse;width:100%;font-size:13px;min-width:1000px}
-  th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--linea);white-space:nowrap}
-  th{background:var(--panel2);color:var(--tinta2);font-weight:600;font-size:12px;
-     position:sticky;top:0;cursor:pointer;user-select:none}
-  th.num,td.num{text-align:right;font-family:var(--mono)}
-  tbody tr:hover{background:#1a2129}
-  tr.grupo{background:#1a2530;font-weight:600}
-  tr.grupo td{color:#cfe3ff}
-  .proj{display:inline-block;max-width:360px;overflow:hidden;text-overflow:ellipsis;
-        white-space:nowrap;cursor:pointer;color:#79c0ff;vertical-align:bottom}
-  .proj:hover{text-decoration:underline}
-
-  .chip{display:inline-block;font:600 11px/1 var(--sans);padding:4px 7px;border-radius:4px}
+  /* Lo UNICO propio de este panel: los tres estados del dato. Es vocabulario de
+     rentabilidad —«tiene presupuesto completo / parcial / no tiene»— y por eso no
+     subio al armazon. La pieza generica (`.chip`) si esta alla. */
   .c-completo{background:#0d2a14;color:#56d364;border:1px solid #1c5a2b}
   .c-parcial{background:#2b2200;color:#e3b341;border:1px solid #6b5200}
   .c-sin{background:#26292e;color:#9aa7b4;border:1px solid #3d4450}
-  .raya{color:var(--tinta3)}
-  .falta{color:var(--tinta3);font-size:11px;white-space:normal;max-width:260px}
-  .al{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
-  .al-rojo{background:var(--rojo)} .al-amarillo{background:var(--ambar)}
-  .pct-bad{color:var(--rojo);font-weight:600}
-  .pct-warn{color:var(--ambar);font-weight:600}
-  .pct-info{color:#79c0ff}
-
-  .vista{display:none} .vista.on{display:block}
-  .volver{color:#79c0ff;cursor:pointer;font-size:13px;display:inline-block;margin:14px 0 6px}
-  h2{font-size:16px;margin:6px 0 2px} .h2sub{color:var(--tinta3);font-size:12px;margin-bottom:10px}
-  .nota{background:var(--panel);border:1px solid var(--linea);border-left:3px solid var(--ambar);
-        border-radius:6px;padding:10px 12px;font-size:12px;color:var(--tinta2);margin:12px 0}
-  .aviso{border:1px solid var(--linea);border-radius:8px;padding:18px;margin:24px 0;background:var(--panel)}
-  .aviso.sesion{border-left:3px solid var(--ambar)}
-  .aviso.red{border-left:3px solid #388bfd}
-  .aviso.servidor{border-left:3px solid var(--rojo)}
-  .aviso h3{margin:0 0 6px;font-size:15px}
-  .aviso p{margin:0 0 10px;color:var(--tinta2);font-size:13px}
-  .aviso .mono{font-family:var(--mono);font-size:12px;color:var(--tinta3);white-space:normal}
-  footer{color:var(--tinta3);font-size:12px;padding:22px 0;border-top:1px solid var(--linea);margin-top:26px}
-  @media (max-width:640px){ .hd h1{font-size:15px} .kpi .n{font-size:20px} }
 </style>
 </head>
 <body>
 
-<header>
-  <div class="wrap hd">
-    <div>
-      <h1>Rentabilidad por proyecto</h1>
-      <div class="sub">FTS Suite · panel · contrato 1</div>
-    </div>
-    <div class="spacer"></div>
-    <span class="jalon" id="jalon">sin jalar todavía</span>
-    <button class="pri" id="btnRefresh">Actualizar</button>
-    <a class="volver-suite" href="../index.html">← Finanzas</a>
-  </div>
-</header>
+<!-- La cabecera la LLENA el armazón (título, quién está dentro, hora del último
+     jalón, botón Actualizar, enlace de vuelta). Aquí sólo va el hueco. -->
+<header><div class="wrap hd"></div></header>
 
 <div class="wrap">
   <div id="aviso"></div>
@@ -181,156 +103,63 @@
     <div class="nota" id="dNota"></div>
   </section>
 
-  <footer>
-    Panel de rentabilidad · <span class="jalon">sin capa de datos y sin snapshots: nada se guarda,
-    nada se commitea · los datos viven en Odoo</span>
-  </footer>
+  <footer></footer>
 </div>
 
+<script src="../../shared/panel/panel-shell.js"></script>
+<script src="../../shared/panel/panel-tabla.js"></script>
 <script>
 'use strict';
 
-var N8N = 'https://primary-production-5c3c.up.railway.app';
-var RUTA = '/webhook/fin/rentabilidad';
+/* ═══ el panel, montado sobre el armazón ════════════════════════════════ */
+var P = Panel.montar({
+  ruta: '/webhook/fin/rentabilidad',
+  titulo: 'Rentabilidad por proyecto',
+  sub: 'FTS Suite · panel · contrato 1',
+  volver: { href: '../index.html', txt: '← Finanzas' },
+  login: '../../shared/login.html',
+  /* Este panel NO guarda nada en el navegador. La lista vacía es la declaración,
+     no un olvido: si algún día guarda algo, su llave va aquí y `caducarSesion`
+     comprueba que no se confunda con la de sesión. */
+  intocables: [],
+  pie: 'Panel de rentabilidad · <span class="jalon">sin capa de datos y sin snapshots: ' +
+       'nada se guarda, nada se commitea · los datos viven en Odoo</span>'
+});
+
+var esc = Panel.esc, nfm = Panel.nfm, dinero = Panel.dinero, pct = Panel.pct;
 var S = { sobre:null, orden:{col:'margen_pct',dir:1}, det:null, dgrupo:'rubro', dgrupo2:'' };
 
-function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){
-  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
-function nfm(v){ if(v===null||v===undefined)return '—';
-  return Number(v).toLocaleString('es-MX',{maximumFractionDigits:0}); }
-function dinero(v,mon){ if(v===null||v===undefined)return '<span class="raya">—</span>';
-  return (mon==='USD'?'US$':'$')+nfm(v); }
-function pct(v,cls){ if(v===null||v===undefined)return '<span class="raya">—</span>';
-  if(cls==='info') return '<span class="pct-info">'+v.toFixed(0)+'%</span>';
-  var c=v>=100?'pct-bad':(v>=70?'pct-warn':'');
-  return c?('<span class="'+c+'">'+v.toFixed(0)+'%</span>'):(v.toFixed(0)+'%'); }
-
-/* ═══ UN SOLO LUGAR clasifica la respuesta ═══════════════════════════════
- * `sesion` (vuelve a entrar) · `red` (espera) · `servidor` (avisa) son tres
- * cosas distintas que llevan a tres acciones distintas. Si la aplicacion las
- * junta en un mensaje solo, elige el peor de los tres por omision — y eso ya
- * costo una sesion con la consola abierta (CLAUDE.md §20 #12b).
- *
- * Ante `sesion` se borra SOLO la llave de sesion. Ninguna otra. */
-var DE_SESION = { TOKEN_AUSENTE:1, TOKEN_MALFORMADO:1, TOKEN_EXPIRADO:1,
-                  FIRMA_INVALIDA:1, PAYLOAD_ILEGIBLE:1, SCOPE_INSUFICIENTE:1,
-                  FALLO_VERIFICACION:1 };
-
-function clasificar(r){
-  if(!r) return 'red';
-  if(r.ok === true) return 'ok';
-  if(r._red) return 'red';
-  if(r.clase) return r.clase;               // el servidor ya la dice
-  if(DE_SESION[r.error]) return 'sesion';
-  return 'servidor';
-}
-
-function caducarSesion(){
-  /* Cinturon: si algun dia la llave de sesion se renombra y coincide con una de
-     datos, esto NO borra nada y lo dice. Mismo patron que MachoteSesion. */
-  var llave = (window.SuiteAuth && SuiteAuth.LLAVE_SESION) || 'fts_suite_session';
-  var INTOCABLES = [];                       // este panel no guarda datos locales
-  if (INTOCABLES.indexOf(llave) >= 0) { try{console.error('[sesion] llave de datos');}catch(e){} return; }
-  try { SuiteAuth.logout(); } catch(e) {}
-}
-
-function mostrarAviso(clase, titulo, cuerpo, detalle, conBoton){
-  document.getElementById('vPortada').classList.remove('on');
-  document.getElementById('vDetalle').classList.remove('on');
-  document.getElementById('aviso').innerHTML =
-    '<div class="aviso '+clase+'"><h3>'+esc(titulo)+'</h3><p>'+cuerpo+'</p>'+
-    (detalle?('<p class="mono">'+esc(detalle)+'</p>'):'')+
-    (conBoton?'<button class="pri" id="avBtn">'+esc(conBoton.txt)+'</button>':'')+'</div>';
-  if(conBoton){ var b=document.getElementById('avBtn'); if(b) b.onclick=conBoton.fn; }
-}
-function limpiarAviso(){ document.getElementById('aviso').innerHTML=''; }
-
 /* ═══ carga: REFRESH MANUAL, nunca automatico ═══════════════════════════ */
-async function pedir(cuerpo){
-  var token = window.SuiteAuth && SuiteAuth.getToken();
-  if(!token) return { ok:false, error:'TOKEN_AUSENTE', clase:'sesion' };
-  var res, data;
-  try {
-    res = await fetch(N8N + RUTA, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      /* El token viaja en el CUERPO, no en un header Authorization: un header
-         fuerza preflight CORS que el webhook de n8n puede no contestar
-         (patron validado en Finanzas, CLAUDE.md §15 #5). */
-      body: JSON.stringify(Object.assign({ token: token }, cuerpo || {}))
-    });
-  } catch(e){ return { ok:false, _red:true, error:'SIN_RED', detalle:String(e && e.message || e) }; }
-
-  /* 404 con cuerpo de n8n = el webhook NO esta registrado, o sea que el
-     workflow no esta publicado. Es un caso propio y accionable: no es "el
-     servidor esta mal", es "falta un clic". */
-  if(res.status === 404) return { ok:false, error:'ENDPOINT_NO_PUBLICADO', clase:'servidor' };
-
-  try { data = await res.json(); } catch(e){
-    return { ok:false, error:'RESPUESTA_ILEGIBLE', clase:'servidor', detalle:'HTTP '+res.status };
-  }
-  return data || { ok:false, error:'RESPUESTA_VACIA', clase:'servidor' };
-}
-
 async function cargar(){
-  var btn = document.getElementById('btnRefresh');
-  btn.disabled = true; btn.textContent = 'Jalando…';
-  var r = await pedir({ modo:'portada' });
-  btn.disabled = false; btn.textContent = 'Actualizar';
+  P.ocupado(true);
+  var r = await P.pedir({ modo:'portada' });
+  P.ocupado(false);
 
-  var clase = clasificar(r);
-  if(clase === 'ok'){
-    limpiarAviso();
-    S.sobre = r;
-    var t = new Date();
-    document.getElementById('jalon').textContent = 'último jalón: ' +
-      t.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-    document.getElementById('vPortada').classList.add('on');
-    pintarPortada();
+  if(Panel.clasificar(r) !== 'ok'){
+    /* El camino de error entero lo lleva el armazón: las tres clases, el borrado
+       de SOLO la llave de sesión, y el caso propio del webhook sin publicar. Lo
+       que este panel aporta son los nombres concretos. */
+    P.avisarFallo(r, cargar, { scope:'rentabilidad:read',
+      workflow:'fin/rentabilidad', workflowId:'Q71Qqumnq5r3tDFU' });
     return;
   }
-  if(clase === 'sesion'){
-    caducarSesion();
-    mostrarAviso('sesion','Tu sesión ya no vale',
-      r.error === 'SCOPE_INSUFICIENTE'
-        ? 'Entraste bien, pero tu cuenta no carga el permiso <b>rentabilidad:read</b>, que es el que pide este panel. Pídeselo a Esteban.'
-        : 'El servidor contestó que la credencial no vale. Volver a intentar con la misma no sirve: hay que entrar de nuevo.',
-      r.error, { txt:'Volver a entrar', fn:function(){ location.href='../../shared/login.html'; } });
-    return;
-  }
-  if(clase === 'red'){
-    mostrarAviso('red','No hubo respuesta del servidor',
-      'No es tu sesión. Puede ser la red o el servidor caído. Espera un momento y vuelve a intentar.',
-      r.detalle || r.error, { txt:'Reintentar', fn:cargar });
-    return;
-  }
-  if(r.error === 'ENDPOINT_NO_PUBLICADO'){
-    mostrarAviso('servidor','El endpoint todavía no está publicado',
-      'El panel está completo, pero el workflow <b>fin/rentabilidad</b> sigue sin publicar en n8n, así que no hay de dónde traer los datos. ' +
-      'Esta pantalla <b>no rellena con ejemplos</b>: prefiere decirlo.',
-      'POST ' + RUTA + ' → HTTP 404 · workflow Q71Qqumnq5r3tDFU', { txt:'Reintentar', fn:cargar });
-    return;
-  }
-  mostrarAviso('servidor','El servidor contestó con un error suyo',
-    'No es tu sesión y no es la red: el problema está del otro lado. Avísale a Esteban con el código de abajo.',
-    (r.error || '') + (r.detalle ? (' · ' + r.detalle) : '') + (r.mensaje ? (' · ' + r.mensaje) : ''),
-    { txt:'Reintentar', fn:cargar });
+  P.limpiarAviso();
+  S.sobre = r;
+  P.jalado();
+  P.vista('vPortada');
+  pintarPortada();
 }
 
 /* ═══ portada ═══════════════════════════════════════════════════════════ */
-function kpi(cl,n,l,n2,onclic){
-  return '<div class="kpi '+cl+(onclic?' clic':'')+'"'+(onclic?(' data-filtro="'+esc(onclic)+'"'):'')+
-         '><div class="n">'+esc(n)+'</div><div class="l">'+esc(l)+
-         '</div><div class="n2">'+esc(n2||'')+'</div></div>';
-}
 function pintarPortada(){
   var d=S.sobre.datos, r=d.resumen;
   document.getElementById('kpis').innerHTML=
-    kpi('neu',r.total,'proyectos activos','el universo del panel','')+
-    kpi('ok',r.completo,'con presupuesto completo','éstos muestran margen','completo')+
-    kpi('warn',r.parcial,'presupuesto parcial','margen optimista: falta costo plan','parcial')+
-    kpi('neu',r.sin_presupuesto,'sin presupuesto','lista de trabajo, no error','sin_presupuesto')+
-    kpi('bad',r.con_alerta,'con alerta de umbral','contra presupuesto, no contra el pasado','')+
-    kpi(r.margen_pct===null?'neu':(r.margen_pct<0?'bad':'ok'),
+    P.kpi('neu',r.total,'proyectos activos','el universo del panel','')+
+    P.kpi('ok',r.completo,'con presupuesto completo','éstos muestran margen','completo')+
+    P.kpi('warn',r.parcial,'presupuesto parcial','margen optimista: falta costo plan','parcial')+
+    P.kpi('neu',r.sin_presupuesto,'sin presupuesto','lista de trabajo, no error','sin_presupuesto')+
+    P.kpi('bad',r.con_alerta,'con alerta de umbral','contra presupuesto, no contra el pasado','')+
+    P.kpi(r.margen_pct===null?'neu':(r.margen_pct<0?'bad':'ok'),
         (r.margen_pct===null?'—':r.margen_pct.toFixed(1)+'%'),
         'margen de los que sí tienen dato','$'+nfm(r.margen_real_mxn)+' MXN · ver salvedades','');
 
@@ -349,130 +178,92 @@ function pintarPortada(){
   pintarTabla();
 }
 
+/* Qué filas se ven es del panel; el orden y el agrupado los lleva el armazón. */
 function visibles(){
-  var f=S.sobre.datos.filas.slice();
+  var f=S.sobre.datos.filas;
   var e=document.getElementById('fEstado').value;
   var q=document.getElementById('fBusca').value.trim().toLowerCase();
   var soloAl=document.getElementById('fAlerta').checked;
   if(e)f=f.filter(function(r){return r.estado_dato===e;});
   if(soloAl)f=f.filter(function(r){return r.alertas.length;});
   if(q)f=f.filter(function(r){return (r.proyecto+' '+r.cliente).toLowerCase().indexOf(q)>=0;});
-  var c=S.orden.col,dir=S.orden.dir;
-  f.sort(function(a,b){
-    var x=a[c],y=b[c];
-    /* los que no tienen dato van SIEMPRE al final, en los dos sentidos: no son
-       "el peor" ni "el mejor", es que no hay numero que ordenar. */
-    if(x===null||x===undefined)return 1;
-    if(y===null||y===undefined)return -1;
-    if(typeof x==='string')return dir*x.localeCompare(y,'es');
-    return dir*(x-y);
-  });
   return f;
 }
 
-function pintarTabla(){
-  var cols=S.sobre.datos.columnas, f=visibles();
-  document.querySelector('#tabla thead').innerHTML='<tr>'+cols.map(function(c){
-    var s=S.orden.col===c.id?(S.orden.dir>0?' ▲':' ▼'):'';
-    return '<th class="'+(c.kind==='texto'?'':'num')+'" data-col="'+esc(c.id)+'">'+esc(c.label)+s+'</th>';
-  }).join('')+'</tr>';
+/* LA REGLA, EN LA CELDA: un proyecto sin presupuesto no muestra CERO en las
+   columnas que SALEN del presupuesto. El endpoint ya manda null, pero esto no
+   depende de eso — un 0 que llegue por cualquier via se sigue pintando raya.
+   `horas_real` queda FUERA de la lista a proposito: no sale del presupuesto,
+   sale del kiosko. Un proyecto sin presupuesto puede tener 500 horas reales, y
+   taparlas seria ocultar un dato cierto — el error opuesto, y del mismo tamano. */
+var DEL_PRESUPUESTO = { ingreso_pres:1, ingreso_real:1, costo_pres:1, costo_real:1,
+                        margen_real:1, margen_pct:1, consumo_mat:1, consumo_mo:1,
+                        horas_plan:1, consumo_horas:1 };
 
-  var g=document.getElementById('fGrupo').value, html='';
-  if(g){
-    var mapa={},orden=[];
-    f.forEach(function(r){ var k=r[g]==null?'(vacío)':String(r[g]);
-      if(!mapa[k]){mapa[k]=[];orden.push(k);} mapa[k].push(r); });
-    orden.sort(function(a,b){return a.localeCompare(b,'es');}).forEach(function(k){
-      html+=filaGrupo(cols,k,mapa[k]);
-      mapa[k].forEach(function(r){ html+=fila(cols,r); });
-    });
-  } else { f.forEach(function(r){ html+=fila(cols,r); }); }
-  document.querySelector('#tabla tbody').innerHTML=html||
-    '<tr><td colspan="'+cols.length+'" style="color:#6b7785">Sin proyectos con ese filtro.</td></tr>';
-  document.getElementById('conteo').textContent=f.length+' de '+S.sobre.datos.filas.length+' proyectos';
-
-  Array.prototype.forEach.call(document.querySelectorAll('#tabla th'),function(el){
-    el.onclick=function(){ var c=el.getAttribute('data-col');
-      if(S.orden.col===c)S.orden.dir*=-1; else {S.orden.col=c;S.orden.dir=1;}
-      pintarTabla(); };
-  });
-  Array.prototype.forEach.call(document.querySelectorAll('#tabla .proj'),function(el){
-    el.onclick=function(){ abrirDetalle(Number(el.getAttribute('data-id'))); };
-  });
-}
-
-function filaGrupo(cols,k,rs){
-  /* SOLO se suma lo que el servidor declaro sumable, y SOLO de los que tienen
-     dato: meter los sin_presupuesto como 0 falsearia el subtotal, que es la
-     misma mentira que la regla prohibe en el total general. */
-  var conDato=rs.filter(function(r){return r.estado_dato!=='sin_presupuesto';});
-  var sinDato=rs.length-conDato.length;
-  return '<tr class="grupo">'+cols.map(function(c,i){
-    if(i===0)return '<td>'+esc(k)+' · '+rs.length+
-      (sinDato?(' <span class="falta">('+sinDato+' sin dato, fuera del subtotal)</span>'):'')+'</td>';
-    if(!c.suma)return '<td></td>';
-    var s=conDato.reduce(function(a,r){var v=r[c.id];return a+(typeof v==='number'?v:0);},0);
-    return '<td class="num">'+(c.kind==='dinero'?dinero(s):nfm(s))+'</td>';
-  }).join('')+'</tr>';
-}
-
-function fila(cols,r){
-  var chip={completo:'c-completo',parcial:'c-parcial',sin_presupuesto:'c-sin'}[r.estado_dato];
-  var etq={completo:'completo',parcial:'parcial',sin_presupuesto:'sin presupuesto'}[r.estado_dato];
-  /* LA REGLA, EN LA CELDA: un proyecto sin presupuesto no muestra CERO en las
-     columnas que SALEN del presupuesto. El endpoint ya manda null, pero esto no
-     depende de eso — un 0 que llegue por cualquier via se sigue pintando raya.
-     `horas_real` queda FUERA de la lista a proposito: no sale del presupuesto,
-     sale del kiosko. Un proyecto sin presupuesto puede tener 500 horas reales, y
-     taparlas seria ocultar un dato cierto — el error opuesto, y del mismo tamano. */
-  var DEL_PRESUPUESTO = { ingreso_pres:1, ingreso_real:1, costo_pres:1, costo_real:1,
-                          margen_real:1, margen_pct:1, consumo_mat:1, consumo_mo:1,
-                          horas_plan:1, consumo_horas:1 };
+/* Devuelve el <td> cuando esta pantalla tiene algo que decir, y `null` cuando
+   se lo deja al armazón (que pinta por el `kind` que declaró el servidor). */
+function celda(c,r){
   var sinDato=(r.estado_dato==='sin_presupuesto');
-  return '<tr>'+cols.map(function(c){
-    var v=r[c.id];
-    /* La guarda va ARRIBA de todo lo numerico: si va despues de una rama
-       especifica, esa rama se la salta. Paso con `consumo_horas`, que pintaba
-       0% en las filas sin presupuesto. */
-    if(sinDato && DEL_PRESUPUESTO[c.id])
-      return '<td class="num"><span class="raya">—</span></td>';
-    if(c.id==='proyecto'){
-      var al=r.alertas.length?('<span class="al al-'+r.alertas[0].nivel+'" title="'+
-        esc(r.alertas.map(function(a){return a.dice;}).join(' · '))+'"></span>'):'';
-      return '<td>'+al+'<span class="proj" data-id="'+esc(r.id)+'" title="'+esc(r.proyecto)+'">'+
-             esc(r.proyecto)+'</span></td>';
-    }
-    if(c.id==='estado_dato'){
-      var ex=(r.estado_dato==='parcial'&&r.falta&&r.falta.length)
-        ? '<div class="falta">falta: '+esc(r.falta.join(', ').replace(/presupuesto de /g,''))+'</div>' : '';
-      return '<td><span class="chip '+chip+'" title="'+esc((r.falta||[]).join(' · '))+'">'+etq+'</span>'+ex+'</td>';
-    }
-    /* Las horas NO llevan color de umbral: medido, el 100% de los que tienen
-       plan creible sale sobre el plan, asi que un rojo ahi no informa de nada.
-       Se muestra el numero en azul, que es "dato", no "alarma". */
-    if(c.id==='consumo_horas') return '<td class="num">'+pct(v,'info')+'</td>';
-    if(c.kind==='dinero')return '<td class="num">'+dinero(v,r.moneda)+'</td>';
-    if(c.kind==='pct')   return '<td class="num">'+pct(v)+'</td>';
-    if(c.kind==='numero')return '<td class="num">'+(v===null||v===undefined?'<span class="raya">—</span>':nfm(v))+'</td>';
-    return '<td>'+esc(v)+'</td>';
-  }).join('')+'</tr>';
+  /* La guarda va ARRIBA de todo lo numerico: si va despues de una rama
+     especifica, esa rama se la salta. Paso con `consumo_horas`, que pintaba
+     0% en las filas sin presupuesto. El armazón respeta este orden porque
+     llama a esta función ANTES de mirar el `kind`. */
+  if(sinDato && DEL_PRESUPUESTO[c.id])
+    return '<td class="num"><span class="raya">—</span></td>';
+  if(c.id==='proyecto'){
+    var al=r.alertas.length?('<span class="al al-'+r.alertas[0].nivel+'" title="'+
+      esc(r.alertas.map(function(a){return a.dice;}).join(' · '))+'"></span>'):'';
+    return '<td>'+al+'<span class="proj" data-id="'+esc(r.id)+'" title="'+esc(r.proyecto)+'">'+
+           esc(r.proyecto)+'</span></td>';
+  }
+  if(c.id==='estado_dato'){
+    var chip={completo:'c-completo',parcial:'c-parcial',sin_presupuesto:'c-sin'}[r.estado_dato];
+    var etq={completo:'completo',parcial:'parcial',sin_presupuesto:'sin presupuesto'}[r.estado_dato];
+    var ex=(r.estado_dato==='parcial'&&r.falta&&r.falta.length)
+      ? '<div class="falta">falta: '+esc(r.falta.join(', ').replace(/presupuesto de /g,''))+'</div>' : '';
+    return '<td><span class="chip '+chip+'" title="'+esc((r.falta||[]).join(' · '))+'">'+etq+'</span>'+ex+'</td>';
+  }
+  /* Las horas NO llevan color de umbral: medido, el 100% de los que tienen
+     plan creible sale sobre el plan, asi que un rojo ahi no informa de nada.
+     Se muestra el numero en azul, que es "dato", no "alarma". */
+  if(c.id==='consumo_horas') return '<td class="num">'+pct(r[c.id],'info')+'</td>';
+  return null;
 }
 
-/* ═══ detalle: se pide BAJO DEMANDA y se reagrupa en el NAVEGADOR ═══════ */
+function pintarTabla(){
+  var n = Panel.tabla({
+    tabla: '#tabla',
+    columnas: S.sobre.datos.columnas,
+    filas: visibles(),
+    orden: S.orden,
+    grupo: document.getElementById('fGrupo').value,
+    celda: celda,
+    /* Quién entra a los subtotales. El armazón no sabe cómo se llama «no tener
+       línea base» en este panel, así que lo pregunta. */
+    enSubtotal: function(r){ return r.estado_dato !== 'sin_presupuesto'; },
+    vacio: 'Sin proyectos con ese filtro.',
+    repintar: pintarTabla,
+    alClic: { sel:'.proj', fn:function(el){ abrirDetalle(Number(el.getAttribute('data-id'))); } }
+  });
+  document.getElementById('conteo').textContent=n+' de '+S.sobre.datos.filas.length+' proyectos';
+}
+
+/* ═══ detalle: se pide BAJO DEMANDA y se reagrupa en el NAVEGADOR ═══════
+ * Esta tabla NO es la del armazón: no pinta las columnas del servidor una por
+ * una, sino grupos (uno o dos niveles) con sus sumas. Es forma propia de este
+ * panel; si un segundo panel la pide igual, entonces sube. */
 async function abrirDetalle(id){
   var fil=S.sobre.datos.filas.filter(function(r){return r.id===id;})[0];
-  document.getElementById('vPortada').classList.remove('on');
-  document.getElementById('vDetalle').classList.add('on');
-  window.scrollTo(0,0);
+  P.vista('vDetalle');
   document.getElementById('dTitulo').textContent=fil?fil.proyecto:('Proyecto '+id);
   document.getElementById('dSub').textContent=fil?
     (fil.cliente+' · '+fil.etapa+' · '+fil.empresa+' · '+fil.moneda):'';
-  document.getElementById('dKpis').innerHTML=kpi('neu','…','jalando el desglose','','');
+  document.getElementById('dKpis').innerHTML=P.kpi('neu','…','jalando el desglose','','');
   document.querySelector('#dTabla thead').innerHTML='';
   document.querySelector('#dTabla tbody').innerHTML='';
 
-  var r = await pedir({ modo:'detalle', project_id:id });
-  if(clasificar(r) !== 'ok' || !r.datos || !r.datos.detalle){
+  var r = await P.pedir({ modo:'detalle', project_id:id });
+  if(Panel.clasificar(r) !== 'ok' || !r.datos || !r.datos.detalle){
     document.getElementById('dKpis').innerHTML='';
     document.getElementById('dNota').innerHTML=
       '<b>No se pudo traer el desglose.</b> ' + esc((r && (r.error||r.mensaje)) || 'sin detalle');
@@ -490,9 +281,9 @@ async function abrirDetalle(id){
   var hz = (det.horas_real ? (nfm(det.horas_real)+' h') : '—');
   var hzPlan = (det.horas_plan ? (nfm(det.horas_plan)+' h plan') : 'sin plan creíble');
   document.getElementById('dKpis').innerHTML=
-    kpi('neu','$'+nfm(det.gasto_total_en_cuenta),'gasto en la cuenta del proyecto','todo lo cargado, con rubro o sin él','')+
-    kpi('warn',det.lineas_sin_rubro+' de '+det.filas.length,'líneas SIN rubro','$'+nfm(det.monto_sin_rubro)+' que el budget no ve','')+
-    kpi('neu',hz,'horas reales del kiosko',hzPlan+(det.consumo_horas!==null&&det.consumo_horas!==undefined?(' · '+det.consumo_horas.toFixed(0)+'%'):''),'');
+    P.kpi('neu','$'+nfm(det.gasto_total_en_cuenta),'gasto en la cuenta del proyecto','todo lo cargado, con rubro o sin él','')+
+    P.kpi('warn',det.lineas_sin_rubro+' de '+det.filas.length,'líneas SIN rubro','$'+nfm(det.monto_sin_rubro)+' que el budget no ve','')+
+    P.kpi('neu',hz,'horas reales del kiosko',hzPlan+(det.consumo_horas!==null&&det.consumo_horas!==undefined?(' · '+det.consumo_horas.toFixed(0)+'%'):''),'');
   document.getElementById('dNota').innerHTML=
     '<b>El desglose ve más costo que la portada.</b> Aquí está todo lo cargado a la cuenta '+
     'analítica del proyecto; la portada sólo ve lo codificado <i>compuesto</i> (proyecto Y rubro '+
@@ -540,15 +331,11 @@ function pintarDetalle(){
 }
 
 /* ═══ cableado ═════════════════════════════════════════════════════════ */
-document.getElementById('btnRefresh').onclick=cargar;
+P.alRefrescar(cargar);
 ['fEstado','fGrupo','fAlerta'].forEach(function(id){
   document.getElementById(id).onchange=pintarTabla;});
 document.getElementById('fBusca').oninput=pintarTabla;
-document.getElementById('volver').onclick=function(){
-  document.getElementById('vDetalle').classList.remove('on');
-  document.getElementById('vPortada').classList.add('on');
-  window.scrollTo(0,0);
-};
+document.getElementById('volver').onclick=function(){ P.vista('vPortada'); };
 document.getElementById('dGrupo').onchange=pintarDetalle;
 document.getElementById('dGrupo2').onchange=pintarDetalle;
 cargar();

@@ -1,0 +1,121 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+ * ARMAZÓN DE LOS PANELES · lo común a todos · issue #240, plataforma #237
+ *
+ * Salió de `finanzas/rentabilidad/index.html`, que fue el primer panel. Vive
+ * aquí para que el SEGUNDO cueste poco: el panel del semáforo no vuelve a
+ * escribir la cabecera, ni la tabla, ni los colores, ni el pie.
+ *
+ * LA LÍNEA: aquí va lo que es de CUALQUIER panel — cabecera, botón de refresh,
+ * tarjetas de KPI, barra de filtros, caja de tabla, avisos, pie. NO va el
+ * vocabulario de un panel concreto: los tres estados del dato de rentabilidad
+ * (`completo` / `parcial` / `sin presupuesto`) son suyos y se quedan en su
+ * archivo. Si una clase sólo la usa un panel, no es del armazón.
+ *
+ * Depende de `panel-shell.js` sólo por el marcado que ese archivo genera
+ * (`header.p-hd`, `footer.p-pie`). Las clases de contenido se pueden usar solas.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+:root{
+  --bg:#0f1216; --panel:#161b22; --panel2:#1c232c; --linea:#2a333f;
+  --tinta:#e6edf3; --tinta2:#9aa7b4; --tinta3:#6b7785;
+  --verde:#2ea043; --ambar:#d29922; --rojo:#da3633; --azul:#1f6feb; --liga:#79c0ff;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tinta);font:14px/1.5 var(--sans)}
+.wrap{max-width:1400px;margin:0 auto;padding:0 16px}
+
+/* ── cabecera: título, quién está dentro, hora del último jalón, refresh ──── */
+header{border-bottom:1px solid var(--linea);background:var(--panel);position:sticky;top:0;z-index:20}
+.hd{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:12px 0}
+.hd h1{font-size:17px;margin:0;font-weight:600;letter-spacing:-.2px}
+.hd .sub{color:var(--tinta3);font-size:12px}
+.spacer{flex:1 1 auto}
+.quien{font-size:12px;color:var(--tinta2);border:1px solid var(--linea);border-radius:6px;
+       padding:5px 9px;white-space:nowrap}
+.quien b{color:var(--tinta);font-weight:600}
+a.volver-suite{color:var(--tinta2);text-decoration:none;font-size:12px;border:1px solid var(--linea);
+  border-radius:6px;padding:6px 10px}
+a.volver-suite:hover{border-color:var(--tinta3);color:var(--tinta)}
+button{font:inherit;color:var(--tinta);background:var(--panel2);border:1px solid var(--linea);
+       border-radius:6px;padding:7px 12px;cursor:pointer}
+button:hover{border-color:var(--tinta3)}
+button.pri{background:var(--azul);border-color:var(--azul);color:#fff}
+button[disabled]{opacity:.55;cursor:default}
+/* La hora del último jalón en monoespaciada: cambia cada vez que se aprieta
+   Actualizar, y con ancho fijo no empuja el resto de la cabecera. */
+.jalon{font:12px/1.4 var(--mono);color:var(--tinta3)}
+
+/* ── tarjetas de KPI ─────────────────────────────────────────────────────── */
+.kpis{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin:14px 0}
+.kpi{background:var(--panel);border:1px solid var(--linea);border-radius:8px;padding:12px 14px}
+.kpi .n{font:600 24px/1.15 var(--mono);letter-spacing:-.5px}
+.kpi .l{color:var(--tinta2);font-size:12px;margin-top:4px}
+.kpi .n2{color:var(--tinta3);font-size:11px;margin-top:6px;font-family:var(--mono)}
+.kpi.ok .n{color:var(--verde)} .kpi.warn .n{color:var(--ambar)}
+.kpi.bad .n{color:var(--rojo)} .kpi.neu .n{color:var(--tinta)}
+.kpi.clic{cursor:pointer} .kpi.clic:hover{border-color:var(--tinta3)}
+
+/* ── salvedades: lo que el número NO cubre, plegado ──────────────────────── */
+details.salv{background:var(--panel);border:1px solid var(--linea);border-radius:8px;margin:14px 0}
+details.salv>summary{cursor:pointer;padding:11px 14px;font-weight:600;font-size:13px}
+details.salv .cuerpo{padding:0 14px 12px}
+.salv-item{border-top:1px solid var(--linea);padding:10px 0;font-size:13px;color:var(--tinta2)}
+.salv-item code{color:var(--ambar);font:600 12px var(--mono)}
+
+/* ── barra de filtros ───────────────────────────────────────────────────── */
+.barra{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:14px 0}
+select,input[type=search]{font:inherit;background:var(--panel2);color:var(--tinta);
+  border:1px solid var(--linea);border-radius:6px;padding:7px 9px}
+label.f{font-size:12px;color:var(--tinta2);display:flex;gap:6px;align-items:center}
+
+/* ── tabla reagrupable ──────────────────────────────────────────────────── */
+.tablabox{overflow-x:auto;border:1px solid var(--linea);border-radius:8px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:1000px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--linea);white-space:nowrap}
+th{background:var(--panel2);color:var(--tinta2);font-weight:600;font-size:12px;
+   position:sticky;top:0;cursor:pointer;user-select:none}
+th.num,td.num{text-align:right;font-family:var(--mono)}
+tbody tr:hover{background:#1a2129}
+tr.grupo{background:#1a2530;font-weight:600}
+tr.grupo td{color:#cfe3ff}
+/* Celda-enlace a un detalle. Se recorta con puntos suspensivos en vez de
+   ensanchar la tabla: el nombre completo va en el `title`. */
+.proj{display:inline-block;max-width:360px;overflow:hidden;text-overflow:ellipsis;
+      white-space:nowrap;cursor:pointer;color:var(--liga);vertical-align:bottom}
+.proj:hover{text-decoration:underline}
+
+/* ── piezas de celda ────────────────────────────────────────────────────── */
+.chip{display:inline-block;font:600 11px/1 var(--sans);padding:4px 7px;border-radius:4px}
+/* La raya es "no hay dato", y NO es lo mismo que un cero. Es la pieza que
+   sostiene la regla de que un renglón sin línea base no se vea como uno en
+   ceros — por eso vive en el armazón y no en un panel. */
+.raya{color:var(--tinta3)}
+.falta{color:var(--tinta3);font-size:11px;white-space:normal;max-width:260px}
+.al{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+.al-rojo{background:var(--rojo)} .al-amarillo{background:var(--ambar)}
+.pct-bad{color:var(--rojo);font-weight:600}
+.pct-warn{color:var(--ambar);font-weight:600}
+.pct-info{color:var(--liga)}
+
+/* ── vistas (portada / detalle) y notas ─────────────────────────────────── */
+.vista{display:none} .vista.on{display:block}
+.volver{color:var(--liga);cursor:pointer;font-size:13px;display:inline-block;margin:14px 0 6px}
+h2{font-size:16px;margin:6px 0 2px} .h2sub{color:var(--tinta3);font-size:12px;margin-bottom:10px}
+.nota{background:var(--panel);border:1px solid var(--linea);border-left:3px solid var(--ambar);
+      border-radius:6px;padding:10px 12px;font-size:12px;color:var(--tinta2);margin:12px 0}
+
+/* ── avisos: tres clases, tres acciones distintas ───────────────────────── */
+.aviso{border:1px solid var(--linea);border-radius:8px;padding:18px;margin:24px 0;background:var(--panel)}
+.aviso.sesion{border-left:3px solid var(--ambar)}
+.aviso.red{border-left:3px solid #388bfd}
+.aviso.servidor{border-left:3px solid var(--rojo)}
+.aviso h3{margin:0 0 6px;font-size:15px}
+.aviso p{margin:0 0 10px;color:var(--tinta2);font-size:13px}
+.aviso .mono{font-family:var(--mono);font-size:12px;color:var(--tinta3);white-space:normal}
+
+/* ── pie que reconcilia ─────────────────────────────────────────────────── */
+footer{color:var(--tinta3);font-size:12px;padding:22px 0;border-top:1px solid var(--linea);margin-top:26px}
+
+@media (max-width:640px){ .hd h1{font-size:15px} .kpi .n{font-size:20px} .quien{display:none} }
