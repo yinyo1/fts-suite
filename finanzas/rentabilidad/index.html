@@ -27,7 +27,7 @@
      si se PINTA la pantalla, no si se puede DESCARGAR. Lo que de verdad protege
      es que `fin/rentabilidad` exija el scope y valide la firma EN EL SERVIDOR.
      Lo dice `shared/auth-jwt.js` en su propia cabecera. */
-  if (!window.SuiteAuth.requerir('rentabilidad:read', '../../comercial/login.html')) {
+  if (!window.SuiteAuth.requerir('rentabilidad:read', '../../shared/login.html')) {
     throw new Error('sin sesion');
   }
 </script>
@@ -294,7 +294,7 @@ async function cargar(){
       r.error === 'SCOPE_INSUFICIENTE'
         ? 'Entraste bien, pero tu cuenta no carga el permiso <b>rentabilidad:read</b>, que es el que pide este panel. Pídeselo a Esteban.'
         : 'El servidor contestó que la credencial no vale. Volver a intentar con la misma no sirve: hay que entrar de nuevo.',
-      r.error, { txt:'Volver a entrar', fn:function(){ location.href='../../comercial/login.html'; } });
+      r.error, { txt:'Volver a entrar', fn:function(){ location.href='../../shared/login.html'; } });
     return;
   }
   if(clase === 'red'){

@@ -9,7 +9,7 @@
      debe alcanzar a verse. Ojo: esto decide si se PINTA, no si se descarga —
      Pages es público. Lo explica `shared/auth-jwt.js`. -->
 <script src="../../shared/auth-jwt.js"></script>
-<script>if (!window.SuiteAuth.requerir('comercial:read', '../login.html')) { throw new Error('sin sesion'); }</script>
+<script>if (!window.SuiteAuth.requerir('comercial:read', '../../shared/login.html')) { throw new Error('sin sesion'); }</script>
 <link rel="stylesheet" href="css/machote.css" />
 </head>
 <body>
