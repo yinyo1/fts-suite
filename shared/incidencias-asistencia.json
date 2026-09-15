@@ -4811,9 +4811,19 @@
           "hora_propuesta_cst": "2026-05-21 07:40:00",
           "comentario": "Fallo el registro de la aplicación",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe Pérez Guzmán",
+          "timestamp": "2026-09-15T13:31:43.892Z",
+          "hora_propuesta_cst": null,
+          "comentario": "aprobada salida",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false,
       "department_id": 3,
