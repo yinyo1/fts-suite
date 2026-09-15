@@ -1,11 +1,17 @@
 {
-  "version": "V1.32",
-  "build": "V1.32",
-  "fecha": "2026-09-14",
+  "version": "V1.33",
+  "build": "V1.33",
+  "fecha": "2026-09-15",
   "modulo": "comercial/machote",
   "ambito": "El CONTADOR es solo de este modulo. finanzas tambien usa V1.xx desde el 2026-09-03 (instruccion directa de Esteban, corrige el \"no propagar\" del issue #148) pero lleva su propio contador y va en V1.00. operaciones/planeacion sigue en 2.4.1, kiosk y confirmar-horas solo con cadena de build, y siete modulos con un 1.0.0 puesto una vez: a esos no se propaga.",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.33",
+      "pr": null,
+      "fecha": "2026-09-15",
+      "que": "La orden con la forma real de FTS -seccion, linea con precio y notas- y los cinco compromisos comerciales como campos que bloquean. Plantillas de notas derivadas de las 176 ordenes confirmadas."
+    },
     {
       "version": "V1.32",
       "pr": null,

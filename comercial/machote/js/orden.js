@@ -62,26 +62,32 @@
            '-' + String(d.getDate()).padStart(2, '0');
   }
 
-  /* ── Lo que se captura A MANO, porque el machote no lo sabe ──────────────
-   * Ésta es la mitad interesante del contrato: el machote es un documento de
-   * COSTEO, y una orden de venta necesita cosas que el costeo nunca tuvo.
-   * Se declaran aquí, en un solo lugar, para que el día que exista el
-   * webhook no haya que ir a buscarlas por la pantalla. */
-  var A_MANO = [
-    { id: 'condiciones_pago', etiqueta: 'Condiciones de pago', tipo: 'select',
-      opciones: ['Anticipo 50% / 50% contra entrega', 'Crédito 30 días',
-                 'Crédito 60 días', 'Contado', 'Anticipo 60% / 40% contra entrega'],
-      valor: 'Anticipo 50% / 50% contra entrega',
-      nota: 'Se negocia por cliente. El machote nunca la tuvo.' },
-    { id: 'validez_hasta', etiqueta: 'La cotización vence el', tipo: 'date',
-      valor: null,
-      nota: 'Por omisión 30 días. Con precios de material volátiles suele ser menos.' },
-    { id: 'referencia_cliente', etiqueta: 'Referencia / OC del cliente', tipo: 'text',
-      valor: '', nota: 'La que trae el cliente. Casi nunca existe al cotizar.' },
-    { id: 'tiempo_entrega', etiqueta: 'Tiempo de entrega', tipo: 'text',
-      valor: '', nota: 'Ej. «6 semanas a partir del anticipo». Depende de compras.' },
-    { id: 'notas', etiqueta: 'Notas para el cliente', tipo: 'textarea',
-      valor: '', nota: 'Va en el cuerpo de la cotización. No es la nota interna.' }
+  /* ── A_MANO se retiró en V1.33 ────────────────────────────────────────────
+   * Era una lista de cinco campos libres —condiciones de pago como texto,
+   * validez, referencia, tiempo de entrega y «notas para el cliente»— que
+   * describía bien el problema y no lo resolvía: un select de cinco frases y
+   * cuatro cajas de texto producen exactamente la tabla que se midió sobre las
+   * 176 órdenes confirmadas (49 sin términos de pago, cero con incoterm, cero
+   * con fecha comprometida).
+   *
+   * Lo sustituyen los CINCO COMPROMISOS de `compromisos.js`, que son campos de
+   * verdad —con catálogo, con validación y con columna propia en la base desde
+   * la migración 009— y que BLOQUEAN la creación de la orden si faltan. Y las
+   * «notas para el cliente» las sustituye el documento de `documento.js`, que
+   * es donde el contrato vive de verdad en las órdenes reales.
+   *
+   * La referencia / OC del cliente se fue sin reemplazo a propósito: casi
+   * nunca existe al cotizar, y un campo que nadie llena es ruido. Vuelve el
+   * día que alguien lo pida con un caso. */
+
+  /** Los cuatro tipos de trabajo de las plantillas de notas. El orden es el de
+   *  frecuencia medida en las órdenes reales: instalación primero porque «El
+   *  servicio incluye:» es el encabezado más repetido (14 veces). */
+  var TIPOS_TRABAJO = [
+    { id: 'instalacion', n: 'Instalación y mano de obra' },
+    { id: 'fabricacion', n: 'Fabricación y suministro' },
+    { id: 'reemplazo',   n: 'Reemplazo de equipo' },
+    { id: 'ingenieria',  n: 'Ingeniería y diseño' }
   ];
 
   var _st = null;      // el estado de la sesión del cascarón
@@ -383,6 +389,76 @@
       '</details>';
   }
 
+  /* ── Repintados parciales ─────────────────────────────────────────────────
+   * Repintar TODO el configurador tras cada tecla le quita el foco a quien
+   * está escribiendo a media palabra. Así que hay dos repintados chicos: uno
+   * para el botón y su explicación, y otro para la lista de bloques. Sólo se
+   * repinta entero cuando cambia la estructura de la pantalla.
+   */
+
+  /** El botón de crear y la razón por la que está trabado. Es lo único que
+   *  depende de los compromisos y del documento a la vez. */
+  function refrescarTrabado() {
+    if (!_st) return;
+    var m = _st.machote;
+    var CP = G.MachoteCompromisos, D = G.MachoteDocumento;
+    var faltaCliente = !(_st.pre.cliente && _st.pre.cliente.odoo_partner_id);
+    var falta = CP ? CP.faltantes(m) : [];
+    var conPrecio = (D && _st.doc) ? D.cuenta(_st.doc.bloques).linea : 0;
+    var trabado = faltaCliente || falta.length > 0 || conPrecio === 0;
+
+    var b = document.getElementById('or-crear');
+    if (b) b.disabled = trabado;
+
+    var caja = document.querySelector('.cp-falta');
+    if (caja && CP) {
+      caja.className = 'cp-falta' + (falta.length ? '' : ' ok');
+      caja.innerHTML = falta.length
+        ? '<strong>Faltan ' + falta.length + ' de los cinco compromisos.</strong><ul>' +
+          falta.map(function (f) {
+            return '<li><b>' + esc(f.que) + '</b> — ' + esc(f.porque) + '</li>';
+          }).join('') + '</ul><p class="tiny">Hasta que estén, la orden no se puede crear.</p>'
+        : '<strong>Los cinco compromisos están.</strong> ' +
+          '<span class="tiny">Viajan a sus campos de Odoo y a nuestra base.</span>';
+    }
+
+    var pie = document.querySelector('.or-trabado');
+    var texto = faltaCliente ? 'Falta elegir el cliente del catálogo. '
+      : conPrecio === 0 ? 'El documento no tiene ninguna línea con precio: una orden sin ' +
+                          'importe no es una orden. '
+      : falta.length ? 'Faltan ' + falta.length + ' de los cinco compromisos. ' : '';
+    if (pie) { pie.textContent = texto; pie.style.display = trabado ? '' : 'none'; }
+  }
+
+  /** El bloque de compromisos, cuando cambió su ESTRUCTURA — se agregó o se
+   *  quitó un hito. Vuelve a cablear, porque los nodos de antes ya no existen. */
+  function repintarCompromisos() {
+    if (!_st) return;
+    var CP = G.MachoteCompromisos;
+    var caja = document.querySelector('.or-compromisos');
+    if (!CP || !caja) return;
+    caja.innerHTML = CP.html(_st.machote);
+    CP.cablear(_st.machote, function (repintar) {
+      if (repintar) { repintarCompromisos(); } else { refrescarTrabado(); }
+    });
+    refrescarTrabado();
+  }
+
+  /** La lista de bloques, cuando cambió su estructura (agregar, quitar, mover).
+   *  Vuelve a cablear: los nodos de antes ya no existen. */
+  function repintarDocumento() {
+    if (!_st || !_st.doc) return;
+    var D = G.MachoteDocumento;
+    var caja = document.getElementById('or-doc');
+    if (!D || !caja) return;
+    caja.innerHTML = D.html(_st.doc.bloques, _st.pre.moneda);
+    D.cablear(_st.doc.bloques, _st.pre.moneda, function (repintar) {
+      _st.tocado = true;
+      if (repintar) { repintarDocumento(); } else { refrescarTrabado(); }
+    });
+    refrescarTrabado();
+  }
+
   function pintarConfigurador() {
     var p = _st.pre, m = _st.machote;
     var faltaCliente = !p.cliente.odoo_partner_id;
@@ -429,23 +505,26 @@
       return tr;
     }).join('');
 
-    var campos = A_MANO.map(function (f) {
-      var v = _st.aMano[f.id];
-      var control;
-      if (f.tipo === 'select') {
-        control = '<select class="cel" data-mano="' + f.id + '">' +
-          f.opciones.map(function (o) {
-            return '<option' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>';
-          }).join('') + '</select>';
-      } else if (f.tipo === 'textarea') {
-        control = '<textarea class="cel" rows="2" data-mano="' + f.id + '">' + esc(v || '') + '</textarea>';
-      } else {
-        control = '<input class="cel" type="' + (f.tipo === 'date' ? 'date' : 'text') +
-          '" data-mano="' + f.id + '" value="' + esc(v || '') + '">';
-      }
-      return '<label class="campo"><span>' + esc(f.etiqueta) + '</span>' + control +
-             '<span class="tiny nota">' + esc(f.nota) + '</span></label>';
+    var CP = G.MachoteCompromisos;
+    var D = G.MachoteDocumento;
+    var faltaCompromiso = CP ? CP.faltantes(m) : [];
+    var campos = CP ? CP.html(m)
+      : '<p class="tiny nota">Los compromisos no están disponibles en esta pantalla.</p>';
+
+    var doc = _st.doc || { bloques: [], plantilla: null };
+    var conPrecio = D ? D.cuenta(doc.bloques).linea : 0;
+    var documento = D
+      ? D.html(doc.bloques, p.moneda)
+      : '<p class="tiny nota">El documento no está disponible en esta pantalla.</p>';
+
+    var tipos = TIPOS_TRABAJO.map(function (t) {
+      return '<option value="' + t.id + '"' +
+             (_st.tipoTrabajo === t.id ? ' selected' : '') + '>' + esc(t.n) + '</option>';
     }).join('');
+
+    /* Tres cosas distintas impiden crear la orden, y decirlas juntas manda a
+     * la persona a arreglar lo que no es (CLAUDE.md §20 #12b). */
+    var trabado = faltaCliente || faltaCompromiso.length > 0 || conPrecio === 0;
 
     cascaron(
       '<div class="or-cab">' +
@@ -492,17 +571,43 @@
         '<td class="num mono" id="or-total">' + mx(p.totales.total, p.moneda) + '</td></tr></tfoot>' +
       '</table></div>' +
 
-      '<h4 class="or-h">Lo que el machote no sabe</h4>' +
-      '<p class="tiny nota">Estos cinco no están en la cotización porque son de la ' +
-      'NEGOCIACIÓN, no del costeo. Es la mitad que siempre se captura a mano.</p>' +
-      '<div class="or-campos">' + campos + '</div>' +
+      '<h4 class="or-h">Los cinco compromisos comerciales</h4>' +
+      '<p class="tiny nota">No están en la cotización porque son de la NEGOCIACIÓN, no ' +
+      'del costeo. Van como <strong>campos</strong> y no como párrafo: es la única forma ' +
+      'de poder contestar después cuánto hay vendido a 120 días y qué cotización venció. ' +
+      'Medido sobre las 176 órdenes confirmadas de 2025-2026, 49 salieron sin términos de ' +
+      'pago y ninguna con incoterm ni con fecha comprometida.</p>' +
+      '<div class="or-compromisos">' + campos + '</div>' +
+
+      '<h4 class="or-h">El documento que va a llevar la orden</h4>' +
+      '<p class="tiny nota">Ésta es la forma que FTS ya usa: encabezado de sección, su ' +
+      'línea con precio, y debajo las notas de ese tramo — donde vive el contrato. ' +
+      'La suite lo <strong>propone</strong> y tú lo editas libremente antes de emitir. ' +
+      'Nada de esto se manda tal cual.</p>' +
+      '<div class="dc-tipo-sel">' +
+        '<label class="campo"><span>Tipo de trabajo</span>' +
+          '<select class="cel" id="dc-tipo">' + tipos + '</select>' +
+          '<span class="tiny nota">Elige de qué plantilla salen las notas. Cambiarlo ' +
+          'vuelve a proponer el documento' +
+          (_st.tocado ? ' — y como ya lo editaste, te va a pedir confirmación.' : '.') +
+          '</span></label>' +
+      '</div>' +
+      '<div id="or-doc">' + documento + '</div>' +
 
       '<div class="or-pie">' +
         '<button class="btn fantasma" id="or-contrato">Ver el contrato de salida</button>' +
         '<button class="btn fantasma" id="or-siguiente">Mandarla al cliente ›</button>' +
-        '<button class="btn" id="or-crear"' + (faltaCliente ? ' disabled' : '') + '>' +
+        '<button class="btn" id="or-crear"' + (trabado ? ' disabled' : '') + '>' +
           'Crear la orden en Odoo</button>' +
       '</div>' +
+      (trabado
+        ? '<p class="tiny nota or-trabado">' +
+            (faltaCliente ? 'Falta elegir el cliente del catálogo. '
+             : conPrecio === 0 ? 'El documento no tiene ninguna línea con precio: una orden sin ' +
+                                'importe no es una orden. '
+             : 'Faltan ' + faltaCompromiso.length + ' de los cinco compromisos. ') +
+          '</p>'
+        : '') +
       '<div id="or-contrato-caja"></div>');
 
     // Cantidad × precio, en vivo. Es una cuenta de verdad, no un adorno.
@@ -540,7 +645,11 @@
         if (el.checked) _st.desglose[i] = true;
         else { delete _st.desglose[i]; delete _st.desgloseEdit[i]; }
         _st.pre = prellenar(_st.machote);
-        _st.pre.aMano = _st.aMano;
+        /* Abrir o cerrar un desglose cambia las LÍNEAS CON PRECIO del
+         * documento, así que hay que volver a proponerlo… salvo que alguien ya
+         * lo haya editado: ahí se respeta lo escrito. Pisar el trabajo de la
+         * persona para mantener la propuesta al día es el peor de los males. */
+        if (!_st.tocado) reproponer();
         pintarConfigurador();
         /* Los renglones nuevos aparecen DEBAJO, y en un teléfono eso es fuera
          * de la pantalla: se prendía la casilla y no pasaba nada visible.
@@ -599,10 +708,44 @@
       };
     });
 
-    Array.prototype.forEach.call(document.querySelectorAll('[data-mano]'), function (el) {
-      el.onchange = function () { _st.aMano[el.dataset.mano] = el.value; };
-      el.oninput  = function () { _st.aMano[el.dataset.mano] = el.value; };
-    });
+    /* ── Los cinco compromisos ────────────────────────────────────────────
+     * Repintar el configurador entero tras cada tecla haría perder el foco a
+     * media palabra, así que sólo se repinta cuando cambia lo que la pantalla
+     * pinta a partir de ellos: el botón y su explicación. */
+    if (G.MachoteCompromisos) {
+      G.MachoteCompromisos.cablear(m, function (repintar) {
+        if (repintar) { repintarCompromisos(); } else { refrescarTrabado(); }
+      });
+    }
+
+    /* ── El documento ─────────────────────────────────────────────────────
+     * Editarlo lo marca como TOCADO, y a partir de ahí ninguna propuesta
+     * automática vuelve a pisarlo. */
+    if (G.MachoteDocumento && _st.doc) {
+      G.MachoteDocumento.cablear(_st.doc.bloques, _st.pre.moneda, function (repintar) {
+        _st.tocado = true;
+        if (repintar) { repintarDocumento(); } else { refrescarTrabado(); }
+      });
+    }
+
+    var selTipo = document.getElementById('dc-tipo');
+    if (selTipo) selTipo.onchange = function () {
+      var nuevo = selTipo.value;
+      /* Cambiar de plantilla con el documento ya editado BORRA ese trabajo.
+       * Se pregunta, y si dicen que no, el select vuelve a donde estaba: un
+       * control que se queda en la opción nueva mintiendo sobre lo que pasó es
+       * peor que no dejar cambiarlo. */
+      if (_st.tocado && !window.confirm(
+            'Ya editaste el documento. Cambiar de tipo de trabajo vuelve a ' +
+            'proponerlo desde cero y pierdes esos cambios. ¿Seguir?')) {
+        selTipo.value = _st.tipoTrabajo;
+        return;
+      }
+      _st.tipoTrabajo = nuevo;
+      _st.tocado = false;
+      reproponer();
+      pintarConfigurador();
+    };
 
     document.getElementById('or-contrato').onclick = pintarContrato;
     document.getElementById('or-siguiente').onclick = pintarEnvio;
@@ -634,48 +777,52 @@
     if (!caja) return;
     if (caja.innerHTML) { caja.innerHTML = ''; return; }
     var p = _st.pre;
+    var D = G.MachoteDocumento, CP = G.MachoteCompromisos;
+    var bloques = (D && _st.doc) ? D.paraOdoo(_st.doc.bloques) : [];
     var cuerpo = {
       token: '‹el de la sesión, como en los otros webhooks›',
       machote_id: p.machote_id,
       version_leida: '‹la versión que se está mirando; el servidor rechaza si ya cambió›',
-      empresa_id: p.empresa.id,
-      partner_id: p.cliente.odoo_partner_id,
-      moneda: p.moneda,
-      tc: p.tc,
-      condiciones_pago: _st.aMano.condiciones_pago,
-      validez_hasta: _st.aMano.validez_hasta,
-      referencia_cliente: _st.aMano.referencia_cliente,
-      tiempo_entrega: _st.aMano.tiempo_entrega,
-      notas: _st.aMano.notas,
-      lineas: p.lineas.map(function (l) {
-        return { nombre: l.nombre, cantidad: l.cantidad, precio_unitario: l.precio };
-      })
+      /* El documento, EN ORDEN. La posición en el arreglo es la posición en la
+       * orden de Odoo: es lo que el servidor escribe en `sequence`. */
+      bloques: bloques,
+      compromisos: CP ? CP.paraOrden(_st.machote) : {},
+      lead_id: _st.machote.lead_id || null
     };
     caja.innerHTML =
       '<div class="contrato">' +
-      '<h4 class="or-h">Contrato de salida · <code>POST comercial/orden-crear</code></h4>' +
-      '<p class="tiny nota">Esto es lo que mandaría el navegador. <strong>El webhook no ' +
-      'existe todavía</strong>: el contrato se escribe antes para que la pantalla y el ' +
-      'servidor no se construyan cada uno por su lado (es lo que trabó el panel de ' +
-      'Confirmar Horas en julio).</p>' +
+      '<h4 class="or-h">Contrato de salida · <code>POST comercial/orden-crear-v2</code></h4>' +
+      '<p class="tiny nota">Esto es lo que manda el navegador, de verdad y ahora mismo. ' +
+      'Va a <strong>v2</strong> y no al <code>orden-crear</code> de producción: v1 crea ' +
+      'una lista plana de renglones sin producto, y esa forma <strong>no confirma</strong> ' +
+      'en Odoo. Son contratos distintos, así que son webhooks distintos — meterle campos ' +
+      'nuevos al de producción habría dejado a los dos lados esperando a que el otro se ' +
+      'desplegara primero, que es lo que trabó Confirmar Horas en julio.</p>' +
       '<pre class="hist-doc">' + esc(JSON.stringify(cuerpo, null, 2)) + '</pre>' +
       '<h5 class="or-h5">De dónde sale cada cosa</h5>' +
       '<div class="tabla-wrap"><table class="or-t chico">' +
       '<thead><tr><th>Campo</th><th>Origen</th></tr></thead><tbody>' +
       [['machote_id · version_leida', 'del machote · la versión evita pisar a otro'],
-       ['empresa_id · moneda · tc', 'del machote (empresa decide moneda)'],
-       ['partner_id', 'del machote, si se eligió cliente del catálogo de Odoo'],
-       ['lineas[]', 'del MOTOR: una por sección, con su precio calculado'],
-       ['condiciones_pago · validez_hasta', 'A MANO — es negociación, no costeo'],
-       ['referencia_cliente · tiempo_entrega · notas', 'A MANO — nadie más los sabe']]
+       ['empresa_id · moneda · pricelist', 'del machote — no viajan: el servidor los relee ' +
+        'de la base por machote_id, que es la única fuente que no se puede falsear desde aquí'],
+       ['partner_id', 'del machote, del catálogo de Odoo; sin él no se deja crear'],
+       ['bloques[] display_type line_section', 'encabezado: sin producto, sin cantidad, sin precio'],
+       ['bloques[] display_type null', 'la línea con precio; el servidor le crea su producto'],
+       ['bloques[] display_type line_note', 'las notas — es donde vive el contrato'],
+       ['compromisos.pago_dias · pago_termino_id', 'CAMPO. Va a payment_term_id de Odoo'],
+       ['compromisos.pago_hitos', 'CAMPO nuestro. NO cabe en Odoo: viaja también como nota'],
+       ['compromisos.incoterm_code', 'CAMPO. El servidor lo resuelve contra account.incoterms'],
+       ['compromisos.entrega_fecha', 'CAMPO. Va a commitment_date de Odoo'],
+       ['compromisos.vigencia_hasta', 'CAMPO. Va a validity_date de Odoo']]
         .map(function (r) {
           return '<tr><td class="mono">' + esc(r[0]) + '</td><td>' + esc(r[1]) + '</td></tr>';
         }).join('') +
       '</tbody></table></div>' +
-      '<p class="tiny nota">Lo que el servidor tendría que devolver: ' +
-      '<code>{ ok, odoo_so_id, odoo_so_name, estado }</code>. El <code>odoo_so_id</code> ' +
-      'es el que ata la cotización a la orden — y sin él la pantalla no puede decir ' +
-      '«enviada», por la misma razón que no puede decirlo por un clic.</p>' +
+      '<p class="tiny nota">Lo que el servidor devuelve: ' +
+      '<code>{ ok, odoo_so_id, odoo_so_name, estado, … }</code> releído de Odoo. El ' +
+      '<code>odoo_so_id</code> es el que ata la cotización a la orden — y sin él la ' +
+      'pantalla no puede decir «enviada», por la misma razón que no puede decirlo por ' +
+      'un clic.</p>' +
       '</div>';
   }
 
@@ -799,7 +946,11 @@
     b.disabled = true;
     b.textContent = 'Creándola en Odoo…';
 
-    _a.crearOrden(_st.machote.id, lineasParaOdoo(_st.pre), _st.aMano, _st.machote.lead_id || null)
+    var D = G.MachoteDocumento, CP = G.MachoteCompromisos;
+    _a.crearOrden(_st.machote.id,
+                  D && _st.doc ? D.paraOdoo(_st.doc.bloques) : [],
+                  CP ? CP.paraOrden(_st.machote) : {},
+                  _st.machote.lead_id || null)
       .then(function (r) {
         b.disabled = false;
         b.textContent = texto;
@@ -1061,17 +1212,76 @@
     };
   }
 
+  /** Los cinco compromisos, al pie del PDF. Esto es lo que antes era un
+   *  párrafo suelto de «condiciones de pago» y ahora sale de los CAMPOS: si no
+   *  se pinta aquí, el cliente no ve a qué se comprometió nadie, y volvemos al
+   *  problema que se midió (49 de 176 órdenes sin términos de pago). */
+  function compromisosHtml() {
+    var CP = G.MachoteCompromisos;
+    if (!CP) return '';
+    var c = CP.de(_st.machote);
+    var f = [];
+    f.push(['Términos de pago',
+            esc(c.pago.termino_texto || (c.pago.dias === 0 ? 'Contado' : '—'))]);
+    if (c.pago.hitos.length) {
+      /* Cada pieza se escapa AQUÍ, una por una, y sólo después se une con
+       * `<br>`. Escapar el resultado ya unido convertiría el `<br>` en texto
+       * visible; no escapar nada mete lo que el usuario tecleó dentro del
+       * HTML del PDF. */
+      f.push(['Forma de pago', c.pago.hitos.map(function (h) {
+        return esc((Number(h.porcentaje) || 0) + '% ' + (h.concepto || '') +
+                   (h.cuando ? ' (' + h.cuando + ')' : ''));
+      }).join('<br>')]);
+    }
+    /* Un incoterm guardado que ya no esté en el catálogo —un machote viejo, o
+     * uno tecleado a mano— no puede tumbar el PDF: se pinta el código solo. */
+    var ic = (CP.INCOTERMS || []).filter(function (x) { return x.c === c.incoterm; })[0];
+    f.push(['Términos comerciales',
+            esc(c.incoterm ? (c.incoterm + (ic ? ' — ' + ic.n : '')) : '—')]);
+    f.push(['Tiempo de entrega',
+            esc((c.entrega.texto || '—') +
+                (c.entrega.fecha ? ' · comprometida el ' + c.entrega.fecha : ''))]);
+    f.push(['Moneda', esc(_st.machote.moneda || '—')]);
+    f.push(['Vigencia de esta cotización',
+            esc(c.vigencia.hasta ? ('hasta el ' + c.vigencia.hasta) :
+                (c.vigencia.dias ? (c.vigencia.dias + ' días') : '—'))]);
+
+    /* Los valores YA vienen escapados de arriba —cada uno en su `push`— porque
+     * algunos llevan `<br>` a propósito. Aquí sólo se escapa la etiqueta. */
+    return '<dl class="cond">' + f.map(function (r) {
+      return '<dt>' + esc(r[0]) + '</dt><dd>' + r[1] + '</dd>';
+    }).join('') + '</dl>';
+  }
+
   /* La cotización lista para imprimir. Se abre en una ventana nueva con su
    * propio HTML: no se puede reusar la hoja del libro, que es de captura y
    * lleva los costos. Al cliente no le va el costo. */
   function imprimible() {
     var p = _st.pre, m = _st.machote;
-    var total = (p.totales.total_editado !== undefined && p.totales.total_editado !== null)
-      ? p.totales.total_editado : p.totales.total;
-    var filas = p.lineas.map(function (l) {
-      return '<tr><td>' + esc(l.nombre) + '</td><td class="n">' + esc(l.cantidad) +
-        '</td><td class="n">' + mx(l.precio, p.moneda) + '</td><td class="n">' +
-        mx(l.importe, p.moneda) + '</td></tr>';
+
+    /* ── El cuerpo sale del DOCUMENTO, no de las líneas del motor ──────────
+     * Es el MISMO documento que va a la orden: secciones, líneas con precio y
+     * notas. Si el PDF pintara otra cosa, el cliente leería una cotización y
+     * recibiría otra orden, y nadie lo notaría hasta que reclamara. */
+    var bloques = (_st.doc && _st.doc.bloques) || [];
+    var total = G.MachoteDocumento
+      ? G.MachoteDocumento.total(bloques)
+      : ((p.totales.total_editado !== undefined && p.totales.total_editado !== null)
+          ? p.totales.total_editado : p.totales.total);
+
+    var filas = bloques.map(function (b) {
+      var t = String(b.texto || '').trim();
+      if (!t) return '';
+      if (b.tipo === 'seccion') {
+        return '<tr class="secc"><td colspan="4">' + esc(t) + '</td></tr>';
+      }
+      if (b.tipo === 'nota') {
+        return '<tr class="nota"><td colspan="4">' + esc(t).replace(/\n/g, '<br>') + '</td></tr>';
+      }
+      var q = Number(b.cantidad) || 0, pu = Number(b.precio) || 0;
+      return '<tr><td>' + esc(t).replace(/\n/g, '<br>') + '</td><td class="n">' + q +
+        '</td><td class="n">' + mx(pu, p.moneda) + '</td><td class="n">' +
+        mx(q * pu, p.moneda) + '</td></tr>';
     }).join('');
 
     var html = '<!doctype html><html lang="es"><head><meta charset="utf-8">' +
@@ -1086,6 +1296,9 @@
       'tfoot td{font-weight:700;border-bottom:0;border-top:2px solid #1c1c1c}' +
       '.cond{margin-top:22px;font-size:12px}.cond dt{font-weight:600;margin-top:8px}' +
       '.cond dd{margin:0;color:#3d3d3d}' +
+      'tr.secc td{font-weight:700;background:#f4f4f4;text-transform:uppercase;' +
+      'font-size:11px;letter-spacing:.04em}' +
+      'tr.nota td{color:#3d3d3d;font-size:12px}' +
       '.sello{margin-top:26px;padding:8px 10px;border:1px dashed #c07a00;color:#c07a00;' +
       'font-size:11px;border-radius:6px}' +
       '@media print{.sello{border-color:#999;color:#666}}' +
@@ -1101,13 +1314,7 @@
       '<tbody>' + filas + '</tbody>' +
       '<tfoot><tr><td colspan="3" class="n">Total</td><td class="n">' +
       mx(total, p.moneda) + ' ' + esc(p.moneda) + '</td></tr></tfoot></table>' +
-      '<dl class="cond">' +
-      '<dt>Condiciones de pago</dt><dd>' + esc(_st.aMano.condiciones_pago || '—') + '</dd>' +
-      '<dt>Vigencia</dt><dd>' + esc(_st.aMano.validez_hasta || '—') + '</dd>' +
-      (_st.aMano.tiempo_entrega ? '<dt>Tiempo de entrega</dt><dd>' + esc(_st.aMano.tiempo_entrega) + '</dd>' : '') +
-      (_st.aMano.referencia_cliente ? '<dt>Su referencia</dt><dd>' + esc(_st.aMano.referencia_cliente) + '</dd>' : '') +
-      (_st.aMano.notas ? '<dt>Notas</dt><dd>' + esc(_st.aMano.notas) + '</dd>' : '') +
-      '</dl>' +
+      compromisosHtml() +
       '<div class="sello">Documento de DEMOSTRACIÓN generado desde el machote. ' +
       'No es una cotización emitida: no lleva folio de Odoo ni firma.</div>' +
       '</body></html>';
@@ -1134,19 +1341,60 @@
     C = G.MachoteCalc;
     if (!C || !m) return;
     var pre = prellenar(m);
-    var aMano = {};
-    A_MANO.forEach(function (f) { aMano[f.id] = f.valor; });
-    if (!aMano.validez_hasta) aMano.validez_hasta = hoyMas(30);
     _st = {
       /* Qué secciones se abrieron a detalle y los precios que se movieron a
        * mano. Viven en el estado del cascarón y no en el machote: el desglose
        * es de ESTA orden, no del costeo. */
       desglose: {}, desgloseEdit: {},
-      machote: m, pre: pre, aMano: aMano,
+      machote: m, pre: pre,
+      /* El documento propuesto. `tocado` se enciende en cuanto alguien lo
+       * edita, y a partir de ahí NADA vuelve a reproponerlo encima: llegar
+       * tarde con las plantillas no puede borrar lo que la persona escribió. */
+      tipoTrabajo: 'instalacion', doc: null, tocado: false,
       alGuardar: (typeof alGuardar === 'function') ? alGuardar : null,
       clienteNombre: G.Clientes ? G.Clientes.nombre(m) : (m.cliente || '')
     };
+    reproponer();
     pintarConfigurador();
+
+    /* Las plantillas llegan por red, así que pueden llegar DESPUÉS de pintar.
+     * La pantalla no las espera: se pinta ya —con secciones y líneas, que es
+     * lo que de verdad hace falta para crear la orden— y si llegan, se vuelve
+     * a proponer. Si no llegan, el documento se queda sin las notas de
+     * plantilla y se dice; una red caída no impide emitir. */
+    var D = G.MachoteDocumento;
+    if (D && D.plantillas) {
+      D.plantillas().then(function (j) {
+        if (!j || !_st || _st.machote !== m || _st.tocado) return;
+        reproponer();
+        if (document.getElementById('modalOrden')) pintarConfigurador();
+      });
+    }
+  }
+
+  /* ── Las secciones, ya resuelto el desglose ───────────────────────────────
+   * `documento.js` no sabe de desglose y no tiene por qué: la regla dura —que
+   * la suma de los renglones dé EXACTAMENTE el precio de la sección— vive aquí,
+   * que es donde está probada. Se le pasan las líneas ya calculadas. */
+  function seccionesParaDocumento(pre) {
+    return (pre.lineas || []).map(function (l) {
+      var filas;
+      if (l.desglose && l.desglose.length) {
+        filas = lineasParaOdoo({ lineas: [l] });
+      } else {
+        filas = [{ nombre: l.nombre, cantidad: Number(l.cantidad) || 1,
+                   precio: Number(l.precio) || 0 }];
+      }
+      return { nombre: l.nombre, lineas: filas };
+    });
+  }
+
+  /** Vuelve a proponer el documento desde el machote. Sólo se llama cuando
+   *  NADIE lo ha tocado — si no, sería borrarle el trabajo a la persona. */
+  function reproponer() {
+    var D = G.MachoteDocumento;
+    if (!D || !_st) return;
+    _st.doc = D.proponer(_st.machote, seccionesParaDocumento(_st.pre), _st.tipoTrabajo);
   }
 
   /* `_lineasParaOdoo` y `_desgloseDe` se exportan para poder MEDIR lo que
@@ -1154,6 +1402,11 @@
    * suma dé exactamente el precio de la sección— no se puede vigilar desde
    * fuera de otra forma. */
   G.MachoteOrden = { abrir: abrir, cerrar: cerrar, _prellenar: prellenar,
-                     _A_MANO: A_MANO, _lineasParaOdoo: lineasParaOdoo,
-                     _desgloseDe: desgloseDe };
+                     _TIPOS_TRABAJO: TIPOS_TRABAJO,
+                     _lineasParaOdoo: lineasParaOdoo,
+                     _seccionesParaDocumento: seccionesParaDocumento,
+                     _desgloseDe: desgloseDe,
+                     /* Para medir sin red lo que viaja: es la única forma de
+                      * vigilar que el COSTO no se cuele al cliente. */
+                     _doc: function () { return _st && _st.doc; } };
 })(window);

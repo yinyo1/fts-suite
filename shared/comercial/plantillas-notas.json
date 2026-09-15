@@ -1,0 +1,243 @@
+{
+  "version": "1.0",
+  "generado": "2026-09-15",
+  "issue": 244,
+
+  "_meta": {
+    "de_donde_salen": "De las 176 ordenes confirmadas de 2025-2026 de SERVICIOS FTS (company 1) y FTS LLC (company 6), leidas por RPC. TECNOLOGIAS Y PRODUCTOS YIN queda fuera a proposito: es otro negocio, venta de material renglon por renglon.",
+
+    "el_hallazgo_incomodo": "El TEXTO de las notas NO se reutiliza. 308 notas dan 287 textos distintos; solo 20 se repiten y el mas repetido aparece 3 veces. Nadie esta copiando de nadie: cada cotizacion escribe sus notas desde cero. Por eso estas plantillas NO se derivan del texto repetido -no lo hay- sino del ESQUELETO: los encabezados que si recurren y los tipos de clausula que si recurren.",
+
+    "encabezados_medidos": "El servicio incluye: 14 (todas MX) · EXCLUSIONS 10 (8 de la LLC) · SCOPE OF WORK 9 · Incluye: 5 · El alcance incluye: 5 · Includes: 4 (LLC) · Se incluye lo siguiente en la presente cotizacion: 4 · Notas: 3 · Alcance del proyecto 3 · Materiales considerados: 3 · ASSUMPTIONS: 2 · Especificacion Tecnica 2 · Condiciones y Notas 2 · Technical Features & Considerations: 2",
+
+    "clausulas_medidas_ordenes_de_176": {
+      "acceso y seguridad": 53,
+      "suministro de material": 53,
+      "exclusiones": 35,
+      "impuestos": 28,
+      "permisos y maniobras": 27,
+      "horario de trabajo": 15,
+      "orden de cambio": 14,
+      "reporte de entrega": 14,
+      "supuestos": 12,
+      "disposicion de residuos": 10,
+      "limitacion de responsabilidad": 8,
+      "tiempo extra": 6,
+      "garantia": 5,
+      "escalacion de precio": 4,
+      "vigencia de la oferta": 1
+    },
+
+    "lo_que_esos_numeros_quieren_decir": "Ni la clausula mas comun llega a la tercera parte de las ordenes (53 de 176). O sea que el esqueleto completo que se ve en las mejores cotizaciones -enfoque, alcance de suministro, supuestos, exclusiones, limitacion de responsabilidad- NO es lo que hace la mayoria: es lo que hacen las buenas. La plantilla no viene a estandarizar lo que ya se hace, viene a SUBIR EL PISO. Y la vigencia, que aparece en UNA sola orden de 176, es justo uno de los cinco compromisos que ahora se piden como campo.",
+
+    "como_se_usa": "La suite PROPONE estos bloques y el equipo los EDITA libremente antes de enviar. Ninguno es obligatorio y ninguno se manda tal cual: los textos entre llaves son huecos que hay que llenar. Lo que se mide en `comercial.documento_orden.plantilla` es de cual se partio, para poder ver cuales se reescriben siempre y mejorarlas.",
+
+    "idioma": "Las ordenes de company 1 estan en espanol y las de la LLC (company 6) en ingles. El idioma se elige por la empresa de la orden, no por el gusto de quien captura."
+  },
+
+  "clausulas": {
+    "es": [
+      {
+        "id": "exclusiones",
+        "titulo": "Exclusiones",
+        "respaldo": "35 de 176 ordenes. El encabezado EXCLUSIONS aparece 10 veces.",
+        "cuerpo": "No incluye:\n- {lo_que_no_entra}\n- Permisos, andamios, gruas o maniobras de izaje mayores.\n- Modificaciones a estructuras, bridas o tuberias existentes.\n- Cualquier actividad no indicada expresamente en este documento."
+      },
+      {
+        "id": "suministro",
+        "titulo": "Alcance de suministro incluido",
+        "respaldo": "53 de 176 ordenes. Encabezados reales: «Alcance de suministro incluido por unidad:», «Materiales considerados:».",
+        "cuerpo": "Alcance de suministro incluido:\n- {materiales}\n- Consumibles y tornilleria de montaje.\n\nEl material no incluye: {material_excluido}."
+      },
+      {
+        "id": "acceso_seguridad",
+        "titulo": "Acceso y seguridad",
+        "respaldo": "53 de 176 ordenes, la clausula mas comun. Varias citan REPSE, ISN y DC-3 por nombre.",
+        "cuerpo": "Los trabajos en sitio quedan sujetos a las politicas de seguridad, accesos y horarios establecidos por {cliente}.\nEl cliente es responsable de dar acceso seguro y despejado a las areas de trabajo.\nPersonal capacitado (DC-3) y supervisor de seguridad certificado para la generacion de actividades.\nContamos con registro REPSE vigente y alta en el portal de proveedores del cliente."
+      },
+      {
+        "id": "horario",
+        "titulo": "Horario de trabajo",
+        "respaldo": "15 de 176 ordenes; tiempo extra en 6.",
+        "cuerpo": "Los trabajos se ejecutan en horario normal, lunes a viernes de {hora_inicio} a {hora_fin}.\nNo se incluye tiempo extra salvo que se indique expresamente."
+      },
+      {
+        "id": "orden_cambio",
+        "titulo": "Trabajos adicionales",
+        "respaldo": "14 de 176 ordenes. La forma real mas comun: «se cotizara por separado».",
+        "cuerpo": "Cualquier actividad mayor no especificada en este documento se cotizara por separado y se ejecutara unicamente con aprobacion previa del cliente."
+      },
+      {
+        "id": "supuestos",
+        "titulo": "Supuestos",
+        "respaldo": "12 de 176 ordenes. Encabezado real: «ASSUMPTIONS:».",
+        "cuerpo": "Esta propuesta se basa en los siguientes supuestos:\n- {supuesto}\n- Las instalaciones existentes se asumen en condiciones de servicio y se reutilizan tal cual.\nSi al ejecutar se encuentran condiciones distintas, se reportaran de inmediato y se cotizaran por separado."
+      },
+      {
+        "id": "impuestos",
+        "titulo": "Impuestos",
+        "respaldo": "28 de 176 ordenes.",
+        "cuerpo": "Los precios indicados no incluyen IVA."
+      },
+      {
+        "id": "escalacion",
+        "titulo": "Vigencia de precios",
+        "respaldo": "4 de 176 ordenes, pero es la clausula que mas dinero protege. Texto real: ajuste ante variacion de materia prima superior al 5%.",
+        "cuerpo": "FTS se reserva el derecho de ajustar el precio unitario ante variaciones en el costo de la materia prima ({material}) superiores al 5% respecto a la fecha de esta cotizacion."
+      },
+      {
+        "id": "responsabilidad",
+        "titulo": "Limitacion de responsabilidad",
+        "respaldo": "8 de 176 ordenes.",
+        "cuerpo": "FTS no se hace responsable por retrasos, sobrecostos o problemas de operacion derivados de:\n- Condiciones existentes del sitio fuera de nuestro alcance.\n- Equipos o sistemas de terceros."
+      },
+      {
+        "id": "reporte",
+        "titulo": "Entregables",
+        "respaldo": "14 de 176 ordenes.",
+        "cuerpo": "Al terminar se entrega reporte de actividades, hallazgos y recomendaciones."
+      },
+      {
+        "id": "residuos",
+        "titulo": "Disposicion de residuos",
+        "respaldo": "10 de 176 ordenes.",
+        "cuerpo": "El equipo retirado y los residuos generados por este alcance se retiran del sitio y se disponen conforme a la normativa, salvo indicacion distinta del cliente."
+      }
+    ],
+
+    "en": [
+      {
+        "id": "exclusiones",
+        "titulo": "Exclusions",
+        "respaldo": "EXCLUSIONS is the most frequent heading in the LLC orders: 8 of its 10 appearances.",
+        "cuerpo": "Exclusions:\n- {lo_que_no_entra}\n- Structural modifications or curb alterations.\n- Electrical work, controls, wiring, or fire alarm interfaces.\n- Any service not explicitly stated in this document."
+      },
+      {
+        "id": "suministro",
+        "titulo": "Scope includes",
+        "respaldo": "53 of 176 orders. Real headings: «SCOPE INCLUDES», «Supply of the following materials:», «Includes:».",
+        "cuerpo": "Scope includes:\n- {materiales}\n- All labor, supports, hangers, anchoring hardware, and required lift equipment.\n\nNot included in the material: {material_excluido}."
+      },
+      {
+        "id": "acceso_seguridad",
+        "titulo": "Site access",
+        "respaldo": "53 of 176 orders, the most common clause.",
+        "cuerpo": "Client is responsible for providing safe and clear access to work areas at all times.\nDaily site access required from {hora_inicio} to {hora_fin} throughout the project.\nAny deficiencies or issues with existing equipment will be reported immediately to the Client."
+      },
+      {
+        "id": "horario",
+        "titulo": "Working hours",
+        "respaldo": "15 of 176 orders; overtime in 6.",
+        "cuerpo": "All work to be performed during regular hours (Mon-Fri, {hora_inicio} - {hora_fin}).\nOvertime labor is not included unless specified."
+      },
+      {
+        "id": "orden_cambio",
+        "titulo": "Change orders",
+        "respaldo": "14 of 176 orders.",
+        "cuerpo": "Any deviation from, or alteration to, this scope involving extra work will be handled as a change order, priced separately and agreed in writing before execution."
+      },
+      {
+        "id": "supuestos",
+        "titulo": "Assumptions",
+        "respaldo": "12 of 176 orders. Real heading: «ASSUMPTIONS:».",
+        "cuerpo": "This proposal is based on the following assumptions:\n- {supuesto}\n- Existing pads/supports, ductwork, piping, electrical, controls and condensate drain are assumed to be reusable and adequate.\nIf reused equipment is found defective during installation, FTS will provide a written change order for repair/replacement costs."
+      },
+      {
+        "id": "impuestos",
+        "titulo": "Taxes",
+        "respaldo": "28 of 176 orders. Verbatim from the LLC orders.",
+        "cuerpo": "The price of this proposal does not include duties, sales, use, excise, or other similar taxes, unless required by federal, state or local law. Applicable taxes will be applied on the final invoice."
+      },
+      {
+        "id": "escalacion",
+        "titulo": "Price escalation",
+        "respaldo": "4 of 176 orders, and the one that protects the most money.",
+        "cuerpo": "This proposal does not include material/labor cost escalations beyond a standard inflationary rate. FTS reserves the right to recover cost impacts resulting from verified market escalation."
+      },
+      {
+        "id": "responsabilidad",
+        "titulo": "Limitation of liability",
+        "respaldo": "8 of 176 orders.",
+        "cuerpo": "FTS shall not be held liable for delays, cost overruns, or operational issues caused by:\n- Existing site conditions outside our scope.\n- Third-party equipment or systems."
+      },
+      {
+        "id": "reporte",
+        "titulo": "Deliverables",
+        "respaldo": "14 of 176 orders.",
+        "cuerpo": "A report of findings and recommendations will be delivered upon completion of the service."
+      },
+      {
+        "id": "residuos",
+        "titulo": "Disposal",
+        "respaldo": "10 of 176 orders.",
+        "cuerpo": "All removed equipment and debris generated by this scope shall be hauled off site and legally disposed of unless otherwise requested by the owner."
+      }
+    ]
+  },
+
+  "tipos": [
+    {
+      "id": "ingenieria",
+      "nombre": { "es": "Ingenieria y diseno", "en": "Engineering and design" },
+      "alcance": {
+        "es": {
+          "titulo": "Alcance del proyecto",
+          "cuerpo": "Alcance del proyecto\nSe cotiza la ingenieria y el diseno de {objeto}.\n- Levantamiento de campo y verificacion de condiciones existentes.\n- Memoria de calculo y criterios de diseno.\n- Planos de fabricacion y de instalacion.\n- Revision y liberacion con el cliente.\n\nEl servicio incluye hasta {horas} horas de trabajo. Si la actividad excede ese limite, el tiempo adicional se cotizara por separado y se ejecutara solo con aprobacion previa del cliente."
+        },
+        "en": {
+          "titulo": "SCOPE OF WORK",
+          "cuerpo": "SCOPE OF WORK\nEngineering and design for {objeto}.\n- Field survey and verification of existing conditions.\n- Design criteria and calculations.\n- Fabrication and installation drawings.\n- Review and sign-off with the Client.\n\nThe service includes up to {horas} hours of work. If the activity exceeds that limit, additional time will be quoted separately and performed only upon prior client approval."
+        }
+      },
+      "cierra_con": ["supuestos", "exclusiones", "orden_cambio", "reporte", "impuestos", "responsabilidad"]
+    },
+
+    {
+      "id": "fabricacion",
+      "nombre": { "es": "Fabricacion y suministro", "en": "Fabrication and supply" },
+      "alcance": {
+        "es": {
+          "titulo": "Alcance del proyecto",
+          "cuerpo": "SCOPE OF WORK\nSe cotiza el suministro y la fabricacion de {objeto}.\n\nEspecificacion Tecnica\n{especificacion}\n\nAlcance de suministro incluido por unidad:\n- Ingenieria y diseno\n- Corte y habilitado de material\n- Soldadura y armado\n- Acabado\n- Pruebas y liberacion"
+        },
+        "en": {
+          "titulo": "SCOPE OF WORK",
+          "cuerpo": "SCOPE OF WORK\nSupply and fabrication of {objeto}.\n\nTechnical Features & Considerations:\n{especificacion}\n\nScope includes per unit:\n- Engineering and design\n- Cutting and material preparation\n- Welding and assembly\n- Finishing\n- Testing and sign-off"
+        }
+      },
+      "cierra_con": ["suministro", "escalacion", "exclusiones", "orden_cambio", "impuestos", "responsabilidad"]
+    },
+
+    {
+      "id": "instalacion",
+      "nombre": { "es": "Instalacion y mano de obra", "en": "Installation and labor" },
+      "alcance": {
+        "es": {
+          "titulo": "El servicio incluye:",
+          "cuerpo": "El servicio incluye:\n- {actividad}\n- Personal capacitado para la generacion de actividades.\n- Supervision en sitio.\n- Herramienta, equipo y consumibles de instalacion.\n- Limpieza del area al terminar."
+        },
+        "en": {
+          "titulo": "SCOPE OF WORK",
+          "cuerpo": "SCOPE OF WORK\nThe scope includes:\n- {actividad}\n- Qualified personnel and on-site supervision.\n- All labor, supports, hangers, anchoring hardware and required lift equipment.\n- Clean-up of the work area upon completion."
+        }
+      },
+      "cierra_con": ["acceso_seguridad", "horario", "exclusiones", "orden_cambio", "residuos", "impuestos", "responsabilidad"]
+    },
+
+    {
+      "id": "reemplazo",
+      "nombre": { "es": "Reemplazo de equipo", "en": "Equipment replacement" },
+      "alcance": {
+        "es": {
+          "titulo": "Alcance del proyecto",
+          "cuerpo": "Alcance del proyecto\nSe cotiza el reemplazo de {equipo_actual} por {equipo_nuevo}, uno por uno.\n\nEQUIPO A REEMPLAZAR\nEquipo: {equipo} | Modelo actual: {modelo_actual} | Modelo nuevo: {modelo_nuevo} | Cantidad: {cantidad}\n\nEl alcance incluye:\n- Coordinacion de paro, entrega y secuencia de instalacion con el cliente.\n- Desconexion de alimentacion electrica, control y conexiones existentes.\n- Retiro del equipo existente y montaje del nuevo.\n- Reconexion a las instalaciones existentes.\n- Arranque y pruebas funcionales."
+        },
+        "en": {
+          "titulo": "SCOPE OF WORK",
+          "cuerpo": "SCOPE OF WORK\nLike-for-like replacement of {equipo_actual} with {equipo_nuevo}.\n\nEQUIPMENT TO BE REPLACED\nItem: {equipo} | Existing MDL: {modelo_actual} | New MDL: {modelo_nuevo} | Qty: ({cantidad})\n\nSCOPE INCLUDES\n- Plan and coordinate delivery, shutdown timing, crane staging and the overall installation sequence with the customer.\n- Disconnect the existing electrical feed, controls wiring and existing connections.\n- Remove the existing unit and set the new unit in place.\n- Reconnect to the building's existing utilities.\n- Start up and confirm proper operation through functional testing."
+        }
+      },
+      "cierra_con": ["supuestos", "acceso_seguridad", "horario", "exclusiones", "orden_cambio", "residuos", "impuestos", "responsabilidad"]
+    }
+  ]
+}

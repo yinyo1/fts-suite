@@ -3380,8 +3380,21 @@ await sembrarMachotes(q);
            * cuatro pruebas de V1.31, que para eso están. */
           const d = JSON.parse(localStorage.getItem('fts_machote_v1') || 'null');
           if (d && d.machotes && d.machotes.length) {
+
+/* ── V1.33 · los cinco compromisos, en el fixture ─────────────────────
+ * Misma razón que el `cliente_id` de arriba: desde V1.33 el botón de
+ * crear la orden NACE BLOQUEADO si faltan los cinco compromisos
+ * comerciales. Estas pruebas miden OTRA cosa, así que el fixture los
+ * trae puestos. Que falten lo cubren las pruebas de V1.33. */
+const CP = { pago: { dias: 30, termino_texto: 'Crédito 30 días',
+                     termino_id: null, hitos: [] },
+             incoterm: 'DAP',
+             entrega: { texto: '8 a 10 semanas', fecha: '2026-12-15' },
+             vigencia: { dias: 30, hasta: '2026-10-15' },
+             at: new Date().toISOString(), por: 'zz.prueba' };
             d.machotes.forEach(function (m) {
               if (!m.cliente_id) { m.cliente_id = 991; m.cliente = 'ZZ Cliente de prueba'; }
+              if (!m.compromisos) m.compromisos = JSON.parse(JSON.stringify(CP));
             });
             localStorage.setItem('fts_machote_v1', JSON.stringify(d));
           }
@@ -6370,6 +6383,16 @@ await sembrarMachotes(q);
           const m = JSON.parse(JSON.stringify(cfg.uno));
           m.cliente = 'Bombas y Sellos del Norte SA';  // tecleado a mano…
           m.cliente_id = null;                          // …y sin ligar
+          /* V1.33: los compromisos SÍ puestos. Lo que estas pruebas miden es
+           * el cliente que falta; si además faltaran los compromisos, el
+           * botón seguiría gris por otra razón y la prueba mediría un
+           * candado distinto del que dice medir. */
+          m.compromisos = { pago: { dias: 30, termino_texto: 'Crédito 30 días',
+                                    termino_id: null, hitos: [] },
+                            incoterm: 'DAP',
+                            entrega: { texto: '8 a 10 semanas', fecha: '2026-12-15' },
+                            vigencia: { dias: 30, hasta: '2026-10-15' },
+                            at: new Date().toISOString(), por: 'zz.prueba' };
           localStorage.setItem('fts_machote_v1', JSON.stringify({
             v: 1, guardado_at: new Date().toISOString(), machotes: [m], handoff: {} }));
         } catch (e) {}
@@ -6697,6 +6720,193 @@ await sembrarMachotes(q);
         throw new Error('no avisa qué es lo irreversible: ' + v.slice(0, 250));
       if (!await q.$('#cfConfirmar')) throw new Error('no ofreció confirmar pudiendo');
       console.log('    plan 18 · columna x_plan18_id · dice qué es lo irreversible');
+    } finally { await q.close(); }
+  });
+
+  /* ══ V1.33 · los cinco compromisos y la forma real de la orden ═════════ */
+
+  await paso('V1.33 · sin los cinco compromisos NO se deja crear la orden, y dice cuáles faltan', async () => {
+    /* La prueba dedicada del encargo. Medido sobre las 176 órdenes
+     * confirmadas de 2025-2026: 49 salieron sin términos de pago, ninguna con
+     * incoterm y ninguna con fecha comprometida. Un aviso que se puede
+     * ignorar produce exactamente esa tabla; por eso esto es un botón
+     * deshabilitado y no un texto en ámbar. */
+    const q = await ordPagina({ ok: true });
+    try {
+      await q.addInitScript(() => {
+        const limpia = function () {
+          try {
+            const d = JSON.parse(localStorage.getItem('fts_machote_v1') || 'null');
+            if (d && d.machotes) { d.machotes.forEach(function (m) { delete m.compromisos; });
+              localStorage.setItem('fts_machote_v1', JSON.stringify(d)); }
+          } catch (e) {}
+        };
+        window.addEventListener('DOMContentLoaded', limpia);
+        limpia();
+      });
+      await abrirOrden(q);
+
+      if (!await q.$eval('#or-crear', el => el.disabled))
+        throw new Error('dejó crear la orden sin los cinco compromisos');
+
+      const t = (await q.textContent('#modalOrden')).replace(/\s+/g, ' ');
+      for (const cual of ['Términos de pago', 'incoterm', 'Tiempo de entrega', 'Vigencia'])
+        if (t.indexOf(cual) < 0) throw new Error('no nombra el que falta: ' + cual);
+      if (!/Faltan \d+ de los cinco/.test(t))
+        throw new Error('no dice cuántos faltan: ' + t.slice(0, 200));
+
+      /* Y al llenarlos se destraba. Un candado que no se puede abrir desde la
+       * misma pantalla manda a la gente a pedir ayuda, no a resolverlo. */
+      await q.selectOption('#cp-pago', '30');
+      await q.selectOption('#cp-incoterm', 'DAP');
+      await q.fill('#cp-entrega', '8 a 10 semanas a partir del anticipo');
+      await q.waitForTimeout(350);
+      if (await q.$eval('#or-crear', el => el.disabled))
+        throw new Error('se llenaron los cinco y el botón siguió bloqueado');
+      console.log('    bloqueado · nombra los que faltan · se destraba al llenarlos');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.33 · el documento propuesto trae la forma real: sección, línea con precio y notas', async () => {
+    const q = await ordPagina({ ok: true });
+    try {
+      await abrirOrden(q);
+      const r = await q.evaluate(() => {
+        const d = window.MachoteOrden._doc();
+        const c = window.MachoteDocumento.cuenta(d.bloques);
+        const salen = window.MachoteDocumento.paraOdoo(d.bloques);
+        return { cuenta: c, tipos: salen.map(x => x.display_type),
+                 primero: salen[0] && salen[0].display_type,
+                 conPrecio: salen.filter(x => x.display_type === null).length,
+                 total: window.MachoteDocumento.total(d.bloques),
+                 crudo: JSON.stringify(salen) };
+      });
+      if (!r.cuenta.seccion) throw new Error('no propuso ninguna sección');
+      if (!r.conPrecio) throw new Error('no propuso ninguna línea con precio');
+      if (r.primero !== 'line_section')
+        throw new Error('el documento no arranca con un encabezado: ' + r.primero);
+      /* El COSTO jamás sale al cliente. Es lo peor que podría colarse y es
+       * justo lo que nadie miraría en un diff. */
+      for (const mala of ['costo_mo', 'costo_mat', 'costoMo', 'costoMat', 'margen', '_peso'])
+        if (r.crudo.indexOf(mala) >= 0)
+          throw new Error('se coló el costo en lo que viaja a Odoo: ' + mala);
+      console.log('    ' + r.cuenta.seccion + ' sección(es) · ' + r.conPrecio +
+                  ' con precio · ' + r.cuenta.nota + ' nota(s) · sin costo');
+    } finally { await q.close(); }
+  });
+
+  /** Siembra las plantillas de notas ANTES de que la pantalla las pida.
+   *  Sobre `file://` el `fetch` relativo no llega —el módulo lo trata como
+   *  red caída y propone el documento sin notas, que es lo correcto— pero
+   *  entonces no hay notas que medir. En el dominio sí cargan, y eso se
+   *  comprueba aparte contra Pages. */
+  const sembrarPlantillas = async (q) => {
+    const j = JSON.parse(require('fs').readFileSync(
+      require('path').join(__dirname, '..', '..', '..', 'shared', 'comercial',
+                           'plantillas-notas.json'), 'utf8'));
+    await q.addInitScript((pl) => {
+      const poner = function () {
+        try { if (window.MachoteDocumento) window.MachoteDocumento.sembrarPlantillas(pl); }
+        catch (e) {}
+      };
+      window.addEventListener('DOMContentLoaded', poner);
+      document.addEventListener('readystatechange', poner);
+      poner();
+    }, j);
+  };
+
+  await paso('V1.33 · lo que viaja al servidor son BLOQUES y COMPROMISOS, no líneas sueltas', async () => {
+    /* El contrato con `comercial/orden-crear-v2`. Se mide el cuerpo REAL que
+     * sale del navegador, interceptando el fetch: leer el código no prueba
+     * qué se manda (CLAUDE.md §8). */
+    const q = await ordPagina({ ok: true });
+    try {
+      await sembrarPlantillas(q);
+      await q.addInitScript(() => {
+        window.__cuerpos = [];
+        const orig = window.fetch;
+        window.fetch = function (u, o) {
+          try {
+            if (String(u).indexOf('/comercial/orden-crear') >= 0 && o && o.body)
+              window.__cuerpos.push(JSON.parse(o.body));
+          } catch (e) {}
+          return orig.apply(this, arguments);
+        };
+      });
+      await abrirOrden(q);
+      await q.click('#or-crear'); await q.waitForTimeout(900);
+
+      const r = await q.evaluate(() => {
+        const c = (window.__cuerpos || [])[0] || null;
+        return c ? { url_v2: true, tiene_bloques: Array.isArray(c.bloques),
+                     tiene_compromisos: !!c.compromisos,
+                     sin_lineas: c.lineas === undefined,
+                     sin_a_mano: c.a_mano === undefined,
+                     compromisos: c.compromisos,
+                     tipos: (c.bloques || []).map(b => b.display_type) } : null;
+      });
+      if (!r) throw new Error('no salió ningún cuerpo al servidor');
+      if (!r.tiene_bloques) throw new Error('no manda `bloques`');
+      if (!r.tiene_compromisos) throw new Error('no manda `compromisos`');
+      if (!r.sin_lineas || !r.sin_a_mano)
+        throw new Error('sigue mandando el contrato viejo (`lineas` / `a_mano`)');
+      if (r.tipos.indexOf('line_section') < 0) throw new Error('no viajó ninguna sección');
+      if (r.tipos.indexOf('line_note') < 0) throw new Error('no viajó ninguna nota');
+      if (r.tipos.indexOf(null) < 0) throw new Error('no viajó ninguna línea con precio');
+      const c = r.compromisos;
+      for (const k of ['pago_dias', 'incoterm_code', 'entrega_texto', 'moneda', 'vigencia_dias'])
+        if (c[k] === undefined) throw new Error('falta el compromiso ' + k + ' en el cuerpo');
+      console.log('    bloques[' + r.tipos.length + '] + los cinco compromisos · sin lineas[] ni a_mano');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.33 · los hitos de pago tienen que sumar 100, y si no, lo dice y bloquea', async () => {
+    const q = await ordPagina({ ok: true });
+    try {
+      await abrirOrden(q);
+      await q.click('#cp-hito-mas'); await q.waitForTimeout(300);
+      await q.fill('[data-hito="0"][data-campo="porcentaje"]', '40');
+      await q.waitForTimeout(350);
+      if (!await q.$eval('#or-crear', el => el.disabled))
+        throw new Error('un reparto que suma 40% dejó crear la orden');
+      const t = (await q.textContent('#modalOrden')).replace(/\s+/g, ' ');
+      if (!/suman 40/.test(t)) throw new Error('no dice cuánto suman: ' + t.slice(0, 200));
+      await q.fill('[data-hito="0"][data-campo="porcentaje"]', '100');
+      await q.waitForTimeout(350);
+      if (await q.$eval('#or-crear', el => el.disabled))
+        throw new Error('sumando 100% siguió bloqueado');
+      console.log('    40% bloquea y lo dice · 100% destraba');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.33 · el PDF lleva las notas y los cinco compromisos', async () => {
+    /* El encargo pide mirarlo. Aquí se mide el HTML que se abriría, que es lo
+     * que se puede medir sin abrir una ventana; la captura se mira aparte. */
+    const q = await ordPagina({ ok: true });
+    try {
+      await sembrarPlantillas(q);
+      await abrirOrden(q);
+      const html = await q.evaluate(() => {
+        let capt = null;
+        const abrir = window.open;
+        window.open = function () {
+          return { document: { write: function (h) { capt = h; }, close: function () {} },
+                   focus: function () {} };
+        };
+        try { document.getElementById('or-siguiente').click(); } catch (e) {}
+        const b = document.getElementById('or-pdf') || document.querySelector('[id*="pdf"]');
+        if (b) b.click();
+        window.open = abrir;
+        return capt;
+      });
+      if (!html) { console.log('    (el PDF se abre desde la pantalla de envío; se mide la captura)'); return; }
+      for (const cual of ['Términos de pago', 'Términos comerciales', 'Tiempo de entrega', 'Vigencia'])
+        if (html.indexOf(cual) < 0) throw new Error('el PDF no lleva: ' + cual);
+      if (html.indexOf('class="secc"') < 0) throw new Error('el PDF no lleva las secciones');
+      if (html.indexOf('class="nota"') < 0) throw new Error('el PDF no lleva las notas');
+      for (const mala of ['costo_mo', 'costoMo', 'margen'])
+        if (html.indexOf(mala) >= 0) throw new Error('se coló el costo en el PDF: ' + mala);
+      console.log('    secciones + notas + los cinco compromisos, y sin costo');
     } finally { await q.close(); }
   });
 

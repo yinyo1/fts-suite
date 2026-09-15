@@ -1562,3 +1562,107 @@ table.lista td.mono { white-space: nowrap; }
   .cf-tabla td[data-th=""] { display: block; }
   .cf-tabla td[data-th=""] .btn { width: 100%; }
 }
+
+/* ══ V1.33 · Los cinco compromisos ═══════════════════════════════════════
+ * Van ARRIBA del documento y con su propia caja de estado porque son el
+ * candado: la pantalla tiene que decir cuáles faltan antes de que alguien
+ * baje a editar notas y descubra al final que no puede emitir.
+ */
+/* ⚠️ Contenedor PROPIO, no `.or-campos`. Esa clase ya existe en este mismo
+ * archivo y es una rejilla de DOS columnas: al reusarla, la caja de «faltan
+ * tres compromisos» se metía en una celda y se estiraba media pantalla.
+ * El CSS nuevo estaba bien; el choque estaba en otra parte del archivo
+ * (CLAUDE.md §20 #12). Se vio en la captura, no en el diff. */
+.or-compromisos { display: block; }
+
+.cp-falta { border: 1px solid var(--ambar); background: #fffaf0; border-radius: 8px;
+            padding: 10px 12px; margin: 0 0 14px; font-size: 13px; }
+.cp-falta.ok { border-color: var(--verde); background: #f0f9f2; }
+.cp-falta strong { display: block; margin-bottom: 4px; }
+.cp-falta ul { margin: 6px 0 0; padding-left: 18px; }
+.cp-falta li { margin-bottom: 3px; }
+.cp-falta p { margin: 6px 0 0; color: var(--suave); }
+
+.cp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+.cp-grid .campo { margin-bottom: 10px; }
+.cp-grid .campo .nota { display: block; margin-top: 2px; }
+
+.cp-hitos { margin-top: 6px; border-top: 1px solid var(--linea2); padding-top: 10px; }
+.cp-hitos-cab { display: flex; align-items: center; justify-content: space-between;
+                gap: 8px; }
+.cp-hitos h5 { margin: 0; font-size: 13px; }
+.cp-hitos .btn { width: auto; }
+.cp-t .cel { width: 100%; }
+/* La suma que no cuadra se ve de lejos: es el error que el cliente descubre
+ * cobrando y nosotros no, si la pantalla no lo grita. */
+.cp-t .mal { color: var(--rojo); font-weight: 700; }
+
+/* ══ V1.33 · El documento de la orden ════════════════════════════════════
+ * Se parece a la lista de líneas de Odoo a propósito: es la pantalla a la
+ * que el equipo está acostumbrado, y la familiaridad aquí vale más que
+ * cualquier diseño nuevo. Cada bloque es una tarjeta con su tipo a la
+ * izquierda y sus flechas a la derecha.
+ */
+.dc-tipo-sel { max-width: 420px; }
+.dc-barra { display: flex; align-items: center; justify-content: space-between;
+            gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.dc-mas { display: flex; gap: 6px; flex-wrap: wrap; }
+.dc-mas .btn, .dc-mover .btn { width: auto; min-height: 30px; padding: 0 9px; }
+
+.dc-lista { list-style: none; margin: 0; padding: 0; }
+.dc-b { border: 1px solid var(--linea); border-radius: 8px; padding: 8px 10px;
+        margin-bottom: 8px; background: var(--fondo); }
+/* El color dice el tipo sin tener que leer la etiqueta. La sección es la
+ * banda, la línea con precio lleva el acento —es lo que cobra— y la nota va
+ * en papel, que es como se ve en el PDF. */
+.dc-seccion { background: var(--cab); border-color: #c8d2dc; }
+.dc-seccion .dc-texto { font-weight: 700; text-transform: uppercase;
+                        letter-spacing: .03em; font-size: 13px; }
+.dc-linea { border-left: 3px solid var(--acento); }
+.dc-nota { background: var(--papel); }
+
+.dc-cab { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.dc-tipo { font-size: 11px; font-weight: 700; text-transform: uppercase;
+           letter-spacing: .04em; color: var(--suave); }
+.dc-de { margin-left: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.dc-mover { display: flex; gap: 4px; margin-left: 8px; }
+.dc-texto { width: 100%; }
+.dc-b textarea.dc-texto { min-height: 52px; resize: vertical; line-height: 1.45; }
+
+.dc-nums { display: flex; align-items: center; gap: 12px; margin-top: 6px;
+           flex-wrap: wrap; }
+.dc-nums label { display: flex; align-items: center; gap: 5px; color: var(--suave); }
+.dc-nums .cel { width: 108px; }
+.dc-imp { margin-left: auto; font-weight: 700; color: var(--tinta); }
+
+.dc-total { display: flex; justify-content: flex-end; gap: 10px; align-items: baseline;
+            border-top: 2px solid var(--tinta); padding-top: 8px; margin-top: 4px;
+            font-size: 13px; }
+.dc-total strong { font-size: 16px; }
+
+/* La razón por la que el botón está trabado, junto al botón. Decirla arriba
+ * y trabar abajo obliga a recorrer la pantalla para entender el candado. */
+.or-trabado { text-align: right; margin: 6px 0 0; color: var(--ambar);
+              font-weight: 600; }
+
+@media (max-width: 720px) {
+  .cp-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 520px) {
+  /* La celda del botón no lleva etiqueta: un `data-th` vacío deja un hueco.
+   * Mismo remedio que ya usa `.cf-tabla`. */
+  .cp-t td[data-th=""]::before { content: none; }
+  .cp-t td[data-th=""] { display: block; }
+  .cp-t td[data-th=""] .btn { width: 100%; }
+
+  /* En el teléfono la cabecera del bloque se parte: el tipo arriba y las
+   * flechas abajo a la derecha, para que el botón de quitar no quede pegado
+   * al de bajar y se toque el que no es. */
+  .dc-cab { flex-wrap: wrap; }
+  .dc-de { margin-left: 0; width: 100%; order: 3; }
+  .dc-mover { margin-left: auto; }
+  .dc-nums .cel { width: 92px; }
+  .dc-imp { width: 100%; text-align: right; margin-left: 0; }
+  .dc-mas { width: 100%; }
+  .dc-mas .btn { flex: 1; }
+}
