@@ -2,6 +2,52 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-CHK-121-2026-09-15T12-17-42-489Z",
+      "tipo": "olvido_checkout",
+      "empleado_id": 121,
+      "empleado_nombre": "Stephany Ventura Arevalo",
+      "department_id": 3,
+      "department_name": "Operaciones",
+      "sin_departamento": false,
+      "depto_invalido": false,
+      "supervisor_id": 112,
+      "supervisor_name": "Felipe Pérez Guzmán",
+      "supervisor_email": "stephanyventura708@gmai.com",
+      "supervisor_phone": "+52 933 123 3163",
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": false,
+      "sin_supervisor": false,
+      "attendance_id": 15490,
+      "fecha_creacion": "2026-09-15T12:17:42.489Z",
+      "check_in_original_utc": "2026-09-14 12:19:01",
+      "check_out_propuesto_utc": "2026-09-15 11:00:00",
+      "check_out_propuesto_cst": "2026-09-15 05:00:00",
+      "geolocation": {
+        "lat": 25.6887771,
+        "lng": -100.2917849,
+        "accuracy": 15.545999526977539,
+        "captured_at": "2026-09-15T12:17:39.657Z"
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "accion": "crear",
+          "fecha": "2026-09-15T12:17:42.489Z",
+          "hora_propuesta_cst": "05:00",
+          "comentario": "Se me olvidó checar"
+        }
+      ],
+      "status": "pendiente_supervisor",
+      "hora_final_aplicada_utc": "2026-09-15 11:00:00",
+      "aplicado_en_odoo": true,
+      "tag_disputa_activo": true,
+      "creada_por_modulo": "kiosk",
+      "creada_por_build": "20260710-kiosk-versioncheck"
+    },
+    {
       "id_interno": "INC-AUTO-CIERRE-59-2026-09-14T13-30-49-850Z",
       "tipo": "auto_cierre_pendiente",
       "status": "pendiente_rh",
