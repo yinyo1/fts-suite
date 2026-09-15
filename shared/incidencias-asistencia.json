@@ -26,9 +26,19 @@
           "hora_propuesta_cst": "2026-09-15 06:49:00",
           "comentario": "No se encontró el celular  para checar  entrada",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe Pérez Guzmán",
+          "timestamp": "2026-09-15T13:23:57.160Z",
+          "hora_propuesta_cst": null,
+          "comentario": "aprobada entrada 6;40",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false,
       "department_id": 3,
