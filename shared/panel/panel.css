@@ -82,6 +82,12 @@ tr.grupo{background:#1a2530;font-weight:600}
 tr.grupo td{color:#cfe3ff}
 /* Celda-enlace a un detalle. Se recorta con puntos suspensivos en vez de
    ensanchar la tabla: el nombre completo va en el `title`. */
+/* Un <a> SIN clase. El armazón no lo estilaba y el navegador le ponía su azul
+   de fábrica (#0000EE), que sobre este fondo oscuro es casi invisible — visto en
+   la captura del panel del semáforo, no en el diff. Va en el armazón y no en un
+   panel porque el próximo que meta un enlace en prosa cae en lo mismo. No puede
+   regresionar nada: hoy ningún panel tiene un <a> sin clase (comprobado). */
+.wrap a{color:var(--liga)}
 .proj{display:inline-block;max-width:360px;overflow:hidden;text-overflow:ellipsis;
       white-space:nowrap;cursor:pointer;color:var(--liga);vertical-align:bottom}
 .proj:hover{text-decoration:underline}

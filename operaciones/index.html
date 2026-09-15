@@ -137,6 +137,20 @@
         <span>Ingreso, costo y margen contra presupuesto</span>
       </div>
     </a>
+    <!-- Semaforo de proyectos (#240, frente #229). Es la MISMA medicion que sale
+         en el correo de las 8:00 del watchdog: mismo motor, mismos umbrales, y la
+         seccion de lo que no puede esperar con el mismo criterio. Lo que cambia es
+         que aqui se puede filtrar, ordenar y agrupar.
+         Tampoco lleva id en SUBMOD_CARDS, por lo mismo que rentabilidad: el permiso
+         de verdad lo exige el ENDPOINT (scope semaforo:read, verificado contra la
+         firma del JWT en el servidor). -->
+    <a id="card-semaforo" href="semaforo/index.html" class="op-card">
+      <div class="op-icon">🚦</div>
+      <div class="op-info">
+        <strong>Semáforo de proyectos</strong>
+        <span>Qué tan tarde va cada proyecto en su etapa</span>
+      </div>
+    </a>
   </div>
 
 </div>

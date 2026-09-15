@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Semáforo de proyectos · FTS Suite</title>
+<!--
+  PANEL DEL SEMAFORO DE PROYECTOS · issue #240 · plataforma #237 · frente #229
+
+  SEGUNDO panel montado sobre el armazon (`shared/panel/`). El primero fue
+  `finanzas/rentabilidad/`, de donde el armazon se extrajo. Lo que este archivo
+  NO contiene, porque es del armazon: la cabecera, quien esta dentro, la hora
+  del ultimo jalon, el boton de refresh, la CLASIFICACION de la respuesta en
+  sesion/red/servidor, los avisos, la tabla reagrupable con sus subtotales, la
+  raya del dato ausente, los colores y el pie.
+
+  Lo propio de este panel: los dos semaforos como vocabulario, la seccion de lo
+  que NO PUEDE ESPERAR, el chip de los tres estados de la linea base, la celda
+  del contador con su fuente, y las banderas de integridad.
+
+  ESTE ARCHIVO NO TRAE DATOS. Ni de demostracion ni reales. Si el endpoint no
+  contesta, esta pantalla lo DICE — nunca rellena con ejemplos. (§20 #12c: lo de
+  ejemplo tiene que estar marcado EN ORIGEN; la forma mas segura de cumplirlo es
+  no tener nada de ejemplo.)
+
+  SIN SNAPSHOTS Y SIN CAPA DE DATOS. El watchdog ya commitea su snapshot diario;
+  este panel LEE el estado de hoy y no guarda nada. Nada se commitea desde aqui.
+
+  EL CONTADOR Y SU FUENTE VIAJAN JUNTOS. `dias_en_stage` sale del ultimo cambio
+  de etapa (`mail.message subtype_id 94`) o, si no hay ninguno, del `create_date`
+  — y entonces NO es tiempo en la etapa, es la EDAD del proyecto. Son dos cosas
+  distintas y la celda las distingue: sin eso, un numero grande se lee como un
+  atoron que no existe (issue #229).
+
+  LA LINEA BASE TIENE TRES ESTADOS, no dos. `con_linea_base` / `nuevo` /
+  `sin_linea_base`. «No tengo con que comparar» NO es «entro hoy»: lo primero es
+  una ausencia de medicion, lo segundo es una noticia, y presentar la ausencia
+  como noticia inventa un cambio que nadie hizo. Contrato en
+  `docs/n8n-workflows/linea-base/README.md`.
+-->
+<script src="../../shared/auth-jwt.js"></script>
+<script>
+  /* EL GATE, inline en el <head> y antes de pintar nada: si viniera del armazon
+     habria que esperar un archivo, y media pantalla pintada es media pantalla
+     ensenada. GitHub Pages es publico, asi que esto decide si se PINTA, no si se
+     puede DESCARGAR — lo que de verdad protege es que `ops/semaforo` exija el
+     scope y valide la firma EN EL SERVIDOR. */
+  if (!window.SuiteAuth.requerir('semaforo:read', '../../shared/login.html')) {
+    throw new Error('sin sesion');
+  }
+</script>
+<link rel="stylesheet" href="../../shared/panel/panel.css">
+<style>
+  /* Lo UNICO propio: el vocabulario de este panel. Las piezas genericas
+     (`.chip`, `.raya`, `.al`, `.falta`) estan en el armazon. */
+
+  /* Los tres estados de la LINEA BASE. El de «sin» es deliberadamente apagado:
+     no es una alarma, es una ausencia. */
+  .lb-con{background:#0d2a14;color:#56d364;border:1px solid #1c5a2b}
+  .lb-nuevo{background:#1c2b3a;color:#6cb6ff;border:1px solid #2a4a6b}
+  .lb-sin{background:#26292e;color:#9aa7b4;border:1px solid #3d4450}
+
+  /* LO QUE NO PUEDE ESPERAR. Misma condicion que la seccion del correo (parche
+     S4): rojo Y (vencido >45d O >90d en la etapa). La regla vive en el
+     SERVIDOR y viaja en la fila como `no_puede_esperar`; aqui solo se pinta.
+     Dos implementaciones del mismo umbral se separan el dia que uno cambie. */
+  .urg{background:var(--panel);border:1px solid #6b1f1f;border-left:3px solid var(--rojo);
+       border-radius:8px;padding:12px 14px;margin:14px 0}
+  .urg h3{margin:0 0 4px;font-size:14px;color:var(--rojo)}
+  .urg .why{color:var(--tinta3);font-size:12px;margin:0 0 8px}
+  .urg ol{margin:0;padding-left:20px;font-size:13px}
+  .urg li{margin-bottom:5px}
+  .urg .meta{color:var(--tinta2);font-size:12px}
+
+  /* La fuente del contador. Pegada al numero porque el numero SIN ella miente.
+     Es `display:block` porque en la celda va DEBAJO del numero. Por eso NO se
+     puede usar dentro de una frase: ahi parte la oracion en tres renglones y
+     deja la coma colgando. Para prosa esta `.fnt-en-linea`, que dice lo mismo
+     sin romper el parrafo. Visto en la captura, no en el diff — es el mismo
+     modo de falla de CLAUDE.md 20 #12: una clase que ya significa otra cosa. */
+  .fnt{display:block;color:var(--tinta3);font-size:10px;font-family:var(--mono)}
+  .fnt.edad{color:var(--ambar)}
+  .fnt-en-linea{color:var(--ambar);font-size:11px;font-family:var(--mono)}
+
+  /* LAS BANDERAS NO ESTIRAN EL RENGLON. Un proyecto con 21 notas vacias metia
+     un parrafo de 21 lineas en su celda y el renglon pasaba de 31 px a 218 —
+     y como esa columna cae fuera de la pantalla, lo que se ve es un hueco
+     enorme sin explicacion. El CONTEO es la senal; el detalle completo vive en
+     el `title`. Tambien visto en la captura. */
+  td .ban{display:inline-block;max-width:230px;overflow:hidden;text-overflow:ellipsis;
+          white-space:nowrap;vertical-align:bottom;color:var(--tinta3);font-size:11px}
+
+  /* Punto del semaforo, en texto y no solo en color: quien no distingue los
+     colores tiene que poder leer el estado igual. */
+  .pt{font-family:var(--mono);font-size:11px;white-space:nowrap}
+  .pt-rojo{color:var(--rojo)} .pt-amarillo{color:var(--ambar)} .pt-verde{color:var(--verde)}
+</style>
+</head>
+<body>
+
+<!-- La cabecera la LLENA el armazón. Aquí sólo va el hueco. -->
+<header><div class="wrap hd"></div></header>
+
+<div class="wrap">
+  <div id="aviso"></div>
+
+  <section class="vista" id="vPortada">
+    <div class="kpis" id="kpis"></div>
+
+    <!-- Va ARRIBA de los filtros a propósito: es lo único de esta pantalla que
+         no se puede filtrar para que desaparezca. -->
+    <div id="urgentes"></div>
+
+    <details class="salv"><summary>Salvedades — qué <em>no</em> dice este tablero</summary>
+      <div class="cuerpo" id="salvCuerpo"></div></details>
+
+    <div class="barra">
+      <label class="f">Retraso en la etapa
+        <select id="fColor">
+          <option value="">todos</option>
+          <option value="rojo">rojo</option>
+          <option value="amarillo">amarillo</option>
+          <option value="verde">verde</option>
+        </select>
+      </label>
+      <label class="f">Grupo
+        <select id="fGrupoVal">
+          <option value="">los dos</option>
+          <option value="Operaciones">Operaciones</option>
+          <option value="Admin">Admin</option>
+        </select>
+      </label>
+      <label class="f">Agrupar por <select id="fGrupo"><option value="">(sin agrupar)</option></select></label>
+      <label class="f"><input type="checkbox" id="fPide"> sólo lo que pide algo</label>
+      <label class="f"><input type="checkbox" id="fBandera"> sólo con bandera</label>
+      <input type="search" id="fBusca" placeholder="buscar proyecto, cliente o etapa…" style="min-width:200px">
+      <div class="spacer"></div>
+      <span class="jalon" id="conteo"></span>
+    </div>
+
+    <div class="tablabox"><table id="tabla"><thead></thead><tbody></tbody></table></div>
+
+    <div class="nota">
+      <b>El color dice UNA sola cosa: qué tan tarde va el proyecto en su etapa.</b>
+      El segundo semáforo —falta de seguimiento— se calcula y se muestra en su
+      columna, pero <b>no manda el color</b>: su verde es inalcanzable por
+      construcción y llevaba 11 corridas en 0% (#220).
+      <br><br>
+      <b>Un contador grande no siempre es un atorón.</b> Donde dice
+      <span class="fnt-en-linea">edad del proyecto</span>, nadie ha movido ese
+      proyecto de etapa nunca, así que lo que se mide es su edad y no su tiempo
+      en la etapa. Son dos cosas distintas (#229).
+      <br><br>
+      Las columnas y sus tipos los manda el servidor; el ancho, el orden, los
+      colores y qué filas se ven son de esta pantalla.
+    </div>
+  </section>
+
+  <footer></footer>
+</div>
+
+<script src="../../shared/panel/panel-shell.js"></script>
+<script src="../../shared/panel/panel-tabla.js"></script>
+<script>
+'use strict';
+
+/* ═══ el panel, montado sobre el armazón ════════════════════════════════ */
+var P = Panel.montar({
+  ruta: '/webhook/ops/semaforo',
+  titulo: 'Semáforo de proyectos',
+  sub: 'FTS Suite · panel · contrato 1',
+  volver: { href: '../index.html', txt: '← Operaciones' },
+  login: '../../shared/login.html',
+  /* Este panel NO guarda nada en el navegador. La lista vacía es la declaración,
+     no un olvido: si algún día guarda algo, su llave va aquí y `caducarSesion`
+     comprueba que no se confunda con la de sesión. */
+  intocables: [],
+  pie: 'Panel del semáforo · <span class="jalon">el estado de HOY, leído de Odoo al ' +
+       'jalar · sin snapshots y sin capa de datos: nada se guarda, nada se commitea' +
+       '</span>'
+});
+
+var esc = Panel.esc, nfm = Panel.nfm;
+var S = { sobre:null, orden:{col:'dias_en_stage',dir:-1} };
+
+var ETQ_LB = { con_linea_base:'con línea base', nuevo:'nuevo', sin_linea_base:'sin línea base' };
+var CLS_LB = { con_linea_base:'lb-con',        nuevo:'lb-nuevo', sin_linea_base:'lb-sin' };
+var PT     = { rojo:'● rojo', amarillo:'● amar', verde:'● verde' };
+
+/* ═══ carga: REFRESH MANUAL, nunca automático ═══════════════════════════ */
+async function cargar(){
+  P.ocupado(true);
+  var r = await P.pedir({});
+  P.ocupado(false);
+
+  if(Panel.clasificar(r) !== 'ok'){
+    /* El camino de error entero lo lleva el armazón: las tres clases, el borrado
+       de SÓLO la llave de sesión, y el caso propio del webhook sin publicar.
+       Lo que este panel aporta son los nombres concretos. */
+    P.avisarFallo(r, cargar, { scope:'semaforo:read',
+      workflow:'ops/semaforo', workflowId:'(pendiente de publicar)' });
+    return;
+  }
+  P.limpiarAviso();
+  S.sobre = r;
+  P.jalado();
+  P.vista('vPortada');
+  pintarPortada();
+}
+
+/* ═══ portada ═══════════════════════════════════════════════════════════ */
+function pintarPortada(){
+  var d = S.sobre.datos, r = d.resumen;
+
+  /* El KPI de «en tiempo» lleva SU DENOMINADOR encima. Es el defecto que costó
+     el parche S4 en el correo: un porcentaje sin decir de qué universo es no
+     cuadra contra ningún encabezado, y el lector no puede detectarlo. */
+  document.getElementById('kpis').innerHTML =
+    P.kpi('neu', r.total, 'proyectos vigilados', 'el universo del panel', '') +
+    P.kpi('bad', r.rojo, 'rojo en su etapa', 'pasó su límite', 'rojo') +
+    P.kpi('warn', r.amarillo, 'amarillo', 'se acerca al límite', 'amarillo') +
+    P.kpi('ok', r.verde, 'verde', 'en tiempo en su etapa', 'verde') +
+    P.kpi(r.no_puede_esperar ? 'bad' : 'ok', r.no_puede_esperar, 'no pueden esperar',
+          'rojo + muy vencido o muy atorado', '') +
+    P.kpi(r.en_tiempo_pct === null ? 'neu' : (r.en_tiempo_pct >= 90 ? 'ok' : 'bad'),
+          (r.en_tiempo_pct === null ? '—' : r.en_tiempo_pct + '%'), 'en tiempo (meta ≥90%)',
+          r.verde + ' de ' + r.total + ' · foto de hoy, no promedio', '');
+
+  pintarUrgentes(d.filas);
+
+  document.getElementById('salvCuerpo').innerHTML =
+    (S.sobre.salvedades || []).map(function(s){
+      return '<div class="salv-item"><code>' + esc(s.codigo) + '</code> — ' + esc(s.dice) + '</div>';
+    }).join('') || '<div class="salv-item">El servidor no declaró ninguna.</div>';
+
+  var gsel = document.getElementById('fGrupo');
+  if(gsel.options.length <= 1){
+    d.columnas.filter(function(c){ return c.agrupable; }).forEach(function(c){
+      var o = document.createElement('option');
+      o.value = c.id; o.textContent = c.label; gsel.appendChild(o);
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('#kpis .kpi.clic'), function(el){
+    el.onclick = function(){
+      document.getElementById('fColor').value = el.getAttribute('data-filtro');
+      pintarTabla();
+    };
+  });
+  pintarTabla();
+}
+
+/* LO QUE NO PUEDE ESPERAR. La condición la decide el SERVIDOR (`no_puede_esperar`
+   en la fila); aquí sólo se ordena y se pinta. Misma sección y mismo criterio que
+   el correo del watchdog, a propósito: dos pantallas que dicen «urgente» de dos
+   cosas distintas es peor que no tener la sección. */
+function pintarUrgentes(filas){
+  var u = filas.filter(function(f){ return f.no_puede_esperar; })
+               .sort(function(a,b){
+                 return ((b.dias_vencido||0) + (b.dias_en_stage||0)) -
+                        ((a.dias_vencido||0) + (a.dias_en_stage||0));
+               });
+  var caja = document.getElementById('urgentes');
+  if(!u.length){
+    /* Cero NO se esconde: «no hay ninguno» es una afirmación con valor, y una
+       sección que desaparece se confunde con una sección que falló. */
+    caja.innerHTML = '<div class="urg" style="border-color:var(--linea);border-left-color:var(--verde)">' +
+      '<h3 style="color:var(--verde)">No hay nada que no pueda esperar</h3>' +
+      '<p class="why">Ningún proyecto está en rojo con más de 45 días de vencido ' +
+      'ni con más de 90 días en la misma etapa.</p></div>';
+    return;
+  }
+  caja.innerHTML = '<div class="urg"><h3>No pueden esperar [' + u.length + ']</h3>' +
+    '<p class="why">En rojo <b>y</b> con más de 45 días de vencido <b>o</b> más de 90 en la ' +
+    'misma etapa. Salen por condición, no porque hayan cambiado: aparecen aquí todos ' +
+    'los días hasta que se muevan. Este bloque no se filtra.</p><ol>' +
+    u.map(function(f){
+      var por = [];
+      if(f.dias_vencido !== null && f.dias_vencido > 45) por.push('vencido ' + f.dias_vencido + 'd');
+      if((f.dias_en_stage||0) > 90) por.push('atorado ' + f.dias_en_stage + 'd en la etapa');
+      return '<li><b>' + esc(f.proyecto) + '</b> <span class="meta">(' + esc(f.cliente) + ') · ' +
+             esc(f.stage) + ' · ' + esc(por.join(' · ')) +
+             (f.compromiso ? (' · compromiso ' + esc(f.compromiso)) : '') + ' · ' +
+             '<a href="' + esc(f.link_odoo) + '" target="_blank" rel="noopener">abrir</a></span></li>';
+    }).join('') + '</ol></div>';
+}
+
+/* Qué filas se ven es del panel; el orden y el agrupado los lleva el armazón. */
+function visibles(){
+  var f = S.sobre.datos.filas;
+  var c = document.getElementById('fColor').value;
+  var g = document.getElementById('fGrupoVal').value;
+  var q = document.getElementById('fBusca').value.trim().toLowerCase();
+  if(c) f = f.filter(function(r){ return r.color_etapa === c; });
+  if(g) f = f.filter(function(r){ return r.grupo === g; });
+  if(document.getElementById('fPide').checked)    f = f.filter(function(r){ return r.pide_algo; });
+  if(document.getElementById('fBandera').checked) f = f.filter(function(r){ return (r.banderas||[]).length; });
+  if(q) f = f.filter(function(r){
+    return (r.proyecto + ' ' + r.cliente + ' ' + r.stage).toLowerCase().indexOf(q) >= 0;
+  });
+  return f;
+}
+
+/* Devuelve el <td> cuando esta pantalla tiene algo que decir, y `null` cuando se
+   lo deja al armazón (que pinta por el `kind` que declaró el servidor). */
+function celda(c, r){
+  if(c.id === 'proyecto'){
+    var al = (r.color_etapa === 'verde') ? '' :
+             ('<span class="al al-' + esc(r.color_etapa) + '" title="retraso en la etapa: ' +
+              esc(r.color_etapa) + '"></span>');
+    return '<td>' + al + '<a class="proj" href="' + esc(r.link_odoo) + '" target="_blank" ' +
+           'rel="noopener" title="' + esc(r.proyecto) + '">' + esc(r.proyecto) + '</a></td>';
+  }
+  if(c.id === 'color_etapa' || c.id === 'color_seguimiento'){
+    var v = r[c.id];
+    return '<td><span class="pt pt-' + esc(v) + '">' + esc(PT[v] || v) + '</span></td>';
+  }
+  /* EL CONTADOR CON SU FUENTE. Un número sin la fuente miente cuando la fuente
+     es `create_date`: ahí no es tiempo en la etapa, es la edad del proyecto. */
+  if(c.id === 'dias_en_stage'){
+    var n = (r.dias_en_stage === null || r.dias_en_stage === undefined)
+      ? '<span class="raya">—</span>' : nfm(r.dias_en_stage);
+    var f = (r.fuente_contador === 'create_date')
+      ? '<span class="fnt edad">edad del proyecto</span>'
+      : (r.fuente_contador === 'ninguna'
+          ? '<span class="fnt edad">sin fuente</span>'
+          : '<span class="fnt">desde el cambio de etapa</span>');
+    return '<td class="num">' + n + f + '</td>';
+  }
+  if(c.id === 'linea_base'){
+    var e = r.linea_base;
+    return '<td><span class="chip ' + (CLS_LB[e] || 'lb-sin') + '" title="' +
+           esc(r.linea_base_dice || '') + '">' + esc(ETQ_LB[e] || e) + '</span></td>';
+  }
+  /* El CONTEO manda y el detalle va en UNA sola línea recortada, con todo el
+     texto en el `title`. Antes esto era un <div> que envolvía: un proyecto con
+     21 notas vacías estiraba su renglón a 218 px, siete veces lo normal, y como
+     esta columna cae fuera de la pantalla lo único que se veía era un hueco. */
+  if(c.id === 'banderas'){
+    var b = r.banderas || [];
+    if(!b.length) return '<td><span class="raya">—</span></td>';
+    var todo = b.map(function(x){ return x.detalle || x.tipo; }).join(' · ');
+    /* El conteo sólo cuando hay MÁS DE UNA. Con una sola salía «1 1 log note(s)
+       sin contenido…», que se lee como dos números pegados. */
+    var n = (b.length > 1) ? ('<b>' + b.length + '</b> ') : '';
+    return '<td title="' + esc(todo) + '">' + n +
+           '<span class="ban">' + esc(todo) + '</span></td>';
+  }
+  return null;
+}
+
+function pintarTabla(){
+  var f = visibles();
+  var n = Panel.tabla({
+    tabla: '#tabla',
+    columnas: S.sobre.datos.columnas,
+    filas: f,
+    orden: S.orden,
+    grupo: document.getElementById('fGrupo').value,
+    celda: celda,
+    /* Regla 2 del armazón: un subtotal sólo suma los que TIENEN dato. Aquí «tener
+       dato» es que el contador venga de un cambio de etapa real — los que se
+       miden por `create_date` no están midiendo lo mismo, así que promediarlos
+       con los demás da un número que no significa nada. */
+    enSubtotal: function(r){ return r.fuente_contador === 'stage_msg'; },
+    vacio: 'Ningún proyecto con esos filtros. Quita alguno.',
+    repintar: pintarTabla
+  });
+  document.getElementById('conteo').textContent =
+    n + ' de ' + S.sobre.datos.filas.length + ' proyectos';
+}
+
+/* ═══ arranque ══════════════════════════════════════════════════════════ */
+['fColor','fGrupoVal','fGrupo'].forEach(function(id){
+  document.getElementById(id).onchange = pintarTabla;
+});
+['fPide','fBandera'].forEach(function(id){
+  document.getElementById(id).onchange = pintarTabla;
+});
+document.getElementById('fBusca').oninput = pintarTabla;
+P.alRefrescar(cargar);
+cargar();
+</script>
+</body>
+</html>
