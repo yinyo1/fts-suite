@@ -120,7 +120,24 @@
   var URL_GUARDAR = BASE + '/comercial/machote-guardar';
   var URL_PRESTAR = BASE + '/comercial/machote-prestar';
   var URL_ARCHIVAR = BASE + '/comercial/machote-archivar';
-  var URL_ORDEN = BASE + '/comercial/orden-crear';
+  /* ── Por qué v2 y no `orden-crear` a secas ────────────────────────────────
+   * `comercial/orden-crear` (v1) sigue vivo y ACTIVO, y se queda intacto: crea
+   * la orden como una lista plana de renglones con precio y SIN producto. Esa
+   * forma no confirma —Odoo se niega: «Some order lines are missing a
+   * product»— y no lleva ni secciones, ni notas, ni los compromisos.
+   *
+   * v2 arma el documento con la forma que FTS ya usa (sección · línea con
+   * precio y producto · notas) y exige los cinco compromisos. Es un contrato
+   * distinto, así que es un webhook distinto: meterle campos nuevos al de
+   * producción y cambiarle el comportamiento habría dejado a los dos lados
+   * dependiendo de que el otro se desplegara primero, que es exactamente el
+   * trabón del 18-jul (CLAUDE.md §8).
+   *
+   * v2 nace INACTIVO. Mientras Esteban no lo encienda, esta llamada contesta
+   * 404 y `postear` lo traduce a `ENDPOINT_APAGADO`, que la pantalla dice tal
+   * cual. Eso es lo correcto: más vale decir «el endpoint todavía no está
+   * encendido» que crear una orden a medias que después no confirma. */
+  var URL_ORDEN = BASE + '/comercial/orden-crear-v2';
   var URL_COMPUERTA = BASE + '/comercial/compuerta';
   var URL_CONFIRMAR = BASE + '/comercial/confirmar';
   var TIMEOUT_MS = 12000;
@@ -1301,7 +1318,7 @@
    *  servidor devuelve su `odoo_so_id`, que él leyó de vuelta de Odoo. Es la
    *  misma regla que gobierna la marca de «enviada» — el clic no es prueba
    *  (hallazgo #15, el ✓ antes del POST). */
-  function crearOrden(idPantalla, lineas, aMano, leadId) {
+  function crearOrden(idPantalla, bloques, compromisos, leadId) {
     var ses = sesion();
     if (!ses) {
       return Promise.resolve({ ok: false, error: 'SIN_SESION',
@@ -1318,8 +1335,10 @@
       token: ses.token,
       machote_id: uuid,
       version_leida: version,
-      lineas: Array.isArray(lineas) ? lineas : [],
-      a_mano: aMano || {},
+      /* El documento, en ORDEN. La posición en el arreglo es la posición en la
+       * orden: es lo que el servidor escribe en `sequence`. */
+      bloques: Array.isArray(bloques) ? bloques : [],
+      compromisos: compromisos || {},
       /* El enlace con la oportunidad. Va si lo hay y no se exige: la mitad de
        * Odoo todavía no existe, y el lado tolerante va primero (CLAUDE.md §8). */
       lead_id: (leadId === 0 || leadId) ? Number(leadId) : null
