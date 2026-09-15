@@ -1,0 +1,15 @@
+--- be-original.js	2026-09-15 09:28:46.867914512 +0000
++++ be-chip.js	2026-09-15 09:28:46.999174688 +0000
+@@ -229,7 +229,11 @@
+               amarillo:'Se acerca al limite: mueve el stage o documenta' };
+ function chip(txt, tono){
+   const c = tono==='fuerte' ? '#444' : '#777';
+-  return '<span style="font-size:11px;color:'+c+';border:1px solid #ccc;border-radius:3px;padding:0 4px;margin-left:4px">'+esc(txt)+'</span>';
++  // El separador va en el TEXTO, no solo en el CSS. La etiqueta se pegaba a lo
++  // anterior en CUATRO sitios -tras el compromiso, tras "en la etapa", tras
++  // "abrir" y tras el detalle de una bandera- y ahi se come la palabra clave de
++  // la seccion. Con CSS se ve igual; sin CSS se sigue entendiendo.
++  return ' &middot; <span style="font-size:11px;color:'+c+';border:1px solid #ccc;border-radius:3px;padding:0 4px;margin-left:4px">'+esc(txt)+'</span>';
+ }
+ // UN renglon, UNA vez, con todo lo suyo encima: color, dias, novedad y banderas.
+ // Las banderas se imprimian dos veces (en linea y otra vez en su seccion): aqui no.
