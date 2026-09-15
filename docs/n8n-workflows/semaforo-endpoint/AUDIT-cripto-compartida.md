@@ -101,3 +101,88 @@ no sabe nada de paneles.
 
 **Recomendación: los dos primeros ahora; los tres de producción, uno por uno y
 sin prisa.** Un endpoint que hoy funciona no gana nada con migrar el mismo día.
+
+---
+
+# CONSTRUIDO: `auth/verificar-scope` (2026-09-15)
+
+```
+workflow   auth/verificar-scope   QokDKd6rCqSNsP4u
+estado     INACTIVO · sub-workflow · sin webhook propio · SOLO LECTURA
+versiones  a83df861-…  esqueleto con marcador
+           bf3acc33-…  la cripto real          <- la que quedó
+```
+
+3 nodos: `Llamado por un endpoint` (executeWorkflowTrigger, passthrough) →
+`Set - secreto` (`$env.SUITE_JWT_SECRET`) → `Code - verificar`.
+
+Recibe `{token, scope}`, devuelve `{ok, error, clase, actor, nombre, scopes, hoy}`.
+
+## El scope viaja como DATO
+
+Si estuviera hardcoded haría falta un sub-workflow por panel, que es el problema
+otra vez. El llamador dice qué exige; este nodo no sabe nada de paneles. Y un
+llamador que **se olvide** de mandarlo recibe `SCOPE_NO_PEDIDO` — **deniega por
+omisión**, no abre con cualquier token.
+
+## 15/15 en las pruebas, incluidos tres tokens FORJADOS
+
+`probar-verificar-scope.js`, contra el `crypto` de Node, con `'x'.repeat(48)` de
+secreto de prueba. El real no aparece por ningún lado.
+
+```
+  OK   token bueno, scope pedido OK      ok:true
+  OK   MISMO sub-workflow, otro panel    ok:true          <- una pieza sirve a los dos
+  OK   tiene un scope, pide OTRO         SCOPE_INSUFICIENTE
+  OK   el llamador NO pide scope         SCOPE_NO_PEDIDO  <- deniega por omisión
+  OK   scope vacío                       SCOPE_NO_PEDIDO
+  OK   token SIN scopes (legacy)         SCOPE_INSUFICIENTE
+  OK   token de Finanzas viejo           SCOPE_INSUFICIENTE
+  OK   FORJADO: firma de otro secreto    FIRMA_INVALIDA
+  OK   FORJADO: payload manipulado       FIRMA_INVALIDA
+  OK   FORJADO: alg none                 FIRMA_INVALIDA
+  OK   expirado                          TOKEN_EXPIRADO
+  OK   malformado                        TOKEN_MALFORMADO
+  OK   ausente                           TOKEN_AUSENTE
+  OK   sin secreto en el entorno         SECRETO_NO_CONFIGURADO · clase servidor
+  OK   NUNCA devuelve el secreto         el secreto no aparece en la respuesta
+```
+
+## ⚠️ Lo que NO está verificado, y hay que decirlo
+
+**La transmisión de esta cripto al servidor NO se comparó byte a byte**, a
+diferencia de los parches S4 y S5. El motivo es concreto: la verificación que uso
+se apoya en que `get_workflow_versions_diff` **caiga a un archivo** cuando el
+resultado es grande (S4: 59 KB, S5: 66 KB), porque entonces se puede hashear con
+un script. Este workflow es chico (~9 KB de diff) y el resultado **volvió en
+línea**, así que sólo se puede mirar — y mirar es exactamente lo que no acepto
+para una criptografía.
+
+Lo que **sí** está anclado:
+
+```
+origen local  Code-verificar-scope.js  8500 chars  sha256 3657ef9523e1ed32…
+la cripto de fase0 dentro de él        3733 chars  sha256 3093cd1faa5b365a
+  -> el prefijo del archivo nuevo ES, byte a byte, el de ../fase0/jwt-verify.js
+```
+
+Y el mecanismo de transmisión quedó **byte-verificado dos veces hoy** sobre
+payloads mayores (31,828 y 33,040 caracteres, cero deriva). Eso hace la
+corrupción improbable, **no imposible**.
+
+**El modo de falla, si la hubiera, es ruidoso y diagnosticable:** una cripto
+corrompida rechaza *todos* los tokens con `FIRMA_INVALIDA`. Así que la primera
+llamada real lo dice. **La comprobación pendiente es una sola:** llamar al
+sub-workflow con un token bueno y ver `ok:true`. No se hizo aquí porque exige
+ejecutar contra `$env.SUITE_JWT_SECRET`, o sea contra la configuración de
+producción.
+
+## Lo que falta
+
+1. **Publicar** `auth/verificar-scope` y hacer esa primera llamada de prueba.
+2. **Construir `ops/semaforo`** llamándolo (nace ya migrado; no hereda ninguna
+   copia de la cripto).
+3. **Migrar los tres de producción** —`fin/rentabilidad`, `comercial/clientes`,
+   `comercial/machotes-leer`— **uno por uno**, con su prueba de token forjado
+   antes y después. Un endpoint que hoy funciona no gana nada con migrar el
+   mismo día.

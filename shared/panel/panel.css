@@ -98,7 +98,23 @@ tr.grupo td{color:#cfe3ff}
    sostiene la regla de que un renglón sin línea base no se vea como uno en
    ceros — por eso vive en el armazón y no en un panel. */
 .raya{color:var(--tinta3)}
-.falta{color:var(--tinta3);font-size:11px;white-space:normal;max-width:260px}
+/* ── TOPE DE ENVOLTURA ─────────────────────────────────────────────────────
+   El problema NO es envolver: es envolver SIN TOPE. Un proyecto con 21 banderas
+   metia 21 lineas en su celda y el renglon pasaba de 31 px a 218 -siete veces lo
+   normal-, y como esa columna caia fuera de la pantalla lo unico que se veia era
+   un hueco enorme sin explicacion (panel del semaforo, 15-sep, #240).
+   El tope vive AQUI y no en un panel para que el tercero no lo herede. Las dos
+   formas que hacen falta:
+     .falta      envuelve, pero nunca mas de 2 lineas.
+     .una-linea  no envuelve: una linea recortada con puntos suspensivos.
+   En las dos, el texto COMPLETO va en el `title` de la celda -el tope recorta lo
+   que se ve, no lo que se puede leer-. Medido despues del cambio: el peor renglon
+   del semaforo bajo de 218 px a 52, y rentabilidad quedo igual (max 1.9x la
+   mediana, que ya era sano porque su contenido esta acotado). */
+.falta{color:var(--tinta3);font-size:11px;white-space:normal;max-width:260px;
+       display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.una-linea{display:inline-block;max-width:230px;overflow:hidden;text-overflow:ellipsis;
+           white-space:nowrap;vertical-align:bottom;color:var(--tinta3);font-size:11px}
 .al{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
 .al-rojo{background:var(--rojo)} .al-amarillo{background:var(--ambar)}
 .pct-bad{color:var(--rojo);font-weight:600}

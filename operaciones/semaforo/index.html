@@ -82,13 +82,8 @@
   .fnt.edad{color:var(--ambar)}
   .fnt-en-linea{color:var(--ambar);font-size:11px;font-family:var(--mono)}
 
-  /* LAS BANDERAS NO ESTIRAN EL RENGLON. Un proyecto con 21 notas vacias metia
-     un parrafo de 21 lineas en su celda y el renglon pasaba de 31 px a 218 —
-     y como esa columna cae fuera de la pantalla, lo que se ve es un hueco
-     enorme sin explicacion. El CONTEO es la senal; el detalle completo vive en
-     el `title`. Tambien visto en la captura. */
-  td .ban{display:inline-block;max-width:230px;overflow:hidden;text-overflow:ellipsis;
-          white-space:nowrap;vertical-align:bottom;color:var(--tinta3);font-size:11px}
+  /* El tope de envoltura NO vive aqui: subio al armazon como `.una-linea` y
+     `.falta`, para que el tercer panel no herede el bug del renglon de 218 px. */
 
   /* Punto del semaforo, en texto y no solo en color: quien no distingue los
      colores tiene que poder leer el estado igual. */
@@ -343,7 +338,7 @@ function celda(c, r){
        sin contenido…», que se lee como dos números pegados. */
     var n = (b.length > 1) ? ('<b>' + b.length + '</b> ') : '';
     return '<td title="' + esc(todo) + '">' + n +
-           '<span class="ban">' + esc(todo) + '</span></td>';
+           '<span class="una-linea">' + esc(todo) + '</span></td>';
   }
   return null;
 }

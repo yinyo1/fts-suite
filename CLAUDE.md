@@ -1001,6 +1001,30 @@ la misma exigencia de §20 #12b (sesión / red / servidor) y de §20 #11 (un `[]
 prueba que la consulta sirva), en la superficie de la resolución de identidad.
 
 
+### 14. Una guarda se clasifica por la VENTANA de su consulta, no por su consumidor
+Antes de decir que una alarma es ruido, mirar **qué tan atrás mira la consulta que
+la alimenta**. Sin filtro de fecha, «0 filas» significa **«no ha pasado nunca»**;
+con una ventana de 30 días significa «no pasó en estos días». Son dos frases
+distintas y sólo la segunda puede ser una condición normal.
+*(Origen: 15-sep-2026, #240. Clasifiqué las 9 guardas de lectura de
+`ops/semaforo-motor` por lo que cada una alimentaba y reporté **6 de 9 ambiguas**,
+con `msg94` —la única `critico:true`— como el caso más grave, «disparable por un
+martes tranquilo». **Falso.** `msg94` filtra por `subtype_id=94` **sin fecha**: lee
+el histórico completo, así que su vacío es «ningún proyecto ha cambiado de etapa
+jamás», que con 36 proyectos es un fallo y no un martes. Su `critico:true` está
+bien puesto. El número real es 3 seguras y 1 discutible. **Esteban me repitió el
+error de vuelta como conclusión asentada**, que es lo que pasa cuando un hallazgo
+mal medido se escribe con seguridad: deja de ser mío y se vuelve del equipo.)*
+**Regla operativa:** tabular `nodo → filtro → ventana` **antes** de juzgar ninguna
+guarda, y pegar esa tabla en el reporte. Si la tabla no está, la clasificación no
+está hecha.
+**Corolario, y es lo que sí se sostuvo de aquel barrido:** una guarda cuyo padre
+puede entregarle un **centinela** (`id in [0]` cuando la lista viene vacía) hereda
+el vacío del padre **por diseño**, no por casualidad — una condición normal produce
+dos alarmas. Eso se detecta mirando el nodo que arma la lista, no el que la
+consume. En `ops/semaforo-motor`, `Code - prep` y `Code - extractIds` hacen
+`x.length ? x : [0]`, y de ahí salían 4 de los 5 disparos registrados.
+
 ---
 
 ### Correcciones a reglas anteriores (verificadas 2026-08-31)
