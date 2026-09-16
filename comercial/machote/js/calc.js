@@ -18,7 +18,7 @@
    * que no es el que espera. Se bumpea junto con `const VERSION_ARCHIVO` de
    * `app.js`, el `?v=` de `index.html` y `version.json` — hay una prueba que
    * falla si los cuatro se separan. */
-  const VERSION = 'V1.33';
+  const VERSION = 'V1.34';
 
   const num = (v) => (typeof v === 'number' && isFinite(v)) ? v : 0;
   const vacio = (v) => v === null || v === undefined || v === '';
@@ -525,6 +525,34 @@
    *  mantiene en pie a los machotes capturados ANTES de este cambio: una
    *  sección sin `margenes` propios sigue leyendo los del machote y muestra
    *  exactamente los mismos números que mostraba. Nada que migrar. */
+  /** El reparto de comisiones que gobierna una sección.
+   *
+   *  Es el gemelo de `margenes()` pero AL REVÉS, y la diferencia es
+   *  deliberada: los multiplicadores son de la sección y el machote sólo da
+   *  el arranque, porque el suministro no se vende con el mismo multiplicador
+   *  que la instalación. Las comisiones son al contrario — se pactan una vez
+   *  para la cotización — así que aquí manda el MACHOTE y la sección sólo se
+   *  desvía cuando alguien lo pide marcando `comision_propia`.
+   *
+   *  Mientras la casilla esté apagada la sección sigue al machote EN VIVO:
+   *  esto no copia nada, lee el del machote cada vez que se calcula. Si el
+   *  reparto del machote cambia, la sección cambia con él.
+   *
+   *  `s.comision` puede existir con la casilla apagada: es el reparto que la
+   *  sección tuvo desviado y que se conserva inerte por si la vuelven a
+   *  encender. Inerte quiere decir que NO se lee aquí. */
+  function comisionDe(m, s) {
+    const propio = s && s.comision_propia === true && s.comision;
+    const de = propio ? s.comision : (m || {});
+    return {
+      reparto: Object.assign({}, REPARTO_PLANTILLA, de.reparto || {}),
+      equipo_venta: de.equipo_venta || [],
+      equipo_operaciones: de.equipo_operaciones || [],
+      equipo_cliente: de.equipo_cliente || [],
+      propio: !!propio
+    };
+  }
+
   function margenes(m, s) {
     const mg = Object.assign({}, MARGENES_PLANTILLA,
                              (m && m.margenes) || {}, (s && s.margenes) || {});
@@ -766,7 +794,7 @@
     // Bajo margen deseado el precio se reparte a prorrata del COSTO de cada
     // sección, no por margen propio de sección. El margen es una restricción
     // global. (DESGLOSE COTIZACION I18/J18.)
-    const detalle = secciones.map(s => {
+    const detalle = secciones.map((s, iSec) => {
       const peso = costo > 0 ? s.costo / costo : 0;              // peso por COSTO
       const pesoV = venta > 0 ? s.venta / venta : 0;             // peso por VENTA
 
@@ -790,6 +818,12 @@
 
       const precioSec = esc[elegido.id] ? esc[elegido.id].precio : null;
       return Object.assign({}, s, {
+        /* ⚠️ La marca y el reparto se leen de la sección CRUDA, no de `s`.
+         * `s` es la salida de `totalSeccion`, que devuelve totales y no
+         * arrastra los campos de captura — se perdían aquí en silencio y el
+         * desvío no se detectaba nunca. */
+        comision_propia: ((m.secciones || [])[iSec] || {}).comision_propia === true,
+        comision: ((m.secciones || [])[iSec] || {}).comision || null,
         peso, pesoV, esc,
         precio: precioSec,
         utilidad: precioSec === null ? null : precioSec - s.costo - (elegido.precio > 0 ? (elegido.comisionFts + elegido.comisionCliente) * peso : 0),
@@ -797,14 +831,79 @@
       });
     });
 
-    // Reparto de la comisión de FTS entre venta y operaciones, y de la del
-    // cliente entre sus contactos.
+    /* ── Reparto de comisiones ─────────────────────────────────────────────
+     * El reparto es DEL MACHOTE y se aplica a todas las secciones. Una
+     * sección sólo se desvía si alguien marcó `comision_propia`.
+     *
+     * ⚠️ EL ATAJO DE ARRIBA NO ES UNA OPTIMIZACIÓN, ES LA GARANTÍA.
+     * Cuando ninguna sección se desvía —o sea, TODOS los machotes que ya
+     * existen— se corre exactamente el mismo camino de antes, línea por
+     * línea. No una fórmula equivalente: LA MISMA. Así ningún machote
+     * capturado puede cambiar ni un centavo por este cambio, y no hay que
+     * confiar en que dos caminos distintos den el mismo flotante.
+     *
+     * Cuando SÍ hay desvíos, la bolsa total no cambia: lo único que cambia es
+     * cómo se reparte. Cada sección toma su parte por `peso` (el mismo peso
+     * por costo con el que ya se le descuenta la comisión en su `utilidad`,
+     * arriba) y la reparte con SU gente si está desviada, o con la del
+     * machote si no. Al final se suma por persona. */
     const rep = Object.assign({}, REPARTO_PLANTILLA, m.reparto || {});
+    const desviadas = detalle.filter(s => s.comision_propia === true);
+
     const bolsaVenta = elegido.comisionFts * num(rep.venta);
     const bolsaOps   = elegido.comisionFts * num(rep.operaciones);
-    const venta_   = repartir(bolsaVenta, m.equipo_venta);
-    const ops_     = repartir(bolsaOps, m.equipo_operaciones);
-    const cliente_ = repartir(elegido.comisionCliente, m.equipo_cliente);
+
+    let venta_, ops_, cliente_;
+    if (!desviadas.length) {
+      venta_   = repartir(bolsaVenta, m.equipo_venta);
+      ops_     = repartir(bolsaOps, m.equipo_operaciones);
+      cliente_ = repartir(elegido.comisionCliente, m.equipo_cliente);
+    } else {
+      const acum = { venta: {}, ops: {}, cliente: {} };
+      const orden = { venta: [], ops: [], cliente: [] };
+      const meter = (donde, lineas) => {
+        lineas.forEach(l => {
+          if (acum[donde][l.nombre] === undefined) {
+            acum[donde][l.nombre] = 0; orden[donde].push(l.nombre);
+          }
+          acum[donde][l.nombre] += l.monto;
+        });
+      };
+      let sumaV = 0, sumaO = 0, sumaC = 0, n = 0;
+      detalle.forEach(s => {
+        const c = comisionDe(m, s);
+        const r = Object.assign({}, REPARTO_PLANTILLA, c.reparto || {});
+        const parteFts = elegido.comisionFts * s.peso;
+        const parteCli = elegido.comisionCliente * s.peso;
+        const v = repartir(parteFts * num(r.venta), c.equipo_venta);
+        const o = repartir(parteFts * num(r.operaciones), c.equipo_operaciones);
+        const k = repartir(parteCli, c.equipo_cliente);
+        meter('venta', v.lineas); meter('ops', o.lineas); meter('cliente', k.lineas);
+        sumaV += v.suma; sumaO += o.suma; sumaC += k.suma; n++;
+      });
+      /* La `suma` que se devuelve es el PROMEDIO de los repartos, para que
+       * «¿suma 100%?» siga significando lo mismo que antes: 1 es que cuadra.
+       * Sumar las sumas daría el número de secciones. */
+      const arma = (donde, suma) => ({
+        lineas: orden[donde].map(nombre => ({ nombre: nombre, pct: null,
+                                              monto: acum[donde][nombre] })),
+        suma: n ? suma / n : 0,
+        cuadra: n === 0 || Math.abs(suma / n - 1) < 0.0001
+      });
+      venta_   = arma('venta', sumaV);
+      ops_     = arma('ops', sumaO);
+      cliente_ = arma('cliente', sumaC);
+    }
+
+    /* Qué secciones tienen un reparto propio que NO suma 100%. La regla dura
+     * aplica al machote y a CADA sección desviada; sin esta lista, una
+     * sección mal repartida se escondería detrás del promedio. */
+    const repartosRotos = desviadas.filter(s => {
+      const c = comisionDe(m, s);
+      return !repartir(1, c.equipo_venta).cuadra ||
+             !repartir(1, c.equipo_operaciones).cuadra ||
+             !repartir(1, c.equipo_cliente).cuadra;
+    }).map(s => s.nombre || s.id);
 
     // Bloque BUDGET ODOO: lo que se captura como presupuesto del proyecto.
     // El cuadre de abajo es el `COINCIDE CON LA TABLA?` del machote: da
@@ -861,7 +960,13 @@
       pesoMo:  costo > 0 ? costoMoTot / costo : null,
       pesoMat: costo > 0 ? costoMat / costo : null,
       pesoViaje: costo > 0 ? costoViaje / costo : null,
-      reparto: { venta: venta_, operaciones: ops_, cliente: cliente_, bolsaVenta, bolsaOps },
+      reparto: { venta: venta_, operaciones: ops_, cliente: cliente_,
+                 /* Qué secciones se desviaron y cuáles de ellas no suman 100%.
+                  * La pantalla los necesita para marcarlas, y la regla dura
+                  * necesita que una sección mal repartida no se esconda
+                  * detrás del promedio. */
+                 secciones_desviadas: desviadas.map(x => x.nombre || x.id),
+                 repartos_rotos: repartosRotos },
       budget,
       sinPrecio, moSinTarifa, sinTipo, sinLink, pisados, mezclaMoneda,
       huecos, costoIncompleto: huecos > 0
@@ -896,7 +1001,7 @@
     PARTIDAS_EN_BLANCO, EQUIPO_VENTA_PLANTILLA, EQUIPO_OPS_PLANTILLA,
     usadaPartida, capturada,
     seccionNueva, machoteNuevo,
-    tcEfectivo, margenes, costoMo, costoPartida, totalSeccion,
+    tcEfectivo, margenes, comisionDe, costoMo, costoPartida, totalSeccion,
     calcular, precioParaMargen, repartir
   };
 })(window);

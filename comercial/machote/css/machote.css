@@ -1666,3 +1666,106 @@ table.lista td.mono { white-space: nowrap; }
   .dc-mas { width: 100%; }
   .dc-mas .btn { flex: 1; }
 }
+
+/* ══ V1.34 · las dos fechas de la lista ══════════════════════════════════
+ * Las columnas salen de ANGOSTAR el nombre (34% → 24%), no de ensanchar la
+ * tabla. Se les pone ancho fijo para que no se estiren con el contenido:
+ * «hace 2 días» y «hace 11 meses» miden distinto y sin tope la columna
+ * bailaría entre renglones.
+ */
+.lista th.fch-th { width: 84px; font-size: 11px; }
+.lista td.fch { white-space: nowrap; font-size: 12px; color: var(--suave); }
+
+/* En el teléfono no hay columnas: las dos fechas van en UNA línea dentro de
+ * la tarjeta, debajo del cliente. */
+.fila .fch-linea { color: var(--suave); margin-top: 2px; }
+
+@media (max-width: 980px) {
+  /* Antes que romper el nombre, se van las fechas: entre saber CUÁNDO y
+   * poder leer QUÉ es, gana el qué. En el teléfono reaparecen en la tarjeta,
+   * que es donde sí caben. */
+  .lista th.fch-th, .lista td.fch { display: none; }
+}
+
+/* ══ V1.34 · la comisión que se aparta, y el pad ═════════════════════════
+ *
+ * La sección con reparto propio se marca con EL MISMO lenguaje que un margen
+ * escrito a mano (`.cel.pisado`) y que el recargo apartado (`.rec-sec
+ * .apartado`): franja ámbar a la izquierda. Tres cosas distintas que
+ * significan lo mismo —«aquí alguien se apartó del valor de arranque»— y por
+ * eso se ven igual: quien aprendió a leer una lee las tres.
+ *
+ * No hay color nuevo. Un cuarto tono enseñaría que hay un cuarto significado.
+ */
+.com-sec { margin: 14px 0 6px; }
+.com-sec.apartado { border-left: 3px solid #d9a800; padding-left: 10px; }
+.com-sec table.hoja2 { max-width: 520px; }
+/* ⚠️ El `≠ machote` va DENTRO de la banda azul del título, y el ámbar oscuro
+ * de `.rec-marca` (#9a6700, pensado para fondo blanco) sobre #1f4e79 casi no
+ * se lee — se vio en la captura a 380, no en el diff. Mismo idioma, tono
+ * aclarado para que contraste contra la banda. */
+.secc-tit .rec-marca { color: #ffd166; }
+
+/* La casilla es lo único que se toca aquí, así que cumple el mínimo táctil
+ * completo -no sólo la cajita de 13 px, también su texto-. */
+.com-check { display: flex; align-items: center; gap: 8px; margin: 8px 0;
+             min-height: var(--toque); font-size: 13px; cursor: pointer; }
+.com-check input { width: 18px; height: 18px; flex: none; cursor: pointer; }
+
+/* ── El pad ────────────────────────────────────────────────────────────
+ *
+ * Plegado por omisión y con el aviso EN EL RESUMEN, no adentro: quien no lo
+ * abre tiene que poder saber qué es sin abrirlo, y quien lo abre ya leyó que
+ * es un borrador antes de escribir la primera línea.
+ */
+.pad-sec { margin: 14px 0 6px; border: 1px solid var(--linea);
+           border-radius: 8px; background: var(--papel); }
+/* ⚠️ `display:flex` en un `<summary>` MATA el triangulito que Chromium pinta
+ * solo, y sin él nada dice que la caja se abre —se ve como un título—. Se
+ * repone a mano: la flecha es lo único que anuncia que hay algo adentro. */
+.pad-sec > summary { padding: 0 12px; min-height: var(--toque);
+                     display: flex; align-items: center; gap: 6px;
+                     flex-wrap: wrap; cursor: pointer;
+                     font-size: 13px; font-weight: 600;
+                     list-style: none; }
+.pad-sec > summary::-webkit-details-marker { display: none; }
+.pad-sec > summary::before { content: '▸'; color: var(--suave); flex: none;
+                             transition: transform .12s ease; }
+.pad-sec[open] > summary::before { transform: rotate(90deg); }
+.pad-sec > .nota, .pad-sec > .tiny { margin: 0 12px 8px; }
+
+/* Monoespaciada a propósito: son cuentas en columna -«3 × 12 × 450»- y con
+ * fuente proporcional los números no alinean y el error de dedo no se ve. */
+.pad-sec textarea.pad-txt { display: block; width: calc(100% - 24px);
+                            margin: 0 12px 10px;
+                            font: 13px/1.55 ui-monospace, SFMono-Regular,
+                                  Menlo, Consolas, monospace;
+                            resize: vertical; }
+
+.pad-pie { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px;
+           padding: 0 12px 12px; }
+.pad-pie label { display: flex; flex-direction: column; gap: 3px; }
+.pad-pie label input { margin-top: 2px; }
+/* El concepto crece, pero con TOPE: sin él, a 1280 px se estira mil pixeles
+ * y empuja el botón a un renglón propio. El tope deja los tres en una línea. */
+.pad-pie label:first-child { flex: 1 1 240px; max-width: 420px; }
+/* ⚠️ `width: auto` NO es redundante: `shared/fts-styles.css` define
+ * `.btn { width: 100% }` para el kiosko, y sin esto el botón se come el
+ * renglón entero y empuja a los dos campos arriba. Lo mismo hacen ya
+ * `.or-pie .btn`, `.hist-cab .btn` y media docena más de este archivo. */
+.pad-pie .btn { flex: none; width: auto; padding: 0 18px; }
+
+@media (max-width: 720px) {
+  /* En el teléfono el pie se apila: tres cosas en fila a 380 px dejan cajas
+   * de 90 px donde no cabe ni «Canalización». El botón va al final y a todo
+   * lo ancho, que es donde el pulgar lo busca. */
+  .pad-pie { flex-direction: column; align-items: stretch; }
+  /* ⚠️ Y hay que APAGAR el `flex` del concepto. En columna, `flex-basis`
+   * mide ALTO: los `240px` que a 1280 hacen ancho, a 380 hacían un hueco
+   * vertical de doscientos pixeles entre Concepto e Importe. Se vio en la
+   * captura, no en el diff.
+   * El `:first-child` va REPETIDO a propósito: sin él, la regla de arriba
+   * —más específica— gana y el hueco se queda. */
+  .pad-pie label, .pad-pie label:first-child { flex: none; max-width: none; }
+  .pad-pie .btn { width: 100%; min-height: var(--toque); }
+}

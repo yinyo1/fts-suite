@@ -6910,6 +6910,323 @@ await sembrarMachotes(q);
     } finally { await q.close(); }
   });
 
+
+  /* ══ V1.34 · LA RETROALIMENTACIÓN DE USO REAL (#246) ═══════════════════
+   *
+   * Cuatro cosas que el encargo pide probar por su nombre. Las cuatro miden el
+   * MODO DE FALLO, no el camino feliz: qué pasa cuando se apaga la excepción
+   * (¿se pierde lo escrito?), qué pasa al borrar (¿avisa, y con qué?), qué
+   * pasa DESPUÉS de deshacer (¿sigue guardando?) y qué NO pasa al escribir en
+   * el pad (¿mueve el precio?).
+   *
+   * ⚠️ El autoguardado es DEBOUNCED a 500 ms (`tocado` → `setTimeout(500)`).
+   * Toda lectura del almacén espera más que eso: con 450 ms se lee la fixture
+   * intacta y la prueba «pasa» midiendo que nada cambió, que es exactamente
+   * el fantasma de CLAUDE.md §8.
+   */
+  const ALMACEN = 900;
+  const delAlmacen = (fn) => p.evaluate((src) => {
+    const raw = JSON.parse(localStorage.getItem('fts_machote_v1') || '{}');
+    const m = (raw.machotes || []).find(x => x.id === 'M-1041') || {};
+    // eslint-disable-next-line no-new-func
+    return new Function('m', 'return (' + src + ')(m);')(m);
+  }, fn.toString());
+
+  await paso('V1.34 · desviar una sección, apagarla y reencenderla conserva el reparto con su fecha', async () => {
+    /* Es LA pregunta que Esteban hizo del punto 1: «¿qué pasa con lo escrito
+     * si desmarco?». La respuesta elegida —se conserva inerte, con su fecha—
+     * sólo vale si está probada: borrar el trabajo de alguien al destildar una
+     * casilla es el error que no tiene vuelta. */
+    await ir('#/m/M-1041');
+    await hoja('Suministro'); await p.waitForTimeout(500);
+
+    if (!(await p.$('.com-sec'))) throw new Error('la sección no ofrece la comisión propia');
+
+    // 1. DESVIAR, y escribir un nombre que NO es el del machote.
+    await p.click('[data-comprop]'); await p.waitForTimeout(500);
+    if (!(await p.$('.com-sec.apartado')))
+      throw new Error('desviada, pero no se ve distinta: falta la marca ámbar');
+    const marca = await p.textContent('.com-sec .rec-marca');
+    if (!/≠/.test(marca)) throw new Error('no marca la desviación: ' + marca);
+
+    const celNombre = '.com-sec [data-cel^="ec:"][data-cel$=":nombre"]';
+    if (!(await p.$(celNombre))) throw new Error('no pintó el reparto de la sección');
+    await p.fill(celNombre, 'PERSONA DE ESTA SECCIÓN');
+    await p.dispatchEvent(celNombre, 'change');
+    await p.waitForTimeout(ALMACEN);
+
+    // La fecha queda DICHA en pantalla, no sólo guardada.
+    const txtOn = (await p.textContent('.com-sec')).replace(/\s+/g, ' ');
+    const fecha = (txtOn.match(/Desviada desde el ([^.]+)\./) || [])[1];
+    if (!fecha) throw new Error('no dice desde cuándo está desviada: ' + txtOn.slice(0, 200));
+
+    // 2. APAGAR. Lo escrito NO se borra, y la pantalla lo dice.
+    await p.click('[data-comprop]'); await p.waitForTimeout(ALMACEN);
+    if (await p.$('.com-sec.apartado')) throw new Error('apagada y sigue marcada como desviada');
+    const txtOff = (await p.textContent('.com-sec')).replace(/\s+/g, ' ');
+    if (!/reparto propio guardado/.test(txtOff))
+      throw new Error('apagada y no avisa que lo guardado sigue ahí: ' + txtOff.slice(0, 220));
+    if (txtOff.indexOf(fecha) < 0)
+      throw new Error('el aviso de apagado no trae la fecha ' + fecha + ': ' + txtOff.slice(0, 220));
+
+    // Y EN EL DATO, que es donde de verdad se pierde o no se pierde.
+    const enReposo = await delAlmacen((m) => {
+      const s = (m.secciones || []).find(x => x.comision) || {};
+      return { propia: s.comision_propia, tiene: !!s.comision,
+               nombre: s.comision && (s.comision.equipo_venta || [])[0] &&
+                       s.comision.equipo_venta[0].nombre,
+               desde: s.comision && s.comision.desde };
+    });
+    if (!enReposo.tiene) throw new Error('SE BORRÓ el reparto propio al destildar');
+    if (enReposo.propia !== false) throw new Error('la bandera no se apagó: ' + enReposo.propia);
+    if (enReposo.nombre !== 'PERSONA DE ESTA SECCIÓN')
+      throw new Error('se perdió lo escrito: ' + enReposo.nombre);
+    if (!enReposo.desde) throw new Error('se perdió la fecha de desviación');
+
+    // 3. REENCENDER: vuelve lo mismo, con la misma fecha.
+    await p.click('[data-comprop]'); await p.waitForTimeout(500);
+    const vuelto = await p.inputValue(celNombre);
+    if (vuelto !== 'PERSONA DE ESTA SECCIÓN')
+      throw new Error('al reencender no volvió lo escrito: ' + vuelto);
+    if ((await p.textContent('.com-sec')).replace(/\s+/g, ' ').indexOf(fecha) < 0)
+      throw new Error('al reencender cambió la fecha; era ' + fecha);
+    console.log('    desviada → apagada (inerte, con aviso y fecha) → reencendida intacta');
+  });
+
+  await paso('V1.34 · borrar un renglón CAPTURADO pregunta con números; uno en blanco no', async () => {
+    /* Las dos mitades son el encargo. Preguntar por un renglón vacío enseña a
+     * decir que sí sin leer, y entonces la confirmación deja de proteger al
+     * renglón que sí importaba. */
+    await ir('#/m/M-1041');
+    await hoja('Suministro'); await p.waitForTimeout(500);
+
+    const botones = await p.$$eval('[data-del]', e => e.map(x => x.dataset.del));
+    if (!botones.length) throw new Error('no hay renglones que borrar');
+    const ref = botones[0];                        // 's-1#0'
+    const [sid, j] = ref.split('#');
+    const cel = (campo) => '[data-cel="s:' + sid + ':partidas:' + j + ':' + campo + '"]';
+
+    await p.fill(cel('descripcion'), 'TUBO DE PRUEBA 134');
+    await p.dispatchEvent(cel('descripcion'), 'change');
+    await p.fill(cel('pu'), '4321');
+    await p.dispatchEvent(cel('pu'), 'change');
+    await p.waitForTimeout(500);
+
+    // (a) CANCELAR deja el renglón donde estaba.
+    let visto = null;
+    p.once('dialog', d => { visto = d.message(); d.dismiss(); });
+    await p.click('[data-del="' + ref + '"]'); await p.waitForTimeout(450);
+    if (!visto) throw new Error('borró un renglón capturado SIN preguntar');
+    if (!/TUBO DE PRUEBA 134/.test(visto))
+      throw new Error('la pregunta no dice qué se pierde: ' + visto);
+    if (!/4,?321/.test(visto)) throw new Error('la pregunta no trae el dinero: ' + visto);
+    if (await p.inputValue(cel('descripcion')) !== 'TUBO DE PRUEBA 134')
+      throw new Error('canceló y aun así borró');
+
+    // (b) ACEPTAR sí borra.
+    p.once('dialog', d => d.accept());
+    await p.click('[data-del="' + ref + '"]'); await p.waitForTimeout(550);
+    if (await p.inputValue(cel('descripcion')).catch(() => '') === 'TUBO DE PRUEBA 134')
+      throw new Error('aceptó y no borró');
+
+    /* (c) Un renglón EN BLANCO se va sin preguntar.
+     *
+     * ⚠️ Un renglón en blanco hay que FABRICARLO: el fixture no trae ninguno
+     * (cinco renglones, los cinco capturados) y el que agrega «+ partida»
+     * nace con `qty: 1`, que `usadaPartida` da por tocado —correctamente—.
+     * Así que se agrega uno y se le borra la cantidad, que es justo lo que
+     * hace quien agregó uno de más.
+     *
+     * ⚠️⚠️ Aquí había un `check('#verVacios')` puesto sobre una creencia
+     * FALSA —que los renglones vacíos de materiales estaban ocultos—. No lo
+     * están: la tabla de materiales pinta `s.partidas` ENTERA, sin filtro;
+     * `#verVacios` es de la tabla de MANO DE OBRA y ni siquiera existe cuando
+     * esa tabla no tiene renglones en cero. Con `SOLO` pasaba de casualidad
+     * (la MO venía vacía); en la suite completa una prueba anterior le llenó
+     * las horas, la casilla desapareció y esto se colgó 30 s. Es el caso que
+     * el encargo manda medir sin `SOLO`. */
+    await p.click('[data-add]'); await p.waitForTimeout(600);
+    const vacio = (await p.$$eval('[data-del]', e => e.map(x => x.dataset.del))).pop();
+    if (!vacio) throw new Error('«+ partida» no agregó ningún renglón');
+    const [sv, jv] = vacio.split('#');
+    const celQty = '[data-cel="s:' + sv + ':partidas:' + jv + ':qty"]';
+    await p.fill(celQty, ''); await p.dispatchEvent(celQty, 'change'); await p.waitForTimeout(600);
+    const sigueVacio = await p.evaluate((ref) => {
+      const C = window.MachoteCalc;
+      const raw = JSON.parse(localStorage.getItem('fts_machote_v1') || '{}');
+      const m = (raw.machotes || []).find(x => x.id === 'M-1041') || {};
+      const [sid, j] = ref.split('#');
+      const s = (m.secciones || []).find(x => x.id === sid);
+      const l = s && s.partidas[+j];
+      return !!l && !C.usadaPartida(l) && !l.descripcion;
+    }, vacio);
+    if (!sigueVacio) throw new Error('no se pudo dejar un renglón en blanco con el que probar');
+
+    let preguntó = false;
+    const escucha = (d) => { preguntó = true; d.dismiss(); };
+    p.on('dialog', escucha);
+    await p.click('[data-del="' + vacio + '"]'); await p.waitForTimeout(450);
+    p.off('dialog', escucha);
+    if (preguntó) throw new Error('preguntó por un renglón vacío');
+    console.log('    capturado: pregunta con descripción y dinero · vacío: se va callado');
+  });
+
+  await paso('V1.34 · borrar una sección pregunta, y la pregunta trae números', async () => {
+    await ir('#/m/M-1041');
+    await hoja('Suministro'); await p.waitForTimeout(500);
+    const secs = () => p.$$eval('.pestana:not(.mas)', e => e.length);   // DESGLOSE + secciones
+    const antes = await secs();
+    if (antes < 3) throw new Error('hacen falta dos secciones para poder borrar una');
+    if (!(await p.$('[data-delsec]'))) throw new Error('la sección no ofrece borrarse');
+
+    let visto = null;
+    p.once('dialog', d => { visto = d.message(); d.dismiss(); });
+    await p.click('[data-delsec]'); await p.waitForTimeout(450);
+    if (!visto) throw new Error('borró la sección SIN preguntar');
+    if (!/rengl[oó]n/i.test(visto))
+      throw new Error('la pregunta no dice cuántos renglones se pierden: ' + visto);
+    if (!/\d/.test(visto)) throw new Error('la pregunta no trae números: ' + visto);
+    if (await secs() !== antes) throw new Error('canceló y aun así borró la sección');
+
+    p.once('dialog', d => d.accept());
+    await p.click('[data-delsec]'); await p.waitForTimeout(700);
+    const despues = await secs();
+    if (despues !== antes - 1)
+      throw new Error('aceptó y no borró: ' + antes + ' → ' + despues);
+    console.log('    pregunta con números · cancelar conserva · aceptar borra');
+  });
+
+  await paso('V1.34 · deshacer tres pasos, y el guardado sigue funcionando normal', async () => {
+    /* El encargo dice «independiente del guardado»: deshacer NO es un modo
+     * aparte que deje la cotización en un limbo. Se aplica, se marca tocado y
+     * se guarda como cualquier otro cambio. */
+    await ir('#/m/M-1041');
+    await p.waitForTimeout(400);
+
+    const nom = '[data-cel="eq:venta:0:nombre"]';
+    if (!(await p.$(nom))) throw new Error('no se encontró el campo con el que probar');
+    const original = await p.inputValue(nom);
+    const escribir = async (v) => {
+      await p.fill(nom, v); await p.dispatchEvent(nom, 'change'); await p.waitForTimeout(450);
+    };
+    const enAlmacen = () => delAlmacen((m) => ((m.equipo_venta || [])[0] || {}).nombre);
+
+    await escribir('PASO UNO'); await escribir('PASO DOS'); await escribir('PASO TRES');
+
+    if (!(await p.$('#btnDeshacer'))) throw new Error('no apareció el botón de deshacer');
+    const rotulo = (await p.textContent('#btnDeshacer')).replace(/\s+/g, ' ').trim();
+    if (!/^↶ Deshacer .+/.test(rotulo))
+      throw new Error('el botón no dice QUÉ deshace: «' + rotulo + '»');
+
+    const paso3 = ['PASO DOS', 'PASO UNO', original];
+    for (let i = 0; i < 3; i++) {
+      if (!(await p.$('#btnDeshacer')))
+        throw new Error('se acabó el deshacer en el paso ' + (i + 1) + ' de 3');
+      await p.click('#btnDeshacer'); await p.waitForTimeout(450);
+      const v = await p.inputValue(nom);
+      if (v !== paso3[i]) throw new Error('deshacer ' + (i + 1) + ' dejó «' + v +
+                                          '» y se esperaba «' + paso3[i] + '»');
+    }
+    // Tres de memoria, tres usados: el botón se acaba, no revienta.
+    if (await p.$('#btnDeshacer'))
+      throw new Error('ofrece un cuarto deshacer con sólo tres pasos de memoria');
+
+    /* Y EL GUARDADO. Lo deshecho queda GUARDADO, no pendiente: el almacén dice
+     * lo mismo que la pantalla. */
+    await p.waitForTimeout(ALMACEN);
+    const guardado = await enAlmacen();
+    if (guardado !== original)
+      throw new Error('deshizo en pantalla pero el almacén quedó en: ' + guardado);
+
+    // Y se sigue editando y guardando como si nada hubiera pasado.
+    await escribir('DESPUÉS DE DESHACER'); await p.waitForTimeout(ALMACEN);
+    if (await enAlmacen() !== 'DESPUÉS DE DESHACER')
+      throw new Error('después de deshacer dejó de guardar: ' + await enAlmacen());
+    console.log('    tres pasos atrás · el almacén los siguió · y siguió guardando');
+  });
+
+  await paso('V1.34 · el pad no altera ningún total, salvo por el botón', async () => {
+    /* La única garantía que vuelve tolerable una hoja libre DENTRO de una hoja
+     * de costos. Se mide lo que la BARRA dice, que es lo que el usuario ve.
+     *
+     * ⚠️ PÁGINA PROPIA, y no por gusto. La página de la suite trae un guion de
+     * arranque que hace `localStorage.clear()` en CADA navegación —a propósito,
+     * para que cada prueba parta limpia— y `sembrarMachotes` repone la fixture
+     * detrás. Ahí una recarga no prueba que el pad sobreviva: prueba que la
+     * fixture volvió. Esta prueba necesita recargar de verdad, así que usa una
+     * página SIN ese guion; es la misma trampa de CLAUDE.md §20 #11 —el
+     * resultado se ve idéntico cuando el dato sobrevivió y cuando lo repusieron
+     * de cero— y sólo se ve montando la página aparte. */
+    const q = await b.newPage({ viewport: { width: 1280, height: 1000 } });
+    q.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
+    await sembrarGeo(q);
+    await sembrarMachotes(q);
+    await q.addInitScript(() => {
+      try {
+        localStorage.setItem('fts_suite_session', JSON.stringify({
+          token: 'prueba.prueba.prueba', actor: 'zz.prueba', nombre: 'ZZ Prueba',
+          empleado_id: null, scopes: ['comercial:read', 'comercial:orden'],
+          exp: Math.floor(Date.now() / 1000) + 3600, debe_cambiar_password: false }));
+      } catch (e) {}
+    });
+    try {
+      await q.goto(BASE); await q.waitForTimeout(700);
+      await q.evaluate(() => { location.hash = '#/m/M-1041'; }); await q.waitForTimeout(700);
+      const aSuministro = async () => {
+        await q.locator('.pestana', { hasText: 'Suministro' }).first().click();
+        await q.waitForTimeout(500);
+      };
+      await aSuministro();
+
+      if (!(await q.$('.pad-sec'))) throw new Error('la sección no trae el pad');
+      if (await q.$eval('.pad-sec', e => e.open))
+        throw new Error('el pad nace abierto; se pidió plegable, no una tercera columna');
+      await q.click('.pad-sec > summary'); await q.waitForTimeout(350);
+
+      const total = async () => (await q.textContent('.fija .mono')).replace(/\s+/g, ' ').trim();
+      const t0 = await total();
+      if (!t0) throw new Error('la barra no dice ningún total');
+
+      const escribirPad = async (sel, val) => {
+        await q.fill(sel, val); await q.dispatchEvent(sel, 'input'); await q.waitForTimeout(400);
+      };
+      await escribirPad('[data-padtxt]', '3 tramos × 12 m × $450/m\n+ 8 soportes × $1,200\n= 25,800');
+      if (await total() !== t0)
+        throw new Error('escribir la cuenta movió el total: ' + t0 + ' → ' + await total());
+      await escribirPad('[data-padcon]', 'Canalización tramo norte');
+      if (await total() !== t0) throw new Error('el concepto movió el total');
+      await escribirPad('[data-padimp]', '25800');
+      if (await total() !== t0)
+        throw new Error('EL IMPORTE DEL PAD MOVIÓ EL TOTAL: ' + t0 + ' → ' + await total());
+
+      // Sobrevive a recargar, y SIGUE sin contar.
+      await q.waitForTimeout(ALMACEN);
+      await q.reload(); await q.waitForTimeout(900);
+      await aSuministro();
+      if (await total() !== t0) throw new Error('tras recargar, el pad guardado sí contaba');
+      if (!/25,800/.test(await q.inputValue('[data-padtxt]')))
+        throw new Error('el pad no sobrevivió a recargar');
+
+      // EL BOTÓN es la única puerta: pasa el número Y SE LLEVA EL TEXTO.
+      await q.click('[data-padpasar]'); await q.waitForTimeout(ALMACEN);
+      if (await total() === t0) throw new Error('el botón no movió nada: ' + t0);
+      const llevado = await q.evaluate(() => {
+        const raw = JSON.parse(localStorage.getItem('fts_machote_v1') || '{}');
+        const m = (raw.machotes || []).find(x => x.id === 'M-1041') || {};
+        const s = (m.secciones || []).find(x => (x.partidas || [])
+          .some(l => l.descripcion === 'Canalización tramo norte'));
+        const l = s && s.partidas.find(x => x.descripcion === 'Canalización tramo norte');
+        return { pu: l && l.pu, com: l && l.comentario, padTexto: s && s.pad && s.pad.texto };
+      });
+      if (Number(llevado.pu) !== 25800) throw new Error('el renglón no llevó el importe: ' + llevado.pu);
+      if (!/25,800/.test(llevado.com || ''))
+        throw new Error('EL RAZONAMIENTO NO VIAJÓ con el número: ' + llevado.com);
+      if (llevado.padTexto) throw new Error('el pad no se vació al pasar el renglón');
+      console.log('    tres cajas escritas, cero centavos movidos · sobrevive a recargar · ' +
+                  'el botón pasa importe Y razonamiento');
+    } finally { await q.close(); }
+  });
+
   await paso('sin errores de consola propios del prototipo', async () => {
     if (errs.length) throw new Error(errs.slice(0, 4).join(' | '));
     if (delEntorno.length) console.log('   (' + delEntorno.length +
