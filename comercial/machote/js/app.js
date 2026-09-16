@@ -57,7 +57,7 @@
    *   2. el `?v=` de la URL con la que el navegador lo bajó,
    *   3. la que declara cada pieza que se carga aparte (hoy el motor).
    * Si discrepan, la pantalla lo DICE en vez de correr a medias. */
-  const VERSION_ARCHIVO = 'V1.33';
+  const VERSION_ARCHIVO = 'V1.34';
 
   const VERSION_URL = (function () {
     try {
@@ -139,6 +139,15 @@
 
   const ST = {
     verVacios: false,
+    /* ── V1.34 · la pila de deshacer ───────────────────────────────────────
+     * Vive en memoria y sólo en memoria: es de la SESIÓN DE EDICIÓN, no del
+     * documento. Si se guardara, una recarga ofrecería deshacer algo que el
+     * usuario ya no recuerda haber hecho.
+     *
+     * NO se limpia al guardar —deshacer es independiente del guardado— pero
+     * SÍ al cambiar de machote, que es donde «el último cambio» deja de
+     * significar lo mismo. `deshacerDe` es el candado que lo garantiza. */
+    deshacer: [], deshacerDe: null,
     // Por qué cambió cada machote, para el historial. Se vacía al guardar.
     motivos: {},
     machotes: _limpiado || [],
@@ -513,6 +522,52 @@
     return f ? f.folio_txt : null;
   }
 
+  /* ── V1.34 · las dos fechas de la lista ─────────────────────────────────
+   * CREACIÓN: `m.creado_at`, que vive dentro del machote desde que nace.
+   * ÚLTIMA MODIFICACIÓN: la fecha de la última VERSIÓN GUARDADA, que la trae
+   * el servidor y `bajar()` deja en la libreta. NO se inventa ninguna: un
+   * machote que aún no ha subido no tiene versión, y ahí va una raya.
+   *
+   * Las dos se tratan distinto a propósito, porque se usan para cosas
+   * distintas: la creación es una referencia fija y va ABSOLUTA; la
+   * modificación es lo que se recorre con la vista para encontrar «la que
+   * toqué al último» y va RELATIVA. */
+  /* ⚠️ `fechaDia`, no `fechaCorta`: ese nombre YA existe más abajo en este
+   * mismo archivo (la fecha de consulta del vuelo) y toma `YYYY-MM-DD`, no un
+   * ISO con hora. Dos `const` con el mismo nombre en el mismo ámbito no se
+   * pisan: tiran el archivo entero. Es el §20 #12 en su forma más barata de
+   * cazar — lo dijo el parser, no una captura. */
+  const fechaDia = (iso) => {
+    if (!iso) return null;
+    const d = new Date(iso);
+    if (isNaN(d)) return null;
+    const MES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    const hoy = new Date();
+    const mismoAnio = d.getFullYear() === hoy.getFullYear();
+    return d.getDate() + '/' + MES[d.getMonth()] + (mismoAnio ? '' : '/' + String(d.getFullYear()).slice(2));
+  };
+  const haceCuanto = (iso) => {
+    if (!iso) return null;
+    const d = new Date(iso);
+    if (isNaN(d)) return null;
+    const seg = Math.floor((Date.now() - d.getTime()) / 1000);
+    if (seg < 60) return 'hace un momento';
+    const min = Math.floor(seg / 60);
+    if (min < 60) return 'hace ' + min + ' min';
+    const hor = Math.floor(min / 60);
+    if (hor < 24) return 'hace ' + hor + (hor === 1 ? ' hora' : ' horas');
+    const dia = Math.floor(hor / 24);
+    if (dia < 31) return 'hace ' + dia + (dia === 1 ? ' día' : ' días');
+    const mes = Math.floor(dia / 30);
+    if (mes < 12) return 'hace ' + mes + (mes === 1 ? ' mes' : ' meses');
+    return 'hace ' + Math.floor(mes / 12) + ' año(s)';
+  };
+  /** La última versión guardada de un machote, o `null` si no ha subido. */
+  const ultimaDe = (m) => {
+    if (!m || !A || !A.ultimaVersion) return null;
+    return A.ultimaVersion(m.id);
+  };
+
   /** ── V1.29 · archivar no se pudo ──────────────────────────────────────
    *  Un `toast` de dos segundos es demasiado poco para «no se archivó»: se va
    *  solo y quien no lo vio se queda creyendo que sí. Se usa la misma banda
@@ -624,10 +679,121 @@
       const it = (m[key] || [])[parseInt(p[2], 10)]; if (!it) return;
       it[p[3]] = sanea(val); return;
     }
+    /* V1.34 · el reparto PROPIO de una sección desviada:
+     * `ec:<sid>:<venta|ops|cli>:<i>:<campo>`. Sólo existe si alguien marcó la
+     * casilla; escribir aquí sin haberla marcado sería inventar un desvío. */
+    if (p[0] === 'ec') {
+      const s = m.secciones.find(x => x.id === p[1]); if (!s || !s.comision) return;
+      const key = p[2] === 'venta' ? 'equipo_venta' : p[2] === 'ops' ? 'equipo_operaciones' : 'equipo_cliente';
+      const it = (s.comision[key] || [])[parseInt(p[3], 10)]; if (!it) return;
+      it[p[4]] = sanea(val);
+      s.comision.desde = new Date().toISOString();
+      return;
+    }
     const parts = path.split('.');
     let o = m;
     for (let i = 0; i < parts.length - 1; i++) { if (!o[parts[i]]) o[parts[i]] = {}; o = o[parts[i]]; }
     o[parts[parts.length - 1]] = sanea(val);
+  }
+
+  /** Leer por la MISMA ruta con la que se escribe. Es el espejo de
+   *  `setPath`, y tiene que seguirlo rama por rama: si las dos se separan, el
+   *  deshacer devolvería el valor de otro campo y sería peor que no existir.
+   *  Por eso vive pegado a él y no en otro archivo. */
+  function getPath(m, path) {
+    const p = String(path).split(':');
+    if (p[0] === 'nom') { const s = m.secciones.find(x => x.id === p[1]); return s ? s.nombre : undefined; }
+    if (p[0] === 'mg')  { const s = m.secciones.find(x => x.id === p[1]); return s && s.margenes ? s.margenes[p[2]] : undefined; }
+    if (p[0] === 'rec') { const s = m.secciones.find(x => x.id === p[1]); return s && s.recargos ? s.recargos[p[2]] : undefined; }
+    if (p[0] === 's') {
+      const s = m.secciones.find(x => x.id === p[1]); if (!s) return undefined;
+      const arr = p[2] === 'mo' ? s.mo : s.partidas;
+      const l = arr[parseInt(p[3], 10)];
+      return l ? l[p[4]] : undefined;
+    }
+    if (p[0] === 'eq') {
+      const key = p[1] === 'venta' ? 'equipo_venta' : p[1] === 'ops' ? 'equipo_operaciones' : 'equipo_cliente';
+      const it = (m[key] || [])[parseInt(p[2], 10)];
+      return it ? it[p[3]] : undefined;
+    }
+    if (p[0] === 'ec') {
+      const s = m.secciones.find(x => x.id === p[1]); if (!s || !s.comision) return undefined;
+      const key = p[2] === 'venta' ? 'equipo_venta' : p[2] === 'ops' ? 'equipo_operaciones' : 'equipo_cliente';
+      const it = (s.comision[key] || [])[parseInt(p[3], 10)];
+      return it ? it[p[4]] : undefined;
+    }
+    const parts = String(path).split('.');
+    let o = m;
+    for (let i = 0; i < parts.length - 1; i++) { if (!o || !o[parts[i]]) return undefined; o = o[parts[i]]; }
+    return o ? o[parts[parts.length - 1]] : undefined;
+  }
+
+  /* ══ V1.34 · DESHACER, como el control Z ═══════════════════════════════
+   *
+   * Tres pasos, el último cambio de valor primero.
+   *
+   * ── LO QUE LO HACE DISTINTO DE UN «UNDO» NORMAL, Y ES LO IMPORTANTE ──────
+   * Esto NO retiene el guardado. Decisión de Esteban, y tiene razón: un
+   * archivo «sin guardar» esperando a que alguien decida es exactamente donde
+   * se pierde información. Así que el machote se sigue guardando como
+   * siempre, cada 500 ms, y deshacer es **un cambio más** — se aplica, se
+   * marca `tocado()` y se guarda igual que si lo hubieras tecleado.
+   *
+   * Consecuencia directa, y es la correcta: si lo que se deshace YA se
+   * guardó, el siguiente guardado lo registra como la versión nueva que es,
+   * con su autor y su hora. **El historial no se reescribe nunca.** Ver no es
+   * restaurar (eso ya era así en la pantalla de versiones) y deshacer
+   * tampoco: deshacer avanza, no retrocede.
+   *
+   * La pila NO se limpia al guardar, justamente porque el guardado no es una
+   * frontera para esto. Se limpia al cambiar de machote, que sí lo es.
+   */
+  const DESHACER_MAX = 3;
+
+  /** Nombre legible de lo que se cambió, para que el botón diga QUÉ va a
+   *  deshacer y no «deshacer cambio 2 de 3», que es un salto a ciegas. */
+  function etiquetaDe(m, path) {
+    const p = String(path).split(':');
+    const sec = (id) => {
+      const s = m.secciones.find(x => x.id === id);
+      return s ? (s.nombre || 'una sección') : 'una sección';
+    };
+    if (p[0] === 'nom') return 'el nombre de ' + sec(p[1]);
+    if (p[0] === 'mg')  return 'el multiplicador de ' + p[2].replace(/_/g, ' ') + ' en ' + sec(p[1]);
+    if (p[0] === 'rec') return 'el recargo de ' + p[2].replace(/_/g, ' ') + ' en ' + sec(p[1]);
+    if (p[0] === 's') {
+      const s = m.secciones.find(x => x.id === p[1]);
+      const arr = s ? (p[2] === 'mo' ? s.mo : s.partidas) : [];
+      const l = arr[parseInt(p[3], 10)] || {};
+      const quien = p[2] === 'mo' ? (l.rol || 'un renglón de mano de obra')
+                                  : (l.descripcion || 'un renglón de materiales');
+      return p[4] + ' de «' + String(quien).slice(0, 40) + '»';
+    }
+    if (p[0] === 'eq') return 'el reparto de comisiones';
+    if (p[0] === 'ec') return 'el reparto de comisiones de ' + sec(p[1]);
+    return String(path).replace(/[._]/g, ' ');
+  }
+
+  /** Apunta un cambio de valor. Sólo se apunta si el valor CAMBIÓ de verdad:
+   *  un `onchange` que dispara sin cambiar nada llenaría la pila de pasos que
+   *  no hacen nada, y el usuario apretaría deshacer tres veces sin ver
+   *  moverse la pantalla. */
+  function apuntarCambio(m, path, antes, ahora) {
+    if (antes === ahora) return;
+    if (!ST.deshacer || ST.deshacerDe !== m.id) { ST.deshacer = []; ST.deshacerDe = m.id; }
+    ST.deshacer.push({ path: path, antes: antes, que: etiquetaDe(m, path) });
+    while (ST.deshacer.length > DESHACER_MAX) ST.deshacer.shift();
+  }
+
+  /** Deshace el último. Devuelve qué se deshizo, o null si no había nada. */
+  function deshacerUno(m) {
+    if (!ST.deshacer || ST.deshacerDe !== m.id || !ST.deshacer.length) return null;
+    const paso = ST.deshacer.pop();
+    setPath(m, paso.path, paso.antes);
+    /* Se guarda como cualquier otro cambio. Esto es lo que impide que quede
+     * un archivo a medias esperando decisión. */
+    tocado(m);
+    return paso;
   }
 
   /* ── Ruteo ───────────────────────────────────────────────────────────── */
@@ -1151,6 +1317,22 @@
         '<td class="num mono">' + mx(c.precio) + '</td>' +
         '<td class="num mono n-' + (c.costoIncompleto ? 'warn' : nivelMargen(c.margen)) + '">' +
           pc(c.margen) + (c.costoIncompleto ? '*' : '') + '</td>' +
+        /* Las dos fechas. La de modificación lleva `title` con el autor y la
+         * fecha completa: en escritorio hay dónde pasar el ratón, y es la
+         * única forma de decir QUIÉN sin gastar una columna más. */
+        (function () {
+          const u = ultimaDe(m);
+          const creada = fechaDia(m.creado_at);
+          const mod = u ? haceCuanto(u.guardada_at) : null;
+          const quien = u ? (nombreDe(u.autor) || u.autor_nombre || u.autor || '') : '';
+          return '<td class="fch sub">' + esc(creada || '—') + '</td>' +
+            '<td class="fch sub"' +
+              (u ? ' title="' + esc('Versión ' + (u.version || '?') + ' · ' +
+                    (fechaDia(u.guardada_at) || '') +
+                    (quien ? ' · ' + quien : '')) + '"' : '') + '>' +
+            (mod ? esc(mod) : '<span title="Todavía no ha llegado al servidor, así que no tiene versión guardada.">—</span>') +
+            '</td>';
+        })() +
         /* La columna «Revisión» («1 dura», «3 duras») se fue con la sección de
          * confirmar la orden: contaba las validaciones que impedían crear la
          * orden desde aquí, y ese camino ya no sale de la lista. Las duras no
@@ -1183,7 +1365,30 @@
             : ' <span class="pill aj">sólo lectura</span>') : '') +
           '<div class="tiny">' + esc(cli(m)) +
           (m.so ? ' · ' + esc(m.so) : '') + ' · ' +
-          esc(nombreDe(duenoDe(m))) + '</div></div>' +
+          esc(nombreDe(duenoDe(m))) + '</div>' +
+          /* ── V1.34 · las fechas en el teléfono ────────────────────────────
+           * UNA línea, no dos columnas: a 380 px no caben, y encoger todo
+           * hasta que no se lea es peor que no tenerlas.
+           *
+           * Creación ABSOLUTA (es una referencia fija) y modificación
+           * RELATIVA (es lo que se recorre con la vista buscando «la que
+           * toqué al último»). El autor va aquí mismo porque en el teléfono
+           * no hay ratón que pasar por encima. */
+          (function () {
+            const u = ultimaDe(m);
+            const creada = fechaDia(m.creado_at);
+            const partes = [];
+            if (creada) partes.push('creado ' + creada);
+            if (u) {
+              const quien = nombreDe(u.autor) || u.autor_nombre || u.autor || '';
+              partes.push('modificado ' + haceCuanto(u.guardada_at) +
+                          (quien ? ' por ' + quien : ''));
+            }
+            return partes.length
+              ? '<div class="tiny fch-linea">' + esc(partes.join(' · ')) + '</div>'
+              : '';
+          })() +
+          '</div>' +
         '<div class="right"><span class="chip" style="background:' + edo(m).color + '">' +
           esc(edo(m).label) + '</span>' +
         '<div class="tiny mono n-' + (c.costoIncompleto ? 'warn' : nivelMargen(c.margen)) + '">' +
@@ -1229,8 +1434,14 @@
     const tabla = visibles.length
       ? '<div class="tw"><table class="lista"><thead><tr>' +
           '<th style="width:92px">Folio</th>' +
-          '<th style="width:34%">Cotización</th><th>Responsable</th><th>Estado</th>' +
-          '<th class="num">Precio</th><th class="num">Margen</th><th style="width:72px"></th>' +
+          /* 34% → 24%: las dos columnas de fecha salen de ANGOSTAR el nombre,
+           * que es la más ancha con diferencia, no de ensanchar la tabla.
+           * Medido a 1280 px en la captura, que es donde se ve si el nombre
+           * se parte feo. */
+          '<th style="width:24%">Cotización</th><th>Responsable</th><th>Estado</th>' +
+          '<th class="num">Precio</th><th class="num">Margen</th>' +
+          '<th class="fch-th">Creada</th><th class="fch-th">Modificada</th>' +
+          '<th style="width:72px"></th>' +
         '</tr></thead><tbody>' + visibles.map(fila).join('') + '</tbody></table>' +
         '<div class="cards">' + visibles.map(tarjeta).join('') + '</div></div>'
       : '<div class="tw">' + vacio + '</div>';
@@ -2365,7 +2576,99 @@
     const listaUnidades = '<datalist id="unidades">' +
       D.UNIDADES.map(u => '<option value="' + esc(u) + '">').join('') + '</datalist>';
 
-    return listaUnidades + cab + leyenda() + bloqueRecargo + tablaMo + bloqueViaje + tablaMat;
+    /* ══ V1.34 · LA COMISIÓN DE ESTA SECCIÓN ═══════════════════════════════
+     *
+     * El reparto es DEL MACHOTE y gobierna todas las secciones. Esta casilla
+     * es la EXCEPCIÓN, y por eso está apagada de origen: el caso normal no
+     * debe costar un clic.
+     *
+     * Es el patrón del recargo de fin de semana AL REVÉS. Allá el valor era
+     * de la sección desde el principio y el machote sólo daba el arranque;
+     * aquí manda el machote y la sección sólo se desprende si alguien lo
+     * pide. Por eso la marca visual es la MISMA (`≠`, ámbar, borde
+     * izquierdo): quien aprendió a leer un recargo apartado lee esto sin que
+     * nadie se lo explique.
+     */
+    const cp = s.comision_propia === true;
+    const guardado = s.comision || null;
+    const eqSec = (rotulo, quien, key) => {
+      const lista = (guardado && guardado[key]) || [];
+      const suma = lista.reduce((a, x) => a + Number(x.pct || 0), 0);
+      const cuadra = Math.abs(suma - 1) < 0.0001;
+      return '<tr class="grupo"><td colspan="2">' + esc(rotulo) + '</td></tr>' +
+        lista.map((it, i) =>
+          '<tr><td>' + cel('ec:' + s.id + ':' + quien + ':' + i + ':nombre', it.nombre, 'desc') + '</td>' +
+          '<td>' + celPct('ec:' + s.id + ':' + quien + ':' + i + ':pct', it.pct, 'w70 pisado') + '</td></tr>').join('') +
+        '<tr class="total"><td class="et">Suma</td><td class="vl mono n-' +
+          (cuadra ? 'ok' : 'bad') + '">' + pc(suma) + '</td></tr>';
+    };
+    const desdeTxt = guardado && guardado.desde ? fechaDia(guardado.desde) : null;
+    const bloqueComision =
+      '<div class="com-sec' + (cp ? ' apartado' : '') + '">' +
+        '<div class="secc-tit">COMISIÓN DE ESTA SECCIÓN' +
+          (cp ? '<span class="rec-marca" title="Esta sección reparte distinto del machote.">≠ machote</span>' : '') +
+        '</div>' +
+        '<label class="com-check"><input type="checkbox" data-comprop="' + esc(s.id) + '"' +
+          (cp ? ' checked' : '') + '> Editar comisión de esta sección</label>' +
+        (cp
+          ? '<div class="tiny n-warn">Esta sección reparte por su cuenta. La <strong>bolsa no cambia</strong>: ' +
+            'lo único que cambia es a quién le toca dentro de esta sección. Tiene que sumar 100% igual que el ' +
+            'del machote.' + (desdeTxt ? ' Desviada desde el ' + esc(desdeTxt) + '.' : '') + '</div>' +
+            '<table class="hoja2"><tbody>' +
+              eqSec('EQUIPO DE VENTA', 'venta', 'equipo_venta') +
+              eqSec('EQUIPO DE OPERACIONES', 'ops', 'equipo_operaciones') +
+              eqSec('LADO CLIENTE', 'cli', 'equipo_cliente') +
+            '</tbody></table>'
+          : '<div class="tiny nota">Sigue el reparto del machote, <strong>en vivo</strong>: si allá cambia, ' +
+            'aquí cambia. Se edita en la hoja DESGLOSE, y vale para todas las secciones.' +
+            (guardado
+              ? '<br><span class="n-warn">Hay un reparto propio guardado' +
+                (desdeTxt ? ' del ' + esc(desdeTxt) : '') +
+                '. No se está usando; vuelve a marcar la casilla para recuperarlo.</span>'
+              : '') +
+            '</div>') +
+      '</div>';
+
+    /* ══ V1.34 · EL PAD DE TRABAJO ═════════════════════════════════════════
+     *
+     * Montalvo pedía un espacio de cálculo libre al lado de las dos tablas.
+     * Va PLEGABLE y debajo, no como tercera columna: la hoja ya va apretada a
+     * 380 px —medido dos veces— y meter una columna más es encoger hasta que
+     * no se lea.
+     *
+     * ── LA TENSIÓN, Y CÓMO SE RESUELVE ────────────────────────────────────
+     * El ROADMAP dice que los cuadros de cálculo son widgets con nombre y no
+     * hoja libre, para que el resultado se capture como DATO. Un pad libre es
+     * lo contrario. Pero no es pad-contra-widget: es que hace falta un lugar
+     * donde PENSAR y otro donde REGISTRAR, y no deben ser el mismo.
+     *
+     * Así que el pad es un BORRADOR DECLARADO: no alimenta ningún total, y lo
+     * dice en pantalla. Lo que lo vuelve útil es el botón: pasa el resultado a
+     * un renglón de verdad Y SE LLEVA EL TEXTO como comentario de ese
+     * renglón. Eso es lo que hoy se pierde — la cuenta se hace en la
+     * calculadora del teléfono y seis meses después nadie sabe de dónde salió
+     * el número.
+     */
+    const pad = s.pad || {};
+    const bloquePad =
+      '<details class="pad-sec"' + (pad.abierto ? ' open' : '') + ' data-pad="' + esc(s.id) + '">' +
+        '<summary>Pad de trabajo <span class="tiny nota">· borrador, no entra en ningún total</span></summary>' +
+        '<div class="tiny nota">Para sacar cuentas. <strong>Nada de lo que escribas aquí mueve el precio.</strong> ' +
+        'Cuando llegues a un número, pásalo a un renglón con el botón: el renglón se lleva el importe y ' +
+        '<strong>este texto queda como su comentario</strong>, para que dentro de seis meses se sepa de dónde salió.</div>' +
+        '<textarea class="cel pad-txt" data-padtxt="' + esc(s.id) + '" rows="6" ' +
+          'placeholder="3 tramos × 12 m × $450/m&#10;+ 8 soportes × $1,200&#10;= ...">' + esc(pad.texto || '') + '</textarea>' +
+        '<div class="pad-pie">' +
+          '<label class="tiny">Concepto <input class="cel" data-padcon="' + esc(s.id) + '" ' +
+            'value="' + esc(pad.concepto || '') + '" placeholder="Canalización tramo norte"></label>' +
+          '<label class="tiny">Importe <input class="cel num" type="number" step="any" min="0" ' +
+            'data-padimp="' + esc(s.id) + '" value="' + esc(nn(pad.importe)) + '"></label>' +
+          '<button class="btn fantasma" data-padpasar="' + esc(s.id) + '">Pasar a renglón</button>' +
+        '</div>' +
+      '</details>';
+
+    return listaUnidades + cab + leyenda() + bloqueRecargo + bloqueComision +
+           tablaMo + bloqueViaje + tablaMat + bloquePad;
   }
 
   /* ── El estado del machote ─────────────────────────────────────────────
@@ -2731,7 +3034,22 @@
        (!ajeno(m) || G.MachoteCesion.soyDireccion())
         ? '<button class="btn fantasma" id="btnCeder" title="Pasarle la propiedad a otra persona. No es un préstamo: no vence.">Ceder</button>'
         : '') +
+      /* DESHACER. Dice QUÉ va a deshacer, no «deshacer» a secas: un botón
+       * que no anuncia su efecto es un salto a ciegas, y en una hoja de
+       * costos un salto a ciegas se paga caro. Sólo aparece si hay algo que
+       * deshacer y si la cotización se puede editar. */
+      ((ST.deshacer && ST.deshacerDe === m.id && ST.deshacer.length && !ajeno(m))
+        ? '<button class="btn fantasma" id="btnDeshacer" title="Deshace el último cambio. Se guarda como cualquier otro cambio: no deja nada pendiente.">↶ Deshacer ' +
+          esc(ST.deshacer[ST.deshacer.length - 1].que) + '</button>'
+        : '') +
       '<a class="btn" href="#/rev/' + m.id + '">Revisar</a></div>';
+    const bd = $('#btnDeshacer');
+    if (bd) bd.onclick = () => {
+      const paso = deshacerUno(m);
+      if (!paso) return;
+      pintarHoja(m); barra(m, C.calcular(m));
+      toast('Deshecho: ' + paso.que);
+    };
     const bo = $('#btnOrden');
     /* El segundo argumento es cómo se GUARDA. La pantalla de la orden puede
      * cambiar el cliente cuando falta, y sin esto ese cambio se quedaría en
@@ -2863,6 +3181,110 @@
         pintarHoja(m); barra(m, C.calcular(m));
       };
     });
+    /* ── V1.34 · la casilla de comisión propia ─────────────────────────────
+     * ENCENDER: la sección se desprende conservando lo que tenía como punto
+     * de partida — que es el reparto del machote, porque hasta ese momento lo
+     * venía siguiendo en vivo. Se copia PROFUNDO: compartir el arreglo con el
+     * machote haría que editar la sección moviera el machote, que es
+     * exactamente lo contrario de desviarse.
+     *
+     * APAGAR: vuelve al del machote y lo desviado SE CONSERVA inerte, con su
+     * fecha, para poder reencenderlo. No se borra. Decisión de Esteban con la
+     * mitigación que importa: al restaurarlo la pantalla dice DE CUÁNDO ES —
+     * un número que reaparece sin fecha después de tres meses es una trampa. */
+    $$('[data-comprop]').forEach(el => {
+      el.onchange = () => {
+        const sec = m.secciones.find(x => x.id === el.dataset.comprop); if (!sec) return;
+        if (el.checked) {
+          if (!sec.comision) {
+            const copia = (a) => JSON.parse(JSON.stringify(a || []));
+            sec.comision = {
+              reparto: Object.assign({}, C.REPARTO_PLANTILLA, m.reparto || {}),
+              equipo_venta: copia(m.equipo_venta),
+              equipo_operaciones: copia(m.equipo_operaciones),
+              equipo_cliente: copia(m.equipo_cliente),
+              desde: new Date().toISOString()
+            };
+          }
+          sec.comision_propia = true;
+        } else {
+          sec.comision_propia = false;   // `sec.comision` se queda, inerte
+        }
+        tocado(m); pintarHoja(m); barra(m, C.calcular(m));
+      };
+    });
+
+    /* ── V1.34 · el pad ────────────────────────────────────────────────────
+     * Se guarda con el machote —si no, se perdería al cambiar de hoja y
+     * dejaría de servir para pensar— pero NO entra en ningún cálculo. Eso lo
+     * garantiza el motor, que no lo lee; aquí sólo se escribe. */
+    $$('[data-padtxt]').forEach(el => {
+      el.oninput = () => {
+        const sec = m.secciones.find(x => x.id === el.dataset.padtxt); if (!sec) return;
+        if (!sec.pad) sec.pad = {};
+        sec.pad.texto = el.value; tocado(m);
+      };
+    });
+    $$('[data-padcon]').forEach(el => {
+      el.oninput = () => {
+        const sec = m.secciones.find(x => x.id === el.dataset.padcon); if (!sec) return;
+        if (!sec.pad) sec.pad = {};
+        sec.pad.concepto = el.value; tocado(m);
+      };
+    });
+    $$('[data-padimp]').forEach(el => {
+      el.oninput = () => {
+        const sec = m.secciones.find(x => x.id === el.dataset.padimp); if (!sec) return;
+        if (!sec.pad) sec.pad = {};
+        sec.pad.importe = el.value === '' ? null : (parseFloat(el.value) || 0);
+        tocado(m);
+      };
+    });
+    $$('[data-pad]').forEach(el => {
+      el.ontoggle = () => {
+        const sec = m.secciones.find(x => x.id === el.dataset.pad); if (!sec) return;
+        if (!sec.pad) sec.pad = {};
+        sec.pad.abierto = el.open; tocado(m);
+      };
+    });
+    /* EL BOTÓN es la ÚNICA puerta por la que el pad toca un total. */
+    $$('[data-padpasar]').forEach(el => {
+      el.onclick = () => {
+        const sec = m.secciones.find(x => x.id === el.dataset.padpasar); if (!sec) return;
+        const pd = sec.pad || {};
+        const imp = Number(pd.importe);
+        if (!pd.concepto || !String(pd.concepto).trim() || !isFinite(imp) || imp <= 0) {
+          toast('Ponle concepto e importe al renglón antes de pasarlo.');
+          return;
+        }
+        /* Se busca el primer renglón EN BLANCO en vez de empujar uno nuevo:
+         * la hoja ya nace con treinta y agregar otro dejaría un hueco más
+         * abajo. Si no hay ninguno libre, ahí sí se agrega. */
+        let libre = sec.partidas.findIndex(x => !C.usadaPartida(x) && !x.descripcion);
+        if (libre < 0) {
+          sec.partidas.push({ qty: '', unidad: '', tipo: '', descripcion: '', modelo: '',
+            marca: '', pu: null, moneda: m.moneda, margen: null, link: '', comentario: '' });
+          libre = sec.partidas.length - 1;
+        }
+        const l = sec.partidas[libre];
+        l.descripcion = String(pd.concepto).trim();
+        l.qty = 1;
+        l.unidad = l.unidad || 'Servicio';
+        l.tipo = l.tipo || 'Materiales';
+        l.pu = imp;
+        l.moneda = l.moneda || m.moneda;
+        /* Lo que hace que esto valga la pena: el RAZONAMIENTO viaja con el
+         * número, en vez de quedarse en la calculadora del teléfono. */
+        l.comentario = String(pd.texto || '').trim();
+        /* El pad se vacía: dejarlo lleno invita a pasarlo dos veces, y un
+         * renglón duplicado en una cotización se paga. El texto no se pierde,
+         * acaba de mudarse al comentario del renglón. */
+        sec.pad = { abierto: true, texto: '', concepto: '', importe: null };
+        tocado(m); pintarHoja(m); barra(m, C.calcular(m));
+        toast('Pasado a renglón: ' + l.descripcion);
+      };
+    });
+
     $$('[data-cel]').forEach(el => {
       const esSel = el.tagName === 'SELECT';
       const aplicar = () => {
@@ -2871,7 +3293,12 @@
         // Lo que se teclea en % se guarda como razón: el motor y lo ya guardado
         // siguen hablando en 0.055, y sólo la pantalla habla en 5.5.
         if (v !== null && el.hasAttribute('data-pct')) v = +(v / 100).toFixed(8);
+        /* Se lee ANTES de escribir: es el único momento en que el valor viejo
+         * todavía existe. Apuntarlo después leería el nuevo y el deshacer no
+         * haría nada. */
+        const antes = getPath(m, el.dataset.cel);
         setPath(m, el.dataset.cel, v);
+        apuntarCambio(m, el.dataset.cel, antes, getPath(m, el.dataset.cel));
       };
       // Al salir del campo se repinta -puede haber cambiado la estructura-.
       // Al teclear sólo se refrescan los derivados, que no roba el foco.
@@ -2981,6 +3408,20 @@
 
     $$('[data-del]').forEach(b => b.onclick = () => {
       const { s, j } = seccionDe(b.dataset.del); if (!s) return;
+      const l = s.partidas[j] || {};
+      /* Un renglón VACÍO se borra sin preguntar: preguntar por un renglón en
+       * blanco enseña a decir que sí sin leer, y entonces la confirmación
+       * deja de proteger el renglón que sí importaba. */
+      if (C.usadaPartida ? C.usadaPartida(l) : (l.descripcion || l.qty)) {
+        const qué = [];
+        if (l.descripcion) qué.push('«' + String(l.descripcion).slice(0, 60) + '»');
+        if (Number(l.qty)) qué.push((Math.round(Number(l.qty) * 100) / 100) +
+                                    (l.unidad ? ' ' + l.unidad : ''));
+        if (Number(l.pu)) qué.push('a ' + mx(Number(l.pu)));
+        if (l.link) qué.push('con liga de compra');
+        if (!confirm('¿Borrar este renglón?\n\n' + (qué.join(' · ') || 'renglón capturado') +
+                     '\n\nNo se puede deshacer desde aquí.')) return;
+      }
       s.partidas.splice(j, 1); refrescar();
     });
     $$('[data-dup]').forEach(b => b.onclick = () => {
@@ -3001,6 +3442,20 @@
     $$('[data-delsec]').forEach(b => b.onclick = () => {
       const i = m.secciones.findIndex(x => x.id === b.dataset.delsec);
       if (i < 0 || m.secciones.length < 2) return;
+      /* Una sección lleva BOM, mano de obra y generales. Borrarla de un clic
+       * era destructivo y silencioso; el aviso dice CON NÚMEROS lo que se
+       * pierde, porque un «¿seguro?» pelón no ayuda a decidir. */
+      const sec = m.secciones[i];
+      const parts = (sec.partidas || []).filter(x => C.usadaPartida && C.usadaPartida(x)).length;
+      const horas = (sec.mo || []).reduce((a, x) => a + (Number(x.qty) || 0), 0);
+      const t = C.totalSeccion ? C.totalSeccion(sec, m) : null;
+      const qué = [];
+      qué.push(parts + (parts === 1 ? ' renglón de materiales' : ' renglones de materiales'));
+      if (horas) qué.push((Math.round(horas * 10) / 10) + ' horas de mano de obra');
+      if (t && t.costo) qué.push('un costo de ' + mx(t.costo));
+      if (!confirm('¿Borrar la sección «' + (sec.nombre || 'sin nombre') + '»?\n\n' +
+                   'Se pierde ' + qué.join(', ') + '.\n\n' +
+                   'No se puede deshacer desde aquí.')) return;
       m.secciones.splice(i, 1); ST.hoja = 'desglose'; tocado(m); vMachote(m.id);
     });
     $$('[data-dupsec]').forEach(b => b.onclick = () => {

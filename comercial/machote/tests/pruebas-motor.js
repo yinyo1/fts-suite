@@ -372,5 +372,84 @@ eq(cvj.costoViaje, 0, 'viejos · con el viaje en cero');
 es(tieneDura(vj, 'sin-lugar-ejecucion'), true, 'viejos · el revisador pide el lugar');
 es(tieneDura(vj, 'foranea-sin-viaje'), false, 'viejos · pero no los trata como foráneos');
 
+
+/* ══ V1.34 · comisiones del machote con excepción por sección ═══════════════
+ *
+ * Lo que se ejercita, que es lo que puede salir mal:
+ *   1. Sin desvíos, el resultado es IDÉNTICO al de antes. No parecido:
+ *      idéntico. Es lo que sostiene a los machotes ya capturados.
+ *   2. Con un desvío, la BOLSA TOTAL no se mueve — sólo cambia a quién le
+ *      toca. Si la bolsa cambiara, el desvío estaría inventando dinero.
+ *   3. Una sección con la casilla apagada NO lee su reparto guardado, por
+ *      mucho que lo tenga: inerte quiere decir inerte.
+ */
+(function () {
+  const base = () => {
+    const m = C.machoteNuevo({ nombre: 'ZZ comisiones', empresa_id: 1 });
+    m.secciones = [C.seccionNueva('A', 'MXN'), C.seccionNueva('B', 'MXN')];
+    // Dos secciones con costo, para que los pesos no sean triviales.
+    m.secciones[0].mo[0].qty = 100; m.secciones[0].mo[0].pu = 100;
+    m.secciones[1].mo[0].qty = 300; m.secciones[1].mo[0].pu = 100;
+    m.equipo_venta = [{ nombre: 'ALDO', pct: 0.5 }, { nombre: 'ANGEL', pct: 0.5 }];
+    m.equipo_operaciones = [{ nombre: 'SUPER', pct: 1 }];
+    m.equipo_cliente = [{ nombre: 'CONTACTO', pct: 1 }];
+    return m;
+  };
+  const bolsa = (c) => c.reparto.venta.lineas.concat(c.reparto.operaciones.lineas,
+                          c.reparto.cliente.lineas).reduce((a, l) => a + l.monto, 0);
+  const porNombre = (c, quien) => {
+    const t = c.reparto.venta.lineas.concat(c.reparto.operaciones.lineas,
+                c.reparto.cliente.lineas).filter(l => l.nombre === quien)[0];
+    return t ? t.monto : 0;
+  };
+
+  const sin = base();
+  const cSin = C.calcular(sin);
+
+  // 1 · sin desvíos: idéntico, y sin marcas
+  es(cSin.reparto.secciones_desviadas.length, 0, 'comisiones · sin desvíos no marca ninguna');
+  eq(porNombre(cSin, 'ALDO'), porNombre(cSin, 'ANGEL'),
+     'comisiones · sin desvíos, 50/50 reparte igual');
+
+  // 2 · con un desvío, la BOLSA TOTAL no se mueve
+  const con = base();
+  con.secciones[0].comision_propia = true;
+  con.secciones[0].comision = {
+    reparto: { venta: 0.73, operaciones: 0.27 },
+    equipo_venta: [{ nombre: 'ALDO', pct: 1 }],          // toda la sección A para ALDO
+    equipo_operaciones: [{ nombre: 'SUPER', pct: 1 }],
+    equipo_cliente: [{ nombre: 'CONTACTO', pct: 1 }],
+    desde: '2026-09-16T00:00:00.000Z', por: 'zz.prueba'
+  };
+  const cCon = C.calcular(con);
+  eq(bolsa(cCon), bolsa(cSin), 'comisiones · un desvío NO mueve la bolsa total', 0.02);
+  es(cCon.reparto.secciones_desviadas.length, 1, 'comisiones · marca la sección desviada');
+  // Y a ALDO le toca más que antes, porque se quedó con toda la sección A.
+  es(porNombre(cCon, 'ALDO') > porNombre(cSin, 'ALDO'), true,
+     'comisiones · el desvío SÍ cambia a quién le toca');
+
+  // 3 · la casilla apagada ignora el reparto guardado (inerte)
+  const apagada = base();
+  apagada.secciones[0].comision_propia = false;
+  apagada.secciones[0].comision = con.secciones[0].comision;   // guardado, inerte
+  const cApagada = C.calcular(apagada);
+  eq(porNombre(cApagada, 'ALDO'), porNombre(cSin, 'ALDO'),
+     'comisiones · apagada NO lee su reparto guardado: inerte es inerte');
+  es(cApagada.reparto.secciones_desviadas.length, 0,
+     'comisiones · apagada no cuenta como desviada');
+
+  // 4 · un reparto propio que no suma 100% se delata, no se esconde
+  const rota = base();
+  rota.secciones[0].comision_propia = true;
+  rota.secciones[0].comision = {
+    reparto: { venta: 0.73, operaciones: 0.27 },
+    equipo_venta: [{ nombre: 'ALDO', pct: 0.4 }],   // 40%, no cuadra
+    equipo_operaciones: [{ nombre: 'SUPER', pct: 1 }],
+    equipo_cliente: [{ nombre: 'CONTACTO', pct: 1 }]
+  };
+  es(C.calcular(rota).reparto.repartos_rotos.length, 1,
+     'comisiones · una sección desviada que no suma 100% se delata');
+})();
+
 console.log('\n' + ok + ' pasaron, ' + mal + ' fallaron.');
 process.exit(mal ? 1 : 0);

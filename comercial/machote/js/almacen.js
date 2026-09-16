@@ -810,6 +810,21 @@
            * viven los datos que el servidor pone y el documento no lleva. */
           folio: fila.folio || null,
           folio_txt: fila.folio_txt || null,
+          /* ── V1.34 · cuándo y quién, de la ÚLTIMA VERSIÓN ────────────────
+           * Va en la libreta por la misma razón que el folio: metido en el
+           * machote entraría en su huella y la lista diría «por subir» de
+           * algo que acaba de bajar.
+           *
+           * ⚠️ Estos tres NO se inventan aquí. Salen tal cual de la fila que
+           * manda `comercial/machotes-leer`, que a su vez los saca de
+           * `machote_version.creada_at` / `.autor` / `.autor_nombre`. Es la
+           * fecha de la versión guardada, no «cuándo tocamos la pantalla»:
+           * una fecha inventada en el cliente se vería igual de bien y sería
+           * mentira. Si el servidor no los manda, quedan en null y la
+           * pantalla pone una raya. */
+          guardada_at: fila.guardada_at || null,
+          autor: fila.autor || null,
+          autor_nombre: fila.autor_nombre || null,
           empujado_at: new Date().toISOString()
         };
       }
@@ -993,6 +1008,22 @@
     var meta = leerSync()[idLocal];
     if (!meta || !meta.folio) return null;
     return { folio: meta.folio, folio_txt: meta.folio_txt || null };
+  }
+
+  /** ── V1.34 · cuándo se guardó la última versión, y quién ────────────────
+   *  Sale de la libreta, donde `bajar()` lo copió de la fila del servidor.
+   *
+   *  `null` NO es un error y no se disimula: significa «este machote todavía
+   *  no ha llegado al servidor», que es quien reparte las versiones. La
+   *  pantalla pone una raya. Inventar aquí la hora del navegador daría una
+   *  fecha que se ve igual de bien y que no corresponde a ninguna versión —
+   *  exactamente lo que el encargo pedía no hacer. */
+  function ultimaVersion(idPantalla) {
+    var meta = leerSync()[idPantalla];
+    if (!meta || !meta.guardada_at) return null;
+    return { guardada_at: meta.guardada_at, autor: meta.autor || null,
+             autor_nombre: meta.autor_nombre || null,
+             version: meta.version || null };
   }
 
   /** El historial completo de un machote, del servidor. Para la pantalla de
@@ -1469,6 +1500,7 @@
     // para que abra al instante y funcione sin red.
     leer: leerLocal,
     folio: folio,
+    ultimaVersion: ultimaVersion,
     marcarBorrado: marcarBorrado,
     archivar: archivar,
     archivarPorUuid: archivarPorUuid,

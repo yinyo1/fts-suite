@@ -1,11 +1,17 @@
 {
-  "version": "V1.33",
-  "build": "V1.33",
-  "fecha": "2026-09-15",
+  "version": "V1.34",
+  "build": "V1.34",
+  "fecha": "2026-09-16",
   "modulo": "comercial/machote",
   "ambito": "El CONTADOR es solo de este modulo. finanzas tambien usa V1.xx desde el 2026-09-03 (instruccion directa de Esteban, corrige el \"no propagar\" del issue #148) pero lleva su propio contador y va en V1.00. operaciones/planeacion sigue en 2.4.1, kiosk y confirmar-horas solo con cadena de build, y siete modulos con un 1.0.0 puesto una vez: a esos no se propaga.",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.34",
+      "pr": null,
+      "fecha": "2026-09-16",
+      "nota": "ESTACION 3 (#246), sesion 4 · RETROALIMENTACION DE USO REAL de Montalvo y Esteban: cinco cosas de la pantalla del machote. (1) COMISION CON EXCEPCION POR SECCION. Una seccion puede repartir distinto del machote sin que la BOLSA cambie: lo unico que cambia es a quien le toca dentro de esa seccion. El motor hace CORTO CIRCUITO cuando ninguna seccion se desvia -corre el MISMO camino de antes, no uno equivalente- para que ningun machote existente pueda moverse un centavo. Al desmarcar la casilla el reparto propio se queda INERTE con su fecha y la pantalla lo dice, porque borrar el trabajo de alguien al destildar una casilla es el error que no tiene vuelta. (2) CONFIRMAR ANTES DE BORRAR seccion y renglon, con NUMEROS en la pregunta (cuantos renglones, cuanto dinero); un renglon en blanco se sigue borrando sin preguntar, que preguntar por nada ensena a decir que si sin leer. (3) LAS DOS FECHAS en la tabla, creada y modificada, en relativo -hace 2 dias- con la absoluta en el title; en el telefono van en UNA linea dentro de la tarjeta. (4) PAD DE TRABAJO por seccion, PLEGABLE y debajo, no como tercera columna: la hoja ya va apretada a 380 px y se midio dos veces. Es un borrador DECLARADO que no alimenta ningun total, y lo que lo hace util es el boton: pasa el numero a un renglon de verdad Y SE LLEVA EL TEXTO como comentario de ese renglon -eso es lo que hoy se pierde cuando la cuenta se hace en la calculadora del telefono-. (5) DESHACER hasta tres pasos, INDEPENDIENTE del guardado: deshacer aplica, marca tocado y guarda normal; el historial nunca se reescribe. El boton dice QUE se deshace, no solo deshacer."
+    },
     {
       "version": "V1.33",
       "pr": null,
