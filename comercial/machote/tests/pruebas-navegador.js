@@ -7031,19 +7031,23 @@ await sembrarMachotes(q);
 
     /* (c) Un renglón EN BLANCO se va sin preguntar.
      *
-     * ⚠️ Los treinta renglones de andamio que trae la sección están OCULTOS
-     * mientras `verVacios` esté apagado, así que no hay ninguno a la mano:
-     * se agrega uno con «+ partida», que además es el camino por el que un
-     * capturista se topa de verdad con un renglón vacío —agregó uno de más—. */
-    /* ⚠️ Un renglón en blanco hay que FABRICARLO: el fixture no trae ninguno
+     * ⚠️ Un renglón en blanco hay que FABRICARLO: el fixture no trae ninguno
      * (cinco renglones, los cinco capturados) y el que agrega «+ partida»
      * nace con `qty: 1`, que `usadaPartida` da por tocado —correctamente—.
      * Así que se agrega uno y se le borra la cantidad, que es justo lo que
-     * hace quien agregó uno de más. Con `verVacios` encendido para que no se
-     * esconda al quedar vacío. */
-    await p.check('#verVacios'); await p.waitForTimeout(600);
+     * hace quien agregó uno de más.
+     *
+     * ⚠️⚠️ Aquí había un `check('#verVacios')` puesto sobre una creencia
+     * FALSA —que los renglones vacíos de materiales estaban ocultos—. No lo
+     * están: la tabla de materiales pinta `s.partidas` ENTERA, sin filtro;
+     * `#verVacios` es de la tabla de MANO DE OBRA y ni siquiera existe cuando
+     * esa tabla no tiene renglones en cero. Con `SOLO` pasaba de casualidad
+     * (la MO venía vacía); en la suite completa una prueba anterior le llenó
+     * las horas, la casilla desapareció y esto se colgó 30 s. Es el caso que
+     * el encargo manda medir sin `SOLO`. */
     await p.click('[data-add]'); await p.waitForTimeout(600);
     const vacio = (await p.$$eval('[data-del]', e => e.map(x => x.dataset.del))).pop();
+    if (!vacio) throw new Error('«+ partida» no agregó ningún renglón');
     const [sv, jv] = vacio.split('#');
     const celQty = '[data-cel="s:' + sv + ':partidas:' + jv + ':qty"]';
     await p.fill(celQty, ''); await p.dispatchEvent(celQty, 'change'); await p.waitForTimeout(600);
