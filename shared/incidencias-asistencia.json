@@ -224,9 +224,19 @@
           "hora_propuesta_cst": "2026-09-11 10:19:00",
           "comentario": "Olvide registrar la entrada al llegar a fts",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "direccion",
+          "user_id": 32,
+          "usuario": "Jesus Esteban De La Cruz Calderon",
+          "timestamp": "2026-09-17T22:41:53.644Z",
+          "hora_propuesta_cst": "10:19",
+          "comentario": "Aprobada incidencia",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_direccion",
+      "status": "aprobada_por_direccion",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false,
       "department_id": 9,
@@ -241,7 +251,7 @@
       "rh_directo_ceo": true,
       "directo_ceo": false,
       "sin_supervisor": false,
-      "tag_disputa_activo": true
+      "tag_disputa_activo": false
     },
     {
       "id_interno": "INC-AUTO-CIERRE-153-2026-09-10T12-36-27-178Z",
