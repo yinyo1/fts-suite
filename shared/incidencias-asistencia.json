@@ -148,7 +148,7 @@
     {
       "id_interno": "INC-AUTO-CIERRE-59-2026-09-14T13-30-49-850Z",
       "tipo": "auto_cierre_pendiente",
-      "status": "pendiente_rh",
+      "status": "aprobada_con_ajuste",
       "fecha_creacion": "2026-09-14T13:30:51.702Z",
       "empleado_id": 59,
       "empleado_nombre": "Gerardo Isai Lozano Davila",
@@ -158,7 +158,7 @@
       "check_out_aplicado_utc": "2026-09-11 23:08:00",
       "horas_originales": "71.98",
       "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
-      "tag_disputa_activo": true,
+      "tag_disputa_activo": false,
       "autoincidencia": true,
       "rh_aprobo": null,
       "rh_fecha": null,
@@ -166,7 +166,18 @@
       "department_name": null,
       "supervisor_id": null,
       "supervisor_name": null,
-      "propuestas": []
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "rh",
+          "user_id": 63,
+          "usuario": "Magaly Estefanía Pérez García",
+          "timestamp": "2026-09-17T18:51:45.161Z",
+          "hora_propuesta_cst": "17:35",
+          "comentario": "SALIO 5.35 PM PERO EL RELOJ CHECADOR NO REGISTRO SU SALIDA.",
+          "accion": "ajustado"
+        }
+      ]
     },
     {
       "id_interno": "INC-OLV-63-2026-09-11T17-20-21-648Z",
