@@ -36,11 +36,21 @@
           "hora_propuesta_cst": null,
           "comentario": "aprobada entrada 6;40",
           "accion": "aprobado"
+        },
+        {
+          "paso": 3,
+          "rol": "rh",
+          "user_id": 63,
+          "usuario": "Magaly Estefanía Pérez García",
+          "timestamp": "2026-09-17T18:53:50.782Z",
+          "hora_propuesta_cst": "06:37",
+          "comentario": "EL REPORTE DEL SEÑOR JUAN VIA WHTSPP INGRESO A FTS A LAS 6.37 AM.",
+          "accion": "ajustado"
         }
       ],
-      "status": "pendiente_rh",
-      "hora_final_aplicada_utc": null,
-      "aplicado_en_odoo": false,
+      "status": "aprobada_con_ajuste",
+      "hora_final_aplicada_utc": "2026-09-15 12:37:00",
+      "aplicado_en_odoo": true,
       "department_id": 3,
       "department_name": "Operaciones",
       "sin_departamento": false,
@@ -53,7 +63,7 @@
       "rh_directo_ceo": false,
       "directo_ceo": false,
       "sin_supervisor": false,
-      "tag_disputa_activo": true
+      "tag_disputa_activo": false
     },
     {
       "id_interno": "INC-AUTO-CIERRE-149-2026-09-15T13-16-47-203Z",
