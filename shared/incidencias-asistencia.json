@@ -2,6 +2,52 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-CHK-155-2026-09-17T23-29-19-173Z",
+      "tipo": "olvido_checkout",
+      "empleado_id": 155,
+      "empleado_nombre": "Juan De La Cruz Maldonado",
+      "department_id": 16,
+      "department_name": "Recursos Humanos",
+      "sin_departamento": false,
+      "depto_invalido": false,
+      "supervisor_id": 63,
+      "supervisor_name": "Magaly Estefanía Pérez García",
+      "supervisor_email": "ventas@fts.mx",
+      "supervisor_phone": null,
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": false,
+      "sin_supervisor": false,
+      "attendance_id": 15545,
+      "fecha_creacion": "2026-09-17T23:29:19.173Z",
+      "check_in_original_utc": "2026-09-17 12:25:49",
+      "check_out_propuesto_utc": "2026-09-17 18:01:00",
+      "check_out_propuesto_cst": "2026-09-17 12:01:00",
+      "geolocation": {
+        "lat": 25.68909466666667,
+        "lng": -100.29172416666667,
+        "accuracy": 100,
+        "captured_at": "2026-09-17T23:29:16.153Z"
+      },
+      "foto_base64": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "accion": "crear",
+          "fecha": "2026-09-17T23:29:19.173Z",
+          "hora_propuesta_cst": "12:01",
+          "comentario": "olvide registrar salida"
+        }
+      ],
+      "status": "pendiente_supervisor",
+      "hora_final_aplicada_utc": "2026-09-17 18:01:00",
+      "aplicado_en_odoo": true,
+      "tag_disputa_activo": true,
+      "creada_por_modulo": "kiosk",
+      "creada_por_build": "20260710-kiosk-versioncheck"
+    },
+    {
       "id_interno": "INC-OLV-131-2026-09-15T13-21-07-430Z",
       "odoo_incidencia_id": null,
       "tipo": "olvido_entrada",
