@@ -553,6 +553,17 @@ Cuando crees un nuevo workflow:
 - El cron 2am (PR E) cierra el orphan a +9.6h con TAG disputa.
 - El replay del queue offline (PR C) puede llegar después con el `ts_evento` real.
 - **Regla: `ts_evento` real GANA sobre el +9.6h estimado.** Documentado en ambos docs para no perderse.
+- **Caso real que separa a los dos, medido el 18-sep-2026 (issue #252):** Germán Merino
+  (att 15549) entró el 17-sep 12:58:11 UTC y su salida **nunca llegó al servidor** — el
+  log del proxy no tiene ni un 499 suyo, y las otras ocho peticiones de kiosk de esa
+  ventana salieron 200 en 0.9–2.6 s. Su pantalla dijo *«signal is aborted without
+  reason»*: el `AbortController` de `n8nFetch` cortando a los 10 s. **El cron de PR E lo
+  habría cerrado a las 2 am con 9.6 h estimadas** y una incidencia para que alguien
+  adivinara la hora; **la cola de PR C lo habría guardado con su `ts_evento` real de las
+  17:25 y lo habría reenviado solo al volver la red** — 10.45 h correctas, sin que nadie
+  preguntara nada. Los dos PRs se parecen en el papel y **no resuelven el mismo problema**:
+  PR E cubre al que nunca cierra, PR C cubre al que **sí cerró y no llegó**. Éste era de
+  los segundos, y se resolvió a mano.
 
 **Infra hardening 28-may:**
 - Variables Railway n8n aplicadas: `EXECUTIONS_DATA_MAX_AGE=336` (14 días), `EXECUTIONS_DATA_SAVE_ON_ERROR=all`, `EXECUTIONS_DATA_SAVE_ON_SUCCESS=all` + 6 más de cleanup.
@@ -1143,6 +1154,34 @@ que las cinco columnas aparecieran y decir cuál falta. Otros dos apuntados: los
 de depto de `DEPTOS_VALIDOS` en los workflows (§13 hallazgo 2, falla en silencio) y los
 nombres de cuenta de la lista `BOLSAS` de Confirmar Horas (cosmético, y ya hay deriva:
 el panel dice `Administración`, Odoo dice `CENTRO DE COSTOS ADMINISTRACION`).
+
+### 17. El historial limpio es NECESARIO y no suficiente
+**Un cero no distingue «no pasó» de «no puede pasar».** Sirve para **descartar** —quien
+sí fue a obra no es precargable, y eso el dato lo prueba— pero **no** para **admitir**:
+la ausencia de casos y la imposibilidad de casos se ven idénticas en cualquier tabla, y
+la diferencia no está en el historial sino en el **rol**.
+
+*(Origen: 18-sep-2026, issue #247. Se derivaron 14 «precargables» de nueve semanas de
+asistencias con cero horas a proyecto. Tres estaban mal: un **Ingeniero Comercial** y un
+**CHOFER** nunca habían ido a obra y pueden ir cualquier día. La marca
+`x_studio_solo_bolsa` que ya existía en Odoo —puesta por alguien que razonó por puesto—
+ya excluía a esos tres. Dos criterios independientes coincidieron y el del historial fue
+el raro.)*
+
+**Y falla en las DOS direcciones**, que es lo que la hace traicionera:
+- **Falso positivo** — «nunca ha ido» leído como «no va»: el chofer, el ingeniero
+  comercial. El historial dice cero y el puesto dice que sí puede.
+- **Falso negativo** — un caso suelto leído como «sí va»: Gibrán salió como MIXTO por
+  asistencias a proyecto **anteriores a un cambio de régimen**; contadas desde el corte
+  correcto, su historial es limpio y sí es precargable.
+
+**Regla operativa:** antes de convertir un conteo en una regla, preguntar **qué impide
+el caso contrario**. Si la respuesta es «nada, simplemente no ha tocado», el conteo no
+alcanza — hace falta el atributo que lo impide (el puesto, el contrato, el permiso), y
+casi siempre **ya está capturado en algún campo** que nadie mira. Buscarlo antes de
+derivarlo. Es la misma familia del `[]` que no prueba la consulta (§20 #11) y del
+`insertadas: 0` que se ve igual que un éxito (§9): **en los tres, un vacío se lee como
+una respuesta.**
 
 ### Correcciones a reglas anteriores (verificadas 2026-08-31)
 
