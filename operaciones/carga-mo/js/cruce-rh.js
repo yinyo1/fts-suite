@@ -134,6 +134,35 @@
       .normalize('NFD').replace(/[̀-ͯ]/g, '')
       .toUpperCase().replace(/\s+/g, ' ').trim();
   }
+  // ── Empate de la MISMA persona entre los dos lados ────────────────────────
+  // Odoo escribe "Brandon Alexander Barrón Balderas" y CONTPAQi
+  // "BARRON BALDERAS BRANDON ALEXANDER": otro orden y sin acentos. La cabecera de
+  // este archivo dice —y tiene razón— que cruzar por nombre es adivinar, y por eso
+  // la LLAVE sigue siendo el código. Esto NO es la llave: sirve sólo para darse
+  // cuenta de que dos hallazgos hablan de la misma persona, y fusionarlos.
+  //
+  // La diferencia está en qué pasa si se equivoca. Un empate falso junta dos avisos
+  // de dos personas distintas: se lee raro, los dos nombres están escritos ahí, y
+  // alguien lo ve. Un cruce de DATOS equivocado le paga a quien no era. Son dos
+  // radios de daño distintos, y por eso aquí el nombre alcanza y para la llave no.
+  function palabras(s) {
+    var t = norm(s).replace(/[^A-Z0-9 ]/g, ' ').split(' ');
+    var o = [];
+    for (var i = 0; i < t.length; i++) if (t[i].length > 2) o.push(t[i]);
+    return o;
+  }
+  function mismaPersona(a, b) {
+    var A = palabras(a), B = palabras(b);
+    if (A.length < 2 || B.length < 2) return false;
+    var chico = A.length <= B.length ? A : B;
+    var grande = A.length <= B.length ? B : A;
+    // TODAS las palabras del nombre corto tienen que estar en el largo. Exigir el
+    // total y no un parecido es lo que evita casar hermanos: "BARRON BALDERAS JUAN"
+    // y "BARRON BALDERAS BRANDON" comparten dos de tres y no empatan.
+    for (var i = 0; i < chico.length; i++) if (grande.indexOf(chico[i]) < 0) return false;
+    return true;
+  }
+
   function num(v) { var n = Number(v); return isFinite(n) ? n : 0; }
   function r2(n) { return Math.round(n * 100) / 100; }
 
@@ -309,6 +338,8 @@
     var porCod = {};
     for (i = 0; i < emps.length; i++) if (emps[i].cod) porCod[('00' + emps[i].cod).slice(-3)] = emps[i];
     var vistos = {};
+    // Las personas que RH mandó sin código, guardadas para el empate del paso 9.
+    var sinCodigo = [];
 
     // Quién es externo (del catálogo) y quién facturó (del Excel), por empleado_id.
     var ext0 = externos || {};
@@ -356,6 +387,7 @@
 
         // (b) Le falta el código de verdad: está en la nómina de CONTPAQi pero su
         // ficha de Odoo no lo tiene cargado. Eso sí se arregla, y en Odoo.
+        sinCodigo.push({ nombre: f.nombre, no_empleado: f.no_empleado, idx: hallazgos.length });
         hallazgos.push({ nivel: REVISION, codigo: 'RH_SIN_CODIGO',
           que: 'RH mandó una persona sin código de CONTPAQi, no se puede cruzar',
           dato: f.nombre + (f.instruccion ? ' · ' + f.instruccion : ''),
@@ -502,16 +534,46 @@
     }
 
     // 9 · Gente en la nómina que RH nunca listó.
+    //
+    // Antes de acusar, se pregunta si no es alguien que YA salió arriba como "RH la
+    // mandó sin código". Cuando lo es, son las dos mitades del MISMO hueco —la ficha
+    // de Odoo sin el código de CONTPAQi— y decirlo dos veces, una de ellas apagando
+    // el botón, es lo que enseña a desconfiar de la lista: la persona aparece como
+    // dos problemas y ninguno de los dos es el que hay que arreglar.
     for (i = 0; i < emps.length; i++) {
       var c3 = ('00' + emps[i].cod).slice(-3);
       if (vistos[c3]) continue;
+
+      var par = null;
+      for (j = 0; j < sinCodigo.length; j++) {
+        if (sinCodigo[j].usado) continue;
+        if (mismaPersona(sinCodigo[j].nombre, emps[i].nombre)) { par = sinCodigo[j]; break; }
+      }
+
+      if (par) {
+        par.usado = true;
+        hallazgos[par.idx]._fusionado = true;
+        hallazgos.push({ nivel: REVISION, codigo: 'PERSONA_SIN_CODIGO_EN_ODOO',
+          que: 'La misma persona está en los dos lados, y el hueco es su código en Odoo',
+          dato: par.nombre + ' · RH la mandó sin código (empleado ' + (par.no_empleado || '?') + ')' +
+                ' · la nómina la paga como ' + c3 + ' "' + emps[i].nombre + '"' +
+                ' · neto $' + num(emps[i].neto).toFixed(2),
+          accion: 'Cárgale el código ' + c3 + ' en su ficha de Odoo (x_studio_codigo_contpaqi). ' +
+                  'No es un error de la nómina: mientras el código no esté, va a seguir saliendo por los dos lados.' });
+        continue;
+      }
+
       hallazgos.push({ nivel: INTEGRIDAD, codigo: 'PAGO_SIN_RH',
         que: 'La nómina paga a alguien que RH no incluyó en la semana',
         dato: c3 + ' ' + emps[i].nombre + ' · neto $' + num(emps[i].neto).toFixed(2),
         accion: 'Confirma con RH. Puede ser un alta que no llegó al módulo de nómina.' });
     }
 
-    return { hallazgos: hallazgos, resumen: res };
+    // Los RH_SIN_CODIGO que encontraron su otra mitad ya se dijeron fusionados.
+    var salida = [];
+    for (i = 0; i < hallazgos.length; i++) if (!hallazgos[i]._fusionado) salida.push(hallazgos[i]);
+
+    return { hallazgos: salida, resumen: res };
   }
 
   // ── Comparar lo que RH pidió contra lo que se capturó ─────────────────────

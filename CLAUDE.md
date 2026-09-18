@@ -1183,6 +1183,34 @@ derivarlo. Es la misma familia del `[]` que no prueba la consulta (§20 #11) y d
 `insertadas: 0` que se ve igual que un éxito (§9): **en los tres, un vacío se lee como
 una respuesta.**
 
+### 18. Una fila ausente de un filtro no dice nada sobre su valor
+**Sólo dice que no cumplió el filtro.** Y como el filtro casi siempre se escribió
+para encontrar *lo que está mal*, la fila que desaparece es justo la que **se
+arregló** — que es la lectura contraria a la que invita la ausencia.
+
+*(Origen: 18-sep-2026, tres veces en la misma sesión y las tres en superficies
+distintas:*
+- *un filtro `manager_approval = "si"` devolvió **8,645** registros —casi la tabla
+  entera— y la lista se leyó como si hubiera filtrado (#254);*
+- *contar la subcadena `PPA` en el archivo de RH dio **16** en vez de 14, porque
+  también encuentra la nota «SI APLICA **PPA**» de quien NO lo tiene (#256);*
+- *un script que listaba filas «con PPA distinto de cero **o** sin código» dejó de
+  mostrar a César en cuanto Ulises le puso el PPA en 0 con su código 058 — dejó de
+  cumplir las dos condiciones. Su ausencia se leyó como «sigue igual» cuando
+  significaba «ya se corrigió».)*
+
+**Regla operativa:** antes de concluir algo de una lista, preguntar **qué tendría
+que pasar para que una fila NO aparezca**, y comprobar que esa respuesta es la que
+se está suponiendo. Si el conteo total es absurdo —casi todo, o casi nada— eso solo
+ya es motivo para parar: un filtro que no discrimina se ve idéntico a uno que sí.
+Y cuando exista, preferir **el contador que el propio proceso escribió** (el
+`14 con premio` del generador) sobre cualquier recuento hecho por fuera.
+
+Es la misma familia del `[]` que no prueba la consulta (§20 #11), del
+`insertadas: 0` que se ve igual que un éxito (§9) y del cero que no distingue «no
+pasó» de «no puede pasar» (§20 #17). **En los cuatro, un vacío se lee como una
+respuesta.**
+
 ### Correcciones a reglas anteriores (verificadas 2026-08-31)
 
 - **§15 #3 quedó stale.** Decía que `docs/n8n-workflows/pmo-chat-apply-code-code-validar-auth.js`
