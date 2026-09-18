@@ -57,7 +57,7 @@
       partes.push('Enviada el <b>' + esc(fechaHoraCst(w.enviado_en)) + '</b>' +
                   (w.actor ? ' por ' + esc(w.actor) : '') +
                   (Number(w.version) > 1 ? ' · versión ' + Number(w.version) : ''));
-      if (w.motivo) partes.push('Última corrección: ' + esc(w.motivo));
+      if (w.motivo) partes.push('Última nota: ' + esc(w.motivo));
     } else if (w.personas_capturadas > 0) {
       partes.push('<span class="cap">' + w.personas_capturadas +
                   (w.personas_capturadas === 1 ? ' persona capturada' : ' personas capturadas') +

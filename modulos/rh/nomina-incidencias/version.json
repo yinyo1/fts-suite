@@ -1,10 +1,15 @@
 {
-  "version": "V1.18",
-  "fecha": "2026-09-05",
+  "version": "V1.19",
+  "fecha": "2026-09-18",
   "modulo": "rh/nomina-incidencias",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "ambito": "El CONTADOR es solo de este modulo. finanzas, comercial/machote y operaciones/carga-mo usan el mismo esquema con contadores PROPIOS (ver sus version.json): que aqui vaya en V1.16 y carga-mo en V1.00 es lo correcto, no un desfase — son modulos distintos que avanzan por separado. operaciones/planeacion sigue en 2.4.1; kiosk y confirmar-horas solo con cadena de build.",
   "historial": [
+    {
+      "version": "V1.19",
+      "pr": null,
+      "nota": "Reenviar deja de llamarse 'corregir'. La mecanica no cambia una linea: los mismos pasos, el mismo motivo obligatorio, la misma version que reemplaza a la anterior. Lo que cambia son las siete frases que Magaly lee, porque todas daban por hecho que reenviar es arreglar un error — 'Reenviar corregida', 'Que se corrigio?', 'Ultima correccion', 'Corregir una semana ya enviada'. La mitad de los reenvios no son errores: son acuerdos posteriores, un bono autorizado el jueves, un dia aclarado con el empleado. Llamarle correccion a eso convierte un acuerdo en una confesion, y quien lo lee cada semana acaba sintiendo que se equivoca cada semana. Ahora el boton dice 'Reenviar', el modal pregunta 'Que cambio?', y una linea nueva dice que sirve igual para corregir un error que para registrar algo que se acordo despues. El ejemplo del recuadro trae los dos casos, no solo el del error. El encabezado del archivo que le llega a Ulises sigue diciendo 'corregida' a proposito: ese texto viaja en el contrato con Carga MO y se toca cuando toque el renombre de ID ODOO, no antes (un cambio de contrato a la vez)."
+    },
     {
       "version": "V1.18",
       "pr": null,

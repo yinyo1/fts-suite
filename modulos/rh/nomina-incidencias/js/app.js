@@ -166,8 +166,14 @@
   // Una semana ya enviada NO se cierra: se puede seguir capturando y volver a
   // mandar. Lo que cambia es el nombre del botón, para que nadie crea que está
   // mandando por primera vez algo que el despacho ya recibió.
+  //
+  // Dice 'Reenviar' y NO 'Reenviar corregida' a propósito: reenviar no siempre es
+  // arreglar un error. La mitad de las veces es registrar algo que se acordó
+  // después — un bono que se autorizó el jueves, un día que se aclaró con el
+  // empleado. Llamarle 'corregida' a eso convierte un acuerdo en una confesión, y
+  // quien lo lee cada semana acaba sintiendo que se equivoca cada semana.
   function etiquetaBoton() {
-    return yaEnviada() ? 'Reenviar corregida a Nóminas FTS' : 'Enviar a Nóminas FTS';
+    return yaEnviada() ? 'Reenviar a Nóminas FTS' : 'Enviar a Nóminas FTS';
   }
 
   // ══════════════════════════ PANTALLA 1 ══════════════════════════
@@ -1115,14 +1121,14 @@
       '<div style="font-size:13px;line-height:1.7;color:var(--muted2)">' +
       'El ' + esc(fechaHoraCst(e.enviado_en)) + ' por <b>' + esc(e.actor || '—') + '</b>' +
       (e.nombre_archivo ? ' · archivo <code>' + esc(e.nombre_archivo) + '</code>' : '') +
-      (e.motivo ? '<br>Última corrección: ' + esc(e.motivo) : '') +
+      (e.motivo ? '<br>Última nota: ' + esc(e.motivo) : '') +
       '</div>';
 
     if (atrasado) {
       h += '<div style="font-size:13px;line-height:1.6;margin-top:9px">' +
         '<b>' + esc(e.cambios_despues) + ' persona' + (Number(e.cambios_despues) > 1 ? 's se han capturado' : ' se ha capturado') +
         ' después del envío.</b> Lo que tiene el despacho es la versión ' + esc(e.version) +
-        '; para que le llegue lo corregido hay que <b>reenviar</b>.</div>';
+        '; para que le llegue <b>lo nuevo</b> hay que reenviar.</div>';
     }
 
     h += '<div class="mact" style="margin-top:12px">' +
@@ -1299,7 +1305,7 @@
       return;
     }
 
-    // Reenviar una semana ya enviada exige decir qué se corrigió. El server lo vuelve
+    // Reenviar una semana ya enviada exige decir qué cambió. El server lo vuelve
     // a exigir (REENVIO_SIN_MOTIVO): preguntarlo aquí es para que la persona no se
     // tope con el rechazo después de haber apretado el botón.
     var motivo = '';
@@ -1343,20 +1349,21 @@
     }
   }
 
-  // Diálogo del motivo de la corrección. Devuelve el texto, o null si se cancela.
+  // Diálogo del motivo del reenvío. Devuelve el texto, o null si se cancela.
   function pedirMotivoCorreccion() {
     return new Promise(function (resolve) {
       var e = envio();
-      var caja = modal('Corregir una semana ya enviada',
+      var caja = modal('Reenviar una semana ya enviada',
         '<div class="msub">La semana ' + esc(S.semana.id) + ' se envió el ' + esc(fechaHoraCst(e.enviado_en)) +
         ' por ' + esc(e.actor || '—') + ' (versión ' + esc(e.version) + '). ' +
         'Vas a mandar la <b>versión ' + (Number(e.version) + 1) + '</b>, que reemplaza a la anterior ' +
         'ante el despacho.</div>' +
         '<div class="mprev">Lo que se envió antes NO se borra: queda guardado y se puede volver a bajar.</div>' +
-        '<label for="mot">¿Qué se corrigió? <span class="req">obligatorio</span></label>' +
-        '<textarea id="mot" rows="3" placeholder="Ej.: a Pedro le faltaba 1 día de incapacidad con folio"></textarea>' +
+        '<label for="mot">¿Qué cambió? <span class="req">obligatorio</span></label>' +
+        '<textarea id="mot" rows="3" placeholder="Ej.: se autorizó el bono de Samuel el jueves · o: a Pedro le faltaba 1 día de incapacidad"></textarea>' +
+        '<div class="mprev">Sirve igual para <b>corregir un error</b> que para <b>registrar algo que se acordó después</b>. Lo que escribas viaja en el archivo del despacho.</div>' +
         '<div id="moterr"></div>' +
-        '<div class="mact"><button class="btn pri" id="motok">Reenviar corregida</button>' +
+        '<div class="mact"><button class="btn pri" id="motok">Reenviar</button>' +
         '<button class="btn" data-cerrar>Cancelar</button></div>');
       var cuerpo = caja.querySelector('.mpanel');
       var listo = false;
@@ -1367,7 +1374,7 @@
         var v = ('' + cuerpo.querySelector('#mot').value).trim();
         if (v.length < 4) {
           var err = cuerpo.querySelector('#moterr');
-          err.textContent = 'Escribe qué se corrigió: el server no acepta un reenvío sin motivo.';
+          err.textContent = 'Escribe qué cambió: el server no acepta un reenvío sin motivo.';
           err.className = 'merr';
           return;
         }
