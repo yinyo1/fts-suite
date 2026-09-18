@@ -1,10 +1,20 @@
 {
-  "version": "V1.01",
-  "fecha": "2026-09-04",
+  "version": "V1.03",
+  "fecha": "2026-09-18",
   "modulo": "operaciones/carga-mo",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "ambito": "El CONTADOR es SOLO de este modulo y arranca en V1.00 aunque el modulo lleve meses en produccion: antes se versionaba con una cadena de build (la ultima fue 20260904-cmo-cruce-rh) y esa numeracion no se puede continuar. rh/nomina-incidencias, finanzas y comercial/machote usan el MISMO esquema con contadores PROPIOS — que aqui diga V1.00 y alla V1.16 es lo correcto, no un desfase.",
   "historial": [
+    {
+      "version": "V1.03",
+      "pr": null,
+      "nota": "Dos cambios para que una semana YA PAGADA se pueda cerrar. (1) EMPATE DE LA MISMA PERSONA: quien viene sin codigo de CONTPAQi salia DOS veces —como 'RH la mando sin codigo' (REVISION) y como 'la nomina paga a alguien que RH no incluyo' (INTEGRIDAD, que apagaba el boton)— porque el cruce no empataba las dos mitades. Eran el mismo hueco: su ficha de Odoo sin el codigo. Ahora sale UN hallazgo de REVISION que nombra los dos lados y dice donde se arregla. El empate es por conjunto de palabras del nombre y exige que TODAS las del nombre corto esten en el largo, para no casar hermanos; se usa solo para fusionar hallazgos, NUNCA como llave de datos: un empate falso junta dos avisos y se ve, un cruce de datos falso le paga a quien no era. Medido contra el caso real de S38 (Brandon, emp 133, codigo 072). (2) DECLARACION 'YA SE PAGO Y TIMBRO': el archivo del despacho es una PRENOMINA; mientras no se timbre, bloquear sirve porque hay ventana para corregir, pero despues del timbrado el dinero ya salio y bloquear solo deja el costo sin registrar en Odoo. El modulo NO sabe si una semana se timbro —nom_envio solo distingue borrador de enviada, que es el envio de RH al despacho— asi que se declara. Los hallazgos NO se degradan ni se esconden: se siguen contando, pintando y mandando con su nivel real; lo unico que cambia es que dejan de apagar el boton. La declaracion se sella con quien y cuando al marcarla, se dice en pantalla arriba de los hallazgos, y viaja en el reporte tambien cuando es false."
+    },
+    {
+      "version": "V1.02",
+      "pr": null,
+      "nota": "El lector del archivo de RH acepta los DOS nombres de la columna del id: 'NO EMPLEADO' (como se ha llamado siempre) e 'ID ODOO' (como se va a llamar). Es la mitad TOLERANTE del renombre, y va primero a proposito: ese encabezado no es un rotulo, es el DETECTOR del renglon de columnas del archivo; si el generador cambiara el nombre con el lector sabiendo solo el viejo, el cruce no fallaria en una columna, moriria entero con 'No se encontro el renglon de columnas' y de paso se caeria el cruce de externos por id de Odoo. El generador sigue emitiendo 'NO EMPLEADO' hasta verificar esta mitad en produccion (regla anti-trabon, CLAUDE.md seccion 8). Los dos nombres se quedan para siempre: los acuses ya generados tienen que seguir abriendose dentro de un anio. El nombre nuevo dice lo que la columna trae —el id del empleado en Odoo— y deja de confundirse con CODIGO, que es el numero de CONTPAQi."
+    },
     {
       "version": "V1.01",
       "pr": null,

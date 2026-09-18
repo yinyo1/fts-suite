@@ -23,11 +23,77 @@
     { id: 478,  nombre: 'RH' }
   ];
 
-  // Celda de atribución: proyecto (🛠️) > bolsa (🗂️) > sin atribución.
+  // ═══ PRECARGA DE DESTINO ═══════════════════════════════════════════════
+  // EL PROBLEMA. Hoy se puede confirmar un renglón SIN destino: el semáforo lo
+  // cuenta como listo y su dinero no sabe a dónde ir. Pasó tres veces en septiembre
+  // (att 15272, 15353, 15505). Y para la mitad de la gente el destino nunca cambia:
+  // medido del 17-jul en adelante, 14 personas llevan 9 semanas con CERO horas a
+  // proyecto. Elegir cada día lo que nunca cambia es el trabajo que produce el hueco.
+  //
+  // QUÉ HACE. Al renglón sin destino de esa gente le llega el suyo YA PROPUESTO, y al
+  // confirmar se escribe junto con la aprobación. Felipe sigue confirmando —que es el
+  // control— pero deja de elegir lo que nunca cambia.
+  //
+  // EL DISPARADOR ES LA MARCA `solo_bolsa`, NO LA CUENTA. Tres personas con cuenta
+  // default poblada SÍ van a obra (Francisco Montalvo 8, Jesús Montalvo 68, Mateo
+  // Salazar 75) y ninguna tiene la marca. Precargar "por tener cuenta" las costearía
+  // mal en silencio; precargar por la marca no falla contra el histórico medido.
+  //
+  // ⚠️ APAGADA. Se enciende con ?precarga=1 —y entonces la pantalla lo anuncia— para
+  // poder mirarla antes de que escriba nada. Opt-in explícito, convención de
+  // docs/FEATURE_FLAGS.md: un default opt-out convierte a cualquiera en cobaya.
+  var PRECARGA_ACTIVA = false;
+  function precargaEncendida(){
+    if(PRECARGA_ACTIVA) return true;
+    try { return /[?&]precarga=1(&|$)/.test(window.location.search); } catch(e){ return false; }
+  }
+
+  // LA MARCA PUEDE ESTAR MAL PUESTA, y el panel puede darse cuenta solo. Si alguien
+  // marca solo_bolsa a quien sí va a obra, sus OTROS renglones del mismo rango traen
+  // proyecto: la contradicción está en la pantalla. Cuando aparece NO se precarga
+  // nada y se dice — es preferible el hueco de hoy, que se ve, a un destino inventado
+  // con cara de dato de Odoo.
+  function contradiceSoloBolsa(row){
+    // Bajo el MISMO interruptor que la precarga, y no por pereza: esta señal existe
+    // para frenarla. Con la precarga apagada la pantalla de Felipe tiene que ser
+    // exactamente la de hoy — ni un marcador nuevo que nadie le explicó.
+    if(!precargaEncendida()) return false;
+    if(!row || row.solo_bolsa !== true) return false;
+    for(var i = 0; i < CH.rows.length; i++){
+      var o = CH.rows[i];
+      if(o.empleado_id === row.empleado_id && o.so_id) return true;
+    }
+    return false;
+  }
+
+  // Devuelve {id, nombre} o null. Cinco candados, y el orden importa: primero lo que
+  // YA tiene destino (jamás se toca), al final lo que el servidor no mandó.
+  function precargaDe(row){
+    if(!precargaEncendida() || !row) return null;
+    if(row.confirmado || row.abierta) return null;   // no se propone sobre lo ya cerrado ni lo que sigue corriendo
+    if(row.so_id || row.cuenta_id) return null;      // tiene destino: no es nuestro
+    if(row.solo_bolsa !== true) return null;         // la marca, no la cuenta
+    if(contradiceSoloBolsa(row)) return null;        // la marca se contradice con su propio rango
+    if(!row.cuenta_default_id) return null;          // el servidor no lo mandó → no se inventa
+    return { id: row.cuenta_default_id,
+             nombre: row.cuenta_default_nombre || ('Bolsa ' + row.cuenta_default_id) };
+  }
+  function hayPrecarga(row){ return !!precargaDe(row); }
+
+  // Celda de atribución: proyecto (🛠️) > bolsa (🗂️) > propuesta > sin atribución.
   function celdaAtribucion(row){
     if(row.so_id) return esc(row.so_nombre || ('Proy ' + row.so_id));
     if(row.cuenta_id) return '<span class="ch-bolsa">🗂️ ' + esc(row.cuenta_nombre || ('Bolsa ' + row.cuenta_id)) + '</span>';
     if(row.abierta) return '<span style="color:#999">— (en curso)</span>';   // PR-6: abierta sin atribución aún ≠ hueco
+    // La propuesta se pinta DISTINTA del destino real a propósito: lo que viene de
+    // Odoo y lo que todavía no está escrito no pueden verse igual (CLAUDE.md §8).
+    var pre = precargaDe(row);
+    if(pre) return '<span class="ch-pre" title="Propuesta por su marca solo-bolsa. Todavía NO está en Odoo: se escribe al confirmar.">🗂️ ' +
+      esc(pre.nombre) + '</span> <span class="ch-tag-pre">propuesta</span>';
+    // La contradicción va con PALABRAS, no con un glifo: al lado ya hay un 🔒 (la
+    // marca solo-bolsa) y dos candados juntos no se distinguen de un vistazo.
+    if(contradiceSoloBolsa(row)) return '<span class="ch-sinso">⚠ Sin atribución</span> ' +
+      '<span class="ch-contra" title="Marcado solo-bolsa y con renglones a proyecto en este mismo rango: la marca no cuadra. No se propone nada hasta aclararlo en Odoo.">marca en duda</span>';
     return '<span class="ch-sinso">⚠ Sin atribución</span>';
   }
   // Etiqueta de la atribución ACTUAL (para prev_label del chatter).
@@ -36,6 +102,15 @@
     if(row.so_id) return row.so_nombre || ('Proy ' + row.so_id);
     if(row.cuenta_id) return row.cuenta_nombre || ('Bolsa ' + row.cuenta_id);
     return '(sin atribución)';
+  }
+
+  // Lo que va a QUEDAR escrito si se confirma este renglón. Distinto de
+  // labelAtribucion, que dice lo que tiene HOY: el popup tiene que enseñar lo que se
+  // va a escribir, no lo que había.
+  function labelDestinoAEscribir(row){
+    var pre = precargaDe(row);
+    if(pre) return '🗂️ ' + pre.nombre + ' · propuesta';
+    return labelAtribucion(row);
   }
 
   // #2b: cross-departamento a PROYECTO (no bolsa). Los híbridos pueden hacerlo; la alerta hace visible, no bloquea.
@@ -344,7 +419,7 @@
     return arr.map(function(r){
       var fl = flagsRow(r);
       return '<tr><td>' + (fl ? fl + ' ' : '') + esc(r.empleado_nombre||'') + '</td><td>' + esc(r.department_name||'') + '</td><td>' +
-        esc(labelAtribucion(r)) + '</td><td style="text-align:right">' + (r.worked_hours!=null? r.worked_hours.toFixed(2)+'h':'—') + '</td></tr>';
+        esc(labelDestinoAEscribir(r)) + '</td><td style="text-align:right">' + (r.worked_hours!=null? r.worked_hours.toFixed(2)+'h':'—') + '</td></tr>';
     }).join('');
   }
   function abrirPopupEnvio(marked, sinMarcar, sinLinea, auto){
@@ -357,6 +432,10 @@
     var html = intro +
       '<table class="ch-pop-tbl"><thead><tr><th>Empleado</th><th>Depto</th><th>Destino</th><th>Hrs</th></tr></thead><tbody>' + popFilas(marked) + '</tbody></table>';
     var alertas = [];
+    var conPre = marked.filter(hayPrecarga);
+    var contra = marked.filter(contradiceSoloBolsa);
+    if(conPre.length) alertas.push('🗂️ <b>' + conPre.length + '</b> con destino PROPUESTO (marca solo-bolsa) — se escribe al confirmar');
+    if(contra.length) alertas.push('⚠️ <b>' + contra.length + '</b> con la <b>marca en duda</b> (solo-bolsa y con renglones a proyecto) — van sin destino, revisa la marca en Odoo');
     if(cross.length) alertas.push('⚠️ <b>' + cross.length + '</b> de otro depto cargando a proyecto');
     if(warn.length)  alertas.push('🟠 <b>' + warn.length + '</b> con MO sin fondos / agotada (se registra el sobrecosto)');
     if(disp.length)  alertas.push('⚖️ <b>' + disp.length + '</b> en disputa — se confirman pero deberán resolverse antes de nómina');
@@ -396,12 +475,25 @@
       var row = findRow(att); var est = budgetEstado(row); var ack = {};
       if(est === 'placeholder') ack.ack_mo_placeholder = true;
       else if(est === 'agotado') ack.ack_mo_agotado = true;
-      n8n('/webhook/planeacion/confirmar-horas', Object.assign({ attendance_id: att, action: 'confirm', origen: 'envio', supervisor_nombre: CH.supervisor }, ack))
+
+      // Con destino propuesto el envío NO es un confirm a secas: es la corrección que
+      // además confirma, por el mismo endpoint que ya usa el botón ✎. Destino y
+      // aprobación entran en la MISMA escritura, así que no se puede quedar aprobado
+      // sin destino — que es exactamente el hueco que esto viene a tapar.
+      var pre = precargaDe(row);
+      var url = pre ? CORREGIR_URL : '/webhook/planeacion/confirmar-horas';
+      var payload = pre
+        ? payloadCorreccion(att, row, 'bolsa', pre.id, pre.nombre)
+        : Object.assign({ attendance_id: att, action: 'confirm', origen: 'envio', supervisor_nombre: CH.supervisor }, ack);
+      n8n(url, payload)
         .then(function(data){
           var r = Array.isArray(data) ? data[0] : data;
           if(r && (r.bloqueo || r.needs_ack)){ blocked++; return; }
           if(!r || r.success === false) throw new Error();
-          if(row){ row.confirmado = true; row._marcado = false; }
+          if(row){
+            if(pre){ row.cuenta_id = pre.id; row.cuenta_nombre = pre.nombre; row.so_id = null; row.so_nombre = ''; }
+            row.confirmado = true; row._marcado = false;
+          }
           actualizarFila(att); ok++;
         })
         .catch(function(){ fail++; })
@@ -479,10 +571,11 @@
     });
   }
 
-  // Corrección con excluyencia mutua → planeacion/corregir-bolsa. Escribe manager_approval=true.
-  function corregir(attId, tipo, id, nombre){
-    if(!attId || !id || !tipo) return;
-    var row = findRow(attId);
+  // El cuerpo de la corrección sale de UNA definición porque ahora lo mandan DOS
+  // caminos: el botón ✎ (elegir a mano) y el envío de un renglón con destino
+  // propuesto. Si se escribieran por separado, el día que cambie el contrato se
+  // arregla uno y el otro sigue mandando la forma vieja.
+  function payloadCorreccion(attId, row, tipo, id, nombre){
     var esBolsa = tipo === 'bolsa';
     var origen = (row && row.cuenta_id) ? 'bolsa' : ((row && row.so_id) ? 'proyecto' : 'nada');
     var payload = {
@@ -494,6 +587,15 @@
       supervisor_nombre: CH.supervisor
     };
     if(esBolsa) payload.cuenta_id = id; else payload.so_id = id;
+    return payload;
+  }
+
+  // Corrección con excluyencia mutua → planeacion/corregir-bolsa. Escribe manager_approval=true.
+  function corregir(attId, tipo, id, nombre){
+    if(!attId || !id || !tipo) return;
+    var row = findRow(attId);
+    var esBolsa = tipo === 'bolsa';
+    var payload = payloadCorreccion(attId, row, tipo, id, nombre);
     $('modal-so-list').innerHTML = '<div class="ch-placeholder">⏳ Guardando…</div>';
     n8n(CORREGIR_URL, payload).then(function(data){
       var r = Array.isArray(data) ? data[0] : data;
@@ -540,6 +642,14 @@
     }
 
     $('main-content').style.display = 'block';
+
+    // La precarga apagada no se anuncia. Encendida SÍ: una pantalla que propone un
+    // destino tiene que decir que lo está proponiendo, o el siguiente que la abra
+    // creerá que el destino vino de Odoo.
+    if(precargaEncendida()){
+      var avi = $('ch-precarga-aviso');
+      if(avi) avi.style.display = 'block';
+    }
 
     // Default: ayer (CST)
     var ayer = ymd(ayerCST());

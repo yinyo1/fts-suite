@@ -272,6 +272,7 @@ Pendiente F4: usar este mapeo al guardar planes operativos.
 - 📌 **Un hallazgo se anota, no se persigue (regla dura, 2026-08-30).** Cuando aparezca algo mientras se trabaja en otra cosa: **si IMPIDE terminar la tarea actual → parar y avisarle a Esteban**; **si no la impide → anotarlo en el backlog y SEGUIR**. **No se abre frente nuevo sin que Esteban lo pida.** Documentar no es lo mismo que perseguir. **Origen:** una sesión de ~12 h sobre el módulo de Nómina en la que el objetivo se movió solo — de «construir el módulo» a «dejar Odoo impecable antes de construir» — encadenando hallazgos que eran todos reales (TAG sin limpiar, fotos expuestas, visibilidad del repo, many2one como string) y ninguno bloqueante. El módulo no avanzó una línea. **Lo segundo no tiene fondo: siempre hay una cosa más que arreglar antes.** Corolario operativo: la pregunta ante cada hallazgo no es «¿esto está mal?» (casi siempre sí) sino **«¿esto impide terminar lo que estoy haciendo AHORA?»**. Si la respuesta es no, va al backlog con su costo estimado y se sigue.
 - 📌 **Un SHA de commit NUNCA se cita de memoria (regla dura, 2026-08-31).** Antes de escribir un hash en un issue, un comentario, un documento o el chat, **leerlo**: `git rev-parse --short=7 <ref>` o `git log --format='%h %s' -1 <ref>`, y de paso confirmar que el asunto del commit es el que se está citando. Un hash es siete caracteres sin redundancia — no hay forma de que un lector detecte que está mal, y un SHA inventado manda a quien lo siga a un commit que no existe o, peor, a otro que sí. **Vale igual para ids de workflow n8n, ids de ejecución, ids de Odoo y números de issue o PR**: si el identificador va a servir para que alguien vaya a buscar algo, sale de un read en el mismo turno, no del recuerdo. Es el mismo principio que «verificado = ejecutado y observado» (§8) y que «todo ID entregado para acción viene con su read crudo pegado» (§8), aplicado a la referencia bibliográfica del trabajo. Corolario: si al citar no se tiene el read a la mano, **no se cita** — se pone la descripción y se busca el hash antes de publicar.
 - 📌 **TODO trabajo vive en un issue de GitHub, no en el chat (regla dura, 2026-08-30).** Cualquier **análisis, hallazgo, diagnóstico, diff, forense o resultado** se publica **como issue o comentario de issue** en `yinyo1/fts-suite`, **con los reads crudos pegados**. El **chat es solo para avisar que terminaste** y para las decisiones que requieren respuesta inmediata; el **issue es donde vive el trabajo**. Regla operativa de Esteban: **«si un análisis no está en un issue, para mí no existe»** — no lo puede leer completo, no lo puede compartir con el equipo, y se pierde entre sesiones (el chat no sobrevive a la compactación de contexto ni al cierre de sesión). **Si no existe issue para el tema, CC lo crea** con título descriptivo y etiqueta (`odoo`, `rrhh`, `nomina`, `carga-manual`…) y **reporta el número en el chat**. Aplica también a los análisis que "solo son una respuesta a una pregunta": si tomó queries, medición o lectura de código, va al issue. **Origen:** el análisis del resolver `Oc2ceMHX2O0L0y2X` (causa raíz del TAG sin limpiar en `auto_cierre_pendiente`, con 3 poblaciones de datos sucios medidas) se entregó completo en el chat y **no quedó en ningún lado** — hubo que re-publicarlo a mano en el #137. Corolario: publicar **primero** en el issue y **después** resumir en el chat, no al revés.
+- 📌 **El ÚLTIMO mensaje de cada turno es el ÍNDICE DE ISSUES A VALIDAR (regla dura, 2026-09-18).** Esteban lee el detalle en los issues, no en el chat. Por eso el cierre de cada turno no es una prosa de lo que se hizo: es **la lista de issues tocados, con su número, su liga, y qué necesita de él en cada uno** (validar, decidir, ejecutar, o nada). Lo que no tenga issue, no aparece — y si algo del turno no tiene issue, el error fue no crearlo, no omitirlo del índice. El resumen narrativo va ANTES del índice y es corto; el índice es lo último que se lee y lo que se usa. **Origen:** tres veces en una misma sesión hubo que preguntar «¿dónde pusiste esto?» — dos porque el análisis se quedó en el chat, y la tercera porque el resumen del chat no decía en qué issue vivía. Publicar en el issue y además decirlo en el chat no basta si el chat no dice DÓNDE. Complementa la regla de que todo trabajo vive en un issue: aquella dice dónde se escribe, ésta dice cómo se entrega.
 - **Antes de modificar workflows productivos:** mostrar diff y pedir confirmación.
 - **Antes de tocar Odoo (cuando agreguemos su MCP):** preview no destructivo primero.
 - **Después de cada cambio:** dejar resumen con archivos tocados, IDs de workflows modificados, y siguiente paso sugerido.
@@ -553,10 +554,24 @@ Cuando crees un nuevo workflow:
 - El cron 2am (PR E) cierra el orphan a +9.6h con TAG disputa.
 - El replay del queue offline (PR C) puede llegar después con el `ts_evento` real.
 - **Regla: `ts_evento` real GANA sobre el +9.6h estimado.** Documentado en ambos docs para no perderse.
+- **Caso real que separa a los dos, medido el 18-sep-2026 (issue #252):** Germán Merino
+  (att 15549) entró el 17-sep 12:58:11 UTC y su salida **nunca llegó al servidor** — el
+  log del proxy no tiene ni un 499 suyo, y las otras ocho peticiones de kiosk de esa
+  ventana salieron 200 en 0.9–2.6 s. Su pantalla dijo *«signal is aborted without
+  reason»*: el `AbortController` de `n8nFetch` cortando a los 10 s. **El cron de PR E lo
+  habría cerrado a las 2 am con 9.6 h estimadas** y una incidencia para que alguien
+  adivinara la hora; **la cola de PR C lo habría guardado con su `ts_evento` real de las
+  17:25 y lo habría reenviado solo al volver la red** — 10.45 h correctas, sin que nadie
+  preguntara nada. Los dos PRs se parecen en el papel y **no resuelven el mismo problema**:
+  PR E cubre al que nunca cierra, PR C cubre al que **sí cerró y no llegó**. Éste era de
+  los segundos, y se resolvió a mano.
 
 **Infra hardening 28-may:**
 - Variables Railway n8n aplicadas: `EXECUTIONS_DATA_MAX_AGE=336` (14 días), `EXECUTIONS_DATA_SAVE_ON_ERROR=all`, `EXECUTIONS_DATA_SAVE_ON_SUCCESS=all` + 6 más de cleanup.
-- Worker + Redis Railway = crashed loop legacy del modo queue anterior (`EXECUTIONS_MODE=regular` desde hace 8 días). Recomendación: apagar por etapas (pendiente Esteban, no urgente — ningún workflow depende de worker en modo regular).
+- ~~Worker + Redis Railway = crashed loop legacy del modo queue anterior. Recomendación: apagar por etapas.~~
+  🔴 **CORREGIDO 2026-09-18 (issue #250, medido). NO APAGAR NADA — la recomendación de arriba era al revés.**
+  Ver la corrección completa en el Bloque B #4 de más abajo: el `Worker` **nunca se ha desplegado**, no es un
+  loop que falla, y es la pieza que habría aislado el incidente del 18-sep.
 
 **Constantes/invariantes validadas:**
 - `n8nFetch` (`odoo.js:15-40`) **ya tiene retry 2× con timeout 10s** — NO necesita más resiliencia de red; el problema fue *surfacing* del fallo terminal.
@@ -591,10 +606,50 @@ Cuando crees un nuevo workflow:
 
 #### Bloque B — Pendientes técnicos no urgentes
 
-4. **Worker + Redis Railway crashed loop**
-   - Causa: legacy del modo queue anterior (`EXECUTIONS_MODE=regular` desde hace 8 días).
-   - Procedimiento por etapas: pausar worker → smoke test 24h → eliminar; pausar Redis → smoke test 24h → eliminar.
-   - Impacto si NO se hace: ~$5-10 USD/mes desperdicio + logs ruidosos. Riesgo: cero (nada depende de worker en regular mode).
+4. 🔴 **El `Worker` NUNCA se ha desplegado — y es el aislamiento que nos faltó (CORREGIDO 2026-09-18)**
+
+   **Lo que decía este punto hasta hoy, y era falso:** que `Worker` + `Redis` eran un *«crashed loop
+   legacy del modo queue anterior»*, con un procedimiento para **eliminarlos por etapas**, *«~$5-10
+   USD/mes de desperdicio»* y *«riesgo: cero»*. Nadie lo ejecutó, y menos mal.
+
+   **Lo medido el 18-sep-2026 (Railway MCP, proyecto `cheerful-comfort`, entorno `production`):**
+   ```
+   Worker  ef4110d9-a33c-4ebf-9fe0-2338e5f6e1e2   latestDeployment: null
+   Redis   b2be579f-4f93-4f6a-97ab-ee6201165393   latestDeployment: SUCCESS 2026-04-03
+
+   métricas 24 h, 1441 muestras cada uno:
+   Worker  MEMORY 0 / CPU 0 / LIMIT 0      (todas las muestras en cero)
+   Redis   MEMORY 0 / CPU 0                (todas las muestras en cero)
+   ```
+   `latestDeployment: null` no es «desplegado y crasheando»: es **jamás desplegado**. Y con todo en
+   cero no hay loop, no hay logs ruidosos y **no hay $5-10/mes que ahorrar** — no hay nada corriendo.
+   El diagnóstico viejo describía un servicio que nunca existió en ejecución.
+
+   **Por qué importa, y es la parte cara:** el proyecto **ya está configurado para modo cola**. El
+   servicio trae `startCommand: "n8n worker"`, las variables de Redis, la misma `N8N_ENCRYPTION_KEY`
+   y —lo decisivo— **`OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS`**. O sea que el aislamiento entre el
+   trabajo pesado y los webhooks con los que el equipo trabaja **está diseñado y sólo está apagado**.
+   (Esa lectura de configuración es de la sesión del DENUE en el issue #249; lo que se midió aquí es
+   el `latestDeployment` y las métricas.)
+
+   El 18-sep un batch del DENUE —ZIPs del INEGI de hasta **137 MB de CSV → ~300,000 items por
+   entidad**, con n8n reteniendo la salida de cada nodo en cada vuelta del ciclo— llevó `Primary` a
+   **7.9959 de 8 GB** y dejó el kiosko y Confirmar Horas inservibles media mañana. Sus 33 ejecuciones
+   fueron **todas en modo `manual`**, que es exactamente lo que esa variable existe para sacar del
+   `Primary`. Con el Worker arriba, ese trabajo se habría comido la memoria del Worker y nadie más se
+   entera.
+
+   **Acción correcta: subir el Worker, no borrarlo** — fuera de horario, verificando que toma
+   trabajos, y confirmando `OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true`. Pendiente de Esteban.
+   ⚠️ **Y NO subir el límite de 8 GB antes de aislar:** más memoria en una caja compartida sólo mueve
+   el precipicio; con el Worker arriba, que el batch reviente es un incidente de nadie.
+
+   **La lección, que vale más que el caso:** este punto llevaba casi cuatro meses recomendando tirar
+   la pieza que hacía falta, y el diagnóstico que lo sostenía («crashed loop») **nunca se midió** —
+   se dedujo de que el servicio existía sin usarse. Un pendiente de backlog que nadie vuelve a medir
+   envejece hacia la confianza, no hacia la duda: se lee como hecho porque lleva mucho escrito. Antes
+   de **ejecutar** una recomendación vieja del backlog, re-medir la premisa; es la misma exigencia de
+   §8 («verificado = ejecutado y observado») aplicada a lo que nosotros mismos escribimos.
 5. **Auditar 6 empleados activos fuera del roster kiosko**
    - Hallazgo: Odoo tiene 40 activos, webhook `kiosk/empleados` retorna 34. Diferencia: filtro `company_id=1` del workflow `2UGWLjNwYRGtXq5y`.
    - Hipótesis: empleados en otra company (Brasil/USA) o filtro adicional. Acción: query directa a Odoo + comparar contra payload del webhook. ~15 min.
@@ -1002,6 +1057,160 @@ prueba que la consulta sirva), en la superficie de la resolución de identidad.
 
 
 ---
+
+### 14. n8n es UN proceso compartido con techo, y el MCP corre DENTRO de él
+La instancia de n8n no es un servicio por sesión: es **un solo proceso de 8 GB** que
+sirve, al mismo tiempo, los webhooks con los que el equipo trabaja (kiosko, Confirmar
+Horas, panel de incidencias, Finanzas) **y** el servidor MCP por el que Claude Code lo
+consulta. **Saturarlo desde el MCP le quita la herramienta a alguien que está
+trabajando**, y no hay aviso: la persona ve su pantalla colgada, no un letrero.
+*(Origen: 18-sep-2026, issue #250. El proceso llegó a **7.98 GB de 8** y reinició a las
+08:23 CST; Odoo empezó a contestar **429 «unusually high number of requests from your
+internet address»** a las 08:36; a las 08:50 Felipe recibió un **502** en
+`planeacion/horas-dia` y su pantalla dijo «Failed to fetch». En el mismo log había
+llamadas `Claude-User` a `/mcp-server/http` de **80 s, 240 s y 295 s**. La correlación
+es real; la dirección de la causa **no se midió** y no se debe afirmar.)*
+
+**Reglas operativas:**
+- **Horario hábil es horario de producción.** Entre 07:00 y 18:00 CST hay gente
+  checando entrada, confirmando horas y capturando nómina. Un barrido pesado contra
+  n8n o contra Odoo se hace fuera de esa ventana, o se parte en pedazos.
+- **Odoo rate-limita por IP, y la IP es compartida.** Los workflows salen por la IP de
+  n8n: si alguien la satura, **todos** los workflows de Odoo empiezan a fallar, no sólo
+  los suyos. El 429 no dice quién fue.
+- **Una llamada MCP que tarda minutos no es «lenta»: es una señal de saturación.** Un
+  `timeout after 60s` de una herramienta de n8n es motivo para **parar y medir**, no
+  para reintentar.
+
+### 15. «Failed to fetch» en el navegador casi nunca es el código del frontend
+Antes de tocar una línea, **dos lecturas de treinta segundos**:
+
+1. **La cadena de build que sale en pantalla.** Dice qué código está corriendo de
+   verdad. Si es el build viejo, el cambio de hoy no puede ser la causa — y eso se
+   comprueba con un `git show origin/main:<ruta> | grep BUILD`, no de memoria.
+2. **El log HTTP de Railway.** Ahí está el código real que devolvió el proxy.
+
+⚠️ **Un `502` del proxy se ve en el navegador como «Failed to fetch», no como
+«HTTP 502»**, porque la respuesta de error no trae cabeceras CORS: el navegador la
+descarta antes de que el código la vea. O sea que el mensaje más alarmante —el que
+parece «no hay internet»— es exactamente el que produce un servidor saturado. Es la
+misma trampa de §20 #12b (sesión / red / servidor), en la capa de abajo.
+
+**La receta, tres llamadas al MCP de Railway** (proyecto `cheerful-comfort`
+`4f4b4d53-3d88-4204-9d8e-b5a4fd8db846`, servicio `Primary`
+`b5168f3e-d25d-46d1-a327-e44b66ee14d4`, entorno `production`
+`524a10af-40c7-4b8f-8f6f-e888962b3aad` — leídos el 18-sep-2026):
+
+```
+get-service-metrics  MEMORY_USAGE_GB + MEMORY_LIMIT_GB, hoursBack 6
+                     → ¿rozó el techo de 8 GB? entonces hubo OOM
+get-logs  types:["deploy"]  filter:"Editor is now accessible"
+                     → cada línea es un REINICIO, con su hora
+get-logs  types:["http"]   filter:"<el webhook que falló>"
+                     → el status real (502/499/200) y cuánto tardó
+```
+
+Y para el log de `deploy`, filtrar `-"rejected by Runner"`: cuando el proceso se
+satura, esa línea se repite miles de veces y tapa todo lo demás.
+
+**Lo que NO arregla nada:** subir el límite de memoria antes de saber qué la consume.
+Un techo más alto con una fuga no quita el problema, sólo tarda más en doler.
+
+### 16. Un formato PROPIO se blinda menos que uno AJENO, y no debería
+Cuando leemos un archivo que hace otro —la lista de raya de CONTPAQi— lo tratamos con
+desconfianza: cada encabezado se resuelve por **alias en un catálogo**, se barren 15
+filas buscando la que más calza, y si no aparece un marcador se truena con nombre
+propio (`MARCADOR_AUSENTE`) y con la instrucción de dónde agregar el alias.
+
+Cuando leemos un archivo que hacemos **nosotros** —el despacho que RH manda a Ulises—
+confiamos en el literal exacto: `cab.indexOf('CODIGO')`. Es al revés de lo que uno
+esperaría del riesgo, y la razón es la palabra «propio».
+
+**«Propio» no significa estable. Significa que quien lo va a romper es de casa.**
+Un formato ajeno cambia cuando el proveedor saca una versión; uno propio cambia el
+martes que a alguien le parezca que la columna se llama mejor de otro modo — y esa
+persona tiene permiso de escritura y ninguna razón para sospechar que un rótulo era
+una pieza de máquina. La probabilidad de que se rompa no es menor: es **mayor**, y
+encima el cambio no viene anunciado por un `CHANGELOG`.
+
+*(Origen: 18-sep-2026. `NO EMPLEADO` no era un rótulo impreso: era el DETECTOR del
+renglón de columnas del archivo de RH. Renombrarlo en el generador no habría roto una
+columna — habría matado el cruce entero. Lo descubrimos porque el rename se pidió; si
+alguien lo hubiera hecho por su cuenta, se descubre en producción.)*
+
+**Regla operativa — un formato propio se lee con las mismas tres defensas que uno ajeno:**
+1. **Alias, no literal.** Los nombres viejos se quedan para siempre: los archivos ya
+   generados tienen que seguir abriéndose dentro de un año.
+2. **Fallar con nombre propio.** Si la estructura no aparece, decirlo y decir dónde se
+   arregla — nunca devolver vacío, que se confunde con «no había nada» (§20 #11).
+3. **Un gate que ate las dos puntas.** El del `MAPA` (`gate-cruce-rh.js:388`) existe
+   justo porque una preposición mal escrita apagó un control entero sin un solo error.
+
+**Al backlog, no perseguir (medido 18-sep):** el hueco peor no es el detector —ése ya
+falla ruidoso— sino las cuatro columnas restantes (`CODIGO`, `EMPLEADO`, `INSTRUCCION`,
+`REVISAR`): un `indexOf` que no calza devuelve −1 y la columna se lee **vacía para
+todos**, así que con `CODIGO` vacío la pantalla reporta a todo el mundo como «RH la
+mandó y no aparece». **Ruidoso y falso, que es peor que silencioso.** ~20 min: exigir
+que las cinco columnas aparecieran y decir cuál falta. Otros dos apuntados: los nombres
+de depto de `DEPTOS_VALIDOS` en los workflows (§13 hallazgo 2, falla en silencio) y los
+nombres de cuenta de la lista `BOLSAS` de Confirmar Horas (cosmético, y ya hay deriva:
+el panel dice `Administración`, Odoo dice `CENTRO DE COSTOS ADMINISTRACION`).
+
+### 17. El historial limpio es NECESARIO y no suficiente
+**Un cero no distingue «no pasó» de «no puede pasar».** Sirve para **descartar** —quien
+sí fue a obra no es precargable, y eso el dato lo prueba— pero **no** para **admitir**:
+la ausencia de casos y la imposibilidad de casos se ven idénticas en cualquier tabla, y
+la diferencia no está en el historial sino en el **rol**.
+
+*(Origen: 18-sep-2026, issue #247. Se derivaron 14 «precargables» de nueve semanas de
+asistencias con cero horas a proyecto. Tres estaban mal: un **Ingeniero Comercial** y un
+**CHOFER** nunca habían ido a obra y pueden ir cualquier día. La marca
+`x_studio_solo_bolsa` que ya existía en Odoo —puesta por alguien que razonó por puesto—
+ya excluía a esos tres. Dos criterios independientes coincidieron y el del historial fue
+el raro.)*
+
+**Y falla en las DOS direcciones**, que es lo que la hace traicionera:
+- **Falso positivo** — «nunca ha ido» leído como «no va»: el chofer, el ingeniero
+  comercial. El historial dice cero y el puesto dice que sí puede.
+- **Falso negativo** — un caso suelto leído como «sí va»: Gibrán salió como MIXTO por
+  asistencias a proyecto **anteriores a un cambio de régimen**; contadas desde el corte
+  correcto, su historial es limpio y sí es precargable.
+
+**Regla operativa:** antes de convertir un conteo en una regla, preguntar **qué impide
+el caso contrario**. Si la respuesta es «nada, simplemente no ha tocado», el conteo no
+alcanza — hace falta el atributo que lo impide (el puesto, el contrato, el permiso), y
+casi siempre **ya está capturado en algún campo** que nadie mira. Buscarlo antes de
+derivarlo. Es la misma familia del `[]` que no prueba la consulta (§20 #11) y del
+`insertadas: 0` que se ve igual que un éxito (§9): **en los tres, un vacío se lee como
+una respuesta.**
+
+### 18. Una fila ausente de un filtro no dice nada sobre su valor
+**Sólo dice que no cumplió el filtro.** Y como el filtro casi siempre se escribió
+para encontrar *lo que está mal*, la fila que desaparece es justo la que **se
+arregló** — que es la lectura contraria a la que invita la ausencia.
+
+*(Origen: 18-sep-2026, tres veces en la misma sesión y las tres en superficies
+distintas:*
+- *un filtro `manager_approval = "si"` devolvió **8,645** registros —casi la tabla
+  entera— y la lista se leyó como si hubiera filtrado (#254);*
+- *contar la subcadena `PPA` en el archivo de RH dio **16** en vez de 14, porque
+  también encuentra la nota «SI APLICA **PPA**» de quien NO lo tiene (#256);*
+- *un script que listaba filas «con PPA distinto de cero **o** sin código» dejó de
+  mostrar a César en cuanto Ulises le puso el PPA en 0 con su código 058 — dejó de
+  cumplir las dos condiciones. Su ausencia se leyó como «sigue igual» cuando
+  significaba «ya se corrigió».)*
+
+**Regla operativa:** antes de concluir algo de una lista, preguntar **qué tendría
+que pasar para que una fila NO aparezca**, y comprobar que esa respuesta es la que
+se está suponiendo. Si el conteo total es absurdo —casi todo, o casi nada— eso solo
+ya es motivo para parar: un filtro que no discrimina se ve idéntico a uno que sí.
+Y cuando exista, preferir **el contador que el propio proceso escribió** (el
+`14 con premio` del generador) sobre cualquier recuento hecho por fuera.
+
+Es la misma familia del `[]` que no prueba la consulta (§20 #11), del
+`insertadas: 0` que se ve igual que un éxito (§9) y del cero que no distingue «no
+pasó» de «no puede pasar» (§20 #17). **En los cuatro, un vacío se lee como una
+respuesta.**
 
 ### Correcciones a reglas anteriores (verificadas 2026-08-31)
 

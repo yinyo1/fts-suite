@@ -291,6 +291,49 @@ function archivoRH() {
 
     await page.screenshot({ path: path.join(OUT, nombre + '-2-con-rh.png'), fullPage: true });
 
+    // ── semana YA TIMBRADA: los hallazgos se quedan, el botón se abre ─────
+    // El riesgo de este cambio no es que no funcione: es que funcione ESCONDIENDO.
+    // Por eso lo que se exige aquí no es sólo que el botón abra, sino que los tres
+    // hallazgos sigan ahí y que la pantalla DIGA que se declaró y quién.
+    const antes = await page.evaluate(() => ({
+      cerrado: document.getElementById('send').disabled,
+      hallazgos: document.querySelectorAll('#rh-panel .msg').length
+    }));
+    check('antes de declarar, el botón está cerrado', antes.cerrado === true, String(antes.cerrado));
+
+    await page.check('#ya-timbrada');
+    await page.waitForTimeout(400);
+
+    const desp = await page.evaluate(() => {
+      const p = document.getElementById('rh-panel');
+      return {
+        cerrado: document.getElementById('send').disabled,
+        hallazgos: p ? p.querySelectorAll('.msg').length : 0,
+        texto: p ? p.textContent : '',
+        rotulo: document.getElementById('send').textContent
+      };
+    });
+    check('al declararla timbrada, el botón se abre', desp.cerrado === false, String(desp.cerrado));
+    check('y el botón vuelve a decir Validar nómina', /Validar/.test(desp.rotulo), desp.rotulo);
+    check('los hallazgos NO se esconden', desp.hallazgos >= antes.hallazgos,
+          desp.hallazgos + ' vs ' + antes.hallazgos);
+    check('la pantalla dice que se declaró', /YA PAGADA Y TIMBRADA/.test(desp.texto), '');
+    check('y dice QUIÉN la declaró', /finanzas/i.test(desp.texto), '');
+    check('sigue diciendo lo que RH pidió y no se capturó',
+          /RH pidió un movimiento que la nómina no refleja/.test(desp.texto), '');
+    // Lo cazó la captura, no la lógica: el contador seguía diciendo "que impiden
+    // mandar" tres líneas debajo del aviso que dice que no detienen nada.
+    check('el contador NO se contradice con el aviso',
+          !/que impiden mandar/.test(desp.texto) && /de integridad, registrados/.test(desp.texto), '');
+
+    await page.screenshot({ path: path.join(OUT, nombre + '-2b-timbrada.png'), fullPage: true });
+
+    // Al desmarcar vuelve a cerrar: una declaración retirada no deja media huella.
+    await page.uncheck('#ya-timbrada');
+    await page.waitForTimeout(400);
+    const vuelta = await page.evaluate(() => document.getElementById('send').disabled);
+    check('al retirar la declaración, el botón se vuelve a cerrar', vuelta === true, String(vuelta));
+
     // ── borrador: se ve distinto que "enviada" y NO se pinta la previa ─────
     // Un borrador todavía puede cambiar. Enseñarlo pondría a Ulises a cuadrar contra
     // números que Magaly aún mueve, y a reclamar diferencias que no existen.

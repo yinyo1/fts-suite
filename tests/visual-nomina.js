@@ -385,6 +385,125 @@ const VIEWPORTS = [
     await ctx.close();
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // EL MODAL DEL REENVÍO — la pantalla que el modo PRÁCTICA no deja ver
+  //
+  // En demo, `semanaDemo()` siempre devuelve la semana en BORRADOR, así que el
+  // diálogo que pide el motivo del reenvío no se alcanza haciendo clic: el flujo se
+  // corta antes con "estás en modo práctica". Y es justo la pantalla donde vive el
+  // encuadre de "esto no siempre es una corrección" — o sea la que no se puede dejar
+  // sin mirar (§20 #12: una pantalla se revisa MIRÁNDOLA).
+  //
+  // Se alcanza poniendo el módulo en modo REAL y sirviendo sus dos endpoints desde
+  // aquí. El fixture NO se escribe a mano: se le pide al propio `NomClient` su semana
+  // de práctica y se le cambia UNA cosa —el envío pasa a `enviada` v2— para no probar
+  // contra una imitación del formato.
+  {
+    vp = 'modal-reenvio';
+    const ctxDemo = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    await ctxDemo.addInitScript(() => {
+      try {
+        localStorage.setItem('fts_suite_session', JSON.stringify({
+          token: 'x.y.z', expires_at: new Date(Date.now() + 3600e3).toISOString(),
+          user: 'magaly', nombre: 'Magaly Pérez', scopes: ['nomina:write']
+        }));
+        localStorage.setItem('fts_nomina_modo', 'demo');
+      } catch (e) {}
+    });
+    const pDemo = await ctxDemo.newPage();
+    await pDemo.goto(base, { waitUntil: 'networkidle' });
+    const FIX = await pDemo.evaluate(() => ({
+      semana:  window.NomClient.semanaDemo(),
+      semanas: window.NomClient.semanasDemo()
+    }));
+    await ctxDemo.close();
+
+    // La semana de práctica trae CASOS INCÓMODOS a propósito (un bono sin proyecto y
+    // tres checadas en disputa), y con cosas abiertas el botón de enviar está
+    // deshabilitado — con razón. Eso es del fixture, no del reenvío, así que se
+    // limpian esas dos cosas para llegar a lo que se viene a mirar: el diálogo.
+    // Medido antes de escribirlo: con esto el banner pasa a «lista para enviar».
+    FIX.semana.disputas = [];
+    FIX.semana.personas.forEach(function (p) {
+      p.declaraciones = (p.declaraciones || []).filter(function (d) { return !/bono/i.test(d.tipo || ''); });
+    });
+
+    // La única diferencia con la semana de práctica: ya se mandó una vez.
+    FIX.semana.estado_envio = 'enviada';
+    FIX.semana.envio = {
+      estado: 'enviada', version: 2, actor: 'magaly',
+      enviado_en: '2026-09-04T16:12:00.000Z',
+      nombre_archivo: 'nomina-S36-2026-v2.csv', archivo: null,
+      motivo: 'faltaba un día de incapacidad de Samuel',
+      bitacora: [], cambios_despues: 1
+    };
+
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    await ctx.addInitScript(() => {
+      try {
+        localStorage.setItem('fts_suite_session', JSON.stringify({
+          token: 'x.y.z', expires_at: new Date(Date.now() + 3600e3).toISOString(),
+          user: 'magaly', nombre: 'Magaly Pérez', scopes: ['nomina:write']
+        }));
+        localStorage.setItem('fts_nomina_modo', 'real');   // REAL: el flujo no se corta
+      } catch (e) {}
+    });
+    await ctx.route('**/webhook/nom/semanas', r => r.fulfill({
+      status: 200, contentType: 'application/json', body: JSON.stringify(FIX.semanas) }));
+    await ctx.route('**/webhook/nom/semana', r => r.fulfill({
+      status: 200, contentType: 'application/json', body: JSON.stringify(FIX.semana) }));
+
+    const page = await ctx.newPage();
+    const errores = [];
+    page.on('pageerror', e => errores.push(String(e)));
+    await page.goto(base, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#indice-lista [data-sem]', { timeout: 15000 });
+    await page.click('#indice-lista [data-sem="S36/2026"]');
+    await page.waitForSelector('#tb tr[data-id]', { timeout: 15000 });
+
+    const etiqueta = (await page.textContent('#enviar') || '').trim();
+    check('una semana ya enviada ofrece REENVIAR, sin llamarle "corregida"',
+      /Reenviar/.test(etiqueta) && !/corregid/i.test(etiqueta), etiqueta);
+
+    await page.screenshot({ path: path.join(OUT, 'modal-0-semana-enviada.png'), fullPage: true });
+
+    await page.click('#enviar');
+    const abrio = await page.waitForSelector('#mot', { timeout: 15000 }).then(() => true).catch(() => false);
+    check('el botón abre el diálogo que pide el motivo', abrio);
+
+    if (abrio) {
+      const txt = await page.textContent('.mpanel');
+      check('pregunta QUÉ CAMBIÓ, no qué se corrigió',
+        /¿Qué cambió\?/.test(txt) && !/qué se corrigió/i.test(txt), txt.slice(0, 160));
+      check('dice que sirve igual para un error que para un acuerdo posterior',
+        /corregir un error/i.test(txt) && /acord/i.test(txt));
+      // El ejemplo vive en el `placeholder`, que NO sale en textContent: hay que
+      // leer el atributo o el assert pasa por vacío sin probar nada (§20 #11).
+      const ejemplo = await page.getAttribute('#mot', 'placeholder');
+      check('el ejemplo trae los dos casos, no solo el del error',
+        /autoriz/i.test(ejemplo || '') && /incapacidad/i.test(ejemplo || ''), ejemplo);
+      check('sigue diciendo que lo anterior NO se borra', /NO se borra/.test(txt));
+      check('sigue exigiendo el motivo', /obligatorio/.test(txt));
+      const btnOk = (await page.textContent('#motok') || '').trim();
+      check('el botón del diálogo dice Reenviar a secas', btnOk === 'Reenviar', btnOk);
+
+      await page.screenshot({ path: path.join(OUT, 'modal-1-motivo.png'), fullPage: true });
+
+      // El motivo sigue siendo obligatorio: con menos de 4 letras tiene que rezongar,
+      // y el rezongo tampoco puede hablar de corregir.
+      await page.fill('#mot', 'ab');
+      await page.click('#motok');
+      const err = (await page.textContent('#moterr') || '').trim();
+      check('un motivo vacío se sigue rechazando', /no acepta un reenvío sin motivo/.test(err), err);
+      check('y el rechazo también pregunta qué CAMBIÓ', /qué cambió/i.test(err), err);
+      await page.screenshot({ path: path.join(OUT, 'modal-2-sin-motivo.png'), fullPage: true });
+    }
+
+    check('modal: cero errores de JavaScript propios',
+      errores.filter(t => !esDelEntorno(t)).length === 0, errores.join(' | ').slice(0, 200));
+    await ctx.close();
+  }
+
   await browser.close();
   srv.close();
 

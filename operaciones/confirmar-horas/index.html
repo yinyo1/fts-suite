@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Confirmar Horas — FTS Suite</title>
 <script>
-  (function(){ window.CH_BUILD = '20260718-ch-envio-ux'; })();
+  (function(){ window.CH_BUILD = '20260918-ch-precarga-destino'; })();
 </script>
 <script src="../../shared/auth-suite.js"></script>
 <script src="../../shared/version-check.js"></script>
@@ -71,6 +71,17 @@
   .ch-x{ background:none; border:none; font-size:18px; cursor:pointer; color:#888; }
   .ch-warn{ color:var(--warn); }
   .ch-solo{ font-size:12px; }
+  /* La PROPUESTA de destino se ve distinta del destino real a proposito: punteado y
+     en gris, nunca con el azul del que si esta escrito en Odoo (CLAUDE.md seccion 8). */
+  .ch-pre{ color:#6b6b6b; border-bottom:1px dashed #9aa0a6; font-weight:600; }
+  .ch-tag-pre{ display:inline-block; white-space:nowrap; font-size:10px; font-weight:700;
+    letter-spacing:.3px; text-transform:uppercase; color:#6b6b6b; background:#eceff3;
+    border:1px dashed #b9bfc7; border-radius:8px; padding:0 6px; margin-left:2px; }
+  .ch-contra{ display:inline-block; white-space:nowrap; font-size:10px; font-weight:700;
+    color:#8a5a12; background:#fff3df; border:1px solid #f0d9a8; border-radius:8px;
+    padding:0 6px; margin-left:2px; cursor:help; }
+  .ch-precarga-aviso{ display:none; background:#fff3df; color:#8a5a12; border:1px solid #f0d9a8;
+    border-radius:8px; padding:10px 12px; margin-bottom:12px; font-size:13px; }
   .ch-mo{ display:inline-block; font-size:10px; font-weight:700; padding:1px 6px; border-radius:8px; white-space:nowrap; margin-left:2px; }
   .ch-mo-red{ background:#fdeceb; color:var(--err); }
   .ch-mo-amber{ background:#fff3df; color:var(--warn); }
@@ -104,6 +115,12 @@
 <div id="auth-gate" class="ch-gate" style="display:none"></div>
 
 <main id="main-content" class="ch-main" style="display:none">
+  <div id="ch-precarga-aviso" class="ch-precarga-aviso">
+    🗂️ <b>Precarga de destino ENCENDIDA (prueba).</b> Los renglones sin destino de quien está
+    marcado <b>solo-bolsa</b> llegan con su bolsa <i>propuesta</i>, en gris punteado. La propuesta
+    <b>todavía no está en Odoo</b>: se escribe al confirmar, junto con la aprobación.
+    Quien tiene renglones a proyecto en este mismo rango <b>no recibe propuesta</b>: salen marcados <i>marca en duda</i>.
+  </div>
   <div class="ch-controls">
     <div class="ch-field">
       <label for="f-desde">Desde</label>

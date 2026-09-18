@@ -9,11 +9,11 @@
      Vx.yy. Se bumpea junto con version.json y con el ?v= de cada script, y el gate
      exige que los tres digan lo mismo: un badge que anuncia una version mientras
      el navegador corre el codigo viejo miente en la peor direccion. -->
-<script>(function(){ window.CMO_VER = 'V1.01'; })();</script>
+<script>(function(){ window.CMO_VER = 'V1.03'; })();</script>
 <script src="../../finanzas/js/auth-fin.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/cruce-rh.js?v=V1.01"></script>
-<script src="js/resolver.js?v=V1.01"></script>
+<script src="js/cruce-rh.js?v=V1.03"></script>
+<script src="js/resolver.js?v=V1.03"></script>
 <style>
   :root{ --azul:#1a4480; --ok:#1a7a3a; --warn:#BA7517; --err:#b3261e; --info:#3b5bdb; --bg:#f4f6f9; }
   *{ box-sizing:border-box; }
@@ -31,6 +31,8 @@
   .btn-w{ background:var(--err); color:#fff; }
   .btn-g{ background:#eef2f8; color:#2c3e56; border:1px solid #d5dfec; padding:7px 12px; font-size:13px; }
   .btn:disabled{ opacity:.4; cursor:not-allowed; }
+  .tmb-lbl{ display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer; white-space:nowrap; }
+  .tmb-lbl input{ cursor:pointer; }
   table{ width:100%; border-collapse:collapse; font-size:12px; }
   th{ background:#eef2f8; text-align:left; padding:6px 8px; position:sticky; top:0; }
   td{ padding:5px 8px; border-top:1px solid #eee; }
@@ -172,6 +174,25 @@
       <label>Lo que mandó RH</label>
       <div class="fld-in">
         <span id="rh-est" class="mut">elige la semana…</span>
+      </div>
+    </div>
+    <div class="sep"></div>
+    <!-- Una semana YA PAGADA no se corrige, se registra. El archivo que manda el
+         despacho es una PRENOMINA: mientras no se timbre, frenar sirve porque hay
+         ventana para arreglar. Despues del timbrado el dinero ya salio, y frenar no
+         recupera nada — solo deja el costo sin registrar en Odoo, o sea que el
+         candado produce un segundo problema en vez de evitar el primero.
+
+         El modulo NO sabe si una semana se timbro: el timbrado ocurre fuera y nada
+         de lo que llega lo cuenta (nom_envio solo distingue 'borrador' de 'enviada',
+         que es el envio de RH al despacho, no lo que el despacho hizo despues). Por
+         eso se DECLARA, y por eso la declaracion se registra con quien y cuando en
+         vez de resolverse con un interruptor: quien declara es el mismo que quiere
+         cargar, asi que lo unico que la hace honesta es que quede escrita. -->
+    <div class="fld">
+      <label>¿Ya se timbró?</label>
+      <div class="fld-in">
+        <label class="tmb-lbl"><input type="checkbox" id="ya-timbrada"> sí — solo registrar</label>
       </div>
     </div>
     <div class="acts">
@@ -384,6 +405,22 @@ $('f-vie').addEventListener('change', function(e){
   if(PARSED) render();
 });
 
+/* La declaracion de semana ya timbrada. Se sella con QUIEN y CUANDO en el momento
+   de marcarla, no al enviar: si se tomara al enviar, un cambio de sesion entre el
+   gesto y el envio le pondria el nombre de otro a una declaracion que no hizo.
+   Al desmarcar se borra entera — una declaracion retirada no deja media huella. */
+$('ya-timbrada').addEventListener('change', function(e){
+  if(e.target.checked){
+    var s = (window.FinAuth && FinAuth.getSession && FinAuth.getSession()) || null;
+    TIMBRADA = { si:true, actor:(s && s.user) || null, cuando:new Date().toISOString() };
+  } else {
+    TIMBRADA = { si:false, actor:null, cuando:null };
+  }
+  /* Cambia lo que se manda, asi que el reporte anterior ya no describe esto. */
+  invalidarReporte();
+  if(PARSED) render();
+});
+
 /* ── ingesta ─────────────────────────────────────────────────────────────── */
 var drop = $('drop'), file = $('file');
 drop.addEventListener('click', function(){ file.click(); });
@@ -432,6 +469,12 @@ function leer(f){
    equivocada. */
 var RH = null;
 var RH_EST = { estado:'nada', msg:'' };
+
+/* La declaracion de "ya se timbro". Vive aqui y no en la casilla porque lo que
+   importa no es el check: es QUIEN lo declaro y CUANDO, que es lo que viaja al
+   reporte. La casilla sola seria un bypass silencioso. */
+var TIMBRADA = { si:false, actor:null, cuando:null };
+function timbradaDeclarada(){ return TIMBRADA.si === true; }
 var RH_SEM = null;          /* la semana que se pidio, para no pintar una respuesta vieja */
 var DESPACHO_WEBHOOK = 'https://primary-production-5c3c.up.railway.app/webhook/nom/despacho';
 
@@ -671,6 +714,19 @@ function pintarCruceRH(P){
         + ' a Magaly si va a reenviar la semana.</div></div></div>';
   }
 
+  /* Declarada timbrada: se dice ARRIBA de los hallazgos, con nombre y hora. Si la
+     declaracion no se ve, el operador lee una lista de fallas que no detienen nada y
+     no sabe por que — y esa es exactamente la pantalla que entrena a ignorar. */
+  if(timbradaDeclarada()){
+    cab += '<div class="msg m-cla"><div><b>Declarada como YA PAGADA Y TIMBRADA</b>'
+        + ' <span class="mut">· ' + esc(TIMBRADA.actor || 'sin identificar') + ' · '
+        + esc(String(TIMBRADA.cuando || '').replace('T',' ').slice(0,16)) + '</span>'
+        + '<div class="mut" style="font-size:12px;margin-top:3px">Los hallazgos de abajo'
+        + ' <b>se siguen reportando completos</b> y viajan en el envío, pero no detienen la carga:'
+        + ' sobre una semana ya pagada no hay nada que corregir antes de mandar. Lo que quede'
+        + ' pendiente se ajusta en la siguiente nómina o se habla con la persona.</div></div></div>';
+  }
+
   if(!r.hallazgos.length){
     box.innerHTML = '<div class="card">' + cab
       + '<div class="msg m-ok"><div><b>✓ La nómina coincide con lo que pidió RH.</b>'
@@ -692,7 +748,13 @@ function pintarCruceRH(P){
 
   box.innerHTML = '<div class="card">' + cab
     + '<div class="mut" style="font-size:12px;margin-bottom:8px">'
-    + (nInt ? '<b style="color:var(--bad)">' + nInt + ' que impiden mandar</b> · ' : '')
+    /* El rotulo tiene que decir la verdad del momento: con la semana declarada
+       timbrada, esos hallazgos YA NO impiden mandar, y dejarlo en "impiden" contradice
+       al aviso que esta tres lineas arriba. Una pantalla que se desmiente a si misma
+       ensena a no leerla. */
+    + (nInt ? '<b style="color:var(--bad)">' + nInt
+              + (timbradaDeclarada() ? ' de integridad, registrados' : ' que impiden mandar')
+              + '</b> · ' : '')
     + (nRev ? nRev + ' que hay que revisar · ' : '')
     + r.resumen.cruzados + ' de ' + r.resumen.total_rh + ' personas cruzadas por código'
     + '</div>' + cuerpo + '</div>';
@@ -910,7 +972,11 @@ function render(){
   /* El cruce contra RH puede cerrar el boton por su cuenta: una nomina que no trae
      lo que RH pidio no se manda, aunque el archivo cuadre consigo mismo. */
   var rhInt = pintarCruceRH(P);
-  if(rhInt > 0) puedeEnviar = false;
+  /* Los hallazgos NO se degradan ni se esconden: siguen contados, pintados y viajando
+     al reporte con su nivel real. Lo unico que cambia es que dejan de apagar el boton,
+     porque sobre una semana ya pagada no hay nada que corregir antes de mandar — hay
+     algo que registrar, y una lista de que ajustar en la siguiente. */
+  if(rhInt > 0 && !timbradaDeclarada()) puedeEnviar = false;
 
   $('send').disabled = !puedeEnviar;
   $('send').textContent = puedeEnviar ? 'Validar nómina'
@@ -1030,6 +1096,10 @@ function armarPayload(modo){
       headers_crudos: P.layout.headers_crudos,
       build: window.CMO_VER
     },
+    /* La declaracion viaja SIEMPRE, tambien cuando es false: que el reporte diga
+       "no se declaro" es un dato, y su ausencia se leeria como que la pregunta no
+       existia (CLAUDE.md seccion 20 #18). */
+    ya_timbrada: { declarada: TIMBRADA.si === true, actor: TIMBRADA.actor, cuando: TIMBRADA.cuando },
     /* empleados: campos legacy (bruto/vac/asim) + campos v2. El motor viejo ignora los nuevos. */
     empleados: P.empleados.map(function(e){
       return {
