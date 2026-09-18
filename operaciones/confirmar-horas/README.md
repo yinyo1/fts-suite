@@ -47,6 +47,41 @@ corregir reusa `POST /webhook/kiosk/sos`.
    en los attendances viejos, **NO vía MCP** (que es read-only). Junto al go-live de B4.
 4. HMAC de los 2 webhoooks nuevos: pendiente (ver `CLAUDE.md §9`).
 
+## Precarga de destino (APAGADA — construida 2026-09-18)
+
+Se puede confirmar un renglón **sin destino**: el semáforo lo cuenta como listo y su
+dinero no sabe a dónde ir (pasó con las asistencias 15272, 15353 y 15505 en
+septiembre). Para 14 personas el destino además nunca cambia — del 17-jul en adelante
+llevan 9 semanas con cero horas a proyecto.
+
+La precarga hace que el renglón sin destino de esa gente llegue con el suyo **propuesto**,
+y al confirmar se escriba junto con la aprobación, en la misma escritura, por
+`/planeacion/corregir-bolsa` (el endpoint del botón ✎, que ya escribe las dos cosas).
+
+| regla | por qué |
+|---|---|
+| El disparador es la marca **`solo_bolsa`**, no la cuenta default | 3 personas con cuenta poblada SÍ van a obra (8, 68, 75) y ninguna tiene la marca |
+| No se toca lo que ya tiene destino, lo confirmado ni la jornada abierta | la propuesta es para el hueco, no para corregir a nadie |
+| Sin `cuenta_default_id` del servidor no se propone nada | no se inventa un destino |
+| Marcado solo-bolsa **y** con renglones a proyecto en el mismo rango → sin propuesta, y se dice (`marca en duda`) | la marca puede estar mal puesta, y el panel lo ve solo |
+| La propuesta se pinta en gris punteado con etiqueta `PROPUESTA` | lo que no está en Odoo no puede verse igual que lo que sí (CLAUDE.md §8) |
+
+**Interruptor:** `PRECARGA_ACTIVA = false` en `js/confirmar-horas.js`. Se enciende con
+`?precarga=1` y entonces la pantalla lo anuncia con un aviso arriba.
+
+**Falta la mitad del servidor.** `planeacion/horas-dia` (`pQ3vVbRkMYvfICQf`) todavía NO
+manda `cuenta_default_id` / `cuenta_default_nombre` por renglón. Hay que agregar
+`x_studio_cuenta_indirecta_default` a los campos que lee de `hr.employee` y mapearlo a
+esos dos nombres en la respuesta — es aditivo, ningún consumidor se rompe. Sin él, el
+front no propone nada (por diseño: el lado tolerante primero).
+
+Prueba: `node tests/visual-confirmar-horas.js` — 52 checks, los siete casos de la tabla
+de la verdad y el cuerpo real del POST en cada uno.
+
+> ⚠️ La tabla de workflows de arriba es de la v1 y quedó **stale**: la corrección de
+> atribución vive hoy en `planeacion/corregir-bolsa` (`O61Abp4s26yYpFEq`), que llegó con
+> PR-5. No se corrigió aquí para no mezclarlo con este cambio.
+
 ## Notas / límites v1
 - **Plan vs real:** la columna "plan" llega en Fase 1 B1/B2 (`planning.slot`).
   B4 v1 muestra solo lo **real** (attendance) + confirmar/corregir. Sin dependencia de B1.
