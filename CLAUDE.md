@@ -1003,6 +1003,64 @@ prueba que la consulta sirva), en la superficie de la resolución de identidad.
 
 ---
 
+### 14. n8n es UN proceso compartido con techo, y el MCP corre DENTRO de él
+La instancia de n8n no es un servicio por sesión: es **un solo proceso de 8 GB** que
+sirve, al mismo tiempo, los webhooks con los que el equipo trabaja (kiosko, Confirmar
+Horas, panel de incidencias, Finanzas) **y** el servidor MCP por el que Claude Code lo
+consulta. **Saturarlo desde el MCP le quita la herramienta a alguien que está
+trabajando**, y no hay aviso: la persona ve su pantalla colgada, no un letrero.
+*(Origen: 18-sep-2026, issue #250. El proceso llegó a **7.98 GB de 8** y reinició a las
+08:23 CST; Odoo empezó a contestar **429 «unusually high number of requests from your
+internet address»** a las 08:36; a las 08:50 Felipe recibió un **502** en
+`planeacion/horas-dia` y su pantalla dijo «Failed to fetch». En el mismo log había
+llamadas `Claude-User` a `/mcp-server/http` de **80 s, 240 s y 295 s**. La correlación
+es real; la dirección de la causa **no se midió** y no se debe afirmar.)*
+
+**Reglas operativas:**
+- **Horario hábil es horario de producción.** Entre 07:00 y 18:00 CST hay gente
+  checando entrada, confirmando horas y capturando nómina. Un barrido pesado contra
+  n8n o contra Odoo se hace fuera de esa ventana, o se parte en pedazos.
+- **Odoo rate-limita por IP, y la IP es compartida.** Los workflows salen por la IP de
+  n8n: si alguien la satura, **todos** los workflows de Odoo empiezan a fallar, no sólo
+  los suyos. El 429 no dice quién fue.
+- **Una llamada MCP que tarda minutos no es «lenta»: es una señal de saturación.** Un
+  `timeout after 60s` de una herramienta de n8n es motivo para **parar y medir**, no
+  para reintentar.
+
+### 15. «Failed to fetch» en el navegador casi nunca es el código del frontend
+Antes de tocar una línea, **dos lecturas de treinta segundos**:
+
+1. **La cadena de build que sale en pantalla.** Dice qué código está corriendo de
+   verdad. Si es el build viejo, el cambio de hoy no puede ser la causa — y eso se
+   comprueba con un `git show origin/main:<ruta> | grep BUILD`, no de memoria.
+2. **El log HTTP de Railway.** Ahí está el código real que devolvió el proxy.
+
+⚠️ **Un `502` del proxy se ve en el navegador como «Failed to fetch», no como
+«HTTP 502»**, porque la respuesta de error no trae cabeceras CORS: el navegador la
+descarta antes de que el código la vea. O sea que el mensaje más alarmante —el que
+parece «no hay internet»— es exactamente el que produce un servidor saturado. Es la
+misma trampa de §20 #12b (sesión / red / servidor), en la capa de abajo.
+
+**La receta, tres llamadas al MCP de Railway** (proyecto `cheerful-comfort`
+`4f4b4d53-3d88-4204-9d8e-b5a4fd8db846`, servicio `Primary`
+`b5168f3e-d25d-46d1-a327-e44b66ee14d4`, entorno `production`
+`524a10af-40c7-4b8f-8f6f-e888962b3aad` — leídos el 18-sep-2026):
+
+```
+get-service-metrics  MEMORY_USAGE_GB + MEMORY_LIMIT_GB, hoursBack 6
+                     → ¿rozó el techo de 8 GB? entonces hubo OOM
+get-logs  types:["deploy"]  filter:"Editor is now accessible"
+                     → cada línea es un REINICIO, con su hora
+get-logs  types:["http"]   filter:"<el webhook que falló>"
+                     → el status real (502/499/200) y cuánto tardó
+```
+
+Y para el log de `deploy`, filtrar `-"rejected by Runner"`: cuando el proceso se
+satura, esa línea se repite miles de veces y tapa todo lo demás.
+
+**Lo que NO arregla nada:** subir el límite de memoria antes de saber qué la consume.
+Un techo más alto con una fuga no quita el problema, sólo tarda más en doler.
+
 ### Correcciones a reglas anteriores (verificadas 2026-08-31)
 
 - **§15 #3 quedó stale.** Decía que `docs/n8n-workflows/pmo-chat-apply-code-code-validar-auth.js`
