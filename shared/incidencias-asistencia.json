@@ -26,9 +26,19 @@
           "hora_propuesta_cst": "2026-09-18 07:33:00",
           "comentario": "Buen día  llegué y no me dejó checar estoy checando desde planta Vertiv",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe Pérez Guzmán",
+          "timestamp": "2026-09-18T17:29:31.891Z",
+          "hora_propuesta_cst": null,
+          "comentario": "entro 8:07 a FTS, aprobada entrada",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false,
       "department_id": 3,
