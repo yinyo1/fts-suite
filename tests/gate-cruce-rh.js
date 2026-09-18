@@ -77,6 +77,49 @@ seccion('Leer el archivo de RH');
     JSON.stringify([dDos.filas[0].codigo3, dDos.filas[0].instruccion]));
 }
 
+// ── LOS DOS NOMBRES DE LA COLUMNA DEL ID ────────────────────────────────────
+// 'NO EMPLEADO' pasa a llamarse 'ID ODOO'. Ese encabezado NO es sólo un rótulo: es
+// el detector del renglón de columnas, así que el lector tiene que entender los dos
+// ANTES de que el generador cambie — si no, el cruce no falla en una columna, muere
+// entero con 'No se encontró el renglón de columnas'.
+//
+// El archivo con el nombre nuevo se fabrica renombrando el encabezado del archivo
+// REAL, que es exactamente lo que va a producir el generador en el paso 2.
+seccion('Los dos nombres de la columna del id');
+{
+  const p1 = persona({ id: 62, nombre: 'Gibrán Solís', codigo: '013',
+    declaraciones: [{ tipo: 'vacaciones', valores: { dias: 2 } }], dias_mexico: 3 });
+  const viejo = archivoRH([p1]);
+  check('el generador todavía emite NO EMPLEADO (el paso 2 no ha corrido)',
+    viejo.indexOf('NO EMPLEADO') >= 0);
+
+  const nuevo = viejo.replace('NO EMPLEADO', 'ID ODOO');
+  check('el renombre de prueba sí cambió algo', nuevo !== viejo);
+
+  const dV = Cruce.parseDespacho(viejo);
+  const dN = Cruce.parseDespacho(nuevo);
+  check('con ID ODOO no hay error de lectura', !dN.error, dN.error || '');
+  check('con ID ODOO encuentra el renglón de columnas', dN.filas.length === 1, String(dN.filas.length));
+  check('con ID ODOO lee el id de Odoo', dN.filas[0].no_empleado === '62', dN.filas[0].no_empleado);
+  check('las dos lecturas son idénticas',
+    JSON.stringify(dV.filas) === JSON.stringify(dN.filas));
+
+  // En minúsculas también: el detector normaliza, y un archivo tecleado a mano no
+  // tiene por qué respetar las mayúsculas para que el cruce funcione.
+  const bajo = viejo.replace('NO EMPLEADO', 'Id Odoo');
+  check('el nombre nuevo en minúsculas también entra',
+    Cruce.parseDespacho(bajo).filas.length === 1,
+    Cruce.parseDespacho(bajo).error || '');
+
+  // Y el caso que importa del otro lado: si algún día desaparecen LOS DOS nombres,
+  // el lector tiene que decirlo, no devolver una lista vacía que parezca 'no había
+  // nadie esta semana' (§20 #11).
+  const sinNinguno = viejo.replace('NO EMPLEADO', 'MATRICULA');
+  const dSin = Cruce.parseDespacho(sinNinguno);
+  check('sin ninguno de los dos nombres, se dice el motivo',
+    /renglón de columnas/.test(dSin.error || ''), dSin.error || '(sin error)');
+}
+
 // El .xlsx es el MISMO archivo que el .csv, y RH manda los dos. Si el lector de
 // rejilla no produjera lo mismo que el de texto, Ulises veria un cruce distinto
 // segun cual de los dos le haya tocado abrir — que es el peor tipo de bug: el que

@@ -98,6 +98,37 @@
   var FACTOR_MIN = 1.02;   // por debajo, no se hizo el cálculo inverso
   var FACTOR_MAX = 1.85;   // por encima, ninguna tasa marginal mexicana lo explica
 
+  // ── LOS DOS NOMBRES DE LA MISMA COLUMNA ───────────────────────────────────
+  // La columna del id de Odoo se llamó 'NO EMPLEADO' desde que existe el archivo, y
+  // pasa a llamarse 'ID ODOO' porque eso es lo que trae: el id del empleado en Odoo,
+  // no el número de empleado de CONTPAQi (ése es CODIGO, la columna de al lado).
+  // Confundirlas costaba explicaciones cada vez.
+  //
+  // ESTE LECTOR ACEPTA LAS DOS, Y NO ES CORTESÍA: este encabezado no es sólo un
+  // rótulo impreso, es el DETECTOR del renglón de columnas. Si el generador cambiara
+  // el nombre y el lector sólo conociera el viejo, la pantalla de Ulises no fallaría
+  // en la columna del id — dejaría de encontrar el renglón entero y el cruce moriría
+  // con 'No se encontró el renglón de columnas'. Por eso el lado tolerante se
+  // despliega PRIMERO y el generador después (regla anti-trabón, CLAUDE.md §8).
+  //
+  // Los dos se quedan para siempre: los archivos ya generados con 'NO EMPLEADO' —los
+  // acuses de las semanas pasadas— tienen que seguir abriéndose dentro de un año.
+  var COL_ID = ['NO EMPLEADO', 'ID ODOO'];
+
+  function primerIndice(cab, nombres) {
+    for (var i = 0; i < nombres.length; i++) {
+      var j = cab.indexOf(nombres[i]);
+      if (j >= 0) return j;
+    }
+    return -1;
+  }
+  function tieneAlguno(textoNorm, nombres) {
+    for (var i = 0; i < nombres.length; i++) {
+      if (textoNorm.indexOf(nombres[i]) >= 0) return true;
+    }
+    return false;
+  }
+
   function norm(s) {
     return ('' + (s === undefined || s === null ? '' : s))
       .normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -148,11 +179,12 @@
 
     var iCab = -1;
     for (var k = 0; k < Math.min(lin.length, 8); k++) {
-      if (/NO EMPLEADO/.test(lin[k]) && /INSTRUCCION/.test(lin[k])) { iCab = k; break; }
+      var nk = norm(lin[k]);
+      if (tieneAlguno(nk, COL_ID) && nk.indexOf('INSTRUCCION') >= 0) { iCab = k; break; }
     }
     if (iCab < 0) { out.error = 'No se encontró el renglón de columnas del archivo de RH.'; return out; }
     var cab = rejilla[iCab].map(norm);
-    var iCod = cab.indexOf('CODIGO'), iNo = cab.indexOf('NO EMPLEADO'),
+    var iCod = cab.indexOf('CODIGO'), iNo = primerIndice(cab, COL_ID),
         iNom = cab.indexOf('EMPLEADO'), iIns = cab.indexOf('INSTRUCCION'), iRev = cab.indexOf('REVISAR');
 
     for (var i = iCab + 1; i < lin.length; i++) {
