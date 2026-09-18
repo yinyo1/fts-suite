@@ -1,14 +1,14 @@
 {
   "_meta": {
     "version": 3,
-    "generated_at": "2026-09-18T21:14:46.801Z",
+    "generated_at": "2026-09-18T21:15:31.603Z",
     "source": "Odoo hr.employee live sync via workflow rh/empleados-master/sync",
     "auto_update_status": "auto_synced",
     "auto_update_status_explicacion": "Workflow n8n rh/empleados-master/sync ACTIVO. Cron 6am CST diario + webhook on-change POST /rh/empleados-master/refresh.",
     "fase": "3-active",
     "last_sync_event": "webhook on-change",
-    "last_sync_started_at": "2026-09-18T21:14:45.981Z",
-    "last_sync_completed_at": "2026-09-18T21:14:46.801Z",
+    "last_sync_started_at": "2026-09-18T21:15:30.753Z",
+    "last_sync_completed_at": "2026-09-18T21:15:31.603Z",
     "sync_strategy": "Cron 6am diario (Schedule Trigger) + webhook on-change desde panel admin (Fase 4 cuando exista).",
     "total_active": 32,
     "total_con_departamento": 31,
@@ -520,7 +520,7 @@
       "work_email": "business72756@gmail.com",
       "work_phone": null,
       "mobile_phone": "8143033117",
-      "x_studio_hora_entrada": 8.05,
+      "x_studio_hora_entrada": 7,
       "x_studio_retardos_15_dias": 0,
       "x_categoria_nomina": "confianza",
       "x_aplica_ppa": true
