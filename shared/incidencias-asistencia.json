@@ -80,9 +80,19 @@
           "hora_propuesta_cst": "2026-09-18 07:30:00",
           "comentario": "Error en el sistema",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 112,
+          "usuario": "Felipe Pérez Guzmán",
+          "timestamp": "2026-09-18T17:33:15.962Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Aprobada, entro 7;30",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false,
       "department_id": 3,
