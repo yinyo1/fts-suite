@@ -1,14 +1,14 @@
 {
   "_meta": {
     "version": 3,
-    "generated_at": "2026-09-18T21:18:50.376Z",
+    "generated_at": "2026-09-18T22:31:19.605Z",
     "source": "Odoo hr.employee live sync via workflow rh/empleados-master/sync",
     "auto_update_status": "auto_synced",
     "auto_update_status_explicacion": "Workflow n8n rh/empleados-master/sync ACTIVO. Cron 6am CST diario + webhook on-change POST /rh/empleados-master/refresh.",
     "fase": "3-active",
     "last_sync_event": "webhook on-change",
-    "last_sync_started_at": "2026-09-18T21:18:49.500Z",
-    "last_sync_completed_at": "2026-09-18T21:18:50.376Z",
+    "last_sync_started_at": "2026-09-18T22:31:18.739Z",
+    "last_sync_completed_at": "2026-09-18T22:31:19.605Z",
     "sync_strategy": "Cron 6am diario (Schedule Trigger) + webhook on-change desde panel admin (Fase 4 cuando exista).",
     "total_active": 32,
     "total_con_departamento": 31,
@@ -17,8 +17,8 @@
     "total_sin_hora_entrada": 1,
     "total_con_categoria_explicita": 7,
     "total_con_categoria_default": 25,
-    "total_ppa_aplica": 28,
-    "total_ppa_no_aplica": 4,
+    "total_ppa_aplica": 29,
+    "total_ppa_no_aplica": 3,
     "distribucion_categorias_explicitas": {
       "ceo": 1,
       "hourly_sencilla": 3,
@@ -489,7 +489,7 @@
       "x_studio_hora_entrada": 7,
       "x_studio_retardos_15_dias": 4,
       "x_categoria_nomina": null,
-      "x_aplica_ppa": false
+      "x_aplica_ppa": true
     },
     {
       "id": 149,
