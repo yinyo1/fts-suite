@@ -4908,9 +4908,19 @@
           "hora_propuesta_cst": null,
           "comentario": "aprobada salida",
           "accion": "aprobado"
+        },
+        {
+          "paso": 3,
+          "rol": "rh",
+          "user_id": 101,
+          "usuario": "Ana Laura Acevedo Flores",
+          "timestamp": "2026-09-18T15:18:12.712Z",
+          "hora_propuesta_cst": "07:40",
+          "comentario": "Incidencia antigua",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_rh",
+      "status": "aprobada_tal_cual",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false,
       "department_id": 3,
@@ -4925,7 +4935,7 @@
       "rh_directo_ceo": false,
       "directo_ceo": false,
       "sin_supervisor": false,
-      "tag_disputa_activo": true
+      "tag_disputa_activo": false
     },
     {
       "id_interno": "INC-OLV-25-2026-05-21T00-58-50-993Z",
