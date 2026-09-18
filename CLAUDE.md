@@ -556,7 +556,10 @@ Cuando crees un nuevo workflow:
 
 **Infra hardening 28-may:**
 - Variables Railway n8n aplicadas: `EXECUTIONS_DATA_MAX_AGE=336` (14 días), `EXECUTIONS_DATA_SAVE_ON_ERROR=all`, `EXECUTIONS_DATA_SAVE_ON_SUCCESS=all` + 6 más de cleanup.
-- Worker + Redis Railway = crashed loop legacy del modo queue anterior (`EXECUTIONS_MODE=regular` desde hace 8 días). Recomendación: apagar por etapas (pendiente Esteban, no urgente — ningún workflow depende de worker en modo regular).
+- ~~Worker + Redis Railway = crashed loop legacy del modo queue anterior. Recomendación: apagar por etapas.~~
+  🔴 **CORREGIDO 2026-09-18 (issue #250, medido). NO APAGAR NADA — la recomendación de arriba era al revés.**
+  Ver la corrección completa en el Bloque B #4 de más abajo: el `Worker` **nunca se ha desplegado**, no es un
+  loop que falla, y es la pieza que habría aislado el incidente del 18-sep.
 
 **Constantes/invariantes validadas:**
 - `n8nFetch` (`odoo.js:15-40`) **ya tiene retry 2× con timeout 10s** — NO necesita más resiliencia de red; el problema fue *surfacing* del fallo terminal.
@@ -591,10 +594,50 @@ Cuando crees un nuevo workflow:
 
 #### Bloque B — Pendientes técnicos no urgentes
 
-4. **Worker + Redis Railway crashed loop**
-   - Causa: legacy del modo queue anterior (`EXECUTIONS_MODE=regular` desde hace 8 días).
-   - Procedimiento por etapas: pausar worker → smoke test 24h → eliminar; pausar Redis → smoke test 24h → eliminar.
-   - Impacto si NO se hace: ~$5-10 USD/mes desperdicio + logs ruidosos. Riesgo: cero (nada depende de worker en regular mode).
+4. 🔴 **El `Worker` NUNCA se ha desplegado — y es el aislamiento que nos faltó (CORREGIDO 2026-09-18)**
+
+   **Lo que decía este punto hasta hoy, y era falso:** que `Worker` + `Redis` eran un *«crashed loop
+   legacy del modo queue anterior»*, con un procedimiento para **eliminarlos por etapas**, *«~$5-10
+   USD/mes de desperdicio»* y *«riesgo: cero»*. Nadie lo ejecutó, y menos mal.
+
+   **Lo medido el 18-sep-2026 (Railway MCP, proyecto `cheerful-comfort`, entorno `production`):**
+   ```
+   Worker  ef4110d9-a33c-4ebf-9fe0-2338e5f6e1e2   latestDeployment: null
+   Redis   b2be579f-4f93-4f6a-97ab-ee6201165393   latestDeployment: SUCCESS 2026-04-03
+
+   métricas 24 h, 1441 muestras cada uno:
+   Worker  MEMORY 0 / CPU 0 / LIMIT 0      (todas las muestras en cero)
+   Redis   MEMORY 0 / CPU 0                (todas las muestras en cero)
+   ```
+   `latestDeployment: null` no es «desplegado y crasheando»: es **jamás desplegado**. Y con todo en
+   cero no hay loop, no hay logs ruidosos y **no hay $5-10/mes que ahorrar** — no hay nada corriendo.
+   El diagnóstico viejo describía un servicio que nunca existió en ejecución.
+
+   **Por qué importa, y es la parte cara:** el proyecto **ya está configurado para modo cola**. El
+   servicio trae `startCommand: "n8n worker"`, las variables de Redis, la misma `N8N_ENCRYPTION_KEY`
+   y —lo decisivo— **`OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS`**. O sea que el aislamiento entre el
+   trabajo pesado y los webhooks con los que el equipo trabaja **está diseñado y sólo está apagado**.
+   (Esa lectura de configuración es de la sesión del DENUE en el issue #249; lo que se midió aquí es
+   el `latestDeployment` y las métricas.)
+
+   El 18-sep un batch del DENUE —ZIPs del INEGI de hasta **137 MB de CSV → ~300,000 items por
+   entidad**, con n8n reteniendo la salida de cada nodo en cada vuelta del ciclo— llevó `Primary` a
+   **7.9959 de 8 GB** y dejó el kiosko y Confirmar Horas inservibles media mañana. Sus 33 ejecuciones
+   fueron **todas en modo `manual`**, que es exactamente lo que esa variable existe para sacar del
+   `Primary`. Con el Worker arriba, ese trabajo se habría comido la memoria del Worker y nadie más se
+   entera.
+
+   **Acción correcta: subir el Worker, no borrarlo** — fuera de horario, verificando que toma
+   trabajos, y confirmando `OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true`. Pendiente de Esteban.
+   ⚠️ **Y NO subir el límite de 8 GB antes de aislar:** más memoria en una caja compartida sólo mueve
+   el precipicio; con el Worker arriba, que el batch reviente es un incidente de nadie.
+
+   **La lección, que vale más que el caso:** este punto llevaba casi cuatro meses recomendando tirar
+   la pieza que hacía falta, y el diagnóstico que lo sostenía («crashed loop») **nunca se midió** —
+   se dedujo de que el servicio existía sin usarse. Un pendiente de backlog que nadie vuelve a medir
+   envejece hacia la confianza, no hacia la duda: se lee como hecho porque lleva mucho escrito. Antes
+   de **ejecutar** una recomendación vieja del backlog, re-medir la premisa; es la misma exigencia de
+   §8 («verificado = ejecutado y observado») aplicada a lo que nosotros mismos escribimos.
 5. **Auditar 6 empleados activos fuera del roster kiosko**
    - Hallazgo: Odoo tiene 40 activos, webhook `kiosk/empleados` retorna 34. Diferencia: filtro `company_id=1` del workflow `2UGWLjNwYRGtXq5y`.
    - Hipótesis: empleados en otra company (Brasil/USA) o filtro adicional. Acción: query directa a Odoo + comparar contra payload del webhook. ~15 min.
@@ -1060,6 +1103,46 @@ satura, esa línea se repite miles de veces y tapa todo lo demás.
 
 **Lo que NO arregla nada:** subir el límite de memoria antes de saber qué la consume.
 Un techo más alto con una fuga no quita el problema, sólo tarda más en doler.
+
+### 16. Un formato PROPIO se blinda menos que uno AJENO, y no debería
+Cuando leemos un archivo que hace otro —la lista de raya de CONTPAQi— lo tratamos con
+desconfianza: cada encabezado se resuelve por **alias en un catálogo**, se barren 15
+filas buscando la que más calza, y si no aparece un marcador se truena con nombre
+propio (`MARCADOR_AUSENTE`) y con la instrucción de dónde agregar el alias.
+
+Cuando leemos un archivo que hacemos **nosotros** —el despacho que RH manda a Ulises—
+confiamos en el literal exacto: `cab.indexOf('CODIGO')`. Es al revés de lo que uno
+esperaría del riesgo, y la razón es la palabra «propio».
+
+**«Propio» no significa estable. Significa que quien lo va a romper es de casa.**
+Un formato ajeno cambia cuando el proveedor saca una versión; uno propio cambia el
+martes que a alguien le parezca que la columna se llama mejor de otro modo — y esa
+persona tiene permiso de escritura y ninguna razón para sospechar que un rótulo era
+una pieza de máquina. La probabilidad de que se rompa no es menor: es **mayor**, y
+encima el cambio no viene anunciado por un `CHANGELOG`.
+
+*(Origen: 18-sep-2026. `NO EMPLEADO` no era un rótulo impreso: era el DETECTOR del
+renglón de columnas del archivo de RH. Renombrarlo en el generador no habría roto una
+columna — habría matado el cruce entero. Lo descubrimos porque el rename se pidió; si
+alguien lo hubiera hecho por su cuenta, se descubre en producción.)*
+
+**Regla operativa — un formato propio se lee con las mismas tres defensas que uno ajeno:**
+1. **Alias, no literal.** Los nombres viejos se quedan para siempre: los archivos ya
+   generados tienen que seguir abriéndose dentro de un año.
+2. **Fallar con nombre propio.** Si la estructura no aparece, decirlo y decir dónde se
+   arregla — nunca devolver vacío, que se confunde con «no había nada» (§20 #11).
+3. **Un gate que ate las dos puntas.** El del `MAPA` (`gate-cruce-rh.js:388`) existe
+   justo porque una preposición mal escrita apagó un control entero sin un solo error.
+
+**Al backlog, no perseguir (medido 18-sep):** el hueco peor no es el detector —ése ya
+falla ruidoso— sino las cuatro columnas restantes (`CODIGO`, `EMPLEADO`, `INSTRUCCION`,
+`REVISAR`): un `indexOf` que no calza devuelve −1 y la columna se lee **vacía para
+todos**, así que con `CODIGO` vacío la pantalla reporta a todo el mundo como «RH la
+mandó y no aparece». **Ruidoso y falso, que es peor que silencioso.** ~20 min: exigir
+que las cinco columnas aparecieran y decir cuál falta. Otros dos apuntados: los nombres
+de depto de `DEPTOS_VALIDOS` en los workflows (§13 hallazgo 2, falla en silencio) y los
+nombres de cuenta de la lista `BOLSAS` de Confirmar Horas (cosmético, y ya hay deriva:
+el panel dice `Administración`, Odoo dice `CENTRO DE COSTOS ADMINISTRACION`).
 
 ### Correcciones a reglas anteriores (verificadas 2026-08-31)
 
