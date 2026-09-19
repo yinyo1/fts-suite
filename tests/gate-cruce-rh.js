@@ -226,6 +226,62 @@ seccion('El cruce · el premio de puntualidad');
   check('los dos de acuerdo en NO darlo → tampoco hallazgo', dd.hallazgos.length === 0, codigos(dd.hallazgos).join(','));
 }
 
+// ═══ La concesion MANUAL sobre una ficha que dice "no aplica" (#256) ═══════
+// El bug que este bloque existe para que no vuelva: `ppaDe` contestaba 'N/A' ANTES
+// de mirar `ppa_decidido`, asi que una concesion de RH sobre alguien con
+// x_aplica_ppa=false se perdia — pero la NOTA seguia viajando, o sea el archivo
+// llevaba la justificacion de un premio que no instruia. Medido en el CSV congelado
+// de S38 (Erick Belmont, emp 149).
+//
+// Los cuatro asserts cubren las cuatro esquinas: la ficha dice no + RH concede, la
+// ficha dice no + RH no decide, la ficha dice no + RH niega, y el invariante duro que
+// ata las dos puntas — la nota NUNCA viaja sola cuando el premio se concedio.
+seccion('El premio · la decision de RH gana sobre la ficha de Odoo');
+{
+  function insDe(per) { return Cruce.parseDespacho(archivoRH([per])).filas[0].instruccion; }
+  const NOTA = 'SI APLICA PPA, SU ENTRADA ES 7.30 AM';
+
+  // 1 · el caso del bug: ficha en false, RH lo concede a mano
+  const concedido = persona({ id: 149, nombre: 'Erick Belmont', codigo: '081',
+    ppa: { aplica: false }, ppa_decidido: true, ppa_nota: NOTA });
+  const insC = insDe(concedido);
+  check('ficha dice "no aplica" pero RH lo concedio → la instruccion trae PPA',
+    /(^|[.·]\s*)PPA\b/.test(insC), insC);
+  check('y la nota tambien viaja', insC.indexOf('Nota del premio: ' + NOTA) >= 0, insC);
+  check('y el cruce ya NO acusa a RH cuando la nomina si lo pago',
+    Cruce.cruzar(Cruce.parseDespacho(archivoRH([concedido])),
+                 [emp('081', 'BELMONT ERICK', { [PPA]: 250 })], 'S36/2026').hallazgos.length === 0);
+
+  // 2 · sin decision de RH, la ficha sigue mandando: N/A, no 'NO'
+  const naPuro = persona({ id: 155, nombre: 'Juan De La Cruz', codigo: '017', ppa: { aplica: false } });
+  check('ficha dice "no aplica" y RH no decidio → sigue sin PPA en la instruccion',
+    !/(^|[.·]\s*)PPA\b/.test(insDe(naPuro)), insDe(naPuro));
+  check('y ppaDe lo reporta como N/A, que no es lo mismo que NO',
+    Des.ppaDe(naPuro).valor === 'N/A', Des.ppaDe(naPuro).valor);
+
+  // 3 · ficha en false y RH lo NIEGA explicitamente: es 'NO', no 'N/A'
+  const negado = persona({ id: 156, nombre: 'Juana Camarillo', codigo: '018',
+    ppa: { aplica: false }, ppa_decidido: false, ppa_nota: 'no le toca esta semana' });
+  check('ficha dice "no aplica" y RH lo nego → NO decidido, no N/A',
+    Des.ppaDe(negado).valor === 'NO' && Des.ppaDe(negado).decidido === true,
+    Des.ppaDe(negado).valor + '/' + Des.ppaDe(negado).decidido);
+
+  // 4 · EL INVARIANTE QUE ATA LAS DOS PUNTAS. Si el premio se concedio, la nota y la
+  //     instruccion viajan JUNTAS. Media verdad en el renglon es peor que ninguna:
+  //     si se pierde todo alguien lo nota, si se pierde la mitad el renglon parece
+  //     completo. Se prueba sobre las dos fichas para que el arreglo no dependa de
+  //     x_aplica_ppa.
+  [true, false].forEach(function (fichaAplica) {
+    const per = persona({ id: 149, codigo: '081', ppa: { aplica: fichaAplica },
+      ppa_decidido: true, ppa_nota: NOTA });
+    const ins = insDe(per);
+    const conNota = ins.indexOf('Nota del premio:') >= 0;
+    const conPPA  = /(^|[.·]\s*)PPA\b/.test(ins);
+    check('concedido con ficha aplica=' + fichaAplica + ' → nota y PPA viajan juntas',
+      conNota && conPPA, ins);
+  });
+}
+
 seccion('El cruce · concepto por concepto');
 {
   const pVac = persona({ id: 62, nombre: 'Gibrán', codigo: '013', dias_mexico: 3,
