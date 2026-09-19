@@ -206,9 +206,20 @@
   // Una decisión humana gana sobre la sugerencia; sin decisión manda la sugerencia.
   // Si la ficha de Odoo dice que no aplica, la celda dice N/A y no 'NO': no es lo
   // mismo "se le quitó" que "nunca le tocó".
+  //
+  // EL ORDEN DE ESTAS DOS LÍNEAS ES EL ARREGLO (#256). El N/A estaba ARRIBA y
+  // contestaba antes de preguntar: si la ficha de Odoo traía x_aplica_ppa en false,
+  // devolvía 'N/A' y NUNCA miraba ppa_decidido, o sea nunca se enteraba de que RH lo
+  // había concedido a mano. Y como la nota se agrega 130 líneas más abajo sin esa
+  // condición, el archivo salía con la JUSTIFICACIÓN de un premio que no instruía —
+  // medido en el CSV congelado de S38: "Nota del premio: SI APLICA PPA, SU ENTRADA ES
+  // 7.30 AM" sin un solo "PPA." al frente. Si se perdiera todo alguien lo notaría;
+  // como se perdía la mitad, el renglón parecía completo.
+  //
+  // La regla correcta: `x_aplica_ppa` es el DEFAULT, no un veto. Quien decide es RH.
   function ppaDe(p) {
-    if (p.ppa && p.ppa.aplica === false) return { valor: 'N/A', decidido: false, revisar: false };
     var decidido = (p.ppa_decidido === true || p.ppa_decidido === false);
+    if (!decidido && p.ppa && p.ppa.aplica === false) return { valor: 'N/A', decidido: false, revisar: false };
     var vale = decidido ? p.ppa_decidido : !!(p.ppa && p.ppa.sugerido);
     return { valor: vale ? 'SI' : 'NO', decidido: decidido, revisar: !!(p.ppa && p.ppa.revisar && !decidido) };
   }

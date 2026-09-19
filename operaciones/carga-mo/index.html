@@ -9,11 +9,11 @@
      Vx.yy. Se bumpea junto con version.json y con el ?v= de cada script, y el gate
      exige que los tres digan lo mismo: un badge que anuncia una version mientras
      el navegador corre el codigo viejo miente en la peor direccion. -->
-<script>(function(){ window.CMO_VER = 'V1.03'; })();</script>
+<script>(function(){ window.CMO_VER = 'V1.04'; })();</script>
 <script src="../../finanzas/js/auth-fin.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/cruce-rh.js?v=V1.03"></script>
-<script src="js/resolver.js?v=V1.03"></script>
+<script src="js/cruce-rh.js?v=V1.04"></script>
+<script src="js/resolver.js?v=V1.04"></script>
 <style>
   :root{ --azul:#1a4480; --ok:#1a7a3a; --warn:#BA7517; --err:#b3261e; --info:#3b5bdb; --bg:#f4f6f9; }
   *{ box-sizing:border-box; }
@@ -31,8 +31,6 @@
   .btn-w{ background:var(--err); color:#fff; }
   .btn-g{ background:#eef2f8; color:#2c3e56; border:1px solid #d5dfec; padding:7px 12px; font-size:13px; }
   .btn:disabled{ opacity:.4; cursor:not-allowed; }
-  .tmb-lbl{ display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer; white-space:nowrap; }
-  .tmb-lbl input{ cursor:pointer; }
   table{ width:100%; border-collapse:collapse; font-size:12px; }
   th{ background:#eef2f8; text-align:left; padding:6px 8px; position:sticky; top:0; }
   td{ padding:5px 8px; border-top:1px solid #eee; }
@@ -177,24 +175,25 @@
       </div>
     </div>
     <div class="sep"></div>
-    <!-- Una semana YA PAGADA no se corrige, se registra. El archivo que manda el
-         despacho es una PRENOMINA: mientras no se timbre, frenar sirve porque hay
-         ventana para arreglar. Despues del timbrado el dinero ya salio, y frenar no
-         recupera nada — solo deja el costo sin registrar en Odoo, o sea que el
-         candado produce un segundo problema en vez de evitar el primero.
+    <!-- LA CASILLA DE "¿ya se timbro?" SE QUITO DE AQUI A PROPOSITO (#259 A1).
+         Cobraba un clic CADA semana para contestar algo que casi siempre es que si:
+         Carga MO corre despues del timbrado, la conciliacion es otro momento. Una
+         pregunta que se contesta igual treinta veces seguidas deja de leerse y se
+         vuelve tramite.
 
-         El modulo NO sabe si una semana se timbro: el timbrado ocurre fuera y nada
-         de lo que llega lo cuenta (nom_envio solo distingue 'borrador' de 'enviada',
-         que es el envio de RH al despacho, no lo que el despacho hizo despues). Por
-         eso se DECLARA, y por eso la declaracion se registra con quien y cuando en
-         vez de resolverse con un interruptor: quien declara es el mismo que quiere
-         cargar, asi que lo unico que la hace honesta es que quede escrita. -->
-    <div class="fld">
-      <label>¿Ya se timbró?</label>
-      <div class="fld-in">
-        <label class="tmb-lbl"><input type="checkbox" id="ya-timbrada"> sí — solo registrar</label>
-      </div>
-    </div>
+         Pero el candado NO se fue con ella. `rhInt > 0` —los hallazgos de INTEGRIDAD
+         del cruce— ya es la senal de "lo que capturo el despacho no coincide con lo
+         que pidio RH". Despues del timbrado eso es historia y frenar no recupera
+         nada; antes del timbrado es trabajo pendiente y frenar sirve. Distinguir los
+         dos casos es el unico bit que el modulo no puede derivar (el timbrado ocurre
+         fuera y nada de lo que llega lo cuenta: `nom_envio` solo sabe 'borrador' vs
+         'enviada', que es el envio de RH al despacho).
+
+         Por eso ahora se pregunta SOLO cuando importa, y en el lugar donde importa:
+         si hay hallazgos, el boton queda cerrado y junto a la lista aparece la
+         accion de declararlo. Semana limpia = cero clics; semana con hallazgos = un
+         clic con los hallazgos a la vista, que es cuando la declaracion significa
+         algo. Ver `declararTimbrada()`. -->
     <div class="acts">
       <button class="btn btn-p" id="send" disabled>Validar nómina</button>
       <button class="btn btn-w" id="wbtn" disabled>Enviar a FTS (Correo + Odoo)</button>
@@ -406,19 +405,33 @@ $('f-vie').addEventListener('change', function(e){
 });
 
 /* La declaracion de semana ya timbrada. Se sella con QUIEN y CUANDO en el momento
-   de marcarla, no al enviar: si se tomara al enviar, un cambio de sesion entre el
+   del gesto, no al enviar: si se tomara al enviar, un cambio de sesion entre el
    gesto y el envio le pondria el nombre de otro a una declaracion que no hizo.
-   Al desmarcar se borra entera — una declaracion retirada no deja media huella. */
-$('ya-timbrada').addEventListener('change', function(e){
-  if(e.target.checked){
-    var s = (window.FinAuth && FinAuth.getSession && FinAuth.getSession()) || null;
-    TIMBRADA = { si:true, actor:(s && s.user) || null, cuando:new Date().toISOString() };
+   Al retirarla se borra entera — una declaracion retirada no deja media huella.
+
+   El gesto vive junto a los hallazgos (ver `pintarCruceRH`), no en el formulario:
+   declarar "ya se pago asi" sin tener enfrente QUE se pago distinto es firmar en
+   blanco. */
+function declararTimbrada(si){
+  if(si){
+    var ses = (window.FinAuth && FinAuth.getSession && FinAuth.getSession()) || null;
+    TIMBRADA = { si:true, actor:(ses && ses.user) || null, cuando:new Date().toISOString() };
   } else {
     TIMBRADA = { si:false, actor:null, cuando:null };
   }
   /* Cambia lo que se manda, asi que el reporte anterior ya no describe esto. */
   invalidarReporte();
   if(PARSED) render();
+}
+
+/* Delegado sobre el contenedor y no sobre el boton: el panel se repinta entero con
+   innerHTML en cada render, asi que un listener puesto sobre el boton muere en el
+   primer repintado. El contenedor sobrevive. */
+$('rh-panel').addEventListener('click', function(ev){
+  var t = ev.target.closest && ev.target.closest('[data-tmb]');
+  if(!t) return;
+  ev.preventDefault();
+  declararTimbrada(t.getAttribute('data-tmb') === '1');
 });
 
 /* ── ingesta ─────────────────────────────────────────────────────────────── */
@@ -604,7 +617,27 @@ function pintarDespacho(){
      aparezca sin nada que hacer es información —significa 'a esta persona no le
      toca ajuste'— y esconderla dejaría a Ulises sin saber si se le olvidó o si de
      verdad no había nada. Las que sí traen instrucción van resaltadas. */
-  var cuerpo = RH.filas.map(function(f){
+  /* EL ORDEN (#259 A3): por # CONTPAQi de menor a mayor, y al final los que
+     facturan. No hay que nombrar a nadie a mano — los que facturan son exactamente
+     los que no traen codigo, porque el codigo ES el numero de la lista de raya y
+     quien factura no esta en ella. Un dia que entre otro que facture, cae solo en su
+     lugar; el dia que a alguien le FALTE el codigo, cae al final y se ve, que es lo
+     que hay que ver.
+     El codigo se compara como NUMERO y no como texto: '9' < '10' es falso entre
+     cadenas, y una lista que salta del 084 al 10 se lee como desordenada. Los que
+     no tienen codigo se mandan al final con Infinity en vez de con un caso aparte. */
+  function ordCod(f){
+    var n = parseInt(String(f.codigo || '').trim(), 10);
+    return isFinite(n) ? n : Infinity;
+  }
+  var filasOrd = RH.filas.slice().sort(function(a, b){
+    var da = ordCod(a), db = ordCod(b);
+    if(da !== db) return da - db;
+    /* Entre los que no traen codigo, alfabetico: sin esto quedan en el orden en que
+       vino el archivo, que no es un orden — es una coincidencia. */
+    return String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es');
+  });
+  var cuerpo = filasOrd.map(function(f){
     var ins = String(f.instruccion||'').trim();
     var rev = String(f.revisar||'').trim();
     return '<tr' + (ins ? ' style="background:#fbfcff"' : '') + '>'
@@ -626,7 +659,7 @@ function pintarDespacho(){
     + (conRev ? ' · ' + conRev + ' con algo que revisar' : '')
     + ' — esto es lo que hay que capturar en CONTPAQi.</div>'
     + '<div style="overflow-x:auto"><table><thead><tr>'
-    + '<th>Código</th><th>No.</th><th>Empleado</th><th>Instrucción</th><th>Revisar</th>'
+    + '<th># CONTPAQi</th><th>ID ODOO</th><th>Empleado</th><th>Instrucción</th><th>Revisar</th>'
     + '</tr></thead><tbody>' + cuerpo + '</tbody></table></div></div>';
 }
 
@@ -724,7 +757,11 @@ function pintarCruceRH(P){
         + '<div class="mut" style="font-size:12px;margin-top:3px">Los hallazgos de abajo'
         + ' <b>se siguen reportando completos</b> y viajan en el envío, pero no detienen la carga:'
         + ' sobre una semana ya pagada no hay nada que corregir antes de mandar. Lo que quede'
-        + ' pendiente se ajusta en la siguiente nómina o se habla con la persona.</div></div></div>';
+        + ' pendiente se ajusta en la siguiente nómina o se habla con la persona.'
+        /* Un gesto de un clic tiene que poder deshacerse con otro. Sin esto, un dedo
+           torpe deja la semana declarada sin forma de retirarlo que no sea recargar
+           la pagina y volver a subir el archivo. */
+        + ' <a href="#" data-tmb="0" style="color:var(--mut)">retirar la declaración</a>.</div></div></div>';
   }
 
   if(!r.hallazgos.length){
@@ -746,6 +783,21 @@ function pintarCruceRH(P){
       + '<div class="mut" style="font-size:12px">→ ' + esc(h.accion) + '</div></div></div>';
   }).join('');
 
+  /* LA ACCION VA AQUI, DEBAJO DE LOS HALLAZGOS (#259 A1). No arriba, y no en el
+     formulario: se declara "ya se pago asi" con la lista de diferencias enfrente,
+     porque declararlo sin verlas es firmar en blanco. Y aparece SOLO cuando hay
+     integridad — en una semana limpia no hay nada que declarar y no se pide nada. */
+  var accion = (nInt > 0 && !timbradaDeclarada())
+    ? '<div class="msg m-cla" style="margin-top:10px"><div>'
+      + '<b>¿Esta semana ya se pagó y se timbró así?</b>'
+      + '<div class="mut" style="font-size:12px;margin:3px 0">Si ya salió el dinero, estas '
+      + nInt + ' diferencia' + (nInt === 1 ? '' : 's') + ' no se corrigen antes de cargar: se '
+      + '<b>registran</b>, y lo que quede pendiente se ajusta en la siguiente nómina. '
+      + 'Si <b>todavía no se timbra</b>, no declares nada — corrígelo en CONTPAQi y vuelve a subir el archivo.</div>'
+      + '<button class="btn" data-tmb="1" style="margin-top:4px">Ya se pagó así — cargar y registrar</button>'
+      + '</div></div>'
+    : '';
+
   box.innerHTML = '<div class="card">' + cab
     + '<div class="mut" style="font-size:12px;margin-bottom:8px">'
     /* El rotulo tiene que decir la verdad del momento: con la semana declarada
@@ -757,7 +809,7 @@ function pintarCruceRH(P){
               + '</b> · ' : '')
     + (nRev ? nRev + ' que hay que revisar · ' : '')
     + r.resumen.cruzados + ' de ' + r.resumen.total_rh + ' personas cruzadas por código'
-    + '</div>' + cuerpo + '</div>';
+    + '</div>' + cuerpo + accion + '</div>';
   return nInt;
 }
 

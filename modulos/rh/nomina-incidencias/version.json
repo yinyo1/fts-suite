@@ -1,10 +1,16 @@
 {
-  "version": "V1.19",
-  "fecha": "2026-09-18",
+  "version": "V1.20",
+  "fecha": "2026-09-19",
   "modulo": "rh/nomina-incidencias",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "ambito": "El CONTADOR es solo de este modulo. finanzas, comercial/machote y operaciones/carga-mo usan el mismo esquema con contadores PROPIOS (ver sus version.json): que aqui vaya en V1.16 y carga-mo en V1.00 es lo correcto, no un desfase — son modulos distintos que avanzan por separado. operaciones/planeacion sigue en 2.4.1; kiosk y confirmar-horas solo con cadena de build.",
   "historial": [
+    {
+      "version": "V1.20",
+      "fecha": "2026-09-19",
+      "titulo": "La decision de RH gana sobre la ficha de Odoo (#256)",
+      "nota": "ppaDe() contestaba N/A ANTES de mirar ppa_decidido: una concesion manual de RH sobre alguien con x_aplica_ppa=false se perdia, pero la NOTA seguia viajando — el archivo llevaba la justificacion de un premio que no instruia. Medido contra los bytes del CSV congelado de S38 (tabla nom_envio, semana S38/2026, enviado 2026-09-18 17:15:39 UTC): el renglon de Erick Belmont (081;149) decia \"4 de 5 dias trabajados. PAGAR 1 dia . Dia festivo. Nota del premio: SI APLICA PPA, SU ENTRADA ES 7.30 AM.\" sin un solo \"PPA.\" al frente, y la linea de totales del mismo archivo decia \"14 con premio\" sin contarlo. La captura de Magaly estaba bien guardada (nom_semana_persona, fila S38/2026|149, ppa \"si\", 2026-09-17T19:00:50Z) y el viaje de ida y vuelta por nom/guardar y nom/semana esta intacto: el unico tramo roto eran dos lineas en el orden equivocado. ARREGLO: x_aplica_ppa vuelve a ser el DEFAULT y deja de ser un veto; quien decide es RH. La pantalla (app.js) ya lo hacia bien desde siempre, por eso RH veia \"otorgado\" y el archivo salia sin otorgarlo. GATE: 113 asserts (eran 105). Los 8 nuevos cubren las cuatro esquinas (ficha no + concede / no decide / niega) y el invariante que ata las dos puntas: si el premio se concedio, la nota y la instruccion viajan JUNTAS. Media verdad en el renglon es peor que ninguna — si se pierde todo alguien lo nota, si se pierde la mitad el renglon parece completo. Comprobado que los 8 se ponen ROJOS contra el codigo viejo: un gate que pasa antes y despues del arreglo no es un gate."
+    },
     {
       "version": "V1.19",
       "pr": null,

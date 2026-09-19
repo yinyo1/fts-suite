@@ -289,6 +289,41 @@ function archivoRH() {
     });
     check('el cruce se lee ANTES que los avisos del archivo', orden === 'antes', String(orden));
 
+    // ── A2 y A3 · los dos encabezados y el orden de la lista ─────────────
+    // Se lee de la TABLA pintada, no del código: un encabezado correcto en el lugar
+    // equivocado se lee mal, y el orden no se puede verificar leyendo el sort.
+    const lista = await page.evaluate(() => {
+      // La tabla vive en #despacho-panel (pintarDespacho), NO en #rh-panel, que es
+      // el del cruce. Lo cazó este gate: la primera versión buscaba en el panel
+      // equivocado y decía "no existe" de una tabla que estaba en pantalla.
+      const tablas = document.querySelectorAll('#despacho-panel table');
+      const t = tablas[tablas.length - 1];
+      if (!t) return null;
+      const th = Array.from(t.querySelectorAll('thead th')).map(x => x.textContent.trim());
+      const cods = Array.from(t.querySelectorAll('tbody tr')).map(
+        tr => (tr.querySelector('td') ? tr.querySelector('td').textContent.trim() : ''));
+      return { th: th, cods: cods };
+    });
+    check('la tabla de RH existe', !!lista, '');
+    check('el primer encabezado dice # CONTPAQi', lista && lista.th[0] === '# CONTPAQi',
+          lista ? lista.th[0] : '');
+    check('el segundo dice ID ODOO, no "No."', lista && lista.th[1] === 'ID ODOO',
+          lista ? lista.th[1] : '');
+    if (lista) {
+      // Numérico, no alfabético: entre cadenas '9' > '10', y una lista que salta del
+      // 084 al 10 se lee como desordenada aunque el sort "funcione".
+      const num = lista.cods.map(c => { const n = parseInt(c, 10); return isFinite(n) ? n : Infinity; });
+      let creciente = true;
+      for (let i = 1; i < num.length; i++) if (num[i] < num[i - 1]) creciente = false;
+      check('los # CONTPAQi van de menor a mayor', creciente, lista.cods.join(','));
+      // Los que facturan no traen código, así que "sin código al final" y "los que
+      // facturan al final" son la misma cosa — y ésta no nombra a nadie a mano.
+      const ultimoCon = num.reduce((acc, v, i) => (v !== Infinity ? i : acc), -1);
+      const primerSin = num.indexOf(Infinity);
+      check('los que no traen código quedan al final',
+            primerSin === -1 || primerSin > ultimoCon, lista.cods.join(','));
+    }
+
     await page.screenshot({ path: path.join(OUT, nombre + '-2-con-rh.png'), fullPage: true });
 
     // ── semana YA TIMBRADA: los hallazgos se quedan, el botón se abre ─────
@@ -301,7 +336,29 @@ function archivoRH() {
     }));
     check('antes de declarar, el botón está cerrado', antes.cerrado === true, String(antes.cerrado));
 
-    await page.check('#ya-timbrada');
+    // ── A1 · la casilla se fue del formulario y la acción vive con los hallazgos ──
+    // Lo que se exige no es que el botón exista, sino que NO se cobre un clic cuando
+    // no hay nada que declarar, y que cuando sí lo hay, esté junto a la lista de
+    // diferencias: declarar "ya se pagó así" sin verlas es firmar en blanco.
+    const gesto = await page.evaluate(() => {
+      const panel = document.getElementById('rh-panel');
+      const b = panel ? panel.querySelector('[data-tmb="1"]') : null;
+      return {
+        casillaVieja: !!document.getElementById('ya-timbrada'),
+        hayBoton: !!b,
+        rotulo: b ? b.textContent : '',
+        dentroDelPanel: !!b,
+        // el orden importa: la acción va DESPUÉS de los hallazgos, no antes
+        despuesDeLosHallazgos: !!(b && panel.querySelector('.msg') &&
+          (panel.querySelector('.msg').compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING))
+      };
+    });
+    check('la casilla ya NO está en el formulario', gesto.casillaVieja === false, '');
+    check('con hallazgos, aparece la acción de declarar', gesto.hayBoton === true, '');
+    check('y dice qué hace, no "aceptar"', /cargar y registrar/i.test(gesto.rotulo), gesto.rotulo);
+    check('la acción va junto a los hallazgos, no antes', gesto.despuesDeLosHallazgos === true, '');
+
+    await page.click('#rh-panel [data-tmb="1"]');
     await page.waitForTimeout(400);
 
     const desp = await page.evaluate(() => {
@@ -328,8 +385,19 @@ function archivoRH() {
 
     await page.screenshot({ path: path.join(OUT, nombre + '-2b-timbrada.png'), fullPage: true });
 
-    // Al desmarcar vuelve a cerrar: una declaración retirada no deja media huella.
-    await page.uncheck('#ya-timbrada');
+    // Ya declarada, la acción NO se sigue ofreciendo: un gesto que ya se hizo y sigue
+    // pidiéndose enseña que no sirvió de nada.
+    const yaNo = await page.evaluate(() =>
+      !document.querySelector('#rh-panel [data-tmb="1"]'));
+    check('una vez declarada, la acción ya no se ofrece', yaNo === true, '');
+
+    // Al retirarla vuelve a cerrar: una declaración retirada no deja media huella.
+    // Y tiene que poder retirarse con un clic — sin esto, un dedo torpe deja la
+    // semana declarada sin más salida que recargar y volver a subir el archivo.
+    const hayDeshacer = await page.evaluate(() =>
+      !!document.querySelector('#rh-panel [data-tmb="0"]'));
+    check('la declaración se puede retirar desde la pantalla', hayDeshacer === true, '');
+    await page.click('#rh-panel [data-tmb="0"]');
     await page.waitForTimeout(400);
     const vuelta = await page.evaluate(() => document.getElementById('send').disabled);
     check('al retirar la declaración, el botón se vuelve a cerrar', vuelta === true, String(vuelta));
