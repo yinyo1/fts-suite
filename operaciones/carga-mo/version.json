@@ -1,10 +1,16 @@
 {
-  "version": "V1.03",
-  "fecha": "2026-09-18",
+  "version": "V1.04",
+  "fecha": "2026-09-19",
   "modulo": "operaciones/carga-mo",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "ambito": "El CONTADOR es SOLO de este modulo y arranca en V1.00 aunque el modulo lleve meses en produccion: antes se versionaba con una cadena de build (la ultima fue 20260904-cmo-cruce-rh) y esa numeracion no se puede continuar. rh/nomina-incidencias, finanzas y comercial/machote usan el MISMO esquema con contadores PROPIOS — que aqui diga V1.00 y alla V1.16 es lo correcto, no un desfase.",
   "historial": [
+    {
+      "version": "V1.04",
+      "fecha": "2026-09-19",
+      "titulo": "La casilla de timbrado se va del formulario; el candado se queda (#259 A1) + los dos encabezados y el orden de la lista (A2, A3)",
+      "nota": "A1. La casilla \"¿ya se timbro?\" cobraba un clic CADA semana para contestar algo que casi siempre es que si: Carga MO corre despues del timbrado y la conciliacion es otro momento. Una pregunta que se contesta igual treinta veces deja de leerse. PERO el candado no se fue con ella: rhInt>0 (los hallazgos de INTEGRIDAD del cruce) ya es la senal de \"lo que capturo el despacho no coincide con lo que pidio RH\", y distinguir \"eso es historia\" de \"eso es trabajo pendiente\" es el unico bit que el modulo no puede derivar -- el timbrado ocurre fuera y nom_envio solo sabe borrador vs enviada. Ahora se pregunta SOLO cuando importa y DONDE importa: semana limpia = cero clics; semana con hallazgos = el boton queda cerrado y debajo de la lista aparece \"Ya se pago asi - cargar y registrar\". Declararlo sin las diferencias enfrente seria firmar en blanco, por eso la accion vive junto a los hallazgos y no en el formulario. El sellado de actor + timestamp es el mismo de antes y se toma en el gesto, no al enviar. Se agrega \"retirar la declaracion\": un gesto de un clic tiene que poder deshacerse con otro. El listener va DELEGADO sobre #rh-panel porque el panel se repinta entero con innerHTML y un listener sobre el boton muere en el primer repintado. A2. Los encabezados \"Codigo\" y \"No.\" pasan a \"# CONTPAQi\" e \"ID ODOO\". El archivo ya se habia renombrado (cruce-rh.js acepta los dos alias); la pantalla se habia quedado atras, y ese par es justo el que hay que poder distinguir de un vistazo. A3. La lista se ordena por # CONTPAQi de menor a mayor con los que facturan al final. No se nombra a nadie a mano: los que facturan son exactamente los que no traen codigo, porque el codigo ES el numero de la lista de raya. El codigo se compara como NUMERO (entre cadenas 9 > 10, y una lista que salta del 084 al 10 se lee como desordenada) y los sin codigo se mandan al final con Infinity. Entre ellos, alfabetico: el orden del archivo no es un orden, es una coincidencia."
+    },
     {
       "version": "V1.03",
       "pr": null,
