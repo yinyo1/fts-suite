@@ -24,6 +24,90 @@ var CATEGORIAS = [
 ];
 var REASON_ES = { 'Fired': 'Despido', 'Resigned': 'Renuncia', 'Retired': 'Fin de contrato' }; // cortesía hasta que se renombre en Odoo
 
+// ─── Tipo de contrato (campo NATIVO de Odoo `employee_type`) ───
+// Odoo acepta mas valores de los que aqui se ofrecen; la Suite expone SOLO estos dos
+// a proposito, porque son los dos que cambian la nomina de FTS. El padron completo
+// (132 registros, activos + archivados, medido 2026-09-20) no tiene ningun otro valor.
+var TIPOS_CONTRATO = [
+  ['employee',  'Empleado'],
+  ['freelance', 'Externo / Honorarios']
+];
+function etiquetaTipo(v){
+  for (var i = 0; i < TIPOS_CONTRATO.length; i++){ if (TIPOS_CONTRATO[i][0] === v) return TIPOS_CONTRATO[i][1]; }
+  return null;   // null = NO es de la lista blanca
+}
+
+// Empresas cuya nomina se paga por CONTPAQi. Es una regla de NEGOCIO, no un dato
+// derivable de Odoo: solo SERVICIOS FTS (1) corre la nomina mexicana. FTS USA (6)
+// tiene la suya, y Taqueria los Jimenez (10) es otro negocio que ni siquiera es FTS
+// (CLAUDE.md §9). Acotar por EMPRESA y no por id de empleado es lo que hace que el
+// aviso no le grite a alguien que nunca debio llevar codigo.
+var EMPRESAS_CONTPAQI = [1];
+
+// Llena un <select> de tipo de contrato. Si el valor que trae Odoo NO esta en la
+// lista blanca, lo agrega como opcion propia y marcada en vez de caer al primero:
+// un guardado no debe pisar en silencio un valor que esta pantalla no entiende
+// (§20 #13 — lo que el indice no cubre no es "no existe").
+function llenarTipoContrato(sel, valorActual){
+  sel.innerHTML = '';
+  var ph = document.createElement('option'); ph.value = ''; ph.textContent = '— elige —';
+  sel.appendChild(ph);
+  TIPOS_CONTRATO.forEach(function(t){
+    var o = document.createElement('option'); o.value = t[0]; o.textContent = t[1]; sel.appendChild(o);
+  });
+  if (valorActual && !etiquetaTipo(valorActual)){
+    var raro = document.createElement('option');
+    raro.value = valorActual; raro.textContent = '⚠️ ' + valorActual + ' (valor de Odoo que esta pantalla no maneja)';
+    sel.appendChild(raro);
+  }
+  sel.value = valorActual || '';
+}
+
+// La regla de dos estados. Se pinta viva mientras RH escribe, y tambien decide si el
+// submit puede salir (ver `bloqueoTipo`).
+//   de planta + sin codigo  → LE FALTA, aviso fuerte
+//   externo   + sin codigo  → correcto, aviso tranquilo
+//   externo   + CON codigo  → contradiccion, aviso ambar (no bloquea: puede ser una baja en transito)
+//   valor fuera de la lista → ambar, y no se toca nada
+function avisoTipoCodigo(E, aviso){
+  if (!aviso) return;
+  var tipo   = (E['employee_type'] && E['employee_type'].value) || '';
+  var codigo = String((E['x_studio_codigo_contpaqi'] && E['x_studio_codigo_contpaqi'].value) || '').trim();
+  var empresa = parseInt((E['company_id'] && E['company_id'].value) || '0', 10);
+  var enContpaqi = EMPRESAS_CONTPAQI.indexOf(empresa) > -1;
+
+  function pinta(clase, html){ aviso.className = 'rh-aviso' + (clase ? ' ' + clase : ''); aviso.innerHTML = html; aviso.hidden = false; }
+
+  if (!tipo){ aviso.hidden = true; aviso.innerHTML = ''; return; }
+  if (!etiquetaTipo(tipo)){
+    return pinta('rh-aviso-raro', '⚠️ El tipo de contrato <strong>' + esc(tipo) + '</strong> viene de Odoo y esta pantalla no lo maneja. No se toca: cámbialo sólo si sabes que debe cambiar.');
+  }
+  // Fuera de CONTPAQi el codigo no significa nada — y decirlo es mejor que callar,
+  // porque un aviso ausente se confunde con "todo bien" (§20 #18).
+  if (!enContpaqi){
+    return pinta('', 'Esta empresa no va en la nómina de CONTPAQi, así que el <strong># CONTPAQi</strong> no aplica aquí.');
+  }
+  if (tipo === 'employee' && !codigo){
+    return pinta('rh-aviso-falta', '🔴 <strong>LE FALTA EL # DE CONTPAQi.</strong> Es de planta: sin código no se puede cruzar con la raya y la nómina de la semana se frena.');
+  }
+  if (tipo === 'freelance' && !codigo){
+    return pinta('rh-aviso-ok', '✔️ Externo por honorarios: no lleva # de CONTPAQi. Correcto.');
+  }
+  if (tipo === 'freelance' && codigo){
+    return pinta('rh-aviso-raro', '⚠️ Dice <strong>Externo / Honorarios</strong> pero trae el código <strong>' + esc(codigo) + '</strong>. Uno de los dos está mal — revisa cuál antes de guardar.');
+  }
+  aviso.hidden = true; aviso.innerHTML = '';
+}
+
+// Lo unico que BLOQUEA es no haber elegido tipo. El codigo faltante avisa fuerte pero
+// no frena: RH a veces da de alta antes de que contabilidad asigne el numero, y
+// bloquear ahi solo empuja a inventarse un codigo.
+function bloqueoTipo(E){
+  var tipo = (E['employee_type'] && E['employee_type'].value) || '';
+  if (!tipo) return 'Elige el tipo de contrato (Empleado o Externo / Honorarios).';
+  return null;
+}
+
 var LK = null;        // lookups cacheados
 var fotoB64 = null;   // foto comprimida (base64 sin prefijo) — alta
 var editFotoB64 = null; // foto nueva en edición (null = no cambiar la existente)
@@ -77,6 +161,9 @@ async function cargarLookups(){
   // categorías nómina (fijas)
   var catSel = elName('x_categoria_nomina'); catSel.innerHTML = '';
   CATEGORIAS.forEach(function(c){ var o = document.createElement('option'); o.value = c[0]; o.textContent = c[1]; catSel.appendChild(o); });
+  // tipo de contrato del ALTA: sin preseleccion a proposito — que nadie herede un
+  // default que no decidio (CLAUDE.md §9, el caso CAJERO 1).
+  llenarTipoContrato(elName('employee_type'), '');
   // motivos de baja (de Odoo, con traducción de cortesía)
   fillSelect(elName('departure_reason_id'), LK.reasons, 'id', function(r){ return REASON_ES[r.name] || r.name; }, '— elige —');
   // empleados activos para la baja
@@ -90,6 +177,7 @@ async function cargarLookups(){
   fillSelect(fe.elements['resource_calendar_id'], LK.calendars, 'id', function(c){ return c.name + ' (' + (c.hours_per_week || '?') + 'h)'; }, '— elige —');
   var ecat = fe.elements['x_categoria_nomina']; ecat.innerHTML = '';
   CATEGORIAS.forEach(function(c){ var o = document.createElement('option'); o.value = c[0]; o.textContent = c[1]; ecat.appendChild(o); });
+  llenarTipoContrato(fe.elements['employee_type'], '');
   fillSelect(document.getElementById('editEmpSel'), LK.managers, 'id', function(m){ return m.name; }, '— elige empleado —');
 }
 
@@ -121,13 +209,16 @@ async function onAlta(e){
   var f = e.target, m = $('#altaMsg'), btn = $('#btnAlta');
   var hora = elName('x_studio_hora_entrada').value;
   if (hora !== '' && (parseFloat(hora) < 0 || parseFloat(hora) > 23.99)) return msg(m, 'Hora de entrada fuera de 0–23.99', 'err');
+  var falta = bloqueoTipo(f.elements); if (falta) return msg(m, falta, 'err');
   var body = {
     name: f.elements['name'].value.trim(), company_id: f.company_id.value, work_email: f.work_email.value.trim(),
     private_email: f.private_email.value.trim(), mobile_phone: f.mobile_phone.value.trim(), work_phone: f.work_phone.value.trim(),
     department_id: f.department_id.value, parent_id: f.parent_id.value, job_id: f.job_id.value || null,
     resource_calendar_id: f.resource_calendar_id.value, pin: f.pin.value.trim(),
     x_studio_hora_entrada: hora, x_categoria_nomina: f.x_categoria_nomina.value || null,
-    x_aplica_ppa: f.x_aplica_ppa.checked, image_1920: fotoB64 || null
+    x_aplica_ppa: f.x_aplica_ppa.checked, image_1920: fotoB64 || null,
+    employee_type: f.employee_type.value,
+    x_studio_codigo_contpaqi: f.x_studio_codigo_contpaqi.value.trim()
   };
   btn.disabled = true; msg(m, 'Creando…');
   try {
@@ -136,6 +227,7 @@ async function onAlta(e){
     msg(m, '✅ Empleado creado (id ' + r.employee_id + ', PIN ' + r.pin + ').', 'ok');
     f.reset(); fotoB64 = null; $('#fotoPreview').removeAttribute('src'); $('#fotoInfo').textContent = '';
     if (elName('company_id').querySelector('option[value="1"]')) elName('company_id').value = '1';
+    avisoTipoCodigo(f.elements, $('#altaAviso'));   // el reset vacia el select: el aviso viejo mentiria
   } catch (err){ msg(m, '❌ ' + err.message, 'err'); }
   finally { btn.disabled = false; }
 }
@@ -222,6 +314,9 @@ async function onEditSelect(){
     E['x_categoria_nomina'].value = e.x_categoria_nomina || '';
     E['x_aplica_ppa'].checked = !!e.x_aplica_ppa;
     E['hora_hhmm'].value = floatToHHMM(e.x_studio_hora_entrada);
+    llenarTipoContrato(E['employee_type'], e.employee_type || '');
+    E['x_studio_codigo_contpaqi'].value = e.x_studio_codigo_contpaqi || '';
+    avisoTipoCodigo(E, $('#editAviso'));
     editFotoB64 = null; $('#editFotoInput').value = ''; $('#editFotoInfo').textContent = '';
     var prev = $('#editFotoPreview');
     if (e.image_128) prev.src = 'data:image/png;base64,' + e.image_128; else prev.removeAttribute('src');
@@ -241,12 +336,15 @@ async function onEditar(e){
   if (!E['empleado_id'].value) return msg(m, 'Elige un empleado primero', 'err');
   var horaF = hhmmToFloat(E['hora_hhmm'].value);
   if (horaF < 0 || horaF > 23.99) return msg(m, 'Hora de entrada fuera de 0–23.99', 'err');
+  var faltaE = bloqueoTipo(E); if (faltaE) return msg(m, faltaE, 'err');
   var body = {
     empleado_id: E['empleado_id'].value, name: E['name'].value.trim(), company_id: E['company_id'].value, work_email: E['work_email'].value.trim(),
     private_email: E['private_email'].value.trim(), mobile_phone: E['mobile_phone'].value.trim(), work_phone: E['work_phone'].value.trim(),
     department_id: E['department_id'].value, parent_id: E['parent_id'].value, job_id: E['job_id'].value || null,
     resource_calendar_id: E['resource_calendar_id'].value, pin: E['pin'].value.trim(),
-    x_studio_hora_entrada: horaF, x_categoria_nomina: E['x_categoria_nomina'].value || null, x_aplica_ppa: E['x_aplica_ppa'].checked
+    x_studio_hora_entrada: horaF, x_categoria_nomina: E['x_categoria_nomina'].value || null, x_aplica_ppa: E['x_aplica_ppa'].checked,
+    employee_type: E['employee_type'].value,
+    x_studio_codigo_contpaqi: E['x_studio_codigo_contpaqi'].value.trim()
   };
   if (editFotoB64) body.image_1920 = editFotoB64;   // SOLO si subió foto nueva (si no, el workflow no toca la existente)
   btn.disabled = true; msg(m, 'Guardando…');
@@ -281,6 +379,17 @@ document.addEventListener('DOMContentLoaded', async function(){
   // eventos
   document.querySelectorAll('.rh-tab').forEach(function(t){ t.addEventListener('click', function(){ setTab(t.dataset.tab); }); });
   elName('department_id').addEventListener('change', aplicarDefaultsDepto);
+  // El aviso depende de TRES campos (tipo, codigo, empresa) en CADA form. Se engancha
+  // por form y no por id global porque los dos forms repiten los mismos `name`.
+  [['#formAlta', '#altaAviso'], ['#formEditar', '#editAviso']].forEach(function(par){
+    var form = $(par[0]), aviso = $(par[1]);
+    ['employee_type', 'x_studio_codigo_contpaqi', 'company_id'].forEach(function(campo){
+      var el = form.elements[campo];
+      if (!el) return;
+      el.addEventListener('change', function(){ avisoTipoCodigo(form.elements, aviso); });
+      el.addEventListener('input',  function(){ avisoTipoCodigo(form.elements, aviso); });
+    });
+  });
   $('#fotoInput').addEventListener('change', onFoto);
   $('#formAlta').addEventListener('submit', onAlta);
   $('#formBaja').addEventListener('submit', onBaja);

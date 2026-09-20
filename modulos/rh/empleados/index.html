@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RH — Alta / Baja de empleados — FTS Suite</title>
 <script>
-  (function(){ window.BUILD_DATE = '20260620-rh-empleados-v3'; })();
+  (function(){ window.BUILD_DATE = '20260920-rh-empleados-v4-tipo-contrato'; })();
 </script>
 <script src="../../../shared/auth-suite.js"></script>
 <link rel="stylesheet" href="css/empleados.css">
@@ -16,7 +16,7 @@
   <a class="rh-back" href="../index.html">← Módulo RH</a>
   <div class="rh-title-wrap">
     <span class="rh-title">👥 Alta / Baja de empleados</span>
-    <span class="rh-build">build 20260620-rh-empleados-v3</span>
+    <span class="rh-build">build 20260920-rh-empleados-v4-tipo-contrato</span>
   </div>
   <div class="rh-user">
     <span class="rh-user-name" id="rh-user-name">—</span>
@@ -51,9 +51,13 @@
         <label class="rh-f"><span>Horario *</span><select name="resource_calendar_id" required></select></label>
         <label class="rh-f"><span>PIN de kiosko * <em>(lo elige el empleado)</em></span><input name="pin" type="text" inputmode="numeric" required></label>
         <label class="rh-f"><span>Hora de entrada</span><input name="x_studio_hora_entrada" type="number" step="0.01" min="0" max="23.99"></label>
+        <label class="rh-f"><span>Tipo de contrato *</span><select name="employee_type" required></select></label>
+        <label class="rh-f"><span># CONTPAQi <em>(solo si es de planta)</em></span><input name="x_studio_codigo_contpaqi" type="text" inputmode="numeric" autocomplete="off"></label>
         <label class="rh-f"><span>Categoría nómina <em>(vacío = auto por depto)</em></span><select name="x_categoria_nomina"></select></label>
         <label class="rh-f rh-check"><input name="x_aplica_ppa" type="checkbox" checked><span>Aplica PPA</span></label>
       </div>
+
+      <div class="rh-aviso" id="altaAviso" hidden></div>
 
       <div class="rh-foto">
         <span class="rh-foto-label">Foto de perfil <em>(opcional)</em></span>
@@ -110,9 +114,13 @@
         <label class="rh-f"><span>Horario *</span><select name="resource_calendar_id" required></select></label>
         <label class="rh-f"><span>PIN de kiosko *</span><input name="pin" type="text" inputmode="numeric" required></label>
         <label class="rh-f"><span>Hora de entrada <em>(HH:MM)</em></span><input name="hora_hhmm" type="time"></label>
+        <label class="rh-f"><span>Tipo de contrato *</span><select name="employee_type" required></select></label>
+        <label class="rh-f"><span># CONTPAQi <em>(solo si es de planta)</em></span><input name="x_studio_codigo_contpaqi" type="text" inputmode="numeric" autocomplete="off"></label>
         <label class="rh-f"><span>Categoría nómina <em>(vacío = auto por depto)</em></span><select name="x_categoria_nomina"></select></label>
         <label class="rh-f rh-check"><input name="x_aplica_ppa" type="checkbox"><span>Aplica PPA</span></label>
       </div>
+
+      <div class="rh-aviso" id="editAviso" hidden></div>
 
       <div class="rh-foto">
         <span class="rh-foto-label">Foto de perfil <em>(deja vacío para no cambiarla)</em></span>
