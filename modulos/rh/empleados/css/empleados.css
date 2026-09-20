@@ -68,3 +68,13 @@ html,body{margin:0;padding:0;min-height:100%;font-family:-apple-system,BlinkMacS
 .rh-empty{text-align:center;color:var(--muted);padding:24px}
 
 .rh-footer{text-align:center;font-size:11px;color:var(--muted);margin-top:28px}
+
+/* ─── Aviso de la regla de dos estados (tipo de contrato ↔ # CONTPAQi) ───
+   Nombre NUEVO a proposito: .rh-msg ya significa "resultado del submit" y
+   .rh-f "campo de la rejilla". Reusar cualquiera de los dos habria heredado
+   su caja y su color (§20 #12). */
+.rh-aviso{margin-top:14px;padding:10px 12px;border-radius:9px;font-size:13px;line-height:1.45;border:1px solid var(--border);background:#fafafa;color:var(--muted2)}
+.rh-aviso strong{font-weight:700}
+.rh-aviso-ok{border-color:#bfe3bf;background:#f2f9f2;color:var(--green2)}
+.rh-aviso-falta{border-color:var(--red);background:#fdf2f2;color:var(--red);font-size:14px;font-weight:600}
+.rh-aviso-raro{border-color:#e8c37a;background:#fdf8ec;color:#8a5a00}
