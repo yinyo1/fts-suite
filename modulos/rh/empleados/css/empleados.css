@@ -78,3 +78,13 @@ html,body{margin:0;padding:0;min-height:100%;font-family:-apple-system,BlinkMacS
 .rh-aviso-ok{border-color:#bfe3bf;background:#f2f9f2;color:var(--green2)}
 .rh-aviso-falta{border-color:var(--red);background:#fdf2f2;color:var(--red);font-size:14px;font-weight:600}
 .rh-aviso-raro{border-color:#e8c37a;background:#fdf8ec;color:#8a5a00}
+
+/* ─── Estado de la cuenta bancaria (captura de un solo sentido) ───
+   Nombre NUEVO otra vez: .rh-aviso ya significa "la regla de dos estados del
+   tipo de contrato" y se pinta con colores propios; esta caja dice otra cosa
+   y vive DENTRO de la rejilla, no debajo de ella (§20 #12). */
+.rh-cuenta{font-size:12px;color:var(--muted2);line-height:1.5;padding:8px 10px;border-radius:8px;
+           border:1px dashed var(--border);background:#fafafa;min-height:0}
+.rh-cuenta strong{font-weight:700;letter-spacing:.06em}
+.rh-cuenta-ok{border-style:solid;border-color:#bfe3bf;background:#f2f9f2;color:var(--green2)}
+.rh-cuenta-mal{border-style:solid;border-color:var(--red);background:#fdf2f2;color:var(--red);font-weight:600}
