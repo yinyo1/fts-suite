@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RH — Alta / Baja de empleados — FTS Suite</title>
 <script>
-  (function(){ window.BUILD_DATE = '20260920-rh-empleados-v4-tipo-contrato'; })();
+  (function(){ window.BUILD_DATE = '20260921-rh-empleados-v6-cuenta'; })();
 </script>
 <script src="../../../shared/auth-suite.js"></script>
 <link rel="stylesheet" href="css/empleados.css">
@@ -16,7 +16,7 @@
   <a class="rh-back" href="../index.html">← Módulo RH</a>
   <div class="rh-title-wrap">
     <span class="rh-title">👥 Alta / Baja de empleados</span>
-    <span class="rh-build">build 20260920-rh-empleados-v4-tipo-contrato</span>
+    <span class="rh-build">build 20260921-rh-empleados-v6-cuenta</span>
   </div>
   <div class="rh-user">
     <span class="rh-user-name" id="rh-user-name">—</span>
@@ -41,7 +41,7 @@
       <div class="rh-grid">
         <label class="rh-f"><span>Nombre completo *</span><input name="name" type="text" required></label>
         <label class="rh-f"><span>Empresa *</span><select name="company_id" required></select></label>
-        <label class="rh-f"><span>Correo de empresa *</span><input name="work_email" type="email" required></label>
+        <label class="rh-f"><span>Correo de empresa * <em>(se revisa el formato, no que el dominio esté bien escrito)</em></span><input name="work_email" type="email" required></label>
         <label class="rh-f"><span>Correo personal</span><input name="private_email" type="email"></label>
         <label class="rh-f"><span>Celular</span><input name="mobile_phone" type="tel"></label>
         <label class="rh-f"><span>Teléfono</span><input name="work_phone" type="tel"></label>
@@ -55,6 +55,9 @@
         <label class="rh-f"><span># CONTPAQi <em>(solo si es de planta)</em></span><input name="x_studio_codigo_contpaqi" type="text" inputmode="numeric" autocomplete="off"></label>
         <label class="rh-f"><span>Categoría nómina <em>(vacío = auto por depto)</em></span><select name="x_categoria_nomina"></select></label>
         <label class="rh-f rh-check"><input name="x_aplica_ppa" type="checkbox" checked><span>Aplica PPA</span></label>
+        <label class="rh-f"><span>Cuenta BBVA <em>(10 dígitos · se captura a ciegas)</em></span><input name="cuenta" type="password" inputmode="numeric" autocomplete="new-password" placeholder="••••••••••"></label>
+        <label class="rh-f"><span>Repite la cuenta <em>(para atrapar el error de tecleo)</em></span><input name="cuenta_confirma" type="password" inputmode="numeric" autocomplete="new-password" placeholder="••••••••••"></label>
+        <div class="rh-f rh-f-wide rh-cuenta" id="altaCuentaEstado"></div>
       </div>
 
       <div class="rh-aviso" id="altaAviso" hidden></div>
@@ -104,7 +107,7 @@
       <div class="rh-grid">
         <label class="rh-f"><span>Nombre completo *</span><input name="name" type="text" required></label>
         <label class="rh-f"><span>Empresa *</span><select name="company_id" required></select></label>
-        <label class="rh-f"><span>Correo de empresa *</span><input name="work_email" type="email" required></label>
+        <label class="rh-f"><span>Correo de empresa * <em>(se revisa el formato, no que el dominio esté bien escrito)</em></span><input name="work_email" type="email" required></label>
         <label class="rh-f"><span>Correo personal</span><input name="private_email" type="email"></label>
         <label class="rh-f"><span>Celular</span><input name="mobile_phone" type="tel"></label>
         <label class="rh-f"><span>Teléfono</span><input name="work_phone" type="tel"></label>
@@ -118,6 +121,9 @@
         <label class="rh-f"><span># CONTPAQi <em>(solo si es de planta)</em></span><input name="x_studio_codigo_contpaqi" type="text" inputmode="numeric" autocomplete="off"></label>
         <label class="rh-f"><span>Categoría nómina <em>(vacío = auto por depto)</em></span><select name="x_categoria_nomina"></select></label>
         <label class="rh-f rh-check"><input name="x_aplica_ppa" type="checkbox"><span>Aplica PPA</span></label>
+        <label class="rh-f"><span>Cuenta BBVA <em>(10 dígitos · se captura a ciegas)</em></span><input name="cuenta" type="password" inputmode="numeric" autocomplete="new-password" placeholder="••••••••••"></label>
+        <label class="rh-f"><span>Repite la cuenta <em>(para atrapar el error de tecleo)</em></span><input name="cuenta_confirma" type="password" inputmode="numeric" autocomplete="new-password" placeholder="••••••••••"></label>
+        <div class="rh-f rh-f-wide rh-cuenta" id="editCuentaEstado"></div>
       </div>
 
       <div class="rh-aviso" id="editAviso" hidden></div>

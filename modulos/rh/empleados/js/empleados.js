@@ -13,7 +13,12 @@ var EP = {
   reactivar:  N8N + '/webhook/rh/empleado/reactivar',
   archivados: N8N + '/webhook/rh/empleados/archivados',
   detalle:    N8N + '/webhook/rh/empleado/detalle',
-  editar:     N8N + '/webhook/rh/empleado/editar'
+  editar:     N8N + '/webhook/rh/empleado/editar',
+  // La cuenta NO viaja en el cuerpo de crear/editar: tiene su propio endpoint, que es
+  // el UNICO escritor de res.partner.bank (§20 #4). Ahi el numero vive como variable
+  // local de un Code y no es salida de ningun nodo, asi que no queda en los datos de
+  // ninguna ejecucion. Mezclarlo con el alta lo habria vuelto salida de nodo.
+  cuenta:     N8N + '/webhook/rh/empleado/cuenta'
 };
 // Defaults autoprogresivos: deptos de campo (Operaciones 3, Ingenieria 17) → calendar 2 / hora 7; oficina → 6 / 8.
 var CAMPO_DEPTS = [3, 17];
@@ -106,6 +111,65 @@ function bloqueoTipo(E){
   var tipo = (E['employee_type'] && E['employee_type'].value) || '';
   if (!tipo) return 'Elige el tipo de contrato (Empleado o Externo / Honorarios).';
   return null;
+}
+
+// ═══ Cuenta bancaria · captura de un solo sentido, con doble captura ═══
+// El numero NO se puede leer de vuelta: `rh/empleado/detalle` devuelve solo los
+// ultimos 4. Por eso los campos nacen vacios y vacios significan "no toques nada":
+// no se puede editar lo que no se ve, asi que corregir es teclear los 10 completos
+// otra vez, dos veces.
+var CUENTA_LARGO = 10;
+// Lo que devuelve el detalle NO son los ultimos 4: es CUANTAS cuentas tiene el contacto.
+// Los ultimos 4 solo se ven una vez, como acuse de la captura que se acaba de hacer, y
+// salen del endpoint de escritura con lo que la propia persona tecleo. Asi el numero
+// completo no tiene que salir de Odoo ni siquiera para recortarlo.
+var cuentasRegistradas = { alta: 0, edit: 0 };
+var cuentaAcuse = { alta: null, edit: null };   // ultimos 4 del ultimo guardado, efimero
+
+// Devuelve { modo:'no_tocar' } | { error, msg } | { valor }
+// El orden de las comprobaciones importa: primero que sean digitos, y solo despues
+// el largo, para que un CLABE se diagnostique como CLABE y no como "largo raro".
+function validarCuenta(a, b){
+  a = String(a == null ? '' : a).trim();
+  b = String(b == null ? '' : b).trim();
+  if (!a && !b) return { modo: 'no_tocar' };
+  if (!a || !b) return { error: 'CUENTA_CAPTURA_INCOMPLETA',
+    msg: 'Escribe la cuenta en los dos campos: uno quedó vacío.' };
+  if (a !== b) return { error: 'CUENTA_NO_COINCIDE',
+    msg: 'Las dos capturas no coinciden. Bórralas y escribe los ' + CUENTA_LARGO + ' dígitos completos otra vez.' };
+  if (!/^[0-9]+$/.test(a)) return { error: 'CUENTA_FORMATO',
+    msg: 'La cuenta trae algo que no es un dígito (un espacio, un guión). Son ' + CUENTA_LARGO + ' dígitos pelones.' };
+  if (a.length === 18) return { error: 'ES_CLABE_NO_CUENTA',
+    msg: 'Son 18 dígitos: eso es una CLABE. Aquí va el número de cuenta BBVA de ' + CUENTA_LARGO + ' dígitos.' };
+  if (a.length !== CUENTA_LARGO) return { error: 'CUENTA_FORMATO',
+    msg: 'La cuenta debe tener ' + CUENTA_LARGO + ' dígitos y llegaron ' + a.length + '.' };
+  return { valor: a };
+}
+
+// Pinta la caja de estado. Se llama viva mientras se teclea, no solo al guardar:
+// una pantalla se revisa mirandola (§20 #12), y un error de captura que solo
+// aparece al enviar obliga a teclear las dos otra vez por nada.
+function pintarCuenta(E, caja, cual){
+  if (!caja) return;
+  var v = validarCuenta(E['cuenta'] && E['cuenta'].value, E['cuenta_confirma'] && E['cuenta_confirma'].value);
+  var n = cuentasRegistradas[cual] || 0;
+  var acuse = cuentaAcuse[cual];
+  function pinta(clase, html){ caja.className = 'rh-cuenta' + (clase ? ' ' + clase : ''); caja.innerHTML = html; }
+
+  if (v.modo === 'no_tocar'){
+    if (acuse) return pinta('rh-cuenta-ok', '✔️ Cuenta guardada · termina en <strong>' + esc(acuse) + '</strong>. ' +
+      'Queda <strong>CAPTURADA</strong>, no verificada: eso lo dirá el banco cuando le deposite.');
+    if (n > 1) return pinta('rh-cuenta-mal', '⚠️ Este contacto tiene <strong>' + n + '</strong> cuentas registradas en Odoo. ' +
+      'La dispersión no sabe cuál usar — hay que dejar una sola antes de que cobre por transferencia.');
+    if (n === 1) return pinta('', 'Cuenta registrada. Déjala en paz dejando los dos campos vacíos. ' +
+      'Para corregirla hay que escribir los ' + CUENTA_LARGO + ' dígitos completos, dos veces — esta pantalla no puede leer el número de vuelta.');
+    return pinta('', 'Sin cuenta registrada. Mientras no la tenga, esta persona no puede cobrar por transferencia.');
+  }
+  if (v.error === 'CUENTA_CAPTURA_INCOMPLETA') return pinta('', v.msg);
+  if (v.error) return pinta('rh-cuenta-mal', '🔴 ' + esc(v.msg));
+  return pinta('rh-cuenta-ok', '✔️ Las dos capturas coinciden · ' + CUENTA_LARGO + ' dígitos. ' +
+    'Al guardar queda <strong>CAPTURADA</strong>, no verificada: la doble captura atrapa el error de <em>tecleo</em>, ' +
+    'no el de <em>origen</em>. Si el número que te dieron ya venía mal, esto no lo ve — eso solo lo atrapa el banco.');
 }
 
 var LK = null;        // lookups cacheados
@@ -203,6 +267,27 @@ async function onFoto(e){
   } catch (err){ info.textContent = '⚠️ ' + err.message; }
 }
 
+// ─── Guardar la cuenta (endpoint aparte) ───
+// Se llama DESPUES de que el empleado quedo guardado, porque necesita su id. Devuelve
+// un texto para pegarle al mensaje: el guardado del empleado y el de la cuenta pueden
+// salir distinto, y callarse la mitad que fallo seria mentir por omision.
+async function guardarCuenta(empleadoId, valor, cual){
+  if (!valor) return { hubo:false, texto:'' };
+  var quien = '';
+  try { var s = FTSAuth.getSession(); quien = (s && (s.nombre || s.username)) || ''; } catch(e){ quien = ''; }
+  try {
+    var r = await api(EP.cuenta, { empleado_id: empleadoId, cuenta: valor, cuenta_confirma: valor, capturado_por: quien || 'RH' });
+    if (r && r.ok && r.ultimos4){
+      cuentaAcuse[cual] = r.ultimos4;
+      cuentasRegistradas[cual] = 1;
+      return { hubo:true, texto:' Cuenta ' + (r.accion || 'guardada') + ' · termina en ' + r.ultimos4 + '.' };
+    }
+    return { hubo:true, fallo:true, texto:' ⚠️ La CUENTA no se guardó (' + ((r && r.error) || 'sin respuesta') + '). El resto sí.' };
+  } catch (err){
+    return { hubo:true, fallo:true, texto:' ⚠️ La CUENTA no se guardó (' + err.message + '). El resto sí.' };
+  }
+}
+
 // ─── ALTA: submit ───
 async function onAlta(e){
   e.preventDefault();
@@ -210,6 +295,8 @@ async function onAlta(e){
   var hora = elName('x_studio_hora_entrada').value;
   if (hora !== '' && (parseFloat(hora) < 0 || parseFloat(hora) > 23.99)) return msg(m, 'Hora de entrada fuera de 0–23.99', 'err');
   var falta = bloqueoTipo(f.elements); if (falta) return msg(m, falta, 'err');
+  var vc = validarCuenta(f.elements['cuenta'].value, f.elements['cuenta_confirma'].value);
+  if (vc.error) return msg(m, vc.msg, 'err');
   var body = {
     name: f.elements['name'].value.trim(), company_id: f.company_id.value, work_email: f.work_email.value.trim(),
     private_email: f.private_email.value.trim(), mobile_phone: f.mobile_phone.value.trim(), work_phone: f.work_phone.value.trim(),
@@ -224,10 +311,15 @@ async function onAlta(e){
   try {
     var r = await api(EP.crear, body);
     if (!r.ok) throw new Error(r.error || 'No se pudo crear');
-    msg(m, '✅ Empleado creado (id ' + r.employee_id + ', PIN ' + r.pin + ').', 'ok');
+    // La cuenta va en su propio viaje, DESPUES de que existe el empleado (necesita su id).
+    var rc = await guardarCuenta(r.employee_id, vc.valor, 'alta');
+    msg(m, (rc.fallo ? '⚠️' : '✅') + ' Empleado creado (id ' + r.employee_id + ', PIN ' + r.pin + ').' + rc.texto,
+        rc.fallo ? 'err' : 'ok');
     f.reset(); fotoB64 = null; $('#fotoPreview').removeAttribute('src'); $('#fotoInfo').textContent = '';
     if (elName('company_id').querySelector('option[value="1"]')) elName('company_id').value = '1';
     avisoTipoCodigo(f.elements, $('#altaAviso'));   // el reset vacia el select: el aviso viejo mentiria
+    cuentasRegistradas.alta = 0; cuentaAcuse.alta = null;
+    pintarCuenta(f.elements, $('#altaCuentaEstado'), 'alta');
   } catch (err){ msg(m, '❌ ' + err.message, 'err'); }
   finally { btn.disabled = false; }
 }
@@ -317,6 +409,12 @@ async function onEditSelect(){
     llenarTipoContrato(E['employee_type'], e.employee_type || '');
     E['x_studio_codigo_contpaqi'].value = e.x_studio_codigo_contpaqi || '';
     avisoTipoCodigo(E, $('#editAviso'));
+    // El detalle NO devuelve el numero, solo los ultimos 4. Los campos nacen vacios
+    // en cada carga: vacio significa "no toques la cuenta".
+    cuentasRegistradas.edit = Number(e.cuentas_registradas) || 0;
+    cuentaAcuse.edit = null;
+    E['cuenta'].value = ''; E['cuenta_confirma'].value = '';
+    pintarCuenta(E, $('#editCuentaEstado'), 'edit');
     editFotoB64 = null; $('#editFotoInput').value = ''; $('#editFotoInfo').textContent = '';
     var prev = $('#editFotoPreview');
     if (e.image_128) prev.src = 'data:image/png;base64,' + e.image_128; else prev.removeAttribute('src');
@@ -337,6 +435,8 @@ async function onEditar(e){
   var horaF = hhmmToFloat(E['hora_hhmm'].value);
   if (horaF < 0 || horaF > 23.99) return msg(m, 'Hora de entrada fuera de 0–23.99', 'err');
   var faltaE = bloqueoTipo(E); if (faltaE) return msg(m, faltaE, 'err');
+  var vcE = validarCuenta(E['cuenta'].value, E['cuenta_confirma'].value);
+  if (vcE.error) return msg(m, vcE.msg, 'err');
   var body = {
     empleado_id: E['empleado_id'].value, name: E['name'].value.trim(), company_id: E['company_id'].value, work_email: E['work_email'].value.trim(),
     private_email: E['private_email'].value.trim(), mobile_phone: E['mobile_phone'].value.trim(), work_phone: E['work_phone'].value.trim(),
@@ -352,10 +452,16 @@ async function onEditar(e){
     var r = await api(EP.editar, body);
     if (!r.ok) throw new Error(r.error || 'No se pudo guardar');
     var savedId = String(body.empleado_id);
+    // Mismo criterio que la foto: si no se capturo nada, la cuenta NO se toca.
+    var rcE = await guardarCuenta(savedId, vcE.valor, 'edit');
+    var acuseE = cuentaAcuse.edit;                          // onEditSelect lo limpia; se guarda antes
     await cargarLookups();                                  // refresca nombres en selectores (jefe directo, baja, editar)
     document.getElementById('editEmpSel').value = savedId;  // mantener al empleado editado seleccionado
     await onEditSelect();                                    // re-llena el form desde Odoo (deja el mensaje vacío)
-    msg(m, '✅ Cambios guardados (' + esc(body.name) + ').', 'ok');  // mensaje al final para que no lo pise onEditSelect
+    cuentaAcuse.edit = acuseE;                               // el acuse es de ESTE guardado, no del detalle
+    pintarCuenta(E, $('#editCuentaEstado'), 'edit');
+    msg(m, (rcE.fallo ? '⚠️' : '✅') + ' Cambios guardados (' + esc(body.name) + ').' + rcE.texto,
+        rcE.fallo ? 'err' : 'ok');  // mensaje al final para que no lo pise onEditSelect
   } catch (err){ msg(m, '❌ ' + err.message, 'err'); }
   finally { btn.disabled = false; }
 }
@@ -381,14 +487,24 @@ document.addEventListener('DOMContentLoaded', async function(){
   elName('department_id').addEventListener('change', aplicarDefaultsDepto);
   // El aviso depende de TRES campos (tipo, codigo, empresa) en CADA form. Se engancha
   // por form y no por id global porque los dos forms repiten los mismos `name`.
-  [['#formAlta', '#altaAviso'], ['#formEditar', '#editAviso']].forEach(function(par){
-    var form = $(par[0]), aviso = $(par[1]);
+  [['#formAlta', '#altaAviso', 'alta'], ['#formEditar', '#editAviso', 'edit']].forEach(function(par){
+    var form = $(par[0]), aviso = $(par[1]), cual = par[2];
     ['employee_type', 'x_studio_codigo_contpaqi', 'company_id'].forEach(function(campo){
       var el = form.elements[campo];
       if (!el) return;
       el.addEventListener('change', function(){ avisoTipoCodigo(form.elements, aviso); });
       el.addEventListener('input',  function(){ avisoTipoCodigo(form.elements, aviso); });
     });
+    // El cableado va POR FORMULARIO, no por id global: los dos formularios repiten
+    // los mismos `name`, asi que un querySelector suelto engancharia siempre el de alta.
+    var caja = $('#' + cual + 'CuentaEstado');
+    ['cuenta', 'cuenta_confirma'].forEach(function(campo){
+      var el = form.elements[campo];
+      if (!el) return;
+      el.addEventListener('input', function(){ pintarCuenta(form.elements, caja, cual); });
+      el.addEventListener('change', function(){ pintarCuenta(form.elements, caja, cual); });
+    });
+    pintarCuenta(form.elements, caja, cual);   // estado inicial: "sin cuenta registrada"
   });
   $('#fotoInput').addEventListener('change', onFoto);
   $('#formAlta').addEventListener('submit', onAlta);
