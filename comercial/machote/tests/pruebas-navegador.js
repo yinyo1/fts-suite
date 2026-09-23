@@ -7191,10 +7191,16 @@ await sembrarMachotes(q);
       };
       await aSuministro();
 
-      if (!(await q.$('.pad-sec'))) throw new Error('la sección no trae el pad');
-      if (await q.$eval('.pad-sec', e => e.open))
-        throw new Error('el pad nace abierto; se pidió plegable, no una tercera columna');
-      await q.click('.pad-sec > summary'); await q.waitForTimeout(350);
+      /* V1.36: el pad dejó de ser un bloque plegable al final de la hoja y es
+       * un PANEL ANCLADO que se abre desde la cabecera. Lo que esta prueba
+       * mide no cambió —que no toque ningún total salvo por el botón—, sólo
+       * cambió por dónde se abre. */
+      if (!(await q.$('[data-padabrir]'))) throw new Error('la sección no trae el botón del pad');
+      if (!(await q.$eval('[data-padpanel]', e => e.hidden)))
+        throw new Error('el pad nace abierto; tiene que abrirse a propósito');
+      await q.click('[data-padabrir]'); await q.waitForTimeout(350);
+      if (await q.$eval('[data-padpanel]', e => e.hidden))
+        throw new Error('el botón no abrió el panel');
 
       const total = async () => (await q.textContent('.fija .mono')).replace(/\s+/g, ' ').trim();
       const t0 = await total();
@@ -7217,6 +7223,9 @@ await sembrarMachotes(q);
       await q.reload(); await q.waitForTimeout(900);
       await aSuministro();
       if (await total() !== t0) throw new Error('tras recargar, el pad guardado sí contaba');
+      /* Se quedó abierto: `pad.abierto` se guarda igual que el texto. */
+      if (await q.$eval('[data-padpanel]', e => e.hidden))
+        throw new Error('el pad estaba abierto y tras recargar salió cerrado');
       if (!/25,800/.test(await q.inputValue('[data-padtxt]')))
         throw new Error('el pad no sobrevivió a recargar');
 
@@ -7377,15 +7386,24 @@ await sembrarMachotes(q);
     } finally { await q.close(); }
   });
 
-  await paso('V1.35 · nada de la hoja de sección cae fuera de alcance, en los dos anchos', async () => {
-    /* LA PRUEBA QUE FALTABA. Con el fixture de 5 partidas todo queda cerca y
-     * cualquier bloque parece alcanzable; con el tamaño real de producción el
-     * pad quedó a 4,941 px en escritorio y a 44,694 px —56 pantallas— en el
-     * teléfono, y nadie lo vio porque ninguna prueba medía POSICIÓN.
+  await paso('V1.36 · nada de la hoja de sección cae fuera de alcance, en los dos anchos', async () => {
+    /* LA PRUEBA QUE FALTABA EN V1.34. Con el fixture de 5 partidas todo queda
+     * cerca y cualquier bloque parece alcanzable; con el tamaño real de
+     * producción el pad quedaba a 4,941 px en escritorio y a 44,694 px —56
+     * pantallas— en el teléfono, y nadie lo vio porque ninguna prueba medía
+     * POSICIÓN.
      *
-     * La regla: ningún bloque de la hoja de sección puede empezar más de DOS
-     * pantallas abajo. Dos y no una porque la hoja arranca con dos tablas de
-     * resumen que ocupan casi una pantalla completa a propósito. */
+     * ⚠️ V1.36 BORRA LA EXCEPCIÓN DECLARADA del pad. En V1.35 se fijó su
+     * número de aquel día como techo, con fecha de caducidad explícita,
+     * mientras Esteban decidía cómo alcanzarlo. Decidió: panel anclado. El
+     * pad ya no está en el flujo, así que entra al tope normal como todo lo
+     * demás y aquí no queda ninguna rama especial. Una excepción en una
+     * prueba sólo es honesta mientras tiene fecha de caducidad — y ésta la
+     * cumplió.
+     *
+     * La regla: ningún bloque de la hoja puede empezar más de DOS pantallas
+     * abajo. Dos y no una porque la hoja arranca con dos tablas de resumen
+     * que ocupan casi una pantalla completa a propósito. */
     const TOPE = 2.0;
     const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
     q.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
@@ -7407,33 +7425,310 @@ await sembrarMachotes(q);
         await q.goto(BASE); await q.waitForTimeout(1200);
         await q.evaluate(() => { location.hash = '#/m/M-P90'; }); await q.waitForTimeout(900);
         await q.locator('.pestana').nth(1).click(); await q.waitForTimeout(1400);
-        const pos = await q.evaluate(() => {
-          const uno = (sel) => { const e = document.querySelector(sel); if (!e) return null;
-            return Math.round(e.getBoundingClientRect().top + window.scrollY); };
-          return { ventana: window.innerHeight, pagina: Math.round(document.documentElement.scrollHeight),
-                   com: uno('.com-sec'), pad: uno('.pad-sec'), rec: uno('.rec-sec') };
+
+        /* El botón del pad: tiene que estar en la CABECERA, que es lo primero
+         * que se ve al entrar en la sección. */
+        const btn = await q.evaluate(() => {
+          const e = document.querySelector('[data-padabrir]');
+          if (!e) return null;
+          const r = e.getBoundingClientRect();
+          return { desdeArriba: Math.round(r.top + window.scrollY), visible: r.height > 0 };
         });
-        for (const [qué, y] of [['comisión de la sección', pos.com], ['pad de trabajo', pos.pad]]) {
-          if (y === null) { malos.push(w + 'px: no existe el bloque «' + qué + '»'); continue; }
-          const pantallas = +(y / pos.ventana).toFixed(1);
-          const linea = w + 'px · ' + qué + ': ' + y + 'px = ' + pantallas + ' pantallas';
-          if (qué === 'pad de trabajo') {
-            /* ⚠️ EXCEPCIÓN DECLARADA, no un tope de diseño. El pad incumple la
-             * regla hoy —está medido y reportado en #246— y la decisión de
-             * cómo alcanzarlo (un botón en la cabecera, no moverlo) está en
-             * manos de Esteban. Mientras tanto se fija el número de HOY para
-             * que no EMPEORE; cuando se arregle, esta rama se borra y el pad
-             * entra al tope normal como todo lo demás. */
-            const TECHO = w === 380 ? 46000 : 5200;
-            if (y > TECHO) malos.push('EMPEORÓ ' + linea + ' (techo declarado ' + TECHO + 'px, #246)');
-            else console.log('    ' + linea + '  ← excepción declarada #246, no empeoró');
-            continue;
-          }
-          if (pantallas > TOPE) malos.push(linea + ' — el tope es ' + TOPE);
-          else console.log('    ' + linea);
-        }
+        if (!btn) { malos.push(w + 'px: no hay botón para abrir el pad'); continue; }
+        if (!btn.visible) malos.push(w + 'px: el botón del pad no se ve');
+        const pantallasBtn = +(btn.desdeArriba / h).toFixed(1);
+        if (pantallasBtn > TOPE) malos.push(w + 'px · botón del pad: ' + btn.desdeArriba + 'px = ' + pantallasBtn + ' pantallas');
+        else console.log('    ' + w + 'px · botón del pad: ' + btn.desdeArriba + 'px = ' + pantallasBtn + ' pantallas');
+
+        /* Y el PANEL, abierto DESDE EL FONDO de la hoja: es el caso que
+         * importa — el que antes obligaba a subir cinco pantallas. Anclado,
+         * tiene que quedar dentro de la ventana sin importar dónde estabas. */
+        await q.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+        await q.waitForTimeout(250);
+        await q.evaluate(() => { document.querySelector('[data-padabrir]').click(); });
+        await q.waitForTimeout(400);
+        const pnl = await q.evaluate(() => {
+          const e = document.querySelector('[data-padpanel]');
+          if (!e || e.hidden) return null;
+          const r = e.getBoundingClientRect();
+          return { top: Math.round(r.top), bottom: Math.round(r.bottom),
+                   alto: Math.round(r.height), ventana: window.innerHeight,
+                   tieneTexto: !!e.querySelector('.pad-txt'),
+                   tieneBoton: !!e.querySelector('[data-padpasar]') };
+        });
+        if (!pnl) { malos.push(w + 'px: el panel del pad no se abrió desde el fondo de la hoja'); continue; }
+        if (pnl.top < 0 || pnl.top > pnl.ventana)
+          malos.push(w + 'px: el panel abrió FUERA de la ventana (top ' + pnl.top + ' de ' + pnl.ventana + ')');
+        if (!pnl.tieneTexto || !pnl.tieneBoton)
+          malos.push(w + 'px: el panel abrió sin su caja de texto o sin su botón');
+        /* Y que no se coma la pantalla entera: sirve para calcular MIRANDO la
+         * tabla, no en vez de ella. */
+        if (pnl.alto > pnl.ventana * 0.8)
+          malos.push(w + 'px: el panel ocupa ' + pnl.alto + 'px de ' + pnl.ventana + ' — tapa la hoja');
+        else console.log('    ' + w + 'px · panel abierto desde el fondo: top ' + pnl.top +
+                         ', alto ' + pnl.alto + ' de ' + pnl.ventana);
+
+        /* Y la comisión, que se queda donde está pero se ANUNCIA arriba. */
+        const avisa = await q.evaluate(() => {
+          const e = document.querySelector('[data-ircom]');
+          if (!e) return null;
+          const r = e.getBoundingClientRect();
+          return { desdeArriba: Math.round(r.top + window.scrollY), txt: e.textContent.trim() };
+        });
+        if (!avisa) { malos.push(w + 'px: la cabecera no anuncia el estado de la comisión'); continue; }
+        const pant = +(avisa.desdeArriba / h).toFixed(1);
+        if (pant > TOPE) malos.push(w + 'px · aviso de comisión: ' + pant + ' pantallas');
+        else console.log('    ' + w + 'px · aviso de comisión: «' + avisa.txt + '» a ' + pant + ' pantallas');
       }
       if (malos.length) throw new Error(malos.join(' | '));
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.36 · la barra fija no aplasta el precio, ni con los cinco botones', async () => {
+    /* La barra se plegaba sólo a ≤560 px, y con TRES botones eso bastaba. El
+     * deshacer de la V1.34 la dejó en CINCO —y el suyo lleva texto largo—:
+     * a 760 px no quedaba nada para el bloque del precio, que se aplastaba en
+     * una columna de un carácter y se derramaba por debajo de la barra.
+     *
+     * Esta prueba no fija un ancho: comprueba la INVARIANTE —el precio se lee
+     * en UN renglón y queda dentro de la barra— a los anchos donde caben
+     * distintos números de botones. Así sigue sirviendo cuando alguien añada
+     * el sexto, que es exactamente como apareció este defecto. */
+    const q = await b.newPage({ viewport: { width: 760, height: 1000 } });
+    q.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
+    try {
+      await sembrarGeo(q);
+      await q.addInitScript((m) => {
+        try {
+          localStorage.setItem('fts_suite_session', JSON.stringify({
+            token:'p.p.p', actor:'zz.prueba', nombre:'ZZ Prueba', empleado_id:null,
+            scopes:['comercial:read','comercial:orden'], exp: Math.floor(Date.now()/1000)+3600 }));
+          localStorage.setItem('fts_machote_v1', JSON.stringify({ v:1,
+            guardado_at:new Date().toISOString(), machotes:[m], handoff:{} }));
+          /* CON libreta: sin ella no hay `idServidor` y la barra sale con
+           * TRES botones — que es justo el caso que NO tenía el defecto.
+           * Medir el caso fácil y declararlo bueno es la trampa del §20 #18. */
+          localStorage.setItem('fts_machote_sync_v1', JSON.stringify({
+            'M-P90': { version: 12, huella: 'z', machote_id: '99999999-8888-7777-6666-555555555555',
+                       guardada_at: new Date(Date.now() - 864e5).toISOString(),
+                       autor: 'zz.prueba', autor_nombre: 'ZZ Prueba',
+                       creado_at: new Date(Date.now() - 96 * 864e5).toISOString() } }));
+        } catch (e) {}
+      }, machoteP90());
+
+      const malos = [];
+      for (const [w, h] of [[1280, 900], [900, 900], [760, 1000], [380, 800]]) {
+        await q.setViewportSize({ width: w, height: h });
+        await q.goto(BASE); await q.waitForTimeout(1200);
+        await q.evaluate(() => { location.hash = '#/m/M-P90'; }); await q.waitForTimeout(900);
+        await q.locator('.pestana').nth(1).click(); await q.waitForTimeout(1200);
+
+        /* El deshacer sólo existe después de un cambio de celda: es el quinto
+         * botón, y sin él la barra no está en el caso que se quiere medir. */
+        const cel = q.locator('[data-cel]').first();
+        await cel.fill('7'); await cel.dispatchEvent('change'); await q.waitForTimeout(700);
+
+        const r = await q.evaluate(() => {
+          const f = document.querySelector('.fija');
+          const g = f.querySelector('.grow');
+          const mono = g.querySelector('.mono');
+          const rf = f.getBoundingClientRect(), rg = g.getBoundingClientRect();
+          const rm = mono ? mono.getBoundingClientRect() : null;
+          return {
+            botones: f.querySelectorAll('.btn').length,
+            deshacer: !!document.getElementById('btnDeshacer'),
+            anchoPrecio: Math.round(rg.width),
+            altoMono: rm ? Math.round(rm.height) : null,
+            seSale: Math.round(rg.bottom - rf.bottom),
+            desborde: f.scrollWidth > f.clientWidth + 1
+          };
+        });
+        console.log('    ' + w + 'px · ' + r.botones + ' botones · precio ' + r.anchoPrecio +
+                    'px de ancho, el número en ' + r.altoMono + 'px de alto');
+        if (!r.deshacer) malos.push(w + ': no salió el botón de deshacer, la barra no está en el caso de cinco');
+        /* 140 px es el mínimo con el que «$1,794,303 MXN · 40%*» se lee de un
+         * golpe; por debajo de eso el número se parte y deja de ser un número. */
+        if (r.anchoPrecio < 140) malos.push(w + ': el precio quedó en ' + r.anchoPrecio + 'px de ancho');
+        if (r.altoMono !== null && r.altoMono > 34) malos.push(w + ': el precio se partió en varios renglones (' + r.altoMono + 'px)');
+        if (r.seSale > 1) malos.push(w + ': el bloque del precio se derrama ' + r.seSale + 'px por debajo de la barra');
+        if (r.desborde) malos.push(w + ': la barra desborda a lo ancho');
+      }
+      if (malos.length) throw new Error(malos.join(' · '));
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.36 · al pasar a renglón se dice que el texto quedó en su comentario, con el nombre', async () => {
+    /* El pad se vacía a la vista del usuario. Sin decir DÓNDE quedó el texto
+     * parece que se perdió — y lo que se «pierde» sería justamente el
+     * razonamiento, que es lo único que esta función existe para salvar. */
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    q.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
+    try {
+      await sembrarGeo(q); await sembrarMachotes(q);
+      await q.addInitScript(() => {
+        try { localStorage.setItem('fts_suite_session', JSON.stringify({
+          token:'p.p.p', actor:'zz.prueba', nombre:'ZZ Prueba', empleado_id:null,
+          scopes:['comercial:read','comercial:orden'], exp: Math.floor(Date.now()/1000)+3600 })); } catch (e) {}
+      });
+      await q.goto(BASE); await q.waitForTimeout(1200);
+      await q.evaluate(() => { location.hash = '#/m/M-1041'; }); await q.waitForTimeout(900);
+      await q.locator('.pestana').nth(1).click(); await q.waitForTimeout(900);
+
+      await q.click('[data-padabrir]'); await q.waitForTimeout(350);
+      await q.fill('[data-padtxt]', '3 tramos × 12 m × $450/m = 16,200');
+      await q.dispatchEvent('[data-padtxt]', 'input');
+      await q.fill('[data-padcon]', 'Canalización tramo norte');
+      await q.dispatchEvent('[data-padcon]', 'input');
+      await q.fill('[data-padimp]', '16200');
+      await q.dispatchEvent('[data-padimp]', 'input');
+      await q.waitForTimeout(400);
+
+      await q.click('[data-padpasar]'); await q.waitForTimeout(500);
+      const aviso = await q.evaluate(() => {
+        const t = document.querySelector('.toast');
+        return t ? t.textContent.trim() : null;
+      });
+      if (!aviso) throw new Error('no dijo nada al pasar el renglón');
+      if (aviso.indexOf('Canalización tramo norte') < 0)
+        throw new Error('el aviso no nombra el renglón: ' + aviso);
+      if (!/comentario/i.test(aviso))
+        throw new Error('el aviso no dice que el texto quedó en el comentario: ' + aviso);
+      if (!/no se borró/i.test(aviso))
+        throw new Error('el aviso no desmiente que se haya borrado: ' + aviso);
+      console.log('    «' + aviso + '»');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.36 · cerrar el pad con una cuenta sin pasar avisa, y el revisador lo recuerda', async () => {
+    /* Dos avisos, y son distintos a propósito. El de CERRAR es puntual y va
+     * en el momento en que el número se esconde. El del REVISADOR dura, y es
+     * el que se ve antes de mandar la cotización.
+     *
+     * ⚠️ Ninguno «al guardar»: el autoguardado dispara 500 ms después de cada
+     * tecla, así que «al guardar» no es un momento sino todo el rato, y un
+     * aviso todo el rato deja de ser un aviso. */
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    q.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
+    try {
+      await sembrarGeo(q); await sembrarMachotes(q);
+      await q.addInitScript(() => {
+        try { localStorage.setItem('fts_suite_session', JSON.stringify({
+          token:'p.p.p', actor:'zz.prueba', nombre:'ZZ Prueba', empleado_id:null,
+          scopes:['comercial:read','comercial:orden'], exp: Math.floor(Date.now()/1000)+3600 })); } catch (e) {}
+      });
+      await q.goto(BASE); await q.waitForTimeout(1200);
+      await q.evaluate(() => { location.hash = '#/m/M-1041'; }); await q.waitForTimeout(900);
+      await q.locator('.pestana').nth(1).click(); await q.waitForTimeout(900);
+
+      // Sin nada escrito, el botón NO trae punto y cerrar no avisa.
+      if (await q.$eval('[data-padabrir]', e => e.classList.contains('con-algo')))
+        throw new Error('el botón trae el punto con el pad vacío');
+
+      await q.click('[data-padabrir]'); await q.waitForTimeout(300);
+      await q.fill('[data-padtxt]', 'una cuenta a medias que nadie pasó');
+      await q.dispatchEvent('[data-padtxt]', 'input'); await q.waitForTimeout(400);
+
+      if (!(await q.$eval('[data-padabrir]', e => e.classList.contains('con-algo'))))
+        throw new Error('escribí en el pad y el botón no marcó que tiene algo');
+
+      /* 900, no 450: cerrar llama a `tocado`, que rearma el autoguardado a
+       * 500 ms. Con 450 el localStorage todavía no tiene el pad y el
+       * revisador lee un machote sin nada — el mismo tropiezo del ALMACEN. */
+      await q.click('[data-padcerrar]'); await q.waitForTimeout(ALMACEN);
+      if (!(await q.$eval('[data-padpanel]', e => e.hidden)))
+        throw new Error('la × no cerró el panel');
+      const aviso = await q.evaluate(() => {
+        const t = document.querySelector('.toast');
+        return t ? t.textContent.trim() : null;
+      });
+      if (!aviso || !/no pasaste/i.test(aviso))
+        throw new Error('cerró con una cuenta sin pasar y no avisó: ' + aviso);
+
+      /* Y el que DURA: la regla blanda del revisador. */
+      const blandas = await q.evaluate(() => {
+        const raw = JSON.parse(localStorage.getItem('fts_machote_v1') || '{}');
+        const m = (raw.machotes || []).find(x => x.id === 'M-1041');
+        const r = window.MachoteReglas.revisar(m);
+        return { ids: r.blandas.map(h => h.id), duras: r.duras.length,
+                 pads: (m.secciones || []).map(s => String((s.pad || {}).texto || '').slice(0, 20)) };
+      });
+      if (blandas.ids.indexOf('pad-sin-pasar') < 0)
+        throw new Error('el revisador no recuerda el pad sin pasar: ' + JSON.stringify(blandas.ids) +
+                        ' · pads guardados: ' + JSON.stringify(blandas.pads));
+      console.log('    aviso al cerrar + regla blanda «pad-sin-pasar» · duras: ' + blandas.duras);
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.36 · la cabecera anuncia los DOS estados de la comisión, y lleva al bloque', async () => {
+    /* Ni silencio ni chip nuevo: la línea que ya existía dice los dos estados.
+     * El ámbar es el MISMO de un margen pisado — no un color nuevo. */
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    q.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
+    try {
+      await sembrarGeo(q); await sembrarMachotes(q);
+      await q.addInitScript(() => {
+        try { localStorage.setItem('fts_suite_session', JSON.stringify({
+          token:'p.p.p', actor:'zz.prueba', nombre:'ZZ Prueba', empleado_id:null,
+          scopes:['comercial:read','comercial:orden'], exp: Math.floor(Date.now()/1000)+3600 })); } catch (e) {}
+      });
+      await q.goto(BASE); await q.waitForTimeout(1200);
+      await q.evaluate(() => { location.hash = '#/m/M-1041'; }); await q.waitForTimeout(900);
+
+      // En DESGLOSE, el caso normal SÍ se enuncia: es donde se pregunta.
+      const desg = await q.evaluate(() => {
+        const e = document.querySelector('.com-resumen');
+        return e ? e.textContent.trim() : null;
+      });
+      if (!desg) throw new Error('DESGLOSE no dice cuántas secciones se apartan');
+      if (!/siguen este reparto/i.test(desg))
+        throw new Error('con 0 desviadas, DESGLOSE no enuncia el caso normal: ' + desg);
+
+      await q.locator('.pestana').nth(1).click(); await q.waitForTimeout(900);
+      const normal = await q.evaluate(() => {
+        const e = document.querySelector('[data-ircom]');
+        return e ? { txt: e.textContent.trim(), apartado: e.classList.contains('apartado') } : null;
+      });
+      if (!normal) throw new Error('la cabecera no anuncia la comisión');
+      if (normal.apartado) throw new Error('sin desviar y sale marcado como apartado');
+      if (!/la del machote/i.test(normal.txt)) throw new Error('el caso normal no se enuncia: ' + normal.txt);
+
+      // Desviar → la MISMA línea se vuelve la marca ámbar.
+      await q.click('[data-comprop]'); await q.waitForTimeout(600);
+      const desv = await q.evaluate(() => {
+        const e = document.querySelector('[data-ircom]');
+        const cs = e ? getComputedStyle(e) : null;
+        return e ? { txt: e.textContent.trim(), apartado: e.classList.contains('apartado'), color: cs.color } : null;
+      });
+      if (!desv.apartado) throw new Error('desviada y la línea no se marcó');
+      if (!/≠ machote/.test(desv.txt)) throw new Error('la marca no usa el lenguaje de un margen pisado: ' + desv.txt);
+      const ambar = await q.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--ambar').trim());
+      const rgb = await q.evaluate((hex) => {
+        const d = document.createElement('div'); d.style.color = hex; document.body.appendChild(d);
+        const c = getComputedStyle(d).color; d.remove(); return c;
+      }, ambar);
+      if (desv.color !== rgb)
+        throw new Error('la marca NO usa el ámbar del módulo: ' + desv.color + ' contra ' + rgb);
+
+      // Y lleva al bloque.
+      await q.evaluate(() => window.scrollTo(0, 0));
+      await q.click('[data-ircom]'); await q.waitForTimeout(700);
+      const llegó = await q.evaluate(() => {
+        const e = document.querySelector('.com-sec');
+        const r = e.getBoundingClientRect();
+        return r.top > -50 && r.top < window.innerHeight;
+      });
+      if (!llegó) throw new Error('pulsar el aviso no llevó al bloque de la comisión');
+
+      // Y en DESGLOSE ahora dice cuántas, con enlace.
+      await q.locator('.pestana').nth(0).click(); await q.waitForTimeout(700);
+      const desg2 = await q.evaluate(() => {
+        const e = document.querySelector('.com-resumen');
+        return e ? { txt: e.textContent.trim(), enlaces: e.querySelectorAll('[data-irsec]').length } : null;
+      });
+      if (!/1 de \d+ secci[oó]n/i.test(desg2.txt))
+        throw new Error('DESGLOSE no cuenta la desviada: ' + desg2.txt);
+      if (desg2.enlaces !== 1) throw new Error('DESGLOSE no enlaza a la sección desviada');
+      console.log('    normal: «' + normal.txt + '» · desviada: «' + desv.txt + '» ámbar · DESGLOSE: «' + desg2.txt + '»');
     } finally { await q.close(); }
   });
 

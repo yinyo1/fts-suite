@@ -1063,27 +1063,6 @@ prueba que la consulta sirva), en la superficie de la resolución de identidad.
 
 
 
-### 14. Un archivo puede diferir entre el dominio y `main` aunque reporte la misma versión
-Medido el 22-sep-2026 auditando el #246: de los diez archivos que carga
-`comercial/machote/index.html`, **nueve tienen huella idéntica** entre
-`yinyo1.github.io` y `origin/main` — y `version.json` **no**: 37,906 caracteres
-en el dominio contra 39,145 en `main`, con el mismo `V1.34`, las mismas 35
-entradas de historial y la misma primera entrada. No se persiguió porque no
-toca el render (sólo lo lee el vigilante de recarga, y ahí dice la versión
-correcta), pero queda apuntado por lo que es: **un archivo servido que no es el
-que está en la rama, sin que la versión lo delate.**
-Es la misma familia que la versión GUARDADA contra la PUBLICADA de n8n (§17
-quirk 2b): dos copias de lo mismo, una que se lee y otra que manda, y un
-marcador que dice lo mismo en las dos. **Si algún día algo se ve viejo en Pages
-y nadie se lo explica, éste es el primer lugar donde mirar** — y la forma de
-mirarlo es comparar huellas archivo por archivo, no fiarse del número de
-versión.
-⚠️ Y al compararlas, medir **lo mismo en los dos lados**: `wc -c` cuenta bytes y
-`s.length` de JS cuenta unidades UTF-16. Estos archivos van llenos de acentos,
-así que mezclarlos inventa una discrepancia en los diez.
-
----
-
 ### 14. n8n es UN proceso compartido con techo, y el MCP corre DENTRO de él
 La instancia de n8n no es un servicio por sesión: es **un solo proceso de 8 GB** que
 sirve, al mismo tiempo, los webhooks con los que el equipo trabaja (kiosko, Confirmar
@@ -1237,6 +1216,42 @@ Es la misma familia del `[]` que no prueba la consulta (§20 #11), del
 `insertadas: 0` que se ve igual que un éxito (§9) y del cero que no distingue «no
 pasó» de «no puede pasar» (§20 #17). **En los cuatro, un vacío se lee como una
 respuesta.**
+
+### 19. Antes de creerle a una discrepancia, comprobar que el INSTRUMENTO no la inventó
+**Una diferencia medida es una afirmación sobre dos cosas: el objeto y la regla con
+que se midió.** Y cuando la regla mete mano, lo que sale tiene toda la pinta de un
+hallazgo: un número concreto, reproducible, y del lado que uno ya sospechaba.
+
+*(Origen: 22-sep-2026, #246, y es una corrección de esta misma lista. Comparando el
+dominio contra `main` archivo por archivo, nueve de diez dieron huella idéntica y
+`version.json` no: **37,906** contra **39,145** caracteres, con la misma versión y el
+mismo historial. Se apuntó aquí como regla —«un archivo servido que no es el que está
+en la rama»— y se le buscó parentesco con el guardado-contra-publicado de n8n (§17 2b).
+**Era mentira, y la prueba costó tres líneas de Node el 23-sep:** el `httpRequest` de
+n8n **parsea** una respuesta `application/json` a objeto, y la huella se calculaba sobre
+`JSON.stringify(obj)` — sin la sangría del archivo. `JSON.stringify(JSON.parse(raw))`
+del `version.json` de la V1.34 mide **37,906 exactos**, y de la V1.35 **40,117**, que
+es el otro número que se había visto. No es «casi»: es el mismo número. El dominio
+sirve el archivo correcto y siempre lo sirvió. Era el ÚNICO `.json` de los diez, y por
+eso fue el único que «difirió» — el detalle que debió delatarlo desde el principio.)*
+
+**Regla operativa:** cuando una comparación señale a **un solo elemento de un
+conjunto**, preguntar primero **qué tiene de distinto ese elemento para el
+instrumento** antes que para el objeto (aquí: era el único JSON, y el cliente HTTP
+trata los JSON distinto). Y toda huella se calcula sobre el **cuerpo crudo**: en n8n,
+`encoding: 'text'` / `json: false`, nunca sobre lo que el cliente ya interpretó. Es la
+otra mitad del aviso de `wc -c` contra `s.length` que quedó en la regla vieja —ahí el
+error era medir unidades distintas, aquí es medir un objeto distinto—, y del mismo modo
+de fallo que el `200` que no prueba la escritura (§8): **el intermediario tiene opinión.**
+
+**Y la lección sobre estas reglas, que es la parte cara:** la regla vieja se escribió
+con la premisa sin medir, con el parentesco ya buscado y el «primer lugar donde mirar»
+ya recomendado. Así envejecen hacia la confianza, igual que el «crashed loop» del
+Worker (§14 Bloque B) que pasó cuatro meses recomendando tirar la pieza que hacía
+falta. **Una regla nueva de esta lista exige la misma vara que cualquier reporte:
+ejecutado y observado (§8), o se escribe como sospecha y se dice que lo es.**
+
+---
 
 ### Correcciones a reglas anteriores (verificadas 2026-08-31)
 
