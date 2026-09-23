@@ -167,11 +167,11 @@ const EXE = CANDIDATOS.find(x => { try { return fs.statSync(x).isFile(); } catch
 const OPCIONES = EXE ? { executablePath: EXE } : {};
 
 
-/* ═══ Capturas V1.36 ═══════════════════════════════════════════════════════
+/* ═══ Capturas V1.37 ═══════════════════════════════════════════════════════
  * Una pantalla se revisa MIRÁNDOLA, no leyendo su diff (CLAUDE.md §20 #12).
  * Reusa el preámbulo de `pruebas-navegador.js` —mismo fixture, mismo
  * navegador, mismo sembrado— para que lo que se mira sea lo que se prueba.
- *   node comercial/machote/tests/capturas-v136.js
+ *   node comercial/machote/tests/capturas-v137.js
  *
  * CUATRO anchos, y los dos de en medio son el motivo del cambio de la V1.35:
  * 760 y 900 caen en la franja donde la tabla ya no enseña las columnas de
@@ -190,8 +190,11 @@ const OPCIONES = EXE ? { executablePath: EXE } : {};
  *   c · el pad ABIERTO como panel anclado al fondo, con su pie
  *   d · el aviso de comisión DESVIADO, en ámbar
  *   e · la barra fija con el botón de deshacer, que dice QUÉ deshace
+ *   f · la barra con el botón del PAD, mirada DESDE EL FONDO de la hoja —que
+ *       es el caso que la V1.36 dejó anotado y la V1.37 cierra
+ *   g · el deshacer de un BORRADO: la etiqueta dice qué renglón vuelve
  */
-const OUT = process.env.OUT || '/tmp/capturas-v136';
+const OUT = process.env.OUT || '/tmp/capturas-v137';
 
 (async () => {
   try { fs.mkdirSync(OUT, { recursive: true }); } catch (e) {}
@@ -246,7 +249,7 @@ const OUT = process.env.OUT || '/tmp/capturas-v136';
      *     columnas a 1280, línea dentro de la fila a 900 y 760, línea dentro
      *     de la tarjeta a 380. La franja 721-980 es justo lo que se arregló. */
     await q.goto(BASE); await q.waitForTimeout(1100);
-    await q.screenshot({ path: OUT + '/v136-' + tag + '-a-lista.png', fullPage: true });
+    await q.screenshot({ path: OUT + '/v137-' + tag + '-a-lista.png', fullPage: true });
     const lst = await q.evaluate(() => {
       /* VISIBLE, no la primera que exista: a 380 px la tabla del escritorio
        * sigue en el HTML con altura 0, y medirla devolvía un 0 que se lee
@@ -284,7 +287,7 @@ const OUT = process.env.OUT || '/tmp/capturas-v136';
      *     botón del pad y el aviso de comisión desde la V1.36. */
     await q.evaluate(() => { location.hash = '#/m/M-P90'; }); await q.waitForTimeout(900);
     await q.locator('.pestana').nth(1).click(); await q.waitForTimeout(1200);
-    await q.screenshot({ path: OUT + '/v136-' + tag + '-b-cabecera.png' });
+    await q.screenshot({ path: OUT + '/v137-' + tag + '-b-cabecera.png' });
 
     /* c · EL PAD, abierto como panel anclado al fondo. Se abre DESPUÉS de
      *     bajar al final de la hoja: es el caso que antes no se alcanzaba
@@ -305,7 +308,7 @@ const OUT = process.env.OUT || '/tmp/capturas-v136';
     await q.fill('[data-padcon]', 'Canalización tramo norte');
     await q.fill('[data-padimp]', '25800');
     await q.waitForTimeout(600);
-    await q.screenshot({ path: OUT + '/v136-' + tag + '-c-pad-anclado.png' });
+    await q.screenshot({ path: OUT + '/v137-' + tag + '-c-pad-anclado.png' });
     const pd = await q.evaluate(() => {
       const r = document.querySelector('.pad-panel:not([hidden])');
       if (!r) return null;
@@ -322,14 +325,14 @@ const OUT = process.env.OUT || '/tmp/capturas-v136';
      *     en ámbar: un solo lugar, los dos estados. */
     await q.click('[data-padcerrar]'); await q.waitForTimeout(400);
     await q.evaluate(() => window.scrollTo(0, 0)); await q.waitForTimeout(300);
-    await q.screenshot({ path: OUT + '/v136-' + tag + '-d1-comision-normal.png' });
+    await q.screenshot({ path: OUT + '/v137-' + tag + '-d1-comision-normal.png' });
     await q.evaluate(() => {
       const e = document.querySelector('.com-sec'); if (e) e.scrollIntoView({ block: 'center' });
     });
     await q.waitForTimeout(300);
     await q.click('[data-comprop]'); await q.waitForTimeout(700);
     await q.evaluate(() => window.scrollTo(0, 0)); await q.waitForTimeout(400);
-    await q.screenshot({ path: OUT + '/v136-' + tag + '-d2-comision-desviada.png' });
+    await q.screenshot({ path: OUT + '/v137-' + tag + '-d2-comision-desviada.png' });
     const cm = await q.evaluate(() => {
       const e = document.querySelector('[data-ircom]');
       if (!e) return null;
@@ -368,8 +371,45 @@ const OUT = process.env.OUT || '/tmp/capturas-v136';
                visible: r.top >= 0 && r.bottom <= window.innerHeight + 1,
                cortada: f.scrollWidth > f.clientWidth + 1 };
     });
-    await q.screenshot({ path: OUT + '/v136-' + tag + '-e-barra-deshacer.png' });
+    await q.screenshot({ path: OUT + '/v137-' + tag + '-e-barra-deshacer.png' });
     console.log('        deshacer → ' + JSON.stringify(bf));
+
+    /* f · V1.37 · LA BARRA DESDE EL FONDO, con el botón del pad. Es el caso
+     *     que la V1.36 midió y no resolvió: 3,899 px a 1280 y 43,715 px a 380
+     *     hasta el botón de la cabecera. Aquí se mira que esté a mano. */
+    const hastaAbajo = await q.evaluate(() => {
+      window.scrollTo(0, document.body.scrollHeight);
+      const bp = document.getElementById('btnPad');
+      const r = bp ? bp.getBoundingClientRect() : null;
+      return { y: Math.round(window.scrollY), hay: !!bp,
+               enPantalla: r ? (r.top >= 0 && r.bottom <= window.innerHeight + 1) : false };
+    });
+    await q.waitForTimeout(300);
+    await q.screenshot({ path: OUT + '/v137-' + tag + '-f-pad-desde-el-fondo.png' });
+    console.log('        pad desde el fondo → hoja en y=' + hastaAbajo.y +
+                ' · botón en la barra: ' + hastaAbajo.hay +
+                ' · en pantalla: ' + hastaAbajo.enPantalla);
+    if (!hastaAbajo.hay || !hastaAbajo.enPantalla)
+      problemas.push(tag + ' el pad NO se alcanza desde el fondo de la hoja');
+
+    /* g · V1.37 · EL DESHACER DE UN BORRADO. Se borra un renglón capturado y
+     *     se mira que el botón diga cuál vuelve — no «deshacer» a secas. */
+    await q.evaluate(() => window.scrollTo(0, 0)); await q.waitForTimeout(300);
+    const refDel = await q.$$eval('[data-del]', e => e.map(x => x.dataset.del));
+    if (refDel.length) {
+      q.once('dialog', d => d.accept());
+      await q.click('[data-del="' + refDel[0] + '"]'); await q.waitForTimeout(900);
+      await q.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+      await q.waitForTimeout(300);
+      await q.screenshot({ path: OUT + '/v137-' + tag + '-g-deshacer-borrado.png' });
+      const etq = await q.evaluate(() => {
+        const e = document.getElementById('btnDeshacer');
+        return e ? (e.textContent || '').trim() : null;
+      });
+      console.log('        deshacer un borrado → «' + etq + '»');
+      if (!etq || etq.indexOf('borrado') < 0)
+        problemas.push(tag + ' borrar un renglón no ofreció deshacerlo');
+    }
     await q.close();
   }
   await b.close();

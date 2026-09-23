@@ -57,7 +57,7 @@
    *   2. el `?v=` de la URL con la que el navegador lo bajó,
    *   3. la que declara cada pieza que se carga aparte (hoy el motor).
    * Si discrepan, la pantalla lo DICE en vez de correr a medias. */
-  const VERSION_ARCHIVO = 'V1.36';
+  const VERSION_ARCHIVO = 'V1.37';
 
   const VERSION_URL = (function () {
     try {
@@ -827,11 +827,56 @@
     while (ST.deshacer.length > DESHACER_MAX) ST.deshacer.shift();
   }
 
-  /** Deshace el último. Devuelve qué se deshizo, o null si no había nada. */
+  /** Apunta un BORRADO. Es otra cosa que `apuntarCambio` y por eso es otra
+   *  función: aquí no hay un `path` que volver a escribir, hay un OBJETO que
+   *  volver a meter en su sitio. El paso guarda una copia profunda y el
+   *  índice donde estaba.
+   *
+   *  ⚠️ V1.37 · La copia es profunda a propósito (`JSON.parse(JSON.stringify)`,
+   *  el mismo gesto que duplicar). Guardar la referencia viva parecería más
+   *  barato y sería un error: el objeto sigue siendo el mismo que la pantalla
+   *  acaba de soltar, y cualquier cosa que lo toque después se llevaría por
+   *  delante lo que la pila promete devolver.
+   *
+   *  Lo que NO revive, y se comprobó antes de construirlo: el `id` de una
+   *  sección es local al documento (`s-<epoch>`) y no lo indexa nada fuera de
+   *  él —ni `localStorage`, ni la libreta, ni la base—; y el FOLIO es del
+   *  machote, no de la sección, y lo asigna el servidor una sola vez. O sea
+   *  que restaurar una sección no resucita ningún identificador liberado:
+   *  devuelve un pedazo del mismo documento al mismo documento. */
+  function apuntarBorrado(m, paso) {
+    if (!ST.deshacer || ST.deshacerDe !== m.id) { ST.deshacer = []; ST.deshacerDe = m.id; }
+    ST.deshacer.push(paso);
+    while (ST.deshacer.length > DESHACER_MAX) ST.deshacer.shift();
+  }
+
+  /** Deshace el último. Devuelve el paso —con `fallo` puesto si no se pudo—,
+   *  o `null` si no había nada que deshacer.
+   *
+   *  ⚠️ «No había nada» y «no se pudo» son dos respuestas distintas y salen
+   *  distintas: si se juntaran, el botón se quedaría quieto sin decir por qué,
+   *  que es el modo de fallo de CLAUDE.md §20 #12b. */
   function deshacerUno(m) {
     if (!ST.deshacer || ST.deshacerDe !== m.id || !ST.deshacer.length) return null;
     const paso = ST.deshacer.pop();
-    setPath(m, paso.path, paso.antes);
+
+    if (paso.tipo === 'partida') {
+      const s = m.secciones.find(x => x.id === paso.sid);
+      /* La sección donde vivía ya no está. No puede pasar con la pila en
+       * orden —borrar la sección apila DESPUÉS, así que se deshace ANTES—,
+       * pero si alguna vez pasa se dice, no se finge. */
+      if (!s) { paso.fallo = 'La sección donde estaba ese renglón ya no existe.'; return paso; }
+      const arr = (paso.campo === 'mo') ? s.mo : s.partidas;
+      arr.splice(Math.min(paso.idx, arr.length), 0, paso.copia);
+    } else if (paso.tipo === 'seccion') {
+      m.secciones.splice(Math.min(paso.idx, m.secciones.length), 0, paso.copia);
+      /* Y se abre la que volvió: si vuelve callada detrás de otra pestaña,
+       * el usuario no tiene cómo saber que el botón hizo algo. */
+      ST.hoja = paso.copia.id;
+    } else {
+      setPath(m, paso.path, paso.antes);
+    }
+
     /* Se guarda como cualquier otro cambio. Esto es lo que impide que quede
      * un archivo a medias esperando decisión. */
     tocado(m);
@@ -3145,12 +3190,75 @@
         ? '<button class="btn fantasma" id="btnDeshacer" title="Deshace el último cambio. Se guarda como cualquier otro cambio: no deja nada pendiente.">↶ Deshacer ' +
           esc(ST.deshacer[ST.deshacer.length - 1].que) + '</button>'
         : '') +
+      /* ── V1.37 · el PAD, desde donde sea ──────────────────────────────
+       * La V1.36 lo puso en la cabecera de la sección, y eso resolvió
+       * ENCONTRARLO: al entrar está a 0.3 pantallas. Lo que no resolvió es
+       * abrirlo desde donde se trabaja: con la hoja al fondo, el botón de la
+       * cabecera queda a 3,899 px en escritorio y a 43,715 px en teléfono.
+       * Medido, no estimado.
+       *
+       * Va AQUÍ y no en un elemento flotante nuevo porque la barra ya es el
+       * único sitio de la pantalla que está siempre a la vista, y un mueble
+       * más —una pestañita en el borde— taparía la tabla justo donde se
+       * captura, a TODOS los anchos.
+       *
+       * Va COMPACTO (`.compacto` le quita el ancho mínimo de 110 px), y el
+       * sitio donde se pone se decidió MIDIENDO, no a ojo. Puesto al final,
+       * el A/B —quitarlo del DOM y volver a medir la barra en la misma
+       * página— dio esto:
+       *
+       *     1280 px   65 → 65      sin costo
+       *      900 px  119 → 119     sin costo
+       *      760 px  119 → 119     sin costo
+       *      380 px  163 → 217     UN RENGLÓN MÁS (+54 px)
+       *
+       * O sea que en el teléfono costaba un 7% de la pantalla, permanente,
+       * por tres letras — y la captura enseñó POR QUÉ: no era el pad el que
+       * no cabía, era «Revisar» el que se quedaba solo en un renglón nuevo.
+       * El arreglo está en el CSS: a ≤560 px el botón del pad viaja en el
+       * renglón del precio, que iba medio vacío. Vuelto a medir: 169 → 169,
+       * sin costo a ningún ancho. Lo que NO se hizo para ahorrarlo fue
+       * recortar el texto del deshacer — eso sería volver al botón que no
+       * anuncia su efecto, que es el defecto que acabamos de arreglar.
+       *
+       * Y el botón existe SÓLO dentro de una sección: en la lista y en
+       * DESGLOSE no hay pad que abrir.
+       *
+       * Sólo dentro de una sección: en DESGLOSE no hay pad que abrir, así que
+       * no se ofrece un botón que no haría nada. */
+      (function () {
+        if (ajeno(m) || !ST.hoja || ST.hoja === 'desglose') return '';
+        const sec = m.secciones.find(x => x.id === ST.hoja);
+        if (!sec) return '';
+        const algo = C.padPendiente(sec);
+        return '<button class="btn fantasma compacto' + (algo ? ' con-algo' : '') +
+          '" id="btnPad" title="' +
+          (algo ? 'Pad de trabajo de esta sección · tiene una cuenta escrita'
+                : 'Pad de trabajo de esta sección · para sacar cuentas') +
+          '">Pad</button>';
+      })() +
       '<a class="btn" href="#/rev/' + m.id + '">Revisar</a></div>';
+    /* El botón de la barra NO abre el pad por su cuenta: aprieta el de la
+     * cabecera. Un solo camino para abrirlo (CLAUDE.md §20 #13) — si mañana
+     * cambia lo que hace abrirlo, cambia en un sitio y los dos siguen de
+     * acuerdo. Si dos lo abrieran cada uno a su manera, el arreglo se
+     * aplicaría a uno. */
+    const bpad = $('#btnPad');
+    if (bpad) bpad.onclick = () => {
+      const orig = document.querySelector('[data-padabrir="' + ST.hoja + '"]');
+      if (orig) orig.click();
+    };
     const bd = $('#btnDeshacer');
     if (bd) bd.onclick = () => {
       const paso = deshacerUno(m);
       if (!paso) return;
-      pintarHoja(m); barra(m, C.calcular(m));
+      if (paso.fallo) { barra(m, C.calcular(m)); toast('No se pudo: ' + paso.fallo); return; }
+      /* Restaurar una SECCIÓN cambia las pestañas, no sólo la hoja de adentro,
+       * así que hay que repintar la pantalla entera. Con `pintarHoja` la
+       * sección volvía al documento y NO aparecía su pestaña: deshacer
+       * habría parecido que no hizo nada. */
+      if (paso.tipo === 'seccion') vMachote(m.id);
+      else { pintarHoja(m); barra(m, C.calcular(m)); }
       toast('Deshecho: ' + paso.que);
     };
     const bo = $('#btnOrden');
@@ -3585,8 +3693,32 @@
                                     (l.unidad ? ' ' + l.unidad : ''));
         if (Number(l.pu)) qué.push('a ' + mx(Number(l.pu)));
         if (l.link) qué.push('con liga de compra');
+        /* ⚠️ V1.37 · la última línea YA NO dice «no se puede deshacer»: desde
+         * esta versión sí se puede, y una advertencia que dejó de ser cierta
+         * es peor que ninguna —enseña a no creerle al resto del diálogo—.
+         * Dice en su lugar CUÁNTO dura la red, que es lo que hay que saber
+         * para decidir: la pila son tres pasos y se borra al cambiar de
+         * cotización. */
         if (!confirm('¿Borrar este renglón?\n\n' + (qué.join(' · ') || 'renglón capturado') +
-                     '\n\nNo se puede deshacer desde aquí.')) return;
+                     '\n\nSe puede deshacer con «↶ Deshacer», abajo, ' +
+                     'mientras no hagas otros tres cambios.')) return;
+        /* El paso se apunta ANTES del splice, con la copia y el índice de
+         * ahora — igual que el valor anterior de una celda se lee antes de
+         * escribir. Y sólo se apunta el renglón que TENÍA algo: uno en blanco
+         * no le quita nada a nadie y gastaría una de las tres ranuras en un
+         * paso que no se ve al deshacerlo. Es el mismo criterio con el que
+         * `apuntarCambio` ignora un cambio que no cambió nada. */
+        apuntarBorrado(m, {
+          tipo: 'partida', sid: s.id, campo: 'partidas', idx: j,
+          copia: JSON.parse(JSON.stringify(l)),
+          /* «el borrado de «X»» y no «el borrado del renglón «X»»: en el
+           * teléfono la etiqueta va dentro del botón de la barra, y las dos
+           * palabras de más lo partían en tres renglones. Se quita lo que se
+           * deduce del contexto —acabas de borrar un renglón— y se deja lo
+           * que no: CUÁL. El nombre se corta a 32 para que quepa en dos. */
+          que: 'el borrado de «' +
+               String(l.descripcion || 'sin descripción').slice(0, 32) + '»'
+        });
       }
       s.partidas.splice(j, 1); refrescar();
     });
@@ -3621,7 +3753,17 @@
       if (t && t.costo) qué.push('un costo de ' + mx(t.costo));
       if (!confirm('¿Borrar la sección «' + (sec.nombre || 'sin nombre') + '»?\n\n' +
                    'Se pierde ' + qué.join(', ') + '.\n\n' +
-                   'No se puede deshacer desde aquí.')) return;
+                   'Se puede deshacer con «↶ Deshacer», abajo, ' +
+                   'mientras no hagas otros tres cambios.')) return;
+      /* Igual que el renglón: la copia y el índice se toman ANTES del splice.
+       * Una sección entera cabe de sobra en la pila —tres pasos, y la más
+       * gorda que existe en producción son unas decenas de kilobytes—, así
+       * que no hay razón para guardar menos que todo. */
+      apuntarBorrado(m, {
+        tipo: 'seccion', idx: i,
+        copia: JSON.parse(JSON.stringify(sec)),
+        que: 'el borrado de la sección «' + (sec.nombre || 'sin nombre') + '»'
+      });
       m.secciones.splice(i, 1); ST.hoja = 'desglose'; tocado(m); vMachote(m.id);
     });
     $$('[data-dupsec]').forEach(b => b.onclick = () => {

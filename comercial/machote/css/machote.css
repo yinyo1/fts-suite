@@ -396,6 +396,21 @@ label.row { min-height: var(--toque); }
  * ancho al que haya que volver el día que se añada un sexto botón. */
 .fija { flex-wrap: wrap; }
 .fija .grow { flex: 1 1 240px; min-width: 0; }
+/* ── V1.37 · el botón compacto de la barra ────────────────────────────────
+ * El ancho mínimo de 110 px es lo que mantiene legibles los botones con
+ * texto largo («Pasar a orden», «↶ Deshacer el nombre de …»). Para el sexto
+ * —el del pad, que dice tres letras— ese mínimo es ancho regalado, y con la
+ * barra ya plegándose por contenido, regalar ancho es plegar un renglón más.
+ * Sigue midiendo más de 40 px de alto, que es el mínimo del módulo. */
+.fija .btn.compacto { min-width: 0; padding: 10px 14px; }
+/* El mismo punto NEUTRO que el botón de la cabecera, y por lo mismo: el
+ * ámbar de este módulo significa «alguien se apartó del valor de arranque»
+ * y un borrador a medias no es una desviación. */
+.fija .btn.compacto.con-algo { position: relative; }
+.fija .btn.compacto.con-algo::after {
+  content: ''; position: absolute; top: 6px; right: 6px;
+  width: 6px; height: 6px; border-radius: 50%; background: var(--suave);
+}
 
 /* ── V1.27 · la barra con TRES botones ──────────────────────────────────
  * Un machote propio y ya subido trae tres: «Pasar a orden», «Prestar» y
@@ -414,8 +429,21 @@ label.row { min-height: var(--toque); }
   /* El plegado ya es global (arriba). Aquí sólo queda lo del teléfono: los
    * botones se reparten el renglón en vez de guardar sus 110 px, que es lo
    * que evita que el quinto se salga de la pantalla. */
-  .fija .grow { flex: 1 1 100%; }
+  .fija .grow { flex: 1 1 200px; order: -2; }
   .fija .btn { flex: 1 1 auto; min-width: 0; }
+  /* ── V1.37 · el del pad VIAJA CON EL PRECIO ─────────────────────────────
+   * Medido: metido al final, el sexto botón empuja a «Revisar» a un renglón
+   * suyo y la barra pasa de 163 a 217 px en el teléfono — un 7% de la
+   * pantalla, permanente, por tres letras. Pero el renglón del precio va
+   * medio vacío («$305,913 MXN · 40%*» son ~200 de 360 px), así que el botón
+   * se sube AHÍ y no cuesta nada: 163 → 163. Es el mismo criterio que plegó
+   * la barra por contenido en la V1.36 —usar el hueco que ya existe en vez
+   * de pedir uno nuevo—.
+   *
+   * `order` y no reordenar el HTML: el orden del DOM es el de lectura y el
+   * de tabulación, y ahí el pad va con los demás botones. Esto es sólo cómo
+   * se acomoda cuando no cabe. */
+  .fija .btn.compacto { flex: 0 0 auto; order: -1; }
 }
 .btnrow .btn { width: auto; }
 

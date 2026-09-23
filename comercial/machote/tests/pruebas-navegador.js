@@ -7733,6 +7733,315 @@ await sembrarMachotes(q);
   });
 
 
+  /* ══ V1.37 · DESHACER UN BORRADO, y el pad desde donde se trabaja ═══════
+   *
+   * El punto 5 del #246 dejó dicho lo incómodo: el deshacer sólo apuntaba
+   * cambios de CELDA, así que lo que más valdría deshacer —un renglón o una
+   * sección borrada— era justo lo que no cubría. Estas pruebas cubren el
+   * arreglo, y las dos primeras tienen dientes comprobados contra el código
+   * de hoy (se corrieron con `apuntarBorrado` neutralizado y fallan).
+   */
+
+  await paso('V1.37 · borrar un renglón capturado se puede DESHACER, y vuelve a su sitio', async () => {
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    q.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
+    try {
+      await sembrarGeo(q); await sembrarMachotes(q);
+      await q.addInitScript(() => {
+        try { localStorage.setItem('fts_suite_session', JSON.stringify({
+          token:'p.p.p', actor:'zz.prueba', nombre:'ZZ Prueba', empleado_id:null,
+          scopes:['comercial:read','comercial:orden'], exp: Math.floor(Date.now()/1000)+3600 })); } catch (e) {}
+      });
+      await q.goto(BASE); await q.waitForTimeout(1200);
+      await q.evaluate(() => { location.hash = '#/m/M-1041'; }); await q.waitForTimeout(900);
+      await q.locator('.pestana').nth(1).click(); await q.waitForTimeout(900);
+
+      /* Se borra el SEGUNDO renglón, no el primero: así la prueba comprueba
+       * que vuelve a SU índice y no simplemente al final o al principio, que
+       * es donde un `push` descuidado lo dejaría sin que nadie lo notara. */
+      const refs = await q.$$eval('[data-del]', e => e.map(x => x.dataset.del));
+      if (refs.length < 3) throw new Error('hacen falta al menos 3 renglones');
+      const ref = refs[1];
+      const [sid, j] = ref.split('#');
+      const cel = (k, campo) => '[data-cel="s:' + sid + ':partidas:' + k + ':' + campo + '"]';
+
+      await q.fill(cel(j, 'descripcion'), 'RENGLON QUE VUELVE 137');
+      await q.dispatchEvent(cel(j, 'descripcion'), 'change');
+      await q.fill(cel(j, 'pu'), '7777');
+      await q.dispatchEvent(cel(j, 'pu'), 'change');
+      await q.waitForTimeout(ALMACEN);
+
+      const antesN = await q.$$eval('[data-del]', e => e.length);
+      const vecinoAntes = await q.inputValue(cel(String(parseInt(j, 10) + 1), 'descripcion'));
+
+      q.once('dialog', d => d.accept());
+      await q.click('[data-del="' + ref + '"]'); await q.waitForTimeout(ALMACEN);
+
+      if (await q.$$eval('[data-del]', e => e.length) !== antesN - 1)
+        throw new Error('el borrado no quitó el renglón');
+
+      const btn = await q.$('#btnDeshacer');
+      if (!btn) throw new Error('borrar un renglón NO ofreció deshacer');
+      const etq = (await q.$eval('#btnDeshacer', e => e.textContent)).trim();
+      if (etq.indexOf('RENGLON QUE VUELVE 137') < 0)
+        throw new Error('el botón no dice QUÉ va a deshacer: ' + etq);
+
+      await q.click('#btnDeshacer'); await q.waitForTimeout(ALMACEN);
+
+      if (await q.$$eval('[data-del]', e => e.length) !== antesN)
+        throw new Error('deshacer no devolvió el renglón');
+      const vuelto = await q.inputValue(cel(j, 'descripcion'));
+      if (vuelto !== 'RENGLON QUE VUELVE 137')
+        throw new Error('volvió en otro sitio o con otro contenido: «' + vuelto + '»');
+      if (await q.inputValue(cel(j, 'pu')) !== '7777')
+        throw new Error('volvió sin su precio');
+      if (await q.inputValue(cel(String(parseInt(j, 10) + 1), 'descripcion')) !== vecinoAntes)
+        throw new Error('volvió empujando al vecino: el índice no se respetó');
+
+      /* Y queda GUARDADO, como cualquier otro cambio: deshacer no deja un
+       * archivo a medias esperando decisión. */
+      const enDisco = await q.evaluate((sid2) => {
+        const raw = JSON.parse(localStorage.getItem('fts_machote_v1') || '{}');
+        const m = (raw.machotes || []).find(x => x.id === 'M-1041');
+        const s = (m.secciones || []).find(x => x.id === sid2);
+        return (s.partidas || []).filter(x => x.descripcion === 'RENGLON QUE VUELVE 137').length;
+      }, sid);
+      if (enDisco !== 1) throw new Error('deshacer no se guardó: ' + enDisco + ' copias en el almacén');
+      console.log('    «' + etq + '» · volvió al índice ' + j + ' con su precio, y guardado');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.37 · borrar una sección se puede DESHACER, con su pestaña y su contenido', async () => {
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    q.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
+    try {
+      await sembrarGeo(q); await sembrarMachotes(q);
+      await q.addInitScript(() => {
+        try { localStorage.setItem('fts_suite_session', JSON.stringify({
+          token:'p.p.p', actor:'zz.prueba', nombre:'ZZ Prueba', empleado_id:null,
+          scopes:['comercial:read','comercial:orden'], exp: Math.floor(Date.now()/1000)+3600 })); } catch (e) {}
+      });
+      await q.goto(BASE); await q.waitForTimeout(1200);
+      await q.evaluate(() => { location.hash = '#/m/M-1041'; }); await q.waitForTimeout(900);
+
+      const antes = await q.evaluate(() => {
+        const raw = JSON.parse(localStorage.getItem('fts_machote_v1') || '{}');
+        const m = (raw.machotes || []).find(x => x.id === 'M-1041');
+        return (m.secciones || []).map(s => ({ id: s.id, nombre: s.nombre,
+                                               parts: (s.partidas || []).length }));
+      });
+      if (antes.length < 2) throw new Error('hacen falta 2 secciones para poder borrar una');
+      const victima = antes[antes.length - 1];   // la ÚLTIMA: su índice se nota
+
+      await q.locator('.pestana').nth(antes.length).click(); await q.waitForTimeout(900);
+      let pregunta = null;
+      q.once('dialog', d => { pregunta = d.message(); d.accept(); });
+      await q.click('[data-delsec="' + victima.id + '"]'); await q.waitForTimeout(ALMACEN);
+      if (!pregunta) throw new Error('borró una sección sin preguntar');
+
+      const sinElla = await q.evaluate(() => {
+        const raw = JSON.parse(localStorage.getItem('fts_machote_v1') || '{}');
+        const m = (raw.machotes || []).find(x => x.id === 'M-1041');
+        return (m.secciones || []).map(s => s.id);
+      });
+      if (sinElla.indexOf(victima.id) >= 0) throw new Error('aceptó y no borró la sección');
+
+      const btn = await q.$('#btnDeshacer');
+      if (!btn) throw new Error('borrar una sección NO ofreció deshacer');
+      const etq = (await q.$eval('#btnDeshacer', e => e.textContent)).trim();
+      if (etq.indexOf(victima.nombre) < 0)
+        throw new Error('el botón no nombra la sección: ' + etq);
+
+      await q.click('#btnDeshacer'); await q.waitForTimeout(ALMACEN);
+
+      const vuelta = await q.evaluate(() => {
+        const raw = JSON.parse(localStorage.getItem('fts_machote_v1') || '{}');
+        const m = (raw.machotes || []).find(x => x.id === 'M-1041');
+        return (m.secciones || []).map(s => ({ id: s.id, nombre: s.nombre,
+                                               parts: (s.partidas || []).length }));
+      });
+      if (JSON.stringify(vuelta) !== JSON.stringify(antes))
+        throw new Error('la sección no volvió igual ni al mismo sitio:\n  antes ' +
+                        JSON.stringify(antes) + '\n  ahora ' + JSON.stringify(vuelta));
+
+      /* Y su PESTAÑA vuelve, y encima queda abierta: si volviera callada
+       * detrás de otra pestaña, deshacer parecería no haber hecho nada.
+       * Esto es lo que `pintarHoja` NO hacía y `vMachote` sí. */
+      const pes = await q.evaluate(() => Array.from(document.querySelectorAll('.pestana'))
+        .map(e => ({ txt: (e.textContent || '').trim(), activa: e.classList.contains('on') })));
+      const suya = pes.find(x => x.txt.toUpperCase().indexOf(String(victima.nombre).toUpperCase().slice(0, 10)) >= 0);
+      if (!suya) throw new Error('volvió al documento pero NO su pestaña: ' + JSON.stringify(pes));
+      if (!suya.activa) throw new Error('la pestaña volvió pero no quedó abierta: ' + JSON.stringify(pes));
+      console.log('    «' + etq + '» · volvió al índice ' + (antes.length - 1) +
+                  ' con sus ' + victima.parts + ' renglones, y con su pestaña abierta');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.37 · las dos confirmaciones ya no prometen lo contrario de lo que pasa', async () => {
+    /* La frase «no se puede deshacer desde aquí» dejó de ser cierta en esta
+     * versión. Una advertencia que dejó de serlo es peor que ninguna: enseña
+     * a no creerle al resto del diálogo. */
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    q.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
+    try {
+      await sembrarGeo(q); await sembrarMachotes(q);
+      await q.addInitScript(() => {
+        try { localStorage.setItem('fts_suite_session', JSON.stringify({
+          token:'p.p.p', actor:'zz.prueba', nombre:'ZZ Prueba', empleado_id:null,
+          scopes:['comercial:read','comercial:orden'], exp: Math.floor(Date.now()/1000)+3600 })); } catch (e) {}
+      });
+      await q.goto(BASE); await q.waitForTimeout(1200);
+      await q.evaluate(() => { location.hash = '#/m/M-1041'; }); await q.waitForTimeout(900);
+      await q.locator('.pestana').nth(1).click(); await q.waitForTimeout(900);
+
+      const vistos = [];
+      const cazar = async (sel) => {
+        let t = null;
+        q.once('dialog', d => { t = d.message(); d.dismiss(); });
+        await q.click(sel); await q.waitForTimeout(400);
+        if (!t) throw new Error('no preguntó en ' + sel);
+        vistos.push(t);
+        if (/no se puede deshacer/i.test(t))
+          throw new Error('sigue diciendo que no se puede deshacer: ' + t);
+        if (!/deshacer/i.test(t))
+          throw new Error('no dice cómo se deshace: ' + t);
+        return t;
+      };
+      const ref = (await q.$$eval('[data-del]', e => e.map(x => x.dataset.del)))[0];
+      const [sid, j] = ref.split('#');
+      await q.fill('[data-cel="s:' + sid + ':partidas:' + j + ':descripcion"]', 'ALGO 137');
+      await q.dispatchEvent('[data-cel="s:' + sid + ':partidas:' + j + ':descripcion"]', 'change');
+      await q.waitForTimeout(ALMACEN);
+      await cazar('[data-del="' + ref + '"]');
+      await cazar('[data-delsec="' + sid + '"]');
+      console.log('    renglón: «' + vistos[0].split('\n').pop() + '»');
+      console.log('    sección: «' + vistos[1].split('\n').pop() + '»');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.37 · el pad se abre desde el FONDO de la hoja, sin viaje, en los dos anchos', async () => {
+    /* La V1.36 lo dejó ENCONTRABLE (botón en la cabecera, a 0.3 pantallas al
+     * entrar) y anotó lo que faltaba: desde el fondo de la hoja ese botón
+     * queda a 3,899 px en escritorio y a 43,715 px en teléfono. Esta prueba
+     * mide eso mismo: con la hoja hasta abajo, el pad se abre sin subir. */
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    q.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
+    try {
+      await sembrarGeo(q);
+      await q.addInitScript((m) => {
+        try {
+          localStorage.setItem('fts_suite_session', JSON.stringify({
+            token:'p.p.p', actor:'zz.prueba', nombre:'ZZ Prueba', empleado_id:null,
+            scopes:['comercial:read','comercial:orden'], exp: Math.floor(Date.now()/1000)+3600 }));
+          localStorage.setItem('fts_machote_v1', JSON.stringify({ v:1,
+            guardado_at:new Date().toISOString(), machotes:[m], handoff:{} }));
+        } catch (e) {}
+      }, machoteP90());
+
+      const malos = [];
+      for (const [w, h] of [[1280, 900], [380, 800]]) {
+        await q.setViewportSize({ width: w, height: h });
+        await q.goto(BASE); await q.waitForTimeout(1200);
+        await q.evaluate(() => { location.hash = '#/m/M-P90'; }); await q.waitForTimeout(900);
+        await q.locator('.pestana').nth(1).click(); await q.waitForTimeout(1200);
+
+        const abajo = await q.evaluate(() => {
+          window.scrollTo(0, document.body.scrollHeight);
+          const bp = document.getElementById('btnPad');
+          const r = bp ? bp.getBoundingClientRect() : null;
+          return { y: Math.round(window.scrollY),
+                   hay: !!bp,
+                   enPantalla: r ? (r.top >= 0 && r.bottom <= window.innerHeight + 1) : false,
+                   alto: r ? Math.round(r.height) : null };
+        });
+        if (!abajo.hay) { malos.push(w + ': no hay botón del pad en la barra'); continue; }
+        if (abajo.y < 500) { malos.push(w + ': la hoja no bajó (y=' + abajo.y + ')'); continue; }
+        if (!abajo.enPantalla) malos.push(w + ': el botón del pad no está en pantalla desde el fondo');
+        if (abajo.alto < 40) malos.push(w + ': el botón del pad mide ' + abajo.alto + 'px de alto');
+
+        /* Y abrirlo desde ahí no manda a ningún lado: el panel sale dentro de
+         * la ventana y el cursor queda en el texto, listo para escribir. */
+        await q.click('#btnPad'); await q.waitForTimeout(500);
+        const pn = await q.evaluate(() => {
+          const e = document.querySelector('.pad-panel:not([hidden])');
+          if (!e) return null;
+          const c = e.getBoundingClientRect();
+          return { top: Math.round(c.top), alto: Math.round(c.height),
+                   ventana: window.innerHeight, y: Math.round(window.scrollY),
+                   dentro: c.top >= 0 && c.bottom <= window.innerHeight + 1,
+                   foco: (document.activeElement || {}).className || '' };
+        });
+        if (!pn) { malos.push(w + ': el botón de la barra no abrió el pad'); continue; }
+        if (!pn.dentro) malos.push(w + ': el pad abrió fuera de la ventana (top ' + pn.top + ')');
+        if (pn.foco.indexOf('pad-txt') < 0) malos.push(w + ': abrió sin dejar el cursor en el pad');
+        console.log('    ' + w + 'px · hoja en y=' + pn.y + ' · botón en pantalla · ' +
+                    'panel top ' + pn.top + ', alto ' + pn.alto + ' de ' + pn.ventana +
+                    ' · foco en el texto');
+      }
+      if (malos.length) throw new Error(malos.join(' · '));
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.37 · el botón del pad no le cuesta un renglón a la barra, a ningún ancho', async () => {
+    /* A/B en la misma página: se mide la barra y se vuelve a medir quitando
+     * el botón del DOM, que es exactamente la barra de la V1.36. Puesto al
+     * final costaba un renglón entero en el teléfono (163 → 217); por eso a
+     * ≤560 px viaja en el renglón del precio, que iba medio vacío. */
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    q.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
+    try {
+      await sembrarGeo(q);
+      await q.addInitScript((m) => {
+        try {
+          localStorage.setItem('fts_suite_session', JSON.stringify({
+            token:'p.p.p', actor:'zz.prueba', nombre:'ZZ Prueba', empleado_id:null,
+            scopes:['comercial:read','comercial:orden'], exp: Math.floor(Date.now()/1000)+3600 }));
+          localStorage.setItem('fts_machote_v1', JSON.stringify({ v:1,
+            guardado_at:new Date().toISOString(), machotes:[m], handoff:{} }));
+          localStorage.setItem('fts_machote_sync_v1', JSON.stringify({
+            'M-P90': { version: 12, huella: 'z', machote_id: '99999999-8888-7777-6666-555555555555',
+                       guardada_at: new Date(Date.now() - 864e5).toISOString(),
+                       autor: 'zz.prueba', autor_nombre: 'ZZ Prueba' } }));
+        } catch (e) {}
+      }, machoteP90());
+
+      const malos = [];
+      for (const [w, h] of [[1280, 900], [900, 900], [760, 1000], [380, 800]]) {
+        await q.setViewportSize({ width: w, height: h });
+        await q.goto(BASE); await q.waitForTimeout(1200);
+        await q.evaluate(() => { location.hash = '#/m/M-P90'; }); await q.waitForTimeout(900);
+        await q.locator('.pestana').nth(1).click(); await q.waitForTimeout(1200);
+        const cel = q.locator('[data-cel]').first();
+        await cel.fill('7'); await cel.dispatchEvent('change'); await q.waitForTimeout(700);
+
+        const r = await q.evaluate(() => {
+          const f = document.querySelector('.fija');
+          const bp = document.getElementById('btnPad');
+          const conEl = Math.round(f.getBoundingClientRect().height);
+          const anchoCon = Math.round(f.querySelector('.grow').getBoundingClientRect().width);
+          const altoMono = Math.round(f.querySelector('.grow .mono').getBoundingClientRect().height);
+          let sinEl = conEl;
+          if (bp) {
+            const padre = bp.parentNode, sig = bp.nextSibling;
+            padre.removeChild(bp);
+            sinEl = Math.round(document.querySelector('.fija').getBoundingClientRect().height);
+            padre.insertBefore(bp, sig);
+          }
+          return { hay: !!bp, conEl, sinEl, anchoCon, altoMono, botones: f.querySelectorAll('.btn').length };
+        });
+        console.log('    ' + w + 'px · ' + r.botones + ' botones · barra ' + r.sinEl +
+                    ' → ' + r.conEl + 'px · precio ' + r.anchoCon + 'px de ancho');
+        if (!r.hay) { malos.push(w + ': no hay botón del pad'); continue; }
+        if (r.conEl > r.sinEl) malos.push(w + ': el botón del pad engordó la barra ' +
+                                          (r.conEl - r.sinEl) + 'px (' + r.sinEl + ' → ' + r.conEl + ')');
+        if (r.anchoCon < 140) malos.push(w + ': el precio quedó en ' + r.anchoCon + 'px de ancho');
+        if (r.altoMono > 34) malos.push(w + ': el precio se partió en varios renglones');
+      }
+      if (malos.length) throw new Error(malos.join(' · '));
+    } finally { await q.close(); }
+  });
+
+
   await paso('sin errores de consola propios del prototipo', async () => {
     if (errs.length) throw new Error(errs.slice(0, 4).join(' | '));
     if (delEntorno.length) console.log('   (' + delEntorno.length +
