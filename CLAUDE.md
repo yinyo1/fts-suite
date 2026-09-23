@@ -1251,6 +1251,30 @@ Worker (§14 Bloque B) que pasó cuatro meses recomendando tirar la pieza que ha
 falta. **Una regla nueva de esta lista exige la misma vara que cualquier reporte:
 ejecutado y observado (§8), o se escribe como sospecha y se dice que lo es.**
 
+### 20. Toda entrega que toque pantalla lleva capturas a CUATRO anchos, y miradas
+**380, 760, 900 y 1280 px**, con la fila más larga que exista de verdad en producción —no
+un ejemplo corto, que cabe en cualquier parte y no prueba nada—. Y **miradas**: abrir el
+archivo y verlo, no comprobar que el guion terminó sin error.
+
+*(Origen: 23-sep-2026, #246. La barra fija del machote estuvo **rota de 380 a 980 px desde
+la V1.34**: el bloque del precio —el número más importante de la pantalla— medía 0 px de
+ancho a 760 y se derramaba por debajo de la barra. **Tres personas la usaron así durante
+días y nadie lo reportó.** No lo encontró una prueba ni una lectura del diff: se vio de un
+golpe en la primera captura de 760, un ancho que hasta entonces nadie había mirado porque
+las capturas se tomaban a 380 y 1280.)*
+
+**Por qué cuatro y no dos.** 380 y 1280 son los dos extremos cómodos: el teléfono tiene su
+media query y el escritorio le sobra sitio. Lo que se rompe está **en medio**, donde una
+regla se apagó y la otra todavía no entra — y ahí no hay nadie mirando. En este módulo la
+franja mala fue 721–980 px **dos veces seguidas y por cosas distintas**: primero las
+columnas de fecha, después la barra fija. Dos anchos de en medio son el costo de que esa
+franja deje de ser un punto ciego.
+
+**Y el silencio no es señal de que esté bien.** Nadie reporta una pantalla fea: se trabaja
+alrededor de ella. El único que iba a notarlo era quien la mirara a propósito, y eso hay
+que programarlo. Es la misma exigencia de §20 #12 («una pantalla se revisa MIRÁNDOLA»),
+puesta como paso obligatorio de la entrega en vez de como buena intención.
+
 ---
 
 ### Correcciones a reglas anteriores (verificadas 2026-08-31)
