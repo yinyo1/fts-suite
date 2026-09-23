@@ -57,7 +57,7 @@
    *   2. el `?v=` de la URL con la que el navegador lo bajó,
    *   3. la que declara cada pieza que se carga aparte (hoy el motor).
    * Si discrepan, la pantalla lo DICE en vez de correr a medias. */
-  const VERSION_ARCHIVO = 'V1.35';
+  const VERSION_ARCHIVO = 'V1.36';
 
   const VERSION_URL = (function () {
     try {
@@ -813,10 +813,17 @@
    *  un `onchange` que dispara sin cambiar nada llenaría la pila de pasos que
    *  no hacen nada, y el usuario apretaría deshacer tres veces sin ver
    *  moverse la pantalla. */
-  function apuntarCambio(m, path, antes, ahora) {
+  function apuntarCambio(m, path, antes, ahora, etq) {
     if (antes === ahora) return;
     if (!ST.deshacer || ST.deshacerDe !== m.id) { ST.deshacer = []; ST.deshacerDe = m.id; }
-    ST.deshacer.push({ path: path, antes: antes, que: etiquetaDe(m, path) });
+    /* ⚠️ V1.36 · `etq` entra HECHA desde el llamador, calculada antes de
+     * escribir, por la misma razón que `antes`. `etiquetaDe` nombra las cosas
+     * por su nombre —«el nombre de «Suministro»», «pu de «Tubo de 4"»»— y
+     * después del write ese nombre YA ES EL NUEVO cuando el campo editado es
+     * justo el que nombra: renombrar una sección a «7» daba «Deshacer el
+     * nombre de 7», que no dice nada de a dónde se vuelve. Se deja el cálculo
+     * tardío como respaldo para cualquier llamador que no la traiga. */
+    ST.deshacer.push({ path: path, antes: antes, que: etq || etiquetaDe(m, path) });
     while (ST.deshacer.length > DESHACER_MAX) ST.deshacer.shift();
   }
 
@@ -2294,12 +2301,46 @@
       '<span class="accsec">' +
         (idx > 0 ? '<button class="ico" data-movsec="' + s.id + '|-1" title="Mover a la izquierda">←</button>' : '') +
         (idx < m.secciones.length - 1 ? '<button class="ico" data-movsec="' + s.id + '|1" title="Mover a la derecha">→</button>' : '') +
+        /* ── V1.36 · el pad se abre desde AQUÍ ────────────────────────────
+         * Es lo único de este renglón que es DE LA SECCIÓN, y la cabecera es
+         * lo primero que se ve al entrar. El punto avisa que hay algo escrito
+         * sin tener que abrirlo.
+         *
+         * NEUTRO, no ámbar: en este módulo el ámbar significa una sola cosa
+         * —alguien se apartó del valor de arranque— y un borrador no es una
+         * desviación. Un cuarto significado para el mismo color debilita los
+         * tres que ya existen. */
+        '<button class="ico pad-btn' + (C.padPendiente(s) ? ' con-algo' : '') +
+          '" data-padabrir="' + s.id + '" title="' +
+          (C.padPendiente(s) ? 'Pad de trabajo · tiene una cuenta escrita' : 'Pad de trabajo · para sacar cuentas') +
+          '">Pad</button>' +
         '<button class="ico" data-dupsec="' + s.id + '" title="Duplicar sección">⧉</button>' +
         (m.secciones.length > 1 ? '<button class="ico peligro" data-delsec="' + s.id + '" title="Eliminar sección">×</button>' : '') +
       '</span></div>' +
       '<div class="tiny nota">Sección ' + (idx + 1) + ' de ' + m.secciones.length +
       (idx >= C.MAX_SECCIONES ? ' · <strong class="n-bad">fuera de las diez ranuras del machote</strong>' : '') +
-      '. Las secciones ocupan la ranura por posición, no por nombre.</div>';
+      '. Las secciones ocupan la ranura por posición, no por nombre.' +
+      /* ── V1.36 · el ESTADO de la comisión, arriba ──────────────────────
+       * El bloque completo de la comisión vive abajo y ahí se queda: sólo
+       * importa cuando alguien va a desviar esta sección, y subirlo le
+       * cobraría espacio a TODAS las secciones por un caso excepcional —
+       * hoy, 0 de 19 secciones reales se han desviado.
+       *
+       * Lo que sí tiene que verse sin bajar es el ESTADO, y va en esta
+       * línea que ya existía en vez de en un chip nuevo: un elemento más
+       * en la cabecera lo pagan todas las secciones para siempre.
+       *
+       * Los dos estados en el mismo sitio, y el ámbar es el MISMO de un
+       * margen pisado — quien aprendió a leer uno lee el otro. Clicable:
+       * el anuncio es también el camino al bloque. */
+      ' · <button type="button" class="com-avisa' + (s.comision_propia === true ? ' apartado' : '') +
+        '" data-ircom="' + esc(s.id) + '" title="' +
+        (s.comision_propia === true
+          ? 'Esta sección reparte distinto del machote. Ir al bloque.'
+          : 'Esta sección sigue el reparto del machote, en vivo. Ir al bloque.') + '">' +
+        (s.comision_propia === true ? 'Comisión: ≠ machote' : 'Comisión: la del machote') +
+      '</button>' +
+      '</div>';
 
     const cab =
       // El nombre va PRIMERO: es lo que dice en qué sección estás parado, y
@@ -2659,43 +2700,54 @@
             '</div>') +
       '</div>';
 
-    /* ══ V1.34 · EL PAD DE TRABAJO ═════════════════════════════════════════
+    /* ══ EL PAD DE TRABAJO · V1.36, ahora PANEL ANCLADO ════════════════════
      *
-     * Montalvo pedía un espacio de cálculo libre al lado de las dos tablas.
-     * Va PLEGABLE y debajo, no como tercera columna: la hoja ya va apretada a
-     * 380 px —medido dos veces— y meter una columna más es encoger hasta que
-     * no se lea.
+     * Montalvo pedía un espacio de cálculo libre. V1.34 lo puso como bloque
+     * plegable al final de la hoja, y la auditoría del #246 midió lo que eso
+     * significaba de verdad sobre un machote del tamaño real: **4,941 px en
+     * escritorio y 44,694 px —56 pantallas— en el teléfono**. Existía,
+     * renderizaba, y era inalcanzable. Nadie lo ha usado: 0 de 19 secciones.
      *
-     * ── LA TENSIÓN, Y CÓMO SE RESUELVE ────────────────────────────────────
-     * El ROADMAP dice que los cuadros de cálculo son widgets con nombre y no
-     * hoja libre, para que el resultado se capture como DATO. Un pad libre es
-     * lo contrario. Pero no es pad-contra-widget: es que hace falta un lugar
-     * donde PENSAR y otro donde REGISTRAR, y no deben ser el mismo.
+     * ── POR QUÉ UN PANEL Y NO MOVERLO DE SITIO ────────────────────────────
+     * Moverlo arriba de la tabla de materiales lo dejaba a ~1,500 px en el
+     * teléfono: mejor, y todavía no es «alcanzable». El problema no era DÓNDE
+     * estaba: es que **una superficie de PENSAR no puede vivir dentro del
+     * documento que estás pensando**. Un documento de cinco pantallas no tiene
+     * un buen sitio para algo que quieres a la mano mirando cualquier parte.
      *
-     * Así que el pad es un BORRADOR DECLARADO: no alimenta ningún total, y lo
-     * dice en pantalla. Lo que lo vuelve útil es el botón: pasa el resultado a
-     * un renglón de verdad Y SE LLEVA EL TEXTO como comentario de ese
-     * renglón. Eso es lo que hoy se pierde — la cuenta se hace en la
-     * calculadora del teléfono y seis meses después nadie sabe de dónde salió
-     * el número.
+     * Anclado al borde inferior, la posición deja de ser un problema: se
+     * alcanza igual desde el primer renglón que desde el último. Y NO es una
+     * ventana modal —se sigue viendo la tabla mientras calculas, que es justo
+     * para lo que sirve—: lleva tope de alto y el resto de la hoja queda
+     * detrás, legible.
+     *
+     * Sigue siendo un BORRADOR DECLARADO: no alimenta ningún total, y lo dice.
+     * Lo que lo vuelve útil es el botón, que pasa el número a un renglón de
+     * verdad Y SE LLEVA EL TEXTO como su comentario — eso es lo que hoy se
+     * pierde cuando la cuenta se hace en la calculadora del teléfono.
      */
     const pad = s.pad || {};
     const bloquePad =
-      '<details class="pad-sec"' + (pad.abierto ? ' open' : '') + ' data-pad="' + esc(s.id) + '">' +
-        '<summary>Pad de trabajo <span class="tiny nota">· borrador, no entra en ningún total</span></summary>' +
-        '<div class="tiny nota">Para sacar cuentas. <strong>Nada de lo que escribas aquí mueve el precio.</strong> ' +
+      '<div class="pad-panel" data-padpanel="' + s.id + '"' + (pad.abierto ? '' : ' hidden') +
+        ' role="dialog" aria-label="Pad de trabajo">' +
+        '<div class="pad-cab">' +
+          '<strong>Pad de trabajo</strong>' +
+          '<span class="tiny nota">· borrador, no entra en ningún total</span>' +
+          '<button class="ico pad-cerrar" data-padcerrar="' + s.id + '" title="Cerrar el pad (Esc)">×</button>' +
+        '</div>' +
+        '<div class="tiny nota pad-ayuda">Para sacar cuentas. <strong>Nada de lo que escribas aquí mueve el precio.</strong> ' +
         'Cuando llegues a un número, pásalo a un renglón con el botón: el renglón se lleva el importe y ' +
         '<strong>este texto queda como su comentario</strong>, para que dentro de seis meses se sepa de dónde salió.</div>' +
-        '<textarea class="cel pad-txt" data-padtxt="' + esc(s.id) + '" rows="6" ' +
+        '<textarea class="cel pad-txt" data-padtxt="' + s.id + '" rows="5" ' +
           'placeholder="3 tramos × 12 m × $450/m&#10;+ 8 soportes × $1,200&#10;= ...">' + esc(pad.texto || '') + '</textarea>' +
         '<div class="pad-pie">' +
-          '<label class="tiny">Concepto <input class="cel" data-padcon="' + esc(s.id) + '" ' +
+          '<label class="tiny">Concepto <input class="cel" data-padcon="' + s.id + '" ' +
             'value="' + esc(pad.concepto || '') + '" placeholder="Canalización tramo norte"></label>' +
           '<label class="tiny">Importe <input class="cel num" type="number" step="any" min="0" ' +
-            'data-padimp="' + esc(s.id) + '" value="' + esc(nn(pad.importe)) + '"></label>' +
-          '<button class="btn fantasma" data-padpasar="' + esc(s.id) + '">Pasar a renglón</button>' +
+            'data-padimp="' + s.id + '" value="' + esc(nn(pad.importe)) + '"></label>' +
+          '<button class="btn fantasma" data-padpasar="' + s.id + '">Pasar a renglón</button>' +
         '</div>' +
-      '</details>';
+      '</div>';
 
     return listaUnidades + cab + leyenda() + bloqueRecargo + bloqueComision +
            tablaMo + bloqueViaje + tablaMat + bloquePad;
@@ -2885,7 +2937,28 @@
       eq('EQUIPO DE VENTA (' + pc(Number(m.reparto.venta)) + ' de la comisión FTS)', 'equipo_venta', 'venta', c.reparto.bolsaVenta) +
       eq('EQUIPO DE OPERACIONES (' + pc(Number(m.reparto.operaciones)) + ')', 'equipo_operaciones', 'ops', c.reparto.bolsaOps) +
       eq('LADO CLIENTE', 'equipo_cliente', 'cli', c.escenario.comisionCliente) +
-      '</tbody></table></div>';
+      '</tbody></table></div>' +
+      /* ── V1.36 · cuántas secciones se apartan de ESTE reparto ────────────
+       * DESGLOSE es donde alguien viene a PREGUNTAR por la comisión, porque
+       * es donde vive el reparto del machote. Por eso aquí sí se enuncia el
+       * caso normal —«todas lo siguen»— y en la cabecera de cada sección no:
+       * ahí nadie pregunta, va pasando, y un letrero en cada sección lo
+       * pagarían todas para siempre.
+       *
+       * La asimetría es deliberada: donde se pregunta, «no hay nada escrito»
+       * se confunde con «no está hecho» (§20 #11, el vacío que se lee como
+       * respuesta). Donde no se pregunta, el silencio es el mensaje. */
+      (function () {
+        const secs = m.secciones || [];
+        const desv = secs.filter(x => x.comision_propia === true);
+        if (!secs.length) return '';
+        return '<div class="tiny nota com-resumen">' + (desv.length
+          ? '<strong class="n-warn">' + desv.length + ' de ' + secs.length +
+            (desv.length === 1 ? ' sección reparte' : ' secciones reparten') + ' distinto</strong>: ' +
+            desv.map(x => '<button type="button" class="com-avisa apartado" data-irsec="' + x.id + '">' +
+              esc(x.nombre || 'sin nombre') + '</button>').join(' · ')
+          : 'Las ' + secs.length + ' secciones siguen este reparto.') + '</div>';
+      })();
 
     return encabezado + resumen + porSeccion + budget + comisiones;
   }
@@ -3252,14 +3325,14 @@
       el.oninput = () => {
         const sec = m.secciones.find(x => x.id === el.dataset.padtxt); if (!sec) return;
         if (!sec.pad) sec.pad = {};
-        sec.pad.texto = el.value; tocado(m);
+        sec.pad.texto = el.value; tocado(m); marcarBoton(sec.id, sec);
       };
     });
     $$('[data-padcon]').forEach(el => {
       el.oninput = () => {
         const sec = m.secciones.find(x => x.id === el.dataset.padcon); if (!sec) return;
         if (!sec.pad) sec.pad = {};
-        sec.pad.concepto = el.value; tocado(m);
+        sec.pad.concepto = el.value; tocado(m); marcarBoton(sec.id, sec);
       };
     });
     $$('[data-padimp]').forEach(el => {
@@ -3267,16 +3340,73 @@
         const sec = m.secciones.find(x => x.id === el.dataset.padimp); if (!sec) return;
         if (!sec.pad) sec.pad = {};
         sec.pad.importe = el.value === '' ? null : (parseFloat(el.value) || 0);
-        tocado(m);
+        tocado(m); marcarBoton(sec.id, sec);
       };
     });
-    $$('[data-pad]').forEach(el => {
-      el.ontoggle = () => {
-        const sec = m.secciones.find(x => x.id === el.dataset.pad); if (!sec) return;
+    /* ── V1.36 · abrir y cerrar el panel ──────────────────────────────────
+     * Se alterna el atributo `hidden` en vez de repintar la hoja: repintar
+     * a 60 renglones cuesta, y peor, tira el foco del textarea a media
+     * cuenta. El estado se guarda igual. */
+    const panelDe = (sid) => $('[data-padpanel="' + sid + '"]');
+    const marcarBoton = (sid, sec) => {
+      const b = $('[data-padabrir="' + sid + '"]');
+      if (!b) return;
+      b.classList.toggle('con-algo', C.padPendiente(sec));
+      b.title = C.padPendiente(sec) ? 'Pad de trabajo · tiene una cuenta escrita'
+                                  : 'Pad de trabajo · para sacar cuentas';
+    };
+    const cerrarPad = (sid, avisar) => {
+      const sec = m.secciones.find(x => x.id === sid); if (!sec) return;
+      const pnl = panelDe(sid); if (!pnl) return;
+      pnl.hidden = true;
+      if (!sec.pad) sec.pad = {};
+      sec.pad.abierto = false; tocado(m);
+      marcarBoton(sid, sec);
+      /* EL AVISO SUAVE, y va AQUÍ y no «al guardar» por una razón medida: el
+       * autoguardado dispara 500 ms después de cada tecla, así que «al
+       * guardar» no es un momento — es todo el rato, y un aviso todo el rato
+       * no es un aviso. Cerrar el panel SÍ es un momento, y es exactamente
+       * cuando el número se queda escondido. No bloquea nada.
+       * (El recordatorio que dura vive en el revisador, como regla blanda.) */
+      if (avisar && C.padPendiente(sec)) {
+        toast('El pad de «' + (sec.nombre || 'esta sección') + '» tiene una cuenta que no pasaste a ningún renglón. Ahí se queda.');
+      }
+    };
+    /* La línea de la cabecera es también el camino: anuncia el estado y
+     * lleva al bloque, que vive abajo a propósito. */
+    $$('[data-irsec]').forEach(el => {
+      el.onclick = () => { ST.hoja = el.dataset.irsec; vMachote(m.id); };
+    });
+    $$('[data-ircom]').forEach(el => {
+      el.onclick = () => {
+        const b = $('.com-sec');
+        if (b) b.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      };
+    });
+    $$('[data-padabrir]').forEach(el => {
+      el.onclick = () => {
+        const sid = el.dataset.padabrir;
+        const sec = m.secciones.find(x => x.id === sid); if (!sec) return;
+        const pnl = panelDe(sid); if (!pnl) return;
+        if (!pnl.hidden) { cerrarPad(sid, true); return; }
+        pnl.hidden = false;
         if (!sec.pad) sec.pad = {};
-        sec.pad.abierto = el.open; tocado(m);
+        sec.pad.abierto = true; tocado(m);
+        const t = pnl.querySelector('.pad-txt');
+        if (t) { t.focus(); try { t.setSelectionRange(t.value.length, t.value.length); } catch (e) {} }
       };
     });
+    $$('[data-padcerrar]').forEach(el => {
+      el.onclick = () => cerrarPad(el.dataset.padcerrar, true);
+    });
+    /* Esc cierra el pad abierto. Se cuelga de la hoja y no de `document` para
+     * que no sobreviva al repintado ni se acumule un listener por render. */
+    const hoja = $('#hoja');
+    if (hoja) hoja.onkeydown = (ev) => {
+      if (ev.key !== 'Escape') return;
+      const abierto = $$('[data-padpanel]').find(x => !x.hidden);
+      if (abierto) { ev.stopPropagation(); cerrarPad(abierto.dataset.padpanel, true); }
+    };
     /* EL BOTÓN es la ÚNICA puerta por la que el pad toca un total. */
     $$('[data-padpasar]').forEach(el => {
       el.onclick = () => {
@@ -3311,7 +3441,11 @@
          * acaba de mudarse al comentario del renglón. */
         sec.pad = { abierto: true, texto: '', concepto: '', importe: null };
         tocado(m); pintarHoja(m); barra(m, C.calcular(m));
-        toast('Pasado a renglón: ' + l.descripcion);
+        /* Se dice DÓNDE quedó el texto. El pad se vacía a la vista del
+         * usuario y sin esto parece que se perdió — y lo que se «pierde» es
+         * justamente el razonamiento, que es lo único que esta función
+         * existe para salvar. */
+        toast('Pasado a «' + l.descripcion + '». El texto no se borró: quedó en el comentario de ese renglón.');
       };
     });
 
@@ -3327,8 +3461,10 @@
          * todavía existe. Apuntarlo después leería el nuevo y el deshacer no
          * haría nada. */
         const antes = getPath(m, el.dataset.cel);
+        /* Y la etiqueta también ANTES, por lo mismo: ver `apuntarCambio`. */
+        const etq = etiquetaDe(m, el.dataset.cel);
         setPath(m, el.dataset.cel, v);
-        apuntarCambio(m, el.dataset.cel, antes, getPath(m, el.dataset.cel));
+        apuntarCambio(m, el.dataset.cel, antes, getPath(m, el.dataset.cel), etq);
       };
       // Al salir del campo se repinta -puede haber cambiado la estructura-.
       // Al teclear sólo se refrescan los derivados, que no roba el foco.

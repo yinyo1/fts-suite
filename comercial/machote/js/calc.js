@@ -18,7 +18,7 @@
    * que no es el que espera. Se bumpea junto con `const VERSION_ARCHIVO` de
    * `app.js`, el `?v=` de `index.html` y `version.json` — hay una prueba que
    * falla si los cuatro se separan. */
-  const VERSION = 'V1.35';
+  const VERSION = 'V1.36';
 
   const num = (v) => (typeof v === 'number' && isFinite(v)) ? v : 0;
   const vacio = (v) => v === null || v === undefined || v === '';
@@ -177,6 +177,28 @@
    * importes. */
   const usadaPartida = (l) => !!l && l.no_aplica !== true &&
     (num(l.qty) > 0 || !vacio(l.pu) || !!l.descripcion);
+
+  /** ¿El pad de esta sección tiene una cuenta escrita que NUNCA se pasó a un
+   *  renglón?
+   *
+   *  Vive AQUÍ, en el motor, y no en la pantalla, porque lo preguntan tres
+   *  sitios en dos archivos: el punto del botón y el aviso al cerrar el panel
+   *  (`app.js`), y la regla blanda del revisador (`reglas.js`). Con una copia
+   *  por archivo, el día que cambie qué cuenta como «algo» se arregla una y
+   *  la otra sigue diciendo otra cosa (§20 #13).
+   *
+   *  ⚠️ El motor NO lee el pad para calcular NADA. Esta función responde una
+   *  pregunta sobre el pad; no lo mete en ningún total. Que viva en `calc.js`
+   *  no lo vuelve parte del precio.
+   *
+   *  El importe cuenta aunque sea 0: quien escribió un cero lo escribió a
+   *  propósito. Lo que no cuenta es la caja abierta y vacía. */
+  const padPendiente = (sec) => {
+    const p = (sec && sec.pad) || {};
+    return !!(String(p.texto || '').trim() ||
+              String(p.concepto || '').trim() ||
+              (p.importe !== null && p.importe !== undefined && p.importe !== ''));
+  };
 
   /** ¿Este renglón está CAPTURADO? Es lo que lo pinta de verde.
    *  Cantidad **y** precio: con sólo la cantidad, el renglón está a medias y
@@ -999,7 +1021,7 @@
     EMPRESAS, empresaDe, monedaPorDefecto,
     MARGENES_PLANTILLA, RECARGOS_PLANTILLA, COMISION_FTS_PLANTILLA, MARGEN_DESEADO_PLANTILLA, REPARTO_PLANTILLA,
     PARTIDAS_EN_BLANCO, EQUIPO_VENTA_PLANTILLA, EQUIPO_OPS_PLANTILLA,
-    usadaPartida, capturada,
+    usadaPartida, capturada, padPendiente,
     seccionNueva, machoteNuevo,
     tcEfectivo, margenes, comisionDe, costoMo, costoPartida, totalSeccion,
     calcular, precioParaMargen, repartir

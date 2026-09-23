@@ -381,7 +381,21 @@ label.row { min-height: var(--toque); }
 .nomsec .btn.del { margin-left: auto; flex: 0 0 auto; width: auto;
                    font-size: 12px; padding: 8px 12px; }
 .fija .btn { flex: 0 0 auto; width: auto; min-width: 110px; }
-.fija .grow { flex: 1 1 auto; min-width: 0; }
+/* ── V1.36 · la barra se pliega por CONTENIDO, no por ancho ───────────────
+ * El renglón de abajo ataba el plegado a «≤560 px», y eso aguantaba mientras
+ * los botones fueran tres. Con CINCO —«Pasar a orden», «Prestar», «Ceder»,
+ * el deshacer de la V1.34 (que además lleva texto: «↶ Deshacer el nombre de
+ * SECCIÓN 1») y «Revisar»— a 760 px no queda nada para `.grow`, y el precio,
+ * el margen y el marcador de revisión se aplastan en una columna de un
+ * carácter que se derrama por debajo de la barra. Medido en la captura de
+ * 760 de la V1.36, y es el MISMO defecto que la franja muerta de la lista:
+ * un número que aguanta hasta que alguien añade una cosa más.
+ *
+ * La base de 240 px lo ata al contenido: mientras quepa el bloque del precio
+ * entero, todo va en un renglón; en cuanto no cabe, se lleva el suyo. No hay
+ * ancho al que haya que volver el día que se añada un sexto botón. */
+.fija { flex-wrap: wrap; }
+.fija .grow { flex: 1 1 240px; min-width: 0; }
 
 /* ── V1.27 · la barra con TRES botones ──────────────────────────────────
  * Un machote propio y ya subido trae tres: «Pasar a orden», «Prestar» y
@@ -397,8 +411,10 @@ label.row { min-height: var(--toque); }
  * El precio se lleva su propio renglón cuando no cabe. Los botones bajan; el
  * número se queda arriba y entero. */
 @media (max-width: 560px) {
-  .fija { flex-wrap: wrap; }
-  .fija .grow { flex: 1 1 100%; order: -1; }
+  /* El plegado ya es global (arriba). Aquí sólo queda lo del teléfono: los
+   * botones se reparten el renglón en vez de guardar sus 110 px, que es lo
+   * que evita que el quinto se salga de la pantalla. */
+  .fija .grow { flex: 1 1 100%; }
   .fija .btn { flex: 1 1 auto; min-width: 0; }
 }
 .btnrow .btn { width: auto; }
@@ -1750,35 +1766,39 @@ table.lista td.mono { white-space: nowrap; }
              min-height: var(--toque); font-size: 13px; cursor: pointer; }
 .com-check input { width: 18px; height: 18px; flex: none; cursor: pointer; }
 
-/* ── El pad ────────────────────────────────────────────────────────────
+/* ── V1.36 · EL PAD, ANCLADO AL BORDE INFERIOR ───────────────────────────
  *
- * Plegado por omisión y con el aviso EN EL RESUMEN, no adentro: quien no lo
- * abre tiene que poder saber qué es sin abrirlo, y quien lo abre ya leyó que
- * es un borrador antes de escribir la primera línea.
- */
-.pad-sec { margin: 14px 0 6px; border: 1px solid var(--linea);
-           border-radius: 8px; background: var(--papel); }
-/* ⚠️ `display:flex` en un `<summary>` MATA el triangulito que Chromium pinta
- * solo, y sin él nada dice que la caja se abre —se ve como un título—. Se
- * repone a mano: la flecha es lo único que anuncia que hay algo adentro. */
-.pad-sec > summary { padding: 0 12px; min-height: var(--toque);
-                     display: flex; align-items: center; gap: 6px;
-                     flex-wrap: wrap; cursor: pointer;
-                     font-size: 13px; font-weight: 600;
-                     list-style: none; }
-.pad-sec > summary::-webkit-details-marker { display: none; }
-.pad-sec > summary::before { content: '▸'; color: var(--suave); flex: none;
-                             transition: transform .12s ease; }
-.pad-sec[open] > summary::before { transform: rotate(90deg); }
-.pad-sec > .nota, .pad-sec > .tiny { margin: 0 12px 8px; }
+ * Deja de estar en el flujo de la hoja. Medido sobre un machote del tamaño
+ * real (60 partidas), como bloque plegable caía a 4,941 px en escritorio y a
+ * 44,694 px —56 pantallas— en el teléfono: existía y era inalcanzable.
+ *
+ * Anclado, la posición deja de ser un problema: se alcanza igual desde el
+ * primer renglón que desde el último. Y NO es modal —tope de alto, el resto
+ * de la hoja legible detrás—, porque sirve para calcular MIRANDO la tabla. */
+.pad-panel { position: fixed; left: 0; right: 0; bottom: 0; z-index: 7;
+             max-height: 58vh; overflow-y: auto;
+             background: var(--fondo); border-top: 2px solid var(--linea);
+             box-shadow: 0 -10px 28px rgba(0,0,0,.14);
+             padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+.pad-panel[hidden] { display: none; }
+
+/* z-index 7 contra el 5 de `#fija`: mientras el pad está abierto tapa la
+ * barra de precio, y es lo correcto — el pad trae su propio botón de acción,
+ * y la barra vuelve al cerrarlo. Dos filas de botones compitiendo abajo se
+ * tocan mal con el pulgar. */
+.pad-cab { display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+           padding: 10px 12px 0; }
+.pad-cab strong { font-size: 13px; }
+.pad-cab .pad-cerrar { margin-left: auto; }
+.pad-ayuda { margin: 6px 12px 8px; }
 
 /* Monoespaciada a propósito: son cuentas en columna -«3 × 12 × 450»- y con
  * fuente proporcional los números no alinean y el error de dedo no se ve. */
-.pad-sec textarea.pad-txt { display: block; width: calc(100% - 24px);
-                            margin: 0 12px 10px;
-                            font: 13px/1.55 ui-monospace, SFMono-Regular,
-                                  Menlo, Consolas, monospace;
-                            resize: vertical; }
+.pad-panel textarea.pad-txt { display: block; width: calc(100% - 24px);
+                              margin: 0 12px 10px;
+                              font: 13px/1.55 ui-monospace, SFMono-Regular,
+                                    Menlo, Consolas, monospace;
+                              resize: vertical; }
 
 .pad-pie { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px;
            padding: 0 12px 12px; }
@@ -1789,21 +1809,54 @@ table.lista td.mono { white-space: nowrap; }
 .pad-pie label:first-child { flex: 1 1 240px; max-width: 420px; }
 /* ⚠️ `width: auto` NO es redundante: `shared/fts-styles.css` define
  * `.btn { width: 100% }` para el kiosko, y sin esto el botón se come el
- * renglón entero y empuja a los dos campos arriba. Lo mismo hacen ya
- * `.or-pie .btn`, `.hist-cab .btn` y media docena más de este archivo. */
+ * renglón entero y empuja a los dos campos arriba. */
 .pad-pie .btn { flex: none; width: auto; padding: 0 18px; }
 
+/* ── El botón que lo abre, en la cabecera de la sección ─────────────────── */
+.nomsec .accsec .pad-btn { width: auto; padding: 0 10px; font-size: 12px;
+                           font-weight: 600; position: relative; }
+/* El punto dice «hay algo escrito» sin abrirlo. NEUTRO: el ámbar de este
+ * módulo significa «alguien se apartó del valor de arranque» (margen pisado,
+ * recargo apartado, comisión desviada) y un borrador no es una desviación.
+ * Un cuarto significado para el mismo color debilita los tres que ya hay. */
+.nomsec .accsec .pad-btn.con-algo::after {
+  content: ''; position: absolute; top: 5px; right: 5px;
+  width: 6px; height: 6px; border-radius: 50%; background: var(--suave); }
+
 @media (max-width: 720px) {
+  .pad-panel { max-height: 72vh; }
   /* En el teléfono el pie se apila: tres cosas en fila a 380 px dejan cajas
    * de 90 px donde no cabe ni «Canalización». El botón va al final y a todo
-   * lo ancho, que es donde el pulgar lo busca. */
+   * lo ancho, que es donde el pulgar lo busca.
+   * ⚠️ Y hay que APAGAR el `flex` del concepto: en columna, `flex-basis` mide
+   * ALTO, y los 240 px que a 1280 hacen ancho aquí abrían un hueco vertical
+   * de doscientos pixeles. El `:first-child` va REPETIDO a propósito: sin él
+   * la regla de arriba —más específica— gana y el hueco se queda. */
   .pad-pie { flex-direction: column; align-items: stretch; }
-  /* ⚠️ Y hay que APAGAR el `flex` del concepto. En columna, `flex-basis`
-   * mide ALTO: los `240px` que a 1280 hacen ancho, a 380 hacían un hueco
-   * vertical de doscientos pixeles entre Concepto e Importe. Se vio en la
-   * captura, no en el diff.
-   * El `:first-child` va REPETIDO a propósito: sin él, la regla de arriba
-   * —más específica— gana y el hueco se queda. */
   .pad-pie label, .pad-pie label:first-child { flex: none; max-width: none; }
   .pad-pie .btn { width: 100%; min-height: var(--toque); }
 }
+
+/* ── V1.36 · el ESTADO de la comisión, en la línea que ya existía ─────────
+ * Ni silencio ni chip nuevo: la misma línea dice los dos estados. En ámbar
+ * cuando la sección se aparta, con EL MISMO lenguaje de un margen pisado.
+ * Es un `<button>` y no un `<span>` porque se puede pulsar para bajar al
+ * bloque: si se anuncia algo que está cinco pantallas abajo, el anuncio
+ * tiene que ser también el camino. */
+/* El aviso es texto dentro de una frase, pero se TOCA, así que le toca el
+ * mínimo de 40 px del módulo. Se consigue sin mover el renglón: en un
+ * elemento EN LÍNEA el relleno vertical no empuja la caja de línea, pero sí
+ * cuenta en el rectángulo —o sea, en el dedo—, así que el objetivo mide 41 px
+ * y el texto se queda donde estaba. El relleno horizontal sí empujaría, y por
+ * eso se cancela con el margen negativo.
+ *
+ * Medido antes de elegir el 12: el hueco hasta el botón de arriba es de 18 px
+ * a 1280 y de 33 px a 380, así que el área crecida no le roba el toque a
+ * nadie. Con 20 px se lo habría robado al botón del pad. */
+.com-avisa { background: none; border: 0; font: inherit;
+             color: var(--suave); cursor: pointer;
+             text-decoration: underline; text-underline-offset: 2px;
+             display: inline; padding: 12px 3px; margin: 0 -3px; }
+.com-avisa:hover { color: var(--tinta); }
+.com-avisa.apartado { color: var(--ambar); font-weight: 700;
+                      text-decoration-color: var(--ambar); }

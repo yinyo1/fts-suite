@@ -577,6 +577,42 @@
       evaluar: (m) => tipoDe(m) ? null
         : { detalle: 'Sin tipo no se sabe qué preguntas críticas faltan por responder.' }
     },
+    /* ── V1.36 · una cuenta que se quedó SÓLO en el pad ──────────────────
+     * El pad es un borrador declarado y no entra en ningún total — a
+     * propósito. El riesgo no es que sume de más: es que un número viva
+     * ÚNICAMENTE ahí y la cotización salga sin él.
+     *
+     * Va como BLANDA y no como dura porque un borrador a medias es un estado
+     * legítimo: se está pensando. Lo que no es legítimo es mandar la
+     * cotización sin darse cuenta.
+     *
+     * ⚠️ Y vive aquí, en el revisador, y no «al guardar»: el autoguardado
+     * dispara 500 ms después de cada tecla, así que «al guardar» no es un
+     * momento sino todo el rato, y un aviso todo el rato deja de ser un
+     * aviso. El revisador es el sitio del módulo para «mira esto antes de
+     * terminar», y trae `destino` para ir a la sección. El aviso puntual al
+     * CERRAR el panel lo da la pantalla; éste es el que dura. */
+    {
+      destino: (m) => {
+        const s = (m.secciones || []).find(x => C.padPendiente(x));
+        return { tab: 'secc', seccion: s ? s.id : null };
+      },
+      id: 'pad-sin-pasar', severidad: 'blanda', area: 'Captura',
+      titulo: 'Una cuenta se quedó en el pad de trabajo',
+      evaluar: (m) => {
+        const secs = (m.secciones || []).filter(x => C.padPendiente(x));
+        if (!secs.length) return null;
+        return {
+          detalle: 'El pad no entra en ningún total: lo que está ahí NO está en el precio. ' +
+                   'Si ese número va en la cotización, pásalo a un renglón con el botón del pad; ' +
+                   'si era sólo una cuenta de paso, se puede dejar.',
+          items: secs.map(x => (x.nombre || 'sin nombre') +
+            ((x.pad || {}).concepto ? ' → ' + x.pad.concepto : '') +
+            ((x.pad || {}).importe !== null && (x.pad || {}).importe !== undefined && x.pad.importe !== ''
+              ? ' · ' + x.pad.importe : ''))
+        };
+      }
+    },
     {
       destino: () => ({ tab: 'diag' }),
       id: 'criticas-sin-responder', severidad: 'dura', area: 'Diagnóstico',
