@@ -810,6 +810,21 @@
            * viven los datos que el servidor pone y el documento no lleva. */
           folio: fila.folio || null,
           folio_txt: fila.folio_txt || null,
+          /* ── CUÁNDO SE CREÓ, y por qué vive AQUÍ y no en el documento ─────
+           * `comercial/machotes-leer` manda `creado_at` en cada fila (de la
+           * columna `machote.created_at`, que existe para los 19 machotes que
+           * hay). El documento NO lo lleva en 10 de esos 19, porque nacieron
+           * antes de que el campo existiera, y por eso la columna «Creada»
+           * sale con raya para más de la mitad de la lista.
+           *
+           * ⚠️ NO se repara metiéndolo en el documento. Eso fue lo primero que
+           * propuse y está MAL: la libreta guarda `huella(doc)` SIN el campo y
+           * la pantalla compara contra `huella(m)` CON el campo, así que los
+           * diez machotes dirían «por subir» en cuanto se cargara la lista —
+           * el modo de falla exacto que advierten los dos comentarios de
+           * arriba. Va donde ya viven el folio y `guardada_at`: la libreta es
+           * el lugar de lo que pone el servidor y el documento no lleva. */
+          creado_at: fila.creado_at || null,
           /* ── V1.34 · cuándo y quién, de la ÚLTIMA VERSIÓN ────────────────
            * Va en la libreta por la misma razón que el folio: metido en el
            * machote entraría en su huella y la lista diría «por subir» de
@@ -1023,7 +1038,8 @@
     if (!meta || !meta.guardada_at) return null;
     return { guardada_at: meta.guardada_at, autor: meta.autor || null,
              autor_nombre: meta.autor_nombre || null,
-             version: meta.version || null };
+             version: meta.version || null,
+             creado_at: meta.creado_at || null };
   }
 
   /** El historial completo de un machote, del servidor. Para la pantalla de

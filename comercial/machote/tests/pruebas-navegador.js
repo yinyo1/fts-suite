@@ -54,6 +54,19 @@ const MACHOTES_FIXTURE = (function () {
   });
 })();
 
+/* El motor REAL, del lado de Node, para fabricar fixturas del tamaño de
+ * producción sin copiar a mano la forma de una sección. Mismo archivo que
+ * corre en la pantalla: si `machoteNuevo` cambia, la fixtura cambia con él. */
+const CALC = (function () {
+  const vm = require('vm');
+  const ctx = { window: {}, console: console };
+  ctx.window.window = ctx.window;
+  vm.createContext(ctx);
+  vm.runInContext(require('fs').readFileSync(
+    path.resolve(__dirname, '..', 'js', 'calc.js'), 'utf8'), ctx);
+  return ctx.window.MachoteCalc;
+})();
+
 /* ── V1.27 · las pruebas SIEMBRAN sus datos ──────────────────────────────
  *
  * Hasta V1.26 la pantalla arrancaba con los cuatro ejemplos de `demo.js` y las
@@ -7226,6 +7239,204 @@ await sembrarMachotes(q);
                   'el botón pasa importe Y razonamiento');
     } finally { await q.close(); }
   });
+
+  /* ══ V1.35 · LO QUE LA V1.34 NO PODÍA VER (#246) ═══════════════════════
+   *
+   * Las pruebas de V1.34 comprobaban que los bloques EXISTEN. Ninguna
+   * comprobaba DÓNDE CAEN ni en qué anchos se apagan, y por eso pasaron en
+   * verde mientras en producción el pad quedaba a 56 pantallas y las dos
+   * columnas de fecha desaparecían en la franja de 721 a 980 px.
+   *
+   * Existir no es estar disponible. Estas tres miden disponibilidad.
+   */
+
+  /** Un machote del PERCENTIL ALTO de producción, medido en el servidor el
+   *  22-sep-2026 sobre los 19 que hay: 60 partidas en una sección (50
+   *  capturadas), 13 renglones de mano de obra, nombre de 89 caracteres.
+   *  Las pruebas con el fixture de `demo.js` —5 partidas— no pueden ver un
+   *  problema de LARGO, que es justo el que se coló. */
+  const machoteP90 = () => {
+    const rell = (n, base) => { let s = base; while (s.length < n) s += ' ' + base; return s.slice(0, n); };
+    const m = CALC.machoteNuevo({ id: 'M-P90', nombre: rell(89, 'Modificacion de tren de drenado con recubrimiento epoxico') });
+    m.cliente_id = 991; m.cliente = rell(30, 'Industrias del Norte SA CV');
+    const s = m.secciones[0];
+    while (s.partidas.length < 60) s.partidas.push({ qty:'', unidad:'', tipo:'', descripcion:'',
+      modelo:'', marca:'', pu:null, moneda:'MXN', margen:null, link:'', comentario:'' });
+    for (let i = 0; i < 50; i++) Object.assign(s.partidas[i],
+      { descripcion: 'Renglon capturado ' + (i+1), qty: 2, pu: 1500, unidad: 'Pieza', tipo: 'Materiales' });
+    s.mo[2].qty = 60; s.mo[4].qty = 40;
+    return m;
+  };
+
+  await paso('V1.35 · la fecha NUNCA falta: ni un ancho sin columnas y sin línea', async () => {
+    /* El defecto era un HUECO: las columnas se iban a ≤980 y la tarjeta que
+     * las repone sólo entra a ≤720. Entre esos dos números no había ninguna
+     * de las dos cosas.
+     *
+     * Esta prueba no comprueba un breakpoint concreto a propósito: comprueba
+     * la INVARIANTE —a cualquier ancho hay columnas O hay línea—. Así sigue
+     * sirviendo si mañana alguien mueve los números, que es exactamente lo
+     * que pasó para causar el hueco. */
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    q.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
+    try {
+      await sembrarGeo(q); await sembrarMachotes(q);
+      await q.addInitScript(() => {
+        try {
+          localStorage.setItem('fts_suite_session', JSON.stringify({
+            token:'p.p.p', actor:'zz.prueba', nombre:'ZZ Prueba', empleado_id:null,
+            scopes:['comercial:read','comercial:orden'], exp: Math.floor(Date.now()/1000)+3600 }));
+          const d = JSON.parse(localStorage.getItem('fts_machote_v1') || 'null');
+          const lib = {};
+          if (d && d.machotes) d.machotes.forEach(function (m) {
+            lib[m.id] = { version: 3, huella: 'x', machote_id: '1111',
+                          guardada_at: new Date(Date.now() - 2 * 864e5).toISOString(),
+                          autor: 'f.montalvo', autor_nombre: 'Francisco Montalvo',
+                          creado_at: new Date(Date.now() - 20 * 864e5).toISOString() };
+          });
+          localStorage.setItem('fts_machote_sync_v1', JSON.stringify(lib));
+        } catch (e) {}
+      });
+      await q.goto(BASE); await q.waitForTimeout(1500);
+
+      const huecos = [];
+      for (const w of [1440, 1281, 1280, 1000, 981, 980, 900, 800, 760, 730, 721, 720, 700, 500, 380]) {
+        await q.setViewportSize({ width: w, height: 900 });
+        await q.waitForTimeout(220);
+        const r = await q.evaluate(() => {
+          const vis = (el) => {
+            if (!el) return false;
+            if (getComputedStyle(el).display === 'none') return false;
+            /* Un ancestro oculto basta para que no se vea: la tabla entera se
+             * apaga a ≤720 y sus hijos siguen diciendo `display:block`. */
+            for (let p = el.parentElement; p; p = p.parentElement)
+              if (getComputedStyle(p).display === 'none') return false;
+            return el.getBoundingClientRect().height > 0;
+          };
+          return {
+            columnas: [...document.querySelectorAll('table.lista td.fch')].filter(vis).length,
+            en_fila: [...document.querySelectorAll('table.lista .fch-en-fila')].filter(vis).length,
+            tarjeta: [...document.querySelectorAll('.cards .fch-linea')].filter(vis).length
+          };
+        });
+        if (!(r.columnas || r.en_fila || r.tarjeta)) huecos.push(w + 'px ' + JSON.stringify(r));
+      }
+      if (huecos.length) throw new Error('anchos SIN fecha por ningún lado: ' + huecos.join(' | '));
+      console.log('    15 anchos de 380 a 1440: en todos hay columnas, línea o tarjeta');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.35 · sin creado_at en el documento se usa el del servidor, y el documento NO se toca', async () => {
+    /* Diez de los diecinueve machotes de producción nacieron antes de que
+     * existiera `creado_at`, así que su documento no lo lleva y la columna
+     * salía con raya. El servidor SÍ lo manda.
+     *
+     * ⚠️ Lo que esta prueba protege de verdad es la segunda mitad: el dato se
+     * pinta desde la LIBRETA y NO se mete en el documento. Metido ahí
+     * cambiaría `huella(m)`, la libreta guarda `huella(doc)` sin él, y los
+     * diez machotes dirían «por subir» nada más cargar la lista. */
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    q.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
+    try {
+      await sembrarGeo(q);
+      await q.addInitScript(() => {
+        try {
+          localStorage.setItem('fts_suite_session', JSON.stringify({
+            token:'p.p.p', actor:'zz.prueba', nombre:'ZZ Prueba', empleado_id:null,
+            scopes:['comercial:read','comercial:orden'], exp: Math.floor(Date.now()/1000)+3600 }));
+          localStorage.setItem('fts_machote_v1', JSON.stringify({ v:1,
+            guardado_at: new Date().toISOString(), handoff:{}, machotes: [{
+              id:'M-SINFECHA', nombre:'Nacio antes de que el campo existiera',
+              cliente:'Cliente', cliente_id:991, moneda:'MXN', empresa_id:1,
+              estado:'borrador', fecha:'2026-09-04', margen_deseado:0.4,
+              secciones:[], equipo_venta:[], equipo_operaciones:[], equipo_cliente:[] }] }));
+          localStorage.setItem('fts_machote_sync_v1', JSON.stringify({
+            'M-SINFECHA': { version:9, huella:'x', machote_id:'2222',
+              guardada_at:new Date(Date.now()-8*864e5).toISOString(),
+              autor:'zz.prueba', autor_nombre:'ZZ Prueba',
+              creado_at:'2026-09-04T15:00:00.000Z' } }));
+        } catch (e) {}
+      });
+      await q.goto(BASE); await q.waitForTimeout(1500);
+
+      const celdas = await q.$$eval('table.lista td.fch', e => e.map(x => x.textContent.trim()));
+      if (!celdas.length) throw new Error('no se pintaron las columnas de fecha');
+      if (celdas[0] === '—')
+        throw new Error('la columna Creada siguió en raya teniendo el dato del servidor');
+      if (!/sep/.test(celdas[0])) throw new Error('la fecha de creación salió rara: ' + celdas[0]);
+
+      // Y el documento sigue SIN el campo: es lo que protege la huella.
+      const enDoc = await q.evaluate(() => {
+        const d = JSON.parse(localStorage.getItem('fts_machote_v1') || '{}');
+        const m = (d.machotes || []).find(x => x.id === 'M-SINFECHA') || {};
+        return Object.prototype.hasOwnProperty.call(m, 'creado_at');
+      });
+      if (enDoc) throw new Error('SE METIÓ `creado_at` en el documento: eso mueve la huella ' +
+                                 'y haría que los 10 machotes digan «por subir» al cargar');
+      console.log('    pinta ' + celdas[0] + ' desde la libreta, y el documento queda intacto');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.35 · nada de la hoja de sección cae fuera de alcance, en los dos anchos', async () => {
+    /* LA PRUEBA QUE FALTABA. Con el fixture de 5 partidas todo queda cerca y
+     * cualquier bloque parece alcanzable; con el tamaño real de producción el
+     * pad quedó a 4,941 px en escritorio y a 44,694 px —56 pantallas— en el
+     * teléfono, y nadie lo vio porque ninguna prueba medía POSICIÓN.
+     *
+     * La regla: ningún bloque de la hoja de sección puede empezar más de DOS
+     * pantallas abajo. Dos y no una porque la hoja arranca con dos tablas de
+     * resumen que ocupan casi una pantalla completa a propósito. */
+    const TOPE = 2.0;
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    q.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
+    try {
+      await sembrarGeo(q);
+      await q.addInitScript((m) => {
+        try {
+          localStorage.setItem('fts_suite_session', JSON.stringify({
+            token:'p.p.p', actor:'zz.prueba', nombre:'ZZ Prueba', empleado_id:null,
+            scopes:['comercial:read','comercial:orden'], exp: Math.floor(Date.now()/1000)+3600 }));
+          localStorage.setItem('fts_machote_v1', JSON.stringify({ v:1,
+            guardado_at:new Date().toISOString(), machotes:[m], handoff:{} }));
+        } catch (e) {}
+      }, machoteP90());
+
+      const malos = [];
+      for (const [w, h] of [[1280, 900], [380, 800]]) {
+        await q.setViewportSize({ width: w, height: h });
+        await q.goto(BASE); await q.waitForTimeout(1200);
+        await q.evaluate(() => { location.hash = '#/m/M-P90'; }); await q.waitForTimeout(900);
+        await q.locator('.pestana').nth(1).click(); await q.waitForTimeout(1400);
+        const pos = await q.evaluate(() => {
+          const uno = (sel) => { const e = document.querySelector(sel); if (!e) return null;
+            return Math.round(e.getBoundingClientRect().top + window.scrollY); };
+          return { ventana: window.innerHeight, pagina: Math.round(document.documentElement.scrollHeight),
+                   com: uno('.com-sec'), pad: uno('.pad-sec'), rec: uno('.rec-sec') };
+        });
+        for (const [qué, y] of [['comisión de la sección', pos.com], ['pad de trabajo', pos.pad]]) {
+          if (y === null) { malos.push(w + 'px: no existe el bloque «' + qué + '»'); continue; }
+          const pantallas = +(y / pos.ventana).toFixed(1);
+          const linea = w + 'px · ' + qué + ': ' + y + 'px = ' + pantallas + ' pantallas';
+          if (qué === 'pad de trabajo') {
+            /* ⚠️ EXCEPCIÓN DECLARADA, no un tope de diseño. El pad incumple la
+             * regla hoy —está medido y reportado en #246— y la decisión de
+             * cómo alcanzarlo (un botón en la cabecera, no moverlo) está en
+             * manos de Esteban. Mientras tanto se fija el número de HOY para
+             * que no EMPEORE; cuando se arregle, esta rama se borra y el pad
+             * entra al tope normal como todo lo demás. */
+            const TECHO = w === 380 ? 46000 : 5200;
+            if (y > TECHO) malos.push('EMPEORÓ ' + linea + ' (techo declarado ' + TECHO + 'px, #246)');
+            else console.log('    ' + linea + '  ← excepción declarada #246, no empeoró');
+            continue;
+          }
+          if (pantallas > TOPE) malos.push(linea + ' — el tope es ' + TOPE);
+          else console.log('    ' + linea);
+        }
+      }
+      if (malos.length) throw new Error(malos.join(' | '));
+    } finally { await q.close(); }
+  });
+
 
   await paso('sin errores de consola propios del prototipo', async () => {
     if (errs.length) throw new Error(errs.slice(0, 4).join(' | '));

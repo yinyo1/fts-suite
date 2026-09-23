@@ -1680,11 +1680,49 @@ table.lista td.mono { white-space: nowrap; }
  * la tarjeta, debajo del cliente. */
 .fila .fch-linea { color: var(--suave); margin-top: 2px; }
 
+/* ── La FRANJA MUERTA de 721 a 980 px, y por qué no se arregla con un número ──
+ *
+ * V1.34 ocultaba las columnas a ≤980 y las reponía en la tarjeta a ≤720. Entre
+ * esos dos números NO HABÍA NINGUNA DE LAS DOS: un hueco de 260 px de ancho de
+ * ventana donde la fecha simplemente no existía. Ahí cae quien tiene el
+ * navegador a medio monitor, que es como lo vio Esteban.
+ *
+ * ⚠️ IGUALAR LOS DOS NÚMEROS NO SIRVE, Y ESTÁ MEDIDO. Con el corte en 720 —o
+ * sea con las columnas encendidas en la franja— la tabla NO las enseña: las
+ * RECORTA. El ancho mínimo de contenido de esta tabla con el nombre más largo
+ * que existe en producción (89 caracteres, medido) es 889 px, y `.tw` lleva
+ * `overflow: hidden`, así que en una ventana de 730 px las dos columnas quedan
+ * fuera del borde y son inalcanzables. Truncar el nombre a dos renglones
+ * arregla el alto (8 renglones → 2) y deja los 889 intactos: el mínimo no lo
+ * pone el nombre, lo ponen las nueve columnas juntas.
+ *
+ * LA SOLUCIÓN ES CAMBIAR DE REPRESENTACIÓN, NO DE NÚMERO. La información pasa
+ * de dos columnas a UNA LÍNEA dentro de la propia fila —la misma línea que ya
+ * usa la tarjeta, del mismo `lineaFechas()`—, que no le cuesta ancho a nadie.
+ *
+ *   ≥ 981 px   dos columnas
+ *   721–980    una línea dentro de la fila   ← esto es lo nuevo
+ *   ≤ 720 px   tarjeta, con la misma línea
+ *
+ * O sea: SIGUEN SIENDO DOS NÚMEROS, pero ya no hay ningún ancho sin la
+ * información, que era el defecto de verdad. Un hueco no se cierra empujando
+ * el borde: se cierra cubriendo los dos lados. */
+.lista .fch-en-fila { display: none; }
+
 @media (max-width: 980px) {
-  /* Antes que romper el nombre, se van las fechas: entre saber CUÁNDO y
-   * poder leer QUÉ es, gana el qué. En el teléfono reaparecen en la tarjeta,
-   * que es donde sí caben. */
+  /* Antes que romper el nombre, se van las COLUMNAS —no el dato—: entre saber
+   * CUÁNDO y poder leer QUÉ es, gana el qué. El cuándo baja a la línea de
+   * abajo, que cabe siempre. */
   .lista th.fch-th, .lista td.fch { display: none; }
+  .lista .fch-en-fila { display: block; margin-top: 2px; }
+
+  /* Y el nombre se recorta a DOS renglones. Medido con el más largo que hay
+   * en producción (89 caracteres): sin esto se parte en OCHO y el renglón
+   * mide 421 px, o sea que caben dos cotizaciones por pantalla. El nombre
+   * completo queda en el `title`, que es lo que pidió Esteban: truncar sí,
+   * perder el dato no. */
+  .lista .nm { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+               overflow: hidden; }
 }
 
 /* ══ V1.34 · la comisión que se aparta, y el pad ═════════════════════════
