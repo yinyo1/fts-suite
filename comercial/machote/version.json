@@ -1,11 +1,17 @@
 {
-  "version": "V1.34",
-  "build": "V1.34",
-  "fecha": "2026-09-16",
+  "version": "V1.35",
+  "build": "V1.35",
+  "fecha": "2026-09-23",
   "modulo": "comercial/machote",
   "ambito": "El CONTADOR es solo de este modulo. finanzas tambien usa V1.xx desde el 2026-09-03 (instruccion directa de Esteban, corrige el \"no propagar\" del issue #148) pero lleva su propio contador y va en V1.00. operaciones/planeacion sigue en 2.4.1, kiosk y confirmar-horas solo con cadena de build, y siete modulos con un 1.0.0 puesto una vez: a esos no se propaga.",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.35",
+      "pr": null,
+      "fecha": "2026-09-23",
+      "nota": "ARREGLOS DE ALCANCE de la V1.34 (#246). La auditoria probo que las tres funciones SI estaban en produccion -huella FNV-1a identica entre el dominio y main en app.js, calc.js, machote.css e index.html- y que el defecto era que no se alcanzaban. (1) LA FRANJA MUERTA DE 721 A 980 px: las columnas de fecha se apagaban a 980 y la tarjeta que las repone solo entra a 720, asi que habia 260 px de ancho de ventana sin fecha por ningun lado. IGUALAR LOS DOS NUMEROS NO SIRVE Y ESTA MEDIDO: con el corte en 720 la tabla no las ENSEÑA, las RECORTA -su ancho minimo de contenido con el nombre mas largo que existe, 89 caracteres, es 889 px, y .tw lleva overflow hidden-. La solucion es cambiar de REPRESENTACION y no de numero: en la franja el dato baja a UNA LINEA dentro de la propia fila, la misma de la tarjeta y del mismo lineaFechas(), que no le cuesta ancho a nadie. Ahora no hay ningun ancho sin la informacion, que era el defecto de verdad. Y el nombre se recorta a dos renglones con el completo en el title: sin eso se partia en OCHO y el renglon media 421 px. (2) LA FECHA DE CREACION: 10 de los 19 machotes de produccion nacieron antes de que el campo existiera y su documento no lo lleva, asi que la columna salia con raya para mas de la mitad de la lista. El servidor SI lo manda. Se repara desde la LIBRETA, no metiendolo en el documento: metido ahi cambiaria huella(m), la libreta guarda huella(doc) sin el, y los diez dirian por subir nada mas cargar la lista -el error exacto que advertian los comentarios del archivo y que Esteban cazo preguntando si se reparaban solos-. (3) TRES PRUEBAS QUE MIDEN DISPONIBILIDAD, no existencia: la invariante de que a cualquier ancho hay columnas o linea -15 anchos, y reprueba nombrando los seis muertos si se reintroduce el defecto-; que el creado_at se pinta sin tocar el documento; y POSICION de cada bloque de la hoja de seccion sobre un machote del percentil alto de produccion -60 partidas, medido en el servidor- en los dos anchos. El pad queda como EXCEPCION DECLARADA con el numero de hoy -4,941 px en escritorio y 44,694 en telefono- para que no empeore mientras Esteban decide como alcanzarlo."
+    },
     {
       "version": "V1.34",
       "pr": null,

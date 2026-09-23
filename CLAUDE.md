@@ -1062,6 +1062,26 @@ la misma exigencia de §20 #12b (sesión / red / servidor) y de §20 #11 (un `[]
 prueba que la consulta sirva), en la superficie de la resolución de identidad.
 
 
+
+### 14. Un archivo puede diferir entre el dominio y `main` aunque reporte la misma versión
+Medido el 22-sep-2026 auditando el #246: de los diez archivos que carga
+`comercial/machote/index.html`, **nueve tienen huella idéntica** entre
+`yinyo1.github.io` y `origin/main` — y `version.json` **no**: 37,906 caracteres
+en el dominio contra 39,145 en `main`, con el mismo `V1.34`, las mismas 35
+entradas de historial y la misma primera entrada. No se persiguió porque no
+toca el render (sólo lo lee el vigilante de recarga, y ahí dice la versión
+correcta), pero queda apuntado por lo que es: **un archivo servido que no es el
+que está en la rama, sin que la versión lo delate.**
+Es la misma familia que la versión GUARDADA contra la PUBLICADA de n8n (§17
+quirk 2b): dos copias de lo mismo, una que se lee y otra que manda, y un
+marcador que dice lo mismo en las dos. **Si algún día algo se ve viejo en Pages
+y nadie se lo explica, éste es el primer lugar donde mirar** — y la forma de
+mirarlo es comparar huellas archivo por archivo, no fiarse del número de
+versión.
+⚠️ Y al compararlas, medir **lo mismo en los dos lados**: `wc -c` cuenta bytes y
+`s.length` de JS cuenta unidades UTF-16. Estos archivos van llenos de acentos,
+así que mezclarlos inventa una discrepancia en los diez.
+
 ---
 
 ### 14. n8n es UN proceso compartido con techo, y el MCP corre DENTRO de él

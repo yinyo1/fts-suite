@@ -57,7 +57,7 @@
    *   2. el `?v=` de la URL con la que el navegador lo bajó,
    *   3. la que declara cada pieza que se carga aparte (hoy el motor).
    * Si discrepan, la pantalla lo DICE en vez de correr a medias. */
-  const VERSION_ARCHIVO = 'V1.34';
+  const VERSION_ARCHIVO = 'V1.35';
 
   const VERSION_URL = (function () {
     try {
@@ -562,6 +562,41 @@
     if (mes < 12) return 'hace ' + mes + (mes === 1 ? ' mes' : ' meses');
     return 'hace ' + Math.floor(mes / 12) + ' año(s)';
   };
+  /** La línea «creado … · modificado …», en UN solo lugar.
+   *
+   *  La usan DOS superficies: la tarjeta del teléfono y —desde el arreglo de
+   *  la franja muerta— la propia fila de la tabla cuando las columnas no
+   *  caben. Vive aquí y no duplicada en cada render por §20 #13: con dos
+   *  copias, el día que cambie el formato se arregla una y la otra sigue
+   *  diciendo otra cosa.
+   *
+   *  Devuelve '' cuando no hay NADA que decir —ni fecha de creación ni
+   *  versión guardada—, que no es lo mismo que decir «sin fecha»: una línea
+   *  vacía ocuparía renglón y no informaría. */
+  function lineaFechas(m, nombreDe, clase) {
+    /* ⚠️ `nombreDe` entra POR PARÁMETRO y no se lee del entorno: vive dentro
+     * de la vista de la lista, no aquí. Escrito de la otra forma, esto
+     * compila, se lee bien, y TIRA la lista entera con
+     * «nombreDe is not defined» — que es exactamente lo que hizo la primera
+     * versión de esta función, y lo cazó la prueba, no el diff (§20 #12). */
+    const u = ultimaDe(m);
+    /* El documento manda; si no lo trae —10 de los 19 que hay en producción
+     * nacieron antes del campo— se usa el del SERVIDOR, que sí lo tiene para
+     * todos. Ese dato viaja en la libreta, no en el documento: ver el porqué
+     * en `almacen.js`, donde se guarda. */
+    const creada = fechaDia(m.creado_at || (u && u.creado_at));
+    const partes = [];
+    if (creada) partes.push('creado ' + creada);
+    if (u) {
+      const quien = nombreDe(u.autor) || u.autor_nombre || u.autor || '';
+      partes.push('modificado ' + haceCuanto(u.guardada_at) + (quien ? ' por ' + quien : ''));
+    }
+    return partes.length
+      ? '<div class="tiny fch-linea' + (clase ? ' ' + clase : '') + '">' +
+        esc(partes.join(' · ')) + '</div>'
+      : '';
+  }
+
   /** La última versión guardada de un machote, o `null` si no ha subido. */
   const ultimaDe = (m) => {
     if (!m || !A || !A.ultimaVersion) return null;
@@ -1303,13 +1338,21 @@
          * líneas de texto en vez de bajar por una columna de once caracteres
          * alineados. Es el dato con el que la gente se habla por teléfono. */
         '<td class="folio-td">' + folioChip(m) + '</td>' +
-        '<td><div class="nm"><a href="#/m/' + esc(m.id) + '">' + esc(m.nombre) + '</a>' +
+        /* El `title` lleva el nombre COMPLETO siempre, porque por debajo de
+         * 980 px el nombre se recorta a dos renglones (ver `machote.css`).
+         * Un nombre cortado sin forma de leerlo entero obliga a abrir la
+         * cotización para saber cuál es. */
+        '<td><div class="nm" title="' + esc(m.nombre) + '"><a href="#/m/' + esc(m.id) + '">' + esc(m.nombre) + '</a>' +
           (dm ? ' <span class="pill" title="Ejemplo que trae la aplicación. No se guarda en el servidor.">ejemplo</span>' : '') +
           (ajeno(m) ? (prestadoAMi(m)
             ? ' <span class="pill presta" title="Su dueño te prestó la escritura. Se edita hasta que venza el permiso; borrar sigue siendo suyo.">prestada</span>'
             : ' <span class="pill aj" title="Trabajo de otra persona. Se abre en lectura: no se edita ni se borra.">sólo lectura</span>') : '') +
           '</div><div class="sub">' + esc(cli(m)) +
-          (m.so ? ' · ' + esc(m.so) : '') + '</div></td>' +
+          (m.so ? ' · ' + esc(m.so) : '') + '</div>' +
+          /* La MISMA línea de la tarjeta, dentro de la fila. Sólo se ve en la
+           * franja donde las columnas no caben (721–980 px). Ver el porqué
+           * en `machote.css`, bloque de la franja muerta. */
+          lineaFechas(m, nombreDe, 'fch-en-fila') + '</td>' +
         '<td class="quien-td sub" title="' + esc(nombreDe(duenoDe(m))) + '">' +
           esc(nombreDe(duenoDe(m))) + '</td>' +
         '<td><span class="pill" style="background:' + edo(m).color + '20;color:' + edo(m).color + '">' +
@@ -1322,7 +1365,7 @@
          * única forma de decir QUIÉN sin gastar una columna más. */
         (function () {
           const u = ultimaDe(m);
-          const creada = fechaDia(m.creado_at);
+          const creada = fechaDia(m.creado_at || (u && u.creado_at));
           const mod = u ? haceCuanto(u.guardada_at) : null;
           const quien = u ? (nombreDe(u.autor) || u.autor_nombre || u.autor || '') : '';
           return '<td class="fch sub">' + esc(creada || '—') + '</td>' +
@@ -1374,20 +1417,7 @@
            * RELATIVA (es lo que se recorre con la vista buscando «la que
            * toqué al último»). El autor va aquí mismo porque en el teléfono
            * no hay ratón que pasar por encima. */
-          (function () {
-            const u = ultimaDe(m);
-            const creada = fechaDia(m.creado_at);
-            const partes = [];
-            if (creada) partes.push('creado ' + creada);
-            if (u) {
-              const quien = nombreDe(u.autor) || u.autor_nombre || u.autor || '';
-              partes.push('modificado ' + haceCuanto(u.guardada_at) +
-                          (quien ? ' por ' + quien : ''));
-            }
-            return partes.length
-              ? '<div class="tiny fch-linea">' + esc(partes.join(' · ')) + '</div>'
-              : '';
-          })() +
+          lineaFechas(m, nombreDe) +
           '</div>' +
         '<div class="right"><span class="chip" style="background:' + edo(m).color + '">' +
           esc(edo(m).label) + '</span>' +
