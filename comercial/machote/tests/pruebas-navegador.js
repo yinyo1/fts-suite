@@ -8000,7 +8000,7 @@ await sembrarMachotes(q);
     } finally { await q.close(); }
   });
 
-  await paso('V1.37 · las dos confirmaciones ya no prometen lo contrario de lo que pasa', async () => {
+  await paso('V1.38 · las dos confirmaciones dicen las DOS condiciones de la pila', async () => {
     /* La frase «no se puede deshacer desde aquí» dejó de ser cierta en esta
      * versión. Una advertencia que dejó de serlo es peor que ninguna: enseña
      * a no creerle al resto del diálogo. */
@@ -8028,6 +8028,14 @@ await sembrarMachotes(q);
           throw new Error('sigue diciendo que no se puede deshacer: ' + t);
         if (!/deshacer/i.test(t))
           throw new Error('no dice cómo se deshace: ' + t);
+        /* V1.38 · y las DOS condiciones, no una. La pila son tres pasos Y
+         * vive en memoria: decir sólo lo de los tres cambios deja la mitad
+         * de la promesa sin cumplir, que es el mismo defecto de la V1.37 en
+         * una talla más chica. */
+        if (!/tres cambios/i.test(t))
+          throw new Error('no dice el límite de tres pasos: ' + t);
+        if (!/recargu|recarga/i.test(t))
+          throw new Error('no dice que una recarga también borra la pila: ' + t);
         return t;
       };
       const ref = (await q.$$eval('[data-del]', e => e.map(x => x.dataset.del)))[0];

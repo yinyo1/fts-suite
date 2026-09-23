@@ -167,11 +167,11 @@ const EXE = CANDIDATOS.find(x => { try { return fs.statSync(x).isFile(); } catch
 const OPCIONES = EXE ? { executablePath: EXE } : {};
 
 
-/* ═══ Capturas V1.37 ═══════════════════════════════════════════════════════
+/* ═══ Capturas V1.38 ═══════════════════════════════════════════════════════
  * Una pantalla se revisa MIRÁNDOLA, no leyendo su diff (CLAUDE.md §20 #12).
  * Reusa el preámbulo de `pruebas-navegador.js` —mismo fixture, mismo
  * navegador, mismo sembrado— para que lo que se mira sea lo que se prueba.
- *   node comercial/machote/tests/capturas-v137.js
+ *   node comercial/machote/tests/capturas-v138.js
  *
  * CUATRO anchos, y los dos de en medio son el motivo del cambio de la V1.35:
  * 760 y 900 caen en la franja donde la tabla ya no enseña las columnas de
@@ -194,7 +194,7 @@ const OPCIONES = EXE ? { executablePath: EXE } : {};
  *       es el caso que la V1.36 dejó anotado y la V1.37 cierra
  *   g · el deshacer de un BORRADO: la etiqueta dice qué renglón vuelve
  */
-const OUT = process.env.OUT || '/tmp/capturas-v137';
+const OUT = process.env.OUT || '/tmp/capturas-v138';
 
 (async () => {
   try { fs.mkdirSync(OUT, { recursive: true }); } catch (e) {}
@@ -249,7 +249,7 @@ const OUT = process.env.OUT || '/tmp/capturas-v137';
      *     columnas a 1280, línea dentro de la fila a 900 y 760, línea dentro
      *     de la tarjeta a 380. La franja 721-980 es justo lo que se arregló. */
     await q.goto(BASE); await q.waitForTimeout(1100);
-    await q.screenshot({ path: OUT + '/v137-' + tag + '-a-lista.png', fullPage: true });
+    await q.screenshot({ path: OUT + '/v138-' + tag + '-a-lista.png', fullPage: true });
     const lst = await q.evaluate(() => {
       /* VISIBLE, no la primera que exista: a 380 px la tabla del escritorio
        * sigue en el HTML con altura 0, y medirla devolvía un 0 que se lee
@@ -287,7 +287,7 @@ const OUT = process.env.OUT || '/tmp/capturas-v137';
      *     botón del pad y el aviso de comisión desde la V1.36. */
     await q.evaluate(() => { location.hash = '#/m/M-P90'; }); await q.waitForTimeout(900);
     await q.locator('.pestana').nth(1).click(); await q.waitForTimeout(1200);
-    await q.screenshot({ path: OUT + '/v137-' + tag + '-b-cabecera.png' });
+    await q.screenshot({ path: OUT + '/v138-' + tag + '-b-cabecera.png' });
 
     /* c · EL PAD, abierto como panel anclado al fondo. Se abre DESPUÉS de
      *     bajar al final de la hoja: es el caso que antes no se alcanzaba
@@ -308,7 +308,7 @@ const OUT = process.env.OUT || '/tmp/capturas-v137';
     await q.fill('[data-padcon]', 'Canalización tramo norte');
     await q.fill('[data-padimp]', '25800');
     await q.waitForTimeout(600);
-    await q.screenshot({ path: OUT + '/v137-' + tag + '-c-pad-anclado.png' });
+    await q.screenshot({ path: OUT + '/v138-' + tag + '-c-pad-anclado.png' });
     const pd = await q.evaluate(() => {
       const r = document.querySelector('.pad-panel:not([hidden])');
       if (!r) return null;
@@ -325,14 +325,14 @@ const OUT = process.env.OUT || '/tmp/capturas-v137';
      *     en ámbar: un solo lugar, los dos estados. */
     await q.click('[data-padcerrar]'); await q.waitForTimeout(400);
     await q.evaluate(() => window.scrollTo(0, 0)); await q.waitForTimeout(300);
-    await q.screenshot({ path: OUT + '/v137-' + tag + '-d1-comision-normal.png' });
+    await q.screenshot({ path: OUT + '/v138-' + tag + '-d1-comision-normal.png' });
     await q.evaluate(() => {
       const e = document.querySelector('.com-sec'); if (e) e.scrollIntoView({ block: 'center' });
     });
     await q.waitForTimeout(300);
     await q.click('[data-comprop]'); await q.waitForTimeout(700);
     await q.evaluate(() => window.scrollTo(0, 0)); await q.waitForTimeout(400);
-    await q.screenshot({ path: OUT + '/v137-' + tag + '-d2-comision-desviada.png' });
+    await q.screenshot({ path: OUT + '/v138-' + tag + '-d2-comision-desviada.png' });
     const cm = await q.evaluate(() => {
       const e = document.querySelector('[data-ircom]');
       if (!e) return null;
@@ -371,7 +371,7 @@ const OUT = process.env.OUT || '/tmp/capturas-v137';
                visible: r.top >= 0 && r.bottom <= window.innerHeight + 1,
                cortada: f.scrollWidth > f.clientWidth + 1 };
     });
-    await q.screenshot({ path: OUT + '/v137-' + tag + '-e-barra-deshacer.png' });
+    await q.screenshot({ path: OUT + '/v138-' + tag + '-e-barra-deshacer.png' });
     console.log('        deshacer → ' + JSON.stringify(bf));
 
     /* f · V1.37 · LA BARRA DESDE EL FONDO, con el botón del pad. Es el caso
@@ -385,7 +385,7 @@ const OUT = process.env.OUT || '/tmp/capturas-v137';
                enPantalla: r ? (r.top >= 0 && r.bottom <= window.innerHeight + 1) : false };
     });
     await q.waitForTimeout(300);
-    await q.screenshot({ path: OUT + '/v137-' + tag + '-f-pad-desde-el-fondo.png' });
+    await q.screenshot({ path: OUT + '/v138-' + tag + '-f-pad-desde-el-fondo.png' });
     console.log('        pad desde el fondo → hoja en y=' + hastaAbajo.y +
                 ' · botón en la barra: ' + hastaAbajo.hay +
                 ' · en pantalla: ' + hastaAbajo.enPantalla);
@@ -401,7 +401,7 @@ const OUT = process.env.OUT || '/tmp/capturas-v137';
       await q.click('[data-del="' + refDel[0] + '"]'); await q.waitForTimeout(900);
       await q.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
       await q.waitForTimeout(300);
-      await q.screenshot({ path: OUT + '/v137-' + tag + '-g-deshacer-borrado.png' });
+      await q.screenshot({ path: OUT + '/v138-' + tag + '-g-deshacer-borrado.png' });
       const etq = await q.evaluate(() => {
         const e = document.getElementById('btnDeshacer');
         return e ? (e.textContent || '').trim() : null;

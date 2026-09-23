@@ -57,7 +57,7 @@
    *   2. el `?v=` de la URL con la que el navegador lo bajó,
    *   3. la que declara cada pieza que se carga aparte (hoy el motor).
    * Si discrepan, la pantalla lo DICE en vez de correr a medias. */
-  const VERSION_ARCHIVO = 'V1.37';
+  const VERSION_ARCHIVO = 'V1.38';
 
   const VERSION_URL = (function () {
     try {
@@ -3694,14 +3694,18 @@
         if (Number(l.pu)) qué.push('a ' + mx(Number(l.pu)));
         if (l.link) qué.push('con liga de compra');
         /* ⚠️ V1.37 · la última línea YA NO dice «no se puede deshacer»: desde
-         * esta versión sí se puede, y una advertencia que dejó de ser cierta
+         * esa versión sí se puede, y una advertencia que dejó de ser cierta
          * es peor que ninguna —enseña a no creerle al resto del diálogo—.
          * Dice en su lugar CUÁNTO dura la red, que es lo que hay que saber
-         * para decidir: la pila son tres pasos y se borra al cambiar de
-         * cotización. */
+         * para decidir.
+         *
+         * ⚠️ V1.38 · y dice las DOS condiciones, no una. La pila son tres
+         * pasos Y vive en memoria: una recarga también la borra. Decir sólo
+         * lo de los tres cambios era el mismo defecto que la V1.37 arregló,
+         * una talla más chica — una promesa que se cumple a medias. */
         if (!confirm('¿Borrar este renglón?\n\n' + (qué.join(' · ') || 'renglón capturado') +
                      '\n\nSe puede deshacer con «↶ Deshacer», abajo, ' +
-                     'mientras no hagas otros tres cambios.')) return;
+                     'mientras no hagas otros tres cambios y no recargues la página.')) return;
         /* El paso se apunta ANTES del splice, con la copia y el índice de
          * ahora — igual que el valor anterior de una celda se lee antes de
          * escribir. Y sólo se apunta el renglón que TENÍA algo: uno en blanco
@@ -3754,7 +3758,7 @@
       if (!confirm('¿Borrar la sección «' + (sec.nombre || 'sin nombre') + '»?\n\n' +
                    'Se pierde ' + qué.join(', ') + '.\n\n' +
                    'Se puede deshacer con «↶ Deshacer», abajo, ' +
-                   'mientras no hagas otros tres cambios.')) return;
+                   'mientras no hagas otros tres cambios y no recargues la página.')) return;
       /* Igual que el renglón: la copia y el índice se toman ANTES del splice.
        * Una sección entera cabe de sobra en la pila —tres pasos, y la más
        * gorda que existe en producción son unas decenas de kilobytes—, así
