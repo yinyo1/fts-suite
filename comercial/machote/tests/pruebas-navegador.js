@@ -2380,8 +2380,39 @@ await sembrarMachotes(o);
       await o.goto(BASE); await o.waitForTimeout(1100);  // el catálogo llega y repinta
       // El recién creado va al principio de la lista (`unshift`).
       const t = await o.evaluate(() => document.querySelector('.fila .tiny').textContent);
-      if (t.indexOf('BBVA México') < 0)
-        throw new Error('siguió mostrando el nombre guardado: ' + t);
+      if (t.indexOf('BBVA México') < 0) {
+        /* ⚠️ Esta prueba falló UNA vez en la suite completa (23-sep, V1.37) y
+         * pasó aislada y en la corrida siguiente sobre el mismo commit. El
+         * mensaje decía «Johnson Controls Enterprises», que es el cliente del
+         * PRIMER machote de la fixture — o sea que la tarjeta de arriba no era
+         * la recién creada. Eso descarta «el catálogo no alcanzó a llegar» (en
+         * ese caso diría «BANCOMER») y apunta a que el machote nuevo no estaba,
+         * o no estaba primero.
+         *
+         * Con el dato de arriba no se puede distinguir entre las dos cosas, así
+         * que el fallo ahora se lleva consigo lo que hace falta para saberlo:
+         * qué tarjetas hay en pantalla y qué machotes hay en el almacén. Si
+         * vuelve a pasar, el mensaje contesta solo. */
+        const ev = await o.evaluate(() => {
+          const crudo = localStorage.getItem('fts_machote_v1');
+          let store = null;
+          try { store = JSON.parse(crudo || 'null'); } catch (e) {}
+          return {
+            tarjetas: Array.from(document.querySelectorAll('.fila .grow > strong, .nm'))
+              .map(e => (e.textContent || '').trim().slice(0, 40)),
+            hayAlmacen: !!crudo,
+            guardado_at: store && store.guardado_at,
+            enAlmacen: store && (store.machotes || []).map(m => m.nombre + '|' + (m.cliente_id || '-')),
+            sesion: !!localStorage.getItem('fts_suite_session')
+          };
+        });
+        throw new Error('siguió mostrando el nombre guardado: ' + t +
+                        '\n      EVIDENCIA · tarjetas en pantalla: ' + JSON.stringify(ev.tarjetas) +
+                        '\n      EVIDENCIA · almacén presente: ' + ev.hayAlmacen +
+                        ' · guardado_at: ' + ev.guardado_at +
+                        ' · sesión: ' + ev.sesion +
+                        '\n      EVIDENCIA · machotes en el almacén: ' + JSON.stringify(ev.enAlmacen));
+      }
       if (t.indexOf('BANCOMER') >= 0) throw new Error('mostró el nombre viejo: ' + t);
       console.log('    guardado "BANCOMER (nombre viejo)" → pinta "BBVA México"');
     } finally { await o.close(); }
@@ -7172,6 +7203,38 @@ await sembrarMachotes(q);
      * de cero— y sólo se ve montando la página aparte. */
     const q = await b.newPage({ viewport: { width: 1280, height: 1000 } });
     q.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
+    /* CAZADOR DE `clear()`. Va ANTES que todo lo demás y sobreescribe el
+     * método en `Storage.prototype`, no en la instancia — que es el detalle
+     * que importa: `localStorage.clear = fn` NO sustituye el método, crea un
+     * ITEM llamado «clear» (Storage expone sus llaves como propiedades, y las
+     * del prototipo ganan). O sea que el envoltorio de `sembrarMachotes`
+     * nunca ha sustituido nada; se ve en el propio almacén, donde aparece una
+     * llave «clear» con una función dentro.
+     *
+     * La pila se guarda en `sessionStorage`, que sobrevive a la recarga y que
+     * `localStorage.clear()` no toca. Si alguna vez esta prueba vuelve a
+     * fallar, el mensaje trae el nombre del culpable. */
+    await q.addInitScript(() => {
+      try {
+        /* LATIDO. Cuenta cuántas veces ha corrido este guion en ESTE
+         * contexto de almacenamiento. Sirve para desambiguar el «(nadie)»:
+         * si tras recargar el contador va en 2, `sessionStorage` sobrevivió y
+         * entonces el «nadie llamó a clear()» es de fiar; si va en 1, se
+         * perdió TODO el almacenamiento —no hubo clear, hubo contexto
+         * nuevo— y el cazador nunca tuvo dónde escribir. */
+        sessionStorage.setItem('__latido',
+          String((parseInt(sessionStorage.getItem('__latido') || '0', 10) || 0) + 1));
+        const orig = Storage.prototype.clear;
+        Storage.prototype.clear = function () {
+          try {
+            const st = (new Error('traza').stack || '(sin pila)').replace(/\n/g, ' | ');
+            sessionStorage.setItem('__clears',
+              (sessionStorage.getItem('__clears') || '') + ' === ' + st.slice(0, 400));
+          } catch (e) {}
+          return orig.apply(this, arguments);
+        };
+      } catch (e) {}
+    });
     await sembrarGeo(q);
     await sembrarMachotes(q);
     await q.addInitScript(() => {
@@ -7218,14 +7281,74 @@ await sembrarMachotes(q);
       if (await total() !== t0)
         throw new Error('EL IMPORTE DEL PAD MOVIÓ EL TOTAL: ' + t0 + ' → ' + await total());
 
-      // Sobrevive a recargar, y SIGUE sin contar.
-      await q.waitForTimeout(ALMACEN);
+      /* Sobrevive a recargar, y SIGUE sin contar.
+       *
+       * ⚠️ NO se recarga tras un `waitForTimeout` a secas. El autoguardado es
+       * un `setTimeout` de 500 ms, y un sleep fijo apuesta a que la máquina no
+       * se atore: si se atora, se recarga ANTES de que el guardado aterrice y
+       * la prueba falla por la carga, no por el producto. Esta prueba falló
+       * así una vez en la suite completa (23-sep, V1.37) y pasó aislada.
+       *
+       * En vez de subir el sleep —que sólo mueve la apuesta— se ESPERA A QUE
+       * EL DATO ESTÉ, con tope. Y si tardó más de lo que debería, se DICE: un
+       * guardado lento es un hallazgo, no algo que taparle a la siguiente
+       * corrida. Si nunca llega, la prueba falla igual que antes. */
+      const t_ini = Date.now();
+      await q.waitForFunction(() => {
+        try {
+          const raw = JSON.parse(localStorage.getItem('fts_machote_v1') || '{}');
+          const m = (raw.machotes || []).find(x => x.id === 'M-1041');
+          const s = m && (m.secciones || []).find(x => (x.pad || {}).abierto === true);
+          return !!(s && String((s.pad || {}).texto || '').indexOf('25,800') >= 0);
+        } catch (e) { return false; }
+      }, { timeout: 8000 }).catch(() => { throw new Error(
+        'el pad NUNCA llegó al almacén en 8 s: no es lentitud, es que no se guardó'); });
+      const t_guardado = Date.now() - t_ini;
+      if (t_guardado > 1500) console.log('    ⚠️ el autoguardado tardó ' + t_guardado +
+        ' ms (el debounce es de 500): la máquina va cargada');
+
+      /* CENTINELA. Si tras recargar el pad no está, hay dos causas muy
+       * distintas: que se haya borrado TODO el almacén (un `clear`, o una
+       * partición de storage distinta) o que alguien haya reescrito SÓLO la
+       * llave de los machotes. El centinela las separa: es una llave que
+       * nadie del producto ni de la siembra toca. */
+      await q.evaluate(() => localStorage.setItem('__centinela', String(Date.now())));
       await q.reload(); await q.waitForTimeout(900);
       await aSuministro();
       if (await total() !== t0) throw new Error('tras recargar, el pad guardado sí contaba');
       /* Se quedó abierto: `pad.abierto` se guarda igual que el texto. */
-      if (await q.$eval('[data-padpanel]', e => e.hidden))
-        throw new Error('el pad estaba abierto y tras recargar salió cerrado');
+      if (await q.$eval('[data-padpanel]', e => e.hidden)) {
+        /* Con el guardado ya comprobado ARRIBA, si esto falla ya no puede ser
+         * el debounce: el dato estaba en el almacén antes de recargar. La
+         * evidencia dice qué quedó después. */
+        const ev = await q.evaluate(() => {
+          const raw = JSON.parse(localStorage.getItem('fts_machote_v1') || '{}');
+          const m = (raw.machotes || []).find(x => x.id === 'M-1041');
+          return {
+            paneles: document.querySelectorAll('[data-padpanel]').length,
+            centinela: localStorage.getItem('__centinela'),
+            clears: sessionStorage.getItem('__clears'),
+            latido: sessionStorage.getItem('__latido'),
+            sesion: !!localStorage.getItem('fts_suite_session'),
+            llaves: Object.keys(localStorage).sort(),
+            pads: (m ? (m.secciones || []) : []).map(x => x.id + ':' +
+                   JSON.stringify((x.pad || {}).abierto) + ':' +
+                   String((x.pad || {}).texto || '').slice(0, 12)),
+            guardado_at: raw.guardado_at,
+            url: document.URL.slice(-46)
+          };
+        });
+        throw new Error('el pad estaba abierto y tras recargar salió cerrado' +
+          ' · guardado ANTES de recargar en ' + t_guardado + ' ms' +
+          '\n      EVIDENCIA · quién llamó a clear(): ' + (ev.clears || '(nadie)') +
+          ' · latido (arranques en este contexto): ' + ev.latido +
+          ' · url: ' + ev.url +
+          '\n      EVIDENCIA · centinela tras recargar: ' + JSON.stringify(ev.centinela) +
+          ' · sesión: ' + ev.sesion + ' · llaves: ' + JSON.stringify(ev.llaves) +
+          '\n      EVIDENCIA · paneles en el DOM: ' + ev.paneles +
+          ' · guardado_at: ' + ev.guardado_at +
+          '\n      EVIDENCIA · pads en el almacén: ' + JSON.stringify(ev.pads));
+      }
       if (!/25,800/.test(await q.inputValue('[data-padtxt]')))
         throw new Error('el pad no sobrevivió a recargar');
 
