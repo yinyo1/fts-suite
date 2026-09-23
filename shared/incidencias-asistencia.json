@@ -36,11 +36,21 @@
           "hora_propuesta_cst": null,
           "comentario": "entrada 7:15",
           "accion": "aprobado"
+        },
+        {
+          "paso": 3,
+          "rol": "rh",
+          "user_id": 63,
+          "usuario": "Magaly Estefanía Pérez García",
+          "timestamp": "2026-09-23T16:29:51.243Z",
+          "hora_propuesta_cst": "07:15",
+          "comentario": "Coincide registro con la reportada por el señor JUan.",
+          "accion": "ajustado"
         }
       ],
-      "status": "pendiente_rh",
-      "hora_final_aplicada_utc": null,
-      "aplicado_en_odoo": false,
+      "status": "aprobada_con_ajuste",
+      "hora_final_aplicada_utc": "2026-09-21 13:15:00",
+      "aplicado_en_odoo": true,
       "department_id": 3,
       "department_name": "Operaciones",
       "sin_departamento": false,
@@ -53,7 +63,7 @@
       "rh_directo_ceo": false,
       "directo_ceo": false,
       "sin_supervisor": false,
-      "tag_disputa_activo": true
+      "tag_disputa_activo": false
     },
     {
       "id_interno": "INC-OLV-25-2026-09-21T16-57-01-259Z",
@@ -90,11 +100,21 @@
           "hora_propuesta_cst": null,
           "comentario": "Entrada 6:50",
           "accion": "aprobado"
+        },
+        {
+          "paso": 3,
+          "rol": "rh",
+          "user_id": 63,
+          "usuario": "Magaly Estefanía Pérez García",
+          "timestamp": "2026-09-23T16:28:50.499Z",
+          "hora_propuesta_cst": "06:42",
+          "comentario": "Hora declarada en el reporte de don juan.",
+          "accion": "ajustado"
         }
       ],
-      "status": "pendiente_rh",
-      "hora_final_aplicada_utc": null,
-      "aplicado_en_odoo": false,
+      "status": "aprobada_con_ajuste",
+      "hora_final_aplicada_utc": "2026-09-21 12:42:00",
+      "aplicado_en_odoo": true,
       "department_id": 3,
       "department_name": "Operaciones",
       "sin_departamento": false,
@@ -107,7 +127,7 @@
       "rh_directo_ceo": false,
       "directo_ceo": false,
       "sin_supervisor": false,
-      "tag_disputa_activo": true
+      "tag_disputa_activo": false
     },
     {
       "id_interno": "INC-OLV-108-2026-09-18T18-06-07-390Z",
