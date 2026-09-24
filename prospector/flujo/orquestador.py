@@ -2,6 +2,8 @@
 
     python3 -m flujo.orquestador iniciar --empresa "Ragasa" --ciudad "Guadalupe, NL"
     python3 -m flujo.orquestador siguiente --empresa "Ragasa"
+    python3 -m flujo.orquestador padron --empresa "Ragasa" --ciudad "Guadalupe" \
+        --entidad "Nuevo Leon" --dominio ragasa.com.mx --giro 311
     python3 -m flujo.orquestador buscar --empresa "Ragasa" --modulo M1 \
         --clave directorios --fuente leadiq --consulta "site:leadiq.com ragasa" \
         --resultados 4 --datos '<json con los contactos que trajo>'
@@ -18,6 +20,7 @@ import argparse, json, os, re, sys
 from .compuertas import (CompuertaCerrada, exigir_confianza, techo_por_agotado,
                          Busqueda)
 from .salida import carpeta_de_corridas, exigir_fuera_del_repo, SalidaEnElRepo
+from .padron import cargar as cargar_padron, vigilar_cobertura, PadronInvalido
 from .catalogo import exigir_permitida, FuenteProhibida
 from .confianza import Contacto, N1_CONFIRMADO, N2_PARCIAL, N3_PUESTO
 from .estado import Corrida, RESPONDIO
@@ -129,10 +132,17 @@ def _imprimir_paso(c: Corrida) -> None:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="orquestador", description=__doc__)
     sub = ap.add_subparsers(dest="cmd", required=True)
-    for nombre in ("iniciar", "siguiente", "buscar", "registrar", "bloque",
-                   "cerrar", "vuelta", "challenge", "ficha", "estado"):
+    for nombre in ("iniciar", "siguiente", "padron", "buscar", "registrar",
+                   "bloque", "cerrar", "vuelta", "challenge", "ficha", "estado"):
         s = sub.add_parser(nombre)
         s.add_argument("--empresa", required=True)
+        if nombre == "padron":
+            s.add_argument("--ciudad", default="")
+            s.add_argument("--entidad", default="")
+            s.add_argument("--dominio", default="")
+            s.add_argument("--giro", default="", help="SCIAN, aunque sean 3 digitos")
+            s.add_argument("--cerrada", default="",
+                           help="evidencia de que la planta ya no opera, si la corrida la encontro")
         if nombre == "iniciar":
             s.add_argument("--ciudad", required=True)
             s.add_argument("--giro", default="")
@@ -196,6 +206,40 @@ def main(argv=None) -> int:
                   f"registro): {c.mod(a.modulo).contadores}")
             print("  Nota: `registrar` NO mueve el agotado. Para eso va `buscar`, "
                   "que exige la consulta que se corrio.")
+            _imprimir_paso(c)
+            return 0
+
+        if a.cmd == "padron":
+            p = cargar_padron()
+            hits = p.buscar(a.empresa, a.dominio, a.ciudad, a.entidad)
+            print(f"Padron: corte {p.corte} · {len(p.operables)} plantas "
+                  f"operables · {p.antiguedad_meses} meses de antiguedad")
+            banderas = list(p.banderas) + vigilar_cobertura(
+                p, a.empresa, a.dominio, a.ciudad, a.entidad, a.giro, a.cerrada)
+            for b in banderas:
+                print("\n  " + str(b).replace("\n", "\n  "))
+                c.avisos.append(str(b).replace("\n", " "))
+
+            # M13 queda registrado con lo que el padron contesto DE VERDAD.
+            # Cero hits es una respuesta y cuenta: significa que se busco bien.
+            consulta = (f"padron corte {p.corte}: empresa='{a.empresa}' "
+                        f"dominio='{a.dominio or '-'}' ciudad='{a.ciudad or '-'}' "
+                        f"entidad='{a.entidad or '-'}'")
+            c.registrar_busqueda("M13", "cortes", consulta, "denue", len(hits),
+                                 nota=f"{len(hits)} fila(s); banderas: "
+                                      f"{', '.join(b.clave for b in banderas) or 'ninguna'}")
+            if hits:
+                print(f"\n  {len(hits)} fila(s):")
+                for f in hits[:5]:
+                    print(f"    {f['nom_estab'][:38]} · {f['raz_social'][:26]} · "
+                          f"{f['municipio']} · CP {f['cod_postal']} · "
+                          f"estrato {f['estrato_min']}+ · {f['dominio_correo'] or 'sin dominio'}")
+                c.cerrar_modulo("M13")
+            else:
+                c.cerrar_modulo("M13", "no_aplicaba",
+                                banderas[-1].mensaje if banderas else
+                                "no aparece en el padron")
+            c.guardar(_ruta(a.empresa))
             _imprimir_paso(c)
             return 0
 
@@ -275,7 +319,8 @@ def main(argv=None) -> int:
             print(f"Ficha ({a.modo}) escrita: {salida}")
             return 0
 
-    except (CompuertaCerrada, FuenteProhibida, SalidaEnElRepo) as e:
+    except (CompuertaCerrada, FuenteProhibida, SalidaEnElRepo,
+            PadronInvalido) as e:
         print(f"\n  ⛔ COMPUERTA: {e}\n", file=sys.stderr)
         return 2
     return 0

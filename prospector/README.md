@@ -73,10 +73,11 @@ dominio no identifica a una persona.
 | Ruta | Qué es |
 |---|---|
 | **`flujo/`** | El código. Compuertas, instrumentación, Chao1, catálogo, ficha y el orquestador |
-| **`tests/`** | 91 pruebas. Casos de regresión **D (LEGO)** y **F (Cuprum)**, más el truco del contador vacío, el lazo de refuerzo y la guardia de datos personales |
+| **`tests/`** | 108 pruebas. Casos de regresión **D (LEGO)** y **F (Cuprum)**, más el truco del contador vacío, el lazo de refuerzo y la guardia de datos personales |
 | **`metodo/`** | El *por qué* de cada paso, con su disparador medido |
 | **`SKILL-criterio.md`** | Lo que juzga Claude y el código no puede |
 | **`CHANGELOG.md`** | Versiones de la herramienta |
+| **`PURGA-DEL-HISTORIAL.md`** | El plan de purga del historial de git. **No ejecutado**: espera ventana coordinada |
 
 ### El código, archivo por archivo
 
@@ -88,6 +89,7 @@ dominio no identifica a una persona.
 | `flujo/estado.py` | 265 | La corrida que Python posee. Las cuatro olas y el **lazo de refuerzo** |
 | `flujo/chao1.py` | 147 | Estimador de completitud, con **veredicto de cuatro valores**: solo `saturo` detiene el lazo |
 | `flujo/ficha.py` | 117 | Modo limpio y modo procedencia, con checklist de lo que no se pudo hacer |
+| `flujo/padron.py` | 332 | **El mapa de plantas y su caducidad.** Lo estructural, el aviso por tiempo (umbral 6 meses) y las tres banderas por datos |
 | `flujo/salida.py` | 109 | **Dónde va el resultado de una corrida, y dónde NO.** Se niega a escribir dentro del repo |
 | `flujo/catalogo.py` | 85 | Las **13 fuentes descartadas**, rechazadas por código con su razón, y qué fuente le corresponde a cada módulo |
 
@@ -151,7 +153,7 @@ presupuesto queda. Claude corre **ese** módulo, registra lo que encontró, y el
 orquestador decide si se avanza.
 
 ```bash
-python3 -m pytest tests -q     # 91 pruebas
+python3 -m pytest tests -q     # 108 pruebas
 ```
 
 ---

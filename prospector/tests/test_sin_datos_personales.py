@@ -10,6 +10,9 @@ Una advertencia en un comentario no detiene a nadie. Esta prueba si.
 Lo que se permite a proposito:
   * marcadores: `[persona]`, `[Persona 01]`, `nombre.apellido@`, `first.last@`
   * buzones genericos de ejemplo: `compras@`, `ventas@`, `info@`
+  * `git@github.com` -- es una URL de clon, no el correo de nadie. Salio como
+    falso positivo al escribir PURGA-DEL-HISTORIAL.md, y es la clase de ruido
+    que hay que permitir con nombre y no aflojando el regex
   * dominios de empresa sueltos (`cuprum.com`) -- una empresa no es una persona
 """
 import pathlib
@@ -27,6 +30,7 @@ PERMITIDO = re.compile(r"""^(
     nombre\.apellido | first\.last | first_lastinitial | n\.apellido
   | \[[^\]]+\]                                  # cualquier marcador [.....]
   | x | a | correo | ejemplo | usuario | user | test | demo | noreply
+  | git                                          # git@github.com, URL de clon SSH
   | info|contacto|ventas|compras|admin|recepcion|facturacion|contabilidad
   | rh|rrhh|hr|soporte|atencion|calidad|sistemas|gerencia|direccion|comercial
 )$""", re.I | re.X)

@@ -3,6 +3,93 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.5.0 — 2026-09-24
+
+**El padron se reduce a mapa de plantas y aprende a avisar que caduco.** Y la
+corrida de punta a punta se hace **desde cero sobre una cuenta nueva**, no sobre
+el caso conocido.
+
+### El padron: lo que envejece lento
+
+Se queda lo estructural -establecimiento, razon social, giro/SCIAN,
+tamano/estrato, municipio, ciudad, CP, `dominio_correo`- y suelta lo que caduca
+rapido. `correoelec` y `telefono` quedan **fuera definitivamente**, por dos
+razones que apuntan al mismo lado: son datos de contacto de personas en un repo
+publico, y un correo de una fila con `fecha_alta` de 2010 no sirve para llamar
+hoy. **El contacto fresco lo consigue la cascada en cada corrida**, que es su
+oficio.
+
+`dominio_correo` es la excepcion deliberada: se deriva del correo, **no
+identifica a una persona**, y es la llave operativa del metodo -dominio + ciudad
++ CP-. Sin ella el padron dejaria de servir; con ella sirve igual que antes.
+
+**Postgres se posterga.** Mientras la herramienta se pule, el mapa vive como CSV
+limpio versionado: es diffable, y un corte contra el siguiente se compara en un
+pull request. El enganche a Postgres esta anotado al final de `flujo/padron.py`
+-`sincronizar_con_postgres` y `desde_postgres`- y **no esta construido**.
+
+### El aviso de caducidad, en dos disparadores
+
+**Por TIEMPO.** `flujo/padron.py` lee el corte del propio CSV -es la fecha del
+DATO, del `metadatos_denue.txt`, no la de la consulta- y calcula la antiguedad.
+
+> **Umbral: 6 meses.** El INEGI publica dos cortes al ano; los medidos fueron
+> `2025_11` y `2026_05`. Seis meses es **un ciclo de publicacion**: pasado ese
+> punto ya existe un corte mas nuevo, y seguir con el viejo no es una decision,
+> es un olvido. Antes de los 6 avisar seria ruido, porque no hay nada mas fresco
+> que traer. A los 12 ya se saltaron dos cortes y el aviso sube de tono.
+
+Hoy, con el corte 05/2026, la antiguedad es **4 meses** y no avisa nada. Empieza
+a avisar en noviembre, que es justo cuando cae el corte siguiente.
+
+**AVISA, no frena.** Frenar una corrida por la edad del mapa seria peor que
+correrla con el mapa viejo: un corte de hace un ano sigue ubicando plantas. Lo
+que si frena es que el CSV traiga columnas de contacto: eso no es
+envejecimiento, es una fuga.
+
+**Por DATOS.** `vigilar_cobertura()` distingue tres cosas que se ven iguales
+desde afuera y no son lo mismo:
+
+| Bandera | Cuando | Que hace falta |
+|---|---|---|
+| `FUERA_DEL_ALCANCE_DEL_PADRON` | El padron no cubre esa entidad o ese giro | Un corte **mas amplio**, no mas nuevo |
+| `NO_EN_PADRON_PERO_EN_ALCANCE` | Lo cubre y la planta no aparece | Primero descartar que el empate fallo por la razon social; luego, corte **mas nuevo** |
+| `PLANTA_QUIZA_CERRADA` | Aparece, y la corrida encontro que ya no opera | `vigente = false` -una baja no borra- |
+
+Confundirlas manda a descargar 32 archivos cuando lo que faltaba era una
+entidad, o a esperar el corte que no va a traer nada. Las tres apuntan al
+**vigilante del DENUE** por `ETag`/`Last-Modified`: es la misma preocupacion
+vista del otro lado. El vigilante pregunta *"cambio el archivo?"*; esto pregunta
+*"me esta estorbando que no haya cambiado?"*.
+
+### Corregido: la geografia no era un filtro
+
+`Padron.buscar()` devolvia la fila de Monterrey cuando se preguntaba por
+Guadalajara. Si se da ciudad o entidad y ningun candidato coincide, la respuesta
+es **cero**, no "los demas". Es la leccion de los cinco DUNS de Ragasa -cuatro
+en NL y uno en Jalisco con la misma razon social-: el nombre no desempata, el
+domicilio si. Lo encontro una prueba con Sigma Alimentos en Jalisco.
+
+### `M13` pasa a ser evidencia, no declaracion
+
+El subcomando `padron` busca la cuenta en el mapa, imprime las banderas y
+**registra la busqueda de M13 con lo que el padron contesto de verdad**. Cero
+filas cuenta: significa que se busco bien y no esta. Si no aparece, M13 se cierra
+`no_aplicaba` con la bandera como razon, y la cascada arranca en M1.
+
+### Pruebas
+
+**91 -> 108.** Nuevas: `tests/test_padron.py` (17).
+
+### La guardia se estreno contra mi propio codigo
+
+`test_sin_datos_personales.py` fallo dos veces en esta version: por
+`[persona]@empresa-ejemplo.com` mal escrito en un fixture nuevo, y por
+`git@github.com` en una URL de clon del plan de purga. La segunda es un falso
+positivo legitimo y quedo permitido **con nombre**, no aflojando el regex.
+
+---
+
 ## 0.4.0 — 2026-09-24
 
 **Los contactos salen del repo, y la regla queda fijada.** `fts-suite` es
