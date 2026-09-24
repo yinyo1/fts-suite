@@ -24,7 +24,7 @@
   // se va. La marca es la que de verdad lo impide.
   if (G.__ftsSinAcceso) return;
 
-  const C = G.MachoteCalc, R = G.REGLAS, D = G.DEMO;
+  const C = G.MachoteCalc, R = G.REGLAS, D = G.DEMO, PH = G.PadHoja;
 
   /* Versión visible en pantalla.
    *
@@ -57,7 +57,7 @@
    *   2. el `?v=` de la URL con la que el navegador lo bajó,
    *   3. la que declara cada pieza que se carga aparte (hoy el motor).
    * Si discrepan, la pantalla lo DICE en vez de correr a medias. */
-  const VERSION_ARCHIVO = 'V1.40';
+  const VERSION_ARCHIVO = 'V1.41';
 
   const VERSION_URL = (function () {
     try {
@@ -2499,10 +2499,14 @@
          * sección, y son las que dicen que no es un botón de formato. El
          * `title` se queda, para el estado («tiene una cuenta escrita»),
          * que es información ADICIONAL y no la definición. */
+        /* V1.41 · el rótulo dice CUÁNTO hay, no sólo que hay algo. El punto
+         * avisa que la hoja tiene contenido; el número dice cuánto, y ésa es
+         * la diferencia entre abrirla y dejarla pasar. */
         '<button class="ico pad-btn' + (C.padPendiente(s) ? ' con-algo' : '') +
           '" data-padabrir="' + s.id + '" title="' +
-          (C.padPendiente(s) ? 'Pad de trabajo · tiene una cuenta escrita' : 'Pad de trabajo · para sacar cuentas') +
-          '">Pad de trabajo</button>' +
+          (C.padPendiente(s) ? 'Hoja de trabajo · ' + C.padFilas(s) + ' fila(s) escritas'
+                             : 'Hoja de trabajo · para sacar cuentas') +
+          '">Hoja de trabajo' + (C.padPendiente(s) ? ' · ' + C.padFilas(s) : '') + '</button>' +
         '<button class="ico" data-dupsec="' + s.id + '" title="Duplicar sección">⧉</button>' +
         (m.secciones.length > 1 ? '<button class="ico peligro" data-delsec="' + s.id + '" title="Eliminar sección">×</button>' : '') +
       '</span></div>' +
@@ -2886,25 +2890,96 @@
      * verdad Y SE LLEVA EL TEXTO como su comentario — eso es lo que hoy se
      * pierde cuando la cuenta se hace en la calculadora del teléfono.
      */
+    /* ── V1.41 · LA HOJA DE TRABAJO ────────────────────────────────────────
+     *
+     * Deja de ser un `textarea`. Montalvo y Esteban pidieron una hoja de
+     * verdad: celdas, columnas, filas, y cuentas dentro. El evaluador vive
+     * en `js/pad-hoja.js` —sin dependencias y sin `eval`, por el porqué que
+     * está escrito allá—, y aquí sólo se pinta y se enlaza.
+     *
+     * SUSTITUYE al texto libre; no conviven. Dos superficies para pensar en
+     * la misma sección es el error que se acaba de deshacer con la banda de
+     * comisión: en un mes nadie sabría cuál manda. El texto de un pad viejo
+     * no se pierde —se migra a la columna de CONCEPTO, una línea por fila—.
+     *
+     * ── LA BARRA DE FÓRMULA, y por qué no es un adorno ───────────────────
+     * Medido a 380 px: una celda mide 70 px, y ahí los NÚMEROS caben y las
+     * FÓRMULAS no —`=SUMA(C1:C2)` se ve como `=SUMA((`—. Escribir a ciegas
+     * es inaceptable, así que la fila de arriba muestra y edita la celda
+     * elegida con el ancho completo. Es lo que hacen todas las hojas en
+     * teléfono, y aquí es lo que hace que la hoja a 380 sea cierta.
+     *
+     * ── LA CELDA ENSEÑA EL VALOR, NO LA FÓRMULA ──────────────────────────
+     * Salvo mientras se edita. Una rejilla que enseña `=A1*B1*450` en vez de
+     * `16,200` no sirve para leer una cuenta, que es para lo que existe.
+     */
     const pad = s.pad || {};
+    const HOJA = PH.paraPintar(PH.hojaDe(s));
+    const EV = PH.evaluar(HOJA);
+    const elegida = PH.dir(pad.elegida) ? pad.elegida : 'C1';
+
+    const celdaHoja = (f, c) => {
+      const esRot = c === 0;
+      const ref = esRot ? '' : PH.nombreDir(c - 1, f);
+      const crudo = String(HOJA[f][c] || '');
+      const errc = ref ? EV.errores[ref] : null;
+      const val = ref ? EV.valores[ref] : null;
+      /* Lo que se ve en reposo: el valor si lo hay, el error si lo hubo, y
+       * si no, el texto tal cual (que es lo normal en la columna de rótulo y
+       * en una celda con una nota). */
+      const visto = esRot ? crudo
+        : errc ? '#' + errc
+        : (val !== null && val !== undefined) ? mx(val)
+        : crudo;
+      return '<td' + (esRot ? ' class="rot"' : '') + '>' +
+        '<input class="cel padcel' + (esRot ? ' rot' : ' num') +
+          (errc ? ' n-bad' : '') + (ref === elegida ? ' sel' : '') + '"' +
+          ' data-padcel="' + esc(s.id) + '|' + f + '|' + c + '"' +
+          (ref ? ' data-padref="' + ref + '"' : '') +
+          ' data-padcrudo="' + esc(crudo) + '"' +
+          ' value="' + esc(visto) + '"></td>';
+    };
+
+    /* ⚠️ La celda VACÍA del número de fila va primero, y no es decoración:
+     * sin ella la fila de encabezados tiene cuatro celdas y las de datos
+     * cinco, así que «A», «B» y «C» quedan corridos una columna respecto de
+     * los números que rotulan. Se ve de inmediato en una captura y es
+     * invisible en el diff (§20 #12). */
+    const encabezados = '<tr><th class="nfila"></th><th class="rot">Concepto</th>' +
+      PH.COLS.map(x => '<th>' + x + '</th>').join('') + '</tr>';
+    const filas = HOJA.map((fila, f) =>
+      '<tr><th class="nfila">' + (f + 1) + '</th>' +
+      fila.map((_, c) => celdaHoja(f, c)).join('') + '</tr>').join('');
+
+    const pieVal = (() => {
+      const v = EV.valores[elegida], e = EV.errores[elegida];
+      if (e) return elegida + ' — no se puede calcular (' + e + ')';
+      return elegida + (v === null || v === undefined ? ' — vacía' : ' = ' + mx(v));
+    })();
+
     const bloquePad =
       '<div class="pad-panel" data-padpanel="' + s.id + '"' + (pad.abierto ? '' : ' hidden') +
-        ' role="dialog" aria-label="Pad de trabajo">' +
+        ' role="dialog" aria-label="Hoja de trabajo">' +
         '<div class="pad-cab">' +
-          '<strong>Pad de trabajo</strong>' +
+          '<strong>Hoja de trabajo</strong>' +
           '<span class="tiny nota">· borrador, no entra en ningún total</span>' +
-          '<button class="ico pad-cerrar" data-padcerrar="' + s.id + '" title="Cerrar el pad (Esc)">×</button>' +
+          '<button class="ico pad-cerrar" data-padcerrar="' + s.id + '" title="Cerrar la hoja (Esc)">×</button>' +
         '</div>' +
         '<div class="tiny nota pad-ayuda">Para sacar cuentas. <strong>Nada de lo que escribas aquí mueve el precio.</strong> ' +
-        'Cuando llegues a un número, pásalo a un renglón con el botón: el renglón se lleva el importe y ' +
-        '<strong>este texto queda como su comentario</strong>, para que dentro de seis meses se sepa de dónde salió.</div>' +
-        '<textarea class="cel pad-txt" data-padtxt="' + s.id + '" rows="5" ' +
-          'placeholder="3 tramos × 12 m × $450/m&#10;+ 8 soportes × $1,200&#10;= ...">' + esc(pad.texto || '') + '</textarea>' +
+        'Escribe números, o fórmulas que empiecen con <code>=</code>: <code>=A1*B1*450</code>, <code>=SUMA(C1:C5)</code>. ' +
+        'Cuando llegues al número, elige su celda y pásala a un renglón: se lleva el importe y ' +
+        '<strong>la cuenta queda en su comentario</strong>.</div>' +
+        '<div class="pad-barra">' +
+          '<span class="pad-dir" data-paddir="' + s.id + '">' + esc(elegida) + '</span>' +
+          '<input class="cel pad-formula" data-padformula="' + s.id + '"' +
+            ' value="' + esc(PH.crudoDe(HOJA, elegida)) + '"' +
+            ' placeholder="Un número, o =A1*B1*450">' +
+        '</div>' +
+        '<div class="pad-rejilla"><table class="hoja-pad"><thead>' + encabezados +
+          '</thead><tbody>' + filas + '</tbody></table></div>' +
         '<div class="pad-pie">' +
-          '<label class="tiny">Concepto <input class="cel" data-padcon="' + s.id + '" ' +
-            'value="' + esc(pad.concepto || '') + '" placeholder="Canalización tramo norte"></label>' +
-          '<label class="tiny">Importe <input class="cel num" type="number" step="any" min="0" ' +
-            'data-padimp="' + s.id + '" value="' + esc(nn(pad.importe)) + '"></label>' +
+          '<span class="tiny">Celda elegida <strong class="mono" data-padval="' + s.id + '">' +
+            esc(pieVal) + '</strong></span>' +
           '<button class="btn fantasma" data-padpasar="' + s.id + '">Pasar a renglón</button>' +
         '</div>' +
       '</div>';
@@ -3091,20 +3166,50 @@
         '<tr class="total"><td class="et">Suma</td><td class="vl mono n-' +
         (Math.abs(suma - 1) < 0.0001 ? 'ok' : 'bad') + '">' + pc(suma) + '</td><td></td></tr>';
     };
+    const rep = Object.assign({}, C.REPARTO_PLANTILLA, m.reparto || {});
     const comisiones =
       '<div class="secc-tit">TABLA DE COMISIONES Y BONOS</div>' +
       '<div class="scroll"><table class="rejilla estrecha"><tbody>' +
-      eq('EQUIPO DE VENTA (' + pc(Number(m.reparto.venta)) + ' de la comisión FTS)', 'equipo_venta', 'venta', c.reparto.bolsaVenta) +
-      eq('EQUIPO DE OPERACIONES (' + pc(Number(m.reparto.operaciones)) + ')', 'equipo_operaciones', 'ops', c.reparto.bolsaOps) +
+      /* ⚠️ `m.reparto` PUEDE NO EXISTIR, y sin esta guarda la hoja de desglose
+       * entera truena con «Cannot read properties of undefined». Viene de
+       * antes de la V1.41 y hoy no le pega a nadie porque todo documento real
+       * lo trae — pero un machote que llegue de un rescate, de un archivo
+       * viejo o de una versión a medias lo dejaría sin pantalla, y el error
+       * no diría qué campo falta. El motor ya resuelve con su plantilla
+       * (`REPARTO_PLANTILLA`); aquí se lee lo MISMO que él usa, en vez de
+       * volver al crudo del documento. */
+      eq('EQUIPO DE VENTA (' + pc(Number(rep.venta)) + ' de la comisión FTS)', 'equipo_venta', 'venta', c.reparto.bolsaVenta) +
+      eq('EQUIPO DE OPERACIONES (' + pc(Number(rep.operaciones)) + ')', 'equipo_operaciones', 'ops', c.reparto.bolsaOps) +
       eq('LADO CLIENTE', 'equipo_cliente', 'cli', c.escenario.comisionCliente) +
       '</tbody></table></div>' +
-      /* ── V1.40 · aquí vivía el resumen «N de M secciones reparten distinto»
-       * Contaba las secciones con la casilla de excepción encendida, y la
-       * casilla se fue. No se sustituye por un resumen equivalente de los
-       * porcentajes: el aviso que se pidió es UNO, y va debajo del cuadro de
-       * la sección donde se cambió, que es donde la persona está mirando.
-       * Un segundo letrero aquí sería otra vez dos sitios diciendo lo mismo. */
-      ''
+      /* ── V1.41 · cuántas secciones tienen comisión propia ────────────────
+       * Decisión de Esteban: SÓLO EL DATO, sin hacerlo clicable ni elaborado.
+       * Quien revisa la cotización completa necesita saber que hay comisiones
+       * distintas, porque cambia el total — y DESGLOSE es donde se revisa.
+       *
+       * No compite con el aviso de la sección: aquél dice «esta sección se
+       * apartó» a quien la está editando; éste dice «hay N apartadas» a quien
+       * mira el conjunto. Distinto lector, distinta pregunta.
+       *
+       * ⚠️ El conteo sale del MOTOR (`comisionesApartadas`), no de leer los
+       * campos aquí. Si la pantalla lo resolviera por su cuenta habría dos
+       * lugares decidiendo el mismo número, que es exactamente cómo empezó el
+       * bug de los márgenes compartidos (§20 regla 4). */
+      (function () {
+        const secs = c.secciones || [];
+        const n = secs.filter(x => (x.comisionesApartadas || 0) > 0).length;
+        if (!secs.length) return '';
+        return '<div class="tiny nota com-resumen">' + (n
+          /* La concordancia: el sustantivo va con el TOTAL y el verbo con el
+           * conteo. «1 de 2 sección tiene» es lo que salía antes, y se vio en
+           * la salida de la prueba, no leyendo el código. */
+          ? '<strong class="n-warn">' + n + ' de ' + secs.length +
+            (secs.length === 1 ? ' sección ' : ' secciones ') +
+            (n === 1 ? 'tiene' : 'tienen') +
+            ' su propia comisión</strong>, distinta de la de este reparto.'
+          : (secs.length === 1 ? 'La sección sigue' : 'Las ' + secs.length + ' secciones siguen') +
+            ' la comisión de este reparto.') + '</div>';
+      })()
 
     return encabezado + resumen + porSeccion + budget + comisiones;
   }
@@ -3504,32 +3609,109 @@
      * fecha, para poder reencenderlo. No se borra. Decisión de Esteban con la
      * mitigación que importa: al restaurarlo la pantalla dice DE CUÁNDO ES —
      * un número que reaparece sin fecha después de tres meses es una trampa. */
-    /* ── V1.34 · el pad ────────────────────────────────────────────────────
+    /* ── V1.41 · LA HOJA DEL PAD ───────────────────────────────────────────
      * Se guarda con el machote —si no, se perdería al cambiar de hoja y
      * dejaría de servir para pensar— pero NO entra en ningún cálculo. Eso lo
-     * garantiza el motor, que no lo lee; aquí sólo se escribe. */
-    $$('[data-padtxt]').forEach(el => {
+     * garantiza el motor, que no la lee; aquí sólo se escribe.
+     *
+     * ⚠️ NO se repinta la hoja al teclear. Repintar a 60 renglones cuesta, y
+     * peor, tira el foco a media cuenta — que es exactamente cuando duele.
+     * Se recalcula y se escriben los valores en su sitio. */
+    const hojaDeSec = (sec) => PH.paraPintar(PH.hojaDe(sec));
+
+    /** Escribe una celda en el documento, normalizando la rejilla primero.
+     *  Devuelve la rejilla ya guardada. */
+    const escribirCelda = (sec, f, c, valor) => {
+      const g = hojaDeSec(sec);
+      while (g.length <= f && g.length < PH.MAX_FILAS) g.push(PH.filaVacia());
+      if (!g[f]) return g;
+      g[f][c] = String(valor === null || valor === undefined ? '' : valor);
+      if (!sec.pad) sec.pad = {};
+      /* Se guarda lo que se ESCRIBIÓ, nunca lo calculado: un valor almacenado
+       * se separa en silencio de sus entradas y después no hay forma de saber
+       * cuál de los dos miente (§8). */
+      sec.pad.hoja = g;
+      /* El texto viejo ya migró a la columna de concepto; dejarlo vivo haría
+       * que la próxima carga lo volviera a migrar encima de lo capturado. */
+      if (sec.pad.texto !== undefined) delete sec.pad.texto;
+      return g;
+    };
+
+    /** Recalcula y repinta SÓLO los valores, la barra y el pie. */
+    const pintarPad = (sid) => {
+      const sec = m.secciones.find(x => x.id === sid); if (!sec) return;
+      const g = hojaDeSec(sec);
+      const ev = PH.evaluar(g);
+      const eleg = PH.dir((sec.pad || {}).elegida) ? sec.pad.elegida : 'C1';
+      $$('[data-padcel]').forEach(el => {
+        const [s2, f, c] = el.dataset.padcel.split('|');
+        if (s2 !== sid) return;
+        const ref = el.dataset.padref || '';
+        const crudo = String((g[+f] || [])[+c] || '');
+        el.dataset.padcrudo = crudo;
+        el.classList.toggle('sel', !!ref && ref === eleg);
+        if (document.activeElement === el) return;   // no pisar lo que se teclea
+        if (!ref) { el.value = crudo; return; }
+        const e = ev.errores[ref], v = ev.valores[ref];
+        el.classList.toggle('n-bad', !!e);
+        el.value = e ? ('#' + e) : (v !== null && v !== undefined ? mx(v) : crudo);
+      });
+      const dirEl = $('[data-paddir="' + sid + '"]');
+      if (dirEl) dirEl.textContent = eleg;
+      const fEl = $('[data-padformula="' + sid + '"]');
+      if (fEl && document.activeElement !== fEl) fEl.value = PH.crudoDe(g, eleg);
+      const pie = $('[data-padval="' + sid + '"]');
+      if (pie) {
+        const e = ev.errores[eleg], v = ev.valores[eleg];
+        pie.textContent = e ? (eleg + ' — no se puede calcular (' + e + ')')
+          : (eleg + (v === null || v === undefined ? ' — vacía' : ' = ' + mx(v)));
+      }
+      marcarBoton(sid, sec);
+    };
+
+    $$('[data-padcel]').forEach(el => {
+      const [sid, f, c] = el.dataset.padcel.split('|');
+      const ref = el.dataset.padref || '';
+      /* Al entrar a una celda se ve LO QUE SE ESCRIBIÓ, no el resultado: si
+       * enseñara el valor, corregir una fórmula obligaría a reescribirla
+       * entera. Al salir vuelve el valor, que es para lo que sirve la
+       * rejilla. */
+      el.onfocus = () => {
+        if (ref) {
+          const sec = m.secciones.find(x => x.id === sid);
+          if (sec) { if (!sec.pad) sec.pad = {}; sec.pad.elegida = ref; }
+          el.value = el.dataset.padcrudo || '';
+          el.classList.remove('n-bad');
+          setTimeout(() => { try { el.select(); } catch (e) {} }, 0);
+        }
+        pintarPad(sid);
+      };
       el.oninput = () => {
-        const sec = m.secciones.find(x => x.id === el.dataset.padtxt); if (!sec) return;
-        if (!sec.pad) sec.pad = {};
-        sec.pad.texto = el.value; tocado(m); marcarBoton(sec.id, sec);
+        const sec = m.secciones.find(x => x.id === sid); if (!sec) return;
+        escribirCelda(sec, +f, +c, el.value);
+        tocado(m);
+        const fEl = $('[data-padformula="' + sid + '"]');
+        if (fEl && ref && (sec.pad || {}).elegida === ref) fEl.value = el.value;
+        pintarPad(sid);
+      };
+      el.onblur = () => pintarPad(sid);
+    });
+
+    /* La barra de fórmula: el ancho completo para la celda elegida. A 380 px
+     * una celda mide 70 y una fórmula no cabe — esto es lo que hace que la
+     * hoja en teléfono no sea una promesa incumplida. */
+    $$('[data-padformula]').forEach(el => {
+      const sid = el.dataset.padformula;
+      el.oninput = () => {
+        const sec = m.secciones.find(x => x.id === sid); if (!sec) return;
+        const d = PH.dir((sec.pad || {}).elegida);
+        if (!d) return;
+        escribirCelda(sec, d.fila, d.col + 1, el.value);
+        tocado(m);
+        pintarPad(sid);
       };
     });
-    $$('[data-padcon]').forEach(el => {
-      el.oninput = () => {
-        const sec = m.secciones.find(x => x.id === el.dataset.padcon); if (!sec) return;
-        if (!sec.pad) sec.pad = {};
-        sec.pad.concepto = el.value; tocado(m); marcarBoton(sec.id, sec);
-      };
-    });
-    $$('[data-padimp]').forEach(el => {
-      el.oninput = () => {
-        const sec = m.secciones.find(x => x.id === el.dataset.padimp); if (!sec) return;
-        if (!sec.pad) sec.pad = {};
-        sec.pad.importe = el.value === '' ? null : (parseFloat(el.value) || 0);
-        tocado(m); marcarBoton(sec.id, sec);
-      };
-    });
+
     /* ── V1.36 · abrir y cerrar el panel ──────────────────────────────────
      * Se alterna el atributo `hidden` en vez de repintar la hoja: repintar
      * a 60 renglones cuesta, y peor, tira el foco del textarea a media
@@ -3538,9 +3720,11 @@
     const marcarBoton = (sid, sec) => {
       const b = $('[data-padabrir="' + sid + '"]');
       if (!b) return;
-      b.classList.toggle('con-algo', C.padPendiente(sec));
-      b.title = C.padPendiente(sec) ? 'Pad de trabajo · tiene una cuenta escrita'
-                                  : 'Pad de trabajo · para sacar cuentas';
+      const hay = C.padPendiente(sec);
+      b.classList.toggle('con-algo', hay);
+      b.title = hay ? 'Hoja de trabajo · ' + C.padFilas(sec) + ' fila(s) escritas'
+                    : 'Hoja de trabajo · para sacar cuentas';
+      b.textContent = 'Hoja de trabajo' + (hay ? ' · ' + C.padFilas(sec) : '');
     };
     const cerrarPad = (sid, avisar) => {
       const sec = m.secciones.find(x => x.id === sid); if (!sec) return;
@@ -3571,8 +3755,18 @@
         pnl.hidden = false;
         if (!sec.pad) sec.pad = {};
         sec.pad.abierto = true; tocado(m);
-        const t = pnl.querySelector('.pad-txt');
-        if (t) { t.focus(); try { t.setSelectionRange(t.value.length, t.value.length); } catch (e) {} }
+        /* ── V1.41 · el cursor entra EN LA HOJA al abrirla ────────────────
+         * Lo cazó la prueba de posición: con el `textarea` fuera, el foco se
+         * quedaba en el botón y había que dar un toque más para empezar a
+         * escribir. En un panel que se abre para calcular, ese toque extra es
+         * justo la fricción que el panel existe para quitar.
+         *
+         * Va a la CELDA ELEGIDA, no a la primera: si alguien vuelve a abrir
+         * la hoja, vuelve donde se quedó. */
+        const eleg = PH.dir((sec.pad || {}).elegida) ? sec.pad.elegida : 'C1';
+        const c0 = pnl.querySelector('[data-padref="' + eleg + '"]') ||
+                   pnl.querySelector('[data-padcel]');
+        if (c0) { c0.focus(); try { c0.select(); } catch (e) {} }
       };
     });
     $$('[data-padcerrar]').forEach(el => {
@@ -3590,15 +3784,24 @@
     $$('[data-padpasar]').forEach(el => {
       el.onclick = () => {
         const sec = m.secciones.find(x => x.id === el.dataset.padpasar); if (!sec) return;
-        const pd = sec.pad || {};
-        const imp = Number(pd.importe);
-        if (!pd.concepto || !String(pd.concepto).trim() || !isFinite(imp) || imp <= 0) {
-          toast('Ponle concepto e importe al renglón antes de pasarlo.');
-          return;
+        const g = hojaDeSec(sec);
+        const ev = PH.evaluar(g);
+        const ref = PH.dir((sec.pad || {}).elegida) ? sec.pad.elegida : 'C1';
+        const d = PH.dir(ref);
+        const val = ev.valores[ref];
+        const errc = ev.errores[ref];
+
+        if (errc) { toast('Esa celda no se puede calcular (' + errc + '). Arréglala antes de pasarla.'); return; }
+        if (val === null || val === undefined || !isFinite(val) || val <= 0) {
+          toast('Elige una celda con un importe mayor que cero antes de pasarla.'); return;
         }
-        /* Se busca el primer renglón EN BLANCO en vez de empujar uno nuevo:
-         * la hoja ya nace con treinta y agregar otro dejaría un hueco más
-         * abajo. Si no hay ninguno libre, ahí sí se agrega. */
+        /* El RÓTULO de la fila es el concepto del renglón. Con una rejilla ya
+         * no hace falta un campo «Concepto» aparte: la primera columna es
+         * exactamente eso, y dos sitios para el mismo dato es el error que se
+         * acaba de deshacer en otra pantalla. */
+        const rotulo = String((g[d.fila] || [])[0] || '').trim();
+        if (!rotulo) { toast('Ponle un concepto en la primera columna de esa fila.'); return; }
+
         let libre = sec.partidas.findIndex(x => !C.usadaPartida(x) && !x.descripcion);
         if (libre < 0) {
           sec.partidas.push({ qty: '', unidad: '', tipo: '', descripcion: '', modelo: '',
@@ -3606,25 +3809,33 @@
           libre = sec.partidas.length - 1;
         }
         const l = sec.partidas[libre];
-        l.descripcion = String(pd.concepto).trim();
+        l.descripcion = rotulo;
         l.qty = 1;
         l.unidad = l.unidad || 'Servicio';
         l.tipo = l.tipo || 'Materiales';
-        l.pu = imp;
+        l.pu = val;
         l.moneda = l.moneda || m.moneda;
-        /* Lo que hace que esto valga la pena: el RAZONAMIENTO viaja con el
-         * número, en vez de quedarse en la calculadora del teléfono. */
-        l.comentario = String(pd.texto || '').trim();
-        /* El pad se vacía: dejarlo lleno invita a pasarlo dos veces, y un
-         * renglón duplicado en una cotización se paga. El texto no se pierde,
-         * acaba de mudarse al comentario del renglón. */
-        sec.pad = { abierto: true, texto: '', concepto: '', importe: null };
+        /* ── El comentario lleva CÓMO SALIÓ, no la hoja entera ─────────────
+         * Rótulo, la fórmula tal como se escribió, y el valor. Volcar la hoja
+         * completa haría comentarios de veinte renglones que nadie lee, y el
+         * punto del pad no es archivar la hoja: es que dentro de seis meses
+         * se sepa de dónde salió ESTE número. */
+        const crudo = PH.crudoDe(g, ref).trim();
+        l.comentario = rotulo + (crudo && crudo.charAt(0) === '=' ? ' · ' + crudo : '') +
+                       ' = ' + mx(val);
+        /* La hoja NO se vacía, y aquí cambia respecto del pad de texto. Un
+         * texto pasado se mudaba entero al comentario y dejarlo era invitar a
+         * pasarlo dos veces; una hoja es una cuenta en construcción de la que
+         * salen VARIOS renglones —materiales, mano de obra, flete—, y
+         * borrarla al primero tiraría el trabajo. */
         tocado(m); pintarHoja(m); barra(m, C.calcular(m));
-        /* Se dice DÓNDE quedó el texto. El pad se vacía a la vista del
-         * usuario y sin esto parece que se perdió — y lo que se «pierde» es
-         * justamente el razonamiento, que es lo único que esta función
-         * existe para salvar. */
-        toast('Pasado a «' + l.descripcion + '». El texto no se borró: quedó en el comentario de ese renglón.');
+        /* Se dice LAS TRES cosas: a qué renglón, por cuánto, y DÓNDE quedó la
+         * cuenta. La tercera es la que importa — el razonamiento viajando con
+         * el número es lo único que esta función existe para salvar, y si no
+         * se dice, quien lo usó no sabe que pasó. Lo cazó la prueba de la
+         * V1.36 cuando el aviso nuevo dejó de mencionarlo. */
+        toast('«' + l.descripcion + '» por ' + mx(val) +
+              '. La cuenta quedó en su comentario; la hoja no se borró.');
       };
     });
 

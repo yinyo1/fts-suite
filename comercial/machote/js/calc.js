@@ -18,7 +18,7 @@
    * que no es el que espera. Se bumpea junto con `const VERSION_ARCHIVO` de
    * `app.js`, el `?v=` de `index.html` y `version.json` — hay una prueba que
    * falla si los cuatro se separan. */
-  const VERSION = 'V1.40';
+  const VERSION = 'V1.41';
 
   const num = (v) => (typeof v === 'number' && isFinite(v)) ? v : 0;
   const vacio = (v) => v === null || v === undefined || v === '';
@@ -193,11 +193,45 @@
    *
    *  El importe cuenta aunque sea 0: quien escribió un cero lo escribió a
    *  propósito. Lo que no cuenta es la caja abierta y vacía. */
+  /** ¿La hoja del pad tiene algo escrito?
+   *
+   *  V1.41 · la hoja sustituyó al texto libre. Se leen las DOS formas a
+   *  propósito: `hoja` es la de ahora y `texto` es la de un pad guardado
+   *  antes del cambio, que sigue siendo trabajo de alguien. Se hace aquí
+   *  sin llamar a `PadHoja` para que el motor no dependa del orden de carga
+   *  de los archivos — es una pregunta de «¿hay algo?», no una evaluación. */
   const padPendiente = (sec) => {
     const p = (sec && sec.pad) || {};
-    return !!(String(p.texto || '').trim() ||
-              String(p.concepto || '').trim() ||
-              (p.importe !== null && p.importe !== undefined && p.importe !== ''));
+    if (Array.isArray(p.hoja)) {
+      for (var i = 0; i < p.hoja.length; i++) {
+        var f = p.hoja[i];
+        if (!Array.isArray(f)) continue;
+        for (var j = 0; j < f.length; j++)
+          if (String(f[j] === null || f[j] === undefined ? '' : f[j]).trim()) return true;
+      }
+    }
+    return !!String(p.texto || '').trim();
+  };
+
+  /** Cuántas filas de la hoja traen algo. El botón dice el NÚMERO, no sólo
+   *  que hay algo: un punto dice que existe, un número dice cuánto, y ésa es
+   *  la diferencia entre abrirlo y no. */
+  const padFilas = (sec) => {
+    const p = (sec && sec.pad) || {};
+    var n = 0;
+    if (Array.isArray(p.hoja)) {
+      for (var i = 0; i < p.hoja.length; i++) {
+        var f = p.hoja[i];
+        if (!Array.isArray(f)) continue;
+        var algo = false;
+        for (var j = 0; j < f.length; j++)
+          if (String(f[j] === null || f[j] === undefined ? '' : f[j]).trim()) algo = true;
+        if (algo) n++;
+      }
+    } else if (String(p.texto || '').trim()) {
+      n = String(p.texto).split('\n').filter(function (x) { return x.trim(); }).length;
+    }
+    return n;
   };
 
   /** ¿Este renglón está CAPTURADO? Es lo que lo pinta de verde.
@@ -1018,7 +1052,7 @@
     EMPRESAS, empresaDe, monedaPorDefecto,
     MARGENES_PLANTILLA, RECARGOS_PLANTILLA, COMISION_FTS_PLANTILLA, MARGEN_DESEADO_PLANTILLA, REPARTO_PLANTILLA,
     PARTIDAS_EN_BLANCO, EQUIPO_VENTA_PLANTILLA, EQUIPO_OPS_PLANTILLA,
-    usadaPartida, capturada, padPendiente,
+    usadaPartida, capturada, padPendiente, padFilas,
     seccionNueva, machoteNuevo,
     tcEfectivo, margenes, comisionesDe, costoMo, costoPartida, totalSeccion,
     calcular, precioParaMargen, repartir

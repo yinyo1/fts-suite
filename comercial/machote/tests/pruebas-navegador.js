@@ -7283,17 +7283,30 @@ await sembrarMachotes(q);
       const t0 = await total();
       if (!t0) throw new Error('la barra no dice ningún total');
 
+      /* V1.41 · la hoja sustituyó al textarea. Se teclea el caso REAL de
+       * Montalvo en la rejilla, celda por celda, y el total no se mueve ni
+       * cuando la fórmula ya resolvió a 25,800. */
+      const sid0 = await q.evaluate(() => {
+        const e = document.querySelector('[data-padcel]');
+        return e ? e.dataset.padcel.split('|')[0] : null;
+      });
+      if (!sid0) throw new Error('la hoja no pintó ninguna celda');
+      const celda = (f, c) => '[data-padcel="' + sid0 + '|' + f + '|' + c + '"]';
       const escribirPad = async (sel, val) => {
-        await q.fill(sel, val); await q.dispatchEvent(sel, 'input'); await q.waitForTimeout(400);
+        await q.fill(sel, val); await q.dispatchEvent(sel, 'input'); await q.waitForTimeout(250);
       };
-      await escribirPad('[data-padtxt]', '3 tramos × 12 m × $450/m\n+ 8 soportes × $1,200\n= 25,800');
+      await escribirPad(celda(0, 0), 'Canalización tramo norte');
+      await escribirPad(celda(0, 1), '3');
+      await escribirPad(celda(0, 2), '12');
       if (await total() !== t0)
-        throw new Error('escribir la cuenta movió el total: ' + t0 + ' → ' + await total());
-      await escribirPad('[data-padcon]', 'Canalización tramo norte');
-      if (await total() !== t0) throw new Error('el concepto movió el total');
-      await escribirPad('[data-padimp]', '25800');
+        throw new Error('escribir en la hoja movió el total: ' + t0 + ' → ' + await total());
+      await escribirPad(celda(0, 3), '=A1*B1*450');
       if (await total() !== t0)
-        throw new Error('EL IMPORTE DEL PAD MOVIÓ EL TOTAL: ' + t0 + ' → ' + await total());
+        throw new Error('UNA FÓRMULA DE LA HOJA MOVIÓ EL TOTAL: ' + t0 + ' → ' + await total());
+      await escribirPad(celda(1, 0), 'Soportes');
+      await escribirPad(celda(1, 3), '9600');
+      if (await total() !== t0)
+        throw new Error('EL IMPORTE DE LA HOJA MOVIÓ EL TOTAL: ' + t0 + ' → ' + await total());
 
       /* Sobrevive a recargar, y SIGUE sin contar.
        *
@@ -7313,10 +7326,14 @@ await sembrarMachotes(q);
           const raw = JSON.parse(localStorage.getItem('fts_machote_v1') || '{}');
           const m = (raw.machotes || []).find(x => x.id === 'M-1041');
           const s = m && (m.secciones || []).find(x => (x.pad || {}).abierto === true);
-          return !!(s && String((s.pad || {}).texto || '').indexOf('25,800') >= 0);
+          /* V1.41 · se espera la FÓRMULA en la rejilla, no el texto: es lo
+           * que se guarda ahora, y esperar lo viejo daría un fallo que parece
+           * de guardado y es de la prueba. */
+          const h = s && (s.pad || {}).hoja;
+          return !!(h && JSON.stringify(h).indexOf('=A1*B1*450') >= 0);
         } catch (e) { return false; }
       }, { timeout: 8000 }).catch(() => { throw new Error(
-        'el pad NUNCA llegó al almacén en 8 s: no es lentitud, es que no se guardó'); });
+        'la hoja NUNCA llegó al almacén en 8 s: no es lentitud, es que no se guardó'); });
       const t_guardado = Date.now() - t_ini;
       if (t_guardado > 1500) console.log('    ⚠️ el autoguardado tardó ' + t_guardado +
         ' ms (el debounce es de 500): la máquina va cargada');
@@ -7363,10 +7380,24 @@ await sembrarMachotes(q);
           ' · guardado_at: ' + ev.guardado_at +
           '\n      EVIDENCIA · pads en el almacén: ' + JSON.stringify(ev.pads));
       }
-      if (!/25,800/.test(await q.inputValue('[data-padtxt]')))
-        throw new Error('el pad no sobrevivió a recargar');
+      /* Sobrevive a recargar: la FÓRMULA, no su resultado. Es la prueba de
+       * que se guarda lo escrito y se recalcula al abrir, que es la regla que
+       * evita que un número almacenado se separe de sus entradas (§8). */
+      const guardado = await q.evaluate(() => {
+        const raw = JSON.parse(localStorage.getItem('fts_machote_v1') || '{}');
+        const m = (raw.machotes || []).find(x => x.id === 'M-1041') || {};
+        const s = (m.secciones || []).find(x => x.pad && x.pad.hoja);
+        return s ? s.pad.hoja[0] : null;
+      });
+      if (!guardado) throw new Error('la hoja no sobrevivió a recargar');
+      if (guardado[3] !== '=A1*B1*450')
+        throw new Error('se guardó el RESULTADO en vez de la fórmula: ' + JSON.stringify(guardado));
+      const visto = await q.inputValue(celda(0, 3));
+      if (!/16,200/.test(visto))
+        throw new Error('la celda no enseña el valor recalculado: ' + visto);
 
-      // EL BOTÓN es la única puerta: pasa el número Y SE LLEVA EL TEXTO.
+      // EL BOTÓN es la única puerta: pasa el número de la celda elegida.
+      await q.click(celda(0, 3)); await q.waitForTimeout(300);
       await q.click('[data-padpasar]'); await q.waitForTimeout(ALMACEN);
       if (await total() === t0) throw new Error('el botón no movió nada: ' + t0);
       const llevado = await q.evaluate(() => {
@@ -7375,14 +7406,19 @@ await sembrarMachotes(q);
         const s = (m.secciones || []).find(x => (x.partidas || [])
           .some(l => l.descripcion === 'Canalización tramo norte'));
         const l = s && s.partidas.find(x => x.descripcion === 'Canalización tramo norte');
-        return { pu: l && l.pu, com: l && l.comentario, padTexto: s && s.pad && s.pad.texto };
+        return { pu: l && l.pu, com: l && l.comentario, hoja: s && s.pad && s.pad.hoja };
       });
-      if (Number(llevado.pu) !== 25800) throw new Error('el renglón no llevó el importe: ' + llevado.pu);
-      if (!/25,800/.test(llevado.com || ''))
-        throw new Error('EL RAZONAMIENTO NO VIAJÓ con el número: ' + llevado.com);
-      if (llevado.padTexto) throw new Error('el pad no se vació al pasar el renglón');
-      console.log('    tres cajas escritas, cero centavos movidos · sobrevive a recargar · ' +
-                  'el botón pasa importe Y razonamiento');
+      if (Number(llevado.pu) !== 16200) throw new Error('el renglón no llevó el importe: ' + llevado.pu);
+      if (!/=A1\*B1\*450/.test(llevado.com || ''))
+        throw new Error('LA CUENTA NO VIAJÓ con el número: ' + llevado.com);
+      if (!/16,200/.test(llevado.com || ''))
+        throw new Error('el comentario no dice a cuánto resolvió: ' + llevado.com);
+      /* Y la hoja NO se vacía, al revés que el pad de texto: de una hoja
+       * salen VARIOS renglones y borrarla al primero tiraría el trabajo. */
+      if (!llevado.hoja || !llevado.hoja.length)
+        throw new Error('la hoja se borró al pasar un renglón');
+      console.log('    celdas y fórmula escritas, cero centavos movidos · se guarda la FÓRMULA · ' +
+                  'el botón pasa importe Y cuenta, y la hoja se queda');
     } finally { await q.close(); }
   });
 
@@ -7590,7 +7626,7 @@ await sembrarMachotes(q);
           const r = e.getBoundingClientRect();
           return { top: Math.round(r.top), bottom: Math.round(r.bottom),
                    alto: Math.round(r.height), ventana: window.innerHeight,
-                   tieneTexto: !!e.querySelector('.pad-txt'),
+                   tieneTexto: !!e.querySelector('.pad-formula'),
                    tieneBoton: !!e.querySelector('[data-padpasar]') };
         });
         if (!pnl) { malos.push(w + 'px: el panel del pad no se abrió desde el fondo de la hoja'); continue; }
@@ -7714,12 +7750,19 @@ await sembrarMachotes(q);
       await q.locator('.pestana').nth(1).click(); await q.waitForTimeout(900);
 
       await q.click('[data-padabrir]'); await q.waitForTimeout(350);
-      await q.fill('[data-padtxt]', '3 tramos × 12 m × $450/m = 16,200');
-      await q.dispatchEvent('[data-padtxt]', 'input');
-      await q.fill('[data-padcon]', 'Canalización tramo norte');
-      await q.dispatchEvent('[data-padcon]', 'input');
-      await q.fill('[data-padimp]', '16200');
-      await q.dispatchEvent('[data-padimp]', 'input');
+      /* V1.41 · en la rejilla: el rótulo de la fila es el concepto del
+       * renglón, y el importe sale de la celda elegida. */
+      const sidP = await q.evaluate(() => {
+        const e = document.querySelector('[data-padcel]');
+        return e ? e.dataset.padcel.split('|')[0] : null;
+      });
+      const celP = (f, c) => '[data-padcel="' + sidP + '|' + f + '|' + c + '"]';
+      for (const [sel, val] of [[celP(0,0), 'Canalización tramo norte'],
+                                [celP(0,1), '3'], [celP(0,2), '12'],
+                                [celP(0,3), '=A1*B1*450']]) {
+        await q.fill(sel, val); await q.dispatchEvent(sel, 'input'); await q.waitForTimeout(150);
+      }
+      await q.click(celP(0, 3)); await q.waitForTimeout(250);
       await q.waitForTimeout(400);
 
       await q.click('[data-padpasar]'); await q.waitForTimeout(500);
@@ -7764,8 +7807,13 @@ await sembrarMachotes(q);
         throw new Error('el botón trae el punto con el pad vacío');
 
       await q.click('[data-padabrir]'); await q.waitForTimeout(300);
-      await q.fill('[data-padtxt]', 'una cuenta a medias que nadie pasó');
-      await q.dispatchEvent('[data-padtxt]', 'input'); await q.waitForTimeout(400);
+      const sidC = await q.evaluate(() => {
+        const e = document.querySelector('[data-padcel]');
+        return e ? e.dataset.padcel.split('|')[0] : null;
+      });
+      const selC = '[data-padcel="' + sidC + '|0|0"]';
+      await q.fill(selC, 'una cuenta a medias que nadie pasó');
+      await q.dispatchEvent(selC, 'input'); await q.waitForTimeout(400);
 
       if (!(await q.$eval('[data-padabrir]', e => e.classList.contains('con-algo'))))
         throw new Error('escribí en el pad y el botón no marcó que tiene algo');
@@ -8043,7 +8091,8 @@ await sembrarMachotes(q);
         });
         if (!pn) { malos.push(w + ': el botón de la barra no abrió el pad'); continue; }
         if (!pn.dentro) malos.push(w + ': el pad abrió fuera de la ventana (top ' + pn.top + ')');
-        if (pn.foco.indexOf('pad-txt') < 0) malos.push(w + ': abrió sin dejar el cursor en el pad');
+        if (pn.foco.indexOf('pad-formula') < 0 && pn.foco.indexOf('padcel') < 0)
+          malos.push(w + ': abrió sin dejar el cursor en la hoja (foco: ' + pn.foco + ')');
         console.log('    ' + w + 'px · hoja en y=' + pn.y + ' · botón en pantalla · ' +
                     'panel top ' + pn.top + ', alto ' + pn.alto + ' de ' + pn.ventana +
                     ' · foco en el texto');
@@ -8281,7 +8330,11 @@ await sembrarMachotes(q);
       if (!r.com.enPantalla) throw new Error('la comisión no está en la primera pantalla: y=' + r.com.y);
       /* El rótulo tiene que decir QUÉ ES: «Pad» solo no se lo dice a nadie que
        * no lo sepa ya, y el `title` no existe en teléfono. */
-      if (!/pad de trabajo/i.test(r.padTexto || ''))
+      /* V1.41 · «Hoja de trabajo», y con el número de filas cuando hay algo.
+       * Lo que la prueba defiende no es la palabra exacta: es que el rótulo
+       * DIGA QUÉ ES, en vez de una abreviatura que sólo entiende quien ya
+       * sabe. «Pad» no lo decía; «Hoja de trabajo» sí. */
+      if (!/hoja de trabajo/i.test(r.padTexto || ''))
         throw new Error('el botón no dice qué es: ' + JSON.stringify(r.padTexto));
       /* Y el campo tiene que ser tocable de verdad: es el control que la gente
        * usa, y el mínimo táctil vale igual para un `input` que para un botón. */
@@ -8329,6 +8382,214 @@ await sembrarMachotes(q);
       console.log('    pestañas ' + JSON.stringify(hojas) + ' · ¿dentro de la sección? ' + hayPad);
       if (hayPad)
         throw new Error('una cotización sin renglones capturados aterrizó DENTRO de la sección');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.41 · la hoja calcula el caso real de Montalvo, y el número CABE a los cuatro anchos', async () => {
+    /* El caso es el que Montalvo ya escribe a mano en el pad de texto:
+     * `3 tramos × 12 m × $450/m + 8 soportes × $1,200 = 25,800`. Si eso no da
+     * 25,800 exactos en la rejilla, la hoja no sirve por más que el resto pase.
+     *
+     * Y el RECORTE, que es lo que la primera versión falló y los conteos no
+     * veían: a 380 px la celda quedó en 54 px y `$16,200` se leía `$16,2(`.
+     * Un importe recortado es peor que uno ausente — se lee como otro número.
+     * Se mide con `scrollWidth > clientWidth`, no a ojo. */
+    const malos = [];
+    for (const [w, h] of [[1280, 900], [900, 900], [760, 900], [380, 820]]) {
+      const q = await b.newPage({ viewport: { width: w, height: h } });
+      q.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
+      try {
+        await sembrarGeo(q); await sembrarMachotes(q);
+        await q.addInitScript(() => {
+          try { localStorage.setItem('fts_suite_session', JSON.stringify({
+            token:'p.p.p', actor:'zz.prueba', nombre:'ZZ Prueba', empleado_id:null,
+            scopes:['comercial:read'], exp: Math.floor(Date.now()/1000)+3600 })); } catch (e) {}
+        });
+        await q.goto(BASE); await q.waitForTimeout(1000);
+        await q.evaluate(() => { location.hash = '#/m/M-1041'; }); await q.waitForTimeout(900);
+        await q.locator('.pestana').nth(1).click(); await q.waitForTimeout(400);
+        const abrir = await q.$('[data-padabrir]');
+        if (!abrir) { malos.push(w + ': no hay botón para abrir la hoja'); continue; }
+        await abrir.click(); await q.waitForTimeout(500);
+
+        const sid = await q.evaluate(() => {
+          const e = document.querySelector('[data-padcel]');
+          return e ? e.dataset.padcel.split('|')[0] : null;
+        });
+        if (!sid) { malos.push(w + ': la hoja abrió sin celdas'); continue; }
+        const cel = (f, c) => '[data-padcel="' + sid + '|' + f + '|' + c + '"]';
+        for (const [sel, val] of [[cel(0,0),'Tramos'], [cel(0,1),'3'], [cel(0,2),'12'],
+                                  [cel(0,3),'=A1*B1*450'],
+                                  [cel(1,0),'Soportes'], [cel(1,1),'8'], [cel(1,2),'1200'],
+                                  [cel(1,3),'=A2*B2'],
+                                  [cel(2,0),'Total'], [cel(2,3),'=SUMA(C1:C2)']]) {
+          const el = await q.$(sel); if (!el) { malos.push(w + ': falta ' + sel); break; }
+          await el.scrollIntoViewIfNeeded(); await el.click();
+          await q.fill(sel, val); await q.dispatchEvent(sel, 'input'); await q.waitForTimeout(90);
+        }
+        await q.evaluate(() => document.activeElement && document.activeElement.blur());
+        await q.waitForTimeout(400);
+
+        const r = await q.evaluate((sid) => {
+          const v = (f, c) => { const e = document.querySelector('[data-padcel="' + sid + '|' + f + '|' + c + '"]');
+                                return e ? e.value : null; };
+          const barra = document.querySelector('.pad-formula');
+          const celda = document.querySelector('[data-padcel][data-padref]');
+          return {
+            C1: v(0,3), C2: v(1,3), C3: v(2,3),
+            anchoBarra: barra ? Math.round(barra.getBoundingClientRect().width) : 0,
+            anchoCelda: celda ? Math.round(celda.getBoundingClientRect().width) : 0,
+            desborde: document.documentElement.scrollWidth > innerWidth,
+            recortadas: [...document.querySelectorAll('input.padcel')]
+              .filter(e => e.scrollWidth > e.clientWidth + 1)
+              .map(e => (e.dataset.padref || 'rot') + ':' + e.value)
+          };
+        }, sid);
+        console.log('    ' + w + 'px · C1 ' + r.C1 + ' · C2 ' + r.C2 + ' · C3 ' + r.C3 +
+                    ' · celda ' + r.anchoCelda + 'px · barra ' + r.anchoBarra + 'px');
+        if (!/16,200/.test(r.C1 || '')) malos.push(w + ': C1 debería ser 16,200 y dice ' + r.C1);
+        if (!/9,600/.test(r.C2 || '')) malos.push(w + ': C2 debería ser 9,600 y dice ' + r.C2);
+        if (!/25,800/.test(r.C3 || '')) malos.push(w + ': C3 debería ser 25,800 y dice ' + r.C3);
+        if (r.recortadas.length) malos.push(w + ': celdas RECORTADAS → ' + JSON.stringify(r.recortadas));
+        if (r.desborde) malos.push(w + ': la hoja desborda a lo ancho');
+        /* La barra tiene que ser mucho más ancha que una celda: ésa es toda
+         * su razón de ser, y sin el número la «barra de fórmula» podría ser
+         * un campo de 60 px que no arregla nada. */
+        if (r.anchoBarra < r.anchoCelda * 2)
+          malos.push(w + ': la barra de fórmula (' + r.anchoBarra + 'px) no es más ancha que una celda (' + r.anchoCelda + 'px)');
+      } finally { await q.close(); }
+    }
+    if (malos.length) throw new Error(malos.join(' | '));
+  });
+
+  await paso('V1.41 · un ciclo se marca y no cuelga; una celda rota no se puede pasar', async () => {
+    /* Las dos mitades del filo. Un parser que corre texto de un usuario tiene
+     * que fallar RUIDOSO: si un ciclo se colgara, el navegador se muere con
+     * la cotización dentro; si una celda rota se pudiera pasar, un número que
+     * no existe entraría al precio. */
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    q.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
+    try {
+      await sembrarGeo(q); await sembrarMachotes(q);
+      await q.addInitScript(() => {
+        try { localStorage.setItem('fts_suite_session', JSON.stringify({
+          token:'p.p.p', actor:'zz.prueba', nombre:'ZZ Prueba', empleado_id:null,
+          scopes:['comercial:read'], exp: Math.floor(Date.now()/1000)+3600 })); } catch (e) {}
+      });
+      await q.goto(BASE); await q.waitForTimeout(1000);
+      await q.evaluate(() => { location.hash = '#/m/M-1041'; }); await q.waitForTimeout(900);
+      await q.locator('.pestana').nth(1).click(); await q.waitForTimeout(400);
+      await (await q.$('[data-padabrir]')).click(); await q.waitForTimeout(500);
+      const sid = await q.evaluate(() => document.querySelector('[data-padcel]').dataset.padcel.split('|')[0]);
+      const cel = (f, c) => '[data-padcel="' + sid + '|' + f + '|' + c + '"]';
+
+      const t0 = Date.now();
+      for (const [sel, val] of [[cel(0,0),'Vueltas'], [cel(0,1),'=B1'], [cel(0,2),'=C1'], [cel(0,3),'=A1']]) {
+        await q.fill(sel, val); await q.dispatchEvent(sel, 'input'); await q.waitForTimeout(90);
+      }
+      await q.evaluate(() => document.activeElement && document.activeElement.blur());
+      await q.waitForTimeout(400);
+      const tardo = Date.now() - t0;
+      if (tardo > 8000) throw new Error('el ciclo tardó ' + tardo + ' ms: parece un cuelgue');
+
+      const r = await q.evaluate((sid) => {
+        const v = (f, c) => document.querySelector('[data-padcel="' + sid + '|' + f + '|' + c + '"]').value;
+        return { A1: v(0,1), B1: v(0,2), C1: v(0,3),
+                 pie: (document.querySelector('[data-padval]') || {}).textContent };
+      }, sid);
+      console.log('    ciclo → A1 ' + r.A1 + ' · B1 ' + r.B1 + ' · C1 ' + r.C1 + ' · pie «' + r.pie + '»');
+      /* LAS TRES marcadas, no sólo donde se detectó: una celda de un ciclo que
+       * enseñara `0` con confianza es peor que el error. */
+      for (const k of ['A1', 'B1', 'C1'])
+        if (!/#CICLO/.test(r[k] || '')) throw new Error(k + ' no dice #CICLO: ' + r[k]);
+
+      // Y pasarla a un renglón tiene que NEGARSE.
+      await q.click(cel(0,3)); await q.waitForTimeout(250);
+      const antes = await q.evaluate(() => {
+        const m = JSON.parse(localStorage.getItem('fts_machote_v1')).machotes.find(x => x.id === 'M-1041');
+        return (m.secciones || []).reduce((a, s) => a + (s.partidas || []).filter(l => l.descripcion).length, 0);
+      });
+      await q.click('[data-padpasar]'); await q.waitForTimeout(700);
+      const despues = await q.evaluate(() => {
+        const m = JSON.parse(localStorage.getItem('fts_machote_v1')).machotes.find(x => x.id === 'M-1041');
+        return (m.secciones || []).reduce((a, s) => a + (s.partidas || []).filter(l => l.descripcion).length, 0);
+      });
+      if (despues !== antes)
+        throw new Error('dejó pasar una celda que no se puede calcular: ' + antes + ' → ' + despues);
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.41 · DESGLOSE dice cuántas secciones tienen su propia comisión', async () => {
+    /* Sólo el dato. Quien revisa la cotización completa necesita saber que
+     * hay comisiones distintas, porque cambia el total — y el conteo sale del
+     * MOTOR, no de que la pantalla relea los campos. */
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    q.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
+    try {
+      await sembrarGeo(q); await sembrarMachotes(q);
+      await q.addInitScript(() => {
+        try { localStorage.setItem('fts_suite_session', JSON.stringify({
+          token:'p.p.p', actor:'zz.prueba', nombre:'ZZ Prueba', empleado_id:null,
+          scopes:['comercial:read'], exp: Math.floor(Date.now()/1000)+3600 })); } catch (e) {}
+      });
+      await q.goto(BASE); await q.waitForTimeout(1000);
+      await q.evaluate(() => { location.hash = '#/m/M-1041'; }); await q.waitForTimeout(900);
+
+      const leer = () => q.evaluate(() => {
+        const e = document.querySelector('.com-resumen');
+        return e ? e.textContent.replace(/\s+/g, ' ').trim() : null;
+      });
+      const sin = await leer();
+      if (!sin) throw new Error('DESGLOSE no dice nada de las comisiones');
+      if (/tiene|tienen/.test(sin)) throw new Error('avisa de un desvío que no existe: ' + sin);
+
+      // Apartar UNA sección y volver a DESGLOSE.
+      await q.locator('.pestana').nth(1).click(); await q.waitForTimeout(400);
+      const campo = q.locator('[data-cel^="com:"][data-cel$=":fts"]').first();
+      await campo.scrollIntoViewIfNeeded();
+      await campo.fill('12'); await campo.dispatchEvent('change'); await q.waitForTimeout(800);
+      await q.locator('.pestana').nth(0).click(); await q.waitForTimeout(600);
+
+      const con = await leer();
+      console.log('    sin desvíos: «' + sin + '»\n    con uno:     «' + con + '»');
+      if (!/1 de \d+ secciones? tiene su propia comisión/.test(con || ''))
+        throw new Error('el conteo no cuadra con lo apartado: ' + con);
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.41 · un machote SIN reparto no tira la hoja de desglose', async () => {
+    /* Venía de antes y hoy no le pega a nadie porque todo documento real trae
+     * `reparto` — pero uno que llegue de un rescate o de un archivo viejo
+     * dejaría la pantalla en blanco con «Cannot read properties of undefined»,
+     * y el error no diría qué campo falta. */
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    const propios = [];
+    q.on('pageerror', e => propios.push(e.message));
+    try {
+      await sembrarGeo(q);
+      await q.addInitScript(() => {
+        try {
+          localStorage.setItem('fts_suite_session', JSON.stringify({
+            token:'p.p.p', actor:'zz.prueba', nombre:'ZZ Prueba', empleado_id:null,
+            scopes:['comercial:read'], exp: Math.floor(Date.now()/1000)+3600 }));
+          localStorage.setItem('fts_machote_v1', JSON.stringify({ v:1,
+            guardado_at:new Date().toISOString(), handoff:{},
+            machotes:[{ id:'M-SINREP', nombre:'Sin reparto', cliente:'ZZ', moneda:'MXN',
+              comision_fts:0.055, comision_cliente:0, margen_deseado:0.4,
+              secciones:[{ id:'s-1', nombre:'SECCIÓN 1', mo:[], partidas:[] }] }] }));
+        } catch (e) {}
+      });
+      await q.goto(BASE); await q.waitForTimeout(1000);
+      await q.evaluate(() => { location.hash = '#/m/M-SINREP'; }); await q.waitForTimeout(1200);
+      const pinto = await q.evaluate(() => {
+        const t = document.querySelector('#hoja');
+        return { hay: !!t && t.textContent.length > 200,
+                 comisiones: /TABLA DE COMISIONES/.test(t ? t.textContent : '') };
+      });
+      console.log('    pintó: ' + JSON.stringify(pinto) + ' · errores propios: ' + propios.length);
+      if (propios.length) throw new Error('tiró la pantalla: ' + propios[0]);
+      if (!pinto.hay) throw new Error('la hoja de desglose quedó vacía');
+      if (!pinto.comisiones) throw new Error('no pintó la tabla de comisiones');
     } finally { await q.close(); }
   });
 

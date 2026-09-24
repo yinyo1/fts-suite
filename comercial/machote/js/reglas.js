@@ -598,18 +598,18 @@
         return { tab: 'secc', seccion: s ? s.id : null };
       },
       id: 'pad-sin-pasar', severidad: 'blanda', area: 'Captura',
-      titulo: 'Una cuenta se quedó en el pad de trabajo',
+      titulo: 'Una cuenta se quedó en la hoja de trabajo',
       evaluar: (m) => {
         const secs = (m.secciones || []).filter(x => C.padPendiente(x));
         if (!secs.length) return null;
         return {
-          detalle: 'El pad no entra en ningún total: lo que está ahí NO está en el precio. ' +
-                   'Si ese número va en la cotización, pásalo a un renglón con el botón del pad; ' +
+          detalle: 'La hoja de trabajo no entra en ningún total: lo que está ahí NO está en el precio. ' +
+                   'Si ese número va en la cotización, elige su celda y pásala a un renglón; ' +
                    'si era sólo una cuenta de paso, se puede dejar.',
+          /* V1.41 · se cuentan FILAS, no el concepto y el importe de antes:
+           * la hoja sustituyó a los dos campos sueltos del pad de texto. */
           items: secs.map(x => (x.nombre || 'sin nombre') +
-            ((x.pad || {}).concepto ? ' → ' + x.pad.concepto : '') +
-            ((x.pad || {}).importe !== null && (x.pad || {}).importe !== undefined && x.pad.importe !== ''
-              ? ' · ' + x.pad.importe : ''))
+            ' · ' + C.padFilas(x) + ' fila(s) escritas')
         };
       }
     },

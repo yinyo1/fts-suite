@@ -17,6 +17,7 @@
  * puede comprobar mirando. Las dos se corren antes de mergear.
  */
 global.window = global;
+require(require('path').resolve(__dirname, '..', 'js', 'pad-hoja.js'));
 require(require('path').resolve(__dirname, '..', 'js', 'calc.js'));
 const C = window.MachoteCalc;
 let ok = 0, mal = 0;
@@ -473,6 +474,78 @@ es(tieneDura(vj, 'foranea-sin-viaje'), false, 'viejos · pero no los trata como 
   delete viejo.secciones[0].comision_cliente;
   es(C.calcular(viejo).escenarios.con_utilidad.precio === cSin.escenarios.con_utilidad.precio, true,
      'comisiones · un machote sin los campos nuevos da EXACTAMENTE el mismo precio');
+})();
+
+/* ══ V1.41 · EL EVALUADOR DE LA HOJA DEL PAD ══════════════════════════════
+ *
+ * Es el trozo con más filo de la sesión: un parser escrito a mano que corre
+ * texto de un usuario. Se ejercita aquí y no sólo en el navegador porque es
+ * JavaScript puro y porque estos casos tienen que correr en un segundo cada
+ * vez que alguien lo toque.
+ *
+ * ⚠️ El caso 1 es EL de Montalvo: lo que hoy escribe a mano en el pad de
+ * texto (`3 tramos × 12 m × $450/m + 8 soportes × $1,200 = 25,800`), tecleado
+ * como lo teclearía en la rejilla. Si eso no da 25,800 exactos, la hoja no
+ * sirve por más que el resto pase.
+ */
+(function () {
+  const PH = window.PadHoja;
+  const ev = (h) => PH.evaluar(h);
+
+  // 1 · el caso real
+  const real = ev([['Tramos','3','12','=A1*B1*450'],
+                   ['Soportes','8','1200','=A2*B2'],
+                   ['Total','','','=SUMA(C1:C2)']]);
+  es(real.valores.C1, 16200, 'hoja · 3 × 12 × 450 = 16,200');
+  es(real.valores.C2, 9600,  'hoja · 8 × 1,200 = 9,600');
+  es(real.valores.C3, 25800, 'hoja · SUMA de la columna = 25,800');
+  es(Object.keys(real.errores).length, 0, 'hoja · el caso real no da ningún error');
+
+  // 2 · aritmética
+  es(ev([['','','','=2+3*4']]).valores.C1, 14, 'hoja · precedencia: 2+3*4 = 14');
+  es(ev([['','','','=(2+3)*4']]).valores.C1, 20, 'hoja · paréntesis: (2+3)*4 = 20');
+  es(ev([['','','','=-5+2']]).valores.C1, -3, 'hoja · menos unario');
+  es(ev([['','','','=10/4']]).valores.C1, 2.5, 'hoja · división');
+
+  // 3 · los errores NO se convierten en números, que es lo peligroso
+  es(ev([['','','','=1/0']]).errores.C1, 'DIV0', 'hoja · dividir entre cero se marca');
+  es(ev([['','','','=2+']]).errores.C1, 'SINTAXIS', 'hoja · fórmula a medias se marca');
+  es(ev([['','','','=Z9+1']]).errores.C1, 'REF', 'hoja · referencia fuera de la rejilla se marca');
+
+  // 4 · ciclos, y que NO cuelguen
+  es(ev([['','=A1','','']]).errores.A1, 'CICLO', 'hoja · una celda que se cita a sí misma');
+  const ind = ev([['','=B1','=C1','=A1']]);
+  es(ind.errores.A1 === 'CICLO' && ind.errores.B1 === 'CICLO' && ind.errores.C1 === 'CICLO', true,
+     'hoja · en un ciclo indirecto se marcan LAS TRES, no sólo donde se detectó');
+  es(ind.valores.A1, null, 'hoja · una celda en ciclo no enseña un cero con confianza');
+
+  // 5 · un error se PROPAGA a quien lo usa
+  const prop = ev([['','=1/0','=A1+5','']]);
+  es(prop.errores.B1, 'REF', 'hoja · quien suma una celda rota queda marcado, no da 5');
+  es(prop.valores.B1, null, 'hoja · y no enseña número');
+
+  // 6 · lo que la gente teclea de verdad
+  es(ev([['','$1,200','2','=A1*B1']]).valores.C1, 2400, 'hoja · acepta $ y comas de millares');
+  es(ev([['','hola','5','=A1+B1']]).valores.C1, 5, 'hoja · el texto vale cero, no rompe');
+  es(ev([['','1','2','=SUMA(A1,B1)']]).valores.C1, 3, 'hoja · SUMA con lista de celdas');
+  es(ev([['','1','2',''],['','3','4','=SUMA(A1:B2)']]).valores.C2, 10, 'hoja · SUMA de un rango 2D');
+
+  // 7 · la migración del pad de texto, que es trabajo de alguien
+  const mig = PH.hojaDe({ pad: { texto: 'primera\nsegunda' } });
+  es(mig.length, 2, 'hoja · un pad de texto viejo migra a filas');
+  es(mig[0][0], 'primera', 'hoja · el texto viejo cae en la columna de CONCEPTO');
+  es(PH.hojaDe({ pad: { hoja: [['x','','','']], texto: 'viejo' } })[0][0], 'x',
+     'hoja · si ya hay rejilla, el texto viejo no la pisa');
+
+  // 8 · defensivo: una hoja mal formada no puede tirar la sección
+  es(PH.normalizar(null).length, 0, 'hoja · null no revienta');
+  es(PH.normalizar([null, 'x', [1,2,3,4,5]]).length, 3, 'hoja · filas basura se normalizan');
+  es(PH.evaluar([['','=SUMA(A1:C20)','','']]).errores.A1, 'CICLO',
+     'hoja · un rango que se incluye a sí mismo es un ciclo, no un cuelgue');
+
+  // 9 · el tope de filas se respeta
+  const muchas = []; for (let i = 0; i < 60; i++) muchas.push(['x','','','']);
+  es(PH.normalizar(muchas).length, PH.MAX_FILAS, 'hoja · no se pasa del tope de filas');
 })();
 
 console.log('\n' + ok + ' pasaron, ' + mal + ' fallaron.');

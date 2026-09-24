@@ -232,9 +232,17 @@ select.cel { -webkit-appearance: none; appearance: none; padding-right: 16px;
 .fija .mono { font-size: 15px; font-weight: 700; }
 textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--linea);
            border-radius: 8px; padding: 9px; font: inherit; }
+/* ⚠️ `shared/fts-styles.css` le pone `white-space: nowrap` al aviso, que en
+ * el teléfono lo saca de la pantalla por los dos lados: se ve cortado y el
+ * mensaje se pierde justo en el ancho donde más falta hace. Se descubrió
+ * mirando una captura a 380 px de un aviso largo — el ancho no lo delataba.
+ * Se envuelve y se le pone tope, que es lo que hace que un aviso siga siendo
+ * legible sin importar lo que diga. */
 .toast { position: fixed; left: 50%; bottom: 78px; transform: translate(-50%, 12px);
          background: #222; color: #fff; padding: 10px 16px; border-radius: 20px;
-         font-size: 13px; opacity: 0; transition: .25s; z-index: 50; }
+         font-size: 13px; opacity: 0; transition: .25s; z-index: 50;
+         white-space: normal; max-width: calc(100vw - 32px); width: max-content;
+         line-height: 1.4; text-align: center; }
 .toast.on { opacity: 1; transform: translate(-50%, 0); }
 
 /* ══ Teléfono: la retícula se vuelve tarjetas ═════════════════════════ */
@@ -1816,25 +1824,71 @@ table.lista td.mono { white-space: nowrap; }
 .pad-cab .pad-cerrar { margin-left: auto; }
 .pad-ayuda { margin: 6px 12px 8px; }
 
-/* Monoespaciada a propósito: son cuentas en columna -«3 × 12 × 450»- y con
- * fuente proporcional los números no alinean y el error de dedo no se ve. */
-.pad-panel textarea.pad-txt { display: block; width: calc(100% - 24px);
-                              margin: 0 12px 10px;
-                              font: 13px/1.55 ui-monospace, SFMono-Regular,
-                                    Menlo, Consolas, monospace;
-                              resize: vertical; }
+/* ── V1.41 · LA BARRA DE FÓRMULA ──────────────────────────────────────────
+ * De ancho completo, y no es un adorno. Medido a 380 px: una celda mide 70 px
+ * y ahí los NÚMEROS caben pero las FÓRMULAS no —`=SUMA(C1:C2)` se ve como
+ * `=SUMA((`—. Sin esta barra, escribir una fórmula en el teléfono es hacerlo
+ * a ciegas. Es lo que hacen todas las hojas en teléfono, y por la misma razón.
+ *
+ * Monoespaciada: son cuentas, y con fuente proporcional el error de dedo no
+ * se ve. */
+.pad-barra { display: flex; align-items: center; gap: 8px; padding: 0 12px 8px; }
+.pad-barra .pad-dir { flex: none; min-width: 40px; text-align: center;
+                      font: 700 12px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+                      color: var(--suave); background: var(--papel);
+                      border: 1px solid var(--linea); border-radius: 6px;
+                      padding: 12px 6px; }
+.pad-barra .pad-formula { flex: 1 1 auto; min-width: 0; min-height: var(--toque);
+                          font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
-.pad-pie { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px;
+/* ── La rejilla ───────────────────────────────────────────────────────────
+ * `table-layout: fixed` es lo que impide que una fórmula larga estire su
+ * columna y empuje a las demás fuera de la pantalla. */
+.pad-rejilla { padding: 0 12px 10px; overflow-x: auto; }
+table.hoja-pad { border-collapse: collapse; width: 100%; table-layout: fixed; }
+table.hoja-pad th { background: var(--papel); border: 1px solid var(--linea);
+                    font-size: 11px; color: var(--suave); font-weight: 600;
+                    height: 22px; padding: 0 4px; }
+table.hoja-pad th.rot { width: 38%; }
+table.hoja-pad th.nfila { width: 26px; font-size: 10px; }
+table.hoja-pad td { border: 1px solid var(--linea); padding: 0; }
+table.hoja-pad input.padcel { width: 100%; border: 0; border-radius: 0;
+                              min-height: var(--toque); padding: 8px 6px;
+                              font: 13px/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+                              box-sizing: border-box; background: transparent; }
+table.hoja-pad input.padcel.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.hoja-pad input.padcel.rot { text-align: left; font-family: inherit; }
+/* La celda elegida: el mismo azul del foco del módulo, sin color nuevo. */
+table.hoja-pad input.padcel.sel { box-shadow: inset 0 0 0 2px #1f4e79; }
+table.hoja-pad input.padcel.n-bad { color: var(--rojo, #b00020); font-weight: 700; }
+
+/* ── V1.41 · en el teléfono, el número tiene que CABER ────────────────────
+ * Primera medición a 380 px con la rejilla puesta: la celda quedó en 54 px y
+ * `$16,200` se veía como `$16,2(`. Un importe recortado es peor que uno
+ * ausente — se lee como si fuera otro número. Se vio en la captura, no en el
+ * diff ni en los conteos, que daban todos verdes (§20 #12).
+ *
+ * Lo que se aprieta es lo que sobra: el rótulo baja de 38% a 32%, la columna
+ * del número de fila a 22 px, y el cuerpo a 12 px. Con eso la celda pasa de
+ * 54 a ~78 px y `$25,800` a 12 px mide ~50. El mínimo táctil NO se toca. */
+@media (max-width: 560px) {
+  table.hoja-pad th.rot { width: 32%; }
+  table.hoja-pad th.nfila { width: 22px; }
+  table.hoja-pad th { font-size: 10px; padding: 0 2px; }
+  table.hoja-pad input.padcel { font-size: 12px; padding: 8px 4px; }
+  .pad-rejilla { padding: 0 8px 10px; }
+  .pad-barra { padding: 0 8px 8px; }
+  .pad-pie { padding: 0 8px 12px; }
+}
+
+.pad-pie { display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
            padding: 0 12px 12px; }
-.pad-pie label { display: flex; flex-direction: column; gap: 3px; }
-.pad-pie label input { margin-top: 2px; }
-/* El concepto crece, pero con TOPE: sin él, a 1280 px se estira mil pixeles
- * y empuja el botón a un renglón propio. El tope deja los tres en una línea. */
-.pad-pie label:first-child { flex: 1 1 240px; max-width: 420px; }
+.pad-pie .mono { font: 700 14px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+                 color: var(--tinta); }
 /* ⚠️ `width: auto` NO es redundante: `shared/fts-styles.css` define
  * `.btn { width: 100% }` para el kiosko, y sin esto el botón se come el
- * renglón entero y empuja a los dos campos arriba. */
-.pad-pie .btn { flex: none; width: auto; padding: 0 18px; }
+ * renglón entero. `margin-left:auto` lo manda a la derecha sin flotar. */
+.pad-pie .btn { flex: none; width: auto; padding: 0 18px; margin-left: auto; }
 
 /* ── El botón que lo abre, en la cabecera de la sección ─────────────────── */
 .nomsec .accsec .pad-btn { width: auto; padding: 0 10px; font-size: 12px;

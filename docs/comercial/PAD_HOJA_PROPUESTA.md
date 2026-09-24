@@ -1,7 +1,8 @@
 # El pad como hoja de cálculo — propuesta
 
-**Estado: PROPUESTA. No construida.** Escrita para el #246 a petición de Esteban, que
-pidió explícitamente proponer antes de construir y no dar nada por obvio.
+**Estado: ✅ CONSTRUIDA en la V1.41.** Este documento se escribió como propuesta y se
+aprobó así; queda como el porqué de las decisiones. Lo que cambió al construirlo está en
+§8 al final — dos cosas, y las dos por medir, no por opinar.
 
 Lo que hay hoy (V1.36–V1.40) es un **área de texto libre** por sección, anclada al borde
 inferior, con un concepto, un importe y un botón «Pasar a renglón». Lo que Esteban y
@@ -170,3 +171,43 @@ este cambio, ese texto es suyo.
    la banda de comisión. La primera columna de la rejilla es el sitio del texto.
 3. **¿Cuántas filas de tope?** Propongo 20, con las filas creciendo solas y un aviso al
    llegar. Sin tope, una hoja larga vuelve el panel inservible en el teléfono.
+
+
+---
+
+## 8 · Lo que cambió al construirlo
+
+Dos cosas, y las dos salieron de medir, no de opinar.
+
+### a · Se cayó el campo «Concepto» aparte
+
+La propuesta conservaba el campo de concepto del pad de texto. Al armar la rejilla quedó
+claro que **la primera columna ya es eso**: el rótulo de la fila explica la cuenta, y es lo
+que tiene que llegar al renglón como descripción. Mantener los dos sería otra vez dos
+sitios para el mismo dato — el error que se acababa de deshacer con la banda de comisión.
+
+Así que «Pasar a renglón» toma el rótulo de la fila de la celda elegida. Si esa fila no
+tiene rótulo, lo pide antes de pasar nada.
+
+### b · La rejilla recortaba los importes a 380 px, y la maqueta no lo había visto
+
+La medición de la propuesta (§5) dio celdas de 70 px y concluyó que los números cabían y
+las fórmulas no. **Con la rejilla de verdad la celda quedó en 54 px** —la columna del
+número de fila, que la maqueta no tenía, se comió 26— y entonces **tampoco cabían los
+importes**: `$16,200` se leía `$16,2(`.
+
+Un importe recortado es peor que uno ausente: se lee como otro número. **Se vio en la
+captura, no en el diff ni en los conteos, que daban todos verdes.**
+
+Se corrigió apretando lo que sobraba en teléfono —rótulo de 38% a 32%, número de fila a
+22 px, cuerpo a 12 px—, sin tocar el mínimo táctil. La celda pasó de 54 a 61 px y los tres
+importes caben. Y la prueba **ya no lo mira a ojo**: compara `scrollWidth` contra
+`clientWidth` de cada celda a los cuatro anchos, que es lo único que detecta un recorte de
+un carácter.
+
+### Lo que NO cambió
+
+El alcance (referencias + `SUMA`), las cero dependencias, la prohibición de `eval`, el
+guardado de la fórmula como texto, la barra de fórmula y la detección de ciclos quedaron
+como estaban escritos. El único hallazgo del evaluador fue que las celdas **río abajo de un
+ciclo** enseñaban `0` con confianza; ahora el error se propaga y se marcan todas.

@@ -1,11 +1,17 @@
 {
-  "version": "V1.40",
-  "build": "V1.40",
+  "version": "V1.41",
+  "build": "V1.41",
   "fecha": "2026-09-24",
   "modulo": "comercial/machote",
   "ambito": "El CONTADOR es solo de este modulo. finanzas tambien usa V1.xx desde el 2026-09-03 (instruccion directa de Esteban, corrige el \"no propagar\" del issue #148) pero lleva su propio contador y va en V1.00. operaciones/planeacion sigue en 2.4.1, kiosk y confirmar-horas solo con cadena de build, y siete modulos con un 1.0.0 puesto una vez: a esos no se propaga.",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.41",
+      "pr": null,
+      "fecha": "2026-09-24",
+      "nota": "EL PAD ES UNA HOJA DE CALCULO DE VERDAD (#246). Deja de ser un area de texto libre: celdas, columnas, filas y cuentas dentro, por seccion. SUSTITUYE al texto libre -dos superficies para pensar en la misma seccion es el error que se deshizo con la banda de comision-; el texto de un pad viejo no se pierde, migra a la columna de CONCEPTO una linea por fila. EL EVALUADOR es propio, en js/pad-hoja.js, ~340 lineas, CERO dependencias. Entiende numeros, + - * / con parentesis, REFERENCIAS entre celdas (=A1*B1*450) y UNA funcion, SUMA, con rangos (=SUMA(C1:C5)) y listas. NO hay eval ni new Function, y no es preferencia: lo que se escribe en el pad lo teclea una persona, se guarda en el servidor y lo abre OTRA -incluido quien recibe un machote prestado-, asi que evaluar ese texto seria ejecutar codigo ajeno en una pagina con la sesion abierta. Por eso hay tokenizador y parser de descenso recursivo. CICLOS: detectados con marcado de tres colores, y se marcan TODAS las celdas del ciclo, no solo donde se detecto -un defecto que aparecio ejercitando el evaluador: las celdas rio abajo ensenaban 0 con confianza, y un cero que en realidad es 'esto no se puede calcular' es peor que un error visible-. El error tambien SE PROPAGA a quien lo usa. LO QUE SE GUARDA ES LO QUE SE ESCRIBIO: las formulas viajan como texto dentro de seccion.pad.hoja y los valores se recalculan al abrir. Nunca se guarda lo calculado. LA BARRA DE FORMULA de ancho completo no es adorno: medido a 380 px, una celda mide ~60 px y ahi los numeros caben y las formulas no. Y la primera version de la rejilla RECORTABA los importes a 380 ($16,200 se veia $16,2()  -se vio en la captura, no en el diff ni en los conteos, que daban verdes-; se corrigio apretando rotulo, numero de fila y cuerpo en telefono, y ahora hay una prueba que mide el recorte con scrollWidth y no a ojo. AL PASAR AL RENGLON: el valor de la celda elegida, con el ROTULO de su fila como concepto -la primera columna ya es eso, un campo aparte serian dos sitios para el mismo dato- y el comentario con rotulo, formula y valor. La hoja NO se vacia, al reves que el pad de texto: de una hoja salen VARIOS renglones. El cursor entra en la celda elegida al abrir -lo cazo la prueba de posicion, se quedaba en el boton-. El boton dice 'Hoja de trabajo' y el numero de filas escritas. ADEMAS: (a) DESGLOSE dice cuantas secciones tienen su propia comision, solo el dato, con el conteo salido del MOTOR y no de releer los campos en la pantalla; (b) m.reparto.venta se leia sin guarda y un documento sin reparto tiraba la hoja de desglose entera con 'Cannot read properties of undefined' -venia de antes de la V1.40, hoy no le pegaba a nadie, y ahora tiene prueba-. PRUEBAS: motor 137 (28 casos nuevos del evaluador, incluido el caso real de Montalvo) y cuatro de navegador con dientes comprobados contra el codigo de la V1.40."
+    },
     {
       "version": "V1.40",
       "pr": null,
