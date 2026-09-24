@@ -1,7 +1,8 @@
 # `docs/trazabilidad/` — el grafo del proyecto, nodo por nodo
 
 Investigación previa al **módulo de Confirmación de órdenes** (junta de administración del
-23-sep-2026). Rector del módulo comercial: [#127](https://github.com/yinyo1/fts-suite/issues/127).
+23-sep-2026). Issue de la sesión: [#291](https://github.com/yinyo1/fts-suite/issues/291).
+Rector del módulo comercial: [#127](https://github.com/yinyo1/fts-suite/issues/127).
 
 **Sesión 0 · 2026-09-24 · sólo lectura.** No se escribió nada en Odoo, ni en Postgres, ni en
 ningún workflow. Nada de lo que hay aquí está construido.

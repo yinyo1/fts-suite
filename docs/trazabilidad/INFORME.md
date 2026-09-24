@@ -1,5 +1,6 @@
 # Trazabilidad por nodos · informe de la sesión 0 (investigación)
 
+**Issue de esta sesión:** [#291](https://github.com/yinyo1/fts-suite/issues/291) · **PR:** [#290](https://github.com/yinyo1/fts-suite/pull/290)
 **Rector:** [#127](https://github.com/yinyo1/fts-suite/issues/127) · **Estación 3:** [#244](https://github.com/yinyo1/fts-suite/issues/244) · **Machote:** [#140](https://github.com/yinyo1/fts-suite/issues/140), [#246](https://github.com/yinyo1/fts-suite/issues/246)
 
 **Fecha de medición:** 2026-09-24 (madrugada CST). **Sesión de sólo lectura**: no se escribió
