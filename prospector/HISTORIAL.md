@@ -128,7 +128,7 @@ Sin código a propósito. **Cero créditos gastados: el saldo siguió en 20.**
 
 Buscando «Ragasa» en la bandeja aparecieron correos de LinkedIn con esta forma:
 
-> *«… Ochoa — **Técnico Electromecánico en Ragasa**»*
+> *«… [Apellido-X] — **Técnico Electromecánico en Ragasa**»*
 
 Son invitaciones de LinkedIn que llegan a Outlook y traen **nombre + puesto +
 empresa en el cuerpo**. Medidas: **914**.
@@ -341,7 +341,7 @@ corpus**.
 | Lusha | **no se llamó** |
 
 - **El DUNS sale `contradicho`, no elegido.**
-- **El «ing. Nerit» del hilo de Ecolab sale con bandera**, porque el hilo no
+- **El «ing. [N.]» del hilo de Ecolab sale con bandera**, porque el hilo no
   deja claro si es de Ragasa, de Ecolab o de FTS. No se le asigna patrón de
   correo a un nombre cuyo patrón no se sabe.
 - **Que Ragasa no esté en Odoo es un dato `verificado`, no un hueco.** Una
@@ -545,8 +545,8 @@ el CRM no tiene ni el registro.**
 | Registros marcados como empresa dentro de ese grupo | **34** |
 
 Hay registros de empresa cuyo correo es el de un empleado de FTS. Ejemplos
-reales: una cuenta con `rubencampos@fts.mx`, otra con `estebandelacruz@fts.mx`,
-varias con `facturacion.fts@outlook.com`.
+reales: una cuenta con `[empleado-fts]@fts.mx`, otra con `[otro-empleado-fts]@fts.mx`,
+varias con `[buzon-fts]@outlook.com`.
 
 ## 4 · El reparto es extremadamente desigual
 
@@ -1191,11 +1191,11 @@ y contrastados. Lleva directorios=1, se exigen 3.
 
 **Los tres conflictos, ninguno señalado a mano:** el patrón de correo (tres
 directorios dan `first.last@cuprum.com`, SignalHire da `first_lastinitial`), el
-puesto de Oscar Quintero (Odoo contra la web) y el CEO (la prensa lo nombra, el
+puesto de [Persona C] (Odoo contra la web) y el CEO (la prensa lo nombra, el
 directorio da iniciales).
 
 **Fase 0 contra Odoo volvió a ser lo más rentable:** con una lectura salió
-**Oscar Quintero Hdz — Portfolio Manager | Strategic CAPEX Lead**, cero órdenes
+**[Persona C] — Portfolio Manager | Strategic CAPEX Lead**, cero órdenes
 de venta. Y Outlook destapó un tercer punto de contacto: **una solicitud de cita
 vía CAINTRA que quedó sin agendar** porque el comprador no tenía espacio.
 

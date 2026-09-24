@@ -147,7 +147,7 @@ paralelizar.
 
 **Rendimiento medido (18-sep-2026): 8 consultas cambiaron 4 de 8 fichas.**
 
-- un **correo real verificado** (`ana.villagomez@cuprum.com`) con respuesta del otro lado;
+- un **correo real verificado** (`[persona]@cuprum.com`) con respuesta del otro lado;
 - una cuenta **reclasificada de prospecto a cliente** — aparecía en la presentación comercial propia;
 - una **invitación sin responder** de siete meses, con 159 contactos en común;
 - una **puerta institucional** (CAINTRA) que aplica a tres cuentas a la vez.
@@ -169,7 +169,7 @@ paralelizar.
 | **Alimenta** | M4 · M6 · M7 · M10 · y el patrón que **todos** los módulos posteriores reutilizan |
 
 **Rendimiento medido:** 7 de 8 cuentas dieron patrón; 4 nombres que LinkedIn no
-dio (Jorge Duque, Víctor López, Luis Alberto Taraco, Ricardo Eric Chavarría).
+dio ([Persona 02], [Persona 04], [Persona L], [Persona M]).
 
 > **El criterio de agotado dice ≥3 y no "uno que responda" por una razón
 > medida:** con un solo directorio salió el "100%" falso de Cuprum. **Un
@@ -177,7 +177,7 @@ dio (Jorge Duque, Víctor López, Luis Alberto Taraco, Ricardo Eric Chavarría).
 
 **Hallazgo lateral gratis:** la máscara que publican (`j***@lego.com`) **valida el
 patrón sin costo** — si la inicial coincide con lo que la regla predice, es una
-confirmación regalada. Pasó con Jorge Duque y con Margarita Gutiérrez.
+confirmación regalada. Pasó con [Persona 02] y con [Persona N].
 
 ---
 
@@ -525,8 +525,8 @@ ya trabajó con FTS.
 | # | Qué se cruza | Contra qué | Regla | Resultado |
 |---|---|---|---|---|
 | **C1** | patrón de correo | **todos** los directorios consultados (≥3) | si 2+ coinciden en dominio y forma → **SÓLIDO**; si difieren >20 puntos de porcentaje, o aparece un **dominio alterno**, o asoma una **empresa hermana** → **EN CONFLICTO** | *el caso Cuprum* |
-| **C2** | patrón **derivado** | **correo literal** de M7, M0b o M0 | el literal es **ANCLA DURA**: si lo contradice, el patrón baja a EN CONFLICTO y **manda el literal** | `ana.villagomez@cuprum.com` |
-| **C3** | máscara del directorio (`j***@`) | patrón derivado | inicial coincide → **+1 confirmación gratis**; no coincide → EN CONFLICTO | Jorge Duque · Margarita Gutiérrez |
+| **C2** | patrón **derivado** | **correo literal** de M7, M0b o M0 | el literal es **ANCLA DURA**: si lo contradice, el patrón baja a EN CONFLICTO y **manda el literal** | `[persona]@cuprum.com` |
+| **C3** | máscara del directorio (`j***@`) | patrón derivado | inicial coincide → **+1 confirmación gratis**; no coincide → EN CONFLICTO | [Persona 02] · [Persona N] |
 | **C4** | puesto de una persona | directorio **vs** PDF **vs** LinkedIn | 2 de 3 coinciden → **CONFIRMADO**; si lo que difiere es la **geografía**, es conflicto de **entidad** (§5a), no de puesto | *Navistar: ZoomInfo lo pone en USA, el PDF en Escobedo* |
 | **C5** | identidad de empresa | `dominio_correo` + ciudad + CP | **nunca por razón social.** El padrón casi nunca coincide con la marca | `grupolala.com` = *Comercializadora de Lácteos* |
 | **C6** | vacante activa | ex-titular del puesto | los dos juntos → **señal caliente de transición** | §5 del método |

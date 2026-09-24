@@ -17,15 +17,15 @@ Es falso. Outlook trae al menos cuatro hilos de 2025 sobre esa planta:
 
 | Fecha | Asunto | Quién |
 |---|---|---|
-| 2025-09-11 | `RE: Planos Ragasa` | diego@fts.mx ↔ Vanessa Silva (Ecolab) |
-| 2025-09-11 | `RE: SOLICITUD DE PROPUESTA PARA SISTEMA DE SUAVIZACION PLANTA RAGASA` | diego@fts.mx |
-| 2025-09-12 | misma cadena, cotización **SO11134** | Vanessa.Silva@ecolab.com |
-| 2025-10-09 | `Agua de desperdicio Ragasa`, **SO11126**, *Vendor 1179713 – NALCO* | diego@fts.mx |
+| 2025-09-11 | `RE: Planos Ragasa` | [comercial-fts]@fts.mx ↔ [Persona K] (Ecolab) |
+| 2025-09-11 | `RE: SOLICITUD DE PROPUESTA PARA SISTEMA DE SUAVIZACION PLANTA RAGASA` | [comercial-fts]@fts.mx |
+| 2025-09-12 | misma cadena, cotización **SO11134** | [persona]@ecolab.com |
+| 2025-10-09 | `Agua de desperdicio Ragasa`, **SO11126**, *Vendor 1179713 – NALCO* | [comercial-fts]@fts.mx |
 
 Y el cliente sí existe en Odoo: **Nalco de México** (id 94), con
 `customer_rank 159` — una de las cuentas grandes— más 13 contactos bajo ella,
-entre ellos **Nerit Mcgregor** (`nerit.mcgregor@ecolab.com`, id 817), que es la
-"ing. Nerit" de la cadena de suavización.
+entre ellos **[Persona B]** (`[persona]@ecolab.com`, id 817), que es la
+"ing. [N.]" de la cadena de suavización.
 
 **La relación con Ragasa existe, pero es indirecta: entra por Nalco/Ecolab.** Una
 búsqueda por razón social en Odoo nunca la habría encontrado. Es el mismo error
@@ -45,7 +45,7 @@ evento predice mejor que el tamaño.
 ### 3. Personas nuevas, de dos formatos distintos de invitación
 
 Del corpus de LinkedIn en Outlook: un *"Técnico Electromecánico en Ragasa"*
-(apellido Ochoa, **sin nombre completo** en el resumen) y **Enrique O. Perez
+(apellido [Apellido-X], **sin nombre completo** en el resumen) y **Enrique O. Perez
 Salazar**, *"Coordinar proyectos, diseño de tuberías, materiales"*.
 
 El segundo es el perfil que compra tubería y proyecto. El primero es el caso que

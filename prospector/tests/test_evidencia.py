@@ -97,7 +97,7 @@ def test_dos_FORMAS_con_su_propia_consulta_si_agotan_M7():
     m = EstadoModulo("M7")
     m.registrar_busqueda("formas", "cuprum.com filetype:pdf organigrama",
                          "pdf_publico", 2, etiqueta="forma_empresa")
-    m.registrar_busqueda("formas", '"Oscar Quintero" cuprum filetype:pdf',
+    m.registrar_busqueda("formas", '"[Persona C]" cuprum filetype:pdf',
                          "pdf_publico", 0, etiqueta="forma_nombre")
     assert m.contadores["formas"] == 2
     m.exigir_agotado()
@@ -160,12 +160,12 @@ def test_los_hits_de_chao1_salen_del_MISMO_registro():
     c = Corrida("Grupo Cuprum", "San Nicolas, NL")
 
     def oscar():
-        return Contacto("Oscar Quintero Hdz", "Portfolio Manager", c.empresa)
+        return Contacto("[Persona C]", "Portfolio Manager", c.empresa)
 
     c.registrar_busqueda("M0", "contactos_recorridos", "res.partner cuprum",
                          "odoo", 1, contactos=[oscar()])
     assert c.contactos[0].hits == 1
-    c.registrar_busqueda("M5", "bloques_secos", "\"Oscar Quintero\" cuprum",
+    c.registrar_busqueda("M5", "bloques_secos", "\"[Persona C]\" cuprum",
                          "buscador", 1, contactos=[oscar()])
     assert len(c.contactos) == 1, "es el mismo, no un duplicado"
     assert c.contactos[0].hits == 2, "dos busquedas distintas lo trajeron"

@@ -249,7 +249,7 @@
     <div class="rows">
       <div class="row">
         <div class="k">Persona identificada</div>
-        <div class="v">Técnico Electromecánico <span class="num">· apellido Ochoa</span></div>
+        <div class="v">Técnico Electromecánico <span class="num">· apellido [Apellido-X]</span></div>
         <span class="chip c-sup">supuesto</span>
         <div class="prov"><span class="src"><b>D4 · FTS interno / invitaciones de LinkedIn</b> · “Técnico Electromecánico en Ragasa” · fecha_dato 2026-05-13.</span>
         <span class="src">Una sola raíz (<b>fts_interno</b>) → supuesto. El puesto <b>no manda sobre agua ni vapor</b>: sirve como puerta, no como comprador.</span></div>
@@ -258,7 +258,7 @@
         <div class="k">Contacto en hilo</div>
         <div class="v">Nombre presente en la cotización SO11134</div>
         <span class="chip c-flag">contradicho</span>
-        <div class="prov"><span class="src"><b>D4 · FTS interno / Outlook</b> · aparece un “ing. Nerit” en el hilo de Ecolab, pero <b>el hilo no deja claro si es de Ragasa, de Ecolab o de FTS</b>.</span>
+        <div class="prov"><span class="src"><b>D4 · FTS interno / Outlook</b> · aparece un “ing. [N.]” en el hilo de Ecolab, pero <b>el hilo no deja claro si es de Ragasa, de Ecolab o de FTS</b>.</span>
         <span class="src">Se levanta bandera y se guarda el dato sin asignarle patrón. <b>No se elige en silencio.</b></span></div>
       </div>
       <div class="row">
@@ -330,7 +330,7 @@
       <li><b>RFC</b> — ninguna fuente disponible lo entrega. <code>autocomplete_by_name</code> no incluye ese campo.</li>
       <li><b>Verificación de domicilio</b> — Google Places sin llave. Hueco marcado, no sustituido.</li>
       <li><b>Comprador de agua y vapor</b> — la única persona identificada es técnico electromecánico. Falta el nivel que decide.</li>
-      <li><b>Empleador de “ing. Nerit”</b> — <b>bandera cerrada en la regresión del 18-sep.</b> Es <b>Nerit Mcgregor</b>, <code>nerit.mcgregor@ecolab.com</code>, contacto 817 de Odoo bajo <b>Nalco de México</b>. Se resolvió leyendo, no adivinando.</li>
+      <li><b>Empleador de “ing. [N.]”</b> — <b>bandera cerrada en la regresión del 18-sep.</b> Es <b>[Persona B]</b>, <code>[persona]@ecolab.com</code>, contacto 817 de Odoo bajo <b>Nalco de México</b>. Se resolvió leyendo, no adivinando.</li>
     </ul>
     <div class="note warn" style="margin-top:18px">
       <strong>Cero créditos de Lusha en esta corrida.</strong>
@@ -404,7 +404,7 @@
     var btn=document.getElementById('rev-1'), code=document.getElementById('pii-1'), abierto=false;
     btn.addEventListener('click',function(){
       abierto=!abierto;
-      code.textContent = abierto ? 'JCABRIALES@RAGASA.COM.MX' : '·····························';
+      code.textContent = abierto ? '[PERSONA]@RAGASA.COM.MX' : '·····························';
       btn.textContent  = abierto ? 'Ocultar' : 'Mostrar';
     });
   })();

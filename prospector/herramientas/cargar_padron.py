@@ -3,15 +3,30 @@
 
 Por que tres y no una:
 
-  1. `db/datos/padron_denue.csv` — la fuente DIFFABLE. Es la que se revisa en
-     un pull request. Un padron que solo vive en un binario no se puede
-     revisar, y un corte del DENUE contra el siguiente se compara aqui.
-  2. `db/datos/padron_denue.sqlite` — la copia consultable sin Postgres.
-  3. stdout — el INSERT para `prospeccion.denue_planta`.
+  1. `datos/padron_denue.csv` — la fuente DIFFABLE, la que se revisa en un pull
+     request. **Va SIN las columnas de contacto** (ver abajo).
+  2. `padron_denue.sqlite` — la copia consultable sin Postgres. Lleva TODO,
+     y NO se versiona.
+  3. stdout — el INSERT para `prospeccion.denue_planta`. Lleva TODO.
 
-Este repo es PRIVADO. El padron trae `correoelec` del DENUE, que es dato
-publico de INEGI pero sigue siendo un correo: no puede terminar en fts-suite,
-que si es publico.
+REGLA DURA: LOS CONTACTOS NO VIVEN EN EL REPO
+---------------------------------------------
+`fts-suite` es un repo PUBLICO. El padron del DENUE trae `correoelec` y
+`telefono`, y aunque INEGI los publique, **son datos de contacto de personas**:
+de las 238 filas del corte 05/2026, 191 traen correo y 136 de esos tienen forma
+de correo de persona (`nombre.apellido@`, o webmail libre que en un negocio
+chico suele ser la cuenta del dueno). 59 traen telefono.
+
+Por eso `COLUMNAS_SENSIBLES` se recorta del CSV versionado. Lo que SI se
+conserva es `dominio_correo`, que se deriva del correo y **no es dato
+personal**: es la llave operativa del metodo -dominio + ciudad + CP-, y con ella
+el padron sigue sirviendo igual.
+
+El destino de los correos y telefonos es **Postgres**
+(`prospeccion.denue_planta`), y a futuro Odoo. Nunca el repo.
+
+Uso:
+    python3 herramientas/cargar_padron.py corrida.json --corte 2026-05
 
 Uso:
     python3 scripts/cargar_padron.py corrida.json --corte 2026-09
@@ -34,6 +49,13 @@ COLUMNAS = [
     "fecha_alta", "sitios_nacionales", "piso_aplicado", "motivo_ingreso",
     "es_punto_venta", "excluido_por",
 ]
+
+# Columnas de contacto: van a Postgres y al SQLite local, NUNCA al CSV del repo.
+COLUMNAS_SENSIBLES = ["telefono", "correoelec"]
+
+# Lo que si se versiona: todo menos el contacto. `dominio_correo` se queda.
+COLUMNAS_PUBLICABLES = [c for c in COLUMNAS if c not in COLUMNAS_SENSIBLES]
+
 
 # Cadenas de autoservicio, club de precio, tienda departamental y plaza.
 # Un establecimiento cuyo NOMBRE carga una de estas es un punto de venta
@@ -248,7 +270,9 @@ def main() -> int:
     filas.sort(key=lambda f: (f["cve_ent"], f["municipio"], f["raz_social"], f["id"]))
     ruta_csv = destino / "padron_denue.csv"
     with ruta_csv.open("w", encoding="utf-8", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=["corte_denue"] + COLUMNAS)
+        # SIN las columnas de contacto: este CSV se versiona en un repo publico.
+        w = csv.DictWriter(fh, fieldnames=["corte_denue"] + COLUMNAS_PUBLICABLES,
+                           extrasaction="ignore")
         w.writeheader()
         for f in filas:
             w.writerow({"corte_denue": args.corte, **f})

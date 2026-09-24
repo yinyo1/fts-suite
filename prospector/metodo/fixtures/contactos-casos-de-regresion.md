@@ -74,7 +74,7 @@ pequeño de los tres y el más importante, porque no verifica una lista de
 hallazgos: verifica que **el motor combine**.
 
 **Medido en LEGO.** La consulta `"facilities manager"` —raíz + nivel, dos
-palabras combinadas— trae a **Jorge Duque**. La raíz suelta, `facilities`, **no
+palabras combinadas— trae a **[Persona 02]**. La raíz suelta, `facilities`, **no
 lo trae**. Misma empresa, misma sesión, mismo buscador. La única variable era la
 combinación.
 
@@ -115,9 +115,9 @@ molding*, la misma empresa dio **21 entradas**:
 
 **Entre los que antes se descartaban venían decisores de obra:**
 
-- **Jorge Robles** — Sr. PM de NPI & Engineering
-- **Marcel García** — Maintenance Manager
-- **Víctor Hugo López** — controles PCS7 / Rockwell / KUKA
+- **[Persona 06]** — Sr. PM de NPI & Engineering
+- **[Persona 05]** — Maintenance Manager
+- **[Persona 04]** — controles PCS7 / Rockwell / KUKA
 
 Y puestos-objetivo sin persona que igual son accionables en Sales Navigator:
 *Head of Global Workplace Projects*, *Sr. Controls Manager*.
@@ -208,7 +208,7 @@ Era falso, y el mecanismo del error importa más que el error:
 | Directorio A | `cuprum.com` al **100%** |
 | Directorio B | `cuprum.com` al **45.45%** |
 | Directorio C | Grupo Cuprum también usa **`verzatec.com`** —empresa hermana— en un **20%** |
-| Correo real, de Outlook | `ana.villagomez@cuprum.com` — **existe y contestó** |
+| Correo real, de Outlook | `[persona]@cuprum.com` — **existe y contestó** |
 
 **Nadie eligió mal.** Se consultó un directorio, contestó con una cifra
 rotunda, y se reportó. **No había casilla para "las fuentes chocan"**, así que el
@@ -225,7 +225,7 @@ dato cayó en el nivel de la única fuente mirada.
 2. **Cruce C1:** con tres directorios que difieren en más de 20 puntos de
    porcentaje, o donde aparece un **dominio alterno** o una **empresa hermana**,
    el dato baja a **EN CONFLICTO** y va a revisión humana.
-3. **Cruce C2, el ancla dura:** el correo literal `ana.villagomez@cuprum.com`
+3. **Cruce C2, el ancla dura:** el correo literal `[persona]@cuprum.com`
    **no resuelve el porcentaje**, pero sí fija que `cuprum.com` es un dominio
    vivo de la cuenta. Una implementación que use el literal para *cerrar* el
    conflicto —en vez de sólo anclar el dominio— **falla el caso**: son preguntas

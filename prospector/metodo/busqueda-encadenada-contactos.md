@@ -49,6 +49,47 @@ están documentadas y no se repiten aquí:
 > incompleta.** No es una cuestión de prisa: es que el dato que faltaba iba a
 > aparecer en la fase que no se corrió.
 
+## 1.1 · Dónde vive el resultado *(regla de arquitectura, no de estilo)*
+
+> **Los datos de contactos y personas son datos personales y NUNCA se guardan en
+> el repositorio.** `fts-suite` es público.
+
+Tres destinos, y no se mezclan:
+
+| Destino | Qué guarda |
+|---|---|
+| **El repo** | Solo la **lógica**: este método, el código de las compuertas, el **diccionario de puestos** —títulos genéricos, no personas—, el catálogo de fuentes, y casos de prueba con **datos ficticios**. |
+| **La sesión** | El resultado de una corrida —la ficha y su historial— mientras la herramienta se pule. Se genera, se usa y **no se commitea**. |
+| **Postgres** | Los **contactos reales**. Se actualizan ahí, y a futuro se integran a Odoo. |
+
+Es la misma separación que ya rige la suite comercial: **código público, corpus
+y datos sensibles en Postgres.**
+
+**Qué cuenta como dato personal, para no tener que preguntar cada vez:**
+
+| No va al repo | Sí puede ir |
+|---|---|
+| El nombre completo de una persona | Su **puesto** — el diccionario de §3.4 son títulos, no gente |
+| Su correo | El **dominio** de la empresa |
+| Su teléfono | El teléfono y domicilio **de la planta**, del padrón |
+
+> **El dominio es la excepción deliberada**, y es la que sostiene el método: la
+> llave operativa es *dominio + ciudad + CP*, y un dominio no identifica a una
+> persona. Por eso el padrón versionado conserva `dominio_correo` y **no**
+> `correoelec` ni `telefono`.
+
+Lo hace cumplir `flujo/salida.py`, que se niega con un `raise` si el destino cae
+dentro del repo, y `tests/test_sin_datos_personales.py`, que barre la carpeta en
+cada corrida de pruebas. **Las dos existen porque la regla ya se rompió una vez**
+—un padrón con 191 correos y 59 teléfonos, y el correo real de una persona en
+cuatro lugares de este documento—.
+
+**Consecuencia para los ejemplos de este método:** donde antes había un nombre o
+un correo real ahora hay un marcador —`[Persona 02]`, `[persona]@cuprum.com`—.
+El caso que ilustraban no cambió; el dato que lo ilustraba vive fuera.
+
+---
+
 ## 2 · Regla de oro
 
 **Cada configuración de búsqueda es una búsqueda propia e independiente, y

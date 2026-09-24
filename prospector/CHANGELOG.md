@@ -3,6 +3,91 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.4.0 — 2026-09-24
+
+**Los contactos salen del repo, y la regla queda fijada.** `fts-suite` es
+publico, y la herramienta llevaba datos personales adentro.
+
+### La regla, en una linea
+
+> **Los datos de contactos y personas son datos personales y NUNCA se guardan en
+> el repo.** El repo guarda LOGICA; la sesion guarda el resultado de la corrida;
+> Postgres guarda los contactos.
+
+Documentada en `README.md` y en §1.1 del metodo. **Y hecha cumplir con codigo**,
+no con un parrafo: `flujo/salida.py` resuelve el destino de cada corrida y se
+niega con un `raise` si cae dentro del arbol del repositorio, aunque el
+`.gitignore` lo cubra.
+
+### Lo que se saco, con numeros
+
+| Qué | Cuánto |
+|---|---|
+| **`datos/padron_denue.csv`** — columnas `correoelec` y `telefono` | **191 correos**, **59 telefonos** |
+| Correos de personas en el metodo, los fixtures y el historial | **11** en 5 archivos |
+| Nombres completos de personas reales | **20** en 7 archivos |
+
+Del padron, 136 de los 191 correos tenian forma de correo de persona
+(`nombre.apellido@`, o webmail libre que en un negocio chico suele ser la cuenta
+del dueno). **`dominio_correo` se conserva**: es la llave operativa del metodo
+-dominio + ciudad + CP- y no identifica a nadie. El padron sigue sirviendo igual.
+
+El destino de esas columnas es `prospeccion.denue_planta` en Postgres, y a
+futuro Odoo. `herramientas/cargar_padron.py` ahora recorta
+`COLUMNAS_SENSIBLES` del CSV que se versiona y las manda al SQLite y al INSERT.
+
+### La salida ya no toca el repo
+
+Antes: `prospector/corridas/`, dentro del arbol, protegida solo por
+`.gitignore`. Ahora: `$TMPDIR/prospector-corridas/<sesion>`, o lo que diga
+`PROSPECTOR_SALIDA`. La carpeta `corridas/` se elimino del repo -su existencia
+invitaba a escribir ahi- y hay una prueba que falla si reaparece.
+
+La compuerta aguanta incluso el intento explicito:
+
+```
+$ PROSPECTOR_SALIDA=.../prospector/corridas orquestador siguiente ...
+⛔ COMPUERTA: '/.../prospector/corridas' esta dentro del repositorio.
+Los contactos y las fichas son datos personales y el repo es PUBLICO: no se
+escriben aqui ni con .gitignore de por medio.
+```
+
+### La guardia que impide que vuelva a pasar
+
+`tests/test_sin_datos_personales.py` barre todo `prospector/` en cada corrida de
+pruebas: correos con forma de persona, telefonos mexicanos de 10 digitos, y las
+columnas de contacto del padron. Permite a proposito los marcadores
+(`[persona]`, `nombre.apellido@`), los buzones genericos y los dominios de
+empresa sueltos.
+
+**Esta prueba existe porque ya paso.** `cargar_padron.py` traia la advertencia
+escrita en su propio docstring -*"no puede terminar en fts-suite, que si es
+publico"*- y el CSV se copio igual. Una advertencia en un comentario no detiene
+a nadie.
+
+### Deuda anotada: el historial de git
+
+Enmascarar hacia adelante **no borra el dato de los commits anteriores**. Los
+correos y nombres siguen en el historial de un repo publico. Purgar el historial
+(`git filter-repo`) es una operacion aparte y mas delicada, y **queda por
+decidir**. Lo que esta hecho es el estado actual.
+
+### Pruebas
+
+**77 -> 91.** Nuevas: `tests/test_salida.py` (10) y
+`tests/test_sin_datos_personales.py` (4).
+
+### A futuro, anotado y NO construido
+
+`flujo/salida.py` lleva al final el enganche a Postgres: donde iria
+`escribir_en_postgres(corrida)`, desde donde se llamaria -en `cerrar`/`ficha`,
+**despues** del challenge, nunca antes- y las dos cosas ya decididas: la cadena
+de conexion por variable de entorno, y que la restriccion
+`ck_patron_nunca_verificado` de la migracion 010 ya dice lo mismo que la
+compuerta de confianza, cada una por su lado. **Es fase posterior.**
+
+---
+
 ## 0.3.0 — 2026-09-24
 
 **Las compuertas verifican evidencia, ya no cuentan declaraciones.** Es la

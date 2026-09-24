@@ -17,13 +17,17 @@ import argparse, json, os, re, sys
 
 from .compuertas import (CompuertaCerrada, exigir_confianza, techo_por_agotado,
                          Busqueda)
+from .salida import carpeta_de_corridas, exigir_fuera_del_repo, SalidaEnElRepo
 from .catalogo import exigir_permitida, FuenteProhibida
 from .confianza import Contacto, N1_CONFIRMADO, N2_PARCIAL, N3_PUESTO
 from .estado import Corrida, RESPONDIO
 from .ficha import modo_limpio, modo_procedencia
 
-RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CORRIDAS = os.path.join(RAIZ, "corridas")
+# Las corridas llevan nombres, puestos y correos de PERSONAS. No se escriben en
+# el repo: `fts-suite` es publico. Ver flujo/salida.py -- ahi vive la regla, y
+# se hace cumplir con un raise, no con un .gitignore.
+def CORRIDAS() -> str:
+    return str(carpeta_de_corridas())
 
 
 def _slug(s: str) -> str:
@@ -31,7 +35,7 @@ def _slug(s: str) -> str:
 
 
 def _ruta(empresa: str) -> str:
-    return os.path.join(CORRIDAS, f"{_slug(empresa)}.json")
+    return os.path.join(CORRIDAS(), f"{_slug(empresa)}.json")
 
 
 def _cargar(empresa: str) -> Corrida:
@@ -166,6 +170,8 @@ def main(argv=None) -> int:
             c.presupuesto.tope_por_cuenta = a.tope
             c.guardar(_ruta(a.empresa))
             print(f"Corrida iniciada: {a.empresa} · tope {a.tope} consultas")
+            print(f"  Los resultados viven en la sesion, NO en el repo:\n"
+                  f"  {CORRIDAS()}")
             _imprimir_paso(c)
             return 0
 
@@ -260,8 +266,8 @@ def main(argv=None) -> int:
             if not c.challenge_corrido:
                 raise CompuertaCerrada(
                     "No se emite ficha sin challenge. Corre: challenge")
-            salida = a.salida or os.path.join(
-                CORRIDAS, f"{_slug(a.empresa)}-{a.modo}." + ("html" if a.modo == "limpio" else "json"))
+            salida = str(exigir_fuera_del_repo(a.salida)) if a.salida else os.path.join(
+                CORRIDAS(), f"{_slug(a.empresa)}-{a.modo}." + ("html" if a.modo == "limpio" else "json"))
             contenido = modo_limpio(c) if a.modo == "limpio" else json.dumps(
                 modo_procedencia(c), ensure_ascii=False, indent=2)
             os.makedirs(os.path.dirname(salida), exist_ok=True)
@@ -269,7 +275,7 @@ def main(argv=None) -> int:
             print(f"Ficha ({a.modo}) escrita: {salida}")
             return 0
 
-    except (CompuertaCerrada, FuenteProhibida) as e:
+    except (CompuertaCerrada, FuenteProhibida, SalidaEnElRepo) as e:
         print(f"\n  ⛔ COMPUERTA: {e}\n", file=sys.stderr)
         return 2
     return 0

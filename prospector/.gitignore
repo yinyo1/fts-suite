@@ -1,6 +1,9 @@
-# Las corridas llevan nombres, puestos y correos de personas reales.
-corridas/*
-!corridas/.gitkeep
+# Las corridas llevan nombres, puestos y correos de PERSONAS, y este repo es
+# publico. La herramienta ya las escribe FUERA del arbol del repo -ver
+# flujo/salida.py, que se niega con un raise-. Esto es la red por si acaso.
+corridas/
+salidas/
+*.corrida.json
 __pycache__/
 *.pyc
 .pytest_cache/

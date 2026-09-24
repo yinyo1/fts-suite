@@ -40,7 +40,7 @@ def test_el_ancla_dura_fija_el_dominio_pero_NO_cierra_el_conflicto():
     d = Dato("patron_correo")
     d.observar("leadiq", "nombre.apellido@cuprum.com")
     d.observar("contactout", "nombre.apellido@verzatec.com")
-    d.observar("outlook", "nombre.apellido@cuprum.com")   # ana.villagomez, real
+    d.observar("outlook", "nombre.apellido@cuprum.com")   # un correo literal real; su valor vive fuera del repo
     d.ancla_dura = True
     assert d.nivel == EN_CONFLICTO, (
         "usar el ancla para CERRAR el conflicto es fallar el caso: "
@@ -78,7 +78,7 @@ def test_el_conflicto_LLEGA_a_la_ficha_limpia():
     from flujo.ficha import modo_limpio
 
     c = Corrida("Grupo Cuprum", "San Nicolas, NL", "aluminio")
-    x = Contacto("Ana Lucia Villagomez", "proveedores", c.empresa)
+    x = Contacto("[Persona A]", "proveedores", c.empresa)
     d = x.dato("patron_correo")
     d.observar("leadiq", "nombre.apellido@cuprum.com")
     d.observar("contactout", "nombre.apellido@verzatec.com")

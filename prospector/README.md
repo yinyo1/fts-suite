@@ -15,12 +15,65 @@ vacantes, prensa, congresos y la web abierta, con la procedencia de cada dato.
 
 ---
 
+## Regla de arquitectura: los contactos NUNCA viven en el repo
+
+> **`fts-suite` es un repositorio PÚBLICO.** Los datos de contactos y personas
+> son datos personales. No se guardan aquí.
+
+La separación es estricta y tiene tres destinos:
+
+| Dónde | Qué vive ahí |
+|---|---|
+| **EL REPO** | Solo la **lógica**: código, compuertas, método, diccionario de puestos —que son títulos genéricos, no personas—, catálogos de fuentes, y pruebas con **datos ficticios**. Ninguna persona real. |
+| **LA SESIÓN** | El resultado de una corrida —la ficha HTML y el historial de esa corrida— mientras la herramienta se pule. Se genera, se usa, y **no se commitea**. |
+| **POSTGRES** | Los **contactos reales**. Se actualizan ahí, y a futuro se integran a Odoo cuando eso se implemente. |
+
+Es la misma separación que ya rige la suite comercial: **código público, corpus
+y datos sensibles en Postgres, nunca en el repo.**
+
+### Cómo se hace cumplir, y no es con un `.gitignore`
+
+`flujo/salida.py` resuelve el destino de cada corrida y **se niega con un
+`raise`** si la ruta cae dentro del árbol del repositorio, aunque el
+`.gitignore` la cubra:
+
+```
+⛔ COMPUERTA: '/…/prospector/corridas' esta dentro del repositorio.
+Los contactos y las fichas son datos personales y el repo es PUBLICO: no se
+escriben aqui ni con .gitignore de por medio.
+```
+
+El destino real es la carpeta de trabajo de la sesión, que se elige sola
+—`$TMPDIR/prospector-corridas/<sesión>`— o la que indique `PROSPECTOR_SALIDA`.
+Un `.gitignore` sigue ahí como red, pero **no es la compuerta**: un
+`.gitignore` se edita sin querer.
+
+Y `tests/test_sin_datos_personales.py` barre todo `prospector/` en cada corrida
+de pruebas buscando correos con forma de persona, teléfonos, y las columnas de
+contacto del padrón. **Esa prueba existe porque ya pasó una vez** —ver
+`CHANGELOG.md` v0.4.0—.
+
+### Qué se considera dato personal aquí, y qué no
+
+| No va al repo | Sí puede ir |
+|---|---|
+| Nombre completo de una persona real | Su **puesto**, que es un título genérico |
+| Su correo (`nombre.apellido@empresa.com`) | El **dominio** de la empresa (`empresa.com`) |
+| Su teléfono | El domicilio y el teléfono **de la planta**, cuando son del padrón y no de alguien |
+| Un correo de webmail libre de un negocio | La razón social y el nombre del establecimiento |
+
+El **dominio** es la excepción deliberada, y es la que hace que el padrón siga
+sirviendo: la llave operativa del método es *dominio + ciudad + CP*, y un
+dominio no identifica a una persona.
+
+---
+
 ## Qué hay aquí
 
 | Ruta | Qué es |
 |---|---|
 | **`flujo/`** | El código. Compuertas, instrumentación, Chao1, catálogo, ficha y el orquestador |
-| **`tests/`** | 77 pruebas. Casos de regresión **D (LEGO)** y **F (Cuprum)**, más el truco del contador vacío y el lazo de refuerzo |
+| **`tests/`** | 91 pruebas. Casos de regresión **D (LEGO)** y **F (Cuprum)**, más el truco del contador vacío, el lazo de refuerzo y la guardia de datos personales |
 | **`metodo/`** | El *por qué* de cada paso, con su disparador medido |
 | **`SKILL-criterio.md`** | Lo que juzga Claude y el código no puede |
 | **`CHANGELOG.md`** | Versiones de la herramienta |
@@ -35,6 +88,7 @@ vacantes, prensa, congresos y la web abierta, con la procedencia de cada dato.
 | `flujo/estado.py` | 265 | La corrida que Python posee. Las cuatro olas y el **lazo de refuerzo** |
 | `flujo/chao1.py` | 147 | Estimador de completitud, con **veredicto de cuatro valores**: solo `saturo` detiene el lazo |
 | `flujo/ficha.py` | 117 | Modo limpio y modo procedencia, con checklist de lo que no se pudo hacer |
+| `flujo/salida.py` | 109 | **Dónde va el resultado de una corrida, y dónde NO.** Se niega a escribir dentro del repo |
 | `flujo/catalogo.py` | 85 | Las **13 fuentes descartadas**, rechazadas por código con su razón, y qué fuente le corresponde a cada módulo |
 
 ### La regla que ordena las compuertas
@@ -97,7 +151,7 @@ presupuesto queda. Claude corre **ese** módulo, registra lo que encontró, y el
 orquestador decide si se avanza.
 
 ```bash
-python3 -m pytest tests -q     # 77 pruebas
+python3 -m pytest tests -q     # 91 pruebas
 ```
 
 ---
