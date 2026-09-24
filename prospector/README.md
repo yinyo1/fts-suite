@@ -134,8 +134,34 @@ issues de **`yinyo1/fts-mcp-odoo`**:
 **De aquí en adelante, los avances se escriben en los issues de
 `yinyo1/fts-suite`.**
 
-> **Nota sobre referencias cruzadas:** algunos documentos de `metodo/` apuntan
-> a rutas de `fts-mcp-odoo` que no existen aquí —`docs/n8n/denue-padron.md`,
-> `.claude/skills/prospectar/SKILL.md`—. Se dejaron tal cual en vez de
-> reescribirlas: **el método es el original, no una adaptación**, y cambiar sus
-> enlaces lo convertiría en una copia divergente.
+## Historial
+
+Los issues #14 a #24 de `fts-mcp-odoo` están copiados íntegros en
+[`HISTORIAL.md`](HISTORIAL.md) —fecha, decisiones, hallazgos y correcciones—.
+**Es una copia: los issues originales siguen abiertos y sin editar en
+`fts-mcp-odoo`.**
+
+## Referencias cruzadas
+
+Las referencias quedaron **resueltas dentro de esta carpeta**. Los cinco
+documentos y los tres datos que el método citaba y que vivían en
+`fts-mcp-odoo` se trajeron aquí, y los enlaces se reapuntaron a esta copia:
+
+| Ahora vive en | Venía de |
+|---|---|
+| `metodo/denue-padron.md` | `docs/n8n/denue-padron.md` |
+| `metodo/denue-vigilante.md` | `docs/n8n/denue-vigilante.md` |
+| `metodo/red-de-validacion.md` | `docs/prospectar/red-de-validacion.md` |
+| `metodo/fuentes-de-senal.md` | `docs/prospectar/fuentes-de-senal.md` |
+| `SKILL-orquestador.md` | `.claude/skills/prospectar/SKILL.md` |
+| `datos/fuentes.json` · `datos/consultas_senal.json` · `datos/padron_denue.csv` | `db/datos/` |
+| `herramientas/cargar_padron.py` | `scripts/cargar_padron.py` |
+
+`SKILL-orquestador.md` **se copió sin su frontmatter a propósito**: aquí es
+documentación para leer, no una skill registrada. La skill viva sigue operando
+en `fts-mcp-odoo`.
+
+Quedan a propósito dos menciones a rutas de `fts-mcp-odoo`: el post-mortem
+`docs/n8n/incidente-kiosk-2026-09-18.md` (es un incidente de infraestructura de
+n8n, no del método) y la ubicación de la skill viva. Son señalamientos, **no enlaces
+rotos**: apuntan a algo que se quedó allá por decisión.

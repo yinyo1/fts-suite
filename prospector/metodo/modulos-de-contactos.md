@@ -267,7 +267,7 @@ Cuprum · 2,000 MDD de Bimbo · 120 MDD de Navistar · 500 MDP de Amazon.
 |---|---|
 | **Entrada** | entidad federativa · `codigo_act` del giro |
 | **Salida** | identidad · ubicación · tamaño · **`dominio_correo`** — la entrada de M1 y media llave operativa |
-| **Fuentes** | corte del DENUE. Detalle en `docs/n8n/denue-padron.md` |
+| **Fuentes** | corte del DENUE. Detalle en [`denue-padron.md`](denue-padron.md) |
 | **Agotado** | corte vigente cargado y empatado |
 | **Alimenta** | **M1** (le da el dominio) · M10 (cruce C5) |
 

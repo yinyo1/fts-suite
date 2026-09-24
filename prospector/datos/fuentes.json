@@ -1,0 +1,192 @@
+{
+  "version": 1,
+  "regla": "Cada corrida intenta TODAS las fuentes que apliquen. El reporte final declara el estado de CADA UNA. Nada queda sin consultar en silencio. Una fuente caida se marca 'fallo' y se registra para reintento; no se ignora.",
+  "estados": {
+    "respondio": "Contesto, con o sin resultados. Cero resultados es una respuesta. OBLIGATORIO decir QUE dio: medido el 2026-09-18 en la regresion de Ragasa, dos casillas marcadas respondio con las manos vacias tapaban un anuncio de 633 mdp en cogeneracion de vapor, que es el angulo tecnico de FTS. Un respondio sin hallazgo declarado se ve identico a uno con hallazgo, y ahi es donde se pierde una planta.",
+    "no_aplicaba": "La fuente no tenia nada que aportar a esta ficha por su naturaleza, no por estar caida. Hay que decir por que.",
+    "fallo": "Se intento y no contesto. Se registra para reintento. NO se confunde con 'sin resultados'.",
+    "omitida_por_costo": "Se decidio no gastar. Exige decir quien decidio y por que.",
+    "sin_acceso": "No hay credencial ni llave hoy. Es un hueco declarado, nunca simulado ni sustituido en silencio.",
+    "sin_herramienta": "La fuente esta viva y su alcance esta MEDIDO, pero todavia no existe con que preguntarle desde esta herramienta. No es sin_acceso -hay acceso-, ni fallo -no se intento-, ni no_aplicaba -si aplicaba-. Es deuda de construccion, y se declara como hueco."
+  },
+  "siempre": [
+    {
+      "clave": "D1_denue",
+      "nombre": "Padron DENUE",
+      "origen_raiz": "inegi",
+      "donde": "postgres",
+      "da": "identidad, ubicacion, SCIAN, estrato, dominio de correo"
+    },
+    {
+      "clave": "D2_odoo_negocio",
+      "nombre": "Odoo lectura de negocio",
+      "origen_raiz": "fts_interno",
+      "donde": "mcp_odoo",
+      "da": "si ya es cuenta, historial comercial, contactos"
+    },
+    {
+      "clave": "D3_odoo_autocomplete",
+      "nombre": "Odoo autocomplete_by_name",
+      "origen_raiz": "dnb",
+      "donde": "mcp_odoo",
+      "da": "razon social canonica y DUNS",
+      "nota": "Segundo argumento es id de pais -156 para Mexico-, no bandera mundial. NO devuelve RFC."
+    },
+    {
+      "clave": "D4_outlook_historia",
+      "nombre": "Outlook, historia de la cuenta",
+      "origen_raiz": "fts_interno",
+      "donde": "mcp_microsoft",
+      "da": "cotizaciones, hilos, contrapartes"
+    },
+    {
+      "clave": "D5_outlook_linkedin",
+      "nombre": "Outlook, corpus de invitaciones de LinkedIn",
+      "origen_raiz": "fts_interno",
+      "donde": "mcp_microsoft",
+      "da": "nombre y puesto de personas",
+      "nota": "Dos formatos: 'acepto tu invitacion' trae nombre completo sin puesto; 'espera tu respuesta' trae puesto y empresa con solo el nombre de pila."
+    },
+    {
+      "clave": "D6_web_proyecto",
+      "nombre": "Busqueda web, angulo de proyecto",
+      "origen_raiz": "web_abierta",
+      "donde": "claude_code_websearch",
+      "da": "inversion, obra nueva, ampliacion"
+    },
+    {
+      "clave": "D7_web_tecnico",
+      "nombre": "Busqueda web, angulo tecnico",
+      "origen_raiz": "web_abierta",
+      "donde": "claude_code_websearch",
+      "da": "agua, vapor, cogeneracion, PTAR"
+    },
+    {
+      "clave": "D8a_articulo_vanguardia-industrial",
+      "nombre": "Lectura de articulos via n8n: Vanguardia Industrial",
+      "origen_raiz": "web_abierta",
+      "donde": "n8n",
+      "da": "el texto completo de la nota",
+      "dominio": "vanguardia-industrial.net",
+      "alcance_medido_desde_n8n": "HTTP 200, 368 KB; tiene RSS",
+      "estado_hoy": "sin_herramienta",
+      "por_que_fila_propia": "'Lectura de articulos' en abstracto se cumple leyendo una sola y declarando la casilla. Cada sitio declara su propio estado."
+    },
+    {
+      "clave": "D8b_articulo_somosindustria",
+      "nombre": "Lectura de articulos via n8n: Somos Industria",
+      "origen_raiz": "web_abierta",
+      "donde": "n8n",
+      "da": "el texto completo de la nota",
+      "dominio": "somosindustria.com",
+      "alcance_medido_desde_n8n": "HTTP 200, 202 KB; sin RSS",
+      "estado_hoy": "sin_herramienta",
+      "por_que_fila_propia": "'Lectura de articulos' en abstracto se cumple leyendo una sola y declarando la casilla. Cada sitio declara su propio estado."
+    },
+    {
+      "clave": "D8c_articulo_solili",
+      "nombre": "Lectura de articulos via n8n: Solili",
+      "origen_raiz": "web_abierta",
+      "donde": "n8n",
+      "da": "el texto completo de la nota",
+      "dominio": "solili.mx",
+      "alcance_medido_desde_n8n": "HTTP 200, 69 KB; sin RSS",
+      "estado_hoy": "sin_herramienta",
+      "por_que_fila_propia": "'Lectura de articulos' en abstracto se cumple leyendo una sola y declarando la casilla. Cada sitio declara su propio estado."
+    },
+    {
+      "clave": "D8d_articulo_clusterindustrial",
+      "nombre": "Lectura de articulos via n8n: Cluster Industrial",
+      "origen_raiz": "web_abierta",
+      "donde": "n8n",
+      "da": "el texto completo de la nota",
+      "dominio": "clusterindustrial.com.mx",
+      "alcance_medido_desde_n8n": "HTTP 200, 511 KB; tiene RSS",
+      "estado_hoy": "sin_herramienta",
+      "por_que_fila_propia": "'Lectura de articulos' en abstracto se cumple leyendo una sola y declarando la casilla. Cada sitio declara su propio estado."
+    },
+    {
+      "clave": "D8e_articulo_mexicoindustry",
+      "nombre": "Lectura de articulos via n8n: Mexico Industry",
+      "origen_raiz": "web_abierta",
+      "donde": "n8n",
+      "da": "el texto completo de la nota",
+      "dominio": "mexicoindustry.com",
+      "alcance_medido_desde_n8n": "HTTP 200, 160 KB; sin RSS",
+      "estado_hoy": "sin_herramienta",
+      "por_que_fila_propia": "'Lectura de articulos' en abstracto se cumple leyendo una sola y declarando la casilla. Cada sitio declara su propio estado."
+    },
+    {
+      "clave": "D9_patron_correo",
+      "nombre": "Derivacion del patron de correo",
+      "origen_raiz": "fts_interno",
+      "donde": "derivado",
+      "da": "correo CANDIDATO",
+      "nota": "NUNCA sale verificado. Lo impide ck_patron_nunca_verificado."
+    }
+  ],
+  "bajo_condicion": [
+    {
+      "clave": "C1_vibe",
+      "nombre": "Vibe, capa gratuita",
+      "condicion": "Solo como SEGUNDA OPINION, nunca como fuente unica.",
+      "por_que": "Registro a LEGO como casa de bolsa de Hong Kong. Una fuente que puede equivocarse asi no sostiene un campo sola.",
+      "declarar": "Siempre, diciendo que dato confirmo o refuto y contra quien se contrasto."
+    },
+    {
+      "clave": "C2_lusha",
+      "nombre": "Lusha",
+      "condicion": "Solo con autorizacion POR CORRIDA.",
+      "presupuesto": {
+        "creditos_restantes": 20,
+        "costo_padron_completo": 480
+      },
+      "por_que": "Quedan 20 creditos de los 480 que costaria el padron completo. Gastar sin plan es quemar el 4% del recurso en una ficha.",
+      "declarar": "Cuantos creditos gasto y QUIEN autorizo. Si el gasto no es cero y no hay nombre, es un error."
+    }
+  ],
+  "sin_acceso_hoy": [
+    {
+      "clave": "X1_google_places",
+      "nombre": "Google Places",
+      "falta": "llave",
+      "nota": "No hay llave y no la habra por ahora."
+    },
+    {
+      "clave": "X2_dnb_directo",
+      "nombre": "D&B directo",
+      "falta": "contrato"
+    },
+    {
+      "clave": "X3_siem",
+      "nombre": "SIEM",
+      "falta": "acceso"
+    },
+    {
+      "clave": "X4_caintra",
+      "nombre": "CAINTRA",
+      "falta": "acceso"
+    },
+    {
+      "clave": "X5_ampip",
+      "nombre": "AMPIP",
+      "falta": "acceso"
+    }
+  ],
+  "duns": {
+    "jerarquia": "baja",
+    "sirve_para": "identificador estable de la planta ENTRE CORTES del padron",
+    "no_sirve_para": "llave de empate",
+    "por_que": [
+      "Sin contrato de D&B no abre el arbol corporativo ni los contactos.",
+      "Puede apuntar a una oficina en vez de la planta, como paso con SuKarne.",
+      "Ragasa tiene 5 DUNS, uno de ellos en Jalisco."
+    ],
+    "llave_operativa": [
+      "dominio_correo",
+      "ciudad",
+      "codigo_postal"
+    ]
+  },
+  "nota_de_cobertura": "Las cinco fuentes de articulos estan en sin_herramienta al 2026-09-18: su alcance desde n8n esta medido y funciona -5 de 11 sitios probados contestaron 200 con contenido util- pero el workflow de lectura no esta construido. Se declara como hueco, no como casilla verde. Gobierno de NL, The Logistics World, OCC y Plastics Technology bloquean al cliente y no estan en la lista: para esos el camino es la busqueda, no el raspado."
+}

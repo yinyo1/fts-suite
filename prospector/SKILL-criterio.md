@@ -1,17 +1,17 @@
 ---
 name: prospectar-contactos
-description: Corre la cascada de busqueda de contactos de una planta industrial usando el orquestador de tools/prospeccion/. Usar cuando se pida prospectar una empresa, armar su ficha de contactos, o buscar quien compra mantenimiento, agua, vapor o servicios industriales en una planta. El orquestador manda el orden; esta skill aporta el criterio.
+description: Corre la cascada de busqueda de contactos de una planta industrial usando el orquestador de prospector/. Usar cuando se pida prospectar una empresa, armar su ficha de contactos, o buscar quien compra mantenimiento, agua, vapor o servicios industriales en una planta. El orquestador manda el orden; esta skill aporta el criterio.
 ---
 
 # Cascada de contactos
 
-**El orquestador de `tools/prospeccion/` decide el orden. Tu aportas el criterio.**
+**El orquestador de `prospector/` decide el orden. Tu aportas el criterio.**
 No inventes pasos, no te adelantes, no cierres un modulo que no agotaste.
 
 ## El ciclo, siempre igual
 
 ```bash
-cd tools/prospeccion
+cd prospector
 python3 -m flujo.orquestador siguiente --empresa "<empresa>"
 ```
 
@@ -83,5 +83,6 @@ python3 -m flujo.orquestador ficha --empresa "<empresa>" --modo procedencia
 ```
 
 El metodo completo, con el porque de cada regla, esta en
-`docs/prospeccion/busqueda-encadenada-contactos.md`. Leelo antes de proponer
+[`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
+Leelo antes de proponer
 cambiar cualquier cosa de aqui.

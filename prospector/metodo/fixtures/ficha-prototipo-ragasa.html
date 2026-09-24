@@ -1,0 +1,509 @@
+<title>Ficha de Prospección Ragasa</title>
+<style>
+  :root{
+    --paper:#f5f7f4; --card:#ffffff; --ink:#12201e; --ink-2:#3d4b48; --ink-3:#6c7975;
+    --line:#dde3df; --line-2:#c9d2cd;
+    --accent:#0f6b5c; --accent-soft:#e3efeb;
+    --ok:#1f7a4d; --ok-soft:#e4f1e9;
+    --sup:#9a6608; --sup-soft:#f8eed8;
+    --nil:#6c7975; --nil-soft:#eceeed;
+    --flag:#a93520; --flag-soft:#fae9e5;
+    --shadow:0 1px 2px rgba(18,32,30,.06),0 8px 24px -16px rgba(18,32,30,.22);
+    --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --body:"Source Sans 3",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    --disp:"Archivo","Source Sans 3",-apple-system,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --paper:#0e1614; --card:#151f1d; --ink:#e8efec; --ink-2:#b3c1bc; --ink-3:#849690;
+      --line:#26332f; --line-2:#334440;
+      --accent:#5cc9b0; --accent-soft:#16302b;
+      --ok:#6ed19b; --ok-soft:#142b20;
+      --sup:#e0ac4d; --sup-soft:#33260f;
+      --nil:#849690; --nil-soft:#1d2724;
+      --flag:#f08a71; --flag-soft:#341811;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0e1614; --card:#151f1d; --ink:#e8efec; --ink-2:#b3c1bc; --ink-3:#849690;
+    --line:#26332f; --line-2:#334440;
+    --accent:#5cc9b0; --accent-soft:#16302b;
+    --ok:#6ed19b; --ok-soft:#142b20;
+    --sup:#e0ac4d; --sup-soft:#33260f;
+    --nil:#849690; --nil-soft:#1d2724;
+    --flag:#f08a71; --flag-soft:#341811;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:var(--body);font-size:16px;line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1120px;margin:0 auto;padding-inline:16px;padding-block:0 64px}
+
+  /* ---------- aviso de prototipo ---------- */
+  .proto{
+    background:var(--sup-soft);border-bottom:1px solid var(--line-2);
+    font-size:13.5px;color:var(--ink-2);
+  }
+  .proto .wrap{padding-block:10px}
+  .proto b{color:var(--ink);font-family:var(--disp);letter-spacing:.02em}
+
+  /* ---------- encabezado ---------- */
+  header.hd{border-bottom:1px solid var(--line);background:var(--card)}
+  header.hd .wrap{padding-block:28px 22px}
+  .eyebrow{
+    font-family:var(--disp);font-size:11.5px;font-weight:600;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--accent);margin:0 0 6px
+  }
+  h1{
+    font-family:var(--disp);font-weight:700;font-size:clamp(28px,5vw,40px);
+    line-height:1.08;letter-spacing:-.02em;margin:0;text-wrap:balance
+  }
+  .sub{margin:8px 0 0;color:var(--ink-2);font-size:17px}
+  .runbar{
+    display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:18px;padding-top:16px;
+    border-top:1px dashed var(--line-2);font-size:13px;color:var(--ink-3)
+  }
+  .runbar span{display:inline-flex;align-items:center;gap:6px}
+  .runbar b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+
+  /* ---------- marcas de procedencia ---------- */
+  .mk{
+    display:inline-flex;align-items:center;gap:5px;vertical-align:baseline;
+    font-family:var(--disp);font-size:10.5px;font-weight:600;letter-spacing:.07em;
+    text-transform:uppercase;padding:2px 7px;border-radius:3px;white-space:nowrap
+  }
+  .mk::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor}
+  .mk.v{background:var(--ok-soft);color:var(--ok)}
+  .mk.s{background:var(--sup-soft);color:var(--sup)}
+  .mk.n{background:var(--nil-soft);color:var(--nil)}
+  .mk.d{background:var(--accent-soft);color:var(--accent)}
+
+  .leyenda{
+    display:flex;flex-wrap:wrap;gap:14px;align-items:center;
+    margin:20px 0 0;padding:12px 14px;background:var(--card);
+    border:1px solid var(--line);border-radius:8px;font-size:13px;color:var(--ink-3)
+  }
+  .leyenda .mk{margin-right:2px}
+
+  /* ---------- secciones ---------- */
+  section{margin-top:40px}
+  .shead{display:flex;align-items:baseline;gap:12px;margin-bottom:14px}
+  .snum{
+    font-family:var(--mono);font-size:12px;font-weight:700;color:var(--accent);
+    border:1px solid var(--line-2);border-radius:4px;padding:2px 7px;flex:none
+  }
+  h2{
+    font-family:var(--disp);font-weight:700;font-size:20px;letter-spacing:-.01em;
+    margin:0;text-wrap:balance
+  }
+  .snote{margin-left:auto;font-size:12.5px;color:var(--ink-3);text-align:right}
+
+  .panel{
+    background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:20px;box-shadow:var(--shadow)
+  }
+
+  /* ---------- lista de datos ---------- */
+  dl.campos{display:grid;grid-template-columns:200px 1fr;gap:1px;margin:0;
+    background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  dl.campos dt,dl.campos dd{background:var(--card);margin:0;padding:11px 14px}
+  dl.campos dt{
+    font-family:var(--disp);font-size:12px;font-weight:600;letter-spacing:.05em;
+    text-transform:uppercase;color:var(--ink-3);display:flex;align-items:center
+  }
+  dl.campos dd{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+  .val{font-weight:600}
+  .val.code{font-family:var(--mono);font-size:14.5px;font-weight:500;letter-spacing:-.01em}
+  .fuente{width:100%;font-size:12.5px;color:var(--ink-3);margin-top:-2px}
+  .fuente a{color:var(--accent)}
+  @media (max-width:640px){
+    dl.campos{grid-template-columns:1fr;gap:0}
+    dl.campos dt{padding-bottom:0;border-top:1px solid var(--line)}
+    dl.campos dt:first-child{border-top:0}
+  }
+
+  /* ---------- historia: dos paneles ---------- */
+  .dos{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media (max-width:820px){.dos{grid-template-columns:1fr}}
+  .hist{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .hist>h3{
+    font-family:var(--disp);font-size:13px;font-weight:700;letter-spacing:.06em;
+    text-transform:uppercase;margin:0;padding:12px 18px;border-bottom:1px solid var(--line);
+    color:var(--ink-2);display:flex;align-items:center;gap:8px
+  }
+  .hist>div{padding:18px}
+  .hist.clave{border-color:var(--accent);border-width:1.5px}
+  .hist.clave>h3{background:var(--accent-soft);color:var(--accent);border-bottom-color:var(--accent)}
+  .veredicto{font-family:var(--disp);font-size:19px;font-weight:700;line-height:1.25;margin:0 0 10px;text-wrap:balance}
+  .hist p{margin:0 0 10px;color:var(--ink-2);font-size:15px}
+  .hist p:last-child{margin-bottom:0}
+  ul.hechos{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:10px}
+  ul.hechos li{
+    padding-left:16px;border-left:2px solid var(--accent);font-size:14.5px;color:var(--ink-2)
+  }
+  ul.hechos b{color:var(--ink)}
+
+  /* ---------- angulo tecnico ---------- */
+  .cifra{display:flex;flex-wrap:wrap;gap:28px;padding:4px 0 16px;margin-bottom:16px;border-bottom:1px solid var(--line)}
+  .cifra div{min-width:120px}
+  .cifra .n{
+    font-family:var(--disp);font-size:26px;font-weight:700;letter-spacing:-.02em;
+    font-variant-numeric:tabular-nums;line-height:1.1;color:var(--accent)
+  }
+  .cifra .l{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);font-family:var(--disp);font-weight:600}
+
+  /* ---------- contactos ---------- */
+  .quien{
+    font-size:14px;color:var(--ink-2);margin:0 0 14px;padding:10px 14px;
+    background:var(--accent-soft);border-radius:8px
+  }
+  .contactos{display:flex;flex-direction:column;gap:12px}
+  .ct{
+    display:grid;grid-template-columns:44px 1fr;gap:16px;align-items:start;
+    background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px
+  }
+  .ct .rank{
+    font-family:var(--disp);font-size:18px;font-weight:700;color:var(--accent);
+    background:var(--accent-soft);border-radius:8px;height:44px;
+    display:flex;align-items:center;justify-content:center
+  }
+  .ct h4{font-family:var(--disp);font-size:16.5px;font-weight:700;margin:0 0 2px}
+  .ct .puesto{font-size:14px;color:var(--ink-2);margin:0 0 8px}
+  .porque{font-size:13.5px;color:var(--ink-2);margin:0 0 10px;padding-left:12px;border-left:2px solid var(--line-2)}
+  .datos-ct{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:13.5px;align-items:center}
+  .datos-ct a{color:var(--accent)}
+  .oculto{
+    font-family:var(--mono);font-size:13px;background:var(--nil-soft);color:var(--ink-3);
+    padding:2px 8px;border-radius:4px;user-select:none
+  }
+  button.rev{
+    font-family:var(--disp);font-size:12.5px;font-weight:600;letter-spacing:.04em;
+    background:var(--card);color:var(--accent);border:1px solid var(--accent);
+    border-radius:6px;padding:7px 13px;cursor:pointer
+  }
+  button.rev:hover{background:var(--accent-soft)}
+  button.rev:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .aviso-pii{font-size:12.5px;color:var(--ink-3);margin:10px 0 0}
+
+  /* ---------- razon de llamada ---------- */
+  .guion{
+    background:var(--card);border:1px solid var(--line);border-left:4px solid var(--accent);
+    border-radius:10px;padding:22px 24px
+  }
+  .guion p{
+    font-family:var(--disp);font-size:clamp(17px,2.4vw,21px);font-weight:600;
+    line-height:1.4;margin:0 0 10px;letter-spacing:-.01em;text-wrap:balance
+  }
+  .guion p:last-child{margin-bottom:0;color:var(--ink-2);font-weight:500}
+
+  /* ---------- banderas ---------- */
+  .bandera{
+    background:var(--flag-soft);border:1px solid var(--flag);border-radius:10px;
+    padding:16px 18px;margin-bottom:12px
+  }
+  .bandera h4{
+    font-family:var(--disp);font-size:14.5px;font-weight:700;margin:0 0 6px;color:var(--flag);
+    display:flex;align-items:baseline;gap:8px
+  }
+  .bandera h4 .tipo{
+    font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+    border:1px solid currentColor;border-radius:3px;padding:1px 6px;flex:none
+  }
+  .bandera p{margin:0;font-size:14.5px;color:var(--ink-2)}
+  .bandera p+p{margin-top:8px}
+  .bandera code{font-family:var(--mono);font-size:13px;background:var(--card);padding:1px 5px;border-radius:3px}
+
+  table.duns{width:100%;border-collapse:collapse;margin-top:12px;font-size:13.5px}
+  table.duns th,table.duns td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line-2)}
+  table.duns th{font-family:var(--disp);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+  table.duns td.c{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  table.duns tr.elegido td{background:var(--ok-soft);font-weight:600}
+  .tablawrap{overflow-x:auto}
+
+  footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);font-size:13px;color:var(--ink-3)}
+  footer a{color:var(--accent)}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<div class="proto"><div class="wrap">
+  <b>PROTOTIPO</b> · Así se leería la ficha. Los campos marcados <span class="mk d">demo</span> están inventados
+  para ver la forma. Los que citan fuente son reales, obtenidos en esta sesión.
+</div></div>
+
+<header class="hd"><div class="wrap">
+  <p class="eyebrow">Ficha de prospección industrial · FTS</p>
+  <h1>Ragasa Industrias</h1>
+  <p class="sub">Planta Guadalupe, Nuevo León · Aceites y grasas vegetales comestibles</p>
+  <div class="runbar">
+    <span>Corrida <b>2026-09-17 22:34</b></span>
+    <span>Créditos Lusha <b>0 de 20</b></span>
+    <span>Fuentes vivas <b>4 de 7</b></span>
+    <span>Banderas <b>3</b></span>
+    <span>Escrituras a Odoo <b>0</b></span>
+  </div>
+</div></header>
+
+<div class="wrap">
+
+<div class="leyenda">
+  <span><span class="mk v">verificado</span> dos fuentes o fuente primaria</span>
+  <span><span class="mk s">supuesto</span> inferido, no confirmado</span>
+  <span><span class="mk n">no encontrado</span> se buscó y no está</span>
+  <span><span class="mk d">demo</span> inventado para el prototipo</span>
+</div>
+
+<!-- 1 -->
+<section>
+  <div class="shead"><span class="snum">01</span><h2>Identificación</h2>
+    <span class="snote">DENUE · Odoo/D&amp;B · Places</span></div>
+  <dl class="campos">
+    <dt>Razón social canónica</dt>
+    <dd><span class="val">Ragasa Industrias, S.A. de C.V.</span><span class="mk v">verificado</span>
+      <span class="fuente">Odoo <code>autocomplete_by_name</code> (D&amp;B), ejecución 103270, país 156</span></dd>
+
+    <dt>DUNS</dt>
+    <dd><span class="val code">810001115</span><span class="mk v">verificado</span>
+      <span class="fuente">El de Guadalupe NL. Hay 5 DUNS con esta misma razón social — ver bandera 1</span></dd>
+
+    <dt>Nombre comercial</dt>
+    <dd><span class="val">Ragasa</span><span class="mk v">verificado</span>
+      <span class="fuente">Uso propio en prensa y dominio corporativo</span></dd>
+
+    <dt>Dirección</dt>
+    <dd><span class="val">Parque Industrial Nexxus Guadalupe, Guadalupe, N.L., C.P. 67130</span>
+      <span class="mk d">demo</span>
+      <span class="fuente">Pendiente de confirmar contra DENUE + Google Places</span></dd>
+
+    <dt>Teléfono</dt>
+    <dd><span class="val code">81 8196 0100</span><span class="mk d">demo</span>
+      <span class="fuente">Sin verificar: Google Places no está disponible en este entorno</span></dd>
+
+    <dt>Dominios de correo</dt>
+    <dd><span class="val code">ragasa.com.mx</span><span class="mk d">demo</span>
+      <span class="fuente">Una empresa puede tener varios dominios; la herramienta no asumirá uno solo</span></dd>
+  </dl>
+</section>
+
+<!-- 2 -->
+<section>
+  <div class="shead"><span class="snum">02</span><h2>Tamaño y giro</h2>
+    <span class="snote">DENUE descarga masiva</span></div>
+  <dl class="campos">
+    <dt>Estrato de personal</dt>
+    <dd><span class="val">251 y más personas</span><span class="mk d">demo</span>
+      <span class="fuente">Por encima del piso de 101+; es planta, no oficina</span></dd>
+    <dt>SCIAN</dt>
+    <dd><span class="val code">311222</span><span class="val">Elaboración de aceites y grasas vegetales comestibles</span>
+      <span class="mk d">demo</span></dd>
+    <dt>Otros sitios del grupo</dt>
+    <dd><span class="val">4 razones sociales adicionales en Monterrey y El Salto, Jalisco</span>
+      <span class="mk v">verificado</span>
+      <span class="fuente">D&amp;B vía Odoo, misma corrida. Ninguno es la planta objetivo</span></dd>
+  </dl>
+</section>
+
+<!-- 3 -->
+<section>
+  <div class="shead"><span class="snum">03</span><h2>Historia con FTS</h2>
+    <span class="snote">Lo que nadie más tiene</span></div>
+  <div class="dos">
+    <div class="hist">
+      <h3>Odoo · ¿ya es cliente?</h3>
+      <div>
+        <p class="veredicto">No existe como cliente</p>
+        <p>Sin coincidencia en <code>res.partner</code> para la razón social ni para el dominio.</p>
+        <p><span class="mk d">demo</span> — el conector de Odoo pide reautenticación; esta comprobación
+        quedó pendiente de correr de verdad.</p>
+      </div>
+    </div>
+    <div class="hist clave">
+      <h3>Correo de FTS · ¿hay historia?</h3>
+      <div>
+        <p class="veredicto">Sí, y cambia el enfoque</p>
+        <p>Dos cotizaciones en 2025 por suavización y filtros, <b>facturadas a través de Nalco</b>.
+        No entró como cliente directo, por eso Odoo no lo ve.</p>
+        <ul class="hechos">
+          <li><b>No es un primer contacto.</b> Es una cuenta que ya compró, con intermediario.</li>
+          <li><b>La pregunta es por qué vía Nalco</b>, no si conocen a FTS.</li>
+        </ul>
+        <p style="margin-top:12px"><span class="mk d">demo</span> — ejemplo real citado por Esteban.
+        La búsqueda en Outlook no se corrió en esta sesión.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section>
+  <div class="shead"><span class="snum">04</span><h2>Ángulo técnico</h2>
+    <span class="snote">Búsqueda web · verificado</span></div>
+  <div class="panel">
+    <div class="cifra">
+      <div><div class="n">19.20 MW</div><div class="l">Cogeneración</div></div>
+      <div><div class="n">$633 M</div><div class="l">Pesos invertidos</div></div>
+      <div><div class="n">Feb 2026</div><div class="l">Arranque de operación</div></div>
+      <div><div class="n">4.2 M m³</div><div class="l">Gas natural / mes</div></div>
+    </div>
+    <p style="margin:0 0 10px;color:var(--ink-2)">
+      Planta de cogeneración en el sitio de Guadalupe: genera electricidad <b>y vapor</b>.
+      Obra iniciada en marzo 2025, operación estimada desde febrero 2026. El recuperador de
+      vapor consume unos 3.8 millones de m³ mensuales adicionales.
+    </p>
+    <p style="margin:0;color:var(--ink-2)">
+      <b>Por qué le importa a FTS:</b> vapor nuevo significa agua de alimentación de caldera nueva.
+      Un ciclo de 19.20 MW con recuperador exige tratamiento de repuesto, control de dureza y
+      purgas — exactamente la conversación de suavización que ya tuvieron en 2025.
+      <span class="mk s">supuesto</span>
+    </p>
+    <p class="fuente" style="margin-top:12px">
+      Fuentes: <a href="https://www.elfinanciero.com.mx/monterrey/2024/04/30/invertira-ragasa-industrias-633-mdp-en-energia/">El Financiero</a> ·
+      <a href="https://petroquimex.com/invertira-ragasa-industrias-633-mdp-en-energia/">Petroquimex</a>
+      <span class="mk v">verificado</span>
+    </p>
+  </div>
+</section>
+
+<!-- 5 -->
+<section>
+  <div class="shead"><span class="snum">05</span><h2>Tres nombres para Sales Navigator</h2>
+    <span class="snote">Ordenados por quién autoriza</span></div>
+  <p class="quien">
+    El orden no es jerárquico. Va primero quien firma o detiene una compra de tratamiento de agua
+    en una planta con proyecto de vapor en curso.
+  </p>
+  <div class="contactos" id="contactos">
+    <article class="ct">
+      <div class="rank">1</div>
+      <div>
+        <h4>Nombre Apellido <span class="mk d">demo</span></h4>
+        <p class="puesto">Gerente de Mantenimiento · Guadalupe, N.L.</p>
+        <p class="porque">Autoriza el gasto de mantenimiento y vive el problema de caldera todos los días.
+          Es quien decide si entra un proveedor de tratamiento sin pasar por corporativo.</p>
+        <div class="datos-ct">
+          <a href="#">LinkedIn</a>
+          <span>Correo probable <span class="oculto" data-pii="n.apellido@ragasa.com.mx">•••••••••••••••••</span></span>
+          <span class="mk s">supuesto</span>
+        </div>
+      </div>
+    </article>
+    <article class="ct">
+      <div class="rank">2</div>
+      <div>
+        <h4>Nombre Apellido <span class="mk d">demo</span></h4>
+        <p class="puesto">Jefe de Proyectos / Ingeniería · Guadalupe, N.L.</p>
+        <p class="porque">Dueño del proyecto de cogeneración. Define especificación de agua de
+          alimentación antes de que arranque la operación.</p>
+        <div class="datos-ct">
+          <a href="#">LinkedIn</a>
+          <span>Correo probable <span class="oculto" data-pii="n.apellido@ragasa.com.mx">•••••••••••••••••</span></span>
+          <span class="mk s">supuesto</span>
+        </div>
+      </div>
+    </article>
+    <article class="ct">
+      <div class="rank">3</div>
+      <div>
+        <h4>Nombre Apellido <span class="mk d">demo</span></h4>
+        <p class="puesto">Compras / Abastecimiento · Monterrey, N.L.</p>
+        <p class="porque">No decide la solución técnica, pero puede bloquear el alta de proveedor.
+          Va tercero a propósito: entrar por aquí convierte la venta en una comparación de precio.</p>
+        <div class="datos-ct">
+          <a href="#">LinkedIn</a>
+          <span>Correo probable <span class="oculto" data-pii="n.apellido@ragasa.com.mx">•••••••••••••••••</span></span>
+          <span class="mk s">supuesto</span>
+        </div>
+      </div>
+    </article>
+  </div>
+  <p class="aviso-pii">
+    <button class="rev" id="btnPii" type="button" aria-expanded="false">Mostrar correos y teléfonos</button>
+    &nbsp;Los datos de contacto salen ocultos por omisión. Esta corrida no gastó créditos de Lusha.
+  </p>
+</section>
+
+<!-- 6 -->
+<section>
+  <div class="shead"><span class="snum">06</span><h2>Razón de llamada</h2></div>
+  <div class="guion">
+    <p>“En 2025 les cotizamos suavización y filtros a través de Nalco. Vi que su cogeneración de
+      19.20 MW arrancó operación en febrero.”</p>
+    <p>“Quiero entender cómo están resolviendo el agua de alimentación del recuperador de vapor,
+      y si tiene sentido que esta vez lo veamos directo.”</p>
+  </div>
+</section>
+
+<!-- 7 -->
+<section>
+  <div class="shead"><span class="snum">07</span><h2>Banderas</h2>
+    <span class="snote">Contradicciones y datos sin verificar</span></div>
+
+  <div class="bandera">
+    <h4><span class="tipo">Empate ambiguo</span> Cinco DUNS con la misma razón social</h4>
+    <p>D&amp;B devuelve <b>5 registros</b> llamados “Ragasa Industrias, S.A. de C.V.” para México.
+      El nombre solo no desempata: <b>únicamente la ciudad lo hace</b>. Se eligió el de Guadalupe
+      porque es el que coincide con el municipio de la planta del DENUE.</p>
+    <div class="tablawrap"><table class="duns">
+      <thead><tr><th>DUNS</th><th>Razón social</th><th>Ciudad</th><th>Estado</th></tr></thead>
+      <tbody>
+        <tr class="elegido"><td class="c">810001115</td><td>Ragasa Industrias, S.A. de C.V.</td><td>Guadalupe</td><td>Nuevo León</td></tr>
+        <tr><td class="c">814468195</td><td>Ragasa Industrias, S.A. de C.V.</td><td>Monterrey (64920)</td><td>Nuevo León</td></tr>
+        <tr><td class="c">816213409</td><td>Ragasa Industrias, S.A. de C.V.</td><td>Monterrey (64920)</td><td>Nuevo León</td></tr>
+        <tr><td class="c">814306833</td><td>Ragasa Industrias S.A. de C.V.</td><td>Monterrey (64920)</td><td>Nuevo León</td></tr>
+        <tr><td class="c">816388748</td><td>Ragasa Industrias, S.A. de C.V.</td><td>El Salto</td><td>Jalisco</td></tr>
+      </tbody>
+    </table></div>
+    <p style="margin-top:10px">Real, medido en la ejecución 103270. El de Jalisco habría pasado un
+      filtro por nombre y es otro estado: exactamente la falla que la regla de validación previene.</p>
+  </div>
+
+  <div class="bandera">
+    <h4><span class="tipo">Fuente caída</span> Sin verificación de existencia ni teléfono</h4>
+    <p>Google Places no está disponible en este entorno: no hay MCP ni llave configurada. Dirección,
+      teléfono y coordenadas quedan <span class="mk s">supuesto</span> hasta que se resuelva.</p>
+  </div>
+
+  <div class="bandera">
+    <h4><span class="tipo">Sin correr</span> Odoo y Outlook no se consultaron</h4>
+    <p>El conector <code>FTS_Odoo</code> pide reautenticación, y la búsqueda en el correo de FTS no
+      se ejecutó en esta corrida de prototipo. La sección 03 va marcada <span class="mk d">demo</span>
+      completa: es la forma de la respuesta, no la respuesta.</p>
+  </div>
+</section>
+
+<footer>
+  Ficha generada por <code>/prospectar</code> · solo lectura, cero escrituras a Odoo ·
+  prototipo para revisión de Rissia antes de construir el orquestador.
+</footer>
+
+</div>
+
+<script>
+(function(){
+  var btn = document.getElementById('btnPii');
+  if(!btn) return;
+  var abierto = false;
+  btn.addEventListener('click', function(){
+    abierto = !abierto;
+    var nodos = document.querySelectorAll('#contactos .oculto');
+    for (var i=0;i<nodos.length;i++){
+      var el = nodos[i];
+      if (abierto){
+        if(!el.dataset.mask) el.dataset.mask = el.textContent;
+        el.textContent = el.dataset.pii;
+      } else {
+        el.textContent = el.dataset.mask || '•••••••••••••••••';
+      }
+    }
+    btn.textContent = abierto ? 'Ocultar correos y teléfonos' : 'Mostrar correos y teléfonos';
+    btn.setAttribute('aria-expanded', abierto ? 'true' : 'false');
+  });
+})();
+</script>

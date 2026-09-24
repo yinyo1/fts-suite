@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "corte_padron": "2026-05",
+  "nota": "Conjunto de consultas dirigidas para el modo senal. Se corren desde Claude Code con WebSearch, que es lo unico que pasa el proxy de egress. La lectura del articulo completo la hace n8n. Ver docs/prospectar/fuentes-de-senal.md.",
+  "terminos_evento": {
+    "alto": [
+      "nueva planta", "planta nueva", "amplia planta", "ampliacion",
+      "arranque de operaciones", "inaugura", "nueva linea", "linea nueva",
+      "planta de tratamiento", "PTAR", "cogeneracion", "caldera", "torre de enfriamiento"
+    ],
+    "medio": ["inversion", "expansion", "certificacion", "nearshoring", "capex"],
+    "bajo": ["vacante", "contratacion"]
+  },
+  "familias": [
+    {
+      "clave": "F1_geo_sector",
+      "cada": "semanal",
+      "para": "Descubrir plantas que NO estan en el padron todavia. El DENUE es una foto de mayo; una planta inaugurada despues no existe ahi.",
+      "plantillas": [
+        "\"nueva planta\" alimentos OR bebidas \"Nuevo Leon\" inversion {anio}",
+        "\"nueva planta\" alimentos OR bebidas Coahuila Saltillo OR Torreon OR \"Ramos Arizpe\" inversion {anio}",
+        "inaugura planta procesadora OR alimenticia OR cervecera \"Nuevo Leon\" OR Coahuila {anio}",
+        "\"arranque de operaciones\" planta alimentos OR bebidas Monterrey OR Saltillo {anio}"
+      ],
+      "riesgo_medido": "Sin la palabra del sector devuelve puro automotriz y metalmecanica. La prueba del 2026-09-18 con geografia y evento pero sin sector trajo GEMMSA, Sigrama, Infinitum Electric y Adient: cero de alimentos."
+    },
+    {
+      "clave": "F2_empresa_evento",
+      "cada": "mensual, por lotes",
+      "para": "Vigilar las empresas que YA estan en el padron. Es la familia mas precisa porque el nombre de la empresa es el filtro mas duro.",
+      "plantillas": [
+        "\"{empresa}\" planta {estado} ampliacion OR inversion OR \"nueva linea\" {anio}",
+        "\"{empresa}\" {municipio} planta agua OR vapor OR energia OR cogeneracion {anio}"
+      ],
+      "se_alimenta_de": "Las razones sociales y marcas del padron operable. La MARCA sale del diccionario de dominio: grupolala.com -> Grupo Lala, hersheys.com -> Hershey, gruma.com -> Mission Foods. Buscar por razon social sola falla porque casi nunca es la marca.",
+      "riesgo_medido": "Devuelve eventos CORPORATIVOS de otras plantas. Medido el 2026-09-18: el capex de Sigma es Espana y EE.UU.; la inversion grande de Heineken es Yucatan, no Monterrey. Por eso la verificacion de geografia va en la extraccion, no en la consulta."
+    },
+    {
+      "clave": "F3_agua_y_energia",
+      "cada": "mensual",
+      "para": "Pegar directo en lo que vende FTS, sin pasar por el evento generico.",
+      "plantillas": [
+        "\"planta de tratamiento\" OR PTAR industria alimentos OR bebidas \"Nuevo Leon\" OR Coahuila {anio}",
+        "cogeneracion OR \"eficiencia hidrica\" OR \"reuso de agua\" planta alimentos OR cervecera Monterrey OR Saltillo {anio}",
+        "\"{empresa}\" agua residual OR \"consumo de agua\" OR sustentabilidad hidrica planta {anio}"
+      ],
+      "riesgo_medido": "La version generica devuelve PROVEEDORES, no prospectos. La prueba del 2026-09-18 trajo AQUA Systems, Carbotecnia y Grupo Rivend, que son competencia de FTS. Hay que descartar todo resultado cuyo dominio sea de un proveedor de tratamiento."
+    },
+    {
+      "clave": "F4_obra_nueva",
+      "cada": "mensual",
+      "para": "Obra industrial nueva antes de que la planta exista. Es la senal mas temprana que hay.",
+      "plantillas": [
+        "nave industrial OR parque industrial \"Nuevo Leon\" OR Coahuila alimentos OR bebidas construccion {anio}",
+        "Solili nave industrial Monterrey OR Saltillo alimentos {anio}"
+      ]
+    }
+  ],
+  "descarte": {
+    "dominios_proveedor": [
+      "aqua.com.mx", "carbotecnia.info", "gruporivend.com", "iagua.es",
+      "condorchem.com", "veolia.com", "ecolab.com", "nalco.com", "suez.com"
+    ],
+    "razon": "Son proveedores de tratamiento de agua. Aparecen mucho en las consultas de F3 y ninguno es prospecto: son competencia o contraparte."
+  },
+  "extraccion": {
+    "obligatorio": [
+      "municipio o estado nombrado explicitamente en el articulo",
+      "nombre de la empresa",
+      "fecha de publicacion"
+    ],
+    "regla_de_geografia": "Un evento solo cuenta para el padron si el articulo nombra un municipio de Nuevo Leon o Coahuila. Que la empresa tenga planta aqui NO basta: la nota puede ser de otra planta suya. Medido: Heineken invierte en Yucatan, Sigma en Espana.",
+    "empate": [
+      "1. por dominio del sitio que enlaza la nota, contra dominio_correo del padron",
+      "2. por marca contra razon social, usando el diccionario de dominios",
+      "3. por municipio; una sola planta ahi = empate unico, varias = AMBIGUO y se marca"
+    ],
+    "sin_empate": "Una nota que no empata con ninguna planta del padron NO se descarta: se guarda como candidata a entrar en el siguiente corte del DENUE."
+  }
+}

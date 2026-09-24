@@ -17,7 +17,7 @@ class CompuertaCerrada(RuntimeError):
 
 
 # ---------------------------------------------------------------- (a) agotado
-# Criterio de agotado por modulo. Es el contrato de docs/prospeccion/modulos.
+# Criterio de agotado por modulo. Es el contrato de metodo/modulos-de-contactos.md
 AGOTADO = {
     "M0":  ("contactos_recorridos", 1,  "recorridos los contactos de la cuenta"),
     "M0b": ("consultas", 1,             "al menos una consulta por empresa"),

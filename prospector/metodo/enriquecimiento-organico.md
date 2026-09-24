@@ -189,7 +189,7 @@ que habilita, luego lo que produce.
 
 ### Dónde vive cada técnica: Claude Code o n8n
 
-Según lo ya medido del proxy de egress (`docs/prospectar/fuentes-de-senal.md`,
+Según lo ya medido del proxy de egress ([`fuentes-de-senal.md`](fuentes-de-senal.md),
 2026-09-18): desde esta sesión **solo pasa `WebSearch`**; **`WebFetch` está
 bloqueado sin excepción** —se probó contra seis dominios y las seis devolvieron
 `EGRESS_BLOCKED`—. n8n desde Railway sí alcanza sitios externos con `GET`

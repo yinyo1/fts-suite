@@ -1,7 +1,7 @@
 # Cambios de la herramienta
 
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
-en §10 de `docs/prospeccion/busqueda-encadenada-contactos.md`.
+en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
 ## 0.2.0 — 2026-09-24
 

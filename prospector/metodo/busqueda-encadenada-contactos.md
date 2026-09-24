@@ -1,6 +1,8 @@
 # Búsqueda encadenada de contactos — la capa de contactos de `/prospectar`
 
 **Versión 1.5** · autocontenida · reemplaza cualquier versión previa.
+> **Nota de ubicación (24-sep-2026).** Este documento se lee desde `fts-suite/prospector/`. Las rutas de abajo se reapuntaron a esta copia; las que siguen citando `fts-mcp-odoo` lo hacen a propósito y se explica por qué.
+
 El historial de correcciones y las reglas para cambiarla están en **§10**.
 
 > **Estado: DOCUMENTADA, NO CONSTRUIDA.** Este documento es el método, probado a
@@ -18,12 +20,12 @@ están documentadas y no se repiten aquí:
 
 | Capa | Documento |
 |---|---|
-| Padrón del DENUE | `docs/n8n/denue-padron.md` |
-| Vigilante de cortes | `docs/n8n/denue-vigilante.md` |
-| Red de validación y procedencia | `docs/prospectar/red-de-validacion.md` |
-| Modo señal y fuentes de evento | `docs/prospectar/fuentes-de-senal.md` |
-| Orquestador y cobertura | `.claude/skills/prospectar/SKILL.md` |
-| Enriquecimiento orgánico (diseño) | `docs/prospeccion/enriquecimiento-organico.md` |
+| Padrón del DENUE | [`denue-padron.md`](denue-padron.md) |
+| Vigilante de cortes | [`denue-vigilante.md`](denue-vigilante.md) |
+| Red de validación y procedencia | [`red-de-validacion.md`](red-de-validacion.md) |
+| Modo señal y fuentes de evento | [`fuentes-de-senal.md`](fuentes-de-senal.md) |
+| Orquestador y cobertura | [`../SKILL-orquestador.md`](../SKILL-orquestador.md) |
+| Enriquecimiento orgánico (diseño) | [`enriquecimiento-organico.md`](enriquecimiento-organico.md) |
 | **Contratos, orden óptimo y challenge** | [`modulos-de-contactos.md`](modulos-de-contactos.md) |
 
 > **Este documento narra el PORQUÉ. El de módulos especifica el CÓMO SE CORRE.**
@@ -305,7 +307,7 @@ identidad: razón social, ubicación, giro, tamaño y, en 112 de 143 plantas del
 corte, **el dominio de correo** — que es la entrada de los directorios y la mitad
 de la llave operativa `dominio_correo + ciudad + CP`.
 
-El detalle está en `docs/n8n/denue-padron.md`. Lo que importa aquí es **cuándo
+El detalle está en [`denue-padron.md`](denue-padron.md). Lo que importa aquí es **cuándo
 corre**, y depende del modo:
 
 - **Modo lote:** DENUE va **arriba de todo**. Es lo que elige qué planta se
@@ -884,7 +886,7 @@ cada seis meses**.
 | **Vibe — señales** | Sólo como **segunda opinión**, nunca como fuente única. Registró a LEGO como casa de bolsa de Hong Kong: una fuente que se equivoca así no sostiene un campo sola | Parcial, y degradada |
 | **D&B directo** | **Sin contrato.** Y vía Odoo es la **misma raíz** que una ficha de dnb.com, así que no sirve para confirmar nada por separado | Sí, si se contrata |
 | **DUNS como llave de empate** | Apunta a veces a **una oficina en vez de la planta** (pasó con SuKarne) y Ragasa tiene **cinco**, uno en Jalisco. Sirve como identificador estable entre cortes, **nada más**. La llave operativa es `dominio_correo + ciudad + CP` | No como llave |
-| **DENUE por API con token** | Descartada en fase previa. El padrón se recorre por **descarga de corte**, por entidad y no nacional | Ver `docs/n8n/denue-padron.md` |
+| **DENUE por API con token** | Descartada en fase previa. El padrón se recorre por **descarga de corte**, por entidad y no nacional | Ver [`denue-padron.md`](denue-padron.md) |
 | **Lookalikes** *(empresas o contactos parecidos)* | Descartada en fase previa: amplía el universo **sin criterio de valor**, y este método ya tiene un filtro de valor explícito en §5 | No mientras el padrón siga sin agotarse |
 | **Google Places** | **No hay llave y no la va a haber por ahora.** Hueco declarado, **nunca simulado ni sustituido en silencio** | Sí, si aparece llave |
 | **SMTP directo para validar correo** | El **catch-all de Microsoft 365** contesta que sí a todo, incluso a buzones inventados. Un `250 OK` no prueba nada | No. Se valida buscando el correo exacto entre comillas |
