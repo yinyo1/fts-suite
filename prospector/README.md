@@ -15,6 +15,17 @@ vacantes, prensa, congresos y la web abierta, con la procedencia de cada dato.
 
 ---
 
+## Cómo se usa, en una línea
+
+```
+prospecta <empresa>
+```
+
+La guía completa está en **[`USO.md`](USO.md)**. Antes de usarla de trabajo,
+**[`LISTO-PARA-USAR.md`](LISTO-PARA-USAR.md)** y `./prospector listo`.
+
+---
+
 ## Regla de arquitectura: los contactos NUNCA viven en el repo
 
 > **`fts-suite` es un repositorio PÚBLICO.** Los datos de contactos y personas
@@ -73,9 +84,11 @@ dominio no identifica a una persona.
 | Ruta | Qué es |
 |---|---|
 | **`flujo/`** | El código. Compuertas, instrumentación, Chao1, catálogo, ficha y el orquestador |
-| **`tests/`** | 146 pruebas. Casos de regresión **D (LEGO)**, **F (Cuprum)** y **G (Hershey)**, más el truco del contador vacío, el lazo de refuerzo y la guardia de datos personales |
+| **`tests/`** | 157 pruebas. Casos de regresión **D (LEGO)**, **F (Cuprum)** y **G (Hershey)**, más el truco del contador vacío, el lazo de refuerzo y la guardia de datos personales |
 | **`metodo/`** | El *por qué* de cada paso, con su disparador medido |
 | **`SKILL-criterio.md`** | Lo que juzga Claude y el código no puede |
+| **`USO.md`** | **Cómo se usa.** La guía corta, en español: el trigger, los conectores, qué entrega |
+| **`LISTO-PARA-USAR.md`** | La lista de verificación antes de usarla de trabajo |
 | **`CHANGELOG.md`** | Versiones de la herramienta |
 | **`PURGA-DEL-HISTORIAL.md`** | El plan de purga del historial de git. **No ejecutado**: espera ventana coordinada |
 
@@ -90,6 +103,7 @@ dominio no identifica a una persona.
 | `flujo/chao1.py` | 147 | Estimador de completitud, con **veredicto de cuatro valores**: solo `saturo` detiene el lazo |
 | `flujo/ficha.py` | 117 | Modo limpio y modo procedencia, con checklist de lo que no se pudo hacer |
 | `flujo/padron.py` | 332 | **El mapa de plantas y su caducidad.** Lo estructural, el aviso por tiempo (umbral 6 meses) y las tres banderas por datos |
+| `flujo/arranque.py` | 274 | **El arranque de una instrucción**: resuelve la cuenta, infiere la geografía, y entrega el plan de 12 pasos con los comandos escritos |
 | `flujo/salida.py` | 109 | **Dónde va el resultado de una corrida, y dónde NO.** Se niega a escribir dentro del repo |
 | `flujo/catalogo.py` | 85 | Las **13 fuentes descartadas**, rechazadas por código con su razón, y qué fuente le corresponde a cada módulo |
 
@@ -153,7 +167,7 @@ presupuesto queda. Claude corre **ese** módulo, registra lo que encontró, y el
 orquestador decide si se avanza.
 
 ```bash
-python3 -m pytest tests -q     # 146 pruebas
+python3 -m pytest tests -q     # 157 pruebas
 ```
 
 ---

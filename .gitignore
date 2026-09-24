@@ -1,4 +1,10 @@
-.claude/
+# `.claude/` sigue ignorado -- `settings.local.json` es de cada maquina-- PERO
+# las SKILLS si se versionan: son la forma de invocar las herramientas del repo
+# y tienen que viajar con el. Ojo con el orden: git no puede re-incluir algo
+# cuyo directorio padre esta excluido, asi que la primera linea es `.claude/*`
+# y no `.claude/`.
+.claude/*
+!.claude/skills/
 scripts/local/
 
 # Volcados de auditoría (journals, bills, conciliación). ESTE REPO ES PÚBLICO:

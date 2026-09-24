@@ -1,5 +1,10 @@
 """El runner. Dice cual es el paso siguiente y se niega a saltarse uno.
 
+    USO NORMAL -- una sola instruccion:
+        ./prospector prospecta --empresa "Hershey"
+        ./prospector listo
+
+
     python3 -m flujo.orquestador iniciar --empresa "Ragasa" --ciudad "Guadalupe, NL"
     python3 -m flujo.orquestador siguiente --empresa "Ragasa"
     python3 -m flujo.orquestador padron --empresa "Ragasa" --ciudad "Guadalupe" \
@@ -21,6 +26,7 @@ from .compuertas import (CompuertaCerrada, exigir_confianza, techo_por_agotado,
                          Busqueda)
 from .salida import carpeta_de_corridas, exigir_fuera_del_repo, SalidaEnElRepo
 from .padron import cargar as cargar_padron, vigilar_cobertura, PadronInvalido
+from .arranque import resolver, texto_del_plan, chequeo, pregunta_de_una_linea
 from .catalogo import exigir_permitida, FuenteProhibida
 from .confianza import Contacto, N1_CONFIRMADO, N2_PARCIAL, N3_PUESTO
 from .estado import Corrida, RESPONDIO
@@ -132,10 +138,21 @@ def _imprimir_paso(c: Corrida) -> None:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="orquestador", description=__doc__)
     sub = ap.add_subparsers(dest="cmd", required=True)
-    for nombre in ("iniciar", "siguiente", "padron", "buscar", "registrar",
-                   "bloque", "cerrar", "vuelta", "challenge", "ficha", "estado"):
+    for nombre in ("prospecta", "listo", "iniciar", "siguiente", "padron",
+                   "buscar", "registrar", "bloque", "cerrar", "vuelta",
+                   "challenge", "ficha", "estado"):
         s = sub.add_parser(nombre)
-        s.add_argument("--empresa", required=True)
+        if nombre != "listo":
+            s.add_argument("--empresa", required=True)
+        if nombre == "listo":
+            s.add_argument("--rapido", action="store_true",
+                           help="salta la suite de pruebas")
+        if nombre == "prospecta":
+            s.add_argument("--ciudad", default="")
+            s.add_argument("--giro", default="")
+            s.add_argument("--dominio", default="")
+            s.add_argument("--entidad", default="")
+            s.add_argument("--tope", type=int, default=60)
         if nombre == "padron":
             s.add_argument("--ciudad", default="")
             s.add_argument("--entidad", default="")
@@ -175,6 +192,65 @@ def main(argv=None) -> int:
     a = ap.parse_args(argv)
 
     try:
+        if a.cmd == "listo":
+            filas = chequeo(correr_pruebas=not a.rapido)
+            print("\nLISTO PARA USAR DE TRABAJO\n" + "=" * 62)
+            pend = 0
+            for que, ok, detalle in filas:
+                marca = {True: " OK ", False: "FALLA", None: " ?  "}[ok]
+                if ok is False: pend += 1
+                print(f"  [{marca}] {que:<26} {detalle}")
+            print("=" * 62)
+            print(f"  Lo que la maquina verifica: "
+                  f"{sum(1 for _q,o,_d in filas if o is not None)} puntos, "
+                  f"{pend} en falla.")
+            print("  Los marcados [ ?  ] SOLO Claude los comprueba, llamando a la")
+            print("  fuente. Darlos por buenos sin llamarla seria el mismo pecado")
+            print("  que la compuerta de agotado persigue.\n")
+            return 2 if pend else 0
+
+        if a.cmd == "prospecta":
+            ar = resolver(a.empresa, a.ciudad, a.giro, a.dominio, a.entidad)
+            if ar.ambiguo and not os.path.exists(_ruta(a.empresa)):
+                # NO se abre la corrida: elegir una planta en silencio es el caso
+                # de los cinco DUNS de Ragasa, y hornear '(sin ciudad)' en una
+                # corrida guardada es peor que preguntar.
+                print("\n  " + pregunta_de_una_linea(ar).replace("\n", "\n  ") + "\n")
+                return 3
+            hay_corrida = os.path.exists(_ruta(a.empresa))
+            if not hay_corrida:
+                c = Corrida(empresa=a.empresa, ciudad=ar.ciudad or "(sin ciudad)",
+                            giro=ar.giro)
+                c.presupuesto.tope_por_cuenta = a.tope
+                for b in ar.banderas:
+                    c.avisos.append(str(b).replace("\n", " "))
+                # M13 queda registrado con lo que el padron contesto DE VERDAD.
+                # Cero filas cuenta: significa que se busco bien y no esta.
+                consulta = (f"padron corte {ar.padron.corte}: empresa="
+                            f"{a.empresa!r} dominio={ar.dominio or '-'!r} "
+                            f"ciudad={ar.ciudad or '-'!r}")
+                c.registrar_busqueda(
+                    "M13", "cortes", consulta, "denue", len(ar.filas_padron),
+                    nota=f"{len(ar.filas_padron)} fila(s); banderas: "
+                         f"{', '.join(b.clave for b in ar.banderas) or 'ninguna'}")
+                if ar.filas_padron and not ar.falta:
+                    c.cerrar_modulo("M13")
+                elif not ar.filas_padron:
+                    c.cerrar_modulo("M13", "no_aplicaba",
+                                    ar.banderas[-1].mensaje if ar.banderas
+                                    else "no aparece en el padron")
+                c.guardar(_ruta(a.empresa))
+                print(f"Corrida abierta: {a.empresa} · tope {a.tope} consultas")
+                print(f"  Resultados en la SESION, nunca en el repo:\n  {CORRIDAS()}")
+            else:
+                c = _cargar(a.empresa)
+                print(f"Corrida YA existe para {a.empresa}: se retoma donde quedo.")
+            print()
+            print(texto_del_plan(ar, a.tope))
+            print()
+            _imprimir_paso(c)
+            return 0
+
         if a.cmd == "iniciar":
             c = Corrida(empresa=a.empresa, ciudad=a.ciudad, giro=a.giro)
             c.presupuesto.tope_por_cuenta = a.tope

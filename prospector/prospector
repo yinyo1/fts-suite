@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Envoltorio: corre el orquestador desde donde sea, sin recordar el -m ni el cd.
+#   ./prospector prospecta --empresa "Hershey"
+#   ./prospector listo
+cd "$(dirname "$(readlink -f "$0")")" && exec python3 -m flujo.orquestador "$@"

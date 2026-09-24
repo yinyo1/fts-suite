@@ -3,6 +3,101 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.7.0 — 2026-09-24
+
+**Arranque de una instruccion.** Hasta aqui abrir una cuenta eran cinco comandos y
+habia que acordarse del orden, de los nombres de los contadores y de que fuente
+le toca a cada modulo. Sirve para desarrollar; no sirve para usar.
+
+### La frase
+
+    prospecta <empresa>
+    prospecta <empresa> en <ciudad>
+
+**La empresa es lo unico obligatorio.** Ciudad, giro, entidad y dominio se
+infieren del padron. Skill en `.claude/skills/prospecta/SKILL.md`, y el comando
+directo es `./prospector prospecta --empresa "X"`.
+
+### Lo que Python hace, y lo que NO
+
+**Python no busca.** No puede: buscar es criterio -si dos empresas de nombre
+parecido son la misma, si un puesto compra, que titulo sale de una nota-. Lo que
+hace es quitar de enmedio todo lo que no es criterio: resolver la cuenta en el
+padron, abrir la corrida fuera del repo, registrar M13 con lo que el padron
+contesto de verdad, y **entregar el plan de 12 pasos con los comandos ya
+escritos**. Las compuertas siguen gobernando; el arranque no salta ninguna.
+
+### Tres respuestas, y las tres son correctas
+
+| Lo que sale | Cuando |
+|---|---|
+| El plan con la geografia inferida | La cuenta esta en el padron |
+| **Una pregunta de una linea**, salida 3 | Varias plantas de la misma cuenta |
+| El plan con una **bandera** | No esta en el mapa, o el mapa esta viejo |
+
+**Ambiguo NO es lo mismo que incompleto**, y confundirlos fue un defecto que
+encontre corriendo el humo: con `prospecta Bimbo` -tres plantas en dos
+municipios- se abria la corrida con `ciudad = "(sin ciudad)"` y seguia a M0 como
+si nada faltara. **Hornear la ambiguedad en una corrida guardada es peor que
+preguntar**, y elegir una planta en silencio es el caso de los cinco DUNS de
+Ragasa con otro disfraz. Ahora pregunta y **no abre la corrida**.
+
+Sin geografia pero fuera del padron es otra cosa: ahi si abre, con el hueco
+declarado. Una corrida sin geografia es mas debil, no imposible.
+
+### El envoltorio
+
+`./prospector` — un script que corre el orquestador desde donde sea, sin recordar
+el `-m` ni el `cd`. Los comandos que imprime el plan se pegan tal cual.
+
+### `./prospector listo`
+
+| Lo verifica la maquina | Solo Claude |
+|---|---|
+| Padron vigente · pruebas en verde · la salida cae fuera del repo | Odoo, Outlook, WebSearch: **hay que llamarlos** |
+
+Los conectores salen `[ ? ]` a proposito:
+
+> Decir que un conector esta vivo sin haberlo llamado es contar una declaracion
+> como evidencia — **exactamente lo que la compuerta de agotado existe para
+> impedir**. La herramienta no se exime de su propia regla.
+
+`--rapido` salta la suite.
+
+### Corregido: `chequeo()` recursaba sin fondo
+
+`chequeo()` corre la suite en un subproceso, asi que llamarlo **desde** la suite
+recursa infinito. **Colgo la maquina** al escribir `tests/test_arranque.py`, y
+hubo que matar los procesos a mano. Cerrado por dos lados: el parametro
+`correr_pruebas=False`, y una **guarda por variable de entorno** que hace que un
+`chequeo()` anidado se niegue a volver a correr las pruebas.
+
+### Y una prueba que me hizo escribir de verdad
+
+`test_cada_paso_del_plan_dice_POR_QUE_ahora` exige mas de 40 caracteres de
+justificacion por paso. Fallo en M6, M8 y M9, donde yo habia puesto *"Refuerzo."*
+y *"Depende de M5."*. **Subi la justificacion, no baje el umbral**: un plan que
+no dice por que invita a saltarse pasos.
+
+### Guias de uso
+
+| Archivo | Que es |
+|---|---|
+| `USO.md` | Como se invoca, que conectores tienen que estar vivos y **como saberlo**, que entrega, donde queda, y que hacer con cada `sin_acceso` |
+| `LISTO-PARA-USAR.md` | La lista de verificacion, la corrida de humo con sus dos casos de borde, y **lo que NO esta listo** |
+
+### `.claude/skills/` se versiona
+
+`.gitignore` pasa de `.claude/` a `.claude/*` + `!.claude/skills/`. Las skills son
+la forma de invocar las herramientas del repo y tienen que viajar con el;
+`settings.local.json` sigue ignorado, que es de cada maquina.
+
+### Pruebas
+
+**146 -> 157.** Nuevas: `tests/test_arranque.py` (11).
+
+---
+
 ## 0.6.0 — 2026-09-24
 
 **No elegir no es lo mismo que no informar.** La compuerta de confianza aprende a
