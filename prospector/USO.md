@@ -21,6 +21,15 @@ prospecta <empresa> en <ciudad>
 dominio se sacan del padrón del DENUE. Si no aparece ahí, la corrida arranca
 igual y lo dice.
 
+> **Y es lo único que escribes.** La verificación previa —padrón, pruebas, y las
+> tres llamadas a Odoo, Outlook y WebSearch— **la hace Claude sola, antes de
+> arrancar, sin que se la pidas.** No hay que acordarse de `listo` ni de probar
+> los conectores: si algo está caído, la corrida se detiene y te pregunta en una
+> línea. Si todo está en verde, arranca.
+>
+> **Solo te habla si hay algo que decidir:** un conector caído, o una empresa con
+> varias plantas.
+
 ### Si prefieres el comando directo
 
 ```bash
@@ -53,22 +62,52 @@ cd prospector
 | **Outlook** | M0b · ¿hay historia? | La corrida sigue, **y pierde la fuente más rentable** |
 | **WebSearch** | Directorios, vacantes, prensa, personas | Sin esto la cascada **no sirve**: es donde vive casi todo |
 
-### Cómo saber si están vivos
+### Cómo se comprueban — y por qué no lo hace Python
 
 ```bash
 ./prospector listo
 ```
 
-Verifica lo que la máquina puede: padrón, pruebas, destino de salida. Los
-conectores los marca `[ ? ]`, y es deliberado:
+Verifica lo que la máquina puede: padrón, pruebas, destino de salida.
 
-> **Solo Claude puede comprobarlos, llamándolos.** Viven detrás de MCP y desde
-> Python no se ven. Darlos por buenos sin llamarlos sería el mismo pecado que la
-> compuerta de agotado persigue: contar una declaración como si fuera evidencia.
+**Los conectores no los puede ver:** viven detrás de MCP. Darlos por buenos sin
+llamarlos sería el mismo pecado que la compuerta de agotado persigue —contar una
+declaración como si fuera evidencia—.
 
-Así que la comprobación real son dos llamadas, y Claude las hace al arrancar: una
-lectura a `res.partner` y una búsqueda en el buzón. **Si alguna falla, lo dice
-antes de empezar.**
+Así que **los llama Claude, de verdad, y registra lo que contestaron.** Eso pasa
+solo, antes de abrir la corrida. Tú no escribes nada:
+
+```
+CONECTORES verificados antes de abrir:
+  [ OK ] odoo       1 fila: res.partner, customer_rank=1
+  [ OK ] outlook    12 hilos
+  [ OK ] websearch  10 resultados
+
+Corrida abierta: Grupo Cuprum · tope 60 consultas
+```
+
+Y **no es una cortesía: es una compuerta.** `prospecta` se niega a abrir la
+corrida si esas tres llamadas no están registradas, y la constancia **vence a los
+60 minutos** —una sonda de hace seis horas no prueba que el conector esté vivo
+ahora—. Después de sondear, `listo` deja de marcarlos `[ ? ]` y muestra lo que
+cada uno contestó.
+
+**`WebFetch` no entra en la cuenta.** Está bloqueado por egress en este entorno,
+medido, y **no detiene nada**: M7 y M8 saldrán `sin_acceso`, que es lo correcto.
+
+### Si uno está caído
+
+La corrida **se detiene antes de empezar** y te pregunta en una línea:
+
+> «Outlook no responde. Es la fuente más rentable cuando hay historia —los
+> correos literales de un hilo son las únicas anclas duras—. ¿Seguimos sin él o
+> esperamos a que se reconecte?»
+
+Si dices que sigan, **queda escrito en la ficha**: el módulo sale `sin_acceso`
+con tu razón, y aparece en el checklist de validaciones. Quien reciba la ficha va
+a ver que la corrida se hizo ciega de esa fuente.
+
+**Nunca arranca a ciegas, y nunca simula la fuente.**
 
 ### Reconectar
 

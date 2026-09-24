@@ -296,12 +296,35 @@ def chequeo(correr_pruebas: bool = True) -> list[tuple[str, bool | None, str]]:
     except Exception as e:
         out.append(("Salida FUERA del repo", False, str(e)))
 
-    out.append(("Odoo vivo (M0)", None,
-                "solo Claude lo comprueba: una lectura a res.partner"))
-    out.append(("Outlook vivo (M0b)", None,
-                "solo Claude lo comprueba: una busqueda en el buzon"))
-    out.append(("WebSearch vivo", None,
-                "solo Claude lo comprueba: una consulta cualquiera"))
+    # Los conectores viven detras de MCP: Python no los ve. Lo que SI puede ver
+    # es la constancia de que Claude los llamo -- que es lo que `conectores`
+    # guarda--. Asi `listo` deja de decir "solo Claude lo comprueba" cuando ya
+    # se comprobo, y lo dice cuando todavia no.
+    from .conectores import Sondeo, CONECTORES, VENTANA_MINUTOS
+    sondeo = Sondeo.cargar()
+    ETIQUETA = {"odoo": "Odoo vivo (M0)", "outlook": "Outlook vivo (M0b)",
+                "websearch": "WebSearch vivo"}
+    for k in CONECTORES:
+        sonda = sondeo.sondas.get(k)
+        if sonda is None:
+            out.append((ETIQUETA[k], None,
+                        f"sin sondear. Claude lo llama ({CONECTORES[k][1]}) y "
+                        f"registra con `conectores --{k} '<lo que devolvio>'`"))
+        elif not sonda.fresca:
+            out.append((ETIQUETA[k], None,
+                        f"sonda de hace {sonda.edad_minutos:.0f} min, vence a "
+                        f"los {VENTANA_MINUTOS}: hay que volver a llamarlo"))
+        elif sonda.vivo:
+            out.append((ETIQUETA[k], True,
+                        f"sondeado hace {sonda.edad_minutos:.0f} min: "
+                        f"{sonda.evidencia}"))
+        elif sonda.autorizado_sin:
+            out.append((ETIQUETA[k], None,
+                        f"CAIDO, hueco autorizado: {sonda.razon_autorizacion}"))
+        else:
+            out.append((ETIQUETA[k], False,
+                        f"NO RESPONDE: {sonda.evidencia}. "
+                        f"{CONECTORES[k][2]}"))
     out.append(("WebFetch", None,
                 "bloqueado por egress en este entorno (medido). M7/M8 salen "
                 "sin_acceso y eso es correcto, no una falla"))

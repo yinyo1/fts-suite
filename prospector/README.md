@@ -84,7 +84,7 @@ dominio no identifica a una persona.
 | Ruta | Qué es |
 |---|---|
 | **`flujo/`** | El código. Compuertas, instrumentación, Chao1, catálogo, ficha y el orquestador |
-| **`tests/`** | 235 pruebas. Casos de regresión **D (LEGO)**, **F (Cuprum)** y **G (Hershey)**, más el truco del contador vacío, el lazo de refuerzo y la guardia de datos personales |
+| **`tests/`** | 259 pruebas. Casos de regresión **D (LEGO)**, **F (Cuprum)** y **G (Hershey)**, más el truco del contador vacío, el lazo de refuerzo y la guardia de datos personales |
 | **`metodo/`** | El *por qué* de cada paso, con su disparador medido |
 | **`SKILL-criterio.md`** | Lo que juzga Claude y el código no puede |
 | **`USO.md`** | **Cómo se usa.** La guía corta, en español: el trigger, los conectores, qué entrega |
@@ -96,16 +96,17 @@ dominio no identifica a una persona.
 
 | Archivo | Líneas | Qué resuelve |
 |---|---|---|
-| `flujo/compuertas.py` | 365 | Las tres compuertas, como `raise`: **agotado**, **presupuesto**, **confianza**. Y `Busqueda`: el registro de trabajo ejecutado del que **se derivan** los contadores |
-| `flujo/confianza.py` | 481 | Niveles e **instrumentación de fuentes por dato**: cada campo guarda todas las observaciones que lo sostienen, con su fuente, su raíz, su forma y la certeza que declara. Las reglas **C1** y **C1-bis** viven aquí |
-| `flujo/orquestador.py` | 279 | El CLI que dice cuál es el paso siguiente y se niega a saltarlo |
-| `flujo/estado.py` | 265 | La corrida que Python posee. Las cuatro olas y el **lazo de refuerzo** |
+| `flujo/compuertas.py` | 460 | Las tres compuertas, como `raise`: **agotado**, **presupuesto**, **confianza**. Y `Busqueda`: el registro de trabajo ejecutado del que **se derivan** los contadores |
+| `flujo/confianza.py` | 656 | Niveles e **instrumentación de fuentes por dato**: cada campo guarda todas las observaciones que lo sostienen, con su fuente, su raíz, su forma y la certeza que declara. Las reglas **C1** y **C1-bis** viven aquí |
+| `flujo/orquestador.py` | 627 | El CLI que dice cuál es el paso siguiente y se niega a saltarlo |
+| `flujo/estado.py` | 543 | La corrida que Python posee. Las cuatro olas y el **lazo de refuerzo** |
 | `flujo/chao1.py` | 147 | Estimador de completitud, con **veredicto de cuatro valores**: solo `saturo` detiene el lazo |
-| `flujo/ficha.py` | 117 | Modo limpio y modo procedencia, con checklist de lo que no se pudo hacer |
+| `flujo/conectores.py` | 252 | Las tres **sondas de conector** y la compuerta del arranque: Claude los llama —Python no los ve—, registra lo que contestaron, y `prospecta` se niega a abrir sin esa constancia |
+| `flujo/ficha.py` | 516 | Modo limpio y modo procedencia, con checklist de lo que no se pudo hacer |
 | `flujo/padron.py` | 332 | **El mapa de plantas y su caducidad.** Lo estructural, el aviso por tiempo (umbral 6 meses) y las tres banderas por datos |
-| `flujo/arranque.py` | 274 | **El arranque de una instrucción**: resuelve la cuenta, infiere la geografía, y entrega el plan de 12 pasos con los comandos escritos |
+| `flujo/arranque.py` | 331 | **El arranque de una instrucción**: resuelve la cuenta, infiere la geografía, y entrega el plan de 12 pasos con los comandos escritos |
 | `flujo/salida.py` | 109 | **Dónde va el resultado de una corrida, y dónde NO.** Se niega a escribir dentro del repo |
-| `flujo/catalogo.py` | 85 | Las **13 fuentes descartadas**, rechazadas por código con su razón, y qué fuente le corresponde a cada módulo |
+| `flujo/catalogo.py` | 108 | Las **13 fuentes descartadas**, rechazadas por código con su razón, y qué fuente le corresponde a cada módulo |
 
 ### La regla que ordena las compuertas
 
@@ -167,7 +168,7 @@ presupuesto queda. Claude corre **ese** módulo, registra lo que encontró, y el
 orquestador decide si se avanza.
 
 ```bash
-python3 -m pytest tests -q     # 235 pruebas
+python3 -m pytest tests -q     # 259 pruebas
 ```
 
 ---

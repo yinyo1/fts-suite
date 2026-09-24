@@ -28,6 +28,7 @@ from .salida import carpeta_de_corridas, exigir_fuera_del_repo, SalidaEnElRepo
 from .padron import cargar as cargar_padron, vigilar_cobertura, PadronInvalido
 from .arranque import resolver, texto_del_plan, chequeo, pregunta_de_una_linea
 from .catalogo import exigir_permitida, FuenteProhibida
+from .conectores import Sondeo, CONECTORES, VENTANA_MINUTOS
 from .confianza import Contacto, N1_CONFIRMADO, N2_PARCIAL, N3_PUESTO
 from .estado import Corrida, RESPONDIO
 from .ficha import (modo_limpio, modo_procedencia,
@@ -160,9 +161,10 @@ def main(argv=None) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     for nombre in ("prospecta", "listo", "iniciar", "siguiente", "padron",
                    "buscar", "registrar", "bloque", "cerrar", "vuelta",
-                   "challenge", "ficha", "estado", "tope", "fusionar"):
+                   "challenge", "ficha", "estado", "tope", "fusionar",
+                   "conectores"):
         s = sub.add_parser(nombre)
-        if nombre != "listo":
+        if nombre not in ("listo", "conectores"):
             s.add_argument("--empresa", required=True)
         if nombre == "listo":
             s.add_argument("--rapido", action="store_true",
@@ -207,6 +209,19 @@ def main(argv=None) -> int:
         if nombre == "cerrar":
             s.add_argument("--estado", default=RESPONDIO)
             s.add_argument("--razon", default="")
+        if nombre == "conectores":
+            for k in CONECTORES:
+                s.add_argument(f"--{k}", default=None,
+                               help=f"lo que contesto {k} DE VERDAD "
+                                    f"({CONECTORES[k][1]})")
+                s.add_argument(f"--{k}-caido", default=None, dest=f"{k}_caido",
+                               help=f"{k} no respondio: por que exactamente")
+            s.add_argument("--continuar-sin", default=None, dest="continuar_sin",
+                           choices=sorted(CONECTORES),
+                           help="el operador autoriza seguir sin ese conector")
+            s.add_argument("--razon", default="",
+                           help="lo que dijo el operador. Obligatorio con "
+                                "--continuar-sin: es un hueco de la corrida")
         if nombre == "fusionar":
             s.add_argument("--de", required=True,
                            help="el nombre como esta registrado hoy")
@@ -251,7 +266,66 @@ def main(argv=None) -> int:
             print("  que la compuerta de agotado persigue.\n")
             return 2 if pend else 0
 
+        if a.cmd == "conectores":
+            sondeo = Sondeo.cargar()
+            hubo = False
+            for k in CONECTORES:
+                vivo = getattr(a, k, None)
+                caido = getattr(a, f"{k}_caido", None)
+                if vivo and caido:
+                    raise SystemExit(
+                        f"--{k} y --{k}-caido a la vez. Un conector contesto o "
+                        "no contesto; las dos cosas no.")
+                if vivo:
+                    sondeo.registrar(k, True, vivo); hubo = True
+                elif caido:
+                    sondeo.registrar(k, False, caido); hubo = True
+            if a.continuar_sin:
+                if not a.razon.strip():
+                    raise SystemExit(
+                        f"--continuar-sin {a.continuar_sin} EXIGE --razon: es un "
+                        "hueco de la corrida y va a salir en la ficha.")
+                sondeo.autorizar_sin(a.continuar_sin, a.razon.strip())
+                hubo = True
+            if hubo:
+                ruta = sondeo.guardar()
+            print("\nCONECTORES · sondas de esta sesion "
+                  f"(valen {VENTANA_MINUTOS} min)")
+            print("=" * 62)
+            for linea in sondeo.resumen():
+                print(linea)
+            print("=" * 62)
+            print("  [ ?  ] webfetch   bloqueado por egress (medido). NO detiene "
+                  "nada:\n         M7/M8 salen sin_acceso y eso es correcto.")
+            if sondeo.listo:
+                print("\n  Listo para arrancar: ./prospector prospecta "
+                      "--empresa \"<empresa>\"\n")
+                return 0
+            try:
+                sondeo.exigir_listo()
+            except CompuertaCerrada as e:
+                print(f"\n  ⛔ FALTA: {e}\n", file=sys.stderr)
+                return 3 if sondeo.caidos_sin_autorizar else 2
+            return 0
+
         if a.cmd == "prospecta":
+            # PRIMER PASO, antes de resolver el padron: los tres conectores
+            # tuvieron que ser LLAMADOS. Python no los ve -- viven detras de
+            # MCP-- asi que no puede llamarlos; lo que si puede es negarse a
+            # abrir la corrida sin constancia fresca de esas llamadas. Es el
+            # mismo mecanismo que `buscar`, que exige la consulta textual.
+            sondeo = Sondeo.cargar()
+            if sondeo.caidos_sin_autorizar:
+                # Salida 3, la misma que la pregunta de la empresa multiplanta:
+                # NO es un error que arreglar, es una DECISION del operador. Que
+                # las dos compartan codigo no es casualidad -- las dos paran la
+                # corrida para preguntar una linea--.
+                try:
+                    sondeo.exigir_listo()
+                except CompuertaCerrada as e:
+                    print(f"\n  ⛔ {e}\n", file=sys.stderr)
+                    return 3
+            sondeo.exigir_listo()
             ar = resolver(a.empresa, a.ciudad, a.giro, a.dominio, a.entidad)
             if ar.ambiguo and not os.path.exists(_ruta(a.empresa)):
                 # NO se abre la corrida: elegir una planta en silencio es el caso
@@ -266,6 +340,22 @@ def main(argv=None) -> int:
                 c.presupuesto.tope_por_cuenta = a.tope
                 for b in ar.banderas:
                     c.avisos.append(str(b).replace("\n", " "))
+                # Un conector autorizado como hueco no se queda en una nota: el
+                # modulo que depende de el sale `sin_acceso` con razon escrita,
+                # y eso viaja hasta el checklist de la ficha. Declarar el hueco
+                # es la mitad del metodo; anotarlo al margen no lo es.
+                for sonda in sondeo.huecos_autorizados:
+                    mod = CONECTORES[sonda.conector][0]
+                    if mod in c.modulos or mod in ("M0", "M0b"):
+                        c.cerrar_modulo(mod, "sin_acceso",
+                                        f"{sonda.conector} no respondio al "
+                                        f"arrancar ({sonda.evidencia}). El "
+                                        f"operador autorizo seguir sin el: "
+                                        f"{sonda.razon_autorizacion}")
+                    c.avisos.append(
+                        f"CORRIDA ABIERTA SIN {sonda.conector.upper()}: "
+                        f"{sonda.evidencia}. Autorizado por el operador: "
+                        f"{sonda.razon_autorizacion}")
                 # M13 queda registrado con lo que el padron contesto DE VERDAD.
                 # Cero filas cuenta: significa que se busco bien y no esta.
                 consulta = (f"padron corte {ar.padron.corte}: empresa="
@@ -282,6 +372,10 @@ def main(argv=None) -> int:
                                     ar.banderas[-1].mensaje if ar.banderas
                                     else "no aparece en el padron")
                 c.guardar(_ruta(a.empresa))
+                print("\nCONECTORES verificados antes de abrir:")
+                for linea in sondeo.resumen():
+                    print(linea)
+                print()
                 print(f"Corrida abierta: {a.empresa} · tope {a.tope} consultas")
                 print(f"  Resultados en la SESION, nunca en el repo:\n  {CORRIDAS()}")
             else:

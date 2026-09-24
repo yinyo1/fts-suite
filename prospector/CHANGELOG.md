@@ -3,6 +3,76 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.9.2 — 2026-09-24
+
+Un ajuste de **fluidez** que resulto ser una compuerta. **259 pruebas.**
+
+### El problema: la verificacion era un prompt extra
+
+El operador trabaja desde la web, en lenguaje natural, sin terminal. Y tenia que
+pedir aparte, cada vez, que se corriera `listo` y que se probaran los tres
+conectores antes de escribir la frase de arranque. Un prompt extra por corrida
+-- y si se le olvidaba, la corrida arrancaba **a ciegas**--.
+
+### Lo que NO se podia hacer, y por que
+
+Mover la verificacion a Python. **Los conectores viven detras de MCP y desde
+Python no se ven** -- por eso `chequeo()` los marcaba `[ ? ]`--. Un `listo` que
+dijera "Odoo vivo" sin haberlo llamado seria contar una declaracion como
+evidencia: el mismo pecado que la compuerta de agotado persigue, aplicado al
+arranque.
+
+### Lo que si se movio: la EXIGENCIA
+
+Claude llama a los tres conectores -- eso no cambia, es lo unico que puede
+llamarlos-- y **registra lo que contestaron**. `prospecta` **se niega a abrir la
+corrida** sin esa constancia:
+
+```
+./prospector conectores --odoo "1 fila de res.partner" \
+                        --outlook "12 hilos" --websearch "10 resultados"
+./prospector prospecta --empresa "<empresa>"
+```
+
+Mismo mecanismo que `buscar`, que exige la consulta textual porque no puede
+comprobar que se corrio. La evidencia es **obligatoria**: un `vivo` sin decir que
+devolvio es una declaracion.
+
+**La sonda vence a los 60 minutos.** Una sonda de hace seis horas no prueba que
+el conector este vivo AHORA, y arrancar con esa constancia seria dar por bueno
+algo que no se llamo.
+
+### Un conector caido detiene la corrida y PREGUNTA
+
+`prospecta` devuelve **3** -- la misma salida que la pregunta de la empresa
+multiplanta, y no es casualidad: las dos paran para preguntar una linea, y
+ninguna de las dos es un error que arreglar--. El mensaje dice **por que importa
+ese conector**, no solo que se cayo.
+
+Si el operador autoriza seguir, no queda en una nota al margen: **el modulo sale
+`sin_acceso` con razon escrita**, y eso viaja hasta el checklist de validaciones
+de la ficha. Quien la reciba va a ver que la corrida se hizo ciega de esa fuente.
+Declarar el hueco es la mitad del metodo; anotarlo al margen no lo es.
+
+Y no se autoriza un hueco de un conector que nadie probo, ni de uno que contesto
+bien: autorizar sin sondear no autoriza nada.
+
+**`WebFetch` no entra.** Bloqueado por egress, medido, y no detiene nada: M7 y M8
+salen `sin_acceso`, que es lo correcto.
+
+### `listo` deja de decir "solo Claude lo comprueba" cuando ya se comprobo
+
+Una vez sondeados, muestra lo que cada conector contesto y la antiguedad de la
+sonda. Sin sonda sigue en `[ ? ]`, y el detalle dice **quien tiene que
+llamarlos**. Lo que sigue prohibido es lo de antes: que Python los de por buenos
+por su cuenta.
+
+### Para el operador
+
+Una frase, `prospecta <empresa> en <ciudad>`, y nada mas. La skill verifica sola,
+y **solo le habla si hay algo que decidir**: un conector caido, o una empresa con
+varias plantas.
+
 ## 0.9.1 — 2026-09-24
 
 Las tres correcciones que dejo la **primera corrida real de un operador** -- no

@@ -1,6 +1,6 @@
 ---
 name: prospecta
-description: Arma la ficha de contactos de una planta industrial de una sola instruccion. Usar cuando se pida "prospecta <empresa>", "prospecta <empresa> en <ciudad>", prospectar una cuenta, armar su ficha de contactos, o buscar quien compra mantenimiento, agua, vapor, calderas o servicios industriales en una planta. La empresa es lo unico obligatorio; la ciudad y el giro se infieren del padron del DENUE.
+description: Arma la ficha de contactos de una planta industrial de una sola instruccion. Usar cuando se pida "prospecta <empresa>", "prospecta <empresa> en <ciudad>", prospectar una cuenta, armar su ficha de contactos, o buscar quien compra mantenimiento, agua, vapor, calderas o servicios industriales en una planta. La empresa es lo unico obligatorio; la ciudad y el giro se infieren del padron. La skill verifica sola el padron, las pruebas y los tres conectores -Odoo, Outlook, WebSearch- antes de arrancar: el operador NO tiene que pedirlo aparte.
 ---
 
 # prospecta
@@ -9,17 +9,98 @@ description: Arma la ficha de contactos de una planta industrial de una sola ins
 
 La empresa es **lo único obligatorio**. Todo lo demás se infiere del padrón.
 
+> **Eso es lo único que el operador escribe.** La verificación previa la haces
+> tú, sola, sin que te la pidan. Él te habla en lenguaje natural desde la web;
+> no tiene terminal y no debería tener que acordarse de pedir `listo` cada vez.
+> **Solo le hablas si algo requiere su decisión:** un conector caído, o una
+> empresa con varias plantas.
+
 ---
 
-## 1 · Arranca con un comando
+## 1 · PRIMER PASO, sin que te lo pidan: verifica
+
+Antes de escribir `prospecta`, dos cosas. No son opcionales y no se saltan.
+
+### 1a · Lo que la máquina verifica
 
 ```bash
-cd <repo>/prospector && ./prospector prospecta --empresa "<empresa>"
+cd <repo>/prospector && ./prospector listo
 ```
 
-Eso hace solo: resuelve la cuenta en el padrón del DENUE, infiere ciudad, giro,
-entidad y dominio, abre la corrida **fuera del repo**, registra M13 con lo que el
-padrón contestó de verdad, y **entrega el plan con los comandos ya escritos**.
+Padrón vigente, pruebas en verde, salida fuera del repo. Si algo sale `FALLA`,
+**dilo y no arranques.**
+
+### 1b · Los tres conectores: LLÁMALOS
+
+`listo` los marca `[ ? ]` porque **Python no los ve** —viven detrás de MCP—.
+Llamarlos es tuyo, y llamarlos de verdad:
+
+| Conector | La llamada mínima | Por qué importa |
+|---|---|---|
+| **Odoo** (M0) | una lectura a `res.partner` con el nombre de la cuenta | dice si la cuenta **ya tiene relación**, y una cuenta con historia se trabaja al revés que una fría |
+| **Outlook** (M0b) | una búsqueda en el buzón con el nombre de la cuenta | la **más rentable cuando hay historia**: los correos literales de un hilo son **anclas**, y ninguna otra fuente las da |
+| **WebSearch** | una consulta cualquiera | sin ella no hay OLA 1 ni motor. En una cuenta sin historia pone el **100% del valor** (medido en #295) |
+
+Y **registra lo que contestaron de verdad**:
+
+```bash
+./prospector conectores \
+  --odoo      "1 fila de res.partner, customer_rank=1" \
+  --outlook   "12 hilos" \
+  --websearch "10 resultados"
+```
+
+La evidencia es **obligatoria**: un `vivo` sin decir qué devolvió es una
+declaración, y las declaraciones son lo que esta herramienta no acepta.
+
+> **`prospecta` se niega a abrir la corrida sin esa constancia**, y la sonda
+> **vence a los 60 minutos** —una sonda de hace seis horas no prueba que el
+> conector esté vivo *ahora*—. Es el mismo mecanismo que `buscar`, que exige la
+> consulta textual porque no puede comprobar que se corrió.
+
+### 1c · Si un conector está caído
+
+Regístralo como caído, **con lo que pasó**:
+
+```bash
+./prospector conectores --outlook-caido "timeout de MCP, no responde"
+```
+
+Entonces `prospecta` **se detiene y devuelve 3** —la misma salida que la pregunta
+de la empresa multiplanta, porque es lo mismo: una decisión del operador, no un
+error que arreglar—. Pásale la pregunta **en una línea**, así:
+
+> «Outlook no responde. Es la fuente más rentable cuando hay historia —los
+> correos literales de un hilo son las únicas anclas duras—. ¿Seguimos sin él o
+> esperamos a que se reconecte?»
+
+Si dice que sigan, **queda escrito**:
+
+```bash
+./prospector conectores --continuar-sin outlook --razon "<lo que dijo>"
+```
+
+Eso no es un trámite: M0b queda **`sin_acceso` con razón escrita**, y eso viaja
+hasta el checklist de validaciones de la ficha. Quien la reciba va a ver que la
+corrida se hizo ciega de esa fuente. **No arranques a ciegas y no simules la
+fuente.**
+
+**`WebFetch` no cuenta aquí.** Está bloqueado por egress en este entorno,
+medido, y **no detiene nada**: M7 y M8 saldrán `sin_acceso` como ya está
+previsto.
+
+---
+
+## 2 · Ahora sí, arranca
+
+```bash
+./prospector prospecta --empresa "<empresa>"
+```
+
+Eso hace solo: verifica las sondas, resuelve la cuenta en el padrón del DENUE,
+infiere ciudad, giro, entidad y dominio, abre la corrida **fuera del repo**,
+registra M13 con lo que el padrón contestó de verdad, y **entrega el plan con los
+comandos ya escritos**.
 
 Tres respuestas posibles, y las tres son correctas:
 
@@ -63,7 +144,7 @@ una planta, con su responsable de mantenimiento y su ciudad.
 > gratis—: se anota en la señal, y cada planta con responsable se prospecta en su
 > propia corrida.
 
-## 2 · Corre el plan, paso por paso, de verdad
+## 3 · Corre el plan, paso por paso, de verdad
 
 **Cada búsqueda del plan se ejecuta.** El plan dice qué buscar, con qué vías y
 por qué en ese orden; tú corres la búsqueda y registras lo que contestó:
@@ -81,7 +162,7 @@ por qué en ese orden; tú corres la búsqueda y registras lo que contestó:
 **`--resultados 0` es válido y cuenta.** Cero resultados es una respuesta: haber
 preguntado bien y no encontrar nada es trabajo hecho.
 
-## 3 · Si una fuente no está, se declara
+## 4 · Si una fuente no está, se declara
 
 ```bash
 ./prospector cerrar --empresa "<empresa>" --modulo M8 \
@@ -96,7 +177,7 @@ En este entorno, medido: **`WebFetch` está bloqueado por egress**, así que M7
 (PDFs) y M8 (padrones) suelen salir `sin_acceso` legítimamente. Eso no es una
 falla de la corrida.
 
-## 4 · Gasto, lazo, cierre
+## 5 · Gasto, lazo, cierre
 
 ```bash
 ./prospector bloque    --empresa "<empresa>"      # las cifras salen del registro
@@ -172,17 +253,21 @@ el módulo con su estado y su razón. El mensaje del `raise` dice cuál de las d
 2. **Cero escrituras a Odoo.** La herramienta lee; nunca escribe. Y Lusha no se
    toca sin autorización explícita de esa corrida.
 
-## Antes de la primera corrida del día
+## La secuencia completa, de memoria
+
+Cuatro comandos. Los tres primeros son tuyos y el operador no los ve; el cuarto
+es el que él pidió.
 
 ```bash
-./prospector listo
+./prospector listo                                   # 1 · padrón, pruebas, salida
+#            ... llamas a Odoo, Outlook y WebSearch de verdad ...
+./prospector conectores --odoo "…" --outlook "…" --websearch "…"   # 2 · registras
+./prospector prospecta --empresa "<empresa>"         # 3 · abre y entrega el plan
 ```
 
-Verifica padrón, pruebas y destino de salida. Los conectores (Odoo, Outlook,
-WebSearch) los marca `[ ? ]` porque **solo tú puedes comprobarlos, llamándolos**.
-Hazlo: una lectura a `res.partner` y una búsqueda en el buzón. Si alguno está
-caído, dilo antes de arrancar — Odoo y Outlook son las dos fuentes más rentables
-y su ausencia limita la corrida.
+Una vez sondeados, `listo` **deja de decir `[ ? ]`** y muestra lo que cada
+conector contestó, con la antigüedad de la sonda. Si vuelves a arrancar más de
+una hora después, hay que volver a llamarlos: la sonda vence.
 
 ## El método
 
