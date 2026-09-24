@@ -182,6 +182,85 @@ def construir(ordenes: list, lineas: list, hilos: list,
     }
 
 
+def a_markdown(cat: dict) -> str:
+    """El catalogo en la forma que se REVISA: una tabla que Esteban lee.
+
+    Se GENERA del JSON, nunca se escribe a mano. Un documento escrito a mano al
+    lado de un JSON se separa del JSON en la segunda actualizacion, y entonces hay
+    dos catalogos que dicen cosas distintas -- que es peor que no tener ninguno--.
+    """
+    c = cat["cobertura"]
+    L = ["# Catálogo de proyectos de FTS — qué ha hecho la casa, de verdad", "",
+         "> **GENERADO**, no escrito a mano: sale de "
+         "`herramientas/construir_catalogo.py` sobre el JSON de al lado. Si algo "
+         "está mal aquí, se corrige el **vocabulario** en "
+         "`flujo/catalogo_proyectos.py` y se vuelve a generar.", "",
+         "Es el insumo del **evaluador del motor 1**: sin él, «planta nueva en "
+         "Durango» no dice si es un prospecto de FTS o de un fabricante de racks. "
+         "Con él, «funde cobre» se convierte en «fundición, y la fundición "
+         "produjo N proyectos de enfriamiento en el historial».", "",
+         "**No lleva ni una persona.** Empresa, proyecto, proceso y monto. Por eso "
+         "puede vivir en este repo, que es público.", "",
+         "## Cobertura — lo primero, porque decide cuánto vale lo demás", "",
+         "| | |", "|---|---|",
+         f"| Órdenes leídas | {c['ordenes_leidas']} |",
+         f"| Líneas leídas | {c['lineas_leidas']} |",
+         f"| Hilos de Outlook | {c['hilos_leidos']} |",
+         f"| Propuestas de SharePoint | {c['propuestas_leidas']} |",
+         f"| **Líneas clasificadas** | **{c['lineas_clasificadas']} "
+         f"({c['pct_clasificado']}%)** |",
+         f"| Sin clasificar | {c['lineas_sin_clasificar']} |", "",
+         f"Descartadas por no ser proyecto: "
+         + (", ".join(f"`{k}` ({v})" for k, v in
+                      c["descartadas_por_no_ser_proyecto"].items()) or "ninguna"),
+         "",
+         "> **El porcentaje sin clasificar es la medida honesta del vocabulario.** "
+         "Un catálogo que clasifica el 100% no tiene mejor vocabulario: miente "
+         "sobre su propia cobertura.", "",
+         "## Tipos de proyecto, y quién los compra", "",
+         "| Tipo | n | Procesos que lo generaron | Quién lo compra |",
+         "|---|---|---|---|"]
+    for t, d in cat["tipos_de_proyecto"].items():
+        pr = ", ".join(f"{k} ({v})" for k, v in
+                       list(d["procesos_que_lo_generaron"].items())[:4])
+        L.append(f"| `{t}` | {d['n']} | {pr or '—'} | {d['quien_lo_compra']} |")
+    L += ["", "> La columna **«quién lo compra» NO sale de los datos**: sale del "
+          "método. Mirar quién firmó exigiría mirar personas, y el catálogo no las "
+          "lleva. Se declara así para que nadie la confunda con una medición.", "",
+          "## Procesos del cliente — la llave que usa el radar", "",
+          "El proceso **no es la industria**: es qué hace la planta, que es lo que "
+          "genera la carga. Dos plantas «automotrices» con procesos distintos son "
+          "dos prospectos distintos.", "",
+          "| Proceso | n | Proyectos que produjo |", "|---|---|---|"]
+    for pr, d in cat["procesos_del_cliente"].items():
+        ty = ", ".join(f"{k} ({v})" for k, v in
+                       list(d["proyectos_que_produjo"].items())[:4])
+        L.append(f"| `{pr}` | {d['n']} | {ty} |")
+    cap = cat.get("capacidad_por_tipo") or {}
+    if cap:
+        L += ["", "## Capacidad — el rango donde FTS ha vendido de verdad", "",
+              "Es la tercera capa del match del evaluador, y **corta por arriba, "
+              "no solo por abajo**: una señal de 1,500 TR no es mejor que una de "
+              "200, es de otro tamaño de empresa y otro competidor.", "",
+              "| Tipo | n con TR | mín | mediana | máx | Unidades vistas |",
+              "|---|---|---|---|---|---|"]
+        for t, d in sorted(cap.items()):
+            u = ", ".join(f"{k}×{v}" for k, v in
+                          (d.get("unidades_vistas") or {}).items())
+            if "min_TR" in d:
+                L.append(f"| `{t}` | {d['n']} | {d['min_TR']:g} | "
+                         f"{d['mediana_TR']:g} | {d['max_TR']:g} | {u} |")
+            else:
+                L.append(f"| `{t}` | — | — | — | — | {u} |")
+    muestra = cat.get("sin_clasificar_muestra") or []
+    if muestra:
+        L += ["", "## Lo que el vocabulario NO cubre todavía", "",
+              "Se listan a propósito: es de aquí de donde sale la siguiente "
+              "corrección del vocabulario.", ""]
+        L += [f"- `{m}`" for m in muestra]
+    return "\n".join(L) + "\n"
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--ordenes", required=True)
@@ -189,6 +268,8 @@ def main(argv=None) -> int:
     ap.add_argument("--hilos", default=None)
     ap.add_argument("--propuestas", default=None)
     ap.add_argument("--salida", required=True)
+    ap.add_argument("--md", default=None,
+                    help="tambien escribe la tabla en markdown, generada del JSON")
     a = ap.parse_args(argv)
     cat = construir(_leer(a.ordenes), _leer(a.lineas),
                     _leer(a.hilos), _leer(a.propuestas))
@@ -204,8 +285,13 @@ def main(argv=None) -> int:
     os.makedirs(os.path.dirname(os.path.abspath(a.salida)) or ".", exist_ok=True)
     with open(a.salida, "w", encoding="utf-8") as f:
         json.dump(cat, f, ensure_ascii=False, indent=2)
+    if a.md:
+        with open(a.md, "w", encoding="utf-8") as f:
+            f.write(a_markdown(cat))
     c = cat["cobertura"]
     print(f"\nCATALOGO DE PROYECTOS -> {a.salida}")
+    if a.md:
+        print(f"  tabla para revisar -> {a.md}")
     print(f"  {c['ordenes_leidas']} ordenes · {c['lineas_leidas']} lineas · "
           f"{c['hilos_leidos']} hilos · {c['propuestas_leidas']} propuestas")
     print(f"  clasificadas {c['lineas_clasificadas']} "

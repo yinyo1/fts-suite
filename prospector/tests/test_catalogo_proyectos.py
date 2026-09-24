@@ -281,3 +281,16 @@ def test_una_linea_sin_orden_conocida_no_revienta():
     cat = construir([], _LINEAS, [], [])
     assert cat["cobertura"]["lineas_clasificadas"] == 2
     assert all(e["cliente"] == "" for e in cat["entradas"])
+
+
+def test_la_tabla_de_revision_se_GENERA_del_JSON(tmp_path):
+    """Un documento escrito a mano al lado de un JSON se separa del JSON en la
+    segunda actualizacion, y entonces hay dos catalogos que dicen cosas
+    distintas — peor que no tener ninguno."""
+    from herramientas.construir_catalogo import a_markdown
+    md = a_markdown(construir(_ORDENES, _LINEAS, _HILOS, []))
+    assert "66.7%" in md, "la cobertura real, no una redactada"
+    assert "`chiller`" in md and "fundicion (1)" in md
+    assert "NO sale de los datos" in md, (
+        "la columna de quien compra se declara como criterio, no como medicion")
+    assert "miente sobre su propia cobertura" in md
