@@ -161,6 +161,69 @@ una planta, con su responsable de mantenimiento y su ciudad.
 > gratis—: se anota en la señal, y cada planta con responsable se prospecta en su
 > propia corrida.
 
+### La corrida CORPORATIVA va aparte
+
+```bash
+./prospector prospecta --empresa "<empresa>" --nivel corporativo
+```
+
+**No lleva `--ciudad`**: su población no es geográfica, y el comando se niega si
+se la das. Se guarda como `<empresa>/_corporativo.json` — el guion bajo la hace
+imposible de colisionar con un slug de ciudad.
+
+**M2 y M13 salen `no_aplicaba` solos**, con razón escrita: una vacante y un
+establecimiento del DENUE son **objetos de planta**, y forzarlos al nivel
+corporativo devuelve las plantas otra vez.
+
+**Y en las corridas de planta esto ya pasa sin que lo pidas:** un contacto cuya
+evidencia lo ubica en **otra planta o en el grupo** sale del Chao1 de esa planta y
+la ficha lo lista aparte, con el comando para recogerlos. En #300 la gente
+regional salió en 2 a 4 de las cuatro corridas y **cada Chao1 la sumó a su
+población**: los cuatro estimaron sobre una población que no existe.
+
+### Sembrar entre corridas
+
+```bash
+./prospector sembrar --empresa "<empresa>" --ciudad "<planta>" \
+  --de "<empresa>/<planta de origen>" --que patron --valor "<lo medido>"
+```
+
+Se siembra **`patron`, `vocabulario` y `nota`**. **Los contactos NO**: van a la
+corrida corporativa, y sembrarlos en una planta es lo que causó el doble conteo.
+
+> **Una semilla no es evidencia, y la herramienta lo hace cumplir:** no cuenta
+> como consulta, no mueve el agotado, **no cuenta como raíz** y **topa en
+> CANDIDATO** hasta que esta corrida lo observe por su cuenta. La ficha lo declara
+> como *«sembrado de X, no observado aquí»*. Sin esa regla, la única ancla del
+> patrón de una cuenta produciría CONFIRMADO en cuatro corridas y el estado
+> reportaría cuatro confirmaciones de un solo hecho.
+
+### Cuando el tope de 60 se acaba y Chao1 dice que falta gente
+
+```bash
+./prospector tramo --empresa "<empresa>" --ciudad "<planta>"            # informa
+./prospector tramo --empresa "<empresa>" --ciudad "<planta>" --renovar  # sube
+```
+
+Renueva en **tramos de 30** — tres bloques de 10, que es la ventana mínima en la
+que la saturación puede dispararse — y **sólo si se cumplen las tres
+condiciones**: Chao1 dice que falta gente **y tiene datos** (un `prematuro` no
+manda nada), el último bloque **no** salió seco, y **queda alguna vía sin
+preguntar**. La razón se escribe y sale en la ficha.
+
+**Hasta 90 renueva sola. De ahí lo decide Esteban**, y el comando sale con
+código 3: pregúntale en una línea y vuelve con `--autorizado`.
+
+### Y si los bloques secos y Chao1 se contradicen
+
+Ya no gana el primero que cerró. Tres casos:
+
+| Chao1 dice | Con 3 bloques secos | Qué pasa |
+|---|---|---|
+| `prematuro` / `sin_datos` | **manda AGOTADO: para** | Con 5 observados y f2=1 Chao1 no tiene denominador. **No dijo «falta gente», dijo «no puedo opinar»** |
+| `falta_barrer` **con datos** | **`CAMBIAR_DE_VIA`** | Las dos tienen razón: la población no está agotada, **pero esta forma de preguntar sí**. Abre vuelta con **otra vía**, sin gastar tope |
+| `falta_barrer` y **no queda vía** | para, y es un hallazgo | *«La población no está agotada; las vías disponibles sí. Lo que falta necesita Sales Navigator.»* Eso le dice al operador **qué comprar** |
+
 ### Multiplanta: el orden, y por qué no son cuatro agentes ciegos
 
 La primera corrida a escala fueron **cuatro plantas de Coficab en paralelo**, las
@@ -195,6 +258,24 @@ no más lento.
 > pasándole al agente de la segunda planta el patrón y el vocabulario de la
 > primera en el prompt. Está propuesto como decisión de Esteban; mientras no
 > exista, la siembra manual es parte del oficio, no un atajo.
+
+### Si la corrida viene del RADAR, el ángulo entra sembrado
+
+```bash
+./prospector prospecta --empresa "<empresa>" --ciudad "<planta>" \
+  --angulo "<la señal que lo originó>" --origen radar
+```
+
+Con `--origen radar` el ángulo entra como **gancho preliminar** y la ficha lo
+declara en rojo: *«el radar sembró esto, esta corrida no lo confirmó»*. **Tu
+trabajo es confirmarlo o corregirlo** antes de la ficha:
+
+```bash
+./prospector registrar --empresa "<empresa>" --ciudad "<planta>" --modulo M12 \
+  --datos '{"angulo_resuelto": "confirmado"}'     # o "corregido"
+```
+
+Con `--origen manual` funciona como siempre. Sin `--angulo`, igual que hoy.
 
 ## 3 · Corre el plan, paso por paso, de verdad
 
@@ -427,7 +508,18 @@ es el que él pidió.
 #            ... subes el .html a su OneDrive ...
 ./prospector entregar  --empresa "<empresa>" --ciudad "<ciudad>" \
                        --destino onedrive --url '<webUrl>'       # 4 · sobrevive
+./prospector paquete   --empresa "<empresa>" --ciudad "<ciudad>"  # 5 · para el CRM
 ```
+
+**El paso 5 es nuevo y es para la máquina, no para Rissia.** `paquete` escribe un
+JSON con lo que el CRM necesita para crear la tarjeta: contactos de valor con su
+nivel de confianza, la señal con su fecha, el gancho, el origen, y **el canal
+recomendado por contacto** — derivado de la evidencia, no de una preferencia:
+historia en el buzón → correo directo; frío con nombre → LinkedIn; puesto sin
+persona → conmutador. **Celular personal nunca.**
+
+La ficha y el paquete **no se sustituyen**: la ficha la lee una persona, el
+paquete lo lee el motor 3.
 
 Una vez sondeados, `listo` **deja de decir `[ ? ]`** y muestra lo que cada
 conector contestó, con la antigüedad de la sonda. Si vuelves a arrancar más de

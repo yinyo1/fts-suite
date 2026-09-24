@@ -137,11 +137,74 @@ Y se guardan separadas sin que tengas que inventar nombres:
 guardado era plano, y encima rompía el cruce con el padrón —que buscaba una
 empresa que no existe—.
 
+### Y la gente REGIONAL ya no ensucia las cuatro fichas
+
+Antes, compras corporativas o EHS regional aparecían en las cuatro corridas y
+**cada una los contaba como suyos**. La ficha de una planta llegaba con un
+contacto de otra ciudad, y la estimación de cuánta gente falta se calculaba sobre
+una población que no existe.
+
+Ahora salen aparte, y tienen su propia corrida:
+
+```
+prospecta Coficab a nivel corporativo
+```
+
+La ficha de cada planta te dice cuántos encontró que **no son de esa planta**, y
+el comando exacto para recogerlos. **Y nadie se excluye por su puesto**: sólo por
+lo que una fuente dijo de dónde está. Si nadie lo dijo, cuenta como de la planta.
+
+### Si la primera planta ya midió algo, la segunda arranca con eso
+
+```
+siembra en la corrida de Durango el patrón de correo que salió en Juárez
+```
+
+Se siembra el **patrón de correo** y el **vocabulario** — no los contactos, que
+van a la corporativa. Lo sembrado entra marcado: la ficha dice *«sembrado de la
+corrida de Juárez, no observado aquí»*, y **se queda en «candidato»** hasta que
+esa corrida lo verifique por su cuenta.
+
+> Eso último no es prudencia de más. Si una semilla contara como fuente, el único
+> correo real que se encontró en Juárez haría que las cuatro corridas dijeran
+> «confirmado» — cuatro confirmaciones de un solo dato, y leyendo el archivo no
+> habría forma de notarlo.
+
+### Cuando se acaban las 60 consultas y todavía falta gente
+
+La herramienta **sube el tope sola, en tramos de 30, hasta 90** — y sólo si la
+evidencia lo justifica: que la estimación diga que falta gente **y tenga datos
+para decirlo**, que el último tramo no saliera vacío, y que quede alguna fuente
+sin preguntar. Deja escrito por qué, y sale en la ficha.
+
+**De 90 para arriba te pregunta a ti.** Una línea, y sigue.
+
+Y hay un caso nuevo que antes se resolvía mal: cuando los últimos tres tramos no
+trajeron nada **pero la estimación dice que sí falta gente**, las dos cosas son
+ciertas — **la población no se agotó, la forma de preguntar sí**. Entonces no para
+ni gasta más: **cambia de vía**. Y si ya no queda ninguna, para y te lo dice como
+lo que es: *«lo que falta necesita Sales Navigator»*, que es información para
+decidir una compra.
+
 ### Cómo van todas a la vez
 
 Pregúntale «¿cómo van las corridas?» y verás una tabla: gasto sobre el tope,
 bloques cerrados y cuántos secos, en qué módulo va cada una, y **si la ficha ya
 se entregó o se va a perder**. No «N tareas en ejecución».
+
+### Si la señal vino del radar
+
+Cuando el radar (que todavía no existe) detecte algo, la corrida arranca con ese
+ángulo ya puesto:
+
+```
+prospecta Coficab en Durango con el ángulo "inauguración de la nave nueva, funde cobre" desde el radar
+```
+
+La ficha lo marca en rojo como **gancho preliminar**: *el radar lo supuso, esta
+corrida no lo confirmó*. La corrida lo confirma o lo corrige, y hasta que lo haga
+el aviso se queda. **Un gancho que nadie verificó no puede salir con el mismo
+peso que uno medido.**
 
 ---
 
@@ -225,6 +288,22 @@ Los cinco estados y lo que significan:
 | `omitida_por_costo` | **Exige quién decidió** |
 
 ---
+
+## Además de la ficha: el paquete para el CRM
+
+```
+saca el paquete de la corrida de Durango
+```
+
+Escribe un **JSON** con lo que un CRM necesita para abrir la tarjeta: los
+contactos de valor con su nivel de confianza, la señal con su fecha, el gancho, y
+**por qué canal conviene el primer toque de cada uno** — si hay historia en el
+buzón, correo directo; si es frío pero tiene nombre, LinkedIn como refuerzo; si es
+un puesto sin persona, el conmutador de la planta. **Celular personal, nunca.**
+
+La ficha es para leerse; el paquete es para que una máquina lo consuma. **Las dos,
+no una.** Y el paquete **no incluye a la gente de otra planta**, justo para que la
+tarjeta no nazca con el contacto equivocado.
 
 ## Lo que la herramienta NO hace
 

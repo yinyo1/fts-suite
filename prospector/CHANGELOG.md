@@ -3,6 +3,144 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.9.5 — 2026-09-24
+
+Las cuatro decisiones que Esteban cerro sobre #302, la interfaz del motor 2 con
+los motores 1 y 3, y el clasificador del catalogo de proyectos. **483 pruebas**
+(eran 364). Los disenos de los motores 1 y 3 quedan en `metodo/`, sin construir.
+
+### La tabla de equivalencias ES-EN de puestos
+
+En el catalogo, como se pidio: **31 grupos, 71 terminos**. Cierra los 2 falsos
+conflictos que quedaron vivos en Durango -- `Director General` contra
+`General Manager`--. Sale **CON SALVEDAD** reportando ambos, con el termino en
+espanol al frente (la ficha la lee un operador mexicano) y **topa en SOLIDO**: la
+tabla es una decision humana, no una observacion, y llamar CONFIRMADO a un
+acuerdo que depende de una tabla seria acreditarle a la evidencia algo que puso el
+catalogo.
+
+**Tres limites deliberados, los tres con prueba.** NO cruza **jerarquia**:
+`gerente` y `jefe` de mantenimiento quedan en grupos distintos, porque en la
+industria mexicana no son la misma posicion y fusionarlos esconderia la diferencia
+que decide a quien se le manda la propuesta. NO cruza **funcion**. Y NO es
+sinonimo dentro de un idioma -- `servicios generales` y `facilidades` son la misma
+funcion y aun asi no estan agrupados: la peticion era ES-EN--.
+
+Y **empareja el valor completo**: `Gerente de Planta` contra
+`Plant Manager COFICAB Silao` **sigue chocando**. Aflojarlo pedia un tokenizador
+de titulos, y el modo de falla de aflojarlo es fusionar a dos personas distintas.
+
+### (a) La exclusion por evidencia de ubicacion
+
+El arreglo **real** del doble conteo de #300: la gente regional salio en 2 a 4 de
+las cuatro corridas y **cada Chao1 la sumo a SU poblacion**, asi que los cuatro
+estimaron sobre una poblacion que no existe. Y la ficha de Pesqueria traia como
+unico contacto a uno **de Juarez**.
+
+`Corrida.poblacion()` excluye a quien la evidencia ubica en otra planta o en el
+grupo; `semilla_corporativa()` lo exporta **sin nombres** -- viaja el puesto y la
+ubicacion, y el nombre lo vuelve a encontrar la corrida destino, asi que la
+semilla no puede pasar por observacion propia--.
+
+**Sale de la EVIDENCIA, nunca del titulo.** "Compras = corporativo" perderia la
+gerencia de compras **de la planta**, que si es target: en Silao era uno de los
+cuatro de valor. Y **quien no tiene ubicacion observada SI cuenta**: ausencia de
+evidencia no es evidencia de ausencia. Basta **una** fuente que nombre esta
+ciudad, que era el falso "CONFLICTO de planta" de Juarez.
+
+### (b) El nivel corporativo
+
+`prospecta --nivel corporativo`, llave `<empresa>/_corporativo.json` -- el guion
+bajo la hace imposible de colisionar con un slug de ciudad--. **M2 y M13 salen
+`no_aplicaba` con razon escrita**: una vacante y un establecimiento del DENUE son
+objetos **de planta**, y forzarlos al nivel corporativo devuelve las plantas otra
+vez. El nivel se aplica **despues** del padron, para que su razon mande sobre la
+del empate. Y **no pregunta cual planta**: no va a ninguna.
+
+### (c) Sembrar, y una semilla NO ES RAIZ
+
+`sembrar --de <corrida> --que patron|vocabulario|nota`. Los **contactos no** se
+siembran en una planta: van a la corporativa, y sembrarlos en las plantas es lo
+que causo el doble conteo.
+
+**Es el peor modo de falla de todo el proyecto**, y por eso la regla es de
+codigo y no de prosa: `Observacion.sembrado` sale de `n_raices`, **nunca es
+ancla**, y el dato **topa en CANDIDATO** hasta que la corrida lo observe por su
+cuenta. Hecho mal, sembrar no pierde datos: **inventa confirmaciones**. El patron
+de Coficab tiene **una** ancla, en Juarez; si sembrarla contara como fuente, esa
+unica observacion daria CONFIRMADO en cuatro corridas y el estado reportaria
+cuatro confirmaciones de un solo hecho -- indistinguible, leyendo el archivo, de
+cuatro observaciones independientes--. La prueba siembra lo mismo desde **dos**
+origenes, que es el caso peor.
+
+### (d) El tope adaptativo y el veredicto CAMBIAR_DE_VIA
+
+Tramos de **30** -- tres bloques de 10, la ventana minima en la que la saturacion
+puede dispararse: con 20 no le das a la compuerta de agotado la oportunidad de
+probar que ya no hay nada--. Tres condiciones de evidencia, razon escrita, y
+renueva sola **hasta 90**; de ahi lo decide el operador, con **codigo 3**.
+
+Y el tercer caso del desempate: cuando Chao1 **opina** que falta gente **y** tres
+bloques dicen que estas consultas ya no la traen, **las dos tienen razon** -- la
+poblacion no esta agotada, esta forma de preguntar si-- y los bloques secos **ya
+no detienen el lazo**: mandan cambiar de via. Sin vias libres si para, y la ficha
+lo dice como lo que es: *"lo que falta necesita Sales Navigator"*, que es
+informacion para decidir una compra.
+
+**Corregido el texto de `prematuro`**, que era la otra mitad del defecto: decia
+"eso manda SEGUIR" y eso es leer un "no se" como un "sigue". Con 5 observados y
+f2=1 Chao1 **no tiene denominador**, y quien decide es el presupuesto.
+
+### El motor 2 se conecta con los otros dos
+
+**Entrada.** `prospecta --angulo "<senal>" --origen radar|manual`. Del radar entra
+como **gancho preliminar**, declarado en rojo arriba de la ficha, y la corrida lo
+**confirma o corrige**. El aviso se **reemplaza** al resolverlo: un "confirmalo"
+que sigue ahi despues de confirmado es una instruccion caduca, y el operador no
+puede saber cual de las dos cosas es cierta.
+
+**Salida.** `./prospector paquete` escribe un JSON **fuera del repo** con lo que
+el CRM necesita. El **canal sale de la evidencia**: historia en el buzon (raiz
+`fts_interno`) -> correo directo; frio con nombre -> LinkedIn como refuerzo;
+puesto sin persona -> conmutador. **Celular personal nunca**, y viaja **declarado**
+en `canales_que_no_emite` para que el motor 3 no lo invente tampoco. Y **no lleva
+a los de otra planta**: el paquete habria creado la tarjeta de CRM con el mismo
+contacto de Juarez que ensucio la ficha de Pesqueria.
+
+### El clasificador del catalogo de proyectos (motor 1, §3a)
+
+`flujo/catalogo_proyectos.py`: clasifica una linea de venta en tipo de proyecto,
+lee el proceso del cliente y las magnitudes con su unidad normalizada. **Por
+vocabulario explicito y no por un modelo**, por dos razones: Esteban lo lee y lo
+corrige, y una linea que no pega sale **sin clasificar** en vez de caer en el
+cajon mas parecido. Un catalogo que clasifica el 100% miente sobre su cobertura.
+
+Tres decisiones que salieron de probarlo: lo **mas especifico gana** (el sistema
+de agua helada le gana al chiller, porque el chiller es su componente);
+**servicio contra equipo** lo decide el verbo de suministro (un mantenimiento de
+chiller no es un proyecto de chiller, y los compra gente distinta); y el match
+exige **frontera izquierda** y deja la derecha libre -- sin la izquierda "cobre"
+pegaria dentro de cualquier palabra, con la derecha se romperian los troncos
+deliberados como `galvan` -> galvanizado--.
+
+### Dos defectos que encontraron mis propias pruebas
+
+**`derivado_de_patron` era una bandera que ponia quien construia el Dato**, asi
+que un correo derivado salia SOLIDO si nadie la ponia. Ahora se **deriva de la
+fuente**: es la misma familia de defecto que el contador vacio, y la fuente ya lo
+dice.
+
+**La guardia de datos personales atrapo dos correos de mis propias fixtures**, que
+quedaron enmascarados. Y dos fixtures ajenos se corrigieron **conservando lo que
+verificaban**: uno tenia una corrida de MTY con un contacto de Pesqueria, que con
+la exclusion nueva ya no sale en "a quien buscar" -- y eso es correcto--.
+
+### Los disenos, sin construir
+
+`metodo/motor1-radar-de-leads.md` y `metodo/motor3-crm-odoo.md`. La escritura a
+Odoo **espera OK explicito de Esteban**: la herramienta lee Odoo y crear un lead
+es escritura.
+
 ## 0.9.4 — 2026-09-24
 
 Los bugs medidos de la primera corrida **a escala** -- Coficab en cuatro plantas,

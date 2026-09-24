@@ -84,7 +84,7 @@ dominio no identifica a una persona.
 | Ruta | Qué es |
 |---|---|
 | **`flujo/`** | El código. Compuertas, instrumentación, Chao1, catálogo, ficha y el orquestador |
-| **`tests/`** | 364 pruebas. Casos de regresión **D (LEGO)**, **F (Cuprum)** y **G (Hershey)**, más el truco del contador vacío, el lazo de refuerzo y la guardia de datos personales |
+| **`tests/`** | 483 pruebas. Casos de regresión **D (LEGO)**, **F (Cuprum)** y **G (Hershey)**, más el truco del contador vacío, el lazo de refuerzo y la guardia de datos personales |
 | **`metodo/`** | El *por qué* de cada paso, con su disparador medido |
 | **`SKILL-criterio.md`** | Lo que juzga Claude y el código no puede |
 | **`USO.md`** | **Cómo se usa.** La guía corta, en español: el trigger, los conectores, qué entrega |
@@ -126,6 +126,8 @@ consulta textual, su fuente permitida para ese módulo y su número de resultado
 | `metodo/modulos-de-contactos.md` | Los 14 módulos con contrato, el orden óptimo y la matriz de challenge |
 | `metodo/fixtures/contactos-casos-de-regresion.md` | Los casos A–F |
 | `metodo/enriquecimiento-organico.md` | Capa de enriquecimiento, solo diseño |
+| `metodo/motor1-radar-de-leads.md` | **Motor 1 · el radar**, solo diseño: fuentes, evaluador con su fórmula, y la validación contra Coficab y Budenheim |
+| `metodo/motor3-crm-odoo.md` | **Motor 3 · el CRM**, solo diseño: la tarjeta, el ciclo de vida, la cadencia, y la vía de escritura que **espera OK de Esteban** |
 | `metodo/propuestas-de-metodo-300.md` | **Cinco cambios de método propuestos y NO construidos**, de la corrida a escala (#300): tope adaptativo, desempate agotado/Chao1, corrida corporativa, sembrar entre corridas |
 
 ---
@@ -169,7 +171,7 @@ presupuesto queda. Claude corre **ese** módulo, registra lo que encontró, y el
 orquestador decide si se avanza.
 
 ```bash
-python3 -m pytest tests -q     # 364 pruebas
+python3 -m pytest tests -q     # 483 pruebas
 ```
 
 ---
