@@ -1,0 +1,13 @@
+{
+  "_nota": "Poner construido:true SOLO en el mismo PR que construye el bloque en producción y actualiza su modelo en sistema.js. La prueba del bloque pasa a ser obligatoria desde ese momento.",
+  "B1":  { "construido": false, "requiere": [],     "titulo": "Visibilidad: éxito solo con escritura confirmada, errores visibles, bitácora y alerta" },
+  "B2":  { "construido": false, "requiere": [],     "titulo": "Fail-closed en la lectura de pendientes, con reintentos" },
+  "B3":  { "construido": false, "requiere": [],     "titulo": "Candado de traslape en resolver (atrás y adelante)" },
+  "B4":  { "construido": false, "requiere": [],     "titulo": "resolver aplica la hora de RH en auto_cierre y en aprobar tal cual" },
+  "B5":  { "construido": false, "requiere": [],     "titulo": "Corregir mi hora de entrada sobre el registro abierto; auto-rescate con hora real" },
+  "B6":  { "construido": false, "requiere": [],     "titulo": "Umbrales únicos y búsqueda de abiertos sin ventana" },
+  "B7":  { "construido": false, "requiere": [],     "titulo": "Salida de emergencia en error_critico" },
+  "B8":  { "construido": false, "requiere": [],     "titulo": "Reparar registro para RH con candado de traslape y auth firmada" },
+  "B9":  { "construido": false, "requiere": [],     "titulo": "Guarda AM/PM en olvidé salida" },
+  "B10": { "construido": false, "requiere": ["B1"], "titulo": "Watchdog de bloqueados y sin-checkin con intentos fallidos" }
+}
