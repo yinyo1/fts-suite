@@ -9274,6 +9274,117 @@ await sembrarMachotes(q);
     } finally { await q.close(); }
   });
 
+  await paso('V1.43 · dar FORMATO a un machote viejo lo migra antes de sellarlo (no le mueve las fórmulas)', async () => {
+    /* 🔴 LA PUERTA DE AL LADO, y es el defecto más caro que se encontró en esta
+     * versión — encontrado releyendo el sello, no por una prueba que existiera.
+     *
+     * La marca `pad.v = 2` le dice a `hojaDe` «esta hoja ya es de la forma
+     * nueva, no la migres». `escribirCelda` la ponía DESPUÉS de escribir la
+     * hoja ya migrada, así que estaba bien. Pero `aplicarFmt` —la cinta— la
+     * ponía **sin tocar la hoja**: dar un clic en «negrita» sobre un machote de
+     * la V1.42 sellaba una hoja de la forma VIEJA como si fuera nueva, y a
+     * partir de ese guardado **cada fórmula apuntaba una columna a la
+     * izquierda, en silencio y para siempre**.
+     *
+     * No hay error, no hay aviso: sólo un número distinto. Exactamente lo que
+     * la migración existe para impedir, colándose por el escritor que nadie
+     * miró. Por eso el sello vive ahora en UNA función que llaman los dos
+     * (§20 #4: un solo escritor por campo).
+     *
+     * La prueba hace el gesto exacto: machote viejo → abrir la hoja → NO
+     * teclear nada → dar formato → recargar → el número tiene que ser el mismo. */
+    const q = await b.newPage({ viewport: { width: 1280, height: 950 } });
+    q.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
+    try {
+      await sembrarGeo(q);
+      const viejo = JSON.parse(JSON.stringify(MACHOTES_FIXTURE.find(x => x.id === 'M-1041')));
+      viejo.id = 'M-VIEJO-FMT';
+      /* Forma 1: índice 0 = RÓTULO, 1 = A, 2 = B, 3 = C. A1='2', B1='3',
+       * y la fórmula de C1 vale 5. */
+      viejo.secciones[0].pad = { abierto: false, elegida: 'C1',
+        hoja: [['Cimentación', '2', '3', '=A1+B1']] };
+      await q.addInitScript((m) => {
+        try {
+          localStorage.setItem('fts_suite_session', JSON.stringify({
+            token:'p.p.p', actor:'zz.prueba', nombre:'ZZ Prueba', empleado_id:null,
+            scopes:['comercial:read'], exp: Math.floor(Date.now()/1000)+3600 }));
+          localStorage.setItem('fts_machote_v1', JSON.stringify({ v:1,
+            guardado_at:new Date().toISOString(), machotes:[m], handoff:{} }));
+        } catch (e) {}
+      }, viejo);
+
+      await q.goto(BASE); await q.waitForTimeout(1000);
+      await q.evaluate(() => { location.hash = '#/m/M-VIEJO-FMT'; }); await q.waitForTimeout(900);
+      await q.locator('.pestana').nth(1).click(); await q.waitForTimeout(500);
+      await (await q.$('[data-padabrir]')).click(); await q.waitForTimeout(600);
+
+      const antes = await q.evaluate(() => {
+        const e = document.querySelector('.pad-panel .padcel[data-padref="D1"]');
+        return e ? e.value : null;
+      });
+      /* ⚠️ NO SE TECLEA NADA. Ése es el punto: si la prueba escribiera una
+       * celda, `escribirCelda` migraría y sellaría bien, y el defecto no
+       * aparecería nunca. El gesto tiene que ser SÓLO el formato. */
+      await q.click('.pad-panel th[data-padcol="D"]'); await q.waitForTimeout(250);
+      await q.click('.pad-cinta .pad-h[data-padfmt="b"]'); await q.waitForTimeout(350);
+      await q.waitForFunction(() => {
+        try {
+          const raw = JSON.parse(localStorage.getItem('fts_machote_v1') || '{}');
+          const m = (raw.machotes || []).find(x => x.id === 'M-VIEJO-FMT');
+          return !!((m.secciones || [])[0] || {}).pad.fmt;
+        } catch (e) { return false; }
+      }, { timeout: 8000 }).catch(() => { throw new Error('el formato no llegó al almacén'); });
+
+      const guardado = await q.evaluate(() => {
+        const raw = JSON.parse(localStorage.getItem('fts_machote_v1') || '{}');
+        const m = (raw.machotes || []).find(x => x.id === 'M-VIEJO-FMT') || {};
+        const p = ((m.secciones || [])[0] || {}).pad || {};
+        return { v: p.v, fila0: p.hoja[0] };
+      });
+
+      /* ⚠️ AQUÍ NO SE RECARGA LA PÁGINA, y conviene decir por qué: el guion de
+       * siembra corre en CADA navegación y repone la fixture ORIGINAL, así que
+       * tras recargar se estaría leyendo el machote sembrado de nuevo —forma
+       * vieja, sin sello— que migra bien y da 5. La pantalla diría «5» con el
+       * defecto puesto: una prueba que se ve verde midiendo el repuesto en vez
+       * del guardado (§20 #11, y la misma trampa que ya está anotada en la
+       * prueba del pad que sobrevive a recargar).
+       *
+       * Lo que SÍ prueba es leer el pad GUARDADO por el camino real —el mismo
+       * `PadHoja.hojaDe` que corre al abrir la hoja la próxima vez— y evaluarlo.
+       * Comprobado A/B contra el código sin el arreglo: con el defecto puesto,
+       * esto devuelve 2 donde tiene que devolver 5. */
+      const despues = await q.evaluate(() => {
+        const raw = JSON.parse(localStorage.getItem('fts_machote_v1') || '{}');
+        const m = (raw.machotes || []).find(x => x.id === 'M-VIEJO-FMT') || {};
+        const sec = (m.secciones || [])[0];
+        const hoja = window.PadHoja.hojaDe(sec);
+        const ev = window.PadHoja.evaluar(hoja);
+        return { D1: ev.valores.D1 === null || ev.valores.D1 === undefined ? '' : String(ev.valores.D1),
+                 crudoD1: window.PadHoja.crudoDe(hoja, 'D1'),
+                 A1: window.PadHoja.crudoDe(hoja, 'A1') };
+      });
+      console.log('    viejo + formato → v=' + guardado.v + ' · fila guardada ' +
+                  JSON.stringify(guardado.fila0.slice(0, 4)) + ' · releído del almacén D1 «' +
+                  despues.D1 + '» (crudo «' + despues.crudoD1 + '»), antes «' + antes + '»');
+
+      const malos = [];
+      if (String(antes).trim() !== '5')
+        malos.push('la hoja vieja no calculaba 5 ANTES del formato, así que la prueba no mide nada: ' + antes);
+      /* Se selló, sí — pero con la hoja YA MIGRADA. Las dos cosas se exigen:
+       * si sólo se exigiera el sello, el defecto pasaría. */
+      if (Number(guardado.v) < 2) malos.push('dar formato no selló la forma (v=' + guardado.v + ')');
+      if (String(guardado.fila0[3]) !== '=B1+C1')
+        malos.push('SE SELLÓ SIN MIGRAR: la fórmula guardada dice ' + JSON.stringify(guardado.fila0[3]) +
+                   ' y tenía que decir "=B1+C1" · fila: ' + JSON.stringify(guardado.fila0));
+      if (String(despues.D1).trim() !== '5')
+        malos.push('LA FÓRMULA CAMBIÓ DE VALOR al dar formato a un machote viejo: ' +
+                   antes + ' → ' + despues.D1 + ' (releído del almacén por el camino real)');
+      if (despues.A1 !== 'Cimentación') malos.push('el rótulo se perdió: ' + despues.A1);
+      if (malos.length) throw new Error(malos.join(' | '));
+    } finally { await q.close(); }
+  });
+
   await paso('V1.43 · LA CINTA: sólo en el popup, y cada grupo hace lo que dice', async () => {
     /* Las herramientas viven SÓLO en el popup grande, y la previa del cuadrante
      * sigue siendo celdas y nada más. Se mide el DOM de las dos, no se supone

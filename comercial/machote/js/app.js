@@ -3769,6 +3769,31 @@
      * Se recalcula y se escriben los valores en su sitio. */
     const hojaDeSec = (sec) => PH.paraPintar(PH.hojaDe(sec));
 
+    /** Sella la FORMA del pad en el documento, migrando primero si hace falta.
+     *
+     * 🔴 LAS DOS COSAS JUNTAS, Y EN ESTE ORDEN. Sellar `v = 2` sin escribir la
+     * hoja migrada es el peor defecto que puede tener este módulo: a partir de
+     * ese guardado `hojaDe` ve la marca, deja de migrar, y lee una hoja de la
+     * forma VIEJA como si fuera de la nueva — o sea que **cada fórmula pasa a
+     * apuntar una columna a la izquierda, en silencio y para siempre**. Es
+     * exactamente lo que la migración existe para impedir.
+     *
+     * Y se coló por la puerta de al lado: `escribirCelda` escribía la hoja
+     * migrada y sellaba, así que estaba bien; pero **aplicar un FORMATO** a un
+     * machote viejo —sin teclear una sola celda— sellaba sin migrar. Un clic en
+     * «negrita» sobre una cotización de la V1.42 le habría cambiado el
+     * resultado a sus fórmulas. Nadie lo habría reportado: no hay error, sólo
+     * un número distinto.
+     *
+     * Por eso vive en UNA función a la que llaman los dos escritores. Con una
+     * copia por sitio, el arreglo se aplica a uno y el otro sigue mintiendo
+     * (§20 #13, y §20 #4: un solo escritor por campo). */
+    const sellarForma = (sec) => {
+      if (!sec.pad) sec.pad = {};
+      if (PH.esFormaVieja(sec.pad)) sec.pad.hoja = PH.hojaDe(sec);
+      sec.pad.v = PH.FORMA;
+    };
+
     /** Escribe una celda en el documento, normalizando la rejilla primero.
      *  Devuelve la rejilla ya guardada. */
     const escribirCelda = (sec, f, c, valor) => {
@@ -3783,13 +3808,15 @@
       sec.pad.hoja = g;
       /* ⚠️ LA MARCA DE FORMA, y es lo que hace que la migración DURE. `hojaDe`
        * corre las fórmulas una letra a la derecha cuando ve un pad de la forma
-       * vieja (sin columna de rótulo aparte), pero NO escribe — abrir un
-       * machote en lectura no debe reescribirlo. Así que la forma nueva se
-       * sella aquí, en el primer tecleo: a partir de ese guardado el pad ya es
-       * de la forma 2 y nadie vuelve a correrle las fórmulas. Sin esta línea,
-       * cada carga correría `=A1` otra vez y en tres aperturas la fórmula
-       * apuntaría a `=D1`. */
-      sec.pad.v = PH.FORMA;
+       * vieja, pero NO escribe — abrir un machote en lectura no debe
+       * reescribirlo—. La forma nueva se sella en el primer tecleo: a partir de
+       * ese guardado el pad ya es de la forma 2 y nadie vuelve a correrle las
+       * fórmulas. Sin esto, cada carga correría `=A1` otra vez y en tres
+       * aperturas la fórmula apuntaría a `=D1`.
+       * ⚠️ Aquí `g` YA viene migrada (sale de `hojaDeSec`), así que sellar es
+       * seguro; `sellarForma` lo deja dicho en un solo sitio y cubre al otro
+       * escritor, que no tenía esa suerte. */
+      sellarForma(sec);
       /* El texto viejo ya migró a la primera columna; dejarlo vivo haría que
        * la próxima carga lo volviera a migrar encima de lo capturado. */
       if (sec.pad.texto !== undefined) delete sec.pad.texto;
@@ -4307,7 +4334,10 @@
        * pesar exactamente lo que pesaba antes de esta versión, y el documento
        * se congela en cada guardado. */
       if (PH.fmtVacio(r.fmt)) delete sec.pad.fmt; else sec.pad.fmt = r.fmt;
-      sec.pad.v = PH.FORMA;
+      /* ⚠️ Migra ANTES de sellar. Sin esto, dar formato a un machote de la
+       * V1.42 sin teclear nada le habría corrido las fórmulas una columna en
+       * silencio — ver el comentario de `sellarForma`. */
+      sellarForma(sec);
       tocado(m);
       /* ⚠️ SE SUELTA EL FOCO DE LA CELDA, y hacen falta las dos cosas juntas.
        * Una celda con el foco enseña su TEXTO CRUDO —está en edición— y
