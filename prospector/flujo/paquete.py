@@ -35,8 +35,7 @@ import json
 import os
 from datetime import datetime, timezone
 
-from .confianza import (CONFIRMADO, SOLIDO, CANDIDATO, EN_CONFLICTO,
-                        raiz_de, EN_ESTA_PLANTA)
+from .confianza import CANDIDATO, raiz_de
 from .ficha import fecha_de
 
 CORREO_DIRECTO = "correo_directo"

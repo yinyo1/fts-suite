@@ -15,11 +15,11 @@ import pytest
 
 from flujo import orquestador as orq
 from flujo.catalogo import grupo_de_puesto, EQUIVALENCIAS_DE_PUESTO
-from flujo.chao1 import CAMBIAR_DE_VIA, FALTA_BARRER, PREMATURO, SATURO
+from flujo.chao1 import CAMBIAR_DE_VIA, PREMATURO
 from flujo.compuertas import (CompuertaCerrada, TOPE_SIN_HUMANO, TRAMO_BASE,
                               TRAMO_INCREMENTO)
 from flujo.confianza import (Contacto, CONFIRMADO, SOLIDO, CANDIDATO,
-                             EN_CONFLICTO, EN_ESTA_PLANTA, EN_OTRA_PLANTA,
+                             EN_ESTA_PLANTA, EN_OTRA_PLANTA,
                              EN_CORPORATIVO, SIN_UBICACION)
 from flujo.estado import Corrida, NIVEL_CORPORATIVO, ORIGEN_RADAR, SIN_ACCESO
 from flujo.ficha import modo_limpio

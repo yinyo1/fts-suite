@@ -10,13 +10,11 @@ from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 
 from .compuertas import (EstadoModulo, Presupuesto, CompuertaCerrada, AGOTADO,
-                         TAMANO_BLOQUE, POR_FUENTE, TRAMO_INCREMENTO,
-                         TOPE_SIN_HUMANO, BLOQUES_SECOS_PARA_PARAR,
+                         TAMANO_BLOQUE, TRAMO_INCREMENTO,
                          Busqueda)
 from .catalogo import PERMITIDAS
 from .confianza import (Contacto, Dato, Observacion, _normaliza,
-                        EN_OTRA_PLANTA, EN_CORPORATIVO,
-                        EN_ESTA_PLANTA, SIN_UBICACION)
+                        EN_OTRA_PLANTA, EN_CORPORATIVO)
 from .chao1 import estimar, FALTA_BARRER, CAMBIAR_DE_VIA, SATURO
 
 # El flujo, con las cinco correcciones validadas en el issue #22.

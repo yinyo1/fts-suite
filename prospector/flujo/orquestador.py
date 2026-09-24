@@ -33,7 +33,7 @@ from .confianza import (Contacto, N1_CONFIRMADO, N2_PARCIAL, N3_PUESTO,
                         CERCANIA_SIN_ESTIMAR, exigir_cercania_coherente)
 from .estado import (Corrida, RESPONDIO, OLAS, NIVEL_PLANTA,
                      NIVEL_CORPORATIVO, LLAVE_CORPORATIVO, ORIGEN_MANUAL,
-                     ORIGEN_RADAR, SE_PUEDE_SEMBRAR, MARCA_ANGULO)
+                     ORIGEN_RADAR, MARCA_ANGULO)
 from .paquete import armar as armar_paquete, escribir as escribir_paquete
 from .compuertas import TOPE_SIN_HUMANO
 from .ficha import (modo_limpio, modo_procedencia,
