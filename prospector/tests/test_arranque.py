@@ -54,7 +54,7 @@ def test_sin_ciudad_y_fuera_del_padron_lo_declara_sin_frenar():
 def test_el_plan_trae_los_modulos_de_busqueda_en_el_orden_del_metodo():
     """M13 no esta en el plan a proposito: `prospecta` ya lo corrio y lo cerro
     al resolver la cuenta en el padron."""
-    assert [m for m, *_ in PLAN] == ["M0", "M0b", "M0c", "M1", "M2", "M3", "M12",
+    assert [m for m, *_ in PLAN] == ["M0", "M0b", "M0c", "M3", "M1", "M2", "M12",
                                      "M4", "M5", "M6", "M7", "M8", "M9"]
 
 

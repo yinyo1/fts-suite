@@ -63,6 +63,12 @@ RAICES = {
     "pdf_publico": "documento_oficial",
     "padron_gobierno": "documento_oficial",
     "congreso": "documento_oficial",
+    # Las tres vias de M3 comparten raiz A PROPOSITO: que la camara y el comite
+    # de normalizacion digan lo mismo son dos documentos oficiales, no dos
+    # mundos independientes. Separarlas en el agotado -- para obligar a
+    # recorrer las tres-- no es lo mismo que separarlas en la confianza.
+    "camara": "documento_oficial",
+    "normalizacion": "documento_oficial",
     "vacante": "bolsa_trabajo",
     # Los agregadores de vacantes comparten raiz: que Indeed y OCC digan lo
     # mismo NO son dos confirmaciones -- suelen republicar el mismo anuncio.
@@ -153,6 +159,8 @@ FUENTES_ANCLA = {
     "pdf_publico",        # una direccion impresa en un documento indexado
     "padron_gobierno",    # idem, en un padron oficial
     "congreso",           # idem, en un programa o memoria
+    "camara",             # idem, en un directorio de camara
+    "normalizacion",      # idem, en la lista de un comite de normalizacion
 }
 
 # En QUE CAMPOS se permite informar pese al desacuerdo. Es una lista corta a
@@ -176,6 +184,32 @@ FUENTES_ANCLA = {
 #
 # `puesto` y `empleador` fallan (2) y (3). No entran, y no deben entrar.
 CAMPOS_CON_MAYORIA = ("patron_correo",)
+
+# Campos cuya naturaleza es ACUMULATIVA: dos observaciones distintas no se
+# contradicen, se suman. Un expediente laboral no es una afirmacion sobre un
+# hecho unico -- es una lista de tramos, y cada fuente ve un pedazo.
+#
+# La corrida de #295 marco TRES conflictos de este tipo, y los tres eran
+# carrera y no contradiccion: la misma persona con dos titulos que resultaron
+# ser puestos SUCESIVOS en la misma casa. La compuerta hizo lo unico que podia
+# hacer -- marcarlos, porque no puede saberlo-- y la vuelta individual los
+# resolvio. Es ruido evitable, y evitarlo NO afloja nada: `puesto` y `entidad`
+# siguen chocando igual, que son los campos donde equivocarse cuesta.
+CAMPOS_ACUMULATIVOS = ("trayectoria",)
+
+# En que campos un literal ANCLA a la PERSONA.
+#
+# `tiene_ancla` miraba la FUENTE y no el campo, asi que una observacion de
+# PUESTO hecha por una fuente de ancla marcaba al contacto como anclado aunque
+# nunca se hubiera visto un correo suyo. En #295 no produjo falsos positivos
+# -- los seis casos ya eran de valor por cercania-- pero la regla decia una
+# cosa y hacia otra: el argumento de `de_valor` es "un comprador con CORREO
+# REAL es accionable", y un puesto impreso en una memoria de congreso no es un
+# correo.
+#
+# `patron_correo` no entra: un patron es una afirmacion sobre una POBLACION de
+# direcciones, no la direccion de esta persona.
+CAMPOS_DE_ANCLA = ("correo",)
 
 # Cuantas anclas DISTINTAS hacen falta para que un campo con disidencia viva
 # llegue a CONFIRMADO en vez de topar en SOLIDO.
@@ -410,6 +444,8 @@ class Dato:
         El valor coincide; la certeza no. Reportar el 100% porque una fuente lo
         dijo es exactamente el bug del Caso F con otro disfraz.
         """
+        if self.campo in CAMPOS_ACUMULATIVOS:
+            return False
         if len(self.valores) > 1:
             return True
         if len(self.formas) > 1:
@@ -552,8 +588,18 @@ class Contacto:
 
     @property
     def tiene_ancla(self) -> bool:
-        """Algun campo suyo lo vio una fuente que observa literales."""
-        return any(o.es_ancla for d in self.datos.values() for o in d.observaciones)
+        """Una fuente de ancla vio un CORREO suyo. No cualquier campo.
+
+        Antes bastaba con que cualquier observacion viniera de una fuente de
+        ancla -- un puesto leido en una memoria de congreso marcaba a la
+        persona como anclada--. El campo importa tanto como la fuente: lo que
+        vuelve accionable a alguien es su direccion, no que su cargo aparezca
+        impreso.
+        """
+        return any(o.es_ancla
+                   for campo, d in self.datos.items()
+                   if campo in CAMPOS_DE_ANCLA
+                   for o in d.observaciones)
 
     @property
     def de_valor(self) -> bool:

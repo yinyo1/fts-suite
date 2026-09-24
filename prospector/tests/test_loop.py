@@ -70,7 +70,7 @@ def _cascada_cerrada(n_contactos: int = 3) -> Corrida:
         ("M13", "cortes", ["denue"]),
         ("M1", "directorios", ["leadiq", "rocketreach", "signalhire"]),
         ("M2", "bolsas", ["vacante", "vacante", "vacante"]),
-        ("M3", "documentos", ["congreso"]),
+        ("M3", "vias", ["camara", "normalizacion", "congreso"]),
         ("M12", "notas", ["prensa"]),
         ("M4", "combinaciones", ["patron_derivado"]),
         ("M6", "vueltas_secas", ["buscador"]),
@@ -99,7 +99,7 @@ def _cascada_cerrada(n_contactos: int = 3) -> Corrida:
                              "buscador", 1,
                              contactos=[Contacto(f"Persona {i}", "Mantenimiento",
                                                  c.empresa)])
-    c.presupuesto.registrar(10, n_contactos)
+    c.presupuesto.registrar(10, n_contactos, de_valor=n_contactos)
     c.cerrar_modulo("M5", "omitida_por_costo", "cerrada a mano para la prueba")
     return c
 
@@ -124,7 +124,8 @@ def test_el_presupuesto_es_quien_detiene_el_lazo_cuando_chao1_no_opina():
     c = _cascada_cerrada(3)
     assert c.siguiente_paso()["ola"] == "loop"
     for _ in range(3):
-        c.presupuesto.registrar(10, 0)          # tres bloques secos de verdad
+        # Secos por el criterio NUEVO: cero entradas DE VALOR.
+        c.presupuesto.registrar(10, 0, de_valor=0)
     assert c.presupuesto.saturado
     assert not c.puede_seguir_el_loop()
     assert "bloques" in c.que_detiene_el_loop()
@@ -154,7 +155,7 @@ def test_una_vuelta_que_no_gasta_no_puede_dar_otra():
     c.abrir_vuelta()
     with pytest.raises(CompuertaCerrada, match="sin un bloque nuevo"):
         c.abrir_vuelta()
-    c.presupuesto.registrar(10, 4)             # se gasto de verdad
+    c.presupuesto.registrar(10, 4, de_valor=4)  # se gasto de verdad
     assert c.abrir_vuelta()["vuelta"] == 2
 
 
@@ -187,7 +188,8 @@ def test_la_compuerta_de_la_vuelta_en_seco_sobrevive_al_disco():
 
     vuelta = Corrida(empresa=d["empresa"], ciudad=d["ciudad"])
     for b in d["presupuesto"]["bloques"]:
-        vuelta.presupuesto.registrar(b["consultas"], b["nuevas"])
+        vuelta.presupuesto.registrar(b["consultas"], b["nuevas"],
+                                     de_valor=b.get("de_valor", 0))
     vuelta.vueltas_loop = d["vueltas_loop"]
     vuelta._bloques_al_abrir_vuelta = d["bloques_al_abrir_vuelta"]
     with pytest.raises(CompuertaCerrada, match="sin un bloque nuevo"):

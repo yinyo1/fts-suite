@@ -3,6 +3,102 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.9.0 — 2026-09-24
+
+Dos decisiones de criterio aprobadas a partir de la corrida de #295, y tres
+arreglos que venian con ellas. **216 pruebas.**
+
+### DECISION 1 · «Seco» = cero entradas DE VALOR
+
+El criterio anterior -- cero ENTRADAS, de las que fueran-- **no terminaba**. En
+una casa de ~6,000 empleados con catorce lineas de negocio siempre queda un
+angulo que devuelve dos o tres nombres sin puesto. La regla medía *si queda
+algo*, y siempre queda algo. Lo que tiene que medir es *si queda algo que
+valga*.
+
+Se mantienen los **tres bloques consecutivos** y los **diez por bloque**. Lo
+unico que cambia es que el bloque se mide por `de_valor`.
+
+Dos propiedades que no son obvias y estan probadas:
+
+- **Un bloque con entradas pero sin valor ES seco.** El bloque 13 de la corrida
+  -- tres entradas, cero de valor-- alargaba la cascada; ahora la cierra.
+- **Un bloque sin entradas pero CON valor NO es seco.** Si una vuelta le
+  encuentra el puesto a alguien que habia entrado sin el, produjo valor. Por eso
+  `de_valor` es la resta de dos marcadores y no un conteo de contactos nuevos.
+
+**Medido contra la corrida de #295**, que es la prueba de regresion:
+
+| | criterio viejo | criterio nuevo |
+|---|---|---|
+| cierra en | **nunca** | **bloque 12** |
+| consultas | 132 y contando | **120** |
+| de valor capturado | 27 de 27 | **25 de 27** |
+
+**Cuesta dos entradas de valor de veintisiete** -- una superintendencia de
+operaciones y un herramental de extrusion-- y ahorra doce consultas. No es
+gratis, y el numero queda escrito donde se ve.
+
+> **El matiz que no se puede callar:** con las fronteras que la corrida uso *de
+> verdad* -- con su bloque de cinco consultas-- el criterio nuevo tampoco se
+> habria pronunciado. No es defecto del criterio: es el bloque corto, que era un
+> error y que el codigo ya no permite. Las dos tablas estan en las pruebas.
+
+### DECISION 2 · M3 sube a POR_FUENTE con tres vias, y sube en la ola
+
+M3 rindio **0.62 entradas de valor por consulta contra 0.25 de M5** -- 2.5x,
+siendo la capa barata-- y fue la **unica fuente que aporto anclas**. Se cerraba
+con un solo documento.
+
+Su agotado exige ahora **tres vias distintas, nombradas en el catalogo**:
+`camara`, `normalizacion` y `congreso`. Con una sola etiqueta el modulo no
+podria agotarse nunca por fuente -- el mismo tropiezo que M2 tuvo con
+`vacante`--.
+
+Las tres **comparten raiz** `documento_oficial` a proposito: separarlas en el
+AGOTADO, para obligar a recorrerlas, no es lo mismo que separarlas en la
+CONFIANZA. Que la camara y el comite digan lo mismo son dos documentos
+oficiales, no dos mundos independientes.
+
+Y **M3 sube al segundo lugar de la OLA 1**, despues del padron y antes de los
+directorios: ademas de contactos da vocabulario, y el motor no puede combinar
+palabras que todavia no existen.
+
+### Tres arreglos que no cambian criterio
+
+**`trayectoria` ya no dispara C1.** Un expediente laboral no es una afirmacion
+sobre un hecho unico: es una lista de tramos, y cada fuente ve un pedazo.
+`puesto` y `entidad` siguen chocando igual -- son los campos donde equivocarse
+cuesta--.
+
+> **Alcance real, medido:** quita **uno** de los once conflictos de #295, no
+> tres. Los otros dos casos de carrera estaban registrados en `puesto`, no en
+> `trayectoria`. Evitarlos es disciplina de captura, no regla de codigo.
+
+**`fusionar` renombra y funde.** Tres veces en #295 aparecio el nombre completo
+de alguien ya registrado con el apellido cortado; registrarlo aparte habria
+inflado el numerador de Chao1 y registrarlo como observacion dejaba la ficha
+mostrando el nombre corto. Ahora `./prospector fusionar --de X --a Y` reapunta
+los hallazgos de las busquedas -- si no, los `hits` colgarian de una clave que
+ya no existe-- y propaga revision y vigencia con la asimetria de siempre: solo
+se agregan, nunca se limpian.
+
+**`tiene_ancla` mira el CAMPO, no solo la fuente.** Un puesto impreso en una
+memoria de congreso marcaba a la persona como anclada aunque nunca se hubiera
+visto un correo suyo. El argumento de `de_valor` es «un comprador con CORREO
+REAL es accionable», y un cargo impreso no es un correo. `patron_correo` tampoco
+ancla: un patron habla de una poblacion de direcciones, no de esta persona.
+
+> **Efecto medido en #295:** las entradas de valor siguen siendo **27** -- los
+> seis casos anclados por fuente ya eran de valor por cercania, tal como estaba
+> reportado--. Lo que cambia es la columna `ancla` de la tabla: de seis a
+> **uno**, que es el numero real de correos literales de la cuenta.
+
+### Sigue abierto, y a proposito
+
+**La cercania solo se acerca, nunca se aleja.** Derivarla del puesto mejor
+evidenciado es cambio de fondo y se decide aparte.
+
 ## 0.8.0 — 2026-09-24
 
 La version que salio de una corrida real de **132 consultas** sobre una cuenta

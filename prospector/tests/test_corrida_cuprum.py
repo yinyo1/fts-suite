@@ -129,7 +129,7 @@ def test_las_consultas_que_no_tocan_red_no_gastan_presupuesto():
     c = Corrida(empresa="Casa", ciudad="MTY")
     c.registrar_busqueda("M4", "combinaciones", "producto completo de combinaciones", "patron_derivado", 240)
     assert c.consultas_de_red() == 0
-    assert c.bloque_pendiente() == (0, 0)
+    assert c.bloque_pendiente() == (0, 0, 0)
 
 
 # ------------------------------------------------- 5. el origen es derivado

@@ -201,7 +201,7 @@ abierta.**
 
 ---
 
-### M3 · `CONGRESOS` *(nuevo)*
+### M3 · `CONGRESOS, CÁMARAS Y NORMALIZACIÓN`
 
 > Generador de puestos-objetivo a escala, y **limpio de dato personal desde el
 > origen**.
@@ -210,13 +210,30 @@ abierta.**
 |---|---|
 | **Entrada** | giro industrial · región |
 | **Salida** | **empresa + puesto, sin nombres**, en volumen · vocabulario real de la industria |
-| **Fuentes** | **CMC México** (asistentes, programa, revista) · **CAINTRA** (*Café con el experto*, cohortes de socios) · **CLAUT** (clúster automotriz NL) · **Supply Hub NL** · **Clúster de Herramentales** |
-| **Agotado** | última edición publicada + la anterior |
+| **Fuentes** | **tres vías nombradas**: `camara` (CAINTRA, CLAUT, CANACINTRA, Supply Hub, Herramentales) · `normalizacion` (IMEDAL y sus comités técnicos) · `congreso` (CMC México, ALUMEXICO, ferias y memorias) |
+| **Agotado** | **las TRES vías**, cada una con su consulta real registrada |
 | **Alimenta** | M4 (vocabulario) · nivel 3 de la ficha, directo |
 
 **Rendimiento medido (parcial):** un solo documento —asistentes de CMC México
 2019— trae país, estado, empresa y puesto. La edición 17 (2024) reporta **más de
 600 asistentes, 92% de perfil medio y alto**.
+
+**Rendimiento medido (corrida completa, #295):** **0.62 entradas de valor por
+consulta**, contra **0.25 de M5** —el módulo más caro del catálogo—. **2.5×,
+siendo la capa barata.** Ocho consultas dieron seis entradas y cinco de valor.
+
+> **La vía que el agotado viejo no alcanzaba.** Con «última edición publicada»
+> el módulo se cerraba con **un** documento, y en la corrida de #295 se cerró
+> antes de llegar al **organismo de normalización del sector** —que fue el que
+> devolvió cinco ingenieros de la casa con nombre completo y título en un
+> documento oficial, y uno sentado en el comité técnico—. **Quien firma la norma
+> es con quien se discute especificación.** Por eso el agotado ahora exige las
+> tres vías: son tres poblaciones de documento distintas, no tres formas de
+> preguntar lo mismo.
+>
+> **Corre arriba en la OLA 1**, justo después del padrón y antes de los
+> directorios: además de contactos da **vocabulario**, y el motor de
+> combinaciones no puede combinar palabras que todavía no existen.
 
 > **Por qué es el módulo más limpio del catálogo:** el organizador **ya publicó
 > sólo empresa y puesto**. No hay nombre que filtrar, no hay celular que decidir

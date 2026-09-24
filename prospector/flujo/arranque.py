@@ -46,6 +46,15 @@ PLAN = [
      "web dieron 5 nombres y ningun gerente; una sola llamada aqui dio dos correos "
      "reales que desempataron el patron. Va ANTES de los directorios a proposito: "
      "el ancla tiene que estar puesta cuando el patron se contraste."),
+    ("M3", "vias", ["camara", "normalizacion", "congreso"],
+     "TRES vias: camara del giro, organismo de NORMALIZACION del sector, y "
+     "congreso o feria",
+     "La capa barata que mas valor rinde por consulta -- 2.5x el motor, medido "
+     "en la corrida de #295-- y la unica que da anclas. Sube aqui porque "
+     "ademas de contactos da VOCABULARIO, y el motor no puede combinar "
+     "palabras que todavia no existen. La via de normalizacion es la que "
+     "entrega ingenieros con nombre completo y titulo en documento oficial: "
+     "quien firma la norma es con quien se discute especificacion."),
     ("M1", "directorios", ["leadiq", "rocketreach", "contactout", "signalhire",
                            "prospeo", "zoominfo"],
      "el formato de correo de la cuenta en TRES directorios DISTINTOS",
@@ -57,9 +66,6 @@ PLAN = [
      "No dan nombres casi nunca. Dan el VOCABULARIO de la casa: como le llaman "
      "ahi al puesto que compra. Y la bolsa propia es otra raiz que los "
      "agregadores: es la empresa hablando de si misma."),
-    ("M3", "documentos", ["congreso"],
-     "camaras y congresos del giro (CAINTRA, CMC, CLAUT, Supply Hub)",
-     "Da puestos con nombre cuando la cuenta expone o patrocina."),
     ("M12", "notas", ["prensa"],
      "inversion, ampliacion, nueva linea, PTAR, cogeneracion, agua, vapor",
      "El ANGULO TECNICO y titulos que el diccionario no tiene. La web entrega "

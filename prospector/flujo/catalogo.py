@@ -79,7 +79,19 @@ PERMITIDAS = {
     "M2":  ["vacante", "vacante_propia", "vacante_indeed", "vacante_glassdoor",
             "vacante_occ", "vacante_simplyhired", "vacante_linkedin_publico",
             "vacante_computrabajo"],
-    "M3":  ["congreso"],
+    # M3 exige TRES vias distintas, asi que el catalogo tiene que NOMBRARLAS.
+    # Con una sola etiqueta `congreso` el modulo no podria agotarse nunca por
+    # fuente -- el mismo tropiezo que M2 tuvo con `vacante` en la corrida del
+    # 24-sep--. Y no son tres formas de preguntar lo mismo: son tres
+    # poblaciones de documento distintas.
+    #
+    #   camara         -- CAINTRA, CLAUT, CANACINTRA: quien preside y quien va
+    #   normalizacion  -- IMEDAL y sus comites: quien firma la NORMA. Es la via
+    #                     que dio los ingenieros con nombre completo y titulo en
+    #                     la corrida de #295, y la que el agotado viejo nunca
+    #                     alcanzaba
+    #   congreso       -- programas, memorias y ferias del sector
+    "M3":  ["camara", "normalizacion", "congreso"],
     "M12": ["prensa"],
     "M5":  ["buscador", "linkedin_publico"],
     "M6":  ["buscador", "linkedin_publico"],

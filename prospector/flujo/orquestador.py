@@ -69,7 +69,9 @@ def _cargar(empresa: str) -> Corrida:
     for b in pres.get("bloques", []):
         c.presupuesto.registrar(b["consultas"], b["nuevas"],
                                 busquedas_al_cerrar=b.get("busquedas_al_cerrar", 0),
-                                contactos_al_cerrar=b.get("contactos_al_cerrar", 0))
+                                contactos_al_cerrar=b.get("contactos_al_cerrar", 0),
+                                de_valor=b.get("de_valor", 0),
+                                de_valor_al_cerrar=b.get("de_valor_al_cerrar", 0))
     c.vueltas_loop = d.get("vueltas_loop", 0)
     # Sin esto la compuerta de la vuelta en seco se olvidaba al releer del
     # disco: la corrida volvia con vueltas_loop=1 y el marcador de bloques en
@@ -154,7 +156,7 @@ def main(argv=None) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     for nombre in ("prospecta", "listo", "iniciar", "siguiente", "padron",
                    "buscar", "registrar", "bloque", "cerrar", "vuelta",
-                   "challenge", "ficha", "estado", "tope"):
+                   "challenge", "ficha", "estado", "tope", "fusionar"):
         s = sub.add_parser(nombre)
         if nombre != "listo":
             s.add_argument("--empresa", required=True)
@@ -197,6 +199,11 @@ def main(argv=None) -> int:
         if nombre == "cerrar":
             s.add_argument("--estado", default=RESPONDIO)
             s.add_argument("--razon", default="")
+        if nombre == "fusionar":
+            s.add_argument("--de", required=True,
+                           help="el nombre como esta registrado hoy")
+            s.add_argument("--a", required=True,
+                           help="el nombre COMPLETO que aparecio despues")
         if nombre == "tope":
             s.add_argument("--nuevo", type=int, required=True)
             s.add_argument("--razon", required=True,
@@ -294,6 +301,19 @@ def main(argv=None) -> int:
             _imprimir_paso(c)
             if a.cmd == "estado":
                 print(json.dumps(c.a_dict()["presupuesto"], indent=2, ensure_ascii=False))
+            return 0
+
+        if a.cmd == "fusionar":
+            antes = len(c.contactos)
+            x = c.fusionar(a.de, a.a)
+            c.guardar(_ruta(a.empresa))
+            fundidos = antes - len(c.contactos)
+            print(f"[{a.empresa}] '{a.de}' -> '{x.nombre}'"
+                  f"{' (DOS fichas fundidas en una)' if fundidos else ''}")
+            print(f"  hits: {x.hits} · origen: {x.modulo_origen or '(sin registro)'} "
+                  f"· de valor: {'si' if x.de_valor else 'no'}")
+            print("  Los hallazgos de las busquedas quedaron reapuntados: si no, "
+                  "los hits colgarian de una clave que ya no existe.")
             return 0
 
         if a.cmd == "tope":
@@ -403,7 +423,8 @@ def main(argv=None) -> int:
             c.presupuesto.exigir_puede_seguir()
             b = c.cerrar_bloque(a.consultas, a.nuevas, parcial=a.parcial)
             c.guardar(_ruta(a.empresa))
-            print(f"Bloque {b.numero}: {b.consultas} consultas, {b.nuevas} nuevas "
+            print(f"Bloque {b.numero}: {b.consultas} consultas, {b.nuevas} nuevas, "
+                  f"{b.de_valor} DE VALOR "
                   f"({b.rendimiento:.2f}/consulta){' SECO' if b.seco else ''}")
             print("  Las dos cifras salen del registro, no de la linea de "
                   "comandos.")

@@ -99,7 +99,24 @@ class Busqueda:
 # ------------------------------------------------------------ (b) presupuesto
 TAMANO_BLOQUE = 10
 BLOQUES_SECOS_PARA_PARAR = 3
-SECO_SI_NUEVAS_MENOR_QUE = 1     # un bloque es seco si trae <1 entrada nueva
+
+# SECO = CERO ENTRADAS DE VALOR. Decision de criterio aprobada tras la corrida
+# de #295.
+#
+# El criterio anterior -- cero ENTRADAS, de las que fueran-- no terminaba. En
+# una casa de ~6,000 empleados con catorce lineas de negocio, seis direcciones y
+# ocho marcas siempre queda un angulo que devuelve dos o tres nombres sin puesto
+# y sin valor. La regla media SI QUEDA ALGO, y siempre queda algo. Lo que tiene
+# que medir es SI QUEDA ALGO QUE VALGA.
+#
+# Medido en la corrida de #295: con el criterio viejo, 132 consultas y 14
+# bloques sin que la regla se pronunciara una sola vez. Con este, la cascada
+# cierra en el bloque 12 -- 120 consultas--.
+SECO_SI_VALOR_MENOR_QUE = 1
+
+# Se conserva para la tabla de rendimiento y para el historial de los bloques ya
+# cerrados. YA NO decide la saturacion.
+SECO_SI_NUEVAS_MENOR_QUE = 1
 
 
 @dataclass
@@ -116,20 +133,35 @@ class Bloque:
     # 50 entradas nuevas contra 46 contactos que la corrida tenia de verdad.
     busquedas_al_cerrar: int = 0
     contactos_al_cerrar: int = 0
+    # Cuanto VALOR aporto el bloque, y cuanto llevaba la corrida al cerrarlo.
+    # `de_valor` es la resta entre dos marcadores, igual que `nuevas`: no es un
+    # numero que alguien escriba.
+    de_valor: int = 0
+    de_valor_al_cerrar: int = 0
 
     @property
     def seco(self) -> bool:
-        """Seco = se pregunto EL BLOQUE COMPLETO y no entro nadie.
+        """Seco = se pregunto EL BLOQUE COMPLETO y no entro NADA DE VALOR.
 
-        La exigencia de que el bloque este lleno no estaba, y la corrida de
-        Cuprum del 24-sep-2026 tropezo con el hueco: cerre un bloque de CINCO
-        consultas sin entradas nuevas y el sistema lo conto igual que uno de
-        diez. Medio bloque sin hallazgos no dice que la veta se acabo: dice que
-        se pregunto la mitad. Y como TRES bloques secos seguidos CIERRAN la
-        cascada, dejarlo pasar permitia declarar saturacion con quince consultas
-        en vez de treinta."""
+        Dos exigencias, y las dos salieron de corridas reales.
+
+        El bloque COMPLETO: cerre un bloque de cinco consultas sin entradas y el
+        sistema lo conto igual que uno de diez. Medio bloque sin hallazgos no
+        dice que la veta se acabo: dice que se pregunto la mitad.
+
+        CERO DE VALOR y no cero entradas: la corrida de #295 gasto 132 consultas
+        sin que la regla se pronunciara nunca, porque siempre quedaba un angulo
+        que devolvia nombres sin puesto. Un bloque que trae cinco contactos de
+        los que ninguno compra ni decide NO esta alimentando la cascada: esta
+        alargandola.
+
+        Un bloque que no suma contactos pero ASCIENDE a uno viejo -- porque al
+        fin aparecio su puesto-- no es seco, y no debe serlo: produjo valor.
+        Por eso `de_valor` es la resta de dos marcadores y no un conteo de
+        contactos nuevos.
+        """
         return (self.consultas >= TAMANO_BLOQUE
-                and self.nuevas < SECO_SI_NUEVAS_MENOR_QUE)
+                and self.de_valor < SECO_SI_VALOR_MENOR_QUE)
 
     @property
     def rendimiento(self) -> float:
@@ -169,7 +201,8 @@ class Presupuesto:
 
     def registrar(self, consultas: int, nuevas: int,
                   busquedas_al_cerrar: int = 0,
-                  contactos_al_cerrar: int = 0) -> Bloque:
+                  contactos_al_cerrar: int = 0,
+                  de_valor: int = 0, de_valor_al_cerrar: int = 0) -> Bloque:
         if consultas > TAMANO_BLOQUE:
             raise CompuertaCerrada(
                 f"Bloque de {consultas} consultas: el maximo es {TAMANO_BLOQUE}. "
@@ -181,23 +214,25 @@ class Presupuesto:
                 "Subir el tope es una decision, no un descuido: hay que pedirla.")
         b = Bloque(numero=len(self.bloques) + 1, consultas=consultas,
                    nuevas=nuevas, busquedas_al_cerrar=busquedas_al_cerrar,
-                   contactos_al_cerrar=contactos_al_cerrar)
+                   contactos_al_cerrar=contactos_al_cerrar,
+                   de_valor=de_valor, de_valor_al_cerrar=de_valor_al_cerrar)
         self.bloques.append(b)
         return b
 
     @property
-    def marcador(self) -> tuple[int, int]:
-        """(busquedas, contactos) que la corrida llevaba al cerrar el ultimo
-        bloque. El punto desde el que se mide el siguiente."""
+    def marcador(self) -> tuple[int, int, int]:
+        """(busquedas, contactos, de_valor) que la corrida llevaba al cerrar el
+        ultimo bloque. El punto desde el que se mide el siguiente."""
         if not self.bloques:
-            return (0, 0)
+            return (0, 0, 0)
         u = self.bloques[-1]
-        return (u.busquedas_al_cerrar, u.contactos_al_cerrar)
+        return (u.busquedas_al_cerrar, u.contactos_al_cerrar, u.de_valor_al_cerrar)
 
     def exigir_puede_seguir(self) -> None:
         if self.saturado:
             raise CompuertaCerrada(
-                f"SATURADO: {self.secos_al_final} bloques secos seguidos. "
+                f"SATURADO: {self.secos_al_final} bloques seguidos sin UNA SOLA "
+                "entrada de valor. "
                 "La cascada cierra aqui; seguir es gastar sin rendimiento.")
         if self.agotado_por_tope:
             raise CompuertaCerrada(
@@ -231,8 +266,18 @@ AGOTADO = {
             "MINIMO TRES directorios DISTINTOS consultados y contrastados"),
     "M2":  ("bolsas", 3, POR_FUENTE,
             "bolsa propia + 2 agregadores, tres fuentes distintas"),
-    "M3":  ("documentos", 1, POR_REGISTRO,
-            "ultima edicion publicada"),
+    # M3 sube a POR_FUENTE con TRES vias. Decision de criterio aprobada tras la
+    # corrida de #295, y el numero que la sostiene: M3 rindio 0.62 entradas DE
+    # VALOR por consulta contra 0.25 de M5 -- 2.5x-- siendo la capa barata, y
+    # fue la UNICA fuente que aporto anclas. Con el criterio viejo -- "ultima
+    # edicion publicada", un solo documento-- se cerraba antes de llegar al
+    # organismo de normalizacion, que fue el que dio los ingenieros con nombre
+    # completo y titulo en un documento oficial.
+    "M3":  ("vias", 3, POR_FUENTE,
+            "TRES vias distintas: camara general (CAINTRA, CLAUT), organismo de "
+            "NORMALIZACION del sector, y congreso o feria. Cada una con su "
+            "consulta real registrada. Son tres poblaciones distintas de "
+            "documento, no tres formas de preguntar lo mismo"),
     "M12": ("notas", 1, POR_REGISTRO,
             "ultima nota relevante de 24 meses"),
     "M4":  ("combinaciones", 1, POR_REGISTRO,

@@ -188,10 +188,10 @@ def test_M5_lee_los_bloques_del_presupuesto_no_un_contador_aparte():
         c.mod("M5").exigir_agotado()
 
     for nuevas in (7, 4):
-        c.presupuesto.registrar(10, nuevas)
+        c.presupuesto.registrar(10, nuevas, de_valor=nuevas)
     assert c.mod("M5").contadores["bloques_secos"] == 0
     for _ in range(3):
-        c.presupuesto.registrar(10, 0)
+        c.presupuesto.registrar(10, 0, de_valor=0)
     assert c.mod("M5").contadores["bloques_secos"] == 3, (
         "lo lee de los bloques reales, no de un contador que alguien subio")
     c.mod("M5").exigir_agotado()

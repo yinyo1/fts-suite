@@ -11,15 +11,20 @@ from datetime import datetime, timezone
 from .compuertas import (EstadoModulo, Presupuesto, CompuertaCerrada, AGOTADO,
                          TAMANO_BLOQUE,
                          Busqueda)
-from .confianza import Contacto, Dato, Observacion
+from .confianza import Contacto, Dato, Observacion, _normaliza
 from .chao1 import estimar
 
 # El flujo, con las cinco correcciones validadas en el issue #22.
 OLAS = [
     ("ola0_internas", "OLA 0 · INTERNAS — precedencia, no rendimiento",
      ["M0", "M0b", "M0c"]),
+    # M3 sube al SEGUNDO lugar de la ola. Decision aprobada tras #295: ademas de
+    # contactos da VOCABULARIO, y correrlo tarde fue lo que hizo que el motor de
+    # combinaciones se armara sin las palabras del organismo de normalizacion.
+    # Su rendimiento medido -- 0.62 entradas de valor por consulta contra 0.25
+    # de M5-- no deja argumento para dejarlo al final de la fila.
     ("ola1_vocabulario", "OLA 1 · BARATAS — llenan el diccionario ANTES del motor",
-     ["M13", "M1", "M2", "M3", "M12"]),
+     ["M13", "M3", "M1", "M2", "M12"]),
     ("ola2_motor", "OLA 2 · EL MOTOR CARO — ~60% del gasto",
      ["M4", "M5", "M6"]),
     ("ola3_refuerzo", "OLA 3 · REFUERZO",
@@ -144,6 +149,65 @@ class Corrida:
                 "Un hueco sin motivo escrito se confunde con 'no hay nada'.")
         self.cobertura[modulo] = {"estado": estado, "razon": razon}
 
+    # ------------------------------------------------- fusionar / renombrar
+    def fusionar(self, nombre_viejo: str, nombre_nuevo: str) -> Contacto:
+        """El contacto se queda con su nombre COMPLETO cuando aparece.
+
+        Tres veces en la corrida de #295 aparecio el nombre completo de alguien
+        que ya estaba en la lista con el apellido cortado por un directorio.
+        Registrarlo como contacto aparte habria inflado el numerador de Chao1;
+        registrarlo como observacion `nombre_completo` -- que fue lo que hice--
+        dejaba la ficha mostrando el nombre corto. Faltaba esto.
+
+        Si el nombre nuevo YA existe como contacto, los dos se funden en uno:
+        las observaciones se suman, la cercania se acerca, la revision humana y
+        la vigencia se propagan con la misma asimetria de siempre -- solo se
+        agregan, nunca se limpian-- y los `hits` se recalculan del registro.
+        """
+        origen = self._buscar(nombre_viejo)
+        if origen is None:
+            raise CompuertaCerrada(
+                f"No hay contacto '{nombre_viejo}' en la corrida. Fusionar algo "
+                "que no esta registrado es inventar una fusion.")
+        if not (nombre_nuevo or "").strip():
+            raise CompuertaCerrada("El nombre nuevo no puede ir vacio.")
+
+        clave_vieja = origen.clave
+        destino = self._buscar(nombre_nuevo)
+
+        if destino is None or destino is origen:
+            origen.nombre = nombre_nuevo.strip()
+        else:
+            for campo, d in origen.datos.items():
+                destino.dato(campo).observaciones.extend(d.observaciones)
+            destino.cercania_decision = min(destino.cercania_decision,
+                                            origen.cercania_decision)
+            if origen.revision_humana and not destino.revision_humana:
+                destino.revision_humana = True
+                destino.motivo_revision = origen.motivo_revision
+            if not origen.sigue_en_la_casa:
+                destino.sigue_en_la_casa = False
+            if not destino.puesto and origen.puesto:
+                destino.puesto = origen.puesto
+            self.contactos.remove(origen)
+            origen = destino
+
+        # El REGISTRO manda: las busquedas apuntan al contacto por su clave, y
+        # si la clave cambia hay que reapuntarlas o los `hits` y el origen
+        # quedan colgando de una clave que ya no existe.
+        for b in self.busquedas():
+            b.hallazgos = [origen.clave if k == clave_vieja else k
+                           for k in b.hallazgos]
+        self._recalcular_hits()
+        return origen
+
+    def _buscar(self, nombre: str) -> Contacto | None:
+        objetivo = _normaliza(nombre or "")
+        for x in self.contactos:
+            if _normaliza(x.nombre or "") == objetivo:
+                return x
+        return None
+
     # --------------------------------------------- el bloque, contra evidencia
     # Las consultas que NO tocan red no gastan presupuesto. M4 genera su
     # producto sin pedirle nada a nadie: contarla seria cobrarle a la cuenta una
@@ -153,15 +217,27 @@ class Corrida:
     def consultas_de_red(self) -> int:
         return sum(1 for b in self.busquedas() if b.fuente not in self.SIN_RED)
 
-    def bloque_pendiente(self) -> tuple[int, int]:
-        """(consultas, nuevas) acumuladas desde el ultimo bloque cerrado.
+    def de_valor_ahora(self) -> int:
+        """Cuantos contactos son DE VALOR en este momento.
+
+        Se mide sobre el estado actual, no sobre el momento en que cada uno
+        entro: si una vuelta posterior le encuentra el puesto a alguien que
+        habia entrado sin el, el valor sube y el bloque que trajo esa evidencia
+        se lo lleva de credito. Paso de verdad en #295 con una coordinacion de
+        fundicion que entro sin puesto en el bloque 4.
+        """
+        return sum(1 for x in self.contactos if x.de_valor)
+
+    def bloque_pendiente(self) -> tuple[int, int, int]:
+        """(consultas, nuevas, de_valor) acumuladas desde el ultimo bloque.
 
         Derivado del registro. Es la misma leccion que los contadores de agotado
         y que `hits`: un bloque que se declara a mano deriva, y derivar en la
         compuerta que decide cuando PARAR es derivar en la unica cifra que no
         se puede equivocar."""
-        b0, c0 = self.presupuesto.marcador
-        return (self.consultas_de_red() - b0, len(self.contactos) - c0)
+        b0, c0, v0 = self.presupuesto.marcador
+        return (self.consultas_de_red() - b0, len(self.contactos) - c0,
+                self.de_valor_ahora() - v0)
 
     def cerrar_bloque(self, consultas: int | None = None,
                       nuevas: int | None = None, parcial: bool = False):
@@ -171,7 +247,7 @@ class Corrida:
         redundancia: es el mismo truco del contador vacio aplicado al
         presupuesto, y hasta la corrida de Cuprum del 24-sep-2026 no habia
         nada que lo detuviera."""
-        real_c, real_n = self.bloque_pendiente()
+        real_c, real_n, real_v = self.bloque_pendiente()
         if consultas is not None and consultas != real_c:
             raise CompuertaCerrada(
                 f"El bloque declara {consultas} consultas y el registro tiene "
@@ -192,7 +268,9 @@ class Corrida:
         return self.presupuesto.registrar(
             real_c, real_n,
             busquedas_al_cerrar=self.consultas_de_red(),
-            contactos_al_cerrar=len(self.contactos))
+            contactos_al_cerrar=len(self.contactos),
+            de_valor=real_v,
+            de_valor_al_cerrar=self.de_valor_ahora())
 
     def cerrar_modulo(self, nombre: str, estado: str = RESPONDIO, razon: str = "") -> None:
         m = self.mod(nombre)
