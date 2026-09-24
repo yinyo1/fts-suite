@@ -161,15 +161,22 @@ def test_los_dos_modos_escriben_ARCHIVO_e_imprimen_su_ruta(tmp_path, capsys,
     c.challenge_corrido = True
     c.guardar(orq._ruta("Casa"))
 
-    assert orq.main(["ficha", "--empresa", "Casa", "--modo", "limpio"]) == 0
-    limpio = tmp_path / "casa-limpio.html"
+    # Codigo 4 desde la v0.9.3: el archivo se escribio y falta ENTREGARLO para
+    # que sobreviva a la sesion. No es falla -- es un paso pendiente-- y lo que
+    # esta prueba verifica sigue siendo lo mismo: que el archivo existe y que su
+    # ruta se imprime.
+    assert orq.main(["ficha", "--empresa", "Casa", "--modo", "limpio"]) == 4
+    # Y la corrida se guarda por empresa + PLANTA, no plana.
+    limpio = tmp_path / "casa" / "sin-ciudad-limpio.html"
     assert limpio.exists()
-    assert str(limpio) in capsys.readouterr().out
+    salida = capsys.readouterr()
+    assert str(limpio) in salida.out
+    assert "ENTREGA PENDIENTE" in salida.err
 
-    assert orq.main(["ficha", "--empresa", "Casa", "--modo", "procedencia"]) == 0
+    assert orq.main(["ficha", "--empresa", "Casa", "--modo", "procedencia"]) == 4
     salida = capsys.readouterr().out
-    for esperado in ("casa-procedencia.html", "casa-procedencia.json"):
-        assert (tmp_path / esperado).exists()
+    for esperado in ("sin-ciudad-procedencia.html", "sin-ciudad-procedencia.json"):
+        assert (tmp_path / "casa" / esperado).exists()
         assert esperado in salida
 
 
@@ -185,6 +192,8 @@ def test_la_ficha_NUNCA_se_escribe_en_el_repo(tmp_path, monkeypatch):
     assert orq.main(["ficha", "--empresa", "Casa", "--modo", "limpio",
                      "--salida", str(repo / "ficha.html")]) == 2
     assert not (repo / "ficha.html").exists()
+    # Y la entrega no abre una puerta al repo: sube a un lugar del OPERADOR.
+    assert "onedrive" in Corrida.DESTINOS
 
 
 # ================================================ 2 · el aviso de bloque a las 10

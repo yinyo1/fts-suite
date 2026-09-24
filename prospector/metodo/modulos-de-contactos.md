@@ -302,6 +302,57 @@ pegaban y esa una fallaba sin un solo error.
 
 ---
 
+### PROPUESTA ABIERTA · compuerta de EVIDENCIA DE OPERACIÓN *(no construida)*
+
+> **Decisión de Esteban. Anotada aquí, no implementada.**
+
+**El caso que la motiva, en curso:** una de las cuatro plantas de Coficab
+—Pesquería— no muestra evidencia de operar. Sin vacantes, sin prensa, sin ficha
+de directorio propia. La cascada, tal como está, gastaría sus 60 consultas sobre
+una planta que **puede no estar produciendo todavía** —o no existir como planta
+separada—.
+
+**La propuesta:** al terminar la OLA 1 —que es exactamente donde se sabe— la
+herramienta mira si la planta dio **alguna** señal de estar operando:
+
+| Señal | Módulo | Qué prueba |
+|---|---|---|
+| una vacante activa | M2 | hay gente contratándose **ahí** |
+| una nota de prensa de ≤24 meses | M12 | alguien la reportó operando |
+| una ficha de directorio con domicilio | M1 | los agregadores la ven |
+| el padrón del DENUE | M13 | el Estado la registró |
+
+**Cero de las cuatro** ⇒ no arranca la OLA 2. Se detiene y pregunta en una línea
+—salida 3, la misma de la empresa multiplanta y del conector caído—:
+
+> «Pesquería no muestra evidencia de operar: sin vacantes, sin prensa, sin
+> directorio y sin padrón. Puede ser una planta anunciada que no arrancó.
+> ¿Sigo gastando el presupuesto aquí, o la dejamos y me voy a Durango?»
+
+**Por qué en la OLA 1 y no antes:** antes no hay con qué decidir. Y por qué no
+después: la OLA 2 es el **60% del gasto**, así que preguntar después es preguntar
+cuando ya no sirve —el mismo error de momento que tenía la compuerta del bloque
+antes de avisar a las diez—.
+
+**Lo que hay que decidir, y por eso no está construido:**
+
+1. **¿Cuántas de las cuatro señales bastan?** Cero es claramente parar. ¿Una sola
+   alcanza para seguir? Una planta nueva legítima puede tener solo el anuncio de
+   prensa, y esa es justo la que más vale prospectar.
+2. **¿Para o pregunta?** Preguntar cuesta una interrupción; parar solo cuesta
+   presupuesto. Con cuatro corridas en paralelo, cuatro preguntas seguidas
+   cansan.
+3. **¿Qué pasa con el trabajo ya hecho?** Si se abandona, la OLA 1 ya gastó
+   ~15 consultas. ¿Se emite ficha parcial —que serviría para decir «esta planta
+   no opera todavía», que es información de venta— o se cierra sin ficha?
+
+Mi recomendación, para cuando se decida: **preguntar, no parar**, y con **cero de
+cuatro** como umbral —no una de cuatro—. Y emitir ficha parcial: «no encontramos
+evidencia de que opere» es un hallazgo, no un fracaso, y le ahorra a Rissia una
+llamada a una planta que no existe.
+
+---
+
 ### M4 · `MOTOR_COMBINACIONES`
 
 > **El único módulo que se testea sin tocar una sola fuente.** Es el Caso C.

@@ -27,6 +27,11 @@ def sesion(tmp_path, monkeypatch):
     return tmp_path
 
 
+def _json_de(raiz, empresa="grupo-cuprum", ciudad="san-nicolas-de-los-garza"):
+    """La corrida se guarda por empresa + PLANTA desde la v0.9.3."""
+    return raiz / empresa / f"{ciudad}.json"
+
+
 def _tres_vivos(s: Sondeo) -> Sondeo:
     s.registrar("odoo", True, "1 fila de res.partner")
     s.registrar("outlook", True, "12 hilos")
@@ -148,7 +153,7 @@ def test_con_el_hueco_autorizado_la_corrida_ya_puede_arrancar():
 def test_prospecta_se_NIEGA_sin_sondeo(sesion, capsys):
     assert orq.main(["prospecta", "--empresa", "Grupo Cuprum"]) == 2
     assert "sin haber LLAMADO a los conectores" in capsys.readouterr().err
-    assert not (sesion / "grupo-cuprum.json").exists(), "no abrio nada"
+    assert not _json_de(sesion).exists(), "no abrio nada"
 
 
 def test_prospecta_con_un_conector_caido_devuelve_3_y_pregunta(sesion, capsys):
@@ -160,7 +165,7 @@ def test_prospecta_con_un_conector_caido_devuelve_3_y_pregunta(sesion, capsys):
     assert orq.main(["prospecta", "--empresa", "Grupo Cuprum"]) == 3
     err = capsys.readouterr().err
     assert "OUTLOOK NO RESPONDE" in err and "PREGUNTA AL OPERADOR" in err
-    assert not (sesion / "grupo-cuprum.json").exists()
+    assert not _json_de(sesion).exists()
 
 
 def test_tras_autorizar_arranca_y_el_hueco_queda_DECLARADO(sesion, capsys):
@@ -179,7 +184,7 @@ def test_tras_autorizar_arranca_y_el_hueco_queda_DECLARADO(sesion, capsys):
     assert "CONECTORES verificados antes de abrir" in salida
     assert "HUECO" in salida
 
-    d = json.loads((sesion / "grupo-cuprum.json").read_text(encoding="utf-8"))
+    d = json.loads(_json_de(sesion).read_text(encoding="utf-8"))
     assert d["cobertura"]["M0b"]["estado"] == "sin_acceso"
     assert "cuenta fria" in d["cobertura"]["M0b"]["razon"]
     assert any("SIN OUTLOOK" in a for a in d["avisos"])
@@ -194,7 +199,7 @@ def test_con_los_tres_vivos_prospecta_abre_sin_preguntar(sesion, capsys):
     salida = capsys.readouterr().out
     assert "Corrida abierta" in salida
     assert "12 hilos" in salida, "imprime la evidencia, no un 'OK' pelado"
-    d = json.loads((sesion / "grupo-cuprum.json").read_text(encoding="utf-8"))
+    d = json.loads(_json_de(sesion).read_text(encoding="utf-8"))
     assert not any("SIN OUTLOOK" in a for a in d["avisos"])
 
 

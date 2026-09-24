@@ -79,6 +79,20 @@ class Corrida:
     # faltan, la ficha lo dice en su lugar en vez de callarlo -- un hueco
     # declarado es informacion; un hueco silencioso es una ficha que parece
     # completa y no lo esta--.
+    # A DONDE se entrego la ficha, para que sobreviva a la sesion. La carpeta de
+    # la corrida vive en /tmp del contenedor de Claude Code web, y ese
+    # contenedor MUERE al cerrar la sesion: la primera corrida de Coficab se
+    # perdio asi (#268). Mientras Postgres no exista, la ficha tiene que salir a
+    # un lugar del OPERADOR.
+    #
+    # Python no puede subirla -- el conector vive detras de MCP, igual que Odoo
+    # y Outlook--. Lo que si puede es EXIGIR la constancia de que salio, y
+    # decirlo fuerte cuando no.
+    entrega: dict = field(default_factory=dict)
+    fichas_emitidas: list = field(default_factory=list)
+    # De DONDE se leyo. Volver a guardar en otro sitio partiria la corrida en
+    # dos archivos: la ruta de origen manda sobre cualquier recalculo.
+    _ruta_origen: str = ""
     gancho: str = ""
     por_que_ahora: str = ""
     como_hablarles: list = field(default_factory=list)
@@ -157,6 +171,93 @@ class Corrida:
                 f"[{modulo}] estado '{estado}' EXIGE razon. "
                 "Un hueco sin motivo escrito se confunde con 'no hay nada'.")
         self.cobertura[modulo] = {"estado": estado, "razon": razon}
+
+    # ------------------------------------------------------------- la entrega
+    #
+    # DESTINOS EVALUADOS, y por que este:
+    #
+    #   onedrive  RECOMENDADO. `sharepoint_upload_file` de M365 sube texto UTF-8
+    #             hasta 1 MB -- la ficha pesa ~25 KB-- y cae en el MISMO
+    #             inquilino de Microsoft donde ya viven el Outlook y el Odoo del
+    #             operador. Los datos personales no salen del control corporativo
+    #             de FTS, que es la razon de fondo: la ficha lleva nombres,
+    #             puestos y correos.
+    #
+    #   drive     ALTERNATIVA. `create_file` de Google Drive es mas simple -- no
+    #             hace falta buscar el driveId primero-- pero cae en una cuenta
+    #             distinta a la corporativa. Sirve de respaldo si OneDrive falla.
+    #
+    #   correo    NO SE PUEDE, medido: el `outlook_send_mail` conectado NO tiene
+    #             parametro de adjuntos. Y pegar el HTML en el cuerpo no sirve:
+    #             el cuerpo se sanea contra una lista corta que quita <style> y
+    #             <span>, asi que llegaria el texto sin el diseno y sin ser un
+    #             archivo que el operador pueda reenviar.
+    DESTINOS = ("onedrive", "drive", "otro")
+
+    def registrar_entrega(self, destino: str, url: str, archivo: str = "") -> dict:
+        if destino not in self.DESTINOS:
+            raise CompuertaCerrada(
+                f"Destino '{destino}' desconocido. Los evaluados: "
+                f"{', '.join(self.DESTINOS)}. 'correo' NO esta: el conector de "
+                "Outlook no tiene parametro de adjuntos.")
+        if not (url or "").strip():
+            raise CompuertaCerrada(
+                f"Entrega a '{destino}' sin URL. Una entrega sin liga no se "
+                "puede comprobar, y el punto de entregarla es que el operador "
+                "la encuentre cuando esta sesion ya no exista.")
+        self.entrega = {
+            "destino": destino, "url": url.strip(), "archivo": archivo,
+            "ts": datetime.now(timezone.utc).isoformat(), "declarada": False,
+        }
+        return self.entrega
+
+    def declarar_sin_entregar(self, razon: str) -> dict:
+        """El operador decide no sacarla. Queda escrito que la ficha es volatil."""
+        if not (razon or "").strip():
+            raise CompuertaCerrada(
+                "No entregar la ficha EXIGE razon escrita: significa que se va a "
+                "perder al cerrar la sesion, y eso tiene que quedar dicho.")
+        self.entrega = {
+            "destino": "", "url": "", "archivo": "",
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "declarada": True, "razon": razon.strip(),
+        }
+        return self.entrega
+
+    @property
+    def entregada(self) -> bool:
+        return bool(self.entrega.get("url"))
+
+    @property
+    def entrega_pendiente(self) -> bool:
+        """Se emitio la ficha y la copia entregada no esta al dia.
+
+        No basta con "se entrego una vez": si la ficha se vuelve a emitir DESPUES
+        de haberla subido, la copia de OneDrive quedo vieja y el operador se la
+        va a mandar a Rissia creyendo que es la ultima. Se compara la fecha del
+        archivo contra la de la entrega -- derivado del disco, no declarado--.
+        """
+        if not self.fichas_emitidas:
+            return False
+        if not self.entrega:
+            return True
+        if self.entrega.get("declarada"):
+            return False            # el operador ya dijo que no la saca
+        ts = self.entrega.get("ts") or ""
+        try:
+            entregada_en = datetime.fromisoformat(ts)
+        except ValueError:
+            return True
+        if entregada_en.tzinfo is None:
+            entregada_en = entregada_en.replace(tzinfo=timezone.utc)
+        for ruta in self.fichas_emitidas:
+            try:
+                m = datetime.fromtimestamp(os.path.getmtime(ruta), timezone.utc)
+            except OSError:
+                continue            # el archivo ya no esta: nada que reclamar
+            if m > entregada_en:
+                return True
+        return False
 
     # ------------------------------------------------- fusionar / renombrar
     def fusionar(self, nombre_viejo: str, nombre_nuevo: str) -> Contacto:
@@ -534,6 +635,8 @@ class Corrida:
             "loop_puede_seguir": self.puede_seguir_el_loop(),
             "loop_lo_detiene": self.que_detiene_el_loop(),
             "avisos": self.avisos,
+            "entrega": self.entrega,
+            "fichas_emitidas": self.fichas_emitidas,
             "gancho": self.gancho,
             "por_que_ahora": self.por_que_ahora,
             "como_hablarles": self.como_hablarles,

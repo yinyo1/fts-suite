@@ -16,6 +16,7 @@ Las compuertas siguen gobernando igual. El arranque no salta ninguna.
 """
 from __future__ import annotations
 
+import importlib.util
 import os
 import pathlib
 import shlex
@@ -234,6 +235,35 @@ GUARDA_RECURSION = "PROSPECTOR_CHEQUEO_EN_CURSO"
 # La suite tarda menos de un segundo. 300 es margen de sobra, y existe para que
 # `listo` REPORTE una falla en vez de quedarse colgado esperando.
 TOPE_PRUEBAS = 300
+# Instalar pytest en un contenedor limpio tarda segundos. Sesenta es margen de
+# sobra, y evita que un pip colgado deje el chequeo esperando.
+TOPE_INSTALAR = 60
+
+
+def hay_pytest() -> bool:
+    return importlib.util.find_spec("pytest") is not None
+
+
+def instalar_pytest() -> bool:
+    """Lo instala si falta. Devuelve si quedo disponible.
+
+    Se intenta UNA vez y en silencio. Si no hay red, o pip esta bloqueado, se
+    devuelve False y el chequeo lo reporta como NO VERIFICADO -- nunca como
+    falla--.
+    """
+    if hay_pytest():
+        return True
+    try:
+        r = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "--quiet",
+             "--disable-pip-version-check", "pytest"],
+            capture_output=True, text=True, timeout=TOPE_INSTALAR)
+    except (subprocess.TimeoutExpired, OSError):
+        return False
+    if r.returncode != 0:
+        return False
+    importlib.invalidate_caches()        # sin esto find_spec sigue diciendo que no
+    return hay_pytest()
 
 
 def chequeo(correr_pruebas: bool = True) -> list[tuple[str, bool | None, str]]:
@@ -265,6 +295,20 @@ def chequeo(correr_pruebas: bool = True) -> list[tuple[str, bool | None, str]]:
         out.append(("Pruebas en verde", None,
                     "no se corrieron (--rapido, o llamada desde las pruebas): "
                     "correr `python3 -m pytest tests -q`"))
+    elif not hay_pytest() and not instalar_pytest():
+        # FALTA pytest, no fallan las pruebas. Las dos corridas reales del
+        # operador vieron FALLA aqui y no era cierto: el contenedor de Claude
+        # Code web no trae pytest, y hubo que instalarlo a mano las dos veces.
+        # Una falla falsa en el primer chequeo del dia es peor que no medir:
+        # manda a depurar la herramienta cuando la herramienta esta bien.
+        #
+        # `None` y no `False` a proposito: NO VERIFICADO no es FALLA. Es la
+        # misma distincion que la herramienta hace en todas partes.
+        out.append(("Pruebas en verde", None,
+                    "NO SE PUDO VERIFICAR: falta `pytest` en este entorno y no "
+                    "se pudo instalar (sin red, o pip bloqueado). No es una "
+                    "falla de la herramienta. A mano: "
+                    "`python3 -m pip install pytest && python3 -m pytest tests -q`"))
     else:
         try:
             r = subprocess.run([sys.executable, "-m", "pytest", "tests", "-q"],

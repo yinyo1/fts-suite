@@ -116,9 +116,26 @@ Tres respuestas posibles, y las tres son correctas:
 **una corrida por ciudad**:
 
 ```bash
-./prospector prospecta --empresa "<empresa>" --ciudad "Pesquería, NL"
+./prospector prospecta --empresa "<empresa>" --ciudad "Pesquería"
 ./prospector prospecta --empresa "<empresa>" --ciudad "Durango"
 ```
+
+**Y la herramienta ya lo guarda así, nativamente:**
+
+```
+<sesión>/coficab/pesqueria.json      ← la corrida
+<sesión>/coficab/pesqueria-limpio.html   ← su ficha
+<sesión>/coficab/durango.json
+```
+
+**No inventes nombres compuestos.** `--empresa "Coficab Durango"` fue el parche
+que el operador tuvo que hacer cuando el guardado era plano; ya no hace falta y
+además rompe el cruce con el padrón, que busca una empresa que no existe. La
+empresa es `Coficab`; la planta va en `--ciudad`.
+
+**Todos los comandos aceptan `--ciudad`** para decir de qué planta hablan. Si la
+empresa tiene varias y no lo dices, **el comando se niega y te las lista** — no
+elige una.
 
 No `prospecta <empresa>` con la intención de abarcar «todas las plantas de
 México» en una sola corrida. Dos razones, las dos medidas:
@@ -180,6 +197,7 @@ falla de la corrida.
 ## 5 · Gasto, lazo, cierre
 
 ```bash
+./prospector estado                              # TODAS las corridas, en tabla
 ./prospector bloque    --empresa "<empresa>"      # las cifras salen del registro
 ./prospector siguiente --empresa "<empresa>"     # dice siempre qué toca
 ./prospector vuelta    --empresa "<empresa>"     # si el paso dice LOOP
@@ -228,6 +246,45 @@ blanco: una ficha que parece completa y no lo está es peor que una con avisos.
 **Pásale `--liga` a cada `buscar` que tenga URL.** La ficha las imprime con su
 fecha, y es lo que permite que un tercero verifique sin volver a buscar.
 
+### Y ENTRÉGALA. Si no, se pierde.
+
+`ficha` devuelve **código 4** —no es falla, es un paso pendiente— y te dice que
+el archivo todavía no sobrevive. **Hazle caso.** La carpeta vive en `/tmp` del
+contenedor y **muere al cerrar la sesión**: la primera corrida de Coficab se
+perdió así, con la ficha ya escrita.
+
+```bash
+# 1. leer el .html que acabas de generar
+# 2. subirlo al OneDrive del operador:
+#      sharepoint_folder_search   -> el driveId de su OneDrive
+#      sharepoint_upload_file     -> filename "<empresa>-<ciudad>-ficha.html",
+#                                    content = el HTML completo
+# 3. registrar la liga
+./prospector entregar --empresa "<empresa>" --ciudad "<ciudad>" \
+  --destino onedrive --url '<el webUrl que devolvió>'
+```
+
+**OneDrive y no otra cosa, por una razón:** es el **mismo inquilino de Microsoft**
+donde ya viven su Outlook y su Odoo. La ficha lleva nombres, puestos y correos —
+los datos personales no salen del control corporativo de FTS. Si OneDrive falla,
+Google Drive sirve de respaldo (`create_file`, `contentMimeType "text/html"`,
+`disableConversionToGoogleType true`).
+
+> **Por correo no se puede.** El `outlook_send_mail` conectado **no tiene
+> parámetro de adjuntos** —medido, no supuesto— y pegar el HTML en el cuerpo no
+> sirve: el cuerpo se sanea quitando `<style>`, así que llegaría sin diseño y sin
+> ser un archivo que él pueda reenviar.
+
+Si él decide no sacarla, **queda escrito que se va a perder**:
+
+```bash
+./prospector entregar --empresa "<empresa>" --sin-entregar --razon "<lo que dijo>"
+```
+
+**Si vuelves a emitir la ficha después de entregarla, el código 4 regresa.** La
+copia de OneDrive quedó vieja, y una copia vieja es peor que ninguna: él se la
+manda a Rissia creyendo que es la última. Vuelve a subirla.
+
 ---
 
 ## Lo que tú decides, y el código no puede
@@ -253,6 +310,19 @@ el módulo con su estado y su razón. El mensaje del `raise` dice cuál de las d
 2. **Cero escrituras a Odoo.** La herramienta lee; nunca escribe. Y Lusha no se
    toca sin autorización explícita de esa corrida.
 
+### Cuando hay varias corridas a la vez
+
+```bash
+./prospector estado
+```
+
+Sin `--empresa`, una tabla de **todas** las corridas de la sesión: gasto sobre el
+tope, bloques cerrados y cuántos secos, módulo en curso, veredicto de Chao1, y
+**si la ficha ya se entregó o se va a perder**. Es lo que hay que darle al
+operador cuando pregunte cómo van, en vez de «N tareas en ejecución».
+
+---
+
 ## La secuencia completa, de memoria
 
 Cuatro comandos. Los tres primeros son tuyos y el operador no los ve; el cuarto
@@ -262,7 +332,12 @@ es el que él pidió.
 ./prospector listo                                   # 1 · padrón, pruebas, salida
 #            ... llamas a Odoo, Outlook y WebSearch de verdad ...
 ./prospector conectores --odoo "…" --outlook "…" --websearch "…"   # 2 · registras
-./prospector prospecta --empresa "<empresa>"         # 3 · abre y entrega el plan
+./prospector prospecta --empresa "<empresa>" --ciudad "<ciudad>"    # 3 · abre
+#            ... corres el plan, cierras bloques cada 10 ...
+./prospector ficha     --empresa "<empresa>" --ciudad "<ciudad>" --modo limpio
+#            ... subes el .html a su OneDrive ...
+./prospector entregar  --empresa "<empresa>" --ciudad "<ciudad>" \
+                       --destino onedrive --url '<webUrl>'       # 4 · sobrevive
 ```
 
 Una vez sondeados, `listo` **deja de decir `[ ? ]`** y muestra lo que cada

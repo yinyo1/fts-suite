@@ -3,6 +3,112 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.9.3 — 2026-09-24
+
+Cuatro mejoras de las **DOS corridas reales del operador** -- Coficab (#268) y
+las cuatro plantas en paralelo--. Dos de fondo, y las dos salieron de perder
+trabajo. **287 pruebas.**
+
+### 1 · La ficha tiene que SOBREVIVIR a la sesion
+
+La carpeta de la corrida vive en `/tmp` del contenedor de Claude Code web, y ese
+contenedor **muere al cerrar la sesion**. La primera corrida de Coficab se perdio
+exactamente asi: la ficha estaba escrita, el operador vio "escrita", y el
+contenedor se la llevo.
+
+**Destinos evaluados, con lo que cada uno puede de verdad:**
+
+| Destino | Veredicto |
+|---|---|
+| **OneDrive / SharePoint** (`sharepoint_upload_file`) | **RECOMENDADO.** Sube texto UTF-8 hasta 1 MB -- la ficha pesa ~25 KB-- y cae en el MISMO inquilino de Microsoft donde ya viven el Outlook y el Odoo del operador. La ficha lleva nombres, puestos y correos: los datos personales **no salen del control corporativo de FTS**. Esa es la razon de fondo, no la comodidad |
+| **Google Drive** (`create_file`) | ALTERNATIVA. Mas simple -- no hace falta buscar el driveId-- pero cae en una cuenta distinta a la corporativa. Respaldo si OneDrive falla |
+| **Correo como adjunto** | **NO SE PUEDE, medido.** El `outlook_send_mail` conectado **no tiene parametro de adjuntos**. Y pegar el HTML en el cuerpo no sirve: el cuerpo se sanea contra una lista corta que quita `<style>` y `<span>`, asi que llegaria sin diseno y sin ser un archivo reenviable |
+
+**Como quedo.** Python no puede subirla -- el conector vive detras de MCP, igual
+que Odoo y Outlook--, asi que se aplico el mismo patron de #298: Claude sube,
+Python **exige la constancia**.
+
+`ficha` devuelve **codigo 4** -- no es falla, es un paso pendiente-- e imprime los
+tres pasos con el conector y el comando exactos. `entregar` registra la liga. Una
+entrega sin URL no es una entrega: no se puede comprobar, y el punto es que el
+operador la encuentre cuando esta sesion ya no exista.
+
+**Y si la ficha se re-emite DESPUES de entregarla, el codigo 4 regresa.** No
+basta con "se entrego una vez": la copia de OneDrive quedo vieja, y una copia
+vieja es peor que ninguna -- el operador se la manda a un tercero creyendo que es
+la ultima--. Se compara la fecha del archivo contra la de la entrega, derivado
+del disco.
+
+Si el operador decide no sacarla, `--sin-entregar --razon` lo deja escrito:
+significa que se va a perder, y eso tiene que quedar dicho.
+
+### 2 · Guardado por empresa + PLANTA, nativo
+
+La corrida se guardaba como `<empresa>.json`, plano. Con una empresa multiplanta
+la segunda planta **pisa** la primera, y el operador lo parcho de la unica forma
+que podia: inventando nombres -- "Coficab Juarez", "Coficab Durango"--. Cuatro
+corridas con cuatro nombres falsos, y el cruce con el padron buscando una empresa
+que no existe.
+
+    <sesion>/coficab/pesqueria.json          la corrida
+    <sesion>/coficab/pesqueria-limpio.html   su ficha
+
+`Corrida.empresa` guarda la empresa **real** -- "Coficab"--, que es la que cruza
+con el padron y la que encabeza la ficha. La ciudad vive en su campo, donde
+siempre debio estar.
+
+Tres detalles que importan:
+
+- **Los acentos se normalizan.** 'Pesqueria' y 'Pesquería' dan el mismo slug, o
+  la misma planta abriria dos corridas segun como se escriba.
+- **Sin `--ciudad` y con varias plantas, el comando SE NIEGA y las lista.**
+  Elegir una en silencio es el defecto que esta mejora corrige.
+- **Las corridas viejas siguen abriendose, y se guardan DONDE ESTABAN.** Hay
+  corridas vivas con el esquema plano; romperlas o moverlas a media corrida del
+  operador seria perder trabajo. La ruta de ORIGEN manda sobre cualquier
+  recalculo -- lo que ademas cierra un modo de falla en el que la corrida se
+  partia en dos archivos--.
+
+La ficha de cada planta tiene su propio archivo. Con el nombre plano las cuatro
+escribian la misma `<empresa>-limpio.html`: el mismo defecto, un paso mas abajo.
+
+### 3 · `pytest` ya no da una falla FALSA
+
+En las dos corridas reales `listo` marco las pruebas en **FALLA** y no era
+cierto: el contenedor de Claude Code web no trae `pytest`, y hubo que instalarlo
+a mano las dos veces. Una falla falsa en el primer chequeo del dia manda a
+depurar la herramienta cuando la herramienta esta bien.
+
+Ahora se intenta instalar una vez, en silencio. Si no se puede -- sin red, o pip
+bloqueado-- se reporta **`None`, no `False`**: NO VERIFICADO no es FALLA, y es la
+misma distincion que la herramienta hace en todas partes.
+
+### 4 · `estado` sin `--empresa`: todas las corridas, en tabla
+
+Con corridas en paralelo el operador solo veia "N tareas en ejecucion".
+
+```
+CORRIDAS EN LA SESION · 4
+
+empresa            planta                 gasto   bloques modulo   chao1        ficha
+Coficab            Cd. Juarez            35/60      3·1    M5       prematuro    ENTREGADA (onedrive)
+Coficab            Durango               12/60      1·0    M2       sin_datos    no emitida
+Coficab            Pesqueria              8/60      0·0    M3       sin_datos    !! SIN ENTREGAR
+```
+
+Gasto sobre el tope, bloques cerrados y cuantos secos, modulo en curso, veredicto
+de Chao1, y **si la ficha ya salio de la sesion**. Cuando hay fichas emitidas y
+sin entregar, lo **grita** al final: son las que se pierden al cerrar.
+
+### Anotado para decision, NO construido
+
+La **compuerta de evidencia de operacion**: si al terminar la OLA 1 una planta no
+dio ninguna senal de operar -- sin vacantes, sin prensa, sin directorio, sin
+padron-- que pregunte antes de gastar el 60% del presupuesto en ella. Es el caso
+de Pesqueria, en curso. Esta escrita en
+`metodo/modulos-de-contactos.md` con las tres cosas que hay que decidir y una
+recomendacion.
+
 ## 0.9.2 — 2026-09-24
 
 Un ajuste de **fluidez** que resulto ser una compuerta. **259 pruebas.**

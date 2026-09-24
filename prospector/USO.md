@@ -117,16 +117,61 @@ síntoma es `MCP server session expired`.
 
 ---
 
+## Varias plantas, varias corridas
+
+**Una corrida es una planta.** Si la empresa tiene cuatro, son cuatro corridas:
+
+```
+prospecta Coficab en Pesquería
+prospecta Coficab en Durango
+```
+
+Y se guardan separadas sin que tengas que inventar nombres:
+
+```
+<sesión>/coficab/pesqueria.json
+<sesión>/coficab/durango.json
+```
+
+**No hace falta escribir «Coficab Durango».** Eso era un parche de cuando el
+guardado era plano, y encima rompía el cruce con el padrón —que buscaba una
+empresa que no existe—.
+
+### Cómo van todas a la vez
+
+Pregúntale «¿cómo van las corridas?» y verás una tabla: gasto sobre el tope,
+bloques cerrados y cuántos secos, en qué módulo va cada una, y **si la ficha ya
+se entregó o se va a perder**. No «N tareas en ejecución».
+
+---
+
 ## Qué entrega, y dónde queda
+
+> ### La ficha NO se queda en la sesión: se entrega
+>
+> La carpeta de la corrida vive en `/tmp` del contenedor de Claude Code, y ese
+> contenedor **muere al cerrar la sesión**. La primera corrida de Coficab se
+> perdió exactamente así, con la ficha ya generada.
+>
+> Ahora, al cerrar la ficha, **Claude la sube a tu OneDrive** y te da la liga. Es
+> automático: no hay que pedirlo. Si algo falla, te lo dice y no se queda callado.
+>
+> **Por qué OneDrive y no correo:** el conector de Outlook **no puede mandar
+> adjuntos** —medido—. Y OneDrive es tu mismo inquilino de Microsoft, así que los
+> nombres y correos de la ficha no salen del control de FTS. Google Drive queda
+> como respaldo.
+>
+> Si prefieres no sacarla, se puede —pero **queda escrito** que esa ficha se
+> pierde al cerrar.
 
 **Archivos**, en **la carpeta de la sesión** — y la ruta exacta la imprime
 `ficha` al terminar, para copiar y pegar:
 
 | Archivo | Para quién |
 |---|---|
-| `<empresa>-limpio.html` | **Rissia y Pablo, y el lognote de Odoo.** Documento autocontenido: gancho, señal con su fecha, por qué ahora, a quién buscar (nombre, puesto, planta, correo y confianza), cómo hablarles, las búsquedas ya armadas para Sales Navigator, las fuentes con liga y fecha, y el checklist de validaciones |
-| `<empresa>-procedencia.html` | Revisar de dónde salió cada dato, abriéndolo |
-| `<empresa>-procedencia.json` | Auditar a máquina. Cada campo con todas sus fuentes, su raíz y su fecha |
+| `<empresa>/<ciudad>-limpio.html` | **Rissia y Pablo, y el lognote de Odoo.** Documento autocontenido: gancho, señal con su fecha, por qué ahora, a quién buscar (nombre, puesto, planta, correo y confianza), cómo hablarles, las búsquedas ya armadas para Sales Navigator, las fuentes con liga y fecha, y el checklist de validaciones |
+| `<empresa>/<ciudad>-procedencia.html` | Revisar de dónde salió cada dato, abriéndolo |
+| `<empresa>/<ciudad>-procedencia.json` | Auditar a máquina. Cada campo con todas sus fuentes, su raíz y su fecha |
 
 Los `.html` son **documentos completos**, con `charset` declarado: se adjuntan a
 un correo y se pegan en un lognote sin que los acentos se rompan. Hasta la v0.9.0

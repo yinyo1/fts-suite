@@ -20,7 +20,7 @@
     python3 -m flujo.orquestador ficha --empresa "Ragasa" --modo limpio
 """
 from __future__ import annotations
-import argparse, json, os, re, sys
+import argparse, json, os, re, sys, unicodedata
 
 from .compuertas import (CompuertaCerrada, exigir_confianza, techo_por_agotado,
                          Busqueda)
@@ -30,7 +30,7 @@ from .arranque import resolver, texto_del_plan, chequeo, pregunta_de_una_linea
 from .catalogo import exigir_permitida, FuenteProhibida
 from .conectores import Sondeo, CONECTORES, VENTANA_MINUTOS
 from .confianza import Contacto, N1_CONFIRMADO, N2_PARCIAL, N3_PUESTO
-from .estado import Corrida, RESPONDIO
+from .estado import Corrida, RESPONDIO, OLAS
 from .ficha import (modo_limpio, modo_procedencia,
                     modo_procedencia_html, tabla_de_rendimiento)
 
@@ -47,17 +47,116 @@ MARCA_CHALLENGE = "[challenge] "
 
 
 def _slug(s: str) -> str:
+    # Los acentos se pierden a proposito: 'Pesqueria' y 'Pesquería' tienen que
+    # dar el MISMO slug, o la misma planta abre dos corridas segun como se
+    # escriba. Es el bug de siempre con la geografia mexicana.
+    s = unicodedata.normalize("NFKD", s or "")
+    s = "".join(ch for ch in s if not unicodedata.combining(ch))
     return re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
 
 
-def _ruta(empresa: str) -> str:
+# ---------------------------------------------------------------- una corrida
+# = UNA PLANTA, y el disco lo refleja
+#
+# Hasta la v0.9.2 la corrida se guardaba como `<empresa>.json`, plano. Con una
+# empresa multiplanta eso significa que la segunda planta PISA la primera, y el
+# operador lo parcho de la unica forma que podia: inventando nombres --
+# "Coficab Juarez", "Coficab Durango"--. Cuatro corridas con cuatro nombres
+# falsos, y el cruce con el padron buscando una empresa que no existe.
+#
+# Ahora la identidad es empresa + ciudad, nativa:
+#
+#     <carpeta de la sesion>/<empresa>/<ciudad>.json
+#
+# `Corrida.empresa` guarda la empresa REAL -- "Coficab"--, que es la que cruza
+# con el padron y la que encabeza la ficha. La ciudad vive en su campo, donde
+# siempre debio estar.
+#
+# Las corridas viejas siguen abriendose: el plano `<empresa>.json` se busca
+# tambien, porque hay corridas vivas guardadas asi y romperlas seria perder
+# trabajo del operador.
+SIN_CIUDAD = "sin-ciudad"
+
+
+def _carpeta_empresa(empresa: str) -> str:
+    return os.path.join(CORRIDAS(), _slug(empresa))
+
+
+def _ruta(empresa: str, ciudad: str | None = None) -> str:
+    """Donde vive la corrida de ESTA planta."""
+    return os.path.join(_carpeta_empresa(empresa),
+                        f"{_slug(ciudad) or SIN_CIUDAD}.json")
+
+
+def _ruta_plana(empresa: str) -> str:
+    """El esquema viejo. Se lee, no se escribe."""
     return os.path.join(CORRIDAS(), f"{_slug(empresa)}.json")
 
 
-def _cargar(empresa: str) -> Corrida:
-    ruta = _ruta(empresa)
+def _corridas_de(empresa: str) -> list[str]:
+    """Las plantas de esa empresa que ya tienen corrida, ordenadas."""
+    d = _carpeta_empresa(empresa)
+    if not os.path.isdir(d):
+        return []
+    return sorted(os.path.join(d, f) for f in os.listdir(d)
+                  if f.endswith(".json") and not f.endswith("-procedencia.json"))
+
+
+def _resolver_ruta(empresa: str, ciudad: str | None = None,
+                   para_crear: bool = False) -> str:
+    """La ruta de la corrida que el comando quiere tocar.
+
+    Con ciudad, no hay ambiguedad. Sin ciudad:
+      1. el plano viejo, si existe -- corridas vivas--;
+      2. si la empresa tiene UNA sola planta abierta, esa;
+      3. si tiene VARIAS, se niega y las lista. Elegir una en silencio es
+         exactamente el defecto que esta mejora corrige.
+    """
+    if ciudad:
+        return _ruta(empresa, ciudad)
+    plano = _ruta_plana(empresa)
+    if os.path.exists(plano):
+        return plano
+    abiertas = _corridas_de(empresa)
+    if len(abiertas) == 1:
+        return abiertas[0]
+    if len(abiertas) > 1:
+        plantas = ", ".join(os.path.basename(r)[:-5] for r in abiertas)
+        raise SystemExit(
+            f"'{empresa}' tiene {len(abiertas)} corridas y no dijiste cual: "
+            f"{plantas}.\n  Agrega --ciudad. Elegir una en silencio es el "
+            "defecto que el guardado por planta corrige.")
+    return _ruta(empresa, ciudad)      # nueva, sin ciudad conocida
+
+
+def _ruta_de(c: Corrida, a) -> str:
+    """Donde vuelve a guardarse la corrida que se acaba de cargar.
+
+    Manda la ruta de ORIGEN, no un recalculo. Si se cargo por el esquema plano
+    viejo se guarda ahi mismo -- mover un archivo a media corrida del operador
+    seria peor que el esquema viejo-- y si se cargo de la carpeta de la planta,
+    vuelve a la misma. Recalcular desde `c.ciudad` partia la corrida en dos
+    archivos cuando el nombre del archivo y la ciudad del contenido no coincidian.
+    """
+    if c._ruta_origen and os.path.exists(c._ruta_origen):
+        return c._ruta_origen
+    plano = _ruta_plana(c.empresa)
+    if os.path.exists(plano):
+        return plano
+    return _ruta(c.empresa, getattr(a, "ciudad", None) or c.ciudad)
+
+
+def _cargar(empresa: str, ciudad: str | None = None) -> Corrida:
+    ruta = _resolver_ruta(empresa, ciudad)
     if not os.path.exists(ruta):
-        raise SystemExit(f"No hay corrida para '{empresa}'. Corre primero: iniciar")
+        abiertas = _corridas_de(empresa)
+        pista = ""
+        if abiertas:
+            pista = ("\n  Plantas con corrida: "
+                     + ", ".join(os.path.basename(r)[:-5] for r in abiertas))
+        raise SystemExit(f"No hay corrida para '{empresa}'"
+                         + (f" en '{ciudad}'" if ciudad else "")
+                         + f". Corre primero: prospecta{pista}")
     d = json.load(open(ruta, encoding="utf-8"))
     c = Corrida(empresa=d["empresa"], ciudad=d["ciudad"], giro=d.get("giro", ""))
     c.creada = d["creada"]
@@ -66,6 +165,12 @@ def _cargar(empresa: str) -> Corrida:
     c.senal = d.get("senal", [])
     c.challenge_corrido = d.get("challenge_corrido", False)
     c.avisos = d.get("avisos", [])
+    # Sin esto la entrega se perdia al releer del disco y `ficha` volvia a
+    # reclamarla aunque ya estuviera subida. Es la MISMA familia de defecto que
+    # `modulo_origen` en #295: un campo que se escribe y no se restaura.
+    c._ruta_origen = ruta
+    c.entrega = d.get("entrega", {}) or {}
+    c.fichas_emitidas = list(d.get("fichas_emitidas", []) or [])
     c.gancho = d.get("gancho", "")
     c.por_que_ahora = d.get("por_que_ahora", "")
     c.como_hablarles = d.get("como_hablarles", [])
@@ -136,6 +241,127 @@ def _contacto(c: Corrida, cd: dict) -> Contacto:
     return x
 
 
+def _todas_las_corridas() -> list[str]:
+    """Todas las corridas de la sesion: el esquema por planta y el plano viejo."""
+    raiz = CORRIDAS()
+    if not os.path.isdir(raiz):
+        return []
+    rutas = []
+    for nombre in sorted(os.listdir(raiz)):
+        ruta = os.path.join(raiz, nombre)
+        if os.path.isdir(ruta):
+            rutas += [os.path.join(ruta, f) for f in sorted(os.listdir(ruta))
+                      if f.endswith(".json")]
+        elif (nombre.endswith(".json") and nombre != "conectores.json"
+              and not nombre.endswith("-procedencia.json")):
+            rutas.append(ruta)
+    return rutas
+
+
+def tabla_de_corridas() -> str:
+    """El estado de TODAS las corridas de la sesion, en una tabla.
+
+    Con corridas en paralelo el operador solo veia "N tareas en ejecucion". Esto
+    es lo que necesita ver: cuanto ha gastado cada una, cuantos bloques cerro y
+    cuantos salieron secos, en que modulo va, y -- lo que mas importa-- si la
+    ficha ya salio de la sesion o se va a perder.
+    """
+    rutas = _todas_las_corridas()
+    if not rutas:
+        return ("Sin corridas en esta sesion.\n  Arranca una: "
+                "./prospector prospecta --empresa \"<empresa>\" "
+                "--ciudad \"<ciudad>\"")
+    L = [f"CORRIDAS EN LA SESION · {len(rutas)}", "",
+         f"{'empresa':<18} {'planta':<18} {'gasto':>9} {'bloques':>9} "
+         f"{'modulo':<8} {'chao1':<12} ficha"]
+    for ruta in rutas:
+        try:
+            d = json.load(open(ruta, encoding="utf-8"))
+        except (ValueError, OSError):
+            L.append(f"{os.path.basename(ruta):<18} (no se pudo leer)")
+            continue
+        pres = d.get("presupuesto", {})
+        bloques = pres.get("bloques", [])
+        secos = sum(1 for b in bloques if b.get("seco"))
+        chao = (d.get("chao1") or {})
+        # El modulo en curso: el primero sin cerrar, en el orden de las olas.
+        en_curso = "—"
+        for _clave, _t, mods in OLAS:
+            for m in mods:
+                if not (d.get("modulos", {}).get(m, {}) or {}).get("cerrado"):
+                    en_curso = m
+                    break
+            if en_curso != "—":
+                break
+        entrega = d.get("entrega") or {}
+        if entrega.get("url"):
+            ficha = f"ENTREGADA ({entrega['destino']})"
+        elif entrega.get("declarada"):
+            ficha = "sin entregar (declarado)"
+        elif d.get("fichas_emitidas"):
+            ficha = "!! SIN ENTREGAR"
+        else:
+            ficha = "no emitida"
+        L.append(
+            f"{(d.get('empresa') or '?')[:17]:<18} "
+            f"{(d.get('ciudad') or '—')[:17]:<18} "
+            f"{pres.get('gastadas', 0):>4}/{pres.get('tope', 0):<4} "
+            f"{len(bloques):>4}·{secos:<4} "
+            f"{en_curso:<8} "
+            f"{(chao.get('veredicto') or '—')[:11]:<12} "
+            f"{ficha}")
+    pendientes = [r for r in rutas if _pendiente_de_entrega(r)]
+    if pendientes:
+        L += ["", f"  ⛔ {len(pendientes)} ficha(s) emitida(s) y SIN ENTREGAR: "
+                  "se pierden al cerrar la sesion.",
+              "     Corre `entregar` en cada una, o declaralo con "
+              "--sin-entregar --razon."]
+    L += ["", "  gasto = consultas/tope · bloques = cerrados·secos"]
+    return "\n".join(L)
+
+
+def _pendiente_de_entrega(ruta: str) -> bool:
+    try:
+        d = json.load(open(ruta, encoding="utf-8"))
+    except (ValueError, OSError):
+        return False
+    return bool(d.get("fichas_emitidas")) and not (d.get("entrega") or {})
+
+
+def texto_entrega_pendiente(c: Corrida, archivo: str) -> str:
+    """El bloque que dice que la ficha existe pero todavia no sobrevive.
+
+    Los pasos van escritos porque quien los ejecuta es Claude -- el conector
+    vive detras de MCP y Python no lo alcanza--, igual que con las sondas de
+    conector.
+    """
+    nombre = f"{_slug(c.empresa)}-{_slug(c.ciudad) or SIN_CIUDAD}-ficha.html"
+    return f"""
+  ⛔ ENTREGA PENDIENTE — la ficha todavia NO sobrevive a esta sesion.
+
+     Esta carpeta vive en /tmp del contenedor y MUERE al cerrar la sesion. La
+     primera corrida de Coficab se perdio exactamente asi.
+
+     1. Lee el archivo:      {archivo}
+     2. Subelo a OneDrive del operador, con el conector de M365:
+          sharepoint_folder_search  -> para el driveId de su OneDrive
+          sharepoint_upload_file    -> filename "{nombre}", content = el HTML
+        Mismo inquilino que su Outlook: los datos personales no salen del
+        control corporativo de FTS. Si OneDrive falla, Google Drive sirve de
+        respaldo (`create_file`, contentMimeType "text/html",
+        disableConversionToGoogleType true).
+     3. Registra la liga que devolvio:
+          ./prospector entregar --empresa {c.empresa!r}{f" --ciudad {c.ciudad!r}" if c.ciudad else ""} \\
+            --destino onedrive --url '<webUrl que devolvio>'
+
+     Por correo NO se puede: el `outlook_send_mail` conectado no tiene
+     parametro de adjuntos (medido, no supuesto).
+
+     Si el operador decide no sacarla, queda escrito que se va a perder:
+       ./prospector entregar --empresa {c.empresa!r} --sin-entregar --razon '<...>'
+"""
+
+
 def _imprimir_paso(c: Corrida) -> None:
     p = c.siguiente_paso()
     print(f"\n  {p['titulo']}")
@@ -162,10 +388,21 @@ def main(argv=None) -> int:
     for nombre in ("prospecta", "listo", "iniciar", "siguiente", "padron",
                    "buscar", "registrar", "bloque", "cerrar", "vuelta",
                    "challenge", "ficha", "estado", "tope", "fusionar",
-                   "conectores"):
+                   "conectores", "entregar"):
         s = sub.add_parser(nombre)
-        if nombre not in ("listo", "conectores"):
+        if nombre == "estado":
+            # `estado` sin --empresa resume TODAS las corridas de la sesion.
+            s.add_argument("--empresa", default=None)
+        elif nombre not in ("listo", "conectores"):
             s.add_argument("--empresa", required=True)
+        # `--ciudad` identifica la PLANTA en todos los comandos de corrida. En
+        # `prospecta`, `iniciar` y `padron` ademas alimenta la resolucion del
+        # padron, y ahi se declara aparte con su ayuda propia.
+        if nombre not in ("listo", "conectores", "prospecta", "iniciar", "padron"):
+            s.add_argument("--ciudad", default=None,
+                           help="la planta, cuando la empresa tiene varias. Sin "
+                                "esto, si hay mas de una, el comando se niega en "
+                                "vez de elegir")
         if nombre == "listo":
             s.add_argument("--rapido", action="store_true",
                            help="salta la suite de pruebas")
@@ -208,6 +445,21 @@ def main(argv=None) -> int:
                            help="JSON con los contactos que trajo, si trajo")
         if nombre == "cerrar":
             s.add_argument("--estado", default=RESPONDIO)
+            s.add_argument("--razon", default="")
+        if nombre == "entregar":
+            s.add_argument("--destino", default=None,
+                           choices=list(Corrida.DESTINOS),
+                           help="onedrive (recomendado: mismo inquilino que su "
+                                "Outlook) · drive (respaldo) · otro")
+            s.add_argument("--url", default="",
+                           help="la liga del archivo ya subido. Sin liga no hay "
+                                "entrega que comprobar")
+            s.add_argument("--archivo", default="",
+                           help="el nombre con el que quedo, si cambio")
+            s.add_argument("--sin-entregar", action="store_true",
+                           dest="sin_entregar",
+                           help="el operador decide NO sacarla. Exige --razon: "
+                                "la ficha se va a perder al cerrar la sesion")
             s.add_argument("--razon", default="")
         if nombre == "conectores":
             for k in CONECTORES:
@@ -327,13 +579,17 @@ def main(argv=None) -> int:
                     return 3
             sondeo.exigir_listo()
             ar = resolver(a.empresa, a.ciudad, a.giro, a.dominio, a.entidad)
-            if ar.ambiguo and not os.path.exists(_ruta(a.empresa)):
+            ruta_nueva = _ruta(a.empresa, a.ciudad or ar.ciudad)
+            existente = (_ruta_plana(a.empresa)
+                         if os.path.exists(_ruta_plana(a.empresa))
+                         else ruta_nueva)
+            if ar.ambiguo and not os.path.exists(existente):
                 # NO se abre la corrida: elegir una planta en silencio es el caso
                 # de los cinco DUNS de Ragasa, y hornear '(sin ciudad)' en una
                 # corrida guardada es peor que preguntar.
                 print("\n  " + pregunta_de_una_linea(ar).replace("\n", "\n  ") + "\n")
                 return 3
-            hay_corrida = os.path.exists(_ruta(a.empresa))
+            hay_corrida = os.path.exists(existente)
             if not hay_corrida:
                 c = Corrida(empresa=a.empresa, ciudad=ar.ciudad or "(sin ciudad)",
                             giro=ar.giro)
@@ -371,7 +627,7 @@ def main(argv=None) -> int:
                     c.cerrar_modulo("M13", "no_aplicaba",
                                     ar.banderas[-1].mensaje if ar.banderas
                                     else "no aparece en el padron")
-                c.guardar(_ruta(a.empresa))
+                c.guardar(existente)
                 print("\nCONECTORES verificados antes de abrir:")
                 for linea in sondeo.resumen():
                     print(linea)
@@ -379,8 +635,10 @@ def main(argv=None) -> int:
                 print(f"Corrida abierta: {a.empresa} · tope {a.tope} consultas")
                 print(f"  Resultados en la SESION, nunca en el repo:\n  {CORRIDAS()}")
             else:
-                c = _cargar(a.empresa)
-                print(f"Corrida YA existe para {a.empresa}: se retoma donde quedo.")
+                c = _cargar(a.empresa, a.ciudad or ar.ciudad)
+                print(f"Corrida YA existe para {a.empresa}"
+                      + (f" en {c.ciudad}" if c.ciudad else "")
+                      + ": se retoma donde quedo.")
             print()
             print(texto_del_plan(ar, a.tope))
             print()
@@ -390,25 +648,61 @@ def main(argv=None) -> int:
         if a.cmd == "iniciar":
             c = Corrida(empresa=a.empresa, ciudad=a.ciudad, giro=a.giro)
             c.presupuesto.tope_por_cuenta = a.tope
-            c.guardar(_ruta(a.empresa))
+            c.guardar(_ruta(a.empresa, a.ciudad))
             print(f"Corrida iniciada: {a.empresa} · tope {a.tope} consultas")
             print(f"  Los resultados viven en la sesion, NO en el repo:\n"
                   f"  {CORRIDAS()}")
             _imprimir_paso(c)
             return 0
 
-        c = _cargar(a.empresa)
+        if a.cmd == "estado" and not a.empresa:
+            print()
+            print(tabla_de_corridas())
+            print()
+            return 0
+
+        c = _cargar(a.empresa, getattr(a, "ciudad", None))
 
         if a.cmd in ("siguiente", "estado"):
             _imprimir_paso(c)
             if a.cmd == "estado":
-                print(json.dumps(c.a_dict()["presupuesto"], indent=2, ensure_ascii=False))
+                print(json.dumps(c.a_dict()["presupuesto"], indent=2,
+                                 ensure_ascii=False))
+                if c.entrega_pendiente:
+                    print("\n  ⛔ La ficha de esta corrida esta emitida y SIN "
+                          "ENTREGAR: se pierde al cerrar la sesion.")
+            return 0
+
+        if a.cmd == "entregar":
+            if a.sin_entregar:
+                if not a.razon.strip():
+                    raise SystemExit(
+                        "--sin-entregar EXIGE --razon: significa que la ficha se "
+                        "va a perder al cerrar la sesion, y eso tiene que quedar "
+                        "dicho en la corrida.")
+                c.declarar_sin_entregar(a.razon)
+                c.guardar(_ruta_de(c, a))
+                print(f"\n  ⚠  FICHA SIN ENTREGAR, declarado: {a.razon.strip()}")
+                print("     Va a desaparecer al cerrar la sesion. Queda escrito "
+                      "en la corrida.\n")
+                return 0
+            if not a.destino:
+                raise SystemExit(
+                    "Falta --destino. Los evaluados: "
+                    + ", ".join(Corrida.DESTINOS)
+                    + ". 'correo' no esta: el conector de Outlook no tiene "
+                      "parametro de adjuntos (medido).")
+            e = c.registrar_entrega(a.destino, a.url, a.archivo)
+            c.guardar(_ruta_de(c, a))
+            print(f"\n  ✓ FICHA ENTREGADA — sobrevive a esta sesion:")
+            print(f"     destino: {e['destino']}")
+            print(f"     liga:    {e['url']}\n")
             return 0
 
         if a.cmd == "fusionar":
             antes = len(c.contactos)
             x = c.fusionar(a.de, a.a)
-            c.guardar(_ruta(a.empresa))
+            c.guardar(_ruta_de(c, a))
             fundidos = antes - len(c.contactos)
             print(f"[{a.empresa}] '{a.de}' -> '{x.nombre}'"
                   f"{' (DOS fichas fundidas en una)' if fundidos else ''}")
@@ -429,7 +723,7 @@ def main(argv=None) -> int:
             c.presupuesto.tope_por_cuenta = a.nuevo
             c.avisos.append(f"TOPE SUBIDO de {antes} a {a.nuevo} consultas. "
                             f"Razon: {a.razon.strip()}")
-            c.guardar(_ruta(a.empresa))
+            c.guardar(_ruta_de(c, a))
             print(f"Tope: {antes} -> {a.nuevo}. Restantes: "
                   f"{c.presupuesto.restantes}")
             print(f"  Queda en los avisos de la ficha, no solo en la consola.")
@@ -459,7 +753,7 @@ def main(argv=None) -> int:
                     setattr(c, campo, str(d[campo]))
             if d.get("como_hablarles"):
                 c.como_hablarles = list(d["como_hablarles"])
-            c.guardar(_ruta(a.empresa))
+            c.guardar(_ruta_de(c, a))
             print(f"[{a.modulo}] registrado. Contadores (derivados del "
                   f"registro): {c.mod(a.modulo).contadores}")
             print("  Nota: `registrar` NO mueve el agotado. Para eso va `buscar`, "
@@ -497,7 +791,7 @@ def main(argv=None) -> int:
                 c.cerrar_modulo("M13", "no_aplicaba",
                                 banderas[-1].mensaje if banderas else
                                 "no aparece en el padron")
-            c.guardar(_ruta(a.empresa))
+            c.guardar(_ruta_de(c, a))
             _imprimir_paso(c)
             return 0
 
@@ -514,7 +808,7 @@ def main(argv=None) -> int:
                 a.modulo, a.clave, a.consulta, a.fuente, a.resultados,
                 nota=a.nota, contactos=contactos, etiqueta=a.etiqueta,
                 liga=a.liga)
-            c.guardar(_ruta(a.empresa))
+            c.guardar(_ruta_de(c, a))
             m = c.mod(a.modulo)
             print(f"[{a.modulo}] busqueda registrada: {a.fuente} · "
                   f"{a.resultados} resultado(s)"
@@ -530,7 +824,7 @@ def main(argv=None) -> int:
 
         if a.cmd == "vuelta":
             r = c.abrir_vuelta()
-            c.guardar(_ruta(a.empresa))
+            c.guardar(_ruta_de(c, a))
             print(f"Vuelta {r['vuelta']} abierta. Reabiertos: "
                   f"{', '.join(r['reabiertos'])}")
             _imprimir_paso(c)
@@ -539,7 +833,7 @@ def main(argv=None) -> int:
         if a.cmd == "bloque":
             c.presupuesto.exigir_puede_seguir()
             b = c.cerrar_bloque(a.consultas, a.nuevas, parcial=a.parcial)
-            c.guardar(_ruta(a.empresa))
+            c.guardar(_ruta_de(c, a))
             print(f"Bloque {b.numero}: {b.consultas} consultas, {b.nuevas} nuevas, "
                   f"{b.de_valor} DE VALOR "
                   f"({b.rendimiento:.2f}/consulta){' SECO' if b.seco else ''}")
@@ -551,7 +845,7 @@ def main(argv=None) -> int:
 
         if a.cmd == "cerrar":
             c.cerrar_modulo(a.modulo, a.estado, a.razon)   # <- compuerta agotado
-            c.guardar(_ruta(a.empresa))
+            c.guardar(_ruta_de(c, a))
             print(f"[{a.modulo}] cerrado como '{a.estado}'.")
             _imprimir_paso(c)
             return 0
@@ -575,7 +869,7 @@ def main(argv=None) -> int:
             c.avisos = ([a for a in c.avisos if not a.startswith(MARCA_CHALLENGE)]
                         + [MARCA_CHALLENGE + a for a in avisos])
             c.challenge_corrido = True
-            c.guardar(_ruta(a.empresa))
+            c.guardar(_ruta_de(c, a))
             print(f"Challenge corrido. {len(avisos)} conflicto(s) a revision humana:")
             for w in avisos:
                 print("  -", w)
@@ -591,8 +885,19 @@ def main(argv=None) -> int:
             # y el de procedencia solo como JSON. La primera corrida real de un
             # operador (#268) mostro para que se necesita el archivo: mandarlo a
             # un tercero y pegarlo en un lognote de Odoo.
+            # La ficha va JUNTO a su corrida, en la carpeta de la planta. Con
+            # el nombre plano viejo las cuatro plantas de una empresa escribian
+            # la misma `<empresa>-limpio.html` y se pisaban -- el mismo defecto
+            # que el guardado por planta acaba de corregir, un paso mas abajo--.
+            # La ficha va JUNTO a su corrida, con el mismo nombre base: si la
+            # corrida es `coficab/pesqueria.json`, la ficha es
+            # `coficab/pesqueria-limpio.html`. Con el nombre plano viejo las
+            # cuatro plantas escribian la misma `<empresa>-limpio.html` y se
+            # pisaban -- el mismo defecto que el guardado por planta acaba de
+            # corregir, un paso mas abajo--.
+            origen = _ruta_de(c, a)
             base = (str(exigir_fuera_del_repo(a.salida)) if a.salida
-                    else os.path.join(CORRIDAS(), f"{_slug(a.empresa)}-{a.modo}"))
+                    else origen[:-5] + f"-{a.modo}")
             if base.lower().endswith((".html", ".htm", ".json")):
                 base = base.rsplit(".", 1)[0]
             escritos = []
@@ -610,10 +915,24 @@ def main(argv=None) -> int:
                 open(ruta, "w", encoding="utf-8").write(contenido)
             print(f"\n  FICHA ({a.modo.upper()}) — archivo listo para mandar:")
             for ruta, _x in escritos:
-                print(f"    {ruta}")
+                print(f"    {ruta}  ({os.path.getsize(ruta):,} bytes)")
+                if ruta not in c.fichas_emitidas:
+                    c.fichas_emitidas.append(ruta)
             print(f"\n  Abrelo o adjuntalo desde esa ruta. NO esta en el repo: "
-                  f"lleva datos personales.\n")
+                  f"lleva datos personales.")
+            c.guardar(_ruta_de(c, a))
+            print()
             print(tabla_de_rendimiento(c))
+            if c.entrega_pendiente:
+                # La ficha existe y todavia NO ha salido de la sesion. Callarlo
+                # seria repetir la perdida de la primera corrida de Coficab: el
+                # archivo estaba, el operador vio "escrita", y el contenedor se
+                # lo llevo. Salida 4 para que la skill lo detecte: no es falla,
+                # es un paso pendiente.
+                print(texto_entrega_pendiente(c, escritos[0][0]), file=sys.stderr)
+                return 4
+            print(f"\n  Entregada en {c.entrega['destino']}: "
+                  f"{c.entrega['url']}\n")
             return 0
 
     except (CompuertaCerrada, FuenteProhibida, SalidaEnElRepo,
