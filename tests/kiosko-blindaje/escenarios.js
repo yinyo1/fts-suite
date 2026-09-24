@@ -87,10 +87,11 @@ const POR_BLOQUE = {
       { tipo: 'falla', fallas: { redCaida: 3 } },
       { tipo: 'accion', emp: 1, t: D(14, 17), boton: 'salida' }
     ] },
-  B2: { inv: ['I5'], titulo: 'Fail-closed: Odoo no responde a la lectura con un abierto de ayer',
+  B2: { inv: ['I5'], titulo: 'Fail-closed: Odoo rechaza rápido la lectura (429) con un abierto de ayer',
     pasos: () => [
       { tipo: 'accion', emp: 1, t: D(14, 7), boton: 'entrada' },
-      { tipo: 'falla', fallas: { lecturaOdoo: 1 } },
+      // Falla RÁPIDA a propósito: la lenta (ECONNRESET 135 s) ya la corta el plazo de B1.
+      { tipo: 'falla', fallas: { lecturaRapida: 1 } },
       { tipo: 'accion', emp: 1, t: D(15, 7, 5), boton: 'resolver' }
     ] },
   B3: { inv: ['I1'], titulo: 'Candado de traslape: RH mueve una entrada por encima de otro registro',

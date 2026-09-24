@@ -60,6 +60,7 @@ Estas reglas vienen de horas de debug. Aplicarlas siempre.
 - **UPDATE:** `"operation": "update"` + `customResourceId`.
 - **READ/SEARCH:** usar `filterRequest` (no `filters`), `value` (no `fieldValue`), `fieldsList` como ARRAY (no CSV string).
 - **"Always Output Data":** debe estar en **ON**. En OFF causa fallo silencioso del workflow completo (gravísimo, ya pasó).
+  - ⚠️ **Excepción medida (2026-09-24, B1 #269):** si el nodo lleva `onError: continueErrorOutput`, `alwaysOutputData: true` hace que corran **las dos ramas**: el error sale por la salida 1 y además n8n manda un item vacío por la salida 0 (arnés, ejecuciones 111538 y 111542). Con dos Respond en juego puede ganar el de éxito. Regla: en nodos Odoo de **escritura** con salida de error, `alwaysOutputData: false` (una escritura exitosa siempre devuelve `{id}`). En nodos de **lectura** con salida de error, se deja en ON y el nodo siguiente corta con un guard que busca el campo `error` en `$('Nodo').all(1)`. Ojo: si la salida 1 viene vacía, `.all(1)` devuelve la salida 0 (ejecución 111545), así que el guard no puede contar items.
 - **Bug conocido:** después de importar workflow JSON, el campo `customResource` queda en blanco. Hay que llenarlo manualmente en la UI antes de activar.
 - **Expresiones Odoo:** un solo `=` (`={{ }}`) — NO doble `==`. Doble es bug clásico.
 - **many2one:** el valor va como **número** (`={{ 513 }}`), NUNCA como literal string — un string se anula en silencio y la ejecución queda en verde. Ver §9 con el crudo.

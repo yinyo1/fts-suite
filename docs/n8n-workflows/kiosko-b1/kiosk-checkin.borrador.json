@@ -1,0 +1,2127 @@
+{
+  "name": "kiosk/checkin (v4.2 fix respuesta · build 20abr · 00c76071)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "kiosk/checkin",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1872,
+        320
+      ],
+      "id": "0749da57-428f-44ee-99fc-84c49f0a5b84",
+      "name": "Webhook",
+      "webhookId": "kiosk-checkin-v4"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ====================================================\n// PREPARAR PARÁMETROS — Schema real del frontend kiosk\n// ====================================================\nconst body = $input.first().json.body || $input.first().json || {};\n\n// Campos básicos\nconst empleado_id = parseInt(body.empleado_id);\nconst empleado_nombre = String(body.empleado_nombre || '');\nconst tipo = String(body.tipo || '').toLowerCase();\nconst timestamp_iso = body.timestamp || new Date().toISOString();\n\n// Coordenadas (frontend manda lat/lng, NO latitud/longitud)\nconst lat = (body.lat !== undefined && body.lat !== null) ? parseFloat(body.lat) : null;\nconst lng = (body.lng !== undefined && body.lng !== null) ? parseFloat(body.lng) : null;\n\n// Geo info\nconst geo_autorizada = body.geo_autorizada !== false; // default true\nconst geo_sitio = String(body.geo_sitio || '');\nconst geo_distancia = parseInt(body.geo_distancia) || 0;\nconst geo_motivo = String(body.geo_motivo || '');\nconst geo_status = String(body.geo_status || (geo_autorizada ? 'autorizado' : 'pendiente_aprobacion'));\n\n// SO (solo en salida)\nconst so_id = body.so_id ? parseInt(body.so_id) : null;\nconst so_nombre = String(body.so_nombre || '');\n\n// Bolsa / cuenta indirecta (Fase 1.5 Parte 10 — solo en salida cuando se confirma bolsa)\nconst cuenta_id = body.cuenta_id ? parseInt(body.cuenta_id) : null;\nconst cuenta_nombre = String(body.cuenta_nombre || '');\n\n// Supervisor info (informativo, va a chatter)\nconst supervisor_nombre = String(body.supervisor_nombre || '');\n\n// Estimado (olvidé checar entrada)\nconst es_estimado = body.es_estimado === true;\nconst motivo_estimado = String(body.motivo_estimado || '');\n\n// Validación mínima\nconst TIPOS_VALIDOS = ['entrada', 'salida', 'salida_comida', 'regreso_comida'];\nif (!empleado_id || !tipo || !TIPOS_VALIDOS.includes(tipo)) {\n  return [{\n    json: {\n      _error: true,\n      codigo_error: 'DATOS_INCOMPLETOS',\n      mensaje: 'Faltan datos requeridos (empleado_id o tipo inválido). Tipo recibido: ' + tipo\n    }\n  }];\n}\n\n// Convertir timestamp del browser a formato Odoo UTC\n// Si es_estimado: usar el timestamp del body (la hora declarada)\n// Si NO: usar ahora (el browser ya manda la hora actual, pero por consistencia usamos server time)\nlet fechaParaOdoo;\nif (es_estimado) {\n  // Frontend manda \"2026-04-20T17:00:00\" (sin Z, hora local del técnico)\n  // Asumimos que es CST (UTC-6) y convertimos a UTC\n  const localDate = new Date(timestamp_iso);\n  // Si no tiene zona, asumimos local del técnico (CST)\n  if (!timestamp_iso.includes('Z') && !timestamp_iso.match(/[+-]\\d{2}:?\\d{2}$/)) {\n    fechaParaOdoo = new Date(localDate.getTime() + (6 * 60 * 60 * 1000));\n  } else {\n    fechaParaOdoo = localDate;\n  }\n} else {\n  fechaParaOdoo = new Date();\n}\n\nconst fechaOdooStr = fechaParaOdoo.toISOString().slice(0, 19).replace('T', ' ');\n\n// Para display CST\nconst fechaCST = new Date(fechaParaOdoo.getTime() - (6 * 60 * 60 * 1000));\nconst hora_cst = fechaCST.toISOString().substring(11, 16);\nconst fecha_cst = fechaCST.toISOString().substring(0, 10);\n\n// Ventana de búsqueda de attendances abiertas\n// F1.5 fix (2026-05-11): ventana 15 días para consistencia con kiosk/estado-empleado workflow.\n// Antes 48h - no detectaba huérfanas >48h y rompía el auto-rescate del Issue 2 (caso Ricardo att 12948 con 95h).\nconst ahoraUTC = new Date();\nconst hace15Dias = new Date(ahoraUTC.getTime() - (15 * 24 * 60 * 60 * 1000));\nconst ventanaInicio = hace15Dias.toISOString().slice(0, 19).replace('T', ' ');\n\nreturn [{\n  json: {\n    // Identificación\n    empleado_id,\n    empleado_nombre,\n    tipo,\n\n    // Tiempo\n    fechaOdoo: fechaOdooStr,\n    hora_cst,\n    fecha_cst,\n    ventanaInicio,\n\n    // Geo\n    lat,\n    lng,\n    geo_autorizada,\n    geo_sitio,\n    geo_distancia,\n    geo_motivo,\n    geo_status,\n\n    // SO\n    so_id,\n    so_nombre,\n\n    // Bolsa / cuenta indirecta (Fase 1.5 Parte 10)\n    cuenta_id,\n    cuenta_nombre,\n\n    // Supervisor\n    supervisor_nombre,\n\n    // Estimado\n    es_estimado,\n    motivo_estimado\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1664,
+        320
+      ],
+      "id": "f7c5dd6a-1a84-4797-98eb-ade848b0685a",
+      "name": "Code - Preparar parámetros"
+    },
+    {
+      "parameters": {
+        "resource": "custom",
+        "customResource": "hr.employee",
+        "operation": "getAll",
+        "limit": 1,
+        "options": {
+          "fieldsList": [
+            "id",
+            "name",
+            "active",
+            "company_id",
+            "department_id",
+            "parent_id"
+          ]
+        },
+        "filterRequest": {
+          "filter": [
+            {
+              "fieldName": "id",
+              "value": "={{ $json.empleado_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.odoo",
+      "typeVersion": 1,
+      "position": [
+        -1456,
+        320
+      ],
+      "id": "8fa5723b-bf50-4bba-bf5f-18f8cedc42a4",
+      "name": "Odoo - Validar empleado",
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "odooApi": {
+          "id": "Wansi69xesEqEiY1",
+          "name": "Odoo FTS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// B1 #269: si Odoo - Validar empleado falló, su salida de error ya lleva la respuesta y aquí\n// llega un item vacío (alwaysOutputData): se corta para no responder dos veces.\n// Ojo: si la salida de error viene vacía, .all(1) devuelve la salida normal (medido en ejecución 111545),\n// por eso se busca el campo error y no se cuenta.\ntry { if ($('Odoo - Validar empleado').all(1).some(i => i.json && i.json.error !== undefined && !i.json.id)) return []; } catch (e) {}\n// ====================================================\n// VALIDAR EMPLEADO (sin PIN — frontend ya validó)\n// ====================================================\nconst params = $('Code - Preparar parámetros').item.json;\nconst empleados = $input.all().map(item => item.json);\n\nif (empleados.length === 0 || !empleados[0].id) {\n  return [{\n    json: {\n      ...params,\n      _error: true,\n      codigo_error: 'EMPLEADO_NO_EXISTE',\n      mensaje: 'Empleado no encontrado en el sistema (id: ' + params.empleado_id + ')'\n    }\n  }];\n}\n\nconst empleado = empleados[0];\n\nif (empleado.active !== true) {\n  return [{\n    json: {\n      ...params,\n      _error: true,\n      codigo_error: 'EMPLEADO_INACTIVO',\n      mensaje: 'Empleado no activo'\n    }\n  }];\n}\n\n// Reusar nombre del frontend si no viene del Odoo\nconst empleado_nombre_final = params.empleado_nombre || empleado.name;\n\nreturn [{\n  json: {\n    ...params,\n    empleado_nombre: empleado_nombre_final,\n    odoo_employee_data: empleado,\n    _valido: true\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1248,
+        320
+      ],
+      "id": "e4b6767d-ea71-46cf-855e-4132ccd5c3fb",
+      "name": "Code - Validar empleado"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "valido-string",
+              "leftValue": "={{ String($json._valido) }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1040,
+        320
+      ],
+      "id": "501ba5db-5cd9-4c70-ae66-5e8f79ed4dd0",
+      "name": "IF - Empleado válido?"
+    },
+    {
+      "parameters": {
+        "resource": "custom",
+        "customResource": "hr.attendance",
+        "operation": "getAll",
+        "returnAll": true,
+        "options": {
+          "fieldsList": [
+            "id",
+            "employee_id",
+            "check_in",
+            "check_out",
+            "worked_hours"
+          ]
+        },
+        "filterRequest": {
+          "filter": [
+            {
+              "fieldName": "employee_id",
+              "value": "={{ $json.empleado_id }}"
+            },
+            {
+              "fieldName": "check_in",
+              "operator": "greaterOrEqual",
+              "value": "={{ $json.ventanaInicio }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.odoo",
+      "typeVersion": 1,
+      "position": [
+        -832,
+        224
+      ],
+      "id": "bdcc6e4e-76fe-44c1-82e3-a1f8a291ee11",
+      "name": "Odoo - Buscar pendientes",
+      "retryOnFail": false,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "odooApi": {
+          "id": "Wansi69xesEqEiY1",
+          "name": "Odoo FTS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ====================================================\n// ANALIZAR CANDADOS según TIPO\n// Diferencia entrada vs salida vs comida\n// F1.5 Issue 2 (2026-05-11): >=16h gatilla AUTO-RESCATE\n// ====================================================\nconst params = $('Code - Validar empleado').item.json;\nconst tipo = params.tipo;\nconst attendances = $input.all().map(item => item.json).filter(a => a && a.id);\n\n// Buscar attendances abiertas (sin check_out)\nconst abiertas = attendances.filter(a => !a.check_out);\nconst ahoraUTC = new Date();\n\n// =========================================\n// CASO: tipo = 'entrada'\n// =========================================\nif (tipo === 'entrada') {\n  // Si NO hay abiertas: continuar con CREATE\n  if (abiertas.length === 0) {\n    return [{\n      json: {\n        ...params,\n        accion: 'CREATE_ENTRADA',\n        attendance_id_pendiente: null,\n        auto_rescate_pending: false\n      }\n    }];\n  }\n\n  // Hay abierta: calcular horas\n  const pendiente = abiertas.sort((a,b) => new Date(b.check_in) - new Date(a.check_in))[0];\n  const checkInPend = new Date(pendiente.check_in.replace(' ', 'T') + 'Z');\n  const horasTrans = (ahoraUTC - checkInPend) / (1000 * 60 * 60);\n\n  // Validación candados:\n  // - < 6h: bloqueo simple \"ya tienes entrada\"\n  // - 6h-16h: ZONA_GRIS (usar 'olvidé salida' o 'seguí en turno')\n  // - >= 16h: AUTO-RESCATE F1.5 (cerrar 9.6h + TAG + incidencia auto_cierre_pendiente, permitir nuevo checkin)\n  if (horasTrans < 6) {\n    return [{\n      json: {\n        ...params,\n        _error: true,\n        codigo_error: 'YA_TIENES_ENTRADA',\n        mensaje: 'Ya tienes una entrada registrada hace ' + horasTrans.toFixed(1) + ' hrs.',\n        attendance_id_abierto: pendiente.id,\n        horas_transcurridas: horasTrans.toFixed(2)\n      }\n    }];\n  } else if (horasTrans < 16) {\n    return [{\n      json: {\n        ...params,\n        _error: true,\n        codigo_error: 'ZONA_GRIS',\n        error_msg: 'ZONA_GRIS:' + horasTrans.toFixed(1),\n        mensaje: 'Llevas ' + horasTrans.toFixed(1) + ' hrs desde tu última entrada. ¿Olvidaste checar salida?',\n        attendance_id_abierto: pendiente.id,\n        horas_transcurridas: horasTrans.toFixed(2)\n      }\n    }];\n  } else {\n    // F1.5 Issue 2 — AUTO-RESCATE\n    const horasNetas = 9.6;\n    const checkOutAutoUTC = new Date(checkInPend.getTime() + horasNetas * 3600 * 1000);\n    const checkOutAutoOdoo = checkOutAutoUTC.toISOString().slice(0, 19).replace('T', ' ');\n    const incidenciaId = 'INC-AUTO-CIERRE-' + params.empleado_id + '-' + new Date().toISOString().replace(/[:.]/g, '-');\n    return [{\n      json: {\n        ...params,\n        accion: 'CREATE_ENTRADA',\n        attendance_id_pendiente: pendiente.id,\n        auto_rescate_pending: true,\n        auto_rescate_check_out: checkOutAutoOdoo,\n        auto_rescate_incidencia_id: incidenciaId,\n        auto_rescate_check_in_original: pendiente.check_in,\n        auto_rescate_horas_originales: horasTrans.toFixed(2)\n      }\n    }];\n  }\n}\n\n// =========================================\n// CASO: tipo = 'salida'\n// =========================================\nif (tipo === 'salida') {\n  if (abiertas.length === 0) {\n    return [{\n      json: {\n        ...params,\n        _error: true,\n        codigo_error: 'NO_HAY_ENTRADA',\n        mensaje: 'No tienes ninguna entrada abierta para cerrar. Registra una entrada primero.'\n      }\n    }];\n  }\n\n  // Hay abierta: usar la más reciente para cerrar\n  const pendiente = abiertas.sort((a,b) => new Date(b.check_in) - new Date(a.check_in))[0];\n  const checkInPend = new Date(pendiente.check_in.replace(' ', 'T') + 'Z');\n  const horasTrans = (ahoraUTC - checkInPend) / (1000 * 60 * 60);\n\n  return [{\n    json: {\n      ...params,\n      accion: 'UPDATE_SALIDA',\n      attendance_id_pendiente: pendiente.id,\n      check_in_original: pendiente.check_in,\n      horas_transcurridas: horasTrans.toFixed(2)\n    }\n  }];\n}\n\n// =========================================\n// CASO: comida (placeholder Fase 1)\n// =========================================\nif (tipo === 'salida_comida' || tipo === 'regreso_comida') {\n  return [{\n    json: {\n      ...params,\n      accion: 'COMIDA_PLACEHOLDER',\n      _placeholder: true\n    }\n  }];\n}\n\n// Tipo desconocido\nreturn [{\n  json: {\n    ...params,\n    _error: true,\n    codigo_error: 'TIPO_DESCONOCIDO',\n    mensaje: 'Tipo de evento no reconocido: ' + tipo\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -624,
+        224
+      ],
+      "id": "4630471e-2748-4ed5-9451-11a6a8fd7c67",
+      "name": "Code - Analizar candados"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "error-string",
+              "leftValue": "={{ String($json._error) }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -416,
+        224
+      ],
+      "id": "802b864f-c662-4eca-b971-1b2900e43423",
+      "name": "IF - Sin bloqueo?"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "case-create-entrada",
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "CREATE_ENTRADA",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ENTRADA"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "case-update-salida",
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "UPDATE_SALIDA",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "SALIDA"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "case-comida",
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "COMIDA_PLACEHOLDER",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "COMIDA"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -208,
+        224
+      ],
+      "id": "523bd2fe-e3ac-4234-8c96-851ecb2af47f",
+      "name": "Switch - Por tipo"
+    },
+    {
+      "parameters": {
+        "resource": "custom",
+        "customResource": "hr.attendance",
+        "fieldsToCreateOrUpdate": {
+          "fields": [
+            {
+              "fieldName": "employee_id",
+              "fieldValue": "={{ $json.empleado_id }}"
+            },
+            {
+              "fieldName": "check_in",
+              "fieldValue": "={{ $json.fechaOdoo }}"
+            },
+            {
+              "fieldName": "in_latitude",
+              "fieldValue": "={{ $json.lat }}"
+            },
+            {
+              "fieldName": "in_longitude",
+              "fieldValue": "={{ $json.lng }}"
+            },
+            {
+              "fieldName": "in_mode",
+              "fieldValue": "kiosk"
+            },
+            {
+              "fieldName": "x_studio_manager_approval",
+              "fieldValue": "={{ $json.es_estimado || $json.geo_status === 'pendiente_aprobacion' }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.odoo",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        -256
+      ],
+      "id": "eb57d56f-e827-4f67-8a38-8229bc1ff64a",
+      "name": "Odoo - CREATE Entrada",
+      "alwaysOutputData": false,
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "odooApi": {
+          "id": "Wansi69xesEqEiY1",
+          "name": "Odoo FTS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Armar datos para el flujo post-CREATE entrada\n// (v4.1 sin chatter - solo pasa datos al siguiente paso)\nconst prev = $('Code - Analizar candados').item.json;\nconst odooResult = $input.first().json;\nconst attendance_id = odooResult.id;\n\nreturn [{\n  json: {\n    ...prev,\n    attendance_id_creado: attendance_id\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "cadc9f46-182e-4feb-aa77-51c848209f99",
+      "name": "Code - Armar Datos Entrada"
+    },
+    {
+      "parameters": {
+        "resource": "custom",
+        "customResource": "hr.attendance",
+        "operation": "update",
+        "customResourceId": "={{ $json.attendance_id_pendiente }}",
+        "fieldsToCreateOrUpdate": {
+          "fields": [
+            {
+              "fieldName": "check_out",
+              "fieldValue": "={{ $json.fechaOdoo }}"
+            },
+            {
+              "fieldName": "out_latitude",
+              "fieldValue": "={{ $json.lat }}"
+            },
+            {
+              "fieldName": "out_longitude",
+              "fieldValue": "={{ $json.lng }}"
+            },
+            {
+              "fieldName": "out_mode",
+              "fieldValue": "kiosk"
+            },
+            {
+              "fieldName": "x_studio_sales_order_2",
+              "fieldValue": "={{ $json.so_id }}"
+            },
+            {
+              "fieldName": "x_studio_project_id",
+              "fieldValue": "={{ $json.so_id }}"
+            },
+            {
+              "fieldName": "x_studio_many2one_field_GUbBF",
+              "fieldValue": "={{ $('Code - Preparar parámetros').first().json.cuenta_id || false }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.odoo",
+      "typeVersion": 1,
+      "position": [
+        16,
+        336
+      ],
+      "id": "a9c5d1d0-6f04-44a1-836e-d626be9f5036",
+      "name": "Odoo - UPDATE Salida",
+      "alwaysOutputData": false,
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "odooApi": {
+          "id": "Wansi69xesEqEiY1",
+          "name": "Odoo FTS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Armar datos para el flujo post-UPDATE salida\n// (v4.1 sin chatter - solo pasa datos al siguiente paso)\n// El UPDATE no devuelve el id, usamos el attendance_id_pendiente del prev\nconst prev = $('Code - Analizar candados').item.json;\n\nreturn [{\n  json: {\n    ...prev,\n    attendance_id_creado: prev.attendance_id_pendiente\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        224
+      ],
+      "id": "ad4b47be-5031-4baf-848b-db0f536f2d3f",
+      "name": "Code - Armar Datos Salida"
+    },
+    {
+      "parameters": {
+        "jsCode": "const prev = $input.first().json;\nreturn [{\n  json: {\n    ...prev,\n    success: true,\n    placeholder: true,\n    mensaje: 'Comida registrada (placeholder Fase 1 - no se persiste en Odoo todavía)',\n    tipo: prev.tipo\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        48,
+        592
+      ],
+      "id": "aab1f189-6d72-4bcf-b7cc-0edf981b3fe4",
+      "name": "Code - Comida placeholder"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Decide si crear incidencia en GitHub\n// Casos:\n//  - tipo='entrada' Y es_estimado=true  -> ajuste_hora_entrada (legacy schema, incidencias.json)\n//  - auto_rescate_pending=true          -> auto_cierre_pendiente (F2.1+ schema, incidencias-asistencia.json)\n// F1.5 sub-fix (2026-05-11): rama auto_rescate migrada a schema F2.1+ para que el visor RH la muestre.\nconst prev = $input.first().json;\nconst analizado = $('Code - Analizar candados').item.json;\nconst isAutoRescate = prev.auto_rescate_pending === true || analizado.auto_rescate_pending === true;\n\nif (prev._error === true) {\n  return [{ json: { ...prev, _skip_github: true } }];\n}\n\n// F1.5 Opcion 2: incidencia auto_cierre_pendiente con schema F2.1+\nif (isAutoRescate) {\n  const incidencia = {\n    id_interno: prev.auto_rescate_incidencia_id || analizado.auto_rescate_incidencia_id,\n    tipo: 'auto_cierre_pendiente',\n    status: 'pendiente_rh',\n    fecha_creacion: new Date().toISOString(),\n    empleado_id: analizado.empleado_id,\n    empleado_nombre: analizado.empleado_nombre,\n    attendance_id_cerrado: analizado.attendance_id_pendiente,\n    attendance_id_nuevo: prev.attendance_id_creado || null,\n    check_in_original_utc: analizado.auto_rescate_check_in_original,\n    check_out_aplicado_utc: analizado.auto_rescate_check_out,\n    horas_originales: analizado.auto_rescate_horas_originales,\n    motivo: 'Auto-cierre por jornada abierta >16h al siguiente check-in del empleado',\n    tag_disputa_activo: true,\n    autoincidencia: true,\n    rh_aprobo: null,\n    rh_fecha: null,\n    // Campos F2.1+ que no aplican a auto-incidencias (salta supervisor, va directo a RH)\n    department_id: null,\n    department_name: null,\n    supervisor_id: null,\n    supervisor_name: null,\n    propuestas: []\n  };\n  return [{\n    json: {\n      ...prev,\n      ...analizado,\n      nueva_incidencia: incidencia,\n      _target_file_path: 'shared/incidencias-asistencia.json',\n      _skip_github: false\n    }\n  }];\n}\n\n// Caso legacy: solo crear incidencia para entradas estimadas (ajuste_hora_entrada)\nif (prev.tipo !== 'entrada' || prev.es_estimado !== true) {\n  return [{ json: { ...prev, _skip_github: true } }];\n}\n\nconst incidencia = {\n  id: 'INC-ENT-' + Date.now(),\n  tipo: 'ajuste_hora_entrada',\n  estado: 'pendiente_supervisor',\n  empleado_id: prev.empleado_id,\n  empleado_nombre: prev.empleado_nombre,\n  attendance_id: prev.attendance_id_creado,\n  hora_estimada: prev.fechaOdoo,\n  motivo: prev.motivo_estimado || '',\n  geo_sitio: prev.geo_sitio || '',\n  geo_autorizada: prev.geo_autorizada,\n  lat: prev.lat,\n  lng: prev.lng,\n  fecha_solicitud: new Date().toISOString(),\n  supervisor_aprobo: null,\n  supervisor_fecha: null,\n  rh_aprobo: null,\n  rh_fecha: null\n};\n\nreturn [{\n  json: {\n    ...prev,\n    nueva_incidencia: incidencia,\n    _target_file_path: 'shared/incidencias.json',\n    _skip_github: false\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "c1afff63-a8ef-4bd1-b5fd-0883a96ddfa6",
+      "name": "Code - Prep Incidencia"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "skip-gh",
+              "leftValue": "={{ String($json._skip_github) }}",
+              "rightValue": "false",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        832,
+        0
+      ],
+      "id": "6b7f902c-6c4f-4557-913e-64294ac8232f",
+      "name": "IF - Crear incidencia?"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.github.com/repos/yinyo1/fts-suite/contents/{{ $json._target_file_path }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "ref",
+              "value": "main"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github.v3+json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "23d1f471-1f63-407a-9903-a4c81f0e02fe",
+      "name": "HTTP - GET incidencias.json",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "i6g6Y7fNeZJW0GA3",
+          "name": "GitHub FTS Suite"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Mergea la nueva incidencia al archivo existente\n// PRESERVA todos los datos del checkin para que Respuesta OK los tenga después del PUT\n// F1.5 sub-fix: commit message dinámico por tipo + _target_file_path preservado para HTTP PUT\nconst ghResp = $input.first().json;\nconst prev = $('Code - Prep Incidencia').item.json;\nconst nueva = prev.nueva_incidencia;\n\nlet archivo = { incidencias: [], _metadata: { version: '1.0' } };\nlet sha = null;\n\nif (ghResp && ghResp.content && ghResp.sha) {\n  sha = ghResp.sha;\n  try {\n    const decoded = Buffer.from(ghResp.content.replace(/\\n/g, ''), 'base64').toString('utf8');\n    archivo = JSON.parse(decoded);\n  } catch (e) {\n    archivo = { incidencias: [], _metadata: { version: '1.0' } };\n  }\n}\n\nif (!Array.isArray(archivo.incidencias)) archivo.incidencias = [];\n\narchivo.incidencias.unshift(nueva);\n\nconst nuevoStr = JSON.stringify(archivo, null, 2);\nconst nuevoB64 = Buffer.from(nuevoStr, 'utf8').toString('base64');\n\nconst tipoLabel = nueva.tipo || 'sin_tipo';\n\nreturn [{\n  json: {\n    // Datos de GitHub PUT (necesarios para el PUT)\n    sha: sha || '',\n    content: nuevoB64,\n    message: 'incidencia: ' + tipoLabel + ' ' + prev.empleado_nombre + ' (id ' + prev.empleado_id + ')',\n    _target_file_path: prev._target_file_path,\n\n    // Datos del checkin PRESERVADOS (para Respuesta OK)\n    incidencia_id: nueva.id_interno || nueva.id,\n    attendance_id_creado: prev.attendance_id_creado,\n    empleado_id: prev.empleado_id,\n    empleado_nombre: prev.empleado_nombre,\n    tipo: prev.tipo,\n    hora_cst: prev.hora_cst,\n    fechaOdoo: prev.fechaOdoo,\n    es_estimado: true,\n    geo_sitio: prev.geo_sitio\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1248,
+        0
+      ],
+      "id": "f14131d7-12bc-4f31-bfc0-eb2d2424ee26",
+      "name": "Code - Merge incidencia"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://api.github.com/repos/yinyo1/fts-suite/contents/{{ $json._target_file_path }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github.v3+json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"message\": \"{{ $json.message }}\",\n  \"content\": \"{{ $json.content }}\",\n  \"sha\": \"{{ $json.sha }}\",\n  \"branch\": \"main\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1456,
+        0
+      ],
+      "id": "3cdf5ae2-b880-4d18-b659-664cfafeb5ee",
+      "name": "HTTP - PUT incidencias.json",
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "i6g6Y7fNeZJW0GA3",
+          "name": "GitHub FTS Suite"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Respuesta OK unificada - v4.2\n// Hay 3 caminos posibles hacia acá:\n// 1. Entrada estimada: pasa por PUT incidencias → llega el output del PUT a $input\n//    → los DATOS REALES están en 'Code - Merge incidencia'\n// 2. Entrada normal: pasa por Prep Incidencia → skip_github=true → llega directo\n//    → los datos están en $input.first()\n// 3. Salida: pasa por Armar Datos Salida → llega directo\n//    → los datos están en $input.first()\n// 4. Comida: placeholder → llega directo\n\nconst fromInput = $input.first().json;\n\n// Detectar si venimos del PUT de GitHub (tiene commit/content)\nconst vinoDelPUT = fromInput && (fromInput.commit || fromInput.content) && !fromInput.tipo;\n\nlet data;\nif (vinoDelPUT) {\n  // Rama de incidencia: leer de Merge incidencia que preservó los datos\n  data = $('Code - Merge incidencia').item.json;\n} else {\n  // Ramas directas\n  data = fromInput;\n}\n\nconst esComida = data.placeholder === true;\nconst tipo = data.tipo || 'desconocido';\n\nlet mensaje;\nif (esComida) {\n  mensaje = 'Comida registrada (Fase 1 placeholder, no persiste en Odoo)';\n} else if (tipo === 'entrada') {\n  mensaje = data.es_estimado \n    ? 'Entrada estimada registrada. Pendiente validación del supervisor.'\n    : 'Check-in registrado exitosamente';\n} else if (tipo === 'salida') {\n  mensaje = 'Check-out registrado exitosamente';\n} else {\n  mensaje = 'Operación completada';\n}\n\nreturn [{\n  json: {\n    success: true,\n    accion_valida: true,\n    tipo: tipo,\n    attendance_id: data.attendance_id_creado || null,\n    empleado_id: data.empleado_id || null,\n    empleado_nombre: data.empleado_nombre || null,\n    hora_cst: data.hora_cst || null,\n    hora_utc: data.fechaOdoo || null,\n    es_estimado: data.es_estimado === true,\n    incidencia_creada: data.incidencia_id || null,\n    placeholder: esComida,\n    mensaje: mensaje\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1664,
+        224
+      ],
+      "id": "1cc90397-e503-4a44-aac0-f627bfa3357a",
+      "name": "Code - Respuesta OK"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Respuesta de error unificada\nconst data = $input.first().json;\n\nconst response = {\n  success: false,\n  accion_valida: false,\n  codigo_error: data.codigo_error || 'ERROR_DESCONOCIDO',\n  mensaje: data.mensaje || 'Error desconocido procesando la solicitud',\n  error_msg: data.error_msg || data.mensaje || 'Error desconocido',\n  empleado_id: data.empleado_id || null,\n  attendance_id_abierto: data.attendance_id_abierto || null,\n  horas_transcurridas: data.horas_transcurridas || null\n};\n\nreturn [{ json: response }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -416,
+        544
+      ],
+      "id": "da941182-0e22-483c-ac0c-fd8c292d8366",
+      "name": "Code - Respuesta Error"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1872,
+        224
+      ],
+      "id": "9896c9c1-4ef4-4e56-bdb6-1654cb41bc35",
+      "name": "Respond OK"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -208,
+        544
+      ],
+      "id": "b73123a5-3318-446b-a2d7-388d1b5a86e3",
+      "name": "Respond Error"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ String($json.auto_rescate_pending) }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "id": "condition-1778533045809-trn8ro33s"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "n24-if-autorescate",
+      "name": "IF - Auto-rescate?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -304,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "custom",
+        "customResource": "hr.attendance",
+        "operation": "update",
+        "customResourceId": "={{ $json.attendance_id_pendiente }}",
+        "fieldsToCreateOrUpdate": {
+          "fields": [
+            {
+              "fieldName": "check_out",
+              "fieldValue": "={{ $json.auto_rescate_check_out }}"
+            },
+            {
+              "fieldName": "x_studio_horario_en_disputa",
+              "fieldValue": "true"
+            },
+            {
+              "fieldName": "x_studio_incidencia_pendiente_id",
+              "fieldValue": "={{ $json.auto_rescate_incidencia_id }}"
+            }
+          ]
+        }
+      },
+      "id": "n25-odoo-close-auto",
+      "name": "Odoo - UPDATE Auto-rescate Close",
+      "type": "n8n-nodes-base.odoo",
+      "typeVersion": 1,
+      "position": [
+        -32,
+        0
+      ],
+      "alwaysOutputData": false,
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "odooApi": {
+          "id": "Wansi69xesEqEiY1",
+          "name": "Odoo FTS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// F1.5 Issue 2 - Restaura params completos después del Odoo close\n// para que Switch - Por tipo pueda rutear por params.tipo\nconst params = $('Code - Analizar candados').item.json;\nreturn [{ json: params }];\n"
+      },
+      "id": "n26-code-continue-auto",
+      "name": "Code - Continue Auto-rescate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        112,
+        112
+      ]
+    },
+    {
+      "id": "3d717a9b-7af7-4311-930f-a0d6e2af199f",
+      "name": "Code - B1 Inicio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2080,
+        560
+      ],
+      "parameters": {
+        "jsCode": "// B1 #269: identidad del intento. El kiosko nuevo manda intento_id (UUID); el viejo no, y el\n// servidor genera uno propio (mitad tolerante: acepta las dos firmas).\nconst w = $input.first().json || {};\nconst body = w.body || {};\nconst raw = String(body.intento_id || '').trim().toLowerCase();\nconst valido = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(raw) || /^k-[a-z0-9]{6,12}-[a-z0-9]{6,12}$/.test(raw);\nconst t0 = Date.now();\nreturn [{ json: {\n  intento_id: valido ? raw : 'srv-' + $execution.id,\n  intento_cliente: valido,\n  empleado_id: parseInt(body.empleado_id) || 0,\n  tipo: String(body.tipo || '').toLowerCase(),\n  t0,\n  inicio_utc: new Date(t0).toISOString(),\n  fecha_cst: new Date(t0 - 6 * 3600e3).toISOString().slice(0, 10),\n  ejecucion: String($execution.id)\n} }];"
+      }
+    },
+    {
+      "id": "2298d480-e60b-43f1-8843-c08c0cab1e36",
+      "name": "DT - B1 Buscar intento",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -1872,
+        560
+      ],
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "cachedResultName": "kiosk_intentos",
+          "mode": "id",
+          "value": "oftRi4tGtdGfgcvX"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "condition": "eq",
+              "keyName": "intento_id",
+              "keyValue": "={{ $json.intento_id }}"
+            }
+          ]
+        },
+        "limit": 1,
+        "operation": "get",
+        "resource": "row"
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "3de5753c-439c-4cd4-b28f-310cd747ecce",
+      "name": "Code - B1 Decidir",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1664,
+        560
+      ],
+      "parameters": {
+        "jsCode": "// B1 #269: idempotencia. Solo un intento guardado como 'ok' se devuelve tal cual.\n// Uno 'en_proceso' de hace menos de 60 s responde EN_PROCESO; un error guardado se vuelve a correr.\nconst ini = $('Code - B1 Inicio').first().json;\nconst f = ($input.first() && $input.first().json) || {};\nlet repetido = false, resp = null;\nif (ini.intento_cliente && f.intento_id === ini.intento_id) {\n  if (f.estado === 'ok') {\n    try { resp = JSON.parse(f.respuesta); } catch (e) { resp = null; }\n    if (resp && typeof resp === 'object') { repetido = true; resp.idempotente = true; resp.intento_id = ini.intento_id; }\n  } else if (f.estado === 'en_proceso' && f.inicio_utc && Date.now() - new Date(f.inicio_utc).getTime() < 60000) {\n    repetido = true;\n    resp = { success: false, accion_valida: false, codigo_error: 'EN_PROCESO', mensaje: 'Tu checada anterior todavía se está guardando. Espera unos segundos.', intento_id: ini.intento_id, empleado_id: ini.empleado_id };\n  }\n}\nreturn [{ json: { ...ini, _repetido: repetido, _respuesta: resp } }];"
+      }
+    },
+    {
+      "id": "73a81e81-79ba-4403-9fd3-d1f4360f55d7",
+      "name": "IF - B1 Repetido?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1456,
+        560
+      ],
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ String($json._repetido) }}",
+              "operator": {
+                "operation": "equals",
+                "type": "string"
+              },
+              "rightValue": "true"
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          }
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "edc62b23-4e13-4712-a2f7-ae15853acef1",
+      "name": "Code - B1 Respuesta repetida",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1248,
+        720
+      ],
+      "parameters": {
+        "jsCode": "return [{ json: $input.first().json._respuesta }];"
+      }
+    },
+    {
+      "id": "a934189b-2dbe-40f9-8f67-15861e566fb0",
+      "name": "Respond - B1 Repetido",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -1040,
+        720
+      ],
+      "parameters": {
+        "options": {}
+      }
+    },
+    {
+      "id": "9586bfdf-f1c4-46d4-8e1e-eff84ff0cb4c",
+      "name": "Code - B1 Fila en proceso",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1248,
+        480
+      ],
+      "parameters": {
+        "jsCode": "const ini = $input.first().json;\nreturn [{ json: { fila: { intento_id: ini.intento_id, empleado_id: ini.empleado_id, tipo: ini.tipo, estado: 'en_proceso', codigo: '', mensaje: '', ejecucion: ini.ejecucion, workflow: 'kiosk/checkin', origen_id: ini.intento_cliente ? 'kiosko' : 'servidor', fecha_cst: ini.fecha_cst, inicio_utc: ini.inicio_utc } } }];"
+      }
+    },
+    {
+      "id": "bdb89d6a-8e11-4f81-93ed-f15237624ffa",
+      "name": "DT - B1 Marcar en proceso",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -1040,
+        480
+      ],
+      "parameters": {
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [],
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "intento_id",
+              "id": "intento_id",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "empleado_id",
+              "id": "empleado_id",
+              "required": false,
+              "type": "number"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "tipo",
+              "id": "tipo",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "estado",
+              "id": "estado",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "codigo",
+              "id": "codigo",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "mensaje",
+              "id": "mensaje",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "ejecucion",
+              "id": "ejecucion",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "workflow",
+              "id": "workflow",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "origen_id",
+              "id": "origen_id",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "fecha_cst",
+              "id": "fecha_cst",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "inicio_utc",
+              "id": "inicio_utc",
+              "required": false,
+              "type": "dateTime"
+            }
+          ],
+          "value": {
+            "codigo": "={{ $json.fila.codigo }}",
+            "ejecucion": "={{ $json.fila.ejecucion }}",
+            "empleado_id": "={{ $json.fila.empleado_id }}",
+            "estado": "={{ $json.fila.estado }}",
+            "fecha_cst": "={{ $json.fila.fecha_cst }}",
+            "inicio_utc": "={{ $json.fila.inicio_utc }}",
+            "intento_id": "={{ $json.fila.intento_id }}",
+            "mensaje": "={{ $json.fila.mensaje }}",
+            "origen_id": "={{ $json.fila.origen_id }}",
+            "tipo": "={{ $json.fila.tipo }}",
+            "workflow": "={{ $json.fila.workflow }}"
+          }
+        },
+        "dataTableId": {
+          "__rl": true,
+          "cachedResultName": "kiosk_intentos",
+          "mode": "id",
+          "value": "oftRi4tGtdGfgcvX"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "condition": "eq",
+              "keyName": "intento_id",
+              "keyValue": "={{ $json.fila.intento_id }}"
+            }
+          ]
+        },
+        "matchType": "allConditions",
+        "operation": "upsert",
+        "options": {},
+        "resource": "row"
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "3047803f-8559-44b3-ab5a-ce9d0d6aaa60",
+      "name": "Code - B1 Restaurar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -832,
+        480
+      ],
+      "parameters": {
+        "jsCode": "// B1 #269: devuelve el item original del Webhook para que el flujo de siempre no cambie.\nreturn [{ json: $('Webhook').first().json }];"
+      }
+    },
+    {
+      "id": "2ed3f8bf-1cc9-4bd7-90f6-3e8a59ef7167",
+      "name": "Code - B1 Plazo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -520,
+        224
+      ],
+      "parameters": {
+        "jsCode": "// B1 #269: plazo del servidor. Ninguna escritura a Odoo empieza después de 20 s desde que entró\n// la petición: el kiosko ya se habrá rendido y la persona volverá a intentar.\nconst x = $input.first().json;\nconst ini = $('Code - B1 Inicio').first().json;\nif (x._error !== true && x.accion !== 'COMIDA_PLACEHOLDER' && Date.now() - ini.t0 > 20000) {\n  return [{ json: { ...x, _error: true, codigo_error: 'TIEMPO_AGOTADO', mensaje: 'El servidor tardó demasiado y no guardó tu checada. Intenta de nuevo.' } }];\n}\nreturn [{ json: x }];"
+      }
+    },
+    {
+      "id": "f2c4730a-509c-4d89-88a6-7bca223f293c",
+      "name": "Code - B1 Falla Odoo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        800
+      ],
+      "parameters": {
+        "jsCode": "// B1 #269: salida de error de los 4 nodos que escriben o validan en Odoo.\n// Convierte la excepción en respuesta legible. Nunca deja la ejecución sin Respond.\nconst e = $input.first().json || {};\nconst err = e.error;\nconst msg = String((err && typeof err === 'object' ? (err.message || err.description) : err) || e.message || 'sin detalle');\nconst sinRespuesta = /ECONNRESET|ETIMEDOUT|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|socket hang up|timeout|timed out|\\b(429|502|503|504)\\b/i.test(msg);\nlet p = {};\ntry { p = $('Code - Preparar parámetros').first().json || {}; } catch (x) { p = {}; }\nconst limpio = msg.replace(/^[\\s\\S]*?(ValidationError|UserError|AccessError|MissingError)[:\\s]*/, '').slice(0, 300);\nreturn [{ json: {\n  _error: true,\n  codigo_error: sinRespuesta ? 'ODOO_NO_RESPONDE' : 'ODOO_RECHAZO',\n  mensaje: sinRespuesta\n    ? 'Odoo no respondió. Tu checada NO se guardó. Intenta de nuevo en un momento.'\n    : 'Odoo rechazó la checada y NO se guardó: ' + limpio,\n  detalle_tecnico: msg.slice(0, 500),\n  empleado_id: p.empleado_id || null,\n  tipo: p.tipo || null\n} }];"
+      }
+    },
+    {
+      "id": "0526b5d6-f7b5-4db5-af6f-a1852f4e28a9",
+      "name": "Code - B1 PUT falló",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1664,
+        480
+      ],
+      "parameters": {
+        "jsCode": "// B1 #269: la checada SÍ quedó en Odoo, pero la incidencia no se pudo guardar en GitHub.\n// Se responde éxito (la checada existe) y se marca la incidencia como no guardada.\nconst m = $('Code - Merge incidencia').first().json;\nreturn [{ json: { ...m, incidencia_id: null, _incidencia_no_guardada: true } }];"
+      }
+    },
+    {
+      "id": "41ed933f-94a6-47cc-b272-0c3f601f1ba8",
+      "name": "Code - B1 Fila OK",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1872,
+        224
+      ],
+      "parameters": {
+        "jsCode": "const r = $input.first().json;\nconst ini = $('Code - B1 Inicio').first().json;\nconst resp = { ...r, intento_id: ini.intento_id };\nif (r._incidencia_no_guardada) resp.incidencia_no_guardada = true;\nconst guardar = { ...resp };\ndelete guardar.empleado_nombre;\nreturn [{ json: { _resp: resp, fila: {\n  intento_id: ini.intento_id, empleado_id: ini.empleado_id || r.empleado_id || 0, tipo: r.tipo || ini.tipo,\n  estado: 'ok', codigo: '', mensaje: String(r.mensaje || ''), attendance_id: r.attendance_id || 0,\n  respuesta: JSON.stringify(guardar), ejecucion: ini.ejecucion, workflow: 'kiosk/checkin',\n  origen_id: ini.intento_cliente ? 'kiosko' : 'servidor', fecha_cst: ini.fecha_cst,\n  inicio_utc: ini.inicio_utc, fin_utc: new Date().toISOString() } } }];"
+      }
+    },
+    {
+      "id": "ba421153-6427-4786-b401-9d38c5bb4fa0",
+      "name": "DT - B1 Guardar OK",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2080,
+        224
+      ],
+      "parameters": {
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [],
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "intento_id",
+              "id": "intento_id",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "empleado_id",
+              "id": "empleado_id",
+              "required": false,
+              "type": "number"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "tipo",
+              "id": "tipo",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "estado",
+              "id": "estado",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "codigo",
+              "id": "codigo",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "mensaje",
+              "id": "mensaje",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "attendance_id",
+              "id": "attendance_id",
+              "required": false,
+              "type": "number"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "respuesta",
+              "id": "respuesta",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "ejecucion",
+              "id": "ejecucion",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "workflow",
+              "id": "workflow",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "origen_id",
+              "id": "origen_id",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "fecha_cst",
+              "id": "fecha_cst",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "inicio_utc",
+              "id": "inicio_utc",
+              "required": false,
+              "type": "dateTime"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "fin_utc",
+              "id": "fin_utc",
+              "required": false,
+              "type": "dateTime"
+            }
+          ],
+          "value": {
+            "attendance_id": "={{ $json.fila.attendance_id }}",
+            "codigo": "={{ $json.fila.codigo }}",
+            "ejecucion": "={{ $json.fila.ejecucion }}",
+            "empleado_id": "={{ $json.fila.empleado_id }}",
+            "estado": "={{ $json.fila.estado }}",
+            "fecha_cst": "={{ $json.fila.fecha_cst }}",
+            "fin_utc": "={{ $json.fila.fin_utc }}",
+            "inicio_utc": "={{ $json.fila.inicio_utc }}",
+            "intento_id": "={{ $json.fila.intento_id }}",
+            "mensaje": "={{ $json.fila.mensaje }}",
+            "origen_id": "={{ $json.fila.origen_id }}",
+            "respuesta": "={{ $json.fila.respuesta }}",
+            "tipo": "={{ $json.fila.tipo }}",
+            "workflow": "={{ $json.fila.workflow }}"
+          }
+        },
+        "dataTableId": {
+          "__rl": true,
+          "cachedResultName": "kiosk_intentos",
+          "mode": "id",
+          "value": "oftRi4tGtdGfgcvX"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "condition": "eq",
+              "keyName": "intento_id",
+              "keyValue": "={{ $json.fila.intento_id }}"
+            }
+          ]
+        },
+        "matchType": "allConditions",
+        "operation": "upsert",
+        "options": {},
+        "resource": "row"
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "5f7e52ce-21fa-429b-8903-0d9de7fd00d4",
+      "name": "Code - B1 Salida OK",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2288,
+        224
+      ],
+      "parameters": {
+        "jsCode": "return [{ json: $('Code - B1 Fila OK').first().json._resp }];"
+      }
+    },
+    {
+      "id": "7f6536e2-d889-4029-834a-8af89b9bab66",
+      "name": "Code - B1 Fila Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        544
+      ],
+      "parameters": {
+        "jsCode": "const r = $input.first().json;\nconst ini = $('Code - B1 Inicio').first().json;\nconst SISTEMA = ['ODOO_RECHAZO','ODOO_NO_RESPONDE','ERROR_INTERNO','TIEMPO_AGOTADO'];\nconst codigo = String(r.codigo_error || 'ERROR_DESCONOCIDO');\nconst resp = { ...r, intento_id: ini.intento_id };\nreturn [{ json: { _resp: resp, _sistema: SISTEMA.includes(codigo), fila: {\n  intento_id: ini.intento_id, empleado_id: ini.empleado_id || r.empleado_id || 0, tipo: ini.tipo,\n  estado: SISTEMA.includes(codigo) ? 'error' : 'rechazo_regla', codigo, mensaje: String(r.mensaje || ''), attendance_id: 0,\n  respuesta: JSON.stringify(resp), ejecucion: ini.ejecucion, workflow: 'kiosk/checkin',\n  origen_id: ini.intento_cliente ? 'kiosko' : 'servidor', fecha_cst: ini.fecha_cst,\n  inicio_utc: ini.inicio_utc, fin_utc: new Date().toISOString() } } }];"
+      }
+    },
+    {
+      "id": "0f56ffad-f3f2-4c1b-85ef-2cdb476f79b1",
+      "name": "DT - B1 Guardar Error",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        544
+      ],
+      "parameters": {
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [],
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "intento_id",
+              "id": "intento_id",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "empleado_id",
+              "id": "empleado_id",
+              "required": false,
+              "type": "number"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "tipo",
+              "id": "tipo",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "estado",
+              "id": "estado",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "codigo",
+              "id": "codigo",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "mensaje",
+              "id": "mensaje",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "attendance_id",
+              "id": "attendance_id",
+              "required": false,
+              "type": "number"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "respuesta",
+              "id": "respuesta",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "ejecucion",
+              "id": "ejecucion",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "workflow",
+              "id": "workflow",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "origen_id",
+              "id": "origen_id",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "fecha_cst",
+              "id": "fecha_cst",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "inicio_utc",
+              "id": "inicio_utc",
+              "required": false,
+              "type": "dateTime"
+            },
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "fin_utc",
+              "id": "fin_utc",
+              "required": false,
+              "type": "dateTime"
+            }
+          ],
+          "value": {
+            "attendance_id": "={{ $json.fila.attendance_id }}",
+            "codigo": "={{ $json.fila.codigo }}",
+            "ejecucion": "={{ $json.fila.ejecucion }}",
+            "empleado_id": "={{ $json.fila.empleado_id }}",
+            "estado": "={{ $json.fila.estado }}",
+            "fecha_cst": "={{ $json.fila.fecha_cst }}",
+            "fin_utc": "={{ $json.fila.fin_utc }}",
+            "inicio_utc": "={{ $json.fila.inicio_utc }}",
+            "intento_id": "={{ $json.fila.intento_id }}",
+            "mensaje": "={{ $json.fila.mensaje }}",
+            "origen_id": "={{ $json.fila.origen_id }}",
+            "respuesta": "={{ $json.fila.respuesta }}",
+            "tipo": "={{ $json.fila.tipo }}",
+            "workflow": "={{ $json.fila.workflow }}"
+          }
+        },
+        "dataTableId": {
+          "__rl": true,
+          "cachedResultName": "kiosk_intentos",
+          "mode": "id",
+          "value": "oftRi4tGtdGfgcvX"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "condition": "eq",
+              "keyName": "intento_id",
+              "keyValue": "={{ $json.fila.intento_id }}"
+            }
+          ]
+        },
+        "matchType": "allConditions",
+        "operation": "upsert",
+        "options": {},
+        "resource": "row"
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "d0e88cf8-5631-45e6-b03e-42a8d89a5606",
+      "name": "Code - B1 Salida Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        544
+      ],
+      "parameters": {
+        "jsCode": "return [{ json: $('Code - B1 Fila Error').first().json._resp }];"
+      }
+    },
+    {
+      "id": "99eefaa9-d011-40b1-b2a4-c402b7c455dc",
+      "name": "IF - B1 Falla de sistema?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        624,
+        544
+      ],
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ String($('Code - B1 Fila Error').first().json._sistema) }}",
+              "operator": {
+                "operation": "equals",
+                "type": "string"
+              },
+              "rightValue": "true"
+            }
+          ],
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          }
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "07da71af-4943-4192-9b47-7127e18c86cf",
+      "name": "Code - B1 Datos alerta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        480
+      ],
+      "parameters": {
+        "jsCode": "const f = $('Code - B1 Fila Error').first().json.fila;\nreturn [{ json: { empleado_id: f.empleado_id, fecha_cst: f.fecha_cst, tipo: f.tipo, codigo: f.codigo, mensaje: f.mensaje, intento_id: f.intento_id, ejecucion: f.ejecucion, workflow: 'kiosk/checkin' } }];"
+      }
+    },
+    {
+      "id": "89078de8-dce8-426f-91c6-14a7ac3a450a",
+      "name": "Exec - B1 Alerta fallas",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1040,
+        480
+      ],
+      "parameters": {
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": false
+        },
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "cachedResultName": "kiosk/alerta-fallas (B1 #269)",
+          "mode": "id",
+          "value": "DUhj6mByBcmPsIYI"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Code - Preparar parámetros": {
+      "main": [
+        [
+          {
+            "node": "Odoo - Validar empleado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Odoo - Validar empleado": {
+      "main": [
+        [
+          {
+            "node": "Code - Validar empleado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code - B1 Falla Odoo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Validar empleado": {
+      "main": [
+        [
+          {
+            "node": "IF - Empleado válido?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Empleado válido?": {
+      "main": [
+        [
+          {
+            "node": "Odoo - Buscar pendientes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code - Respuesta Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Odoo - Buscar pendientes": {
+      "main": [
+        [
+          {
+            "node": "Code - Analizar candados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Sin bloqueo?": {
+      "main": [
+        [
+          {
+            "node": "IF - Auto-rescate?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code - Respuesta Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch - Por tipo": {
+      "main": [
+        [
+          {
+            "node": "Odoo - CREATE Entrada",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Odoo - UPDATE Salida",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code - Comida placeholder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Odoo - CREATE Entrada": {
+      "main": [
+        [
+          {
+            "node": "Code - Armar Datos Entrada",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code - B1 Falla Odoo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Armar Datos Entrada": {
+      "main": [
+        [
+          {
+            "node": "Code - Prep Incidencia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Odoo - UPDATE Salida": {
+      "main": [
+        [
+          {
+            "node": "Code - Armar Datos Salida",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code - B1 Falla Odoo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Armar Datos Salida": {
+      "main": [
+        [
+          {
+            "node": "Code - Respuesta OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Prep Incidencia": {
+      "main": [
+        [
+          {
+            "node": "IF - Crear incidencia?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Crear incidencia?": {
+      "main": [
+        [
+          {
+            "node": "HTTP - GET incidencias.json",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code - Respuesta OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP - GET incidencias.json": {
+      "main": [
+        [
+          {
+            "node": "Code - Merge incidencia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Merge incidencia": {
+      "main": [
+        [
+          {
+            "node": "HTTP - PUT incidencias.json",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP - PUT incidencias.json": {
+      "main": [
+        [
+          {
+            "node": "Code - Respuesta OK",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code - B1 PUT falló",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Comida placeholder": {
+      "main": [
+        [
+          {
+            "node": "Code - Respuesta OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Auto-rescate?": {
+      "main": [
+        [
+          {
+            "node": "Odoo - UPDATE Auto-rescate Close",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Switch - Por tipo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Odoo - UPDATE Auto-rescate Close": {
+      "main": [
+        [
+          {
+            "node": "Code - Continue Auto-rescate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code - B1 Falla Odoo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Continue Auto-rescate": {
+      "main": [
+        [
+          {
+            "node": "Switch - Por tipo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code - B1 Inicio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - B1 Inicio": {
+      "main": [
+        [
+          {
+            "node": "DT - B1 Buscar intento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DT - B1 Buscar intento": {
+      "main": [
+        [
+          {
+            "node": "Code - B1 Decidir",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - B1 Decidir": {
+      "main": [
+        [
+          {
+            "node": "IF - B1 Repetido?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - B1 Repetido?": {
+      "main": [
+        [
+          {
+            "node": "Code - B1 Respuesta repetida",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code - B1 Fila en proceso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - B1 Respuesta repetida": {
+      "main": [
+        [
+          {
+            "node": "Respond - B1 Repetido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - B1 Fila en proceso": {
+      "main": [
+        [
+          {
+            "node": "DT - B1 Marcar en proceso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DT - B1 Marcar en proceso": {
+      "main": [
+        [
+          {
+            "node": "Code - B1 Restaurar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - B1 Restaurar": {
+      "main": [
+        [
+          {
+            "node": "Code - Preparar parámetros",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Analizar candados": {
+      "main": [
+        [
+          {
+            "node": "Code - B1 Plazo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - B1 Plazo": {
+      "main": [
+        [
+          {
+            "node": "IF - Sin bloqueo?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - B1 Falla Odoo": {
+      "main": [
+        [
+          {
+            "node": "Code - Respuesta Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - B1 PUT falló": {
+      "main": [
+        [
+          {
+            "node": "Code - Respuesta OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Respuesta OK": {
+      "main": [
+        [
+          {
+            "node": "Code - B1 Fila OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - B1 Fila OK": {
+      "main": [
+        [
+          {
+            "node": "DT - B1 Guardar OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DT - B1 Guardar OK": {
+      "main": [
+        [
+          {
+            "node": "Code - B1 Salida OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - B1 Salida OK": {
+      "main": [
+        [
+          {
+            "node": "Respond OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Respuesta Error": {
+      "main": [
+        [
+          {
+            "node": "Code - B1 Fila Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - B1 Fila Error": {
+      "main": [
+        [
+          {
+            "node": "DT - B1 Guardar Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DT - B1 Guardar Error": {
+      "main": [
+        [
+          {
+            "node": "Code - B1 Salida Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - B1 Salida Error": {
+      "main": [
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond Error": {
+      "main": [
+        [
+          {
+            "node": "IF - B1 Falla de sistema?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - B1 Falla de sistema?": {
+      "main": [
+        [
+          {
+            "node": "Code - B1 Datos alerta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - B1 Datos alerta": {
+      "main": [
+        [
+          {
+            "node": "Exec - B1 Alerta fallas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": true
+  },
+  "_b1": {
+    "draftVersionId": "b8003bd7-df82-4eb9-a51c-f4f2aab5fdc0",
+    "publicadaHoy": "feb04c42-18f0-4b45-9368-b35e69049d7e"
+  }
+}

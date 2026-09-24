@@ -43,11 +43,12 @@ class Sistema {
     this.intentos = [];          // verdad del modelo: todo intento del empleado y si logró su efecto
     this.ejecuciones = [];       // ejecuciones de servidor (como las de n8n)
     this.reportesWatchdog = [];
-    this.fallas = { redCaida: 0, lecturaOdoo: 0, lento: 0 };
+    this.fallas = { redCaida: 0, lecturaOdoo: 0, lecturaRapida: 0, lento: 0 };
     this.saturadoHasta = 0;
     this.sigInc = 1;
     this.sigIntento = 1;
-    this.procesados = new Map();  // B1: intento_id -> respuesta (idempotencia de reintentos)
+    this.procesados = new Map();  // B1: intento_id -> {respuesta, listo} (kiosk_intentos)
+    this.PLAZO_SERVIDOR_MS = 20 * 1000;   // B1: después de esto el servidor ya no escribe
   }
 
   clonar() {
@@ -143,21 +144,32 @@ class Sistema {
     const antes = this.odoo.clonar();
     let t = now, resp = null, llego = false;
     const intento = 'k' + (this.sigIntento++);   // B1: un id por intento, igual en los reintentos
+    // B1, tal como quedó construido (PR de B1, #269): kiosk_intentos guarda el intento
+    // en_proceso al empezar y la respuesta final al terminar. Un reintento que llega
+    // mientras la primera ejecución sigue corriendo recibe EN_PROCESO; el kiosko, ante
+    // una falla o un EN_PROCESO, consulta kiosk/intento hasta 3 veces cada 3 s.
+    const RECONCILIA_MS = 9 * 1000;
+    let enProceso = false;
     for (let i = 0; i < 3; i++) {
       if (this.fallas.redCaida > 0) { this.fallas.redCaida--; t += 12 * 1000; continue; }
       if (t < this.saturadoHasta) { t += 12 * 1000; continue; }  // n8n saturado: no ejecuta
-      if (this.d.B1 && this.procesados.has(intento)) { resp = { latencia: 300, body: this.procesados.get(intento) }; llego = true; break; }
+      if (this.d.B1 && this.procesados.has(intento)) {
+        const p = this.procesados.get(intento);
+        if (p.listo > t) { enProceso = true; break; }   // EN_PROCESO: el kiosko pasa a reconciliar
+        if (p.body.success === true) { resp = { latencia: 300, body: p.body }; llego = true; break; }
+        // Un intento que terminó en error no escribió nada: el reintento se vuelve a ejecutar.
+      }
       const s = this.checkinServidor(emp, tipo, t, opts);
-      if (this.d.B1 && s.body) this.procesados.set(intento, s.body);
+      if (this.d.B1 && s.body) this.procesados.set(intento, { body: s.body, listo: t + s.latencia });
       if (s.latencia > 10000) { t += 12 * 1000; continue; }    // cliente abortó: HTTP 499
       resp = s; llego = true; break;
     }
     const logrado = this.efectoLogrado(antes, emp, tipo);
     let pantalla;
-    if (!llego && this.d.B1 && this.procesados.has(intento)) {
+    if (!llego && this.d.B1 && this.procesados.has(intento) && this.procesados.get(intento).listo <= t + RECONCILIA_MS) {
       // B1: tras agotar el tiempo, el kiosko CONSULTA el intento por su id (kiosk/intento)
-      // antes de decidir. Si el servidor sí lo procesó, esa es la respuesta.
-      resp = { latencia: 300, body: this.procesados.get(intento) }; llego = true;
+      // antes de decidir. Si el servidor sí lo terminó dentro de la ventana, esa es la respuesta.
+      resp = { latencia: 300, body: this.procesados.get(intento).body }; llego = true;
     }
     if (!llego) {
       pantalla = this.d.B1 ? 'error' : 'exito';
@@ -198,14 +210,19 @@ class Sistema {
 
     // "Odoo - Buscar pendientes": onError=continueRegularOutput, retryOnFail=false.
     let lecturaFallo = false, abiertas;
+    // Dos formas de fallar la lectura: ECONNRESET a los 135 s (exec 104284) o un rechazo
+    // rápido (p. ej. 429 de Odoo, CLAUDE.md §20 #14), que no dispara el plazo de B1.
+    let lecturaLenta = false;
     const leer = () => {
-      if (this.fallas.lecturaOdoo > 0) { this.fallas.lecturaOdoo--; return null; }
+      if (this.fallas.lecturaOdoo > 0) { this.fallas.lecturaOdoo--; lecturaLenta = true; return null; }
+      if (this.fallas.lecturaRapida > 0) { this.fallas.lecturaRapida--; return null; }
       return this.abiertos(emp, now, u.ventana);
     };
     abiertas = leer();
     if (abiertas === null) {
-      lecturaFallo = true; latencia = 135000; this.saturadoHasta = now + 135000;
-      ej.nodos.push('Buscar pendientes: ECONNRESET');
+      lecturaFallo = true;
+      if (lecturaLenta) { latencia = 135000; this.saturadoHasta = now + 135000; }
+      ej.nodos.push(lecturaLenta ? 'Buscar pendientes: ECONNRESET' : 'Buscar pendientes: rechazo rápido');
       if (this.d.B2) {
         for (let k = 0; k < 2 && abiertas === null; k++) abiertas = leer();
         if (abiertas === null) {
@@ -218,6 +235,16 @@ class Sistema {
       } else {
         abiertas = [];   // el item de parámetros no trae `id` y el filtro lo descarta: 0 abiertas
       }
+    }
+
+    // B1: plazo del servidor. Si la lectura tardó más de lo que el kiosko espera, NO se
+    // escribe: el kiosko ya dijo "No se guardó" y escribir ahora lo contradiría (I2).
+    // Nodo "Code - Analizar candados" de kiosk/checkin, antes de cualquier escritura.
+    if (this.d.B1 && latencia > this.PLAZO_SERVIDOR_MS) {
+      ej.error = 'TIEMPO_AGOTADO';
+      this.registrarFalla(emp, now, 'TIEMPO_AGOTADO', 'servidor');
+      return { latencia, body: { success: false, accion_valida: false, codigo_error: 'TIEMPO_AGOTADO',
+               error_msg: 'El servidor tardó demasiado y no guardó nada. Intenta de nuevo.' } };
     }
 
     const falla = (err) => {

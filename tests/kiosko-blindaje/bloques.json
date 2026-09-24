@@ -1,6 +1,6 @@
 {
   "_nota": "Poner construido:true SOLO en el mismo PR que construye el bloque en producción y actualiza su modelo en sistema.js. La prueba del bloque pasa a ser obligatoria desde ese momento.",
-  "B1":  { "construido": false, "requiere": [],     "titulo": "Visibilidad: éxito solo con escritura confirmada, errores visibles, bitácora y alerta" },
+  "B1":  { "construido": true, "requiere": [],     "titulo": "Visibilidad: éxito solo con escritura confirmada, errores visibles, bitácora y alerta" },
   "B2":  { "construido": false, "requiere": [],     "titulo": "Fail-closed en la lectura de pendientes, con reintentos" },
   "B3":  { "construido": false, "requiere": [],     "titulo": "Candado de traslape en resolver (atrás y adelante)" },
   "B4":  { "construido": false, "requiere": [],     "titulo": "resolver aplica la hora de RH en auto_cierre y en aprobar tal cual" },
