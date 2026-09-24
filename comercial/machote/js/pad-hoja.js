@@ -38,8 +38,10 @@
 (function (global) {
   'use strict';
 
-  var COLS = ['A', 'B', 'C'];          // las columnas citables
-  var MAX_FILAS = 20;                  // tope; ver `filasVacias` abajo
+  /* V1.42 · 10 × 10. Antes eran 3 columnas y 20 filas; Esteban lo movió a una
+   * rejilla cuadrada, que es la forma en que la gente piensa una hoja. */
+  var COLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+  var MAX_FILAS = 10;
   var ANCHO = COLS.length + 1;         // + la columna de rótulo
 
   /* ── La rejilla ──────────────────────────────────────────────────────── */
@@ -107,7 +109,7 @@
 
   /** `A1` → {col:0, fila:0}, o null si no es una dirección. */
   function dir(ref) {
-    var m = /^([A-Ca-c])([0-9]{1,2})$/.exec(String(ref || '').trim());
+    var m = /^([A-Ja-j])([0-9]{1,2})$/.exec(String(ref || '').trim());
     if (!m) return null;
     var col = COLS.indexOf(m[1].toUpperCase());
     var fila = parseInt(m[2], 10) - 1;
@@ -140,15 +142,39 @@
         t.push({ t: 'num', v: parseFloat(txt) });
         i = j; continue;
       }
-      if (/[A-Za-z]/.test(c)) {
+      /* ⚠️ Las vocales con acento y la Ñ son LETRAS aquí. Sin esto,
+       * `MULTIPLICACIÓN` se parte en `MULTIPLICACI` + un carácter que el
+       * tokenizador no reconoce, y la fórmula falla con un error de sintaxis
+       * que no dice nada — que es justo lo que pasaba en la primera versión
+       * de esta tanda: `nombreFuncion` quitaba el acento correctamente pero
+       * nunca llegaba a verlo. Se descubrió probando las cuatro, no leyendo. */
+      if (/[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/.test(c)) {
         var k = i;
-        while (k < s.length && /[A-Za-z0-9]/.test(s[k])) k++;
+        while (k < s.length && /[A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ]/.test(s[k])) k++;
         t.push({ t: 'id', v: s.slice(i, k) });
         i = k; continue;
       }
       throw err('SINTAXIS', c);
     }
     return t;
+  }
+
+  /** ── V1.42 · las cuatro aritméticas en PALABRA ────────────────────────
+   *  `SUMA`, `RESTA`, `MULTIPLICACION`, `DIVISION`, con y sin acento y en
+   *  cualquier caja. Los símbolos `+ − * /` siguen funcionando igual, así que
+   *  `SUMA(A1:A4)` y `A1+A2+A3+A4` son dos formas de escribir lo mismo y las
+   *  dos se pueden teclear — que es el punto: nadie debería tener que
+   *  acordarse de cuál de las dos entiende la hoja.
+   *
+   *  Los acentos se quitan con `normalize('NFD')` y no con una lista de
+   *  reemplazos: una lista se queda corta el día que alguien teclee la Ó de
+   *  otro teclado. Devuelve el nombre canónico, o `null` si no es función. */
+  var FUNCIONES = { SUMA: 1, RESTA: 1, MULTIPLICACION: 1, DIVISION: 1 };
+  function nombreFuncion(txt) {
+    var n = String(txt || '');
+    try { n = n.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (e) {}
+    n = n.toUpperCase();
+    return FUNCIONES[n] ? n : null;
   }
 
   function err(clase, detalle) {
@@ -224,17 +250,51 @@
       if (x.t === 'num') { come(); return x.v; }
       if (x.t === '(') { come('('); var v = expr(); come(')'); return v; }
       if (x.t === 'id') {
-        if (String(x.v).toUpperCase() === 'SUMA') {
+        var fn = nombreFuncion(x.v);
+        if (fn) {
           come('id'); come('(');
-          var total = 0;
+          /* Se juntan TODOS los valores en orden y después se pliegan con el
+           * operador. Escrito así, las cuatro funciones son la misma función
+           * con un operador distinto, y agregar una quinta no toca el parser. */
+          var vals = [];
           for (;;) {
-            var refs = rango();
-            for (var i = 0; i < refs.length; i++) total += leer(refs[i]);
+            /* Un argumento es UN RANGO (`A1:C3`) o CUALQUIER EXPRESIÓN
+             * (`A1`, `450`, `A1*2`). Se distingue por los dos puntos, que es
+             * lo único que el rango tiene y la expresión no. Aceptar sólo
+             * rangos dejaba fuera `=SUMA(C1:C2, 500)`, que es lo primero que
+             * alguien escribe viniendo de Excel. */
+            var t0 = mira(), t1 = tokens[p + 1];
+            if (t0 && t0.t === 'id' && dir(t0.v) && t1 && t1.t === ':') {
+              var refs = rango();
+              for (var i = 0; i < refs.length; i++) vals.push(leer(refs[i]));
+            } else {
+              vals.push(expr());
+            }
             if (mira() && mira().t === ',') { come(','); continue; }
             break;
           }
           come(')');
-          return total;
+          if (!vals.length) return 0;
+          if (fn === 'SUMA') {
+            var t = 0; for (var a = 0; a < vals.length; a++) t += vals[a];
+            return t;
+          }
+          if (fn === 'MULTIPLICACION') {
+            var p2 = 1; for (var b = 0; b < vals.length; b++) p2 *= vals[b];
+            return p2;
+          }
+          /* RESTA y DIVISION se pliegan desde el PRIMER valor, que es lo que
+           * significan cuando alguien las escribe: `RESTA(A1:A3)` es
+           * `A1 − A2 − A3`, no la suma con signo. */
+          var acc = vals[0];
+          for (var c2 = 1; c2 < vals.length; c2++) {
+            if (fn === 'RESTA') acc -= vals[c2];
+            else {
+              if (vals[c2] === 0) throw err('DIV0', '');
+              acc /= vals[c2];
+            }
+          }
+          return acc;
         }
         if (!dir(x.v)) throw err('REF', x.v);
         come('id');
@@ -348,7 +408,7 @@
     COLS: COLS, MAX_FILAS: MAX_FILAS, ANCHO: ANCHO,
     filaVacia: filaVacia, normalizar: normalizar, paraPintar: paraPintar,
     filaEnBlanco: filaEnBlanco, tieneAlgo: tieneAlgo, filasConAlgo: filasConAlgo,
-    dir: dir, nombreDir: nombreDir, crudoDe: crudoDe,
+    dir: dir, nombreDir: nombreDir, crudoDe: crudoDe, nombreFuncion: nombreFuncion,
     evaluar: evaluar, desdeTexto: desdeTexto, hojaDe: hojaDe
   };
 })(typeof window !== 'undefined' ? window : globalThis);

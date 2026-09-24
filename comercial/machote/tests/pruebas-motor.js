@@ -540,12 +540,68 @@ es(tieneDura(vj, 'foranea-sin-viaje'), false, 'viejos · pero no los trata como 
   // 8 · defensivo: una hoja mal formada no puede tirar la sección
   es(PH.normalizar(null).length, 0, 'hoja · null no revienta');
   es(PH.normalizar([null, 'x', [1,2,3,4,5]]).length, 3, 'hoja · filas basura se normalizan');
-  es(PH.evaluar([['','=SUMA(A1:C20)','','']]).errores.A1, 'CICLO',
+  es(PH.evaluar([['','=SUMA(A1:C10)','','']]).errores.A1, 'CICLO',
      'hoja · un rango que se incluye a sí mismo es un ciclo, no un cuelgue');
+  /* V1.42 · con el tope en 10 filas, `C20` dejó de ser una dirección. Antes
+   * esta misma prueba usaba `A1:C20` y esperaba CICLO; hoy da REF, que es
+   * correcto y sigue siendo ruidoso. Se cambió la prueba, no el motor. */
+  es(PH.evaluar([['','=SUMA(A1:C20)','','']]).errores.A1, 'REF',
+     'hoja · un rango fuera de la rejilla es REF, no un número inventado');
 
   // 9 · el tope de filas se respeta
   const muchas = []; for (let i = 0; i < 60; i++) muchas.push(['x','','','']);
   es(PH.normalizar(muchas).length, PH.MAX_FILAS, 'hoja · no se pasa del tope de filas');
+
+  /* ══ V1.42 · LAS CUATRO PALABRAS EN ESPAÑOL ════════════════════════════
+   *
+   * Con acento y sin él, en mayúsculas, minúsculas y mezcladas. Nadie va a
+   * acordarse de si el acento cuenta, y una fórmula rechazada por una tilde
+   * es de las cosas que hacen que la gente abandone la herramienta y vuelva
+   * al Excel — que es exactamente de donde la estamos trayendo.
+   *
+   * Las cuatro comparten un mismo camino: se juntan los valores y se pliegan
+   * con un operador. Por eso se prueban las cuatro, no una de muestra: la
+   * que se rompería sola es la que tiene el operador distinto. */
+  const base = [['Tramos','3','12','=A1*B1*450'], ['Soportes','8','1200','=A2*B2']];
+  const conF = (f) => ev([base[0], base[1], ['t', f, '', '']]);
+  const val  = (f) => { const r = conF(f); return r.errores.A3 ? ('#' + r.errores.A3) : r.valores.A3; };
+
+  es(val('=SUMA(C1:C2)'),            25800, 'palabras · SUMA de un rango');
+  es(val('=suma(C1:C2)'),            25800, 'palabras · suma en minúsculas');
+  es(val('=Suma(C1:C2)'),            25800, 'palabras · Suma mezclada');
+  es(val('=MULTIPLICACION(A1,B1)'),     36, 'palabras · MULTIPLICACION sin acento');
+  es(val('=MULTIPLICACIÓN(A1,B1)'),     36, 'palabras · MULTIPLICACIÓN con acento');
+  es(val('=multiplicación(A1,B1)'),     36, 'palabras · multiplicación minúscula y con acento');
+  es(val('=RESTA(C1,C2)'),            6600, 'palabras · RESTA se pliega desde el primero');
+  es(val('=DIVISION(C1,A1)'),         5400, 'palabras · DIVISION sin acento');
+  es(val('=división(C1,A1)'),         5400, 'palabras · división con acento y minúscula');
+  es(val('=DIVISION(C1,0)'),       '#DIV0', 'palabras · dividir entre cero falla RUIDOSO');
+
+  /* Los signos NO dejaron de servir por agregar las palabras: es la mitad
+   * que se rompe callada al tocar el tokenizador. */
+  es(ev(base).valores.C1, 16200, 'palabras · los signos siguen sirviendo (C1)');
+  es(ev(base).valores.C2,  9600, 'palabras · los signos siguen sirviendo (C2)');
+  es(val('=SUMA(C1:C2)*2'),          51600, 'palabras · una palabra dentro de una expresión');
+
+  /* Un argumento puede ser una expresión, no sólo una celda. Es lo primero
+   * que alguien escribe viniendo de Excel, y aceptar sólo rangos lo rompía. */
+  es(val('=SUMA(C1:C2, 500)'),       26300, 'palabras · rango MÁS un número suelto');
+  es(val('=SUMA(A1*2, 4)'),             10, 'palabras · un argumento que es una cuenta');
+
+  /* Y lo que NO es una de las cuatro sigue fallando, que es lo que evita que
+   * `=PROMEDIO(A1:A9)` devuelva un número inventado. */
+  es(val('=PROMEDIO(A1,B1)'),       '#REF', 'palabras · una palabra que no existe NO se inventa');
+  es(val('=suma()'),            '#SINTAXIS', 'palabras · una palabra vacía no vale cero callado');
+
+  // 10 · la rejilla es de 10 × 10
+  es(PH.COLS.length, 10, 'hoja · diez columnas');
+  es(PH.COLS[9], 'J', 'hoja · la última columna es J');
+  es(PH.MAX_FILAS, 10, 'hoja · diez filas');
+  es(ev([['','1','','','','','','','','','=J1+A1'].slice(0,11)]).valores.J1, null,
+     'hoja · J1 existe y vale vacío');
+  es(PH.dir('J10') && PH.dir('J10').col, 9, 'hoja · J10 es una dirección válida');
+  es(PH.dir('K1'), null, 'hoja · K1 NO es una dirección');
+  es(PH.dir('A11'), null, 'hoja · A11 NO es una dirección');
 })();
 
 console.log('\n' + ok + ' pasaron, ' + mal + ' fallaron.');

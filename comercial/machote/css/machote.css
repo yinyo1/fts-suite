@@ -1824,71 +1824,212 @@ table.lista td.mono { white-space: nowrap; }
 .pad-cab .pad-cerrar { margin-left: auto; }
 .pad-ayuda { margin: 6px 12px 8px; }
 
-/* ── V1.41 · LA BARRA DE FÓRMULA ──────────────────────────────────────────
- * De ancho completo, y no es un adorno. Medido a 380 px: una celda mide 70 px
- * y ahí los NÚMEROS caben pero las FÓRMULAS no —`=SUMA(C1:C2)` se ve como
- * `=SUMA((`—. Sin esta barra, escribir una fórmula en el teléfono es hacerlo
- * a ciegas. Es lo que hacen todas las hojas en teléfono, y por la misma razón.
+/* ══ LA HOJA DE TRABAJO · V1.42, con cara de Excel ════════════════════════
  *
- * Monoespaciada: son cuentas, y con fuente proporcional el error de dedo no
- * se ve. */
-.pad-barra { display: flex; align-items: center; gap: 8px; padding: 0 12px 8px; }
-.pad-barra .pad-dir { flex: none; min-width: 40px; text-align: center;
-                      font: 700 12px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-                      color: var(--suave); background: var(--papel);
-                      border: 1px solid var(--linea); border-radius: 6px;
-                      padding: 12px 6px; }
-.pad-barra .pad-formula { flex: 1 1 auto; min-width: 0; min-height: var(--toque);
-                          font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-
-/* ── La rejilla ───────────────────────────────────────────────────────────
- * `table-layout: fixed` es lo que impide que una fórmula larga estire su
- * columna y empuje a las demás fuera de la pantalla. */
-.pad-rejilla { padding: 0 12px 10px; overflow-x: auto; }
-table.hoja-pad { border-collapse: collapse; width: 100%; table-layout: fixed; }
-table.hoja-pad th { background: var(--papel); border: 1px solid var(--linea);
-                    font-size: 11px; color: var(--suave); font-weight: 600;
-                    height: 22px; padding: 0 4px; }
-table.hoja-pad th.rot { width: 38%; }
-table.hoja-pad th.nfila { width: 26px; font-size: 10px; }
-table.hoja-pad td { border: 1px solid var(--linea); padding: 0; }
-table.hoja-pad input.padcel { width: 100%; border: 0; border-radius: 0;
-                              min-height: var(--toque); padding: 8px 6px;
-                              font: 13px/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-                              box-sizing: border-box; background: transparent; }
-table.hoja-pad input.padcel.num { text-align: right; font-variant-numeric: tabular-nums; }
-table.hoja-pad input.padcel.rot { text-align: left; font-family: inherit; }
-/* La celda elegida: el mismo azul del foco del módulo, sin color nuevo. */
-table.hoja-pad input.padcel.sel { box-shadow: inset 0 0 0 2px #1f4e79; }
-table.hoja-pad input.padcel.n-bad { color: var(--rojo, #b00020); font-weight: 700; }
-
-/* ── V1.41 · en el teléfono, el número tiene que CABER ────────────────────
- * Primera medición a 380 px con la rejilla puesta: la celda quedó en 54 px y
- * `$16,200` se veía como `$16,2(`. Un importe recortado es peor que uno
- * ausente — se lee como si fuera otro número. Se vio en la captura, no en el
- * diff ni en los conteos, que daban todos verdes (§20 #12).
+ * ── DE DÓNDE SALEN LOS COLORES, y qué es fuente y qué es elección ────────
+ * Esteban pidió que se vea como Excel y que lo BUSCARA en vez de sacarlo de
+ * memoria. Lo que la búsqueda devolvió con nombre y apellido:
+ *   · el verde de marca de Excel es **#1D6F42** («Celtic»)
+ *     — brandpalettes.com / usbrandcolors.com;
+ *   · la celda seleccionada se contornea en VERDE por omisión
+ *     — excelribbon.tips.net;
+ *   · las líneas de la rejilla son un gris claro; se cita #BFBFBF como
+ *     ejemplo de ese gris — Microsoft Support / howtoexcel.org.
  *
- * Lo que se aprieta es lo que sobra: el rótulo baja de 38% a 32%, la columna
- * del número de fila a 22 px, y el cuerpo a 12 px. Con eso la celda pasa de
- * 54 a ~78 px y `$25,800` a 12 px mide ~50. El mínimo táctil NO se toca. */
-@media (max-width: 560px) {
-  table.hoja-pad th.rot { width: 32%; }
-  table.hoja-pad th.nfila { width: 22px; }
-  table.hoja-pad th { font-size: 10px; padding: 0 2px; }
-  table.hoja-pad input.padcel { font-size: 12px; padding: 8px 4px; }
-  .pad-rejilla { padding: 0 8px 10px; }
-  .pad-barra { padding: 0 8px 8px; }
-  .pad-pie { padding: 0 8px 12px; }
+ * Lo que NO está publicado son los grises exactos del cromo de la aplicación
+ * (encabezados de fila y columna, relleno del encabezado seleccionado). Las
+ * páginas con la paleta completa están bloqueadas por la política de red del
+ * contenedor. Así que esos tres tonos son ELECCIÓN MÍA, en la familia del
+ * gris de Office, y quedan dichos como tales en vez de presentarse como
+ * medidos. Si Esteban quiere el tono exacto, se cambia en una línea.
+ *
+ * ── EL LÍMITE, que es la parte importante ────────────────────────────────
+ * Esto viste la HOJA, no el módulo. Todo lo de abajo está bajo `.hoja-pad`,
+ * `.pad-panel` o `.pad-previa`: la suite entera sigue con su estilo y no se
+ * entera. Un módulo que cambia de aspecto entero porque una pieza imita a
+ * otra aplicación es cómo se pierde la identidad de una interfaz.
+ *
+ * ── MODO OSCURO ──────────────────────────────────────────────────────────
+ * Medido: el módulo NO tiene modo oscuro —cero `prefers-color-scheme` en
+ * `machote.css` y en `fts-styles.css`; el único del repo está en
+ * `shared/login.html`—. Así que «respetar el modo oscuro» aquí sólo puede
+ * significar NO meter una isla oscura dentro de una página clara. La hoja
+ * sigue al módulo. Cuando el módulo tenga tema oscuro, esta hoja se suma con
+ * las variables de abajo, que para eso están separadas.
+ */
+:root {
+  --xl-verde:      #1D6F42;   /* verde de marca de Excel — de fuente */
+  --xl-verde-flojo:#E4EFE9;   /* elección: el mismo verde muy aguado */
+  --xl-linea:      #D4D4D4;   /* elección, en la familia del gris citado */
+  --xl-cab:        #F2F2F2;   /* elección: relleno de encabezados */
+  --xl-cab-sel:    #D8E7DE;   /* elección: encabezado de la fila/columna activa */
+  --xl-cab-linea:  #C6C6C6;   /* elección */
+  --xl-cab-tinta:  #444444;
+  --xl-ref0:       #1D6F42;   /* las tres de las referencias, rotando */
+  --xl-ref1:       #9C27B0;
+  --xl-ref2:       #C25E00;
 }
 
+/* La tipografía de Excel: Aptos es la de Office desde 2024 y Calibri la
+ * anterior; las dos están en las máquinas del equipo, que es donde esto se
+ * usa. La cadena termina en la del sistema para que no se vea rara en otra. */
+.hoja-pad, .pad-formula, .pad-dir {
+  font-family: Aptos, Calibri, 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+/* ── La barra de fórmula ──────────────────────────────────────────────────
+ * De ancho completo, y no es un adorno. Medido a 380 px: una celda mide ~60 px
+ * y ahí los NÚMEROS caben y las FÓRMULAS no. Sin esta barra, escribir una
+ * fórmula en el teléfono es hacerlo a ciegas. */
+.pad-barra { display: flex; align-items: center; gap: 8px; padding: 0 12px 8px; }
+.pad-barra .pad-dir { flex: none; min-width: 46px; text-align: center;
+                      font-size: 12px; font-weight: 700;
+                      color: var(--xl-cab-tinta); background: var(--xl-cab);
+                      border: 1px solid var(--xl-cab-linea); border-radius: 3px;
+                      padding: 12px 6px; }
+.pad-barra .pad-formula { flex: 1 1 auto; min-width: 0; min-height: var(--toque);
+                          border-radius: 3px; border: 1px solid var(--xl-cab-linea);
+                          font-size: 13px; }
+.pad-barra .pad-formula:focus { outline: 2px solid var(--xl-verde); outline-offset: -1px; }
+
+/* ── La rejilla ───────────────────────────────────────────────────────────
+ * `table-layout: fixed` impide que una fórmula larga estire su columna y
+ * empuje a las demás fuera de la pantalla. */
+/* ⚠️ ANCHO MÍNIMO, y es lo que impide que la rejilla mienta. Con diez
+ * columnas repartidas en el ancho disponible, a 900 px cada celda queda en
+ * 62 y a 760 en 51 — y ahí `$16,200` se corta. Un importe recortado se lee
+ * como otro número, que es el defecto que ya costó una corrección en la
+ * V1.41. Con el mínimo puesto, la celda nunca baja de ~78 px y lo que no
+ * cabe se DESPLAZA, que es lo que hace cualquier hoja. La previa NO lleva
+ * esto: son tres columnas y caben. */
+.pad-rejilla { padding: 0 12px 10px; overflow: auto; max-height: 56vh; }
+/* 56vh y no 52: la tabla de 10 filas mide 481 px, y a 52vh en una ventana
+ * de 900 se quedaba 13 px corta —la fila 10 pedía desplazamiento para
+ * nada—. Medido, no estimado. */
+.pad-rejilla table.hoja-pad { min-width: 960px; }
+.pad-rejilla table.hoja-pad th.rot { width: 150px; }
+/* ── PANELES CONGELADOS, como en Excel ────────────────────────────────
+ * La rejilla de diez columnas no cabe a lo ancho y se desplaza DENTRO de su
+ * caja. Sin congelar, al moverse a la derecha se iban el número de fila y el
+ * concepto: la barra decía «C1» y en la tabla no había manera de ver cuál era
+ * la 1 ni de qué renglón. Visto en la captura de 380, no en el diff.
+ * Se congelan LAS DOS, número y concepto. Congelar sólo el número deja la
+ * etiqueta pasando POR DEBAJO de una tira de 26 px y el texto se parte en dos
+ * («Tr|1|os»), que se lee como un defecto de pintado — probado y descartado.
+ * `td:first-of-type` es la celda de Concepto: el primer hijo del renglón es
+ * un `th` (el número), así que el primer `td` es la etiqueta. */
+.pad-rejilla table.hoja-pad th.nfila { position: sticky; left: 0; z-index: 3; }
+.pad-rejilla table.hoja-pad th.rot { position: sticky; left: 26px; z-index: 3; }
+.pad-rejilla table.hoja-pad tbody td:first-of-type {
+  position: sticky; left: 26px; z-index: 2; background: #fff;
+  box-shadow: 1px 0 0 var(--xl-linea); }
+table.hoja-pad { border-collapse: collapse; width: 100%; table-layout: fixed; }
+table.hoja-pad th { background: var(--xl-cab); border: 1px solid var(--xl-cab-linea);
+                    font-size: 11px; color: var(--xl-cab-tinta); font-weight: 400;
+                    height: 20px; padding: 0 4px; }
+table.hoja-pad th.rot { width: 22%; }
+table.hoja-pad th.nfila { width: 26px; font-size: 10px; }
+table.hoja-pad td { border: 1px solid var(--xl-linea); padding: 0; background: #fff; }
+table.hoja-pad input.padcel { width: 100%; border: 0; border-radius: 0;
+                              min-height: var(--toque); padding: 6px;
+                              font: inherit; font-size: 13px;
+                              box-sizing: border-box; background: transparent;
+                              color: var(--tinta); }
+table.hoja-pad input.padcel.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.hoja-pad input.padcel.rot { text-align: left; }
+table.hoja-pad input.padcel:focus { outline: none; }
+/* La celda elegida: el contorno VERDE de Excel, grueso y por dentro para que
+ * no empuje a las vecinas. */
+table.hoja-pad input.padcel.sel { box-shadow: inset 0 0 0 2px var(--xl-verde); }
+table.hoja-pad input.padcel.n-bad { color: var(--rojo); font-weight: 700; }
+
+/* ── Las celdas CITADAS por la fórmula que se está escribiendo ────────────
+ * Tres colores que rotan, como en Excel: con uno solo, dos referencias
+ * distintas se ven iguales y se pierde justo lo que esto viene a resolver —
+ * ver QUÉ estás tomando. El relleno es el color al 12%, así que el número
+ * sigue legible encima. */
+table.hoja-pad input.padcel.ref0 { box-shadow: inset 0 0 0 2px var(--xl-ref0); background: rgba(29,111,66,.10); }
+table.hoja-pad input.padcel.ref1 { box-shadow: inset 0 0 0 2px var(--xl-ref1); background: rgba(156,39,176,.10); }
+table.hoja-pad input.padcel.ref2 { box-shadow: inset 0 0 0 2px var(--xl-ref2); background: rgba(194,94,0,.10); }
+
+/* ── El tercer cuadrante: la PREVIA ───────────────────────────────────── */
+.blk-pad { flex: 1 1 320px; min-width: 0; }
+.pad-previa-cab { width: 100%; margin-bottom: -1px; }
+.pad-previa-cab th.der { text-align: right; width: 44px; }
+.pad-previa-cab .pad-expandir { width: auto; min-width: var(--toque); min-height: 28px;
+                                padding: 0 8px; font-size: 15px; line-height: 1;
+                                color: var(--xl-verde); }
+/* La previa NO se estira. Cuando el cuadrante cae a su propio renglón
+ * —de 721 a 1000 px de ancho— el bloque mide 736-876 px, y una tabla de
+ * cuatro columnas repartida ahí deja celdas de 230 px: deja de parecerse a
+ * una hoja de cálculo. Con tope, la previa se ve igual de ancha que a 1280,
+ * que es donde se diseñó. Medido en las capturas de los cuatro anchos. */
+.pad-previa { overflow-x: auto; }
+.pad-previa table.hoja-pad { max-width: 430px; }
+.pad-previa table.hoja-pad input.padcel { min-height: 34px; font-size: 12px; padding: 4px; }
+.pad-previa table.hoja-pad th { height: 18px; }
+
+/* ── El POPUP ─────────────────────────────────────────────────────────────
+ * CENTRADO en escritorio, que es como se abre una hoja cuando hay sitio. En
+ * teléfono vuelve a pegarse al borde inferior: ahí un centrado tapa la tabla
+ * que se está mirando y no deja dónde agarrarlo. */
+.pad-fondo { position: fixed; inset: 0; background: rgba(0,0,0,.28); z-index: 6; }
+.pad-fondo[hidden] { display: none; }
+.pad-panel { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+             /* ⚠️ `right` y `bottom` en `auto` NO sobran: la regla del panel
+              * anclado de la V1.36 sigue viva más arriba y deja `right:0` y
+              * `bottom:0` puestos. Con `left:50%` y `top:50%` eso SOBRE-RESTRINGE
+              * un `position:fixed` y el alto queda clavado en 50vh: medido, el
+              * panel daba 450 px de los 792 disponibles y sólo se alcanzaban 4
+              * de las 10 filas sin desplazar. No se veía en el diff; se vio en
+              * la captura y se midió. */
+             right: auto; bottom: auto;
+             width: min(980px, calc(100vw - 32px)); max-height: 88vh;
+             display: flex; flex-direction: column;
+             background: var(--fondo); border: 1px solid var(--xl-cab-linea);
+             border-radius: 8px; box-shadow: 0 18px 48px rgba(0,0,0,.22);
+             z-index: 7; padding-top: 4px; }
+.pad-panel[hidden] { display: none; }
+.pad-cab { display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+           padding: 8px 12px 6px; }
+.pad-cab strong { font-size: 13px; }
+.pad-cab .pad-cerrar { margin-left: auto; }
+.pad-ayuda { padding: 0 12px 8px; }
+.pad-ayuda code { background: var(--xl-cab); border: 1px solid var(--xl-cab-linea);
+                  border-radius: 3px; padding: 0 4px; font-size: 12px; }
+
 .pad-pie { display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
-           padding: 0 12px 12px; }
-.pad-pie .mono { font: 700 14px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-                 color: var(--tinta); }
+           padding: 8px 12px 12px; border-top: 1px solid var(--linea2); }
+.pad-pie .mono { font-size: 14px; font-weight: 700; color: var(--tinta); }
 /* ⚠️ `width: auto` NO es redundante: `shared/fts-styles.css` define
- * `.btn { width: 100% }` para el kiosko, y sin esto el botón se come el
- * renglón entero. `margin-left:auto` lo manda a la derecha sin flotar. */
+ * `.btn { width: 100% }` para el kiosko. */
 .pad-pie .btn { flex: none; width: auto; padding: 0 18px; margin-left: auto; }
+
+/* ── TELÉFONO ─────────────────────────────────────────────────────────────
+ * Sin tercer cuadrante —tres columnas a 380 px no caben y la hoja de sección
+ * ya estaba en su límite— y el popup pegado abajo, como estaba. La rejilla de
+ * 10 columnas no cabe a lo ancho: se desplaza en horizontal DENTRO de su
+ * caja, con las celdas a 64 px para que el importe entre completo. Es la
+ * decisión de la V1.41 llevada al ancho nuevo: antes que encoger hasta que no
+ * se lea, se desplaza. */
+@media (max-width: 720px) {
+  .blk-pad { display: none; }
+  .pad-fondo { display: none; }
+  .pad-panel { left: 0; right: 0; top: auto; bottom: 0; transform: none;
+               width: 100%; max-height: 82vh; border-radius: 12px 12px 0 0;
+               border-left: 0; border-right: 0; border-bottom: 0;
+               border-top: 2px solid var(--xl-verde); }
+  .pad-rejilla { padding: 0 8px 10px; max-height: 46vh; }
+  .pad-rejilla table.hoja-pad { min-width: 960px; }
+  /* En el teléfono el concepto se angosta: 26 + 150 congelados de 380 px
+   * dejan la mitad de la pantalla sin celdas. A 110 caben el número, la
+   * etiqueta y tres columnas de importe. */
+  .pad-rejilla table.hoja-pad th.rot { width: 110px; }
+  table.hoja-pad input.padcel { font-size: 12px; padding: 6px 4px; }
+  .pad-barra { padding: 0 8px 8px; }
+  .pad-pie { padding: 8px 8px 12px; }
+  .pad-ayuda { padding: 0 8px 8px; }
+}
 
 /* ── El botón que lo abre, en la cabecera de la sección ─────────────────── */
 .nomsec .accsec .pad-btn { width: auto; padding: 0 10px; font-size: 12px;
