@@ -1,7 +1,7 @@
 // ═══ FTS Kiosk — Lógica principal ═══
 // Script clásico, estado global compartido
 
-const KIOSK_BUILD = '20260710-kiosk-versioncheck';
+const KIOSK_BUILD = '20260924-kiosk-b1-visibilidad';
 console.log('[kiosk] build:', KIOSK_BUILD);
 window.KIOSK_BUILD = KIOSK_BUILD;
 // PR-7: auto version-check — si el navegador sirve un bundle viejo cacheado
@@ -1123,117 +1123,233 @@ async function registrarAsistencia(){
     supervisor_nombre:  (K.seleccionado && K.seleccionado.manager_name) || null,
   };
 
-  // Mostrar pantalla de confirmación inmediatamente
-  showScreen('ks-confirm');
+  // B1 (#269): un intento_id por intento. Es el mismo en los reintentos automáticos
+  // de n8nFetch y en el botón "Reintentar": el servidor no escribe dos veces.
+  payload.intento_id = nuevoIntentoId();
+  K.intentoActual = { payload: payload, tipo: tipo, hora: now, reintentos: 0 };
 
-  // Botón "Terminado" deshabilitado mientras procesamos (evita que el
-  // usuario salga de ks-confirm durante el await del checkin y se pierda
-  // el mensaje de "Check-in + Incidencia creadas").
-  var btnTerm = document.getElementById('btnTerminado');
-  var btnSpin = document.getElementById('btnTerminadoSpinner');
-  var btnText = document.getElementById('btnTerminadoText');
-  if(btnTerm){
-    btnTerm.disabled = true;
-    btnTerm.style.opacity = '0.6';
-    btnTerm.style.cursor = 'not-allowed';
-  }
-  if(btnSpin) btnSpin.textContent = '⏳';
-  if(btnText) btnText.textContent = 'Procesando...';
+  // Nunca se pinta la confirmación antes del POST: primero "Guardando…".
+  await enviarIntentoActual();
+}
 
-  const confirmTipo   = document.getElementById('confirm-tipo');
-  const confirmNombre = document.getElementById('confirm-nombre');
-  const confirmSO     = document.getElementById('confirm-so');
-  const confirmHora   = document.getElementById('confirm-hora');
-  const confirmGeo    = document.getElementById('confirm-geo');
-  const confirmIcon   = document.getElementById('confirm-icon');
+// ═══ B1 · Visibilidad (#269) ═══
+// Regla: la pantalla de confirmación se pinta SOLO con success === true y attendance_id.
+// Todo lo demás es "No se guardó tu checada", salvo un candado de negocio (zona gris,
+// fuera de zona, ya tienes entrada…), que conserva su modal de siempre.
 
-  if(confirmTipo){
-    const confirmLabels = {
-      entrada:        '🟢 ENTRADA',
-      salida_comida:  '🍽️ SALIDA A COMER',
-      regreso_comida: '🔄 REGRESO DE COMIDA',
-      salida:         '🔴 SALIDA',
-    };
-    const entradaLike = (tipo === 'entrada' || tipo === 'regreso_comida');
-    confirmTipo.textContent = confirmLabels[tipo] || tipo.toUpperCase();
-    confirmTipo.className = 'kiosk-big-type ' + (entradaLike ? 'in' : 'out');
-  }
-  if(confirmNombre) confirmNombre.textContent = payload.empleado_nombre || '—';
-  // PR-2 fix: si el checkout fue por BOLSA (cuenta indirecta) y no por proyecto,
-  // mostrar la bolsa en vez de "—" (payload.so_nombre viene vacío en ese caso).
-  if(confirmSO)     confirmSO.textContent     = payload.so_nombre || (payload.cuenta_nombre ? '🗂️ Bolsa: ' + payload.cuenta_nombre : '—');
-  if(confirmHora)   confirmHora.textContent   = now.toLocaleTimeString('es-MX');
-  if(confirmGeo){
-    confirmGeo.innerHTML = payload.geo_autorizada
-      ? '<span class="kiosk-geo-dot ok"></span>📍 ' + (payload.geo_sitio || 'Ubicación autorizada')
-      : '<span class="kiosk-geo-dot warn"></span>⚠️ Pendiente aprobación supervisor';
-  }
-  if(confirmIcon){
-    confirmIcon.textContent = payload.geo_autorizada ? '✓' : '⚠';
-    confirmIcon.className   = payload.geo_autorizada ? 'kiosk-status-ok' : 'kiosk-status-err';
-  }
+// Códigos que son fallas del sistema, no reglas de negocio: van a la pantalla de error
+// con "Reintentar", aunque vengan con accion_valida:false.
+var CODIGOS_FALLA_SISTEMA = {
+  ODOO_RECHAZO: 1, ODOO_NO_RESPONDE: 1, ERROR_INTERNO: 1, EN_PROCESO: 1, RESPUESTA_INVALIDA: 1,
+  TIEMPO_AGOTADO: 1
+};
 
-  // Enviar a n8n (o solo log en demo)
-  var checkinResp = null;
-  var checkinOk   = true;
-  if(!K.config.demoMode && K.config.n8nUrl){
+function nuevoIntentoId(){
+  try{ if(window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID(); }catch(e){}
+  try{
+    var b = new Uint8Array(16); window.crypto.getRandomValues(b);
+    b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;
+    var h = Array.prototype.map.call(b, function(x){ return ('0' + x.toString(16)).slice(-2); }).join('');
+    return h.slice(0,8)+'-'+h.slice(8,12)+'-'+h.slice(12,16)+'-'+h.slice(16,20)+'-'+h.slice(20);
+  }catch(e){}
+  return 'k-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12);
+}
+
+function clasificarRespuestaCheckin(r){
+  if(!r || typeof r !== 'object'){
+    return { estado: 'error', mensaje: 'El servidor no confirmó tu checada.' };
+  }
+  if(r.success === true && r.attendance_id != null && r.attendance_id !== ''){
+    return { estado: 'ok', mensaje: r.mensaje || '' };
+  }
+  // Comida: placeholder de Fase 1, a propósito no escribe en Odoo (kiosk/checkin,
+  // "Code - Comida placeholder"). success sin attendance_id es su respuesta correcta.
+  if(r.success === true && r.placeholder === true){
+    return { estado: 'ok', mensaje: r.mensaje || '' };
+  }
+  var codigo = r.codigo_error || null;
+  if(r.accion_valida === false && !(codigo && CODIGOS_FALLA_SISTEMA[codigo])){
+    return { estado: 'candado', mensaje: r.error_msg || r.mensaje || 'No se pudo registrar.' };
+  }
+  return {
+    estado: 'error',
+    codigo: codigo,
+    mensaje: r.mensaje || r.error_msg || 'El servidor no confirmó tu checada.'
+  };
+}
+
+var ETIQUETAS_TIPO = {
+  entrada:        '🟢 ENTRADA',
+  salida_comida:  '🍽️ SALIDA A COMER',
+  regreso_comida: '🔄 REGRESO DE COMIDA',
+  salida:         '🔴 SALIDA'
+};
+
+function mostrarGuardando(it){
+  var el;
+  if((el = document.getElementById('guardando-nombre'))) el.textContent = it.payload.empleado_nombre || '—';
+  if((el = document.getElementById('guardando-tipo'))){
+    el.textContent = ETIQUETAS_TIPO[it.tipo] || String(it.tipo).toUpperCase();
+    el.className = 'kiosk-big-type ' + ((it.tipo === 'entrada' || it.tipo === 'regreso_comida') ? 'in' : 'out');
+  }
+  if((el = document.getElementById('guardando-detalle'))){
+    el.textContent = it.reintentos > 0 ? 'Reintentando (' + it.reintentos + ')…' : 'No cierres esta pantalla';
+  }
+  showScreen('ks-guardando');
+}
+
+// Reconciliación: tras un timeout o una respuesta ilegible, pregunta a kiosk/intento
+// si el servidor SÍ procesó el intento. Si sigue en proceso, espera y vuelve a
+// preguntar (máx. 3 veces). Devuelve la respuesta original del servidor o null.
+async function reconciliarIntento(payload){
+  if(!window.OdooKiosk || !window.OdooKiosk.consultarIntento) return null;
+  for(var i = 0; i < 3; i++){
     try{
-      checkinResp = await window.OdooKiosk.registrarCheckin(payload);
-      // Verificar candados del backend
-      var r = Array.isArray(checkinResp) ? checkinResp[0] : checkinResp;
-      console.log('[kiosk:registrar] checkin response', {
-        success: r && r.success,
-        accion_valida: r && r.accion_valida,
-        attendance_id: r && r.attendance_id,
-        checkinOk: checkinOk,
-        hasOlvidoFlagAfterCheckin: !!K.olvidoEntradaData
-      });
-      if(r && r.accion_valida === false){
-        var errMsg = r.error_msg || 'Error desconocido';
-        mostrarErrorCandado(errMsg);
-        // Si venía en flujo de olvido, no crear incidencia (spec: si checkin falla, no incidencia)
-        clearOlvidoEntradaFlag('registrarAsistencia_candado');
-        habilitarBotonTerminado();
-        return;
-      }
-    } catch(e){
-      console.warn('Error enviando a n8n:', e);
-      checkinOk = false;
-      habilitarBotonTerminado();
+      var q = await window.OdooKiosk.consultarIntento(payload.intento_id, payload.empleado_id);
+      q = Array.isArray(q) ? q[0] : q;
+      if(q && q.procesado === true && q.resultado) return q.resultado;
+      if(!(q && q.estado === 'en_proceso')) return null;
+    }catch(e){
+      console.warn('[kiosk:b1] reconciliación falló', e && e.tipo, e && e.message);
+      return null;
     }
-  } else {
+    await new Promise(function(r){ setTimeout(r, 3000); });
+  }
+  return null;
+}
+
+function motivoLegible(e){
+  if(!e) return 'El servidor no confirmó tu checada.';
+  if(e.tipo === 'timeout')   return 'El servidor no contestó a tiempo.';
+  if(e.tipo === 'red')       return 'No hubo conexión con el servidor.';
+  if(e.tipo === 'respuesta') return 'El servidor no confirmó que se guardó.';
+  if(e.tipo === 'http')      return 'El servidor devolvió un error (' + e.status + ').';
+  return e.message || 'El servidor no confirmó tu checada.';
+}
+
+async function enviarIntentoActual(){
+  var it = K.intentoActual;
+  if(!it) return;
+  var payload = it.payload;
+  mostrarGuardando(it);
+
+  // Demo: sin servidor, se confirma directo (comportamiento de siempre).
+  if(K.config.demoMode || !K.config.n8nUrl){
     console.log('[DEMO] Payload kiosk:', payload);
-    checkinResp = { demo: true };
+    return confirmarIntento(it, { demo: true }, '');
   }
 
-  // ── Flujo olvido entrada: crear incidencia paralela ──
-  console.log('[kiosk:registrar] pre-incidencia check', {
-    checkinOk: checkinOk,
-    hasOlvidoFlag: !!K.olvidoEntradaData,
-    willCreateIncidencia: !!(checkinOk && K.olvidoEntradaData)
-  });
-  // FIX #2: guard mismatch eliminado — el FIX #1 garantiza que tipo sea
-  // siempre 'entrada' cuando hay flag activo.
-  // Diagnóstico: el flag DEBE sobrevivir hasta aquí si empezó activo
-  console.log('[kiosk:registrar] flag check at incidencia point', {
-    k_olvido: K.olvidoEntradaData,
-    checkinOk: checkinOk,
-    willFire: !!(checkinOk && K.olvidoEntradaData)
-  });
-  if(checkinOk && K.olvidoEntradaData){
+  var r = null, fallo = null;
+  try{
+    var resp = await window.OdooKiosk.registrarCheckin(payload);
+    r = Array.isArray(resp) ? resp[0] : resp;
+  }catch(e){
+    fallo = e;
+    console.warn('[kiosk:b1] checkin falló', e && e.tipo, e && e.message);
+  }
+
+  // Reconciliación: tras una falla de red o una respuesta ilegible, y también cuando el
+  // servidor dice EN_PROCESO (un reintento llegó mientras la primera ejecución seguía).
+  if(fallo || (r && r.codigo_error === 'EN_PROCESO')){
+    var rec = await reconciliarIntento(payload);
+    if(rec){ r = rec; fallo = null; }
+  }
+  console.log('[kiosk:b1] resultado', { intento_id: payload.intento_id, fallo: fallo && fallo.tipo, success: r && r.success, attendance_id: r && r.attendance_id, codigo_error: r && r.codigo_error });
+
+  if(fallo){ mostrarNoSeGuardo(it, motivoLegible(fallo)); return; }
+
+  var c = clasificarRespuestaCheckin(r);
+  if(c.estado === 'candado'){
+    showScreen('ks-guardando');
+    mostrarErrorCandado(c.mensaje);
+    // Si venía en flujo de olvido, no crear incidencia (spec: si checkin falla, no incidencia)
+    clearOlvidoEntradaFlag('registrarAsistencia_candado');
+    K.intentoActual = null;
+    return;
+  }
+  if(c.estado === 'error'){ mostrarNoSeGuardo(it, c.mensaje, c.codigo); return; }
+  return confirmarIntento(it, r, c.mensaje);
+}
+
+async function confirmarIntento(it, checkinResp, mensajeServidor){
+  var payload = it.payload, tipo = it.tipo;
+  K.intentoActual = null;
+  pintarConfirmacion(payload, tipo, it.hora, mensajeServidor);
+
+  // ── Flujo olvido entrada: crear incidencia paralela (solo tras éxito real) ──
+  if(K.olvidoEntradaData){
     var incRes = await crearIncidenciaOlvidoEntrada(payload, checkinResp);
     mostrarConfirmacionOlvidoEntrada(payload, K.olvidoEntradaData, incRes);
     clearOlvidoEntradaFlag('registrarAsistencia_ok');
     habilitarBotonTerminado();
     return;   // evita autoReturn() estándar — el modal tiene su propio botón
   }
-
-  // Habilitar botón "Terminado" antes del autoReturn (flujo normal sin olvido)
   habilitarBotonTerminado();
-
-  // Contador visible + reset al terminar (o al click en "Terminado")
   autoReturn();
 }
+
+function pintarConfirmacion(payload, tipo, hora, mensajeServidor){
+  var el;
+  if((el = document.getElementById('confirm-tipo'))){
+    var entradaLike = (tipo === 'entrada' || tipo === 'regreso_comida');
+    el.textContent = ETIQUETAS_TIPO[tipo] || String(tipo).toUpperCase();
+    el.className = 'kiosk-big-type ' + (entradaLike ? 'in' : 'out');
+  }
+  if((el = document.getElementById('confirm-nombre'))) el.textContent = payload.empleado_nombre || '—';
+  // PR-2 fix: si el checkout fue por BOLSA (cuenta indirecta) y no por proyecto,
+  // mostrar la bolsa en vez de "—" (payload.so_nombre viene vacío en ese caso).
+  if((el = document.getElementById('confirm-so'))) el.textContent = payload.so_nombre || (payload.cuenta_nombre ? '🗂️ Bolsa: ' + payload.cuenta_nombre : '—');
+  if((el = document.getElementById('confirm-hora'))) el.textContent = hora.toLocaleTimeString('es-MX');
+  if((el = document.getElementById('confirm-geo'))){
+    el.innerHTML = payload.geo_autorizada
+      ? '<span class="kiosk-geo-dot ok"></span>📍 ' + (payload.geo_sitio || 'Ubicación autorizada')
+      : '<span class="kiosk-geo-dot warn"></span>⚠️ Pendiente aprobación supervisor';
+  }
+  if((el = document.getElementById('confirm-icon'))){
+    el.textContent = payload.geo_autorizada ? '✓' : '⚠';
+    el.className   = payload.geo_autorizada ? 'kiosk-status-ok' : 'kiosk-status-err';
+  }
+  // Siempre se muestra el mensaje del servidor (p. ej. "Entrada estimada registrada…").
+  if((el = document.getElementById('confirm-mensaje'))){
+    el.textContent = mensajeServidor || '';
+    el.style.display = mensajeServidor ? '' : 'none';
+  }
+  var btnTerm = document.getElementById('btnTerminado');
+  if(btnTerm){ btnTerm.disabled = true; btnTerm.style.opacity = '0.6'; btnTerm.style.cursor = 'not-allowed'; }
+  showScreen('ks-confirm');
+}
+
+function mostrarNoSeGuardo(it, motivo, codigo){
+  var el;
+  if((el = document.getElementById('nosave-tipo'))) el.textContent = ETIQUETAS_TIPO[it.tipo] || String(it.tipo).toUpperCase();
+  if((el = document.getElementById('nosave-nombre'))) el.textContent = it.payload.empleado_nombre || '—';
+  if((el = document.getElementById('nosave-hora'))) el.textContent = it.hora.toLocaleTimeString('es-MX');
+  if((el = document.getElementById('nosave-motivo'))) el.textContent = motivo || 'El servidor no confirmó tu checada.';
+  if((el = document.getElementById('nosave-ref'))){
+    el.textContent = 'Referencia: ' + String(it.payload.intento_id).slice(0, 8) + (codigo ? ' · ' + codigo : '') +
+      (it.reintentos ? ' · reintentos: ' + it.reintentos : '');
+  }
+  var btn = document.getElementById('btnReintentar');
+  if(btn){ btn.disabled = false; btn.style.opacity = '1'; }
+  // No hay autoReturn: la pantalla se queda hasta que la persona decida.
+  showScreen('ks-nosave');
+}
+
+async function reintentarRegistro(){
+  var it = K.intentoActual;
+  if(!it){ goHome(); return; }
+  var btn = document.getElementById('btnReintentar');
+  if(btn){ btn.disabled = true; btn.style.opacity = '0.6'; }
+  it.reintentos++;
+  await enviarIntentoActual();   // mismo payload, mismo intento_id
+}
+window.reintentarRegistro = reintentarRegistro;
+
+function salirSinGuardar(){
+  K.intentoActual = null;
+  goHome();
+}
+window.salirSinGuardar = salirSinGuardar;
 
 // UI de confirmación específica para flujo olvido-entrada
 function mostrarConfirmacionOlvidoEntrada(payload, olvidoData, incRes){

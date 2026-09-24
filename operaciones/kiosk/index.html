@@ -191,6 +191,31 @@
   </div>
 </div>
 
+<!-- ═══════ PANTALLA 4b — GUARDANDO (B1 #269: nada de ✓ antes de la respuesta) ═══════ -->
+<div class="kiosk-screen" id="ks-guardando">
+  <div class="kiosk-status-wait" aria-hidden="true"><span class="kiosk-spinner-grande"></span></div>
+  <div class="kiosk-big-name" id="guardando-nombre">—</div>
+  <div id="guardando-tipo" class="kiosk-big-type in">—</div>
+  <div class="kiosk-guardando-txt">Guardando tu checada…</div>
+  <div class="kiosk-guardando-sub" id="guardando-detalle">No cierres esta pantalla</div>
+</div>
+
+<!-- ═══════ PANTALLA 4c — NO SE GUARDÓ (B1 #269) ═══════ -->
+<div class="kiosk-screen" id="ks-nosave" role="alert">
+  <div class="kiosk-status-err">✕</div>
+  <div class="kiosk-nosave-titulo">No se guardó tu checada</div>
+  <div class="kiosk-big-name" id="nosave-nombre">—</div>
+  <div id="nosave-tipo" class="kiosk-big-type out">—</div>
+  <div style="margin-top:16px;width:100%;max-width:420px">
+    <div class="kiosk-confirm-row"><span class="lbl">Hora del intento</span><span class="val" id="nosave-hora">—</span></div>
+  </div>
+  <div class="kiosk-nosave-motivo" id="nosave-motivo">—</div>
+  <div class="kiosk-nosave-instr">Si vuelve a fallar, avisa a tu supervisor.</div>
+  <button class="kiosk-terminar-btn kiosk-reintentar-btn" id="btnReintentar" onclick="reintentarRegistro()">Reintentar</button>
+  <button class="kiosk-salir-btn" onclick="salirSinGuardar()">Salir sin guardar</button>
+  <div class="kiosk-nosave-ref" id="nosave-ref"></div>
+</div>
+
 <!-- ═══════ PANTALLA 5 — CONFIRMACIÓN ═══════ -->
 <div class="kiosk-screen" id="ks-confirm">
   <div id="confirm-icon" class="kiosk-status-ok">✓</div>
@@ -201,6 +226,7 @@
     <div class="kiosk-confirm-row"><span class="lbl">Hora</span><span class="val" id="confirm-hora">—</span></div>
     <div class="kiosk-confirm-row"><span class="lbl">Ubicación</span><span class="val" id="confirm-geo"><span class="kiosk-geo-dot warn"></span>Registrando…</span></div>
   </div>
+  <div class="kiosk-confirm-mensaje" id="confirm-mensaje" style="display:none"></div>
   <div style="font-size:13px;color:#666;margin-top:32px" id="ksReturnCounter">Regresando en 4…</div>
   <button class="kiosk-terminar-btn" id="btnTerminado" onclick="terminarYHome()" disabled>
     <span id="btnTerminadoSpinner" style="display:inline-block;">⏳</span>

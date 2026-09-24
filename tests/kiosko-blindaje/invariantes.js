@@ -156,7 +156,7 @@ function entradaLograda(sim, emp, t) {
   const est = sim.estado(emp, t);
   for (const b of ['entrada', 'resolver']) {
     if (!est.botones.includes(b)) continue;
-    const s = sim.clonar(); s.fallas = { redCaida: 0, lecturaOdoo: 0, lento: 0 }; s.saturadoHasta = 0;
+    const s = sim.clonar(); s.fallas = { redCaida: 0, lecturaOdoo: 0, lecturaRapida: 0, lento: 0 }; s.saturadoHasta = 0;
     const r = s.accion(emp, b, t, { hora_real: t });
     if (r.logrado) return true;
   }
@@ -168,7 +168,7 @@ function haySalida(sim, emp, t, quien, profundidad) {
   if (profundidad === 0) return false;
   const opciones = quien === 'empleado' ? accionesEmpleado(sim, emp, t) : accionesRH(sim, emp, t).concat(accionesEmpleado(sim, emp, t));
   for (const a of opciones) {
-    const s = sim.clonar(); s.fallas = { redCaida: 0, lecturaOdoo: 0, lento: 0 }; s.saturadoHasta = 0;
+    const s = sim.clonar(); s.fallas = { redCaida: 0, lecturaOdoo: 0, lecturaRapida: 0, lento: 0 }; s.saturadoHasta = 0;
     const r = aplicar(s, emp, t, a);
     if (!r || r.error) continue;
     if (haySalida(s, emp, t + 2 * MIN, quien, profundidad - 1)) return true;

@@ -34,6 +34,7 @@ function generar(seed, empleados) {
       verdad[emp + '|' + d] = { llegada, salida };
       if (r() < 0.15) ev.push({ tipo: 'falla', t: llegada - MIN, fallas: { redCaida: 3 } });
       if (r() < 0.12) ev.push({ tipo: 'falla', t: llegada - MIN, fallas: { lecturaOdoo: r() < 0.5 ? 1 : 3 } });
+      if (r() < 0.06) ev.push({ tipo: 'falla', t: llegada - MIN, fallas: { lecturaRapida: r() < 0.5 ? 1 : 3 } });
       if (r() < 0.10) ev.push({ tipo: 'falla', t: llegada - MIN, fallas: { lento: 1 } });
       const tarde = r() < 0.15;
       ev.push({ tipo: 'entrar', emp, t: tarde ? llegada + (60 + Math.floor(r() * 140)) * MIN : llegada,
