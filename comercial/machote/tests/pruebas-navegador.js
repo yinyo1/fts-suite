@@ -1940,7 +1940,10 @@ await sembrarMachotes(q);
   await paso('las comisiones se capturan en % y se guardan como razón', async () => {
     await p.setViewportSize({ width: 1280, height: 900 });
     await ir('#/m/M-1041'); await hoja('Suministro');
-    const campo = p.locator('[data-cel="comision_fts"]');
+    /* V1.40 · la ruta lleva el id de la sección: `com:<sid>:fts`. El campo
+     * es el mismo que la gente ya tocaba, en la misma columna; lo que cambió
+     * es a QUIÉN le escribe. */
+    const campo = p.locator('[data-cel^="com:"][data-cel$=":fts"]').first();
     if (await campo.count() === 0) throw new Error('no está el campo de comisión');
     // 0.055 por dentro se ve como 5.5 en pantalla.
     const enPantalla = await campo.inputValue();
@@ -1955,11 +1958,14 @@ await sembrarMachotes(q);
       const c = localStorage.getItem('fts_machote_v1');
       if (!c) return null;
       const m = JSON.parse(c).machotes.find(x => x.id === 'M-1041');
-      return m ? m.comision_fts : null;
+      if (!m) return null;
+      // V1.40 · ahora vive en la SECCIÓN, no en el machote.
+      const sec = (m.secciones || []).find(x => x.comision_fts !== undefined);
+      return sec ? sec.comision_fts : null;
     });
-    if (guardado === null) throw new Error('no alcanzó a guardar');
+    if (guardado === null) throw new Error('no alcanzó a guardar en la sección');
     if (Math.abs(guardado - 0.08) > 1e-8) throw new Error('guardó ' + guardado + ', esperaba 0.08');
-    console.log('    pantalla 5.5% · almacén 0.055 · tecleado 8% → 0.08');
+    console.log('    pantalla 5.5% · almacén 0.055 · tecleado 8% → 0.08, en la SECCIÓN');
     await p.setViewportSize({ width: 380, height: 780 });
   });
 
@@ -2191,26 +2197,83 @@ await sembrarMachotes(q);
                 ' · renglones ' + r.suma + ' = total ' + r.tot);
   });
 
-  await paso('las comisiones SÍ son de toda la cotización', async () => {
-    /* La otra mitad de lo que pidió: "lo unico compartido es la comision de
-     * fts y del usuario". Una prueba que sólo mirara la separación dejaría
-     * pasar que se separara TAMBIÉN esto, que es justo lo que no debe pasar. */
+  await paso('V1.40 · la comisión de FTS de una sección NO mueve la de la otra', async () => {
+    /* Ésta es LA prueba del encargo, y hasta la V1.39 decía lo contrario:
+     * se llamaba «las comisiones SÍ son de toda la cotización» y comprobaba
+     * que cambiar una en la sección 1 la cambiara en la 2. Eso era el
+     * defecto, escrito como si fuera la regla.
+     *
+     * Se invierte entera, no se ajusta: una prueba que defendía el defecto
+     * no se parchea, se reemplaza. */
     await ir('#/m/M-1041');
     await p.locator('.pestana').nth(1).click(); await p.waitForTimeout(300);
-    await p.fill('[data-cel="comision_fts"]', '9');
-    await p.dispatchEvent('[data-cel="comision_fts"]', 'change');
+    const uno = p.locator('[data-cel^="com:"][data-cel$=":fts"]').first();
+    await uno.fill('9'); await uno.dispatchEvent('change');
     await p.waitForTimeout(900);
+
     await p.locator('.pestana').nth(2).click(); await p.waitForTimeout(350);
-    const enDos = await p.inputValue('[data-cel="comision_fts"]');
-    if (Number(enDos) !== 9)
-      throw new Error('la comisión no se compartió entre secciones: ' + enDos);
-    const guardado = await p.evaluate(() => {
-      const d = JSON.parse(localStorage.getItem('fts_machote_v1'));
-      return d.machotes.find(x => x.id === 'M-1041').comision_fts;
+    const dos = p.locator('[data-cel^="com:"][data-cel$=":fts"]').first();
+    const enDos = await dos.inputValue();
+    if (Number(enDos) === 9)
+      throw new Error('la comisión se contagió a la otra sección: ' + enDos);
+    if (Math.abs(Number(enDos) - 5.5) > 1e-6)
+      throw new Error('la otra sección debería seguir con la del machote (5.5), dice ' + enDos);
+
+    const almacen = await p.evaluate(() => {
+      const m = JSON.parse(localStorage.getItem('fts_machote_v1'))
+                  .machotes.find(x => x.id === 'M-1041');
+      return { machote: m.comision_fts,
+               secciones: (m.secciones || []).map(x => x.comision_fts) };
     });
-    if (Math.abs(Number(guardado) - 0.09) > 1e-9)
-      throw new Error('en el almacén quedó ' + guardado + ', se esperaba 0.09');
-    console.log('    9 % en las dos secciones · almacén 0.09, una sola vez');
+    // El machote NO se toca: sigue siendo el valor de arranque de las demás.
+    if (Math.abs(Number(almacen.machote) - 0.055) > 1e-9)
+      throw new Error('se escribió en el machote: ' + almacen.machote);
+    if (Math.abs(Number(almacen.secciones[0]) - 0.09) > 1e-9)
+      throw new Error('la sección 1 no guardó 0.09: ' + JSON.stringify(almacen.secciones));
+    if (almacen.secciones[1] !== undefined)
+      throw new Error('la sección 2 no debería tener campo propio: ' + JSON.stringify(almacen.secciones));
+    console.log('    sección 1 = 9% · sección 2 = 5.5% (heredada) · machote intacto 0.055');
+  });
+
+  await paso('V1.40 · el aviso de comisión apartada sale DEBAJO del cuadro, no en la cabecera', async () => {
+    /* Dónde, no sólo si. El defecto de la V1.39 no fue que el aviso no
+     * existiera: fue que estaba donde nadie mira. Se exige que esté en la
+     * primera pantalla DESDE EL CAMPO —que es donde la persona está parada
+     * cuando acaba de mover el número— y que la cabecera NO tenga un segundo
+     * letrero diciendo lo mismo. */
+    await ir('#/m/M-1041');
+    await p.locator('.pestana').nth(1).click(); await p.waitForTimeout(300);
+
+    const sinAviso = await p.evaluate(() => !!document.querySelector('.com-apartada'));
+    if (sinAviso) throw new Error('avisa de un desvío que no existe');
+
+    const campo = p.locator('[data-cel^="com:"][data-cel$=":fts"]').first();
+    await campo.scrollIntoViewIfNeeded();
+    await campo.fill('11'); await campo.dispatchEvent('change');
+    await p.waitForTimeout(900);
+    await p.locator('[data-cel^="com:"][data-cel$=":fts"]').first().scrollIntoViewIfNeeded();
+    await p.waitForTimeout(200);
+
+    const r = await p.evaluate(() => {
+      const a = document.querySelector('.com-apartada');
+      const c = document.querySelector('[data-cel^="com:"][data-cel$=":fts"]');
+      if (!a || !c) return { hay: !!a, campo: !!c };
+      const ra = a.getBoundingClientRect(), rc = c.getBoundingClientRect();
+      return { hay: true, texto: a.textContent.trim(),
+               enPantalla: ra.top >= 0 && ra.top < innerHeight,
+               debajo: ra.top > rc.top,
+               distancia: Math.round(ra.top - rc.bottom),
+               // Y que no haya quedado un segundo aviso de la banda vieja.
+               banda: !!document.querySelector('.com-sec, [data-comprop], [data-ircom]') };
+    });
+    console.log('    ' + JSON.stringify(r));
+    if (!r.hay) throw new Error('no avisó del desvío');
+    if (!r.enPantalla) throw new Error('el aviso no está en la primera pantalla desde el campo');
+    if (!r.debajo) throw new Error('el aviso no está DEBAJO del campo que se cambió');
+    if (r.distancia > 260) throw new Error('el aviso quedó a ' + r.distancia + 'px del campo');
+    if (r.banda) throw new Error('sigue viva la banda de excepción de la V1.34');
+    if (!/esta secci/i.test(r.texto || ''))
+      throw new Error('el aviso no dice que el cambio es sólo de esta sección: ' + r.texto);
   });
 
   await paso('el precio de una sección se mueve con SU multiplicador', async () => {
@@ -6976,66 +7039,17 @@ await sembrarMachotes(q);
     return new Function('m', 'return (' + src + ')(m);')(m);
   }, fn.toString());
 
-  await paso('V1.34 · desviar una sección, apagarla y reencenderla conserva el reparto con su fecha', async () => {
-    /* Es LA pregunta que Esteban hizo del punto 1: «¿qué pasa con lo escrito
-     * si desmarco?». La respuesta elegida —se conserva inerte, con su fecha—
-     * sólo vale si está probada: borrar el trabajo de alguien al destildar una
-     * casilla es el error que no tiene vuelta. */
-    await ir('#/m/M-1041');
-    await hoja('Suministro'); await p.waitForTimeout(500);
-
-    if (!(await p.$('.com-sec'))) throw new Error('la sección no ofrece la comisión propia');
-
-    // 1. DESVIAR, y escribir un nombre que NO es el del machote.
-    await p.click('[data-comprop]'); await p.waitForTimeout(500);
-    if (!(await p.$('.com-sec.apartado')))
-      throw new Error('desviada, pero no se ve distinta: falta la marca ámbar');
-    const marca = await p.textContent('.com-sec .rec-marca');
-    if (!/≠/.test(marca)) throw new Error('no marca la desviación: ' + marca);
-
-    const celNombre = '.com-sec [data-cel^="ec:"][data-cel$=":nombre"]';
-    if (!(await p.$(celNombre))) throw new Error('no pintó el reparto de la sección');
-    await p.fill(celNombre, 'PERSONA DE ESTA SECCIÓN');
-    await p.dispatchEvent(celNombre, 'change');
-    await p.waitForTimeout(ALMACEN);
-
-    // La fecha queda DICHA en pantalla, no sólo guardada.
-    const txtOn = (await p.textContent('.com-sec')).replace(/\s+/g, ' ');
-    const fecha = (txtOn.match(/Desviada desde el ([^.]+)\./) || [])[1];
-    if (!fecha) throw new Error('no dice desde cuándo está desviada: ' + txtOn.slice(0, 200));
-
-    // 2. APAGAR. Lo escrito NO se borra, y la pantalla lo dice.
-    await p.click('[data-comprop]'); await p.waitForTimeout(ALMACEN);
-    if (await p.$('.com-sec.apartado')) throw new Error('apagada y sigue marcada como desviada');
-    const txtOff = (await p.textContent('.com-sec')).replace(/\s+/g, ' ');
-    if (!/reparto propio guardado/.test(txtOff))
-      throw new Error('apagada y no avisa que lo guardado sigue ahí: ' + txtOff.slice(0, 220));
-    if (txtOff.indexOf(fecha) < 0)
-      throw new Error('el aviso de apagado no trae la fecha ' + fecha + ': ' + txtOff.slice(0, 220));
-
-    // Y EN EL DATO, que es donde de verdad se pierde o no se pierde.
-    const enReposo = await delAlmacen((m) => {
-      const s = (m.secciones || []).find(x => x.comision) || {};
-      return { propia: s.comision_propia, tiene: !!s.comision,
-               nombre: s.comision && (s.comision.equipo_venta || [])[0] &&
-                       s.comision.equipo_venta[0].nombre,
-               desde: s.comision && s.comision.desde };
-    });
-    if (!enReposo.tiene) throw new Error('SE BORRÓ el reparto propio al destildar');
-    if (enReposo.propia !== false) throw new Error('la bandera no se apagó: ' + enReposo.propia);
-    if (enReposo.nombre !== 'PERSONA DE ESTA SECCIÓN')
-      throw new Error('se perdió lo escrito: ' + enReposo.nombre);
-    if (!enReposo.desde) throw new Error('se perdió la fecha de desviación');
-
-    // 3. REENCENDER: vuelve lo mismo, con la misma fecha.
-    await p.click('[data-comprop]'); await p.waitForTimeout(500);
-    const vuelto = await p.inputValue(celNombre);
-    if (vuelto !== 'PERSONA DE ESTA SECCIÓN')
-      throw new Error('al reencender no volvió lo escrito: ' + vuelto);
-    if ((await p.textContent('.com-sec')).replace(/\s+/g, ' ').indexOf(fecha) < 0)
-      throw new Error('al reencender cambió la fecha; era ' + fecha);
-    console.log('    desviada → apagada (inerte, con aviso y fecha) → reencendida intacta');
-  });
+  /* ── V1.40 · aquí vivía la prueba de la banda de excepción ──────────────
+   * «desviar una sección, apagarla y reencenderla conserva el reparto con su
+   * fecha»: ejercitaba la casilla `comision_propia` y el objeto `comision`.
+   * Los dos se fueron con la V1.40 porque no eran lo que se había pedido, y
+   * porque nadie los usó nunca —medido en las 895 versiones de sección de
+   * todo el historial, no sólo en las vivas—.
+   *
+   * La prueba NO se adapta: defendía un mecanismo que ya no existe. Lo que
+   * ocupa su lugar son las dos de arriba —«la comisión de FTS de una sección
+   * NO mueve la de la otra» y «el aviso sale DEBAJO del cuadro»— más las del
+   * motor en `pruebas-motor.js`. */
 
   await paso('V1.34 · borrar un renglón CAPTURADO pregunta con números; uno en blanco no', async () => {
     /* Las dos mitades son el encargo. Preguntar por un renglón vacío enseña a
@@ -7591,17 +7605,19 @@ await sembrarMachotes(q);
         else console.log('    ' + w + 'px · panel abierto desde el fondo: top ' + pnl.top +
                          ', alto ' + pnl.alto + ' de ' + pnl.ventana);
 
-        /* Y la comisión, que se queda donde está pero se ANUNCIA arriba. */
-        const avisa = await q.evaluate(() => {
-          const e = document.querySelector('[data-ircom]');
+        /* V1.40 · lo que tiene que estar al alcance es el CAMPO de comisión,
+         * no un aviso en la cabecera: el aviso vive debajo del cuadro y sólo
+         * aparece cuando la sección se apartó. El campo está siempre. */
+        const campoCom = await q.evaluate(() => {
+          const e = document.querySelector('[data-cel^="com:"][data-cel$=":fts"]');
           if (!e) return null;
           const r = e.getBoundingClientRect();
-          return { desdeArriba: Math.round(r.top + window.scrollY), txt: e.textContent.trim() };
+          return { desdeArriba: Math.round(r.top + window.scrollY) };
         });
-        if (!avisa) { malos.push(w + 'px: la cabecera no anuncia el estado de la comisión'); continue; }
-        const pant = +(avisa.desdeArriba / h).toFixed(1);
-        if (pant > TOPE) malos.push(w + 'px · aviso de comisión: ' + pant + ' pantallas');
-        else console.log('    ' + w + 'px · aviso de comisión: «' + avisa.txt + '» a ' + pant + ' pantallas');
+        if (!campoCom) { malos.push(w + 'px: no está el campo de comisión de la sección'); continue; }
+        const pant = +(campoCom.desdeArriba / h).toFixed(1);
+        if (pant > TOPE) malos.push(w + 'px · campo de comisión: ' + pant + ' pantallas');
+        else console.log('    ' + w + 'px · campo de comisión de la sección a ' + pant + ' pantallas');
       }
       if (malos.length) throw new Error(malos.join(' | '));
     } finally { await q.close(); }
@@ -7782,88 +7798,11 @@ await sembrarMachotes(q);
     } finally { await q.close(); }
   });
 
-  await paso('V1.36 · la cabecera anuncia los DOS estados de la comisión, y lleva al bloque', async () => {
-    /* Ni silencio ni chip nuevo: la línea que ya existía dice los dos estados.
-     * El ámbar es el MISMO de un margen pisado — no un color nuevo. */
-    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
-    q.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
-    try {
-      await sembrarGeo(q); await sembrarMachotes(q);
-      await q.addInitScript(() => {
-        try { localStorage.setItem('fts_suite_session', JSON.stringify({
-          token:'p.p.p', actor:'zz.prueba', nombre:'ZZ Prueba', empleado_id:null,
-          scopes:['comercial:read','comercial:orden'], exp: Math.floor(Date.now()/1000)+3600 })); } catch (e) {}
-      });
-      await q.goto(BASE); await q.waitForTimeout(1200);
-      await q.evaluate(() => { location.hash = '#/m/M-1041'; }); await q.waitForTimeout(900);
-
-      // En DESGLOSE, el caso normal SÍ se enuncia: es donde se pregunta.
-      const desg = await q.evaluate(() => {
-        const e = document.querySelector('.com-resumen');
-        return e ? e.textContent.trim() : null;
-      });
-      if (!desg) throw new Error('DESGLOSE no dice cuántas secciones se apartan');
-      if (!/siguen este reparto/i.test(desg))
-        throw new Error('con 0 desviadas, DESGLOSE no enuncia el caso normal: ' + desg);
-
-      await q.locator('.pestana').nth(1).click(); await q.waitForTimeout(900);
-      const normal = await q.evaluate(() => {
-        const e = document.querySelector('[data-ircom]');
-        return e ? { txt: e.textContent.trim(), apartado: e.classList.contains('apartado') } : null;
-      });
-      if (!normal) throw new Error('la cabecera no anuncia la comisión');
-      if (normal.apartado) throw new Error('sin desviar y sale marcado como apartado');
-      if (!/la del machote/i.test(normal.txt)) throw new Error('el caso normal no se enuncia: ' + normal.txt);
-
-      // Desviar → la MISMA línea se vuelve la marca ámbar.
-      await q.click('[data-comprop]'); await q.waitForTimeout(600);
-      const desv = await q.evaluate(() => {
-        const e = document.querySelector('[data-ircom]');
-        const cs = e ? getComputedStyle(e) : null;
-        return e ? { txt: e.textContent.trim(), apartado: e.classList.contains('apartado'), color: cs.color } : null;
-      });
-      if (!desv.apartado) throw new Error('desviada y la línea no se marcó');
-      if (!/≠ machote/.test(desv.txt)) throw new Error('la marca no usa el lenguaje de un margen pisado: ' + desv.txt);
-      const ambar = await q.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--ambar').trim());
-      const rgb = await q.evaluate((hex) => {
-        const d = document.createElement('div'); d.style.color = hex; document.body.appendChild(d);
-        const c = getComputedStyle(d).color; d.remove(); return c;
-      }, ambar);
-      if (desv.color !== rgb)
-        throw new Error('la marca NO usa el ámbar del módulo: ' + desv.color + ' contra ' + rgb);
-
-      // Y lleva al bloque.
-      await q.evaluate(() => window.scrollTo(0, 0));
-      await q.click('[data-ircom]'); await q.waitForTimeout(700);
-      const llegó = await q.evaluate(() => {
-        const e = document.querySelector('.com-sec');
-        const r = e.getBoundingClientRect();
-        return r.top > -50 && r.top < window.innerHeight;
-      });
-      if (!llegó) throw new Error('pulsar el aviso no llevó al bloque de la comisión');
-
-      // Y en DESGLOSE ahora dice cuántas, con enlace.
-      await q.locator('.pestana').nth(0).click(); await q.waitForTimeout(700);
-      const desg2 = await q.evaluate(() => {
-        const e = document.querySelector('.com-resumen');
-        return e ? { txt: e.textContent.trim(), enlaces: e.querySelectorAll('[data-irsec]').length } : null;
-      });
-      if (!/1 de \d+ secci[oó]n/i.test(desg2.txt))
-        throw new Error('DESGLOSE no cuenta la desviada: ' + desg2.txt);
-      if (desg2.enlaces !== 1) throw new Error('DESGLOSE no enlaza a la sección desviada');
-      console.log('    normal: «' + normal.txt + '» · desviada: «' + desv.txt + '» ámbar · DESGLOSE: «' + desg2.txt + '»');
-    } finally { await q.close(); }
-  });
-
-
-  /* ══ V1.37 · DESHACER UN BORRADO, y el pad desde donde se trabaja ═══════
-   *
-   * El punto 5 del #246 dejó dicho lo incómodo: el deshacer sólo apuntaba
-   * cambios de CELDA, así que lo que más valdría deshacer —un renglón o una
-   * sección borrada— era justo lo que no cubría. Estas pruebas cubren el
-   * arreglo, y las dos primeras tienen dientes comprobados contra el código
-   * de hoy (se corrieron con `apuntarBorrado` neutralizado y fallan).
-   */
+  /* ── V1.40 · aquí vivía «la cabecera anuncia los DOS estados de la comisión»
+   * Medía el renglón «Comisión: la del machote · cambiar» y que llevara a la
+   * banda de excepción. Los dos se fueron: el aviso ahora sale DEBAJO del
+   * cuadro donde se cambia el número, y lo cubre la prueba
+   * «el aviso de comisión apartada sale DEBAJO del cuadro, no en la cabecera». */
 
   await paso('V1.37 · borrar un renglón capturado se puede DESHACER, y vuelve a su sitio', async () => {
     const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
@@ -8326,7 +8265,10 @@ await sembrarMachotes(q);
           return { y: Math.round(b.top + scrollY), alto: Math.round(b.height),
                    enPantalla: b.top >= 0 && b.top < innerHeight }; };
         const pad = document.querySelector('[data-padabrir]');
-        const com = document.querySelector('.com-avisa');
+        /* V1.40 · lo que tiene que verse al aterrizar es el CAMPO de comisión
+         * de la sección, no el aviso: el aviso sólo existe cuando alguien se
+         * apartó, y aquí nadie se ha apartado todavía. */
+        const com = document.querySelector('[data-cel^="com:"][data-cel$=":fts"]');
         return { pad: dentro(pad), padTexto: pad ? pad.textContent.trim() : null,
                  com: dentro(com), comTexto: com ? com.textContent.trim() : null,
                  scroll: Math.round(scrollY) };
@@ -8341,12 +8283,10 @@ await sembrarMachotes(q);
        * no lo sepa ya, y el `title` no existe en teléfono. */
       if (!/pad de trabajo/i.test(r.padTexto || ''))
         throw new Error('el botón no dice qué es: ' + JSON.stringify(r.padTexto));
-      /* Y el aviso de comisión tiene que traer VERBO, que es lo que convierte
-       * un rótulo en una puerta. */
-      if (!/cambiar|ver/i.test(r.comTexto || ''))
-        throw new Error('el aviso de comisión no dice qué se puede hacer: ' + JSON.stringify(r.comTexto));
+      /* Y el campo tiene que ser tocable de verdad: es el control que la gente
+       * usa, y el mínimo táctil vale igual para un `input` que para un botón. */
       if (r.com.alto < 40)
-        throw new Error('el aviso mide ' + r.com.alto + 'px de alto: por debajo del mínimo táctil');
+        throw new Error('el campo de comisión mide ' + r.com.alto + 'px de alto: por debajo del mínimo táctil');
     } finally { await q.close(); }
   });
 

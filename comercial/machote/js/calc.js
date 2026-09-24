@@ -18,7 +18,7 @@
    * que no es el que espera. Se bumpea junto con `const VERSION_ARCHIVO` de
    * `app.js`, el `?v=` de `index.html` y `version.json` — hay una prueba que
    * falla si los cuatro se separan. */
-  const VERSION = 'V1.39';
+  const VERSION = 'V1.40';
 
   const num = (v) => (typeof v === 'number' && isFinite(v)) ? v : 0;
   const vacio = (v) => v === null || v === undefined || v === '';
@@ -547,32 +547,42 @@
    *  mantiene en pie a los machotes capturados ANTES de este cambio: una
    *  sección sin `margenes` propios sigue leyendo los del machote y muestra
    *  exactamente los mismos números que mostraba. Nada que migrar. */
-  /** El reparto de comisiones que gobierna una sección.
+  /** ── V1.40 · los DOS PORCENTAJES de comisión, por sección ──────────────
    *
-   *  Es el gemelo de `margenes()` pero AL REVÉS, y la diferencia es
-   *  deliberada: los multiplicadores son de la sección y el machote sólo da
-   *  el arranque, porque el suministro no se vende con el mismo multiplicador
-   *  que la instalación. Las comisiones son al contrario — se pactan una vez
-   *  para la cotización — así que aquí manda el MACHOTE y la sección sólo se
-   *  desvía cuando alguien lo pide marcando `comision_propia`.
+   *  «Comisión de FTS» y «comisión de cliente» son los dos campos que la
+   *  gente ya toca, y viven en la misma columna de «Margen de utilidad» que
+   *  los cuatro multiplicadores. Hasta la V1.39 eran del machote entero:
+   *  cambiar uno en una sección lo cambiaba en TODAS, en silencio. Ahora son
+   *  de la sección, con el machote como valor de arranque.
    *
-   *  Mientras la casilla esté apagada la sección sigue al machote EN VIVO:
-   *  esto no copia nada, lee el del machote cada vez que se calcula. Si el
-   *  reparto del machote cambia, la sección cambia con él.
+   *  El mecanismo es el de `recargosDe`, no uno nuevo: una capa que prefiere
+   *  lo de la sección y cae al machote, y que además dice de DÓNDE salió el
+   *  número para que la pantalla pueda avisar sin recalcularlo por su cuenta
+   *  (§20 regla 4, un solo escritor).
    *
-   *  `s.comision` puede existir con la casilla apagada: es el reparto que la
-   *  sección tuvo desviado y que se conserva inerte por si la vuelven a
-   *  encender. Inerte quiere decir que NO se lee aquí. */
-  function comisionDe(m, s) {
-    const propio = s && s.comision_propia === true && s.comision;
-    const de = propio ? s.comision : (m || {});
-    return {
-      reparto: Object.assign({}, REPARTO_PLANTILLA, de.reparto || {}),
-      equipo_venta: de.equipo_venta || [],
-      equipo_operaciones: de.equipo_operaciones || [],
-      equipo_cliente: de.equipo_cliente || [],
-      propio: !!propio
+   *  ⚠️ AUSENTE NO ES CERO, y aquí la diferencia mueve dinero: `0` es «esta
+   *  sección no paga comisión» y ausente es «la del machote». Por eso la
+   *  celda vacía BORRA el campo en vez de escribir cero — igual que el
+   *  recargo, por la misma razón.
+   *
+   *  ── Lo que ESTO SUSTITUYE, y por qué se fue ──
+   *  La V1.34 construyó otra cosa: una banda «COMISIÓN DE ESTA SECCIÓN» con
+   *  una casilla de excepción que desviaba el REPARTO (quién se lleva qué
+   *  dentro de la bolsa). No era lo que se había pedido, y en 895 versiones
+   *  de sección de todo el historial nadie la encendió NUNCA — medido antes
+   *  de quitarla, no supuesto. Dos controles para lo mismo es peor que uno
+   *  mal puesto, así que se fue entera. El reparto vuelve a ser del machote,
+   *  que es lo que siempre fue en los datos reales. */
+  function comisionesDe(m, s) {
+    const capa = (clave) => {
+      const v = s ? s[clave] : undefined;
+      const hay = v !== undefined && v !== null && v !== '';
+      const delMachote = num(m && m[clave]);
+      const pct = hay ? num(v) : delMachote;
+      return { pct: pct, origen: hay ? 'seccion' : 'machote',
+               delMachote: delMachote, apartado: hay && pct !== delMachote };
     };
+    return { fts: capa('comision_fts'), cliente: capa('comision_cliente') };
   }
 
   function margenes(m, s) {
@@ -675,6 +685,8 @@
     const cptsViaje = conceptosViaje(m, s);
     // V1.28 · los recargos vigentes de ESTA sección, con su procedencia.
     const recSec = recargosDe(m, s);
+    // V1.40 · los dos porcentajes de comisión de ESTA sección, con su procedencia.
+    const comSec = comisionesDe(m, s);
     const monedas = {};
 
     (s.mo || []).forEach(l => {
@@ -710,6 +722,10 @@
     const viajePorResolver = (esForaneo(m) && !viajeDe(m).no_aplica && seccionConAlgo)
       ? cptsViaje.filter(x => !x.resuelto).length : 0;
 
+    const ventaSec = ventaMo + ventaMat + costoViaje;
+    const comFtsSec = ventaSec * comSec.fts.pct;
+    const comCliSec = (ventaSec + comFtsSec) * comSec.cliente.pct;
+
     return {
       id: s.id, nombre: s.nombre,
       // Los multiplicadores de ESTA sección. La pantalla los pinta de aquí, no
@@ -734,6 +750,20 @@
       recargos: recSec,
       recargosApartados: esEUA(m)
         ? ['fin_semana', 'festivo'].filter(k => recSec[k].apartado).length : 0,
+      /* ── V1.40 · la comisión de ESTA sección ──────────────────────────
+       * En cascada y en este orden: la del cliente se calcula sobre el
+       * precio que YA incluye la de FTS. Es el mismo orden que tenía el
+       * cálculo global (DESGLOSE COTIZACION D7/D8), sólo que ahora con los
+       * porcentajes de la sección.
+       *
+       * La pantalla pinta de aquí, no lo resuelve por su cuenta: dos
+       * lugares decidiendo el mismo número es cómo empezó el bug de los
+       * márgenes compartidos (§20 regla 4). */
+      comisiones: comSec,
+      comisionesApartadas: (comSec.fts.apartado ? 1 : 0) +
+                           (comSec.cliente.apartado ? 1 : 0),
+      comFts: comFtsSec,
+      comCli: comCliSec,
       monedas: Object.keys(monedas)
     };
   }
@@ -770,13 +800,29 @@
     // Días de viaje: se cuentan aparte de las horas a propósito (ver costoMo).
     const dias       = secciones.reduce((a, s) => a + s.dias, 0);
 
+    // Los del MACHOTE, que siguen siendo el valor de arranque de cada sección.
     const pctFts = num(m.comision_fts);
     const pctCli = num(m.comision_cliente);
 
-    // Las comisiones van en cascada, en este orden: la del cliente se calcula
-    // sobre el precio que ya incluye la de FTS. (DESGLOSE COTIZACION D7/D8.)
-    const comFtsCU = venta * pctFts;
-    const comCliCU = (venta + comFtsCU) * pctCli;
+    /* ── V1.40 · las comisiones se suman POR SECCIÓN ────────────────────
+     * Cada sección aplica SUS dos porcentajes sobre SU venta, en cascada
+     * (la del cliente sobre el precio que ya incluye la de FTS — DESGLOSE
+     * COTIZACION D7/D8).
+     *
+     * ⚠️ EL ATAJO NO ES UNA OPTIMIZACIÓN, ES LA GARANTÍA — el mismo patrón
+     * que ya protegía al reparto más abajo. Cuando NINGUNA sección se
+     * aparta —o sea, TODOS los machotes que ya existen— se corre el mismo
+     * camino de antes, línea por línea. No una fórmula equivalente: LA
+     * MISMA. Porque `Σ(venta_i × p)` y `(Σventa_i) × p` son iguales en
+     * álgebra y NO necesariamente en coma flotante, y «no cambia ni un
+     * centavo» tiene que ser un hecho, no una esperanza. */
+    const algunaApartada = secciones.some(s => s.comisionesApartadas > 0);
+    const comFtsCU = algunaApartada
+      ? secciones.reduce((a, s) => a + s.comFts, 0)
+      : venta * pctFts;
+    const comCliCU = algunaApartada
+      ? secciones.reduce((a, s) => a + s.comCli, 0)
+      : (venta + comFtsCU) * pctCli;
     const precioCU = venta + comFtsCU + comCliCU;       // escenario CON UTILIDAD
 
     // Las comisiones como fracción del precio: es lo que el escenario de
@@ -790,7 +836,12 @@
     const comFtsMD = precioMD === null ? 0 : precioMD * kFts;
     const comCliMD = precioMD === null ? 0 : precioMD * kCli;
 
-    // Factor_req: cuántas veces el costo hay que cobrar para llegar al margen.
+    /* Factor_req: cuántas veces el costo hay que cobrar para llegar al margen.
+     * Usa los porcentajes DEL MACHOTE a propósito: es un número de cabecera
+     * de toda la cotización, y con secciones que reparten distinto no existe
+     * un solo factor. Los escenarios sí son exactos —`kFts`/`kCli` salen de
+     * los totales reales, no de estos porcentajes—; el que queda como
+     * aproximación cuando hay desvíos es este indicador. */
     const dfact = 1 - margenDeseado * (1 + pctFts) * (1 + pctCli);
     const factorReq = dfact > 0 ? 1 / dfact : null;
 
@@ -830,7 +881,12 @@
         costo: { mo: s.costoMo, mat: s.costoMat, viaje: s.costoViaje, precio: s.costo },
         con_utilidad: {
           mo: s.ventaMo, mat: s.ventaMat, viaje: s.ventaViaje,
-          precio: s.venta + (comFtsCU + comCliCU) * pesoV
+          /* V1.40 · con desvíos, cada sección carga la comisión que ella
+           * causó, no una parte a prorrata de la venta: si la sección 2
+           * cobra el doble de comisión, prorratear se la pasaría a la 1.
+           * Sin desvíos se conserva la línea vieja, exacta (ver el atajo). */
+          precio: algunaApartada ? (s.venta + s.comFts + s.comCli)
+                                 : s.venta + (comFtsCU + comCliCU) * pesoV
         },
         margen_deseado: precioMD === null
           ? { mo: null, mat: null, viaje: null, precio: null }
@@ -840,12 +896,6 @@
 
       const precioSec = esc[elegido.id] ? esc[elegido.id].precio : null;
       return Object.assign({}, s, {
-        /* ⚠️ La marca y el reparto se leen de la sección CRUDA, no de `s`.
-         * `s` es la salida de `totalSeccion`, que devuelve totales y no
-         * arrastra los campos de captura — se perdían aquí en silencio y el
-         * desvío no se detectaba nunca. */
-        comision_propia: ((m.secciones || [])[iSec] || {}).comision_propia === true,
-        comision: ((m.secciones || [])[iSec] || {}).comision || null,
         peso, pesoV, esc,
         precio: precioSec,
         utilidad: precioSec === null ? null : precioSec - s.costo - (elegido.precio > 0 ? (elegido.comisionFts + elegido.comisionCliente) * peso : 0),
@@ -854,78 +904,30 @@
     });
 
     /* ── Reparto de comisiones ─────────────────────────────────────────────
-     * El reparto es DEL MACHOTE y se aplica a todas las secciones. Una
-     * sección sólo se desvía si alguien marcó `comision_propia`.
+     * El reparto —quién se lleva qué dentro de la bolsa— es DEL MACHOTE y se
+     * aplica a todas las secciones. Se pacta una vez para la cotización.
      *
-     * ⚠️ EL ATAJO DE ARRIBA NO ES UNA OPTIMIZACIÓN, ES LA GARANTÍA.
-     * Cuando ninguna sección se desvía —o sea, TODOS los machotes que ya
-     * existen— se corre exactamente el mismo camino de antes, línea por
-     * línea. No una fórmula equivalente: LA MISMA. Así ningún machote
-     * capturado puede cambiar ni un centavo por este cambio, y no hay que
-     * confiar en que dos caminos distintos den el mismo flotante.
+     * ── V1.40 · aquí vivía una excepción por sección, y se fue ──
+     * La V1.34 dejó que una sección repartiera distinto marcando una casilla
+     * (`comision_propia` + un objeto `comision` con sus propios equipos). Era
+     * una traducción equivocada de lo que se había pedido: lo que hacía falta
+     * era que los dos PORCENTAJES fueran por sección, no que cada sección
+     * tuviera su propia nómina de beneficiarios.
      *
-     * Cuando SÍ hay desvíos, la bolsa total no cambia: lo único que cambia es
-     * cómo se reparte. Cada sección toma su parte por `peso` (el mismo peso
-     * por costo con el que ya se le descuenta la comisión en su `utilidad`,
-     * arriba) y la reparte con SU gente si está desviada, o con la del
-     * machote si no. Al final se suma por persona. */
+     * Antes de borrarlo se midió, en TODO el historial append-only y no sólo
+     * en las versiones vivas: 895 versiones de sección, `comision_propia`
+     * encendida en 0, el objeto `comision` escrito en 0. Nadie la usó nunca,
+     * así que no hubo dato que preservar ni migración que escribir. La
+     * medición está en el #246; queda dicha aquí porque el día que alguien
+     * relea esto, «no había datos» no se puede deducir del código.
+     *
+     * Lo que sustituye a esa banda es `comisionesDe` (arriba). */
     const rep = Object.assign({}, REPARTO_PLANTILLA, m.reparto || {});
-    const desviadas = detalle.filter(s => s.comision_propia === true);
-
     const bolsaVenta = elegido.comisionFts * num(rep.venta);
     const bolsaOps   = elegido.comisionFts * num(rep.operaciones);
-
-    let venta_, ops_, cliente_;
-    if (!desviadas.length) {
-      venta_   = repartir(bolsaVenta, m.equipo_venta);
-      ops_     = repartir(bolsaOps, m.equipo_operaciones);
-      cliente_ = repartir(elegido.comisionCliente, m.equipo_cliente);
-    } else {
-      const acum = { venta: {}, ops: {}, cliente: {} };
-      const orden = { venta: [], ops: [], cliente: [] };
-      const meter = (donde, lineas) => {
-        lineas.forEach(l => {
-          if (acum[donde][l.nombre] === undefined) {
-            acum[donde][l.nombre] = 0; orden[donde].push(l.nombre);
-          }
-          acum[donde][l.nombre] += l.monto;
-        });
-      };
-      let sumaV = 0, sumaO = 0, sumaC = 0, n = 0;
-      detalle.forEach(s => {
-        const c = comisionDe(m, s);
-        const r = Object.assign({}, REPARTO_PLANTILLA, c.reparto || {});
-        const parteFts = elegido.comisionFts * s.peso;
-        const parteCli = elegido.comisionCliente * s.peso;
-        const v = repartir(parteFts * num(r.venta), c.equipo_venta);
-        const o = repartir(parteFts * num(r.operaciones), c.equipo_operaciones);
-        const k = repartir(parteCli, c.equipo_cliente);
-        meter('venta', v.lineas); meter('ops', o.lineas); meter('cliente', k.lineas);
-        sumaV += v.suma; sumaO += o.suma; sumaC += k.suma; n++;
-      });
-      /* La `suma` que se devuelve es el PROMEDIO de los repartos, para que
-       * «¿suma 100%?» siga significando lo mismo que antes: 1 es que cuadra.
-       * Sumar las sumas daría el número de secciones. */
-      const arma = (donde, suma) => ({
-        lineas: orden[donde].map(nombre => ({ nombre: nombre, pct: null,
-                                              monto: acum[donde][nombre] })),
-        suma: n ? suma / n : 0,
-        cuadra: n === 0 || Math.abs(suma / n - 1) < 0.0001
-      });
-      venta_   = arma('venta', sumaV);
-      ops_     = arma('ops', sumaO);
-      cliente_ = arma('cliente', sumaC);
-    }
-
-    /* Qué secciones tienen un reparto propio que NO suma 100%. La regla dura
-     * aplica al machote y a CADA sección desviada; sin esta lista, una
-     * sección mal repartida se escondería detrás del promedio. */
-    const repartosRotos = desviadas.filter(s => {
-      const c = comisionDe(m, s);
-      return !repartir(1, c.equipo_venta).cuadra ||
-             !repartir(1, c.equipo_operaciones).cuadra ||
-             !repartir(1, c.equipo_cliente).cuadra;
-    }).map(s => s.nombre || s.id);
+    const venta_   = repartir(bolsaVenta, m.equipo_venta);
+    const ops_     = repartir(bolsaOps, m.equipo_operaciones);
+    const cliente_ = repartir(elegido.comisionCliente, m.equipo_cliente);
 
     // Bloque BUDGET ODOO: lo que se captura como presupuesto del proyecto.
     // El cuadre de abajo es el `COINCIDE CON LA TABLA?` del machote: da
@@ -982,13 +984,8 @@
       pesoMo:  costo > 0 ? costoMoTot / costo : null,
       pesoMat: costo > 0 ? costoMat / costo : null,
       pesoViaje: costo > 0 ? costoViaje / costo : null,
-      reparto: { venta: venta_, operaciones: ops_, cliente: cliente_,
-                 /* Qué secciones se desviaron y cuáles de ellas no suman 100%.
-                  * La pantalla los necesita para marcarlas, y la regla dura
-                  * necesita que una sección mal repartida no se esconda
-                  * detrás del promedio. */
-                 secciones_desviadas: desviadas.map(x => x.nombre || x.id),
-                 repartos_rotos: repartosRotos },
+      reparto: { venta: venta_, operaciones: ops_, cliente: cliente_ },
+
       budget,
       sinPrecio, moSinTarifa, sinTipo, sinLink, pisados, mezclaMoneda,
       huecos, costoIncompleto: huecos > 0
@@ -1023,7 +1020,7 @@
     PARTIDAS_EN_BLANCO, EQUIPO_VENTA_PLANTILLA, EQUIPO_OPS_PLANTILLA,
     usadaPartida, capturada, padPendiente,
     seccionNueva, machoteNuevo,
-    tcEfectivo, margenes, comisionDe, costoMo, costoPartida, totalSeccion,
+    tcEfectivo, margenes, comisionesDe, costoMo, costoPartida, totalSeccion,
     calcular, precioParaMargen, repartir
   };
 })(window);

@@ -373,15 +373,24 @@ es(tieneDura(vj, 'sin-lugar-ejecucion'), true, 'viejos · el revisador pide el l
 es(tieneDura(vj, 'foranea-sin-viaje'), false, 'viejos · pero no los trata como foráneos');
 
 
-/* ══ V1.34 · comisiones del machote con excepción por sección ═══════════════
+/* ══ V1.40 · LOS DOS PORCENTAJES DE COMISIÓN, POR SECCIÓN ══════════════════
+ *
+ * Lo que se pidió, y lo que la V1.34 había entendido al revés: «comisión de
+ * FTS» y «comisión de cliente» —los dos campos que la gente ya toca, en la
+ * columna de margen de utilidad— tienen que ser DE LA SECCIÓN. Hasta la V1.39
+ * cambiar uno en una sección lo cambiaba en todas, en silencio.
  *
  * Lo que se ejercita, que es lo que puede salir mal:
- *   1. Sin desvíos, el resultado es IDÉNTICO al de antes. No parecido:
- *      idéntico. Es lo que sostiene a los machotes ya capturados.
- *   2. Con un desvío, la BOLSA TOTAL no se mueve — sólo cambia a quién le
- *      toca. Si la bolsa cambiara, el desvío estaría inventando dinero.
- *   3. Una sección con la casilla apagada NO lee su reparto guardado, por
- *      mucho que lo tenga: inerte quiere decir inerte.
+ *   1. Sin desvíos, TODO número es idéntico al de antes. No parecido:
+ *      idéntico, hasta el último bit. Es lo que sostiene a los 45 machotes
+ *      ya capturados — y lo que garantiza el atajo de `calcular`.
+ *   2. Cambiar la comisión de la sección 1 NO mueve la de la sección 2.
+ *      Éste es literalmente el defecto que se reportó.
+ *   3. `0` y «vacío» son cosas distintas: cero es «esta sección no paga» y
+ *      ausente es «la del machote». Si se confundieran, quien quiera poner
+ *      cero acabaría heredando el 5.5% sin enterarse.
+ *   4. El total sube o baja lo que debe: la sección desviada carga SU
+ *      comisión, no una parte a prorrata.
  */
 (function () {
   const base = () => {
@@ -390,65 +399,80 @@ es(tieneDura(vj, 'foranea-sin-viaje'), false, 'viejos · pero no los trata como 
     // Dos secciones con costo, para que los pesos no sean triviales.
     m.secciones[0].mo[0].qty = 100; m.secciones[0].mo[0].pu = 100;
     m.secciones[1].mo[0].qty = 300; m.secciones[1].mo[0].pu = 100;
-    m.equipo_venta = [{ nombre: 'ALDO', pct: 0.5 }, { nombre: 'ANGEL', pct: 0.5 }];
-    m.equipo_operaciones = [{ nombre: 'SUPER', pct: 1 }];
-    m.equipo_cliente = [{ nombre: 'CONTACTO', pct: 1 }];
+    m.comision_fts = 0.055; m.comision_cliente = 0.02;
     return m;
   };
-  const bolsa = (c) => c.reparto.venta.lineas.concat(c.reparto.operaciones.lineas,
-                          c.reparto.cliente.lineas).reduce((a, l) => a + l.monto, 0);
-  const porNombre = (c, quien) => {
-    const t = c.reparto.venta.lineas.concat(c.reparto.operaciones.lineas,
-                c.reparto.cliente.lineas).filter(l => l.nombre === quien)[0];
-    return t ? t.monto : 0;
-  };
 
+  // ── 1 · sin desvíos: el MISMO camino, no uno equivalente ────────────────
   const sin = base();
   const cSin = C.calcular(sin);
+  const aMano = (() => {
+    const venta = cSin.venta;
+    const cf = venta * 0.055;
+    const cc = (venta + cf) * 0.02;
+    return { cf, cc, precio: venta + cf + cc };
+  })();
+  es(cSin.escenarios.con_utilidad.comisionFts === aMano.cf, true,
+     'comisiones · sin desvíos, la de FTS es EXACTAMENTE la de antes (mismo bit)');
+  es(cSin.escenarios.con_utilidad.comisionCliente === aMano.cc, true,
+     'comisiones · sin desvíos, la de cliente es EXACTAMENTE la de antes');
+  es(cSin.escenarios.con_utilidad.precio === aMano.precio, true,
+     'comisiones · sin desvíos, el precio es EXACTAMENTE el de antes');
+  es(cSin.secciones[0].comisionesApartadas, 0, 'comisiones · sin desvíos no marca ninguna');
 
-  // 1 · sin desvíos: idéntico, y sin marcas
-  es(cSin.reparto.secciones_desviadas.length, 0, 'comisiones · sin desvíos no marca ninguna');
-  eq(porNombre(cSin, 'ALDO'), porNombre(cSin, 'ANGEL'),
-     'comisiones · sin desvíos, 50/50 reparte igual');
+  // ── 2 · cambiar la de UNA sección NO mueve la otra ──────────────────────
+  //     Es el defecto reportado, y va por los dos campos.
+  const uno = base();
+  uno.secciones[0].comision_fts = 0.10;
+  const cUno = C.calcular(uno);
+  eq(cUno.secciones[1].comFts, cSin.secciones[1].comFts,
+     'comisiones · cambiar la de FTS en la sección 1 NO mueve la de la 2', 0.0001);
+  es(cUno.secciones[0].comFts > cSin.secciones[0].comFts, true,
+     'comisiones · cambiar la de FTS en la sección 1 SÍ mueve la suya');
+  es(cUno.secciones[0].comisiones.fts.origen, 'seccion',
+     'comisiones · la sección dice que el número es suyo');
+  es(cUno.secciones[1].comisiones.fts.origen, 'machote',
+     'comisiones · la que no se tocó sigue diciendo que es del machote');
 
-  // 2 · con un desvío, la BOLSA TOTAL no se mueve
-  const con = base();
-  con.secciones[0].comision_propia = true;
-  con.secciones[0].comision = {
-    reparto: { venta: 0.73, operaciones: 0.27 },
-    equipo_venta: [{ nombre: 'ALDO', pct: 1 }],          // toda la sección A para ALDO
-    equipo_operaciones: [{ nombre: 'SUPER', pct: 1 }],
-    equipo_cliente: [{ nombre: 'CONTACTO', pct: 1 }],
-    desde: '2026-09-16T00:00:00.000Z', por: 'zz.prueba'
-  };
-  const cCon = C.calcular(con);
-  eq(bolsa(cCon), bolsa(cSin), 'comisiones · un desvío NO mueve la bolsa total', 0.02);
-  es(cCon.reparto.secciones_desviadas.length, 1, 'comisiones · marca la sección desviada');
-  // Y a ALDO le toca más que antes, porque se quedó con toda la sección A.
-  es(porNombre(cCon, 'ALDO') > porNombre(cSin, 'ALDO'), true,
-     'comisiones · el desvío SÍ cambia a quién le toca');
+  const dos = base();
+  dos.secciones[0].comision_cliente = 0.09;
+  const cDos = C.calcular(dos);
+  eq(cDos.secciones[1].comCli, cSin.secciones[1].comCli,
+     'comisiones · cambiar la de CLIENTE en la sección 1 NO mueve la de la 2', 0.0001);
+  es(cDos.secciones[0].comCli > cSin.secciones[0].comCli, true,
+     'comisiones · cambiar la de CLIENTE en la sección 1 SÍ mueve la suya');
 
-  // 3 · la casilla apagada ignora el reparto guardado (inerte)
-  const apagada = base();
-  apagada.secciones[0].comision_propia = false;
-  apagada.secciones[0].comision = con.secciones[0].comision;   // guardado, inerte
-  const cApagada = C.calcular(apagada);
-  eq(porNombre(cApagada, 'ALDO'), porNombre(cSin, 'ALDO'),
-     'comisiones · apagada NO lee su reparto guardado: inerte es inerte');
-  es(cApagada.reparto.secciones_desviadas.length, 0,
-     'comisiones · apagada no cuenta como desviada');
+  // ── 3 · cero NO es vacío ────────────────────────────────────────────────
+  const cero = base();
+  cero.secciones[0].comision_fts = 0;
+  const cCero = C.calcular(cero);
+  es(cCero.secciones[0].comFts, 0, 'comisiones · cero en la sección significa CERO');
+  es(cCero.secciones[0].comisiones.fts.apartado, true,
+     'comisiones · poner cero cuenta como apartarse del machote');
+  eq(cCero.secciones[1].comFts, cSin.secciones[1].comFts,
+     'comisiones · el cero de una sección no toca a la otra', 0.0001);
 
-  // 4 · un reparto propio que no suma 100% se delata, no se esconde
-  const rota = base();
-  rota.secciones[0].comision_propia = true;
-  rota.secciones[0].comision = {
-    reparto: { venta: 0.73, operaciones: 0.27 },
-    equipo_venta: [{ nombre: 'ALDO', pct: 0.4 }],   // 40%, no cuadra
-    equipo_operaciones: [{ nombre: 'SUPER', pct: 1 }],
-    equipo_cliente: [{ nombre: 'CONTACTO', pct: 1 }]
-  };
-  es(C.calcular(rota).reparto.repartos_rotos.length, 1,
-     'comisiones · una sección desviada que no suma 100% se delata');
+  const vacia = base();
+  vacia.secciones[0].comision_fts = '';      // vacío = la del machote
+  const cVacia = C.calcular(vacia);
+  eq(cVacia.secciones[0].comFts, cSin.secciones[0].comFts,
+     'comisiones · vacío hereda la del machote, no cero', 0.0001);
+  es(cVacia.secciones[0].comisiones.fts.apartado, false,
+     'comisiones · heredar no es apartarse');
+
+  // ── 4 · el total se mueve lo que debe, y sólo por la sección que cambió ──
+  const subeSolo = cUno.escenarios.con_utilidad.comisionFts - cSin.escenarios.con_utilidad.comisionFts;
+  const esperado = cSin.secciones[0].venta * (0.10 - 0.055);
+  eq(subeSolo, esperado,
+     'comisiones · el total sube exactamente lo que causó la sección 1', 0.0001);
+
+  // ── 5 · un machote de ANTES —sin ningún campo en la sección— no cambia ──
+  //     La capa vieja es la ausencia: es lo que tienen los 45 reales.
+  const viejo = base();
+  delete viejo.secciones[0].comision_fts;
+  delete viejo.secciones[0].comision_cliente;
+  es(C.calcular(viejo).escenarios.con_utilidad.precio === cSin.escenarios.con_utilidad.precio, true,
+     'comisiones · un machote sin los campos nuevos da EXACTAMENTE el mismo precio');
 })();
 
 console.log('\n' + ok + ' pasaron, ' + mal + ' fallaron.');

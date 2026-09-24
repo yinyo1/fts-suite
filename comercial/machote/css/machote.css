@@ -1779,20 +1779,16 @@ table.lista td.mono { white-space: nowrap; }
  *
  * No hay color nuevo. Un cuarto tono enseñaría que hay un cuarto significado.
  */
-.com-sec { margin: 14px 0 6px; }
-.com-sec.apartado { border-left: 3px solid #d9a800; padding-left: 10px; }
-.com-sec table.hoja2 { max-width: 520px; }
-/* ⚠️ El `≠ machote` va DENTRO de la banda azul del título, y el ámbar oscuro
- * de `.rec-marca` (#9a6700, pensado para fondo blanco) sobre #1f4e79 casi no
- * se lee — se vio en la captura a 380, no en el diff. Mismo idioma, tono
- * aclarado para que contraste contra la banda. */
-.secc-tit .rec-marca { color: #ffd166; }
-
-/* La casilla es lo único que se toca aquí, así que cumple el mínimo táctil
- * completo -no sólo la cajita de 13 px, también su texto-. */
-.com-check { display: flex; align-items: center; gap: 8px; margin: 8px 0;
-             min-height: var(--toque); font-size: 13px; cursor: pointer; }
-.com-check input { width: 18px; height: 18px; flex: none; cursor: pointer; }
+/* ── V1.40 · el aviso de comisión apartada ────────────────────────────────
+ * Va DEBAJO del cuadro de margen de utilidad, que es donde se cambia el
+ * número. Aquí vivían las reglas de la banda «COMISIÓN DE ESTA SECCIÓN» y su
+ * casilla; la banda se fue con la V1.40 (nadie la usó en 895 versiones de
+ * sección, medido antes de quitarla).
+ *
+ * El ámbar es el MISMO de un margen escrito a mano y de un recargo apartado:
+ * tres cosas distintas que significan lo mismo —«aquí alguien se apartó del
+ * valor de arranque»— y por eso se ven igual. No hay color nuevo. */
+.com-apartada { margin: 8px 0 2px; max-width: 520px; }
 
 /* ── V1.36 · EL PAD, ANCLADO AL BORDE INFERIOR ───────────────────────────
  *
@@ -1881,25 +1877,3 @@ table.lista td.mono { white-space: nowrap; }
  * Medido antes de elegir el 12: el hueco hasta el botón de arriba es de 18 px
  * a 1280 y de 33 px a 380, así que el área crecida no le roba el toque a
  * nadie. Con 20 px se lo habría robado al botón del pad. */
-/* ── V1.39 · que se vea que es un botón ───────────────────────────────
- * Con `border: 0` y color `--suave` a 12 px, esto se leía como la nota al
- * pie que lo rodea. Ahora lleva contorno y fondo propios —el mínimo que
- * distingue un control de un texto— y sube a 13 px. Sigue siendo discreto:
- * el caso normal es no tocarlo, y no debe competir con los números. */
-/* ⚠️ Los 40 px de alto NO son decorativos y ya se perdieron una vez: la
- * versión con contorno nació con `padding: 4px 9px` y midió 27 px, que la
- * prueba de objetivos táctiles rechazó. El relleno generoso de la versión
- * vieja (`12px 3px`) estaba puesto por esto mismo, y quitarlo al cambiar de
- * forma fue la manera de tirar la razón junto con el estilo. Se fija con
- * `min-height` y no con relleno para que no vuelva a depender de aritmética
- * de `line-height`. */
-.com-avisa { background: var(--papel, #fff); border: 1px solid var(--linea, #d6d6d6);
-             border-radius: 6px; font: inherit; font-size: 13px;
-             color: var(--suave); cursor: pointer;
-             text-decoration: none;
-             display: inline-flex; align-items: center; min-height: 40px;
-             padding: 0 10px; margin: 0 2px;
-             line-height: 1.3; white-space: nowrap; vertical-align: middle; }
-.com-avisa:hover { color: var(--tinta); border-color: var(--tinta); }
-.com-avisa.apartado { color: var(--ambar); font-weight: 700;
-                      border-color: var(--ambar); }

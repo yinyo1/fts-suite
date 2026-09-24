@@ -57,7 +57,7 @@
    *   2. el `?v=` de la URL con la que el navegador lo bajó,
    *   3. la que declara cada pieza que se carga aparte (hoy el motor).
    * Si discrepan, la pantalla lo DICE en vez de correr a medias. */
-  const VERSION_ARCHIVO = 'V1.39';
+  const VERSION_ARCHIVO = 'V1.40';
 
   const VERSION_URL = (function () {
     try {
@@ -718,6 +718,23 @@
       if (!s.margenes) s.margenes = {};
       s.margenes[p[2]] = sanea(val); return;
     }
+    /* ── V1.40 · las dos comisiones son DE LA SECCIÓN: `com:<sid>:<fts|cliente>`
+     * Hasta la V1.39 se escribían en `m.comision_fts` / `m.comision_cliente`,
+     * y por eso cambiar una en una sección la cambiaba en TODAS. Es el mismo
+     * defecto que tuvieron los multiplicadores antes de `mg:`.
+     *
+     * ⚠️ Vaciar la celda BORRA el campo en vez de escribir cero, igual que el
+     * recargo de abajo y por la misma razón — sólo que aquí la diferencia
+     * mueve dinero: cero es «esta sección no paga comisión» y ausente es «la
+     * del machote». Si vaciar escribiera cero, quien sólo quería deshacer su
+     * cambio se quedaría con una sección sin comisión y sin enterarse. */
+    if (p[0] === 'com') {
+      const s = m.secciones.find(x => x.id === p[1]); if (!s) return;
+      const campo = p[2] === 'fts' ? 'comision_fts' : 'comision_cliente';
+      if (val === null || val === undefined || val === '') delete s[campo];
+      else s[campo] = sanea(val);
+      return;
+    }
     /* V1.28 · el recargo es DE LA SECCIÓN: `rec:<sid>:<fin_semana|festivo>`.
      * Vaciar la celda BORRA el campo en vez de escribir cero, y la diferencia
      * importa: cero es «el fin de semana no se cobra más caro» y ausente es
@@ -767,6 +784,8 @@
     if (p[0] === 'nom') { const s = m.secciones.find(x => x.id === p[1]); return s ? s.nombre : undefined; }
     if (p[0] === 'mg')  { const s = m.secciones.find(x => x.id === p[1]); return s && s.margenes ? s.margenes[p[2]] : undefined; }
     if (p[0] === 'rec') { const s = m.secciones.find(x => x.id === p[1]); return s && s.recargos ? s.recargos[p[2]] : undefined; }
+    if (p[0] === 'com') { const s = m.secciones.find(x => x.id === p[1]);
+                          return s ? s[p[2] === 'fts' ? 'comision_fts' : 'comision_cliente'] : undefined; }
     if (p[0] === 's') {
       const s = m.secciones.find(x => x.id === p[1]); if (!s) return undefined;
       const arr = p[2] === 'mo' ? s.mo : s.partidas;
@@ -823,6 +842,8 @@
     if (p[0] === 'nom') return 'el nombre de ' + sec(p[1]);
     if (p[0] === 'mg')  return 'el multiplicador de ' + p[2].replace(/_/g, ' ') + ' en ' + sec(p[1]);
     if (p[0] === 'rec') return 'el recargo de ' + p[2].replace(/_/g, ' ') + ' en ' + sec(p[1]);
+    if (p[0] === 'com') return 'la comisión de ' + (p[2] === 'fts' ? 'FTS' : 'cliente') +
+                               ' en ' + sec(p[1]);
     if (p[0] === 's') {
       const s = m.secciones.find(x => x.id === p[1]);
       const arr = s ? (p[2] === 'mo' ? s.mo : s.partidas) : [];
@@ -2360,6 +2381,27 @@
     // vieran iguales en todas las hojas.
     const mg = cs.margenes || c.margenes;
 
+    /* Las rutas de captura y los dos porcentajes vigentes de ESTA sección.
+     * Van aquí arriba porque los usan las DOS tablas del encabezado: la de
+     * la izquierda para rotular e imputar, y la de la derecha para capturar.
+     * Un `const` citado más arriba de su línea no vale `undefined`: tira la
+     * función entera (§20 #12, y ya pasó una vez en este archivo). */
+    const comp = 'com:' + s.id + ':';
+    const comSec = C.comisionesDe(m, s);
+
+    /* La parte de la comisión total que le toca a ESTA sección, siguiendo el
+     * escenario elegido (en «costo» las comisiones son cero; en «margen
+     * deseado» van escaladas). Ver el porqué de las dos ramas abajo. */
+    const hayApartadas = (c.secciones || []).some(x => x.comisionesApartadas > 0);
+    const porcionCom = (cual) => {
+      const total = cual === 'fts' ? c.escenario.comisionFts : c.escenario.comisionCliente;
+      if (!cs.venta) return 0;
+      if (!hayApartadas) return total * (cs.venta / (c.venta || 1));
+      const suma = (c.secciones || []).reduce((a, x) => a + (cual === 'fts' ? x.comFts : x.comCli), 0);
+      const mia = cual === 'fts' ? cs.comFts : cs.comCli;
+      return suma > 0 ? total * (mia / suma) : 0;
+    };
+
     // Bloque de encabezado: las once filas de la izquierda y la tabla de
     // márgenes de la derecha, tal como están en la hoja.
     const izq = [
@@ -2367,11 +2409,24 @@
       ['Materiales y servicio', mx(cs.costoMat)],
       ['Costos Sumados (Mat, Servicio, Mano de obra)', mx2(cs.costo)],
       ['', ''],
-      // El porcentaje al lado del importe: sin él, "Comisiones FTS $79,108"
-      // no dice si eso es un 5% o un 15%, que es lo que se está decidiendo.
-      ['Comisiones CLIENTE ' + pc(c.pctCli), mx(cs.venta ? c.escenario.comisionCliente * (cs.venta / (c.venta || 1)) : 0)],
-      ['Comisiones FTS ' + pc(c.pctFts), mx(cs.venta ? c.escenario.comisionFts * (cs.venta / (c.venta || 1)) : 0)],
-      ['Costos totales (Cuanto le cuesta a FTS?)', mx(cs.costo + (c.escenario.comisionFts + c.escenario.comisionCliente) * (cs.venta / (c.venta || 1)))],
+      /* El porcentaje al lado del importe: sin él, "Comisiones FTS $79,108"
+       * no dice si eso es un 5% o un 15%, que es lo que se está decidiendo.
+       *
+       * ── V1.40 · el porcentaje es EL DE ESTA SECCIÓN ───────────────────
+       * Decía el del machote, y con la comisión por sección eso es una
+       * mentira visible: el campo de al lado dice 12% y este rótulo decía
+       * 5.50%. Se vio en la captura, no en el diff (§20 #12).
+       *
+       * Y el IMPORTE: hasta aquí era la comisión total repartida a prorrata
+       * de la VENTA de cada sección. Cuando una sección cobra distinto, eso
+       * le pasa parte de su comisión a las demás. Con desvíos se usa la que
+       * la sección causó de verdad; sin desvíos se conserva la expresión
+       * vieja tal cual —los dos ratios son el mismo, pero «igual en álgebra»
+       * no es «igual en coma flotante», y los 45 machotes que ya existen no
+       * pueden moverse ni un centavo. Mismo atajo-garantía que en `calc.js`. */
+      ['Comisiones CLIENTE ' + pc(comSec.cliente.pct), mx(porcionCom('cli'))],
+      ['Comisiones FTS ' + pc(comSec.fts.pct), mx(porcionCom('fts'))],
+      ['Costos totales (Cuanto le cuesta a FTS?)', mx(cs.costo + porcionCom('fts') + porcionCom('cli'))],
       ['Precio de Venta FTS (Antes de comisiones)', mx(cs.venta)],
       ['Precio de Venta a cliente (Despues de comisiones)', mx2(cs.esc ? cs.esc.con_utilidad.precio : null)],
       ['Utilidad', mx2((cs.esc ? cs.esc.con_utilidad.precio : 0) - cs.costo)],
@@ -2385,12 +2440,39 @@
       ['Materiales', mgp + 'materiales', mg.materiales],
       ['Servicios', mgp + 'servicios', mg.servicios]
     ].map(r => '<tr><td class="et">' + r[0] + '</td><td>' + celNum(r[1], r[2], 'w70') + '</td></tr>').join('') +
-      // Las comisiones SÍ son del machote entero: se pactan una vez para la
-      // cotización. Por eso siguen sin el prefijo de sección, y por eso se
-      // dice en la pantalla — dos tablas pegadas con reglas distintas, si no
-      // se explica, se leen como una sola.
-      '<tr><td class="et">Comision FTS</td><td>' + celPct('comision_fts', m.comision_fts) + '</td></tr>' +
-      '<tr><td class="et">Comision CLIENTE</td><td>' + celPct('comision_cliente', m.comision_cliente) + '</td></tr>';
+      /* ── V1.40 · las dos comisiones también son DE LA SECCIÓN ───────────
+       * Son los dos campos que la gente ya toca, y estaban en esta misma
+       * columna escribiendo al machote entero: cambiar uno aquí lo cambiaba
+       * en todas las secciones, sin decirlo. Ahora llevan el prefijo de
+       * sección igual que los cuatro multiplicadores de arriba — el mismo
+       * mecanismo, no uno nuevo.
+       *
+       * Se pinta el valor VIGENTE de la sección (`cs.comisiones.*.pct`), que
+       * lo resuelve el motor: si la sección no tiene el suyo, se ve el del
+       * machote, y escribir encima lo aparta. La pantalla no vuelve a
+       * decidir ese número (§20 regla 4, un solo escritor). */
+      '<tr><td class="et">Comision FTS</td><td>' +
+        celPct(comp + 'fts', comSec.fts.pct, comSec.fts.apartado ? 'w70 pisado' : 'w70') + '</td></tr>' +
+      '<tr><td class="et">Comision CLIENTE</td><td>' +
+        celPct(comp + 'cliente', comSec.cliente.pct, comSec.cliente.apartado ? 'w70 pisado' : 'w70') + '</td></tr>';
+
+    /* ── El aviso, DEBAJO DEL CUADRO donde se cambió ────────────────────
+     * Aquí y no en la cabecera: en la cabecera fue donde nadie lo vio. Es la
+     * lección de la V1.39 —el defecto no era que no existiera, era que nadie
+     * llegaba— aplicada al sitio donde la persona está mirando en el momento
+     * en que acaba de mover el número.
+     *
+     * Silencio cuando no hay nada que decir. Un aviso permanente que casi
+     * siempre dice «todo normal» se deja de leer, y entonces tampoco se lee
+     * el día que dice otra cosa. */
+    const avisoCom = (function () {
+      const d = [];
+      if (comSec.fts.apartado) d.push('la de FTS (' + pc(comSec.fts.delMachote) + ' en el machote)');
+      if (comSec.cliente.apartado) d.push('la de cliente (' + pc(comSec.cliente.delMachote) + ' en el machote)');
+      if (!d.length) return '';
+      return '<div class="tiny n-warn com-apartada">Esta sección tiene su propia comisión: ' +
+        d.join(' y ') + '. Sólo cambia <strong>esta sección</strong>; las demás siguen con la del machote.</div>';
+    })();
 
     const nombreSec =
       '<div class="nomsec"><span class="et">NOMBRE DE SECCIÓN</span>' + cel('nom:' + s.id, s.nombre, 'nombre') +
@@ -2440,26 +2522,15 @@
        * Los dos estados en el mismo sitio, y el ámbar es el MISMO de un
        * margen pisado — quien aprendió a leer uno lee el otro. Clicable:
        * el anuncio es también el camino al bloque. */
-      /* ── V1.39 · el aviso tiene que LEERSE como un control ───────────
-       * Medido el 23-sep sobre el machote real de Montalvo («Caseta para
-       * Antonio», versión 55): esto era texto de 12 px en gris #6b6b6b,
-       * subrayado, colgado del final de una frase que habla de OTRA cosa
-       * («Sección 1 de 1. Las secciones ocupan la ranura por posición…»).
-       * Se lee como una nota al pie, no como algo que se pueda tocar — y
-       * ésa es la explicación más simple del 0 de 45 secciones desviadas.
+      /* ── V1.40 · aquí vivía el aviso «Comisión: … · cambiar» ──────────
+       * Llevaba a la banda de excepción, y la banda se fue: no era lo que se
+       * había pedido. Ahora la comisión de la sección se cambia donde la
+       * gente ya la cambiaba —los dos campos de la columna de margen de
+       * utilidad—, y el aviso de que esta sección se apartó va DEBAJO DE ESE
+       * CUADRO, que es donde la persona está mirando cuando lo mueve.
        *
-       * Dos cambios, los dos baratos: el VERBO («cambiar» / «ver»), que es
-       * lo que convierte un rótulo en una puerta, y un contorno en el CSS
-       * para que se vea que es un botón. El tamaño sube de 12 a 13: seguía
-       * siendo el cuerpo más chico de la pantalla. */
-      ' · <button type="button" class="com-avisa' + (s.comision_propia === true ? ' apartado' : '') +
-        '" data-ircom="' + esc(s.id) + '" title="' +
-        (s.comision_propia === true
-          ? 'Esta sección reparte distinto del machote. Ir al bloque.'
-          : 'Esta sección sigue el reparto del machote, en vivo. Ir al bloque para cambiarlo.') + '">' +
-        (s.comision_propia === true ? 'Comisión: ≠ machote · ver'
-                                    : 'Comisión: la del machote · cambiar') +
-      '</button>' +
+       * Dos puertas al mismo sitio era el riesgo real: en un mes nadie sabría
+       * cuál manda. */
       '</div>';
 
     const cab =
@@ -2473,8 +2544,13 @@
       '</tbody></table></div>' +
       '<div class="blk"><table class="hoja2"><thead><tr><th>Concepto</th><th>Margen de utilidad</th></tr></thead>' +
       '<tbody>' + der + '</tbody></table>' +
-      '<div class="tiny nota">Los cuatro multiplicadores son <strong>de esta sección</strong>; ' +
-      'las dos comisiones son de toda la cotización.<br>' +
+      avisoCom +
+      /* V1.40 · ya no hay dos reglas en esta tabla: los seis campos son de la
+       * sección. La frase que decía «las dos comisiones son de toda la
+       * cotización» dejó de ser cierta y se fue — una advertencia que ya no
+       * aplica es peor que ninguna. */
+      '<div class="tiny nota">Los seis campos son <strong>de esta sección</strong>. ' +
+      'El machote da el valor de arranque; si aquí se cambia, sólo cambia aquí.<br>' +
       'Horas extras = mano de obra × 2 = <strong>' + mg.extra + '</strong>. No se captura, igual que en el Excel.</div>' +
       '</div></div>';
 
@@ -2767,58 +2843,22 @@
     const listaUnidades = '<datalist id="unidades">' +
       D.UNIDADES.map(u => '<option value="' + esc(u) + '">').join('') + '</datalist>';
 
-    /* ══ V1.34 · LA COMISIÓN DE ESTA SECCIÓN ═══════════════════════════════
+    /* ══ V1.40 · aquí vivía «COMISIÓN DE ESTA SECCIÓN» ════════════════════
      *
-     * El reparto es DEL MACHOTE y gobierna todas las secciones. Esta casilla
-     * es la EXCEPCIÓN, y por eso está apagada de origen: el caso normal no
-     * debe costar un clic.
+     * Una banda con una casilla de excepción que desviaba el REPARTO —quién
+     * se lleva qué dentro de la bolsa— por sección. Se construyó en la V1.34
+     * traduciendo mal lo que se había pedido: hacía falta que los dos
+     * PORCENTAJES fueran por sección, no que cada sección tuviera su propia
+     * nómina de beneficiarios.
      *
-     * Es el patrón del recargo de fin de semana AL REVÉS. Allá el valor era
-     * de la sección desde el principio y el machote sólo daba el arranque;
-     * aquí manda el machote y la sección sólo se desprende si alguien lo
-     * pide. Por eso la marca visual es la MISMA (`≠`, ámbar, borde
-     * izquierdo): quien aprendió a leer un recargo apartado lee esto sin que
-     * nadie se lo explique.
-     */
-    const cp = s.comision_propia === true;
-    const guardado = s.comision || null;
-    const eqSec = (rotulo, quien, key) => {
-      const lista = (guardado && guardado[key]) || [];
-      const suma = lista.reduce((a, x) => a + Number(x.pct || 0), 0);
-      const cuadra = Math.abs(suma - 1) < 0.0001;
-      return '<tr class="grupo"><td colspan="2">' + esc(rotulo) + '</td></tr>' +
-        lista.map((it, i) =>
-          '<tr><td>' + cel('ec:' + s.id + ':' + quien + ':' + i + ':nombre', it.nombre, 'desc') + '</td>' +
-          '<td>' + celPct('ec:' + s.id + ':' + quien + ':' + i + ':pct', it.pct, 'w70 pisado') + '</td></tr>').join('') +
-        '<tr class="total"><td class="et">Suma</td><td class="vl mono n-' +
-          (cuadra ? 'ok' : 'bad') + '">' + pc(suma) + '</td></tr>';
-    };
-    const desdeTxt = guardado && guardado.desde ? fechaDia(guardado.desde) : null;
-    const bloqueComision =
-      '<div class="com-sec' + (cp ? ' apartado' : '') + '">' +
-        '<div class="secc-tit">COMISIÓN DE ESTA SECCIÓN' +
-          (cp ? '<span class="rec-marca" title="Esta sección reparte distinto del machote.">≠ machote</span>' : '') +
-        '</div>' +
-        '<label class="com-check"><input type="checkbox" data-comprop="' + esc(s.id) + '"' +
-          (cp ? ' checked' : '') + '> Editar comisión de esta sección</label>' +
-        (cp
-          ? '<div class="tiny n-warn">Esta sección reparte por su cuenta. La <strong>bolsa no cambia</strong>: ' +
-            'lo único que cambia es a quién le toca dentro de esta sección. Tiene que sumar 100% igual que el ' +
-            'del machote.' + (desdeTxt ? ' Desviada desde el ' + esc(desdeTxt) + '.' : '') + '</div>' +
-            '<table class="hoja2"><tbody>' +
-              eqSec('EQUIPO DE VENTA', 'venta', 'equipo_venta') +
-              eqSec('EQUIPO DE OPERACIONES', 'ops', 'equipo_operaciones') +
-              eqSec('LADO CLIENTE', 'cli', 'equipo_cliente') +
-            '</tbody></table>'
-          : '<div class="tiny nota">Sigue el reparto del machote, <strong>en vivo</strong>: si allá cambia, ' +
-            'aquí cambia. Se edita en la hoja DESGLOSE, y vale para todas las secciones.' +
-            (guardado
-              ? '<br><span class="n-warn">Hay un reparto propio guardado' +
-                (desdeTxt ? ' del ' + esc(desdeTxt) : '') +
-                '. No se está usando; vuelve a marcar la casilla para recuperarlo.</span>'
-              : '') +
-            '</div>') +
-      '</div>';
+     * Se midió antes de quitarla, en TODO el historial append-only y no sólo
+     * en las versiones vivas (§20 #18: una fila ausente de un filtro no dice
+     * nada sobre su valor): 895 versiones de sección, `comision_propia`
+     * encendida en 0, el objeto `comision` escrito en 0. Nadie la usó nunca,
+     * así que no hubo dato que preservar.
+     *
+     * Lo que la sustituye son los dos campos de la columna de margen de
+     * utilidad, arriba, y su aviso justo debajo. */
 
     /* ══ EL PAD DE TRABAJO · V1.36, ahora PANEL ANCLADO ════════════════════
      *
@@ -2869,7 +2909,7 @@
         '</div>' +
       '</div>';
 
-    return listaUnidades + cab + leyenda() + bloqueRecargo + bloqueComision +
+    return listaUnidades + cab + leyenda() + bloqueRecargo +
            tablaMo + bloqueViaje + tablaMat + bloquePad;
   }
 
@@ -3058,49 +3098,13 @@
       eq('EQUIPO DE OPERACIONES (' + pc(Number(m.reparto.operaciones)) + ')', 'equipo_operaciones', 'ops', c.reparto.bolsaOps) +
       eq('LADO CLIENTE', 'equipo_cliente', 'cli', c.escenario.comisionCliente) +
       '</tbody></table></div>' +
-      /* ── V1.36 · cuántas secciones se apartan de ESTE reparto ────────────
-       * DESGLOSE es donde alguien viene a PREGUNTAR por la comisión, porque
-       * es donde vive el reparto del machote. Por eso aquí sí se enuncia el
-       * caso normal —«todas lo siguen»— y en la cabecera de cada sección no:
-       * ahí nadie pregunta, va pasando, y un letrero en cada sección lo
-       * pagarían todas para siempre.
-       *
-       * La asimetría es deliberada: donde se pregunta, «no hay nada escrito»
-       * se confunde con «no está hecho» (§20 #11, el vacío que se lee como
-       * respuesta). Donde no se pregunta, el silencio es el mensaje. */
-      (function () {
-        const secs = m.secciones || [];
-        const desv = secs.filter(x => x.comision_propia === true);
-        if (!secs.length) return '';
-        /* ── V1.39 · esto también tiene que ser una PUERTA ───────────────
-         * Hasta aquí, cuando NADA estaba desviado —que es el caso de las 45
-         * secciones reales— esta línea era una frase gris sin salida: decía
-         * que todas siguen el reparto y no ofrecía el camino a cambiarlo.
-         * Y es la pantalla donde se ATERRIZA (`ST.hoja = 'desglose'`,
-         * app.js:1791), así que era el primer sitio donde alguien buscaría.
-         *
-         * Ahora los nombres de sección son clicables en los DOS estados. La
-         * asimetría que defendía el comentario viejo —«donde no se pregunta,
-         * el silencio es el mensaje»— seguía siendo buena para el TEXTO de
-         * aviso, y se conserva: sin desviaciones no hay alarma, sólo una
-         * frase neutra. Lo que no tenía defensa era esconder el camino.
-         *
-         * De paso, la concordancia: con una sección decía «Las 1 secciones
-         * siguen este reparto», y ése es justo el caso real —12 de los 13
-         * machotes de Montalvo tienen UNA sección—. */
-        const ir = (x) => '<button type="button" class="com-avisa" data-irsec="' +
-          esc(x.id) + '" title="Ir a la comisión de esta sección">' +
-          esc(x.nombre || 'sin nombre') + '</button>';
-        return '<div class="tiny nota com-resumen">' + (desv.length
-          ? '<strong class="n-warn">' + desv.length + ' de ' + secs.length +
-            (desv.length === 1 ? ' sección reparte' : ' secciones reparten') + ' distinto</strong>: ' +
-            desv.map(x => '<button type="button" class="com-avisa apartado" data-irsec="' + esc(x.id) + '">' +
-              esc(x.nombre || 'sin nombre') + '</button>').join(' · ')
-          : (secs.length === 1
-              ? 'La sección sigue este reparto. Para que reparta distinto: '
-              : 'Las ' + secs.length + ' secciones siguen este reparto. Para que alguna reparta distinto: ') +
-            secs.map(ir).join(' · ')) + '</div>';
-      })();
+      /* ── V1.40 · aquí vivía el resumen «N de M secciones reparten distinto»
+       * Contaba las secciones con la casilla de excepción encendida, y la
+       * casilla se fue. No se sustituye por un resumen equivalente de los
+       * porcentajes: el aviso que se pidió es UNO, y va debajo del cuadro de
+       * la sección donde se cambió, que es donde la persona está mirando.
+       * Un segundo letrero aquí sería otra vez dos sitios diciendo lo mismo. */
+      ''
 
     return encabezado + resumen + porSeccion + budget + comisiones;
   }
@@ -3500,28 +3504,6 @@
      * fecha, para poder reencenderlo. No se borra. Decisión de Esteban con la
      * mitigación que importa: al restaurarlo la pantalla dice DE CUÁNDO ES —
      * un número que reaparece sin fecha después de tres meses es una trampa. */
-    $$('[data-comprop]').forEach(el => {
-      el.onchange = () => {
-        const sec = m.secciones.find(x => x.id === el.dataset.comprop); if (!sec) return;
-        if (el.checked) {
-          if (!sec.comision) {
-            const copia = (a) => JSON.parse(JSON.stringify(a || []));
-            sec.comision = {
-              reparto: Object.assign({}, C.REPARTO_PLANTILLA, m.reparto || {}),
-              equipo_venta: copia(m.equipo_venta),
-              equipo_operaciones: copia(m.equipo_operaciones),
-              equipo_cliente: copia(m.equipo_cliente),
-              desde: new Date().toISOString()
-            };
-          }
-          sec.comision_propia = true;
-        } else {
-          sec.comision_propia = false;   // `sec.comision` se queda, inerte
-        }
-        tocado(m); pintarHoja(m); barra(m, C.calcular(m));
-      };
-    });
-
     /* ── V1.34 · el pad ────────────────────────────────────────────────────
      * Se guarda con el machote —si no, se perdería al cambiar de hoja y
      * dejaría de servir para pensar— pero NO entra en ningún cálculo. Eso lo
@@ -3579,15 +3561,7 @@
     };
     /* La línea de la cabecera es también el camino: anuncia el estado y
      * lleva al bloque, que vive abajo a propósito. */
-    $$('[data-irsec]').forEach(el => {
-      el.onclick = () => { ST.hoja = el.dataset.irsec; vMachote(m.id); };
-    });
-    $$('[data-ircom]').forEach(el => {
-      el.onclick = () => {
-        const b = $('.com-sec');
-        if (b) b.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      };
-    });
+
     $$('[data-padabrir]').forEach(el => {
       el.onclick = () => {
         const sid = el.dataset.padabrir;

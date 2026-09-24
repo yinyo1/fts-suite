@@ -1,11 +1,17 @@
 {
-  "version": "V1.39",
-  "build": "V1.39",
+  "version": "V1.40",
+  "build": "V1.40",
   "fecha": "2026-09-24",
   "modulo": "comercial/machote",
   "ambito": "El CONTADOR es solo de este modulo. finanzas tambien usa V1.xx desde el 2026-09-03 (instruccion directa de Esteban, corrige el \"no propagar\" del issue #148) pero lleva su propio contador y va en V1.00. operaciones/planeacion sigue en 2.4.1, kiosk y confirmar-horas solo con cadena de build, y siete modulos con un 1.0.0 puesto una vez: a esos no se propaga.",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.40",
+      "pr": null,
+      "fecha": "2026-09-24",
+      "nota": "LA COMISION POR SECCION DE VERDAD, Y LA BANDA DE LA V1.34 FUERA (#246). Esteban confirmo que la banda 'COMISION DE ESTA SECCION' con su casilla NO era lo que se habia pedido: se construyo traduciendo mal la peticion de Montalvo a un mecanismo de EXCEPCION sobre el REPARTO (quien se lleva que dentro de la bolsa), cuando lo que hacia falta era que los DOS PORCENTAJES que la gente ya toca -comision de FTS y comision de cliente, en la columna de Margen de utilidad- fueran POR SECCION. Eso explica el 0 de 45: nadie uso la banda porque no es el control que tocan. LO QUE SE HIZO. (1) Los dos campos son de la seccion, con el MISMO mecanismo de capas que ya tenia el rate de mano de obra (margenes/recargosDe): la seccion manda, el machote da el valor de arranque. Ruta nueva com:<sid>:<fts|cliente>, gemela de mg: y rec:. AUSENTE NO ES CERO -vaciar la celda BORRA el campo y se vuelve a heredar; cero significa 'esta seccion no paga'-, igual que el recargo y por la misma razon, solo que aqui la diferencia mueve dinero. (2) El aviso de que la seccion se aparto va DEBAJO DEL CUADRO donde se cambio el numero, no en la cabecera: la cabecera fue donde nadie lo vio. Medido: a 63 px del campo, en pantalla a los cuatro anchos. Silencio cuando no hay nada que decir. (3) La tabla de la izquierda rotulaba 'Comisiones FTS 5.50%' mientras el campo de al lado decia 12% -se vio en la captura, no en el diff- y ademas imputaba la comision a prorrata de la VENTA, lo que le pasaba parte de la comision de una seccion a las demas. Ahora rotula e imputa con la de la seccion. LA BANDA SE FUE ENTERA: casilla, renglon 'Comision: la del machote - cambiar', marca ambar asociada, resumen clicable en DESGLOSE, comisionDe() del motor, repartos_rotos, secciones_desviadas, el CSS y las pruebas que lo cubrian. Dos controles para lo mismo es peor que uno mal puesto. ANTES DE BORRAR SE MIDIO, y en TODO el historial append-only y no solo en las versiones vivas (§20 #18): 895 versiones de seccion, comision_propia encendida en 0, objeto comision escrito en 0, 0 machotes afectados. Nadie la uso nunca, asi que no hubo dato que preservar ni migracion que escribir. LA INVARIANTE, que es lo que sostiene a los 45 machotes que ya existen: sin ninguna seccion apartada se corre EL MISMO camino de antes, linea por linea, no una formula equivalente -porque Suma(venta_i x p) y (Suma venta_i) x p son iguales en algebra y NO necesariamente en coma flotante-. Comprobado con === sobre el bit, y verificado sobre el machote real de Montalvo 'Caseta para Antonio' v55: $216,687 antes y despues, identico. PRUEBAS: motor 110 (siete casos nuevos, incluido cero-no-es-vacio y el machote sin los campos nuevos) y dos de navegador con dientes comprobados contra el codigo de la V1.39. PENDIENTE APARTE: el pad como hoja de calculo de verdad va como PROPUESTA en el #246, sin construir."
+    },
     {
       "version": "V1.39",
       "pr": null,
