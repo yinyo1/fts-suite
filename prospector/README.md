@@ -122,6 +122,7 @@ issues de **`yinyo1/fts-mcp-odoo`**:
 | Issue | Qué resolvió |
 |---|---|
 | #14 | El método documentado |
+| #15 | Auditoría de estado: qué está construido y qué es diseño |
 | #16 · #17 | El motor de combinaciones · los tres niveles de la ficha |
 | #18 | La capa de PDFs públicos, con su límite de privacidad |
 | #19 | Los módulos con contrato, el orden óptimo y la matriz de challenge |
