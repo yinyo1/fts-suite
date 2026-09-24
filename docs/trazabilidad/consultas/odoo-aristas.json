@@ -1,0 +1,932 @@
+{
+ "medido": "2026-09-24",
+ "ventana": "2025-01-01 -> hoy",
+ "companias": [
+  1,
+  6
+ ],
+ "solo_lectura": true,
+ "aristas": [
+  {
+   "id": 1,
+   "arista": "cotizacion -> oportunidad",
+   "modelo": "sale.order",
+   "dominio": [
+    [
+     "date_order",
+     ">=",
+     "2025-01-01 00:00:00"
+    ],
+    [
+     "company_id",
+     "in",
+     [
+      1,
+      6
+     ]
+    ],
+    [
+     "opportunity_id",
+     "=",
+     false
+    ]
+   ],
+   "universo": 1065,
+   "rotas": 367,
+   "detalle": {
+    "SERVICIOS FTS": 208,
+    "FTS LLC": 159
+   }
+  },
+  {
+   "id": "1b",
+   "arista": "cotizacion confirmada -> oportunidad",
+   "modelo": "sale.order",
+   "dominio": [
+    [
+     "date_order",
+     ">=",
+     "2025-01-01 00:00:00"
+    ],
+    [
+     "company_id",
+     "in",
+     [
+      1,
+      6
+     ]
+    ],
+    [
+     "state",
+     "=",
+     "sale"
+    ],
+    [
+     "opportunity_id",
+     "=",
+     false
+    ]
+   ],
+   "universo": 179,
+   "rotas": 68,
+   "detalle": {
+    "SERVICIOS FTS": 35,
+    "FTS LLC": 33
+   }
+  },
+  {
+   "id": 2,
+   "arista": "oportunidad -> N cotizaciones",
+   "modelo": "sale.order",
+   "dominio": [
+    [
+     "date_order",
+     ">=",
+     "2025-01-01 00:00:00"
+    ],
+    [
+     "company_id",
+     "in",
+     [
+      1,
+      6
+     ]
+    ],
+    [
+     "opportunity_id",
+     "!=",
+     false
+    ]
+   ],
+   "metodo": "read_group por opportunity_id",
+   "universo": 698,
+   "grupos": 483,
+   "nota": "698-483 = al menos 215 son la 2a o posterior"
+  },
+  {
+   "id": 5,
+   "arista": "SO confirmada -> proyecto nativo",
+   "modelo": "sale.order",
+   "dominio": [
+    [
+     "date_order",
+     ">=",
+     "2025-01-01 00:00:00"
+    ],
+    [
+     "company_id",
+     "in",
+     [
+      1,
+      6
+     ]
+    ],
+    [
+     "state",
+     "=",
+     "sale"
+    ],
+    [
+     "project_id",
+     "=",
+     false
+    ]
+   ],
+   "universo": 179,
+   "rotas": 41,
+   "detalle": {
+    "SERVICIOS FTS": 26,
+    "FTS LLC": 15
+   }
+  },
+  {
+   "id": "5b",
+   "arista": "SO confirmada -> proyecto del radar",
+   "modelo": "sale.order",
+   "dominio": [
+    [
+     "date_order",
+     ">=",
+     "2025-01-01 00:00:00"
+    ],
+    [
+     "company_id",
+     "in",
+     [
+      1,
+      6
+     ]
+    ],
+    [
+     "state",
+     "=",
+     "sale"
+    ],
+    [
+     "x_studio_project_id_created_1",
+     "=",
+     false
+    ]
+   ],
+   "universo": 179,
+   "rotas": 134,
+   "detalle": {
+    "SERVICIOS FTS": 124,
+    "FTS LLC": 10
+   }
+  },
+  {
+   "id": "5c",
+   "arista": "SO confirmada -> ningun proyecto",
+   "modelo": "sale.order",
+   "dominio": [
+    [
+     "date_order",
+     ">=",
+     "2025-01-01 00:00:00"
+    ],
+    [
+     "company_id",
+     "in",
+     [
+      1,
+      6
+     ]
+    ],
+    [
+     "state",
+     "=",
+     "sale"
+    ],
+    [
+     "project_id",
+     "=",
+     false
+    ],
+    [
+     "x_studio_project_id_created_1",
+     "=",
+     false
+    ]
+   ],
+   "universo": 179,
+   "rotas": 28,
+   "detalle": {
+    "SERVICIOS FTS": 21,
+    "FTS LLC": 7
+   }
+  },
+  {
+   "id": 6,
+   "arista": "SO confirmada -> cuenta analitica",
+   "modelo": "sale.order",
+   "dominio": [
+    [
+     "date_order",
+     ">=",
+     "2025-01-01 00:00:00"
+    ],
+    [
+     "company_id",
+     "in",
+     [
+      1,
+      6
+     ]
+    ],
+    [
+     "state",
+     "=",
+     "sale"
+    ],
+    [
+     "project_account_id",
+     "=",
+     false
+    ]
+   ],
+   "universo": 179,
+   "rotas": 41
+  },
+  {
+   "id": "6b",
+   "arista": "SO -> analitica por campo Studio viejo",
+   "modelo": "sale.order",
+   "dominio": [
+    [
+     "date_order",
+     ">=",
+     "2025-01-01 00:00:00"
+    ],
+    [
+     "company_id",
+     "in",
+     [
+      1,
+      6
+     ]
+    ],
+    [
+     "state",
+     "=",
+     "sale"
+    ],
+    [
+     "x_studio_analytic_account",
+     "!=",
+     false
+    ]
+   ],
+   "universo": 179,
+   "poblado": 13
+  },
+  {
+   "id": 7,
+   "arista": "SO confirmada -> numero de PO del cliente",
+   "modelo": "sale.order",
+   "dominio": [
+    "&",
+    "&",
+    "&",
+    [
+     "date_order",
+     ">=",
+     "2025-01-01 00:00:00"
+    ],
+    [
+     "company_id",
+     "in",
+     [
+      1,
+      6
+     ]
+    ],
+    [
+     "state",
+     "=",
+     "sale"
+    ],
+    "|",
+    [
+     "x_studio_purchase_order_number",
+     "=",
+     false
+    ],
+    [
+     "x_studio_purchase_order_number",
+     "=",
+     ""
+    ]
+   ],
+   "universo": 179,
+   "rotas": 57,
+   "detalle": {
+    "SERVICIOS FTS": 34,
+    "FTS LLC": 23
+   }
+  },
+  {
+   "id": 8,
+   "arista": "SO confirmada -> archivo de PO",
+   "modelo": "sale.order",
+   "dominio": [
+    [
+     "date_order",
+     ">=",
+     "2025-01-01 00:00:00"
+    ],
+    [
+     "company_id",
+     "in",
+     [
+      1,
+      6
+     ]
+    ],
+    [
+     "state",
+     "=",
+     "sale"
+    ],
+    [
+     "x_studio_purchase_order_file_filename",
+     "=",
+     false
+    ]
+   ],
+   "universo": 179,
+   "rotas": 39,
+   "nota": "archivo SIN numero: 20 (8 en la 1, 12 en la 6)"
+  },
+  {
+   "id": 9,
+   "arista": "SO confirmada -> terminos de pago",
+   "modelo": "sale.order",
+   "dominio": [
+    [
+     "date_order",
+     ">=",
+     "2025-01-01 00:00:00"
+    ],
+    [
+     "company_id",
+     "in",
+     [
+      1,
+      6
+     ]
+    ],
+    [
+     "state",
+     "=",
+     "sale"
+    ],
+    [
+     "payment_term_id",
+     "=",
+     false
+    ]
+   ],
+   "universo": 179,
+   "rotas": 51
+  },
+  {
+   "id": 10,
+   "arista": "factura -> invoice_origin",
+   "modelo": "account.move",
+   "dominio": [
+    [
+     "invoice_date",
+     ">=",
+     "2025-01-01"
+    ],
+    [
+     "company_id",
+     "in",
+     [
+      1,
+      6
+     ]
+    ],
+    [
+     "state",
+     "=",
+     "posted"
+    ],
+    [
+     "move_type",
+     "in",
+     [
+      "out_invoice",
+      "out_refund"
+     ]
+    ],
+    [
+     "invoice_origin",
+     "=",
+     false
+    ]
+   ],
+   "universo": 210,
+   "rotas": 34
+  },
+  {
+   "id": 11,
+   "arista": "renglon de factura -> renglon de orden",
+   "modelo": "account.move.line",
+   "dominio": [
+    [
+     "parent_state",
+     "=",
+     "posted"
+    ],
+    [
+     "move_id.move_type",
+     "in",
+     [
+      "out_invoice",
+      "out_refund"
+     ]
+    ],
+    [
+     "company_id",
+     "in",
+     [
+      1,
+      6
+     ]
+    ],
+    [
+     "date",
+     ">=",
+     "2025-01-01"
+    ],
+    [
+     "display_type",
+     "=",
+     "product"
+    ],
+    [
+     "sale_line_ids",
+     "=",
+     false
+    ]
+   ],
+   "universo": 352,
+   "rotas": 95,
+   "facturas_afectadas": 53
+  },
+  {
+   "id": 12,
+   "arista": "NC -> factura original",
+   "modelo": "account.move",
+   "dominio": [
+    [
+     "invoice_date",
+     ">=",
+     "2025-01-01"
+    ],
+    [
+     "company_id",
+     "in",
+     [
+      1,
+      6
+     ]
+    ],
+    [
+     "state",
+     "=",
+     "posted"
+    ],
+    [
+     "move_type",
+     "=",
+     "out_refund"
+    ],
+    [
+     "reversed_entry_id",
+     "=",
+     false
+    ]
+   ],
+   "universo": 13,
+   "rotas": 0
+  },
+  {
+   "id": 14,
+   "arista": "orden de compra -> proyecto nativo",
+   "modelo": "purchase.order",
+   "dominio": [
+    [
+     "date_order",
+     ">=",
+     "2025-01-01 00:00:00"
+    ],
+    [
+     "company_id",
+     "in",
+     [
+      1,
+      6
+     ]
+    ],
+    [
+     "state",
+     "=",
+     "purchase"
+    ],
+    [
+     "project_id",
+     "=",
+     false
+    ]
+   ],
+   "universo": 3598,
+   "rotas": 3598
+  },
+  {
+   "id": "14b",
+   "arista": "orden de compra -> SO (Studio)",
+   "modelo": "purchase.order",
+   "dominio": [
+    [
+     "date_order",
+     ">=",
+     "2025-01-01 00:00:00"
+    ],
+    [
+     "company_id",
+     "in",
+     [
+      1,
+      6
+     ]
+    ],
+    [
+     "state",
+     "=",
+     "purchase"
+    ],
+    [
+     "x_studio_many2one_field_LFiHc",
+     "!=",
+     false
+    ]
+   ],
+   "universo": 3598,
+   "poblado": 1061,
+   "nota": "todos en la compania 1; en la 6 es cero"
+  },
+  {
+   "id": 15,
+   "arista": "renglon de PO -> analitica",
+   "modelo": "purchase.order.line",
+   "dominio": [
+    [
+     "order_id.date_order",
+     ">=",
+     "2025-01-01 00:00:00"
+    ],
+    [
+     "company_id",
+     "in",
+     [
+      1,
+      6
+     ]
+    ],
+    [
+     "state",
+     "=",
+     "purchase"
+    ],
+    [
+     "analytic_distribution",
+     "=",
+     false
+    ]
+   ],
+   "universo": 7512,
+   "rotas": 2375
+  },
+  {
+   "id": 16,
+   "arista": "renglon de bill -> renglon de PO",
+   "modelo": "account.move.line",
+   "dominio": [
+    [
+     "parent_state",
+     "=",
+     "posted"
+    ],
+    [
+     "move_id.move_type",
+     "in",
+     [
+      "in_invoice",
+      "in_refund"
+     ]
+    ],
+    [
+     "company_id",
+     "in",
+     [
+      1,
+      6
+     ]
+    ],
+    [
+     "date",
+     ">=",
+     "2025-01-01"
+    ],
+    [
+     "display_type",
+     "=",
+     "product"
+    ],
+    [
+     "purchase_line_id",
+     "=",
+     false
+    ]
+   ],
+   "universo": 6369,
+   "rotas": 143
+  },
+  {
+   "id": 17,
+   "arista": "renglon de bill -> analitica",
+   "modelo": "account.move.line",
+   "dominio": [
+    [
+     "parent_state",
+     "=",
+     "posted"
+    ],
+    [
+     "move_id.move_type",
+     "in",
+     [
+      "in_invoice",
+      "in_refund"
+     ]
+    ],
+    [
+     "company_id",
+     "in",
+     [
+      1,
+      6
+     ]
+    ],
+    [
+     "date",
+     ">=",
+     "2025-01-01"
+    ],
+    [
+     "display_type",
+     "=",
+     "product"
+    ],
+    [
+     "analytic_distribution",
+     "=",
+     false
+    ]
+   ],
+   "universo": 6369,
+   "rotas": 234
+  },
+  {
+   "id": "17b",
+   "arista": "renglon de bill -> PROYECTO (plan 1 o 18)",
+   "modelo": "account.move.line",
+   "dominio": [
+    [
+     "parent_state",
+     "=",
+     "posted"
+    ],
+    [
+     "move_id.move_type",
+     "in",
+     [
+      "in_invoice",
+      "in_refund"
+     ]
+    ],
+    [
+     "company_id",
+     "in",
+     [
+      1,
+      6
+     ]
+    ],
+    [
+     "date",
+     ">=",
+     "2025-01-01"
+    ],
+    [
+     "display_type",
+     "=",
+     "product"
+    ],
+    [
+     "distribution_analytic_account_ids.root_plan_id",
+     "in",
+     [
+      1,
+      18
+     ]
+    ]
+   ],
+   "universo": 6369,
+   "con_proyecto": 2615,
+   "rotas": 3754
+  },
+  {
+   "id": 18,
+   "arista": "gasto de tarjeta -> analitica",
+   "modelo": "account.move.line",
+   "dominio": [
+    [
+     "parent_state",
+     "=",
+     "posted"
+    ],
+    [
+     "journal_id",
+     "in",
+     [
+      61,
+      73,
+      122,
+      123
+     ]
+    ],
+    [
+     "date",
+     ">=",
+     "2025-01-01"
+    ],
+    [
+     "display_type",
+     "=",
+     "product"
+    ],
+    [
+     "analytic_distribution",
+     "=",
+     false
+    ]
+   ],
+   "universo": 8898,
+   "rotas": 8898,
+   "nota": "NO es un error: el asiento de tarjeta abona a proveedores; el gasto con analitica vive en el bill"
+  },
+  {
+   "id": 19,
+   "arista": "mano de obra -> proyecto",
+   "modelo": "account.analytic.line",
+   "dominio": [
+    [
+     "date",
+     ">=",
+     "2025-01-01"
+    ],
+    [
+     "company_id",
+     "in",
+     [
+      1,
+      6
+     ]
+    ],
+    [
+     "general_account_id",
+     "=",
+     false
+    ],
+    [
+     "account_id",
+     "=",
+     false
+    ]
+   ],
+   "universo": 790,
+   "rotas": 524,
+   "nota": "por diseno: son las bolsas indirectas de Carga MO"
+  },
+  {
+   "id": 20,
+   "arista": "cobro -> factura",
+   "modelo": "account.payment",
+   "dominio": [
+    [
+     "date",
+     ">=",
+     "2025-01-01"
+    ],
+    [
+     "company_id",
+     "in",
+     [
+      1,
+      6
+     ]
+    ],
+    [
+     "partner_type",
+     "=",
+     "customer"
+    ]
+   ],
+   "universo": 180,
+   "sin_conciliar": 12,
+   "nota": "de los 91 in_process, 90 SI estan conciliados"
+  },
+  {
+   "id": 21,
+   "arista": "pago a proveedor -> documento",
+   "modelo": "account.payment",
+   "dominio": [
+    [
+     "date",
+     ">=",
+     "2025-01-01"
+    ],
+    [
+     "company_id",
+     "in",
+     [
+      1,
+      6
+     ]
+    ],
+    [
+     "state",
+     "=",
+     "in_process"
+    ],
+    [
+     "partner_type",
+     "=",
+     "supplier"
+    ]
+   ],
+   "universo": 1091,
+   "sin_conciliar": 306
+  },
+  {
+   "id": "anticipo",
+   "arista": "anticipo nativo",
+   "modelo": "sale.order.line",
+   "dominio": [
+    [
+     "is_downpayment",
+     "=",
+     true
+    ],
+    [
+     "company_id",
+     "in",
+     [
+      1,
+      6
+     ]
+    ],
+    [
+     "order_id.date_order",
+     ">=",
+     "2025-01-01 00:00:00"
+    ]
+   ],
+   "universo": "todas",
+   "encontrados": 0,
+   "nota": "CERO. El asistente nativo de anticipos nunca se ha usado: esa es la causa raiz de la arista 11"
+  },
+  {
+   "id": "planes",
+   "arista": "planes analiticos",
+   "modelo": "account.analytic.plan",
+   "dominio": [],
+   "planes": 19,
+   "con_padre": 0,
+   "nota": "todos parent_id vacio; empate de sequence 10 entre el plan 1 y el 22"
+  },
+  {
+   "id": "aplicabilidad",
+   "arista": "candados analiticos nativos",
+   "modelo": "account.analytic.applicability",
+   "dominio": [],
+   "filas": 135,
+   "mandatory": 0,
+   "nota": "TODAS optional: no hay ningun candado analitico nativo"
+  }
+ ]
+}
