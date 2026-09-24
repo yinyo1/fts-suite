@@ -1,10 +1,10 @@
 {
   "module": "operaciones/planeacion",
-  "version": "2.4.1",
-  "build": "20260706-planeacion-fecha-cst-fix",
+  "version": "2.5.0",
+  "build": "20260924-planeacion-deps-check",
   "status": "in_development",
   "fase": "F4-B2",
-  "actualizado": "2026-07-06",
+  "actualizado": "2026-09-24",
   "rebuilt_from_scratch": true,
-  "notas": "Fix borde timezone: fechaActual default en CST (UTC-6) en vez de UTC (planeacion.js:18) — el plan ya no cae en manana cuando se publica despues de 18:00 CST. B2 Carga MO: merge automatico del plan publicado (planeacion/dia) al entrar/cambiar dia + indicador 'publicado'"
+  "notas": "Incidente 24-sep-2026 (turnos.js no cargó en el navegador de Felipe y exportar falló en silencio): chequeo de arranque con shared/deps-check.js (banner rojo que nombra el archivo que no cargó), ?v=<build> en todos los <script>/<link> locales, build en pantalla = el del código (PL_BUILD) con aviso si version.json trae otro, y los 4 caminos de exportar (preview, Copiar, WhatsApp, PNG) muestran el error en pantalla."
 }

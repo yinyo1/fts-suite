@@ -1,6 +1,6 @@
-// Build: 20260428-planeacion-f3-export-v3
+// Build: ver window.PL_BUILD (index.html) — es el mismo string que version.json.build
 'use strict';
-window.BUILD_DATE = '20260428-planeacion-f3-export-v3';
+window.BUILD_DATE = window.PL_BUILD || window.BUILD_DATE;
 
 (function(){
 
@@ -574,6 +574,7 @@ window.BUILD_DATE = '20260428-planeacion-f3-export-v3';
               '<button id="btn-wa"     class="pl-btn-export pl-btn-wa">📱 Enviar a WhatsApp</button>' +
               '<button id="btn-publicar" class="pl-btn-export">💾 Publicar (guardar plan)</button>' +
             '</div>' +
+            '<div id="pl-export-msg" class="pl-export-msg" role="alert" aria-live="assertive"></div>' +
             '<div id="pl-publicar-msg" style="font-size:12px;margin-top:8px"></div>' +
           '</div>' +
         '</div>';
@@ -592,8 +593,14 @@ window.BUILD_DATE = '20260428-planeacion-f3-export-v3';
       });
 
       $('btn-copiar').addEventListener('click', async () => {
-        const texto = window.PLANEACION_EXPORTAR.generarTextoWA(this.asignaciones, this.fechaFormateadaCorta());
-        await window.PLANEACION_EXPORTAR.copiarTexto(texto);
+        this.limpiarErrorExport();
+        try {
+          const texto = window.PLANEACION_EXPORTAR.generarTextoWA(this.asignaciones, this.fechaFormateadaCorta());
+          await window.PLANEACION_EXPORTAR.copiarTexto(texto);
+        } catch (e){
+          this.mostrarErrorExport('copiar el texto', e);
+          return;
+        }
         const b = $('btn-copiar');
         const orig = b.textContent;
         b.textContent = '✓ Copiado';
@@ -605,11 +612,12 @@ window.BUILD_DATE = '20260428-planeacion-f3-export-v3';
         const orig = btn.textContent;
         btn.disabled = true;
         btn.textContent = '⏳ Generando…';
+        this.limpiarErrorExport();
         try {
           const supervisor = (window.FTSAuth && window.FTSAuth.getSession() && window.FTSAuth.getSession().nombre) || 'Felipe Pérez';
           await window.PLANEACION_EXPORTAR.generarPNG(this.asignaciones, this.fechaFormateadaCorta(), supervisor);
         } catch (e){
-          alert('Error generando imagen: ' + e.message);
+          this.mostrarErrorExport('generar la imagen', e);
         } finally {
           btn.disabled = false;
           btn.textContent = orig;
@@ -617,8 +625,13 @@ window.BUILD_DATE = '20260428-planeacion-f3-export-v3';
       });
 
       $('btn-wa').addEventListener('click', () => {
-        const texto = window.PLANEACION_EXPORTAR.generarTextoWA(this.asignaciones, this.fechaFormateadaCorta());
-        window.PLANEACION_EXPORTAR.compartirWA(texto);
+        this.limpiarErrorExport();
+        try {
+          const texto = window.PLANEACION_EXPORTAR.generarTextoWA(this.asignaciones, this.fechaFormateadaCorta());
+          window.PLANEACION_EXPORTAR.compartirWA(texto);
+        } catch (e){
+          this.mostrarErrorExport('armar el mensaje de WhatsApp', e);
+        }
       });
 
       $('btn-publicar').addEventListener('click', () => this.publicarPlan());
@@ -627,8 +640,40 @@ window.BUILD_DATE = '20260428-planeacion-f3-export-v3';
     actualizarPreviewExport(){
       const preview = $('export-preview');
       if (!preview) return;
-      const texto = window.PLANEACION_EXPORTAR.generarTextoWA(this.asignaciones, this.fechaFormateadaCorta());
-      preview.textContent = texto;
+      preview.classList.remove('pl-export-preview-error');
+      try {
+        preview.textContent = window.PLANEACION_EXPORTAR.generarTextoWA(this.asignaciones, this.fechaFormateadaCorta());
+      } catch (e){
+        // Nunca un preview vacío: si no se puede armar el texto, se dice por qué.
+        preview.classList.add('pl-export-preview-error');
+        preview.textContent = this.textoErrorExport('armar el texto del plan', e);
+        console.error('[planeacion] preview export falló:', e);
+      }
+    },
+
+    // ─── Errores de exportar: SIEMPRE en pantalla (incidente 24-sep-2026) ───
+    // Si el error viene de un archivo que no cargó, se nombra el archivo; el mensaje
+    // técnico va al final, entre paréntesis, para quien tenga que diagnosticarlo.
+    textoErrorExport(accion, e){
+      const causa = (window.FTSDeps && window.FTSDeps.explicar()) || '';
+      const tecnico = (e && e.message) ? e.message : String(e);
+      return 'No se pudo ' + accion + '. ' + (causa || 'Recarga la página con Ctrl+Shift+R; si se repite, avisa a sistemas.') +
+             ' (' + tecnico + ')';
+    },
+
+    mostrarErrorExport(accion, e){
+      console.error('[planeacion] exportar: no se pudo ' + accion + ':', e);
+      const m = $('pl-export-msg');
+      if (!m) { alert(this.textoErrorExport(accion, e)); return; }
+      m.textContent = '⚠️ ' + this.textoErrorExport(accion, e);
+      m.classList.add('pl-export-msg-error');
+    },
+
+    limpiarErrorExport(){
+      const m = $('pl-export-msg');
+      if (!m) return;
+      m.textContent = '';
+      m.classList.remove('pl-export-msg-error');
     },
 
     // ─── B1: publicar plan → planning.slot (upsert vía n8n) ───
@@ -729,10 +774,18 @@ window.BUILD_DATE = '20260428-planeacion-f3-export-v3';
     window.location.href = '../../index.html';
   }
 
+  window.PLANEACION_APP = PlaneacionApp;
+
   document.addEventListener('DOMContentLoaded', async function(){
     console.log('[planeacion] init build=' + window.BUILD_DATE);
 
-    if (!window.FTSAuth || !window.FTSAuth.isLoggedIn()){
+    // Si auth-suite.js no cargó, NO es "no hay sesión": es un archivo que falta, y el
+    // banner de FTSDeps ya lo está diciendo. Mandar al launcher lo escondería.
+    if (!window.FTSAuth){
+      if (window.FTSDeps) window.FTSDeps.banner('Planeación: no cargó shared/auth-suite.js, no se puede validar tu sesión.', []);
+      return;
+    }
+    if (!window.FTSAuth.isLoggedIn()){
       redirectToLauncher();
       return;
     }
@@ -761,6 +814,14 @@ window.BUILD_DATE = '20260428-planeacion-f3-export-v3';
       console.log('[planeacion] PlaneacionApp inicializado');
     } catch (e){
       console.error('[planeacion] init falló:', e);
+      if (window.FTSDeps) {
+        const faltan = window.FTSDeps.faltantes();
+        const tecnico = (e && e.message) ? e.message : String(e);
+        window.FTSDeps.banner(
+          'Planeación no pudo arrancar' + (faltan.length ? ': no ' + (faltan.length === 1 ? 'cargó 1 archivo.' : 'cargaron ' + faltan.length + ' archivos.') : '.'),
+          faltan.length ? faltan.map(f => ({ archivo: f.archivo, detalle: 'no cargó' })) : [{ archivo: 'error', detalle: tecnico }],
+          'build ' + window.PL_BUILD + ' · ' + tecnico);
+      }
     }
   });
 

@@ -451,3 +451,13 @@ a { color: inherit; }
   .pl-config-horario-row { flex-direction: column; align-items: stretch; }
   .pl-config-horario-inputs { justify-content: flex-end; }
 }
+
+/* ─── Errores de exportar y build viejo (incidente 24-sep-2026) ─── */
+.pl-export-msg { font-size: 13px; margin-top: 8px; line-height: 1.45; overflow-wrap: anywhere; }
+.pl-export-msg:empty { display: none; }
+.pl-export-msg-error {
+  background: #fdecea; color: #8a1c12; border: 1px solid #f5c2bd;
+  border-radius: 8px; padding: 8px 10px; font-weight: 500;
+}
+.pl-export-preview.pl-export-preview-error { color: #8a1c12; background: #fdecea; white-space: normal; }
+.pl-build.pl-build-viejo { color: #8a1c12; font-weight: 600; }

@@ -5,13 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Planeación Operativa — FTS Suite</title>
 <script>
-  (function(){
-    const BUILD_DATE = '20260428-planeacion-f3-export-v3';
-    window.BUILD_DATE = BUILD_DATE;
-  })();
+  // PL_BUILD = el build del CÓDIGO que está corriendo. Debe ser idéntico a
+  // version.json.build y al ?v= de cada <script>/<link> de abajo (lo exige
+  // tests/visual-planeacion.js). Al bumpear, se cambian los tres juntos.
+  window.PL_BUILD = '20260924-planeacion-deps-check';
+  window.BUILD_DATE = window.PL_BUILD;
 </script>
-<link rel="stylesheet" href="css/planeacion.css">
-<script src="../../shared/auth-suite.js"></script>
+<!-- Primero que todo: escucha qué archivo no cargó (incidente 24-sep-2026) -->
+<script src="../../shared/deps-check.js?v=20260924-planeacion-deps-check"></script>
+<link rel="stylesheet" href="css/planeacion.css?v=20260924-planeacion-deps-check">
+<script src="../../shared/auth-suite.js?v=20260924-planeacion-deps-check"></script>
 </head>
 <body>
 
@@ -61,27 +64,66 @@
 <!-- html2canvas para generar PNG (CDN) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
-<!-- Scripts (orden importante) -->
-<script src="js/sitios.js"></script>
-<script src="js/proyectos.js"></script>
-<script src="js/config.js"></script>
-<script src="js/horarios-base.js"></script>
-<script src="js/empleados.js"></script>
-<script src="js/jornada.js"></script>
-<script src="js/turnos.js"></script>
-<script src="js/exportar.js"></script>
-<script src="js/planeacion.js"></script>
+<!-- Scripts (orden importante). ?v= = build: el index nuevo nunca convive con un JS viejo en caché -->
+<script src="js/sitios.js?v=20260924-planeacion-deps-check"></script>
+<script src="js/proyectos.js?v=20260924-planeacion-deps-check"></script>
+<script src="js/config.js?v=20260924-planeacion-deps-check"></script>
+<script src="js/horarios-base.js?v=20260924-planeacion-deps-check"></script>
+<script src="js/empleados.js?v=20260924-planeacion-deps-check"></script>
+<script src="js/jornada.js?v=20260924-planeacion-deps-check"></script>
+<script src="js/turnos.js?v=20260924-planeacion-deps-check"></script>
+<script src="js/exportar.js?v=20260924-planeacion-deps-check"></script>
+<script src="js/planeacion.js?v=20260924-planeacion-deps-check"></script>
 
-<!-- Build indicator: lee version.json (cache-bust) para verificación visual del deploy -->
+<!-- Chequeo de arranque: si falta un archivo, banner rojo que lo nombra -->
 <script>
   (function(){
+    var REQUERIDOS = [
+      { global: 'FTSAuth',              archivo: 'shared/auth-suite.js' },
+      { global: 'html2canvas',          archivo: 'html2canvas (cdnjs, para el PNG)' },
+      { global: 'PLANEACION_SITIOS',    archivo: 'js/sitios.js' },
+      { global: 'PLANEACION_PROYECTOS', archivo: 'js/proyectos.js' },
+      { global: 'PLANEACION_CONFIG',    archivo: 'js/config.js' },
+      { global: 'PLANEACION_HORARIOS',  archivo: 'js/horarios-base.js' },
+      { global: 'PLANEACION_EMPLEADOS', archivo: 'js/empleados.js' },
+      { global: 'PLANEACION_JORNADA',   archivo: 'js/jornada.js' },
+      { global: 'PLANEACION_TURNOS',    archivo: 'js/turnos.js' },
+      { global: 'PLANEACION_EXPORTAR',  archivo: 'js/exportar.js' },
+      { global: 'PLANEACION_APP',       archivo: 'js/planeacion.js' }
+    ];
+    if (window.FTSDeps) {
+      window.PL_DEPS = window.FTSDeps.verificar({ modulo: 'Planeación', build: window.PL_BUILD, requeridos: REQUERIDOS });
+      return;
+    }
+    // Respaldo: el que no llegó es el propio shared/deps-check.js.
+    var faltan = ['shared/deps-check.js'];
+    for (var i = 0; i < REQUERIDOS.length; i++) {
+      if (typeof window[REQUERIDOS[i].global] === 'undefined') faltan.push(REQUERIDOS[i].archivo);
+    }
+    var d = document.createElement('div');
+    d.className = 'fts-deps-banner';
+    d.setAttribute('role', 'alert');
+    d.style.cssText = 'position:sticky;top:0;z-index:10000;background:#b42318;color:#fff;padding:12px 16px;font:14px/1.45 Arial,sans-serif';
+    d.textContent = '⚠️ Planeación: no cargaron ' + faltan.join(', ') + '. Recarga la página con Ctrl+Shift+R.';
+    document.body.insertBefore(d, document.body.firstChild);
+    window.PL_DEPS = { ok: false, faltantes: faltan };
+  })();
+</script>
+
+<!-- Build indicator: muestra el build del CÓDIGO (PL_BUILD), no el de version.json.
+     Hasta 2026-09 pintaba version.json leído en vivo, y eso no probaba qué JS corría.
+     Si version.json ya trae otro build, avisa que hay versión nueva (sin recargar solo:
+     un reload a media captura perdería el plan que no se ha publicado). -->
+<script>
+  (function(){
+    var el = document.getElementById('pl-build');
+    if (el) el.textContent = 'build ' + window.PL_BUILD;
     fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(d){
-        if (!d || !d.build) return;
-        window.BUILD_DATE = d.build;
-        var el = document.getElementById('pl-build');
-        if (el) el.textContent = 'build ' + d.build;
+        if (!d || !d.build || d.build === window.PL_BUILD || !el) return;
+        el.textContent = 'build ' + window.PL_BUILD + ' · hay versión nueva (' + d.build + '): recarga con Ctrl+Shift+R';
+        el.classList.add('pl-build-viejo');
       })
       .catch(function(){});
   })();
