@@ -65,6 +65,15 @@ ningún machote real puede crear su orden. (§11)
 
 ---
 
+> ⚠️ **Una inferencia de este informe fue corregida por la sesión 3.** El §11 dice que
+> `comercial/orden-crear-v2` bloquea a los 24 machotes porque los compromisos están en cero.
+> **El endpoint los lee del CUERPO de la petición, no de las columnas**, y son cuatro los
+> obligatorios, no cinco: la puerta no la cierra el webhook, la cierra que la pantalla nunca
+> se usó. Detalle y código en el §2.2 de
+> [`PLAN-MAESTRO-ESTACION-3.md`](PLAN-MAESTRO-ESTACION-3.md).
+
+---
+
 ## 0-bis · Correcciones a la sesión 0, y por qué importan
 
 Tres cifras del [`INFORME.md`](INFORME.md) no se reprodujeron. Se corrigen aquí con el
