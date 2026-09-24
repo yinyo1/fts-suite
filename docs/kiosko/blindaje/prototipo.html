@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kiosko blindado · prototipo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* Paleta y formas del kiosko actual (operaciones/kiosk/css/kiosk.css e index.html). */
+  :root{
+    --verde:#107C10; --azul:#0078D4; --naranja:#D83B01; --ambar:#7a5800;
+    --fondo:#fafafa; --texto:#1a1a1a; --gris:#666; --borde:#e0e0e0;
+    --card-activo:#f0f9f0; --card-azul:#f0f4ff; --card-amarillo:#fff3cd; --card-rojo:#ffe8e8;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter',-apple-system,sans-serif;background:var(--fondo);color:var(--texto);min-height:100vh}
+  button{font-family:inherit}
+  .top{background:#fff;border-bottom:1px solid var(--borde);padding:12px 16px;position:sticky;top:0;z-index:50}
+  .top h1{font-size:16px;font-weight:700}
+  .top p{font-size:12px;color:var(--gris);margin-top:2px}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+  .tab{border:1px solid var(--borde);background:#fff;border-radius:999px;padding:7px 12px;font-size:13px;cursor:pointer;color:#333}
+  .tab.on{background:var(--azul);border-color:var(--azul);color:#fff;font-weight:600}
+  .wrap{display:flex;gap:24px;padding:20px 16px 60px;max-width:1180px;margin:0 auto;align-items:flex-start}
+  .device{flex:0 0 auto;width:100%;max-width:440px;background:#fafafa;border:1px solid var(--borde);border-radius:24px;box-shadow:0 8px 32px rgba(0,0,0,.06);padding:16px 16px 24px;position:relative;min-height:640px;overflow:hidden}
+  .device.desk{max-width:none;flex:1 1 auto;border-radius:14px;min-height:520px}
+  .notas{flex:1 1 320px;min-width:0}
+  .notas h2{font-size:15px;margin-bottom:8px}
+  .notas p,.notas li{font-size:13px;line-height:1.55;color:#333}
+  .notas ul{padding-left:18px;margin:6px 0 12px}
+  .inv{display:inline-block;background:#eef4ff;color:var(--azul);border-radius:6px;padding:1px 7px;font-size:11px;font-weight:700;margin:0 4px 4px 0}
+  .antes{background:#fff5f0;border:1px solid #f3c9b5;border-radius:10px;padding:10px 12px;margin-top:10px;font-size:12.5px;color:#7a2e0e}
+  .sim{background:#fff;border:1px dashed #bbb;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.5px}
+  .sim label{display:block;margin:3px 0;cursor:pointer}
+
+  /* Pantalla de estado, igual que #ks-estado */
+  .emp{text-align:center;margin-bottom:14px}
+  .foto{width:72px;height:72px;border-radius:50%;border:3px solid var(--azul);background:#e8eef7;display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:26px;font-weight:700;color:var(--azul)}
+  .emp h3{margin:8px 0 2px;font-size:19px}
+  .emp small{color:var(--gris);font-size:12.5px}
+  .card{border-radius:12px;padding:16px;margin-bottom:14px;display:flex;align-items:center;gap:12px}
+  .card .izq{flex:1;text-align:center}
+  .card .emoji{font-size:32px;margin-bottom:6px}
+  .card .txt{font-size:13px;font-weight:500;line-height:1.35}
+  .card .der{flex:1;display:flex;align-items:center;justify-content:center}
+  .prim{border:none;padding:14px 10px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;width:100%;color:#fff;line-height:1.3}
+  .sec{border-radius:12px;padding:13px;font-size:14px;font-weight:500;cursor:pointer;width:100%;line-height:1.35;margin-bottom:10px;text-align:center}
+  .sec small{display:block;font-size:11px;font-weight:600;color:var(--ambar);margin-top:2px}
+  .hist{border:1px solid var(--borde);border-radius:8px;padding:4px;margin-bottom:14px}
+  .hist .fila{display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;padding:7px 9px;background:#f8f9fa;border-radius:8px;margin-bottom:4px;font-size:12px;align-items:center}
+  .hist .fila:last-child{margin-bottom:0}
+  .aviso{border-radius:10px;padding:12px;font-size:13px;line-height:1.5;margin-bottom:12px}
+  .aviso.rojo{background:var(--card-rojo);border:1px solid #f1b3b3;color:#7a1010}
+  .aviso.ambar{background:#fff4d9;border:1px solid #e6d38a;color:var(--ambar)}
+  .aviso.verde{background:var(--card-activo);border:1px solid #bfe3bf;color:#0d5c0d}
+  .aviso.azul{background:var(--card-azul);border:1px solid #bcd3f5;color:#0b4f8a}
+  .folio{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:rgba(0,0,0,.05);padding:1px 6px;border-radius:5px}
+
+  /* Modales como los del kiosko */
+  .modal{position:absolute;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:18px;z-index:10}
+  .modal .caja{background:#fff;border-radius:16px;padding:20px;width:100%;max-width:380px;max-height:92%;overflow:auto}
+  .modal h3{font-size:17px;margin-bottom:6px}
+  .modal p{font-size:13px;color:#444;line-height:1.5;margin-bottom:10px}
+  .campo{margin-bottom:12px}
+  .campo label{font-size:12px;font-weight:700;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px;color:#333}
+  .campo input,.campo textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:15px;font-family:inherit}
+  .campo textarea{height:70px;resize:none;font-size:14px}
+  .fila-botones{display:flex;gap:10px;margin-top:6px}
+  .fila-botones button{flex:1;padding:12px;border-radius:10px;font-size:14px;cursor:pointer}
+  .btn-gris{background:#f0f0f0;color:#333;border:1px solid #ccc}
+  .btn-verde{background:var(--verde);color:#fff;border:none;font-weight:600}
+  .btn-azul{background:var(--azul);color:#fff;border:none;font-weight:600}
+  .btn-rojo{background:var(--naranja);color:#fff;border:none;font-weight:600}
+  .spinner{width:40px;height:40px;border:4px solid #e0e0e0;border-top:4px solid var(--verde);border-radius:50%;animation:gira .8s linear infinite;margin:10px auto}
+  @keyframes gira{to{transform:rotate(360deg)}}
+  .calc{background:#f8f9fa;border-radius:8px;padding:10px;font-size:13px;margin-bottom:10px;line-height:1.5}
+
+  /* RH */
+  .rh-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+  .rh-head h3{font-size:17px}
+  .tabla{width:100%;border-collapse:collapse;font-size:13px}
+  .tabla th{text-align:left;font-size:11px;text-transform:uppercase;color:var(--gris);padding:8px;border-bottom:1px solid var(--borde)}
+  .tabla td{padding:9px 8px;border-bottom:1px solid #f0f0f0;vertical-align:middle}
+  .tabla tr.malo td{background:#fff5f5}
+  .scroll{overflow-x:auto;border:1px solid var(--borde);border-radius:10px;background:#fff}
+  .chip{display:inline-block;font-size:11px;font-weight:700;border-radius:6px;padding:2px 7px}
+  .chip.abierto{background:#fff3cd;color:var(--ambar)} .chip.micro{background:#ffe8e8;color:#9a1b1b}
+  .chip.ok{background:var(--card-activo);color:var(--verde)} .chip.envuelve{background:#ffe8e8;color:#9a1b1b}
+  .mini{border:1px solid var(--borde);background:#fff;border-radius:8px;padding:6px 9px;font-size:12px;cursor:pointer;margin:2px 4px 2px 0;white-space:nowrap}
+  .linea{position:relative;height:34px;background:#f3f4f6;border-radius:8px;margin:10px 0 4px;overflow:hidden}
+  .seg{position:absolute;top:6px;height:22px;border-radius:6px;font-size:11px;color:#fff;display:flex;align-items:center;padding:0 6px;white-space:nowrap}
+  .ejes{display:flex;justify-content:space-between;font-size:10.5px;color:var(--gris)}
+  .diff{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12.5px}
+  .diff div{background:#f8f9fa;border-radius:8px;padding:8px}
+  @media (max-width:860px){ .wrap{flex-direction:column;padding:14px 16px 60px} .device{max-width:none} .notas{flex:1 1 auto} }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Kiosko blindado · prototipo de los flujos nuevos</h1>
+  <p>Datos demo. No se conecta a Odoo ni a n8n. Plan y fuentes en docs/kiosko/blindaje/.</p>
+  <div class="tabs" id="tabs"></div>
+</div>
+<div class="wrap">
+  <div class="device" id="device"></div>
+  <div class="notas" id="notas"></div>
+</div>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const EMP = { nombre: 'Empleado Demo', ini: 'ED', sup: 'Supervisor Demo', rh: 'RH Demo' };
+
+const TABS = [
+  { id: 'error', t: '1 · Error visible' },
+  { id: 'corregir', t: '2 · Corregir mi entrada' },
+  { id: 'critico', t: '3 · Error crítico' },
+  { id: 'ampm', t: '4 · Olvidé salida AM/PM' },
+  { id: 'rh', t: '5 · RH: reparar registro' }
+];
+let tab = 'error';
+let S = {};   // estado del flujo activo
+
+function pintarTabs() {
+  $('#tabs').innerHTML = TABS.map(x => '<button class="tab' + (x.id === tab ? ' on' : '') + '" onclick="ir(\'' + x.id + '\')">' + x.t + '</button>').join('');
+}
+function ir(id) { tab = id; S = {}; pintarTabs(); render(); }
+window.ir = ir;
+
+function cabecera(fecha) {
+  return '<div class="emp"><div class="foto">' + EMP.ini + '</div><h3>' + EMP.nombre + '</h3><small>' + fecha + '</small></div>';
+}
+function card(fondo, emoji, texto, boton) {
+  return '<div class="card" style="background:' + fondo + '"><div class="izq"><div class="emoji">' + emoji + '</div><div class="txt">' + texto + '</div></div>' +
+         (boton ? '<div class="der">' + boton + '</div>' : '') + '</div>';
+}
+function hist(filas) {
+  return '<p style="font-size:12px;color:#666;margin:0 0 6px">Últimas checadas:</p><div class="hist">' +
+    filas.map(f => '<div class="fila"><span>' + f[0] + '</span><span>' + f[1] + '</span><span style="color:#0078D4">' + f[2] + '</span><span style="color:#666;font-size:11px">' + f[3] + '</span></div>').join('') + '</div>';
+}
+function modal(html) { return '<div class="modal"><div class="caja">' + html + '</div></div>'; }
+function notas(titulo, invs, cuerpo, antes) {
+  $('#notas').innerHTML = '<h2>' + titulo + '</h2>' + invs.map(i => '<span class="inv">' + i + '</span>').join('') + cuerpo +
+    (antes ? '<div class="antes"><b>Hoy pasa esto:</b> ' + antes + '</div>' : '');
+}
+
+// ─── 1. Error visible con aviso al supervisor ─────────────────────────────
+function vError() {
+  const d = $('#device'); d.className = 'device';
+  S.sim = S.sim || 'red';
+  const sim = '<div class="sim"><b>Simular respuesta del servidor:</b>' +
+    [['red', 'La red no entrega (3 intentos, HTTP 499)'], ['odoo', 'Odoo rechaza la escritura'], ['ok', 'Odoo confirma']].map(x =>
+      '<label><input type="radio" name="sim" ' + (S.sim === x[0] ? 'checked' : '') + ' onchange="S.sim=\'' + x[0] + '\';S.paso=null;render()"> ' + x[1] + '</label>').join('') + '</div>';
+  let h = sim + cabecera('jueves, 17 de septiembre de 2026 · 17:22');
+  if (!S.paso) {
+    h += card('var(--card-activo)', '🟢', 'En jornada. Llevas 10:24 hrs',
+      '<button class="prim" style="background:var(--naranja)" onclick="S.paso=\'enviando\';render();setTimeout(()=>{S.paso=\'fin\';render()},1400)">🚪 Checar<br>Salida</button>');
+    h += hist([['☀️', 'jue 17 sep', '06:58 → ⏳', '·'], ['☀️', 'mar 15 sep', '06:59 → 17:31', '10.5h']]);
+  } else if (S.paso === 'enviando') {
+    h += '<div class="aviso azul" style="text-align:center"><div class="spinner"></div>Enviando tu salida…<br><b>No cierres esta pantalla.</b><br><small>La confirmación solo aparece cuando Odoo guarde el registro.</small></div>';
+  } else if (S.sim === 'ok') {
+    h += '<div class="aviso verde" style="text-align:center"><div style="font-size:44px">✓</div><b style="font-size:18px">SALIDA REGISTRADA</b><br>17:22 · Odoo confirmó el registro <span class="folio">#15549</span><br><small>Proyecto: SO9428</small></div>' +
+      '<button class="sec btn-verde" style="border:none" onclick="S.paso=null;render()">Terminado</button>';
+  } else if (S.sim === 'red') {
+    h += '<div class="aviso rojo"><div style="font-size:30px;text-align:center">❌</div><b>Tu salida NO se guardó.</b><br>No hubo respuesta del servidor después de 3 intentos. Verificamos y no llegó ningún registro.<br><br>Hora que quisiste registrar: <b>17:22</b></div>' +
+      '<div class="aviso ambar">📣 Avisamos a <b>' + EMP.sup + '</b> a las 17:23.<br>Folio del intento: <span class="folio">KI-0917-124-01</span></div>' +
+      '<button class="sec btn-rojo" style="border:none" onclick="S.paso=\'enviando\';S.sim=\'ok\';render();setTimeout(()=>{S.paso=\'fin\';render()},1200)">🔄 Reintentar ahora</button>' +
+      '<button class="sec" style="background:#fff;color:#0078D4;border:1px solid #0078D4" onclick="S.paso=null;render()">Lo declaro después (queda pendiente con la hora 17:22)</button>';
+  } else {
+    h += '<div class="aviso rojo"><div style="font-size:30px;text-align:center">⛔</div><b>Odoo no aceptó tu salida.</b><br>Hay un registro que empieza a las 10:27 dentro de tu jornada, y Odoo no permite que se traslapen.</div>' +
+      '<div class="aviso ambar">📣 Avisamos a <b>' + EMP.sup + '</b> y a <b>' + EMP.rh + '</b>. Ellos lo arreglan desde la suite.<br>Folio: <span class="folio">KI-0918-124-02</span></div>' +
+      '<button class="sec" style="background:#fff5f0;color:var(--naranja);border:1px solid var(--naranja)" onclick="ir(\'critico\')">🆘 Ver qué puedo hacer yo</button>';
+  }
+  d.innerHTML = h;
+  notas('Éxito solo cuando Odoo confirmó', ['I2', 'I3', 'B1'],
+    '<ul><li>La pantalla de confirmación ya no se pinta antes de enviar. Mientras espera, dice "Enviando" y pide no cerrar.</li>' +
+    '<li>Éxito solo con respuesta del servidor que traiga el número de registro de Odoo.</li>' +
+    '<li>Si no hubo respuesta, el kiosko <b>consulta</b> el intento por su folio antes de decidir (el servidor pudo haberlo guardado aunque la respuesta no llegara).</li>' +
+    '<li>Toda falla queda en la bitácora con folio y avisa al supervisor (una alerta por persona por hora).</li></ul>',
+    'la confirmación se pinta antes del POST (kiosk.js:1127) y el catch no avisa (kiosk.js:1199-1203). Un empleado intentó 17 veces en 4 días y las 17 vio "éxito".');
+}
+
+// ─── 2. Corregir mi hora de entrada ────────────────────────────────────────
+function vCorregir() {
+  const d = $('#device'); d.className = 'device';
+  let h = cabecera('viernes, 18 de septiembre de 2026 · 10:28');
+  if (!S.enviado) {
+    h += card('var(--card-activo)', '🟢', 'En jornada desde <b>10:27</b>',
+      '<button class="prim" style="background:var(--naranja)">🚪 Checar<br>Salida</button>');
+    h += '<div class="aviso ambar">Tu registro anterior se cerró automáticamente a 9.6 h. RH lo va a revisar contigo.</div>';
+    h += '<button class="sec" style="background:#f0f4ff;color:#0078D4;border:1px solid #0078D4" onclick="S.modal=1;render()">🕘 Corregir mi hora de entrada<small>[requiere aprobación]</small></button>';
+    h += '<button class="sec" style="background:#fff5f0;color:#D83B01;border:1px solid #D83B01">❌ Salí pero olvidé checar salida</button>';
+  } else {
+    h += card('var(--card-activo)', '🟢', 'En jornada desde <b>10:27</b><br><span style="color:#7a5800">Corrección a <b>' + S.hora + '</b> pendiente</span>',
+      '<button class="prim" style="background:var(--naranja)">🚪 Checar<br>Salida</button>');
+    h += '<div class="aviso verde">✓ Solicitud enviada a <b>' + EMP.sup + '</b>.<br>Folio <span class="folio">INC-OLV-124-0918</span>. Tu jornada sigue abierta: <b>no necesitas checar salida ni volver a entrar.</b></div>';
+    h += '<button class="sec" style="background:#fff;color:#666;border:1px solid #ccc" onclick="S={};render()">↺ Reiniciar demo</button>';
+  }
+  if (S.modal) {
+    h += modal('<h3>🕘 Corregir mi hora de entrada</h3><p>Tu entrada quedó registrada a las <b>10:27</b>. ¿A qué hora llegaste realmente?</p>' +
+      '<div class="campo"><label>Hora real de llegada</label><input type="time" id="hr" value="07:30"></div>' +
+      '<div class="campo"><label>Motivo (obligatorio)</label><textarea id="mot" placeholder="Ej: el kiosko no respondió a las 7:30"></textarea></div>' +
+      '<div class="calc">Se pedirá mover tu entrada de <b>10:27</b> a la hora que indiques. Tu supervisor y RH la aprueban. El sistema revisa que no choque con otro registro antes de aplicarla.</div>' +
+      '<div class="fila-botones"><button class="btn-gris" onclick="S.modal=0;render()">Cancelar</button><button class="btn-azul" onclick="S.hora=$(\'#hr\').value;S.enviado=1;S.modal=0;render()">Enviar</button></div>');
+  }
+  d.innerHTML = h;
+  notas('Corregir la entrada sin cerrar y reabrir', ['I1', 'B5', 'B3'],
+    '<ul><li>En jornada activa aparece "Corregir mi hora de entrada". La corrección va sobre el <b>mismo</b> registro abierto: no se crea otro.</li>' +
+    '<li>"Resolver ahora" en error crítico también pregunta a qué hora llegó, para no tener que hacer esto después.</li>' +
+    '<li>Al aprobarla, resolver revisa que la hora nueva no cruce otro registro (B3).</li></ul>',
+    '"Llegué pero olvidé checar entrada" solo aparece sin registro abierto (kiosk.js:1835). Para declarar su hora real, el empleado checó salida a los 38 s y volvió a entrar (ejecuciones 104629 y 104631). Ese registro de 38 s es el que después quedó envuelto y bloqueó 4 días.');
+}
+
+// ─── 3. Error crítico con salida de emergencia ─────────────────────────────
+function vCritico() {
+  const d = $('#device'); d.className = 'device';
+  let h = cabecera('lunes, 21 de septiembre de 2026 · 06:47');
+  if (S.fin === 'sos') {
+    h += card('var(--card-azul)', '🆘', 'Aviso enviado. <b>No tienes que hacer nada más.</b>', '');
+    h += '<div class="aviso azul">Folio <span class="folio">INC-BLOQUEO-124-0921</span> para <b>' + EMP.rh + '</b> y <b>' + EMP.sup + '</b>.<br><br>Anotamos tu llegada de hoy: <b>06:47</b>. Cuando RH destrabe tu registro, se aplica esa hora.<br><br>Te avisamos aquí cuando esté resuelto.</div>';
+    h += '<button class="sec" style="background:#fff;color:#666;border:1px solid #ccc" onclick="S={};render()">↺ Reiniciar demo</button>';
+  } else if (S.fin === 'declarada') {
+    h += card('var(--card-azul)', '🔵', 'Sin entrada registrada hoy',
+      '<button class="prim" style="background:var(--verde)">✅ Registrar<br>Entrada</button>');
+    h += '<div class="aviso verde">✓ Tu salida del jueves quedó en <b>' + S.hora + '</b>, pendiente de aprobación. Ya puedes checar tu entrada de hoy.</div>';
+    h += '<button class="sec" style="background:#fff;color:#666;border:1px solid #ccc" onclick="S={};render()">↺ Reiniciar demo</button>';
+  } else {
+    h += card('var(--card-rojo)', '🔴', 'Tu registro del <b>jueves 17</b> sigue abierto (<b>96 h</b>)', '');
+    h += '<div class="aviso rojo">Para registrar tu entrada de hoy primero hay que cerrar ese registro. Elige una opción:</div>';
+    h += '<button class="sec" style="background:var(--azul);color:#fff;border:none;font-weight:600" onclick="S.modal=\'declarar\';render()">🕔 Declarar mi hora de salida del jueves<small style="color:#dfe9f7">queda pendiente de aprobación</small></button>';
+    h += '<button class="sec" style="background:#fff;color:#333;border:1px solid #ccc" onclick="S.modal=\'rescate\';render()">⏱️ No recuerdo: cerrar a 9.6 h y entrar ahora<small>RH revisa la hora después</small></button>';
+    h += '<button class="sec" style="background:#fff5f0;color:var(--naranja);border:1px solid var(--naranja);font-weight:600" onclick="S.modal=\'sos\';render()">🆘 No puedo checar: avisar a RH y a mi supervisor</button>';
+  }
+  if (S.modal === 'declarar') {
+    h += modal('<h3>🕔 ¿A qué hora saliste el jueves?</h3><p>Entrada registrada: <b>jue 17 · 06:58</b></p>' +
+      '<div class="campo"><label>Hora de salida</label><input type="time" id="hs" value="17:22"></div>' +
+      '<div class="calc">Sin límite de 12 horas hacia atrás. El turno no puede pasar de 16 h sin confirmación (ver flujo 4).</div>' +
+      '<div class="fila-botones"><button class="btn-gris" onclick="S.modal=0;render()">Cancelar</button><button class="btn-azul" onclick="S.hora=$(\'#hs\').value;S.fin=\'declarada\';S.modal=0;render()">Guardar</button></div>');
+  }
+  if (S.modal === 'rescate') {
+    h += modal('<h3>⏱️ Cerrar a 9.6 h y entrar ahora</h3><p>Tu registro del jueves se cierra a las <b>16:34</b> (9.6 h) y queda marcado para que RH lo revise.</p>' +
+      '<div class="campo"><label>¿A qué hora llegaste hoy?</label><input type="time" value="06:47"></div>' +
+      '<div class="fila-botones"><button class="btn-gris" onclick="S.modal=0;render()">Cancelar</button><button class="btn-verde" onclick="S.fin=\'declarada\';S.hora=\'16:34 (automática)\';S.modal=0;render()">Continuar</button></div>');
+  }
+  if (S.modal === 'sos') {
+    h += modal('<h3>🆘 Avisar a RH y a tu supervisor</h3><p>Se crea un folio con tu foto, tu ubicación y la hora de hoy. Queda guardado <b>antes</b> de intentar nada en Odoo, así que no se pierde aunque Odoo falle.</p>' +
+      '<div class="campo"><label>¿Qué pasa? (opcional)</label><textarea placeholder="Ej: le doy entrada y no me deja"></textarea></div>' +
+      '<div class="fila-botones"><button class="btn-gris" onclick="S.modal=0;render()">Cancelar</button><button class="btn-rojo" onclick="S.fin=\'sos\';S.modal=0;render()">Enviar aviso</button></div>');
+  }
+  d.innerHTML = h;
+  notas('Todo bloqueo tiene salida', ['I4', 'B7', 'B6'],
+    '<ul><li>En error crítico hay tres salidas en vez de una: declarar la hora real, cerrar a 9.6 h, o avisar a RH.</li>' +
+    '<li>El aviso se persiste antes de cualquier escritura en Odoo, y guarda la llegada de hoy.</li>' +
+    '<li>Con umbrales únicos (B6), a partir de 16 h el kiosko ya no ofrece "Seguí en turno", que creaba turnos de 20 h o más.</li></ul>',
+    'en error crítico solo hay "Resolver ahora" (kiosk.js:1821, sin secundario en 1853-1855). Si el cierre falla, se repite la misma falla y se ve como éxito. Ni el supervisor ni RH tienen herramienta.');
+}
+
+// ─── 4. Olvidé salida con guarda AM/PM ────────────────────────────────────
+function vAmpm() {
+  const d = $('#device'); d.className = 'device';
+  S.h = S.h || '05:05';
+  const ent = { dia: 'lun 17 ago', h: 6, m: 57 };
+  const [hh, mm] = S.h.split(':').map(Number);
+  let mins = (hh * 60 + mm) - (ent.h * 60 + ent.m); let sig = false;
+  if (mins < 0) { mins += 1440; sig = true; }
+  const largo = mins > 16 * 60;
+  const pm = String(hh + 12).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
+  const dur = Math.floor(mins / 60) + ' h ' + String(mins % 60).padStart(2, '0') + ' min';
+  let h = cabecera('martes, 18 de agosto de 2026 · 06:48');
+  h += card('var(--card-amarillo)', '🟡', 'Entrada sin salida registrada', '<button class="prim" style="background:var(--azul)">🌙 Seguí<br>en turno</button>');
+  if (S.ok) {
+    h += '<div class="aviso verde">✓ Salida declarada: <b>' + S.ok + '</b>. Pendiente de aprobación.</div>' +
+      '<button class="sec" style="background:#fff;color:#666;border:1px solid #ccc" onclick="S={};render()">↺ Reiniciar demo</button>';
+  }
+  d.innerHTML = h;
+  if (!S.ok) {
+    let aviso = '';
+    if (largo && hh < 12 && !S.confirmaAm) {
+      aviso = '<div class="aviso ambar">⚠️ Eso sería un turno de <b>' + dur + '</b>.<br>¿Quisiste decir <b>' + pm + '</b> (' + hh + ':' + String(mm).padStart(2, '0') + ' de la tarde)?</div>' +
+        '<div class="fila-botones" style="margin-bottom:10px"><button class="btn-azul" onclick="S.h=\'' + pm + '\';render()">Sí, ' + pm + '</button><button class="btn-gris" onclick="S.confirmaAm=1;render()">No, fue de la mañana</button></div>';
+    } else if (largo && S.confirmaAm) {
+      aviso = '<div class="aviso rojo">Turno de ' + dur + '. Explica en el motivo por qué fue tan largo; RH lo revisa aparte.</div>';
+    }
+    d.innerHTML += modal('<h3>❌ Olvidé checar salida</h3><p>Tu entrada registrada fue el <b>' + ent.dia + '</b> a las <b>06:57</b>. ¿A qué hora saliste?</p>' +
+      '<div class="campo"><label>Hora de salida</label><input type="time" id="hs2" value="' + S.h + '" onchange="S.h=this.value;S.confirmaAm=0;render()"></div>' +
+      '<div class="calc">Salida: <b>' + (sig ? 'mar 18 ago' : 'lun 17 ago') + ' · ' + S.h + '</b><br>Turno: <b style="color:' + (largo ? '#9a1b1b' : '#107C10') + '">' + dur + '</b></div>' + aviso +
+      '<div class="campo"><label>Motivo (obligatorio)</label><textarea placeholder="Ej: se me olvidó checar al salir"></textarea></div>' +
+      '<div class="fila-botones"><button class="btn-gris">Cancelar</button><button class="btn-rojo" ' + (largo && !S.confirmaAm ? 'disabled style="opacity:.45"' : '') + ' onclick="S.ok=\'' + (sig ? 'mar 18 ago ' : 'lun 17 ago ') + S.h + ' · ' + dur + '\';render()">💾 Guardar</button></div>');
+  }
+  notas('La hora de salida no se confunde de AM a PM', ['I8', 'B9'],
+    '<ul><li>El formulario muestra siempre la duración del turno antes de guardar.</li>' +
+    '<li>Si el turno pasaría de 16 h y la hora más 12 tiene sentido, pregunta "¿Quisiste decir…?".</li>' +
+    '<li>Si de verdad fue de la mañana, se puede, pero se marca para revisión.</li></ul>',
+    '"05:05" se guarda como 05:05 del día siguiente por el ajuste de medianoche (kiosk.js:2022-2024). Un registro real quedó en 22.12 h (14966) aunque el supervisor escribió "Salida 5 de la tarde" y RH lo aprobó tal cual.');
+}
+
+// ─── 5. RH: reparar registro ───────────────────────────────────────────────
+const REG0 = [
+  { id: 15549, ent: 'jue 17 06:58', sal: 'jue 17 17:22', h: '10.40', ini: 6.97, fin: 17.37, dia: 17 },
+  { id: 15589, ent: 'vie 18 07:30', sal: null, h: '·', ini: 7.5, fin: null, dia: 18 },
+  { id: 15588, ent: 'vie 18 10:27', sal: 'vie 18 10:28', h: '0.01', ini: 10.45, fin: 10.47, dia: 18 }
+];
+function vRh() {
+  const d = $('#device'); d.className = 'device desk';
+  if (!S.regs) S.regs = JSON.parse(JSON.stringify(REG0));
+  const r = S.regs;
+  const abierto = r.find(x => x.sal === null);
+  const micro = r.find(x => x.id === 15588);
+  const envuelve = abierto && r.some(x => x.dia === abierto.dia && x.ini > abierto.ini);
+  let h = '<div class="rh-head"><div><h3>🛠️ Reparar registro · ' + EMP.nombre + '</h3><small style="color:#666">Días 17 y 18 de septiembre · releído de Odoo hace 2 s</small></div>' +
+    '<button class="mini" onclick="S={};render()">↺ Reiniciar demo</button></div>';
+  if (envuelve) h += '<div class="aviso rojo">⚠️ <b>Traslape:</b> el registro <b>' + abierto.id + '</b> está abierto desde las ' + abierto.ent.slice(7) + ' y <b>envuelve</b> al registro ' + micro.id + ' (10:27 a 10:28, 38 s). Mientras exista, <b>nadie puede cerrar ' + abierto.id + '</b> y el empleado no puede checar.</div>';
+  else if (!abierto) h += '<div class="aviso verde">✓ Sin traslapes ni registros abiertos. El empleado ya puede checar.</div>';
+  // línea de tiempo del viernes
+  const vie = r.filter(x => x.dia === 18);
+  const X = v => ((v - 6) / 12 * 100).toFixed(1) + '%';
+  h += '<div style="font-size:12px;color:#666;margin-top:6px">Viernes 18</div><div class="linea">' +
+    vie.map(x => '<div class="seg" style="left:' + X(x.ini) + ';width:' + (x.fin ? Math.max(1.2, (x.fin - x.ini) / 12 * 100) : (18 - x.ini) / 12 * 100) + '%;background:' +
+      (x.sal === null ? 'rgba(122,88,0,.55)' : (x.fin - x.ini < 0.1 ? '#c42b1c' : '#107C10')) + ';' + (x.sal === null ? 'z-index:1' : 'z-index:2') + '">' + (x.sal === null ? x.id + ' abierto →' : '') + '</div>').join('') +
+    '</div><div class="ejes"><span>06:00</span><span>09:00</span><span>12:00</span><span>15:00</span><span>18:00</span></div>';
+  h += '<div class="scroll" style="margin-top:14px"><table class="tabla"><thead><tr><th>Registro</th><th>Entrada</th><th>Salida</th><th>Horas</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>' +
+    r.map(x => {
+      const esMicro = x.sal && (x.fin - x.ini) < 0.1;
+      const esEnv = x.sal === null && envuelve;
+      const chip = esEnv ? '<span class="chip envuelve">abierto · envuelve</span>' : (x.sal === null ? '<span class="chip abierto">abierto</span>' : (esMicro ? '<span class="chip micro">38 s</span>' : '<span class="chip ok">ok</span>'));
+      const acc = (esMicro ? '<button class="mini" onclick="S.m={op:\'borrar\',id:' + x.id + ',paso:1};render()">🗑️ Borrar</button>' : '') +
+        (x.sal === null ? '<button class="mini" onclick="S.m={op:\'cerrar\',id:' + x.id + ',paso:1,hora:\'17:09\'};render()">🔒 Cerrar a…</button>' : '') +
+        '<button class="mini">✎ Mover</button>';
+      return '<tr class="' + (esMicro || esEnv ? 'malo' : '') + '"><td><b>' + x.id + '</b></td><td>' + x.ent + '</td><td>' + (x.sal || '⏳') + '</td><td>' + x.h + '</td><td>' + chip + '</td><td>' + acc + '</td></tr>';
+    }).join('') + '</tbody></table></div>';
+  if (S.msg) h += '<div class="aviso ' + S.msg[0] + '" style="margin-top:12px">' + S.msg[1] + '</div>';
+  if (S.m) {
+    const m = S.m;
+    if (m.op === 'cerrar' && m.paso === 1) {
+      const [hh, mm] = m.hora.split(':').map(Number); const fin = hh + mm / 60;
+      const choque = r.find(x => x.id !== m.id && x.dia === 18 && x.ini > 7.5 && x.ini < fin);
+      h += modal('<h3>🔒 Cerrar el registro ' + m.id + '</h3><p>Entrada: <b>vie 18 07:30</b></p>' +
+        '<div class="campo"><label>Hora de salida</label><input type="time" value="' + m.hora + '" onchange="S.m.hora=this.value;render()"></div>' +
+        (choque ? '<div class="aviso rojo">⛔ No se puede: la salida a las ' + m.hora + ' cruza el registro <b>' + choque.id + '</b> (10:27). Resuelve primero ' + choque.id + '.</div>' :
+          '<div class="diff"><div><b>Antes</b><br>07:30 → ⏳</div><div><b>Después</b><br>07:30 → ' + m.hora + '<br>' + (fin - 7.5).toFixed(2) + ' h</div></div>') +
+        '<div class="fila-botones"><button class="btn-gris" onclick="S.m=null;render()">Cancelar</button><button class="btn-azul" ' + (choque ? 'disabled style="opacity:.45"' : 'onclick="S.m.paso=2;render()"') + '>Revisar y confirmar</button></div>');
+    } else if (m.op === 'borrar' && m.paso === 1) {
+      h += modal('<h3>🗑️ Borrar el registro ' + m.id + '</h3><p>Registro de <b>38 segundos</b> (10:27:49 a 10:28:27) creado al checar salida para corregir la hora de entrada.</p>' +
+        '<div class="diff"><div><b>Antes</b><br>3 registros · 1 traslape</div><div><b>Después</b><br>2 registros · 0 traslapes</div></div>' +
+        '<div class="fila-botones"><button class="btn-gris" onclick="S.m=null;render()">Cancelar</button><button class="btn-rojo" onclick="S.m.paso=2;render()">Continuar</button></div>');
+    } else if (m.paso === 2) {
+      h += modal('<h3>Confirmación final</h3><p>Escribe el número del registro para confirmar. Queda en el historial de Odoo con tu nombre.</p>' +
+        '<div class="campo"><label>Registro</label><input id="conf" placeholder="' + m.id + '" oninput="document.getElementById(\'okc\').disabled = this.value !== \'' + m.id + '\'"></div>' +
+        '<div class="fila-botones"><button class="btn-gris" onclick="S.m=null;render()">Cancelar</button><button class="btn-rojo" id="okc" disabled onclick="aplicarRh()">Aplicar en Odoo</button></div>');
+    }
+  }
+  d.innerHTML = h;
+  notas('RH destraba sin entrar a Odoo', ['I1', 'I4', 'B8', 'B3'],
+    '<ul><li>La vista marca traslapes, abiertos y micro registros, con la línea de tiempo del día.</li>' +
+    '<li>Toda acción pasa por el mismo candado de traslape que resolver (B3): la herramienta no deja crear un traslape.</li>' +
+    '<li>Vista previa antes y después, doble confirmación, y relectura de Odoo al terminar.</li>' +
+    '<li>Autenticación firmada del lado del servidor (no el token de hoy).</li></ul>',
+    'el editor de asistencias existe solo para el usuario master, no revisa traslapes (editor-asistencias.html:1418-1460) y manda un token base64 sin firma (L778-791). El caso real se destrabó a mano en el backend de Odoo.');
+}
+function aplicarRh() {
+  const m = S.m;
+  if (m.op === 'borrar') { S.regs = S.regs.filter(x => x.id !== m.id); S.msg = ['verde', '✓ Registro ' + m.id + ' borrado. Releído de Odoo: 2 registros, 0 traslapes. Ahora puedes cerrar 15589.']; }
+  else { const x = S.regs.find(y => y.id === m.id); const [hh, mm] = m.hora.split(':').map(Number); x.sal = 'vie 18 ' + m.hora; x.fin = hh + mm / 60; x.h = (x.fin - x.ini).toFixed(2);
+    S.msg = ['verde', '✓ Registro ' + m.id + ' cerrado a las ' + m.hora + ' (' + x.h + ' h). Releído de Odoo. El empleado ya puede checar.']; }
+  S.m = null; render();
+}
+window.aplicarRh = aplicarRh;
+
+function render() {
+  ({ error: vError, corregir: vCorregir, critico: vCritico, ampm: vAmpm, rh: vRh })[tab]();
+}
+window.render = render;
+pintarTabs(); render();
+</script>
+</body>
+</html>
