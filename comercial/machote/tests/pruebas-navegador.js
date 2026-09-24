@@ -7793,54 +7793,28 @@ await sembrarMachotes(q);
     } finally { await q.close(); }
   });
 
-  await paso('V1.36 · al pasar a renglón se dice que el texto quedó en su comentario, con el nombre', async () => {
-    /* El pad se vacía a la vista del usuario. Sin decir DÓNDE quedó el texto
-     * parece que se perdió — y lo que se «pierde» sería justamente el
-     * razonamiento, que es lo único que esta función existe para salvar. */
-    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
-    q.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
-    try {
-      await sembrarGeo(q); await sembrarMachotes(q);
-      await q.addInitScript(() => {
-        try { localStorage.setItem('fts_suite_session', JSON.stringify({
-          token:'p.p.p', actor:'zz.prueba', nombre:'ZZ Prueba', empleado_id:null,
-          scopes:['comercial:read','comercial:orden'], exp: Math.floor(Date.now()/1000)+3600 })); } catch (e) {}
-      });
-      await q.goto(BASE); await q.waitForTimeout(1200);
-      await q.evaluate(() => { location.hash = '#/m/M-1041'; }); await q.waitForTimeout(900);
-      await q.locator('.pestana').nth(1).click(); await q.waitForTimeout(900);
-
-      await q.click('[data-padabrir]'); await q.waitForTimeout(350);
-      /* V1.41 · en la rejilla: el rótulo de la fila es el concepto del
-       * renglón, y el importe sale de la celda elegida. */
-      const sidP = await q.evaluate(() => {
-        const e = document.querySelector('[data-padonde="full"][data-padcel]');
-        return e ? e.dataset.padcel.split('|')[0] : null;
-      });
-      const celP = (f, c) => '[data-padonde="full"][data-padcel="' + sidP + '|' + f + '|' + c + '"]';
-      for (const [sel, val] of [[celP(0,0), 'Canalización tramo norte'],
-                                [celP(0,1), '3'], [celP(0,2), '12'],
-                                [celP(0,3), '=A1*B1*450']]) {
-        await q.fill(sel, val); await q.dispatchEvent(sel, 'input'); await q.waitForTimeout(150);
-      }
-      await q.click(celP(0, 3)); await q.waitForTimeout(250);
-      await q.waitForTimeout(400);
-
-      await q.click('[data-padpasar]'); await q.waitForTimeout(500);
-      const aviso = await q.evaluate(() => {
-        const t = document.querySelector('.toast');
-        return t ? t.textContent.trim() : null;
-      });
-      if (!aviso) throw new Error('no dijo nada al pasar el renglón');
-      if (aviso.indexOf('Canalización tramo norte') < 0)
-        throw new Error('el aviso no nombra el renglón: ' + aviso);
-      if (!/comentario/i.test(aviso))
-        throw new Error('el aviso no dice que el texto quedó en el comentario: ' + aviso);
-      if (!/no se borró/i.test(aviso))
-        throw new Error('el aviso no desmiente que se haya borrado: ' + aviso);
-      console.log('    «' + aviso + '»');
-    } finally { await q.close(); }
-  });
+  /* ⚠️ V1.43 · AQUÍ VIVÍA «al pasar a renglón se dice que el texto quedó en su
+   * comentario, con el nombre».
+   *
+   * Medía las tres cosas que el aviso tenía que decir al pasar una celda a un
+   * renglón: a cuál, por cuánto, y DÓNDE quedó la cuenta. Se fue entera con
+   * «Pasar a renglón»: el pad no tiene salida hacia el machote.
+   *
+   * No se reescribe «al revés» porque ya está cubierto, y mejor, por la prueba
+   * «el pad no altera NINGÚN total, y ya no hay puerta que lo permita», que
+   * exige las tres cosas de golpe: que no exista el botón, que el total no se
+   * mueva con la hoja llena, y que no aparezca ningún renglón con el texto del
+   * pad. Dejar aquí una segunda versión de lo mismo sería un sitio más que
+   * mantener diciendo lo mismo (§20 #13).
+   *
+   * 📌 Y conviene decir CÓMO apareció, porque es la lección de la tanda: esta
+   * prueba fue el NOVENO huérfano, y el único que no encontré. Las ocho
+   * anteriores salieron de buscar en el código; ésta se quedó porque su título
+   * no dice «pad» ni «V1.4x» y se me escapó del filtro `SOLO` con el que
+   * estuve iterando. La cazó **la suite completa, sin `SOLO`** —249 verdes y
+   * ésta en rojo— que es exactamente para lo que la regla de correr la suite
+   * entera antes de entregar existe. Iterar con filtro es barato y correcto;
+   * entregar con filtro es cómo se cuela el que falta. */
 
   await paso('V1.43 · cerrar el pad NO regaña, y el revisador tampoco: es un borrador legítimo', async () => {
     /* ⚠️ ESTA PRUEBA ESTÁ AL REVÉS QUE EN LA V1.36, y el giro es el punto.
