@@ -811,3 +811,24 @@ def test_la_corporativa_se_DISTINGUE_en_la_tabla(sesion):
     assert "(corporativo)" in t
     assert "Durango" in t
     assert "✎" not in t, "ninguna fue editada a mano"
+
+
+def test_el_paquete_de_la_CORPORATIVA_si_lleva_a_los_regionales(sesion):
+    """Simetria del diseno: el mismo contacto que una corrida de planta excluye
+    -- porque su ubicacion dice "grupo"-- es exactamente a quien la corporativa
+    SI tiene que entregarle al CRM. Si los excluyera tambien, la exportacion no
+    tendria destino y los regionales se perderian del todo."""
+    _sondas_ok()
+    orq.main(["prospecta", "--empresa", "Coficab", "--nivel", "corporativo"])
+    orq.main(["registrar", "--empresa", "Coficab", "--modulo", "M1", "--datos",
+              json.dumps({"contactos": [{
+                  "nombre": "Uno", "puesto": "Gerente de Compras",
+                  "cercania_decision": 10,
+                  "datos": {"planta": [{"fuente": "zoominfo",
+                                        "valor": "COFICAB Group"}]}}]})])
+    assert orq.main(["paquete", "--empresa", "Coficab"]) == 0
+    p = sesion / "coficab" / "_corporativo-paquete.json"
+    assert p.exists(), "la llave del paquete corporativo tampoco choca"
+    pq = json.loads(p.read_text("utf-8"))
+    assert pq["planta"] is None and pq["nivel"] == NIVEL_CORPORATIVO
+    assert [x["puesto"] for x in pq["contactos_de_valor"]] == ["Gerente de Compras"]
