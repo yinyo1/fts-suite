@@ -25,6 +25,7 @@ un contador que alguien sube, es un hecho que se lee de las observaciones. Aqui
 distintos hay en el registro de trabajo ejecutado.
 """
 from __future__ import annotations
+import re
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 
@@ -38,6 +39,44 @@ class CompuertaCerrada(RuntimeError):
 
 # ------------------------------------------------------ el registro de trabajo
 MIN_LARGO_CONSULTA = 3       # "odoo" o "SO11134" valen; "" y "x" no
+
+
+# ------------------------------------------------------------------- las ligas
+# Reportado por Esteban sobre la ficha de Durango: la liga de la fuente de
+# clusters NO abre. La ficha la imprimia como si fuera buena.
+#
+# Lo que esto SI puede verificar es la FORMA -- que sea una URL absoluta, con
+# esquema y dominio, sin espacios ni comillas ni parentesis de cierre pegados--.
+# Lo que NO puede es abrirla: `WebFetch` esta bloqueado por egress en este
+# entorno, medido. Asi que se hace lo unico honesto: se rechaza lo que no tiene
+# forma de URL, y lo que sí la tiene se imprime MARCADO COMO NO COMPROBADA, en
+# vez de como buena. Una liga con forma correcta que devuelve 404 se sigue
+# viendo igual desde aqui; decir que abre seria afirmar lo que no se llamo.
+_LIGA_OK = re.compile(r'''^https?://[^\s<>"']+\.[^\s<>"']+$''', re.I)
+# Basura que se pega al copiar de un resultado de busqueda o de un markdown.
+_COLAS_PEGADAS = ''')]},.;:'"«»'''
+
+
+def exigir_liga_con_forma(liga: str, modulo: str = "") -> str:
+    """Devuelve la liga limpia, o lanza si no tiene forma de URL."""
+    liga = (liga or "").strip()
+    if not liga:
+        return ""                    # opcional: Odoo y el buzon no tienen URL
+    liga = liga.strip(_COLAS_PEGADAS)
+    if _LIGA_OK.match(liga):
+        return liga
+    pista = ""
+    if liga.startswith("www.") or "." in liga.split("/")[0]:
+        pista = f" Le falta el esquema: prueba 'https://{liga}'."
+    elif " " in liga:
+        pista = " Tiene espacios: una URL no los lleva sin codificar."
+    elif liga.startswith("/"):
+        pista = " Es una ruta relativa, no una URL: falta el dominio."
+    raise CompuertaCerrada(
+        f"[{modulo}] la liga '{liga}' no tiene forma de URL absoluta.{pista}\n"
+        "  Una liga rota en la ficha es peor que ninguna: quien la reciba la "
+        "abre, no abre, y deja de confiar en las demas. Si no tienes la URL "
+        "completa, no pases --liga: la ficha dice 'sin liga' y eso es honesto.")
 
 
 @dataclass
@@ -75,6 +114,7 @@ class Busqueda:
         return " ".join(self.consulta.lower().split())
 
     def __post_init__(self) -> None:
+        self.liga = exigir_liga_con_forma(self.liga, self.modulo)
         if not (self.consulta or "").strip() or len(self.consulta.strip()) < MIN_LARGO_CONSULTA:
             raise CompuertaCerrada(
                 f"[{self.modulo}] busqueda sin consulta. Una busqueda sin texto "

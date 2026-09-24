@@ -245,7 +245,9 @@ def test_el_puesto_y_la_entidad_SIGUEN_chocando():
     e = x.dato("entidad")
     e.observar("linkedin_publico", "Casa")
     e.observar("rocketreach", "Otra Casa")
-    assert e.choca
+    assert e.choca, (
+        "la contencion NO aplica a `entidad`: 'Casa' esta contenido en 'Otra "
+        "Casa' y son dos EMPRESAS distintas. Un empleador equivocado no rebota.")
 
 
 def test_un_puesto_impreso_en_documento_oficial_NO_ancla_a_la_persona():

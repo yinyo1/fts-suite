@@ -42,12 +42,23 @@ def checklist_validaciones(c: Corrida) -> list[dict]:
 # Fecha suelta dentro de un texto de senal, en las formas que la corrida escribe:
 # "ene-2026", "9-oct-2025", "2026-09-24", "agosto de 2022", "mar-2025".
 _MESES = ("ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic")
+# Las formas van de la MAS precisa a la MENOS: el regex alterna, y si la parcial
+# fuera primero se comeria el ano de una fecha completa.
+#
+# B3 de #300: `AAAA-MM` y `AAAA` solos no se reconocian, asi que la senal de
+# oct-2024 de Silao y la de 2018 de Juarez salian "sin fecha en el registro"
+# aunque la traen escrita. Esa marca existe para que una senal vieja NO se lea
+# fresca; no reconocer la fecha parcial ESCONDE la antiguedad, que es lo
+# contrario de su proposito. Se acepta y se imprime tal cual: '2024-10' dice
+# menos que '2024-10-15' y dice muchisimo mas que nada.
 _FECHA = re.compile(
     r"(\d{4}-\d{2}-\d{2}"
     r"|\d{1,2}[ -](?:%s)[a-z]*[ -]\d{4}"
     r"|(?:%s)[a-z]*[ -]\d{4}"
     r"|(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre"
-    r"|noviembre|diciembre)\s+de\s+\d{4})" % (_MESES, _MESES), re.I)
+    r"|noviembre|diciembre)\s+(?:de\s+)?\d{4}"
+    r"|\d{4}-(?:0[1-9]|1[0-2])"
+    r"|(?<![\d./-])(?:19|20)\d{2}(?![\d./-]))" % (_MESES, _MESES), re.I)
 
 
 def fecha_de(texto: str) -> str:
@@ -197,8 +208,23 @@ def modo_limpio(c: Corrida) -> str:
     # --- fuentes: via, consulta, fecha y liga
     fuentes = []
     for b in c.busquedas():
-        liga = (f'<a href="{html.escape(b.liga, quote=True)}">liga</a>'
-                if b.liga else '<i>sin liga</i>')
+        # La liga se imprime MARCADA COMO NO COMPROBADA. Se verifico su FORMA al
+        # registrarla -- una URL absoluta, sin espacios ni colas pegadas-- pero
+        # NADIE la abrio: WebFetch esta bloqueado por egress en este entorno.
+        #
+        # Esteban reporto una liga rota en la ficha de Durango. El arreglo no es
+        # prometer que abre -- no se puede desde aqui-- sino dejar de imprimirla
+        # como si estuviera comprobada. Quien reciba la ficha ve el dominio y
+        # sabe que la forma se reviso y el contenido no.
+        if b.liga:
+            dominio = b.liga.split("//", 1)[-1].split("/", 1)[0][:38]
+            liga = (f'<a href="{html.escape(b.liga, quote=True)}" '
+                    f'title="forma verificada, contenido NO comprobado: '
+                    f'WebFetch bloqueado por egress">'
+                    f'{html.escape(dominio)}</a>'
+                    f'<span class="nc" title="no comprobada">?</span>')
+        else:
+            liga = '<i>sin liga</i>'
         fuentes.append(
             f'<tr><td>{html.escape(b.modulo)}</td>'
             f'<td>{html.escape(b.etiqueta or b.fuente)}</td>'
@@ -220,6 +246,17 @@ def modo_limpio(c: Corrida) -> str:
               if c.como_hablarles else "")
     avisos = ("".join(f"<li>{html.escape(a)}</li>" for a in c.avisos
                       if not a.startswith("[challenge]")))
+
+    # El estado editado a mano se DECLARA arriba, antes del gancho. No bloquea la
+    # ficha -- dentro hay trabajo real y negarse a emitirla lo perderia-- pero no
+    # puede salir sin decirlo: quien la reciba tiene derecho a saber que una
+    # parte del estado no la escribio la herramienta.
+    aviso_edicion = ('<div class="editada"><b>ESTADO EDITADO A MANO.</b> La firma '
+                     'del archivo de esta corrida no coincide con su contenido: '
+                     'alguien escribio el JSON por fuera de la herramienta. Los '
+                     'datos de abajo pueden no venir de una busqueda registrada. '
+                     'Vale la pena revisar contra las fuentes antes de mandarla.'
+                     '</div>') if c.editada_a_mano else ""
 
     # Los tres bloques de criterio, ya resueltos: o el texto del operador, o el
     # hueco declarado con el comando exacto que lo llena.
@@ -276,6 +313,9 @@ def modo_limpio(c: Corrida) -> str:
  .fecha{{display:inline-block;font:600 .74rem ui-monospace,monospace;
          background:#eaf1f7;color:var(--azul);padding:1px 6px;border-radius:3px;
          margin-right:6px}}
+ .nc{{display:inline-block;font:700 .66rem ui-monospace,monospace;color:#a4560a;
+      background:#fbf3e8;border-radius:50%;width:13px;height:13px;
+      text-align:center;line-height:13px;margin-left:4px;vertical-align:super}}
  .sinfecha{{display:inline-block;font:600 .74rem ui-monospace,monospace;
             background:#fbf3e8;color:var(--ambar);padding:1px 6px;
             border-radius:3px;margin-right:6px}}
@@ -284,6 +324,9 @@ def modo_limpio(c: Corrida) -> str:
  ul.sv{{background:#fdf8e6;border-left:3px solid var(--oro);
         padding:10px 12px 10px 30px;margin:0;font-size:.9rem}}
  ul.sv code{{font:.82rem ui-monospace,monospace;color:var(--azul)}}
+ .editada{{background:#fdecea;border:2px solid #a4340a;color:#7a2708;
+           padding:12px 14px;margin-bottom:18px;font-size:.92rem;
+           border-radius:3px}}
  .hueco{{background:#fbf3e8;border-left:3px solid var(--ambar);
          padding:10px 12px;font-size:.9rem;margin:6px 0}}
  .e-sin_acceso,.e-fallo{{color:var(--ambar);font-weight:600}}
@@ -298,6 +341,7 @@ def modo_limpio(c: Corrida) -> str:
 </style>
 </head>
 <body>
+{aviso_edicion}
 <h1>{html.escape(c.empresa)}</h1>
 <div class="meta">{html.escape(c.ciudad)} · {html.escape(c.giro)} ·
  corrida {c.creada[:10]} · {len(c.busquedas())} busquedas registradas</div>
@@ -332,6 +376,11 @@ def modo_limpio(c: Corrida) -> str:
     <th>Liga</th></tr>
 {fuentes and "".join(fuentes) or '<tr><td colspan="6"><i>Sin busquedas.</i></td></tr>'}
 </table>
+<p class="meta">Las ligas llevan <span class="nc">?</span> porque su FORMA se
+verifico al registrarlas y su CONTENIDO no: abrirlas exige WebFetch, que esta
+bloqueado por egress en este entorno. Si una no abre, el hallazgo sigue siendo
+valido -- la consulta y la fecha estan-- pero la fuente hay que volver a
+localizarla.</p>
 
 <h2>Checklist de validaciones</h2>
 <table>

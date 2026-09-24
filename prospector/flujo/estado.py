@@ -4,6 +4,7 @@ Si Claude intenta avanzar sin cerrar el paso anterior, `siguiente_paso` no
 devuelve el paso que quiere: devuelve el que falta.
 """
 from __future__ import annotations
+import hashlib
 import json, os
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
@@ -93,6 +94,10 @@ class Corrida:
     # De DONDE se leyo. Volver a guardar en otro sitio partiria la corrida en
     # dos archivos: la ruta de origen manda sobre cualquier recalculo.
     _ruta_origen: str = ""
+    # La firma que el archivo TRAIA, y la que la corrida tiene de verdad al
+    # abrirse. Si no coinciden, alguien escribio el JSON por fuera.
+    _firma_leida: str = ""
+    firma_al_abrir: str = ""
     gancho: str = ""
     por_que_ahora: str = ""
     como_hablarles: list = field(default_factory=list)
@@ -171,6 +176,79 @@ class Corrida:
                 f"[{modulo}] estado '{estado}' EXIGE razon. "
                 "Un hueco sin motivo escrito se confunde con 'no hay nada'.")
         self.cobertura[modulo] = {"estado": estado, "razon": razon}
+
+    # ---------------------------------------------------------------- senales
+    #
+    # B1 y B6 de #300. Dos defectos que se tocan:
+    #
+    #   B1  `registrar` aceptaba la senal como objeto {fecha,texto,fuente} y
+    #       `ficha` tronaba con TypeError. Un agente lo vio y edito el JSON de
+    #       estado a mano para poder emitir la ficha -- que es justo lo que no
+    #       queremos--.
+    #   B6  nada impedia meter "Mapeo de plantas" o "Contactos:" como senal.
+    #       Salen en la ficha como senal sin fecha, ocupando el lugar de una de
+    #       verdad.
+    #
+    # NOTA DE DISENO, y me aparto de la letra de B1 a proposito: B1 pedia
+    # RECHAZAR el objeto y B6 pedia que la senal tenga "texto y fuente". Las dos
+    # cosas juntas no se pueden -- si la senal es solo texto, no hay donde poner
+    # la fuente--. El instinto del agente era correcto: queria estructura. Asi
+    # que se ACEPTAN las dos formas y se normalizan a la cadena canonica, en vez
+    # de rechazar la que tenia razon. Lo que se rechaza es lo que no es una
+    # senal. Si Esteban prefiere el rechazo puro, es una linea.
+    ETIQUETAS_NO_SENAL = (
+        "mapeo de plantas", "contactos", "vocabulario", "resumen", "notas",
+        "hallazgos", "fuentes", "pendientes", "observaciones",
+    )
+    LARGO_MINIMO_SENAL = 25
+
+    @classmethod
+    def normalizar_senal(cls, s) -> str:
+        """Una senal, como cadena canonica. Lanza si no es una senal.
+
+        Acepta la cadena, o un objeto con `texto` y opcionalmente `fecha` y
+        `fuente` -- y los pega delante, porque la ficha lee la fecha DEL TEXTO--.
+        """
+        if isinstance(s, dict):
+            texto = str(s.get("texto") or s.get("senal") or "").strip()
+            if not texto:
+                raise CompuertaCerrada(
+                    f"Senal sin `texto`: {s!r}. Si viene como objeto, el campo "
+                    "`texto` es obligatorio; `fecha` y `fuente` son opcionales y "
+                    "se pegan al frente para que la ficha las vea.")
+            trozos = [str(s[k]).strip() for k in ("fecha", "fuente")
+                      if s.get(k)]
+            s = " · ".join(trozos + [texto]) if trozos else texto
+        elif not isinstance(s, str):
+            raise CompuertaCerrada(
+                f"Senal de tipo {type(s).__name__}: {s!r}. Una senal es texto, "
+                "o un objeto con `texto`. Ni una lista ni un numero.")
+
+        s = " ".join(s.split())
+        if not s:
+            raise CompuertaCerrada("Senal vacia.")
+        desnudo = s.rstrip(":").strip().lower()
+        if desnudo in cls.ETIQUETAS_NO_SENAL:
+            raise CompuertaCerrada(
+                f"'{s}' es un ENCABEZADO, no una senal. Una senal dice algo que "
+                "pasa en la cuenta y que se puede fechar -- una inversion, una "
+                "vacante, un evento, una nota--. Lo que es un rotulo va en la "
+                "nota de su busqueda, no aqui.")
+        if s.endswith(":"):
+            raise CompuertaCerrada(
+                f"'{s}' termina en dos puntos: es el rotulo de una lista, no la "
+                "senal. Escribe el hallazgo.")
+        if len(s) < cls.LARGO_MINIMO_SENAL:
+            raise CompuertaCerrada(
+                f"Senal de {len(s)} caracteres: '{s}'. Una senal necesita cuerpo "
+                f"(>= {cls.LARGO_MINIMO_SENAL}): que pasa, y con que fecha o "
+                "fuente se sabe. Dos palabras no son una senal.")
+        return s
+
+    def agregar_senal(self, s) -> str:
+        canonica = self.normalizar_senal(s)
+        self.senal.append(canonica)
+        return canonica
 
     # ------------------------------------------------------------- la entrega
     #
@@ -608,10 +686,38 @@ class Corrida:
                 "chao1": est.a_dict()}
 
     # ---------------------------------------------------------------- persist
+    # ------------------------------------------------- firma contra edicion a mano
+    #
+    # En Pesqueria un agente EDITO EL JSON DE ESTADO A MANO para que la ficha
+    # saliera -- convirtio las senales de objeto a texto--. Lo declaro en el
+    # issue, y se pudo verificar contra un respaldo, pero la herramienta no lo
+    # detecto: un estado editado a mano se veia idéntico a uno legitimo.
+    #
+    # Esto NO es seguridad: cualquiera que edite el JSON puede recalcular la
+    # firma. Es DETECCION DE DESCUIDO, que es el caso real -- un agente con prisa
+    # arreglando un bug--. Y su unico efecto es DECLARARLO en la ficha, nunca
+    # bloquear: un estado editado a mano sigue teniendo trabajo real dentro, y
+    # negarse a emitir la ficha perderia ese trabajo. Lo que no puede pasar es
+    # que salga sin decirlo.
+    CAMPO_FIRMA = "_firma"
+
+    def firma(self) -> str:
+        d = self.a_dict()
+        d.pop(self.CAMPO_FIRMA, None)
+        crudo = json.dumps(d, ensure_ascii=False, sort_keys=True,
+                           separators=(",", ":"))
+        return hashlib.sha256(crudo.encode("utf-8")).hexdigest()[:32]
+
+    @property
+    def editada_a_mano(self) -> bool:
+        return bool(self.firma_al_abrir) and self.firma_al_abrir != self._firma_leida
+
     def guardar(self, ruta: str) -> str:
         os.makedirs(os.path.dirname(ruta), exist_ok=True)
+        d = self.a_dict()
+        d[self.CAMPO_FIRMA] = self.firma()
         with open(ruta, "w", encoding="utf-8") as f:
-            json.dump(self.a_dict(), f, ensure_ascii=False, indent=2)
+            json.dump(d, f, ensure_ascii=False, indent=2)
         return ruta
 
     def a_dict(self) -> dict:

@@ -29,7 +29,8 @@ from .padron import cargar as cargar_padron, vigilar_cobertura, PadronInvalido
 from .arranque import resolver, texto_del_plan, chequeo, pregunta_de_una_linea
 from .catalogo import exigir_permitida, FuenteProhibida
 from .conectores import Sondeo, CONECTORES, VENTANA_MINUTOS
-from .confianza import Contacto, N1_CONFIRMADO, N2_PARCIAL, N3_PUESTO
+from .confianza import (Contacto, N1_CONFIRMADO, N2_PARCIAL, N3_PUESTO,
+                        CERCANIA_SIN_ESTIMAR, exigir_cercania_coherente)
 from .estado import Corrida, RESPONDIO, OLAS
 from .ficha import (modo_limpio, modo_procedencia,
                     modo_procedencia_html, tabla_de_rendimiento)
@@ -146,6 +147,12 @@ def _ruta_de(c: Corrida, a) -> str:
     return _ruta(c.empresa, getattr(a, "ciudad", None) or c.ciudad)
 
 
+def _cargar_de(ruta: str) -> Corrida:
+    """Carga una corrida por su RUTA, sin resolver empresa ni ciudad."""
+    d = json.load(open(ruta, encoding="utf-8"))
+    return _armar(d, ruta)
+
+
 def _cargar(empresa: str, ciudad: str | None = None) -> Corrida:
     ruta = _resolver_ruta(empresa, ciudad)
     if not os.path.exists(ruta):
@@ -157,7 +164,15 @@ def _cargar(empresa: str, ciudad: str | None = None) -> Corrida:
         raise SystemExit(f"No hay corrida para '{empresa}'"
                          + (f" en '{ciudad}'" if ciudad else "")
                          + f". Corre primero: prospecta{pista}")
-    d = json.load(open(ruta, encoding="utf-8"))
+    return _armar(json.load(open(ruta, encoding="utf-8")), ruta)
+
+
+def _armar(d: dict, ruta: str) -> Corrida:
+    """Reconstruye la corrida desde su JSON.
+
+    Compartido por las dos vias de carga: por empresa + ciudad, y por ruta
+    directa -- que es la que usa el resumen de todas las corridas--.
+    """
     c = Corrida(empresa=d["empresa"], ciudad=d["ciudad"], giro=d.get("giro", ""))
     c.creada = d["creada"]
     c.cobertura = d.get("cobertura", {})
@@ -169,6 +184,9 @@ def _cargar(empresa: str, ciudad: str | None = None) -> Corrida:
     # reclamarla aunque ya estuviera subida. Es la MISMA familia de defecto que
     # `modulo_origen` en #295: un campo que se escribe y no se restaura.
     c._ruta_origen = ruta
+    # La firma que el archivo traia, contra la que el contenido produce de
+    # verdad. Si no coinciden, el JSON se escribio por fuera de la herramienta.
+    c._firma_leida = str(d.get(Corrida.CAMPO_FIRMA) or "")
     c.entrega = d.get("entrega", {}) or {}
     c.fichas_emitidas = list(d.get("fichas_emitidas", []) or [])
     c.gancho = d.get("gancho", "")
@@ -216,16 +234,22 @@ def _cargar(empresa: str, ciudad: str | None = None) -> Corrida:
                               nota=o.get("nota", ""), forma=o.get("forma"))
         c.contactos.append(x)
     c._recalcular_hits()
+    c.firma_al_abrir = c.firma()
     return c
 
 
 def _contacto(c: Corrida, cd: dict) -> Contacto:
     """Arma un Contacto desde el JSON, con la compuerta de catalogo en cada
     observacion. Compartido por `registrar` y por `buscar`."""
+    # La compuerta de ESCALA, antes de construir el contacto. En Silao un agente
+    # capturo la cercania invertida y marco a un reclutador como comprador; la
+    # herramienta no lo detecto. Ahora si, y en el momento.
     x = Contacto(nombre=cd.get("nombre"), puesto=cd.get("puesto"),
                  empresa=c.empresa,
                  nivel_ficha=cd.get("nivel_ficha", N2_PARCIAL),
-                 cercania_decision=cd.get("cercania_decision", 50),
+                 cercania_decision=exigir_cercania_coherente(
+                     cd.get("cercania_decision", CERCANIA_SIN_ESTIMAR),
+                     cd.get("puesto")),
                  revision_humana=cd.get("revision_humana", False),
                  motivo_revision=cd.get("motivo_revision", ""),
                  sigue_en_la_casa=cd.get("sigue_en_la_casa", True))
@@ -293,6 +317,15 @@ def tabla_de_corridas() -> str:
                     break
             if en_curso != "—":
                 break
+        # La firma: si el archivo no la trae, o no cuadra, el estado se toco por
+        # fuera. Aqui se lee del JSON directo, sin reconstruir la corrida.
+        editada = ""
+        try:
+            c_tmp = _cargar_de(ruta)
+            if c_tmp.editada_a_mano:
+                editada = " ✎"
+        except Exception:
+            editada = " ?"
         entrega = d.get("entrega") or {}
         if entrega.get("url"):
             ficha = f"ENTREGADA ({entrega['destino']})"
@@ -303,7 +336,7 @@ def tabla_de_corridas() -> str:
         else:
             ficha = "no emitida"
         L.append(
-            f"{(d.get('empresa') or '?')[:17]:<18} "
+            f"{((d.get('empresa') or '?') + editada)[:17]:<18} "
             f"{(d.get('ciudad') or '—')[:17]:<18} "
             f"{pres.get('gastadas', 0):>4}/{pres.get('tope', 0):<4} "
             f"{len(bloques):>4}·{secos:<4} "
@@ -316,6 +349,10 @@ def tabla_de_corridas() -> str:
                   "se pierden al cerrar la sesion.",
               "     Corre `entregar` en cada una, o declaralo con "
               "--sin-entregar --razon."]
+    editadas = [l for l in L if " ✎" in l]
+    if editadas:
+        L += ["", f"  ✎ {len(editadas)} corrida(s) con el ESTADO EDITADO A MANO: "
+                  "su ficha lo declara arriba."]
     L += ["", "  gasto = consultas/tope · bloques = cerrados·secos"]
     return "\n".join(L)
 

@@ -197,6 +197,24 @@ CAMPOS_CON_MAYORIA = ("patron_correo",)
 # siguen chocando igual, que son los campos donde equivocarse cuesta.
 CAMPOS_ACUMULATIVOS = ("trayectoria",)
 
+# Cuerpo minimo para que un valor corto cuente como "la misma cosa, mas corta".
+# Cuatro caracteres: "jefe" si, "GM" no -- dos letras contenidas en otra cadena
+# son coincidencia, no redaccion--.
+LARGO_MINIMO_CONTENCION = 4
+
+# En QUE CAMPOS la contencion vale como "la misma cosa, mas corta". Lista corta a
+# proposito, y `entidad` NO esta: la encontro una prueba propia al implementar
+# B2. "Casa" esta contenido en "Otra Casa" como palabra completa, y son dos
+# EMPRESAS DISTINTAS que comparten una palabra. El metodo ya lo decia de
+# `entidad` y `empleador` (§ de C1-bis): un empleador equivocado le atribuye una
+# persona a la empresa que no es, y eso NO REBOTA -- se manda el correo y se
+# queda ahi--. Un puesto redactado con mas o menos detalle no tiene ese costo.
+#
+# B2 pedia exactamente esto: "si un valor normalizado de PUESTO contiene al
+# otro". Ampliarlo a entidad habria sido pasarse de la peticion y abrir un modo
+# de falla peor que el que cierra.
+CAMPOS_CON_CONTENCION = ("puesto",)
+
 # En que campos un literal ANCLA a la PERSONA.
 #
 # `tiene_ancla` miraba la FUENTE y no el campo, asi que una observacion de
@@ -419,6 +437,8 @@ class Dato:
         Informar la mayoria y callar la disidencia seria elegir en silencio con
         otro nombre.
         """
+        if self.contencion:
+            return self.salvedad_por_contencion
         if not self.informa_pese_al_conflicto:
             return ""
         _valor, a_favor, disidentes = self.mayoria
@@ -428,6 +448,61 @@ class Dato:
         return (f"{len(a_favor)} de {self.n_fuentes} fuentes coinciden, y "
                 f"{'/'.join(anclas)} lo vio literal. "
                 f"{quien} disiente y dice {dicen} -- confirmalo antes de usarlo.")
+
+    @property
+    def contencion(self) -> tuple | None:
+        """Los valores no se contradicen: uno CONTIENE a los otros.
+
+        B2 de #300, y fue la compuerta que mas estorbo: el challenge marcaba
+        CONFLICTO entre "Gerente" y "Gerente COFICAB LEON, Silao Gto". No es una
+        contradiccion, es la misma cosa redactada con mas o menos detalle -- en
+        Silao fueron 7 de 7 falsos conflictos, siete contactos mandados a
+        revision humana sin nada que decidir--.
+
+        Devuelve (el_mas_especifico, los_mas_cortos) o None.
+
+        Dos salvaguardas para que esto NO tape un choque de verdad:
+
+          * la contencion es POR PALABRA COMPLETA. "ventas" no esta contenido en
+            "inventas", y "GM" no lo esta en "GMT". Sin esto la regla taparia
+            cosas distintas que comparten letras.
+          * el valor corto tiene que tener cuerpo (>= LARGO_MINIMO_CONTENCION).
+            Un "1" contenido en "12" no es una redaccion mas detallada.
+
+        Y lo que NO tapa, medido en la misma corrida: "Director General" contra
+        "General Manager" -- Durango, 2 de 3-- no es contencion, es TRADUCCION.
+        Ninguno contiene al otro y sigue saliendo CONFLICTO, que es lo correcto
+        mientras nadie decida una regla de traduccion.
+        """
+        if self.campo not in CAMPOS_CON_CONTENCION:
+            return None
+        vals = [v for v in self.valores if isinstance(v, str)]
+        if len(vals) < 2 or len(vals) != len(self.valores):
+            return None
+        # Se COMPARA normalizado -- mayusculas y acentos no hacen una redaccion
+        # distinta-- y se DEVUELVE el original, que es lo que la ficha imprime.
+        norm = {v: _normaliza(v) for v in vals}
+        largo = max(vals, key=lambda v: len(norm[v]))
+        cortos = [v for v in vals if v != largo]
+        if any(len(norm[v]) < LARGO_MINIMO_CONTENCION for v in cortos):
+            return None
+        if not all(_contiene_palabras(norm[largo], norm[v]) for v in cortos):
+            return None
+        return (largo, cortos)
+
+    @property
+    def salvedad_por_contencion(self) -> str:
+        c = self.contencion
+        if not c:
+            return ""
+        largo, cortos = c
+        n_cortos = {_normaliza(v) for v in cortos}
+        quien = ", ".join(sorted({o.fuente for o in self.observaciones
+                                  if _normaliza(o.valor) in n_cortos}))
+        return (f"se reporta la redaccion mas especifica ({largo}); "
+                f"{quien or 'otra fuente'} lo dice mas corto "
+                f"({' / '.join(cortos)}). No es contradiccion: una redaccion "
+                "contiene a la otra.")
 
     @property
     def choca(self) -> bool:
@@ -446,6 +521,8 @@ class Dato:
         """
         if self.campo in CAMPOS_ACUMULATIVOS:
             return False
+        if self.contencion:
+            return False          # B2: contencion no es contradiccion
         if len(self.valores) > 1:
             return True
         if len(self.formas) > 1:
@@ -479,6 +556,12 @@ class Dato:
             if self.medido_no_inferido and self.n_raices >= 2:
                 return CONFIRMADO
             return SOLIDO
+        if self.contencion:
+            # Coinciden en el TRONCO, no en el todo: una lo dice mas corto. Dos
+            # fuentes que dicen "Gerente" y "Gerente COFICAB LEON, Silao Gto"
+            # corroboran el puesto, no la redaccion completa. Llamarlo
+            # CONFIRMADO seria afirmar mas de lo que se observo.
+            return SOLIDO
         if self.n_raices >= 2:
             return CONFIRMADO
         # una sola raiz: TOPA aqui. No es conflicto, es techo.
@@ -500,6 +583,12 @@ class Dato:
             if self.informa_pese_al_conflicto:
                 return self.mayoria[0]
             return None          # elegir en silencio es el bug del Caso F
+        c = self.contencion
+        if c:
+            # El MAS ESPECIFICO, no el primero que llego: "Gerente COFICAB LEON,
+            # Silao Gto" dice la planta y "Gerente" no. Y no se elige en
+            # silencio -- la salvedad dice que la otra fuente lo dice mas corto--.
+            return c[0]          # ya es el valor ORIGINAL mas especifico
         return self.observaciones[0].valor if self.observaciones else None
 
     def a_dict(self) -> dict:
@@ -523,6 +612,18 @@ class Dato:
             "valores_en_conflicto": self.valores if self.choca else [],
             "observaciones": [asdict(o) | {"raiz": o.raiz} for o in self.observaciones],
         }
+
+
+def _contiene_palabras(largo: str, corto: str) -> bool:
+    """`corto` aparece dentro de `largo` como PALABRAS COMPLETAS.
+
+    Sin la frontera de palabra, "ventas" quedaria contenido en "inventas" y la
+    regla de contencion taparia un choque de verdad.
+    """
+    if corto == largo:
+        return False
+    patron = r"(?<!\w)" + re.escape(corto) + r"(?!\w)"
+    return re.search(patron, largo) is not None
 
 
 def _normaliza(v: Any) -> str:
@@ -556,6 +657,86 @@ CERCANIA_DE_VALOR = 20
 # El default del campo. "50" no significa "a medio camino": significa que nadie
 # la estimo. Por eso es la unica cercania que el ancla puede desempatar.
 CERCANIA_SIN_ESTIMAR = 50
+
+# La ESCALA, y la compuerta que la defiende. En Silao un agente la capturo
+# INVERTIDA -- creyo que 100 = decide-- y marco a un contacto de reclutamiento
+# como comprador con correo solido: el unico "de valor + correo" de esa corrida
+# era falso. La herramienta no lo detecto en el momento.
+#
+# La escala es: 0 = DECIDE la obra · 100 = contexto. Se defiende de dos formas:
+#
+#   1. rango: fuera de 0-100 no es una cercania, es un error de captura;
+#   2. coherencia con el PUESTO: hay puestos que, por definicion del metodo, no
+#      compran ni deciden infraestructura. RH, reclutamiento, atraccion de
+#      talento, prensa, recepcion. Si el puesto dice eso y la cercania dice
+#      "decide", una de las dos esta mal -- y la que se puede leer es el puesto--.
+CERCANIA_DECIDE = 0
+CERCANIA_CONTEXTO = 100
+
+# Puestos que NO compran ni deciden la infraestructura que vende FTS. El metodo
+# ya los nombraba contexto en prosa (§5: "IT o RH que solo mencionan la palabra
+# son contexto, no target"); aqui pasan a ser una compuerta.
+PUESTOS_NUNCA_DECISORES = (
+    "reclutad", "reclutamiento", "atraccion de talento", "atracción de talento",
+    "recursos humanos", "capital humano", "rh ", "talent acquisition",
+    "recruiter", "recruiting", "headhunt",
+    "recepcion", "recepción", "receptionist",
+    "prensa", "comunicacion social", "comunicación social",
+    "community manager", "redes sociales",
+    "becario", "practicante", "intern ",
+)
+# Hasta donde puede acercarse un puesto de esa lista. 41 = fuera del filtro de
+# valor (que corta en 20) y fuera del "sin estimar" (50), asi que ni cuenta como
+# de valor ni se confunde con no haberlo estimado.
+CERCANIA_TOPE_NO_DECISOR = 41
+
+
+def puesto_nunca_decisor(puesto: str | None) -> str:
+    """Devuelve la palabra que lo delata, o "" si el puesto puede decidir."""
+    p = f" {_normaliza(puesto or '')} "
+    for marca in PUESTOS_NUNCA_DECISORES:
+        if marca.strip() and marca in p:
+            return marca.strip()
+    return ""
+
+
+def exigir_cercania_coherente(cercania, puesto: str | None) -> int:
+    """Compuerta de escala. Lanza si la cercania no puede ser esa.
+
+    Vive aqui y no en el orquestador porque es una regla del METODO, no del CLI:
+    cualquier via que cree un Contacto tiene que pasar por ella.
+    """
+    from .compuertas import CompuertaCerrada
+    if isinstance(cercania, bool) or not isinstance(cercania, (int, float)):
+        raise CompuertaCerrada(
+            f"Cercania {cercania!r}: tiene que ser un numero de "
+            f"{CERCANIA_DECIDE} a {CERCANIA_CONTEXTO}.")
+    if float(cercania) != int(cercania):
+        raise CompuertaCerrada(
+            f"Cercania {cercania!r}: la escala es de ENTEROS. Un 100.5 es un "
+            "error de captura, no media posicion mas lejos de la decision.")
+    cercania = int(cercania)
+    if not (CERCANIA_DECIDE <= cercania <= CERCANIA_CONTEXTO):
+        raise CompuertaCerrada(
+            f"Cercania {cercania} fuera de rango. La escala va de "
+            f"{CERCANIA_DECIDE} a {CERCANIA_CONTEXTO}, y OJO CON EL SENTIDO: "
+            f"{CERCANIA_DECIDE} = DECIDE la obra, {CERCANIA_CONTEXTO} = "
+            "contexto. Es al reves de lo que la intuicion dice.")
+    marca = puesto_nunca_decisor(puesto)
+    if marca and cercania <= CERCANIA_TOPE_NO_DECISOR:
+        raise CompuertaCerrada(
+            f"Cercania {cercania} para el puesto {puesto!r}: '{marca}' no compra "
+            "ni decide la infraestructura que vende FTS, asi que no puede estar "
+            f"a {cercania} de la decision.\n"
+            f"  RECUERDA EL SENTIDO DE LA ESCALA: {CERCANIA_DECIDE} = DECIDE, "
+            f"{CERCANIA_CONTEXTO} = contexto. Si querias decir 'es contexto', el "
+            f"numero es alto, no bajo.\n"
+            f"  En la corrida de Silao (#300) este error dejo a un contacto de "
+            "reclutamiento marcado como comprador con correo solido: el unico "
+            "'de valor + correo' de esa corrida era falso.\n"
+            f"  Si de verdad decide, usa un puesto que lo diga; si es contexto, "
+            f"usa > {CERCANIA_TOPE_NO_DECISOR}.")
+    return cercania
 
 
 # --- niveles de la FICHA: completitud, eje distinto de la confianza ---

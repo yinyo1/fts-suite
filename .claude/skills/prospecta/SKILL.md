@@ -161,6 +161,41 @@ una planta, con su responsable de mantenimiento y su ciudad.
 > gratis—: se anota en la señal, y cada planta con responsable se prospecta en su
 > propia corrida.
 
+### Multiplanta: el orden, y por qué no son cuatro agentes ciegos
+
+La primera corrida a escala fueron **cuatro plantas de Coficab en paralelo**, las
+cuatro arrancadas desde cero al mismo tiempo. Salió trabajo de verdad, y salieron
+además cuatro defectos que las cuatro corridas cometieron **por separado y a la
+vez**: el mismo falso conflicto de puesto siete veces, la misma señal sin fecha,
+la misma escala de cercanía invertida. Cuatro agentes ciegos no se corrigen entre
+sí: **repiten el mismo error cuatro veces y lo pagan cuatro veces**.
+
+El orden que sí funciona, y es el recomendado:
+
+1. **Primero, en primer plano, la planta que tiene historia.** La que Odoo o el
+   buzón conocen. Es la más rentable (`fts_interno` es la raíz más barata y la que
+   más rinde cuando hay historia) y es la que **calibra**: de ella salen el
+   vocabulario real de la cuenta, el patrón de correo, el nombre con el que la
+   empresa se llama a sí misma y los títulos que de verdad usa. Córrela tú,
+   viéndola, hasta la ficha.
+2. **Después las demás, sembradas con lo que salió de esa.** Ya en paralelo si
+   hace falta, pero **no desde cero**: cada una arranca con el patrón de correo, el
+   vocabulario y los títulos que la primera midió. Una planta sembrada gasta menos
+   consultas y no vuelve a descubrir lo que ya se sabe.
+3. **La corporativa, aparte.** Su población es otra —dirección, compras,
+   ingeniería central— y su criterio de agotado también. Mezclarla con una planta
+   rompe el denominador de Chao1 igual que mezclar dos plantas.
+
+**Nunca cuatro agentes ciegos desde cero.** Si el operador pide las cuatro ya,
+dile esto en una línea —«arranco Silao primero porque ahí hay historia, y con lo
+que salga siembro las otras tres»— y arranca la primera. Es más rápido en total,
+no más lento.
+
+> Sembrar entre corridas **todavía no está construido**: hoy se hace a mano,
+> pasándole al agente de la segunda planta el patrón y el vocabulario de la
+> primera en el prompt. Está propuesto como decisión de Esteban; mientras no
+> exista, la siembra manual es parte del oficio, no un atajo.
+
 ## 3 · Corre el plan, paso por paso, de verdad
 
 **Cada búsqueda del plan se ejecuta.** El plan dice qué buscar, con qué vías y
@@ -178,6 +213,25 @@ por qué en ese orden; tú corres la búsqueda y registras lo que contestó:
 
 **`--resultados 0` es válido y cuenta.** Cero resultados es una respuesta: haber
 preguntado bien y no encontrar nada es trabajo hecho.
+
+### `cercania_decision`: **0 = DECIDE · 100 = contexto**
+
+Léelo dos veces, porque es al revés de lo que la intuición dice, y ya se capturó
+invertido una vez. En Silao un agente creyó que 100 era «decide» y marcó a un
+contacto de **reclutamiento** como comprador con correo sólido: el único contacto
+«de valor + correo» de esa corrida era falso, y nadie lo notó hasta el cruce.
+
+| Valor | Quién |
+|---|---|
+| `0`–`20` | **Decide o especifica la obra.** Mantenimiento, planta, proyectos, ingeniería, compras técnicas. Es el target. |
+| `50` | **Sin estimar.** El default. No es «a medias»: es «no lo sé todavía». |
+| `> 41` | **Contexto.** Sirve para vocabulario, para el patrón de correo, para saber cómo se llama la planta. No para mandarle la propuesta. |
+
+La herramienta ahora **se niega** a dos cosas: una cercanía fuera de `0`–`100`, y
+una cercanía de decisor en un puesto que por definición no compra infraestructura
+—reclutamiento, RH, capital humano, prensa, recepción, becario—. Esos puestos
+topan en `41`. **No es que no sirvan**: un reclutador es una fuente buenísima de
+vocabulario de planta. Lo que no es, es el comprador.
 
 ## 4 · Si una fuente no está, se declara
 
@@ -301,6 +355,41 @@ presupuesto, agotado, confianza. Tú eres dueño del criterio.**
 
 Cuando una compuerta te frena, **no la rodees**: o cumples su criterio, o cierras
 el módulo con su estado y su razón. El mensaje del `raise` dice cuál de las dos.
+
+### Rodear una compuerta está prohibido, y hay que reportarlo
+
+Esto es más fuerte que un consejo de estilo. Tres formas de rodear, y las tres
+están **prohibidas**:
+
+1. **Correr una búsqueda que la compuerta se negó a registrar.** Si
+   `buscar` o `registrar` lanzaron, ese trabajo **no existe**. Volver a llamar a
+   WebSearch «de todas formas» y usar el resultado deja un hallazgo en la ficha
+   que no tiene fila en el registro: el agotado lo cuenta mal, Chao1 lo estima
+   sobre un denominador falso, y la fuente no se puede verificar. La compuerta que
+   se negó **ya te dijo qué falta** — la consulta, la fuente, el bloque sin cerrar.
+   Arréglalo y regístrala. Si no se puede arreglar, cierra el módulo con su razón.
+2. **Editar el JSON de estado a mano.** Pasó de verdad, en Pesquería: un agente
+   convirtió las señales de objeto a texto editando el archivo, para que la ficha
+   saliera. El bug que lo obligó ya está arreglado — la señal como objeto se acepta
+   — pero la regla queda: **el estado sólo lo escribe la herramienta**. Desde ahora
+   la corrida lleva una firma y **la ficha declara arriba, en rojo, «ESTADO EDITADO
+   A MANO»** si el archivo no cuadra. No bloquea la emisión; la delata.
+3. **Inventar el valor que la compuerta pedía** para que deje de estorbar: una
+   cercanía puesta al revés para que un contacto pase el filtro de valor, un
+   `--resultados` inflado, una razón de cobertura vacía de contenido. Una cifra
+   inventada es peor que un hueco: el hueco se ve.
+
+**Y si ocurrió, se reporta.** En el issue final, una línea por vez, con el
+comando y lo que la compuerta dijo:
+
+> «Rodeé una compuerta: `buscar` se negó a registrar *<consulta>* por *<motivo>*
+> y corrí la búsqueda igual / edité el estado a mano para *<qué>*.»
+
+No es una confesión que cueste nada: es **el dato más valioso de la corrida**. Los
+siete falsos conflictos de Silao y la escala invertida salieron a la luz porque el
+agente lo declaró. Una compuerta que estorba de más es un defecto de la
+herramienta, y sólo se puede arreglar si se sabe dónde estorbó. Callarlo deja el
+defecto vivo y la ficha sin aval.
 
 ## Dos cosas que no se negocian
 

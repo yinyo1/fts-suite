@@ -3,6 +3,172 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.9.4 — 2026-09-24
+
+Los bugs medidos de la primera corrida **a escala** -- Coficab en cuatro plantas,
+#300-- y las tres **desviaciones de agente** que esa corrida destapo. **364
+pruebas** (eran 287); las 77 nuevas estan en `tests/test_maestro_300.py`.
+
+Los cinco cambios de metodo que la corrida pide quedaron **disenados y NO
+construidos**, en [`metodo/propuestas-de-metodo-300.md`](metodo/propuestas-de-metodo-300.md).
+
+### B2 · Dos redacciones del mismo puesto no son una contradiccion
+
+El challenge marcaba **CONFLICTO** entre `Gerente` y
+`Gerente COFICAB LEON, Silao Gto`. No es una contradiccion: es la misma cosa
+redactada con mas o menos detalle. **En Silao fueron 7 de 7** -- siete contactos
+mandados a revision humana sin nada que decidir--.
+
+Ahora, cuando un valor **contiene** a los otros, el dato sale **CON SALVEDAD** y
+se reporta **la redaccion mas especifica** (la que dice la planta), nombrando a la
+fuente que lo dice mas corto. No es elegir en silencio -- el bug del Caso F--.
+
+**Tres limites, y los tres importan:**
+
+* **Solo en `puesto`** (`CAMPOS_CON_CONTENCION`). Lo encontro una prueba propia al
+  implementar esto: `Casa` esta contenido en `Otra Casa` como palabra completa, y
+  son **dos empresas distintas**. Un empleador equivocado **no rebota** -- se manda
+  el correo y se queda ahi--; un puesto redactado con mas o menos detalle no tiene
+  ese costo.
+* **Por palabra completa**, y el corto necesita **cuerpo** (>= 4 caracteres). Sin
+  la frontera, `ventas` quedaria contenido en `inventas`.
+* **Topa en SOLIDO, no CONFIRMADO.** Las fuentes coinciden en el **tronco**, no en
+  el todo. Llamarlo CONFIRMADO afirmaria mas de lo que se observo.
+
+**Y lo que NO arregla, medido en la misma corrida:** `Director General` contra
+`General Manager` -- Durango, 2 de 3-- **sigue saliendo CONFLICTO**, que es lo
+correcto: eso es **traduccion**, no redaccion, y ninguna regla de traduccion esta
+aprobada. **El arreglo cierra 7 de los 9 falsos conflictos de la corrida, no 9.**
+
+### B3 · La fecha parcial ya cuenta como fecha
+
+`fecha_de()` no reconocia `AAAA-MM` ni `AAAA` solos, asi que la senal de **oct-2024
+de Silao** y la de **2018 de Juarez** salian "sin fecha en el registro" **aunque la
+traen escrita**. Esa marca existe para que una senal vieja no se lea fresca: no
+reconocer la fecha parcial **esconde la antiguedad**, que es lo contrario de su
+proposito.
+
+Se aceptan y se imprimen tal cual -- `2024-10` dice menos que `2024-10-15` y
+muchisimo mas que nada--. Las formas parciales van **al final** del alternado: si
+fueran primero se comerian el ano de una fecha completa. Y llevan frontera, para
+que `1500 empleados` y `version 3.2024.1` no pasen por fecha.
+
+### B1 + B6 · Que es, y que no es, una senal
+
+`registrar` aceptaba la senal como objeto `{fecha,texto,fuente}` y `ficha` tronaba
+con **TypeError**. Un agente lo vio y **edito el JSON de estado a mano** para poder
+emitir la ficha.
+
+**Me aparto de la letra de B1 a proposito, y hay que saberlo:** B1 pedia
+**rechazar** el objeto; B6 pedia que la senal tenga "texto y fuente". Las dos cosas
+juntas no se pueden si la senal es solo texto. **El instinto del agente era
+correcto: queria estructura.** Asi que se **aceptan las dos formas** y se
+normalizan a la cadena canonica -- `fecha` y `fuente` se pegan al frente, porque la
+ficha lee la fecha DEL TEXTO--. Si Esteban prefiere el rechazo puro, es una linea.
+
+Lo que **si** se rechaza (B6) es lo que no es una senal: los encabezados
+(`Mapeo de plantas`, `Contactos:`, `Vocabulario`…), cualquier rotulo que termina en
+dos puntos, y lo que no llega a 25 caracteres.
+
+### La liga rota de Durango
+
+Esteban reporto que la liga de una fuente de la ficha de Durango **no abre**, y la
+ficha la imprimia como si fuera buena.
+
+**Lo que se puede verificar es la FORMA, y se verifica:** URL absoluta, con esquema
+y dominio, sin espacios; y se limpian las colas que se pegan al copiar (`).`, `,`).
+Una liga sin esquema, una ruta relativa o una con espacios **se rechazan al
+registrarlas**, con la pista de que le falta. Sin liga sigue siendo valido -- Odoo y
+el buzon no tienen URL, y exigirla los dejaria fuera del registro--.
+
+**Lo que NO se puede es abrirla: `WebFetch` esta bloqueado por egress, medido.**
+Asi que la ficha deja de imprimirla como comprobada: ahora muestra **el dominio**
+con un **`?`** y una nota al pie que dice exactamente que se verifico la forma y no
+el contenido. Prometer que abre seria afirmar lo que no se llamo.
+
+### La escala de cercania, que se capturo invertida
+
+En Silao un agente creyo que **100 = decide** -- es al reves-- y marco a un contacto
+de **reclutamiento** como comprador con correo solido: **el unico "de valor +
+correo" de esa corrida era falso**, y la herramienta no lo detecto.
+
+`exigir_cercania_coherente` corre en `_contacto`, o sea en **las dos vias** por las
+que un agente captura (`registrar` y `buscar`), y rechaza:
+
+* lo que no es numero, y lo que es **decimal** -- un `100.5` es un error de captura,
+  no media posicion mas lejos de la decision; sin esta linea `int(100.5)` pasaba
+  callado--;
+* fuera de `0`-`100`, **con el sentido de la escala en el mensaje**: el error real
+  fue de sentido, no de rango, y un mensaje que no lo diga deja al agente
+  invertirla **dentro** del rango;
+* una cercania de decisor (<= 41) en un puesto que **por definicion no compra
+  infraestructura**: reclutamiento, RH, capital humano, prensa, recepcion, becario.
+  **No es que no sirvan** -- un reclutador es una fuente buenisima de vocabulario de
+  planta--: lo que no es, es el comprador. Topan en 41, fuera del filtro de valor
+  (20) y sin confundirse con "sin estimar" (50).
+
+Y la escala **quedo escrita en la skill**, con su tabla. No estaba en ninguna
+parte, que es la razon de fondo por la que se pudo invertir.
+
+### El estado editado a mano se declara en la ficha
+
+En Pesqueria un agente **edito el JSON de estado a mano** para que la ficha
+saliera. Lo declaro en el issue y se pudo verificar contra un respaldo, pero **la
+herramienta no lo detecto**: un estado editado a mano se veia identico a uno
+legitimo.
+
+La corrida lleva ahora una **firma** (SHA-256 de su contenido) que se escribe al
+guardar y se verifica al abrir. Si no cuadra, **la ficha lo declara arriba, en
+rojo, antes del gancho**, y `estado` marca la corrida con **`✎`**.
+
+**Dos cosas que esto NO es.** No es **seguridad**: quien edite el JSON puede
+recalcular la firma, y hay una prueba que lo fija asi para que nadie la presente
+despues como un control de integridad. Es **deteccion de descuido**, que es el caso
+real -- un agente con prisa arreglando un bug--. Y **no bloquea**: dentro hay
+trabajo real y negarse a emitir la ficha lo perderia. Lo que no puede pasar es que
+salga **sin decirlo**.
+
+### La skill: rodear una compuerta esta prohibido, y se reporta
+
+Tres formas de rodear, las tres medidas en la corrida, las tres prohibidas por
+escrito: correr una busqueda que la compuerta se nego a registrar (Durango),
+editar el estado a mano (Pesqueria), e inventar el valor que la compuerta pedia
+(Silao). **Y si ocurrio, va en el issue final**, con el comando y lo que la
+compuerta dijo.
+
+No es una confesion que cueste nada: **es el dato mas valioso de la corrida.** Los
+siete falsos conflictos y la escala invertida salieron a la luz porque el agente
+lo declaro. Una compuerta que estorba de mas es un defecto de la herramienta, y
+solo se arregla si se sabe donde estorbo.
+
+### La skill: multiplanta, y por que no son cuatro agentes ciegos
+
+Las cuatro plantas arrancaron **desde cero al mismo tiempo**, y cometieron los
+mismos cuatro defectos **por separado y a la vez**. Cuatro agentes ciegos no se
+corrigen entre si: **repiten el mismo error cuatro veces y lo pagan cuatro veces.**
+
+El orden recomendado quedo escrito: **primero la planta con historia, en primer
+plano** -- es la mas rentable y la que calibra el vocabulario y el patron--;
+**despues las demas, sembradas con lo que salio de esa**; **la corporativa,
+aparte**, porque su poblacion y su agotado son otros. Mientras `sembrar` no exista,
+la siembra a mano es parte del oficio.
+
+### B7 · Confirmado, ya estaba
+
+La distincion entre "`pytest` no instalado" y "pruebas en rojo" se cerro en #301
+(MEJORA 3): `listo` dice **NO SE PUDO VERIFICAR** con `None`, no `False`. Sin
+cambios aqui.
+
+### Lo que NO se pudo medir, y hay que decirlo
+
+**Las cuatro fichas de Coficab no estan en este contenedor.** Viven en la sesion
+del operador (`…/384cecea-…/`); esta corre en `1546b028-…`. Asi que **re-emitir la
+ficha de Silao y de Durango sobre los archivos reales era imposible**, y la
+medicion de B2 y B3 se hizo **reconstruyendo los casos exactos que #300
+documenta** -- los siete pares de puesto de Silao, los dos de Durango, la senal de
+oct-2024, la de 2018--. Son los casos del issue, no los archivos del issue. Cuando
+Esteban corra de nuevo, la ficha sale ya con los arreglos.
+
 ## 0.9.3 — 2026-09-24
 
 Cuatro mejoras de las **DOS corridas reales del operador** -- Coficab (#268) y
