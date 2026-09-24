@@ -28,9 +28,11 @@ from .salida import carpeta_de_corridas, exigir_fuera_del_repo, SalidaEnElRepo
 from .padron import cargar as cargar_padron, vigilar_cobertura, PadronInvalido
 from .arranque import resolver, texto_del_plan, chequeo, pregunta_de_una_linea
 from .catalogo import exigir_permitida, FuenteProhibida
+from .conectores import Sondeo, CONECTORES, VENTANA_MINUTOS
 from .confianza import Contacto, N1_CONFIRMADO, N2_PARCIAL, N3_PUESTO
 from .estado import Corrida, RESPONDIO
-from .ficha import modo_limpio, modo_procedencia, tabla_de_rendimiento
+from .ficha import (modo_limpio, modo_procedencia,
+                    modo_procedencia_html, tabla_de_rendimiento)
 
 # Las corridas llevan nombres, puestos y correos de PERSONAS. No se escriben en
 # el repo: `fts-suite` es publico. Ver flujo/salida.py -- ahi vive la regla, y
@@ -64,6 +66,9 @@ def _cargar(empresa: str) -> Corrida:
     c.senal = d.get("senal", [])
     c.challenge_corrido = d.get("challenge_corrido", False)
     c.avisos = d.get("avisos", [])
+    c.gancho = d.get("gancho", "")
+    c.por_que_ahora = d.get("por_que_ahora", "")
+    c.como_hablarles = d.get("como_hablarles", [])
     pres = d.get("presupuesto", {})
     c.presupuesto.tope_por_cuenta = pres.get("tope", 60)
     for b in pres.get("bloques", []):
@@ -156,9 +161,10 @@ def main(argv=None) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     for nombre in ("prospecta", "listo", "iniciar", "siguiente", "padron",
                    "buscar", "registrar", "bloque", "cerrar", "vuelta",
-                   "challenge", "ficha", "estado", "tope", "fusionar"):
+                   "challenge", "ficha", "estado", "tope", "fusionar",
+                   "conectores"):
         s = sub.add_parser(nombre)
-        if nombre != "listo":
+        if nombre not in ("listo", "conectores"):
             s.add_argument("--empresa", required=True)
         if nombre == "listo":
             s.add_argument("--rapido", action="store_true",
@@ -191,6 +197,10 @@ def main(argv=None) -> int:
             s.add_argument("--resultados", type=int, required=True,
                            help="cuantos trajo. CERO es valido y cuenta.")
             s.add_argument("--nota", default="")
+            s.add_argument("--liga", default="",
+                           help="la URL de donde salio, si la hay. La ficha la "
+                                "necesita: una fuente sin liga ni fecha no es "
+                                "una fuente, es una afirmacion")
             s.add_argument("--etiqueta", default=None,
                            help="cuando lo distinto no es la fuente sino la forma "
                                 "de preguntar (M7: forma_empresa / forma_nombre)")
@@ -199,6 +209,19 @@ def main(argv=None) -> int:
         if nombre == "cerrar":
             s.add_argument("--estado", default=RESPONDIO)
             s.add_argument("--razon", default="")
+        if nombre == "conectores":
+            for k in CONECTORES:
+                s.add_argument(f"--{k}", default=None,
+                               help=f"lo que contesto {k} DE VERDAD "
+                                    f"({CONECTORES[k][1]})")
+                s.add_argument(f"--{k}-caido", default=None, dest=f"{k}_caido",
+                               help=f"{k} no respondio: por que exactamente")
+            s.add_argument("--continuar-sin", default=None, dest="continuar_sin",
+                           choices=sorted(CONECTORES),
+                           help="el operador autoriza seguir sin ese conector")
+            s.add_argument("--razon", default="",
+                           help="lo que dijo el operador. Obligatorio con "
+                                "--continuar-sin: es un hueco de la corrida")
         if nombre == "fusionar":
             s.add_argument("--de", required=True,
                            help="el nombre como esta registrado hoy")
@@ -243,7 +266,66 @@ def main(argv=None) -> int:
             print("  que la compuerta de agotado persigue.\n")
             return 2 if pend else 0
 
+        if a.cmd == "conectores":
+            sondeo = Sondeo.cargar()
+            hubo = False
+            for k in CONECTORES:
+                vivo = getattr(a, k, None)
+                caido = getattr(a, f"{k}_caido", None)
+                if vivo and caido:
+                    raise SystemExit(
+                        f"--{k} y --{k}-caido a la vez. Un conector contesto o "
+                        "no contesto; las dos cosas no.")
+                if vivo:
+                    sondeo.registrar(k, True, vivo); hubo = True
+                elif caido:
+                    sondeo.registrar(k, False, caido); hubo = True
+            if a.continuar_sin:
+                if not a.razon.strip():
+                    raise SystemExit(
+                        f"--continuar-sin {a.continuar_sin} EXIGE --razon: es un "
+                        "hueco de la corrida y va a salir en la ficha.")
+                sondeo.autorizar_sin(a.continuar_sin, a.razon.strip())
+                hubo = True
+            if hubo:
+                ruta = sondeo.guardar()
+            print("\nCONECTORES · sondas de esta sesion "
+                  f"(valen {VENTANA_MINUTOS} min)")
+            print("=" * 62)
+            for linea in sondeo.resumen():
+                print(linea)
+            print("=" * 62)
+            print("  [ ?  ] webfetch   bloqueado por egress (medido). NO detiene "
+                  "nada:\n         M7/M8 salen sin_acceso y eso es correcto.")
+            if sondeo.listo:
+                print("\n  Listo para arrancar: ./prospector prospecta "
+                      "--empresa \"<empresa>\"\n")
+                return 0
+            try:
+                sondeo.exigir_listo()
+            except CompuertaCerrada as e:
+                print(f"\n  ⛔ FALTA: {e}\n", file=sys.stderr)
+                return 3 if sondeo.caidos_sin_autorizar else 2
+            return 0
+
         if a.cmd == "prospecta":
+            # PRIMER PASO, antes de resolver el padron: los tres conectores
+            # tuvieron que ser LLAMADOS. Python no los ve -- viven detras de
+            # MCP-- asi que no puede llamarlos; lo que si puede es negarse a
+            # abrir la corrida sin constancia fresca de esas llamadas. Es el
+            # mismo mecanismo que `buscar`, que exige la consulta textual.
+            sondeo = Sondeo.cargar()
+            if sondeo.caidos_sin_autorizar:
+                # Salida 3, la misma que la pregunta de la empresa multiplanta:
+                # NO es un error que arreglar, es una DECISION del operador. Que
+                # las dos compartan codigo no es casualidad -- las dos paran la
+                # corrida para preguntar una linea--.
+                try:
+                    sondeo.exigir_listo()
+                except CompuertaCerrada as e:
+                    print(f"\n  ⛔ {e}\n", file=sys.stderr)
+                    return 3
+            sondeo.exigir_listo()
             ar = resolver(a.empresa, a.ciudad, a.giro, a.dominio, a.entidad)
             if ar.ambiguo and not os.path.exists(_ruta(a.empresa)):
                 # NO se abre la corrida: elegir una planta en silencio es el caso
@@ -258,6 +340,22 @@ def main(argv=None) -> int:
                 c.presupuesto.tope_por_cuenta = a.tope
                 for b in ar.banderas:
                     c.avisos.append(str(b).replace("\n", " "))
+                # Un conector autorizado como hueco no se queda en una nota: el
+                # modulo que depende de el sale `sin_acceso` con razon escrita,
+                # y eso viaja hasta el checklist de la ficha. Declarar el hueco
+                # es la mitad del metodo; anotarlo al margen no lo es.
+                for sonda in sondeo.huecos_autorizados:
+                    mod = CONECTORES[sonda.conector][0]
+                    if mod in c.modulos or mod in ("M0", "M0b"):
+                        c.cerrar_modulo(mod, "sin_acceso",
+                                        f"{sonda.conector} no respondio al "
+                                        f"arrancar ({sonda.evidencia}). El "
+                                        f"operador autorizo seguir sin el: "
+                                        f"{sonda.razon_autorizacion}")
+                    c.avisos.append(
+                        f"CORRIDA ABIERTA SIN {sonda.conector.upper()}: "
+                        f"{sonda.evidencia}. Autorizado por el operador: "
+                        f"{sonda.razon_autorizacion}")
                 # M13 queda registrado con lo que el padron contesto DE VERDAD.
                 # Cero filas cuenta: significa que se busco bien y no esta.
                 consulta = (f"padron corte {ar.padron.corte}: empresa="
@@ -274,6 +372,10 @@ def main(argv=None) -> int:
                                     ar.banderas[-1].mensaje if ar.banderas
                                     else "no aparece en el padron")
                 c.guardar(_ruta(a.empresa))
+                print("\nCONECTORES verificados antes de abrir:")
+                for linea in sondeo.resumen():
+                    print(linea)
+                print()
                 print(f"Corrida abierta: {a.empresa} · tope {a.tope} consultas")
                 print(f"  Resultados en la SESION, nunca en el repo:\n  {CORRIDAS()}")
             else:
@@ -350,6 +452,13 @@ def main(argv=None) -> int:
                 c.agregar(x)
             c.vocabulario.extend(d.get("vocabulario", []))
             c.senal.extend(d.get("senal", []))
+            # Los tres textos de CRITERIO que la ficha necesita. Se reemplazan,
+            # no se acumulan: son una redaccion, no una lista de hallazgos.
+            for campo in ("gancho", "por_que_ahora"):
+                if d.get(campo):
+                    setattr(c, campo, str(d[campo]))
+            if d.get("como_hablarles"):
+                c.como_hablarles = list(d["como_hablarles"])
             c.guardar(_ruta(a.empresa))
             print(f"[{a.modulo}] registrado. Contadores (derivados del "
                   f"registro): {c.mod(a.modulo).contadores}")
@@ -393,6 +502,9 @@ def main(argv=None) -> int:
             return 0
 
         if a.cmd == "buscar":
+            # ANTES de registrar: si el bloque anterior quedo abierto en diez, se
+            # corrige aqui, que es donde todavia tiene arreglo.
+            c.exigir_bloque_cerrado()
             contactos = []
             if a.datos:
                 d = json.loads(a.datos)
@@ -400,7 +512,8 @@ def main(argv=None) -> int:
                     contactos.append(_contacto(c, cd))
             b = c.registrar_busqueda(
                 a.modulo, a.clave, a.consulta, a.fuente, a.resultados,
-                nota=a.nota, contactos=contactos, etiqueta=a.etiqueta)
+                nota=a.nota, contactos=contactos, etiqueta=a.etiqueta,
+                liga=a.liga)
             c.guardar(_ruta(a.empresa))
             m = c.mod(a.modulo)
             print(f"[{a.modulo}] busqueda registrada: {a.fuente} · "
@@ -408,6 +521,10 @@ def main(argv=None) -> int:
                   f"{' (CERO, y cuenta)' if a.resultados == 0 else ''}")
             print(f"  Consulta: {b.consulta}")
             print(f"  Contadores DERIVADOS del registro: {m.contadores}")
+            aviso = c.aviso_de_bloque()
+            if aviso:
+                print()
+                print(aviso)
             _imprimir_paso(c)
             return 0
 
@@ -469,14 +586,33 @@ def main(argv=None) -> int:
             if not c.challenge_corrido:
                 raise CompuertaCerrada(
                     "No se emite ficha sin challenge. Corre: challenge")
-            salida = str(exigir_fuera_del_repo(a.salida)) if a.salida else os.path.join(
-                CORRIDAS(), f"{_slug(a.empresa)}-{a.modo}." + ("html" if a.modo == "limpio" else "json"))
-            contenido = modo_limpio(c) if a.modo == "limpio" else json.dumps(
-                modo_procedencia(c), ensure_ascii=False, indent=2)
-            os.makedirs(os.path.dirname(salida), exist_ok=True)
-            open(salida, "w", encoding="utf-8").write(contenido)
-            print(f"Ficha ({a.modo}) escrita: {salida}")
-            print()
+            # Los DOS modos escriben un .html autocontenido. Hasta la
+            # v0.9.0 el limpio salia como fragmento -- sin doctype ni charset--
+            # y el de procedencia solo como JSON. La primera corrida real de un
+            # operador (#268) mostro para que se necesita el archivo: mandarlo a
+            # un tercero y pegarlo en un lognote de Odoo.
+            base = (str(exigir_fuera_del_repo(a.salida)) if a.salida
+                    else os.path.join(CORRIDAS(), f"{_slug(a.empresa)}-{a.modo}"))
+            if base.lower().endswith((".html", ".htm", ".json")):
+                base = base.rsplit(".", 1)[0]
+            escritos = []
+            if a.modo == "limpio":
+                escritos.append((base + ".html", modo_limpio(c)))
+            else:
+                escritos.append((base + ".html", modo_procedencia_html(c)))
+                # El JSON se queda: es el artefacto AUDITABLE, el que una
+                # maquina lee sin ambiguedad. El .html es el que se revisa.
+                escritos.append((base + ".json", json.dumps(
+                    modo_procedencia(c), ensure_ascii=False, indent=2)))
+            for ruta, contenido in escritos:
+                exigir_fuera_del_repo(ruta)
+                os.makedirs(os.path.dirname(ruta) or ".", exist_ok=True)
+                open(ruta, "w", encoding="utf-8").write(contenido)
+            print(f"\n  FICHA ({a.modo.upper()}) — archivo listo para mandar:")
+            for ruta, _x in escritos:
+                print(f"    {ruta}")
+            print(f"\n  Abrelo o adjuntalo desde esa ruta. NO esta en el repo: "
+                  f"lleva datos personales.\n")
             print(tabla_de_rendimiento(c))
             return 0
 

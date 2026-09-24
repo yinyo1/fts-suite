@@ -96,9 +96,18 @@ def test_las_vias_del_plan_existen_en_el_catalogo():
                 "seria mandar al usuario contra una compuerta")
 
 
-def test_el_chequeo_no_da_por_buenos_los_conectores():
+def test_el_chequeo_no_da_por_buenos_los_conectores(tmp_path, monkeypatch):
     """Decir que un conector esta vivo sin llamarlo es contar una declaracion
-    como evidencia: el mismo pecado que la compuerta de agotado persigue."""
+    como evidencia: el mismo pecado que la compuerta de agotado persigue.
+
+    Desde la v0.9.2 `chequeo()` SI puede reportarlos -- pero solo repitiendo lo
+    que Claude registro al llamarlos--. Lo que sigue prohibido es lo de antes:
+    que Python los de por buenos por su cuenta. Sin sonda, `None`; y el detalle
+    dice quien tiene que llamarlos.
+    """
+    # Sesion limpia: sin esto el chequeo leeria la sonda de la sesion real y el
+    # resultado dependeria de si alguien corrio `conectores` antes.
+    monkeypatch.setenv("PROSPECTOR_SALIDA", str(tmp_path))
     # `correr_pruebas=False` a proposito: chequeo() corre la suite en un
     # subproceso, y llamarlo desde la suite recursa sin fondo. Lo encontre
     # colgando la maquina. Hay una guarda por variable de entorno ademas.
@@ -106,8 +115,9 @@ def test_el_chequeo_no_da_por_buenos_los_conectores():
     porque = {q: (ok, det) for q, ok, det in filas}
     for conector in ("Odoo vivo (M0)", "Outlook vivo (M0b)", "WebSearch vivo"):
         ok, det = porque[conector]
-        assert ok is None, f"{conector} no se puede verificar desde Python"
-        assert "solo Claude" in det
+        assert ok is None, f"{conector} sin sonda no se puede dar por bueno"
+        assert "sin sondear" in det
+        assert "Claude lo llama" in det, "dice quien tiene que llamarlo"
     assert porque["Pruebas en verde"][0] is None, "saltadas por --rapido"
     assert porque["Salida FUERA del repo"][0] is True
 

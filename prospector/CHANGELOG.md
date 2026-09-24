@@ -3,6 +3,154 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.9.2 — 2026-09-24
+
+Un ajuste de **fluidez** que resulto ser una compuerta. **259 pruebas.**
+
+### El problema: la verificacion era un prompt extra
+
+El operador trabaja desde la web, en lenguaje natural, sin terminal. Y tenia que
+pedir aparte, cada vez, que se corriera `listo` y que se probaran los tres
+conectores antes de escribir la frase de arranque. Un prompt extra por corrida
+-- y si se le olvidaba, la corrida arrancaba **a ciegas**--.
+
+### Lo que NO se podia hacer, y por que
+
+Mover la verificacion a Python. **Los conectores viven detras de MCP y desde
+Python no se ven** -- por eso `chequeo()` los marcaba `[ ? ]`--. Un `listo` que
+dijera "Odoo vivo" sin haberlo llamado seria contar una declaracion como
+evidencia: el mismo pecado que la compuerta de agotado persigue, aplicado al
+arranque.
+
+### Lo que si se movio: la EXIGENCIA
+
+Claude llama a los tres conectores -- eso no cambia, es lo unico que puede
+llamarlos-- y **registra lo que contestaron**. `prospecta` **se niega a abrir la
+corrida** sin esa constancia:
+
+```
+./prospector conectores --odoo "1 fila de res.partner" \
+                        --outlook "12 hilos" --websearch "10 resultados"
+./prospector prospecta --empresa "<empresa>"
+```
+
+Mismo mecanismo que `buscar`, que exige la consulta textual porque no puede
+comprobar que se corrio. La evidencia es **obligatoria**: un `vivo` sin decir que
+devolvio es una declaracion.
+
+**La sonda vence a los 60 minutos.** Una sonda de hace seis horas no prueba que
+el conector este vivo AHORA, y arrancar con esa constancia seria dar por bueno
+algo que no se llamo.
+
+### Un conector caido detiene la corrida y PREGUNTA
+
+`prospecta` devuelve **3** -- la misma salida que la pregunta de la empresa
+multiplanta, y no es casualidad: las dos paran para preguntar una linea, y
+ninguna de las dos es un error que arreglar--. El mensaje dice **por que importa
+ese conector**, no solo que se cayo.
+
+Si el operador autoriza seguir, no queda en una nota al margen: **el modulo sale
+`sin_acceso` con razon escrita**, y eso viaja hasta el checklist de validaciones
+de la ficha. Quien la reciba va a ver que la corrida se hizo ciega de esa fuente.
+Declarar el hueco es la mitad del metodo; anotarlo al margen no lo es.
+
+Y no se autoriza un hueco de un conector que nadie probo, ni de uno que contesto
+bien: autorizar sin sondear no autoriza nada.
+
+**`WebFetch` no entra.** Bloqueado por egress, medido, y no detiene nada: M7 y M8
+salen `sin_acceso`, que es lo correcto.
+
+### `listo` deja de decir "solo Claude lo comprueba" cuando ya se comprobo
+
+Una vez sondeados, muestra lo que cada conector contesto y la antiguedad de la
+sonda. Sin sonda sigue en `[ ? ]`, y el detalle dice **quien tiene que
+llamarlos**. Lo que sigue prohibido es lo de antes: que Python los de por buenos
+por su cuenta.
+
+### Para el operador
+
+Una frase, `prospecta <empresa> en <ciudad>`, y nada mas. La skill verifica sola,
+y **solo le habla si hay algo que decidir**: un conector caido, o una empresa con
+varias plantas.
+
+## 0.9.1 — 2026-09-24
+
+Las tres correcciones que dejo la **primera corrida real de un operador** -- no
+mia: Esteban, sobre Coficab, #268--. **235 pruebas.**
+
+### 1 · La ficha sale como ARCHIVO .html, y completo
+
+El defecto era doble.
+
+**Uno:** el archivo se escribia con extension `.html` pero el contenido era un
+FRAGMENTO -- sin `<!doctype>`, sin `<html>` y **sin `<meta charset>`**--. Sin
+charset declarado los acentos se rompen en cuanto el archivo sale del navegador
+que lo genero: adjunto de correo, lognote de Odoo, vista previa. El operador
+necesita el archivo justo para eso.
+
+**Dos:** le faltaba la mitad de lo que se manda. Tenia contactos, senal,
+conflictos y checklist. Ahora tiene, en este orden: **gancho · senal caliente con
+su fecha · por que ahora · a quien buscar** (nombre, puesto, **planta**, correo y
+nivel de confianza) **· como hablarles · busquedas para Sales Navigator ·
+fuentes con liga y fecha · checklist de validaciones** -- que se corrio, que
+salio `sin_acceso` y por que-- y la completitud de Chao1.
+
+Y **imprime la ruta exacta** del archivo al terminar, en lugar de una linea que
+se perdia entre la tabla de rendimiento.
+
+Tres detalles que valen mas que el formato:
+
+- **Cada senal va con LA FECHA que su texto trae**, o marcada `sin fecha en el
+  registro`. Es la leccion de #295 vuelta codigo: un programa de inversion de
+  2022 que, sin la fecha al lado, se leia como noticia fresca.
+- **Las busquedas de Sales Navigator se DERIVAN** de los puestos de valor y del
+  vocabulario que la corrida recogio. El operador ya hizo ese trabajo; volver a
+  escribirlo a mano es donde se pierde media hora y se cuelan errores de dedo.
+- **Los tres textos de criterio** -- gancho, por que ahora, como hablarles-- los
+  escribe el operador, porque el codigo no puede derivarlos. Si faltan, la ficha
+  **lo dice en su lugar y nombra el comando que los llena**: una ficha que parece
+  completa y no lo esta es peor que una con avisos.
+
+El modo procedencia sale ahora **tambien como `.html`**, aparte. El `.json` se
+queda: es el artefacto auditable a maquina, y el `.html` es el que se revisa.
+
+`buscar` acepta `--liga`. Una fuente sin liga ni fecha no es una fuente, es una
+afirmacion -- y la ficha marca `sin liga` cuando no la hay, en vez de dejar el
+hueco en blanco--.
+
+La guardia de `salida.py` sigue siendo lo unico que sostiene todo esto, y sigue
+probada: pedir la ficha dentro del repo devuelve codigo 2 y no escribe nada.
+
+### 2 · Aviso de bloque a las 10, y negativa en la 11
+
+El operador no cerro el bloque a las diez y siguio hasta **35**. Ahi `bloque` lo
+rechaza -- el maximo es diez-- y un tramo de 35 **no se puede cerrar ni partir**
+sin editar el estado a mano. Consecuencia real: M5 cerrado como `fallo` con razon
+escrita, y la vuelta que Chao1 pedia imposible de abrir.
+
+La compuerta detectaba el error **cuando ya no tenia arreglo**. Ahora:
+
+- a las **9** consultas `buscar` avisa que falta una;
+- a las **10** avisa fuerte, con el comando exacto;
+- en la **11** se niega a registrar, y el mensaje dice que hacer y que se pierde
+  si se deja correr.
+
+El arreglo es **prevencion, no una puerta nueva**: `bloque` sigue negandose a
+cerrar un tramo de 35. Lo que cambia es que ese estado ya es inalcanzable por la
+via normal. Hay prueba de regresion con el caso de 35.
+
+### 3 · Una corrida = UNA planta (`SKILL.md`)
+
+Anotado en la skill, con las dos razones medidas: con un barrido que salta entre
+seis plantas **los bloques de 10 dejan de medir** rendimiento marginal, y **Chao1
+pierde el denominador** -- estima una poblacion, no seis--.
+
+Y reforzado lo que la herramienta ya hacia bien: ante una empresa multiplanta
+**pregunta cual y espera**. Elegir una en silencio es el defecto de los cinco
+DUNS de Ragasa; abarcarlas todas es el mismo error con otro disfraz. El mapeo de
+plantas si se hace en una sola corrida -- M12 y M2 lo dan casi gratis-- y cada
+planta con responsable se prospecta en la suya.
+
 ## 0.9.0 — 2026-09-24
 
 Dos decisiones de criterio aprobadas a partir de la corrida de #295, y tres
