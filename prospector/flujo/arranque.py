@@ -16,7 +16,11 @@ Las compuertas siguen gobernando igual. El arranque no salta ninguna.
 """
 from __future__ import annotations
 
+import os
+import pathlib
 import shlex
+import subprocess
+import sys
 from dataclasses import dataclass, field
 
 from .padron import cargar, vigilar_cobertura, Padron, Bandera
@@ -212,6 +216,10 @@ def texto_del_plan(a: Arranque, tope: int = 60) -> str:
 # `chequeo()` que la ve se niega a volver a correr las pruebas.
 GUARDA_RECURSION = "PROSPECTOR_CHEQUEO_EN_CURSO"
 
+# La suite tarda menos de un segundo. 300 es margen de sobra, y existe para que
+# `listo` REPORTE una falla en vez de quedarse colgado esperando.
+TOPE_PRUEBAS = 300
+
 
 def chequeo(correr_pruebas: bool = True) -> list[tuple[str, bool | None, str]]:
     """Lo que la maquina PUEDE verificar sola. (que, ok, detalle)
@@ -223,7 +231,6 @@ def chequeo(correr_pruebas: bool = True) -> list[tuple[str, bool | None, str]]:
     `correr_pruebas=False` salta la suite -es lo que usa `--rapido`, y lo que
     usan las propias pruebas para no morderse la cola-.
     """
-    import os, subprocess, sys, pathlib
     from .salida import carpeta_de_corridas, raiz_del_repo
     out = []
 
@@ -244,11 +251,23 @@ def chequeo(correr_pruebas: bool = True) -> list[tuple[str, bool | None, str]]:
                     "no se corrieron (--rapido, o llamada desde las pruebas): "
                     "correr `python3 -m pytest tests -q`"))
     else:
-        r = subprocess.run([sys.executable, "-m", "pytest", "tests", "-q"],
-                           cwd=raiz, capture_output=True, text=True,
-                           env={**os.environ, GUARDA_RECURSION: "1"}, timeout=300)
-        ultima = (r.stdout.strip().splitlines() or [""])[-1]
-        out.append(("Pruebas en verde", r.returncode == 0, ultima))
+        try:
+            r = subprocess.run([sys.executable, "-m", "pytest", "tests", "-q"],
+                               cwd=raiz, capture_output=True, text=True,
+                               env={**os.environ, GUARDA_RECURSION: "1"},
+                               timeout=TOPE_PRUEBAS)
+            ultima = (r.stdout.strip().splitlines() or [""])[-1]
+            out.append(("Pruebas en verde", r.returncode == 0, ultima))
+        except subprocess.TimeoutExpired:
+            # Un chequeo que revienta con traza es peor que uno que reporta
+            # falla: el que lo corre no sabe si el problema es la herramienta o
+            # su maquina. La suite tarda <1s; 300 es una hora y media de margen.
+            out.append(("Pruebas en verde", False,
+                        f"NO terminaron en {TOPE_PRUEBAS}s. La suite normal "
+                        "tarda menos de un segundo: algo esta colgado. Correr "
+                        "`python3 -m pytest tests -q` a mano para ver donde."))
+        except Exception as e:
+            out.append(("Pruebas en verde", False, f"no se pudieron correr: {e}"))
 
     try:
         destino = carpeta_de_corridas()

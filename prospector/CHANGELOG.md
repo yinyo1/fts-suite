@@ -3,6 +3,41 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.7.1 — 2026-09-24
+
+Cierra el ultimo punto donde la herramienta podia colgar, y lo deja probado.
+
+### `listo` ya no revienta con traza si las pruebas se cuelgan
+
+El `timeout=300` del subproceso lanzaba `TimeoutExpired` **sin capturar**, asi que
+`./prospector listo` habria muerto con una traza en vez de reportar la falla.
+
+> Un chequeo que revienta con traza es peor que uno que reporta falla: el que lo
+> corre no sabe si el problema es la herramienta o su maquina.
+
+Ahora reporta `FALLA` con el mensaje que dice que la suite normal tarda menos de
+un segundo, asi que 300 significa que algo esta colgado, y como verlo a mano.
+
+### Y el barrido que confirma que no hay otro punto
+
+`chequeo()` es el **unico lugar del codigo que lanza un subproceso**, verificado
+por grep: en `flujo/` no hay `while True`, ni red, ni `input()`, ni sockets. El
+unico camino por el que la herramienta podia quedarse esperando era ese, y queda
+cerrado por tres lados: la guarda de recursion por variable de entorno, el
+parametro `correr_pruebas=False`, y el timeout capturado.
+
+Los tres con prueba, y la guarda probada **tambien fuera de las pruebas** —
+corriendo `PROSPECTOR_CHEQUEO_EN_CURSO=1 ./prospector listo`—.
+
+De paso, los imports de `chequeo()` subieron al modulo: estaban dentro de la
+funcion y eso hacia imposible sustituir `subprocess` en una prueba.
+
+### Pruebas
+
+**157 -> 159.**
+
+---
+
 ## 0.7.0 — 2026-09-24
 
 **Arranque de una instruccion.** Hasta aqui abrir una cuenta eran cinco comandos y

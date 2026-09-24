@@ -107,3 +107,39 @@ def test_el_chequeo_no_da_por_buenos_los_conectores():
         assert "solo Claude" in det
     assert porque["Pruebas en verde"][0] is None, "saltadas por --rapido"
     assert porque["Salida FUERA del repo"][0] is True
+
+
+def test_el_chequeo_REPORTA_falla_si_las_pruebas_se_cuelgan(monkeypatch):
+    """Un chequeo que revienta con traza es peor que uno que reporta falla: el
+    que lo corre no sabe si el problema es la herramienta o su maquina.
+
+    Y el punto de fondo: `chequeo()` es el UNICO lugar del codigo que lanza un
+    subproceso, asi que es el unico que puede colgar. Verificado por grep: no
+    hay `while True`, ni red, ni `input()` en `flujo/`.
+    """
+    import subprocess
+    from flujo import arranque
+
+    def cuelga(*a, **kw):
+        raise subprocess.TimeoutExpired(cmd="pytest", timeout=arranque.TOPE_PRUEBAS)
+
+    monkeypatch.setattr(arranque.subprocess, "run", cuelga, raising=False)
+    monkeypatch.delenv(arranque.GUARDA_RECURSION, raising=False)
+    filas = {q: (ok, d) for q, ok, d in arranque.chequeo(correr_pruebas=True)}
+    ok, det = filas["Pruebas en verde"]
+    assert ok is False, "tiene que reportar FALLA, no propagar la excepcion"
+    assert "NO terminaron" in det and "colgado" in det
+
+
+def test_la_guarda_de_recursion_impide_el_subproceso(monkeypatch):
+    """La recursion que colgo la maquina: chequeo() corre la suite, y llamarlo
+    DESDE la suite recursa sin fondo. La guarda viaja en el entorno del
+    subproceso, asi que un chequeo() anidado se niega."""
+    from flujo import arranque
+    monkeypatch.setenv(arranque.GUARDA_RECURSION, "1")
+    llamadas = []
+    monkeypatch.setattr(arranque.subprocess, "run",
+                        lambda *a, **kw: llamadas.append(a) or None, raising=False)
+    filas = {q: (ok, d) for q, ok, d in arranque.chequeo(correr_pruebas=True)}
+    assert llamadas == [], "con la guarda puesta NO se debe lanzar el subproceso"
+    assert filas["Pruebas en verde"][0] is None
