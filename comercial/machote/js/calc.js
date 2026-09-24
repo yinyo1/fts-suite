@@ -18,7 +18,7 @@
    * que no es el que espera. Se bumpea junto con `const VERSION_ARCHIVO` de
    * `app.js`, el `?v=` de `index.html` y `version.json` — hay una prueba que
    * falla si los cuatro se separan. */
-  const VERSION = 'V1.42';
+  const VERSION = 'V1.43';
 
   const num = (v) => (typeof v === 'number' && isFinite(v)) ? v : 0;
   const vacio = (v) => v === null || v === undefined || v === '';
@@ -178,28 +178,28 @@
   const usadaPartida = (l) => !!l && l.no_aplica !== true &&
     (num(l.qty) > 0 || !vacio(l.pu) || !!l.descripcion);
 
-  /** ¿El pad de esta sección tiene una cuenta escrita que NUNCA se pasó a un
-   *  renglón?
+  /** ¿La hoja de trabajo de esta sección tiene algo escrito?
    *
-   *  Vive AQUÍ, en el motor, y no en la pantalla, porque lo preguntan tres
-   *  sitios en dos archivos: el punto del botón y el aviso al cerrar el panel
-   *  (`app.js`), y la regla blanda del revisador (`reglas.js`). Con una copia
-   *  por archivo, el día que cambie qué cuenta como «algo» se arregla una y
-   *  la otra sigue diciendo otra cosa (§20 #13).
+   *  ⚠️ V1.43 · SE LLAMABA «una cuenta que NUNCA se pasó a un renglón», y ya
+   *  no es eso: no hay a dónde pasarla. El pad es borrador y cálculo, se
+   *  guarda con el documento y **no alimenta nada**. La pregunta que queda es
+   *  la de información —¿hay algo escrito?— y sirve para el punto y el conteo
+   *  del botón, que es lo que hace que la hoja se encuentre sin abrirla. El
+   *  aviso al cerrar y la regla blanda del revisador se fueron con la salida.
    *
-   *  ⚠️ El motor NO lee el pad para calcular NADA. Esta función responde una
-   *  pregunta sobre el pad; no lo mete en ningún total. Que viva en `calc.js`
-   *  no lo vuelve parte del precio.
+   *  ⚠️ Y LO QUE NO CAMBIÓ, que es la garantía del módulo: **el motor NO lee
+   *  el pad para calcular NADA**. Esta función responde una pregunta SOBRE el
+   *  pad; no lo mete en ningún total, ninguna validación depende de ella y su
+   *  contenido no entra en ninguna suma. Que viva en `calc.js` no lo vuelve
+   *  parte del precio — vive aquí porque la preguntan dos sitios y una copia
+   *  por archivo se separa a la primera (§20 #13).
    *
-   *  El importe cuenta aunque sea 0: quien escribió un cero lo escribió a
-   *  propósito. Lo que no cuenta es la caja abierta y vacía. */
-  /** ¿La hoja del pad tiene algo escrito?
-   *
-   *  V1.41 · la hoja sustituyó al texto libre. Se leen las DOS formas a
-   *  propósito: `hoja` es la de ahora y `texto` es la de un pad guardado
-   *  antes del cambio, que sigue siendo trabajo de alguien. Se hace aquí
-   *  sin llamar a `PadHoja` para que el motor no dependa del orden de carga
-   *  de los archivos — es una pregunta de «¿hay algo?», no una evaluación. */
+   *  Se leen las DOS formas del guardado a propósito: `hoja` es la de ahora y
+   *  `texto` es la de un pad de antes de la V1.41, que sigue siendo trabajo de
+   *  alguien. Y se hace SIN llamar a `PadHoja`, así que es indiferente a la
+   *  forma de la rejilla: pregunta «¿alguna celda tiene algo?», que es cierto
+   *  igual con la columna de rótulo y sin ella. Por eso el cambio de forma de
+   *  la V1.43 no la tocó. */
   const padPendiente = (sec) => {
     const p = (sec && sec.pad) || {};
     if (Array.isArray(p.hoja)) {

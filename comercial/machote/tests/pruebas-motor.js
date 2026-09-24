@@ -493,59 +493,73 @@ es(tieneDura(vj, 'foranea-sin-viaje'), false, 'viejos · pero no los trata como 
   const ev = (h) => PH.evaluar(h);
 
   // 1 · el caso real
-  const real = ev([['Tramos','3','12','=A1*B1*450'],
-                   ['Soportes','8','1200','=A2*B2'],
-                   ['Total','','','=SUMA(C1:C2)']]);
+  /* ⚠️ V1.43 · LA FORMA CAMBIÓ: ya no hay columna de rótulo en el índice 0.
+   * El rótulo es ahora una celda como cualquier otra —aquí en la D, para que
+   * quede probado que el texto vive en cualquier columna— y A, B y C son los
+   * índices 0, 1 y 2. Las referencias de las pruebas NO se movieron a
+   * propósito: siguen diciendo A1, B1, C1 y apuntando a lo mismo que antes,
+   * así que si algo se rompiera se vería aquí y no en un nombre distinto. */
+  const real = ev([['3','12','=A1*B1*450','Tramos'],
+                   ['8','1200','=A2*B2','Soportes'],
+                   ['','','=SUMA(C1:C2)','Total']]);
   es(real.valores.C1, 16200, 'hoja · 3 × 12 × 450 = 16,200');
   es(real.valores.C2, 9600,  'hoja · 8 × 1,200 = 9,600');
   es(real.valores.C3, 25800, 'hoja · SUMA de la columna = 25,800');
   es(Object.keys(real.errores).length, 0, 'hoja · el caso real no da ningún error');
 
   // 2 · aritmética
-  es(ev([['','','','=2+3*4']]).valores.C1, 14, 'hoja · precedencia: 2+3*4 = 14');
-  es(ev([['','','','=(2+3)*4']]).valores.C1, 20, 'hoja · paréntesis: (2+3)*4 = 20');
-  es(ev([['','','','=-5+2']]).valores.C1, -3, 'hoja · menos unario');
-  es(ev([['','','','=10/4']]).valores.C1, 2.5, 'hoja · división');
+  es(ev([['','','=2+3*4']]).valores.C1, 14, 'hoja · precedencia: 2+3*4 = 14');
+  es(ev([['','','=(2+3)*4']]).valores.C1, 20, 'hoja · paréntesis: (2+3)*4 = 20');
+  es(ev([['','','=-5+2']]).valores.C1, -3, 'hoja · menos unario');
+  es(ev([['','','=10/4']]).valores.C1, 2.5, 'hoja · división');
 
   // 3 · los errores NO se convierten en números, que es lo peligroso
-  es(ev([['','','','=1/0']]).errores.C1, 'DIV0', 'hoja · dividir entre cero se marca');
-  es(ev([['','','','=2+']]).errores.C1, 'SINTAXIS', 'hoja · fórmula a medias se marca');
-  es(ev([['','','','=Z9+1']]).errores.C1, 'REF', 'hoja · referencia fuera de la rejilla se marca');
+  es(ev([['','','=1/0']]).errores.C1, 'DIV0', 'hoja · dividir entre cero se marca');
+  es(ev([['','','=2+']]).errores.C1, 'SINTAXIS', 'hoja · fórmula a medias se marca');
+  es(ev([['','','=Z9+1']]).errores.C1, 'REF', 'hoja · referencia fuera de la rejilla se marca');
 
   // 4 · ciclos, y que NO cuelguen
-  es(ev([['','=A1','','']]).errores.A1, 'CICLO', 'hoja · una celda que se cita a sí misma');
-  const ind = ev([['','=B1','=C1','=A1']]);
+  es(ev([['=A1','','']]).errores.A1, 'CICLO', 'hoja · una celda que se cita a sí misma');
+  const ind = ev([['=B1','=C1','=A1']]);
   es(ind.errores.A1 === 'CICLO' && ind.errores.B1 === 'CICLO' && ind.errores.C1 === 'CICLO', true,
      'hoja · en un ciclo indirecto se marcan LAS TRES, no sólo donde se detectó');
   es(ind.valores.A1, null, 'hoja · una celda en ciclo no enseña un cero con confianza');
 
   // 5 · un error se PROPAGA a quien lo usa
-  const prop = ev([['','=1/0','=A1+5','']]);
+  const prop = ev([['=1/0','=A1+5','']]);
   es(prop.errores.B1, 'REF', 'hoja · quien suma una celda rota queda marcado, no da 5');
   es(prop.valores.B1, null, 'hoja · y no enseña número');
 
   // 6 · lo que la gente teclea de verdad
-  es(ev([['','$1,200','2','=A1*B1']]).valores.C1, 2400, 'hoja · acepta $ y comas de millares');
-  es(ev([['','hola','5','=A1+B1']]).valores.C1, 5, 'hoja · el texto vale cero, no rompe');
-  es(ev([['','1','2','=SUMA(A1,B1)']]).valores.C1, 3, 'hoja · SUMA con lista de celdas');
-  es(ev([['','1','2',''],['','3','4','=SUMA(A1:B2)']]).valores.C2, 10, 'hoja · SUMA de un rango 2D');
+  es(ev([['$1,200','2','=A1*B1']]).valores.C1, 2400, 'hoja · acepta $ y comas de millares');
+  es(ev([['hola','5','=A1+B1']]).valores.C1, 5, 'hoja · el texto vale cero, no rompe');
+  es(ev([['1','2','=SUMA(A1,B1)']]).valores.C1, 3, 'hoja · SUMA con lista de celdas');
+  es(ev([['1','2',''],['3','4','=SUMA(A1:B2)']]).valores.C2, 10, 'hoja · SUMA de un rango 2D');
+  /* V1.43 · el por ciento al final de un número lo convierte en razón, que es
+   * lo que hace Excel y lo que hace falta para que el formato de porcentaje
+   * sirva de algo: teclear `5%` tiene que valer 0.05. */
+  es(ev([['5%','','=A1*100']]).valores.C1, 5, 'hoja · un número con % vale su razón');
 
   // 7 · la migración del pad de texto, que es trabajo de alguien
   const mig = PH.hojaDe({ pad: { texto: 'primera\nsegunda' } });
   es(mig.length, 2, 'hoja · un pad de texto viejo migra a filas');
-  es(mig[0][0], 'primera', 'hoja · el texto viejo cae en la columna de CONCEPTO');
+  es(mig[0][0], 'primera', 'hoja · el texto viejo cae en la columna A');
   es(PH.hojaDe({ pad: { hoja: [['x','','','']], texto: 'viejo' } })[0][0], 'x',
      'hoja · si ya hay rejilla, el texto viejo no la pisa');
 
   // 8 · defensivo: una hoja mal formada no puede tirar la sección
   es(PH.normalizar(null).length, 0, 'hoja · null no revienta');
   es(PH.normalizar([null, 'x', [1,2,3,4,5]]).length, 3, 'hoja · filas basura se normalizan');
-  es(PH.evaluar([['','=SUMA(A1:C10)','','']]).errores.A1, 'CICLO',
+  es(PH.evaluar([['=SUMA(A1:C10)','','']]).errores.A1, 'CICLO',
      'hoja · un rango que se incluye a sí mismo es un ciclo, no un cuelgue');
   /* V1.42 · con el tope en 10 filas, `C20` dejó de ser una dirección. Antes
    * esta misma prueba usaba `A1:C20` y esperaba CICLO; hoy da REF, que es
    * correcto y sigue siendo ruidoso. Se cambió la prueba, no el motor. */
-  es(PH.evaluar([['','=SUMA(A1:C20)','','']]).errores.A1, 'REF',
+  /* ⚠️ V1.43 · el rango de fuera pasó de `C20` a `C40`: con treinta filas, la
+   * 20 ES una fila válida y la prueba habría dejado de probar lo que dice sin
+   * dar un solo error — el modo de fallo de §20 #19, un instrumento que se
+   * queda corto en silencio. */
+  es(PH.evaluar([['=SUMA(A1:C40)','','']]).errores.A1, 'REF',
      'hoja · un rango fuera de la rejilla es REF, no un número inventado');
 
   // 9 · el tope de filas se respeta
@@ -562,8 +576,8 @@ es(tieneDura(vj, 'foranea-sin-viaje'), false, 'viejos · pero no los trata como 
    * Las cuatro comparten un mismo camino: se juntan los valores y se pliegan
    * con un operador. Por eso se prueban las cuatro, no una de muestra: la
    * que se rompería sola es la que tiene el operador distinto. */
-  const base = [['Tramos','3','12','=A1*B1*450'], ['Soportes','8','1200','=A2*B2']];
-  const conF = (f) => ev([base[0], base[1], ['t', f, '', '']]);
+  const base = [['3','12','=A1*B1*450','Tramos'], ['8','1200','=A2*B2','Soportes']];
+  const conF = (f) => ev([base[0], base[1], [f, '', '']]);
   const val  = (f) => { const r = conF(f); return r.errores.A3 ? ('#' + r.errores.A3) : r.valores.A3; };
 
   es(val('=SUMA(C1:C2)'),            25800, 'palabras · SUMA de un rango');
@@ -593,15 +607,22 @@ es(tieneDura(vj, 'foranea-sin-viaje'), false, 'viejos · pero no los trata como 
   es(val('=PROMEDIO(A1,B1)'),       '#REF', 'palabras · una palabra que no existe NO se inventa');
   es(val('=suma()'),            '#SINTAXIS', 'palabras · una palabra vacía no vale cero callado');
 
-  // 10 · la rejilla es de 10 × 10
-  es(PH.COLS.length, 10, 'hoja · diez columnas');
-  es(PH.COLS[9], 'J', 'hoja · la última columna es J');
-  es(PH.MAX_FILAS, 10, 'hoja · diez filas');
-  es(ev([['','1','','','','','','','','','=J1+A1'].slice(0,11)]).valores.J1, null,
-     'hoja · J1 existe y vale vacío');
-  es(PH.dir('J10') && PH.dir('J10').col, 9, 'hoja · J10 es una dirección válida');
-  es(PH.dir('K1'), null, 'hoja · K1 NO es una dirección');
-  es(PH.dir('A11'), null, 'hoja · A11 NO es una dirección');
+  // 10 · V1.43 · la rejilla es de 30 filas × 15 columnas (A…O)
+  es(PH.COLS.length, 15, 'hoja · quince columnas');
+  es(PH.COLS[14], 'O', 'hoja · la última columna es O');
+  es(PH.MAX_FILAS, 30, 'hoja · treinta filas');
+  es(PH.ANCHO, 15, 'hoja · el ancho de la fila es el de las columnas');
+  es(PH.filaVacia().length, 15, 'hoja · una fila vacía mide lo que la rejilla');
+  /* La última celda de la esquina: la que se rompe si alguien cambia un tope
+   * y se olvida del otro. */
+  es(PH.dir('O30') && PH.dir('O30').col, 14, 'hoja · O30 es una dirección válida');
+  es(PH.dir('O30').fila, 29, 'hoja · O30 está en la fila 29 contando desde cero');
+  es(PH.dir('P1'), null, 'hoja · P1 NO es una dirección');
+  es(PH.dir('A31'), null, 'hoja · A31 NO es una dirección');
+  /* Que la columna O de verdad se EVALÚA, no sólo que se puede nombrar: son
+   * dos cosas distintas y la segunda no prueba la primera. */
+  const ultima = ev([['2','','','','','','','','','','','','','','=A1*3']]);
+  es(ultima.valores.O1, 6, 'hoja · la columna O se evalúa, no sólo existe');
 })();
 
 console.log('\n' + ok + ' pasaron, ' + mal + ' fallaron.');

@@ -4,6 +4,31 @@
 aprobó así; queda como el porqué de las decisiones. Lo que cambió al construirlo está en
 §8 al final — dos cosas, y las dos por medir, no por opinar.
 
+> ## ⚠️ SUPERSEDED EN PARTE POR LA V1.43
+>
+> El pad dejó de tener **salida hacia el machote**. Es **borrador y cálculo, y no
+> alimenta nada**: se guarda con el documento y viaja en cada versión, pero el motor
+> no lo lee, ninguna validación depende de él y su contenido no entra en ningún total.
+>
+> **Lo que quedó sin efecto de este documento:**
+> - **§3 «Qué se pasa al renglón»** — completo. No se pasa nada. Con «Pasar a
+>   renglón» se fueron el contrato del comentario del renglón, el aviso al cerrar el
+>   panel y la regla blanda `pad-sin-pasar` del revisador.
+> - **§8a «Se cayó el campo Concepto»** — la conclusión («la primera columna es el
+>   rótulo que llega al renglón») ya no aplica: **la columna de rótulo se quitó
+>   entera** y el índice 0 pasó a ser la columna A. Un rótulo es ahora texto en
+>   cualquier celda.
+> - **§1 «4 columnas × filas que crecen»** y **§7 «20 filas de tope»** — la rejilla
+>   es de **30 × 15 (A…O)**.
+> - **«NO entra: formatos»** de la tabla de §1 — sí entran: hay cinta de
+>   herramientas en el popup grande.
+>
+> **Lo que sigue vigente**, y es la mayor parte: cero dependencias, la prohibición de
+> `eval`/`new Function`, guardar la fórmula como texto y nunca el resultado, la barra
+> de fórmula, la detección de ciclos, y que la hoja viva dentro de `seccion.pad`.
+>
+> Cómo se guarda el formato sin inflar el documento: **[`PAD_FORMATO.md`](PAD_FORMATO.md)**.
+
 Lo que hay hoy (V1.36–V1.40) es un **área de texto libre** por sección, anclada al borde
 inferior, con un concepto, un importe y un botón «Pasar a renglón». Lo que Esteban y
 Montalvo quieren es **una hoja de verdad**: celdas, columnas, filas, y cuentas dentro.
@@ -58,9 +83,14 @@ descarta el atajo de dos líneas que haría tentador no escribirlo.
 
 ---
 
-## 3 · Qué se pasa al renglón
+## 3 · Qué se pasa al renglón ~~(SUPERSEDED · V1.43: no se pasa nada)~~
 
-**La inclinación de Esteban es la correcta, con un matiz.**
+> ⚠️ **Esta sección entera quedó sin efecto en la V1.43.** El pad no tiene salida
+> hacia el machote. Se deja escrita porque explica qué se perdió al quitarla —el
+> comentario del renglón con «de dónde salió el número»— y ése es el hueco que
+> habría que volver a llenar si algún día se decide que el pad vuelva a alimentar algo.
+
+**La inclinación de Esteban era la correcta, con un matiz.**
 
 - Se pasa **el valor de la celda que la persona elija**. La hoja entera no: un renglón tiene
   un importe, no una tabla.
@@ -179,7 +209,14 @@ este cambio, ese texto es suyo.
 
 Dos cosas, y las dos salieron de medir, no de opinar.
 
-### a · Se cayó el campo «Concepto» aparte
+### a · Se cayó el campo «Concepto» aparte ~~(SUPERSEDED · V1.43)~~
+
+> ⚠️ **En la V1.43 se cayó la COLUMNA de concepto también.** El razonamiento de
+> abajo —«la primera columna ya es el rótulo, y es lo que llega al renglón»— dependía
+> de que hubiera algo a dónde llegar. Sin salida, una columna que no se puede
+> referenciar en una fórmula es sólo una columna capada: ahora el índice 0 es la
+> columna A y un rótulo es texto en la celda que se quiera. La migración de los pads
+> viejos está en [`PAD_FORMATO.md`](PAD_FORMATO.md) §4.
 
 La propuesta conservaba el campo de concepto del pad de texto. Al armar la rejilla quedó
 claro que **la primera columna ya es eso**: el rótulo de la fila explica la cuenta, y es lo

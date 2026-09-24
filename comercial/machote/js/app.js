@@ -57,7 +57,7 @@
    *   2. el `?v=` de la URL con la que el navegador lo bajó,
    *   3. la que declara cada pieza que se carga aparte (hoy el motor).
    * Si discrepan, la pantalla lo DICE en vez de correr a medias. */
-  const VERSION_ARCHIVO = 'V1.42';
+  const VERSION_ARCHIVO = 'V1.43';
 
   const VERSION_URL = (function () {
     try {
@@ -2373,6 +2373,32 @@
   }
 
   /* ── Hoja de sección ─────────────────────────────────────────────────── */
+  /** El pie de la hoja: qué vale la celda elegida.
+   *
+   * ⚠️ «Vacía» y «tiene texto» NO son lo mismo, y decirlo mal es de las cosas
+   * que hacen dudar de la herramienta entera. El pie decía «D4 — vacía» de una
+   * celda que enseñaba «TOTAL DEL ALCANCE» en pantalla, porque sólo miraba el
+   * valor NUMÉRICO y un rótulo no tiene. Se vio en la captura de 1280, no en el
+   * diff. Ahora hay cuatro respuestas para cuatro estados distintos —error,
+   * número, texto y vacío de verdad—, que es la misma exigencia de §20 #12b
+   * aplicada aquí: si una pantalla junta dos estados en un mensaje, elige el
+   * peor de los dos por omisión.
+   *
+   * ⚠️ Y VIVE AQUÍ, en el ámbito del módulo, no dentro del render: la usan el
+   * pintado inicial (`hojaSeccion`) y el repintado (`pintarPad`, dentro de
+   * `enlazar`), que son DOS ÁMBITOS DISTINTOS. Declarada en el primero, el
+   * segundo la vería como no definida y tiraría la función entera —§20 #12, que
+   * en este módulo ya dejó una lista de machotes en blanco—. */
+  function piePad(ref, hoja, ev, fmt) {
+    const e = ev.errores[ref];
+    if (e) return ref + ' — no se puede calcular (' + e + ')';
+    const v = ev.valores[ref];
+    if (v !== null && v !== undefined) return ref + ' = ' + PH.formatoNumero(v, PH.estiloDe(fmt, ref));
+    const crudo = String(PH.crudoDe(hoja, ref) || '').trim();
+    if (crudo) return ref + ' — texto: «' + (crudo.length > 40 ? crudo.slice(0, 40) + '…' : crudo) + '»';
+    return ref + ' — vacía';
+  }
+
   function hojaSeccion(m, s, c) {
     const cs = c.secciones.find(x => x.id === s.id) || {};
     const idx = m.secciones.findIndex(x => x.id === s.id);
@@ -2537,87 +2563,189 @@
        * cuál manda. */
       '</div>';
 
-    /* ── V1.42 · LA HOJA DE TRABAJO: previa + popup ────────────────────────
+    /* ── V1.43 · LA HOJA DE TRABAJO: previa + popup con cinta ──────────────
      *
      * Dos superficies, UNA sola rejilla y UN solo dato:
      *   · la PREVIA vive como tercer cuadrante de la cabecera de la sección,
-     *     4 × 4, editable ahí mismo. Es lo que hace que la hoja se encuentre
-     *     sin abrir nada — la lección de la V1.39 llevada al final: no basta
-     *     con que exista y esté a un clic, tiene que estar A LA VISTA.
-     *   · el POPUP es la hoja completa, 10 × 10.
+     *     4 × 3, editable ahí mismo. Es lo que hace que la hoja se encuentre
+     *     sin abrir nada — la lección de la V1.39: no basta con que exista y
+     *     esté a un clic, tiene que estar A LA VISTA. **No lleva cinta.**
+     *   · el POPUP es la hoja completa, 30 × 15 (hasta la O), **y sólo ahí
+     *     vive la cinta de herramientas**.
      *
      * Las celdas de las dos apuntan al mismo `seccion.pad.hoja`, así que lo
      * que se teclea en la previa ya está en el popup al abrirlo y al revés.
      * Por eso `pintarPad` recorre TODAS las celdas que casen, no la primera:
      * una celda existe dos veces en el DOM cuando el popup está abierto.
      *
-     * En TELÉFONO no hay tercer cuadrante —tres columnas a 380 px no caben, y
-     * la hoja de sección ya estaba en su límite—. Ahí la previa se esconde y
-     * el popup se pega al borde inferior, que es lo que ya funcionaba. Es la
-     * misma hoja: cambia dónde se para, no qué es. */
+     * ── LO QUE LA V1.43 QUITÓ, Y POR QUÉ ─────────────────────────────────
+     * Fuera la columna «Concepto» y fuera «Pasar a renglón». El pad es
+     * BORRADOR Y CÁLCULO: **no alimenta nada**. Con eso se cayeron tres cosas
+     * más, que eran andamio de esa salida y quedaron huérfanas:
+     *   · el contrato de que el texto viajara como comentario del renglón;
+     *   · el aviso al cerrar («tienes una cuenta que no pasaste»);
+     *   · la regla blanda `pad-sin-pasar` del revisador — que sin salida se
+     *     volvía un regaño perpetuo sobre un borrador legítimo.
+     * Lo que NO se quitó: el pad **se sigue guardando** con el documento y
+     * viaja en cada versión. Eso no estaba en discusión. */
     const pad = s.pad || {};
     const HOJA = PH.paraPintar(PH.hojaDe(s));
     const EV = PH.evaluar(HOJA);
+    const FMT = PH.fmtLeer(pad);
     const elegida = PH.dir(pad.elegida) ? pad.elegida : 'A1';
 
     const celdaHoja = (f, c, donde) => {
-      const esRot = c === 0;
-      const ref = esRot ? '' : PH.nombreDir(c - 1, f);
+      const ref = PH.nombreDir(c, f);
       const crudo = String((HOJA[f] || [])[c] || '');
-      const errc = ref ? EV.errores[ref] : null;
-      const val = ref ? EV.valores[ref] : null;
-      /* Lo que se ve en reposo: el valor si lo hay, el error si lo hubo, y
-       * si no, el texto tal cual (que es lo normal en la columna de rótulo y
-       * en una celda con una nota). */
-      const visto = esRot ? crudo
-        : errc ? '#' + errc
-        : (val !== null && val !== undefined) ? mx(val)
+      const errc = EV.errores[ref];
+      const val = EV.valores[ref];
+      const est = PH.estiloDe(FMT, ref);
+      /* Lo que se ve en reposo: el valor con SU FORMATO si lo hay, el error
+       * si lo hubo, y si no, el texto tal cual. */
+      const visto = errc ? '#' + errc
+        : (val !== null && val !== undefined) ? PH.formatoNumero(val, est)
         : crudo;
-      return '<td' + (esRot ? ' class="rot"' : '') + '>' +
-        '<input class="cel padcel' + (esRot ? ' rot' : ' num') +
-          (errc ? ' n-bad' : '') + (ref === elegida ? ' sel' : '') + '"' +
-          ' data-padcel="' + esc(s.id) + '|' + f + '|' + c + '"' +
-          ' data-padonde="' + donde + '"' +
-          (ref ? ' data-padref="' + ref + '"' : '') +
-          ' data-padcrudo="' + esc(crudo) + '"' +
-          ' value="' + esc(visto) + '"></td>';
+      /* La alineación por omisión es la de una hoja: número a la derecha,
+       * texto a la izquierda. Un estilo explícito la pisa. */
+      const auto = (val !== null && val !== undefined) ? ' num' : ' txt';
+      const css = PH.cssDe(est);
+      /* ⚠️ «Ajustar texto» necesita un elemento que sepa envolver, y un
+       * `input` no sabe. Con `w` la celda se pinta como `textarea`: mismas
+       * clases, mismos `data-`, mismo `value`/`selectionStart`, y Enter ya
+       * estaba interceptado desde la V1.42 así que no mete un salto de línea. */
+      const et = est.w ? 'textarea' : 'input';
+      const attrs =
+        ' class="cel padcel' + auto + (errc ? ' n-bad' : '') +
+          (ref === elegida ? ' sel' : '') + (est.w ? ' envuelve' : '') + '"' +
+        ' data-padcel="' + esc(s.id) + '|' + f + '|' + c + '"' +
+        ' data-padonde="' + donde + '"' +
+        ' data-padref="' + ref + '"' +
+        ' data-padcrudo="' + esc(crudo) + '"' +
+        (css ? ' style="' + esc(css) + '"' : '');
+      return '<td>' + (est.w
+        ? '<textarea' + attrs + ' rows="1">' + esc(visto) + '</textarea>'
+        : '<input' + attrs + ' value="' + esc(visto) + '">') + '</td>';
     };
 
-    /** La rejilla, con el tamaño que le pidan. La previa pide 4 × 4 y el
-     *  popup 10 × 10; el resto es idéntico, incluidas las cabeceras de
+    /** La rejilla, con el tamaño que le pidan. La previa pide 4 × 3 y el
+     *  popup 30 × 15; el resto es idéntico, incluidas las cabeceras de
      *  columna y el número de fila, que son la mitad de lo que hace que una
      *  rejilla se lea como una hoja y no como una tabla cualquiera. */
     const rejilla = (nFilas, nCols, donde) => {
       const cols = PH.COLS.slice(0, nCols);
-      const enc = '<tr><th class="nfila"></th><th class="rot">Concepto</th>' +
-        cols.map(x => '<th>' + x + '</th>').join('') + '</tr>';
+      const enc = '<tr><th class="nfila"></th>' +
+        cols.map(x => '<th data-padcol="' + x + '">' + x + '</th>').join('') + '</tr>';
       let filas = '';
       for (let f = 0; f < nFilas; f++) {
-        filas += '<tr><th class="nfila">' + (f + 1) + '</th>' +
-          celdaHoja(f, 0, donde) +
-          cols.map((_, c) => celdaHoja(f, c + 1, donde)).join('') + '</tr>';
+        filas += '<tr><th class="nfila" data-padfila="' + f + '">' + (f + 1) + '</th>' +
+          cols.map((_, c) => celdaHoja(f, c, donde)).join('') + '</tr>';
       }
       return '<table class="hoja-pad"><thead>' + enc + '</thead><tbody>' + filas + '</tbody></table>';
     };
 
-    const pieVal = (() => {
-      const v = EV.valores[elegida], e = EV.errores[elegida];
-      if (e) return elegida + ' — no se puede calcular (' + e + ')';
-      return elegida + (v === null || v === undefined ? ' — vacía' : ' = ' + mx(v));
-    })();
+    const pieVal = piePad(elegida, HOJA, EV, FMT);
 
-    /* ── La PREVIA, tercer cuadrante ──────────────────────────────────── */
+    /* ── La PREVIA, tercer cuadrante. SIN CINTA ───────────────────────── */
     const bloquePrevia =
       '<div class="blk blk-pad">' +
         '<table class="hoja2 pad-previa-cab"><thead><tr>' +
           '<th data-padcuenta="' + esc(s.id) + '">Hoja de trabajo' +
             (C.padPendiente(s) ? ' · ' + C.padFilas(s) : '') + '</th>' +
           '<th class="der"><button class="ico pad-expandir" data-padabrir="' + esc(s.id) + '"' +
-            ' title="Abrir la hoja completa (10 × 10)" aria-label="Abrir la hoja completa">⤢</button></th>' +
+            ' title="Abrir la hoja completa (30 × 15)" aria-label="Abrir la hoja completa">⤢</button></th>' +
         '</tr></thead></table>' +
-        '<div class="pad-previa">' + rejilla(4, 3, 'previa') + '</div>' +
+        '<div class="pad-previa">' + rejilla(4, 4, 'previa') + '</div>' +
         '<div class="tiny nota">Borrador: <strong>no entra en ningún total</strong>. ' +
-        'Números, o fórmulas con <code>=</code>. El <span class="mono">⤢</span> abre las 10 × 10.</div>' +
+        'Números, o fórmulas con <code>=</code>. El <span class="mono">⤢</span> abre las 30 × 15 ' +
+        'con las herramientas.</div>' +
+      '</div>';
+
+    /* ── LA CINTA, sólo en el popup ────────────────────────────────────────
+     * Lo de la pestaña Inicio de Excel que Esteban usa, y nada más: fuente,
+     * alineación, número y copiar/pegar. Cada botón manda un `data-padfmt`
+     * con la clave de estilo y su valor; el modelo hace el resto.
+     *
+     * Los grupos van separados por una línea vertical, como en Excel, y con
+     * su rótulo abajo en letra chica — que es lo que hace que se reconozca
+     * sin tener que pasar el ratón por encima. */
+    const PAL_EXCEL = [
+      ['C00000','FF0000','FFC000','FFFF00','92D050','00B050','00B0F0','0070C0','002060','7030A0'],
+      ['FFFFFF','F2F2F2','D9D9D9','BFBFBF','A6A6A6','808080','595959','404040','262626','000000']
+    ];
+    const swatches = (clave) => PAL_EXCEL.map(fila =>
+      '<div class="pad-swrow">' + fila.map(h =>
+        '<button class="pad-sw" data-padfmt="' + clave + '" data-padval="' + h +
+        '" style="background:#' + h + '" title="#' + h + '" aria-label="#' + h + '"></button>'
+      ).join('') + '</div>').join('');
+
+    const cinta =
+      '<div class="pad-cinta" role="toolbar" aria-label="Herramientas de la hoja">' +
+        /* ── Fuente ── */
+        '<div class="pad-grupo">' +
+          '<div class="pad-fila">' +
+            '<select class="pad-sel pad-tipo" data-padfmt="f" aria-label="Tipo de letra">' +
+              PH.FUENTES.map((n, i) => '<option value="' + i + '">' + esc(n) + '</option>').join('') +
+            '</select>' +
+            '<select class="pad-sel pad-tam" data-padfmt="z" aria-label="Tamaño de letra">' +
+              PH.TAMANOS.map(n => '<option value="' + n + '">' + n + '</option>').join('') +
+            '</select>' +
+          '</div>' +
+          '<div class="pad-fila">' +
+            '<button class="pad-h neg" data-padfmt="b" data-padval="1" title="Negrita (Ctrl+B)" aria-label="Negrita">N</button>' +
+            '<button class="pad-h cur" data-padfmt="i" data-padval="1" title="Cursiva (Ctrl+I)" aria-label="Cursiva">K</button>' +
+            '<button class="pad-h sub" data-padfmt="u" data-padval="1" title="Subrayado (Ctrl+U)" aria-label="Subrayado">S</button>' +
+            '<span class="pad-pop-host">' +
+              '<button class="pad-h" data-padpop="c" title="Color de letra" aria-label="Color de letra">' +
+                '<span class="pad-a">A</span><span class="pad-barrita" id="swc-' + esc(s.id) + '"></span></button>' +
+              '<div class="pad-pop" data-padpopfor="c" hidden>' + swatches('c') +
+                '<button class="pad-sw-auto" data-padfmt="c" data-padval="">Automático</button></div>' +
+            '</span>' +
+            '<span class="pad-pop-host">' +
+              '<button class="pad-h" data-padpop="g" title="Color de relleno" aria-label="Color de relleno">' +
+                '<span class="pad-cubeta">▰</span><span class="pad-barrita" id="swg-' + esc(s.id) + '"></span></button>' +
+              '<div class="pad-pop" data-padpopfor="g" hidden>' + swatches('g') +
+                '<button class="pad-sw-auto" data-padfmt="g" data-padval="">Sin relleno</button></div>' +
+            '</span>' +
+          '</div>' +
+          '<div class="pad-rot">Fuente</div>' +
+        '</div>' +
+        /* ── Alineación ── */
+        '<div class="pad-grupo">' +
+          '<div class="pad-fila">' +
+            '<button class="pad-h" data-padfmt="a" data-padval="l" title="Alinear a la izquierda" aria-label="Alinear a la izquierda">⯇</button>' +
+            '<button class="pad-h" data-padfmt="a" data-padval="c" title="Centrar" aria-label="Centrar">≡</button>' +
+            '<button class="pad-h" data-padfmt="a" data-padval="r" title="Alinear a la derecha" aria-label="Alinear a la derecha">⯈</button>' +
+            '<button class="pad-h ancho" data-padfmt="w" data-padval="1" title="Ajustar texto" aria-label="Ajustar texto">⏎ Ajustar</button>' +
+          '</div>' +
+          '<div class="pad-rot">Alineación</div>' +
+        '</div>' +
+        /* ── Número ── */
+        '<div class="pad-grupo">' +
+          '<div class="pad-fila">' +
+            '<select class="pad-sel pad-num" data-padfmt="n" aria-label="Formato de número">' +
+              '<option value="g">General</option>' +
+              '<option value="m">Moneda</option>' +
+              '<option value="p">Porcentaje</option>' +
+              '<option value="s">Millares</option>' +
+            '</select>' +
+          '</div>' +
+          '<div class="pad-fila">' +
+            '<button class="pad-h" data-padfmt="n" data-padval="m" title="Formato de moneda" aria-label="Formato de moneda">$</button>' +
+            '<button class="pad-h" data-padfmt="n" data-padval="p" title="Formato de porcentaje" aria-label="Formato de porcentaje">%</button>' +
+            '<button class="pad-h" data-padfmt="n" data-padval="s" title="Separador de miles" aria-label="Separador de miles">000</button>' +
+            '<button class="pad-h" data-paddec="-1" title="Quitar decimales" aria-label="Quitar decimales">.0◄</button>' +
+            '<button class="pad-h" data-paddec="1" title="Agregar decimales" aria-label="Agregar decimales">.00►</button>' +
+          '</div>' +
+          '<div class="pad-rot">Número</div>' +
+        '</div>' +
+        /* ── Copiar y pegar ── */
+        '<div class="pad-grupo">' +
+          '<div class="pad-fila">' +
+            '<button class="pad-h ancho" data-padcopiar="1" title="Copiar (Ctrl+C)" aria-label="Copiar">⎘ Copiar</button>' +
+            '<button class="pad-h ancho" data-padpegar="1" title="Pegar (Ctrl+V)" aria-label="Pegar">⎗ Pegar</button>' +
+          '</div>' +
+          '<div class="pad-rot">Portapapeles</div>' +
+        '</div>' +
       '</div>';
 
     /* ── El POPUP, la hoja completa ───────────────────────────────────── */
@@ -2630,10 +2758,7 @@
           '<span class="tiny nota">· borrador, no entra en ningún total</span>' +
           '<button class="ico pad-cerrar" data-padcerrar="' + esc(s.id) + '" title="Cerrar la hoja (Esc)">×</button>' +
         '</div>' +
-        '<div class="tiny nota pad-ayuda">Escribe números, o fórmulas que empiecen con <code>=</code>. ' +
-        'Sirven los signos <code>+ − * /</code> y las palabras <code>SUMA</code>, <code>RESTA</code>, ' +
-        '<code>MULTIPLICACIÓN</code> y <code>DIVISIÓN</code>. Después de un <code>=</code> o de un signo, ' +
-        '<strong>da clic o muévete con las flechas</strong> para tomar una celda.</div>' +
+        cinta +
         '<div class="pad-barra">' +
           '<span class="pad-dir" data-paddir="' + esc(s.id) + '">' + esc(elegida) + '</span>' +
           '<input class="cel pad-formula" data-padformula="' + esc(s.id) + '"' +
@@ -2644,9 +2769,13 @@
         '<div class="pad-pie">' +
           '<span class="tiny">Celda elegida <strong class="mono" data-padval="' + esc(s.id) + '">' +
             esc(pieVal) + '</strong></span>' +
-          '<button class="btn fantasma" data-padpasar="' + esc(s.id) + '">Pasar a renglón</button>' +
+          '<span class="tiny nota pad-ayuda-pie">Números, o fórmulas con <code>=</code>: ' +
+            'signos <code>+ − * /</code> y las palabras <code>SUMA</code>, <code>RESTA</code>, ' +
+            '<code>MULTIPLICACIÓN</code>, <code>DIVISIÓN</code>. Tras un <code>=</code>, ' +
+            'da clic o muévete con las flechas para tomar una celda.</span>' +
         '</div>' +
       '</div>';
+
 
     const cab =
       // El nombre va PRIMERO: es lo que dice en qué sección estás parado, y
@@ -3640,6 +3769,31 @@
      * Se recalcula y se escriben los valores en su sitio. */
     const hojaDeSec = (sec) => PH.paraPintar(PH.hojaDe(sec));
 
+    /** Sella la FORMA del pad en el documento, migrando primero si hace falta.
+     *
+     * 🔴 LAS DOS COSAS JUNTAS, Y EN ESTE ORDEN. Sellar `v = 2` sin escribir la
+     * hoja migrada es el peor defecto que puede tener este módulo: a partir de
+     * ese guardado `hojaDe` ve la marca, deja de migrar, y lee una hoja de la
+     * forma VIEJA como si fuera de la nueva — o sea que **cada fórmula pasa a
+     * apuntar una columna a la izquierda, en silencio y para siempre**. Es
+     * exactamente lo que la migración existe para impedir.
+     *
+     * Y se coló por la puerta de al lado: `escribirCelda` escribía la hoja
+     * migrada y sellaba, así que estaba bien; pero **aplicar un FORMATO** a un
+     * machote viejo —sin teclear una sola celda— sellaba sin migrar. Un clic en
+     * «negrita» sobre una cotización de la V1.42 le habría cambiado el
+     * resultado a sus fórmulas. Nadie lo habría reportado: no hay error, sólo
+     * un número distinto.
+     *
+     * Por eso vive en UNA función a la que llaman los dos escritores. Con una
+     * copia por sitio, el arreglo se aplica a uno y el otro sigue mintiendo
+     * (§20 #13, y §20 #4: un solo escritor por campo). */
+    const sellarForma = (sec) => {
+      if (!sec.pad) sec.pad = {};
+      if (PH.esFormaVieja(sec.pad)) sec.pad.hoja = PH.hojaDe(sec);
+      sec.pad.v = PH.FORMA;
+    };
+
     /** Escribe una celda en el documento, normalizando la rejilla primero.
      *  Devuelve la rejilla ya guardada. */
     const escribirCelda = (sec, f, c, valor) => {
@@ -3652,18 +3806,122 @@
        * se separa en silencio de sus entradas y después no hay forma de saber
        * cuál de los dos miente (§8). */
       sec.pad.hoja = g;
-      /* El texto viejo ya migró a la columna de concepto; dejarlo vivo haría
-       * que la próxima carga lo volviera a migrar encima de lo capturado. */
+      /* ⚠️ LA MARCA DE FORMA, y es lo que hace que la migración DURE. `hojaDe`
+       * corre las fórmulas una letra a la derecha cuando ve un pad de la forma
+       * vieja, pero NO escribe — abrir un machote en lectura no debe
+       * reescribirlo—. La forma nueva se sella en el primer tecleo: a partir de
+       * ese guardado el pad ya es de la forma 2 y nadie vuelve a correrle las
+       * fórmulas. Sin esto, cada carga correría `=A1` otra vez y en tres
+       * aperturas la fórmula apuntaría a `=D1`.
+       * ⚠️ Aquí `g` YA viene migrada (sale de `hojaDeSec`), así que sellar es
+       * seguro; `sellarForma` lo deja dicho en un solo sitio y cubre al otro
+       * escritor, que no tenía esa suerte. */
+      sellarForma(sec);
+      /* El texto viejo ya migró a la primera columna; dejarlo vivo haría que
+       * la próxima carga lo volviera a migrar encima de lo capturado. */
       if (sec.pad.texto !== undefined) delete sec.pad.texto;
       return g;
     };
 
-    /** Recalcula y repinta SÓLO los valores, la barra y el pie. */
+    /* ══ V1.43 · LA SELECCIÓN DE RANGO Y EL PORTAPAPELES ══════════════════
+     *
+     * La cinta necesita saber A QUÉ aplicar el formato, y una celda a la vez
+     * volvería «poner la columna del importe en moneda» treinta clics. Así
+     * que hay una SELECCIÓN de rango, aparte del modo de referencias de la
+     * V1.42, y son dos cosas distintas que conviene no confundir:
+     *
+     *   · `ED.ancla`/`ED.foco` construyen el TEXTO de una fórmula (`=SUMA(A1:C4)`)
+     *     mientras se escribe. Vive sólo mientras hay un editor tomando celdas.
+     *   · `SEL` es la SELECCIÓN de la hoja, la de toda la vida: a qué celdas
+     *     le pega el botón de negrita. Sobrevive al foco.
+     *
+     * Se arrastra con el ratón cuando NO se está tomando referencias, y se
+     * selecciona una columna o una fila entera dando clic en su encabezado —
+     * que es como se selecciona una columna en cualquier hoja, y sin eso la
+     * cinta no sirve para lo que la gente la va a usar.
+     *
+     * ── EL PORTAPAPELES copia CONTENIDO, no formato, y se dice ───────────
+     * Copiar el estilo también sonaba obvio y es una trampa medida: cada
+     * celda pegada con su propio estilo mete una entrada de rango, y el tope
+     * son 120 — pegar un bloque de 6 × 5 se comería un cuarto del cupo de la
+     * hoja para siempre, dentro de un documento que se congela en cada
+     * versión. Así que se copia el texto crudo (las fórmulas viajan tal cual,
+     * sin correr las referencias) y el formato se queda donde estaba. El
+     * rótulo del botón y la ayuda del pie lo dicen, para que nadie lo
+     * descubra pegando.
+     *
+     * Pegar DESDE Excel sí funciona, y sale gratis: el navegador entrega el
+     * texto en el evento `paste`, se parte por tabuladores y saltos de línea
+     * y se reparte por la rejilla. Leer el portapapeles del sistema con la
+     * API pide permiso y falla en la mitad de los casos; el evento no. */
+    const SEL = { sid: null, a: null, b: null, arrastrando: false };
+    const CLIP = { sid: null, rango: null, filas: null };
+
+    /** Normaliza la selección a `{f0,c0,f1,c1}` o `null`. */
+    const selCaja = (sid) => {
+      if (!SEL.a || !SEL.b || SEL.sid !== sid) return null;
+      return { f0: Math.min(SEL.a.f, SEL.b.f), f1: Math.max(SEL.a.f, SEL.b.f),
+               c0: Math.min(SEL.a.c, SEL.b.c), c1: Math.max(SEL.a.c, SEL.b.c) };
+    };
+    /** El rango de la selección como texto (`A1` o `A1:C4`). */
+    const textoSeleccion = (sid) => {
+      const k = selCaja(sid); if (!k) return '';
+      const uno = PH.nombreDir(k.c0, k.f0);
+      if (k.f0 === k.f1 && k.c0 === k.c1) return uno;
+      return uno + ':' + PH.nombreDir(k.c1, k.f1);
+    };
+    /** ¿Esta celda está dentro de la selección? (y sólo si es de MÁS de una:
+     *  sombrear una celda sola duplicaría lo que ya dice `.sel`). */
+    const enSeleccion = (sid, ref) => {
+      const k = selCaja(sid); if (!k || !ref) return false;
+      if (k.f0 === k.f1 && k.c0 === k.c1) return false;
+      const d = PH.dir(ref); if (!d) return false;
+      return d.fila >= k.f0 && d.fila <= k.f1 && d.col >= k.c0 && d.col <= k.c1;
+    };
+    /** ¿Esta celda es de las que se copiaron? (el sombreado gris y el borde
+     *  punteado de Excel: dice de dónde saldría un pegado). */
+    const enCopia = (sid, ref) =>
+      !!(CLIP.rango && CLIP.sid === sid && ref && PH.enRango(CLIP.rango, ref));
+    /** Pone la selección en una celda sola. */
+    const selUna = (sid, f, c) => {
+      SEL.sid = sid; SEL.a = { f: f, c: c }; SEL.b = { f: f, c: c };
+    };
+    /** El rango al que le pega la cinta: la selección si hay, y si no, la
+     *  celda elegida. Nunca vacío, porque un botón que no hace nada sin que
+     *  se sepa por qué es peor que un botón desactivado. */
+    const rangoCinta = (sid, sec) => textoSeleccion(sid) ||
+      (PH.dir((sec.pad || {}).elegida) ? sec.pad.elegida : 'A1');
+
+    /** Deja la cinta reflejando el estilo de la celda elegida. Sin esto, los
+     *  dos menús mienten: dirían «Aptos Narrow 11» sobre una celda en Arial
+     *  16, y el siguiente cambio de tamaño le devolvería la letra base sin
+     *  que nadie lo pidiera. */
+    const pintarCinta = (sid, est) => {
+      const pnl = $('[data-padpanel="' + sid + '"]'); if (!pnl) return;
+      const sel = (cl, v) => pnl.querySelectorAll('.pad-sel[data-padfmt="' + cl + '"]')
+        .forEach(e => { if (document.activeElement !== e) e.value = v; });
+      sel('f', String(est.f === undefined ? PH.FUENTE_BASE : est.f));
+      sel('z', String(est.z === undefined ? PH.TAMANO_BASE : est.z));
+      sel('n', String(est.n || 'g'));
+      pnl.querySelectorAll('.pad-h[data-padfmt]').forEach(b => {
+        const cl = b.dataset.padfmt, v = b.dataset.padval;
+        b.classList.toggle('activo', String(est[cl] === undefined ? '' : est[cl]) === String(v));
+      });
+    };
+
+    /** Recalcula y repinta SÓLO los valores, el estilo, la barra y el pie.
+     *
+     * ⚠️ No se repinta la rejilla entera, y por eso el formato se aplica
+     * aquí celda por celda en vez de en el render: un `pintarHoja` completo
+     * tira el foco a media cuenta, que es exactamente cuando duele. El
+     * `style` en línea es la ÚNICA forma del estilo en pantalla — no hay
+     * clases por combinación, que serían miles. */
     const pintarPad = (sid) => {
       const sec = m.secciones.find(x => x.id === sid); if (!sec) return;
       const g = hojaDeSec(sec);
       const ev = PH.evaluar(g);
-      const eleg = PH.dir((sec.pad || {}).elegida) ? sec.pad.elegida : 'C1';
+      const fmt = PH.fmtLeer(sec.pad || {});
+      const eleg = PH.dir((sec.pad || {}).elegida) ? sec.pad.elegida : 'A1';
       $$('[data-padcel]').forEach(el => {
         const [s2, f, c] = el.dataset.padcel.split('|');
         if (s2 !== sid) return;
@@ -3671,22 +3929,35 @@
         const crudo = String((g[+f] || [])[+c] || '');
         el.dataset.padcrudo = crudo;
         el.classList.toggle('sel', !!ref && ref === eleg);
-        if (document.activeElement === el) return;   // no pisar lo que se teclea
-        if (!ref) { el.value = crudo; return; }
+        el.classList.toggle('enrango', enSeleccion(sid, ref));
+        el.classList.toggle('copiada', enCopia(sid, ref));
+        const est = PH.estiloDe(fmt, ref);
+        /* `cssText` y no clases: el estilo es una combinación libre de once
+         * claves. Se pisa completo para que QUITAR una quede en pantalla —
+         * si sólo se añadiera, «sin relleno» no se vería nunca. */
+        el.style.cssText = PH.cssDe(est);
         const e = ev.errores[ref], v = ev.valores[ref];
         el.classList.toggle('n-bad', !!e);
-        el.value = e ? ('#' + e) : (v !== null && v !== undefined ? mx(v) : crudo);
+        el.classList.toggle('envuelve', !!est.w);
+        /* Alineación por omisión de hoja: el número a la derecha y el texto a
+         * la izquierda, salvo que haya alineación explícita (la mete `cssDe`). */
+        const esNum = (v !== null && v !== undefined);
+        el.classList.toggle('num', esNum);
+        el.classList.toggle('txt', !esNum);
+        if (document.activeElement === el) return;   // no pisar lo que se teclea
+        el.value = e ? ('#' + e) : (esNum ? PH.formatoNumero(v, est) : crudo);
       });
       const dirEl = $('[data-paddir="' + sid + '"]');
-      if (dirEl) dirEl.textContent = eleg;
+      if (dirEl) dirEl.textContent = textoSeleccion(sid) || eleg;
       const fEl = $('[data-padformula="' + sid + '"]');
       if (fEl && document.activeElement !== fEl) fEl.value = PH.crudoDe(g, eleg);
       const pie = $('[data-padval="' + sid + '"]');
-      if (pie) {
-        const e = ev.errores[eleg], v = ev.valores[eleg];
-        pie.textContent = e ? (eleg + ' — no se puede calcular (' + e + ')')
-          : (eleg + (v === null || v === undefined ? ' — vacía' : ' = ' + mx(v)));
-      }
+      if (pie) pie.textContent = piePad(eleg, g, ev, fmt);
+      /* La cinta refleja la primera celda del rango al que le va a pegar —
+       * que con una selección de varias NO es la celda elegida. Si reflejara
+       * otra, el menú de tamaño diría 11 y el siguiente clic le pondría 11 a
+       * toda la selección sin que nadie lo pidiera. */
+      pintarCinta(sid, PH.estiloDe(fmt, (textoSeleccion(sid) || eleg).split(':')[0]));
       marcarBoton(sid, sec);
     };
 
@@ -3775,7 +4046,7 @@
       const sec = m.secciones.find(x => x.id === ED.sid); if (!sec) return;
       if (ED.ref) {
         const d = PH.dir(ED.ref);
-        if (d) escribirCelda(sec, d.fila, d.col + 1, ED.el.value);
+        if (d) escribirCelda(sec, d.fila, d.col, ED.el.value);
       } else if (ED.cel) {
         escribirCelda(sec, ED.cel.f, ED.cel.c, ED.el.value);
       }
@@ -3789,7 +4060,7 @@
      *  una fórmula» en «ver qué estás tomando». */
     const refsDe = (txt) => {
       const out = [];
-      const re = /([A-J])([0-9]{1,2})(?:\s*:\s*([A-J])([0-9]{1,2}))?/gi;
+      const re = /([A-O])([0-9]{1,2})(?:\s*:\s*([A-O])([0-9]{1,2}))?/gi;
       let m2;
       while ((m2 = re.exec(String(txt || '')))) {
         const a = PH.dir(m2[1] + m2[2]);
@@ -3848,26 +4119,72 @@
        * en `mousedown` y con `preventDefault` porque el navegador mueve el
        * foco ANTES del `click`, y para entonces el editor ya se perdió. */
       el.addEventListener('mousedown', (ev) => {
-        if (!ref || !ED.el || ED.el === el || !tomando(ED.el)) return;
-        ev.preventDefault();
-        const d = PH.dir(ref);
-        ED.ancla = { f: d.fila, c: d.col };
-        ED.foco = { f: d.fila, c: d.col };
-        ED.arrastrando = true;
-        insertarRef(ref);
+        if (!ref) return;
+        if (ED.el && ED.el !== el && tomando(ED.el)) {
+          ev.preventDefault();
+          const d = PH.dir(ref);
+          ED.ancla = { f: d.fila, c: d.col };
+          ED.foco = { f: d.fila, c: d.col };
+          ED.arrastrando = true;
+          insertarRef(ref);
+          return;
+        }
+        /* Sin modo de referencias, el arrastre es la SELECCIÓN de la hoja: a
+         * esas celdas le pega la cinta. No se hace `preventDefault` — el
+         * navegador tiene que mover el foco como siempre, porque la celda
+         * sigue siendo editable. */
+        if (ev.shiftKey && SEL.sid === sid && SEL.a) {
+          SEL.b = { f: +f, c: +c };
+        } else {
+          selUna(sid, +f, +c);
+        }
+        SEL.arrastrando = true;
+        pintarPad(sid);
       });
-      /* Arrastrar sobre las celdas convierte la referencia en un rango. */
+      /* 🔴 ARRASTRAR PARA SELECCIONAR NO DEBE MOVER EL TEXTO DE LA CELDA.
+       *
+       * Lo cazó la prueba de la cinta, y era un defecto de verdad: al entrar en
+       * una celda, `onfocus` hace `select()` —para que teclear encima
+       * sustituya, que es lo que hace una hoja—, así que su contenido queda
+       * SELECCIONADO. Y arrastrar desde texto seleccionado es, para el
+       * navegador, un arrastre de texto: el `11` de A6 se SALÍA de su celda y
+       * se metía en la de destino, que acabó con `1144`. O sea que intentar
+       * seleccionar un rango de celdas con contenido DESTRUÍA el contenido.
+       *
+       * Medido en el almacén, no deducido: `A6` quedó vacía y `B7` con
+       * `1144` = `11` + `44`, y el portapapeles de la hoja copió ya ese
+       * destrozo. En el diff no se veía: las dos piezas —`select()` al enfocar
+       * y arrastrar para seleccionar— son correctas por separado.
+       *
+       * `dragstart` es el sitio exacto: apaga el arrastre NATIVO de texto sin
+       * tocar el foco ni la selección de texto dentro de la celda, así que
+       * teclear encima sigue sustituyendo y el arrastre entre celdas pasa a ser
+       * lo único que queda: la selección de la hoja. */
+      el.addEventListener('dragstart', (ev) => { ev.preventDefault(); });
+
+      /* Arrastrar sobre las celdas: un rango para la fórmula si se está
+       * escribiendo una, y si no, la selección de la hoja. */
       el.addEventListener('mouseenter', () => {
-        if (!ED.arrastrando || !ref) return;
-        const d = PH.dir(ref);
-        ED.foco = { f: d.fila, c: d.col };
-        insertarRef(textoRango());
+        if (ED.arrastrando && ref) {
+          const d = PH.dir(ref);
+          ED.foco = { f: d.fila, c: d.col };
+          insertarRef(textoRango());
+          return;
+        }
+        if (SEL.arrastrando && SEL.sid === sid) {
+          SEL.b = { f: +f, c: +c };
+          pintarPad(sid);
+        }
       });
 
       el.onfocus = () => {
         if (ref) {
           const sec = m.secciones.find(x => x.id === sid);
           if (sec) { if (!sec.pad) sec.pad = {}; sec.pad.elegida = ref; }
+          /* Entrar en una celda con el teclado (tabulador) también mueve la
+           * selección: si no, la cinta seguiría apuntando a donde estaba el
+           * ratón la última vez, que es el peor de los dos. */
+          if (!SEL.arrastrando && !enSeleccion(sid, ref)) selUna(sid, +f, +c);
           el.value = el.dataset.padcrudo || '';
           el.classList.remove('n-bad');
           setTimeout(() => { try { el.select(); } catch (e) {} }, 0);
@@ -3913,7 +4230,7 @@
         if (sec && crudo !== undefined) {
           if (ED.ref) {
             const d = PH.dir(ED.ref);
-            if (d) { escribirCelda(sec, d.fila, d.col + 1, crudo); tocado(m); }
+            if (d) { escribirCelda(sec, d.fila, d.col, crudo); tocado(m); }
           } else if (ED.cel) {
             escribirCelda(sec, ED.cel.f, ED.cel.c, crudo); tocado(m);
           }
@@ -3925,6 +4242,28 @@
         ev.preventDefault();
         soltarEditor(); pintarPad(sid); el.blur();
         return;
+      }
+      /* ── Los atajos de la cinta ──────────────────────────────────────
+       * Ctrl+B/I/U y Ctrl+C. **Ctrl+V NO se intercepta**: el pegado viaja en
+       * el evento `paste`, que es el único camino que entrega el texto del
+       * portapapeles sin pedir permiso — atajarlo aquí lo rompería. */
+      if ((ev.ctrlKey || ev.metaKey) && !ev.altKey) {
+        const K = { b: 'b', i: 'i', u: 'u' };
+        const cl = K[String(ev.key || '').toLowerCase()];
+        const sec = m.secciones.find(x => x.id === sid);
+        if (cl && sec) {
+          ev.preventDefault();
+          aplicarFmt(sid, alternar(sid, sec, cl, 1));
+          return;
+        }
+        if (String(ev.key || '').toLowerCase() === 'c' && selCaja(sid)) {
+          const k = selCaja(sid);
+          /* Con UNA celda seleccionada, Ctrl+C es el de siempre: copiar el
+           * texto que se está editando. Sólo con un rango toma el relevo la
+           * copia de la hoja — si no, seleccionar media fórmula y copiarla
+           * dejaría de funcionar, y eso se usa todo el día. */
+          if (k.f0 !== k.f1 || k.c0 !== k.c1) { ev.preventDefault(); copiarSel(sid); return; }
+        }
       }
       const FLECHAS = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
       const mov = FLECHAS[ev.key];
@@ -3944,7 +4283,254 @@
     };
 
     /* Soltar el ratón termina el arrastre, se suelte donde se suelte. */
-    document.addEventListener('mouseup', () => { ED.arrastrando = false; });
+    document.addEventListener('mouseup', () => {
+      ED.arrastrando = false; SEL.arrastrando = false;
+    });
+
+    /* ── Los encabezados: una columna o una fila enteras ───────────────────
+     * Es como se selecciona una columna en cualquier hoja, y sin esto poner
+     * en moneda la columna del importe serían treinta clics — o sea que la
+     * cinta no serviría para lo que la gente la va a usar. */
+    $$('[data-padcol]').forEach(th => {
+      th.onclick = () => {
+        const pnl = th.closest('[data-padpanel]'); if (!pnl) return;
+        const sid = pnl.dataset.padpanel;
+        const c = PH.COLS.indexOf(th.dataset.padcol); if (c < 0) return;
+        SEL.sid = sid; SEL.a = { f: 0, c: c }; SEL.b = { f: PH.MAX_FILAS - 1, c: c };
+        pintarPad(sid);
+      };
+    });
+    $$('[data-padfila]').forEach(th => {
+      th.onclick = () => {
+        const pnl = th.closest('[data-padpanel]'); if (!pnl) return;
+        const sid = pnl.dataset.padpanel;
+        const f = +th.dataset.padfila;
+        SEL.sid = sid; SEL.a = { f: f, c: 0 }; SEL.b = { f: f, c: PH.COLS.length - 1 };
+        pintarPad(sid);
+      };
+    });
+
+    /* ══ LA CINTA ═════════════════════════════════════════════════════════
+     * Cada botón dice QUÉ clave de estilo cambia y a qué valor; el modelo de
+     * `pad-hoja.js` hace lo demás —diccionario, rangos, el último gana, tirar
+     * los huérfanos—. Aquí sólo se decide a qué rango y se avisa si no cupo.
+     *
+     * ⚠️ Los botones van en `mousedown` con `preventDefault`, no en `click`:
+     * el `click` llega DESPUÉS de que el navegador movió el foco fuera de la
+     * celda, y para entonces la selección de una celda sola ya se perdería el
+     * repintado. Con `preventDefault` el foco no se mueve y la celda sigue
+     * lista para seguir escribiendo, que es como se comporta una cinta. */
+    /* Los desplegables de color, que se abren y se cierran solos. */
+    const cerrarPops = (pnl) => {
+      (pnl || document).querySelectorAll('.pad-pop').forEach(p => { p.hidden = true; });
+    };
+
+    const aplicarFmt = (sid, cambio) => {
+      const sec = m.secciones.find(x => x.id === sid); if (!sec) return;
+      if (!sec.pad) sec.pad = {};
+      const rg = rangoCinta(sid, sec);
+      const r = PH.fmtAplicar(PH.fmtLeer(sec.pad), rg, cambio);
+      /* Un formato vacío NO se guarda: una cotización sin formato tiene que
+       * pesar exactamente lo que pesaba antes de esta versión, y el documento
+       * se congela en cada guardado. */
+      if (PH.fmtVacio(r.fmt)) delete sec.pad.fmt; else sec.pad.fmt = r.fmt;
+      /* ⚠️ Migra ANTES de sellar. Sin esto, dar formato a un machote de la
+       * V1.42 sin teclear nada le habría corrido las fórmulas una columna en
+       * silencio — ver el comentario de `sellarForma`. */
+      sellarForma(sec);
+      tocado(m);
+      /* ⚠️ SE SUELTA EL FOCO DE LA CELDA, y hacen falta las dos cosas juntas.
+       * Una celda con el foco enseña su TEXTO CRUDO —está en edición— y
+       * `pintarPad` la salta a propósito para no pisar lo que se teclea. Con el
+       * `preventDefault` de los botones de la cinta el foco NO se movía, así
+       * que apretar `$` sobre la celda en la que estabas parado no cambiaba
+       * nada en pantalla: el botón parecía no hacer nada. Y el `preventDefault`
+       * sí hace falta, porque es lo que conserva la SELECCIÓN de varias celdas.
+       * La salida es soltar el foco aquí: la selección vive en `SEL`, que es
+       * independiente, así que sobrevive y se puede seguir formateando.
+       * Lo cazó la prueba de la cinta midiendo el valor pintado. */
+      const act = document.activeElement;
+      if (act && act.classList && act.classList.contains('padcel')) act.blur();
+      /* «Ajustar texto» cambia la ETIQUETA de la celda —un `input` no sabe
+       * envolver, hace falta un `textarea`— y eso se decide al pintar la
+       * rejilla, no al repintar valores. Es el único cambio de formato que pide
+       * repintar la hoja entera; los otros diez son estilo en línea. */
+      if (cambio && Object.prototype.hasOwnProperty.call(cambio, 'w')) {
+        pintarHoja(m);
+        return;
+      }
+      pintarPad(sid);
+      if (r.tope) {
+        toast('La hoja llegó al tope de ' + PH.CAP_RANGOS + ' formatos distintos. ' +
+              'Ese último no se guardó — el contenido sí está, es sólo el formato.');
+      }
+    };
+
+    /** Lo que vale el botón: si la celda YA lo tiene, el botón lo QUITA.
+     *  Es lo que hace Excel con negrita, y sin esto no habría forma de
+     *  deshacer un formato más que poniéndolo otra vez. */
+    const alternar = (sid, sec, cl, val) => {
+      const est = PH.estiloDe(PH.fmtLeer(sec.pad || {}), rangoCinta(sid, sec).split(':')[0]);
+      const puesto = String(est[cl] === undefined ? '' : est[cl]) === String(val);
+      const cambio = {};
+      cambio[cl] = puesto ? null : val;
+      return cambio;
+    };
+
+    $$('.pad-h[data-padfmt], .pad-sw[data-padfmt], .pad-sw-auto[data-padfmt]').forEach(b => {
+      b.addEventListener('mousedown', (ev) => {
+        ev.preventDefault();
+        const pnl = b.closest('[data-padpanel]'); if (!pnl) return;
+        const sid = pnl.dataset.padpanel;
+        const sec = m.secciones.find(x => x.id === sid); if (!sec) return;
+        const cl = b.dataset.padfmt;
+        const val = b.dataset.padval;
+        /* Un color vacío BORRA la clave: así son «Automático» y «Sin relleno». */
+        if (val === '') { const c = {}; c[cl] = null; aplicarFmt(sid, c); cerrarPops(pnl); return; }
+        /* Los colores y el formato de número se PONEN (no alternan): elegir
+         * rojo teniendo rojo no debería quitarlo, eso es lo que hace el
+         * «Automático», y para el formato de número el «General» del menú.
+         * Negrita, cursiva, subrayado, alineación y ajuste sí alternan, porque
+         * ahí el botón ES el interruptor y no hay otra forma de quitarlos. */
+        if (cl === 'c' || cl === 'g' || cl === 'n') {
+          const c = {}; c[cl] = val; aplicarFmt(sid, c); cerrarPops(pnl); return;
+        }
+        aplicarFmt(sid, alternar(sid, sec, cl, val));
+      });
+    });
+
+    $$('.pad-sel[data-padfmt]').forEach(se => {
+      se.onchange = () => {
+        const pnl = se.closest('[data-padpanel]'); if (!pnl) return;
+        const sid = pnl.dataset.padpanel;
+        const cl = se.dataset.padfmt;
+        const c = {};
+        c[cl] = (cl === 'f' || cl === 'z') ? +se.value : se.value;
+        /* «General» no es un formato: es la ausencia de uno. Guardarlo
+         * ocuparía una entrada de las 120 para no decir nada. */
+        if (cl === 'n' && se.value === 'g') c[cl] = null;
+        aplicarFmt(sid, c);
+      };
+    });
+
+    /* Más y menos decimales, relativos a lo que la celda ya tiene. */
+    $$('[data-paddec]').forEach(b => {
+      b.addEventListener('mousedown', (ev) => {
+        ev.preventDefault();
+        const pnl = b.closest('[data-padpanel]'); if (!pnl) return;
+        const sid = pnl.dataset.padpanel;
+        const sec = m.secciones.find(x => x.id === sid); if (!sec) return;
+        const rg = rangoCinta(sid, sec);
+        const est = PH.estiloDe(PH.fmtLeer(sec.pad || {}), rg.split(':')[0]);
+        /* El punto de partida no es 0: en moneda son 2 y en general las que
+         * tenga el número. Sin esto, «quitar un decimal» sobre $1,234.56 no
+         * haría nada visible la primera vez. */
+        const hoy = est.d !== undefined ? est.d : (est.n === 'm' ? 2 : 2);
+        const n = Math.max(0, Math.min(6, hoy + (+b.dataset.paddec)));
+        aplicarFmt(sid, { d: n });
+      });
+    });
+
+    $$('[data-padpop]').forEach(b => {
+      b.addEventListener('mousedown', (ev) => {
+        ev.preventDefault();
+        const host = b.closest('.pad-pop-host'); if (!host) return;
+        const pop = host.querySelector('.pad-pop'); if (!pop) return;
+        const abierto = !pop.hidden;
+        cerrarPops(b.closest('[data-padpanel]'));
+        pop.hidden = abierto;
+      });
+    });
+
+    /* ── Copiar y pegar ───────────────────────────────────────────────────
+     * Copia el CONTENIDO, no el formato (ver la nota del bloque de `SEL`:
+     * copiar estilos se come el cupo de 120 rangos en un pegado). Las celdas
+     * de origen quedan sombreadas y con el borde punteado, como en Excel, y
+     * eso dice de dónde saldría el pegado. */
+    const copiarSel = (sid) => {
+      const sec = m.secciones.find(x => x.id === sid); if (!sec) return;
+      const k = selCaja(sid); if (!k) return;
+      const g = hojaDeSec(sec);
+      const filas = [];
+      for (let f = k.f0; f <= k.f1; f++) {
+        const fila = [];
+        for (let c = k.c0; c <= k.c1; c++) fila.push(String((g[f] || [])[c] || ''));
+        filas.push(fila);
+      }
+      CLIP.sid = sid; CLIP.rango = textoSeleccion(sid); CLIP.filas = filas;
+      /* Al portapapeles del sistema también, en TSV: así lo que se copia aquí
+       * se pega en Excel. Es lo único que la API da sin pedir permiso, y si
+       * falla no pasa nada — el pegado de aquí no depende de ella. */
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(filas.map(x => x.join('\t')).join('\n'))
+            .catch(() => {});
+        }
+      } catch (e) {}
+      pintarPad(sid);
+      const n = filas.length * (filas[0] || []).length;
+      toast('Copiadas ' + n + ' celda(s) de ' + CLIP.rango + '. Se copia el contenido, no el formato.');
+    };
+
+    /** Reparte un bloque de filas × columnas desde la esquina de la selección. */
+    const pegarEn = (sid, filas) => {
+      const sec = m.secciones.find(x => x.id === sid); if (!sec) return 0;
+      const k = selCaja(sid); if (!k || !filas || !filas.length) return 0;
+      let n = 0;
+      for (let i = 0; i < filas.length; i++) {
+        const f = k.f0 + i;
+        if (f >= PH.MAX_FILAS) break;
+        for (let j = 0; j < filas[i].length; j++) {
+          const c = k.c0 + j;
+          if (c >= PH.COLS.length) break;
+          escribirCelda(sec, f, c, filas[i][j]); n++;
+        }
+      }
+      if (n) {
+        SEL.b = { f: Math.min(PH.MAX_FILAS - 1, k.f0 + filas.length - 1),
+                  c: Math.min(PH.COLS.length - 1, k.c0 + (filas[0] || []).length - 1) };
+        tocado(m); pintarPad(sid);
+      }
+      return n;
+    };
+
+    $$('[data-padcopiar]').forEach(b => {
+      b.addEventListener('mousedown', (ev) => {
+        ev.preventDefault();
+        const pnl = b.closest('[data-padpanel]'); if (pnl) copiarSel(pnl.dataset.padpanel);
+      });
+    });
+    $$('[data-padpegar]').forEach(b => {
+      b.addEventListener('mousedown', (ev) => {
+        ev.preventDefault();
+        const pnl = b.closest('[data-padpanel]'); if (!pnl) return;
+        const sid = pnl.dataset.padpanel;
+        if (!CLIP.filas || CLIP.sid !== sid) {
+          toast('No hay nada copiado en esta hoja. Selecciona celdas y usa Copiar, ' +
+                'o pega desde Excel con Ctrl+V dentro de una celda.');
+          return;
+        }
+        const n = pegarEn(sid, CLIP.filas);
+        if (n) toast('Pegadas ' + n + ' celda(s). El formato del destino no cambió.');
+      });
+    });
+
+    /* Pegar DESDE Excel: el navegador entrega el texto en el evento, así que
+     * sale gratis y sin pedir permiso. Se parte por tabuladores y saltos. */
+    $$('[data-padcel]').forEach(el => {
+      el.addEventListener('paste', (ev) => {
+        const txt = (ev.clipboardData || window.clipboardData || {}).getData
+          ? (ev.clipboardData || window.clipboardData).getData('text') : '';
+        if (!txt || (txt.indexOf('\t') < 0 && txt.indexOf('\n') < 0)) return;  // una celda: que pegue normal
+        ev.preventDefault();
+        const [sid, f, c] = el.dataset.padcel.split('|');
+        selUna(sid, +f, +c);
+        const filas = txt.replace(/\r\n?/g, '\n').replace(/\n$/, '').split('\n')
+          .map(x => x.split('\t'));
+        const n = pegarEn(sid, filas);
+        if (n) toast('Pegadas ' + n + ' celda(s) desde el portapapeles.');
+      });
+    });
 
     /* La barra de fórmula: el ancho completo para la celda elegida. A 380 px
      * una celda mide ~60 y una fórmula no cabe — esto es lo que hace que la
@@ -3961,7 +4547,7 @@
         const sec = m.secciones.find(x => x.id === sid); if (!sec) return;
         const d = PH.dir((sec.pad || {}).elegida);
         if (!d) return;
-        escribirCelda(sec, d.fila, d.col + 1, el.value);
+        escribirCelda(sec, d.fila, d.col, el.value);
         tocado(m);
         pintarPad(sid);
         marcarReferencias();
@@ -4003,15 +4589,14 @@
       sec.pad.abierto = false; tocado(m);
       soltarEditor();
       marcarBoton(sid, sec);
-      /* EL AVISO SUAVE, y va AQUÍ y no «al guardar» por una razón medida: el
-       * autoguardado dispara 500 ms después de cada tecla, así que «al
-       * guardar» no es un momento — es todo el rato, y un aviso todo el rato
-       * no es un aviso. Cerrar el panel SÍ es un momento, y es exactamente
-       * cuando el número se queda escondido. No bloquea nada.
-       * (El recordatorio que dura vive en el revisador, como regla blanda.) */
-      if (avisar && C.padPendiente(sec)) {
-        toast('El pad de «' + (sec.nombre || 'esta sección') + '» tiene una cuenta que no pasaste a ningún renglón. Ahí se queda.');
-      }
+      /* ── V1.43 · AQUÍ VIVÍA EL AVISO «no pasaste esta cuenta» ────────────
+       * Se fue con «Pasar a renglón». Sin salida hacia el machote, avisar de
+       * que una cuenta «se queda en la hoja» sería regañar a alguien por usar
+       * un borrador para lo que es: la hoja se guarda, viaja en la versión, y
+       * ahí sigue la próxima vez que abra. No hay nada que avisar.
+       * El parámetro `avisar` se queda por no tocar las seis llamadas, y no
+       * hace nada — si algún día vuelve a haber algo que decir al cerrar,
+       * este es su sitio. */
     };
     /* La línea de la cabecera es también el camino: anuncia el estado y
      * lleva al bloque, que vive abajo a propósito. */
@@ -4056,64 +4641,20 @@
       const abierto = $$('[data-padpanel]').find(x => !x.hidden);
       if (abierto) { ev.stopPropagation(); cerrarPad(abierto.dataset.padpanel, true); }
     };
-    /* EL BOTÓN es la ÚNICA puerta por la que el pad toca un total. */
-    $$('[data-padpasar]').forEach(el => {
-      el.onclick = () => {
-        const sec = m.secciones.find(x => x.id === el.dataset.padpasar); if (!sec) return;
-        const g = hojaDeSec(sec);
-        const ev = PH.evaluar(g);
-        const ref = PH.dir((sec.pad || {}).elegida) ? sec.pad.elegida : 'C1';
-        const d = PH.dir(ref);
-        const val = ev.valores[ref];
-        const errc = ev.errores[ref];
-
-        if (errc) { toast('Esa celda no se puede calcular (' + errc + '). Arréglala antes de pasarla.'); return; }
-        if (val === null || val === undefined || !isFinite(val) || val <= 0) {
-          toast('Elige una celda con un importe mayor que cero antes de pasarla.'); return;
-        }
-        /* El RÓTULO de la fila es el concepto del renglón. Con una rejilla ya
-         * no hace falta un campo «Concepto» aparte: la primera columna es
-         * exactamente eso, y dos sitios para el mismo dato es el error que se
-         * acaba de deshacer en otra pantalla. */
-        const rotulo = String((g[d.fila] || [])[0] || '').trim();
-        if (!rotulo) { toast('Ponle un concepto en la primera columna de esa fila.'); return; }
-
-        let libre = sec.partidas.findIndex(x => !C.usadaPartida(x) && !x.descripcion);
-        if (libre < 0) {
-          sec.partidas.push({ qty: '', unidad: '', tipo: '', descripcion: '', modelo: '',
-            marca: '', pu: null, moneda: m.moneda, margen: null, link: '', comentario: '' });
-          libre = sec.partidas.length - 1;
-        }
-        const l = sec.partidas[libre];
-        l.descripcion = rotulo;
-        l.qty = 1;
-        l.unidad = l.unidad || 'Servicio';
-        l.tipo = l.tipo || 'Materiales';
-        l.pu = val;
-        l.moneda = l.moneda || m.moneda;
-        /* ── El comentario lleva CÓMO SALIÓ, no la hoja entera ─────────────
-         * Rótulo, la fórmula tal como se escribió, y el valor. Volcar la hoja
-         * completa haría comentarios de veinte renglones que nadie lee, y el
-         * punto del pad no es archivar la hoja: es que dentro de seis meses
-         * se sepa de dónde salió ESTE número. */
-        const crudo = PH.crudoDe(g, ref).trim();
-        l.comentario = rotulo + (crudo && crudo.charAt(0) === '=' ? ' · ' + crudo : '') +
-                       ' = ' + mx(val);
-        /* La hoja NO se vacía, y aquí cambia respecto del pad de texto. Un
-         * texto pasado se mudaba entero al comentario y dejarlo era invitar a
-         * pasarlo dos veces; una hoja es una cuenta en construcción de la que
-         * salen VARIOS renglones —materiales, mano de obra, flete—, y
-         * borrarla al primero tiraría el trabajo. */
-        tocado(m); pintarHoja(m); barra(m, C.calcular(m));
-        /* Se dice LAS TRES cosas: a qué renglón, por cuánto, y DÓNDE quedó la
-         * cuenta. La tercera es la que importa — el razonamiento viajando con
-         * el número es lo único que esta función existe para salvar, y si no
-         * se dice, quien lo usó no sabe que pasó. Lo cazó la prueba de la
-         * V1.36 cuando el aviso nuevo dejó de mencionarlo. */
-        toast('«' + l.descripcion + '» por ' + mx(val) +
-              '. La cuenta quedó en su comentario; la hoja no se borró.');
-      };
-    });
+    /* ── V1.43 · AQUÍ VIVÍA «Pasar a renglón» ─────────────────────────────
+     * Se fue completo, y con él el contrato de que el rótulo de la fila
+     * viajara como descripción del renglón y la fórmula como su comentario.
+     * El pad es BORRADOR Y CÁLCULO: **no alimenta nada**. La hoja se guarda
+     * con el documento y viaja en cada versión —eso no cambió— pero ya no
+     * tiene ninguna salida hacia los totales, y el motor no la lee (lo dice
+     * el encabezado de `calc.js` y lo comprueba la prueba del motor).
+     *
+     * Huérfanos que se fueron con él, en este mismo cambio:
+     *   · el aviso al cerrar el panel («tienes una cuenta que no pasaste»);
+     *   · la regla blanda `pad-sin-pasar` del revisador, que sin salida era
+     *     un regaño perpetuo sobre un borrador legítimo;
+     *   · la exigencia de rótulo en la primera columna, que existía sólo para
+     *     que el renglón tuviera descripción. */
 
     $$('[data-cel]').forEach(el => {
       const esSel = el.tagName === 'SELECT';
