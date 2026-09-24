@@ -713,3 +713,35 @@ def test_el_paquete_NO_se_puede_escribir_en_el_repo(sesion):
     assert orq.main(["paquete", "--empresa", "Coficab", "--ciudad", "Durango",
                      "--salida", fuga]) == 2
     assert not os.path.exists(fuga), "no se escribio nada, no solo se quejo"
+
+
+# --- lo que la verificacion del comando `tramo` destapo ---------------------
+def test_MODO_DE_FALLA_el_motor_LOCAL_no_es_una_via_para_cambiar():
+    """Una via es un lugar DONDE PREGUNTAR, y `patron_derivado` -- el motor de
+    combinaciones de M4-- no pregunta en ningun lado: genera local.
+
+    No era cosmetico. Una corrida cuya unica via "libre" fuera M4 recibiria
+    CAMBIAR_DE_VIA y daria vueltas sobre un generador local, en vez de parar y
+    decir "esto necesita Sales Navigator" — que es el hallazgo entregable.
+    """
+    c = Corrida(empresa="Coficab", ciudad="Silao", giro="cables")
+    vias = c.vias_sin_agotar()
+    assert "M4" not in vias
+    assert not any("patron_derivado" in fs for fs in vias.values())
+
+
+def test_el_comando_que_sugiere_tramo_lleva_la_CIUDAD(sesion, capsys):
+    """Sin ella, en una empresa multiplanta el comando sugerido se niega."""
+    _sondas_ok()
+    orq.main(["prospecta", "--empresa", "Coficab", "--ciudad", "Silao"])
+    c = orq._cargar("Coficab", "Silao")
+    for i, h in enumerate([1] * 10 + [2] * 5 + [3] * 5 + [5] * 5):
+        x = Contacto(nombre=f"N{i}", puesto="Gerente de Planta",
+                     empresa="Coficab", cercania_decision=10)
+        x.hits = h
+        c.contactos.append(x)
+    _con_bloques(c, 6)
+    c.guardar(orq._ruta("Coficab", "Silao"))
+    capsys.readouterr()
+    assert orq.main(["tramo", "--empresa", "Coficab", "--ciudad", "Silao"]) == 0
+    assert "--ciudad 'Silao'" in capsys.readouterr().out

@@ -808,7 +808,15 @@ class Corrida:
                 continue
             m = self.modulos.get(mod)
             usadas = {b.via for b in (m.registros if m else [])}
-            libres = [f for f in permitidas if f.strip().lower() not in usadas]
+            # Una via es un lugar DONDE PREGUNTAR, y `patron_derivado` -- el motor
+            # de combinaciones de M4-- no pregunta en ningun lado: genera local.
+            # Lo encontro una verificacion del comando `tramo`, y no era
+            # cosmetico: una corrida cuya unica via "libre" fuera M4 recibiria
+            # CAMBIAR_DE_VIA y daria vueltas sobre un generador local en vez de
+            # parar y decir "esto necesita Sales Navigator", que es el hallazgo.
+            libres = [f for f in permitidas
+                      if f.strip().lower() not in usadas
+                      and f.strip().lower() not in self.SIN_RED]
             if libres:
                 out[mod] = libres
         return out

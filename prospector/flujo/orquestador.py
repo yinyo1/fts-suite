@@ -881,8 +881,11 @@ def main(argv=None) -> int:
             if not a.renovar:
                 if ev["puede"]:
                     extra = (" --autorizado" if ev["necesita_humano"] else "")
+                    # Con la ciudad: sin ella, en una empresa multiplanta el
+                    # comando que se sugiere se niega y no renueva nada.
+                    planta = (f" --ciudad {c.ciudad!r}" if c.ciudad else "")
                     print(f"\n  Se puede renovar. Corre: ./prospector tramo "
-                          f"--empresa {c.empresa!r} --renovar{extra}\n")
+                          f"--empresa {c.empresa!r}{planta} --renovar{extra}\n")
                 else:
                     print("\n  NO se renueva todavia. Falta: "
                           + ", ".join(ev["faltan"]) + "\n")
