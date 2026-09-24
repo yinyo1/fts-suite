@@ -93,6 +93,79 @@ BRECHA_MAGNITUD = 20.0
 MAGNITUD_PISO = 60.0
 
 
+# ------------------------------------------------- regla C1-bis: informar vs vaciar
+# Medido en Hershey (#287): el patron de correo tuvo CUATRO fuentes. Tres decian
+# `FLast` -y una de esas tres era un correo literal real visto en un hilo de
+# Outlook- y solo SignalHire decia lo contrario. La compuerta marco conflicto y
+# VACIO el campo.
+#
+#     Sin patron de correo, Rissia no le puede escribir a nadie.
+#
+# Y el campo vacio tiraba informacion buena: que 3 de 4 apuntaban al mismo lado,
+# y que una de esas 3 no era una estadistica de directorio sino un correo que
+# alguien mando de verdad.
+#
+#     NO ELEGIR NO ES LO MISMO QUE NO INFORMAR.
+#
+# Pero relajar la regla entera seria volver al Caso F. La linea va aqui:
+#
+#     MAYORIA CLARA + ANCLA DURA  -> informa el valor, con la disidencia al lado
+#     empate, o desacuerdo sin ancla -> se abstiene: EN CONFLICTO y campo vacio
+
+# Cuantas fuentes tiene que juntar la mayoria. TRES, y no es un numero al azar:
+# es el mismo que el metodo ya exige en M1 -"MINIMO TRES directorios DISTINTOS
+# consultados y contrastados"- porque con dos no hay con que contrastar. Si dos
+# no alcanzan para agotar un modulo, tampoco alcanzan para ganarle a una
+# disidencia.
+#
+# Y es la linea que separa los dos casos reales:
+#   Hershey  3 contra 1  -> informa
+#   Cuprum   2 contra 1  -> se abstiene, aunque tenga ancla
+MINIMO_MAYORIA = 3
+
+# Y ademas la mayoria tiene que ser al menos TRES VECES la disidencia. Con 3
+# contra 1 se informa; con 3 contra 2 no. Una disidencia que junta dos fuentes
+# ya no es ruido.
+RAZON_MAYORIA = 3.0
+
+# Fuentes cuyo valor es un dato LITERAL OBSERVADO, no una estimacion.
+#
+# Un directorio dice "el 68.78% de las direcciones se ven asi": es una
+# estadistica sobre una poblacion, y puede estar sesgada por la muestra que ese
+# directorio junto. Un correo visto en un hilo de Outlook, o impreso en un PDF
+# indexado, es una direccion que EXISTIO. Son dos clases de evidencia distintas
+# y la segunda es la que ancla.
+FUENTES_ANCLA = {
+    "outlook",            # una direccion real en un hilo
+    "odoo",               # una direccion real en el CRM
+    "pdf_publico",        # una direccion impresa en un documento indexado
+    "padron_gobierno",    # idem, en un padron oficial
+    "congreso",           # idem, en un programa o memoria
+}
+
+# En QUE CAMPOS se permite informar pese al desacuerdo. Es una lista corta a
+# proposito: admitir un campo aqui es una decision, no un descuido.
+#
+# El criterio para admitir uno:
+#
+#   1. Es un hecho de la CUENTA, no de una PERSONA. El patron de correo es una
+#      estadistica sobre una poblacion de direcciones; que las fuentes difieran
+#      es ruido de muestreo esperado, y la mayoria significa algo.
+#
+#   2. La disidencia NO puede ser "la fuente mas fresca". Un patron de correo
+#      no cambia de un mes a otro. Un PUESTO si: si tres fuentes dicen que
+#      alguien es Jefe de Mantenimiento y una dice que es Gerente de Planta, la
+#      disidente puede ser la que se entero del ascenso. Ahi la mayoria no es
+#      la verdad, es la inercia.
+#
+#   3. Equivocarse es barato y visible. Un patron de correo equivocado rebota;
+#      un EMPLEADOR equivocado le atribuye una persona a la empresa que no es,
+#      y eso no rebota: se manda el correo y se queda ahi.
+#
+# `puesto` y `empleador` fallan (2) y (3). No entran, y no deben entrar.
+CAMPOS_CON_MAYORIA = ("patron_correo",)
+
+
 @dataclass
 class Observacion:
     """Una fuente diciendo algo sobre un campo. La unidad de instrumentacion."""
@@ -113,6 +186,11 @@ class Observacion:
     @property
     def raiz(self) -> str:
         return raiz_de(self.fuente)
+
+    @property
+    def es_ancla(self) -> bool:
+        """Esta observacion es un dato literal observado, no una estimacion."""
+        return self.fuente.strip().lower() in FUENTES_ANCLA
 
 
 @dataclass
@@ -181,6 +259,8 @@ class Dato:
         aviso que llega a revision humana tiene que decir si son dos valores
         distintos o el mismo valor con dos certezas distintas.
         """
+        if self.informa_pese_al_conflicto:
+            return self.disidencia
         if len(self.valores) > 1:
             return ("valores distintos: " +
                     " / ".join(str(v) for v in self.valores))
@@ -194,6 +274,76 @@ class Dato:
             return (f"mismo valor, certezas separadas por "
                     f"{self.brecha_magnitud:.4g} puntos: " + " / ".join(partes))
         return ""
+
+    # --- regla C1-bis: mayoria clara con ancla INFORMA; el resto se abstiene ---
+    @property
+    def _grupos(self) -> list[tuple[Any, list["Observacion"]]]:
+        """Las observaciones agrupadas por valor, de mas apoyada a menos."""
+        grupos: dict[str, list[Observacion]] = {}
+        for o in self.observaciones:
+            grupos.setdefault(_normaliza(o.valor), []).append(o)
+        return sorted(((g[0].valor, g) for g in grupos.values()),
+                      key=lambda par: -len(par[1]))
+
+    @property
+    def mayoria(self):
+        """(valor, observaciones_a_favor, observaciones_disidentes), o None.
+
+        Solo existe cuando hay DOS O MAS valores distintos: si todas dicen lo
+        mismo no hay disidencia que aislar, y si chocan por FORMA o por brecha
+        de certeza sobre el MISMO valor, no hay un valor mayoritario que
+        reportar -- justo lo que hay que decidir es cual de las dos lecturas
+        del mismo literal vale, y eso la mayoria no lo contesta.
+        """
+        grupos = self._grupos
+        if len(grupos) < 2:
+            return None
+        valor, a_favor = grupos[0]
+        disidentes = [o for _v, g in grupos[1:] for o in g]
+        return valor, a_favor, disidentes
+
+    @property
+    def ancla_en_la_mayoria(self) -> bool:
+        """Al menos una de las fuentes de la mayoria vio un dato LITERAL."""
+        m = self.mayoria
+        return bool(m) and any(o.es_ancla for o in m[1])
+
+    @property
+    def informa_pese_al_conflicto(self) -> bool:
+        """MAYORIA CLARA + ANCLA DURA. Las tres condiciones, conjuntivas.
+
+        Si falta una sola, el campo se vacia como siempre. La que mas trabaja es
+        `MINIMO_MAYORIA`: es la que separa Hershey -3 contra 1, informa- de
+        Cuprum -2 contra 1, se abstiene AUNQUE tenga el ancla de Outlook-.
+        """
+        if self.campo not in CAMPOS_CON_MAYORIA:
+            return False
+        m = self.mayoria
+        if not m:
+            return False
+        _valor, a_favor, disidentes = m
+        if len(a_favor) < MINIMO_MAYORIA:
+            return False
+        if len(a_favor) < RAZON_MAYORIA * len(disidentes):
+            return False
+        return self.ancla_en_la_mayoria
+
+    @property
+    def disidencia(self) -> str:
+        """Lo que dice la minoria. Va VISIBLE en la ficha, junto al valor.
+
+        Informar la mayoria y callar la disidencia seria elegir en silencio con
+        otro nombre.
+        """
+        if not self.informa_pese_al_conflicto:
+            return ""
+        _valor, a_favor, disidentes = self.mayoria
+        quien = ", ".join(sorted({o.fuente for o in disidentes}))
+        dicen = " / ".join(sorted({str(o.valor) for o in disidentes}))
+        anclas = sorted({o.fuente for o in a_favor if o.es_ancla})
+        return (f"{len(a_favor)} de {self.n_fuentes} fuentes coinciden, y "
+                f"{'/'.join(anclas)} lo vio literal. "
+                f"{quien} disiente y dice {dicen} -- confirmalo antes de usarlo.")
 
     @property
     def choca(self) -> bool:
@@ -232,7 +382,14 @@ class Dato:
         if not self.observaciones:
             return NO_ENCONTRADO
         if self.choca:
-            return EN_CONFLICTO
+            if not self.informa_pese_al_conflicto:
+                return EN_CONFLICTO
+            # Mayoria clara con ancla: se informa. Pero TOPA EN SOLIDO, nunca
+            # CONFIRMADO: hay una fuente viva diciendo lo contrario, y llamarle
+            # "verificado" a eso seria el Caso F por la puerta de atras.
+            if self.certeza_declarada_baja:
+                return CANDIDATO
+            return SOLIDO
         if self.n_raices >= 2:
             return CONFIRMADO
         # una sola raiz: TOPA aqui. No es conflicto, es techo.
@@ -244,8 +401,15 @@ class Dato:
 
     @property
     def valor(self) -> Any:
-        """El valor a reportar. En conflicto NO elige: devuelve None."""
+        """El valor a reportar.
+
+        En conflicto NO elige -- salvo cuando hay MAYORIA CLARA + ANCLA DURA, y
+        entonces no esta eligiendo en silencio: reporta el valor de la mayoria
+        Y la disidencia al lado, las dos cosas visibles.
+        """
         if self.choca:
+            if self.informa_pese_al_conflicto:
+                return self.mayoria[0]
             return None          # elegir en silencio es el bug del Caso F
         return self.observaciones[0].valor if self.observaciones else None
 
@@ -258,6 +422,9 @@ class Dato:
             "n_fuentes": self.n_fuentes,
             "n_raices": self.n_raices,
             "choca": self.choca,
+            "informa_pese_al_conflicto": self.informa_pese_al_conflicto,
+            "disidencia": self.disidencia,
+            "ancla_en_la_mayoria": self.ancla_en_la_mayoria,
             "motivo_conflicto": self.motivo_conflicto,
             "brecha_magnitud": self.brecha_magnitud,
             "formas": self.formas,

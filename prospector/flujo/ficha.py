@@ -35,14 +35,29 @@ def modo_limpio(c: Corrida) -> str:
 
     filas = []
     for x in visibles:
+        # Si no hay correo de la persona, sirve el PATRON de la cuenta: para un
+        # puesto sin persona es justo lo accionable. Va etiquetado como patron y
+        # no como direccion, porque no lo es: es la forma, no el buzon.
         correo = x.datos.get("correo")
+        es_patron = correo is None
+        if es_patron:
+            correo = x.datos.get("patron_correo")
         if correo is None:
             linea_correo = ""
         elif correo.nivel == EN_CONFLICTO:
             linea_correo = ('<div class="conf">EN CONFLICTO — '
                             f'{html.escape(correo.motivo_conflicto)}</div>')
         else:
-            linea_correo = f'<div class="mail">{html.escape(str(correo.valor or ""))} <i>{CHIP[correo.nivel]}</i></div>'
+            etiqueta = "patron · " if es_patron else ""
+            linea_correo = (f'<div class="mail">{etiqueta}'
+                            f'{html.escape(str(correo.valor or ""))} '
+                            f'<i>{CHIP[correo.nivel]}</i></div>')
+            # Mayoria clara con ancla: se reporta el valor Y la salvedad. Dar el
+            # valor y callar la disidencia seria elegir en silencio con otro
+            # nombre.
+            if correo.disidencia:
+                linea_correo += (f'<div class="dis">con salvedad — '
+                                 f'{html.escape(correo.disidencia)}</div>')
         filas.append(
             f'<div class="p"><span class="lv">{NIVEL_FICHA.get(x.nivel_ficha,"N2")}</span>'
             f'<div><b>{html.escape(x.nombre or "(puesto sin persona)")}</b>'
@@ -52,9 +67,16 @@ def modo_limpio(c: Corrida) -> str:
 
     # Los conflictos van ARRIBA y visibles. El modo limpio no puede afirmar
     # nada que el de procedencia marque contradicho -- y callarlo es afirmar.
-    conflictos = []
+    conflictos, salvedades = [], []
     for x in c.contactos:
         for campo, d in x.datos.items():
+            if d.informa_pese_al_conflicto:
+                salvedades.append(
+                    f'<li><b>{html.escape(campo)}</b> de '
+                    f'{html.escape(x.nombre or x.puesto or "?")}: '
+                    f'<code>{html.escape(str(d.valor))}</code> — '
+                    f'{html.escape(d.disidencia)}</li>')
+                continue
             if d.nivel == EN_CONFLICTO:
                 # El MOTIVO, no solo los valores: un conflicto por brecha de
                 # certeza tiene UN solo valor, y sin el motivo la ficha lo
@@ -66,6 +88,11 @@ def modo_limpio(c: Corrida) -> str:
                     f' — <i>no se elige en silencio, va a revision humana</i></li>')
     bloque_conf = (f'<h2>En conflicto — {len(conflictos)}</h2><ul class="cf">'
                    f'{"".join(conflictos)}</ul>') if conflictos else ""
+    # Los informados con salvedad NO van al mismo bloque: no son pendientes,
+    # son datos usables que llevan una nota. Mezclarlos manda a revision humana
+    # algo que ya se puede usar, y eso vuelve la ficha una lista de tareas.
+    bloque_salv = (f'<h2>Con salvedad — {len(salvedades)}</h2><ul class="sv">'
+                   f'{"".join(salvedades)}</ul>') if salvedades else ""
     val = "".join(
         f'<tr><td>{f["modulo"]}</td><td>{f["estado"]}</td>'
         f'<td>{html.escape(f["razon"])}</td></tr>' for f in checklist_validaciones(c))
@@ -80,6 +107,9 @@ def modo_limpio(c: Corrida) -> str:
  .ro{{display:block;color:#4a5560;font-size:.93rem}}
  .mail{{font:.82rem monospace;color:#1f4b6e;margin-top:3px}} .mail i{{color:#8b95a1;font-style:normal}}
  .conf{{font:.82rem monospace;color:#a4560a;margin-top:3px;font-weight:600}}
+ .dis{{font:.76rem system-ui;color:#7a6320;margin-top:2px}}
+ ul.sv{{font:.84rem system-ui;color:#5a4a12;background:#fdf8e6;border-left:3px solid #c9a227;padding:8px 8px 8px 24px;margin:6px 0}}
+ ul.sv code{{font:.82rem monospace;color:#1f4b6e}}
  .cf{{background:#fbf3e8;border-left:3px solid #a4560a;padding:10px 12px 10px 30px;margin:0}}
  .cf li{{margin:4px 0;font-size:.9rem}}
  table{{width:100%;border-collapse:collapse;font-size:.85rem;margin-top:8px}}
@@ -89,7 +119,7 @@ def modo_limpio(c: Corrida) -> str:
 <h1>{html.escape(c.empresa)}</h1>
 <div class="meta">{html.escape(c.ciudad)} · {html.escape(c.giro)} · corrida {c.creada[:10]}</div>
 
-{bloque_conf}
+{bloque_conf}{bloque_salv}
 
 <h2>Senal caliente</h2><ul>{sen}</ul>
 

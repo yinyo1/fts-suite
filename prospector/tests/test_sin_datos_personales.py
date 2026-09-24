@@ -9,6 +9,9 @@ Una advertencia en un comentario no detiene a nadie. Esta prueba si.
 
 Lo que se permite a proposito:
   * marcadores: `[persona]`, `[Persona 01]`, `nombre.apellido@`, `first.last@`
+  * plantillas de patron: `FLast@`, `LastF@`, `FirstLast@` -- son la FORMA del
+    patron escrita como plantilla, no la direccion de nadie. Es lo que los
+    directorios reportan y lo que el Caso G compara
   * buzones genericos de ejemplo: `compras@`, `ventas@`, `info@`
   * `git@github.com` -- es una URL de clon, no el correo de nadie. Salio como
     falso positivo al escribir PURGA-DEL-HISTORIAL.md, y es la clase de ruido
@@ -28,6 +31,7 @@ CORREO = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 # Locales permitidos: marcadores y buzones genericos.
 PERMITIDO = re.compile(r"""^(
     nombre\.apellido | first\.last | first_lastinitial | n\.apellido
+  | FLast | LastF | FirstLast | LastFirstInitial | flast | lastf   # plantillas
   | \[[^\]]+\]                                  # cualquier marcador [.....]
   | x | a | correo | ejemplo | usuario | user | test | demo | noreply
   | git                                          # git@github.com, URL de clon SSH

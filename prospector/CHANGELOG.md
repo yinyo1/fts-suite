@@ -3,6 +3,108 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.6.0 — 2026-09-24
+
+**No elegir no es lo mismo que no informar.** La compuerta de confianza aprende a
+distinguir un desacuerdo que se puede reportar de uno del que hay que abstenerse.
+
+### El defecto, medido en Hershey (#287)
+
+El patron de correo tuvo CUATRO fuentes: tres decian `FLast` -y una de esas tres
+era **un correo literal real** visto en un hilo de Outlook- y solo SignalHire
+decia lo contrario. La compuerta marco conflicto y **vacio el campo**.
+
+Sin patron de correo, Rissia no le puede escribir a nadie. Y el campo vacio
+tiraba informacion buena: que 3 de 4 apuntaban al mismo lado, y que una de esas
+3 no era una estadistica de directorio sino una direccion que existio.
+
+### La regla nueva: C1-bis
+
+| Situacion | Que hace |
+|---|---|
+| **Mayoria clara + ancla dura** | **Informa** el valor, con la disidencia visible al lado |
+| Empate, o desacuerdo sin ancla | **Se abstiene**: EN CONFLICTO, campo sin valor |
+
+**Mayoria clara** = al menos **3 fuentes** Y al menos **3 veces** la disidencia.
+El tres es el mismo numero que el metodo ya exige en M1 -*minimo tres
+directorios contrastados*- porque con dos no hay con que contrastar. Si dos no
+alcanzan para agotar un modulo, tampoco para ganarle a una disidencia.
+
+**Ancla dura** = al menos una fuente de la mayoria vio un dato **literal**:
+Outlook u Odoo (una direccion real), un PDF publico, un padron de gobierno, un
+congreso. **Ningun directorio ancla**: reportan una estadistica sobre la muestra
+que ellos juntaron, no una direccion que existio. Y **el ancla tiene que estar
+en la MAYORIA**: si el unico que vio un literal dice lo contrario que los tres
+directorios, eso es mas razon para abstenerse.
+
+**El techo es SOLIDO, nunca CONFIRMADO.** Hay una fuente viva diciendo lo
+contrario; llamarle *verificado* a eso seria el Caso F por la puerta de atras.
+
+### La linea, comprobada contra los dos casos reales
+
+| Caso | Cuentas | Ancla | Resultado |
+|---|---|---|---|
+| **Hershey** | 3 contra 1 | Outlook vio el literal | **informa** con salvedad |
+| **Cuprum** | 2 contra 1 | Outlook vio el literal | **se abstiene** |
+
+Cuprum es el caso que mas trabaja: **ahi si hay ancla** y aun asi se abstiene.
+
+> **Y una correccion a lo que yo mismo escribi primero.** Habia puesto que
+> `MINIMO_MAYORIA` era la condicion que separaba los dos casos. **Es falso**, y
+> lo vi corriendo la matriz de umbrales en subprocesos limpios: con el minimo en
+> 2 y la razon en 3.0, Cuprum sigue dando conflicto porque 2 no es tres veces 1.
+> **Cada condicion lo bloquea por su lado; hay que bajar LAS DOS a 2 para que se
+> rompa.** Eso quedo fijado en dos pruebas, una por cada direccion.
+
+### Solo aplica al patron de correo
+
+`CAMPOS_CON_MAYORIA = ("patron_correo",)`. Admitir otro campo es una decision, y
+el criterio esta escrito en el codigo y en §5.1 del metodo. **`puesto` y
+`empleador` no entran y no deben entrar**: un puesto cambia -la disidente puede
+ser la que se entero del ascenso, y ahi la mayoria no es la verdad sino la
+inercia- y un empleador equivocado no rebota, se manda el correo y se queda ahi.
+
+### En la ficha
+
+Los datos informados con salvedad van en **su propio bloque**, separados de los
+conflictos de verdad: un dato usable con una nota **no es un pendiente**, y
+mezclarlos vuelve la ficha una lista de tareas. El challenge los reporta como
+`CON SALVEDAD`, no como `revision humana`.
+
+### Corregido: la tarjeta no mostraba el patron
+
+Lo encontro ejercitar la ficha de punta a punta, no una prueba. La tarjeta leia
+solo `correo` -la direccion de una PERSONA- y el patron de la CUENTA vive en
+`patron_correo`. Para un puesto sin persona el patron es justo lo accionable, y
+no aparecia: el valor solo salia en el bloque de arriba. Ahora la tarjeta cae al
+patron cuando no hay correo, **etiquetado `patron ·`** y no como direccion,
+porque no lo es: es la forma, no el buzon.
+
+Lo que ve Rissia:
+
+```
+N3  (puesto sin persona)
+    Maintenance Supervisor · Utilities & Facilities
+    patron · FLast@hersheys.com   SOL
+    con salvedad — 3 de 4 fuentes coinciden, y outlook lo vio literal.
+    signalhire disiente y dice LastF@hersheys.com -- confirmalo antes de usarlo.
+```
+
+### Las otras dos caras de C1 no se tocaron
+
+La regla solo puede dispararse cuando hay **dos o mas valores distintos**. El
+choque por FORMA sobre el mismo literal, y el choque por BRECHA de certeza,
+siguen vaciando el campo: ahi no hay un valor mayoritario que reportar, porque
+lo que se discute es cual de las dos lecturas del mismo literal vale, y eso la
+mayoria no lo contesta.
+
+### Pruebas
+
+**108 -> 146.** Nuevas: `tests/test_caso_g_hershey.py` (38). Las 11 del Caso F
+**no se tocaron** y siguen pasando: era la condicion del cambio.
+
+---
+
 ## 0.5.0 — 2026-09-24
 
 **El padron se reduce a mapa de plantas y aprende a avisar que caduco.** Y la

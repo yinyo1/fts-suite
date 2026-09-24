@@ -566,6 +566,96 @@ Ninguno de los dos datos, solo, dice eso.
 
 ---
 
+### 5.1 · Cuando un conflicto informa, y cuando se abstiene *(regla C1-bis)*
+
+> **No elegir no es lo mismo que no informar.**
+
+Medido en Hershey el 24-sep-2026. El patrón de correo tuvo **cuatro** fuentes:
+tres decían `FLast` —y una de esas tres era **un correo literal real** visto en
+un hilo de Outlook— y solo SignalHire decía lo contrario. La compuerta marcó
+conflicto y **vació el campo**.
+
+Sin patrón de correo, Rissia no le puede escribir a nadie. Y el campo vacío
+tiraba información buena: que 3 de 4 apuntaban al mismo lado, y que una de esas
+3 no era una estadística de directorio sino una dirección que existió.
+
+**La regla, en una línea:**
+
+| Situación | Qué hace la ficha |
+|---|---|
+| **Mayoría clara + ancla dura** | **Informa** el valor de la mayoría, con la disidencia visible al lado |
+| Empate, o desacuerdo sin ancla | **Se abstiene**: EN CONFLICTO y campo sin valor |
+
+#### Mayoría clara — las dos condiciones, conjuntivas
+
+1. **Al menos TRES fuentes** en la mayoría.
+2. **Al menos tres veces** la disidencia (3 contra 1 informa; 3 contra 2 no).
+
+El **tres no es un número al azar**: es el mismo que §4 ya exige en la Fase 1
+—*mínimo tres directorios contrastados*— porque con dos no hay con qué
+contrastar. **Si dos no alcanzan para agotar un módulo, tampoco alcanzan para
+ganarle a una disidencia.**
+
+Y es la línea que separa los dos casos reales:
+
+| Caso | Cuentas | Ancla | Resultado |
+|---|---|---|---|
+| **Hershey** | 3 contra 1 | Outlook vio el literal | **informa** `FLast@…` con salvedad |
+| **Cuprum** | 2 contra 1 | Outlook vio el literal | **se abstiene** — dos no alcanzan |
+
+> Cuprum es el caso que más trabaja. **Ahí sí hay ancla dura** y aun así se
+> abstiene. Medido: cada una de las dos condiciones lo bloquea por su lado, y
+> harían falta bajar **las dos** para que se rompa.
+
+#### Ancla dura — qué cuenta y qué no
+
+**Una fuente ancla cuando vio un dato LITERAL, no cuando estimó uno.**
+
+| Ancla | No ancla |
+|---|---|
+| Outlook, Odoo — una dirección real en un hilo o en el CRM | Cualquier directorio: reporta *«el 68.78% se ve así»* |
+| PDF público, padrón de gobierno, congreso — impreso en un documento indexado | Prensa, buscador, LinkedIn público, vacantes, patrón derivado |
+
+Un directorio dice una **estadística sobre la muestra que él juntó**. Un correo
+visto en un hilo es una dirección que **existió**. Son dos clases de evidencia y
+solo la segunda ancla.
+
+**El ancla tiene que estar en la MAYORÍA.** Si el único que vio un literal dice
+lo contrario que los tres directorios, eso es **más** razón para abstenerse.
+
+#### Qué se reporta, y con qué techo
+
+El valor de la mayoría, **topado en SÓLIDO — nunca CONFIRMADO**: hay una fuente
+viva diciendo lo contrario, y llamarle *verificado* a eso sería el Caso F por la
+puerta de atrás. Junto al valor va la salvedad, **visible en el modo limpio**:
+
+> *3 de 4 fuentes coinciden, y outlook lo vio literal. signalhire disiente y
+> dice `LastF@…` — confírmalo antes de usarlo.*
+
+Y va en su **propio bloque**, separado de los conflictos de verdad: un dato
+usable con una nota **no es un pendiente**, y mezclarlo con los conflictos
+vuelve la ficha una lista de tareas.
+
+#### En qué campos aplica — solo el patrón de correo
+
+**`patron_correo`, y nada más.** Admitir un campo aquí es una decisión. El
+criterio para admitir otro:
+
+1. **Es un hecho de la CUENTA, no de una PERSONA.** El patrón es una estadística
+   sobre una población de direcciones; que las fuentes difieran es ruido de
+   muestreo esperado, y la mayoría significa algo.
+2. **La disidencia no puede ser «la fuente más fresca».** Un patrón de correo no
+   cambia de un mes a otro. Un **puesto** sí: si tres dicen *Jefe de
+   Mantenimiento* y una dice *Gerente de Planta*, la disidente puede ser la que
+   se enteró del ascenso. **Ahí la mayoría no es la verdad, es la inercia.**
+3. **Equivocarse es barato y visible.** Un patrón equivocado rebota; un
+   **empleador** equivocado le atribuye una persona a la empresa que no es, y
+   eso no rebota: se manda el correo y se queda ahí.
+
+`puesto` y `empleador` fallan (2) y (3). **No entran, y no deben entrar.**
+
+---
+
 ## 6 · Límite de entorno *(medido)*
 
 **El buscador desde servidor o API devuelve resultados más genéricos que un

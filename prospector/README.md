@@ -73,7 +73,7 @@ dominio no identifica a una persona.
 | Ruta | Qué es |
 |---|---|
 | **`flujo/`** | El código. Compuertas, instrumentación, Chao1, catálogo, ficha y el orquestador |
-| **`tests/`** | 108 pruebas. Casos de regresión **D (LEGO)** y **F (Cuprum)**, más el truco del contador vacío, el lazo de refuerzo y la guardia de datos personales |
+| **`tests/`** | 146 pruebas. Casos de regresión **D (LEGO)**, **F (Cuprum)** y **G (Hershey)**, más el truco del contador vacío, el lazo de refuerzo y la guardia de datos personales |
 | **`metodo/`** | El *por qué* de cada paso, con su disparador medido |
 | **`SKILL-criterio.md`** | Lo que juzga Claude y el código no puede |
 | **`CHANGELOG.md`** | Versiones de la herramienta |
@@ -84,7 +84,7 @@ dominio no identifica a una persona.
 | Archivo | Líneas | Qué resuelve |
 |---|---|---|
 | `flujo/compuertas.py` | 365 | Las tres compuertas, como `raise`: **agotado**, **presupuesto**, **confianza**. Y `Busqueda`: el registro de trabajo ejecutado del que **se derivan** los contadores |
-| `flujo/confianza.py` | 314 | Niveles e **instrumentación de fuentes por dato**: cada campo guarda todas las observaciones que lo sostienen, con su fuente, su raíz, su forma y la certeza que declara. La **regla C1** vive aquí |
+| `flujo/confianza.py` | 481 | Niveles e **instrumentación de fuentes por dato**: cada campo guarda todas las observaciones que lo sostienen, con su fuente, su raíz, su forma y la certeza que declara. Las reglas **C1** y **C1-bis** viven aquí |
 | `flujo/orquestador.py` | 279 | El CLI que dice cuál es el paso siguiente y se niega a saltarlo |
 | `flujo/estado.py` | 265 | La corrida que Python posee. Las cuatro olas y el **lazo de refuerzo** |
 | `flujo/chao1.py` | 147 | Estimador de completitud, con **veredicto de cuatro valores**: solo `saturo` detiene el lazo |
@@ -153,7 +153,7 @@ presupuesto queda. Claude corre **ese** módulo, registra lo que encontró, y el
 orquestador decide si se avanza.
 
 ```bash
-python3 -m pytest tests -q     # 108 pruebas
+python3 -m pytest tests -q     # 146 pruebas
 ```
 
 ---

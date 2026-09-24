@@ -358,7 +358,14 @@ def exigir_confianza(contactos: list[Contacto]) -> list[str]:
                 raise CompuertaCerrada(
                     f"[{c.nombre or c.puesto}] campo '{campo}' marcado CONFIRMADO "
                     f"con {d.n_raices} raiz. Se exigen 2 de raiz distinta.")
-            if d.nivel == EN_CONFLICTO:
+            if d.informa_pese_al_conflicto:
+                # No es un pendiente: es un dato usable con su salvedad. Mandarlo
+                # a revision humana junto con los conflictos de verdad vuelve la
+                # ficha una lista de tareas.
+                avisos.append(
+                    f"CON SALVEDAD en '{campo}' de {c.nombre or c.puesto}: "
+                    f"se reporta {d.valor}. {d.disidencia}")
+            elif d.nivel == EN_CONFLICTO:
                 avisos.append(
                     f"CONFLICTO en '{campo}' de {c.nombre or c.puesto}: "
                     f"{d.motivo_conflicto} -> revision humana, no se elige en silencio")
