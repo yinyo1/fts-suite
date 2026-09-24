@@ -71,10 +71,11 @@ function servir(faltante, truncar) {
 // Nombres y actividades LARGOS a propósito (§20 #20): un ejemplo corto cabe en
 // cualquier parte y no prueba nada. Ids 9xxx inventados.
 const EMPLEADOS = [
-  ['Carlos Alberto Marín Vega de la Garza'], ['Juan Pablo Lucas Ramos'], ['Leonel Cruz Cristobal'],
-  ['Samuel Ulises Alcántara Hernández'], ['Erick Santiago Antonio'], ['Mateo Salazar'],
-  ['Héctor Cruz Villarreal'], ['Germán Merino Castañeda'], ['Ricardo Hernández'],
-  ['José Enoc Treviño'], ['Alejandro Reyes'], ['Francisco Montalvo']
+  ['Aurelio Bernal Quintanilla de la Garza'], ['Tomás Ibarra Lozano'], ['Nicolás Peña Ríos'],
+  ['Octavio Zamora Villalobos'], ['Rubén Cárdenas Olvera'], ['Damián Fuentes'],
+  ['Emiliano Tovar Saldívar'], ['Gustavo Leal Montemayor'], ['Iván Rosales'],
+  ['Joaquín Serna'], ['Lorenzo Garza'], ['Maximiliano Ochoa'],
+  // Nombres INVENTADOS: el repo es público (CLAUDE.md §20 #7).
 ].map((n, i) => ({ id: 9101 + i, name: n[0], job_title: 'Técnico', active: true, department_id: [3, 'Operaciones'] }));
 const SOS = [
   { so_id: 1, so_nombre: 'SO11547 · Topo Chico — Mantenimiento cortina y caseta L6' },
