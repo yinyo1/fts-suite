@@ -6,7 +6,7 @@ en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenad
 ## 0.9.5 — 2026-09-24
 
 Las cuatro decisiones que Esteban cerro sobre #302, la interfaz del motor 2 con
-los motores 1 y 3, y el clasificador del catalogo de proyectos. **497 pruebas**
+los motores 1 y 3, y el clasificador del catalogo de proyectos. **498 pruebas**
 (eran 364). Los disenos de los motores 1 y 3 quedan en `metodo/`, sin construir.
 
 ### La tabla de equivalencias ES-EN de puestos

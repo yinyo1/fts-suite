@@ -832,3 +832,21 @@ def test_el_paquete_de_la_CORPORATIVA_si_lleva_a_los_regionales(sesion):
     pq = json.loads(p.read_text("utf-8"))
     assert pq["planta"] is None and pq["nivel"] == NIVEL_CORPORATIVO
     assert [x["puesto"] for x in pq["contactos_de_valor"]] == ["Gerente de Compras"]
+
+
+def test_subir_el_tope_A_MANO_tambien_queda_en_el_historial(sesion):
+    """Habia DOS caminos para subir el tope y solo uno dejaba rastro en `tramos`,
+    asi que la ficha mostraba unas subidas y no otras. **Un historial con huecos
+    es peor que ninguno, porque parece completo.**"""
+    _sondas_ok()
+    orq.main(["prospecta", "--empresa", "Coficab", "--ciudad", "Durango"])
+    assert orq.main(["tope", "--empresa", "Coficab", "--ciudad", "Durango",
+                     "--nuevo", "80", "--razon",
+                     "Esteban lo autorizo: la cuenta vale la vuelta"]) == 0
+    c = orq._cargar("Coficab", "Durango")
+    assert c.presupuesto.tope_por_cuenta == 80
+    assert len(c.presupuesto.tramos) == 1
+    t = c.presupuesto.tramos[0]
+    assert t["a_mano"] is True and t["autorizado_por_humano"] is True
+    assert "Esteban" in t["razon"]
+    assert "TOPE SUBIDO A MANO" in modo_limpio(c)

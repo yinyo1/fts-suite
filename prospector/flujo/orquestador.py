@@ -956,9 +956,12 @@ def main(argv=None) -> int:
                     "a media corrida borraria evidencia ya gastada.")
             if not a.razon.strip():
                 raise SystemExit("Falta --razon.")
-            c.presupuesto.tope_por_cuenta = a.nuevo
-            c.avisos.append(f"TOPE SUBIDO de {antes} a {a.nuevo} consultas. "
-                            f"Razon: {a.razon.strip()}")
+            # Queda en `tramos`, igual que una renovacion automatica: con dos
+            # caminos para subir el tope y solo uno dejando historial, la ficha
+            # mostraba unas subidas y no otras.
+            c.presupuesto.subir_a_mano(a.nuevo, a.razon)
+            c.avisos.append(f"TOPE SUBIDO A MANO de {antes} a {a.nuevo} "
+                            f"consultas. Razon: {a.razon.strip()}")
             c.guardar(_ruta_de(c, a))
             print(f"Tope: {antes} -> {a.nuevo}. Restantes: "
                   f"{c.presupuesto.restantes}")

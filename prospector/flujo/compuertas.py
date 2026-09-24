@@ -257,6 +257,25 @@ class Presupuesto:
         """La siguiente renovacion pasa de TOPE_SIN_HUMANO."""
         return self.tope_siguiente > TOPE_SIN_HUMANO
 
+    def subir_a_mano(self, nuevo: int, razon: str) -> dict:
+        """El operador sube el tope por su cuenta, sin pasar por las condiciones.
+
+        Es legitimo -- el tope es del operador-- y por eso se conserva. Lo que NO
+        es legitimo es que quede fuera del historial: con `renovar` y este metodo
+        habia DOS formas de subir el tope y solo una dejaba rastro en
+        `tramos`, asi que la ficha mostraba unas subidas y no otras. Un historial
+        con huecos es peor que ninguno, porque parece completo.
+        """
+        if not str(razon or "").strip():
+            raise CompuertaCerrada("Subir el tope a mano exige razon escrita.")
+        r = {"tramo": self.tramo + 1, "tope_anterior": self.tope_por_cuenta,
+             "tope_nuevo": int(nuevo), "razon": razon.strip(),
+             "autorizado_por_humano": True, "a_mano": True,
+             "ts": datetime.now(timezone.utc).isoformat()}
+        self.tope_por_cuenta = int(nuevo)
+        self.tramos.append(r)
+        return r
+
     def renovar(self, razon: str, evidencia: dict,
                 autorizado_por_humano: bool = False) -> dict:
         """Sube el tope un tramo. La razon es OBLIGATORIA y queda escrita."""
