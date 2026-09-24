@@ -57,7 +57,7 @@
    *   2. el `?v=` de la URL con la que el navegador lo bajó,
    *   3. la que declara cada pieza que se carga aparte (hoy el motor).
    * Si discrepan, la pantalla lo DICE en vez de correr a medias. */
-  const VERSION_ARCHIVO = 'V1.38';
+  const VERSION_ARCHIVO = 'V1.39';
 
   const VERSION_URL = (function () {
     try {
@@ -546,6 +546,32 @@
     const mismoAnio = d.getFullYear() === hoy.getFullYear();
     return d.getDate() + '/' + MES[d.getMonth()] + (mismoAnio ? '' : '/' + String(d.getFullYear()).slice(2));
   };
+  /** Fecha ABSOLUTA con hora: `18/sep 15:38`, o `18/sep/25 15:38` si es de
+   *  otro año.
+   *
+   *  Sustituye a `haceCuanto` en las dos superficies que dicen CUÁNDO SE
+   *  MODIFICÓ, y el motivo no es estético. «hace 5 días» contesta una
+   *  pregunta que nadie tiene; la que sí se tiene —«¿lo que acabo de guardar
+   *  llegó?»— sólo la contesta una hora, porque se compara con la hora en
+   *  que uno estuvo trabajando. Y mientras el número relativo se mueve solo
+   *  al pasar los días, una fecha fija que NO se mueve después de guardar es
+   *  una señal legible de que algo no subió.
+   *
+   *  La hora es la LOCAL del navegador —`getHours` la da— que para el equipo
+   *  es CST. El dato viene del servidor en UTC (`machote_version.creada_at`,
+   *  con Z), así que se convierte al leerlo, no al escribirlo.
+   *
+   *  En TELÉFONO se usa el mismo formato, no uno recortado: la decisión es
+   *  que la hora es justamente lo que hacía falta, y quitarla en la pantalla
+   *  donde se trabaja de pie sería quitar el arreglo. */
+  const fechaHora = (iso) => {
+    const dia = fechaDia(iso);
+    if (!dia) return null;
+    const d = new Date(iso);
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    return dia + ' ' + hh + ':' + mm;
+  };
   const haceCuanto = (iso) => {
     if (!iso) return null;
     const d = new Date(iso);
@@ -589,7 +615,8 @@
     if (creada) partes.push('creado ' + creada);
     if (u) {
       const quien = nombreDe(u.autor) || u.autor_nombre || u.autor || '';
-      partes.push('modificado ' + haceCuanto(u.guardada_at) + (quien ? ' por ' + quien : ''));
+      /* ABSOLUTA con hora, no «hace N días»: ver `fechaHora`. */
+      partes.push('modificado ' + fechaHora(u.guardada_at) + (quien ? ' por ' + quien : ''));
     }
     return partes.length
       ? '<div class="tiny fch-linea' + (clase ? ' ' + clase : '') + '">' +
@@ -1418,12 +1445,12 @@
         (function () {
           const u = ultimaDe(m);
           const creada = fechaDia(m.creado_at || (u && u.creado_at));
-          const mod = u ? haceCuanto(u.guardada_at) : null;
+          const mod = u ? fechaHora(u.guardada_at) : null;
           const quien = u ? (nombreDe(u.autor) || u.autor_nombre || u.autor || '') : '';
           return '<td class="fch sub">' + esc(creada || '—') + '</td>' +
             '<td class="fch sub"' +
               (u ? ' title="' + esc('Versión ' + (u.version || '?') + ' · ' +
-                    (fechaDia(u.guardada_at) || '') +
+                    (fechaHora(u.guardada_at) || '') +
                     (quien ? ' · ' + quien : '')) + '"' : '') + '>' +
             (mod ? esc(mod) : '<span title="Todavía no ha llegado al servidor, así que no tiene versión guardada.">—</span>') +
             '</td>';
@@ -1786,9 +1813,33 @@
   /* ── El libro ────────────────────────────────────────────────────────── */
   function vMachote(id) {
     const m = mach(id); if (!m) { location.hash = '#/'; return; }
-    // Al cambiar de cotización se vuelve al DESGLOSE: arrastrar la hoja
-    // abierta de la anterior deja al analista en una sección que no pidió.
-    if (ST.libroAbierto !== id) { ST.hoja = 'desglose'; ST.libroAbierto = id; }
+    /* ── Dónde se aterriza al abrir una cotización ──────────────────────
+     * Al cambiar de cotización NO se arrastra la hoja abierta de la anterior:
+     * dejaría al analista en una sección que no pidió.
+     *
+     * ── V1.39 · y con UNA sección que ya trae trabajo, se aterriza EN ELLA.
+     *
+     * Medido el 23-sep sobre los 13 machotes reales de Montalvo: DOCE tienen
+     * una sola sección. Para ésos, DESGLOSE es el resumen de algo que todavía
+     * no se ha visto — «RESUMEN POR SECCIÓN» con una fila y nueve renglones
+     * en gris— y, peor, es la pantalla donde NO EXISTEN ni la comisión de la
+     * sección ni el pad: los dos viven dentro. Ésa es la explicación medida
+     * del 0 de 45 y del 0 pads; no que sobren, sino que se aterriza en la
+     * única pantalla donde no están.
+     *
+     * Se exige que la sección TRAIGA TRABAJO, y no sólo que sea única, porque
+     * en una cotización recién creada lo primero sí es el DESGLOSE: escenario,
+     * margen, empresa, moneda y lugar se eligen antes de capturar nada. Con
+     * renglones capturados, esa decisión ya se tomó.
+     *
+     * DESGLOSE no se esconde: es la primera pestaña, a un clic, y sigue
+     * siendo donde vive el reparto del machote. */
+    if (ST.libroAbierto !== id) {
+      const unica = (m.secciones || []).length === 1 ? m.secciones[0] : null;
+      const conTrabajo = unica && (unica.partidas || []).some(C.capturada);
+      ST.hoja = conTrabajo ? unica.id : 'desglose';
+      ST.libroAbierto = id;
+    }
     const c = C.calcular(m);
     const soloLectura = !puedoEscribir(m);
     const fol = folioDe(m);
@@ -2355,10 +2406,21 @@
          * —alguien se apartó del valor de arranque— y un borrador no es una
          * desviación. Un cuarto significado para el mismo color debilita los
          * tres que ya existen. */
+        /* ── V1.39 · el rótulo dice QUÉ ES ──────────────────────────────
+         * Decía «Pad», 44 px, y lo que es vivía sólo en el `title`. Un
+         * `title` es un globo que aparece al dejar el ratón encima: en el
+         * teléfono NO EXISTE, y en escritorio hay que sospechar ya que ahí
+         * hay algo para ir a pararse. O sea que la explicación estaba
+         * exactamente donde no la iba a encontrar quien no sabía.
+         *
+         * «Pad de trabajo» son dos palabras más en la cabecera de la
+         * sección, y son las que dicen que no es un botón de formato. El
+         * `title` se queda, para el estado («tiene una cuenta escrita»),
+         * que es información ADICIONAL y no la definición. */
         '<button class="ico pad-btn' + (C.padPendiente(s) ? ' con-algo' : '') +
           '" data-padabrir="' + s.id + '" title="' +
           (C.padPendiente(s) ? 'Pad de trabajo · tiene una cuenta escrita' : 'Pad de trabajo · para sacar cuentas') +
-          '">Pad</button>' +
+          '">Pad de trabajo</button>' +
         '<button class="ico" data-dupsec="' + s.id + '" title="Duplicar sección">⧉</button>' +
         (m.secciones.length > 1 ? '<button class="ico peligro" data-delsec="' + s.id + '" title="Eliminar sección">×</button>' : '') +
       '</span></div>' +
@@ -2378,12 +2440,25 @@
        * Los dos estados en el mismo sitio, y el ámbar es el MISMO de un
        * margen pisado — quien aprendió a leer uno lee el otro. Clicable:
        * el anuncio es también el camino al bloque. */
+      /* ── V1.39 · el aviso tiene que LEERSE como un control ───────────
+       * Medido el 23-sep sobre el machote real de Montalvo («Caseta para
+       * Antonio», versión 55): esto era texto de 12 px en gris #6b6b6b,
+       * subrayado, colgado del final de una frase que habla de OTRA cosa
+       * («Sección 1 de 1. Las secciones ocupan la ranura por posición…»).
+       * Se lee como una nota al pie, no como algo que se pueda tocar — y
+       * ésa es la explicación más simple del 0 de 45 secciones desviadas.
+       *
+       * Dos cambios, los dos baratos: el VERBO («cambiar» / «ver»), que es
+       * lo que convierte un rótulo en una puerta, y un contorno en el CSS
+       * para que se vea que es un botón. El tamaño sube de 12 a 13: seguía
+       * siendo el cuerpo más chico de la pantalla. */
       ' · <button type="button" class="com-avisa' + (s.comision_propia === true ? ' apartado' : '') +
         '" data-ircom="' + esc(s.id) + '" title="' +
         (s.comision_propia === true
           ? 'Esta sección reparte distinto del machote. Ir al bloque.'
-          : 'Esta sección sigue el reparto del machote, en vivo. Ir al bloque.') + '">' +
-        (s.comision_propia === true ? 'Comisión: ≠ machote' : 'Comisión: la del machote') +
+          : 'Esta sección sigue el reparto del machote, en vivo. Ir al bloque para cambiarlo.') + '">' +
+        (s.comision_propia === true ? 'Comisión: ≠ machote · ver'
+                                    : 'Comisión: la del machote · cambiar') +
       '</button>' +
       '</div>';
 
@@ -2997,12 +3072,34 @@
         const secs = m.secciones || [];
         const desv = secs.filter(x => x.comision_propia === true);
         if (!secs.length) return '';
+        /* ── V1.39 · esto también tiene que ser una PUERTA ───────────────
+         * Hasta aquí, cuando NADA estaba desviado —que es el caso de las 45
+         * secciones reales— esta línea era una frase gris sin salida: decía
+         * que todas siguen el reparto y no ofrecía el camino a cambiarlo.
+         * Y es la pantalla donde se ATERRIZA (`ST.hoja = 'desglose'`,
+         * app.js:1791), así que era el primer sitio donde alguien buscaría.
+         *
+         * Ahora los nombres de sección son clicables en los DOS estados. La
+         * asimetría que defendía el comentario viejo —«donde no se pregunta,
+         * el silencio es el mensaje»— seguía siendo buena para el TEXTO de
+         * aviso, y se conserva: sin desviaciones no hay alarma, sólo una
+         * frase neutra. Lo que no tenía defensa era esconder el camino.
+         *
+         * De paso, la concordancia: con una sección decía «Las 1 secciones
+         * siguen este reparto», y ése es justo el caso real —12 de los 13
+         * machotes de Montalvo tienen UNA sección—. */
+        const ir = (x) => '<button type="button" class="com-avisa" data-irsec="' +
+          esc(x.id) + '" title="Ir a la comisión de esta sección">' +
+          esc(x.nombre || 'sin nombre') + '</button>';
         return '<div class="tiny nota com-resumen">' + (desv.length
           ? '<strong class="n-warn">' + desv.length + ' de ' + secs.length +
             (desv.length === 1 ? ' sección reparte' : ' secciones reparten') + ' distinto</strong>: ' +
-            desv.map(x => '<button type="button" class="com-avisa apartado" data-irsec="' + x.id + '">' +
+            desv.map(x => '<button type="button" class="com-avisa apartado" data-irsec="' + esc(x.id) + '">' +
               esc(x.nombre || 'sin nombre') + '</button>').join(' · ')
-          : 'Las ' + secs.length + ' secciones siguen este reparto.') + '</div>';
+          : (secs.length === 1
+              ? 'La sección sigue este reparto. Para que reparta distinto: '
+              : 'Las ' + secs.length + ' secciones siguen este reparto. Para que alguna reparta distinto: ') +
+            secs.map(ir).join(' · ')) + '</div>';
       })();
 
     return encabezado + resumen + porSeccion + budget + comisiones;

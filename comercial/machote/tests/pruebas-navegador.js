@@ -8173,6 +8173,225 @@ await sembrarMachotes(q);
   });
 
 
+  /* ══ V1.39 · lo que Montalvo no encontraba ════════════════════════════════
+   *
+   * Las tres las reportó él usando la aplicación en producción, y las tres se
+   * verificaron abriendo su machote REAL («Caseta para Antonio», versión 55,
+   * traído de Postgres y probado contra el md5 del servidor). Estas pruebas
+   * son la red para que no vuelvan a irse: la suite aprobó 234 de 234 con el
+   * aterrizaje cambiado, o sea que NINGUNA prueba miraba dónde se cae al
+   * abrir un machote — que era justo la causa raíz. */
+
+  await paso('V1.39 · la fecha de modificación es ABSOLUTA con hora, no «hace N días»', async () => {
+    /* Esto NO era una discusión de alcance: se pidió absoluta con hora y se
+     * había entregado `haceCuanto`. Los dientes van por los dos lados —que
+     * aparezca la hora Y que no aparezca el relativo—, porque una prueba que
+     * sólo pide la hora la pasaría un texto que dijera las dos cosas. */
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    q.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
+    try {
+      await sembrarGeo(q);
+      const CUANDO = '2026-09-18T21:38:42.760Z';   // el de la versión 55 real
+      await q.addInitScript((cuando) => {
+        try {
+          localStorage.setItem('fts_suite_session', JSON.stringify({
+            token:'p.p.p', actor:'zz.prueba', nombre:'ZZ Prueba', empleado_id:null,
+            scopes:['comercial:read'], exp: Math.floor(Date.now()/1000)+3600 }));
+          localStorage.setItem('fts_machote_v1', JSON.stringify({ v:1,
+            guardado_at: new Date().toISOString(), handoff:{},
+            machotes:[{ id:'M-FECHA', nombre:'Con fecha', cliente:'ZZ', moneda:'MXN',
+                        creado_at:'2026-09-14T23:13:36.721Z', secciones:[] }] }));
+          localStorage.setItem('fts_machote_sync_v1', JSON.stringify({
+            'M-FECHA': { version: 55, huella: 'x', guardada_at: cuando,
+                         autor: 'zz.prueba', autor_nombre: 'ZZ Prueba',
+                         creado_at: '2026-09-14T23:13:36.721Z' } }));
+        } catch (e) {}
+      }, CUANDO);
+      await q.goto(BASE); await q.waitForTimeout(1200);
+
+      const celda = (await q.$$eval('td.fch', t => t.map(x => x.textContent.trim())))
+        .filter(Boolean);
+      const texto = celda.join(' | ');
+      console.log('    columnas de fecha: ' + texto);
+      if (/hace \d/.test(texto))
+        throw new Error('sigue pintando el relativo: ' + texto);
+      if (!/\d{1,2}\/[a-z]{3}(\/\d{2})? \d{2}:\d{2}/.test(texto))
+        throw new Error('no hay fecha con hora: ' + texto);
+
+      /* Y la hora tiene que ser la LOCAL, no el UTC crudo del servidor. Se
+       * compara contra lo que da el propio navegador para ese instante, que
+       * es la única forma de no re-implementar la conversión en la prueba. */
+      const esperado = await q.evaluate((iso) => {
+        const d = new Date(iso);
+        return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+      }, CUANDO);
+      if (texto.indexOf(esperado) < 0)
+        throw new Error('la hora no es la local (' + esperado + '): ' + texto);
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.39 · la fecha se mueve cuando el SERVIDOR guarda, y no cuando uno teclea', async () => {
+    /* Las dos mitades importan. Que se mueva con una versión nueva es lo que
+     * Esteban reportó que no pasaba. Que NO se mueva al teclear es lo que
+     * hace que el dato signifique algo: una fecha que avanzara con cada tecla
+     * diría «guardado» de algo que nunca subió, y se vería igual de bien. */
+    const q = await b.newPage({ viewport: { width: 1280, height: 900 } });
+    q.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
+    try {
+      await sembrarGeo(q);
+      await q.addInitScript(() => {
+        try {
+          localStorage.setItem('fts_suite_session', JSON.stringify({
+            token:'p.p.p', actor:'zz.prueba', nombre:'ZZ Prueba', empleado_id:null,
+            scopes:['comercial:read'], exp: Math.floor(Date.now()/1000)+3600 }));
+          if (!localStorage.getItem('fts_machote_v1')) {
+            localStorage.setItem('fts_machote_v1', JSON.stringify({ v:1,
+              guardado_at: new Date().toISOString(), handoff:{},
+              machotes:[{ id:'M-MUEVE', nombre:'Se mueve', cliente:'ZZ', moneda:'MXN',
+                          creado_at:'2026-09-14T23:13:36.721Z', secciones:[] }] }));
+          }
+          /* ⚠️ SÓLO si no hay. `addInitScript` corre en CADA navegación, y la
+           * prueba recarga a propósito: sembrar a ciegas pisaría el avance
+           * que ella misma acaba de escribir y el fallo parecería de la
+           * aplicación. Ya pasó al escribirla. */
+          if (!localStorage.getItem('fts_machote_sync_v1')) {
+            localStorage.setItem('fts_machote_sync_v1', JSON.stringify({
+              'M-MUEVE': { version: 1, huella: 'x', guardada_at: '2026-09-18T15:00:00.000Z',
+                           autor: 'zz.prueba', autor_nombre: 'ZZ Prueba' } }));
+          }
+        } catch (e) {}
+      });
+      await q.goto(BASE); await q.waitForTimeout(1200);
+      const leer = () => q.$$eval('td.fch', t => t.map(x => x.textContent.trim()).join(' | '));
+
+      const antes = await leer();
+
+      // (a) tocar el documento SIN que el servidor acepte nada: no debe moverse.
+      await q.evaluate(() => {
+        const c = JSON.parse(localStorage.getItem('fts_machote_v1'));
+        c.machotes[0].nombre = 'Se mueve (editado)';
+        localStorage.setItem('fts_machote_v1', JSON.stringify(c));
+        location.hash = '#/'; location.reload();
+      });
+      await q.waitForTimeout(1300);
+      const trasTeclear = await leer();
+      if (trasTeclear !== antes)
+        throw new Error('la fecha se movió sin que el servidor guardara: «' +
+                        antes + '» → «' + trasTeclear + '»');
+
+      // (b) el servidor acepta una versión nueva: la libreta avanza y la pantalla también.
+      await q.evaluate(() => {
+        const s = JSON.parse(localStorage.getItem('fts_machote_sync_v1'));
+        s['M-MUEVE'].version = 2;
+        s['M-MUEVE'].guardada_at = '2026-09-19T23:45:00.000Z';
+        localStorage.setItem('fts_machote_sync_v1', JSON.stringify(s));
+        location.reload();
+      });
+      await q.waitForTimeout(1300);
+      const despues = await leer();
+      console.log('    ' + antes + '  →(teclear) igual→  ' + trasTeclear +
+                  '  →(versión nueva)→  ' + despues);
+      if (despues === trasTeclear)
+        throw new Error('el servidor guardó una versión nueva y la fecha NO se movió: ' + despues);
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.39 · con UNA sección con trabajo se aterriza EN ella: comisión y pad a la vista', async () => {
+    /* La causa raíz medida del «no está»: se aterrizaba siempre en DESGLOSE,
+     * y ahí NINGUNA de las dos existe. Doce de los trece machotes reales de
+     * Montalvo tienen una sola sección.
+     *
+     * Los dientes no son «que exista el botón» —existía— sino que esté EN LA
+     * PRIMERA PANTALLA al abrir, sin tocar una pestaña. */
+    const q = await b.newPage({ viewport: { width: 1280, height: 800 } });
+    q.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
+    try {
+      await sembrarGeo(q);
+      await q.addInitScript((m) => {
+        try {
+          localStorage.setItem('fts_suite_session', JSON.stringify({
+            token:'p.p.p', actor:'zz.prueba', nombre:'ZZ Prueba', empleado_id:null,
+            scopes:['comercial:read','comercial:orden'], exp: Math.floor(Date.now()/1000)+3600 }));
+          localStorage.setItem('fts_machote_v1', JSON.stringify({ v:1,
+            guardado_at:new Date().toISOString(), machotes:[m], handoff:{} }));
+        } catch (e) {}
+      }, machoteP90());
+      await q.goto(BASE); await q.waitForTimeout(1000);
+      await q.evaluate(() => { location.hash = '#/m/M-P90'; });
+      await q.waitForTimeout(1300);
+
+      const r = await q.evaluate(() => {
+        const dentro = (el) => { if (!el) return null;
+          const b = el.getBoundingClientRect();
+          return { y: Math.round(b.top + scrollY), alto: Math.round(b.height),
+                   enPantalla: b.top >= 0 && b.top < innerHeight }; };
+        const pad = document.querySelector('[data-padabrir]');
+        const com = document.querySelector('.com-avisa');
+        return { pad: dentro(pad), padTexto: pad ? pad.textContent.trim() : null,
+                 com: dentro(com), comTexto: com ? com.textContent.trim() : null,
+                 scroll: Math.round(scrollY) };
+      });
+      console.log('    pad ' + JSON.stringify(r.padTexto) + ' ' + JSON.stringify(r.pad) +
+                  ' · comisión ' + JSON.stringify(r.comTexto) + ' ' + JSON.stringify(r.com));
+      if (!r.pad) throw new Error('al abrir no hay botón de pad: se aterrizó fuera de la sección');
+      if (!r.com) throw new Error('al abrir no hay aviso de comisión');
+      if (!r.pad.enPantalla) throw new Error('el pad no está en la primera pantalla: y=' + r.pad.y);
+      if (!r.com.enPantalla) throw new Error('la comisión no está en la primera pantalla: y=' + r.com.y);
+      /* El rótulo tiene que decir QUÉ ES: «Pad» solo no se lo dice a nadie que
+       * no lo sepa ya, y el `title` no existe en teléfono. */
+      if (!/pad de trabajo/i.test(r.padTexto || ''))
+        throw new Error('el botón no dice qué es: ' + JSON.stringify(r.padTexto));
+      /* Y el aviso de comisión tiene que traer VERBO, que es lo que convierte
+       * un rótulo en una puerta. */
+      if (!/cambiar|ver/i.test(r.comTexto || ''))
+        throw new Error('el aviso de comisión no dice qué se puede hacer: ' + JSON.stringify(r.comTexto));
+      if (r.com.alto < 40)
+        throw new Error('el aviso mide ' + r.com.alto + 'px de alto: por debajo del mínimo táctil');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.39 · una cotización SIN trabajo sigue aterrizando en DESGLOSE', async () => {
+    /* El complemento, y sin él la regla se degrada en «siempre la sección».
+     * En una cotización recién creada lo primero SÍ es el desglose: escenario,
+     * margen, empresa, moneda y lugar se eligen antes de capturar nada. */
+    const q = await b.newPage({ viewport: { width: 1280, height: 800 } });
+    q.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
+    try {
+      await sembrarGeo(q);
+      await q.addInitScript(() => {
+        try {
+          localStorage.setItem('fts_suite_session', JSON.stringify({
+            token:'p.p.p', actor:'zz.prueba', nombre:'ZZ Prueba', empleado_id:null,
+            scopes:['comercial:read'], exp: Math.floor(Date.now()/1000)+3600 }));
+          localStorage.setItem('fts_machote_v1', JSON.stringify({ v:1,
+            guardado_at:new Date().toISOString(), handoff:{},
+            /* `reparto` y los equipos van porque TODO documento real los trae:
+             * sin ellos la hoja de desglose truena en `m.reparto.venta`, que
+             * es una fragilidad ANTERIOR a esta versión —está igual en la
+             * V1.38— y no es lo que esta prueba mide. Queda anotada aparte. */
+            machotes:[{ id:'M-NUEVO', nombre:'Recién creada', cliente:'ZZ', moneda:'MXN',
+              reparto:{ venta:0.73, operaciones:0.27 },
+              comision_fts:0.055, comision_cliente:0, margen_deseado:0.4,
+              equipo_venta:[{ nombre:'MONTY', pct:1 }],
+              equipo_operaciones:[{ nombre:'SUPERVISOR FTS', pct:1 }],
+              equipo_cliente:[{ nombre:'Contacto cliente 1', pct:1 }],
+              secciones:[{ id:'s-nueva', nombre:'SECCIÓN 1', mo:[], partidas:[
+                { descripcion:'', qty:0, pu:null, tipo:'Materiales', unidad:'Pieza', moneda:'MXN' }
+              ] }] }] }));
+        } catch (e) {}
+      });
+      await q.goto(BASE); await q.waitForTimeout(1000);
+      await q.evaluate(() => { location.hash = '#/m/M-NUEVO'; });
+      await q.waitForTimeout(1300);
+      const hayPad = await q.evaluate(() => !!document.querySelector('[data-padabrir]'));
+      const hojas = await q.evaluate(() =>
+        [...document.querySelectorAll('[data-hoja]')].map(x => x.textContent.trim()));
+      console.log('    pestañas ' + JSON.stringify(hojas) + ' · ¿dentro de la sección? ' + hayPad);
+      if (hayPad)
+        throw new Error('una cotización sin renglones capturados aterrizó DENTRO de la sección');
+    } finally { await q.close(); }
+  });
+
   await paso('sin errores de consola propios del prototipo', async () => {
     if (errs.length) throw new Error(errs.slice(0, 4).join(' | '));
     if (delEntorno.length) console.log('   (' + delEntorno.length +

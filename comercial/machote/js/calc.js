@@ -18,7 +18,7 @@
    * que no es el que espera. Se bumpea junto con `const VERSION_ARCHIVO` de
    * `app.js`, el `?v=` de `index.html` y `version.json` — hay una prueba que
    * falla si los cuatro se separan. */
-  const VERSION = 'V1.38';
+  const VERSION = 'V1.39';
 
   const num = (v) => (typeof v === 'number' && isFinite(v)) ? v : 0;
   const vacio = (v) => v === null || v === undefined || v === '';

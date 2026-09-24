@@ -1,11 +1,17 @@
 {
-  "version": "V1.38",
-  "build": "V1.38",
-  "fecha": "2026-09-23",
+  "version": "V1.39",
+  "build": "V1.39",
+  "fecha": "2026-09-24",
   "modulo": "comercial/machote",
   "ambito": "El CONTADOR es solo de este modulo. finanzas tambien usa V1.xx desde el 2026-09-03 (instruccion directa de Esteban, corrige el \"no propagar\" del issue #148) pero lleva su propio contador y va en V1.00. operaciones/planeacion sigue en 2.4.1, kiosk y confirmar-horas solo con cadena de build, y siete modulos con un 1.0.0 puesto una vez: a esos no se propaga.",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "historial": [
+    {
+      "version": "V1.39",
+      "pr": null,
+      "fecha": "2026-09-24",
+      "nota": "AUDITORIA DE USUARIO REAL SOBRE UN MACHOTE REAL DE MONTALVO (#246). Montalvo reporto que tres cosas NO estan: comision por seccion, fecha de modificacion con hora, y el pad. Se verifico abriendo la aplicacion con el DOCUMENTO REAL 'Caseta para Antonio' (M-1789427616211, version 55), traido de Postgres y probado contra el md5 del servidor (a267238e55bae4325af456bc9f12b035, 14036 bytes) -no una fixture-. VEREDICTO: (2) LA FECHA NO ESTABA. Incumplimiento, sin discusion: lineaFechas pintaba 'modificado hace 5 dias'. Ahora es ABSOLUTA CON HORA ('18/sep 15:38'), en la linea y en la columna Modificada, y en TELEFONO se usa el mismo formato -la hora es justo lo que hacia falta y recortarla ahi seria quitar el arreglo-. La hora es la LOCAL del navegador: el servidor manda UTC con Z y se convierte al leer (comprobado: 21:38Z sale 15:38 en America/Monterrey). (1) y (3) ESTABAN, PERO HABIA QUE SABER DONDE, y la causa raiz medida es la misma para las dos: al abrir un machote se aterrizaba SIEMPRE en la hoja DESGLOSE (app.js, ST.hoja='desglose'), y en esa pantalla NINGUNA de las dos existe -las dos viven dentro de la seccion-. Medido: al abrir, hayComision=false y hayPad=false. Esa es la explicacion del 0 de 45 secciones desviadas y los 0 pads: no sobran, es que se aterrizaba en la unica pantalla donde no estan. TRES ARREGLOS. (a) ATERRIZAJE: con UNA sola seccion que ya trae renglones capturados se aterriza EN ELLA. Medido sobre los 13 machotes reales de Montalvo: DOCE tienen una sola seccion. Se exige que traiga trabajo porque en una cotizacion recien creada lo primero si es el DESGLOSE (escenario, margen, empresa, moneda, lugar). DESGLOSE sigue a un clic. (b) EL AVISO DE COMISION se lee como un control: era texto de 12 px gris subrayado colgado del final de una frase sobre otra cosa; ahora es un boton con contorno, 13 px, y con VERBO ('Comision: la del machote - cambiar'). (c) EL PAD dice que es un pad: el rotulo pasa de 'Pad' a 'Pad de trabajo'. Lo que era el boton vivia solo en el title, y un title no existe en telefono. Ademas, en DESGLOSE el resumen de comisiones es ahora una PUERTA en los dos estados (antes solo era clicable si algo ya estaba desviado) y se corrigio la concordancia 'Las 1 secciones'. MEDICION HONESTA DE ESA PUERTA: cae a 2.97 pantallas en laptop y 3.92 en telefono, asi que NO es el arreglo -es un complemento-; el arreglo es el aterrizaje. Se midio a alturas reales (1280x800 y 380x740) y no con una ventana generosa, porque una ventana alta regala el aprobado."
+    },
     {
       "version": "V1.38",
       "pr": null,
