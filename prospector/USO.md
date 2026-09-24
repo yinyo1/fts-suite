@@ -80,14 +80,24 @@ síntoma es `MCP server session expired`.
 
 ## Qué entrega, y dónde queda
 
-Dos archivos, en **la carpeta de la sesión**:
+**Archivos**, en **la carpeta de la sesión** — y la ruta exacta la imprime
+`ficha` al terminar, para copiar y pegar:
 
 | Archivo | Para quién |
 |---|---|
-| `<empresa>-limpio.html` | **Rissia.** La ficha: contactos por cercanía a la decisión, el ángulo técnico, y los datos con salvedad marcados |
-| `<empresa>-procedencia.json` | Auditar. Cada campo con todas sus fuentes, su raíz y su fecha |
+| `<empresa>-limpio.html` | **Rissia y Pablo, y el lognote de Odoo.** Documento autocontenido: gancho, señal con su fecha, por qué ahora, a quién buscar (nombre, puesto, planta, correo y confianza), cómo hablarles, las búsquedas ya armadas para Sales Navigator, las fuentes con liga y fecha, y el checklist de validaciones |
+| `<empresa>-procedencia.html` | Revisar de dónde salió cada dato, abriéndolo |
+| `<empresa>-procedencia.json` | Auditar a máquina. Cada campo con todas sus fuentes, su raíz y su fecha |
 
-La ruta exacta la imprime el arranque. Por omisión:
+Los `.html` son **documentos completos**, con `charset` declarado: se adjuntan a
+un correo y se pegan en un lognote sin que los acentos se rompan. Hasta la v0.9.0
+eran fragmentos y sí se rompían — lo destapó la primera corrida de un operador.
+
+**Tres secciones de la ficha son tuyas**, porque son criterio: el gancho, el «por
+qué ahora» y el «cómo hablarles». Se cargan con `registrar` antes de emitir, y si
+faltan la ficha **lo dice en su lugar** en vez de dejarlas en blanco.
+
+La ruta también la imprime el arranque. Por omisión:
 
 ```
 $TMPDIR/prospector-corridas/<sesión>/

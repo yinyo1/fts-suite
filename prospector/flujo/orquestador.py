@@ -30,7 +30,8 @@ from .arranque import resolver, texto_del_plan, chequeo, pregunta_de_una_linea
 from .catalogo import exigir_permitida, FuenteProhibida
 from .confianza import Contacto, N1_CONFIRMADO, N2_PARCIAL, N3_PUESTO
 from .estado import Corrida, RESPONDIO
-from .ficha import modo_limpio, modo_procedencia, tabla_de_rendimiento
+from .ficha import (modo_limpio, modo_procedencia,
+                    modo_procedencia_html, tabla_de_rendimiento)
 
 # Las corridas llevan nombres, puestos y correos de PERSONAS. No se escriben en
 # el repo: `fts-suite` es publico. Ver flujo/salida.py -- ahi vive la regla, y
@@ -64,6 +65,9 @@ def _cargar(empresa: str) -> Corrida:
     c.senal = d.get("senal", [])
     c.challenge_corrido = d.get("challenge_corrido", False)
     c.avisos = d.get("avisos", [])
+    c.gancho = d.get("gancho", "")
+    c.por_que_ahora = d.get("por_que_ahora", "")
+    c.como_hablarles = d.get("como_hablarles", [])
     pres = d.get("presupuesto", {})
     c.presupuesto.tope_por_cuenta = pres.get("tope", 60)
     for b in pres.get("bloques", []):
@@ -191,6 +195,10 @@ def main(argv=None) -> int:
             s.add_argument("--resultados", type=int, required=True,
                            help="cuantos trajo. CERO es valido y cuenta.")
             s.add_argument("--nota", default="")
+            s.add_argument("--liga", default="",
+                           help="la URL de donde salio, si la hay. La ficha la "
+                                "necesita: una fuente sin liga ni fecha no es "
+                                "una fuente, es una afirmacion")
             s.add_argument("--etiqueta", default=None,
                            help="cuando lo distinto no es la fuente sino la forma "
                                 "de preguntar (M7: forma_empresa / forma_nombre)")
@@ -350,6 +358,13 @@ def main(argv=None) -> int:
                 c.agregar(x)
             c.vocabulario.extend(d.get("vocabulario", []))
             c.senal.extend(d.get("senal", []))
+            # Los tres textos de CRITERIO que la ficha necesita. Se reemplazan,
+            # no se acumulan: son una redaccion, no una lista de hallazgos.
+            for campo in ("gancho", "por_que_ahora"):
+                if d.get(campo):
+                    setattr(c, campo, str(d[campo]))
+            if d.get("como_hablarles"):
+                c.como_hablarles = list(d["como_hablarles"])
             c.guardar(_ruta(a.empresa))
             print(f"[{a.modulo}] registrado. Contadores (derivados del "
                   f"registro): {c.mod(a.modulo).contadores}")
@@ -393,6 +408,9 @@ def main(argv=None) -> int:
             return 0
 
         if a.cmd == "buscar":
+            # ANTES de registrar: si el bloque anterior quedo abierto en diez, se
+            # corrige aqui, que es donde todavia tiene arreglo.
+            c.exigir_bloque_cerrado()
             contactos = []
             if a.datos:
                 d = json.loads(a.datos)
@@ -400,7 +418,8 @@ def main(argv=None) -> int:
                     contactos.append(_contacto(c, cd))
             b = c.registrar_busqueda(
                 a.modulo, a.clave, a.consulta, a.fuente, a.resultados,
-                nota=a.nota, contactos=contactos, etiqueta=a.etiqueta)
+                nota=a.nota, contactos=contactos, etiqueta=a.etiqueta,
+                liga=a.liga)
             c.guardar(_ruta(a.empresa))
             m = c.mod(a.modulo)
             print(f"[{a.modulo}] busqueda registrada: {a.fuente} · "
@@ -408,6 +427,10 @@ def main(argv=None) -> int:
                   f"{' (CERO, y cuenta)' if a.resultados == 0 else ''}")
             print(f"  Consulta: {b.consulta}")
             print(f"  Contadores DERIVADOS del registro: {m.contadores}")
+            aviso = c.aviso_de_bloque()
+            if aviso:
+                print()
+                print(aviso)
             _imprimir_paso(c)
             return 0
 
@@ -469,14 +492,33 @@ def main(argv=None) -> int:
             if not c.challenge_corrido:
                 raise CompuertaCerrada(
                     "No se emite ficha sin challenge. Corre: challenge")
-            salida = str(exigir_fuera_del_repo(a.salida)) if a.salida else os.path.join(
-                CORRIDAS(), f"{_slug(a.empresa)}-{a.modo}." + ("html" if a.modo == "limpio" else "json"))
-            contenido = modo_limpio(c) if a.modo == "limpio" else json.dumps(
-                modo_procedencia(c), ensure_ascii=False, indent=2)
-            os.makedirs(os.path.dirname(salida), exist_ok=True)
-            open(salida, "w", encoding="utf-8").write(contenido)
-            print(f"Ficha ({a.modo}) escrita: {salida}")
-            print()
+            # Los DOS modos escriben un .html autocontenido. Hasta la
+            # v0.9.0 el limpio salia como fragmento -- sin doctype ni charset--
+            # y el de procedencia solo como JSON. La primera corrida real de un
+            # operador (#268) mostro para que se necesita el archivo: mandarlo a
+            # un tercero y pegarlo en un lognote de Odoo.
+            base = (str(exigir_fuera_del_repo(a.salida)) if a.salida
+                    else os.path.join(CORRIDAS(), f"{_slug(a.empresa)}-{a.modo}"))
+            if base.lower().endswith((".html", ".htm", ".json")):
+                base = base.rsplit(".", 1)[0]
+            escritos = []
+            if a.modo == "limpio":
+                escritos.append((base + ".html", modo_limpio(c)))
+            else:
+                escritos.append((base + ".html", modo_procedencia_html(c)))
+                # El JSON se queda: es el artefacto AUDITABLE, el que una
+                # maquina lee sin ambiguedad. El .html es el que se revisa.
+                escritos.append((base + ".json", json.dumps(
+                    modo_procedencia(c), ensure_ascii=False, indent=2)))
+            for ruta, contenido in escritos:
+                exigir_fuera_del_repo(ruta)
+                os.makedirs(os.path.dirname(ruta) or ".", exist_ok=True)
+                open(ruta, "w", encoding="utf-8").write(contenido)
+            print(f"\n  FICHA ({a.modo.upper()}) — archivo listo para mandar:")
+            for ruta, _x in escritos:
+                print(f"    {ruta}")
+            print(f"\n  Abrelo o adjuntalo desde esa ruta. NO esta en el repo: "
+                  f"lleva datos personales.\n")
             print(tabla_de_rendimiento(c))
             return 0
 

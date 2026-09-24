@@ -55,6 +55,11 @@ class Busqueda:
     resultados: int
     ts: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     nota: str = ""
+    # La LIGA de donde salio, cuando la hay. La ficha la necesita para que el
+    # operador pueda mandarla a un tercero y que el tercero la verifique: una
+    # fuente sin liga ni fecha no es una fuente, es una afirmacion. Opcional a
+    # proposito -- una lectura a Odoo o al buzon no tiene URL--.
+    liga: str = ""
     hallazgos: list[str] = field(default_factory=list)   # claves de contacto
     etiqueta: str | None = None   # cuando lo que distingue NO es la fuente sino
                                   # la forma de preguntar (M7: por empresa vs
@@ -313,11 +318,13 @@ class EstadoModulo:
     def registrar_busqueda(self, clave: str, consulta: str, fuente: str,
                            resultados: int, nota: str = "",
                            hallazgos: list[str] | None = None,
-                           etiqueta: str | None = None) -> Busqueda:
+                           etiqueta: str | None = None,
+                           liga: str = "") -> Busqueda:
         """La UNICA forma de hacer subir un contador de agotado."""
         b = Busqueda(modulo=self.modulo, clave=clave, consulta=consulta,
                      fuente=fuente, resultados=resultados, nota=nota,
-                     hallazgos=list(hallazgos or []), etiqueta=etiqueta)
+                     liga=liga, hallazgos=list(hallazgos or []),
+                     etiqueta=etiqueta)
         self.registros.append(b)
         return b
 

@@ -74,6 +74,14 @@ class Corrida:
     senal: list = field(default_factory=list)        # hallazgos de prensa
     challenge_corrido: bool = False
     avisos: list = field(default_factory=list)
+    # Los tres textos que la ficha necesita y el codigo NO puede derivar: son
+    # CRITERIO, y el criterio es del operador. Se cargan con `registrar`. Si
+    # faltan, la ficha lo dice en su lugar en vez de callarlo -- un hueco
+    # declarado es informacion; un hueco silencioso es una ficha que parece
+    # completa y no lo esta--.
+    gancho: str = ""
+    por_que_ahora: str = ""
+    como_hablarles: list = field(default_factory=list)
     vueltas_loop: int = 0
     _bloques_al_abrir_vuelta: int = 0
 
@@ -97,7 +105,8 @@ class Corrida:
     def registrar_busqueda(self, modulo: str, clave: str, consulta: str,
                            fuente: str, resultados: int, nota: str = "",
                            contactos: list | None = None,
-                           etiqueta: str | None = None) -> Busqueda:
+                           etiqueta: str | None = None,
+                           liga: str = "") -> Busqueda:
         """Registra trabajo EJECUTADO. Es lo unico que mueve un contador."""
         contactos = contactos or []
         if resultados < len(contactos):
@@ -113,7 +122,7 @@ class Corrida:
                 x.modulo_origen = modulo
         claves = [self.agregar(x, contar_hit=False).clave for x in contactos]
         b = m.registrar_busqueda(clave, consulta, fuente, resultados, nota,
-                                 claves, etiqueta=etiqueta)
+                                 claves, etiqueta=etiqueta, liga=liga)
         self._recalcular_hits()
         return b
 
@@ -238,6 +247,51 @@ class Corrida:
         b0, c0, v0 = self.presupuesto.marcador
         return (self.consultas_de_red() - b0, len(self.contactos) - c0,
                 self.de_valor_ahora() - v0)
+
+    def exigir_bloque_cerrado(self) -> None:
+        """Se niega a registrar la consulta 11 con un bloque de 10 sin cerrar.
+
+        La primera corrida real de un operador (Coficab, #268) se rompio aqui, y
+        no por descuido de la compuerta sino por su MOMENTO: el operador no cerro
+        el bloque a las diez y siguio hasta 35. Ahi `bloque` lo rechaza -- el
+        maximo es diez-- y el bloque ya no se puede partir sin editar el estado a
+        mano. Consecuencia real: M5 cerrado como `fallo` y la vuelta que Chao1
+        pedia imposible de abrir.
+
+        La compuerta detectaba el error cuando ya no tenia arreglo. Ahora lo
+        detecta cuando todavia se puede corregir: en la consulta once.
+        """
+        pendientes, _n, _v = self.bloque_pendiente()
+        if pendientes >= TAMANO_BLOQUE:
+            raise CompuertaCerrada(
+                f"Hay {pendientes} consultas sin bloque cerrado y el bloque es "
+                f"de {TAMANO_BLOQUE}. NO se registra la siguiente hasta "
+                f"cerrarlo:\n\n"
+                f"    ./prospector bloque --empresa {self.empresa!r}\n\n"
+                "Las dos cifras salen del registro, no hay que contarlas. "
+                "Si se deja correr, el bloque pasa de diez y entonces ya no se "
+                "puede cerrar ni partir: se pierde la medicion de rendimiento "
+                "marginal de ese tramo y con ella la vuelta del lazo. Paso de "
+                "verdad en la corrida de Coficab (#268), con 35 consultas.")
+
+    def aviso_de_bloque(self) -> str:
+        """El aviso que `buscar` imprime cuando el pendiente llega al tope.
+
+        Vacio mientras no haga falta: un aviso que sale siempre no se lee.
+        """
+        pendientes, nuevas, valor = self.bloque_pendiente()
+        if pendientes < TAMANO_BLOQUE:
+            faltan = TAMANO_BLOQUE - pendientes
+            if faltan <= 2:
+                return (f"  ⏱  {pendientes}/{TAMANO_BLOQUE} consultas en el "
+                        f"bloque. {'Falta' if faltan == 1 else 'Faltan'} "
+                        f"{faltan} para cerrarlo.")
+            return ""
+        return (f"  ⛔ CIERRA EL BLOQUE AHORA — {pendientes}/{TAMANO_BLOQUE} "
+                f"consultas, {nuevas} entradas, {valor} de valor:\n"
+                f"       ./prospector bloque --empresa {self.empresa!r}\n"
+                f"     La siguiente busqueda NO se va a registrar hasta que lo "
+                f"cierres.")
 
     def cerrar_bloque(self, consultas: int | None = None,
                       nuevas: int | None = None, parcial: bool = False):
@@ -480,6 +534,9 @@ class Corrida:
             "loop_puede_seguir": self.puede_seguir_el_loop(),
             "loop_lo_detiene": self.que_detiene_el_loop(),
             "avisos": self.avisos,
+            "gancho": self.gancho,
+            "por_que_ahora": self.por_que_ahora,
+            "como_hablarles": self.como_hablarles,
             "rendimiento_por_modulo": self.rendimiento(),
             "rendimiento_por_origen": self.rendimiento_por_origen(),
             "contactos": [c.a_dict() for c in self.contactos],

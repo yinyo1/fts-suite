@@ -317,11 +317,15 @@ def test_la_TARJETA_muestra_el_patron_cuando_no_hay_correo_de_la_persona():
     x.datos["patron_correo"] = _hershey()
     c.agregar(x)
 
-    tarjeta = re.search(r'<div class="p">.*?</div></div>',
-                        modo_limpio(c), re.S).group(0)
-    assert "patron · FLast@hersheys.com" in tarjeta
-    assert "SOL" in tarjeta
-    assert "con salvedad" in tarjeta and "signalhire disiente" in tarjeta
+    # La fila de "A quien buscar". Dejo de ser una tarjeta `<div class="p">` y
+    # paso a ser un renglon de tabla cuando la ficha se volvio documento
+    # autocontenido (#268): lo que se comprueba es lo MISMO -- que el patron de
+    # la cuenta se imprime cuando la persona no tiene correo propio--.
+    fila = re.search(r'<tr><td class="lv">.*?</tr>',
+                     modo_limpio(c), re.S).group(0)
+    assert "patron · FLast@hersheys.com" in fila
+    assert "SOL" in fila
+    assert "con salvedad" in fila and "signalhire disiente" in fila
 
 
 def test_un_patron_EN_CONFLICTO_de_verdad_no_se_imprime_en_la_tarjeta():
@@ -340,7 +344,7 @@ def test_un_patron_EN_CONFLICTO_de_verdad_no_se_imprime_en_la_tarjeta():
     d.observar("contactout", "nombre.apellido@verzatec.com", nota="20%")
     c.agregar(x)
 
-    tarjeta = re.search(r'<div class="p">.*?</div></div>',
-                        modo_limpio(c), re.S).group(0)
-    assert "EN CONFLICTO" in tarjeta
-    assert "patron ·" not in tarjeta, "no hay valor que imprimir"
+    fila = re.search(r'<tr><td class="lv">.*?</tr>',
+                     modo_limpio(c), re.S).group(0)
+    assert "EN CONFLICTO" in fila
+    assert "patron ·" not in fila, "no hay valor que imprimir"
