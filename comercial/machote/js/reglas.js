@@ -577,42 +577,13 @@
       evaluar: (m) => tipoDe(m) ? null
         : { detalle: 'Sin tipo no se sabe qué preguntas críticas faltan por responder.' }
     },
-    /* ── V1.36 · una cuenta que se quedó SÓLO en el pad ──────────────────
-     * El pad es un borrador declarado y no entra en ningún total — a
-     * propósito. El riesgo no es que sume de más: es que un número viva
-     * ÚNICAMENTE ahí y la cotización salga sin él.
-     *
-     * Va como BLANDA y no como dura porque un borrador a medias es un estado
-     * legítimo: se está pensando. Lo que no es legítimo es mandar la
-     * cotización sin darse cuenta.
-     *
-     * ⚠️ Y vive aquí, en el revisador, y no «al guardar»: el autoguardado
-     * dispara 500 ms después de cada tecla, así que «al guardar» no es un
-     * momento sino todo el rato, y un aviso todo el rato deja de ser un
-     * aviso. El revisador es el sitio del módulo para «mira esto antes de
-     * terminar», y trae `destino` para ir a la sección. El aviso puntual al
-     * CERRAR el panel lo da la pantalla; éste es el que dura. */
-    {
-      destino: (m) => {
-        const s = (m.secciones || []).find(x => C.padPendiente(x));
-        return { tab: 'secc', seccion: s ? s.id : null };
-      },
-      id: 'pad-sin-pasar', severidad: 'blanda', area: 'Captura',
-      titulo: 'Una cuenta se quedó en la hoja de trabajo',
-      evaluar: (m) => {
-        const secs = (m.secciones || []).filter(x => C.padPendiente(x));
-        if (!secs.length) return null;
-        return {
-          detalle: 'La hoja de trabajo no entra en ningún total: lo que está ahí NO está en el precio. ' +
-                   'Si ese número va en la cotización, elige su celda y pásala a un renglón; ' +
-                   'si era sólo una cuenta de paso, se puede dejar.',
-          /* V1.41 · se cuentan FILAS, no el concepto y el importe de antes:
-           * la hoja sustituyó a los dos campos sueltos del pad de texto. */
-          items: secs.map(x => (x.nombre || 'sin nombre') +
-            ' · ' + C.padFilas(x) + ' fila(s) escritas')
-        };
-      }
-    },
+    /* ── V1.43 · AQUÍ VIVÍA LA REGLA `pad-sin-pasar` ─────────────────────
+     * Decía «una cuenta se quedó en la hoja de trabajo» y llevaba a pasarla a
+     * un renglón. Se fue con «Pasar a renglón»: sin salida hacia el machote,
+     * la regla sería un regaño perpetuo sobre un borrador legítimo —y peor,
+     * uno que no se puede callar haciendo lo que pide, porque ya no hay qué
+     * hacer—. La hoja es BORRADOR Y CÁLCULO, se guarda con el documento y no
+     * alimenta nada; que tenga algo escrito no es un hallazgo. */
     {
       destino: () => ({ tab: 'diag' }),
       id: 'criticas-sin-responder', severidad: 'dura', area: 'Diagnóstico',

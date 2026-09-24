@@ -11,3 +11,11 @@ scripts/local/
 # son datos financieros reales y no deben publicarse ni por accidente con `git add -A`.
 data/
 node_modules/
+
+# Detalle de trazabilidad con datos de cliente (nombres, importes, RFC, contactos).
+# ESTE REPO ES PÚBLICO (§20 #7): el análisis se publica en el issue y el detalle
+# crudo se queda fuera. La carpeta existe en la máquina de quien la generó; aquí
+# se ignora para que un `git add -A` distraído no la publique. Y borrarla del
+# archivo después NO la borra del historial: si se cuela, es una filtración, no
+# un typo.
+docs/trazabilidad/_privado/
