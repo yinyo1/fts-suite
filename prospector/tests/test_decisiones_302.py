@@ -745,3 +745,69 @@ def test_el_comando_que_sugiere_tramo_lleva_la_CIUDAD(sesion, capsys):
     capsys.readouterr()
     assert orq.main(["tramo", "--empresa", "Coficab", "--ciudad", "Silao"]) == 0
     assert "--ciudad 'Silao'" in capsys.readouterr().out
+
+
+# --- lo que la verificacion del comando `estado` destapo --------------------
+def test_MODO_DE_FALLA_actualizar_la_herramienta_NO_marca_todo_como_editado(sesion):
+    """El peor modo de falla posible para la senal de edicion a mano.
+
+    Se descubrio verificando `estado` a mano: despues de un cambio de codigo
+    -- excluir el motor local de `vias_sin_agotar`-- TODAS las corridas guardadas
+    aparecieron marcadas como "editadas a mano". No lo estaban: cambio la
+    DERIVACION, no el archivo.
+
+    Si la marca tambien se dispara cuando el operador actualiza la herramienta,
+    sale en todas las fichas, deja de significar nada y nadie vuelve a hacerle
+    caso. **Una alarma que suena siempre es peor que ninguna.** Asi que la firma
+    hashea solo lo que se ESCRIBIO; los derivados quedan fuera.
+    """
+    _sondas_ok()
+    orq.main(["prospecta", "--empresa", "Coficab", "--ciudad", "Durango"])
+    ruta = orq._ruta("Coficab", "Durango")
+    d = json.loads(open(ruta, encoding="utf-8").read())
+    # Se simula un cambio de version: un derivado distinto del que se guardo.
+    d["chao1"]["cobertura_pct"] = 99.9
+    d["desempate"]["vias_sin_agotar"] = {"M0": ["odoo"]}
+    d["tramo"]["razon"] = "otra derivacion, de otra version de la herramienta"
+    d["loop_lo_detiene"] = "lo que sea"
+    d["rendimiento_por_modulo"] = []
+    with open(ruta, "w", encoding="utf-8") as f:
+        json.dump(d, f, ensure_ascii=False)
+    assert not orq._cargar_de(ruta).editada_a_mano, (
+        "un DERIVADO distinto no es una edicion a mano: es otra version del "
+        "codigo recalculando de la misma evidencia")
+
+
+def test_la_firma_SIGUE_delatando_una_edicion_de_lo_ESCRITO(sesion):
+    """La otra mitad: excluir los derivados no puede desarmar la senal."""
+    _sondas_ok()
+    orq.main(["prospecta", "--empresa", "Coficab", "--ciudad", "Durango"])
+    ruta = orq._ruta("Coficab", "Durango")
+    d = json.loads(open(ruta, encoding="utf-8").read())
+    d["gancho"] = "un gancho que nadie busco"
+    with open(ruta, "w", encoding="utf-8") as f:
+        json.dump(d, f, ensure_ascii=False)
+    assert orq._cargar_de(ruta).editada_a_mano
+
+
+def test_el_PAQUETE_no_es_una_corrida(sesion):
+    """Sin esto el resumen lo leia como corrida y la fila salia con '?'."""
+    _sondas_ok()
+    orq.main(["prospecta", "--empresa", "Coficab", "--ciudad", "Durango"])
+    orq.main(["paquete", "--empresa", "Coficab", "--ciudad", "Durango"])
+    assert (sesion / "coficab" / "durango-paquete.json").exists()
+    rutas = orq._todas_las_corridas()
+    assert not any("paquete" in r for r in rutas)
+    assert "CORRIDAS EN LA SESION · 1" in orq.tabla_de_corridas()
+
+
+def test_la_corporativa_se_DISTINGUE_en_la_tabla(sesion):
+    """Sin esto dos filas de la misma empresa salen identicas con la planta en
+    blanco, y el operador no puede saber cual es cual."""
+    _sondas_ok()
+    orq.main(["prospecta", "--empresa", "Coficab", "--nivel", "corporativo"])
+    orq.main(["prospecta", "--empresa", "Coficab", "--ciudad", "Durango"])
+    t = orq.tabla_de_corridas()
+    assert "(corporativo)" in t
+    assert "Durango" in t
+    assert "✎" not in t, "ninguna fue editada a mano"

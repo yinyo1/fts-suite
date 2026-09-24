@@ -1065,9 +1065,35 @@ class Corrida:
     # que salga sin decirlo.
     CAMPO_FIRMA = "_firma"
 
+    # LO QUE LA FIRMA NO MIRA, y es la mitad del diseno: los campos DERIVADOS.
+    #
+    # Lo encontro una verificacion a mano del comando `estado`: despues de un
+    # cambio de codigo -- excluir el motor local de `vias_sin_agotar`-- TODAS las
+    # corridas guardadas aparecieron marcadas como "editadas a mano". No lo
+    # estaban: lo que cambio fue la DERIVACION, no el archivo.
+    #
+    # Y ese es el peor modo de falla posible para esta senal. La firma existe para
+    # delatar a quien escribe el JSON por fuera; si tambien se dispara cuando el
+    # operador actualiza la herramienta, la marca sale en todas las fichas, deja
+    # de significar nada y nadie vuelve a hacerle caso. Una alarma que suena
+    # siempre es peor que ninguna.
+    #
+    # Asi que la firma hashea SOLO LO QUE SE ESCRIBIO: el registro de busquedas,
+    # los contactos, los textos de criterio, el presupuesto, lo sembrado. Todo lo
+    # que se recalcula de esa evidencia queda fuera -- y no se pierde nada: un
+    # derivado que cambia sin que cambie su evidencia es un bug del codigo, no una
+    # edicion a mano, y esta senal no es para eso.
+    CAMPOS_DERIVADOS = (
+        "chao1", "desempate", "tramo", "busquedas",
+        "rendimiento_por_modulo", "rendimiento_por_origen",
+        "loop_puede_seguir", "loop_lo_detiene", "fuera_de_la_poblacion",
+    )
+
     def firma(self) -> str:
         d = self.a_dict()
         d.pop(self.CAMPO_FIRMA, None)
+        for k in self.CAMPOS_DERIVADOS:
+            d.pop(k, None)
         crudo = json.dumps(d, ensure_ascii=False, sort_keys=True,
                            separators=(",", ":"))
         return hashlib.sha256(crudo.encode("utf-8")).hexdigest()[:32]

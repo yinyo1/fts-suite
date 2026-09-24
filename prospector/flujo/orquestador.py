@@ -107,13 +107,24 @@ def _ruta_plana(empresa: str) -> str:
     return os.path.join(CORRIDAS(), f"{_slug(empresa)}.json")
 
 
+# Archivos que la herramienta ESCRIBE en la carpeta de la corrida y que NO son
+# corridas. `-paquete.json` entro con la salida al motor 3, y sin esta lista el
+# resumen de `estado` lo leia como una corrida y la fila salia con "?" -- lo
+# encontro una verificacion a mano del comando--.
+SUFIJOS_QUE_NO_SON_CORRIDA = ("-procedencia.json", "-paquete.json")
+
+
+def _es_salida(nombre: str) -> bool:
+    return any(nombre.endswith(s) for s in SUFIJOS_QUE_NO_SON_CORRIDA)
+
+
 def _corridas_de(empresa: str) -> list[str]:
     """Las plantas de esa empresa que ya tienen corrida, ordenadas."""
     d = _carpeta_empresa(empresa)
     if not os.path.isdir(d):
         return []
     return sorted(os.path.join(d, f) for f in os.listdir(d)
-                  if f.endswith(".json") and not f.endswith("-procedencia.json"))
+                  if f.endswith(".json") and not _es_salida(f))
 
 
 def _resolver_ruta(empresa: str, ciudad: str | None = None,
@@ -302,9 +313,9 @@ def _todas_las_corridas() -> list[str]:
         ruta = os.path.join(raiz, nombre)
         if os.path.isdir(ruta):
             rutas += [os.path.join(ruta, f) for f in sorted(os.listdir(ruta))
-                      if f.endswith(".json")]
+                      if f.endswith(".json") and not _es_salida(f)]
         elif (nombre.endswith(".json") and nombre != "conectores.json"
-              and not nombre.endswith("-procedencia.json")):
+              and not _es_salida(nombre)):
             rutas.append(ruta)
     return rutas
 
@@ -364,7 +375,10 @@ def tabla_de_corridas() -> str:
             ficha = "no emitida"
         L.append(
             f"{((d.get('empresa') or '?') + editada)[:17]:<18} "
-            f"{(d.get('ciudad') or '—')[:17]:<18} "
+            # La corporativa se distingue: sin esto dos filas de la misma empresa
+            # salen identicas con la planta en blanco, y el operador no puede
+            # saber cual es cual.
+            f"{(d.get('ciudad') or ('(corporativo)' if d.get('nivel') == NIVEL_CORPORATIVO else '—'))[:17]:<18} "
             f"{pres.get('gastadas', 0):>4}/{pres.get('tope', 0):<4} "
             f"{len(bloques):>4}·{secos:<4} "
             f"{en_curso:<8} "
