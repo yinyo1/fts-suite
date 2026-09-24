@@ -1,0 +1,213 @@
+"""El runner. Dice cual es el paso siguiente y se niega a saltarse uno.
+
+    python3 -m flujo.orquestador iniciar --empresa "Ragasa" --ciudad "Guadalupe, NL"
+    python3 -m flujo.orquestador siguiente --empresa "Ragasa"
+    python3 -m flujo.orquestador registrar --empresa "Ragasa" --modulo M1 --datos '<json>'
+    python3 -m flujo.orquestador bloque --empresa "Ragasa" --consultas 10 --nuevas 7
+    python3 -m flujo.orquestador cerrar --empresa "Ragasa" --modulo M1
+    python3 -m flujo.orquestador challenge --empresa "Ragasa"
+    python3 -m flujo.orquestador ficha --empresa "Ragasa" --modo limpio
+"""
+from __future__ import annotations
+import argparse, json, os, re, sys
+
+from .compuertas import CompuertaCerrada, exigir_confianza, techo_por_agotado
+from .catalogo import exigir_permitida, FuenteProhibida
+from .confianza import Contacto, N1_CONFIRMADO, N2_PARCIAL, N3_PUESTO
+from .estado import Corrida, RESPONDIO
+from .ficha import modo_limpio, modo_procedencia
+
+RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CORRIDAS = os.path.join(RAIZ, "corridas")
+
+
+def _slug(s: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
+
+
+def _ruta(empresa: str) -> str:
+    return os.path.join(CORRIDAS, f"{_slug(empresa)}.json")
+
+
+def _cargar(empresa: str) -> Corrida:
+    ruta = _ruta(empresa)
+    if not os.path.exists(ruta):
+        raise SystemExit(f"No hay corrida para '{empresa}'. Corre primero: iniciar")
+    d = json.load(open(ruta, encoding="utf-8"))
+    c = Corrida(empresa=d["empresa"], ciudad=d["ciudad"], giro=d.get("giro", ""))
+    c.creada = d["creada"]
+    c.cobertura = d.get("cobertura", {})
+    c.vocabulario = d.get("vocabulario", [])
+    c.senal = d.get("senal", [])
+    c.challenge_corrido = d.get("challenge_corrido", False)
+    c.avisos = d.get("avisos", [])
+    for nombre, m in d.get("modulos", {}).items():
+        em = c.mod(nombre); em.contadores = m["contadores"]; em.cerrado = m["cerrado"]
+    pres = d.get("presupuesto", {})
+    c.presupuesto.tope_por_cuenta = pres.get("tope", 60)
+    for b in pres.get("bloques", []):
+        c.presupuesto.registrar(b["consultas"], b["nuevas"])
+    for cd in d.get("contactos", []):
+        x = Contacto(nombre=cd["nombre"], puesto=cd["puesto"], empresa=cd["empresa"],
+                     nivel_ficha=cd["nivel_ficha"], cercania_decision=cd["cercania_decision"],
+                     revision_humana=cd["revision_humana"],
+                     motivo_revision=cd.get("motivo_revision", ""))
+        x.hits = cd.get("hits", 1)
+        for campo, dd in cd.get("datos", {}).items():
+            dato = x.dato(campo)
+            dato.derivado_de_patron = any(o["fuente"] == "patron_derivado" for o in dd["observaciones"])
+            for o in dd["observaciones"]:
+                dato.observar(o["fuente"], o["valor"], fecha_dato=o.get("fecha_dato"),
+                              nota=o.get("nota", ""))
+        c.contactos.append(x)
+    return c
+
+
+def _imprimir_paso(c: Corrida) -> None:
+    p = c.siguiente_paso()
+    print(f"\n  {p['titulo']}")
+    print(f"  PASO SIGUIENTE: {p['modulo']} — {p['que_hace']}")
+    if "agotado_cuando" in p:
+        print(f"  Agotado cuando: {p['agotado_cuando']}")
+        print(f"  Lleva: {p['lleva'] or '(nada aun)'}")
+    if "presupuesto_restante" in p:
+        print(f"  Presupuesto restante: {p['presupuesto_restante']} consultas")
+    if "chao1" in p:
+        e = p["chao1"]
+        print(f"  Chao1: {e['observados']} observados · estimado {e['estimado']} · "
+              f"cobertura {e['cobertura_pct']}% · {e['nota']}")
+    print()
+
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(prog="orquestador", description=__doc__)
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    for nombre in ("iniciar", "siguiente", "registrar", "bloque", "cerrar",
+                   "challenge", "ficha", "estado"):
+        s = sub.add_parser(nombre)
+        s.add_argument("--empresa", required=True)
+        if nombre == "iniciar":
+            s.add_argument("--ciudad", required=True)
+            s.add_argument("--giro", default="")
+            s.add_argument("--tope", type=int, default=60)
+        if nombre in ("registrar", "cerrar"):
+            s.add_argument("--modulo", required=True)
+        if nombre == "registrar":
+            s.add_argument("--datos", required=True, help="JSON con contactos/vocabulario/senal")
+            s.add_argument("--contador", default=None)
+        if nombre == "cerrar":
+            s.add_argument("--estado", default=RESPONDIO)
+            s.add_argument("--razon", default="")
+        if nombre == "bloque":
+            s.add_argument("--consultas", type=int, required=True)
+            s.add_argument("--nuevas", type=int, required=True)
+        if nombre == "ficha":
+            s.add_argument("--modo", choices=["limpio", "procedencia"], default="limpio")
+            s.add_argument("--salida", default=None)
+    a = ap.parse_args(argv)
+
+    try:
+        if a.cmd == "iniciar":
+            c = Corrida(empresa=a.empresa, ciudad=a.ciudad, giro=a.giro)
+            c.presupuesto.tope_por_cuenta = a.tope
+            c.guardar(_ruta(a.empresa))
+            print(f"Corrida iniciada: {a.empresa} · tope {a.tope} consultas")
+            _imprimir_paso(c)
+            return 0
+
+        c = _cargar(a.empresa)
+
+        if a.cmd in ("siguiente", "estado"):
+            _imprimir_paso(c)
+            if a.cmd == "estado":
+                print(json.dumps(c.a_dict()["presupuesto"], indent=2, ensure_ascii=False))
+            return 0
+
+        if a.cmd == "registrar":
+            d = json.loads(a.datos)
+            for f in d.get("fuentes", []):
+                exigir_permitida(f)                       # <- compuerta catalogo
+            for cd in d.get("contactos", []):
+                x = Contacto(nombre=cd.get("nombre"), puesto=cd.get("puesto"),
+                             empresa=c.empresa,
+                             nivel_ficha=cd.get("nivel_ficha", N2_PARCIAL),
+                             cercania_decision=cd.get("cercania_decision", 50),
+                             revision_humana=cd.get("revision_humana", False),
+                             motivo_revision=cd.get("motivo_revision", ""))
+                for campo, obs in cd.get("datos", {}).items():
+                    dato = x.dato(campo)
+                    for o in obs:
+                        exigir_permitida(o["fuente"])
+                        dato.observar(o["fuente"], o["valor"],
+                                      fecha_dato=o.get("fecha_dato"), nota=o.get("nota", ""))
+                        if o["fuente"] == "patron_derivado":
+                            dato.derivado_de_patron = True
+                c.agregar(x)
+            c.vocabulario.extend(d.get("vocabulario", []))
+            c.senal.extend(d.get("senal", []))
+            if a.contador:
+                c.mod(a.modulo).suma(a.contador)
+            elif d.get("contador"):
+                c.mod(a.modulo).suma(d["contador"], d.get("n", 1))
+            c.guardar(_ruta(a.empresa))
+            print(f"[{a.modulo}] registrado. Contadores: {c.mod(a.modulo).contadores}")
+            _imprimir_paso(c)
+            return 0
+
+        if a.cmd == "bloque":
+            c.presupuesto.exigir_puede_seguir()
+            b = c.presupuesto.registrar(a.consultas, a.nuevas)
+            c.guardar(_ruta(a.empresa))
+            print(f"Bloque {b.numero}: {b.consultas} consultas, {b.nuevas} nuevas "
+                  f"({b.rendimiento:.2f}/consulta){' SECO' if b.seco else ''}")
+            print(f"Secos seguidos: {c.presupuesto.secos_al_final}/3 · "
+                  f"restantes: {c.presupuesto.restantes}")
+            return 0
+
+        if a.cmd == "cerrar":
+            c.cerrar_modulo(a.modulo, a.estado, a.razon)   # <- compuerta agotado
+            c.guardar(_ruta(a.empresa))
+            print(f"[{a.modulo}] cerrado como '{a.estado}'.")
+            _imprimir_paso(c)
+            return 0
+
+        if a.cmd == "challenge":
+            abiertos = [m for _k, _t, mods in __import__(
+                "flujo.estado", fromlist=["OLAS"]).OLAS for m in mods
+                if not c.mod(m).cerrado]
+            if abiertos:
+                raise CompuertaCerrada(
+                    f"No se cruza con modulos abiertos: {', '.join(abiertos)}. "
+                    "Cruzar a medias produce el falso consenso que el Caso F "
+                    "existe para impedir.")
+            avisos = exigir_confianza(c.contactos)          # <- compuerta confianza
+            c.avisos = avisos
+            c.challenge_corrido = True
+            c.guardar(_ruta(a.empresa))
+            print(f"Challenge corrido. {len(avisos)} conflicto(s) a revision humana:")
+            for w in avisos:
+                print("  -", w)
+            _imprimir_paso(c)
+            return 0
+
+        if a.cmd == "ficha":
+            if not c.challenge_corrido:
+                raise CompuertaCerrada(
+                    "No se emite ficha sin challenge. Corre: challenge")
+            salida = a.salida or os.path.join(
+                CORRIDAS, f"{_slug(a.empresa)}-{a.modo}." + ("html" if a.modo == "limpio" else "json"))
+            contenido = modo_limpio(c) if a.modo == "limpio" else json.dumps(
+                modo_procedencia(c), ensure_ascii=False, indent=2)
+            os.makedirs(os.path.dirname(salida), exist_ok=True)
+            open(salida, "w", encoding="utf-8").write(contenido)
+            print(f"Ficha ({a.modo}) escrita: {salida}")
+            return 0
+
+    except (CompuertaCerrada, FuenteProhibida) as e:
+        print(f"\n  ⛔ COMPUERTA: {e}\n", file=sys.stderr)
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,0 +1,6 @@
+# Las corridas llevan nombres, puestos y correos de personas reales.
+corridas/*
+!corridas/.gitkeep
+__pycache__/
+*.pyc
+.pytest_cache/
