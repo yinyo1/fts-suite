@@ -37,7 +37,7 @@ tabla de rendimiento de esa corrida.
 
 ---
 
-## Los ocho defectos que la corrida encontro
+## Los nueve defectos que la corrida encontro
 
 **1. El ancla ascendia a cualquiera.** `de_valor` devolvia cierto por tener un
 correo literal, sin mirar la cercania. Un directorio sectorial devolvio un
@@ -75,7 +75,14 @@ de treinta. Ahora `seco` exige bloque **completo**, y cerrar uno corto exige
 **7. Las consultas sin red gastaban presupuesto.** M4 genera su producto sin
 pedirle nada a nadie. Ya no cuenta contra el tope.
 
-**8. El catalogo estaba incompleto.** La compuerta rechazo una consulta a un
+**8. El challenge borraba los avisos de la corrida.** `c.avisos = avisos`
+pisaba la lista entera, asi que cada challenge se llevaba por delante los avisos
+de caducidad del padron y las subidas de tope -- las DECISIONES de la corrida--.
+Se descubrio al ir a citar las cuatro subidas de tope y encontrar la lista con
+puros conflictos. Ahora los avisos del challenge llevan marca y solo se
+reemplazan entre ellos.
+
+**9. El catalogo estaba incompleto.** La compuerta rechazo una consulta a un
 agregador de organigramas por no tenerlo en la lista de M1. Se corrigio **la
 lista, no la compuerta** -- y esa consulta resulto ser la mas rentable del
 bloque--.

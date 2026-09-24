@@ -166,3 +166,25 @@ def test_theorg_es_un_directorio_de_M1_y_comparte_raiz():
     lista. Se corrigio la LISTA, no la compuerta."""
     assert "theorg" in PERMITIDAS["M1"]
     assert RAICES["theorg"] == RAICES["rocketreach"] == "directorio"
+
+
+# ------------------------------------------------- 7. el challenge no pisa
+def test_el_challenge_no_borra_los_avisos_de_la_corrida(tmp_path, monkeypatch):
+    """`c.avisos = avisos` borraba los avisos de caducidad del padron y las
+    subidas de tope -- las DECISIONES de la corrida-- en cada challenge."""
+    from flujo import orquestador as orq
+    monkeypatch.setattr(orq, "CORRIDAS", lambda: str(tmp_path))
+    c = Corrida(empresa="Casa", ciudad="MTY")
+    c.avisos = ["TOPE SUBIDO de 60 a 120. Razon: la que sea."]
+    x = _c(nombre="Ana", cercania_decision=10)
+    x.dato("puesto").observar("linkedin_publico", "Gerente")
+    c.agregar(x)
+    c.guardar(orq._ruta("Casa"))
+
+    orq.main(["challenge", "--empresa", "Casa"])
+    orq.main(["challenge", "--empresa", "Casa"])      # dos veces, sin duplicar
+
+    d = orq._cargar("Casa")
+    assert any(a.startswith("TOPE SUBIDO") for a in d.avisos)
+    marcados = [a for a in d.avisos if a.startswith(orq.MARCA_CHALLENGE)]
+    assert len(marcados) == len(set(marcados))

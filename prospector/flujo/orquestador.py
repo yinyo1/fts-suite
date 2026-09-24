@@ -39,6 +39,11 @@ def CORRIDAS() -> str:
     return str(carpeta_de_corridas())
 
 
+# Marca de los avisos que produce el challenge. Existe para poder re-correrlo
+# sin duplicarlos Y sin borrar los avisos que NO son suyos.
+MARCA_CHALLENGE = "[challenge] "
+
+
 def _slug(s: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
 
@@ -423,7 +428,14 @@ def main(argv=None) -> int:
                     "Cruzar a medias produce el falso consenso que el Caso F "
                     "existe para impedir.")
             avisos = exigir_confianza(c.contactos)          # <- compuerta confianza
-            c.avisos = avisos
+            # NO se pisan los avisos de la corrida. `c.avisos = avisos` borraba
+            # los avisos de caducidad del padron y las subidas de tope -- las
+            # DECISIONES de la corrida-- cada vez que se corria el challenge.
+            # Lo encontro la corrida de Cuprum del 24-sep-2026 al ir a citar las
+            # cuatro subidas de tope y encontrar la lista con puros conflictos.
+            # Se reemplazan solo los del challenge anterior, por su marca.
+            c.avisos = ([a for a in c.avisos if not a.startswith(MARCA_CHALLENGE)]
+                        + [MARCA_CHALLENGE + a for a in avisos])
             c.challenge_corrido = True
             c.guardar(_ruta(a.empresa))
             print(f"Challenge corrido. {len(avisos)} conflicto(s) a revision humana:")
