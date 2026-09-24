@@ -154,9 +154,19 @@
           "hora_propuesta_cst": "2026-09-18 08:03:00",
           "comentario": "No funcionaba el reloj checador",
           "accion": "solicitud"
+        },
+        {
+          "paso": 2,
+          "rol": "supervisor",
+          "user_id": 97,
+          "usuario": "Rissia Xavier de Araujo",
+          "timestamp": "2026-09-24T16:54:19.570Z",
+          "hora_propuesta_cst": null,
+          "comentario": "Aprobado por supervisión.",
+          "accion": "aprobado"
         }
       ],
-      "status": "pendiente_supervisor",
+      "status": "pendiente_rh",
       "hora_final_aplicada_utc": null,
       "aplicado_en_odoo": false,
       "department_id": 6,
