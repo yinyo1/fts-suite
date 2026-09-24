@@ -11,3 +11,9 @@ scripts/local/
 # son datos financieros reales y no deben publicarse ni por accidente con `git add -A`.
 data/
 node_modules/
+
+# Detalle de trazabilidad con nombres de cliente, montos y documentos reales.
+# ESTE REPO ES PÚBLICO. Lo público vive en docs/trazabilidad/*.md con números de
+# documento, conteos y porcentajes; el detalle nominal se regenera con los
+# guiones de docs/trazabilidad/consultas/ y nunca se commitea.
+docs/trazabilidad/_privado/
