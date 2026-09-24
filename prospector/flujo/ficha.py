@@ -137,11 +137,43 @@ estimado {est.estimado:.0f} · cobertura {est.cobertura:.0%}.<br>{html.escape(es
 
 
 def modo_procedencia(c: Corrida) -> dict:
-    """Cada dato con su fuente, su n_fuentes, su nivel. Auditable."""
+    """Cada dato con su fuente, su n_fuentes, su nivel. Auditable.
+
+    Y la TABLA DE RENDIMIENTO de esta corrida, calculada sola. Hasta la v0.7.1 esa
+    tabla la armaba yo a mano y hacia atras, con mi juicio sobre que contacto era
+    de valor -lo dije en #292-. Eso es exactamente lo que la herramienta existe
+    para no tener que hacer: un numero que alguien afirma contra uno que el codigo
+    deriva.
+    """
     return {
         "empresa": c.empresa, "ciudad": c.ciudad,
         "chao1": c.completitud().a_dict(),
         "cobertura": c.cobertura,
         "avisos": c.avisos,
+        "rendimiento_por_modulo": c.rendimiento(),
+        "rendimiento_por_origen": c.rendimiento_por_origen(),
         "contactos": [x.a_dict() for x in c.contactos],
     }
+
+
+def tabla_de_rendimiento(c: Corrida) -> str:
+    """La misma tabla, legible, para imprimir al cerrar la corrida."""
+    L = [f"RENDIMIENTO · {c.empresa}", "",
+         f"{'mod':5s} {'cons':>5} {'entr':>5} {'valor':>6} {'ancla':>6} "
+         f"{'ent/c':>6} {'val/c':>6}  cobertura"]
+    for f in c.rendimiento():
+        if not f["consultas"] and not f["entradas"]:
+            continue
+        ec = "  -  " if f["ent_por_consulta"] is None else f"{f['ent_por_consulta']:>5.2f}"
+        vc = "  -  " if f["valor_por_consulta"] is None else f"{f['valor_por_consulta']:>5.2f}"
+        L.append(f"{f['modulo']:5s} {f['consultas']:>5} {f['entradas']:>5} "
+                 f"{f['de_valor']:>6} {f['con_ancla']:>6} {ec:>6} {vc:>6}  {f['cobertura']}")
+    L += ["", f"{'origen':10s} {'cons':>5} {'entr':>5} {'valor':>6} "
+              f"{'% valor':>8} {'val/c':>6}"]
+    for origen, a in sorted(c.rendimiento_por_origen().items(),
+                            key=lambda kv: -(kv[1]["de_valor"])):
+        pct = "   -  " if a["pct_del_valor"] is None else f"{a['pct_del_valor']:>6}%"
+        vc = "  -  " if a["valor_por_consulta"] is None else f"{a['valor_por_consulta']:>5.2f}"
+        L.append(f"{origen:10s} {a['consultas']:>5} {a['entradas']:>5} "
+                 f"{a['de_valor']:>6} {pct:>8} {vc:>6}")
+    return "\n".join(L)

@@ -9,6 +9,7 @@ from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 
 from .compuertas import (EstadoModulo, Presupuesto, CompuertaCerrada, AGOTADO,
+                         TAMANO_BLOQUE,
                          Busqueda)
 from .confianza import Contacto, Dato, Observacion
 from .chao1 import estimar
@@ -16,7 +17,7 @@ from .chao1 import estimar
 # El flujo, con las cinco correcciones validadas en el issue #22.
 OLAS = [
     ("ola0_internas", "OLA 0 · INTERNAS — precedencia, no rendimiento",
-     ["M0", "M0b"]),
+     ["M0", "M0b", "M0c"]),
     ("ola1_vocabulario", "OLA 1 · BARATAS — llenan el diccionario ANTES del motor",
      ["M13", "M1", "M2", "M3", "M12"]),
     ("ola2_motor", "OLA 2 · EL MOTOR CARO — ~60% del gasto",
@@ -31,6 +32,7 @@ MODULOS_DEL_LOOP = ("M5", "M6", "M7")
 DESCRIPCION = {
     "M0":  "Odoo · contactos ya cotizados -> patron REAL + vocabulario",
     "M0b": "Outlook · historia de cuenta -> ¿ya es cliente?",
+    "M0c": "search_people · contactos IMPLICITOS del dominio -> CORREO LITERAL (ancla dura)",
     "M13": "DENUE · padron -> identidad y dominio_correo (entrada de M1)",
     "M1":  "Directorios (MINIMO 3, contrastados) -> patron con %",
     "M2":  "Vacantes · careers, Indeed, Glassdoor -> vocabulario de la casa",
@@ -99,6 +101,11 @@ class Corrida:
                 f"entrega {len(contactos)} contacto(s). Una busqueda no puede "
                 "traer mas gente de la que dice haber encontrado.")
         m = self.mod(modulo)
+        for x in contactos:
+            # De que modulo salio. El PRIMERO que lo trajo se queda con el
+            # credito: si M5 lo encuentra despues, ya no es un hallazgo nuevo.
+            if not x.modulo_origen:
+                x.modulo_origen = modulo
         claves = [self.agregar(x, contar_hit=False).clave for x in contactos]
         b = m.registrar_busqueda(clave, consulta, fuente, resultados, nota,
                                  claves, etiqueta=etiqueta)
@@ -106,17 +113,29 @@ class Corrida:
         return b
 
     def _recalcular_hits(self) -> None:
-        """`hits` = en cuantas busquedas DISTINTAS aparecio el contacto.
+        """`hits` y `modulo_origen`: los dos DERIVADOS del registro.
 
-        Derivado del registro, no un contador que alguien sube. Es lo mismo que
-        `n_raices` hace con las observaciones, aplicado al progreso."""
+        Derivados, no contadores que alguien sube. Es lo mismo que `n_raices`
+        hace con las observaciones, aplicado al progreso.
+
+        `modulo_origen` estuvo un rato como campo que se ESCRIBIA al registrar,
+        y la corrida real de Cuprum del 24-sep-2026 mostro por que eso esta mal:
+        `_cargar` no lo restauraba del JSON, la corrida volvia del disco con
+        veintitres contactos sin origen, y la tabla de rendimiento -- la cifra
+        que ORDENA las prioridades del metodo -- salia con todas las filas en
+        cero sin quejarse de nada. Derivarlo del registro vuelve imposible ese
+        modo de falla: si la evidencia esta, el origen esta."""
         conteo: dict[str, int] = {}
-        for b in self.busquedas():
+        origen: dict[str, str] = {}
+        for b in self.busquedas():           # en orden: el PRIMERO se lo queda
             for k in set(b.hallazgos):
                 conteo[k] = conteo.get(k, 0) + 1
+                origen.setdefault(k, b.modulo)
         for x in self.contactos:
             if x.clave in conteo:
                 x.hits = conteo[x.clave]
+            if x.clave in origen:
+                x.modulo_origen = origen[x.clave]
 
     def marcar_cobertura(self, modulo: str, estado: str, razon: str = "") -> None:
         if estado in (NO_APLICABA, OMITIDA_COSTO, SIN_ACCESO) and not razon:
@@ -124,6 +143,56 @@ class Corrida:
                 f"[{modulo}] estado '{estado}' EXIGE razon. "
                 "Un hueco sin motivo escrito se confunde con 'no hay nada'.")
         self.cobertura[modulo] = {"estado": estado, "razon": razon}
+
+    # --------------------------------------------- el bloque, contra evidencia
+    # Las consultas que NO tocan red no gastan presupuesto. M4 genera su
+    # producto sin pedirle nada a nadie: contarla seria cobrarle a la cuenta una
+    # consulta que nunca salio.
+    SIN_RED = ("patron_derivado",)
+
+    def consultas_de_red(self) -> int:
+        return sum(1 for b in self.busquedas() if b.fuente not in self.SIN_RED)
+
+    def bloque_pendiente(self) -> tuple[int, int]:
+        """(consultas, nuevas) acumuladas desde el ultimo bloque cerrado.
+
+        Derivado del registro. Es la misma leccion que los contadores de agotado
+        y que `hits`: un bloque que se declara a mano deriva, y derivar en la
+        compuerta que decide cuando PARAR es derivar en la unica cifra que no
+        se puede equivocar."""
+        b0, c0 = self.presupuesto.marcador
+        return (self.consultas_de_red() - b0, len(self.contactos) - c0)
+
+    def cerrar_bloque(self, consultas: int | None = None,
+                      nuevas: int | None = None, parcial: bool = False):
+        """Cierra el bloque con lo que la EVIDENCIA dice.
+
+        Si quien lo cierra declara numeros, tienen que coincidir. No es
+        redundancia: es el mismo truco del contador vacio aplicado al
+        presupuesto, y hasta la corrida de Cuprum del 24-sep-2026 no habia
+        nada que lo detuviera."""
+        real_c, real_n = self.bloque_pendiente()
+        if consultas is not None and consultas != real_c:
+            raise CompuertaCerrada(
+                f"El bloque declara {consultas} consultas y el registro tiene "
+                f"{real_c}. Un bloque mide rendimiento marginal: si el "
+                "denominador se escribe a mano, no mide nada. Registra las "
+                "busquedas que falten con `buscar`, o no declares el numero.")
+        if nuevas is not None and nuevas != real_n:
+            raise CompuertaCerrada(
+                f"El bloque declara {nuevas} entradas nuevas y la corrida "
+                f"gano {real_n} contactos desde el bloque anterior. El "
+                "numerador tampoco se escribe a mano.")
+        if real_c < TAMANO_BLOQUE and not parcial:
+            raise CompuertaCerrada(
+                f"Bloque de {real_c} consultas: el tamano es {TAMANO_BLOQUE}. "
+                "Un bloque corto no puede declarar que la veta se agoto, solo "
+                "que se pregunto poco. Corre las que faltan, o cierralo con "
+                "`parcial=True` y sabiendo que NO contara como seco.")
+        return self.presupuesto.registrar(
+            real_c, real_n,
+            busquedas_al_cerrar=self.consultas_de_red(),
+            contactos_al_cerrar=len(self.contactos))
 
     def cerrar_modulo(self, nombre: str, estado: str = RESPONDIO, razon: str = "") -> None:
         m = self.mod(nombre)
@@ -141,10 +210,82 @@ class Corrida:
                 for campo, d in c.datos.items():
                     destino = ex.dato(campo)
                     destino.observaciones.extend(d.observaciones)
+                # La cercania solo se ACERCA. Una vuelta posterior que identifica
+                # mejor el asiento no puede quedar ignorada porque el contacto ya
+                # estaba en la lista: la corrida de Cuprum del 24-sep-2026 entro
+                # a un "decision maker" sin puesto con cercania 50, y dos
+                # consultas despues un organigrama lo nombro DIRECTOR GENERAL.
+                # Sin esto seguia contando como contexto.
+                ex.cercania_decision = min(ex.cercania_decision,
+                                           c.cercania_decision)
+                # La revision humana solo se AGREGA, nunca se limpia sola: un
+                # hueco que ya se detecto no desaparece porque otra fuente no lo
+                # mencione.
+                # La vigencia solo se APAGA, nunca se vuelve a encender.
+                if not c.sigue_en_la_casa:
+                    ex.sigue_en_la_casa = False
+                if c.revision_humana and not ex.revision_humana:
+                    ex.revision_humana = True
+                    ex.motivo_revision = c.motivo_revision
+                if not ex.puesto and c.puesto:
+                    ex.puesto = c.puesto
                 return ex
         c.hits = max(1, c.hits) if contar_hit else max(0, c.hits)
         self.contactos.append(c)
         return c
+
+    # ------------------------------------------------- rendimiento por modulo
+    def rendimiento(self) -> list[dict]:
+        """La tabla de #20, calculada de esta corrida. Monedas SEPARADAS.
+
+        `entradas` y `de_valor` no se suman ni se promedian entre si: son dos
+        preguntas distintas, y mezclarlas fue el error que el #20 corrigio. M5
+        puede traer veinte entradas y cero de valor, y las dos cifras son
+        ciertas al mismo tiempo.
+        """
+        filas = []
+        for clave, _titulo, modulos in OLAS:
+            for mod in modulos:
+                m = self.modulos.get(mod)
+                if m is None:
+                    continue
+                traidos = [c for c in self.contactos if c.modulo_origen == mod]
+                cons = m.consultas_corridas
+                val = sum(1 for c in traidos if c.de_valor)
+                anclas = sum(1 for c in traidos if c.tiene_ancla)
+                filas.append({
+                    "ola": clave, "modulo": mod,
+                    "consultas": cons,
+                    "resultados_declarados": m.resultados_totales,
+                    "entradas": len(traidos),
+                    "de_valor": val,
+                    "con_ancla": anclas,
+                    "ent_por_consulta": round(len(traidos) / cons, 2) if cons else None,
+                    "valor_por_consulta": round(val / cons, 2) if cons else None,
+                    "cobertura": self.cobertura.get(mod, {}).get("estado", PENDIENTE),
+                    "agotado": m.agotado,
+                })
+        return filas
+
+    def rendimiento_por_origen(self) -> dict:
+        """Internas contra web abierta. El numero que ordena las prioridades."""
+        ORIGEN = {"M0": "interna", "M0b": "interna", "M0c": "interna",
+                  "M4": "motor", "M13": "padron"}
+        out = {}
+        for f in self.rendimiento():
+            k = ORIGEN.get(f["modulo"], "web")
+            a = out.setdefault(k, {"consultas": 0, "entradas": 0, "de_valor": 0,
+                                   "con_ancla": 0, "modulos": []})
+            a["consultas"] += f["consultas"]; a["entradas"] += f["entradas"]
+            a["de_valor"] += f["de_valor"];   a["con_ancla"] += f["con_ancla"]
+            a["modulos"].append(f["modulo"])
+        total_valor = sum(a["de_valor"] for a in out.values())
+        for a in out.values():
+            a["pct_del_valor"] = (round(100 * a["de_valor"] / total_valor)
+                                  if total_valor else None)
+            a["valor_por_consulta"] = (round(a["de_valor"] / a["consultas"], 2)
+                                       if a["consultas"] else None)
+        return out
 
     # ------------------------------------------------------------------ chao1
     def completitud(self):
@@ -261,5 +402,7 @@ class Corrida:
             "loop_puede_seguir": self.puede_seguir_el_loop(),
             "loop_lo_detiene": self.que_detiene_el_loop(),
             "avisos": self.avisos,
+            "rendimiento_por_modulo": self.rendimiento(),
+            "rendimiento_por_origen": self.rendimiento_por_origen(),
             "contactos": [c.a_dict() for c in self.contactos],
         }

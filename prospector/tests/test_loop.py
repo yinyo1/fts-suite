@@ -66,6 +66,7 @@ def _cascada_cerrada(n_contactos: int = 3) -> Corrida:
     plan = [
         ("M0", "contactos_recorridos", ["odoo"]),
         ("M0b", "consultas", ["outlook"]),
+        ("M0c", "llamadas", ["outlook_personas", "outlook_personas"]),
         ("M13", "cortes", ["denue"]),
         ("M1", "directorios", ["leadiq", "rocketreach", "signalhire"]),
         ("M2", "bolsas", ["vacante", "vacante", "vacante"]),
@@ -79,7 +80,11 @@ def _cascada_cerrada(n_contactos: int = 3) -> Corrida:
     ]
     for modulo, clave, fuentes in plan:
         for i, f in enumerate(fuentes):
-            c.registrar_busqueda(modulo, clave, f"{modulo} consulta {i} {f}", f, 0)
+            # M0c distingue sus dos llamadas por ETIQUETA, no por fuente: las dos
+            # van contra search_people. Es el mismo mecanismo que M7.
+            etiq = ("via_dominio", "via_nombre")[i] if modulo == "M0c" else None
+            c.registrar_busqueda(modulo, clave, f"{modulo} consulta {i} {f}", f, 0,
+                                 etiqueta=etiq)
         if modulo == "M2":
             # M2 exige tres fuentes distintas y solo hay una permitida: se cierra
             # declarando el hueco, que es para lo que existen los cinco estados.

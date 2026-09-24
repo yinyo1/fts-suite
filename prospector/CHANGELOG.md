@@ -3,6 +3,97 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.8.0 — 2026-09-24
+
+La version que salio de una corrida real de **132 consultas** sobre una cuenta
+sola. No trae funciones nuevas por gusto: trae ocho defectos que 132 consultas
+encontraron y que ninguna prueba de escritorio habia encontrado, mas el modulo
+que faltaba en la Fase 0.
+
+### M0c · `search_people` de Microsoft 365
+
+Tercer modulo de la ola interna, despues de Odoo y Outlook. Entrada: el dominio
+de correo de la empresa. Salida: **contactos implicitos** -- gente que de verdad
+escribio a FTS desde esa casa-- con su correo LITERAL, que es la clase mas
+fuerte de ancla que hay.
+
+Comparte raiz `fts_interno` con Outlook a proposito: darle raiz propia habria
+inflado `n_raices` con la misma casa dos veces, que es la trampa del #4.
+
+Agotado: **DOS llamadas**, por dominio y por nombre. Cero contactos cuenta, y
+significa algo -- que FTS no tiene historia con esa casa--.
+
+### `ANCLAS_PARA_CONFIRMAR = 2`
+
+Un correo literal prueba que ese buzon existe. **Dos** literales de acuerdo
+miden la poblacion. Con uno, el patron topa en SOLIDO; con dos y dos raices,
+llega a CONFIRMADO aunque un directorio siga diciendo lo contrario.
+
+### `de_valor` y `modulo_origen` en cada entrada
+
+Cada contacto graba si es **de valor para FTS** -- comprador tecnico o decisor
+de CAPEX-- y de que modulo salio. La ficha en modo procedencia imprime sola la
+tabla de rendimiento de esa corrida.
+
+---
+
+## Los ocho defectos que la corrida encontro
+
+**1. El ancla ascendia a cualquiera.** `de_valor` devolvia cierto por tener un
+correo literal, sin mirar la cercania. Un directorio sectorial devolvio un
+correo de difusion comercial y entraba como comprador tecnico. Ahora el ancla
+solo desempata cuando **nadie estimo la cercania**; si se estimo y dio contexto,
+un correo literal no asciende a nadie.
+
+**2. No habia forma de decir "ya no esta".** El asiento de mas valor de toda la
+corrida resulto, en la consulta ~100, ser **director general de otra empresa**.
+Nuevo campo `sigue_en_la_casa`, que solo se apaga y nunca se reenciende: que un
+perfil viejo siga diciendo que trabaja ahi no prueba que siga ahi.
+
+**3. La cercania no se podia afinar.** Alguien entraba como "decision maker" sin
+puesto (cercania 50) y dos bloques despues un organigrama lo nombraba director
+general, y seguia contando como contexto. Ahora la cercania **se acerca** al
+fusionar. (Sigue sin poder ALEJARSE: defecto conocido, declarado abajo.)
+
+**4. `modulo_origen` no sobrevivia al disco.** `_cargar` no lo restauraba, la
+corrida volvia con 23 contactos sin origen y la tabla de rendimiento -- la cifra
+que ORDENA las prioridades del metodo-- salia con **todas las filas en cero sin
+quejarse de nada**. Ahora se DERIVA del registro, como los contadores de agotado
+y como `hits`: si la evidencia esta, el origen esta.
+
+**5. El bloque era el ultimo lugar que contaba declaraciones.** `bloque` pedia
+`--consultas` y `--nuevas` a mano. A mano sume 58 consultas contra 59
+registradas y 50 entradas nuevas contra 46 contactos reales. Ahora las dos
+cifras salen del registro, y declarar otras **lanza**.
+
+**6. Medio bloque podia declarar saturacion.** Cerre un bloque de cinco
+consultas sin entradas y conto igual que uno de diez. Como tres bloques secos
+CIERRAN la cascada, eso permitia declarar saturacion con quince consultas en vez
+de treinta. Ahora `seco` exige bloque **completo**, y cerrar uno corto exige
+`--parcial`, que nunca cuenta como seco.
+
+**7. Las consultas sin red gastaban presupuesto.** M4 genera su producto sin
+pedirle nada a nadie. Ya no cuenta contra el tope.
+
+**8. El catalogo estaba incompleto.** La compuerta rechazo una consulta a un
+agregador de organigramas por no tenerlo en la lista de M1. Se corrigio **la
+lista, no la compuerta** -- y esa consulta resulto ser la mas rentable del
+bloque--.
+
+### `tope`, el comando
+
+El codigo ya decia que subir el tope es una decision y no un descuido. Ahora
+tiene donde pedirse: `./prospector tope --empresa X --nuevo N --razon "..."`.
+Exige razon, solo sube, y queda en los avisos de la ficha.
+
+### Lo que la corrida NO logro, y queda declarado
+
+**La regla de tres bloques secos no se pronuncio.** 132 consultas, el tope
+subido cuatro veces a proposito, 14 bloques, y solo DOS secos -- nunca dos
+seguidos--. El bloque 14 trajo siete entradas nuevas. M5 se cerro como
+`omitida_por_costo` con razon escrita, no como agotado, y el veredicto de Chao1
+al cerrar es `FALTA_BARRER` con 42.5% de cobertura estimada.
+
 ## 0.7.1 — 2026-09-24
 
 Cierra el ultimo punto donde la herramienta podia colgar, y lo deja probado.

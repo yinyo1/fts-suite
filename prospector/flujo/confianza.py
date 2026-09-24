@@ -37,6 +37,11 @@ A_PROCEDENCIA = {
 RAICES = {
     "odoo": "fts_interno",
     "outlook": "fts_interno",
+    # `search_people` es la MISMA raiz que Outlook: las dos salen del historial
+    # de comunicacion de FTS. Que las dos coincidan NO son dos confirmaciones
+    # independientes -es la trampa de la independencia del #4-, y darle raiz
+    # propia habria sido inflar el n_raices con la misma casa dos veces.
+    "outlook_personas": "fts_interno",
     "leadiq": "directorio",
     "rocketreach": "directorio",
     "zoominfo": "directorio",
@@ -49,6 +54,9 @@ RAICES = {
     "clay": "directorio",
     "tomba": "directorio",
     "datanyze": "directorio",
+    # Publica jerarquia en vez de correos, pero sigue siendo un agregador de
+    # perfiles de terceros: MISMA raiz que los demas directorios.
+    "theorg": "directorio",
     "linkedin_publico": "web_perfil",
     "buscador": "web_abierta",
     "prensa": "web_abierta",
@@ -137,6 +145,10 @@ RAZON_MAYORIA = 3.0
 # y la segunda es la que ancla.
 FUENTES_ANCLA = {
     "outlook",            # una direccion real en un hilo
+    "outlook_personas",   # un CONTACTO IMPLICITO: alguien que de verdad escribio
+                          # a FTS desde ese dominio. Es la clase mas fuerte de
+                          # ancla que hay, porque no es una direccion citada
+                          # dentro de un texto: es una con la que hubo trafico.
     "odoo",               # una direccion real en el CRM
     "pdf_publico",        # una direccion impresa en un documento indexado
     "padron_gobierno",    # idem, en un padron oficial
@@ -164,6 +176,27 @@ FUENTES_ANCLA = {
 #
 # `puesto` y `empleador` fallan (2) y (3). No entran, y no deben entrar.
 CAMPOS_CON_MAYORIA = ("patron_correo",)
+
+# Cuantas anclas DISTINTAS hacen falta para que un campo con disidencia viva
+# llegue a CONFIRMADO en vez de topar en SOLIDO.
+#
+# Dos, y la razon es la regla del #24 leida con cuidado:
+#
+#     "El correo real de Outlook prueba que el dominio vive. NO prueba con que
+#      frecuencia se usa: son preguntas distintas."
+#
+# UNA direccion literal es evidencia de EXISTENCIA. No dice nada sobre el patron,
+# que es una afirmacion sobre una poblacion -y Hershey usa OCHO patrones segun
+# LeadIQ, asi que una direccion suelta no desempata nada-.
+#
+# DOS O MAS literales que coinciden en la forma ya no son existencia: son una
+# MEDICION directa de la poblacion, pequena pero real. Ahi el patron deja de
+# inferirse y pasa a observarse, y por eso puede llegar a CONFIRMADO aunque un
+# directorio siga diciendo lo contrario.
+#
+# Es la diferencia entre "existe una direccion asi" y "las direcciones que he
+# visto son asi".
+ANCLAS_PARA_CONFIRMAR = 2
 
 
 @dataclass
@@ -309,6 +342,23 @@ class Dato:
         return bool(m) and any(o.es_ancla for o in m[1])
 
     @property
+    def anclas_en_la_mayoria(self) -> int:
+        """Cuantas fuentes DISTINTAS de ancla sostienen a la mayoria."""
+        m = self.mayoria
+        if not m:
+            return sum(1 for o in self.observaciones if o.es_ancla) if not self.choca else 0
+        return len({o.fuente for o in m[1] if o.es_ancla})
+
+    @property
+    def medido_no_inferido(self) -> bool:
+        """La mayoria se apoya en VARIOS literales, no en uno suelto.
+
+        Una direccion literal dice que el dominio vive; varias que coinciden
+        dicen como se ven las direcciones. Lo segundo es una medicion.
+        """
+        return self.anclas_en_la_mayoria >= ANCLAS_PARA_CONFIRMAR
+
+    @property
     def informa_pese_al_conflicto(self) -> bool:
         """MAYORIA CLARA + ANCLA DURA. Las tres condiciones, conjuntivas.
 
@@ -384,11 +434,14 @@ class Dato:
         if self.choca:
             if not self.informa_pese_al_conflicto:
                 return EN_CONFLICTO
-            # Mayoria clara con ancla: se informa. Pero TOPA EN SOLIDO, nunca
-            # CONFIRMADO: hay una fuente viva diciendo lo contrario, y llamarle
-            # "verificado" a eso seria el Caso F por la puerta de atras.
             if self.certeza_declarada_baja:
                 return CANDIDATO
+            # Con VARIOS literales de acuerdo, el patron deja de inferirse y pasa
+            # a observarse: eso si llega a CONFIRMADO, aunque un directorio siga
+            # diciendo lo contrario. Con UNO solo topa en SOLIDO, porque una
+            # direccion prueba que existe, no con que frecuencia se usa (#24).
+            if self.medido_no_inferido and self.n_raices >= 2:
+                return CONFIRMADO
             return SOLIDO
         if self.n_raices >= 2:
             return CONFIRMADO
@@ -425,6 +478,8 @@ class Dato:
             "informa_pese_al_conflicto": self.informa_pese_al_conflicto,
             "disidencia": self.disidencia,
             "ancla_en_la_mayoria": self.ancla_en_la_mayoria,
+            "anclas_en_la_mayoria": self.anclas_en_la_mayoria,
+            "medido_no_inferido": self.medido_no_inferido,
             "motivo_conflicto": self.motivo_conflicto,
             "brecha_magnitud": self.brecha_magnitud,
             "formas": self.formas,
@@ -438,6 +493,33 @@ def _normaliza(v: Any) -> str:
     if isinstance(v, str):
         return " ".join(v.lower().split())
     return str(v)
+
+
+# ------------------------------------------------- el filtro de valor (§5)
+# `de_valor` = el puesto COMPRA, DECIDE o INFLUYE la infraestructura que vende
+# FTS. No es una medida de confianza ni de completitud: es de CORRECTITUD.
+# IT o RH que solo mencionan la palabra son contexto, no target.
+#
+# Se DERIVA, no se declara -misma leccion que los contadores de agotado-:
+#   * `cercania_decision <= CERCANIA_DE_VALOR`, que es la escala que ya ordena la
+#     ficha (0 = decide la obra, 100 = contexto);
+#   * o tiene un correo LITERAL de una fuente de ancla Y NADIE le estimo la
+#     cercania todavia, porque un correo real vuelve accionable a quien aun
+#     podria ser comprador.
+#
+# El ancla NO asciende a nadie. Si la cercania SI se estimo y dio contexto, un
+# correo literal no lo vuelve target. Lo encontro la corrida real de Cuprum del
+# 24-sep-2026: un directorio sectorial devolvio un correo literal de cuprum.com
+# de difusion comercial. Con la regla vieja entraba como "de valor" -- y el
+# filtro de valor es de CORRECTITUD, no de accionabilidad: contarlo habria
+# inflado justo la cifra que ordena las prioridades del metodo.
+#
+# El umbral 20 no es nuevo: es el corte que la ficha de LEGO ya usaba para
+# separar a los seis que deciden de los que son contexto.
+CERCANIA_DE_VALOR = 20
+# El default del campo. "50" no significa "a medio camino": significa que nadie
+# la estimo. Por eso es la unica cercania que el ancla puede desempatar.
+CERCANIA_SIN_ESTIMAR = 50
 
 
 # --- niveles de la FICHA: completitud, eje distinto de la confianza ---
@@ -457,6 +539,49 @@ class Contacto:
     revision_humana: bool = False
     motivo_revision: str = ""
     hits: int = 0                 # cuantas consultas distintas lo trajeron
+    modulo_origen: str = ""       # de que modulo salio, para la tabla de rendimiento
+    # VIGENCIA. Se apaga cuando alguna fuente muestra que la persona ya no esta
+    # en la casa, y NO se vuelve a encender: que un perfil viejo siga diciendo
+    # que trabaja ahi no prueba que siga ahi. Lo forzo la corrida de Cuprum del
+    # 24-sep-2026 en la consulta ~100: el asiento de mas valor de toda la lista
+    # -- un director de proyectos estrategicos que la prensa citaba dando
+    # toneladas y prensas -- resulto ser DIRECTOR GENERAL DE OTRA EMPRESA. Sin
+    # este campo seguia contando como contacto de valor, y habria llegado a la
+    # ficha de Rissia.
+    sigue_en_la_casa: bool = True
+
+    @property
+    def tiene_ancla(self) -> bool:
+        """Algun campo suyo lo vio una fuente que observa literales."""
+        return any(o.es_ancla for d in self.datos.values() for o in d.observaciones)
+
+    @property
+    def de_valor(self) -> bool:
+        """Comprador tecnico o decisor de CAPEX. Derivado, no declarado."""
+        if not self.sigue_en_la_casa:
+            return False          # el mejor puesto del mundo en otra empresa
+        if self.cercania_decision <= CERCANIA_DE_VALOR:
+            return True
+        return self.tiene_ancla and self.cercania_decision == CERCANIA_SIN_ESTIMAR
+
+    @property
+    def por_que_de_valor(self) -> str:
+        if not self.sigue_en_la_casa:
+            return ("YA NO ESTA EN LA CASA: el puesto era de valor y la persona "
+                    "ya no lo ocupa. No cuenta, y no se imprime.")
+        if self.cercania_decision <= CERCANIA_DE_VALOR:
+            return (f"cercania {self.cercania_decision} <= {CERCANIA_DE_VALOR}: "
+                    "decide o influye la obra")
+        if self.tiene_ancla and self.cercania_decision == CERCANIA_SIN_ESTIMAR:
+            fs = sorted({o.fuente for d in self.datos.values()
+                         for o in d.observaciones if o.es_ancla})
+            return (f"correo literal de {', '.join(fs)} y cercania sin estimar: "
+                    "accionable, queda a revision de puesto")
+        if self.tiene_ancla:
+            return (f"cercania {self.cercania_decision}: contexto. Tiene correo "
+                    "literal, y aun asi no es target: el ancla sirve al patron, "
+                    "no al filtro de valor")
+        return f"cercania {self.cercania_decision}: contexto, no target"
 
     def dato(self, campo: str, **kw) -> Dato:
         if campo not in self.datos:
@@ -477,5 +602,9 @@ class Contacto:
             "revision_humana": self.revision_humana,
             "motivo_revision": self.motivo_revision,
             "hits": self.hits,
+            "modulo_origen": self.modulo_origen,
+            "sigue_en_la_casa": self.sigue_en_la_casa,
+            "de_valor": self.de_valor,
+            "por_que_de_valor": self.por_que_de_valor,
             "datos": {k: d.a_dict() for k, d in self.datos.items()},
         }

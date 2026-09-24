@@ -30,7 +30,7 @@ from .arranque import resolver, texto_del_plan, chequeo, pregunta_de_una_linea
 from .catalogo import exigir_permitida, FuenteProhibida
 from .confianza import Contacto, N1_CONFIRMADO, N2_PARCIAL, N3_PUESTO
 from .estado import Corrida, RESPONDIO
-from .ficha import modo_limpio, modo_procedencia
+from .ficha import modo_limpio, modo_procedencia, tabla_de_rendimiento
 
 # Las corridas llevan nombres, puestos y correos de PERSONAS. No se escriben en
 # el repo: `fts-suite` es publico. Ver flujo/salida.py -- ahi vive la regla, y
@@ -62,7 +62,9 @@ def _cargar(empresa: str) -> Corrida:
     pres = d.get("presupuesto", {})
     c.presupuesto.tope_por_cuenta = pres.get("tope", 60)
     for b in pres.get("bloques", []):
-        c.presupuesto.registrar(b["consultas"], b["nuevas"])
+        c.presupuesto.registrar(b["consultas"], b["nuevas"],
+                                busquedas_al_cerrar=b.get("busquedas_al_cerrar", 0),
+                                contactos_al_cerrar=b.get("contactos_al_cerrar", 0))
     c.vueltas_loop = d.get("vueltas_loop", 0)
     # Sin esto la compuerta de la vuelta en seco se olvidaba al releer del
     # disco: la corrida volvia con vueltas_loop=1 y el marcador de bloques en
@@ -83,6 +85,12 @@ def _cargar(empresa: str) -> Corrida:
                      revision_humana=cd["revision_humana"],
                      motivo_revision=cd.get("motivo_revision", ""))
         x.hits = cd.get("hits", 1)
+        # Se restaura para los contactos que entraron por `registrar` (esos no
+        # dejan hallazgo en ninguna busqueda, asi que `_recalcular_hits` no
+        # puede derivarles el origen). Para los que entraron por `buscar`, el
+        # registro manda y este valor se sobreescribe solo.
+        x.modulo_origen = cd.get("modulo_origen", "")
+        x.sigue_en_la_casa = cd.get("sigue_en_la_casa", True)
         for campo, dd in cd.get("datos", {}).items():
             dato = x.dato(campo)
             dato.derivado_de_patron = any(o["fuente"] == "patron_derivado" for o in dd["observaciones"])
@@ -102,7 +110,8 @@ def _contacto(c: Corrida, cd: dict) -> Contacto:
                  nivel_ficha=cd.get("nivel_ficha", N2_PARCIAL),
                  cercania_decision=cd.get("cercania_decision", 50),
                  revision_humana=cd.get("revision_humana", False),
-                 motivo_revision=cd.get("motivo_revision", ""))
+                 motivo_revision=cd.get("motivo_revision", ""),
+                 sigue_en_la_casa=cd.get("sigue_en_la_casa", True))
     for campo, obs in cd.get("datos", {}).items():
         dato = x.dato(campo)
         for o in obs:
@@ -140,7 +149,7 @@ def main(argv=None) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     for nombre in ("prospecta", "listo", "iniciar", "siguiente", "padron",
                    "buscar", "registrar", "bloque", "cerrar", "vuelta",
-                   "challenge", "ficha", "estado"):
+                   "challenge", "ficha", "estado", "tope"):
         s = sub.add_parser(nombre)
         if nombre != "listo":
             s.add_argument("--empresa", required=True)
@@ -183,9 +192,22 @@ def main(argv=None) -> int:
         if nombre == "cerrar":
             s.add_argument("--estado", default=RESPONDIO)
             s.add_argument("--razon", default="")
+        if nombre == "tope":
+            s.add_argument("--nuevo", type=int, required=True)
+            s.add_argument("--razon", required=True,
+                           help="POR QUE se sube. Sin razon no se sube: el "
+                                "codigo ya decia que subir el tope es una "
+                                "decision y no un descuido, y una decision que "
+                                "no deja rastro es un descuido con otro nombre.")
         if nombre == "bloque":
-            s.add_argument("--consultas", type=int, required=True)
-            s.add_argument("--nuevas", type=int, required=True)
+            # YA NO son obligatorios: el bloque se cierra contra el registro.
+            # Si se declaran, tienen que coincidir -- y si no coinciden, la
+            # compuerta lanza en vez de creerle al que escribe.
+            s.add_argument("--consultas", type=int, default=None)
+            s.add_argument("--nuevas", type=int, default=None)
+            s.add_argument("--parcial", action="store_true",
+                           help="cierra un bloque incompleto. NO cuenta como "
+                                "seco aunque no traiga nada.")
         if nombre == "ficha":
             s.add_argument("--modo", choices=["limpio", "procedencia"], default="limpio")
             s.add_argument("--salida", default=None)
@@ -269,12 +291,38 @@ def main(argv=None) -> int:
                 print(json.dumps(c.a_dict()["presupuesto"], indent=2, ensure_ascii=False))
             return 0
 
+        if a.cmd == "tope":
+            antes = c.presupuesto.tope_por_cuenta
+            if a.nuevo <= antes:
+                raise SystemExit(
+                    f"El tope ya es {antes}. Este comando SUBE el tope; bajarlo "
+                    "a media corrida borraria evidencia ya gastada.")
+            if not a.razon.strip():
+                raise SystemExit("Falta --razon.")
+            c.presupuesto.tope_por_cuenta = a.nuevo
+            c.avisos.append(f"TOPE SUBIDO de {antes} a {a.nuevo} consultas. "
+                            f"Razon: {a.razon.strip()}")
+            c.guardar(_ruta(a.empresa))
+            print(f"Tope: {antes} -> {a.nuevo}. Restantes: "
+                  f"{c.presupuesto.restantes}")
+            print(f"  Queda en los avisos de la ficha, no solo en la consola.")
+            _imprimir_paso(c)
+            return 0
+
         if a.cmd == "registrar":
             d = json.loads(a.datos)
             for f in d.get("fuentes", []):
                 exigir_permitida(f)                       # <- compuerta catalogo
             for cd in d.get("contactos", []):
-                c.agregar(_contacto(c, cd))
+                x = _contacto(c, cd)
+                # Mismo credito que en `buscar`: el modulo que lo trajo se
+                # queda con la entrada. Sin esto, un contacto entrado por
+                # `registrar` no aparecia en NINGUNA fila de la tabla de
+                # rendimiento -- la tabla sumaba menos entradas de las que la
+                # corrida tenia, y el % de valor por origen salia mal.
+                if not x.modulo_origen:
+                    x.modulo_origen = a.modulo
+                c.agregar(x)
             c.vocabulario.extend(d.get("vocabulario", []))
             c.senal.extend(d.get("senal", []))
             c.guardar(_ruta(a.empresa))
@@ -348,10 +396,12 @@ def main(argv=None) -> int:
 
         if a.cmd == "bloque":
             c.presupuesto.exigir_puede_seguir()
-            b = c.presupuesto.registrar(a.consultas, a.nuevas)
+            b = c.cerrar_bloque(a.consultas, a.nuevas, parcial=a.parcial)
             c.guardar(_ruta(a.empresa))
             print(f"Bloque {b.numero}: {b.consultas} consultas, {b.nuevas} nuevas "
                   f"({b.rendimiento:.2f}/consulta){' SECO' if b.seco else ''}")
+            print("  Las dos cifras salen del registro, no de la linea de "
+                  "comandos.")
             print(f"Secos seguidos: {c.presupuesto.secos_al_final}/3 · "
                   f"restantes: {c.presupuesto.restantes}")
             return 0
@@ -393,6 +443,8 @@ def main(argv=None) -> int:
             os.makedirs(os.path.dirname(salida), exist_ok=True)
             open(salida, "w", encoding="utf-8").write(contenido)
             print(f"Ficha ({a.modo}) escrita: {salida}")
+            print()
+            print(tabla_de_rendimiento(c))
             return 0
 
     except (CompuertaCerrada, FuenteProhibida, SalidaEnElRepo,

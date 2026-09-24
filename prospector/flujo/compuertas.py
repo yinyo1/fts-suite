@@ -107,10 +107,29 @@ class Bloque:
     numero: int
     consultas: int
     nuevas: int
+    # Marcadores de EVIDENCIA al cerrar el bloque: cuantas busquedas y cuantos
+    # contactos llevaba la corrida en ese momento. Con ellos, `consultas` y
+    # `nuevas` dejan de ser dos numeros que alguien escribe y pasan a ser dos
+    # restas comprobables. Era el ULTIMO lugar del sistema donde una compuerta
+    # contaba declaraciones en vez de evidencia, y se noto en la corrida real de
+    # Cuprum del 24-sep-2026: a mano sume 58 consultas contra 59 registradas y
+    # 50 entradas nuevas contra 46 contactos que la corrida tenia de verdad.
+    busquedas_al_cerrar: int = 0
+    contactos_al_cerrar: int = 0
 
     @property
     def seco(self) -> bool:
-        return self.nuevas < SECO_SI_NUEVAS_MENOR_QUE
+        """Seco = se pregunto EL BLOQUE COMPLETO y no entro nadie.
+
+        La exigencia de que el bloque este lleno no estaba, y la corrida de
+        Cuprum del 24-sep-2026 tropezo con el hueco: cerre un bloque de CINCO
+        consultas sin entradas nuevas y el sistema lo conto igual que uno de
+        diez. Medio bloque sin hallazgos no dice que la veta se acabo: dice que
+        se pregunto la mitad. Y como TRES bloques secos seguidos CIERRAN la
+        cascada, dejarlo pasar permitia declarar saturacion con quince consultas
+        en vez de treinta."""
+        return (self.consultas >= TAMANO_BLOQUE
+                and self.nuevas < SECO_SI_NUEVAS_MENOR_QUE)
 
     @property
     def rendimiento(self) -> float:
@@ -148,7 +167,9 @@ class Presupuesto:
     def agotado_por_tope(self) -> bool:
         return self.restantes <= 0
 
-    def registrar(self, consultas: int, nuevas: int) -> Bloque:
+    def registrar(self, consultas: int, nuevas: int,
+                  busquedas_al_cerrar: int = 0,
+                  contactos_al_cerrar: int = 0) -> Bloque:
         if consultas > TAMANO_BLOQUE:
             raise CompuertaCerrada(
                 f"Bloque de {consultas} consultas: el maximo es {TAMANO_BLOQUE}. "
@@ -158,9 +179,20 @@ class Presupuesto:
             raise CompuertaCerrada(
                 f"Presupuesto agotado: {self.gastadas}/{self.tope_por_cuenta}. "
                 "Subir el tope es una decision, no un descuido: hay que pedirla.")
-        b = Bloque(numero=len(self.bloques) + 1, consultas=consultas, nuevas=nuevas)
+        b = Bloque(numero=len(self.bloques) + 1, consultas=consultas,
+                   nuevas=nuevas, busquedas_al_cerrar=busquedas_al_cerrar,
+                   contactos_al_cerrar=contactos_al_cerrar)
         self.bloques.append(b)
         return b
+
+    @property
+    def marcador(self) -> tuple[int, int]:
+        """(busquedas, contactos) que la corrida llevaba al cerrar el ultimo
+        bloque. El punto desde el que se mide el siguiente."""
+        if not self.bloques:
+            return (0, 0)
+        u = self.bloques[-1]
+        return (u.busquedas_al_cerrar, u.contactos_al_cerrar)
 
     def exigir_puede_seguir(self) -> None:
         if self.saturado:
@@ -189,6 +221,10 @@ AGOTADO = {
             "recorridos los contactos de la cuenta"),
     "M0b": ("consultas", 1, POR_REGISTRO,
             "al menos una consulta por empresa"),
+    "M0c": ("llamadas", 2, POR_FUENTE,
+            "las DOS llamadas a search_people: por dominio y por nombre de la "
+            "empresa. Cero contactos cuenta: significa que FTS no tiene historia "
+            "con esa casa, y eso es una respuesta"),
     "M13": ("cortes", 1, POR_REGISTRO,
             "corte vigente cargado"),
     "M1":  ("directorios", 3, POR_FUENTE,

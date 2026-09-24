@@ -57,10 +57,21 @@ DESCARTADAS = {
 PERMITIDAS = {
     "M0":  ["odoo"],
     "M0b": ["outlook"],
+    # M0c · `search_people` de Microsoft 365. Dos vias: por DOMINIO y por NOMBRE
+    # de la empresa. Son dos preguntas distintas a la misma fuente: el dominio
+    # trae a quien escribio desde esa casa; el nombre trae a quien Graph asocia
+    # con la marca aunque escriba desde otro dominio.
+    "M0c": ["outlook_personas"],
     "M13": ["denue"],
+    # `theorg` entro por la corrida de Cuprum del 24-sep-2026: un agregador de
+    # ORGANIGRAMAS publicados. Es un directorio de personas como los demas -- y
+    # rinde distinto, porque publica la JERARQUIA y no el correo. La compuerta de
+    # catalogo rechazo la consulta por no tenerlo en la lista, que es
+    # exactamente lo que debia hacer: la lista estaba incompleta y se corrige
+    # aqui, no relajando la compuerta.
     "M1":  ["prospeo", "rocketreach", "leadiq", "zoominfo", "finalscout",
             "contactout", "signalhire", "aeroleads", "seamless", "clay",
-            "tomba", "datanyze"],
+            "tomba", "datanyze", "theorg"],
     # El criterio de M2 pide "bolsa propia + 2 agregadores": son TRES fuentes
     # distintas, asi que el catalogo tiene que nombrarlas. Con una sola etiqueta
     # `vacante` el modulo no podia agotarse nunca -- lo encontro la corrida de

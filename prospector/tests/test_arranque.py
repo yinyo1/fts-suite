@@ -54,13 +54,16 @@ def test_sin_ciudad_y_fuera_del_padron_lo_declara_sin_frenar():
 def test_el_plan_trae_los_modulos_de_busqueda_en_el_orden_del_metodo():
     """M13 no esta en el plan a proposito: `prospecta` ya lo corrio y lo cerro
     al resolver la cuenta en el padron."""
-    assert [m for m, *_ in PLAN] == ["M0", "M0b", "M1", "M2", "M3", "M12",
+    assert [m for m, *_ in PLAN] == ["M0", "M0b", "M0c", "M1", "M2", "M3", "M12",
                                      "M4", "M5", "M6", "M7", "M8", "M9"]
 
 
 def test_el_plan_pone_las_internas_primero_y_el_motor_despues_del_vocabulario():
     orden = [m for m, *_ in PLAN]
-    assert orden[0] == "M0" and orden[1] == "M0b", "internas primero: precedencia"
+    assert orden[:3] == ["M0", "M0b", "M0c"], "internas primero: precedencia"
+    assert orden.index("M0c") < orden.index("M1"), (
+        "el ancla de search_people tiene que estar puesta ANTES de que los "
+        "directorios contrasten el patron")
     assert orden.index("M2") < orden.index("M4"), "vacantes ANTES del motor"
     assert orden.index("M12") < orden.index("M4"), "prensa ANTES del motor"
     assert orden.index("M6") < orden.index("M7"), "M7 pide nombres que da M6"

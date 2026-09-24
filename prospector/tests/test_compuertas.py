@@ -49,6 +49,13 @@ def test_el_flujo_arranca_por_internas_y_denue_va_antes_de_directorios():
     c.cerrar_modulo("M0")
     c.registrar_busqueda("M0b", "consultas", "outlook: X", "outlook", 0)
     c.cerrar_modulo("M0b")
+    assert c.siguiente_paso()["modulo"] == "M0c", (
+        "search_people va DESPUES de Outlook y ANTES del padron: es interna, y su "
+        "correo literal es el ancla que el resto de la cascada va a contrastar")
+    for etiq, q in (("via_dominio", 'search_people("x.com")'),
+                    ("via_nombre", 'search_people("Empresa X")')):
+        c.registrar_busqueda("M0c", "llamadas", q, "outlook_personas", 0, etiqueta=etiq)
+    c.cerrar_modulo("M0c")
     assert c.siguiente_paso()["modulo"] == "M13", "DENUE da el dominio que M1 necesita"
 
 
