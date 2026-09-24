@@ -17,6 +17,9 @@ import re
 from dataclasses import dataclass, field, asdict
 from typing import Any
 
+from .catalogo import (EQUIVALENCIAS_DE_PUESTO, grupo_de_puesto,
+                       _plano as _plano_puesto)
+
 # --- niveles, alineados con el modelo de procedencia del orquestador ---
 CONFIRMADO = "confirmado"      # >=2 fuentes de RAIZ distinta   -> verificado
 SOLIDO = "solido"              # 1 fuente confiable              -> supuesto
@@ -215,6 +218,16 @@ LARGO_MINIMO_CONTENCION = 4
 # de falla peor que el que cierra.
 CAMPOS_CON_CONTENCION = ("puesto",)
 
+# En que campos vale la EQUIVALENCIA POR TABLA ES-EN. Aprobada por Esteban sobre
+# #302, y es el ultimo de los falsos conflictos que #300 midio: en Durango
+# "Director General" contra "General Manager" son la misma persona con el titulo
+# en dos idiomas. La contencion no los alcanza -- ninguno contiene al otro-- y
+# sin tabla siguen yendo a revision humana sin nada que decidir.
+#
+# Mismo campo que la contencion, y por la misma razon: un PUESTO redactado o
+# traducido distinto no cuesta nada equivocado; una ENTIDAD si.
+CAMPOS_CON_EQUIVALENCIA = ("puesto",)
+
 # En que campos un literal ANCLA a la PERSONA.
 #
 # `tiene_ancla` miraba la FUENTE y no el campo, asi que una observacion de
@@ -228,6 +241,64 @@ CAMPOS_CON_CONTENCION = ("puesto",)
 # `patron_correo` no entra: un patron es una afirmacion sobre una POBLACION de
 # direcciones, no la direccion de esta persona.
 CAMPOS_DE_ANCLA = ("correo",)
+
+# ------------------------------------------------ DONDE ESTA SENTADA LA PERSONA
+#
+# El arreglo del DOBLE CONTEO que #300 midio: compras MRO, compras regionales de
+# Americas, EHS corporativo y una gerencia de mantenimiento sin planta
+# aparecieron en 2 a 4 de las cuatro corridas de Coficab, y CADA Chao1 las sumo a
+# SU poblacion. Los cuatro Chao1 estimaron sobre una poblacion que no existe. Y
+# la ficha de Pesqueria traia como unico contacto a uno de JUAREZ.
+#
+# LA REGLA, Y SU LIMITE, SON LO MISMO: la ubicacion sale de la EVIDENCIA, nunca
+# del titulo. "Compras = corporativo" perderia a la gerencia de compras DE LA
+# PLANTA, que si es target -- en Silao era uno de los cuatro de valor--. Asi que
+# se lee del campo de ubicacion que las fuentes llenaron, y si no hay nada, NO SE
+# EXCLUYE A NADIE: ausencia de evidencia no es evidencia de ausencia, y excluir
+# por silencio seria exactamente la heuristica que esto evita.
+CAMPOS_DE_UBICACION = ("planta", "sitio", "ubicacion", "ubicación")
+
+# Palabras que dicen "esto no es una planta, es el grupo": las que aparecieron de
+# verdad en las cuatro corridas ("COFICAB Group", compras regionales de
+# Americas, EHS corporativo) mas las formas equivalentes.
+MARCAS_CORPORATIVAS = (
+    "group", "grupo", "corporate", "corporativo", "corporativa",
+    "headquarters", "hq", "matriz", "global", "worldwide",
+    "regional", "region", "americas", "america del norte", "north america",
+    "latam", "latinoamerica", "latinoamérica", "emea", "apac",
+)
+
+# Donde puede quedar una persona respecto de la corrida que la encontro.
+EN_ESTA_PLANTA = "esta_planta"
+EN_OTRA_PLANTA = "otra_planta"
+EN_CORPORATIVO = "corporativo"
+SIN_UBICACION = "sin_ubicacion"
+
+
+def _es_corporativa(valor: str) -> bool:
+    v = f" {_plano_puesto(valor)} "
+    return any(f" {m} " in v or v.strip().startswith(m) or v.strip().endswith(m)
+               for m in MARCAS_CORPORATIVAS)
+
+
+def _nombra_la_ciudad(valor: str, ciudad: str) -> bool:
+    """La ciudad de la corrida aparece en el valor de ubicacion.
+
+    Se compara sin acentos y por PALABRA, igual que la contencion: sin la
+    frontera, "leon" emparejaria dentro de cualquier cadena que la contenga.
+    Y se prueba tambien sin las abreviaturas que la geografia mexicana arrastra
+    ("Cd. Juarez" contra "Ciudad Juarez" contra "Juarez").
+    """
+    v, c = _plano_puesto(valor), _plano_puesto(ciudad)
+    if not v or not c:
+        return False
+    nucleo = [t for t in c.split()
+              if t not in ("cd", "ciudad", "de", "del", "la", "las", "los",
+                           "san", "santa", "villa")]
+    if not nucleo:
+        nucleo = c.split()
+    return all(re.search(r"(?<!\w)" + re.escape(t) + r"(?!\w)", v)
+               for t in nucleo)
 
 # Cuantas anclas DISTINTAS hacen falta para que un campo con disidencia viva
 # llegue a CONFIRMADO en vez de topar en SOLIDO.
@@ -261,6 +332,18 @@ class Observacion:
     magnitud: float | None = None   # el % que el directorio declara, si lo da
     forma: str | None = None        # la FORMA del patron, si la fuente la nombra
                                     # ("first.last", "first_lastinitial", ...)
+    # SEMBRADA de otra corrida, no observada en esta. Ver `sembrar` en el
+    # orquestador y el §4 de metodo/propuestas-de-metodo-300.md.
+    #
+    # ESTE CAMPO ES EL QUE IMPIDE QUE SEMBRAR INVENTE CONFIRMACIONES. El patron
+    # de correo de Coficab tiene UNA sola ancla, en Juarez. Si sembrarla contara
+    # como fuente, esa unica observacion produciria CONFIRMADO en las cuatro
+    # corridas, y el estado reportaria cuatro confirmaciones de un solo hecho --
+    # indistinguible, leyendo el estado, de cuatro observaciones
+    # independientes--. Es la misma familia de error que la regla de RAICES
+    # previene, y una semilla comparte origen con su corrida POR DEFINICION.
+    sembrado: bool = False
+    de_corrida: str = ""            # de que corrida vino la semilla
 
     def __post_init__(self) -> None:
         if self.magnitud is None and self.nota:
@@ -275,6 +358,8 @@ class Observacion:
     @property
     def es_ancla(self) -> bool:
         """Esta observacion es un dato literal observado, no una estimacion."""
+        if self.sembrado:
+            return False       # una semilla no es un literal de ESTA corrida
         return self.fuente.strip().lower() in FUENTES_ANCLA
 
 
@@ -301,7 +386,37 @@ class Dato:
 
     @property
     def n_raices(self) -> int:
-        return len({o.raiz for o in self.observaciones})
+        """Raices de observaciones PROPIAS. Las sembradas no cuentan.
+
+        Es la linea que impide que sembrar invente confirmaciones. Ver el
+        comentario de `Observacion.sembrado`.
+        """
+        return len({o.raiz for o in self.observaciones if not o.sembrado})
+
+    @property
+    def es_derivado_de_patron(self) -> bool:
+        """Derivado de un patron, leido de la EVIDENCIA y no de una bandera.
+
+        `derivado_de_patron` es un booleano que pone quien construye el Dato, y
+        un booleano que alguien pone es la familia de defecto que este proyecto
+        lleva cuatro issues cerrando: lo encontro una prueba del paquete del
+        motor 3, donde un correo con una sola observacion de `patron_derivado`
+        salia SOLIDO porque nadie habia puesto la bandera. La fuente ya lo dice.
+        """
+        return self.derivado_de_patron or any(
+            o.fuente.strip().lower() == "patron_derivado"
+            for o in self.observaciones)
+
+    @property
+    def solo_sembrado(self) -> bool:
+        """Todo lo que sostiene este dato vino de otra corrida."""
+        return bool(self.observaciones) and all(o.sembrado
+                                                for o in self.observaciones)
+
+    @property
+    def corridas_que_lo_sembraron(self) -> list[str]:
+        return sorted({o.de_corrida for o in self.observaciones
+                       if o.sembrado and o.de_corrida})
 
     @property
     def valores(self) -> list[Any]:
@@ -439,6 +554,8 @@ class Dato:
         """
         if self.contencion:
             return self.salvedad_por_contencion
+        if self.equivalencia:
+            return self.salvedad_por_equivalencia
         if not self.informa_pese_al_conflicto:
             return ""
         _valor, a_favor, disidentes = self.mayoria
@@ -505,6 +622,59 @@ class Dato:
                 "contiene a la otra.")
 
     @property
+    def equivalencia(self) -> tuple | None:
+        """Los valores son el MISMO puesto en dos idiomas, por tabla.
+
+        Devuelve (el_termino_en_espanol, los_demas) o None.
+
+        Es el caso de Durango -- 2 de los 3 conflictos de puesto de esa corrida--
+        y la contencion no lo alcanza: "Director General" no contiene a "General
+        Manager" ni al reves. Lo unico que los une es que significan lo mismo, y
+        eso no se deduce de las cadenas: se declara en una tabla que Esteban
+        aprueba (`catalogo.EQUIVALENCIAS_DE_PUESTO`).
+
+        TODOS los valores tienen que caer en el MISMO grupo. Con
+        "Director General" / "General Manager" / "Gerente de Ventas" no hay
+        equivalencia: el tercero es otra persona u otro dato, y ahi el conflicto
+        es de verdad.
+
+        LIMITE DECLARADO: la tabla empareja el valor COMPLETO, no un nucleo
+        dentro de una cadena larga. "Gerente de Planta" contra "Plant Manager
+        COFICAB Silao" NO es equivalencia y sigue chocando. Aflojarlo pedia un
+        tokenizador de titulos, y el modo de falla de aflojarlo es fusionar a dos
+        personas distintas -- el mismo riesgo que hizo que la contencion se
+        quedara fuera de `entidad`--.
+        """
+        if self.campo not in CAMPOS_CON_EQUIVALENCIA:
+            return None
+        vals = [v for v in self.valores if isinstance(v, str)]
+        if len(vals) < 2 or len(vals) != len(self.valores):
+            return None
+        grupos = {grupo_de_puesto(v) for v in vals}
+        if len(grupos) != 1 or None in grupos:
+            return None
+        g = EQUIVALENCIAS_DE_PUESTO[grupos.pop()]
+        # El termino en ESPANOL es el primero del grupo, y es el que se reporta:
+        # la ficha la lee un operador mexicano. Si varios valores caen del lado
+        # espanol, gana el que la tabla lista primero.
+        en_espanol = [v for v in vals if _plano_puesto(v) == _plano_puesto(g[0])]
+        principal = en_espanol[0] if en_espanol else vals[0]
+        return (principal, [v for v in vals if v != principal])
+
+    @property
+    def salvedad_por_equivalencia(self) -> str:
+        e = self.equivalencia
+        if not e:
+            return ""
+        principal, otros = e
+        quien = ", ".join(sorted({o.fuente for o in self.observaciones
+                                  if o.valor in otros}))
+        return (f"se reporta {principal}; {quien or 'otra fuente'} lo dice "
+                f"{' / '.join(str(o) for o in otros)}. No es contradiccion: son "
+                "el mismo puesto en dos idiomas, por la tabla de equivalencias "
+                "que Esteban aprobo.")
+
+    @property
     def choca(self) -> bool:
         """Chocan por cualquiera de las TRES caras de la regla C1:
 
@@ -523,6 +693,8 @@ class Dato:
             return False
         if self.contencion:
             return False          # B2: contencion no es contradiccion
+        if self.equivalencia:
+            return False          # el mismo puesto en dos idiomas, por tabla
         if len(self.valores) > 1:
             return True
         if len(self.formas) > 1:
@@ -544,6 +716,12 @@ class Dato:
     def nivel(self) -> str:
         if not self.observaciones:
             return NO_ENCONTRADO
+        if self.solo_sembrado:
+            # TOPA EN CANDIDATO, y no es prudencia: es lo que se observo. Aqui
+            # nadie miro nada -- el dato viene de otra corrida-- y sin `n_raices`
+            # propias no hay con que subirlo. Cuando esta corrida lo observe por
+            # su cuenta, deja de ser solo sembrado y sube con sus propias raices.
+            return CANDIDATO
         if self.choca:
             if not self.informa_pese_al_conflicto:
                 return EN_CONFLICTO
@@ -556,6 +734,13 @@ class Dato:
             if self.medido_no_inferido and self.n_raices >= 2:
                 return CONFIRMADO
             return SOLIDO
+        if self.equivalencia:
+            # Igual que la contencion, y por una razon propia: las fuentes
+            # coinciden en el PUESTO y no en como se escribe. Y la tabla es una
+            # decision humana, no una observacion: llamar CONFIRMADO a un
+            # acuerdo que depende de una tabla seria acreditarle a la evidencia
+            # algo que puso el catalogo.
+            return SOLIDO
         if self.contencion:
             # Coinciden en el TRONCO, no en el todo: una lo dice mas corto. Dos
             # fuentes que dicen "Gerente" y "Gerente COFICAB LEON, Silao Gto"
@@ -565,7 +750,7 @@ class Dato:
         if self.n_raices >= 2:
             return CONFIRMADO
         # una sola raiz: TOPA aqui. No es conflicto, es techo.
-        if self.derivado_de_patron and not self.ancla_dura:
+        if self.es_derivado_de_patron and not self.ancla_dura:
             return CANDIDATO
         if self.certeza_declarada_baja:
             return CANDIDATO
@@ -583,6 +768,9 @@ class Dato:
             if self.informa_pese_al_conflicto:
                 return self.mayoria[0]
             return None          # elegir en silencio es el bug del Caso F
+        e = self.equivalencia
+        if e:
+            return e[0]          # el termino en espanol, y la salvedad da el otro
         c = self.contencion
         if c:
             # El MAS ESPECIFICO, no el primero que llego: "Gerente COFICAB LEON,
@@ -781,6 +969,53 @@ class Contacto:
                    for campo, d in self.datos.items()
                    if campo in CAMPOS_DE_ANCLA
                    for o in d.observaciones)
+
+    @property
+    def ubicaciones_observadas(self) -> list[str]:
+        """Lo que las fuentes dijeron de DONDE esta, sin inventar nada."""
+        out = []
+        for campo in CAMPOS_DE_UBICACION:
+            d = self.datos.get(campo)
+            if not d:
+                continue
+            for o in d.observaciones:
+                if isinstance(o.valor, str) and o.valor.strip():
+                    out.append(o.valor)
+        return out
+
+    def ubicacion_respecto_a(self, ciudad: str | None) -> str:
+        """Donde esta esta persona respecto de la corrida que la encontro.
+
+        Cuatro respuestas, y la cuarta es la que mantiene la regla honesta:
+
+          EN_ESTA_PLANTA  alguna fuente nombra la ciudad de la corrida
+          EN_OTRA_PLANTA  nombran una planta, y ninguna es esta
+          EN_CORPORATIVO  lo que nombran es el grupo o una region, no una planta
+          SIN_UBICACION   nadie dijo donde esta -- y entonces NO SE EXCLUYE--
+
+        El orden importa: **basta UNA fuente que nombre esta ciudad** para que la
+        persona sea de aqui. Es el caso de Juarez en #300, donde un contacto
+        tenia "COFICAB Group" y "planta Cd. Juarez" a la vez y el challenge lo
+        marco como CONFLICTO de planta: no hay conflicto, la persona es de Juarez
+        y una fuente la nombro por el grupo.
+        """
+        vals = self.ubicaciones_observadas
+        if not vals:
+            return SIN_UBICACION
+        if ciudad and any(_nombra_la_ciudad(v, ciudad) for v in vals):
+            return EN_ESTA_PLANTA
+        if all(_es_corporativa(v) for v in vals):
+            return EN_CORPORATIVO
+        if not ciudad:
+            # Una corrida sin ciudad -- la corporativa-- no tiene con que decir
+            # "otra planta": no hay esta. Ver `completitud` en estado.py.
+            return SIN_UBICACION
+        return EN_OTRA_PLANTA
+
+    def cuenta_en_la_poblacion_de(self, ciudad: str | None) -> bool:
+        """Si esta persona pertenece a la poblacion que Chao1 esta estimando."""
+        return self.ubicacion_respecto_a(ciudad) not in (EN_OTRA_PLANTA,
+                                                         EN_CORPORATIVO)
 
     @property
     def de_valor(self) -> bool:

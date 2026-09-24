@@ -31,7 +31,11 @@ from .catalogo import exigir_permitida, FuenteProhibida
 from .conectores import Sondeo, CONECTORES, VENTANA_MINUTOS
 from .confianza import (Contacto, N1_CONFIRMADO, N2_PARCIAL, N3_PUESTO,
                         CERCANIA_SIN_ESTIMAR, exigir_cercania_coherente)
-from .estado import Corrida, RESPONDIO, OLAS
+from .estado import (Corrida, RESPONDIO, OLAS, NIVEL_PLANTA,
+                     NIVEL_CORPORATIVO, LLAVE_CORPORATIVO, ORIGEN_MANUAL,
+                     ORIGEN_RADAR, SE_PUEDE_SEMBRAR, MARCA_ANGULO)
+from .paquete import armar as armar_paquete, escribir as escribir_paquete
+from .compuertas import TOPE_SIN_HUMANO
 from .ficha import (modo_limpio, modo_procedencia,
                     modo_procedencia_html, tabla_de_rendimiento)
 
@@ -83,8 +87,17 @@ def _carpeta_empresa(empresa: str) -> str:
     return os.path.join(CORRIDAS(), _slug(empresa))
 
 
-def _ruta(empresa: str, ciudad: str | None = None) -> str:
-    """Donde vive la corrida de ESTA planta."""
+def _ruta(empresa: str, ciudad: str | None = None,
+           nivel: str = NIVEL_PLANTA) -> str:
+    """Donde vive la corrida de ESTA planta, o la corporativa.
+
+    La corporativa NO lleva ciudad -- su poblacion no es geografica-- y su llave
+    es `_corporativo`: el guion bajo al frente la hace imposible de colisionar
+    con un slug de ciudad (ninguna empieza asi) y la ordena primero.
+    """
+    if nivel == NIVEL_CORPORATIVO:
+        return os.path.join(_carpeta_empresa(empresa),
+                            f"{LLAVE_CORPORATIVO}.json")
     return os.path.join(_carpeta_empresa(empresa),
                         f"{_slug(ciudad) or SIN_CIUDAD}.json")
 
@@ -192,8 +205,20 @@ def _armar(d: dict, ruta: str) -> Corrida:
     c.gancho = d.get("gancho", "")
     c.por_que_ahora = d.get("por_que_ahora", "")
     c.como_hablarles = d.get("como_hablarles", [])
+    # Los campos del motor 1 y del nivel. Es la MISMA familia de defecto que
+    # `modulo_origen` (#295) y `entrega` (#301): un campo que se escribe y no se
+    # restaura se pierde al releer, y la corrida vuelve pareciendo otra.
+    c.nivel = d.get("nivel", NIVEL_PLANTA)
+    c.sembrado = list(d.get("sembrado", []) or [])
+    c.angulo = d.get("angulo", "")
+    c.origen = d.get("origen", ORIGEN_MANUAL)
+    c.angulo_resuelto = d.get("angulo_resuelto", "")
     pres = d.get("presupuesto", {})
     c.presupuesto.tope_por_cuenta = pres.get("tope", 60)
+    # Los tramos se restauran DESPUES del tope, y tal cual: son el historial de
+    # las renovaciones y la razon escrita de cada una. Recalcularlos seria
+    # inventar la evidencia que las justifico.
+    c.presupuesto.tramos = list(pres.get("tramos", []) or [])
     for b in pres.get("bloques", []):
         c.presupuesto.registrar(b["consultas"], b["nuevas"],
                                 busquedas_al_cerrar=b.get("busquedas_al_cerrar", 0),
@@ -231,7 +256,9 @@ def _armar(d: dict, ruta: str) -> Corrida:
             dato.derivado_de_patron = any(o["fuente"] == "patron_derivado" for o in dd["observaciones"])
             for o in dd["observaciones"]:
                 dato.observar(o["fuente"], o["valor"], fecha_dato=o.get("fecha_dato"),
-                              nota=o.get("nota", ""), forma=o.get("forma"))
+                              nota=o.get("nota", ""), forma=o.get("forma"),
+                              sembrado=bool(o.get("sembrado")),
+                              de_corrida=o.get("de_corrida", ""))
         c.contactos.append(x)
     c._recalcular_hits()
     c.firma_al_abrir = c.firma()
@@ -425,7 +452,7 @@ def main(argv=None) -> int:
     for nombre in ("prospecta", "listo", "iniciar", "siguiente", "padron",
                    "buscar", "registrar", "bloque", "cerrar", "vuelta",
                    "challenge", "ficha", "estado", "tope", "fusionar",
-                   "conectores", "entregar"):
+                   "conectores", "entregar", "sembrar", "tramo", "paquete"):
         s = sub.add_parser(nombre)
         if nombre == "estado":
             # `estado` sin --empresa resume TODAS las corridas de la sesion.
@@ -449,6 +476,19 @@ def main(argv=None) -> int:
             s.add_argument("--dominio", default="")
             s.add_argument("--entidad", default="")
             s.add_argument("--tope", type=int, default=60)
+            s.add_argument("--nivel", choices=[NIVEL_PLANTA, NIVEL_CORPORATIVO],
+                           default=NIVEL_PLANTA,
+                           help="planta (lo de siempre) o corporativo: la gente "
+                                "regional o de grupo, que NO tiene planta. El "
+                                "corporativo no pide --ciudad")
+            s.add_argument("--angulo", default="",
+                           help="la SENAL que origino la corrida. Con --origen "
+                                "radar entra a la ficha como gancho PRELIMINAR, "
+                                "no observado, y la corrida lo confirma o corrige")
+            s.add_argument("--origen", choices=[ORIGEN_MANUAL, ORIGEN_RADAR],
+                           default=ORIGEN_MANUAL,
+                           help="de donde vino el angulo: manual (el operador) o "
+                                "radar (el motor 1)")
         if nombre == "padron":
             s.add_argument("--ciudad", default="")
             s.add_argument("--entidad", default="")
@@ -532,6 +572,30 @@ def main(argv=None) -> int:
             s.add_argument("--parcial", action="store_true",
                            help="cierra un bloque incompleto. NO cuenta como "
                                 "seco aunque no traiga nada.")
+        if nombre == "sembrar":
+            s.add_argument("--de", dest="de_corrida", required=True,
+                           help="la corrida de origen, como 'Coficab/Cd. Juarez'")
+            # SIN `choices` a proposito: argparse rechazaria `contactos` con un
+            # "invalid choice" y se perderia la razon, que es la parte que
+            # importa -- sembrar contactos regionales en una planta es el doble
+            # conteo de #300--. La compuerta de `Corrida.sembrar` la explica.
+            s.add_argument("--que", required=True,
+                           help="patron, vocabulario o nota. Los CONTACTOS "
+                                "regionales no se siembran en una planta: van a "
+                                "la corrida corporativa")
+            s.add_argument("--valor", required=True)
+            s.add_argument("--nota", default="")
+        if nombre == "tramo":
+            s.add_argument("--renovar", action="store_true",
+                           help="sube el tope un tramo, si la evidencia lo "
+                                "justifica. Sin esto solo informa")
+            s.add_argument("--autorizado", action="store_true",
+                           help="el operador autoriza pasar del tope que la "
+                                "herramienta renueva sola")
+        if nombre == "paquete":
+            s.add_argument("--salida", default=None,
+                           help="donde escribir el JSON. Por omision, la carpeta "
+                                "de la corrida")
         if nombre == "ficha":
             s.add_argument("--modo", choices=["limpio", "procedencia"], default="limpio")
             s.add_argument("--salida", default=None)
@@ -615,12 +679,22 @@ def main(argv=None) -> int:
                     print(f"\n  ⛔ {e}\n", file=sys.stderr)
                     return 3
             sondeo.exigir_listo()
+            corporativo = a.nivel == NIVEL_CORPORATIVO
+            if corporativo and a.ciudad:
+                print("\n  ⛔ --nivel corporativo no lleva --ciudad: su poblacion "
+                      "NO es geografica.\n     Si querias la planta de "
+                      f"{a.ciudad}, corre sin --nivel.\n", file=sys.stderr)
+                return 2
             ar = resolver(a.empresa, a.ciudad, a.giro, a.dominio, a.entidad)
-            ruta_nueva = _ruta(a.empresa, a.ciudad or ar.ciudad)
+            ruta_nueva = _ruta(a.empresa, a.ciudad or ar.ciudad,
+                               nivel=a.nivel)
             existente = (_ruta_plana(a.empresa)
                          if os.path.exists(_ruta_plana(a.empresa))
                          else ruta_nueva)
-            if ar.ambiguo and not os.path.exists(existente):
+            # La corrida CORPORATIVA no pregunta cual planta: no va a ninguna.
+            # Que el padron liste tres establecimientos es informacion, no una
+            # ambiguedad que resolver.
+            if ar.ambiguo and not corporativo and not os.path.exists(existente):
                 # NO se abre la corrida: elegir una planta en silencio es el caso
                 # de los cinco DUNS de Ragasa, y hornear '(sin ciudad)' en una
                 # corrida guardada es peor que preguntar.
@@ -628,9 +702,30 @@ def main(argv=None) -> int:
                 return 3
             hay_corrida = os.path.exists(existente)
             if not hay_corrida:
-                c = Corrida(empresa=a.empresa, ciudad=ar.ciudad or "(sin ciudad)",
-                            giro=ar.giro)
+                c = Corrida(
+                    empresa=a.empresa,
+                    ciudad="" if corporativo else (ar.ciudad or "(sin ciudad)"),
+                    giro=ar.giro, nivel=a.nivel)
                 c.presupuesto.tope_por_cuenta = a.tope
+                # El ANGULO. Cuando lo siembra el radar entra como gancho
+                # PRELIMINAR y se dice que no se observo aqui: la corrida lo
+                # confirma o lo corrige, y la ficha lo declara mientras no pase
+                # ninguna de las dos cosas. Un gancho sembrado que sale como si
+                # lo hubiera medido esta corrida es la semilla que se hace pasar
+                # por observacion, el modo de falla del §4 de las propuestas.
+                if a.angulo:
+                    c.angulo = a.angulo.strip()
+                    c.origen = a.origen
+                    if a.origen == ORIGEN_RADAR:
+                        c.gancho = c.angulo
+                        c.avisos.append(
+                            MARCA_ANGULO
+                            + "GANCHO PRELIMINAR sembrado por el RADAR, no "
+                            "observado en esta corrida. Confirmalo o corrigelo "
+                            "con `registrar --datos '{\"angulo_resuelto\": "
+                            "\"confirmado|corregido\"}'` antes de la ficha.")
+                    else:
+                        c.angulo_resuelto = "manual"
                 for b in ar.banderas:
                     c.avisos.append(str(b).replace("\n", " "))
                 # Un conector autorizado como hueco no se queda en una nota: el
@@ -664,6 +759,19 @@ def main(argv=None) -> int:
                     c.cerrar_modulo("M13", "no_aplicaba",
                                     ar.banderas[-1].mensaje if ar.banderas
                                     else "no aparece en el padron")
+                # El nivel corporativo se aplica DESPUES del padron, a
+                # proposito: el padron SI se consulto -- la consulta queda
+                # registrada, y cero filas es una respuesta-- pero la RAZON que
+                # manda en M13 es la del nivel, no la del empate. Al reves, la
+                # razon del padron pisaba la del nivel y la cobertura decia "no
+                # aparece en el corte" cuando lo que pasa es que el corporativo
+                # no es un establecimiento.
+                if corporativo:
+                    cerrados = c.abrir_nivel_corporativo()
+                    c.avisos.append(
+                        "NIVEL CORPORATIVO: " + ", ".join(cerrados) + " salen "
+                        "no_aplicaba con razon escrita. Una vacante y un "
+                        "establecimiento del DENUE son objetos DE PLANTA.")
                 c.guardar(existente)
                 print("\nCONECTORES verificados antes de abrir:")
                 for linea in sondeo.resumen():
@@ -749,6 +857,80 @@ def main(argv=None) -> int:
                   "los hits colgarian de una clave que ya no existe.")
             return 0
 
+        if a.cmd == "sembrar":
+            r = c.sembrar(a.de_corrida, a.que, a.valor, nota=a.nota)
+            c.guardar(_ruta_de(c, a))
+            print(f"\nSEMBRADO de {r['de_corrida']}: {r['que']} = {r['valor']}")
+            print("  NO cuenta como consulta, NO mueve el agotado, y NO cuenta "
+                  "como raiz.")
+            print("  Topa en CANDIDATO hasta que ESTA corrida lo observe por su "
+                  "cuenta.")
+            print("  La ficha lo declara: 'sembrado de <corrida>, no observado "
+                  "aqui'.\n")
+            _imprimir_paso(c)
+            return 0
+
+        if a.cmd == "tramo":
+            ev = c.evaluar_tramo()
+            print(f"\nTRAMO {ev['tramo_actual']} · tope {ev['tope_actual']} "
+                  f"consultas · gastadas {c.presupuesto.gastadas}")
+            print(f"  Evidencia: {ev['razon']}")
+            print(f"\n  Las tres condiciones para renovar a {ev['tope_siguiente']}:")
+            for k, v in ev["condiciones"].items():
+                print(f"    [{'OK' if v else '  '}] {k.replace('_', ' ')}")
+            if not a.renovar:
+                if ev["puede"]:
+                    extra = (" --autorizado" if ev["necesita_humano"] else "")
+                    print(f"\n  Se puede renovar. Corre: ./prospector tramo "
+                          f"--empresa {c.empresa!r} --renovar{extra}\n")
+                else:
+                    print("\n  NO se renueva todavia. Falta: "
+                          + ", ".join(ev["faltan"]) + "\n")
+                return 0
+            if ev["necesita_humano"] and not a.autorizado:
+                print(f"\n  ⛔ Pasar de {ev['tope_actual']} a "
+                      f"{ev['tope_siguiente']} excede {TOPE_SIN_HUMANO}, que es "
+                      "hasta donde la herramienta renueva sola.\n"
+                      "     Preguntale al operador y vuelve con --autorizado.\n",
+                      file=sys.stderr)
+                return 3
+            r = c.renovar_tramo(autorizado_por_humano=a.autorizado)
+            c.avisos.append(
+                f"TOPE RENOVADO por tramo {r['tramo']}: {r['tope_anterior']} -> "
+                f"{r['tope_nuevo']} consultas. Razon: {r['razon']}"
+                + (" (autorizado por el operador)"
+                   if r["autorizado_por_humano"] else " (automatico)"))
+            c.guardar(_ruta_de(c, a))
+            print(f"\n  TRAMO {r['tramo']}: tope {r['tope_anterior']} -> "
+                  f"{r['tope_nuevo']}. Restantes: {c.presupuesto.restantes}")
+            print(f"  Razon escrita, y queda en la ficha: {r['razon']}\n")
+            _imprimir_paso(c)
+            return 0
+
+        if a.cmd == "paquete":
+            destino = a.salida or os.path.join(
+                os.path.dirname(_ruta_de(c, a)),
+                (_slug(c.ciudad) or LLAVE_CORPORATIVO) + "-paquete.json")
+            destino = exigir_fuera_del_repo(destino)
+            ruta = escribir_paquete(c, destino)
+            pq = armar_paquete(c)
+            print(f"\nPAQUETE PARA EL MOTOR 3 (CRM) — {os.path.getsize(ruta):,} bytes")
+            print(f"  {ruta}")
+            print(f"  empresa {pq['empresa']} · planta {pq['planta'] or '(corporativo)'}"
+                  f" · origen {pq['origen']}")
+            print(f"  contactos de valor: {len(pq['contactos_de_valor'])}"
+                  f" · senales: {len(pq['senal'])}")
+            for x in pq["contactos_de_valor"]:
+                print(f"    · {x['puesto'] or '(sin puesto)'} — canal "
+                      f"{x['canal_recomendado']} — {x['nivel_confianza']}"
+                      + ("  ⚠ REVISION HUMANA" if x["revision_humana"] else ""))
+            if not pq["contactos_de_valor"]:
+                print("    (ninguno: el motor 3 no tiene a quien tocar todavia)")
+            print("\n  El paquete es un INSUMO, no una instruccion. Los de "
+                  "revision humana NO se contactan sin que alguien los revise.\n")
+            _imprimir_paso(c)
+            return 0
+
         if a.cmd == "tope":
             antes = c.presupuesto.tope_por_cuenta
             if a.nuevo <= antes:
@@ -782,7 +964,28 @@ def main(argv=None) -> int:
                     x.modulo_origen = a.modulo
                 c.agregar(x)
             c.vocabulario.extend(d.get("vocabulario", []))
-            c.senal.extend(d.get("senal", []))
+            for sn in d.get("senal", []):
+                c.agregar_senal(sn)          # <- compuerta B1+B6 de #300
+            # El angulo que sembro el radar se CONFIRMA o se CORRIGE aqui. Que
+            # el gancho preliminar se quede sin resolver no bloquea la ficha,
+            # pero la ficha lo declara: un gancho que el radar supuso y la
+            # corrida no verifico no puede salir con el mismo peso que uno medido.
+            if d.get("angulo_resuelto"):
+                r = str(d["angulo_resuelto"]).strip().lower()
+                if r not in ("confirmado", "corregido", "manual"):
+                    raise SystemExit(
+                        f"angulo_resuelto '{r}': solo vale 'confirmado' o "
+                        "'corregido'. El angulo del radar es una hipotesis; la "
+                        "corrida dice si se sostuvo o no.")
+                c.angulo_resuelto = r
+                # El aviso que decia "confirmalo" se REEMPLAZA. Dejarlo seria
+                # una instruccion caduca en la ficha, y el operador no puede
+                # saber cual de las dos cosas es cierta.
+                c.avisos = [a for a in c.avisos
+                            if not a.startswith(MARCA_ANGULO)]
+                c.avisos.append(
+                    MARCA_ANGULO + f"El angulo que sembro el radar quedo "
+                    f"{r.upper()} por esta corrida.")
             # Los tres textos de CRITERIO que la ficha necesita. Se reemplazan,
             # no se acumulan: son una redaccion, no una lista de hallazgos.
             for campo in ("gancho", "por_que_ahora"):

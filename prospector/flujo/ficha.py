@@ -152,9 +152,14 @@ def modo_limpio(c: Corrida) -> str:
     la mitad de las secciones que el operador necesita para mandarla.
     """
     est = c.completitud()
-    visibles = [x for x in c.contactos if not x.revision_humana and x.sigue_en_la_casa]
+    # Los de OTRA PLANTA o del CORPORATIVO no salen aqui, y no es que se
+    # pierdan: salen en su propia seccion, y la semilla corporativa se los lleva.
+    # La ficha de Pesqueria de #300 traia como unico contacto a uno de Juarez.
+    poblacion = c.poblacion()
+    visibles = [x for x in poblacion if not x.revision_humana and x.sigue_en_la_casa]
     visibles.sort(key=lambda x: (x.cercania_decision, x.nombre or "zzz"))
-    ocultos = len(c.contactos) - len(visibles)
+    ocultos = len(poblacion) - len(visibles)
+    fuera = c.fuera_de_la_poblacion()
 
     # --- a quien buscar
     filas = []
@@ -174,6 +179,40 @@ def modo_limpio(c: Corrida) -> str:
             f'<td>{html.escape(planta) or "<i>n/d</i>"}</td>'
             f'<td>{linea_correo}</td>'
             f'<td class="c">{"si" if x.de_valor else "no"}</td></tr>')
+
+    # --- los que NO son de esta planta: no se tiran, se exportan
+    filas_fuera = []
+    for x, donde in fuera:
+        filas_fuera.append(
+            f'<tr><td>{html.escape(x.puesto or x.nombre or "?")}</td>'
+            f'<td>{html.escape(", ".join(x.ubicaciones_observadas))}</td>'
+            f'<td class="c">{"otra planta" if donde == "otra_planta" else "corporativo"}</td>'
+            f'</tr>')
+    bloque_fuera = ("" if not filas_fuera else (
+        f'<h2>No son de esta planta — {len(filas_fuera)}</h2>'
+        '<p class="meta">Salen del Chao1 de esta corrida a proposito: su '
+        'poblacion es otra, y contarlos aqui fue lo que hizo que los cuatro '
+        'Chao1 de #300 estimaran sobre una poblacion que no existe. No se '
+        'pierden — son la semilla de la corrida corporativa:<br>'
+        f'<code>./prospector prospecta --empresa '
+        f'{html.escape(repr(c.empresa))} --nivel corporativo</code></p>'
+        '<table><tr><th>Puesto</th><th>Ubicacion observada</th><th>Donde</th></tr>'
+        + "".join(filas_fuera) + '</table>'))
+
+    # --- lo SEMBRADO de otras corridas: se declara, nunca pasa por observado
+    sem = []
+    for r in c.sembrado:
+        sem.append(f'<li><b>{html.escape(r["que"])}</b>: '
+                   f'<code>{html.escape(str(r["valor"]))}</code> — sembrado de '
+                   f'<i>{html.escape(r["de_corrida"])}</i>, '
+                   f'<b>no observado en esta corrida</b></li>')
+    bloque_sembrado = ("" if not sem else (
+        f'<h2>Sembrado de otras corridas — {len(sem)}</h2>'
+        '<ul class="sv">' + "".join(sem) + '</ul>'
+        '<p class="meta">Una semilla NO cuenta como fuente ni como raiz, y topa '
+        'en CANDIDATO hasta que esta corrida lo observe por su cuenta. Sin esa '
+        'regla, una sola ancla produciria CONFIRMADO en cuatro corridas y el '
+        'estado reportaria cuatro confirmaciones de un solo hecho.</p>'))
 
     # --- senal, con su fecha al lado
     sen = []
@@ -251,6 +290,22 @@ def modo_limpio(c: Corrida) -> str:
     # ficha -- dentro hay trabajo real y negarse a emitirla lo perderia-- pero no
     # puede salir sin decirlo: quien la reciba tiene derecho a saber que una
     # parte del estado no la escribio la herramienta.
+    # El angulo que sembro el RADAR y esta corrida no confirmo ni corrigio. No
+    # bloquea la ficha -- el trabajo de la corrida es real-- pero no puede salir
+    # con el mismo peso que un gancho medido aqui.
+    aviso_angulo = ""
+    if c.origen == "radar" and c.angulo and not c.angulo_resuelto:
+        aviso_angulo = (
+            '<div class="prelim"><b>GANCHO PRELIMINAR, sembrado por el radar.</b> '
+            'Esta corrida NO lo confirmo ni lo corrigio, asi que el gancho de '
+            'abajo es la hipotesis con la que el radar detono la busqueda, no un '
+            'hallazgo medido aqui. Vale la pena verificarlo antes de usarlo como '
+            'gancho de apertura.</div>')
+    elif c.origen == "radar" and c.angulo_resuelto == "corregido":
+        aviso_angulo = (
+            '<div class="prelim">El radar detono esta corrida con otro angulo y '
+            'la corrida lo <b>corrigio</b>. El gancho de abajo es el corregido.</div>')
+
     aviso_edicion = ('<div class="editada"><b>ESTADO EDITADO A MANO.</b> La firma '
                      'del archivo de esta corrida no coincide con su contenido: '
                      'alguien escribio el JSON por fuera de la herramienta. Los '
@@ -324,6 +379,8 @@ def modo_limpio(c: Corrida) -> str:
  ul.sv{{background:#fdf8e6;border-left:3px solid var(--oro);
         padding:10px 12px 10px 30px;margin:0;font-size:.9rem}}
  ul.sv code{{font:.82rem ui-monospace,monospace;color:var(--azul)}}
+ .prelim{{background:#fbf3e8;border:2px solid var(--ambar);color:#7a5308;
+          padding:11px 14px;margin-bottom:16px;font-size:.9rem;border-radius:3px}}
  .editada{{background:#fdecea;border:2px solid #a4340a;color:#7a2708;
            padding:12px 14px;margin-bottom:18px;font-size:.92rem;
            border-radius:3px}}
@@ -341,7 +398,7 @@ def modo_limpio(c: Corrida) -> str:
 </style>
 </head>
 <body>
-{aviso_edicion}
+{aviso_edicion}{aviso_angulo}
 <h1>{html.escape(c.empresa)}</h1>
 <div class="meta">{html.escape(c.ciudad)} · {html.escape(c.giro)} ·
  corrida {c.creada[:10]} · {len(c.busquedas())} busquedas registradas</div>
@@ -355,7 +412,7 @@ def modo_limpio(c: Corrida) -> str:
 <h2>Por que ahora</h2>
 {bl_porque}
 
-{bloque_conf}{bloque_salv}
+{bloque_conf}{bloque_salv}{bloque_fuera}{bloque_sembrado}
 
 <h2>A quien buscar — {len(visibles)} entradas</h2>
 <table>

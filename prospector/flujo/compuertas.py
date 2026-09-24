@@ -164,6 +164,28 @@ SECO_SI_VALOR_MENOR_QUE = 1
 SECO_SI_NUEVAS_MENOR_QUE = 1
 
 
+# ------------------------------------------------------- (b-bis) los TRAMOS
+#
+# El tope deja de ser un numero y pasa a ser UN TRAMO CON RENOVACION. Aprobado
+# sobre #302; lo medido que lo pide esta en #300: TRES de las cuatro corridas de
+# Coficab cerraron en 60/60 con Chao1 pidiendo seguir, y el tope de 60 se eligio
+# antes de tener una sola corrida grande.
+#
+# POR QUE EL TRAMO ES DE 30, y no de 20 ni de 50: treinta consultas son
+# EXACTAMENTE TRES BLOQUES DE DIEZ, que es la ventana minima en la que la regla
+# de saturacion (`BLOQUES_SECOS_PARA_PARAR`) puede dispararse. Un tramo de 20 no
+# le da a la compuerta de agotado la oportunidad de probar que ya no hay nada; uno
+# de 50 gasta veinte consultas despues de que ya se probo.
+TRAMO_BASE = 60
+TRAMO_INCREMENTO = 30
+# Hasta aqui renueva SOLA, con sus tres condiciones cumplidas y su razon escrita.
+# De aqui en adelante lo decide el operador: una renovacion automatica sin techo
+# convierte el tope en decoracion -- Chao1 casi siempre dice que falta gente, es
+# un estimador de poblacion-- y una que pregunta siempre, con cuatro corridas en
+# paralelo, son cuatro preguntas seguidas que se contestan "si" sin leer.
+TOPE_SIN_HUMANO = 90
+
+
 @dataclass
 class Bloque:
     numero: int
@@ -215,8 +237,45 @@ class Bloque:
 
 @dataclass
 class Presupuesto:
-    tope_por_cuenta: int = 60
+    tope_por_cuenta: int = TRAMO_BASE
     bloques: list[Bloque] = field(default_factory=list)
+    # Cada renovacion, con la EVIDENCIA que la justifico. No es una bitacora
+    # decorativa: es lo que la ficha y el issue citan cuando alguien pregunta por
+    # que esta corrida gasto 90 y no 60.
+    tramos: list[dict] = field(default_factory=list)
+
+    @property
+    def tramo(self) -> int:
+        return 1 + len(self.tramos)
+
+    @property
+    def tope_siguiente(self) -> int:
+        return self.tope_por_cuenta + TRAMO_INCREMENTO
+
+    @property
+    def renovacion_necesita_humano(self) -> bool:
+        """La siguiente renovacion pasa de TOPE_SIN_HUMANO."""
+        return self.tope_siguiente > TOPE_SIN_HUMANO
+
+    def renovar(self, razon: str, evidencia: dict,
+                autorizado_por_humano: bool = False) -> dict:
+        """Sube el tope un tramo. La razon es OBLIGATORIA y queda escrita."""
+        if not str(razon or "").strip():
+            raise CompuertaCerrada(
+                "Una renovacion de tope sin razon escrita es un tope que no "
+                "existe. La razon es lo que la ficha cita despues.")
+        if self.renovacion_necesita_humano and not autorizado_por_humano:
+            raise CompuertaCerrada(
+                f"Subir de {self.tope_por_cuenta} a {self.tope_siguiente} pasa de "
+                f"{TOPE_SIN_HUMANO}, que es hasta donde la herramienta renueva "
+                "sola. De aqui lo decide el operador.")
+        r = {"tramo": self.tramo + 1, "tope_anterior": self.tope_por_cuenta,
+             "tope_nuevo": self.tope_siguiente, "razon": razon.strip(),
+             "autorizado_por_humano": bool(autorizado_por_humano),
+             "ts": datetime.now(timezone.utc).isoformat()} | dict(evidencia or {})
+        self.tope_por_cuenta = self.tope_siguiente
+        self.tramos.append(r)
+        return r
 
     @property
     def gastadas(self) -> int:

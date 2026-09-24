@@ -38,6 +38,15 @@ SIN_DATOS = "sin_datos"
 PREMATURO = "prematuro"
 FALTA_BARRER = "falta_barrer"
 SATURO = "saturo"
+# El TERCER caso del desempate, aprobado sobre #302. No es un veredicto que
+# `estimar` pueda emitir -- no depende de los hits sino de los BLOQUES-- asi que
+# lo resuelve `Corrida.desempate()`. Vive aqui porque es del mismo vocabulario.
+#
+# Es el caso en que las dos compuertas tienen razon A LA VEZ: Chao1 opina y dice
+# que falta ~40% de la poblacion, y tres bloques seguidos dicen que estas
+# consultas ya no la traen. Las dos son ciertas: LA POBLACION NO ESTA AGOTADA,
+# PERO ESTA FORMA DE PREGUNTAR SI. Ni parar ni renovar tope: cambiar de via.
+CAMBIAR_DE_VIA = "cambiar_de_via"
 
 UMBRAL_SATURACION = 0.8     # cobertura estimada a partir de la cual esta barrido
 
@@ -72,8 +81,14 @@ class Estimacion:
     def por_que(self) -> str:
         return {
             SIN_DATOS: "sin un solo contacto: la cascada no ha empezado",
-            PREMATURO: "Chao1 todavia no tiene datos para opinar -- "
-                       "eso manda SEGUIR, no terminar",
+            # CORREGIDA sobre #302. Decia "eso manda SEGUIR, no terminar", y
+            # eso era leer un "no se" como un "sigue". `prematuro` NO MANDA
+            # NADA: con 5 observados y f2=1 Chao1 no tiene denominador, y quien
+            # decide entonces es el presupuesto. Tratar la falta de datos como
+            # una instruccion de seguir es el mismo error que imprimir una liga
+            # sin comprobar como si abriera.
+            PREMATURO: "Chao1 todavia no tiene datos para opinar: NO OPINA, "
+                       "ni para seguir ni para parar. Decide el presupuesto",
             FALTA_BARRER: "Chao1 opina y dice que falta gente por encontrar",
             SATURO: "Chao1 opina y dice que ya esta barrido",
         }[self.veredicto]

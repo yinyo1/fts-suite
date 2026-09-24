@@ -149,17 +149,22 @@ def test_la_contencion_TOPA_en_SOLIDO_no_llega_a_CONFIRMADO():
     assert p.nivel == SOLIDO
 
 
-def test_la_TRADUCCION_de_Durango_SIGUE_chocando():
+def test_la_TRADUCCION_de_Durango_NO_la_cierra_la_CONTENCION():
     """Los 2 de 3 de Durango: 'Director General' contra 'General Manager'.
-    Ninguno contiene al otro y no hay regla de traduccion aprobada. Que esto
-    siga saliendo EN_CONFLICTO es lo correcto, no un pendiente: el arreglo de B2
-    cierra 7 de los 9 falsos conflictos de la corrida, no 9."""
+
+    **Esta prueba cambio de veredicto, y a proposito.** Cuando se escribio,
+    esto seguia chocando y era lo correcto: ninguno contiene al otro y no habia
+    regla de traduccion aprobada. Esteban la aprobo en #302, asi que ahora lo
+    cierra la TABLA DE EQUIVALENCIAS -- no la contencion--, y lo que esta prueba
+    conserva es justo eso: que la contencion no tiene nada que ver aqui. Si
+    alguien quita la tabla, el conflicto vuelve, y esta prueba lo dice.
+    """
     x = Contacto(nombre="N N", puesto=None, empresa="Coficab")
     p = x.dato("puesto")
     p.observar("linkedin_publico", "Director General")
     p.observar("rocketreach", "General Manager")
-    assert p.choca
-    assert p.nivel == EN_CONFLICTO
+    assert p.contencion is None, "ninguno contiene al otro: no es contencion"
+    assert p.equivalencia is not None, "lo cierra la tabla ES-EN, no la contencion"
 
 
 def test_la_contencion_es_por_PALABRA_COMPLETA():

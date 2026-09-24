@@ -28,12 +28,21 @@ def test_sin_datos_no_detiene_el_lazo():
 
 def test_prematuro_NO_detiene_el_lazo():
     """El corazon del defecto. 16 observados, f1=14, f2=1: Chao1 no puede
-    opinar, y eso NO es una senal de terminar."""
+    opinar, y eso NO es una senal de terminar.
+
+    **La ASERCION DEL TEXTO cambio, no la del comportamiento.** Antes el texto
+    decia "eso manda SEGUIR", y esa frase era la otra mitad del defecto: leia un
+    "no se" como un "sigue". Un `prematuro` NO MANDA NADA -- con f2=1 no hay
+    denominador-- y quien decide es el presupuesto. Lo que esta prueba defiende
+    sigue siendo lo mismo: `prematuro` **no detiene** el lazo por su cuenta.
+    """
     e = estimar([4, 2] + [1] * 14)
     assert e.veredicto == PREMATURO
     assert not e.opina
     assert not e.detiene_el_loop
-    assert "SEGUIR" in e.por_que
+    assert "NO OPINA" in e.por_que
+    assert "manda SEGUIR" not in e.por_que, (
+        "un 'no se' no es una instruccion de seguir: eso era el defecto")
 
 
 def test_falta_barrer_no_detiene_el_lazo():

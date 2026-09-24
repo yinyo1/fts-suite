@@ -97,7 +97,13 @@ def test_una_busqueda_sin_liga_lo_dice_en_vez_de_dejar_el_hueco_en_blanco():
 
 
 def test_la_fila_de_contacto_trae_nombre_puesto_planta_correo_y_confianza():
-    c = Corrida(empresa="Casa", ciudad="MTY")
+    # La corrida es de Pesqueria y el contacto tambien. **La ciudad del fixture
+    # cambio**: decia MTY con un contacto de Pesqueria, y desde que la corrida
+    # excluye a quien la evidencia ubica en OTRA planta, ese contacto ya no sale
+    # en "a quien buscar" -- sale en "no son de esta planta", que es lo correcto
+    # y tiene su propia prueba--. Lo que esta prueba verifica no cambio: que la
+    # fila lleve nombre, puesto, planta, correo y nivel.
+    c = Corrida(empresa="Casa", ciudad="Pesqueria")
     x = Contacto(nombre="Ana Ficticia", puesto="Gerente de Mantenimiento",
                  empresa="Casa", cercania_decision=10)
     x.dato("planta").observar("linkedin_publico", "Pesqueria, NL")

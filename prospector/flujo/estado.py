@@ -10,10 +10,14 @@ from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 
 from .compuertas import (EstadoModulo, Presupuesto, CompuertaCerrada, AGOTADO,
-                         TAMANO_BLOQUE,
+                         TAMANO_BLOQUE, POR_FUENTE, TRAMO_INCREMENTO,
+                         TOPE_SIN_HUMANO, BLOQUES_SECOS_PARA_PARAR,
                          Busqueda)
-from .confianza import Contacto, Dato, Observacion, _normaliza
-from .chao1 import estimar
+from .catalogo import PERMITIDAS
+from .confianza import (Contacto, Dato, Observacion, _normaliza,
+                        EN_OTRA_PLANTA, EN_CORPORATIVO,
+                        EN_ESTA_PLANTA, SIN_UBICACION)
+from .chao1 import estimar, FALTA_BARRER, CAMBIAR_DE_VIA, SATURO
 
 # El flujo, con las cinco correcciones validadas en el issue #22.
 OLAS = [
@@ -60,6 +64,40 @@ SIN_ACCESO = "sin_acceso"
 OMITIDA_COSTO = "omitida_por_costo"
 PENDIENTE = "pendiente"
 
+# ---------------------------------------------------------------- niveles
+NIVEL_PLANTA = "planta"
+NIVEL_CORPORATIVO = "corporativo"
+# Llave del archivo de la corrida corporativa. El guion bajo al frente la hace
+# IMPOSIBLE de colisionar con un slug de ciudad -- ninguna ciudad empieza asi--
+# y la ordena primero en la tabla de `estado`.
+LLAVE_CORPORATIVO = "_corporativo"
+
+# Los dos modulos que NO aplican al nivel corporativo, con su razon escrita: una
+# VACANTE y un ESTABLECIMIENTO del DENUE son objetos DE PLANTA. Forzarlos al
+# nivel corporativo devuelve las plantas otra vez, que es el problema que el
+# nivel corporativo resuelve.
+MODULOS_SIN_NIVEL_CORPORATIVO = {
+    "M2": ("una vacante se publica POR PLANTA, con su ciudad. En el nivel "
+           "corporativo devolveria las plantas otra vez, que es justo lo que "
+           "este nivel separa."),
+    "M13": ("el DENUE lista ESTABLECIMIENTOS con domicilio. El corporativo no "
+            "es un establecimiento: no tiene una linea en el padron."),
+}
+
+# De donde vino el angulo de la corrida.
+ORIGEN_MANUAL = "manual"
+ORIGEN_RADAR = "radar"
+# Marca del aviso del angulo preliminar, para poder REEMPLAZARLO cuando la
+# corrida lo resuelve. Mismo mecanismo que `MARCA_CHALLENGE`: un aviso que dice
+# "confirmalo" y sigue ahi despues de confirmado es una instruccion caduca en la
+# ficha, y el operador no puede saber cual de las dos cosas es cierta.
+MARCA_ANGULO = "[angulo] "
+
+# QUE se siembra entre corridas. Lista corta, y los contactos NO estan: un
+# contacto regional sembrado en una corrida de planta es exactamente el doble
+# conteo que #300 midio. Van a la corrida corporativa.
+SE_PUEDE_SEMBRAR = ("patron", "vocabulario", "nota")
+
 
 @dataclass
 class Corrida:
@@ -103,6 +141,20 @@ class Corrida:
     como_hablarles: list = field(default_factory=list)
     vueltas_loop: int = 0
     _bloques_al_abrir_vuelta: int = 0
+    # NIVEL de la corrida. `planta` es una planta concreta -- lo de siempre-- y
+    # `corporativo` es la gente regional o de grupo, que NO tiene planta. Ver el
+    # §3 de metodo/propuestas-de-metodo-300.md: en #300 la gente regional salio
+    # en 2 a 4 de las cuatro corridas y cada Chao1 la sumo a SU poblacion.
+    nivel: str = NIVEL_PLANTA
+    # Lo que se SEMBRO de otras corridas, con su procedencia. No es evidencia:
+    # es el punto de partida, y la ficha lo declara como tal.
+    sembrado: list = field(default_factory=list)
+    # El ANGULO con el que la corrida arranco -- la senal que la origino-- y de
+    # donde vino. Cuando lo siembra el radar (motor 1) entra como gancho
+    # PRELIMINAR, no observado, y la corrida lo confirma o lo corrige.
+    angulo: str = ""
+    origen: str = ORIGEN_MANUAL
+    angulo_resuelto: str = ""        # "confirmado" | "corregido" | ""
 
     # ---------------------------------------------------------------- modulos
     def mod(self, nombre: str) -> EstadoModulo:
@@ -600,14 +652,318 @@ class Corrida:
 
     # ------------------------------------------------------------------ chao1
     def completitud(self):
-        return estimar([c.hits for c in self.contactos])
+        """Chao1 sobre LA POBLACION DE ESTA CORRIDA, no sobre todo lo que entro.
+
+        El arreglo del doble conteo de #300. Compras MRO, compras regionales de
+        Americas y EHS corporativo aparecieron en 2 a 4 de las cuatro corridas de
+        Coficab, y cada Chao1 las sumo a SU poblacion: los cuatro estimaron sobre
+        una poblacion que no existe.
+
+        Se excluye por EVIDENCIA DE UBICACION -- una fuente dijo que esta en otra
+        planta o en el grupo-- y nunca por el titulo. Quien no tiene ubicacion
+        observada SI cuenta: ausencia de evidencia no es evidencia de ausencia.
+
+        En el nivel CORPORATIVO no se excluye a nadie, y no es una excepcion
+        suelta: la exclusion necesita una ciudad contra la que comparar, y una
+        corrida corporativa no tiene una. Sus consultas ya son corporativas.
+        """
+        return estimar([c.hits for c in self.poblacion()])
+
+    def poblacion(self) -> list:
+        """Los contactos que pertenecen a la poblacion que esta corrida estima."""
+        if self.nivel == NIVEL_CORPORATIVO:
+            return list(self.contactos)
+        return [c for c in self.contactos
+                if c.cuenta_en_la_poblacion_de(self.ciudad)]
+
+    def fuera_de_la_poblacion(self) -> list[tuple]:
+        """(contacto, donde_esta) de los que NO cuentan, con su razon."""
+        if self.nivel == NIVEL_CORPORATIVO:
+            return []
+        out = []
+        for c in self.contactos:
+            donde = c.ubicacion_respecto_a(self.ciudad)
+            if donde in (EN_OTRA_PLANTA, EN_CORPORATIVO):
+                out.append((c, donde))
+        return out
+
+    # ------------------------------------------- la semilla para el corporativo
+    def semilla_corporativa(self) -> list[dict]:
+        """Los regionales y los de otra planta, listos para `sembrar`.
+
+        Es la segunda mitad del arreglo, y sin ella el primero solo resta: hoy
+        esta gente es RUIDO en cuatro fichas -- la ficha de Pesqueria traia como
+        unico contacto a uno de Juarez--. Asi es el INSUMO de una quinta corrida.
+
+        Sale sin nombres: lo que viaja es el PUESTO, la ubicacion observada y de
+        que corrida salio. El nombre lo vuelve a encontrar la corrida destino, y
+        asi la semilla no puede pasar por observacion propia.
+        """
+        out = []
+        for c, donde in self.fuera_de_la_poblacion():
+            out.append({
+                "puesto": c.puesto or (c.dato("puesto").valor
+                                       if "puesto" in c.datos else None),
+                "donde": donde,
+                "ubicaciones": c.ubicaciones_observadas,
+                "cercania_decision": c.cercania_decision,
+                "de_corrida": self.llave,
+            })
+        return out
+
+    @property
+    def llave(self) -> str:
+        """Como se nombra esta corrida cuando otra habla de ella."""
+        if self.nivel == NIVEL_CORPORATIVO:
+            return f"{self.empresa}/{LLAVE_CORPORATIVO}"
+        return f"{self.empresa}/{self.ciudad or '?'}"
+
+    # ------------------------------------------------------------- sembrar
+    def sembrar(self, de_corrida: str, que: str, valor, campo: str = "",
+                nota: str = "") -> dict:
+        """Mete en esta corrida algo que OTRA corrida ya midio.
+
+        `que` es `patron`, `vocabulario` o `nota`. Los CONTACTOS REGIONALES no se
+        siembran en una corrida de planta -- van a la corporativa--: sembrarlos en
+        las plantas es exactamente lo que causo el doble conteo.
+
+        Lo que esto NO hace, y es todo el diseno:
+
+          * NO registra una busqueda -- no se ejecuto trabajo aqui--, asi que no
+            mueve el presupuesto ni el agotado;
+          * NO cuenta como raiz: la observacion entra con `sembrado=True` y
+            `Dato.n_raices` la salta;
+          * TOPA EN CANDIDATO mientras esta corrida no lo observe por su cuenta.
+
+        La razon esta escrita en `Observacion.sembrado`: el patron de Coficab
+        tiene UNA ancla, en Juarez. Si sembrarla contara como fuente, una sola
+        observacion produciria CONFIRMADO en cuatro corridas.
+        """
+        if que not in SE_PUEDE_SEMBRAR:
+            raise CompuertaCerrada(
+                f"No se siembra '{que}'. Lo que se siembra es: "
+                f"{', '.join(sorted(SE_PUEDE_SEMBRAR))}.\n"
+                "  Y los CONTACTOS REGIONALES no se siembran en una corrida de "
+                "planta: van a la corrida corporativa. Sembrarlos en las plantas "
+                "es lo que hizo que los cuatro Chao1 de #300 contaran a la misma "
+                "gente cuatro veces.")
+        if not str(de_corrida or "").strip():
+            raise CompuertaCerrada(
+                "Una semilla sin corrida de origen no se puede auditar: la ficha "
+                "tiene que poder decir de donde salio el dato.")
+        if de_corrida.strip() == self.llave:
+            raise CompuertaCerrada(
+                f"'{de_corrida}' es esta misma corrida. Sembrarse a si misma "
+                "duplicaria la observacion y la haria parecer dos.")
+        if not str(valor or "").strip():
+            raise CompuertaCerrada(f"Semilla de '{que}' sin valor.")
+        valor = str(valor).strip()
+        registro = {"que": que, "valor": valor, "de_corrida": de_corrida.strip(),
+                    "campo": campo, "nota": nota,
+                    "ts": datetime.now(timezone.utc).isoformat()}
+        if que == "vocabulario":
+            if valor not in self.vocabulario:
+                self.vocabulario.append(valor)
+        self.sembrado.append(registro)
+        return registro
+
+    def sembrar_en_contacto(self, c: Contacto, campo: str, valor,
+                            de_corrida: str) -> Observacion:
+        """La semilla que entra como OBSERVACION de un contacto, marcada."""
+        d = c.dato(campo)
+        d.observar("sembrado", valor, sembrado=True, de_corrida=de_corrida,
+                   nota=f"sembrado de {de_corrida}, no observado aqui")
+        return d.observaciones[-1]
+
+    @property
+    def patron_sembrado(self) -> dict | None:
+        """El patron de correo que esta corrida NO derivo: lo trajo sembrado."""
+        for r in reversed(self.sembrado):
+            if r["que"] == "patron":
+                return r
+        return None
+
+    # ------------------------------------------------------- nivel corporativo
+    def abrir_nivel_corporativo(self) -> list[str]:
+        """Cierra los modulos que no aplican a una corrida sin planta."""
+        cerrados = []
+        for mod, razon in MODULOS_SIN_NIVEL_CORPORATIVO.items():
+            self.mod(mod).cerrado = True
+            self.marcar_cobertura(mod, NO_APLICABA, razon)
+            cerrados.append(mod)
+        return cerrados
+
+    # -------------------------------------------------- las VIAS que quedan
+    def vias_sin_agotar(self) -> dict[str, list[str]]:
+        """Fuentes del catalogo que este modulo NO ha preguntado todavia.
+
+        Es lo que hace operable el veredicto CAMBIAR_DE_VIA: "cambia de via" sin
+        decir a cual no es una instruccion. Un modulo cerrado por `sin_acceso` o
+        `omitida_por_costo` no ofrece vias: ya se dijo por que no se puede.
+        """
+        out = {}
+        for mod, permitidas in PERMITIDAS.items():
+            cob = (self.cobertura.get(mod) or {}).get("estado", "")
+            if cob in (SIN_ACCESO, OMITIDA_COSTO, NO_APLICABA):
+                continue
+            m = self.modulos.get(mod)
+            usadas = {b.via for b in (m.registros if m else [])}
+            libres = [f for f in permitidas if f.strip().lower() not in usadas]
+            if libres:
+                out[mod] = libres
+        return out
+
+    # -------------------------------------------------------- EL DESEMPATE
+    def desempate(self) -> dict:
+        """Quien manda cuando la compuerta de agotado y Chao1 no coinciden.
+
+        Aprobado sobre #302, y la razon de fondo es que LAS DOS NO MIDEN LO
+        MISMO: agotado mide el rendimiento marginal DE LA ESTRATEGIA que se esta
+        corriendo; Chao1 mide LA POBLACION que falta por ver. Pueden tener razon
+        las dos a la vez.
+
+        Los tres casos:
+
+          1. `prematuro` o `sin_datos` contra 3 bloques secos -> MANDA AGOTADO.
+             Y no porque "prematuro pierda": porque con 5 observados y f2=1 Chao1
+             NO TIENE DENOMINADOR. No dijo "falta gente", dijo "no puedo opinar".
+             Es el caso de Pesqueria en #300.
+          2. `falta_barrer` confiable y sin bloques secos -> MANDA CHAO1. Es
+             Juarez y Silao, que cerraron por TOPE y no por agotado: eso lo
+             resuelve el tramo adaptativo, no este desempate.
+          3. `falta_barrer` confiable CONTRA 3 bloques secos -> NINGUNA DE LAS
+             DOS. Las consultas estan mal, no el presupuesto: CAMBIAR_DE_VIA.
+             Y si no queda ninguna via, entonces si para -- y eso es un hallazgo
+             entregable, no un fracaso: le dice al operador QUE COMPRAR--.
+        """
+        est = self.completitud()
+        vias = self.vias_sin_agotar()
+        base = {"chao1": est.veredicto, "chao1_opina": est.confiable,
+                "secos_al_final": self.presupuesto.secos_al_final,
+                "vias_sin_agotar": vias}
+        if not self.presupuesto.saturado:
+            if est.veredicto == SATURO:
+                return base | {"veredicto": SATURO, "manda": "chao1",
+                               "para": True,
+                               "razon": "Chao1 opina y dice que ya esta barrido."}
+            return base | {"veredicto": est.veredicto, "manda": "ninguna",
+                           "para": False,
+                           "razon": "no hay desacuerdo: ninguna compuerta cerro."}
+        # saturado: tres bloques secos seguidos
+        if not (est.veredicto == FALTA_BARRER and est.confiable):
+            return base | {
+                "veredicto": est.veredicto, "manda": "agotado", "para": True,
+                "razon": (
+                    f"{self.presupuesto.secos_al_final} bloques secos seguidos, y "
+                    f"Chao1 con {est.observados} observados y f2={est.f2} NO "
+                    "OPINA -- no dijo 'falta gente', dijo 'no puedo'--. Manda la "
+                    "compuerta de agotado.")}
+        if vias:
+            return base | {
+                "veredicto": CAMBIAR_DE_VIA, "manda": "ninguna", "para": False,
+                "razon": (
+                    f"las dos tienen razon: Chao1 opina y dice que falta "
+                    f"{100 - est.cobertura * 100:.0f}% de la poblacion, y "
+                    f"{self.presupuesto.secos_al_final} bloques seguidos dicen "
+                    "que estas consultas ya no la traen. LAS CONSULTAS ESTAN "
+                    "MAL, NO EL PRESUPUESTO: cambia de via, sin renovar tope. "
+                    "Quedan: " + "; ".join(f"{m} -> {', '.join(f)}"
+                                           for m, f in vias.items()))}
+        return base | {
+            "veredicto": SATURO, "manda": "las dos", "para": True,
+            "razon": (
+                "la poblacion NO esta agotada -- Chao1 opina y dice que falta "
+                f"{100 - est.cobertura * 100:.0f}%-- pero LAS VIAS DISPONIBLES "
+                "SI. No queda una sola fuente del catalogo sin preguntar en un "
+                "modulo abierto. Lo que falta necesita una fuente que no "
+                "tenemos: Sales Navigator, o un padron con acceso. Eso va en la "
+                "ficha, y es un hallazgo: dice QUE COMPRAR.")}
+
+    # --------------------------------------------------- EL TRAMO ADAPTATIVO
+    def evaluar_tramo(self) -> dict:
+        """Si el tope se puede renovar, y con que evidencia. NO muta nada.
+
+        Las TRES condiciones, todas derivadas de evidencia y ninguna de un
+        contador que alguien suba.
+        """
+        est = self.completitud()
+        ultimo = self.presupuesto.bloques[-1] if self.presupuesto.bloques else None
+        vias = self.vias_sin_agotar()
+        cond = {
+            "chao1_dice_que_falta": est.veredicto == FALTA_BARRER and est.confiable,
+            "ultimo_bloque_no_seco": bool(ultimo) and not ultimo.seco,
+            "queda_via_sin_agotar": bool(vias),
+        }
+        faltan = [k for k, v in cond.items() if not v]
+        razon = (
+            f"chao1 {est.veredicto} "
+            f"{'confiable' if est.confiable else 'NO confiable'} "
+            f"{est.cobertura:.0%} · ultimo bloque "
+            + (f"B{ultimo.numero} {ultimo.consultas}/{ultimo.nuevas}/"
+               f"{ultimo.de_valor}{' SECO' if ultimo.seco else ' no seco'}"
+               if ultimo else "sin bloques cerrados")
+            + " · vias sin agotar: "
+            + ("; ".join(f"{m}->{len(f)}" for m, f in vias.items()) or "ninguna"))
+        return {
+            "tramo_actual": self.presupuesto.tramo,
+            "tope_actual": self.presupuesto.tope_por_cuenta,
+            "tope_siguiente": self.presupuesto.tope_siguiente,
+            "incremento": TRAMO_INCREMENTO,
+            "condiciones": cond, "faltan": faltan,
+            "puede": not faltan,
+            "necesita_humano": self.presupuesto.renovacion_necesita_humano,
+            "razon": razon,
+            "evidencia": {
+                "chao1": {"observados": est.observados, "f1": est.f1,
+                          "f2": est.f2, "estimado": round(est.estimado, 1),
+                          "cobertura": round(est.cobertura, 3),
+                          "veredicto": est.veredicto,
+                          "confiable": est.confiable},
+                "ultimo_bloque": ({"n": ultimo.numero,
+                                   "consultas": ultimo.consultas,
+                                   "entradas": ultimo.nuevas,
+                                   "de_valor": ultimo.de_valor,
+                                   "seco": ultimo.seco} if ultimo else None),
+                "vias_sin_agotar": vias,
+            },
+        }
+
+    def renovar_tramo(self, autorizado_por_humano: bool = False) -> dict:
+        """Sube el tope un tramo, si la evidencia lo justifica."""
+        ev = self.evaluar_tramo()
+        if not ev["puede"]:
+            explica = {
+                "chao1_dice_que_falta": (
+                    "Chao1 no dice que falte gente CON DATOS. Un `prematuro` no "
+                    "manda nada: no es razon para gastar mas."),
+                "ultimo_bloque_no_seco": (
+                    "el ultimo bloque cerrado salio SECO. Si el tramo termino en "
+                    "seco, el problema no es el presupuesto."),
+                "queda_via_sin_agotar": (
+                    "no queda una sola fuente del catalogo sin preguntar en un "
+                    "modulo abierto. Renovar el tope para volver a preguntar lo "
+                    "mismo es gastar por gastar."),
+            }
+            raise CompuertaCerrada(
+                f"El tope NO se renueva de {ev['tope_actual']} a "
+                f"{ev['tope_siguiente']}. Falta:\n"
+                + "\n".join(f"  · {explica[k]}" for k in ev["faltan"])
+                + f"\n\n  Evidencia leida: {ev['razon']}")
+        return self.presupuesto.renovar(ev["razon"], ev["evidencia"],
+                                        autorizado_por_humano=autorizado_por_humano)
 
     # ----------------------------------------------------------------- el loop
     def que_detiene_el_loop(self) -> str:
         """La razon por la que el lazo YA no puede seguir, o '' si puede."""
         if self.presupuesto.saturado:
+            # El DESEMPATE decide, no la primera compuerta que cerro. Cuando
+            # Chao1 opina y dice que falta gente Y quedan vias sin preguntar, los
+            # tres bloques secos NO detienen el lazo: mandan cambiar de via.
+            d = self.desempate()
+            if not d["para"]:
+                return ""
             return (f"presupuesto: {self.presupuesto.secos_al_final} bloques "
-                    "secos seguidos")
+                    f"secos seguidos — {d['razon']}")
         if self.presupuesto.agotado_por_tope:
             return (f"presupuesto: tope de {self.presupuesto.tope_por_cuenta} "
                     "consultas alcanzado")
@@ -731,11 +1087,21 @@ class Corrida:
                             "gastadas": self.presupuesto.gastadas,
                             "restantes": self.presupuesto.restantes,
                             "saturado": self.presupuesto.saturado,
-                            "bloques": [asdict(b) | {"seco": b.seco} for b in self.presupuesto.bloques]},
+                            "bloques": [asdict(b) | {"seco": b.seco} for b in self.presupuesto.bloques],
+                            "tramo": self.presupuesto.tramo,
+                            "tramos": self.presupuesto.tramos},
             "chao1": self.completitud().a_dict(),
+            "desempate": self.desempate(),
+            "tramo": self.evaluar_tramo(),
             "vocabulario": self.vocabulario,
             "senal": self.senal,
             "challenge_corrido": self.challenge_corrido,
+            "nivel": self.nivel,
+            "sembrado": self.sembrado,
+            "angulo": self.angulo,
+            "origen": self.origen,
+            "angulo_resuelto": self.angulo_resuelto,
+            "fuera_de_la_poblacion": len(self.fuera_de_la_poblacion()),
             "vueltas_loop": self.vueltas_loop,
             "bloques_al_abrir_vuelta": self._bloques_al_abrir_vuelta,
             "loop_puede_seguir": self.puede_seguir_el_loop(),
