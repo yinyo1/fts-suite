@@ -61,7 +61,13 @@ PERMITIDAS = {
     "M1":  ["prospeo", "rocketreach", "leadiq", "zoominfo", "finalscout",
             "contactout", "signalhire", "aeroleads", "seamless", "clay",
             "tomba", "datanyze"],
-    "M2":  ["vacante"],
+    # El criterio de M2 pide "bolsa propia + 2 agregadores": son TRES fuentes
+    # distintas, asi que el catalogo tiene que nombrarlas. Con una sola etiqueta
+    # `vacante` el modulo no podia agotarse nunca -- lo encontro la corrida de
+    # Cuprum del 24-sep-2026 al intentar cerrarlo.
+    "M2":  ["vacante", "vacante_propia", "vacante_indeed", "vacante_glassdoor",
+            "vacante_occ", "vacante_simplyhired", "vacante_linkedin_publico",
+            "vacante_computrabajo"],
     "M3":  ["congreso"],
     "M12": ["prensa"],
     "M5":  ["buscador", "linkedin_publico"],

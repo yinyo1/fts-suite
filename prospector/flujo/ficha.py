@@ -39,7 +39,8 @@ def modo_limpio(c: Corrida) -> str:
         if correo is None:
             linea_correo = ""
         elif correo.nivel == EN_CONFLICTO:
-            linea_correo = f'<div class="conf">EN CONFLICTO: {" · ".join(map(str, correo.valores))}</div>'
+            linea_correo = ('<div class="conf">EN CONFLICTO — '
+                            f'{html.escape(correo.motivo_conflicto)}</div>')
         else:
             linea_correo = f'<div class="mail">{html.escape(str(correo.valor or ""))} <i>{CHIP[correo.nivel]}</i></div>'
         filas.append(
@@ -55,10 +56,13 @@ def modo_limpio(c: Corrida) -> str:
     for x in c.contactos:
         for campo, d in x.datos.items():
             if d.nivel == EN_CONFLICTO:
+                # El MOTIVO, no solo los valores: un conflicto por brecha de
+                # certeza tiene UN solo valor, y sin el motivo la ficha lo
+                # mostraba como si no hubiera nada raro.
                 conflictos.append(
                     f'<li><b>{html.escape(campo)}</b> de '
                     f'{html.escape(x.nombre or x.puesto or "?")}: '
-                    f'{" &nbsp;vs&nbsp; ".join(html.escape(str(v)) for v in d.valores)}'
+                    f'{html.escape(d.motivo_conflicto)}'
                     f' — <i>no se elige en silencio, va a revision humana</i></li>')
     bloque_conf = (f'<h2>En conflicto — {len(conflictos)}</h2><ul class="cf">'
                    f'{"".join(conflictos)}</ul>') if conflictos else ""

@@ -3,6 +3,115 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.3.0 — 2026-09-24
+
+**Las compuertas verifican evidencia, ya no cuentan declaraciones.** Es la
+correccion de fondo de los tres defectos que la corrida real de Cuprum dejo
+abiertos (#24). La corrida de punta a punta de esta version encontro **tres
+defectos mas**, todos corregidos aqui.
+
+### El defecto de raiz: el contador declarable
+
+`EstadoModulo.suma("bolsas")` subia un entero. Para cerrar M2 -que exige tres
+bolsas de trabajo- bastaba llamarlo tres veces con nada detras.
+
+Ahora **el contador no se puede tocar**: es una propiedad DERIVADA de
+`registros`, una lista de `Busqueda`. Y una `Busqueda` solo existe si trae
+consulta textual, fuente permitida **para ese modulo**, y un numero de
+resultados. `suma()` queda como tumba que lanza `CompuertaCerrada` con el
+mensaje que dice por donde va.
+
+El modelo es el que ya funcionaba en la compuerta de confianza: `n_raices` no es
+un contador que alguien sube, es un hecho que se lee de las observaciones.
+
+**Las cuatro variantes del truco, cerradas:**
+
+| Intento | Como se cierra |
+|---|---|
+| `suma()` tres veces con nada detras | `CompuertaCerrada`: el contador es derivado |
+| Asignar `contadores = {"bolsas": 3}` | `AttributeError`: es propiedad de solo lectura |
+| Tres consultas reales, las tres a Indeed | El criterio cuenta **vias distintas**; repetir no suma |
+| Acreditarle a M1 una nota de prensa | `PERMITIDAS[modulo]` rechaza la fuente ajena |
+| La misma consulta con dos etiquetas | Una via distinta exige **su propia consulta** |
+| Editar `directorios: 3` en el JSON guardado | Al cargar se restaura la EVIDENCIA; el contador se re-deriva |
+
+**`resultados=0` cuenta.** Cero resultados ES una respuesta: haber preguntado
+bien y no encontrar nada es trabajo hecho. Si cero no contara, la compuerta
+premiaria mentir.
+
+### M5 lee el presupuesto real
+
+`bloques_secos` ya no es un contador propio de M5: se lee de
+`Presupuesto.secos_al_final`, los bloques de verdad de esa corrida. Registrar
+busquedas en M5 ya no lo agota -- lo agota gastar.
+
+### Regla C1, en sus tres caras
+
+Un dato choca si las fuentes dan **valores distintos**, si nombran **formas
+distintas** (SignalHire con `first_lastinitial` frente a `first.last`), o si dan
+el mismo valor con **certezas separadas por mas de 20 puntos**.
+
+Y la cara que faltaba del todo: **una fuente sola que declara menos de 60% de
+certeza ya no llega a SOLIDO, baja a CANDIDATO.** El techo por fuente unica
+atrapa *cuantos* lo dijeron; esto atrapa *que tan seguros* lo dijeron.
+
+`Dato.motivo_conflicto` dice de cual de las tres se trata. Sin el, un conflicto
+por brecha de certeza -que tiene UN solo valor- se imprimia en la ficha como si
+no hubiera nada raro.
+
+### El lazo de refuerzo: ya se dispara
+
+La condicion era `est.confiable and est.cobertura < 0.8`. Al principio de una
+corrida Chao1 nunca es confiable, asi que **el lazo no arrancaba jamas**:
+*"no tengo datos para opinar"* se leia como *"ya termina"*.
+
+Chao1 emite ahora un veredicto de cuatro valores y **solo uno detiene el lazo**:
+
+| Veredicto | Que pasa |
+|---|---|
+| `sin_datos` · `prematuro` · `falta_barrer` | **SIGUE** |
+| `saturo` | **PARA** |
+
+Quien detiene el lazo cuando Chao1 no opina es el **presupuesto**: tres bloques
+secos o el tope de la cuenta. Chao1 solo puede terminarlo antes. `f2 < 3` sigue
+sin ser confiable.
+
+`abrir_vuelta()` reabre M5-M6-M7 y **exige un bloque nuevo desde la vuelta
+anterior**: un lazo que gira en seco es el contador vacio aplicado al flujo.
+
+### Una sola fuente de verdad del progreso
+
+`hits` -lo que alimenta Chao1- ya no es un contador que sube al agregar: es
+**en cuantas busquedas distintas aparecio el contacto**, derivado del mismo
+registro que sostiene el agotado.
+
+### Corregido, por lo que mostro la corrida de punta a punta
+
+1. **`siguiente_paso` imprimia el modo de conteo en vez del criterio.** Decia
+   "Agotado cuando: registros" en lugar de "recorridos los contactos de la
+   cuenta". Las tuplas de `AGOTADO` crecieron a cuatro campos y el indice quedo
+   corrido.
+2. **M2 y M7 no se podian agotar NUNCA.** Su criterio pide tres bolsas y dos
+   formas, y el catalogo solo les permitia una etiqueta (`vacante`,
+   `pdf_publico`). El catalogo era mas grueso que el criterio. M2 nombra ahora
+   sus siete bolsas; M7 distingue por `etiqueta`, no por fuente.
+3. **La compuerta de la vuelta en seco no sobrevivia al disco.** `vueltas_loop`
+   se guardaba y el marcador de bloques no, asi que al releer la corrida volvia
+   con la vuelta abierta y el marcador en cero: cualquier bloque viejo la dejaba
+   dar otra vuelta gratis.
+
+### Raices nuevas
+
+Los agregadores de vacantes comparten raiz `bolsa_trabajo` -Indeed y OCC
+republican el mismo anuncio, coincidir no confirma-. La bolsa **propia** de la
+empresa es otra raiz: es la empresa hablando de si misma.
+
+### Pruebas
+
+**43 -> 77.** Nuevas: `tests/test_evidencia.py` (19) y `tests/test_loop.py` (12), mas 4 de la regla C1 en `test_caso_f_cuprum.py`.
+
+---
+
 ## 0.2.0 — 2026-09-24
 
 La herramienta se aisla en `tools/prospeccion/` y se corre **de verdad** sobre

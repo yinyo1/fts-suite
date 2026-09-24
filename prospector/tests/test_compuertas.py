@@ -29,7 +29,7 @@ def test_el_tope_por_cuenta_se_respeta():
 
 def test_no_se_cierra_un_modulo_sin_agotarlo():
     c = Corrida("X", "Monterrey")
-    c.mod("M1").suma("directorios")          # 1 de 3
+    c.registrar_busqueda("M1", "directorios", "cuprum.com leadiq", "leadiq", 3)
     with pytest.raises(CompuertaCerrada, match="NO agotado"):
         c.cerrar_modulo("M1")
 
@@ -44,8 +44,11 @@ def test_un_hueco_sin_razon_escrita_se_rechaza():
 def test_el_flujo_arranca_por_internas_y_denue_va_antes_de_directorios():
     c = Corrida("X", "Monterrey")
     assert c.siguiente_paso()["modulo"] == "M0"
-    c.mod("M0").suma("contactos_recorridos"); c.cerrar_modulo("M0")
-    c.mod("M0b").suma("consultas"); c.cerrar_modulo("M0b")
+    c.registrar_busqueda("M0", "contactos_recorridos",
+                         "res.partner name ilike X", "odoo", 0)
+    c.cerrar_modulo("M0")
+    c.registrar_busqueda("M0b", "consultas", "outlook: X", "outlook", 0)
+    c.cerrar_modulo("M0b")
     assert c.siguiente_paso()["modulo"] == "M13", "DENUE da el dominio que M1 necesita"
 
 

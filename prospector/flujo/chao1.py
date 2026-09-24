@@ -7,9 +7,39 @@ distintas, ya barriste casi todo.
 
 Requiere `hits` por contacto: cuantas consultas distintas lo trajeron.
 Ese conteo es justo lo que antes se tiraba.
+
+------------------------------------------------------------------------------
+La correccion de fondo (defecto abierto de #24)
+
+`confiable` era un booleano, y el lazo de refuerzo lo leia asi:
+
+    if est.confiable and est.cobertura < 0.8:  -> seguir barriendo
+
+Al principio de una corrida Chao1 NUNCA es confiable -- pocos observados, f2
+chico, casi todo visto una sola vez -- asi que la condicion era falsa y el lazo
+no se disparaba jamas. **"No tengo datos para opinar" se estaba leyendo como
+"ya termina".** Es el error exactamente al reves: la falta de datos es la razon
+mas fuerte para seguir buscando.
+
+Ahora Chao1 emite un VEREDICTO de cuatro valores y solo UNO detiene el lazo:
+
+    SIN_DATOS     no hay ni un contacto     -> SIGUE (obvio)
+    PREMATURO     no alcanza para opinar    -> SIGUE (es lo contrario de terminar)
+    FALTA_BARRER  opina, y falta gente      -> SIGUE
+    SATURO        opina, y ya esta barrido  -> PARA
+
+Quien detiene el lazo cuando Chao1 no puede opinar es el PRESUPUESTO: tres
+bloques secos o el tope de la cuenta. Chao1 solo puede terminarlo antes.
 """
 from __future__ import annotations
 from dataclasses import dataclass
+
+SIN_DATOS = "sin_datos"
+PREMATURO = "prematuro"
+FALTA_BARRER = "falta_barrer"
+SATURO = "saturo"
+
+UMBRAL_SATURACION = 0.8     # cobertura estimada a partir de la cual esta barrido
 
 
 @dataclass
@@ -20,8 +50,33 @@ class Estimacion:
     estimado: float      # poblacion total estimada
     no_vistos: float
     cobertura: float     # observados / estimado
-    confiable: bool
+    confiable: bool      # = opina. Con f2<3 NO opina: el divisor 2*f2 vale 2
     nota: str
+    veredicto: str = PREMATURO
+    razones: tuple = ()
+
+    @property
+    def opina(self) -> bool:
+        """Si la estimacion alcanza para sacar una conclusion."""
+        return self.confiable
+
+    @property
+    def detiene_el_loop(self) -> bool:
+        """SOLO 'saturo' detiene. Los otros tres mandan seguir.
+
+        Esta es la linea que arregla el defecto: `not opina` NO detiene.
+        """
+        return self.veredicto == SATURO
+
+    @property
+    def por_que(self) -> str:
+        return {
+            SIN_DATOS: "sin un solo contacto: la cascada no ha empezado",
+            PREMATURO: "Chao1 todavia no tiene datos para opinar -- "
+                       "eso manda SEGUIR, no terminar",
+            FALTA_BARRER: "Chao1 opina y dice que falta gente por encontrar",
+            SATURO: "Chao1 opina y dice que ya esta barrido",
+        }[self.veredicto]
 
     def a_dict(self) -> dict:
         return {
@@ -29,7 +84,12 @@ class Estimacion:
             "estimado": round(self.estimado, 1),
             "no_vistos": round(self.no_vistos, 1),
             "cobertura_pct": round(self.cobertura * 100, 1),
-            "confiable": self.confiable, "nota": self.nota,
+            "confiable": self.confiable, "opina": self.opina,
+            "veredicto": self.veredicto,
+            "detiene_el_loop": self.detiene_el_loop,
+            "por_que": self.por_que,
+            "razones": list(self.razones),
+            "nota": self.nota,
         }
 
 
@@ -38,7 +98,9 @@ def estimar(hits: list[int]) -> Estimacion:
     hits = [h for h in hits if h > 0]
     s_obs = len(hits)
     if s_obs == 0:
-        return Estimacion(0, 0, 0, 0.0, 0.0, 0.0, False, "sin observaciones")
+        return Estimacion(0, 0, 0, 0.0, 0.0, 0.0, False, "sin observaciones",
+                          veredicto=SIN_DATOS,
+                          razones=("no hay ni un contacto observado",))
 
     f1 = sum(1 for h in hits if h == 1)
     f2 = sum(1 for h in hits if h == 2)
@@ -71,6 +133,15 @@ def estimar(hits: list[int]) -> Estimacion:
                        "la cascada apenas empezo")
     confiable = not razones
     if razones:
-        nota += " - POCO CONFIABLE (" + "; ".join(razones) + ")"
+        nota += " - NO OPINA TODAVIA (" + "; ".join(razones) + ")"
 
-    return Estimacion(s_obs, f1, f2, estimado, no_vistos, cobertura, confiable, nota)
+    if not confiable:
+        # NO es "ya termina". Es "no se todavia", y eso manda seguir.
+        veredicto = PREMATURO
+    elif cobertura < UMBRAL_SATURACION:
+        veredicto = FALTA_BARRER
+    else:
+        veredicto = SATURO
+
+    return Estimacion(s_obs, f1, f2, estimado, no_vistos, cobertura, confiable,
+                      nota, veredicto=veredicto, razones=tuple(razones))

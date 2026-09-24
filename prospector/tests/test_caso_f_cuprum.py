@@ -51,7 +51,7 @@ def test_modulo_no_agotado_no_puede_confirmar():
     """A Cuprum se le hizo UNA consulta de directorio. La regla de cruce no
     puede dispararse con una sola fuente: lo que lo atrapa es el agotado."""
     m = EstadoModulo("M1")
-    m.suma("directorios")                      # 1 de 3
+    m.registrar_busqueda("directorios", "cuprum.com leadiq", "leadiq", 4)
     with pytest.raises(CompuertaCerrada, match="MINIMO TRES"):
         m.exigir_agotado()
     assert techo_por_agotado(m, CONFIRMADO) == SOLIDO
@@ -59,8 +59,8 @@ def test_modulo_no_agotado_no_puede_confirmar():
 
 def test_con_tres_directorios_de_acuerdo_si_confirma():
     m = EstadoModulo("M1")
-    for _ in range(3):
-        m.suma("directorios")
+    for fuente in ("leadiq", "rocketreach", "contactout"):
+        m.registrar_busqueda("directorios", f"cuprum.com {fuente}", fuente, 2)
     m.exigir_agotado()
     d = Dato("puesto")
     d.observar("leadiq", "Plant Manager")
@@ -109,10 +109,61 @@ def test_mismo_valor_con_confianzas_muy_distintas_TAMBIEN_choca():
 
 
 def test_una_brecha_pequena_NO_dispara_conflicto():
-    """Que no frene de mas: 44 vs 45.45 es la misma respuesta."""
+    """Que no frene de mas: 44 vs 45.45 es la misma respuesta, no un choque.
+
+    Pero tampoco es SOLIDO: las dos fuentes admiten menos del 60% de certeza.
+    El nivel correcto es CANDIDATO -- hay acuerdo, y el acuerdo es sobre algo
+    de lo que ninguna de las dos esta segura. Marcar eso SOLIDO era la otra
+    mitad del hueco de la regla C1.
+    """
+    from flujo.confianza import CANDIDATO
     d = Dato("patron_correo")
     d.observar("leadiq", "nombre.apellido@cuprum.com", nota="44%")
     d.observar("contactout", "nombre.apellido@cuprum.com", nota="45.45%")
     assert d.brecha_magnitud < 20
-    assert not d.choca
-    assert d.nivel == SOLIDO
+    assert not d.choca, "44 vs 45.45 no es un conflicto"
+    assert d.nivel == CANDIDATO
+    assert d.certeza_declarada_baja
+
+
+def test_dos_fuentes_seguras_y_de_acuerdo_si_llegan_a_solido():
+    """Que el piso de certeza no frene de mas tampoco: 92% y 95% de la MISMA
+    raiz es SOLIDO, y de raices distintas es CONFIRMADO."""
+    from flujo.confianza import CONFIRMADO as CONF
+    d = Dato("patron_correo")
+    d.observar("leadiq", "nombre.apellido@cuprum.com", nota="92%")
+    d.observar("contactout", "nombre.apellido@cuprum.com", nota="95%")
+    assert d.nivel == SOLIDO, "dos directorios son la misma raiz"
+    d.observar("pdf_publico", "nombre.apellido@cuprum.com", nota="93%")
+    assert d.nivel == CONF, "raiz distinta y de acuerdo: confirmado"
+
+
+def test_C1_el_formato_alterno_de_signalhire_TAMBIEN_choca():
+    """El tercer caso de la regla C1, el de la corrida real de Cuprum: tres
+    directorios dicen `first.last` y SignalHire dice `first_lastinitial`.
+
+    Si las dos fuentes escriben el mismo literal pero NOMBRAN formas distintas,
+    siguen chocando. El valor no alcanza para decidirlo: hay que mirar la forma.
+    """
+    d = Dato("patron_correo")
+    d.observar("leadiq", "first.last@cuprum.com", forma="first.last")
+    d.observar("signalhire", "first.last@cuprum.com", forma="first_lastinitial")
+    assert len(d.valores) == 1, "el literal es el mismo"
+    assert d.formas == ["first.last", "first_lastinitial"]
+    assert d.choca
+    assert d.nivel == EN_CONFLICTO
+    assert "FORMAS distintas" in d.motivo_conflicto
+
+
+def test_el_conflicto_por_brecha_DICE_que_es_una_brecha():
+    """Un conflicto por brecha de certeza tiene UN solo valor. Sin el motivo,
+    la ficha lo imprimia como si no hubiera nada raro: el nombre del dato y un
+    valor, sin `A vs B`. Callar el motivo es callar el conflicto."""
+    d = Dato("patron_correo")
+    d.observar("leadiq", "first.last@cuprum.com", nota="44%")
+    d.observar("rocketreach", "first.last@cuprum.com", nota="45%")
+    d.observar("contactout", "first.last@cuprum.com", nota="100%")
+    assert d.nivel == EN_CONFLICTO
+    assert len(d.valores) == 1
+    assert "certezas separadas por 56 puntos" in d.motivo_conflicto
+    assert "leadiq 44%" in d.motivo_conflicto and "contactout 100%" in d.motivo_conflicto

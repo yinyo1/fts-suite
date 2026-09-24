@@ -20,7 +20,7 @@ vacantes, prensa, congresos y la web abierta, con la procedencia de cada dato.
 | Ruta | Qué es |
 |---|---|
 | **`flujo/`** | El código. Compuertas, instrumentación, Chao1, catálogo, ficha y el orquestador |
-| **`tests/`** | 43 pruebas. Incluyen los casos de regresión **D (LEGO)** y **F (Cuprum)** |
+| **`tests/`** | 77 pruebas. Casos de regresión **D (LEGO)** y **F (Cuprum)**, más el truco del contador vacío y el lazo de refuerzo |
 | **`metodo/`** | El *por qué* de cada paso, con su disparador medido |
 | **`SKILL-criterio.md`** | Lo que juzga Claude y el código no puede |
 | **`CHANGELOG.md`** | Versiones de la herramienta |
@@ -29,13 +29,23 @@ vacantes, prensa, congresos y la web abierta, con la procedencia de cada dato.
 
 | Archivo | Líneas | Qué resuelve |
 |---|---|---|
-| `flujo/confianza.py` | ~215 | Niveles e **instrumentación de fuentes por dato**: cada campo guarda todas las observaciones que lo sostienen, con su fuente y su raíz |
-| `flujo/compuertas.py` | ~185 | Las tres compuertas, como `raise`: **agotado**, **presupuesto**, **confianza** |
-| `flujo/orquestador.py` | ~210 | El CLI que dice cuál es el paso siguiente y se niega a saltarlo |
-| `flujo/estado.py` | ~165 | La corrida que Python posee. El flujo en cuatro olas |
-| `flujo/ficha.py` | ~125 | Modo limpio y modo procedencia, con checklist de lo que no se pudo hacer |
-| `flujo/catalogo.py` | ~80 | Las **13 fuentes descartadas**, rechazadas por código con su razón |
-| `flujo/chao1.py` | ~70 | Estimador de completitud, con marca de *poco confiable* |
+| `flujo/compuertas.py` | 365 | Las tres compuertas, como `raise`: **agotado**, **presupuesto**, **confianza**. Y `Busqueda`: el registro de trabajo ejecutado del que **se derivan** los contadores |
+| `flujo/confianza.py` | 314 | Niveles e **instrumentación de fuentes por dato**: cada campo guarda todas las observaciones que lo sostienen, con su fuente, su raíz, su forma y la certeza que declara. La **regla C1** vive aquí |
+| `flujo/orquestador.py` | 279 | El CLI que dice cuál es el paso siguiente y se niega a saltarlo |
+| `flujo/estado.py` | 265 | La corrida que Python posee. Las cuatro olas y el **lazo de refuerzo** |
+| `flujo/chao1.py` | 147 | Estimador de completitud, con **veredicto de cuatro valores**: solo `saturo` detiene el lazo |
+| `flujo/ficha.py` | 117 | Modo limpio y modo procedencia, con checklist de lo que no se pudo hacer |
+| `flujo/catalogo.py` | 85 | Las **13 fuentes descartadas**, rechazadas por código con su razón, y qué fuente le corresponde a cada módulo |
+
+### La regla que ordena las compuertas
+
+> **Una compuerta verifica evidencia, no cuenta declaraciones.**
+
+`n_raices` no es un contador que alguien sube: es un hecho que se lee de las
+observaciones. Desde la v0.3.0 los contadores de agotado funcionan igual — son
+**derivados** del registro de búsquedas, y una búsqueda solo existe si trae su
+consulta textual, su fuente permitida para ese módulo y su número de resultados.
+`resultados=0` cuenta: cero resultados **es** una respuesta.
 
 ### El método
 
@@ -87,7 +97,7 @@ presupuesto queda. Claude corre **ese** módulo, registra lo que encontró, y el
 orquestador decide si se avanza.
 
 ```bash
-python3 -m pytest tests -q     # 43 pruebas
+python3 -m pytest tests -q     # 77 pruebas
 ```
 
 ---
