@@ -11,6 +11,14 @@ nada en Odoo, ni en Postgres, ni en ningún workflow existente.
 > `docs/trazabilidad/_privado/` (ignorado por git) y se regenera con
 > [`consultas/`](consultas/).
 
+> ⚠️ **Tres cifras de este informe fueron corregidas por la sesión 2.** Antes de citar las
+> reglas de facturación (38 órdenes), los pagos sin conciliar (306) o el número de
+> `budget.analytic` (123), leer el **§0-bis** de
+> [`INFORME-SESION-2.md`](INFORME-SESION-2.md). El motivo de fondo es que este informe **no
+> dejó escrito su instrumento** —ni la tolerancia de las reglas ni los dominios—, así que no
+> se podían auditar. La sesión 2 los deja pegados en
+> [`consultas/sesion-2-dominios.md`](consultas/sesion-2-dominios.md).
+
 ---
 
 ## 0 · Lo que hay que saber si sólo se leen diez líneas
