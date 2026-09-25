@@ -47,17 +47,65 @@ def plano(v) -> str:
 # "chiller" cuando la linea dice las dos cosas, porque el sistema es el proyecto
 # y el chiller es un componente suyo.
 TIPOS_DE_PROYECTO = (
+    # --- MANEJO DE MATERIAL E INTEGRACION A LINEA -------------------------
     ("integracion_embolsadora", (
         "embolsadora", "enfardadora", "empacadora", "integracion de linea",
         "integrar a la linea", "bagger")),
+    ("conveyor_y_manejo", (
+        "conveyor", "polipasto", "seleccionadora", "vertical warehouse",
+        "artesa", "parrilla magnetica", "soplador", "banda transportadora",
+        "elevador de cangilones", "tolva")),
+    # --- ESTRUCTURA Y OBRA ------------------------------------------------
     ("mezzanine", (
         "mezzanine", "mezanine", "entrepiso", "plataforma estructural")),
+    ("estructura_metalica", (
+        "estructura metalica", "barandal", "escalera", "pasillo elevado",
+        "guardas", "cuarto metalico", "caseta", "ampliacion de techo",
+        "instalacion de techo", "ducto metalico", "encofrado",
+        "base para tanque", "bases de tanques", "base para tablero",
+        "plataforma", "soporteria")),
+    ("trabajos_civiles", ("trabajos civiles", "obra civil", "cimentacion")),
+    # --- ELECTRICO: la familia que el dato destapo -------------------------
+    ("transformador", ("transformador", "geafol")),
+    ("electroducto_busway", (
+        "electroducto", "busway", "barras de cobre", "barra de cobre",
+        "unidad de expansion termica", "codo horizontal", "codo vertical")),
+    ("tablero_electrico", (
+        "tablero", "interruptor de potencia", "relevador", "siprotec",
+        "unidad de disparo", "gabinete de proteccion", "switchgear",
+        "centro de carga", "arrancador", "interruptor")),
     ("subestacion", (
-        "subestacion", "transformador", "acometida", "tablero de distribucion",
-        "media tension", "switchgear")),
+        "subestacion", "acometida", "media tension", "34.5 kv", "13.8 kv")),
+    ("instalacion_electrica", (
+        "instalacion electrica", "bajadas electricas", "canalizacion",
+        "alimentacion electrica", "cable cal", "mcm", "xlpe", "luminaria",
+        "pruebas electricas", "cableado", "conduit", "tuberia conduit",
+        "instalacion electromecanica", "electromecanico",
+        "sistema electrico", "suministro electrico", "integracion electrica",
+        "electrical migration", "integracion electrica/mecanica")),
+    ("puesta_a_tierra", ("puesta a tierra", "sistema de tierras",
+                         "red de tierras")),
+    ("ups_respaldo", ("ups", "no break", "respaldo de energia")),
+    # --- AUTOMATIZACION, CONTROL Y RED INDUSTRIAL --------------------------
+    ("integracion_control", (
+        "integracion de sistema de control", "sistema de control",
+        "tablero de control", "instrumentacion", "plc", "hmi", "scada",
+        "variador", "vfd", "automatizacion", "retrofit", "recetas",
+        "senales y tablero", "integracion de senales", "lazo de control",
+        "integracion de valvulas", "control de proceso", "programacion",
+        "integracion de control", "integracion de sistema mecanico",
+        "sistema obsoleto e integracion", "integracion de resistencias")),
+    ("red_industrial", (
+        "nodos de red", "switches de red", "switches", "idf", "firewall",
+        "thinclient", "thin client", "pantalla", "label verification",
+        "label identification", "nodo electrico")),
+    ("medicion_y_calibracion", (
+        "calibracion", "bascula", "medidores de flujo", "rayos x",
+        "medidor de flujo", "verificacion metrologica")),
+    # --- TERMICO Y FLUIDOS: el nucleo historico ---------------------------
     ("sistema_agua_helada", (
         "agua helada", "chilled water", "sistema de enfriamiento de proceso",
-        "circuito de agua helada")),
+        "circuito de agua helada", "sistema de enfriamiento")),
     ("circuito_cerrado", (
         "circuito cerrado", "closed loop", "circuito de recirculacion")),
     ("torre_de_enfriamiento", (
@@ -66,24 +114,42 @@ TIPOS_DE_PROYECTO = (
         "intercambiador", "heat exchanger", "placas", "shell and tube",
         "casco y tubo")),
     ("chiller", (
-        "chiller", "enfriador de agua", "unidad enfriadora", "planta de agua "
-        "helada")),
+        "chiller", "enfriador de agua", "unidad enfriadora",
+        "planta de agua helada", "rtu")),
+    ("clima_de_tablero", (
+        "clima", "rittal", "ac unit", "aire acondicionado", "condensadora",
+        "deshumidificador", "minisplit")),
     ("caldera_vapor", (
-        "caldera", "vapor", "generador de vapor", "boiler")),
+        "caldera", "vapor", "generador de vapor", "boiler", "marmita")),
     ("tratamiento_de_agua", (
         "ptar", "tratamiento de agua", "osmosis", "suavizador",
-        "planta de tratamiento", "desmineraliz")),
+        "planta de tratamiento", "desmineraliz", "filtros ultra sand",
+        "filtro de arena")),
     ("bombeo", (
-        "bombeo", "carcamo", "estacion de bombas", "sistema de bombeo")),
+        "bombeo", "carcamo", "estacion de bombas", "sistema de bombeo",
+        "skid de bombas", "skid bombeo")),
     ("tuberia_y_montaje", (
-        "tuberia", "piping", "montaje mecanico", "interconexion", "racks de "
-        "tuberia", "soporteria")),
+        "tuberia", "piping", "montaje mecanico", "interconexion",
+        "racks de tuberia", "valvulas y conexiones", "cedula 80",
+        "cedula 40", "soporte de tuberias", "ducteria")),
+    # --- SERVICIO ---------------------------------------------------------
+    ("comisionamiento_y_arranque", (
+        "comisionamiento", "puesta en marcha", "puesta en servicio",
+        "supervision de ingenieria", "ingeniero supervisor",
+        "soporte de ingenieria", "pruebas previas", "ingenieria de "
+        "refrigeracion", "servicio de 2 tecnicos", "soporte tecnico")),
+    ("maniobras_y_montaje", (
+        "maniobras", "desmontaje", "traslado y montaje", "descarga de equipo",
+        "desinstalacion", "grua", "montaje de equipo", "desconexion")),
     ("mantenimiento_servicio", (
-        "mantenimiento", "servicio preventivo", "correctivo", "puesta en marcha",
-        "arranque", "limpieza quimica", "reparacion")),
+        "mantenimiento", "servicio preventivo", "correctivo",
+        "limpieza quimica", "reparacion", "modificacion de", "mejoras al "
+        "sistema")),
     ("refaccion", (
-        "refaccion", "repuesto", "spare", "kit de", "sello", "impulsor")),
+        "refaccion", "repuesto", "spare", "kit de", "sello", "impulsor",
+        "controlador cbe", "rejillas")),
 )
+
 
 # ---------------------------------------------------------------------------
 # PROCESOS DEL CLIENTE. No es la industria: es QUE HACE la planta, que es lo que
@@ -124,10 +190,18 @@ PROCESOS_DEL_CLIENTE = (
 # Palabras que descalifican una linea como PROYECTO. Una orden de venta trae
 # fletes, viaticos y anticipos, y contarlos como proyectos infla el catalogo con
 # cosas que no dicen nada del alcance tecnico de FTS.
+# Lo que NO es un proyecto. La segunda mitad de esta lista salio del dato real de
+# Odoo, no de imaginarla: una orden de proyecto trae fianzas, diesel, renta de
+# equipo y lineas administrativas que reemplazan a otra orden.
 NO_ES_PROYECTO = (
     "flete", "viatico", "viaje", "hospedaje", "anticipo", "descuento",
     "redondeo", "iva", "comision", "penalizacion", "nota de credito",
     "gastos de envio", "maniobra de descarga",
+    # --- del dato real ---
+    "fianza", "diesel", "renta de equipo", "renta de :", "transportacion",
+    "expeditacion", "ajuste por modificacion de alcance", "sustituye a la so",
+    "reemplazara a la so", "esta so", "generales", "total trabajos",
+    "fletes", "seguro de obra",
 )
 
 # Magnitudes: lo que dice QUE TAMANO fue el proyecto. Es la tercera capa del
@@ -296,4 +370,37 @@ PERFIL_DE_QUIEN_COMPRA = {
     "subestacion": "ingenieria de planta y electrico; direccion aprueba el capex",
     "mantenimiento_servicio": "jefatura de mantenimiento, compra recurrente",
     "refaccion": "compras MRO, con almacen de por medio",
+    # --- las familias que el dato real de Odoo destapo -------------------
+    "transformador": ("ingenieria de planta y electrico; el capex lo aprueba "
+                      "direccion, y la especificacion la firma quien responde "
+                      "por la continuidad de la energia"),
+    "electroducto_busway": ("ingenieria de proyectos electricos. Es obra de "
+                            "ampliacion: aparece cuando la planta sube carga"),
+    "tablero_electrico": ("mantenimiento electrico e ingenieria de planta; "
+                          "compras tecnicas cierra"),
+    "instalacion_electrica": ("mantenimiento electrico. Es la venta mas "
+                              "recurrente del lado electrico"),
+    "puesta_a_tierra": ("ingenieria de planta, y con EHS de por medio cuando "
+                        "hay auditoria o norma que cumplir"),
+    "ups_respaldo": ("IT industrial junto con mantenimiento electrico: "
+                     "protege linea, no oficina"),
+    "integracion_control": ("ingenieria de manufactura y automatizacion. NO es "
+                            "venta de mantenimiento: lo que compran es que la "
+                            "linea haga algo que hoy no hace"),
+    "red_industrial": ("IT industrial. Es la unica familia donde el comprador "
+                       "puede estar en sistemas y no en planta"),
+    "medicion_y_calibracion": ("calidad y metrologia, con mantenimiento "
+                               "ejecutando. Compra recurrente y calendarizada"),
+    "clima_de_tablero": ("mantenimiento electrico: enfria el tablero, no la "
+                         "nave. Se confunde con HVAC y no es lo mismo"),
+    "estructura_metalica": ("ingenieria de proyectos o facilidades; en "
+                            "seguridad de maquina entra EHS"),
+    "trabajos_civiles": "ingenieria de proyectos; obra nueva",
+    "conveyor_y_manejo": ("ingenieria de manufactura y produccion: compran "
+                          "capacidad de linea"),
+    "comisionamiento_y_arranque": ("quien es dueno del arranque: direccion de "
+                                   "planta o ingenieria de proyectos. Se vende "
+                                   "junto al equipo, casi nunca solo"),
+    "maniobras_y_montaje": ("ingenieria de proyectos; es el complemento de una "
+                            "venta de equipo, propia o de un tercero"),
 }

@@ -32,6 +32,58 @@ saber qué señal convirtió, los pesos del evaluador son una opinión.**
 
 ---
 
+## LO QUE EL CATÁLOGO REAL CORRIGIÓ DE ESTE DOCUMENTO
+
+Este documento se escribió **antes** de construir el catálogo de §3a. El catálogo
+se construyó después, contra Odoo, y **corrigió su premisa central**. Se deja
+escrito aquí arriba porque cambia cómo hay que leer todo lo de abajo.
+
+Sobre 154 líneas de proyecto clasificadas
+([el catálogo](../datos/catalogo-de-proyectos-fts.md)):
+
+| Familia | % de las líneas |
+|---|---|
+| **Eléctrico** — tableros, transformadores, electroducto, instalación, subestación, tierras, UPS | **33.8%** |
+| **Automatización y TI industrial** — control, PLC/HMI, red industrial, medición | **18.8%** |
+| Térmico y fluidos — agua helada, chiller, torre, tubería, bombeo, tratamiento | 14.9% |
+| Servicio — comisionamiento, maniobras, mantenimiento | 13.6% |
+| Estructura y obra — mezanine, estructura metálica, civil | 11.7% |
+| Manejo de material — conveyor, polipasto | 7.1% |
+
+> **`chiller` + `sistema_agua_helada` son 6 de 154 líneas.**
+
+**Tres consecuencias, y las tres son decisiones de método, no detalles:**
+
+1. **El evaluador no puede puntuar sólo con vocabulario de agua y enfriamiento.**
+   `datos/consultas_senal.json` tiene hoy en `terminos_evento.alto`
+   «PTAR, cogeneración, caldera, torre de enfriamiento» — y eso cubre **15%** de
+   lo que FTS vende de verdad. Un radar montado sobre esas palabras encontraría
+   sistemáticamente la minoría del negocio. Hay que sumar los términos
+   eléctricos y de automatización: *subestación, tablero, transformador, media
+   tensión, ampliación de carga, electroducto, automatización de línea, PLC,
+   retrofit, migración de control, red industrial*.
+2. **El perfil de quién compra cambia por familia, y el método tenía una regla
+   que ahora choca.** El método dice que «IT o RH que sólo mencionan la palabra
+   son contexto, no target». Para `red_industrial` — 19% del negocio junto con
+   control — **el comprador puede estar en IT industrial**, y la compuerta de
+   cercanía lo mandaría a contexto. No lo cambié: es criterio, y es tuyo. Lo dejo
+   nombrado porque es un falso negativo sistemático sobre la segunda familia más
+   grande.
+3. **La señal de obra nueva vale más de lo que este documento decía, no menos.**
+   Una ampliación de planta mueve **carga eléctrica** antes que carga térmica:
+   subestación, tablero, electroducto. Es la familia más grande de FTS y la que
+   una nota de «ampliación» delata primero.
+
+**Y una cosa que el catálogo NO pudo establecer, declarada como hueco:** el
+**proceso del cliente**. La triangulación con Outlook, buscando por palabras de
+proceso en todo el buzón, devolvió casi puro boletín y convocatoria: sólo **6 de
+154** líneas quedaron con proceso identificado. El proceso hay que sacarlo con
+búsqueda **dirigida por cliente**, no genérica — la misma lección que
+`fuentes-de-senal.md` ya había medido para los feeds. Sin eso, el factor «match
+de proceso» del evaluador (25 de 50 puntos) no tiene con qué calcularse todavía.
+
+---
+
 # 3b · Las fuentes del radar
 
 Tres grupos, y el tercero es el que nadie más tiene.
@@ -42,7 +94,7 @@ Tres grupos, y el tercero es el que nadie más tiene.
 |---|---|---|---|
 | **Vacantes técnicas** (OCC, Indeed, Computrabajo, LinkedIn Jobs público) | La señal más honesta de que una planta **opera y crece**: nadie contrata un técnico de mantenimiento para una nave que no existe | `WebSearch` desde la sesión | OCC devuelve **403** al raspado; Computrabajo **200**. Por búsqueda, las cuatro funcionan |
 | **Prensa industrial** | Obra nueva, inversión, inauguración | n8n lee; la sesión busca | 5 de 11 fuentes responden 200. Dos con RSS vivo |
-| **Convocatorias de proveedores** | La señal **más fuerte que existe**: la empresa dice en público que va a comprar | por diseñar (ver abajo) | no medido |
+| **Convocatorias de proveedores** | La señal **más fuerte que existe**: la empresa dice en público que va a comprar | **ya llegan al buzón** | **MEDIDO: están llegando hoy y nadie las mina** |
 | **Licitaciones** | Obra pública y paraestatales | CompraNet / ComprasMX | no medido |
 
 **El ajuste que la medición obliga.** `fuentes-de-senal.md` midió que un feed
@@ -60,11 +112,24 @@ manda sobre fluidos o mantenimiento** y dejarlas en bajo si no, porque son la
 un año. En #300 fueron las vacantes activas de OCC e Indeed las que confirmaron
 que Pesquería opera, contra la duda de si la planta existía.
 
-**Las convocatorias de proveedores hay que ir a buscarlas donde están**, y no es
-un feed: son los portales de compras de las propias corporaciones
-(`proveedores.<dominio>`, `supplier.<dominio>`, los formularios de registro de
-proveedor) más los boletines de las cámaras. Es trabajo de n8n, y es el que
-mejor paga: una convocatoria es una empresa **declarando** que va a comprar.
+**Las convocatorias ya están en el buzón, y ése es el hallazgo del 24-sep-2026.**
+Buscando en Outlook aparecieron, con cadencia semanal o quincenal, correos de
+agregadores de requerimientos industriales — del tipo «empresas buscan
+proveedores de estos productos y servicios», con requerimientos por categoría y
+por estado— más avisos de congresos del sector y, lo más valioso, **una RFQ real
+de un cliente reenviada por un vendedor de FTS** (iluminación y obra civil para
+el acceso de una planta).
+
+Eso cambia el plan: **la fuente que este documento puntuó con 23 y marcó «no
+medido» está entrando sola, por correo, y nadie la está leyendo.** No hace falta
+raspar portales para empezar: hace falta **una regla sobre el buzón** que
+clasifique esos correos, cruce el requerimiento contra el catálogo de §3a y
+levante la señal. Es la vía más barata de todo el radar y la única que ya tiene
+el dato en casa.
+
+Los portales de compras corporativos (`proveedores.<dominio>`,
+`supplier.<dominio>`) siguen siendo el siguiente paso, y siguen siendo trabajo de
+n8n. Pero van **después**.
 
 ## Grupo 2 · Cámaras y clusters
 

@@ -64,7 +64,7 @@ def _texto_de(fila: dict, *claves) -> str:
 
 
 def construir(ordenes: list, lineas: list, hilos: list,
-              propuestas: list) -> dict:
+              propuestas: list, procedencia: str = "") -> dict:
     """El catalogo. Triangula las tres fuentes y dice de donde salio cada cosa."""
     # --- indice de ordenes, para colgarles sus lineas y su cliente
     por_id = {}
@@ -152,6 +152,7 @@ def construir(ordenes: list, lineas: list, hilos: list,
         "nota": ("Que ha hecho FTS de verdad. Triangulado de Odoo (que se "
                  "vendio), Outlook (de que se hablo) y SharePoint (que se "
                  "propuso). SIN PERSONAS: empresa, proyecto, proceso y monto."),
+        "procedencia": procedencia,
         "cobertura": {
             "ordenes_leidas": len(ordenes),
             "lineas_leidas": len(lineas),
@@ -201,6 +202,11 @@ def a_markdown(cat: dict) -> str:
          "produjo N proyectos de enfriamiento en el historial».", "",
          "**No lleva ni una persona.** Empresa, proyecto, proceso y monto. Por eso "
          "puede vivir en este repo, que es público.", "",
+         "## Procedencia de la muestra — léelo antes de las tablas", "",
+         (cat.get("procedencia") or
+          "**SIN DECLARAR.** Un catálogo sin procedencia no se puede "
+          "interpretar: un sesgo de muestreo no declarado se lee como un hecho "
+          "sobre el negocio."), "",
          "## Cobertura — lo primero, porque decide cuánto vale lo demás", "",
          "| | |", "|---|---|",
          f"| Órdenes leídas | {c['ordenes_leidas']} |",
@@ -268,11 +274,16 @@ def main(argv=None) -> int:
     ap.add_argument("--hilos", default=None)
     ap.add_argument("--propuestas", default=None)
     ap.add_argument("--salida", required=True)
+    ap.add_argument("--procedencia", default="",
+                    help="COMO se tomo la muestra. Sin esto el catalogo no se "
+                         "puede interpretar: un sesgo de muestreo no declarado "
+                         "se lee como un hecho sobre el negocio")
     ap.add_argument("--md", default=None,
                     help="tambien escribe la tabla en markdown, generada del JSON")
     a = ap.parse_args(argv)
     cat = construir(_leer(a.ordenes), _leer(a.lineas),
-                    _leer(a.hilos), _leer(a.propuestas))
+                    _leer(a.hilos), _leer(a.propuestas),
+                    procedencia=a.procedencia)
     crudo = json.dumps(cat, ensure_ascii=False)
     # Despues de enmascarar, CUALQUIER coincidencia que quede es una fuga. No
     # hace falta filtrar los marcadores: `[correo]` y `[telefono]` no tienen forma
