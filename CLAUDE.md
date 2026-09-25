@@ -1251,7 +1251,7 @@ Worker (§14 Bloque B) que pasó cuatro meses recomendando tirar la pieza que ha
 falta. **Una regla nueva de esta lista exige la misma vara que cualquier reporte:
 ejecutado y observado (§8), o se escribe como sospecha y se dice que lo es.**
 
-**Corolario medido el 25-sep-2026 (#267): hay instrumentos que OMITEN EN SILENCIO, y eso
+**Corolario medido el 25-sep-2026 (#311): hay instrumentos que OMITEN EN SILENCIO, y eso
 es peor que un error.** El MCP de Odoo tiene `res.partner.bank` en denylist dura, y la misma
 lista **esconde tambien `hr.employee.bank_account_ids`** — que si existe, se ve en la pestana
 Personal de la ficha y es un many2many almacenado. `odoo_describe('hr.employee', 'bank')`
