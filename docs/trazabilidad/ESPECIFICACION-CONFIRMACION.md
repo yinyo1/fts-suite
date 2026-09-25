@@ -468,12 +468,17 @@ cada lado**. Medido sobre `sale.order`, `state='sale'`, `company_id in (1,6)`,
 
 **Pesos** (cía 1, `currency_id = 33`), 135 órdenes:
 
-| | órdenes | % órdenes | subtotal | % del dinero |
-|---|---|---|---|---|
-| **≥ 200,000** | **38** | 28 % | 91,652,593 MXN | **95.4 %** |
-| < 200,000 | 97 | 72 % | 4,427,778 MXN | 4.6 % |
+| | órdenes | % órdenes | % del dinero |
+|---|---|---|---|
+| **≥ 200,000** | **38** | 28 % | **95.4 %** |
+| < 200,000 | 97 | 72 % | 4.6 % |
 
-**Dólares** (cías 1 y 6, `currency_id = 2`), 45 órdenes, 1,211,722 USD en total:
+📌 **Los importes absolutos no se escriben aquí** — este repositorio es público. Se
+reproducen en un minuto con el dominio de
+[`consultas/sesion-4-dominios.md`](consultas/sesion-4-dominios.md), que es lo que hace falta
+para auditar la cifra.
+
+**Dólares** (cías 1 y 6, `currency_id = 2`), 45 órdenes:
 
 | umbral | órdenes que lo cruzan | % órdenes | % del dinero |
 |---|---|---|---|
