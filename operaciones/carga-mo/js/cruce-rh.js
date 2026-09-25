@@ -50,9 +50,13 @@
     { etiqueta: 'Bono condicionado',          clave: 'BONO' },
     { etiqueta: 'Tiempo extra',               clave: 'HORAS_EXTRAS' },
     { etiqueta: 'Ajuste de sueldo',           clave: 'AJUSTE_EN_SUELDOS' },
-    { etiqueta: 'Descuento por préstamo',     clave: 'PRESTAMO_EMPRESA' },
-    { etiqueta: 'Descuento de anticipo',      clave: 'PRESTAMO_EMPRESA' },
-    { etiqueta: 'Compensa contra deuda',      clave: 'PRESTAMO_EMPRESA' },
+    // `suma` son las columnas HERMANAS del mismo concepto. CONTPAQi abre una
+    // segunda («Ptmo. empresa2») cuando la persona tiene dos préstamos vivos a la
+    // vez; RH declara un solo monto y hay que compararlo contra las dos, o el
+    // descuento partido se lee como si faltara dinero.
+    { etiqueta: 'Descuento por préstamo',     clave: 'PRESTAMO_EMPRESA', suma: ['PRESTAMO_EMPRESA', 'PTMO_EMPRESA2'] },
+    { etiqueta: 'Descuento de anticipo',      clave: 'PRESTAMO_EMPRESA', suma: ['PRESTAMO_EMPRESA', 'PTMO_EMPRESA2'] },
+    { etiqueta: 'Compensa contra deuda',      clave: 'PRESTAMO_EMPRESA', suma: ['PRESTAMO_EMPRESA', 'PTMO_EMPRESA2'] },
     // Las dos puntas que DAN dinero caen en el mismo concepto de CONTPAQi, y no es
     // coincidencia: Ulises captura los prestamos PRIMERO como anticipo y despues
     // programa el descuento semanal. Su practica, no una traduccion nuestra.
@@ -468,7 +472,7 @@
           continue;
         }
         pedido[fila.clave] = true;
-        var val = valorDe(e, fila.clave);
+        var val = valorDe(e, fila.suma || fila.clave);
         if (Math.abs(val) < 0.005) {
           hallazgos.push({ nivel: INTEGRIDAD, codigo: 'INSTRUCCION_NO_CAPTURADA',
             que: 'RH pidió un movimiento que la nómina no refleja',
@@ -517,7 +521,7 @@
       for (j = 0; j < MAPA.length; j++) {
         var cl = MAPA[j].clave;
         if (pedido[cl] || derivado[cl]) continue;
-        var v2 = valorDe(e, cl);
+        var v2 = valorDe(e, MAPA[j].suma || cl);
         if (Math.abs(v2) < 0.005) continue;
         if (yaReportado(hallazgos, quien, cl)) continue;
         hallazgos.push({ nivel: INTEGRIDAD, codigo: 'CAPTURA_SIN_INSTRUCCION',
@@ -635,8 +639,20 @@
   // descuento por préstamo). Buscar solo en percepciones fue lo que hizo que los tres
   // descuentos de la SEM 36 se reportaran como "RH lo pidió y no aparece" estando
   // capturados: el dato existía, se estaba mirando la mitad equivocada del renglón.
+  // `clave` puede ser una clave o un ARREGLO de claves, y entonces se SUMAN.
+  // Existe porque CONTPAQi parte un mismo concepto en varias columnas cuando hay
+  // más de uno vivo a la vez: a quien tiene dos préstamos de empresa le captura
+  // uno en «Préstamo empresa» y el otro en «Ptmo. empresa2». RH declara UN monto
+  // —el que se le va a descontar esta semana— y la comparación tiene que ser
+  // contra la suma de las dos, o un préstamo partido en dos se lee como si le
+  // faltara dinero. Medido con el caso real de S39 (Ricardo Alán, 98).
   function valorDe(e, clave) {
     if (!e) return 0;
+    if (Array.isArray(clave)) {
+      var t = 0;
+      for (var q = 0; q < clave.length; q++) t += valorDe(e, clave[q]);
+      return t;
+    }
     var v = e.conceptos && e.conceptos[clave];
     if (v === undefined || v === null) v = e.deducciones && e.deducciones[clave];
     return num(v);

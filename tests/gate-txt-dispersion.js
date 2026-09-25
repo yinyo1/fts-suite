@@ -261,6 +261,39 @@ seccion('nivel 1b · persona por persona');
   check('los acentos no rompen el apareo', c.hallazgos.length === 0, JSON.stringify(soloCodigos(c.hallazgos)));
 }
 
+/* ═══ 4b · EL NETO DE CERO ════════════════════════════════════════════════
+   Pasa de verdad: a quien se le descuenta todo lo que gana —dos préstamos en la
+   misma semana, por ejemplo— le queda cero, y entonces NO debe haber
+   transferencia. El banco no mueve cero pesos.
+   «Falta un renglón» y «su neto es cero» piden cosas distintas: uno manda a
+   buscar un error, el otro no pide nada. Y la suma no los distingue, porque un
+   cero no cambia un total — así que sin esto sería un hallazgo de INTEGRIDAD
+   frenando una semana correcta. Medido contra el caso real de S39. */
+seccion('un neto de cero no es un renglón que falta');
+{
+  const P = excel([EMP[0], { cod: '037', nombre: 'HERNANDEZ GONZALEZ RICARDO', neto: 0 }], [], 1500.75);
+  const solo = archivo([reng(1, '1000000001', 150075, 'PEREZ LOPEZ JUAN')]);
+  const c = Txt.cruzar(P, { nomina: Txt.leer(solo, 'n.txt'), honorarios: null }, CAT);
+  check('quien tiene neto cero NO se reporta como renglón faltante',
+    !tiene(c.hallazgos, 'TXT_SIN_RENGLON'), JSON.stringify(soloCodigos(c.hallazgos)));
+  check('se dice como AVISO, que informa y no detiene', tiene(c.hallazgos, 'TXT_NETO_CERO'));
+  check('y NO frena: cero hallazgos de integridad', Txt.contar(c.hallazgos, 'INTEGRIDAD') === 0,
+    String(Txt.contar(c.hallazgos, 'INTEGRIDAD')));
+  check('las sumas cuadran igual, porque un cero no cambia un total',
+    c.resumen.cuadra_todo === true);
+  check('el aviso dice que es correcto que no aparezca',
+    /correcto que no aparezca/.test(c.hallazgos.filter(h => h.codigo === 'TXT_NETO_CERO')[0].accion));
+}
+{
+  // Y no se aflojó el control: a quien SÍ tiene neto y no trae renglón se le
+  // sigue frenando la semana.
+  const P = excel([EMP[0], EMP[1]], [], 3500.75);
+  const solo = archivo([reng(1, '1000000001', 150075, 'PEREZ LOPEZ JUAN')]);
+  const c = Txt.cruzar(P, { nomina: Txt.leer(solo, 'n.txt'), honorarios: null }, CAT);
+  check('a quien SÍ le toca dinero y no trae renglón se le sigue frenando',
+    tiene(c.hallazgos, 'TXT_SIN_RENGLON') && Txt.contar(c.hallazgos, 'INTEGRIDAD') > 0);
+}
+
 /* ═══ 5 · EL TRÍO ═════════════════════════════════════════════════════════ */
 seccion('el trío · alias por subconjunto de palabras');
 {
