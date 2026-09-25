@@ -1251,6 +1251,23 @@ Worker (§14 Bloque B) que pasó cuatro meses recomendando tirar la pieza que ha
 falta. **Una regla nueva de esta lista exige la misma vara que cualquier reporte:
 ejecutado y observado (§8), o se escribe como sospecha y se dice que lo es.**
 
+**Corolario medido el 25-sep-2026 (#267): hay instrumentos que OMITEN EN SILENCIO, y eso
+es peor que un error.** El MCP de Odoo tiene `res.partner.bank` en denylist dura, y la misma
+lista **esconde tambien `hr.employee.bank_account_ids`** — que si existe, se ve en la pestana
+Personal de la ficha y es un many2many almacenado. `odoo_describe('hr.employee', 'bank')`
+contesta **«0 de 0 campos»**, y un `odoo_query` que pide el campo **por su nombre** devuelve
+las otras columnas y **omite esa, sin error y sin aviso**. Esteban y CC midieron lo mismo por
+separado, con el mismo instrumento, y los dos concluyeron que el campo no existia. **Un
+rechazo se nota; una omision se hereda** — y como las dos mediciones coincidieron, la
+coincidencia se leyo como confirmacion cuando era la misma ceguera dos veces.
+**Regla operativa:** cuando una herramienta conteste «no hay» sobre algo que el producto
+documenta o que se ve en la pantalla, comprobarlo con **otro instrumento** antes de escribirlo
+como hallazgo; para Odoo, el de referencia es un **runner del lado del servidor por RPC**, no
+el MCP. Y aplica igual al codigo de medicion propio: en esa misma sesion un contador
+`if (b.employee_id)` reporto **27 de 27 con employee_id** cuando el valor era `[]` — en
+JavaScript un arreglo vacio es verdadero. Lo desmintio el detalle crudo, que se imprimio al
+lado. **Por eso todo conteo va acompanado de la muestra cruda de la que sale.**
+
 ### 20. Toda entrega que toque pantalla lleva capturas a CUATRO anchos, y miradas
 **380, 760, 900 y 1280 px**, con la fila más larga que exista de verdad en producción —no
 un ejemplo corto, que cabe en cualquier parte y no prueba nada—. Y **miradas**: abrir el
