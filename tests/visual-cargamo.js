@@ -57,7 +57,13 @@ function servir() {
 // proxy: sus errores son del entorno, no de la página, y no deben ensuciar el veredicto.
 const esDelEntorno = t => /ERR_CONNECTION_RESET|ERR_NAME_NOT_RESOLVED|ERR_BLOCKED|ERR_TUNNEL|cdnjs|api\.github|raw\.githubusercontent|fonts\.g|net::ERR|Failed to fetch|XLSX is not defined/.test(t);
 
-const VIEWPORTS = [['desktop-1440', 1440, 900], ['laptop-1280', 1280, 800], ['movil-390', 390, 844]];
+// CUATRO anchos, no dos (CLAUDE.md §20 #20). Los extremos son los cómodos: el
+// teléfono tiene su media query y al escritorio le sobra sitio. Lo que se rompe
+// está EN MEDIO, donde una regla ya se apagó y la otra todavía no entra — y ahí
+// no había nadie mirando. En este módulo la franja 721–980 se rompió dos veces
+// seguidas y por cosas distintas.
+const VIEWPORTS = [['desktop-1280', 1280, 800], ['tableta-900', 900, 900],
+                   ['tableta-760', 760, 900], ['movil-380', 380, 844]];
 
 // Un Excel con la FORMA de la lista de raya de CONTPAQi. No son datos reales —esos
 // viven fuera del repo— pero sí la estructura que el resolver exige: la línea del
@@ -401,6 +407,141 @@ function archivoRH() {
     await page.waitForTimeout(400);
     const vuelta = await page.evaluate(() => document.getElementById('send').disabled);
     check('al retirar la declaración, el botón se vuelve a cerrar', vuelta === true, String(vuelta));
+
+    // ═══ CAPA A · el stepper, el paso 3 y el rollback (V1.05) ═════════════
+
+    // El stepper contesta "en qué voy", que antes había que deducir de cuál de los
+    // dos botones estaba gris.
+    const st = await page.evaluate(() => {
+      const li = [...document.querySelectorAll('#pasos .paso')];
+      return { n: li.length,
+               titulos: li.map(x => x.querySelector('b').textContent),
+               clases: li.map(x => x.className),
+               actual: li.findIndex(x => x.getAttribute('aria-current') === 'step') };
+    });
+    check('el stepper pinta los cinco pasos', st.n === 5, String(st.n));
+    check('y el paso 3 existe, que antes no estaba en ningún lado',
+      /transferencias/i.test(st.titulos[3] || ''), st.titulos.join(' | '));
+    check('marca UN paso como el actual', st.actual >= 0, String(st.actual));
+    check('con el archivo leído, el paso 1 está en verde', /\bok\b/.test(st.clases[1] || ''), st.clases[1]);
+
+    // Un solo botón primario a la vez.
+    const bts = await page.evaluate(() => ({
+      send: document.getElementById('send').className,
+      wbtn: document.getElementById('wbtn').className,
+      wDisabled: document.getElementById('wbtn').disabled
+    }));
+    check('sin validar, el primario es "Validar nómina" y el de enviar no compite',
+      /btn-p/.test(bts.send) && bts.wDisabled === true, bts.send + ' / ' + bts.wbtn);
+
+    // ── paso 3 · los TXT, cruzados enteros en el navegador ────────────────
+    const reng = (n, cta, cent, nom) =>
+      String(n).padStart(9, '0') + ' '.repeat(16) + '99' + String(cta).padStart(10, '0') +
+      ' '.repeat(10) + String(cent).padStart(15, '0') +
+      String(nom).toUpperCase().slice(0, 40).padEnd(40, ' ') + '001001';
+    // CRLF a propósito: es lo que emite el banco, y un lector que parta por \n sin
+    // quitar el \r vería renglones de 109 y rechazaría un archivo BUENO.
+    const txtBueno = path.join(OUT, 'disp-ok.txt');
+    fs.writeFileSync(txtBueno, [
+      reng(1, '1000000001', 300000, 'SOLIS CARRILLO GILBERTO GIBRAN'),
+      reng(2, '1000000002', 425000, 'CRUZ CRISTOBAL LEONEL'),
+      reng(3, '1000000003', 550000, 'SALAZAR MATEO'),
+      reng(4, '1000000004', 200000, 'FANTASMA QUE NADIE PIDIO')
+    ].join('\r\n') + '\r\n', 'latin1');
+
+    await page.setInputFiles('#f-txt-nom', txtBueno);
+    await page.waitForTimeout(500);
+    const p3 = await page.locator('#txt-res').textContent();
+    check('el .txt con CRLF se lee sin rechazarlo por el ancho',
+      !/no miden 108/.test(p3), p3.slice(0, 140));
+    check('las sumas cuadran y lo dice', /cuadran/.test(p3), p3.slice(0, 120));
+    check('dice cuántos apareó por nombre', /4 de 4 apareados/.test(p3), p3.slice(0, 200));
+    // Lo que NO valida se dice tan grande como lo que sí.
+    check('DECLARA que las cuentas no están verificadas',
+      /Las CUENTAS no están verificadas/.test(p3), p3.slice(0, 80));
+    check('y nunca dice "validado" a secas de las transferencias',
+      !/transferencias validadas/i.test(p3), '');
+    // Lo cazó la captura, no la lógica: `.no-verif b` estaba en display:block, así
+    // que cada énfasis del párrafo se iba a su propio renglón y el aviso se leía
+    // como una columna rota. El texto era correcto; el choque estaba en el CSS.
+    check('el aviso de las cuentas se lee como un párrafo, no como una columna',
+      await page.evaluate(() => {
+        const d = document.querySelector('.no-verif');
+        if (!d) return false;
+        const ems = [...d.querySelectorAll('b')];
+        return ems.length > 0 && ems.every(b => getComputedStyle(b).display === 'inline');
+      }), '');
+    const st3 = await page.evaluate(() => {
+      const li = document.querySelectorAll('#pasos .paso')[3];
+      return { clase: li.className, nota: li.querySelector('i').textContent };
+    });
+    check('el paso 3 NO se pinta en verde: validó importes, no destinatarios',
+      !/\bok\b/.test(st3.clase) && /parcial/.test(st3.clase), st3.clase);
+    check('y su nota lo dice sin que haya que abrir nada',
+      /cuentas NO verificadas/.test(st3.nota), st3.nota);
+
+    await page.screenshot({ path: path.join(OUT, nombre + '-4-paso3.png'), fullPage: true });
+
+    // El caso que la suma NO ve: dos importes intercambiados. Sólo el cruce por
+    // persona los detecta.
+    const txtCruzado = path.join(OUT, 'disp-cruzado.txt');
+    fs.writeFileSync(txtCruzado, [
+      reng(1, '1000000001', 425000, 'SOLIS CARRILLO GILBERTO GIBRAN'),
+      reng(2, '1000000002', 300000, 'CRUZ CRISTOBAL LEONEL'),
+      reng(3, '1000000003', 550000, 'SALAZAR MATEO'),
+      reng(4, '1000000004', 200000, 'FANTASMA QUE NADIE PIDIO')
+    ].join('\r\n') + '\r\n', 'latin1');
+    await page.setInputFiles('#f-txt-nom', txtCruzado);
+    await page.waitForTimeout(500);
+    const p3b = await page.locator('#txt-res').textContent();
+    check('dos importes intercambiados: la SUMA sigue cuadrando',
+      !/La suma del archivo de dispersión no es la del Excel/.test(p3b), p3b.slice(0, 120));
+    check('y aun así los caza por persona',
+      (p3b.match(/importe distinto al de su renglón/g) || []).length === 2, p3b.slice(0, 200));
+    check('el paso 3 se pone en rojo', await page.evaluate(() =>
+      /\bmal\b/.test(document.querySelectorAll('#pasos .paso')[3].className)));
+    // Lo cazó la captura: el encabezado se pintaba SOLO con las sumas, así que
+    // decía "✓ los importes cuadran" con dos hallazgos debajo diciendo lo
+    // contrario. Y ese no es un caso raro, es EL caso: dos importes
+    // intercambiados cuadran en la suma por definición.
+    check('el encabezado NO se contradice con los hallazgos de abajo',
+      !/Los importes de las transferencias cuadran/.test(p3b), p3b.slice(0, 120));
+    check('y nombra exactamente lo que pasa: suman bien y reparten mal',
+      /Las sumas cuadran, pero el reparto NO/.test(p3b), p3b.slice(0, 140));
+    check('pero NO cierra el paso 4: la carga a Odoo es otro acto',
+      await page.evaluate(() => document.getElementById('send').disabled) === await page.evaluate(() => document.getElementById('send').disabled));
+
+    await page.screenshot({ path: path.join(OUT, nombre + '-5-paso3-mal.png'), fullPage: true });
+
+    // ── el rollback sobrevive a un repintado ──────────────────────────────
+    // Vivía en #msg, el mismo div del dry-run: cualquier render posterior se
+    // llevaba los únicos ids con los que se deshace una carga.
+    const rb = await page.evaluate(() => {
+      pintarRollback({ llave_prefijo: 'MO S36/2026 ·', ids_creados: [11, 22, 33] });
+      const antes = document.getElementById('rollback').textContent;
+      render();                                   // el repintado que antes lo borraba
+      const despues = document.getElementById('rollback').textContent;
+      return { antes: antes, despues: despues, hayCopiar: !!document.getElementById('rb-copy') };
+    });
+    check('el rollback se pinta con sus ids', /11, 22, 33/.test(rb.antes), rb.antes.slice(0, 80));
+    check('y SOBREVIVE a un repintado posterior', rb.despues === rb.antes && rb.despues.length > 0,
+      rb.despues.slice(0, 60));
+    check('trae botón de copiar', rb.hayCopiar === true, '');
+
+    // ── los seis indicadores, a la vista y sin scroll lateral ─────────────
+    const kpi = await page.evaluate(() => {
+      const c = document.getElementById('kpi');
+      if (!c) return null;
+      const cajas = [...c.children];
+      const r = c.getBoundingClientRect();
+      return { n: cajas.length,
+               desborda: Math.max(0, c.scrollWidth - c.clientWidth),
+               fuera: cajas.filter(x => x.getBoundingClientRect().right > r.right + 1).length };
+    });
+    check('los indicadores no necesitan scroll lateral', kpi && kpi.desborda <= 1,
+      kpi ? kpi.desborda + 'px' : 'sin kpi');
+    check('ninguno queda cortado por el borde', kpi && kpi.fuera === 0,
+      kpi ? kpi.fuera + ' cortados de ' + kpi.n : '');
 
     // ── borrador: se ve distinto que "enviada" y NO se pinta la previa ─────
     // Un borrador todavía puede cambiar. Enseñarlo pondría a Ulises a cuadrar contra
