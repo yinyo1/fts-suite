@@ -594,6 +594,80 @@ seccion('Contrato con nom/despacho');
   check('y salen las personas', comoDelEndpoint.filas.length === 1);
 }
 
+/* ═══ UN PRÉSTAMO PARTIDO EN DOS COLUMNAS ════════════════════════════════
+   S39 estrena el caso: Ricardo Alán (98) con dos préstamos vivos a la vez.
+   CONTPAQi le captura uno en «Préstamo empresa» y el otro en «Ptmo. empresa2».
+   RH declara UN monto —lo que se le descuenta esta semana— así que compararlo
+   contra una sola columna leería el descuento partido como si faltara dinero.
+   Es la misma familia del anticipo de Gibrán: un concepto que el cruce mira a
+   medias produce un hallazgo que suena a error de captura y no lo es. */
+{
+  seccion('un préstamo partido en dos columnas de CONTPAQi');
+  const SEM39 = { id: 'S39/2026', desde: '2026-09-18', hasta: '2026-09-24', dias: 5 };
+  const p = persona({ id: 98, codigo: '037', nombre: 'Ricardo Alán Hernández González',
+    declaraciones: [{ tipo: 'descuento_prestamo', valores: { monto: 7213.47, pago: 1 } }] });
+  const d = Cruce.parseDespacho(Des.texto({ semana: SEM39, personas: [p], disputas: [] },
+    { version: 1, actor: 'magaly.perez', fecha: '2026-09-25 10:00' }));
+
+  // Capturado como lo captura CONTPAQi: partido en las dos columnas.
+  const partido = emp('037', 'HERNANDEZ GONZALEZ RICARDO ALAN', {}, 0);
+  partido.deducciones = { PRESTAMO_EMPRESA: 1000, PTMO_EMPRESA2: 6213.47 };
+  const rp = Cruce.cruzar(d, [partido], 'S39/2026');
+  const cods = rp.hallazgos.map(h => h.codigo);
+  check('el descuento partido en dos columnas SÍ se da por capturado',
+    cods.indexOf('INSTRUCCION_NO_CAPTURADA') < 0, JSON.stringify(cods));
+  check('y no se reclama como monto distinto',
+    cods.indexOf('MONTO_DISTINTO') < 0, JSON.stringify(cods));
+
+  // Y si de verdad falta, se sigue reclamando: el control no se aflojó.
+  const aMedias = emp('037', 'HERNANDEZ GONZALEZ RICARDO ALAN', {}, 0);
+  aMedias.deducciones = { PRESTAMO_EMPRESA: 1000 };
+  const rm = Cruce.cruzar(d, [aMedias], 'S39/2026');
+  check('si de verdad falta la mitad, se sigue reclamando',
+    rm.hallazgos.length > rp.hallazgos.length,
+    JSON.stringify(rm.hallazgos.map(h => h.codigo)));
+}
+
+/* ═══ LAS DOS COLUMNAS DE PRÉSTAMO DE EMPRESA ════════════════════════════
+   S39 estrena el caso: la misma persona con DOS descuentos de préstamo en la
+   misma semana, en dos columnas distintas de CONTPAQi. Si el catálogo sólo
+   conociera una, la otra caería como «deducción no catalogada» y quien la lea
+   pensaría que el sistema no la vio.
+   Se prueban las grafías REALES, con punto y con número: el encabezado lo
+   escribe CONTPAQi y nadie nos avisa si cambia (§20 #16). */
+{
+  seccion('las dos columnas de préstamo de empresa');
+  const cat2 = JSON.parse(fs.readFileSync(path.join(RAIZ, 'shared/operaciones/contpaqi_conceptos.json'), 'utf8'));
+  // ⚠️ El normalizador del RESOLVER, no el del cruce. Son distintos a propósito y
+  // esta prueba se equivocó primero con el otro: `cruce-rh.norm` conserva la
+  // puntuación ("PTMO. EMPRESA2") porque normaliza etiquetas de conceptos de RH,
+  // mientras que `resolver.norm` la quita ("PTMO EMPRESA2") porque normaliza
+  // ENCABEZADOS de Excel. El que lee la columna es el resolver (resolver.js:98),
+  // así que probar con el otro habría dado un falso rojo — y, al revés, podría dar
+  // un falso verde el día que las dos listas dejen de coincidir.
+  const Res = require(path.join(RAIZ, 'operaciones', 'carga-mo', 'js', 'resolver.js'));
+  const idx = {};
+  Object.keys(cat2.conceptos).forEach(k =>
+    (cat2.conceptos[k].alias || []).forEach(al => { idx[Res.norm(al)] = k; }));
+  const resuelve = h => idx[Res.norm(h)] || null;
+
+  check('la PRIMERA columna resuelve', resuelve('Préstamo empresa') === 'PRESTAMO_EMPRESA',
+    String(resuelve('Préstamo empresa')));
+  check('la SEGUNDA columna resuelve con su grafía real (con punto)',
+    resuelve('Ptmo. empresa2') === 'PTMO_EMPRESA2', String(resuelve('Ptmo. empresa2')));
+  check('y con las otras grafías plausibles',
+    resuelve('Prestamo empresa 2') === 'PTMO_EMPRESA2' &&
+    resuelve('PTMO EMPRESA 2') === 'PTMO_EMPRESA2',
+    String(resuelve('Prestamo empresa 2')));
+  // Las dos son DEDUCCIONES e INFORMATIVAS: no se distribuyen, así que no pueden
+  // caer al puente. El anticipo de Gibrán sí podía, porque aquel es percepción.
+  ['PRESTAMO_EMPRESA', 'PTMO_EMPRESA2'].forEach(k => {
+    check('«' + k + '» es deducción, así que no puede caer al puente',
+      cat2.conceptos[k].zona === 'deducciones' && cat2.conceptos[k].clase === 'INFORMATIVO',
+      cat2.conceptos[k].zona + '/' + cat2.conceptos[k].clase);
+  });
+}
+
 console.log('\n' + '═'.repeat(64));
 if (fail) { console.log('FALLARON ' + fail + ' de ' + (ok + fail)); process.exit(1); }
 console.log('GATE VERDE — ' + ok + '/' + ok + ' asserts');

@@ -355,6 +355,22 @@
     });
 
     libres.filter(function (x) { return !x.usada; }).forEach(function (x) {
+      /* ── Un neto de CERO no es un renglón que falta ──────────────────────
+         Son dos cosas distintas y piden cosas distintas: «falta un renglón»
+         manda a buscar un error, «su neto es cero» no pide nada. Pasa de
+         verdad: a quien se le descuenta todo lo que gana —dos préstamos, por
+         ejemplo— le queda cero, y entonces NO debe haber transferencia. El
+         banco no mueve cero pesos.
+         La suma no lo nota (un cero no cambia un total), así que si esto se
+         reportara como falta sería un hallazgo de INTEGRIDAD que frena una
+         semana correcta. Se dice como AVISO, que informa y no detiene. */
+      if (x.p.c === 0) {
+        add(AVISO, 'TXT_NETO_CERO',
+            'A alguien le tocó cero esta semana, así que no lleva renglón en el banco',
+            x.p.quien + ' · neto ' + pesos(0) + ' (fila ' + x.p.fila + ')',
+            'No hay nada que hacer: es correcto que no aparezca. Ocurre cuando las deducciones se comen todo el neto.');
+        return;
+      }
       add(INTEGRIDAD, 'TXT_SIN_RENGLON',
           'Hay alguien en el Excel que no tiene renglón en el archivo del banco',
           x.p.quien + ' · ' + pesos(x.p.c) + ' (fila ' + x.p.fila + ')',
@@ -402,6 +418,13 @@
     });
 
     libres.filter(function (x) { return !x.usada; }).forEach(function (x) {
+      if (x.p.c === 0) {
+        add(AVISO, 'TXT_NETO_CERO',
+            'A alguien de honorarios le tocó cero esta semana, así que no lleva renglón',
+            x.p.quien + ' · neto ' + pesos(0) + ' (fila ' + x.p.fila + ')',
+            'No hay nada que hacer: es correcto que no aparezca.');
+        return;
+      }
       add(INTEGRIDAD, 'TXT_HONORARIOS_SIN_RENGLON',
           'Hay alguien de honorarios en el Excel sin renglón en su archivo del banco',
           x.p.quien + ' · ' + pesos(x.p.c) + ' (fila ' + x.p.fila + ')',

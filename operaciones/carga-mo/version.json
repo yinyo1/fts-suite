@@ -1,10 +1,16 @@
 {
-  "version": "V1.05",
+  "version": "V1.06",
   "fecha": "2026-09-25",
   "modulo": "operaciones/carga-mo",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "ambito": "El CONTADOR es SOLO de este modulo y arranca en V1.00 aunque el modulo lleve meses en produccion: antes se versionaba con una cadena de build (la ultima fue 20260904-cmo-cruce-rh) y esa numeracion no se puede continuar. rh/nomina-incidencias, finanzas y comercial/machote usan el MISMO esquema con contadores PROPIOS — que aqui diga V1.00 y alla V1.16 es lo correcto, no un desfase.",
   "historial": [
+    {
+      "version": "V1.06",
+      "fecha": "2026-09-25",
+      "titulo": "Los tres casos que estrena S39: neto en cero, un prestamo partido en dos columnas, y el cambio de regimen de Ricardo (#313)",
+      "nota": "NETO EN CERO. A quien se le descuenta todo lo que gana le queda cero, y entonces NO debe haber transferencia: el banco no mueve cero pesos. El Nivel 1b lo reportaba como TXT_SIN_RENGLON, o sea 'falta un renglon' — que manda a buscar un error que no existe. Y la suma no lo distingue, porque un cero no cambia un total, asi que era un hallazgo de INTEGRIDAD frenando una semana correcta. Ahora se dice como AVISO (TXT_NETO_CERO) con el porque. Medido contra el caso real de Ricardo Alan en S39. UN PRESTAMO PARTIDO EN DOS COLUMNAS. CONTPAQi abre una segunda columna ('Ptmo. empresa2') cuando la persona tiene dos prestamos vivos a la vez. El catalogo YA conocia las dos —y las dos son deducciones informativas, asi que ningun dinero podia caer al puente: el caso del anticipo de Gibran era distinto porque aquel es una percepcion— pero el MAPA del cruce solo miraba la primera, asi que un descuento partido se leia como si faltara dinero. Ahora una entrada del MAPA puede declarar sus columnas HERMANAS con `suma` y valorDe las suma. El control no se aflojo: si de verdad falta la mitad, se sigue reclamando. Ademas alias defensivos para la segunda columna (catalogo 2026.6): la grafia real con punto ya funcionaba —medido— y se agregan cuatro mas porque el encabezado lo escribe CONTPAQi y nadie avisa si cambia. UN FALSO ROJO DEL GATE, ANOTADO: la primera version de la prueba uso el normalizador de cruce-rh, que conserva la puntuacion porque normaliza etiquetas de conceptos; el que lee los ENCABEZADOS del Excel es el del resolver, que la quita. Probar con el equivocado habria dado un falso rojo hoy y puede dar un falso verde manana."
+    },
     {
       "version": "V1.05",
       "fecha": "2026-09-25",
