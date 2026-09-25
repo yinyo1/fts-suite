@@ -114,7 +114,7 @@ def armar(c) -> dict:
             "motivo_revision": x.motivo_revision,
             "canal_recomendado": canal,
             "canal_por_que": por_que,
-            "ubicacion": x.ubicacion_respecto_a(c.ciudad),
+            "ubicacion": x.ubicacion_respecto_a(c.ciudad, c.alias_de_ubicacion),
             "modulo_origen": x.modulo_origen,
         })
     return {

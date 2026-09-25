@@ -15,7 +15,11 @@ from flujo.ficha import (modo_limpio, modo_procedencia_html, fecha_de,
 
 
 def _con_busquedas(c: Corrida, n: int, liga: str = "") -> Corrida:
-    for i in range(n):
+    # La numeracion SIGUE donde quedo la corrida, no reinicia en cero. Sin esto,
+    # llamar al helper dos veces sobre la misma corrida repetia la consulta 0 y la
+    # compuerta de duplicados (#306) la rechazaba -- con razon: es el mismo texto--.
+    ya = len(c.mod("M5").registros)
+    for i in range(ya, ya + n):
         c.registrar_busqueda("M5", "bloques_secos",
                              f"consulta real numero {i} sobre la casa",
                              "buscador", 1, liga=liga)
@@ -116,17 +120,35 @@ def test_la_fila_de_contacto_trae_nombre_puesto_planta_correo_y_confianza():
     assert "SOL" in fila or "CONF" in fila
 
 
-def test_un_contacto_en_revision_o_que_YA_NO_ESTA_no_se_imprime():
+def test_un_contacto_que_YA_NO_ESTA_no_se_imprime_pero_el_PENDIENTE_si():
+    """**Esta prueba cambio de veredicto por la DECISION 3 de #306, y a medias.**
+
+    Cuando se escribio, la ficha limpia ocultaba a los de `revision_humana` Y a los
+    que ya no estan en la casa, y las dos cosas parecian lo mismo. No lo son:
+
+      * quien YA NO ESTA en la casa sigue fuera, y eso no cambia — no es que falte
+        confirmarlo, es que la persona se fue;
+      * quien esta PENDIENTE DE CONFIRMAR ahora SI sale, en su propia seccion y con
+        la razon visible. En la corrida de Pesqueria esconderlos dejo la ficha
+        limpia con CERO personas con nombre, mientras las dos puertas mas probables
+        estaban justo ahi.
+    """
     c = Corrida(empresa="Casa", ciudad="MTY")
     c.agregar(Contacto(nombre="Visible", puesto="Gerente", empresa="Casa",
                        cercania_decision=10))
-    c.agregar(Contacto(nombre="Oculto", puesto="Gerente", empresa="Casa",
-                       cercania_decision=10, revision_humana=True))
+    c.agregar(Contacto(nombre="Pendiente", puesto="Gerente", empresa="Casa",
+                       cercania_decision=10, revision_humana=True,
+                       motivo_revision="falta confirmar la planta"))
     c.agregar(Contacto(nombre="Ido", puesto="Gerente", empresa="Casa",
                        cercania_decision=10, sigue_en_la_casa=False))
     txt = modo_limpio(c)
-    assert "Visible" in txt and "Oculto" not in txt and "Ido" not in txt
-    assert "2 hallazgo(s) fuera de esta ficha" in txt
+    assert "Visible" in txt
+    assert "Ido" not in txt, "el que se fue sigue fuera"
+    assert "Pendiente" in txt, "el pendiente SI sale (DECISION 3 de #306)"
+    assert "Por confirmar" in txt
+    assert "falta confirmar la planta" in txt, "con su razon visible"
+    assert "1 hallazgo(s) fuera de esta ficha" in txt, (
+        "y el contador cuenta solo al que ya no esta, no al pendiente")
 
 
 def test_las_busquedas_de_sales_navigator_se_DERIVAN_de_lo_encontrado():

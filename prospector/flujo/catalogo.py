@@ -159,7 +159,11 @@ EQUIVALENCIAS_DE_PUESTO = (
     ("supervisor de mantenimiento", "maintenance supervisor"),
     ("ingeniero de mantenimiento", "maintenance engineer"),
     ("gerente de servicios auxiliares", "utilities manager"),
-    ("gerente de facilidades", "facilities manager"),
+    # "Gerente de Facilities" es spanglish y la industria mexicana lo dice asi todo
+    # el tiempo. Entra por el DEFECTO 2 de #306: sin el, "Gerente de Facilities"
+    # contra "Facilities Manager - COFICAB Americas" seguia chocando aunque el
+    # sufijo de empresa ya se quitara. Y sigue siendo ES-EN: es el mismo puesto.
+    ("gerente de facilidades", "gerente de facilities", "facilities manager"),
     # --- ingenieria y proyectos ---
     ("gerente de ingenieria", "engineering manager"),
     ("gerente de proyectos", "project manager"),
@@ -169,6 +173,9 @@ EQUIVALENCIAS_DE_PUESTO = (
     ("gerente de compras", "purchasing manager", "procurement manager"),
     ("jefe de compras", "head of purchasing", "purchasing chief"),
     ("comprador", "buyer"),
+    # Del mismo caso de #306. "Senior Buyer" contra "Comprador Senior" es ES-EN, y
+    # NO cruza jerarquia con `comprador`: un senior buyer no es un comprador raso.
+    ("comprador senior", "senior buyer"),
     ("gerente de cadena de suministro", "supply chain manager"),
     # --- calidad, EHS, soporte ---
     ("gerente de calidad", "quality manager"),

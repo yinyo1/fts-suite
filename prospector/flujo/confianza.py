@@ -228,6 +228,107 @@ CAMPOS_CON_CONTENCION = ("puesto",)
 # traducido distinto no cuesta nada equivocado; una ENTIDAD si.
 CAMPOS_CON_EQUIVALENCIA = ("puesto",)
 
+# ------------------------------------------- EL SUFIJO DE EMPRESA EN EL PUESTO
+#
+# DEFECTO 2 de #306. "Gerente de Facilities" contra "Facilities Manager - COFICAB
+# Americas", y "Senior Buyer en COFICAB Group" contra "Senior Buyer at Coficab",
+# seguian chocando: ni la contencion ni la tabla ES-EN los absorben cuando el
+# valor trae la EMPRESA pegada al puesto.
+#
+# Se quita antes de comparar, y SOLO antes de comparar: el valor que la ficha
+# imprime sigue siendo el original, porque el nombre de la empresa en el puesto es
+# informacion de procedencia -- dice que la fuente lo vio escrito asi--.
+#
+# LA CONDICION QUE LO HACE SEGURO: el trozo se corta **solo si contiene el nombre
+# de la cuenta o una marca corporativa**. Sin esa condicion, "Gerente de Planta
+# COFICAB LEON, Silao Gto" perderia "Silao Gto" y la contencion de #300 -- que
+# reporta la redaccion mas especifica, la que dice la planta-- dejaria de
+# funcionar. Se probo: el corte incondicional rompe siete pruebas de Silao.
+SEPARADORES_DE_EMPRESA = (" en ", " at ", " - ", " – ", " — ", " | ", " @ ", ", ")
+
+# Palabras que delatan que el trozo es el nombre corporativo y no la planta.
+MARCAS_CORPORATIVAS_EN_PUESTO = (
+    "group", "grupo", "americas", "america", "corp", "corporation", "inc",
+    "ltd", "gmbh", "sa de cv", "s a de c v", "sapi", "srl", "s de rl",
+    "de mexico", "mexico", "mx", "worldwide", "global", "holding", "ag",
+    "company", "co", "llc", "plc", "international",
+)
+
+
+def _es_trozo_de_empresa(trozo: str, empresa: str) -> bool:
+    """El trozo nombra a la cuenta, o es un sufijo corporativo suyo."""
+    t = _plano_puesto(trozo)
+    if not t:
+        return False
+    e = _plano_puesto(empresa)
+    if e:
+        # basta la primera palabra de la cuenta: "Coficab" en "COFICAB Americas"
+        raiz = e.split()[0]
+        if len(raiz) >= 4 and re.search(r"(?<!\w)" + re.escape(raiz), t):
+            return True
+    palabras = t.split()
+    return bool(palabras) and all(
+        p in MARCAS_CORPORATIVAS_EN_PUESTO for p in palabras)
+
+
+def _es_solo_empresa(trozo: str, empresa: str) -> bool:
+    """El trozo es UNICAMENTE el nombre de la cuenta, sin puesto dentro.
+
+    Mas estricto que `_es_trozo_de_empresa`, y hace falta para el corte AL FRENTE:
+    con el predicado flojo, "Gerente de Planta COFICAB LEON, Silao Gto" perdia la
+    cabeza entera -- porque contiene "coficab"-- y quedaba en "Silao Gto". Lo
+    encontro la primera prueba de esta normalizacion contra los siete casos de
+    Silao de #300.
+    """
+    t = _plano_puesto(trozo)
+    if not t:
+        return False
+    e = _plano_puesto(empresa)
+    raiz = e.split()[0] if e else ""
+    permitidas = set(MARCAS_CORPORATIVAS_EN_PUESTO)
+    if raiz:
+        permitidas.add(raiz)
+    # las plantas se nombran con la ciudad pegada al corporativo ("COFICAB LEON"),
+    # y eso NO es solo-empresa: lleva un lugar dentro.
+    return all(p in permitidas for p in t.split())
+
+
+def sin_sufijo_de_empresa(valor, empresa: str = "") -> str:
+    """El puesto sin la empresa pegada. Para COMPARAR, nunca para imprimir."""
+    v = str(valor or "").strip()
+    if not v:
+        return v
+    cambio = True
+    while cambio:
+        cambio = False
+        for sep in SEPARADORES_DE_EMPRESA:
+            i = v.lower().rfind(sep)
+            if i <= 0:
+                continue
+            cabeza, cola = v[:i].strip(), v[i + len(sep):].strip()
+            if cabeza and _es_trozo_de_empresa(cola, empresa):
+                v, cambio = cabeza, True
+                break
+        if cambio:
+            continue
+        # tambien al frente: "COFICAB — Gerente de Planta"
+        for sep in SEPARADORES_DE_EMPRESA:
+            i = v.lower().find(sep)
+            if i <= 0:
+                continue
+            cabeza, cola = v[:i].strip(), v[i + len(sep):].strip()
+            if cola and _es_solo_empresa(cabeza, empresa):
+                v, cambio = cola, True
+                break
+    # y el nombre de la cuenta pegado sin separador al final: "Senior Buyer Coficab"
+    e = _plano_puesto(empresa)
+    if e:
+        raiz = e.split()[0]
+        if len(raiz) >= 4:
+            v = re.sub(r"\s+" + re.escape(raiz) + r"\s*$", "", v,
+                       flags=re.I).strip() or v
+    return v
+
 # En que campos un literal ANCLA a la PERSONA.
 #
 # `tiene_ancla` miraba la FUENTE y no el campo, asi que una observacion de
@@ -281,7 +382,7 @@ def _es_corporativa(valor: str) -> bool:
                for m in MARCAS_CORPORATIVAS)
 
 
-def _nombra_la_ciudad(valor: str, ciudad: str) -> bool:
+def _nombra_la_ciudad(valor: str, ciudad: str, alias=()) -> bool:
     """La ciudad de la corrida aparece en el valor de ubicacion.
 
     Se compara sin acentos y por PALABRA, igual que la contencion: sin la
@@ -289,15 +390,33 @@ def _nombra_la_ciudad(valor: str, ciudad: str) -> bool:
     Y se prueba tambien sin las abreviaturas que la geografia mexicana arrastra
     ("Cd. Juarez" contra "Ciudad Juarez" contra "Juarez").
     """
-    v, c = _plano_puesto(valor), _plano_puesto(ciudad)
-    if not v or not c:
+    v = _plano_puesto(valor)
+    if not v:
+        return False
+    # DEFECTO 4 de #306. "COFICAB Monterrey" ES la planta de Pesqueria -- su razon
+    # comercial es "COFICAB MX Suc Monterrey"-- y la regla por palabra la mandaba a
+    # "otra planta", excluyendo a gente que si es de la planta. Una empresa cuya
+    # planta se llama por otra ciudad no lo puede adivinar ninguna regla de
+    # cadenas: se DECLARA, por cuenta, y queda en el estado.
+    for a in (alias or ()):
+        if _nombra_una_sola_ciudad(v, a):
+            return True
+    c = _plano_puesto(ciudad)
+    if not c:
+        return False
+    return _nombra_una_sola_ciudad(v, c)
+
+
+def _nombra_una_sola_ciudad(v_plano: str, ciudad: str) -> bool:
+    c = _plano_puesto(ciudad)
+    if not c:
         return False
     nucleo = [t for t in c.split()
               if t not in ("cd", "ciudad", "de", "del", "la", "las", "los",
                            "san", "santa", "villa")]
     if not nucleo:
         nucleo = c.split()
-    return all(re.search(r"(?<!\w)" + re.escape(t) + r"(?!\w)", v)
+    return all(re.search(r"(?<!\w)" + re.escape(t) + r"(?!\w)", v_plano)
                for t in nucleo)
 
 # Cuantas anclas DISTINTAS hacen falta para que un campo con disidencia viva
@@ -374,6 +493,9 @@ class Dato:
     observaciones: list[Observacion] = field(default_factory=list)
     derivado_de_patron: bool = False
     ancla_dura: bool = False        # correo literal: pesa mas que un derivado
+    # La cuenta a la que pertenece este dato. La pone `Contacto.dato()`, y sirve
+    # para quitar el sufijo de empresa del puesto antes de comparar (#306, D2).
+    empresa: str = ""
 
     def observar(self, fuente: str, valor: Any, **kw) -> "Dato":
         self.observaciones.append(Observacion(fuente=fuente, valor=valor, **kw))
@@ -554,6 +676,8 @@ class Dato:
         """
         if self.contencion:
             return self.salvedad_por_contencion
+        if self.mismo_salvo_la_empresa:
+            return self.salvedad_por_sufijo
         if self.equivalencia:
             return self.salvedad_por_equivalencia
         if not self.informa_pese_al_conflicto:
@@ -598,7 +722,9 @@ class Dato:
             return None
         # Se COMPARA normalizado -- mayusculas y acentos no hacen una redaccion
         # distinta-- y se DEVUELVE el original, que es lo que la ficha imprime.
-        norm = {v: _normaliza(v) for v in vals}
+        # Se compara SIN el sufijo de empresa (#306, D2) y se devuelve el original.
+        norm = {v: _normaliza(sin_sufijo_de_empresa(v, self.empresa))
+                for v in vals}
         largo = max(vals, key=lambda v: len(norm[v]))
         cortos = [v for v in vals if v != largo]
         if any(len(norm[v]) < LARGO_MINIMO_CONTENCION for v in cortos):
@@ -620,6 +746,46 @@ class Dato:
                 f"{quien or 'otra fuente'} lo dice mas corto "
                 f"({' / '.join(cortos)}). No es contradiccion: una redaccion "
                 "contiene a la otra.")
+
+    @property
+    def valores_comparables(self) -> list[str]:
+        """Los valores sin el sufijo de empresa. Solo para comparar."""
+        if self.campo not in CAMPOS_CON_EQUIVALENCIA:
+            return [str(v) for v in self.valores]
+        return [sin_sufijo_de_empresa(v, self.empresa) for v in self.valores]
+
+    @property
+    def mismo_salvo_la_empresa(self) -> tuple | None:
+        """Es el MISMO puesto: lo que difiere es la empresa pegada.
+
+        El caso de "Senior Buyer en COFICAB Group" contra "Senior Buyer at
+        Coficab" (#306, D2). Quitado el sufijo son la misma cadena, asi que no hay
+        nada que decidir: se reporta el valor mas corto -- el que no arrastra la
+        empresa-- y la salvedad dice que la otra fuente lo escribio con ella.
+        """
+        if self.campo not in CAMPOS_CON_EQUIVALENCIA:
+            return None
+        vals = [v for v in self.valores if isinstance(v, str)]
+        if len(vals) < 2 or len(vals) != len(self.valores):
+            return None
+        comp = {_normaliza(sin_sufijo_de_empresa(v, self.empresa)) for v in vals}
+        if len(comp) != 1 or not next(iter(comp)):
+            return None
+        limpio = min(vals, key=lambda v: len(_normaliza(v)))
+        return (limpio, [v for v in vals if v != limpio])
+
+    @property
+    def salvedad_por_sufijo(self) -> str:
+        e = self.mismo_salvo_la_empresa
+        if not e:
+            return ""
+        limpio, otros = e
+        quien = ", ".join(sorted({o.fuente for o in self.observaciones
+                                  if o.valor in otros}))
+        return (f"se reporta {limpio}; {quien or 'otra fuente'} lo escribe con la "
+                f"empresa pegada ({' / '.join(str(o) for o in otros)}). No es "
+                "contradiccion: es el mismo puesto con el nombre de la cuenta "
+                "dentro del valor.")
 
     @property
     def equivalencia(self) -> tuple | None:
@@ -650,14 +816,19 @@ class Dato:
         vals = [v for v in self.valores if isinstance(v, str)]
         if len(vals) < 2 or len(vals) != len(self.valores):
             return None
-        grupos = {grupo_de_puesto(v) for v in vals}
+        # SIN el sufijo de empresa: "Facilities Manager - COFICAB Americas" tiene
+        # que poder emparejar con "Gerente de Facilities" (#306, D2).
+        grupos = {grupo_de_puesto(sin_sufijo_de_empresa(v, self.empresa))
+                  for v in vals}
         if len(grupos) != 1 or None in grupos:
             return None
         g = EQUIVALENCIAS_DE_PUESTO[grupos.pop()]
         # El termino en ESPANOL es el primero del grupo, y es el que se reporta:
         # la ficha la lee un operador mexicano. Si varios valores caen del lado
         # espanol, gana el que la tabla lista primero.
-        en_espanol = [v for v in vals if _plano_puesto(v) == _plano_puesto(g[0])]
+        en_espanol = [v for v in vals
+                      if _plano_puesto(sin_sufijo_de_empresa(v, self.empresa))
+                      == _plano_puesto(g[0])]
         principal = en_espanol[0] if en_espanol else vals[0]
         return (principal, [v for v in vals if v != principal])
 
@@ -693,6 +864,8 @@ class Dato:
             return False
         if self.contencion:
             return False          # B2: contencion no es contradiccion
+        if self.mismo_salvo_la_empresa:
+            return False          # el mismo puesto con la empresa pegada
         if self.equivalencia:
             return False          # el mismo puesto en dos idiomas, por tabla
         if len(self.valores) > 1:
@@ -734,6 +907,12 @@ class Dato:
             if self.medido_no_inferido and self.n_raices >= 2:
                 return CONFIRMADO
             return SOLIDO
+        if self.mismo_salvo_la_empresa:
+            # Aqui las fuentes coinciden en TODO salvo en si arrastran el nombre
+            # de la cuenta. Es el caso mas fuerte de los tres, y aun asi topa en
+            # SOLIDO por la misma razon que los otros: el acuerdo depende de una
+            # normalizacion nuestra, no de que las dos hayan escrito lo mismo.
+            return SOLIDO
         if self.equivalencia:
             # Igual que la contencion, y por una razon propia: las fuentes
             # coinciden en el PUESTO y no en como se escribe. Y la tabla es una
@@ -768,6 +947,9 @@ class Dato:
             if self.informa_pese_al_conflicto:
                 return self.mayoria[0]
             return None          # elegir en silencio es el bug del Caso F
+        m = self.mismo_salvo_la_empresa
+        if m:
+            return m[0]          # el mas corto: el que no arrastra la empresa
         e = self.equivalencia
         if e:
             return e[0]          # el termino en espanol, y la salvedad da el otro
@@ -1052,7 +1234,7 @@ class Contacto:
                     out.append(o.valor)
         return out
 
-    def ubicacion_respecto_a(self, ciudad: str | None) -> str:
+    def ubicacion_respecto_a(self, ciudad: str | None, alias=()) -> str:
         """Donde esta esta persona respecto de la corrida que la encontro.
 
         Cuatro respuestas, y la cuarta es la que mantiene la regla honesta:
@@ -1071,7 +1253,8 @@ class Contacto:
         vals = self.ubicaciones_observadas
         if not vals:
             return SIN_UBICACION
-        if ciudad and any(_nombra_la_ciudad(v, ciudad) for v in vals):
+        if (ciudad or alias) and any(_nombra_la_ciudad(v, ciudad or "", alias)
+                                     for v in vals):
             return EN_ESTA_PLANTA
         if all(_es_corporativa(v) for v in vals):
             return EN_CORPORATIVO
@@ -1081,10 +1264,10 @@ class Contacto:
             return SIN_UBICACION
         return EN_OTRA_PLANTA
 
-    def cuenta_en_la_poblacion_de(self, ciudad: str | None) -> bool:
+    def cuenta_en_la_poblacion_de(self, ciudad: str | None, alias=()) -> bool:
         """Si esta persona pertenece a la poblacion que Chao1 esta estimando."""
-        return self.ubicacion_respecto_a(ciudad) not in (EN_OTRA_PLANTA,
-                                                         EN_CORPORATIVO)
+        return self.ubicacion_respecto_a(ciudad, alias) not in (EN_OTRA_PLANTA,
+                                                                EN_CORPORATIVO)
 
     @property
     def de_valor(self) -> bool:
@@ -1116,6 +1299,7 @@ class Contacto:
 
     def dato(self, campo: str, **kw) -> Dato:
         if campo not in self.datos:
+            kw.setdefault("empresa", self.empresa)
             self.datos[campo] = Dato(campo=campo, **kw)
         return self.datos[campo]
 

@@ -91,6 +91,21 @@ ORIGEN_RADAR = "radar"
 # ficha, y el operador no puede saber cual de las dos cosas es cierta.
 MARCA_ANGULO = "[angulo] "
 
+# Marca del veredicto del PADRON. DEFECTO 1 de #306: el primer `prospecta` dejo
+# NO_EN_PADRON_PERO_EN_ALCANCE ("cae dentro de lo que el padron cubre") y despues
+# `padron --giro 335` dijo FUERA_DEL_ALCANCE_DEL_PADRON (el padron cubre 311 y
+# 312). La ficha imprimio LOS DOS, y el primero manda a correr el vigilante del
+# DENUE sin motivo.
+#
+# El veredicto del padron es UNO: el ultimo que se midio, con la informacion mas
+# completa. No es una bitacora -- para eso esta el registro de M13, que si conserva
+# cada consulta con su fecha--: es una CONCLUSION, y dos conclusiones que se
+# contradicen en la misma ficha no informan, confunden.
+MARCA_PADRON = "[padron] "
+
+# Marca de los avisos de la ENTREGA, para que la ficha los pueda separar.
+MARCA_ENTREGA = "[entrega] "
+
 # QUE se siembra entre corridas. Lista corta, y los contactos NO estan: un
 # contacto regional sembrado en una corrida de planta es exactamente el doble
 # conteo que #300 midio. Van a la corrida corporativa.
@@ -159,6 +174,12 @@ class Corrida:
     # `medicion`, y sigue siendo contexto en electrico o termico. Sin declararlo,
     # la excepcion NO se abre -- el default es la regla vieja, que es la segura--.
     tipos: list = field(default_factory=list)
+    # ALIAS DE UBICACION de esta cuenta. DEFECTO 4 de #306: "COFICAB Monterrey" es
+    # la planta de Pesqueria, porque su razon comercial es "COFICAB MX Suc
+    # Monterrey". Ninguna regla de cadenas puede saberlo; el operador lo declara en
+    # una linea y queda escrito aqui, en el estado, para que la exclusion lo
+    # respete y para que la ficha lo pueda decir.
+    alias_de_ubicacion: list = field(default_factory=list)
 
     # ---------------------------------------------------------------- modulos
     def mod(self, nombre: str) -> EstadoModulo:
@@ -177,12 +198,42 @@ class Corrida:
         todas = [b for m in self.modulos.values() for b in m.registros]
         return sorted(todas, key=lambda b: b.ts)
 
+    def fila_duplicada(self, modulo: str, consulta: str) -> int:
+        """El numero de fila donde esta ya registrada esta misma consulta, o 0.
+
+        COMPUERTA RODEADA en #306, y la causa no fue descuido del agente: la salida
+        de `buscar` recortada con `| tail -1` imprimio una linea en blanco, el
+        agente creyo que habia fallado, y la repitio. Dos consultas quedaron
+        contadas dos veces -- el gasto real era 58 y no 60, y dos bloques llevaban
+        una fila de mas--.
+        """
+        n = _normaliza(consulta)
+        if not n:
+            return 0
+        for i, b in enumerate(self.mod(modulo).registros, start=1):
+            if b.consulta_normalizada == n:
+                return i
+        return 0
+
     def registrar_busqueda(self, modulo: str, clave: str, consulta: str,
                            fuente: str, resultados: int, nota: str = "",
                            contactos: list | None = None,
                            etiqueta: str | None = None,
                            liga: str = "") -> Busqueda:
         """Registra trabajo EJECUTADO. Es lo unico que mueve un contador."""
+        fila = self.fila_duplicada(modulo, consulta)
+        if fila:
+            ya = self.mod(modulo).registros[fila - 1]
+            raise CompuertaCerrada(
+                f"[{modulo}] esa consulta YA ESTA REGISTRADA como fila {fila}:\n"
+                f"    {ya.consulta}\n"
+                f"    fuente {ya.fuente} · {ya.resultados} resultado(s) · "
+                f"{ya.ts[:19]}\n\n"
+                "  Registrarla dos veces infla el gasto y mete una fila de mas en "
+                "el bloque: pasó en la corrida de Pesqueria (#306), donde el gasto "
+                "real era 58 y el estado decia 60.\n"
+                "  Si de verdad corriste una consulta DISTINTA, cambiale el texto "
+                "para que se distinga; si querias la misma, ya esta contada.")
         contactos = contactos or []
         if resultados < len(contactos):
             raise CompuertaCerrada(
@@ -328,7 +379,27 @@ class Corrida:
     #             archivo que el operador pueda reenviar.
     DESTINOS = ("onedrive", "drive", "otro")
 
-    def registrar_entrega(self, destino: str, url: str, archivo: str = "") -> dict:
+    @staticmethod
+    def huella(ruta: str) -> dict:
+        """SHA-256 y tamano del archivo. La huella que la entrega tiene que casar.
+
+        La entrega de Pesqueria (#306) reporto **36,650 bytes subidos contra 36,649
+        del local** y la nota decia: *"es el salto de linea final que agrego la
+        transcripcion; no se verifico el contenido byte por byte"*. Puede que fuera
+        eso. Tambien puede que fuera un caracter cambiado en medio -- y el TAMANO NO
+        distingue las dos cosas--.
+        """
+        h = hashlib.sha256()
+        n = 0
+        with open(ruta, "rb") as f:
+            for trozo in iter(lambda: f.read(65536), b""):
+                h.update(trozo)
+                n += len(trozo)
+        return {"sha256": h.hexdigest(), "bytes": n}
+
+    def registrar_entrega(self, destino: str, url: str, archivo: str = "",
+                          sha256_subido: str = "",
+                          bytes_subidos: int | None = None) -> dict:
         if destino not in self.DESTINOS:
             raise CompuertaCerrada(
                 f"Destino '{destino}' desconocido. Los evaluados: "
@@ -339,10 +410,60 @@ class Corrida:
                 f"Entrega a '{destino}' sin URL. Una entrega sin liga no se "
                 "puede comprobar, y el punto de entregarla es que el operador "
                 "la encuentre cuando esta sesion ya no exista.")
+        # `fichas_emitidas` guarda RUTAS, no registros: el archivo a verificar es
+        # el que el operador declare con --archivo y, si no declara ninguno, la
+        # ultima ficha emitida -- que es la que acaba de subir--.
+        local = {}
+        ruta_local = (archivo or "").strip()
+        if not ruta_local and self.fichas_emitidas:
+            ruta_local = self.fichas_emitidas[-1]
+        if ruta_local and os.path.exists(ruta_local):
+            local = self.huella(ruta_local)
+        verificacion, avisos = "sin_verificar", []
+        if local and sha256_subido:
+            if sha256_subido.strip().lower() == local["sha256"]:
+                verificacion = "identico"
+            else:
+                verificacion = "DIFIERE"
+                igual_tamano = (bytes_subidos == local["bytes"])
+                avisos.append(
+                    "EL CONTENIDO SUBIDO NO ES EL LOCAL. sha256 local "
+                    f"{local['sha256'][:16]}… contra subido "
+                    f"{sha256_subido.strip()[:16]}…"
+                    + (f", y el TAMANO SI COINCIDE ({local['bytes']:,} bytes): "
+                       "un archivo del mismo tamano con distinto contenido es "
+                       "exactamente lo que el tamano no puede detectar."
+                       if igual_tamano else
+                       f". Local {local['bytes']:,} bytes contra "
+                       f"{bytes_subidos:,} subidos." if bytes_subidos is not None
+                       else "."))
+        elif local and bytes_subidos is not None:
+            verificacion = ("mismo_tamano_sin_hash"
+                            if bytes_subidos == local["bytes"]
+                            else "TAMANO_DISTINTO")
+            avisos.append(
+                "Se comparo SOLO EL TAMANO, y el tamano no verifica contenido: "
+                f"local {local['bytes']:,} contra {bytes_subidos:,} subidos"
+                + (". Coinciden, y aun asi dos archivos del mismo tamano pueden "
+                   "diferir en cualquier byte." if bytes_subidos == local["bytes"]
+                   else ". NO coinciden.")
+                + " Pasa el `--sha256` que devolvio el conector para verificar de "
+                  "verdad.")
+        elif local:
+            avisos.append(
+                "Entrega registrada SIN VERIFICAR el contenido. La subida de "
+                "Pesqueria (#306) difirio en un byte y nadie lo comparo: pasa "
+                "`--sha256` con el hash que devolvio el conector, o al menos "
+                "`--bytes`.")
         self.entrega = {
-            "destino": destino, "url": url.strip(), "archivo": archivo,
+            "destino": destino, "url": url.strip(), "archivo": ruta_local,
             "ts": datetime.now(timezone.utc).isoformat(), "declarada": False,
+            "local": local, "sha256_subido": (sha256_subido or "").strip(),
+            "bytes_subidos": bytes_subidos,
+            "verificacion": verificacion, "avisos_de_verificacion": avisos,
         }
+        for a in avisos:
+            self.avisos.append(MARCA_ENTREGA + a)
         return self.entrega
 
     def declarar_sin_entregar(self, razon: str) -> dict:
@@ -483,6 +604,27 @@ class Corrida:
         return (self.consultas_de_red() - b0, len(self.contactos) - c0,
                 self.de_valor_ahora() - v0)
 
+    def filas_sin_red_en_el_bloque(self) -> int:
+        """Filas del bloque en curso que NO cuentan al gasto.
+
+        DEFECTO 5 de #306, REPRODUCIDO. El agente vio `bloque` negarse con "bloque
+        de 9" y, en la misma secuencia, los `buscar` siguientes negarse por "10 sin
+        cerrar". No es un error de aritmetica: las dos cifras cuentan cosas
+        distintas y **ninguno de los dos mensajes lo decia**.
+
+          · el bloque mide CONSULTAS DE RED, porque mide rendimiento marginal del
+            gasto, y el motor de combinaciones (M4, fuente `patron_derivado`) no
+            gasta red: genera local;
+          · el registro muestra TODAS las filas.
+
+        Nueve consultas de red mas una fila de M4 dan un registro de diez y un
+        bloque de nueve. Las dos cifras son correctas; lo que faltaba era decir por
+        que difieren. Reproducido asi:
+
+            9 x buscar de red  +  1 x M4 patron_derivado  ->  bloque dice 9
+        """
+        return len(self.busquedas()) - self.consultas_de_red()
+
     def exigir_bloque_cerrado(self) -> None:
         """Se niega a registrar la consulta 11 con un bloque de 10 sin cerrar.
 
@@ -498,6 +640,7 @@ class Corrida:
         """
         pendientes, _n, _v = self.bloque_pendiente()
         if pendientes >= TAMANO_BLOQUE:
+            sin_red = self.filas_sin_red_en_el_bloque()
             raise CompuertaCerrada(
                 f"Hay {pendientes} consultas sin bloque cerrado y el bloque es "
                 f"de {TAMANO_BLOQUE}. NO se registra la siguiente hasta "
@@ -507,7 +650,14 @@ class Corrida:
                 "Si se deja correr, el bloque pasa de diez y entonces ya no se "
                 "puede cerrar ni partir: se pierde la medicion de rendimiento "
                 "marginal de ese tramo y con ella la vuelta del lazo. Paso de "
-                "verdad en la corrida de Coficab (#268), con 35 consultas.")
+                "verdad en la corrida de Coficab (#268), con 35 consultas."
+                + (f"\n\n  OJO CON LAS DOS CIFRAS: el registro tiene "
+                   f"{len(self.busquedas())} filas y el bloque cuenta "
+                   f"{pendientes}. La diferencia son {sin_red} fila(s) que NO "
+                   "gastan red -- el motor de combinaciones de M4 genera local-- y "
+                   "el bloque mide GASTO, no filas. Las dos cifras son correctas; "
+                   "en #306 la falta de esta linea se vio como un error de "
+                   "contabilidad." if sin_red else ""))
 
     def aviso_de_bloque(self) -> str:
         """El aviso que `buscar` imprime cuando el pendiente llega al tope.
@@ -549,11 +699,19 @@ class Corrida:
                 f"gano {real_n} contactos desde el bloque anterior. El "
                 "numerador tampoco se escribe a mano.")
         if real_c < TAMANO_BLOQUE and not parcial:
+            sin_red = self.filas_sin_red_en_el_bloque()
             raise CompuertaCerrada(
                 f"Bloque de {real_c} consultas: el tamano es {TAMANO_BLOQUE}. "
                 "Un bloque corto no puede declarar que la veta se agoto, solo "
                 "que se pregunto poco. Corre las que faltan, o cierralo con "
-                "`parcial=True` y sabiendo que NO contara como seco.")
+                "`parcial=True` y sabiendo que NO contara como seco."
+                + (f"\n\n  OJO CON LAS DOS CIFRAS: el registro tiene "
+                   f"{len(self.busquedas())} filas y este bloque cuenta "
+                   f"{real_c}. La diferencia son {sin_red} fila(s) que NO gastan "
+                   "red (el motor de combinaciones de M4 genera local), y el "
+                   "bloque mide GASTO, no filas. Es el caso de #306: el mismo "
+                   "estado dice 9 aqui y 10 en el registro, y las dos son "
+                   "correctas." if sin_red else ""))
         return self.presupuesto.registrar(
             real_c, real_n,
             busquedas_al_cerrar=self.consultas_de_red(),
@@ -678,7 +836,8 @@ class Corrida:
         if self.nivel == NIVEL_CORPORATIVO:
             return list(self.contactos)
         return [c for c in self.contactos
-                if c.cuenta_en_la_poblacion_de(self.ciudad)]
+                if c.cuenta_en_la_poblacion_de(self.ciudad,
+                                               self.alias_de_ubicacion)]
 
     def fuera_de_la_poblacion(self) -> list[tuple]:
         """(contacto, donde_esta) de los que NO cuentan, con su razon."""
@@ -686,7 +845,8 @@ class Corrida:
             return []
         out = []
         for c in self.contactos:
-            donde = c.ubicacion_respecto_a(self.ciudad)
+            donde = c.ubicacion_respecto_a(self.ciudad,
+                                           self.alias_de_ubicacion)
             if donde in (EN_OTRA_PLANTA, EN_CORPORATIVO):
                 out.append((c, donde))
         return out
@@ -723,6 +883,51 @@ class Corrida:
         return f"{self.empresa}/{self.ciudad or '?'}"
 
     # ------------------------------------------------------------- sembrar
+    def registrar_veredicto_del_padron(self, banderas) -> list[str]:
+        """El veredicto del padron REEMPLAZA al anterior, no se acumula.
+
+        Devuelve los avisos que quedaron. El historial de lo que se consulto no se
+        pierde: vive en el registro de busquedas de M13, con su fecha y su nota.
+        Lo que se reemplaza es la CONCLUSION.
+        """
+        nuevos = [MARCA_PADRON + str(b).replace("\n", " ") for b in banderas]
+        antes = len([a for a in self.avisos if a.startswith(MARCA_PADRON)])
+        self.avisos = [a for a in self.avisos if not a.startswith(MARCA_PADRON)]
+        self.avisos += nuevos
+        if antes and nuevos:
+            self.avisos.append(
+                MARCA_PADRON + f"(este veredicto reemplazo a {antes} anterior(es): "
+                "el padron se volvio a consultar con mas informacion, y dos "
+                "conclusiones que se contradicen en la misma ficha confunden. Cada "
+                "consulta al padron sigue registrada en M13, con su fecha.)")
+        return nuevos
+
+    def declarar_alias_de_ubicacion(self, alias: str) -> str:
+        """El operador declara que esta planta tambien se llama asi.
+
+        Es criterio, no evidencia: la herramienta no lo puede derivar. Y por eso
+        queda ESCRITO -- en el estado y en la ficha-- en vez de aplicarse callado.
+        """
+        a = " ".join(str(alias or "").split())
+        if not a:
+            raise CompuertaCerrada(
+                "Un alias de ubicacion vacio no declara nada. Escribe el nombre "
+                "con el que la cuenta llama a esta planta, por ejemplo "
+                "'Monterrey' cuando la planta de Pesqueria se anuncia asi.")
+        if len(a) < 3:
+            raise CompuertaCerrada(
+                f"Alias '{a}': demasiado corto para ser un nombre de lugar. Dos "
+                "letras dentro de una cadena son coincidencia, y este alias abre "
+                "la puerta de la poblacion: un alias flojo mete gente de otra "
+                "planta en el Chao1 de esta.")
+        if _normaliza(a) == _normaliza(self.ciudad):
+            raise CompuertaCerrada(
+                f"'{a}' es la ciudad de la corrida: ya empata sola, y declararlo "
+                "como alias no agrega nada.")
+        if a not in self.alias_de_ubicacion:
+            self.alias_de_ubicacion.append(a)
+        return a
+
     def sembrar(self, de_corrida: str, que: str, valor, campo: str = "",
                 nota: str = "") -> dict:
         """Mete en esta corrida algo que OTRA corrida ya midio.
@@ -1140,6 +1345,7 @@ class Corrida:
             "origen": self.origen,
             "angulo_resuelto": self.angulo_resuelto,
             "tipos": self.tipos,
+            "alias_de_ubicacion": self.alias_de_ubicacion,
             "fuera_de_la_poblacion": len(self.fuera_de_la_poblacion()),
             "vueltas_loop": self.vueltas_loop,
             "bloques_al_abrir_vuelta": self._bloques_al_abrir_vuelta,

@@ -84,7 +84,7 @@ dominio no identifica a una persona.
 | Ruta | Qué es |
 |---|---|
 | **`flujo/`** | El código. Compuertas, instrumentación, Chao1, catálogo, ficha y el orquestador |
-| **`tests/`** | 581 pruebas. Casos de regresión **D (LEGO)**, **F (Cuprum)** y **G (Hershey)**, más el truco del contador vacío, el lazo de refuerzo y la guardia de datos personales |
+| **`tests/`** | 617 pruebas. Casos de regresión **D (LEGO)**, **F (Cuprum)** y **G (Hershey)**, más el truco del contador vacío, el lazo de refuerzo y la guardia de datos personales |
 | **`metodo/`** | El *por qué* de cada paso, con su disparador medido |
 | **`SKILL-criterio.md`** | Lo que juzga Claude y el código no puede |
 | **`USO.md`** | **Cómo se usa.** La guía corta, en español: el trigger, los conectores, qué entrega |
@@ -178,7 +178,7 @@ presupuesto queda. Claude corre **ese** módulo, registra lo que encontró, y el
 orquestador decide si se avanza.
 
 ```bash
-python3 -m pytest tests -q     # 581 pruebas
+python3 -m pytest tests -q     # 617 pruebas
 ```
 
 ---

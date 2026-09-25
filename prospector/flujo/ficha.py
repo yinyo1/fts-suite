@@ -158,7 +158,22 @@ def modo_limpio(c: Corrida) -> str:
     poblacion = c.poblacion()
     visibles = [x for x in poblacion if not x.revision_humana and x.sigue_en_la_casa]
     visibles.sort(key=lambda x: (x.cercania_decision, x.nombre or "zzz"))
-    ocultos = len(poblacion) - len(visibles)
+    # DEFECTO 3 de #306, y era el serio. El modo limpio ESCONDIA a los contactos
+    # en revision humana, y en Pesqueria eso dejo la ficha limpia con CERO
+    # personas de valor con nombre -- mientras las dos puertas mas probables, la
+    # contraparte de un proyecto de nov-2025 y el EHS de la planta, estaban en
+    # revision y solo salian en la version de procedencia--.
+    #
+    # Un contacto pendiente CON SU RAZON VISIBLE vale mas que un hueco. Lo que
+    # sigue oculto en limpio es la PROCEDENCIA TECNICA -- que fuente lo trajo, con
+    # que consulta, con que nivel por campo--, no la persona.
+    por_confirmar = [x for x in poblacion
+                     if x.revision_humana and x.sigue_en_la_casa]
+    por_confirmar.sort(key=lambda x: (x.cercania_decision, x.nombre or "zzz"))
+    # Los que YA NO ESTAN en la casa siguen fuera de las dos secciones: no es que
+    # falte confirmarlos, es que la persona se fue. Ese si es un hueco correcto.
+    ya_no_estan = len([x for x in poblacion if not x.sigue_en_la_casa])
+    ocultos = ya_no_estan
     fuera = c.fuera_de_la_poblacion()
 
     # --- a quien buscar
@@ -180,6 +195,31 @@ def modo_limpio(c: Corrida) -> str:
             f'<td>{linea_correo}</td>'
             f'<td class="c">{"si" if x.de_valor else "no"}</td></tr>')
 
+    # --- POR CONFIRMAR: los de revision humana, con su razon en una linea
+    filas_confirmar = []
+    for x in por_confirmar:
+        correo, _salvedad, chip = _correo_visible(x)
+        planta = _planta_de(x)
+        filas_confirmar.append(
+            f'<tr><td><b>{html.escape(x.nombre or "(puesto sin persona)")}</b></td>'
+            f'<td>{html.escape(x.puesto or "")}</td>'
+            f'<td>{html.escape(planta) or "<i>n/d</i>"}</td>'
+            f'<td>{html.escape(correo) if correo else "<i>sin correo</i>"}'
+            + (f' <i>{chip}</i>' if correo else '') + '</td>'
+            f'<td class="rz">{html.escape(x.motivo_revision) or "<i>sin razon escrita</i>"}</td>'
+            f'</tr>')
+    bloque_confirmar = ("" if not filas_confirmar else (
+        f'<h2>Por confirmar — {len(filas_confirmar)}</h2>'
+        '<p class="meta">Estas personas <b>no estan descartadas</b>: les falta una '
+        'comprobacion, y la razon exacta va en la ultima columna. Se imprimen aqui '
+        'a proposito — <b>un contacto pendiente con su razon visible vale mas que '
+        'un hueco</b>, y esconderlos dejo una ficha con cero personas con nombre '
+        'cuando las dos puertas mas probables estaban justo aqui. Lo que el modo '
+        'limpio si oculta es la procedencia tecnica, no a la persona.</p>'
+        '<table><tr><th>Nombre</th><th>Puesto probable</th><th>Planta</th>'
+        '<th>Correo</th><th>Que falta confirmar</th></tr>'
+        + "".join(filas_confirmar) + '</table>'))
+
     # --- los que NO son de esta planta: no se tiran, se exportan
     filas_fuera = []
     for x, donde in fuera:
@@ -198,6 +238,18 @@ def modo_limpio(c: Corrida) -> str:
         f'{html.escape(repr(c.empresa))} --nivel corporativo</code></p>'
         '<table><tr><th>Puesto</th><th>Ubicacion observada</th><th>Donde</th></tr>'
         + "".join(filas_fuera) + '</table>'))
+
+    # --- el ALIAS DE UBICACION declarado. Se imprime SIEMPRE que exista, incluso
+    # cuando ya no quede nadie fuera: la frontera de esta planta se movio a mano,
+    # y quien lea la ficha tiene derecho a saberlo (#306, D4).
+    bloque_alias = ("" if not c.alias_de_ubicacion else (
+        '<p class="meta"><b>Alias de ubicacion declarado.</b> Para esta cuenta, '
+        + '<b>' + html.escape(" · ".join(c.alias_de_ubicacion)) + '</b> tambien '
+        'nombra a ' + html.escape(c.ciudad or "esta planta")
+        + '. Lo declaro el operador: que dos nombres sean el mismo lugar es '
+          'geografia local y la herramienta no lo puede derivar. Los contactos '
+          'que ese alias devolvio a la poblacion estan arriba, y el Chao1 los '
+          'cuenta.</p>'))
 
     # --- lo SEMBRADO de otras corridas: se declara, nunca pasa por observado
     sem = []
@@ -379,6 +431,7 @@ def modo_limpio(c: Corrida) -> str:
  ul.sv{{background:#fdf8e6;border-left:3px solid var(--oro);
         padding:10px 12px 10px 30px;margin:0;font-size:.9rem}}
  ul.sv code{{font:.82rem ui-monospace,monospace;color:var(--azul)}}
+ td.rz{{font-size:.84rem;color:#7a5308;max-width:24rem}}
  .prelim{{background:#fbf3e8;border:2px solid var(--ambar);color:#7a5308;
           padding:11px 14px;margin-bottom:16px;font-size:.9rem;border-radius:3px}}
  .editada{{background:#fdecea;border:2px solid #a4340a;color:#7a2708;
@@ -412,7 +465,7 @@ def modo_limpio(c: Corrida) -> str:
 <h2>Por que ahora</h2>
 {bl_porque}
 
-{bloque_conf}{bloque_salv}{bloque_fuera}{bloque_sembrado}
+{bloque_conf}{bloque_salv}{bloque_confirmar}{bloque_fuera}{bloque_alias}{bloque_sembrado}
 
 <h2>A quien buscar — {len(visibles)} entradas</h2>
 <table>
@@ -450,7 +503,7 @@ localizarla.</p>
 <b>Completitud estimada (Chao1):</b> {est.observados} observados ·
 estimado {est.estimado:.0f} · cobertura {est.cobertura:.0%} ·
 veredicto <b>{est.veredicto.upper()}</b>.<br>{html.escape(est.por_que)}
-{f"<br><b>{ocultos} hallazgo(s) fuera de esta ficha</b>: en revision humana o ya no estan en la casa." if ocultos else ""}
+{f"<br><b>{ocultos} hallazgo(s) fuera de esta ficha</b>: la fuente mostro que la persona YA NO ESTA en la casa. Los que solo estan pendientes de confirmar SI salen, en su propia seccion." if ocultos else ""}
 </div>
 </body>
 </html>"""

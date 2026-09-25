@@ -3,6 +3,132 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.9.7 — 2026-09-25
+
+Los **cinco defectos y la compuerta rodeada** que dejo la corrida de Coficab
+Pesqueria (#306). **617 pruebas** (eran 581). Ningun modulo nuevo: los seis son
+arreglos en lo que ya existia, y cuatro de ellos son defectos de **lo que la
+herramienta NO decia**, no de lo que calculaba.
+
+### D3 · La ficha limpia ya no esconde a los contactos en revision
+
+**Era el serio.** El modo limpio filtraba a los contactos en `revision_humana`, y
+en Pesqueria eso dejo la ficha que se manda con **cero personas de valor con
+nombre** — mientras las dos puertas mas probables, la contraparte de un proyecto
+de nov-2025 y el EHS de la planta, existian y solo salian en la version de
+procedencia, que no es la que se manda.
+
+Ahora salen en su propia seccion, **«Por confirmar»**, con nombre, puesto
+probable, planta, correo y **la razon exacta de la revision en la misma fila**. Un
+contacto pendiente con su razon visible vale mas que un hueco. Lo que el modo
+limpio sigue ocultando es la **procedencia tecnica** — que fuente lo trajo, con
+que consulta, con que nivel por campo—, no a la persona.
+
+El que **ya no esta en la casa** sigue fuera de las dos secciones: a ese no le
+falta una comprobacion, y ese hueco si es correcto.
+
+**Y el defecto tenia DOS mecanismos, no uno.** #306 lo describio como un problema
+del modo limpio; arreglado solo eso, la seccion seguia saliendo vacia. Los dos
+contactos de Pesqueria estaban ademas **excluidos de la poblacion** por la regla
+de ubicacion, porque sus plantas observadas eran «COFICAB Monterrey» y «Coficab
+(planta sin confirmar)». Sin D4 abajo, D3 no arregla nada.
+
+### D4 · Alias de ubicacion por cuenta, declarado en una linea
+
+`COFICAB Monterrey` **es** la planta de Pesqueria: la cuenta la anuncia con el
+nombre del area metropolitana. Que dos nombres sean el mismo lugar es geografia
+local y la herramienta **no lo puede derivar**, asi que lo declara el operador:
+
+    ./prospector alias --empresa 'Coficab' --ciudad 'Pesqueria' --es 'Monterrey'
+
+Queda en el estado, **se restaura al releer** — si no, la vuelta siguiente vuelve
+a tirar a quien el alias rescato, la misma familia de defecto que `modulo_origen`
+en #295— , la exclusion de la poblacion lo respeta, y **se imprime en la ficha**:
+mover la frontera de una planta a mano y no decirlo deja una ficha que parece
+derivada cuando lleva un juicio dentro. La salida del comando dice **a cuantos
+contactos devolvio a la poblacion**.
+
+Un alias de menos de tres letras se rechaza: el alias abre la puerta de la
+poblacion, y uno flojo mete gente de otra planta en el Chao1 de esta — que es la
+cifra que decide cuando parar.
+
+### D1 · El veredicto del padron REEMPLAZA al anterior
+
+La ficha de Pesqueria llevaba los dos: el «no aparece en el padron» de la primera
+consulta y el «aparece» de la segunda. Dos conclusiones que se contradicen en la
+misma hoja. Ahora el ultimo manda y borra al anterior, y **el reemplazo queda
+dicho** — reemplazar en silencio es tan malo como acumular—. El historial de lo
+que se consulto no se pierde: vive en el registro de M13, con su fecha. Lo que se
+reemplaza es la CONCLUSION, y solo la del padron: los avisos de las compuertas, de
+la entrega y del angulo no se tocan.
+
+### D2 · El sufijo de empresa sale del puesto ANTES de comparar
+
+«Senior Buyer en COFICAB Group» contra «Senior Buyer at Coficab» se declaraba
+EN_CONFLICTO. No hay conflicto: es el mismo puesto con el nombre de la cuenta
+dentro del valor. `sin_sufijo_de_empresa` lo quita — al final, al frente, con
+separador o pegado— **antes** de comparar por contencion y por la tabla ES-EN de
+#302, y aparece el tercer caso de resolucion, `mismo_salvo_la_empresa`: se reporta
+el valor mas corto, con salvedad, y **tope en SOLIDO** como los otros dos.
+
+Quitado el sufijo, el segundo caso lo resuelve solo la tabla: «Gerente de
+Facilidades en Coficab» contra «Facilities Manager - COFICAB Group». El sufijo
+estorbaba **antes** de llegar a la tabla.
+
+**Lo que NO se lleva:** «COFICAB LEON» nombra una planta, no solo la empresa. La
+primera version se comia la cabeza completa y reducia «Gerente de Planta COFICAB
+LEON, Silao Gto» a «Silao Gto» — el puesto desaparecia—. Por eso el corte al
+frente exige que el trozo sea **solo** empresa, no que la contenga. Y dos puestos
+de verdad distintos siguen chocando: normalizar no puede volverse una manera de
+tapar desacuerdos.
+
+### Compuerta rodeada · una consulta no se registra dos veces
+
+Dos consultas de Pesqueria quedaron contadas dos veces: el gasto real era **58 y
+el estado decia 60**, y dos bloques llevaban una fila de mas. `registrar_busqueda`
+ahora rechaza una consulta textual identica en el mismo modulo — normalizada, asi
+que ni el espaciado ni la caja la disfrazan— y dice **en que fila ya esta**. La
+misma consulta en OTRO modulo si pasa: son dos preguntas distintas y las dos se
+pagan.
+
+**La causa raiz no fue descuido del agente, fue la salida.** El agente recorto con
+`| tail -1`, la ultima linea salio en blanco, creyo que la busqueda habia fallado
+y la repitio. Ahora `buscar` **confirma siempre en la ultima linea** — visible
+aunque se recorte— con el modulo, el numero de fila, los resultados y el gasto.
+Arreglado en los dos extremos: el que rechaza el duplicado y el que evitaba que se
+intentara.
+
+### D5 · La contabilidad de bloques: REPRODUCIDO, y no era aritmetica
+
+Reproducido exactamente: **9 consultas de red + 1 fila local de M4** dan un
+registro de 10 y un bloque de 9. Una mas de red y el bloque llega a 10 mientras el
+registro va en 11, que es cuando `buscar` se niega por «10 sin cerrar». Las dos
+cifras **eran correctas**: el bloque mide CONSULTAS DE RED porque mide rendimiento
+marginal del gasto, y el motor de combinaciones de M4 genera local sin gastar red;
+el registro muestra todas las filas. Lo que faltaba era **decir por que difieren**,
+y ahora lo dicen las dos negativas — la de `bloque` y la de `buscar`— con una
+linea «OJO CON LAS DOS CIFRAS». Cuando todo el bloque es de red no hay nada que
+explicar y el aviso no sale.
+
+### La subida se verifica por CONTENIDO, no por tamano
+
+La entrega de Pesqueria reporto **36,650 bytes subidos contra 36,649 del local** y
+la nota decia que no se habia comparado el contenido byte por byte. Puede que
+fuera el salto de linea final. Tambien puede que fuera un caracter cambiado en
+medio, **y el tamano no distingue las dos cosas**.
+
+`Corrida.huella` calcula el SHA-256 del archivo local y `entregar` acepta
+`--sha256` y `--bytes` con lo que devolvio el conector. Cinco veredictos, y el CLI
+**imprime siempre el suyo**, incluso cuando no hubo nada que comparar:
+
+| veredicto | que significa |
+|---|---|
+| `identico` | sha256 casa. Es el unico que verifica |
+| `DIFIERE` | el contenido subido no es el local. Si el TAMANO si coincide, lo dice: es exactamente lo que el tamano no puede detectar |
+| `mismo_tamano_sin_hash` | se comparo solo el tamano, y coincide. **No es verificado** |
+| `TAMANO_DISTINTO` | ni el tamano casa |
+| `sin_verificar` | no se paso nada. En Pesqueria se dio por buena justo asi |
+
 ## 0.9.6 — 2026-09-25
 
 Las **seis decisiones de #305**, construidas. **581 pruebas** (eran 498). Cuatro

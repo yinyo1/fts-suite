@@ -154,6 +154,29 @@ La ficha de cada planta te dice cuántos encontró que **no son de esa planta**,
 el comando exacto para recogerlos. **Y nadie se excluye por su puesto**: sólo por
 lo que una fuente dijo de dónde está. Si nadie lo dijo, cuenta como de la planta.
 
+### Cuando la cuenta le llama a la planta de otra manera
+
+`COFICAB Monterrey` **es** la planta de Pesquería: la cuenta la anuncia con el
+nombre del área metropolitana. La herramienta no lo puede adivinar —que dos
+nombres sean el mismo lugar es geografía local—, y sin decírselo **excluye a esa
+gente como «de otra planta»**. En Pesquería eso tiró a las dos puertas más
+probables de la corrida.
+
+Se declara en una línea:
+
+```
+./prospector alias --empresa 'Coficab' --ciudad 'Pesqueria' --es 'Monterrey'
+```
+
+Queda en la corrida, **sobrevive a releerla**, la exclusión lo respeta, y **sale
+impreso en la ficha**: es criterio tuyo, no evidencia, y quien lea la ficha tiene
+derecho a saber que la frontera de esa planta se movió a mano. El comando te dice
+**a cuántos contactos devolvió a la población**.
+
+Un alias de dos letras se rechaza: abre la puerta de la población, y uno flojo
+mete gente de otra planta en el Chao1 de esta —que es la cifra que decide cuándo
+parar—.
+
 ### Si la primera planta ya midió algo, la segunda arranca con eso
 
 ```
@@ -226,6 +249,25 @@ peso que uno medido.**
 >
 > Si prefieres no sacarla, se puede —pero **queda escrito** que esa ficha se
 > pierde al cerrar.
+>
+> ### Y la subida se comprueba por CONTENIDO, no por tamaño
+>
+> La entrega de Pesquería reportó **36,650 bytes subidos contra 36,649 del
+> local**, y nadie comparó el contenido. Pudo ser el salto de línea final. Pudo
+> ser un carácter cambiado en medio: **el tamaño no distingue las dos cosas**.
+>
+> Claude pasa el hash que le devolvió el conector y la herramienta lo compara
+> contra el del archivo en disco:
+>
+> ```
+> ./prospector entregar --empresa 'Coficab' --ciudad 'Pesqueria' \
+>   --destino onedrive --url '<webUrl>' --sha256 '<el hash que devolvió>'
+> ```
+>
+> El veredicto **se imprime siempre**, incluso cuando no hubo nada que comparar:
+> `identico` es el único que verifica; `mismo_tamano_sin_hash` dice en voz alta
+> que solo se comparó el tamaño; `sin_verificar` dice que no se comparó nada. En
+> Pesquería se dio por buena justo así, y por eso ahora lo dice.
 
 **Archivos**, en **la carpeta de la sesión** — y la ruta exacta la imprime
 `ficha` al terminar, para copiar y pegar:
@@ -239,6 +281,15 @@ peso que uno medido.**
 Los `.html` son **documentos completos**, con `charset` declarado: se adjuntan a
 un correo y se pegan en un lognote sin que los acentos se rompan. Hasta la v0.9.0
 eran fragmentos y sí se rompían — lo destapó la primera corrida de un operador.
+
+**Los contactos que le faltan una comprobación SÍ salen en la ficha limpia**, en
+su propia sección «**Por confirmar**», con su nombre, su puesto probable y **la
+razón exacta de lo que falta, en la misma fila**. Un contacto pendiente con su
+razón visible vale más que un hueco: la ficha de Pesquería salió con cero
+personas con nombre mientras las dos puertas más probables estaban justo ahí, en
+revisión. Lo que la ficha limpia sí oculta es la **procedencia técnica** —qué
+fuente lo trajo, con qué consulta—, no a la persona. El que **ya no trabaja ahí**
+sigue fuera: a ese no le falta una comprobación.
 
 **Tres secciones de la ficha son tuyas**, porque son criterio: el gancho, el «por
 qué ahora» y el «cómo hablarles». Se cargan con `registrar` antes de emitir, y si

@@ -181,6 +181,22 @@ la ficha lo lista aparte, con el comando para recogerlos. En #300 la gente
 regional salió en 2 a 4 de las cuatro corridas y **cada Chao1 la sumó a su
 población**: los cuatro estimaron sobre una población que no existe.
 
+> **Y cuando la cuenta le llama a la planta de otra manera, dilo.** `COFICAB
+> Monterrey` **es** la planta de Pesquería: la cuenta la anuncia con el nombre del
+> área metropolitana. Sin declararlo, la exclusión de arriba tira a esa gente como
+> «de otra planta» —en Pesquería tiró a las dos puertas más probables, y además
+> el modo limpio las escondía por estar en revisión: **dos mecanismos, no uno**—.
+>
+> ```bash
+> ./prospector alias --empresa "<empresa>" --ciudad "<planta>" --es "<el otro nombre>"
+> ```
+>
+> **No lo inventes tú:** es criterio del operador. Si ves plantas observadas que
+> podrían ser la misma, **pregúntale** y declara lo que te diga. Queda escrito en
+> la corrida y **sale impreso en la ficha**, porque mover la frontera de una
+> planta a mano y no decirlo deja una ficha que parece derivada cuando lleva un
+> juicio dentro.
+
 ### Sembrar entre corridas
 
 ```bash
@@ -295,6 +311,23 @@ por qué en ese orden; tú corres la búsqueda y registras lo que contestó:
 **`--resultados 0` es válido y cuenta.** Cero resultados es una respuesta: haber
 preguntado bien y no encontrar nada es trabajo hecho.
 
+> ### No recortes la salida de `buscar`, y no repitas una consulta
+>
+> En Pesquería un `| tail -1` imprimió una línea en blanco, el agente creyó que la
+> búsqueda había fallado y la repitió: dos consultas quedaron contadas dos veces,
+> **el gasto real era 58 y el estado decía 60**.
+>
+> `buscar` ahora **confirma siempre en la última línea** —`REGISTRADA · [M5] fila
+> 7 · 3 resultado(s) · gasto 41/90`—, así que si recortas verás la confirmación y
+> no un hueco. Y si registras la misma consulta textual dos veces en el mismo
+> módulo, **se rechaza diciendo en qué fila ya está**. La misma consulta en otro
+> módulo sí pasa: son dos preguntas y las dos se pagan.
+>
+> **Si `bloque` dice 9 y `buscar` dice 10, las dos tienen razón.** El bloque cuenta
+> **consultas de red** porque mide rendimiento del gasto; el registro muestra
+> todas las filas, y las de M4 (`patron_derivado`) se generan local sin gastar red.
+> Los dos mensajes ahora lo explican con una línea «OJO CON LAS DOS CIFRAS».
+
 ### `cercania_decision`: **0 = DECIDE · 100 = contexto**
 
 Léelo dos veces, porque es al revés de lo que la intuición dice, y ya se capturó
@@ -396,8 +429,17 @@ perdió así, con la ficha ya escrita.
 #                                    content = el HTML completo
 # 3. registrar la liga
 ./prospector entregar --empresa "<empresa>" --ciudad "<ciudad>" \
-  --destino onedrive --url '<el webUrl que devolvió>'
+  --destino onedrive --url '<el webUrl que devolvió>' \
+  --sha256 '<el hash que devolvió el conector>'
 ```
+
+> **Pasa el `--sha256`.** La entrega de Pesquería reportó 36,650 bytes subidos
+> contra 36,649 del local y nadie comparó el contenido. Pudo ser el salto de
+> línea final; pudo ser un carácter cambiado en medio, y **el tamaño no distingue
+> las dos cosas**. Si el conector solo te da el tamaño, pasa `--bytes`, y la
+> herramienta te va a decir en voz alta que **eso no verifica**. Si no pasas
+> ninguno, queda `sin_verificar` — que es exactamente como se dio por buena la
+> subida de Pesquería.
 
 **OneDrive y no otra cosa, por una razón:** es el **mismo inquilino de Microsoft**
 donde ya viven su Outlook y su Odoo. La ficha lleva nombres, puestos y correos —
@@ -507,7 +549,7 @@ es el que él pidió.
 ./prospector ficha     --empresa "<empresa>" --ciudad "<ciudad>" --modo limpio
 #            ... subes el .html a su OneDrive ...
 ./prospector entregar  --empresa "<empresa>" --ciudad "<ciudad>" \
-                       --destino onedrive --url '<webUrl>'       # 4 · sobrevive
+              --destino onedrive --url '<webUrl>' --sha256 '<hash>'  # 4 · sobrevive
 ./prospector paquete   --empresa "<empresa>" --ciudad "<ciudad>"  # 5 · para el CRM
 ```
 

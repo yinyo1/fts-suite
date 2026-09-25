@@ -33,7 +33,7 @@ from .confianza import (Contacto, N1_CONFIRMADO, N2_PARCIAL, N3_PUESTO,
                         CERCANIA_SIN_ESTIMAR, exigir_cercania_coherente)
 from .estado import (Corrida, RESPONDIO, OLAS, NIVEL_PLANTA,
                      NIVEL_CORPORATIVO, LLAVE_CORPORATIVO, ORIGEN_MANUAL,
-                     ORIGEN_RADAR, MARCA_ANGULO)
+                     ORIGEN_RADAR, MARCA_ANGULO, MARCA_PADRON)
 from .paquete import armar as armar_paquete, escribir as escribir_paquete
 from .importacion_odoo import escribir as escribir_importacion
 from .compuertas import TOPE_SIN_HUMANO
@@ -226,6 +226,10 @@ def _armar(d: dict, ruta: str) -> Corrida:
     c.origen = d.get("origen", ORIGEN_MANUAL)
     c.angulo_resuelto = d.get("angulo_resuelto", "")
     c.tipos = list(d.get("tipos", []) or [])
+    # El alias de ubicacion es CRITERIO DEL OPERADOR: no se puede derivar,
+    # y si no se restaura, la exclusion de la vuelta siguiente vuelve a
+    # tirar a la gente que el alias rescato (#306, D4).
+    c.alias_de_ubicacion = list(d.get("alias_de_ubicacion", []) or [])
     pres = d.get("presupuesto", {})
     c.presupuesto.tope_por_cuenta = pres.get("tope", 60)
     # Los tramos se restauran DESPUES del tope, y tal cual: son el historial de
@@ -470,7 +474,7 @@ def main(argv=None) -> int:
                    "buscar", "registrar", "bloque", "cerrar", "vuelta",
                    "challenge", "ficha", "estado", "tope", "fusionar",
                    "conectores", "entregar", "sembrar", "tramo", "paquete",
-                   "importar"):
+                   "importar", "alias"):
         s = sub.add_parser(nombre)
         if nombre == "estado":
             # `estado` sin --empresa resume TODAS las corridas de la sesion.
@@ -546,6 +550,11 @@ def main(argv=None) -> int:
         if nombre == "cerrar":
             s.add_argument("--estado", default=RESPONDIO)
             s.add_argument("--razon", default="")
+        if nombre == "alias":
+            s.add_argument("--es", required=True,
+                           help="el otro nombre con el que esta cuenta llama a "
+                                "esta planta. Ejemplo: --es 'Monterrey' cuando la "
+                                "planta de Pesqueria se anuncia asi")
         if nombre == "entregar":
             s.add_argument("--destino", default=None,
                            choices=list(Corrida.DESTINOS),
@@ -555,7 +564,16 @@ def main(argv=None) -> int:
                            help="la liga del archivo ya subido. Sin liga no hay "
                                 "entrega que comprobar")
             s.add_argument("--archivo", default="",
-                           help="el nombre con el que quedo, si cambio")
+                           help="la RUTA LOCAL de la ficha que se subio, si no "
+                                "es la ultima emitida")
+            s.add_argument("--sha256", default="",
+                           help="el hash que devolvio el conector de la copia "
+                                "subida. Es lo unico que verifica CONTENIDO: el "
+                                "tamano no distingue un salto de linea de mas de "
+                                "un caracter cambiado en medio (#306)")
+            s.add_argument("--bytes", default=None, type=int, dest="bytes_",
+                           help="el tamano que devolvio el conector. Sirve de "
+                                "consuelo si no da hash, pero NO verifica")
             s.add_argument("--sin-entregar", action="store_true",
                            dest="sin_entregar",
                            help="el operador decide NO sacarla. Exige --razon: "
@@ -755,8 +773,7 @@ def main(argv=None) -> int:
                             "\"confirmado|corregido\"}'` antes de la ficha.")
                     else:
                         c.angulo_resuelto = "manual"
-                for b in ar.banderas:
-                    c.avisos.append(str(b).replace("\n", " "))
+                c.registrar_veredicto_del_padron(ar.banderas)
                 # Un conector autorizado como hueco no se queda en una nota: el
                 # modulo que depende de el sale `sin_acceso` con razon escrita,
                 # y eso viaja hasta el checklist de la ficha. Declarar el hueco
@@ -847,6 +864,30 @@ def main(argv=None) -> int:
                           "ENTREGAR: se pierde al cerrar la sesion.")
             return 0
 
+        if a.cmd == "alias":
+            # DEFECTO 4 de #306. "COFICAB Monterrey" es la planta de Pesqueria: la
+            # cuenta la anuncia con el nombre del area metropolitana, y sin esto la
+            # exclusion por planta tiraba a las dos puertas mas probables de la
+            # corrida. La herramienta NO lo puede derivar -- que dos lugares sean
+            # el mismo es geografia local--, asi que lo declara el operador en una
+            # linea y queda escrito en el estado, no aplicado callado.
+            x = c.declarar_alias_de_ubicacion(a.es)
+            c.guardar(_ruta_de(c, a))
+            rescatados = [y for y in c.contactos
+                          if y.cuenta_en_la_poblacion_de(c.ciudad,
+                                                         c.alias_de_ubicacion)
+                          and not y.cuenta_en_la_poblacion_de(c.ciudad)]
+            print(f"\n  ✓ ALIAS DECLARADO — para esta cuenta, "
+                  f"'{x}' es {c.ciudad or 'esta planta'}.")
+            print(f"     alias de la corrida: "
+                  f"{', '.join(c.alias_de_ubicacion)}")
+            print(f"     contactos que vuelven a la poblacion: {len(rescatados)}"
+                  + (" (Chao1 y el agotado se recalculan con ellos dentro)"
+                     if rescatados else ""))
+            print("     Es criterio tuyo, no evidencia: queda escrito en la "
+                  "corrida y en la ficha.\n")
+            return 0
+
         if a.cmd == "entregar":
             if a.sin_entregar:
                 if not a.razon.strip():
@@ -866,11 +907,36 @@ def main(argv=None) -> int:
                     + ", ".join(Corrida.DESTINOS)
                     + ". 'correo' no esta: el conector de Outlook no tiene "
                       "parametro de adjuntos (medido).")
-            e = c.registrar_entrega(a.destino, a.url, a.archivo)
+            e = c.registrar_entrega(a.destino, a.url, a.archivo,
+                                    sha256_subido=a.sha256,
+                                    bytes_subidos=a.bytes_)
             c.guardar(_ruta_de(c, a))
             print(f"\n  ✓ FICHA ENTREGADA — sobrevive a esta sesion:")
             print(f"     destino: {e['destino']}")
-            print(f"     liga:    {e['url']}\n")
+            print(f"     liga:    {e['url']}")
+            # La verificacion se IMPRIME SIEMPRE, incluso cuando no hubo nada que
+            # comparar. En Pesqueria (#306) la subida difirio en un byte y la
+            # entrega se dio por buena porque nadie dijo en voz alta que el
+            # contenido no se habia comparado.
+            rotulos = {
+                "identico": "✓ contenido VERIFICADO por sha256: identico al local",
+                "DIFIERE": "⛔ contenido DISTINTO del local (sha256 no casa)",
+                "mismo_tamano_sin_hash": "⚠  solo se comparo el TAMANO, y coincide "
+                                         "— el tamano no verifica contenido",
+                "TAMANO_DISTINTO": "⛔ el TAMANO no coincide con el local",
+                "sin_verificar": "⚠  SIN VERIFICAR: no se paso --sha256 ni --bytes",
+            }
+            print(f"     verifica: {rotulos.get(e['verificacion'], e['verificacion'])}")
+            if e.get("local"):
+                print(f"     local:   {e['archivo']} · "
+                      f"{e['local']['bytes']:,} bytes · "
+                      f"sha256 {e['local']['sha256'][:16]}…")
+            else:
+                print("     local:   (no se encontro el archivo en disco: nada "
+                      "que comparar)")
+            for aviso in e.get("avisos_de_verificacion", []):
+                print(f"       · {aviso}")
+            print()
             return 0
 
         if a.cmd == "fusionar":
@@ -1066,7 +1132,14 @@ def main(argv=None) -> int:
                 p, a.empresa, a.dominio, a.ciudad, a.entidad, a.giro, a.cerrada)
             for b in banderas:
                 print("\n  " + str(b).replace("\n", "\n  "))
-                c.avisos.append(str(b).replace("\n", " "))
+            # El veredicto REEMPLAZA al anterior. Sin esto la ficha imprimia los
+            # dos y el viejo mandaba a correr el vigilante sin motivo (#306, D1).
+            reemplazados = len([x for x in c.avisos
+                                if x.startswith(MARCA_PADRON)])
+            c.registrar_veredicto_del_padron(banderas)
+            if reemplazados:
+                print(f"\n  ↻ Este veredicto REEMPLAZA a {reemplazados} anterior(es) "
+                      "en la ficha. El historial de consultas sigue en M13.")
 
             # M13 queda registrado con lo que el padron contesto DE VERDAD.
             # Cero hits es una respuesta y cuenta: significa que se busco bien.
@@ -1116,6 +1189,14 @@ def main(argv=None) -> int:
                 print()
                 print(aviso)
             _imprimir_paso(c)
+            # LA ULTIMA LINEA CONFIRMA, y es lo ultimo que se imprime a proposito:
+            # el agente de #306 recorto la salida con `| tail -1`, vio una linea en
+            # blanco y repitio la consulta. Una confirmacion que solo esta arriba no
+            # sirve cuando la salida se recorta, y recortarla es lo normal.
+            fila = len(c.mod(a.modulo).registros)
+            print(f"REGISTRADA · [{a.modulo}] fila {fila} · {a.resultados} "
+                  f"resultado(s) · gasto {c.presupuesto.gastadas + c.bloque_pendiente()[0]}"
+                  f"/{c.presupuesto.tope_por_cuenta}")
             return 0
 
         if a.cmd == "vuelta":
