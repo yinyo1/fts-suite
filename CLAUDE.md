@@ -1275,6 +1275,41 @@ alrededor de ella. El único que iba a notarlo era quien la mirara a propósito,
 que programarlo. Es la misma exigencia de §20 #12 («una pantalla se revisa MIRÁNDOLA»),
 puesta como paso obligatorio de la entrega en vez de como buena intención.
 
+### 21. Un <script> que no llega no avisa: el módulo lo tiene que preguntar al arrancar
+Una página con varios `<script>` clásicos que se hablan por globales (`window.X`) **no
+se entera** cuando uno no carga: el navegador sigue con los demás, la pantalla se ve
+normal, y el hueco aparece después en el botón que lo usa, con un error técnico. Un 404
+de un instante, una descarga cortada a la mitad (que llega como `SyntaxError`) o una
+extensión producen **exactamente el mismo síntoma**, y ninguno deja rastro en n8n ni en
+Railway — sólo en la consola de quien lo vivió.
+*(Origen: 24-sep-2026, Planeación Operativa. `window.PLANEACION_TURNOS` llegó `undefined`
+al Edge de Felipe: preview de "Compartir plan" vacío, "Copiar" sin hacer nada, "Generar
+PNG" con `Cannot read properties of undefined (reading 'agruparPorProyectoYTurno')`.
+Pages servía el archivo bien —huella idéntica a `main`, medido— y no se pudo saber cuál
+de las tres causas fue. Reproducido en local quitando `turnos.js`: los tres síntomas,
+idénticos.)*
+
+**Regla operativa, para todo módulo con más de un `<script>` propio:**
+1. **`shared/deps-check.js` primero en el `<head>`**, y `FTSDeps.verificar({requeridos})`
+   al final del `<body>` con cada global que el módulo necesita y el archivo que lo
+   define. Si falta uno: banner rojo que **nombra el archivo** y dice Ctrl+Shift+R.
+2. **`?v=<build>` en cada `<script>`/`<link>` local**, con el mismo string que
+   `version.json.build`, y una prueba que lo exija. Sin eso, un `index.html` nuevo puede
+   convivir con un JS viejo del caché.
+3. **Ningún botón falla en silencio**: todo handler que llama a otro archivo va en
+   `try/catch` y pinta el error **en la pantalla**, no en la consola.
+4. **El build en pantalla sale del CÓDIGO**, no de `version.json` leído en vivo. Planeación
+   pintaba `version.json` con `no-store`, así que el rótulo mostraba el último deploy
+   aunque el JS que corría fuera otro: **no probaba nada** (§20 #15 punto 1 se apoya en
+   que ese rótulo diga la verdad).
+
+⚠️ **Contexto que lo agrava:** Pages le cambia `ETag` y `Last-Modified` a **todos** los
+archivos en cada deploy, aunque no hayan cambiado (medido: `W/"6ab5a69d-<tamaño>"` y la
+misma hora de deploy en los 13 archivos del módulo). Con ~12 deploys en un día hábil por
+los commits automáticos, la revalidación del caché (`max-age=600`) casi nunca da `304`:
+el navegador vuelve a bajar todo cada rato, y cada bajada es otra oportunidad de que una
+falle. El caché no sirve de red de seguridad.
+
 ---
 
 ### Correcciones a reglas anteriores (verificadas 2026-08-31)
