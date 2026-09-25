@@ -16,10 +16,10 @@ Las cifras de sesiones anteriores **no se vuelven a medir**: están en
 ```
 [["state","=","sale"],["company_id","=",1],["currency_id","=",33],
  ["date_order",">=","2025-01-01"],["amount_untaxed",">=",200000]]
- → 38 registros · amount_untaxed:sum = 91,652,593.13 MXN
+ → 38 registros · el 95.4 % del subtotal del periodo
 
  mismo, con ["amount_untaxed","<",200000]
- → 97 registros · amount_untaxed:sum =  4,427,778.14 MXN
+ → 97 registros · el 4.6 % restante
 ```
 
 **Dólares:** `currency_id = 2`, cías 1 y 6 → **45 órdenes**, leídas **una por una** con
