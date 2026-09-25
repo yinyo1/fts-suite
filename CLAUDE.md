@@ -143,6 +143,7 @@ Aplicada en `Code Merge incidencia` de `xVNp36` y `Code Build incidencia` de `5S
 - **`hr.attendance`:** campo SO link es `x_studio_sales_order_2` (renombrado desde `x_studio_many2one_field_wyDLM`).
 - **`hr.attendance` custom fields F1 v3 (4-may-2026):** `x_studio_horario_en_disputa` (id 97921, boolean, default false) + `x_studio_incidencia_pendiente_id` (id 97923, char size 100). Aplicados al crear incidencia olvido_checkout, cleanup en estados terminales del resolver. Cleanup paralelo del sprint: borrados `x_studio_tiempo_2` (id 29492) + `x_studio_tiempo_de_comida_horas` (id 7915) → net 0 nuevas líneas Studio.
 - **`account.analytic.line`:** Odoo 19 usa `analytic_distribution` (no `analytic_account_id` como en v16).
+- **`res.partner.bank`: la CLABE tiene campo PROPIO, `l10n_mx_edi_clabe` (char, almacenado, escribible).** El numero de cuenta BBVA de 10 digitos va en `acc_number`; la CLABE de 18 **no**. Hoy da igual porque la dispersion es por cuenta de 10 digitos (medido 25-sep-2026: 1 de 27 cuentas de empleados tiene el CLABE lleno, y es un registro viejo). **Importa el dia que se disperse por CLABE: el campo es `l10n_mx_edi_clabe`.** Meter una CLABE en `acc_number` **romperia el paso 3 de Carga MO**, que compara contra los 10 digitos del TXT de dispersion — y el modo de fallo es de los caros: no truena, simplemente deja de cuadrar. Y `hr.employee.bank_account_ids` **no es un espejo** de las cuentas del contacto: es un many2many almacenado, o sea una tabla de enlace que hay que escribir aparte (#311).
 - **`resource.calendar`:** debe excluir tipo `lunch` para cálculo correcto de horas trabajadas.
 - **Empleados sin `department_id`:** caso real, ya manejado en código. Workflows que dependan de departamento deben tener fallback explícito (escalación a RH o flag `sin_departamento`).
 - **`hr.employee` campos relevantes F2.1:** `parent_id` (many2one) es la fuente de verdad para supervisor (jerarquía organizacional). `attendance_manager_id` EXISTE pero está vacío para todos los empleados (no usar). `work_email`, `work_phone`, `mobile_phone` se snapshot al crear incidencia (defensivo, pueden ser null sin romper). Verificado todos los empleados activos tienen `parent_id` poblado al 4-may-2026.
@@ -1267,6 +1268,33 @@ el MCP. Y aplica igual al codigo de medicion propio: en esa misma sesion un cont
 `if (b.employee_id)` reporto **27 de 27 con employee_id** cuando el valor era `[]` — en
 JavaScript un arreglo vacio es verdadero. Lo desmintio el detalle crudo, que se imprimio al
 lado. **Por eso todo conteo va acompanado de la muestra cruda de la que sale.**
+
+**Dos corolarios mas, del mismo dia y del mismo hilo (#311):**
+
+**(a) Dos mediciones que coinciden solo se refuerzan si son INDEPENDIENTES.** Esteban y CC
+midieron por separado que `hr.employee.bank_account_ids` no existia, **con el mismo MCP**, y la
+coincidencia se leyo como confirmacion. No lo era: era la misma ceguera dos veces. Dos personas
+distintas no hacen independiente a una medicion; **lo que la hace independiente es el
+instrumento**. Antes de apoyarse en que «los dos medimos lo mismo», preguntar si los dos
+miramos por el mismo agujero.
+
+**(b) Una medicion es una afirmacion sobre un MOMENTO, no sobre el sistema.** En la misma sesion,
+la consulta `hr.employee` de la empresa 1 devolvio **0 de 29 con enlace** a las 17:14 UTC y
+**28 de 29** a las 17:55 — la misma consulta, el mismo instrumento, resultados opuestos. No habia
+error: entre las dos, Esteban corrio el one-shot. **Casi se reporta como contradiccion a
+resolver, y era el sistema cambiando.** En una base viva, **volver a medir no es redundante**, y
+cuando dos lecturas difieren la primera pregunta es *cuando* se tomo cada una, no *cual esta
+mal*. Corolario para los reportes: todo conteo que se vaya a citar lleva su hora, porque sin
+ella no se puede saber a que mundo se referia.
+
+**(c) Y el veredicto se NIEGA a emitirse si el instrumento no pudo mirar.** En la misma sesion un
+barrido de «quien referencia esta cuenta» devolvio `usos: []` con **las 12 consultas rotas** por
+un dominio mal envuelto: 21 campos, 9 no consultables, 12 errores, **cero consultas exitosas**, y
+aun asi la lista vacia se leia como «no la usa nadie». La version corregida devuelve
+`VEREDICTO: NO_CONCLUYENTE` mientras quede una sola consulta fallida — y con las 12 arregladas
+la respuesta fue la contraria: **33 pagos y 58 asientos**. **Un barrido que puede fallar
+parcialmente tiene que contar sus exitos y negarse a concluir sin ellos**, igual que
+`intentadas > 0` en §9.
 
 ### 20. Toda entrega que toque pantalla lleva capturas a CUATRO anchos, y miradas
 **380, 760, 900 y 1280 px**, con la fila más larga que exista de verdad en producción —no
