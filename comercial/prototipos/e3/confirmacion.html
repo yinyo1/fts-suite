@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prototipo · Confirmación con sus candados</title>
+<link rel="stylesheet" href="_comun.css">
+<style>
+  .paso{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--linea2)}
+  .paso:last-child{border-bottom:0}
+  .paso .n{flex:none;width:26px;height:26px;border-radius:50%;background:var(--papel);
+           border:1px solid var(--linea);display:flex;align-items:center;justify-content:center;
+           font-size:12px;font-weight:700;color:var(--suave)}
+  .paso.irrev .n{background:#ffebe9;border-color:#ffc9c9;color:#a40e26}
+  .paso .t{flex:1 1 auto;min-width:0}
+  .paso .t b{font-size:13.5px} .paso .t div{font-size:12px;color:var(--suave);line-height:1.45}
+  .cuadre{display:grid;grid-template-columns:1fr auto;gap:4px 14px;font-size:13.5px;
+          max-width:430px;margin:10px 0}
+  .cuadre .v{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+  .cuadre .sep{grid-column:1/-1;border-top:1px solid var(--linea);margin:4px 0}
+</style>
+</head>
+<body>
+
+<div class="demo">
+  <b>PROTOTIPO · datos inventados.</b> No está conectado a nada: no lee Odoo, no lee Postgres y
+  ningún botón escribe. Sirve para ver <b>la forma de la pantalla y el texto de los candados</b>
+  antes de construirla. Issue <b>#294</b> · 25-sep-2026.
+</div>
+
+<div class="topbar">
+  <b>Confirmar orden</b>
+  <span class="pill neu">folio 42 · v17</span>
+  <span class="pill info">Industrias del Norte (demo)</span>
+  <span style="flex:1 1 auto"></span>
+  <span class="tiny">SO-DEMO-0042</span>
+</div>
+
+<div class="wrap">
+
+  <div class="card">
+    <h2>Lo que se va a confirmar</h2>
+    <p class="sub">Sale del machote. Aquí no se edita: si algo está mal, se corrige en la
+       cotización y se vuelve. Es lo que hace que la versión 17 signifique algo.</p>
+    <div class="tabla-caja">
+      <table>
+        <thead><tr><th>Concepto</th><th class="num">Importe</th><th>De dónde</th></tr></thead>
+        <tbody>
+          <tr><td>Subtotal de la cotización</td><td class="num mono">$1,000,000.00</td><td class="tiny">motor del machote</td></tr>
+          <tr><td>IVA 16 %</td><td class="num mono">$160,000.00</td><td class="tiny">decisión de esta pantalla</td></tr>
+          <tr><td><b>Total</b></td><td class="num mono"><b>$1,160,000.00</b></td><td class="tiny">—</td></tr>
+          <tr><td>Costo planeado</td><td class="num mono">$640,000.00</td><td class="tiny">motor · mano de obra + materiales + viajes</td></tr>
+          <tr><td>Margen</td><td class="num mono n-ok">36.0 %</td><td class="tiny">calculado</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Lo que falta capturar</h2>
+    <p class="sub">Cuatro cosas que el machote no tiene. Todo lo demás ya viene de la cotización.</p>
+
+    <div class="rejilla">
+      <label class="campo"><span>Número de la orden de compra</span>
+        <input type="text" value="4500123987" ></label>
+      <label class="campo"><span>Importe que dice la PO</span>
+        <input type="number" value="1160000.00" step="0.01"></label>
+    </div>
+    <p class="tiny" style="margin:-4px 0 10px">
+      ⓘ No se te pregunta si tu PO trae IVA: se deduce comparando este importe contra el
+      subtotal y contra el total. Este cliente <b>siempre ha mandado con IVA</b> (6 de 6).
+    </p>
+
+    <label class="campo"><span>Archivo de la PO</span>
+      <input type="text" value="PO-4500123987.pdf  ·  3 páginas  ·  248 KB" readonly></label>
+    <p class="tiny" style="margin:-4px 0 10px">
+      ⓘ Se revisa <b>al subirlo</b>, no después. Un PDF en blanco sólo se puede detectar en ese
+      momento: una vez guardado en Odoo ya no se puede volver a leer desde aquí.
+    </p>
+
+    <div class="rejilla">
+      <label class="campo"><span>Contacto del cliente</span><input type="text" value="Compras — Planta Poniente"></label>
+      <label class="campo"><span>Teléfono</span><input type="text" value="81 0000 0000"></label>
+      <label class="campo"><span>Correo</span><input type="text" value="compras@ejemplo-demo.mx"></label>
+      <label class="campo"><span>Quién dirige la obra</span>
+        <select><option>— elegir de la plantilla —</option><option selected>Supervisor de obra (demo)</option></select></label>
+      <label class="campo"><span>Inicio de obra</span><input type="date" value="2026-10-06"></label>
+      <label class="campo"><span>Fin de obra</span><input type="date" value="2026-12-15"></label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Los candados</h2>
+    <p class="sub">Se revisan en orden, y <b>primero lo que se puede rechazar sin tocar nada</b>.
+       Un candado que salta no es un error: es un pendiente.</p>
+
+    <div class="candado pasa"><h4>✓ Cliente del catálogo <span class="pill ok">pasa</span></h4>
+      <p class="tiny">Ligado a Odoo. Sin esto no se puede crear la orden.</p></div>
+
+    <div class="candado pasa"><h4>✓ Contacto con teléfono y correo <span class="pill ok">pasa</span></h4>
+      <p class="tiny">Es a quien se le manda la factura.</p></div>
+
+    <div class="candado pasa"><h4>✓ Los cuatro compromisos <span class="pill ok">pasa</span></h4>
+      <p class="tiny">Términos de pago (30 días) · incoterm (DDP) · entrega (8 semanas) ·
+         vigencia (30 días). Capturados en la cotización.</p></div>
+
+    <div class="candado pasa"><h4>✓ La PO cuadra <span class="pill ok">con IVA</span>
+        <span class="codigo">CON_IVA</span></h4>
+      <div class="cuadre">
+        <div>Tu PO dice</div><div class="v">$1,160,000.00</div>
+        <div>La cotización, sin IVA</div><div class="v">$1,000,000.00</div>
+        <div>La cotización, con IVA</div><div class="v">$1,160,000.00</div>
+        <div class="sep"></div>
+        <div>Cuadra contra</div><div class="v n-ok">el total con IVA</div>
+      </div>
+      <p class="tiny">Coincide con la forma en que este cliente siempre manda su PO.</p></div>
+
+    <div class="candado frena"><h4>✗ Anticipo obligatorio <span class="pill bad">frena</span>
+        <span class="codigo">SIN_ANTICIPO</span></h4>
+      <p><b>Esta orden pasa del umbral y no tiene anticipo.</b><br>
+        El subtotal es <b>$1,000,000.00 MXN</b> y el umbral para pesos es
+        <b>$200,000.00</b>. Arriba de ese monto el anticipo es obligatorio.</p>
+      <p class="tiny">Se propone <b>30 %</b> = $300,000.00 sobre el subtotal. Se factura con el
+        asistente de anticipos de Odoo, que es lo que hace que el avance de la orden quede bien
+        sin tener que corregirlo después.</p>
+      <div class="btns">
+        <button class="btn pri">Poner anticipo de 30 %</button>
+        <button class="btn">Cambiar el porcentaje</button>
+        <button class="btn">Pedir excepción a dirección</button>
+      </div></div>
+
+    <div class="candado frena"><h4>✗ Beneficiario de comisión sin autorizar
+        <span class="pill bad">frena</span> <span class="codigo">BENEFICIARIO_SIN_APROBAR</span></h4>
+      <p><b>Falta autorizar a quien va a recibir comisión.</b><br>
+        <b>Contacto nuevo del cliente (demo)</b> — lado cliente — está <b>pendiente de
+        autorizar</b> desde el 24-sep.</p>
+      <p class="tiny">Se le pidió a quien autoriza el 24-sep 18:40 y <b>caduca el 27-sep a las
+        18:40</b>. Sin esa autorización no se puede confirmar, porque el presupuesto de comisión
+        se escribe al confirmar.</p>
+      <div class="btns">
+        <button class="btn">Recordarle</button>
+        <button class="btn peli">Quitar a esta persona de la cotización</button>
+      </div></div>
+
+    <div class="candado avisa"><h4>⚠ La oportunidad <span class="pill warn">avisa, todavía no frena</span>
+        <span class="codigo">SIN_OPORTUNIDAD</span></h4>
+      <p class="tiny">Esta cotización no está ligada a ninguna tarjeta del CRM. Hoy se marca y
+        deja pasar; cuando las 24 cotizaciones vivas estén ligadas, pasa a frenar.
+        <b>Se liga en la cotización, no aquí</b>: la liga nace al cotizar.</p></div>
+
+    <div class="candado pasa"><h4>✓ Las facturas de la orden cuadran <span class="pill ok">pasa</span></h4>
+      <p class="tiny">Orden en borrador, sin facturas. En este camino el candado casi nunca
+        salta: sirve cuando se reabre una orden ya facturada, cuando la orden se creó en Odoo
+        por fuera, o en una orden hija de adicionales.</p></div>
+  </div>
+
+  <div class="card">
+    <h2>Qué va a escribir, y en qué orden</h2>
+    <p class="sub">Lo irreversible va al final, para que una confirmación a medias
+       <b>nunca deje una orden confirmada sin su proyecto</b>.</p>
+
+    <div class="paso"><div class="n">0</div><div class="t"><b>Reservar el intento</b>
+      <div>En nuestra base. Si dos personas confirman a la vez, sólo una pasa.</div></div></div>
+    <div class="paso"><div class="n">1</div><div class="t"><b>Contacto en Odoo</b>
+      <div>Si no existe. Reversible: se archiva.</div></div></div>
+    <div class="paso"><div class="n">2</div><div class="t"><b>Cuenta analítica</b>
+      <div>Del plan que toca según la empresa. Reversible.</div></div></div>
+    <div class="paso"><div class="n">3</div><div class="t"><b>Proyecto</b>
+      <div>Ligado a la analítica <b>y a la orden por los dos caminos</b>. Reversible.</div></div></div>
+    <div class="paso"><div class="n">4</div><div class="t"><b>Presupuesto</b>
+      <div>Ingreso, mano de obra, materiales <b>y viajes</b> — con los montos reales del
+        machote, no con el −1 de hoy.</div></div></div>
+    <div class="paso"><div class="n">5</div><div class="t"><b>Presupuesto de comisión</b>
+      <div>Un renglón por beneficiario, desde el reparto de la cotización.</div></div></div>
+    <div class="paso"><div class="n">6</div><div class="t"><b>Escribir en la orden</b>
+      <div>PO y su archivo, términos, incoterm, fecha, contacto, proyecto, analítica.
+        <b>El archivo es lo único irreversible que no es el último paso</b>: por eso se valida
+        antes.</div></div></div>
+    <div class="paso"><div class="n">7</div><div class="t"><b>Factura de anticipo</b>
+      <div>Con el asistente de Odoo. Reversible: se cancela.</div></div></div>
+    <div class="paso irrev"><div class="n">8</div><div class="t"><b>Confirmar la orden</b>
+      <div><b class="n-bad">Esto no se deshace.</b> Va al final porque no hay nada después que
+        pueda fallar.</div></div></div>
+
+    <div class="btns" style="margin-top:16px">
+      <button class="btn pri" disabled>Confirmar orden — faltan 2 candados</button>
+      <button class="btn">Revisar de nuevo</button>
+      <button class="btn">Volver a la cotización</button>
+    </div>
+    <p class="tiny" style="margin-top:10px">El botón se enciende solo cuando los dos candados
+      rojos pasen. No hay forma de saltárselos desde aquí — y tampoco desde el servidor, que
+      vuelve a revisarlos todos.</p>
+  </div>
+
+</div>
+</body>
+</html>

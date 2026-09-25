@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prototipo · Comisiones con flujo de aprobación</title>
+<link rel="stylesheet" href="_comun.css">
+<style>
+  .ben{display:flex;gap:10px;align-items:center;padding:11px 0;border-bottom:1px solid var(--linea2);flex-wrap:wrap}
+  .ben:last-child{border-bottom:0}
+  .ben .nm{flex:1 1 190px;min-width:0}
+  .ben .nm b{font-size:13.5px} .ben .nm div{font-size:11.5px;color:var(--suave)}
+  .ben .pc{flex:none;width:92px}
+  .ben .pc input{text-align:right;min-height:38px;padding:6px 9px}
+  .ben .im{flex:none;width:118px;text-align:right;font-variant-numeric:tabular-nums;font-size:13.5px;font-weight:600}
+  .suma{display:flex;gap:10px;align-items:center;padding:11px 0 0;margin-top:6px;
+        border-top:2px solid var(--linea);font-size:13.5px;font-weight:700}
+  .suma .im{flex:none;width:118px;text-align:right;font-variant-numeric:tabular-nums}
+  .correo{border:1px solid var(--linea);border-radius:9px;background:var(--fondo);overflow:hidden;margin-top:10px}
+  .correo .cab{background:var(--papel);border-bottom:1px solid var(--linea);padding:10px 14px;font-size:12px;color:var(--suave)}
+  .correo .cab b{color:var(--tinta)}
+  .correo .cue{padding:15px}
+  .correo .cue h4{margin:0 0 10px;font-size:15px}
+  .correo .dato{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:13px;margin:10px 0}
+  .correo .dato .k{color:var(--suave)}
+  .correo .ligas{display:flex;gap:9px;margin:16px 0 6px;flex-wrap:wrap}
+  .lg{min-height:var(--toque);padding:0 18px;border-radius:8px;display:inline-flex;
+      align-items:center;font-weight:700;font-size:14px;text-decoration:none}
+  .lg.si{background:var(--verde);color:#fff} .lg.no{background:#fff;color:var(--rojo);border:1px solid #ffc9c9}
+  .linea-t{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:var(--suave);
+           word-break:break-all;background:var(--papel);border:1px solid var(--linea);
+           border-radius:5px;padding:7px 9px;margin-top:9px}
+  .estados{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
+  .estados button{font-size:12px;min-height:34px;padding:0 11px;border-radius:7px;
+                  border:1px solid var(--linea);background:var(--fondo);cursor:pointer}
+  .estados button[aria-pressed=true]{background:var(--acento);border-color:var(--acento);color:#fff}
+</style>
+</head>
+<body>
+
+<div class="demo">
+  <b>PROTOTIPO · datos inventados.</b> No manda correo, no lee Odoo, no guarda nada. Los botones
+  de abajo sólo cambian lo que se ve, para poder mirar <b>los cuatro estados</b> sin construir
+  nada. Issue <b>#294</b> · 25-sep-2026.
+</div>
+
+<div class="topbar">
+  <b>Comisiones de la cotización</b>
+  <span class="pill neu">folio 42 · v17</span>
+  <span style="flex:1 1 auto"></span>
+  <span class="tiny">bolsa: $55,000.00 MXN</span>
+</div>
+
+<div class="wrap">
+
+  <div class="card">
+    <h2>Quién comisiona</h2>
+    <p class="sub">Se elige del catálogo de Odoo y se guarda <b>el id</b>, no el nombre. Hoy el
+       machote guarda cuatro nombres escritos a mano en la plantilla, y tres de esas personas ya
+       no están en la empresa.</p>
+
+    <h3 style="margin-top:6px">Lado FTS <span class="tiny" style="font-weight:400">· 73 % de la bolsa</span></h3>
+    <div class="ben">
+      <div class="nm"><b>Ingeniero de ventas (demo)</b><div>rubro 3.2 · empleado vigente ✓</div></div>
+      <div class="pc"><input type="number" value="60"></div><div class="im">$24,090.00</div>
+      <span class="pill ok">listo</span>
+    </div>
+    <div class="ben">
+      <div class="nm"><b>Dirección (demo)</b><div>rubro 3.6 · empleado vigente ✓</div></div>
+      <div class="pc"><input type="number" value="40"></div><div class="im">$16,060.00</div>
+      <span class="pill ok">listo</span>
+    </div>
+    <div class="ben" style="opacity:.62">
+      <div class="nm"><b>Persona que ya salió (demo)</b><div class="n-bad">ya no está en la empresa — baja en julio</div></div>
+      <div class="pc"><input type="number" value="0" disabled></div><div class="im">—</div>
+      <span class="pill bad">quitar</span>
+    </div>
+    <div class="suma"><div class="nm">Suma del lado FTS</div><div class="im">100 %</div>
+      <span class="pill ok">cuadra</span></div>
+
+    <h3>Lado cliente <span class="tiny" style="font-weight:400">· 27 % de la bolsa</span></h3>
+    <div class="ben">
+      <div class="nm"><b>Contacto nuevo del cliente (demo)</b>
+        <div id="sub-est">pendiente de autorizar desde el 24-sep</div></div>
+      <div class="pc"><input type="number" value="100"></div><div class="im">$14,850.00</div>
+      <span class="pill bad" id="pill-est">pendiente</span>
+    </div>
+    <p class="tiny">ⓘ Odoo tiene <b>once contactos de cliente con rubro propio</b>. El machote
+      de hoy trae un texto de relleno en los 19 que llevan comisión, así que ninguno de los once
+      se ha usado nunca.</p>
+  </div>
+
+  <div class="card" id="caja-flujo">
+    <h2>El beneficiario nuevo</h2>
+    <p class="sub">Crear a alguien que no está en el catálogo <b>no frena la cotización</b>:
+       se sigue armando. Lo que no se puede hacer con un beneficiario sin autorizar es
+       <b>confirmar la orden</b>.</p>
+
+    <div class="estados">
+      <span class="tiny" style="align-self:center;margin-right:4px">Ver el estado:</span>
+      <button data-e="pendiente" aria-pressed="true">Pendiente</button>
+      <button data-e="aprobado" aria-pressed="false">Aprobado</button>
+      <button data-e="rechazado" aria-pressed="false">Rechazado</button>
+      <button data-e="caducado" aria-pressed="false">Caducado</button>
+    </div>
+
+    <div id="panel"></div>
+  </div>
+
+  <div class="card">
+    <h2>El correo que se manda</h2>
+    <p class="sub">Se manda desde el buzón que ya está autorizado en Azure. Esta sesión
+       <b>no mandó ninguno</b>: esto es la maqueta del texto.</p>
+
+    <div class="correo">
+      <div class="cab">
+        <div><b>Para:</b> quien autoriza &nbsp;·&nbsp; <b>Copia:</b> dirección</div>
+        <div style="margin-top:4px"><b>Asunto:</b> [FTS · autorizar comisión] Contacto nuevo del
+          cliente (demo) — lado cliente — cotización 42</div>
+      </div>
+      <div class="cue">
+        <h4>Te piden autorizar a alguien que va a recibir comisión</h4>
+        <div class="dato">
+          <div class="k">Lo pide</div><div>quien cotiza · 24-sep 18:40</div>
+          <div class="k">Beneficiario</div><div><b>Contacto nuevo del cliente (demo)</b> — lado cliente</div>
+          <div class="k">Del cliente</div><div>Industrias del Norte (demo)</div>
+          <div class="k">En la cotización</div><div>folio 42 · $1,000,000.00 MXN</div>
+          <div class="k">Le tocaría</div><div><b>27 % de la bolsa · $14,850.00 MXN</b></div>
+        </div>
+        <div class="ligas">
+          <a class="lg si" href="#" onclick="return false">Autorizar</a>
+          <a class="lg no" href="#" onclick="return false">No autorizar</a>
+        </div>
+        <p class="tiny" style="margin:0">Caduca el <b>27-sep a las 18:40</b>. Si no haces nada,
+          se cancela sola y quien la pidió puede volver a mandártela. No hace falta que
+          contestes este correo.</p>
+        <div class="linea-t">https://…/comercial/aprobar/#/b/eyJzIjoiN2ExYy…ifQ.k3Qm9Xr2…<br>
+          <span style="color:#8a6d00">la liga lleva dentro, firmado: la solicitud, quién puede
+          autorizarla y cuándo caduca · un solo uso · no abre sesión</span></div>
+      </div>
+    </div>
+
+    <h3>Por qué se puede mandar esto por correo</h3>
+    <p class="tiny" style="max-width:66ch">
+      Porque <b>la liga aprueba un renglón de catálogo, no un pago</b>. Entre que alguien queda
+      autorizado y recibe un peso hay tres actos humanos más: que un machote le asigne un
+      porcentaje, que la orden se confirme, y que Contabilidad emita y pague una factura a su
+      nombre. Si la liga moviera dinero, no debería existir en un correo.
+    </p>
+    <p class="tiny" style="max-width:66ch">
+      <b>Y el hueco que sí queda, dicho:</b> si quien autoriza reenvía el correo, quien lo reciba
+      puede autorizar. No hay forma de impedirlo con una liga en un correo. Lo que se hace:
+      la autorización queda <b>a su nombre</b> con hora e IP, <b>dirección recibe copia en el
+      momento</b>, la autorización <b>se puede revertir</b>, y <b>no mueve dinero</b>.
+    </p>
+  </div>
+
+</div>
+
+<script>
+/* Sólo cambia lo que se ve. No hay red, no hay almacenamiento, no hay nada que guardar. */
+var P = {
+  pendiente: {
+    pill:'<span class="pill bad">pendiente</span>', sub:'pendiente de autorizar desde el 24-sep',
+    html:'<div class="candado frena"><h4>Pendiente de autorizar <span class="pill bad">frena confirmar</span></h4>'+
+      '<p><b>Contacto nuevo del cliente (demo)</b> se creó el 24-sep 18:40 y está esperando autorización.</p>'+
+      '<p class="tiny">Se le pidió a quien autoriza ese mismo día. <b>Caduca el 27-sep a las 18:40.</b> '+
+      'A las 24 h se le manda un recordatorio; a las 48 h se te avisa a ti para que puedas ir a buscarlo.</p>'+
+      '<div class="btns"><button class="btn">Recordarle</button>'+
+      '<button class="btn peli">Quitarlo de la cotización</button></div></div>'+
+      '<p class="tiny">La cotización <b>se sigue armando</b> con normalidad. Lo único cerrado es confirmar la orden.</p>'
+  },
+  aprobado: {
+    pill:'<span class="pill ok">autorizado</span>', sub:'autorizado el 25-sep · rubro 5.10 pendiente de abrir',
+    html:'<div class="candado pasa"><h4>Autorizado <span class="pill ok">deja confirmar</span></h4>'+
+      '<p>Autorizado el <b>25-sep 09:12</b>. Dirección recibió copia en ese momento.</p>'+
+      '<p class="tiny">Falta que Contabilidad abra su rubro en Odoo — son tres escrituras y dos de '+
+      'ellas no las hace la suite a propósito. Mientras tanto <b>sí se puede confirmar</b>: el '+
+      'presupuesto de comisión se escribe cuando el rubro exista.</p></div>'+
+      '<p class="tiny">La autorización <b>se puede revertir</b>. Lo que no se puede es borrar que ocurrió.</p>'
+  },
+  rechazado: {
+    pill:'<span class="pill bad">no autorizado</span>', sub:'no autorizado el 25-sep',
+    html:'<div class="candado frena"><h4>No autorizado <span class="pill bad">frena confirmar</span></h4>'+
+      '<p>No autorizado el <b>25-sep 09:12</b>, con este motivo:</p>'+
+      '<p style="background:var(--papel);border:1px solid var(--linea);border-radius:7px;padding:10px 12px;font-style:italic">'+
+      '«Este contacto ya cobra por el contrato marco. No lleva comisión aparte.»</p>'+
+      '<p class="tiny">El motivo es <b>obligatorio</b> al no autorizar: un rechazo sin razón deja a '+
+      'quien cotiza sin nada que hacer, y lo que pasa de verdad es que pone a otra persona.</p>'+
+      '<div class="btns"><button class="btn peli">Quitarlo de la cotización</button>'+
+      '<button class="btn">Volver a pedirlo con más contexto</button></div></div>'
+  },
+  caducado: {
+    pill:'<span class="pill warn">caducado</span>', sub:'caducó el 27-sep sin respuesta',
+    html:'<div class="candado avisa"><h4>Caducó sin respuesta <span class="pill warn">frena confirmar</span></h4>'+
+      '<p>Se pidió el 24-sep y <b>nadie contestó en 72 horas</b>. La solicitud se canceló sola.</p>'+
+      '<p class="tiny"><b>Caducar no es que lo hayan rechazado</b>, y por eso son dos estados '+
+      'distintos: un rechazo es una decisión y lleva motivo; esto es la ausencia de una decisión. '+
+      'Juntarlos haría que un olvido se leyera como una negativa.</p>'+
+      '<div class="btns"><button class="btn pri">Volver a mandarlo</button>'+
+      '<button class="btn peli">Quitarlo de la cotización</button></div></div>'
+  }
+};
+var panel = document.getElementById('panel');
+var bts = document.querySelectorAll('.estados button');
+function pinta(e){
+  panel.innerHTML = P[e].html;
+  document.getElementById('pill-est').outerHTML = P[e].pill.replace('<span ','<span id="pill-est" ');
+  document.getElementById('sub-est').textContent = P[e].sub;
+  bts.forEach(function(b){ b.setAttribute('aria-pressed', String(b.dataset.e === e)); });
+}
+bts.forEach(function(b){ b.onclick = function(){ pinta(b.dataset.e); }; });
+pinta('pendiente');
+</script>
+</body>
+</html>

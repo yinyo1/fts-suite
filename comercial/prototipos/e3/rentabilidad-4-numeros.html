@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prototipo · Rentabilidad de cuatro números</title>
+<link rel="stylesheet" href="_comun.css">
+<style>
+  .barra{height:26px;border-radius:6px;background:var(--linea2);overflow:hidden;display:flex;margin:3px 0 2px}
+  .barra i{display:block;height:100%}
+  .lg{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--suave);margin:2px 0 12px}
+  .lg span{display:inline-flex;align-items:center;gap:5px}
+  .lg b{width:11px;height:11px;border-radius:3px;display:inline-block}
+  .par{border:1px solid var(--linea);border-radius:10px;padding:14px;background:var(--fondo);margin:12px 0}
+  .par h4{margin:0 0 3px;font-size:14px}
+  .par .gr{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;margin:6px 0 2px}
+  .sel{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:4px}
+  .sel select{max-width:290px}
+</style>
+</head>
+<body>
+
+<div class="demo">
+  <b>PROTOTIPO · datos inventados.</b> Los números de abajo están escritos a mano para ver la
+  forma del reporte. Lo único real son <b>los porcentajes de la banda de advertencia</b>, que
+  salen de medir el libro analítico de producción. Issue <b>#294</b> · 25-sep-2026.
+</div>
+
+<div class="topbar">
+  <b>Rentabilidad por proyecto</b>
+  <span style="flex:1 1 auto"></span>
+  <span class="tiny">cifras en MXN</span>
+</div>
+
+<div class="wrap">
+
+  <div class="card">
+    <div class="sel">
+      <select><option selected>Proyecto demo · Planta Poniente — Industrias del Norte</option></select>
+      <span class="pill info">en ejecución</span>
+      <span class="pill neu">cotización 42</span>
+    </div>
+    <p class="sub" style="margin-top:8px">Cuatro números, y <b>siempre los cuatro</b>. Un tablero
+       que esconde el que falta convierte «no hay dato» en «vale cero».</p>
+
+    <div class="cuatro">
+      <div class="num-caja">
+        <div class="et">1 · Vendido</div>
+        <div class="vl">$1,000,000</div>
+        <div class="nt">Subtotal de la orden confirmada. Sin IVA: el impuesto no es dinero de FTS.</div>
+      </div>
+      <div class="num-caja">
+        <div class="et">2 · Costo planeado</div>
+        <div class="vl">$640,000</div>
+        <div class="nt">Lo que la cotización dijo que iba a costar, congelado al confirmar.</div>
+      </div>
+      <div class="num-caja">
+        <div class="et">3 · Facturado</div>
+        <div class="vl">$500,000</div>
+        <div class="nt"><b>Incluye el anticipo.</b> Si se facturó y se cobró, ese dinero es del
+          proyecto y aquí se ve.</div>
+      </div>
+      <div class="num-caja">
+        <div class="et">4 · Costo ejercido</div>
+        <div class="vl">$310,000</div>
+        <div class="nt">Lo gastado de verdad, del libro analítico, <b>sin los renglones de
+          impuesto</b>.</div>
+      </div>
+    </div>
+
+    <div class="barra" style="margin-top:16px">
+      <i style="width:50%;background:#1a7f37" title="facturado"></i>
+      <i style="width:31%;background:#0969da" title="ejercido"></i>
+    </div>
+    <div class="lg">
+      <span><b style="background:#1a7f37"></b> facturado · 50 % de lo vendido</span>
+      <span><b style="background:#0969da"></b> ejercido · 31 % de lo vendido</span>
+      <span><b style="background:#ececec"></b> resto</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Cómo se lee</h2>
+    <p class="sub">Dos lecturas distintas, y cada una contesta una pregunta que la otra no.</p>
+
+    <div class="par">
+      <h4>A media obra · ¿cobro al ritmo que gasto?</h4>
+      <div class="gr n-ok">+$190,000</div>
+      <div class="tiny">Facturado $500,000 − ejercido $310,000. <b>Este par no dice el margen</b>
+        y no hay que leerlo así: dice que la obra <b>se está financiando sola</b>. El anticipo
+        está dentro a propósito, porque es dinero del proyecto.</div>
+    </div>
+
+    <div class="par">
+      <h4>Al cierre · el margen de verdad</h4>
+      <div class="gr" style="color:var(--suave)">— todavía no</div>
+      <div class="tiny">Se calcula igual (facturado − ejercido) pero <b>sólo significa margen
+        cuando ya no falta facturar ni gastar</b>. Enseñarlo antes es enseñar un número que
+        va a cambiar, y la gente se lo cree.</div>
+    </div>
+
+    <div class="par">
+      <h4>¿La cotización cotiza bien?</h4>
+      <div class="gr" style="color:var(--suave)">— al cierre</div>
+      <div class="tiny">Comparar el margen real contra el planeado
+        (vendido − planeado = <b>$360,000</b>, 36 %). <b>Éste es el número que hoy nadie puede
+        ver</b>, y el que justifica toda la cadena de la cotización a la analítica: es lo que
+        dice si el machote está cotizando bien o si llevamos un año dejando dinero en la mesa.</div>
+    </div>
+  </div>
+
+  <div class="banda">
+    <h4>⚠ Hoy este reporte todavía no es de fiar, y son dos cosas concretas</h4>
+    <p><b>1 · Dos de cada tres renglones del libro analítico son mecánica de impuesto.</b>
+      De <b>13,731</b> renglones con proyecto de 2025 en adelante, <b>9,205 (67.0 %)</b> son IVA
+      acreditable, IVA pendiente o base imponible — no son costo. Sólo <b>4,526 (33.0 %)</b> son
+      costo o ingreso de verdad.<br>
+      <span class="tiny">Por eso el número 4 <b>no puede ser una suma del libro</b>: excluye esas
+      cuentas por lista escrita y visible. Un reporte que sume todo enseña un costo inflado por
+      dos tercios de renglones que no son costo.</span></p>
+    <p><b>2 · La mano de obra subcontratada no llega al proyecto.</b>
+      El <b>55 %</b> del costo en pesos se queda con rubro pero <b>sin proyecto</b>, y
+      <b>18 proveedores</b> concentran el <b>88 %</b> de eso. Mientras siga así, el número 4
+      está <b>incompleto por abajo</b> y el margen sale <b>mejor de lo que es</b>.<br>
+      <span class="tiny">Se arregla con un valor por omisión de analítica por proveedor —unas 18
+      filas, trabajo de Contabilidad—, no con código.</span></p>
+    <p class="tiny" style="margin-top:9px"><b>Esta banda se mide, no se configura:</b> desaparece
+      sola cuando los dos porcentajes bajen del umbral. Nadie tiene que acordarse de quitarla.</p>
+  </div>
+
+  <div class="card">
+    <h2>De dónde sale cada número</h2>
+    <div class="tabla-caja">
+      <table>
+        <thead><tr><th>#</th><th>Número</th><th>Modelo</th><th>Campo</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Vendido</td><td class="tiny">sale.order · state = sale</td><td class="tiny">amount_untaxed</td></tr>
+          <tr><td>2</td><td>Costo planeado</td><td class="tiny">comercial.handoff</td><td class="tiny">presupuesto (jsonb), rubros de costo</td></tr>
+          <tr><td>3</td><td>Facturado</td><td class="tiny">account.move · out_invoice + out_refund · posted</td><td class="tiny">amount_untaxed_signed</td></tr>
+          <tr><td>4</td><td>Costo ejercido</td><td class="tiny">account.analytic.line · del proyecto</td><td class="tiny">amount, <b>excluyendo</b> 899.01.99 · 119.01.01 · 118.01.01</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="tiny" style="margin-top:10px">Los cuatro <b>sobre el subtotal</b>, los cuatro
+      <b>por moneda</b>. Nunca se suman pesos con dólares: si hace falta consolidar, se convierte
+      al final y se dice con qué tipo de cambio.</p>
+  </div>
+
+</div>
+</body>
+</html>
