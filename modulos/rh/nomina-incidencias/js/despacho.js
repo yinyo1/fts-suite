@@ -93,6 +93,9 @@
     { k: 'finiquito',    t: 'FINIQUITO',                          tipo: 'mxn',  total: true  },
     { k: 'descuentos',   t: 'DESCUENTOS',                         tipo: 'mxn',  total: true  },
     { k: 'anticipo',     t: 'ANTICIPO ENTREGADO',                 tipo: 'mxn',  total: true  },
+    // Columna PROPIA, no se mezcla con el anticipo: en CONTPAQi son conceptos
+    // distintos (PRESTAMO EMPRESA contra anticipo) y Ulises los captura por separado.
+    { k: 'prestamo',     t: 'PRESTAMO OTORGADO',                  tipo: 'mxn',  total: true  },
     { k: 'fts_usa',      t: 'PAGADO POR FTS USA',                 tipo: 'mxn',  total: true  }
   ];
 
@@ -125,6 +128,7 @@
     compensa_deuda:      { col: 'descuentos', campo: 'monto' },
     descuento_prestamo:  { col: 'descuentos', campo: 'monto' },
     anticipo_sueldo:     { col: 'anticipo',   campo: 'monto' },
+    prestamo_otorgado:   { col: 'prestamo',   campo: 'monto' },
     pagado_fts_usa:      { col: 'fts_usa',    campo: 'monto' }
   };
 
@@ -169,6 +173,9 @@
     finiquito:           { v: 'AGREGAR',   signo: 'suma'  },
     tiempo_extra:        { v: 'AGREGAR',   signo: 'suma'  },
     anticipo_sueldo:     { v: 'AGREGAR',   signo: 'suma'  },
+    // OTORGAR el prestamo suma al neto de esa semana. Los descuentos empiezan despues,
+    // con el otro concepto: son las dos puntas y NO se capturan en la misma semana.
+    prestamo_otorgado:   { v: 'AGREGAR',   signo: 'suma'  },
     // Dinero que se descuenta
     descuento_anticipo:  { v: 'DESCONTAR', signo: 'resta' },
     descuento_prestamo:  { v: 'DESCONTAR', signo: 'resta' },

@@ -143,13 +143,20 @@ seccion('Derivaciones');
 seccion('Catálogo');
 {
   const decl = Cat.tiposDeclarables(), est = Cat.tiposDeEstado();
-  check('24 tipos declarables + 7 estados = 31', decl.length + est.length === 31, decl.length + '+' + est.length);
+  check('25 tipos declarables + 7 estados = 32', decl.length + est.length === 32, decl.length + '+' + est.length);
   check('meta() encuentra un tipo de cada grupo',
     Cat.meta('vacaciones').grupo === 'dias' && Cat.meta('bono_proyecto').grupo === 'dinero' &&
     Cat.meta('anticipo_sueldo').grupo === 'desc' && Cat.meta('baja').grupo === 'estado');
   check('meta() de un tipo inexistente es null', Cat.meta('no_existe') === null);
   check('el anticipo está marcado como NO costo (es préstamo)',
     Cat.meta('anticipo_sueldo').def.no_costo === true);
+  // Las dos puntas del prestamo existen y NO se confunden entre si.
+  check('el préstamo OTORGADO existe y está marcado como NO costo',
+    Cat.meta('prestamo_otorgado') !== null && Cat.meta('prestamo_otorgado').def.no_costo === true);
+  check('otorgar y descontar son dos tipos distintos, con etiquetas que no se confunden',
+    Cat.meta('prestamo_otorgado').def.label === 'Préstamo otorgado' &&
+    Cat.meta('descuento_prestamo').def.label === 'Descuento por préstamo' &&
+    Cat.meta('descuento_prestamo').def.no_costo !== true);
   check('ningún tipo de dinero se queda sin pedir fuente, salvo los descuentos internos', (function () {
     const sinFuente = [];
     for (const t in Cat.CATALOGO.dinero.items) if (!Cat.CATALOGO.dinero.items[t].fuente) sinFuente.push(t);
@@ -163,13 +170,16 @@ seccion('Totales y estados vigentes');
   const gente = [
     persona({ id: 1, declaraciones: [{ tipo: 'bono_proyecto', fuente: 'J96', valores: { renglones: [{ monto: 1000, so: 'SO1' }, { monto: 500, so: 'SO2' }] } }] }),
     persona({ id: 2, declaraciones: [{ tipo: 'anticipo_sueldo', fuente: 'J96', valores: { monto: 3500, plazo: 4 } }] }),
-    persona({ id: 3, declaraciones: [{ tipo: 'descuento_prestamo', valores: { monto: 700, pago: 2 } }] })
+    persona({ id: 3, declaraciones: [{ tipo: 'descuento_prestamo', valores: { monto: 700, pago: 2 } }] }),
+    persona({ id: 4, declaraciones: [{ tipo: 'prestamo_otorgado', fuente: 'J96', valores: { monto: 9000, plazo: 10 } }] })
   ];
   const t = Log.totalesDinero(gente);
   check('los renglones del bono se suman: 1500', t.percepciones === 1500, String(t.percepciones));
-  check('el anticipo NO entra en percepciones', t.no_costo === 3500 && t.percepciones === 1500, JSON.stringify(t));
+  // 3500 del anticipo + 9000 del prestamo otorgado. Ninguno de los dos es costo.
+  check('ni el anticipo ni el préstamo otorgado entran en percepciones',
+    t.no_costo === 12500 && t.percepciones === 1500, JSON.stringify(t));
   check('el descuento va en su propio cubo', t.descuentos === 700, String(t.descuentos));
-  check('el total por moneda usa la fuente', t.por_moneda.MXN === 5000, JSON.stringify(t.por_moneda));
+  check('el total por moneda usa la fuente', t.por_moneda.MXN === 14000, JSON.stringify(t.por_moneda));
 
   const conEstado = persona({ estados: [
     { tipo: 'standby', valores: { desde: '2026-07-01', hasta: '2026-08-01' } },
