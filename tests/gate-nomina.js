@@ -151,6 +151,12 @@ seccion('Catálogo');
   check('el anticipo está marcado como NO costo (es préstamo)',
     Cat.meta('anticipo_sueldo').def.no_costo === true);
   // Las dos puntas del prestamo existen y NO se confunden entre si.
+  // Una alerta va a quien puede actuar sobre ella: la duda interna de RH no cruza (#312).
+  check('el premio sin decidir NO viaja en la columna REVISAR del despacho', (function () {
+    const pRev = persona({ id: 9, ppa: { aplica: true, sugerido: true, revisar: true }, ppa_decidido: null });
+    const fRev = Des.filas({ semana: SEMANA, personas: [pRev], disputas: [] })[0];
+    return !/premio/i.test(fRev.revisar || '');
+  })(), 'la duda interna de RH no es de Ulises');
   check('el préstamo OTORGADO existe y está marcado como NO costo',
     Cat.meta('prestamo_otorgado') !== null && Cat.meta('prestamo_otorgado').def.no_costo === true);
   check('otorgar y descontar son dos tipos distintos, con etiquetas que no se confunden',

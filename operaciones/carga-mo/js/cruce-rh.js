@@ -52,7 +52,14 @@
     { etiqueta: 'Ajuste de sueldo',           clave: 'AJUSTE_EN_SUELDOS' },
     { etiqueta: 'Descuento por préstamo',     clave: 'PRESTAMO_EMPRESA' },
     { etiqueta: 'Descuento de anticipo',      clave: 'PRESTAMO_EMPRESA' },
-    { etiqueta: 'Compensa contra deuda',      clave: 'PRESTAMO_EMPRESA' }
+    { etiqueta: 'Compensa contra deuda',      clave: 'PRESTAMO_EMPRESA' },
+    // Las dos puntas que DAN dinero caen en el mismo concepto de CONTPAQi, y no es
+    // coincidencia: Ulises captura los prestamos PRIMERO como anticipo y despues
+    // programa el descuento semanal. Su practica, no una traduccion nuestra.
+    // Sin estas dos lineas, el anticipo de Gibran en S39 se reporto como
+    // 'RH pidio algo que este cruce no sabe comparar' y sus $2,000 cayeron al puente.
+    { etiqueta: 'Anticipo de sueldo',         clave: 'ANTICIPO_DE_SUELDOS' },
+    { etiqueta: 'Préstamo otorgado',          clave: 'ANTICIPO_DE_SUELDOS' }
   ];
   // ⚠️ Las etiquetas de arriba tienen que existir LETRA POR LETRA en el catálogo de
   // nómina (modulos/rh/nomina-incidencias/js/catalogo.js). Dos de ellas no existían

@@ -1,5 +1,5 @@
 {
-  "version": "V1.21",
+  "version": "V1.22",
   "fecha": "2026-09-19",
   "modulo": "rh/nomina-incidencias",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
@@ -113,6 +113,17 @@
     }
   ],
   "changelog": [
+    {
+      "version": "V1.22",
+      "fecha": "2026-09-25",
+      "cambios": [
+        "El premio sin decidir YA NO viaja en la columna REVISAR del despacho. Una alerta va a quien puede actuar sobre ella, y esa dice que RH no ha decidido el premio: Ulises no tiene con que juzgarla.",
+        "Caso S39 Rissia: entro a las 12 por un tramite de migracion que FTS le pidio; Magaly lo resolvio y lo escribio en la INSTRUCCION, pero sin marcar ppa_decidido el archivo le llego a Ulises pidiendo revisar algo que el no puede resolver.",
+        "La señal NO se pierde: la pantalla de RH ya pinta la pildora roja 'revisar' con la misma condicion (app.js:255).",
+        "Era el UNICO aviso que sobrevivia a una semana bien enviada: los demas salen de Log.bloqueos, que apaga el boton de enviar.",
+        "Gate: check nuevo. 249/249."
+      ]
+    },
     {
       "version": "V1.21",
       "fecha": "2026-09-25",
