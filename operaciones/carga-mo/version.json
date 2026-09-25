@@ -1,10 +1,16 @@
 {
-  "version": "V1.04",
-  "fecha": "2026-09-19",
+  "version": "V1.05",
+  "fecha": "2026-09-25",
   "modulo": "operaciones/carga-mo",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "ambito": "El CONTADOR es SOLO de este modulo y arranca en V1.00 aunque el modulo lleve meses en produccion: antes se versionaba con una cadena de build (la ultima fue 20260904-cmo-cruce-rh) y esa numeracion no se puede continuar. rh/nomina-incidencias, finanzas y comercial/machote usan el MISMO esquema con contadores PROPIOS — que aqui diga V1.00 y alla V1.16 es lo correcto, no un desfase.",
   "historial": [
+    {
+      "version": "V1.05",
+      "fecha": "2026-09-25",
+      "titulo": "Capa A: el stepper de 5 pasos, el paso 3 (los TXT de dispersion) y el rollback en bloque propio (#313)",
+      "nota": "PASO 3, NUEVO. Entre el Excel validado y el archivo que mueve el dinero no habia nada: el Excel podia estar impecable y el .txt que se sube al banco pagarle a quien no era. Ahora se sueltan los dos .txt (nomina y honorarios) y se cruzan enteros EN EL NAVEGADOR, sin red. Nivel 1: tres sumas que cierran entre si (TXT de CONTPAQi == filas CON codigo; TXT de honorarios == filas SIN codigo; los dos == Total Gral.), lo que de paso PRUEBA que el archivo de honorarios es de esta semana, porque no lo declara en ningun lado ni su nombre es de fiar. Nivel 1b: persona por persona, que atrapa el caso que la suma no ve — dos importes intercambiados cuadran igual. La llave es el NOMBRE contra el Excel (los dos salen de CONTPAQi y traen el nombre identico: 27 de 27 en S38) y NO el importe (dos personas tienen el mismo neto al centavo en S37 y S38). El de honorarios se resuelve por la tabla de alias del trio, por subconjunto de palabras, que aguanta MANZANARES/MANZANAREZ. El paso NO detiene al paso 4: la carga a Odoo y la dispersion en BBVA son dos actos distintos. Y DECLARA lo que no valida: las cuentas NO se verifican (el Nivel 2 esta construido y apagado porque su endpoint aun no pide credencial), asi que la pantalla nunca dice 'validado' a secas. STEPPER. Cinco pasos con su estado y UN solo boton primario a la vez; antes los dos botones convivian siempre visibles y 'en que voy' habia que deducirlo de cual estaba gris. ROLLBACK. Sale de #msg —el mismo div que usa el dry-run, donde cualquier repintado posterior se llevaba los unicos ids con los que se deshace una carga— a un bloque propio, fijo y con boton de copiar. Y #msg se parte en dos: el dry-run y la escritura contestan preguntas distintas. KPIs. De un carril con scroll lateral (a 390 px se veian 3 de 6, el tercero cortado) a cuadricula auto-fit: los seis a la vista sin una sola media query."
+    },
     {
       "version": "V1.04",
       "fecha": "2026-09-19",

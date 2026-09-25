@@ -9,11 +9,12 @@
      Vx.yy. Se bumpea junto con version.json y con el ?v= de cada script, y el gate
      exige que los tres digan lo mismo: un badge que anuncia una version mientras
      el navegador corre el codigo viejo miente en la peor direccion. -->
-<script>(function(){ window.CMO_VER = 'V1.04'; })();</script>
+<script>(function(){ window.CMO_VER = 'V1.05'; })();</script>
 <script src="../../finanzas/js/auth-fin.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/cruce-rh.js?v=V1.04"></script>
-<script src="js/resolver.js?v=V1.04"></script>
+<script src="js/cruce-rh.js?v=V1.05"></script>
+<script src="js/resolver.js?v=V1.05"></script>
+<script src="js/txt-dispersion.js?v=V1.05"></script>
 <style>
   :root{ --azul:#1a4480; --ok:#1a7a3a; --warn:#BA7517; --err:#b3261e; --info:#3b5bdb; --bg:#f4f6f9; }
   *{ box-sizing:border-box; }
@@ -72,10 +73,15 @@
   .bn-facts div b{ font-size:17px; font-variant-numeric:tabular-nums; }
   .bn-facts div i{ font-style:normal; font-size:11px; opacity:.75; display:block; }
 
-  /* ── KPIs compactos, una sola fila ── */
-  .kpi{ display:flex; gap:8px; flex-wrap:nowrap; overflow-x:auto; margin:0; }
-  .kpi div{ background:#f7f9fc; border:1px solid #e3e9f2; border-radius:8px; padding:6px 10px; flex:1 0 auto; min-width:112px; }
-  .kpi span{ display:block; font-size:10px; color:#667; white-space:nowrap; }
+  /* ── KPIs en cuadricula: los SEIS a la vista, sin scroll lateral ──
+     Antes era `flex-wrap:nowrap; overflow-x:auto`, o sea un carril con scroll: a
+     390 px se veian 3 de 6 y el tercero cortado a la mitad. Un numero que hay que
+     ir a buscar con el dedo es un numero que no se mira, y estos seis son el
+     resumen de la nomina entera. `auto-fit` acomoda 2 columnas en telefono, 3 en
+     tableta y 6 en escritorio, sin una sola media query. */
+  .kpi{ display:grid; grid-template-columns:repeat(auto-fit,minmax(138px,1fr)); gap:8px; margin:0; }
+  .kpi div{ background:#f7f9fc; border:1px solid #e3e9f2; border-radius:8px; padding:6px 10px; min-width:0; }
+  .kpi span{ display:block; font-size:10px; color:#667; line-height:1.25; }
   .kpi b{ font-size:14px; font-variant-numeric:tabular-nums; white-space:nowrap; }
 
   .kpi-help{ margin-top:10px; font-size:11px; color:#66707d; line-height:1.5; }
@@ -131,6 +137,58 @@
   .sec>summary:hover{ background:#f7f9fc; border-radius:10px; }
   .sec .body{ padding:0 16px 14px; }
   .gate{ max-width:520px; margin:60px auto; background:#fff; border-radius:12px; padding:28px; text-align:center; }
+
+  /* ═══ EL STEPPER ══════════════════════════════════════════════════════
+     Cinco pasos con su estado, y UN solo boton primario a la vez. Antes los dos
+     botones convivian siempre visibles, asi que "en que voy" habia que deducirlo
+     de cual estaba gris. El stepper lo dice, y de paso vuelve visible el paso 3,
+     que antes no existia en ningun lado.
+     El paso que toca se marca con `aria-current="step"`, que es lo que lee un
+     lector de pantalla — y de paso es por donde lo agarra el gate visual. */
+  .pasos{ display:grid; grid-template-columns:repeat(auto-fit,minmax(132px,1fr)); gap:8px; margin:0 0 12px; }
+  .paso{ display:flex; gap:9px; align-items:flex-start; background:#fff; border:1px solid #e3e9f2;
+         border-radius:9px; padding:9px 11px; min-width:0; }
+  .paso .pn{ flex:0 0 21px; height:21px; border-radius:50%; background:#eef2f8; color:#5b6b80;
+             font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+  .paso .pt{ min-width:0; }
+  .paso .pt b{ display:block; font-size:12px; font-weight:600; line-height:1.25; }
+  .paso .pt i{ display:block; font-style:normal; font-size:10.5px; color:#66707d; line-height:1.3; margin-top:1px; }
+  .paso.ok{ border-color:#b7e0c4; background:#f4fbf6; }
+  .paso.ok .pn{ background:var(--ok); color:#fff; }
+  .paso.ok .pt i{ color:#2c6b42; }
+  .paso.mal{ border-color:#f2c2be; background:#fef6f5; }
+  .paso.mal .pn{ background:var(--err); color:#fff; }
+  .paso.mal .pt i{ color:#8a2f27; }
+  .paso.parcial{ border-color:#f0d9a8; background:#fffaf0; }
+  .paso.parcial .pn{ background:var(--warn); color:#fff; }
+  .paso.parcial .pt i{ color:#7a4d0a; }
+  .paso.curso{ border-color:#b9c6ef; background:#f5f7fe; }
+  .paso.curso .pn{ background:var(--info); color:#fff; }
+  .paso[aria-current=step]{ box-shadow:0 0 0 2px rgba(26,68,128,.25); }
+
+  /* ═══ PASO 3 · los TXT de dispersion ═════════════════════════════════ */
+  .txt-zonas{ display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:10px; }
+  .txt-z{ border:1px dashed #c7d2e2; border-radius:9px; padding:11px 13px; background:#fbfcfe; min-width:0; }
+  .txt-z.puesto{ border-style:solid; border-color:#b7e0c4; background:#f4fbf6; }
+  .txt-z b{ display:block; font-size:12.5px; margin-bottom:2px; }
+  .txt-z .n{ font-size:11px; color:#66707d; display:block; margin-bottom:7px; line-height:1.4; }
+  .txt-z .f{ font-size:11.5px; color:#2c3e56; display:block; margin-top:6px; word-break:break-all; }
+  /* Lo que NO se valida se dice igual de grande que lo que si. Un paso que
+     presume de "validado" escondiendo su mitad apagada miente por omision. */
+  .no-verif{ margin-top:12px; border-left:5px solid var(--warn); background:#fffaf0;
+             border-radius:8px; padding:10px 12px; font-size:12.5px; color:#7a4d0a; }
+  .no-verif .t{ display:block; font-size:13px; font-weight:700; margin-bottom:3px; }
+  .no-verif b{ font-weight:600; }   /* énfasis EN LÍNEA; el título usa .t */
+
+  /* ═══ ROLLBACK · bloque fijo, no un div que el siguiente render borra ══
+     Los ids son la UNICA forma de deshacer una carga, y vivian en #msg, el mismo
+     contenedor que usa el dry-run: cualquier repintado posterior se los llevaba. */
+  .rb{ border:2px solid var(--azul); border-radius:10px; background:#f5f8fd; padding:12px 14px; margin-bottom:14px; }
+  .rb .rb-t{ font-size:13px; font-weight:700; color:var(--azul); display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .rb .rb-t span{ font-weight:400; font-size:11.5px; color:#5b6b80; }
+  .rb code{ display:block; font-size:11px; background:#fff; border:1px solid #dbe4f0; border-radius:6px;
+            padding:7px 9px; margin-top:8px; max-height:110px; overflow:auto; word-break:break-all; }
+  .rb .rb-a{ margin-left:auto; }
 </style>
 </head>
 <body>
@@ -143,6 +201,11 @@
 <div id="gate" class="gate" style="display:none"></div>
 
 <main id="main" class="wrap" style="display:none">
+
+  <!-- 0 · EN QUÉ VOY. Va antes que nada porque es la pregunta que se contesta
+       primero al volver a la pantalla, y antes no la contestaba nadie: había que
+       deducirla de cuál de los dos botones estaba gris. -->
+  <ol class="pasos" id="pasos"></ol>
 
   <!-- barra de acción: todo lo que se toca, en una línea y arriba -->
   <div class="card bar" id="bar">
@@ -213,6 +276,13 @@
     <!-- 1 · lo primero que se lee -->
     <div id="banner"></div>
 
+    <!-- 1.5 · el rollback de la carga que YA ocurrió.
+         Bloque propio y fijo: los ids son la única forma de deshacer una carga y
+         vivían en #msg, que cualquier render posterior borra. No se limpia al
+         invalidar el reporte —una carga hecha no se desHace porque se suba otro
+         archivo— sólo lo reemplaza la siguiente escritura. -->
+    <div id="rollback"></div>
+
     <!-- 2 · los números, compactos -->
     <div class="card" id="c-kpi" style="display:none">
       <div id="kpi-dim"></div>
@@ -245,6 +315,30 @@
     <!-- 5 · cuenta puente: nunca colapsada -->
     <div id="puente-box"></div>
 
+    <!-- 5.5 · PASO 3 · los archivos que de verdad mueven el dinero.
+         Todo lo de arriba valida la nómina; esto valida la TRANSFERENCIA. Entre el
+         Excel validado y el archivo que se sube al banco no había nada. -->
+    <div class="card" id="c-txt">
+      <h3>Paso 3 · Validar transferencias <span class="mut" style="font-weight:400;font-size:12px">(opcional — no detiene el paso 4)</span></h3>
+      <div class="txt-zonas">
+        <div class="txt-z" id="tz-nom">
+          <b>TXT de la nómina</b>
+          <span class="n">El de CONTPAQi, con todos los que llevan código.</span>
+          <button class="btn btn-g" data-txt="nom">📄 Elegir archivo…</button>
+          <input type="file" id="f-txt-nom" accept=".txt" style="display:none">
+          <span class="f mut" id="n-txt-nom">ninguno</span>
+        </div>
+        <div class="txt-z" id="tz-hon">
+          <b>TXT de honorarios</b>
+          <span class="n">El de quienes facturan. Si esta semana nadie facturó, no hace falta.</span>
+          <button class="btn btn-g" data-txt="hon">📄 Elegir archivo…</button>
+          <input type="file" id="f-txt-hon" accept=".txt" style="display:none">
+          <span class="f mut" id="n-txt-hon">ninguno</span>
+        </div>
+      </div>
+      <div id="txt-res"></div>
+    </div>
+
     <!-- 6 · el detalle, colapsado -->
     <details class="sec" id="c-tabla" style="display:none">
       <summary>Nómina leída <span class="mut" style="font-weight:400">(<span id="cnt">0</span> empleados)</span></summary>
@@ -258,8 +352,11 @@
       </div>
     </details>
 
-    <!-- 7 · respuesta del servidor: pivote + json, colapsados -->
+    <!-- 7 · respuesta del servidor. DOS contenedores, a propósito: el dry-run y
+         la escritura contestan preguntas distintas y antes compartían div, así que
+         cada uno borraba al otro. -->
     <div id="msg"></div>
+    <div id="msg-write"></div>
   </div>
 </main>
 
@@ -507,6 +604,7 @@ function semanaDeViernes(vie){
 }
 
 function pintarEstadoRh(){
+  try{ pintarPasos(); }catch(e){}
   var el = $('rh-est'); if(!el) return;
   if(RH_EST.estado === 'cargando'){ el.className = 'mut'; el.textContent = 'consultando…'; return; }
   if(RH_EST.estado === 'ok'){
@@ -900,9 +998,14 @@ function pintarBanner(){
 /* ── el reporte del servidor caduca en cuanto cambia lo que se le mandó ──── */
 function invalidarReporte(){
   LAST_REPORT = null;
+  ESCRITO = false;
   $('wbtn').disabled = true;
   $('wbtn').className = 'btn btn-w';
   $('msg').innerHTML = '';
+  $('msg-write').innerHTML = '';
+  /* #rollback NO se limpia aquí a propósito: una carga que ya ocurrió no se
+     deshace porque se suba otro archivo, y sus ids son la única forma de
+     revertirla. Sólo la reemplaza la siguiente escritura. */
   $('srv-panel').style.display = 'none'; $('srv-panel').innerHTML = '';
   if(BANNER){ BANNER.srvOk = null; BANNER.delta = null; }
 }
@@ -1033,7 +1136,184 @@ function render(){
   $('send').disabled = !puedeEnviar;
   $('send').textContent = puedeEnviar ? 'Validar nómina'
     : (rhInt > 0 ? 'No coincide con lo que pidió RH' : 'Corrige los errores');
+
+  /* El paso 3 se repinta con cada archivo nuevo: si se cambia el Excel, el cruce
+     contra los .txt que ya estaban cargados cambia de significado. */
+  pintarPaso3();
+  pintarPasos();
 }
+/* ═══ PASO 3 · los TXT de dispersión ══════════════════════════════════════
+   Todo lo de arriba valida la NÓMINA. Esto valida la TRANSFERENCIA, que es otra
+   cosa: el Excel puede estar impecable y el archivo que se sube al banco pagarle
+   a quien no era. La lógica vive en js/txt-dispersion.js y corre entera aquí, sin
+   red — por eso este paso funciona aunque n8n esté caído.
+
+   ⚠️ NO detiene al paso 4. La carga de mano de obra a Odoo y la dispersión en BBVA
+   son dos actos distintos; atar uno al otro trabaría el cierre de la semana por un
+   archivo que ni siquiera interviene en lo que se escribe. */
+var TXT = { nom:null, hon:null, nombreNom:'', nombreHon:'' };
+
+function leerTxt(cual, f){
+  var rd = new FileReader();
+  rd.onload = function(ev){
+    /* El texto va CRUDO: sin normalizar saltos de línea y sin recortar. Los
+       archivos vienen con CRLF, y quien los normaliza antes de medirlos destruye
+       justo la evidencia que el lector necesita (#313). */
+    var res = CargaMOTxt.leer(ev.target.result, f.name);
+    if(cual === 'nom'){ TXT.nom = res; TXT.nombreNom = f.name; }
+    else { TXT.hon = res; TXT.nombreHon = f.name; }
+    $('n-txt-' + cual).textContent = f.name;
+    $('n-txt-' + cual).className = 'f';
+    $('tz-' + (cual === 'nom' ? 'nom' : 'hon')).className = 'txt-z puesto';
+    pintarPaso3();
+    pintarPasos();
+  };
+  rd.readAsText(f);
+}
+(function(){
+  var zonas = document.querySelectorAll('[data-txt]');
+  for(var i=0;i<zonas.length;i++){
+    (function(b){
+      var cual = b.getAttribute('data-txt');
+      b.addEventListener('click', function(){ $('f-txt-' + cual).click(); });
+      $('f-txt-' + cual).addEventListener('change', function(e){
+        if(e.target.files[0]) leerTxt(cual, e.target.files[0]);
+      });
+    })(zonas[i]);
+  }
+})();
+
+/* Estado del paso 3, para el stepper y para el reporte:
+   'nada' · 'mal' (hallazgos de integridad) · 'ok' (cuadra) */
+var TXT_EST = 'nada';
+
+function pintarPaso3(){
+  var box = $('txt-res');
+  if(!TXT.nom && !TXT.hon){ box.innerHTML = ''; TXT_EST = 'nada'; return; }
+  if(!PARSED){
+    box.innerHTML = renderMsg({ nivel:'AVISO', que:'Falta el Excel de CONTPAQi para poder cruzar',
+      dato:'los .txt ya están cargados',
+      accion:'Sube arriba el archivo de la nómina. El cruce compara cada transferencia contra su renglón del Excel.' });
+    TXT_EST = 'nada'; return;
+  }
+  var r = CargaMOTxt.cruzar(PARSED, { nomina:TXT.nom, honorarios:TXT.hon }, CAT);
+  var res = r.resumen;
+  var nInt = CargaMOTxt.contar(r.hallazgos, 'INTEGRIDAD');
+  TXT_EST = nInt > 0 ? 'mal' : (res && res.cuadra_todo ? 'ok' : 'parcial');
+
+  var h = '';
+  if(res){
+    var fila = function(t, x){
+      if(!x) return '';
+      return '<li><b>' + esc(t) + '</b> — ' + x.renglones + ' renglón(es) por ' + money(x.total_txt/100)
+        + ' · el Excel dice ' + money(x.total_excel/100)
+        + ' · <b style="color:' + (x.cuadra ? 'var(--ok)' : 'var(--err)') + '">'
+        + (x.cuadra ? 'cuadra' : 'NO cuadra') + '</b>'
+        + ' · ' + x.apareados + ' de ' + x.personas_excel + ' apareados por nombre</li>';
+    };
+    /* El encabezado tiene que contar LAS DOS mitades. Pintarlo solo con las sumas
+       producía la peor pantalla posible: «✓ los importes cuadran» arriba y dos
+       hallazgos abajo diciendo que a dos personas se les transfiere lo que no es.
+       Y ese caso no es raro, es EL caso: dos importes intercambiados cuadran en la
+       suma por definición. Lo cazó la captura, no el gate (§20 #12). */
+    var sumasOk = res.cuadra_todo;
+    var todo = sumasOk && nInt === 0;
+    h += '<div class="panel ' + (todo ? 'panel-ok' : 'panel-no') + '" style="margin-top:12px">'
+       + '<span class="p-t">' + (todo ? '✓ Los importes de las transferencias cuadran'
+           : (sumasOk ? '⛔ Las sumas cuadran, pero el reparto NO' : '⛔ Los importes NO cuadran')) + '</span>'
+       + '<span class="p-s">' + (todo
+           ? 'Cada renglón de los archivos del banco corresponde a una persona del Excel, y por su importe exacto.'
+           : (sumasOk
+               ? 'El total transferido es el correcto, así que sumando nadie lo notaría — pero hay quien va a recibir lo que no le toca. No mandes los archivos al banco.'
+               : 'No mandes los archivos al banco hasta resolver lo de abajo.')) + '</span>'
+       + '<ul class="p-motivos" style="list-style:none;padding-left:0">'
+       + fila('Nómina', res.nomina) + fila('Honorarios', res.honorarios)
+       + (res.total_gral !== null
+           ? '<li style="margin-top:6px"><b>Los dos juntos</b> — ' + money((res.nomina.total_txt + (res.honorarios?res.honorarios.total_txt:0))/100)
+             + ' contra el «Total Gral.» del Excel, ' + money(res.total_gral/100) + '</li>'
+           : '')
+       + '</ul></div>';
+  }
+  r.hallazgos.forEach(function(m){ h += renderMsg(m); });
+
+  /* Lo que este paso NO verifica, dicho tan grande como lo que sí.
+     Mientras el Nivel 2 no tenga candado en el servidor, la pantalla NO puede
+     decir «transferencias validadas» a secas: validó los importes, no los
+     destinatarios, y son cosas distintas. */
+  h += '<div class="no-verif"><span class="t">⚠️ Las CUENTAS no están verificadas</span>'
+     + 'Esto comprobó <b>cuánto</b> se transfiere y <b>a cuántas personas</b>, no <b>a qué cuenta</b>. '
+     + 'La comparación contra las cuentas de Odoo está construida pero apagada: su endpoint todavía no pide '
+     + 'credencial, y encenderlo así dejaría las cuentas de la gente consultables desde fuera. '
+     + 'Hasta que tenga candado, un dedazo en un número de cuenta <b>este paso no lo ve</b> (#313).</div>';
+  box.innerHTML = h;
+}
+
+/* ═══ EL STEPPER ═════════════════════════════════════════════════════════
+   Un solo lugar decide en qué paso va la semana, y de ahí sale tanto la lista de
+   arriba como cuál botón manda. Antes «en qué voy» había que deducirlo de cuál de
+   los dos botones estaba gris. */
+var ESCRITO = false;
+
+function pasoEstado(){
+  var P = [];
+  /* 0 · lo que mandó RH */
+  if(RH_EST.estado === 'ok' && RH) P.push(['ok', 'llegó · ' + ((RH.filas||[]).length) + ' personas']);
+  else if(RH_EST.estado === 'cargando') P.push(['curso', 'consultando…']);
+  else if(RH_EST.estado === 'falta') P.push(['parcial', 'RH aún no la envía']);
+  else if(RH_EST.estado === 'error') P.push(['mal', 'no se pudo consultar']);
+  else P.push(['pend', 'elige la semana']);
+  /* 1 · el archivo */
+  if(!PARSED) P.push(['pend', 'sube el Excel']);
+  else if(DIM) P.push(['mal', 'el archivo tiene errores']);
+  else P.push(['ok', (PARSED.empleados||[]).length + ' empleados leídos']);
+  /* 2 · la nómina contra Odoo y contra RH */
+  if(!PARSED) P.push(['pend', 'falta el archivo']);
+  else if(!LAST_REPORT) P.push([$('send').disabled ? 'mal' : 'curso',
+                                $('send').disabled ? $('send').textContent : 'listo para validar']);
+  else P.push([$('wbtn').disabled ? 'mal' : 'ok',
+               $('wbtn').disabled ? 'no se puede enviar' : 'validada']);
+  /* 3 · las transferencias */
+  if(TXT_EST === 'ok')      P.push(['parcial', 'importes ✓ · cuentas NO verificadas']);
+  else if(TXT_EST === 'mal')P.push(['mal', 'los importes no cuadran']);
+  else                      P.push(['pend', 'opcional · sube los .txt']);
+  /* 4 · enviar */
+  if(ESCRITO) P.push(['ok', 'cargada en Odoo']);
+  else if(!$('wbtn').disabled) P.push(['curso', 'listo para enviar']);
+  else P.push(['pend', 'falta validar']);
+  return P;
+}
+
+function pintarPasos(){
+  var T = ['Instrucciones de RH','Validar archivo','Validar nómina','Validar transferencias','Enviar'];
+  var E = pasoEstado();
+  /* El paso "en curso" es el primero que todavía no está en verde. Es lo que se
+     marca con aria-current, o sea lo que un lector de pantalla anuncia. */
+  var actual = -1;
+  for(var i=0;i<E.length;i++){ if(E[i][0] !== 'ok'){ actual = i; break; } }
+  $('pasos').innerHTML = E.map(function(e, i){
+    return '<li class="paso ' + e[0] + '"' + (i === actual ? ' aria-current="step"' : '') + '>'
+      + '<div class="pn">' + (e[0] === 'ok' ? '✓' : i) + '</div>'
+      + '<div class="pt"><b>' + T[i] + '</b><i>' + esc(e[1]) + '</i></div></li>';
+  }).join('');
+  mandoBotones();
+}
+
+/* UN botón primario a la vez. El otro no desaparece —volver a validar es legítimo—
+   pero se hace chico y gris para que no compita. */
+function mandoBotones(){
+  var sd = $('send'), wb = $('wbtn');
+  var listoParaEnviar = !wb.disabled;
+  if(ESCRITO){
+    sd.className = 'btn btn-g'; wb.className = 'btn btn-w';
+  } else if(listoParaEnviar){
+    sd.className = 'btn btn-g'; sd.textContent = 'Volver a validar';
+    wb.className = 'btn btn-w listo';
+  } else {
+    sd.className = 'btn btn-p';
+    wb.className = 'btn btn-w';
+  }
+}
+
 function k(label, val, color){
   return '<div><span>'+label+'</span><b'+(color?' style="color:'+color+'"':'')+'>'+val+'</b></div>';
 }
@@ -1363,6 +1643,7 @@ function renderReport(j, msg){
      para que el siguiente paso no haya que adivinarlo */
   $('wbtn').disabled = !verde;
   $('wbtn').className = 'btn btn-w' + (verde ? ' listo' : '');
+  pintarPasos();
 }
 
 async function doWrite(){
@@ -1385,12 +1666,16 @@ async function doWrite(){
     }
     mostrarAlertaServidor(ok ? '' : renderMsg({ nivel:'INTEGRIDAD', que:'NO se escribió', dato: j.motivo || j.msg || 'sin detalle',
       accion:'Nada se guardó en Odoo. Revisa el motivo y vuelve a intentar cuando esté resuelto.' }));
-    msg.innerHTML = (ok
-        ? '<div class="card"><div class="mut" style="font-size:11px">Rollback: unlink name like "'+esc(j.llave_prefijo||'')+'" · IDs: '+esc((j.ids_creados||[]).join(', '))+'</div></div>'
-        : '')
-      + '<details class="sec" open><summary>Respuesta del servidor</summary>'
+    /* El rollback va a SU bloque, arriba y fijo. Antes vivía en #msg, el mismo
+       div que usa el dry-run, así que el siguiente repintado se llevaba los
+       únicos ids con los que se puede deshacer una carga. */
+    if(ok) pintarRollback(j);
+    $('msg-write').innerHTML =
+        '<details class="sec" open><summary>Respuesta del servidor <span class="mut" style="font-weight:400">(la escritura)</span></summary>'
       + '<div class="body"><pre style="font-size:11px;overflow:auto">'+esc(JSON.stringify(j,null,2))+'</pre></div></details>';
     if(wb){ wb.textContent = ok ? 'Cargado ✓' : 'Enviar a FTS (Correo + Odoo)'; wb.disabled = ok; }
+    ESCRITO = ok;
+    pintarPasos();
   }catch(err){
     mostrarAlertaServidor(renderMsg({ nivel:'INTEGRIDAD', que:'Error al escribir', dato: err.message,
       accion:'Verifica en Odoo si se crearon líneas antes de reintentar: busca partidas analíticas cuyo nombre empiece con "MO S'+PARSED.periodo.periodo+'/".' }));
@@ -1398,6 +1683,44 @@ async function doWrite(){
   }
 }
 $('wbtn').addEventListener('click', doWrite);
+
+/* ── el rollback, en su propio bloque y con un botón de copiar ───────────
+   Los ids son la única forma de revertir una carga. Pedirle a alguien que los
+   seleccione a mano de un <pre> de 38 números, en el momento en que algo salió
+   mal, es pedirle que se equivoque. */
+function pintarRollback(j){
+  var ids = (j.ids_creados || []);
+  var cmd = 'unlink name like "' + (j.llave_prefijo || '') + '"';
+  var hoy = new Date();
+  var hh = ('0'+hoy.getHours()).slice(-2) + ':' + ('0'+hoy.getMinutes()).slice(-2);
+  $('rollback').innerHTML =
+      '<div class="rb"><div class="rb-t">🔑 Cómo deshacer esta carga'
+    +   '<span>SEM ' + esc(String((PARSED && PARSED.periodo) ? PARSED.periodo.periodo : '?'))
+    +   ' · ' + ids.length + ' líneas · cargada a las ' + hh + '</span>'
+    +   '<button class="btn btn-g rb-a" id="rb-copy">Copiar</button></div>'
+    + '<code id="rb-txt">' + esc(cmd) + '\nIDs: ' + esc(ids.join(', ')) + '</code></div>';
+  var b = $('rb-copy');
+  if(b) b.onclick = function(){
+    var t = $('rb-txt').textContent;
+    var listo = function(){ b.textContent = 'Copiado ✓'; setTimeout(function(){ b.textContent = 'Copiar'; }, 2000); };
+    /* navigator.clipboard no existe fuera de https ni en algunos navegadores viejos;
+       el respaldo con un textarea funciona en todos. Un botón de copiar que a veces
+       no copia y no lo dice es peor que no tenerlo. */
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(t).then(listo, function(){ copiarViejo(t, listo, b); });
+    } else copiarViejo(t, listo, b);
+  };
+}
+function copiarViejo(t, listo, b){
+  try{
+    var ta = document.createElement('textarea');
+    ta.value = t; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    var ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    if(ok) listo(); else b.textContent = 'cópialo a mano ↓';
+  }catch(e){ b.textContent = 'cópialo a mano ↓'; }
+}
 
 gate();
 </script>
