@@ -135,6 +135,36 @@ quedaron enmascarados. Y dos fixtures ajenos se corrigieron **conservando lo que
 verificaban**: uno tenia una corrida de MTY con un contacto de Pesqueria, que con
 la exclusion nueva ya no sale en "a quien buscar" -- y eso es correcto--.
 
+### El catalogo real, y lo que corrigio
+
+Triangulado contra Odoo el 24-sep-2026 **despues de las 18:00 CST**, fuera de
+horario de produccion. 154 lineas de proyecto clasificadas, **94.5% de
+cobertura**. `datos/catalogo-de-proyectos-fts.md`, generado del JSON.
+
+**Y contradice el supuesto del que partia el metodo:** ELECTRICO 33.8% ·
+AUTOMATIZACION/TI 18.8% · TERMICO/FLUIDOS **14.9%** · SERVICIO 13.6% ·
+ESTRUCTURA 11.7% · MANEJO 7.1%. **`chiller` + `sistema_agua_helada` son SEIS de
+154 lineas.** El agua y el enfriamiento son el cuarto lugar, y un radar montado
+sobre "PTAR, caldera, torre de enfriamiento" -- que es lo que
+`consultas_senal.json` tiene hoy-- encontraria la minoria del negocio.
+
+El vocabulario del clasificador crecio de 14 a **29 tipos** con lo que el dato
+mostro. Cada uno con su perfil de quien compra, declarado como CRITERIO y no como
+medicion: mirar quien firmo exigiria mirar personas.
+
+**Un hallazgo que no buscaba:** las convocatorias de proveedores -- la fuente que
+el diseno puntuo con 23 y marco "no medido"-- **llegan al buzon solas, con
+cadencia semanal, y nadie las lee**. Es la via mas barata del radar y la unica
+cuyo dato ya esta en casa.
+
+**Dos huecos declarados:** el PROCESO del cliente (la busqueda generica en
+Outlook devolvio casi puro boletin; solo 6 de 154 lineas quedaron con proceso), y
+la muestra es **muestra, no censo** -- 168 de las 664 lineas de tamano de
+proyecto, sesgada hacia proyecto grande, con las descripciones truncadas a ~40
+caracteres por el conector--. Todo viaja escrito en la seccion de PROCEDENCIA del
+catalogo, antes de las tablas: un sesgo de muestreo no declarado se lee como un
+hecho sobre el negocio.
+
 ### Los disenos, sin construir
 
 `metodo/motor1-radar-de-leads.md` y `metodo/motor3-crm-odoo.md`. La escritura a

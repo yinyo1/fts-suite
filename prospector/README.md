@@ -126,6 +126,9 @@ consulta textual, su fuente permitida para ese módulo y su número de resultado
 | `metodo/modulos-de-contactos.md` | Los 14 módulos con contrato, el orden óptimo y la matriz de challenge |
 | `metodo/fixtures/contactos-casos-de-regresion.md` | Los casos A–F |
 | `metodo/enriquecimiento-organico.md` | Capa de enriquecimiento, solo diseño |
+| **`datos/catalogo-de-proyectos-fts.md`** | **Qué ha hecho FTS de verdad**, triangulado de Odoo. GENERADO del JSON de al lado, no escrito a mano. Sin personas |
+| `flujo/catalogo_proyectos.py` | El clasificador: 29 tipos de proyecto y 14 procesos de cliente, por vocabulario auditable |
+| `herramientas/construir_catalogo.py` | Arma el catálogo del crudo de Odoo. Se **detiene** si algo con forma de dato personal llega a la salida |
 | `metodo/motor1-radar-de-leads.md` | **Motor 1 · el radar**, solo diseño: fuentes, evaluador con su fórmula, y la validación contra Coficab y Budenheim |
 | `metodo/motor3-crm-odoo.md` | **Motor 3 · el CRM**, solo diseño: la tarjeta, el ciclo de vida, la cadencia, y la vía de escritura que **espera OK de Esteban** |
 | `metodo/propuestas-de-metodo-300.md` | **Cinco cambios de método propuestos y NO construidos**, de la corrida a escala (#300): tope adaptativo, desempate agotado/Chao1, corrida corporativa, sembrar entre corridas |
