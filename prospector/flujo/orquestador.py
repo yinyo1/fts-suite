@@ -35,6 +35,7 @@ from .estado import (Corrida, RESPONDIO, OLAS, NIVEL_PLANTA,
                      NIVEL_CORPORATIVO, LLAVE_CORPORATIVO, ORIGEN_MANUAL,
                      ORIGEN_RADAR, MARCA_ANGULO)
 from .paquete import armar as armar_paquete, escribir as escribir_paquete
+from .importacion_odoo import escribir as escribir_importacion
 from .compuertas import TOPE_SIN_HUMANO
 from .ficha import (modo_limpio, modo_procedencia,
                     modo_procedencia_html, tabla_de_rendimiento)
@@ -224,6 +225,7 @@ def _armar(d: dict, ruta: str) -> Corrida:
     c.angulo = d.get("angulo", "")
     c.origen = d.get("origen", ORIGEN_MANUAL)
     c.angulo_resuelto = d.get("angulo_resuelto", "")
+    c.tipos = list(d.get("tipos", []) or [])
     pres = d.get("presupuesto", {})
     c.presupuesto.tope_por_cuenta = pres.get("tope", 60)
     # Los tramos se restauran DESPUES del tope, y tal cual: son el historial de
@@ -287,7 +289,8 @@ def _contacto(c: Corrida, cd: dict) -> Contacto:
                  nivel_ficha=cd.get("nivel_ficha", N2_PARCIAL),
                  cercania_decision=exigir_cercania_coherente(
                      cd.get("cercania_decision", CERCANIA_SIN_ESTIMAR),
-                     cd.get("puesto")),
+                     cd.get("puesto"),
+                     tipos_del_proyecto=c.tipos),
                  revision_humana=cd.get("revision_humana", False),
                  motivo_revision=cd.get("motivo_revision", ""),
                  sigue_en_la_casa=cd.get("sigue_en_la_casa", True))
@@ -466,7 +469,8 @@ def main(argv=None) -> int:
     for nombre in ("prospecta", "listo", "iniciar", "siguiente", "padron",
                    "buscar", "registrar", "bloque", "cerrar", "vuelta",
                    "challenge", "ficha", "estado", "tope", "fusionar",
-                   "conectores", "entregar", "sembrar", "tramo", "paquete"):
+                   "conectores", "entregar", "sembrar", "tramo", "paquete",
+                   "importar"):
         s = sub.add_parser(nombre)
         if nombre == "estado":
             # `estado` sin --empresa resume TODAS las corridas de la sesion.
@@ -499,6 +503,11 @@ def main(argv=None) -> int:
                            help="la SENAL que origino la corrida. Con --origen "
                                 "radar entra a la ficha como gancho PRELIMINAR, "
                                 "no observado, y la corrida lo confirma o corrige")
+            s.add_argument("--tipos", default="",
+                           help="tipos del catalogo que la corrida persigue, "
+                                "separados por coma. Abre la excepcion de IT "
+                                "INDUSTRIAL en red_industrial, "
+                                "integracion_control y medicion")
             s.add_argument("--origen", choices=[ORIGEN_MANUAL, ORIGEN_RADAR],
                            default=ORIGEN_MANUAL,
                            help="de donde vino el angulo: manual (el operador) o "
@@ -606,6 +615,10 @@ def main(argv=None) -> int:
             s.add_argument("--autorizado", action="store_true",
                            help="el operador autoriza pasar del tope que la "
                                 "herramienta renueva sola")
+        if nombre == "importar":
+            s.add_argument("--salida", default=None,
+                           help="donde escribir el CSV. Por omision, la carpeta "
+                                "de la corrida")
         if nombre == "paquete":
             s.add_argument("--salida", default=None,
                            help="donde escribir el JSON. Por omision, la carpeta "
@@ -727,6 +740,8 @@ def main(argv=None) -> int:
                 # ninguna de las dos cosas. Un gancho sembrado que sale como si
                 # lo hubiera medido esta corrida es la semilla que se hace pasar
                 # por observacion, el modo de falla del §4 de las propuestas.
+                if a.tipos:
+                    c.tipos = [t.strip() for t in a.tipos.split(",") if t.strip()]
                 if a.angulo:
                     c.angulo = a.angulo.strip()
                     c.origen = a.origen
@@ -921,6 +936,27 @@ def main(argv=None) -> int:
             print(f"\n  TRAMO {r['tramo']}: tope {r['tope_anterior']} -> "
                   f"{r['tope_nuevo']}. Restantes: {c.presupuesto.restantes}")
             print(f"  Razon escrita, y queda en la ficha: {r['razon']}\n")
+            _imprimir_paso(c)
+            return 0
+
+        if a.cmd == "importar":
+            destino = a.salida or os.path.join(
+                os.path.dirname(_ruta_de(c, a)),
+                (_slug(c.ciudad) or LLAVE_CORPORATIVO) + "-crm-lead.csv")
+            destino = exigir_fuera_del_repo(destino)
+            r = escribir_importacion(c, destino)
+            print(f"\nARCHIVO DE IMPORTACION PARA ODOO — {r['bytes']:,} bytes")
+            print(f"  {r['archivo']}")
+            print(f"  {r['tarjetas']} tarjeta(s) · caduca {r['caduca']}")
+            print(f"  contactos en el lognote: {r['contactos_en_el_lognote']}")
+            print(f"  NO creados como partner por revision humana: "
+                  f"{r['no_creados_por_revision']}")
+            print(f"  correos retenidos por ser CANDIDATO: "
+                  f"{r['correos_retenidos_por_candidato']}")
+            print(f"\n  ESCRITURAS A ODOO: {r['escrituras_a_odoo']}. Esta es la "
+                  "ETAPA 1: lo revisas y lo subes tu.")
+            print("  Importar > crm.lead en Odoo. La etapa 2 espera tu OK con "
+                  "alcance exacto.\n")
             _imprimir_paso(c)
             return 0
 

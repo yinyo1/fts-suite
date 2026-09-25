@@ -32,6 +32,29 @@ saber qué señal convirtió, los pesos del evaluador son una opinión.**
 
 ---
 
+> ## CONSTRUIDO sobre #305 — este documento ya no es solo diseño
+>
+> Las seis decisiones de #305 quedaron **construidas**, y el código manda sobre el
+> texto de abajo donde difieran:
+>
+> | Decisión | Dónde vive |
+> |---|---|
+> | **D1** términos eléctricos y de automatización, con peso derivado del catálogo | `flujo/radar.py` |
+> | **D2** IT industrial puede decidir, acotado a tres tipos | `flujo/confianza.py` |
+> | **D3** el padrón es factor (+8 / 0), nunca negativo | `flujo/radar.py` |
+> | **D4** modo expansión, con «qué sigue» por co-ocurrencia medida | `flujo/expansion.py` |
+> | **D5** la regla del buzón para convocatorias | `flujo/buzon.py` |
+> | **D6** etapa 1 de escritura a Odoo (CSV de importación) | `flujo/importacion_odoo.py` |
+>
+> **Y lo que la construcción corrigió del propio diseño**, medido sobre el buzón
+> real el 25-sep-2026: de 22 correos revisados salieron **17 señales, 14 de ellas
+> sin leer — y CERO pasaron el umbral.** Las convocatorias de agregador dan 37-48
+> porque no nombran la empresa que compra, ni el estado, ni un tipo de proyecto de
+> FTS. El evaluador tiene razón, y este documento decía que esa fuente era «la más
+> barata y el dato ya está en casa». **Está en casa, y es floja.** El valor real
+> está detrás del enlace que el correo trae, y abrir ese enlace exige WebFetch, que
+> está bloqueado aquí: **la convocatoria sí necesita n8n después de todo.**
+
 ## LO QUE EL CATÁLOGO REAL CORRIGIÓ DE ESTE DOCUMENTO
 
 Este documento se escribió **antes** de construir el catálogo de §3a. El catálogo

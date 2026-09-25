@@ -872,7 +872,58 @@ PUESTOS_NUNCA_DECISORES = (
     "prensa", "comunicacion social", "comunicación social",
     "community manager", "redes sociales",
     "becario", "practicante", "intern ",
+    # --- IT CORPORATIVO, que entra por la DECISION 2 de #305 ---------------
+    # El metodo ya decia en prosa que "IT o RH que solo mencionan la palabra son
+    # contexto", y esa regla NO estaba en el codigo: solo en el texto. Aqui pasa a
+    # ser compuerta, y a la vez se abre la excepcion de abajo -- que es la mitad
+    # que Esteban aprobo--.
+    "mesa de ayuda", "help desk", "helpdesk", "soporte a usuarios",
+    "infraestructura de ti", "infraestructura it", "administrador de red",
+    "administrador de sistemas", "sysadmin", "seguridad informatica",
+    "ciberseguridad", "director de sistemas", "gerente de sistemas",
+    "gerente de ti", "it manager", "it director", "cio",
 )
+
+# ------------------------------------------- IT INDUSTRIAL: la excepcion medida
+#
+# DECISION 2 de #305, aprobada, y la razon es un numero: el catalogo real de
+# proyectos midio que AUTOMATIZACION Y TI INDUSTRIAL es el 18.8% del negocio de
+# FTS -- `integracion_control` es el tipo MAS GRANDE de los 29--. La regla de que
+# "IT es contexto" es correcta para el IT que administra correo y laptops, y es un
+# FALSO NEGATIVO SISTEMATICO sobre la segunda familia mas grande cuando el puesto
+# es de OT, de sistemas de manufactura o de ingenieria de control: ahi esa persona
+# SI compra, y a veces es quien firma.
+#
+# ACOTADO A TRES TIPOS, y eso es lo que impide que se abra de mas: para un
+# proyecto ELECTRICO o TERMICO, un puesto de IT sigue siendo contexto. Un gerente
+# de sistemas no compra una subestacion.
+PUESTOS_IT_INDUSTRIAL = (
+    "ot ", " ot", "operational technology", "tecnologia operativa",
+    "sistemas de manufactura", "manufacturing systems", "mes ",
+    "industrial it", "ti industrial", "it/ot", "it ot",
+    "ingenieria de control", "ingeniero de control", "control engineer",
+    "automatizacion", "automation", "controls",
+    "scada", "instrumentacion y control", "digitalizacion industrial",
+    "industria 4.0", "smart factory", "planta digital",
+)
+
+# Los tipos de proyecto donde un puesto de IT INDUSTRIAL puede ser decisor. Es la
+# lista de la DECISION 2, y es corta a proposito.
+TIPOS_DONDE_IT_DECIDE = ("red_industrial", "integracion_control",
+                         "medicion_y_calibracion", "medicion")
+
+
+def es_it_industrial(puesto: str | None) -> str:
+    """La palabra que lo vuelve IT INDUSTRIAL, o "" si es IT de oficina.
+
+    La diferencia no es de grado: el IT industrial responde por la linea, el
+    corporativo por el correo. El primero compra integracion; el segundo no.
+    """
+    p = f" {_normaliza(puesto or '')} "
+    for marca in PUESTOS_IT_INDUSTRIAL:
+        if marca.strip() and marca in p:
+            return marca.strip()
+    return ""
 # Hasta donde puede acercarse un puesto de esa lista. 41 = fuera del filtro de
 # valor (que corta en 20) y fuera del "sin estimar" (50), asi que ni cuenta como
 # de valor ni se confunde con no haberlo estimado.
@@ -888,11 +939,17 @@ def puesto_nunca_decisor(puesto: str | None) -> str:
     return ""
 
 
-def exigir_cercania_coherente(cercania, puesto: str | None) -> int:
+def exigir_cercania_coherente(cercania, puesto: str | None,
+                              tipos_del_proyecto=()) -> int:
     """Compuerta de escala. Lanza si la cercania no puede ser esa.
 
     Vive aqui y no en el orquestador porque es una regla del METODO, no del CLI:
     cualquier via que cree un Contacto tiene que pasar por ella.
+
+    `tipos_del_proyecto` son los tipos del catalogo que esta corrida persigue. Si
+    incluyen `red_industrial`, `integracion_control` o `medicion`, un puesto de IT
+    INDUSTRIAL deja de ser contexto y puede ser decisor (DECISION 2 de #305). Para
+    los demas tipos -- electrico, termico, estructura-- IT sigue siendo contexto.
     """
     from .compuertas import CompuertaCerrada
     if isinstance(cercania, bool) or not isinstance(cercania, (int, float)):
@@ -911,6 +968,13 @@ def exigir_cercania_coherente(cercania, puesto: str | None) -> int:
             f"{CERCANIA_DECIDE} = DECIDE la obra, {CERCANIA_CONTEXTO} = "
             "contexto. Es al reves de lo que la intuicion dice.")
     marca = puesto_nunca_decisor(puesto)
+    # LA EXCEPCION DE IT INDUSTRIAL, acotada a los tipos donde de verdad compra.
+    if marca:
+        industrial = es_it_industrial(puesto)
+        pertinente = any(_normaliza(t) in TIPOS_DONDE_IT_DECIDE
+                         for t in (tipos_del_proyecto or ()))
+        if industrial and pertinente:
+            return cercania      # OT / control / sistemas de manufactura: decide
     if marca and cercania <= CERCANIA_TOPE_NO_DECISOR:
         raise CompuertaCerrada(
             f"Cercania {cercania} para el puesto {puesto!r}: '{marca}' no compra "
@@ -923,7 +987,12 @@ def exigir_cercania_coherente(cercania, puesto: str | None) -> int:
             "reclutamiento marcado como comprador con correo solido: el unico "
             "'de valor + correo' de esa corrida era falso.\n"
             f"  Si de verdad decide, usa un puesto que lo diga; si es contexto, "
-            f"usa > {CERCANIA_TOPE_NO_DECISOR}.")
+            f"usa > {CERCANIA_TOPE_NO_DECISOR}.\n"
+            + (f"  OJO: '{es_it_industrial(puesto)}' SI puede decidir, pero solo "
+               f"en proyectos de {', '.join(TIPOS_DONDE_IT_DECIDE[:3])}. Esta "
+               f"corrida persigue {list(tipos_del_proyecto) or 'nada declarado'}. "
+               "Declara el tipo con `--tipos` si es de automatizacion o red."
+               if es_it_industrial(puesto) else ""))
     return cercania
 
 

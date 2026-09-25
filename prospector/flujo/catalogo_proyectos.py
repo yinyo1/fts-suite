@@ -166,16 +166,34 @@ PROCESOS_DEL_CLIENTE = (
     ("extrusion", ("extrusion", "extrusora", "extruder", "husillo",
                    "perfileria")),
     ("inyeccion", ("inyeccion", "inyectora", "molde", "injection molding")),
-    ("arneses_cableado", ("arnes", "arneses", "cableado", "wire harness",
-                          "trefilado", "cable", "conductor")),
+    ("arneses_cableado", ("arnes", "arneses", "wire harness",
+                          "trefilado", "alambre magneto", "magnet wire",
+                          "esmaltado de alambre", "conductor de cobre")),
     ("envasado_bebidas", ("envasado", "embotellado", "llenadora", "bebida",
-                          "refresco", "cerveza", "bottling")),
+                          "refresco", "cerveza", "bottling", "topo chico",
+                          "agua purificada", "purificadora")),
+    # El vocabulario de ALIMENTOS crecio con lo que las lineas de Odoo dicen de
+    # verdad, no con lo que yo suponia: amasadora, marmita, artesa, tunel de
+    # enfriamiento, tolva de sal, te. Ese es el rendimiento alto -- la descripcion
+    # de la linea nombra el equipo, y el equipo nombra el proceso-- contra la
+    # busqueda generica en el buzon, que devolvio casi puro hilo interno.
     ("alimentos", ("alimento", "lacteo", "carnico", "panificacion", "harina",
-                   "boteana", "snack", "chocolate", "confiteria")),
+                   "boteana", "snack", "chocolate", "confiteria",
+                   "amasadora", "marmita", "artesa", "cooling tunel",
+                   "cooling tunnel", "tunel de enfriamiento", "tolva de sal",
+                   " te y ", "galleta", "masa", "tortilla", "molino",
+                   "rayos x", "deteccion de metales", "detector de metales",
+                   "flow master", "empaque de producto")),
     ("quimica", ("quimica", "quimico", "reactor", "formulacion", "resina",
-                 "polimero")),
+                 "polimero", "fosfato", "tratamiento quimico", "dosificacion",
+                 "condensados", "skid de bombas", "tanque de proceso")),
+    # `maquinado de hierro` entra por la firma de un cliente en su propio correo
+    # ("Iron Machining Manager"), que es la unica evidencia directa de proceso que
+    # la busqueda dirigida en el buzon produjo. Se deja anotada la procedencia
+    # porque es de una fuente distinta a las demas.
     ("metalmecanica", ("metalmecanica", "maquinado", "cnc", "estampado",
-                       "troquelado", "soldadura", "prensa")),
+                       "troquelado", "soldadura", "prensa", "machining",
+                       "iron machining", "rueda", "wheel", "maquinados")),
     ("tratamiento_termico", ("tratamiento termico", "temple", "recocido",
                              "horno de temple", "austenizado")),
     ("galvanoplastia", ("galvan", "anodizado", "recubrimiento", "electrolitic",

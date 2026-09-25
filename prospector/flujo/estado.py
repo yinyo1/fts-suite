@@ -153,6 +153,12 @@ class Corrida:
     angulo: str = ""
     origen: str = ORIGEN_MANUAL
     angulo_resuelto: str = ""        # "confirmado" | "corregido" | ""
+    # QUE TIPOS del catalogo persigue esta corrida. Lo usa la excepcion de IT
+    # INDUSTRIAL (DECISION 2 de #305): un puesto de OT o de sistemas de
+    # manufactura puede ser decisor en `red_industrial`, `integracion_control` y
+    # `medicion`, y sigue siendo contexto en electrico o termico. Sin declararlo,
+    # la excepcion NO se abre -- el default es la regla vieja, que es la segura--.
+    tipos: list = field(default_factory=list)
 
     # ---------------------------------------------------------------- modulos
     def mod(self, nombre: str) -> EstadoModulo:
@@ -1133,6 +1139,7 @@ class Corrida:
             "angulo": self.angulo,
             "origen": self.origen,
             "angulo_resuelto": self.angulo_resuelto,
+            "tipos": self.tipos,
             "fuera_de_la_poblacion": len(self.fuera_de_la_poblacion()),
             "vueltas_loop": self.vueltas_loop,
             "bloques_al_abrir_vuelta": self._bloques_al_abrir_vuelta,

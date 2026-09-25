@@ -12,6 +12,19 @@ Existe, tiene pruebas, y se puede leer hoy sin tocar Odoo.
 
 ---
 
+> ## ETAPA 1 CONSTRUIDA sobre #305 (DECISIÓN 6)
+>
+> `./prospector importar` escribe un **CSV que la importación nativa de Odoo
+> entiende** (`crm.lead`), fuera del repo, con **cero escrituras y sin
+> credencial**. `flujo/importacion_odoo.py`. Las tres reglas duras son de código,
+> no de prosa, y cada una tiene prueba: un correo `candidato` **no** va en
+> `email_from` (va al lognote con su nivel, y la tarjeta encabeza con el contacto
+> cuyo correo **sí** se puede usar); un contacto en revisión humana **no** se
+> propone como partner; y **no existe columna de celular**.
+>
+> **La etapa 2 sigue esperando tu OK con alcance exacto, y no usa la credencial de
+> Odoo que ya existe en la suite.**
+
 # 4a · La tarjeta de prospecto
 
 Un **`crm.lead` de tipo `lead`**, no `opportunity`. La distinción no es

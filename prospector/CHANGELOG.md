@@ -3,6 +3,118 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.9.6 — 2026-09-25
+
+Las **seis decisiones de #305**, construidas. **581 pruebas** (eran 498). Cuatro
+modulos nuevos: `radar.py`, `buzon.py`, `expansion.py`, `importacion_odoo.py`.
+
+### D1 · Electrico y automatizacion en el evaluador, con peso DERIVADO
+
+El catalogo midio que ELECTRICO es 33.8% y AUTOMATIZACION 18.8%, contra 14.9% de
+termico. Entraron los terminos que faltaban -- subestacion, tablero,
+transformador, electroducto, busway, puesta a tierra, UPS, ampliacion de carga,
+automatizacion de linea, PLC, HMI, retrofit, migracion de control, red
+industrial, integracion de control, medicion-- y **su peso sale de la
+participacion de su familia en el catalogo, no de un numero escrito**. Si manana
+FTS vende otra cosa, los pesos se mueven solos al regenerar el catalogo.
+
+Una familia chica **no vale cero** (`PESO_MINIMO_TIPO`): un proyecto de chiller
+sigue siendo un proyecto de FTS. Y una fuente sin peso declarado cuenta **cero, no
+un promedio**: un peso inventado es peor que un hueco.
+
+### D2 · IT industrial puede ser comprador, acotado a tres tipos
+
+`integracion_control` es el tipo **mas grande de los 29** del catalogo. La regla de
+que "IT es contexto" -- que vivia en la PROSA del metodo, no en el codigo-- era un
+falso negativo sistematico sobre eso. Ahora el IT de oficina esta en
+`PUESTOS_NUNCA_DECISORES` **y** el industrial (OT, sistemas de manufactura,
+ingenieria de control) puede ser decisor en `red_industrial`,
+`integracion_control` y `medicion`. En electrico o termico sigue siendo contexto:
+un gerente de sistemas no compra una subestacion.
+
+**La excepcion es MAS ESTRECHA de lo que parece, y lo encontro una prueba al
+escribirla:** solo rescata a los puestos AMBIGUOS -- los que se llaman como IT de
+oficina y responden por la linea, tipo "Gerente de Sistemas de Manufactura"--.
+"Ingeniero de Control" y "Especialista OT" nunca estuvieron bloqueados.
+
+### D3 · El padron es FACTOR, no requisito
+
+Empata +8, no empata **0 y nunca negativo**, y el no-empate viaja como ambiguedad
+declarada. Era el sesgo contra la planta nueva: el corte del DENUE es semestral, y
+la de obra nueva -- la de presupuesto abierto-- era sistematicamente la que el
+radar no podia detonar.
+
+**Medido con el caso que la decision pidio:** Coficab Durango, senal fresca, SIN
+padron, leida del boletin del cluster -> **62, PASA**. La misma senal hoy, con la
+obra ya arrancada -> 37, ARCHIVA, que es correcto. Y la misma senal leida de prensa
+generica en vez del cluster -> 58, GUARDA: **el mismo evento vale distinto segun
+donde se lea**, y eso es el evaluador funcionando.
+
+### D4 · Modo expansion
+
+Vigila cuentas CON historia. Disparador propio -- proyecto cerrado, arrancado o
+comisionamiento-- con **ventana de dos bordes**: antes de 30 dias la planta todavia
+digiere la obra, despues de 540 ya compro con otro.
+
+**"Que sigue" sale de la CO-OCURRENCIA medida en el catalogo**, no de una tabla:
+si los clientes que compraron X tambien compraron Y, Y sigue a X. La tabla
+declarada del metodo rellena donde el catalogo no tiene con que, y viaja marcada
+como **CRITERIO, no medicion**.
+
+Y una co-ocurrencia de **UN solo cliente no hace un patron** -- misma leccion que
+`f2 < 3` en Chao1--: el catalogo decia `chiller -> instalacion_electrica` con n=1
+porque un cliente compro las dos cosas en la misma obra. Eso es una obra.
+
+**Validado con Budenheim:** genera senal de expansion **sin ninguna fuente
+publica**, desde sus proyectos reales de Odoo (conveyor, integracion de control,
+mezanine).
+
+### D5 · La regla del buzon — y lo que la medicion corrigio
+
+Clasifica convocatoria / RFQ de cliente / congreso, extrae empresa, requerimiento,
+categoria, estado y **fecha de cierre** (que manda sobre cualquier plazo: en una
+convocatoria el plazo no lo decide FTS). **Solo lectura**, y la senal **no lleva al
+remitente**: viaja con la empresa y el requerimiento.
+
+**La palabra suelta "requerimiento" se cayo por el dato real.** Atrapaba un hilo
+INTERNO de aceptacion de proyecto y marketing de un proveedor de vision
+industrial -- el segundo es peor: habria entrado como convocatoria con peso 23--.
+La marca tiene que ser la FRASE.
+
+**Y el resultado corrige lo que #305 prometio.** Sobre 22 correos del buzon real:
+**17 senales, 14 sin leer, y CERO pasan el umbral.** Las convocatorias de agregador
+dan 37-48 porque no nombran la empresa que compra, ni el estado, ni un tipo de
+proyecto de FTS. El evaluador tiene razon. #305 dijo "la via mas barata y el dato
+ya esta en casa": **esta en casa, y es floja**. El valor esta detras del enlace que
+el correo trae, y abrirlo exige WebFetch -- bloqueado aqui--: **la convocatoria si
+necesita n8n despues de todo.**
+
+### D6 · Etapa 1 de escritura a Odoo
+
+`./prospector importar` escribe un CSV de `crm.lead` fuera del repo, **cero
+escrituras, sin credencial**. Tipo `lead`, no oportunidad: un prospecto que nunca
+contesto no es una oportunidad perdida, nunca fue una oportunidad.
+
+Las tres reglas duras son de codigo, con prueba cada una: un correo **candidato**
+no va en `email_from` -- de ahi salen los envios-- y la tarjeta **encabeza con el
+contacto cuyo correo si se puede usar**, que fue un arreglo que salio de probarlo;
+un contacto en revision humana **no** se propone como partner; y **no existe
+columna de celular**.
+
+### El hueco del proceso, cerrado: 3.9% -> 82.5%
+
+Y la causa no era el rendimiento de Outlook: **el constructor ignoraba
+`order_partner_id`**, asi que TODAS las entradas salian sin cliente y el cruce de
+proceso no tenia con que empatar. Arreglado eso, mas el vocabulario de proceso
+crecido con lo que las lineas de Odoo dicen de verdad -- amasadora, marmita,
+artesa, tunel de enfriamiento, tolva de sal--, la cobertura paso de **6 de 154 a
+127 de 154**, con 6 procesos en vez de 2.
+
+La busqueda dirigida por cliente en el buzon **si rindio poco**: una sola evidencia
+directa, la firma de un cliente como *Iron Machining Manager*. El rendimiento alto
+estaba en la descripcion de la linea, que nombra el equipo, y el equipo nombra el
+proceso.
+
 ## 0.9.5 — 2026-09-24
 
 Las cuatro decisiones que Esteban cerro sobre #302, la interfaz del motor 2 con

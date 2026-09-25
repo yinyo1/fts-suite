@@ -59,6 +59,23 @@ def _leer(ruta: str | None) -> list:
     return d if isinstance(d, list) else []
 
 
+def _empresa_sola(v) -> str:
+    """Odoo escribe el contacto pegado a la empresa: "Nalco de Mexico, Juan Perez".
+
+    Para el catalogo interesa LA EMPRESA, y la persona ademas no puede viajar: se
+    corta en la primera coma. Es la misma normalizacion que el empate del padron
+    necesita, y aqui tiene un motivo extra -- el catalogo no lleva personas--.
+    """
+    return str(v or "").split(",")[0].strip()
+
+
+def _nombre(v) -> str:
+    """El nombre de un many2one de Odoo, que llega como [id, nombre] o como texto."""
+    if isinstance(v, (list, tuple)) and len(v) == 2:
+        return str(v[1])
+    return str(v or "") if not isinstance(v, (list, tuple)) else ""
+
+
 def _texto_de(fila: dict, *claves) -> str:
     return " · ".join(str(fila.get(k) or "") for k in claves if fila.get(k))
 
@@ -93,8 +110,8 @@ def construir(ordenes: list, lineas: list, hilos: list,
             ("sharepoint", propuestas, ("name", "nombre", "title", "titulo",
                                         "path", "ruta"))):
         for f in filas:
-            cliente = (f.get("cliente") or f.get("empresa") or
-                       f.get("partner") or "")
+            cliente = _empresa_sola(f.get("cliente") or f.get("empresa") or
+                                     f.get("partner") or "")
             texto = _texto_de(f, *claves)
             pr = proceso_de(texto)
             if pr["proceso"]:
@@ -116,7 +133,13 @@ def construir(ordenes: list, lineas: list, hilos: list,
             descartadas[r["descartada"]] += 1
             continue
         o = por_id.get(oid, {})
-        cliente = o.get("cliente") or ""
+        # `order_partner_id` viene EN LA PROPIA LINEA, y es el respaldo cuando la
+        # orden no esta en la muestra -- Odoo pagina, y una linea puede llegar sin
+        # su orden--. Sin este respaldo TODAS las entradas salian sin cliente, y
+        # con ellas el cruce de proceso: fue la causa real de que el catalogo v1
+        # tuviera 6 de 154 lineas con proceso, no el rendimiento de Outlook.
+        cliente = _empresa_sola(o.get("cliente")
+                                or _nombre(l.get("order_partner_id")))
         pcs = proceso_por_cliente.get(plano(cliente))
         proceso_linea = proceso_de(desc)["proceso"]
         proceso = proceso_linea or (pcs.most_common(1)[0][0] if pcs else None)

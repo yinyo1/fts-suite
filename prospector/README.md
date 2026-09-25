@@ -84,7 +84,7 @@ dominio no identifica a una persona.
 | Ruta | Qué es |
 |---|---|
 | **`flujo/`** | El código. Compuertas, instrumentación, Chao1, catálogo, ficha y el orquestador |
-| **`tests/`** | 498 pruebas. Casos de regresión **D (LEGO)**, **F (Cuprum)** y **G (Hershey)**, más el truco del contador vacío, el lazo de refuerzo y la guardia de datos personales |
+| **`tests/`** | 581 pruebas. Casos de regresión **D (LEGO)**, **F (Cuprum)** y **G (Hershey)**, más el truco del contador vacío, el lazo de refuerzo y la guardia de datos personales |
 | **`metodo/`** | El *por qué* de cada paso, con su disparador medido |
 | **`SKILL-criterio.md`** | Lo que juzga Claude y el código no puede |
 | **`USO.md`** | **Cómo se usa.** La guía corta, en español: el trigger, los conectores, qué entrega |
@@ -127,6 +127,10 @@ consulta textual, su fuente permitida para ese módulo y su número de resultado
 | `metodo/fixtures/contactos-casos-de-regresion.md` | Los casos A–F |
 | `metodo/enriquecimiento-organico.md` | Capa de enriquecimiento, solo diseño |
 | **`datos/catalogo-de-proyectos-fts.md`** | **Qué ha hecho FTS de verdad**, triangulado de Odoo. GENERADO del JSON de al lado, no escrito a mano. Sin personas |
+| `flujo/radar.py` | **El evaluador del radar**: puntúa una señal con su desglose. Los pesos se **derivan** del catálogo, no se escriben |
+| `flujo/buzon.py` | **La regla del buzón**: clasifica convocatorias, RFQs y congresos. Solo lectura, y la señal **no lleva al remitente** |
+| `flujo/expansion.py` | **Modo expansión**: qué va a necesitar el que ya es cliente. «Qué sigue» por co-ocurrencia **medida** en el catálogo |
+| `flujo/importacion_odoo.py` | **Etapa 1 de escritura a Odoo**: CSV de `crm.lead` que una persona sube. **Cero escrituras** |
 | `flujo/catalogo_proyectos.py` | El clasificador: 29 tipos de proyecto y 14 procesos de cliente, por vocabulario auditable |
 | `herramientas/construir_catalogo.py` | Arma el catálogo del crudo de Odoo. Se **detiene** si algo con forma de dato personal llega a la salida |
 | `metodo/motor1-radar-de-leads.md` | **Motor 1 · el radar**, solo diseño: fuentes, evaluador con su fórmula, y la validación contra Coficab y Budenheim |
@@ -174,7 +178,7 @@ presupuesto queda. Claude corre **ese** módulo, registra lo que encontró, y el
 orquestador decide si se avanza.
 
 ```bash
-python3 -m pytest tests -q     # 498 pruebas
+python3 -m pytest tests -q     # 581 pruebas
 ```
 
 ---
