@@ -1,0 +1,102 @@
+/* ═══ Prototipos de la Estación 3 · hoja de estilo común ═══
+ *
+ * Los mismos tokens del módulo de machote, para que estas pantallas se vean
+ * de la MISMA familia que la suite y no como una maqueta de otro sitio.
+ * No es el CSS de producción: es una copia recortada, a propósito, para que
+ * estos archivos sean autocontenidos y se puedan abrir con doble clic.
+ */
+:root{
+  --tinta:#1c1c1c; --suave:#6b6b6b; --linea:#dcdcdc; --linea2:#ececec;
+  --fondo:#fff; --papel:#f6f7f8; --cab:#eef1f4;
+  --acento:#0969da; --verde:#1a7f37; --ambar:#9a6700; --rojo:#cf222e;
+  --toque:44px;
+  --azul-banda:#1f4e79;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--papel);color:var(--tinta);
+     font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;}
+.mono{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+.tiny{font-size:12px;color:var(--suave);line-height:1.45}
+.n-ok{color:var(--verde)} .n-warn{color:var(--ambar)} .n-bad{color:var(--rojo)}
+
+/* ── el marco ── */
+.topbar{background:var(--fondo);border-bottom:1px solid var(--linea);
+        padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+        position:sticky;top:0;z-index:10}
+.topbar b{font-size:15px}
+.wrap{max-width:1080px;margin:0 auto;padding:16px}
+.card{background:var(--fondo);border:1px solid var(--linea);border-radius:10px;
+      padding:16px;margin-bottom:14px}
+h2{font-size:19px;margin:0 0 4px} h3{font-size:15px;margin:18px 0 8px}
+.sub{color:var(--suave);font-size:13px;margin:0 0 14px}
+
+/* ── la marca de prototipo, que NO se puede confundir con producción ── */
+.demo{background:#3d2b00;color:#ffdf8a;padding:9px 16px;font-size:12.5px;
+      line-height:1.5;border-bottom:2px solid #8a6d00}
+.demo b{color:#fff}
+
+/* ── pastillas de estado ── */
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;
+      border-radius:20px;white-space:nowrap;vertical-align:middle}
+.pill.ok{background:#dafbe1;color:#116329} .pill.bad{background:#ffebe9;color:#a40e26}
+.pill.warn{background:#fff8c5;color:#7d4e00} .pill.neu{background:var(--papel);color:var(--suave)}
+.pill.info{background:#ddf4ff;color:#0a3069}
+
+/* ── candados ── */
+.candado{border:1px solid var(--linea);border-left:4px solid var(--linea);
+         border-radius:8px;padding:12px 14px;margin:10px 0;background:var(--fondo)}
+.candado.pasa{border-left-color:var(--verde)}
+.candado.frena{border-left-color:var(--rojo);background:#fffbfa}
+.candado.avisa{border-left-color:var(--ambar);background:#fffdf5}
+.candado h4{margin:0 0 4px;font-size:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.candado p{margin:5px 0 0;font-size:13px;line-height:1.5}
+.codigo{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;
+        background:var(--papel);border:1px solid var(--linea);border-radius:4px;padding:1px 6px}
+
+/* ── botones ── */
+.btn{min-height:var(--toque);padding:0 16px;border-radius:8px;border:1px solid var(--linea);
+     background:var(--fondo);color:var(--tinta);font-size:14px;font-weight:600;cursor:pointer;
+     display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn:hover{background:var(--papel)}
+.btn.pri{background:var(--acento);border-color:var(--acento);color:#fff}
+.btn.pri:disabled{background:#8fb8e8;border-color:#8fb8e8;cursor:not-allowed}
+.btn.peli{color:var(--rojo);border-color:#ffc9c9}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+
+/* ── tablas y números ── */
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--linea2)}
+th{background:var(--cab);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;
+   color:#44546a;font-weight:700}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.tabla-caja{overflow-x:auto;border:1px solid var(--linea);border-radius:8px}
+
+/* ── campos ── */
+label.campo{display:block;margin:12px 0}
+label.campo>span{display:block;font-size:12px;font-weight:700;color:#44546a;margin-bottom:5px}
+input[type=text],input[type=number],input[type=date],select,textarea{
+  width:100%;min-height:var(--toque);padding:9px 11px;border:1px solid var(--linea);
+  border-radius:8px;font:inherit;background:var(--fondo);color:var(--tinta)}
+textarea{min-height:80px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--acento);outline-offset:-1px}
+.rejilla{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:0 14px}
+
+/* ── el bloque de los cuatro números ── */
+.cuatro{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.num-caja{border:1px solid var(--linea);border-radius:10px;padding:14px;background:var(--fondo)}
+.num-caja .et{font-size:11.5px;font-weight:700;color:#44546a;text-transform:uppercase;
+              letter-spacing:.04em;display:flex;align-items:center;gap:6px}
+.num-caja .vl{font-size:23px;font-weight:700;margin:7px 0 2px;font-variant-numeric:tabular-nums}
+.num-caja .nt{font-size:11.5px;color:var(--suave);line-height:1.4}
+.num-caja.sin .vl{color:var(--suave)}
+
+/* ── banda de advertencia del reporte ── */
+.banda{border:1px solid #f0c36d;background:#fffbe6;border-radius:9px;padding:13px 15px;margin:14px 0}
+.banda h4{margin:0 0 6px;font-size:14px;color:#7d4e00}
+.banda p{margin:5px 0;font-size:13px;line-height:1.55}
+
+@media (max-width:720px){
+  .wrap{padding:12px}
+  .card{padding:13px;border-radius:9px}
+  .topbar{padding:9px 12px}
+}
