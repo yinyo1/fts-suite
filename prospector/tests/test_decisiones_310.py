@@ -494,3 +494,89 @@ def test_RE_EMITIR_basta_para_corregir_una_corrida_VIEJA(sesion, capsys):
     html = open(ruta, encoding="utf-8").read()
     assert "CUENTA FRIA EN ESTA PLANTA" in html
     assert "a su grupo en Ciudad Juarez" in html
+
+
+# ================= #320 · la cobertura del registro, en DOS cifras
+from flujo.ubicacion_de_proyectos import (cobertura, cargar_cuentas,
+                                          linea_para_declarar, RUTA_CUENTAS)
+
+
+def test_el_censo_de_cuentas_existe_y_es_el_DENOMINADOR():
+    """Sin el censo, "cuantas cuentas tienen su planta declarada" no se puede
+    contestar: solo se sabria cuantas SI, nunca cuantas faltan."""
+    c = cargar_cuentas()
+    assert c["cuentas"]
+    assert all(x["empresa"] and x["lineas_de_proyecto"] >= 1
+               for x in c["cuentas"])
+    assert c["corte"]
+
+
+def test_el_censo_NO_lleva_personas_ni_importes():
+    """Los contactos hijos de Odoo ('Empresa, Persona') se colapsaron cortando en
+    la primera coma. Si alguien regenera el censo sin colapsar, esto lo detiene."""
+    permitidas = {"empresa", "lineas_de_proyecto"}
+    for x in cargar_cuentas()["cuentas"]:
+        assert set(x) == permitidas
+        nombre = x["empresa"].lower()
+        # La COMA es la marca del contacto hijo de Odoo sin colapsar -- "Empresa,
+        # Persona"--, y es la unica forma en que una persona podria colarse aqui.
+        assert "," not in nombre, f"'{x['empresa']}' trae un contacto pegado"
+        assert "@" not in nombre
+        # Los importes se prohiben por ESTRUCTURA -- el juego de campos de arriba
+        # es cerrado--, no buscando palabras dentro de la razon social. Buscarlas
+        # ahi marcaba a "MONTOI" por contener "monto", que es el mismo error de
+        # subcadena que clasifico a "QUIMITEC TRATAMIENTO DE AGUAS" como persona
+        # cuando el censo se armo. Una razon social puede decir lo que sea.
+        assert isinstance(x["lineas_de_proyecto"], int)
+
+
+def test_la_cobertura_se_reporta_en_DOS_cifras():
+    """Y no es prolijidad: **a quien se le factura no es siempre a quien se
+    prospecta**. Coficab tiene tres proyectos declarados y NO esta en el censo de
+    Odoo, porque los tres entraron via un distribuidor que si esta. Una sola cifra
+    obligaria a elegir entre dos preguntas distintas."""
+    r = cobertura()
+    assert r["censo"] == len(r["con_historia"]) + len(r["sin_historia"])
+    assert "coficab" in r["declaradas_fuera_del_censo"]
+    assert r["registros"] == 3
+
+
+def test_declarar_una_cuenta_DEL_CENSO_la_mueve_de_columna():
+    """La cifra tiene que moverse cuando se declara, o el reporte no mide nada."""
+    censo = {"cuentas": [{"empresa": "Ficticia SA", "lineas_de_proyecto": 9},
+                         {"empresa": "Otra SA", "lineas_de_proyecto": 2}],
+             "corte": "2026-09-25"}
+    vacio = {"registros": []}
+    r0 = cobertura(vacio, censo)
+    assert len(r0["sin_historia"]) == 2 and not r0["con_historia"]
+    con = {"registros": [{"empresa": "ficticia sa", "planta": "Saltillo"}]}
+    r1 = cobertura(con, censo)
+    assert [x["empresa"] for x in r1["con_historia"]] == ["Ficticia SA"]
+    assert [x["empresa"] for x in r1["sin_historia"]] == ["Otra SA"]
+
+
+def test_las_que_FALTAN_se_ordenan_por_trabajo_de_proyecto():
+    """El orden es la priorizacion: la cuenta con mas proyectos es la que mas
+    riesgo corre de que una corrida le atribuya la planta equivocada."""
+    censo = {"cuentas": [{"empresa": "Chica", "lineas_de_proyecto": 1},
+                         {"empresa": "Grande", "lineas_de_proyecto": 50}]}
+    r = cobertura({"registros": []}, censo)
+    assert [x["empresa"] for x in r["sin_historia"]] == ["Grande", "Chica"]
+
+
+def test_la_linea_para_declarar_sale_ARMADA():
+    linea = linea_para_declarar("MONDELEZ MEXICO")
+    assert "donde-se-hizo" in linea
+    assert "'MONDELEZ MEXICO'" in linea
+    assert "--planta" in linea
+
+
+def test_el_CLI_reporta_la_cobertura_y_deja_las_lineas_listas(capsys):
+    assert orq.main(["donde-falta"]) == 0
+    salida = capsys.readouterr().out
+    assert "COBERTURA DEL REGISTRO" in salida
+    assert "SIN planta declarada" in salida
+    assert "FUERA del censo" in salida       # la segunda cifra, siempre visible
+    assert "donde-se-hizo --empresa" in salida
+    # y la regla de Esteban, impresa donde se va a usar
+    assert "NO la declares" in salida

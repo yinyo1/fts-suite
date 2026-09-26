@@ -181,6 +181,22 @@ Vive **en el repo**, no en la sesión —es la única forma de que sobreviva—,
 guarda solo empresa, planta, referencia, fecha, qué fue y canal: **ni una persona
 y ni un importe**.
 
+**Para saber qué te falta declarar:**
+
+```
+./prospector donde-falta
+```
+
+Te lista las cuentas de Odoo con trabajo de tamaño de proyecto que **todavía no
+tienen planta declarada**, de más a menos proyectos —el orden es la
+priorización— y con **la línea ya escrita** para que declarar sea copiar, pegar y
+llenar la planta.
+
+Reporta **dos cifras**, y no es prolijidad: *a quien le facturas no siempre es a
+quien prospectas*. Coficab tiene sus tres proyectos declarados y **no aparece en
+el censo de Odoo**, porque los tres entraron vía Quimitec — Odoo conoce a quien
+se le factura, y la corrida prospecta al cliente final.
+
 ### Cuando la cuenta le llama a la planta de otra manera
 
 `COFICAB Monterrey` **es** la planta de Pesquería: la cuenta la anuncia con el

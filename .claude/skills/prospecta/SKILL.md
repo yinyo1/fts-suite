@@ -154,7 +154,24 @@ que afirme trabajo previo aquí cuando el registro dice que fue en otra planta.
 ```
 
 **Commítealo.** Si se queda solo en el contenedor, muere con la sesión y el
-próximo agente vuelve a adivinar. El registro guarda empresa, planta, referencia,
+próximo agente vuelve a adivinar.
+
+**Y si el operador te pregunta qué falta declarar:**
+
+```bash
+./prospector donde-falta
+```
+
+Lista las cuentas de Odoo con trabajo de tamaño de proyecto que aún no tienen
+planta, de más a menos proyectos, con la línea ya armada. **No le rellenes las
+plantas tú**: pásale la lista y que él dicte. Donde él no esté seguro, se queda
+`sin_historia_declarada` — que es un veredicto correcto, no un hueco.
+
+> **Ojo con el denominador:** a quien FTS le factura no siempre es a quien se
+> prospecta. Coficab tiene tres proyectos y **no aparece en el censo de Odoo**,
+> porque entraron vía un distribuidor que sí aparece. Por eso `donde-falta` da dos
+> cifras, y por eso este dato no se puede derivar: para esa cuenta Odoo no tiene ni
+> la planta **ni el nombre del cliente final**. El registro guarda empresa, planta, referencia,
 fecha, qué fue y canal: **ni una persona y ni un importe**, y por eso puede vivir
 en un repo público.
 

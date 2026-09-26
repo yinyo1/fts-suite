@@ -163,6 +163,16 @@ EQUIVALENCIAS_DE_PUESTO = (
     # el tiempo. Entra por el DEFECTO 2 de #306: sin el, "Gerente de Facilities"
     # contra "Facilities Manager - COFICAB Americas" seguia chocando aunque el
     # sufijo de empresa ya se quitara. Y sigue siendo ES-EN: es el mismo puesto.
+    #
+    # ROZA LA RESTRICCION 3 Y NO LA CRUZA, y Esteban lo APROBO asi en #320: la
+    # restriccion prohibe agrupar dos palabras ESPANOLAS distintas para la misma
+    # funcion -- y por eso `servicios generales` sigue FUERA de la tabla--.
+    # "facilities" no es otra palabra espanola: es la MISMA palabra inglesa con
+    # cabeza espanola. Queda escrito aqui para que un lector futuro no lea el
+    # grupo como un descuido y lo "arregle": sacarlo devuelve el caso de #306 a
+    # EN_CONFLICTO, y la prueba
+    # `test_RESTRICCION_3_gerente_de_facilities_es_SPANGLISH_no_un_sinonimo_ES`
+    # falla a proposito si alguien lo intenta.
     ("gerente de facilidades", "gerente de facilities", "facilities manager"),
     # --- ingenieria y proyectos ---
     ("gerente de ingenieria", "engineering manager"),

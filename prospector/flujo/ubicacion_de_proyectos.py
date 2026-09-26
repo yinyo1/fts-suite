@@ -43,8 +43,14 @@ import os
 import unicodedata
 from datetime import date
 
-RUTA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                    "datos", "ubicacion-de-proyectos.json")
+_DATOS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                      "datos")
+RUTA = os.path.join(_DATOS, "ubicacion-de-proyectos.json")
+
+# El DENOMINADOR: las cuentas de Odoo con trabajo de tamano de proyecto. Sin el,
+# "cuantas cuentas tienen su planta declarada" no se puede contestar -- solo se
+# sabe cuantas SI, nunca cuantas faltan--.
+RUTA_CUENTAS = os.path.join(_DATOS, "cuentas-con-proyecto.json")
 
 # La unica fuente que hay, y por eso se escribe: que el dato venga de la cabeza
 # del dueno no lo hace menos cierto, lo hace NO AUDITABLE. Escrito, al menos se
@@ -224,3 +230,59 @@ def _guardar(d: dict, ruta: str) -> None:
     with open(ruta, "w", encoding="utf-8") as f:
         json.dump(d, f, ensure_ascii=False, indent=2)
         f.write("\n")
+
+
+# --------------------------------------------------------------- cobertura
+def cargar_cuentas(ruta: str = RUTA_CUENTAS) -> dict:
+    if not os.path.exists(ruta):
+        return {"cuentas": []}
+    with open(ruta, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def cobertura(datos: dict | None = None, censo: dict | None = None) -> dict:
+    """Cuantas cuentas tienen su planta declarada, y cuantas siguen sin ella.
+
+    SE REPORTA EN DOS CIFRAS, y no es prolijidad: **a quien se le factura no es
+    siempre a quien se prospecta**. Coficab tiene tres proyectos declarados y NO
+    aparece en el censo de Odoo, porque los tres entraron via un distribuidor que
+    si aparece. Contar una sola cifra obligaria a elegir entre dos preguntas
+    distintas:
+
+      · del CENSO de Odoo, cuantas cuentas tienen planta declarada -- lo que
+        contesta "cuanto me falta cargar"--;
+      · del REGISTRO, cuantas cuentas hay declaradas que el censo no conoce
+        -- lo que mide el trabajo que entro por intermediario--.
+    """
+    d = datos if datos is not None else cargar()
+    c = censo if censo is not None else cargar_cuentas()
+    declaradas = {}
+    for r in d.get("registros", []):
+        e = _plano(r.get("empresa"))
+        if e:
+            declaradas.setdefault(e, []).append(r)
+    cuentas = c.get("cuentas", []) or []
+    con, sin = [], []
+    for x in cuentas:
+        e = _plano(x.get("empresa"))
+        fila = {"empresa": x.get("empresa"),
+                "lineas_de_proyecto": x.get("lineas_de_proyecto", 0)}
+        (con if e in declaradas else sin).append(fila)
+    en_censo = {_plano(x.get("empresa")) for x in cuentas}
+    fuera = sorted(e for e in declaradas if e not in en_censo)
+    return {
+        "censo": len(cuentas),
+        "con_historia": con,
+        "sin_historia": sorted(sin, key=lambda x: -x["lineas_de_proyecto"]),
+        "declaradas_fuera_del_censo": fuera,
+        "registros": sum(len(v) for v in declaradas.values()),
+        "corte_del_censo": c.get("corte", ""),
+        "total_cuentas_con_orden": c.get("total_cuentas_con_orden_confirmada"),
+    }
+
+
+def linea_para_declarar(empresa: str) -> str:
+    """El comando ya escrito, para que declarar sea copiar y pegar."""
+    return (f"./prospector donde-se-hizo --empresa {empresa!r} "
+            "--referencia '<SO o vacio>' --planta '<la planta>' "
+            "--que '<que fue>' --fecha '<AAAA-MM>' --canal '<si entro por alguien>'")

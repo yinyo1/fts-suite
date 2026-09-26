@@ -3,6 +3,57 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.9.9 — 2026-09-26
+
+Cierra #320: la **restriccion 3 aprobada** y la **medicion de cuanto falta** del
+registro de ubicacion de proyectos. **661 pruebas** (eran 654).
+
+### La restriccion 3, aprobada y ESCRITA en el codigo
+
+Esteban aprobo el juicio: «Gerente de Facilities» es la misma palabra inglesa con
+cabeza espanola, no un sinonimo intra-espanol, asi que el grupo se queda y
+`servicios generales` sigue fuera de la tabla. Queda escrito **en el comentario
+del grupo**, no solo aqui, para que un lector futuro no lo lea como descuido y lo
+"arregle": sacarlo devuelve el caso de #306 a EN_CONFLICTO, y la prueba
+`test_RESTRICCION_3_gerente_de_facilities_es_SPANGLISH_no_un_sinonimo_ES` falla a
+proposito si alguien lo intenta.
+
+### El censo: `datos/cuentas-con-proyecto.json`
+
+**26 cuentas** de Odoo con trabajo de tamano de proyecto — lineas confirmadas de
+`sale.order.line` >= 100,000— , medidas el 25-sep-2026 despues de las 18:00 CST.
+Es el **DENOMINADOR**, y sin el la pregunta "cuantas cuentas tienen su planta
+declarada" no se puede contestar: solo se sabria cuantas SI, nunca cuantas faltan.
+
+Lleva razon social y **cuantas** lineas de proyecto tiene. Ni una persona y ni un
+importe: los contactos hijos de Odoo (`Empresa, Persona`) se colapsan cortando en
+la primera coma, y una prueba falla si alguna razon social del censo trae una coma
+— que es la unica forma en que una persona podria colarse—. Los importes se
+prohiben por **estructura**, con un juego de campos cerrado, no buscando palabras
+dentro del nombre: buscarlas marcaba a `MONTOI` por contener "monto".
+
+### `donde-falta`: la cobertura en DOS cifras
+
+    ./prospector donde-falta
+
+Lista las cuentas del censo **sin planta declarada**, de mas a menos trabajo de
+proyecto — el orden es la priorizacion: la cuenta con mas proyectos es la que mas
+riesgo corre de que una corrida le atribuya la planta equivocada— y con **la linea
+ya armada** para que declarar sea copiar, pegar y llenar la planta. Imprime tambien
+la regla del operador donde se va a usar: *donde no estes seguro de la planta, NO
+la declares*.
+
+**Reporta dos cifras, y no es prolijidad: a quien se le factura no es siempre a
+quien se prospecta.** Coficab tiene sus tres proyectos declarados y **no aparece en
+el censo**, porque los tres entraron via un distribuidor que si aparece. Odoo
+conoce a quien se le factura; la corrida prospecta al cliente final. Contar una
+sola cifra obligaria a elegir entre dos preguntas distintas, asi que se reportan
+las dos: cuantas del censo tienen planta declarada, y cuantas declaradas el censo
+no conoce — que es la medida del trabajo que entro por intermediario—.
+
+Y eso refuerza por que el dato no se puede derivar: para Coficab, **Odoo no tiene
+ni la planta ni el nombre del cliente**. Tiene el del distribuidor.
+
 ## 0.9.8 — 2026-09-26
 
 Las **tres decisiones de #310** mas un **dato de negocio que Odoo no tiene**.

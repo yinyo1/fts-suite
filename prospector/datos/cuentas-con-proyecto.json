@@ -1,0 +1,115 @@
+{
+  "que_es": "Censo de cuentas de Odoo con trabajo DE TAMANO DE PROYECTO (lineas de sale.order.line confirmadas >= 100,000). Es el DENOMINADOR del registro de ubicacion de proyectos: cada una de estas cuentas puede aparecer en una corrida, y si su planta no esta declarada la corrida puede atribuirle a la planta equivocada un proyecto que si existe.",
+  "que_NO_lleva": "Ni una persona y ni un importe. Solo razon social y CUANTAS lineas de proyecto tiene. Los contactos hijos de Odoo ('Empresa, Persona') se colapsaron a la empresa cortando en la primera coma, asi que ninguna persona viaja.",
+  "procedencia": "sale.order.line agrupado por order_partner_id, state=sale, price_subtotal >= 100,000. Medido el 25-sep-2026 despues de las 18:00 CST -- fuera de horario de produccion--. Odoo tiene 201 cuentas con orden confirmada en total; estas 26 son las que tienen trabajo de tamano de proyecto.",
+  "ojo_el_facturado_no_es_el_cliente": "Coficab NO esta en esta lista y si tiene tres proyectos: entraron via QUIMITEC TRATAMIENTO DE AGUAS, que si esta. Odoo conoce a quien se le factura; la corrida prospecta al cliente final. Las dos listas no son la misma, y por eso la cobertura se reporta como DOS cifras.",
+  "razones_sociales_que_son_personas_fisicas": 5,
+  "corte": "2026-09-25",
+  "total_cuentas_con_orden_confirmada": 201,
+  "cuentas": [
+    {
+      "empresa": "MONDELEZ MEXICO",
+      "lineas_de_proyecto": 343
+    },
+    {
+      "empresa": "Nalco de Mexico",
+      "lineas_de_proyecto": 40
+    },
+    {
+      "empresa": "Empacadora San Marcos",
+      "lineas_de_proyecto": 38
+    },
+    {
+      "empresa": "TECNOLOGIAS Y PRODUCTOS YIN SA DE CV",
+      "lineas_de_proyecto": 33
+    },
+    {
+      "empresa": "JOHNSON CONTROLS ENTERPRISES MEXICO",
+      "lineas_de_proyecto": 25
+    },
+    {
+      "empresa": "CONMET DE MEXICO",
+      "lineas_de_proyecto": 23
+    },
+    {
+      "empresa": "ALTA EXTRACCION",
+      "lineas_de_proyecto": 8
+    },
+    {
+      "empresa": "Budenheim Mexico",
+      "lineas_de_proyecto": 7
+    },
+    {
+      "empresa": "QUIMITEC TRATAMIENTO DE AGUAS",
+      "lineas_de_proyecto": 6
+    },
+    {
+      "empresa": "MAGNEKON S.A. DE C.V.",
+      "lineas_de_proyecto": 6
+    },
+    {
+      "empresa": "Industrial de Cuautitlan",
+      "lineas_de_proyecto": 5
+    },
+    {
+      "empresa": "BEBIDAS PURIFICADAS",
+      "lineas_de_proyecto": 5
+    },
+    {
+      "empresa": "Mission Foods",
+      "lineas_de_proyecto": 3
+    },
+    {
+      "empresa": "MONTOI",
+      "lineas_de_proyecto": 3
+    },
+    {
+      "empresa": "No sabe fallar",
+      "lineas_de_proyecto": 2
+    },
+    {
+      "empresa": "Lau Industries de Mexico",
+      "lineas_de_proyecto": 2
+    },
+    {
+      "empresa": "GARCOMEX",
+      "lineas_de_proyecto": 2
+    },
+    {
+      "empresa": "Quezar SA de CV",
+      "lineas_de_proyecto": 2
+    },
+    {
+      "empresa": "Heritage Interactive",
+      "lineas_de_proyecto": 1
+    },
+    {
+      "empresa": "Abbotsford Road Coffee Specialists Inc.",
+      "lineas_de_proyecto": 1
+    },
+    {
+      "empresa": "BIC",
+      "lineas_de_proyecto": 1
+    },
+    {
+      "empresa": "Abamex Ingenieria",
+      "lineas_de_proyecto": 1
+    },
+    {
+      "empresa": "Mattel",
+      "lineas_de_proyecto": 1
+    },
+    {
+      "empresa": "Bridgestone Mexico",
+      "lineas_de_proyecto": 1
+    },
+    {
+      "empresa": "Productos de Vinagre SA de CV",
+      "lineas_de_proyecto": 1
+    },
+    {
+      "empresa": "INDUSTRY SERVICE & UPKEEP",
+      "lineas_de_proyecto": 1
+    }
+  ]
+}

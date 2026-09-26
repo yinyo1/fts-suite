@@ -84,7 +84,7 @@ dominio no identifica a una persona.
 | Ruta | Qué es |
 |---|---|
 | **`flujo/`** | El código. Compuertas, instrumentación, Chao1, catálogo, ficha y el orquestador |
-| **`tests/`** | 654 pruebas. Casos de regresión **D (LEGO)**, **F (Cuprum)** y **G (Hershey)**, más el truco del contador vacío, el lazo de refuerzo y la guardia de datos personales |
+| **`tests/`** | 661 pruebas. Casos de regresión **D (LEGO)**, **F (Cuprum)** y **G (Hershey)**, más el truco del contador vacío, el lazo de refuerzo y la guardia de datos personales |
 | **`metodo/`** | El *por qué* de cada paso, con su disparador medido |
 | **`SKILL-criterio.md`** | Lo que juzga Claude y el código no puede |
 | **`USO.md`** | **Cómo se usa.** La guía corta, en español: el trigger, los conectores, qué entrega |
@@ -127,6 +127,7 @@ consulta textual, su fuente permitida para ese módulo y su número de resultado
 | `metodo/fixtures/contactos-casos-de-regresion.md` | Los casos A–F |
 | `metodo/enriquecimiento-organico.md` | Capa de enriquecimiento, solo diseño |
 | **`datos/catalogo-de-proyectos-fts.md`** | **Qué ha hecho FTS de verdad**, triangulado de Odoo. GENERADO del JSON de al lado, no escrito a mano. Sin personas |
+| **`datos/cuentas-con-proyecto.json`** | **Censo** de cuentas de Odoo con trabajo de tamaño de proyecto. Es el **denominador**: sin él, «cuántas cuentas tienen su planta declarada» no se puede contestar —sólo se sabría cuántas sí, nunca cuántas faltan—. Sin personas y sin importes |
 | **`datos/ubicacion-de-proyectos.json`** | **En qué PLANTA se hizo cada proyecto**, declarado por el operador. `sale.order` de Odoo trae el cliente y **no trae el sitio**, y sin este archivo una corrida deduce que FTS ya trabajó en la planta que está prospectando. Sin personas y sin importes |
 | `flujo/radar.py` | **El evaluador del radar**: puntúa una señal con su desglose. Los pesos se **derivan** del catálogo, no se escriben |
 | `flujo/buzon.py` | **La regla del buzón**: clasifica convocatorias, RFQs y congresos. Solo lectura, y la señal **no lleva al remitente** |
@@ -179,7 +180,7 @@ presupuesto queda. Claude corre **ese** módulo, registra lo que encontró, y el
 orquestador decide si se avanza.
 
 ```bash
-python3 -m pytest tests -q     # 654 pruebas
+python3 -m pytest tests -q     # 661 pruebas
 ```
 
 ---

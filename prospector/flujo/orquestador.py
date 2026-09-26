@@ -38,7 +38,8 @@ from .estado import (Corrida, RESPONDIO, OLAS, NIVEL_PLANTA,
 from .ubicacion_de_proyectos import (declarar as declarar_ubicacion,
                                      carta_de_presentacion, de_la_cuenta,
                                      DeclaracionInvalida, RUTA as RUTA_UBICACION,
-                                     HISTORIA_EN_OTRA_PLANTA)
+                                     HISTORIA_EN_OTRA_PLANTA, cobertura,
+                                     linea_para_declarar)
 from .paquete import armar as armar_paquete, escribir as escribir_paquete
 from .importacion_odoo import escribir as escribir_importacion
 from .compuertas import TOPE_SIN_HUMANO
@@ -490,18 +491,18 @@ def main(argv=None) -> int:
                    "buscar", "registrar", "bloque", "cerrar", "vuelta",
                    "challenge", "ficha", "estado", "tope", "fusionar",
                    "conectores", "entregar", "sembrar", "tramo", "paquete",
-                   "importar", "alias", "donde-se-hizo"):
+                   "importar", "alias", "donde-se-hizo", "donde-falta"):
         s = sub.add_parser(nombre)
         if nombre == "estado":
             # `estado` sin --empresa resume TODAS las corridas de la sesion.
             s.add_argument("--empresa", default=None)
-        elif nombre not in ("listo", "conectores"):
+        elif nombre not in ("listo", "conectores", "donde-falta"):
             s.add_argument("--empresa", required=True)
         # `--ciudad` identifica la PLANTA en todos los comandos de corrida. En
         # `prospecta`, `iniciar` y `padron` ademas alimenta la resolucion del
         # padron, y ahi se declara aparte con su ayuda propia.
         if nombre not in ("listo", "conectores", "prospecta", "iniciar", "padron",
-                          "donde-se-hizo"):
+                          "donde-se-hizo", "donde-falta"):
             s.add_argument("--ciudad", default=None,
                            help="la planta, cuando la empresa tiene varias. Sin "
                                 "esto, si hay mas de una, el comando se niega en "
@@ -899,6 +900,38 @@ def main(argv=None) -> int:
         # registro de ubicacion de proyectos es de la CUENTA, no de una corrida, y
         # lo que tiene que evitar es que la corrida que TODAVIA NO EXISTE vuelva a
         # especular con la planta de un proyecto (#310).
+        if a.cmd == "donde-falta":
+            r = cobertura()
+            print(f"\n  COBERTURA DEL REGISTRO DE UBICACION DE PROYECTOS")
+            print(f"  censo de Odoo: {r['censo']} cuentas con trabajo de tamano "
+                  f"de proyecto (corte {r['corte_del_censo']})")
+            print(f"  de esas, CON planta declarada: {len(r['con_historia'])}")
+            print(f"  de esas, SIN planta declarada: {len(r['sin_historia'])}")
+            # La segunda cifra, y no es prolijidad: a quien se le factura no es
+            # siempre a quien se prospecta. Coficab tiene tres proyectos
+            # declarados y NO esta en el censo, porque entraron por distribuidor.
+            if r["declaradas_fuera_del_censo"]:
+                print(f"  ademas, declaradas y FUERA del censo: "
+                      f"{len(r['declaradas_fuera_del_censo'])} "
+                      f"({', '.join(r['declaradas_fuera_del_censo'])}) — entraron "
+                      "por intermediario, asi que Odoo las factura a otro nombre")
+            if r["con_historia"]:
+                print("\n  YA DECLARADAS:")
+                for x in r["con_historia"]:
+                    print(f"     ✓ {x['empresa']}")
+            if r["sin_historia"]:
+                print(f"\n  FALTAN {len(r['sin_historia'])}, de mas a menos "
+                      "trabajo de proyecto. Copia la linea y llena la planta:\n")
+                for x in r["sin_historia"]:
+                    print(f"     {x['empresa']}  ({x['lineas_de_proyecto']} "
+                          f"linea(s) de proyecto)")
+                    print(f"       {linea_para_declarar(x['empresa'])}")
+                print("\n  Donde NO estes seguro de la planta, NO la declares: "
+                      "sin_historia_declarada es mejor que un dato mal declarado, "
+                      "y la ficha sabe distinguirlos.")
+            print()
+            return 0
+
         if a.cmd == "donde-se-hizo":
             try:
                 r = declarar_ubicacion(a.empresa, a.referencia, a.planta,
