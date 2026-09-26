@@ -1,0 +1,38 @@
+{
+  "que_es": "En que PLANTA se hizo cada proyecto de FTS. Lo declara el operador porque sale.order de Odoo NO registra el sitio: tiene el cliente y no tiene la planta. Sin esto, una corrida encuentra proyectos de una cuenta, no ve ninguna planta escrita, y concluye que FTS ya trabajo en LA PLANTA que esta prospectando. Paso en la ficha de Coficab Pesqueria (#310).",
+  "que_NO_lleva": "Ni una persona y ni un importe. Empresa, planta, referencia de orden, fecha, que fue y por que canal. Por eso puede vivir en un repo publico, igual que el catalogo de proyectos.",
+  "fuente_unica": "conocimiento_directo. Nadie puede derivar esto: no esta en Odoo, no esta en el correo de forma fiable, y la direccion de facturacion apunta al corporativo o al intermediario. El unico que lo sabe es quien vendio.",
+  "corte": "2026-09-26",
+  "registros": [
+    {
+      "empresa": "Coficab",
+      "referencia": "SO10977",
+      "planta": "Ciudad Juarez",
+      "que": "mezanine, intercambiador y chiller",
+      "fecha": "2025-11",
+      "canal": "Quimitec",
+      "fuente": "conocimiento_directo",
+      "declarado_en": "2026-09-26"
+    },
+    {
+      "empresa": "Coficab",
+      "referencia": "cotizacion urgente chiller Battery 4",
+      "planta": "Ciudad Juarez",
+      "que": "chiller para Battery 4, cotizacion urgente",
+      "fecha": "2026-04",
+      "canal": "Quimitec",
+      "fuente": "conocimiento_directo",
+      "declarado_en": "2026-09-26"
+    },
+    {
+      "empresa": "Coficab",
+      "referencia": "SO11551",
+      "planta": "Ciudad Juarez",
+      "que": "chiller Trane 30 TR, arranque ago-2026",
+      "fecha": "2026-08",
+      "canal": "Quimitec",
+      "fuente": "conocimiento_directo",
+      "declarado_en": "2026-09-26"
+    }
+  ]
+}

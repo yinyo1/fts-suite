@@ -21,6 +21,9 @@ import re
 
 from .confianza import CONFIRMADO, EN_CONFLICTO, SOLIDO, CANDIDATO, N1_CONFIRMADO, N2_PARCIAL, N3_PUESTO
 from .estado import Corrida, RESPONDIO, PENDIENTE
+from .ubicacion_de_proyectos import (carta_de_presentacion, HISTORIA_AQUI,
+                                     HISTORIA_EN_OTRA_PLANTA,
+                                     SIN_HISTORIA_DECLARADA)
 
 CHIP = {CONFIRMADO: "CONF", SOLIDO: "SOL", CANDIDATO: "CAND", EN_CONFLICTO: "CONFLICTO"}
 NIVEL_FICHA = {N1_CONFIRMADO: "N1", N2_PARCIAL: "N2", N3_PUESTO: "N3"}
@@ -35,7 +38,39 @@ def checklist_validaciones(c: Corrida) -> list[dict]:
             cob = c.cobertura.get(m, {"estado": PENDIENTE, "razon": ""})
             filas.append({"modulo": m, "estado": cob["estado"], "razon": cob["razon"],
                           "agotado": c.mod(m).agotado})
+    # Y una validacion que no es de cobertura sino de VERACIDAD: si el registro
+    # declarado dice que esta planta es fria y el gancho afirma trabajo previo
+    # AQUI, el checklist lo marca. Es el error de #310, y es el unico de la ficha
+    # que no cuesta una consulta: cuesta la cuenta.
+    hist = c.historia()
+    if hist["veredicto"] == HISTORIA_EN_OTRA_PLANTA:
+        texto = " ".join([c.gancho or "", c.por_que_ahora or ""]
+                         + list(c.como_hablarles or []))
+        if _afirma_trabajo_aqui(texto):
+            filas.append({
+                "modulo": "HISTORIA", "estado": EN_CONFLICTO,
+                "razon": ("El gancho afirma trabajo previo EN ESTA PLANTA y el "
+                          "registro declarado dice que los proyectos de esta "
+                          f"cuenta fueron en {', '.join(hist['plantas'])}. "
+                          "Corrigelo antes de mandarla: la afirmacion se cae en "
+                          "la primera llamada."),
+                "agotado": False})
     return filas
+
+
+# Frases con las que una ficha se atribuye trabajo EN la planta que prospecta.
+# Deliberadamente CORTA y textual: no es un clasificador, es una lista que
+# Esteban puede leer y corregir -- el mismo criterio del catalogo de proyectos--.
+_AFIRMA_AQUI = (
+    "en su planta", "en esta planta", "en su instalacion", "en sus instalaciones",
+    "ya trabajamos con ustedes", "ya les hemos trabajado", "su planta ya",
+    "trabajamos en su sitio",
+)
+
+
+def _afirma_trabajo_aqui(texto: str) -> bool:
+    t = " ".join(str(texto or "").lower().split())
+    return any(f in t for f in _AFIRMA_AQUI)
 
 
 # ------------------------------------------------------------------ utilerias
@@ -251,6 +286,59 @@ def modo_limpio(c: Corrida) -> str:
           'que ese alias devolvio a la poblacion estan arriba, y el Chao1 los '
           'cuenta.</p>'))
 
+    # --- HISTORIA DECLARADA. Va ARRIBA del gancho porque condiciona el gancho:
+    # la ficha de Pesqueria (#310) decia "ya trabajamos en su planta" cuando los
+    # tres proyectos de esa cuenta fueron en Juarez, y esa frase no es un matiz
+    # de redaccion -- es una afirmacion falsa que se cae en la primera llamada--.
+    hist = c.historia()
+    if hist["veredicto"] == HISTORIA_EN_OTRA_PLANTA:
+        bloque_historia = (
+            '<div class="fria"><b>CUENTA FRIA EN ESTA PLANTA.</b> '
+            + html.escape(hist["por_que"]) + '<br><br><b>Carta de presentacion que '
+            'SI se sostiene:</b><br>'
+            + html.escape(carta_de_presentacion(c.empresa, c.ciudad))
+            + '<div class="proc">Declarado por el operador (conocimiento directo). '
+              '<code>sale.order</code> de Odoo no registra la planta: tiene el '
+              'cliente y no tiene el sitio, asi que esto no se puede derivar.</div>'
+            + '<table><tr><th>Referencia</th><th>Planta</th><th>Que fue</th>'
+              '<th>Fecha</th><th>Canal</th></tr>'
+            + "".join(
+                f'<tr><td>{html.escape(r.get("referencia",""))}</td>'
+                f'<td>{html.escape(r.get("planta",""))}</td>'
+                f'<td>{html.escape(r.get("que",""))}</td>'
+                f'<td>{html.escape(r.get("fecha","")) or "<i>n/d</i>"}</td>'
+                f'<td>{html.escape(r.get("canal","")) or "<i>n/d</i>"}</td></tr>'
+                for r in hist["en_otras"])
+            + '</table></div>')
+    elif hist["veredicto"] == HISTORIA_AQUI:
+        bloque_historia = (
+            '<div class="hist"><b>FTS ya trabajo EN ESTA PLANTA</b> — '
+            + html.escape("; ".join(r.get("que", "") for r in hist["aqui"]
+                                    if r.get("que")))
+            + '. Declarado por el operador (conocimiento directo).</div>')
+    else:
+        bloque_historia = ""
+
+    # --- los ALIAS QUITADOS. Quitar un alias mueve la poblacion y con ella el
+    # denominador de Chao1, que es la cifra que decide cuando parar: no puede
+    # pasar en silencio (#310, decision 3).
+    bloque_quitados = ("" if not c.alias_quitados else (
+        '<h2>Alias de ubicacion retirados — ' + str(len(c.alias_quitados))
+        + '</h2><p class="meta">Un alias mal puesto no es permanente, y quitarlo '
+          'tampoco es silencioso: el alias abre la puerta de la poblacion, y la '
+          'poblacion es el denominador del agotado.</p><table>'
+          '<tr><th>Alias</th><th>Contactos que salieron</th>'
+          '<th>Poblacion</th><th>Chao1 estimado</th><th>Veredicto</th></tr>'
+        + "".join(
+            f'<tr><td><b>{html.escape(q["alias"])}</b></td>'
+            f'<td>{len(q["salieron"])}</td>'
+            f'<td>{q["poblacion_antes"]} &rarr; {q["poblacion_despues"]}</td>'
+            f'<td>{q["chao1_antes"]} &rarr; {q["chao1_despues"]}</td>'
+            f'<td>{html.escape(q["veredicto_antes"])} &rarr; '
+            f'{html.escape(q["veredicto_despues"])}</td></tr>'
+            for q in c.alias_quitados)
+        + '</table>'))
+
     # --- lo SEMBRADO de otras corridas: se declara, nunca pasa por observado
     sem = []
     for r in c.sembrado:
@@ -432,6 +520,12 @@ def modo_limpio(c: Corrida) -> str:
         padding:10px 12px 10px 30px;margin:0;font-size:.9rem}}
  ul.sv code{{font:.82rem ui-monospace,monospace;color:var(--azul)}}
  td.rz{{font-size:.84rem;color:#7a5308;max-width:24rem}}
+ .fria{{background:#fdecea;border:2px solid #a4340a;color:#7a2708;
+        padding:12px 14px;margin-bottom:18px;font-size:.92rem;border-radius:3px}}
+ .fria table{{margin-top:10px;font-size:.85rem}}
+ .fria .proc{{font-size:.82rem;color:#8a4a34;margin-top:8px}}
+ .hist{{background:#eef7f0;border-left:3px solid #2f6b46;color:#24503a;
+        padding:11px 14px;margin-bottom:16px;font-size:.9rem}}
  .prelim{{background:#fbf3e8;border:2px solid var(--ambar);color:#7a5308;
           padding:11px 14px;margin-bottom:16px;font-size:.9rem;border-radius:3px}}
  .editada{{background:#fdecea;border:2px solid #a4340a;color:#7a2708;
@@ -456,6 +550,7 @@ def modo_limpio(c: Corrida) -> str:
 <div class="meta">{html.escape(c.ciudad)} · {html.escape(c.giro)} ·
  corrida {c.creada[:10]} · {len(c.busquedas())} busquedas registradas</div>
 
+{bloque_historia}
 <h2>Gancho</h2>
 {bl_gancho}
 
@@ -465,7 +560,7 @@ def modo_limpio(c: Corrida) -> str:
 <h2>Por que ahora</h2>
 {bl_porque}
 
-{bloque_conf}{bloque_salv}{bloque_confirmar}{bloque_fuera}{bloque_alias}{bloque_sembrado}
+{bloque_conf}{bloque_salv}{bloque_confirmar}{bloque_fuera}{bloque_alias}{bloque_quitados}{bloque_sembrado}
 
 <h2>A quien buscar — {len(visibles)} entradas</h2>
 <table>

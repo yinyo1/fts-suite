@@ -14,8 +14,13 @@ from .compuertas import (EstadoModulo, Presupuesto, CompuertaCerrada, AGOTADO,
                          Busqueda)
 from .catalogo import PERMITIDAS
 from .confianza import (Contacto, Dato, Observacion, _normaliza,
-                        EN_OTRA_PLANTA, EN_CORPORATIVO)
+                        EN_OTRA_PLANTA, EN_CORPORATIVO, CAMPOS_DE_UBICACION,
+                        _nombra_la_ciudad, _es_corporativa)
 from .chao1 import estimar, FALTA_BARRER, CAMBIAR_DE_VIA, SATURO
+from .ubicacion_de_proyectos import (veredicto as veredicto_de_historia,
+                                     carta_de_presentacion,
+                                     HISTORIA_EN_OTRA_PLANTA,
+                                     SIN_HISTORIA_DECLARADA)
 
 # El flujo, con las cinco correcciones validadas en el issue #22.
 OLAS = [
@@ -106,6 +111,16 @@ MARCA_PADRON = "[padron] "
 # Marca de los avisos de la ENTREGA, para que la ficha los pueda separar.
 MARCA_ENTREGA = "[entrega] "
 
+# Marca de lo declarado sobre la UBICACION de los proyectos previos. Es la carta
+# de presentacion de la corrida, y es lo que la ficha de Pesqueria (#310) dijo
+# mal: "ya trabajamos en su planta" cuando los tres proyectos fueron en Juarez.
+MARCA_HISTORIA = "[historia] "
+
+# Marca de lo que el operador QUITO a mano. Un alias mal puesto no debe ser
+# permanente -- decision 3 de #310-- pero quitarlo tampoco puede ser silencioso:
+# mueve la poblacion y con ella el Chao1, que es la cifra que decide cuando parar.
+MARCA_ALIAS = "[alias] "
+
 # QUE se siembra entre corridas. Lista corta, y los contactos NO estan: un
 # contacto regional sembrado en una corrida de planta es exactamente el doble
 # conteo que #300 midio. Van a la corrida corporativa.
@@ -180,6 +195,10 @@ class Corrida:
     # una linea y queda escrito aqui, en el estado, para que la exclusion lo
     # respete y para que la ficha lo pueda decir.
     alias_de_ubicacion: list = field(default_factory=list)
+    # Los alias que se QUITARON, con el antes y el despues de la poblacion y de
+    # Chao1. No es bitacora por gusto: quitar un alias mueve el denominador del
+    # agotado, y la ficha tiene que poder declarar el cambio (#310, decision 3).
+    alias_quitados: list = field(default_factory=list)
 
     # ---------------------------------------------------------------- modulos
     def mod(self, nombre: str) -> EstadoModulo:
@@ -902,6 +921,38 @@ class Corrida:
                 "consulta al padron sigue registrada en M13, con su fecha.)")
         return nuevos
 
+    # ------------------------------------------- historia declarada de proyectos
+    def historia(self) -> dict:
+        """Que puede decir esta corrida sobre proyectos previos EN ESTA PLANTA.
+
+        Se lee del registro declarado, no del estado: lo que hay que evitar es que
+        la corrida que TODAVIA NO EXISTE vuelva a especular, y una corrida nueva
+        arranca sin nada sembrado.
+        """
+        return veredicto_de_historia(self.empresa, self.ciudad)
+
+    def registrar_historia_declarada(self) -> list[str]:
+        """Pone el veredicto de historia en los avisos. REEMPLAZA al anterior.
+
+        Misma regla que el veredicto del padron (#306, D1), y por la misma razon:
+        es una CONCLUSION, y dos cartas de presentacion que se contradicen en la
+        misma ficha son peores que ninguna.
+        """
+        v = self.historia()
+        self.avisos = [a for a in self.avisos if not a.startswith(MARCA_HISTORIA)]
+        if v["veredicto"] == SIN_HISTORIA_DECLARADA:
+            return []
+        nuevos = [MARCA_HISTORIA + v["por_que"].replace("\n", " "),
+                  MARCA_HISTORIA + "CARTA DE PRESENTACION: "
+                  + carta_de_presentacion(self.empresa, self.ciudad)]
+        self.avisos += nuevos
+        return nuevos
+
+    @property
+    def es_cuenta_fria(self) -> bool:
+        """Cuenta con historia del grupo, pero NINGUNA en esta planta."""
+        return self.historia()["veredicto"] == HISTORIA_EN_OTRA_PLANTA
+
     def declarar_alias_de_ubicacion(self, alias: str) -> str:
         """El operador declara que esta planta tambien se llama asi.
 
@@ -927,6 +978,111 @@ class Corrida:
         if a not in self.alias_de_ubicacion:
             self.alias_de_ubicacion.append(a)
         return a
+
+    def quitar_alias_de_ubicacion(self, alias: str) -> dict:
+        """Quita un alias y RECALCULA poblacion y Chao1, diciendo que cambio.
+
+        DECISION 3 de #310. Un alias mal puesto no puede ser permanente -- se
+        declara con una linea y con una linea tiene que poder deshacerse--, pero
+        quitarlo tampoco puede ser silencioso: el alias abre la puerta de la
+        poblacion, y la poblacion es el denominador de Chao1, que es la cifra que
+        decide cuando parar. Quitar un alias sin decirlo mueve el veredicto de
+        agotado sin que nadie sepa por que.
+
+        Devuelve el antes y el despues, y lo deja escrito en la corrida para que la
+        ficha lo declare.
+        """
+        a = " ".join(str(alias or "").split())
+        if a not in self.alias_de_ubicacion:
+            raise CompuertaCerrada(
+                f"'{a}' no esta declarado como alias de esta corrida"
+                + (f". Los declarados: {', '.join(self.alias_de_ubicacion)}."
+                   if self.alias_de_ubicacion else ": no hay ninguno.")
+                + " Quitar un alias que no existe no es inocuo: quien lo pide cree "
+                  "que la poblacion cambio, y no cambio.")
+        antes_pob = [x.nombre for x in self.poblacion()]
+        antes_chao = self.completitud()
+        self.alias_de_ubicacion.remove(a)
+        despues_pob = [x.nombre for x in self.poblacion()]
+        despues_chao = self.completitud()
+        salieron = [n for n in antes_pob if n not in despues_pob]
+        cambio = {
+            "alias": a, "cuando": datetime.now(timezone.utc).isoformat(),
+            "salieron": salieron,
+            "poblacion_antes": len(antes_pob), "poblacion_despues": len(despues_pob),
+            "chao1_antes": round(antes_chao.estimado, 1),
+            "chao1_despues": round(despues_chao.estimado, 1),
+            "veredicto_antes": antes_chao.veredicto,
+            "veredicto_despues": despues_chao.veredicto,
+        }
+        self.alias_quitados.append(cambio)
+        self.avisos.append(
+            MARCA_ALIAS + f"SE QUITO EL ALIAS '{a}': "
+            f"{len(salieron)} contacto(s) salieron de la poblacion "
+            f"({cambio['poblacion_antes']} -> {cambio['poblacion_despues']}), y "
+            f"Chao1 paso de {cambio['chao1_antes']} a {cambio['chao1_despues']} "
+            f"estimados (veredicto {cambio['veredicto_antes']} -> "
+            f"{cambio['veredicto_despues']}). El alias abre la puerta de la "
+            "poblacion, y la poblacion es el denominador del agotado: quitarlo "
+            "mueve la cifra que decide cuando parar.")
+        return cambio
+
+    def alias_por_preguntar(self) -> list[dict]:
+        """Ubicaciones observadas que PODRIAN ser esta planta, con su evidencia.
+
+        DECISION 2 de #310: el alias se queda como criterio del operador, y el
+        agente **pregunta con la evidencia que lo motiva** en vez de aplicarlo
+        solo. Esto arma la pregunta -- "vi 'COFICAB Monterrey' en 3 fuentes y
+        'Pesqueria' en 2, son la misma planta?"-- y NO TOCA NADA.
+
+        Solo propone lo que hoy esta EXCLUIDO: si algo ya empata con la ciudad o
+        con un alias declarado, no hay nada que preguntar. Y las corporativas se
+        quedan fuera: "COFICAB Group" no es una planta con otro nombre, es el
+        grupo, y confundirlos es el doble conteo de #300.
+        """
+        if self.nivel == NIVEL_CORPORATIVO or not self.ciudad:
+            return []
+        fuentes_por_valor: dict[str, set] = {}
+        for x in self.contactos:
+            for campo in CAMPOS_DE_UBICACION:
+                d = x.datos.get(campo)
+                if not d:
+                    continue
+                for o in d.observaciones:
+                    if isinstance(o.valor, str) and o.valor.strip():
+                        fuentes_por_valor.setdefault(o.valor.strip(),
+                                                     set()).add(o.fuente)
+        de_la_ciudad = sum(len(f) for v, f in fuentes_por_valor.items()
+                           if _nombra_la_ciudad(v, self.ciudad,
+                                                self.alias_de_ubicacion))
+        out = []
+        for valor, fuentes in fuentes_por_valor.items():
+            if _nombra_la_ciudad(valor, self.ciudad, self.alias_de_ubicacion):
+                continue
+            if _es_corporativa(valor):
+                continue
+            afectados = [x.nombre for x in self.contactos
+                         if valor in x.ubicaciones_observadas
+                         and not x.cuenta_en_la_poblacion_de(
+                             self.ciudad, self.alias_de_ubicacion)]
+            if not afectados:
+                continue
+            out.append({
+                "valor": valor, "fuentes": sorted(fuentes),
+                "n_fuentes": len(fuentes),
+                "fuentes_de_la_ciudad": de_la_ciudad,
+                "contactos_afectados": len(afectados),
+                "pregunta": (
+                    f"Vi '{valor}' en {len(fuentes)} fuente(s) "
+                    f"({', '.join(sorted(fuentes))}) y '{self.ciudad}' en "
+                    f"{de_la_ciudad}. Hoy '{valor}' cuenta como OTRA planta y deja "
+                    f"{len(afectados)} contacto(s) fuera de la poblacion. "
+                    f"Son la misma planta?"),
+                "si_dice_si": (f"./prospector alias --empresa {self.empresa!r} "
+                               f"--ciudad {self.ciudad!r} --es '<el nombre corto>'"),
+            })
+        out.sort(key=lambda r: (-r["contactos_afectados"], -r["n_fuentes"]))
+        return out
 
     def sembrar(self, de_corrida: str, que: str, valor, campo: str = "",
                 nota: str = "") -> dict:
@@ -1346,6 +1502,7 @@ class Corrida:
             "angulo_resuelto": self.angulo_resuelto,
             "tipos": self.tipos,
             "alias_de_ubicacion": self.alias_de_ubicacion,
+            "alias_quitados": self.alias_quitados,
             "fuera_de_la_poblacion": len(self.fuera_de_la_poblacion()),
             "vueltas_loop": self.vueltas_loop,
             "bloques_al_abrir_vuelta": self._bloques_al_abrir_vuelta,

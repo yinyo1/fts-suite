@@ -154,6 +154,33 @@ La ficha de cada planta te dice cuántos encontró que **no son de esa planta**,
 el comando exacto para recogerlos. **Y nadie se excluye por su puesto**: sólo por
 lo que una fuente dijo de dónde está. Si nadie lo dijo, cuenta como de la planta.
 
+### Si ya le vendimos a esa empresa, ¿fue en ESA planta?
+
+> **Odoo no lo sabe.** La orden de venta trae el **cliente** y **no trae la
+> planta**. Así que la corrida de Coficab Pesquería vio tres proyectos de agua
+> helada de esa cuenta y la ficha concluyó que ya habíamos trabajado **en esa
+> planta**. Los tres fueron en **Ciudad Juárez**. Pesquería es cuenta **fría**.
+>
+> «Ya trabajamos en su planta» es **falso** y se cae en la primera llamada. «Ya le
+> hicimos tres proyectos de agua helada a su grupo en Juárez» es **cierto**, abre
+> la puerta igual de bien, y aguanta que el de Pesquería pregunte cuál proyecto.
+
+Este dato **solo lo tienes tú**, y se graba en una línea:
+
+```
+./prospector donde-se-hizo --empresa 'Coficab' --referencia 'SO10977' \
+  --planta 'Ciudad Juarez' --que 'chiller' --fecha '2025-11' --canal 'Quimitec'
+```
+
+Una vez grabado, **ninguna corrida futura de esa cuenta vuelve a especular**: la
+Fase 0 lo lee antes de la primera consulta, `prospecta` te dice si la planta es
+fría, la ficha lo declara con la evidencia, y el checklist **rechaza un gancho**
+que afirme trabajo previo en una planta donde no lo hubo.
+
+Vive **en el repo**, no en la sesión —es la única forma de que sobreviva—, y
+guarda solo empresa, planta, referencia, fecha, qué fue y canal: **ni una persona
+y ni un importe**.
+
 ### Cuando la cuenta le llama a la planta de otra manera
 
 `COFICAB Monterrey` **es** la planta de Pesquería: la cuenta la anuncia con el
@@ -176,6 +203,21 @@ derecho a saber que la frontera de esa planta se movió a mano. El comando te di
 Un alias de dos letras se rechaza: abre la puerta de la población, y uno flojo
 mete gente de otra planta en el Chao1 de esta —que es la cifra que decide cuándo
 parar—.
+
+**Claude no lo declara solo: te pregunta con la evidencia.** *«Vi "COFICAB
+Monterrey" en 3 fuentes y "Pesquería" en 2. Hoy cuenta como otra planta y deja 1
+contacto fuera. ¿Son la misma?»* Tú contestas en una línea.
+
+**Y si resultó mal puesto, se quita:**
+
+```
+./prospector alias --empresa 'Coficab' --ciudad 'Pesqueria' --quitar 'Monterrey'
+```
+
+Quitarlo **recalcula** población y Chao1 y te dice qué se movió —«1 contacto
+salió · población 2 → 1 · Chao1 2.5 → 1.0»—, y **la ficha declara el cambio**. Un
+alias mal puesto no es permanente; quitarlo tampoco es silencioso, porque mueve la
+cifra que decide cuándo parar.
 
 ### Si la primera planta ya midió algo, la segunda arranca con eso
 

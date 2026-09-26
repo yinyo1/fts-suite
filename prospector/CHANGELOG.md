@@ -3,6 +3,122 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.9.8 — 2026-09-26
+
+Las **tres decisiones de #310** mas un **dato de negocio que Odoo no tiene**.
+**654 pruebas** (eran 617). Un modulo nuevo, `ubicacion_de_proyectos.py`, y un
+archivo declarado en `datos/`.
+
+### El dato: en que PLANTA se hizo cada proyecto. Odoo no lo registra
+
+`sale.order` trae el **cliente** y **no trae la planta**. Por eso la corrida de
+Coficab Pesqueria encontro tres proyectos de agua helada de esa cuenta, no vio
+ninguna planta escrita, y la ficha concluyo lo que parecia obvio y es falso: que
+FTS ya habia trabajado **en esa planta**. Los tres fueron en **Ciudad Juarez**.
+Pesqueria es cuenta **FRIA**: sin proyecto propio y sin contacto propio.
+
+La diferencia no es de redaccion:
+
+| | |
+|---|---|
+| «ya trabajamos en su planta» | **falso.** Se cae en la primera llamada |
+| «ya le hicimos tres proyectos de agua helada a su grupo en Juarez» | **cierto**, y sigue siendo fuerte |
+
+La segunda abre la puerta igual de bien y **no se derrumba cuando el de Pesqueria
+pregunta cual proyecto**. Es el unico error de la ficha que no cuesta una
+consulta: cuesta la cuenta.
+
+**Donde vive y por que ahi.** En `datos/ubicacion-de-proyectos.json`, no en el
+estado de una corrida, y esa es la decision de diseno: el estado de una corrida
+muere con la sesion, y lo que hay que evitar es que **la corrida que todavia no
+existe** vuelva a especular. Una corrida de Coficab/Saltillo abierta en diciembre
+lo lee sin que nadie se acuerde de sembrarlo. Guarda empresa, planta, referencia,
+fecha, que fue y canal: **ni una persona y ni un importe**, que es la misma linea
+que deja vivir al catalogo de proyectos en un repo publico.
+
+Se declara en una linea, y la salida **insiste en commitearlo** — si se queda en
+el contenedor, muere con la sesion:
+
+    ./prospector donde-se-hizo --empresa 'Coficab' --referencia 'SO10977' \
+      --planta 'Ciudad Juarez' --que 'chiller' --fecha '2025-11' --canal 'Quimitec'
+
+**Tres veredictos, y el de en medio es el que faltaba.** Antes solo habia "hay
+proyectos de esta cuenta" contra "no hay", y la primera se leia como "hay
+proyectos en esta planta":
+
+| veredicto | que dice |
+|---|---|
+| `historia_en_esta_planta` | FTS trabajo aqui. «Ya trabajamos en su planta» es cierto |
+| `historia_del_grupo_en_otra_planta` | **CUENTA FRIA.** La historia es del grupo, y la carta de presentacion tiene que decirlo asi |
+| `sin_historia_declarada` | Nadie declaro donde. **NO significa que no haya**: significa que la planta no esta escrita |
+
+**Cuatro lugares lo leen.** La Fase 0 lo registra antes de la primera consulta;
+`prospecta` y `siguiente` imprimen la carta que si se sostiene; la ficha la
+declara con la evidencia (referencia, planta, que fue, canal) y dice **por que no
+se puede derivar**, para que nadie lo "arregle" borrando el archivo; y el
+checklist **rechaza un gancho** que afirme trabajo previo aqui cuando el registro
+dice que fue en otra planta. La lista de frases que dispara ese rechazo es corta y
+textual a proposito: no es un clasificador, es una lista que se puede leer y
+corregir.
+
+`contacto_es_puerta_a` cierra la otra mitad: la contraparte de un proyecto de otra
+planta **no es puerta a esta**. No es mal contacto — es excelente para su planta y
+es semilla de la corrida corporativa— : es que no abre **esta** puerta. Y una
+referencia no declarada no abre nada: callar no es afirmar.
+
+Declarar dos veces la misma orden **reemplaza**, como el veredicto del padron de
+#306 y por la misma razon: dos plantas para una orden son dos afirmaciones que se
+contradicen.
+
+### DECISION 1 · La tabla ES-EN, con los dos grupos aprobados
+
+`gerente de facilidades / gerente de facilities / facilities manager` y
+`comprador senior / senior buyer`, con una prueba por cada una de las tres
+restricciones de #302:
+
+1. **No cruza jerarquia:** `comprador senior` queda en grupo DISTINTO de
+   `comprador`. Un senior buyer no es un comprador raso.
+2. **No cruza funcion:** `facilidades` no entra al grupo de `servicios
+   auxiliares`, aunque muchas plantas junten las dos en una gerencia.
+3. **No es sinonimo intra-idioma** — y este es el limite fino, que vale dejarlo
+   escrito. La restriccion prohibe agrupar dos palabras ESPANOLAS distintas para
+   la misma funcion, y `servicios generales` sigue fuera de la tabla. «Gerente de
+   Facilities» no es otra palabra espanola: es la MISMA palabra inglesa con cabeza
+   espanola, que es como la industria mexicana lo dice. Sigue siendo ES-EN.
+
+### DECISION 2 · El alias lo PREGUNTA el agente, no lo aplica
+
+`alias --preguntar` arma la pregunta **con la evidencia que la motiva** — «Vi
+'COFICAB Monterrey' en 3 fuente(s) y 'Pesqueria' en 2. Hoy cuenta como OTRA planta
+y deja 1 contacto fuera de la poblacion. Son la misma planta?»— y sale con
+**codigo 3**: necesita decision del operador, no es falla. **No toca nada**, y hay
+una prueba de modo de falla que lo fija: si preguntar aplicara el alias, la
+decision estaria revertida en el codigo.
+
+Imprime **las dos ramas**, no solo la del si: si el operador dice que no, lo
+correcto es que esos contactos se queden fuera, y salen en la seccion «No son de
+esta planta». Las corporativas nunca se proponen: «COFICAB Group» es el grupo, no
+la planta con otro nombre, y confundirlos es el doble conteo de #300.
+
+### DECISION 3 · `alias --quitar`, que recalcula y lo declara
+
+Un alias mal puesto no puede ser permanente — se declara con una linea y con una
+linea tiene que poder deshacerse—, pero quitarlo tampoco puede ser silencioso: el
+alias abre la puerta de la poblacion, y la poblacion es el **denominador de
+Chao1**, que es la cifra que decide cuando parar.
+
+Quitarlo mide el antes y el despues y lo deja escrito:
+
+    ✓ ALIAS RETIRADO — 'Monterrey'
+      contactos que salieron: 1
+      poblacion: 2 -> 1
+      Chao1 estimado: 2.5 -> 1.0 · veredicto prematuro -> prematuro
+
+La ficha lo declara en «Alias de ubicacion retirados», y **sobrevive al guardado**:
+si no se restaurara, la ficha de la vuelta siguiente dejaria de declarar un cambio
+que si ocurrio. Quitar un alias que no existe se rechaza, porque no es inocuo:
+quien lo pide cree que la poblacion cambio, y no cambio.
+
 ## 0.9.7 — 2026-09-25
 
 Los **cinco defectos y la compuerta rodeada** que dejo la corrida de Coficab

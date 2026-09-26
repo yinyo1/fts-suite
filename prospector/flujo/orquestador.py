@@ -33,7 +33,12 @@ from .confianza import (Contacto, N1_CONFIRMADO, N2_PARCIAL, N3_PUESTO,
                         CERCANIA_SIN_ESTIMAR, exigir_cercania_coherente)
 from .estado import (Corrida, RESPONDIO, OLAS, NIVEL_PLANTA,
                      NIVEL_CORPORATIVO, LLAVE_CORPORATIVO, ORIGEN_MANUAL,
-                     ORIGEN_RADAR, MARCA_ANGULO, MARCA_PADRON)
+                     ORIGEN_RADAR, MARCA_ANGULO, MARCA_PADRON,
+                     MARCA_HISTORIA, MARCA_ALIAS)
+from .ubicacion_de_proyectos import (declarar as declarar_ubicacion,
+                                     carta_de_presentacion, de_la_cuenta,
+                                     DeclaracionInvalida, RUTA as RUTA_UBICACION,
+                                     HISTORIA_EN_OTRA_PLANTA)
 from .paquete import armar as armar_paquete, escribir as escribir_paquete
 from .importacion_odoo import escribir as escribir_importacion
 from .compuertas import TOPE_SIN_HUMANO
@@ -230,6 +235,7 @@ def _armar(d: dict, ruta: str) -> Corrida:
     # y si no se restaura, la exclusion de la vuelta siguiente vuelve a
     # tirar a la gente que el alias rescato (#306, D4).
     c.alias_de_ubicacion = list(d.get("alias_de_ubicacion", []) or [])
+    c.alias_quitados = list(d.get("alias_quitados", []) or [])
     pres = d.get("presupuesto", {})
     c.presupuesto.tope_por_cuenta = pres.get("tope", 60)
     # Los tramos se restauran DESPUES del tope, y tal cual: son el historial de
@@ -448,6 +454,16 @@ def texto_entrega_pendiente(c: Corrida, archivo: str) -> str:
 
 
 def _imprimir_paso(c: Corrida) -> None:
+    # La HISTORIA DECLARADA va primero, y va SIEMPRE, porque condiciona la carta
+    # de presentacion de toda la corrida. Que quede en los avisos del estado no
+    # alcanza: la leccion de #306 es que un dato que la salida no dice en voz
+    # alta es un dato que el operador no tiene. La ficha de Pesqueria (#310)
+    # afirmo trabajo previo en una planta donde FTS nunca puso un pie.
+    h = c.historia()
+    if h["veredicto"] == HISTORIA_EN_OTRA_PLANTA:
+        print(f"\n  ⚠  {h['por_que']}")
+        print(f"     Carta de presentacion: "
+              f"{carta_de_presentacion(c.empresa, c.ciudad)}")
     p = c.siguiente_paso()
     print(f"\n  {p['titulo']}")
     print(f"  PASO SIGUIENTE: {p['modulo']} — {p['que_hace']}")
@@ -474,7 +490,7 @@ def main(argv=None) -> int:
                    "buscar", "registrar", "bloque", "cerrar", "vuelta",
                    "challenge", "ficha", "estado", "tope", "fusionar",
                    "conectores", "entregar", "sembrar", "tramo", "paquete",
-                   "importar", "alias"):
+                   "importar", "alias", "donde-se-hizo"):
         s = sub.add_parser(nombre)
         if nombre == "estado":
             # `estado` sin --empresa resume TODAS las corridas de la sesion.
@@ -484,7 +500,8 @@ def main(argv=None) -> int:
         # `--ciudad` identifica la PLANTA en todos los comandos de corrida. En
         # `prospecta`, `iniciar` y `padron` ademas alimenta la resolucion del
         # padron, y ahi se declara aparte con su ayuda propia.
-        if nombre not in ("listo", "conectores", "prospecta", "iniciar", "padron"):
+        if nombre not in ("listo", "conectores", "prospecta", "iniciar", "padron",
+                          "donde-se-hizo"):
             s.add_argument("--ciudad", default=None,
                            help="la planta, cuando la empresa tiene varias. Sin "
                                 "esto, si hay mas de una, el comando se niega en "
@@ -550,11 +567,31 @@ def main(argv=None) -> int:
         if nombre == "cerrar":
             s.add_argument("--estado", default=RESPONDIO)
             s.add_argument("--razon", default="")
+        if nombre == "donde-se-hizo":
+            s.add_argument("--referencia", required=True,
+                           help="la orden o la cotizacion: 'SO10977'")
+            s.add_argument("--planta", required=True,
+                           help="la PLANTA donde se hizo. Es el dato que Odoo no "
+                                "tiene: sale.order trae el cliente y no el sitio")
+            s.add_argument("--que", default="",
+                           help="que fue, en corto: 'chiller Trane 30 TR'")
+            s.add_argument("--fecha", default="", help="'2025-11' basta")
+            s.add_argument("--canal", default="",
+                           help="por quien entro, si entro por alguien")
         if nombre == "alias":
-            s.add_argument("--es", required=True,
+            s.add_argument("--es", default="",
                            help="el otro nombre con el que esta cuenta llama a "
                                 "esta planta. Ejemplo: --es 'Monterrey' cuando la "
                                 "planta de Pesqueria se anuncia asi")
+            s.add_argument("--quitar", default="",
+                           help="retira un alias ya declarado. Recalcula "
+                                "poblacion y Chao1, y la ficha declara el cambio: "
+                                "un alias mal puesto no es permanente, y quitarlo "
+                                "tampoco es silencioso")
+            s.add_argument("--preguntar", action="store_true",
+                           help="NO declara nada: lista las ubicaciones que "
+                                "podrian ser esta planta, con la evidencia que lo "
+                                "motiva, para que el operador decida")
         if nombre == "entregar":
             s.add_argument("--destino", default=None,
                            choices=list(Corrida.DESTINOS),
@@ -774,6 +811,12 @@ def main(argv=None) -> int:
                     else:
                         c.angulo_resuelto = "manual"
                 c.registrar_veredicto_del_padron(ar.banderas)
+                # La HISTORIA DECLARADA se lee en la Fase 0, antes de cualquier
+                # consulta, porque condiciona la carta de presentacion de toda la
+                # corrida. `sale.order` no registra la planta, asi que sin esto la
+                # corrida deduce lo que parece obvio y es falso: que FTS ya
+                # trabajo en LA PLANTA que esta prospectando (#310).
+                c.registrar_historia_declarada()
                 # Un conector autorizado como hueco no se queda en una nota: el
                 # modulo que depende de el sale `sin_acceso` con razon escrita,
                 # y eso viaja hasta el checklist de la ficha. Declarar el hueco
@@ -852,6 +895,34 @@ def main(argv=None) -> int:
             print()
             return 0
 
+        # `donde-se-hizo` NO necesita una corrida abierta, y es a proposito: el
+        # registro de ubicacion de proyectos es de la CUENTA, no de una corrida, y
+        # lo que tiene que evitar es que la corrida que TODAVIA NO EXISTE vuelva a
+        # especular con la planta de un proyecto (#310).
+        if a.cmd == "donde-se-hizo":
+            try:
+                r = declarar_ubicacion(a.empresa, a.referencia, a.planta,
+                                       que=a.que, fecha=a.fecha, canal=a.canal)
+            except DeclaracionInvalida as e:
+                raise SystemExit(f"\n  ⛔ {e}\n")
+            print(f"\n  ✓ DECLARADO — {r['empresa']} · {r['referencia']} se hizo "
+                  f"en {r['planta']}")
+            if r.get("reemplazo_a"):
+                print(f"     REEMPLAZO la declaracion anterior, que decia "
+                      f"{r['reemplazo_a']}: dos plantas para la misma orden son "
+                      "dos afirmaciones que se contradicen.")
+            print(f"     fuente: {r['fuente']} — Odoo no registra la planta de "
+                  "una orden, asi que esto no se deriva, se declara.")
+            print(f"     lo que ahora sabe la cuenta:")
+            for x in de_la_cuenta(a.empresa):
+                print(f"       · {x['referencia']} -> {x['planta']}"
+                      + (f" ({x['que']})" if x.get("que") else ""))
+            print(f"\n     Vive en el REPO, no en la sesion: "
+                  f"{os.path.relpath(RUTA_UBICACION, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))}")
+            print("     COMMITEALO. Si se queda solo en este contenedor, la "
+                  "corrida de la semana que entra vuelve a especular.\n")
+            return 0
+
         c = _cargar(a.empresa, getattr(a, "ciudad", None))
 
         if a.cmd in ("siguiente", "estado"):
@@ -865,6 +936,48 @@ def main(argv=None) -> int:
             return 0
 
         if a.cmd == "alias":
+            # --preguntar NO declara nada. DECISION 2 de #310: el alias se queda
+            # como criterio del operador, y el agente pregunta CON LA EVIDENCIA
+            # que lo motiva en vez de aplicarlo solo.
+            if a.preguntar:
+                cand = c.alias_por_preguntar()
+                if not cand:
+                    print("\n  Nada que preguntar: ninguna ubicacion observada "
+                          "queda fuera de la poblacion por nombre de planta.\n")
+                    return 0
+                print(f"\n  ALIAS POR PREGUNTAR — {len(cand)}. Esto NO declara "
+                      "nada: lo decide el operador.\n")
+                for q in cand:
+                    print(f"     {q['pregunta']}")
+                    print(f"       si dice que si:  {q['si_dice_si']}")
+                    print(f"       si dice que no:  no hagas nada — "
+                          f"{q['contactos_afectados']} contacto(s) se quedan "
+                          "fuera, que es lo correcto, y salen en la seccion "
+                          "'No son de esta planta' de la ficha.\n")
+                return 3
+            if a.quitar:
+                cam = c.quitar_alias_de_ubicacion(a.quitar)
+                c.guardar(_ruta_de(c, a))
+                print(f"\n  ✓ ALIAS RETIRADO — '{cam['alias']}'")
+                print(f"     contactos que salieron: {len(cam['salieron'])}")
+                print(f"     poblacion: {cam['poblacion_antes']} -> "
+                      f"{cam['poblacion_despues']}")
+                print(f"     Chao1 estimado: {cam['chao1_antes']} -> "
+                      f"{cam['chao1_despues']} · veredicto "
+                      f"{cam['veredicto_antes']} -> {cam['veredicto_despues']}")
+                print("     El cambio queda DECLARADO en la ficha: el alias abre "
+                      "la puerta de la poblacion, y la poblacion es el "
+                      "denominador del agotado.\n")
+                return 0
+            if not a.es:
+                raise SystemExit(
+                    "Falta --es. Tres formas de usar `alias`:\n"
+                    "  --preguntar        lista lo que PODRIA ser esta planta, "
+                    "con su evidencia, y no declara nada\n"
+                    "  --es '<nombre>'    declara que esta planta tambien se "
+                    "llama asi\n"
+                    "  --quitar '<nombre>' retira uno ya declarado, recalculando "
+                    "poblacion y Chao1")
             # DEFECTO 4 de #306. "COFICAB Monterrey" es la planta de Pesqueria: la
             # cuenta la anuncia con el nombre del area metropolitana, y sin esto la
             # exclusion por planta tiraba a las dos puertas mas probables de la
@@ -1257,6 +1370,12 @@ def main(argv=None) -> int:
             if not c.challenge_corrido:
                 raise CompuertaCerrada(
                     "No se emite ficha sin challenge. Corre: challenge")
+            # Se vuelve a leer la historia declarada AQUI, no solo al abrir. Dos
+            # razones: una corrida abierta antes de que el dato existiera no la
+            # tiene en sus avisos, y el operador puede declarar la planta de un
+            # proyecto DESPUES de abrir la corrida -- que es justo lo que paso con
+            # Pesqueria (#310)--. Re-emitir tiene que bastar.
+            c.registrar_historia_declarada()
             # Los DOS modos escriben un .html autocontenido. Hasta la
             # v0.9.0 el limpio salia como fragmento -- sin doctype ni charset--
             # y el de procedencia solo como JSON. La primera corrida real de un

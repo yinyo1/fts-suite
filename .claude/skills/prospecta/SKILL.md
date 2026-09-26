@@ -110,6 +110,54 @@ Tres respuestas posibles, y las tres son correctas:
 | **Una pregunta de una línea** (*«tiene 3 plantas, ¿cuál?»*, salida 3) | Preguntársela al usuario tal cual y repetir con `--ciudad`. **No elijas una tú.** |
 | El plan con una **bandera** del padrón | Seguirlo igual. La bandera es aviso, no freno. |
 
+### La planta de un proyecto previo NO SE DEDUCE. Se lee del registro.
+
+> **Odoo no tiene este dato, y ahí se perdió una ficha.** `sale.order` trae el
+> **cliente** y **no trae la planta**. Así que la corrida de Coficab Pesquería
+> encontró tres proyectos de agua helada de esa cuenta, no vio ninguna planta
+> escrita, y la ficha concluyó lo que parecía obvio: que FTS ya había trabajado
+> **en esa planta**. Los tres fueron en **Ciudad Juárez**. Pesquería es cuenta
+> **fría**: sin proyecto propio y sin contacto propio.
+>
+> Y la diferencia no es de redacción:
+>
+> | | |
+> |---|---|
+> | «ya trabajamos en su planta» | **falso.** Se cae en la primera llamada |
+> | «ya le hicimos tres proyectos de agua helada a su grupo en Juárez» | **cierto**, y sigue siendo fuerte |
+>
+> La segunda abre la puerta igual de bien y **no se derrumba cuando el de
+> Pesquería pregunta cuál proyecto**. Es el único error de la ficha que no cuesta
+> una consulta: cuesta la cuenta.
+
+La Fase 0 lee el registro declarado y te lo dice antes de la primera consulta. Si
+la cuenta es fría en esta planta, `prospecta` y `siguiente` imprimen la carta de
+presentación que **sí se sostiene**, y la ficha la declara con la evidencia
+(referencia, planta, qué fue, canal). El checklist además **rechaza un gancho**
+que afirme trabajo previo aquí cuando el registro dice que fue en otra planta.
+
+**Tres reglas, y ninguna es negociable:**
+
+1. **No infieras la planta de un proyecto.** Ni de la dirección de facturación
+   —es la del corporativo, o la del intermediario—, ni de que el contacto del
+   proyecto aparezca en una búsqueda de esta ciudad.
+2. **La contraparte de un proyecto de otra planta no es puerta a ésta.** No es mal
+   contacto: es excelente para *su* planta, y es semilla de la corrida
+   corporativa. Simplemente no abre **esta** puerta.
+3. **Si el operador te dice dónde se hizo algo, GRÁBALO.** Una línea, y vive en el
+   repo —no en la sesión— para que la corrida del mes que entra no vuelva a
+   especular:
+
+```bash
+./prospector donde-se-hizo --empresa "Coficab" --referencia "SO10977" \
+  --planta "Ciudad Juarez" --que "chiller" --fecha "2025-11" --canal "Quimitec"
+```
+
+**Commítealo.** Si se queda solo en el contenedor, muere con la sesión y el
+próximo agente vuelve a adivinar. El registro guarda empresa, planta, referencia,
+fecha, qué fue y canal: **ni una persona y ni un importe**, y por eso puede vivir
+en un repo público.
+
 ### Una corrida = UNA planta
 
 **La herramienta corre una planta a la vez.** Si la empresa tiene varias, es
@@ -181,21 +229,41 @@ la ficha lo lista aparte, con el comando para recogerlos. En #300 la gente
 regional salió en 2 a 4 de las cuatro corridas y **cada Chao1 la sumó a su
 población**: los cuatro estimaron sobre una población que no existe.
 
-> **Y cuando la cuenta le llama a la planta de otra manera, dilo.** `COFICAB
+> **Y cuando la cuenta le llama a la planta de otra manera, PREGUNTA.** `COFICAB
 > Monterrey` **es** la planta de Pesquería: la cuenta la anuncia con el nombre del
 > área metropolitana. Sin declararlo, la exclusión de arriba tira a esa gente como
 > «de otra planta» —en Pesquería tiró a las dos puertas más probables, y además
 > el modo limpio las escondía por estar en revisión: **dos mecanismos, no uno**—.
 >
+> **El alias es criterio del operador, no tuyo** (decisión 2 de #310). Tú armas la
+> pregunta con la evidencia que la motiva, y él decide en una línea:
+>
 > ```bash
-> ./prospector alias --empresa "<empresa>" --ciudad "<planta>" --es "<el otro nombre>"
+> ./prospector alias --empresa "<empresa>" --ciudad "<planta>" --preguntar
+> #   -> «Vi 'COFICAB Monterrey' en 3 fuentes y 'Pesquería' en 2. Hoy cuenta como
+> #      OTRA planta y deja 1 contacto fuera de la población. ¿Son la misma?»
+> #   sale con código 3: necesita su decisión, no es falla
+>
+> ./prospector alias --empresa "<empresa>" --ciudad "<planta>" --es "Monterrey"
 > ```
 >
-> **No lo inventes tú:** es criterio del operador. Si ves plantas observadas que
-> podrían ser la misma, **pregúntale** y declara lo que te diga. Queda escrito en
-> la corrida y **sale impreso en la ficha**, porque mover la frontera de una
-> planta a mano y no decirlo deja una ficha que parece derivada cuando lleva un
-> juicio dentro.
+> `--preguntar` **no declara nada**. No apliques un alias porque te parezca
+> obvio: que dos nombres sean el mismo lugar es geografía local, y una `Monterrey`
+> mal puesta mete gente de Apodaca en el Chao1 de Pesquería. Las corporativas
+> («COFICAB Group») no se proponen nunca: ésas son el grupo, no la planta con otro
+> nombre, y confundirlos es el doble conteo de #300.
+>
+> **Si resulta que estaba mal, se quita** (decisión 3 de #310), y el retiro
+> recalcula población y Chao1 y **la ficha declara el cambio**:
+>
+> ```bash
+> ./prospector alias --empresa "<empresa>" --ciudad "<planta>" --quitar "Monterrey"
+> #   -> «1 contacto salió · población 2 -> 1 · Chao1 2.5 -> 1.0»
+> ```
+>
+> Lo declarado y lo retirado **salen impresos en la ficha**, porque mover la
+> frontera de una planta a mano y no decirlo deja una ficha que parece derivada
+> cuando lleva un juicio dentro.
 
 ### Sembrar entre corridas
 
