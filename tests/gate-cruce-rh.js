@@ -594,6 +594,73 @@ seccion('Contrato con nom/despacho');
   check('y salen las personas', comoDelEndpoint.filas.length === 1);
 }
 
+/* ═══ LA COMPARACIÓN ES SIMÉTRICA ════════════════════════════════════════
+   La app permite declarar el mismo concepto VARIAS veces —medido: el `push` de
+   app.js:738 no mira el tipo, y `multi` gobierna otra cosa— así que comparar
+   declaración por declaración contra el total capturado produce un hallazgo falso
+   por cada declaración de más. Medido en S39: 13 de 13 conceptos comparables lo
+   hacían, y salían como REVISION, que ensucia sin frenar — el modo de falla que
+   envejece sin que nadie lo reporte.
+   Ahora se suman los DOS lados: declaraciones de la misma clave contra columnas
+   hermanas. Las cuatro formas salen por el mismo camino. */
+{
+  seccion('la comparación suma los dos lados');
+  const SEM39 = { id: 'S39/2026', desde: '2026-09-18', hasta: '2026-09-24', dias: 5 };
+  const desp = decls => Cruce.parseDespacho(Des.texto(
+    { semana: SEM39, personas: [persona({ id: 98, codigo: '037',
+      nombre: 'Ricardo Alán Hernández González', declaraciones: decls })], disputas: [] },
+    { version: 4, actor: 'magaly.perez', fecha: '2026-09-26 12:00' }));
+  const nomina = ded => {
+    const e = emp('037', 'HERNANDEZ GONZALEZ RICARDO ALAN', {}, 0);
+    e.deducciones = ded; return e;
+  };
+  const DOS = [{ tipo: 'descuento_prestamo', valores: { monto: 1000, pago: 50 } },
+               { tipo: 'descuento_prestamo', valores: { monto: 5254.17, pago: 2 } }];
+  const UNA = [{ tipo: 'descuento_prestamo', valores: { monto: 6254.17, pago: 1 } }];
+  const sucios = r => r.hallazgos.filter(h => /MONTO|DESCUENTO|NO_CAPTURADA|SIN_INSTRUCCION/.test(h.codigo));
+
+  // El caso REAL de S39: dos declaraciones, dos columnas, mismos totales.
+  check('2 declaraciones ↔ 2 columnas: cero hallazgos',
+    sucios(Cruce.cruzar(desp(DOS), [nomina({ PRESTAMO_EMPRESA: 1000, PTMO_EMPRESA2: 5254.17 })], 'S39/2026')).length === 0,
+    JSON.stringify(sucios(Cruce.cruzar(desp(DOS), [nomina({ PRESTAMO_EMPRESA: 1000, PTMO_EMPRESA2: 5254.17 })], 'S39/2026')).map(h => h.codigo)));
+  check('1 declaración ↔ 2 columnas: cero hallazgos',
+    sucios(Cruce.cruzar(desp(UNA), [nomina({ PRESTAMO_EMPRESA: 1000, PTMO_EMPRESA2: 5254.17 })], 'S39/2026')).length === 0);
+  // Decisión de Esteban (#313): lo que se verifica es cuánto se le descuenta a la
+  // persona; en cuántos renglones lo escribió Ulises es un detalle de su captura.
+  // ⚠️ CON FECHA DE CADUCIDAD: el día que llevemos saldos, el desglose SÍ importa
+  // —los dos renglones de Ricardo son pagos de préstamos distintos, el 44 de uno y
+  // el 1 de otro— y hay que volver aquí.
+  check('2 declaraciones ↔ 1 sola columna: también cuadra',
+    sucios(Cruce.cruzar(desp(DOS), [nomina({ PRESTAMO_EMPRESA: 6254.17 })], 'S39/2026')).length === 0);
+  // Y el control no se aflojó.
+  const falta = Cruce.cruzar(desp(DOS), [nomina({ PRESTAMO_EMPRESA: 1000, PTMO_EMPRESA2: 4254.17 })], 'S39/2026');
+  check('si de verdad falta dinero, se sigue reclamando', sucios(falta).length === 1,
+    JSON.stringify(sucios(falta).map(h => h.codigo)));
+
+  // ── Y el mensaje tiene que ser de un DESCUENTO, no de un bono ──────────
+  // En S39 salió «la nómina capturó más de lo que pidió RH y el archivo no dice si
+  // el bono va libre de impuestos · ×6.2542» sobre un descuento de préstamo: la
+  // lógica del gross-up aplicada a algo que se RESTA, con un factor que no
+  // significa nada.
+  const h1 = sucios(falta)[0] || {};
+  check('el hallazgo de un descuento NO habla de bonos ni de ISR',
+    !/bono|libre de impuestos|ISR/i.test(h1.que + ' ' + h1.accion), h1.que);
+  check('ni trae un factor multiplicador, que en un descuento no quiere decir nada',
+    !/×/.test(h1.dato || ''), h1.dato);
+  check('dice descontar y da la diferencia', /descontar/.test(h1.que + ' ' + h1.dato) && /diferencia/.test(h1.dato || ''), h1.dato);
+
+  // ── Las dos verdades atadas ────────────────────────────────────────────
+  // `deduccion` vive en el MAPA y `zona` en el catálogo. Son el mismo hecho escrito
+  // dos veces, y sin esto podrían separarse sin que nadie se entere (§20 #4).
+  const cat3 = JSON.parse(fs.readFileSync(path.join(RAIZ, 'shared/operaciones/contpaqi_conceptos.json'), 'utf8'));
+  const divergen = Cruce.MAPA.filter(m => {
+    const c = cat3.conceptos[m.clave];
+    return !c || (c.zona === 'deducciones') !== (m.deduccion === true);
+  });
+  check('la marca `deduccion` del MAPA coincide con la `zona` del catálogo en las ' + Cruce.MAPA.length + ' filas',
+    divergen.length === 0, JSON.stringify(divergen.map(m => m.etiqueta)));
+}
+
 /* ═══ UN PRÉSTAMO PARTIDO EN DOS COLUMNAS ════════════════════════════════
    S39 estrena el caso: Ricardo Alán (98) con dos préstamos vivos a la vez.
    CONTPAQi le captura uno en «Préstamo empresa» y el otro en «Ptmo. empresa2».

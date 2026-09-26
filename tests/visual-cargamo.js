@@ -528,6 +528,54 @@ function archivoRH() {
       rb.despues.slice(0, 60));
     check('trae botón de copiar', rb.hayCopiar === true, '');
 
+    // ── el stepper DESPUÉS de una carga exitosa ───────────────────────────
+    // En S39 quedó el paso 2 en ROJO diciendo "no se puede enviar" al lado del paso
+    // 4 en verde diciendo "cargada en Odoo". Leía `wbtn.disabled`, que tras una
+    // carga buena está deshabilitado justo PORQUE ya se usó. Un paso en rojo junto
+    // a una carga exitosa es la señal que hace dudar de lo que sí funcionó.
+    const post = await page.evaluate(() => {
+      VALIDADA = true; ESCRITO = true; LAST_REPORT = {};
+      document.getElementById('wbtn').disabled = true;
+      pintarPasos();
+      const li = [...document.querySelectorAll('#pasos .paso')];
+      return { clases: li.map(x => x.className), notas: li.map(x => x.querySelector('i').textContent) };
+    });
+    check('tras cargar, el paso 2 NO se queda en rojo', !/\bmal\b/.test(post.clases[2]), post.clases[2]);
+    check('y dice "validada", no "no se puede enviar"', /validada/.test(post.notas[2]), post.notas[2]);
+    check('el paso 4 queda en verde', /\bok\b/.test(post.clases[4]), post.clases[4]);
+    check('el 2 y el 4 no se contradicen',
+      !(/\bmal\b/.test(post.clases[2]) && /\bok\b/.test(post.clases[4])), post.clases.join(' | '));
+
+    // ── saltarse el paso 3 deja HUELLA ────────────────────────────────────
+    // No es que se olvide: la pantalla dice "opcional" y nada pregunta. Saltarlo es
+    // legítimo; que no quede rastro de haberlo saltado, no — dentro de tres semanas
+    // nadie sabría qué semanas se cruzaron contra los .txt del banco.
+    const huella = await page.evaluate(() => {
+      TXT.nom = null; TXT.hon = null; TXT_EST = 'nada'; ESCRITO = true; pintarPasos();
+      const li = document.querySelectorAll('#pasos .paso')[3];
+      const pay = armarPayload('write');
+      return { nota: li.querySelector('i').textContent, clase: li.className,
+               t: pay.transferencias, h: pay.hallazgos_resumen };
+    });
+    check('cargada sin validar, el paso 3 ya NO dice "opcional"',
+      !/opcional/.test(huella.nota), huella.nota);
+    check('dice que NO se validaron las transferencias',
+      /NO se validaron/.test(huella.nota), huella.nota);
+    check('y el reporte se lo lleva al servidor',
+      huella.t && huella.t.validadas === false && huella.t.estado === 'nada',
+      JSON.stringify(huella.t));
+    check('incluido el porqué de que las cuentas no se verifiquen',
+      !!(huella.t && huella.t.cuentas_verificadas === false && /credencial/.test(huella.t.cuentas_no_verificadas_porque || '')), '');
+    // Sin esto no se puede contestar "¿qué hallazgos llevan meses saliendo?": hoy
+    // los hallazgos se pintan y se pierden al recargar.
+    check('y el reporte lleva el inventario de hallazgos',
+      !!(huella.h && typeof huella.h.total === 'number' && huella.h.por_nivel && huella.h.por_codigo),
+      JSON.stringify(huella.h));
+    check('del inventario viajan códigos y conteos, no nombres ni montos',
+      !/\$|[A-Z][a-z]+ [A-Z][a-z]+/.test(JSON.stringify(huella.h || {})), JSON.stringify(huella.h));
+
+    await page.evaluate(() => { ESCRITO = false; VALIDADA = false; LAST_REPORT = null; });
+
     // ── los seis indicadores, a la vista y sin scroll lateral ─────────────
     const kpi = await page.evaluate(() => {
       const c = document.getElementById('kpi');

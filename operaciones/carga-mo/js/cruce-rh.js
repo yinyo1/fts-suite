@@ -54,9 +54,14 @@
     // segunda («Ptmo. empresa2») cuando la persona tiene dos préstamos vivos a la
     // vez; RH declara un solo monto y hay que compararlo contra las dos, o el
     // descuento partido se lee como si faltara dinero.
-    { etiqueta: 'Descuento por préstamo',     clave: 'PRESTAMO_EMPRESA', suma: ['PRESTAMO_EMPRESA', 'PTMO_EMPRESA2'] },
-    { etiqueta: 'Descuento de anticipo',      clave: 'PRESTAMO_EMPRESA', suma: ['PRESTAMO_EMPRESA', 'PTMO_EMPRESA2'] },
-    { etiqueta: 'Compensa contra deuda',      clave: 'PRESTAMO_EMPRESA', suma: ['PRESTAMO_EMPRESA', 'PTMO_EMPRESA2'] },
+    // `deduccion` dice de qué lado del renglón vive el concepto. Va EXPLÍCITO, como
+    // el resto de esta tabla y por la misma razón: deducirlo sería el camino corto y
+    // el que se rompe en silencio. Lo que la mantiene honesta es el gate, que exige
+    // que esta marca coincida con la `zona` del catálogo en las 15 filas — si un día
+    // divergen, la prueba lo dice; sin ese gate serían dos verdades sueltas (§20 #4).
+    { etiqueta: 'Descuento por préstamo',     clave: 'PRESTAMO_EMPRESA', suma: ['PRESTAMO_EMPRESA', 'PTMO_EMPRESA2'], deduccion: true },
+    { etiqueta: 'Descuento de anticipo',      clave: 'PRESTAMO_EMPRESA', suma: ['PRESTAMO_EMPRESA', 'PTMO_EMPRESA2'], deduccion: true },
+    { etiqueta: 'Compensa contra deuda',      clave: 'PRESTAMO_EMPRESA', suma: ['PRESTAMO_EMPRESA', 'PTMO_EMPRESA2'], deduccion: true },
     // Las dos puntas que DAN dinero caen en el mismo concepto de CONTPAQi, y no es
     // coincidencia: Ulises captura los prestamos PRIMERO como anticipo y despues
     // programa el descuento semanal. Su practica, no una traduccion nuestra.
@@ -445,7 +450,7 @@
       }
 
       // 6 · Concepto por concepto, en las dos direcciones.
-      var pedido = {};
+      var pedido = {}, agrup = {}, ordenClaves = [];
       for (j = 0; j < f.conceptos.items.length; j++) {
         var it = f.conceptos.items[j];
         var fila = buscarMapa(it.concepto);
@@ -471,22 +476,55 @@
             accion: 'Revísalo a mano. Si es un concepto que se va a repetir, hay que agregarlo a la tabla del cruce.' });
           continue;
         }
+        // ── La comparación de montos NO se hace aquí ───────────────────────
+        // Se ACUMULA por clave y se compara una sola vez más abajo. La razón está
+        // medida: la app permite declarar el mismo concepto varias veces —el `push`
+        // de app.js:738 no mira el tipo, y `multi` gobierna otra cosa (la forma del
+        // valor dentro de UNA declaración, no cuántas hay)—. Comparando renglón por
+        // renglón contra el TOTAL capturado, cada declaración de más produce un
+        // hallazgo falso: medido, 13 de 13 conceptos comparables lo hacían.
+        // Caso real S39: Ricardo con dos declaraciones de préstamo, $1,000 +
+        // $5,254.17, contra dos columnas que suman exactamente eso — y dos
+        // hallazgos diciendo que no cuadraba.
         pedido[fila.clave] = true;
-        var val = valorDe(e, fila.suma || fila.clave);
-        if (Math.abs(val) < 0.005) {
-          hallazgos.push({ nivel: INTEGRIDAD, codigo: 'INSTRUCCION_NO_CAPTURADA',
-            que: 'RH pidió un movimiento que la nómina no refleja',
-            dato: quien + ' · ' + it.texto,
-            accion: 'Captúralo en CONTPAQi o confirma con RH que ya no aplica.' });
-        } else if (it.monto !== null && (Math.abs(Math.abs(val) - it.monto) > 0.005 || it.libre === true)) {
-          var h = compararMonto(quien, it, Math.abs(val));
-          if (h) hallazgos.push(h);
-        }
+        var g = agrup[fila.clave];
+        if (!g) { g = agrup[fila.clave] = { fila: fila, monto: 0, sinMonto: false, libres: {}, textos: [] }; ordenClaves.push(fila.clave); }
+        if (it.monto === null) g.sinMonto = true; else g.monto += it.monto;
+        g.libres[String(it.libre)] = true;
+        g.textos.push(it.texto);
+
         if (it.sin_cantidad) {
           hallazgos.push({ nivel: REVISION, codigo: 'RH_SIN_CANTIDAD',
             que: 'RH mandó el concepto sin decir cuánto',
             dato: quien + ' · ' + it.texto,
             accion: 'Pide a RH la cantidad. No la inventes.' });
+        }
+      }
+
+      // 6b · Ahora sí: UNA comparación por clave, sumando los dos lados.
+      //      Izquierda: todo lo que RH declaró de esa clave.
+      //      Derecha:   todas las columnas hermanas de CONTPAQi.
+      //      Así 1↔1, 1↔2, 2↔2 y 2↔1 salen por el mismo camino, sin casos especiales.
+      for (j = 0; j < ordenClaves.length; j++) {
+        var gk = agrup[ordenClaves[j]];
+        var texto = gk.textos.join(' · ');
+        var valG = valorDe(e, gk.fila.suma || gk.fila.clave);
+        if (Math.abs(valG) < 0.005) {
+          hallazgos.push({ nivel: INTEGRIDAD, codigo: 'INSTRUCCION_NO_CAPTURADA',
+            que: 'RH pidió un movimiento que la nómina no refleja',
+            dato: quien + ' · ' + texto,
+            accion: 'Captúralo en CONTPAQi o confirma con RH que ya no aplica.' });
+          continue;
+        }
+        if (gk.sinMonto) continue;   // sin cantidad declarada no hay igualdad que comprobar
+        // Si dos declaraciones de la misma clave no coinciden en si van libres de
+        // impuestos, no se adivina: se trata como no declarado.
+        var ls = Object.keys(gk.libres);
+        var libre = ls.length === 1 ? (ls[0] === 'true' ? true : (ls[0] === 'false' ? false : null)) : null;
+        var it2 = { monto: gk.monto, libre: libre, texto: texto };
+        if (Math.abs(Math.abs(valG) - gk.monto) > 0.005 || libre === true) {
+          var h = compararMonto(quien, it2, Math.abs(valG), gk.fila.deduccion === true);
+          if (h) hallazgos.push(h);
         }
       }
 
@@ -590,8 +628,27 @@
   // ── Comparar lo que RH pidió contra lo que se capturó ─────────────────────
   // Devuelve SIEMPRE un hallazgo: la diferencia existe y se dice. Lo que cambia es
   // el nivel y la explicación, porque no toda diferencia es un error.
-  function compararMonto(quien, it, capturado) {
+  function compararMonto(quien, it, capturado, deduccion) {
     var factor = it.monto > 0 ? capturado / it.monto : 0;
+
+    // ── Un DESCUENTO no se gross-upea ──────────────────────────────────────
+    // Todo lo de abajo razona sobre un bono cuyo ISR absorbe la empresa: «se
+    // capturó más porque la diferencia es el impuesto». Aplicado a algo que se
+    // RESTA no significa nada, y el factor tampoco. En S39 salió «la nómina
+    // capturó más de lo que pidió RH y el archivo no dice si el bono va libre de
+    // impuestos · ×6.2542» sobre un descuento de préstamo: un mensaje que habla
+    // de otro concepto y un número que no quiere decir nada.
+    // Para una deducción sólo hay una pregunta honesta: ¿el monto es el mismo?
+    if (deduccion === true) {
+      if (Math.abs(capturado - it.monto) <= 0.005) return null;
+      return { nivel: REVISION, codigo: 'DESCUENTO_DISTINTO',
+        que: 'El descuento capturado no es el que pidió RH',
+        dato: quien + ' · RH pidió descontar $' + it.monto.toFixed(2) +
+              ' y la nómina descuenta $' + capturado.toFixed(2) +
+              ' · diferencia $' + (capturado - it.monto).toFixed(2),
+        accion: 'Corrige el monto en CONTPAQi, o confirma con RH si el descuento cambió. ' +
+                'Si el concepto se capturó partido en dos columnas, ya van sumadas.' };
+    }
 
     // Bono libre: la diferencia es el ISR que absorbe la empresa. Es correcto.
     if (it.libre === true) {

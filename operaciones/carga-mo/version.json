@@ -1,10 +1,16 @@
 {
-  "version": "V1.06",
-  "fecha": "2026-09-25",
+  "version": "V1.07",
+  "fecha": "2026-09-26",
   "modulo": "operaciones/carga-mo",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "ambito": "El CONTADOR es SOLO de este modulo y arranca en V1.00 aunque el modulo lleve meses en produccion: antes se versionaba con una cadena de build (la ultima fue 20260904-cmo-cruce-rh) y esa numeracion no se puede continuar. rh/nomina-incidencias, finanzas y comercial/machote usan el MISMO esquema con contadores PROPIOS — que aqui diga V1.00 y alla V1.16 es lo correcto, no un desfase.",
   "historial": [
+    {
+      "version": "V1.07",
+      "fecha": "2026-09-26",
+      "titulo": "Los tres defectos que dejo ver la carga de S39: el paso 2 pegado, la comparacion asimetrica y el mensaje de otro concepto (#313)",
+      "nota": "EL PASO 2 SE QUEDABA EN ROJO DESPUES DE CARGAR. Leia `wbtn.disabled` como si significara 'no se pudo validar', cuando tras una carga buena el boton esta deshabilitado justo PORQUE ya se uso. En S39 quedo el paso 2 en rojo diciendo 'no se puede enviar' al lado del paso 4 en verde diciendo 'cargada en Odoo'. Un paso en rojo junto a una carga exitosa es la senal que hace dudar de lo que si funciono. Ahora se lee de VALIDADA, el veredicto real del servidor, no el estado de un control de pantalla. LA COMPARACION SUMA LOS DOS LADOS. La app permite declarar el mismo concepto varias veces —medido: el push de app.js:738 no mira el tipo, y `multi` gobierna otra cosa, la forma del valor DENTRO de una declaracion— asi que comparar declaracion por declaracion contra el total capturado producia un hallazgo falso por cada declaracion de mas: 13 de 13 conceptos comparables. Caso real S39: Ricardo con dos declaraciones de prestamo, 1,000 + 5,254.17, contra dos columnas que suman exactamente eso, y dos hallazgos diciendo que no cuadraba. Ahora se suman los dos lados y las cuatro formas (1-1, 1-2, 2-2, 2-1) salen por el mismo camino. UN DESCUENTO YA NO ENTRA POR LA RAMA DE LOS BONOS. El mensaje aplicaba la logica del gross-up —'se capturo mas porque la diferencia es el ISR'— a algo que se RESTA, con un factor que no significa nada. Medido: 3 de las 15 filas del MAPA apuntan a una deduccion, las tres del prestamo. Ahora el MAPA lo declara explicito y un gate exige que esa marca coincida con la `zona` del catalogo en las 15 filas, para que las dos verdades no se separen en silencio. SALTARSE EL PASO 3 DEJA HUELLA. El paso es opcional a proposito, pero saltarlo no dejaba rastro: dentro de tres semanas nadie sabria que semanas se cruzaron contra los .txt del banco. Ahora el stepper deja de decir 'opcional' una vez cargada y dice que NO se validaron, el confirm lo avisa sin frenar, y el reporte se lleva `transferencias` al servidor. Y de paso viaja `hallazgos_resumen` (solo codigos y conteos, ni nombres ni montos): sin el no se puede contestar que hallazgos llevan meses saliendo sin que nadie los reporte, porque hoy se pintan y se pierden al recargar."
+    },
     {
       "version": "V1.06",
       "fecha": "2026-09-25",
