@@ -9,12 +9,12 @@
      Vx.yy. Se bumpea junto con version.json y con el ?v= de cada script, y el gate
      exige que los tres digan lo mismo: un badge que anuncia una version mientras
      el navegador corre el codigo viejo miente en la peor direccion. -->
-<script>(function(){ window.CMO_VER = 'V1.06'; })();</script>
+<script>(function(){ window.CMO_VER = 'V1.07'; })();</script>
 <script src="../../finanzas/js/auth-fin.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/cruce-rh.js?v=V1.06"></script>
-<script src="js/resolver.js?v=V1.06"></script>
-<script src="js/txt-dispersion.js?v=V1.06"></script>
+<script src="js/cruce-rh.js?v=V1.07"></script>
+<script src="js/resolver.js?v=V1.07"></script>
+<script src="js/txt-dispersion.js?v=V1.07"></script>
 <style>
   :root{ --azul:#1a4480; --ok:#1a7a3a; --warn:#BA7517; --err:#b3261e; --info:#3b5bdb; --bg:#f4f6f9; }
   *{ box-sizing:border-box; }
@@ -822,6 +822,7 @@ function pintarCruceRH(P){
   // reportaría como si le faltara el código de CONTPAQi.
   var externos = { personas: (CAT && CAT.trio && CAT.trio.personas) || {}, filas: (P && P.trio) || [] };
   var r = CruceRH.cruzar(RH, (P && P.empleados) || [], semSel, externos);
+  ULTIMOS_HALLAZGOS = r.hallazgos || [];
   var nInt = CruceRH.contar(r.hallazgos, 'INTEGRIDAD');
   var nRev = CruceRH.contar(r.hallazgos, 'REVISION');
 
@@ -999,6 +1000,7 @@ function pintarBanner(){
 function invalidarReporte(){
   LAST_REPORT = null;
   ESCRITO = false;
+  VALIDADA = false;
   $('wbtn').disabled = true;
   $('wbtn').className = 'btn btn-w';
   $('msg').innerHTML = '';
@@ -1253,6 +1255,18 @@ function pintarPaso3(){
    arriba como cuál botón manda. Antes «en qué voy» había que deducirlo de cuál de
    los dos botones estaba gris. */
 var ESCRITO = false;
+/* El veredicto del servidor sobre la nómina, guardado aparte. No se deriva del
+   estado de ningún botón: un control deshabilitado puede significar «falló» o
+   «ya se usó», y confundirlos fue el bug del paso 2 en S39. */
+var VALIDADA = false;
+/* Los hallazgos del cruce, guardados para que un RESUMEN de ellos viaje en el
+   reporte. Hoy nunca salían del navegador: se pintaban y se perdían al recargar.
+   Por eso no se puede contestar «qué hallazgos llevan meses saliendo y nadie ha
+   reportado» — no hay historia que consultar, y un control que se equivoca sin
+   frenar es justo el que envejece sin que nadie lo note.
+   Viajan sólo CÓDIGO y CONTEO: ni nombres ni montos, que no hacen falta para
+   contar y sí para exponer a alguien. */
+var ULTIMOS_HALLAZGOS = [];
 
 function pasoEstado(){
   var P = [];
@@ -1266,15 +1280,26 @@ function pasoEstado(){
   if(!PARSED) P.push(['pend', 'sube el Excel']);
   else if(DIM) P.push(['mal', 'el archivo tiene errores']);
   else P.push(['ok', (PARSED.empleados||[]).length + ' empleados leídos']);
-  /* 2 · la nómina contra Odoo y contra RH */
+  /* 2 · la nómina contra Odoo y contra RH
+     🔴 Se leía de `$('wbtn').disabled`, que NO significa «no se pudo validar»: tras
+     una carga exitosa el botón queda deshabilitado justo porque ya se usó. Resultado
+     en S39: el paso 2 en ROJO diciendo «no se puede enviar» al lado del paso 4 en
+     verde diciendo «cargada en Odoo». Un paso en rojo junto a una carga buena es la
+     señal que hace dudar de lo que sí funcionó — el mismo modo de falla del mensaje
+     alarmante producido por algo inocente.
+     Ahora se lee de VALIDADA, que es el veredicto real del servidor y no el estado
+     de un control de la pantalla. */
   if(!PARSED) P.push(['pend', 'falta el archivo']);
   else if(!LAST_REPORT) P.push([$('send').disabled ? 'mal' : 'curso',
                                 $('send').disabled ? $('send').textContent : 'listo para validar']);
-  else P.push([$('wbtn').disabled ? 'mal' : 'ok',
-               $('wbtn').disabled ? 'no se puede enviar' : 'validada']);
-  /* 3 · las transferencias */
+  else P.push([VALIDADA ? 'ok' : 'mal', VALIDADA ? 'validada' : 'no se puede enviar']);
+  /* 3 · las transferencias
+     Si la semana YA se cargó sin haber pasado por aquí, el paso no dice «opcional»
+     —eso describe una decisión que ya no está disponible— dice que NO se validaron.
+     Saltarlo es legítimo; que no quede huella de haberlo saltado, no. */
   if(TXT_EST === 'ok')      P.push(['parcial', 'importes ✓ · cuentas NO verificadas']);
   else if(TXT_EST === 'mal')P.push(['mal', 'los importes no cuadran']);
+  else if(ESCRITO)          P.push(['parcial', 'NO se validaron las transferencias']);
   else                      P.push(['pend', 'opcional · sube los .txt']);
   /* 4 · enviar */
   if(ESCRITO) P.push(['ok', 'cargada en Odoo']);
@@ -1432,6 +1457,30 @@ function armarPayload(modo){
        "no se declaro" es un dato, y su ausencia se leeria como que la pregunta no
        existia (CLAUDE.md seccion 20 #18). */
     ya_timbrada: { declarada: TIMBRADA.si === true, actor: TIMBRADA.actor, cuando: TIMBRADA.cuando },
+    /* ── La huella del paso 3 ────────────────────────────────────────────
+       Viaja SIEMPRE, también cuando no se validó, y por la misma razón que
+       `ya_timbrada`: su ausencia se leería como que el paso no existía (§20 #18).
+       Sin esto, dentro de tres semanas nadie puede saber qué semanas se cruzaron
+       contra los .txt del banco y cuáles no — y «no me acuerdo» se parece
+       demasiado a «sí se hizo». */
+    /* El inventario de lo que la pantalla concluyó. No es el detalle: es lo que
+       permite preguntar dentro de tres meses «¿este hallazgo sale todas las
+       semanas?», que hoy es una pregunta sin fuente. */
+    hallazgos_resumen: (function(){
+      var porNivel = {}, porCodigo = {};
+      ULTIMOS_HALLAZGOS.forEach(function(h){
+        porNivel[h.nivel] = (porNivel[h.nivel] || 0) + 1;
+        porCodigo[h.codigo] = (porCodigo[h.codigo] || 0) + 1;
+      });
+      return { total: ULTIMOS_HALLAZGOS.length, por_nivel: porNivel, por_codigo: porCodigo };
+    })(),
+    transferencias: {
+      validadas: TXT_EST === 'ok',
+      estado: TXT_EST,
+      archivos: { nomina: TXT.nombreNom || null, honorarios: TXT.nombreHon || null },
+      cuentas_verificadas: false,
+      cuentas_no_verificadas_porque: 'el Nivel 2 esta construido y apagado: su endpoint aun no pide credencial (#313)'
+    },
     /* empleados: campos legacy (bruto/vac/asim) + campos v2. El motor viejo ignora los nuevos. */
     empleados: P.empleados.map(function(e){
       return {
@@ -1643,12 +1692,20 @@ function renderReport(j, msg){
      para que el siguiente paso no haya que adivinarlo */
   $('wbtn').disabled = !verde;
   $('wbtn').className = 'btn btn-w' + (verde ? ' listo' : '');
+  VALIDADA = verde;
   pintarPasos();
 }
 
 async function doWrite(){
   if(!PARSED || !LAST_REPORT) return;
-  if(!confirm('¿ESCRIBIR en Odoo la SEM '+PARSED.periodo.periodo+'?\n\nCrea partidas analíticas reales.\nRollback: unlink por llave "MO S'+PARSED.periodo.periodo+'/'+String(PARSED.periodo.inicio).slice(0,4)+' ·".')) return;
+  /* El aviso del paso 3 NO frena: informa. Saltarlo es legítimo —la carga a Odoo y
+     la dispersión en BBVA son dos actos distintos— pero saltarlo sin enterarse no lo
+     es. En S39 el paso se saltó porque decía «opcional» y nada preguntó. */
+  var avisoTxt = (TXT_EST === 'ok') ? ''
+    : '\n\n⚠️ Las transferencias NO se validaron' +
+      (TXT_EST === 'mal' ? ' (los importes no cuadran).' : ' (no se subieron los .txt).') +
+      '\nSe va a registrar así en el reporte. La carga a Odoo no depende de eso.';
+  if(!confirm('¿ESCRIBIR en Odoo la SEM '+PARSED.periodo.periodo+'?\n\nCrea partidas analíticas reales.\nRollback: unlink por llave "MO S'+PARSED.periodo.periodo+'/'+String(PARSED.periodo.inicio).slice(0,4)+' ·".'+avisoTxt)) return;
   if(!FinAuth.getToken()){ showGate(); return; }
   var wb = $('wbtn'); if(wb){ wb.disabled = true; wb.textContent='Escribiendo…'; }
   var msg = $('msg');
