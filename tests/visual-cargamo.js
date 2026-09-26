@@ -528,6 +528,58 @@ function archivoRH() {
       rb.despues.slice(0, 60));
     check('trae botón de copiar', rb.hayCopiar === true, '');
 
+    // ═══ LOS BLOQUES PLEGADOS ═════════════════════════════════════════════
+    // La pantalla sirve a dos públicos: Ulises viene por lo de RH, finanzas por el
+    // reparto y la escritura. Abiertos todos, cada uno pasa por encima de lo del
+    // otro. Plegados, sólo si el resumen dice algo — un bloque cerrado que no
+    // informa obliga a abrirlo, y entonces el plegado nada más estorba.
+    const plg = await page.evaluate(() => {
+      const r = {};
+      ['despacho-panel', 'rh-panel', 'c-msgs', 'c-txt'].forEach(id => {
+        const d = document.getElementById(id.indexOf('c-txt') === 0 ? id : 'plg-' + id)
+               || document.querySelector('#' + id + ' details.plg');
+        if (!d) { r[id] = null; return; }
+        r[id] = { abierto: d.open,
+                  titulo: (d.querySelector('.plg-t') || {}).textContent || '',
+                  resumen: (d.querySelector('.plg-r') || {}).textContent || '',
+                  chip: (d.querySelector('.chip') || {}).textContent || '',
+                  chipClase: (d.querySelector('.chip') || {}).className || '' };
+      });
+      return r;
+    });
+    check('lo que mandó RH ya no cuelga abierto con sus 29 renglones',
+      plg['despacho-panel'] && plg['despacho-panel'].abierto === false,
+      JSON.stringify(plg['despacho-panel']));
+    check('y su renglón cerrado dice cuántas personas y cuántas con instrucción',
+      /\d+ personas · \d+ con instrucción/.test((plg['despacho-panel'] || {}).resumen || ''),
+      (plg['despacho-panel'] || {}).resumen);
+    check('el cruce contra RH trae su cuenta en el resumen',
+      /\d+ que revisar · \d+ que frenan/.test((plg['rh-panel'] || {}).resumen || ''),
+      (plg['rh-panel'] || {}).resumen);
+    // Con hallazgos que FRENAN el bloque se abre solo: lo que pide algo no se
+    // esconde detrás de un clic.
+    check('un bloque con hallazgos que frenan se abre solo',
+      plg['rh-panel'] && plg['rh-panel'].abierto === true, JSON.stringify(plg['rh-panel']));
+    check('y su etiqueta lo dice en color', /chip-mal/.test((plg['rh-panel'] || {}).chipClase || ''),
+      (plg['rh-panel'] || {}).chipClase);
+    check('los avisos del archivo, en cambio, van cerrados',
+      plg['c-msgs'] && plg['c-msgs'].abierto === false, JSON.stringify(plg['c-msgs']));
+
+    // Un bloque cerrado tiene que poder abrirse, y quedarse abierto al repintar:
+    // si un render posterior lo vuelve a cerrar, abrirlo no sirvió de nada.
+    const abrible = await page.evaluate(() => {
+      const d = document.querySelector('#despacho-panel details.plg');
+      d.querySelector('summary').click();
+      const tras = d.open;
+      render();                                   // un repintado cualquiera
+      const d2 = document.querySelector('#despacho-panel details.plg');
+      return { tras: tras, sigue: d2 ? d2.open : null,
+               texto: (d2 ? d2.textContent : '').indexOf('Leonel') >= 0 };
+    });
+    check('un bloque cerrado se abre con un clic', abrible.tras === true, String(abrible.tras));
+    check('y se queda abierto tras un repintado', abrible.sigue === true, String(abrible.sigue));
+    check('con su contenido intacto adentro', abrible.texto === true, '');
+
     // ── el stepper DESPUÉS de una carga exitosa ───────────────────────────
     // En S39 quedó el paso 2 en ROJO diciendo "no se puede enviar" al lado del paso
     // 4 en verde diciendo "cargada en Odoo". Leía `wbtn.disabled`, que tras una
@@ -575,6 +627,12 @@ function archivoRH() {
       !/\$|[A-Z][a-z]+ [A-Z][a-z]+/.test(JSON.stringify(huella.h || {})), JSON.stringify(huella.h));
 
     await page.evaluate(() => { ESCRITO = false; VALIDADA = false; LAST_REPORT = null; });
+
+    // El desborde se mide con la pantalla EN SU PEOR ESTADO: nómina leída, cruce
+    // con hallazgos, paso 3 cargado y rollback pintado. Medirlo vacía no mide nada.
+    const desbCargada = await page.evaluate(() =>
+      Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth));
+    check('con la pantalla llena, no desborda a lo ancho', desbCargada <= 1, desbCargada + 'px');
 
     // ── los seis indicadores, a la vista y sin scroll lateral ─────────────
     const kpi = await page.evaluate(() => {
