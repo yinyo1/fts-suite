@@ -9,12 +9,12 @@
      Vx.yy. Se bumpea junto con version.json y con el ?v= de cada script, y el gate
      exige que los tres digan lo mismo: un badge que anuncia una version mientras
      el navegador corre el codigo viejo miente en la peor direccion. -->
-<script>(function(){ window.CMO_VER = 'V1.07'; })();</script>
+<script>(function(){ window.CMO_VER = 'V1.08'; })();</script>
 <script src="../../finanzas/js/auth-fin.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/cruce-rh.js?v=V1.07"></script>
-<script src="js/resolver.js?v=V1.07"></script>
-<script src="js/txt-dispersion.js?v=V1.07"></script>
+<script src="js/cruce-rh.js?v=V1.08"></script>
+<script src="js/resolver.js?v=V1.08"></script>
+<script src="js/txt-dispersion.js?v=V1.08"></script>
 <style>
   :root{ --azul:#1a4480; --ok:#1a7a3a; --warn:#BA7517; --err:#b3261e; --info:#3b5bdb; --bg:#f4f6f9; }
   *{ box-sizing:border-box; }
@@ -130,7 +130,7 @@
   /* ── secciones colapsables (el detalle no estorba la decisión) ── */
   .sec{ background:#fff; border-radius:10px; box-shadow:0 1px 6px rgba(0,0,0,.06); margin-bottom:14px; }
   .sec>summary{ list-style:none; cursor:pointer; padding:13px 16px; font-size:14px; font-weight:600;
-                display:flex; align-items:center; gap:9px; }
+                display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
   .sec>summary::-webkit-details-marker{ display:none; }
   .sec>summary::before{ content:'▸'; color:#8494a8; font-size:11px; }
   .sec[open]>summary::before{ content:'▾'; }
@@ -189,6 +189,39 @@
   .rb code{ display:block; font-size:11px; background:#fff; border:1px solid #dbe4f0; border-radius:6px;
             padding:7px 9px; margin-top:8px; max-height:110px; overflow:auto; word-break:break-all; }
   .rb .rb-a{ margin-left:auto; }
+
+  /* ═══ BLOQUES PLEGADOS ════════════════════════════════════════════════
+     La pantalla sirve a DOS públicos con la misma vista: Ulises viene por las
+     instrucciones de RH y por los hallazgos que él puede corregir; finanzas viene
+     por el reparto, la nómina leída y los controles de escritura. Abiertos todos
+     al mismo nivel, cada uno tiene que pasar por encima de lo del otro — 29
+     renglones de instrucciones para llegar a ver si la carga cuadró, o al revés.
+     Plegados con su resumen, los dos leen sólo su renglón y abren lo suyo.
+     El resumen NO es decoración: es lo que permite no abrir. Un bloque cerrado
+     que no dice nada obliga a abrirlo, y entonces el plegado sólo estorba. */
+  .plg{ background:#fff; border-radius:10px; box-shadow:0 1px 6px rgba(0,0,0,.06); margin-bottom:14px; }
+  .plg>summary{ list-style:none; cursor:pointer; padding:12px 16px;
+                display:grid; grid-template-columns:14px 1fr auto; gap:11px; align-items:center; }
+  .plg>summary::-webkit-details-marker{ display:none; }
+  .plg>summary:hover{ background:#f7f9fc; border-radius:10px; }
+  .plg .chev{ color:#8494a8; font-size:12px; transition:transform .18s; }
+  .plg[open] .chev{ transform:rotate(90deg); }
+  .plg-t{ font-size:14px; font-weight:600; display:block; }
+  .plg-r{ font-size:11.5px; color:#66707d; display:block; margin-top:1px; line-height:1.35; }
+  .plg>summary>div{ min-width:0; }
+  .plg .body{ padding:0 16px 14px; }
+  /* El contenido ya viene envuelto en su propia tarjeta. Se le quita el cromo en
+     vez de reescribir el HTML de cada render: así el plegado no toca ni una línea
+     de lógica, que es justo lo que se pidió. */
+  .plg .body>.card, .plg .body>.panel, .plg .body>.puente{ box-shadow:none; margin:0; padding:0; background:transparent; border:none; }
+  .plg .body>.card>h3, .plg .body>.puente>h3{ display:none; }
+
+  .chip{ font-size:11px; font-weight:700; padding:3px 10px; border-radius:99px; white-space:nowrap;
+         background:#eef2f8; color:#566; }
+  .chip-ok{   background:#e3f4e8; color:var(--ok); }
+  .chip-mal{  background:#fdeceb; color:var(--err); }
+  .chip-rev{  background:#fff8e8; color:var(--warn); }
+  .chip-info{ background:#eef2fd; color:var(--info); }
 </style>
 </head>
 <body>
@@ -318,8 +351,16 @@
     <!-- 5.5 · PASO 3 · los archivos que de verdad mueven el dinero.
          Todo lo de arriba valida la nómina; esto valida la TRANSFERENCIA. Entre el
          Excel validado y el archivo que se sube al banco no había nada. -->
-    <div class="card" id="c-txt">
-      <h3>Paso 3 · Validar transferencias <span class="mut" style="font-weight:400;font-size:12px">(opcional — no detiene el paso 4)</span></h3>
+    <!-- ⚠️ Este bloque se pliega desde el MARCADO, no envolviendo su innerHTML como
+         los demás: aquí dentro viven dos <input type=file> con sus listeners, y
+         reescribir el contenedor los destruye. Lo cazó el gate al primer intento —
+         el paso 3 dejó de responder a los archivos. Los otros bloques sí se pueden
+         envolver porque sus listeners están DELEGADOS en el contenedor. -->
+    <details class="plg" id="c-txt" open>
+      <summary><span class="chev">›</span>
+        <div><span class="plg-t">Transferencias</span><span class="plg-r" id="c-txt-r">opcional · suelta los .txt del banco</span></div>
+        <span class="chip" id="c-txt-chip">pendiente</span></summary>
+      <div class="body">
       <div class="txt-zonas">
         <div class="txt-z" id="tz-nom">
           <b>TXT de la nómina</b>
@@ -337,11 +378,13 @@
         </div>
       </div>
       <div id="txt-res"></div>
-    </div>
+      </div>
+    </details>
 
     <!-- 6 · el detalle, colapsado -->
     <details class="sec" id="c-tabla" style="display:none">
-      <summary>Nómina leída <span class="mut" style="font-weight:400">(<span id="cnt">0</span> empleados)</span></summary>
+      <summary>Nómina leída <span class="mut" id="cnt" style="display:none">0</span>
+        <span class="chip" id="cnt-chip" style="margin-left:auto"></span></summary>
       <div class="body">
         <div style="max-height:420px;overflow:auto">
           <table>
@@ -1308,6 +1351,111 @@ function pasoEstado(){
   return P;
 }
 
+/* ═══ PLEGAR LOS BLOQUES ═════════════════════════════════════════════════
+   Envuelve lo que cada render YA pintó. No toca ningún cálculo, ningún hallazgo
+   ni ningún cruce: lee el innerHTML del contenedor y lo mete en un <details> con
+   su resumen. Por eso vive en un solo lugar y se llama al final de pintarPasos(),
+   que corre después de cada render.
+
+   Los listeners delegados sobreviven: cuelgan del CONTENEDOR (#rh-panel), no de
+   lo que hay dentro, y el contenedor no se reemplaza.
+
+   Qué se abre por omisión: lo que PIDE algo. Un bloque con hallazgos que frenan
+   se abre solo; el resto se queda cerrado con su resumen. Y si alguien lo abre a
+   mano, se queda abierto entre repintados — si no, abrirlo no serviría de nada. */
+function plegar(id, titulo, resumen, chip, abrirPorOmision){
+  var box = $(id);
+  if(!box) return;
+  var det = box.firstElementChild;
+  var yaPlegado = det && det.tagName === 'DETAILS' && det.className.indexOf('plg') >= 0;
+  var interno = yaPlegado ? det.querySelector('.body').innerHTML : box.innerHTML;
+  if(!interno || !interno.trim()){ box.innerHTML = ''; return; }
+
+  /* ── El estado abierto/cerrado se lee del ELEMENTO, no de un registro aparte ──
+     La primera versión lo guardaba en un mapa desde el evento `toggle`. No sirve:
+     `toggle` se dispara de forma ASÍNCRONA, así que un repintado que ocurra justo
+     después del clic corre ANTES de que el estado quede guardado, y el bloque se
+     vuelve a cerrar solo. Lo cazó el gate; a ojo no se habría visto nunca, porque
+     hace falta que las dos cosas pasen en el mismo instante.
+     Leer `det.open` es síncrono y es la verdad, no una copia de la verdad.
+     Excepción: lo que FRENA el envío se vuelve a abrir aunque lo hayan cerrado.
+     La pantalla puede insistir en lo que impide mandar la nómina. */
+  var abierto = abrirPorOmision ? true : (yaPlegado ? det.open : false);
+
+  box.innerHTML = '<details class="plg" id="plg-' + id + '"' + (abierto ? ' open' : '') + '>'
+    + '<summary><span class="chev">›</span>'
+    +   '<div><span class="plg-t">' + esc(titulo) + '</span>'
+    +   (resumen ? '<span class="plg-r">' + esc(resumen) + '</span>' : '') + '</div>'
+    +   (chip ? '<span class="chip' + (chip.k ? ' chip-' + chip.k : '') + '">' + esc(chip.t) + '</span>' : '')
+    + '</summary><div class="body">' + interno + '</div></details>';
+}
+
+function plegarTodo(){
+  /* ── de ULISES ──────────────────────────────────────────────────────── */
+  if(RH && RH.filas){
+    var conInstr = 0;
+    for(var i=0;i<RH.filas.length;i++){ if((RH.filas[i].instruccion||'').trim()) conInstr++; }
+    plegar('despacho-panel', 'Lo que pidió RH',
+      RH.filas.length + ' personas · ' + conInstr + ' con instrucción',
+      { k:'info', t: RH.version ? ('v' + RH.version) : 'enviada' }, false);
+  } else {
+    var m = { nada:['Lo que pidió RH','elige la semana',{k:'',t:'—'}],
+              cargando:['Lo que pidió RH','consultando…',{k:'info',t:'…'}],
+              falta:['Lo que pidió RH','RH todavía no ha enviado esta semana',{k:'rev',t:'falta'}],
+              error:['Lo que pidió RH','no se pudo consultar',{k:'mal',t:'error'}] }[RH_EST.estado];
+    /* Los TRES estados se conservan: 'falta' es un pendiente de Magaly y 'error'
+       es un problema nuestro. Fundirlos manda a Ulises con la persona equivocada. */
+    if(m) plegar('despacho-panel', m[0], m[1], m[2], RH_EST.estado === 'error');
+  }
+
+  var nInt = 0, nRev = 0;
+  for(var j=0;j<ULTIMOS_HALLAZGOS.length;j++){
+    if(ULTIMOS_HALLAZGOS[j].nivel === 'INTEGRIDAD') nInt++;
+    else if(ULTIMOS_HALLAZGOS[j].nivel === 'REVISION') nRev++;
+  }
+  plegar('rh-panel', 'Contra lo que pidió RH',
+    ULTIMOS_HALLAZGOS.length ? (nRev + ' que revisar · ' + nInt + ' que frenan') : 'sin diferencias',
+    nInt > 0 ? {k:'mal',t:'frena'} : (nRev > 0 ? {k:'rev',t:'revisar'} : {k:'ok',t:'cuadra'}),
+    nInt > 0);
+
+  /* ── de LOS DOS ─────────────────────────────────────────────────────── */
+  var tr = $('c-txt-r'), tc = $('c-txt-chip');
+  if(tr) tr.textContent =
+      TXT_EST === 'ok'  ? 'importes ✓ · las cuentas NO se verifican'
+    : TXT_EST === 'mal' ? 'los importes no cuadran'
+    : ESCRITO           ? 'no se validaron esta semana'
+                        : 'opcional · suelta los .txt del banco';
+  if(tc){
+    var ch = TXT_EST === 'ok' ? {k:'rev',t:'parcial'}
+           : TXT_EST === 'mal'? {k:'mal',t:'no cuadra'}
+           : {k:'',t:'pendiente'};
+    tc.className = 'chip' + (ch.k ? ' chip-' + ch.k : ''); tc.textContent = ch.t;
+  }
+
+  /* ── de FINANZAS ────────────────────────────────────────────────────── */
+  var P = PARSED;
+  if(P){
+    var f = P.fallas || [], fi = 0, fc = 0, fa = 0;
+    for(var k=0;k<f.length;k++){
+      if(f[k].nivel === 'INTEGRIDAD') fi++;
+      else if(f[k].nivel === 'CLASIFICACION') fc++; else fa++;
+    }
+    plegar('c-msgs', 'Avisos del archivo',
+      f.length ? (fi + ' que frenan · ' + fc + ' de clasificación · ' + fa + ' informativos')
+               : 'el archivo cuadra consigo mismo',
+      fi > 0 ? {k:'mal',t:'frena'} : (fc > 0 ? {k:'rev',t:'revisar'} : {k:'ok',t:'sin avisos'}),
+      fi > 0);
+    var cnt = $('cnt-chip'); if(cnt) cnt.textContent = (P.empleados||[]).length + ' empleados';
+  }
+  var pu = $('puente-box');
+  if(pu && pu.textContent.trim()){
+    var tot = (P && P.totales && P.totales.puente) || 0;
+    plegar('puente-box', 'Cuenta puente',
+      tot > 0.005 ? (money(tot) + ' sin poder atribuir a nadie') : 'nada al puente',
+      tot > 0.005 ? {k:'rev',t:'revisar'} : {k:'ok',t:'en cero'}, false);
+  }
+}
+
 function pintarPasos(){
   var T = ['Instrucciones de RH','Validar archivo','Validar nómina','Validar transferencias','Enviar'];
   var E = pasoEstado();
@@ -1321,6 +1469,7 @@ function pintarPasos(){
       + '<div class="pt"><b>' + T[i] + '</b><i>' + esc(e[1]) + '</i></div></li>';
   }).join('');
   mandoBotones();
+  try{ plegarTodo(); }catch(e){ console.warn('plegado:', e.message); }
 }
 
 /* UN botón primario a la vez. El otro no desaparece —volver a validar es legítimo—
@@ -1728,7 +1877,7 @@ async function doWrite(){
        únicos ids con los que se puede deshacer una carga. */
     if(ok) pintarRollback(j);
     $('msg-write').innerHTML =
-        '<details class="sec" open><summary>Respuesta del servidor <span class="mut" style="font-weight:400">(la escritura)</span></summary>'
+        '<details class="sec"><summary>Respuesta del servidor <span class="mut" style="font-weight:400">(la escritura)</span></summary>'
       + '<div class="body"><pre style="font-size:11px;overflow:auto">'+esc(JSON.stringify(j,null,2))+'</pre></div></details>';
     if(wb){ wb.textContent = ok ? 'Cargado ✓' : 'Enviar a FTS (Correo + Odoo)'; wb.disabled = ok; }
     ESCRITO = ok;

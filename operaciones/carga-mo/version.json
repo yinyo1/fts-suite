@@ -1,10 +1,16 @@
 {
-  "version": "V1.07",
+  "version": "V1.08",
   "fecha": "2026-09-26",
   "modulo": "operaciones/carga-mo",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Al pasar de .99 sube el mayor y el menor vuelve a 00.",
   "ambito": "El CONTADOR es SOLO de este modulo y arranca en V1.00 aunque el modulo lleve meses en produccion: antes se versionaba con una cadena de build (la ultima fue 20260904-cmo-cruce-rh) y esa numeracion no se puede continuar. rh/nomina-incidencias, finanzas y comercial/machote usan el MISMO esquema con contadores PROPIOS — que aqui diga V1.00 y alla V1.16 es lo correcto, no un desfase.",
   "historial": [
+    {
+      "version": "V1.08",
+      "fecha": "2026-09-26",
+      "titulo": "Capa A completa: los bloques plegados con su resumen y su etiqueta, ordenados por quien los lee (#313)",
+      "nota": "CERO LOGICA TOCADA. Ni un calculo, ni un hallazgo, ni un cruce: el plegado ENVUELVE lo que cada render ya pinto, desde un solo lugar, y el cromo de la tarjeta interna se apaga por CSS en vez de reescribir el HTML de cada funcion. DOS PUBLICOS, UNA VISTA. Ulises viene por las instrucciones de RH y por los hallazgos que el puede corregir; finanzas por el reparto, la nomina leida y los controles de escritura. Abiertos todos al mismo nivel, cada uno tenia que pasar por encima de lo del otro — 29 renglones de instrucciones para llegar a ver si la carga cuadro. Plegados con su resumen, los dos leen su renglon y abren lo suyo. EL RESUMEN NO ES DECORACION: es lo que permite NO abrir. Un bloque cerrado que no dice nada obliga a abrirlo, y entonces el plegado solo estorba. Cada uno dice lo suyo ('3 personas · 3 con instruccion', '0 que revisar · 3 que frenan') con una etiqueta de color que sale del nivel mas alto que haya. QUE SE ABRE SOLO: lo que PIDE algo. Un bloque con hallazgos que frenan se abre por su cuenta y se vuelve a abrir aunque lo cierren — la pantalla puede insistir en lo que impide mandar la nomina. El resto queda cerrado, y si alguien lo abre se queda abierto entre repintados. NO SE PLIEGAN NUNCA: el stepper, la caja de estado con su boton, los seis indicadores, y el rollback con sus ids. DOS BUGS QUE CAZO EL GATE Y NO LA LECTURA: (1) envolver el paso 3 por innerHTML DESTRUIA sus dos inputs de archivo y sus listeners — el paso dejo de responder a los archivos; ahora ese bloque se pliega desde el MARCADO, y los demas si se pueden envolver porque sus listeners estan delegados en el contenedor. (2) el estado abierto/cerrado se guardaba en un mapa desde el evento `toggle`, que es ASINCRONO: un repintado justo despues del clic corria ANTES de guardarlo y el bloque se cerraba solo. Ahora se lee `det.open` del elemento, que es sincrono y es la verdad en vez de una copia de la verdad. A ojo no se habria visto nunca."
+    },
     {
       "version": "V1.07",
       "fecha": "2026-09-26",
