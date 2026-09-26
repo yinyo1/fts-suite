@@ -101,6 +101,13 @@
         anticipo_sueldo:     { label: 'Anticipo de sueldo',     fuente: true, no_costo: true, campos: [['monto', 'Monto', 'num'], ['plazo', 'Semanas para pagarlo', 'num']] },
         descuento_anticipo:  { label: 'Descuento de anticipo',  campos: [['monto', 'Monto', 'num']] },
         compensa_deuda:      { label: 'Compensa contra deuda',  campos: [['monto', 'Monto', 'num']] },
+        // Las DOS puntas del mismo prestamo. Hasta hoy solo existia la que QUITA
+        // dinero, asi que no habia forma de capturar la semana en que FTS lo OTORGA.
+        // El otorgado lleva no_costo igual que el anticipo (#134/#141): sale dinero
+        // de la empresa pero NO es costo laboral de la semana, es algo que la persona
+        // debe. Sin esa marca el motor lo mandaria al puente como gasto indirecto,
+        // que es justo lo que hubo que borrar a mano en la S34 de Leonel.
+        prestamo_otorgado:   { label: 'Préstamo otorgado',      fuente: true, no_costo: true, campos: [['monto', 'Monto', 'num'], ['plazo', 'Semanas para pagarlo', 'num']] },
         descuento_prestamo:  { label: 'Descuento por préstamo', campos: [['monto', 'Monto', 'num'], ['pago', 'Número de pago', 'num']] },
         pagado_fts_usa:      { label: 'Pagado por FTS USA',     fuente: true, campos: [['monto', 'Monto', 'num']] }
       }

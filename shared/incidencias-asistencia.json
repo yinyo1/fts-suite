@@ -2,6 +2,84 @@
   "version": 1,
   "incidencias": [
     {
+      "id_interno": "INC-OLV-108-2026-09-25T14-27-05-146Z",
+      "odoo_incidencia_id": null,
+      "tipo": "olvido_entrada",
+      "empleado_id": 108,
+      "empleado_nombre": "Pablo Bayly Fernández",
+      "fecha_creacion": "2026-09-25T14:27:05.146Z",
+      "attendance_id": 15721,
+      "hora_real_checkin_utc": "2026-09-25T14:26:59.604Z",
+      "geolocation": {
+        "lat": 25.6891075,
+        "lng": -100.2915743,
+        "sitio_detectado": "FTS Monterrey"
+      },
+      "foto_base64": "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",
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "empleado",
+          "user_id": 108,
+          "usuario": "Pablo Bayly Fernández",
+          "timestamp": "2026-09-25T14:27:05.146Z",
+          "hora_propuesta_cst": "2026-09-25 07:04:00",
+          "comentario": "No sé registro mi entrada con el celular",
+          "accion": "solicitud"
+        }
+      ],
+      "status": "pendiente_supervisor",
+      "hora_final_aplicada_utc": null,
+      "aplicado_en_odoo": false,
+      "department_id": 6,
+      "department_name": "Comercial",
+      "sin_departamento": false,
+      "depto_invalido": false,
+      "supervisor_id": 97,
+      "supervisor_name": "Rissia Xavier de Araujo",
+      "supervisor_email": "pablo@fts.mx",
+      "supervisor_phone": "+52 81 1908 0605",
+      "es_ceo": false,
+      "rh_directo_ceo": false,
+      "directo_ceo": false,
+      "sin_supervisor": false,
+      "tag_disputa_activo": true
+    },
+    {
+      "id_interno": "INC-AUTO-CIERRE-6-2026-09-25T13-26-48-377Z",
+      "tipo": "auto_cierre_pendiente",
+      "status": "aprobada_con_ajuste",
+      "fecha_creacion": "2026-09-25T13:26:50.086Z",
+      "empleado_id": 6,
+      "empleado_nombre": "Leonel Cruz Cristobal",
+      "attendance_id_cerrado": 15686,
+      "attendance_id_nuevo": 15716,
+      "check_in_original_utc": "2026-09-24 13:02:01",
+      "check_out_aplicado_utc": "2026-09-24 22:38:01",
+      "horas_originales": "24.41",
+      "motivo": "Auto-cierre por jornada abierta >16h al siguiente check-in del empleado",
+      "tag_disputa_activo": false,
+      "autoincidencia": true,
+      "rh_aprobo": null,
+      "rh_fecha": null,
+      "department_id": null,
+      "department_name": null,
+      "supervisor_id": null,
+      "supervisor_name": null,
+      "propuestas": [
+        {
+          "paso": 1,
+          "rol": "rh",
+          "user_id": 63,
+          "usuario": "Magaly Estefanía Pérez García",
+          "timestamp": "2026-09-25T16:35:12.196Z",
+          "hora_propuesta_cst": "17:00",
+          "comentario": "REGISTRO SALIDA PERO NO LE DETECTO A LAS 5.00 PM , SI NO 4.38. (EVIDENCIA ENVIADA POR FELIPE)",
+          "accion": "ajustado"
+        }
+      ]
+    },
+    {
       "id_interno": "INC-OLV-133-2026-09-21T22-54-54-354Z",
       "odoo_incidencia_id": null,
       "tipo": "olvido_entrada",
