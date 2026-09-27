@@ -413,7 +413,9 @@ def test_la_FICHA_lo_declara_arriba(sesion):
     # #322 metio una cabecera (kicker, h1, estado de cuenta) ARRIBA del aviso: el
     # ancla ya no es <h1>, es el gancho. La garantia real -- y la que el mensaje de
     # esta prueba siempre dijo-- no cambio: el aviso va antes del gancho, no al pie.
-    assert h.index("ESTADO EDITADO A MANO") < h.index("<h2>Gancho</h2>"), \
+    # #323 porto el acomodo del prototipo: el gancho es el bloque `.hook` teal,
+    # sin encabezado propio. El ancla cambio; la garantia no.
+    assert h.index("ESTADO EDITADO A MANO") < h.index('<div class="hook">'), \
         "el aviso va ANTES del gancho, no al pie"
 
 

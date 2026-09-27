@@ -593,7 +593,7 @@ def test_el_angulo_del_RADAR_entra_como_gancho_PRELIMINAR(sesion):
     h = modo_limpio(c)
     assert "GANCHO PRELIMINAR" in h
     # el ancla es el gancho, no el <h1>: #322 puso la cabecera arriba del aviso
-    assert h.index("GANCHO PRELIMINAR") < h.index("<h2>Gancho</h2>")
+    assert h.index("GANCHO PRELIMINAR") < h.index('<div class="hook">')
 
 
 def test_un_angulo_MANUAL_funciona_como_hoy(sesion):

@@ -58,12 +58,13 @@ def test_la_ficha_trae_TODAS_las_secciones_que_el_operador_necesita():
     # se fundio en la linea de tiempo de "Por que ahora", y "Fuentes" y
     # "Checklist de validaciones" bajaron a la pestana tecnica -- eran las dos que
     # Rissia leia como catorce fallas antes de llegar a un contacto--.
-    for pedida in ("Gancho", "Por que ahora", "A quien buscar", "Como hablarles",
+    for pedida in ("Por que ahora", "A quien buscar", "Como hablarles",
                    "Lo que falta y donde conseguirlo", "Que no pudimos revisar"):
         assert any(pedida in x for x in secciones), f"falta la seccion {pedida}"
     # y lo que bajo sigue existiendo, en la capa que le toca
     tec = h[h.index('<details class="tec">'):]
-    assert "Todas las busquedas" in tec and "Checklist por modulo" in tec
+    assert "Todas las busquedas" in tec
+    assert "Estado por modulo" in tec
     assert "Sales Navigator" in limpia
 
 
@@ -91,6 +92,8 @@ def test_los_textos_de_criterio_se_imprimen_cuando_estan():
     txt = modo_limpio(c)
     assert c.gancho in txt and c.por_que_ahora in txt
     assert c.como_hablarles[0] in txt
+    assert 'class="hook"' in txt, "el gancho es el bloque teal del prototipo (#323)"
+    assert 'class="big"' in txt
     # ninguno de los TRES huecos de criterio: el cuarto aviso de #322 -- "sin
     # decisores con nombre todavia"-- usa la misma clase y aqui si aplica.
     for no_esperado in ("Sin gancho escrito", "Sin razon de oportunidad escrita",
@@ -111,9 +114,9 @@ def test_cada_senal_va_con_LA_FECHA_que_su_texto_trae():
     txt = modo_limpio(c)
     # #322 convirtio la senal en LINEA DE TIEMPO: la fecha va en `tl-f` a la
     # izquierda del hecho, y lo que no la trae lo dice y pide confirmarla.
-    assert 'class="tl-f">mar-2025' in txt
+    assert 'class="f">mar-2025' in txt
     assert "Sin fecha" in txt
-    assert "confirmar el ano antes de citarlo" in txt
+    assert "Confirmar el ano antes de citarlo" in txt
 
 
 def test_la_ficha_lista_las_fuentes_con_su_fecha_y_su_liga():
@@ -142,7 +145,7 @@ def test_la_fila_de_contacto_trae_nombre_puesto_planta_correo_y_confianza():
     x.dato("planta").observar("linkedin_publico", "Pesqueria, NL")
     x.dato("correo").observar("congreso", "[persona]@example.com")
     c.agregar(x)
-    tarjeta = re.search(r'<div class="card">.*?</div>\s*</div>',
+    tarjeta = re.search(r'<div class="persona[^>]*>.*?<div class="lado">.*?</div>\s*</div>',
                         modo_limpio(c), re.S).group(0)
     for esperado in ("Ana Ficticia", "Gerente de Mantenimiento", "Pesqueria, NL",
                      "[persona]@example.com"):
@@ -182,8 +185,11 @@ def test_un_contacto_que_YA_NO_ESTA_no_se_imprime_pero_el_PENDIENTE_si():
     assert "falta confirmar la planta" in limpia, "con su razon visible"
     # el contador sigue contando SOLO al que ya no esta, y ahora lo dice en el pie
     # con palabras en vez de "1 hallazgo(s) fuera de esta ficha".
-    assert "1 persona(s) quedaron fuera" in limpia
-    assert "ya no trabajan ahi" in limpia
+    # #323 movio el PIE debajo de la pestana, como el prototipo, asi que su
+    # contenido se mide en el documento. Sigue siendo texto de la capa de lectura
+    # -- no lleva un solo termino interno-- y la prueba de vocabulario lo cuida.
+    assert "1 persona(s) quedaron fuera" in txt
+    assert "ya no trabajan ahi" in txt
     # y en la pestana aparece marcado: la procedencia de un descarte tambien se
     # audita.
     assert "Ido" in txt and "YA NO ESTA en la casa" in txt

@@ -308,10 +308,12 @@ def _correo_en_palabras(x) -> tuple[str, str, str]:
         valor = f"patron de la cuenta: {d.valor}"
         if d.nivel == CONFIRMADO:
             n = anclas or d.n_fuentes
+            # verde, como el prototipo: lo confirmado se lee como bueno aunque
+            # el buzon de la persona siga siendo probable -- eso lo dice el texto--.
             return (valor,
                     f"patron confirmado con {n} correo(s) real(es) de la empresa; "
                     "el buzon de esta persona es probable, no verificado"
-                    + salvedad, "sup")
+                    + salvedad, "ok")
         # OJO CON LA REDACCION: si el patron mismo NO esta confirmado, decir
         # "sobre patron confirmado" es una afirmacion falsa, y en la capa que se
         # manda al cliente la redaccion ES el dato. Se dice lo que hay.
@@ -394,7 +396,7 @@ def aviso_rojo(c: Corrida) -> str:
             "llamar.")
     if not partes:
         return ""
-    return ('<div class="aviso"><div class="aviso-t">Antes de llamar</div>'
+    return ('<div class="aviso"><b>Ojo antes de llamar:</b>'
             + "".join(f"<p>{x}</p>" for x in partes) + "</div>")
 
 
@@ -415,14 +417,13 @@ def linea_de_tiempo(c: Corrida) -> str:
     sin = [x for x in filas if not x[0]]
     out = []
     for f, t in con:
-        out.append(f'<div class="tl"><div class="tl-f">{html.escape(f)}</div>'
-                   f'<div class="tl-h">{html.escape(t)}</div></div>')
+        out.append(f'<li><span class="f">{html.escape(f)}</span>'
+                   f'<span class="t">{html.escape(t)}</span></li>')
     for _f, t in sin:
-        out.append('<div class="tl"><div class="tl-f sf">Sin fecha</div>'
-                   f'<div class="tl-h">{html.escape(t)}'
-                   '<div class="tl-n">confirmar el ano antes de citarlo</div>'
-                   '</div></div>')
-    return "".join(out)
+        out.append('<li><span class="f sf">Sin fecha</span>'
+                   f'<span class="t">{html.escape(t)} '
+                   '<b>Confirmar el ano antes de citarlo.</b></span></li>')
+    return f'<ul class="timeline">{"".join(out)}</ul>' if out else ""
 
 
 _MES_N = {m: i for i, m in enumerate(
@@ -503,25 +504,39 @@ def tarjetas_de_contactos(c: Corrida) -> tuple[str, str, str, dict]:
     confirmar.sort(key=orden)
     contexto.sort(key=orden)
 
-    def tarjeta(x, tipo: str, razon_extra: str = "") -> str:
+    # UNA PERSONA, con el acomodo del prototipo (#323): a la izquierda nombre
+    # grande, puesto y planta debajo, y la linea de por que importa; a la derecha
+    # el chip de tipo y, bajo el chip, el correo en monoespaciada con su nivel en
+    # palabras. El chip va ARRIBA del correo y no en la cabecera, que es lo que
+    # hace que la columna derecha se lea como una sola cosa.
+    CHIP_CLASE = {"Decisor": "tea", "Puesto sin persona": "pue",
+                  "Por confirmar": "dec", "Contexto": "ctx"}
+
+    def persona(x, tipo: str, razon_extra: str = "") -> str:
         correo, dice, clase = _correo_en_palabras(x)
         planta = _planta_de(x)
-        nombre = x.nombre or "(puesto sin persona)"
-        chip = tipo
-        linea = (f'<div class="mail">{html.escape(correo)}</div>' if correo else "")
-        return (
-            f'<div class="card">'
-            f'<div class="card-h"><div class="card-n">{html.escape(nombre)}</div>'
-            f'<span class="chip c-{clase if tipo == "Por confirmar" else "t"}">'
-            f'{html.escape(chip)}</span></div>'
-            f'<div class="card-p">{html.escape(x.puesto or "puesto sin registrar")}'
-            + (f' · {html.escape(planta)}' if planta else "") + '</div>'
-            f'<div class="card-q">{html.escape(_por_que_le_importa(x, c))}</div>'
-            + (f'<div class="card-r">{html.escape(razon_extra)}</div>'
-               if razon_extra else "")
-            + linea
-            + f'<div class="mail-d {clase}">{html.escape(dice)}</div>'
-            '</div>')
+        sin_nombre = not x.nombre
+        nombre = x.nombre or (x.puesto or "(puesto sin persona)")
+        puesto = ("Puesto confirmado que existe, todavia sin nombre" if sin_nombre
+                  else (x.puesto or "puesto sin registrar"))
+        if planta and not sin_nombre:
+            puesto += f", {planta}"
+        elif planta:
+            puesto += f" · {planta}"
+        cuerpo = (f'<div class="nombre">{html.escape(nombre)}</div>'
+                  f'<div class="puesto">{html.escape(puesto)}</div>'
+                  f'<div class="porque">{html.escape(_por_que_le_importa(x, c))}'
+                  + (f' <b>{html.escape(razon_extra)}</b>' if razon_extra else "")
+                  + '</div>')
+        cor = ('<span class="correo' + (' nil' if not correo else '') + '">'
+               + (html.escape(correo) if correo else "")
+               + f'<small class="{clase}">{html.escape(dice)}</small></span>')
+        return (f'<div class="persona{" sinpersona" if sin_nombre else ""}">'
+                f'<div>{cuerpo}</div>'
+                f'<div class="lado">'
+                f'<span class="chip {CHIP_CLASE.get(tipo, "ctx")}">'
+                f'{html.escape(tipo)}</span>{cor}</div></div>')
+    tarjeta = persona
 
     b_dec = "".join(
         tarjeta(x, "Puesto sin persona" if not x.nombre else "Decisor")
@@ -533,25 +548,35 @@ def tarjetas_de_contactos(c: Corrida) -> tuple[str, str, str, dict]:
     # los de contexto van en UNA tarjeta, no en una por cabeza: son contexto, y
     # una tarjeta por cada uno los hace competir visualmente con los decisores.
     if contexto:
-        def _linea_ctx(x) -> str:
-            _correo, dice, clase = _correo_en_palabras(x)
-            # Un CONFLICTO se dice incluso en la tarjeta de contexto. Callar un
-            # conflicto es afirmar que no hay desacuerdo, y esa regla no depende de
-            # que la persona sea decisora: la ficha de Cuprum (#289) se rompio por
-            # exactamente esto, con el conflicto guardado y no impreso.
-            extra = (f'<div class="mail-d flag">{html.escape(dice)}</div>'
-                     if clase == "flag" else "")
-            return (f'<li><b>{html.escape(x.nombre or "(puesto sin persona)")}</b> — '
-                    f'{html.escape(x.puesto or "puesto sin registrar")}'
-                    + (f' · {html.escape(_planta_de(x))}' if _planta_de(x) else "")
-                    + extra + '</li>')
-        filas = "".join(_linea_ctx(x) for x in contexto)
-        b_ctx = (f'<div class="card ctx"><div class="card-h">'
-                 f'<div class="card-n">Contexto — {len(contexto)} persona(s)'
-                 f'</div><span class="chip c-t">Contexto</span></div>'
-                 '<div class="card-q">No compran, y sirven para dos cosas: '
-                 'confirmar el organigrama y conseguir el nombre de quien si '
-                 f'decide.</div><ul class="ctx-l">{filas}</ul></div>')
+        # Un CONFLICTO se dice incluso aqui. Callar un conflicto es afirmar que no
+        # hay desacuerdo, y esa regla no depende de que la persona sea decisora:
+        # la ficha de Cuprum (#289) se rompio por exactamente esto.
+        vistos, puestos = [], []
+        for x in contexto:
+            pz = x.puesto or "puesto sin confirmar"
+            if pz not in vistos:
+                vistos.append(pz)
+                puestos.append(pz)
+        puestos_ctx = ", ".join(puestos[:4]) + (
+            f" y {len(puestos) - 4} mas" if len(puestos) > 4 else "")
+        # Los de contexto van en UNA fila de persona, no en una por cabeza: son
+        # contexto, y una tarjeta por cada uno los hace competir visualmente con
+        # los decisores. Es el acomodo del prototipo.
+        nombres = " · ".join(x.nombre or x.puesto or "?" for x in contexto[:6])
+        if len(contexto) > 6:
+            nombres += f" y {len(contexto) - 6} mas"
+        conflictos_ctx = "".join(
+            f'<div class="porque"><b>{html.escape(_correo_en_palabras(x)[1])}</b>'
+            f' — {html.escape(x.nombre or x.puesto or "?")}</div>'
+            for x in contexto if _correo_en_palabras(x)[2] == "flag")
+        b_ctx = (f'<div class="persona"><div>'
+                 f'<div class="nombre">{html.escape(nombres)}</div>'
+                 f'<div class="puesto">{html.escape(puestos_ctx)}</div>'
+                 '<div class="porque">Estan en la planta o en la cuenta y pueden '
+                 'abrir puerta, pero no deciden compras tecnicas.</div>'
+                 + conflictos_ctx + '</div>'
+                 '<div class="lado"><span class="chip ctx">Contexto</span>'
+                 '</div></div>')
     else:
         b_ctx = ""
     return (b_dec, b_con, b_ctx,
@@ -583,19 +608,17 @@ def medidor(c: Corrida) -> tuple[str, str]:
         else:
             frase = ("Falta buena parte del mapa de esta planta. Lo que sigue "
                      "necesita Sales Navigator para cerrarse.")
-    # medidor circular, SVG inline: un archivo que se manda por correo no puede
-    # depender de una imagen externa.
-    r, circ = 34, 2 * 3.14159 * 34
-    lleno = circ * ((pct or 0) / 100)
+    # MEDIDOR CONIC-GRADIENT, como el prototipo aprobado (#323): un circulo con
+    # el porcentaje al centro. Sustituyo a un SVG que hacia lo mismo con menos
+    # claridad, y no necesita nada externo -- un archivo que se manda por correo
+    # no puede depender de una imagen que hay que descargar--.
     etiqueta = f"{pct}%" if pct is not None else "n/d"
-    svg = (f'<svg class="gauge" viewBox="0 0 80 80" role="img" '
-           f'aria-label="cobertura estimada {etiqueta}">'
-           f'<circle cx="40" cy="40" r="{r}" class="g-bg"/>'
-           f'<circle cx="40" cy="40" r="{r}" class="g-fg" '
-           f'stroke-dasharray="{lleno:.1f} {circ:.1f}" '
-           f'transform="rotate(-90 40 40)"/>'
-           f'<text x="40" y="45" class="g-t">{etiqueta}</text></svg>')
-    return (svg, frase)
+    relleno = (f"conic-gradient(var(--teal) 0 {pct}%, var(--line) {pct}% 100%)"
+               if pct is not None else "var(--gray-bg)")
+    medidor = (f'<div class="medidor" style="background:{relleno}" role="img" '
+               f'aria-label="cobertura estimada {etiqueta}">'
+               f'<span>{etiqueta}</span></div>')
+    return (medidor, frase)
 
 
 def no_se_pudo_revisar(c: Corrida) -> list[str]:
@@ -640,7 +663,18 @@ def _clase_de_estado(estado: str) -> str:
     fuga de vocabulario interno a la capa limpia por la puerta de atras, y la
     prueba de regresion la encontro.
     """
-    return "alerta" if estado in ("sin_acceso", "fallo") else "tenue"
+    if estado in ("sin_acceso", "fallo", "omitida_por_costo"):
+        return "warn"
+    if estado == RESPONDIO:
+        return "ok"
+    return "no"
+
+
+# NO hay `_estado_legible`. Se escribio y se quito: el prototipo escribe los
+# estados bonitos ("sin acceso") y aqui gana la regla de #322 -- "aqui si van
+# todos los terminos internos: es la procedencia"--. `sin_acceso` con guion bajo
+# es la llave exacta que se puede buscar entre fichas y entre corridas; "sin
+# acceso" con espacio ya es prosa, y la prueba de vocabulario lo cacho.
 
 
 def capa_tecnica(c: Corrida) -> str:
@@ -656,7 +690,7 @@ def capa_tecnica(c: Corrida) -> str:
     sl = sello()
 
     chao = (
-        '<table><tr><th>Observados</th><th>f1</th><th>f2</th><th>Estimado</th>'
+        '<table class="tec-t"><tr><th>Observados</th><th>f1</th><th>f2</th><th>Estimado</th>'
         '<th>Cobertura</th><th>Veredicto</th></tr>'
         f'<tr><td>{est.observados}</td><td>{est.f1}</td><td>{est.f2}</td>'
         f'<td>{est.estimado:.1f}</td><td>{est.cobertura:.0%}</td>'
@@ -665,7 +699,8 @@ def capa_tecnica(c: Corrida) -> str:
 
     val = "".join(
         f'<tr><td>{html.escape(f["modulo"])}</td>'
-        f'<td class="e-{_clase_de_estado(f["estado"])}">{html.escape(f["estado"])}</td>'
+        f'<td class="est-{_clase_de_estado(f["estado"])}">'
+        f'{html.escape(f["estado"])}</td>'
         f'<td>{html.escape(f["razon"]) or "—"}</td>'
         f'<td class="c">{"si" if f["agotado"] else "no"}</td></tr>'
         for f in checklist_validaciones(c))
@@ -696,7 +731,7 @@ def capa_tecnica(c: Corrida) -> str:
             f'<td class="c">{NIVEL_FICHA.get(x.nivel_ficha, "N2")}</td>'
             f'<td class="c">{x.cercania_decision}</td>'
             f'<td class="c">{x.hits}</td>'
-            f'<td class="q">{html.escape(campos) or "—"}</td></tr>')
+            f'<td class="mono">{html.escape(campos) or "—"}</td></tr>')
 
     # LA HISTORIA DECLARADA, con su referencia. El aviso rojo de la capa limpia
     # dice lo que hay que decir en la llamada -- "nunca trabajamos aqui, fue en
@@ -706,7 +741,7 @@ def capa_tecnica(c: Corrida) -> str:
     regs = hist.get("aqui", []) + hist.get("en_otras", [])
     hist_t = ("" if not regs else (
         '<h3>Historia declarada de la cuenta</h3>'
-        '<table><tr><th>Referencia</th><th>Planta</th><th>Que fue</th>'
+        '<table class="tec-t"><tr><th>Referencia</th><th>Planta</th><th>Que fue</th>'
         '<th>Fecha</th><th>Canal</th><th>Es esta planta</th></tr>'
         + "".join(
             f'<tr><td>{html.escape(r.get("referencia",""))}</td>'
@@ -802,32 +837,31 @@ def capa_tecnica(c: Corrida) -> str:
 
     niveles_t = "".join(niveles) or '<tr><td colspan="5"><i>Sin contactos.</i></td></tr>'
     return f'''<details class="tec">
-<summary>Detalle tecnico: como se obtuvieron estos datos
-<span class="hint">para validar o auditar — no hace falta abrirlo para llamar</span>
-</summary>
+<summary>Detalle tecnico: como se obtuvieron estos datos <span class="hint">para validar o auditar, no hace falta abrirlo para llamar</span></summary>
+<div class="tec-body">
 
-<h3>Completitud estimada (Chao1)</h3>
+<h3>Que tan completa esta la ficha (Chao1)</h3>
 {chao}
 
 <h3>Nivel por contacto y por campo</h3>
-<table><tr><th>Quien</th><th>Nivel</th><th>Cercania</th><th>Hits</th>
+<table class="tec-t"><tr><th>Quien</th><th>Nivel</th><th>Cercania</th><th>Hits</th>
 <th>Nivel por campo</th></tr>
 {niveles_t}</table>
 <p class="nt">N1 nombre completo · N2 parcial · N3 puesto sin persona.
 CONF confirmado (2+ raices) · SOL solido (1 fuente fiable) · CAND candidato ·
 CONFLICTO dos fuentes que no coinciden. Una sola fuente topa en SOLIDO.</p>
 
-<h3>Checklist por modulo</h3>
-<table><tr><th>Modulo</th><th>Estado</th><th>Razon</th><th>Agotado</th></tr>
+<h3>Estado por modulo (checklist de validaciones)</h3>
+<table class="tec-t"><tr><th>Modulo</th><th>Estado</th><th>Razon</th><th>Agotado</th></tr>
 {val}</table>
 
 {seccion("Contactos en revision humana",
-         f'<table><tr><th>Quien</th><th>Puesto</th><th>Motivo exacto</th></tr>{rev}</table>' if rev else "")}
+         f'<table class="tec-t"><tr><th>Quien</th><th>Puesto</th><th>Motivo exacto</th></tr>{rev}</table>' if rev else "")}
 
 {hist_t}
 {alias_t}
 {seccion("Fuera de la poblacion de esta planta",
-         (f'<table><tr><th>Puesto</th><th>Ubicacion observada</th><th>Donde</th></tr>{f_fuera}</table>'
+         (f'<table class="tec-t"><tr><th>Puesto</th><th>Ubicacion observada</th><th>Donde</th></tr>{f_fuera}</table>'
           '<p class="nt">Salen del Chao1 a proposito: su poblacion es otra. No se '
           'pierden — son la semilla de la corrida corporativa:<br><code>'
           f'./prospector prospecta --empresa {html.escape(repr(c.empresa))} '
@@ -840,11 +874,11 @@ CONFLICTO dos fuentes que no coinciden. Una sola fuente topa en SOLIDO.</p>
            'en CANDIDATO hasta que esta corrida lo observe por su cuenta.</p>'
          if sem else "")}
 {seccion("Alias de ubicacion retirados",
-         ('<table><tr><th>Alias</th><th>Salieron</th><th>Poblacion</th>'
+         ('<table class="tec-t"><tr><th>Alias</th><th>Salieron</th><th>Poblacion</th>'
           f'<th>Chao1</th><th>Veredicto</th></tr>{quitados}</table>') if quitados else "")}
 
 <h3>Todas las busquedas — {todas}</h3>
-<table><tr><th>Mod</th><th>Via</th><th>Consulta</th><th>Res</th><th>Fecha</th>
+<table class="tec-t"><tr><th>Mod</th><th>Via</th><th>Consulta</th><th>Res</th><th>Fecha</th>
 <th>Liga</th></tr>
 {"".join(fuentes) or '<tr><td colspan="6"><i>Sin busquedas.</i></td></tr>'}</table>
 <p class="nt">Las ligas llevan <span class="nc">?</span> porque su FORMA se
@@ -854,7 +888,7 @@ por egress en este entorno.</p>
 {seccion("Avisos de la corrida", f"<ul>{avisos}</ul>" if avisos else "")}
 
 <h3>La corrida</h3>
-<table>
+<table class="tec-t">
 <tr><th>Fecha</th><td>{html.escape(c.creada[:19])}</td></tr>
 <tr><th>Llave</th><td><code>{html.escape(c.llave)}</code></td></tr>
 <tr><th>Busquedas registradas</th><td>{todas} ({unicas} consultas unicas)</td></tr>
@@ -864,6 +898,7 @@ por egress en este entorno.</p>
 <tr><th>Commit</th><td><code>{html.escape(sl["commit"])}</code></td></tr>
 <tr><th>Firma del estado</th><td>{html.escape(firma)}</td></tr>
 </table>
+</div>
 </details>'''
 
 
@@ -889,14 +924,25 @@ def modo_limpio(c: Corrida) -> str:
     # --- los tres bloques de criterio del operador: su texto, o el hueco con el
     # comando que lo llena. Nunca en blanco (#268).
     CARGA = "registrar --datos '{\"%s\": %s}'"
-    bl_gancho = (f'<div class="gancho">{html.escape(c.gancho)}</div>'
-                 if c.gancho else _hueco(
-                     "gancho escrito",
-                     "Lo escribe el operador: es criterio, no dato. Se carga con "
-                     + CARGA % ("gancho", '"..."')))
+    # EL GANCHO EN DOS PARTES, como el prototipo: la frase grande que abre la
+    # llamada, y debajo el detalle que la sostiene. Se parte en la PRIMERA frase
+    # -- no a la mitad de una oracion-- y si es una sola, la parte grande es todo.
+    if c.gancho:
+        trozos = re.split(r"(?<=[.!?])\s+", c.gancho.strip(), maxsplit=1)
+        grande = trozos[0]
+        detalle = trozos[1] if len(trozos) > 1 else ""
+        bl_gancho = ('<div class="hook">'
+                     f'<div class="big">{html.escape(grande)}</div>'
+                     + (f'<p>{html.escape(detalle)}</p>' if detalle else "")
+                     + '</div>')
+    else:
+        bl_gancho = _hueco(
+            "gancho escrito",
+            "Lo escribe el operador: es criterio, no dato. Se carga con "
+            + CARGA % ("gancho", '"..."'))
 
     tl = linea_de_tiempo(c)
-    bl_porque = (f'<div class="gancho">{html.escape(c.por_que_ahora)}</div>'
+    bl_porque = (f'<p style="margin:0 0 12px">{html.escape(c.por_que_ahora)}</p>'
                  if c.por_que_ahora else _hueco(
                      "razon de oportunidad escrita",
                      "La linea de tiempo de abajo es la materia prima; esto es la "
@@ -907,7 +953,7 @@ def modo_limpio(c: Corrida) -> str:
     # encontro, para que el guion se pueda aplicar a alguien concreto.
     hablar_op = ("".join(f"<li>{html.escape(t)}</li>" for t in c.como_hablarles)
                  if c.como_hablarles else "")
-    bl_hablar = (f'<ul>{hablar_op}</ul>' if hablar_op else _hueco(
+    bl_hablar = (f'<ul class="simple">{hablar_op}</ul>' if hablar_op else _hueco(
         "guion escrito",
         "El vocabulario y los indicadores que la corrida recogio son la materia "
         "prima. Se carga con " + CARGA % ("como_hablarles", '["...", "..."]')))
@@ -935,10 +981,10 @@ def modo_limpio(c: Corrida) -> str:
             + html.escape(", ".join(hist["plantas"]))
             + ', no en esta planta. Aqui no abre puertas y mencionarlo puede '
               'confundir a quien te contesta.</li>')
-    bl_grupos = (f'<ul class="gr">{nota_canal}{grupos}</ul>'
+    bl_grupos = (f'<ul class="simple">{nota_canal}{grupos}</ul>'
                  if (grupos or nota_canal) else "")
 
-    nav = "".join(f"<li><code>{html.escape(q)}</code></li>"
+    nav = "".join(f"<code>{html.escape(q)}</code>"
                   for q in busquedas_sales_navigator(c))
     faltantes = no_se_pudo_revisar(c)
     bl_falta = ("".join(f"<li>{html.escape(t)}</li>" for t in faltantes)
@@ -952,176 +998,227 @@ def modo_limpio(c: Corrida) -> str:
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{html.escape(c.empresa)} — ficha de prospeccion</title>
 <style>
- :root{{--paper:#f5f7f4;--card:#fff;--ink:#12201e;--ink2:#3d4b48;--ink3:#6c7975;
-        --line:#dde3df;--line2:#c9d2cd;--accent:#0f6b5c;--accent-s:#e3efeb;
-        --ok:#1f7a4d;--ok-s:#e4f1e9;--sup:#9a6608;--sup-s:#f8eed8;
-        --nil:#6c7975;--nil-s:#eceeed;--flag:#a93520;--flag-s:#fae9e5;
-        --shadow:0 1px 2px rgba(18,32,30,.06),0 8px 24px -16px rgba(18,32,30,.22);
-        --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
-        --body:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}}
+ /* ------------------------------------------------------------------ paleta
+    Los tokens son los del PROTOTIPO APROBADO (#323), con sus nombres y sus
+    valores: teal para lo positivo, rojo para el aviso y para "por confirmar",
+    ambar para "puesto sin persona" y para la etiqueta de estado, gris para
+    contexto y para la barra de la pestana. */
+ :root{{--paper:#f5f7f4;--ink:#1b2621;--muted:#66716c;--line:#dde3df;
+        --card:#ffffff;--teal:#0f6b5c;--teal-soft:#e2efeb;
+        --hot:#b3261e;--hot-bg:#fbe9e7;--ok:#1f7a4d;--ok-bg:#e6f4ec;
+        --warn:#b06a00;--warn-bg:#fbf3e3;--gray-bg:#eef1ef}}
  @media (prefers-color-scheme:dark){{:root:not([data-theme="light"]){{
-        --paper:#0e1614;--card:#151f1d;--ink:#e8efec;--ink2:#b3c1bc;--ink3:#849690;
-        --line:#26332f;--line2:#334440;--accent:#5cc9b0;--accent-s:#16302b;
-        --ok:#6ed19b;--ok-s:#142b20;--sup:#e0ac4d;--sup-s:#33260f;
-        --nil:#849690;--nil-s:#1d2724;--flag:#f08a71;--flag-s:#341811;
-        --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8)}}}}
- :root[data-theme="dark"]{{--paper:#0e1614;--card:#151f1d;--ink:#e8efec;
-        --ink2:#b3c1bc;--ink3:#849690;--line:#26332f;--line2:#334440;
-        --accent:#5cc9b0;--accent-s:#16302b;--ok:#6ed19b;--ok-s:#142b20;
-        --sup:#e0ac4d;--sup-s:#33260f;--nil:#849690;--nil-s:#1d2724;
-        --flag:#f08a71;--flag-s:#341811}}
+        --paper:#121815;--ink:#e8efeb;--muted:#9aa8a2;--line:#2a3831;
+        --card:#18211d;--teal:#4db5a0;--teal-soft:#183029;--hot:#f2897f;
+        --hot-bg:#2c1613;--ok:#5bc98a;--ok-bg:#122a1d;--warn:#e0a94a;
+        --warn-bg:#2e2413;--gray-bg:#1e2622}}}}
+ :root[data-theme="dark"]{{--paper:#121815;--ink:#e8efeb;--muted:#9aa8a2;
+        --line:#2a3831;--card:#18211d;--teal:#4db5a0;--teal-soft:#183029;
+        --hot:#f2897f;--hot-bg:#2c1613;--ok:#5bc98a;--ok-bg:#122a1d;
+        --warn:#e0a94a;--warn-bg:#2e2413;--gray-bg:#1e2622}}
  *{{box-sizing:border-box}}
- body{{font:16px/1.6 var(--body);color:var(--ink);background:var(--paper);
-       margin:0;padding:0}}
- .wrap{{max-width:780px;margin:0 auto;padding-block:32px;padding-left:16px;
-        padding-right:16px}}
- .kicker{{font:600 .72rem var(--body);letter-spacing:.11em;text-transform:uppercase;
-          color:var(--accent);margin-bottom:8px}}
- h1{{font-size:2rem;line-height:1.15;margin:0;text-wrap:balance;
-     letter-spacing:-.02em}}
- .sub{{color:var(--ink3);font-size:.95rem;margin-top:6px}}
- .edo{{display:inline-block;margin-top:14px;font:600 .8rem var(--body);
-       padding:5px 12px;border-radius:999px}}
- .edo.fria{{background:var(--flag-s);color:var(--flag)}}
- .edo.ok{{background:var(--ok-s);color:var(--ok)}}
- .edo.nil{{background:var(--nil-s);color:var(--nil)}}
- h2{{font:600 .78rem var(--body);letter-spacing:.1em;text-transform:uppercase;
-     color:var(--ink3);margin:40px 0 12px;padding-bottom:6px;
-     border-bottom:1px solid var(--line)}}
- h3{{font-size:.95rem;margin:22px 0 6px;color:var(--ink2)}}
- .aviso{{background:var(--flag-s);border-left:4px solid var(--flag);
-         padding:16px 18px;margin:24px 0 0;border-radius:4px}}
- .aviso-t{{font:700 .74rem var(--body);letter-spacing:.1em;
-           text-transform:uppercase;color:var(--flag);margin-bottom:8px}}
- .aviso p{{margin:0 0 10px;font-size:.93rem;color:var(--ink)}}
- .aviso p:last-child{{margin-bottom:0}}
- .gancho{{background:var(--accent-s);border-left:4px solid var(--accent);
-          padding:16px 18px;font-size:1.08rem;line-height:1.5;border-radius:4px}}
- .tl{{display:flex;gap:16px;padding:10px 0;border-bottom:1px solid var(--line)}}
- .tl:last-child{{border-bottom:0}}
- .tl-f{{flex:0 0 5.5rem;font:700 .82rem var(--mono);color:var(--accent);
-        padding-top:2px}}
- .tl-f.sf{{color:var(--sup)}}
- .tl-h{{flex:1;font-size:.95rem}}
- .tl-n{{font-size:.82rem;color:var(--sup);margin-top:2px}}
- .card{{background:var(--card);border:1px solid var(--line);border-radius:6px;
-        padding:14px 16px;margin-bottom:10px;box-shadow:var(--shadow)}}
- .card-h{{display:flex;align-items:baseline;gap:10px;justify-content:space-between}}
- .card-n{{font-size:1.14rem;font-weight:650;letter-spacing:-.01em}}
- .card-p{{color:var(--ink2);font-size:.9rem;margin-top:2px}}
- .card-q{{font-size:.9rem;color:var(--ink2);margin-top:8px}}
- .card-r{{font-size:.88rem;color:var(--sup);background:var(--sup-s);
-          padding:7px 10px;border-radius:4px;margin-top:8px}}
- .chip{{flex:0 0 auto;font:600 .68rem var(--body);letter-spacing:.06em;
-        text-transform:uppercase;padding:3px 9px;border-radius:999px;
-        background:var(--nil-s);color:var(--nil);white-space:nowrap}}
- .chip.c-t{{background:var(--accent-s);color:var(--accent)}}
- .chip.c-sup,.chip.c-flag{{background:var(--sup-s);color:var(--sup)}}
- .mail{{font:.86rem var(--mono);color:var(--ink);margin-top:10px;
-        word-break:break-all}}
- .mail-d{{font-size:.82rem;margin-top:2px}}
- .mail-d.ok{{color:var(--ok)}} .mail-d.sup{{color:var(--sup)}}
- .mail-d.nil{{color:var(--ink3)}} .mail-d.flag{{color:var(--flag)}}
- .ctx-l{{margin:8px 0 0;padding-left:20px;font-size:.9rem;color:var(--ink2)}}
- .gr{{padding-left:20px;font-size:.92rem;color:var(--ink2)}}
- .gr li.ojo{{color:var(--flag);list-style:none;margin-left:-20px;
-             background:var(--flag-s);padding:9px 12px;border-radius:4px}}
- .cob{{display:flex;gap:18px;align-items:center;background:var(--card);
-       border:1px solid var(--line);border-radius:6px;padding:16px}}
- .gauge{{flex:0 0 76px;width:76px;height:76px}}
- .g-bg{{fill:none;stroke:var(--line2);stroke-width:8}}
- .g-fg{{fill:none;stroke:var(--accent);stroke-width:8;stroke-linecap:round}}
- .g-t{{font:700 17px var(--body);fill:var(--ink);text-anchor:middle}}
- .hueco{{background:var(--sup-s);border-left:4px solid var(--sup);
-         padding:12px 14px;font-size:.92rem;border-radius:4px;color:var(--ink)}}
- ul.nav{{padding-left:0;list-style:none}}
- ul.nav li{{margin:6px 0}}
- ul.nav code{{display:block;font:.82rem var(--mono);background:var(--card);
-              border:1px solid var(--line);border-radius:4px;padding:9px 11px;
-              word-break:break-word}}
- .pie{{margin-top:44px;padding-top:16px;border-top:1px solid var(--line);
-       color:var(--ink3);font-size:.85rem}}
- details.tec{{margin-top:32px;background:var(--card);border:1px solid var(--line);
-              border-radius:6px}}
- details.tec>summary{{cursor:pointer;padding:14px 16px;font-weight:600;
-                      font-size:.92rem;color:var(--ink2)}}
- details.tec .hint{{display:block;font-weight:400;font-size:.82rem;
-                    color:var(--ink3);margin-top:3px}}
- details.tec>*:not(summary){{margin-left:16px;margin-right:16px}}
- details.tec>*:last-child{{margin-bottom:16px}}
- details.tec table{{width:calc(100% - 0px);border-collapse:collapse;
-                    font-size:.82rem;margin:6px 0 4px}}
- details.tec th{{text-align:left;font-size:.7rem;text-transform:uppercase;
-                 letter-spacing:.05em;color:var(--ink3);padding:5px 7px;
+ body{{margin:0;background:var(--paper);color:var(--ink);font-size:16px;
+       line-height:1.55;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",
+       Roboto,"Source Sans 3",sans-serif}}
+ .wrap{{max-width:760px;margin:0 auto;padding-block:28px 70px;
+        padding-left:18px;padding-right:18px}}
+
+ /* ----------------------------------------------------------- cabecera */
+ .kicker{{font-size:12px;letter-spacing:.09em;text-transform:uppercase;
+          color:var(--teal);font-weight:700}}
+ h1{{margin:6px 0 2px;font-size:30px;font-weight:800;letter-spacing:-.02em;
+     line-height:1.1;text-wrap:balance}}
+ .sub{{color:var(--muted);font-size:15px;margin:0}}
+ .estado{{display:inline-block;margin-top:12px;padding:5px 13px;
+          border-radius:999px;font-size:13px;font-weight:700}}
+ .estado.fria{{background:var(--warn-bg);color:var(--warn)}}
+ .estado.ok{{background:var(--ok-bg);color:var(--ok)}}
+ .estado.nil{{background:var(--gray-bg);color:var(--muted)}}
+
+ /* -------------------------------------------------------------- bloques */
+ .card{{background:var(--card);border:1px solid var(--line);border-radius:14px;
+        padding:20px 22px;margin:18px 0}}
+ .card h2{{margin:0 0 12px;font-size:12.5px;letter-spacing:.08em;
+           text-transform:uppercase;color:var(--teal);font-weight:700}}
+ .hook{{background:var(--teal-soft);border:1px solid var(--teal);
+        border-radius:14px;padding:20px 22px;margin:18px 0}}
+ .hook .big{{font-size:21px;font-weight:800;color:var(--teal);line-height:1.25;
+             letter-spacing:-.01em}}
+ .hook p{{margin:12px 0 0;font-size:16px}}
+ .aviso{{background:var(--hot-bg);border:1px solid var(--hot);border-radius:12px;
+         padding:14px 18px;margin:18px 0}}
+ .aviso b{{color:var(--hot)}}
+ .aviso p{{margin:6px 0 0;font-size:15px}}
+
+ /* --------------------------------------------------------- por que ahora */
+ .timeline{{list-style:none;margin:0;padding:0}}
+ .timeline li{{display:grid;grid-template-columns:96px 1fr;gap:12px;
+               padding:9px 0;border-bottom:1px solid var(--line)}}
+ .timeline li:last-child{{border-bottom:none}}
+ .timeline .f{{font-weight:700;color:var(--teal);font-size:14px}}
+ .timeline .f.sf{{color:var(--warn)}}
+ .timeline .t{{font-size:15px}}
+
+ /* ------------------------------------------------------------ contactos */
+ .persona{{display:grid;grid-template-columns:1fr auto;gap:14px;padding:14px 0;
+           border-bottom:1px solid var(--line)}}
+ .persona:last-child{{border-bottom:none}}
+ .persona .nombre{{font-weight:800;font-size:17px}}
+ .persona .puesto{{color:var(--muted);font-size:14.5px;margin-top:2px}}
+ .persona .porque{{margin-top:6px;font-size:15px}}
+ .persona .lado{{text-align:right;min-width:150px}}
+ .chip{{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 10px;
+        border-radius:6px;margin-bottom:6px}}
+ .chip.dec{{background:var(--hot-bg);color:var(--hot)}}
+ .chip.pue{{background:var(--warn-bg);color:var(--warn)}}
+ .chip.ctx{{background:var(--gray-bg);color:var(--muted)}}
+ .chip.tea{{background:var(--teal-soft);color:var(--teal)}}
+ /* El correo se parte por CSS, no con un <br>. Ver el comentario de
+    `_correo_en_palabras`: un <br> mete un salto de linea en el texto y el correo
+    deja de poder copiarse a un campo "Para:". */
+ .correo{{display:block;font-family:ui-monospace,Menlo,monospace;font-size:13px;
+          color:var(--teal);word-break:break-all}}
+ .correo small{{display:block;font-family:inherit;font-size:11.5px;
+                color:var(--muted);font-weight:600;word-break:normal}}
+ .correo small.ok{{color:var(--ok)}}
+ .correo small.flag{{color:var(--hot)}}
+ .correo.nil{{color:var(--muted)}}
+ .sinpersona{{opacity:.9}}
+ .sinpersona .nombre{{color:var(--warn)}}
+ .sub-h{{font-size:13px;font-weight:700;color:var(--muted);
+         text-transform:uppercase;letter-spacing:.06em;margin:20px 0 4px}}
+ .nota-g{{font-size:13.5px;color:var(--muted);margin:2px 0 6px}}
+
+ ul.simple{{margin:8px 0 0;padding-left:20px}}
+ ul.simple li{{margin:7px 0;font-size:15.5px}}
+ ul.simple li.ojo{{list-style:none;margin-left:-20px;background:var(--hot-bg);
+                   color:var(--hot);padding:9px 12px;border-radius:8px}}
+
+ .sn{{background:var(--card);border:1px dashed var(--line);border-radius:10px;
+      padding:12px 14px;margin-top:14px}}
+ .sn code{{display:block;font-family:ui-monospace,Menlo,monospace;font-size:13px;
+           padding:4px 0;color:var(--ink);word-break:break-word}}
+
+ /* -------------------------------------------------------------- medidor */
+ .completitud{{display:grid;grid-template-columns:auto 1fr;gap:16px;
+               align-items:center}}
+ .medidor{{width:110px;height:110px;border-radius:50%;display:grid;
+           place-items:center;flex:none}}
+ .medidor span{{width:80px;height:80px;border-radius:50%;background:var(--card);
+                display:grid;place-items:center;font-weight:800;font-size:22px;
+                color:var(--teal)}}
+ .completitud p{{margin:0;font-size:15px}}
+ .hueco{{background:var(--warn-bg);border:1px solid var(--warn);color:var(--ink);
+         border-radius:10px;padding:12px 14px;font-size:15px}}
+
+ /* ------------------------------------------------- pestana tecnica */
+ details.tec{{margin:26px 0 0;border:1px solid var(--line);border-radius:14px;
+              background:var(--gray-bg)}}
+ details.tec>summary{{cursor:pointer;list-style:none;padding:16px 22px;
+                      font-weight:700;font-size:14px;color:var(--muted);
+                      display:flex;align-items:center;gap:10px;
+                      user-select:none}}
+ details.tec>summary::-webkit-details-marker{{display:none}}
+ details.tec>summary::before{{content:"\\25B8";font-size:14px;
+                              transition:transform .15s}}
+ details.tec[open]>summary::before{{transform:rotate(90deg)}}
+ details.tec>summary .hint{{font-weight:500;font-size:13px;color:var(--muted);
+                            margin-left:auto;text-align:right}}
+ .tec-body{{padding:0 22px 22px}}
+ .tec-body h3{{margin:18px 0 8px;font-size:12px;letter-spacing:.07em;
+               text-transform:uppercase;color:var(--muted)}}
+ table.tec-t{{width:100%;border-collapse:collapse;font-size:13px;
+              background:var(--card);border-radius:8px;overflow:hidden}}
+ table.tec-t th{{text-align:left;font-size:11px;text-transform:uppercase;
+                 letter-spacing:.05em;color:var(--muted);padding:7px 9px;
                  border-bottom:1px solid var(--line)}}
- details.tec td{{padding:5px 7px;border-bottom:1px solid var(--line);
+ table.tec-t td{{padding:7px 9px;border-bottom:1px solid var(--line);
                  vertical-align:top}}
- details.tec td.c{{text-align:center;white-space:nowrap}}
- details.tec td.q{{font:.76rem var(--mono);word-break:break-word}}
- .nt{{font-size:.8rem;color:var(--ink3);margin:4px 0 12px}}
- .nc{{display:inline-block;font:700 .62rem var(--mono);color:var(--sup);
-      background:var(--sup-s);border-radius:50%;width:13px;height:13px;
-      text-align:center;line-height:13px;margin-left:3px;vertical-align:super}}
- ul.cf,ul.sv{{background:var(--sup-s);border-left:3px solid var(--sup);
-              padding:9px 12px 9px 28px;margin:0 0 10px;font-size:.84rem}}
- .e-alerta{{color:var(--sup);font-weight:600}}
- .e-tenue{{color:var(--ink3)}}
- code{{font:.82rem var(--mono)}}
- a{{color:var(--accent)}}
+ table.tec-t tr:last-child td{{border-bottom:none}}
+ table.tec-t td.c{{text-align:center;white-space:nowrap}}
+ .mono{{font-family:ui-monospace,Menlo,monospace;font-size:12px;
+        word-break:break-word}}
+ .est-ok{{color:var(--ok);font-weight:700}}
+ .est-no{{color:var(--muted)}}
+ .est-warn{{color:var(--warn);font-weight:700}}
  .tabla-scroll{{overflow-x:auto}}
+ .nt{{font-size:12.5px;color:var(--muted);margin:6px 0 12px}}
+ ul.cf,ul.sv{{background:var(--warn-bg);border-left:3px solid var(--warn);
+              padding:9px 12px 9px 28px;margin:0 0 10px;font-size:13px}}
+ .nc{{display:inline-block;font:700 .62rem ui-monospace,Menlo,monospace;
+      color:var(--warn);background:var(--warn-bg);border-radius:50%;width:13px;
+      height:13px;text-align:center;line-height:13px;margin-left:3px;
+      vertical-align:super}}
+ code{{font-family:ui-monospace,Menlo,monospace;font-size:13px}}
+ a{{color:var(--teal)}}
+
+ .foot{{color:var(--muted);font-size:12.5px;text-align:center;margin-top:26px;
+        line-height:1.5}}
+ .foot a{{color:var(--teal)}}
+
  @media (max-width:520px){{
-   h1{{font-size:1.6rem}}
-   .tl{{flex-direction:column;gap:2px}}
-   .tl-f{{flex:none}}
-   .cob{{flex-direction:column;align-items:flex-start}}
+   h1{{font-size:24px}}
+   .timeline li{{grid-template-columns:1fr;gap:2px}}
+   .persona{{grid-template-columns:1fr}}
+   .persona .lado{{text-align:left;min-width:0}}
+   .completitud{{grid-template-columns:1fr}}
  }}
  @media print{{body{{background:#fff}} .wrap{{padding:0;max-width:none}}
-               details.tec{{display:none}} h2{{page-break-after:avoid}}
-               .card{{page-break-inside:avoid;box-shadow:none}}}}
+               details.tec{{display:none}}
+               .card,.hook{{page-break-inside:avoid}}}}
 </style>
 </head>
 <body>
 <div class="wrap">
 
 <div class="kicker">Ficha de prospeccion · para Rissia</div>
-<h1>{html.escape(c.empresa)}{f" — {html.escape(c.ciudad)}" if c.ciudad else ""}</h1>
-<div class="sub">{html.escape(c.giro or "giro sin registrar")}{f" · {html.escape(c.ciudad)}" if c.ciudad else ""}</div>
-<div class="edo {estado_cls}">{html.escape(estado_txt)}</div>
+<h1>{html.escape(c.empresa)}{f", planta {html.escape(c.ciudad)}" if c.ciudad else ""}</h1>
+<p class="sub">{html.escape(c.giro or "giro sin registrar")}{f" · {html.escape(c.ciudad)}" if c.ciudad else ""} · {len(c.busquedas())} busquedas registradas</p>
+<span class="estado {estado_cls}">{html.escape(estado_txt)}</span>
 
 {aviso_rojo(c)}
 
-<h2>Gancho</h2>
 {bl_gancho}
 
+<div class="card">
 <h2>Por que ahora</h2>
 {bl_porque}
-{f'<div style="margin-top:14px">{tl}</div>' if tl else '<p class="nt">Sin senal registrada en esta corrida.</p>'}
+{tl or '<p class="nt">Sin senal registrada en esta corrida.</p>'}
+</div>
 
+<div class="card">
 <h2>A quien buscar</h2>
-{f'<h3>Decisores de la planta — {n["decisores"]}</h3>{b_dec}' if b_dec else '<p class="hueco"><b>Sin decisores con nombre todavia.</b> Lo que sigue en «Lo que falta» es exactamente como conseguirlos.</p>'}
-{f'<h3>Por confirmar, valen la pena — {n["confirmar"]}</h3><p class="nt">No estan descartados: les falta una comprobacion, y cual va en su tarjeta. Un contacto pendiente con su razon visible vale mas que un hueco.</p>{b_con}' if b_con else ''}
-{f'<h3>De contexto, no son compradores — {n["contexto"]}</h3>{b_ctx}' if b_ctx else ''}
+{f'<div class="sub-h">Decisores de la planta — {n["decisores"]}</div>{b_dec}' if b_dec else '<div class="hueco"><b>Sin decisores con nombre todavia.</b> Lo que sigue en «Lo que falta» es exactamente como conseguirlos.</div>'}
+{f'<div class="sub-h">Por confirmar, valen la pena — {n["confirmar"]}</div><p class="nota-g">No estan descartados: les falta una comprobacion, y cual va en su renglon. Un contacto pendiente con su razon visible vale mas que un hueco.</p>{b_con}' if b_con else ''}
+{f'<div class="sub-h">De contexto, no son compradores — {n["contexto"]}</div>{b_ctx}' if b_ctx else ''}
+</div>
 
+<div class="card">
 <h2>Como hablarles</h2>
 {bl_hablar}
 {bl_grupos}
-
-<h2>Lo que falta y donde conseguirlo</h2>
-<div class="cob">{svg}<div>{html.escape(frase)}</div></div>
-<h3>Busquedas listas para pegar en Sales Navigator</h3>
-<ul class="nav">{nav}</ul>
-
-<h2>Que no pudimos revisar</h2>
-<ul>{bl_falta}</ul>
-
-<div class="pie">
-Corrida del {c.creada[:10]} · {len(c.busquedas())} busquedas reales
-{f' · {len(fuera)} contacto(s) de otras plantas o del corporativo se guardaron para la corrida corporativa' if fuera else ''}
-{f' · {len(ya_no_estan)} persona(s) quedaron fuera porque una fuente mostro que ya no trabajan ahi' if ya_no_estan else ''}.
-<br>El detalle de donde salio cada dato esta en la pestana de abajo.
 </div>
 
+<div class="card">
+<h2>Lo que falta y donde conseguirlo</h2>
+<div class="completitud">{svg}<p>{html.escape(frase)}</p></div>
+<p class="nota-g">Busquedas listas para pegar en Sales Navigator</p>
+<div class="sn">{nav}</div>
+</div>
+
+<div class="card">
+<h2>Que no pudimos revisar</h2>
+<ul class="simple">{bl_falta}</ul>
+</div>
+
+
 {capa_tecnica(c)}
+
+<div class="foot">
+Corrida del {c.creada[:10]} · {len(c.busquedas())} busquedas reales{f' · {len(fuera)} contacto(s) de otras plantas o del corporativo se guardaron para la corrida corporativa' if fuera else ''}{f' · {len(ya_no_estan)} persona(s) quedaron fuera porque una fuente mostro que ya no trabajan ahi' if ya_no_estan else ''}
+<br>El detalle de donde salio cada dato esta en la pestana de arriba.
+</div>
+
 
 </div>
 </body>

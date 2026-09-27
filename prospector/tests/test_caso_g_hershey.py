@@ -323,7 +323,7 @@ def test_la_TARJETA_muestra_el_patron_cuando_no_hay_correo_de_la_persona():
     # cuenta se imprime cuando la persona no tiene correo propio, marcado como
     # patron y no como direccion, con su nivel dicho EN PALABRAS -- ya no "SOL"--
     # y con la salvedad visible.
-    tarjeta = re.search(r'<div class="card">.*?</div>\s*</div>',
+    tarjeta = re.search(r'<div class="persona[^>]*>.*?<div class="lado">.*?</div>\s*</div>',
                         modo_limpio(c), re.S).group(0)
     assert "patron de la cuenta: FLast@hersheys.com" in tarjeta
     assert "probable" in tarjeta and "SOL" not in tarjeta
@@ -346,7 +346,7 @@ def test_un_patron_EN_CONFLICTO_de_verdad_no_se_imprime_en_la_tarjeta():
     d.observar("contactout", "nombre.apellido@verzatec.com", nota="20%")
     c.agregar(x)
 
-    tarjeta = re.search(r'<div class="card">.*?</div>\s*</div>',
+    tarjeta = re.search(r'<div class="persona[^>]*>.*?<div class="lado">.*?</div>\s*</div>',
                         modo_limpio(c), re.S).group(0)
     # #322: se dice en palabras, no con la sigla EN CONFLICTO. La garantia es la
     # misma y es la que importa: NO se imprime un valor, porque no hay uno.

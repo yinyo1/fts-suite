@@ -1,249 +1,361 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Coficab — ficha de prospeccion</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coficab Pesquería · Ficha para Rissia</title>
 <style>
- :root{--paper:#f5f7f4;--card:#fff;--ink:#12201e;--ink2:#3d4b48;--ink3:#6c7975;
-        --line:#dde3df;--line2:#c9d2cd;--accent:#0f6b5c;--accent-s:#e3efeb;
-        --ok:#1f7a4d;--ok-s:#e4f1e9;--sup:#9a6608;--sup-s:#f8eed8;
-        --nil:#6c7975;--nil-s:#eceeed;--flag:#a93520;--flag-s:#fae9e5;
-        --shadow:0 1px 2px rgba(18,32,30,.06),0 8px 24px -16px rgba(18,32,30,.22);
-        --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
-        --body:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif}
- @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-        --paper:#0e1614;--card:#151f1d;--ink:#e8efec;--ink2:#b3c1bc;--ink3:#849690;
-        --line:#26332f;--line2:#334440;--accent:#5cc9b0;--accent-s:#16302b;
-        --ok:#6ed19b;--ok-s:#142b20;--sup:#e0ac4d;--sup-s:#33260f;
-        --nil:#849690;--nil-s:#1d2724;--flag:#f08a71;--flag-s:#341811;
-        --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8)}}
- :root[data-theme="dark"]{--paper:#0e1614;--card:#151f1d;--ink:#e8efec;
-        --ink2:#b3c1bc;--ink3:#849690;--line:#26332f;--line2:#334440;
-        --accent:#5cc9b0;--accent-s:#16302b;--ok:#6ed19b;--ok-s:#142b20;
-        --sup:#e0ac4d;--sup-s:#33260f;--nil:#849690;--nil-s:#1d2724;
-        --flag:#f08a71;--flag-s:#341811}
- *{box-sizing:border-box}
- body{font:16px/1.6 var(--body);color:var(--ink);background:var(--paper);
-       margin:0;padding:0}
- .wrap{max-width:780px;margin:0 auto;padding-block:32px;padding-left:16px;
-        padding-right:16px}
- .kicker{font:600 .72rem var(--body);letter-spacing:.11em;text-transform:uppercase;
-          color:var(--accent);margin-bottom:8px}
- h1{font-size:2rem;line-height:1.15;margin:0;text-wrap:balance;
-     letter-spacing:-.02em}
- .sub{color:var(--ink3);font-size:.95rem;margin-top:6px}
- .edo{display:inline-block;margin-top:14px;font:600 .8rem var(--body);
-       padding:5px 12px;border-radius:999px}
- .edo.fria{background:var(--flag-s);color:var(--flag)}
- .edo.ok{background:var(--ok-s);color:var(--ok)}
- .edo.nil{background:var(--nil-s);color:var(--nil)}
- h2{font:600 .78rem var(--body);letter-spacing:.1em;text-transform:uppercase;
-     color:var(--ink3);margin:40px 0 12px;padding-bottom:6px;
-     border-bottom:1px solid var(--line)}
- h3{font-size:.95rem;margin:22px 0 6px;color:var(--ink2)}
- .aviso{background:var(--flag-s);border-left:4px solid var(--flag);
-         padding:16px 18px;margin:24px 0 0;border-radius:4px}
- .aviso-t{font:700 .74rem var(--body);letter-spacing:.1em;
-           text-transform:uppercase;color:var(--flag);margin-bottom:8px}
- .aviso p{margin:0 0 10px;font-size:.93rem;color:var(--ink)}
- .aviso p:last-child{margin-bottom:0}
- .gancho{background:var(--accent-s);border-left:4px solid var(--accent);
-          padding:16px 18px;font-size:1.08rem;line-height:1.5;border-radius:4px}
- .tl{display:flex;gap:16px;padding:10px 0;border-bottom:1px solid var(--line)}
- .tl:last-child{border-bottom:0}
- .tl-f{flex:0 0 5.5rem;font:700 .82rem var(--mono);color:var(--accent);
-        padding-top:2px}
- .tl-f.sf{color:var(--sup)}
- .tl-h{flex:1;font-size:.95rem}
- .tl-n{font-size:.82rem;color:var(--sup);margin-top:2px}
- .card{background:var(--card);border:1px solid var(--line);border-radius:6px;
-        padding:14px 16px;margin-bottom:10px;box-shadow:var(--shadow)}
- .card-h{display:flex;align-items:baseline;gap:10px;justify-content:space-between}
- .card-n{font-size:1.14rem;font-weight:650;letter-spacing:-.01em}
- .card-p{color:var(--ink2);font-size:.9rem;margin-top:2px}
- .card-q{font-size:.9rem;color:var(--ink2);margin-top:8px}
- .card-r{font-size:.88rem;color:var(--sup);background:var(--sup-s);
-          padding:7px 10px;border-radius:4px;margin-top:8px}
- .chip{flex:0 0 auto;font:600 .68rem var(--body);letter-spacing:.06em;
-        text-transform:uppercase;padding:3px 9px;border-radius:999px;
-        background:var(--nil-s);color:var(--nil);white-space:nowrap}
- .chip.c-t{background:var(--accent-s);color:var(--accent)}
- .chip.c-sup,.chip.c-flag{background:var(--sup-s);color:var(--sup)}
- .mail{font:.86rem var(--mono);color:var(--ink);margin-top:10px;
-        word-break:break-all}
- .mail-d{font-size:.82rem;margin-top:2px}
- .mail-d.ok{color:var(--ok)} .mail-d.sup{color:var(--sup)}
- .mail-d.nil{color:var(--ink3)} .mail-d.flag{color:var(--flag)}
- .ctx-l{margin:8px 0 0;padding-left:20px;font-size:.9rem;color:var(--ink2)}
- .gr{padding-left:20px;font-size:.92rem;color:var(--ink2)}
- .gr li.ojo{color:var(--flag);list-style:none;margin-left:-20px;
-             background:var(--flag-s);padding:9px 12px;border-radius:4px}
- .cob{display:flex;gap:18px;align-items:center;background:var(--card);
-       border:1px solid var(--line);border-radius:6px;padding:16px}
- .gauge{flex:0 0 76px;width:76px;height:76px}
- .g-bg{fill:none;stroke:var(--line2);stroke-width:8}
- .g-fg{fill:none;stroke:var(--accent);stroke-width:8;stroke-linecap:round}
- .g-t{font:700 17px var(--body);fill:var(--ink);text-anchor:middle}
- .hueco{background:var(--sup-s);border-left:4px solid var(--sup);
-         padding:12px 14px;font-size:.92rem;border-radius:4px;color:var(--ink)}
- ul.nav{padding-left:0;list-style:none}
- ul.nav li{margin:6px 0}
- ul.nav code{display:block;font:.82rem var(--mono);background:var(--card);
-              border:1px solid var(--line);border-radius:4px;padding:9px 11px;
-              word-break:break-word}
- .pie{margin-top:44px;padding-top:16px;border-top:1px solid var(--line);
-       color:var(--ink3);font-size:.85rem}
- details.tec{margin-top:32px;background:var(--card);border:1px solid var(--line);
-              border-radius:6px}
- details.tec>summary{cursor:pointer;padding:14px 16px;font-weight:600;
-                      font-size:.92rem;color:var(--ink2)}
- details.tec .hint{display:block;font-weight:400;font-size:.82rem;
-                    color:var(--ink3);margin-top:3px}
- details.tec>*:not(summary){margin-left:16px;margin-right:16px}
- details.tec>*:last-child{margin-bottom:16px}
- details.tec table{width:calc(100% - 0px);border-collapse:collapse;
-                    font-size:.82rem;margin:6px 0 4px}
- details.tec th{text-align:left;font-size:.7rem;text-transform:uppercase;
-                 letter-spacing:.05em;color:var(--ink3);padding:5px 7px;
-                 border-bottom:1px solid var(--line)}
- details.tec td{padding:5px 7px;border-bottom:1px solid var(--line);
-                 vertical-align:top}
- details.tec td.c{text-align:center;white-space:nowrap}
- details.tec td.q{font:.76rem var(--mono);word-break:break-word}
- .nt{font-size:.8rem;color:var(--ink3);margin:4px 0 12px}
- .nc{display:inline-block;font:700 .62rem var(--mono);color:var(--sup);
-      background:var(--sup-s);border-radius:50%;width:13px;height:13px;
-      text-align:center;line-height:13px;margin-left:3px;vertical-align:super}
- ul.cf,ul.sv{background:var(--sup-s);border-left:3px solid var(--sup);
-              padding:9px 12px 9px 28px;margin:0 0 10px;font-size:.84rem}
- .e-alerta{color:var(--sup);font-weight:600}
- .e-tenue{color:var(--ink3)}
- code{font:.82rem var(--mono)}
- a{color:var(--accent)}
- .tabla-scroll{overflow-x:auto}
- @media (max-width:520px){
-   h1{font-size:1.6rem}
-   .tl{flex-direction:column;gap:2px}
-   .tl-f{flex:none}
-   .cob{flex-direction:column;align-items:flex-start}
- }
- @media print{body{background:#fff} .wrap{padding:0;max-width:none}
-               details.tec{display:none} h2{page-break-after:avoid}
-               .card{page-break-inside:avoid;box-shadow:none}}
+  :root{
+    --paper:#f5f7f4; --ink:#1b2621; --muted:#66716c; --line:#dde3df; --card:#ffffff;
+    --teal:#0f6b5c; --teal-soft:#e2efeb;
+    --hot:#b3261e; --hot-bg:#fbe9e7;
+    --ok:#1f7a4d; --ok-bg:#e6f4ec;
+    --warn:#b06a00; --warn-bg:#fbf3e3;
+    --gray-bg:#eef1ef;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#121815; --ink:#e8efeb; --muted:#9aa8a2; --line:#2a3831; --card:#18211d;
+      --teal:#4db5a0; --teal-soft:#183029; --hot:#f2897f; --hot-bg:#2c1613;
+      --ok:#5bc98a; --ok-bg:#122a1d; --warn:#e0a94a; --warn-bg:#2e2413; --gray-bg:#1e2622;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Source Sans 3",sans-serif;
+    line-height:1.55;font-size:16px}
+  .wrap{max-width:760px;margin:0 auto;padding:28px 18px 70px}
+
+  /* cabecera */
+  .kicker{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--teal);font-weight:700}
+  h1{margin:6px 0 2px;font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1.1}
+  .sub{color:var(--muted);font-size:15px;margin:0}
+  .estado{display:inline-block;margin-top:12px;padding:5px 13px;border-radius:999px;
+    font-size:13px;font-weight:700;background:var(--warn-bg);color:var(--warn)}
+
+  /* bloques */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin:18px 0}
+  .card h2{margin:0 0 12px;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--teal);font-weight:700}
+  .hook{background:var(--teal-soft);border:1px solid var(--teal);border-radius:14px;padding:20px 22px;margin:18px 0}
+  .hook .big{font-size:21px;font-weight:800;color:var(--teal);line-height:1.25;letter-spacing:-.01em}
+  .hook p{margin:12px 0 0;font-size:16px}
+  .aviso{background:var(--hot-bg);border:1px solid var(--hot);border-radius:12px;padding:14px 18px;margin:18px 0}
+  .aviso b{color:var(--hot)}
+  .aviso p{margin:6px 0 0;font-size:15px}
+
+  /* por qué ahora */
+  .timeline{list-style:none;margin:0;padding:0}
+  .timeline li{display:grid;grid-template-columns:96px 1fr;gap:12px;padding:9px 0;border-bottom:1px solid var(--line)}
+  .timeline li:last-child{border-bottom:none}
+  .timeline .f{font-weight:700;color:var(--teal);font-size:14px}
+  .timeline .t{font-size:15px}
+
+  /* contactos */
+  .persona{display:grid;grid-template-columns:1fr auto;gap:14px;padding:14px 0;border-bottom:1px solid var(--line)}
+  .persona:last-child{border-bottom:none}
+  .persona .nombre{font-weight:800;font-size:17px}
+  .persona .puesto{color:var(--muted);font-size:14.5px;margin-top:2px}
+  .persona .porque{margin-top:6px;font-size:15px}
+  .persona .lado{text-align:right;min-width:150px}
+  .chip{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:6px;margin-bottom:6px}
+  .chip.dec{background:var(--hot-bg);color:var(--hot)}
+  .chip.pue{background:var(--warn-bg);color:var(--warn)}
+  .chip.ctx{background:var(--gray-bg);color:var(--muted)}
+  .correo{display:block;font-family:ui-monospace,Menlo,monospace;font-size:13px;color:var(--teal)}
+  .correo small{display:block;font-family:inherit;font-size:11.5px;color:var(--muted);font-weight:600}
+  .ok{color:var(--ok)}
+  .sinpersona{opacity:.9}
+  .sinpersona .nombre{color:var(--warn)}
+
+  .sub-h{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:20px 0 4px}
+
+  ul.simple{margin:8px 0 0;padding-left:20px} ul.simple li{margin:7px 0;font-size:15.5px}
+
+  .sn{background:var(--card);border:1px dashed var(--line);border-radius:10px;padding:12px 14px}
+  .sn code{display:block;font-family:ui-monospace,Menlo,monospace;font-size:13px;padding:4px 0;color:var(--ink)}
+
+  .completitud{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center}
+  .medidor{width:110px;height:110px;border-radius:50%;
+    background:conic-gradient(var(--teal) 0 49%, var(--line) 49% 100%);
+    display:grid;place-items:center;flex:none}
+  .medidor span{width:80px;height:80px;border-radius:50%;background:var(--card);display:grid;place-items:center;
+    font-weight:800;font-size:22px;color:var(--teal)}
+  .completitud p{margin:0;font-size:15px}
+
+
+  /* pestaña técnica colapsada */
+  details.tec{margin:26px 0 0;border:1px solid var(--line);border-radius:14px;background:var(--gray-bg)}
+  details.tec>summary{cursor:pointer;list-style:none;padding:16px 22px;font-weight:700;font-size:14px;
+    color:var(--muted);display:flex;align-items:center;gap:10px;user-select:none}
+  details.tec>summary::-webkit-details-marker{display:none}
+  details.tec>summary::before{content:"▸";font-size:14px;transition:transform .15s}
+  details.tec[open]>summary::before{transform:rotate(90deg)}
+  details.tec>summary .hint{font-weight:500;font-size:13px;color:var(--muted);margin-left:auto}
+  .tec-body{padding:0 22px 22px}
+  .tec-body h3{margin:18px 0 8px;font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+  table.tec-t{width:100%;border-collapse:collapse;font-size:13px;background:var(--card);border-radius:8px;overflow:hidden}
+  table.tec-t th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:7px 9px;border-bottom:1px solid var(--line)}
+  table.tec-t td{padding:7px 9px;border-bottom:1px solid var(--line);vertical-align:top}
+  table.tec-t tr:last-child td{border-bottom:none}
+  .mono{font-family:ui-monospace,Menlo,monospace;font-size:12px}
+  .est-ok{color:var(--ok);font-weight:700} .est-no{color:var(--muted)} .est-warn{color:var(--warn);font-weight:700}
+
+  .foot{color:var(--muted);font-size:12.5px;text-align:center;margin-top:26px;line-height:1.5}
+  .foot a{color:var(--teal)}
 </style>
 </head>
 <body>
-<div style="max-width:780px;margin:0 auto;padding:14px 16px;
-  background:#fbf3e8;border:2px solid #9a6608;color:#6b4708;font:14px/1.5
-  -apple-system,system-ui,sans-serif;border-radius:4px">
-<b>PROTOTIPO DE REFERENCIA — datos FICTICIOS.</b> Esta es la ficha de Coficab
-Pesqueria regenerada con el diseno de dos capas de #322, y sirve como referencia
-visual del formato. <b>Ninguna persona aqui es real:</b> los nombres son
-inventados y los correos son de ejemplo, porque este archivo si vive en el repo y
-el repo es publico. Una ficha de verdad NUNCA se guarda aqui.
+<div style="max-width:760px;margin:0 auto;padding:14px 18px;
+  background:#fbf3e3;border:1px solid #b06a00;color:#6b4708;border-radius:12px;
+  font:14px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+<b>PROTOTIPO APROBADO — referencia visual. Personas ENMASCARADAS.</b>
+Este es el prototipo que Esteban aprobo, guardado con su marcado y su CSS
+intactos para que sirva de referencia. <b>Los nombres y los correos se
+reemplazaron por marcadores ficticios</b>: el original traia ocho personas reales
+y cuatro correos reales, y este archivo vive en un repo publico. El resto del
+documento es el del prototipo, sin cambios.
 <br><br>
-<b>Nota sobre el prototipo aprobado:</b> el <code>prototipo-ficha.html</code> que
-#322 decia traer adjunto no llego al repo ni al issue, asi que este archivo se
-construyo desde la ESPECIFICACION ESCRITA de #322 -- las nueve secciones a-i, la
-pestana colapsada y la regla de vocabulario-- reusando la paleta que ya estaba
-aprobada en <code>metodo/fixtures/ficha-prototipo-ragasa.html</code>. Si el
-adjunto aparece y el diseno difiere, esto se ajusta.
+Lo que el prototipo destapo de paso: cuatro de esos correos venian escritos
+<code>nombre.apellido&lt;br&gt;@dominio</code> — partidos con una etiqueta para que
+cupieran en la columna— y <b>asi evadian la guardia de datos personales del
+repo</b>, porque el caracter antes de la arroba era un <code>&gt;</code>. El hueco
+quedo cerrado en #323.
 </div>
 <div class="wrap">
 
-<div class="kicker">Ficha de prospeccion · para Rissia</div>
-<h1>Coficab — Pesqueria</h1>
-<div class="sub">cables · Pesqueria</div>
-<div class="edo fria">Cuenta fria en esta planta · carta del grupo</div>
+  <div class="kicker">Ficha de prospección · para Rissia</div>
+  <h1>Coficab, planta Pesquería</h1>
+  <p class="sub">Cables automotrices · Airport Technology Park, Pesquería NL · dos naves, a 40 minutos de FTS</p>
+  <span class="estado">Cuenta fría en esta planta · carta del grupo</span>
 
-<div class="aviso"><div class="aviso-t">Antes de llamar</div><p><b>FTS nunca ha trabajado en esta planta.</b> Todo el trabajo con esta cuenta fue en Ciudad Juarez via Quimitec. No digas «ya trabajamos en su planta»: se cae en la primera llamada.<br><br><b>La carta correcta es:</b><br>«Ya le hicimos 3 proyecto(s) a su grupo en Ciudad Juarez», via Quimitec — chiller Trane 30 TR, arranque ago-2026; chiller para Battery 4, cotizacion urgente; mezanine, intercambiador y chiller. NO digas &#x27;ya trabajamos en su planta&#x27;: esta planta es fria, y la afirmacion se cae en la primera llamada.</p></div>
+  <div class="aviso">
+    <b>Ojo antes de llamar:</b>
+    <p>FTS nunca ha trabajado en Pesquería. Todo lo que hemos hecho con Coficab fue en <b>Ciudad Juárez</b>, y entró por Quimitec. La carta correcta es "ya le hicimos tres proyectos de agua helada a su grupo", no "ya trabajamos en su planta".</p>
+  </div>
 
-<h2>Gancho</h2>
-<div class="gancho">Arrancaron una linea nueva en agosto y el agua helada esta al limite. Somos el proveedor de agua helada de su grupo en Juarez.</div>
+  <div class="hook">
+    <div class="big">El grupo Coficab ha pedido agua helada de proceso tres veces en diez meses, y FTS hizo dos de esos proyectos. Pesquería es su planta más cercana a nosotros y todavía no hablamos directo.</div>
+    <p>Chillers, circuito cerrado e intercambiadores para una planta de cables: es exactamente lo que ya les instalamos. Aquí la referencia es del mismo grupo, no de un desconocido.</p>
+  </div>
 
-<h2>Por que ahora</h2>
-<div class="gancho">El equipo que su grupo compro en Juarez es el mismo que esta planta necesitaria, y el arranque de linea lo adelanta.</div>
-<div style="margin-top:14px"><div class="tl"><div class="tl-f">2018</div><div class="tl-h">ampliacion de nave 2018</div></div><div class="tl"><div class="tl-f">ago-2026</div><div class="tl-h">arranque de linea ago-2026</div></div><div class="tl"><div class="tl-f sf">Sin fecha</div><div class="tl-h">nota de prensa sobre inversion, sin fecha en el registro<div class="tl-n">confirmar el ano antes de citarlo</div></div></div></div>
+  <div class="card">
+    <h2>Por qué ahora</h2>
+    <ul class="timeline">
+      <li><span class="f">Nov 2025</span><span class="t">Proyecto de mezanine, intercambiador y chiller de circuito cerrado para Coficab Juárez, vía Quimitec.</span></li>
+      <li><span class="f">Abr 2026</span><span class="t">Coficab Américas pidió con urgencia un chiller de agua con instalación para "Battery 4".</span></li>
+      <li><span class="f">Ago 2026</span><span class="t">FTS arrancó el chiller Trane de 30 TR en Juárez. Referencia viva.</span></li>
+      <li><span class="f">Sin fecha</span><span class="t">Prensa reporta que Coficab abre una segunda planta en Nuevo León. <b>Confirmar el año antes de citarlo.</b></span></li>
+    </ul>
+  </div>
 
-<h2>A quien buscar</h2>
-<h3>Decisores de la planta — 1</h3><div class="card"><div class="card-h"><div class="card-n">(puesto sin persona)</div><span class="chip c-t">Puesto sin persona</span></div><div class="card-p">Jefe de Mantenimiento · Coficab Pesqueria</div><div class="card-q">responde por que la planta no pare: es quien vive el problema que FTS resuelve</div><div class="mail">patron de la cuenta: nombre.apellido@ejemplo.com</div><div class="mail-d sup">patron confirmado con 2 correo(s) real(es) de la empresa; el buzon de esta persona es probable, no verificado</div></div>
-<h3>Por confirmar, valen la pena — 1</h3><p class="nt">No estan descartados: les falta una comprobacion, y cual va en su tarjeta. Un contacto pendiente con su razon visible vale mas que un hueco.</p><div class="card"><div class="card-h"><div class="card-n">Ana Ficticia</div><span class="chip c-nil">Por confirmar</span></div><div class="card-p">Gerente de EHS · COFICAB Monterrey</div><div class="card-q">responde por que la planta no pare: es quien vive el problema que FTS resuelve</div><div class="card-r">el puesto viene de un directorio de 2023 y no se confirmo con una fuente de 2026</div><div class="mail-d nil">sin correo — hay que pedirlo por conmutador o por LinkedIn</div></div>
-<h3>De contexto, no son compradores — 12</h3><div class="card ctx"><div class="card-h"><div class="card-n">Contexto — 12 persona(s)</div><span class="chip c-t">Contexto</span></div><div class="card-q">No compran, y sirven para dos cosas: confirmar el organigrama y conseguir el nombre de quien si decide.</div><ul class="ctx-l"><li><b>Persona0 Ficticia</b> — Supervisor de Mantenimiento · Coficab Pesqueria</li><li><b>Persona1 Ficticia</b> — Supervisor de Mantenimiento · Coficab Pesqueria</li><li><b>Persona10 Ficticia</b> — Supervisor de Mantenimiento · Coficab Pesqueria</li><li><b>Persona2 Ficticia</b> — Supervisor de Mantenimiento · Coficab Pesqueria</li><li><b>Persona3 Ficticia</b> — Supervisor de Mantenimiento · Coficab Pesqueria</li><li><b>Persona4 Ficticia</b> — Supervisor de Mantenimiento · Coficab Pesqueria</li><li><b>Persona5 Ficticia</b> — Supervisor de Mantenimiento · Coficab Pesqueria</li><li><b>Persona6 Ficticia</b> — Supervisor de Mantenimiento · Coficab Pesqueria</li><li><b>Persona7 Ficticia</b> — Supervisor de Mantenimiento · Coficab Pesqueria</li><li><b>Persona8 Ficticia</b> — Supervisor de Mantenimiento · Coficab Pesqueria</li><li><b>Persona9 Ficticia</b> — Supervisor de Mantenimiento · Coficab Pesqueria</li><li><b>Cami Ficticia</b> — Gerente de Sistemas · Coficab Pesqueria</li></ul></div>
+  <div class="card">
+    <h2>A quién buscar</h2>
 
-<h2>Como hablarles</h2>
-<ul><li>Abrir por el arranque de linea, no por el equipo.</li><li>Hablar de continuidad de operacion, no de catalogo.</li></ul>
-<ul class="gr"><li class="ojo"><b>Cuidado con el intermediario Quimitec</b> — es nuestro canal en Ciudad Juarez, no en esta planta. Aqui no abre puertas y mencionarlo puede confundir a quien te contesta.</li><li><b>Mantenimiento y servicios de planta</b> — Ana Ficticia, Jefe de Mantenimiento, Persona0 Ficticia, Persona1 Ficticia y 9 mas</li><li><b>Otros contactos</b> — Cami Ficticia</li></ul>
+    <div class="sub-h">Decisores de la planta</div>
 
-<h2>Lo que falta y donde conseguirlo</h2>
-<div class="cob"><svg class="gauge" viewBox="0 0 80 80" role="img" aria-label="cobertura estimada 69%"><circle cx="40" cy="40" r="34" class="g-bg"/><circle cx="40" cy="40" r="34" class="g-fg" stroke-dasharray="147.4 213.6" transform="rotate(-90 40 40)"/><text x="40" y="45" class="g-t">69%</text></svg><div>Encontramos aproximadamente dos tercios del mapa de esta planta; lo que falta sale de Sales Navigator.</div></div>
-<h3>Busquedas listas para pegar en Sales Navigator</h3>
-<ul class="nav"><li><code>Empresa &quot;Coficab&quot; · Cargo actual: &quot;Jefe de Mantenimiento&quot; OR &quot;Gerente de EHS&quot; OR &quot;Comprador Senior&quot;</code></li><li><code>Empresa &quot;Coficab&quot; · Geografia &quot;Pesqueria&quot; · Cargo actual: &quot;Jefe de Mantenimiento&quot; OR &quot;Gerente de EHS&quot; OR &quot;Comprador Senior&quot;</code></li><li><code>Empresa &quot;Coficab&quot; · Palabras clave: &quot;agua helada&quot; OR &quot;chiller de proceso&quot; OR &quot;torre de enfriamiento&quot;</code></li></ul>
+    <div class="persona sinpersona">
+      <div>
+        <div class="nombre">Gerente de Mantenimiento de Pesquería</div>
+        <div class="puesto">Puesto confirmado que existe, todavía sin nombre</div>
+        <div class="porque">Es quien vive el dolor de disponibilidad de equipos. El comprador técnico central de FTS. Buscarlo en Sales Navigator con la primera búsqueda de abajo.</div>
+      </div>
+      <div class="lado">
+        <span class="chip pue">Puesto sin persona</span>
+        <span class="correo">nombre.apellido<br>@ejemplo.com<small class="ok">patrón confirmado con 4 correos reales</small></span>
+      </div>
+    </div>
 
-<h2>Que no pudimos revisar</h2>
-<ul><li>el historial de ventas de FTS, el buzon de FTS, los correos que esa empresa ya nos mando, el padron del DENUE y 7 mas: no se alcanzo a revisar en esta corrida</li><li>PDFs y documentos publicos, padrones oficiales de gobierno: el entorno no deja abrirlos</li><li>registros de comercio exterior: se dejo fuera para no gastar el presupuesto de la corrida</li></ul>
+    <div class="persona sinpersona">
+      <div>
+        <div class="nombre">Plant Manager, Data Cable Pesquería</div>
+        <div class="puesto">Puesto confirmado que existe, todavía sin nombre</div>
+        <div class="porque">Manda en la nave de cable de datos. Autoriza gasto de instalación.</div>
+      </div>
+      <div class="lado">
+        <span class="chip pue">Puesto sin persona</span>
+        <span class="correo">nombre.apellido<br>@ejemplo.com</span>
+      </div>
+    </div>
 
-<div class="pie">
-Corrida del 2026-09-27 · 22 busquedas reales
- · 6 contacto(s) de otras plantas o del corporativo se guardaron para la corrida corporativa
-.
-<br>El detalle de donde salio cada dato esta en la pestana de abajo.
-</div>
+    <div class="sub-h">Por confirmar, valen la pena</div>
 
-<details class="tec">
-<summary>Detalle tecnico: como se obtuvieron estos datos
-<span class="hint">para validar o auditar — no hace falta abrirlo para llamar</span>
-</summary>
+    <div class="persona">
+      <div>
+        <div class="nombre">Ana Ficticia</div>
+        <div class="puesto">Ingeniera ambiental / EHS, Coficab Monterrey (es Pesquería)</div>
+        <div class="porque">Es de la planta. EHS toca agua, tratamiento y permisos: puerta lateral al área técnica.</div>
+      </div>
+      <div class="lado">
+        <span class="chip dec">Por confirmar</span>
+        <span class="correo">nombre.apellido<br>@ejemplo.com<small>probable, sobre patrón confirmado</small></span>
+      </div>
+    </div>
 
-<h3>Completitud estimada (Chao1)</h3>
-<table><tr><th>Observados</th><th>f1</th><th>f2</th><th>Estimado</th><th>Cobertura</th><th>Veredicto</th></tr><tr><td>14</td><td>8</td><td>5</td><td>20.4</td><td>69%</td><td><b>FALTA_BARRER</b></td></tr></table><p class="nt">Chao1 opina y dice que falta gente por encontrar</p>
+    <div class="persona">
+      <div>
+        <div class="nombre">Beto Ficticio</div>
+        <div class="puesto">Facilities Manager, Coficab Américas (regional)</div>
+        <div class="porque">Facilities de toda la región. Si Pesquería no tiene su propio gerente de facilities, ella es quien decide.</div>
+      </div>
+      <div class="lado">
+        <span class="chip dec">Por confirmar</span>
+        <span class="correo">nombre.apellido<br>@ejemplo.com<small>probable</small></span>
+      </div>
+    </div>
 
-<h3>Nivel por contacto y por campo</h3>
-<table><tr><th>Quien</th><th>Nivel</th><th>Cercania</th><th>Hits</th>
-<th>Nivel por campo</th></tr>
-<tr><td>Jefe de Mantenimiento</td><td class="c">N2</td><td class="c">10</td><td class="c">2</td><td class="q">patron_correo:CONF(camara,outlook_personas) · planta:SOL(buscador)</td></tr><tr><td>Ana Ficticia</td><td class="c">N2</td><td class="c">12</td><td class="c">3</td><td class="q">planta:SOL(buscador)</td></tr><tr><td>Beto Ficticio</td><td class="c">N2</td><td class="c">18</td><td class="c">2</td><td class="q">planta:SOL(buscador)</td></tr><tr><td>Regional0 Ficticio</td><td class="c">N2</td><td class="c">30</td><td class="c">1</td><td class="q">planta:SOL(buscador)</td></tr><tr><td>Regional1 Ficticio</td><td class="c">N2</td><td class="c">30</td><td class="c">1</td><td class="q">planta:SOL(buscador)</td></tr><tr><td>Regional2 Ficticio</td><td class="c">N2</td><td class="c">30</td><td class="c">1</td><td class="q">planta:SOL(buscador)</td></tr><tr><td>Regional3 Ficticio</td><td class="c">N2</td><td class="c">30</td><td class="c">1</td><td class="q">planta:SOL(buscador)</td></tr><tr><td>Regional4 Ficticio</td><td class="c">N2</td><td class="c">30</td><td class="c">1</td><td class="q">planta:SOL(buscador)</td></tr><tr><td>Persona0 Ficticia</td><td class="c">N2</td><td class="c">45</td><td class="c">1</td><td class="q">planta:SOL(buscador)</td></tr><tr><td>Persona1 Ficticia</td><td class="c">N2</td><td class="c">45</td><td class="c">1</td><td class="q">planta:SOL(buscador)</td></tr><tr><td>Persona2 Ficticia</td><td class="c">N2</td><td class="c">45</td><td class="c">1</td><td class="q">planta:SOL(buscador)</td></tr><tr><td>Persona3 Ficticia</td><td class="c">N2</td><td class="c">45</td><td class="c">1</td><td class="q">planta:SOL(buscador)</td></tr><tr><td>Persona4 Ficticia</td><td class="c">N2</td><td class="c">45</td><td class="c">1</td><td class="q">planta:SOL(buscador)</td></tr><tr><td>Persona5 Ficticia</td><td class="c">N2</td><td class="c">45</td><td class="c">1</td><td class="q">planta:SOL(buscador)</td></tr><tr><td>Persona6 Ficticia</td><td class="c">N2</td><td class="c">45</td><td class="c">1</td><td class="q">planta:SOL(buscador)</td></tr><tr><td>Persona7 Ficticia</td><td class="c">N2</td><td class="c">45</td><td class="c">2</td><td class="q">planta:SOL(buscador)</td></tr><tr><td>Persona8 Ficticia</td><td class="c">N2</td><td class="c">45</td><td class="c">2</td><td class="q">planta:SOL(buscador)</td></tr><tr><td>Persona9 Ficticia</td><td class="c">N2</td><td class="c">45</td><td class="c">2</td><td class="q">planta:SOL(buscador)</td></tr><tr><td>Persona10 Ficticia</td><td class="c">N2</td><td class="c">45</td><td class="c">2</td><td class="q">planta:SOL(buscador)</td></tr><tr><td>Cami Ficticia</td><td class="c">N2</td><td class="c">86</td><td class="c">1</td><td class="q">planta:SOL(buscador)</td></tr></table>
-<p class="nt">N1 nombre completo · N2 parcial · N3 puesto sin persona.
-CONF confirmado (2+ raices) · SOL solido (1 fuente fiable) · CAND candidato ·
-CONFLICTO dos fuentes que no coinciden. Una sola fuente topa en SOLIDO.</p>
+    <div class="persona">
+      <div>
+        <div class="nombre">Cami Ficticia</div>
+        <div class="puesto">Senior Buyer, Coficab Group</div>
+        <div class="porque">Compras del grupo. Puerta para el alta de FTS como proveedor directo, sin pasar por Quimitec.</div>
+      </div>
+      <div class="lado">
+        <span class="chip dec">Por confirmar</span>
+        <span class="correo">nombre.apellido<br>@ejemplo.com<small>probable</small></span>
+      </div>
+    </div>
 
-<h3>Checklist por modulo</h3>
-<table><tr><th>Modulo</th><th>Estado</th><th>Razon</th><th>Agotado</th></tr>
-<tr><td>M0</td><td class="e-tenue">pendiente</td><td>—</td><td class="c">si</td></tr><tr><td>M0b</td><td class="e-tenue">pendiente</td><td>—</td><td class="c">no</td></tr><tr><td>M0c</td><td class="e-tenue">pendiente</td><td>—</td><td class="c">no</td></tr><tr><td>M13</td><td class="e-tenue">pendiente</td><td>—</td><td class="c">si</td></tr><tr><td>M3</td><td class="e-tenue">pendiente</td><td>—</td><td class="c">no</td></tr><tr><td>M1</td><td class="e-tenue">pendiente</td><td>—</td><td class="c">no</td></tr><tr><td>M2</td><td class="e-tenue">pendiente</td><td>—</td><td class="c">no</td></tr><tr><td>M12</td><td class="e-tenue">pendiente</td><td>—</td><td class="c">no</td></tr><tr><td>M4</td><td class="e-tenue">pendiente</td><td>—</td><td class="c">no</td></tr><tr><td>M5</td><td class="e-tenue">pendiente</td><td>—</td><td class="c">no</td></tr><tr><td>M6</td><td class="e-tenue">pendiente</td><td>—</td><td class="c">no</td></tr><tr><td>M7</td><td class="e-alerta">sin_acceso</td><td>WebFetch bloqueado por egress en este entorno</td><td class="c">no</td></tr><tr><td>M8</td><td class="e-alerta">sin_acceso</td><td>exige abrir la pagina del padron</td><td class="c">no</td></tr><tr><td>M9</td><td class="e-tenue">omitida_por_costo</td><td>Panjiva pide suscripcion</td><td class="c">no</td></tr></table>
+    <div class="persona">
+      <div>
+        <div class="nombre">Dani Ficticio</div>
+        <div class="puesto">Facilities regional, Coficab Group (nivel no confirmado)</div>
+        <div class="porque">Las fuentes no coinciden en si es gerente regional o ingeniero. Vale confirmarlo antes de escribirle.</div>
+      </div>
+      <div class="lado">
+        <span class="chip dec">Por confirmar</span>
+        <span class="correo">nombre.apellido<br>@ejemplo.com<small>probable</small></span>
+      </div>
+    </div>
 
-<h3>Contactos en revision humana</h3><table><tr><th>Quien</th><th>Puesto</th><th>Motivo exacto</th></tr><tr><td>Ana Ficticia</td><td>Gerente de EHS</td><td>el puesto viene de un directorio de 2023 y no se confirmo con una fuente de 2026</td></tr><tr><td>Beto Ficticio</td><td>Comprador Senior</td><td>dos fuentes escriben su puesto distinto: Senior Buyer y Comprador Sr</td></tr></table>
+    <div class="sub-h">De contexto, no son compradores</div>
 
-<h3>Historia declarada de la cuenta</h3><table><tr><th>Referencia</th><th>Planta</th><th>Que fue</th><th>Fecha</th><th>Canal</th><th>Es esta planta</th></tr><tr><td>SO10977</td><td>Ciudad Juarez</td><td>mezanine, intercambiador y chiller</td><td>2025-11</td><td>Quimitec</td><td class="c">no</td></tr><tr><td>cotizacion urgente chiller Battery 4</td><td>Ciudad Juarez</td><td>chiller para Battery 4, cotizacion urgente</td><td>2026-04</td><td>Quimitec</td><td class="c">no</td></tr><tr><td>SO11551</td><td>Ciudad Juarez</td><td>chiller Trane 30 TR, arranque ago-2026</td><td>2026-08</td><td>Quimitec</td><td class="c">no</td></tr></table><p class="nt">Declarado por el operador (conocimiento directo). <code>sale.order</code> de Odoo no registra la planta: tiene el cliente y no tiene el sitio, asi que esto no se puede derivar.</p>
-<h3>Alias de ubicacion declarado</h3><p class="nt">Para esta cuenta, <b>Monterrey</b> tambien nombra a Pesqueria. Lo declaro el operador: que dos nombres sean el mismo lugar es geografia local y la herramienta no lo puede derivar. Los contactos que ese alias devolvio a la poblacion cuentan en el Chao1.</p>
-<h3>Fuera de la poblacion de esta planta</h3><table><tr><th>Puesto</th><th>Ubicacion observada</th><th>Donde</th></tr><tr><td>Comprador Senior</td><td>Coficab (planta sin confirmar)</td><td class="c">otra planta</td></tr><tr><td>Compras regionales</td><td>COFICAB Group</td><td class="c">corporativo</td></tr><tr><td>Compras regionales</td><td>Coficab Cd. Juarez</td><td class="c">otra planta</td></tr><tr><td>Compras regionales</td><td>Coficab Silao</td><td class="c">otra planta</td></tr><tr><td>Compras regionales</td><td>COFICAB Americas</td><td class="c">corporativo</td></tr><tr><td>Compras regionales</td><td>Coficab Durango</td><td class="c">otra planta</td></tr></table><p class="nt">Salen del Chao1 a proposito: su poblacion es otra. No se pierden — son la semilla de la corrida corporativa:<br><code>./prospector prospecta --empresa &#x27;Coficab&#x27; --nivel corporativo</code></p>
+    <div class="persona">
+      <div>
+        <div class="nombre">Fabi Ficticia · Gabo Ficticio · Hugo Ficticio</div>
+        <div class="puesto">Pesquería: comercio exterior, controlling y un puesto sin confirmar</div>
+        <div class="porque">Están en la planta y pueden abrir puerta, pero no deciden compras técnicas.</div>
+      </div>
+      <div class="lado"><span class="chip ctx">Contexto</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Cómo hablarles</h2>
+    <ul class="simple">
+      <li><b>A mantenimiento y facilities:</b> referencia concreta del chiller Trane de 30 TR que arrancamos en Juárez en agosto, tiempo de respuesta local desde Monterrey, y mantenimiento de chillers, torres y circuito cerrado. Hablar de disponibilidad de equipo, que es el lenguaje de sus vacantes.</li>
+      <li><b>A compras:</b> FTS ya está de facto dentro del grupo vía Quimitec. Ofrecer alta directa como contratista local de Pesquería, ingeniería más instalación llave en mano.</li>
+      <li><b>Cuidado con Quimitec:</b> es nuestro canal en Juárez. En Pesquería no hay relación con ellos, así que aquí sí se entra directo, pero sin mencionar que buscamos saltarlos.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>Lo que falta y dónde conseguirlo</h2>
+    <div class="completitud">
+      <div class="medidor"><span>49%</span></div>
+      <p>Encontramos aproximadamente <b>la mitad</b> de la gente que hay en esta planta. El buscador público ya no da más: los gerentes de mantenimiento de una planta mediana no aparecen ahí. <b>Lo que falta sale de Sales Navigator</b>, con estas tres búsquedas listas para pegar.</p>
+    </div>
+    <div class="sn" style="margin-top:14px">
+      <code>Empresa "Coficab" · Geografía "Pesquería" · Cargo: "Gerente de Mantenimiento" OR "Plant Manager" OR "Facilities"</code>
+      <code>Empresa "Coficab" · Cargo: "Regional Facilities Manager" OR "Country MRO Purchasing Manager" OR "Engineering Manager"</code>
+      <code>Empresa "Coficab" · Palabras clave: "Planeador de mantenimiento" OR "Gerente de operaciones" OR "Comprador"</code>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Qué no pudimos revisar</h2>
+    <ul class="simple">
+      <li>PDFs y padrones oficiales: el entorno no deja abrirlos. Si hay un directorio de proveedores de Coficab, no lo vimos.</li>
+      <li>Comercio exterior: se acabó el presupuesto de búsqueda antes de llegar.</li>
+      <li>El padrón del DENUE no cubre el giro de cables, así que Coficab no aparece ahí y no es por falta de actualización.</li>
+    </ul>
+  </div>
 
 
+  <details class="tec">
+    <summary>Detalle técnico: cómo se obtuvieron estos datos <span class="hint">para validar o auditar, no hace falta abrirlo para llamar</span></summary>
+    <div class="tec-body">
 
+      <h3>Qué tan completa está la ficha (Chao1)</h3>
+      <table class="tec-t">
+        <tr><th>Observados</th><th>Vistos una vez (f1)</th><th>Vistos dos veces (f2)</th><th>Estimado</th><th>Cobertura</th><th>Veredicto</th></tr>
+        <tr><td>13</td><td>9</td><td>2</td><td>26</td><td>49%</td><td class="est-warn">FALTA_BARRER</td></tr>
+      </table>
 
+      <h3>Estado por módulo (checklist de validaciones)</h3>
+      <table class="tec-t">
+        <tr><th>Módulo</th><th>Estado</th><th>Razón</th></tr>
+        <tr><td>M0 Odoo</td><td class="est-ok">respondió</td><td>0 partners con Coficab; 1 con Quimitec</td></tr>
+        <tr><td>M0b Outlook</td><td class="est-ok">respondió</td><td>25 hilos "coficab", 7 con dominio, 0 "coficab pesqueria"</td></tr>
+        <tr><td>M0c search_people</td><td class="est-ok">respondió</td><td>4 correos literales reales del dominio</td></tr>
+        <tr><td>M13 DENUE</td><td class="est-no">no aplicaba</td><td>El padrón no cubre SCIAN 335 (cubre 311, 312). Hace falta un corte más amplio, no más nuevo</td></tr>
+        <tr><td>M3 cámaras/normalización/congreso</td><td class="est-ok">respondió</td><td>CLAUT 0 · CANAME 1 · congreso 0</td></tr>
+        <tr><td>M1 directorios</td><td class="est-ok">respondió</td><td>RocketReach, LeadIQ, SignalHire coinciden en nombre.apellido</td></tr>
+        <tr><td>M2 vacantes</td><td class="est-ok">respondió</td><td>careers 10 · Indeed 9 · OCC 9</td></tr>
+        <tr><td>M12 prensa</td><td class="est-ok">respondió</td><td>4 consultas, señal de segunda planta sin año visible</td></tr>
+        <tr><td>M5 personas</td><td class="est-warn">omitida por costo</td><td>5 bloques, ninguno seco, ninguno trajo decisor de mantenimiento con planta Pesquería. LinkedIn público no expone esa capa</td></tr>
+        <tr><td>M6 individual</td><td class="est-ok">respondió</td><td>10 consultas por nombre para cerrar a los de valor</td></tr>
+        <tr><td>M7 PDFs</td><td class="est-no">sin acceso</td><td>WebFetch bloqueado por egress</td></tr>
+        <tr><td>M8 padrones oficiales</td><td class="est-no">sin acceso</td><td>WebFetch bloqueado; DENUE local no cubre el giro</td></tr>
+        <tr><td>M9 aduanas</td><td class="est-no">omitida por costo</td><td>Presupuesto agotado; Panjiva pide suscripción</td></tr>
+      </table>
 
+      <h3>Contactos en revisión (5) y por qué</h3>
+      <table class="tec-t">
+        <tr><th>Persona</th><th>Motivo</th></tr>
+        <tr><td>Beto Ficticio</td><td>Puesto con dos redacciones: "Gerente de Facilities" / "Facilities Manager - COFICAB Americas"</td></tr>
+        <tr><td>Cami Ficticia</td><td>Tres redacciones de Senior Buyer con sufijo de empresa distinto</td></tr>
+        <tr><td>Dani Ficticio</td><td>Conflicto real de nivel: "Regional Facilities Manager" (LinkedIn) vs "Junior Facilities Engineer" (ZoomInfo)</td></tr>
+        <tr><td>Ana Ficticia</td><td>"EHS iniciativas ambientales COFICAB Monterrey" / "Environmental Engineer at Coficab"</td></tr>
+        <tr><td>Eva Ficticia</td><td>"Engineering Manager" / "Program Manager", ambos COFICAB Américas</td></tr>
+      </table>
 
-<h3>Todas las busquedas — 22</h3>
-<table><tr><th>Mod</th><th>Via</th><th>Consulta</th><th>Res</th><th>Fecha</th>
-<th>Liga</th></tr>
-<tr><td>M13</td><td>denue</td><td class="q">padron corte 2026-05: Coficab</td><td class="c">0</td><td class="c">2026-09-27</td><td class="c"><i>sin liga</i></td></tr><tr><td>M0</td><td>odoo</td><td class="q">res.partner Coficab</td><td class="c">1</td><td class="c">2026-09-27</td><td class="c"><i>sin liga</i></td></tr><tr><td>M5</td><td>buscador</td><td class="q">coficab pesqueria puesto 0</td><td class="c">0</td><td class="c">2026-09-27</td><td class="c"><a href="https://ejemplo.mx/r0" title="forma verificada, contenido NO comprobado">ejemplo.mx</a><span class="nc">?</span></td></tr><tr><td>M5</td><td>buscador</td><td class="q">coficab pesqueria puesto 1</td><td class="c">1</td><td class="c">2026-09-27</td><td class="c"><i>sin liga</i></td></tr><tr><td>M5</td><td>buscador</td><td class="q">coficab pesqueria puesto 2</td><td class="c">1</td><td class="c">2026-09-27</td><td class="c"><i>sin liga</i></td></tr><tr><td>M5</td><td>buscador</td><td class="q">coficab pesqueria puesto 3</td><td class="c">0</td><td class="c">2026-09-27</td><td class="c"><i>sin liga</i></td></tr><tr><td>M5</td><td>buscador</td><td class="q">coficab pesqueria puesto 4</td><td class="c">1</td><td class="c">2026-09-27</td><td class="c"><a href="https://ejemplo.mx/r4" title="forma verificada, contenido NO comprobado">ejemplo.mx</a><span class="nc">?</span></td></tr><tr><td>M5</td><td>buscador</td><td class="q">coficab pesqueria puesto 5</td><td class="c">1</td><td class="c">2026-09-27</td><td class="c"><i>sin liga</i></td></tr><tr><td>M5</td><td>buscador</td><td class="q">coficab pesqueria puesto 6</td><td class="c">0</td><td class="c">2026-09-27</td><td class="c"><i>sin liga</i></td></tr><tr><td>M5</td><td>buscador</td><td class="q">coficab pesqueria puesto 7</td><td class="c">1</td><td class="c">2026-09-27</td><td class="c"><i>sin liga</i></td></tr><tr><td>M5</td><td>buscador</td><td class="q">coficab pesqueria puesto 8</td><td class="c">1</td><td class="c">2026-09-27</td><td class="c"><a href="https://ejemplo.mx/r8" title="forma verificada, contenido NO comprobado">ejemplo.mx</a><span class="nc">?</span></td></tr><tr><td>M5</td><td>buscador</td><td class="q">coficab pesqueria puesto 9</td><td class="c">0</td><td class="c">2026-09-27</td><td class="c"><i>sin liga</i></td></tr><tr><td>M5</td><td>buscador</td><td class="q">coficab pesqueria puesto 10</td><td class="c">1</td><td class="c">2026-09-27</td><td class="c"><i>sin liga</i></td></tr><tr><td>M5</td><td>buscador</td><td class="q">coficab pesqueria puesto 11</td><td class="c">1</td><td class="c">2026-09-27</td><td class="c"><i>sin liga</i></td></tr><tr><td>M5</td><td>buscador</td><td class="q">coficab pesqueria puesto 12</td><td class="c">0</td><td class="c">2026-09-27</td><td class="c"><a href="https://ejemplo.mx/r12" title="forma verificada, contenido NO comprobado">ejemplo.mx</a><span class="nc">?</span></td></tr><tr><td>M5</td><td>buscador</td><td class="q">coficab pesqueria puesto 13</td><td class="c">1</td><td class="c">2026-09-27</td><td class="c"><i>sin liga</i></td></tr><tr><td>M5</td><td>buscador</td><td class="q">coficab pesqueria puesto 14</td><td class="c">1</td><td class="c">2026-09-27</td><td class="c"><i>sin liga</i></td></tr><tr><td>M5</td><td>buscador</td><td class="q">coficab pesqueria puesto 15</td><td class="c">0</td><td class="c">2026-09-27</td><td class="c"><i>sin liga</i></td></tr><tr><td>M5</td><td>buscador</td><td class="q">coficab pesqueria puesto 16</td><td class="c">1</td><td class="c">2026-09-27</td><td class="c"><a href="https://ejemplo.mx/r16" title="forma verificada, contenido NO comprobado">ejemplo.mx</a><span class="nc">?</span></td></tr><tr><td>M5</td><td>buscador</td><td class="q">coficab pesqueria puesto 17</td><td class="c">1</td><td class="c">2026-09-27</td><td class="c"><i>sin liga</i></td></tr><tr><td>M5</td><td>buscador</td><td class="q">coficab pesqueria puesto 18</td><td class="c">0</td><td class="c">2026-09-27</td><td class="c"><i>sin liga</i></td></tr><tr><td>M5</td><td>buscador</td><td class="q">coficab pesqueria puesto 19</td><td class="c">1</td><td class="c">2026-09-27</td><td class="c"><i>sin liga</i></td></tr></table>
-<p class="nt">Las ligas llevan <span class="nc">?</span> porque su FORMA se
-verifico al registrarlas y su CONTENIDO no: abrirlas exige WebFetch, bloqueado
-por egress en este entorno.</p>
+      <h3>Contactos que no son de esta planta (15), guardados para la corrida corporativa</h3>
+      <table class="tec-t">
+        <tr><th>Puesto</th><th>Ubicación observada</th><th>Dónde</th></tr>
+        <tr><td>Ingeniero, contraparte de arranque de chiller</td><td>Cd. Juárez</td><td>otra planta</td></tr>
+        <tr><td>Regional NPI Engineer</td><td>COFICAB Américas</td><td>corporativo</td></tr>
+        <tr><td>Country MRO Purchasing Manager</td><td>COFICAB Group</td><td>corporativo</td></tr>
+        <tr><td>Regional Strategic Buyer</td><td>COFICAB Americas</td><td>corporativo</td></tr>
+        <tr><td>Corporate Commodity Purchasing Manager</td><td>Portugal</td><td>corporativo</td></tr>
+        <tr><td>Extrusion Engineer</td><td>Apodaca</td><td>otra planta</td></tr>
+        <tr><td colspan="3" class="est-no">… y 9 más. Semilla: ./prospector prospecta --empresa 'Coficab' --nivel corporativo</td></tr>
+      </table>
 
-<h3>Avisos de la corrida</h3><ul><li>[historia] CUENTA FRIA EN ESTA PLANTA. Los 3 proyecto(s) declarado(s) de esta cuenta fueron en Ciudad Juarez, no en Pesqueria. Esta planta no tiene proyecto propio ni contacto propio: la historia es DEL GRUPO, y la carta de presentacion tiene que decirlo asi o se cae en la primera llamada.</li><li>[historia] CARTA DE PRESENTACION: «Ya le hicimos 3 proyecto(s) a su grupo en Ciudad Juarez», via Quimitec — chiller Trane 30 TR, arranque ago-2026; chiller para Battery 4, cotizacion urgente; mezanine, intercambiador y chiller. NO digas &#x27;ya trabajamos en su planta&#x27;: esta planta es fria, y la afirmacion se cae en la primera llamada.</li></ul>
+      <h3>Las 61 búsquedas, con fecha y liga</h3>
+      <table class="tec-t">
+        <tr><th>Mód</th><th>Vía</th><th>Consulta</th><th>Res</th><th>Liga</th></tr>
+        <tr><td>M0</td><td>odoo</td><td class="mono">res.partner name ilike 'coficab'</td><td>0</td><td>sin liga</td></tr>
+        <tr><td>M0b</td><td>outlook</td><td class="mono">outlook_email_search query='coficab'</td><td>25</td><td>sin liga</td></tr>
+        <tr><td>M0c</td><td>via_dominio</td><td class="mono">search_people 'coficab.com'</td><td>1</td><td>sin liga</td></tr>
+        <tr><td>M1</td><td>rocketreach</td><td class="mono">COFICAB email format coficab.com rocketreach</td><td>10</td><td>rocketreach.co ?</td></tr>
+        <tr><td>M2</td><td>vacante_indeed</td><td class="mono">indeed COFICAB Pesquería ingeniero mantenimiento facilities</td><td>9</td><td>mx.indeed.com ?</td></tr>
+        <tr><td>M5</td><td>linkedin_publico</td><td class="mono">site:linkedin.com/in COFICAB Pesquería gerente de mantenimiento</td><td>9</td><td>linkedin.com ?</td></tr>
+        <tr><td>M6</td><td>buscador</td><td class="mono">"Cami Ficticia" COFICAB buyer</td><td>3</td><td>rocketreach.co ?</td></tr>
+        <tr><td colspan="5" class="est-no">… 54 más en la ficha de procedencia. Las ligas llevan ? porque su forma se verificó y su contenido no (WebFetch bloqueado).</td></tr>
+      </table>
 
-<h3>La corrida</h3>
-<table>
-<tr><th>Fecha</th><td>2026-09-27T04:20:10</td></tr>
-<tr><th>Llave</th><td><code>Coficab/Pesqueria</code></td></tr>
-<tr><th>Busquedas registradas</th><td>22 (22 consultas unicas)</td></tr>
-<tr><th>Presupuesto gastado</th><td>0 de
-    60</td></tr>
-<tr><th>Version de la herramienta</th><td><code>0.9.9</code></td></tr>
-<tr><th>Commit</th><td><code>16b2d61+sucio</code></td></tr>
-<tr><th>Firma del estado</th><td>coincide con el contenido</td></tr>
-</table>
-</details>
+      <h3>Avisos de la corrida</h3>
+      <table class="tec-t">
+        <tr><td class="mono">FUERA_DEL_ALCANCE_DEL_PADRON</td><td>Coficab no está en el DENUE porque el padrón no cubre SCIAN 335. Hace falta un corte más amplio, no más nuevo.</td></tr>
+        <tr><td class="mono">HISTORIA_DECLARADA</td><td>Los tres proyectos con Coficab (SO10977, Battery 4, SO11551) fueron en Cd. Juárez vía Quimitec. Fuente: conocimiento directo del dueño.</td></tr>
+      </table>
 
+      <h3>Corrida</h3>
+      <table class="tec-t">
+        <tr><td>Fecha</td><td>2026-09-25</td></tr>
+        <tr><td>Llave</td><td class="mono">coficab/pesqueria</td></tr>
+        <tr><td>Búsquedas registradas</td><td>61 (58 únicas; 2 duplicadas reportadas)</td></tr>
+        <tr><td>Presupuesto</td><td>60/60 consultas</td></tr>
+        <tr><td>Versión de la herramienta</td><td class="mono">prospector v0.8.x · commit 1490e1a</td></tr>
+        <tr><td>Estado firmado</td><td class="est-ok">íntegro, sin edición manual</td></tr>
+      </table>
+
+    </div>
+  </details>
+
+  <div class="foot">
+    Corrida del 25 de septiembre de 2026 · 61 búsquedas reales · 15 contactos regionales y de otras plantas se guardaron para la corrida corporativa · Detalle técnico en la pestaña colapsada de arriba · Los correos marcados "probable" siguen el patrón confirmado de Coficab; confirmar al abrir cada perfil.
+  </div>
 </div>
 </body>
 </html>

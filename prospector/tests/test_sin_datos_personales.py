@@ -46,6 +46,29 @@ DOMINIO_EJEMPLO = re.compile(r"(example\.(com|org|net)|empresa-ejemplo\.|ejemplo
 TELEFONO = re.compile(r"(?<![\d.\-])(?:\+?52[ \-]?)?(?:81|33|55|86|84|87|82|83|89)\d{8}(?![\d.])")
 
 
+# Etiquetas HTML entre el local y el @. ES UN HUECO REAL QUE YA PASO: el
+# prototipo de ficha de #323 traia cuatro correos de personas reales escritos
+# `wendy.maldonado<br>@coficab.com` -- partidos con un <br> para que cupieran en
+# la columna-- y ESTA PRUEBA LOS DEJO PASAR, porque el caracter antes del @ era
+# un `>` y el regex no lo admite en el local.
+#
+# Cuatro correos reales entraron a un repo publico por una etiqueta de maquetado.
+# Ahora el texto se limpia de etiquetas ANTES de buscar, en los archivos donde el
+# marcado puede partir un dato: el dato es el texto que se lee, no el que se
+# escribio.
+_ETIQUETA = re.compile(r"<[^>]*>")
+CON_MARCADO = {".html", ".md"}
+
+
+def _texto_para_buscar(f: pathlib.Path) -> str:
+    t = f.read_text(encoding="utf-8", errors="replace")
+    if f.suffix in CON_MARCADO:
+        # se quita la etiqueta SIN dejar espacio, que es justo como lo lee el ojo:
+        # "wendy.apellido<br>@x.com" se ve como un correo, y lo es.
+        t = _ETIQUETA.sub("", t)
+    return t
+
+
 def _archivos():
     for f in sorted(RAIZ.rglob("*")):
         if not f.is_file() or f.suffix not in EXT:
@@ -58,7 +81,7 @@ def _archivos():
 def test_ningun_correo_de_persona_en_el_repo():
     hallazgos = []
     for f in _archivos():
-        for n, linea in enumerate(f.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+        for n, linea in enumerate(_texto_para_buscar(f).splitlines(), 1):
             for correo in CORREO.findall(linea):
                 local, _, dom = correo.partition("@")
                 if PERMITIDO.match(local) or DOMINIO_EJEMPLO.search(dom):
@@ -73,7 +96,7 @@ def test_ningun_correo_de_persona_en_el_repo():
 def test_ningun_telefono_en_el_repo():
     hallazgos = []
     for f in _archivos():
-        for n, linea in enumerate(f.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+        for n, linea in enumerate(_texto_para_buscar(f).splitlines(), 1):
             for tel in TELEFONO.findall(linea):
                 hallazgos.append(f"{f.relative_to(RAIZ)}:{n}  {tel}")
     assert not hallazgos, (
@@ -102,3 +125,33 @@ def test_el_cargador_excluye_las_columnas_de_contacto():
     assert "correoelec" not in cp.COLUMNAS_PUBLICABLES
     assert "telefono" not in cp.COLUMNAS_PUBLICABLES
     assert "dominio_correo" in cp.COLUMNAS_PUBLICABLES
+
+
+def test_un_correo_PARTIDO_POR_MARCADO_no_se_escapa(tmp_path, monkeypatch):
+    """EL HUECO QUE #323 destapo, y por accidente.
+
+    El prototipo de ficha traia `wendy.maldonado<br>@coficab.com` -- el <br>
+    partia el correo para que cupiera en la columna-- y el escaner lo dejo pasar,
+    porque el caracter antes del @ era un `>`. Cuatro correos de personas reales
+    habrian entrado a un repo publico por una etiqueta de maquetado.
+
+    Un dato personal no deja de serlo porque el HTML lo parta a la mitad.
+    """
+    f = tmp_path / "ficha.html"
+    f.write_text('<span class="correo">persona.apellido<br>@empresareal.com</span>',
+                 encoding="utf-8")
+    texto = _texto_para_buscar(f)
+    hallados = [c for c in CORREO.findall(texto)
+                if not PERMITIDO.match(c.partition("@")[0])
+                and not DOMINIO_EJEMPLO.search(c.partition("@")[2])]
+    assert hallados, "un correo partido por una etiqueta sigue siendo un correo"
+
+
+def test_el_marcador_partido_SIGUE_permitido(tmp_path):
+    """Y el arreglo no puede volverse un falso positivo: `nombre.apellido@` es una
+    plantilla de patron, y partirla con un <br> tampoco la vuelve el correo de
+    nadie."""
+    f = tmp_path / "ficha.html"
+    f.write_text('<span>nombre.apellido<br>@coficab.com</span>', encoding="utf-8")
+    for c in CORREO.findall(_texto_para_buscar(f)):
+        assert PERMITIDO.match(c.partition("@")[0]), c

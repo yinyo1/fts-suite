@@ -143,8 +143,8 @@ def test_la_pestana_esta_CERRADA_por_defecto():
 # ==================================== el orden de lectura de la vendedora
 def test_el_orden_de_las_secciones_es_el_de_la_llamada():
     h = fichamod.modo_limpio(_corrida_rica())
-    orden = ["Ficha de prospeccion · para Rissia", "Gancho", "Por que ahora",
-             "A quien buscar", "Como hablarles",
+    orden = ["Ficha de prospeccion · para Rissia", 'class="hook"',
+             "Por que ahora", "A quien buscar", "Como hablarles",
              "Lo que falta y donde conseguirlo", "Que no pudimos revisar",
              "Detalle tecnico"]
     posiciones = [h.index(t) for t in orden]
@@ -184,7 +184,9 @@ def test_el_de_OTRA_PLANTA_no_ensucia_la_capa_limpia_pero_sigue_contado():
     """No se pierde: el pie dice cuantos se guardaron, y la pestana los lista."""
     limpia, tec = _capas(fichamod.modo_limpio(_corrida_rica()))
     assert "Eva Ficticia" not in limpia
-    assert "se guardaron para la corrida corporativa" in limpia
+    # el pie va debajo de la pestana desde #323, como el prototipo
+    h = fichamod.modo_limpio(_corrida_rica())
+    assert "se guardaron para la corrida corporativa" in h
     assert "Eva Ficticia" in tec or "Compras Americas" in tec
 
 
@@ -195,14 +197,17 @@ def test_la_linea_de_tiempo_ordena_y_marca_lo_que_no_trae_fecha():
     limpia, _t = _capas(fichamod.modo_limpio(c))
     assert tl in limpia, "la linea de tiempo no llego a la capa limpia"
     assert "Sin fecha" in limpia
-    assert "confirmar el ano antes de citarlo" in limpia
+    assert "Confirmar el ano antes de citarlo" in limpia
 
 
 def test_el_medidor_dice_el_porcentaje_y_QUE_SIGNIFICA():
     limpia, _t = _capas(fichamod.modo_limpio(_corrida_rica()))
-    assert 'class="gauge"' in limpia
+    # #323: el medidor es el circulo conic-gradient del prototipo, con el
+    # porcentaje al centro, no un SVG.
+    assert 'class="medidor"' in limpia
+    assert "conic-gradient(var(--teal)" in limpia
     assert "Sales Navigator" in limpia
-    assert re.search(r'class="g-t">\d+%<', limpia)
+    assert re.search(r"<span>\d+%</span>", limpia)
 
 
 def test_lo_que_no_se_pudo_revisar_va_en_lenguaje_de_persona():
@@ -216,7 +221,7 @@ def test_lo_que_no_se_pudo_revisar_va_en_lenguaje_de_persona():
 # ============================================ el aviso rojo, condicional
 def test_el_aviso_rojo_SALE_cuando_la_planta_es_fria():
     limpia, _t = _capas(fichamod.modo_limpio(_corrida_rica()))
-    assert "Antes de llamar" in limpia
+    assert "Ojo antes de llamar" in limpia
     assert "FTS nunca ha trabajado en esta planta" in limpia
     assert "Ciudad Juarez" in limpia
     assert "a su grupo en Ciudad Juarez" in limpia
@@ -227,7 +232,7 @@ def test_el_aviso_rojo_NO_SE_IMPRIME_cuando_no_hay_nada_que_avisar():
     hace funcionar, y la que es facil de romper sin notarlo."""
     c = _corrida_rica(empresa="EmpresaFicticiaSinHistoria", ciudad="Saltillo")
     limpia, _t = _capas(fichamod.modo_limpio(c))
-    assert "Antes de llamar" not in limpia
+    assert "Ojo antes de llamar" not in limpia
     assert 'class="aviso"' not in limpia
 
 
@@ -314,3 +319,121 @@ def test_emitir_en_modo_procedencia_escribe_SOLO_el_json(sesion, capsys):
     c2 = orq._cargar("Coficab", "Pesqueria")
     assert any(r.endswith(".json") for r in c2.fichas_emitidas)
     assert not any(r.endswith("-procedencia.html") for r in c2.fichas_emitidas)
+
+
+# ================== #323 · el estilo del PROTOTIPO APROBADO, portado
+def test_los_tokens_de_la_paleta_son_los_del_prototipo():
+    """Nombres y valores exactos. Si alguien los renombra, las reglas del
+    prototipo dejan de aplicar en silencio y la ficha se ve casi bien."""
+    h = fichamod.modo_limpio(_corrida_rica())
+    css = h[h.index("<style>"):h.index("</style>")]
+    for token, valor in (("--teal", "#0f6b5c"), ("--teal-soft", "#e2efeb"),
+                         ("--hot", "#b3261e"), ("--hot-bg", "#fbe9e7"),
+                         ("--warn", "#b06a00"), ("--warn-bg", "#fbf3e3"),
+                         ("--ok", "#1f7a4d"), ("--gray-bg", "#eef1ef"),
+                         ("--paper", "#f5f7f4"), ("--ink", "#1b2621")):
+        assert f"{token}:{valor}" in css, f"falta {token}:{valor}"
+    # y los tres estados de tema siguen ahi
+    assert "prefers-color-scheme:dark" in css
+    assert ':root:not([data-theme="light"])' in css
+    assert ':root[data-theme="dark"]' in css
+
+
+def test_el_gancho_es_el_BLOQUE_TEAL_en_dos_partes():
+    c = _corrida_rica()
+    c.gancho = ("El grupo pidio agua helada tres veces en diez meses. "
+                "Pesqueria es su planta mas cercana y no hablamos directo.")
+    limpia, _t = _capas(fichamod.modo_limpio(c))
+    assert 'class="hook"' in limpia and 'class="big"' in limpia
+    # se parte en la PRIMERA frase, no a la mitad de una oracion
+    assert "El grupo pidio agua helada tres veces en diez meses." in limpia
+    assert "<p>Pesqueria es su planta mas cercana" in limpia
+
+
+def test_un_gancho_de_UNA_SOLA_FRASE_no_queda_partido():
+    c = _corrida_rica()
+    c.gancho = "Arrancaron una linea nueva en agosto"
+    limpia, _t = _capas(fichamod.modo_limpio(c))
+    assert 'class="big">Arrancaron una linea nueva en agosto</div>' in limpia
+
+
+def test_las_secciones_van_en_TARJETAS_con_h2_teal():
+    limpia, _t = _capas(fichamod.modo_limpio(_corrida_rica()))
+    assert limpia.count('<div class="card">') >= 5
+    assert "<h2>Por que ahora</h2>" in limpia
+
+
+def test_la_persona_va_en_DOS_COLUMNAS_con_el_chip_sobre_el_correo():
+    """El acomodo del prototipo: nombre grande a la izquierda, chip y correo a la
+    derecha. El chip va ARRIBA del correo, que es lo que hace que la columna
+    derecha se lea como una sola cosa."""
+    limpia, _t = _capas(fichamod.modo_limpio(_corrida_rica()))
+    import re as _re
+    fila = _re.search(r'<div class="persona[^>]*>.*?<div class="lado">.*?</div>\s*</div>',
+                      limpia, _re.S).group(0)
+    assert 'class="nombre"' in fila and 'class="puesto"' in fila
+    assert 'class="porque"' in fila
+    assert fila.index('class="chip') < fila.index('class="correo')
+
+
+def test_los_chips_usan_el_color_que_les_toca():
+    """Teal para lo positivo, rojo para «por confirmar», ambar para «puesto sin
+    persona», gris para contexto. Es la instruccion de #323, literal."""
+    limpia, _t = _capas(fichamod.modo_limpio(_corrida_rica()))
+    assert '<span class="chip pue">Puesto sin persona' in limpia
+    assert '<span class="chip dec">Por confirmar' in limpia
+    assert '<span class="chip ctx">Contexto' in limpia
+    assert '<span class="chip tea">Decisor' in limpia
+
+
+def test_el_medidor_es_un_CIRCULO_conic_gradient_con_el_numero_al_centro():
+    limpia, _t = _capas(fichamod.modo_limpio(_corrida_rica()))
+    assert 'class="medidor"' in limpia
+    assert "conic-gradient(var(--teal) 0 " in limpia
+    assert re.search(r'<span>\d+%</span>', limpia)
+
+
+def test_el_medidor_SIN_estimacion_no_finge_un_porcentaje():
+    """MODO DE FALLA: cuando la corrida no alcanza para estimar, el circulo sale
+    gris y sin numero en vez de dibujar un 0% que se leeria como «no encontramos
+    a nadie»."""
+    c = _corrida_rica()
+    c.contactos = c.contactos[:2]
+    limpia, _t = _capas(fichamod.modo_limpio(c))
+    assert "<span>n/d</span>" in limpia
+    assert "conic-gradient" not in limpia
+    assert "Todavia no se puede estimar" in limpia
+
+
+def test_la_pestana_tiene_la_BARRA_GRIS_y_el_marcador():
+    h = fichamod.modo_limpio(_corrida_rica())
+    css = h[h.index("<style>"):h.index("</style>")]
+    assert "details.tec{{margin" not in css      # ya paso por el formateo
+    assert "background:var(--gray-bg)" in css
+    assert 'content:"\\25B8"' in css or 'content:"\u25b8"' in css.lower()
+    assert "details.tec[open]>summary::before" in css
+    assert "margin-left:auto" in css             # el hint, a la derecha
+    tec = h[h.index('<details class="tec">'):]
+    assert '<div class="tec-body">' in tec
+    assert 'class="tec-t"' in tec
+
+
+def test_el_correo_NO_lleva_un_BR_adentro():
+    """LA UNICA DESVIACION DELIBERADA del prototipo, y esta es su prueba.
+
+    El prototipo parte el correo con `nombre.apellido<br>@coficab.com` para que
+    quepa en la columna. Se ve bien y **rompe el copiado**: al pegarlo en un campo
+    "Para:" viaja con un salto de linea adentro y la direccion queda invalida en
+    la mayoria de los clientes. El correo es lo que quien llama COPIA, asi que el
+    salto se hace con `word-break` en CSS -- mismo resultado visual, texto intacto--.
+
+    Y el mismo <br> abrio un hueco en la guardia de datos personales: un correo
+    partido por una etiqueta era invisible al escaner. Ver
+    `test_un_correo_PARTIDO_POR_MARCADO_no_se_escapa`.
+    """
+    limpia, _t = _capas(fichamod.modo_limpio(_corrida_rica()))
+    import re as _re
+    for cor in _re.findall(r'<span class="correo[^"]*">(.*?)</span>', limpia, _re.S):
+        assert "<br>" not in cor, "un correo con <br> no se puede copiar"
+    css = _t if False else limpia
+    assert "word-break:break-all" in fichamod.modo_limpio(_corrida_rica())

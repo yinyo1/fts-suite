@@ -3,6 +3,68 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.10.1 — 2026-09-27
+
+El **estilo del prototipo aprobado**, portado (#323), y **un hueco de la guardia
+de datos personales cerrado**. **699 pruebas** (eran 689).
+
+### El hueco, que salio por accidente y es lo mas importante de esta version
+
+El prototipo aprobado traia **cuatro correos de personas reales** escritos
+`nombre.apellido<br>@dominio` — partidos con una etiqueta para que cupieran en la
+columna—. Se copio al repo para usarlo de referencia y **la guardia de datos
+personales lo dejo pasar**: el caracter antes de la arroba era un `>`, que el
+regex no admite en el local, asi que para el escaner no habia ningun correo.
+
+Cuatro correos reales entraron a un repo publico por una etiqueta de maquetado, y
+la prueba que existe justo para eso no se entero.
+
+Ahora el escaner **quita las etiquetas antes de buscar** en `.html` y `.md`: el
+dato es el texto que se lee, no el que se escribio. Con dos pruebas: una que el
+correo partido no se escape, y otra que `nombre.apellido@` partido **siga
+permitido** -- el arreglo no puede volverse un falso positivo--.
+
+`metodo/prototipo-ficha.html` guarda el prototipo con su marcado y su CSS
+intactos y **las personas enmascaradas**: la referencia visual vale, los ocho
+nombres y los cuatro correos no.
+
+### El estilo portado, punto por punto
+
+| | |
+|---|---|
+| **Paleta** | Los tokens del prototipo con sus nombres y valores: `--teal #0f6b5c`, `--hot #b3261e`, `--warn #b06a00`, `--gray-bg #eef1ef`. Teal para lo positivo, rojo para el aviso y «por confirmar», ambar para «puesto sin persona» y la etiqueta de estado, gris para contexto y la barra de la pestana |
+| **Secciones** | En tarjetas de radio 14 con `h2` teal de 12.5px, no encabezados subrayados |
+| **Gancho** | Bloque teal con borde, la frase grande de 21px y el detalle debajo. Se parte en la **primera frase**, nunca a la mitad de una oracion |
+| **Aviso** | «Ojo antes de llamar:» sobre fondo rojo suave |
+| **Linea de tiempo** | Grid de 96px con la fecha en teal a la izquierda |
+| **Personas** | Dos columnas: nombre de 17px y puesto a la izquierda, chip **arriba** del correo a la derecha |
+| **Medidor** | Circulo `conic-gradient` de 110px con el porcentaje al centro, en vez de un SVG |
+| **Pestana** | Barra gris con el marcador `▸` que rota al abrir, hint a la derecha, tablas `.tec-t` sobre fondo de tarjeta |
+| **Pie** | Centrado y **debajo** de la pestana, que es donde lo pone el prototipo |
+
+El orden de la capa limpia quedo **identico** al del prototipo, verificado
+comparando la posicion de trece hitos en los dos documentos.
+
+### Tres desviaciones, y las tres tienen razon
+
+1. **El correo NO lleva un `<br>` adentro.** El prototipo lo parte con una
+   etiqueta para que quepa; se ve bien y **rompe el copiado** — al pegarlo en un
+   campo «Para:» viaja con un salto de linea y la direccion queda invalida en la
+   mayoria de los clientes. El correo es justo lo que quien llama copia, asi que
+   el salto se hace con `word-break` en CSS: mismo resultado visual, texto
+   intacto. Y ese mismo `<br>` es el que abrio el hueco de la guardia.
+2. **Los estados de modulo se imprimen crudos** (`sin_acceso`, no «sin acceso»).
+   El prototipo los escribe bonitos; aqui gana la regla de #322 — «aqui si van
+   todos los terminos internos: es la procedencia»—. `sin_acceso` con guion bajo
+   es la llave exacta que se puede buscar entre fichas; con espacio ya es prosa.
+3. **La caja de Sales Navigator lleva rotulo.** En el prototipo la frase del
+   medidor la presenta, pero esa frase solo existe cuando la estimacion opina;
+   cuando no, quedaba una caja de consultas sin decir que son. Un rotulo fijo
+   cuesta una linea.
+
+Y **el medidor sin estimacion no finge**: sale gris y con `n/d` en vez de dibujar
+un 0%, que se leeria como «no encontramos a nadie».
+
 ## 0.10.0 — 2026-09-27
 
 **La ficha se rediseno para el lector real** (#322). Una sola ficha con dos capas.
