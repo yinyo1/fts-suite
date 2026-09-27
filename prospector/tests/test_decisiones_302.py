@@ -235,7 +235,11 @@ def test_la_ficha_los_pone_en_su_SECCION_no_en_a_quien_buscar():
     c, _x = _con_planta("Regional", "Gerente de Compras", "COFICAB Group",
                         "Pesqueria")
     h = modo_limpio(c)
-    assert "No son de esta planta" in h
+    # #322 bajo esta seccion a la pestana tecnica: para quien LLAMA, "No son de
+    # esta planta — 15" era ruido antes de llegar a un contacto. Sigue completa,
+    # con su ubicacion observada y el comando de la corrida corporativa.
+    tec = h[h.index('<details class="tec">'):]
+    assert "Fuera de la poblacion de esta planta" in tec
     assert "--nivel corporativo" in h, "la ficha dice como recogerlos"
 
 
@@ -588,7 +592,8 @@ def test_el_angulo_del_RADAR_entra_como_gancho_PRELIMINAR(sesion):
     assert c.angulo_resuelto == "", "todavia no lo confirmo nadie"
     h = modo_limpio(c)
     assert "GANCHO PRELIMINAR" in h
-    assert h.index("GANCHO PRELIMINAR") < h.index("<h1>")
+    # el ancla es el gancho, no el <h1>: #322 puso la cabecera arriba del aviso
+    assert h.index("GANCHO PRELIMINAR") < h.index("<h2>Gancho</h2>")
 
 
 def test_un_angulo_MANUAL_funciona_como_hoy(sesion):

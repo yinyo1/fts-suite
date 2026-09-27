@@ -10,7 +10,7 @@ from flujo import orquestador as orq
 from flujo.compuertas import CompuertaCerrada, TAMANO_BLOQUE
 from flujo.confianza import Contacto, N3_PUESTO
 from flujo.estado import Corrida
-from flujo.ficha import (modo_limpio, modo_procedencia_html, fecha_de,
+from flujo.ficha import (modo_limpio, fecha_de,
                          busquedas_sales_navigator)
 
 
@@ -41,13 +41,30 @@ def test_la_ficha_limpia_es_un_documento_AUTOCONTENIDO():
     assert html_txt.rstrip().endswith("</html>")
 
 
+def _solo_limpia(h: str) -> str:
+    """La capa limpia, sin la pestana tecnica. #322 partio la ficha en dos capas:
+    varias de estas pruebas median sobre el documento entero y ahora tienen que
+    decir EN QUE CAPA esperan cada cosa."""
+    i = h.find('<details class="tec">')
+    return h if i < 0 else h[:i]
+
+
 def test_la_ficha_trae_TODAS_las_secciones_que_el_operador_necesita():
     c = Corrida(empresa="Casa", ciudad="Pesqueria, NL", giro="cables")
-    secciones = re.findall(r"<h2>([^<]*)</h2>", modo_limpio(c))
-    for pedida in ("Gancho", "Senal caliente", "Por que ahora", "A quien buscar",
-                   "Como hablarles", "Busquedas para Sales Navigator", "Fuentes",
-                   "Checklist de validaciones"):
-        assert any(pedida in s for s in secciones), f"falta la seccion {pedida}"
+    h = modo_limpio(c)
+    limpia = _solo_limpia(h)
+    secciones = re.findall(r"<h2>([^<]*)</h2>", limpia)
+    # #322 renombro y reordeno las secciones para el lector real: "Senal caliente"
+    # se fundio en la linea de tiempo de "Por que ahora", y "Fuentes" y
+    # "Checklist de validaciones" bajaron a la pestana tecnica -- eran las dos que
+    # Rissia leia como catorce fallas antes de llegar a un contacto--.
+    for pedida in ("Gancho", "Por que ahora", "A quien buscar", "Como hablarles",
+                   "Lo que falta y donde conseguirlo", "Que no pudimos revisar"):
+        assert any(pedida in x for x in secciones), f"falta la seccion {pedida}"
+    # y lo que bajo sigue existiendo, en la capa que le toca
+    tec = h[h.index('<details class="tec">'):]
+    assert "Todas las busquedas" in tec and "Checklist por modulo" in tec
+    assert "Sales Navigator" in limpia
 
 
 def test_los_textos_de_criterio_que_faltan_salen_como_HUECO_DECLARADO():
@@ -57,7 +74,12 @@ def test_los_textos_de_criterio_que_faltan_salen_como_HUECO_DECLARADO():
     avisos--."""
     c = Corrida(empresa="Casa", ciudad="Pesqueria, NL")
     txt = modo_limpio(c)
-    assert txt.count('class="hueco"') == 3
+    # TRES huecos de criterio, y #322 agrego un cuarto aviso con la misma clase
+    # cuando no hay ni un decisor con nombre. Lo que esta prueba cuida es que los
+    # tres textos de criterio se declaren, no cuantos avisos amarillos hay.
+    for pedido in ("Sin gancho escrito", "Sin razon de oportunidad escrita",
+                   "Sin guion escrito"):
+        assert pedido in txt, f"falta declarar: {pedido}"
     assert "registrar --datos" in txt
 
 
@@ -69,7 +91,11 @@ def test_los_textos_de_criterio_se_imprimen_cuando_estan():
     txt = modo_limpio(c)
     assert c.gancho in txt and c.por_que_ahora in txt
     assert c.como_hablarles[0] in txt
-    assert 'class="hueco"' not in txt
+    # ninguno de los TRES huecos de criterio: el cuarto aviso de #322 -- "sin
+    # decisores con nombre todavia"-- usa la misma clase y aqui si aplica.
+    for no_esperado in ("Sin gancho escrito", "Sin razon de oportunidad escrita",
+                        "Sin guion escrito"):
+        assert no_esperado not in txt
 
 
 def test_cada_senal_va_con_LA_FECHA_que_su_texto_trae():
@@ -83,8 +109,11 @@ def test_cada_senal_va_con_LA_FECHA_que_su_texto_trae():
     c = Corrida(empresa="Casa", ciudad="MTY")
     c.senal = ["segunda planta inaugurada en mar-2025", "algo sin fecha"]
     txt = modo_limpio(c)
-    assert 'class="fecha">mar-2025' in txt
-    assert "sin fecha en el registro" in txt
+    # #322 convirtio la senal en LINEA DE TIEMPO: la fecha va en `tl-f` a la
+    # izquierda del hecho, y lo que no la trae lo dice y pide confirmarla.
+    assert 'class="tl-f">mar-2025' in txt
+    assert "Sin fecha" in txt
+    assert "confirmar el ano antes de citarlo" in txt
 
 
 def test_la_ficha_lista_las_fuentes_con_su_fecha_y_su_liga():
@@ -113,11 +142,14 @@ def test_la_fila_de_contacto_trae_nombre_puesto_planta_correo_y_confianza():
     x.dato("planta").observar("linkedin_publico", "Pesqueria, NL")
     x.dato("correo").observar("congreso", "[persona]@example.com")
     c.agregar(x)
-    fila = re.search(r'<tr><td class="lv">.*?</tr>', modo_limpio(c), re.S).group(0)
+    tarjeta = re.search(r'<div class="card">.*?</div>\s*</div>',
+                        modo_limpio(c), re.S).group(0)
     for esperado in ("Ana Ficticia", "Gerente de Mantenimiento", "Pesqueria, NL",
                      "[persona]@example.com"):
-        assert esperado in fila
-    assert "SOL" in fila or "CONF" in fila
+        assert esperado in tarjeta
+    # #322: el nivel se dice EN PALABRAS, no con la sigla. Es el punto del
+    # rediseno, no un detalle: "SOL" no significa nada para quien va a llamar.
+    assert "correo" in tarjeta and "SOL" not in tarjeta and "CONF" not in tarjeta
 
 
 def test_un_contacto_que_YA_NO_ESTA_no_se_imprime_pero_el_PENDIENTE_si():
@@ -142,13 +174,19 @@ def test_un_contacto_que_YA_NO_ESTA_no_se_imprime_pero_el_PENDIENTE_si():
     c.agregar(Contacto(nombre="Ido", puesto="Gerente", empresa="Casa",
                        cercania_decision=10, sigue_en_la_casa=False))
     txt = modo_limpio(c)
-    assert "Visible" in txt
-    assert "Ido" not in txt, "el que se fue sigue fuera"
-    assert "Pendiente" in txt, "el pendiente SI sale (DECISION 3 de #306)"
-    assert "Por confirmar" in txt
-    assert "falta confirmar la planta" in txt, "con su razon visible"
-    assert "1 hallazgo(s) fuera de esta ficha" in txt, (
-        "y el contador cuenta solo al que ya no esta, no al pendiente")
+    limpia = _solo_limpia(txt)
+    assert "Visible" in limpia
+    assert "Ido" not in limpia, "el que se fue sigue fuera de la capa limpia"
+    assert "Pendiente" in limpia, "el pendiente SI sale (DECISION 3 de #306)"
+    assert "Por confirmar" in limpia
+    assert "falta confirmar la planta" in limpia, "con su razon visible"
+    # el contador sigue contando SOLO al que ya no esta, y ahora lo dice en el pie
+    # con palabras en vez de "1 hallazgo(s) fuera de esta ficha".
+    assert "1 persona(s) quedaron fuera" in limpia
+    assert "ya no trabajan ahi" in limpia
+    # y en la pestana aparece marcado: la procedencia de un descarte tambien se
+    # audita.
+    assert "Ido" in txt and "YA NO ESTA en la casa" in txt
 
 
 def test_las_busquedas_de_sales_navigator_se_DERIVAN_de_lo_encontrado():
@@ -167,17 +205,33 @@ def test_sin_nada_que_derivar_lo_dice_en_vez_de_inventar_una_busqueda():
     assert len(qs) == 1 and "no hay busqueda que derivar" in qs[0]
 
 
-def test_el_modo_procedencia_tambien_es_un_html_autocontenido():
+def test_la_PROCEDENCIA_sigue_siendo_auditable_pero_YA_NO_como_segundo_html():
+    """VEREDICTO CAMBIADO en #322, y lo que se conserva es lo que importaba.
+
+    Esta prueba exigia que `modo procedencia` fuera un SEGUNDO html autocontenido.
+    Ese segundo archivo se retiro: eran dos documentos que habia que abrir en
+    orden, asi que nadie abria el segundo -- y la ficha de Pesqueria tenia a sus
+    dos mejores contactos solo ahi--.
+
+    Lo que sigue valiendo, y esta prueba lo sigue exigiendo: la procedencia existe,
+    es completa, y la fuente de cada dato se puede leer. Ahora vive en la capa
+    tecnica de LA ficha, y el JSON de auditoria se queda para la maquina.
+    """
     c = Corrida(empresa="Casa", ciudad="MTY")
     x = Contacto(nombre="Ana", puesto="Gerente", empresa="Casa",
                  cercania_decision=10)
     x.dato("puesto").observar("linkedin_publico", "Gerente", nota="90%")
     c.agregar(x)
-    txt = modo_procedencia_html(c)
+    txt = modo_limpio(c)
     assert txt.lstrip().startswith("<!doctype html>")
     assert '<meta charset="utf-8">' in txt
-    assert "Cada dato, con su procedencia" in txt
-    assert "linkedin_publico" in txt and "web_perfil" in txt
+    # la fuente tecnica sigue ahi, dentro de la pestana
+    tec = txt[txt.index('<details class="tec">'):]
+    assert "linkedin_publico" in tec
+    assert "Detalle tecnico" in txt
+    # y el JSON auditable sigue completo
+    from flujo.ficha import modo_procedencia
+    assert modo_procedencia(c)
 
 
 def test_los_dos_modos_escriben_ARCHIVO_e_imprimen_su_ruta(tmp_path, capsys,
@@ -201,11 +255,14 @@ def test_los_dos_modos_escriben_ARCHIVO_e_imprimen_su_ruta(tmp_path, capsys,
     assert str(limpio) in salida.out
     assert "ENTREGA PENDIENTE" in salida.err
 
+    # #322: el modo procedencia YA NO escribe un segundo html. La capa tecnica de
+    # la ficha limpia lo reemplaza, y el JSON -- el artefacto que una maquina lee
+    # sin ambiguedad-- se queda como unica salida de este modo.
     assert orq.main(["ficha", "--empresa", "Casa", "--modo", "procedencia"]) == 4
     salida = capsys.readouterr().out
-    for esperado in ("sin-ciudad-procedencia.html", "sin-ciudad-procedencia.json"):
-        assert (tmp_path / "casa" / esperado).exists()
-        assert esperado in salida
+    assert (tmp_path / "casa" / "sin-ciudad-procedencia.json").exists()
+    assert "sin-ciudad-procedencia.json" in salida
+    assert not (tmp_path / "casa" / "sin-ciudad-procedencia.html").exists()
 
 
 def test_la_ficha_NUNCA_se_escribe_en_el_repo(tmp_path, monkeypatch):

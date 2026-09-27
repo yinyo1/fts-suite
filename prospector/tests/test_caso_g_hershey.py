@@ -317,15 +317,17 @@ def test_la_TARJETA_muestra_el_patron_cuando_no_hay_correo_de_la_persona():
     x.datos["patron_correo"] = _hershey()
     c.agregar(x)
 
-    # La fila de "A quien buscar". Dejo de ser una tarjeta `<div class="p">` y
-    # paso a ser un renglon de tabla cuando la ficha se volvio documento
-    # autocontenido (#268): lo que se comprueba es lo MISMO -- que el patron de
-    # la cuenta se imprime cuando la persona no tiene correo propio--.
-    fila = re.search(r'<tr><td class="lv">.*?</tr>',
-                     modo_limpio(c), re.S).group(0)
-    assert "patron · FLast@hersheys.com" in fila
-    assert "SOL" in fila
-    assert "con salvedad" in fila and "signalhire disiente" in fila
+    # La fila de "A quien buscar" cambio de forma TRES veces y lo que se comprueba
+    # es siempre lo mismo: tarjeta `<div class="p">`, luego renglon de tabla
+    # (#268), y ahora tarjeta otra vez (#322). Lo que importa: el patron de la
+    # cuenta se imprime cuando la persona no tiene correo propio, marcado como
+    # patron y no como direccion, con su nivel dicho EN PALABRAS -- ya no "SOL"--
+    # y con la salvedad visible.
+    tarjeta = re.search(r'<div class="card">.*?</div>\s*</div>',
+                        modo_limpio(c), re.S).group(0)
+    assert "patron de la cuenta: FLast@hersheys.com" in tarjeta
+    assert "probable" in tarjeta and "SOL" not in tarjeta
+    assert "Ojo:" in tarjeta and "signalhire disiente" in tarjeta
 
 
 def test_un_patron_EN_CONFLICTO_de_verdad_no_se_imprime_en_la_tarjeta():
@@ -344,7 +346,13 @@ def test_un_patron_EN_CONFLICTO_de_verdad_no_se_imprime_en_la_tarjeta():
     d.observar("contactout", "nombre.apellido@verzatec.com", nota="20%")
     c.agregar(x)
 
-    fila = re.search(r'<tr><td class="lv">.*?</tr>',
-                     modo_limpio(c), re.S).group(0)
-    assert "EN CONFLICTO" in fila
-    assert "patron ·" not in fila, "no hay valor que imprimir"
+    tarjeta = re.search(r'<div class="card">.*?</div>\s*</div>',
+                        modo_limpio(c), re.S).group(0)
+    # #322: se dice en palabras, no con la sigla EN CONFLICTO. La garantia es la
+    # misma y es la que importa: NO se imprime un valor, porque no hay uno.
+    assert "dos fuentes lo escriben distinto" in tarjeta
+    assert "no elegimos por ti" in tarjeta
+    # Los dos valores que CHOCAN si se nombran -- "tenemos dos formas posibles" es
+    # accionable-- y lo que sigue prohibido es imprimir UNO como si fuera el bueno.
+    assert "cuprum.com" in tarjeta and "verzatec.com" in tarjeta
+    assert "patron de la cuenta:" not in tarjeta, "no se elige un valor"

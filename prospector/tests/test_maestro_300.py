@@ -410,7 +410,10 @@ def test_la_FICHA_lo_declara_arriba(sesion):
     json.dump(d, open(ruta, "w", encoding="utf-8"), ensure_ascii=False)
     h = modo_limpio(orq._cargar_de(ruta))
     assert "ESTADO EDITADO A MANO" in h
-    assert h.index("ESTADO EDITADO A MANO") < h.index("<h1>"), \
+    # #322 metio una cabecera (kicker, h1, estado de cuenta) ARRIBA del aviso: el
+    # ancla ya no es <h1>, es el gancho. La garantia real -- y la que el mensaje de
+    # esta prueba siempre dijo-- no cambio: el aviso va antes del gancho, no al pie.
+    assert h.index("ESTADO EDITADO A MANO") < h.index("<h2>Gancho</h2>"), \
         "el aviso va ANTES del gancho, no al pie"
 
 

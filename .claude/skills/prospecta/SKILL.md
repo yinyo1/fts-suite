@@ -471,6 +471,25 @@ puede cerrar (el máximo es 10) **ni partir** sin editar el estado a mano.
 Consecuencia: M5 cerrado como `fallo` y la vuelta que Chao1 pedía imposible de
 abrir. Ahora el error se detecta cuando todavía tiene arreglo.
 
+### La ficha es UNA, con dos capas
+
+> **Escribe para quien va a llamar, no para quien construyo la herramienta.** La
+> capa que se abre es de Rissia: con quién hablar, con qué abrir, qué no decir y
+> qué falta. **Cero vocabulario interno ahí**: ni M5, ni N2, ni CONF, ni Chao1, ni
+> `sin_acceso`. Si hay que nombrar una fuente, va en castellano — «el padrón del
+> DENUE», «el buzón de FTS», «Sales Navigator».
+>
+> La procedencia vive en una **pestaña cerrada al final**. Ahí sí van todos los
+> términos: es lo que Esteban y Pablo abren para auditar.
+>
+> **Lo que NO puede bajar a la pestaña es la honestidad.** Un contacto por
+> confirmar, un correo probable o una señal sin fecha siguen arriba, dichos como
+> los diría una persona. Lo que baja es *de dónde salió el dato*, no *qué tan
+> seguro es*. Hay pruebas que fallan si una sigla se escapa a la capa limpia, y
+> otras que fallan si la pestaña pierde un término: las dos direcciones importan.
+>
+> `--modo procedencia` ya **solo escribe el JSON**. El segundo HTML se retiró.
+
 ### La ficha sale como ARCHIVO
 
 `ficha --modo limpio` escribe un **.html autocontenido** en la carpeta de la

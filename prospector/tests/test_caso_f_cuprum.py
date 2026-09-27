@@ -85,9 +85,15 @@ def test_el_conflicto_LLEGA_a_la_ficha_limpia():
     c.agregar(x)
 
     html_out = modo_limpio(c)
-    assert "En conflicto" in html_out
-    assert "verzatec" in html_out and "cuprum.com" in html_out
-    assert "revision humana" in html_out
+    limpia = html_out[:html_out.index('<details class="tec">')]
+    # #322 quito la seccion "En conflicto — N" de la capa limpia -- era ruido antes
+    # de llegar a un contacto-- y puso el conflicto DONDE SIRVE: en la persona,
+    # dicho en palabras y con los dos valores que chocan, porque "tenemos dos
+    # formas posibles" es accionable para quien llama. La garantia de esta prueba
+    # no cambio: callar un conflicto es afirmar, y la capa limpia no lo calla.
+    assert "dos fuentes lo escriben distinto" in limpia
+    assert "verzatec" in limpia and "cuprum.com" in limpia
+    assert "no elegimos por ti" in limpia
 
 
 def test_mismo_valor_con_confianzas_muy_distintas_TAMBIEN_choca():

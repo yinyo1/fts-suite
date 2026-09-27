@@ -330,11 +330,31 @@ peso que uno medido.**
 **Archivos**, en **la carpeta de la sesión** — y la ruta exacta la imprime
 `ficha` al terminar, para copiar y pegar:
 
+> ### Una sola ficha, con dos capas
+>
+> **Lo que se abre es lo que Rissia necesita para llamar**, en su orden: con quién
+> hablar, con qué abrir, qué no decir, y qué falta. Sin códigos de módulo, sin
+> siglas de confianza, sin Chao1.
+>
+> **Al final hay una pestaña cerrada**, «Detalle técnico: cómo se obtuvieron estos
+> datos», que dice en voz alta que *no hace falta abrirla para llamar*. Ahí está
+> todo lo auditable: la estimación completa, el checklist por módulo, los
+> contactos en revisión con su motivo exacto, los de otras plantas, **todas** las
+> búsquedas con su liga, y la versión y el commit con que se generó la ficha.
+>
+> **La honestidad no se fue a la pestaña.** Lo que está por confirmar, lo probable
+> y lo que no tiene fecha siguen arriba, dicho como lo diría una persona: «patrón
+> confirmado con 2 correos reales; el buzón de esta persona es probable, no
+> verificado». Lo que bajó es *de dónde salió*, no *qué tan seguro es*.
+>
+> **Ya no hay un segundo archivo.** Eran dos que había que abrir en orden, así que
+> nadie abría el segundo — y la ficha de Pesquería tenía a sus dos mejores
+> contactos justo ahí. El `.json` de auditoría se queda, para la máquina.
+
 | Archivo | Para quién |
 |---|---|
 | `<empresa>/<ciudad>-limpio.html` | **Rissia y Pablo, y el lognote de Odoo.** Documento autocontenido: gancho, señal con su fecha, por qué ahora, a quién buscar (nombre, puesto, planta, correo y confianza), cómo hablarles, las búsquedas ya armadas para Sales Navigator, las fuentes con liga y fecha, y el checklist de validaciones |
-| `<empresa>/<ciudad>-procedencia.html` | Revisar de dónde salió cada dato, abriéndolo |
-| `<empresa>/<ciudad>-procedencia.json` | Auditar a máquina. Cada campo con todas sus fuentes, su raíz y su fecha |
+| `<empresa>/<ciudad>-procedencia.json` | Auditar **a máquina**. Cada campo con todas sus fuentes, su raíz y su fecha. Para auditar **a ojo**, la pestaña de la ficha alcanza |
 
 Los `.html` son **documentos completos**, con `charset` declarado: se adjuntan a
 un correo y se pegan en un lognote sin que los acentos se rompan. Hasta la v0.9.0

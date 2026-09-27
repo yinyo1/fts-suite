@@ -43,8 +43,7 @@ from .ubicacion_de_proyectos import (declarar as declarar_ubicacion,
 from .paquete import armar as armar_paquete, escribir as escribir_paquete
 from .importacion_odoo import escribir as escribir_importacion
 from .compuertas import TOPE_SIN_HUMANO
-from .ficha import (modo_limpio, modo_procedencia,
-                    modo_procedencia_html, tabla_de_rendimiento)
+from .ficha import (modo_limpio, modo_procedencia, tabla_de_rendimiento)
 
 # Las corridas llevan nombres, puestos y correos de PERSONAS. No se escriben en
 # el repo: `fts-suite` es publico. Ver flujo/salida.py -- ahi vive la regla, y
@@ -1433,9 +1432,12 @@ def main(argv=None) -> int:
             if a.modo == "limpio":
                 escritos.append((base + ".html", modo_limpio(c)))
             else:
-                escritos.append((base + ".html", modo_procedencia_html(c)))
-                # El JSON se queda: es el artefacto AUDITABLE, el que una
-                # maquina lee sin ambiguedad. El .html es el que se revisa.
+                # El SEGUNDO HTML dejo de existir (#322): la capa tecnica de la
+                # ficha limpia lo reemplaza. Dos archivos que habia que abrir en
+                # orden era una manera de que nadie abriera el segundo.
+                #
+                # El JSON se queda, y es el unico que este modo escribe: es el
+                # artefacto AUDITABLE, el que una maquina lee sin ambiguedad.
                 escritos.append((base + ".json", json.dumps(
                     modo_procedencia(c), ensure_ascii=False, indent=2)))
             for ruta, contenido in escritos:

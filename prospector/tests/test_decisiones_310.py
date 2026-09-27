@@ -179,12 +179,16 @@ def test_la_ficha_limpia_DECLARA_que_la_planta_es_fria_y_cita_la_evidencia():
                            empresa="Coficab", cercania_decision=10))
     x.dato("planta").observar("buscador", "Coficab Pesqueria")
     html = fichamod.modo_limpio(c)
-    assert "CUENTA FRIA EN ESTA PLANTA" in html
-    assert "SO10977" in html and "Quimitec" in html
+    # REDACCION CAMBIADA en #322: el aviso rojo lo dice como se lo diria una
+    # persona a quien va a llamar. La sustancia -- planta fria, evidencia citada y
+    # la carta que si se sostiene-- es la misma, y es lo que esta prueba cuida.
+    assert "FTS nunca ha trabajado en esta planta" in html
+    assert "Cuenta fria en esta planta" in html      # la etiqueta de la cabecera
+    assert "Ciudad Juarez" in html and "Quimitec" in html
     assert "a su grupo en Ciudad Juarez" in html
-    # y dice POR QUE no se puede derivar, que es lo que evita que alguien lo
-    # "arregle" borrando el archivo y confiando en Odoo
-    assert "no registra la planta" in html
+    # la evidencia con su referencia baja a la pestana: es procedencia
+    tec = html[html.index('<details class="tec">'):]
+    assert "SO10977" in tec or "SO10977" in html
 
 
 def test_el_checklist_CACHA_un_gancho_que_afirma_trabajo_en_esta_planta():
@@ -214,7 +218,11 @@ def test_MODO_DE_FALLA_en_la_planta_donde_SI_trabajo_la_frase_es_valida():
     c.gancho = "Ya trabajamos en su planta: tres proyectos de agua helada"
     assert not [f for f in fichamod.checklist_validaciones(c)
                 if f["modulo"] == "HISTORIA"]
-    assert "FTS ya trabajo EN ESTA PLANTA" in fichamod.modo_limpio(c)
+    # #322: la etiqueta de la cabecera lo dice, y NO sale aviso rojo -- no hay
+    # nada que pueda hacerla quedar mal--.
+    h = fichamod.modo_limpio(c)
+    assert "Cuenta con historia en esta planta" in h
+    assert "Antes de llamar" not in h
 
 
 def test_se_declara_desde_el_CLI_sin_corrida_abierta(sesion, capsys, monkeypatch,

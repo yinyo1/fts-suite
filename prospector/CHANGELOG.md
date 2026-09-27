@@ -3,6 +3,91 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.10.0 — 2026-09-27
+
+**La ficha se rediseno para el lector real** (#322). Una sola ficha con dos capas.
+**687 pruebas** (eran 661). Un modulo nuevo, `sello.py`, y el segundo HTML
+retirado.
+
+### El problema: estaba escrita para quien la construyo
+
+Medido en la ficha de Pesqueria. Antes de llegar a **un solo contacto**, Rissia
+leia: «En conflicto — 5», «No son de esta planta — 15», los codigos M0b/M5/M13,
+N1/N2/N3, Chao1, FALTA_BARRER, y las 61 busquedas en tabla completa. Para quien
+construyo la herramienta eso es transparencia. Para quien va a llamar es **ruido
+que la hace dudar de la ficha antes de llegar a lo util** -- y los cinco contactos
+que si valian estaban escondidos en «conflicto» por variantes de redaccion--.
+
+    CAPA LIMPIA     visible al abrir, en orden de lectura de vendedora, con CERO
+                    vocabulario interno.
+    CAPA TECNICA    un <details> CERRADO al final, con el hint dicho en voz alta:
+                    "no hace falta abrirlo para llamar".
+
+**La honestidad no se movio de capa.** Lo que esta por confirmar, lo probable y lo
+que no tiene fecha siguen ARRIBA, dicho como lo diria una persona. Lo que bajo es
+de DONDE salio, no QUE TAN seguro es.
+
+### La capa limpia, en orden de llamada
+
+Cabecera con kicker y **etiqueta de estado de cuenta** · **aviso rojo solo si hay
+algo que puede hacerla quedar mal** · gancho · «por que ahora» como **linea de
+tiempo** ordenada, con «Sin fecha — confirmar el ano antes de citarlo» · **tres
+grupos de contactos** en tarjetas · «como hablarles» por tipo de interlocutor, con
+**nota de canal** · **medidor de cobertura** con frase humana y las busquedas de
+Sales Navigator · «que no pudimos revisar» en castellano · pie.
+
+**El vocabulario se traduce en un solo lugar** (`FUENTE_EN_CASTELLANO`,
+`POR_QUE_NO_SE_PUDO`): «M7 sin_acceso» es ahora «PDFs y documentos publicos: el
+entorno no deja abrirlos». El nivel del correo se dice en palabras — «patron
+confirmado con 2 correo(s) real(es) de la empresa; el buzon de esta persona es
+probable, no verificado»— porque «SOL» no significa nada para quien llama.
+
+### El segundo HTML dejo de existir
+
+Eran dos documentos que habia que abrir en orden, asi que **nadie abria el
+segundo** — y la ficha de Pesqueria tenia a sus dos mejores contactos solo ahi. El
+JSON de auditoria se queda: una maquina lo lee sin ambiguedad.
+
+### Version y commit sellados: `sello.py`
+
+La tabla de corrida ahora dice con **que version y que commit** se genero la
+ficha. Una ficha que nadie puede fechar contra el codigo no se puede reproducir.
+La version sale del CHANGELOG, no de una constante: habia una
+`__version__ = "0.1.0"` mientras el CHANGELOG iba en 0.9.9 -- **nueve versiones
+mintiendo**, y nadie lo noto porque nada la leia--. Sin git se dice `sin-git`, y
+un arbol con cambios sin commitear marca `+sucio`: una ficha generada fuera de un
+checkout es legitima, hacerla pasar por una que si lo estaba no.
+
+### Cinco defectos que el rediseno destapo, y las pruebas que los encontraron
+
+1. **El CSS filtraba vocabulario por la puerta de atras.** `.e-sin_acceso` y
+   `.e-omitida_por_costo` vivian en `<head>`, que esta FUERA del `<details>`.
+   Ahora las clases son `.e-alerta` y `.e-tenue`.
+2. **Un correo EN CONFLICTO se reportaba como «sin correo».** El orden de las
+   comprobaciones preguntaba por el valor antes que por el conflicto, y un dato en
+   conflicto no expone valor a proposito. Decir «no hay» cuando lo que hay es un
+   desacuerdo entre fuentes es la clase de silencio que este rediseno existe para
+   no cometer.
+3. **El conteo de anclas leia el campo equivocado.** `ancla_dura` es de `Dato`, no
+   de `Observacion`: contarlo sobre las observaciones daba cero siempre y caia al
+   respaldo sin fallar. «confirmado con 0 correos reales» destruye la confianza en
+   la ficha completa. Ahora usa `anclas_en_la_mayoria`.
+4. **La salvedad del correo se habia perdido.** Una fuente que disiente es justo
+   lo que quien llama necesita antes de escribir. Vuelve, con «Ojo: …».
+5. **Un conflicto en un contacto de contexto quedaba invisible**, porque la
+   tarjeta agrupada no imprimia correos. Ahora un conflicto se dice siempre, y con
+   **los dos valores que chocan**: «tenemos dos formas posibles» es accionable, y
+   lo unico prohibido sigue siendo elegir uno en silencio.
+
+Y dos garantias que el rediseno habia tirado y volvieron: el **GANCHO PRELIMINAR**
+del radar sin confirmar, y el **alias de ubicacion declarado** (#306 D4).
+
+### Un puesto sin persona va con los decisores
+
+Aunque su cercania no alcance para `de_valor`: un puesto sin nombre sigue siendo
+una puerta -- se llama al conmutador y se pregunta por el-- mientras que mandarlo a
+«contexto» lo entierra en una lista que nadie marca.
+
 ## 0.9.9 — 2026-09-26
 
 Cierra #320: la **restriccion 3 aprobada** y la **medicion de cuanto falta** del

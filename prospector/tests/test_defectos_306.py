@@ -76,9 +76,14 @@ def test_MODO_DE_FALLA_la_procedencia_tecnica_SIGUE_oculta_en_limpio():
     x.dato("puesto").observar("outlook_personas", "Gerente de EHS",
                               forma="firma de correo")
     html = fichamod.modo_limpio(c)
-    assert "Ana Ficticia" in html
-    assert "outlook_personas" not in html
-    assert "firma de correo" not in html
+    limpia = html[:html.index('<details class="tec">')]
+    # #322: "oculta en limpio" ahora significa oculta en LA CAPA LIMPIA. La
+    # procedencia no desaparecio -- eso la volveria inauditable-- : bajo a la
+    # pestana, que es exactamente lo que este rediseno queria.
+    assert "Ana Ficticia" in limpia
+    assert "outlook_personas" not in limpia
+    assert "firma de correo" not in limpia
+    assert "outlook_personas" in html, "la procedencia sigue existiendo, abajo"
 
 
 def test_MODO_DE_FALLA_el_que_YA_NO_ESTA_no_aparece_en_por_confirmar():
@@ -89,8 +94,13 @@ def test_MODO_DE_FALLA_el_que_YA_NO_ESTA_no_aparece_en_por_confirmar():
                        empresa="Coficab", revision_humana=True,
                        motivo_revision="por confirmar", sigue_en_la_casa=False))
     html = fichamod.modo_limpio(c)
-    assert "Ana Ficticia" not in html
-    assert "Por confirmar" not in html
+    limpia = html[:html.index('<details class="tec">')]
+    # #322: la capa LIMPIA sigue sin imprimirlo, que es la garantia. En la pestana
+    # tecnica si aparece, marcado "(YA NO ESTA en la casa)": la procedencia de un
+    # descarte es tan auditable como la de un hallazgo.
+    assert "Ana Ficticia" not in limpia
+    assert "Por confirmar" not in limpia
+    assert "YA NO ESTA en la casa" in html
 
 
 # ============================ DEFECTO 1 · el veredicto del padron se REEMPLAZA
