@@ -155,3 +155,56 @@ def test_el_marcador_partido_SIGUE_permitido(tmp_path):
     f.write_text('<span>nombre.apellido<br>@coficab.com</span>', encoding="utf-8")
     for c in CORREO.findall(_texto_para_buscar(f)):
         assert PERMITIDO.match(c.partition("@")[0]), c
+
+
+def test_la_herramienta_de_auditoria_comparte_LOS_MISMOS_regex_que_la_guardia():
+    """#324. Si la auditoria del historial tuviera su propia copia de los regex,
+    los dos se irian separando y el dia de la purga el inventario no cuadraria con
+    lo que la guardia deja pasar. Los importa de aqui a proposito."""
+    import importlib.util
+    ruta = RAIZ / "herramientas" / "auditar_historial.py"
+    assert ruta.exists(), "la herramienta de auditoria del historial no esta"
+    spec = importlib.util.spec_from_file_location("auditar_historial", ruta)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert mod.G.CORREO is CORREO
+    assert mod.G.TELEFONO is TELEFONO
+    assert mod.G.PERMITIDO is PERMITIDO
+
+
+def test_la_auditoria_NO_puede_imprimir_un_valor():
+    """La forma de un correo sale enmascarada y su dominio no. Un reporte de fuga
+    que reproduce la fuga es la fuga otra vez -- ya paso en el issue #285--."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "auditar_historial", RAIZ / "herramientas" / "auditar_historial.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    # El fixture usa un dominio de ejemplo a proposito: la guardia de arriba
+    # escanea ESTE archivo, y ya cazo tres veces en esta sesion a fixtures que
+    # parecian correos de verdad. Un dominio permitido evita el falso positivo sin
+    # aflojar el regex.
+    f = mod.forma("nombre.muy.largo@example.com")
+    assert "nombre" not in f and "largo" not in f
+    assert f == "xxxxxx.xxx.xxxxx@example.com"     # el dominio SI se ve
+    # y la huella no permite reconstruir el valor
+    h = mod.huella("alguien@example.com")
+    assert len(h) == 10 and "alguien" not in h
+
+
+def test_el_plan_de_purga_habla_de_RUTAS_no_de_valores():
+    """El documento que dice que hay que purgar no puede contener lo que hay que
+    purgar. Es la regla que ya trae escrita, y esta prueba la hace cumplir sobre el
+    apartado que #324 le agrego."""
+    plan = (RAIZ / "PURGA-DEL-HISTORIAL.md")
+    texto = _texto_para_buscar(plan)
+    hallazgos = []
+    for correo in CORREO.findall(texto):
+        local, _, dom = correo.partition("@")
+        if PERMITIDO.match(local) or DOMINIO_EJEMPLO.search(dom):
+            continue
+        hallazgos.append(correo)
+    assert not hallazgos, f"el plan de purga nombra {len(hallazgos)} correo(s)"
+    assert not TELEFONO.findall(texto), "el plan de purga nombra un telefono"
+    # y si menciona dominios, es sin la parte local: una empresa no es una persona
+    assert "@fts.mx" in texto, "el inventario de dominios es parte del valor del plan"

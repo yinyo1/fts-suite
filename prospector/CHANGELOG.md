@@ -3,6 +3,66 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.10.2 — 2026-09-27
+
+Auditoria del **historial completo** de git buscando datos personales (#324).
+**702 pruebas** (eran 699). Herramienta nueva:
+`herramientas/auditar_historial.py`.
+
+### Lo que se buscaba: cero. El hueco de #323 no dejo rastro
+
+Se recorrieron **los 594 blobs de texto de los 64 commits de todas las ramas** con
+el escaner de la guardia mas la limpieza de etiquetas. Correos escondidos por
+marcado: **cero**. Telefonos: **cero**. El unico caso de esa forma fue el prototipo
+de #323, detectado antes de commitearlo. **Ese vector queda cerrado.**
+
+### Lo que se encontro de paso, y es mas grande
+
+**La guardia solo mira `prospector/`.** Su `RAIZ` es `parent.parent` del archivo de
+la prueba, que vive en `prospector/tests/`, asi que el resto del repo nunca se
+barrio -- y el plan de purga se escribio sobre lo que la guardia veia--.
+
+| | en el historial | VIVOS en HEAD |
+|---|---|---|
+| Correos de persona | **198** | **46** |
+| Telefonos | **62** | **10** |
+
+En **37 archivos**, y el repo es `public`. La concentracion mas alta esta en
+`shared/config/empleados-master.json` (27 correos y 5 telefonos: el maestro de
+empleados) y `shared/incidencias-asistencia.json`. Seis correos son de **dominio de
+cliente**, que es la clase peor: un correo de empleado propio es un problema
+laboral; el de la contraparte de un cliente es eso y ademas un problema comercial.
+
+No estan solo en el historial: **estan en el arbol de trabajo**. Purgar sin
+enmascarar primero no sirve — el commit siguiente los vuelve a subir.
+
+### Que se hizo, y que NO
+
+`PURGA-DEL-HISTORIAL.md` gana un **§4** con el alcance nuevo: rutas por familia,
+conteos, el inventario de dominios sin la parte local, los tres patrones a purgar y
+**el orden correcto, que no es purgar primero** -- enmascarar HEAD, ampliar la
+guardia, y purgar las cuatro secciones en la misma ventana, porque dos purgas son
+dos `push --force --mirror`--.
+
+**No se enmascaro nada y no se amplio la guardia**, y las dos omisiones son
+deliberadas: son 37 archivos de frentes que no son este, y ampliar la guardia hoy
+pondria la prueba en rojo con 46 hallazgos y bloquearia a todos los demas. Eso lo
+decide Esteban.
+
+### La herramienta
+
+`auditar_historial.py` recorre **blobs, no diffs** — un `git log -p` cuenta el mismo
+dato una vez por commit que lo toca, pierde lo que entro por un merge y no dice
+donde vive ahora— e **importa los regex de la guardia** en vez de copiarlos, para
+que el inventario del dia de la purga no pueda divergir de lo que la prueba deja
+pasar.
+
+Y **no puede imprimir un valor**: cada hallazgo sale por su forma
+(`xxxxxx.xxx@dominio`, con el dominio visible porque una empresa no es una persona)
+y por un prefijo de hash que alcanza para agrupar y comparar corridas. Hay una
+prueba de eso, y otra de que el propio plan de purga no nombre ningun dato: un
+reporte de fuga que reproduce la fuga es la fuga otra vez.
+
 ## 0.10.1 — 2026-09-27
 
 El **estilo del prototipo aprobado**, portado (#323), y **un hueco de la guardia
