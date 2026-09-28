@@ -19,14 +19,16 @@
     VENCIDO: ['Vencido', 'e-vencido'], ESCALADO: ['Escalado', 'e-escalado'], FIRMA_RECIBIDA: ['Hoja recibida', 'e-recibida'],
     SE_NEGO_A_FIRMAR: ['Se negó a firmar', 'e-negativa'], IMPUGNADO: ['Impugnado', 'e-impugnado'], VALIDADO_RH: ['Validado por RH', 'e-validado'],
     ACCION_PROGRAMADA: ['Suspensión programada', 'e-programada'], ACCION_VERIFICADA: ['Suspensión verificada', 'e-verificada'],
-    CERRADO: ['Cerrado', 'e-cerrado'], CANCELADO_POR_RH: ['Cancelado por RH', 'e-otro']
+    CERRADO: ['Cerrado', 'e-cerrado'], CANCELADO_POR_RH: ['Cancelado por RH', 'e-otro'],
+    RETENIDO: ['Nivel alcanzado, no notificado', 'e-retenido']
   };
   var NIVEL = { aviso: 'Aviso', carta_compromiso: 'Carta compromiso', acta: 'Acta administrativa', suspension: 'Suspensión' };
   var CUBETAS = [
     { id: 'rh', t: 'Esperan a RH', q: 'Hoja recibida, negativa o impugnación', clase: 'rh', estados: ['FIRMA_RECIBIDA', 'SE_NEGO_A_FIRMAR', 'IMPUGNADO', 'VALIDADO_RH'] },
     { id: 'espera', t: 'Esperando firma', q: 'Dentro del plazo', clase: '', estados: ['ESPERANDO_FIRMA', 'DETECTADO', 'NOTIFICADO'] },
     { id: 'vencidos', t: 'Vencidos o escalados', q: 'Sin hoja al vencer el plazo', clase: 'urge', estados: ['VENCIDO', 'ESCALADO'] },
-    { id: 'programadas', t: 'Suspensiones programadas', q: 'Por aplicar y verificar', clase: '', estados: ['ACCION_PROGRAMADA'] }
+    { id: 'programadas', t: 'Suspensiones programadas', q: 'Por aplicar y verificar', clase: '', estados: ['ACCION_PROGRAMADA'] },
+    { id: 'retenidos', t: 'Nivel alcanzado, no notificado', q: 'Arranque suave: no se le escribió a la persona', clase: 'ret', estados: ['RETENIDO'] }
   ];
   var st = { casos: [], salud: null, filtro: 'todos', vista: 'lista', folio: null, editor: false, cerrados: false };
 
@@ -41,6 +43,7 @@
   }
   function fechaDia(iso) { var d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', timeZone: 'America/Monterrey' }); }
   function toast(t) {
+    var viejo = document.querySelector('.toast'); if (viejo) viejo.remove();
     var el = document.createElement('div'); el.className = 'toast'; el.setAttribute('role', 'status'); el.textContent = t;
     document.body.appendChild(el); setTimeout(function () { el.remove(); }, 3200);
   }
@@ -164,6 +167,7 @@
     }
     if (s === 'VALIDADO_RH') { if (c.accion === 'suspension') a.push(['programar', 'Programar suspensión', 'pri']); a.push(['cerrar', 'Cerrar caso']); }
     if (s === 'ACCION_PROGRAMADA') a.push(['ejecutada', 'Confirmar que se aplicó', 'pri']);
+    if (s === 'RETENIDO') a.push(['cerrar', 'Cerrar: ya se atendió en persona']);
     if (s !== 'CERRADO' && s !== 'CANCELADO_POR_RH' && s !== 'ACCION_VERIFICADA') a.push(['cancelar', 'Cancelar caso', 'peligro']);
     return a;
   }
@@ -278,7 +282,7 @@
     try { r = await pedir({ accion: 'config' }); } catch (e) { return; }
     if (!r || r.ok !== true) { $('#ajustes').innerHTML = '<div class="caja vacio">' + mensajeError(r || {}) + '</div>'; return; }
     var cfg = r.config || {}, esc2 = r.escalera || [], ex = r.exclusiones || [];
-    var claves = ['modo', 'tolerancia_min', 'hora_fuente', 'periodo', 'reincidencia_dias', 'contar_desde', 'dias_validacion_rh', 'buzon_receptor'];
+    var claves = ['modo', 'nivel_maximo_habilitado', 'suspensiones_habilitadas', 'tolerancia_min', 'hora_fuente', 'periodo', 'reincidencia_dias', 'contar_desde', 'dias_validacion_rh', 'buzon_receptor'];
     function val(v) { return v == null ? 'sin definir' : (typeof v === 'object' ? JSON.stringify(v) : String(v)); }
     $('#ajustes').innerHTML =
       '<div class="aviso demo"><div><b>Valores por confirmar</b>Lo marcado "por confirmar" salió de la reconstrucción del sistema anterior o es una propuesta. Dirección y RH los confirman antes de pasar a modo real.</div></div>' +
@@ -287,17 +291,20 @@
         '</tbody></table></div></section>' +
       '<section class="caja bloque"><h2>Reglas</h2><dl class="dl">' + claves.filter(function (k) { return cfg[k]; }).map(function (k) {
         return '<dt>' + esc(k.replace(/_/g, ' ')) + '</dt><dd><b class="num">' + esc(val(cfg[k].valor)) + '</b> ' + (cfg[k].confirmado ? '' : '<span class="chip e-espera">por confirmar</span>') + '<br><span class="nivel">' + esc(cfg[k].descripcion || '') + '</span></dd>'; }).join('') + '</dl></section></div>' +
-      '<section class="caja bloque" style="margin-top:14px"><h2>Días que no cuentan</h2><div class="nivel">Permisos, viajes, festivos. Un retardo en estos días no cuenta.</div>' +
+      '<section class="caja bloque" style="margin-top:14px"><h2>Días que no cuentan</h2><div class="nivel">Permisos, vacaciones, viajes o trabajo en campo de una persona. Un retardo en estos días no cuenta. Los días feriados de toda la empresa los agrega Dirección aparte.</div>' +
         '<div class="tabla-wrap"><table><thead><tr><th>Quién</th><th>Desde</th><th>Hasta</th><th>Tipo</th><th>Motivo</th><th></th></tr></thead><tbody>' +
-        (ex.length ? ex.map(function (x) { return '<tr><td>' + (x.employee_id ? 'Empleado ' + esc(x.employee_id) : 'Todos') + '</td><td class="num">' + esc(x.desde) + '</td><td class="num">' + esc(x.hasta) + '</td><td>' + esc(x.tipo) + '</td><td>' + esc(x.motivo) + '</td><td>' + (st.editor ? '<button class="btn" data-quitar="' + esc(x.id) + '">Quitar</button>' : '') + '</td></tr>'; }).join('') : '<tr><td colspan="6" class="vacio">Ninguno.</td></tr>') +
+        (ex.length ? ex.map(function (x) { return '<tr><td>' + 'Empleado ' + esc(x.employee_id) + '</td><td class="num">' + esc(x.desde) + '</td><td class="num">' + esc(x.hasta) + '</td><td>' + esc(x.tipo) + '</td><td>' + esc(x.motivo) + '</td><td>' + (st.editor ? '<button class="btn" data-quitar="' + esc(x.id) + '">Quitar</button>' : '') + '</td></tr>'; }).join('') : '<tr><td colspan="6" class="vacio">Ninguno.</td></tr>') +
         '</tbody></table></div>' +
-        (st.editor ? '<div class="form"><div class="fila2"><label>Número de empleado (vacío: todos)<input id="x-emp" inputmode="numeric"></label><label>Tipo<select id="x-tipo"><option value="permiso">Permiso</option><option value="usa">Trabajo en USA</option><option value="campo">Trabajo en campo</option><option value="festivo">Festivo</option><option value="otro">Otro</option></select></label></div>' +
+        (st.editor ? '<div class="form"><div class="fila2"><label>Número de empleado<input id="x-emp" inputmode="numeric"></label><label>Tipo<select id="x-tipo"><option value="permiso">Permiso</option><option value="vacaciones">Vacaciones</option><option value="incapacidad">Incapacidad</option><option value="usa">Trabajo en USA</option><option value="campo">Trabajo en campo</option><option value="horario_especial">Horario especial</option><option value="no_aplica">No aplica el control</option><option value="otro">Otro</option></select></label></div>' +
           '<div class="fila2"><label>Desde<input type="date" id="x-desde"></label><label>Hasta<input type="date" id="x-hasta"></label></div><label>Motivo<input id="x-motivo"></label>' +
           '<button class="btn pri" id="x-agregar">Agregar</button><div id="x-err" class="err"></div></div>' : '') + '</section>';
   }
   async function agregarExclusion() {
     var d = { accion: 'exclusion_agregar', employee_id: $('#x-emp').value.trim() || null, tipo: $('#x-tipo').value, desde: $('#x-desde').value, hasta: $('#x-hasta').value, motivo: $('#x-motivo').value.trim() };
+    if (!/^[0-9]+$/.test(String(d.employee_id || ''))) { $('#x-err').textContent = 'Escribe el número de empleado.'; return; }
+    d.employee_id = Number(d.employee_id);
     if (!d.desde || !d.hasta || d.motivo.length < 5) { $('#x-err').textContent = 'Llena las dos fechas y un motivo.'; return; }
+    if (d.hasta < d.desde) { $('#x-err').textContent = 'La fecha final va después de la inicial.'; return; }
     var r; try { r = await pedir(d); } catch (e) { return; }
     if (!r || r.ok !== true) { $('#x-err').textContent = mensajeError(r || {}); return; }
     toast('Agregado.'); ajustes();
@@ -308,10 +315,66 @@
     toast('Quitado.'); ajustes();
   }
 
+  // ── Calidad de datos (retardos_0005) ──
+  function hhmm(h) {
+    if (h == null || h === '') return '';
+    var n = Number(h), m = Math.round(n * 60);
+    return ('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + (m % 60)).slice(-2);
+  }
+  var BANDERAS = {
+    ficha_vs_calendario: 'Ficha y calendario no coinciden', sin_correo: 'Sin correo', correo_personal: 'Correo personal',
+    dominio_invalido: 'Dominio de correo inválido', correo_compartido: 'Correo compartido', retrasos_mas_180: 'Retrasos de más de 3 h',
+    sin_checadas: 'Sin checadas en 90 días', sin_hora_entrada: 'Sin hora de entrada'
+  };
+  async function calidad() {
+    st.vista = 'calidad'; mostrarVista();
+    $('#calidad').innerHTML = '<div class="caja vacio">Cargando…</div>';
+    var r;
+    try { r = await pedir({ accion: 'calidad' }); } catch (e) { return; }
+    if (!r || r.ok !== true) { $('#calidad').innerHTML = '<div class="caja vacio">' + mensajeError(r || {}) + '</div>'; return; }
+    st.calidad = r.personas || [];
+    var cuenta = {}; st.calidad.forEach(function (p) { Object.keys(p.banderas || {}).forEach(function (b) { cuenta[b] = (cuenta[b] || 0) + 1; }); });
+    var revisados = st.calidad.filter(function (p) { return p.revisado; }).length;
+    $('#calidad').innerHTML =
+      '<div class="aviso demo"><div><b>La hora sugerida es sólo una referencia</b>' + esc(r.regla_sugerida || '') + ' Nada de esta pantalla cambia la ficha en Odoo: si RH decide corregir una hora, la corrige en Odoo y aquí marca "revisado".</div></div>' +
+      '<div class="resumen">' + '<div class="cubeta"><span class="n">' + revisados + ' / ' + st.calidad.length + '</span><span class="l">Personas revisadas</span></div>' +
+        Object.keys(BANDERAS).filter(function (b) { return cuenta[b]; }).map(function (b) {
+          return '<div class="cubeta"><span class="n">' + cuenta[b] + '</span><span class="l">' + esc(BANDERAS[b]) + '</span></div>'; }).join('') + '</div>' +
+      '<div class="caja"><div class="tabla-wrap"><table class="calidad"><thead><tr><th>Persona y banderas</th><th class="num">Ficha</th><th class="num">Sugerida</th><th class="num">Tarde con su hora</th><th class="num">Mediana</th><th class="num">Percentil 25</th><th class="num">Calendario</th><th>Revisión</th></tr></thead><tbody>' +
+      st.calidad.map(function (p) {
+        var b = Object.keys(p.banderas || {}).map(function (k) { return '<span class="chip e-espera">' + esc(BANDERAS[k] || k) + '</span>'; }).join('');
+        var cambia = p.hora_sugerida != null && Number(p.hora_sugerida) !== Number(p.hora_entrada);
+        return '<tr><td class="quien2"><b>' + esc(p.nombre || ('Empleado ' + p.employee_id)) + '</b><span>' + esc(p.departamento || '') + ' · núm. ' + esc(p.employee_id) + ' · ' + esc(p.dias_con_checada) + ' días con checada</span>' +
+          (b ? '<div class="chips">' + b + '</div>' : '') + '</td>' +
+          '<td class="n">' + hhmm(p.hora_entrada) + '</td>' +
+          '<td class="n">' + (cambia ? '<b class="cambia">' + hhmm(p.hora_sugerida) + '</b>' : hhmm(p.hora_sugerida)) + '</td>' +
+          '<td class="n">' + (p.pct_tarde == null ? '' : esc(p.pct_tarde) + ' %') + '</td>' +
+          '<td class="n">' + hhmm(p.mediana) + '</td><td class="n">' + hhmm(p.p25) + '</td><td class="n">' + hhmm(p.hora_calendario) + '</td>' +
+          '<td>' + (p.revisado ? '<span class="chip e-validado" title="' + esc((p.nota || '') + ' · ' + (p.revisado_por || '')) + '">revisado</span>' + (st.editor ? ' <button class="enlace" data-revisar="' + esc(p.employee_id) + '" data-valor="0">quitar</button>' : '')
+                         : (st.editor ? '<button class="btn" data-revisar="' + esc(p.employee_id) + '" data-valor="1">Marcar revisado</button>' : '')) + '</td></tr>';
+      }).join('') + '</tbody></table></div></div><div id="form-revisar"></div>';
+  }
+  function formRevisar(id, valor) {
+    var p = (st.calidad || []).filter(function (x) { return String(x.employee_id) === String(id); })[0] || {};
+    $('#form-revisar').innerHTML = '<div class="form" style="margin-top:12px"><b>' + esc(p.nombre || ('Empleado ' + id)) + '</b>' +
+      '<label>Qué se decidió (queda en la bitácora)<input id="rv-nota" placeholder="' + (valor === '1' ? 'Por ejemplo: su entrada real es 8:00; se corrige en Odoo' : 'Por qué se quita la marca') + '"></label>' +
+      '<button class="btn pri" data-guardar-revision="' + esc(id) + '" data-valor="' + valor + '">' + (valor === '1' ? 'Marcar revisado' : 'Quitar la marca') + '</button><div id="rv-err" class="err"></div></div>';
+    $('#rv-nota').focus();
+  }
+  async function guardarRevision(id, valor, boton) {
+    var nota = $('#rv-nota').value.trim();
+    if (nota.length < 5) { $('#rv-err').textContent = 'Escribe qué se decidió.'; return; }
+    boton.disabled = true;
+    var r; try { r = await pedir({ accion: 'calidad_revisar', employee_id: Number(id), revisado: valor === '1', nota: nota }); } catch (e) { return; } finally { boton.disabled = false; }
+    if (!r || r.ok !== true) { $('#rv-err').textContent = mensajeError(r || {}); return; }
+    toast('Guardado.'); calidad();
+  }
+
   function mostrarVista() {
     $('#v-lista').classList.toggle('hid', st.vista !== 'lista');
     $('#detalle').classList.toggle('hid', st.vista !== 'detalle');
     $('#ajustes').classList.toggle('hid', st.vista !== 'ajustes');
+    $('#calidad').classList.toggle('hid', st.vista !== 'calidad');
     document.querySelectorAll('[data-vista]').forEach(function (t) { t.setAttribute('aria-selected', String(t.dataset.vista === st.vista || (t.dataset.vista === 'lista' && st.vista === 'detalle'))); });
     window.scrollTo(0, 0);
   }
@@ -325,7 +388,9 @@
     if (t.id === 'ver-todos') { st.filtro = 'todos'; pintarResumen(); return pintarLista(); }
     if (t.id === 'cerrados') { st.cerrados = !st.cerrados; t.textContent = st.cerrados ? 'Ocultar cerrados' : 'Incluir cerrados'; st.filtro = 'todos'; return cargar(); }
     if (t.id === 'x-agregar') return agregarExclusion();
-    if (t.dataset.vista) { if (t.dataset.vista === 'ajustes') return ajustes(); st.vista = 'lista'; mostrarVista(); return cargar(); }
+    if (t.dataset.vista) { if (t.dataset.vista === 'ajustes') return ajustes(); if (t.dataset.vista === 'calidad') return calidad(); st.vista = 'lista'; mostrarVista(); return cargar(); }
+    if (t.dataset.revisar) return formRevisar(t.dataset.revisar, t.dataset.valor);
+    if (t.dataset.guardarRevision) return guardarRevision(t.dataset.guardarRevision, t.dataset.valor, t);
     if (t.dataset.cubeta) { st.filtro = st.filtro === t.dataset.cubeta ? 'todos' : t.dataset.cubeta; pintarResumen(); return pintarLista(); }
     if (t.dataset.folio) return abrir(t.dataset.folio);
     if (t.dataset.accion) return form(t.dataset.accion);

@@ -1,9 +1,15 @@
 {
-  "version": "V1.00",
+  "version": "V1.01",
   "fecha": "2026-09-28",
   "modulo": "rh/retardos",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Contador propio de este modulo.",
   "historial": [
+    {
+      "version": "V1.01",
+      "fecha": "2026-09-28",
+      "titulo": "Calidad de datos, arranque suave y dias que no cuentan corregido (#334, sesion 2)",
+      "nota": "Pestana Calidad de datos: por persona, hora de ficha y de calendario, mediana y percentil 25 de su primera checada de 90 dias, porcentaje de dias tarde con su hora, hora sugerida (solo referencia) y banderas; RH marca revisado con nota y queda en la bitacora. Casos RETENIDO (nivel alcanzado, no notificado) con su propia tarjeta. El formulario de dias que no cuentan pedia 'todos' y 'festivo', que la base no acepta (employee_id obligatorio y sin tipo festivo): ahora pide el numero de empleado y usa los tipos de la base. Los avisos ya no se enciman."
+    },
     {
       "version": "V1.00",
       "fecha": "2026-09-28",

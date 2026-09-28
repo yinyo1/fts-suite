@@ -15,7 +15,7 @@ try {
   var cfg = $('Postgres - Config').first().json || {};
   var empresas = cfg.empresas || [1];
   var dias = 7;
-  try { if ($('Manual (pasada 35 dias)').isExecuted) dias = 35; } catch (e) { dias = 7; }
+  try { if ($('Manual (pasada 92 dias)').isExecuted) dias = 92; } catch (e) { dias = 7; }
   var hh = null;
   try { if (typeof $helpers !== 'undefined' && $helpers && $helpers.httpRequest) hh = $helpers; } catch (e) {}
   if (!hh) { try { if (this && this.helpers && this.helpers.httpRequest) hh = this.helpers; } catch (e) {} }

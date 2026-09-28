@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Retardos · RH · FTS Suite</title>
-<link rel="stylesheet" href="css/retardos.css?v=V1.00">
+<link rel="stylesheet" href="css/retardos.css?v=V1.01">
 </head>
 <body>
 
@@ -12,7 +12,7 @@
   <a href="../index.html">← Volver a RH</a>
   <span class="t">Retardos</span>
   <!-- Se bumpea JUNTO con version.json: es lo que se ve si el fetch de version.json falla. -->
-  <span class="badge" id="ver-badge">V1.00</span>
+  <span class="badge" id="ver-badge">V1.01</span>
   <span class="badge hid" id="modo">EJEMPLO</span>
   <span class="sp"></span>
   <span class="quien" id="quien"></span>
@@ -38,6 +38,7 @@
   <div id="salud"></div>
   <div class="tabs" role="tablist">
     <button class="tab" role="tab" data-vista="lista" aria-selected="true">Casos</button>
+    <button class="tab" role="tab" data-vista="calidad" aria-selected="false">Calidad de datos</button>
     <button class="tab" role="tab" data-vista="ajustes" aria-selected="false">Reglas y días que no cuentan</button>
   </div>
 
@@ -48,12 +49,13 @@
   </div>
   <div class="hid" id="detalle"></div>
   <div class="hid" id="ajustes"></div>
+  <div class="hid" id="calidad"></div>
   <div class="pie" id="pie"></div>
 </div>
 
-<script src="../../../shared/auth-jwt.js?v=V1.00"></script>
-<script src="../../../retardos/lib/sesion.js?v=V1.00"></script>
-<script src="js/api.js?v=V1.00"></script>
-<script src="js/app.js?v=V1.00"></script>
+<script src="../../../shared/auth-jwt.js?v=V1.01"></script>
+<script src="../../../retardos/lib/sesion.js?v=V1.01"></script>
+<script src="js/api.js?v=V1.01"></script>
+<script src="js/app.js?v=V1.01"></script>
 </body>
 </html>

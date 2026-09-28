@@ -55,6 +55,8 @@
   ];
   var CONFIG = {
     modo: { valor: 'sombra', confirmado: false, descripcion: 'sombra: todo correo va a Dirección y RH con [SOMBRA]. real: al empleado.' },
+    nivel_maximo_habilitado: { valor: 2, confirmado: false, descripcion: 'Nivel más alto que se notifica. 2 = carta compromiso. Arriba de eso el caso queda como nivel alcanzado, no notificado.' },
+    suspensiones_habilitadas: { valor: false, confirmado: false, descripcion: 'Si es false, ninguna suspensión se notifica.' },
     tolerancia_min: { valor: 20, confirmado: false, descripcion: 'Minutos de gracia después de la hora de entrada.' },
     hora_fuente: { valor: 'hora_entrada', confirmado: false, descripcion: 'De dónde sale la hora esperada: la ficha o el calendario.' },
     periodo: { valor: 'mes', confirmado: false, descripcion: 'Ventana en la que se cuentan los retardos.' },
@@ -105,7 +107,8 @@
     caso(P[4], 1, 'CERRADO', 1, -3, null),
     caso(P[5], 3, 'ESCALADO', 6, -9, -1, { ruta: 'supervisor', email_valido: false }),
     caso(P[6], 2, 'IMPUGNADO', 3, -5, 1),
-    caso(P[7], 4, 'ACCION_PROGRAMADA', 7, -12, null, { accion_desde: fecha(3), accion_hasta: fecha(3) })
+    caso(P[7], 4, 'ACCION_PROGRAMADA', 7, -12, null, { accion_desde: fecha(3), accion_hasta: fecha(3) }),
+    caso(P[0], 3, 'RETENIDO', 5, 0, null)
   ];
   CASOS.forEach(function (c) {
     c.bitacora = [
@@ -116,10 +119,14 @@
     if (c.estado !== 'ESPERANDO_FIRMA' && c.estado !== 'CERRADO' && c.nivel > 1)
       c.bitacora.push({ at: iso(-1), evento: 'transicion', de: 'ESPERANDO_FIRMA', a: c.estado, actor: c.estado === 'FIRMA_RECIBIDA' ? 'correo:empleado' : 'sistema', motivo: 'Ejemplo' });
     c.envios = [{ tipo: 'notificacion', estado: 'enviado', modo: 'sombra', enviado_at: c.abierto_at, asunto: '[SOMBRA] [' + c.folio + '] ' + c.nombre_nivel }];
+    if (c.estado === 'RETENIDO') {
+      c.bitacora = [c.bitacora[0], { at: c.abierto_at, evento: 'transicion', de: 'DETECTADO', a: 'RETENIDO', actor: 'sistema', motivo: 'Nivel alcanzado, no notificado: el nivel 3 no está habilitado (arranque suave)' }];
+      c.envios = [];
+    }
   });
   var EXCL = [
     { id: 3, employee_id: 504, desde: '2026-09-14', hasta: '2026-09-18', tipo: 'usa', motivo: 'Viaje de trabajo (ejemplo)', activo: true },
-    { id: 4, employee_id: null, desde: '2026-09-16', hasta: '2026-09-16', tipo: 'festivo', motivo: 'Día feriado (ejemplo)', activo: true }
+    { id: 4, employee_id: 507, desde: '2026-09-21', hasta: '2026-09-22', tipo: 'permiso', motivo: 'Permiso con goce (ejemplo)', activo: true }
   ];
   var TRANS = {
     DETECTADO: ['NOTIFICADO', 'CANCELADO_POR_RH'], NOTIFICADO: ['ESPERANDO_FIRMA', 'CERRADO', 'CANCELADO_POR_RH'],
@@ -129,7 +136,7 @@
     FIRMA_RECIBIDA: ['VALIDADO_RH', 'ESPERANDO_FIRMA', 'IMPUGNADO', 'CANCELADO_POR_RH'],
     SE_NEGO_A_FIRMAR: ['VALIDADO_RH', 'CANCELADO_POR_RH'], IMPUGNADO: ['ESPERANDO_FIRMA', 'VALIDADO_RH', 'CANCELADO_POR_RH'],
     VALIDADO_RH: ['ACCION_PROGRAMADA', 'CERRADO', 'CANCELADO_POR_RH'], ACCION_PROGRAMADA: ['ACCION_VERIFICADA', 'CANCELADO_POR_RH'],
-    ACCION_VERIFICADA: ['CERRADO']
+    ACCION_VERIFICADA: ['CERRADO'], RETENIDO: ['CERRADO', 'CANCELADO_POR_RH']
   };
   function mover(c, a, motivo, actor) {
     if ((TRANS[c.estado] || []).indexOf(a) < 0) throw new Error('TRANSICION_INVALIDA ' + c.estado + ' -> ' + a);
@@ -141,6 +148,16 @@
     return { ok: true, problemas: [], modo: 'sombra', casos_abiertos: CASOS.filter(function (c) { return c.estado !== 'CERRADO' && c.estado !== 'CANCELADO_POR_RH'; }).length,
              outbox_pendiente: 0, ultima_deteccion: iso(-0.2), ultima_deteccion_leidos: 212 };
   }
+
+  // Calidad de datos de EJEMPLO (horas decimales; nombres inventados).
+  var CALIDAD = [
+    { employee_id: 501, nombre: 'Laura Demo', departamento: 'Operaciones', hora_entrada: 7, hora_calendario: 7, dias_con_checada: 58, mediana: 7.2, p25: 6.95, pct_tarde: 34.5, hora_sugerida: 7.5, banderas: {}, revisado: false },
+    { employee_id: 503, nombre: 'Irene Demo', departamento: 'Comercial', hora_entrada: 7.5, hora_calendario: 8, dias_con_checada: 55, mediana: 8.1, p25: 7.9, pct_tarde: 61.8, hora_sugerida: 8, banderas: { ficha_vs_calendario: true, correo_personal: true }, revisado: false },
+    { employee_id: 504, nombre: 'Tomás Demo', departamento: 'Operaciones', hora_entrada: 7, hora_calendario: 7, dias_con_checada: 60, mediana: 7.05, p25: 6.9, pct_tarde: 8.3, hora_sugerida: 7, banderas: {}, revisado: true, nota: 'Correcto (ejemplo)', revisado_por: 'rh.demo' },
+    { employee_id: 505, nombre: 'Rebeca Demo', departamento: 'Ingenieria', hora_entrada: 7, hora_calendario: 8, dias_con_checada: 57, mediana: 10.4, p25: 8.1, pct_tarde: 71.9, hora_sugerida: 10.5, banderas: { ficha_vs_calendario: true, retrasos_mas_180: true }, revisado: false },
+    { employee_id: 506, nombre: 'Héctor Demo', departamento: 'Operaciones', hora_entrada: 7, hora_calendario: 7, dias_con_checada: 61, mediana: 7.15, p25: 7, pct_tarde: 18, hora_sugerida: 7, banderas: { dominio_invalido: true, correo_personal: true }, revisado: false },
+    { employee_id: 507, nombre: 'Noemí Demo', departamento: 'Comercial', hora_entrada: 11, hora_calendario: 8, dias_con_checada: 0, mediana: null, p25: null, pct_tarde: null, hora_sugerida: null, banderas: { ficha_vs_calendario: true, correo_compartido: true, sin_checadas: true }, revisado: false }
+  ];
   var sinSustituir = {};
   function listaFila(c) {
     return { folio: c.folio, employee_id: c.employee_id, nombre: c.nombre, nivel: c.nivel, accion: c.accion, estado: c.estado, periodo: c.periodo,
@@ -163,6 +180,8 @@
         EXCL.unshift({ id: 10 + EXCL.length, employee_id: d.employee_id ? Number(d.employee_id) : null, desde: d.desde, hasta: d.hasta, tipo: d.tipo, motivo: d.motivo, activo: true });
         return { ok: true, caso: null };
       }
+      if (d.accion === 'calidad') return { ok: true, personas: CALIDAD, tolerancia_min: 20, regla_sugerida: 'Primer horario en punto o y media con el que habría llegado tarde en no más del 20% de sus días hábiles de los últimos 90.' };
+      if (d.accion === 'calidad_revisar') { CALIDAD.forEach(function (x) { if (x.employee_id === Number(d.employee_id)) { x.revisado = !!d.revisado; x.nota = d.nota; x.revisado_por = actor; } }); return { ok: true }; }
       if (d.accion === 'exclusion_quitar') { EXCL.forEach(function (x) { if (x.id === Number(d.id)) x.activo = false; }); return { ok: true, caso: null }; }
       var c = CASOS.filter(function (x) { return x.folio === d.folio; })[0];
       if (!c) return { ok: false, error: 'FOLIO_INEXISTENTE' };

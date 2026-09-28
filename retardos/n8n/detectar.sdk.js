@@ -1,7 +1,7 @@
 import { workflow, node, trigger, ifElse } from '@n8n/workflow-sdk';
 const PG = { postgres: { id: 'Zu4Y9UuzGwCBN8lH', name: 'fts-suite-db · fts_admin' } };
 const cron = trigger({ type: 'n8n-nodes-base.scheduleTrigger', version: 1.2, config: { name: 'Cron L-V 12:15 y 19:15', parameters: { rule: { interval: [ { field: 'cronExpression', expression: '15 12,19 * * 1-5' } ] } } } });
-const manual = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Manual (pasada 35 dias)' } });
+const manual = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Manual (pasada 92 dias)' } });
 const config = node({ type: 'n8n-nodes-base.postgres', version: 2.6, config: { name: 'Postgres - Config', credentials: PG, parameters: { operation: 'executeQuery', query: "SELECT retardos.cfg('empresa_ids') AS empresas, retardos.cfg_txt('modo') AS modo", options: {} } } });
 const secreto = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Set - secreto', parameters: { mode: 'manual', includeOtherFields: false, assignments: { assignments: [
   { id: 'a1', name: 'okey', type: 'string', value: '={{ $env.ODOO_RPC_KEY }}' },

@@ -68,6 +68,7 @@ function ingestar(B, checadas, empleados, extra) {
     empleados: empleados || [EMP(1), SUP], checadas, olvido_entrada_att: [] }, extra || {});
   return B.j('SELECT retardos.ingestar(' + lit(p) + ')');
 }
+function habilitarTodo(B) { config(B, 'nivel_maximo_habilitado', 4); config(B, 'suspensiones_habilitadas', true); }
 function config(B, clave, valor) { B.q("UPDATE retardos.config SET valor = " + lit(valor) + " WHERE clave = '" + clave + "'"); }
 function enviarTodo(B) {
   const lista = B.j('SELECT retardos.por_enviar(100)') || [];
@@ -285,6 +286,7 @@ conPg('suspensión: se verifica contra checadas y Nómina; si hubo checada, aler
   const B = base();
   try {
     B.q("UPDATE retardos.escalera SET umbral = 1 WHERE nivel = 4; UPDATE retardos.escalera SET activo = false WHERE nivel < 4");
+    habilitarTodo(B); // retardos_0005: estas pruebas son del flujo CON suspensiones habilitadas
     const folio = ingestar(B, [chec(1, '2026-09-01', '09:00')]).casos_nuevos[0];
     enviarTodo(B);
     B.j('SELECT retardos.panel(' + lit({ accion: 'registrar_negativa', folio, actor: 'rh', rol: 'editor', testigo1: 'Testigo A', testigo2: 'Testigo B' }) + ')');
@@ -303,6 +305,7 @@ conPg('suspensión aplicada: sin checadas y en Nómina → ACCION_VERIFICADA y C
   const B = base();
   try {
     B.q("UPDATE retardos.escalera SET umbral = 1 WHERE nivel = 4; UPDATE retardos.escalera SET activo = false WHERE nivel < 4");
+    habilitarTodo(B); // retardos_0005: estas pruebas son del flujo CON suspensiones habilitadas
     const folio = ingestar(B, [chec(1, '2026-09-01', '09:00')]).casos_nuevos[0];
     enviarTodo(B);
     B.j('SELECT retardos.panel(' + lit({ accion: 'registrar_negativa', folio, actor: 'rh', rol: 'editor', testigo1: 'Testigo A', testigo2: 'Testigo B' }) + ')');
@@ -317,6 +320,7 @@ conPg('reglas legales: suspensión de más de 8 días rechazada; negativa exige 
   const B = base();
   try {
     B.q("UPDATE retardos.escalera SET umbral = 1 WHERE nivel = 4; UPDATE retardos.escalera SET activo = false WHERE nivel < 4");
+    habilitarTodo(B); // retardos_0005: estas pruebas son del flujo CON suspensiones habilitadas
     const folio = ingestar(B, [chec(1, '2026-09-01', '09:00')]).casos_nuevos[0]; enviarTodo(B);
     assert.equal(B.j('SELECT retardos.panel(' + lit({ accion: 'registrar_negativa', folio, actor: 'rh', rol: 'editor', testigo1: 'A' }) + ')').error, 'FALTAN_TESTIGOS');
     assert.equal(B.j('SELECT retardos.panel(' + lit({ accion: 'programar_accion', folio, actor: 'rh', rol: 'editor', desde: '2026-09-07', dias: 9 }) + ')').error, 'DIAS_FUERA_DE_LEY');
@@ -367,6 +371,123 @@ conPg('panel: RH ve la hoja subida y la consulta queda en la bitácora', () => {
     const otro = B.j('SELECT retardos.panel_seguro(' + lit({ accion: 'evidencia', actor: 'rh.demo', rol: 'lector', nonce: 'nonce_demo_ev_0000004', folio, id: ev.id + 999 }) + ')');
     assert.equal(otro.error, 'EVIDENCIA_INEXISTENTE');
     assert.equal(B.q("SELECT count(*) FROM retardos.bitacora WHERE evento = 'evidencia_vista'"), '1');
+  } finally { B.fin(); }
+});
+
+// ── retardos_0005: arranque suave ───────────────────────────────────────────
+function siete(emp) {
+  const dias = ['01', '02', '03', '04', '07', '08', '09'];
+  return dias.map((d) => chec(emp, '2026-09-' + d, '07:45'));
+}
+function envios(B, folio) {
+  return B.j("SELECT coalesce(jsonb_agg(tipo), '[]'::jsonb) FROM retardos.envio WHERE caso_id = (SELECT id FROM retardos.caso WHERE folio = '" + folio + "')");
+}
+function diaPorDia(B, ch) {
+  const abiertos = [];
+  for (let i = 0; i < ch.length; i++) abiertos.push(...ingestar(B, ch.slice(0, i + 1)).casos_nuevos);
+  return abiertos;
+}
+conPg('arranque suave: por defecto sólo se notifica hasta carta; acta y suspensión quedan RETENIDO sin correo', () => {
+  const B = base();
+  try {
+    const cfg = B.j("SELECT jsonb_object_agg(clave, jsonb_build_object('v', valor, 'c', confirmado)) FROM retardos.config WHERE clave IN ('nivel_maximo_habilitado','suspensiones_habilitadas')");
+    assert.deepEqual(cfg, { nivel_maximo_habilitado: { v: 2, c: false }, suspensiones_habilitadas: { v: false, c: false } });
+    const abiertos = diaPorDia(B, siete(1));   // como en producción: cada umbral cruzado abre su caso
+    const casos = B.j("SELECT jsonb_object_agg(nivel, estado) FROM retardos.caso WHERE employee_id = 1");
+    assert.deepEqual(Object.keys(casos).sort(), ['1', '2', '3', '4']);
+    assert.notEqual(casos['1'], 'RETENIDO');
+    assert.notEqual(casos['2'], 'RETENIDO');
+    assert.equal(casos['3'], 'RETENIDO');
+    assert.equal(casos['4'], 'RETENIDO');
+    for (const f of abiertos) {
+      const nivel = B.j("SELECT nivel FROM retardos.caso WHERE folio = '" + f + "'");
+      const tipos = envios(B, f);
+      if (nivel >= 3) assert.deepEqual(tipos, [], 'un caso retenido no genera ningún correo');
+      else assert.ok(tipos.includes('notificacion'));
+    }
+    assert.equal(B.j("SELECT count(*) FROM retardos.bitacora WHERE a = 'RETENIDO' AND motivo LIKE 'Nivel alcanzado, no notificado%'"), 2);
+    const lista = B.j('SELECT retardos.panel(' + lit({ accion: 'listar', actor: 'rh', rol: 'lector' }) + ')');
+    assert.equal(lista.casos.filter((c) => c.estado === 'RETENIDO').length, 2, 'RH los ve en el panel');
+  } finally { B.fin(); }
+});
+
+conPg('arranque suave: con nivel máximo 4 y suspensiones deshabilitadas, se notifica el acta y se retiene la suspensión', () => {
+  const B = base();
+  try {
+    config(B, 'nivel_maximo_habilitado', 4);
+    diaPorDia(B, siete(1));
+    const casos = B.j("SELECT jsonb_object_agg(nivel, estado) FROM retardos.caso WHERE employee_id = 1");
+    assert.notEqual(casos['3'], 'RETENIDO');
+    assert.equal(casos['4'], 'RETENIDO');
+    habilitarTodo(B);
+    assert.equal(B.j('SELECT to_jsonb(retardos.nivel_habilitado(4::smallint))'), true);
+  } finally { B.fin(); }
+});
+
+conPg('arranque suave: un caso RETENIDO sólo puede cerrarse o cancelarse', () => {
+  const B = base();
+  try {
+    diaPorDia(B, siete(1));
+    const folio = B.j("SELECT to_jsonb(folio) FROM retardos.caso WHERE employee_id = 1 AND nivel = 3");
+    assert.throws(() => B.q("SELECT retardos.transicionar((SELECT id FROM retardos.caso WHERE folio = '" + folio + "'), 'ESPERANDO_FIRMA', 'x', 'y')"), /TRANSICION_INVALIDA/);
+    const r = B.j('SELECT retardos.panel(' + lit({ accion: 'cerrar', folio, actor: 'rh', rol: 'editor', motivo: 'Se habló en persona; no procede documento' }) + ')');
+    assert.equal(r.ok, true);
+    assert.equal(r.caso.estado, 'CERRADO');
+  } finally { B.fin(); }
+});
+
+// ── retardos_0005: calidad de datos ─────────────────────────────────────────
+conPg('calidad de datos: banderas, hora sugerida (sin tocar la ficha) y "revisado" con bitácora', () => {
+  const B = base();
+  try {
+    const hoy = B.j("SELECT to_jsonb((now() AT TIME ZONE 'America/Monterrey')::date)");
+    const dias = B.j("SELECT jsonb_agg(to_char(d, 'YYYY-MM-DD') ORDER BY d) FROM generate_series(('" + hoy + "'::date - 40), ('" + hoy + "'::date - 1), interval '1 day') d WHERE extract(isodow FROM d) < 6");
+    const ch = [];
+    dias.forEach((d, i) => { ch.push(chec(1, d, i % 5 === 0 ? '07:05' : '08:10')); ch.push(chec(2, d, '07:00')); });
+    const emps = [EMP(1, { hora_entrada: 7, hora_calendario: 8, email: 'demo1@gmai.com' }),
+                  EMP(2, { email: 'compartido@example.com' }), EMP(3, { email: 'compartido@example.com' }), SUP];
+    B.j('SELECT retardos.ingestar(' + lit({ workflow: 'retardos/detectar', desde: dias[0], hasta: hoy, empleados: emps, checadas: ch, olvido_entrada_att: [] }) + ')');
+    const cal = B.j('SELECT retardos.panel_seguro(' + lit({ accion: 'calidad', actor: 'rh', rol: 'lector', nonce: 'nonce_demo_cal_000001' }) + ')');
+    assert.equal(cal.ok, true);
+    const p = (id) => cal.personas.find((x) => x.employee_id === id);
+    assert.equal(p(1).banderas.ficha_vs_calendario, true);
+    assert.equal(p(1).banderas.correo_personal, true);
+    assert.equal(p(1).banderas.dominio_invalido, true);
+    assert.ok(Number(p(1).pct_tarde) >= 75, 'llega 08:10 con entrada 07:00 la mayoría de los días');
+    assert.equal(Number(p(1).hora_sugerida), 8);
+    assert.equal(p(2).banderas.correo_compartido, true);
+    assert.equal(Number(p(2).hora_sugerida), 7, 'quien ya llega a tiempo conserva su hora');
+    assert.equal(p(3).banderas.sin_checadas, true);
+    assert.equal(Number(B.j('SELECT hora_entrada FROM retardos.empleado WHERE employee_id = 1')), 7, 'la sugerida nunca toca la ficha');
+    const no = B.j('SELECT retardos.panel_seguro(' + lit({ accion: 'calidad_revisar', actor: 'rh', rol: 'lector', nonce: 'nonce_demo_cal_000002', employee_id: 1 }) + ')');
+    assert.equal(no.error, 'SOLO_LECTURA');
+    const si = B.j('SELECT retardos.panel_seguro(' + lit({ accion: 'calidad_revisar', actor: 'rh.demo', rol: 'editor', nonce: 'nonce_demo_cal_000003', employee_id: 1, revisado: true, nota: 'Su entrada real es 8:00; se corrige en Odoo' }) + ')');
+    assert.equal(si.ok, true);
+    const cal2 = B.j('SELECT retardos.panel_calidad(' + lit({}) + ')');
+    assert.equal(cal2.personas.find((x) => x.employee_id === 1).revisado, true);
+    assert.equal(B.j("SELECT count(*) FROM retardos.bitacora WHERE evento = 'calidad_revisado' AND evidencia->>'employee_id' = '1'"), 1);
+  } finally { B.fin(); }
+});
+
+// ── retardos_0005: simulador de escalera ────────────────────────────────────
+conPg('simulador: cuenta casos por umbral cruzado, retiene arriba del nivel máximo y no escribe nada', () => {
+  const B = base();
+  try {
+    ingestar(B, siete(1).concat([chec(2, '2026-09-01', '07:45'), chec(2, '2026-09-02', '11:30')]), [EMP(1), EMP(2), SUP]);
+    const antes = B.j("SELECT jsonb_build_array((SELECT count(*) FROM retardos.caso), (SELECT count(*) FROM retardos.envio), (SELECT count(*) FROM retardos.bitacora))");
+    const a = B.j('SELECT retardos.simular_escalera(' + lit({ desde: '2026-09-01', hasta: '2026-09-30', umbrales: [1, 3, 5, 7] }) + ')');
+    const m = a.por_mes['2026-09'];
+    assert.equal(m.retardos, 9);
+    assert.deepEqual(m.casos_notificados_por_nivel, { 1: 2, 2: 1, 3: 1, 4: 1 });
+    assert.equal(m.correos_a_personas, 5);
+    assert.deepEqual(m.personas_por_nivel_maximo, { 1: 1, 4: 1 });
+    const f = B.j('SELECT retardos.simular_escalera(' + lit({ desde: '2026-09-01', hasta: '2026-09-30', umbrales: [1, 3, 5, 7], nivel_max: 2, excluir_mas_de_min: 180 }) + ')');
+    const mf = f.por_mes['2026-09'];
+    assert.equal(mf.retardos, 8, 'el retraso de 4.5 h se excluye');
+    assert.deepEqual(mf.casos_retenidos_por_nivel, { 3: 1, 4: 1 });
+    assert.equal(mf.correos_a_personas, 3);
+    const despues = B.j("SELECT jsonb_build_array((SELECT count(*) FROM retardos.caso), (SELECT count(*) FROM retardos.envio), (SELECT count(*) FROM retardos.bitacora))");
+    assert.deepEqual(despues, antes, 'el simulador es de sólo lectura');
   } finally { B.fin(); }
 });
 

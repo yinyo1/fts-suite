@@ -101,7 +101,7 @@
     if (!secreto || String(secreto).length < 32) return { ok: false, error: 'SECRETO_NO_CONFIGURADO' };
     body = body || {};
     var datos = body.datos || {};
-    var escribe = ['listar', 'caso', 'config', 'evidencia'].indexOf(String(datos.accion || '')) < 0;
+    var escribe = ['listar', 'caso', 'config', 'evidencia', 'calidad'].indexOf(String(datos.accion || '')) < 0;
     var v = verificarJWT(String(body.token || ''), String(secreto), escribe ? 'retardos:write' : 'retardos:read',
                          ahoraMs ? Math.floor(ahoraMs / 1000) : undefined);
     if (!v.ok) return v;
