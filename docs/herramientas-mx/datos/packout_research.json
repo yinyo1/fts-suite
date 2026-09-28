@@ -1,795 +1,1033 @@
 [
-  {
-    "modelo": "48-22-8442",
-    "nombre": "PACKOUT 2-Drawer Tool Box (Caja de herramientas con 2 cajones)",
-    "tipo": "caja_cajones",
-    "estado": "vigente (listado activo en milwaukeetool.com y tiendas; no verificado en página)",
-    "ext_mm": {
-      "L": 414,
-      "W": 564,
-      "H": 363
-    },
-    "ext_in": {
-      "L": 16.3,
-      "W": 22.2,
-      "H": 14.3,
-      "nota": "L x W x H (in)"
-    },
-    "cajones": [
-      {
-        "n": 2,
-        "int_mm": {
-          "ancho": 414,
-          "fondo": 318,
-          "alto": 127
-        },
-        "int_in": {
-          "ancho": "16 19/64",
-          "fondo": 12.5,
-          "alto": 5
-        },
-        "alto_frente_mm": null,
-        "capacidad_kg": 11.3,
-        "capacidad_lb": 25,
-        "fuente": "int: snippet de búsqueda sobre Zoro/US (https://www.zoro.com/milwaukee-tool-packout-2-drawer-tool-box-50-lb-capacity-25-lb-capacity-per-drawer-22-w-x-16-d-x-14-h-48-22-8442/i/G300719715/); 25 lb/cajón en título Zoro. Ver notas: fuente UK da 61/130 mm (contradictoria)."
-      }
-    ],
-    "capacidad_total_kg": 22.7,
-    "peso_vacio_kg": 9.1,
-    "barra_seguridad": {
-      "valor": true,
-      "fuente": "milwaukeetool.com / Home Depot MX (snippet): 'barra de seguridad de bloqueo... cerrar los cajones con candado'"
-    },
-    "precios_mx": [
-      {
-        "tienda": "no atribuible con certeza (buscador cita ferrepat.com u otro)",
-        "precio_mxn": 3952,
-        "fecha": "2026-09-28",
-        "url": "https://www.ferrepat.com/herramientas-manuales/caja-para-herramienta-milwaukee-14299",
-        "confianza": "baja: snippet"
-      },
-      {
-        "tienda": "no atribuible (otro minorista MX)",
-        "precio_mxn": 4199,
-        "fecha": "2026-09-28",
-        "url": null,
-        "confianza": "baja: snippet"
-      },
-      {
-        "tienda": "Home Depot MX",
-        "precio_mxn": null,
-        "fecha": "2026-09-28",
-        "url": "https://www.homedepot.com.mx/p/milwaukee-caja-de-herramientas-packout-de-2-cajones-milwaukee-48-22-8442-165830",
-        "confianza": "listado existe; precio no visible en snippet, sitio bloqueado"
-      },
-      {
-        "tienda": "milwaukeestore.com.mx",
-        "precio_mxn": null,
-        "fecha": "2026-09-28",
-        "url": "https://milwaukeestore.com.mx/products/caja-de-herramientas-de-2-cajones-packout%E2%84%A2-48-22-8442",
-        "confianza": "listado existe; precio no visible"
-      }
-    ],
-    "fuentes": [
-      {
-        "campo": "ext_in",
-        "valor": "22.2 W x 16.3 L x 14.3 H in",
-        "url": "https://www.northerntool.com/products/milwaukee-packout-2-drawer-tool-box-16-3in-l-x-22-2in-w-x-14-3in-h-model-48-22-8442-103364",
-        "tipo_fuente": "tienda (US) - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      },
-      {
-        "campo": "ext_in (alterno)",
-        "valor": "22.2 x 16.2 x 14.3 in",
-        "url": "https://www.amazon.com/clp/B08189NW5C",
-        "tipo_fuente": "tienda (Amazon US) - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      },
-      {
-        "campo": "ext_mm (UK 4932472129)",
-        "valor": "564 x 414 x 363 mm",
-        "url": "https://www.powertoolworld.co.uk/milwaukee-packout-2-drawer-tool-box-4932472129",
-        "tipo_fuente": "distribuidor UK - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      },
-      {
-        "campo": "ext_cm (MX)",
-        "valor": "38 x 42 x 57 cm, 10 kg",
-        "url": "https://www.ferrepat.com/herramientas-manuales/caja-para-herramienta-milwaukee-14299",
-        "tipo_fuente": "tienda MX - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      },
-      {
-        "campo": "peso_vacio",
-        "valor": "20.05 lb",
-        "url": "https://www.toolnut.com/milwaukee-48-22-8442-packout-2-drawer-tool-box.html",
-        "tipo_fuente": "tienda US - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress) (atribución del buscador incierta)",
-        "pagina": null
-      },
-      {
-        "campo": "capacidad_total",
-        "valor": "50 lb (US) / 22.5 kg (UK)",
-        "url": "https://www.milwaukeetool.com/products/details/packout-2-drawer-tool-box/48-22-8442",
-        "tipo_fuente": "oficial Milwaukee - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      },
-      {
-        "campo": "capacidad_por_cajon",
-        "valor": "11 kg por cajón (UK); 25 lb por cajón (Zoro)",
-        "url": "https://www.sgs-engineering.com/milwaukee-4932472129-packouttm-2-drawer-tool-box",
-        "tipo_fuente": "distribuidor UK - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      },
-      {
-        "campo": "int (UK, contradictorio)",
-        "valor": "cajón chico 61x416x322 mm, grande 130x416x322 mm",
-        "url": "https://imilwauke.pl/en/25303-4932472129-packout-2-drawer-tool-box-560-x-410-x-360-mm.html",
-        "tipo_fuente": "distribuidor PL - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      }
-    ],
-    "notas": "El 2-cajones tiene 2 cajones IGUALES (listado 'Equal 2-Drawer'). El dato UK de 61/130 mm coincide exactamente con el modelo 2+1 (4932493190) y probablemente el buscador lo mezcló; no usar sin verificar. Ext 14.3 in = misma carcasa que 8441/8443/8444/8447. Capacidad 50 lb = 22.7 kg (UK dice 22.5 kg)."
+ {
+  "modelo": "48-22-8442",
+  "nombre": "PACKOUT 2-Drawer Tool Box (Caja de herramientas con 2 cajones)",
+  "tipo": "caja_cajones",
+  "estado": "vigente (listado activo en milwaukeetool.com y tiendas; no verificado en página)",
+  "ext_mm": {
+   "L": 414,
+   "W": 564,
+   "H": 363
   },
-  {
-    "modelo": "48-22-8443",
-    "nombre": "PACKOUT 3-Drawer Tool Box (Caja de herramientas con 3 cajones)",
-    "tipo": "caja_cajones",
-    "estado": "vigente (listado activo; no verificado en página)",
-    "ext_mm": {
-      "L": 414,
-      "W": 564,
-      "H": 363
-    },
-    "ext_in": {
-      "L": 16.3,
-      "W": 22.2,
-      "H": 14.3,
-      "nota": "L x W x H (in)"
-    },
-    "cajones": [
-      {
-        "n": 3,
-        "int_mm": {
-          "ancho": 414,
-          "fondo": 318,
-          "alto": 76
-        },
-        "int_in": {
-          "ancho": 16.5,
-          "fondo": 16,
-          "alto": 3.4,
-          "nota": "valor US de snippet (Zoro?) — fondo 16 in parece erróneo vs ext 16.3 in"
-        },
-        "alto_frente_mm": null,
-        "capacidad_kg": 11,
-        "fuente": "int_mm: distribuidores UK modelo 4932472130 (snippet): '76 x 414 x 318 mm (inner)', 11 kg/cajón; una fuente dice 127 x 414 x 318"
-      }
-    ],
-    "capacidad_total_kg": 22.7,
-    "peso_vacio_kg": null,
-    "barra_seguridad": {
-      "valor": true,
-      "fuente": "Home Depot MX / milwaukeetool.com (snippet)"
-    },
-    "precios_mx": [
-      {
-        "tienda": "Home Depot MX",
-        "precio_mxn": 3399,
-        "fecha": "2026-09-28",
-        "url": "https://www.homedepot.com.mx/p/milwaukee-caja-de-herramientas-packout-de-3-cajones-milwaukee-48-22-8443-165831",
-        "confianza": "media: snippet de buscador, no página abierta"
-      },
-      {
-        "tienda": "milwaukeestore.com.mx",
-        "precio_mxn": 4889,
-        "fecha": "2026-09-28",
-        "url": "https://milwaukeestore.com.mx/products/caja-de-herramientas-de-3-cajones-packout%E2%84%A2-48-22-8443",
-        "confianza": "media: snippet"
-      }
-    ],
-    "fuentes": [
-      {
-        "campo": "ext_in",
-        "valor": "16.3 L x 22.2 W x 14.3 H in",
-        "url": "https://www.northerntool.com/products/milwaukee-packout-3-drawer-tool-box-16-3in-l-x-22-2in-w-x-14-3in-h-model-48-22-8443-103365",
-        "tipo_fuente": "tienda US - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      },
-      {
-        "campo": "ext_mm (UK 4932472130)",
-        "valor": "363 x 564 x 414 mm; peso 10 kg; capacidad 22 kg",
-        "url": "https://www.electricalwholesaler.ie/en/products/milwaukee-packout-3-drawer-tool-box-4932472130",
-        "tipo_fuente": "distribuidor IE - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      },
-      {
-        "campo": "hoja técnica EU",
-        "valor": "PDF milwaukeetool.eu alojado en RS (no descargable: bloqueado)",
-        "url": "https://docs.rs-online.com/ea05/A700000009313529.pdf",
-        "tipo_fuente": "oficial Milwaukee EU (vía RS) - no leído",
-        "pagina": null
-      },
-      {
-        "campo": "peso_vacio",
-        "valor": "25.8 lb (US, snippet) vs 10.04 kg (Home Depot MX) vs 10 kg (UK)",
-        "url": "https://www.homedepot.com.mx/p/milwaukee-caja-de-herramientas-packout-de-3-cajones-milwaukee-48-22-8443-165831",
-        "tipo_fuente": "tienda - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      },
-      {
-        "campo": "dim HD MX",
-        "valor": "36.2 x 40.89 x 40.89 cm (largo/ancho/prof.) — inconsistente",
-        "url": "https://www.homedepot.com.mx/p/milwaukee-caja-de-herramientas-packout-de-3-cajones-milwaukee-48-22-8443-165831",
-        "tipo_fuente": "tienda MX - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      },
-      {
-        "campo": "int_in",
-        "valor": "16 1/2 W x 16 D x 3.4 H in",
-        "url": "https://www.zoro.com/milwaukee-packout-3-drawer-tool-box-48-22-8443/i/G700719735/",
-        "tipo_fuente": "tienda US - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress) (atribución incierta)",
-        "pagina": null
-      }
-    ],
-    "notas": "DISCREPANCIAS: peso vacío 25.8 lb (11.7 kg) vs 10.04 kg (HD MX) vs 10 kg (UK) — se deja null. Alto interior 3.4 in (86 mm) US vs 76 mm UK (otra fuente UK 127 mm, que es el alto del 2-cajones). HD MX publica 36.2 x 40.89 x 40.89 cm, no coincide con 363x564x414 mm (probable error de captura: repite 40.89)."
+  "ext_in": {
+   "L": 16.3,
+   "W": 22.2,
+   "H": 14.3,
+   "nota": "L (fondo) x W (frente) x H"
   },
-  {
-    "modelo": "48-22-8447",
-    "nombre": "PACKOUT Multi-Depth 3-Drawer Tool Box (Caja de 3 cajones de profundidades múltiples)",
-    "tipo": "caja_cajones",
-    "estado": "vigente (lanzada oct-2023 según ToolGuyd; no verificado en página)",
-    "ext_mm": {
-      "L": 414,
-      "W": 564,
-      "H": 363
+  "cajones": [
+   {
+    "n": 2,
+    "int_mm": {
+     "ancho": 414,
+     "fondo": 318,
+     "alto": 127
     },
-    "ext_in": {
-      "L": 16.3,
-      "W": 22.2,
-      "H": 14.3,
-      "nota": "L x W x H (in)"
+    "int_in": {
+     "ancho": 16.3,
+     "fondo": 12.5,
+     "alto": 5.0
     },
-    "cajones": [
-      {
-        "n": 2,
-        "int_mm": {
-          "ancho": 416,
-          "fondo": 322,
-          "alto": 61
-        },
-        "alto_frente_mm": null,
-        "capacidad_kg": 11,
-        "fuente": "distribuidores UK modelo 4932493190 '2+1 Drawer' (snippet): 'small drawers 61 x 416 x 322 mm'; equivalencia 4932493190 = 48-22-8447 es INFERENCIA"
-      },
-      {
-        "n": 1,
-        "int_mm": {
-          "ancho": 416,
-          "fondo": 322,
-          "alto": 130
-        },
-        "alto_frente_mm": null,
-        "capacidad_kg": 11,
-        "fuente": "idem: 'large drawer 130 x 416 x 322 mm'"
-      }
-    ],
-    "capacidad_total_kg": 22.7,
-    "peso_vacio_kg": null,
-    "barra_seguridad": {
-      "valor": true,
-      "fuente": "milwaukeetool.com (snippet): 'locking security bar that allows you to padlock the drawers closed'"
-    },
-    "precios_mx": [
-      {
-        "tienda": "no atribuible con certeza (probable Mercado Libre MX)",
-        "precio_mxn": 4787,
-        "fecha": "2026-09-28",
-        "url": "https://www.mercadolibre.com.mx/caja-herramienta-3-cajones-difs-packout-48228447-milwaukee/p/MLM38060933",
-        "confianza": "baja: snippet"
-      }
-    ],
-    "fuentes": [
-      {
-        "campo": "ext_in",
-        "valor": "22.2 W x 14.3 H x 16.3 D in",
-        "url": "https://www.milwaukeetool.com/products/details/packout-multi-depth-3-drawer-tool-box/48-22-8447",
-        "tipo_fuente": "oficial Milwaukee / tiendas - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      },
-      {
-        "campo": "ext_cm (MX)",
-        "valor": "56.4 cm largo x 41.4 cm ancho",
-        "url": "https://www.milwaukeetool.com/es/productos/detalles/caja-de-herramientas-de-3-cajones-de-profundidades-multiples-packout/48-22-8447",
-        "tipo_fuente": "snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress) (atribución incierta)",
-        "pagina": null
-      },
-      {
-        "campo": "int_mm",
-        "valor": "61/61/130 x 416 x 322 mm",
-        "url": "https://www.romfordtools.com/Milwaukee-4932493190-PACKOUT-2-Plus-1-Drawer-Tool-Box/P12002",
-        "tipo_fuente": "distribuidor UK - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      }
-    ],
-    "notas": "Configuración 2 cajones bajos + 1 profundo (EU lo vende como '2+1'). El orden vertical (profundo abajo) NO está verificado. Capacidad 50 lb total."
+    "capacidad_kg": 11.3,
+    "fuente": "CAT pag. 10 (imagen): cajon 16.3 x 12.5 in, 5 in de alto; https://www.milwaukeetool.com/products/48-22-8442",
+    "nivel": "D1",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "capacidad_total_kg": 22.7,
+  "peso_vacio_kg": 9.09,
+  "barra_seguridad": {
+   "valor": true,
+   "fuente": "CAT pag. 10 \"Locking security bar\" + MLK features",
+   "nivel": "D2"
   },
-  {
-    "modelo": "48-22-8444",
-    "nombre": "PACKOUT 4-Drawer Tool Box (Caja de herramientas con 4 cajones)",
-    "tipo": "caja_cajones",
-    "estado": "vigente (EXISTE: listado en milwaukeetool.com, Home Depot US, Amazon MX, Mercado Libre MX; lanzada oct-2023)",
-    "ext_mm": {
-      "L": 414,
-      "W": 564,
-      "H": 363
-    },
-    "ext_in": {
-      "L": 16.3,
-      "W": 22.2,
-      "H": 14.3,
-      "nota": "L x W x H (in)"
-    },
-    "cajones": [
-      {
-        "n": 4,
-        "int_mm": {
-          "ancho": 416,
-          "fondo": 322,
-          "alto": 61
-        },
-        "alto_frente_mm": null,
-        "capacidad_kg": 11,
-        "fuente": "UK modelo 4932493189 (CEF / electricalwholesaler, snippet): 'inner dimensions 61 x 416 x 322 mm', 11 kg/cajón"
-      }
-    ],
-    "capacidad_total_kg": 22.7,
-    "peso_vacio_kg": null,
-    "barra_seguridad": {
-      "valor": true,
-      "fuente": "milwaukeetool.com (snippet)"
-    },
-    "precios_mx": [
-      {
-        "tienda": "Mercado Libre MX",
-        "precio_mxn": 4799,
-        "fecha": "2026-09-28",
-        "url": "https://www.mercadolibre.com.mx/caja-de-herramientas-4-cajones-packout-48228444-milwaukee/p/MLM38396653",
-        "confianza": "media-baja: snippet"
-      },
-      {
-        "tienda": "Ferrecsa / Micra Herramientas / Amazon MX",
-        "precio_mxn": null,
-        "fecha": "2026-09-28",
-        "url": "https://ferrecsa.com.mx/Producto/caja-packout-4-cajones-48-22-8444-milwaukee",
-        "confianza": "listado existe; sin precio visible"
-      }
-    ],
-    "fuentes": [
-      {
-        "campo": "ext_in",
-        "valor": "16.3 L x 22.2 W x 14.3 H in",
-        "url": "https://www.toolnut.com/products/milwaukee-48-22-8444-packout-4-drawer-tool-box",
-        "tipo_fuente": "tienda US - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      },
-      {
-        "campo": "ext_mm (UK)",
-        "valor": "363 x 564 x 414 mm",
-        "url": "https://www.cef.co.uk/catalogue/products/5282639-packout-4-drawer-tool-box",
-        "tipo_fuente": "distribuidor UK - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      },
-      {
-        "campo": "int_mm",
-        "valor": "61 x 416 x 322 mm; 11 kg/cajón",
-        "url": "https://electricalwholesaler.uk/products/milwaukee-packout-4-drawer-tool-box-48-22-8444",
-        "tipo_fuente": "distribuidor UK - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      }
-    ],
-    "notas": "4 juegos de divisores Quick-Adjust. Cajones bajos (61 mm útiles)."
-  },
-  {
-    "modelo": "48-22-8441",
-    "nombre": "PACKOUT Single Drawer Tool Box (1 cajón, SIN ruedas)",
-    "tipo": "caja_cajones",
-    "estado": "vigente (modelo más nuevo de la familia de cajones fija; no verificado en página)",
-    "ext_mm": {
-      "L": 414,
-      "W": 564,
-      "H": 363
-    },
-    "ext_in": {
-      "L": 16.3,
-      "W": 22.2,
-      "H": 14.3,
-      "nota": "L x W x H (in)"
-    },
-    "cajones": [
-      {
-        "n": 1,
-        "int_mm": {
-          "ancho": null,
-          "fondo": null,
-          "alto": null
-        },
-        "alto_frente_mm": null,
-        "capacidad_kg": null,
-        "fuente": "no encontrado"
-      }
-    ],
-    "capacidad_total_kg": 22.7,
-    "peso_vacio_kg": null,
-    "barra_seguridad": {
-      "valor": true,
-      "fuente": "redtoolstore (título, snippet): 'with Locking Bar and Dividers'"
-    },
-    "precios_mx": [],
-    "fuentes": [
-      {
-        "campo": "ext_in",
-        "valor": "22.2 W x 16.3 L x 14.3 H in; 50 lb",
-        "url": "https://www.redtoolstore.com/products/milwaukee-48-22-8441-packout-single-drawer-tool-box-22-2-w-x-16-3-l-x-14-3-h-with-locking-bar-and-dividers",
-        "tipo_fuente": "tienda US - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      },
-      {
-        "campo": "existencia",
-        "valor": "página oficial",
-        "url": "https://www.milwaukeetool.com/products/details/packout-single-drawer-tool-box/48-22-8441",
-        "tipo_fuente": "oficial Milwaukee - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      }
-    ],
-    "notas": "Apertura con una mano, rieles laterales para accesorios (ToolGuyd, snippet). Alto interior NO publicado en lo encontrado. No se halló disponibilidad en MX."
-  },
-  {
-    "modelo": "48-22-8420",
-    "nombre": "PACKOUT Rolling Drawer Tool Box (caja rodante de 1 cajón frontal profundo)",
-    "tipo": "base_rodante_con_cajon",
-    "estado": "vigente (ES un cajón único con ruedas 9 in y manija telescópica, NO un cajón simple)",
-    "ext_mm": {
-      "L": 610,
-      "W": 483,
-      "H": 502
-    },
-    "ext_in": {
-      "L": 24,
-      "W": 19,
-      "H": 19.75,
-      "nota": "24 L x 19 D x 19.75 H in (ToolGuyd)"
-    },
-    "cajones": [
-      {
-        "n": 1,
-        "int_mm": {
-          "ancho": 432,
-          "fondo": 330,
-          "alto": 406
-        },
-        "int_in": {
-          "ancho": 17,
-          "fondo": 13,
-          "alto": 16
-        },
-        "alto_frente_mm": null,
-        "capacidad_kg": 113.4,
-        "fuente": "ToolGuyd (snippet): 'Interior Dimensions: 17 L x 13 D x 16 H' — la capacidad 250 lb es del conjunto, no se publica por cajón"
-      }
-    ],
-    "capacidad_total_kg": 113.4,
-    "peso_vacio_kg": 13.2,
-    "barra_seguridad": {
-      "valor": null,
-      "fuente": "no encontrado"
-    },
-    "precios_mx": [
-      {
-        "tienda": "no atribuible (Mercado Libre MX / herramientaelectrica.mx)",
-        "precio_mxn": 5999,
-        "fecha": "2026-09-28",
-        "url": "https://www.mercadolibre.com.mx/caja-con-ruedas-cajon-delantero-packout-milwaukee-48-22-8420-rojo/p/MLM60702351",
-        "confianza": "baja"
-      },
-      {
-        "tienda": "no atribuible",
-        "precio_mxn": 5599,
-        "fecha": "2026-09-28",
-        "url": "https://herramientaelectrica.mx/products/caja-de-herramientas-con-cajones-y-ruedas-packout-48-22-8420",
-        "confianza": "baja"
-      },
-      {
-        "tienda": "no atribuible (oferta, antes 7,581)",
-        "precio_mxn": 6799,
-        "fecha": "2026-09-28",
-        "url": null,
-        "confianza": "baja"
-      }
-    ],
-    "fuentes": [
-      {
-        "campo": "ext_in/int_in",
-        "valor": "ext 24 x 19 x 19.75 in; int 17 x 13 x 16 in; 250 lb",
-        "url": "https://toolguyd.com/milwaukee-packout-single-drawer-rolling-tool-box-48-22-8420-launch/",
-        "tipo_fuente": "blog especializado - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      },
-      {
-        "campo": "peso_vacio",
-        "valor": "29 lb",
-        "url": "https://www.amazon.com/48-22-8420-Milwaukee-Rolling-Drawer-Collapsible/dp/B0HBNWRZ3Y",
-        "tipo_fuente": "Amazon US (vendedor tercero, título) - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      },
-      {
-        "campo": "oficial",
-        "valor": "PACKOUT Rolling Drawer Tool Box",
-        "url": "https://www.milwaukeetool.com/products/details/packout-rolling-drawer-tool-box/48-22-8420",
-        "tipo_fuente": "oficial - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      }
-    ],
-    "notas": "Candidata directa como BASE del carrito: rueda, acepta PACKOUT encima (stack & lock) y aporta un cajón profundo de 16 in. Incluye 2 divisores grandes, 6 chicos y bandeja removible (ToolGuyd)."
-  },
-  {
-    "modelo": "48-22-8426",
-    "nombre": "PACKOUT Rolling Tool Box (caja rodante de tapa, no cajón)",
-    "tipo": "base_rodante",
-    "estado": "vigente",
-    "ext_mm": {
-      "L": 561,
-      "W": 472,
-      "H": 650
-    },
-    "ext_in": {
-      "L": 22.1,
-      "W": 18.6,
-      "H": 25.6,
-      "nota": "22.1 x 18.6 x 25.6 in; Northern Tool dice 18.9 W"
-    },
-    "cajones": [],
-    "capacidad_total_kg": 113.4,
-    "peso_vacio_kg": null,
-    "barra_seguridad": {
-      "valor": false,
-      "fuente": "no tiene cajones; HD MX: 'dos cierres y orificio para candado'"
-    },
-    "precios_mx": [
-      {
-        "tienda": "Home Depot MX (Pro)",
-        "precio_mxn": 3815,
-        "fecha": "2026-09-28",
-        "url": "https://pro.homedepot.com.mx/pro/herramientas/cajas-para-herramientas-y-organizadores/organizadores/caja-con-ruedas-packout-milwauke-139086",
-        "confianza": "media: snippet ('antes $4,239')"
-      }
-    ],
-    "fuentes": [
-      {
-        "campo": "ext_in",
-        "valor": "22.1 x 18.6 x 25.6 in; interior 19.1 x 14.6 x 13.9 in; 250 lb; IP65; ruedas 9 in",
-        "url": "https://merrimacindustrial.com/milwaukee-packouttm-impact-resistant-polymer-waterproof-rolling-tool-box-22-1-x-18-6-x-25-6-in-250-lb",
-        "tipo_fuente": "distribuidor US - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      },
-      {
-        "campo": "ext_cm (MX)",
-        "valor": "67 x 49 x 47.24 cm; 113.39 kg",
-        "url": "https://www.homedepot.com.mx/p/milwaukee-caja-de-herramienta-packout-con-llantas-67-x-49-x-4724-cm-milwaukee-48-22-8426-139086",
-        "tipo_fuente": "tienda MX - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      }
-    ],
-    "notas": "Interior 19.1 x 14.6 x 13.9 in = 485 x 371 x 353 mm. DISCREPANCIA: HD MX 67 x 49 x 47.24 cm vs US 650 x 561 x 472 mm (alto 67 vs 65 cm: posible medición con manija). Base rodante de tapa: no es cajón."
-  },
-  {
-    "modelo": "48-22-8410",
-    "nombre": "PACKOUT Dolly",
-    "tipo": "base_rodante (plataforma 4 ruedas)",
-    "estado": "vigente",
-    "ext_mm": {
-      "L": 620,
-      "W": 480,
-      "H": 193
-    },
-    "ext_in": {
-      "L": 24.4,
-      "W": 18.9,
-      "H": 7.6
-    },
-    "cajones": [],
-    "capacidad_total_kg": 113.4,
-    "peso_vacio_kg": null,
-    "barra_seguridad": {
-      "valor": null,
-      "fuente": "no aplica"
-    },
-    "precios_mx": [
-      {
-        "tienda": "Ferreterías Calzada",
-        "precio_mxn": 2345,
-        "fecha": "2026-09-28",
-        "url": "https://ferreteriacalzada.mx/producto/paquete-dolly-250lbs-modulo-almac-milwaukee-48-22-8410/",
-        "confianza": "media-baja: snippet ('con IVA')"
-      }
-    ],
-    "fuentes": [
-      {
-        "campo": "ext_in",
-        "valor": "24.4 L x 18.9 W x 7.6 H in; ruedas 4 in; 250 lb",
-        "url": "https://www.rshughes.com/p/Milwaukee-PACKOUT-48-22-8410-Dolly-250-Lb-Capacity-Impact-Resistant-Polymers-52408/045242_52408/",
-        "tipo_fuente": "distribuidor US - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      }
-    ],
-    "notas": "Plataforma con 4 rodajas (con freno) y palanca QUICKSTOP. Base más baja posible para un carrito de solo cajones."
-  },
-  {
-    "modelo": "48-22-8415",
-    "nombre": "PACKOUT 2-Wheel Cart (diablito)",
-    "tipo": "carro_2_ruedas",
-    "estado": "vigente",
-    "ext_mm": {
-      "L": 537,
-      "W": 305,
-      "H": 1219
-    },
-    "ext_in": {
-      "L": 21.13,
-      "W": 12,
-      "H": 48,
-      "nota": "21.13 W x 12 D x 48 H in"
-    },
-    "cajones": [],
-    "capacidad_total_kg": 181.4,
-    "peso_vacio_kg": null,
-    "barra_seguridad": {
-      "valor": null,
-      "fuente": "no aplica"
-    },
-    "precios_mx": [],
-    "fuentes": [
-      {
-        "campo": "ext_in",
-        "valor": "21.13 W x 12 D x 48 H in; 400 lb; ruedas 10 in anti-ponchadura",
-        "url": "https://www.outdoorsupplyhardware.com/2800986/product/milwaukee-48-22-8415",
-        "tipo_fuente": "distribuidor US - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      }
-    ],
-    "notas": "Es un diablito de 2 ruedas con placa plegable, no una base de 4 ruedas. No se encontró precio MX."
-  },
-  {
-    "modelo": "48-22-8440",
-    "nombre": "PACKOUT Crate",
-    "tipo": "huacal",
-    "estado": "vigente",
-    "ext_mm": {
-      "L": 472,
-      "W": 391,
-      "H": 251
-    },
-    "ext_in": {
-      "L": 18.6,
-      "W": 15.4,
-      "H": 9.9
-    },
-    "cajones": [],
-    "capacidad_total_kg": 22.7,
-    "peso_vacio_kg": null,
-    "barra_seguridad": {
-      "valor": null,
-      "fuente": "no aplica"
-    },
-    "precios_mx": [],
-    "fuentes": [
-      {
-        "campo": "ext/int",
-        "valor": "ext 18.6 x 15.4 x 9.9 in; int 16 x 13 x 9 in; 1872 in3; 50 lb",
-        "url": "https://www.homedepot.com/p/Milwaukee-PACKOUT-18-6-in-Tool-Storage-Crate-Bin-with-Carrying-Handles-and-50-lbs-Weight-Capacity-48-22-8440/311569700",
-        "tipo_fuente": "tienda US - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      }
-    ],
-    "notas": "Interior 406 x 330 x 229 mm."
-  },
-  {
-    "modelo": "48-22-8450",
-    "nombre": "PACKOUT Tool Case with Customizable Insert (caja de tapa con espuma) — REFERENCIA actual",
-    "tipo": "caja_tapa",
-    "estado": "vigente",
-    "ext_mm": {
-      "L": 529,
-      "W": 380,
-      "H": 150
-    },
-    "ext_in": {
-      "L": 20.59,
-      "W": 14.84,
-      "H": 5.91,
-      "nota": "US; HD MX: 15.01 x 38 x 52.9 cm"
-    },
-    "cajones": [],
-    "capacidad_total_kg": 34.0,
-    "peso_vacio_kg": 2.6,
-    "barra_seguridad": {
-      "valor": false,
-      "fuente": "2 broches + sello IP65 (snippet)"
-    },
-    "interior_mm": {
-      "ancho": 480,
-      "fondo": 320,
-      "alto": 114,
-      "in": "18.9 x 12.6 x 4.5 in",
-      "fuente": "snippet de buscador sin atribución clara (Tool Nut / fwwebb / toolmarts) — confianza baja",
-      "volumen_l_estimacion": 17.5
-    },
-    "precios_mx": [
-      {
-        "tienda": "Home Depot MX",
-        "precio_mxn": null,
-        "fecha": "2026-09-28",
-        "url": "https://www.homedepot.com.mx/p/milwaukee-caja-de-almacenamiento-packout-con-inserto-1501-x-38-x-529-cm-milwaukee-48-22-8450-139212",
-        "confianza": "listado existe (SKU 139212); precio no visible"
-      }
-    ],
-    "fuentes": [
-      {
-        "campo": "ext_cm (MX)",
-        "valor": "15.01 x 38 x 52.9 cm; 34.01 kg; 75 lb",
-        "url": "https://www.homedepot.com.mx/p/milwaukee-caja-de-almacenamiento-packout-con-inserto-1501-x-38-x-529-cm-milwaukee-48-22-8450-139212",
-        "tipo_fuente": "tienda MX - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      },
-      {
-        "campo": "ext_in (US)",
-        "valor": "20.59 x 14.84 x 5.91 in; 5.69 lb",
-        "url": "https://www.amazon.com/Milwaukee-MLW48228450-Packout-Tool-Insert/dp/B07LH3BMZ4",
-        "tipo_fuente": "tienda US - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      },
-      {
-        "campo": "ext_in (alterno)",
-        "valor": "20.7 W x 15.2 L x 6.2 H in",
-        "url": "https://www.toolnut.com/products/milwaukee-48-22-8450-packout-tool-case-with-customizable-insert",
-        "tipo_fuente": "tienda US - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      }
-    ],
-    "notas": "US 20.59x14.84x5.91 in = 523x377x150 mm vs HD MX 529x380x150 mm vs 20.7x15.2x6.2 in = 526x386x157 mm: difieren ≤9 mm. Volumen interior ~27.4 L es ESTIMACIÓN a partir de un snippet no atribuido."
-  },
-  {
-    "modelo": "48-22-8445",
-    "nombre": "PACKOUT Cabinet (puerta frontal, sin cajones)",
-    "tipo": "gabinete",
-    "estado": "vigente",
-    "ext_mm": {
-      "L": 495,
-      "W": 368,
-      "H": 373
-    },
-    "ext_in": {
-      "L": 19.5,
-      "W": 14.5,
-      "H": 14.7,
-      "nota": "título Home Depot US: 19.5 W x 14.7 H x 14.5 D in"
-    },
-    "cajones": [],
-    "capacidad_total_kg": null,
-    "peso_vacio_kg": null,
-    "barra_seguridad": {
-      "valor": null,
-      "fuente": "no encontrado"
-    },
-    "precios_mx": [],
-    "fuentes": [
-      {
-        "campo": "ext_in",
-        "valor": "19.5 x 14.7 x 14.5 in",
-        "url": "https://www.homedepot.com/p/Milwaukee-Packout-19-5-in-W-x-14-7-in-H-x-14-5-in-D-Cabinet-in-Red-1-Piece-48-22-8445/320324795",
-        "tipo_fuente": "tienda US (título) - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
-        "pagina": null
-      }
-    ],
-    "notas": "Es el único 'gabinete' PACKOUT encontrado; no tiene cajones. No se encontró 'PACKOUT rolling cabinet' ni modelos 48-22-8448/8449."
+  "precios_mx": [
+   {
+    "tienda": "no atribuible con certeza (buscador cita ferrepat.com u otro)",
+    "precio_mxn": 3952,
+    "fecha": "2026-09-28",
+    "url": "https://www.ferrepat.com/herramientas-manuales/caja-para-herramienta-milwaukee-14299",
+    "confianza": "baja: snippet",
+    "iva": "incluido (precio de tienda MX)"
+   },
+   {
+    "tienda": "no atribuible (otro minorista MX)",
+    "precio_mxn": 4199,
+    "fecha": "2026-09-28",
+    "url": null,
+    "confianza": "baja: snippet",
+    "iva": "incluido (precio de tienda MX)"
+   },
+   {
+    "tienda": "Home Depot MX",
+    "precio_mxn": null,
+    "fecha": "2026-09-28",
+    "url": "https://www.homedepot.com.mx/p/milwaukee-caja-de-herramientas-packout-de-2-cajones-milwaukee-48-22-8442-165830",
+    "confianza": "listado existe; precio no visible en snippet, sitio bloqueado",
+    "iva": "sin dato"
+   },
+   {
+    "tienda": "milwaukeestore.com.mx",
+    "precio_mxn": null,
+    "fecha": "2026-09-28",
+    "url": "https://milwaukeestore.com.mx/products/caja-de-herramientas-de-2-cajones-packout%E2%84%A2-48-22-8442",
+    "confianza": "listado existe; precio no visible",
+    "iva": "sin dato"
+   },
+   {
+    "tienda": "The Home Depot EUA (referencia, USD)",
+    "precio_mxn": null,
+    "precio_usd": 179,
+    "fecha": "2026-09-28",
+    "url": "https://www.homedepot.com/p/Milwaukee-PACKOUT-22-in-2-Drawer-Tool-Box-with-Metal-Reinforced-Corners-48-22-8442/315059770",
+    "confianza": "referencia de precio de lista EUA, sin impuestos",
+    "iva": "no aplica"
+   }
+  ],
+  "fuentes": [
+   {
+    "campo": "cajones",
+    "valor": "CAT pag. 10 (imagen): cajon 16.3 x 12.5 in, 5 in de alto; https://www.milwaukeetool.com/products/48-22-8442",
+    "url": "https://www.milwaukeetool.com/-/media/PDFs/Sizing-Charts/PACKOUT-2023-Dimension-Catalog.pdf",
+    "tipo_fuente": "fabricante (leido hoy, pagina completa)",
+    "pagina": null
+   },
+   {
+    "campo": "ext",
+    "valor": "CAT pag. 10 + MLK Length/Width/Height; HDUS 16.3 x 22.2 x 14.3 in",
+    "url": "https://www.homedepot.com/p/Milwaukee-PACKOUT-22-in-2-Drawer-Tool-Box-with-Metal-Reinforced-Corners-48-22-8442/315059770",
+    "tipo_fuente": "fabricante + distribuidor EUA",
+    "pagina": null
+   },
+   {
+    "campo": "ext_in",
+    "valor": "22.2 W x 16.3 L x 14.3 H in",
+    "url": "https://www.northerntool.com/products/milwaukee-packout-2-drawer-tool-box-16-3in-l-x-22-2in-w-x-14-3in-h-model-48-22-8442-103364",
+    "tipo_fuente": "(sesion anterior) tienda (US) - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   },
+   {
+    "campo": "ext_in (alterno)",
+    "valor": "22.2 x 16.2 x 14.3 in",
+    "url": "https://www.amazon.com/clp/B08189NW5C",
+    "tipo_fuente": "(sesion anterior) tienda (Amazon US) - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   },
+   {
+    "campo": "ext_mm (UK 4932472129)",
+    "valor": "564 x 414 x 363 mm",
+    "url": "https://www.powertoolworld.co.uk/milwaukee-packout-2-drawer-tool-box-4932472129",
+    "tipo_fuente": "(sesion anterior) distribuidor UK - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   },
+   {
+    "campo": "ext_cm (MX)",
+    "valor": "38 x 42 x 57 cm, 10 kg",
+    "url": "https://www.ferrepat.com/herramientas-manuales/caja-para-herramienta-milwaukee-14299",
+    "tipo_fuente": "(sesion anterior) tienda MX - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   },
+   {
+    "campo": "peso_vacio",
+    "valor": "20.05 lb",
+    "url": "https://www.toolnut.com/milwaukee-48-22-8442-packout-2-drawer-tool-box.html",
+    "tipo_fuente": "(sesion anterior) tienda US - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress) (atribución del buscador incierta)",
+    "pagina": null
+   },
+   {
+    "campo": "capacidad_total",
+    "valor": "50 lb (US) / 22.5 kg (UK)",
+    "url": "https://www.milwaukeetool.com/products/details/packout-2-drawer-tool-box/48-22-8442",
+    "tipo_fuente": "(sesion anterior) oficial Milwaukee - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   },
+   {
+    "campo": "capacidad_por_cajon",
+    "valor": "11 kg por cajón (UK); 25 lb por cajón (Zoro)",
+    "url": "https://www.sgs-engineering.com/milwaukee-4932472129-packouttm-2-drawer-tool-box",
+    "tipo_fuente": "(sesion anterior) distribuidor UK - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   },
+   {
+    "campo": "int (UK, contradictorio)",
+    "valor": "cajón chico 61x416x322 mm, grande 130x416x322 mm",
+    "url": "https://imilwauke.pl/en/25303-4932472129-packout-2-drawer-tool-box-560-x-410-x-360-mm.html",
+    "tipo_fuente": "(sesion anterior) distribuidor PL - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   }
+  ],
+  "notas": "El 2-cajones tiene 2 cajones IGUALES (listado 'Equal 2-Drawer'). El dato UK de 61/130 mm coincide exactamente con el modelo 2+1 (4932493190) y probablemente el buscador lo mezcló; no usar sin verificar. Ext 14.3 in = misma carcasa que 8441/8443/8444/8447. Capacidad 50 lb = 22.7 kg (UK dice 22.5 kg).",
+  "ext_fuente": {
+   "fuente": "CAT pag. 10 + MLK Length/Width/Height; HDUS 16.3 x 22.2 x 14.3 in",
+   "nivel": "D2",
+   "fecha": "2026-09-28"
   }
+ },
+ {
+  "modelo": "48-22-8443",
+  "nombre": "PACKOUT 3-Drawer Tool Box (Caja de herramientas con 3 cajones)",
+  "tipo": "caja_cajones",
+  "estado": "vigente (listado activo; no verificado en página)",
+  "ext_mm": {
+   "L": 414,
+   "W": 564,
+   "H": 363
+  },
+  "ext_in": {
+   "L": 16.3,
+   "W": 22.2,
+   "H": 14.3,
+   "nota": "L (fondo) x W (frente) x H"
+  },
+  "cajones": [
+   {
+    "n": 3,
+    "int_mm": {
+     "ancho": 414,
+     "fondo": 318,
+     "alto": 76
+    },
+    "int_in": {
+     "ancho": 16.3,
+     "fondo": 12.5,
+     "alto": 3.0
+    },
+    "capacidad_kg": 11,
+    "fuente": "CAT pag. 11 (imagen): cajon 16.3 x 12.5 in, 3 in de alto",
+    "nivel": "D1",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "capacidad_total_kg": 22.7,
+  "peso_vacio_kg": 10.18,
+  "barra_seguridad": {
+   "valor": true,
+   "fuente": "CAT pag. 11 + MLK features",
+   "nivel": "D2"
+  },
+  "precios_mx": [
+   {
+    "tienda": "The Home Depot Mexico (pagina leida)",
+    "precio_mxn": 3799.0,
+    "fecha": "2026-09-28",
+    "url": "https://www.homedepot.com.mx/p/milwaukee-caja-de-herramientas-packout-de-3-cajones-milwaukee-48-22-8443-165831",
+    "confianza": "alta: pagina abierta",
+    "iva": "incluido"
+   },
+   {
+    "tienda": "Home Depot MX",
+    "precio_mxn": 3399,
+    "fecha": "2026-09-28",
+    "url": "https://www.homedepot.com.mx/p/milwaukee-caja-de-herramientas-packout-de-3-cajones-milwaukee-48-22-8443-165831",
+    "confianza": "media: snippet de buscador, no página abierta",
+    "iva": "incluido (precio de tienda MX)"
+   },
+   {
+    "tienda": "milwaukeestore.com.mx",
+    "precio_mxn": 4889,
+    "fecha": "2026-09-28",
+    "url": "https://milwaukeestore.com.mx/products/caja-de-herramientas-de-3-cajones-packout%E2%84%A2-48-22-8443",
+    "confianza": "media: snippet",
+    "iva": "incluido (precio de tienda MX)"
+   },
+   {
+    "tienda": "The Home Depot EUA (referencia, USD)",
+    "precio_mxn": null,
+    "precio_usd": 199,
+    "fecha": "2026-09-28",
+    "url": "https://www.homedepot.com/p/Milwaukee-PACKOUT-22-in-Modular-3-Drawer-Tool-Box-with-Metal-Reinforced-Corners-48-22-8443/315059793",
+    "confianza": "referencia de precio de lista EUA, sin impuestos",
+    "iva": "no aplica"
+   }
+  ],
+  "fuentes": [
+   {
+    "campo": "cajones",
+    "valor": "CAT pag. 11 (imagen): cajon 16.3 x 12.5 in, 3 in de alto",
+    "url": "https://www.milwaukeetool.com/-/media/PDFs/Sizing-Charts/PACKOUT-2023-Dimension-Catalog.pdf",
+    "tipo_fuente": "fabricante (leido hoy, pagina completa)",
+    "pagina": null
+   },
+   {
+    "campo": "ext",
+    "valor": "CAT pag. 11 + MLK; HDUS 16.3 x 22.2 x 14.3; HDMX 40.89 x 36.2 cm (fondo x alto)",
+    "url": "https://www.homedepot.com/p/Milwaukee-PACKOUT-22-in-Modular-3-Drawer-Tool-Box-with-Metal-Reinforced-Corners-48-22-8443/315059793",
+    "tipo_fuente": "fabricante + distribuidor EUA",
+    "pagina": null
+   },
+   {
+    "campo": "ext_in",
+    "valor": "16.3 L x 22.2 W x 14.3 H in",
+    "url": "https://www.northerntool.com/products/milwaukee-packout-3-drawer-tool-box-16-3in-l-x-22-2in-w-x-14-3in-h-model-48-22-8443-103365",
+    "tipo_fuente": "(sesion anterior) tienda US - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   },
+   {
+    "campo": "ext_mm (UK 4932472130)",
+    "valor": "363 x 564 x 414 mm; peso 10 kg; capacidad 22 kg",
+    "url": "https://www.electricalwholesaler.ie/en/products/milwaukee-packout-3-drawer-tool-box-4932472130",
+    "tipo_fuente": "(sesion anterior) distribuidor IE - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   },
+   {
+    "campo": "hoja técnica EU",
+    "valor": "PDF milwaukeetool.eu alojado en RS (no descargable: bloqueado)",
+    "url": "https://docs.rs-online.com/ea05/A700000009313529.pdf",
+    "tipo_fuente": "(sesion anterior) oficial Milwaukee EU (vía RS) - no leído",
+    "pagina": null
+   },
+   {
+    "campo": "peso_vacio",
+    "valor": "25.8 lb (US, snippet) vs 10.04 kg (Home Depot MX) vs 10 kg (UK)",
+    "url": "https://www.homedepot.com.mx/p/milwaukee-caja-de-herramientas-packout-de-3-cajones-milwaukee-48-22-8443-165831",
+    "tipo_fuente": "(sesion anterior) tienda - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   },
+   {
+    "campo": "dim HD MX",
+    "valor": "36.2 x 40.89 x 40.89 cm (largo/ancho/prof.) — inconsistente",
+    "url": "https://www.homedepot.com.mx/p/milwaukee-caja-de-herramientas-packout-de-3-cajones-milwaukee-48-22-8443-165831",
+    "tipo_fuente": "(sesion anterior) tienda MX - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   },
+   {
+    "campo": "int_in",
+    "valor": "16 1/2 W x 16 D x 3.4 H in",
+    "url": "https://www.zoro.com/milwaukee-packout-3-drawer-tool-box-48-22-8443/i/G700719735/",
+    "tipo_fuente": "(sesion anterior) tienda US - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress) (atribución incierta)",
+    "pagina": null
+   }
+  ],
+  "notas": "DISCREPANCIAS: peso vacío 25.8 lb (11.7 kg) vs 10.04 kg (HD MX) vs 10 kg (UK) — se deja null. Alto interior 3.4 in (86 mm) US vs 76 mm UK (otra fuente UK 127 mm, que es el alto del 2-cajones). HD MX publica 36.2 x 40.89 x 40.89 cm, no coincide con 363x564x414 mm (probable error de captura: repite 40.89).",
+  "ext_fuente": {
+   "fuente": "CAT pag. 11 + MLK; HDUS 16.3 x 22.2 x 14.3; HDMX 40.89 x 36.2 cm (fondo x alto)",
+   "nivel": "D2",
+   "fecha": "2026-09-28"
+  },
+  "resuelve": "Discrepancia 76 contra 86 mm: el fabricante da 3 in = 76 mm. Los 86 mm de la ficha de EUA no se sostienen."
+ },
+ {
+  "modelo": "48-22-8447",
+  "nombre": "PACKOUT Multi-Depth 3-Drawer Tool Box (Caja de 3 cajones de profundidades múltiples)",
+  "tipo": "caja_cajones",
+  "estado": "vigente (lanzada oct-2023 según ToolGuyd; no verificado en página)",
+  "ext_mm": {
+   "L": 414,
+   "W": 564,
+   "H": 363
+  },
+  "ext_in": {
+   "L": 16.3,
+   "W": 22.2,
+   "H": 14.3,
+   "nota": "L (fondo) x W (frente) x H"
+  },
+  "cajones": [
+   {
+    "n": 2,
+    "int_mm": {
+     "ancho": 414,
+     "fondo": 318,
+     "alto": 63
+    },
+    "int_in": {
+     "ancho": 16.3,
+     "fondo": 12.5,
+     "alto": 2.5
+    },
+    "capacidad_kg": 11,
+    "fuente": "MLK imagen \"48-22-8447 Dimensions\": 2 cajones de 2.5 in (6.35 cm)",
+    "nivel": "D1",
+    "fecha": "2026-09-28"
+   },
+   {
+    "n": 1,
+    "int_mm": {
+     "ancho": 414,
+     "fondo": 318,
+     "alto": 127
+    },
+    "int_in": {
+     "ancho": 16.3,
+     "fondo": 12.5,
+     "alto": 5.0
+    },
+    "capacidad_kg": 11,
+    "fuente": "MLK imagen \"48-22-8447 Dimensions\": 1 cajon de 5 in (12.7 cm)",
+    "nivel": "D1",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "capacidad_total_kg": 22.7,
+  "peso_vacio_kg": 10.66,
+  "barra_seguridad": {
+   "valor": true,
+   "fuente": "MLK features \"Locking Security Bar\"",
+   "nivel": "D1"
+  },
+  "precios_mx": [
+   {
+    "tienda": "no atribuible con certeza (probable Mercado Libre MX)",
+    "precio_mxn": 4787,
+    "fecha": "2026-09-28",
+    "url": "https://www.mercadolibre.com.mx/caja-herramienta-3-cajones-difs-packout-48228447-milwaukee/p/MLM38060933",
+    "confianza": "baja: snippet",
+    "iva": "incluido (precio de tienda MX)"
+   },
+   {
+    "tienda": "The Home Depot EUA (referencia, USD)",
+    "precio_mxn": null,
+    "precio_usd": 199,
+    "fecha": "2026-09-28",
+    "url": "https://www.homedepot.com/p/Milwaukee-PACKOUT-22-in-Modular-3-Drawer-Multi-Drawer-Tool-Box-with-Metal-Reinforced-Corners-and-50-lbs-Capacity-48-22-8447/326479354",
+    "confianza": "referencia de precio de lista EUA, sin impuestos",
+    "iva": "no aplica"
+   }
+  ],
+  "fuentes": [
+   {
+    "campo": "cajones",
+    "valor": "MLK imagen \"48-22-8447 Dimensions\": 2 cajones de 2.5 in (6.35 cm); MLK imagen \"48-22-8447 Dimensions\": 1 cajon de 5 in (12.7 cm)",
+    "url": "https://www.milwaukeetool.com/products/48-22-8447",
+    "tipo_fuente": "fabricante (leido hoy, pagina completa)",
+    "pagina": null
+   },
+   {
+    "campo": "ext",
+    "valor": "MLK; HDUS 16.10 x 22.2 x 14.3 in",
+    "url": "https://www.homedepot.com/p/Milwaukee-PACKOUT-22-in-Modular-3-Drawer-Multi-Drawer-Tool-Box-with-Metal-Reinforced-Corners-and-50-lbs-Capacity-48-22-8447/326479354",
+    "tipo_fuente": "fabricante + distribuidor EUA",
+    "pagina": null
+   },
+   {
+    "campo": "ext_in",
+    "valor": "22.2 W x 14.3 H x 16.3 D in",
+    "url": "https://www.milwaukeetool.com/products/details/packout-multi-depth-3-drawer-tool-box/48-22-8447",
+    "tipo_fuente": "(sesion anterior) oficial Milwaukee / tiendas - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   },
+   {
+    "campo": "ext_cm (MX)",
+    "valor": "56.4 cm largo x 41.4 cm ancho",
+    "url": "https://www.milwaukeetool.com/es/productos/detalles/caja-de-herramientas-de-3-cajones-de-profundidades-multiples-packout/48-22-8447",
+    "tipo_fuente": "(sesion anterior) snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress) (atribución incierta)",
+    "pagina": null
+   },
+   {
+    "campo": "int_mm",
+    "valor": "61/61/130 x 416 x 322 mm",
+    "url": "https://www.romfordtools.com/Milwaukee-4932493190-PACKOUT-2-Plus-1-Drawer-Tool-Box/P12002",
+    "tipo_fuente": "(sesion anterior) distribuidor UK - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   }
+  ],
+  "notas": "Configuración 2 cajones bajos + 1 profundo (EU lo vende como '2+1'). El orden vertical (profundo abajo) NO está verificado. Capacidad 50 lb total.",
+  "ext_fuente": {
+   "fuente": "MLK; HDUS 16.10 x 22.2 x 14.3 in",
+   "nivel": "D2",
+   "fecha": "2026-09-28"
+  },
+  "resuelve": "Discrepancia 8442 contra 8447: la division 61 + 61 + 130 que la ficha UK atribuia al 8442 es la del 8447 (oficial: 63.5 + 63.5 + 127). El 8442 son 2 cajones de 127."
+ },
+ {
+  "modelo": "48-22-8444",
+  "nombre": "PACKOUT 4-Drawer Tool Box (Caja de herramientas con 4 cajones)",
+  "tipo": "caja_cajones",
+  "estado": "vigente (EXISTE: listado en milwaukeetool.com, Home Depot US, Amazon MX, Mercado Libre MX; lanzada oct-2023)",
+  "ext_mm": {
+   "L": 414,
+   "W": 564,
+   "H": 363
+  },
+  "ext_in": {
+   "L": 16.3,
+   "W": 22.2,
+   "H": 14.3,
+   "nota": "L (fondo) x W (frente) x H"
+  },
+  "cajones": [
+   {
+    "n": 4,
+    "int_mm": {
+     "ancho": 414,
+     "fondo": 318,
+     "alto": 58
+    },
+    "int_in": {
+     "ancho": 16.3,
+     "fondo": 12.5,
+     "alto": 2.3
+    },
+    "capacidad_kg": 11,
+    "fuente": "MLK imagen \"48-22-8444 Dimensions\": cajon 16.3 x 12.5 in, 2.3 in (5.8 cm) de alto; respuesta de comprador en HDUS repite 2.3 x 16.3 x 12.5 in tomado de la misma imagen",
+    "nivel": "D1",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "capacidad_total_kg": 22.7,
+  "peso_vacio_kg": 10.89,
+  "barra_seguridad": {
+   "valor": true,
+   "fuente": "MLK features \"Locking Security Bar\"; HDUS preguntas: la barra se guarda bajo la caja",
+   "nivel": "D2"
+  },
+  "precios_mx": [
+   {
+    "tienda": "Mercado Libre MX",
+    "precio_mxn": 4799,
+    "fecha": "2026-09-28",
+    "url": "https://www.mercadolibre.com.mx/caja-de-herramientas-4-cajones-packout-48228444-milwaukee/p/MLM38396653",
+    "confianza": "media-baja: snippet",
+    "iva": "incluido (precio de tienda MX)"
+   },
+   {
+    "tienda": "Ferrecsa / Micra Herramientas / Amazon MX",
+    "precio_mxn": null,
+    "fecha": "2026-09-28",
+    "url": "https://ferrecsa.com.mx/Producto/caja-packout-4-cajones-48-22-8444-milwaukee",
+    "confianza": "listado existe; sin precio visible",
+    "iva": "sin dato"
+   },
+   {
+    "tienda": "The Home Depot EUA (referencia, USD)",
+    "precio_mxn": null,
+    "precio_usd": 219,
+    "fecha": "2026-09-28",
+    "url": "https://www.homedepot.com/p/Milwaukee-PACKOUT-22-in-Modular-4-Drawer-Tool-Box-with-Metal-Reinforced-Corners-and-50-lbs-Capacity-48-22-8444/326480385",
+    "confianza": "referencia de precio de lista EUA, sin impuestos",
+    "iva": "no aplica"
+   }
+  ],
+  "fuentes": [
+   {
+    "campo": "cajones",
+    "valor": "MLK imagen \"48-22-8444 Dimensions\": cajon 16.3 x 12.5 in, 2.3 in (5.8 cm) de alto; respuesta de comprador en HDUS repite 2.3 x 16.3 x 12.5 in tomado de la misma imagen",
+    "url": "https://www.milwaukeetool.com/products/48-22-8444",
+    "tipo_fuente": "fabricante (leido hoy, pagina completa)",
+    "pagina": null
+   },
+   {
+    "campo": "ext",
+    "valor": "MLK Length 16.3 / Width 22.2 / Height 14.3 in; HDUS 16.10 x 22.2 x 14.3 in (5 mm menos de fondo)",
+    "url": "https://www.homedepot.com/p/Milwaukee-PACKOUT-22-in-Modular-4-Drawer-Tool-Box-with-Metal-Reinforced-Corners-and-50-lbs-Capacity-48-22-8444/326480385",
+    "tipo_fuente": "fabricante + distribuidor EUA",
+    "pagina": null
+   },
+   {
+    "campo": "ext_in",
+    "valor": "16.3 L x 22.2 W x 14.3 H in",
+    "url": "https://www.toolnut.com/products/milwaukee-48-22-8444-packout-4-drawer-tool-box",
+    "tipo_fuente": "(sesion anterior) tienda US - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   },
+   {
+    "campo": "ext_mm (UK)",
+    "valor": "363 x 564 x 414 mm",
+    "url": "https://www.cef.co.uk/catalogue/products/5282639-packout-4-drawer-tool-box",
+    "tipo_fuente": "(sesion anterior) distribuidor UK - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   },
+   {
+    "campo": "int_mm",
+    "valor": "61 x 416 x 322 mm; 11 kg/cajón",
+    "url": "https://electricalwholesaler.uk/products/milwaukee-packout-4-drawer-tool-box-48-22-8444",
+    "tipo_fuente": "(sesion anterior) distribuidor UK - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   }
+  ],
+  "notas": "El cajon es de 58 mm, NO de 61 mm (fragmento UK de la sesion anterior). La imagen oficial rotula 22.2 in como \"54.4 cm\": error de la imagen, 22.2 in = 56.4 cm. 4 juegos de divisores Quick-Adjust. Cajones bajos (61 mm útiles).",
+  "ext_fuente": {
+   "fuente": "MLK Length 16.3 / Width 22.2 / Height 14.3 in; HDUS 16.10 x 22.2 x 14.3 in (5 mm menos de fondo)",
+   "nivel": "D2",
+   "fecha": "2026-09-28"
+  }
+ },
+ {
+  "modelo": "48-22-8441",
+  "nombre": "PACKOUT Single Drawer Tool Box (1 cajón, SIN ruedas)",
+  "tipo": "caja_cajones",
+  "estado": "vigente (modelo más nuevo de la familia de cajones fija; no verificado en página)",
+  "ext_mm": {
+   "L": 414,
+   "W": 564,
+   "H": 356
+  },
+  "ext_in": {
+   "L": 16.3,
+   "W": 22.2,
+   "H": 14.0,
+   "nota": "L (fondo) x W (frente) x H"
+  },
+  "cajones": [
+   {
+    "n": 1,
+    "int_mm": {
+     "ancho": 419,
+     "fondo": 330,
+     "alto": 260
+    },
+    "int_in": {
+     "ancho": 16.5,
+     "fondo": 13.0,
+     "alto": 10.25
+    },
+    "capacidad_kg": 22.7,
+    "fuente": "MLK imagen \"48-22-8441 Dimensions 101\": cajon 16.5 x 13 in (41.9 x 33 cm), 10.25 in (26 cm)",
+    "nivel": "D1",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "capacidad_total_kg": 22.7,
+  "peso_vacio_kg": 10.5,
+  "barra_seguridad": {
+   "valor": true,
+   "fuente": "MLK features \"Locking Security Bar\"",
+   "nivel": "D1"
+  },
+  "precios_mx": [
+   {
+    "tienda": "The Home Depot EUA (referencia, USD)",
+    "precio_mxn": null,
+    "precio_usd": 164,
+    "fecha": "2026-09-28",
+    "url": "https://www.homedepot.com/p/Milwaukee-PACKOUT-Single-Drawer-Tool-Box-48-22-8441/342729532",
+    "confianza": "referencia de precio de lista EUA, sin impuestos",
+    "iva": "no aplica"
+   }
+  ],
+  "fuentes": [
+   {
+    "campo": "cajones",
+    "valor": "MLK imagen \"48-22-8441 Dimensions 101\": cajon 16.5 x 13 in (41.9 x 33 cm), 10.25 in (26 cm)",
+    "url": "https://www.milwaukeetool.com/products/48-22-8441",
+    "tipo_fuente": "fabricante (leido hoy, pagina completa)",
+    "pagina": null
+   },
+   {
+    "campo": "ext",
+    "valor": "MLK imagen: 22.2 x 16.3 x 14 in; MLK especificaciones Height 14.3; HDUS 22 x 22.5 x 14.5 in",
+    "url": "https://www.homedepot.com/p/Milwaukee-PACKOUT-Single-Drawer-Tool-Box-48-22-8441/342729532",
+    "tipo_fuente": "fabricante + distribuidor EUA",
+    "pagina": null
+   },
+   {
+    "campo": "ext_in",
+    "valor": "22.2 W x 16.3 L x 14.3 H in; 50 lb",
+    "url": "https://www.redtoolstore.com/products/milwaukee-48-22-8441-packout-single-drawer-tool-box-22-2-w-x-16-3-l-x-14-3-h-with-locking-bar-and-dividers",
+    "tipo_fuente": "(sesion anterior) tienda US - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   },
+   {
+    "campo": "existencia",
+    "valor": "página oficial",
+    "url": "https://www.milwaukeetool.com/products/details/packout-single-drawer-tool-box/48-22-8441",
+    "tipo_fuente": "(sesion anterior) oficial Milwaukee - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   }
+  ],
+  "notas": "Apertura con una mano, rieles laterales para accesorios (ToolGuyd, snippet). Alto interior NO publicado en lo encontrado. No se halló disponibilidad en MX.",
+  "ext_fuente": {
+   "fuente": "MLK imagen: 22.2 x 16.3 x 14 in; MLK especificaciones Height 14.3; HDUS 22 x 22.5 x 14.5 in",
+   "nivel": "D1",
+   "fecha": "2026-09-28"
+  }
+ },
+ {
+  "modelo": "48-22-8420",
+  "nombre": "PACKOUT Rolling Drawer Tool Box (caja rodante de 1 cajón frontal profundo)",
+  "tipo": "base_rodante_con_cajon",
+  "estado": "vigente (ES un cajón único con ruedas 9 in y manija telescópica, NO un cajón simple)",
+  "ext_mm": {
+   "L": 483,
+   "W": 610,
+   "H": 502
+  },
+  "ext_in": {
+   "L": 19.0,
+   "W": 24.0,
+   "H": 19.75,
+   "nota": "L (fondo) x W (frente) x H"
+  },
+  "cajones": [
+   {
+    "n": 1,
+    "int_mm": {
+     "ancho": 432,
+     "fondo": 330,
+     "alto": 406
+    },
+    "int_in": {
+     "ancho": null,
+     "fondo": 13.0,
+     "alto": 16.0
+    },
+    "capacidad_kg": 113.4,
+    "fuente": "MLK imagen \"48-22-8420 Dimensions 101\": 13 in de ancho de cajon y 16 in de alto; el tercer lado (432 mm) sigue siendo fragmento de buscador",
+    "nivel": "D1 (13 y 16 in) / D1 fragmento (432)",
+    "fecha": "2026-09-28"
+   }
+  ],
+  "capacidad_total_kg": 113.4,
+  "peso_vacio_kg": 13.15,
+  "barra_seguridad": {
+   "valor": false,
+   "fuente": "MLK no lista \"Locking Security Bar\" (si la lista en 8441/8442/8443/8444/8447). Comprador en HDUS: \"hay que desapilar todo lo que va encima para poder ponerle candado\".",
+   "nivel": "D1"
+  },
+  "precios_mx": [
+   {
+    "tienda": "no atribuible (Mercado Libre MX / herramientaelectrica.mx)",
+    "precio_mxn": 5999,
+    "fecha": "2026-09-28",
+    "url": "https://www.mercadolibre.com.mx/caja-con-ruedas-cajon-delantero-packout-milwaukee-48-22-8420-rojo/p/MLM60702351",
+    "confianza": "baja",
+    "iva": "incluido (precio de tienda MX)"
+   },
+   {
+    "tienda": "no atribuible",
+    "precio_mxn": 5599,
+    "fecha": "2026-09-28",
+    "url": "https://herramientaelectrica.mx/products/caja-de-herramientas-con-cajones-y-ruedas-packout-48-22-8420",
+    "confianza": "baja",
+    "iva": "incluido (precio de tienda MX)"
+   },
+   {
+    "tienda": "no atribuible (oferta, antes 7,581)",
+    "precio_mxn": 6799,
+    "fecha": "2026-09-28",
+    "url": null,
+    "confianza": "baja",
+    "iva": "incluido (precio de tienda MX)"
+   },
+   {
+    "tienda": "The Home Depot EUA (referencia, USD)",
+    "precio_mxn": null,
+    "precio_usd": 269,
+    "fecha": "2026-09-28",
+    "url": "https://www.homedepot.com/p/Milwaukee-PACKOUT-19-in-Rolling-Drawer-Tool-Box-48-22-8420/334615696",
+    "confianza": "referencia de precio de lista EUA, sin impuestos",
+    "iva": "no aplica"
+   }
+  ],
+  "fuentes": [
+   {
+    "campo": "cajones",
+    "valor": "MLK imagen \"48-22-8420 Dimensions 101\": 13 in de ancho de cajon y 16 in de alto; el tercer lado (432 mm) sigue siendo fragmento de buscador",
+    "url": "https://www.milwaukeetool.com/products/48-22-8420",
+    "tipo_fuente": "fabricante (leido hoy, pagina completa)",
+    "pagina": null
+   },
+   {
+    "campo": "ext",
+    "valor": "MLK imagen: 24 x 19 x 19.75 in; MLK especificaciones 24 x 19 x 20 in; HDUS 23.9 x 19.49 x 19.82 in",
+    "url": "https://www.homedepot.com/p/Milwaukee-PACKOUT-19-in-Rolling-Drawer-Tool-Box-48-22-8420/334615696",
+    "tipo_fuente": "fabricante + distribuidor EUA",
+    "pagina": null
+   },
+   {
+    "campo": "ext_in/int_in",
+    "valor": "ext 24 x 19 x 19.75 in; int 17 x 13 x 16 in; 250 lb",
+    "url": "https://toolguyd.com/milwaukee-packout-single-drawer-rolling-tool-box-48-22-8420-launch/",
+    "tipo_fuente": "(sesion anterior) blog especializado - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   },
+   {
+    "campo": "peso_vacio",
+    "valor": "29 lb",
+    "url": "https://www.amazon.com/48-22-8420-Milwaukee-Rolling-Drawer-Collapsible/dp/B0HBNWRZ3Y",
+    "tipo_fuente": "(sesion anterior) Amazon US (vendedor tercero, título) - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   },
+   {
+    "campo": "oficial",
+    "valor": "PACKOUT Rolling Drawer Tool Box",
+    "url": "https://www.milwaukeetool.com/products/details/packout-rolling-drawer-tool-box/48-22-8420",
+    "tipo_fuente": "(sesion anterior) oficial - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   }
+  ],
+  "notas": "Incluye 2 divisores grandes, 6 divisores y una bandeja interior (MLK \"Includes\"). Peso: MLK 29 lb, HDUS 36 lb. Candidata directa como BASE del carrito: rueda, acepta PACKOUT encima (stack & lock) y aporta un cajón profundo de 16 in. Incluye 2 divisores grandes, 6 chicos y bandeja removible (ToolGuyd).",
+  "ext_fuente": {
+   "fuente": "MLK imagen: 24 x 19 x 19.75 in; MLK especificaciones 24 x 19 x 20 in; HDUS 23.9 x 19.49 x 19.82 in",
+   "nivel": "D2",
+   "fecha": "2026-09-28"
+  }
+ },
+ {
+  "modelo": "48-22-8426",
+  "nombre": "PACKOUT Rolling Tool Box (caja rodante de tapa, no cajón)",
+  "tipo": "base_rodante",
+  "estado": "vigente",
+  "ext_mm": {
+   "L": 561,
+   "W": 472,
+   "H": 650
+  },
+  "ext_in": {
+   "L": 22.1,
+   "W": 18.6,
+   "H": 25.6,
+   "nota": "22.1 x 18.6 x 25.6 in; Northern Tool dice 18.9 W"
+  },
+  "cajones": [],
+  "capacidad_total_kg": 113.4,
+  "peso_vacio_kg": null,
+  "barra_seguridad": {
+   "valor": false,
+   "fuente": "no tiene cajones; HD MX: 'dos cierres y orificio para candado'"
+  },
+  "precios_mx": [
+   {
+    "tienda": "The Home Depot Mexico (pagina leida)",
+    "precio_mxn": 3799.0,
+    "fecha": "2026-09-28",
+    "url": "https://www.homedepot.com.mx/p/milwaukee-caja-de-herramienta-packout-con-llantas-67-x-49-x-4724-cm-milwaukee-48-22-8426-139086",
+    "confianza": "alta: pagina abierta",
+    "iva": "incluido"
+   },
+   {
+    "tienda": "Home Depot MX (Pro)",
+    "precio_mxn": 3815,
+    "fecha": "2026-09-28",
+    "url": "https://pro.homedepot.com.mx/pro/herramientas/cajas-para-herramientas-y-organizadores/organizadores/caja-con-ruedas-packout-milwauke-139086",
+    "confianza": "media: snippet ('antes $4,239')"
+   }
+  ],
+  "fuentes": [
+   {
+    "campo": "ext_in",
+    "valor": "22.1 x 18.6 x 25.6 in; interior 19.1 x 14.6 x 13.9 in; 250 lb; IP65; ruedas 9 in",
+    "url": "https://merrimacindustrial.com/milwaukee-packouttm-impact-resistant-polymer-waterproof-rolling-tool-box-22-1-x-18-6-x-25-6-in-250-lb",
+    "tipo_fuente": "distribuidor US - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   },
+   {
+    "campo": "ext_cm (MX)",
+    "valor": "67 x 49 x 47.24 cm; 113.39 kg",
+    "url": "https://www.homedepot.com.mx/p/milwaukee-caja-de-herramienta-packout-con-llantas-67-x-49-x-4724-cm-milwaukee-48-22-8426-139086",
+    "tipo_fuente": "tienda MX - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   }
+  ],
+  "notas": "Interior 19.1 x 14.6 x 13.9 in = 485 x 371 x 353 mm. DISCREPANCIA: HD MX 67 x 49 x 47.24 cm vs US 650 x 561 x 472 mm (alto 67 vs 65 cm: posible medición con manija). Base rodante de tapa: no es cajón."
+ },
+ {
+  "modelo": "48-22-8410",
+  "nombre": "PACKOUT Dolly",
+  "tipo": "base_rodante (plataforma 4 ruedas)",
+  "estado": "vigente",
+  "ext_mm": {
+   "L": 620,
+   "W": 480,
+   "H": 193
+  },
+  "ext_in": {
+   "L": 24.4,
+   "W": 18.9,
+   "H": 7.6
+  },
+  "cajones": [],
+  "capacidad_total_kg": 113.4,
+  "peso_vacio_kg": null,
+  "barra_seguridad": {
+   "valor": null,
+   "fuente": "no aplica"
+  },
+  "precios_mx": [
+   {
+    "tienda": "Ferreterías Calzada",
+    "precio_mxn": 2345,
+    "fecha": "2026-09-28",
+    "url": "https://ferreteriacalzada.mx/producto/paquete-dolly-250lbs-modulo-almac-milwaukee-48-22-8410/",
+    "confianza": "media-baja: snippet ('con IVA')"
+   }
+  ],
+  "fuentes": [
+   {
+    "campo": "ext_in",
+    "valor": "24.4 L x 18.9 W x 7.6 H in; ruedas 4 in; 250 lb",
+    "url": "https://www.rshughes.com/p/Milwaukee-PACKOUT-48-22-8410-Dolly-250-Lb-Capacity-Impact-Resistant-Polymers-52408/045242_52408/",
+    "tipo_fuente": "distribuidor US - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   }
+  ],
+  "notas": "Plataforma con 4 rodajas (con freno) y palanca QUICKSTOP. Base más baja posible para un carrito de solo cajones."
+ },
+ {
+  "modelo": "48-22-8415",
+  "nombre": "PACKOUT 2-Wheel Cart (diablito)",
+  "tipo": "carro_2_ruedas",
+  "estado": "vigente",
+  "ext_mm": {
+   "L": 537,
+   "W": 305,
+   "H": 1219
+  },
+  "ext_in": {
+   "L": 21.13,
+   "W": 12,
+   "H": 48,
+   "nota": "21.13 W x 12 D x 48 H in"
+  },
+  "cajones": [],
+  "capacidad_total_kg": 181.4,
+  "peso_vacio_kg": null,
+  "barra_seguridad": {
+   "valor": null,
+   "fuente": "no aplica"
+  },
+  "precios_mx": [],
+  "fuentes": [
+   {
+    "campo": "ext_in",
+    "valor": "21.13 W x 12 D x 48 H in; 400 lb; ruedas 10 in anti-ponchadura",
+    "url": "https://www.outdoorsupplyhardware.com/2800986/product/milwaukee-48-22-8415",
+    "tipo_fuente": "distribuidor US - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   }
+  ],
+  "notas": "Es un diablito de 2 ruedas con placa plegable, no una base de 4 ruedas. No se encontró precio MX."
+ },
+ {
+  "modelo": "48-22-8440",
+  "nombre": "PACKOUT Crate",
+  "tipo": "huacal",
+  "estado": "vigente",
+  "ext_mm": {
+   "L": 472,
+   "W": 391,
+   "H": 251
+  },
+  "ext_in": {
+   "L": 18.6,
+   "W": 15.4,
+   "H": 9.9
+  },
+  "cajones": [],
+  "capacidad_total_kg": 22.7,
+  "peso_vacio_kg": null,
+  "barra_seguridad": {
+   "valor": null,
+   "fuente": "no aplica"
+  },
+  "precios_mx": [],
+  "fuentes": [
+   {
+    "campo": "ext/int",
+    "valor": "ext 18.6 x 15.4 x 9.9 in; int 16 x 13 x 9 in; 1872 in3; 50 lb",
+    "url": "https://www.homedepot.com/p/Milwaukee-PACKOUT-18-6-in-Tool-Storage-Crate-Bin-with-Carrying-Handles-and-50-lbs-Weight-Capacity-48-22-8440/311569700",
+    "tipo_fuente": "tienda US - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   }
+  ],
+  "notas": "Interior 406 x 330 x 229 mm."
+ },
+ {
+  "modelo": "48-22-8450",
+  "nombre": "PACKOUT Tool Case with Customizable Insert (caja de tapa con espuma) — REFERENCIA actual",
+  "tipo": "caja_tapa",
+  "estado": "vigente",
+  "ext_mm": {
+   "L": 529,
+   "W": 380,
+   "H": 150
+  },
+  "ext_in": {
+   "L": 20.59,
+   "W": 14.84,
+   "H": 5.91,
+   "nota": "US; HD MX: 15.01 x 38 x 52.9 cm"
+  },
+  "cajones": [],
+  "capacidad_total_kg": 34.0,
+  "peso_vacio_kg": 2.6,
+  "barra_seguridad": {
+   "valor": false,
+   "fuente": "2 broches + sello IP65 (snippet)"
+  },
+  "interior_mm": {
+   "ancho": 480,
+   "fondo": 320,
+   "alto": 114,
+   "in": "18.9 x 12.6 x 4.5 in",
+   "fuente": "snippet de buscador sin atribución clara (Tool Nut / fwwebb / toolmarts) — confianza baja",
+   "volumen_l_estimacion": 17.5
+  },
+  "precios_mx": [
+   {
+    "tienda": "The Home Depot Mexico (pagina leida)",
+    "precio_mxn": 2159.0,
+    "fecha": "2026-09-28",
+    "url": "https://www.homedepot.com.mx/p/milwaukee-caja-de-almacenamiento-packout-con-inserto-1501-x-38-x-529-cm-milwaukee-48-22-8450-139212",
+    "confianza": "alta: pagina abierta",
+    "iva": "incluido"
+   },
+   {
+    "tienda": "Home Depot MX",
+    "precio_mxn": null,
+    "fecha": "2026-09-28",
+    "url": "https://www.homedepot.com.mx/p/milwaukee-caja-de-almacenamiento-packout-con-inserto-1501-x-38-x-529-cm-milwaukee-48-22-8450-139212",
+    "confianza": "listado existe (SKU 139212); precio no visible"
+   }
+  ],
+  "fuentes": [
+   {
+    "campo": "ext_cm (MX)",
+    "valor": "15.01 x 38 x 52.9 cm; 34.01 kg; 75 lb",
+    "url": "https://www.homedepot.com.mx/p/milwaukee-caja-de-almacenamiento-packout-con-inserto-1501-x-38-x-529-cm-milwaukee-48-22-8450-139212",
+    "tipo_fuente": "tienda MX - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   },
+   {
+    "campo": "ext_in (US)",
+    "valor": "20.59 x 14.84 x 5.91 in; 5.69 lb",
+    "url": "https://www.amazon.com/Milwaukee-MLW48228450-Packout-Tool-Insert/dp/B07LH3BMZ4",
+    "tipo_fuente": "tienda US - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   },
+   {
+    "campo": "ext_in (alterno)",
+    "valor": "20.7 W x 15.2 L x 6.2 H in",
+    "url": "https://www.toolnut.com/products/milwaukee-48-22-8450-packout-tool-case-with-customizable-insert",
+    "tipo_fuente": "tienda US - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   }
+  ],
+  "notas": "US 20.59x14.84x5.91 in = 523x377x150 mm vs HD MX 529x380x150 mm vs 20.7x15.2x6.2 in = 526x386x157 mm: difieren ≤9 mm. Volumen interior ~27.4 L es ESTIMACIÓN a partir de un snippet no atribuido."
+ },
+ {
+  "modelo": "48-22-8445",
+  "nombre": "PACKOUT Cabinet (puerta frontal, sin cajones)",
+  "tipo": "gabinete",
+  "estado": "vigente",
+  "ext_mm": {
+   "L": 495,
+   "W": 368,
+   "H": 373
+  },
+  "ext_in": {
+   "L": 19.5,
+   "W": 14.5,
+   "H": 14.7,
+   "nota": "título Home Depot US: 19.5 W x 14.7 H x 14.5 D in"
+  },
+  "cajones": [],
+  "capacidad_total_kg": null,
+  "peso_vacio_kg": null,
+  "barra_seguridad": {
+   "valor": null,
+   "fuente": "no encontrado"
+  },
+  "precios_mx": [],
+  "fuentes": [
+   {
+    "campo": "ext_in",
+    "valor": "19.5 x 14.7 x 14.5 in",
+    "url": "https://www.homedepot.com/p/Milwaukee-Packout-19-5-in-W-x-14-7-in-H-x-14-5-in-D-Cabinet-in-Red-1-Piece-48-22-8445/320324795",
+    "tipo_fuente": "tienda US (título) - snippet_buscador (WebSearch; página NO abierta: host bloqueado por egress)",
+    "pagina": null
+   }
+  ],
+  "notas": "Es el único 'gabinete' PACKOUT encontrado; no tiene cajones. No se encontró 'PACKOUT rolling cabinet' ni modelos 48-22-8448/8449."
+ }
 ]

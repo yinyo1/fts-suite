@@ -1,0 +1,354 @@
+[
+ {
+  "id": "ADAP",
+  "nombre": "JUEGO DE ADAPTADORES 3 PIEZAS 1/4\", 3/8\" Y 1/2\" ACERO CROMO",
+  "precio_mxn": 439,
+  "url": "https://www.homedepot.com.mx/p/husky-juego-de-adaptadores-1-4-1-2-y-3-8-de-pulgada-3-piezas-husky-106475-106475",
+  "nota": "",
+  "modelo": "106475"
+ },
+ {
+  "id": "AJ12",
+  "nombre": "LLAVE AJUSTABLE DE DOBLE VELOCIDAD 12\" ACERO NEGRO",
+  "precio_mxn": 359,
+  "url": "https://www.homedepot.com.mx/p/husky-llave-ajustable-de-12-pulgadas-acero-husky-17018-128380",
+  "nota": "",
+  "modelo": "17018"
+ },
+ {
+  "id": "AJ8",
+  "nombre": "LLAVE AJUSTABLE DE DOBLE VELOCIDAD 8\" ACERO AL CARBON NEGRA",
+  "precio_mxn": 215,
+  "url": "https://www.homedepot.com.mx/p/husky-llave-ajustable-de-8-pulgadas-acero-husky-17016-128377",
+  "nota": "",
+  "modelo": "17016"
+ },
+ {
+  "id": "AMARRE",
+  "nombre": "AMARRES TIPO MATRACA DE 360 X 2.5 CM 4 PIEZAS",
+  "precio_mxn": 375,
+  "url": "https://www.homedepot.com.mx/p/husky-amarres-tipo-matraca-de-360-x-25-cm-4-piezas-fh0829-134129",
+  "nota": "",
+  "modelo": "Fh0829"
+ },
+ {
+  "id": "BAT1",
+  "nombre": "BATERÍA MILWAUKEE M18 CP2.0",
+  "precio_mxn": 2485,
+  "url": "https://www.homedepot.com.mx/p/milwaukee-bateria-milwaukee-m18-cp20-48-11-1820-108358",
+  "nota": "",
+  "modelo": "48-11-1820"
+ },
+ {
+  "id": "CALAD",
+  "nombre": "SIERRA CALADORA DE VELOCIDAD VARIABLE DE 4.8A",
+  "precio_mxn": 789,
+  "url": "https://www.homedepot.com.mx/p/ryobi-sierra-caladora-ryobi-600-3000-cpm-580-w-js481lg-103119",
+  "nota": "",
+  "modelo": "Js481lg"
+ },
+ {
+  "id": "CARG1",
+  "nombre": "MULTI CARGADOR DE BATERÍAS MILWAUKEE M18 Y M12",
+  "precio_mxn": 1799,
+  "url": "https://www.homedepot.com.mx/p/milwaukee-multi-cargador-de-baterias-milwaukee-m18-y-m12-48-59-1812-129465",
+  "nota": "",
+  "modelo": "48-59-1812"
+ },
+ {
+  "id": "CHOF8",
+  "nombre": "PINZAS DE CHOFER 8\" DE ACERO",
+  "precio_mxn": 149,
+  "url": "https://www.homedepot.com.mx/p/truper-pinzas-de-chofer-8-de-acero-pch-8-248697",
+  "nota": "equivalente Truper PCH-8; el listado dice 17301",
+  "modelo": "Pch-8"
+ },
+ {
+  "id": "COMB10",
+  "nombre": "JUEGO DE LLAVES COMBINADAS 10 PIEZAS SAE CON ESTUCHE",
+  "precio_mxn": 1199,
+  "url": "https://www.homedepot.com.mx/p/husky-juego-de-llaves-combinadas-husky-bite-10-piezas-estandar-hbcw10xls-217405",
+  "nota": "",
+  "modelo": "Hbcw10xls"
+ },
+ {
+  "id": "COMB7",
+  "nombre": "JUEGO DE LLAVES COMBINADAS CON MATRACA REVERSIBLE SAE 7 PIEZAS ACERO CROMADO",
+  "precio_mxn": 1555,
+  "url": "https://www.homedepot.com.mx/p/husky-juego-de-llaves-combinadas-de-trinquete-reversible-175-x-245-x-45-cm-de-acero-husky-7-piezas-hrrw7pcsaemx-165760",
+  "nota": "",
+  "modelo": "Hrrw7pcsaemx"
+ },
+ {
+  "id": "ESCCAR",
+  "nombre": "ESCUADRA PARA CARPINTERO 12\" ACERO INOXIDABLE",
+  "precio_mxn": 159,
+  "url": "https://www.homedepot.com.mx/p/truper-escuadra-para-carpintero-12-pulgadas-truper-ec-12-714462",
+  "nota": "",
+  "modelo": "Ec-12"
+ },
+ {
+  "id": "ESCCOMB",
+  "nombre": "ESCUADRA 12\" ACERO INOXIDABLE CON VIAL DE ACRILICO",
+  "precio_mxn": 279,
+  "url": "https://www.homedepot.com.mx/p/empire-escuadra-de-acero-con-vial-de-acrilico-de-12-pulgadas-30-cm-empire-220im-133488",
+  "nota": "",
+  "modelo": "220im"
+ },
+ {
+  "id": "ESM45",
+  "nombre": "MINI ESMERILADORA ANGULAR ALAMBRICA 4 1/2\" 7 AMPERES MILWAUKEE",
+  "precio_mxn": 1839,
+  "url": "https://www.homedepot.com.mx/p/milwaukee-mini-esmeriladora-angular-alambrica-4-1-2-7-amperes-milwaukee-6130-33-197226",
+  "nota": "",
+  "modelo": "6130-33"
+ },
+ {
+  "id": "EXTS",
+  "nombre": "BARRA DE EXTENSION 6\" CUADRO 3/8\" METAL HUSKY",
+  "precio_mxn": 167,
+  "url": "https://www.homedepot.com.mx/p/husky-barra-de-extension-215-cm-metal-husky-h3dext6mx-129311",
+  "nota": "",
+  "modelo": "H3dext6mx"
+ },
+ {
+  "id": "EXTS",
+  "nombre": "JUEGO DE EXTENSIONES ARTICULADAS 3 PIEZAS CUADRO 3/8\" ACERO ACABADO CROMO",
+  "precio_mxn": 495,
+  "url": "https://www.homedepot.com.mx/p/husky-juego-de-extensiones-oscilantes-3-piezas-husky-106545-106459",
+  "nota": "",
+  "modelo": "106545"
+ },
+ {
+  "id": "EXTS",
+  "nombre": "MANERAL DE FUERZA CUADRO 3/8\" ACERO",
+  "precio_mxn": 515,
+  "url": "https://www.homedepot.com.mx/p/husky-palanca-de-extension-3-8-de-pulgada-acero-husky-h38bb10mx-106480",
+  "nota": "",
+  "modelo": "H38bb10mx"
+ },
+ {
+  "id": "IMP14",
+  "nombre": "DESTORNILLADOR DE IMPACTO SIN ESCOBILLAS HEXAGONAL DE 1/4 PULGADA MILWAUKEE M18",
+  "precio_mxn": 3349,
+  "url": "https://www.homedepot.com.mx/p/milwaukee-destornillador-de-impacto-sin-escobillas-hexagonal-de-1-4-pulgada-milwaukee-m18-3650-20-226105",
+  "nota": "",
+  "modelo": "3650-20"
+ },
+ {
+  "id": "LASER",
+  "nombre": "NIVEL LÁSER VERDE 12 METROS LÍNEAS HORIZONTALES Y VERTICALES CON SOPORTE GIRATORIO",
+  "precio_mxn": 2059,
+  "url": "https://www.homedepot.com.mx/p/bosch-nivelador-laser-verde-bosch-gll-12-22-g-221419",
+  "nota": "",
+  "modelo": "Gll 12-22 g"
+ },
+ {
+  "id": "LIJA",
+  "nombre": "M18 LIJADORA ORBITAL INALÁMBRICA DE 5\" DE 18V (SOLO HERRAMIENTA)",
+  "precio_mxn": 3155,
+  "url": "https://www.homedepot.com.mx/p/milwaukee-m18-lijadora-orbital-inalambrica-de-5-de-18v-solo-herramienta-2648-20-148664",
+  "nota": "",
+  "modelo": "2648-20"
+ },
+ {
+  "id": "LIMAS",
+  "nombre": "LIMA REDONDA ACERO 6\" PARA METAL",
+  "precio_mxn": 97,
+  "url": "https://www.homedepot.com.mx/p/bellota-lima-redonda-para-metal-6-pulgadas-acero-bellota-6400406f1bl-137911",
+  "nota": "",
+  "modelo": "6400406f1bl"
+ },
+ {
+  "id": "LIMAS",
+  "nombre": "LIMA TRIANGULAR ACERO 8\" PARA AFILADO DE HERRAMIENTAS AGRICOLAS",
+  "precio_mxn": 61,
+  "url": "https://www.homedepot.com.mx/p/bellota-lima-triangular-244-x-1-x-06-cm-acero-bellota-64091081bl-137916",
+  "nota": "",
+  "modelo": "64091081bl"
+ },
+ {
+  "id": "MART",
+  "nombre": "MARTILLO DE UÑA CURVA 16 OZ MANGO FIBRA DE VIDRIO",
+  "precio_mxn": 209,
+  "url": "https://www.homedepot.com.mx/p/truper-martillo-de-una-curva-16-onzas-acero-truper-ma-16f-449645",
+  "nota": "",
+  "modelo": "Ma-16f"
+ },
+ {
+  "id": "MATR",
+  "nombre": "MATRACA ROTATIVA 3/8\" ACERO HUSKY",
+  "precio_mxn": 1155,
+  "url": "https://www.homedepot.com.mx/p/husky-matraca-rotativa-3-8-acero-husky-h38rotoratmx-106478",
+  "nota": "solo la matraca, sin dados",
+  "modelo": "H38rotoratmx"
+ },
+ {
+  "id": "MAZO",
+  "nombre": "MAZO DE HULE 16 ONZAS MANGO MADERA HICKORY",
+  "precio_mxn": 145,
+  "url": "https://www.homedepot.com.mx/p/truper-mazo-de-hule-16-onzas-truper-mh-16-462668",
+  "nota": "",
+  "modelo": "Mh-16"
+ },
+ {
+  "id": "MINIP",
+  "nombre": "MINI PINZAS PARA CORTAR 12.7 X 6 X 1.27 CM DE ACERO MILWAUKEE",
+  "precio_mxn": 435,
+  "url": "https://www.homedepot.com.mx/p/milwaukee-mini-pinzas-para-cortar-127-x-6-x-127-cm-de-acero-milwaukee-48-22-6105-147979",
+  "nota": "",
+  "modelo": "48-22-6105"
+ },
+ {
+  "id": "NAVAJA",
+  "nombre": "NAVAJA RETRÁCTIL ACERO 22.4 CM USO DOMÉSTICO Y TALLER",
+  "precio_mxn": 75,
+  "url": "https://www.homedepot.com.mx/p/anvil-navaja-retractil-224-x-88-x-2-cm-acero-anvil-99735a-137360",
+  "nota": "",
+  "modelo": "99735a"
+ },
+ {
+  "id": "NIVTUB1",
+  "nombre": "NIVELADOR FIJABLE PARA TUBERÍA MILWAUKEE DE 6.5 PULGADAS",
+  "precio_mxn": 959,
+  "url": "https://www.homedepot.com.mx/p/milwaukee-nivelador-fijable-para-tuberia-milwaukee-de-65-pulgadas-48-22-5110-224575",
+  "nota": "",
+  "modelo": "48-22-5110"
+ },
+ {
+  "id": "PDIAG",
+  "nombre": "PINZA EN DIAGONAL ACERO 7\" GRAN APALANCAMIENTO",
+  "precio_mxn": 289,
+  "url": "https://www.homedepot.com.mx/p/husky-pinzas-en-diagonal-de-178-cm-acero-husky-903465-903465",
+  "nota": "",
+  "modelo": "903465"
+ },
+ {
+  "id": "PELA",
+  "nombre": "PELACABLES/CORTACABLES DE 6\"",
+  "precio_mxn": 235,
+  "url": "https://www.homedepot.com.mx/p/commercial-electric-pelacables-cortacables-de-6-ce100821-127734",
+  "nota": "",
+  "modelo": "Ce100821"
+ },
+ {
+  "id": "PELEC",
+  "nombre": "PINZAS DE ELECTRICISTA DE 22.9 CM EN ACERO HUSKY",
+  "precio_mxn": 455,
+  "url": "https://www.homedepot.com.mx/p/husky-pinzas-de-electricista-de-229-cm-en-acero-husky-709195-709195",
+  "nota": "",
+  "modelo": "709195"
+ },
+ {
+  "id": "PREC6",
+  "nombre": "JUEGO DE DESTORNILLADORES DE PRECISIÓN ACERO MILWAUKEE 6 PIEZAS",
+  "precio_mxn": 1129,
+  "url": "https://www.homedepot.com.mx/p/milwaukee-juego-de-destornilladores-de-precision-acero-milwaukee-6-piezas-48-22-2606-147997",
+  "nota": "",
+  "modelo": "48-22-2606"
+ },
+ {
+  "id": "PRES10",
+  "nombre": "CURVED JAW LOCKING PLIERS CHROME VANADIUM STEEL 10 IN",
+  "precio_mxn": 375,
+  "url": "https://www.homedepot.com.mx/p/husky-pinzas-de-presion-de-mordaza-curva-husky-709204-709204",
+  "nota": "",
+  "modelo": "709204"
+ },
+ {
+  "id": "PRES11",
+  "nombre": "PINZA DE PRESIÓN TIPO C TORQUE LOCK DE 11 PULGADAS MILWAUKEE",
+  "precio_mxn": 635,
+  "url": "https://www.homedepot.com.mx/p/milwaukee-pinza-de-presion-tipo-c-torque-lock-de-11-pulgadas-milwaukee-48-22-3531-109796",
+  "nota": "",
+  "modelo": "48-22-3531"
+ },
+ {
+  "id": "PRES6C",
+  "nombre": "PINZA DE PRESIÓN EN C TORQUE LOCK DE 6 PULGADAS ACERO MILWAUKEE",
+  "precio_mxn": 475,
+  "url": "https://www.homedepot.com.mx/p/milwaukee-pinza-de-presion-en-c-torque-lock-de-6-pulgadas-acero-milwaukee-48-22-3532-109804",
+  "nota": "",
+  "modelo": "48-22-3532"
+ },
+ {
+  "id": "PRES7",
+  "nombre": "PINZA DE PRESION METAL DE MORDAZA RECTA 7\"",
+  "precio_mxn": 365,
+  "url": "https://www.homedepot.com.mx/p/pinza-de-presion-metal-de-mordaza-recta-7-de-mordaza-recta-709207",
+  "nota": "",
+  "modelo": "De mordaza recta"
+ },
+ {
+  "id": "SABLE",
+  "nombre": "SIERRA SAWZALL ALÁMBRICA DE 1-1/8\" CON QUIK-LOK",
+  "precio_mxn": 4199,
+  "url": "https://www.homedepot.com.mx/p/milwaukee-sierra-sawzall-alambrica-de-1-1-8-con-quik-lok-6519-31-474409",
+  "nota": "hoy la pagina es la 6519-31, no la 6509-31 del listado",
+  "modelo": "6519-31"
+ },
+ {
+  "id": "SDS",
+  "nombre": "ROTOMARTILLO SDS PLUS 1500 RPM 800 WATTS MILWAUKEE",
+  "precio_mxn": 4149,
+  "url": "https://www.homedepot.com.mx/p/milwaukee-rotomartillo-sds-plus-1500-rpm-800-watts-milwaukee-5485-21-141961",
+  "nota": "",
+  "modelo": "5485-21"
+ },
+ {
+  "id": "SDSBIT",
+  "nombre": "JUEGO DE BROCAS PARA MAMPOSTERIA SDS PLUS 5/8\" 15 PIEZAS",
+  "precio_mxn": 1125,
+  "url": "https://www.homedepot.com.mx/p/dewalt-juego-de-brocas-para-mamposteria-sds-plus-5-8-15-piezas-dwa0870-119665",
+  "nota": "",
+  "modelo": "Dwa0870"
+ },
+ {
+  "id": "SEGUETA",
+  "nombre": "ARCO DE SEGUETA AJUSTABLE 8-12\" PARA CORTE",
+  "precio_mxn": 339,
+  "url": "https://www.homedepot.com.mx/p/stanley-arco-de-sierra-ajustable-de-para-8-10-y-12-pulgadas-amarillo-15-555-858108",
+  "nota": "",
+  "modelo": "15- 555"
+ },
+ {
+  "id": "STILL1",
+  "nombre": "LLAVE PARA TUBO 14\" ACERO FORJADO",
+  "precio_mxn": 525,
+  "url": "https://www.homedepot.com.mx/p/husky-llave-para-tubo-de-14-pulgadas-acero-husky-73126-128368",
+  "nota": "",
+  "modelo": "73126"
+ },
+ {
+  "id": "TAL12",
+  "nombre": "TALADRO ROTOMARTILLO 1/2\" PULGADAS MILWAUKEE",
+  "precio_mxn": 2565,
+  "url": "https://www.homedepot.com.mx/p/milwaukee-taladro-rotomartillo-1-2-pulgadas-milwaukee-5375-20-197009",
+  "nota": "",
+  "modelo": "5375-20"
+ },
+ {
+  "id": "TAZON",
+  "nombre": "TAZON MAGNETICO 1 PIEZA ACERO CROMADO",
+  "precio_mxn": 485,
+  "url": "https://www.homedepot.com.mx/p/husky-tazon-magnetico-323-gr-48-cm-acero-husky-129-291-129291",
+  "nota": "",
+  "modelo": "129 291"
+ },
+ {
+  "id": "TORPEDO2",
+  "nombre": "NIVEL TORPEDO 9\" CON MAGNETO PLASTICO ROJO",
+  "precio_mxn": 285,
+  "url": "https://www.homedepot.com.mx/p/husky-nivel-magnetico-plastico-huski-10790-840933",
+  "nota": "",
+  "modelo": "10790"
+ },
+ {
+  "id": "TORX",
+  "nombre": "JUEGO DE LLAVES TORX TIPO NAVAJA SAE/MM 3 PIEZAS",
+  "precio_mxn": 395,
+  "url": "https://www.homedepot.com.mx/p/husky-juego-de-llaves-torx-tipo-navaja-estandar-mm-3-piezas-hfhk3pcsetmx-149798",
+  "nota": "",
+  "modelo": "Hfhk3pcsetmx"
+ }
+]

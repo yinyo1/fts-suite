@@ -28,16 +28,18 @@ for m in R:
             alturas.append(im.get('alto'))
         cajones.append([m['modelo'], n, im.get('ancho'), im.get('fondo'), im.get('alto'),
                         (im['alto'] - H_LIBRE) if im.get('alto') else None, c.get('capacidad_kg'),
-                        c.get('fuente'), ESTADO])
+                        c.get('fuente'), c.get('nivel') or ESTADO])
     bs = m.get('barra_seguridad') or {}
     ext_h = e.get('H')
     modelos.append([m['modelo'], m.get('nombre'), m.get('tipo'), m.get('estado'), e.get('L'), e.get('W'), ext_h,
                     len(alturas), ', '.join(str(a) for a in alturas if a), round(vol_l, 1) if vol_l else None,
                     round(vol_l / ext_h * 100, 2) if vol_l and ext_h else None,
                     m.get('capacidad_total_kg'), m.get('peso_vacio_kg'),
-                    {True: 'si', False: 'no'}.get(bs.get('valor'), 'sin dato'), bs.get('fuente'), m.get('notas'), ESTADO])
+                    {True: 'si', False: 'no'}.get(bs.get('valor'), 'sin dato'), bs.get('fuente'), m.get('notas'),
+                    ('ext ' + (m.get('ext_fuente') or {}).get('nivel', '') + ' · ' + (m.get('ext_fuente') or {}).get('fuente', '')) if m.get('ext_fuente') else ESTADO])
     for pr in (m.get('precios_mx') or []):
-        precios.append([m['modelo'], pr.get('tienda'), pr.get('precio_mxn'), pr.get('fecha'), pr.get('url'), pr.get('confianza') or pr.get('nota')])
+        precios.append([m['modelo'], pr.get('tienda'), pr.get('precio_mxn'), pr.get('fecha'), pr.get('url'), pr.get('confianza') or pr.get('nota'),
+                        pr.get('iva') or 'sin dato', pr.get('precio_usd')])
     for f in (m.get('fuentes') or []):
         fuentes.append([m['modelo'], f.get('campo'), f.get('valor'), f.get('url'), f.get('tipo_fuente'), f.get('pagina')])
     cont_json[m['modelo']] = {'nombre': m.get('nombre'), 'tipo': m.get('tipo'), 'ext_mm': e,
@@ -46,13 +48,13 @@ for m in R:
 
 # --- Precios reales pagados por FTS (Odoo purchase.order.line, sin IVA): la fuente mas firme que tenemos ---
 precios += [
- ['48-22-8447', 'CENTRO DE HERRAMIENTAS Y SERVICIOS (Odoo P05566)', 3499.00, '2026-02-04', 'Odoo purchase.order P05566', 'pagado por FTS, sin IVA'],
- ['48-22-8444 (probable)', 'CENTRO DE HERRAMIENTAS Y SERVICIOS (Odoo P03220)', 3614.00, '2025-04-28', 'Odoo purchase.order P03220', 'pagado por FTS, sin IVA; descripcion "CAJA DE HERRAMIENTAS CON 4 CAJONES PACKOUT"'],
- ['48-22-8427', 'CENTRO DE HERRAMIENTAS Y SERVICIOS (Odoo P05566)', 2825.00, '2026-02-04', 'Odoo purchase.order P05566', 'pagado por FTS, sin IVA'],
- ['48-22-8450', 'The Home Depot Mexico (Odoo P01829/P02096/P02097/P02102)', 1854.40, '2025-01-17', 'Odoo', 'pagado por FTS, sin IVA; el listado dice $1,565'],
- ['48-22-8424', 'The Home Depot Mexico (Odoo P01829)', 1465.78, '2025-01-17', 'Odoo', 'pagado por FTS, sin IVA'],
- ['48-22-8440', 'CENTRO DE HERRAMIENTAS Y SERVICIOS (Odoo P02408)', 1089.00, '2025-03-04', 'Odoo', 'pagado por FTS, sin IVA'],
- ['48-22-8485', 'CENTRO DE HERRAMIENTAS Y SERVICIOS (Odoo P02408)', 589.00, '2025-03-04', 'Odoo', 'placa de montaje, sin IVA'],
+ ['48-22-8447', 'CENTRO DE HERRAMIENTAS Y SERVICIOS (Odoo P05566)', 3499.00, '2026-02-04', 'Odoo purchase.order P05566', 'pagado por FTS', 'sin IVA', None],
+ ['48-22-8444 (probable)', 'CENTRO DE HERRAMIENTAS Y SERVICIOS (Odoo P03220)', 3614.00, '2025-04-28', 'Odoo purchase.order P03220', 'pagado por FTS; descripcion "CAJA DE HERRAMIENTAS CON 4 CAJONES PACKOUT"', 'sin IVA', None],
+ ['48-22-8427', 'CENTRO DE HERRAMIENTAS Y SERVICIOS (Odoo P05566)', 2825.00, '2026-02-04', 'Odoo purchase.order P05566', 'pagado por FTS', 'sin IVA', None],
+ ['48-22-8450', 'The Home Depot Mexico (Odoo P01829/P02096/P02097/P02102)', 1854.40, '2025-01-17', 'Odoo', 'pagado por FTS; el listado dice $1,565', 'sin IVA', None],
+ ['48-22-8424', 'The Home Depot Mexico (Odoo P01829)', 1465.78, '2025-01-17', 'Odoo', 'pagado por FTS', 'sin IVA', None],
+ ['48-22-8440', 'CENTRO DE HERRAMIENTAS Y SERVICIOS (Odoo P02408)', 1089.00, '2025-03-04', 'Odoo', 'pagado por FTS', 'sin IVA', None],
+ ['48-22-8485', 'CENTRO DE HERRAMIENTAS Y SERVICIOS (Odoo P02408)', 589.00, '2025-03-04', 'Odoo', 'placa de montaje', 'sin IVA', None],
 ]
 # --- 48-22-8450 interior: 18.9 x 12.6 x 4.5 in (fragmento, sin sitio claro) ---
 ref_int = (480, 320, 114)
@@ -73,8 +75,8 @@ for mo in modelos:
 alturas_disp = {}
 for mo in cont_json.values():
     pass
-ALT = {'61 (8444, 8447 chicos)': 61, '76 (8443)': 76, '127 (8442)': 127, '130 (8447 hondo)': 130, '406 (8420 base)': 406}
-LARGO_MAX_CAJON = 416   # ancho interior del cajon, el menor reportado
+ALT = {'58 (8444)': 58, '63 (8447 chicos)': 63, '76 (8443)': 76, '127 (8442, 8447 hondo)': 127, '260 (8441)': 260, '406 (8420 base)': 406}
+LARGO_MAX_CAJON = 414   # ancho interior del cajon (fabricante, 16.3 in)
 no_caben = []
 for p in P:
     if p['familia'] == 'contenedor':
@@ -94,7 +96,7 @@ for p in P:
         pass
     if largo > LARGO_MAX_CAJON:
         motivo.append(f'largo {largo} mm > {LARGO_MAX_CAJON} mm de ancho de cajon (cabria en diagonal solo si < 520)')
-    solo_base = bool(donde) and donde == ['406 (8420 base)']
+    solo_base = bool(donde) and set(donde) <= {'406 (8420 base)', '260 (8441)'}
     peso_alto = (p['peso_kg'] or 0) > 11
     if peso_alto:
         motivo.append(f'peso {p["peso_kg"]} kg > 11 kg por cajon: solo en la base 8420')
@@ -116,10 +118,17 @@ ws = wb.active; ws.title = 'Modelos'
 hoja(ws, ['modelo', 'nombre', 'tipo', 'estado', 'ext_L_mm', 'ext_W_mm', 'ext_H_mm', 'n_cajones', 'alturas_int_mm',
           'vol_util_L', 'L_por_100mm_de_pila', 'capacidad_total_kg', 'peso_vacio_kg', 'barra_candado', 'fuente_barra', 'notas', 'validacion'], modelos)
 hoja(wb.create_sheet('Cajones'), ['modelo', 'n', 'ancho_int_mm', 'fondo_int_mm', 'alto_int_mm', 'alto_util_mm (int-10)', 'capacidad_kg_cajon', 'fuente', 'validacion'], cajones)
-hoja(wb.create_sheet('Precios_MX'), ['modelo', 'tienda', 'precio_mxn', 'fecha_consulta', 'url', 'confianza'], precios)
+hoja(wb.create_sheet('Precios_MX'), ['modelo', 'tienda', 'precio_mxn', 'fecha_consulta', 'url', 'confianza', 'IVA', 'precio_usd'], precios)
 hoja(wb.create_sheet('Comparativo_8450'), ['contenedor', 'alto_ext_mm', 'vol_util_L', 'L_por_100mm_de_pila', 'perdida_vs_8450_%', 'nota'], comp)
 hoja(wb.create_sheet('No_caben'), ['numero_interno', 'descripcion', 'L', 'A', 'H', 'peso_kg', 'alto_acostado', 'cajones_donde_cabe', 'motivo', 'validacion'], no_caben)
 hoja(wb.create_sheet('Fuentes'), ['modelo', 'campo', 'valor', 'url', 'tipo_fuente', 'pagina'], fuentes)
+# --- Sesion nocturna 1 (#330): que cambio y por que ---
+CN = json.load(open(os.path.join(D, 'cambios_contenedores_nocturna.json'), encoding='utf-8'))
+cn = [[x['modelo'], ' | '.join(f'{a[0]} x {a[1]}x{a[2]}x{a[3]}' for a in x['cajones_antes']), ' | '.join(f'{a[0]} x {a[1]}x{a[2]}x{a[3]}' for a in x['cajones_despues']),
+       {True: 'si', False: 'no'}.get(x['barra']), x['nota']] for x in CN]
+cn += [['(todos)', '', '', '', 'Fuente: ficha del fabricante leida el 2026-09-28 (la red ya abre milwaukeetool.com). Ninguna cota tiene medicion fisica: nivel maximo D2.'],
+       ['nuevos 2025-2026', '', '', '', 'Sitemap de milwaukeetool.com: los unicos PACKOUT de cajones son 8441, 8442, 8443, 8444, 8447 y 8420. No hay modelo nuevo de cajones. Si hay espuma para cajones 48-22-8452 (8442/8443) y 48-22-8453 (8442/8443/8444/8447, 2 piezas, 3.6 in).']]
+hoja(wb.create_sheet('Cambios_sesion_nocturna'), ['modelo', 'cajones antes (n x ancho x fondo x alto mm)', 'cajones ahora', 'barra para candado', 'nota'], cn)
 wb.save(os.path.join(BASE, 'contenedores.xlsx'))
 json.dump(cont_json, open(os.path.join(D, 'contenedores.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 for c in comp: print(c)

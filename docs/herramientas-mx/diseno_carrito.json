@@ -1,5 +1,5 @@
 {
- "ganadora": "ffd",
+ "ganadora": "fijo",
  "parametros": {
   "G_PIEZAS": 12,
   "G_PARED": 6,
@@ -10,39 +10,218 @@
    "metricas": {
     "cajas": 2,
     "alto_mm": 1228,
-    "cajones_usados": 8,
-    "cajones_totales": 10,
-    "ocupacion_media": 63.1,
-    "peso_kg": 17.8,
-    "centro_gravedad_mm": 599,
-    "penalizacion": 55.3,
+    "cajones_usados": 9,
+    "cajones_totales": 9,
+    "ocupacion_media": 59.8,
+    "peso_kg": 18.3,
+    "centro_gravedad_mm": 787,
+    "penalizacion": 42.1,
     "modelos": [
      "48-22-8420",
      "48-22-8444",
-     "48-22-8444"
+     "48-22-8443"
     ]
    },
    "cajas": [
     {
-     "modelo": "48-22-8444",
+     "modelo": "48-22-8443",
      "cajones": [
       {
        "n": 1,
-       "alto": 61,
-       "alto_util": 51,
-       "ancho": 416,
-       "fondo": 322,
-       "ocupacion": 63.1,
-       "peso_kg": 1.41,
+       "alto": 76,
+       "alto_util": 66,
+       "ancho": 414,
+       "fondo": 318,
+       "ocupacion": 69.1,
+       "peso_kg": 3.21,
        "cap_kg": 11,
        "piezas": [
         {
          "activo": "FTS-BAS-01-C1-01",
+         "id": "IMP38",
+         "ref": "B2",
+         "corto": "Llave de impacto M18 FUEL 3/8 2854-20 (sin bateria)",
+         "familia": "inalambricas_energia",
+         "x": 6,
+         "y": 6,
+         "w": 122,
+         "h": 202,
+         "rot": true,
+         "L": 202,
+         "A": 122,
+         "H": 65,
+         "peso_kg": 1.089,
+         "frec": "frecuente",
+         "fuente_dim": "D2"
+        },
+        {
+         "activo": "FTS-BAS-01-C1-02",
+         "id": "ROTO18",
+         "ref": "B3",
+         "corto": "Rotomartillo M18 1/2 3602-20 (sin bateria)",
+         "familia": "inalambricas_energia",
+         "x": 140,
+         "y": 6,
+         "w": 202,
+         "h": 147,
+         "rot": false,
+         "L": 202,
+         "A": 147,
+         "H": 56,
+         "peso_kg": 1.043,
+         "frec": "diario",
+         "fuente_dim": "D2"
+        },
+        {
+         "activo": "FTS-BAS-01-C1-03",
+         "id": "TORPEDO",
+         "ref": "E5",
+         "corto": "Nivel torpedo magnetico 9 in Husky",
+         "familia": "medicion_trazo",
+         "x": 354,
+         "y": 6,
+         "w": 45,
+         "h": 230,
+         "rot": true,
+         "L": 230,
+         "A": 45,
+         "H": 16,
+         "peso_kg": 0.138,
+         "frec": "diario",
+         "fuente_dim": "D1"
+        },
+        {
+         "activo": "FTS-BAS-01-C1-04",
+         "id": "BAT1",
+         "ref": "B4",
+         "corto": "Bateria M18 CP2.0",
+         "familia": "inalambricas_energia",
+         "x": 6,
+         "y": 220,
+         "w": 118,
+         "h": 79,
+         "rot": false,
+         "L": 118,
+         "A": 79,
+         "H": 55,
+         "peso_kg": 0.431,
+         "frec": "diario",
+         "fuente_dim": "D1"
+        },
+        {
+         "activo": "FTS-BAS-01-C1-05",
+         "id": "BAT2",
+         "ref": "B5",
+         "corto": "Bateria M18 CP2.0",
+         "familia": "inalambricas_energia",
+         "x": 136,
+         "y": 220,
+         "w": 118,
+         "h": 79,
+         "rot": false,
+         "L": 118,
+         "A": 79,
+         "H": 55,
+         "peso_kg": 0.431,
+         "frec": "diario",
+         "fuente_dim": "D1"
+        },
+        {
+         "activo": "FTS-BAS-01-C1-06",
+         "id": "MINIP",
+         "ref": "A5",
+         "corto": "Mini pinza de corte al ras 48-22-6105",
+         "familia": "electrico",
+         "x": 266,
+         "y": 248,
+         "w": 127,
+         "h": 60,
+         "rot": false,
+         "L": 127,
+         "A": 60,
+         "H": 13,
+         "peso_kg": 0.08,
+         "frec": "frecuente",
+         "fuente_dim": "D1"
+        }
+       ],
+       "pie": [
+        "Modulo BASE · caja 48-22-8443 · cajon C1 · alto interior 76 mm, util 66 mm",
+        "Ocupacion en planta 69.1 % · peso 3.21 kg de 11 kg",
+        "Medidas no validadas: confirmar con vernier antes de imprimir"
+       ]
+      },
+      {
+       "n": 2,
+       "alto": 76,
+       "alto_util": 66,
+       "ancho": 414,
+       "fondo": 318,
+       "ocupacion": 65.7,
+       "peso_kg": 2.12,
+       "cap_kg": 11,
+       "piezas": [
+        {
+         "activo": "FTS-BAS-01-C2-01",
+         "id": "IMP14",
+         "ref": "B1",
+         "corto": "Atornillador de impacto M18 3650-20 (sin bateria)",
+         "familia": "inalambricas_energia",
+         "x": 6,
+         "y": 6,
+         "w": 112,
+         "h": 196,
+         "rot": true,
+         "L": 196,
+         "A": 112,
+         "H": 53,
+         "peso_kg": 0.771,
+         "frec": "diario",
+         "fuente_dim": "D2"
+        },
+        {
+         "activo": "FTS-BAS-01-C2-02",
+         "id": "WIHA-PC",
+         "ref": "A8",
+         "corto": "Pinza de corte diagonal aislada 160 (32933)",
+         "familia": "electrico",
+         "x": 130,
+         "y": 6,
+         "w": 55,
+         "h": 160,
+         "rot": true,
+         "L": 160,
+         "A": 55,
+         "H": 20,
+         "peso_kg": 0.18,
+         "frec": "diario",
+         "fuente_dim": "F"
+        },
+        {
+         "activo": "FTS-BAS-01-C2-03",
+         "id": "AJ12",
+         "ref": "J1",
+         "corto": "Llave ajustable 12 in Husky 17018",
+         "familia": "mecanica_general",
+         "x": 221,
+         "y": 6,
+         "w": 78,
+         "h": 305,
+         "rot": true,
+         "L": 305,
+         "A": 78,
+         "H": 20,
+         "peso_kg": 0.777,
+         "frec": "diario",
+         "fuente_dim": "D1"
+        },
+        {
+         "activo": "FTS-BAS-01-C2-04",
          "id": "NAVAJA",
          "ref": "Q1",
          "corto": "Navaja retractil Anvil",
          "familia": "mecanica_general",
-         "x": 6,
+         "x": 311,
          "y": 6,
          "w": 88,
          "h": 224,
@@ -50,54 +229,71 @@
          "L": 224,
          "A": 88,
          "H": 20,
-         "peso_kg": 0.2,
+         "peso_kg": 0.11,
          "frec": "diario",
-         "fuente_dim": "nominal"
+         "fuente_dim": "D1"
         },
         {
-         "activo": "FTS-BAS-01-C1-02",
+         "activo": "FTS-BAS-01-C2-05",
+         "id": "WIHA-PE",
+         "ref": "A9",
+         "corto": "Pinza combinada aislada 200 (32930)",
+         "familia": "electrico",
+         "x": 6,
+         "y": 214,
+         "w": 203,
+         "h": 60,
+         "rot": false,
+         "L": 203,
+         "A": 60,
+         "H": 22,
+         "peso_kg": 0.28,
+         "frec": "diario",
+         "fuente_dim": "F"
+        }
+       ],
+       "pie": [
+        "Modulo BASE · caja 48-22-8443 · cajon C2 · alto interior 76 mm, util 66 mm",
+        "Ocupacion en planta 65.7 % · peso 2.12 kg de 11 kg",
+        "Medidas no validadas: confirmar con vernier antes de imprimir"
+       ]
+      },
+      {
+       "n": 3,
+       "alto": 76,
+       "alto_util": 66,
+       "ancho": 414,
+       "fondo": 318,
+       "ocupacion": 57.3,
+       "peso_kg": 1.92,
+       "cap_kg": 11,
+       "piezas": [
+        {
+         "activo": "FTS-BAS-01-C3-01",
          "id": "VERN",
          "ref": "E3",
          "corto": "Vernier digital 6 in Truper CALDI-6MP",
          "familia": "medicion_trazo",
-         "x": 106,
+         "x": 6,
          "y": 6,
-         "w": 237,
-         "h": 80,
-         "rot": false,
+         "w": 80,
+         "h": 237,
+         "rot": true,
          "L": 237,
          "A": 80,
          "H": 20,
          "peso_kg": 0.205,
          "frec": "frecuente",
-         "fuente_dim": "buscador"
+         "fuente_dim": "F"
         },
         {
-         "activo": "FTS-BAS-01-C1-03",
-         "id": "PDIAG",
-         "ref": "I3",
-         "corto": "Pinza diagonal 7 in Husky 903465",
-         "familia": "mecanica_general",
-         "x": 355,
-         "y": 6,
-         "w": 55,
-         "h": 178,
-         "rot": true,
-         "L": 178,
-         "A": 55,
-         "H": 20,
-         "peso_kg": 0.3,
-         "frec": "diario",
-         "fuente_dim": "nominal"
-        },
-        {
-         "activo": "FTS-BAS-01-C1-04",
+         "activo": "FTS-BAS-01-C3-02",
          "id": "BROCAS",
          "ref": "G2",
          "corto": "Juego 15 brocas HSS 1/16-1/2 Truper (estuche)",
          "familia": "perforacion_corte",
-         "x": 106,
-         "y": 98,
+         "x": 98,
+         "y": 6,
          "w": 80,
          "h": 150,
          "rot": true,
@@ -106,169 +302,84 @@
          "H": 20,
          "peso_kg": 0.3,
          "frec": "frecuente",
-         "fuente_dim": "estimacion"
+         "fuente_dim": "F"
         },
         {
-         "activo": "FTS-BAS-01-C1-05",
-         "id": "MINIP",
-         "ref": "A5",
-         "corto": "Mini pinza de corte al ras 48-22-6105",
-         "familia": "electrico",
-         "x": 198,
-         "y": 196,
-         "w": 127,
-         "h": 51,
+         "activo": "FTS-BAS-01-C3-03",
+         "id": "PDIAG",
+         "ref": "I3",
+         "corto": "Pinza diagonal 7 in Husky 903465",
+         "familia": "mecanica_general",
+         "x": 190,
+         "y": 6,
+         "w": 178,
+         "h": 58,
          "rot": false,
-         "L": 127,
-         "A": 51,
-         "H": 13,
-         "peso_kg": 0.059,
+         "L": 178,
+         "A": 58,
+         "H": 17,
+         "peso_kg": 0.306,
+         "frec": "diario",
+         "fuente_dim": "D1"
+        },
+        {
+         "activo": "FTS-BAS-01-C3-04",
+         "id": "AJ8",
+         "ref": "J4",
+         "corto": "Llave ajustable 8 in Husky 17016",
+         "familia": "mecanica_general",
+         "x": 190,
+         "y": 76,
+         "w": 205,
+         "h": 56,
+         "rot": false,
+         "L": 205,
+         "A": 56,
+         "H": 15,
+         "peso_kg": 0.302,
+         "frec": "diario",
+         "fuente_dim": "D1"
+        },
+        {
+         "activo": "FTS-BAS-01-C3-05",
+         "id": "CHOF8",
+         "ref": "J7",
+         "corto": "Pinza de chofer 8 in Truper 17301",
+         "familia": "mecanica_general",
+         "x": 190,
+         "y": 144,
+         "w": 203,
+         "h": 50,
+         "rot": false,
+         "L": 203,
+         "A": 50,
+         "H": 15,
+         "peso_kg": 0.292,
          "frec": "frecuente",
-         "fuente_dim": "buscador"
+         "fuente_dim": "D1"
         },
         {
-         "activo": "FTS-BAS-01-C1-06",
-         "id": "WIHA-PP",
-         "ref": "A10",
-         "corto": "Pinza de punta aislada 160 (32926)",
-         "familia": "electrico",
-         "x": 6,
-         "y": 260,
-         "w": 160,
-         "h": 55,
-         "rot": false,
-         "L": 160,
-         "A": 55,
-         "H": 20,
-         "peso_kg": 0.17,
-         "frec": "diario",
-         "fuente_dim": "nominal"
-        },
-        {
-         "activo": "FTS-BAS-01-C1-07",
-         "id": "WIHA-PC",
-         "ref": "A8",
-         "corto": "Pinza de corte diagonal aislada 160 (32933)",
-         "familia": "electrico",
-         "x": 178,
-         "y": 260,
-         "w": 160,
-         "h": 55,
-         "rot": false,
-         "L": 160,
-         "A": 55,
-         "H": 20,
-         "peso_kg": 0.18,
-         "frec": "diario",
-         "fuente_dim": "nominal"
-        }
-       ],
-       "pie": [
-        "Modulo BASE · caja 48-22-8444 · cajon C1 · alto interior 61 mm, util 51 mm",
-        "Ocupacion en planta 63.1 % · peso 1.41 kg de 11 kg",
-        "Medidas no validadas: confirmar con vernier antes de imprimir"
-       ]
-      },
-      {
-       "n": 2,
-       "alto": 61,
-       "alto_util": 51,
-       "ancho": 416,
-       "fondo": 322,
-       "ocupacion": 26.8,
-       "peso_kg": 1.06,
-       "cap_kg": 11,
-       "piezas": [
-        {
-         "activo": "FTS-BAS-01-C2-01",
+         "activo": "FTS-BAS-01-C3-06",
          "id": "PELEC",
          "ref": "I1",
          "corto": "Pinza de electricista 9 in Husky 709195",
          "familia": "mecanica_general",
          "x": 6,
-         "y": 6,
-         "w": 50,
-         "h": 250,
-         "rot": true,
+         "y": 255,
+         "w": 250,
+         "h": 50,
+         "rot": false,
          "L": 250,
          "A": 50,
          "H": 15,
          "peso_kg": 0.515,
          "frec": "diario",
-         "fuente_dim": "buscador"
-        },
-        {
-         "activo": "FTS-BAS-01-C2-02",
-         "id": "AJ8",
-         "ref": "J4",
-         "corto": "Llave ajustable 8 in Husky 17016",
-         "familia": "mecanica_general",
-         "x": 68,
-         "y": 6,
-         "w": 60,
-         "h": 203,
-         "rot": true,
-         "L": 203,
-         "A": 60,
-         "H": 15,
-         "peso_kg": 0.3,
-         "frec": "diario",
-         "fuente_dim": "nominal"
-        },
-        {
-         "activo": "FTS-BAS-01-C2-03",
-         "id": "CHOF8",
-         "ref": "J7",
-         "corto": "Pinza de chofer 8 in Truper 17301",
-         "familia": "mecanica_general",
-         "x": 68,
-         "y": 221,
-         "w": 203,
-         "h": 55,
-         "rot": false,
-         "L": 203,
-         "A": 55,
-         "H": 15,
-         "peso_kg": 0.25,
-         "frec": "frecuente",
-         "fuente_dim": "nominal"
+         "fuente_dim": "D1"
         }
        ],
        "pie": [
-        "Modulo BASE · caja 48-22-8444 · cajon C2 · alto interior 61 mm, util 51 mm",
-        "Ocupacion en planta 26.8 % · peso 1.06 kg de 11 kg",
-        "Medidas no validadas: confirmar con vernier antes de imprimir"
-       ]
-      },
-      {
-       "n": 3,
-       "alto": 61,
-       "alto_util": 51,
-       "ancho": 416,
-       "fondo": 322,
-       "ocupacion": 0.0,
-       "peso_kg": 0.0,
-       "cap_kg": 11,
-       "piezas": [],
-       "pie": [
-        "Modulo BASE · caja 48-22-8444 · cajon C3 · alto interior 61 mm, util 51 mm",
-        "Ocupacion en planta 0.0 % · peso 0.0 kg de 11 kg",
-        "Medidas no validadas: confirmar con vernier antes de imprimir"
-       ]
-      },
-      {
-       "n": 4,
-       "alto": 61,
-       "alto_util": 51,
-       "ancho": 416,
-       "fondo": 322,
-       "ocupacion": 0.0,
-       "peso_kg": 0.0,
-       "cap_kg": 11,
-       "piezas": [],
-       "pie": [
-        "Modulo BASE · caja 48-22-8444 · cajon C4 · alto interior 61 mm, util 51 mm",
-        "Ocupacion en planta 0.0 % · peso 0.0 kg de 11 kg",
+        "Modulo BASE · caja 48-22-8443 · cajon C3 · alto interior 76 mm, util 66 mm",
+        "Ocupacion en planta 57.3 % · peso 1.92 kg de 11 kg",
         "Medidas no validadas: confirmar con vernier antes de imprimir"
        ]
       }
@@ -278,17 +389,17 @@
      "modelo": "48-22-8444",
      "cajones": [
       {
-       "n": 5,
-       "alto": 61,
-       "alto_util": 51,
-       "ancho": 416,
-       "fondo": 322,
-       "ocupacion": 78.1,
-       "peso_kg": 2.57,
+       "n": 4,
+       "alto": 58,
+       "alto_util": 48,
+       "ancho": 414,
+       "fondo": 318,
+       "ocupacion": 79.4,
+       "peso_kg": 2.67,
        "cap_kg": 11,
        "piezas": [
         {
-         "activo": "FTS-BAS-01-C5-01",
+         "activo": "FTS-BAS-01-C4-01",
          "id": "MATR",
          "ref": "X-MATR",
          "corto": "Matraca 3/8 + dados (juego Husky P, 3/8)",
@@ -303,10 +414,10 @@
          "H": 45,
          "peso_kg": 1.6,
          "frec": "frecuente",
-         "fuente_dim": "estimacion"
+         "fuente_dim": "F"
         },
         {
-         "activo": "FTS-BAS-01-C5-02",
+         "activo": "FTS-BAS-01-C4-02",
          "id": "COMB7",
          "ref": "K1",
          "corto": "Juego 7 llaves combinadas matraca Husky (en su riel)",
@@ -319,12 +430,12 @@
          "L": 245,
          "A": 175,
          "H": 45,
-         "peso_kg": 0.9,
+         "peso_kg": 1.0,
          "frec": "frecuente",
-         "fuente_dim": "buscador"
+         "fuente_dim": "D1"
         },
         {
-         "activo": "FTS-BAS-01-C5-03",
+         "activo": "FTS-BAS-01-C4-03",
          "id": "WIHA-DS1",
          "ref": "A2",
          "corto": "Desarmador aislado PH1 x 80 (32101)",
@@ -339,27 +450,27 @@
          "H": 30,
          "peso_kg": 0.07,
          "frec": "diario",
-         "fuente_dim": "estimacion"
+         "fuente_dim": "F"
         }
        ],
        "pie": [
-        "Modulo BASE · caja 48-22-8444 · cajon C5 · alto interior 61 mm, util 51 mm",
-        "Ocupacion en planta 78.1 % · peso 2.57 kg de 11 kg",
+        "Modulo BASE · caja 48-22-8444 · cajon C4 · alto interior 58 mm, util 48 mm",
+        "Ocupacion en planta 79.4 % · peso 2.67 kg de 11 kg",
         "Medidas no validadas: confirmar con vernier antes de imprimir"
        ]
       },
       {
-       "n": 6,
-       "alto": 61,
-       "alto_util": 51,
-       "ancho": 416,
-       "fondo": 322,
-       "ocupacion": 72.2,
-       "peso_kg": 2.1,
+       "n": 5,
+       "alto": 58,
+       "alto_util": 48,
+       "ancho": 414,
+       "fondo": 318,
+       "ocupacion": 69.4,
+       "peso_kg": 1.92,
        "cap_kg": 11,
        "piezas": [
         {
-         "activo": "FTS-BAS-01-C6-01",
+         "activo": "FTS-BAS-01-C5-01",
          "id": "TAZON",
          "ref": "TPC13",
          "corto": "Tazon magnetico Husky",
@@ -372,15 +483,15 @@
          "L": 150,
          "A": 150,
          "H": 40,
-         "peso_kg": 0.32,
+         "peso_kg": 0.323,
          "frec": "frecuente",
-         "fuente_dim": "nominal"
+         "fuente_dim": "D1"
         },
         {
-         "activo": "FTS-BAS-01-C6-02",
-         "id": "HDS-B",
-         "ref": "I5.4-I5.6",
-         "corto": "3 desarmadores Husky (P2 x3)",
+         "activo": "FTS-BAS-01-C5-02",
+         "id": "HDS-A",
+         "ref": "I5.1-I5.3",
+         "corto": "3 desarmadores Husky (P1, P1, P2)",
          "familia": "mecanica_general",
          "x": 168,
          "y": 6,
@@ -392,46 +503,46 @@
          "H": 32,
          "peso_kg": 0.3,
          "frec": "diario",
-         "fuente_dim": "estimacion"
+         "fuente_dim": "F"
         },
         {
-         "activo": "FTS-BAS-01-C6-03",
-         "id": "WIHA-DS4",
-         "ref": "A12",
-         "corto": "Desarmador aislado plano 4.5 x 100 (32023)",
+         "activo": "FTS-BAS-01-C5-03",
+         "id": "WIHA-DS2",
+         "ref": "A3",
+         "corto": "Desarmador aislado PH2 x 100 (32102)",
          "familia": "electrico",
          "x": 168,
          "y": 118,
          "w": 215,
-         "h": 30,
+         "h": 32,
          "rot": false,
          "L": 215,
-         "A": 30,
-         "H": 30,
-         "peso_kg": 0.07,
+         "A": 32,
+         "H": 32,
+         "peso_kg": 0.08,
          "frec": "diario",
-         "fuente_dim": "estimacion"
+         "fuente_dim": "F"
         },
         {
-         "activo": "FTS-BAS-01-C6-04",
-         "id": "WIHA-DS3",
-         "ref": "A11",
-         "corto": "Desarmador aislado plano 3.0 x 100 (32012)",
-         "familia": "electrico",
-         "x": 168,
-         "y": 160,
-         "w": 205,
-         "h": 28,
+         "activo": "FTS-BAS-01-C5-04",
+         "id": "PRES6C",
+         "ref": "L5",
+         "corto": "Pinza de presion C 6 in Torque Lock 48-22-3532",
+         "familia": "soldadura_metalmecanica",
+         "x": 250,
+         "y": 162,
+         "w": 152,
+         "h": 70,
          "rot": false,
-         "L": 205,
-         "A": 28,
-         "H": 28,
-         "peso_kg": 0.06,
-         "frec": "diario",
-         "fuente_dim": "estimacion"
+         "L": 152,
+         "A": 70,
+         "H": 22,
+         "peso_kg": 0.3,
+         "frec": "frecuente",
+         "fuente_dim": "F"
         },
         {
-         "activo": "FTS-BAS-01-C6-05",
+         "activo": "FTS-BAS-01-C5-05",
          "id": "FLEX1",
          "ref": "J11",
          "corto": "Flexometro 5 m Stanley 30-615",
@@ -446,28 +557,28 @@
          "H": 40,
          "peso_kg": 0.25,
          "frec": "diario",
-         "fuente_dim": "buscador"
+         "fuente_dim": "D2"
         },
         {
-         "activo": "FTS-BAS-01-C6-06",
-         "id": "PRES11",
-         "ref": "L1",
-         "corto": "Pinza de presion C 11 in Torque Lock 48-22-3531",
-         "familia": "soldadura_metalmecanica",
+         "activo": "FTS-BAS-01-C5-06",
+         "id": "ESCAL",
+         "ref": "G3",
+         "corto": "Juego 3 brocas escalonadas Truper",
+         "familia": "perforacion_corte",
          "x": 88,
-         "y": 200,
-         "w": 279,
-         "h": 110,
+         "y": 168,
+         "w": 150,
+         "h": 90,
          "rot": false,
-         "L": 279,
-         "A": 110,
-         "H": 25,
-         "peso_kg": 0.85,
+         "L": 150,
+         "A": 90,
+         "H": 35,
+         "peso_kg": 0.35,
          "frec": "frecuente",
-         "fuente_dim": "buscador"
+         "fuente_dim": "F"
         },
         {
-         "activo": "FTS-BAS-01-C6-07",
+         "activo": "FTS-BAS-01-C5-07",
          "id": "FLEX2",
          "ref": "J12",
          "corto": "Flexometro 5 m Stanley 30-615",
@@ -482,23 +593,148 @@
          "H": 40,
          "peso_kg": 0.25,
          "frec": "diario",
-         "fuente_dim": "buscador"
+         "fuente_dim": "D2"
+        },
+        {
+         "activo": "FTS-BAS-01-C5-08",
+         "id": "WIHA-DS4",
+         "ref": "A12",
+         "corto": "Desarmador aislado plano 4.5 x 100 (32023)",
+         "familia": "electrico",
+         "x": 88,
+         "y": 270,
+         "w": 215,
+         "h": 30,
+         "rot": false,
+         "L": 215,
+         "A": 30,
+         "H": 30,
+         "peso_kg": 0.07,
+         "frec": "diario",
+         "fuente_dim": "F"
         }
        ],
        "pie": [
-        "Modulo BASE · caja 48-22-8444 · cajon C6 · alto interior 61 mm, util 51 mm",
-        "Ocupacion en planta 72.2 % · peso 2.1 kg de 11 kg",
+        "Modulo BASE · caja 48-22-8444 · cajon C5 · alto interior 58 mm, util 48 mm",
+        "Ocupacion en planta 69.4 % · peso 1.92 kg de 11 kg",
+        "Medidas no validadas: confirmar con vernier antes de imprimir"
+       ]
+      },
+      {
+       "n": 6,
+       "alto": 58,
+       "alto_util": 48,
+       "ancho": 414,
+       "fondo": 318,
+       "ocupacion": 71.7,
+       "peso_kg": 2.05,
+       "cap_kg": 11,
+       "piezas": [
+        {
+         "activo": "FTS-BAS-01-C6-01",
+         "id": "HDS-B",
+         "ref": "I5.4-I5.6",
+         "corto": "3 desarmadores Husky (P2 x3)",
+         "familia": "mecanica_general",
+         "x": 6,
+         "y": 6,
+         "w": 100,
+         "h": 230,
+         "rot": true,
+         "L": 230,
+         "A": 100,
+         "H": 32,
+         "peso_kg": 0.3,
+         "frec": "diario",
+         "fuente_dim": "F"
+        },
+        {
+         "activo": "FTS-BAS-01-C6-02",
+         "id": "PRES11",
+         "ref": "L1",
+         "corto": "Pinza de presion C 11 in Torque Lock 48-22-3531",
+         "familia": "soldadura_metalmecanica",
+         "x": 118,
+         "y": 6,
+         "w": 279,
+         "h": 110,
+         "rot": false,
+         "L": 279,
+         "A": 110,
+         "H": 25,
+         "peso_kg": 0.85,
+         "frec": "frecuente",
+         "fuente_dim": "F"
+        },
+        {
+         "activo": "FTS-BAS-01-C6-03",
+         "id": "EXTS",
+         "ref": "P36,P38,N1",
+         "corto": "Extensiones 3/8 (6 in, 10 in, oscilantes) y palanca",
+         "familia": "mecanica_general",
+         "x": 118,
+         "y": 128,
+         "w": 260,
+         "h": 80,
+         "rot": false,
+         "L": 260,
+         "A": 80,
+         "H": 25,
+         "peso_kg": 0.6,
+         "frec": "frecuente",
+         "fuente_dim": "F"
+        },
+        {
+         "activo": "FTS-BAS-01-C6-04",
+         "id": "PREC6",
+         "ref": "A1",
+         "corto": "Juego 6 desarmadores de precision 48-22-2606 (estuche)",
+         "familia": "electrico",
+         "x": 118,
+         "y": 220,
+         "w": 190,
+         "h": 90,
+         "rot": false,
+         "L": 190,
+         "A": 90,
+         "H": 25,
+         "peso_kg": 0.2,
+         "frec": "frecuente",
+         "fuente_dim": "F"
+        },
+        {
+         "activo": "FTS-BAS-01-C6-05",
+         "id": "ADAP",
+         "ref": "N2",
+         "corto": "Juego 3 adaptadores 1/4-3/8-1/2",
+         "familia": "mecanica_general",
+         "x": 320,
+         "y": 220,
+         "w": 70,
+         "h": 40,
+         "rot": false,
+         "L": 70,
+         "A": 40,
+         "H": 25,
+         "peso_kg": 0.1,
+         "frec": "frecuente",
+         "fuente_dim": "F"
+        }
+       ],
+       "pie": [
+        "Modulo BASE · caja 48-22-8444 · cajon C6 · alto interior 58 mm, util 48 mm",
+        "Ocupacion en planta 71.7 % · peso 2.05 kg de 11 kg",
         "Medidas no validadas: confirmar con vernier antes de imprimir"
        ]
       },
       {
        "n": 7,
-       "alto": 61,
-       "alto_util": 51,
-       "ancho": 416,
-       "fondo": 322,
-       "ocupacion": 73.9,
-       "peso_kg": 1.74,
+       "alto": 58,
+       "alto_util": 48,
+       "ancho": 414,
+       "fondo": 318,
+       "ocupacion": 65.9,
+       "peso_kg": 1.87,
        "cap_kg": 11,
        "piezas": [
         {
@@ -510,234 +746,91 @@
          "x": 6,
          "y": 6,
          "w": 340,
-         "h": 125,
+         "h": 130,
          "rot": false,
          "L": 340,
-         "A": 125,
-         "H": 35,
+         "A": 130,
+         "H": 30,
          "peso_kg": 0.707,
          "frec": "frecuente",
-         "fuente_dim": "buscador"
+         "fuente_dim": "D1"
         },
         {
          "activo": "FTS-BAS-01-C7-02",
-         "id": "WIHA-DS2",
-         "ref": "A3",
-         "corto": "Desarmador aislado PH2 x 100 (32102)",
+         "id": "WIHA-DS3",
+         "ref": "A11",
+         "corto": "Desarmador aislado plano 3.0 x 100 (32012)",
          "familia": "electrico",
          "x": 358,
          "y": 6,
-         "w": 32,
-         "h": 215,
+         "w": 28,
+         "h": 205,
          "rot": true,
-         "L": 215,
-         "A": 32,
-         "H": 32,
-         "peso_kg": 0.08,
+         "L": 205,
+         "A": 28,
+         "H": 28,
+         "peso_kg": 0.06,
          "frec": "diario",
-         "fuente_dim": "estimacion"
+         "fuente_dim": "F"
         },
         {
          "activo": "FTS-BAS-01-C7-03",
-         "id": "ESCAL",
-         "ref": "G3",
-         "corto": "Juego 3 brocas escalonadas Truper",
-         "familia": "perforacion_corte",
-         "x": 6,
-         "y": 143,
-         "w": 90,
-         "h": 150,
-         "rot": true,
-         "L": 150,
-         "A": 90,
-         "H": 35,
-         "peso_kg": 0.35,
-         "frec": "frecuente",
-         "fuente_dim": "estimacion"
-        },
-        {
-         "activo": "FTS-BAS-01-C7-04",
-         "id": "HDS-A",
-         "ref": "I5.1-I5.3",
-         "corto": "3 desarmadores Husky (P1, P1, P2)",
-         "familia": "mecanica_general",
-         "x": 108,
-         "y": 143,
-         "w": 230,
-         "h": 100,
-         "rot": false,
-         "L": 230,
-         "A": 100,
-         "H": 32,
-         "peso_kg": 0.3,
-         "frec": "diario",
-         "fuente_dim": "estimacion"
-        },
-        {
-         "activo": "FTS-BAS-01-C7-05",
-         "id": "ADAP",
-         "ref": "N2",
-         "corto": "Juego 3 adaptadores 1/4-3/8-1/2",
-         "familia": "mecanica_general",
-         "x": 350,
-         "y": 233,
-         "w": 40,
-         "h": 70,
-         "rot": true,
-         "L": 70,
-         "A": 40,
-         "H": 25,
-         "peso_kg": 0.1,
-         "frec": "frecuente",
-         "fuente_dim": "estimacion"
-        },
-        {
-         "activo": "FTS-BAS-01-C7-06",
-         "id": "TORPEDO",
-         "ref": "E5",
-         "corto": "Nivel torpedo magnetico 9 in Husky",
-         "familia": "medicion_trazo",
-         "x": 108,
-         "y": 255,
-         "w": 230,
-         "h": 45,
-         "rot": false,
-         "L": 230,
-         "A": 45,
-         "H": 30,
-         "peso_kg": 0.2,
-         "frec": "diario",
-         "fuente_dim": "buscador"
-        }
-       ],
-       "pie": [
-        "Modulo BASE · caja 48-22-8444 · cajon C7 · alto interior 61 mm, util 51 mm",
-        "Ocupacion en planta 73.9 % · peso 1.74 kg de 11 kg",
-        "Medidas no validadas: confirmar con vernier antes de imprimir"
-       ]
-      },
-      {
-       "n": 8,
-       "alto": 61,
-       "alto_util": 51,
-       "ancho": 416,
-       "fondo": 322,
-       "ocupacion": 66.4,
-       "peso_kg": 2.23,
-       "cap_kg": 11,
-       "piezas": [
-        {
-         "activo": "FTS-BAS-01-C8-01",
-         "id": "EXTS",
-         "ref": "P36,P38,N1",
-         "corto": "Extensiones 3/8 (6 in, 10 in, oscilantes) y palanca",
-         "familia": "mecanica_general",
-         "x": 6,
-         "y": 6,
-         "w": 80,
-         "h": 260,
-         "rot": true,
-         "L": 260,
-         "A": 80,
-         "H": 25,
-         "peso_kg": 0.6,
-         "frec": "frecuente",
-         "fuente_dim": "estimacion"
-        },
-        {
-         "activo": "FTS-BAS-01-C8-02",
-         "id": "PRES10",
-         "ref": "L7",
-         "corto": "Pinza de presion 10 in mordaza curva Husky 709204",
-         "familia": "soldadura_metalmecanica",
-         "x": 98,
-         "y": 6,
-         "w": 70,
-         "h": 254,
-         "rot": true,
-         "L": 254,
-         "A": 70,
-         "H": 25,
-         "peso_kg": 0.5,
-         "frec": "frecuente",
-         "fuente_dim": "buscador"
-        },
-        {
-         "activo": "FTS-BAS-01-C8-03",
-         "id": "PREC6",
-         "ref": "A1",
-         "corto": "Juego 6 desarmadores de precision 48-22-2606 (estuche)",
-         "familia": "electrico",
-         "x": 180,
-         "y": 6,
-         "w": 190,
-         "h": 90,
-         "rot": false,
-         "L": 190,
-         "A": 90,
-         "H": 25,
-         "peso_kg": 0.2,
-         "frec": "frecuente",
-         "fuente_dim": "estimacion"
-        },
-        {
-         "activo": "FTS-BAS-01-C8-04",
          "id": "PRES7",
          "ref": "L3",
          "corto": "Pinza de presion 7 in mordaza recta Husky",
          "familia": "soldadura_metalmecanica",
-         "x": 180,
-         "y": 108,
-         "w": 60,
-         "h": 178,
-         "rot": true,
-         "L": 178,
-         "A": 60,
-         "H": 25,
-         "peso_kg": 0.35,
+         "x": 6,
+         "y": 148,
+         "w": 182,
+         "h": 62,
+         "rot": false,
+         "L": 182,
+         "A": 62,
+         "H": 23,
+         "peso_kg": 0.364,
          "frec": "frecuente",
-         "fuente_dim": "nominal"
+         "fuente_dim": "D1"
         },
         {
-         "activo": "FTS-BAS-01-C8-05",
-         "id": "WIHA-PE",
-         "ref": "A9",
-         "corto": "Pinza combinada aislada 200 (32930)",
+         "activo": "FTS-BAS-01-C7-04",
+         "id": "WIHA-PP",
+         "ref": "A10",
+         "corto": "Pinza de punta aislada 160 (32926)",
          "familia": "electrico",
-         "x": 252,
-         "y": 108,
-         "w": 60,
-         "h": 200,
+         "x": 272,
+         "y": 148,
+         "w": 55,
+         "h": 160,
          "rot": true,
-         "L": 200,
-         "A": 60,
-         "H": 22,
-         "peso_kg": 0.28,
+         "L": 160,
+         "A": 55,
+         "H": 20,
+         "peso_kg": 0.17,
          "frec": "diario",
-         "fuente_dim": "nominal"
+         "fuente_dim": "F"
         },
         {
-         "activo": "FTS-BAS-01-C8-06",
-         "id": "PRES6C",
-         "ref": "L5",
-         "corto": "Pinza de presion C 6 in Torque Lock 48-22-3532",
+         "activo": "FTS-BAS-01-C7-05",
+         "id": "PRES10",
+         "ref": "L7",
+         "corto": "Pinza de presion 10 in mordaza curva Husky 709204",
          "familia": "soldadura_metalmecanica",
-         "x": 324,
-         "y": 108,
-         "w": 70,
-         "h": 152,
-         "rot": true,
-         "L": 152,
-         "A": 70,
-         "H": 22,
-         "peso_kg": 0.3,
+         "x": 6,
+         "y": 223,
+         "w": 254,
+         "h": 66,
+         "rot": false,
+         "L": 254,
+         "A": 66,
+         "H": 26,
+         "peso_kg": 0.569,
          "frec": "frecuente",
-         "fuente_dim": "buscador"
+         "fuente_dim": "D1"
         }
        ],
        "pie": [
-        "Modulo BASE · caja 48-22-8444 · cajon C8 · alto interior 61 mm, util 51 mm",
-        "Ocupacion en planta 66.4 % · peso 2.23 kg de 11 kg",
+        "Modulo BASE · caja 48-22-8444 · cajon C7 · alto interior 58 mm, util 48 mm",
+        "Ocupacion en planta 65.9 % · peso 1.87 kg de 11 kg",
         "Medidas no validadas: confirmar con vernier antes de imprimir"
        ]
       }
@@ -747,180 +840,72 @@
      "modelo": "48-22-8420",
      "cajones": [
       {
-       "n": 9,
+       "n": 8,
        "alto": 190,
        "alto_util": 180,
        "ancho": 432,
        "fondo": 330,
-       "ocupacion": 68.7,
-       "peso_kg": 4.03,
+       "ocupacion": 38.1,
+       "peso_kg": 1.59,
        "cap_kg": 15,
        "piezas": [
         {
-         "activo": "FTS-BAS-01-C9-01",
+         "activo": "FTS-BAS-01-C8-01",
          "id": "ESM45",
          "ref": "M1",
          "corto": "Mini esmeriladora 4-1/2 alambrica 6130-33 + cable",
          "familia": "perforacion_corte",
          "x": 6,
          "y": 6,
-         "w": 130,
-         "h": 300,
-         "rot": true,
-         "L": 300,
-         "A": 130,
-         "H": 105,
-         "peso_kg": 1.9,
-         "frec": "diario",
-         "fuente_dim": "buscador"
-        },
-        {
-         "activo": "FTS-BAS-01-C9-02",
-         "id": "ROTO18",
-         "ref": "B3",
-         "corto": "Rotomartillo M18 1/2 3602-20 (sin bateria)",
-         "familia": "inalambricas_energia",
-         "x": 148,
-         "y": 6,
-         "w": 202,
-         "h": 170,
+         "w": 357,
+         "h": 152,
          "rot": false,
-         "L": 202,
-         "A": 170,
-         "H": 75,
-         "peso_kg": 1.043,
+         "L": 357,
+         "A": 152,
+         "H": 90,
+         "peso_kg": 1.588,
          "frec": "diario",
-         "fuente_dim": "buscador"
-        },
-        {
-         "activo": "FTS-BAS-01-C9-03",
-         "id": "IMP38",
-         "ref": "B2",
-         "corto": "Llave de impacto M18 FUEL 3/8 2854-20 (sin bateria)",
-         "familia": "inalambricas_energia",
-         "x": 148,
-         "y": 188,
-         "w": 202,
-         "h": 122,
-         "rot": false,
-         "L": 202,
-         "A": 122,
-         "H": 70,
-         "peso_kg": 1.089,
-         "frec": "frecuente",
-         "fuente_dim": "buscador"
+         "fuente_dim": "D2"
         }
        ],
        "pie": [
-        "Modulo BASE · caja 48-22-8420 · cajon C9 · alto interior 190 mm, util 180 mm",
-        "Ocupacion en planta 68.7 % · peso 4.03 kg de 15 kg",
+        "Modulo BASE · caja 48-22-8420 · cajon C8 · alto interior 190 mm, util 180 mm",
+        "Ocupacion en planta 38.1 % · peso 1.59 kg de 15 kg",
         "Medidas no validadas: confirmar con vernier antes de imprimir"
        ]
       },
       {
-       "n": 10,
+       "n": 9,
        "alto": 200,
        "alto_util": 190,
        "ancho": 432,
        "fondo": 330,
-       "ocupacion": 55.2,
-       "peso_kg": 2.63,
+       "ocupacion": 22.0,
+       "peso_kg": 0.91,
        "cap_kg": 25,
        "piezas": [
         {
-         "activo": "FTS-BAS-01-C10-01",
+         "activo": "FTS-BAS-01-C9-01",
          "id": "CARG1",
          "ref": "nuevo",
          "corto": "Cargador sencillo M18/M12 48-59-1812 (compra)",
          "familia": "inalambricas_energia",
          "x": 6,
          "y": 6,
-         "w": 100,
-         "h": 150,
+         "w": 155,
+         "h": 202,
          "rot": true,
-         "L": 150,
-         "A": 100,
-         "H": 70,
-         "peso_kg": 0.4,
+         "L": 202,
+         "A": 155,
+         "H": 87,
+         "peso_kg": 0.912,
          "frec": "diario",
-         "fuente_dim": "estimacion"
-        },
-        {
-         "activo": "FTS-BAS-01-C10-02",
-         "id": "BAT1",
-         "ref": "B4",
-         "corto": "Bateria M18 CP2.0",
-         "familia": "inalambricas_energia",
-         "x": 118,
-         "y": 6,
-         "w": 80,
-         "h": 115,
-         "rot": true,
-         "L": 115,
-         "A": 80,
-         "H": 60,
-         "peso_kg": 0.43,
-         "frec": "diario",
-         "fuente_dim": "estimacion"
-        },
-        {
-         "activo": "FTS-BAS-01-C10-03",
-         "id": "BAT2",
-         "ref": "B5",
-         "corto": "Bateria M18 CP2.0",
-         "familia": "inalambricas_energia",
-         "x": 210,
-         "y": 6,
-         "w": 80,
-         "h": 115,
-         "rot": true,
-         "L": 115,
-         "A": 80,
-         "H": 60,
-         "peso_kg": 0.43,
-         "frec": "diario",
-         "fuente_dim": "estimacion"
-        },
-        {
-         "activo": "FTS-BAS-01-C10-04",
-         "id": "AJ12",
-         "ref": "J1",
-         "corto": "Llave ajustable 12 in Husky 17018",
-         "familia": "mecanica_general",
-         "x": 302,
-         "y": 6,
-         "w": 78,
-         "h": 300,
-         "rot": true,
-         "L": 300,
-         "A": 78,
-         "H": 20,
-         "peso_kg": 0.6,
-         "frec": "diario",
-         "fuente_dim": "buscador"
-        },
-        {
-         "activo": "FTS-BAS-01-C10-05",
-         "id": "IMP14",
-         "ref": "B1",
-         "corto": "Atornillador de impacto M18 3650-20 (sin bateria)",
-         "familia": "inalambricas_energia",
-         "x": 6,
-         "y": 168,
-         "w": 196,
-         "h": 112,
-         "rot": false,
-         "L": 196,
-         "A": 112,
-         "H": 60,
-         "peso_kg": 0.771,
-         "frec": "diario",
-         "fuente_dim": "buscador"
+         "fuente_dim": "D2"
         }
        ],
        "pie": [
-        "Modulo BASE · caja 48-22-8420 · cajon C10 · alto interior 200 mm, util 190 mm",
-        "Ocupacion en planta 55.2 % · peso 2.63 kg de 25 kg",
+        "Modulo BASE · caja 48-22-8420 · cajon C9 · alto interior 200 mm, util 190 mm",
+        "Ocupacion en planta 22.0 % · peso 0.91 kg de 25 kg",
         "Medidas no validadas: confirmar con vernier antes de imprimir"
        ]
       }
@@ -934,7 +919,7 @@
     "alto_mm": 363,
     "cajones_usados": 2,
     "cajones_totales": 4,
-    "ocupacion_media": 54.4,
+    "ocupacion_media": 55.3,
     "peso_kg": 3.0,
     "centro_gravedad_mm": 281,
     "penalizacion": 1.4,
@@ -948,11 +933,11 @@
      "cajones": [
       {
        "n": 1,
-       "alto": 61,
-       "alto_util": 51,
-       "ancho": 416,
-       "fondo": 322,
-       "ocupacion": 71.0,
+       "alto": 58,
+       "alto_util": 48,
+       "ancho": 414,
+       "fondo": 318,
+       "ocupacion": 72.2,
        "peso_kg": 1.79,
        "cap_kg": 11,
        "piezas": [
@@ -972,7 +957,7 @@
          "H": 40,
          "peso_kg": 0.3,
          "frec": "frecuente",
-         "fuente_dim": "estimacion"
+         "fuente_dim": "F"
         },
         {
          "activo": "FTS-ELE-01-C1-02",
@@ -990,7 +975,7 @@
          "H": 25,
          "peso_kg": 0.06,
          "frec": "frecuente",
-         "fuente_dim": "estimacion"
+         "fuente_dim": "F"
         },
         {
          "activo": "FTS-ELE-01-C1-03",
@@ -1008,7 +993,7 @@
          "H": 34,
          "peso_kg": 0.265,
          "frec": "frecuente",
-         "fuente_dim": "buscador"
+         "fuente_dim": "D2"
         },
         {
          "activo": "FTS-ELE-01-C1-04",
@@ -1026,7 +1011,7 @@
          "H": 32,
          "peso_kg": 0.33,
          "frec": "diario",
-         "fuente_dim": "estimacion"
+         "fuente_dim": "F"
         },
         {
          "activo": "FTS-ELE-01-C1-05",
@@ -1044,7 +1029,7 @@
          "H": 32,
          "peso_kg": 0.33,
          "frec": "diario",
-         "fuente_dim": "estimacion"
+         "fuente_dim": "F"
         },
         {
          "activo": "FTS-ELE-01-C1-06",
@@ -1062,22 +1047,22 @@
          "H": 40,
          "peso_kg": 0.5,
          "frec": "ocasional",
-         "fuente_dim": "estimacion"
+         "fuente_dim": "F"
         }
        ],
        "pie": [
-        "Modulo ELE · caja 48-22-8444 · cajon C1 · alto interior 61 mm, util 51 mm",
-        "Ocupacion en planta 71.0 % · peso 1.79 kg de 11 kg",
+        "Modulo ELE · caja 48-22-8444 · cajon C1 · alto interior 58 mm, util 48 mm",
+        "Ocupacion en planta 72.2 % · peso 1.79 kg de 11 kg",
         "Medidas no validadas: confirmar con vernier antes de imprimir"
        ]
       },
       {
        "n": 2,
-       "alto": 61,
-       "alto_util": 51,
-       "ancho": 416,
-       "fondo": 322,
-       "ocupacion": 37.7,
+       "alto": 58,
+       "alto_util": 48,
+       "ancho": 414,
+       "fondo": 318,
+       "ocupacion": 38.4,
        "peso_kg": 1.23,
        "cap_kg": 11,
        "piezas": [
@@ -1097,7 +1082,7 @@
          "H": 30,
          "peso_kg": 0.6,
          "frec": "frecuente",
-         "fuente_dim": "estimacion"
+         "fuente_dim": "F"
         },
         {
          "activo": "FTS-ELE-01-C2-02",
@@ -1115,7 +1100,7 @@
          "H": 25,
          "peso_kg": 0.3,
          "frec": "ocasional",
-         "fuente_dim": "estimacion"
+         "fuente_dim": "F"
         },
         {
          "activo": "FTS-ELE-01-C2-03",
@@ -1133,7 +1118,7 @@
          "H": 15,
          "peso_kg": 0.2,
          "frec": "frecuente",
-         "fuente_dim": "estimacion"
+         "fuente_dim": "F"
         },
         {
          "activo": "FTS-ELE-01-C2-04",
@@ -1151,43 +1136,43 @@
          "H": 30,
          "peso_kg": 0.13,
          "frec": "ocasional",
-         "fuente_dim": "buscador"
+         "fuente_dim": "D2"
         }
        ],
        "pie": [
-        "Modulo ELE · caja 48-22-8444 · cajon C2 · alto interior 61 mm, util 51 mm",
-        "Ocupacion en planta 37.7 % · peso 1.23 kg de 11 kg",
+        "Modulo ELE · caja 48-22-8444 · cajon C2 · alto interior 58 mm, util 48 mm",
+        "Ocupacion en planta 38.4 % · peso 1.23 kg de 11 kg",
         "Medidas no validadas: confirmar con vernier antes de imprimir"
        ]
       },
       {
        "n": 3,
-       "alto": 61,
-       "alto_util": 51,
-       "ancho": 416,
-       "fondo": 322,
+       "alto": 58,
+       "alto_util": 48,
+       "ancho": 414,
+       "fondo": 318,
        "ocupacion": 0.0,
        "peso_kg": 0.0,
        "cap_kg": 11,
        "piezas": [],
        "pie": [
-        "Modulo ELE · caja 48-22-8444 · cajon C3 · alto interior 61 mm, util 51 mm",
+        "Modulo ELE · caja 48-22-8444 · cajon C3 · alto interior 58 mm, util 48 mm",
         "Ocupacion en planta 0.0 % · peso 0.0 kg de 11 kg",
         "Medidas no validadas: confirmar con vernier antes de imprimir"
        ]
       },
       {
        "n": 4,
-       "alto": 61,
-       "alto_util": 51,
-       "ancho": 416,
-       "fondo": 322,
+       "alto": 58,
+       "alto_util": 48,
+       "ancho": 414,
+       "fondo": 318,
        "ocupacion": 0.0,
        "peso_kg": 0.0,
        "cap_kg": 11,
        "piezas": [],
        "pie": [
-        "Modulo ELE · caja 48-22-8444 · cajon C4 · alto interior 61 mm, util 51 mm",
+        "Modulo ELE · caja 48-22-8444 · cajon C4 · alto interior 58 mm, util 48 mm",
         "Ocupacion en planta 0.0 % · peso 0.0 kg de 11 kg",
         "Medidas no validadas: confirmar con vernier antes de imprimir"
        ]
@@ -1200,127 +1185,38 @@
    "metricas": {
     "cajas": 2,
     "alto_mm": 726,
-    "cajones_usados": 5,
+    "cajones_usados": 6,
     "cajones_totales": 6,
-    "ocupacion_media": 71.7,
-    "peso_kg": 16.9,
-    "centro_gravedad_mm": 399,
-    "penalizacion": 10.6,
+    "ocupacion_media": 56.7,
+    "peso_kg": 16.2,
+    "centro_gravedad_mm": 447,
+    "penalizacion": 7.1,
     "modelos": [
-     "48-22-8444",
-     "48-22-8442"
+     "48-22-8447",
+     "48-22-8447"
     ]
    },
    "cajas": [
     {
-     "modelo": "48-22-8442",
+     "modelo": "48-22-8447",
      "cajones": [
       {
        "n": 1,
-       "alto": 127,
-       "alto_util": 117,
+       "alto": 63,
+       "alto_util": 53,
        "ancho": 414,
        "fondo": 318,
-       "ocupacion": 75.2,
-       "peso_kg": 3.1,
-       "cap_kg": 11.3,
+       "ocupacion": 73.3,
+       "peso_kg": 5.17,
+       "cap_kg": 11,
        "piezas": [
         {
          "activo": "FTS-SOL-01-C1-01",
-         "id": "ESM45B",
-         "ref": "M2",
-         "corto": "Mini esmeriladora 4-1/2 6130-33 (2a)",
-         "familia": "perforacion_corte",
-         "x": 6,
-         "y": 6,
-         "w": 130,
-         "h": 300,
-         "rot": true,
-         "L": 300,
-         "A": 130,
-         "H": 105,
-         "peso_kg": 1.9,
-         "frec": "diario",
-         "fuente_dim": "buscador"
-        },
-        {
-         "activo": "FTS-SOL-01-C1-02",
-         "id": "MOTO",
-         "ref": "X-MOTO",
-         "corto": "Moto tool Truper (estuche)",
-         "familia": "soldadura_metalmecanica",
-         "x": 148,
-         "y": 6,
-         "w": 200,
-         "h": 300,
-         "rot": true,
-         "L": 300,
-         "A": 200,
-         "H": 80,
-         "peso_kg": 1.2,
-         "frec": "ocasional",
-         "fuente_dim": "estimacion"
-        }
-       ],
-       "pie": [
-        "Modulo SOL · caja 48-22-8442 · cajon C1 · alto interior 127 mm, util 117 mm",
-        "Ocupacion en planta 75.2 % · peso 3.1 kg de 11.3 kg",
-        "Medidas no validadas: confirmar con vernier antes de imprimir"
-       ]
-      },
-      {
-       "n": 2,
-       "alto": 127,
-       "alto_util": 117,
-       "ancho": 414,
-       "fondo": 318,
-       "ocupacion": 64.4,
-       "peso_kg": 6.6,
-       "cap_kg": 11.3,
-       "piezas": [
-        {
-         "activo": "FTS-SOL-01-C2-01",
-         "id": "RECT",
-         "ref": "X-DWRECT",
-         "corto": "Rectificador DeWalt DWE4887",
-         "familia": "soldadura_metalmecanica",
-         "x": 6,
-         "y": 6,
-         "w": 70,
-         "h": 290,
-         "rot": true,
-         "L": 290,
-         "A": 70,
-         "H": 70,
-         "peso_kg": 1.3,
-         "frec": "ocasional",
-         "fuente_dim": "estimacion"
-        },
-        {
-         "activo": "FTS-SOL-01-C2-02",
-         "id": "ESCMAG",
-         "ref": "Q3 + X-Q3b..d",
-         "corto": "4 escuadras magneticas 4 in Truper (apiladas)",
-         "familia": "soldadura_metalmecanica",
-         "x": 88,
-         "y": 6,
-         "w": 110,
-         "h": 150,
-         "rot": true,
-         "L": 150,
-         "A": 110,
-         "H": 60,
-         "peso_kg": 1.6,
-         "frec": "diario",
-         "fuente_dim": "estimacion"
-        },
-        {
-         "activo": "FTS-SOL-01-C2-03",
          "id": "EXTQ",
          "ref": "Q4",
          "corto": "Extractor de quijadas 6 t Urrea 4216",
          "familia": "soldadura_metalmecanica",
-         "x": 210,
+         "x": 6,
          "y": 6,
          "w": 160,
          "h": 300,
@@ -1330,32 +1226,81 @@
          "H": 50,
          "peso_kg": 3.7,
          "frec": "ocasional",
-         "fuente_dim": "buscador"
+         "fuente_dim": "F"
+        },
+        {
+         "activo": "FTS-SOL-01-C1-02",
+         "id": "PRES10B",
+         "ref": "L8",
+         "corto": "Pinza de presion 10 in curva (2a)",
+         "familia": "soldadura_metalmecanica",
+         "x": 178,
+         "y": 6,
+         "w": 66,
+         "h": 254,
+         "rot": true,
+         "L": 254,
+         "A": 66,
+         "H": 26,
+         "peso_kg": 0.569,
+         "frec": "frecuente",
+         "fuente_dim": "D1"
+        },
+        {
+         "activo": "FTS-SOL-01-C1-03",
+         "id": "PRES11B",
+         "ref": "L2",
+         "corto": "Pinza de presion C 11 in (2a)",
+         "familia": "soldadura_metalmecanica",
+         "x": 256,
+         "y": 6,
+         "w": 110,
+         "h": 279,
+         "rot": true,
+         "L": 279,
+         "A": 110,
+         "H": 25,
+         "peso_kg": 0.85,
+         "frec": "frecuente",
+         "fuente_dim": "F"
+        },
+        {
+         "activo": "FTS-SOL-01-C1-04",
+         "id": "FRESA",
+         "ref": "G4",
+         "corto": "Fresa de carburo SF-5",
+         "familia": "soldadura_metalmecanica",
+         "x": 178,
+         "y": 297,
+         "w": 70,
+         "h": 15,
+         "rot": false,
+         "L": 70,
+         "A": 15,
+         "H": 15,
+         "peso_kg": 0.05,
+         "frec": "ocasional",
+         "fuente_dim": "F"
         }
        ],
        "pie": [
-        "Modulo SOL · caja 48-22-8442 · cajon C2 · alto interior 127 mm, util 117 mm",
-        "Ocupacion en planta 64.4 % · peso 6.6 kg de 11.3 kg",
+        "Modulo SOL · caja 48-22-8447 · cajon C1 · alto interior 63 mm, util 53 mm",
+        "Ocupacion en planta 73.3 % · peso 5.17 kg de 11 kg",
         "Medidas no validadas: confirmar con vernier antes de imprimir"
        ]
-      }
-     ]
-    },
-    {
-     "modelo": "48-22-8444",
-     "cajones": [
+      },
       {
-       "n": 3,
-       "alto": 61,
-       "alto_util": 51,
-       "ancho": 416,
-       "fondo": 322,
-       "ocupacion": 81.6,
+       "n": 2,
+       "alto": 63,
+       "alto_util": 53,
+       "ancho": 414,
+       "fondo": 318,
+       "ocupacion": 83.1,
        "peso_kg": 2.93,
        "cap_kg": 11,
        "piezas": [
         {
-         "activo": "FTS-SOL-01-C3-01",
+         "activo": "FTS-SOL-01-C2-01",
          "id": "MACH",
          "ref": "F1",
          "corto": "Juego 40 machuelos y tarrajas Truper 11442 (2 estuches)",
@@ -1370,10 +1315,10 @@
          "H": 45,
          "peso_kg": 2.5,
          "frec": "ocasional",
-         "fuente_dim": "estimacion"
+         "fuente_dim": "F"
         },
         {
-         "activo": "FTS-SOL-01-C3-02",
+         "activo": "FTS-SOL-01-C2-02",
          "id": "TORX",
          "ref": "P1",
          "corto": "Juego llaves Torx/hex tipo navaja Husky",
@@ -1388,10 +1333,10 @@
          "H": 30,
          "peso_kg": 0.3,
          "frec": "ocasional",
-         "fuente_dim": "estimacion"
+         "fuente_dim": "F"
         },
         {
-         "activo": "FTS-SOL-01-C3-03",
+         "activo": "FTS-SOL-01-C2-03",
          "id": "EXTOR",
          "ref": "F6",
          "corto": "Juego 5 extractores de tornillos Truper EXT-5",
@@ -1406,23 +1351,81 @@
          "H": 20,
          "peso_kg": 0.13,
          "frec": "ocasional",
-         "fuente_dim": "estimacion"
+         "fuente_dim": "F"
         }
        ],
        "pie": [
-        "Modulo SOL · caja 48-22-8444 · cajon C3 · alto interior 61 mm, util 51 mm",
-        "Ocupacion en planta 81.6 % · peso 2.93 kg de 11 kg",
+        "Modulo SOL · caja 48-22-8447 · cajon C2 · alto interior 63 mm, util 53 mm",
+        "Ocupacion en planta 83.1 % · peso 2.93 kg de 11 kg",
         "Medidas no validadas: confirmar con vernier antes de imprimir"
        ]
       },
       {
+       "n": 3,
+       "alto": 127,
+       "alto_util": 117,
+       "ancho": 414,
+       "fondo": 318,
+       "ocupacion": 53.8,
+       "peso_kg": 3.19,
+       "cap_kg": 11,
+       "piezas": [
+        {
+         "activo": "FTS-SOL-01-C3-01",
+         "id": "ESM45B",
+         "ref": "M2",
+         "corto": "Mini esmeriladora 4-1/2 6130-33 (2a)",
+         "familia": "perforacion_corte",
+         "x": 6,
+         "y": 6,
+         "w": 357,
+         "h": 152,
+         "rot": false,
+         "L": 357,
+         "A": 152,
+         "H": 90,
+         "peso_kg": 1.588,
+         "frec": "diario",
+         "fuente_dim": "D2"
+        },
+        {
+         "activo": "FTS-SOL-01-C3-02",
+         "id": "ESCMAG",
+         "ref": "Q3 + X-Q3b..d",
+         "corto": "4 escuadras magneticas 4 in Truper (apiladas)",
+         "familia": "soldadura_metalmecanica",
+         "x": 6,
+         "y": 170,
+         "w": 150,
+         "h": 110,
+         "rot": false,
+         "L": 150,
+         "A": 110,
+         "H": 60,
+         "peso_kg": 1.6,
+         "frec": "diario",
+         "fuente_dim": "F"
+        }
+       ],
+       "pie": [
+        "Modulo SOL · caja 48-22-8447 · cajon C3 · alto interior 127 mm, util 117 mm",
+        "Ocupacion en planta 53.8 % · peso 3.19 kg de 11 kg",
+        "Medidas no validadas: confirmar con vernier antes de imprimir"
+       ]
+      }
+     ]
+    },
+    {
+     "modelo": "48-22-8447",
+     "cajones": [
+      {
        "n": 4,
-       "alto": 61,
-       "alto_util": 51,
-       "ancho": 416,
-       "fondo": 322,
-       "ocupacion": 77.3,
-       "peso_kg": 2.8,
+       "alto": 63,
+       "alto_util": 53,
+       "ancho": 414,
+       "fondo": 318,
+       "ocupacion": 57.7,
+       "peso_kg": 2.06,
        "cap_kg": 11,
        "piezas": [
         {
@@ -1441,171 +1444,136 @@
          "H": 25,
          "peso_kg": 1.4,
          "frec": "frecuente",
-         "fuente_dim": "estimacion"
+         "fuente_dim": "F"
         },
         {
          "activo": "FTS-SOL-01-C4-02",
-         "id": "PRES11B",
-         "ref": "L2",
-         "corto": "Pinza de presion C 11 in (2a)",
-         "familia": "soldadura_metalmecanica",
-         "x": 198,
-         "y": 6,
-         "w": 110,
-         "h": 279,
-         "rot": true,
-         "L": 279,
-         "A": 110,
-         "H": 25,
-         "peso_kg": 0.85,
-         "frec": "frecuente",
-         "fuente_dim": "buscador"
-        },
-        {
-         "activo": "FTS-SOL-01-C4-03",
-         "id": "PRES10B",
-         "ref": "L8",
-         "corto": "Pinza de presion 10 in curva (2a)",
-         "familia": "soldadura_metalmecanica",
-         "x": 320,
-         "y": 6,
-         "w": 70,
-         "h": 254,
-         "rot": true,
-         "L": 254,
-         "A": 70,
-         "H": 25,
-         "peso_kg": 0.5,
-         "frec": "frecuente",
-         "fuente_dim": "buscador"
-        },
-        {
-         "activo": "FTS-SOL-01-C4-04",
-         "id": "FRESA",
-         "ref": "G4",
-         "corto": "Fresa de carburo SF-5",
-         "familia": "soldadura_metalmecanica",
-         "x": 198,
-         "y": 297,
-         "w": 70,
-         "h": 15,
-         "rot": false,
-         "L": 70,
-         "A": 15,
-         "H": 15,
-         "peso_kg": 0.05,
-         "frec": "ocasional",
-         "fuente_dim": "estimacion"
-        }
-       ],
-       "pie": [
-        "Modulo SOL · caja 48-22-8444 · cajon C4 · alto interior 61 mm, util 51 mm",
-        "Ocupacion en planta 77.3 % · peso 2.8 kg de 11 kg",
-        "Medidas no validadas: confirmar con vernier antes de imprimir"
-       ]
-      },
-      {
-       "n": 5,
-       "alto": 61,
-       "alto_util": 51,
-       "ancho": 416,
-       "fondo": 322,
-       "ocupacion": 60.0,
-       "peso_kg": 1.45,
-       "cap_kg": 11,
-       "piezas": [
-        {
-         "activo": "FTS-SOL-01-C5-01",
-         "id": "SEGUETA",
-         "ref": "TPC12",
-         "corto": "Arco con segueta 12 in Stanley 15-555",
-         "familia": "perforacion_corte",
-         "x": 6,
-         "y": 6,
-         "w": 400,
-         "h": 110,
-         "rot": false,
-         "L": 400,
-         "A": 110,
-         "H": 25,
-         "peso_kg": 0.5,
-         "frec": "frecuente",
-         "fuente_dim": "estimacion"
-        },
-        {
-         "activo": "FTS-SOL-01-C5-02",
          "id": "PRES7B",
          "ref": "L4",
          "corto": "Pinza de presion 7 in (2a, hoy faltante)",
          "familia": "soldadura_metalmecanica",
-         "x": 6,
-         "y": 128,
-         "w": 60,
-         "h": 178,
-         "rot": true,
-         "L": 178,
-         "A": 60,
-         "H": 25,
-         "peso_kg": 0.35,
+         "x": 198,
+         "y": 6,
+         "w": 182,
+         "h": 62,
+         "rot": false,
+         "L": 182,
+         "A": 62,
+         "H": 23,
+         "peso_kg": 0.364,
          "frec": "frecuente",
-         "fuente_dim": "nominal"
+         "fuente_dim": "D1"
         },
         {
-         "activo": "FTS-SOL-01-C5-03",
+         "activo": "FTS-SOL-01-C4-03",
          "id": "PRES6CB",
          "ref": "L6",
          "corto": "Pinza de presion C 6 in (2a)",
          "familia": "soldadura_metalmecanica",
-         "x": 78,
-         "y": 128,
-         "w": 70,
-         "h": 152,
-         "rot": true,
+         "x": 198,
+         "y": 80,
+         "w": 152,
+         "h": 70,
+         "rot": false,
          "L": 152,
          "A": 70,
          "H": 22,
          "peso_kg": 0.3,
          "frec": "frecuente",
-         "fuente_dim": "buscador"
-        },
+         "fuente_dim": "F"
+        }
+       ],
+       "pie": [
+        "Modulo SOL · caja 48-22-8447 · cajon C4 · alto interior 63 mm, util 53 mm",
+        "Ocupacion en planta 57.7 % · peso 2.06 kg de 11 kg",
+        "Medidas no validadas: confirmar con vernier antes de imprimir"
+       ]
+      },
+      {
+       "n": 5,
+       "alto": 63,
+       "alto_util": 53,
+       "ancho": 414,
+       "fondo": 318,
+       "ocupacion": 11.4,
+       "peso_kg": 0.3,
+       "cap_kg": 11,
+       "piezas": [
         {
-         "activo": "FTS-SOL-01-C5-04",
+         "activo": "FTS-SOL-01-C5-01",
          "id": "LIMAS",
          "ref": "H1-H3",
          "corto": "3 limas 6 in (redonda, media cana, triangular)",
          "familia": "soldadura_metalmecanica",
-         "x": 160,
-         "y": 128,
-         "w": 250,
-         "h": 60,
-         "rot": false,
+         "x": 6,
+         "y": 6,
+         "w": 60,
+         "h": 250,
+         "rot": true,
          "L": 250,
          "A": 60,
          "H": 15,
          "peso_kg": 0.3,
          "frec": "ocasional",
-         "fuente_dim": "nominal"
+         "fuente_dim": "F"
         }
        ],
        "pie": [
-        "Modulo SOL · caja 48-22-8444 · cajon C5 · alto interior 61 mm, util 51 mm",
-        "Ocupacion en planta 60.0 % · peso 1.45 kg de 11 kg",
+        "Modulo SOL · caja 48-22-8447 · cajon C5 · alto interior 63 mm, util 53 mm",
+        "Ocupacion en planta 11.4 % · peso 0.3 kg de 11 kg",
         "Medidas no validadas: confirmar con vernier antes de imprimir"
        ]
       },
       {
        "n": 6,
-       "alto": 61,
-       "alto_util": 51,
-       "ancho": 416,
-       "fondo": 322,
-       "ocupacion": 0.0,
-       "peso_kg": 0.0,
+       "alto": 127,
+       "alto_util": 117,
+       "ancho": 414,
+       "fondo": 318,
+       "ocupacion": 61.0,
+       "peso_kg": 2.5,
        "cap_kg": 11,
-       "piezas": [],
+       "piezas": [
+        {
+         "activo": "FTS-SOL-01-C6-01",
+         "id": "MOTO",
+         "ref": "X-MOTO",
+         "corto": "Moto tool Truper (estuche)",
+         "familia": "soldadura_metalmecanica",
+         "x": 6,
+         "y": 6,
+         "w": 200,
+         "h": 300,
+         "rot": true,
+         "L": 300,
+         "A": 200,
+         "H": 80,
+         "peso_kg": 1.2,
+         "frec": "ocasional",
+         "fuente_dim": "F"
+        },
+        {
+         "activo": "FTS-SOL-01-C6-02",
+         "id": "RECT",
+         "ref": "X-DWRECT",
+         "corto": "Rectificador DeWalt DWE4887",
+         "familia": "soldadura_metalmecanica",
+         "x": 218,
+         "y": 6,
+         "w": 70,
+         "h": 290,
+         "rot": true,
+         "L": 290,
+         "A": 70,
+         "H": 70,
+         "peso_kg": 1.3,
+         "frec": "ocasional",
+         "fuente_dim": "F"
+        }
+       ],
        "pie": [
-        "Modulo SOL · caja 48-22-8444 · cajon C6 · alto interior 61 mm, util 51 mm",
-        "Ocupacion en planta 0.0 % · peso 0.0 kg de 11 kg",
+        "Modulo SOL · caja 48-22-8447 · cajon C6 · alto interior 127 mm, util 117 mm",
+        "Ocupacion en planta 61.0 % · peso 2.5 kg de 11 kg",
         "Medidas no validadas: confirmar con vernier antes de imprimir"
        ]
       }
@@ -1619,32 +1587,125 @@
     "alto_mm": 1228,
     "cajones_usados": 6,
     "cajones_totales": 8,
-    "ocupacion_media": 50.9,
-    "peso_kg": 13.3,
-    "centro_gravedad_mm": 607,
-    "penalizacion": 8.4,
+    "ocupacion_media": 58.0,
+    "peso_kg": 13.8,
+    "centro_gravedad_mm": 782,
+    "penalizacion": 6.7,
     "modelos": [
      "48-22-8420",
-     "48-22-8442",
-     "48-22-8444"
+     "48-22-8444",
+     "48-22-8442"
     ]
    },
    "cajas": [
     {
-     "modelo": "48-22-8444",
+     "modelo": "48-22-8442",
      "cajones": [
       {
        "n": 1,
-       "alto": 61,
-       "alto_util": 51,
-       "ancho": 416,
-       "fondo": 322,
-       "ocupacion": 74.7,
+       "alto": 127,
+       "alto_util": 117,
+       "ancho": 414,
+       "fondo": 318,
+       "ocupacion": 68.4,
+       "peso_kg": 3.13,
+       "cap_kg": 11.3,
+       "piezas": [
+        {
+         "activo": "FTS-CIV-01-C1-01",
+         "id": "TAL12",
+         "ref": "C1",
+         "corto": "Taladro percutor alambrico 1/2 5375-20",
+         "familia": "perforacion_corte",
+         "x": 6,
+         "y": 6,
+         "w": 340,
+         "h": 265,
+         "rot": false,
+         "L": 340,
+         "A": 265,
+         "H": 86,
+         "peso_kg": 3.13,
+         "frec": "frecuente",
+         "fuente_dim": "D1"
+        }
+       ],
+       "pie": [
+        "Modulo CIV · caja 48-22-8442 · cajon C1 · alto interior 127 mm, util 117 mm",
+        "Ocupacion en planta 68.4 % · peso 3.13 kg de 11.3 kg",
+        "Medidas no validadas: confirmar con vernier antes de imprimir"
+       ]
+      },
+      {
+       "n": 2,
+       "alto": 127,
+       "alto_util": 117,
+       "ancho": 414,
+       "fondo": 318,
+       "ocupacion": 58.7,
+       "peso_kg": 3.43,
+       "cap_kg": 11.3,
+       "piezas": [
+        {
+         "activo": "FTS-CIV-01-C2-01",
+         "id": "SDS",
+         "ref": "C2",
+         "corto": "Rotomartillo SDS-Plus 5485-21 (sin estuche)",
+         "familia": "perforacion_corte",
+         "x": 6,
+         "y": 6,
+         "w": 335,
+         "h": 195,
+         "rot": false,
+         "L": 335,
+         "A": 195,
+         "H": 75,
+         "peso_kg": 3.034,
+         "frec": "diario",
+         "fuente_dim": "D1"
+        },
+        {
+         "activo": "FTS-CIV-01-C2-02",
+         "id": "MANGOS",
+         "ref": "C3 + X-C3b",
+         "corto": "2 mangos laterales",
+         "familia": "perforacion_corte",
+         "x": 6,
+         "y": 213,
+         "w": 200,
+         "h": 60,
+         "rot": false,
+         "L": 200,
+         "A": 60,
+         "H": 50,
+         "peso_kg": 0.4,
+         "frec": "frecuente",
+         "fuente_dim": "F"
+        }
+       ],
+       "pie": [
+        "Modulo CIV · caja 48-22-8442 · cajon C2 · alto interior 127 mm, util 117 mm",
+        "Ocupacion en planta 58.7 % · peso 3.43 kg de 11.3 kg",
+        "Medidas no validadas: confirmar con vernier antes de imprimir"
+       ]
+      }
+     ]
+    },
+    {
+     "modelo": "48-22-8444",
+     "cajones": [
+      {
+       "n": 3,
+       "alto": 58,
+       "alto_util": 48,
+       "ancho": 414,
+       "fondo": 318,
+       "ocupacion": 76.0,
        "peso_kg": 2.2,
        "cap_kg": 11,
        "piezas": [
         {
-         "activo": "FTS-CIV-01-C1-01",
+         "activo": "FTS-CIV-01-C3-01",
          "id": "SDSBIT",
          "ref": "G1",
          "corto": "Juego 15 brocas y cinceles SDS-Plus DeWalt DWA0870",
@@ -1659,27 +1720,27 @@
          "H": 45,
          "peso_kg": 2.2,
          "frec": "frecuente",
-         "fuente_dim": "estimacion"
+         "fuente_dim": "F"
         }
        ],
        "pie": [
-        "Modulo CIV · caja 48-22-8444 · cajon C1 · alto interior 61 mm, util 51 mm",
-        "Ocupacion en planta 74.7 % · peso 2.2 kg de 11 kg",
+        "Modulo CIV · caja 48-22-8444 · cajon C3 · alto interior 58 mm, util 48 mm",
+        "Ocupacion en planta 76.0 % · peso 2.2 kg de 11 kg",
         "Medidas no validadas: confirmar con vernier antes de imprimir"
        ]
       },
       {
-       "n": 2,
-       "alto": 61,
-       "alto_util": 51,
-       "ancho": 416,
-       "fondo": 322,
-       "ocupacion": 43.1,
+       "n": 4,
+       "alto": 58,
+       "alto_util": 48,
+       "ancho": 414,
+       "fondo": 318,
+       "ocupacion": 45.1,
        "peso_kg": 1.21,
        "cap_kg": 11,
        "piezas": [
         {
-         "activo": "FTS-CIV-01-C2-01",
+         "activo": "FTS-CIV-01-C4-01",
          "id": "MART2",
          "ref": "H6",
          "corto": "Martillo una curva 16 oz (2o)",
@@ -1687,23 +1748,23 @@
          "x": 6,
          "y": 6,
          "w": 340,
-         "h": 125,
+         "h": 130,
          "rot": false,
          "L": 340,
-         "A": 125,
-         "H": 35,
+         "A": 130,
+         "H": 30,
          "peso_kg": 0.707,
          "frec": "frecuente",
-         "fuente_dim": "buscador"
+         "fuente_dim": "D1"
         },
         {
-         "activo": "FTS-CIV-01-C2-02",
+         "activo": "FTS-CIV-01-C4-02",
          "id": "CINC",
          "ref": "H9,H10",
          "corto": "2 cinceles de corte frio 5/16x6 y 7/8x10",
          "familia": "mecanica_general",
          "x": 6,
-         "y": 143,
+         "y": 148,
          "w": 254,
          "h": 60,
          "rot": false,
@@ -1712,137 +1773,44 @@
          "H": 25,
          "peso_kg": 0.5,
          "frec": "ocasional",
-         "fuente_dim": "nominal"
+         "fuente_dim": "F"
         }
        ],
        "pie": [
-        "Modulo CIV · caja 48-22-8444 · cajon C2 · alto interior 61 mm, util 51 mm",
-        "Ocupacion en planta 43.1 % · peso 1.21 kg de 11 kg",
+        "Modulo CIV · caja 48-22-8444 · cajon C4 · alto interior 58 mm, util 48 mm",
+        "Ocupacion en planta 45.1 % · peso 1.21 kg de 11 kg",
         "Medidas no validadas: confirmar con vernier antes de imprimir"
        ]
       },
-      {
-       "n": 3,
-       "alto": 61,
-       "alto_util": 51,
-       "ancho": 416,
-       "fondo": 322,
-       "ocupacion": 0.0,
-       "peso_kg": 0.0,
-       "cap_kg": 11,
-       "piezas": [],
-       "pie": [
-        "Modulo CIV · caja 48-22-8444 · cajon C3 · alto interior 61 mm, util 51 mm",
-        "Ocupacion en planta 0.0 % · peso 0.0 kg de 11 kg",
-        "Medidas no validadas: confirmar con vernier antes de imprimir"
-       ]
-      },
-      {
-       "n": 4,
-       "alto": 61,
-       "alto_util": 51,
-       "ancho": 416,
-       "fondo": 322,
-       "ocupacion": 0.0,
-       "peso_kg": 0.0,
-       "cap_kg": 11,
-       "piezas": [],
-       "pie": [
-        "Modulo CIV · caja 48-22-8444 · cajon C4 · alto interior 61 mm, util 51 mm",
-        "Ocupacion en planta 0.0 % · peso 0.0 kg de 11 kg",
-        "Medidas no validadas: confirmar con vernier antes de imprimir"
-       ]
-      }
-     ]
-    },
-    {
-     "modelo": "48-22-8442",
-     "cajones": [
       {
        "n": 5,
-       "alto": 127,
-       "alto_util": 117,
+       "alto": 58,
+       "alto_util": 48,
        "ancho": 414,
        "fondo": 318,
-       "ocupacion": 45.0,
-       "peso_kg": 2.6,
-       "cap_kg": 11.3,
-       "piezas": [
-        {
-         "activo": "FTS-CIV-01-C5-01",
-         "id": "CALAD",
-         "ref": "R2",
-         "corto": "Sierra caladora Ryobi JS481LG",
-         "familia": "perforacion_corte",
-         "x": 6,
-         "y": 6,
-         "w": 200,
-         "h": 236,
-         "rot": true,
-         "L": 236,
-         "A": 200,
-         "H": 79,
-         "peso_kg": 2.2,
-         "frec": "ocasional",
-         "fuente_dim": "estimacion"
-        },
-        {
-         "activo": "FTS-CIV-01-C5-02",
-         "id": "MANGOS",
-         "ref": "C3 + X-C3b",
-         "corto": "2 mangos laterales",
-         "familia": "perforacion_corte",
-         "x": 218,
-         "y": 6,
-         "w": 60,
-         "h": 200,
-         "rot": true,
-         "L": 200,
-         "A": 60,
-         "H": 50,
-         "peso_kg": 0.4,
-         "frec": "frecuente",
-         "fuente_dim": "estimacion"
-        }
-       ],
+       "ocupacion": 0.0,
+       "peso_kg": 0.0,
+       "cap_kg": 11,
+       "piezas": [],
        "pie": [
-        "Modulo CIV · caja 48-22-8442 · cajon C5 · alto interior 127 mm, util 117 mm",
-        "Ocupacion en planta 45.0 % · peso 2.6 kg de 11.3 kg",
+        "Modulo CIV · caja 48-22-8444 · cajon C5 · alto interior 58 mm, util 48 mm",
+        "Ocupacion en planta 0.0 % · peso 0.0 kg de 11 kg",
         "Medidas no validadas: confirmar con vernier antes de imprimir"
        ]
       },
       {
        "n": 6,
-       "alto": 127,
-       "alto_util": 117,
+       "alto": 58,
+       "alto_util": 48,
        "ancho": 414,
        "fondo": 318,
-       "ocupacion": 28.4,
-       "peso_kg": 0.7,
-       "cap_kg": 11.3,
-       "piezas": [
-        {
-         "activo": "FTS-CIV-01-C6-01",
-         "id": "MAZO",
-         "ref": "H4",
-         "corto": "Mazo de hule 16 oz Truper MH-16",
-         "familia": "mecanica_general",
-         "x": 6,
-         "y": 6,
-         "w": 340,
-         "h": 110,
-         "rot": false,
-         "L": 340,
-         "A": 110,
-         "H": 60,
-         "peso_kg": 0.7,
-         "frec": "ocasional",
-         "fuente_dim": "buscador"
-        }
-       ],
+       "ocupacion": 0.0,
+       "peso_kg": 0.0,
+       "cap_kg": 11,
+       "piezas": [],
        "pie": [
-        "Modulo CIV · caja 48-22-8442 · cajon C6 · alto interior 127 mm, util 117 mm",
-        "Ocupacion en planta 28.4 % · peso 0.7 kg de 11.3 kg",
+        "Modulo CIV · caja 48-22-8444 · cajon C6 · alto interior 58 mm, util 48 mm",
+        "Ocupacion en planta 0.0 % · peso 0.0 kg de 11 kg",
         "Medidas no validadas: confirmar con vernier antes de imprimir"
        ]
       }
@@ -1857,8 +1825,8 @@
        "alto_util": 180,
        "ancho": 432,
        "fondo": 330,
-       "ocupacion": 68.3,
-       "peso_kg": 3.64,
+       "ocupacion": 73.5,
+       "peso_kg": 3.23,
        "cap_kg": 15,
        "piezas": [
         {
@@ -1875,32 +1843,32 @@
          "L": 267,
          "A": 146,
          "H": 125,
-         "peso_kg": 0.907,
+         "peso_kg": 1.225,
          "frec": "ocasional",
-         "fuente_dim": "buscador"
+         "fuente_dim": "D2"
         },
         {
          "activo": "FTS-CIV-01-C7-02",
-         "id": "TAL12",
-         "ref": "C1",
-         "corto": "Taladro percutor alambrico 1/2 5375-20",
+         "id": "CALAD",
+         "ref": "R2",
+         "corto": "Sierra caladora Ryobi JS481LG",
          "familia": "perforacion_corte",
          "x": 164,
          "y": 6,
-         "w": 200,
-         "h": 292,
+         "w": 236,
+         "h": 279,
          "rot": true,
-         "L": 292,
-         "A": 200,
-         "H": 80,
-         "peso_kg": 2.73,
-         "frec": "frecuente",
-         "fuente_dim": "buscador"
+         "L": 279,
+         "A": 236,
+         "H": 72,
+         "peso_kg": 2.0,
+         "frec": "ocasional",
+         "fuente_dim": "D1"
         }
        ],
        "pie": [
         "Modulo CIV · caja 48-22-8420 · cajon C7 · alto interior 190 mm, util 180 mm",
-        "Ocupacion en planta 68.3 % · peso 3.64 kg de 15 kg",
+        "Ocupacion en planta 73.5 % · peso 3.23 kg de 15 kg",
         "Medidas no validadas: confirmar con vernier antes de imprimir"
        ]
       },
@@ -1910,32 +1878,32 @@
        "alto_util": 190,
        "ancho": 432,
        "fondo": 330,
-       "ocupacion": 45.8,
-       "peso_kg": 3.0,
+       "ocupacion": 26.0,
+       "peso_kg": 0.65,
        "cap_kg": 25,
        "piezas": [
         {
          "activo": "FTS-CIV-01-C8-01",
-         "id": "SDS",
-         "ref": "C2",
-         "corto": "Rotomartillo SDS-Plus 5485-21 (sin estuche)",
-         "familia": "perforacion_corte",
+         "id": "MAZO",
+         "ref": "H4",
+         "corto": "Mazo de hule 16 oz Truper MH-16",
+         "familia": "mecanica_general",
          "x": 6,
          "y": 6,
-         "w": 335,
-         "h": 195,
+         "w": 357,
+         "h": 104,
          "rot": false,
-         "L": 335,
-         "A": 195,
-         "H": 90,
-         "peso_kg": 3.0,
-         "frec": "diario",
-         "fuente_dim": "buscador"
+         "L": 357,
+         "A": 104,
+         "H": 51,
+         "peso_kg": 0.649,
+         "frec": "ocasional",
+         "fuente_dim": "D1"
         }
        ],
        "pie": [
         "Modulo CIV · caja 48-22-8420 · cajon C8 · alto interior 200 mm, util 190 mm",
-        "Ocupacion en planta 45.8 % · peso 3.0 kg de 25 kg",
+        "Ocupacion en planta 26.0 % · peso 0.65 kg de 25 kg",
         "Medidas no validadas: confirmar con vernier antes de imprimir"
        ]
       }
@@ -1949,10 +1917,10 @@
     "alto_mm": 363,
     "cajones_usados": 2,
     "cajones_totales": 2,
-    "ocupacion_media": 56.2,
-    "peso_kg": 5.0,
-    "centro_gravedad_mm": 261,
-    "penalizacion": 1.3,
+    "ocupacion_media": 56.0,
+    "peso_kg": 4.8,
+    "centro_gravedad_mm": 258,
+    "penalizacion": 1.6,
     "modelos": [
      "48-22-8442"
     ]
@@ -1967,8 +1935,8 @@
        "alto_util": 117,
        "ancho": 414,
        "fondo": 318,
-       "ocupacion": 66.0,
-       "peso_kg": 4.7,
+       "ocupacion": 65.7,
+       "peso_kg": 4.45,
        "cap_kg": 11.3,
        "piezas": [
         {
@@ -1984,10 +1952,10 @@
          "rot": true,
          "L": 100,
          "A": 64,
-         "H": 100,
+         "H": 104,
          "peso_kg": 0.35,
          "frec": "frecuente",
-         "fuente_dim": "buscador"
+         "fuente_dim": "D1"
         },
         {
          "activo": "FTS-MED-01-C1-02",
@@ -2005,7 +1973,7 @@
          "H": 60,
          "peso_kg": 1.6,
          "frec": "frecuente",
-         "fuente_dim": "estimacion"
+         "fuente_dim": "F"
         },
         {
          "activo": "FTS-MED-01-C1-03",
@@ -2015,36 +1983,18 @@
          "familia": "medicion_trazo",
          "x": 224,
          "y": 6,
-         "w": 100,
-         "h": 305,
+         "w": 133,
+         "h": 304,
          "rot": true,
-         "L": 305,
-         "A": 100,
+         "L": 304,
+         "A": 133,
          "H": 30,
-         "peso_kg": 0.4,
+         "peso_kg": 0.35,
          "frec": "frecuente",
-         "fuente_dim": "nominal"
+         "fuente_dim": "F"
         },
         {
          "activo": "FTS-MED-01-C1-04",
-         "id": "TORPEDO2",
-         "ref": "E6",
-         "corto": "Nivel torpedo magnetico 9 in (2o)",
-         "familia": "medicion_trazo",
-         "x": 336,
-         "y": 6,
-         "w": 45,
-         "h": 230,
-         "rot": true,
-         "L": 230,
-         "A": 45,
-         "H": 30,
-         "peso_kg": 0.2,
-         "frec": "frecuente",
-         "fuente_dim": "buscador"
-        },
-        {
-         "activo": "FTS-MED-01-C1-05",
          "id": "LASER2",
          "ref": "X-LASER2",
          "corto": "Nivel laser verde Bosch (2o)",
@@ -2056,13 +2006,13 @@
          "rot": true,
          "L": 100,
          "A": 64,
-         "H": 100,
+         "H": 104,
          "peso_kg": 0.35,
          "frec": "frecuente",
-         "fuente_dim": "estimacion"
+         "fuente_dim": "D1"
         },
         {
-         "activo": "FTS-MED-01-C1-06",
+         "activo": "FTS-MED-01-C1-05",
          "id": "GRILL",
          "ref": "D9-D11",
          "corto": "3 grilletes 5/8 Crosby",
@@ -2077,12 +2027,12 @@
          "H": 45,
          "peso_kg": 1.8,
          "frec": "ocasional",
-         "fuente_dim": "estimacion"
+         "fuente_dim": "F"
         }
        ],
        "pie": [
         "Modulo MED · caja 48-22-8442 · cajon C1 · alto interior 127 mm, util 117 mm",
-        "Ocupacion en planta 66.0 % · peso 4.7 kg de 11.3 kg",
+        "Ocupacion en planta 65.7 % · peso 4.45 kg de 11.3 kg",
         "Medidas no validadas: confirmar con vernier antes de imprimir"
        ]
       },
@@ -2092,32 +2042,50 @@
        "alto_util": 117,
        "ancho": 414,
        "fondo": 318,
-       "ocupacion": 46.3,
-       "peso_kg": 0.3,
+       "ocupacion": 46.2,
+       "peso_kg": 0.37,
        "cap_kg": 11.3,
        "piezas": [
         {
          "activo": "FTS-MED-01-C2-01",
+         "id": "TORPEDO2",
+         "ref": "E6",
+         "corto": "Nivel torpedo magnetico 9 in (2o)",
+         "familia": "medicion_trazo",
+         "x": 6,
+         "y": 6,
+         "w": 45,
+         "h": 230,
+         "rot": true,
+         "L": 230,
+         "A": 45,
+         "H": 16,
+         "peso_kg": 0.138,
+         "frec": "frecuente",
+         "fuente_dim": "D1"
+        },
+        {
+         "activo": "FTS-MED-01-C2-02",
          "id": "ESCCAR",
          "ref": "E2",
          "corto": "Escuadra de carpintero 12 in Truper EC-12",
          "familia": "medicion_trazo",
-         "x": 6,
+         "x": 63,
          "y": 6,
-         "w": 200,
-         "h": 305,
+         "w": 166,
+         "h": 304,
          "rot": true,
-         "L": 305,
-         "A": 200,
-         "H": 15,
-         "peso_kg": 0.3,
+         "L": 304,
+         "A": 166,
+         "H": 14,
+         "peso_kg": 0.228,
          "frec": "ocasional",
-         "fuente_dim": "nominal"
+         "fuente_dim": "D1"
         }
        ],
        "pie": [
         "Modulo MED · caja 48-22-8442 · cajon C2 · alto interior 127 mm, util 117 mm",
-        "Ocupacion en planta 46.3 % · peso 0.3 kg de 11.3 kg",
+        "Ocupacion en planta 46.2 % · peso 0.37 kg de 11.3 kg",
         "Medidas no validadas: confirmar con vernier antes de imprimir"
        ]
       }
@@ -2131,10 +2099,10 @@
     "alto_mm": 363,
     "cajones_usados": 2,
     "cajones_totales": 3,
-    "ocupacion_media": 45.9,
-    "peso_kg": 5.9,
-    "centro_gravedad_mm": 249,
-    "penalizacion": 1.5,
+    "ocupacion_media": 44.6,
+    "peso_kg": 6.0,
+    "centro_gravedad_mm": 269,
+    "penalizacion": 1.3,
     "modelos": [
      "48-22-8443"
     ]
@@ -2149,8 +2117,8 @@
        "alto_util": 66,
        "ancho": 414,
        "fondo": 318,
-       "ocupacion": 43.2,
-       "peso_kg": 3.3,
+       "ocupacion": 60.5,
+       "peso_kg": 4.36,
        "cap_kg": 11,
        "piezas": [
         {
@@ -2169,7 +2137,7 @@
          "H": 60,
          "peso_kg": 1.2,
          "frec": "ocasional",
-         "fuente_dim": "estimacion"
+         "fuente_dim": "F"
         },
         {
          "activo": "FTS-TUB-01-C1-02",
@@ -2179,15 +2147,15 @@
          "familia": "tuberia",
          "x": 118,
          "y": 6,
-         "w": 165,
-         "h": 45,
+         "w": 159,
+         "h": 51,
          "rot": false,
-         "L": 165,
-         "A": 45,
-         "H": 40,
-         "peso_kg": 0.3,
+         "L": 159,
+         "A": 51,
+         "H": 19,
+         "peso_kg": 0.141,
          "frec": "frecuente",
-         "fuente_dim": "buscador"
+         "fuente_dim": "D1"
         },
         {
          "activo": "FTS-TUB-01-C1-03",
@@ -2205,30 +2173,30 @@
          "H": 40,
          "peso_kg": 1.5,
          "frec": "ocasional",
-         "fuente_dim": "estimacion"
+         "fuente_dim": "F"
         },
         {
          "activo": "FTS-TUB-01-C1-04",
-         "id": "NIVTUB2",
-         "ref": "E7",
-         "corto": "Nivel para tuberia 6.5 in Milwaukee 48-22-5110",
+         "id": "STILL1",
+         "ref": "H7",
+         "corto": "Llave stillson 14 in Husky 73126",
          "familia": "tuberia",
          "x": 6,
          "y": 210,
-         "w": 165,
-         "h": 45,
+         "w": 356,
+         "h": 83,
          "rot": false,
-         "L": 165,
-         "A": 45,
-         "H": 40,
-         "peso_kg": 0.3,
-         "frec": "frecuente",
-         "fuente_dim": "buscador"
+         "L": 356,
+         "A": 83,
+         "H": 32,
+         "peso_kg": 1.52,
+         "frec": "diario",
+         "fuente_dim": "D1"
         }
        ],
        "pie": [
         "Modulo TUB · caja 48-22-8443 · cajon C1 · alto interior 76 mm, util 66 mm",
-        "Ocupacion en planta 43.2 % · peso 3.3 kg de 11 kg",
+        "Ocupacion en planta 60.5 % · peso 4.36 kg de 11 kg",
         "Medidas no validadas: confirmar con vernier antes de imprimir"
        ]
       },
@@ -2238,50 +2206,50 @@
        "alto_util": 66,
        "ancho": 414,
        "fondo": 318,
-       "ocupacion": 48.5,
-       "peso_kg": 2.6,
+       "ocupacion": 28.6,
+       "peso_kg": 1.66,
        "cap_kg": 11,
        "piezas": [
         {
          "activo": "FTS-TUB-01-C2-01",
-         "id": "STILL1",
-         "ref": "H7",
-         "corto": "Llave stillson 14 in Husky 73126",
-         "familia": "tuberia",
-         "x": 6,
-         "y": 6,
-         "w": 355,
-         "h": 90,
-         "rot": false,
-         "L": 355,
-         "A": 90,
-         "H": 35,
-         "peso_kg": 1.3,
-         "frec": "diario",
-         "fuente_dim": "nominal"
-        },
-        {
-         "activo": "FTS-TUB-01-C2-02",
          "id": "STILL2",
          "ref": "H8",
          "corto": "Llave stillson 14 in Husky 73126",
          "familia": "tuberia",
          "x": 6,
-         "y": 108,
-         "w": 355,
-         "h": 90,
+         "y": 6,
+         "w": 356,
+         "h": 83,
          "rot": false,
-         "L": 355,
-         "A": 90,
-         "H": 35,
-         "peso_kg": 1.3,
+         "L": 356,
+         "A": 83,
+         "H": 32,
+         "peso_kg": 1.52,
          "frec": "diario",
-         "fuente_dim": "nominal"
+         "fuente_dim": "D1"
+        },
+        {
+         "activo": "FTS-TUB-01-C2-02",
+         "id": "NIVTUB2",
+         "ref": "E7",
+         "corto": "Nivel para tuberia 6.5 in Milwaukee 48-22-5110",
+         "familia": "tuberia",
+         "x": 6,
+         "y": 101,
+         "w": 51,
+         "h": 159,
+         "rot": true,
+         "L": 159,
+         "A": 51,
+         "H": 19,
+         "peso_kg": 0.141,
+         "frec": "frecuente",
+         "fuente_dim": "D1"
         }
        ],
        "pie": [
         "Modulo TUB · caja 48-22-8443 · cajon C2 · alto interior 76 mm, util 66 mm",
-        "Ocupacion en planta 48.5 % · peso 2.6 kg de 11 kg",
+        "Ocupacion en planta 28.6 % · peso 1.66 kg de 11 kg",
         "Medidas no validadas: confirmar con vernier antes de imprimir"
        ]
       },
@@ -2313,15 +2281,20 @@
    "desc": "Kit knockout M18 Force Logic 2677-23 (estuche)",
    "familia": "electrico",
    "modulo": "ELE",
-   "L": 480,
-   "A": 330,
-   "H": 120,
+   "L": 582,
+   "A": 284,
+   "H": 429,
    "peso_kg": 7.5,
-   "fuente_dim": "estimacion",
+   "fuente_dim": "D1",
    "frec": "ocasional",
    "nota": "la herramienta es 297x59x114 (2 fuentes); el estuche no tiene medida: queda en su estuche",
    "validado": false,
-   "suelto": "estuche original del kit"
+   "suelto": "estuche original del kit",
+   "nivel_dim": {
+    "L": "D1",
+    "A": "D1",
+    "H": "D1"
+   }
   },
   {
    "id": "12R",
@@ -2332,12 +2305,17 @@
    "L": 420,
    "A": 320,
    "H": 120,
-   "peso_kg": 15.8,
-   "fuente_dim": "estimacion",
+   "peso_kg": 15.762,
+   "fuente_dim": "F",
    "frec": "frecuente",
    "nota": "peso 15.76 kg (buscador) > 11 kg por cajon: solo en la base 8420",
    "validado": false,
-   "suelto": "estuche original Ridgid (15.8 kg > 11 kg por cajon)"
+   "suelto": "estuche original Ridgid (15.8 kg > 11 kg por cajon)",
+   "nivel_dim": {
+    "L": "F",
+    "A": "F",
+    "H": "F"
+   }
   },
   {
    "id": "SABLE",
@@ -2345,15 +2323,42 @@
    "desc": "Sierra sable 6509-31 (estuche original)",
    "familia": "perforacion_corte",
    "modulo": "CIV",
-   "L": 520,
-   "A": 250,
-   "H": 120,
-   "peso_kg": 4.5,
-   "fuente_dim": "estimacion",
+   "L": 483,
+   "A": 133,
+   "H": 114,
+   "peso_kg": 3.221,
+   "fuente_dim": "D1",
    "frec": "ocasional",
    "nota": "largo herramienta 483 (buscador); queda en su estuche",
    "validado": false,
-   "suelto": "estuche original"
+   "suelto": "estuche original",
+   "nivel_dim": {
+    "L": "D1",
+    "A": "D1",
+    "H": "D1"
+   }
+  },
+  {
+   "id": "SEGUETA",
+   "ref": "TPC12",
+   "desc": "Arco con segueta 12 in Stanley 15-555",
+   "familia": "perforacion_corte",
+   "modulo": "SOL",
+   "L": 475,
+   "A": 134,
+   "H": 24,
+   "peso_kg": 0.688,
+   "fuente_dim": "D1",
+   "frec": "frecuente",
+   "nota": "cabe a lo ancho del cajon (416)",
+   "validado": false,
+   "suelto": "no cabe en ningun cajon (475 x 134 x 24 mm): soporte lateral o medir",
+   "nivel_dim": {
+    "L": "D1",
+    "A": "D1",
+    "H": "D1"
+   },
+   "requiere_candado": false
   }
  ]
 }

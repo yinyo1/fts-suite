@@ -15,16 +15,24 @@ BASE = os.path.join(os.path.dirname(__file__), '..'); D = os.path.join(BASE, 'da
 G_PIEZAS, G_PARED, H_LIBRE = 12, 6, 10
 FREC_W = {'diario': 3, 'frecuente': 2, 'ocasional': 1}
 
-# Contenedores de diseno (fuente: datos/packout_research.json, fragmentos de buscador, NO validado)
+# Contenedores de diseno. Fuente (sesion nocturna 1, #330): ficha del fabricante leida el 2026-09-28.
+#   8442 y 8443: PACKOUT-2023-Dimension-Catalog.pdf pags. 10 y 11 (cajon 16.3 x 12.5 in; 5 in y 3 in de alto).
+#   8444 y 8447: imagen "Dimensions" de milwaukeetool.com/products/48-22-8444 y 48-22-8447 (16.3 x 12.5 in;
+#               8444 = 4 cajones de 2.3 in; 8447 = 2 de 2.5 in + 1 de 5 in).
+#   Capacidad: el fabricante publica 50 lb (22.7 kg) por caja; los 11 kg por cajon son fragmento de buscador.
+# El alto de 2.5 in (63.5 mm) se redondea hacia abajo a 63 mm (conservador).
 CAJAS = {
- '48-22-8444': {'alto': 363, 'cap': 22.7, 'cajones': [(416, 322, 61, 11)] * 4},
- '48-22-8447': {'alto': 363, 'cap': 22.7, 'cajones': [(416, 322, 61, 11), (416, 322, 61, 11), (416, 322, 130, 11)]},
+ '48-22-8444': {'alto': 363, 'cap': 22.7, 'cajones': [(414, 318, 58, 11)] * 4},
+ '48-22-8447': {'alto': 363, 'cap': 22.7, 'cajones': [(414, 318, 63, 11), (414, 318, 63, 11), (414, 318, 127, 11)]},
  '48-22-8442': {'alto': 363, 'cap': 22.7, 'cajones': [(414, 318, 127, 11.3)] * 2},
  '48-22-8443': {'alto': 363, 'cap': 22.7, 'cajones': [(414, 318, 76, 11)] * 3},
 }
-# 48-22-8420: un cajon de 432 x 330 x 406. Se propone una BANDEJA REMOVIBLE impresa a media altura (apoyada en 4 postes
-# impresos) para no desperdiciar 406 mm en un solo nivel: bandeja 190 mm arriba, fondo 200 mm abajo (406 - 16 de bandeja).
-# Capacidad por nivel (15 y 25 kg) es SUPUESTO de diseno: Milwaukee no publica capacidad del cajon, solo 113 kg del conjunto.
+# 48-22-8441 (1 cajon de 16.5 x 13 x 10.25 in, ficha del fabricante): solo entra en la comparacion de base.
+CAJA_8441 = {'alto': 356, 'cap': 22.7, 'cajones': [(419, 330, 260, 22.7)]}
+# 48-22-8420: cajon de 13 in de ancho y 16 in de alto (ficha del fabricante); el fondo de 432 mm es fragmento de
+# buscador (sin segunda fuente). Se propone una BANDEJA REMOVIBLE impresa a media altura para no desperdiciar
+# 406 mm en un solo nivel: bandeja 190 mm arriba, fondo 200 mm abajo (406 - 16 de bandeja).
+# Capacidad por nivel (15 y 25 kg) es SUPUESTO de diseno: Milwaukee solo publica 250 lb (113 kg) del conjunto.
 BASE_RODANTE = {'modelo': '48-22-8420', 'alto': 502, 'cap': 113.4, 'cajones': [(432, 330, 190, 15), (432, 330, 200, 25)]}
 MOD_CODE = {'BASE': 'BAS', 'ELE': 'ELE', 'SOL': 'SOL', 'TUB': 'TUB', 'CIV': 'CIV', 'MED': 'MED'}
 
@@ -66,8 +74,10 @@ class Cajon:
         # se infla cada pieza G_PIEZAS y el cajon util gana G_PIEZAS: quedan G_PIEZAS entre piezas y G_PARED contra paredes
         self.mr = MaxRects(ancho - 2 * G_PARED + G_PIEZAS, fondo - 2 * G_PARED + G_PIEZAS)
         self.piezas, self.peso, self.familia = [], 0.0, None
+    con_barra = True
     def cabe(self, p):
         if p['H'] > self.alto_util or self.peso + p['peso_kg'] > self.cap: return None
+        if p.get('requiere_candado') and not self.con_barra: return None
         trial = copy.deepcopy(self.mr)
         return trial.insert(p['L'] + G_PIEZAS, p['A'] + G_PIEZAS)
     def poner(self, p):
@@ -80,25 +90,28 @@ class Cajon:
 
 class Pila:
     def __init__(self, modulo, con_base):
-        self.modulo, self.cajas = modulo, []
+        self.modulo, self.cajas, self.no_caben = modulo, [], []
         if con_base: self._abrir(BASE_RODANTE['modelo'], BASE_RODANTE)
     def _abrir(self, modelo, spec):
         cid = len(self.cajas)
         caj = [Cajon(cid, i, *c) for i, c in enumerate(spec['cajones'])]
+        for c in caj: c.con_barra = modelo != BASE_RODANTE['modelo']   # 8420 sin barra de seguridad (ficha MLK, #330)
         self.cajas.append({'modelo': modelo, 'alto': spec['alto'], 'cap': spec['cap'], 'cajones': caj})
         return caj
     def cajones(self):
         return [c for b in self.cajas for c in b['cajones']]
     def peso_caja(self, c): return sum(x.peso for x in self.cajas[c.caja_id]['cajones'])
+    pref = None   # orden de preferencia de modelos para desempatar (se prueban varios en correr())
     def abrir_para(self, p):
-        """Caja nueva: la que tenga el cajon mas bajo que admita la pieza; empate -> mas cajones."""
+        """Caja nueva: la que tenga el cajon mas bajo que admita la pieza; empate -> preferencia, luego mas cajones."""
         opts = []
         for m, s in CAJAS.items():
             hs = [c[2] - H_LIBRE for c in s['cajones'] if c[2] - H_LIBRE >= p['H']]
-            if hs: opts.append((min(hs), -len(s['cajones']), m))
+            rank = self.pref.index(m) if self.pref else 0
+            if hs: opts.append((min(hs), rank, -len(s['cajones']), m))
         if not opts:   # ninguna caja de cajones la admite: el modulo lleva su propia base rodante 8420
             return self._abrir(BASE_RODANTE['modelo'], BASE_RODANTE) if p['H'] <= max(c[2] for c in BASE_RODANTE['cajones']) - H_LIBRE else None
-        _, _, m = min(opts)
+        m = min(opts)[-1]
         return self._abrir(m, CAJAS[m])
 
 def colocar(pila, p, candidatos):
@@ -111,13 +124,54 @@ def colocar(pila, p, candidatos):
     if best: best[1].poner(p); return best[1]
     return None
 
-def estrategia_ffd(piezas, modulo, con_base):
-    pila = Pila(modulo, con_base)
+def empacar_fijo(piezas, modulo, base, modelos):
+    """FFD dentro de un juego FIJO de cajas (no abre cajas nuevas). Devuelve la pila; pila.no_caben dice si fallo."""
+    pila = Pila(modulo, con_base=base)
+    for mdl in modelos: pila._abrir(mdl, CAJAS[mdl])
+    for p in sorted(piezas, key=lambda q: (-q['H'], -q['L'] * q['A'])):
+        if not colocar(pila, p, pila.cajones()): pila.no_caben.append(p)
+    return pila
+
+def estrategia_fijo(piezas, modulo, con_base):
+    """Prueba todos los juegos de 1 a 3 cajas de cajones (con o sin base 8420) y se queda con el que mete todas las
+    piezas con menos cajas, menos alto y menos penalizacion. Si ninguno alcanza, cae a FFD dinamico."""
+    # piezas que no caben en NINGUN cajon (ni la base 8420) se apartan antes de buscar: van a Sueltos
+    def cabe_en_algun(p):
+        todos = [c for s in CAJAS.values() for c in s['cajones']] + BASE_RODANTE['cajones']
+        return any(p['H'] + H_LIBRE <= c[2] and sorted((p['L'] + G_PIEZAS, p['A'] + G_PIEZAS)) <= sorted((c[0] - 2 * G_PARED + G_PIEZAS, c[1] - 2 * G_PARED + G_PIEZAS))
+                   and min(p['L'], p['A']) + G_PIEZAS <= min(c[0], c[1]) - 2 * G_PARED + G_PIEZAS and max(p['L'], p['A']) + G_PIEZAS <= max(c[0], c[1]) - 2 * G_PARED + G_PIEZAS for c in todos)
+    imposibles = [p for p in piezas if not cabe_en_algun(p)]
+    piezas = [p for p in piezas if cabe_en_algun(p)]
+    necesita_base = con_base or any(p['H'] > max(c[2] for s in CAJAS.values() for c in s['cajones']) - H_LIBRE for p in piezas)
+    best = None
+    for n in (1, 2, 3):
+        for combo in itertools.combinations_with_replacement(sorted(CAJAS), n):
+            pila = empacar_fijo(piezas, modulo, necesita_base, combo)
+            if pila.no_caben: continue
+            pila.cajas = [b for b in pila.cajas if b['modelo'] == BASE_RODANTE['modelo'] or any(c.piezas for c in b['cajones'])]
+            mt = metricas(pila)
+            libres = mt['cajones_totales'] - mt['cajones_usados']   # reserva para consumibles y lo que agregue el frente
+            key = (mt['cajas'], mt['alto_mm'], -min(libres, 1), mt['penalizacion'])
+            if best is None or key < best[0]: best = (key, pila)
+        if best: break
+    pila = best[1] if best else estrategia_ffd(piezas, modulo, con_base)
+    pila.no_caben = pila.no_caben + imposibles
+    return pila
+
+def estrategia_ffd(piezas, modulo, con_base, pref=None):
+    if pref is None:   # prueba las 24 preferencias de desempate y se queda con la mejor (menos cajas, menos alto, menos penalizacion)
+        best = None
+        for perm in itertools.permutations(CAJAS):
+            pila = estrategia_ffd(piezas, modulo, con_base, list(perm))
+            mt = metricas(pila); key = (len(pila.no_caben), mt['cajas'], mt['alto_mm'], mt['penalizacion'])
+            if best is None or key < best[0]: best = (key, pila)
+        return best[1]
+    pila = Pila(modulo, con_base); pila.pref = pref
     for p in sorted(piezas, key=lambda q: (-q['H'], -q['L'] * q['A'])):
         if colocar(pila, p, pila.cajones()): continue
         nuevos = pila.abrir_para(p)
         if not nuevos or not colocar(pila, p, nuevos):
-            raise RuntimeError(f'no cabe {p["id"]} {p["L"]}x{p["A"]}x{p["H"]}')
+            pila.no_caben.append(p)
     return pila
 
 def estrategia_familia(piezas, modulo, con_base):
@@ -135,7 +189,7 @@ def estrategia_familia(piezas, modulo, con_base):
             c = colocar(pila, p, nuevos) if nuevos else None
             if not c:   # ultimo recurso: cualquier cajon con espacio
                 c = colocar(pila, p, pila.cajones())
-                if not c: raise RuntimeError(f'no cabe {p["id"]}')
+                if not c: pila.no_caben.append(p)
             else:
                 c.familia = f
     return pila
@@ -216,18 +270,60 @@ def _rejilla(c, orden, W, H, step):
         if not placed: return False
     return True
 
+# Piezas que deben ir en cajon con barra para candado (sesion nocturna 1): la 8420 no trae barra y, segun un comprador
+# en HDUS, solo se le pone candado desapilada. Las M18 y sus baterias son lo mas caro y lo mas facil de llevarse.
+REQUIERE_CANDADO = {'IMP14', 'IMP38', 'ROTO18', 'BAT1', 'BAT2'}
 def correr():
-    piezas = [p for p in json.load(open(os.path.join(D, 'piezas_carrito.json'), encoding='utf-8')) if not p.get('suelto')]
+    piezas = [dict(p, requiere_candado=p['id'] in REQUIERE_CANDADO) for p in json.load(open(os.path.join(D, 'piezas_carrito.json'), encoding='utf-8')) if not p.get('suelto')]
     sueltos = [p for p in json.load(open(os.path.join(D, 'piezas_carrito.json'), encoding='utf-8')) if p.get('suelto')]
     por_mod = defaultdict(list)
     for p in piezas: por_mod[p['modulo']].append(p)
     resultados = {}
-    for est, fn in (('ffd', estrategia_ffd), ('familia', estrategia_familia)):
+    for est, fn in (('fijo', estrategia_fijo), ('ffd', estrategia_ffd), ('familia', estrategia_familia)):
         resultados[est] = {}
         for m, ps in por_mod.items():
             pila = fn(ps, m, con_base=(m == 'BASE'))
             resultados[est][m] = (pila, metricas(pila))
     return resultados, sueltos
+
+def no_caben(res, g):
+    """Piezas que la estrategia ganadora no pudo meter en ningun cajon: van a Sueltos con el motivo."""
+    out = []
+    for m, (pila, mt) in res[g].items():
+        for p in pila.no_caben:
+            out.append(dict(p, suelto=f'no cabe en ningun cajon ({p["L"]} x {p["A"]} x {p["H"]} mm): soporte lateral o medir'))
+    return out
+
+# ------------------------------------------------------------------ comparacion de bases (sesion nocturna 1)
+BASES = {
+ '8420 + 2 x 8444 (vigente)': ['48-22-8444', '48-22-8444'],
+ '8420 + 8444 + 8447': ['48-22-8444', '48-22-8447'],
+ '8420 + 2 x 8447': ['48-22-8447', '48-22-8447'],
+ '8420 + 8443 + 8444': ['48-22-8443', '48-22-8444'],
+ '8420 + 8441 + 8444': ['48-22-8441', '48-22-8444'],
+ '8420 + 1 x 8444': ['48-22-8444'],
+}
+def comparar_bases():
+    """Empaca las piezas del carrito base en un juego FIJO de cajas encima de la 8420 (sin abrir cajas nuevas)
+    y reporta si caben, cuantos cajones usa, el alto de pila y cuantos cajones quedan libres de reserva."""
+    todas = [p for p in json.load(open(os.path.join(D, 'piezas_carrito.json'), encoding='utf-8')) if p['modulo'] == 'BASE' and not p.get('suelto')]
+    filas = []
+    for candado, nombre, modelos in [(c, n, m) for c in (True, False) for n, m in BASES.items()]:
+        piezas = [dict(p, requiere_candado=candado and p['id'] in REQUIERE_CANDADO) for p in todas]
+        nombre = nombre + (' · M18 con candado' if candado else ' · sin exigir candado')
+        pila = Pila('BASE', con_base=True)
+        for mdl in modelos:
+            pila._abrir(mdl, CAJA_8441 if mdl == '48-22-8441' else CAJAS[mdl])
+        fuera = []
+        for p in sorted(piezas, key=lambda q: (-q['H'], -q['L'] * q['A'])):
+            if not colocar(pila, p, pila.cajones()): fuera.append(p['id'])
+        mt = metricas(pila)
+        libres = sum(1 for c in pila.cajones() if not c.piezas)
+        en_8420 = [q['id'] for c in pila.cajones() if not c.con_barra for q in c.piezas]
+        filas.append({'base': nombre, 'caben_todas': not fuera, 'en_8420_sin_candado': en_8420, 'no_caben': fuera, 'alto_pila_mm': sum(b['alto'] for b in pila.cajas),
+                      'cajones_usados': mt['cajones_usados'], 'cajones_libres': libres, 'ocupacion_media_%': mt['ocupacion_media'],
+                      'penalizacion': mt['penalizacion']})
+    return filas
 
 def ganadora(res):
     tot = {}
@@ -329,12 +425,16 @@ def exportar(res, g, sueltos, verificar=True):
          ['G_PARED', G_PARED, 'la pared del cajon ya es tope; 3 mm de pared de silueta + 3 mm de juego de impresion'],
          ['H_LIBRE', H_LIBRE, '3 mm de base de silueta + 7 mm para que nada roce el cajon de arriba'],
          ['cap cajon 8420', '15 kg bandeja / 25 kg fondo', 'SUPUESTO: Milwaukee solo publica 113 kg del conjunto'],
-         ['medidas de cajon', '416 x 322 (61/130), 414 x 318 (127/76)', 'fragmento de buscador; se usa la menor reportada (conservador)']])
+         ['medidas de cajon', '414 x 318 x 58 (8444), 63 y 127 (8447), 127 (8442), 76 (8443); 8420 432 x 330 x 406', 'ficha del fabricante leida 2026-09-28 (catalogo PACKOUT 2023 e imagen Dimensions); el fondo 432 de la 8420 es fragmento']])
     wb.save(os.path.join(BASE, 'diseno_carrito.xlsx'))
     json.dump(diseno, open(os.path.join(BASE, 'diseno_carrito.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
     return diseno, verif
 
 if __name__ == '__main__' and True:
+    sueltos = sueltos + no_caben(res, g)
+    comp_bases = comparar_bases()
+    json.dump(comp_bases, open(os.path.join(D, 'comparacion_bases.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+    for f in comp_bases: print('BASE', f)
     diseno, verif = exportar(res, g, sueltos, verificar=True)
     print('cajones verificados', len(verif), 'geometria con error', sum(1 for v in verif if v[8] != 'sin errores'), 'rejilla no reproduce', sum(1 for v in verif if v[6] == 'NO'))
     for v in verif: print(v)

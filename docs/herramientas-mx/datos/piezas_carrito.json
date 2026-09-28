@@ -9,11 +9,16 @@
   "A": 30,
   "H": 30,
   "peso_kg": 0.07,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "diario",
   "nota": "largo = 80 hoja + ~110 mango",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "WIHA-DS2",
@@ -25,11 +30,16 @@
   "A": 32,
   "H": 32,
   "peso_kg": 0.08,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "diario",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "WIHA-DS3",
@@ -41,11 +51,16 @@
   "A": 28,
   "H": 28,
   "peso_kg": 0.06,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "diario",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "WIHA-DS4",
@@ -57,11 +72,16 @@
   "A": 30,
   "H": 30,
   "peso_kg": 0.07,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "diario",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "WIHA-PP",
@@ -73,11 +93,16 @@
   "A": 55,
   "H": 20,
   "peso_kg": 0.17,
-  "fuente_dim": "nominal",
+  "fuente_dim": "F",
   "frec": "diario",
   "nota": "largo 160 = nombre",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D1",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "WIHA-PC",
@@ -89,11 +114,16 @@
   "A": 55,
   "H": 20,
   "peso_kg": 0.18,
-  "fuente_dim": "nominal",
+  "fuente_dim": "F",
   "frec": "diario",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D1",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "WIHA-PE",
@@ -101,15 +131,20 @@
   "desc": "Pinza combinada aislada 200 (32930)",
   "familia": "electrico",
   "modulo": "BASE",
-  "L": 200,
+  "L": 203,
   "A": 60,
   "H": 22,
   "peso_kg": 0.28,
-  "fuente_dim": "nominal",
+  "fuente_dim": "F",
   "frec": "diario",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D2",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "PREC6",
@@ -121,11 +156,16 @@
   "A": 90,
   "H": 25,
   "peso_kg": 0.2,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "frecuente",
   "nota": "buscador da 279x152x51 de empaque: descartado",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "MINIP",
@@ -134,14 +174,19 @@
   "familia": "electrico",
   "modulo": "BASE",
   "L": 127,
-  "A": 51,
+  "A": 60,
   "H": 13,
-  "peso_kg": 0.059,
-  "fuente_dim": "buscador",
+  "peso_kg": 0.08,
+  "fuente_dim": "D1",
   "frec": "frecuente",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D2",
+   "A": "D1",
+   "H": "D2"
+  }
  },
  {
   "id": "HDS-A",
@@ -153,11 +198,16 @@
   "A": 100,
   "H": 32,
   "peso_kg": 0.3,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "diario",
   "nota": "grupo de 3 lado a lado",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "HDS-B",
@@ -169,11 +219,16 @@
   "A": 100,
   "H": 32,
   "peso_kg": 0.3,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "diario",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "HDS-C",
@@ -185,11 +240,16 @@
   "A": 100,
   "H": 32,
   "peso_kg": 0.33,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "diario",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "HDS-D",
@@ -201,11 +261,16 @@
   "A": 100,
   "H": 32,
   "peso_kg": 0.33,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "diario",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "PELEC",
@@ -217,11 +282,16 @@
   "A": 50,
   "H": 15,
   "peso_kg": 0.515,
-  "fuente_dim": "buscador",
+  "fuente_dim": "D1",
   "frec": "diario",
   "nota": "buscador: 250x50x15 (15 mm de espesor parece bajo)",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D1",
+   "A": "D1",
+   "H": "D1"
+  }
  },
  {
   "id": "PDIAG",
@@ -230,14 +300,19 @@
   "familia": "mecanica_general",
   "modulo": "BASE",
   "L": 178,
-  "A": 55,
-  "H": 20,
-  "peso_kg": 0.3,
-  "fuente_dim": "nominal",
+  "A": 58,
+  "H": 17,
+  "peso_kg": 0.306,
+  "fuente_dim": "D1",
   "frec": "diario",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D2",
+   "A": "D1",
+   "H": "D1"
+  }
  },
  {
   "id": "PRES11",
@@ -249,11 +324,16 @@
   "A": 110,
   "H": 25,
   "peso_kg": 0.85,
-  "fuente_dim": "buscador",
+  "fuente_dim": "F",
   "frec": "frecuente",
   "nota": "ancho de la C estimado",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D2",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "PRES7",
@@ -261,15 +341,20 @@
   "desc": "Pinza de presion 7 in mordaza recta Husky",
   "familia": "soldadura_metalmecanica",
   "modulo": "BASE",
-  "L": 178,
-  "A": 60,
-  "H": 25,
-  "peso_kg": 0.35,
-  "fuente_dim": "nominal",
+  "L": 182,
+  "A": 62,
+  "H": 23,
+  "peso_kg": 0.364,
+  "fuente_dim": "D1",
   "frec": "frecuente",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D2",
+   "A": "D1",
+   "H": "D1"
+  }
  },
  {
   "id": "PRES6C",
@@ -281,11 +366,16 @@
   "A": 70,
   "H": 22,
   "peso_kg": 0.3,
-  "fuente_dim": "buscador",
+  "fuente_dim": "F",
   "frec": "frecuente",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D2",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "PRES10",
@@ -294,14 +384,19 @@
   "familia": "soldadura_metalmecanica",
   "modulo": "BASE",
   "L": 254,
-  "A": 70,
-  "H": 25,
-  "peso_kg": 0.5,
-  "fuente_dim": "buscador",
+  "A": 66,
+  "H": 26,
+  "peso_kg": 0.569,
+  "fuente_dim": "D1",
   "frec": "frecuente",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D1",
+   "A": "D1",
+   "H": "D1"
+  }
  },
  {
   "id": "AJ12",
@@ -309,15 +404,20 @@
   "desc": "Llave ajustable 12 in Husky 17018",
   "familia": "mecanica_general",
   "modulo": "BASE",
-  "L": 300,
+  "L": 305,
   "A": 78,
   "H": 20,
-  "peso_kg": 0.6,
-  "fuente_dim": "buscador",
+  "peso_kg": 0.777,
+  "fuente_dim": "D1",
   "frec": "diario",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D2",
+   "A": "D1",
+   "H": "D1"
+  }
  },
  {
   "id": "AJ8",
@@ -325,15 +425,20 @@
   "desc": "Llave ajustable 8 in Husky 17016",
   "familia": "mecanica_general",
   "modulo": "BASE",
-  "L": 203,
-  "A": 60,
+  "L": 205,
+  "A": 56,
   "H": 15,
-  "peso_kg": 0.3,
-  "fuente_dim": "nominal",
+  "peso_kg": 0.302,
+  "fuente_dim": "D1",
   "frec": "diario",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D2",
+   "A": "D1",
+   "H": "D1"
+  }
  },
  {
   "id": "CHOF8",
@@ -342,14 +447,19 @@
   "familia": "mecanica_general",
   "modulo": "BASE",
   "L": 203,
-  "A": 55,
+  "A": 50,
   "H": 15,
-  "peso_kg": 0.25,
-  "fuente_dim": "nominal",
+  "peso_kg": 0.292,
+  "fuente_dim": "D1",
   "frec": "frecuente",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D2",
+   "A": "D1",
+   "H": "D1"
+  }
  },
  {
   "id": "FLEX1",
@@ -361,11 +471,16 @@
   "A": 60,
   "H": 40,
   "peso_kg": 0.25,
-  "fuente_dim": "buscador",
+  "fuente_dim": "D2",
   "frec": "diario",
   "nota": "planta 70x60, espesor 40",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D2",
+   "A": "D2",
+   "H": "D2"
+  }
  },
  {
   "id": "FLEX2",
@@ -377,11 +492,16 @@
   "A": 60,
   "H": 40,
   "peso_kg": 0.25,
-  "fuente_dim": "buscador",
+  "fuente_dim": "D2",
   "frec": "diario",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D2",
+   "A": "D2",
+   "H": "D2"
+  }
  },
  {
   "id": "COMB7",
@@ -392,12 +512,17 @@
   "L": 245,
   "A": 175,
   "H": 45,
-  "peso_kg": 0.9,
-  "fuente_dim": "buscador",
+  "peso_kg": 1.0,
+  "fuente_dim": "D1",
   "frec": "frecuente",
   "nota": "medida de estuche",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D1",
+   "A": "D1",
+   "H": "D1"
+  }
  },
  {
   "id": "COMB10",
@@ -409,11 +534,16 @@
   "A": 180,
   "H": 25,
   "peso_kg": 1.4,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "frecuente",
   "nota": "foto K: dos filas de llaves",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "MATR",
@@ -425,11 +555,16 @@
   "A": 200,
   "H": 45,
   "peso_kg": 1.6,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "frecuente",
   "nota": "dados P7-P35 en riel + matraca; foto P",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "EXTS",
@@ -441,11 +576,16 @@
   "A": 80,
   "H": 25,
   "peso_kg": 0.6,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "frecuente",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "ADAP",
@@ -457,11 +597,16 @@
   "A": 40,
   "H": 25,
   "peso_kg": 0.1,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "frecuente",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "TORX",
@@ -473,11 +618,16 @@
   "A": 45,
   "H": 30,
   "peso_kg": 0.3,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "ocasional",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "MART",
@@ -486,14 +636,19 @@
   "familia": "mecanica_general",
   "modulo": "BASE",
   "L": 340,
-  "A": 125,
-  "H": 35,
+  "A": 130,
+  "H": 30,
   "peso_kg": 0.707,
-  "fuente_dim": "buscador",
+  "fuente_dim": "D1",
   "frec": "frecuente",
   "nota": "alto de cabeza 125 estimado",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D1",
+   "A": "D1",
+   "H": "D1"
+  }
  },
  {
   "id": "MAZO",
@@ -501,15 +656,20 @@
   "desc": "Mazo de hule 16 oz Truper MH-16",
   "familia": "mecanica_general",
   "modulo": "CIV",
-  "L": 340,
-  "A": 110,
-  "H": 60,
-  "peso_kg": 0.7,
-  "fuente_dim": "buscador",
+  "L": 357,
+  "A": 104,
+  "H": 51,
+  "peso_kg": 0.649,
+  "fuente_dim": "D1",
   "frec": "ocasional",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D1",
+   "A": "D1",
+   "H": "D1"
+  }
  },
  {
   "id": "CINC",
@@ -521,11 +681,16 @@
   "A": 60,
   "H": 25,
   "peso_kg": 0.5,
-  "fuente_dim": "nominal",
+  "fuente_dim": "F",
   "frec": "ocasional",
   "nota": "10 in = 254",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "LIMAS",
@@ -537,11 +702,16 @@
   "A": 60,
   "H": 15,
   "peso_kg": 0.3,
-  "fuente_dim": "nominal",
+  "fuente_dim": "F",
   "frec": "ocasional",
   "nota": "H3 trae 24.4 cm en el nombre",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D1",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "NAVAJA",
@@ -552,12 +722,17 @@
   "L": 224,
   "A": 88,
   "H": 20,
-  "peso_kg": 0.2,
-  "fuente_dim": "nominal",
+  "peso_kg": 0.11,
+  "fuente_dim": "D1",
   "frec": "diario",
   "nota": "22.4 x 8.8 x 2 cm = nombre",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D1",
+   "A": "D1",
+   "H": "D1"
+  }
  },
  {
   "id": "TAZON",
@@ -568,12 +743,17 @@
   "L": 150,
   "A": 150,
   "H": 40,
-  "peso_kg": 0.32,
-  "fuente_dim": "nominal",
+  "peso_kg": 0.323,
+  "fuente_dim": "D1",
   "frec": "frecuente",
   "nota": "nombre: 323 g; diametro estimado",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D1",
+   "A": "D1",
+   "H": "D1"
+  }
  },
  {
   "id": "TORPEDO",
@@ -583,13 +763,18 @@
   "modulo": "BASE",
   "L": 230,
   "A": 45,
-  "H": 30,
-  "peso_kg": 0.2,
-  "fuente_dim": "buscador",
+  "H": 16,
+  "peso_kg": 0.138,
+  "fuente_dim": "D1",
   "frec": "diario",
   "nota": "buscador 230x45x16; 30 con vial",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D1",
+   "A": "D1",
+   "H": "D1"
+  }
  },
  {
   "id": "ESCCOMB",
@@ -597,15 +782,20 @@
   "desc": "Escuadra combinada 12 in Empire 220IM",
   "familia": "medicion_trazo",
   "modulo": "MED",
-  "L": 305,
-  "A": 100,
+  "L": 304,
+  "A": 133,
   "H": 30,
-  "peso_kg": 0.4,
-  "fuente_dim": "nominal",
+  "peso_kg": 0.35,
+  "fuente_dim": "F",
   "frec": "frecuente",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D1",
+   "A": "D1",
+   "H": "F"
+  }
  },
  {
   "id": "VERN",
@@ -617,11 +807,16 @@
   "A": 80,
   "H": 20,
   "peso_kg": 0.205,
-  "fuente_dim": "buscador",
+  "fuente_dim": "F",
   "frec": "frecuente",
   "nota": "ancho de las puntas estimado",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D1",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "SEGUETA",
@@ -629,15 +824,20 @@
   "desc": "Arco con segueta 12 in Stanley 15-555",
   "familia": "perforacion_corte",
   "modulo": "SOL",
-  "L": 400,
-  "A": 110,
-  "H": 25,
-  "peso_kg": 0.5,
-  "fuente_dim": "estimacion",
+  "L": 475,
+  "A": 134,
+  "H": 24,
+  "peso_kg": 0.688,
+  "fuente_dim": "D1",
   "frec": "frecuente",
   "nota": "cabe a lo ancho del cajon (416)",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D1",
+   "A": "D1",
+   "H": "D1"
+  }
  },
  {
   "id": "BROCAS",
@@ -649,11 +849,16 @@
   "A": 80,
   "H": 20,
   "peso_kg": 0.3,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "frecuente",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "ESCAL",
@@ -665,11 +870,16 @@
   "A": 90,
   "H": 35,
   "peso_kg": 0.35,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "frecuente",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "IMP14",
@@ -679,13 +889,18 @@
   "modulo": "BASE",
   "L": 196,
   "A": 112,
-  "H": 60,
+  "H": 53,
   "peso_kg": 0.771,
-  "fuente_dim": "buscador",
+  "fuente_dim": "D2",
   "frec": "diario",
   "nota": "acostado: planta alto x largo; espesor 60 estimado (buscador da 53)",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D2",
+   "A": "D2",
+   "H": "D2"
+  }
  },
  {
   "id": "IMP38",
@@ -695,13 +910,18 @@
   "modulo": "BASE",
   "L": 202,
   "A": 122,
-  "H": 70,
+  "H": 65,
   "peso_kg": 1.089,
-  "fuente_dim": "buscador",
+  "fuente_dim": "D2",
   "frec": "frecuente",
   "nota": "espesor 70 (buscador 65)",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D2",
+   "A": "D2",
+   "H": "D2"
+  }
  },
  {
   "id": "ROTO18",
@@ -710,14 +930,19 @@
   "familia": "inalambricas_energia",
   "modulo": "BASE",
   "L": 202,
-  "A": 170,
-  "H": 75,
+  "A": 147,
+  "H": 56,
   "peso_kg": 1.043,
-  "fuente_dim": "buscador",
+  "fuente_dim": "D2",
   "frec": "diario",
   "nota": "largo 170 estimado (buscador 147 sin portabrocas)",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D2",
+   "A": "D2",
+   "H": "D2"
+  }
  },
  {
   "id": "BAT1",
@@ -725,15 +950,20 @@
   "desc": "Bateria M18 CP2.0",
   "familia": "inalambricas_energia",
   "modulo": "BASE",
-  "L": 115,
-  "A": 80,
-  "H": 60,
-  "peso_kg": 0.43,
-  "fuente_dim": "estimacion",
+  "L": 118,
+  "A": 79,
+  "H": 55,
+  "peso_kg": 0.431,
+  "fuente_dim": "D1",
   "frec": "diario",
   "nota": "buscador solo da empaque",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D1",
+   "A": "D1",
+   "H": "D1"
+  }
  },
  {
   "id": "BAT2",
@@ -741,15 +971,20 @@
   "desc": "Bateria M18 CP2.0",
   "familia": "inalambricas_energia",
   "modulo": "BASE",
-  "L": 115,
-  "A": 80,
-  "H": 60,
-  "peso_kg": 0.43,
-  "fuente_dim": "estimacion",
+  "L": 118,
+  "A": 79,
+  "H": 55,
+  "peso_kg": 0.431,
+  "fuente_dim": "D1",
   "frec": "diario",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D1",
+   "A": "D1",
+   "H": "D1"
+  }
  },
  {
   "id": "CARG1",
@@ -757,15 +992,20 @@
   "desc": "Cargador sencillo M18/M12 48-59-1812 (compra)",
   "familia": "inalambricas_energia",
   "modulo": "BASE",
-  "L": 150,
-  "A": 100,
-  "H": 70,
-  "peso_kg": 0.4,
-  "fuente_dim": "estimacion",
+  "L": 202,
+  "A": 155,
+  "H": 87,
+  "peso_kg": 0.912,
+  "fuente_dim": "D2",
   "frec": "diario",
   "nota": "el de 6 bahias no cabe en cajon: se queda en taller",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D2",
+   "A": "D2",
+   "H": "D2"
+  }
  },
  {
   "id": "ESM45",
@@ -773,15 +1013,20 @@
   "desc": "Mini esmeriladora 4-1/2 alambrica 6130-33 + cable",
   "familia": "perforacion_corte",
   "modulo": "BASE",
-  "L": 300,
-  "A": 130,
-  "H": 105,
-  "peso_kg": 1.9,
-  "fuente_dim": "buscador",
+  "L": 357,
+  "A": 152,
+  "H": 90,
+  "peso_kg": 1.588,
+  "fuente_dim": "D2",
   "frec": "diario",
   "nota": "largo 259 (buscador) + guarda; cable enrollado junto",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D2",
+   "A": "D2",
+   "H": "D2"
+  }
  },
  {
   "id": "FLUKE",
@@ -793,11 +1038,16 @@
   "A": 75,
   "H": 34,
   "peso_kg": 0.265,
-  "fuente_dim": "buscador",
+  "fuente_dim": "D2",
   "frec": "frecuente",
   "nota": "2 fuentes",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D2",
+   "A": "D2",
+   "H": "D2"
+  }
  },
  {
   "id": "MAPPER",
@@ -809,11 +1059,16 @@
   "A": 52,
   "H": 30,
   "peso_kg": 0.13,
-  "fuente_dim": "buscador",
+  "fuente_dim": "D2",
   "frec": "ocasional",
   "nota": "2 fuentes",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D2",
+   "A": "D2",
+   "H": "D2"
+  }
  },
  {
   "id": "PELA",
@@ -825,11 +1080,16 @@
   "A": 55,
   "H": 15,
   "peso_kg": 0.2,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "frecuente",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "CRIMP",
@@ -841,11 +1101,16 @@
   "A": 90,
   "H": 30,
   "peso_kg": 0.6,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "frecuente",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "KO",
@@ -853,15 +1118,20 @@
   "desc": "Kit knockout M18 Force Logic 2677-23 (estuche)",
   "familia": "electrico",
   "modulo": "ELE",
-  "L": 480,
-  "A": 330,
-  "H": 120,
+  "L": 582,
+  "A": 284,
+  "H": 429,
   "peso_kg": 7.5,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "D1",
   "frec": "ocasional",
   "nota": "la herramienta es 297x59x114 (2 fuentes); el estuche no tiene medida: queda en su estuche",
   "validado": false,
-  "suelto": "estuche original del kit"
+  "suelto": "estuche original del kit",
+  "nivel_dim": {
+   "L": "D1",
+   "A": "D1",
+   "H": "D1"
+  }
  },
  {
   "id": "EXTECH",
@@ -873,11 +1143,16 @@
   "A": 70,
   "H": 40,
   "peso_kg": 0.3,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "frecuente",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "PONCH",
@@ -889,11 +1164,16 @@
   "A": 70,
   "H": 25,
   "peso_kg": 0.3,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "ocasional",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "DETV",
@@ -905,11 +1185,16 @@
   "A": 25,
   "H": 25,
   "peso_kg": 0.06,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "frecuente",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "SACAB",
@@ -921,11 +1206,16 @@
   "A": 90,
   "H": 40,
   "peso_kg": 0.5,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "ocasional",
   "nota": "foto F",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "ESCMAG",
@@ -937,11 +1227,16 @@
   "A": 110,
   "H": 60,
   "peso_kg": 1.6,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "diario",
   "nota": "foto Q: 4 apiladas, 15 mm cada una",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "PRES11B",
@@ -953,11 +1248,16 @@
   "A": 110,
   "H": 25,
   "peso_kg": 0.85,
-  "fuente_dim": "buscador",
+  "fuente_dim": "F",
   "frec": "frecuente",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D2",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "PRES6CB",
@@ -969,11 +1269,16 @@
   "A": 70,
   "H": 22,
   "peso_kg": 0.3,
-  "fuente_dim": "buscador",
+  "fuente_dim": "F",
   "frec": "frecuente",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D2",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "PRES10B",
@@ -982,14 +1287,19 @@
   "familia": "soldadura_metalmecanica",
   "modulo": "SOL",
   "L": 254,
-  "A": 70,
-  "H": 25,
-  "peso_kg": 0.5,
-  "fuente_dim": "buscador",
+  "A": 66,
+  "H": 26,
+  "peso_kg": 0.569,
+  "fuente_dim": "D1",
   "frec": "frecuente",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D1",
+   "A": "D1",
+   "H": "D1"
+  }
  },
  {
   "id": "PRES7B",
@@ -997,15 +1307,20 @@
   "desc": "Pinza de presion 7 in (2a, hoy faltante)",
   "familia": "soldadura_metalmecanica",
   "modulo": "SOL",
-  "L": 178,
-  "A": 60,
-  "H": 25,
-  "peso_kg": 0.35,
-  "fuente_dim": "nominal",
+  "L": 182,
+  "A": 62,
+  "H": 23,
+  "peso_kg": 0.364,
+  "fuente_dim": "D1",
   "frec": "frecuente",
   "nota": "hueco en foto: comprar",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D2",
+   "A": "D1",
+   "H": "D1"
+  }
  },
  {
   "id": "ESM45B",
@@ -1013,15 +1328,20 @@
   "desc": "Mini esmeriladora 4-1/2 6130-33 (2a)",
   "familia": "perforacion_corte",
   "modulo": "SOL",
-  "L": 300,
-  "A": 130,
-  "H": 105,
-  "peso_kg": 1.9,
-  "fuente_dim": "buscador",
+  "L": 357,
+  "A": 152,
+  "H": 90,
+  "peso_kg": 1.588,
+  "fuente_dim": "D2",
   "frec": "diario",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D2",
+   "A": "D2",
+   "H": "D2"
+  }
  },
  {
   "id": "RECT",
@@ -1033,11 +1353,16 @@
   "A": 70,
   "H": 70,
   "peso_kg": 1.3,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "ocasional",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "MOTO",
@@ -1049,11 +1374,16 @@
   "A": 200,
   "H": 80,
   "peso_kg": 1.2,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "ocasional",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "MACH",
@@ -1065,11 +1395,16 @@
   "A": 290,
   "H": 45,
   "peso_kg": 2.5,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "ocasional",
   "nota": "foto F: estuche negro + naranja",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "EXTOR",
@@ -1081,11 +1416,16 @@
   "A": 60,
   "H": 20,
   "peso_kg": 0.13,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "ocasional",
   "nota": "buscador da empaque 180x130x20",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "EXTQ",
@@ -1097,11 +1437,16 @@
   "A": 160,
   "H": 50,
   "peso_kg": 3.7,
-  "fuente_dim": "buscador",
+  "fuente_dim": "F",
   "frec": "ocasional",
   "nota": "buscador: 300x160x50, 3.7 kg (empaque)",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "FRESA",
@@ -1113,11 +1458,16 @@
   "A": 15,
   "H": 15,
   "peso_kg": 0.05,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "ocasional",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "STILL1",
@@ -1125,15 +1475,20 @@
   "desc": "Llave stillson 14 in Husky 73126",
   "familia": "tuberia",
   "modulo": "TUB",
-  "L": 355,
-  "A": 90,
-  "H": 35,
-  "peso_kg": 1.3,
-  "fuente_dim": "nominal",
+  "L": 356,
+  "A": 83,
+  "H": 32,
+  "peso_kg": 1.52,
+  "fuente_dim": "D1",
   "frec": "diario",
   "nota": "buscador 325x83x32; 14 in = 356",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D1",
+   "A": "D1",
+   "H": "D1"
+  }
  },
  {
   "id": "STILL2",
@@ -1141,15 +1496,20 @@
   "desc": "Llave stillson 14 in Husky 73126",
   "familia": "tuberia",
   "modulo": "TUB",
-  "L": 355,
-  "A": 90,
-  "H": 35,
-  "peso_kg": 1.3,
-  "fuente_dim": "nominal",
+  "L": 356,
+  "A": 83,
+  "H": 32,
+  "peso_kg": 1.52,
+  "fuente_dim": "D1",
   "frec": "diario",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D1",
+   "A": "D1",
+   "H": "D1"
+  }
  },
  {
   "id": "CAIMAN",
@@ -1161,11 +1521,16 @@
   "A": 80,
   "H": 40,
   "peso_kg": 1.5,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "ocasional",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "NIVTUB1",
@@ -1173,15 +1538,20 @@
   "desc": "Nivel para tuberia 6.5 in Milwaukee 48-22-5110",
   "familia": "tuberia",
   "modulo": "TUB",
-  "L": 165,
-  "A": 45,
-  "H": 40,
-  "peso_kg": 0.3,
-  "fuente_dim": "buscador",
+  "L": 159,
+  "A": 51,
+  "H": 19,
+  "peso_kg": 0.141,
+  "fuente_dim": "D1",
   "frec": "frecuente",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D2",
+   "A": "D1",
+   "H": "D2"
+  }
  },
  {
   "id": "NIVTUB2",
@@ -1189,15 +1559,20 @@
   "desc": "Nivel para tuberia 6.5 in Milwaukee 48-22-5110",
   "familia": "tuberia",
   "modulo": "TUB",
-  "L": 165,
-  "A": 45,
-  "H": 40,
-  "peso_kg": 0.3,
-  "fuente_dim": "buscador",
+  "L": 159,
+  "A": 51,
+  "H": 19,
+  "peso_kg": 0.141,
+  "fuente_dim": "D1",
   "frec": "frecuente",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D2",
+   "A": "D1",
+   "H": "D2"
+  }
  },
  {
   "id": "12R",
@@ -1208,12 +1583,17 @@
   "L": 420,
   "A": 320,
   "H": 120,
-  "peso_kg": 15.8,
-  "fuente_dim": "estimacion",
+  "peso_kg": 15.762,
+  "fuente_dim": "F",
   "frec": "frecuente",
   "nota": "peso 15.76 kg (buscador) > 11 kg por cajon: solo en la base 8420",
   "validado": false,
-  "suelto": "estuche original Ridgid (15.8 kg > 11 kg por cajon)"
+  "suelto": "estuche original Ridgid (15.8 kg > 11 kg por cajon)",
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "CAB34",
@@ -1225,11 +1605,16 @@
   "A": 100,
   "H": 60,
   "peso_kg": 1.2,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "ocasional",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "SDS",
@@ -1239,13 +1624,18 @@
   "modulo": "CIV",
   "L": 335,
   "A": 195,
-  "H": 90,
-  "peso_kg": 3.0,
-  "fuente_dim": "buscador",
+  "H": 75,
+  "peso_kg": 3.034,
+  "fuente_dim": "D1",
   "frec": "diario",
   "nota": "espesor 90 estimado (buscador 75)",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D1",
+   "A": "D1",
+   "H": "D1"
+  }
  },
  {
   "id": "TAL12",
@@ -1253,15 +1643,20 @@
   "desc": "Taladro percutor alambrico 1/2 5375-20",
   "familia": "perforacion_corte",
   "modulo": "CIV",
-  "L": 292,
-  "A": 200,
-  "H": 80,
-  "peso_kg": 2.73,
-  "fuente_dim": "buscador",
+  "L": 340,
+  "A": 265,
+  "H": 86,
+  "peso_kg": 3.13,
+  "fuente_dim": "D1",
   "frec": "frecuente",
   "nota": "alto 200 estimado",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D1",
+   "A": "D1",
+   "H": "D1"
+  }
  },
  {
   "id": "MANGOS",
@@ -1273,11 +1668,16 @@
   "A": 60,
   "H": 50,
   "peso_kg": 0.4,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "frecuente",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "SDSBIT",
@@ -1289,11 +1689,16 @@
   "A": 250,
   "H": 45,
   "peso_kg": 2.2,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "frecuente",
   "nota": "foto G: charola metalica que ocupa casi todo el 8450",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "MART2",
@@ -1302,14 +1707,19 @@
   "familia": "mecanica_general",
   "modulo": "CIV",
   "L": 340,
-  "A": 125,
-  "H": 35,
+  "A": 130,
+  "H": 30,
   "peso_kg": 0.707,
-  "fuente_dim": "buscador",
+  "fuente_dim": "D1",
   "frec": "frecuente",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D1",
+   "A": "D1",
+   "H": "D1"
+  }
  },
  {
   "id": "CALAD",
@@ -1317,15 +1727,20 @@
   "desc": "Sierra caladora Ryobi JS481LG",
   "familia": "perforacion_corte",
   "modulo": "CIV",
-  "L": 236,
-  "A": 200,
-  "H": 79,
-  "peso_kg": 2.2,
-  "fuente_dim": "estimacion",
+  "L": 279,
+  "A": 236,
+  "H": 72,
+  "peso_kg": 2.0,
+  "fuente_dim": "D1",
   "frec": "ocasional",
   "nota": "buscador da empaque",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D1",
+   "A": "D1",
+   "H": "D1"
+  }
  },
  {
   "id": "LIJA",
@@ -1336,12 +1751,17 @@
   "L": 267,
   "A": 146,
   "H": 125,
-  "peso_kg": 0.907,
-  "fuente_dim": "buscador",
+  "peso_kg": 1.225,
+  "fuente_dim": "D2",
   "frec": "ocasional",
   "nota": "espesor 125: solo cabe en cajon de 130 o base",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D2",
+   "A": "D2",
+   "H": "D2"
+  }
  },
  {
   "id": "SABLE",
@@ -1349,15 +1769,20 @@
   "desc": "Sierra sable 6509-31 (estuche original)",
   "familia": "perforacion_corte",
   "modulo": "CIV",
-  "L": 520,
-  "A": 250,
-  "H": 120,
-  "peso_kg": 4.5,
-  "fuente_dim": "estimacion",
+  "L": 483,
+  "A": 133,
+  "H": 114,
+  "peso_kg": 3.221,
+  "fuente_dim": "D1",
   "frec": "ocasional",
   "nota": "largo herramienta 483 (buscador); queda en su estuche",
   "validado": false,
-  "suelto": "estuche original"
+  "suelto": "estuche original",
+  "nivel_dim": {
+   "L": "D1",
+   "A": "D1",
+   "H": "D1"
+  }
  },
  {
   "id": "LASER",
@@ -1367,13 +1792,18 @@
   "modulo": "MED",
   "L": 100,
   "A": 64,
-  "H": 100,
+  "H": 104,
   "peso_kg": 0.35,
-  "fuente_dim": "buscador",
+  "fuente_dim": "D1",
   "frec": "frecuente",
   "nota": "va parado: 100 de alto",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D2",
+   "A": "D2",
+   "H": "D1"
+  }
  },
  {
   "id": "LASER2",
@@ -1383,13 +1813,18 @@
   "modulo": "MED",
   "L": 100,
   "A": 64,
-  "H": 100,
+  "H": 104,
   "peso_kg": 0.35,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "D1",
   "frec": "frecuente",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D2",
+   "A": "D2",
+   "H": "D1"
+  }
  },
  {
   "id": "ESCCAR",
@@ -1397,15 +1832,20 @@
   "desc": "Escuadra de carpintero 12 in Truper EC-12",
   "familia": "medicion_trazo",
   "modulo": "MED",
-  "L": 305,
-  "A": 200,
-  "H": 15,
-  "peso_kg": 0.3,
-  "fuente_dim": "nominal",
+  "L": 304,
+  "A": 166,
+  "H": 14,
+  "peso_kg": 0.228,
+  "fuente_dim": "D1",
   "frec": "ocasional",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D1",
+   "A": "D1",
+   "H": "D1"
+  }
  },
  {
   "id": "TORPEDO2",
@@ -1415,13 +1855,18 @@
   "modulo": "MED",
   "L": 230,
   "A": 45,
-  "H": 30,
-  "peso_kg": 0.2,
-  "fuente_dim": "buscador",
+  "H": 16,
+  "peso_kg": 0.138,
+  "fuente_dim": "D1",
   "frec": "frecuente",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "D1",
+   "A": "D1",
+   "H": "D1"
+  }
  },
  {
   "id": "AMARRE",
@@ -1433,11 +1878,16 @@
   "A": 120,
   "H": 60,
   "peso_kg": 1.6,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "frecuente",
   "nota": "en cajon de 61 no cabe: va al de 127/130",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  },
  {
   "id": "GRILL",
@@ -1449,10 +1899,15 @@
   "A": 90,
   "H": 45,
   "peso_kg": 1.8,
-  "fuente_dim": "estimacion",
+  "fuente_dim": "F",
   "frec": "ocasional",
   "nota": "",
   "validado": false,
-  "suelto": null
+  "suelto": null,
+  "nivel_dim": {
+   "L": "F",
+   "A": "F",
+   "H": "F"
+  }
  }
 ]

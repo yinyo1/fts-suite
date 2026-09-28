@@ -1,0 +1,258 @@
+[
+ {
+  "base": "8420 + 2 x 8444 (vigente) · M18 con candado",
+  "caben_todas": false,
+  "en_8420_sin_candado": [
+   "ESM45",
+   "CARG1"
+  ],
+  "no_caben": [
+   "IMP38",
+   "ROTO18",
+   "BAT1",
+   "BAT2",
+   "IMP14"
+  ],
+  "alto_pila_mm": 1228,
+  "cajones_usados": 9,
+  "cajones_libres": 1,
+  "ocupacion_media_%": 51.8,
+  "penalizacion": 37.2
+ },
+ {
+  "base": "8420 + 8444 + 8447 · M18 con candado",
+  "caben_todas": false,
+  "en_8420_sin_candado": [
+   "CARG1",
+   "PELEC"
+  ],
+  "no_caben": [
+   "ROTO18"
+  ],
+  "alto_pila_mm": 1228,
+  "cajones_usados": 8,
+  "cajones_libres": 1,
+  "ocupacion_media_%": 64.8,
+  "penalizacion": 40.4
+ },
+ {
+  "base": "8420 + 2 x 8447 · M18 con candado",
+  "caben_todas": true,
+  "en_8420_sin_candado": [
+   "PRES11",
+   "AJ12",
+   "NAVAJA",
+   "VERN",
+   "WIHA-PC",
+   "PDIAG",
+   "PELEC",
+   "AJ8",
+   "CHOF8"
+  ],
+  "no_caben": [],
+  "alto_pila_mm": 1228,
+  "cajones_usados": 8,
+  "cajones_libres": 0,
+  "ocupacion_media_%": 66.9,
+  "penalizacion": 50.8
+ },
+ {
+  "base": "8420 + 8443 + 8444 · M18 con candado",
+  "caben_todas": true,
+  "en_8420_sin_candado": [
+   "ESM45",
+   "CARG1"
+  ],
+  "no_caben": [],
+  "alto_pila_mm": 1228,
+  "cajones_usados": 9,
+  "cajones_libres": 0,
+  "ocupacion_media_%": 59.8,
+  "penalizacion": 42.1
+ },
+ {
+  "base": "8420 + 8441 + 8444 · M18 con candado",
+  "caben_todas": false,
+  "en_8420_sin_candado": [
+   "ESM45",
+   "WIHA-PE",
+   "AJ12",
+   "BROCAS",
+   "CARG1",
+   "NAVAJA",
+   "VERN",
+   "WIHA-PC",
+   "PDIAG",
+   "MINIP"
+  ],
+  "no_caben": [
+   "IMP14",
+   "PELEC",
+   "AJ8",
+   "CHOF8"
+  ],
+  "alto_pila_mm": 1221,
+  "cajones_usados": 7,
+  "cajones_libres": 0,
+  "ocupacion_media_%": 69.5,
+  "penalizacion": 56.9
+ },
+ {
+  "base": "8420 + 1 x 8444 · M18 con candado",
+  "caben_todas": false,
+  "en_8420_sin_candado": [
+   "ESM45",
+   "WIHA-PE",
+   "AJ12",
+   "BROCAS",
+   "CARG1",
+   "NAVAJA",
+   "VERN",
+   "WIHA-PC",
+   "PDIAG",
+   "MINIP"
+  ],
+  "no_caben": [
+   "IMP38",
+   "ROTO18",
+   "BAT1",
+   "BAT2",
+   "IMP14",
+   "TORPEDO",
+   "PELEC",
+   "AJ8",
+   "CHOF8"
+  ],
+  "alto_pila_mm": 865,
+  "cajones_usados": 6,
+  "cajones_libres": 0,
+  "ocupacion_media_%": 71.0,
+  "penalizacion": 26.7
+ },
+ {
+  "base": "8420 + 2 x 8444 (vigente) · sin exigir candado",
+  "caben_todas": true,
+  "en_8420_sin_candado": [
+   "ESM45",
+   "IMP38",
+   "ROTO18",
+   "CARG1",
+   "BAT1",
+   "BAT2",
+   "IMP14"
+  ],
+  "no_caben": [],
+  "alto_pila_mm": 1228,
+  "cajones_usados": 9,
+  "cajones_libres": 1,
+  "ocupacion_media_%": 59.2,
+  "penalizacion": 51.4
+ },
+ {
+  "base": "8420 + 8444 + 8447 · sin exigir candado",
+  "caben_todas": true,
+  "en_8420_sin_candado": [
+   "CARG1",
+   "ROTO18",
+   "PELEC"
+  ],
+  "no_caben": [],
+  "alto_pila_mm": 1228,
+  "cajones_usados": 8,
+  "cajones_libres": 1,
+  "ocupacion_media_%": 67.4,
+  "penalizacion": 43.0
+ },
+ {
+  "base": "8420 + 2 x 8447 · sin exigir candado",
+  "caben_todas": true,
+  "en_8420_sin_candado": [
+   "PRES11",
+   "AJ12",
+   "NAVAJA",
+   "VERN",
+   "WIHA-PC",
+   "PDIAG",
+   "PELEC",
+   "AJ8",
+   "CHOF8"
+  ],
+  "no_caben": [],
+  "alto_pila_mm": 1228,
+  "cajones_usados": 8,
+  "cajones_libres": 0,
+  "ocupacion_media_%": 66.9,
+  "penalizacion": 50.8
+ },
+ {
+  "base": "8420 + 8443 + 8444 · sin exigir candado",
+  "caben_todas": true,
+  "en_8420_sin_candado": [
+   "ESM45",
+   "CARG1"
+  ],
+  "no_caben": [],
+  "alto_pila_mm": 1228,
+  "cajones_usados": 9,
+  "cajones_libres": 0,
+  "ocupacion_media_%": 59.8,
+  "penalizacion": 42.1
+ },
+ {
+  "base": "8420 + 8441 + 8444 · sin exigir candado",
+  "caben_todas": false,
+  "en_8420_sin_candado": [
+   "ESM45",
+   "IMP38",
+   "ROTO18",
+   "CARG1",
+   "BAT1",
+   "BAT2",
+   "IMP14",
+   "WIHA-PE",
+   "BROCAS",
+   "WIHA-PC"
+  ],
+  "no_caben": [
+   "TORPEDO",
+   "PELEC"
+  ],
+  "alto_pila_mm": 1221,
+  "cajones_usados": 7,
+  "cajones_libres": 0,
+  "ocupacion_media_%": 72.9,
+  "penalizacion": 59.5
+ },
+ {
+  "base": "8420 + 1 x 8444 · sin exigir candado",
+  "caben_todas": false,
+  "en_8420_sin_candado": [
+   "ESM45",
+   "IMP38",
+   "ROTO18",
+   "CARG1",
+   "BAT1",
+   "BAT2",
+   "IMP14",
+   "WIHA-PE",
+   "BROCAS",
+   "WIHA-PC"
+  ],
+  "no_caben": [
+   "AJ12",
+   "NAVAJA",
+   "VERN",
+   "PDIAG",
+   "TORPEDO",
+   "PELEC",
+   "AJ8",
+   "CHOF8",
+   "MINIP"
+  ],
+  "alto_pila_mm": 865,
+  "cajones_usados": 6,
+  "cajones_libres": 0,
+  "ocupacion_media_%": 72.7,
+  "penalizacion": 28.2
+ }
+]

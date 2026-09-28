@@ -32,7 +32,17 @@ Salida: `diseno_carrito.xlsx` + `svg/*.svg` (via skill `vista-cajon`).
 ## Objetivo
 Minimizar (1) numero de modulos, (2) altura total de la pila, (3) penalizaciones blandas.
 
+## Cotas de cajon (fabricante, leidas 2026-09-28, #330)
+- 8444: 4 cajones de 414 x 318 x **58** mm (2.3 in). 8447: 63 + 63 + 127. 8442: 127 + 127. 8443: 76 x 3. 8441: 1 de 419 x 330 x 260.
+- 8420: cajon de 330 de ancho y 406 de alto (fabricante); el fondo de 432 es fragmento. **Sin barra para candado.**
+
+## Regla de candado
+Las piezas en `REQUIERE_CANDADO` (M18 y sus baterias) solo van en cajones con barra (`con_barra`), o sea nunca en la 8420.
+
 ## Estrategias implementadas
+- `fijo` (gana desde #330): prueba todos los juegos de 1 a 3 cajas por modulo, empaca FFD dentro del juego fijo y elige
+  el que mete todo con menos cajas, menos alto, al menos un cajon libre de reserva si se puede, y menos penalizacion.
+  Las piezas que no caben en ningun cajon se apartan antes (van a Sueltos) para no tumbar la busqueda.
 - `ffd`: First-Fit Decreasing por area, cajones ordenados por altura, guillotina con skyline 2D.
 - `familia`: primero agrupa por familia y asigna cada familia al cajon mas bajo donde cabe; luego empaca con skyline.
 Correr ambas y comparar con `python3 acomodo.py --comparar`.

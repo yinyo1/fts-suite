@@ -54,18 +54,18 @@
   "cajones": [
    {
     "int_mm": {
-     "ancho": 416,
-     "fondo": 322,
-     "alto": 61
+     "ancho": 414,
+     "fondo": 318,
+     "alto": 63
     },
     "n": 2,
     "capacidad_kg": 11
    },
    {
     "int_mm": {
-     "ancho": 416,
-     "fondo": 322,
-     "alto": 130
+     "ancho": 414,
+     "fondo": 318,
+     "alto": 127
     },
     "n": 1,
     "capacidad_kg": 11
@@ -85,9 +85,9 @@
   "cajones": [
    {
     "int_mm": {
-     "ancho": 416,
-     "fondo": 322,
-     "alto": 61
+     "ancho": 414,
+     "fondo": 318,
+     "alto": 58
     },
     "n": 4,
     "capacidad_kg": 11
@@ -102,17 +102,17 @@
   "ext_mm": {
    "L": 414,
    "W": 564,
-   "H": 363
+   "H": 356
   },
   "cajones": [
    {
     "int_mm": {
-     "ancho": null,
-     "fondo": null,
-     "alto": null
+     "ancho": 419,
+     "fondo": 330,
+     "alto": 260
     },
     "n": 1,
-    "capacidad_kg": null
+    "capacidad_kg": 22.7
    }
   ],
   "capacidad_total_kg": 22.7,
@@ -122,8 +122,8 @@
   "nombre": "PACKOUT Rolling Drawer Tool Box (caja rodante de 1 cajón frontal profundo)",
   "tipo": "base_rodante_con_cajon",
   "ext_mm": {
-   "L": 610,
-   "W": 483,
+   "L": 483,
+   "W": 610,
    "H": 502
   },
   "cajones": [

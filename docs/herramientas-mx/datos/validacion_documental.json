@@ -1,0 +1,3301 @@
+{
+ "fecha": "2026-09-28",
+ "niveles": {
+  "V": "validado",
+  "D2": "documental doble",
+  "D1": "documental simple",
+  "F": "estimacion desde foto",
+  "X": "faltante"
+ },
+ "piezas": [
+  {
+   "id": "WIHA-DS1",
+   "ref": "A2",
+   "desc": "Desarmador aislado PH1 x 80 (32101)",
+   "modulo": "BASE",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "hoja 80 mm por nombre (NOM); largo total estimado de foto A 2025-05-30"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "estimado de foto"
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "estimado de foto"
+   },
+   "peso": null,
+   "nota": "Wiha 32101: ninguna pagina abierta publica largo total. HDUS vende el juego 32985 sin medidas por pieza. Medir con vernier.",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "WIHA-DS2",
+   "ref": "A3",
+   "desc": "Desarmador aislado PH2 x 100 (32102)",
+   "modulo": "BASE",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "hoja 100 mm por nombre (NOM); largo total estimado de foto A 2025-05-30"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "estimado de foto"
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "estimado de foto"
+   },
+   "peso": null,
+   "nota": "Wiha 32102: ninguna pagina abierta publica largo total. HDUS vende el juego 32985 sin medidas por pieza. Medir con vernier.",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "WIHA-DS3",
+   "ref": "A11",
+   "desc": "Desarmador aislado plano 3.0 x 100 (32012)",
+   "modulo": "BASE",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "hoja 100 mm por nombre (NOM); largo total estimado de foto A 2025-05-30"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "estimado de foto"
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "estimado de foto"
+   },
+   "peso": null,
+   "nota": "Wiha 32012: ninguna pagina abierta publica largo total. HDUS vende el juego 32985 sin medidas por pieza. Medir con vernier.",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "WIHA-DS4",
+   "ref": "A12",
+   "desc": "Desarmador aislado plano 4.5 x 100 (32023)",
+   "modulo": "BASE",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "hoja 100 mm por nombre (NOM); largo total estimado de foto A 2025-05-30"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "estimado de foto"
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "estimado de foto"
+   },
+   "peso": null,
+   "nota": "Wiha 32023: ninguna pagina abierta publica largo total. HDUS vende el juego 32985 sin medidas por pieza. Medir con vernier.",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "WIHA-PP",
+   "ref": "A10",
+   "desc": "Pinza de punta aislada 160 (32926)",
+   "modulo": "BASE",
+   "L": {
+    "v": 160,
+    "nivel": "D1",
+    "fuente": "NOM 160 mm (32926 \"160\"); PREV transcat 160 (misma cifra nominal)"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "peso": null,
+   "nota": "HDUS 32926 publica \"Product Height 1.5 in\" sin eje claro: no se usa.",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "WIHA-PC",
+   "ref": "A8",
+   "desc": "Pinza de corte diagonal aislada 160 (32933)",
+   "modulo": "BASE",
+   "L": {
+    "v": 160,
+    "nivel": "D1",
+    "fuente": "NOM 160 mm (32933)"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "peso": null,
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "WIHA-PE",
+   "ref": "A9",
+   "desc": "Pinza combinada aislada 200 (32930)",
+   "modulo": "BASE",
+   "L": {
+    "v": 203,
+    "nivel": "D2",
+    "fuente": "NOM 200 mm (32930) + HDUS \"8 in\" = 203 mm; se usa 203"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "peso": null,
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "PREC6",
+   "ref": "A1",
+   "desc": "Juego 6 desarmadores de precision 48-22-2606 (estuche)",
+   "modulo": "BASE",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "estuche estimado de foto"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "peso": null,
+   "nota": "MLK 11.5 x 6 x 1.5 in y HDMX 29.21 x 15.36 x 5.84 cm son la tarjeta de venta, no el estuche.",
+   "empaque_descartado": {
+    "MLK": [
+     292,
+     152,
+     38
+    ],
+    "HDMX": [
+     292,
+     154,
+     58
+    ]
+   },
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "MINIP",
+   "ref": "A5",
+   "desc": "Mini pinza de corte al ras 48-22-6105",
+   "modulo": "BASE",
+   "L": {
+    "v": 127,
+    "nivel": "D2",
+    "fuente": "MLK 5 in = 127; HDMX 12.7 cm"
+   },
+   "A": {
+    "v": 60,
+    "nivel": "D1",
+    "fuente": "MLK 2 in = 51; HDMX 6 cm = 60: difieren 9 mm, se usa 60"
+   },
+   "H": {
+    "v": 13,
+    "nivel": "D2",
+    "fuente": "MLK 0.5 in = 13; HDMX 1.27 cm"
+   },
+   "peso": [
+    0.08,
+    "HDMX 0.080 kg (MLK 0.13 lb = 0.059)"
+   ],
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "HDS-A",
+   "ref": "I5.1-I5.3",
+   "desc": "3 desarmadores Husky (P1, P1, P2)",
+   "modulo": "BASE",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "grupo de 3 desarmadores Husky, foto I 2025-07-03"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "peso": null,
+   "nota": "El listado trae el mismo numero 246340150 para 12 desarmadores distintos: no es numero de parte util.",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "HDS-B",
+   "ref": "I5.4-I5.6",
+   "desc": "3 desarmadores Husky (P2 x3)",
+   "modulo": "BASE",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "grupo de 3 desarmadores Husky, foto I 2025-07-03"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "peso": null,
+   "nota": "El listado trae el mismo numero 246340150 para 12 desarmadores distintos: no es numero de parte util.",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "HDS-C",
+   "ref": "I5.7-I5.9",
+   "desc": "3 desarmadores Husky 1/4",
+   "modulo": "ELE",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "grupo de 3 desarmadores Husky, foto I 2025-07-03"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "peso": null,
+   "nota": "El listado trae el mismo numero 246340150 para 12 desarmadores distintos: no es numero de parte util.",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "HDS-D",
+   "ref": "I5.10-I5.12",
+   "desc": "3 desarmadores Husky 1/4, 3/16",
+   "modulo": "ELE",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "grupo de 3 desarmadores Husky, foto I 2025-07-03"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "peso": null,
+   "nota": "El listado trae el mismo numero 246340150 para 12 desarmadores distintos: no es numero de parte util.",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "PELEC",
+   "ref": "I1",
+   "desc": "Pinza de electricista 9 in Husky 709195",
+   "modulo": "BASE",
+   "L": {
+    "v": 250,
+    "nivel": "D1",
+    "fuente": "HDMX 709195: 25 cm; NOM 9 in = 229 (difieren 21 mm, se usa 250)"
+   },
+   "A": {
+    "v": 50,
+    "nivel": "D1",
+    "fuente": "HDMX 5 cm"
+   },
+   "H": {
+    "v": 15,
+    "nivel": "D1",
+    "fuente": "HDMX 1.5 cm"
+   },
+   "peso": [
+    0.515,
+    "HDMX"
+   ],
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "PDIAG",
+   "ref": "I3",
+   "desc": "Pinza diagonal 7 in Husky 903465",
+   "modulo": "BASE",
+   "L": {
+    "v": 178,
+    "nivel": "D2",
+    "fuente": "HDMX 903465: 17.8 cm; NOM 7 in = 178"
+   },
+   "A": {
+    "v": 58,
+    "nivel": "D1",
+    "fuente": "HDMX 5.8 cm"
+   },
+   "H": {
+    "v": 17,
+    "nivel": "D1",
+    "fuente": "HDMX 1.7 cm"
+   },
+   "peso": [
+    0.306,
+    "HDMX"
+   ],
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "PRES11",
+   "ref": "L1",
+   "desc": "Pinza de presion C 11 in Torque Lock 48-22-3531",
+   "modulo": "BASE",
+   "L": {
+    "v": 279,
+    "nivel": "D2",
+    "fuente": "NOM 11 in = 279; PREV tenaquip 279"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto L 2025-07-03"
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "peso": null,
+   "nota": "MLK 14.4 x 6.75 x 0.75 in y HDMX 37.6 x 17.3 x 2.5 cm son la tarjeta de venta.",
+   "empaque_descartado": {
+    "MLK": [
+     366,
+     171,
+     19
+    ],
+    "HDMX": [
+     376,
+     173,
+     25
+    ]
+   },
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "PRES7",
+   "ref": "L3",
+   "desc": "Pinza de presion 7 in mordaza recta Husky",
+   "modulo": "BASE",
+   "L": {
+    "v": 182,
+    "nivel": "D2",
+    "fuente": "HDMX 709207: 18.2 cm; NOM 7 in = 178 (4 mm)"
+   },
+   "A": {
+    "v": 62,
+    "nivel": "D1",
+    "fuente": "HDMX 6.2 cm"
+   },
+   "H": {
+    "v": 23,
+    "nivel": "D1",
+    "fuente": "HDMX 2.3 cm"
+   },
+   "peso": [
+    0.364,
+    "HDMX"
+   ],
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "PRES6C",
+   "ref": "L5",
+   "desc": "Pinza de presion C 6 in Torque Lock 48-22-3532",
+   "modulo": "BASE",
+   "L": {
+    "v": 152,
+    "nivel": "D2",
+    "fuente": "NOM 6 in = 152; PREV rshughes 152"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "peso": null,
+   "nota": "MLK 12.9 x 4.3 x 0.6 in y HDMX 24.9 x 11 x 1.52 cm son tarjeta de venta.",
+   "empaque_descartado": {
+    "MLK": [
+     328,
+     109,
+     15
+    ],
+    "HDMX": [
+     249,
+     110,
+     15
+    ]
+   },
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "PRES10",
+   "ref": "L7",
+   "desc": "Pinza de presion 10 in mordaza curva Husky 709204",
+   "modulo": "BASE",
+   "L": {
+    "v": 254,
+    "nivel": "D1",
+    "fuente": "NOM 10 in = 254; HDMX 709204 publica 22.6 cm (28 mm menos), se usa 254"
+   },
+   "A": {
+    "v": 66,
+    "nivel": "D1",
+    "fuente": "HDMX 6.6 cm"
+   },
+   "H": {
+    "v": 26,
+    "nivel": "D1",
+    "fuente": "HDMX 2.6 cm"
+   },
+   "peso": [
+    0.569,
+    "HDMX"
+   ],
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "AJ12",
+   "ref": "J1",
+   "desc": "Llave ajustable 12 in Husky 17018",
+   "modulo": "BASE",
+   "L": {
+    "v": 305,
+    "nivel": "D2",
+    "fuente": "NOM 12 in = 305; HDMX 17018: 30 cm"
+   },
+   "A": {
+    "v": 78,
+    "nivel": "D1",
+    "fuente": "HDMX 7.8 cm"
+   },
+   "H": {
+    "v": 20,
+    "nivel": "D1",
+    "fuente": "HDMX 2 cm"
+   },
+   "peso": [
+    0.777,
+    "HDMX"
+   ],
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "AJ8",
+   "ref": "J4",
+   "desc": "Llave ajustable 8 in Husky 17016",
+   "modulo": "BASE",
+   "L": {
+    "v": 205,
+    "nivel": "D2",
+    "fuente": "HDMX 17016: 20.5 cm; NOM 8 in = 203"
+   },
+   "A": {
+    "v": 56,
+    "nivel": "D1",
+    "fuente": "HDMX 5.6 cm"
+   },
+   "H": {
+    "v": 15,
+    "nivel": "D1",
+    "fuente": "HDMX 1.5 cm"
+   },
+   "peso": [
+    0.302,
+    "HDMX"
+   ],
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "CHOF8",
+   "ref": "J7",
+   "desc": "Pinza de chofer 8 in Truper 17301",
+   "modulo": "BASE",
+   "L": {
+    "v": 203,
+    "nivel": "D2",
+    "fuente": "HDMX PCH-8: 20.3 cm; NOM 8 in"
+   },
+   "A": {
+    "v": 50,
+    "nivel": "D1",
+    "fuente": "HDMX 5 cm"
+   },
+   "H": {
+    "v": 15,
+    "nivel": "D1",
+    "fuente": "HDMX 1.5 cm"
+   },
+   "peso": [
+    0.292,
+    "HDMX"
+   ],
+   "nota": "El listado dice Truper 17301; en HDMX el articulo equivalente es PCH-8 (sku 248697). Leer la pieza.",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "FLEX1",
+   "ref": "J11",
+   "desc": "Flexometro 5 m Stanley 30-615",
+   "modulo": "BASE",
+   "L": {
+    "v": 70,
+    "nivel": "D2",
+    "fuente": "PREV claroshop + ferrepat (fragmentos): 70"
+   },
+   "A": {
+    "v": 60,
+    "nivel": "D2",
+    "fuente": "PREV: 60"
+   },
+   "H": {
+    "v": 40,
+    "nivel": "D2",
+    "fuente": "PREV: 40"
+   },
+   "peso": null,
+   "nota": "Stanley 30-615: HDMX ya no lo lista (busqueda por sku 237599 sin resultado). Los dos documentales son fragmentos.",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "FLEX2",
+   "ref": "J12",
+   "desc": "Flexometro 5 m Stanley 30-615",
+   "modulo": "BASE",
+   "L": {
+    "v": 70,
+    "nivel": "D2",
+    "fuente": "PREV claroshop + ferrepat (fragmentos): 70"
+   },
+   "A": {
+    "v": 60,
+    "nivel": "D2",
+    "fuente": "PREV: 60"
+   },
+   "H": {
+    "v": 40,
+    "nivel": "D2",
+    "fuente": "PREV: 40"
+   },
+   "peso": null,
+   "nota": "Stanley 30-615: HDMX ya no lo lista (busqueda por sku 237599 sin resultado). Los dos documentales son fragmentos.",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "COMB7",
+   "ref": "K1",
+   "desc": "Juego 7 llaves combinadas matraca Husky (en su riel)",
+   "modulo": "BASE",
+   "L": {
+    "v": 245,
+    "nivel": "D1",
+    "fuente": "HDMX HRRW7PCSAEMX: 24.5 cm (con su riel)"
+   },
+   "A": {
+    "v": 175,
+    "nivel": "D1",
+    "fuente": "HDMX 17.5 cm"
+   },
+   "H": {
+    "v": 45,
+    "nivel": "D1",
+    "fuente": "HDMX 4.5 cm"
+   },
+   "peso": [
+    1.0,
+    "HDMX"
+   ],
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "COMB10",
+   "ref": "K2",
+   "desc": "Juego 10 llaves combinadas Husky BITE",
+   "modulo": "SOL",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto o estimacion"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "peso": null,
+   "nota": "HDMX HBCW10XLS no publica medidas.",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "MATR",
+   "ref": "X-MATR",
+   "desc": "Matraca 3/8 + dados (juego Husky P, 3/8)",
+   "modulo": "BASE",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "juego matraca + dados, foto P"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "peso": null,
+   "nota": "HDMX matraca H38ROTORATMX sola: 24 x 4.2 x 3.4 cm. El juego completo no tiene ficha.",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "EXTS",
+   "ref": "P36,P38,N1",
+   "desc": "Extensiones 3/8 (6 in, 10 in, oscilantes) y palanca",
+   "modulo": "BASE",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto P"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "peso": null,
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "ADAP",
+   "ref": "N2",
+   "desc": "Juego 3 adaptadores 1/4-3/8-1/2",
+   "modulo": "BASE",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "peso": null,
+   "nota": "HDMX 106475 9.8 x 7.2 x 1.9 cm es la tarjeta.",
+   "empaque_descartado": {
+    "HDMX": [
+     98,
+     72,
+     19
+    ]
+   },
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "TORX",
+   "ref": "P1",
+   "desc": "Juego llaves Torx/hex tipo navaja Husky",
+   "modulo": "SOL",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto o estimacion"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "peso": null,
+   "nota": "HDMX HFHK3PCSETMX publica 6.7 x 5.11 x 1.5 cm: incoherente para 3 llaves tipo navaja. No se usa.",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "MART",
+   "ref": "H5",
+   "desc": "Martillo una curva 16 oz Truper MA-16F",
+   "modulo": "BASE",
+   "L": {
+    "v": 340,
+    "nivel": "D1",
+    "fuente": "PREV truper.com 340; HDMX MA-16F 33.5 cm (5 mm), se usa 340"
+   },
+   "A": {
+    "v": 130,
+    "nivel": "D1",
+    "fuente": "HDMX 13 cm"
+   },
+   "H": {
+    "v": 30,
+    "nivel": "D1",
+    "fuente": "HDMX 3 cm"
+   },
+   "peso": [
+    0.707,
+    "HDMX + PREV truper"
+   ],
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "MAZO",
+   "ref": "H4",
+   "desc": "Mazo de hule 16 oz Truper MH-16",
+   "modulo": "CIV",
+   "L": {
+    "v": 357,
+    "nivel": "D1",
+    "fuente": "HDMX MH-16: 35.7 cm; PREV truper 340 (17 mm), se usa 357"
+   },
+   "A": {
+    "v": 104,
+    "nivel": "D1",
+    "fuente": "HDMX 10.4 cm"
+   },
+   "H": {
+    "v": 51,
+    "nivel": "D1",
+    "fuente": "HDMX 5.1 cm"
+   },
+   "peso": [
+    0.649,
+    "HDMX"
+   ],
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "CINC",
+   "ref": "H9,H10",
+   "desc": "2 cinceles de corte frio 5/16x6 y 7/8x10",
+   "modulo": "CIV",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto o estimacion"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "peso": null,
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "LIMAS",
+   "ref": "H1-H3",
+   "desc": "3 limas 6 in (redonda, media cana, triangular)",
+   "modulo": "SOL",
+   "L": {
+    "v": 250,
+    "nivel": "D1",
+    "fuente": "HDMX lima triangular 64091081BL 24.4 cm; redonda 6400406F1BL 19.5 cm (grupo de 3, se usa 250)"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "grupo"
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "grupo"
+   },
+   "peso": null,
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "NAVAJA",
+   "ref": "Q1",
+   "desc": "Navaja retractil Anvil",
+   "modulo": "BASE",
+   "L": {
+    "v": 224,
+    "nivel": "D1",
+    "fuente": "HDMX 99735A: 22.4 cm (el nombre del listado viene de la misma pagina)"
+   },
+   "A": {
+    "v": 88,
+    "nivel": "D1",
+    "fuente": "HDMX 8.8 cm"
+   },
+   "H": {
+    "v": 20,
+    "nivel": "D1",
+    "fuente": "HDMX 2 cm"
+   },
+   "peso": [
+    0.11,
+    "HDMX"
+   ],
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "TAZON",
+   "ref": "TPC13",
+   "desc": "Tazon magnetico Husky",
+   "modulo": "BASE",
+   "L": {
+    "v": 150,
+    "nivel": "D1",
+    "fuente": "HDMX 129-291: 15 cm"
+   },
+   "A": {
+    "v": 150,
+    "nivel": "D1",
+    "fuente": "HDMX 15 cm"
+   },
+   "H": {
+    "v": 40,
+    "nivel": "D1",
+    "fuente": "HDMX 4 cm"
+   },
+   "peso": [
+    0.323,
+    "HDMX"
+   ],
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "TORPEDO",
+   "ref": "E5",
+   "desc": "Nivel torpedo magnetico 9 in Husky",
+   "modulo": "BASE",
+   "L": {
+    "v": 230,
+    "nivel": "D1",
+    "fuente": "HDMX 10790: 23 cm (PREV es la misma pagina)"
+   },
+   "A": {
+    "v": 45,
+    "nivel": "D1",
+    "fuente": "HDMX 4.5 cm"
+   },
+   "H": {
+    "v": 16,
+    "nivel": "D1",
+    "fuente": "HDMX 1.6 cm"
+   },
+   "peso": [
+    0.138,
+    "HDMX"
+   ],
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "ESCCOMB",
+   "ref": "E1",
+   "desc": "Escuadra combinada 12 in Empire 220IM",
+   "modulo": "MED",
+   "L": {
+    "v": 304,
+    "nivel": "D1",
+    "fuente": "HDMX 220IM: 30.4 cm"
+   },
+   "A": {
+    "v": 133,
+    "nivel": "D1",
+    "fuente": "HDMX 13.3 cm"
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "HDMX dice 1.9 cm; la cabeza mide mas, se estima"
+   },
+   "peso": [
+    0.35,
+    "HDMX"
+   ],
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "VERN",
+   "ref": "E3",
+   "desc": "Vernier digital 6 in Truper CALDI-6MP",
+   "modulo": "BASE",
+   "L": {
+    "v": 237,
+    "nivel": "D1",
+    "fuente": "PREV truper.com CALDI-6MP 237"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto E"
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "peso": null,
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "SEGUETA",
+   "ref": "TPC12",
+   "desc": "Arco con segueta 12 in Stanley 15-555",
+   "modulo": "SOL",
+   "L": {
+    "v": 475,
+    "nivel": "D1",
+    "fuente": "HDMX 15-555: 47.5 cm (puede ser empaque; arco ajustable 8-10-12 in)"
+   },
+   "A": {
+    "v": 134,
+    "nivel": "D1",
+    "fuente": "HDMX 13.4 cm"
+   },
+   "H": {
+    "v": 24,
+    "nivel": "D1",
+    "fuente": "HDMX 2.4 cm"
+   },
+   "peso": [
+    0.688,
+    "HDMX"
+   ],
+   "nota": "Si 475 mm es real no cabe en ningun cajon (414 mm): el acomodo la manda a soporte lateral. Medir con el arco en 10 in.",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "BROCAS",
+   "ref": "G2",
+   "desc": "Juego 15 brocas HSS 1/16-1/2 Truper (estuche)",
+   "modulo": "BASE",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto G"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "peso": null,
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "ESCAL",
+   "ref": "G3",
+   "desc": "Juego 3 brocas escalonadas Truper",
+   "modulo": "BASE",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto G"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "peso": null,
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "IMP14",
+   "ref": "B1",
+   "desc": "Atornillador de impacto M18 3650-20 (sin bateria)",
+   "modulo": "BASE",
+   "L": {
+    "v": 196,
+    "nivel": "D2",
+    "fuente": "MLK 3650-20 Height 7.7 in; HDUS 7.7 in (sindicada)"
+   },
+   "A": {
+    "v": 112,
+    "nivel": "D2",
+    "fuente": "MLK Length 4.4 in; HDUS 4.4"
+   },
+   "H": {
+    "v": 53,
+    "nivel": "D2",
+    "fuente": "MLK Width 2.1 in; HDUS 2.1"
+   },
+   "peso": [
+    0.771,
+    "MLK 1.7 lb sin bateria"
+   ],
+   "nota": "HDMX 24.1 x 13.69 x 9.91 cm es la caja.",
+   "empaque_descartado": {
+    "HDMX": [
+     241,
+     137,
+     99
+    ]
+   },
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "IMP38",
+   "ref": "B2",
+   "desc": "Llave de impacto M18 FUEL 3/8 2854-20 (sin bateria)",
+   "modulo": "BASE",
+   "L": {
+    "v": 202,
+    "nivel": "D2",
+    "fuente": "MLK 2854-20 Height 7.95 in; HDUS 7.95 (sindicada)"
+   },
+   "A": {
+    "v": 122,
+    "nivel": "D2",
+    "fuente": "MLK Length 4.8 in; HDUS 4.8"
+   },
+   "H": {
+    "v": 65,
+    "nivel": "D2",
+    "fuente": "MLK Width 2.56 in; HDUS 2.56"
+   },
+   "peso": [
+    1.089,
+    "MLK 2.4 lb sin bateria"
+   ],
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "ROTO18",
+   "ref": "B3",
+   "desc": "Rotomartillo M18 1/2 3602-20 (sin bateria)",
+   "modulo": "BASE",
+   "L": {
+    "v": 202,
+    "nivel": "D2",
+    "fuente": "MLK 3602-20 Height 7.95 in; HDUS 7.95 (sindicada)"
+   },
+   "A": {
+    "v": 147,
+    "nivel": "D2",
+    "fuente": "MLK Length 5.8 in; HDUS 5.8"
+   },
+   "H": {
+    "v": 56,
+    "nivel": "D2",
+    "fuente": "MLK Width 2.2 in; HDUS 2.2"
+   },
+   "peso": [
+    1.043,
+    "MLK 2.3 lb sin bateria"
+   ],
+   "nota": "Antes 202 x 170 x 75 (fragmento). La ficha da cabeza de 5.8 in; parece corta para un rotomartillo con broquero: medir.",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "BAT1",
+   "ref": "B4",
+   "desc": "Bateria M18 CP2.0",
+   "modulo": "BASE",
+   "L": {
+    "v": 118,
+    "nivel": "D1",
+    "fuente": "MLK 48-11-1820 Length 4.66 in"
+   },
+   "A": {
+    "v": 79,
+    "nivel": "D1",
+    "fuente": "MLK Width 3.12 in"
+   },
+   "H": {
+    "v": 55,
+    "nivel": "D1",
+    "fuente": "MLK Height 2.15 in"
+   },
+   "peso": [
+    0.431,
+    "MLK 0.95 lb"
+   ],
+   "nota": "HDUS 6.77 x 3.4 x 2.75 in y HDMX 10.2 x 8.4 x 8.4 cm son empaque.",
+   "empaque_descartado": {
+    "HDUS": [
+     172,
+     86,
+     70
+    ],
+    "HDMX": [
+     102,
+     84,
+     84
+    ]
+   },
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "BAT2",
+   "ref": "B5",
+   "desc": "Bateria M18 CP2.0",
+   "modulo": "BASE",
+   "L": {
+    "v": 118,
+    "nivel": "D1",
+    "fuente": "MLK 48-11-1820 Length 4.66 in"
+   },
+   "A": {
+    "v": 79,
+    "nivel": "D1",
+    "fuente": "MLK Width 3.12 in"
+   },
+   "H": {
+    "v": 55,
+    "nivel": "D1",
+    "fuente": "MLK Height 2.15 in"
+   },
+   "peso": [
+    0.431,
+    "MLK 0.95 lb"
+   ],
+   "nota": "HDUS 6.77 x 3.4 x 2.75 in y HDMX 10.2 x 8.4 x 8.4 cm son empaque.",
+   "empaque_descartado": {
+    "HDUS": [
+     172,
+     86,
+     70
+    ],
+    "HDMX": [
+     102,
+     84,
+     84
+    ]
+   },
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "CARG1",
+   "ref": "nuevo",
+   "desc": "Cargador sencillo M18/M12 48-59-1812 (compra)",
+   "modulo": "BASE",
+   "L": {
+    "v": 202,
+    "nivel": "D2",
+    "fuente": "MLK 48-59-1812 Height 7.95 in; HDUS 7.95 (sindicada)"
+   },
+   "A": {
+    "v": 155,
+    "nivel": "D2",
+    "fuente": "MLK Length 6.1 in; HDUS 6.1"
+   },
+   "H": {
+    "v": 87,
+    "nivel": "D2",
+    "fuente": "MLK Width 3.42 in; HDUS 3.42"
+   },
+   "peso": [
+    0.912,
+    "MLK 2.01 lb"
+   ],
+   "nota": "Antes 150 x 100 x 70 y 0.4 kg (estimacion): el cargador es mas grande. HDMX 30 x 22 x 11.5 cm es la caja.",
+   "empaque_descartado": {
+    "HDMX": [
+     300,
+     220,
+     115
+    ]
+   },
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "ESM45",
+   "ref": "M1",
+   "desc": "Mini esmeriladora 4-1/2 alambrica 6130-33 + cable",
+   "modulo": "BASE",
+   "L": {
+    "v": 357,
+    "nivel": "D2",
+    "fuente": "MLK 6130-33 Width 14.05 in; HDMX 35.69 cm (sindicada)"
+   },
+   "A": {
+    "v": 152,
+    "nivel": "D2",
+    "fuente": "MLK Height 6 in; HDMX 15.24 cm"
+   },
+   "H": {
+    "v": 90,
+    "nivel": "D2",
+    "fuente": "MLK Length 3.55 in; HDMX 9.02 cm"
+   },
+   "peso": [
+    1.588,
+    "MLK 3.5 lb"
+   ],
+   "nota": "HDUS publica 10.5 x 3.2 x 3.2 in (cuerpo sin mango lateral). Se usa la medida CON mango lateral puesto (conservador). Si se decide guardarla sin mango, el largo baja a 267 mm y el mango va aparte.",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "FLUKE",
+   "ref": "A4",
+   "desc": "Pinza amperimetrica Fluke 302+",
+   "modulo": "ELE",
+   "L": {
+    "v": 207,
+    "nivel": "D2",
+    "fuente": "PREV itm.com PDF + manualslib (manual Fluke 302+)"
+   },
+   "A": {
+    "v": 75,
+    "nivel": "D2",
+    "fuente": "PREV"
+   },
+   "H": {
+    "v": 34,
+    "nivel": "D2",
+    "fuente": "PREV"
+   },
+   "peso": [
+    0.265,
+    "PREV manual"
+   ],
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "MAPPER",
+   "ref": "E8",
+   "desc": "Probador de cableado Fluke MicroMapper MT-8200-49A",
+   "modulo": "ELE",
+   "L": {
+    "v": 125,
+    "nivel": "D2",
+    "fuente": "PREV farnell + tequipment"
+   },
+   "A": {
+    "v": 52,
+    "nivel": "D2",
+    "fuente": "PREV"
+   },
+   "H": {
+    "v": 30,
+    "nivel": "D2",
+    "fuente": "PREV"
+   },
+   "peso": [
+    0.13,
+    "PREV"
+   ],
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "PELA",
+   "ref": "A6",
+   "desc": "Pelacables Commercial Electric CE100821",
+   "modulo": "ELE",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto A; NOM 6 in = 152 solo de la parte metalica"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "peso": null,
+   "nota": "HDMX CE100821 publica ancho 10.5 y fondo 2.5 cm, sin largo: incompleto.",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "CRIMP",
+   "ref": "A7",
+   "desc": "Pinza crimpadora Weidmuller 1445070000",
+   "modulo": "ELE",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto o estimacion"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "peso": null,
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "KO",
+   "ref": "TPC10",
+   "desc": "Kit knockout M18 Force Logic 2677-23 (estuche)",
+   "modulo": "ELE",
+   "L": {
+    "v": 582,
+    "nivel": "D1",
+    "fuente": "MLK 2677-23 kit (estuche) Length 22.9 in"
+   },
+   "A": {
+    "v": 284,
+    "nivel": "D1",
+    "fuente": "MLK Width 11.2 in"
+   },
+   "H": {
+    "v": 429,
+    "nivel": "D1",
+    "fuente": "MLK Height 16.9 in"
+   },
+   "peso": null,
+   "nota": "Es el estuche del kit, va suelto. Peso del kit en MLK 50.6 lb parece error de captura (herramienta 4.3 lb).",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "EXTECH",
+   "ref": "X-EXTECH",
+   "desc": "Amperimetro Extech MA440",
+   "modulo": "ELE",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto o estimacion"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "peso": null,
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "PONCH",
+   "ref": "X-PONCH",
+   "desc": "Pinza ponchadora RJ45",
+   "modulo": "ELE",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto o estimacion"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "peso": null,
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "DETV",
+   "ref": "X-DETV",
+   "desc": "Detector de voltaje Milwaukee",
+   "modulo": "ELE",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto o estimacion"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "peso": null,
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "SACAB",
+   "ref": "F2,F4,F5",
+   "desc": "3 sacabocados Dogo 7, 13 y 19 mm",
+   "modulo": "ELE",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto o estimacion"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "peso": null,
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "ESCMAG",
+   "ref": "Q3 + X-Q3b..d",
+   "desc": "4 escuadras magneticas 4 in Truper (apiladas)",
+   "modulo": "SOL",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto Q o R"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "peso": null,
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "PRES11B",
+   "ref": "L2",
+   "desc": "Pinza de presion C 11 in (2a)",
+   "modulo": "SOL",
+   "L": {
+    "v": 279,
+    "nivel": "D2",
+    "fuente": "NOM 11 in = 279; PREV tenaquip 279"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto L 2025-07-03"
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "peso": null,
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "PRES6CB",
+   "ref": "L6",
+   "desc": "Pinza de presion C 6 in (2a)",
+   "modulo": "SOL",
+   "L": {
+    "v": 152,
+    "nivel": "D2",
+    "fuente": "NOM 6 in = 152; PREV rshughes 152"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto"
+   },
+   "peso": null,
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "PRES10B",
+   "ref": "L8",
+   "desc": "Pinza de presion 10 in curva (2a)",
+   "modulo": "SOL",
+   "L": {
+    "v": 254,
+    "nivel": "D1",
+    "fuente": "NOM 10 in = 254; HDMX 709204 publica 22.6 cm (28 mm menos), se usa 254"
+   },
+   "A": {
+    "v": 66,
+    "nivel": "D1",
+    "fuente": "HDMX 6.6 cm"
+   },
+   "H": {
+    "v": 26,
+    "nivel": "D1",
+    "fuente": "HDMX 2.6 cm"
+   },
+   "peso": [
+    0.569,
+    "HDMX"
+   ],
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "PRES7B",
+   "ref": "L4",
+   "desc": "Pinza de presion 7 in (2a, hoy faltante)",
+   "modulo": "SOL",
+   "L": {
+    "v": 182,
+    "nivel": "D2",
+    "fuente": "HDMX 709207: 18.2 cm; NOM 7 in = 178 (4 mm)"
+   },
+   "A": {
+    "v": 62,
+    "nivel": "D1",
+    "fuente": "HDMX 6.2 cm"
+   },
+   "H": {
+    "v": 23,
+    "nivel": "D1",
+    "fuente": "HDMX 2.3 cm"
+   },
+   "peso": [
+    0.364,
+    "HDMX"
+   ],
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "ESM45B",
+   "ref": "M2",
+   "desc": "Mini esmeriladora 4-1/2 6130-33 (2a)",
+   "modulo": "SOL",
+   "L": {
+    "v": 357,
+    "nivel": "D2",
+    "fuente": "MLK 6130-33 Width 14.05 in; HDMX 35.69 cm (sindicada)"
+   },
+   "A": {
+    "v": 152,
+    "nivel": "D2",
+    "fuente": "MLK Height 6 in; HDMX 15.24 cm"
+   },
+   "H": {
+    "v": 90,
+    "nivel": "D2",
+    "fuente": "MLK Length 3.55 in; HDMX 9.02 cm"
+   },
+   "peso": [
+    1.588,
+    "MLK 3.5 lb"
+   ],
+   "nota": "HDUS publica 10.5 x 3.2 x 3.2 in (cuerpo sin mango lateral). Se usa la medida CON mango lateral puesto (conservador). Si se decide guardarla sin mango, el largo baja a 267 mm y el mango va aparte.",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "RECT",
+   "ref": "X-DWRECT",
+   "desc": "Rectificador DeWalt DWE4887",
+   "modulo": "SOL",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto o estimacion"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "peso": null,
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "MOTO",
+   "ref": "X-MOTO",
+   "desc": "Moto tool Truper (estuche)",
+   "modulo": "SOL",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto o estimacion"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "peso": null,
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "MACH",
+   "ref": "F1",
+   "desc": "Juego 40 machuelos y tarrajas Truper 11442 (2 estuches)",
+   "modulo": "SOL",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto o estimacion"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "peso": null,
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "EXTOR",
+   "ref": "F6",
+   "desc": "Juego 5 extractores de tornillos Truper EXT-5",
+   "modulo": "SOL",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto o estimacion"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "peso": null,
+   "nota": "PREV truper.com 180 x 130 x 20 es blister (empaque).",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "EXTQ",
+   "ref": "Q4",
+   "desc": "Extractor de quijadas 6 t Urrea 4216",
+   "modulo": "SOL",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto o estimacion"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "peso": null,
+   "nota": "PREV urrea.com 300 x 160 x 50 es empaque; ademas el modelo 4212 contra 4216 sigue abierto (factura).",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "FRESA",
+   "ref": "G4",
+   "desc": "Fresa de carburo SF-5",
+   "modulo": "SOL",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto o estimacion"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "peso": null,
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "STILL1",
+   "ref": "H7",
+   "desc": "Llave stillson 14 in Husky 73126",
+   "modulo": "TUB",
+   "L": {
+    "v": 356,
+    "nivel": "D1",
+    "fuente": "NOM 14 in = 356; HDMX 73126 publica 32.5 cm (31 mm menos), se usa 356"
+   },
+   "A": {
+    "v": 83,
+    "nivel": "D1",
+    "fuente": "HDMX 8.3 cm"
+   },
+   "H": {
+    "v": 32,
+    "nivel": "D1",
+    "fuente": "HDMX 3.2 cm"
+   },
+   "peso": [
+    1.52,
+    "HDMX"
+   ],
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "STILL2",
+   "ref": "H8",
+   "desc": "Llave stillson 14 in Husky 73126",
+   "modulo": "TUB",
+   "L": {
+    "v": 356,
+    "nivel": "D1",
+    "fuente": "NOM 14 in = 356; HDMX 73126 publica 32.5 cm (31 mm menos), se usa 356"
+   },
+   "A": {
+    "v": 83,
+    "nivel": "D1",
+    "fuente": "HDMX 8.3 cm"
+   },
+   "H": {
+    "v": 32,
+    "nivel": "D1",
+    "fuente": "HDMX 3.2 cm"
+   },
+   "peso": [
+    1.52,
+    "HDMX"
+   ],
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "CAIMAN",
+   "ref": "X-CAIMAN",
+   "desc": "Llave de cadena caiman 6 in Urrea 797UR",
+   "modulo": "TUB",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto o estimacion"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "peso": null,
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "NIVTUB1",
+   "ref": "E4",
+   "desc": "Nivel para tuberia 6.5 in Milwaukee 48-22-5110",
+   "modulo": "TUB",
+   "L": {
+    "v": 159,
+    "nivel": "D2",
+    "fuente": "MLK 48-22-5110 Length 6.25 in; HDUS 6.25 (sindicada)"
+   },
+   "A": {
+    "v": 51,
+    "nivel": "D1",
+    "fuente": "MLK Height 2 in"
+   },
+   "H": {
+    "v": 19,
+    "nivel": "D2",
+    "fuente": "MLK Width 0.75 in; HDUS 0.75"
+   },
+   "peso": [
+    0.141,
+    "MLK 0.311 lb"
+   ],
+   "nota": "HDMX 26.7 x 8.26 x 2.74 cm es la tarjeta.",
+   "empaque_descartado": {
+    "HDMX": [
+     267,
+     83,
+     27
+    ]
+   },
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "NIVTUB2",
+   "ref": "E7",
+   "desc": "Nivel para tuberia 6.5 in Milwaukee 48-22-5110",
+   "modulo": "TUB",
+   "L": {
+    "v": 159,
+    "nivel": "D2",
+    "fuente": "MLK 48-22-5110 Length 6.25 in; HDUS 6.25 (sindicada)"
+   },
+   "A": {
+    "v": 51,
+    "nivel": "D1",
+    "fuente": "MLK Height 2 in"
+   },
+   "H": {
+    "v": 19,
+    "nivel": "D2",
+    "fuente": "MLK Width 0.75 in; HDUS 0.75"
+   },
+   "peso": [
+    0.141,
+    "MLK 0.311 lb"
+   ],
+   "nota": "HDMX 26.7 x 8.26 x 2.74 cm es la tarjeta.",
+   "empaque_descartado": {
+    "HDMX": [
+     267,
+     83,
+     27
+    ]
+   },
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "12R",
+   "ref": "O1-O6",
+   "desc": "Juego tarraja Ridgid 12R 36475 (matraca + 6 cabezales)",
+   "modulo": "TUB",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "estuche Ridgid en foto O"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "peso": [
+    15.762,
+    "PREV cf-t.com"
+   ],
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "CAB34",
+   "ref": "X-12R34",
+   "desc": "Cabezal 12R 3/4 NPT de repuesto",
+   "modulo": "TUB",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto o estimacion"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "peso": null,
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "SDS",
+   "ref": "C2",
+   "desc": "Rotomartillo SDS-Plus 5485-21 (sin estuche)",
+   "modulo": "CIV",
+   "L": {
+    "v": 335,
+    "nivel": "D1",
+    "fuente": "HDMX 5485-21: 33.5 cm"
+   },
+   "A": {
+    "v": 195,
+    "nivel": "D1",
+    "fuente": "HDMX 19.5 cm"
+   },
+   "H": {
+    "v": 75,
+    "nivel": "D1",
+    "fuente": "HDMX 7.5 cm"
+   },
+   "peso": [
+    3.034,
+    "HDMX"
+   ],
+   "nota": "MLK no abre la ficha 5485-21 (pagina sin especificaciones).",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "TAL12",
+   "ref": "C1",
+   "desc": "Taladro percutor alambrico 1/2 5375-20",
+   "modulo": "CIV",
+   "L": {
+    "v": 340,
+    "nivel": "D1",
+    "fuente": "HDMX 5375-20: 34.01 cm (con mango lateral)"
+   },
+   "A": {
+    "v": 265,
+    "nivel": "D1",
+    "fuente": "HDMX 26.49 cm"
+   },
+   "H": {
+    "v": 86,
+    "nivel": "D1",
+    "fuente": "HDMX 8.61 cm"
+   },
+   "peso": [
+    3.13,
+    "HDMX"
+   ],
+   "nota": "Antes 292 (PREV). Se usa la de HDMX por ser mayor.",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "MANGOS",
+   "ref": "C3 + X-C3b",
+   "desc": "2 mangos laterales",
+   "modulo": "CIV",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto o estimacion"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "peso": null,
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "SDSBIT",
+   "ref": "G1",
+   "desc": "Juego 15 brocas y cinceles SDS-Plus DeWalt DWA0870",
+   "modulo": "CIV",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "estuche en foto G"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "peso": null,
+   "nota": "HDMX DWA0870 publica 103.2 x 24.2 x 65.3 cm: error de captura.",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "MART2",
+   "ref": "H6",
+   "desc": "Martillo una curva 16 oz (2o)",
+   "modulo": "CIV",
+   "L": {
+    "v": 340,
+    "nivel": "D1",
+    "fuente": "PREV truper.com 340; HDMX MA-16F 33.5 cm (5 mm), se usa 340"
+   },
+   "A": {
+    "v": 130,
+    "nivel": "D1",
+    "fuente": "HDMX 13 cm"
+   },
+   "H": {
+    "v": 30,
+    "nivel": "D1",
+    "fuente": "HDMX 3 cm"
+   },
+   "peso": [
+    0.707,
+    "HDMX + PREV truper"
+   ],
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "CALAD",
+   "ref": "R2",
+   "desc": "Sierra caladora Ryobi JS481LG",
+   "modulo": "CIV",
+   "L": {
+    "v": 279,
+    "nivel": "D1",
+    "fuente": "HDMX JS481LG: 27.94 cm (posible empaque)"
+   },
+   "A": {
+    "v": 236,
+    "nivel": "D1",
+    "fuente": "HDMX 23.62 cm"
+   },
+   "H": {
+    "v": 72,
+    "nivel": "D1",
+    "fuente": "HDMX 7.2 cm"
+   },
+   "peso": [
+    2.0,
+    "HDMX"
+   ],
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "LIJA",
+   "ref": "R3",
+   "desc": "Lijadora orbital M18 2648-20",
+   "modulo": "CIV",
+   "L": {
+    "v": 267,
+    "nivel": "D2",
+    "fuente": "MLK 2648-20 Length 10.5 in; HDUS 10.50 (sindicada)"
+   },
+   "A": {
+    "v": 146,
+    "nivel": "D2",
+    "fuente": "MLK Height 5.74 in; HDUS 5.74"
+   },
+   "H": {
+    "v": 125,
+    "nivel": "D2",
+    "fuente": "MLK Width 4.92 in; HDUS 4.92"
+   },
+   "peso": [
+    1.225,
+    "MLK 2.7 lb"
+   ],
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "SABLE",
+   "ref": "TPC14",
+   "desc": "Sierra sable 6509-31 (estuche original)",
+   "modulo": "CIV",
+   "L": {
+    "v": 483,
+    "nivel": "D1",
+    "fuente": "MLK 6509-31 Length 19 in (herramienta; va en estuche)"
+   },
+   "A": {
+    "v": 133,
+    "nivel": "D1",
+    "fuente": "MLK Height 5.25 in"
+   },
+   "H": {
+    "v": 114,
+    "nivel": "D1",
+    "fuente": "MLK Width 4.5 in"
+   },
+   "peso": [
+    3.221,
+    "MLK 7.1 lb"
+   ],
+   "nota": "El sku HDMX 474409 del listado hoy corresponde a la 6519-31. Leer la placa.",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "LASER",
+   "ref": "R1",
+   "desc": "Nivel laser verde Bosch GLL 12-22 G",
+   "modulo": "MED",
+   "L": {
+    "v": 100,
+    "nivel": "D2",
+    "fuente": "HDMX GLL 12-22 G 10 cm; PREV bosch-professional 100"
+   },
+   "A": {
+    "v": 64,
+    "nivel": "D2",
+    "fuente": "HDMX 6.4; PREV 64"
+   },
+   "H": {
+    "v": 104,
+    "nivel": "D1",
+    "fuente": "HDMX 10.4 cm (PREV 100), se usa 104"
+   },
+   "peso": [
+    0.35,
+    "HDMX"
+   ],
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "LASER2",
+   "ref": "X-LASER2",
+   "desc": "Nivel laser verde Bosch (2o)",
+   "modulo": "MED",
+   "L": {
+    "v": 100,
+    "nivel": "D2",
+    "fuente": "HDMX GLL 12-22 G 10 cm; PREV bosch-professional 100"
+   },
+   "A": {
+    "v": 64,
+    "nivel": "D2",
+    "fuente": "HDMX 6.4; PREV 64"
+   },
+   "H": {
+    "v": 104,
+    "nivel": "D1",
+    "fuente": "HDMX 10.4 cm (PREV 100), se usa 104"
+   },
+   "peso": [
+    0.35,
+    "HDMX"
+   ],
+   "nota": "LASER2 supone el mismo modelo: confirmar.",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "ESCCAR",
+   "ref": "E2",
+   "desc": "Escuadra de carpintero 12 in Truper EC-12",
+   "modulo": "MED",
+   "L": {
+    "v": 304,
+    "nivel": "D1",
+    "fuente": "HDMX EC-12: 30.4 cm"
+   },
+   "A": {
+    "v": 166,
+    "nivel": "D1",
+    "fuente": "HDMX 16.6 cm"
+   },
+   "H": {
+    "v": 14,
+    "nivel": "D1",
+    "fuente": "HDMX 1.4 cm"
+   },
+   "peso": [
+    0.228,
+    "HDMX"
+   ],
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "TORPEDO2",
+   "ref": "E6",
+   "desc": "Nivel torpedo magnetico 9 in (2o)",
+   "modulo": "MED",
+   "L": {
+    "v": 230,
+    "nivel": "D1",
+    "fuente": "HDMX 10790: 23 cm (PREV es la misma pagina)"
+   },
+   "A": {
+    "v": 45,
+    "nivel": "D1",
+    "fuente": "HDMX 4.5 cm"
+   },
+   "H": {
+    "v": 16,
+    "nivel": "D1",
+    "fuente": "HDMX 1.6 cm"
+   },
+   "peso": [
+    0.138,
+    "HDMX"
+   ],
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "AMARRE",
+   "ref": "D1-D4",
+   "desc": "4 amarres tipo matraca 3.6 m (enrollados)",
+   "modulo": "MED",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto o estimacion"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "peso": null,
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  },
+  {
+   "id": "GRILL",
+   "ref": "D9-D11",
+   "desc": "3 grilletes 5/8 Crosby",
+   "modulo": "MED",
+   "L": {
+    "v": null,
+    "nivel": "F",
+    "fuente": "foto o estimacion"
+   },
+   "A": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "H": {
+    "v": null,
+    "nivel": "F",
+    "fuente": ""
+   },
+   "peso": null,
+   "nota": "",
+   "empaque_descartado": null,
+   "fecha": "2026-09-28"
+  }
+ ],
+ "cambios": [
+  {
+   "id": "WIHA-PE",
+   "ref": "A9",
+   "desc": "Pinza combinada aislada 200 (32930)",
+   "modulo": "BASE",
+   "antes": [
+    200,
+    60,
+    22,
+    0.28
+   ],
+   "despues": [
+    203,
+    60,
+    22,
+    0.28
+   ],
+   "motivo": "L: NOM 200 mm (32930) + HDUS \"8 in\" = 203 mm; se usa 203"
+  },
+  {
+   "id": "MINIP",
+   "ref": "A5",
+   "desc": "Mini pinza de corte al ras 48-22-6105",
+   "modulo": "BASE",
+   "antes": [
+    127,
+    51,
+    13,
+    0.059
+   ],
+   "despues": [
+    127,
+    60,
+    13,
+    0.08
+   ],
+   "motivo": "A: MLK 2 in = 51; HDMX 6 cm = 60: difieren 9 mm, se usa 60; peso: HDMX 0.080 kg (MLK 0.13 lb = 0.059)"
+  },
+  {
+   "id": "PDIAG",
+   "ref": "I3",
+   "desc": "Pinza diagonal 7 in Husky 903465",
+   "modulo": "BASE",
+   "antes": [
+    178,
+    55,
+    20,
+    0.3
+   ],
+   "despues": [
+    178,
+    58,
+    17,
+    0.306
+   ],
+   "motivo": "A: HDMX 5.8 cm; H: HDMX 1.7 cm; peso: HDMX"
+  },
+  {
+   "id": "PRES7",
+   "ref": "L3",
+   "desc": "Pinza de presion 7 in mordaza recta Husky",
+   "modulo": "BASE",
+   "antes": [
+    178,
+    60,
+    25,
+    0.35
+   ],
+   "despues": [
+    182,
+    62,
+    23,
+    0.364
+   ],
+   "motivo": "L: HDMX 709207: 18.2 cm; NOM 7 in = 178 (4 mm); A: HDMX 6.2 cm; H: HDMX 2.3 cm; peso: HDMX"
+  },
+  {
+   "id": "PRES10",
+   "ref": "L7",
+   "desc": "Pinza de presion 10 in mordaza curva Husky 709204",
+   "modulo": "BASE",
+   "antes": [
+    254,
+    70,
+    25,
+    0.5
+   ],
+   "despues": [
+    254,
+    66,
+    26,
+    0.569
+   ],
+   "motivo": "A: HDMX 6.6 cm; H: HDMX 2.6 cm; peso: HDMX"
+  },
+  {
+   "id": "AJ12",
+   "ref": "J1",
+   "desc": "Llave ajustable 12 in Husky 17018",
+   "modulo": "BASE",
+   "antes": [
+    300,
+    78,
+    20,
+    0.6
+   ],
+   "despues": [
+    305,
+    78,
+    20,
+    0.777
+   ],
+   "motivo": "L: NOM 12 in = 305; HDMX 17018: 30 cm; peso: HDMX"
+  },
+  {
+   "id": "AJ8",
+   "ref": "J4",
+   "desc": "Llave ajustable 8 in Husky 17016",
+   "modulo": "BASE",
+   "antes": [
+    203,
+    60,
+    15,
+    0.3
+   ],
+   "despues": [
+    205,
+    56,
+    15,
+    0.302
+   ],
+   "motivo": "L: HDMX 17016: 20.5 cm; NOM 8 in = 203; A: HDMX 5.6 cm; peso: HDMX"
+  },
+  {
+   "id": "CHOF8",
+   "ref": "J7",
+   "desc": "Pinza de chofer 8 in Truper 17301",
+   "modulo": "BASE",
+   "antes": [
+    203,
+    55,
+    15,
+    0.25
+   ],
+   "despues": [
+    203,
+    50,
+    15,
+    0.292
+   ],
+   "motivo": "A: HDMX 5 cm; peso: HDMX"
+  },
+  {
+   "id": "COMB7",
+   "ref": "K1",
+   "desc": "Juego 7 llaves combinadas matraca Husky (en su riel)",
+   "modulo": "BASE",
+   "antes": [
+    245,
+    175,
+    45,
+    0.9
+   ],
+   "despues": [
+    245,
+    175,
+    45,
+    1.0
+   ],
+   "motivo": "; peso: HDMX"
+  },
+  {
+   "id": "MART",
+   "ref": "H5",
+   "desc": "Martillo una curva 16 oz Truper MA-16F",
+   "modulo": "BASE",
+   "antes": [
+    340,
+    125,
+    35,
+    0.707
+   ],
+   "despues": [
+    340,
+    130,
+    30,
+    0.707
+   ],
+   "motivo": "A: HDMX 13 cm; H: HDMX 3 cm"
+  },
+  {
+   "id": "MAZO",
+   "ref": "H4",
+   "desc": "Mazo de hule 16 oz Truper MH-16",
+   "modulo": "CIV",
+   "antes": [
+    340,
+    110,
+    60,
+    0.7
+   ],
+   "despues": [
+    357,
+    104,
+    51,
+    0.649
+   ],
+   "motivo": "L: HDMX MH-16: 35.7 cm; PREV truper 340 (17 mm), se usa 357; A: HDMX 10.4 cm; H: HDMX 5.1 cm; peso: HDMX"
+  },
+  {
+   "id": "NAVAJA",
+   "ref": "Q1",
+   "desc": "Navaja retractil Anvil",
+   "modulo": "BASE",
+   "antes": [
+    224,
+    88,
+    20,
+    0.2
+   ],
+   "despues": [
+    224,
+    88,
+    20,
+    0.11
+   ],
+   "motivo": "; peso: HDMX"
+  },
+  {
+   "id": "TAZON",
+   "ref": "TPC13",
+   "desc": "Tazon magnetico Husky",
+   "modulo": "BASE",
+   "antes": [
+    150,
+    150,
+    40,
+    0.32
+   ],
+   "despues": [
+    150,
+    150,
+    40,
+    0.323
+   ],
+   "motivo": "; peso: HDMX"
+  },
+  {
+   "id": "TORPEDO",
+   "ref": "E5",
+   "desc": "Nivel torpedo magnetico 9 in Husky",
+   "modulo": "BASE",
+   "antes": [
+    230,
+    45,
+    30,
+    0.2
+   ],
+   "despues": [
+    230,
+    45,
+    16,
+    0.138
+   ],
+   "motivo": "H: HDMX 1.6 cm; peso: HDMX"
+  },
+  {
+   "id": "ESCCOMB",
+   "ref": "E1",
+   "desc": "Escuadra combinada 12 in Empire 220IM",
+   "modulo": "MED",
+   "antes": [
+    305,
+    100,
+    30,
+    0.4
+   ],
+   "despues": [
+    304,
+    133,
+    30,
+    0.35
+   ],
+   "motivo": "L: HDMX 220IM: 30.4 cm; A: HDMX 13.3 cm; peso: HDMX"
+  },
+  {
+   "id": "SEGUETA",
+   "ref": "TPC12",
+   "desc": "Arco con segueta 12 in Stanley 15-555",
+   "modulo": "SOL",
+   "antes": [
+    400,
+    110,
+    25,
+    0.5
+   ],
+   "despues": [
+    475,
+    134,
+    24,
+    0.688
+   ],
+   "motivo": "L: HDMX 15-555: 47.5 cm (puede ser empaque; arco ajustable 8-10-12 in); A: HDMX 13.4 cm; H: HDMX 2.4 cm; peso: HDMX"
+  },
+  {
+   "id": "IMP14",
+   "ref": "B1",
+   "desc": "Atornillador de impacto M18 3650-20 (sin bateria)",
+   "modulo": "BASE",
+   "antes": [
+    196,
+    112,
+    60,
+    0.771
+   ],
+   "despues": [
+    196,
+    112,
+    53,
+    0.771
+   ],
+   "motivo": "H: MLK Width 2.1 in; HDUS 2.1"
+  },
+  {
+   "id": "IMP38",
+   "ref": "B2",
+   "desc": "Llave de impacto M18 FUEL 3/8 2854-20 (sin bateria)",
+   "modulo": "BASE",
+   "antes": [
+    202,
+    122,
+    70,
+    1.089
+   ],
+   "despues": [
+    202,
+    122,
+    65,
+    1.089
+   ],
+   "motivo": "H: MLK Width 2.56 in; HDUS 2.56"
+  },
+  {
+   "id": "ROTO18",
+   "ref": "B3",
+   "desc": "Rotomartillo M18 1/2 3602-20 (sin bateria)",
+   "modulo": "BASE",
+   "antes": [
+    202,
+    170,
+    75,
+    1.043
+   ],
+   "despues": [
+    202,
+    147,
+    56,
+    1.043
+   ],
+   "motivo": "A: MLK Length 5.8 in; HDUS 5.8; H: MLK Width 2.2 in; HDUS 2.2"
+  },
+  {
+   "id": "BAT1",
+   "ref": "B4",
+   "desc": "Bateria M18 CP2.0",
+   "modulo": "BASE",
+   "antes": [
+    115,
+    80,
+    60,
+    0.43
+   ],
+   "despues": [
+    118,
+    79,
+    55,
+    0.431
+   ],
+   "motivo": "L: MLK 48-11-1820 Length 4.66 in; A: MLK Width 3.12 in; H: MLK Height 2.15 in; peso: MLK 0.95 lb"
+  },
+  {
+   "id": "BAT2",
+   "ref": "B5",
+   "desc": "Bateria M18 CP2.0",
+   "modulo": "BASE",
+   "antes": [
+    115,
+    80,
+    60,
+    0.43
+   ],
+   "despues": [
+    118,
+    79,
+    55,
+    0.431
+   ],
+   "motivo": "L: MLK 48-11-1820 Length 4.66 in; A: MLK Width 3.12 in; H: MLK Height 2.15 in; peso: MLK 0.95 lb"
+  },
+  {
+   "id": "CARG1",
+   "ref": "nuevo",
+   "desc": "Cargador sencillo M18/M12 48-59-1812 (compra)",
+   "modulo": "BASE",
+   "antes": [
+    150,
+    100,
+    70,
+    0.4
+   ],
+   "despues": [
+    202,
+    155,
+    87,
+    0.912
+   ],
+   "motivo": "L: MLK 48-59-1812 Height 7.95 in; HDUS 7.95 (sindicada); A: MLK Length 6.1 in; HDUS 6.1; H: MLK Width 3.42 in; HDUS 3.42; peso: MLK 2.01 lb"
+  },
+  {
+   "id": "ESM45",
+   "ref": "M1",
+   "desc": "Mini esmeriladora 4-1/2 alambrica 6130-33 + cable",
+   "modulo": "BASE",
+   "antes": [
+    300,
+    130,
+    105,
+    1.9
+   ],
+   "despues": [
+    357,
+    152,
+    90,
+    1.588
+   ],
+   "motivo": "L: MLK 6130-33 Width 14.05 in; HDMX 35.69 cm (sindicada); A: MLK Height 6 in; HDMX 15.24 cm; H: MLK Length 3.55 in; HDMX 9.02 cm; peso: MLK 3.5 lb"
+  },
+  {
+   "id": "KO",
+   "ref": "TPC10",
+   "desc": "Kit knockout M18 Force Logic 2677-23 (estuche)",
+   "modulo": "ELE",
+   "antes": [
+    480,
+    330,
+    120,
+    7.5
+   ],
+   "despues": [
+    582,
+    284,
+    429,
+    7.5
+   ],
+   "motivo": "L: MLK 2677-23 kit (estuche) Length 22.9 in; A: MLK Width 11.2 in; H: MLK Height 16.9 in"
+  },
+  {
+   "id": "PRES10B",
+   "ref": "L8",
+   "desc": "Pinza de presion 10 in curva (2a)",
+   "modulo": "SOL",
+   "antes": [
+    254,
+    70,
+    25,
+    0.5
+   ],
+   "despues": [
+    254,
+    66,
+    26,
+    0.569
+   ],
+   "motivo": "A: HDMX 6.6 cm; H: HDMX 2.6 cm; peso: HDMX"
+  },
+  {
+   "id": "PRES7B",
+   "ref": "L4",
+   "desc": "Pinza de presion 7 in (2a, hoy faltante)",
+   "modulo": "SOL",
+   "antes": [
+    178,
+    60,
+    25,
+    0.35
+   ],
+   "despues": [
+    182,
+    62,
+    23,
+    0.364
+   ],
+   "motivo": "L: HDMX 709207: 18.2 cm; NOM 7 in = 178 (4 mm); A: HDMX 6.2 cm; H: HDMX 2.3 cm; peso: HDMX"
+  },
+  {
+   "id": "ESM45B",
+   "ref": "M2",
+   "desc": "Mini esmeriladora 4-1/2 6130-33 (2a)",
+   "modulo": "SOL",
+   "antes": [
+    300,
+    130,
+    105,
+    1.9
+   ],
+   "despues": [
+    357,
+    152,
+    90,
+    1.588
+   ],
+   "motivo": "L: MLK 6130-33 Width 14.05 in; HDMX 35.69 cm (sindicada); A: MLK Height 6 in; HDMX 15.24 cm; H: MLK Length 3.55 in; HDMX 9.02 cm; peso: MLK 3.5 lb"
+  },
+  {
+   "id": "STILL1",
+   "ref": "H7",
+   "desc": "Llave stillson 14 in Husky 73126",
+   "modulo": "TUB",
+   "antes": [
+    355,
+    90,
+    35,
+    1.3
+   ],
+   "despues": [
+    356,
+    83,
+    32,
+    1.52
+   ],
+   "motivo": "L: NOM 14 in = 356; HDMX 73126 publica 32.5 cm (31 mm menos), se usa 356; A: HDMX 8.3 cm; H: HDMX 3.2 cm; peso: HDMX"
+  },
+  {
+   "id": "STILL2",
+   "ref": "H8",
+   "desc": "Llave stillson 14 in Husky 73126",
+   "modulo": "TUB",
+   "antes": [
+    355,
+    90,
+    35,
+    1.3
+   ],
+   "despues": [
+    356,
+    83,
+    32,
+    1.52
+   ],
+   "motivo": "L: NOM 14 in = 356; HDMX 73126 publica 32.5 cm (31 mm menos), se usa 356; A: HDMX 8.3 cm; H: HDMX 3.2 cm; peso: HDMX"
+  },
+  {
+   "id": "NIVTUB1",
+   "ref": "E4",
+   "desc": "Nivel para tuberia 6.5 in Milwaukee 48-22-5110",
+   "modulo": "TUB",
+   "antes": [
+    165,
+    45,
+    40,
+    0.3
+   ],
+   "despues": [
+    159,
+    51,
+    19,
+    0.141
+   ],
+   "motivo": "L: MLK 48-22-5110 Length 6.25 in; HDUS 6.25 (sindicada); A: MLK Height 2 in; H: MLK Width 0.75 in; HDUS 0.75; peso: MLK 0.311 lb"
+  },
+  {
+   "id": "NIVTUB2",
+   "ref": "E7",
+   "desc": "Nivel para tuberia 6.5 in Milwaukee 48-22-5110",
+   "modulo": "TUB",
+   "antes": [
+    165,
+    45,
+    40,
+    0.3
+   ],
+   "despues": [
+    159,
+    51,
+    19,
+    0.141
+   ],
+   "motivo": "L: MLK 48-22-5110 Length 6.25 in; HDUS 6.25 (sindicada); A: MLK Height 2 in; H: MLK Width 0.75 in; HDUS 0.75; peso: MLK 0.311 lb"
+  },
+  {
+   "id": "12R",
+   "ref": "O1-O6",
+   "desc": "Juego tarraja Ridgid 12R 36475 (matraca + 6 cabezales)",
+   "modulo": "TUB",
+   "antes": [
+    420,
+    320,
+    120,
+    15.8
+   ],
+   "despues": [
+    420,
+    320,
+    120,
+    15.762
+   ],
+   "motivo": "; peso: PREV cf-t.com"
+  },
+  {
+   "id": "SDS",
+   "ref": "C2",
+   "desc": "Rotomartillo SDS-Plus 5485-21 (sin estuche)",
+   "modulo": "CIV",
+   "antes": [
+    335,
+    195,
+    90,
+    3.0
+   ],
+   "despues": [
+    335,
+    195,
+    75,
+    3.034
+   ],
+   "motivo": "H: HDMX 7.5 cm; peso: HDMX"
+  },
+  {
+   "id": "TAL12",
+   "ref": "C1",
+   "desc": "Taladro percutor alambrico 1/2 5375-20",
+   "modulo": "CIV",
+   "antes": [
+    292,
+    200,
+    80,
+    2.73
+   ],
+   "despues": [
+    340,
+    265,
+    86,
+    3.13
+   ],
+   "motivo": "L: HDMX 5375-20: 34.01 cm (con mango lateral); A: HDMX 26.49 cm; H: HDMX 8.61 cm; peso: HDMX"
+  },
+  {
+   "id": "MART2",
+   "ref": "H6",
+   "desc": "Martillo una curva 16 oz (2o)",
+   "modulo": "CIV",
+   "antes": [
+    340,
+    125,
+    35,
+    0.707
+   ],
+   "despues": [
+    340,
+    130,
+    30,
+    0.707
+   ],
+   "motivo": "A: HDMX 13 cm; H: HDMX 3 cm"
+  },
+  {
+   "id": "CALAD",
+   "ref": "R2",
+   "desc": "Sierra caladora Ryobi JS481LG",
+   "modulo": "CIV",
+   "antes": [
+    236,
+    200,
+    79,
+    2.2
+   ],
+   "despues": [
+    279,
+    236,
+    72,
+    2.0
+   ],
+   "motivo": "L: HDMX JS481LG: 27.94 cm (posible empaque); A: HDMX 23.62 cm; H: HDMX 7.2 cm; peso: HDMX"
+  },
+  {
+   "id": "LIJA",
+   "ref": "R3",
+   "desc": "Lijadora orbital M18 2648-20",
+   "modulo": "CIV",
+   "antes": [
+    267,
+    146,
+    125,
+    0.907
+   ],
+   "despues": [
+    267,
+    146,
+    125,
+    1.225
+   ],
+   "motivo": "; peso: MLK 2.7 lb"
+  },
+  {
+   "id": "SABLE",
+   "ref": "TPC14",
+   "desc": "Sierra sable 6509-31 (estuche original)",
+   "modulo": "CIV",
+   "antes": [
+    520,
+    250,
+    120,
+    4.5
+   ],
+   "despues": [
+    483,
+    133,
+    114,
+    3.221
+   ],
+   "motivo": "L: MLK 6509-31 Length 19 in (herramienta; va en estuche); A: MLK Height 5.25 in; H: MLK Width 4.5 in; peso: MLK 7.1 lb"
+  },
+  {
+   "id": "LASER",
+   "ref": "R1",
+   "desc": "Nivel laser verde Bosch GLL 12-22 G",
+   "modulo": "MED",
+   "antes": [
+    100,
+    64,
+    100,
+    0.35
+   ],
+   "despues": [
+    100,
+    64,
+    104,
+    0.35
+   ],
+   "motivo": "H: HDMX 10.4 cm (PREV 100), se usa 104"
+  },
+  {
+   "id": "LASER2",
+   "ref": "X-LASER2",
+   "desc": "Nivel laser verde Bosch (2o)",
+   "modulo": "MED",
+   "antes": [
+    100,
+    64,
+    100,
+    0.35
+   ],
+   "despues": [
+    100,
+    64,
+    104,
+    0.35
+   ],
+   "motivo": "H: HDMX 10.4 cm (PREV 100), se usa 104"
+  },
+  {
+   "id": "ESCCAR",
+   "ref": "E2",
+   "desc": "Escuadra de carpintero 12 in Truper EC-12",
+   "modulo": "MED",
+   "antes": [
+    305,
+    200,
+    15,
+    0.3
+   ],
+   "despues": [
+    304,
+    166,
+    14,
+    0.228
+   ],
+   "motivo": "L: HDMX EC-12: 30.4 cm; A: HDMX 16.6 cm; H: HDMX 1.4 cm; peso: HDMX"
+  },
+  {
+   "id": "TORPEDO2",
+   "ref": "E6",
+   "desc": "Nivel torpedo magnetico 9 in (2o)",
+   "modulo": "MED",
+   "antes": [
+    230,
+    45,
+    30,
+    0.2
+   ],
+   "despues": [
+    230,
+    45,
+    16,
+    0.138
+   ],
+   "motivo": "H: HDMX 1.6 cm; peso: HDMX"
+  }
+ ]
+}

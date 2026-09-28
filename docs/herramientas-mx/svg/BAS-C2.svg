@@ -1,27 +1,35 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 508 484" width="813" font-family="Arial, sans-serif">
-<rect x="0" y="0" width="508" height="484" fill="#ffffff"/>
-<text x="46" y="18" font-size="13" font-weight="bold">FTS · Modulo BAS · Cajon C2 · 48-22-8444 · vista superior (mm)</text>
-<rect x="46" y="46" width="416" height="322" fill="#2b2b2b" stroke="#000" stroke-width="3"/>
-<line x1="46" y1="32" x2="462" y2="32" stroke="#333" stroke-width="1"/>
-<line x1="46" y1="26" x2="46" y2="38" stroke="#333"/><line x1="462" y1="26" x2="462" y2="38" stroke="#333"/>
-<text x="254.0" y="28" font-size="11" text-anchor="middle">416 mm</text>
-<line x1="32" y1="46" x2="32" y2="368" stroke="#333"/>
-<line x1="26" y1="46" x2="38" y2="46" stroke="#333"/><line x1="26" y1="368" x2="38" y2="368" stroke="#333"/>
-<text x="28" y="207.0" font-size="11" text-anchor="middle" transform="rotate(-90 28 207.0)">322 mm</text>
-<text x="254.0" y="382" font-size="10" text-anchor="middle" fill="#555">FRENTE DEL CAJON</text>
-<rect x="52" y="52" width="50" height="250" rx="4" fill="#C9DDF2" stroke="#111" stroke-width="1.2"/>
-<text x="77.0" y="175.8" font-size="6.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C2-01 R</text>
-<text x="77.0" y="183.0" font-size="5.1" text-anchor="middle">Pinza de electri</text>
-<text x="54" y="300" font-size="5.0" fill="#333">250x50x15</text>
-<rect x="114" y="52" width="60" height="203" rx="4" fill="#C9DDF2" stroke="#111" stroke-width="1.2"/>
-<text x="144.0" y="152.3" font-size="6.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C2-02 R</text>
-<text x="144.0" y="159.5" font-size="5.1" text-anchor="middle">Llave ajustable 8 in</text>
-<text x="116" y="253" font-size="5.0" fill="#333">203x60x15</text>
-<rect x="114" y="267" width="203" height="55" rx="4" fill="#C9DDF2" stroke="#111" stroke-width="1.2"/>
-<text x="215.5" y="292.3" font-size="11.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C2-03</text>
-<text x="215.5" y="305.5" font-size="9.3" text-anchor="middle">Pinza de chofer 8 in Truper 17301</text>
-<text x="116" y="320" font-size="7.7" fill="#333">203x55x15</text>
-<text x="46" y="400" font-size="11" fill="#000">Modulo BASE · caja 48-22-8444 · cajon C2 · alto interior 61 mm, util 51 mm</text>
-<text x="46" y="414" font-size="11" fill="#000">Ocupacion en planta 26.8 % · peso 1.06 kg de 11 kg</text>
-<text x="46" y="428" font-size="11" fill="#000">Medidas no validadas: confirmar con vernier antes de imprimir</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 506 480" width="810" font-family="Arial, sans-serif">
+<rect x="0" y="0" width="506" height="480" fill="#ffffff"/>
+<text x="46" y="18" font-size="13" font-weight="bold">FTS · Modulo BAS · Cajon C2 · 48-22-8443 · vista superior (mm)</text>
+<rect x="46" y="46" width="414" height="318" fill="#2b2b2b" stroke="#000" stroke-width="3"/>
+<line x1="46" y1="32" x2="460" y2="32" stroke="#333" stroke-width="1"/>
+<line x1="46" y1="26" x2="46" y2="38" stroke="#333"/><line x1="460" y1="26" x2="460" y2="38" stroke="#333"/>
+<text x="253.0" y="28" font-size="11" text-anchor="middle">414 mm</text>
+<line x1="32" y1="46" x2="32" y2="364" stroke="#333"/>
+<line x1="26" y1="46" x2="38" y2="46" stroke="#333"/><line x1="26" y1="364" x2="38" y2="364" stroke="#333"/>
+<text x="28" y="205.0" font-size="11" text-anchor="middle" transform="rotate(-90 28 205.0)">318 mm</text>
+<text x="253.0" y="378" font-size="10" text-anchor="middle" fill="#555">FRENTE DEL CAJON</text>
+<rect x="52" y="52" width="112" height="196" rx="4" fill="#F4A6A6" stroke="#111" stroke-width="1.2"/>
+<text x="108.0" y="148.4" font-size="8.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C2-01 R</text>
+<text x="108.0" y="158.0" font-size="6.8" text-anchor="middle">Atornillador de impacto M18 </text>
+<text x="54" y="246" font-size="5.6" fill="#333">196x112x53</text>
+<rect x="176" y="52" width="55" height="160" rx="4" fill="#FFE08A" stroke="#111" stroke-width="1.2"/>
+<text x="203.5" y="130.8" font-size="6.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C2-02 R</text>
+<text x="203.5" y="138.0" font-size="5.1" text-anchor="middle">Pinza de corte dia</text>
+<text x="178" y="210" font-size="5.0" fill="#333">160x55x20</text>
+<rect x="267" y="52" width="78" height="305" rx="4" fill="#C9DDF2" stroke="#111" stroke-width="1.2"/>
+<text x="306.0" y="203.3" font-size="6.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C2-03 R</text>
+<text x="306.0" y="210.5" font-size="5.1" text-anchor="middle">Llave ajustable 12 in Husk</text>
+<text x="269" y="355" font-size="5.0" fill="#333">305x78x20</text>
+<rect x="357" y="52" width="88" height="224" rx="4" fill="#C9DDF2" stroke="#111" stroke-width="1.2"/>
+<text x="401.0" y="162.74285714285713" font-size="6.3" text-anchor="middle" font-weight="bold">FTS-BAS-01-C2-04 R</text>
+<text x="401.0" y="170.28571428571428" font-size="5.3" text-anchor="middle">Navaja retractil Anvil</text>
+<text x="359" y="274" font-size="5.0" fill="#333">224x88x20</text>
+<rect x="52" y="260" width="203" height="60" rx="4" fill="#FFE08A" stroke="#111" stroke-width="1.2"/>
+<text x="153.5" y="287.8" font-size="11.0" text-anchor="middle" font-weight="bold">FTS-BAS-01-C2-05</text>
+<text x="153.5" y="301.0" font-size="9.3" text-anchor="middle">Pinza combinada aislada 200 (32930)</text>
+<text x="54" y="318" font-size="7.7" fill="#333">203x60x22</text>
+<text x="46" y="396" font-size="11" fill="#000">Modulo BASE · caja 48-22-8443 · cajon C2 · alto interior 76 mm, util 66 mm</text>
+<text x="46" y="410" font-size="11" fill="#000">Ocupacion en planta 65.7 % · peso 2.12 kg de 11 kg</text>
+<text x="46" y="424" font-size="11" fill="#000">Medidas no validadas: confirmar con vernier antes de imprimir</text>
 </svg>

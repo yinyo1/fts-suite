@@ -34,19 +34,19 @@ S = {
  '48-22-3532': ('Pinza de presion C 6 in Torque Lock', {'BASE': 1, 'SOL': 1}, 2, 0, 405.00, 'listado (Home Depot, folio 223028)', 'pagado'),
  '709204': ('Pinza de presion curva Husky', {'BASE': 1, 'SOL': 1}, 2, 2, 316.81, 'Odoo P02044', 'pagado'),
  '17018': ('Llave ajustable 12 in Husky', {'BASE': 1}, 3, 1, 308.00, 'Odoo P01581 (Ferremayoreo)', 'pagado'),
- '17016': ('Llave ajustable 8 in Husky', {'BASE': 1}, 3, 0, None, 'COTIZAR (sin precio en listado, Odoo ni buscador)', None),
+ '17016': ('Llave ajustable 8 in Husky', {'BASE': 1}, 3, 0, 215.00, 'Home Depot MX 17016 sku 128377, pagina leida 2026-09-28, IVA incluido', 'tienda'),
  '17301': ('Pinza de chofer 8 in Truper', {'BASE': 1}, 2, 0, 129.00, 'buscador (tienda no clara, sin IVA)', 'baja'),
  '30-615': ('Flexometro 5 m Stanley', {'BASE': 2}, 3, 3, 122.50, 'Odoo P01765', 'pagado'),
  'Hrrw7': ('Juego 7 llaves combinadas con matraca Husky', {'BASE': 1}, 1, 3, 1340.52, 'Odoo P05748 "JUEGO DE LLAVES CON MATRACA" (probable mismo articulo)', 'pagado'),
- 'Hbcw10': ('Juego 10 llaves combinadas Husky BITE', {'SOL': 1}, 1, 0, None, 'COTIZAR', None),
- 'dados38': ('Matraca 3/8 + juego de dados mm/in', {'BASE': 1}, 1, 0, None, 'COTIZAR (hoy son dados sueltos P7-P35)', None),
- 'ext38': ('Extensiones 3/8 (6, 10 in, oscilantes) y palanca', {'BASE': 1}, 1, 0, None, 'COTIZAR', None),
+ 'Hbcw10': ('Juego 10 llaves combinadas Husky BITE', {'SOL': 1}, 1, 0, 1199.00, 'Home Depot MX HBCW10XLS sku 217405, pagina leida 2026-09-28, IVA incluido', 'tienda'),
+ 'dados38': ('Matraca 3/8 + juego de dados mm/in', {'BASE': 1}, 1, 0, None, 'COTIZAR (HD MX 2026-09-28 solo la matraca H38ROTORATMX $1,155 IVA incluido; los dados son sueltos P7-P35)', None),
+ 'ext38': ('Extensiones 3/8 (6, 10 in, oscilantes) y palanca', {'BASE': 1}, 1, 0, 1177.00, 'Home Depot MX suma de 3 paginas leidas 2026-09-28 (H3DEXT6MX $167 + 106545 $495 + H38BB10MX $515), IVA incluido', 'tienda'),
  '106475': ('Juego 3 adaptadores 1/4-3/8-1/2 Husky', {'BASE': 1}, 2, 0, 333.71, 'listado (folio 223028)', 'pagado'),
  'torx': ('Juego llaves Torx/hex navaja Husky', {'SOL': 1}, 6, 0, None, 'COTIZAR', None),
  'MA-16F': ('Martillo una curva 16 oz Truper', {'BASE': 1, 'CIV': 1}, 2, 1, 142.74, 'Odoo P06664 (2026-07-03)', 'pagado'),
- 'MH-16': ('Mazo de hule 16 oz Truper', {'CIV': 1}, 1, 0, None, 'COTIZAR', None),
+ 'MH-16': ('Mazo de hule 16 oz Truper', {'CIV': 1}, 1, 0, 145.00, 'Home Depot MX MH-16 sku 462668, pagina leida 2026-09-28, IVA incluido', 'tienda'),
  'cinceles': ('Par de cinceles 5/16x6 y 7/8x10 Truper', {'CIV': 1}, 1, 0, 178.64, 'listado 101.24 + 77.40 (folio 280051)', 'pagado'),
- 'limas': ('3 limas 6 in Bellota', {'SOL': 1}, 1, 0, None, 'COTIZAR', None),
+ 'limas': ('3 limas 6 in Bellota', {'SOL': 1}, 1, 0, None, 'COTIZAR (HD MX 2026-09-28 tiene 2 de 3: redonda $97 y triangular $61, IVA incluido; falta media cana)', None),
  '99735a': ('Navaja retractil Anvil', {'BASE': 1}, 1, 0, 63.70, 'listado (folio 280051)', 'pagado'),
  '129291': ('Tazon magnetico Husky', {'BASE': 1}, 1, 0, 367.50, 'Odoo P01829', 'pagado'),
  '10790': ('Nivel torpedo magnetico Husky', {'BASE': 1, 'MED': 1}, 2, 1, 285.00, 'buscador Home Depot MX', 'media'),
@@ -58,12 +58,12 @@ S = {
  'comboM18': ('Combo M18: atornillador de impacto + rotomartillo 1/2 (sustituye 3650-20 y 3602-20 sueltos)', {'BASE': 1}, 1, 2, 6629.36, 'Odoo P01765 (2025-01-10) "MILWAUKEE COMBO DE HERRAMIENTAS M18"; P05567 (2026-02-04) $6,602.58. Verificar si incluye baterias y cargador', 'pagado'),
  '2854-20': ('Llave de impacto M18 FUEL 3/8 (solo herramienta)', {'BASE': 1}, 1, 0, 3241.14, 'listado (Amazon)', 'pagado'),
  '48-11-1820': ('Bateria M18 CP2.0', {'BASE': 2}, 2, 0, 2085.00, 'listado TPC5 (Home Depot)', 'pagado'),
- '48-59-1812': ('Cargador sencillo M18/M12', {'BASE': 1}, 0, 0, 1777.55, 'buscador OASA Norte', 'media'),
+ '48-59-1812': ('Cargador sencillo M18/M12', {'BASE': 1}, 0, 0, 1799.00, 'Home Depot MX 48-59-1812 sku 129465, pagina leida 2026-09-28, IVA incluido', 'tienda'),
  '6130-33': ('Mini esmeriladora 4-1/2 Milwaukee', {'BASE': 1, 'SOL': 1}, 2, 4, 1585.34, 'Odoo P06371 (2026-05-19)', 'pagado'),
  '302+': ('Pinza amperimetrica Fluke 302+', {'ELE': 1}, 1, 0, 1724.14, 'Odoo P01859', 'pagado'),
  'MA440': ('Amperimetro Extech MA440', {'ELE': 1}, 0, 2, 1072.88, 'Odoo P05648', 'pagado'),
  'MT-8200': ('Probador MicroMapper Fluke', {'ELE': 1}, 1, 0, 204 * TC, 'Odoo P01841 USD 204 x 17.64', 'pagado'),
- 'CE100821': ('Pelacables Commercial Electric', {'ELE': 1}, 1, 0, None, 'COTIZAR', None),
+ 'CE100821': ('Pelacables Commercial Electric', {'ELE': 1}, 1, 0, 235.00, 'Home Depot MX CE100821 sku 127734, pagina leida 2026-09-28, IVA incluido', 'tienda'),
  '1445070000': ('Crimpadora Weidmuller', {'ELE': 1}, 1, 0, 4911.00, 'Odoo P01827', 'pagado'),
  'ponch': ('Pinza ponchadora RJ45', {'ELE': 1}, 0, 1, 495.69, 'Odoo P05150', 'pagado'),
  'detv': ('Detector de voltaje Milwaukee', {'ELE': 1}, 0, 1, 400.86, 'Odoo P06378', 'pagado'),
@@ -95,15 +95,22 @@ S = {
 }
 COMPARTIDO = {'2677-23': 'knockout: $32,190 y uso ocasional; 1 en taller, se pide con el proyecto electrico',
               '36475': 'tarraja 12R: $15,059, 15.8 kg; 1 en taller, se pide con el proyecto de tuberia roscada'}
-CONT = {  # contenedores por unidad de modulo (de diseno_carrito.json)
- 'BASE': {'48-22-8420': 1, '48-22-8444': 2}, 'ELE': {'48-22-8444': 1}, 'SOL': {'48-22-8442': 1, '48-22-8444': 1},
- 'TUB': {'48-22-8443': 1}, 'CIV': {'48-22-8420': 1, '48-22-8442': 1, '48-22-8444': 1}, 'MED': {'48-22-8442': 1},
-}
+def _cont_desde_diseno():
+    """Contenedores por unidad de modulo, leidos de diseno_carrito.json (lo que decidio el acomodo)."""
+    dz = json.load(open(os.path.join(BASE, 'diseno_carrito.json'), encoding='utf-8'))
+    out = {}
+    for m, v in dz['modulos'].items():
+        d = defaultdict(int)
+        for c in v['cajas']: d[c['modelo']] += 1
+        out[m] = dict(d)
+    return out
+CONT = _cont_desde_diseno()
 CONT_PRECIO = {'48-22-8444': (3614.00, 'Odoo P03220 (2025-04-28, "4 cajones", sin IVA)', 'pagado'),
                '48-22-8420': (5599.00, 'buscador HerramientaElectrica.mx', 'media'),
                '48-22-8442': (3952.00, 'buscador HerramientaElectrica.mx (agotado)', 'alta'),
-               '48-22-8443': (3399.00, 'buscador Home Depot MX', 'media')}
-CONT_EXISTE = {'48-22-8444': 1, '48-22-8447 (sustituye 1 x 8444)': 1}   # P03220 y P05566, SIN recepcion en Odoo: ubicarlas
+               '48-22-8443': (3799.00, 'Home Depot MX sku 165831, pagina leida 2026-09-28, IVA incluido', 'tienda'),
+               '48-22-8447': (3499.00, 'Odoo P05566 (2026-02-04, sin IVA)', 'pagado')}
+CONT_EXISTE = {'48-22-8444': 1, '48-22-8447': 1}   # P03220 (4 cajones) y P05566 (8447), SIN recepcion en Odoo: ubicarlas
 # accesorios de control por unidad
 CANDADO = (119.00, 'listado hoja Maleta Personal: Master 646DMX, Home Depot', 'pagado')
 CABLE = (337.55, 'buscador Amazon MX: cable 1.8 m con combinacion reajustable', 'baja')
@@ -141,7 +148,7 @@ for m, u in UNIDADES.items():
 n_cont_total = sum(cont_need.values())
 cfilas = []
 for k, n in cont_need.items():
-    ex = 2 if k == '48-22-8444' else 0   # 1 de 4 cajones (P03220) + la 8447 (P05566) sustituye una 8444
+    ex = CONT_EXISTE.get(k, 0)   # P03220 (4 cajones) y P05566 (8447) si aparecen en el conteo fisico
     p, f, c = CONT_PRECIO[k]
     cfilas.append([k, n, ex, n - ex, p, round((n - ex) * p, 2), f, c])
 n_kits = UNIDADES['BASE']
@@ -177,6 +184,14 @@ t_cont = sum(c[5] for c in cfilas)
 t_rfid = sum(r[4] for r in rf)
 t_fab = sum(f[3] for f in fab if f[3])
 total = t_herr + t_cont + t_rfid + t_fab
+# Normalizacion de IVA (sesion nocturna 1): lo pagado por FTS en Odoo viene SIN IVA; los precios de tienda MX traen IVA.
+# Para sumar peras con peras se divide el precio de tienda entre 1.16. RFID y lector vienen de precios en USD sin
+# impuestos: se dejan igual. Si la confianza es 'pagado' no se toca.
+def _sin_iva(monto, conf): return monto if conf == 'pagado' else monto / 1.16
+t_herr_n = sum(_sin_iva(f[9], f[11]) for f in filas if f[9])
+t_cont_n = sum(_sin_iva(c[5], c[7]) for c in cfilas)
+t_fab_n = sum(_sin_iva(f[3], f[5]) for f in fab if f[3])
+total_n = t_herr_n + t_cont_n + t_rfid + t_fab_n
 # por carrito base y por modulo (herramienta + contenedores + candados)
 def cont_cost(m):
     s = 0
@@ -194,6 +209,8 @@ resumen = [['Herramienta a comprar (conservador, solo renglones con precio)', ro
            ['Filamento PETG', round(t_fab, 2)],
            ['TOTAL con precio conocido (MXN, mezcla de precios sin IVA pagados y precios de tienda)', round(total, 2)],
            ['TOTAL si aparecen las compras de Odoo', round(total - t_herr + t_herr_opt, 2)],
+           ['TOTAL con precio conocido, normalizado SIN IVA (tienda / 1.16)', round(total_n, 2)],
+           ['TOTAL normalizado con IVA (x 1.16)', round(total_n * 1.16, 2)],
            ['Renglones de herramienta SIN precio (cotizar)', len(sin_precio)],
            ['Tipo de cambio usado', f'{TC} MXN/USD (Odoo, 2026-09-27)']]
 hoja(wb.active, ['concepto', 'MXN'], resumen); wb.active.title = 'Resumen'

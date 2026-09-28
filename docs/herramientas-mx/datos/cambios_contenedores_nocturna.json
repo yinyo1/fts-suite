@@ -1,0 +1,140 @@
+[
+ {
+  "modelo": "48-22-8442",
+  "cajones_antes": [
+   [
+    2,
+    414,
+    318,
+    127
+   ]
+  ],
+  "cajones_despues": [
+   [
+    2,
+    414,
+    318,
+    127
+   ]
+  ],
+  "barra": true,
+  "nota": ""
+ },
+ {
+  "modelo": "48-22-8443",
+  "cajones_antes": [
+   [
+    3,
+    414,
+    318,
+    76
+   ]
+  ],
+  "cajones_despues": [
+   [
+    3,
+    414,
+    318,
+    76
+   ]
+  ],
+  "barra": true,
+  "nota": "Discrepancia 76 contra 86 mm: el fabricante da 3 in = 76 mm. Los 86 mm de la ficha de EUA no se sostienen."
+ },
+ {
+  "modelo": "48-22-8447",
+  "cajones_antes": [
+   [
+    2,
+    416,
+    322,
+    61
+   ],
+   [
+    1,
+    416,
+    322,
+    130
+   ]
+  ],
+  "cajones_despues": [
+   [
+    2,
+    414,
+    318,
+    63
+   ],
+   [
+    1,
+    414,
+    318,
+    127
+   ]
+  ],
+  "barra": true,
+  "nota": "Discrepancia 8442 contra 8447: la division 61 + 61 + 130 que la ficha UK atribuia al 8442 es la del 8447 (oficial: 63.5 + 63.5 + 127). El 8442 son 2 cajones de 127."
+ },
+ {
+  "modelo": "48-22-8444",
+  "cajones_antes": [
+   [
+    4,
+    416,
+    322,
+    61
+   ]
+  ],
+  "cajones_despues": [
+   [
+    4,
+    414,
+    318,
+    58
+   ]
+  ],
+  "barra": true,
+  "nota": "El cajon es de 58 mm, NO de 61 mm (fragmento UK de la sesion anterior). La imagen oficial rotula 22.2 in como \"54.4 cm\": error de la imagen, 22.2 in = 56.4 cm."
+ },
+ {
+  "modelo": "48-22-8441",
+  "cajones_antes": [
+   [
+    1,
+    null,
+    null,
+    null
+   ]
+  ],
+  "cajones_despues": [
+   [
+    1,
+    419,
+    330,
+    260
+   ]
+  ],
+  "barra": true,
+  "nota": ""
+ },
+ {
+  "modelo": "48-22-8420",
+  "cajones_antes": [
+   [
+    1,
+    432,
+    330,
+    406
+   ]
+  ],
+  "cajones_despues": [
+   [
+    1,
+    432,
+    330,
+    406
+   ]
+  ],
+  "barra": false,
+  "nota": "Incluye 2 divisores grandes, 6 divisores y una bandeja interior (MLK \"Includes\"). Peso: MLK 29 lb, HDUS 36 lb."
+ }
+]
