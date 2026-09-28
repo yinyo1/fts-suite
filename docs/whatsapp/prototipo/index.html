@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memoria FTS · Prototipo</title>
+<style>
+  :root { --fondo:#f5f6f8; --tarjeta:#fff; --texto:#1b1f24; --tenue:#5b6470; --borde:#dde1e6; --acento:#0b6bcb; --ok:#1a7f37; --aviso:#9a6700; --alerta:#b42318; --cita:#eef3fb; }
+  @media (prefers-color-scheme: dark) { :root { --fondo:#0f1216; --tarjeta:#171b21; --texto:#e7eaee; --tenue:#9aa4b0; --borde:#2a313a; --acento:#4c9cf0; --ok:#3fb950; --aviso:#d29922; --alerta:#f85149; --cita:#1b2433; } }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif; background:var(--fondo); color:var(--texto); }
+  header { background:var(--tarjeta); border-bottom:1px solid var(--borde); padding:14px 16px; }
+  h1 { margin:0; font-size:18px; }
+  .sub { color:var(--tenue); font-size:13px; }
+  .banda { background:var(--aviso); color:#fff; font-size:12px; padding:4px 16px; }
+  nav { display:flex; gap:4px; padding:8px 16px 0; overflow-x:auto; background:var(--tarjeta); border-bottom:1px solid var(--borde); }
+  nav button { font:inherit; border:0; background:none; color:var(--tenue); padding:8px 12px; border-bottom:2px solid transparent; cursor:pointer; white-space:nowrap; }
+  nav button.activa { color:var(--texto); border-bottom-color:var(--acento); font-weight:600; }
+  main { padding:16px; max-width:1100px; margin:0 auto; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:8px; margin-bottom:14px; }
+  .kpi { background:var(--tarjeta); border:1px solid var(--borde); border-radius:8px; padding:10px 12px; }
+  .kpi b { display:block; font-size:22px; }
+  .kpi span { color:var(--tenue); font-size:12px; }
+  .tarjeta { background:var(--tarjeta); border:1px solid var(--borde); border-radius:8px; padding:12px; margin-bottom:10px; }
+  .fila { display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; }
+  .t { font-weight:600; }
+  .chip { font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid var(--borde); color:var(--tenue); white-space:nowrap; }
+  .chip.aviso { color:var(--aviso); border-color:var(--aviso); } .chip.ok { color:var(--ok); border-color:var(--ok); }
+  .chip.alerta { color:var(--alerta); border-color:var(--alerta); } .chip.info { color:var(--acento); border-color:var(--acento); }
+  .meta { color:var(--tenue); font-size:13px; margin-top:4px; }
+  .cita { background:var(--cita); border-left:3px solid var(--acento); padding:6px 10px; margin:6px 0; font-size:14px; border-radius:4px; }
+  .cita small { color:var(--tenue); display:block; font-size:11px; }
+  .acciones { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  button.b { font:inherit; padding:6px 12px; border-radius:6px; border:1px solid var(--borde); background:var(--tarjeta); color:var(--texto); cursor:pointer; }
+  button.b.primario { background:var(--acento); border-color:var(--acento); color:#fff; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:6px 4px; border-bottom:1px solid var(--borde); vertical-align:top; }
+  th { color:var(--tenue); font-weight:500; font-size:12px; }
+  .oculto { display:none; }
+  @media (max-width: 640px) { table, thead, tbody, tr, td { display:block; } thead { display:none; } tr { border-bottom:1px solid var(--borde); padding:6px 0; } td { border:0; padding:2px 0; } }
+  .nota { color:var(--tenue); font-size:12px; margin-top:16px; }
+</style>
+</head>
+<body>
+<div class="banda">PROTOTIPO · todos los datos son SINTÉTICOS · nada aquí escribe en ningún lado</div>
+<header><h1>Memoria FTS</h1><div class="sub">Lo que pasa en los grupos, convertido en propuestas que una persona aprueba.</div></header>
+<nav id="nav">
+  <button data-v="bandeja" class="activa">Bandeja de grupos</button>
+  <button data-v="resumen">Resumen por SO</button>
+  <button data-v="propuestas">Propuestas</button>
+  <button data-v="alertas">Alertas</button>
+</nav>
+<main>
+  <section id="v-bandeja"></section>
+  <section id="v-resumen" class="oculto"></section>
+  <section id="v-propuestas" class="oculto"></section>
+  <section id="v-alertas" class="oculto"></section>
+  <p class="nota">Prototipo de docs/whatsapp (F18, #328). Las pantallas reales leen memoria.api_canales, memoria.api_propuestas y memoria.v_senales_watchdog; las decisiones guardan la diferencia entre lo propuesto y lo aprobado.</p>
+</main>
+<script>
+var D = {
+  grupos: [
+    { nombre: 'SO99001 Planta Sintética Norte', detectado: 'proyecto', estado: 'capturando', pendiente: 'ok', so: 'SO99001', ultimo: 'hoy 17:42', eventos: 214 },
+    { nombre: 'Compras tickets USA (sintético)', detectado: 'compras', estado: 'capturando', pendiente: 'ok', so: null, ultimo: 'hoy 16:05', eventos: 58 },
+    { nombre: 'Materiales obra sintética', detectado: 'materiales', estado: 'capturando', pendiente: 'ok', so: null, ultimo: 'hoy 12:30', eventos: 37 },
+    { nombre: 'Levantamiento cliente sintético', detectado: 'levantamiento', estado: 'pendiente', pendiente: 'por aprobar', so: null, ultimo: 'ayer 18:10', eventos: 0 },
+    { nombre: 'Familia de alguien (no es de trabajo)', detectado: 'sin_asignar', estado: 'pendiente', pendiente: 'por aprobar', so: null, ultimo: 'hoy 09:00', eventos: 0 }
+  ],
+  resumenes: [
+    { so: 'SO99001', dia: '27-sep', eventos: 31, fotos: 9, audios: 4, texto: 'Se energizó el tablero 1. Faltan 3 interruptores termomagnéticos para el tablero 2. El cliente pidió una salida adicional no cotizada. Compromiso: queda listo el viernes.',
+      citas: [['15:00', 'Avance: tablero 1 energizado'], ['15:10', 'Faltan 3 interruptores y hubo un casi accidente, gente sin arnés'], ['15:20', 'El cliente pidió también una salida adicional que no estaba en la cotización; queda listo el viernes']] }
+  ],
+  propuestas: [
+    { tipo: 'bill', titulo: 'Bill propuesto · FTS USA', detalle: 'Proveedor: Home Depot · 1,234.50 USD · 27-sep · cruce con tarjeta: pendiente (fuente banco no conectada)', conf: 0.6, cita: ['16:00', 'Ticket proveedor: Home Depot por 1,234.50 USD'] },
+    { tipo: 'requisicion', titulo: 'Requisición propuesta · SO99001 · urgencia alta', detalle: '10 pzas codo 3/4 galvanizado · 25 m cable THW calibre 12', conf: 0.5, cita: ['09:00', 'Urgente para hoy: 10 pzas de codo 3/4 galvanizado, 25 m de cable THW calibre 12'] },
+    { tipo: 'resumen_diario', titulo: 'Resumen diario · SO99001 · 27-sep', detalle: '31 eventos, 3 citas', conf: 0.5, cita: ['15:00', 'Avance: tablero 1 energizado'] }
+  ],
+  alertas: [
+    { sev: 'alta', regla: 'Seguridad', a: 'seguridad + dirección', cita: ['15:10', 'hubo un casi accidente, gente sin arnés'], so: 'SO99001' },
+    { sev: 'alta', regla: 'Adicional no cotizado', a: 'comercial (cotizador) + dirección', cita: ['15:20', 'una salida adicional que no estaba en la cotización'], so: 'SO99001' },
+    { sev: 'media', regla: 'Faltante de material', a: 'compras + supervisor', cita: ['15:10', 'Faltan 3 interruptores'], so: 'SO99001' },
+    { sev: 'media', regla: 'Compromiso de fecha', a: 'PM / supervisor', cita: ['15:20', 'queda listo el viernes'], so: 'SO99001' }
+  ]
+};
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function cita(c) { return '<div class="cita"><small>' + esc(c[0]) + ' · cita literal</small>' + esc(c[1]) + '</div>'; }
+function kpis(xs) { return '<div class="kpis">' + xs.map(function (k) { return '<div class="kpi"><b>' + esc(k[0]) + '</b><span>' + esc(k[1]) + '</span></div>'; }).join('') + '</div>'; }
+
+document.getElementById('v-bandeja').innerHTML =
+  kpis([[D.grupos.filter(function (g) { return g.estado === 'capturando'; }).length, 'grupos capturando'], [D.grupos.filter(function (g) { return g.estado === 'pendiente'; }).length, 'por aprobar'], [309, 'eventos hoy'], ['0', 'mensajes enviados (nunca)']]) +
+  D.grupos.map(function (g) {
+    return '<div class="tarjeta"><div class="fila"><span class="t">' + esc(g.nombre) + '</span><span class="chip ' + (g.pendiente === 'ok' ? 'ok' : 'aviso') + '">' + esc(g.pendiente) + '</span></div>' +
+      '<div class="meta">Detectado por nombre: ' + esc(g.detectado) + ' · estado: ' + esc(g.estado) + (g.so ? ' · ligado a ' + esc(g.so) : '') + ' · último: ' + esc(g.ultimo) + ' · ' + g.eventos + ' eventos</div>' +
+      (g.estado === 'pendiente' ? '<div class="acciones"><button class="b primario">Aprobar y capturar</button><button class="b">Excluir</button></div>' : '') + '</div>';
+  }).join('');
+
+document.getElementById('v-resumen').innerHTML = D.resumenes.map(function (r) {
+  return kpis([[r.eventos, 'eventos del día'], [r.fotos, 'fotos'], [r.audios, 'audios'], [r.citas.length, 'citas']]) +
+    '<div class="tarjeta"><div class="fila"><span class="t">' + esc(r.so) + ' · ' + esc(r.dia) + '</span><span class="chip info">propuesta · falta aprobar</span></div>' +
+    '<p>' + esc(r.texto) + '</p>' + r.citas.map(cita).join('') +
+    '<div class="acciones"><button class="b primario">Aprobar</button><button class="b">Corregir</button><button class="b">Rechazar</button></div>' +
+    '<div class="meta">Si corriges, se guarda la diferencia entre lo propuesto y lo aprobado: así aprende el sistema.</div></div>';
+}).join('');
+
+document.getElementById('v-propuestas').innerHTML = D.propuestas.map(function (p) {
+  return '<div class="tarjeta"><div class="fila"><span class="t">' + esc(p.titulo) + '</span><span class="chip">confianza ' + Math.round(p.conf * 100) + '%</span></div>' +
+    '<div class="meta">' + esc(p.detalle) + '</div>' + cita(p.cita) +
+    '<div class="acciones"><button class="b primario">Aprobar</button><button class="b">Corregir</button><button class="b">Rechazar</button></div>' +
+    '<div class="meta">Nada llega a Odoo sin tu aprobación. Lo aprobado lo escribe n8n y se verifica releyendo Odoo.</div></div>';
+}).join('');
+
+document.getElementById('v-alertas').innerHTML =
+  '<div class="tarjeta"><table><thead><tr><th>Severidad</th><th>Regla</th><th>SO</th><th>Cita</th><th>Avisar a (sugerido)</th></tr></thead><tbody>' +
+  D.alertas.map(function (a) {
+    return '<tr><td><span class="chip ' + (a.sev === 'alta' ? 'alerta' : 'aviso') + '">' + esc(a.sev) + '</span></td><td>' + esc(a.regla) + '</td><td>' + esc(a.so) + '</td><td>' + esc(a.cita[1]) + '<div class="meta">' + esc(a.cita[0]) + '</div></td><td>' + esc(a.a) + '</td></tr>';
+  }).join('') + '</tbody></table></div>';
+
+document.getElementById('nav').addEventListener('click', function (e) {
+  var v = e.target.getAttribute('data-v'); if (!v) return;
+  Array.prototype.forEach.call(this.children, function (b) { b.classList.toggle('activa', b === e.target); });
+  ['bandeja', 'resumen', 'propuestas', 'alertas'].forEach(function (x) { document.getElementById('v-' + x).classList.toggle('oculto', x !== v); });
+});
+</script>
+</body>
+</html>
