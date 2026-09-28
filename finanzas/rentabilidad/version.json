@@ -1,0 +1,14 @@
+{
+  "version": "v1.00",
+  "fecha": "2026-09-28",
+  "modulo": "finanzas/rentabilidad",
+  "esquema": "v<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main que toque este modulo. Serie propia: NO comparte numeracion con finanzas/version.json (que va en V1.09), porque el panel tiene dirección, motor y ciclo de despliegue propios.",
+  "ambito": "finanzas/rentabilidad/ + shared/panel/ + los workflows fin/rentabilidad-*",
+  "historial": [
+    {
+      "version": "v1.00",
+      "issue": 332,
+      "nota": "Estreno del badge. El panel ya existia en main desde el commit 964d4cd (PR #245, issue #240) pero nunca tuvo version propia, asi que no habia forma de saber en pantalla que build estaba desplegado. Se agrega el badge y este archivo; cero cambios de comportamiento. En la misma entrega va el prototipo docs/rentabilidad/prototipo.html con datos reales del 2026-09-28."
+    }
+  ]
+}
