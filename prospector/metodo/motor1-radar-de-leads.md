@@ -103,7 +103,8 @@ proceso en todo el buzón, devolvió casi puro boletín y convocatoria: sólo **
 154** líneas quedaron con proceso identificado. El proceso hay que sacarlo con
 búsqueda **dirigida por cliente**, no genérica — la misma lección que
 `fuentes-de-senal.md` ya había medido para los feeds. Sin eso, el factor «match
-de proceso» del evaluador (25 de 50 puntos) no tiene con qué calcularse todavía.
+de proceso» del evaluador (**25 puntos**, `MAX_PROCESO`) no tiene con qué
+calcularse todavía.
 
 ---
 
@@ -236,8 +237,24 @@ que un correo del cliente.
 ## La fórmula
 
 ```
-puntaje = match_catalogo(0-50) + frescura(0-25) + fuerza_de_fuente(0-25)
+puntaje = match_catalogo + frescura(0-25) + fuerza_de_fuente(0-25) + padron(0 u 8)
+
+match_catalogo = proceso(0-25) + tipo_de_obra + capacidad(0-10)
 ```
+
+> ⚠️ **[calculado] Los topes de arriba no suman 100, y decir que sumaban era una
+> mentira del documento.** Dos cosas:
+>
+> * `tipo_de_obra` **no tiene tope 15**. El tope de `MAX_TIPO_DE_OBRA` es por
+>   familia; `obra_nueva_integral` vale **44.4** a propósito (D3 de #329), porque
+>   una planta nueva no es un tipo de proyecto: es los seis a la vez.
+> * **`padron` faltaba en la fórmula** desde la primera versión, y vale 8.
+>
+> El máximo que el evaluador puede producir hoy es **137.4**, no 100, y eso es
+> deliberado: los umbrales (`pasa` 60, `guarda` 40) son cortes absolutos, no
+> porcentajes. Leer el puntaje como un porcentaje es el error que este cuadro
+> evita. El número de arriba lo verifica una prueba contra las constantes del
+> código, así que si un peso cambia y este documento no, **la suite truena**.
 
 > ## 🔖 Convención de este documento (D7 de #335)
 >

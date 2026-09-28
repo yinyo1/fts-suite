@@ -114,6 +114,54 @@ El caso 5 se declara en el lognote: *«esta tarjeta no trae ni tipo ni fuente de
 señal, así que su plazo no significa nada.»* Un plazo por omisión que se lee
 igual que un plazo razonado es peor que ningún plazo.
 
+### La precisión de la fecha de la señal, y por qué se cuenta desde el día 1
+
+**[calculado]** La prensa fecha al mes: *«anunciada nov-2023»*, *«arranque de obra
+marzo-2025»*. Ésa es una precisión válida y se declara
+(`fecha_senal_precision`: `dia` · `mes` · `anio`), pero el reloj necesita un día,
+así que el mes se normaliza al **día 1**.
+
+> **Al día 1 y no al 15 ni al último.** Hace la señal hasta 30 días **más vieja**
+> de lo que podría ser, nunca más fresca. Una ventana de caducidad que se equivoca
+> tiene que equivocarse del lado de **cerrarse antes**, y una fecha que sólo se sabe
+> al mes no debería poder ganarle puntos a una que se sabe al día.
+
+Y **una fecha ilegible no es lo mismo que no tener fecha.** Hasta el 28-sep-2026,
+`razon_de_caducidad` sólo leía `AAAA-MM-DD`: cualquier otra cosa caía a un `except`
+y el reloj arrancaba en **hoy** sin decir por qué. Medido: una señal de **nov-2023**
+salía caducando en **enero de 2027** — tres años y dos meses de ventana inventada.
+Es la misma familia que #302, donde no reconocer la fecha *escondía* la antigüedad.
+Hoy se leen las tres precisiones, una cadena que no se puede interpretar se
+**rechaza** al declarar la señal, y el `por_que` distingue *«no hay fecha»* de *«la
+fecha no se pudo leer»*.
+
+---
+
+## 2b · La cadencia: los primeros toques se escalonan (D8)
+
+La tabla de cadencia vive en el §4c del diseño del CRM; lo que sigue es la regla
+que la gobierna, porque **nada en el tablero la muestra** y una regla invisible se
+rompe sin querer.
+
+**Máximo un toque #1 por cuenta por día, con al menos 2 días hábiles entre
+contactos**, empezando por el nivel de confianza más alto y el canal más directo.
+
+> **Por qué.** Antes los cuatro contactos de una tarjeta recibían su toque #1 el
+> mismo día, por cuatro canales distintos. Desde la planta eso no se ve como
+> cadencia: se ve como enjambre. Cuatro personas de la misma empresa comentando el
+> mismo día que les escribió el mismo proveedor es exactamente la conversación que
+> no queremos provocar.
+
+| | |
+|---|---|
+| Separación entre primeros toques | **2 días hábiles** (`SEPARACION_ENTRE_PRIMEROS_TOQUES`) |
+| Orden de arranque | nivel de confianza, luego canal (correo directo → LinkedIn → conmutador → evento), luego cercanía a la decisión |
+| Quien está en revisión humana | **no consume día de escalonamiento**, porque no se le programa toque |
+| Los toques 2 y 3 | siguen la espera de su canal, no el escalonamiento |
+
+La prueba que **documentaba el enjambre** quedó invertida: ahora exige que los
+primeros toques no caigan el mismo día.
+
 ---
 
 ## 3 · El destino 2, convertido en restricción

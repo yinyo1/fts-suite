@@ -397,7 +397,11 @@ def _plano(t: str) -> str:
     queda a media frase -- "el documento prometia una > capacidad que..."--. Las dos
     son ruido de maquetado, no del texto.
     """
-    sin_cita = "\n".join(re.sub(r"^\s*>\s?", "", l) for l in t.splitlines())
+    # El `>` se quita SOLO cuando es marca de cita. Sin el lookahead, "`>= 60`"
+    # perdia su mayor-que y la busqueda fallaba por el formato y no por el numero
+    # -- una prueba floja disfrazada de estricta--.
+    sin_cita = "\n".join(re.sub(r"^\s*>(?=\s|$)", " ", l)
+                         for l in t.splitlines())
     return " ".join(sin_cita.split())
 
 
