@@ -9742,6 +9742,32 @@ await sembrarMachotes(q);
    * ⚠️ El catálogo de oportunidades y el de beneficiarios se FINGEN, por las
    * mismas dos razones que el de clientes: determinismo, y que el contenedor no
    * alcanza Railway. Los nombres son inventados. */
+  /* ── Sembrar la SESIÓN en una página secundaria ─────────────────────────
+   * La página principal la recibe del `addInitScript` de arriba; una
+   * `b.newPage()` NO. Y sin sesión la aplicación no pinta el libro, así que los
+   * clics se quedan esperando un botón que nunca va a existir: los cinco
+   * primeros intentos de estas pruebas murieron con «Timeout 30000ms». */
+  const sembrarSesion = (pg) => pg.addInitScript(() => {
+    try {
+      localStorage.setItem('fts_suite_session', JSON.stringify({
+        token: 'prueba.prueba.prueba',
+        actor: 'zz.prueba', nombre: 'ZZ Prueba', empleado_id: null,
+        scopes: ['comercial:read'],
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        debe_cambiar_password: false
+      }));
+    } catch (e) {}
+  });
+
+  /* Lee un machote del almacén REAL del módulo. La llave es `fts_machote_v1` y
+   * el sobre es `{v, guardado_at, machotes, handoff}` — leerlo como un arreglo
+   * plano devuelve undefined, y el primer intento de estas pruebas lo hizo:
+   * «Cannot read properties of undefined (reading 'secciones')». */
+  const delAlmacenReal = (pg, id) => pg.evaluate((x) => {
+    const sobre = JSON.parse(localStorage.getItem('fts_machote_v1') || '{}');
+    return (sobre.machotes || []).find(m => m.id === x) || null;
+  }, id);
+
   const sembrarOp = async (pg, opciones) => {
     await pg.addInitScript((cfg) => {
       const orig = window.fetch;
@@ -9776,6 +9802,34 @@ await sembrarMachotes(q);
                          nombre: 'Contacto Inventado', tipo: 'externo', vigente: true,
                          pendiente: true, ambiguo: false, como: 'guardado en la base' }] }) });
         }
+        /* Los endpoints del almacen y el catalogo se fingen IGUAL que en la
+         * pagina principal. Sin esto la pantalla intenta salir a Railway, que
+         * el contenedor no alcanza, y lo que se mide es el error del proxy en
+         * vez del render. */
+        if (s.indexOf('/comercial/clientes') >= 0) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({
+            ok: true, total: 3, clientes: [
+              { id: 49,   nombre: 'ABINSA SA DE CV' },
+              { id: 1247, nombre: 'BBVA Mexico' },
+              { id: 385,  nombre: 'Abamex Ingenieria, SA de CV' }
+            ] }) });
+        }
+        if (s.indexOf('/comercial/machotes-leer') >= 0) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({
+            ok: true, modo: 'lista', actor: 'zz.prueba', machotes: [], total: 0 }) });
+        }
+        if (s.indexOf('/comercial/machote-guardar') >= 0) {
+          var cg = {};
+          try { cg = JSON.parse((o && o.body) || '{}'); } catch (e) {}
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({
+            ok: true, machote_id: 'uuid-de-mentiras', id_local: cg.id_local,
+            dueno: 'zz.prueba', version: (Number(cg.version_leida) || 0) + 1,
+            versiones: 1 }) });
+        }
+        if (s.indexOf('/comercial/machote-archivar') >= 0) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({
+            ok: true, hecho: true }) });
+        }
         return orig(u, o);
       };
     }, opciones || {});
@@ -9798,13 +9852,14 @@ await sembrarMachotes(q);
     /* Y la regla DURA, que es lo que de verdad bloquea. Se mide con el motor de
      * reglas dentro de la página, no leyendo el texto de la pantalla. */
     const r = await p.evaluate(() => {
-      const m = window.MachoteApp ? null : null;   // el estado vive en el módulo
-      const doc = JSON.parse(localStorage.getItem('machotes_v1') || '[]')
-        .find(x => x.id === 'M-1041');
+      const sobre = JSON.parse(localStorage.getItem('fts_machote_v1') || '{}');
+      const doc = (sobre.machotes || []).find(x => x.id === 'M-1041');
+      if (!doc) return { falta: true };
       const rev = window.REGLAS.revisar(doc);
       return { bloquea: rev.duras.some(h => h.id === 'sin-oportunidad'),
                puede: rev.puedeConfirmar };
     });
+    if (r.falta) throw new Error('el machote de ejemplo no está en el almacén');
     if (!r.bloquea) throw new Error('la regla dura sin-oportunidad NO saltó');
     if (r.puede) throw new Error('dice que se puede confirmar sin oportunidad');
     console.log('    franja + regla dura: dice qué falta, por qué importa y dónde se arregla');
@@ -9814,6 +9869,8 @@ await sembrarMachotes(q);
     const q = await b.newPage();
     try {
       await sembrarGeo(q);
+      await sembrarMachotes(q);
+      await sembrarSesion(q);
       await sembrarOp(q, { muerto: false });
       await q.goto(BASE); await q.waitForTimeout(260);
       await q.evaluate(() => { location.hash = '#/m/M-1041'; });
@@ -9832,8 +9889,7 @@ await sembrarMachotes(q);
       if (!(await q.$('#opPastilla'))) throw new Error('no pintó la pastilla de ligada');
       const past = (await q.textContent('#opPastilla')).replace(/\s+/g, ' ');
       if (past.indexOf('901') < 0) throw new Error('la pastilla no trae el id: «' + past + '»');
-      const enDoc = await q.evaluate(() => (JSON.parse(localStorage.getItem('machotes_v1') || '[]')
-        .find(x => x.id === 'M-1041') || {}).oportunidad);
+      const enDoc = ((await delAlmacenReal(q, 'M-1041')) || {}).oportunidad;
       if (!enDoc || enDoc.lead_id !== 901)
         throw new Error('no quedó en el documento: ' + JSON.stringify(enDoc));
       console.log('    2 candidatas con su porqué · elegida 901 · franja fuera, pastilla dentro, y en el documento');
@@ -9844,6 +9900,8 @@ await sembrarMachotes(q);
     const q = await b.newPage();
     try {
       await sembrarGeo(q);
+      await sembrarMachotes(q);
+      await sembrarSesion(q);
       await sembrarOp(q, { muerto: true });
       await q.goto(BASE); await q.waitForTimeout(260);
       await q.evaluate(() => { location.hash = '#/m/M-1041'; });
@@ -9868,6 +9926,8 @@ await sembrarMachotes(q);
     const q = await b.newPage();
     try {
       await sembrarGeo(q);
+      await sembrarMachotes(q);
+      await sembrarSesion(q);
       await sembrarOp(q, { muerto: false });
       await q.goto(BASE); await q.waitForTimeout(260);
       await q.evaluate(() => { location.hash = '#/m/M-1041'; });
@@ -9902,8 +9962,7 @@ await sembrarMachotes(q);
       await ints[1].click(); await q.waitForTimeout(500);
       const t2 = (await q.textContent(cel)).replace(/\s+/g, ' ');
       if (t2.indexOf('sin ligar') >= 0) throw new Error('después de ligar sigue diciendo «sin ligar»');
-      const guardado = await q.evaluate(() => ((JSON.parse(localStorage.getItem('machotes_v1') || '[]')
-        .find(x => x.id === 'M-1041') || {}).equipo_venta || [])[0]);
+      const guardado = (((await delAlmacenReal(q, 'M-1041')) || {}).equipo_venta || [])[0];
       if (!guardado || !guardado.beneficiario || guardado.beneficiario.cuenta_id !== 1179)
         throw new Error('no guardó la CUENTA: ' + JSON.stringify(guardado));
       console.log('    botón en vez de campo · ambiguo y pendiente dichos con palabras · guarda la cuenta 1179');
@@ -9919,6 +9978,8 @@ await sembrarMachotes(q);
       const q = await b.newPage();
       try {
         await sembrarGeo(q);
+        await sembrarMachotes(q);
+        await sembrarSesion(q);
         await sembrarOp(q, { muerto: false });
         await q.setViewportSize({ width: w, height: 900 });
         await q.goto(BASE); await q.waitForTimeout(260);
