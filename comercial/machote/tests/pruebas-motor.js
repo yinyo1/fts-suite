@@ -791,5 +791,278 @@ es(tieneDura(vj, 'foranea-sin-viaje'), false, 'viejos · pero no los trata como 
   es(rev.puedeConfirmar, false, 'regla · y por eso no se puede confirmar');
 })();
 
+
+/* ══ V1.45 · la CONFIRMACIÓN: el cuadre de la PO, el umbral y los candados ══
+ *
+ * Lo que se ejercita, y por qué cada caso está aquí:
+ *   · el cuadre contra la PO en sus CUATRO veredictos, incluido `NO_APLICA`
+ *     —que existe para no reportar «con IVA» de una orden sin impuesto—;
+ *   · el orden de las comparaciones cuando la tasa es cero, que es donde una
+ *     implementación descuidada da el veredicto falso;
+ *   · el umbral del anticipo en las dos monedas, con el número FIJO en dólares;
+ *   · que el anticipo se calcula sobre el SUBTOTAL y no sobre el total;
+ *   · el olfateo del archivo, con bytes de PDF armados a mano;
+ *   · y que las duras y las blandas NO se confunden, que es la distinción de la
+ *     que depende que un escaneo legítimo no bloquee una orden.
+ */
+(function () {
+  require(require('path').resolve(__dirname, '..', 'js', 'confirmacion.js'));
+  const F = window.Confirmacion;
+  const R2 = window.MachoteReglas;
+
+  /* Un machote con un precio REDONDO, para que las cuentas del cuadre se puedan
+   * verificar a mano leyendo el nombre de la prueba. El precio sale del motor:
+   * no se inventa aquí, porque entonces la prueba mediría otro número que el
+   * que la pantalla va a comparar. */
+  const mk = (moneda) => {
+    /* ⚠️ La moneda del documento NO se pasa como parámetro: nace de la EMPRESA
+     * (compañía 1 = MXN, compañía 6 = USD · `calc.js` L286-292). La primera
+     * versión de estas pruebas hacía `machoteNuevo({ moneda: 'USD' })`, el
+     * parámetro se ignoraba, el machote salía en pesos, y la prueba del umbral
+     * en dólares pasaba o fallaba por la razón equivocada. Peor: al forzar
+     * `m.moneda = 'USD'` a mano, el precio salía **0**, porque las partidas
+     * seguían en pesos y `tcEfectivo` era nulo. */
+    const m = C.machoteNuevo({ nombre: 'conf', empresa_id: (moneda === 'USD' ? 6 : 1) });
+    if (m.moneda !== (moneda || 'MXN'))
+      throw new Error('el machote salió en ' + m.moneda + ' y se pidió ' + (moneda || 'MXN'));
+    const s = m.secciones[0];
+    s.partidas[0].qty = 1; s.partidas[0].pu = 100000; s.partidas[0].tipo = 'Materiales';
+    s.partidas[0].fuente = 'lista';
+    m.escenario = 'costo';   /* el escenario COSTO hace precio == costo, o sea 100,000 exactos */
+    if (s.partidas[0].moneda !== m.moneda)
+      throw new Error('la partida nació en ' + s.partidas[0].moneda + ' y el documento en ' + m.moneda);
+    return m;
+  };
+
+  const m = mk('MXN');
+  const c = C.calcular(m);
+  eq(F.subtotalDe(m, c), 100000, 'conf · el subtotal sale del motor: 100,000 exactos');
+
+  /* ── El cuadre, veredicto por veredicto ──────────────────────────────── */
+  es(F.cuadrePO(m, c).porque, 'SIN_DECISION_IVA',
+     'conf · sin decidir el IVA no se puede comparar, y se DICE (no se asume que no lleva)');
+
+  m.confirmacion = F.vacio();
+  m.confirmacion.iva.decision = 'lleva';
+  es(F.cuadrePO(m, c).porque, 'SIN_IMPORTE', 'conf · con IVA decidido pero sin importe: falta el número');
+
+  m.confirmacion.po.importe = 100000;
+  es(F.cuadrePO(m, c).veredicto, 'SIN_IVA', 'conf · PO 100,000 contra subtotal 100,000 → SIN_IVA');
+
+  m.confirmacion.po.importe = 116000;
+  es(F.cuadrePO(m, c).veredicto, 'CON_IVA', 'conf · PO 116,000 contra total 116,000 → CON_IVA');
+
+  m.confirmacion.po.importe = 116000.009;
+  es(F.cuadrePO(m, c).veredicto, 'CON_IVA', 'conf · la tolerancia es un centavo: 0.009 de más pasa');
+  m.confirmacion.po.importe = 116000.02;
+  es(F.cuadrePO(m, c).veredicto, 'NO_DETERMINADO', 'conf · dos centavos de más ya NO pasa');
+
+  m.confirmacion.po.importe = 123456;
+  const q = F.cuadrePO(m, c);
+  es(q.veredicto, 'NO_DETERMINADO', 'conf · un importe que no cuadra con ninguno → NO_DETERMINADO');
+  eq(q.diferencia, 7456, 'conf · la diferencia es contra el MÁS CERCANO: 123,456 − 116,000');
+  es(q.contra, 'total', 'conf · y dice contra cuál');
+  es(/no cuadra con la cotización/.test(q.mensaje), true,
+     'conf · el mensaje dice que los dos documentos no coinciden, no que «hay un error de IVA»');
+
+  /* ── NO_APLICA: el caso que una implementación descuidada reporta mal ─── */
+  m.confirmacion.iva.decision = 'no_lleva';
+  m.confirmacion.iva.leyenda_id = 'exportacion';
+  m.confirmacion.po.importe = 100000;
+  const qna = F.cuadrePO(m, c);
+  es(qna.veredicto, 'NO_APLICA',
+     'conf · sin impuesto y la PO cuadra → NO_APLICA, NO «CON_IVA» (las dos comparaciones darían igual)');
+  es(qna.porque, 'SIN_IMPUESTO', 'conf · y el porqué lo separa de un cuadre normal');
+  m.confirmacion.po.importe = 99000;
+  es(F.cuadrePO(m, c).veredicto, 'NO_DETERMINADO',
+     'conf · sin impuesto y la PO NO cuadra: sigue siendo un descuadre, no un NO_APLICA');
+
+  /* ── La memoria por cliente: copiloto, nunca fuente ──────────────────── */
+  m.confirmacion.iva.decision = 'lleva';
+  m.confirmacion.po.importe = 100000;
+  const qm = F.cuadrePO(m, c, { convencion: 'CON_IVA', veces_con: 12, veces_sin: 0 });
+  es(qm.veredicto, 'SIN_IVA', 'conf · la memoria NO cambia el veredicto: manda esta orden');
+  es(/siempre había mandado su PO CON IVA/.test(qm.aviso || ''), true,
+     'conf · pero avisa que contradice lo de siempre, con el conteo');
+  const qa = F.cuadrePO(m, c, { convencion: 'AMBAS', veces_con: 12, veces_sin: 7 });
+  es(/de las dos formas/.test(qa.aviso || ''), true,
+     'conf · un cliente bimodal se dice bimodal, no se le sostiene una mayoría que miente');
+  es(F.cuadrePO(m, c, { convencion: 'SIN_IVA', veces_sin: 9 }).aviso, null,
+     'conf · y cuando la memoria coincide, no dice nada (un aviso de más se filtra)');
+
+  /* ── El umbral, y el número fijo en dólares ──────────────────────────── */
+  es(F.umbralDe('MXN'), 200000, 'conf · umbral en pesos: 200,000');
+  es(F.umbralDe('USD'), 10000, 'conf · umbral en dólares: 10,000 FIJO, no convertido');
+  es(F.umbralDe('EUR'), 200000, 'conf · una moneda desconocida cae al de pesos, no a cero');
+
+  /* ── El anticipo se cobra sobre el SUBTOTAL ──────────────────────────── */
+  m.confirmacion.anticipo.aplica = true;
+  m.confirmacion.anticipo.pct = 30;
+  const po = F.paraOrden(m, c);
+  eq(po.anticipo_base, 100000, 'conf · la base del anticipo es el subtotal');
+  eq(po.anticipo_monto, 30000,
+     'conf · 30% de 100,000 = 30,000 · NO 34,800, que sería anticipar el IVA que no es nuestro');
+  es(po.umbral_anticipo, 200000, 'conf · y el payload lleva el umbral con el que se juzgó');
+
+  /* ── El olfateo del archivo ───────────────────────────────────────────── */
+  const bytesDe = (s) => { const a = new Uint8Array(s.length);
+    for (let i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); return a; };
+  const pdfConTexto = bytesDe('%PDF-1.7\n/Type /Page\n/Font /Helv\nBT (hola) Tj ET\n%%EOF');
+  const pdfEscaneado = bytesDe('%PDF-1.4\n/Type /Page\n/XObject /Im0 /DCTDecode\n%%EOF');
+  const pdfDosPaginas = bytesDe('%PDF-1.7\n/Type /Page\n/Type /Page\n/Font /F1\n%%EOF');
+  let a = F.inspeccionar('po.pdf', 'application/pdf', pdfConTexto);
+  es(a.paginas, 1, 'conf · el olfateo cuenta una página');
+  es(a.con_texto, true, 'conf · y ve que tiene texto');
+  a = F.inspeccionar('po.pdf', 'application/pdf', pdfDosPaginas);
+  es(a.paginas, 2, 'conf · cuenta dos páginas · y NO confunde /Type /Pages con /Type /Page');
+  a = F.inspeccionar('po.pdf', 'application/pdf', pdfEscaneado);
+  es(a.con_texto, false, 'conf · un PDF sin /Font se marca sin texto');
+  a = F.inspeccionar('foto.jpg', 'image/jpeg', bytesDe('\xFF\xD8\xFF cualquier cosa'));
+  es(a.con_texto, false, 'conf · una foto: una página, sin texto, sin dramatismo');
+  es(a.paginas, 1, 'conf · y cuenta como una página');
+  a = F.inspeccionar('vacio.pdf', 'application/pdf', bytesDe(''));
+  es(a.bytes, 0, 'conf · un archivo de cero bytes se reporta con cero bytes');
+
+  /* ── Las duras y las blandas, que es la distinción que importa ───────── */
+  const m2 = mk('MXN');
+  let f = F.faltantes(m2, C.calcular(m2));
+  const ids = f.map(x => x.id);
+  es(ids.indexOf('contacto-nombre') >= 0, true, 'conf · un machote nuevo pide el contacto');
+  es(ids.indexOf('iva') >= 0, true, 'conf · y la decisión de IVA');
+  es(ids.indexOf('po-numero') >= 0, true, 'conf · y el número de la PO');
+  es(ids.indexOf('po-archivo') >= 0, true, 'conf · y el archivo de la PO');
+  es(F.puedeConfirmar(m2, C.calcular(m2)), false, 'conf · así NO se puede confirmar');
+  es(f.every(x => x.que && x.porque && x.donde), true,
+     'conf · TODOS los renglones traen qué, por qué y dónde — ninguno dice sólo «falta»');
+  es(f.some(x => /error/i.test(x.que) || /error/i.test(x.porque)), false,
+     'conf · y ninguno dice «error»: un candado que salta está haciendo su trabajo');
+
+  /* Se llena todo y tiene que quedar limpio. Con datos INVENTADOS: este archivo
+   * vive en un repo público (§20 #7). */
+  m2.confirmacion = F.vacio();
+  m2.confirmacion.contacto = { partner_id: 1, nombre: 'Contacto Inventado',
+                               tel: '81 1234 5678', correo: 'contacto@ejemplo.invalid' };
+  m2.confirmacion.iva.decision = 'lleva';
+  m2.confirmacion.po.numero = 'PO-INVENTADA-1';
+  m2.confirmacion.po.archivo = F.inspeccionar('po.pdf', 'application/pdf', pdfConTexto);
+  m2.confirmacion.po.importe = 116000;
+  f = F.faltantes(m2, C.calcular(m2));
+  es(f.length, 0, 'conf · con todo lleno no falta nada, ni duro ni blando');
+  es(F.puedeConfirmar(m2, C.calcular(m2)), true, 'conf · y ya se puede confirmar');
+
+  /* El escaneo: avisa y DEJA PASAR. Es la decisión propia de la V1.45. */
+  m2.confirmacion.po.archivo = F.inspeccionar('po.pdf', 'application/pdf', pdfEscaneado);
+  f = F.faltantes(m2, C.calcular(m2));
+  es(f.length, 1, 'conf · un escaneo produce UN aviso');
+  es(f[0].dureza, 'blanda', 'conf · y es BLANDO: bloquearlo haría que la gente suba otro archivo');
+  es(F.puedeConfirmar(m2, C.calcular(m2)), true, 'conf · así que sí se puede confirmar');
+
+  /* La salida del descuadre: se anota el motivo y deja de bloquear, con rastro. */
+  m2.confirmacion.po.archivo = F.inspeccionar('po.pdf', 'application/pdf', pdfConTexto);
+  m2.confirmacion.po.importe = 300000;
+  es(F.puedeConfirmar(m2, C.calcular(m2)), false, 'conf · una PO que no cuadra BLOQUEA');
+  es(F.duras(m2, C.calcular(m2))[0].codigo, 'PO_NO_CUADRA', 'conf · con su código');
+  m2.confirmacion.po.varias = { motivo: 'La PO del cliente cubre tres cotizaciones',
+                                at: '2026-09-28T00:00:00Z', por: 'zz.prueba' };
+  const f2 = F.faltantes(m2, C.calcular(m2));
+  es(F.puedeConfirmar(m2, C.calcular(m2)), true,
+     'conf · anotando que cubre varias, deja de bloquear (un candado sin salida se rodea en silencio)');
+  es(f2[0].dureza, 'blanda', 'conf · y queda como aviso, no desaparece');
+  es(/cubre más de una cotización/.test(f2[0].porque), true, 'conf · con el motivo escrito dentro');
+
+  /* El correo y el teléfono: flojos a propósito, pero no de adorno. */
+  es(F.correoValido('a@b.co'), true, 'conf · un correo corto y válido pasa');
+  es(F.correoValido('sin arroba'), false, 'conf · sin arroba no');
+  es(F.correoValido('a@b'), false, 'conf · sin punto después del dominio tampoco');
+  es(F.telValido('81 1234 5678'), true, 'conf · diez dígitos con espacios pasan');
+  es(F.telValido('+52 (81) 1234-5678'), true, 'conf · y con lada y guiones también');
+  es(F.telValido('1234'), false, 'conf · cuatro dígitos no');
+
+  /* La leyenda cuando no lleva IVA, que es la mitad del candado 7. */
+  const m3 = mk('MXN');
+  m3.confirmacion = F.vacio();
+  m3.confirmacion.iva.decision = 'no_lleva';
+  let ff = F.faltantes(m3, C.calcular(m3)).map(x => x.id);
+  es(ff.indexOf('iva-leyenda') >= 0, true, 'conf · «no lleva IVA» sin leyenda BLOQUEA');
+  m3.confirmacion.iva.leyenda_id = 'otra';
+  ff = F.faltantes(m3, C.calcular(m3)).map(x => x.id);
+  es(ff.indexOf('iva-leyenda') >= 0, true, 'conf · elegir «otra» sin escribirla sigue bloqueando');
+  m3.confirmacion.iva.leyenda_id = 'otra';
+  m3.confirmacion.iva.leyenda_texto = 'Operación fuera del objeto';
+  ff = F.faltantes(m3, C.calcular(m3)).map(x => x.id);
+  es(ff.indexOf('iva-leyenda') >= 0, false, 'conf · escrita, deja de bloquear');
+  es(F.paraOrden(m3, C.calcular(m3)).iva_leyenda_texto, 'Operación fuera del objeto',
+     'conf · y el texto propio es el que viaja, no el de la lista');
+  m3.confirmacion.iva.leyenda_id = 'exportacion';
+  es(/exportación/i.test(F.paraOrden(m3, C.calcular(m3)).iva_leyenda_texto), true,
+     'conf · con una de la lista, viaja el texto de la lista');
+
+  /* ── El anticipo arriba y abajo del umbral ───────────────────────────── */
+  const chico = mk('MXN');
+  chico.secciones[0].partidas[0].pu = 50000;
+  chico.confirmacion = F.vacio();
+  es(F.faltantes(chico, C.calcular(chico)).map(x => x.id).indexOf('anticipo'), -1,
+     'conf · 50,000 está abajo del umbral: no pide anticipo');
+  const grande = mk('MXN');
+  grande.secciones[0].partidas[0].pu = 250000;
+  grande.confirmacion = F.vacio();
+  es(F.faltantes(grande, C.calcular(grande)).map(x => x.id).indexOf('anticipo') >= 0, true,
+     'conf · 250,000 está arriba: pide anticipo');
+  /* Y el borde exacto: en el umbral, SÍ pide. Un `>` en vez de `>=` dejaría
+   * pasar justo la orden del monto del umbral, que es la que alguien va a
+   * teclear a propósito. */
+  const borde = mk('MXN');
+  borde.secciones[0].partidas[0].pu = 200000;
+  borde.confirmacion = F.vacio();
+  es(F.faltantes(borde, C.calcular(borde)).map(x => x.id).indexOf('anticipo') >= 0, true,
+     'conf · EN el umbral exacto también pide: el borde se incluye');
+  /* Dólares: 12,000 USD está arriba de 10,000 aunque 12,000 pesos no lo estaría.
+   * Es la prueba de que el umbral depende de la MONEDA y no del número. */
+  const usd = mk('USD');
+  usd.secciones[0].partidas[0].pu = 12000;
+  usd.confirmacion = F.vacio();
+  es(F.faltantes(usd, C.calcular(usd)).map(x => x.id).indexOf('anticipo') >= 0, true,
+     'conf · 12,000 USD está arriba del umbral de dólares');
+  const usdChico = mk('USD');
+  usdChico.secciones[0].partidas[0].pu = 8000;
+  usdChico.confirmacion = F.vacio();
+  es(F.faltantes(usdChico, C.calcular(usdChico)).map(x => x.id).indexOf('anticipo'), -1,
+     'conf · 8,000 USD está abajo · y 8,000 en pesos también lo estaría: el caso no discrimina solo');
+  grande.confirmacion.anticipo.aplica = true;
+  es(F.faltantes(grande, C.calcular(grande)).map(x => x.id).indexOf('anticipo-pct') >= 0, true,
+     'conf · decir que lleva anticipo sin el porcentaje sigue bloqueando');
+  grande.confirmacion.anticipo.pct = 30;
+  es(F.faltantes(grande, C.calcular(grande)).map(x => x.id).indexOf('anticipo-pct'), -1,
+     'conf · con el porcentaje, ya no');
+  grande.confirmacion.anticipo.pct = 130;
+  es(F.faltantes(grande, C.calcular(grande)).map(x => x.id).indexOf('anticipo-pct') >= 0, true,
+     'conf · un 130% no es un porcentaje');
+
+  /* ── Un machote VIEJO no se rompe ─────────────────────────────────────── */
+  const antiguo = mk('MXN');
+  delete antiguo.confirmacion;
+  es(typeof F.de(antiguo).contacto.nombre, 'string',
+     'conf · un machote sin el bloque sale con la forma completa, no con undefined');
+  es(F.de(antiguo).anticipo.aplica, null,
+     'conf · y «no se decidió» es null, NO false: juntarlos haría que lo no decidido se porte como un «no»');
+
+  /* ── Y las dos reglas del revisador ───────────────────────────────────── */
+  let rev2 = R2.revisar(m2);
+  const dura2 = (r, id) => r.duras.some(h => h.id === id);
+  const blanda2 = (r, id) => r.blandas.some(h => h.id === id);
+  es(blanda2(rev2, 'confirmacion-por-mirar'), true,
+     'regla · la PO que cubre varias sale como aviso blando');
+  es(dura2(rev2, 'confirmacion-incompleta'), false, 'regla · y no bloquea');
+  const m4 = mk('MXN');
+  m4.confirmacion = F.vacio();
+  rev2 = R2.revisar(m4);
+  es(dura2(rev2, 'confirmacion-incompleta'), true,
+     'regla · un machote sin los datos de la orden BLOQUEA la confirmación');
+  es(rev2.puedeConfirmar, false, 'regla · y por eso no se puede confirmar');
+  /* La regla tiene que listar CADA faltante, no sólo decir que faltan: es la
+   * diferencia entre «no puedes seguir» y «te falta el correo del contacto». */
+  const h = rev2.duras.find(x => x.id === 'confirmacion-incompleta');
+  es(h.items.length >= 4, true, 'regla · y enumera cada uno, con su dónde');
+})();
 console.log('\n' + ok + ' pasaron, ' + mal + ' fallaron.');
 process.exit(mal ? 1 : 0);

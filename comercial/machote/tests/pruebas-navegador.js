@@ -10011,6 +10011,278 @@ await sembrarMachotes(q);
     if (malos.length) throw new Error(malos.join(' | '));
   });
 
+
+  /* ══ V1.45 · los candados de la CONFIRMACIÓN, en el modal de la orden ══════
+   *
+   * Lo que se mide aquí y NO se puede medir sin navegador: que el bloque se
+   * pinte dentro del modal, que el botón de crear quede TRABADO mientras falte
+   * algo, que teclear cambie el estado de verdad, y que un cambio que altera la
+   * forma repinte y SIGA cableado — el fallo silencioso del repintado sin
+   * re-cablear, que no truena y deja la pantalla muerta. */
+
+
+  /* El machote se arma DENTRO del navegador, con el motor que ya está cargado
+   * ahí: armarlo aquí obligaría a cargar calc.js en Node y a mantener dos
+   * caminos de construcción que se separan. El precio es redondo —100,000— para
+   * que el cuadre se pueda verificar a mano: 100,000 y 116,000. */
+  const conMachoteOrden = async (conf, grande) => {
+    const q = await b.newPage({ viewport: { width: 1280, height: 1000 } });
+    await sembrarGeo(q);
+    await q.addInitScript((cfg) => {
+      try {
+        /* El clear va SOLO en la primera carga. Este guion se vuelve a correr en
+         * cada navegacion, incluida la RECARGA de mas abajo, asi que sin la
+         * guarda borraba el machote que se acababa de sembrar — y el modal no
+         * abria porque no habia cotizacion. El sintoma era «no encontre el
+         * boton», que manda a buscar el error en el selector y no aqui. */
+        if (!sessionStorage.getItem('__limpio_v145')) {
+          localStorage.clear();
+          sessionStorage.setItem('__limpio_v145', '1');
+        }
+        localStorage.setItem('fts_suite_session', JSON.stringify({
+          token: 'p.p.p', actor: 'zz.prueba', nombre: 'ZZ Prueba', empleado_id: null,
+          scopes: ['comercial:read', 'comercial:write'],
+          exp: Math.floor(Date.now() / 1000) + 3600 }));
+      } catch (e) {}
+      window.__CONF_PRUEBA = cfg;
+      const orig = window.fetch;
+      window.fetch = function (u, o) {
+        const s2 = String(u);
+        if (s2.indexOf('/comercial/clientes') >= 0)
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, total: 1,
+            clientes: [{ id: 49, nombre: 'Cliente Industrial Inventado, SA de CV' }] }) });
+        if (s2.indexOf('/comercial/machotes-leer') >= 0)
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true,
+            modo: 'lista', actor: 'zz.prueba', machotes: [], total: 0 }) });
+        if (s2.indexOf('/comercial/machote-guardar') >= 0 || s2.indexOf('/comercial/machote-archivar') >= 0)
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, hecho: true,
+            machote_id: 'uuid-inventado', version: 4, versiones: 4 }) });
+        if (s2.indexOf('/comercial/oportunidades') >= 0)
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true,
+            modo: 'buscar', oportunidades: [], total: 0 }) });
+        if (s2.indexOf('/comercial/beneficiarios') >= 0)
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true,
+            modo: 'catalogo', internos: [], externos: [] }) });
+        return orig(u, o);
+      };
+    }, { conf: conf, grande: !!grande });
+
+    await q.goto(BASE); await q.waitForTimeout(700);
+    /* El machote se siembra AQUÍ, con el motor de la página, y después se
+     * recarga: así el documento es exactamente el que produce la aplicación. */
+    await q.evaluate(() => {
+      const cfg = window.__CONF_PRUEBA || {};
+      const C = window.MachoteCalc;
+      const m = C.machoteNuevo({ nombre: 'Cotización de prueba V1.45',
+                                 creado_por: 'zz.prueba', empresa_id: 1 });
+      m.id = 'M-9145';
+      m.cliente_id = 49;
+      m.cliente = 'Cliente Industrial Inventado, SA de CV';
+      m.escenario = 'costo';
+      m.diagnostico = { tipo: 'instalacion', respuestas: {} };
+      const s = m.secciones[0];
+      s.nombre = 'SUMINISTRO E INSTALACIÓN';
+      s.partidas[0].desc = 'Partida inventada';
+      s.partidas[0].qty = 1;
+      s.partidas[0].pu = cfg.grande ? 850000 : 100000;
+      s.partidas[0].tipo = 'Materiales';
+      s.partidas[0].fuente = 'lista';
+      s.partidas[0].unidad = 'lote';
+      s.mo.find(l => l.rol === 'tecnicos').qty = 0;
+      m.compromisos = { pago: { dias: 30, termino_texto: '30 dias', termino_id: null, hitos: [] },
+                        incoterm: 'DAP', entrega: { texto: '8 a 10 semanas', fecha: null },
+                        vigencia: { dias: 30, hasta: null }, at: null, por: null };
+      m.oportunidad = { lead_id: 901, nombre: 'Oportunidad inventada' };
+      if (cfg.conf) m.confirmacion = cfg.conf;
+      localStorage.setItem('fts_machote_v1', JSON.stringify({ v: 1,
+        guardado_at: new Date().toISOString(), machotes: [m], handoff: {} }));
+      localStorage.setItem('fts_machote_sync_v1', JSON.stringify({ v: 1, filas: [
+        { id_local: 'M-9145', machote_id: 'uuid-inventado', version: 3, folio: 77,
+          folio_txt: 'COT-0077', subido_at: new Date().toISOString(),
+          huella: 'x', odoo_lead_id: 901 }] }));
+    });
+    await q.reload(); await q.waitForTimeout(700);
+    await q.evaluate(() => { location.hash = '#/m/M-9145'; });
+    await q.waitForTimeout(700);
+    const abierto = await q.evaluate(() => {
+      const bs = Array.prototype.slice.call(document.querySelectorAll('button, a'));
+      const b2 = bs.find(x => /orden de venta|pasar a orden/i.test(x.textContent || ''));
+      if (!b2) return false; b2.click(); return true;
+    });
+    if (!abierto) { await q.close(); throw new Error('no encontre el boton de pasar a orden'); }
+    await q.waitForTimeout(1100);
+    return q;
+  };
+
+  /* Se lee el atributo disabled del boton REAL, no un texto: un aviso que se
+   * puede ignorar produce exactamente la tabla de ordenes sin terminos de pago
+   * que motivo los compromisos. */
+  const botonTrabado = (q) => q.evaluate(() => {
+    const bs = Array.prototype.slice.call(document.querySelectorAll('button'));
+    const b2 = bs.find(x => /crear la orden|crear orden/i.test(x.textContent || ''));
+    return b2 ? b2.disabled === true : null;
+  });
+
+  const CONF_COMPLETA = {
+    contacto: { partner_id: 1, nombre: 'Contacto Inventado Del Cliente',
+                tel: '81 1234 5678', correo: 'contacto@ejemplo.invalid' },
+    iva: { decision: 'lleva', leyenda_id: null, leyenda_texto: '' },
+    po: { numero: 'PO-INVENTADA-4471', importe: 100000,
+          archivo: { nombre: 'po.pdf', tipo: 'application/pdf', bytes: 184320,
+                     paginas: 3, con_texto: true, subido_at: '2026-09-28T00:00:00Z' },
+          veredicto: null, varias: null },
+    anticipo: { aplica: false, pct: null }
+  };
+  const clon = (x) => JSON.parse(JSON.stringify(x));
+
+  await paso('V1.45 · D · el bloque de la confirmación se pinta DENTRO del modal de la orden', async () => {
+    const q = await conMachoteOrden(null, false);
+    try {
+      if (!(await q.$('#or-confirmables'))) throw new Error('el bloque no se pintó');
+      const txt = ((await q.textContent('#or-confirmables')) || '').replace(/\s+/g, ' ').toUpperCase();
+      /* Los cuatro sub-bloques por su título, no por un contador: si mañana se
+       * agrega uno, la prueba sigue sirviendo y dice cuál falta. */
+      ['A QUIÉN SE LE FACTURA', 'IMPUESTO', 'LA ORDEN DE COMPRA', 'ANTICIPO'].forEach(t => {
+        if (txt.indexOf(t) < 0) throw new Error('falta el bloque «' + t + '»');
+      });
+      console.log('    los cuatro bloques en su sitio, dentro del modal');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.45 · D · con datos faltando, el botón de crear la orden queda TRABADO', async () => {
+    const q = await conMachoteOrden(null, false);
+    try {
+      const t = await botonTrabado(q);
+      if (t === null) throw new Error('no encontré el botón de crear la orden');
+      if (t !== true) throw new Error('el botón NO está trabado con datos faltando');
+      /* Y los candados salen UNO POR UNO en la lista de estorbos, con su dónde:
+       * «faltan 4 datos» manda a la persona a buscar cuáles. */
+      const est = (await q.textContent('.estorbos')) || '';
+      ['Contacto del cliente', 'Correo del contacto', 'El número de la orden de compra']
+        .forEach(x => { if (est.indexOf(x) < 0) throw new Error('el estorbo «' + x + '» no se listó'); });
+      console.log('    botón trabado · y cada candado dicho por su nombre');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.45 · D · con todo lleno, el botón se destraba', async () => {
+    const q = await conMachoteOrden(CONF_COMPLETA, false);
+    try {
+      const t = await botonTrabado(q);
+      if (t === null) throw new Error('no encontré el botón');
+      if (t !== false) throw new Error('el botón sigue trabado con todo lleno');
+      console.log('    destrabado');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.45 · D · teclear el total de la PO deduce el IVA, y el repintado NO pierde el cableado', async () => {
+    const q = await conMachoteOrden(CONF_COMPLETA, false);
+    try {
+      let t = ((await q.textContent('#or-confirmables')) || '').replace(/\s+/g, ' ');
+      if (t.indexOf('sin el IVA dentro') < 0)
+        throw new Error('con 100,000 no dedujo SIN_IVA: «' + t.slice(0, 200) + '»');
+
+      /* Se teclea DOS veces a propósito. El cambio del importe altera la FORMA,
+       * así que dispara un repintado; si tras repintar no se re-cableara, el
+       * SEGUNDO cambio no haría nada y la pantalla quedaría muerta sin tronar.
+       * Ese fallo no se ve leyendo el diff: sólo se ve tecleando dos veces. */
+      const sel = '#or-confirmables [data-cfx="po.importe"]';
+      await q.fill(sel, '116000'); await q.waitForTimeout(600);
+      t = ((await q.textContent('#or-confirmables')) || '').replace(/\s+/g, ' ');
+      if (t.indexOf('con el IVA dentro') < 0)
+        throw new Error('con 116,000 no dedujo CON_IVA: «' + t.slice(0, 200) + '»');
+
+      await q.fill(sel, '234567.89'); await q.waitForTimeout(600);
+      t = ((await q.textContent('#or-confirmables')) || '').replace(/\s+/g, ' ');
+      if (t.indexOf('no cuadra con la cotización') < 0)
+        throw new Error('tras DOS cambios dejó de reaccionar: el repintado no re-cableó');
+      if (t.indexOf('Diferencia contra el total') < 0)
+        throw new Error('no dice la diferencia contra el más cercano');
+      console.log('    SIN_IVA → CON_IVA → NO_DETERMINADO tecleando · el repintado sigue vivo');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.45 · D · el descuadre tiene SALIDA: se anota el motivo y destraba', async () => {
+    const conf = clon(CONF_COMPLETA); conf.po.importe = 234567.89;
+    const q = await conMachoteOrden(conf, false);
+    try {
+      if ((await botonTrabado(q)) !== true)
+        throw new Error('una PO que no cuadra NO trabó el botón');
+      /* Un motivo de dos letras NO debe pasar: la salida existe para dejar
+       * rastro, y un rastro que dice «ok» no es rastro. */
+      await q.fill('#or-confirmables [data-cfx-varias]', 'ok');
+      await q.click('#or-confirmables [data-cfx-varias-ok]');
+      await q.waitForTimeout(500);
+      if ((await botonTrabado(q)) !== true)
+        throw new Error('un motivo de dos letras destrabó el botón');
+
+      await q.fill('#or-confirmables [data-cfx-varias]', 'La PO del cliente cubre tres cotizaciones');
+      await q.click('#or-confirmables [data-cfx-varias-ok]');
+      await q.waitForTimeout(700);
+      if ((await botonTrabado(q)) !== false)
+        throw new Error('con el motivo escrito el botón SIGUE trabado');
+      const t = ((await q.textContent('#or-confirmables')) || '').replace(/\s+/g, ' ');
+      if (t.indexOf('cubre tres cotizaciones') < 0)
+        throw new Error('el motivo no quedó a la vista');
+      console.log('    anotado y destrabado · y el motivo queda escrito');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.45 · D · arriba del umbral el anticipo obliga, y se calcula sobre el SUBTOTAL', async () => {
+    const conf = clon(CONF_COMPLETA); conf.po.importe = 986000;   /* 850,000 × 1.16 */
+    const q = await conMachoteOrden(conf, true);
+    try {
+      if ((await botonTrabado(q)) !== true)
+        throw new Error('850,000 sin anticipo NO trabó el botón');
+      await q.selectOption('#or-confirmables [data-cfx="anticipo.aplica"]', 'si');
+      await q.waitForTimeout(600);
+      await q.fill('#or-confirmables [data-cfx="anticipo.pct"]', '30');
+      await q.waitForTimeout(600);
+      const t = ((await q.textContent('#or-confirmables')) || '').replace(/\s+/g, ' ');
+      /* 30% de 850,000 son 255,000. Sobre el total serían 295,800, o sea
+       * anticipar el IVA que no es nuestro. El número está en la pantalla
+       * justamente para que eso se pueda ver. */
+      if (t.indexOf('255,000.00') < 0)
+        throw new Error('el anticipo no dice 255,000: «' + t.slice(0, 300) + '»');
+      if (t.indexOf('295,800') >= 0)
+        throw new Error('cobra el anticipo sobre el TOTAL, con el IVA dentro');
+      console.log('    255,000 sobre el subtotal · no 295,800 sobre el total');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.45 · D · nada desborda a 380, 760, 900 y 1280 con el bloque abierto', async () => {
+    const malos = [];
+    /* Los cuatro anchos, y 760 y 900 son EL PUNTO: en este módulo la franja de
+     * 721-980 se ha roto dos veces por cosas distintas (§20 #20). */
+    for (const w of [380, 760, 900, 1280]) {
+      const q = await conMachoteOrden(CONF_COMPLETA, false);
+      try {
+        await q.setViewportSize({ width: w, height: 1000 });
+        await q.waitForTimeout(500);
+        const r = await q.evaluate((ancho) => {
+          const host = document.getElementById('or-confirmables');
+          if (!host) return { falta: true };
+          const out = { cero: 0, sale: 0, campos: 0 };
+          const cs = host.querySelectorAll('input, select, .cfx-c, .cfx-cuadre');
+          out.campos = cs.length;
+          Array.prototype.forEach.call(cs, function (e) {
+            const bb = e.getBoundingClientRect();
+            if (bb.height > 0 && bb.width < 1) out.cero++;
+            if (bb.right > ancho + 2) out.sale++;
+          });
+          out.desborde = document.documentElement.scrollWidth - document.documentElement.clientWidth;
+          return out;
+        }, w);
+        if (r.falta) { malos.push(w + ': el bloque no está'); continue; }
+        if (!r.campos) malos.push(w + ': el bloque no tiene campos');
+        if (r.cero) malos.push(w + ': ' + r.cero + ' campo(s) con ancho CERO');
+        if (r.sale) malos.push(w + ': ' + r.sale + ' elemento(s) se salen por la derecha');
+        if (r.desborde > 2) malos.push(w + ': la página desborda ' + r.desborde + 'px');
+      } finally { await q.close(); }
+    }
+    if (malos.length) throw new Error(malos.join(' | '));
+    console.log('    380 · 760 · 900 · 1280 sin desbordes ni anchos en cero');
+  });
+
   await paso('sin errores de consola propios del prototipo', async () => {
     if (errs.length) throw new Error(errs.slice(0, 4).join(' | '));
     if (delEntorno.length) console.log('   (' + delEntorno.length +

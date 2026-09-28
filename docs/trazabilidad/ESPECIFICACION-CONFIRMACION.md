@@ -529,3 +529,97 @@ comercial.umbral_anticipo (
 mañana aparece una orden en euros, la Confirmación **no la deja pasar en silencio**: dice
 *«no hay umbral de anticipo configurado para EUR»* y manda a configurarlo. Un umbral ausente
 leído como «no aplica» es exactamente cómo un candado se apaga sin que nadie lo decida.
+
+---
+
+## 8 · Estado de construcción, al 28-sep-2026
+
+Lo que esta especificación describía ya no es sólo papel. Aquí queda **qué se
+construyó, qué no, y las cuatro decisiones que se tomaron sin preguntar** porque
+no había a quién preguntarle a esa hora.
+
+### 8.1 · Los candados, uno por uno
+
+| # | candado | dónde vive hoy | estado |
+|---|---|---|---|
+| 1 | versión vieja | servidor | pendiente |
+| 2 | scope | `orden.js` + servidor | ya estaba |
+| 3 | reglas duras | `reglas.js` | ya estaba |
+| 4 | cliente del catálogo | `orden.js` | ya estaba |
+| 5 | contacto con teléfono y correo | **`confirmacion.js`** | ✅ construido |
+| 6 | días de pago | `compromisos.js` | ya estaba |
+| 7 | decisión de IVA, explícita o leyenda | **`confirmacion.js`** | ✅ construido |
+| 8 | viáticos | V1.26 | ya estaba |
+| 9 | oportunidad ligada | `oportunidades.js` | ✅ V1.44 |
+| 10 | número de PO | **`confirmacion.js`** | ✅ construido |
+| 11 | archivo de PO | **`confirmacion.js`** | ✅ construido, **blando** (§8.3) |
+| 12 | el importe de la PO cuadra | **`confirmacion.js`** | ✅ construido |
+| 13 | anticipo arriba del umbral | **`confirmacion.js`** | ✅ construido |
+| 14 | beneficiario aprobado | `beneficiarios.js` | ✅ V1.44 |
+| 15 | las facturas cuadran | — | **no construido** |
+| 16 | la orden sigue cuadrando | servidor | pendiente |
+| 17 | idempotencia | servidor | pendiente |
+
+**Los candados 15, 16 y 17 son del SERVIDOR y no se construyeron.** El 15 en
+particular necesita leer `amount_invoiced` y `amount_to_invoice` de Odoo, que
+son calculados y sin almacenar: sólo se pueden comparar fuera, y eso vive en el
+workflow, no en el navegador.
+
+### 8.2 · Dónde se capturan, y por qué ahí
+
+En el modal de **«Pasar a orden de venta»**, no en la pantalla de confirmar.
+
+El contacto, el IVA, la PO y el anticipo son datos que **ya se tienen cuando se
+manda la orden**. Pedirlos al confirmar significa pedírselos a **otra persona,
+otro día, sin el correo del cliente delante** — y entonces se inventan o se
+paran. Al confirmar, el servidor los vuelve a comprobar; la pantalla existe para
+que nadie llegue hasta el final para que le digan que no.
+
+### 8.3 · Las cuatro decisiones propias
+
+**1 · El umbral del anticipo en dólares es 10,000, FIJO.** Un umbral es una
+política, no una conversión: si fuera `200,000 / tipo_de_cambio`, la **misma**
+orden estaría arriba del umbral un día y abajo el siguiente sin que nadie
+cambiara nada — la peor propiedad posible en una regla que la gente tiene que
+poder anticipar. Y se eligió del lado **estricto**: a ~17.35 MXN/USD, 10,000 USD
+son ~173,500 MXN. Es a propósito, por el modo de falla — un umbral bajo produce
+una conversación, uno alto produce arrancar una obra grande sin un peso
+adelantado (CLAUDE.md §9).
+
+**2 · El archivo escaneado avisa y DEJA PASAR**, contra la letra del §3.1 que lo
+ponía en la tabla de los que rechazan. Tres razones: el propio mensaje de la
+especificación es una **pregunta** («¿es el correcto?»); un escaneo sin capa de
+texto es un caso legítimo y frecuente; y si bloqueara, la salida obvia sería
+**subir otro archivo cualquiera que sí traiga texto**, con lo que el candado
+habría producido exactamente el dato falso que venía a impedir. Es la lección
+del tercer botón de [`IVA-EN-LA-PO.md`](IVA-EN-LA-PO.md) §4.1. Además el
+detector es un **olfateo**, no un intérprete de PDF: bloquear con una pista sería
+peor todavía.
+
+**3 · El descuadre tiene salida, y la salida deja rastro.** Si la PO cubre varias
+cotizaciones se anota el motivo, queda con autor y fecha, deja de bloquear y sale
+como aviso blando. Sin ella, la persona acabaría tecleando el número que hace
+cuadrar.
+
+**4 · La memoria por cliente (§3 de `IVA-EN-LA-PO.md`) NO se construyó**, pero
+`cuadrePO` la recibe como argumento con la forma ya fijada
+(`{convencion, veces_con, veces_sin}`) y funciona igual sin ella. Necesita una
+tabla y un endpoint; el día que existan se enchufa sin tocar la heurística.
+
+### 8.4 · Lo que se probó, y lo que no
+
+**Probado (276 aserciones de motor y 7 de navegador, todas en verde):** los
+cuatro veredictos del cuadre, incluido `NO_APLICA`; que la tolerancia es un
+centavo exacto; que la memoria no cambia el veredicto; el umbral en las dos
+monedas y **en su borde exacto**; que el anticipo se calcula sobre el subtotal y
+no sobre el total; el olfateo con bytes de PDF armados a mano; que las duras y
+las blandas no se confunden; que el botón de crear queda trabado y se destraba;
+que teclear dos veces sigue funcionando —o sea que el repintado no pierde el
+cableado—; y que nada desborda a 380, 760, 900 ni 1280.
+
+**No probado:** el ciclo contra Odoo. Nada de esto ha creado una orden real.
+
+⚠️ **Y una cosa que hay que confirmar con Gerardo antes de usarla con un
+cliente:** el texto exacto de las cuatro leyendas de «no lleva IVA». La lista
+existe para que cada quien no la escriba distinta, no para decidir la redacción
+fiscal.

@@ -275,6 +275,59 @@
         } : null;
       }
     },
+    /* ── V1.45 · los candados de la CONFIRMACIÓN ───────────────────────────
+     * Los seis que faltaban de la especificación (§3): el contacto, la decisión
+     * de IVA, el número y el archivo de la PO, el cuadre contra la PO, y el
+     * anticipo arriba del umbral.
+     *
+     * ── POR QUÉ DOS REGLAS Y NO SEIS ─────────────────────────────────────
+     * Porque `Confirmacion.faltantes` ya devuelve la lista con su dureza, su
+     * porqué y su dónde. Seis reglas aquí serían seis sitios que vuelven a
+     * decidir qué es duro y qué es blando, y el día que cambie un criterio se
+     * arregla uno y los otros cinco siguen diciendo lo de antes (§20 #4).
+     *
+     * Así que aquí van DOS —una dura y una blanda— y cada una sólo agrupa lo
+     * que aquel módulo ya clasificó. El texto de cada renglón sale de allá, con
+     * su qué / por qué / dónde, que es lo que la especificación exige de todos
+     * los mensajes.
+     *
+     * Sin el módulo cargado NO disparan: una regla dura que salta por un
+     * `<script>` que no llegó bloquearía todas las cotizaciones del sistema por
+     * un fallo de red. Es la misma cautela de `sin-oportunidad`. */
+    {
+      destino: () => ({ tab: 'datos' }),
+      id: 'confirmacion-incompleta', severidad: 'dura', area: 'Confirmación',
+      titulo: 'Faltan datos para poder crear la orden',
+      evaluar: (m, c) => {
+        const C = G.Confirmacion;
+        if (!C) return null;
+        const d = C.duras(m, c);
+        return d.length ? {
+          detalle: 'La cotización se puede guardar y mandar así; lo que no se puede es ' +
+                   'convertirla en orden, porque ' + (d.length === 1 ? 'falta un dato'
+                   : 'faltan ' + d.length + ' datos') + ' sin los que la orden nacería mal. ' +
+                   'Cada renglón dice dónde se arregla.',
+          items: d.map(x => ({ seccion: x.que, desc: x.porque + ' → ' + x.donde }))
+        } : null;
+      }
+    },
+    {
+      destino: () => ({ tab: 'datos' }),
+      id: 'confirmacion-por-mirar', severidad: 'blanda', area: 'Confirmación',
+      titulo: 'Cosas de la orden que alguien debería mirar',
+      evaluar: (m, c) => {
+        const C = G.Confirmacion;
+        if (!C) return null;
+        const b = C.faltantes(m, c).filter(x => x.dureza === 'blanda');
+        return b.length ? {
+          detalle: 'Nada de esto impide confirmar. Son avisos: un escaneo sin texto o una PO ' +
+                   'que cubre varias cotizaciones son casos legítimos, pero quedan anotados ' +
+                   'para que alguien los revise con calma.',
+          items: b.map(x => ({ seccion: x.que, desc: x.porque }))
+        } : null;
+      }
+    },
+
     /* ── `comision-sin-nombre` se retiró en la V1.44 ───────────────────────
      * Decía «hay comisión de cliente sin nadie a quién pagarle» mirando si
      * `equipo_cliente` tenía algún renglón con nombre. `comision-sin-ligar`

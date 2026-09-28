@@ -2362,3 +2362,57 @@ table.hoja-pad .padcel.ref2 { box-shadow: inset 0 0 0 2px var(--xl-ref2); backgr
 .modal .caja.ben-caja { max-width: 560px; width: 100%; }
 .ben-grupo { margin: 12px 0 0; }
 .ben-aviso { margin: 10px 0 0; }
+
+/* ══ V1.45 · los campos de la CONFIRMACIÓN ═══════════════════════════════════
+ * Prefijo `cf-` en TODO. Reusar un nombre que ya existe en este archivo es cómo
+ * la V1.42 acabó con tres cajas donde iba una: el CSS nuevo era correcto y el
+ * choque estaba en otra parte del mismo archivo (§20 #12).
+ *
+ * Cero columnas fijas y cero tablas: `flex-wrap` con un mínimo por campo, así
+ * que a 380 cada campo ocupa su renglón y a 1280 se acomodan varios en fondo.
+ * La franja que se rompe en este módulo ha sido dos veces la de 721-980 px, y
+ * las dos por una rejilla con medidas escritas a mano. */
+.cfx-bloque { border-top: 1px solid var(--linea, #e4e6ea); padding: 12px 0 4px; }
+.cfx-h { font-size: 13px; margin: 0 0 8px; color: var(--tinta2, #57606a); font-weight: 600;
+        text-transform: uppercase; letter-spacing: .03em; }
+.cfx-fila { display: flex; flex-wrap: wrap; gap: 10px 14px; }
+.cfx-c { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.cfx-et { font-size: 12px; color: var(--tinta2, #57606a); }
+.cfx-ay { font-size: 11.5px; color: var(--tinta3, #8b949e); line-height: 1.35; }
+/* `min-width:0` en el input además del contenedor: sin él, el ancho intrínseco
+ * de un `<input>` (unas 20 letras) gana al `flex-shrink` y el campo se derrama
+ * fuera de su caja justo en los anchos de en medio. Es el mismo mecanismo que
+ * dejó el bloque del precio en 0 px de ancho a 760 en la V1.34. */
+.cfx-in { width: 100%; min-width: 0; }
+.cfx-file { font-size: 12px; max-width: 100%; }
+.cfx-mal { border-color: #cf222e !important; background: #fff8f8; }
+.cfx-arch { font-size: 12px; color: var(--tinta2, #57606a); margin: 8px 0 0; word-break: break-word; }
+
+.cfx-cuadre { margin: 10px 0 0; padding: 10px 12px; border-radius: 8px; font-size: 13px; }
+.cfx-cuadre p { margin: 6px 0 0; line-height: 1.45; }
+.cfx-si { background: #eaf6ec; border-left: 3px solid #1a7f37; }
+.cfx-no { background: #fff5f5; border-left: 3px solid #cf222e; }
+/* Los tres números en fila cuando caben y apilados cuando no. Van juntos porque
+ * es lo único que permite decidir: ver el de la PO al lado de los dos de la
+ * cotización. */
+.cfx-tres { display: flex; flex-wrap: wrap; gap: 4px 18px; }
+.cfx-tres span { white-space: nowrap; }
+.cfx-tres b { color: var(--tinta2, #57606a); font-weight: 500; margin-right: 4px; }
+.cfx-aviso { background: #fff8c5; padding: 6px 9px; border-radius: 6px; font-size: 12.5px; }
+.cfx-salida { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 0; }
+.cfx-salida .cfx-in { flex: 1 1 240px; }
+.cfx-varias-ok { font-size: 12.5px; color: #57606a; }
+.cfx-monto { margin: 8px 0 0; font-size: 13px; }
+
+.cfx-faltan { margin: 12px 0 0; display: flex; flex-direction: column; gap: 6px; }
+.cfx-falta { font-size: 12.5px; line-height: 1.45; padding: 7px 10px; border-radius: 6px; }
+.cfx-dura { background: #fff5f5; border-left: 3px solid #cf222e; }
+.cfx-blanda { background: #fff8c5; border-left: 3px solid #9a6700; }
+.cfx-donde { color: var(--tinta3, #8b949e); }
+
+@media (max-width: 420px) {
+  /* A 380 los campos ya se apilan solos por el `flex-wrap`; lo único que
+   * estorba es el espacio vertical entre bloques. */
+  .cfx-bloque { padding: 10px 0 2px; }
+  .cfx-fila { gap: 8px; }
+}

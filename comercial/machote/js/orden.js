@@ -319,6 +319,20 @@
       de_captura.push('El machote mezcla monedas en sus renglones. Se convierte con el ' +
         'TC, pero conviene revisarlo antes de mandarlo a Odoo.');
     }
+    /* ── V1.45 · los candados de la CONFIRMACIÓN ──────────────────────────
+     * Se listan UNO POR UNO y no como «faltan 4 datos»: lo que la persona
+     * necesita saber es cuál falta y dónde se arregla, que es la diferencia
+     * entre «no puedes seguir» y «te falta el correo del contacto».
+     *
+     * Y salen de `Confirmacion.duras`, que es el único que decide qué es duro:
+     * volver a decidirlo aquí serían dos definiciones divergiendo (§20 #4). */
+    var CF = G.Confirmacion;
+    if (CF) {
+      CF.duras(m, c).forEach(function (x) {
+        de_captura.push('<strong>' + esc(x.que) + '</strong> — ' + esc(x.porque) +
+          ' <em>' + esc(x.donde) + '</em>');
+      });
+    }
     if (R && R.revisar) {
       var rev = R.revisar(m);
       if (rev.duras && rev.duras.length) {
@@ -432,6 +446,23 @@
 
   /** El bloque de compromisos, cuando cambió su ESTRUCTURA — se agregó o se
    *  quitó un hito. Vuelve a cablear, porque los nodos de antes ya no existen. */
+  /** V1.45 · repinta SÓLO el bloque de la confirmación y lo vuelve a cablear.
+   *  Se llama cuando el cambio altera la FORMA (aparece la leyenda del IVA,
+   *  aparece el porcentaje del anticipo, aparece el cuadre de la PO), no en
+   *  cada tecla. Y tras repintar hay que re-cablear: los manejadores viven en
+   *  los nodos que se acaban de tirar, así que sin esto la pantalla queda
+   *  pintada y muerta — el mismo fallo silencioso del rename a medias. */
+  function repintarConfirmables() {
+    var host = document.getElementById('or-confirmables');
+    var CFM = G.Confirmacion;
+    if (!host || !CFM) return;
+    host.innerHTML = CFM.html(_st.machote, _st.pre._calc);
+    CFM.cablear(host, _st.machote, function (repintar) {
+      if (repintar) { repintarConfirmables(); } else { refrescarTrabado(); }
+    });
+    refrescarTrabado();
+  }
+
   function repintarCompromisos() {
     if (!_st) return;
     var CP = G.MachoteCompromisos;
@@ -507,7 +538,15 @@
 
     var CP = G.MachoteCompromisos;
     var D = G.MachoteDocumento;
+    var CFM = G.Confirmacion;
     var faltaCompromiso = CP ? CP.faltantes(m) : [];
+    /* V1.45 · los campos que la confirmación va a exigir. Se capturan AQUÍ, al
+     * crear la orden, y no al confirmarla: el cliente, el contacto, la PO y el
+     * anticipo son datos que ya se tienen cuando se manda la orden, y pedirlos
+     * al final significa pedírselos a otra persona, otro día, sin el correo del
+     * cliente delante. */
+    var confirmables = CFM ? CFM.html(m, p._calc) : '';
+    var faltaConfirmar = CFM ? CFM.duras(m, p._calc) : [];
     var campos = CP ? CP.html(m)
       : '<p class="tiny nota">Los compromisos no están disponibles en esta pantalla.</p>';
 
@@ -524,7 +563,8 @@
 
     /* Tres cosas distintas impiden crear la orden, y decirlas juntas manda a
      * la persona a arreglar lo que no es (CLAUDE.md §20 #12b). */
-    var trabado = faltaCliente || faltaCompromiso.length > 0 || conPrecio === 0;
+    var trabado = faltaCliente || faltaCompromiso.length > 0 || conPrecio === 0 ||
+                  faltaConfirmar.length > 0;
 
     cascaron(
       '<div class="or-cab">' +
@@ -578,6 +618,18 @@
       'Medido sobre las 176 órdenes confirmadas de 2025-2026, 49 salieron sin términos de ' +
       'pago y ninguna con incoterm ni con fecha comprometida.</p>' +
       '<div class="or-compromisos">' + campos + '</div>' +
+
+      /* V1.45 · va DESPUÉS de los compromisos y ANTES del documento, a
+       * propósito: es la misma conversación —qué le falta a esta cotización
+       * para volverse una orden— y el documento es ya la salida. Poner los
+       * candados después del documento haría que la persona edite el texto que
+       * va al cliente y sólo entonces descubra que no puede emitir. */
+      '<h4 class="or-h">Lo que la confirmación va a exigir</h4>' +
+      '<p class="tiny nota">Se captura <strong>aquí</strong> y no al confirmar. Al confirmar, ' +
+      'estos datos los pide otra persona, otro día, sin el correo del cliente delante. ' +
+      'El servidor los vuelve a comprobar antes de escribir: esta pantalla existe para que ' +
+      'nadie llegue hasta el final para que le digan que no.</p>' +
+      '<div class="or-confirmables" id="or-confirmables">' + confirmables + '</div>' +
 
       '<h4 class="or-h">El documento que va a llevar la orden</h4>' +
       '<p class="tiny nota">Ésta es la forma que FTS ya usa: encabezado de sección, su ' +
@@ -712,6 +764,16 @@
      * Repintar el configurador entero tras cada tecla haría perder el foco a
      * media palabra, así que sólo se repinta cuando cambia lo que la pantalla
      * pinta a partir de ellos: el botón y su explicación. */
+    /* V1.45 · el cableado de los campos de la confirmación. Su repintado es
+     * PARCIAL, igual que el de compromisos y por la misma razón: repintar el
+     * modal entero tras cada tecla le quita el foco a quien está escribiendo a
+     * media palabra. */
+    if (G.Confirmacion) {
+      G.Confirmacion.cablear(document.getElementById('or-confirmables'), m,
+        function (repintar) {
+          if (repintar) { repintarConfirmables(); } else { refrescarTrabado(); }
+        });
+    }
     if (G.MachoteCompromisos) {
       G.MachoteCompromisos.cablear(m, function (repintar) {
         if (repintar) { repintarCompromisos(); } else { refrescarTrabado(); }
@@ -787,6 +849,13 @@
        * orden de Odoo: es lo que el servidor escribe en `sequence`. */
       bloques: bloques,
       compromisos: CP ? CP.paraOrden(_st.machote) : {},
+      /* V1.45 · lo que la confirmacion va a exigir, ya capturado. Va en su
+       * propia llave y no mezclado con los compromisos: son dos contratos
+       * distintos y el dia que uno cambie no tiene por que mover al otro.
+       * El ARCHIVO de la PO no va aqui — viaja aparte, porque un base64 de dos
+       * megas dentro del payload convierte cada reintento en dos megas mas. */
+      confirmacion: G.Confirmacion
+        ? G.Confirmacion.paraOrden(_st.machote, _st.pre._calc) : {},
       /* ── V1.44 · la oportunidad, leída de donde de verdad vive ────────────
        * Aquí decía `_st.machote.lead_id`, y esa propiedad **no la escribía
        * nadie**: el campo del servidor se llama `odoo_lead_id` y la pantalla no
