@@ -22,7 +22,8 @@ def conninfo() -> str:
 
 
 @contextmanager
-def conexion():
+def conexion(ensayo: bool = False):
+    """ensayo=True: todo lo escrito se REVIERTE al salir, pase lo que pase."""
     con = psycopg.connect(conninfo(), row_factory=dict_row, autocommit=False, connect_timeout=10)
     try:
         rol = os.environ.get("BANCOS_DB_ROLE", "bancos_app")
@@ -30,7 +31,10 @@ def conexion():
             with con.cursor() as cur:
                 cur.execute(psql.SQL("SET ROLE {}").format(psql.Identifier(rol)))
         yield con
-        con.commit()
+        if ensayo:
+            con.rollback()
+        else:
+            con.commit()
     except Exception:
         con.rollback()
         raise

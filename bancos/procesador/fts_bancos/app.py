@@ -136,6 +136,45 @@ def _procesar(contenido: bytes, nombre: str, meta: dict, corrida_id):
                                   "requiere_correo": bool(problemas), "problemas": problemas}, default=str))
 
 
+@app.post("/ensayo")
+async def ensayo(req: Request, hoy: str = "2026-09-15"):
+    """Corre el pipeline completo sobre un ZIP de fixtures SINTÉTICOS dentro de una transacción
+    que se revierte al final. Sirve para probar el contenedor de producción sin ensuciar la base."""
+    import io
+    import zipfile
+    from .cuentas import cargar_de_entorno as _c
+    from .ensayo import CUENTAS_FALSAS_JSON
+    contenido = await req.body()
+    salida = {"archivos": {}}
+    with conexion(ensayo=True) as con:
+        falsas = _c(CUENTAS_FALSAS_JSON)
+        pipeline.sembrar(con, falsas)
+        cid = pipeline.abrir_corrida(con, "fixture", "ensayo")
+        with zipfile.ZipFile(io.BytesIO(contenido)) as z:
+            for n in sorted(z.namelist()):
+                cat = pipeline.catalogo_db(con)
+                cat.cuentas = [c for c in cat.cuentas if c.numero in {f.numero for f in falsas}]
+                for c in cat.cuentas:
+                    c.clave = next(f.clave for f in falsas if f.numero == c.numero)
+                items = pipeline.procesar_archivo(con, z.read(n), n, {"origen": "fixture"}, cid, cat, pipeline.reglas_db(con))
+                salida["archivos"][n] = [{k: i.dict()[k] for k in ("nombre_original", "estado", "accion", "periodo", "motivo",
+                                                                  "avisos", "nombre_destino", "carpeta_destino", "v1", "v2")}
+                                         for i in items]
+        cat = pipeline.catalogo_db(con)
+        cat.cuentas = [c for c in cat.cuentas if c.numero in {f.numero for f in falsas}]
+        for c in cat.cuentas:
+            c.clave = next(f.clave for f in falsas if f.numero == c.numero)
+        salida["cierre"] = pipeline.cerrar_corrida(con, cid, cat, True, None, date.fromisoformat(hoy))
+        filas = [f for f in reportes.filas_base(con) if "…00" in f["cuenta"]]
+        salida["base_filas"] = len(filas)
+        salida["base_csv_sha256"] = sha256_bytes(reportes.csv_bytes([{**f, "id": "", "par_traspaso": ""} for f in filas]))
+        rec = verificar.huella_reconstruida(con, cat, pipeline.reglas_db(con))
+        salida["reconstruida"] = {k: rec[k] for k in ("huella", "movimientos", "estados")}
+        salida["hashes_iguales_al_reprocesar"] = not rec["estados_con_huella_distinta"]
+    salida["revertido"] = True
+    return json.loads(json.dumps(salida, default=str))
+
+
 @app.get("/blob/{sha}")
 def blob(sha: str):
     if len(sha) != 64 or any(c not in "0123456789abcdef" for c in sha):
