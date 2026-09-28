@@ -153,10 +153,19 @@ def test_el_piloto_carga_y_sus_reglas_rechazan(base):
     assert r["cuentas_cargadas"] == 9
     assert len(r["huecos_no_cargados"]) == 4
     res = r["resumen"]
-    # Una tarjeta abierta por cuenta, y CERO contactos: la semana 1 valida reglas,
-    # y las reglas no necesitan a nadie.
-    assert res["tarjetas_abiertas"] == res["cuentas"] == 9
+    assert res["cuentas"] == 9
+    # OPCION C de #340: las nueve cuentas cargan, pero NO las nueve nacen abiertas.
+    # Coficab/Durango nace en `vencida_sin_trabajar`, asi que abiertas + vencidas
+    # tiene que dar las nueve -- y ninguna se pierde por el camino--.
+    assert res["tarjetas_vencidas_sin_trabajar"] == 1
+    assert res["tarjetas_abiertas"] == 8
+    assert (res["tarjetas_abiertas"] + res["tarjetas_cerradas"]
+            + res["tarjetas_vencidas_sin_trabajar"]) == 9
+    assert res["vencidas_reabiertas"] == 0
+    # CERO contactos: la semana 1 valida reglas, y las reglas no necesitan a nadie.
     assert res["contactos"] == 0
+    # Y CERO cierres, que es la mitad del punto de la opcion C: una vencida sin
+    # trabajar NO fabrica un cierre.
     assert res["cierres"] == 0
     reglas = cp.verificar_reglas(base)
     assert reglas, "la verificacion no probo ninguna regla"
@@ -216,53 +225,148 @@ def test_el_puntaje_que_entra_a_la_base_lo_CALCULA_el_codigo(base):
 
 
 # ============================  tarea 3 de #336 · la tarjeta que nace vencida
-def test_una_tarjeta_muerta_abierta_BLOQUEA_el_reciclaje(base):
-    """El argumento que decide el diseno de `metodo/tarjeta-que-nace-vencida.md`.
+def test_opcionC_la_vencida_YA_NO_bloquea_el_reciclaje(base):
+    """La prueba que decidio el diseno, AHORA INVERTIDA porque el diseno se aplico.
 
-    No es un problema de presentacion: una tarjeta vencida que sigue `abierta`
-    ocupa el unico lugar que la cuenta tiene, y cuando llegue una senal nueva el
-    destino 2 NO PUEDE reabrir -- el indice unico parcial lo rechaza--. O sea que una
-    tarjeta muerta rompe el mecanismo que el motor 3 existe para sostener.
+    Antes de #340 esta prueba exigia que la reapertura FALLARA, y pasaba: una
+    tarjeta vencida que seguia `abierta` ocupaba el unico lugar de la cuenta y el
+    indice unico parcial rechazaba la tarjeta nueva. Ese era el argumento que
+    decidia -- no era presentacion, era el mecanismo del destino 2 roto--.
 
-    Si esta prueba fallara, la recomendacion del diseno cambiaria: el estado propio
-    solo serviria para limpiar el tablero, y eso no justificaria tocar el esquema.
+    Con la opcion C la vencida nace en `vencida_sin_trabajar`, el indice parcial no
+    la ve, y el lugar queda libre SIN borrar nada: la cuenta, su senal y su
+    expediente siguen en la base, que es justo lo que el destino 2 necesita para
+    reabrir *con historial*.
     """
     import cargar_piloto as cp
     r = cp.cargar(base)
     vencidas = r["tarjetas_vencidas_al_cargar"]
     assert vencidas, "ninguna nacio vencida; el caso no se puede probar"
-    # La cuenta de la tarjeta vencida.
+    assert all(v["estado"] == "vencida_sin_trabajar" for v in vencidas)
     llave = vencidas[0]["llave"]
     cuenta_id = base.correr(
         "SELECT id FROM motor3.cuenta WHERE llave_de_corrida = "
         f"$m3q${llave}$m3q$;").strip()
     assert cuenta_id
-    # Llega una senal NUEVA de esa misma cuenta y se intenta reabrir.
+    # Llega una senal NUEVA de esa misma cuenta y el destino 2 reabre.
     base.correr(
         f"INSERT INTO motor3.senal (cuenta_id, fuente, tipo, fecha_senal, "
         f"evaluada) VALUES ({cuenta_id}, 'correo_propio', 'necesidad_declarada', "
         f"current_date, false);")
     nueva = base.correr("SELECT max(id) FROM motor3.senal;").strip()
-    try:
-        base.correr(f"INSERT INTO motor3.tarjeta (cuenta_id, senal_id) "
-                    f"VALUES ({cuenta_id}, {nueva});")
-        reabrio = True
-        detalle = ""
-    except SinPostgres as e:
-        reabrio, detalle = False, str(e)
-    assert not reabrio, (
-        "la tarjeta muerta NO bloqueo el reciclaje: revisa la recomendacion de "
-        "metodo/tarjeta-que-nace-vencida.md antes de aplicarla")
-    assert "tarjeta_una_abierta_por_cuenta" in detalle
+    base.correr(f"INSERT INTO motor3.tarjeta (cuenta_id, senal_id) "
+                f"VALUES ({cuenta_id}, {nueva});")
+    # Y la historia no se perdio: quedan DOS tarjetas de la cuenta, una abierta.
+    filas = base.json(
+        "SELECT jsonb_agg(jsonb_build_object('estado', estado)) FROM "
+        f"motor3.tarjeta WHERE cuenta_id = {cuenta_id};")
+    estados = sorted(f["estado"] for f in filas)
+    assert estados == ["abierta", "vencida_sin_trabajar"], estados
 
 
-def test_el_estado_propio_dejaria_libre_el_lugar(base):
-    """La otra mitad del argumento: con la vencida FUERA de `abierta`, el reciclaje
-    si puede reabrir. Se prueba con el estado que ya existe (`cerrada`) porque
-    `vencida_sin_trabajar` todavia NO esta en el esquema -- el diseno espera OK--.
+def test_opcionC_la_vencida_NO_ENTRA_a_ninguna_de_las_tres_compuertas(base):
+    """El otro motivo de la opcion C, y el que decide contra la opcion B.
 
-    Lo que esta prueba sostiene es que el indice es PARCIAL y por eso la solucion
-    propuesta funciona, no que el estado nuevo exista.
+    Las tres vistas del aprendizaje leen de `cierre`. Una vencida sin trabajar no
+    tiene cierre, asi que ninguna la ve. Fabricarle uno con destino `caduca` le
+    diria al lazo 1 que esa fuente NO CONVIRTIO -- cuando la verdad es que nunca se
+    intento--, y con 20 cierres de compuerta tres o cuatro falsos mueven un peso.
+    """
+    import cargar_piloto as cp
+    r = cp.cargar(base)
+    assert r["tarjetas_vencidas_al_cargar"], "el caso no se puede probar"
+    # Cero cierres en la base: nada que los lazos puedan leer.
+    assert base.correr("SELECT count(*) FROM motor3.cierre;").strip() == "0"
+    for vista in ("conversion_por_fuente", "conversion_por_padron",
+                  "dias_hasta_respuesta_por_tipo"):
+        n = base.correr(f"SELECT count(*) FROM motor3.{vista};").strip()
+        assert n == "0", f"{vista} vio una tarjeta que nunca se trabajo"
+    # Y tampoco la ve el tablero como trabajo vivo.
+    for vista in ("toca_hoy", "caducan_con_toques_pendientes"):
+        assert base.correr(
+            f"SELECT count(*) FROM motor3.{vista};").strip() == "0", vista
+
+
+def test_opcionC_la_vista_vencidas_sin_trabajar_la_cuenta_con_su_fecha(base):
+    """Se puede contar, y eso es una metrica DEL PROCESO, no del radar: mide
+    cuanto tarda el equipo en trabajar lo que el radar detona."""
+    import cargar_piloto as cp
+    cp.cargar(base)
+    filas = base.json(
+        "SELECT jsonb_agg(to_jsonb(v)) FROM motor3.vencidas_sin_trabajar v;")
+    assert filas and len(filas) == 1
+    f = filas[0]
+    assert f["empresa"] == "Coficab" and f["planta"] == "Durango"
+    # La caducidad que ya se le paso queda guardada, y con ella se puede decir
+    # CUANTO lleva vencida. Sin ese dato nadie podria auditar de cuando era la
+    # senal que la mato.
+    assert f["caducidad_original"], "sin caducidad_original no hay nada que auditar"
+    assert f["dias_vencida"] > 0
+    assert f["reabierta_vencida"] is False
+    # La senal sigue ahi: la opcion A -- no cargarla-- habria tirado esto.
+    assert f["fecha_senal"]
+
+
+def test_opcionC_el_esquema_EXIGE_la_caducidad_original(base):
+    """Una vencida sin la fecha que se le paso no se puede auditar, y una
+    reapertura de vencida sin ese dato borra justo el numero que el lazo 1
+    necesita para el contraejemplo. Los dos CHECK lo rechazan."""
+    import cargar_piloto as cp
+    cp.cargar(base)
+    cuenta_id = base.correr(
+        "SELECT id FROM motor3.cuenta LIMIT 1;").strip()
+    for sql, cual in (
+        (f"INSERT INTO motor3.tarjeta (cuenta_id, estado) VALUES "
+         f"({cuenta_id}, 'vencida_sin_trabajar');",
+         "vencida_sin_trabajar_guarda_su_caducidad"),
+        (f"INSERT INTO motor3.tarjeta (cuenta_id, reabierta_vencida) VALUES "
+         f"({cuenta_id}, true);",
+         "reabierta_vencida_guarda_su_caducidad"),
+    ):
+        with pytest.raises(SinPostgres) as e:
+            base.correr(sql)
+        assert cual in str(e.value), cual
+
+
+def test_opcionC_reabrir_una_vencida_recalcula_la_caducidad_desde_hoy(base):
+    """La mitad del valor del diseno. Una senal de obra nueva de hace diez meses no
+    esta muerta como prospecto -- la planta sigue comprando-- pero su ventana de
+    especificacion si cerro. Reabrirla con la caducidad original la mata en el acto.
+
+    Y queda ESCRITO que se reabrio vencida, porque si esa tarjeta convierte el lazo
+    1 tiene un contraejemplo medido de la curva de frescura -- y un contraejemplo
+    medido vale mas que la curva--.
+    """
+    import cargar_piloto as cp
+    cp.cargar(base)
+    t_id = base.correr("SELECT id FROM motor3.tarjeta WHERE estado = "
+                       "'vencida_sin_trabajar';").strip()
+    assert t_id
+    original = base.correr(
+        f"SELECT caducidad_original FROM motor3.tarjeta WHERE id = {t_id};").strip()
+    base.correr(
+        f"UPDATE motor3.tarjeta SET estado = 'abierta', reabierta_vencida = true, "
+        f"caduca_el = current_date + 120, reaperturas = reaperturas + 1 "
+        f"WHERE id = {t_id};")
+    f = base.json("SELECT to_jsonb(t) FROM motor3.tarjeta t WHERE id = "
+                  f"{t_id};")
+    assert f["estado"] == "abierta"
+    assert f["reabierta_vencida"] is True
+    # La original NO se borra: es el dato que hace auditable la reapertura.
+    assert f["caducidad_original"] == original
+    assert f["caduca_el"] > original
+    # Y la vista ya no la lista, porque ya no esta sin trabajar.
+    assert base.correr(
+        "SELECT count(*) FROM motor3.vencidas_sin_trabajar;").strip() == "0"
+
+
+def test_el_indice_es_PARCIAL_y_por_eso_la_opcionC_funciona(base):
+    """Que el indice unico sea PARCIAL es lo que hace posible la opcion C.
+
+    Se prueba con `cerrada` a proposito, y no con el estado nuevo: lo que sostiene
+    esta prueba es la propiedad del INDICE -- solo mira `abierta`--, no que el enum
+    tenga un valor mas. Si manana alguien convirtiera el indice en total, la opcion
+    C se caeria en silencio y esta prueba es la que lo cazaria.
     """
     import cargar_piloto as cp
     r = cp.cargar(base)

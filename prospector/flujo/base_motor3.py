@@ -175,6 +175,13 @@ def resumen_del_piloto(b: Base) -> dict:
                             WHERE estado = 'abierta'),
       'tarjetas_cerradas', (SELECT count(*) FROM motor3.tarjeta
                             WHERE estado = 'cerrada'),
+      -- OPCION C de #340. Se cuenta APARTE de las cerradas a proposito: una
+      -- cerrada se trabajo y termino, una vencida sin trabajar nunca se toco, y
+      -- sumarlas esconde justo el numero que mide al equipo en vez del radar.
+      'tarjetas_vencidas_sin_trabajar', (SELECT count(*) FROM motor3.tarjeta
+                            WHERE estado = 'vencida_sin_trabajar'),
+      'vencidas_reabiertas', (SELECT count(*) FROM motor3.tarjeta
+                            WHERE reabierta_vencida),
       'toques', (SELECT count(*) FROM motor3.toque),
       'toques_pendientes', (SELECT count(*) FROM motor3.toque
                             WHERE resultado IS NULL),

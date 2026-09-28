@@ -1,9 +1,15 @@
 # Una tarjeta cuya señal ya venció al cargarla · diseño
 
-> **🔒 DISEÑO, NO APLICADO.** Nada de este documento está en el código. Es la
-> tarea 3 de #336 y espera OK. Lo único que el código hace hoy es **declararlas**
-> (`cargar_piloto.py` las reporta como `tarjetas_vencidas_al_cargar`) y **no
-> cerrarlas solas**.
+> **✅ APLICADO — opción C, aprobada en #340.** El esquema tiene el valor
+> `vencida_sin_trabajar`, la vista `vencidas_sin_trabajar` y las columnas
+> `reabierta_vencida` y `caducidad_original`. `cargar_piloto.py` carga Coficab
+> Durango con ese estado, y hay pruebas contra la base real de que **no entra a
+> ninguna de las tres compuertas** y **no bloquea el reciclaje**.
+>
+> La prueba que decidía el diseño —que la tarjeta muerta *sí* bloqueaba el
+> reciclaje— **quedó invertida**: ahora exige que no bloquee. La que sostiene que
+> el índice es **parcial** se quedó como está, porque es la propiedad de la que
+> depende todo lo demás.
 
 ## El caso, medido
 
@@ -56,7 +62,7 @@ con hueco, probablemente nazcan más.
 > única razón por la que el motor 3 existe. **Ensuciar el aprendizaje para que el
 > tablero quede limpio es el peor de los dos males.**
 
-### Opción C ← **recomendada** · Estado propio `vencida_sin_trabajar`, fuera de los lazos
+### Opción C ← **APLICADA** · Estado propio `vencida_sin_trabajar`, fuera de los lazos
 
 **Cómo:** un valor nuevo en `estado_de_tarjeta`, y **no** un `cierre`.
 
@@ -120,7 +126,19 @@ no debería funcionar, y un contraejemplo medido vale más que la curva.
 | `metodo/prototipo-tablero-motor3.html` | un renglón que las muestre como lo que son |
 | pruebas | que no aparezcan en `toca_hoy`, que no lleguen a los lazos, y que no bloqueen el reciclaje |
 
-**Nada de esto se toca hasta tu OK.** Lo que el código hace hoy — declararlas y no
-cerrarlas — es el comportamiento correcto mientras la decisión no exista: no miente
-y no corrompe nada; sólo deja una tarjeta muerta visible en el tablero, y eso es
-un costo de presentación, no de datos.
+## Lo que quedó medido al aplicarlo
+
+| | |
+|---|---|
+| Cuentas cargadas | **9** |
+| De ellas, abiertas | **8** |
+| `vencida_sin_trabajar` | **1** — Coficab/Durango |
+| `cierre` en la base | **0**, y ése es el punto entero |
+| Filas en las tres vistas del aprendizaje | **0, 0, 0** |
+| Filas en `toca_hoy` y `caducan_con_toques_pendientes` | **0, 0** |
+| Reapertura del destino 2 con señal nueva | **funciona**, y la cuenta queda con dos tarjetas: una `abierta` y la `vencida_sin_trabajar` |
+
+Dos `CHECK` nuevos exigen `caducidad_original`: uno para el estado, otro para
+`reabierta_vencida`. **Una vencida sin la fecha que se le pasó no se puede
+auditar**, y una reapertura sin ese dato borra justo el número que el lazo 1
+necesita para el contraejemplo de la curva de frescura.

@@ -99,13 +99,35 @@ def cargar(b: Base, hoy: date | None = None, aplicar_esquema: bool = True) -> di
         paquete = {"senal_origen": {"fuente": c["fuente"], "tipo": tipo,
                                     "fecha_senal": c.get("fecha_senal")}}
         caduca, por_que = io.razon_de_caducidad(paquete, hoy)
+        # OPCION C, aprobada en #340. Una tarjeta cuya senal ya caduco antes de
+        # cargarla NO nace abierta: nace en `vencida_sin_trabajar`, que es un
+        # estado propio y no un cierre.
+        #
+        # Las dos cosas que eso compra, y las dos importan:
+        #
+        #  1. NO ENTRA A LOS LAZOS. No hay `cierre`, y las tres vistas del
+        #     aprendizaje (`conversion_por_fuente`, `conversion_por_padron`,
+        #     `dias_hasta_respuesta_por_tipo`) leen de `cierre`. Un cierre
+        #     fabricado le diria al lazo 1 que esa fuente NO CONVIRTIO, cuando la
+        #     verdad es que nunca se intento.
+        #  2. NO BLOQUEA EL RECICLAJE. El indice unico es PARCIAL sobre
+        #     `estado = 'abierta'`, asi que el lugar de la cuenta queda libre y el
+        #     destino 2 puede abrir una tarjeta nueva el dia que llegue senal
+        #     fresca -- con el historial de esta, que es justo lo que necesita--.
+        #
+        # `caducidad_original` guarda la fecha que ya se paso. El CHECK del esquema
+        # la exige: sin ella nadie podria decir de cuando era la senal que la mato.
+        nace_vencida = str(caduca) < hoy.isoformat()
         tarjetas.append({
             "id": i, "cuenta_id": i, "senal_id": i,
-            "estado": "abierta",
+            "estado": "vencida_sin_trabajar" if nace_vencida else "abierta",
             "caduca_el": caduca, "caduca_por_que": por_que,
+            "caducidad_original": caduca if nace_vencida else None,
+            "reabierta_vencida": False,
             "reaperturas": 0, "odoo_lead_id": None,
-            # `cerrada` tampoco: el CHECK exige que sea NULL mientras este
-            # abierta, y el DEFAULT ya la deja asi.
+            # `cerrada` tampoco: el CHECK exige que sea NULL mientras no este
+            # cerrada, y el DEFAULT ya la deja asi. `vencida_sin_trabajar` NO es
+            # `cerrada`: nunca se trabajo, y esa distincion es el punto entero.
         })
 
     b.cargar_json("motor3.cuenta", cuentas)
@@ -119,22 +141,23 @@ def cargar(b: Base, hoy: date | None = None, aplicar_esquema: bool = True) -> di
     for tabla in ("cuenta", "senal", "tarjeta"):
         b.correr(f"SELECT setval(pg_get_serial_sequence('motor3.{tabla}','id'), "
                  f"coalesce((SELECT max(id) FROM motor3.{tabla}), 1));")
-    # LAS TARJETAS QUE NACEN VENCIDAS SE DECLARAN. Salio cargando de verdad:
-    # Coficab/Durango tiene senal del 8-dic-2025 y tipo `obra_nueva`, asi que su
-    # ventana de 120 dias cerro en abril de 2026. Abrir hoy una tarjeta con
-    # caducidad en el pasado es una tarjeta que nace muerta, y el tablero la
-    # mostraria como trabajo vivo.
+    # LAS TARJETAS QUE NACEN VENCIDAS, con el estado que #340 aprobo. Salio
+    # cargando de verdad: Coficab/Durango tiene senal del 8-dic-2025 y tipo
+    # `obra_nueva`, asi que su ventana de 120 dias cerro en abril de 2026.
     #
-    # NO se cierra automaticamente, y es deliberado: un `cierre` sin un solo toque
-    # seria un expediente inventado -- destino `caduca` sin cadencia, sin canal y
-    # sin resultado-- y entraria a los tres lazos como si fuera un desenlace real.
-    # Ensuciar el aprendizaje para que el tablero quede limpio es el peor de los
-    # dos males. Se marca, se reporta, y lo decide una persona.
-    vencidas = [{"llave": t["llave"] if "llave" in t else _llave_de_corrida(c),
-                 "caduca": tj["caduca_el"], "por_que": tj["caduca_por_que"]}
+    # Antes se cargaban ABIERTAS y solo se reportaban, y eso dejaba dos cosas
+    # rotas: el tablero las mostraba como trabajo vivo, y una tarjeta muerta
+    # ocupando el unico lugar `abierta` de la cuenta BLOQUEABA el reciclaje. Con
+    # `vencida_sin_trabajar` las dos se arreglan sin fabricar un cierre.
+    #
+    # Se siguen reportando, porque el numero es una metrica DEL PROCESO y no del
+    # radar: mide cuanto tarda el equipo en trabajar lo que el radar detona.
+    vencidas = [{"llave": _llave_de_corrida(c),
+                 "caduca": tj["caduca_el"], "por_que": tj["caduca_por_que"],
+                 "estado": tj["estado"],
+                 "dias_vencida": (hoy - date.fromisoformat(str(tj["caduca_el"]))).days}
                 for c, tj in zip(con_senal, tarjetas)
-                if str(tj["caduca_el"]) < hoy.isoformat()
-                for t in [{}]]
+                if tj["estado"] == "vencida_sin_trabajar"]
     return {
         "cuentas_cargadas": len(cuentas),
         "tarjetas_vencidas_al_cargar": vencidas,
@@ -233,10 +256,18 @@ if __name__ == "__main__":
             print(f"  {t['llave']:26} {t['puntaje']:>8} {t['veredicto']:>9}  "
                   f"{t['caduca']}")
         if r["tarjetas_vencidas_al_cargar"]:
-            print(f"\n  ⚠  {len(r['tarjetas_vencidas_al_cargar'])} TARJETA(S) NACEN "
-                  "VENCIDAS — su senal ya paso su ventana:")
+            n = len(r["tarjetas_vencidas_al_cargar"])
+            print(f"\n  ◐  {n} TARJETA(S) NACEN VENCIDAS — cargadas como "
+                  "'vencida_sin_trabajar' (opcion C de #340)")
             for v in r["tarjetas_vencidas_al_cargar"]:
-                print(f"     · {v['llave']} caduca {v['caduca']} — {v['por_que']}")
+                print(f"     · {v['llave']} caduco {v['caduca']} "
+                      f"({v['dias_vencida']} dias) — {v['por_que']}")
+            print("     NO entran a los tres lazos -- no hay cierre-- y NO ocupan "
+                  "el lugar `abierta` de la cuenta:")
+            print("     si llega senal fresca, el destino 2 reabre CON el "
+                  "historial de esta. Las lista `vencidas_sin_trabajar`.")
+            print("     Ese numero mide AL EQUIPO, no al radar: es cuanto tarda "
+                  "en trabajarse lo que el radar detona.")
             print("     No se cierran solas: un cierre sin un solo toque seria un "
                   "expediente inventado")
             print("     y entraria a los tres lazos como un desenlace real. Lo "
