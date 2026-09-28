@@ -517,7 +517,7 @@ def v3_y_huecos(con, corrida_id, catalogo: Catalogo, hoy: date | None = None) ->
     Un hueco es un mes faltante entre el primero esperado y el último mes cerrado."""
     inicio = os.environ.get("BANCOS_PERIODO_INICIO", "2024-01")
     limite = periodo_limite(hoy)
-    resumen = {"cuentas": {}, "huecos_abiertos": 0, "v3_ok": 0, "v3_fallas": 0}
+    resumen = {"cuentas": {}, "huecos_abiertos": 0, "v3_ok": 0, "v3_fallas": 0, "v3_no_aplica": 0}
     with con.cursor() as cur:
         for c in catalogo.cuentas:
             if c.tipo != "cuenta":
@@ -553,8 +553,10 @@ def v3_y_huecos(con, corrida_id, catalogo: Catalogo, hoy: date | None = None) ->
                                  _j({"periodo": p, "anterior": periodo_anterior(p)}), corrida_id))
                 if res in ("ok", "primero"):
                     resumen["v3_ok"] += 1
-                else:
+                elif res == "descuadre":   # la única falla real: los dos meses existen y no encadenan
                     resumen["v3_fallas"] += 1
+                else:                      # hueco / sin_anterior: no aplica, el hueco queda registrado
+                    resumen["v3_no_aplica"] += 1
                 if res == "descuadre":
                     _hueco(cur, c.id, p, "continuidad", dif, {"texto": f"el saldo inicial de {p} no es el final de {periodo_anterior(p)}"})
             # huecos por mes faltante, con el monto que falta explicar
