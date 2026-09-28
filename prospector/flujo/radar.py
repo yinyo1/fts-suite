@@ -539,6 +539,38 @@ def puntos_de_inversion(valor: float, unidad: str,
             f"y abajo del corte de {CORTE_PROGRAMA_CORPORATIVO_MDD:g} MDD")
 
 
+def rango_de_la_unidad(catalogo: dict, unidad: str) -> dict | None:
+    """El rango del catalogo para UNA unidad, unido sobre todos los tipos.
+
+    LA UNION Y NO EL PRIMER TIPO QUE PEGUE, y es un arreglo de B4 (#340). El codigo
+    anterior recorria `capacidad_por_tipo` y comparaba contra el rango del PRIMER
+    tipo que tuviera datos, sin importar si era el tipo correcto -- y una senal no
+    viene etiquetada con el tipo de proyecto de FTS, asi que no hay forma de elegir
+    uno--. Comparar contra un tipo arbitrario es peor que no comparar.
+
+    La union si tiene sentido: la pregunta que el corte por arriba hace es *"esta
+    magnitud cae donde FTS vende"*, y eso es una pregunta sobre FTS entera. Se mide
+    ademas cuantos valores DISTINTOS sostienen el rango, porque un rango de un solo
+    valor no es un rango.
+    """
+    valores: list[float] = []
+    tipos: list[str] = []
+    for tipo, d in (catalogo.get("capacidad_por_tipo") or {}).items():
+        r = (d.get("rangos") or {}).get(unidad)
+        if r:
+            valores += list(r.get("valores") or [r["min"], r["max"]])
+            tipos.append(tipo)
+        elif unidad == "TR" and "min_TR" in d:
+            # Catalogo viejo, de antes de que los rangos fueran por unidad.
+            valores += [d["min_TR"], d["max_TR"]]
+            tipos.append(tipo)
+    if not valores:
+        return None
+    u = sorted(set(valores))
+    return {"min": u[0], "max": u[-1], "distintos": len(u),
+            "tipos": sorted(tipos), "comparable": len(u) >= 2}
+
+
 def puntos_de_capacidad(texto: str, catalogo: dict) -> tuple[float, str]:
     """La magnitud de la senal contra el rango donde FTS SI ha vendido.
 
@@ -555,35 +587,56 @@ def puntos_de_capacidad(texto: str, catalogo: dict) -> tuple[float, str]:
     for m in mags:
         if m["unidad"] in UNIDADES_DE_DINERO:
             return puntos_de_inversion(m["valor"], m["unidad"], catalogo)
-    cap = catalogo.get("capacidad_por_tipo") or {}
-    # DEFECTO B4 de #335: `capacidad_por_tipo` viene VACIO en el catalogo
-    # construido -- las 154 entradas traen `magnitudes: []`, porque sus
-    # descripciones no dicen la capacidad en una forma que el regex lea--. O sea
-    # que la rama de abajo, la del corte por arriba en TR, NUNCA ha corrido: toda
-    # magnitud de capacidad cae al respaldo de "sin rango comparable". Queda dicho
-    # en el `por_que` en vez de aparentar una comparacion que no hubo.
-    if not cap:
-        return (MAX_CAPACIDAD / 2,
-                f"magnitud declarada ({mags[0]['valor']:g} {mags[0]['unidad']}) y "
-                "el catalogo NO trae rangos de capacidad por tipo: no hay contra "
-                "que compararla, asi que cuenta la mitad. No es que quede fuera de "
-                "rango -- es que el rango no existe--")
+    # Se recorren TODAS las magnitudes buscando una con rango comparable, en vez de
+    # decidir con la primera: un texto que dice "cable de 240 mm2 en 35 kV" trae dos
+    # unidades y solo una puede tener bordes medidos.
+    sin_bordes = []
     for m in mags:
-        for tipo, d in cap.items():
-            if "min_TR" not in d or m["unidad"] != "TR":
-                continue
-            lo, hi = d["min_TR"], d["max_TR"]
-            if lo <= m["valor"] <= hi:
-                return (MAX_CAPACIDAD,
-                        f"{m['valor']:g} {m['unidad']} cae en el rango de "
-                        f"{tipo} ({lo:g}-{hi:g})")
-            fuera = "por encima" if m["valor"] > hi else "por debajo"
-            return (MAX_CAPACIDAD / 4,
-                    f"{m['valor']:g} {m['unidad']} queda {fuera} del rango de "
-                    f"{tipo} ({lo:g}-{hi:g}): otro tamano de empresa")
-    return (MAX_CAPACIDAD / 2,
-            f"magnitud declarada ({mags[0]['valor']:g} {mags[0]['unidad']}) sin "
-            "rango comparable en el catalogo")
+        r = rango_de_la_unidad(catalogo, m["unidad"])
+        if r is None:
+            continue
+        donde = ", ".join(r["tipos"])
+        if not r["comparable"]:
+            sin_bordes.append(
+                f"{m['valor']:g} {m['unidad']} contra UN SOLO valor medido "
+                f"({r['min']:g} {m['unidad']} en {donde}): un punto no es un "
+                "rango, y decir que algo queda fuera de un punto seria inventarle "
+                "el borde")
+            continue
+        lo, hi = r["min"], r["max"]
+        cuantos = f"{r['distintos']} valores en {donde}"
+        if lo <= m["valor"] <= hi:
+            return (MAX_CAPACIDAD,
+                    f"{m['valor']:g} {m['unidad']} cae en el rango donde FTS SI ha "
+                    f"vendido ({lo:g}-{hi:g}, {cuantos})")
+        fuera = "por encima" if m["valor"] > hi else "por debajo"
+        return (MAX_CAPACIDAD / 4,
+                f"{m['valor']:g} {m['unidad']} queda {fuera} del rango donde FTS "
+                f"vende ({lo:g}-{hi:g}, {cuantos}): otro tamano de empresa y otro "
+                "competidor")
+    if sin_bordes:
+        # Hay EVIDENCIA de que FTS trabaja en esa unidad -- lineas vendidas-- pero no
+        # hay bordes. La mitad: se midio algo, no se pudo ordenar.
+        return (MAX_CAPACIDAD / 2, "; ".join(sin_bordes))
+    # UNA MAGNITUD QUE NO SE PUEDE COMPARAR CON NADA NO DA PUNTOS, y cambio en #340.
+    # Antes daba la mitad, y eso regalaba 5 puntos por cualquier numero con unidad:
+    # la prueba de aceptacion de D3 lo cazo en el acto -- "se renta nave industrial
+    # de 4000 m2" paso de `archiva` a `guarda` en cuanto el lector aprendio a leer
+    # m2, y los metros cuadrados de una nave EN RENTA no dicen nada sobre si el
+    # tamano de FTS cabe ahi--.
+    #
+    # El factor se llama `capacidad` y existe para el corte por arriba. Media
+    # calificacion por un numero que no se comparo contra nada es justo la
+    # comparacion inventada que este factor persigue. Se distingue del "sin magnitud
+    # declarada" en el POR QUE, que es donde la distincion sirve; en el puntaje las
+    # dos cosas valen lo mismo, porque las dos aportan lo mismo: nada.
+    unidades = ", ".join(sorted({m["unidad"] for m in mags}))
+    return (0.0,
+            f"magnitud declarada ({mags[0]['valor']:g} {mags[0]['unidad']}) pero el "
+            f"catalogo no tiene NI UNA linea medida en {unidades}: no hay rango "
+            "contra que compararla, asi que no da puntos. No es que quede fuera de "
+            "rango -- es que no hay rango, y media calificacion por una comparacion "
+            "que no se hizo seria inventarla--")
 
 
 def dias_de_antiguedad(fecha: str | None, hoy: date | None = None) -> int | None:

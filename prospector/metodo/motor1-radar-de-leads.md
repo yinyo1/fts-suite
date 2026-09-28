@@ -284,11 +284,37 @@ MDD es un programa corporativo que se reparte en años, en varias plantas y con
 contratistas de otro tamaño, así que cuenta `MAX_CAPACIDAD / 4` — 2,000 MDD de
 Bimbo no puede quedar arriba de 60 MDD de Coficab Durango.
 
-> ⚠️ **[calculado] y vale la pena saberlo:** `capacidad_por_tipo` viene **vacío**
-> en el catálogo construido —las 154 entradas traen `magnitudes: []`— así que la
-> rama del corte por arriba **en TR** nunca ha corrido. Toda magnitud de capacidad
-> que no sea dinero cae al respaldo de «sin rango comparable» y vale la mitad. El
-> `por_que` lo dice: *no es que quede fuera de rango, es que el rango no existe*.
+> ✅ **[calculado] B4, cerrado el 28-sep (#340).** Hasta esa noche
+> `capacidad_por_tipo` venía **vacío** y la rama del corte por arriba **nunca había
+> corrido**. El defecto no estaba en los datos: estaba en el vocabulario.
+> `magnitudes()` leía la unidad del **proceso del cliente** —TR, kVA, HP— y el
+> catálogo habla en la unidad del **equipo que FTS instala**. Medido sobre las 154
+> líneas reales: **cero TR, cero kVA, cero HP**, y lo que sí hay es 4,000 A de
+> electroducto, 36 y 35 kV de tablero y cable, 4000 W y 2000 W de clima de
+> gabinete, 480 V y 127 V, 130 m y 11 m, 240 mm², 400 MCM.
+>
+> Ahora: **14 de 154 líneas** traen magnitud, **6 tipos** tienen rango y **2 de esos
+> rangos comparan de verdad** (`clima_de_tablero` 2000–4000 W, `instalacion_electrica`
+> 127–480 V; uniendo tipos, `kV` 35–36 también). El rango se construye **por unidad**
+> y se **une sobre los tipos**, porque una señal no viene etiquetada con el tipo de
+> proyecto de FTS y comparar contra un tipo arbitrario es peor que no comparar.
+>
+> Dos límites quedan dichos, no tapados. **Un rango de un solo valor no es un
+> rango:** `electroducto_busway` trae cinco líneas y las cinco dicen 4,000 A, así que
+> se marca `comparable: false` y el evaluador **no corta** con él. Y **las
+> descripciones vienen truncadas** por el conector —51 caracteres la más larga,
+> medido—, así que una línea como *«Transformador seco GEAFOL Siemens Energy»* casi
+> seguro trae su kVA en Odoo y aquí ya no cabe; ese techo no se levanta sin volver a
+> leer Odoo.
+>
+> ⚠️ **Y una magnitud que no se puede comparar con nada dejó de dar puntos.** Antes
+> valía la mitad, y eso regalaba 5 puntos por cualquier número con unidad: la prueba
+> de aceptación de D3 lo cazó en el acto —*«se renta nave industrial de 4000 m²»*
+> pasó de `archiva` a `guarda` en cuanto el lector aprendió a leer m², y los metros
+> cuadrados de una nave **en renta** no dicen nada sobre si el tamaño de FTS cabe
+> ahí—. El `por_que` sigue distinguiendo «no dijo tamaño» de «dijo tamaño y no hay
+> con qué compararlo»; en puntaje las dos valen lo mismo, porque las dos aportan lo
+> mismo: nada.
 
 ### Factor 2 · Frescura (0–25)
 

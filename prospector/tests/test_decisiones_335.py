@@ -22,6 +22,9 @@ from flujo.catalogo_proyectos import UNIDADES_DE_DINERO, magnitudes
 HOY = date(2026, 9, 28)
 CAT = radar.cargar_catalogo()
 
+#: Atajo: estas pruebas llaman a `magnitudes()` muchas veces con un texto corto.
+mg = magnitudes
+
 
 # ==========================================================  D6 · el dinero
 def test_d6_magnitudes_lee_las_unidades_que_la_decision_nombra():
@@ -190,21 +193,119 @@ def test_d6_apagado_el_dinero_NO_se_lee_por_ninguna_via():
     assert mg("60 MDD")
 
 
-# ======================================  B4 · capacidad_por_tipo viene vacio
-def test_b4_el_catalogo_no_trae_rangos_de_capacidad_y_se_DICE():
-    """Las 154 entradas traen `magnitudes: []` -- sus descripciones no dicen la
-    capacidad en una forma que el regex lea-- asi que `capacidad_por_tipo` sale
-    vacio y la rama del corte por arriba en TR NUNCA ha corrido.
+# ==============================  B4 · CERRADO en #340, y la prueba se invierte
+def test_b4_el_catalogo_YA_trae_rangos_de_capacidad():
+    """Antes esta prueba exigia `capacidad_por_tipo == {}` y pasaba: las 154 lineas
+    salian con `magnitudes: []`, asi que la rama del corte por arriba NUNCA habia
+    corrido. El defecto NO estaba en los datos: estaba en el vocabulario.
 
-    Lo que esta prueba exige no es que el catalogo tenga rangos: es que cuando NO
-    los tenga, el `por_que` lo diga en vez de aparentar una comparacion que no hubo.
+    `magnitudes()` leia la unidad del PROCESO DEL CLIENTE -- TR, kVA, HP-- y el
+    catalogo habla en la unidad del EQUIPO QUE FTS INSTALA: amperes de electroducto,
+    kV de tablero, watts de clima de gabinete. En las 154 lineas no hay ni una TR.
     """
-    assert CAT.get("capacidad_por_tipo") == {}, (
-        "si el catalogo ya trae rangos, este defecto se cerro: actualiza la prueba")
-    v, por = radar.puntos_de_capacidad("chiller de 200 TR", CAT)
+    cap = CAT.get("capacidad_por_tipo") or {}
+    assert cap, "el catalogo volvio a quedarse sin rangos: B4 se reabrio"
+    con_magnitud = [e for e in CAT["entradas"] if e.get("magnitudes")]
+    assert len(con_magnitud) == 14, (
+        f"cambio el conteo medido: {len(con_magnitud)} de {len(CAT['entradas'])}")
+    # Las unidades que el catalogo de verdad usa, y NINGUNA es de las que
+    # `magnitudes()` sabia leer antes.
+    unidades = {m["unidad"] for e in con_magnitud for m in e["magnitudes"]}
+    assert unidades == {"A", "kV", "V", "W", "m", "mm2", "MCM"}, unidades
+    assert not (unidades & {"TR", "kVA", "HP", "m3/h", "GPM"}), (
+        "si el catalogo ya trae TR, la razon del defecto cambio")
+
+
+def test_b4_un_rango_de_UN_SOLO_valor_no_corta():
+    """`electroducto_busway` trae cinco lineas y las cinco dicen 4,000 A. Eso dice
+    que FTS vende busway de 4,000 A; NO dice donde estan sus bordes. Decir que
+    3,000 A queda por debajo del rango seria inventarle el borde."""
+    r = radar.rango_de_la_unidad(CAT, "A")
+    assert r and r["min"] == r["max"] == 4000.0
+    assert r["distintos"] == 1 and r["comparable"] is False
+    v, por = radar.puntos_de_capacidad("electroducto de 3000 A", CAT)
     assert v == radar.MAX_CAPACIDAD / 2
-    assert "NO trae rangos de capacidad" in por
-    assert "el rango no existe" in por
+    assert "UN SOLO valor medido" in por and "un punto no es un rango" in por
+
+
+def test_b4_el_corte_por_arriba_YA_CORRE_y_no_solo_en_TR():
+    """La rama que nunca habia corrido. `clima_de_tablero` trae 2000 W y 4000 W: dos
+    valores distintos, asi que si hay bordes y el corte si puede cortar."""
+    r = radar.rango_de_la_unidad(CAT, "W")
+    assert r["comparable"] is True and (r["min"], r["max"]) == (2000.0, 4000.0)
+    dentro, por_dentro = radar.puntos_de_capacidad("clima de tablero de 3000 W", CAT)
+    assert dentro == radar.MAX_CAPACIDAD
+    assert "cae en el rango" in por_dentro
+    arriba, por_arriba = radar.puntos_de_capacidad("clima de 40000 W", CAT)
+    assert arriba == radar.MAX_CAPACIDAD / 4
+    assert "por encima" in por_arriba and "otro tamano de empresa" in por_arriba
+    abajo, por_abajo = radar.puntos_de_capacidad("clima de 50 W", CAT)
+    assert abajo == radar.MAX_CAPACIDAD / 4
+    assert "por debajo" in por_abajo
+
+
+def test_b4_el_rango_SE_UNE_sobre_los_tipos_y_no_se_toma_el_primero():
+    """El otro medio defecto. El codigo viejo recorria `capacidad_por_tipo` y
+    comparaba contra el rango del PRIMER tipo que tuviera datos, sin importar si era
+    el tipo correcto -- y una senal no viene etiquetada con el tipo de proyecto de
+    FTS, asi que no hay forma de elegir uno--.
+
+    `kV` sale en DOS tipos con un valor cada uno (35 en instalacion_electrica, 36 en
+    tablero_electrico). Por separado ninguno compara; unidos son 35-36 y si.
+    """
+    r = radar.rango_de_la_unidad(CAT, "kV")
+    assert sorted(r["tipos"]) == ["instalacion_electrica", "tablero_electrico"]
+    assert (r["min"], r["max"], r["distintos"]) == (35.0, 36.0, 2)
+    assert r["comparable"] is True
+
+
+def test_b4_una_magnitud_QUE_NO_SE_PUEDE_COMPARAR_no_da_puntos():
+    """Y cambio en #340. Antes daba media calificacion, y eso regalaba 5 puntos por
+    cualquier numero con unidad. La prueba de aceptacion de D3 lo cazo: "se renta
+    nave industrial de 4000 m2" paso de `archiva` a `guarda` en cuanto el lector
+    aprendio a leer m2 -- y los metros cuadrados de una nave EN RENTA no dicen nada
+    sobre si el tamano de FTS cabe ahi--."""
+    assert radar.rango_de_la_unidad(CAT, "m2") is None
+    v, por = radar.puntos_de_capacidad("nave de 4000 m2", CAT)
+    assert v == 0.0
+    assert "no tiene NI UNA linea medida" in por
+    assert "seria inventarla" in por
+    # Y NO es lo mismo que no haber dicho nada: el por que los distingue.
+    v2, por2 = radar.puntos_de_capacidad("una nave industrial", CAT)
+    assert v2 == 0.0 and "sin magnitud declarada" in por2
+    assert por != por2
+
+
+def test_b4_las_comas_de_miles_valen_lo_que_dicen():
+    """"4,000 A" habria dado 0.0 y "1,500 TR" habria dado 1.5 -- y 1,500 TR es
+    literalmente el ejemplo que el docstring del corte por arriba usa para explicar
+    para que sirve--."""
+    assert mg("electroducto de 4,000 A") == [{"valor": 4000.0, "unidad": "A"}]
+    assert mg("chiller de 1,500 TR") == [{"valor": 1500.0, "unidad": "TR"}]
+    # Coma con menos de tres digitos sigue siendo decimal.
+    assert mg("chiller de 1,5 TR") == [{"valor": 1.5, "unidad": "TR"}]
+
+
+def test_b4_los_amperes_no_se_comen_la_preposicion_espanola():
+    """`A` es la unica unidad que choca con una PALABRA del espanol. El regex exige
+    mayuscula Y hay un piso, porque un texto en altas volveria a producirla."""
+    assert mg("se mudan de 2 a 3 naves") == []
+    assert mg("SE MUDAN DE 2 A 3 NAVES") == []          # el piso la ataja
+    assert mg("interruptor de 2 A") == []               # 2 A no es un proyecto
+    assert mg("electroducto de 400 A") == [{"valor": 400.0, "unidad": "A"}]
+
+
+def test_b4_el_limite_del_conector_queda_MEDIDO_no_supuesto():
+    """La parte que NO se puede arreglar sin volver a leer Odoo, dicha con numero."""
+    largos = [len(e["descripcion"]) for e in CAT["entradas"]]
+    assert max(largos) <= 60, (
+        "si las descripciones ya no vienen truncadas, el limite se levanto y el "
+        "catalogo se puede reconstruir con mas magnitudes")
+    rd = CAT.get("rederivacion") or {}
+    assert "TRUNCADAS" in (rd.get("limite_medido") or ""), (
+        "el catalogo tiene que declarar su propio techo")
+    assert rd["lineas_con_magnitud_antes"] == 0
+    assert rd["lineas_con_magnitud_despues"] == 14
 
 
 # ==========================================================  D9 · el filtro

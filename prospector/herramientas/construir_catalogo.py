@@ -271,16 +271,26 @@ def a_markdown(cat: dict) -> str:
               "Es la tercera capa del match del evaluador, y **corta por arriba, "
               "no solo por abajo**: una señal de 1,500 TR no es mejor que una de "
               "200, es de otro tamaño de empresa y otro competidor.", "",
-              "| Tipo | n con TR | mín | mediana | máx | Unidades vistas |",
-              "|---|---|---|---|---|---|"]
-        for t, d in sorted(cap.items()):
-            u = ", ".join(f"{k}×{v}" for k, v in
-                          (d.get("unidades_vistas") or {}).items())
-            if "min_TR" in d:
-                L.append(f"| `{t}` | {d['n']} | {d['min_TR']:g} | "
-                         f"{d['mediana_TR']:g} | {d['max_TR']:g} | {u} |")
-            else:
-                L.append(f"| `{t}` | — | — | — | — | {u} |")
+              "El rango se construye **por unidad y no sólo en TR** (B4 de #340). "
+              "En las 154 líneas reales **no hay una sola TR**: lo que hay son las "
+              "unidades del equipo que FTS instala — amperes de electroducto, kV de "
+              "tablero, watts de clima de gabinete —. Con el filtro puesto en TR, "
+              "el corte por arriba no podía correr ni con las magnitudes leídas.", "",
+              "**Un rango de un solo valor no es un rango.** La columna "
+              "`¿compara?` dice si tiene al menos dos valores distintos; si no los "
+              "tiene, el evaluador **no corta** con él, porque decir que algo queda "
+              "fuera de un punto sería inventarle el borde.", "",
+              "| Tipo | Unidad | n | distintos | mín | mediana | máx | ¿compara? |",
+              "|---|---|---:|---:|---:|---:|---:|---|"]
+        hubo = False
+        for ti, d in sorted(cap.items()):
+            for u, r in sorted((d.get("rangos") or {}).items()):
+                hubo = True
+                L.append(f"| `{ti}` | `{u}` | {r['n']} | {r['distintos']} | "
+                         f"{r['min']:g} | {r['mediana']:g} | {r['max']:g} | "
+                         f"{'sí' if r['comparable'] else '**no** — un solo valor'} |")
+        if not hubo:
+            L.append("| — | — | — | — | — | — | — | ninguna línea trae magnitud |")
     muestra = cat.get("sin_clasificar_muestra") or []
     if muestra:
         L += ["", "## Lo que el vocabulario NO cubre todavía", "",
@@ -290,10 +300,56 @@ def a_markdown(cat: dict) -> str:
     return "\n".join(L) + "\n"
 
 
+def rederivar(cat: dict) -> dict:
+    """Recalcula `magnitudes` y `capacidad_por_tipo` sobre un catalogo YA construido.
+
+    POR QUE EXISTE ESTE MODO. Construir el catalogo desde cero exige leer Odoo, y
+    hay turnos -- este, por las reglas duras-- en los que eso no se hace. Pero el
+    defecto B4 no estaba en los datos: estaba en el VOCABULARIO de `magnitudes()`,
+    que no sabia leer las unidades que las descripciones ya traian. Volver a pasar
+    el lector sobre las descripciones guardadas arregla el catalogo sin inventar un
+    solo dato y sin tocar Odoo.
+
+    Lo que NO hace: no reclasifica el tipo ni el proceso, no cambia montos y no
+    agrega lineas. Solo vuelve a leer la magnitud de cada descripcion, que es lo
+    unico que el arreglo cambia.
+    """
+    antes = sum(1 for e in cat["entradas"] if e.get("magnitudes"))
+    for e in cat["entradas"]:
+        e["magnitudes"] = magnitudes(e.get("descripcion") or "")
+    cat["capacidad_por_tipo"] = palabras_de_capacidad(cat["entradas"])
+    despues = sum(1 for e in cat["entradas"] if e.get("magnitudes"))
+    comparables = sum(
+        1 for d in cat["capacidad_por_tipo"].values()
+        for r in (d.get("rangos") or {}).values() if r["comparable"])
+    cat["rederivacion"] = {
+        "por_que": ("B4 de #340. `magnitudes()` no sabia leer las unidades que las "
+                    "descripciones ya traian -- A, kV, V, W, m, mm2, MCM-- y por "
+                    "eso las 154 lineas salieron con `magnitudes: []` y "
+                    "`capacidad_por_tipo` vacio. Se volvio a leer la descripcion "
+                    "guardada; NO se consulto Odoo y no se invento ningun dato."),
+        "lineas_con_magnitud_antes": antes,
+        "lineas_con_magnitud_despues": despues,
+        "tipos_con_rango": len(cat["capacidad_por_tipo"]),
+        "rangos_comparables": comparables,
+        "limite_medido": ("Las descripciones vienen TRUNCADAS por el conector "
+                          "(51 caracteres el mas largo, medido), asi que una linea "
+                          "como 'Transformador seco GEAFOL Siemens Energy' casi "
+                          "seguro trae su kVA en Odoo y aqui ya no cabe. Ese techo "
+                          "no se puede subir sin volver a leer Odoo."),
+        "unidades_que_el_catalogo_NO_usa": ["TR", "kVA", "HP", "m3/h", "GPM"],
+    }
+    return cat
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--ordenes", required=True)
-    ap.add_argument("--lineas", required=True)
+    ap.add_argument("--rederivar", default=None,
+                    help="RUTA de un catalogo ya construido: recalcula sus "
+                         "magnitudes y sus rangos sin consultar Odoo. Escribe "
+                         "sobre --salida.")
+    ap.add_argument("--ordenes")
+    ap.add_argument("--lineas")
     ap.add_argument("--hilos", default=None)
     ap.add_argument("--propuestas", default=None)
     ap.add_argument("--salida", required=True)
@@ -304,9 +360,18 @@ def main(argv=None) -> int:
     ap.add_argument("--md", default=None,
                     help="tambien escribe la tabla en markdown, generada del JSON")
     a = ap.parse_args(argv)
-    cat = construir(_leer(a.ordenes), _leer(a.lineas),
-                    _leer(a.hilos), _leer(a.propuestas),
-                    procedencia=a.procedencia)
+    if a.rederivar:
+        # A proposito NO pasa por `_leer`: esa funcion existe para desenvolver
+        # la respuesta del conector y acaba devolviendo una LISTA. Aqui lo que se
+        # lee es el catalogo entero, que es un dict.
+        with open(a.rederivar, encoding="utf-8") as f:
+            cat = rederivar(json.load(f))
+    else:
+        if not (a.ordenes and a.lineas):
+            ap.error("sin --rederivar hacen falta --ordenes y --lineas")
+        cat = construir(_leer(a.ordenes), _leer(a.lineas),
+                        _leer(a.hilos), _leer(a.propuestas),
+                        procedencia=a.procedencia)
     crudo = json.dumps(cat, ensure_ascii=False)
     # Despues de enmascarar, CUALQUIER coincidencia que quede es una fuga. No
     # hace falta filtrar los marcadores: `[correo]` y `[telefono]` no tienen forma
@@ -324,6 +389,14 @@ def main(argv=None) -> int:
             f.write(a_markdown(cat))
     c = cat["cobertura"]
     print(f"\nCATALOGO DE PROYECTOS -> {a.salida}")
+    if cat.get("rederivacion"):
+        rd = cat["rederivacion"]
+        print(f"  REDERIVADO (B4): lineas con magnitud "
+              f"{rd['lineas_con_magnitud_antes']} -> "
+              f"{rd['lineas_con_magnitud_despues']} de "
+              f"{len(cat['entradas'])} · tipos con rango "
+              f"{rd['tipos_con_rango']} · rangos que SI comparan "
+              f"{rd['rangos_comparables']}")
     if a.md:
         print(f"  tabla para revisar -> {a.md}")
     print(f"  {c['ordenes_leidas']} ordenes · {c['lineas_leidas']} lineas · "

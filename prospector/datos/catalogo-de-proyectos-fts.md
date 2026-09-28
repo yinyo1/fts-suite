@@ -68,6 +68,26 @@ El proceso **no es la industria**: es qué hace la planta, que es lo que genera 
 | `arneses_cableado` | 3 | estructura_metalica (2), tuberia_y_montaje (1) |
 | `datacenter` | 3 | ups_respaldo (2), tablero_electrico (1) |
 
+## Capacidad — el rango donde FTS ha vendido de verdad
+
+Es la tercera capa del match del evaluador, y **corta por arriba, no solo por abajo**: una señal de 1,500 TR no es mejor que una de 200, es de otro tamaño de empresa y otro competidor.
+
+El rango se construye **por unidad y no sólo en TR** (B4 de #340). En las 154 líneas reales **no hay una sola TR**: lo que hay son las unidades del equipo que FTS instala — amperes de electroducto, kV de tablero, watts de clima de gabinete —. Con el filtro puesto en TR, el corte por arriba no podía correr ni con las magnitudes leídas.
+
+**Un rango de un solo valor no es un rango.** La columna `¿compara?` dice si tiene al menos dos valores distintos; si no los tiene, el evaluador **no corta** con él, porque decir que algo queda fuera de un punto sería inventarle el borde.
+
+| Tipo | Unidad | n | distintos | mín | mediana | máx | ¿compara? |
+|---|---|---:|---:|---:|---:|---:|---|
+| `clima_de_tablero` | `W` | 2 | 2 | 2000 | 4000 | 4000 | sí |
+| `electroducto_busway` | `A` | 5 | 1 | 4000 | 4000 | 4000 | **no** — un solo valor |
+| `estructura_metalica` | `m` | 1 | 1 | 11 | 11 | 11 | **no** — un solo valor |
+| `instalacion_electrica` | `MCM` | 1 | 1 | 400 | 400 | 400 | **no** — un solo valor |
+| `instalacion_electrica` | `V` | 2 | 2 | 127 | 480 | 480 | sí |
+| `instalacion_electrica` | `kV` | 1 | 1 | 35 | 35 | 35 | **no** — un solo valor |
+| `instalacion_electrica` | `mm2` | 1 | 1 | 240 | 240 | 240 | **no** — un solo valor |
+| `tablero_electrico` | `kV` | 1 | 1 | 36 | 36 | 36 | **no** — un solo valor |
+| `tuberia_y_montaje` | `m` | 1 | 1 | 130 | 130 | 130 | **no** — un solo valor |
+
 ## Lo que el vocabulario NO cubre todavía
 
 Se listan a propósito: es de aquí de donde sale la siguiente corrección del vocabulario.
