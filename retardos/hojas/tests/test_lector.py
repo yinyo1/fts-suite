@@ -68,3 +68,15 @@ def test_layout_es_el_del_generador():
     js = "process.stdout.write(JSON.stringify(require(process.argv[1]).LAYOUT))"
     del_gen = json.loads(subprocess.check_output(["node", "-e", js, str(raiz / "retardos" / "lib" / "pdf.js")]))
     assert del_gen == lector.LAYOUT, "regenera con: node retardos/hojas/exportar-layout.js"
+
+
+def test_tercer_aviso_de_jornada_folio_jor():
+    """El 3er aviso de jornada (#334, reglas R3) usa folio JOR-AAAA-NNNN: el QR y el OCR de respaldo lo leen."""
+    r = lector.leer((FIX / "12-jornada-sin-firmar.pdf").read_bytes(), "application/pdf")
+    assert r["ok"], r
+    p = r["paginas"][0]
+    assert p["folio"] == "JOR-2026-0003"
+    assert p["folio_fuente"] == "qr"
+    assert p["qr_nivel"] == 3
+    assert not any(v["presente"] for v in p["firmas"].values())
+    assert lector.FOLIO_RE.search("folio JOR - 2026 - 0041").group(0).replace(" ", "") == "JOR-2026-0041"

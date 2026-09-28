@@ -30,6 +30,7 @@ function psqlFile(db, file) {
 function lit(obj) { return "'" + JSON.stringify(obj).replace(/'/g, "''") + "'::jsonb"; }
 
 let plantillaLista = false;
+let festivosSembrados = null;
 function base() {
   if (!plantillaLista) {
     try { psql('postgres', 'DROP DATABASE IF EXISTS ret_tpl'); } catch (e) { /* nada */ }
@@ -38,6 +39,10 @@ function base() {
     for (const f of fs.readdirSync(MIG).filter((x) => /^retardos_[0-9]{4}_.*[.]sql$/.test(x)).sort()) {
       psqlFile('ret_tpl', path.join(MIG, f));
     }
+    // retardos_0007 siembra los festivos del art. 74 LFT. Se cuentan aquí (prueba propia) y se quitan de la
+    // plantilla para que las pruebas que usan "el mes actual" no dependan de en qué mes se corren.
+    festivosSembrados = Number(psql('ret_tpl', "SELECT count(*) FROM retardos.festivo WHERE creado_por = 'semilla_lft_art74'"));
+    psql('ret_tpl', "DELETE FROM retardos.festivo WHERE creado_por = 'semilla_lft_art74'");
     plantillaLista = true;
   }
   const db = 'ret_t' + process.pid + '_' + (++n);
@@ -59,8 +64,8 @@ const SUP = EMP(900, { email: 'supervisor@example.com', parent_id: null, hora_en
 let attSeq = 1000;
 // fecha 'AAAA-MM-DD', hora local 'HH:MM' → UTC (Monterrey = UTC−6)
 function chec(emp, fecha, hhmm, extra) {
-  const [h, m] = hhmm.split(':').map(Number);
-  const d = new Date(Date.UTC(+fecha.slice(0, 4), +fecha.slice(5, 7) - 1, +fecha.slice(8, 10), h + 6, m));
+  const [h, m, sg] = hhmm.split(':').map(Number);
+  const d = new Date(Date.UTC(+fecha.slice(0, 4), +fecha.slice(5, 7) - 1, +fecha.slice(8, 10), h + 6, m, sg || 0));
   return Object.assign({ attendance_id: ++attSeq, employee_id: emp, check_in_utc: d.toISOString(), disputa: false, incidencia_pendiente: '' }, extra || {});
 }
 function ingestar(B, checadas, empleados, extra) {
@@ -173,7 +178,7 @@ conPg('días en USA (exclusión) y olvido de entrada no cuentan', () => {
 conPg('festivo no cuenta; fin de semana no existe; solo la primera checada del día', () => {
   const B = base();
   try {
-    B.q("INSERT INTO retardos.festivo (fecha, nombre) VALUES ('2026-09-16', 'Festivo demo')");
+    B.q("INSERT INTO retardos.festivo (fecha, nombre) VALUES ('2026-09-16', 'Festivo demo') ON CONFLICT (fecha) DO NOTHING");
     const r = ingestar(B, [chec(1, '2026-09-16', '09:00'), chec(1, '2026-09-19', '09:00'),
                            chec(1, '2026-09-21', '06:55'), chec(1, '2026-09-21', '09:00')]);
     assert.equal(r.contados, 0);
@@ -183,13 +188,56 @@ conPg('festivo no cuenta; fin de semana no existe; solo la primera checada del d
   } finally { B.fin(); }
 });
 
-conPg('tolerancia: 20 min exactos no es retardo, 21 sí', () => {
+// AJUSTE R3 (28-sep-2026): antes "20 min exactos no es retardo, 21 sí". La regla nueva es 15 min al segundo.
+conPg('tolerancia: 14:59 y 15:00 exactos no son retardo, 15:01 sí (al segundo)', () => {
   const B = base();
   try {
-    const r = ingestar(B, [chec(1, '2026-09-01', '07:20'), chec(1, '2026-09-02', '07:21')]);
+    const r = ingestar(B, [chec(1, '2026-09-01', '07:14:59'), chec(1, '2026-09-02', '07:15:00'), chec(1, '2026-09-03', '07:15:01')]);
     assert.equal(r.contados, 1);
-    assert.equal(B.q("SELECT fecha FROM retardos.retardo"), '2026-09-02');
+    assert.equal(r.tolerancia_min, 15);
+    assert.equal(B.q("SELECT fecha || '|' || minutos_tarde || '|' || seg_local || '|' || tolerancia_min FROM retardos.retardo"), '2026-09-03|15|26101|15');
+    // Con los segundos en el correo: la hora de checada sale 07:15:01, no 07:15.
+    config(B, 'contar_desde', '2000-01-01');
+    ingestar(B, [chec(1, '2026-09-03', '07:15:01')]);
+    const d = B.j("SELECT retardos.caso_datos(id) FROM retardos.caso LIMIT 1");
+    assert.equal(d.retardos[0].llegada, '07:15:01');
+    assert.equal(d.tolerancia_min, 15);
+    assert.equal(d.leyenda_hora, 'hora del centro, CST');
   } finally { B.fin(); }
+});
+
+conPg('hora del centro: una checada cerca de la medianoche UTC se cuenta en el día local (CST)', () => {
+  const B = base();
+  try {
+    // 00:30 UTC del miércoles 2 = 18:30 CST del martes 1. 05:59:59 UTC del lunes 7 = 23:59:59 CST del domingo 6.
+    const r = ingestar(B, [
+      { attendance_id: 7001, employee_id: 1, check_in_utc: '2026-09-02T00:30:00Z', disputa: false, incidencia_pendiente: '' },
+      { attendance_id: 7002, employee_id: 1, check_in_utc: '2026-09-07T05:59:59Z', disputa: false, incidencia_pendiente: '' },
+      { attendance_id: 7003, employee_id: 1, check_in_utc: '2026-09-07T06:00:00Z', disputa: false, incidencia_pendiente: '' }]);
+    assert.equal(B.q("SELECT string_agg(attendance_id || ':' || fecha || ':' || seg_local, ',' ORDER BY attendance_id) FROM retardos.checada"),
+      '7001:2026-09-01:66600,7002:2026-09-06:86399,7003:2026-09-07:0');
+    assert.equal(r.contados, 1, 'sólo la del martes es retardo; el domingo no existe y el lunes 00:00 es temprano');
+    assert.equal(B.q("SELECT fecha FROM retardos.retardo WHERE estado = 'contado'"), '2026-09-01');
+    // La conversión vive en un solo lugar y es UTC-6 todo el año (sin horario de verano).
+    assert.equal(B.q("SELECT to_char(retardos.a_local('2026-04-05 12:00Z'), 'HH24:MI') || ' ' || to_char(retardos.a_local('2026-07-01 12:00Z'), 'HH24:MI') || ' ' || to_char(retardos.a_local('2026-12-01 12:00Z'), 'HH24:MI')"), '06:00 06:00 06:00');
+  } finally { B.fin(); }
+});
+
+conPg('sábado y domingo: llegar tarde nunca es retardo, aunque dias_habiles o el calendario los incluyan', () => {
+  const B = base();
+  try {
+    config(B, 'dias_habiles', [1, 2, 3, 4, 5, 6, 7]);
+    const r = ingestar(B, [chec(1, '2026-09-05', '11:00'), chec(1, '2026-09-06', '12:00')]);
+    assert.equal(r.contados, 0);
+    assert.equal(B.q('SELECT count(*) FROM retardos.retardo'), '0');
+    assert.equal(B.q("SELECT retardos.es_habil('2026-09-05') || ' ' || retardos.es_habil('2026-09-04')"), 'false true');
+  } finally { B.fin(); }
+});
+
+test('los festivos del art. 74 LFT quedan sembrados (2026 y 2027)', () => {
+  if (!PG) return;
+  base().fin();
+  assert.equal(festivosSembrados, 14);
 });
 
 conPg('empleado sin correo válido: ruta alterna por supervisor', () => {
@@ -839,7 +887,7 @@ conPg('cambio a con_suspension: no genera suspensiones retroactivas; sólo reinc
     const futuros = habilesMes(1, 7);
     diaPorDiaRango(B, tardes(2, futuros), emps);
     assert.equal(B.q("SELECT estado FROM retardos.caso WHERE employee_id = 2 AND accion = 'suspension'") !== 'RETENIDO', true, 'siete retardos nuevos sí llegan a suspensión');
-    assert.ok(B.j("SELECT jsonb_agg(tipo) FROM retardos.envio e JOIN retardos.caso c ON c.id = e.caso_id WHERE c.employee_id = 2 AND c.accion = 'suspension'").includes('notificacion'));
+    assert.ok(B.j("SELECT jsonb_agg(e.tipo) FROM retardos.envio e JOIN retardos.caso c ON c.id = e.caso_id WHERE c.employee_id = 2 AND c.accion = 'suspension'").includes('notificacion'));
     if (pasados.length >= 4) {
       const e3 = [EMP(3), SUP];
       diaPorDiaRango(B, tardes(3, pasados.concat(habilesMes(0, 23).filter((d) => d > ymd(hoyMty())).slice(0, 3))), e3);
@@ -852,10 +900,23 @@ conPg('cambio a con_suspension: no genera suspensiones retroactivas; sólo reinc
 // ── pruebas de JS puro (corren siempre) ────────────────────────────────────
 test('cambio de campo en Odoo: el contrato truena con CONTRATO_ROTO en vez de seguir vacío', () => {
   const N = require('../../retardos/lib/normalizar.js');
-  const att = [{ id: 1, employee_id: [5, 'Demo'], check_in: '2026-09-01 13:10:00', x_studio_horario_en_disputa: false, x_studio_incidencia_pendiente_id: false }];
+  const att = [{ id: 1, employee_id: [5, 'Demo'], check_in: '2026-09-01 13:10:00', check_out: '2026-09-01 23:16:00', worked_hours: 10.1,
+                  in_mode: 'kiosk', out_mode: 'manual', x_studio_horario_en_disputa: false, x_studio_incidencia_pendiente_id: false }];
   const emp = [{ id: 5, name: 'Demo', job_title: 'x', company_id: [1, 'FTS'], active: true, x_studio_hora_entrada: 7, work_email: 'd@example.com', private_email: 'D.Personal@Example.com', parent_id: false, department_id: false, resource_calendar_id: [2, 'Ops'] }];
-  const ok = N.normalizar({ att, emp, cal: [{ calendar_id: [2, 'Ops'], dayofweek: '0', hour_from: 7 }], desde: '2026-09-01', hasta: '2026-09-01' });
+  const L = (d, a, b, per) => ({ calendar_id: [2, 'Ops'], dayofweek: d, hour_from: a, hour_to: b, day_period: per || 'morning' });
+  const cal = [L('0', 7, 12), L('0', 12, 12.5, 'lunch'), L('0', 12.5, 17.6, 'afternoon'), L('1', 7, 17.1), L('2', 7, 17.1), L('3', 7, 17.1), L('4', 7, 17.1)];
+  const incid = { incidencias: [{ tipo: 'olvido_checkout', status: 'pendiente_supervisor', attendance_id: 1 }] };
+  const ok = N.normalizar({ att, emp, cal, incidencias: incid, desde: '2026-09-01', hasta: '2026-09-01' });
   assert.equal(ok.checadas[0].check_in_utc, '2026-09-01T13:10:00Z');
+  assert.equal(ok.checadas[0].check_out_utc, '2026-09-01T23:16:00Z');
+  assert.equal(ok.checadas[0].worked_hours, 10.1);
+  assert.equal(ok.checadas[0].out_mode, 'manual');
+  assert.equal(ok.checadas[0].incidencia_abierta, true);
+  assert.deepEqual(ok.empleados[0].calendario, { id: 2, nombre: 'Ops', horas_semana: 50.5, dias: [1, 2, 3, 4, 5], tiene_comida: true });
+  const sinSalida = [Object.assign({}, att[0])]; delete sinSalida[0].check_out;
+  assert.throws(() => N.normalizar({ att: sinSalida, emp, cal }), /CONTRATO_ROTO:hr[.]attendance[.]check_out/);
+  const abierta = [Object.assign({}, att[0], { check_out: false, worked_hours: 0 })];
+  assert.equal(N.normalizar({ att: abierta, emp, cal }).checadas[0].check_out_utc, null);
   assert.equal(ok.empleados[0].hora_calendario, 7);
   assert.deepEqual(ok.empleados[0].correos, [{ campo: 'work_email', email: 'd@example.com' }, { campo: 'private_email', email: 'd.personal@example.com' }]);
   const sinPersonal = [Object.assign({}, emp[0])]; delete sinPersonal[0].private_email;
@@ -898,6 +959,14 @@ test('PDF: se genera, es PDF, trae el folio y no lleva guiones largos', () => {
   assert.ok(bin.indexOf(String.fromCharCode(8212)) < 0);
   assert.match(bin, /%%EOF/);
   for (const a of ['aviso', 'carta_compromiso', 'acta', 'suspension']) assert.ok(P.hoja({ accion: a, folio: 'RET-2026-0001' }).bytes > 800);
+  // Tercer aviso de jornada: folio JOR, QR y la tabla por día.
+  const j = P.hoja({ folio: 'JOR-2026-0003', accion: 'aviso_jornada_3', nombre: 'Demo', nivel: 3, periodo: 'S38/2026',
+    jornada: { semana: 'S38/2026', desde: '11/09/2026', hasta: '17/09/2026', horas_efectivas: '41:30', umbral: '48:00', faltante: '6:30', aviso_n: 3,
+      dias: [{ dia: 'viernes', fecha: '11/09/2026', brutas: '10:06', comida: '0:30', efectivas: '9:36' }] } });
+  const jb = Buffer.from(j.base64, 'base64').toString('latin1');
+  assert.match(jb, /JOR-2026-0003/);
+  assert.match(jb, /TERCER AVISO DE JORNADA/);
+  assert.equal(P.textoQR('JOR-2026-0003', 3, 1, 1), 'FTS|JOR-2026-0003|N3|P1/1');
 });
 
 test('ningún fuente que se embebe en n8n lleva diagonales invertidas', () => {
@@ -923,5 +992,279 @@ conPg('buzón receptor vacío: el reply-to cae al remitente, nunca al texto null
     ingestar(B, tres(1));
     const e = B.j('SELECT retardos.por_enviar(10)')[0];
     assert.equal(e.responder_a, 'sales@fts.mx');
+  } finally { B.fin(); }
+});
+
+// ── Jornada semanal FTS (#334, reglas R3) ───────────────────────────────────
+// Asistencia con salida. hSal = 'HH:MM' del mismo día o '+1 HH:MM' del día siguiente (hora del centro).
+function asis(emp, fecha, hEnt, hSal, extra) {
+  const c = chec(emp, fecha, hEnt);
+  const sig = hSal.startsWith('+');
+  const dd = sig ? Number(hSal.split(' ')[0].slice(1)) : 0;
+  const [h, m] = (sig ? hSal.split(' ')[1] : hSal).split(':').map(Number);
+  const co = new Date(Date.UTC(+fecha.slice(0, 4), +fecha.slice(5, 7) - 1, +fecha.slice(8, 10) + dd, h + 6, m));
+  return Object.assign(c, { check_out_utc: co.toISOString(), worked_hours: (co - new Date(c.check_in_utc)) / 3600000,
+                            in_mode: 'kiosk', out_mode: 'kiosk' }, extra || {});
+}
+// Días laborables de una semana FTS (viernes + lunes a jueves).
+function laborables(vie) {
+  const d0 = new Date(vie + 'T00:00:00Z'); const out = [];
+  for (const k of [0, 3, 4, 5, 6]) { const d = new Date(d0.getTime() + k * 86400000); out.push(d.toISOString().slice(0, 10)); }
+  return out;
+}
+function semana(emp, vie, horas) {   // horas: 5 duraciones 'HH:MM' desde las 07:00
+  return laborables(vie).map((f, i) => {
+    const [h, m] = horas[i].split(':').map(Number); const t = 7 * 60 + h * 60 + m;
+    return asis(emp, f, '07:00', String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'));
+  });
+}
+function cargar(B, checadas, empleados) {
+  const fs = checadas.map((c) => c.check_in_utc.slice(0, 10)).sort();
+  return ingestar(B, checadas, empleados || [EMP(1), SUP], { desde: fs[0], hasta: fs[fs.length - 1] });
+}
+const corte = (B, vie, extra) => B.j('SELECT retardos.jornada_corte(' + lit(Object.assign({ desde: vie }, extra || {})) + ')');
+const js = (B, emp, sem) => B.j("SELECT to_jsonb(j) FROM retardos.jornada_semana j WHERE employee_id = " + emp + " AND semana = '" + sem + "'");
+const H10 = ['10:06', '10:06', '10:06', '10:06', '10:06'];
+
+conPg('semana FTS: misma numeración que Nómina (ancla jue 23-jul-2026 = S30) y viernes a jueves', () => {
+  const B = base();
+  try {
+    assert.equal(B.q("SELECT retardos.semana_id('2026-08-28') || ' ' || retardos.semana_de_id('S37/2026') || ' ' || retardos.semana_desde('2026-09-10') || ' ' || retardos.semana_desde('2026-09-11')"),
+      'S36/2026 2026-09-04 2026-09-04 2026-09-11');
+    // Semana todavía abierta: el corte no corre.
+    assert.throws(() => B.q("SELECT retardos.jornada_corte(jsonb_build_object('desde', retardos.hoy_local()))"), /SEMANA_ABIERTA/);
+  } finally { B.fin(); }
+});
+
+conPg('jornada: 5 días de 10.1 h brutas = 48.0 efectivas cumple; 47:59 incumple', () => {
+  const B = base();
+  try {
+    config(B, 'jornada_desde', '2026-01-01');
+    cargar(B, semana(1, '2026-08-28', H10).concat(semana(2, '2026-08-28', ['10:06', '10:06', '10:06', '10:06', '10:05'])), [EMP(1), EMP(2), SUP]);
+    const r = corte(B, '2026-08-28');
+    const a = js(B, 1, 'S36/2026'), b = js(B, 2, 'S36/2026');
+    assert.equal(a.estado, 'cumple'); assert.equal(Number(a.horas_brutas), 50.5); assert.equal(Number(a.comida_h), 2.5); assert.equal(Number(a.horas_efectivas), 48);
+    assert.equal(b.estado, 'incumple'); assert.equal(Number(b.horas_efectivas), 47.98); assert.equal(Number(b.faltante), 0.02);
+    assert.equal(r.casos_nuevos.length, 1);
+    assert.match(r.casos_nuevos[0], /^JOR-2026-[0-9]{4}$/);
+    // desglose por día: comida de 30 min por día laborado
+    const d = a.desglose.filter((x) => x.brutas > 0);
+    assert.equal(d.length, 5); assert.ok(d.every((x) => x.comida === 0.5 && x.efectivas === 9.6));
+  } finally { B.fin(); }
+});
+
+conPg('jornada: asistencia que cruza de jueves a viernes se parte en el corte', () => {
+  const B = base();
+  try {
+    cargar(B, [asis(1, '2026-09-03', '22:00', '+1 06:00')]);
+    corte(B, '2026-08-28'); corte(B, '2026-09-04');
+    const a = js(B, 1, 'S36/2026'), b = js(B, 1, 'S37/2026');
+    assert.equal(Number(a.horas_brutas), 2);
+    assert.equal(Number(b.horas_brutas), 6);
+    assert.equal(a.desglose.find((x) => x.fecha === '2026-09-03').brutas, 2);
+    assert.equal(b.desglose.find((x) => x.fecha === '2026-09-04').brutas, 6);
+  } finally { B.fin(); }
+});
+
+conPg('jornada: comida en día corto, sábado con cada opción y calendario que ya descuenta', () => {
+  const B = base();
+  try {
+    // Lunes 31-ago: una sola checada de 20 min → la comida no puede dejar horas negativas.
+    // Sábado 29-ago: 3 h. Domingo 30-ago: 7 h. Martes 1-sep: Odoo ya descontó 1 h (worked_hours = duración - 1).
+    // Miércoles 2-sep: Odoo descontó 15 min → sólo se descuentan los 15 que faltan.
+    const ch = [asis(1, '2026-08-31', '07:00', '07:20'), asis(1, '2026-08-29', '08:00', '11:00'), asis(1, '2026-08-30', '08:00', '15:00'),
+                asis(1, '2026-09-01', '07:00', '17:00', { worked_hours: 9 }), asis(1, '2026-09-02', '07:00', '17:00', { worked_hours: 9.75 })];
+    cargar(B, ch);
+    const dia = (f) => js(B, 1, 'S36/2026').desglose.find((x) => x.fecha === f);
+    config(B, 'jornada_comida_fin_de_semana', 'desde_horas');
+    corte(B, '2026-08-28');
+    assert.deepEqual([dia('2026-08-31').brutas, dia('2026-08-31').comida, dia('2026-08-31').efectivas], [0.33, 0.33, 0]);
+    assert.deepEqual([dia('2026-08-29').comida, dia('2026-08-29').efectivas], [0, 3], 'sábado de 3 h: menos de 6 h, sin comida');
+    assert.deepEqual([dia('2026-08-30').comida, dia('2026-08-30').efectivas], [0.5, 6.5], 'domingo de 7 h: sí');
+    assert.deepEqual([dia('2026-09-01').comida, dia('2026-09-01').efectivas], [1, 9], 'Odoo ya descontó 1 h: no se duplica');
+    assert.deepEqual([dia('2026-09-02').comida, dia('2026-09-02').efectivas], [0.5, 9.5], 'Odoo descontó 15 min: se completan los 30');
+    B.q("DELETE FROM retardos.jornada_semana");
+    config(B, 'jornada_comida_fin_de_semana', 'siempre'); corte(B, '2026-08-28');
+    assert.equal(dia('2026-08-29').comida, 0.5);
+    B.q("DELETE FROM retardos.jornada_semana");
+    config(B, 'jornada_comida_fin_de_semana', 'nunca'); corte(B, '2026-08-28');
+    assert.equal(dia('2026-08-30').comida, 0);
+    // Sábado y domingo: suman horas pero nunca son retardo.
+    assert.equal(B.q("SELECT count(*) FROM retardos.retardo WHERE fecha IN ('2026-08-29','2026-08-30')"), '0');
+  } finally { B.fin(); }
+});
+
+conPg('jornada: prorrateo por festivo en lunes, permiso (exclusión) e incapacidad (Nómina)', () => {
+  const B = base();
+  try {
+    B.q("INSERT INTO retardos.festivo (fecha, nombre) VALUES ('2026-09-07', 'Festivo demo') ON CONFLICT DO NOTHING");
+    const cuatro = laborables('2026-09-04').filter((f) => f !== '2026-09-07').map((f) => asis(1, f, '07:00', '17:06'));
+    B.q("INSERT INTO retardos.exclusion (employee_id, desde, hasta, tipo, motivo, creado_por) VALUES (2, '2026-09-08', '2026-09-08', 'permiso', 'Permiso demo', 'prueba')");
+    const tres2 = ['2026-09-04', '2026-09-09', '2026-09-10'].map((f) => asis(2, f, '07:00', '17:06'));
+    cargar(B, cuatro.concat(tres2), [EMP(1), EMP(2), SUP]);
+    corte(B, '2026-09-04', { nomina: [{ employee_id: 2, semana: 'S37/2026', declaraciones: [{ tipo: 'incapacidad', valores: { dias: 1 } }, { tipo: 'descuento_prestamo', valores: { monto: 500 } }] }] });
+    const a = js(B, 1, 'S37/2026'), b = js(B, 2, 'S37/2026');
+    assert.deepEqual([a.estado, Number(a.dias_prorrateo), Number(a.umbral), Number(a.horas_efectivas)], ['cumple', 1, 38.4, 38.4]);
+    assert.equal(a.desglose.find((x) => x.fecha === '2026-09-07').prorrateo, 'festivo');
+    // El festivo es de todos: a la persona 2 se le prorratean festivo (lunes) + permiso (martes) + incapacidad declarada en Nómina.
+    assert.deepEqual([b.estado, Number(b.dias_prorrateo), Number(b.umbral)], ['cumple', 3, 19.2]);
+    assert.deepEqual(b.prorrateo.dias_con_fecha + '|' + b.prorrateo.dias_nomina, '2|1');
+  } finally { B.fin(); }
+});
+
+conPg('jornada: jornada contratada distinta de 48 (calendario) y calendario de 50 h de presencia (se queda en 48)', () => {
+  const B = base();
+  try {
+    const cal40 = { id: 40, nombre: 'Cuarenta demo', horas_semana: 40, dias: [1, 2, 3, 4, 5], tiene_comida: true };
+    const cal50 = { id: 2, nombre: 'Operaciones demo', horas_semana: 50, dias: [1, 2, 3, 4, 5], tiene_comida: false };
+    cargar(B, semana(1, '2026-08-28', ['08:30', '08:30', '08:30', '08:30', '08:30']).concat(semana(2, '2026-08-28', H10)),
+      [EMP(1, { calendario: cal40 }), EMP(2, { calendario: cal50 }), SUP]);
+    corte(B, '2026-08-28');
+    const a = js(B, 1, 'S36/2026'), b = js(B, 2, 'S36/2026');
+    assert.deepEqual([a.umbral_fuente, Number(a.umbral), a.estado], ['calendario', 40, 'cumple']);
+    assert.deepEqual([b.umbral_fuente, Number(b.umbral), b.estado], ['fts', 48, 'cumple']);
+    const cal = B.j("SELECT jsonb_object_agg(employee_id, banderas) FROM retardos.v_calidad WHERE employee_id IN (1, 2)");
+    assert.equal(cal['1'].jornada_usa_calendario, true);
+    assert.equal(cal['2'].jornada_calendario_distinta, true);
+    assert.equal(cal['2'].jornada_usa_calendario, undefined);
+  } finally { B.fin(); }
+});
+
+conPg('jornada: checada sin salida va a Jornada por revisar, no a aviso; RH corrige y ahí sí abre caso', () => {
+  const B = base();
+  try {
+    config(B, 'jornada_desde', '2026-01-01');
+    const ch = semana(1, '2026-08-28', H10); ch[1].check_out_utc = null; ch[1].worked_hours = 0;
+    cargar(B, ch);
+    const r = corte(B, '2026-08-28');
+    const a = js(B, 1, 'S36/2026');
+    assert.equal(a.estado, 'revisar');
+    assert.deepEqual(a.motivos_revision[0].motivos, ['sin_salida']);
+    assert.equal(r.casos_nuevos.length, 0);
+    assert.ok(B.q("SELECT count(*) FROM retardos.envio WHERE clave_dedupe = 'jornada_revisar:S36/2026'") === '1');
+    // Un nuevo corte no la cambia sola; RH decide.
+    const rv = panelS(B, { accion: 'jornada_revisar', employee_id: 1, semana: 'S36/2026', decision: 'corregir', horas_efectivas: 44, motivo: 'Salida real 13:00 según el supervisor' });
+    assert.equal(rv.ok, true); assert.equal(rv.estado, 'incumple'); assert.match(rv.folio, /^JOR-/);
+    assert.equal(B.q("SELECT count(*) FROM retardos.bitacora WHERE evento = 'jornada_revisada'"), '1');
+    corte(B, '2026-08-28');
+    assert.equal(B.q("SELECT estado || '|' || horas_corregidas FROM retardos.jornada_semana WHERE employee_id = 1"), 'incumple|44.00');
+    // Asistencia de más de 16 h (olvido de salida): también a revisión.
+    B.q('DELETE FROM retardos.jornada_semana');
+    cargar(B, [asis(2, '2026-09-04', '07:00', '+1 09:00')], [EMP(2), SUP]);
+    corte(B, '2026-09-04');
+    assert.deepEqual(js(B, 2, 'S37/2026').motivos_revision[0].motivos, ['asistencia_mas_de_max']);
+  } finally { B.fin(); }
+});
+
+conPg('jornada: escalera 1.º, 2.º y 3.º aviso dentro de la ventana; medida retenida; re-corte sin duplicados', () => {
+  const B = base();
+  try {
+    config(B, 'jornada_desde', '2026-01-01');
+    const corta = ['10:06', '10:06', '10:06', '10:06', '06:00'];
+    for (const vie of ['2026-08-21', '2026-08-28', '2026-09-04']) { cargar(B, semana(1, vie, corta)); corte(B, vie); }
+    const casos = B.j("SELECT jsonb_agg(jsonb_build_object('n', nivel, 'a', accion, 'p', periodo, 'f', requiere_firma) ORDER BY nivel) FROM retardos.caso WHERE tipo = 'jornada'");
+    assert.deepEqual(casos.map((c) => c.n + ':' + c.p), ['1:S35/2026', '2:S36/2026', '3:S37/2026']);
+    assert.deepEqual(casos.map((c) => c.f), [false, false, true]);
+    // 1.º aviso: a la persona con copia a RH y al jefe.
+    const e1 = B.j("SELECT to_jsonb(e) FROM retardos.envio e JOIN retardos.caso c ON c.id = e.caso_id WHERE c.nivel = 1 AND c.tipo = 'jornada'");
+    assert.deepEqual(e1.para, ['demo1@example.com']);
+    assert.ok(e1.cc.includes('supervisor@example.com'));
+    assert.match(e1.cuerpo_html, /viernes 21[/]08[/]2026 al jueves 27[/]08[/]2026/);
+    assert.match(e1.cuerpo_html, /hora del centro, CST/);
+    assert.match(e1.cuerpo_html, /Faltante: <b>4:06<[/]b>/);
+    assert.match(e1.cuerpo_html, /aviso número <b>1<[/]b>/);
+    // 3.º: hoja con QR a RH, aviso a la persona con la misma hoja y una propuesta de medida.
+    const t3 = B.j("SELECT jsonb_agg(e.tipo || ':' || coalesce(e.pdf, '-') ORDER BY e.id) FROM retardos.envio e JOIN retardos.caso c ON c.id = e.caso_id WHERE c.nivel = 3 AND c.tipo = 'jornada'");
+    assert.deepEqual(t3, ['notificacion:aviso_jornada_3', 'aviso_trabajador:aviso_jornada_3']);
+    assert.equal(B.q("SELECT estado || '|' || horas_propuestas FROM retardos.medida"), 'propuesta|4.10');
+    // Re-corte de las tres semanas: nada nuevo.
+    const antes = B.q('SELECT count(*) FROM retardos.caso') + '|' + B.q('SELECT count(*) FROM retardos.envio');
+    for (const vie of ['2026-08-21', '2026-08-28', '2026-09-04']) corte(B, vie);
+    assert.equal(B.q('SELECT count(*) FROM retardos.caso') + '|' + B.q('SELECT count(*) FROM retardos.envio'), antes);
+    // RH decide un descuento: queda RETENIDO (modo_medidas_jornada = retenidas).
+    const md = B.q('SELECT id FROM retardos.medida');
+    const d1 = panelS(B, { accion: 'medida_decidir', medida_id: Number(md), decision: 'descuento', horas: 4.1, motivo: 'Tiempo no laborado documentado' });
+    assert.equal(d1.estado, 'retenida');
+    assert.equal(B.q("SELECT count(*) FROM retardos.bitacora WHERE evento = 'medida_decidida'"), '1');
+    // El PDF del 3er aviso lleva la tabla por día.
+    const d3 = B.j("SELECT retardos.caso_datos(id) FROM retardos.caso WHERE tipo = 'jornada' AND nivel = 3");
+    assert.equal(d3.jornada.dias.length, 7);
+    assert.equal(d3.jornada.faltante, '4:06');
+  } finally { B.fin(); }
+});
+
+conPg('jornada: fuera de la ventana el conteo vuelve a empezar', () => {
+  const B = base();
+  try {
+    config(B, 'jornada_desde', '2026-01-01');
+    config(B, 'jornada_ventana_dias', 10);
+    const corta = ['10:06', '10:06', '10:06', '10:06', '06:00'];
+    for (const vie of ['2026-08-21', '2026-09-04']) { cargar(B, semana(1, vie, corta)); corte(B, vie); }
+    assert.equal(B.q("SELECT string_agg(nivel::text, ',' ORDER BY periodo) FROM retardos.caso WHERE tipo = 'jornada'"), '1,1');
+  } finally { B.fin(); }
+});
+
+conPg('jornada: 3er aviso firmado y confirmado por RH se cierra; con medidas habilitadas, el descuento se verifica contra Nómina', () => {
+  const B = base();
+  try {
+    config(B, 'jornada_desde', '2026-01-01');
+    const corta = ['10:06', '10:06', '10:06', '10:06', '06:00'];
+    for (const vie of ['2026-08-21', '2026-08-28', '2026-09-04']) { cargar(B, semana(1, vie, corta)); corte(B, vie); }
+    enviarTodo(B);
+    const folio = B.q("SELECT folio FROM retardos.caso WHERE tipo = 'jornada' AND nivel = 3");
+    assert.equal(B.q("SELECT estado FROM retardos.caso WHERE folio = '" + folio + "'"), 'ESPERANDO_FIRMA');
+    const h = subir(B, b64Unico('jornada3'));
+    const lec = leer(B, h.hoja_id, [pagina(folio, { qr_nivel: 3 })]);
+    assert.equal(lec.lecturas[0].sugerencia, 'lista_para_validar');
+    const v = panelS(B, { accion: 'hoja_confirmar', lectura_id: lec.lecturas[0].lectura_id, resultado: 'firmada' });
+    assert.equal(v.ok, true);
+    assert.equal(B.q("SELECT estado FROM retardos.caso WHERE folio = '" + folio + "'"), 'CERRADO');
+    // Medidas habilitadas (sólo en esta prueba: en producción nace 'retenidas').
+    config(B, 'modo_medidas_jornada', 'habilitadas');
+    const md = Number(B.q('SELECT id FROM retardos.medida'));
+    assert.equal(panelS(B, { accion: 'medida_decidir', medida_id: md, decision: 'descuento', horas: 4.1, motivo: 'Tiempo no laborado documentado' }).estado, 'por_aplicar');
+    let r = B.j("SELECT retardos.verificar('{}'::jsonb)");
+    assert.equal(r.medidas_alertadas, 1);
+    const sem = B.q('SELECT retardos.semana_id(retardos.semana_desde(retardos.hoy_local()))');
+    r = B.j('SELECT retardos.verificar(' + lit({ nom_semana: [{ employee_id: 1, semana: sem, declaraciones: [{ tipo: 'tiempo_no_laborado', valores: { horas: 4.1 } }] }] }) + ')');
+    assert.equal(r.medidas_verificadas, 1);
+    assert.equal(B.q('SELECT estado FROM retardos.medida'), 'verificada');
+  } finally { B.fin(); }
+});
+
+conPg('jornada: envío diferido al lunes y latido del corte del viernes', () => {
+  const B = base();
+  try {
+    config(B, 'jornada_desde', '2026-01-01');
+    config(B, 'jornada_envio', 'lunes');
+    cargar(B, semana(1, '2026-08-28', ['10:06', '10:06', '10:06', '10:06', '06:00']));
+    corte(B, '2026-08-28');
+    assert.equal(B.q("SELECT count(*) FROM retardos.envio WHERE no_antes_de IS NOT NULL AND extract(isodow FROM retardos.a_local(no_antes_de)) = 1"), '1');
+    assert.equal(B.j('SELECT retardos.por_enviar(50)').filter((e) => /jornada semanal/.test(e.asunto)).length, 0);
+    // Latido: viernes 25-sep 10:30 sin corte → falta; con corte de las 08:05 → no; jueves → no aplica.
+    B.q("DELETE FROM retardos.jornada_semana"); B.q("DELETE FROM retardos.corrida WHERE workflow = 'retardos/jornada'");
+    assert.equal(B.q("SELECT retardos.falta_corte_jornada('2026-09-25 10:30')"), 't');
+    assert.equal(B.q("SELECT retardos.falta_corte_jornada('2026-09-25 09:30')"), 'f');
+    B.q("INSERT INTO retardos.corrida (workflow, iniciada_at, terminada_at, ok) VALUES ('retardos/jornada', '2026-09-25 14:05Z', '2026-09-25 14:06Z', true)");
+    assert.equal(B.q("SELECT retardos.falta_corte_jornada('2026-09-25 10:30')"), 'f');
+    assert.equal(B.q("SELECT retardos.falta_corte_jornada('2026-09-24 18:00')"), 'f');
+  } finally { B.fin(); }
+});
+
+conPg('plantillas: aviso de retardo con tolerancia, conteo y umbral de carta; todas pendientes de validación de RH', () => {
+  const B = base();
+  try {
+    config(B, 'contar_desde', '2000-01-01');
+    ingestar(B, [chec(1, '2026-09-01', '07:15:01')]);
+    const e = B.j("SELECT to_jsonb(e) FROM retardos.envio e WHERE tipo = 'notificacion'");
+    assert.match(e.cuerpo_html, /07:15:01/);
+    assert.match(e.cuerpo_html, /<b>15 minutos<[/]b>/);
+    assert.match(e.cuerpo_html, /A partir de <b>3 retardos<[/]b>/);
+    assert.match(e.cuerpo_html, /hora del centro, CST/);
+    assert.equal(B.q("SELECT count(*) FROM retardos.plantilla WHERE estado_texto <> 'pendiente_validacion_rh'"), '0');
+    const c = B.j("SELECT retardos.comunicado_arranque('{}'::jsonb)");
+    assert.equal(c.encolado, null, 'sin lista de distribución no se encola');
+    assert.match(c.html, /15 minutos/); assert.match(c.html, /48 horas efectivas/);
+    for (const t of B.j("SELECT jsonb_agg(asunto || cuerpo_html) FROM retardos.plantilla")) assert.equal(t.indexOf(String.fromCharCode(8212)), -1);
   } finally { B.fin(); }
 });

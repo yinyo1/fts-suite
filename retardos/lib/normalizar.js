@@ -11,10 +11,11 @@
  */
 (function (raiz) {
   var CAMPOS = {
-    'hr.attendance': ['id', 'employee_id', 'check_in', 'x_studio_horario_en_disputa', 'x_studio_incidencia_pendiente_id'],
+    'hr.attendance': ['id', 'employee_id', 'check_in', 'check_out', 'worked_hours', 'in_mode', 'out_mode',
+                      'x_studio_horario_en_disputa', 'x_studio_incidencia_pendiente_id'],
     'hr.employee': ['id', 'name', 'job_title', 'company_id', 'active', 'x_studio_hora_entrada', 'work_email',
                     'private_email', 'parent_id', 'department_id', 'resource_calendar_id'],
-    'resource.calendar.attendance': ['calendar_id', 'dayofweek', 'hour_from']
+    'resource.calendar.attendance': ['calendar_id', 'dayofweek', 'hour_from', 'hour_to', 'day_period']
   };
 
   function m2oId(v) {
@@ -48,6 +49,8 @@
         var f = filas[k];
         if (typeof f.check_in !== 'string' || f.check_in.length < 19) throw roto(modelo, 'check_in', 'formato');
         if (m2oId(f.employee_id) == null && f.employee_id !== false) throw roto(modelo, 'employee_id', 'forma');
+        if (f.check_out !== false && f.check_out !== null && (typeof f.check_out !== 'string' || f.check_out.length < 19)) throw roto(modelo, 'check_out', 'formato');
+        if (f.worked_hours !== false && f.worked_hours !== null && typeof f.worked_hours !== 'number') throw roto(modelo, 'worked_hours', 'tipo');
       }
     }
     if (modelo === 'hr.employee') {
@@ -70,6 +73,27 @@
     return m;
   }
 
+  // Jornada del calendario: horas de presencia por semana sin renglones de comida, días (ISO, 1 = lunes) y si trae comida.
+  // Odoo: dayofweek '0' = lunes. Un calendario de dos semanas (week_type) cuenta la mitad de cada renglón.
+  function calendarios(filas) {
+    var m = {};
+    for (var i = 0; i < filas.length; i++) {
+      var r = filas[i], cid = m2oId(r.calendar_id), dow = parseInt(r.dayofweek, 10);
+      if (cid == null || isNaN(dow)) continue;
+      var c = m[cid] || (m[cid] = { id: cid, nombre: m2oNombre(r.calendar_id), horas_semana: 0, dias: [], tiene_comida: false });
+      if (r.day_period === 'lunch') { c.tiene_comida = true; continue; }
+      var h = (typeof r.hour_to === 'number' && typeof r.hour_from === 'number') ? r.hour_to - r.hour_from : 0;
+      var f = (r.week_type === '0' || r.week_type === '1') ? 0.5 : 1;
+      c.horas_semana = Math.round((c.horas_semana + h * f) * 100) / 100;
+      if (c.dias.indexOf(dow + 1) < 0) c.dias.push(dow + 1);
+    }
+    Object.keys(m).forEach(function (k) { m[k].dias.sort(); });
+    return m;
+  }
+
+  // Estados terminales del almacén de incidencias (CLAUDE.md §3, esEstadoTerminal).
+  var TERMINAL = ['aprobada_tal_cual', 'aprobada_con_ajuste', 'aprobada_por_direccion', 'rechazada_por_rh', 'rechazada_por_direccion'];
+
   function correosDe(e) {
     var out = [], campos = ['work_email', 'private_email'];
     for (var i = 0; i < campos.length; i++) {
@@ -87,7 +111,7 @@
     validar('hr.attendance', att);
     validar('hr.employee', emp);
     validar('resource.calendar.attendance', cal);
-    var hc = horasCalendario(cal);
+    var hc = horasCalendario(cal), cals = calendarios(cal);
     var empleados = [];
     for (var i = 0; i < emp.length; i++) {
       var e = emp[i];
@@ -99,8 +123,19 @@
         email: e.work_email || null, parent_id: m2oId(e.parent_id), departamento: m2oNombre(e.department_id),
         // Todos los correos de la ficha, con el campo de donde salen. La resolución (empresa primero,
         // si no personal, u opción ambos) vive en Postgres: retardos.destinatarios().
-        correos: correosDe(e)
+        correos: correosDe(e),
+        calendario: cals[m2oId(e.resource_calendar_id)] || (m2oId(e.resource_calendar_id) == null ? null
+          : { id: m2oId(e.resource_calendar_id), nombre: m2oNombre(e.resource_calendar_id), horas_semana: null, dias: null, tiene_comida: null })
       });
+    }
+    // Incidencias abiertas (olvidos, auto-cierre) por attendance: la semana de jornada va a revisión.
+    var abiertas = {};
+    var incs0 = (entrada.incidencias && entrada.incidencias.incidencias) || [];
+    for (var q0 = 0; q0 < incs0.length; q0++) {
+      var i0 = incs0[q0];
+      if (TERMINAL.indexOf(String(i0.status || '')) >= 0) continue;
+      var ids0 = [i0.attendance_id, i0.attendance_id_nuevo];
+      for (var z0 = 0; z0 < ids0.length; z0++) if (typeof ids0[z0] === 'number') abiertas[ids0[z0]] = true;
     }
     var checadas = [];
     for (var j = 0; j < att.length; j++) {
@@ -108,8 +143,12 @@
       if (eid == null) continue;
       checadas.push({
         attendance_id: a.id, employee_id: eid, check_in_utc: aISO(a.check_in),
+        check_out_utc: typeof a.check_out === 'string' ? aISO(a.check_out) : null,
+        worked_hours: typeof a.worked_hours === 'number' ? a.worked_hours : null,
+        in_mode: a.in_mode || null, out_mode: a.out_mode || null,
         disputa: a.x_studio_horario_en_disputa === true,
-        incidencia_pendiente: a.x_studio_incidencia_pendiente_id || ''
+        incidencia_pendiente: a.x_studio_incidencia_pendiente_id || '',
+        incidencia_abierta: abiertas[a.id] === true
       });
     }
     // Olvidos de entrada del almacén de incidencias (cualquier estado que no sea rechazo).

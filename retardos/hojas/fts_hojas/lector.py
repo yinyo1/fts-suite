@@ -42,8 +42,8 @@ UMBRAL_FIRMA = 0.010
 UMBRAL_CASILLA = 0.10
 UMBRAL_COMENTARIO = 0.006
 
-QR_RE = re.compile(r"FTS[|](RET-[0-9]{4}-[0-9]{4})[|]N([0-9])[|]P([0-9]+)/([0-9]+)")
-FOLIO_RE = re.compile(r"RET\s*-\s*([0-9]{4})\s*-\s*([0-9]{4})")
+QR_RE = re.compile(r"FTS[|]((?:RET|JOR)-[0-9]{4}-[0-9]{4})[|]N([0-9])[|]P([0-9]+)/([0-9]+)")
+FOLIO_RE = re.compile(r"(RET|JOR)\s*-\s*([0-9]{4})\s*-\s*([0-9]{4})")
 INYECCION = re.compile(
     r"(ignora|ignore|olvida (lo|las|todo)|instrucciones (anteriores|previas)|previous instructions|system prompt|"
     r"\bprompt\b|eres un (modelo|asistente)|you are an?|act[uú]a como|marca(r)? (esta|la) hoja como|"
@@ -256,7 +256,7 @@ def leer_pagina(p: Pagina, usar_ia: bool) -> dict:
         textos_inyeccion.append(texto)
         f = FOLIO_RE.search((p.texto_capa or "") + " " + texto)
         if f:
-            out["folio"] = f"RET-{f.group(1)}-{f.group(2)}"
+            out["folio"] = f"{f.group(1)}-{f.group(2)}-{f.group(3)}"
             out["folio_fuente"] = "ocr"
         if any(INYECCION.search(t or "") for t in textos_inyeccion):
             ban.append("posible_inyeccion")

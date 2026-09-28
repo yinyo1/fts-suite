@@ -263,19 +263,24 @@
     aviso: 'AVISO DE RETARDOS',
     carta_compromiso: 'CARTA COMPROMISO',
     acta: 'ACTA ADMINISTRATIVA',
-    suspension: 'CITATORIO Y PROPUESTA DE MEDIDA DISCIPLINARIA'
+    suspension: 'CITATORIO Y PROPUESTA DE MEDIDA DISCIPLINARIA',
+    aviso_jornada_3: 'TERCER AVISO DE JORNADA SEMANAL INCOMPLETA'
   };
   var CUERPO = {
     aviso: 'Por medio del presente se le informa que el control de asistencia registró los retardos que se detallan abajo. Este aviso es informativo.',
     carta_compromiso: 'Reconozco los retardos que se detallan abajo y me comprometo a presentarme puntualmente a mi jornada conforme a mi horario de entrada.',
     acta: 'Se levanta la presente acta administrativa por los retardos que se detallan abajo, con fundamento en los artículos 20 y 134 fracciones I, III y V de la Ley Federal del Trabajo y en el Reglamento Interior de Trabajo. Antes de firmar, el trabajador puede manifestar lo que a su derecho convenga en el espacio de comentarios.',
-    suspension: 'Por reincidencia en retardos después de documentos previos firmados, se cita al trabajador para ser oído antes de determinar una medida disciplinaria. Cualquier suspensión se aplicará conforme al Reglamento Interior de Trabajo y al artículo 423 fracción X de la Ley Federal del Trabajo, con un máximo de ocho días. La decisión es de Recursos Humanos.'
+    suspension: 'Por reincidencia en retardos después de documentos previos firmados, se cita al trabajador para ser oído antes de determinar una medida disciplinaria. Cualquier suspensión se aplicará conforme al Reglamento Interior de Trabajo y al artículo 423 fracción X de la Ley Federal del Trabajo, con un máximo de ocho días. La decisión es de Recursos Humanos.',
+    // Texto PENDIENTE DE VALIDACIÓN DE RH (docs/retardos/PLANTILLAS.md).
+    aviso_jornada_3: 'La jornada semanal en FTS es de horas efectivas de viernes a jueves, ya descontada la comida de cada día trabajado. Este es el tercer aviso de jornada incompleta en el periodo que revisa Recursos Humanos. Cumplirla es respetar el tiempo de los compañeros, que cubren lo que falta. Antes de firmar, el trabajador puede escribir su versión en el espacio de comentarios. Recursos Humanos decide cualquier medida; ninguna se aplica de forma automática.'
   };
   // Texto PENDIENTE DE VALIDACIÓN DE LEGAL (docs/retardos/PARA_LEGAL.md): va en la carta y en el acta.
   var REINCIDENCIA = 'La reincidencia queda registrada y puede dar lugar a las medidas que prevea el Reglamento Interior de Trabajo.';
   var PENDIENTE_LEGAL = ['REINCIDENCIA'];
   var PIE = 'Recursos Humanos recolecta esta hoja firmada. Si la recibió por correo, entréguela a Recursos Humanos o responda ese correo con la foto de la hoja, sin cambiar el asunto.';
-  var NIVEL_DE = { aviso: 1, carta_compromiso: 2, acta: 3, suspension: 4 };
+  var NIVEL_DE = { aviso: 1, carta_compromiso: 2, acta: 3, suspension: 4, aviso_jornada_3: 3 };
+  var PENDIENTE_RH = ['aviso_jornada_3'];
+  function esJornada(acc) { return String(acc).indexOf('aviso_jornada') === 0; }
 
   function textoQR(folio, nivel, pag, total) { return 'FTS|' + (folio || 'SIN-FOLIO') + '|N' + nivel + '|P' + pag + '/' + total; }
 
@@ -290,14 +295,29 @@
     P.texto(60, 682, TITULOS[acc] || 'DOCUMENTO', 14, true);
     P.texto(60, 662, 'Nombre: ' + (d.nombre || ''), 11, true);
     P.texto(60, 648, 'Puesto: ' + (d.puesto || '') + '    Departamento: ' + (d.departamento || ''), 9, false);
+    if (esJornada(acc)) {
+      var jj = d.jornada || {};
+      P.texto(60, 634, 'Aviso ' + (jj.aviso_n || nivel) + '    Semana ' + (jj.semana || d.periodo || '') + ': viernes ' + (jj.desde || '') + ' a jueves '
+        + (jj.hasta || '') + ' (hora del centro, CST)', 9, false);
+      return;
+    }
     P.texto(60, 634, 'Nivel ' + nivel + '    Periodo: ' + (d.periodo || '') + '    Retardos en el periodo: ' + (d.retardos_n == null ? '' : d.retardos_n)
       + (d.motivo_apertura === 'reincidencia' ? '    Motivo: reincidencia' : ''), 9, false);
   }
-  function cabeceraTabla(P, y) {
-    P.texto(60, y, 'Fecha', 9, true); P.texto(170, y, 'Hora de llegada', 9, true); P.texto(300, y, 'Hora de entrada', 9, true); P.texto(430, y, 'Minutos tarde', 9, true);
+  function cabeceraTabla(P, y, j) {
+    if (j) {
+      P.texto(60, y, 'Día', 9, true); P.texto(200, y, 'Horas registradas', 9, true); P.texto(320, y, 'Comida descontada', 9, true); P.texto(440, y, 'Horas efectivas', 9, true);
+    } else {
+      P.texto(60, y, 'Fecha', 9, true); P.texto(170, y, 'Hora de llegada', 9, true); P.texto(300, y, 'Hora de entrada', 9, true); P.texto(430, y, 'Minutos tarde', 9, true);
+    }
     P.linea(60, y - 6, 550);
   }
-  function fila(P, y, r) {
+  function fila(P, y, r, j) {
+    if (j) {
+      P.texto(60, y, (r.dia || '') + ' ' + (r.fecha || '') + (r.nota ? ' (' + r.nota + ')' : ''), 9, false);
+      P.texto(200, y, String(r.brutas || ''), 9, false); P.texto(320, y, String(r.comida || ''), 9, false); P.texto(440, y, String(r.efectivas || ''), 9, false);
+      return;
+    }
     P.texto(60, y, r.fecha, 9, false); P.texto(170, y, r.llegada, 9, false); P.texto(300, y, r.esperada, 9, false); P.texto(430, y, String(r.minutos), 9, false);
   }
 
@@ -306,7 +326,8 @@
     var acc = d.accion || 'aviso';
     var nivel = d.nivel || NIVEL_DE[acc] || 1;
     var firma = acc !== 'aviso';
-    var rs = d.retardos || [];
+    var esJ = esJornada(acc);
+    var rs = esJ ? ((d.jornada && d.jornada.dias) || []) : (d.retardos || []);
     var porPag1 = firma ? LAYOUT.tabla_filas : 26, porPagN = 40;
     var resto = Math.max(0, rs.length - porPag1), total = 1 + (resto > 0 ? Math.ceil(resto / porPagN) : 0);
     var paginas = [];
@@ -323,10 +344,13 @@
       y -= 4;
     }
     if (y < 526) throw new Error('HOJA_TEXTO_DEMASIADO_LARGO');
-    cabeceraTabla(P, 516);
+    cabeceraTabla(P, 516, esJ);
     var yf = 498;
-    for (var i = 0; i < Math.min(rs.length, porPag1); i++) { fila(P, yf, rs[i]); yf -= 12; }
-    if (resto > 0) P.texto(60, yf - 2, 'Continúa en la página 2: ' + resto + ' retardos más.', 9, true);
+    for (var i = 0; i < Math.min(rs.length, porPag1); i++) { fila(P, yf, rs[i], esJ); yf -= 12; }
+    if (esJ) {
+      var jt = d.jornada || {};
+      P.texto(60, yf - 2, 'Horas efectivas: ' + (jt.horas_efectivas || '') + ' de ' + (jt.umbral || '') + '. Faltante: ' + (jt.faltante || '') + '. Horas en formato horas:minutos.', 9, true);
+    } else if (resto > 0) P.texto(60, yf - 2, 'Continúa en la página 2: ' + resto + ' retardos más.', 9, true);
 
     if (firma) {
       var C = LAYOUT.cajas;
@@ -350,7 +374,7 @@
       encabezado(Q, d, acc, nivel, pg, total);
       cabeceraTabla(Q, 660);
       var y2 = 642, desde = porPag1 + (pg - 2) * porPagN;
-      for (var j = desde; j < Math.min(rs.length, desde + porPagN); j++) { fila(Q, y2, rs[j]); y2 -= 12; }
+      for (var j = desde; j < Math.min(rs.length, desde + porPagN); j++) { fila(Q, y2, rs[j], esJ); y2 -= 12; }
       paginas.push(Q.ops);
     }
 
@@ -358,7 +382,7 @@
     return { base64: b64(bin), nombre: (d.folio || 'retardos') + '-' + acc + '.pdf', bytes: bin.length, binario: bin, paginas: total };
   }
 
-  var api = { hoja: hoja, LAYOUT: LAYOUT, textoQR: textoQR, PENDIENTE_LEGAL: PENDIENTE_LEGAL, _qr: qrMatriz, _aLatin1: aLatin1, _b64: b64 };
+  var api = { hoja: hoja, LAYOUT: LAYOUT, textoQR: textoQR, PENDIENTE_LEGAL: PENDIENTE_LEGAL, PENDIENTE_RH: PENDIENTE_RH, _qr: qrMatriz, _aLatin1: aLatin1, _b64: b64 };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else raiz.RetardosPDF = api;
 })(typeof window !== 'undefined' ? window : this);
