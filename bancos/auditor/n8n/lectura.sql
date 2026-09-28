@@ -1,4 +1,4 @@
-SET ROLE bancos_auditor;
+SET LOCAL ROLE bancos_auditor;
 SELECT json_build_object(
   'leido_at', now(), 'hoy', bancos.hoy_mty(), 'rol', current_user,
   'cuentas', (SELECT json_agg(c ORDER BY c.id) FROM (SELECT id, banco, alias, numero_mask, right(clabe, 4) AS clabe4, moneda, tipo, carpeta, activa FROM bancos.cuentas) c),

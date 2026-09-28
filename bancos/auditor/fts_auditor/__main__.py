@@ -19,7 +19,8 @@ def main(argv):
     od = json.loads((d / "onedrive.json").read_text())
     n8n = json.loads((d / "n8n.json").read_text()) if (d / "n8n.json").exists() else {}
     pdfs = {p.stem: p.read_bytes() for p in (d / "pdf").glob("*.pdf")}
-    r = Auditoria(base, od, pdfs, n8n=n8n, alcance_archivos=alcance).correr()
+    solo_salud = alcance is not None and not alcance
+    r = Auditoria(base, od, pdfs, n8n=n8n, alcance_archivos=alcance).correr(objetivo1=not solo_salud)
     decidir = json.loads((d / "para_decidir.json").read_text()) if (d / "para_decidir.json").exists() else []
     (d / "resultado.json").write_text(json.dumps(r, ensure_ascii=False, default=str, indent=1))
     (d / "informe.html").write_text(html_privado(r, tipo, decidir))

@@ -66,3 +66,73 @@ export default workflow('fts-bancos-auditor-lectura', 'fts_bancos_auditor_lectur
 const salida = process.argv[2] || '.';
 fs.writeFileSync(path.join(salida, 'auditor_lectura.sdk.js'), lectura);
 console.log('ok', lectura.length);
+
+// ── registrar ──
+const conSql = (f, sqlf) => leer(f).replace('__SQL__', J(leer(sqlf))).replace('__INFORME__', leer('code/informe.js'));
+const registrar = `import { workflow, node, trigger, expr } from '@n8n/workflow-sdk';
+const entrada = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { name: 'Auditor (registrar)',
+  parameters: { httpMethod: 'POST', path: 'fts-bancos-auditor-registrar-4b8e20', responseMode: 'onReceived', options: {} } } });
+const validar = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Code - Validar',
+  parameters: { jsCode: ${J(conSql('code/validar_registro.js', 'registrar.sql'))} } } });
+const reg = node({ type: 'n8n-nodes-base.postgres', version: 2.6, config: { name: 'Postgres - Registrar',
+  parameters: { operation: 'executeQuery', query: expr('{{ $json.sql }}'), options: {} }, credentials: ${PG} } });
+const subir = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { name: 'HTTP - Subir informe (OneDrive)', onError: 'continueRegularOutput',
+  parameters: { method: 'PUT',
+    url: expr("{{ '${U}' + '/root:/' + ['FTS Finanzas - Bancos', '02 Base maestra de transacciones', 'Auditorias', $('Code - Validar').first().json.nombre].map(encodeURIComponent).join('/') + ':/content' }}"),
+    authentication: 'genericCredentialType', genericAuthType: 'oAuth2Api', sendBody: true, contentType: 'raw', rawContentType: 'text/html',
+    body: expr("{{ $('Code - Validar').first().json.html }}"), options: { response: { response: { fullResponse: true, neverError: true } } } },
+  credentials: ${GRAPH} } });
+const correo = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Code - Correo', parameters: { jsCode: ${J(leer('code/correo_rojo.js'))} } } });
+const esRojo = node({ type: 'n8n-nodes-base.if', version: 2.2, config: { name: 'IF - ROJO?', parameters: {
+  conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'loose' },
+    conditions: [{ leftValue: expr('{{ $json.enviar }}'), operator: { type: 'string', operation: 'equals' }, rightValue: 'si' }], combinator: 'and' }, options: {} } } });
+const enviar = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { name: 'HTTP - Correo ROJO a Esteban', onError: 'continueRegularOutput',
+  parameters: { method: 'POST', url: 'https://graph.microsoft.com/v1.0/users/sales@fts.mx/sendMail', authentication: 'genericCredentialType',
+    genericAuthType: 'oAuth2Api', sendBody: true, specifyBody: 'json', jsonBody: expr('{{ JSON.stringify($json.mail) }}'),
+    options: { response: { response: { fullResponse: true, neverError: true } } } },
+  credentials: ${GRAPH} } });
+const marcarC = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Code - Marcar', executeOnce: true,
+  parameters: { jsCode: ${J(conSql('code/marcar.js', 'marcar.sql'))} } } });
+const marcar = node({ type: 'n8n-nodes-base.postgres', version: 2.6, config: { name: 'Postgres - Marcar',
+  parameters: { operation: 'executeQuery', query: expr('{{ $json.sql }}'), options: {} }, credentials: ${PG} } });
+export default workflow('fts-bancos-auditor-registrar', 'fts_bancos_auditor_registrar')
+  .add(entrada).to(validar).to(reg).to(subir).to(correo)
+  .to(esRojo.onTrue(enviar.to(marcarC)).onFalse(marcarC))
+  .add(marcarC).to(marcar);
+`;
+fs.writeFileSync(path.join(salida, 'auditor_registrar.sdk.js'), registrar);
+console.log('ok registrar', registrar.length);
+
+// ── eventos (cada 15 min) y resumen (17:30 hábil) ──
+const eventos = `import { workflow, node, trigger, expr } from '@n8n/workflow-sdk';
+const cada15 = trigger({ type: 'n8n-nodes-base.scheduleTrigger', version: 1.2, config: { name: 'Cada 15 min 7-21 h',
+  parameters: { rule: { interval: [{ field: 'cronExpression', expression: '7,22,37,52 7-21 * * *' }] } } } });
+const probar = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Probar (a mano)' } });
+const enc = node({ type: 'n8n-nodes-base.postgres', version: 2.6, config: { name: 'Postgres - Encolar eventos (bancos_app)',
+  parameters: { operation: 'executeQuery', query: ${J(leer('eventos.sql'))}, options: {} }, credentials: ${PG} } });
+export default workflow('fts-bancos-auditor-eventos', 'fts_bancos_auditor_eventos')
+  .add(cada15).to(enc)
+  .add(probar).to(enc);
+`;
+const resumen = `import { workflow, node, trigger, expr } from '@n8n/workflow-sdk';
+const diario = trigger({ type: 'n8n-nodes-base.scheduleTrigger', version: 1.2, config: { name: 'Dias habiles 17:30',
+  parameters: { rule: { interval: [{ field: 'cronExpression', expression: '30 17 * * 1-5' }] } } } });
+const probar = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Probar (a mano, sin enviar)' } });
+const leerR = node({ type: 'n8n-nodes-base.postgres', version: 2.6, config: { name: 'Postgres - Auditorias de hoy',
+  parameters: { operation: 'executeQuery', query: ${J(leer('resumen.sql'))}, options: {} }, credentials: ${PG} } });
+const armar = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Code - Armar resumen', parameters: { jsCode: ${J(leer('code/resumen.js'))} } } });
+const soloReal = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Code - Solo si es el horario', parameters: { jsCode:
+  "/* A mano no se envía nada: sólo el disparador de las 17:30 manda el correo. */\\nlet real = false;\\ntry { real = $('Dias habiles 17:30').isExecuted; } catch (e) { real = false; }\\nreturn real ? $input.all() : [];\\n" } } });
+const enviar = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { name: 'HTTP - Resumen a Esteban', onError: 'continueRegularOutput',
+  parameters: { method: 'POST', url: 'https://graph.microsoft.com/v1.0/users/sales@fts.mx/sendMail', authentication: 'genericCredentialType',
+    genericAuthType: 'oAuth2Api', sendBody: true, specifyBody: 'json', jsonBody: expr('{{ JSON.stringify($json.mail) }}'),
+    options: { response: { response: { fullResponse: true, neverError: true } } } },
+  credentials: ${GRAPH} } });
+export default workflow('fts-bancos-auditor-resumen', 'fts_bancos_auditor_resumen')
+  .add(diario).to(leerR)
+  .add(probar).to(leerR)
+  .add(leerR).to(armar).to(soloReal).to(enviar);
+`;
+fs.writeFileSync(path.join(salida, 'auditor_eventos.sdk.js'), eventos);
+fs.writeFileSync(path.join(salida, 'auditor_resumen.sdk.js'), resumen);
+console.log('ok eventos/resumen', eventos.length, resumen.length);

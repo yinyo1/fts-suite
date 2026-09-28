@@ -279,7 +279,10 @@ class Auditoria:
             if r.get("error"):
                 self.h(5, "ROJO", "E_CORRIDA_FALLIDA", corrida=r["id"], origen=r["origen"])
             if r.get("graph_ok") is False:
-                self.h(5, "ROJO", "E_BUZON_ERROR_GRAPH", corrida=r["id"])
+                # ROJO sólo si la lectura MÁS RECIENTE del buzón sigue fallando; si ya se recuperó, AMARILLO
+                ultima = max((x for x in (b.get("corridas") or []) if x["origen"] == "cron"), key=lambda x: x["id"], default=None)
+                sigue = ultima is not None and ultima.get("graph_ok") is False
+                self.h(5, "ROJO" if sigue else "AMARILLO", "E_BUZON_ERROR_GRAPH" if sigue else "E_BUZON_ERROR_GRAPH_RECUPERADO", corrida=r["id"])
             if r.get("terminada_at") is None and ahora - ini > timedelta(hours=3) and r["origen"] != "inventario":
                 self.h(5, "AMARILLO", "E_CORRIDA_SIN_CERRAR", corrida=r["id"], origen=r["origen"])
         reales = [k for k in (b.get("correos") or []) if k["modo"] == "real"]

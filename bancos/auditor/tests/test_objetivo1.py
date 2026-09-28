@@ -35,7 +35,7 @@ def sembrar(pdfs: dict[str, bytes]):
 
 def foto():
     """Lo que el auditor ve: la base por el rol bancos_auditor, y un OneDrive simulado con las copias canónicas."""
-    salida = subprocess.run(["psql", os.environ["DATABASE_URL"], "-v", "ON_ERROR_STOP=1", "-qAt", "-f", str(LECTURA)],
+    salida = subprocess.run(["psql", os.environ["DATABASE_URL"], "-v", "ON_ERROR_STOP=1", "-1", "-qAt", "-f", str(LECTURA)],
                             check=True, capture_output=True, text=True).stdout.strip()
     base = json.loads(salida)
     assert base["rol"] == "bancos_auditor"
