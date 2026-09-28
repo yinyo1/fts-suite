@@ -17,7 +17,7 @@ const PIEZAS = {
   detectar: { __LEER__: 'detectar-leer.js' },
   jornada: { __LEER__: 'detectar-leer.js', __NOMINA__: 'jornada-nomina.js' },
   enviar: { __PREPARAR__: 'enviar-preparar.js', __RESULTADO__: 'enviar-resultado.js' },
-  verificar: { __NOMINA__: 'verificar-nomina.js' },
+  verificar: { __NOMINA__: 'verificar-nomina.js', __SEMANA__: 'verificar-semana.js' },
   'resumen-semanal': {},
   latido: { __ALERTA__: 'latido-alerta.js' },
   lector: { __DECIDIR__: 'lector-decidir.js', __MAPEAR__: 'lector-mapear.js' },
