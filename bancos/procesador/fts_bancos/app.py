@@ -203,6 +203,27 @@ def diag_token_roles(req: Request):
             "vence_utc": datetime.fromtimestamp(d.get("exp", 0), timezone.utc).isoformat(), "segundos_para_vencer": d.get("exp", 0) - ahora}
 
 
+@app.get("/diag/estructura/{sha}")
+def diag_estructura(sha: str, desde: int = 1, hasta: int = 2, max_lineas: int = 120):
+    """Calibración del parser: renglones de un PDF ya recibido con la posición x de cada palabra
+    y TODOS los dígitos cambiados por 9. Sirve para ver el acomodo sin ver cifras. Sólo red privada."""
+    import re as _re
+    from . import bbva as _b
+    if len(sha) != 64:
+        raise HTTPException(400)
+    with conexion() as con, con.cursor() as cur:
+        cur.execute("SELECT contenido FROM bancos.blobs WHERE sha256=%s", (sha,))
+        r = cur.fetchone()
+    if not r:
+        raise HTTPException(404)
+    out = []
+    with _b.abrir_pdf(bytes(r["contenido"])) as pdf:
+        for n in range(desde, min(hasta, len(pdf.pages)) + 1):
+            for linea in _b._lineas(pdf.pages[n - 1])[:max_lineas]:
+                out.append({"p": n, "top": round(linea[0].top), "w": [[round(w.x0), round(w.x1), _re.sub(r"\d", "9", w.texto)] for w in linea]})
+    return {"paginas": len(out) and out[-1]["p"], "lineas": out}
+
+
 @app.get("/blob/{sha}")
 def blob(sha: str):
     if len(sha) != 64 or any(c not in string.hexdigits.lower() for c in sha):
