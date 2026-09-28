@@ -1021,6 +1021,57 @@ class Corrida:
                 "de omision.")
         return self.senal_origen
 
+    def avisar_si_falta_el_expediente(self) -> list[str]:
+        """DECISION D1 de #329, aprobada opcion (b): la ficha AVISA, no bloquea.
+
+        El hueco que cierra: `senal` exige una fuente valida, pero nada obliga a
+        correr `senal`. Una cuenta sin expediente se trabaja igual y no ensena
+        nada, y el hueco era INVISIBLE -- nadie lo veia hasta que el reporte de
+        aprendizaje decia "3 cierres no cuentan"--.
+
+        POR QUE NO VA EN `aviso_rojo`, aunque D1 diga "igual que avisa del padron
+        y de la cuenta fria". La cuenta fria SI va en rojo: decirle a un cliente
+        "ya trabajamos en su planta" cuando no es cierto se cae en la llamada. Que
+        falte el expediente NO se cae en ninguna llamada: la ficha esta bien, el
+        gancho esta bien, los contactos estan bien. Lo que falta es la capacidad
+        de APRENDER de esta cuenta cuando su tarjeta cierre.
+        Meterlo en el bloque rojo de la capa limpia tendria dos costos: le pondria
+        vocabulario interno -- "expediente de senal"-- a la capa que #322 dejo
+        libre de el, y gastaria el aviso rojo en algo que a Rissia no le sirve
+        para llamar. Un aviso rojo que sale siempre no se lee.
+        Va donde va el del padron: a los avisos de la corrida, que se ven en la
+        pestana tecnica y en la salida del comando.
+
+        Reemplaza el aviso anterior en vez de acumularlo, por la misma razon que
+        el veredicto del padron (#306, D1): es una CONCLUSION sobre el estado
+        actual, y dos conclusiones contradictorias en la lista no informan.
+        """
+        self.avisos = [a for a in self.avisos
+                       if not a.startswith(MARCA_SENAL + "SIN EXPEDIENTE")]
+        sen = self.senal_origen or {}
+        faltan = []
+        if not sen.get("fuente"):
+            faltan.append("la fuente")
+        if not sen.get("tipo"):
+            faltan.append("el tipo")
+        if sen.get("puntaje") is None:
+            faltan.append("el puntaje del evaluador")
+        if not faltan:
+            return []
+        aviso = (
+            MARCA_SENAL + "SIN EXPEDIENTE DE SENAL COMPLETO: falta "
+            + ", ".join(faltan)
+            + ". La ficha sirve igual para llamar -- esto no cambia nada de lo que "
+              "dice--, y esta cuenta NO va a poder ensenarle nada al radar cuando "
+              "su tarjeta cierre: sin fuente no se le puede atribuir el desenlace "
+              "a nada, y sin tipo su plazo de caducidad es el de omision. Se "
+              "arregla sin gastar consultas: ./prospector senal --empresa "
+              f"{self.empresa!r}"
+            + (f" --ciudad {self.ciudad!r}" if self.ciudad else "")
+            + " --fuente '<la fuente>' --reevaluar")
+        self.avisos.append(aviso)
+        return [aviso]
+
     # ------------------------------------------------------------- sembrar
     def registrar_veredicto_del_padron(self, banderas) -> list[str]:
         """El veredicto del padron REEMPLAZA al anterior, no se acumula.

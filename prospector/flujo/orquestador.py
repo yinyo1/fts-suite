@@ -1157,8 +1157,12 @@ def main(argv=None) -> int:
                     raise SystemExit(
                         "--reevaluar sin texto de senal: no hay que puntuar. "
                         "Pasa --texto, o registra la senal primero.")
+                # EL GIRO VIAJA. Defecto B3 de #330: el proceso del cliente es
+                # propiedad de la CUENTA y el evaluador solo veia el titular de
+                # la senal. `Corrida.giro` existe desde siempre.
                 ev = _evaluar({"texto": texto, "fuente": a.fuente,
-                               "fecha": a.fecha_senal or None})
+                               "fecha": a.fecha_senal or None,
+                               "giro": c.giro})
             sen = c.declarar_senal_origen(
                 a.fuente, texto=texto, tipo=a.tipo,
                 fecha_senal=a.fecha_senal, evaluacion=ev,
@@ -1575,6 +1579,10 @@ def main(argv=None) -> int:
             # proyecto DESPUES de abrir la corrida -- que es justo lo que paso con
             # Pesqueria (#310)--. Re-emitir tiene que bastar.
             c.registrar_historia_declarada()
+            # D1 de #329: el hueco del expediente de senal se declara al emitir,
+            # por la misma razon que la historia se relee aqui -- una corrida
+            # abierta antes de que el expediente existiera no lo tiene--.
+            _falta_expediente = c.avisar_si_falta_el_expediente()
             # Los DOS modos escriben un .html autocontenido. Hasta la
             # v0.9.0 el limpio salia como fragmento -- sin doctype ni charset--
             # y el de procedencia solo como JSON. La primera corrida real de un
@@ -1590,6 +1598,11 @@ def main(argv=None) -> int:
             # cuatro plantas escribian la misma `<empresa>-limpio.html` y se
             # pisaban -- el mismo defecto que el guardado por planta acaba de
             # corregir, un paso mas abajo--.
+            if _falta_expediente:
+                # Se imprime en la salida del comando ademas de quedar en los
+                # avisos: quien emite la ficha es quien puede arreglarlo, y en ese
+                # momento.
+                print(f"\n  ⚠  {_falta_expediente[0]}")
             origen = _ruta_de(c, a)
             base = (str(exigir_fuera_del_repo(a.salida)) if a.salida
                     else origen[:-5] + f"-{a.modo}")

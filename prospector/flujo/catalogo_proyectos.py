@@ -166,7 +166,14 @@ PROCESOS_DEL_CLIENTE = (
     ("extrusion", ("extrusion", "extrusora", "extruder", "husillo",
                    "perfileria")),
     ("inyeccion", ("inyeccion", "inyectora", "molde", "injection molding")),
+    # DEFECTO B2 de #330: el catalogo tiene el proceso `arneses_cableado` con
+    # proyectos reales, y su vocabulario no incluia la palabra "cable". Una planta
+    # de CABLE automotriz -- que es literalmente este proceso-- puntuaba CERO en
+    # proceso. Coficab, la cuenta mas trabajada del proyecto, es de cable.
     ("arneses_cableado", ("arnes", "arneses", "wire harness",
+                          "cable automotriz", "cables automotrices",
+                          "cableado", "fabrica cable", "planta de cable",
+                          "cable de cobre", "cable de datos", "wire and cable",
                           "trefilado", "alambre magneto", "magnet wire",
                           "esmaltado de alambre", "conductor de cobre")),
     ("envasado_bebidas", ("envasado", "embotellado", "llenadora", "bebida",
@@ -191,8 +198,21 @@ PROCESOS_DEL_CLIENTE = (
     # ("Iron Machining Manager"), que es la unica evidencia directa de proceso que
     # la busqueda dirigida en el buzon produjo. Se deja anotada la procedencia
     # porque es de una fuente distinta a las demas.
+    # DEFECTO B1 de #330: "prensa" estaba aqui y producia un FALSO POSITIVO
+    # sistematico. En una linea de venta de Odoo "prensa" es la maquina; en el
+    # texto de una SENAL, "prensa reporta..." o "nota de prensa" es el medio, y
+    # el proceso reconocido salia `metalmecanica`. Medido: Coficab Pesqueria
+    # puntuaba 12.7 puntos de proceso **por la palabra "prensa" de "prensa
+    # reporta"**, y con ellos cruzaba el umbral de `pasa`. Un umbral cruzado por
+    # un falso positivo es peor que un umbral no cruzado.
+    #
+    # Se sustituye por las formas que SI son la maquina y no el medio. "prensa
+    # hidraulica", "prensa de estampado" y "linea de prensas" no aparecen en
+    # ninguna nota periodistica; "prensa" sola aparece en todas.
     ("metalmecanica", ("metalmecanica", "maquinado", "cnc", "estampado",
-                       "troquelado", "soldadura", "prensa", "machining",
+                       "troquelado", "soldadura", "prensa hidraulica",
+                       "prensa de estampado", "linea de prensas",
+                       "prensa mecanica", "stamping press", "machining",
                        "iron machining", "rueda", "wheel", "maquinados")),
     ("tratamiento_termico", ("tratamiento termico", "temple", "recocido",
                              "horno de temple", "austenizado")),

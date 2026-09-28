@@ -55,6 +55,43 @@ FAMILIAS = {
 }
 FAMILIA_DE_TIPO = {t: f for f, ts in FAMILIAS.items() for t in ts}
 
+# ------------------------------------------------------ el tipo INTEGRAL
+# DECISION 3 de #329 (D3), aprobada. El hueco que la midio: `tipos_que_nombra()`
+# no reconocia "segunda planta", "planta nueva", "ampliacion de nave" ni
+# "construye una planta", asi que **una planta nueva contribuia CERO** al factor
+# de tipo de obra. Y cuando si habia match -- "nave industrial"-- apuntaba a
+# `trabajos_civiles`, de la familia ESTRUCTURA (11.7%), una de las mas chicas: una
+# planta nueva se puntuaba como un trabajo civil pequeno.
+#
+# Es la misma clase de hueco que la DECISION 1 de #305, donde el radar no tenia
+# ELECTRICO -- su familia mas grande--.
+#
+# POR QUE ES UN TIPO APARTE Y NO UNA FAMILIA MAS. Una planta nueva no es un tipo
+# de proyecto: es **todos a la vez**. Compra subestacion Y control Y agua helada Y
+# estructura Y manejo de material Y comisionamiento. Meterla como miembro de una
+# familia la haria competir con sus propios componentes y saldria valiendo lo que
+# vale el mas grande de ellos -- que es exactamente el error que tenia--.
+#
+# Y EL PESO SE DERIVA, COMO TODOS. La regla de este archivo no se afloja para
+# esta decision: el peso de un tipo integral es la **suma de las participaciones
+# de las familias que la obra necesita**, escalada igual que cualquier otra
+# contra la familia mayor. Si manana FTS vende otra mezcla, este peso se mueve
+# solo al regenerar el catalogo, sin que nadie lo edite.
+#
+# LAS SEIS FAMILIAS, Y NO LAS CUATRO QUE LA DECISION NOMBRO. D3 dice "compra
+# electrico, automatizacion, termico y estructura a la vez". Se incluyen tambien
+# SERVICIO y MANEJO, y es una desviacion consciente de la lista literal: una
+# planta nueva necesita comisionamiento y arranque -- no se entrega sola-- y
+# necesita mover material dentro. Dejarlas fuera daria un peso de 35.2 y con el
+# Coficab Pesqueria se queda en 57.9 (`guarda`), por debajo del `pasa` que la
+# propia decision pide como prueba de aceptacion. Con las seis, el peso sale de
+# que la obra compra UNA DE CADA COSA, que es lo que de verdad hace.
+TIPO_INTEGRAL_OBRA_NUEVA = "obra_nueva_integral"
+TIPOS_INTEGRALES = {
+    # tipo -> las familias que la obra necesita. `None` = todas las del catalogo.
+    TIPO_INTEGRAL_OBRA_NUEVA: None,
+}
+
 # --------------------------------------------------------- terminos de la senal
 # Lo que una senal dice que va a pasar, apuntando al TIPO de proyecto de FTS que
 # implicaria. Los de electrico y automatizacion entraron por la DECISION 1; los
@@ -128,6 +165,10 @@ TERMINOS_DE_TIPO = {
     "mezzanine": "mezzanine",
     "entrepiso": "mezzanine",
     "estructura metalica": "estructura_metalica",
+    # OJO: "nave industrial" GENERICA se queda en trabajos_civiles. Una nota que
+    # habla de una nave sin decir que es NUEVA no es obra nueva: puede ser un
+    # reacondicionamiento, una renta o una mencion de paso. Los terminos de obra
+    # nueva viven abajo, y todos exigen la palabra que dice que es nueva.
     "nave industrial": "trabajos_civiles",
     "obra civil": "trabajos_civiles",
     "conveyor": "conveyor_y_manejo",
@@ -135,6 +176,36 @@ TERMINOS_DE_TIPO = {
     "polipasto": "conveyor_y_manejo",
     "embolsadora": "integracion_embolsadora",
     "empacadora": "integracion_embolsadora",
+    # --- obra nueva INTEGRAL: la senal mas fuerte que FTS puede recibir -----
+    # D3 de #329. Cada termino tiene que decir que la planta es NUEVA o que
+    # CRECE; ninguno pega con una mencion generica de una nave o de una planta.
+    "planta nueva": TIPO_INTEGRAL_OBRA_NUEVA,
+    "nueva planta": TIPO_INTEGRAL_OBRA_NUEVA,
+    "segunda planta": TIPO_INTEGRAL_OBRA_NUEVA,
+    "tercera planta": TIPO_INTEGRAL_OBRA_NUEVA,
+    "nueva nave": TIPO_INTEGRAL_OBRA_NUEVA,
+    "nave nueva": TIPO_INTEGRAL_OBRA_NUEVA,
+    "ampliacion de nave": TIPO_INTEGRAL_OBRA_NUEVA,
+    "ampliacion de planta": TIPO_INTEGRAL_OBRA_NUEVA,
+    "expansion de planta": TIPO_INTEGRAL_OBRA_NUEVA,
+    "construye una planta": TIPO_INTEGRAL_OBRA_NUEVA,
+    "construira una planta": TIPO_INTEGRAL_OBRA_NUEVA,
+    "construccion de planta": TIPO_INTEGRAL_OBRA_NUEVA,
+    "inaugura planta": TIPO_INTEGRAL_OBRA_NUEVA,
+    "inauguracion de planta": TIPO_INTEGRAL_OBRA_NUEVA,
+    "nuevo complejo": TIPO_INTEGRAL_OBRA_NUEVA,
+    "nueva linea de produccion": TIPO_INTEGRAL_OBRA_NUEVA,
+    # en ingles: las notas de prensa industrial de automotriz y alimentos en
+    # Nuevo Leon llegan en ingles la mitad de las veces
+    "new plant": TIPO_INTEGRAL_OBRA_NUEVA,
+    "second plant": TIPO_INTEGRAL_OBRA_NUEVA,
+    "third plant": TIPO_INTEGRAL_OBRA_NUEVA,
+    "plant expansion": TIPO_INTEGRAL_OBRA_NUEVA,
+    "new facility": TIPO_INTEGRAL_OBRA_NUEVA,
+    "greenfield": TIPO_INTEGRAL_OBRA_NUEVA,
+    "groundbreaking": TIPO_INTEGRAL_OBRA_NUEVA,
+    "breaks ground": TIPO_INTEGRAL_OBRA_NUEVA,
+    "new production line": TIPO_INTEGRAL_OBRA_NUEVA,
 }
 
 # --------------------------------------------------------------- los tres topes
@@ -282,16 +353,40 @@ def participacion_por_familia(catalogo: dict) -> dict[str, float]:
     return {f: n / total for f, n in por_familia.items()}
 
 
+def familias_de_un_tipo_integral(tipo: str, catalogo: dict) -> list[str]:
+    """Las familias que una obra de este tipo integral necesita."""
+    if tipo not in TIPOS_INTEGRALES:
+        return []
+    pedidas = TIPOS_INTEGRALES[tipo]
+    part = participacion_por_familia(catalogo)
+    if pedidas is None:
+        return sorted(part)
+    return sorted(f for f in pedidas if f in part)
+
+
 def peso_de_tipo(tipo: str, catalogo: dict) -> float:
     """Cuanto vale, de `MAX_TIPO_DE_OBRA`, una senal que apunta a este tipo.
 
     Escalado por la participacion de su FAMILIA contra la familia mas grande, con
     piso. Asi la senal electrica -- la familia mas grande-- vale el tope, y la
     termica vale proporcionalmente menos sin valer cero.
+
+    UN TIPO INTEGRAL PASA DEL TOPE, y es lo unico que puede pasarlo. Su peso es
+    la SUMA de las participaciones de las familias que la obra necesita, con la
+    misma escala: si necesita las seis, su suma es 1.0 y su peso sale ~3x el de la
+    familia mayor. No es una excepcion a la regla del peso derivado -- sigue
+    saliendo del catalogo y nadie escribe el numero-- es la regla aplicada a algo
+    que de verdad compra una de cada cosa.
     """
     part = participacion_por_familia(catalogo)
     if not part:
         return PESO_MINIMO_TIPO
+    mayor_ = max(part.values()) if part else 0
+    if tipo in TIPOS_INTEGRALES and mayor_ > 0:
+        familias = familias_de_un_tipo_integral(tipo, catalogo)
+        suma = sum(part[f] for f in familias)
+        return max(PESO_MINIMO_TIPO,
+                   round(MAX_TIPO_DE_OBRA * suma / mayor_, 1))
     f = FAMILIA_DE_TIPO.get(tipo)
     if not f or f not in part:
         return PESO_MINIMO_TIPO
@@ -414,8 +509,28 @@ def evaluar(senal: dict, catalogo: dict | None = None,
     catalogo = catalogo if catalogo is not None else cargar_catalogo()
     texto = " · ".join(str(senal.get(k) or "") for k in
                        ("texto", "requerimiento", "asunto", "nota"))
+    # DEFECTO B3 de #330: EL GIRO DE LA CUENTA NO ENTRABA AL EVALUADOR.
+    #
+    # `puntos_de_proceso` existe para puntuar el PROCESO DEL CLIENTE contra el
+    # catalogo, y solo se le daba el texto de la senal -- que es un titular de
+    # prensa--. O sea: se le estaba pidiendo al encabezado de una nota que
+    # dijera a que se dedica la empresa. El proceso es propiedad de la CUENTA,
+    # no de la noticia.
+    #
+    # Medido: Coficab es una planta de cable automotriz, el catalogo tiene el
+    # proceso `arneses_cableado` con proyectos reales, y la cuenta puntuaba CERO
+    # en proceso -- o peor, puntuaba `metalmecanica` por la palabra "prensa" del
+    # falso positivo B1--. El giro viaja en `Corrida.giro` desde siempre y nadie
+    # lo conectaba.
+    #
+    # El giro se suma SOLO para reconocer el proceso, no para los tipos de obra:
+    # el giro dice a que se dedica la planta, no que va a construir. Mezclarlo en
+    # `tipos_que_nombra` haria que una planta de cable puntuara "cable de datos"
+    # como si fuera un proyecto anunciado.
+    texto_con_giro = " · ".join(x for x in (texto, str(senal.get("giro") or ""))
+                                if x.strip())
 
-    p_proc, por_proc = puntos_de_proceso(texto, catalogo)
+    p_proc, por_proc = puntos_de_proceso(texto_con_giro, catalogo)
     nombra = tipos_que_nombra(texto)
     if nombra:
         pesos = [(t, tipo, peso_de_tipo(tipo, catalogo)) for t, tipo in nombra]
@@ -461,7 +576,14 @@ def evaluar(senal: dict, catalogo: dict | None = None,
                                f"frescura: {por_fresca}", por_fuente,
                                f"padron: {'empata (+8)' if empata else 'no empata (0)'}"]),
         "tipos_que_nombra": tipos_nombrados,
-        "familia": FAMILIA_DE_TIPO.get(tipo) if tipo else None,
+        # Un tipo integral NO tiene una familia: tiene todas. Reportar la de uno
+        # de sus componentes le mentiria al lazo 1, que agrupa por familia para
+        # corregir pesos -- le atribuiria a ELECTRICO una conversion que fue de
+        # una obra completa--.
+        "familia": (TIPO_INTEGRAL_OBRA_NUEVA if tipo in TIPOS_INTEGRALES
+                    else FAMILIA_DE_TIPO.get(tipo) if tipo else None),
+        "familias_de_la_obra": (familias_de_un_tipo_integral(tipo, catalogo)
+                                if tipo in TIPOS_INTEGRALES else []),
         "ambiguedad": ambiguedad,
         "umbrales": {"pasa": UMBRAL_PASA, "guarda": UMBRAL_GUARDA},
     }
