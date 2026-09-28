@@ -5,7 +5,7 @@
 
   "semaforo": {
     "_nota": "Simetrico: la desviacion se vigila en los DOS sentidos. Decision D3 de Esteban.",
-    "puntos_costo_adelante": 90,
+    "puntos_costo_adelante": 15,
     "_nota_costo": "Ambar cuando el consumo de costo va N puntos ADELANTE del avance de facturacion: sobregiro en curso.",
     "puntos_facturacion_adelante": 20,
     "_nota_facturacion": "Ambar cuando la FACTURACION va N puntos adelante del costo: costo sin registrar, y el margen que se ve es falso. Es el caso que domina hoy y el mas peligroso, porque sin esta regla un proyecto facturado al 100% con el 14% del costo sale VERDE (caso SO10304, medido el 2026-09-28)."
