@@ -1,0 +1,1605 @@
+{
+ "cobertura": {
+  "registros_total": 11562,
+  "registros_con_proyecto": 2073,
+  "primer_dia": "2024-11-11",
+  "ultimo_dia": "2026-09-25",
+  "primer_dia_con_proyecto_sostenido": "2026-04-23",
+  "dias_con_proyecto_antes_2026_04": [
+   "2025-08-22"
+  ]
+ },
+ "cobertura_mensual": {
+  "2024-11": {
+   "registros": 267,
+   "con_proyecto": 0,
+   "pct": 0.0
+  },
+  "2024-12": {
+   "registros": 505,
+   "con_proyecto": 0,
+   "pct": 0.0
+  },
+  "2025-01": {
+   "registros": 401,
+   "con_proyecto": 0,
+   "pct": 0.0
+  },
+  "2025-02": {
+   "registros": 387,
+   "con_proyecto": 0,
+   "pct": 0.0
+  },
+  "2025-03": {
+   "registros": 369,
+   "con_proyecto": 0,
+   "pct": 0.0
+  },
+  "2025-04": {
+   "registros": 425,
+   "con_proyecto": 0,
+   "pct": 0.0
+  },
+  "2025-05": {
+   "registros": 401,
+   "con_proyecto": 0,
+   "pct": 0.0
+  },
+  "2025-06": {
+   "registros": 406,
+   "con_proyecto": 0,
+   "pct": 0.0
+  },
+  "2025-07": {
+   "registros": 482,
+   "con_proyecto": 0,
+   "pct": 0.0
+  },
+  "2025-08": {
+   "registros": 474,
+   "con_proyecto": 1,
+   "pct": 0.2
+  },
+  "2025-09": {
+   "registros": 423,
+   "con_proyecto": 0,
+   "pct": 0.0
+  },
+  "2025-10": {
+   "registros": 575,
+   "con_proyecto": 0,
+   "pct": 0.0
+  },
+  "2025-11": {
+   "registros": 582,
+   "con_proyecto": 0,
+   "pct": 0.0
+  },
+  "2025-12": {
+   "registros": 593,
+   "con_proyecto": 0,
+   "pct": 0.0
+  },
+  "2026-01": {
+   "registros": 555,
+   "con_proyecto": 0,
+   "pct": 0.0
+  },
+  "2026-02": {
+   "registros": 512,
+   "con_proyecto": 0,
+   "pct": 0.0
+  },
+  "2026-03": {
+   "registros": 587,
+   "con_proyecto": 0,
+   "pct": 0.0
+  },
+  "2026-04": {
+   "registros": 671,
+   "con_proyecto": 184,
+   "pct": 27.4
+  },
+  "2026-05": {
+   "registros": 649,
+   "con_proyecto": 547,
+   "pct": 84.3
+  },
+  "2026-06": {
+   "registros": 625,
+   "con_proyecto": 579,
+   "pct": 92.6
+  },
+  "2026-07": {
+   "registros": 658,
+   "con_proyecto": 347,
+   "pct": 52.7
+  },
+  "2026-08": {
+   "registros": 534,
+   "con_proyecto": 207,
+   "pct": 38.8
+  },
+  "2026-09": {
+   "registros": 481,
+   "con_proyecto": 208,
+   "pct": 43.2
+  }
+ },
+ "ventana": {
+  "desde": "2026-04-23",
+  "hasta": "2026-09-25",
+  "empleado_dia_campo": 1943,
+  "empleado_dia_campo_con_proyecto": 1608,
+  "pct": 82.8
+ },
+ "cobertura_ventana_por_grupo_mes": {
+  "campo": {
+   "2026-04": {
+    "empleado_dia": 150,
+    "con_proyecto": 126,
+    "pct": 84.0
+   },
+   "2026-05": {
+    "empleado_dia": 439,
+    "con_proyecto": 369,
+    "pct": 84.1
+   },
+   "2026-06": {
+    "empleado_dia": 381,
+    "con_proyecto": 368,
+    "pct": 96.6
+   },
+   "2026-07": {
+    "empleado_dia": 383,
+    "con_proyecto": 332,
+    "pct": 86.7
+   },
+   "2026-08": {
+    "empleado_dia": 301,
+    "con_proyecto": 206,
+    "pct": 68.4
+   },
+   "2026-09": {
+    "empleado_dia": 289,
+    "con_proyecto": 207,
+    "pct": 71.6
+   }
+  },
+  "cuadrilla": {
+   "2026-04": {
+    "empleado_dia": 86,
+    "con_proyecto": 73,
+    "pct": 84.9
+   },
+   "2026-05": {
+    "empleado_dia": 257,
+    "con_proyecto": 212,
+    "pct": 82.5
+   },
+   "2026-06": {
+    "empleado_dia": 277,
+    "con_proyecto": 267,
+    "pct": 96.4
+   },
+   "2026-07": {
+    "empleado_dia": 300,
+    "con_proyecto": 265,
+    "pct": 88.3
+   },
+   "2026-08": {
+    "empleado_dia": 243,
+    "con_proyecto": 190,
+    "pct": 78.2
+   },
+   "2026-09": {
+    "empleado_dia": 237,
+    "con_proyecto": 188,
+    "pct": 79.3
+   }
+  },
+  "oficina": {
+   "2026-04": {
+    "empleado_dia": 62,
+    "con_proyecto": 58,
+    "pct": 93.5
+   },
+   "2026-05": {
+    "empleado_dia": 207,
+    "con_proyecto": 175,
+    "pct": 84.5
+   },
+   "2026-06": {
+    "empleado_dia": 241,
+    "con_proyecto": 208,
+    "pct": 86.3
+   },
+   "2026-07": {
+    "empleado_dia": 272,
+    "con_proyecto": 13,
+    "pct": 4.8
+   },
+   "2026-08": {
+    "empleado_dia": 232,
+    "con_proyecto": 0,
+    "pct": 0.0
+   },
+   "2026-09": {
+    "empleado_dia": 190,
+    "con_proyecto": 0,
+    "pct": 0.0
+   }
+  }
+ },
+ "magnekon_registros": {
+  "total": 464,
+  "oficina": 383
+ },
+ "frentes_todos": {
+  "dias_con_frente": 120,
+  "frentes_SO": {
+   "n": 120,
+   "max": 5,
+   "p95": 4.0,
+   "p90": 4.0,
+   "p75": 4.0,
+   "mediana": 3.0,
+   "media": 2.78
+  },
+  "plantas": {
+   "n": 120,
+   "max": 5,
+   "p95": 4.0,
+   "p90": 4.0,
+   "p75": 3.0,
+   "mediana": 2.0,
+   "media": 2.63
+  },
+  "dias_plantas_ge2": 106,
+  "dias_plantas_ge3": 59,
+  "dias_plantas_ge4": 28,
+  "dias_habiles": {
+   "n": 111
+  },
+  "plantas_solo_lun_vie": {
+   "n": 111,
+   "max": 5,
+   "p95": 4.0,
+   "p90": 4.0,
+   "p75": 3.5,
+   "mediana": 3.0,
+   "media": 2.76
+  },
+  "hist_plantas": {
+   "1": 14,
+   "2": 47,
+   "3": 31,
+   "4": 25,
+   "5": 3
+  },
+  "por_mes": {
+   "2026-04": {
+    "dias": 8,
+    "max": 5,
+    "mediana": 4.0,
+    "media": 3.25,
+    "dias_ge2": 6,
+    "dias_ge3": 6,
+    "dias_ge4": 5
+   },
+   "2026-05": {
+    "dias": 26,
+    "max": 5,
+    "mediana": 3.0,
+    "media": 2.81,
+    "dias_ge2": 21,
+    "dias_ge3": 18,
+    "dias_ge4": 7
+   },
+   "2026-06": {
+    "dias": 23,
+    "max": 5,
+    "mediana": 4.0,
+    "media": 3.52,
+    "dias_ge2": 22,
+    "dias_ge3": 22,
+    "dias_ge4": 13
+   },
+   "2026-07": {
+    "dias": 23,
+    "max": 4,
+    "mediana": 2.0,
+    "media": 2.43,
+    "dias_ge2": 23,
+    "dias_ge3": 7,
+    "dias_ge4": 3
+   },
+   "2026-08": {
+    "dias": 22,
+    "max": 2,
+    "mediana": 2.0,
+    "media": 1.73,
+    "dias_ge2": 16,
+    "dias_ge3": 0,
+    "dias_ge4": 0
+   },
+   "2026-09": {
+    "dias": 18,
+    "max": 3,
+    "mediana": 2.0,
+    "media": 2.33,
+    "dias_ge2": 18,
+    "dias_ge3": 6,
+    "dias_ge4": 0
+   }
+  }
+ },
+ "frentes_sin_oficina_en_magnekon": {
+  "dias_con_frente": 120,
+  "frentes_SO": {
+   "n": 120,
+   "max": 5,
+   "p95": 4.0,
+   "p90": 4.0,
+   "p75": 3.0,
+   "mediana": 2.0,
+   "media": 2.6
+  },
+  "plantas": {
+   "n": 120,
+   "max": 5,
+   "p95": 4.0,
+   "p90": 4.0,
+   "p75": 3.0,
+   "mediana": 2.0,
+   "media": 2.46
+  },
+  "dias_plantas_ge2": 106,
+  "dias_plantas_ge3": 48,
+  "dias_plantas_ge4": 20,
+  "dias_habiles": {
+   "n": 111
+  },
+  "plantas_solo_lun_vie": {
+   "n": 111,
+   "max": 5,
+   "p95": 4.0,
+   "p90": 4.0,
+   "p75": 3.0,
+   "mediana": 2.0,
+   "media": 2.57
+  },
+  "hist_plantas": {
+   "1": 14,
+   "2": 58,
+   "3": 28,
+   "4": 19,
+   "5": 1
+  },
+  "por_mes": {
+   "2026-04": {
+    "dias": 8,
+    "max": 5,
+    "mediana": 4.0,
+    "media": 3.25,
+    "dias_ge2": 6,
+    "dias_ge3": 6,
+    "dias_ge4": 5
+   },
+   "2026-05": {
+    "dias": 26,
+    "max": 4,
+    "mediana": 2.5,
+    "media": 2.58,
+    "dias_ge2": 21,
+    "dias_ge3": 13,
+    "dias_ge4": 7
+   },
+   "2026-06": {
+    "dias": 23,
+    "max": 4,
+    "mediana": 3.0,
+    "media": 3,
+    "dias_ge2": 22,
+    "dias_ge3": 17,
+    "dias_ge4": 7
+   },
+   "2026-07": {
+    "dias": 23,
+    "max": 4,
+    "mediana": 2.0,
+    "media": 2.3,
+    "dias_ge2": 23,
+    "dias_ge3": 6,
+    "dias_ge4": 1
+   },
+   "2026-08": {
+    "dias": 22,
+    "max": 2,
+    "mediana": 2.0,
+    "media": 1.73,
+    "dias_ge2": 16,
+    "dias_ge3": 0,
+    "dias_ge4": 0
+   },
+   "2026-09": {
+    "dias": 18,
+    "max": 3,
+    "mediana": 2.0,
+    "media": 2.33,
+    "dias_ge2": 18,
+    "dias_ge3": 6,
+    "dias_ge4": 0
+   }
+  }
+ },
+ "frentes_solo_cuadrilla": {
+  "dias_con_frente": 120,
+  "frentes_SO": {
+   "n": 120,
+   "max": 4,
+   "p95": 3.0,
+   "p90": 3.0,
+   "p75": 3.0,
+   "mediana": 2.0,
+   "media": 2.23
+  },
+  "plantas": {
+   "n": 120,
+   "max": 4,
+   "p95": 3.0,
+   "p90": 3.0,
+   "p75": 2.25,
+   "mediana": 2.0,
+   "media": 2.15
+  },
+  "dias_plantas_ge2": 106,
+  "dias_plantas_ge3": 30,
+  "dias_plantas_ge4": 2,
+  "dias_habiles": {
+   "n": 111
+  },
+  "plantas_solo_lun_vie": {
+   "n": 111,
+   "max": 4,
+   "p95": 3.0,
+   "p90": 3.0,
+   "p75": 3.0,
+   "mediana": 2.0,
+   "media": 2.23
+  },
+  "hist_plantas": {
+   "1": 14,
+   "2": 76,
+   "3": 28,
+   "4": 2
+  },
+  "por_mes": {
+   "2026-04": {
+    "dias": 8,
+    "max": 3,
+    "mediana": 2.0,
+    "media": 2,
+    "dias_ge2": 6,
+    "dias_ge3": 2,
+    "dias_ge4": 0
+   },
+   "2026-05": {
+    "dias": 26,
+    "max": 3,
+    "mediana": 2.0,
+    "media": 2.08,
+    "dias_ge2": 21,
+    "dias_ge3": 7,
+    "dias_ge4": 0
+   },
+   "2026-06": {
+    "dias": 23,
+    "max": 4,
+    "mediana": 2.0,
+    "media": 2.48,
+    "dias_ge2": 22,
+    "dias_ge3": 11,
+    "dias_ge4": 1
+   },
+   "2026-07": {
+    "dias": 23,
+    "max": 4,
+    "mediana": 2.0,
+    "media": 2.26,
+    "dias_ge2": 23,
+    "dias_ge3": 5,
+    "dias_ge4": 1
+   },
+   "2026-08": {
+    "dias": 22,
+    "max": 2,
+    "mediana": 2.0,
+    "media": 1.73,
+    "dias_ge2": 16,
+    "dias_ge3": 0,
+    "dias_ge4": 0
+   },
+   "2026-09": {
+    "dias": 18,
+    "max": 3,
+    "mediana": 2.0,
+    "media": 2.28,
+    "dias_ge2": 18,
+    "dias_ge3": 5,
+    "dias_ge4": 0
+   }
+  }
+ },
+ "frentes_sin_oficina": {
+  "dias_con_frente": 120,
+  "frentes_SO": {
+   "n": 120,
+   "max": 5,
+   "p95": 4.0,
+   "p90": 4.0,
+   "p75": 3.0,
+   "mediana": 2.0,
+   "media": 2.52
+  },
+  "plantas": {
+   "n": 120,
+   "max": 4,
+   "p95": 4.0,
+   "p90": 4.0,
+   "p75": 3.0,
+   "mediana": 2.0,
+   "media": 2.38
+  },
+  "dias_plantas_ge2": 106,
+  "dias_plantas_ge3": 46,
+  "dias_plantas_ge4": 13,
+  "dias_habiles": {
+   "n": 111
+  },
+  "plantas_solo_lun_vie": {
+   "n": 111,
+   "max": 4,
+   "p95": 4.0,
+   "p90": 4.0,
+   "p75": 3.0,
+   "mediana": 2.0,
+   "media": 2.48
+  },
+  "hist_plantas": {
+   "1": 14,
+   "2": 60,
+   "3": 33,
+   "4": 13
+  },
+  "por_mes": {
+   "2026-04": {
+    "dias": 8,
+    "max": 4,
+    "mediana": 3.0,
+    "media": 2.75,
+    "dias_ge2": 6,
+    "dias_ge3": 6,
+    "dias_ge4": 2
+   },
+   "2026-05": {
+    "dias": 26,
+    "max": 4,
+    "mediana": 2.5,
+    "media": 2.5,
+    "dias_ge2": 21,
+    "dias_ge3": 13,
+    "dias_ge4": 5
+   },
+   "2026-06": {
+    "dias": 23,
+    "max": 4,
+    "mediana": 3.0,
+    "media": 2.87,
+    "dias_ge2": 22,
+    "dias_ge3": 16,
+    "dias_ge4": 5
+   },
+   "2026-07": {
+    "dias": 23,
+    "max": 4,
+    "mediana": 2.0,
+    "media": 2.26,
+    "dias_ge2": 23,
+    "dias_ge3": 5,
+    "dias_ge4": 1
+   },
+   "2026-08": {
+    "dias": 22,
+    "max": 2,
+    "mediana": 2.0,
+    "media": 1.73,
+    "dias_ge2": 16,
+    "dias_ge3": 0,
+    "dias_ge4": 0
+   },
+   "2026-09": {
+    "dias": 18,
+    "max": 3,
+    "mediana": 2.0,
+    "media": 2.33,
+    "dias_ge2": 18,
+    "dias_ge3": 6,
+    "dias_ge4": 0
+   }
+  }
+ },
+ "corridas_todos": {
+  "global": {
+   "corridas": 405,
+   "dias_registrados": {
+    "n": 405,
+    "max": 46,
+    "p95": 17.0,
+    "p90": 11.0,
+    "p75": 6.0,
+    "mediana": 2.0,
+    "media": 4.98
+   },
+   "dias_naturales": {
+    "n": 405,
+    "max": 65,
+    "p95": 25.8,
+    "p90": 17.0,
+    "p75": 9.0,
+    "mediana": 3.0,
+    "media": 6.83
+   }
+  },
+  "por_planta": {
+   "TOPO_CHICO": {
+    "corridas": 147,
+    "dias_registrados": {
+     "n": 147,
+     "max": 46,
+     "p95": 20.0,
+     "p90": 16.0,
+     "p75": 8.5,
+     "mediana": 3.0,
+     "media": 6.34
+    },
+    "dias_naturales": {
+     "n": 147,
+     "max": 64,
+     "p95": 31.1,
+     "p90": 23.8,
+     "p75": 11.5,
+     "mediana": 4.0,
+     "media": 8.7
+    }
+   },
+   "VERTIV": {
+    "corridas": 98,
+    "dias_registrados": {
+     "n": 98,
+     "max": 36,
+     "p95": 16.15,
+     "p90": 10.6,
+     "p75": 7.0,
+     "mediana": 3.0,
+     "media": 5.26
+    },
+    "dias_naturales": {
+     "n": 98,
+     "max": 56,
+     "p95": 24.3,
+     "p90": 15.6,
+     "p75": 10.0,
+     "mediana": 4.0,
+     "media": 7.17
+    }
+   },
+   "MAGNEKON": {
+    "corridas": 85,
+    "dias_registrados": {
+     "n": 85,
+     "max": 41,
+     "p95": 11.0,
+     "p90": 10.0,
+     "p75": 7.0,
+     "mediana": 4.0,
+     "media": 5.42
+    },
+    "dias_naturales": {
+     "n": 85,
+     "max": 65,
+     "p95": 16.8,
+     "p90": 15.0,
+     "p75": 10.0,
+     "mediana": 5.0,
+     "media": 7.72
+    }
+   },
+   "BRIDGESTONE": {
+    "corridas": 53,
+    "dias_registrados": {
+     "n": 53,
+     "max": 6,
+     "p95": 4.4,
+     "p90": 3.0,
+     "p75": 2.0,
+     "mediana": 1.0,
+     "media": 1.58
+    },
+    "dias_naturales": {
+     "n": 53,
+     "max": 8,
+     "p95": 7.0,
+     "p90": 5.0,
+     "p75": 2.0,
+     "mediana": 1.0,
+     "media": 1.96
+    }
+   },
+   "BUDENHEIM": {
+    "corridas": 16,
+    "dias_registrados": {
+     "n": 16,
+     "max": 2,
+     "p95": 2.0,
+     "p90": 2.0,
+     "p75": 1.0,
+     "mediana": 1.0,
+     "media": 1.19
+    },
+    "dias_naturales": {
+     "n": 16,
+     "max": 2,
+     "p95": 2.0,
+     "p90": 2.0,
+     "p75": 1.0,
+     "mediana": 1.0,
+     "media": 1.19
+    }
+   },
+   "MISSION_FOODS": {
+    "corridas": 2,
+    "dias_registrados": {
+     "n": 2,
+     "max": 1,
+     "p95": 1.0,
+     "p90": 1.0,
+     "p75": 1.0,
+     "mediana": 1.0,
+     "media": 1
+    },
+    "dias_naturales": {
+     "n": 2,
+     "max": 1,
+     "p95": 1.0,
+     "p90": 1.0,
+     "p75": 1.0,
+     "mediana": 1.0,
+     "media": 1
+    }
+   },
+   "BEBIDAS_PURIFICADAS": {
+    "corridas": 2,
+    "dias_registrados": {
+     "n": 2,
+     "max": 1,
+     "p95": 1.0,
+     "p90": 1.0,
+     "p75": 1.0,
+     "mediana": 1.0,
+     "media": 1
+    },
+    "dias_naturales": {
+     "n": 2,
+     "max": 1,
+     "p95": 1.0,
+     "p90": 1.0,
+     "p75": 1.0,
+     "mediana": 1.0,
+     "media": 1
+    }
+   },
+   "QUIMITEC": {
+    "corridas": 1,
+    "dias_registrados": {
+     "n": 1,
+     "max": 1,
+     "p95": 1.0,
+     "p90": 1.0,
+     "p75": 1.0,
+     "mediana": 1.0,
+     "media": 1
+    },
+    "dias_naturales": {
+     "n": 1,
+     "max": 1,
+     "p95": 1.0,
+     "p90": 1.0,
+     "p75": 1.0,
+     "mediana": 1.0,
+     "media": 1
+    }
+   },
+   "MONDELEZ": {
+    "corridas": 1,
+    "dias_registrados": {
+     "n": 1,
+     "max": 1,
+     "p95": 1.0,
+     "p90": 1.0,
+     "p75": 1.0,
+     "mediana": 1.0,
+     "media": 1
+    },
+    "dias_naturales": {
+     "n": 1,
+     "max": 1,
+     "p95": 1.0,
+     "p90": 1.0,
+     "p75": 1.0,
+     "mediana": 1.0,
+     "media": 1
+    }
+   }
+  }
+ },
+ "corridas_cuadrilla": {
+  "global": {
+   "corridas": 219,
+   "dias_registrados": {
+    "n": 219,
+    "max": 46,
+    "p95": 17.0,
+    "p90": 13.0,
+    "p75": 7.0,
+    "mediana": 3.0,
+    "media": 5.29
+   },
+   "dias_naturales": {
+    "n": 219,
+    "max": 64,
+    "p95": 25.1,
+    "p90": 17.0,
+    "p75": 9.5,
+    "mediana": 4.0,
+    "media": 7.06
+   }
+  },
+  "por_planta": {
+   "TOPO_CHICO": {
+    "corridas": 98,
+    "dias_registrados": {
+     "n": 98,
+     "max": 46,
+     "p95": 20.0,
+     "p90": 16.0,
+     "p75": 9.75,
+     "mediana": 4.0,
+     "media": 6.76
+    },
+    "dias_naturales": {
+     "n": 98,
+     "max": 64,
+     "p95": 29.45,
+     "p90": 23.0,
+     "p75": 12.0,
+     "mediana": 5.0,
+     "media": 9.16
+    }
+   },
+   "VERTIV": {
+    "corridas": 74,
+    "dias_registrados": {
+     "n": 74,
+     "max": 36,
+     "p95": 14.35,
+     "p90": 9.0,
+     "p75": 7.0,
+     "mediana": 3.0,
+     "media": 5.15
+    },
+    "dias_naturales": {
+     "n": 74,
+     "max": 53,
+     "p95": 18.0,
+     "p90": 12.7,
+     "p75": 10.0,
+     "mediana": 4.0,
+     "media": 6.84
+    }
+   },
+   "BRIDGESTONE": {
+    "corridas": 33,
+    "dias_registrados": {
+     "n": 33,
+     "max": 6,
+     "p95": 5.0,
+     "p90": 3.8,
+     "p75": 2.0,
+     "mediana": 1.0,
+     "media": 1.82
+    },
+    "dias_naturales": {
+     "n": 33,
+     "max": 8,
+     "p95": 7.4,
+     "p90": 6.6,
+     "p75": 2.0,
+     "mediana": 1.0,
+     "media": 2.3
+    }
+   },
+   "MAGNEKON": {
+    "corridas": 8,
+    "dias_registrados": {
+     "n": 8,
+     "max": 10,
+     "p95": 10.0,
+     "p90": 10.0,
+     "p75": 10.0,
+     "mediana": 7.5,
+     "media": 6
+    },
+    "dias_naturales": {
+     "n": 8,
+     "max": 12,
+     "p95": 12.0,
+     "p90": 12.0,
+     "p75": 12.0,
+     "mediana": 9.5,
+     "media": 7.25
+    }
+   },
+   "BUDENHEIM": {
+    "corridas": 3,
+    "dias_registrados": {
+     "n": 3,
+     "max": 2,
+     "p95": 2.0,
+     "p90": 2.0,
+     "p75": 2.0,
+     "mediana": 2.0,
+     "media": 1.67
+    },
+    "dias_naturales": {
+     "n": 3,
+     "max": 2,
+     "p95": 2.0,
+     "p90": 2.0,
+     "p75": 2.0,
+     "mediana": 2.0,
+     "media": 1.67
+    }
+   },
+   "MISSION_FOODS": {
+    "corridas": 1,
+    "dias_registrados": {
+     "n": 1,
+     "max": 1,
+     "p95": 1.0,
+     "p90": 1.0,
+     "p75": 1.0,
+     "mediana": 1.0,
+     "media": 1
+    },
+    "dias_naturales": {
+     "n": 1,
+     "max": 1,
+     "p95": 1.0,
+     "p90": 1.0,
+     "p75": 1.0,
+     "mediana": 1.0,
+     "media": 1
+    }
+   },
+   "QUIMITEC": {
+    "corridas": 1,
+    "dias_registrados": {
+     "n": 1,
+     "max": 1,
+     "p95": 1.0,
+     "p90": 1.0,
+     "p75": 1.0,
+     "mediana": 1.0,
+     "media": 1
+    },
+    "dias_naturales": {
+     "n": 1,
+     "max": 1,
+     "p95": 1.0,
+     "p90": 1.0,
+     "p75": 1.0,
+     "mediana": 1.0,
+     "media": 1
+    }
+   },
+   "BEBIDAS_PURIFICADAS": {
+    "corridas": 1,
+    "dias_registrados": {
+     "n": 1,
+     "max": 1,
+     "p95": 1.0,
+     "p90": 1.0,
+     "p75": 1.0,
+     "mediana": 1.0,
+     "media": 1
+    },
+    "dias_naturales": {
+     "n": 1,
+     "max": 1,
+     "p95": 1.0,
+     "p90": 1.0,
+     "p75": 1.0,
+     "mediana": 1.0,
+     "media": 1
+    }
+   }
+  }
+ },
+ "presencia_planta": {
+  "TOPO_CHICO": {
+   "primer_dia": "2026-04-23",
+   "ultimo_dia": "2026-09-25",
+   "span_naturales": 156,
+   "dias_con_asistencia": 119,
+   "tramos_continuos": 1,
+   "tramo_mas_largo_dias_registrados": 119,
+   "tramo_mas_largo": "2026-04-23..2026-09-25",
+   "tramo_mas_largo_naturales": 156,
+   "empleados_distintos": 32
+  },
+  "VERTIV": {
+   "primer_dia": "2026-04-23",
+   "ultimo_dia": "2026-09-25",
+   "span_naturales": 156,
+   "dias_con_asistencia": 93,
+   "tramos_continuos": 4,
+   "tramo_mas_largo_dias_registrados": 60,
+   "tramo_mas_largo": "2026-04-23..2026-07-17",
+   "tramo_mas_largo_naturales": 86,
+   "empleados_distintos": 24
+  },
+  "MAGNEKON": {
+   "primer_dia": "2026-04-23",
+   "ultimo_dia": "2026-08-03",
+   "span_naturales": 103,
+   "dias_con_asistencia": 59,
+   "tramos_continuos": 4,
+   "tramo_mas_largo_dias_registrados": 45,
+   "tramo_mas_largo": "2026-04-23..2026-06-26",
+   "tramo_mas_largo_naturales": 65,
+   "empleados_distintos": 25
+  },
+  "BRIDGESTONE": {
+   "primer_dia": "2026-04-23",
+   "ultimo_dia": "2026-09-24",
+   "span_naturales": 155,
+   "dias_con_asistencia": 32,
+   "tramos_continuos": 11,
+   "tramo_mas_largo_dias_registrados": 10,
+   "tramo_mas_largo": "2026-06-11..2026-06-30",
+   "tramo_mas_largo_naturales": 20,
+   "empleados_distintos": 19
+  },
+  "BUDENHEIM": {
+   "primer_dia": "2026-04-23",
+   "ultimo_dia": "2026-06-08",
+   "span_naturales": 47,
+   "dias_con_asistencia": 8,
+   "tramos_continuos": 5,
+   "tramo_mas_largo_dias_registrados": 2,
+   "tramo_mas_largo": "2026-04-29..2026-04-30",
+   "tramo_mas_largo_naturales": 2,
+   "empleados_distintos": 9
+  },
+  "MISSION_FOODS": {
+   "primer_dia": "2026-05-11",
+   "ultimo_dia": "2026-07-07",
+   "span_naturales": 58,
+   "dias_con_asistencia": 2,
+   "tramos_continuos": 2,
+   "tramo_mas_largo_dias_registrados": 1,
+   "tramo_mas_largo": "2026-05-11..2026-05-11",
+   "tramo_mas_largo_naturales": 1,
+   "empleados_distintos": 2
+  },
+  "BEBIDAS_PURIFICADAS": {
+   "primer_dia": "2026-05-01",
+   "ultimo_dia": "2026-05-01",
+   "span_naturales": 1,
+   "dias_con_asistencia": 1,
+   "tramos_continuos": 1,
+   "tramo_mas_largo_dias_registrados": 1,
+   "tramo_mas_largo": "2026-05-01..2026-05-01",
+   "tramo_mas_largo_naturales": 1,
+   "empleados_distintos": 2
+  },
+  "MONDELEZ": {
+   "primer_dia": "2026-06-04",
+   "ultimo_dia": "2026-06-04",
+   "span_naturales": 1,
+   "dias_con_asistencia": 1,
+   "tramos_continuos": 1,
+   "tramo_mas_largo_dias_registrados": 1,
+   "tramo_mas_largo": "2026-06-04..2026-06-04",
+   "tramo_mas_largo_naturales": 1,
+   "empleados_distintos": 1
+  },
+  "QUIMITEC": {
+   "primer_dia": "2026-07-08",
+   "ultimo_dia": "2026-07-08",
+   "span_naturales": 1,
+   "dias_con_asistencia": 1,
+   "tramos_continuos": 1,
+   "tramo_mas_largo_dias_registrados": 1,
+   "tramo_mas_largo": "2026-07-08..2026-07-08",
+   "tramo_mas_largo_naturales": 1,
+   "empleados_distintos": 1
+  }
+ },
+ "rotacion_todos": {
+  "empleados": 44,
+  "transiciones": 1910,
+  "cambios": 298,
+  "pct_cambio": 15.6,
+  "empleado_dias": 2017,
+  "empleado_dias_multiplanta": 0,
+  "pct_multiplanta": 0.0,
+  "cambios_por_semana_empleados_10d": {
+   "n": 37,
+   "max": 1.44,
+   "p95": 1.3,
+   "p90": 1.26,
+   "p75": 0.83,
+   "mediana": 0.59,
+   "media": 0.6
+  }
+ },
+ "rotacion_cuadrilla": {
+  "empleados": 14,
+  "transiciones": 1117,
+  "cambios": 177,
+  "pct_cambio": 15.8,
+  "empleado_dias": 1159,
+  "empleado_dias_multiplanta": 0,
+  "pct_multiplanta": 0.0,
+  "cambios_por_semana_empleados_10d": {
+   "n": 14,
+   "max": 1.44,
+   "p95": 1.23,
+   "p90": 1.09,
+   "p75": 0.79,
+   "mediana": 0.59,
+   "media": 0.65
+  },
+  "detalle": {
+   "Mateo Salazar [75]": {
+    "dias_con_planta": 52,
+    "transiciones": 46,
+    "cambios": 12,
+    "pct_cambio": 26.1,
+    "cambios_por_semana": 0.54,
+    "dias_multiplanta": 0,
+    "plantas": [
+     "BRIDGESTONE",
+     "TOPO_CHICO",
+     "VERTIV"
+    ]
+   },
+   "Felipe Pérez [112]": {
+    "dias_con_planta": 42,
+    "transiciones": 39,
+    "cambios": 16,
+    "pct_cambio": 41.0,
+    "cambios_por_semana": 1.44,
+    "dias_multiplanta": 0,
+    "plantas": [
+     "BRIDGESTONE",
+     "MISSION_FOODS",
+     "QUIMITEC",
+     "TOPO_CHICO",
+     "VERTIV"
+    ]
+   },
+   "Germán Merino [124]": {
+    "dias_con_planta": 101,
+    "transiciones": 98,
+    "cambios": 23,
+    "pct_cambio": 23.5,
+    "cambios_por_semana": 1.03,
+    "dias_multiplanta": 0,
+    "plantas": [
+     "BRIDGESTONE",
+     "MAGNEKON",
+     "TOPO_CHICO",
+     "VERTIV"
+    ]
+   },
+   "Enoc Maldonado [128]": {
+    "dias_con_planta": 109,
+    "transiciones": 107,
+    "cambios": 15,
+    "pct_cambio": 14.0,
+    "cambios_por_semana": 0.67,
+    "dias_multiplanta": 0,
+    "plantas": [
+     "MAGNEKON",
+     "TOPO_CHICO",
+     "VERTIV"
+    ]
+   },
+   "Rolando Vázquez [130]": {
+    "dias_con_planta": 104,
+    "transiciones": 101,
+    "cambios": 15,
+    "pct_cambio": 14.9,
+    "cambios_por_semana": 0.67,
+    "dias_multiplanta": 0,
+    "plantas": [
+     "MAGNEKON",
+     "TOPO_CHICO",
+     "VERTIV"
+    ]
+   },
+   "Tomás Vázquez [131]": {
+    "dias_con_planta": 102,
+    "transiciones": 100,
+    "cambios": 13,
+    "pct_cambio": 13.0,
+    "cambios_por_semana": 0.59,
+    "dias_multiplanta": 0,
+    "plantas": [
+     "MAGNEKON",
+     "TOPO_CHICO",
+     "VERTIV"
+    ]
+   },
+   "Leonel Cruz [6]": {
+    "dias_con_planta": 93,
+    "transiciones": 90,
+    "cambios": 10,
+    "pct_cambio": 11.1,
+    "cambios_por_semana": 0.45,
+    "dias_multiplanta": 0,
+    "plantas": [
+     "BRIDGESTONE",
+     "TOPO_CHICO",
+     "VERTIV"
+    ]
+   },
+   "Héctor Cruz [25]": {
+    "dias_con_planta": 100,
+    "transiciones": 98,
+    "cambios": 3,
+    "pct_cambio": 3.1,
+    "cambios_por_semana": 0.14,
+    "dias_multiplanta": 0,
+    "plantas": [
+     "TOPO_CHICO",
+     "VERTIV"
+    ]
+   },
+   "Juan Manuel Sánchez [55]": {
+    "dias_con_planta": 62,
+    "transiciones": 57,
+    "cambios": 7,
+    "pct_cambio": 12.3,
+    "cambios_por_semana": 0.37,
+    "dias_multiplanta": 0,
+    "plantas": [
+     "TOPO_CHICO",
+     "VERTIV"
+    ]
+   },
+   "César Gómez [127]": {
+    "dias_con_planta": 109,
+    "transiciones": 108,
+    "cambios": 13,
+    "pct_cambio": 12.0,
+    "cambios_por_semana": 0.59,
+    "dias_multiplanta": 0,
+    "plantas": [
+     "BRIDGESTONE",
+     "TOPO_CHICO",
+     "VERTIV"
+    ]
+   },
+   "Carlos Manzanares [76]": {
+    "dias_con_planta": 100,
+    "transiciones": 98,
+    "cambios": 7,
+    "pct_cambio": 7.1,
+    "cambios_por_semana": 0.32,
+    "dias_multiplanta": 0,
+    "plantas": [
+     "MAGNEKON",
+     "TOPO_CHICO",
+     "VERTIV"
+    ]
+   },
+   "José Luis Romero [79]": {
+    "dias_con_planta": 71,
+    "transiciones": 64,
+    "cambios": 24,
+    "pct_cambio": 37.5,
+    "cambios_por_semana": 1.11,
+    "dias_multiplanta": 0,
+    "plantas": [
+     "BEBIDAS_PURIFICADAS",
+     "BRIDGESTONE",
+     "BUDENHEIM",
+     "TOPO_CHICO",
+     "VERTIV"
+    ]
+   },
+   "Stephany Ventura [121]": {
+    "dias_con_planta": 104,
+    "transiciones": 103,
+    "cambios": 18,
+    "pct_cambio": 17.5,
+    "cambios_por_semana": 0.83,
+    "dias_multiplanta": 0,
+    "plantas": [
+     "BRIDGESTONE",
+     "TOPO_CHICO"
+    ]
+   },
+   "Ramiro Segovia [154]": {
+    "dias_con_planta": 10,
+    "transiciones": 8,
+    "cambios": 1,
+    "pct_cambio": 12.5,
+    "cambios_por_semana": 0.3,
+    "dias_multiplanta": 0,
+    "plantas": [
+     "MAGNEKON",
+     "TOPO_CHICO"
+    ]
+   }
+  }
+ },
+ "ultima_asistencia_por_so": {
+  "SO11526": {
+   "project_id": 2297,
+   "planta": "USA",
+   "ultimo_dia": "2026-04-28",
+   "dias_sin_asistencia_al_2026_09_28": 153,
+   "stage_proyecto": "Complete TOTAL (Gera)",
+   "empresa": "USA"
+  },
+  "SO11511": {
+   "project_id": 2327,
+   "planta": "BEBIDAS_PURIFICADAS",
+   "ultimo_dia": "2026-05-01",
+   "dias_sin_asistencia_al_2026_09_28": 150,
+   "stage_proyecto": "En plazo de credito",
+   "empresa": "MX"
+  },
+  "SO7723": {
+   "project_id": 101,
+   "planta": "MAGNEKON",
+   "ultimo_dia": "2026-05-05",
+   "dias_sin_asistencia_al_2026_09_28": 146,
+   "stage_proyecto": "En plazo de credito",
+   "empresa": "MX"
+  },
+  "SO11516": {
+   "project_id": 515,
+   "planta": "USA",
+   "ultimo_dia": "2026-05-08",
+   "dias_sin_asistencia_al_2026_09_28": 143,
+   "stage_proyecto": "Complete TOTAL (Gera)",
+   "empresa": "USA"
+  },
+  "SO5995": {
+   "project_id": 28,
+   "planta": "VERTIV",
+   "ultimo_dia": "2026-05-12",
+   "dias_sin_asistencia_al_2026_09_28": 139,
+   "stage_proyecto": "Complete TOTAL (Gera)",
+   "empresa": "MX"
+  },
+  "SO11644": {
+   "project_id": 2328,
+   "planta": "USA",
+   "ultimo_dia": "2026-05-13",
+   "dias_sin_asistencia_al_2026_09_28": 138,
+   "stage_proyecto": "Complete TOTAL (Gera)",
+   "empresa": "USA"
+  },
+  "SO9667": {
+   "project_id": 126,
+   "planta": "MONDELEZ",
+   "ultimo_dia": "2026-06-04",
+   "dias_sin_asistencia_al_2026_09_28": 116,
+   "stage_proyecto": "Canceled",
+   "empresa": "MX"
+  },
+  "SO10344": {
+   "project_id": 155,
+   "planta": "BUDENHEIM",
+   "ultimo_dia": "2026-06-08",
+   "dias_sin_asistencia_al_2026_09_28": 112,
+   "stage_proyecto": "Complete TOTAL (Gera)",
+   "empresa": "MX"
+  },
+  "SO11557": {
+   "project_id": 2305,
+   "planta": "USA",
+   "ultimo_dia": "2026-06-15",
+   "dias_sin_asistencia_al_2026_09_28": 105,
+   "stage_proyecto": "Complete TOTAL (Gera)",
+   "empresa": "USA"
+  },
+  "SO11492": {
+   "project_id": 506,
+   "planta": "MISSION_FOODS",
+   "ultimo_dia": "2026-07-07",
+   "dias_sin_asistencia_al_2026_09_28": 83,
+   "stage_proyecto": "In Progress",
+   "empresa": "MX"
+  },
+  "SO11551": {
+   "project_id": 2337,
+   "planta": "QUIMITEC",
+   "ultimo_dia": "2026-07-08",
+   "dias_sin_asistencia_al_2026_09_28": 82,
+   "stage_proyecto": "Complete TOTAL (Gera)",
+   "empresa": "MX"
+  },
+  "SO11290": {
+   "project_id": 241,
+   "planta": "NALCO_MEXICALI_ING",
+   "ultimo_dia": "2026-07-29",
+   "dias_sin_asistencia_al_2026_09_28": 61,
+   "stage_proyecto": "En plazo de credito",
+   "empresa": "MX"
+  },
+  "SO10300": {
+   "project_id": 160,
+   "planta": "MAGNEKON",
+   "ultimo_dia": "2026-08-03",
+   "dias_sin_asistencia_al_2026_09_28": 56,
+   "stage_proyecto": "En plazo de credito",
+   "empresa": "MX"
+  },
+  "SO10337": {
+   "project_id": 212,
+   "planta": "BRIDGESTONE",
+   "ultimo_dia": "2026-08-07",
+   "dias_sin_asistencia_al_2026_09_28": 52,
+   "stage_proyecto": "In Progress",
+   "empresa": "MX"
+  },
+  "SO11773": {
+   "project_id": 2356,
+   "planta": "USA",
+   "ultimo_dia": "2026-09-02",
+   "dias_sin_asistencia_al_2026_09_28": 26,
+   "stage_proyecto": "Done Operations",
+   "empresa": "USA"
+  },
+  "SO11762": {
+   "project_id": 2349,
+   "planta": "TOPO_CHICO",
+   "ultimo_dia": "2026-09-14",
+   "dias_sin_asistencia_al_2026_09_28": 14,
+   "stage_proyecto": "En plazo de credito",
+   "empresa": "MX"
+  },
+  "SO11699": {
+   "project_id": 2352,
+   "planta": "BRIDGESTONE",
+   "ultimo_dia": "2026-09-24",
+   "dias_sin_asistencia_al_2026_09_28": 4,
+   "stage_proyecto": "In Progress",
+   "empresa": "MX"
+  },
+  "SO11547": {
+   "project_id": 2302,
+   "planta": "TOPO_CHICO",
+   "ultimo_dia": "2026-09-25",
+   "dias_sin_asistencia_al_2026_09_28": 3,
+   "stage_proyecto": "In Progress",
+   "empresa": "MX"
+  },
+  "SO9428": {
+   "project_id": 121,
+   "planta": "VERTIV",
+   "ultimo_dia": "2026-09-25",
+   "dias_sin_asistencia_al_2026_09_28": 3,
+   "stage_proyecto": "In Progress",
+   "empresa": "MX"
+  },
+  "SO11498": {
+   "project_id": 2375,
+   "planta": "BRIDGESTONE_ING",
+   "ultimo_dia": "2026-09-25",
+   "dias_sin_asistencia_al_2026_09_28": 3,
+   "stage_proyecto": "In Progress",
+   "empresa": "MX"
+  }
+ },
+ "_parametros": {
+  "GAP_MAX_dias": 4,
+  "NO_FRENTE": [
+   241,
+   515,
+   2297,
+   2305,
+   2328,
+   2356,
+   2375
+  ],
+  "OFICINA": [
+   32,
+   47,
+   48,
+   59,
+   60,
+   62,
+   63,
+   78,
+   84,
+   85,
+   97,
+   98,
+   101,
+   108,
+   143,
+   149,
+   150,
+   153,
+   155,
+   156
+  ],
+  "CUADRILLA": {
+   "76": "Carlos Manzanares",
+   "75": "Mateo Salazar",
+   "124": "Germán Merino",
+   "121": "Stephany Ventura",
+   "6": "Leonel Cruz",
+   "79": "José Luis Romero",
+   "127": "César Gómez",
+   "128": "Enoc Maldonado",
+   "130": "Rolando Vázquez",
+   "131": "Tomás Vázquez",
+   "154": "Ramiro Segovia",
+   "112": "Felipe Pérez",
+   "25": "Héctor Cruz",
+   "55": "Juan Manuel Sánchez"
+  }
+ },
+ "parteA": {
+  "total": 185,
+  "por_tipo": {
+   "otros": 62,
+   "electrico_control": 49,
+   "soldadura_tuberia_proceso": 27,
+   "mecanico_instalacion": 27,
+   "hvac": 12,
+   "obra_civil_ligera": 8
+  },
+  "por_confianza": {
+   "alta": 154,
+   "media": 13,
+   "baja": 18
+  },
+  "monto_mxn_por_tipo": {
+   "electrico_control": 56626301,
+   "hvac": 4190536,
+   "mecanico_instalacion": 2563689,
+   "obra_civil_ligera": 1996083,
+   "otros": 2978988,
+   "soldadura_tuberia_proceso": 37802861
+  },
+  "monto_usd_por_tipo": {
+   "electrico_control": 17288,
+   "hvac": 185200,
+   "mecanico_instalacion": 423480,
+   "obra_civil_ligera": 0,
+   "otros": 2685,
+   "soldadura_tuberia_proceso": 9300
+  }
+ }
+}
