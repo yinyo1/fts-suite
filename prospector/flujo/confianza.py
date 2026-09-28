@@ -26,6 +26,17 @@ SOLIDO = "solido"              # 1 fuente confiable              -> supuesto
 CANDIDATO = "candidato"        # derivado de patron, sin ancla   -> supuesto
 EN_CONFLICTO = "en_conflicto"  # dos fuentes chocan              -> contradicho
 NO_ENCONTRADO = "no_encontrado"
+# DESMENTIDO: el mundo contesto y dijo que el dato esta MAL. No es lo mismo que
+# `en_conflicto` -- ahi dos fuentes chocan y ninguna es arbitro-- ni que
+# `no_encontrado`. Aqui hubo un intento real de usar el dato y el intento fallo:
+# el correo reboto, contesto quien no era, la persona ya no trabaja ahi.
+#
+# HALLAZGO H5 de #325: sin este nivel el lazo del motor 2 era prosa. `Dato.nivel`
+# se DERIVA de las observaciones, y un rebote no es una observacion -- nadie
+# observo un correo, se intento enviar a uno--, asi que no existia forma de que
+# un desenlace del CRM bajara un nivel. El motor 2 nunca se enteraba de si sus
+# correos llegaban.
+DESMENTIDO = "desmentido"
 
 A_PROCEDENCIA = {
     CONFIRMADO: "verificado",
@@ -33,6 +44,9 @@ A_PROCEDENCIA = {
     CANDIDATO: "supuesto",
     EN_CONFLICTO: "contradicho",
     NO_ENCONTRADO: "no_encontrado",
+    # No es "contradicho": contradicho son dos fuentes que chocan. Aqui el dato
+    # se USO y fallo, y eso es mas fuerte que cualquier desacuerdo entre fuentes.
+    DESMENTIDO: "desmentido_al_usarlo",
 }
 
 # Raices de fuente. Dos fuentes de la MISMA raiz no confirman nada:
@@ -496,6 +510,62 @@ class Dato:
     # La cuenta a la que pertenece este dato. La pone `Contacto.dato()`, y sirve
     # para quitar el sufijo de empresa del puesto antes de comparar (#306, D2).
     empresa: str = ""
+    # CONTRA-EVIDENCIA. Lo que paso cuando alguien uso este dato en el mundo real
+    # y no funciono. Viene del motor 3 al cerrar un toque, y es la unica via por
+    # la que un nivel puede BAJAR.
+    desmentidos: list = field(default_factory=list)
+
+    #: Que desenlaces de un toque desmienten un dato, y cuales NO. La lista
+    #: corta importa tanto como la larga: `sin_respuesta` NO desmiente nada. El
+    #: silencio no es contra-evidencia -- puede ser que el correo llego y nadie
+    #: contesto-- y contarlo como desmentido acabaria descartando los correos
+    #: buenos de las cuentas que simplemente no contestan.
+    DESMIENTEN = {
+        "rebote": ("el correo no existe o no acepta: el buzon esta mal, "
+                   "independientemente de cuantas fuentes lo dijeran"),
+        "persona_equivocada": ("contesto alguien que no es: el nombre, el puesto "
+                               "o los dos estan mal emparejados"),
+        "ya_no_trabaja_aqui": ("la persona salio de la empresa: el dato fue "
+                               "cierto y dejo de serlo"),
+    }
+    NO_DESMIENTEN = {
+        "sin_respuesta": ("el silencio NO es contra-evidencia. El correo pudo "
+                          "llegar perfectamente y la persona no contestar"),
+        "respuesta_negativa": ("dijo que no, y eso habla del NEGOCIO, no del "
+                               "dato: el correo llego y la persona era la "
+                               "correcta. Es la mejor prueba de que el dato "
+                               "estaba bien"),
+        "respuesta_positiva": ("confirma el dato en vez de desmentirlo"),
+    }
+
+    def desmentir(self, que_paso: str, de_donde: str = "motor3_crm_odoo",
+                  fecha: str = "", detalle: str = "") -> "Dato":
+        """Registra que el mundo contradijo este dato. La unica via para bajar.
+
+        Lanza si el desenlace no desmiente. Es a proposito: pasar
+        `sin_respuesta` aqui seria el error que descarta los datos buenos de las
+        cuentas calladas, y prefiero que truene a que lo acepte en silencio.
+        """
+        q = (que_paso or "").strip()
+        if q in self.NO_DESMIENTEN:
+            raise ValueError(
+                f"'{q}' NO desmiente un dato: {self.NO_DESMIENTEN[q]}. "
+                "No se registra como contra-evidencia.")
+        if q not in self.DESMIENTEN:
+            raise ValueError(
+                f"Desenlace '{q}' desconocido. Los que desmienten: "
+                + ", ".join(sorted(self.DESMIENTEN))
+                + ". Los que explicitamente NO: "
+                + ", ".join(sorted(self.NO_DESMIENTEN)))
+        self.desmentidos.append({
+            "que_paso": q, "por_que_desmiente": self.DESMIENTEN[q],
+            "de_donde": de_donde, "fecha": fecha, "detalle": detalle,
+        })
+        return self
+
+    @property
+    def desmentido(self) -> bool:
+        return bool(self.desmentidos)
 
     def observar(self, fuente: str, valor: Any, **kw) -> "Dato":
         self.observaciones.append(Observacion(fuente=fuente, valor=valor, **kw))
@@ -887,6 +957,17 @@ class Dato:
 
     @property
     def nivel(self) -> str:
+        # EL DESMENTIDO VA PRIMERO, y el orden es la mitad del arreglo. Puesto
+        # despues de `choca` o de `n_raices >= 2`, un correo que reboto seguiria
+        # saliendo CONFIRMADO porque dos fuentes lo dijeron -- y las dos estaban
+        # mal--. Es la misma clase de error que escondio el correo EN_CONFLICTO
+        # detras de "sin correo" en #323: la comprobacion existia y nunca se
+        # alcanzaba.
+        #
+        # Un desmentido le gana a cualquier cantidad de observaciones porque no
+        # es otra opinion sobre el dato: es el resultado de USARLO.
+        if self.desmentidos:
+            return DESMENTIDO
         if not self.observaciones:
             return NO_ENCONTRADO
         if self.solo_sembrado:
@@ -979,6 +1060,7 @@ class Dato:
             "brecha_magnitud": self.brecha_magnitud,
             "formas": self.formas,
             "certeza_declarada_baja": self.certeza_declarada_baja,
+            "desmentidos": list(self.desmentidos),
             "valores_en_conflicto": self.valores if self.choca else [],
             "observaciones": [asdict(o) | {"raiz": o.raiz} for o in self.observaciones],
         }

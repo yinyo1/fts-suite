@@ -119,6 +119,7 @@ MARCA_HISTORIA = "[historia] "
 # Marca de lo que el operador QUITO a mano. Un alias mal puesto no debe ser
 # permanente -- decision 3 de #310-- pero quitarlo tampoco puede ser silencioso:
 # mueve la poblacion y con ella el Chao1, que es la cifra que decide cuando parar.
+MARCA_SENAL = "[senal] "
 MARCA_ALIAS = "[alias] "
 
 # QUE se siembra entre corridas. Lista corta, y los contactos NO estan: un
@@ -183,6 +184,21 @@ class Corrida:
     angulo: str = ""
     origen: str = ORIGEN_MANUAL
     angulo_resuelto: str = ""        # "confirmado" | "corregido" | ""
+    # EL EXPEDIENTE DE LA SENAL que origino esta cuenta: fuente, tipo, fecha y el
+    # PUNTAJE CON SU DESGLOSE tal como el evaluador del radar los calculo.
+    #
+    # Hallazgo H1 de #325, y es el que rompia los tres lazos de aprendizaje: el
+    # radar puntuaba una senal con su desglose de seis factores, sembraba la
+    # corrida con `angulo` -- una cadena-- y `origen: "radar"`, y el puntaje se
+    # TIRABA. El paquete al motor 3 no emitia ni la fuente ni el tipo ni el
+    # puntaje, asi que cuando la tarjeta cerraba no habia con que comparar el
+    # desenlace: no se podia saber si la prensa industrial convierte peor que el
+    # correo propio, que es la primera pregunta que el aprendizaje contesta.
+    #
+    # Se guarda el DESGLOSE completo, no solo el total. Un total de 72 no dice si
+    # vino de un match de catalogo fuerte con senal vieja o de lo contrario, y son
+    # dos lecciones opuestas.
+    senal_origen: dict = field(default_factory=dict)
     # QUE TIPOS del catalogo persigue esta corrida. Lo usa la excepcion de IT
     # INDUSTRIAL (DECISION 2 de #305): un puesto de OT o de sistemas de
     # manufactura puede ser decisor en `red_industrial`, `integracion_control` y
@@ -929,6 +945,82 @@ class Corrida:
             return f"{self.empresa}/{LLAVE_CORPORATIVO}"
         return f"{self.empresa}/{self.ciudad or '?'}"
 
+    # ------------------------------------------------- expediente de la senal
+    #: Lo que el expediente tiene que traer para que los tres lazos de
+    #: aprendizaje puedan alimentarse. Se valida al declararlo, no al cerrar la
+    #: tarjeta: para entonces la senal ya no esta a la vista de nadie.
+    CAMPOS_DE_LA_SENAL = ("fuente", "tipo", "fecha_senal", "puntaje",
+                          "veredicto", "desglose", "empata_padron", "familia",
+                          "texto", "fecha_de_cierre", "fecha_del_evento")
+
+    def declarar_senal_origen(self, fuente: str, texto: str = "",
+                              tipo: str = "", fecha_senal: str = "",
+                              evaluacion: dict | None = None,
+                              fecha_de_cierre: str = "",
+                              fecha_del_evento: str = "") -> dict:
+        """El expediente de la senal que origino esta cuenta.
+
+        Lo llena el radar cuando siembra -- pasandole su `evaluar()` completo-- o
+        el operador cuando la cuenta entro a mano y el sabe de donde salio.
+
+        NO se acepta una fuente inventada. `puntos_de_fuente` ya decide que una
+        fuente sin peso declarado vale CERO y no un promedio; dejar entrar aqui
+        una fuente que el evaluador no conoce produciria una tarjeta cuyo lazo de
+        aprendizaje mueve un peso que no existe.
+        """
+        from .radar import FUERZA_DE_FUENTE, tipo_de_senal_de
+        f = (fuente or "").strip().lower().replace(" ", "_")
+        if not f:
+            raise CompuertaCerrada(
+                "Declarar la senal EXIGE fuente. Sin fuente no hay lazo 1: el "
+                "desenlace no se puede atribuir a nada, y el peso de fuerza de "
+                "fuente se queda siendo una hipotesis para siempre.")
+        if f not in FUERZA_DE_FUENTE:
+            raise CompuertaCerrada(
+                f"Fuente '{f}' no esta en el evaluador. Las que si: "
+                + ", ".join(sorted(FUERZA_DE_FUENTE))
+                + ". Una fuente que el evaluador no conoce puntua CERO y su "
+                  "leccion no tiene donde aterrizar.")
+        tipo_final, de_donde = tipo_de_senal_de(f, tipo)
+        ev = dict(evaluacion or {})
+        self.senal_origen = {
+            "fuente": f,
+            "tipo": tipo_final,
+            "tipo_de_donde": de_donde,
+            "fecha_senal": (fecha_senal or "").strip(),
+            "fecha_de_cierre": (fecha_de_cierre or "").strip(),
+            "fecha_del_evento": (fecha_del_evento or "").strip(),
+            "texto": (texto or "").strip(),
+            # Del evaluador, tal como lo devolvio. Si no vino, se dice que no
+            # vino en lugar de poner un cero que se lea como "puntuo cero".
+            "puntaje": ev.get("puntaje"),
+            "veredicto": ev.get("veredicto"),
+            "desglose": ev.get("desglose") or {},
+            "familia": ev.get("familia"),
+            "empata_padron": bool((ev.get("desglose") or {}).get("padron")),
+            "evaluada": bool(ev),
+            "declarada": datetime.now(timezone.utc).isoformat(),
+        }
+        if not ev:
+            self.avisos.append(
+                MARCA_SENAL + "La senal se declaro SIN pasar por el evaluador: "
+                "hay fuente y tipo, y no hay puntaje ni desglose. El lazo 1 "
+                "puede contar conversiones por fuente, y NO puede corregir la "
+                "curva de frescura ni los pesos por familia, porque no sabe con "
+                "que numero se decidio gastar las consultas.")
+        if tipo_final == "convocatoria_abierta" and not self.senal_origen["fecha_de_cierre"]:
+            self.avisos.append(
+                MARCA_SENAL + "Convocatoria SIN fecha de cierre. El plazo de una "
+                "convocatoria no lo decide FTS: sin la fecha, la tarjeta va a "
+                "caducar por el plazo por omision y puede vencer despues de que "
+                "la convocatoria cerro.")
+        if tipo_final == "presencia_en_evento" and not self.senal_origen["fecha_del_evento"]:
+            self.avisos.append(
+                MARCA_SENAL + "Senal de evento SIN fecha del evento. El evento ES "
+                "el canal: sin su fecha no hay cuando tocar, y el plazo cae al "
+                "de omision.")
+        return self.senal_origen
+
     # ------------------------------------------------------------- sembrar
     def registrar_veredicto_del_padron(self, banderas) -> list[str]:
         """El veredicto del padron REEMPLAZA al anterior, no se acumula.
@@ -1528,6 +1620,7 @@ class Corrida:
             "angulo": self.angulo,
             "origen": self.origen,
             "angulo_resuelto": self.angulo_resuelto,
+            "senal_origen": self.senal_origen,
             "tipos": self.tipos,
             "alias_de_ubicacion": self.alias_de_ubicacion,
             "alias_quitados": self.alias_quitados,

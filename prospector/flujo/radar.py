@@ -181,6 +181,70 @@ FUERZA_DE_FUENTE = {
     "feed_generico": 3,
 }
 
+# ------------------------------------------------------------ tipo de senal
+# QUE ESTA PASANDO, que no es lo mismo que QUIEN NOS LO DIJO.
+#
+# La tabla de caducidad de `importacion_odoo.py` nacia mezclando las dos cosas:
+# once llaves, diez de ellas FUENTES (`correo_propio`, `prensa_industrial`,
+# `camara`...) y una sola TIPO (`obra_nueva`). Esa mezcla es la que la dejo
+# muerta -- ver el hallazgo H2 de #325--: la caducidad se buscaba por una llave
+# que el paquete no emitia y caia siempre al plazo por omision.
+#
+# La separacion importa porque los dos ejes contestan preguntas distintas:
+#
+#   * la FUENTE dice cuanto CREERLE a la senal -> `FUERZA_DE_FUENTE`, puntaje;
+#   * el TIPO dice CUANDO SE VENCE -> el reloj lo pone el evento, no el CRM.
+#
+# La misma obra nueva puede llegar por prensa (poco fiable) o por el correo del
+# cliente (muy fiable) y en los dos casos su ventana de especificacion es la
+# misma. Y la misma fuente -- el buzon-- puede traer una convocatoria que cierra
+# el jueves o una necesidad para el ano que entra.
+TIPOS_DE_SENAL = {
+    "obra_nueva": "planta nueva, nave nueva o ampliacion anunciada",
+    "ampliacion_de_capacidad": "mas carga, mas linea o mas proceso en lo que ya existe",
+    "convocatoria_abierta": "licitacion o registro de proveedores con fecha de cierre",
+    "necesidad_declarada": "alguien de la cuenta dijo por escrito que va a necesitar algo",
+    "vacante_tecnica": "contratan a quien operaria o mantendria lo que FTS instala",
+    "presencia_en_evento": "la cuenta estara en un congreso, expo o camara",
+    "navegacion": "visitas al sitio desde la IP de la corporacion",
+    "reconocimiento_de_mercado": "nota, premio o movimiento corporativo sin obra declarada",
+}
+
+# Que tipo implica cada fuente cuando nadie declara el tipo. Es un DEFAULT
+# honesto, no una equivalencia: `prensa_industrial` suele traer obra nueva, y
+# cuando trae otra cosa el operador lo declara y este mapa no se usa.
+TIPO_POR_OMISION_DE_FUENTE = {
+    "correo_propio": "necesidad_declarada",
+    "rfq_cliente": "necesidad_declarada",
+    "convocatoria": "convocatoria_abierta",
+    "licitacion": "convocatoria_abierta",
+    "expansion_odoo": "ampliacion_de_capacidad",
+    "vacante_tecnica": "vacante_tecnica",
+    "camara": "presencia_en_evento",
+    "congreso": "presencia_en_evento",
+    "prensa_industrial": "obra_nueva",
+    "ip_corporativa": "navegacion",
+    "feed_generico": "reconocimiento_de_mercado",
+}
+
+
+def tipo_de_senal_de(fuente: str, tipo_declarado: str = "") -> tuple[str, str]:
+    """(tipo, de donde salio). El declarado manda sobre el derivado."""
+    t = (tipo_declarado or "").strip()
+    if t:
+        if t not in TIPOS_DE_SENAL:
+            raise ValueError(
+                f"Tipo de senal '{t}' desconocido. Los que existen: "
+                + ", ".join(sorted(TIPOS_DE_SENAL))
+                + ". Un tipo inventado rompe el reloj de caducidad en silencio, "
+                  "que es exactamente el hallazgo H2.")
+        return (t, "declarado")
+    f = plano(fuente or "").replace(" ", "_")
+    if f in TIPO_POR_OMISION_DE_FUENTE:
+        return (TIPO_POR_OMISION_DE_FUENTE[f], f"derivado de la fuente '{f}'")
+    return ("", "sin tipo: la fuente no permite derivarlo y nadie lo declaro")
+
+
 # --------------------------------------------------------------- los umbrales
 UMBRAL_PASA = 60
 UMBRAL_GUARDA = 40

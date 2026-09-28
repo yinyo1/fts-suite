@@ -43,37 +43,121 @@ COLUMNAS = (
     "campaign_id", "tag_ids", "description",
 )
 
-# Plazos de caducidad por tipo de senal, del §4b del diseno. RAZONADOS, NO
-# MEDIDOS: se corrigen con el lazo de aprendizaje del motor 3.
-DIAS_DE_CADUCIDAD = {
-    "convocatoria": 30, "licitacion": 30,
-    "rfq_cliente": 21,
-    "correo_propio": 90,
-    "expansion_odoo": 120,
-    "obra_nueva": 120, "prensa_industrial": 60,
-    "vacante_tecnica": 45,
-    "camara": 45, "congreso": 45,
-    "ip_corporativa": 21,
+# ----------------------------------------------------------------- caducidad
+# HALLAZGO H2 de #325: esta tabla estuvo MUERTA desde que nacio. `fecha_de_
+# caducidad` la buscaba por `paquete["fuente"]` -- una llave que `paquete.armar()`
+# nunca emitio-- y caia a `paquete["origen"]`, que solo vale `radar` o `manual`,
+# ninguno de los dos en la tabla. Resultado medido: TODA tarjeta caducaba a los 60
+# dias por omision, y las once filas nunca eligieron ninguna.
+#
+# Y la razon de fondo del fallo estaba en la tabla misma: mezclaba los dos ejes.
+# Diez de sus once llaves eran FUENTES (`correo_propio`, `camara`, ...) y una sola
+# era TIPO (`obra_nueva`). Ahora el reloj se busca por TIPO -- que es lo que el
+# diseno dice: "el reloj lo pone el evento, no el CRM"-- y la fuente queda como
+# respaldo para las cuentas viejas que no traen tipo.
+#
+# SIGUEN SIENDO PLAZOS RAZONADOS, NO MEDIDOS. Los corrige el lazo 3 del motor 3.
+DIAS_POR_TIPO_DE_SENAL = {
+    "convocatoria_abierta": 30,   # respaldo: manda su fecha de cierre
+    "necesidad_declarada": 90,    # o la fecha que el correo diga
+    "obra_nueva": 120,            # la ventana de especificacion de una obra
+    "ampliacion_de_capacidad": 120,
+    "vacante_tecnica": 45,        # una vacante se cierra rapido
+    "presencia_en_evento": 45,    # respaldo: manda la fecha del evento + 15
+    "navegacion": 21,             # la intencion de navegacion se enfria
+    "reconocimiento_de_mercado": 60,
+}
+
+# Respaldo por FUENTE, solo para cuentas que no traen tipo -- las evaluadas antes
+# de #325--. No es una segunda opinion: es lo que se usa cuando falta el dato.
+DIAS_POR_FUENTE = {
+    "convocatoria": 30, "licitacion": 30, "rfq_cliente": 21,
+    "correo_propio": 90, "expansion_odoo": 120, "obra_nueva": 120,
+    "prensa_industrial": 60, "vacante_tecnica": 45,
+    "camara": 45, "congreso": 45, "ip_corporativa": 21,
 }
 CADUCIDAD_POR_OMISION = 60
+# Cuantos dias despues del evento sigue sirviendo la tarjeta. El evento ES el
+# canal: pasada la feria, el pretexto para llamar se acabo.
+DIAS_DESPUES_DEL_EVENTO = 15
+
+# Compatibilidad: el nombre viejo apuntaba a la tabla mezclada. Se conserva
+# apuntando al respaldo por fuente, que es lo que de verdad contenia.
+DIAS_DE_CADUCIDAD = DIAS_POR_FUENTE
+
+
+def _senal(paquete: dict) -> dict:
+    return paquete.get("senal_origen") or {}
 
 
 def fecha_de_caducidad(paquete: dict, hoy: date | None = None) -> str:
-    """El menor de los dos relojes: el de la senal y el de la cadencia.
+    """Lo mismo que `razon_de_caducidad`, sin la explicacion."""
+    return razon_de_caducidad(paquete, hoy)[0]
 
-    Una convocatoria con fecha de cierre manda sobre cualquier plazo: **el plazo
-    no lo decide FTS**. Si cierra el 30, la tarjeta caduca el 30.
+
+def razon_de_caducidad(paquete: dict,
+                       hoy: date | None = None) -> tuple[str, str]:
+    """(fecha, por que esa). El orden de precedencia es el del diseno §4b.
+
+    1. la FECHA DE CIERRE de una convocatoria: el plazo no lo decide FTS;
+    2. la FECHA DEL EVENTO mas quince dias: el evento es el canal;
+    3. el plazo del TIPO de senal: el reloj lo pone lo que esta pasando;
+    4. el plazo de la FUENTE, para las cuentas viejas sin tipo;
+    5. el plazo por omision, y se dice que fue por omision.
     """
     hoy = hoy or date.today()
-    cierre = (paquete.get("fecha_de_cierre") or
+    sen = _senal(paquete)
+
+    cierre = (sen.get("fecha_de_cierre") or paquete.get("fecha_de_cierre") or
               next((s.get("fecha_de_cierre") for s in paquete.get("senal") or []
                     if isinstance(s, dict) and s.get("fecha_de_cierre")), None))
     if cierre:
-        return str(cierre)[:10]
-    dias = DIAS_DE_CADUCIDAD.get(
-        str(paquete.get("fuente") or paquete.get("origen") or ""),
-        CADUCIDAD_POR_OMISION)
-    return (hoy + timedelta(days=dias)).isoformat()
+        return (str(cierre)[:10],
+                "la fecha de cierre de la convocatoria: el plazo no lo decide FTS")
+
+    evento = sen.get("fecha_del_evento") or ""
+    if evento:
+        try:
+            d = date.fromisoformat(str(evento)[:10])
+        except ValueError:
+            d = None
+        if d is not None:
+            return ((d + timedelta(days=DIAS_DESPUES_DEL_EVENTO)).isoformat(),
+                    f"el evento del {d.isoformat()} mas "
+                    f"{DIAS_DESPUES_DEL_EVENTO} dias: el evento es el canal")
+
+    # El reloj arranca en la FECHA DE LA SENAL, no en hoy. Una nota de hace 80
+    # dias con plazo de 120 le quedan 40, no 120. Arrancar en hoy le regalaba a
+    # la senal vieja la misma ventana que a la fresca, que es justo la
+    # informacion que el factor de frescura del evaluador se molesta en medir.
+    arranque, de_donde = hoy, "hoy"
+    fs = sen.get("fecha_senal") or ""
+    if fs:
+        try:
+            arranque = date.fromisoformat(str(fs)[:10])
+            de_donde = f"la fecha de la senal ({arranque.isoformat()})"
+        except ValueError:
+            pass
+
+    tipo = sen.get("tipo") or paquete.get("tipo_de_senal") or ""
+    if tipo in DIAS_POR_TIPO_DE_SENAL:
+        n = DIAS_POR_TIPO_DE_SENAL[tipo]
+        return ((arranque + timedelta(days=n)).isoformat(),
+                f"{n} dias para una senal de tipo '{tipo}', contados desde "
+                f"{de_donde}")
+
+    fuente = sen.get("fuente") or paquete.get("fuente") or ""
+    if fuente in DIAS_POR_FUENTE:
+        n = DIAS_POR_FUENTE[fuente]
+        return ((arranque + timedelta(days=n)).isoformat(),
+                f"{n} dias por la FUENTE '{fuente}', contados desde {de_donde} "
+                "-- esta cuenta no trae tipo de senal, asi que el reloj sale del "
+                "respaldo--")
+
+    return ((arranque + timedelta(days=CADUCIDAD_POR_OMISION)).isoformat(),
+            f"{CADUCIDAD_POR_OMISION} dias POR OMISION: esta tarjeta no trae ni "
+            "tipo ni fuente de senal, asi que su plazo no significa nada. "
+            "Regenera la cuenta para que el reloj sea de verdad")
 
 
 def _correo_publicable(x: dict) -> tuple[str, str]:
@@ -97,7 +181,7 @@ def lineas(paquete: dict, hoy: date | None = None) -> list[dict]:
     embudo, que es el mismo error que multiplicar tarjetas por senal.
     """
     hoy = hoy or date.today()
-    caduca = fecha_de_caducidad(paquete, hoy)
+    caduca, por_que_caduca = razon_de_caducidad(paquete, hoy)
     contactos = list(paquete.get("contactos_de_valor") or [])
 
     # REGLA DURA 2: los de revision humana NO se proponen como partner.
@@ -159,6 +243,23 @@ def lineas(paquete: dict, hoy: date | None = None) -> list[dict]:
     for n in notas_correo:
         cuerpo.append("")
         cuerpo.append(f"⚠ {n}")
+    sen = _senal(paquete)
+    cuerpo += ["",
+               f"CADUCA EL {caduca} — {por_que_caduca}",
+               ("SENAL: fuente '{}' · tipo '{}'{}".format(
+                   sen.get("fuente") or "SIN DECLARAR",
+                   sen.get("tipo") or "SIN DECLARAR",
+                   f" · puntaje del evaluador {sen['puntaje']}"
+                   if sen.get("puntaje") is not None
+                   else " · SIN PUNTAJE del evaluador: esta cuenta no puede "
+                        "alimentar el lazo de los pesos")
+                if sen else
+                "SENAL SIN EXPEDIENTE: esta tarjeta no puede alimentar ningun "
+                "lazo de aprendizaje, y su plazo de caducidad es el de omision. "
+                "Regenera la cuenta."),
+               f"LLAVE DE RECICLAJE: {paquete.get('llave_de_reciclaje') or 'NO HAY'}"
+               + (f" — {paquete.get('llave_de_reciclaje_por_que')}"
+                  if not paquete.get("llave_de_reciclaje") else "")]
     ch = paquete.get("chao1") or {}
     cuerpo += ["",
                f"BARRIDO: {paquete.get('consultas_gastadas')} de "
@@ -202,7 +303,11 @@ def lineas(paquete: dict, hoy: date | None = None) -> list[dict]:
         "function": cabeza.get("puesto") or "",
         "date_deadline": caduca,
         "source_id": f"radar-{paquete.get('origen')}",
-        "medium_id": str(paquete.get("fuente") or paquete.get("origen") or ""),
+        # H3: `medium_id` es LA FUENTE DE LA SENAL -- lo que el evaluador
+        # puntuo--, no el origen. Antes caia a `origen` y quedaba repitiendo
+        # `source_id`: dos columnas con la misma informacion y la fuente perdida.
+        "medium_id": str(_senal(paquete).get("fuente")
+                         or paquete.get("fuente") or "sin-fuente-declarada"),
         "campaign_id": ("senal:" + (_fec(senales[0]) or "sin-fecha")
                         if senales else "sin-senal"),
         "tag_ids": ",".join(etiquetas),
@@ -224,6 +329,7 @@ def escribir(corrida, destino: str, hoy: date | None = None) -> dict:
     """Escribe el CSV de importacion. Devuelve la constancia de lo que hizo."""
     pq = armar_paquete(corrida)
     texto = a_csv(pq, hoy)
+    caduca, por_que = razon_de_caducidad(pq, hoy)
     os.makedirs(os.path.dirname(destino), exist_ok=True)
     with open(destino, "w", encoding="utf-8-sig", newline="") as f:
         f.write(texto)
@@ -238,6 +344,9 @@ def escribir(corrida, destino: str, hoy: date | None = None) -> dict:
         "contactos_en_el_lognote": len(contactos),
         "no_creados_por_revision": len(en_revision),
         "correos_retenidos_por_candidato": len(candidatos),
-        "caduca": fecha_de_caducidad(pq, hoy),
+        "caduca": caduca,
+        "caduca_por_que": por_que,
+        "llave_de_reciclaje": pq.get("llave_de_reciclaje"),
+        "senal_con_expediente": bool(pq.get("senal_origen")),
         "escrituras_a_odoo": 0,
     }

@@ -230,6 +230,12 @@ def _armar(d: dict, ruta: str) -> Corrida:
     c.angulo = d.get("angulo", "")
     c.origen = d.get("origen", ORIGEN_MANUAL)
     c.angulo_resuelto = d.get("angulo_resuelto", "")
+    # El expediente de la senal se restaura TAL CUAL, sin recalcular: el puntaje
+    # y su desglose son lo que el evaluador dijo EL DIA que lo dijo. Recalcularlos
+    # al cargar les cambiaria la frescura -- la senal envejece-- y el lazo de
+    # aprendizaje compararia el desenlace contra un numero que nadie uso para
+    # decidir. La foto vale porque es foto (#325, H1).
+    c.senal_origen = dict(d.get("senal_origen", {}) or {})
     c.tipos = list(d.get("tipos", []) or [])
     # El alias de ubicacion es CRITERIO DEL OPERADOR: no se puede derivar,
     # y si no se restaura, la exclusion de la vuelta siguiente vuelve a

@@ -52,6 +52,70 @@ CANALES_QUE_NO_EMITE = {
 }
 
 
+# --------------------------------------------------------- llave de reciclaje
+# El destino 2 del motor 3 -- la tarjeta archivada REABRE con su historial en vez
+# de nacer de cero-- es, en palabras del diseno, "la decision de diseno mas
+# importante del motor 3". Y hasta el hallazgo H4 de #325 no se podia implementar:
+# el paquete emitia `llave_corrida = "Coficab/Pesqueria"`, o sea EMPRESA + ciudad,
+# y el diseno dice explicitamente que la misma empresa se reconoce por
+# `dominio_correo + ciudad` y NO por nombre, porque la razon social casi nunca es
+# la marca -- `HERSMEX` por Hershey--.
+#
+# Reciclar por nombre falla en las dos direcciones, y las dos son caras:
+#
+#   * NO reconoce: "Coficab" y "COFICAB MX Suc Monterrey" son la misma cuenta y
+#     producirian dos tarjetas. Al ano hay seis de la misma planta, nadie sabe
+#     cual es la vigente, y el equipo se vuelve a presentar como si no se
+#     conocieran -- que es justo lo que el destino 2 existe para evitar--.
+#   * RECONOCE DE MAS: dos empresas distintas con nombre parecido se funden en una
+#     tarjeta, y el historial de una contamina a la otra.
+#
+# EL DOMINIO TIENE QUE SER OBSERVADO. Un dominio adivinado del nombre de la
+# empresa vuelve a ser la llave por nombre con un disfraz.
+def dominio_de_la_cuenta(c) -> tuple[str | None, str]:
+    """(dominio, por que). Solo de correos ANCLA -- observados, no derivados--."""
+    conteo: dict[str, int] = {}
+    for x in c.poblacion():
+        d = x.datos.get("correo")
+        if d is None:
+            continue
+        for o in d.observaciones:
+            if o.sembrado or not o.es_ancla:
+                continue
+            valor = str(o.valor or "")
+            if "@" not in valor:
+                continue
+            dom = valor.rsplit("@", 1)[1].strip().lower()
+            if dom:
+                conteo[dom] = conteo.get(dom, 0) + 1
+    if not conteo:
+        return (None, "ningun correo ANCLA observado en esta cuenta: no hay "
+                      "dominio que no sea adivinado")
+    orden = sorted(conteo.items(), key=lambda kv: (-kv[1], kv[0]))
+    dom, n = orden[0]
+    if len(orden) > 1:
+        return (dom, f"dominio mas visto entre los correos observados ({n} de "
+                     f"{sum(conteo.values())}); tambien se vieron "
+                     + ", ".join(f"{d} x{k}" for d, k in orden[1:]))
+    return (dom, f"unico dominio observado, en {n} correo(s) ancla")
+
+
+def llave_de_reciclaje(c) -> tuple[str | None, str]:
+    """La llave con la que el motor 3 reconoce "la misma cuenta" para reabrir.
+
+    Devuelve None cuando no hay dominio observado, y eso NO es un error: es la
+    respuesta correcta. Una llave inventada para no devolver None es peor que no
+    tener llave, porque el motor 3 la usaria para fundir o para partir cuentas
+    sin que nadie lo notara. Sin llave, la tarjeta se crea y el reciclaje se
+    resuelve a mano -- y el paquete lo dice--.
+    """
+    dom, por_que = dominio_de_la_cuenta(c)
+    if not dom:
+        return (None, por_que)
+    lugar = (c.ciudad or "").strip().lower() or "?"
+    return (f"{dom}|{lugar}", por_que)
+
+
 def canal_de(c) -> tuple[str, str]:
     """(canal, por que) para este contacto, derivado de su evidencia."""
     correo = c.datos.get("correo")
@@ -95,6 +159,8 @@ def _nivel_del_contacto(c) -> str:
 def armar(c) -> dict:
     """El paquete de esta corrida, listo para el motor 3."""
     est = c.completitud()
+    _dom = dominio_de_la_cuenta(c)
+    _llave = llave_de_reciclaje(c)
     senales = [{"texto": s, "fecha": fecha_de(s) or None} for s in c.senal]
     contactos = []
     for x in c.poblacion():
@@ -128,8 +194,23 @@ def armar(c) -> dict:
         "nivel": c.nivel,
         "giro": c.giro,
         "llave_corrida": c.llave,
+        # La llave de RECICLAJE del destino 2, que no es la de la corrida: la de
+        # la corrida lleva el nombre de la empresa y esta lleva el dominio
+        # observado. Ver `llave_de_reciclaje`.
+        "llave_de_reciclaje": _llave[0],
+        "llave_de_reciclaje_por_que": _llave[1],
+        "dominio_correo": _dom[0],
         # --- de donde vino ---
         "origen": c.origen,
+        # EL EXPEDIENTE DE LA SENAL, con el puntaje y su desglose tal como el
+        # evaluador los calculo. Hallazgo H1 de #325: sin esto el motor 3 cierra
+        # tarjetas y no puede decirle al radar si la fuente que las origino
+        # convierte o no. `fuente` y `tipo` se leen tambien sueltos porque el
+        # reloj de caducidad los busca ahi.
+        "senal_origen": dict(c.senal_origen),
+        "fuente": (c.senal_origen or {}).get("fuente"),
+        "tipo_de_senal": (c.senal_origen or {}).get("tipo"),
+        "puntaje_del_evaluador": (c.senal_origen or {}).get("puntaje"),
         "angulo": c.angulo or None,
         "angulo_resuelto": c.angulo_resuelto or None,
         # --- que decir ---

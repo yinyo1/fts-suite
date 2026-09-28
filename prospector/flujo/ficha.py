@@ -57,7 +57,7 @@ from __future__ import annotations
 import html
 import re
 
-from .confianza import CONFIRMADO, EN_CONFLICTO, SOLIDO, CANDIDATO, N1_CONFIRMADO, N2_PARCIAL, N3_PUESTO
+from .confianza import CONFIRMADO, DESMENTIDO, EN_CONFLICTO, SOLIDO, CANDIDATO, N1_CONFIRMADO, N2_PARCIAL, N3_PUESTO
 from .estado import Corrida, RESPONDIO, PENDIENTE
 from .sello import sello
 from .ubicacion_de_proyectos import (carta_de_presentacion, HISTORIA_AQUI,
@@ -223,7 +223,25 @@ def _planta_de(x) -> str:
         d = x.datos.get(campo)
         if d is not None and d.nivel != EN_CONFLICTO and d.valor:
             return str(d.valor)
-        if d is not None and d.nivel == EN_CONFLICTO:
+        # EL DESMENTIDO VA ANTES QUE TODO, incluso antes del conflicto. Sin esta
+    # comprobacion un correo que REBOTO caia al respaldo del final y salia como
+    # "correo probable — confirmalo en la primera llamada", que es al reves de lo
+    # que pasa: ya se confirmo, y lo que se confirmo es que esta mal. Es la misma
+    # trampa de orden que escondio el conflicto detras de "sin correo" (#323),
+    # y aqui seria peor: la ficha estaria invitando a usar un buzon que ya reboto.
+    if d is not None and d.nivel == DESMENTIDO:
+        ultimo = d.desmentidos[-1]
+        que = {"rebote": "este correo REBOTO cuando se le escribio",
+               "persona_equivocada": "se escribio a este correo y contesto quien "
+                                     "no era",
+               "ya_no_trabaja_aqui": "esta persona ya no trabaja aqui"}.get(
+                   ultimo.get("que_paso"), "se intento usar este dato y no sirvio")
+        cuando = f" ({ultimo['fecha']})" if ultimo.get("fecha") else ""
+        return ("", f"NO LO USES: {que}{cuando}. "
+                + (f"{ultimo['detalle']}. " if ultimo.get("detalle") else "")
+                + "Hay que conseguir el correo de nuevo, por conmutador o "
+                  "preguntandole a quien si contesta", "flag")
+    if d is not None and d.nivel == EN_CONFLICTO:
             return "en conflicto"
     return ""
 
@@ -279,6 +297,24 @@ def _correo_en_palabras(x) -> tuple[str, str, str]:
     # que preguntar por el valor antes reportaba "sin correo" y **escondia el
     # conflicto**. Decir "no hay" cuando lo que hay es un desacuerdo entre fuentes
     # es la clase de silencio que este rediseno existe para no cometer.
+    # EL DESMENTIDO VA ANTES QUE TODO, incluso antes del conflicto. Sin esta
+    # comprobacion un correo que REBOTO caia al respaldo del final y salia como
+    # "correo probable — confirmalo en la primera llamada", que es al reves de lo
+    # que pasa: ya se confirmo, y lo que se confirmo es que esta mal. Es la misma
+    # trampa de orden que escondio el conflicto detras de "sin correo" (#323),
+    # y aqui seria peor: la ficha estaria invitando a usar un buzon que ya reboto.
+    if d is not None and d.nivel == DESMENTIDO:
+        ultimo = d.desmentidos[-1]
+        que = {"rebote": "este correo REBOTO cuando se le escribio",
+               "persona_equivocada": "se escribio a este correo y contesto quien "
+                                     "no era",
+               "ya_no_trabaja_aqui": "esta persona ya no trabaja aqui"}.get(
+                   ultimo.get("que_paso"), "se intento usar este dato y no sirvio")
+        cuando = f" ({ultimo['fecha']})" if ultimo.get("fecha") else ""
+        return ("", f"NO LO USES: {que}{cuando}. "
+                + (f"{ultimo['detalle']}. " if ultimo.get("detalle") else "")
+                + "Hay que conseguir el correo de nuevo, por conmutador o "
+                  "preguntandole a quien si contesta", "flag")
     if d is not None and d.nivel == EN_CONFLICTO:
         # NO se elige un valor -- eso es la regla--, pero SI se dicen los dos que
         # chocan: "tenemos dos formas posibles, cuprum.com y verzatec.com" es
