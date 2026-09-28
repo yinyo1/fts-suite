@@ -435,7 +435,8 @@ class Corrida:
     def registrar_entrega(self, destino: str, url: str, archivo: str = "",
                           sha256_subido: str = "",
                           bytes_subidos: int | None = None,
-                          hash_de_relectura: bool = False) -> dict:
+                          hash_de_relectura: bool = False,
+                          base64_con_longitud_confirmada: bool = False) -> dict:
         """Registra la entrega y COMPARA lo subido contra lo local.
 
         `hash_de_relectura` distingue DE DONDE salio el sha256, porque las dos
@@ -499,6 +500,33 @@ class Corrida:
                        f". Local {local['bytes']:,} bytes contra "
                        f"{bytes_subidos:,} subidos." if bytes_subidos is not None
                        else "."))
+        elif local and bytes_subidos is not None and base64_con_longitud_confirmada:
+            # TERCER CASO, y hacia falta. Salio subiendo el CSV y la tarjeta del
+            # piloto (#330): se subieron como BASE64 declarando `expectedBytes`, y
+            # el conector RECHAZA el envio si lo que recibe no decodifica a
+            # exactamente esa cantidad de bytes.
+            #
+            # Eso no es "el mismo tamano": es una comprobacion del TRANSPORTE que
+            # el servidor hizo y que no se puede rodear. Un base64 corrupto o
+            # truncado o no decodifica, o decodifica a otra longitud, y en los dos
+            # casos la subida se cae. Es justo el modo de falla de #306 -- un byte
+            # de mas por una transcripcion-- y este camino lo hace imposible.
+            #
+            # Y sigue siendo MAS DEBIL que una relectura: confirma la longitud de
+            # lo que llego, no su contenido. Una sustitucion que preserve longitud
+            # DENTRO del base64 que yo emiti pasaria las dos comprobaciones.
+            # Registrarlo como `identico` seria el mismo pecado que registrar el
+            # tamano como verificacion.
+            verificacion = ("longitud_confirmada_en_base64"
+                            if bytes_subidos == local["bytes"]
+                            else "TAMANO_DISTINTO")
+            avisos.append(
+                "Subido como BASE64 declarando la longitud exacta: el conector "
+                f"rechaza el envio si no decodifica a {local['bytes']:,} bytes, "
+                "asi que el transporte quedo comprobado del lado del servidor y "
+                "el byte de mas de #306 no puede pasar por aqui. NO es una "
+                "relectura: confirma la longitud de lo que llego, no su "
+                "contenido. Para verificar contenido, `--sha256-releido`.")
         elif local and bytes_subidos is not None:
             verificacion = ("mismo_tamano_sin_hash"
                             if bytes_subidos == local["bytes"]
@@ -523,6 +551,7 @@ class Corrida:
             "local": local, "sha256_subido": (sha256_subido or "").strip(),
             "bytes_subidos": bytes_subidos,
             "hash_de_relectura": bool(hash_de_relectura),
+            "base64_con_longitud_confirmada": bool(base64_con_longitud_confirmada),
             "verificacion": verificacion, "avisos_de_verificacion": avisos,
         }
         for a in avisos:

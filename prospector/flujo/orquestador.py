@@ -652,6 +652,14 @@ def main(argv=None) -> int:
                                 "hasheandolo aqui. Verifica el ida y vuelta "
                                 "completo, no la copia remota por si sola; la "
                                 "corrida lo va a decir asi")
+            s.add_argument("--base64-confirmado", action="store_true",
+                           dest="base64_confirmado",
+                           help="el archivo se subio como BASE64 declarando su "
+                                "longitud exacta, y el conector la confirmo. Mas "
+                                "fuerte que el tamano -- el servidor rechaza lo que "
+                                "no decodifique a esa longitud-- y mas debil que "
+                                "una relectura: confirma la longitud, no el "
+                                "contenido")
             s.add_argument("--bytes", default=None, type=int, dest="bytes_",
                            help="el tamano que devolvio el conector. Sirve de "
                                 "consuelo si no da hash, pero NO verifica")
@@ -1254,7 +1262,8 @@ def main(argv=None) -> int:
             e = c.registrar_entrega(a.destino, a.url, a.archivo,
                                     sha256_subido=a.sha256,
                                     bytes_subidos=a.bytes_,
-                                    hash_de_relectura=a.sha256_releido)
+                                    hash_de_relectura=a.sha256_releido,
+                                    base64_con_longitud_confirmada=a.base64_confirmado)
             c.guardar(_ruta_de(c, a))
             print(f"\n  ✓ FICHA ENTREGADA — sobrevive a esta sesion:")
             print(f"     destino: {e['destino']}")
@@ -1269,6 +1278,10 @@ def main(argv=None) -> int:
                     "✓ contenido VERIFICADO releyendo el archivo: identico al "
                     "local byte por byte (el conector no da hash propio)",
                 "DIFIERE": "⛔ contenido DISTINTO del local (sha256 no casa)",
+                "longitud_confirmada_en_base64":
+                    "◐ LONGITUD confirmada por el servidor en la subida base64: "
+                    "el byte de mas de #306 no puede pasar por aqui, y el "
+                    "contenido no quedo comparado",
                 "mismo_tamano_sin_hash": "⚠  solo se comparo el TAMANO, y coincide "
                                          "— el tamano no verifica contenido",
                 "TAMANO_DISTINTO": "⛔ el TAMANO no coincide con el local",

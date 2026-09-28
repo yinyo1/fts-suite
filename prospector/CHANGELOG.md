@@ -3,6 +3,69 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.13.0 — 2026-09-28
+
+Turno nocturno (#330), segunda mitad: el piloto en pie. **853 pruebas** (eran 812).
+Modulos nuevos: `flujo/cadencia.py`, `flujo/base_motor3.py`. Herramientas nuevas:
+`linea_base_radar.py`, `cargar_piloto.py`, `exportar_etapa1.py`,
+`tarjeta_hershey.py`.
+
+### La linea base del radar: 3 de 9 cuentas pasarian solas
+
+`datos/senales-documentadas.json` lleva la senal de cada cuenta ya evaluada CON LA
+PROCEDENCIA dentro del repo, y `herramientas/linea_base_radar.py` recalcula el
+antes y el despues. El "antes" no esta guardado a mano: se obtiene desactivando D3
+y B1/B2/B3 en un contexto que restaura el estado al salir.
+
+Nueve cuentas con senal y CUATRO HUECOS declarados. Un hueco no es un cero.
+
+**D6 y D7 propuestos y NO aplicados.** D6: el evaluador no puede leer ninguno de
+los seis montos documentados -- `magnitudes()` lee TR y kVA, y 60 MDD, 205 MDD, 633
+MDP, 2000 MDD, 500 MDP y 19.2 MW devuelven lista vacia--. No se aplico porque exige
+elegir una ESCALA y eso es criterio. D7: el ejemplo trabajado del §3d de
+`motor1-radar-de-leads.md` calcula 59 a mano y el codigo nunca produjo ese numero;
+los seis factores difieren.
+
+### La cadencia del §4c, calculada
+
+`flujo/cadencia.py`. La tabla vivia en prosa y nada la aplicaba. Dos relojes y
+manda el menor: no se programa un toque despues de la caducidad, y cuando la
+cadencia no cabe se COMPRIME en vez de perder toques. Dias habiles, y **sin
+calendario de feriados** -- una tabla que hay que mantener cada ano y que se queda
+vieja en silencio es peor que no tenerla--.
+
+**D8 reportado, no arreglado:** los cuatro contactos de una tarjeta reciben su
+toque #1 el mismo dia, por cuatro canales. Desde la planta eso no se ve como
+cadencia, se ve como enjambre. Hay una prueba que DOCUMENTA el comportamiento
+actual en vez de exigir el corregido: escalonar cambia como FTS se ve frente al
+cliente.
+
+### El piloto de la semana 1, en pie
+
+`flujo/base_motor3.py` habla con Postgres por `psql`, sin driver de Python y sin
+pegar ningun valor dentro del SQL. Cargadas 9 cuentas, 9 senales con expediente y 9
+tarjetas abiertas; cero contactos y cero cierres, los dos a proposito. Las cuatro
+reglas de la base verificadas contra los datos reales del piloto, no contra filas
+de juguete.
+
+`./prospector aprendizaje --socket ...` lee los cierres de la base, y si la base no
+contesta NO devuelve una lista vacia. Las tres compuertas dicen **SIN_DATOS**, no
+`prematuro`: la diferencia es "no hay ni uno" contra "hay y no alcanzan".
+
+**Hallazgo:** Coficab/Durango abre con caducidad ya vencida, y no se cierra sola --
+un cierre sin un solo toque seria un expediente inventado y entraria a los tres
+lazos como un desenlace real--.
+
+### Un tercer veredicto de entrega, porque hacia falta
+
+El CSV de etapa 1 y la tarjeta del piloto se subieron como **base64 declarando
+`expectedBytes`**, y el conector rechaza lo que no decodifique a esa longitud
+exacta. Eso no es "el mismo tamano" -- es una comprobacion del transporte que hizo
+el servidor, y el byte de mas de #306 no puede pasar por ahi-- y tampoco es una
+relectura. Forzarlo a `mismo_tamano_sin_hash` lo subvaluaba; a `identico`, lo
+sobrevaluaba. Veredicto nuevo **`longitud_confirmada_en_base64`**, con su rotulo, y
+su aviso dice las dos mitades: lo que comprueba y lo que no.
+
 ## 0.12.0 — 2026-09-28
 
 Las cinco decisiones de #329 aplicadas, y **tres defectos del evaluador** que
