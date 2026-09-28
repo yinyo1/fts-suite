@@ -1173,7 +1173,7 @@
    "media": 0.65
   },
   "detalle": {
-   "Mateo Salazar [75]": {
+   "emp-75-supervisor_sr [75]": {
     "dias_con_planta": 52,
     "transiciones": 46,
     "cambios": 12,
@@ -1186,7 +1186,7 @@
      "VERTIV"
     ]
    },
-   "Felipe Pérez [112]": {
+   "emp-112-manager_ops [112]": {
     "dias_con_planta": 42,
     "transiciones": 39,
     "cambios": 16,
@@ -1201,7 +1201,7 @@
      "VERTIV"
     ]
    },
-   "Germán Merino [124]": {
+   "emp-124-segurista [124]": {
     "dias_con_planta": 101,
     "transiciones": 98,
     "cambios": 23,
@@ -1215,7 +1215,7 @@
      "VERTIV"
     ]
    },
-   "Enoc Maldonado [128]": {
+   "emp-128-soldador [128]": {
     "dias_con_planta": 109,
     "transiciones": 107,
     "cambios": 15,
@@ -1228,7 +1228,7 @@
      "VERTIV"
     ]
    },
-   "Rolando Vázquez [130]": {
+   "emp-130-soldador [130]": {
     "dias_con_planta": 104,
     "transiciones": 101,
     "cambios": 15,
@@ -1241,7 +1241,7 @@
      "VERTIV"
     ]
    },
-   "Tomás Vázquez [131]": {
+   "emp-131-soldador [131]": {
     "dias_con_planta": 102,
     "transiciones": 100,
     "cambios": 13,
@@ -1254,7 +1254,7 @@
      "VERTIV"
     ]
    },
-   "Leonel Cruz [6]": {
+   "emp-6-tecnico_em [6]": {
     "dias_con_planta": 93,
     "transiciones": 90,
     "cambios": 10,
@@ -1267,7 +1267,7 @@
      "VERTIV"
     ]
    },
-   "Héctor Cruz [25]": {
+   "emp-25-ingenieria [25]": {
     "dias_con_planta": 100,
     "transiciones": 98,
     "cambios": 3,
@@ -1279,7 +1279,7 @@
      "VERTIV"
     ]
    },
-   "Juan Manuel Sánchez [55]": {
+   "emp-55-ingenieria [55]": {
     "dias_con_planta": 62,
     "transiciones": 57,
     "cambios": 7,
@@ -1291,7 +1291,7 @@
      "VERTIV"
     ]
    },
-   "César Gómez [127]": {
+   "emp-127-soldador [127]": {
     "dias_con_planta": 109,
     "transiciones": 108,
     "cambios": 13,
@@ -1304,7 +1304,7 @@
      "VERTIV"
     ]
    },
-   "Carlos Manzanares [76]": {
+   "emp-76-supervisor_sr [76]": {
     "dias_con_planta": 100,
     "transiciones": 98,
     "cambios": 7,
@@ -1317,7 +1317,7 @@
      "VERTIV"
     ]
    },
-   "José Luis Romero [79]": {
+   "emp-79-tecnico_em [79]": {
     "dias_con_planta": 71,
     "transiciones": 64,
     "cambios": 24,
@@ -1332,7 +1332,7 @@
      "VERTIV"
     ]
    },
-   "Stephany Ventura [121]": {
+   "emp-121-segurista [121]": {
     "dias_con_planta": 104,
     "transiciones": 103,
     "cambios": 18,
@@ -1344,7 +1344,7 @@
      "TOPO_CHICO"
     ]
    },
-   "Ramiro Segovia [154]": {
+   "emp-154-chofer [154]": {
     "dias_con_planta": 10,
     "transiciones": 8,
     "cambios": 1,
@@ -1554,20 +1554,20 @@
    156
   ],
   "CUADRILLA": {
-   "76": "Carlos Manzanares",
-   "75": "Mateo Salazar",
-   "124": "Germán Merino",
-   "121": "Stephany Ventura",
-   "6": "Leonel Cruz",
-   "79": "José Luis Romero",
-   "127": "César Gómez",
-   "128": "Enoc Maldonado",
-   "130": "Rolando Vázquez",
-   "131": "Tomás Vázquez",
-   "154": "Ramiro Segovia",
-   "112": "Felipe Pérez",
-   "25": "Héctor Cruz",
-   "55": "Juan Manuel Sánchez"
+   "76": "emp-76-supervisor_sr",
+   "75": "emp-75-supervisor_sr",
+   "124": "emp-124-segurista",
+   "121": "emp-121-segurista",
+   "6": "emp-6-tecnico_em",
+   "79": "emp-79-tecnico_em",
+   "127": "emp-127-soldador",
+   "128": "emp-128-soldador",
+   "130": "emp-130-soldador",
+   "131": "emp-131-soldador",
+   "154": "emp-154-chofer",
+   "112": "emp-112-manager_ops",
+   "25": "emp-25-ingenieria",
+   "55": "emp-55-ingenieria"
   }
  },
  "parteA": {

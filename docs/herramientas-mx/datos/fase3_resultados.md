@@ -59,7 +59,7 @@ se reporta siempre la variante **"sin oficina"**.
 Cómo se calcula: por día, número de proyectos distintos (= frentes) y de plantas inferidas distintas con al
 menos una asistencia. Se excluyen del conteo los proyectos que no son frente de campo: ingeniería de escritorio
 (SO11498 Bridgestone ingeniería conceptual, SO11290 test loop Mexicali) y los 5 proyectos de FTS USA. Oficina =
-empleados de Comercial, Admin y Finanzas, Legal, RH y Dirección (Q9), salvo Francisco Montalvo (8), que opera en sitio.
+empleados de Comercial, Admin y Finanzas, Legal, RH y Dirección (Q9), salvo emp-8 (8), que opera en sitio.
 
 | variante | días | plantas: máx | p95 | p90 | mediana | media | días ≥2 | días ≥3 | días ≥4 |
 |---|---|---|---|---|---|---|---|---|---|
@@ -150,23 +150,23 @@ Por persona (cuadrilla):
 
 | empleado [id] | días con planta | cambios | % cambio | cambios/semana | plantas |
 |---|---|---|---|---|---|
-| Felipe Pérez [112] | 42 | 16 | 41.0 % | 1.44 | Bridgestone, Mission, Quimitec, Topo Chico, Vertiv |
-| José Luis Romero [79] | 71 | 24 | 37.5 % | 1.11 | Bebidas Purificadas, Bridgestone, Budenheim, Topo Chico, Vertiv |
-| Mateo Salazar [75] | 52 | 12 | 26.1 % | 0.54 | Bridgestone, Topo Chico, Vertiv |
-| Germán Merino [124] | 101 | 23 | 23.5 % | 1.03 | Bridgestone, Magnekon, Topo Chico, Vertiv |
-| Stephany Ventura [121] | 104 | 18 | 17.5 % | 0.83 | Bridgestone, Topo Chico |
-| Rolando Vázquez [130] | 104 | 15 | 14.9 % | 0.67 | Magnekon, Topo Chico, Vertiv |
-| Enoc Maldonado [128] | 109 | 15 | 14.0 % | 0.67 | Magnekon, Topo Chico, Vertiv |
-| Tomás Vázquez [131] | 102 | 13 | 13.0 % | 0.59 | Magnekon, Topo Chico, Vertiv |
-| Ramiro Segovia [154] | 10 | 1 | 12.5 % | 0.30 | Magnekon, Topo Chico |
-| Juan Manuel Sánchez [55] | 62 | 7 | 12.3 % | 0.37 | Topo Chico, Vertiv |
-| César Gómez [127] | 109 | 13 | 12.0 % | 0.59 | Bridgestone, Topo Chico, Vertiv |
-| Leonel Cruz [6] | 93 | 10 | 11.1 % | 0.45 | Bridgestone, Topo Chico, Vertiv |
-| Carlos Manzanares [76] | 100 | 7 | 7.1 % | 0.32 | Magnekon, Topo Chico, Vertiv |
-| Héctor Cruz [25] | 100 | 3 | 3.1 % | 0.14 | Topo Chico, Vertiv |
+| emp-112-manager_ops [112] | 42 | 16 | 41.0 % | 1.44 | Bridgestone, Mission, Quimitec, Topo Chico, Vertiv |
+| emp-79-tecnico_em [79] | 71 | 24 | 37.5 % | 1.11 | Bebidas Purificadas, Bridgestone, Budenheim, Topo Chico, Vertiv |
+| emp-75-supervisor_sr [75] | 52 | 12 | 26.1 % | 0.54 | Bridgestone, Topo Chico, Vertiv |
+| emp-124-segurista [124] | 101 | 23 | 23.5 % | 1.03 | Bridgestone, Magnekon, Topo Chico, Vertiv |
+| emp-121-segurista [121] | 104 | 18 | 17.5 % | 0.83 | Bridgestone, Topo Chico |
+| emp-130-soldador [130] | 104 | 15 | 14.9 % | 0.67 | Magnekon, Topo Chico, Vertiv |
+| emp-128-soldador [128] | 109 | 15 | 14.0 % | 0.67 | Magnekon, Topo Chico, Vertiv |
+| emp-131-soldador [131] | 102 | 13 | 13.0 % | 0.59 | Magnekon, Topo Chico, Vertiv |
+| emp-154-chofer [154] | 10 | 1 | 12.5 % | 0.30 | Magnekon, Topo Chico |
+| emp-55-ingenieria [55] | 62 | 7 | 12.3 % | 0.37 | Topo Chico, Vertiv |
+| emp-127-soldador [127] | 109 | 13 | 12.0 % | 0.59 | Bridgestone, Topo Chico, Vertiv |
+| emp-6-tecnico_em [6] | 93 | 10 | 11.1 % | 0.45 | Bridgestone, Topo Chico, Vertiv |
+| emp-76-supervisor_sr [76] | 100 | 7 | 7.1 % | 0.32 | Magnekon, Topo Chico, Vertiv |
+| emp-25-ingenieria [25] | 100 | 3 | 3.1 % | 0.14 | Topo Chico, Vertiv |
 
 Lectura: el técnico típico cambia de planta **~1 vez cada 2 semanas**; los que más se mueven son los de
-supervisión/visitas (Felipe, José Luis, Germán: ~1-1.4 cambios/semana). Juan Manuel Sánchez además tiene 33 registros
+supervisión/visitas (Felipe, José Luis, Germán: ~1-1.4 cambios/semana). emp-55-ingenieria además tiene 33 registros
 en proyectos de ingeniería (SO11498, SO11290) que aquí no cuentan.
 
 ---

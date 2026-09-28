@@ -68,17 +68,17 @@ NO_FRENTE = {2375, 241, 2305, 515, 2356, 2328, 2297}
 
 # Nombres truncados en la salida del MCP -> id (hr.employee, Q9)
 TRUNC_EMP = {
-    'Israel Enrique Rodríguez Hernández': 109, 'Jesus Esteban De La Cruz Calderon': 32,
-    'Brandon Alexander Barrón Balderas': 133, 'Jonathan Missael Carrizales Hernández': 122,
-    'Carlos Guadalupe Guerrero Medrano': 50,
+    'emp-109': 109, 'emp-32': 32,
+    'emp-133': 133, 'emp-122': 122,
+    'emp-50': 50,
 }
 # Cuadrilla de interes (ids de hr.employee, Q9)
-CUADRILLA = {76: 'Carlos Manzanares', 75: 'Mateo Salazar', 124: 'Germán Merino', 121: 'Stephany Ventura',
-             6: 'Leonel Cruz', 79: 'José Luis Romero', 127: 'César Gómez', 128: 'Enoc Maldonado',
-             130: 'Rolando Vázquez', 131: 'Tomás Vázquez', 154: 'Ramiro Segovia', 112: 'Felipe Pérez',
-             25: 'Héctor Cruz', 55: 'Juan Manuel Sánchez'}
+CUADRILLA = {76: 'emp-76-supervisor_sr', 75: 'emp-75-supervisor_sr', 124: 'emp-124-segurista', 121: 'emp-121-segurista',
+             6: 'emp-6-tecnico_em', 79: 'emp-79-tecnico_em', 127: 'emp-127-soldador', 128: 'emp-128-soldador',
+             130: 'emp-130-soldador', 131: 'emp-131-soldador', 154: 'emp-154-chofer', 112: 'emp-112-manager_ops',
+             25: 'emp-25-ingenieria', 55: 'emp-55-ingenieria'}
 # Personal de oficina (department_id Comercial/Admin y Finanzas/Legal/RH/Direccion, Q9), menos
-# Francisco Montalvo (8), que figura en Comercial pero opera en sitio.
+# emp-8 (8), que figura en Comercial pero opera en sitio.
 OFICINA = {32, 47, 48, 59, 60, 62, 63, 78, 84, 85, 97, 98, 101, 108, 143, 149, 150, 153, 155, 156}
 
 # res.partner de envio (Q4): id, ciudad, estado. Es la direccion FISCAL/HQ del cliente, NO la planta.
