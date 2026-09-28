@@ -63,3 +63,23 @@ Gramos y horas: cascara (area x 1.2 mm) + relleno x resto, 1.27 g/cm3, 15 cm3/h 
 2. La ficha mas chica (`...C6-05_ADAP`): probar el perno en el agujero (debe entrar a mano, sin juego lateral).
 3. Las otras 3 losetas y las 4 fichas.
 4. Foto del cajon armado y peso real de cada pieza: esos datos reemplazan esta estimacion.
+
+## Loseta ligera (sesión nocturna 2, #338)
+
+`LOSETA_LIGERA = true` en `fts_rejilla.scad` corta una ventana circular de 16 mm al centro de cada celda de la rejilla. Quedan:
+- 5 mm de costilla entre ventanas;
+- 6.9 mm de material entre ventana y agujero;
+- 4 mm de borde sin ventanas.
+
+**Medido en las STL de BASE C6**, con `estimar_stl.py`:
+
+| | Sólida (sesión 1) | Ligera | Diferencia |
+|---|---|---|---|
+| 4 losetas | 297.3 cm³, 378 g | 199.5 cm³, 253 g | −33 % |
+| Cajón C6 completo | 704 g, 40.8 h | 579 g, 33.6 h | −18 % |
+
+**Falta probar** con el cajón impreso que la loseta no se flexione al meter los pernos. Si se flexiona, sube `ESP_LOSETA` o baja `D_VENTANA`.
+
+Con `false` se vuelve a la loseta sólida.
+
+**Lado del rebaje de dedo:** la ficha acepta `lados` ([0, 1] por defecto). `generar_cajon.py` lo toma de `datos/interferencias_3d.json`: si un lado largo da a la pared, el rebaje va solo del otro lado.

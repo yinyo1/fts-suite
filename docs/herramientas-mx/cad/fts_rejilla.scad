@@ -23,6 +23,13 @@ PARED       = 3;      // pared de la silueta
 HOLGURA     = 1.0;    // entre herramienta y contorno, por lado
 DEDO        = 22;     // diametro del rebaje para meter los dedos
 MARGEN_PERNO= 5;      // un perno se pone solo si queda a >= 5 mm del borde de la ficha
+// Loseta aligerada (sesion nocturna 2, #338): una ventana circular en el centro de cada celda de la rejilla, entre 4
+// agujeros. Con 16 mm de diametro quedan 5 mm de costilla entre ventanas y 6.9 mm de material entre ventana y agujero
+// (anillo de 4.2 mm alrededor del agujero de 5.4, donde entra el perno). Se quita el 45.6 % del area de cada celda
+// (pi x 8^2 / 21^2). LOSETA_LIGERA = false vuelve a la loseta solida de la sesion 1.
+LOSETA_LIGERA = true;
+D_VENTANA   = 16;
+BORDE_LOSETA= 4;      // ninguna ventana a menos de 4 mm del borde de la loseta
 $fn = 32;
 
 // ------------------------------------------------------------------ loseta
@@ -33,6 +40,11 @@ module loseta(x0, y0, w, h, ancho_cajon, fondo_cajon) {
             px = ORIGEN + i * PASO; py = ORIGEN + j * PASO;
             if (px > x0 + 3 && px < x0 + w - 3 && py > y0 + 3 && py < y0 + h - 3)
                 translate([px, py, -1]) cylinder(d = D_AGUJERO, h = ESP_LOSETA + 2);
+            // ventana al centro de la celda (entre este agujero y los de +x, +y)
+            cx = px + PASO / 2; cy = py + PASO / 2;
+            if (LOSETA_LIGERA && cx - D_VENTANA / 2 > x0 + BORDE_LOSETA && cx + D_VENTANA / 2 < x0 + w - BORDE_LOSETA
+                && cy - D_VENTANA / 2 > y0 + BORDE_LOSETA && cy + D_VENTANA / 2 < y0 + h - BORDE_LOSETA)
+                translate([cx, cy, -1]) cylinder(d = D_VENTANA, h = ESP_LOSETA + 2);
         }
         // rotulo en bajo relieve: cajon y posicion de la loseta
     }

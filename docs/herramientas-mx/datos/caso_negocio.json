@@ -72,12 +72,12 @@
   "herr": 6407.12,
   "cont": 13197.0,
   "ctrl": 813.55,
-  "petg": 6767.31,
-  "total": 27184.98,
+  "petg": 5837.06,
+  "total": 26254.73,
   "sin_precio": 0,
   "n_cont": 4,
-  "kg": 10.69,
-  "h_std": 538.1,
+  "kg": 9.22,
+  "h_std": 465.2,
   "cajas": {
    "48-22-8443": 2,
    "48-22-8444": 1,
@@ -88,12 +88,12 @@
   "herr": 52796.13,
   "cont": 16811.0,
   "ctrl": 813.55,
-  "petg": 6767.31,
-  "total": 77187.99,
+  "petg": 5837.06,
+  "total": 76257.74,
   "sin_precio": 1,
   "n_cont": 4,
-  "kg": 10.69,
-  "h_std": 538.1,
+  "kg": 9.22,
+  "h_std": 465.2,
   "cajas": {
    "48-22-8443": 2,
    "48-22-8444": 1,
@@ -121,12 +121,12 @@
   "herr": 166422.1,
   "cont": 107838.0,
   "ctrl": 5357.3,
-  "petg": 43591.78,
-  "total": 323209.18,
+  "petg": 37312.33,
+  "total": 316929.73,
   "sin_precio": 5,
   "n_cont": 28,
-  "kg": 68.87,
-  "h_std": 3466.1,
+  "kg": 58.95,
+  "h_std": 2974.7,
   "cajas": {
    "48-22-8443": 7,
    "48-22-8444": 8,
@@ -142,12 +142,12 @@
    "herr": 136007.11,
    "cont": 94826.0,
    "ctrl": 4662.75,
-   "petg": 37804.81,
-   "total": 273300.67,
+   "petg": 32291.98,
+   "total": 267787.84,
    "sin_precio": 5,
    "n_cont": 25,
-   "kg": 59.72,
-   "h_std": 3006.0
+   "kg": 51.01,
+   "h_std": 2574.6
   },
   {
    "bases": 4,
@@ -155,12 +155,12 @@
    "herr": 247461.51,
    "cont": 171047.0,
    "ctrl": 7936.4,
-   "petg": 58347.03,
-   "total": 484791.94,
+   "petg": 49405.57,
+   "total": 475850.48,
    "sin_precio": 6,
    "n_cont": 44,
-   "kg": 92.18,
-   "h_std": 4639.6
+   "kg": 78.05,
+   "h_std": 3940.0
   },
   {
    "bases": 5,
@@ -168,12 +168,12 @@
    "herr": 166422.1,
    "cont": 107838.0,
    "ctrl": 5357.3,
-   "petg": 43591.78,
-   "total": 323209.18,
+   "petg": 37312.33,
+   "total": 316929.73,
    "sin_precio": 5,
    "n_cont": 28,
-   "kg": 68.87,
-   "h_std": 3466.1
+   "kg": 58.95,
+   "h_std": 2974.7
   },
   {
    "bases": 5,
@@ -181,12 +181,12 @@
    "herr": 326772.83,
    "cont": 215587.0,
    "ctrl": 9920.5,
-   "petg": 72933.79,
-   "total": 625214.12,
+   "petg": 61756.96,
+   "total": 614037.29,
    "sin_precio": 6,
    "n_cont": 55,
-   "kg": 115.22,
-   "h_std": 5799.5
+   "kg": 97.56,
+   "h_std": 4925.0
   },
   {
    "bases": 6,
@@ -194,12 +194,12 @@
    "herr": 196837.09,
    "cont": 120850.0,
    "ctrl": 6051.85,
-   "petg": 49378.76,
-   "total": 373117.7,
+   "petg": 42332.68,
+   "total": 366071.62,
    "sin_precio": 5,
    "n_cont": 31,
-   "kg": 78.01,
-   "h_std": 3926.3
+   "kg": 66.88,
+   "h_std": 3374.9
   },
   {
    "bases": 6,
@@ -207,23 +207,23 @@
    "herr": 406084.15,
    "cont": 260127.0,
    "ctrl": 11904.6,
-   "petg": 87520.55,
-   "total": 765636.3,
+   "petg": 74108.36,
+   "total": 752224.11,
    "sin_precio": 6,
    "n_cont": 66,
-   "kg": 138.26,
-   "h_std": 6959.4
+   "kg": 117.07,
+   "h_std": 5910.0
   }
  ],
  "factor_petg": [
-  2.279,
-  2.513
+  1.898,
+  2.1
  ],
  "inversiones": {
-  "Piloto (1 base + 1 modulo TUB, con inventario existente)": 27184.98,
-  "Plan completo (5 bases, modulos compartidos), sin RFID": 323209.18,
+  "Piloto (1 base + 1 modulo TUB, con inventario existente)": 26254.73,
+  "Plan completo (5 bases, modulos compartidos), sin RFID": 316929.73,
   "Plan completo + RFID (asignacion_y_compra.xlsx, total conservador)": 316214.8,
-  "Solo el control (contenedores, candados, cables, PETG, RFID), sin herramienta": 176863.18
+  "Solo el control (contenedores, candados, cables, PETG, RFID), sin herramienta": 170583.73
  },
  "huerfanos": [
   {
