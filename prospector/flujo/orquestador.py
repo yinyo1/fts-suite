@@ -608,6 +608,13 @@ def main(argv=None) -> int:
                                 "subida. Es lo unico que verifica CONTENIDO: el "
                                 "tamano no distingue un salto de linea de mas de "
                                 "un caracter cambiado en medio (#306)")
+            s.add_argument("--sha256-releido", action="store_true",
+                           dest="sha256_releido",
+                           help="el sha256 que pasas NO lo devolvio el conector: "
+                                "lo calculaste leyendo el archivo de vuelta y "
+                                "hasheandolo aqui. Verifica el ida y vuelta "
+                                "completo, no la copia remota por si sola; la "
+                                "corrida lo va a decir asi")
             s.add_argument("--bytes", default=None, type=int, dest="bytes_",
                            help="el tamano que devolvio el conector. Sirve de "
                                 "consuelo si no da hash, pero NO verifica")
@@ -1054,7 +1061,8 @@ def main(argv=None) -> int:
                       "parametro de adjuntos (medido).")
             e = c.registrar_entrega(a.destino, a.url, a.archivo,
                                     sha256_subido=a.sha256,
-                                    bytes_subidos=a.bytes_)
+                                    bytes_subidos=a.bytes_,
+                                    hash_de_relectura=a.sha256_releido)
             c.guardar(_ruta_de(c, a))
             print(f"\n  ✓ FICHA ENTREGADA — sobrevive a esta sesion:")
             print(f"     destino: {e['destino']}")
@@ -1065,6 +1073,9 @@ def main(argv=None) -> int:
             # contenido no se habia comparado.
             rotulos = {
                 "identico": "✓ contenido VERIFICADO por sha256: identico al local",
+                "identico_por_relectura":
+                    "✓ contenido VERIFICADO releyendo el archivo: identico al "
+                    "local byte por byte (el conector no da hash propio)",
                 "DIFIERE": "⛔ contenido DISTINTO del local (sha256 no casa)",
                 "mismo_tamano_sin_hash": "⚠  solo se comparo el TAMANO, y coincide "
                                          "— el tamano no verifica contenido",

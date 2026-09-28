@@ -418,7 +418,23 @@ class Corrida:
 
     def registrar_entrega(self, destino: str, url: str, archivo: str = "",
                           sha256_subido: str = "",
-                          bytes_subidos: int | None = None) -> dict:
+                          bytes_subidos: int | None = None,
+                          hash_de_relectura: bool = False) -> dict:
+        """Registra la entrega y COMPARA lo subido contra lo local.
+
+        `hash_de_relectura` distingue DE DONDE salio el sha256, porque las dos
+        procedencias no prueban lo mismo y la corrida tiene que decir cual fue:
+
+        - del CONECTOR: el servicio calculo el hash sobre los bytes que tiene
+          guardados y nos lo dijo. Verifica la copia remota.
+        - de RELECTURA: el conector no da hash (medido: Graph no expone
+          `file.hashes` por este conector), asi que se leyo el archivo de vuelta
+          y se hasheo aqui. Verifica el ida y vuelta completo, que es lo que
+          falla en la practica -- el salto de linea de mas de #306 lo habria
+          cazado --, pero pasa por la lectura del conector: si el conector
+          normaliza al leer, normaliza en los dos lados y la comparacion se
+          vuelve ciega a eso. Es mas fuerte que el tamano y mas debil que un
+          hash del servicio, y se llama por su nombre."""
         if destino not in self.DESTINOS:
             raise CompuertaCerrada(
                 f"Destino '{destino}' desconocido. Los evaluados: "
@@ -441,7 +457,18 @@ class Corrida:
         verificacion, avisos = "sin_verificar", []
         if local and sha256_subido:
             if sha256_subido.strip().lower() == local["sha256"]:
-                verificacion = "identico"
+                verificacion = ("identico_por_relectura" if hash_de_relectura
+                                else "identico")
+                if hash_de_relectura:
+                    avisos.append(
+                        "CONTENIDO verificado LEYENDO EL ARCHIVO DE VUELTA, no "
+                        "con un hash del servicio: el conector no devuelve "
+                        "`file.hashes`. El ida y vuelta completo coincide byte "
+                        f"por byte ({local['bytes']:,} bytes, sha256 "
+                        f"{local['sha256'][:16]}…). Queda una salvedad: la "
+                        "relectura pasa por el mismo conector, asi que si el "
+                        "conector normalizara algo al leer, lo normalizaria en "
+                        "los dos lados y esta comparacion no lo veria.")
             else:
                 verificacion = "DIFIERE"
                 igual_tamano = (bytes_subidos == local["bytes"])
@@ -479,6 +506,7 @@ class Corrida:
             "ts": datetime.now(timezone.utc).isoformat(), "declarada": False,
             "local": local, "sha256_subido": (sha256_subido or "").strip(),
             "bytes_subidos": bytes_subidos,
+            "hash_de_relectura": bool(hash_de_relectura),
             "verificacion": verificacion, "avisos_de_verificacion": avisos,
         }
         for a in avisos:

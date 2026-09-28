@@ -3,6 +3,43 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.10.3 — 2026-09-28
+
+La entrega ya puede verificar **contenido** con el conector de Graph, que no
+devuelve hash. **708 pruebas** (eran 703).
+
+### El conector no da `file.hashes`: hay que leer el archivo de vuelta
+
+La subida de la ficha de Pesqueria a OneDrive quedo en
+`mismo_tamano_sin_hash`: el conector confirmo **31,625 bytes** y nada mas. El
+tamano no verifica contenido — es exactamente lo que fallo en #306, donde la
+copia subida difirio en un byte (un salto de linea de mas) y la entrega se dio
+por buena.
+
+Se midio de donde se puede sacar un hash de la copia remota y **no se puede**:
+ni `drive:///users/me`, ni el listado de la carpeta raiz, ni `sharepoint_search`
+exponen la faceta `file.hashes` de Graph por este conector. Tampoco hay subida
+ni descarga por ruta local: el contenido viaja como parametro de texto.
+
+Lo que si se puede: **leer el archivo de vuelta y hashearlo aqui**. Se hizo, y
+el ida y vuelta completo coincide **byte por byte** con el local.
+
+### El veredicto nuevo se llama por su nombre
+
+Registrar eso como `identico` habria sido mentir en la corrida: `--sha256`
+documenta que es «el hash que devolvio el conector», y el conector no devolvio
+ninguno. Entonces:
+
+- bandera nueva `entregar --sha256-releido`, que declara la procedencia;
+- veredicto nuevo **`identico_por_relectura`**, con su rotulo propio;
+- el aviso dice las dos cosas: que coincide byte por byte, **y** que la
+  relectura pasa por el mismo conector, asi que si el conector normalizara algo
+  al leer lo normalizaria en los dos lados y la comparacion no lo veria.
+
+Es mas fuerte que el tamano — habria cazado el byte de #306 — y mas debil que un
+hash del servicio. Un hash de relectura que **no** casa sigue siendo `DIFIERE`:
+la procedencia no suaviza un desacuerdo.
+
 ## 0.10.2 — 2026-09-27
 
 Auditoria del **historial completo** de git buscando datos personales (#324).
