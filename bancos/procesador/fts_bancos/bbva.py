@@ -173,32 +173,38 @@ def parsear(contenido: bytes) -> EstadoParseado:
         textos = [(p.extract_text() or "") for p in pdf.pages]
         if not any(t.strip() for t in textos):
             raise ErrorParser("SIN_TEXTO", "el PDF no tiene texto extraíble (¿escaneado?)")
-        p1 = textos[0]
+        # Algunos PDF del portal traen antes una hoja que es sólo imagen (sin texto). Esas se
+        # saltan; una hoja CON texto que no sea el estado no se salta: eso sería otro documento.
+        i0 = 0
+        while i0 < len(textos) - 1 and not textos[i0].strip():
+            i0 += 1
+        p1 = textos[i0]
         paginas: dict = {}
+        avisos_ini = [f"la pág. 1 del PDF no tiene texto (imagen); el estado empieza en la pág. {i0 + 1}"] if i0 else []
 
         mp = RE_PERIODO.search(p1)
         if not mp:
-            raise ErrorParser("MARCADOR_AUSENTE", "no se encontró 'Periodo DEL dd/mm/aaaa AL dd/mm/aaaa' en la pág. 1", 1)
+            raise ErrorParser("MARCADOR_AUSENTE", "no se encontró 'Periodo DEL dd/mm/aaaa AL dd/mm/aaaa' en la pág. 1", i0 + 1)
         d1, m1, a1, d2, m2, a2 = (int(x) for x in mp.groups())
         inicio, fin = date(a1, m1, d1), date(a2, m2, d2)
-        paginas["periodo"] = 1
+        paginas["periodo"] = i0 + 1
 
         rfc = (RE_RFC.search(p1).group(1).upper() if RE_RFC.search(p1) else None)
         cuenta = RE_CUENTA.search(p1)
         clabe = RE_CLABE.search(p1)
 
         # El resumen puede partirse a la pág. 2 en estados largos: se busca en las dos primeras.
-        cabecera = "\n".join(textos[:2])
+        cabecera = "\n".join(textos[i0:i0 + 2])
         si = _buscar(ALIAS_SALDO_INICIAL, cabecera)
         sli = _buscar(ALIAS_SALDO_LIQ_INI, cabecera)
         sf = _buscar(ALIAS_SALDO_FINAL, cabecera)
         ra, rc = RE_ABONOS.search(cabecera), RE_CARGOS.search(cabecera)
         faltan = [n for n, v in (("Saldo Anterior", si), ("Saldo Final", sf), ("Depósitos / Abonos", ra), ("Retiros / Cargos", rc)) if v is None]
         if faltan:
-            raise ErrorParser("MARCADOR_AUSENTE", "no se encontró en el resumen 'Comportamiento': " + ", ".join(faltan), 1)
+            raise ErrorParser("MARCADOR_AUSENTE", "no se encontró en el resumen 'Comportamiento': " + ", ".join(faltan), i0 + 1)
         for clave, alias in (("saldo_inicial", ALIAS_SALDO_INICIAL), ("saldo_final", ALIAS_SALDO_FINAL)):
-            paginas[clave] = next((i + 1 for i, t in enumerate(textos[:2]) if any(re.search(a, t, re.I) for a in alias)), 1)
-        paginas["resumen"] = next((i + 1 for i, t in enumerate(textos[:2]) if RE_ABONOS.search(t)), 1)
+            paginas[clave] = next((i + 1 for i, t in enumerate(textos[:i0 + 2]) if i >= i0 and any(re.search(a, t, re.I) for a in alias)), i0 + 1)
+        paginas["resumen"] = next((i + 1 for i, t in enumerate(textos[:i0 + 2]) if i >= i0 and RE_ABONOS.search(t)), i0 + 1)
 
         todo = "\n".join(textos)
         tc, ta = RE_TOT_CARGOS.search(todo), RE_TOT_ABONOS.search(todo)
@@ -217,6 +223,7 @@ def parsear(contenido: bytes) -> EstadoParseado:
             totales_num_cargos=int(tc.group(2)) if tc else None, totales_total_cargos=dinero(tc.group(1)) if tc else None,
             paginas=paginas, num_paginas=len(pdf.pages), texto_encabezado=p1[:4000],
         )
+        est.avisos.extend(avisos_ini)
         if not tc or not ta:
             est.avisos.append("MARCADOR_AUSENTE: bloque 'Total de Movimientos' incompleto; V1 se valida sólo contra el resumen")
 
@@ -321,7 +328,13 @@ def _movimientos(pdf, est: EstadoParseado) -> None:
     if actual:
         est.movimientos.append(actual)
     if columnas is None:
-        raise ErrorParser("SIN_ENCABEZADO_COLUMNAS", "no se encontró el encabezado CARGOS/ABONOS del detalle")
+        # Un mes sin movimientos no trae sección de detalle. Sólo se acepta si el propio banco
+        # dice cero en el resumen (y en los totales, si los imprime); V1 y V2 lo verifican después.
+        ceros = (est.resumen_num_cargos == 0 and est.resumen_num_abonos == 0
+                 and est.totales_num_cargos in (None, 0) and est.totales_num_abonos in (None, 0))
+        if not ceros:
+            raise ErrorParser("SIN_ENCABEZADO_COLUMNAS", "no se encontró el encabezado CARGOS/ABONOS del detalle")
+        est.avisos.append("mes sin movimientos: el banco no imprimió la sección de detalle")
     for m in est.movimientos:
         m.descripcion = re.sub(r"\s+", " ", m.descripcion).strip()
         ref = re.search(r"\bRef\.?\s*:?\s*([A-Z0-9/-]{4,})", m.descripcion, re.I)

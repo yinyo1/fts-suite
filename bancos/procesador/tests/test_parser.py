@@ -60,3 +60,30 @@ def test_hash_estable():
     a1 = bbva.calcular_hashes(bbva.parsear(b), e.numero)
     a2 = bbva.calcular_hashes(bbva.parsear(b), e.numero)
     assert a1 == a2
+
+
+def test_hoja_imagen_antes_del_estado_se_salta():
+    e = escenario()["general_2026-03"]
+    e.portada_sin_texto = True
+    est = bbva.parsear(pdf_estado(e))
+    assert est.periodo == "2026-03" and est.paginas["periodo"] == 2
+    assert any("pág. 1 del PDF no tiene texto" in a for a in est.avisos)
+    assert validar.v1(est)[0] and validar.v2(est)[0]
+
+
+def test_mes_sin_movimientos_sin_seccion_de_detalle():
+    e = escenario()["usd_2026-03"]
+    e.movs = []
+    e.sin_detalle = True
+    est = bbva.parsear(pdf_estado(e))
+    assert est.movimientos == [] and est.saldo_final == est.saldo_inicial
+    assert any("sin movimientos" in a for a in est.avisos)
+    assert validar.v1(est)[0] and validar.v2(est)[0]
+
+
+def test_sin_detalle_pero_el_resumen_dice_que_hubo_movimientos_se_rechaza():
+    e = escenario()["usd_2026-03"]
+    e.sin_detalle = True   # movimientos en el resumen, pero sin sección de detalle
+    with pytest.raises(bbva.ErrorParser) as ex:
+        bbva.parsear(pdf_estado(e))
+    assert ex.value.codigo == "SIN_ENCABEZADO_COLUMNAS"

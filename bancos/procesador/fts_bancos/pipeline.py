@@ -188,7 +188,7 @@ def es_candidato(contenido: bytes, catalogo: Catalogo) -> bool:
     if not entrada.es_pdf(contenido):
         return False
     try:
-        t = "\n".join(bbva.texto_paginas(contenido, max_paginas=1))
+        t = "\n".join(bbva.texto_paginas(contenido, max_paginas=2))   # hay PDF con una hoja-imagen antes
     except Exception:
         return b"/Encrypt" in contenido   # protegido: se guarda para avisar
     if not t.strip():
@@ -294,7 +294,7 @@ def _orden_pieza(p) -> int:
     if not pista:
         return 1
     try:
-        m = bbva.RE_PERIODO.search("\n".join(bbva.texto_paginas(p.contenido, max_paginas=1)))
+        m = bbva.RE_PERIODO.search("\n".join(bbva.texto_paginas(p.contenido, max_paginas=2)))
     except Exception:
         return 1
     return 0 if m and f"{int(m.group(6)):04d}-{int(m.group(5)):02d}" == pista else 1

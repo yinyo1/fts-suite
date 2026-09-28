@@ -52,6 +52,8 @@ class Estado:
     corromper_total_cargos: Decimal = Decimal("0")
     corromper_saldo_impreso: Decimal = Decimal("0")
     sin_texto_extra: list[str] = field(default_factory=list)
+    portada_sin_texto: bool = False   # pág. 1 que es sólo imagen, antes del estado (visto en estados reales)
+    sin_detalle: bool = False         # mes sin movimientos: el banco no imprime la sección de detalle
 
 
 def saldo_final(e: Estado) -> Decimal:
@@ -92,6 +94,11 @@ def pdf_estado(e: Estado, encriptar: str | None = None) -> bytes:
         c.drawRightString(590, y, "LIQUIDACIÓN")
         c.setFont("Helvetica", 7)
 
+    if e.portada_sin_texto:
+        c.setFillGray(0.85)
+        c.rect(36, 200, W - 72, H - 260, fill=1, stroke=0)
+        c.setFillGray(0)
+        c.showPage()
     # pág. 1
     c.setFont("Helvetica-Bold", 10)
     c.drawString(36, H - 40, "Estado de Cuenta")
@@ -118,10 +125,11 @@ def pdf_estado(e: Estado, encriptar: str | None = None) -> bytes:
         c.drawString(36, H - 226 - 10 * i, t)
     c.setFont("Helvetica-Bold", 8)
     y = H - 260
-    c.drawString(36, y, "Detalle de Movimientos Realizados")
-    y -= 22
-    encabezado_columnas(y)
-    y -= 14
+    if not e.sin_detalle:
+        c.drawString(36, y, "Detalle de Movimientos Realizados")
+        y -= 22
+        encabezado_columnas(y)
+        y -= 14
     saldo = e.saldo_inicial
     liq_saldo_por_dia = {}
     for i, x in enumerate(movs):
