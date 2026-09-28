@@ -1,0 +1,136 @@
+{
+  "que_es": "Las senales de las cuentas YA EVALUADAS, con la procedencia de cada una dentro de este repo. Es el insumo de la linea base del radar: sin esto, 'cuantas cuentas habria encontrado el radar' seria una opinion.",
+  "que_NO_lleva": "Ni una persona. Son empresas, montos de inversion publicos y fechas de nota. Nada de esto es dato personal.",
+  "regla": "Cada renglon dice DONDE esta documentado. Donde la senal no esta documentada, el renglon lo dice y NO se inventa: fuente y tipo quedan en null y la cuenta cuenta como hueco, no como cero.",
+  "corte": "2026-09-28",
+  "cuentas": [
+    {
+      "empresa": "Coficab", "planta": "Pesqueria", "giro": "cables automotrices",
+      "fuente": "prensa_industrial", "tipo": "obra_nueva",
+      "texto": "prensa reporta segunda planta en Nuevo Leon; ampliacion de nave",
+      "fecha_senal": null, "fecha_documentada": false,
+      "en_padron_denue": false,
+      "documentado_en": "#306 y #310; la ficha regenerada de #323 lo trae en la linea de tiempo como 'Sin fecha - Confirmar el ano antes de citarlo'",
+      "nota": "La corrida real, 21 busquedas. La fecha de la nota NO esta documentada y la ficha lo declara."
+    },
+    {
+      "empresa": "Coficab", "planta": "Durango", "giro": "cables automotrices; el piso superior funde cobre OFC",
+      "fuente": "prensa_industrial", "tipo": "obra_nueva",
+      "texto": "nave nueva con carga de enfriamiento; inversion de 60 MDD; de 500 a 2000 empleos; inauguracion",
+      "fecha_senal": "2025-12-08", "fecha_documentada": true,
+      "en_padron_denue": false,
+      "documentado_en": "metodo/motor1-radar-de-leads.md, §3d 'Habria encontrado a Coficab Durango'",
+      "nota": "La unica cuenta con su puntaje VIEJO documentado: 59, GUARDA. Sirve de control del calculo."
+    },
+    {
+      "empresa": "LEGO", "planta": null, "giro": "juguete de plastico; inyeccion",
+      "fuente": "prensa_industrial", "tipo": "ampliacion_de_capacidad",
+      "texto": "inversion anunciada de 205 MDD",
+      "fecha_senal": null, "fecha_documentada": false,
+      "en_padron_denue": null,
+      "documentado_en": "metodo/modulos-de-contactos.md, rendimiento medido de M12 el 18-sep-2026",
+      "nota": "Una de las ocho senales calientes de M12. El MONTO esta documentado; la fecha de la nota no."
+    },
+    {
+      "empresa": "Ragasa", "planta": null, "giro": "aceites y grasas comestibles",
+      "fuente": "prensa_industrial", "tipo": "ampliacion_de_capacidad",
+      "texto": "inversion anunciada de 633 MDP",
+      "fecha_senal": null, "fecha_documentada": false,
+      "en_padron_denue": true,
+      "documentado_en": "metodo/modulos-de-contactos.md, M12 18-sep-2026; corrida e2e en #5 y revalidada en #8",
+      "nota": null
+    },
+    {
+      "empresa": "Cuprum", "planta": null, "giro": "extrusion de aluminio; anodizado",
+      "fuente": "prensa_industrial", "tipo": "ampliacion_de_capacidad",
+      "texto": "inversion anunciada de 200 MDD",
+      "fecha_senal": null, "fecha_documentada": false,
+      "en_padron_denue": true,
+      "documentado_en": "metodo/modulos-de-contactos.md, M12 18-sep-2026; la corrida real de #24",
+      "nota": "La corrida de punta a punta de #24, 16 contactos."
+    },
+    {
+      "empresa": "Bimbo", "planta": null, "giro": "panificacion; alimentos",
+      "fuente": "prensa_industrial", "tipo": "ampliacion_de_capacidad",
+      "texto": "inversion anunciada de 2000 MDD",
+      "fecha_senal": null, "fecha_documentada": false,
+      "en_padron_denue": true,
+      "documentado_en": "metodo/modulos-de-contactos.md, M12 18-sep-2026",
+      "nota": "El caso al filo del padron: pasa las otras tres reglas y falla el umbral de sitios."
+    },
+    {
+      "empresa": "Amazon", "planta": null, "giro": "centro de distribucion; datacenter",
+      "fuente": "prensa_industrial", "tipo": "ampliacion_de_capacidad",
+      "texto": "inversion anunciada de 500 MDP",
+      "fecha_senal": null, "fecha_documentada": false,
+      "en_padron_denue": null,
+      "documentado_en": "metodo/modulos-de-contactos.md, M12 18-sep-2026",
+      "nota": "Corrida flaca: 3 consultas, 11 entradas. Salio flaca porque se busco menos, no porque tenga menos gente."
+    },
+    {
+      "empresa": "Nemak", "planta": "Garcia", "giro": "fundicion de aluminio; cabezas y monoblocks",
+      "fuente": "prensa_industrial", "tipo": "ampliacion_de_capacidad",
+      "texto": "inversion anunciada y vacantes abiertas del area de mantenimiento al mismo tiempo",
+      "fecha_senal": null, "fecha_documentada": false,
+      "en_padron_denue": true,
+      "documentado_en": "metodo/modulos-de-contactos.md, cruce C7 'la obra va adelante del equipo' y C8 'de prospecto a cliente'",
+      "nota": "El cruce C7 esta documentado con esta cuenta como ejemplo. La cuenta paso de prospecto a cliente (C8)."
+    },
+    {
+      "empresa": "Hershey", "planta": "Escobedo", "giro": "confiteria y chocolate; alimentos",
+      "fuente": "correo_propio", "tipo": "necesidad_declarada",
+      "texto": "hilo vivo en el buzon de FTS sobre molinos; NDA firmado; vacantes tecnicas de mantenimiento abiertas",
+      "fecha_senal": "2026-09-24", "fecha_documentada": true,
+      "en_padron_denue": true,
+      "documentado_en": "metodo/busqueda-encadenada-contactos.md §'Medido en Hershey el 24-sep-2026'; el NDA y el hilo los aporta Esteban (conocimiento directo)",
+      "nota": "La fuente mas fuerte del catalogo: el cliente diciendolo por escrito en nuestro propio buzon. Es la tarjeta que abre el piloto."
+    },
+    {
+      "empresa": "Coficab", "planta": "Cd. Juarez", "giro": "cables automotrices",
+      "fuente": null, "tipo": null,
+      "texto": null,
+      "fecha_senal": null, "fecha_documentada": false,
+      "en_padron_denue": false,
+      "documentado_en": "propuestas-de-metodo-300.md y el registro de ubicacion de proyectos (3 proyectos declarados)",
+      "nota": "HUECO DECLARADO. Esta planta tiene TRES proyectos de FTS y ninguna SENAL documentada: entro por historia en Odoo, no por una senal del radar. Poner `expansion_odoo` aqui seria inventarle una procedencia a la cuenta mas documentada del proyecto."
+    },
+    {
+      "empresa": "Coficab", "planta": "Silao", "giro": "cables automotrices",
+      "fuente": null, "tipo": null,
+      "texto": null,
+      "fecha_senal": null, "fecha_documentada": false,
+      "en_padron_denue": false,
+      "documentado_en": "propuestas-de-metodo-300.md: Chao1 16 observados, 24.3 estimados, 65.8% cobertura, falta_barrer",
+      "nota": "HUECO DECLARADO. Lo unico documentado es su barrido de contactos. No hay senal."
+    },
+    {
+      "empresa": "Metalsa", "planta": null, "giro": "estructuras automotrices; estampado y soldadura",
+      "fuente": null, "tipo": null,
+      "texto": null,
+      "fecha_senal": null, "fecha_documentada": false,
+      "en_padron_denue": null,
+      "documentado_en": null,
+      "nota": "HUECO DECLARADO. No hay senal documentada de esta cuenta en ningun archivo del repo."
+    },
+    {
+      "empresa": "International", "planta": null, "giro": "camiones y tractocamiones; ensamble",
+      "fuente": null, "tipo": null,
+      "texto": null,
+      "fecha_senal": null, "fecha_documentada": false,
+      "en_padron_denue": null,
+      "documentado_en": "metodo/modulos-de-contactos.md: 4 consultas, 15 entradas, 3.75 de rendimiento",
+      "nota": "HUECO DECLARADO. Lo unico documentado es su rendimiento de consultas. Salio flaca porque se busco menos."
+    }
+  ],
+  "casos_de_control": [
+    {
+      "que_es": "Una senal DOCUMENTADA CON FECHA que no es de ninguna de las 13 cuentas. Sirve para ver que el radar puntua bien una senal fresca de verdad.",
+      "empresa": "(procesadora de carne en Escobedo, razon social no documentada)",
+      "giro": "procesamiento de carne; alimentos",
+      "fuente": "prensa_industrial", "tipo": "obra_nueva",
+      "texto": "planta procesadora de carne nueva en Escobedo con 500 mdp de inversion",
+      "fecha_senal": "2026-09-03", "fecha_documentada": true,
+      "documentado_en": "HISTORIAL.md y metodo/fuentes-de-senal.md: la nota que devolvio la consulta dirigida"
+    }
+  ]
+}
