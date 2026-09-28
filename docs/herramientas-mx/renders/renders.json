@@ -1,0 +1,80 @@
+[
+ {
+  "modulo": "BASE",
+  "cajon": 1,
+  "falta": null,
+  "archivo": "BASE-C1.jpg"
+ },
+ {
+  "modulo": "BASE",
+  "cajon": 2,
+  "falta": null,
+  "archivo": "BASE-C2.jpg"
+ },
+ {
+  "modulo": "BASE",
+  "cajon": 3,
+  "falta": null,
+  "archivo": "BASE-C3.jpg"
+ },
+ {
+  "modulo": "BASE",
+  "cajon": 3,
+  "falta": "FTS-BAS-01-C3-03",
+  "archivo": "BASE-C3_faltante_BAS-01-C3-03.jpg"
+ },
+ {
+  "modulo": "BASE",
+  "cajon": 4,
+  "falta": null,
+  "archivo": "BASE-C4.jpg"
+ },
+ {
+  "modulo": "BASE",
+  "cajon": 5,
+  "falta": null,
+  "archivo": "BASE-C5.jpg"
+ },
+ {
+  "modulo": "BASE",
+  "cajon": 6,
+  "falta": null,
+  "archivo": "BASE-C6.jpg"
+ },
+ {
+  "modulo": "BASE",
+  "cajon": 6,
+  "falta": "FTS-BAS-01-C6-04-03",
+  "archivo": "BASE-C6_faltante_BAS-01-C6-04-03.jpg"
+ },
+ {
+  "modulo": "BASE",
+  "cajon": 7,
+  "falta": null,
+  "archivo": "BASE-C7.jpg"
+ },
+ {
+  "modulo": "BASE",
+  "cajon": 8,
+  "falta": null,
+  "archivo": "BASE-C8.jpg"
+ },
+ {
+  "modulo": "BASE",
+  "cajon": 9,
+  "falta": null,
+  "archivo": "BASE-C9.jpg"
+ },
+ {
+  "modulo": "TUB",
+  "cajon": 1,
+  "falta": null,
+  "archivo": "TUB-C1.jpg"
+ },
+ {
+  "modulo": "TUB",
+  "cajon": 2,
+  "falta": null,
+  "archivo": "TUB-C2.jpg"
+ }
+]
