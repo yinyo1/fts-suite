@@ -853,10 +853,13 @@ conPg('cambio a con_suspension: no genera suspensiones retroactivas; sólo reinc
 test('cambio de campo en Odoo: el contrato truena con CONTRATO_ROTO en vez de seguir vacío', () => {
   const N = require('../../retardos/lib/normalizar.js');
   const att = [{ id: 1, employee_id: [5, 'Demo'], check_in: '2026-09-01 13:10:00', x_studio_horario_en_disputa: false, x_studio_incidencia_pendiente_id: false }];
-  const emp = [{ id: 5, name: 'Demo', job_title: 'x', company_id: [1, 'FTS'], active: true, x_studio_hora_entrada: 7, work_email: 'd@example.com', parent_id: false, department_id: false, resource_calendar_id: [2, 'Ops'] }];
+  const emp = [{ id: 5, name: 'Demo', job_title: 'x', company_id: [1, 'FTS'], active: true, x_studio_hora_entrada: 7, work_email: 'd@example.com', private_email: 'D.Personal@Example.com', parent_id: false, department_id: false, resource_calendar_id: [2, 'Ops'] }];
   const ok = N.normalizar({ att, emp, cal: [{ calendar_id: [2, 'Ops'], dayofweek: '0', hour_from: 7 }], desde: '2026-09-01', hasta: '2026-09-01' });
   assert.equal(ok.checadas[0].check_in_utc, '2026-09-01T13:10:00Z');
   assert.equal(ok.empleados[0].hora_calendario, 7);
+  assert.deepEqual(ok.empleados[0].correos, [{ campo: 'work_email', email: 'd@example.com' }, { campo: 'private_email', email: 'd.personal@example.com' }]);
+  const sinPersonal = [Object.assign({}, emp[0])]; delete sinPersonal[0].private_email;
+  assert.throws(() => N.normalizar({ att, emp: sinPersonal, cal: [] }), /CONTRATO_ROTO:hr[.]employee[.]private_email/);
   const sinCampo = [Object.assign({}, emp[0])]; delete sinCampo[0].x_studio_hora_entrada;
   assert.throws(() => N.normalizar({ att, emp: sinCampo, cal: [] }), /CONTRATO_ROTO:hr[.]employee[.]x_studio_hora_entrada/);
   const tipo = [Object.assign({}, emp[0], { x_studio_hora_entrada: '7:00' })];

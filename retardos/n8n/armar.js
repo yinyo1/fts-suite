@@ -21,7 +21,8 @@ const PIEZAS = {
   latido: { __ALERTA__: 'latido-alerta.js' },
   lector: { __DECIDIR__: 'lector-decidir.js', __MAPEAR__: 'lector-mapear.js' },
   panel: { __PUERTA__: 'panel-puerta.js' },
-  error: { __ALERTA__: 'error-alerta.js' }
+  error: { __ALERTA__: 'error-alerta.js' },
+  hojas: { __ARCHIVOS__: 'hojas-archivos.js', __REGISTRAR__: 'hojas-registrar.js', __BINARIO__: 'hojas-binario.js', __RESULTADO__: 'hojas-resultado.js' }
 };
 const LIBS = { '/*__PDF__*/': 'pdf.js', '/*__SESION__*/': 'sesion.js', '/*__NORMALIZAR__*/': 'normalizar.js' };
 const wf = process.argv[2];

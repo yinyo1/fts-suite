@@ -13,7 +13,7 @@
   var CAMPOS = {
     'hr.attendance': ['id', 'employee_id', 'check_in', 'x_studio_horario_en_disputa', 'x_studio_incidencia_pendiente_id'],
     'hr.employee': ['id', 'name', 'job_title', 'company_id', 'active', 'x_studio_hora_entrada', 'work_email',
-                    'parent_id', 'department_id', 'resource_calendar_id'],
+                    'private_email', 'parent_id', 'department_id', 'resource_calendar_id'],
     'resource.calendar.attendance': ['calendar_id', 'dayofweek', 'hour_from']
   };
 
@@ -70,6 +70,15 @@
     return m;
   }
 
+  function correosDe(e) {
+    var out = [], campos = ['work_email', 'private_email'];
+    for (var i = 0; i < campos.length; i++) {
+      var v = e[campos[i]];
+      if (typeof v === 'string' && v.indexOf('@') > 0) out.push({ campo: campos[i], email: v.trim().toLowerCase() });
+    }
+    return out;
+  }
+
   // Odoo entrega datetimes en UTC sin sufijo Z (CLAUDE.md §11 #1).
   function aISO(utc) { return String(utc).replace(' ', 'T') + 'Z'; }
 
@@ -87,7 +96,10 @@
         company_id: m2oId(e.company_id), activo: e.active !== false,
         hora_entrada: typeof e.x_studio_hora_entrada === 'number' ? e.x_studio_hora_entrada : null,
         hora_calendario: hc[m2oId(e.resource_calendar_id)] == null ? null : hc[m2oId(e.resource_calendar_id)],
-        email: e.work_email || null, parent_id: m2oId(e.parent_id), departamento: m2oNombre(e.department_id)
+        email: e.work_email || null, parent_id: m2oId(e.parent_id), departamento: m2oNombre(e.department_id),
+        // Todos los correos de la ficha, con el campo de donde salen. La resolución (empresa primero,
+        // si no personal, u opción ambos) vive en Postgres: retardos.destinatarios().
+        correos: correosDe(e)
       });
     }
     var checadas = [];
