@@ -124,7 +124,11 @@ def test_la_ficha_lista_las_fuentes_con_su_fecha_y_su_liga():
                        liga="https://example.com/fuente")
     txt = modo_limpio(c)
     assert txt.count('href="https://example.com/fuente"') == 3
-    assert txt.count('<td class="q">') == 3
+    # la celda de la consulta se llama `mono` desde #323 -- `q` se quedo sin CSS--.
+    # Se cuenta sobre la tabla de busquedas, porque `mono` tambien la usa la tabla
+    # de nivel por contacto.
+    tabla = txt[txt.index("Todas las busquedas"):]
+    assert tabla.count('<td class="mono">') == 3
 
 
 def test_una_busqueda_sin_liga_lo_dice_en_vez_de_dejar_el_hueco_en_blanco():
