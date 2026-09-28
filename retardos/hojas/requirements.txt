@@ -1,0 +1,8 @@
+fastapi==0.141.1
+uvicorn==0.54.0
+pypdfium2==5.13.0
+zxing-cpp==3.1.1
+pillow==12.3.0
+numpy==2.4.6
+pytesseract==0.3.13
+httpx==0.28.1
