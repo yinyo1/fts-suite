@@ -1,6 +1,9 @@
 /* ── Code - Renglon (una vez por item): arma el renglón de bancos.correos en base64 (un solo parámetro SQL).
  * Si vino de "HTTP - Enviar MIME", sólo se registra con 202; otro status truena la ejecución (queda visible). */
-const armado = $json.message_id ? $json : $('Code - Armar').item.json;
+// Lo que se registra es lo que SALIÓ: en la solicitud, la salida de "Code - Hilo" (con In-Reply-To y el
+// Thread-Index encadenado); en el acuse, que no tiene ese nodo, la de "Code - Armar".
+const origen = () => { try { return $('Code - Hilo').item.json; } catch (e) { return $('Code - Armar').item.json; } };
+const armado = $json.message_id ? $json : origen();
 const status = $json.message_id ? null : $json.statusCode;
 if (armado.modo === 'real' && status !== 202) throw new Error('Graph sendMail no devolvió 202 (status ' + status + '): no se registra el envío');
 const r = { tipo: armado.tipo, modo: armado.modo, hoy: armado.hoy, message_id: armado.message_id, in_reply_to: armado.in_reply_to || '',

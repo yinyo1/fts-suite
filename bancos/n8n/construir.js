@@ -8,6 +8,9 @@ const C = path.join(__dirname, 'code');
 const leer = f => fs.readFileSync(path.join(C, f), 'utf8');
 const correo = leer('correo.js').replace(/\nif \(typeof module !== 'undefined'\) \{[\s\S]*?\n\}\n$/, '\n');
 const J = JSON.stringify;
+// en n8n el adaptador corre sin condición: se quita el ramal de pruebas (module.exports)
+const hilo = leer('hilo_solicitud.js').replace("if (typeof module !== 'undefined') {\n  module.exports = { encadenar, threadIndexHijo };\n} else {", '{');
+if (hilo.includes('module.exports')) throw new Error('hilo_solicitud.js: no se pudo quitar el ramal de pruebas');
 // el SDK no acepta funciones flecha: cada filtro se escribe completo
 const filtro = (v, nombre, valor) => `const ${v} = node({ type: 'n8n-nodes-base.filter', version: 2.2, config: { name: ${J(nombre)}, parameters: {
   conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'loose' },
@@ -76,7 +79,7 @@ const liga = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { 
 const armar = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Code - Armar',
   parameters: { jsCode: ${J(correo + '\n' + leer('adaptador_solicitud.js'))} } } });
 const hilo = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Code - Hilo',
-  parameters: { jsCode: ${J(leer('hilo_solicitud.js'))} } } });
+  parameters: { jsCode: ${J(hilo)} } } });
 ${filtro('fEnviar', 'Filtro - enviar', 'enviar')}
 ${filtro('fRegistrar', 'Filtro - ensayo (registrar sin enviar)', 'registrar')}
 ${filtro('fAviso', 'Filtro - aviso a Esteban', 'aviso')}
