@@ -729,3 +729,78 @@ V1.33 y cuyas pruebas acaban de correr):
 
 **Es decisión de Esteban** porque hace que los machotes en curso pidan un dato que
 hasta hoy no pedían.
+
+---
+
+## 10 · La falla que encontró la suite completa, y por qué importa más que las otras cinco
+
+La suite completa, sobre el árbol quieto, dio **255 pasaron y 6 fallaron**. Cinco eran
+fixturas que envejecieron y una era un hueco de diseño. Queda escrita porque el hueco
+tiene una forma que se va a repetir.
+
+### 10.1 · El trabón se calculaba en DOS sitios, y uno se quedó atrás
+
+`orden.js` decide si el botón «Crear la orden en Odoo» está bloqueado en **dos lugares**:
+el render completo del modal, y `refrescarTrabado()`, el repintado parcial que corre en
+cada tecleo para no quitarle el foco a quien escribe. Al agregar los candados de la
+confirmación se actualizó el render y **no** el parcial.
+
+El efecto:
+
+```
+abrir el modal                → botón BLOQUEADO   ✅  (render completo)
+teclear en cualquier campo    → botón DESBLOQUEADO 🔴  (repintado parcial)
+```
+
+O sea que el candado se abría **tocando algo que no tenía nada que ver** — un término de
+pago, la cantidad de un renglón. Cualquiera de las dos cosas que una persona hace
+inevitablemente antes de apretar el botón.
+
+**Lo grave no es que dejara pasar. Es que la prueba de los cinco compromisos PASABA.**
+Esa prueba llena los compromisos y exige que el botón se destrabe; se destrababa, así que
+el ✓ salía. Pasaba **por la razón equivocada**, que es el modo de falla de CLAUDE.md
+§20 #18: una ausencia —de la falla— leída como una respuesta. Si no se hubiera corrido la
+suite completa, el ✓ de esa prueba habría sido la evidencia de que el candado servía.
+
+Y el pie mentía en los dos caminos. Con la confirmación incompleta y los compromisos
+puestos, decía **«Faltan 0 de los cinco compromisos»** — un mensaje que manda a la
+persona a arreglar lo que no es (§20 #12b), exactamente lo que el comentario escrito
+encima de esa línea decía estar evitando. **Un comentario no es una garantía.**
+
+**Arreglo:** una sola función `razones(m, p)` que devuelve las cuatro razones del trabón
+en orden de qué arreglar primero, usada por el render y por el repintado. Los dos locales
+que quedaron sin uso se quitaron, en vez de dejarlos calculando lo mismo dos veces.
+
+**La lección, que es de la familia de §20 #4 (un solo escritor por campo) en una
+superficie nueva:** cuando una decisión —un gate, un permiso, un total— se calcula en dos
+sitios, la copia que se olvide **no falla**: contesta distinto. Y el que contesta distinto
+es el que corre más seguido, porque el que se actualiza es el que se está escribiendo.
+La forma de que no vuelva a pasar no es acordarse: es que la decisión tenga **un solo
+cuerpo** y los dos caminos lo llamen.
+
+**Y una prueba de un gate tiene que ejercer el camino PARCIAL, no sólo el inicial.** La
+prueba nueva (`el candado NO se abre al teclear en OTRO campo`) toca los dos repintados
+y exige que el botón siga trabado y que el pie nombre la confirmación.
+
+### 10.2 · Las otras cinco, y la que era mía por descuido
+
+**`version.json`** · este módulo tiene su propia convención: `build` es **igual** a
+`version`, porque el vigilante del kiosko compara `MACHOTE_BUILD` contra
+`version.json`. Le había puesto la cadena `YYYYMMDD-modulo-hito` de CLAUDE.md §8, que es
+la de otros módulos. La prueba `V1.27 · H` lo cazó, que para eso está.
+
+**Cuatro pruebas de V1.30 / V1.31 / V1.33** esperaban un botón que ya no se habilita, y
+fallaban con «Timeout esperando el click» y «el botón siguió bloqueado» — mensajes que
+mandan a buscar en el selector, no en la fixtura. Es la **tercera vez** que pasa lo mismo:
+ya había pasado con el `cliente_id` de la V1.31 y con los cinco compromisos de la V1.33, y
+las dos veces se resolvió igual, con la razón escrita al lado en la fixtura.
+
+Dos cosas se hicieron distinto esta vez, para que no haya cuarta:
+
+1. **El importe de la PO sale del motor** (`CALC.calcular(m).precio`), no de un número
+   copiado. Un número copiado cuadra hoy y envejece mal, y cuando envejezca la falla no
+   va a decir «la fixtura envejeció» sino «el botón sigue bloqueado».
+2. **Hay una prueba que vigila la fixtura** (`la fixtura de la confirmación está
+   COMPLETA`): corre en Node contra los módulos reales y exige cero candados duros. El día
+   que se agregue el sexto candado, lo que falla es ella, **con el nombre del candado que
+   falta** — en vez de cinco pruebas ajenas con mensajes que no apuntan a nada.
