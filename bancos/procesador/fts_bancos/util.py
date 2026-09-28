@@ -21,7 +21,7 @@ RE_MONTO = re.compile(r"^-?\$?\d{1,3}(?:,\d{3})*\.\d{2}-?$")
 
 
 def dinero(texto: str) -> Decimal:
-    """'1,234.56' -> Decimal('1234.56'). Acepta '-' al inicio o al final y '$'."""
+    """Texto de importe (con comas de miles y dos decimales) -> Decimal. Acepta '-' al inicio o al final y '$'."""
     t = texto.strip().replace("$", "").replace(",", "")
     neg = t.startswith("-") or t.endswith("-")
     t = t.strip("-")

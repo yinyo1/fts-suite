@@ -29,6 +29,8 @@ def base_limpia(monkeypatch):
     monkeypatch.setenv("BANCOS_DB_ROLE", "bancos_app")
     monkeypatch.setenv("BANCOS_CUENTAS_JSON", CUENTAS_JSON)
     monkeypatch.setenv("BANCOS_PERIODO_INICIO", "2026-01")
+    from fts_bancos.sinteticos import rfc as _rfc
+    monkeypatch.setenv("BANCOS_RFC", _rfc())
     monkeypatch.delenv("BANCOS_HMAC_SECRET", raising=False)
     from fts_bancos import pipeline
     from fts_bancos.cuentas import cargar_de_entorno

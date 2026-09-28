@@ -8,6 +8,7 @@ import hmac
 import json
 import logging
 import os
+import string
 import time
 from datetime import date, datetime, timezone
 
@@ -182,9 +183,27 @@ async def ensayo(req: Request, hoy: str = "2026-09-15"):
     return json.loads(json.dumps(salida, default=str))
 
 
+@app.get("/diag/token-roles")
+def diag_token_roles(req: Request):
+    """Diagnóstico de permisos de Graph SIN exponer el token: decodifica sólo la carga útil
+    del JWT que n8n adjunta y devuelve roles, emisión y vencimiento. No lo guarda ni lo registra."""
+    auth = req.headers.get("authorization", "")
+    if not auth.lower().startswith("bearer "):
+        return {"ok": False, "motivo": "sin token"}
+    try:
+        carga = auth.split()[1].split(".")[1]
+        carga += "=" * (-len(carga) % 4)
+        d = json.loads(base64.urlsafe_b64decode(carga))
+    except Exception:
+        return {"ok": False, "motivo": "token ilegible"}
+    ahora = int(time.time())
+    return {"ok": True, "roles": sorted(d.get("roles", [])), "emitido_utc": datetime.fromtimestamp(d.get("iat", 0), timezone.utc).isoformat(),
+            "vence_utc": datetime.fromtimestamp(d.get("exp", 0), timezone.utc).isoformat(), "segundos_para_vencer": d.get("exp", 0) - ahora}
+
+
 @app.get("/blob/{sha}")
 def blob(sha: str):
-    if len(sha) != 64 or any(c not in "0123456789abcdef" for c in sha):
+    if len(sha) != 64 or any(c not in string.hexdigits.lower() for c in sha):
         raise HTTPException(400)
     with conexion() as con, con.cursor() as cur:
         cur.execute("SELECT b.contenido FROM bancos.blobs b JOIN bancos.archivos a ON a.sha256=b.sha256 WHERE b.sha256=%s", (sha,))

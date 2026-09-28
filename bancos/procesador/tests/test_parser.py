@@ -38,7 +38,8 @@ def test_v2_detecta_saldo_impreso_distinto():
 
 
 def test_muchas_paginas_y_liquidacion_diferida():
-    e = Estado("0999000011", "012580009990000117", 2026, 5, Decimal("1000.00"))
+    from fixtures import CUENTAS
+    e = Estado(CUENTAS[0]["numero"], CUENTAS[0]["clabe"], 2026, 5, Decimal(1000))
     for d in range(1, 29):
         for k in range(4):
             e.movs.append(Mov(d, "T20" if k % 2 else "T17", [f"MOV {d}-{k}", "LINEA DOS"],

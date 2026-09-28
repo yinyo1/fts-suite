@@ -17,7 +17,9 @@ import re
 from dataclasses import dataclass, field
 
 ENTIDAD = "Servicios FTS SA de CV"
-RFC_FTS = "SFT170905L43"
+# El RFC llega por variable de entorno (BANCOS_RFC); el repo no lo lleva.
+def rfc_fts() -> str:
+    return os.environ.get("BANCOS_RFC", "").strip().upper()
 
 
 @dataclass

@@ -15,20 +15,12 @@ from decimal import Decimal
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
+from fts_bancos.sinteticos import cuentas_falsas, monto as M_, rfc as rfc_falso
+
 MES3 = ["", "ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"]
 
-# cuentas FALSAS (mismo largo que las de BBVA)
-CUENTAS = [
-    {"clave": "general", "banco": "BBVA", "alias": "General", "numero": "0999000011",
-     "clabe": "012580009990000117", "moneda": "MXN", "journal_odoo": 8,
-     "carpeta": "01 Estados de cuenta originales - Servicios FTS SA de CV/BBVA/BBVA General MXN 0999000011"},
-    {"clave": "nomina", "banco": "BBVA", "alias": "Nomina", "numero": "0999000022",
-     "clabe": "012580009990000228", "moneda": "MXN", "journal_odoo": 96,
-     "carpeta": "01 Estados de cuenta originales - Servicios FTS SA de CV/BBVA/BBVA Nomina MXN 0999000022"},
-    {"clave": "usd", "banco": "BBVA", "alias": "USD", "numero": "0999000033",
-     "clabe": "012580009990000339", "moneda": "USD", "journal_odoo": 75,
-     "carpeta": "01 Estados de cuenta originales - Servicios FTS SA de CV/BBVA/BBVA USD 0999000033"},
-]
+# cuentas FALSAS, armadas por código (fts_bancos/sinteticos.py)
+CUENTAS = cuentas_falsas()
 CUENTAS_JSON = json.dumps(CUENTAS)
 
 
@@ -54,7 +46,7 @@ class Estado:
     mes: int
     saldo_inicial: Decimal
     movs: list[Mov] = field(default_factory=list)
-    rfc: str = "SFT170905L43"
+    rfc: str = field(default_factory=rfc_falso)
     entidad: str = "SERVICIOS FTS SA DE CV"
     moneda: str = "MXN"
     corromper_total_cargos: Decimal = Decimal("0")
@@ -219,28 +211,28 @@ def escenario() -> dict[str, Estado]:
     """Devuelve {clave_periodo: Estado}. Traspasos General→Nómina con referencia BNET."""
     gen, nom, usd = CUENTAS
     estados: dict[str, Estado] = {}
-    s_gen, s_nom, s_usd = D("500000.00"), D("20000.00"), D("10000.00")
+    s_gen, s_nom, s_usd = M_(500000), M_(20000), M_(10000)
     for mes in range(1, 9):
         eg = Estado(gen["numero"], gen["clabe"], 2026, mes, s_gen)
         en = Estado(nom["numero"], nom["clabe"], 2026, mes, s_nom)
         eu = Estado(usd["numero"], usd["clabe"], 2026, mes, s_usd, moneda="USD")
-        cobro = D(100000 + mes * 1111) + D("0.25")
+        cobro = M_(100000 + mes * 1111, 25)
         eg.movs += [
             Mov(2, "T20", ["SPEI RECIBIDOBANCO PRUEBA", "0000001 CLIENTE UNO SA DE CV", f"Ref. COB{mes:02d}01"], abono=cobro),
-            Mov(3, "T17", ["SPEI ENVIADO BANCO PRUEBA", "0000002 PROVEEDOR DOS SA", f"Ref. PAG{mes:02d}02"], cargo=D("15000.50")),
-            Mov(5, "N06", ["PAGO CUENTA DE TERCERO", f"BNET {nom['numero']} TRASPASO NOMINA"], cargo=D("30000.00")),
-            Mov(5, "S39", ["SERV BANCA INTERNET"], cargo=D("250.00")),
-            Mov(5, "S40", ["IVA COM SERV BCA INTERNET"], cargo=D("40.00")),
-            Mov(12, "T17", ["SPEI ENVIADO BANCO PRUEBA", "PAGO SAT DECLARACION"], cargo=D("8000.00"), dia_liq=13),
-            Mov(20, "T17", ["SPEI ENVIADO BANCO PRUEBA", "PAGO IMSS SIPARE"], cargo=D("4000.00")),
+            Mov(3, "T17", ["SPEI ENVIADO BANCO PRUEBA", "0000002 PROVEEDOR DOS SA", f"Ref. PAG{mes:02d}02"], cargo=M_(15000, 50)),
+            Mov(5, "N06", ["PAGO CUENTA DE TERCERO", f"BNET {nom['numero']} TRASPASO NOMINA"], cargo=M_(30000)),
+            Mov(5, "S39", ["SERV BANCA INTERNET"], cargo=M_(250)),
+            Mov(5, "S40", ["IVA COM SERV BCA INTERNET"], cargo=M_(40)),
+            Mov(12, "T17", ["SPEI ENVIADO BANCO PRUEBA", "PAGO SAT DECLARACION"], cargo=M_(8000), dia_liq=13),
+            Mov(20, "T17", ["SPEI ENVIADO BANCO PRUEBA", "PAGO IMSS SIPARE"], cargo=M_(4000)),
         ]
         en.movs += [
-            Mov(5, "N06", ["PAGO CUENTA DE TERCERO", f"BNET {gen['numero']} TRASPASO NOMINA"], abono=D("30000.00")),
-            Mov(6, "P14", ["PAGO DE NOMINA DISPERSION", "NOMINA QUINCENA"], cargo=D("29000.00")),
+            Mov(5, "N06", ["PAGO CUENTA DE TERCERO", f"BNET {gen['numero']} TRASPASO NOMINA"], abono=M_(30000)),
+            Mov(6, "P14", ["PAGO DE NOMINA DISPERSION", "NOMINA QUINCENA"], cargo=M_(29000)),
         ]
         eu.movs += [
-            Mov(10, "T20", ["SPEI RECIBIDO USD CLIENTE EXTERIOR", "Ref. USD" + str(mes)], abono=D("1500.00")),
-            Mov(15, "T17", ["TRANSFERENCIA ENVIADA PROVEEDOR EXTERIOR"], cargo=D("700.00")),
+            Mov(10, "T20", ["SPEI RECIBIDO USD CLIENTE EXTERIOR", "Ref. USD" + str(mes)], abono=M_(1500)),
+            Mov(15, "T17", ["TRANSFERENCIA ENVIADA PROVEEDOR EXTERIOR"], cargo=M_(700)),
         ]
         for e, clave in ((eg, "general"), (en, "nomina"), (eu, "usd")):
             estados[f"{clave}_2026-{mes:02d}"] = e

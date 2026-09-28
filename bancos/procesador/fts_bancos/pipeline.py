@@ -15,7 +15,7 @@ from decimal import Decimal
 
 from . import PARSER_VERSION, bbva, entrada, validar
 from .clasificar import VERSION_CLASIFICADOR, Regla, clasificar, emparejar, reglas_base
-from .cuentas import RFC_FTS, Catalogo, Cuenta, cargar_de_entorno
+from .cuentas import Catalogo, rfc_fts, Cuenta, cargar_de_entorno
 from .util import (NOMBRE_MES, fmt, mascara, periodo_anterior, periodo_siguiente,
                    rango_periodos, sha256_bytes)
 
@@ -45,7 +45,7 @@ def sembrar(con, cuentas: list[Cuenta]) -> None:
             cur.execute(
                 """INSERT INTO bancos.cuentas (banco, alias, numero, clabe, moneda, journal_odoo, entidad, rfc, tipo, carpeta)
                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (numero) DO NOTHING""",
-                (c.banco, c.alias, c.numero, c.clabe, c.moneda, c.journal_odoo, "Servicios FTS SA de CV", RFC_FTS, c.tipo, c.carpeta))
+                (c.banco, c.alias, c.numero, c.clabe, c.moneda, c.journal_odoo, "Servicios FTS SA de CV", rfc_fts() or None, c.tipo, c.carpeta))
         for r in reglas_base():
             cur.execute(
                 """INSERT INTO bancos.reglas (prioridad, nombre, codigo_banco, patron, sentido, categoria, subcategoria, contraparte, origen)
@@ -183,7 +183,7 @@ def es_candidato(contenido: bytes, catalogo: Catalogo) -> bool:
         return b"/Encrypt" in contenido   # protegido: se guarda para avisar
     if not t.strip():
         return False
-    if re.search(r"ESTADO\s+DE\s+CUENTA", t, re.I) and (RFC_FTS in t.replace(" ", "") or catalogo.identificar(t)):
+    if re.search(r"ESTADO\s+DE\s+CUENTA", t, re.I) and ((rfc_fts() and rfc_fts() in t.replace(" ", "")) or catalogo.identificar(t)):
         return True
     return bool(bbva.RE_PERIODO.search(t) and catalogo.identificar(t))
 
@@ -318,7 +318,7 @@ def _procesar_documento(con, fila, contenido, nombre, meta, corrida_id, catalogo
         avisos.append(f"el archivo '{nombre}' es {NOMBRE_MES[est.periodo_fin.month]} {est.periodo_fin.year}, no "
                       f"{NOMBRE_MES[pm]} {pa}: el periodo sale de la pág. 1 ('Periodo DEL … AL …'), no del nombre")
     if cuenta is None:
-        rfc_ok = (est.rfc or "").upper() == RFC_FTS
+        rfc_ok = bool(rfc_fts()) and (est.rfc or "").upper() == rfc_fts()
         motivo = ("estado de una cuenta de FTS que no está registrada" if rfc_ok
                   else "el estado no es de una cuenta de Servicios FTS (RFC distinto)")
         mask = mascara(est.numero_cuenta or est.clabe)

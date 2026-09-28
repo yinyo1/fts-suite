@@ -5,7 +5,7 @@ import json
 import time
 
 from fastapi.testclient import TestClient
-from fixtures import escenario, pdf_estado
+from fixtures import CUENTAS, escenario, pdf_estado
 
 from fts_bancos.db import conexion
 
@@ -52,7 +52,7 @@ def test_api_procesar_y_cotejo(base_limpia):
     ]
     res = c.post("/cotejo", json={"lineas": lineas, "desde": "2026-03-01", "hasta": "2026-03-31"}).json()
     assert (res["exactos"], res["probables"], res["sin_match"], res["odoo_sin_banco"]) == (1, 1, len(movs) - 2, 1)
-    assert "Cotejo banco (PDF) contra Odoo" in res["html"] and "BBVA_General-MXN_0999000011_2026-03.pdf" in res["html"]
+    assert "Cotejo banco (PDF) contra Odoo" in res["html"] and ("BBVA_General-MXN_" + CUENTAS[0]["numero"] + "_2026-03.pdf") in res["html"]
     assert c.get("/base-maestra.csv").headers["x-filas"] == str(len(movs))
     idem = c.post("/verificar/idempotencia").json()
     assert idem["iguales"] and idem["csv_estable"]
