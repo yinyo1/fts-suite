@@ -80,6 +80,8 @@ Cada exclusión queda en la tabla `retardo` con su motivo: se puede auditar por 
 
 ## 4. Escalera
 
+> **Actualizado por el complemento de la sesión 2 (§10):** la firma la recolecta RH, no la persona, y el nivel 4 arranca como "nivel de suspensión alcanzado, no aplicado".
+
 | Nivel | Medida | Se abre con | Plazo de firma | Testigos | Origen |
 |---|---|---|---|---|---|
 | 1 | Aviso (informativo) | 1 retardo en el periodo | no se firma | no | recuperado |
@@ -115,6 +117,8 @@ La tabla `transicion_valida` es la única fuente: una transición que no está a
 bitácora registra cada paso y no se puede editar ni borrar (trigger).
 
 ## 6. Correos
+
+> **Reemplazado en parte por §10.3.** La tabla de abajo es el diseño de la sesión 1; los correos vigentes están en §10.3.
 
 | Correo | A quién | Cuándo |
 |---|---|---|
@@ -165,3 +169,93 @@ para consultar y `retardos:write` para registrar. Muestra:
 - los días que no cuentan.
 
 Tiene un modo de práctica con datos inventados.
+
+## 10. Complemento de la sesión 2: RH recolecta las firmas
+
+Decisiones de Esteban del 28-sep-2026. Donde choquen con las secciones anteriores, manda ésta.
+
+### 10.1 Quién hace qué
+
+| Paso | Antes (sesión 1) | Ahora |
+|---|---|---|
+| Recibe la hoja | La persona, por correo, con PDF | **RH**, por correo, con PDF y copia al jefe |
+| Se entera | La persona, con la hoja | La persona, con un **aviso informativo** y el PDF; no tiene que contestar |
+| Recolecta la firma | La persona la devuelve firmada | **RH** cita a la persona y recolecta la firma, o la negativa con **dos testigos** |
+| Sube la hoja | La persona, respondiendo el correo | **RH**, desde el panel, la carpeta o el correo |
+| Lee la hoja | RH a ojo | El **lector** sugiere; **RH confirma** en "Hojas por confirmar" |
+| Plazo | 3 días hábiles para la persona | `dias_recoleccion_rh` (3) días hábiles para RH |
+| Recordatorio | A la persona, copia jefe y RH | A **RH**, con copia al jefe |
+| Escalamiento | A RH y jefe, copia Dirección | A **Dirección** (`escalamiento_cc`), con copia a RH |
+
+Si la persona contesta el correo con la hoja firmada, se acepta igual: el adjunto entra al
+mismo lector y RH lo confirma.
+
+### 10.2 La hoja
+
+Hecha para que una máquina la lea (`retardos/lib/pdf.js`, geometría en
+`retardos/hojas/fts_hojas/layout.json`):
+
+- folio grande arriba y un código QR en cada página (`FTS|folio|nivel|página`);
+- tres marcas de esquina para enderezar fotos de celular;
+- recuadros delimitados de firma: trabajador, RH, jefe y dos testigos;
+- casilla "Se negó a firmar" y recuadro de comentarios del trabajador (derecho a ser oído);
+- en carta y acta, un párrafo de reincidencia **marcado como pendiente de validación de Legal**.
+
+### 10.3 Correos vigentes
+
+| Correo | A quién | Cuándo |
+|---|---|---|
+| Aviso (nivel 1) | La persona; sin correo, su jefe | Al abrir el caso |
+| Hoja por recolectar | RH, copia al jefe, con PDF | Al abrir carta o acta |
+| Aviso al trabajador | La persona, con el PDF, informativo | Al abrir carta o acta, si tiene correo |
+| Recordatorio | RH, copia al jefe | Primer vencimiento |
+| Escalamiento | Dirección, copia RH | Segundo vencimiento |
+| Hoja por confirmar | RH | Cuando el lector termina de leer una hoja |
+| Revisión | RH | Respuesta sin adjunto utilizable o sin folio |
+| Alerta de modo | Esteban y RH | Se cumple un disparador de `MODO_SUSPENSION.md` §2 |
+| Resumen semanal | RH y Dirección | Lunes; incluye acierto del lector y alertas abiertas |
+
+**A qué correo.** Se lee de Odoo (`work_email`, `private_email`) y se resuelve en Postgres,
+sin escribir en Odoo:
+
+- empresa si hay, si no el personal (`correo_modo = preferente`), o los dos (`ambos`);
+- se descartan direcciones inválidas y buzones compartidos o genéricos;
+- cada envío guarda qué correo se usó y de qué campo salió.
+
+### 10.4 El lector de hojas
+
+Servicio `retardos-hojas` en Railway, en red privada:
+
+- sin base de datos, sin credenciales y sin herramientas: recibe un archivo y devuelve JSON;
+- lee el QR (o el folio por OCR), la tinta de cada recuadro, la casilla de negativa y los
+  comentarios;
+- texto que parezca instrucción se marca como posible inyección.
+
+n8n (`retardos/hojas`, cada 5 minutos) le pasa las hojas pendientes y guarda la lectura.
+Postgres calcula la sugerencia, una de:
+
+- lista para validar;
+- falta firma X;
+- folio o nombre no coinciden;
+- posible impugnación;
+- ilegible;
+- posible inyección.
+
+**RH decide siempre.** Puede confirmar firmada, negativa o impugnación, corregir el folio,
+pedir la hoja de nuevo o descartarla. Cada lectura y cada decisión van a la bitácora, y el
+acierto del lector sale en el resumen semanal.
+
+- Cada hoja se guarda con su sha256: subir dos veces la misma no la duplica.
+- El latido alerta si hay hojas atoradas o el lector falla.
+
+### 10.5 Sin suspensiones al arrancar
+
+`modo_sanciones = sin_suspension`:
+
+- aviso, carta y acta funcionan;
+- el nivel 4 queda `RETENIDO` como "nivel de suspensión alcanzado, no aplicado" y cuenta
+  como antecedente;
+- la reincidencia acumulada se sigue por persona con semáforo;
+- una alerta **recomienda** cambiar de modo, pero nunca lo cambia.
+
+Cómo y cuándo cambiar: `MODO_SUSPENSION.md`.

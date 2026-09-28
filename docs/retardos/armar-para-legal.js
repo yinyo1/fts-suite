@@ -10,16 +10,25 @@ const R = path.resolve(__dirname, '..', '..');
 const PDF = require(path.join(R, 'retardos', 'lib', 'pdf.js'));
 
 // 1) Plantillas de correo tal como se sembraron.
-const sql = fs.readFileSync(path.join(R, 'db', 'migrations', 'retardos', 'retardos_0002_logica.sql'), 'utf8');
-const bloque = sql.slice(sql.indexOf('INSERT INTO retardos.plantilla (clave, asunto, cuerpo_html) VALUES'));
-const re = /\('([a-z_]+)', '((?:[^']|'')*)',\s*'((?:[^']|'')*)'\)/g;
-const P = {}; let m;
-while ((m = re.exec(bloque))) P[m[1]] = { asunto: m[2].replace(/''/g, "'"), cuerpo: m[3].replace(/''/g, "'") };
+//    retardos_0006 agrega las del flujo "RH recolecta" (complemento de la sesión 2).
+const P = {};
+for (const mig of ['retardos_0002_logica.sql', 'retardos_0006_rh_recolecta_hojas_y_sanciones.sql']) {
+  const sql = fs.readFileSync(path.join(R, 'db', 'migrations', 'retardos', mig), 'utf8');
+  const i = sql.indexOf('INSERT INTO retardos.plantilla (clave, asunto, cuerpo_html) VALUES');
+  if (i < 0) throw new Error('Sin plantillas en ' + mig);
+  const bloque = sql.slice(i, sql.indexOf(';\n', i));
+  const re = /\('([a-z_]+)', '((?:[^']|'')*)',\s*'((?:[^']|'')*)'\)/g; let m;
+  while ((m = re.exec(bloque))) P[m[1]] = { asunto: m[2].replace(/''/g, "'"), cuerpo: m[3].replace(/''/g, "'") };
+}
+for (const k of ['rh_recolectar', 'aviso_trabajador', 'recordatorio_rh_recolectar', 'escalamiento_rh']) if (!P[k]) throw new Error('Falta plantilla ' + k);
 
 // 2) Títulos y cuerpos de las hojas, leídos del generador de PDF.
 const src = fs.readFileSync(path.join(R, 'retardos', 'lib', 'pdf.js'), 'utf8');
 const cap = (nombre) => { const i = src.indexOf('var ' + nombre + ' = {'); const j = src.indexOf('};', i); return vm.runInNewContext('(' + src.slice(i + ('var ' + nombre + ' = ').length, j + 1) + ')'); };
 const TITULOS = cap('TITULOS'), CUERPO = cap('CUERPO');
+const CONST = (nombre) => { const r = new RegExp('var ' + nombre + " = '((?:[^'\\\\]|\\\\.)*)';"); const x = src.match(r); if (!x) throw new Error('Sin ' + nombre); return x[1]; };
+const REINCIDENCIA = CONST('REINCIDENCIA'), PIE = CONST('PIE');
+if (PDF.PENDIENTE_LEGAL.indexOf('REINCIDENCIA') < 0) throw new Error('REINCIDENCIA ya no está marcada como pendiente de Legal: revisar el texto de PARA_LEGAL.');
 
 // 3) Datos de muestra (inventados).
 const retardos = [
@@ -42,12 +51,13 @@ function datos(accion) {
 function tablaTexto(n) { return '\n\n| Fecha | Hora de llegada | Hora de entrada | Minutos tarde |\n|---|---|---|---|\n' + retardos.slice(0, n).map((r) => `| ${r.fecha} | ${r.llegada} | ${r.esperada} | ${r.minutos} |`).join('\n') + '\n\n'; }
 function render(t, v) { return t.replace(/\[\[([a-z_]+)\]\]/g, (_, k) => (v[k] == null ? '' : String(v[k]))); }
 function aTexto(html) {
-  return html.replace(/<br>/g, '  \n').replace(/<\/p>/g, '\n\n').replace(/<p>/g, '').replace(/<b>/g, '**').replace(/<\/b>/g, '**')
+  return html.replace(/<ol>/g, '\n').replace(/<li>/g, '\n1. ').replace(/<\/ol>/g, '\n\n').replace(/<br>/g, '  \n').replace(/<\/p>/g, '\n\n').replace(/<p>/g, '').replace(/<b>/g, '**').replace(/<\/b>/g, '**')
              .replace(/<[^>]+>/g, '').replace(/\n{3,}/g, '\n\n').trim();
 }
 function correo(clave, accion) {
   const n = NIV[accion][0];
-  const v = { folio: 'RET-2026-0041', nombre: 'Laura Demo', periodo: '2026-09', retardos_n: n, vence: '01/10/2026', nombre_nivel: NIV[accion][1], detalle: '@@TABLA@@' };
+  const v = { folio: 'RET-2026-0041', nombre: 'Laura Demo', periodo: '2026-09', retardos_n: n, vence: '01/10/2026', vence_rh: '01/10/2026', nombre_nivel: NIV[accion][1], detalle: '@@TABLA@@',
+              puesto: 'Técnica de campo', departamento: 'Operaciones', correo_trabajador: 'laura.demo@ejemplo.com' };
   const p = P[clave];
   return '**Asunto:** ' + render(p.asunto, v) + '\n\n' + aTexto(render(p.cuerpo, v)).replace('@@TABLA@@', tablaTexto(n)).replace(/\n{3,}/g, '\n\n');
 }
@@ -71,6 +81,12 @@ const bloques = {
   CORREO_SUPERVISOR: correo('ruta_supervisor', 'carta_compromiso'),
   CORREO_PIDE_HOJA: correo('pide_hoja', 'carta_compromiso'),
   CORREO_RECORDATORIO: correo('recordatorio', 'carta_compromiso'),
+  CORREO_RH_RECOLECTAR: correo('rh_recolectar', 'acta'),
+  CORREO_AVISO_TRABAJADOR: correo('aviso_trabajador', 'acta'),
+  CORREO_RECORDATORIO_RH: correo('recordatorio_rh_recolectar', 'acta'),
+  CORREO_ESCALAMIENTO_RH: correo('escalamiento_rh', 'acta'),
+  HOJA_REINCIDENCIA: REINCIDENCIA,
+  HOJA_PIE: PIE,
   HOJA_AVISO: '**' + TITULOS.aviso + '**\n\n' + CUERPO.aviso,
   HOJA_CARTA: '**' + TITULOS.carta_compromiso + '**\n\n' + CUERPO.carta_compromiso,
   HOJA_ACTA: '**' + TITULOS.acta + '**\n\n' + CUERPO.acta,

@@ -12,9 +12,12 @@ Hoy el sistema funciona en **modo sombra**: detecta y arma todo, pero ningún co
 
 - Revisa dos veces al día la primera checada de cada persona en el kiosko y la compara con su hora de entrada registrada más 20 minutos de tolerancia.
 - Cuenta los retardos de cada persona en el mes, de lunes a viernes. No cuentan los días de permiso, vacaciones, incapacidad, trabajo fuera o feriado, ni los días donde la checada está en disputa o hubo un olvido de entrada registrado.
-- Cuando alguien llega a cierto número de retardos en el mes, abre un **caso con folio** (por ejemplo RET-2026-0041) y le manda un correo con una hoja en PDF para firmar.
-- Recibe la hoja firmada cuando la persona responde el correo, y avisa a RH para que la revise.
-- Recuerda cuando se vence el plazo y avisa a Dirección si sigue sin respuesta.
+- Cuando alguien llega a cierto número de retardos en el mes, abre un **caso con folio** (por ejemplo RET-2026-0041).
+- En el aviso (nivel 1) le manda un correo informativo a la persona.
+- En carta compromiso y acta **le manda la hoja a Recursos Humanos** (con copia al jefe directo) para que **RH cite a la persona y recolecte la firma** en papel. A la persona le llega un **aviso informativo** con la misma hoja en PDF, para que la conozca antes de la cita; no tiene que contestarlo.
+- RH sube la hoja firmada (o la negativa con dos testigos). Un lector automático sugiere si la hoja está completa, y **RH confirma**.
+- Si la persona contesta el correo con la hoja firmada, también se acepta.
+- Le recuerda a RH cuando se vence el plazo y avisa a Dirección si sigue sin hoja.
 - Deja registro de todo en una bitácora que no se puede editar ni borrar.
 
 **No hace:**
@@ -22,9 +25,9 @@ Hoy el sistema funciona en **modo sombra**: detecta y arma todo, pero ningún co
 - **No sanciona a nadie.** Ninguna medida se aplica sola. Una suspensión sólo existe si RH la programa a mano en el panel, después de escuchar a la persona.
 - No descuenta nada de la nómina.
 - No escribe en el expediente de Odoo mientras esté en modo sombra.
-- No decide si una hoja está bien firmada: eso lo revisa una persona de RH mirando el archivo.
+- No decide si una hoja está bien firmada. El lector sólo **sugiere** (por ejemplo "falta la firma del testigo 2"); la confirma una persona de RH mirando el archivo, y ningún caso se cierra solo.
 
-**Arranque suave (así está configurado hoy):** aunque la escalera tiene cuatro niveles, por ahora sólo se notifican el **aviso** y la **carta compromiso**. Si alguien llega al nivel de acta o de suspensión, el caso queda registrado como "nivel alcanzado, no notificado" para que RH lo atienda en persona, y **no se le manda ningún correo**. Las actas y suspensiones se habilitan sólo cuando Legal confirme el Reglamento Interior.
+**Sin suspensiones (así está configurado hoy):** aviso, carta compromiso y acta funcionan. Si alguien llega al nivel de suspensión, el caso queda registrado como **"nivel de suspensión alcanzado, no aplicado"**, cuenta como antecedente, y **no se le manda nada** a la persona. El sistema lleva la cuenta de la reincidencia y, si se repite, **recomienda** a Dirección y RH activar las suspensiones; nunca las activa solo. Activarlas requiere que Legal confirme el Reglamento y los textos (ver preguntas).
 
 ## 2. La escalera propuesta (pendiente de confirmar)
 
@@ -43,6 +46,8 @@ Los números están medidos contra datos reales en el issue #334 (Tarea 3). Con 
 
 ### 3.1 Correos a la persona
 
+> Estos textos son del diseño original, en el que la persona recibía la hoja y la devolvía firmada. Con el flujo actual (RH recolecta), para carta y acta la persona recibe el **aviso informativo** de la sección 3.2 y la hoja va a RH. Se conservan aquí porque siguen en la base y porque Legal puede preferir alguno de los dos.
+
 Cada correo sale de `sales@fts.mx`. El folio va entre corchetes en el asunto para que la respuesta encuentre su caso.
 
 **Aviso (nivel 1)**
@@ -53,15 +58,33 @@ Cada correo sale de `sales@fts.mx`. El folio va entre corchetes en el asunto par
 
 @@CORREO_CARTA@@
 
-**Acta administrativa (nivel 3, hoy retenida por el arranque suave)**
+**Acta administrativa (nivel 3)**
 
 @@CORREO_ACTA@@
 
-**Citatorio por reincidencia (nivel 4, hoy retenido)**
+**Citatorio por reincidencia (nivel 4, hoy no se aplica: modo sin suspensión)**
 
 @@CORREO_SUSPENSION@@
 
-### 3.2 Otros correos del ciclo
+### 3.2 Flujo actual: RH recolecta la firma
+
+**A Recursos Humanos, con copia al jefe directo y la hoja en PDF** (carta compromiso o acta)
+
+@@CORREO_RH_RECOLECTAR@@
+
+**A la persona, informativo, con la misma hoja en PDF**
+
+@@CORREO_AVISO_TRABAJADOR@@
+
+**A RH cuando se vence el plazo** (con copia al jefe directo)
+
+@@CORREO_RECORDATORIO_RH@@
+
+**A Dirección, con copia a RH, cuando se vence por segunda vez**
+
+@@CORREO_ESCALAMIENTO_RH@@
+
+### 3.2b Otros correos del ciclo (diseño original)
 
 **Cuando la persona no tiene correo válido** (va a su supervisor para entrega en papel)
 
@@ -87,7 +110,15 @@ Cada hoja lleva el nombre de la empresa, el folio, la fecha, el nombre y puesto 
 
 @@HOJA_SUSPENSION@@
 
-Firmas que lleva cada hoja: firma del trabajador, Recursos Humanos, jefe directo, y en acta y citatorio además dos testigos. Al pie: "responda al correo del folio con esta hoja firmada (PDF o foto clara), sin cambiar el asunto".
+En la carta compromiso y en el acta se agrega este párrafo, **pendiente de validación de Legal** (no lo hemos puesto a prueba contra el Reglamento, porque no lo tenemos):
+
+> @@HOJA_REINCIDENCIA@@
+
+Cada hoja lleva además el **folio en grande** y un **código QR** en cada página (sólo contiene el folio, el nivel y el número de página), para que el lector la identifique aunque sea una foto de celular.
+
+Recuadros de firma: trabajador, Recursos Humanos, jefe directo, y dos testigos. Una casilla **"Se negó a firmar (se requieren dos testigos)"** y un recuadro de **comentarios del trabajador**. Al pie:
+
+> @@HOJA_PIE@@
 
 **Muestras en PDF con datos inventados:**
 
@@ -103,7 +134,7 @@ Firmas que lleva cada hoja: firma del trabajador, Recursos Humanos, jefe directo
 
 ## 5. Negativa a firmar
 
-Si la persona se niega a firmar, RH lo registra en el panel con **el nombre completo de dos testigos** (el sistema no deja registrarlo con uno o sin ninguno) y sube la **constancia de negativa** firmada por los testigos. El caso queda en "Se negó a firmar" y la bitácora guarda quiénes fueron los testigos y cuándo.
+Si la persona se niega a firmar, RH marca la casilla "Se negó a firmar" en la misma hoja, recaba la firma de **dos testigos**, y al confirmarla en el panel escribe **el nombre completo de los dos** (el sistema no deja registrarlo con uno o sin ninguno). También puede subir una constancia de negativa aparte. El caso queda en "Se negó a firmar" y la bitácora guarda quiénes fueron los testigos y cuándo.
 
 ## 6. Cómo se guardan las hojas y quién las ve
 
@@ -135,13 +166,15 @@ Los textos nuevos **no citan el art. 47**. El acta cita los artículos 20 y 134 
 ## 9. Preguntas para Legal
 
 1. **Reglamento Interior de Trabajo:** ¿existe?, ¿dónde está?, ¿está depositado ante la autoridad laboral (art. 424 fr. IV LFT)?, ¿qué dice de puntualidad, tolerancia, retardos, faltas por retardos, medidas disciplinarias y suspensión? ¿El archivo escaneado de la carpeta de Legal es su constancia de depósito?
-2. **Si no existe o no prevé la suspensión:** ¿qué medidas se pueden aplicar mientras tanto? Nuestra propuesta: dejar el sistema sólo en aviso y carta compromiso (arranque suave) hasta tenerlo.
+2. **Si no existe o no prevé la suspensión:** ¿qué medidas se pueden aplicar mientras tanto? Así está hoy: aviso, carta compromiso y acta, sin suspensiones, hasta tenerlo. ¿Es correcto aplicar el acta sin el Reglamento?
 3. **Textos:** ¿están bien la carta compromiso, el acta y el citatorio tal como están arriba? ¿Qué cambiarían?
 4. **Citar artículos:** ver la sección 8.
-5. **Notificación por correo:** ¿basta el correo con la hoja firmada que regresa, o el acta y el citatorio deben firmarse siempre en papel, en persona y ante testigos?
+5. **Firma en persona:** ahora RH cita a la persona y recolecta la firma en papel; el correo a la persona es sólo informativo. ¿Está bien así? ¿Debe estar presente alguien además de RH (el jefe directo)?
 6. **Derecho de audiencia:** ¿alcanza con el espacio de comentarios, la impugnación en el panel y el citatorio previo a la suspensión?
 7. **Negativa a firmar:** ¿qué debe decir la constancia que firman los testigos? ¿Pueden ser compañeros de trabajo o debe ser alguien en particular?
 8. **Plazos:** ¿3 días hábiles para firmar y 2 para que RH valide son razonables?
 9. **Sábados:** para quienes trabajan seis días según su contrato, ¿el sábado debe contar para retardos?
 10. **Conservación de las hojas firmadas:** ¿cuánto tiempo se guardan y quién puede verlas además de RH?
 11. **Correo personal:** 13 de 29 personas tienen registrado un correo personal (no de la empresa). ¿Se les puede notificar ahí o sólo al correo de la empresa o en papel?
+12. **Párrafo de reincidencia** (carta y acta, sección 3.3): ¿se queda, se cambia o se quita?
+13. **Antecedentes al activar suspensiones:** el día que se activen, ¿las actas firmadas antes de esa fecha cuentan como antecedente para una suspensión por reincidencia? Hoy el sistema dice que **no**, y no aplica ninguna suspensión por retardos anteriores a la activación.
