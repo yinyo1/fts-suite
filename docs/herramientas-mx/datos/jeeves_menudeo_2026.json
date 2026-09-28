@@ -1,0 +1,79 @@
+{
+ "fuente": "Odoo, account.bank.statement.line, diario 61 (tarjeta Jeeves), solo lectura 2026-09-28. Cargos (amount < 0) con fecha >= 2025-01-01 cuyo concepto contiene: home depot, mercado, amazon, ferre, herram, plomer, tornill o sodimac, y NO conciliados con factura (is_reconciled falso). Se agrega por comercio; el tarjetahabiente no se guarda.",
+ "ventana": [
+  "2026-01-01",
+  "2026-09-23"
+ ],
+ "nota_2025": "En 2025 el diario 61 tiene 16 lineas en total: Jeeves arranca en 2026.",
+ "excluidas_conciliadas_con_factura": {
+  "cargos": 63,
+  "monto": 57609.55,
+  "por_que": "pagan facturas de proveedor que pueden venir de ordenes de compra ya contadas en la reposicion por OC; se excluyen para no contar doble"
+ },
+ "total": {
+  "cargos": 323,
+  "monto": 435540.45
+ },
+ "comercios": [
+  {
+   "comercio": "Ferreterias locales",
+   "cargos": 208,
+   "monto": 189733.44,
+   "clase": "incierto"
+  },
+  {
+   "comercio": "Home Depot",
+   "cargos": 56,
+   "monto": 133761.93,
+   "clase": "incierto"
+  },
+  {
+   "comercio": "Mercado Libre / MercadoPago",
+   "cargos": 34,
+   "monto": 51491.28,
+   "clase": "incierto"
+  },
+  {
+   "comercio": "Plomerama (plomeria)",
+   "cargos": 4,
+   "monto": 19114.47,
+   "clase": "material_probable"
+  },
+  {
+   "comercio": "Tornillos (tornilleria)",
+   "cargos": 13,
+   "monto": 14522.82,
+   "clase": "material_probable"
+  },
+  {
+   "comercio": "Amazon",
+   "cargos": 4,
+   "monto": 14221.87,
+   "clase": "incierto"
+  },
+  {
+   "comercio": "Sodimac",
+   "cargos": 1,
+   "monto": 5999.0,
+   "clase": "incierto"
+  },
+  {
+   "comercio": "Sin comercio visible (concepto truncado)",
+   "cargos": 2,
+   "monto": 3825.68,
+   "clase": "incierto"
+  },
+  {
+   "comercio": "DeWalt (Dwmx Herramientas)",
+   "cargos": 1,
+   "monto": 2869.96,
+   "clase": "herramienta_clara"
+  }
+ ],
+ "kiosko": {
+  "fuente": "Odoo hr.attendance, depto Operaciones, con x_studio_project_id, check_in >= 2026-07-01, solo lectura 2026-09-28",
+  "dias": 63,
+  "asistencias": 735,
+  "grupos_dia_proyecto": 175
+ }
+}

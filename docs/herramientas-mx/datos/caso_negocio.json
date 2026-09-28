@@ -298,5 +298,166 @@
    "ult": "2026-09-25",
    "clas": "ACTIVO (con asistencia en la ventana)"
   }
- ]
+ ],
+ "v2": {
+  "jeeves_anual": {
+   "E1 solo herramienta clara": 3938.1,
+   "E2 clara + mitad de lo incierto": 277710.88,
+   "E3 clara + todo lo incierto": 551483.66
+  },
+  "jeeves_clases": {
+   "herramienta_clara": 2869.96,
+   "material_probable": 33637.29,
+   "incierto": 399033.2
+  },
+  "factor_anual": 1.3722,
+  "frentes_dia": 2.778,
+  "personas_frente": 4.2,
+  "horas": {
+   "bajo": 243.1,
+   "medio": 729.2,
+   "alto": 1458.3
+  },
+  "horas_mxn": {
+   "bajo": 24310.0,
+   "medio": 72920.0,
+   "alto": 145830.0
+  },
+  "costo_hora_parametro": 100.0,
+  "reduccion": 0.75,
+  "recuperacion": [
+   [
+    "Piloto (1 base + TUB)",
+    26254.73,
+    0.36,
+    "bajo",
+    19514.02,
+    3938.1,
+    24310.0,
+    12895.77,
+    2.04
+   ],
+   [
+    "Piloto (1 base + TUB)",
+    26254.73,
+    0.36,
+    "medio sin ferreteria",
+    34676.25,
+    3938.1,
+    72920.0,
+    30114.27,
+    0.87
+   ],
+   [
+    "Piloto (1 base + TUB)",
+    26254.73,
+    0.36,
+    "medio",
+    34676.25,
+    277710.88,
+    72920.0,
+    104032.93,
+    0.25
+   ],
+   [
+    "Piloto (1 base + TUB)",
+    26254.73,
+    0.36,
+    "alto",
+    40872.8,
+    551483.66,
+    145830.0,
+    199310.34,
+    0.13
+   ],
+   [
+    "Lote de 2 (acumulado F2, 3 bases)",
+    125934.52,
+    0.72,
+    "bajo",
+    19514.02,
+    3938.1,
+    24310.0,
+    25791.54,
+    4.88
+   ],
+   [
+    "Lote de 2 (acumulado F2, 3 bases)",
+    125934.52,
+    0.72,
+    "medio sin ferreteria",
+    34676.25,
+    3938.1,
+    72920.0,
+    60228.55,
+    2.09
+   ],
+   [
+    "Lote de 2 (acumulado F2, 3 bases)",
+    125934.52,
+    0.72,
+    "medio",
+    34676.25,
+    277710.88,
+    72920.0,
+    208065.85,
+    0.61
+   ],
+   [
+    "Lote de 2 (acumulado F2, 3 bases)",
+    125934.52,
+    0.72,
+    "alto",
+    40872.8,
+    551483.66,
+    145830.0,
+    398620.69,
+    0.32
+   ],
+   [
+    "Plan completo (5 bases)",
+    316929.73,
+    1.0,
+    "bajo",
+    19514.02,
+    3938.1,
+    24310.0,
+    35821.59,
+    8.85
+   ],
+   [
+    "Plan completo (5 bases)",
+    316929.73,
+    1.0,
+    "medio sin ferreteria",
+    34676.25,
+    3938.1,
+    72920.0,
+    83650.76,
+    3.79
+   ],
+   [
+    "Plan completo (5 bases)",
+    316929.73,
+    1.0,
+    "medio",
+    34676.25,
+    277710.88,
+    72920.0,
+    288980.35,
+    1.1
+   ],
+   [
+    "Plan completo (5 bases)",
+    316929.73,
+    1.0,
+    "alto",
+    40872.8,
+    551483.66,
+    145830.0,
+    553639.85,
+    0.57
+   ]
+  ]
+ }
 }

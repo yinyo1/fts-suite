@@ -17,6 +17,14 @@ Nada escribe en Odoo ni en n8n.
 
 ## Costo exacto
 
+> **Actualización de la sesión nocturna 2 (#338):** con las losetas ligeras, el PETG del piloto baja a 9.22 kg y 465 h, que cuestan $5,837.06. **El total pasa a $26,254.73**, o $76,257.74 si nada del listado aparece. La tabla de abajo es la de la sesión 1.
+>
+> Otros dos cambios de la sesión 2:
+> - Las M18 van **sin batería**.
+> - En el cajón C6 del piloto, 3 de sus 5 fichas llevan el rebaje de dedo de un solo lado. Ver `reporte_interferencias.md`.
+>
+> Hay una regla nueva para la checklist, sacada de `estabilidad.md`: **un cajón abierto a la vez y nunca abrir en rampa.**
+
 | Concepto | Con el inventario del listado | Si nada del listado aparece | Cómo salió |
 |---|---|---|---|
 | Herramienta que falta | $6,407.12 | $52,796.13 | Hoja `Herramienta` recalculada para 1 BASE y 1 TUB. Falta 48-59-1812 (cargador), 797UR y un cabezal 3/4 |

@@ -253,13 +253,78 @@ hoja('Supuestos', ['supuesto', 'por que', 'efecto si esta mal'], [
     ('Modulos dedicados = cada base con un juego de TODOS los modulos', 'cota alta; en la practica se dedicaria solo lo que la planta usa', 'el costo dedicado real queda entre compartidos y esta cota'),
 ], {1: 55, 2: 70, 3: 55})
 
+# =================== CASO V2 (sesion nocturna 2, #338): menudeo Jeeves + horas perdidas + recuperacion por cobertura
+J = json.load(open(os.path.join(D, 'jeeves_menudeo_2026.json'), encoding='utf-8'))
+j0, j1 = date.fromisoformat(J['ventana'][0]), date.fromisoformat(J['ventana'][1])
+F_ANUAL = 365 / ((j1 - j0).days + 1)
+jc = {c: round(sum(x['monto'] for x in J['comercios'] if x['clase'] == c), 2) for c in ('herramienta_clara', 'material_probable', 'incierto')}
+JE = {'E1 solo herramienta clara': jc['herramienta_clara'],
+      'E2 clara + mitad de lo incierto': jc['herramienta_clara'] + 0.5 * jc['incierto'],
+      'E3 clara + todo lo incierto': jc['herramienta_clara'] + jc['incierto']}
+JE_A = {k: round(v * F_ANUAL, 2) for k, v in JE.items()}
+K = J['kiosko']
+FRENTES = K['grupos_dia_proyecto'] / K['dias']            # frentes con gente por dia habil (dato)
+PERS = K['asistencias'] / K['grupos_dia_proyecto']        # personas por frente (dato)
+DIAS_HAB = 250                                            # supuesto: 52 x 5 - 10 feriados
+COSTO_HORA = 100.0                                        # PARAMETRO de referencia, NO sale de nomina: direccion lo ajusta
+MIN = {'bajo': 5, 'medio': 15, 'alto': 30}                # minutos por frente por dia que la cuadrilla espera o busca (supuesto)
+HORAS = {k: round(m * PERS * FRENTES * DIAS_HAB / 60, 1) for k, m in MIN.items()}
+HORAS_MXN = {k: round(h * COSTO_HORA, 2) for k, h in HORAS.items()}
+ESC = {  # componente de reposicion por OC, de Jeeves y de horas por escenario
+ 'bajo': (ahorro_base, 'A anual (serie)', JE_A['E1 solo herramienta clara'], 'E1', HORAS_MXN['bajo']),
+ 'medio sin ferreteria': (anual['A. Reposicion con detalle (base)']['ult_12m'], 'A ultimos 12 meses', JE_A['E1 solo herramienta clara'], 'E1', HORAS_MXN['medio']),
+ 'medio': (anual['A. Reposicion con detalle (base)']['ult_12m'], 'A ultimos 12 meses', JE_A['E2 clara + mitad de lo incierto'], 'E2', HORAS_MXN['medio']),
+ 'alto': (ahorro_amp, 'B ultimos 12 meses', JE_A['E3 clara + todo lo incierto'], 'E3', HORAS_MXN['alto'])}
+REDUC = 0.75                                              # supuesto central: el carrito evita el 75 % de la perdida y del tiempo buscando
+COB = {'Piloto (1 base + TUB)': (pil['total'], 1 / FRENTES), 'Lote de 2 (acumulado F2, 3 bases)': (None, min(1.0, 2 / FRENTES)),
+       'Plan completo (5 bases)': (costo(ACTUAL)['total'], 1.0)}
+_lote = costo({'BASE': 3, 'TUB': 1, 'ELE': 1})['total']; COB['Lote de 2 (acumulado F2, 3 bases)'] = (_lote, min(1.0, 2 / FRENTES))
+REC2 = []
+for inv_nom, (inv, cob) in COB.items():
+    for e, (rep, rep_n, je, je_n, hm) in ESC.items():
+        ah = cob * REDUC * (rep + je + hm)
+        REC2.append((inv_nom, round(inv, 2), round(cob, 2), e, round(rep, 2), round(je, 2), round(hm, 2), round(ah, 2), round(inv / ah, 2) if ah else None))
+hoja('Jeeves_menudeo', ['comercio', 'cargos', 'monto MXN (ene a sep 2026)', 'anualizado', 'clase', 'por que esa clase'],
+     [(c['comercio'], c['cargos'], c['monto'], round(c['monto'] * F_ANUAL, 2), c['clase'],
+       {'herramienta_clara': 'el comercio es una marca de herramienta', 'material_probable': 'comercio de plomeria o tornilleria: material de proyecto',
+        'incierto': 'ferreteria o tienda general: el concepto no dice que se compro'}[c['clase']]) for c in J['comercios']]
+     + [('EXCLUIDAS: conciliadas con factura de proveedor', J['excluidas_conciliadas_con_factura']['cargos'], J['excluidas_conciliadas_con_factura']['monto'], None, 'excluido', J['excluidas_conciliadas_con_factura']['por_que'])],
+     {1: 40, 6: 55})
+hoja('Jeeves_escenarios', ['escenario', 'monto ene a sep 2026', 'anualizado', 'como salio'],
+     [(k, round(v, 2), JE_A[k], f"clara {jc['herramienta_clara']:,.2f} + {('0' if k.startswith('E1') else ('0.5 x ' if k.startswith('E2') else '1 x '))}incierto {jc['incierto']:,.2f}; anualizado x {F_ANUAL:.3f} (365 / {(j1 - j0).days + 1} dias)") for k, v in JE.items()]
+     + [('Material probable (no entra)', jc['material_probable'], round(jc['material_probable'] * F_ANUAL, 2), 'plomeria y tornilleria')], {1: 36, 4: 70})
+hoja('Horas_perdidas', ['escenario', 'minutos por frente por dia (supuesto)', 'personas por frente (dato)', 'frentes por dia (dato)', 'dias habiles al anio (supuesto)',
+                        'horas persona al anio', 'costo hora de referencia (PARAMETRO)', 'MXN al anio'],
+     [(k, MIN[k], round(PERS, 2), round(FRENTES, 2), DIAS_HAB, HORAS[k], COSTO_HORA, HORAS_MXN[k]) for k in MIN]
+     + [('fuente de los datos', None, f"{K['asistencias']} asistencias / {K['grupos_dia_proyecto']} dia-proyecto", f"{K['grupos_dia_proyecto']} / {K['dias']} dias", None, None,
+         'NO sale de nomina: valor de referencia para que direccion lo ajuste', None)], {1: 20, 7: 40})
+hoja('Recuperacion_v2', ['inversion', 'MXN', 'cobertura (frentes que cubre / frentes por dia)', 'escenario', 'reposicion OC al anio', 'Jeeves herramienta al anio',
+                         'horas perdidas MXN al anio', 'ahorro anual (cobertura x 75 % x suma)', 'anios para recuperar'], REC2, {1: 34})
+hoja('Dato_vs_supuesto', ['componente', 'que es dato de Odoo', 'que es supuesto'], [
+    ('Reposicion por orden de compra', 'lineas de purchase.order.line clasificadas (18 reposicion, 2 duplicadas)', 'que es un piso del gasto real; el 75 % que evita el carrito'),
+    ('Menudeo en tarjeta Jeeves', f"{J['total']['cargos']} cargos no conciliados por {J['total']['monto']:,.2f} en {', '.join(J['ventana'])}, por comercio", 'que parte de ferreterias, Home Depot, Mercado Libre y Amazon es herramienta (0, 50 o 100 %)'),
+    ('Horas perdidas buscando o esperando', f"{FRENTES:.2f} frentes por dia y {PERS:.2f} personas por frente (kiosko, jul a sep 2026)", f"minutos por dia (5, 15, 30), {DIAS_HAB} dias habiles y el costo hora de {COSTO_HORA:.0f} (parametro, no nomina)"),
+    ('Costo de retraso con cliente', 'nada: no se inventa monto', 'linea cualitativa: ver Resumen'),
+    ('Cobertura de cada inversion', 'frentes por dia (kiosko)', 'que un carrito cubre un frente; el lote de 2 cubre 2 frentes activos y 1 de reserva'),
+], {1: 32, 2: 60, 3: 60})
+ws = wb['Resumen']
+for fila in [('CASO V2 (sesion nocturna 2)', None, None),
+             ('Menudeo Jeeves anualizado, E1 / E2 / E3', f"{JE_A['E1 solo herramienta clara']:,.0f} / {JE_A['E2 clara + mitad de lo incierto']:,.0f} / {JE_A['E3 clara + todo lo incierto']:,.0f}", 'hojas Jeeves_menudeo y Jeeves_escenarios'),
+             ('Horas perdidas en MXN al anio, bajo / medio / alto', f"{HORAS_MXN['bajo']:,.0f} / {HORAS_MXN['medio']:,.0f} / {HORAS_MXN['alto']:,.0f}", f"costo hora de {COSTO_HORA:.0f} es PARAMETRO de referencia; hoja Horas_perdidas"),
+             ('Recuperacion del piloto, bajo / medio sin ferreteria / medio / alto (anios)', ' / '.join(str(r[8]) for r in REC2 if r[0].startswith('Piloto')), 'hoja Recuperacion_v2 (ya cuenta que el piloto cubre 1 de ' + f"{FRENTES:.1f} frentes)"),
+             ('Recuperacion del lote de 2, bajo / medio sin ferreteria / medio / alto (anios)', ' / '.join(str(r[8]) for r in REC2 if r[0].startswith('Lote')), 'acumulado de F2 del plan maestro'),
+             ('Recuperacion del plan completo, bajo / medio sin ferreteria / medio / alto (anios)', ' / '.join(str(r[8]) for r in REC2 if r[0].startswith('Plan')), 'hoja Recuperacion_v2'),
+             ('Costo de retraso con cliente', 'cualitativo', 'Ejemplo: una cuadrilla de 4 en Topo Chico espera media manana una llave que se quedo en otra planta; la actividad del cronograma se recorre y, si el contrato tiene penalizacion por atraso, aplica. No se estima monto: no hay dato.')]:
+    ws.append(list(fila))
 out = os.path.join(BASE, 'caso_negocio.xlsx'); wb.save(out)
 res = {'anual': anual, 'anios_serie': round(ANIOS_SERIE, 3), 'familias': {k: {kk: round(vv, 2) for kk, vv in v.items()} for k, v in fam.items()},
        'piloto': {k: v for k, v in pil.items() if k != 'det'}, 'piloto_todo_nuevo': {k: v for k, v in pil_nuevo.items() if k != 'det'},
        'piloto_det': pil['det'], 'plan_actual': {k: v for k, v in ca.items() if k != 'det'},
        'sensibilidad': [{'bases': nb, 'modulos': modo, **{k: v for k, v in c.items() if k not in ('det', 'cajas')}} for nb, modo, u, c in sens],
        'factor_petg': [round(F_G, 3), round(F_H, 3)], 'inversiones': INV,
-       'huerfanos': [{'id': p[0], 'so': p[1], 'ult': p[5], 'clas': clasif(p)} for p in PROY]}
+       'huerfanos': [{'id': p[0], 'so': p[1], 'ult': p[5], 'clas': clasif(p)} for p in PROY],
+       'v2': {'jeeves_anual': JE_A, 'jeeves_clases': jc, 'factor_anual': round(F_ANUAL, 4), 'frentes_dia': round(FRENTES, 3), 'personas_frente': round(PERS, 3),
+              'horas': HORAS, 'horas_mxn': HORAS_MXN, 'costo_hora_parametro': COSTO_HORA, 'reduccion': REDUC, 'recuperacion': REC2}}
 json.dump(res, open(os.path.join(D, 'caso_negocio.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1, default=str)
 print(json.dumps({'anual': anual, 'piloto': pil['total'], 'piloto_nuevo': pil_nuevo['total'], 'plan': ca['total'],
                   'sens': [(nb, modo, c['total']) for nb, modo, u, c in sens], 'F': (F_G, F_H)}, indent=1, default=str))
