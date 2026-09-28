@@ -1,9 +1,15 @@
 {
-  "version": "V1.02",
+  "version": "V1.03",
   "fecha": "2026-09-28",
   "modulo": "rh/retardos",
   "esquema": "V<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main. Contador propio de este modulo.",
   "historial": [
+    {
+      "version": "V1.03",
+      "fecha": "2026-09-28",
+      "titulo": "Reglas definitivas: tolerancia 15 minutos y jornada semanal FTS (#334, reglas R3)",
+      "nota": "Tolerancia de 15 minutos al segundo, lunes a viernes, hora del centro. Pestana Jornada semanal: semaforo por persona, horas efectivas de viernes a jueves con desglose por dia (sabado y domingo suman horas y nunca son retardo) y bandeja Jornada por revisar (entrada sin salida, asistencias de mas de 16 horas, incidencias abiertas): ahi no sale aviso hasta que RH confirma, corrige o marca que no aplica. Pestana Propuestas de medida del tercer aviso, que quedan retenidas. Configuracion muestra las reglas de jornada, los avisos, los dias feriados (agregar y quitar) y el estado de cada texto de correo (pendiente de RH)."
+    },
     {
       "version": "V1.02",
       "fecha": "2026-09-28",

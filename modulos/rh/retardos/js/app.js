@@ -24,7 +24,9 @@
     CERRADO: ['Cerrado', 'e-cerrado'], CANCELADO_POR_RH: ['Cancelado por RH', 'e-otro'],
     RETENIDO: ['Nivel de suspensión alcanzado, no aplicado', 'e-retenido']
   };
-  var NIVEL = { aviso: 'Aviso', carta_compromiso: 'Carta compromiso', acta: 'Acta administrativa', suspension: 'Suspensión' };
+  var NIVEL = { aviso: 'Aviso', carta_compromiso: 'Carta compromiso', acta: 'Acta administrativa', suspension: 'Suspensión',
+    aviso_jornada_1: 'Jornada: 1er aviso', aviso_jornada_2: 'Jornada: 2do aviso', aviso_jornada_3: 'Jornada: 3er aviso' };
+  function esJor(c) { return String(c.folio || '').indexOf('JOR-') === 0 || c.tipo === 'jornada'; }
   var CUBETAS = [
     { id: 'recolectar', t: 'Firmas por recolectar', q: 'Imprimir, citar y subir la hoja. Por vencimiento', clase: '', estados: ['ESPERANDO_FIRMA', 'VENCIDO', 'ESCALADO', 'DETECTADO', 'NOTIFICADO'] },
     { id: 'rh', t: 'Casos con hoja recibida', q: 'Confírmala en Hojas por confirmar', clase: 'rh', estados: ['FIRMA_RECIBIDA'] },
@@ -32,7 +34,7 @@
     { id: 'resolver', t: 'Por resolver', q: 'Negativa, impugnación o validado', clase: '', estados: ['SE_NEGO_A_FIRMAR', 'IMPUGNADO', 'VALIDADO_RH', 'ACCION_PROGRAMADA'] },
     { id: 'retenidos', t: 'Suspensión alcanzada, no aplicada', q: 'Modo sin suspensión: cuenta como antecedente', clase: 'ret', estados: ['RETENIDO'] }
   ];
-  var st = { casos: [], salud: null, filtro: 'todos', vista: 'lista', folio: null, editor: false, cerrados: false, hojas: [], reinc: null };
+  var st = { casos: [], salud: null, filtro: 'todos', vista: 'lista', folio: null, editor: false, cerrados: false, hojas: [], reinc: null, jor: null, jSem: null, medidas: [] };
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function chip(estado) { var e = E[estado] || [estado, 'e-otro']; return '<span class="chip ' + e[1] + '">' + esc(e[0]) + '</span>'; }
@@ -62,7 +64,9 @@
       LECTURA_YA_DECIDIDA: 'Esa hoja ya la resolvió alguien más. Recarga.', SIN_CASO_LIGADO: 'La hoja no está ligada a un caso: corrige el folio primero.',
       CASO_NO_ESPERA_HOJA: 'El caso ya no espera hoja. Recarga para ver su estado.', FOLIO_INEXISTENTE: 'Ese folio no existe.',
       MAXIMO_10_ARCHIVOS: 'Sube máximo 10 archivos a la vez.', TIPO_NO_ACEPTADO: 'Sólo PDF o fotos (JPG, PNG).', ARCHIVO_DEMASIADO_GRANDE: 'El archivo pesa demasiado.',
-      SEMANAS_INVALIDAS: 'Pospón entre 1 y 26 semanas.', DECISION_INVALIDA: 'Elige cambiar, posponer o descartar.'
+      SEMANAS_INVALIDAS: 'Pospón entre 1 y 26 semanas.', DECISION_INVALIDA: 'Elige una de las opciones.',
+      HORAS_INVALIDAS: 'Revisa las horas: van de 0 a 168 y el descuento no puede pasar del faltante.', SEMANA_INEXISTENTE: 'Esa semana ya no está en la lista. Recarga.',
+      YA_TIENE_CASO: 'Esa semana ya abrió un aviso: se atiende desde el caso.', MEDIDA_INEXISTENTE: 'Esa propuesta ya no existe. Recarga.', MEDIDA_YA_DECIDIDA: 'Esa propuesta ya se decidió. Recarga.'
     };
     return M[r.error] || ('El servidor no aceptó la acción (' + esc(r.error || 'sin código') + ').');
   }
@@ -145,7 +149,7 @@
         return '<tr class="fila" tabindex="0" data-folio="' + esc(c.folio) + '"><td class="folio">' + esc(c.folio) + '</td>' +
           '<td class="quien2"><b>' + esc(c.nombre || ('Empleado ' + c.employee_id)) + '</b><span>' + esc(c.periodo) + (c.ruta === 'supervisor' ? ' · entrega por supervisor' : '') + '</span></td>' +
           '<td class="nivel"><i>' + c.nivel + '</i>' + esc(NIVEL[c.accion] || c.accion) + '</td>' +
-          '<td class="n">' + c.retardos_n + '</td><td>' + chip(c.estado) + '</td>' +
+          '<td class="n">' + (esJor(c) ? '<span class="nivel">jornada</span>' : c.retardos_n) + '</td><td>' + chip(c.estado) + '</td>' +
           '<td class="num vence">' + (c.vence_at ? fechaDia(c.vence_at) : '') + '</td><td class="n">' + (c.dias_abierto == null ? '' : c.dias_abierto) + '</td>' +
           (imprimir ? '<td><button class="btn" data-imprimir="' + esc(c.folio) + '">Imprimir hoja</button></td>' : '') + '</tr>';
       }).join('') + '</tbody></table></div>';
@@ -181,6 +185,14 @@
     if (s !== 'CERRADO' && s !== 'CANCELADO_POR_RH' && s !== 'ACCION_VERIFICADA') a.push(['cancelar', 'Cancelar caso', 'peligro']);
     return a;
   }
+  function bloqueJornadaCaso(c) {
+    var j = c.jornada || {};
+    return '<section class="caja bloque"><h2>Semana ' + esc(j.semana || c.periodo) + ': ' + esc(j.horas_efectivas || '') + ' de ' + esc(j.umbral || '') + ' horas efectivas</h2>' +
+      '<div class="nivel">Viernes ' + esc(j.desde || '') + ' a jueves ' + esc(j.hasta || '') + ', hora del centro (CST). Aviso ' + esc(j.aviso_n || c.nivel) + ' de 3. Faltante: ' + esc(j.faltante || '') + '.</div>' +
+      '<div class="tabla-wrap"><table><thead><tr><th>Día</th><th class="num">Registradas</th><th class="num">Comida</th><th class="num">Efectivas</th><th>Nota</th></tr></thead><tbody>' +
+      (j.dias || []).map(function (x) { return '<tr><td>' + esc(x.dia) + ' ' + esc(x.fecha) + '</td><td class="n">' + esc(x.brutas) + '</td><td class="n">' + esc(x.comida) + '</td><td class="n">' + esc(x.efectivas) + '</td><td class="nivel">' + esc(x.nota || '') + '</td></tr>'; }).join('') +
+      '</tbody></table></div></section>';
+  }
   function pintarDetalle(r) {
     var c = r.caso || {}, evs = r.evidencias || [], bit = r.bitacora || [], env = r.envios || [];
     var acts = st.editor ? acciones(c, evs) : [];
@@ -190,9 +202,11 @@
     var h = '<button class="btn volver-lista" id="volver">← Volver a la lista</button>' +
       '<div class="cab"><div><h1>' + esc(c.nombre) + '</h1><div class="sub"><span class="folio">' + esc(c.folio) + '</span> · ' + esc(c.nombre_nivel) + ' · periodo ' + esc(c.periodo) + '</div></div><span class="sp"></span>' + chip(c.estado) + '</div>' +
       '<div class="detalle"><div style="display:grid;gap:14px;min-width:0">' +
+      (esJor(c) ? bloqueJornadaCaso(c) :
       '<section class="caja bloque"><h2>' + esc(c.retardos_n) + ' retardos en el periodo</h2>' +
         (c.motivo_apertura === 'reincidencia' ? '<div class="aviso mal" style="margin:0"><div><b>Reincidencia</b>Ya tenía un documento firmado y validado en los últimos días. Por eso sube de nivel.</div></div>' : '') +
-        '<div class="tabla-wrap"><table><thead><tr><th>Fecha</th><th>Llegó</th><th>Entrada</th><th class="num">Minutos tarde</th></tr></thead><tbody>' + retardos + '</tbody></table></div></section>' +
+        '<div class="nivel">Hora del centro (CST). Tolerancia de ' + esc(c.tolerancia_min == null ? 15 : c.tolerancia_min) + ' minutos al segundo: llegar a los 15:00 no es retardo, a los 15:01 sí.</div>' +
+        '<div class="tabla-wrap"><table><thead><tr><th>Fecha</th><th>Llegó</th><th>Entrada</th><th class="num">Minutos tarde</th></tr></thead><tbody>' + retardos + '</tbody></table></div></section>') +
       (acts.length ? '<section class="caja bloque"><h2>Qué sigue</h2><div class="acciones">' + acts.map(function (a) {
         return '<button class="btn ' + (a[2] || '') + '" data-accion="' + a[0] + '">' + esc(a[1]) + '</button>'; }).join('') + '</div><div id="form-accion"></div></section>' : '') +
       '<section class="caja bloque"><h2>Hojas y constancias</h2>' + (evs.length ? evs.map(function (e) {
@@ -295,15 +309,31 @@
     try { r = await pedir({ accion: 'config' }); } catch (e) { return; }
     if (!r || r.ok !== true) { $('#ajustes').innerHTML = '<div class="caja vacio">' + mensajeError(r || {}) + '</div>'; return; }
     var cfg = r.config || {}, esc2 = r.escalera || [], ex = r.exclusiones || [];
-    var claves = ['modo', 'modo_sanciones', 'dias_recoleccion_rh', 'correo_modo', 'tolerancia_min', 'hora_fuente', 'periodo', 'reincidencia_dias', 'contar_desde', 'dias_validacion_rh', 'hojas_carpeta', 'buzon_receptor', 'real_desde'];
+    var claves = ['modo', 'modo_sanciones', 'tolerancia_min', 'dias_habiles', 'zona_horaria', 'hora_fuente', 'periodo', 'reincidencia_dias', 'contar_desde', 'dias_recoleccion_rh', 'correo_modo', 'dias_validacion_rh', 'hojas_carpeta', 'buzon_receptor', 'real_desde'];
+    var clavesJ = ['jornada_umbral_horas', 'jornada_comida_min', 'jornada_comida_fin_de_semana', 'jornada_comida_fds_min_horas', 'jornada_usar_calendario', 'jornada_tolerancia_calendario_h', 'jornada_horas_max_asistencia', 'jornada_ventana_dias', 'jornada_plazo_correccion_dias', 'jornada_desde', 'jornada_envio', 'modo_medidas_jornada', 'jornada_tipo_nomina_descuento'];
+    var escJ = r.escalera_jornada || [], fest = r.festivos || [], pls = r.plantillas || [];
     function val(v) { return v == null ? 'sin definir' : (typeof v === 'object' ? JSON.stringify(v) : String(v)); }
+    function dl(ks) { return ks.filter(function (k) { return cfg[k]; }).map(function (k) {
+      return '<dt>' + esc(k.replace(/_/g, ' ')) + '</dt><dd><b class="num">' + esc(val(cfg[k].valor)) + '</b> ' + (cfg[k].confirmado ? '' : '<span class="chip e-espera">por confirmar</span>') + '<br><span class="nivel">' + esc(cfg[k].descripcion || '') + '</span></dd>'; }).join(''); }
     $('#ajustes').innerHTML =
       '<div class="aviso demo"><div><b>Valores por confirmar</b>Lo marcado "por confirmar" salió de la reconstrucción del sistema anterior o es una propuesta. Dirección y RH los confirman antes de pasar a modo real.</div></div>' +
       '<div class="detalle"><section class="caja bloque"><h2>Escalera de medidas</h2><div class="tabla-wrap"><table><thead><tr><th>Nivel</th><th>Medida</th><th class="num">Desde</th><th class="num">Plazo firma</th><th>Testigos</th><th>Estado</th></tr></thead><tbody>' +
         esc2.map(function (e) { return '<tr><td class="n">' + e.nivel + '</td><td>' + esc(e.nombre) + (e.dias_suspension ? ' (' + e.dias_suspension + ' día)' : '') + '</td><td class="n">' + e.umbral + ' retardos</td><td class="n">' + (e.dias_plazo_firma ? e.dias_plazo_firma + ' días háb.' : 'no firma') + '</td><td>' + (e.requiere_testigos ? 'dos' : 'no') + '</td><td>' + (e.confirmado ? '<span class="chip e-validado">confirmado</span>' : '<span class="chip e-espera">por confirmar</span>') + ' <span class="nivel">' + esc(e.origen) + '</span></td></tr>'; }).join('') +
         '</tbody></table></div></section>' +
-      '<section class="caja bloque"><h2>Reglas</h2><dl class="dl">' + claves.filter(function (k) { return cfg[k]; }).map(function (k) {
-        return '<dt>' + esc(k.replace(/_/g, ' ')) + '</dt><dd><b class="num">' + esc(val(cfg[k].valor)) + '</b> ' + (cfg[k].confirmado ? '' : '<span class="chip e-espera">por confirmar</span>') + '<br><span class="nivel">' + esc(cfg[k].descripcion || '') + '</span></dd>'; }).join('') + '</dl></section></div>' +
+      '<section class="caja bloque"><h2>Reglas de retardo</h2><dl class="dl">' + dl(claves) + '</dl></section></div>' +
+      '<div class="detalle" style="margin-top:14px"><section class="caja bloque"><h2>Jornada semanal FTS</h2>' +
+        '<div class="nivel">Semana de viernes 00:00 a jueves 23:59:59, hora del centro. Una asistencia que cruza el corte se parte en dos. El corte corre el viernes a las 08:00.</div>' +
+        '<dl class="dl">' + dl(clavesJ) + '</dl></section>' +
+      '<section class="caja bloque"><h2>Avisos de jornada</h2><ul class="linea">' +
+        escJ.map(function (e) { return '<li><div><b>' + e.nivel + '. ' + esc(e.nombre) + '</b> ' + (e.confirmado ? '<span class="chip e-validado">confirmado</span>' : '<span class="chip e-espera">por confirmar</span>') + '<br><span class="nivel">' + esc(e.nota || '') + '</span></div></li>'; }).join('') +
+        '</ul><div class="nivel">La propuesta de medida del tercer aviso queda retenida mientras modo medidas jornada sea "retenidas".</div></section></div>' +
+      '<div class="detalle" style="margin-top:14px"><section class="caja bloque"><h2>Días feriados</h2><div class="nivel">Toda la empresa. No cuentan como retardo y bajan 9.6 horas el umbral de la semana. Sembrados los del artículo 74 de la LFT; Dirección agrega los que decida la empresa.</div>' +
+        '<div class="tabla-wrap"><table><thead><tr><th>Fecha</th><th>Nombre</th><th></th></tr></thead><tbody>' +
+        (fest.length ? fest.map(function (f) { return '<tr><td class="num">' + esc(f.fecha) + '</td><td>' + esc(f.nombre) + '</td><td>' + (st.editor ? '<button class="btn" data-quitar-festivo="' + esc(f.fecha) + '">Quitar</button>' : '') + '</td></tr>'; }).join('') : '<tr><td colspan="3" class="vacio">Ninguno.</td></tr>') +
+        '</tbody></table></div>' +
+        (st.editor ? '<div class="form"><div class="fila2"><label>Fecha<input type="date" id="f-fecha"></label><label>Nombre<input id="f-nombre"></label></div><button class="btn pri" id="f-agregar">Agregar feriado</button><div id="f-err" class="err"></div></div>' : '') + '</section>' +
+      '<section class="caja bloque"><h2>Textos de los correos</h2><div class="nivel">Todos dicen "texto pendiente de validación de RH" hasta que RH los apruebe. Cómo se reemplazan: docs/retardos/PLANTILLAS.md.</div><ul class="linea">' +
+        pls.map(function (t) { return '<li><div><b>' + esc(t.clave) + '</b> ' + (t.estado_texto === 'validado_rh' ? '<span class="chip e-validado">validado por RH</span>' : '<span class="chip e-espera">pendiente de RH</span>') + '</div></li>'; }).join('') + '</ul></section></div>' +
       '<section class="caja bloque" style="margin-top:14px"><h2>Días que no cuentan</h2><div class="nivel">Permisos, vacaciones, viajes o trabajo en campo de una persona. Un retardo en estos días no cuenta. Los días feriados de toda la empresa los agrega Dirección aparte.</div>' +
         '<div class="tabla-wrap"><table><thead><tr><th>Quién</th><th>Desde</th><th>Hasta</th><th>Tipo</th><th>Motivo</th><th></th></tr></thead><tbody>' +
         (ex.length ? ex.map(function (x) { return '<tr><td>' + 'Empleado ' + esc(x.employee_id) + '</td><td class="num">' + esc(x.desde) + '</td><td class="num">' + esc(x.hasta) + '</td><td>' + esc(x.tipo) + '</td><td>' + esc(x.motivo) + '</td><td>' + (st.editor ? '<button class="btn" data-quitar="' + esc(x.id) + '">Quitar</button>' : '') + '</td></tr>'; }).join('') : '<tr><td colspan="6" class="vacio">Ninguno.</td></tr>') +
@@ -326,6 +356,143 @@
     var r; try { r = await pedir({ accion: 'exclusion_quitar', id: Number(id), motivo: 'Quitado desde el panel' }); } catch (e) { return; }
     if (!r || r.ok !== true) { toast(mensajeError(r || {})); return; }
     toast('Quitado.'); ajustes();
+  }
+
+  async function festivo(accion, fecha, boton) {
+    var d = { accion: accion, fecha: fecha };
+    if (accion === 'festivo_agregar') {
+      d.nombre = ($('#f-nombre').value || '').trim();
+      if (!d.fecha || d.nombre.length < 3) { $('#f-err').textContent = 'Escribe la fecha y el nombre del feriado.'; return; }
+    } else d.motivo = 'Quitado desde el panel';
+    if (boton) boton.disabled = true;
+    var r; try { r = await pedir(d); } catch (e) { return; } finally { if (boton) boton.disabled = false; }
+    if (!r || r.ok !== true) { toast(mensajeError(r || {})); return; }
+    toast(accion === 'festivo_agregar' ? 'Feriado agregado.' : 'Feriado quitado.'); ajustes();
+  }
+
+  // ── Jornada semanal FTS (reglas R3) ──
+  var DIA = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+  var ESTJ = { cumple: ['Cumple', 'e-validado'], incumple: ['Incumple', 'e-vencido'], revisar: ['Por revisar', 'e-espera'], exento: ['Exento', 'e-otro'], no_aplica: ['No aplica', 'e-otro'] };
+  var SEMJ = { rojo: ['Rojo', 'e-vencido'], amarillo: ['Amarillo', 'e-espera'], verde: ['Verde', 'e-validado'], gris: ['Revisar datos', 'e-otro'] };
+  var MOTJ = { sin_salida: 'Entrada sin salida', salida_no_leida: 'Salida sin leer', asistencia_mas_de_max: 'Asistencia de más de 16 horas', incidencia_pendiente: 'Incidencia abierta en Odoo', en_disputa: 'Horario en disputa', sin_asistencias: 'Sin ninguna asistencia en la semana' };
+  function hm(h) {
+    if (h == null || h === '') return '';
+    var m = Math.round(Number(h) * 60), neg = m < 0; m = Math.abs(m);
+    return (neg ? '-' : '') + Math.floor(m / 60) + ':' + ('0' + (m % 60)).slice(-2);
+  }
+  // Numeración de Nómina: jueves 23-jul-2026 = S30, sin reinicio en enero; el año es el del jueves.
+  function semId(desde) {
+    var v = Date.UTC(+desde.slice(0, 4), +desde.slice(5, 7) - 1, +desde.slice(8, 10)) + 6 * 86400000;
+    return 'S' + (30 + Math.round((v - Date.UTC(2026, 6, 23)) / (7 * 86400000))) + '/' + new Date(v).getUTCFullYear();
+  }
+  function fDia(iso) { var p = String(iso || '').split('-'); return p.length === 3 ? p[2] + '/' + p[1] : esc(iso); }
+  function chipJ(m, k) { var e = m[k] || [k, 'e-otro']; return '<span class="chip ' + e[1] + '">' + esc(e[0]) + '</span>'; }
+  function motivosTxt(ms) { return (ms || []).map(function (m) { return esc(MOTJ[m] || m); }).join(', '); }
+  function tablaDias(ds) {
+    return '<div class="tabla-wrap"><table class="dias"><thead><tr><th>Día</th><th class="num">Registradas</th><th class="num">Comida</th><th class="num">Efectivas</th><th>Nota</th></tr></thead><tbody>' +
+      (ds || []).map(function (x) {
+        var nota = x.prorrateo ? 'Cubierto: ' + String(x.prorrateo).replace('nomina:', 'Nómina, ').replace(/_/g, ' ') : (x.motivos && x.motivos.length ? motivosTxt(x.motivos) : (!x.laborable && x.brutas ? 'Fin de semana: suma horas, nunca es retardo' : (x.laborable && !x.brutas ? 'No checó' : '')));
+        return '<tr class="' + (x.laborable ? '' : 'fds') + '"><td>' + DIA[x.dow] + ' ' + fDia(x.fecha) + '</td><td class="n">' + hm(x.brutas) + '</td><td class="n">' + hm(x.comida) + '</td><td class="n">' + hm(x.efectivas) + '</td><td class="nivel">' + nota + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+  async function jornada(sem) {
+    st.vista = 'jornada'; mostrarVista();
+    $('#jornada').innerHTML = '<div class="caja vacio">Cargando…</div>';
+    var r; try { r = await pedir({ accion: 'jornada', semana: sem || st.jSem || undefined }); } catch (e) { return; }
+    if (!r || r.ok !== true) { $('#jornada').innerHTML = '<div class="caja vacio">' + mensajeError(r || {}) + '</div>'; return; }
+    st.jor = r; st.jSem = r.semana;
+    var ps = r.personas || [], pr = r.por_revisar || [], cuenta = { rojo: 0, amarillo: 0, verde: 0, gris: 0 };
+    ps.forEach(function (p) { cuenta[p.semaforo] = (cuenta[p.semaforo] || 0) + 1; });
+    var rg = r.reglas || {};
+    var opciones = (r.semanas || []).map(function (d) { return '<option value="' + esc(d) + '"' + (d === r.desde ? ' selected' : '') + '>Semana del viernes ' + fDia(d) + '</option>'; }).join('');
+    $('#jornada').innerHTML =
+      '<div class="aviso sombra"><div><b>Jornada semanal FTS: ' + esc(rg.umbral) + ' horas efectivas de viernes a jueves</b>' +
+        'Se descuentan ' + esc(rg.comida_min) + ' minutos de comida por día trabajado. Sábado y domingo nunca son retardo, pero sus horas cuentan. Un feriado, permiso, incapacidad, vacaciones o día que no cuenta baja 9.6 horas el umbral. ' +
+        'Los avisos abren desde la semana del ' + esc(r.avisos_desde || 'sin definir') + '. Las medidas del tercer aviso quedan ' + esc(rg.modo_medidas === 'habilitadas' ? 'habilitadas' : 'retenidas') + '.</div></div>' +
+      '<div class="cab"><h1>Semana ' + esc(r.semana) + '</h1><span class="nivel">viernes ' + fDia(r.desde) + ' a jueves ' + fDia(r.hasta) + '</span><span class="sp"></span>' +
+        (opciones ? '<select id="j-semana" aria-label="Semana">' + opciones + '</select>' : '') + '</div>' +
+      '<div class="resumen"><div class="cubeta"><span class="n sem-rojo">' + cuenta.rojo + '</span><span class="l">Rojo</span><span class="q">3er aviso o 3 semanas cortas en 8</span></div>' +
+        '<div class="cubeta"><span class="n sem-amarillo">' + cuenta.amarillo + '</span><span class="l">Amarillo</span><span class="q">Semana corta o aviso en la ventana</span></div>' +
+        '<div class="cubeta"><span class="n sem-verde">' + cuenta.verde + '</span><span class="l">Verde</span><span class="q">Cumplió</span></div>' +
+        '<div class="cubeta rh"><span class="n">' + pr.length + '</span><span class="l">Jornada por revisar</span><span class="q">Datos incompletos: no sale aviso</span></div></div>' +
+      '<section class="caja bloque" style="margin-bottom:14px"><h2>Jornada por revisar</h2><div class="nivel">Entrada sin salida, asistencias de más de 16 horas, incidencias abiertas o una semana sin asistencias. Aquí no sale ningún aviso hasta que RH confirma, corrige o marca que no aplica.</div>' +
+        (pr.length ? pr.map(function (x) {
+          var id = x.employee_id + '|' + x.semana;
+          return '<div class="ev alerta"><div><b>' + esc(x.nombre || ('Empleado ' + x.employee_id)) + '</b> · semana ' + esc(x.semana) + ' · ' + hm(x.horas_efectivas) + ' de ' + hm(x.umbral) + ' horas<br><span class="nivel">' +
+            (x.motivos || []).map(function (m) { return (m.fecha ? fDia(m.fecha) + ': ' : '') + motivosTxt(m.motivos); }).join(' · ') + '</span>' +
+            '<details><summary>Ver los días</summary>' + tablaDias(x.desglose) + '</details></div>' +
+            (st.editor ? '<div class="acciones"><button class="btn" data-jrev="' + esc(id) + '" data-decision="confirmar">Confirmar horas</button><button class="btn" data-jrev="' + esc(id) + '" data-decision="corregir">Corregir horas</button><button class="btn" data-jrev="' + esc(id) + '" data-decision="no_aplica">No aplica</button></div>' : '') +
+            '<div id="jf-' + esc(id.replace(/[^A-Za-z0-9]/g, '_')) + '" class="alerta-form"></div></div>';
+        }).join('') : '<div class="nivel">Nada por revisar.</div>') + '</section>' +
+      '<div class="caja"><div class="tabla-wrap"><table class="jornada"><thead><tr><th>Persona</th><th>Semáforo</th><th>Estado</th><th class="num">Efectivas</th><th class="num">Umbral</th><th class="num">Faltante</th><th>Aviso</th><th></th></tr></thead><tbody>' +
+      (ps.length ? ps.map(function (p) {
+        var k = 'jd-' + p.employee_id;
+        return '<tr><td class="quien2"><b>' + esc(p.nombre || ('Empleado ' + p.employee_id)) + '</b><span>' + esc(p.departamento || '') + (p.umbral_fuente === 'calendario' ? ' · umbral de su calendario' : '') + (p.dias_prorrateo ? ' · ' + p.dias_prorrateo + (Number(p.dias_prorrateo) === 1 ? ' día cubierto' : ' días cubiertos') : '') + '</span></td>' +
+          '<td>' + chipJ(SEMJ, p.semaforo) + '</td><td>' + chipJ(ESTJ, p.estado) + '</td><td class="n">' + hm(p.horas_corregidas != null ? p.horas_corregidas : p.horas_efectivas) + '</td><td class="n">' + hm(p.umbral) + '</td><td class="n">' + (p.faltante ? hm(p.faltante) : '') + '</td>' +
+          '<td>' + (p.folio ? '<button class="enlace" data-folio="' + esc(p.folio) + '">' + esc(p.folio) + '</button> <span class="nivel">aviso ' + esc(p.aviso_n) + '</span>' : '') + '</td>' +
+          '<td><button class="btn" data-desglose="' + k + '" aria-expanded="false">Días</button></td></tr>' +
+          '<tr class="hid desglose" id="' + k + '"><td colspan="8">' + tablaDias(p.desglose) + '</td></tr>';
+      }).join('') : '<tr><td colspan="8" class="vacio">Esta semana todavía no tiene corte.</td></tr>') + '</tbody></table></div></div>';
+  }
+  function formJornada(id, decision) {
+    var box = $('#jf-' + id.replace(/[^A-Za-z0-9]/g, '_'));
+    var x = ((st.jor || {}).por_revisar || []).filter(function (q) { return q.employee_id + '|' + q.semana === id; })[0] || {};
+    var T = {
+      confirmar: '<div class="nivel">Se toman las ' + hm(x.horas_efectivas) + ' horas calculadas. Si quedan abajo del umbral y la semana ya abre avisos, sale el aviso.</div>',
+      corregir: '<label>Horas efectivas correctas (decimal, por ejemplo 47.5)<input id="jf-horas" inputmode="decimal"></label>',
+      no_aplica: '<div class="nivel">La semana no se evalúa. Queda en la bitácora con el motivo.</div>'
+    };
+    box.innerHTML = '<div class="form" style="margin-top:8px">' + T[decision] + '<label>Motivo (queda en la bitácora)<input id="jf-motivo"></label><button class="btn pri" data-jrev-enviar="' + esc(id) + '" data-decision="' + decision + '">Guardar</button><div id="jf-err" class="err"></div></div>';
+  }
+  async function enviarJornada(id, decision, boton) {
+    var pz = id.split('|'), d = { accion: 'jornada_revisar', employee_id: Number(pz[0]), semana: pz[1], decision: decision, motivo: ($('#jf-motivo').value || '').trim() };
+    if (decision === 'corregir') { d.horas_efectivas = Number(String($('#jf-horas').value).replace(',', '.')); if (!(d.horas_efectivas >= 0)) { $('#jf-err').textContent = 'Escribe las horas.'; return; } }
+    if (d.motivo.length < 5) { $('#jf-err').textContent = 'Escribe el motivo (al menos 5 letras).'; return; }
+    boton.disabled = true;
+    var r; try { r = await pedir(d); } catch (e) { return; } finally { boton.disabled = false; }
+    if (!r || r.ok !== true) { $('#jf-err').textContent = mensajeError(r || {}); return; }
+    toast('Guardado: la semana queda ' + ((ESTJ[r.estado] || [r.estado])[0]).toLowerCase() + (r.folio ? ', aviso ' + r.folio : '') + '.');
+    jornada(st.jSem);
+  }
+
+  // ── Propuestas de medida (3er aviso de jornada) ──
+  var ESTM = { propuesta: ['Propuesta, sin decidir', 'e-vencido'], retenida: ['Retenida', 'e-retenido'], por_aplicar: ['Por aplicar en Nómina', 'e-programada'], verificada: ['Verificada en Nómina', 'e-verificada'], descartada: ['Descartada', 'e-otro'] };
+  async function medidas() {
+    st.vista = 'medidas'; mostrarVista();
+    $('#medidas').innerHTML = '<div class="caja vacio">Cargando…</div>';
+    var r; try { r = await pedir({ accion: 'medidas' }); } catch (e) { return; }
+    if (!r || r.ok !== true) { $('#medidas').innerHTML = '<div class="caja vacio">' + mensajeError(r || {}) + '</div>'; return; }
+    st.medidas = r.medidas || [];
+    var ret = r.modo_medidas_jornada !== 'habilitadas';
+    $('#medidas').innerHTML =
+      '<div class="aviso ' + (ret ? 'sombra' : 'mal') + '"><div><b>Medidas ' + (ret ? 'retenidas' : 'habilitadas') + '</b>' +
+        (ret ? 'El tercer aviso de jornada abre una propuesta. RH decide y la decisión queda en la bitácora, pero la medida no se aplica ni se manda a Nómina hasta que Legal confirme.' : 'Un descuento registrado se verifica contra Nómina · Incidencias antes del corte. RH lo captura en Nómina.') + '</div></div>' +
+      '<div class="caja"><div class="tabla-wrap"><table><thead><tr><th>Persona</th><th>Folio</th><th>Semana</th><th class="num">Faltante</th><th>Estado</th><th>Decisión</th><th></th></tr></thead><tbody>' +
+      (st.medidas.length ? st.medidas.map(function (m) {
+        var dd = m.decision ? esc(m.decision.decision) + (m.decision.horas ? ' ' + hm(m.decision.horas) + ' h' : '') + ' · ' + esc(m.decision.motivo || '') + ' <span class="nivel">(' + esc(m.decidido_por || '') + ')</span>' : '';
+        return '<tr><td class="quien2"><b>' + esc(m.nombre || ('Empleado ' + m.employee_id)) + '</b><span>' + esc(m.departamento || '') + '</span></td><td><button class="enlace" data-folio="' + esc(m.folio) + '">' + esc(m.folio) + '</button></td><td>' + esc(m.semana) + '</td>' +
+          '<td class="n">' + hm(m.horas_propuestas) + '</td><td>' + chipJ(ESTM, m.estado) + '</td><td>' + dd + '</td>' +
+          '<td>' + (st.editor && (m.estado === 'propuesta' || m.estado === 'retenida') ? '<button class="btn" data-medida="' + m.id + '">Decidir</button>' : '') + '</td></tr>' +
+          '<tr class="hid" id="mf-' + m.id + '"><td colspan="7"></td></tr>';
+      }).join('') : '<tr><td colspan="7" class="vacio">No hay propuestas.</td></tr>') + '</tbody></table></div></div>';
+  }
+  function formMedida(id) {
+    var m = st.medidas.filter(function (x) { return String(x.id) === String(id); })[0] || {};
+    var fila = $('#mf-' + id); fila.classList.remove('hid');
+    fila.firstChild.innerHTML = '<div class="form"><div class="nivel">Faltante de la semana: ' + hm(m.horas_propuestas) + ' horas. La decisión es de RH; ninguna medida se aplica sola.</div>' +
+      '<div class="fila2"><label>Decisión<select id="mf-dec"><option value="descuento">Descuento de tiempo no laborado</option><option value="otra">Otra medida</option><option value="ninguna">Ninguna</option></select></label>' +
+      '<label>Horas a descontar (hasta ' + hm(m.horas_propuestas) + ')<input id="mf-horas" inputmode="decimal"></label></div>' +
+      '<label>Detalle (si es otra medida)<input id="mf-detalle"></label><label>Motivo (queda en la bitácora)<input id="mf-motivo"></label>' +
+      '<button class="btn pri" data-medida-enviar="' + m.id + '">Guardar decisión</button><div id="mf-err" class="err"></div></div>';
+  }
+  async function enviarMedida(id, boton) {
+    var d = { accion: 'medida_decidir', medida_id: Number(id), decision: $('#mf-dec').value, detalle: ($('#mf-detalle').value || '').trim(), motivo: ($('#mf-motivo').value || '').trim() };
+    if (d.decision === 'descuento') d.horas = Number(String($('#mf-horas').value).replace(',', '.'));
+    if (d.motivo.length < 5) { $('#mf-err').textContent = 'Escribe el motivo (al menos 5 letras).'; return; }
+    boton.disabled = true;
+    var r; try { r = await pedir(d); } catch (e) { return; } finally { boton.disabled = false; }
+    if (!r || r.ok !== true) { $('#mf-err').textContent = mensajeError(r || {}); return; }
+    toast(r.nota || 'Decisión registrada.'); medidas();
   }
 
   // ── Calidad de datos (retardos_0005) ──
@@ -570,6 +737,8 @@
     $('#calidad').classList.toggle('hid', st.vista !== 'calidad');
     $('#hojas').classList.toggle('hid', st.vista !== 'hojas');
     $('#reincidencia').classList.toggle('hid', st.vista !== 'reincidencia');
+    $('#jornada').classList.toggle('hid', st.vista !== 'jornada');
+    $('#medidas').classList.toggle('hid', st.vista !== 'medidas');
     document.querySelectorAll('[data-vista]').forEach(function (t) { t.setAttribute('aria-selected', String(t.dataset.vista === st.vista || (t.dataset.vista === 'lista' && st.vista === 'detalle'))); });
     window.scrollTo(0, 0);
   }
@@ -583,9 +752,17 @@
     if (t.id === 'ver-todos') { st.filtro = 'todos'; pintarResumen(); return pintarLista(); }
     if (t.id === 'cerrados') { st.cerrados = !st.cerrados; t.textContent = st.cerrados ? 'Ocultar cerrados' : 'Incluir cerrados'; st.filtro = 'todos'; return cargar(); }
     if (t.id === 'x-agregar') return agregarExclusion();
+    if (t.id === 'f-agregar') return festivo('festivo_agregar', $('#f-fecha').value, t);
+    if (t.dataset.quitarFestivo) return festivo('festivo_quitar', t.dataset.quitarFestivo, t);
+    if (t.dataset.desglose) { var fd = document.getElementById(t.dataset.desglose); var ab = fd.classList.toggle('hid'); t.setAttribute('aria-expanded', String(!ab)); return; }
+    if (t.dataset.jrev) return formJornada(t.dataset.jrev, t.dataset.decision);
+    if (t.dataset.jrevEnviar) return enviarJornada(t.dataset.jrevEnviar, t.dataset.decision, t);
+    if (t.dataset.medida) return formMedida(t.dataset.medida);
+    if (t.dataset.medidaEnviar) return enviarMedida(t.dataset.medidaEnviar, t);
     if (t.dataset.vista) {
       if (t.dataset.vista === 'ajustes') return ajustes(); if (t.dataset.vista === 'calidad') return calidad();
       if (t.dataset.vista === 'hojas') return hojas(); if (t.dataset.vista === 'reincidencia') return reincidencia();
+      if (t.dataset.vista === 'jornada') return jornada(); if (t.dataset.vista === 'medidas') return medidas();
       st.vista = 'lista'; mostrarVista(); return cargar();
     }
     if (t.dataset.imprimir) return imprimir(t.dataset.imprimir);
@@ -604,6 +781,7 @@
     if (t.dataset.ver) return ver(t.dataset.ver);
     if (t.dataset.quitar) return quitarExclusion(t.dataset.quitar);
   });
+  document.addEventListener('change', function (ev) { if (ev.target && ev.target.id === 'j-semana') jornada(semId(ev.target.value)); });
   document.addEventListener('keydown', function (ev) {
     if (ev.key === 'Enter' && ev.target.matches && ev.target.matches('tr.fila')) abrir(ev.target.dataset.folio);
     if (ev.key === 'Enter' && ev.target.id === 'p') entrar();

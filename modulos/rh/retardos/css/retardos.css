@@ -189,3 +189,15 @@ table.reinc td.quien2{min-width:200px}
 .hoja-datos .chips .chip{white-space:nowrap}
 .bloque > .nivel{white-space:normal}
 td.vence,[data-imprimir]{white-space:nowrap}
+
+/* Jornada semanal FTS (V1.03) */
+table.dias td,table.dias th{font-size:13px}
+table.dias tr.fds td{background:var(--violet-l)}
+tr.desglose>td{background:var(--bg);padding:8px}
+details summary{cursor:pointer;color:var(--muted2);font-size:13px;margin-top:4px}
+#j-semana{padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);max-width:100%}
+table.jornada td.quien2 span{white-space:normal}
+.dl .nivel,#ajustes td .nivel,table.dias .nivel,#medidas td .nivel,.ev .nivel{white-space:normal}
+table.jornada .enlace,#medidas td .enlace{white-space:nowrap}
+.bloque .linea .nivel{white-space:normal}
+.bloque .linea li>div:only-child{grid-column:1/-1}
