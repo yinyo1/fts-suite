@@ -1,7 +1,7 @@
 # Especificación de la aplicación de herramientas (Herramientas MX)
 
 Proyecto Herramientas MX · issue #325 · Fase 6.
-Prototipo navegable con datos de ejemplo: [`prototipo_app.html`](prototipo_app.html).
+Prototipos navegables con datos de ejemplo: [`prototipo_app.html`](prototipo_app.html) (v1, Fase 6) y [`prototipo_app_v2.html`](prototipo_app_v2.html) (v2, sesion nocturna 1, #330; ver seccion 9).
 
 ## 1. Principio de diseño
 
@@ -199,3 +199,107 @@ tarea_reasignacion(id, kit_id, disparador[plan|kiosko|baja], employee_id, abiert
 - Lectura RFID en la app (fase 2; el hardware se especifica en `plan_fabricacion.md`).
 - Detección automática de huecos en la foto.
 - Integración con `stock.lot` de Odoo. Se evalúa cuando el catálogo de activos esté estable.
+
+## 9. Prototipo v2 (sesión nocturna 1, #330)
+
+Sigue siendo **prototipo HTML autocontenido con datos de ejemplo**: no llama a n8n ni a Odoo. Se genera con `scripts/build_prototipo_app_v2.py` desde `scripts/prototipo_app_v2.template.html`.
+
+### 9.1 Catálogo de plantas (P11)
+Cada planta guarda:
+- **Identidad:** nombre y cliente.
+- **Geocerca:** vacía = **PENDIENTE**. Hoy solo Topo Chico y el taller tienen geocerca en `shared/public-config.json`.
+- **Stage del proyecto.**
+- **Lugares de resguardo:** la app rechaza "cajón general".
+- **Reglas de caseta:**
+  - formato FTS o formato propio de la planta;
+  - columnas del formato (activo, descripción, marca, número de serie, cantidad);
+  - si la serie es obligatoria;
+  - si firma el vigilante;
+  - horario;
+  - si la planta revisa pieza por pieza a la salida;
+  - si permite fotos dentro de planta;
+  - una nota para el equipo.
+
+**Tabla nueva para el esquema:** `planta_caseta(planta_id, formato, columnas[], serie_obligatoria, firma_vigilante, horario, revision_salida, foto_permitida, nota)`.
+
+### 9.2 Formato de caseta configurable
+Se arma con las reglas de la planta y con la **lista exacta del kit**:
+- Incluye la base y cada módulo montado, con los números de activo del kit (por ejemplo `FTS-BAS-02-C3-01`).
+- Cabe en una hoja. Se imprime o se enseña en pantalla.
+- Entrada: al llegar o al recibir una transferencia. Salida: al retirar o transferir.
+
+Si la planta prohíbe fotos, la evidencia de llegada es la foto en caseta, por fuera.
+
+### 9.3 Modo sin señal
+Todo cambio se guarda primero en el teléfono como **evento con `uuid` y con la hora del evento**. Después se envía.
+- **La pantalla distingue** "guardado en el teléfono, pendiente de enviar" de "confirmado por el servidor", y nunca pinta confirmado antes de tiempo (CLAUDE.md §8, la UI no es fuente de verdad).
+- **Al volver la señal se envía solo.** El servidor es **idempotente por `uuid`**: reenviar no duplica.
+- **El servidor guarda la hora ORIGINAL del evento** (`ts_evento`), no la de llegada. Es la regla de la cola offline del kiosko (CLAUDE.md §14, PR C): la hora real gana sobre la estimada.
+- **En producción:** `IndexedDB` como cola, `navigator.onLine` más un reintento con espera creciente, y el webhook `POST /herramientas/evento` con `uuid` como llave única.
+
+### 9.4 Revisión por foto con detección de huecos (demo)
+**El método:**
+- Referencia: la silueta amarilla del cajón, dibujada desde el acomodo.
+- Por cada pieza se mide la **fracción de píxeles amarillos** en el 60 % central de su silueta.
+- **Más de 45 % de amarillo = hueco.** Con la herramienta puesta se ve oscuro; sin ella se ve el amarillo.
+
+**La demo:**
+- Genera una foto sintética con ruido de cámara. Detecta exactamente la pieza que se quitó y ningún falso positivo (pruebas 26 y 27).
+- También acepta una foto real, pero solo si viene **encuadrada al borde interior del cajón**. El alineado automático (homografía con las esquinas del cajón o marcas en las esquinas de la loseta) queda para la fase 2.
+- **Esto es demostración del método, no prueba de campo.** Falta probarlo con fotos reales del cajón piloto.
+
+### 9.5 Vista de dirección
+- **Indicadores:** kits, alertas, alertas rojas y valor de la herramienta en kits.
+- **Por planta:**
+  - última asistencia de FTS;
+  - valor de la herramienta que hay ahí;
+  - tabla de kits con estado, días hábiles sin revisión y alertas A1 a A7.
+- **Cómo sale el valor:** precio de compra de `asignacion_y_compra.xlsx` × cantidad por unidad de cada módulo montado, sin el knockout ni la 12R (son compartidos). Por unidad:
+  - base: $30,415
+  - eléctrico: $12,995
+  - soldadura: $12,469
+  - obra civil: $13,662
+  - medición: $2,449
+  - tubería: $7,322
+
+### 9.6 Reloj de simulación
+Solo existe en la demo. Sirve para adelantar horas, fijar "martes 21:40", quitar la señal, publicar un plan nocturno y simular una checada de kiosko. Así se prueban escalamientos de 24 y 48 h sin esperar.
+
+### 9.7 Recorrido automatizado (caso de la Fase 7.2 y los demás)
+Script `scripts/probar_prototipo_v2.py` (Playwright, 380 px). Resultado en `datos/prueba_prototipo_v2.json`: **29 de 29 pasan**, con 0 errores de consola.
+
+| # | Paso | Resultado |
+|---|---|---|
+| 1 | A1 y A2 marcan FTS-CAR-03 en Bridgestone (ultima asistencia 7-ago) | PASA |
+| 2 | Reloj en martes 21:40 | PASA |
+| 3 | Plan nocturno abre la reasignacion de FTS-CAR-01 sola | PASA |
+| 4 | Con la tarea abierta no puede tomar otro kit | PASA |
+| 5 | La checada en Vertiv vuelve a disparar la misma tarea | PASA |
+| 6 | A las 24 h la tarea escala a Supervisor SR (A7 amarilla) | PASA |
+| 7 | A las 48 h escala al Manager (A7 roja) | PASA |
+| 8 | Tecnico B sin asistencia hoy ni ayer en Topo Chico no puede quedarse con el kit | PASA |
+| 9 | Con checada de hoy, Tecnico B queda como responsable | PASA |
+| 10 | Sin senal: los cambios quedan en el telefono | PASA |
+| 11 | Ya no hay tarea abierta de FTS-CAR-01 (la checada de Tecnico B en Topo Chico abre, con razon, la de su kit FTS-CAR-02 en Vertiv) | PASA |
+| 12 | Al volver la senal todo se envia, con la hora ORIGINAL del evento | PASA |
+| 13 | Reenviar todo no duplica (servidor idempotente) | PASA |
+| 14 | Resuelta la tarea, desaparece la A7 de FTS-CAR-01 | PASA |
+| 15 | Opcion 2: pasa a EN_TRANSFERENCIA | PASA |
+| 16 | A las 24 h sin recibir: A6 | PASA |
+| 17 | A las 48 h sin recibir: EXTRAVIADO | PASA |
+| 18 | Quien recibe confirma y sale el formato de ENTRADA de Vertiv | PASA |
+| 19 | El kit queda EN_USO en Vertiv | PASA |
+| 20 | Retiro: formato de SALIDA con la lista exacta del kit (base + soldadura) | PASA |
+| 21 | Catalogo: rechaza "cajon general" como lugar | PASA |
+| 22 | Formato de caseta de Vertiv ahora pide No. de serie obligatorio | PASA |
+| 23 | Salida de taller: EN_TRANSITO | PASA |
+| 24 | Llegada: formato de ENTRADA con base + medicion | PASA |
+| 25 | Foto completa: ningun hueco | PASA |
+| 26 | Foto sin la pieza 2 del cajon: detecta exactamente ese hueco | PASA |
+| 27 | La revision con hueco abre la alerta A4 (faltante) | PASA |
+| 28 | Direccion: kits por planta, dias sin revision, alertas y valor | PASA |
+| 29 | Cero errores de consola en todo el recorrido | PASA |
+
+**Dos comportamientos que salieron en la prueba y que hay que decidir si se quieren así:**
+1. **El plan nocturno abre una tarea por cada kit que la persona tiene a su nombre en otra planta,** no solo el de la planta que deja. En el ejemplo, el técnico A tenía FTS-CAR-01 en Topo Chico y FTS-CAR-03 en Bridgestone (planta sin gente desde agosto), y se abrieron las dos. Es lo correcto: FTS-CAR-03 es justo el kit huérfano de la vida real.
+2. **La checada de kiosko de cualquier persona también abre tareas.** Cuando el técnico B checa en Topo Chico para poder quedarse con FTS-CAR-01, se abre la tarea de su kit FTS-CAR-02 en Vertiv. También es lo correcto, pero en la práctica un día con varias checadas cruzadas puede generar varias tareas. Conviene que el supervisor SR pueda resolverlas en bloque.

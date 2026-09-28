@@ -1,0 +1,167 @@
+[
+ [
+  "A1 y A2 marcan FTS-CAR-03 en Bridgestone (ultima asistencia 7-ago)",
+  "PASA",
+  "A3 A3 FTS-CAR-01 a: Responsable Sin revision: 1 dia(s) habil(es); A1 A1 FTS-CAR-02 a: Responsable + Supervisor SR Kit huerfano: nadie de FTS con asistencia en Vertiv hace 2 dias habiles (ultima 2026-09-25); A1 A1 FTS-CAR-03 a: Manager de operaciones Kit huerfano: nadie de FTS con asistencia en Bridgestone hace 37 dias habiles (ultima 2026-08-07); A2 A2 FTS-CAR-03 a: Supervisor SR Proyecto parado: 37 dias habiles sin asistencia en Bridgestone; pedir retiro o transferencia; A3 A3 FTS-CAR-03 a: Supervisor SR Resguardado sin gente y sin revision hace 52 dias"
+ ],
+ [
+  "Reloj en martes 21:40",
+  "PASA",
+  ""
+ ],
+ [
+  "Plan nocturno abre la reasignacion de FTS-CAR-01 sola",
+  "PASA",
+  "⚠ Reasignacion obligatoria Tecnico A (emp-79, encargado de frente) cambio a Vertiv y tiene a su nombre FTS-CAR-01 en Top"
+ ],
+ [
+  "Con la tarea abierta no puede tomar otro kit",
+  "PASA",
+  "No se puede: Tecnico A (emp-79, encargado de frente) tiene abierta la reasignacion de FTS-"
+ ],
+ [
+  "La checada en Vertiv vuelve a disparar la misma tarea",
+  "PASA",
+  "Disparada por: plan nocturno + kiosko · abierta 2026-09-29 21:40"
+ ],
+ [
+  "A las 24 h la tarea escala a Supervisor SR (A7 amarilla)",
+  "PASA",
+  [
+   "A7 A7 FTS-CAR-01 a: Supervisor SR Reasignacion abierta hace 24 h (Tecnico A (emp-79, encargado de frente))",
+   "A7 A7 FTS-CAR-03 a: Supervisor SR Reasignacion abierta hace 24 h (Tecnico A (emp-79, encargado de frente))"
+  ]
+ ],
+ [
+  "A las 48 h escala al Manager (A7 roja)",
+  "PASA",
+  [
+   "A7 A7 FTS-CAR-01 a: Manager de operaciones Reasignacion abierta hace 48 h (Tecnico A (emp-79, encargado de frente))",
+   "A7 A7 FTS-CAR-03 a: Manager de operaciones Reasignacion abierta hace 48 h (Tecnico A (emp-79, encargado de frente))"
+  ]
+ ],
+ [
+  "Tecnico B sin asistencia hoy ni ayer en Topo Chico no puede quedarse con el kit",
+  "PASA",
+  "Tecnico B (emp-6, encargado de frente) no tiene asistencia en Topo Chico hoy ni ayer. No puede ser r"
+ ],
+ [
+  "Con checada de hoy, Tecnico B queda como responsable",
+  "PASA",
+  "EN_USO"
+ ],
+ [
+  "Sin senal: los cambios quedan en el telefono",
+  "PASA",
+  "3 pendientes"
+ ],
+ [
+  "Ya no hay tarea abierta de FTS-CAR-01 (la checada de Tecnico B en Topo Chico abre, con razon, la de su kit FTS-CAR-02 en Vertiv)",
+  "PASA",
+  [
+   "Tecnico A (emp-79, encargado de frente) cambio a Vertiv y tiene a su nombre FTS-CAR-03 en ",
+   "Tecnico B (emp-6, encargado de frente) cambio a Topo Chico y tiene a su nombre FTS-CAR-02 "
+  ]
+ ],
+ [
+  "Al volver la senal todo se envia, con la hora ORIGINAL del evento",
+  "PASA",
+  "9 en servidor, 9 en telefono"
+ ],
+ [
+  "Reenviar todo no duplica (servidor idempotente)",
+  "PASA",
+  "9"
+ ],
+ [
+  "Resuelta la tarea, desaparece la A7 de FTS-CAR-01",
+  "PASA",
+  [
+   "A7 A7 FTS-CAR-03 a: Manager de operaciones Reasignacion abierta hace 48 h (Tecnico A (emp-79, encargado de frente))"
+  ]
+ ],
+ [
+  "Opcion 2: pasa a EN_TRANSFERENCIA",
+  "PASA",
+  ""
+ ],
+ [
+  "A las 24 h sin recibir: A6",
+  "PASA",
+  ""
+ ],
+ [
+  "A las 48 h sin recibir: EXTRAVIADO",
+  "PASA",
+  ""
+ ],
+ [
+  "Quien recibe confirma y sale el formato de ENTRADA de Vertiv",
+  "PASA",
+  "50 piezas · una sola vez por estancia"
+ ],
+ [
+  "El kit queda EN_USO en Vertiv",
+  "PASA",
+  ""
+ ],
+ [
+  "Retiro: formato de SALIDA con la lista exacta del kit (base + soldadura)",
+  "PASA",
+  "55 piezas"
+ ],
+ [
+  "Catalogo: rechaza \"cajon general\" como lugar",
+  "PASA",
+  ""
+ ],
+ [
+  "Formato de caseta de Vertiv ahora pide No. de serie obligatorio",
+  "PASA",
+  ""
+ ],
+ [
+  "Salida de taller: EN_TRANSITO",
+  "PASA",
+  ""
+ ],
+ [
+  "Llegada: formato de ENTRADA con base + medicion",
+  "PASA",
+  "47 piezas"
+ ],
+ [
+  "Foto completa: ningun hueco",
+  "PASA",
+  ""
+ ],
+ [
+  "Foto sin la pieza 2 del cajon: detecta exactamente ese hueco",
+  "PASA",
+  [
+   "FTS-BAS-01-C1-02\t100 %\tHUECO"
+  ]
+ ],
+ [
+  "La revision con hueco abre la alerta A4 (faltante)",
+  "PASA",
+  [
+   "A4 A4 FTS-CAR-01 a: Responsable + Supervisor Faltante FTS-BAS-01-C1-02 (Rotomartillo M18 1/2 3602-20 (sin bateria)) hace 0 h"
+  ]
+ ],
+ [
+  "Direccion: kits por planta, dias sin revision, alertas y valor",
+  "PASA",
+  [
+   "4",
+   "kits",
+   "6",
+   "alertas"
+  ]
+ ],
+ [
+  "Cero errores de consola en todo el recorrido",
+  "PASA",
+  []
+ ]
+]

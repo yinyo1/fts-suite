@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Herramientas FTS v2</title>
+<style>
+:root{--bg:#f6f5f1;--card:#fff;--ink:#1d1d1b;--mut:#5f5e57;--line:#d9d6cc;--acc:#f2b705;--ok:#2e7d32;--bad:#c62828;--warn:#b26a00;--chip:#efece3;--info:#1565c0}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#171714;--card:#22221e;--ink:#f1efe8;--mut:#b3b0a6;--line:#3a3933;--chip:#2d2c27;--ok:#66bb6a;--bad:#ef5350;--warn:#ffb74d;--info:#64b5f6}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--ink);color:var(--bg);padding:8px 16px;display:flex;gap:8px;align-items:center}
+header h1{margin:0;font-size:16px;flex:1}header .reloj{font-size:12px;opacity:.85;text-align:right}
+#banner{display:none;padding:8px 16px;font-size:13px;background:var(--warn);color:#fff}#banner.on{display:block}
+main{max-width:900px;margin:0 auto;padding:10px 16px 96px}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--line);z-index:6;overflow-x:auto}
+nav button{flex:1 0 auto;min-width:62px;padding:10px 6px;border:0;background:none;color:var(--mut);font:inherit;font-size:12px}nav button.on{color:var(--ink);box-shadow:inset 0 3px 0 var(--acc);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;margin:10px 0}
+.card h2{margin:0 0 6px;font-size:16px}.mut{color:var(--mut);font-size:12px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.sp{flex:1}
+.chip{display:inline-block;border-radius:12px;padding:1px 8px;font-size:11px;background:var(--chip)}
+.chip.EN_USO{background:var(--ok);color:#fff}.chip.RESGUARDADO{background:var(--info);color:#fff}.chip.EN_TALLER{background:var(--chip)}
+.chip.EN_TRANSITO,.chip.EN_TRANSFERENCIA{background:var(--warn);color:#fff}.chip.EXTRAVIADO{background:var(--bad);color:#fff}
+.chip.a1,.chip.roja{background:var(--bad);color:#fff}.chip.amarilla{background:var(--acc);color:#1d1d1b}
+button.b,button.s{padding:9px 12px;border-radius:8px;border:0;font:inherit;font-weight:600;background:var(--acc);color:#1d1d1b;margin:4px 4px 0 0}
+button.s{background:var(--chip);color:var(--ink);font-weight:500}
+label{display:block;font-size:12px;color:var(--mut);margin:8px 0 2px}
+input,select,textarea{width:100%;font:inherit;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+input[type=checkbox]{width:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}td,th{border-bottom:1px solid var(--line);padding:5px 4px;text-align:left;vertical-align:top}
+.tw{overflow-x:auto}
+.foto{border:2px dashed var(--line);border-radius:8px;padding:12px;text-align:center;margin:8px 0;cursor:pointer}.foto.ok{border-color:var(--ok);border-style:solid}
+canvas{max-width:100%;border-radius:6px;border:1px solid var(--line)}
+.pend{color:var(--warn)}.conf{color:var(--ok)}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}.kpi div{background:var(--chip);border-radius:8px;padding:8px}.kpi b{display:block;font-size:20px}
+@media print{header,nav,#banner,.noprint{display:none!important}body{background:#fff;color:#000}main{padding:0}.card{border:0}}
+</style></head>
+<body>
+<header><h1 id="tit">Herramientas FTS</h1><div class="reloj"><span id="reloj"></span><br><span id="red"></span></div></header>
+<div id="banner" data-t="banner"></div>
+<main id="app"></main>
+<nav><button id="n-kits" onclick="go('kits')">Kits</button><button id="n-rev" onclick="go('rev')">Revision</button><button id="n-plantas" onclick="go('plantas')">Plantas</button><button id="n-dir" onclick="go('dir')">Direccion</button><button id="n-alertas" onclick="go('alertas')">Alertas</button><button id="n-hist" onclick="go('hist')">Historial</button><button id="n-sim" onclick="go('sim')">Simular</button></nav>
+<script>
+const DEMO=__DEMO__;
+const PER=DEMO.personas;let S=null;
+const $=id=>document.getElementById(id);const clone=o=>JSON.parse(JSON.stringify(o));
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function nuevo(){return {reloj:DEMO.inicio,online:true,plantas:clone(DEMO.plantas),kits:clone(DEMO.kits),asist:clone(DEMO.asistencia),eventos:[],outbox:[],srv:[],tareas:[],faltantes:[],n:0}}
+function load(){try{const x=localStorage.getItem('fts_herr_v2');S=x?JSON.parse(x):null}catch(e){S=null}if(!S)S=nuevo()}
+function save(){try{localStorage.setItem('fts_herr_v2',JSON.stringify(S))}catch(e){}pintarBarra()}
+function reset(){S=nuevo();save();go('kits')}
+// ------------------------------------------------------------ reloj (simulado)
+function fecha(ts){return ts.slice(0,10)}function hora(ts){return ts.slice(11,16)}
+function mas(ts,h){const d=new Date(ts+':00');d.setMinutes(d.getMinutes()+Math.round(h*60));const p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`}
+function horas(a,b){return (new Date(b+':00')-new Date(a+':00'))/36e5}
+function habiles(a,b){let n=0;const d=new Date(fecha(a)+'T12:00:00'),f=new Date(fecha(b)+'T12:00:00');while(d<f){d.setDate(d.getDate()+1);const w=d.getDay();if(w&&w!==6)n++}return n}
+const DIAS=['domingo','lunes','martes','miercoles','jueves','viernes','sabado'];
+function textoReloj(){const d=new Date(S.reloj+':00');return DIAS[d.getDay()]+' '+fecha(S.reloj)+' '+hora(S.reloj)}
+// ------------------------------------------------------------ eventos y cola sin senal
+function uuid(){S.n++;return 'ev-'+Date.now().toString(36)+'-'+S.n}
+function registrar(tipo,k,antes,despues,extra){const ev=Object.assign({uuid:uuid(),ts:S.reloj,tipo,kit:k?k.id:null,antes,despues,resp:k?k.resp:null,estado:'pendiente'},extra||{});
+ S.eventos.unshift(ev);S.outbox.push(ev.uuid);if(S.online)enviar();save();return ev}
+function enviar(){ // el servidor es idempotente por uuid y guarda la hora ORIGINAL del evento (no la de envio)
+ for(const u of S.outbox){const ev=S.eventos.find(e=>e.uuid===u);if(!ev)continue;if(!S.srv.some(x=>x.uuid===u))S.srv.push({uuid:u,ts_evento:ev.ts,recibido:S.reloj,tipo:ev.tipo,kit:ev.kit});ev.estado='confirmado'}
+ S.outbox=[]}
+function pintarBarra(){$('reloj').textContent=textoReloj();$('red').textContent=S.online?'con senal':'SIN SENAL';const b=$('banner');
+ if(S.outbox.length){b.classList.add('on');b.innerHTML=`${S.online?'Enviando':'Sin senal'}: <b data-t="pendientes">${S.outbox.length}</b> cambio(s) guardados en este telefono. ${S.online?'':'Se envian solos al volver la senal.'}`}else b.classList.remove('on')}
+addEventListener('online',()=>{if(S){S.online=true;enviar();save();go(vista)}});addEventListener('offline',()=>{if(S){S.online=false;save();go(vista)}});
+// ------------------------------------------------------------ utilidades del dominio
+const kit=id=>S.kits.find(k=>k.id===id);const planta=id=>S.plantas.find(p=>p.id===id)||{nombre:id,lugares:[],caseta:{columnas:['activo','descripcion']}};
+function numKit(k){return k.id.slice(-2)}
+function listaKit(k){const rows=[];for(const m of k.modulos)for(const p of DEMO.piezas_mod[m]||[])rows.push({a:p.a.replace(/-01-/,'-'+numKit(k)+'-'),d:p.d,m});return rows}
+function valorKit(k){return k.modulos.reduce((s,m)=>s+(DEMO.valor_modulo[m]||0),0)}
+function tieneAsist(p,e,ts){const f=(S.asist[p]||{})[e];if(!f)return false;const hoy=fecha(ts),ayer=fecha(mas(hoy+'T12:00',-24));return f===hoy||f===ayer}
+function ultAsistPlanta(p){const v=Object.values(S.asist[p]||{});return v.length?v.sort().slice(-1)[0]:null}
+let fotoN=0;function foto(txt){fotoN++;const id='f'+fotoN;return `<div class="foto" id="${id}" data-t="foto" onclick="tomar('${id}')">📷 ${esc(txt)}<br><span class="mut">(toca para tomar foto)</span><input type="file" accept="image/*" capture="environment" style="display:none" onchange="this.parentNode.classList.add('ok')"></div>`}
+function tomar(id){const e=$(id);if(e.classList.contains('ok'))return;const i=e.querySelector('input');try{i.click()}catch(x){};setTimeout(()=>{e.classList.add('ok');e.firstChild.textContent='✅ Foto simulada (demo) '},300)}
+function fotosOk(){return [...document.querySelectorAll('.foto')].every(f=>f.classList.contains('ok'))}
+// ------------------------------------------------------------ alertas A1 a A7 (en produccion: cron n8n 7:00 y 19:00)
+function alertas(){const out=[],t=S.reloj;
+ for(const k of S.kits){const p=planta(k.planta);
+  if(['EN_USO','RESGUARDADO'].includes(k.estado)&&k.planta!=='TALLER'){const ua=ultAsistPlanta(k.planta);const h=ua?habiles(ua+'T12:00',t):99;
+   if(h>=2)out.push({a:'A1',kit:k.id,nivel:h>=5?'roja':'amarilla',txt:`Kit huerfano: nadie de FTS con asistencia en ${p.nombre} hace ${h} dias habiles (ultima ${ua||'nunca'})`,a_quien:h>=5?'Manager de operaciones':'Responsable + Supervisor SR'});
+   if(['cierre','In Progress-parado'].includes(p.stage)||h>=10)out.push({a:'A2',kit:k.id,nivel:'roja',txt:`Proyecto parado: ${h} dias habiles sin asistencia en ${p.nombre}; pedir retiro o transferencia`,a_quien:'Supervisor SR'});
+   const hr=habiles(k.ult_revision,t);const sinGente=h>=2;
+   if(k.estado==='EN_USO'&&hr>=1)out.push({a:'A3',kit:k.id,nivel:hr>=2?'roja':'amarilla',txt:`Sin revision: ${hr} dia(s) habil(es)`,a_quien:hr>=2?'Supervisor SR':'Responsable'});
+   if(k.estado==='RESGUARDADO'&&sinGente&&horas(k.ult_revision,t)>=24*7)out.push({a:'A3',kit:k.id,nivel:'amarilla',txt:`Resguardado sin gente y sin revision hace ${Math.floor(horas(k.ult_revision,t)/24)} dias`,a_quien:'Supervisor SR'})}
+  if(['EN_TRANSITO','EN_TRANSFERENCIA'].includes(k.estado)&&k.desde){const h=horas(k.desde,t);if(h>=24)out.push({a:'A6',kit:k.id,nivel:h>=48?'roja':'amarilla',txt:`${k.estado} hace ${Math.floor(h)} h`,a_quien:'Quien entrega'})}
+  if(k.combo_pendiente&&horas(k.combo_pendiente,t)>=24)out.push({a:'A5',kit:k.id,nivel:'amarilla',txt:'Combinacion sin cambiar 24 h despues de una rotacion',a_quien:'Supervisor SR'})}
+ for(const f of S.faltantes.filter(f=>!f.cerrado)){const h=horas(f.ts,t);out.push({a:'A4',kit:f.kit,nivel:h>=24?'roja':'amarilla',txt:`Faltante ${f.a} (${f.d}) hace ${Math.floor(h)} h`,a_quien:h>=24?'Manager de operaciones':'Responsable + Supervisor'})}
+ for(const ta of S.tareas.filter(x=>!x.resuelta)){const h=horas(ta.abierta,t);if(h>=24)out.push({a:'A7',kit:ta.kit,nivel:h>=48?'roja':'amarilla',txt:`Reasignacion abierta hace ${Math.floor(h)} h (${PER[ta.persona]})`,a_quien:h>=48?'Manager de operaciones':'Supervisor SR'})}
+ return out}
+function cron(){ // lo que haria el workflow de alertas: transferencias sin confirmar > 48 h pasan a EXTRAVIADO
+ for(const k of S.kits)if(['EN_TRANSITO','EN_TRANSFERENCIA'].includes(k.estado)&&k.desde&&horas(k.desde,S.reloj)>=48){const a=k.estado;k.estado='EXTRAVIADO';registrar('A6: sin confirmar en 48 h, pasa a EXTRAVIADO',k,a,'EXTRAVIADO')}}
+// ------------------------------------------------------------ navegacion
+let vista='kits';
+function go(v,arg){vista=v;fotoN=0;for(const b of document.querySelectorAll('nav button'))b.classList.remove('on');const nb=$('n-'+v);if(nb)nb.classList.add('on');
+ const V={kits,rev:revision,plantas,dir:direccion,alertas:vAlertas,hist,sim,salida,llegada,resguardo,reasignar,retiro,recibir,editPlanta,casetaVista};
+ $('app').innerHTML=V[v](arg);$('tit').textContent={kits:'Kits',rev:'Revision por foto',plantas:'Catalogo de plantas',dir:'Vista de direccion',alertas:'Alertas',hist:'Historial',sim:'Simulacion'}[v]||'Herramientas FTS';pintarBarra();window.scrollTo(0,0);if(v==='rev'&&arg)setTimeout(()=>dibujarRef(),0)}
+function b(t,f,c,tid){return `<button class="${c||'b'}" ${tid?`data-t="${tid}"`:''} onclick="${f}">${t}</button>`}
+// ------------------------------------------------------------ Kits
+function kits(){const al=alertas();const abiertas=S.tareas.filter(t=>!t.resuelta);
+ let h=abiertas.map(t=>`<div class="card" style="border-color:var(--bad)" data-t="tarea"><b>⚠ Reasignacion obligatoria</b><br>${esc(PER[t.persona])} cambio a ${esc(planta(t.nueva).nombre)} y tiene a su nombre ${t.kit} en ${esc(planta(kit(t.kit).planta).nombre)}.<div class="mut">Disparada por: ${t.disparadores.join(' + ')} · abierta ${t.abierta.replace('T',' ')}</div>${b('Resolver','go(\'reasignar\',\''+t.id+'\')','b','resolver')}</div>`).join('');
+ for(const k of S.kits){const p=planta(k.planta);const ak=al.filter(a=>a.kit===k.id);const id=`'${k.id}'`;
+  h+=`<div class="card" data-t="kit-${k.id}"><div class="row"><b>${k.id}</b><span class="chip ${k.estado}" data-t="estado-${k.id}">${k.estado}</span><span class="sp"></span><span class="mut">${k.modulos.join(' + ')}</span></div>
+  <div class="mut">${esc(p.nombre)}${k.lugar?' · '+esc(k.lugar):''} · responsable: ${esc(PER[k.resp])} · ultima revision ${k.ult_revision.replace('T',' ')}</div>
+  ${ak.map(a=>`<span class="chip ${a.nivel}">${a.a}</span> `).join('')}<div>`;
+  if(k.estado==='EN_TALLER')h+=b('Preparar salida',`go('salida',${id})`)+b('Tomar este kit',`tomarKit(${id})`,'s','tomar-'+k.id);
+  if(k.estado==='EN_TRANSITO')h+=b('Registrar llegada',`go('llegada',${id})`,'b','llegada-'+k.id);
+  if(k.estado==='EN_USO')h+=b('Resguardar',`go('resguardo',${id})`)+b('Revisar',`go('rev',${id})`,'s')+b('Retirar',`go('retiro',${id})`,'s');
+  if(k.estado==='RESGUARDADO')h+=b('Abrir',`abrir(${id})`)+b('Revisar',`go('rev',${id})`,'s')+b('Retirar',`go('retiro',${id})`,'s');
+  if(k.estado==='EN_TRANSFERENCIA')h+=b('Confirmar recepcion',`go('recibir',${id})`,'b','recibir-'+k.id);
+  if(k.estado==='EXTRAVIADO')h+=b('Aparecio',`aparecio(${id})`,'s');
+  h+=b('Formato de caseta',`go('casetaVista',${id})`,'s')+'</div></div>'}
+ return h}
+function tomarKit(id){const e=prompt('Quien toma el kit (e79, e6)','e79');if(!e)return;const t=S.tareas.find(x=>!x.resuelta&&x.persona===e);
+ if(t){alert('No se puede: '+PER[e]+' tiene abierta la reasignacion de '+t.kit+'. Primero resuelvela.');registrar('Intento de tomar kit bloqueado',kit(id),kit(id).estado,kit(id).estado,{nota:PER[e]+' con reasignacion abierta'});return}
+ const k=kit(id);k.resp=e;registrar('Kit asignado',k,k.estado,k.estado);go('kits')}
+function abrir(id){const k=kit(id),a=k.estado;k.estado='EN_USO';registrar('Abrir resguardo',k,a,k.estado);go('kits')}
+function aparecio(id){const k=kit(id);k.estado='EN_USO';k.desde=null;registrar('Aparecio',k,'EXTRAVIADO','EN_USO');go('kits')}
+function salida(id){const k=kit(id);return `<div class="card"><h2>Salida de FTS · ${k.id}</h2>
+ <label>Modulos montados</label>${['ELE','SOL','TUB','CIV','MED'].map(m=>`<label style="display:inline;margin-right:10px"><input type="checkbox" value="${m}" class="mods" ${k.modulos.includes(m)?'checked':''}> ${m}</label>`).join('')}
+ <label>Planta destino</label><select id="dest">${S.plantas.filter(p=>p.id!=='TALLER').map(p=>`<option value="${p.id}">${esc(p.nombre)}</option>`).join('')}</select>
+ <label>Responsable en planta</label><select id="resp">${['e79','e6'].map(e=>`<option value="${e}">${esc(PER[e])}</option>`).join('')}</select>
+ ${foto('Carrito cerrado con candados')}${b('Salir (pasa a EN TRANSITO)',`salir('${id}')`)}</div>`}
+function salir(id){if(!fotosOk())return alert('Sin foto no hay cambio de estado.');const k=kit(id),a=k.estado;k.modulos=['BASE',...[...document.querySelectorAll('.mods:checked')].map(x=>x.value)];
+ k.destino=$('dest').value;k.destResp=$('resp').value;k.resp='e154';k.estado='EN_TRANSITO';k.desde=S.reloj;k.ult_revision=S.reloj;registrar('Salida de FTS',k,a,k.estado,{nota:'destino '+planta(k.destino).nombre});go('kits')}
+function llegada(id){const k=kit(id);return `<div class="card"><h2>Llegada a ${esc(planta(k.destino||k.planta).nombre)}</h2>${foto('Foto en caseta')}${b('Registrar llegada y generar formato de entrada',`llegar('${id}')`,'b','confirmar-llegada')}</div>`}
+function llegar(id){if(!fotosOk())return alert('Sin foto no hay cambio de estado.');const k=kit(id),a=k.estado;k.planta=k.destino||k.planta;k.resp=k.destResp||k.resp;k.estado='EN_USO';k.desde=null;k.lugar=null;registrar('Llegada a planta',k,a,k.estado);go('casetaVista',id+'|ENTRADA')}
+function resguardo(id){const k=kit(id),p=planta(k.planta);return `<div class="card"><h2>Resguardo · ${k.id}</h2><label>Lugar (catalogo de ${esc(p.nombre)})</label><select id="lug">${p.lugares.map(l=>`<option>${esc(l)}</option>`).join('')}</select>
+ <label>Combinacion (4 digitos, se guarda cifrada)</label><input id="comb" type="password" inputmode="numeric" maxlength="4">${foto('Lugar cerrado con el candado visible')}${b('Resguardar',`resguardar('${id}')`)}</div>`}
+function resguardar(id){if(!fotosOk())return alert('Sin foto del lugar cerrado no se resguarda.');if(!/^\d{4}$/.test($('comb').value))return alert('Registra la combinacion.');const k=kit(id),a=k.estado;k.estado='RESGUARDADO';k.lugar=$('lug').value;k.combo_conocen=[k.resp,'e75'];k.combo_pendiente=null;registrar('Resguardo',k,a,k.estado,{nota:k.lugar});go('kits')}
+// ------------------------------------------------------------ Reasignacion (el caso de la Fase 7.2)
+function abrirTarea(persona,nueva,disparador){for(const k of S.kits.filter(k=>k.resp===persona&&['EN_USO','RESGUARDADO'].includes(k.estado)&&k.planta!==nueva)){
+  let t=S.tareas.find(x=>!x.resuelta&&x.kit===k.id);if(t){if(!t.disparadores.includes(disparador))t.disparadores.push(disparador)}
+  else{t={id:'T'+(S.tareas.length+1),kit:k.id,persona,nueva,abierta:S.reloj,disparadores:[disparador],resuelta:false};S.tareas.push(t)}
+  registrar('Reasignacion abierta ('+disparador+')',k,k.estado,k.estado,{nota:PER[persona]+' pasa a '+planta(nueva).nombre})}}
+function reasignar(tid){const t=S.tareas.find(x=>x.id===tid),k=kit(t.kit),p=planta(k.planta);const cand=Object.keys(PER).filter(e=>e!==t.persona&&tieneAsist(k.planta,e,S.reloj)&&['e79','e6','e124'].includes(e));
+ return `<div class="card"><h2>¿Que pasa con ${k.id} en ${esc(p.nombre)}?</h2><div class="mut">${esc(PER[t.persona])} pasa a ${esc(planta(t.nueva).nombre)}. Mientras esta tarea siga abierta no puede tomar otro kit. Escala a Supervisor SR a las 24 h y al Manager a las 48 h.</div>
+ ${b('1 · Se queda con otro responsable',`opc('${tid}','queda')`,'s','op-queda')}${b('2 · Se transfiere a otra planta',`opc('${tid}','transf')`,'s','op-transf')}${b('3 · Se retira a taller',`opc('${tid}','retira')`,'s','op-retira')}<div id="op"></div>
+ <div class="mut" style="margin-top:8px">Candidatos con asistencia en ${esc(p.nombre)} hoy o ayer: ${cand.map(e=>esc(PER[e])).join(', ')||'ninguno'}</div></div>`}
+function opc(tid,o){const t=S.tareas.find(x=>x.id===tid),k=kit(t.kit);fotoN=10;
+ if(o==='queda'){const cand=['e6','e124'].filter(e=>e!==t.persona);$('op').innerHTML=`<label>Nuevo responsable</label><select id="nr">${cand.map(e=>`<option value="${e}">${esc(PER[e])}</option>`).join('')}</select>
+  <label>Nueva combinacion (el responsable anterior la conocia)</label><input id="nc" type="password" maxlength="4" inputmode="numeric">${foto('Entrega: nuevo responsable con el kit')}${b('Confirmar con PIN y foto',`resolver('${tid}','queda')`,'b','confirmar-queda')}`}
+ if(o==='transf')$('op').innerHTML=`<label>Planta destino</label><select id="pd">${S.plantas.filter(p=>p.id!=='TALLER'&&p.id!==k.planta).map(p=>`<option value="${p.id}" ${p.id===t.nueva?'selected':''}>${esc(p.nombre)}</option>`).join('')}</select>
+  <label>Quien recibe</label><select id="qr"><option value="${t.persona}">${esc(PER[t.persona])}</option></select>${foto('Kit cerrado al salir')}${b('Transferir',`resolver('${tid}','transf')`,'b','confirmar-transf')}`;
+ if(o==='retira')$('op').innerHTML=foto('Kit cargado')+b('Retirar a taller',`resolver('${tid}','retira')`,'b','confirmar-retira')}
+function resolver(tid,o){if(!fotosOk())return alert('Sin foto no hay cambio de estado.');const t=S.tareas.find(x=>x.id===tid),k=kit(t.kit),a=k.estado;
+ if(o==='queda'){const nr=$('nr').value;if(!tieneAsist(k.planta,nr,S.reloj))return alert(PER[nr]+' no tiene asistencia en '+planta(k.planta).nombre+' hoy ni ayer. No puede ser responsable ahi.');
+  if(!/^\d{4}$/.test($('nc').value)){k.combo_pendiente=S.reloj}else{k.combo_conocen=[nr,'e75'];k.combo_pendiente=null}k.resp=nr;registrar('Reasignacion: se queda con otro responsable',k,a,k.estado,{nota:PER[nr]})}
+ if(o==='transf'){k.destino=$('pd').value;k.destResp=$('qr').value;k.estado='EN_TRANSFERENCIA';k.desde=S.reloj;registrar('Reasignacion: transferencia (formato de SALIDA generado)',k,a,k.estado,{nota:'a '+planta(k.destino).nombre})}
+ if(o==='retira'){k.estado='EN_TRANSITO';k.destino='TALLER';k.destResp='e0';k.desde=S.reloj;registrar('Reasignacion: retiro a taller (formato de SALIDA generado)',k,a,k.estado)}
+ t.resuelta=true;t.opcion=o;t.resuelta_en=S.reloj;save();go('kits')}
+function recibir(id){const k=kit(id);return `<div class="card"><h2>Recibir ${k.id} en ${esc(planta(k.destino).nombre)}</h2>${foto('Kit recibido, con quien recibe')}${b('Confirmar recepcion y generar formato de ENTRADA',`recibirOk('${id}')`,'b','confirmar-recepcion')}</div>`}
+function recibirOk(id){if(!fotosOk())return alert('Sin foto no hay cambio de estado.');const k=kit(id),a=k.estado;k.planta=k.destino;k.resp=k.destResp;k.estado=k.planta==='TALLER'?'EN_TALLER':'EN_USO';k.desde=null;registrar('Transferencia recibida',k,a,k.estado);go('casetaVista',id+'|ENTRADA')}
+function retiro(id){const k=kit(id);return `<div class="card"><h2>Retiro de ${esc(planta(k.planta).nombre)}</h2><div class="mut">Primero una revision completa; lo que falte queda como faltante con dueno.</div>${foto('Kit cargado en la camioneta')}${b('Generar formato de SALIDA y pasar a EN TRANSITO',`retirar('${id}')`)}</div>`}
+function retirar(id){if(!fotosOk())return alert('Sin foto no hay cambio de estado.');const k=kit(id),a=k.estado;k.estado='EN_TRANSITO';k.destino='TALLER';k.destResp='e0';k.desde=S.reloj;registrar('Retiro de planta',k,a,k.estado);go('casetaVista',id+'|SALIDA')}
+// ------------------------------------------------------------ Formato de caseta configurable
+function casetaVista(arg){const [id,tipo]=(arg||'').split('|');const k=kit(id);const p=planta(tipo==='SALIDA'?k.planta:(k.destino&&k.estado!=='EN_USO'?k.destino:k.planta));const c=p.caseta;const rows=listaKit(k);
+ const cols={activo:'No. de activo',descripcion:'Descripcion',marca:'Marca',serie:'No. de serie'+(c.serie_obligatoria?' (obligatorio)':''),cantidad:'Cant.'};
+ return `<div class="card" data-t="caseta"><div class="row"><b>FORMATO DE ${tipo||'ENTRADA'} DE HERRAMIENTA</b><span class="sp"></span><span class="mut">${c.formato==='FTS'?'formato FTS':'llenado sobre el formato de la planta'}</span></div>
+ <div>${esc(p.nombre)} · ${esc(p.cliente)} · Contratista: Servicios FTS · Kit ${k.id} (${k.modulos.join(' + ')})<br>Fecha y hora: ${S.reloj.replace('T',' ')} · Responsable FTS: ${esc(PER[k.resp])} · Horario de caseta: ${esc(c.horario)}</div>
+ ${c.nota?`<div class="mut">Regla de la planta: ${esc(c.nota)}</div>`:''}${c.revision_salida&&tipo==='SALIDA'?'<div class="mut">Esta planta revisa pieza por pieza a la salida.</div>':''}
+ <div class="tw"><table><tr><th>#</th>${c.columnas.map(x=>`<th>${cols[x]}</th>`).join('')}</tr>${rows.map((r,i)=>`<tr><td>${i+1}</td>${c.columnas.map(x=>`<td>${x==='activo'?r.a:x==='descripcion'?esc(r.d):x==='cantidad'?'1':'&nbsp;'}</td>`).join('')}</tr>`).join('')}</table></div>
+ <p data-t="caseta-total"><b>${rows.length}</b> piezas · una sola vez por estancia</p>${c.firma_vigilante?'<p>Firma del vigilante: ______________________</p>':''}<p>Firma del responsable FTS: ______________________</p>
+ <div class="noprint">${b('Imprimir','window.print()','s')}${b('Volver','go(\'kits\')','s')}</div></div>`}
+// ------------------------------------------------------------ Plantas
+function plantas(){return S.plantas.map(p=>`<div class="card" data-t="planta-${p.id}"><div class="row"><b>${esc(p.nombre)}</b><span class="mut">${esc(p.cliente)}</span><span class="sp"></span>${b('Editar',`go('editPlanta','${p.id}')`,'s')}</div>
+ <div class="mut">Geocerca: ${p.geocerca?esc(p.geocerca):'<b style="color:var(--warn)">PENDIENTE</b>'} · Stage: ${esc(p.stage)}</div><div class="mut">Lugares de resguardo: ${p.lugares.map(esc).join(' · ')}</div>
+ <div class="mut">Caseta: ${esc(p.caseta.formato)} · columnas ${p.caseta.columnas.join(', ')} · ${p.caseta.firma_vigilante?'firma vigilante':'sin firma'} · ${p.caseta.foto_permitida?'fotos permitidas':'SIN FOTOS en planta'} · ${esc(p.caseta.horario)}</div></div>`).join('')+b('Agregar planta','nuevaPlanta()','s')}
+function nuevaPlanta(){const id='P'+(S.plantas.length+1);S.plantas.push({id,nombre:'Planta nueva',cliente:'(cliente)',geocerca:null,stage:'-',lugares:['(capturar lugar)'],caseta:{formato:'FTS',columnas:['activo','descripcion'],serie_obligatoria:false,firma_vigilante:true,horario:'',revision_salida:false,foto_permitida:true,nota:''}});save();go('editPlanta',id)}
+function editPlanta(id){const p=planta(id),c=p.caseta;const ck=(n,v)=>`<label style="display:inline;margin-right:10px"><input type="checkbox" id="${n}" ${v?'checked':''}> ${n.replace('_',' ')}</label>`;
+ return `<div class="card"><h2>Planta</h2><label>Nombre</label><input id="pn" value="${esc(p.nombre)}"><label>Cliente</label><input id="pc" value="${esc(p.cliente)}">
+ <label>Geocerca (vacio = pendiente)</label><input id="pg" value="${esc(p.geocerca||'')}" placeholder="lat, lng, radio m"><label>Lugares de resguardo (uno por linea; no existe "cajon general")</label><textarea id="pl" rows="3">${esc(p.lugares.join('\n'))}</textarea>
+ <h2 style="margin-top:12px">Reglas de caseta</h2><label>Formato</label><select id="cf"><option ${c.formato==='FTS'?'selected':''}>FTS</option><option ${c.formato!=='FTS'?'selected':''}>propio de la planta</option></select>
+ <label>Columnas</label>${['activo','descripcion','marca','serie','cantidad'].map(x=>`<label style="display:inline;margin-right:10px"><input type="checkbox" class="cc" value="${x}" ${c.columnas.includes(x)?'checked':''}> ${x}</label>`).join('')}
+ <div>${ck('serie_obligatoria',c.serie_obligatoria)}${ck('firma_vigilante',c.firma_vigilante)}${ck('revision_salida',c.revision_salida)}${ck('foto_permitida',c.foto_permitida)}</div>
+ <label>Horario de caseta</label><input id="ch" value="${esc(c.horario)}"><label>Nota para el equipo</label><input id="cn" value="${esc(c.nota)}">
+ ${b('Guardar',`guardarPlanta('${id}')`,'b','guardar-planta')}${b('Cancelar','go(\'plantas\')','s')}</div>`}
+function guardarPlanta(id){const p=planta(id);p.nombre=$('pn').value;p.cliente=$('pc').value;p.geocerca=$('pg').value.trim()||null;p.lugares=$('pl').value.split('\n').map(x=>x.trim()).filter(x=>x&&!/^caj[oó]n general$/i.test(x));
+ const c=p.caseta;c.formato=$('cf').value;c.columnas=[...document.querySelectorAll('.cc:checked')].map(x=>x.value);if(!c.columnas.length)c.columnas=['activo','descripcion'];
+ ['serie_obligatoria','firma_vigilante','revision_salida','foto_permitida'].forEach(n=>c[n]=$(n).checked);c.horario=$('ch').value;c.nota=$('cn').value;registrar('Catalogo de planta editado',null,'','',{nota:p.nombre});go('plantas')}
+// ------------------------------------------------------------ Revision por foto con deteccion de huecos
+let RV=null;
+function revision(id){if(!id)return `<div class="card">Elige un kit:${S.kits.filter(k=>['EN_USO','RESGUARDADO'].includes(k.estado)).map(k=>b(k.id,`go('rev','${k.id}')`,'s')).join('')}</div>`;
+ const k=kit(id);const caj=[];for(const m of k.modulos)for(const c of DEMO.cajones[m]||[])caj.push(Object.assign({m},c));RV={id,caj,i:0,falt:[]};return pasoRev()}
+function pasoRev(){const c=RV.caj[RV.i];return `<div class="card"><div class="row"><b>${RV.id}</b><span class="sp"></span><span class="mut">Cajon ${RV.i+1} de ${RV.caj.length} · ${c.m} C${c.n} · ${c.modelo}</span></div>
+ <div class="mut">Referencia: silueta amarilla. Un hueco es una zona amarilla grande donde deberia haber una herramienta.</div>
+ <canvas id="ref" width="414" height="318"></canvas>
+ <label>Foto del cajon abierto</label><div class="row">${b('Simular foto completa','simFoto(-1)','s','sim-completa')}<select id="quita" style="width:auto"><option value="">quitar una pieza…</option>${c.p.map((p,i)=>`<option value="${i}">${esc(p.a)}</option>`).join('')}</select>${b('Simular foto con hueco','simFoto(+$(\'quita\').value)','s','sim-hueco')}</div>
+ <label>O sube una foto real (encuadrada al borde interior del cajon)</label><input type="file" accept="image/*" capture="environment" onchange="fotoReal(this)">
+ <canvas id="ft" width="414" height="318" style="display:none"></canvas><div id="det" data-t="deteccion"></div>
+ <div class="noprint">${b(RV.i<RV.caj.length-1?'Siguiente cajon':'Terminar revision','sigRev()','b','sig-cajon')}</div></div>`}
+function pintaCajon(ctx,c,faltan){ctx.fillStyle='#2b2b2b';ctx.fillRect(0,0,c.ancho,c.fondo);
+ c.p.forEach((p,i)=>{ctx.fillStyle='#f2b705';ctx.fillRect(p.x-3,p.y-3,p.w+6,p.h+6);if(faltan!==null&&!faltan.includes(i)){ctx.fillStyle='#555';ctx.beginPath();ctx.roundRect?ctx.roundRect(p.x+1,p.y+1,p.w-2,p.h-2,6):ctx.rect(p.x+1,p.y+1,p.w-2,p.h-2);ctx.fill();ctx.fillStyle='#8a8a8a';ctx.fillRect(p.x+p.w*0.15,p.y+p.h*0.4,p.w*0.7,p.h*0.2)}})}
+function dibujarRef(){const cv=$('ref');if(!cv)return;const c=RV.caj[RV.i];cv.width=c.ancho;cv.height=c.fondo;pintaCajon(cv.getContext('2d'),c,null)}
+function simFoto(q){const c=RV.caj[RV.i];const cv=$('ft');cv.width=c.ancho;cv.height=c.fondo;cv.style.display='block';const ctx=cv.getContext('2d');
+ pintaCajon(ctx,c,q>=0?[q]:[]);// ruido de camara y luz
+ const im=ctx.getImageData(0,0,cv.width,cv.height);let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;for(let i=0;i<im.data.length;i+=4){const n=(rnd()-0.5)*40;im.data[i]+=n;im.data[i+1]+=n;im.data[i+2]+=n}ctx.putImageData(im,0,0);detectar()}
+function fotoReal(inp){const f=inp.files[0];if(!f)return;const c=RV.caj[RV.i];const img=new Image();img.onload=()=>{const cv=$('ft');cv.width=c.ancho;cv.height=c.fondo;cv.style.display='block';cv.getContext('2d').drawImage(img,0,0,c.ancho,c.fondo);detectar(true)};img.src=URL.createObjectURL(f)}
+function detectar(real){const c=RV.caj[RV.i];const cv=$('ft');const ctx=cv.getContext('2d');const res=[];
+ c.p.forEach((p,i)=>{const x0=Math.round(p.x+p.w*0.2),y0=Math.round(p.y+p.h*0.2),w=Math.max(1,Math.round(p.w*0.6)),h=Math.max(1,Math.round(p.h*0.6));const d=ctx.getImageData(x0,y0,w,h).data;let am=0;
+  for(let j=0;j<d.length;j+=4){const r=d[j],g=d[j+1],bl=d[j+2];if(r>170&&g>120&&bl<110&&r-bl>90)am++}const frac=am/(d.length/4);res.push({i,a:p.a,d:p.d,frac,hueco:frac>0.45});
+  ctx.strokeStyle=frac>0.45?'#c62828':'#2e7d32';ctx.lineWidth=4;ctx.strokeRect(p.x,p.y,p.w,p.h)});
+ RV.res=res;$('det').innerHTML=`<table><tr><th>Activo</th><th>% amarillo visible</th><th>Resultado</th></tr>${res.map(r=>`<tr><td>${r.a}</td><td>${Math.round(r.frac*100)} %</td><td data-t="res-${r.a}">${r.hueco?'<b style="color:var(--bad)">HUECO</b>':'ok'}</td></tr>`).join('')}</table>
+ <div class="mut">Regla: mas de 45 % de amarillo en el centro de la silueta = hueco. ${real?'Foto real: solo funciona si esta encuadrada al borde interior del cajon; el alineado automatico queda para la fase 2.':'Foto simulada con ruido; es la demo del metodo, no una prueba de campo.'}</div>`}
+function sigRev(){if(RV.res)for(const r of RV.res.filter(r=>r.hueco)){const f={kit:RV.id,a:r.a.replace(/-01-/,'-'+RV.id.slice(-2)+'-'),d:r.d,ts:S.reloj,cerrado:false};S.faltantes.push(f);RV.falt.push(f)}
+ RV.res=null;if(RV.i<RV.caj.length-1){RV.i++;$('app').innerHTML=pasoRev();dibujarRef();return}
+ const k=kit(RV.id);k.ult_revision=S.reloj;registrar('Revision',k,k.estado,k.estado,{nota:RV.falt.length?RV.falt.length+' faltante(s): alerta A4':'completo'});go('kits')}
+// ------------------------------------------------------------ Direccion
+function direccion(){const al=alertas();const est={};S.kits.forEach(k=>est[k.estado]=(est[k.estado]||0)+1);const tot=S.kits.reduce((s,k)=>s+valorKit(k),0);
+ const f=n=>'$'+Math.round(n).toLocaleString('es-MX');
+ let h=`<div class="card"><div class="kpi"><div><b>${S.kits.length}</b>kits</div><div><b>${al.length}</b>alertas</div><div><b>${al.filter(a=>a.nivel==='roja').length}</b>rojas</div><div><b>${f(tot)}</b>herramienta en kits</div></div>
+ <div class="mut" style="margin-top:6px">${Object.entries(est).map(([e,n])=>`<span class="chip ${e}">${e} ${n}</span>`).join(' ')}</div><div class="mut">Valor = precio de compra (asignacion_y_compra.xlsx) de la herramienta de cada modulo montado. Sin knockout ni 12R (compartidos).</div></div>`;
+ for(const p of S.plantas){const ks=S.kits.filter(k=>k.planta===p.id);if(!ks.length)continue;
+  h+=`<div class="card" data-t="dir-${p.id}"><div class="row"><b>${esc(p.nombre)}</b><span class="mut">ultima asistencia FTS: ${ultAsistPlanta(p.id)||'-'}</span><span class="sp"></span><b>${f(ks.reduce((s,k)=>s+valorKit(k),0))}</b></div>
+  <div class="tw"><table><tr><th>Kit</th><th>Estado</th><th>Dias habiles sin revision</th><th>Alertas</th></tr>${ks.map(k=>`<tr><td>${k.id}</td><td><span class="chip ${k.estado}">${k.estado}</span></td><td>${habiles(k.ult_revision,S.reloj)}</td><td>${al.filter(a=>a.kit===k.id).map(a=>`<span class="chip ${a.nivel}">${a.a}</span>`).join(' ')||'-'}</td></tr>`).join('')}</table></div></div>`}
+ const trans=S.kits.filter(k=>!S.plantas.some(p=>p.id===k.planta));return h}
+function vAlertas(){const al=alertas();if(!al.length)return '<div class="card">Sin alertas.</div>';
+ return al.map(a=>`<div class="card" data-t="alerta-${a.a}"><div class="row"><span class="chip ${a.nivel}">${a.a}</span><b>${a.kit}</b><span class="sp"></span><span class="mut">a: ${esc(a.a_quien)}</span></div><div>${esc(a.txt)}</div></div>`).join('')}
+function hist(){return `<div class="card"><div class="mut">Servidor (simulado): ${S.srv.length} eventos recibidos. Pendientes en el telefono: ${S.outbox.length}.</div><div class="tw"><table><tr><th>Hora del evento</th><th>Kit</th><th>Que</th><th>Estado</th><th>Envio</th></tr>
+ ${S.eventos.map(e=>`<tr><td>${e.ts.replace('T',' ')}</td><td>${e.kit||'-'}</td><td>${esc(e.tipo)}${e.nota?'<br><span class=mut>'+esc(e.nota)+'</span>':''}</td><td>${e.antes&&e.antes!==e.despues?e.antes+' → '+e.despues:(e.despues||'')}</td><td class="${e.estado==='confirmado'?'conf':'pend'}" data-t="envio">${e.estado==='confirmado'?'confirmado':'pendiente'}</td></tr>`).join('')}</table></div></div>`}
+// ------------------------------------------------------------ Simulacion (solo demo)
+function sim(){return `<div class="card"><h2>Reloj de la demo</h2><div data-t="reloj">${textoReloj()}</div>
+ ${b('+1 h','avanzar(1)','s')}${b('+12 h','avanzar(12)','s')}${b('+24 h','avanzar(24)','s','mas24')}${b('+48 h','avanzar(48)','s','mas48')}${b('Martes 21:40','fijar(\'2026-09-29T21:40\')','s','martes')}</div>
+ <div class="card"><h2>Senal</h2>${b(S.online?'Quitar senal':'Volver la senal','senal()','s','senal')}<div class="mut">Sin senal todo se guarda en el telefono con su hora real y se envia despues; el servidor ignora duplicados.</div></div>
+ <div class="card"><h2>Plan nocturno</h2><label>Persona</label><select id="pp">${['e79','e6','e124'].map(e=>`<option value="${e}">${esc(PER[e])}</option>`).join('')}</select><label>Planta de manana</label><select id="pl2">${S.plantas.map(p=>`<option value="${p.id}">${esc(p.nombre)}</option>`).join('')}</select>${b('Publicar plan','plan()','b','publicar-plan')}</div>
+ <div class="card"><h2>Checada de kiosko</h2><label>Persona</label><select id="kp">${['e79','e6','e124'].map(e=>`<option value="${e}">${esc(PER[e])}</option>`).join('')}</select><label>Planta</label><select id="kpl">${S.plantas.map(p=>`<option value="${p.id}">${esc(p.nombre)}</option>`).join('')}</select>${b('Checar entrada hoy','checar()','b','checar')}</div>
+ <div class="card">${b('Reiniciar demo','reset()','s','reset')}</div>`}
+function avanzar(h){S.reloj=mas(S.reloj,h);cron();save();go('sim')}function fijar(t){S.reloj=t;save();go('sim')}
+function senal(){S.online=!S.online;if(S.online)enviar();save();go('sim')}
+function plan(){abrirTarea($('pp').value,$('pl2').value,'plan nocturno');save();go('kits')}
+function checar(){const e=$('kp').value,p=$('kpl').value;S.asist[p]=S.asist[p]||{};S.asist[p][e]=fecha(S.reloj);registrar('Checada de kiosko (x_studio_project_id)',null,'','',{nota:PER[e]+' en '+planta(p).nombre});abrirTarea(e,p,'kiosko');save();go('kits')}
+load();if(!navigator.onLine)S.online=false;go('kits');
+</script></body></html>
