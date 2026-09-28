@@ -3,6 +3,75 @@
 Versiona **la herramienta**, no el metodo. El metodo tiene su propio historial
 en §10 de [`metodo/busqueda-encadenada-contactos.md`](metodo/busqueda-encadenada-contactos.md).
 
+## 0.11.0 — 2026-09-28
+
+Los **tres lazos de aprendizaje** del motor 3, el esquema de Postgres y la
+regeneracion de las cuentas ya evaluadas (#325). **787 pruebas** (eran 708).
+Modulos nuevos: `flujo/aprendizaje.py`, `flujo/regeneracion.py`.
+Comandos nuevos: `senal`, `regenera`, `aprendizaje`.
+
+### Auditando antes de disenar: cinco hallazgos, y los cinco eran el mismo
+
+El diseno de `metodo/motor3-crm-odoo.md` estaba bien escrito. Lo que no estaba
+era la CADENA que describe. Los tres lazos no podian alimentarse por falta de
+campos, no por falta de diseno — y ninguno fallaba ruidosamente:
+
+- **H1** El expediente de la senal nunca viajaba. El radar puntuaba con seis
+  factores, sembraba `angulo` -- una cadena-- y el puntaje se tiraba.
+- **H2** La tabla de caducidad estuvo MUERTA desde que nacio: se buscaba por una
+  llave que el paquete no emitia. Medido: toda tarjeta caducaba a los 60 dias y
+  las once filas nunca eligieron ninguna. Devolvia una fecha perfectamente
+  valida, solo que siempre la misma.
+- **H3** `medium_id` repetia `source_id` y la fuente se perdia.
+- **H4** La llave de reciclaje del destino 2 no existia.
+- **H5** Un rebote no podia bajar un nivel: el motor 2 nunca se enteraba de si
+  sus correos llegaban.
+
+La leccion vale mas que los cinco arreglos: **un lazo de aprendizaje tiene cuatro
+piezas -- evento, registro, compuerta y DESTINO CONCRETO en el codigo-- y la
+cuarta es la que se olvida.** Un documento que dice "el aprendizaje ajustara los
+pesos" sin nombrar la constante produce un archivo que nadie lee nunca.
+
+### Los tres lazos, con compuertas distintas a proposito
+
+Tres lazos porque tienen tres DESTINOS distintos: al radar (pesos), al motor 2
+(niveles y canales), al motor 3 mismo (plazos y cadencia). El lazo 2 abre con UN
+rebote -- un hecho sobre un correo concreto, no una tasa-- y el lazo 1 pide 20
+cierres POR CELDA, porque 20 repartidos en once fuentes son menos de dos por
+fuente. Meterlos en la misma compuerta obligaria a elegir entre mover el lazo 1
+con ruido o dejar el lazo 2 esperando veinte rebotes para corregir un patron que
+ya se sabe malo.
+
+Y una compuerta que decia ABRE mientras su propia propuesta decia "no hay con que
+compararla" se corrigio: su cuenta son los cierres COMPARABLES, no todos. Es la
+misma familia que el `mismo_tamano_sin_hash` que se leia como verificado.
+
+**Ningun lazo mueve una constante.** Calculan que moverian con la cuenta a la
+vista. Un evaluador que se reajusta solo es un evaluador que nadie puede auditar.
+
+### Postgres: la logica en el repo, las personas fuera
+
+`datos/esquema-motor3.sql`, **aplicado contra Postgres 16**, con sus seis
+restricciones probadas una por una rechazando lo que dicen rechazar — un CHECK mal
+escrito se lee igual que uno bien escrito. Las personas viven en DOS tablas y
+solo dos; `toque` -- la que los tres lazos leen-- no lleva a nadie, asi que el
+corte de aprendizaje sale con un `SELECT *` sin que nadie tenga que acordarse de
+excluir columnas. Un corte que hay que recordar limpiar es un corte que un dia
+sale sin limpiar.
+
+### Regeneracion: dos de los tres arreglos cuestan cero consultas
+
+Las cuentas viejas tienen la ficha bien; les falta el expediente. `declarar` y
+`reevaluar` no gastan ni una consulta; `volver a correr` es el caso raro. El plan
+ordena por lo barato primero.
+
+Al regenerar Coficab Pesqueria de verdad salio un hallazgo: el evaluador la
+puntua en **22.7 (`archiva`)**, y con la senal mas fuerte de la cuenta en 51.6
+(`guarda`). **La cuenta en la que se gastaron 21 busquedas no habria pasado el
+radar.** El desglose dice por que: `tipo_de_obra 0.0`, porque el evaluador no
+tiene vocabulario para "planta nueva". Queda reportado como decision, no
+arreglado: cambiar el vocabulario del radar cambia que detona.
+
 ## 0.10.3 — 2026-09-28
 
 La entrega ya puede verificar **contenido** con el conector de Graph, que no

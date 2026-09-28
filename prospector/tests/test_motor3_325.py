@@ -5,6 +5,7 @@ del diseno -- el diseno estaba bien escrito--: son pruebas de que la cadena que
 el diseno describe de verdad transporta los datos, que es lo que no hacia.
 """
 import os
+import re
 import sys
 from datetime import date
 
@@ -427,3 +428,134 @@ def test_el_expediente_marca_las_cuentas_que_no_pueden_ensenar_nada():
     # el aprendizaje avanza mas rapido de lo que avanza.
     assert r["cierres_sin_expediente_de_senal"] == 1
     assert r["cuentas_por_regenerar"] == [e["llave"]]
+
+
+# ==========================================  el prototipo del tablero
+PROTO = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                     "metodo", "prototipo-tablero-motor3.html")
+
+
+def _proto():
+    with open(PROTO, encoding="utf-8") as f:
+        return f.read()
+
+
+def test_el_prototipo_usa_la_paleta_aprobada():
+    h = _proto()
+    # Los tokens de #323, con sus nombres Y sus valores. Un prototipo nuevo con
+    # otra paleta obliga a Esteban a aprobar el color dos veces.
+    for token in ("--paper:#f5f7f4", "--teal:#0f6b5c", "--hot:#b3261e",
+                  "--warn:#b06a00", "--ok:#1f7a4d", "--gray-bg:#eef1ef"):
+        assert token in h, f"falta el token {token} de la paleta aprobada"
+
+
+def test_el_prototipo_define_los_tres_estados_de_tema():
+    h = _proto()
+    assert "@media (prefers-color-scheme:dark)" in h
+    assert ':root:not([data-theme="light"])' in h
+    assert ':root[data-theme="dark"]' in h
+
+
+def test_toda_clase_usada_en_el_prototipo_tiene_CSS():
+    # La leccion de #323: `class="q"` sobrevivio a un renombre, se quedo sin CSS,
+    # y la columna de consultas perdio su monoespaciada sin que nada fallara.
+    h = _proto()
+    usadas = set()
+    for m in re.finditer(r'class="([^"]+)"', h):
+        usadas.update(m.group(1).split())
+    definidas = set(re.findall(r"\.([a-zA-Z][\w-]*)", h[:h.index("</style>")]))
+    assert not (usadas - definidas), f"clases sin CSS: {sorted(usadas - definidas)}"
+
+
+def test_el_prototipo_declara_que_sus_cuentas_son_inventadas():
+    h = _proto()
+    assert "inventad" in h.lower()
+
+
+def test_el_prototipo_dice_las_tres_preguntas_de_los_tres_lazos():
+    h = _proto()
+    for pregunta in ("vale la pena tocar", "qué datos se toca",
+                     "por qué canal se toca"):
+        assert pregunta in h, f"el tablero no dice: {pregunta}"
+
+
+def test_el_prototipo_nombra_la_constante_que_cada_lazo_movería():
+    # Un tablero que dice "el aprendizaje ajustara los pesos" sin nombrar la
+    # constante produce un archivo que nadie lee nunca.
+    h = _proto()
+    for constante in ("FUERZA_DE_FUENTE", "PADRON_EMPATA", "DESMENTIDO",
+                      "canal_de()", "flujo/radar.py",
+                      "flujo/importacion_odoo.py"):
+        assert constante in h
+
+
+def test_el_prototipo_distingue_los_cierres_que_no_ensenan_nada():
+    h = _proto()
+    assert "58 cierres" in h and "55 enseñan" in h
+
+
+def test_el_prototipo_no_lee_las_tablas_de_personas():
+    h = _proto()
+    # Lo dice, y el esquema lo sostiene (ver test_esquema_motor3).
+    assert "contacto" in h and "toque_destinatario" in h
+    assert "Ninguna cifra de este tablero necesita leer" in h
+
+
+# ==========================================  los comandos nuevos
+def test_el_comando_senal_declara_y_deja_la_caducidad_viva(tmp_path, monkeypatch):
+    monkeypatch.setenv("PROSPECTOR_SALIDA", str(tmp_path))
+    from flujo.orquestador import main
+    c = _corrida()
+    c.guardar(str(tmp_path / "ejemplo" / "monterrey.json"))
+    assert main(["senal", "--empresa", "Ejemplo", "--ciudad", "Monterrey",
+                 "--fuente", "prensa_industrial",
+                 "--fecha-senal", "2026-07-01"]) == 0
+    from flujo.orquestador import _cargar_de
+    otra = _cargar_de(str(tmp_path / "ejemplo" / "monterrey.json"))
+    assert otra.senal_origen["fuente"] == "prensa_industrial"
+    assert otra.senal_origen["tipo"] == "obra_nueva"
+
+
+def test_el_comando_senal_rechaza_una_fuente_inventada(tmp_path, monkeypatch):
+    monkeypatch.setenv("PROSPECTOR_SALIDA", str(tmp_path))
+    from flujo.orquestador import main
+    _corrida().guardar(str(tmp_path / "ejemplo" / "monterrey.json"))
+    # Codigo 2 = compuerta cerrada, la convencion del proyecto. No una traza:
+    # el operador tiene que leer POR QUE se nego, no un stacktrace.
+    assert main(["senal", "--empresa", "Ejemplo", "--ciudad", "Monterrey",
+                 "--fuente", "un_blog_que_me_gusta"]) == 2
+
+
+def test_reevaluar_marca_que_el_puntaje_es_de_hoy(tmp_path, monkeypatch):
+    monkeypatch.setenv("PROSPECTOR_SALIDA", str(tmp_path))
+    from flujo.orquestador import main, _cargar_de
+    _corrida().guardar(str(tmp_path / "ejemplo" / "monterrey.json"))
+    main(["senal", "--empresa", "Ejemplo", "--ciudad", "Monterrey",
+          "--fuente", "prensa_industrial", "--reevaluar"])
+    otra = _cargar_de(str(tmp_path / "ejemplo" / "monterrey.json"))
+    assert otra.senal_origen["puntaje"] is not None
+    # El numero NO es el del dia de la corrida: la frescura cambio. Sin esta
+    # marca, el lazo 1 corregiria la curva de frescura con un numero que la curva
+    # ya afecto.
+    assert otra.senal_origen["puntaje_reevaluado_hoy"] is True
+    assert any("REEVALUO hoy" in a for a in otra.avisos)
+
+
+def test_el_comando_regenera_corre_sin_empresa(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("PROSPECTOR_SALIDA", str(tmp_path))
+    from flujo.orquestador import main
+    _corrida().guardar(str(tmp_path / "ejemplo" / "monterrey.json"))
+    assert main(["regenera"]) == 0
+    salida = capsys.readouterr().out
+    assert "REGENERACION" in salida
+    assert "Ejemplo/Monterrey" in salida
+    # El comando de arreglo tiene que estar VISIBLE en la salida, no en un doc.
+    assert "./prospector senal" in salida
+
+
+def test_el_comando_aprendizaje_sin_cierres_lo_dice(capsys):
+    from flujo.orquestador import main
+    assert main(["aprendizaje"]) == 0
+    salida = capsys.readouterr().out
+    assert "0 cierre(s)" in salida
+    assert "nadie puede auditar" in salida

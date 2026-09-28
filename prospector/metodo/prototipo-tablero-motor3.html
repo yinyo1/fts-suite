@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motor 3 — tablero del ciclo</title>
+<!--
+  PROTOTIPO del tablero del motor 3 (#325). Diseño, no producto.
+
+  CERO DATOS PERSONALES, y no por prudencia: por construcción. Ninguna de las
+  vistas que este tablero lee toca `contacto` ni `toque_destinatario` -- las dos
+  únicas tablas con datos personales del esquema--. Las cifras salen de `toque`,
+  que lleva canal, fecha, nivel y resultado, y no lleva a nadie. Por eso este
+  tablero se puede abrir en una junta, compartir y capturar en pantalla.
+
+  Las empresas que aparecen son inventadas.
+
+  Paleta: la APROBADA en #323, con sus nombres y sus valores. Teal para lo
+  positivo, rojo para el aviso, ámbar para lo que falta, gris para contexto.
+-->
+<style>
+ :root{--paper:#f5f7f4;--ink:#1b2621;--muted:#66716c;--line:#dde3df;
+        --card:#ffffff;--teal:#0f6b5c;--teal-soft:#e2efeb;
+        --hot:#b3261e;--hot-bg:#fbe9e7;--ok:#1f7a4d;--ok-bg:#e6f4ec;
+        --warn:#b06a00;--warn-bg:#fbf3e3;--gray-bg:#eef1ef}
+ @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+        --paper:#121815;--ink:#e8efeb;--muted:#9aa8a2;--line:#2a3831;
+        --card:#18211d;--teal:#4db5a0;--teal-soft:#183029;--hot:#f2897f;
+        --hot-bg:#2c1613;--ok:#5bc98a;--ok-bg:#122a1d;--warn:#e0a94a;
+        --warn-bg:#2e2413;--gray-bg:#1e2622}}
+ :root[data-theme="dark"]{--paper:#121815;--ink:#e8efeb;--muted:#9aa8a2;
+        --line:#2a3831;--card:#18211d;--teal:#4db5a0;--teal-soft:#183029;
+        --hot:#f2897f;--hot-bg:#2c1613;--ok:#5bc98a;--ok-bg:#122a1d;
+        --warn:#e0a94a;--warn-bg:#2e2413;--gray-bg:#1e2622}
+ *{box-sizing:border-box}
+ body{margin:0;background:var(--paper);color:var(--ink);font-size:16px;
+       line-height:1.55;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",
+       Roboto,"Source Sans 3",sans-serif}
+ .wrap{max-width:900px;margin:0 auto;padding-block:28px 70px;
+        padding-left:18px;padding-right:18px}
+ .kicker{font-size:12px;letter-spacing:.09em;text-transform:uppercase;
+          color:var(--teal);font-weight:700}
+ h1{margin:6px 0 2px;font-size:30px;font-weight:800;letter-spacing:-.02em;
+     line-height:1.1;text-wrap:balance}
+ .sub{color:var(--muted);font-size:15px;margin:0}
+ .card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+        padding:20px 22px;margin:18px 0}
+ .card h2{margin:0 0 4px;font-size:12.5px;letter-spacing:.08em;
+           text-transform:uppercase;color:var(--teal);font-weight:700}
+ .card .q{margin:0 0 14px;font-size:14px;color:var(--muted)}
+ .aviso{background:var(--hot-bg);border:1px solid var(--hot);border-radius:12px;
+         padding:14px 18px;margin:18px 0}
+ .aviso b{color:var(--hot)}
+ .aviso p{margin:6px 0 0;font-size:15px}
+
+ /* ------------------------------------------------------- el ciclo, arriba */
+ .ciclo{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}
+ .paso{background:var(--card);border:1px solid var(--line);border-radius:12px;
+        padding:14px 16px}
+ .paso .n{font-size:28px;font-weight:800;line-height:1;
+           font-variant-numeric:tabular-nums}
+ .paso .r{font-size:12px;letter-spacing:.06em;text-transform:uppercase;
+           color:var(--muted);font-weight:700;margin-top:6px}
+ .paso .d{font-size:13px;color:var(--muted);margin-top:4px}
+ .paso.abierta .n{color:var(--teal)}
+ .paso.caduca .n{color:var(--muted)}
+ .paso.recicla .n{color:var(--warn)}
+ .paso.evoluciona .n{color:var(--ok)}
+
+ /* -------------------------------------------------------------- que toca hoy */
+ table{width:100%;border-collapse:collapse;font-size:14.5px}
+ th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;
+     color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line);
+     font-weight:700}
+ td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+ tr:last-child td{border-bottom:none}
+ td.c{text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums}
+ .pill{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 9px;
+        border-radius:6px;white-space:nowrap}
+ .pill.dir{background:var(--teal-soft);color:var(--teal)}
+ .pill.li{background:var(--gray-bg);color:var(--muted)}
+ .pill.con{background:var(--warn-bg);color:var(--warn)}
+ .pill.ev{background:var(--ok-bg);color:var(--ok)}
+ .urge{color:var(--hot);font-weight:800}
+ .tabla-scroll{overflow-x:auto}
+
+ /* ----------------------------------------------------------- las compuertas */
+ .lazo{border:1px solid var(--line);border-radius:14px;background:var(--card);
+        margin:14px 0;overflow:hidden}
+ .lazo>header{padding:14px 20px;border-bottom:1px solid var(--line);
+               background:var(--gray-bg)}
+ .lazo>header .t{font-weight:800;font-size:16px}
+ .lazo>header .p{font-size:13.5px;color:var(--muted);margin-top:2px}
+ .lazo>header .dest{font-size:12px;color:var(--muted);margin-top:6px;
+                     font-family:ui-monospace,Menlo,monospace}
+ .celdas{padding:6px 20px 16px}
+ .celda{display:grid;grid-template-columns:1fr auto;gap:12px;
+         padding:12px 0;border-bottom:1px solid var(--line);align-items:start}
+ .celda:last-child{border-bottom:none}
+ .celda .nom{font-family:ui-monospace,Menlo,monospace;font-size:13px;
+              font-weight:700}
+ .celda .prop{font-size:14px;margin-top:5px}
+ .celda .mov{font-size:13.5px;margin-top:5px;color:var(--muted)}
+ .celda .mov b{color:var(--ink);font-family:ui-monospace,Menlo,monospace}
+ .estado{text-align:right;min-width:132px}
+ .barra{height:6px;border-radius:99px;background:var(--gray-bg);overflow:hidden;
+         margin-top:7px}
+ .barra i{display:block;height:100%;border-radius:99px}
+ .abre .barra i{background:var(--ok)}
+ .esp  .barra i{background:var(--warn)}
+ .nada .barra i{background:var(--line)}
+ .cuenta{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+ .veredicto{font-size:11.5px;font-weight:800;letter-spacing:.04em;
+             text-transform:uppercase;padding:3px 9px;border-radius:6px;
+             display:inline-block}
+ .abre .veredicto{background:var(--ok-bg);color:var(--ok)}
+ .esp  .veredicto{background:var(--warn-bg);color:var(--warn)}
+ .nada .veredicto{background:var(--gray-bg);color:var(--muted)}
+
+ .nota{font-size:13.5px;color:var(--muted);margin:10px 0 0}
+ .foot{color:var(--muted);font-size:12.5px;text-align:center;margin-top:26px;
+        line-height:1.5}
+ figure{margin:18px 0}
+ figcaption{font-size:13px;color:var(--muted);margin-top:8px;text-align:center}
+ svg{max-width:100%;height:auto;display:block;margin:0 auto}
+
+ @media (max-width:640px){
+   h1{font-size:24px}
+   .ciclo{grid-template-columns:repeat(2,1fr)}
+   .celda{grid-template-columns:1fr}
+   .estado{text-align:left;min-width:0}
+ }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="kicker">Motor 3 · tablero del ciclo</div>
+<h1>Qué toca hoy, y qué ya se puede aprender</h1>
+<p class="sub">Corte del 28-sep-2026 · 58 tarjetas cerradas · 12 abiertas · datos de ejemplo</p>
+
+<div class="aviso"><b>Prototipo con cuentas inventadas.</b><p>Las cifras ilustran la forma del tablero, no el estado real del negocio. Lo que sí es real: <b>ninguna de estas cifras necesita una sola persona</b>. Salen de <code>toque</code>, que lleva canal, fecha, nivel y resultado — y no lleva nombres ni correos. Por eso este tablero se puede abrir en una junta.</p></div>
+
+<!-- ============================================================ el ciclo -->
+<div class="ciclo">
+  <div class="paso abierta"><div class="n">12</div><div class="r">Abiertas</div><div class="d">con cadencia viva</div></div>
+  <div class="paso caduca"><div class="n">44</div><div class="r">Caducaron</div><div class="d">archivadas con motivo</div></div>
+  <div class="paso recicla"><div class="n">6</div><div class="r">Reciclaron</div><div class="d">reabrieron con historial</div></div>
+  <div class="paso evoluciona"><div class="n">8</div><div class="r">Evolucionaron</div><div class="d">pasaron a ventas</div></div>
+</div>
+
+<figure>
+<svg viewBox="0 0 700 250" role="img" aria-label="El ciclo de una tarjeta: del paquete del motor 2 a la tarjeta, y de ahi a caduca, recicla o evoluciona; la caducada reabre con senal nueva y las tres alimentan los tres lazos de aprendizaje">
+ <defs>
+  <marker id="f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7"
+          markerHeight="7" orient="auto-start-reverse">
+   <polygon points="0,0 10,5 0,10" fill="currentColor"/>
+  </marker>
+ </defs>
+ <g fill="none" stroke="currentColor" stroke-width="1.4"
+    font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif">
+  <!-- paquete -->
+  <rect x="8" y="98" width="104" height="44" rx="8"/>
+  <text x="60" y="118" text-anchor="middle" font-size="12" fill="currentColor"
+        stroke="none">paquete</text>
+  <text x="60" y="132" text-anchor="middle" font-size="10.5" fill="currentColor"
+        stroke="none" opacity=".7">del motor 2</text>
+  <!-- tarjeta -->
+  <rect x="172" y="88" width="126" height="64" rx="8" stroke-width="2"/>
+  <text x="235" y="110" text-anchor="middle" font-size="12.5" fill="currentColor"
+        stroke="none" font-weight="700">TARJETA</text>
+  <text x="235" y="126" text-anchor="middle" font-size="10.5" fill="currentColor"
+        stroke="none" opacity=".7">una sola abierta</text>
+  <text x="235" y="140" text-anchor="middle" font-size="10.5" fill="currentColor"
+        stroke="none" opacity=".7">por cuenta</text>
+  <line x1="112" y1="120" x2="170" y2="120" marker-end="url(#f)"/>
+  <!-- tres destinos -->
+  <rect x="404" y="12" width="118" height="40" rx="8"/>
+  <text x="463" y="37" text-anchor="middle" font-size="12" fill="currentColor"
+        stroke="none">caduca</text>
+  <rect x="404" y="100" width="118" height="40" rx="8"/>
+  <text x="463" y="125" text-anchor="middle" font-size="12" fill="currentColor"
+        stroke="none">recicla</text>
+  <rect x="404" y="188" width="118" height="40" rx="8"/>
+  <text x="463" y="213" text-anchor="middle" font-size="12" fill="currentColor"
+        stroke="none">evoluciona</text>
+  <path d="M298 108 C350 108 352 32 402 32" marker-end="url(#f)"/>
+  <line x1="298" y1="120" x2="402" y2="120" marker-end="url(#f)"/>
+  <path d="M298 132 C350 132 352 208 402 208" marker-end="url(#f)"/>
+  <text x="350" y="76" text-anchor="middle" font-size="10" fill="currentColor"
+        stroke="none" opacity=".7">sin respuesta</text>
+  <text x="350" y="182" text-anchor="middle" font-size="10" fill="currentColor"
+        stroke="none" opacity=".7">hay respuesta</text>
+  <!-- reabre: de caduca de vuelta a la tarjeta -->
+  <path d="M404 46 C330 66 300 60 246 84" stroke-dasharray="4 3"
+        marker-end="url(#f)"/>
+  <text x="318" y="52" text-anchor="middle" font-size="10" fill="currentColor"
+        stroke="none" opacity=".7">señal nueva: reabre</text>
+  <!-- los tres lazos -->
+  <rect x="576" y="88" width="116" height="64" rx="8" stroke-dasharray="3 3"/>
+  <text x="634" y="112" text-anchor="middle" font-size="11.5" fill="currentColor"
+        stroke="none" font-weight="700">3 LAZOS</text>
+  <text x="634" y="128" text-anchor="middle" font-size="10" fill="currentColor"
+        stroke="none" opacity=".7">radar · motor 2</text>
+  <text x="634" y="140" text-anchor="middle" font-size="10" fill="currentColor"
+        stroke="none" opacity=".7">motor 3</text>
+  <line x1="522" y1="32" x2="560" y2="32"/>
+  <line x1="560" y1="32" x2="560" y2="112"/>
+  <line x1="522" y1="208" x2="560" y2="208"/>
+  <line x1="560" y1="208" x2="560" y2="128"/>
+  <line x1="522" y1="120" x2="574" y2="120" marker-end="url(#f)"/>
+  <line x1="560" y1="112" x2="574" y2="112" marker-end="url(#f)"/>
+  <line x1="560" y1="128" x2="574" y2="128" marker-end="url(#f)"/>
+ </g>
+</svg>
+<figcaption>Los <b>tres</b> destinos alimentan el aprendizaje, no sólo el que convierte: una tarjeta que caducó dice tanto como una que ganó, y una archivada sin motivo escrito no le enseña nada al radar.</figcaption>
+</figure>
+
+<!-- ======================================================== que toca hoy -->
+<div class="card">
+<h2>Qué toca hoy</h2>
+<p class="q">Lo que Odoo ya sabe recordar, visible también fuera de Odoo — en la etapa 1 nadie ha creado todavía una sola <code>mail.activity</code>.</p>
+<div class="tabla-scroll">
+<table>
+<tr><th>Cuenta</th><th>Toque</th><th>Canal</th><th class="c">Programado</th><th class="c">Caduca</th></tr>
+<tr><td>Aceros del Norte · Apodaca</td><td class="c">2 de 3</td><td><span class="pill dir">correo directo</span></td><td class="c">hoy</td><td class="c">en 31 d</td></tr>
+<tr><td>Termoplásticos Bajío · Silao</td><td class="c">1 de 3</td><td><span class="pill dir">correo directo</span></td><td class="c">hoy</td><td class="c">en 88 d</td></tr>
+<tr><td>Envases del Golfo · Veracruz</td><td class="c">3 de 3</td><td><span class="pill li">LinkedIn</span></td><td class="c">hoy</td><td class="c urge">en 4 d</td></tr>
+<tr><td>Cables del Centro · Querétaro</td><td class="c">1 de 2</td><td><span class="pill con">conmutador</span></td><td class="c">ayer</td><td class="c">en 19 d</td></tr>
+<tr><td>Alimentos Sierra · Saltillo</td><td class="c">1 de 1</td><td><span class="pill ev">evento</span></td><td class="c">hoy</td><td class="c">en 15 d</td></tr>
+</table>
+</div>
+<p class="nota"><b>Envases del Golfo</b> caduca en 4 días con su último toque sin hacer. Es la única alarma que el ciclo necesita: trabajo que se va a perder por no hacerse, no por no funcionar.</p>
+</div>
+
+<!-- ======================================================== los tres lazos -->
+<h2 style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--teal);margin:34px 0 0">Los tres lazos de aprendizaje</h2>
+<p class="sub" style="margin:4px 0 0">Cada lazo dice <b>qué constante movería y con qué cuenta</b>. Ninguno la mueve: un evaluador que se reajusta solo es un evaluador que nadie puede auditar.</p>
+
+<!-- LAZO 1 -->
+<div class="lazo">
+<header>
+  <div class="t">Lazo 1 · al radar</div>
+  <div class="p">¿A quién vale la pena tocar?</div>
+  <div class="dest">flujo/radar.py</div>
+</header>
+<div class="celdas">
+
+ <div class="celda abre">
+  <div>
+   <div class="nom">fuerza_de_fuente[prensa_industrial]</div>
+   <div class="prop">Convirtió <b>1 de 22</b>. La mejor fuente medida convierte 33%.</div>
+   <div class="mov">mover <b>FUERZA_DE_FUENTE</b> de <b>8</b> a <b>3.4</b></div>
+  </div>
+  <div class="estado">
+   <span class="veredicto">alcanza</span>
+   <div class="barra"><i style="width:100%"></i></div>
+   <div class="cuenta">22 de 20 cierres</div>
+  </div>
+ </div>
+
+ <div class="celda abre">
+  <div>
+   <div class="nom">fuerza_de_fuente[correo_propio]</div>
+   <div class="prop">Convirtió <b>7 de 21</b> — es la mejor fuente medida.</div>
+   <div class="mov">dejar <b>FUERZA_DE_FUENTE</b> en <b>25</b>: el peso ya estaba bien</div>
+  </div>
+  <div class="estado">
+   <span class="veredicto">alcanza</span>
+   <div class="barra"><i style="width:100%"></i></div>
+   <div class="cuenta">21 de 20 cierres</div>
+  </div>
+ </div>
+
+ <div class="celda esp">
+  <div>
+   <div class="nom">fuerza_de_fuente[vacante_tecnica]</div>
+   <div class="prop"><b>0 de 12</b> cierres convirtieron. Apunta a cero, y todavía no se puede afirmar.</div>
+   <div class="mov">faltan <b>8 cierres</b> para que la tasa signifique algo</div>
+  </div>
+  <div class="estado">
+   <span class="veredicto">prematuro</span>
+   <div class="barra"><i style="width:60%"></i></div>
+   <div class="cuenta">12 de 20 cierres</div>
+  </div>
+ </div>
+
+ <div class="celda nada">
+  <div>
+   <div class="nom">escala_frescura</div>
+   <div class="prop">55 cierres con desglose de frescura, y <b>todos del mismo lado de la curva</b> (55 con señal fresca, 0 con señal vieja).</div>
+   <div class="mov">la compuerta se queda cerrada a propósito: sin los dos lados no se puede saber si la curva ordena bien</div>
+  </div>
+  <div class="estado">
+   <span class="veredicto">sin comparar</span>
+   <div class="barra"><i style="width:0%"></i></div>
+   <div class="cuenta">0 comparables</div>
+  </div>
+ </div>
+
+ <div class="celda abre">
+  <div>
+   <div class="nom">padron_empata</div>
+   <div class="prop">En el padrón: <b>3 de 13</b> (23%). Fuera del padrón: <b>5 de 42</b> (12%). El +8 se sostiene.</div>
+   <div class="mov">dejar <b>PADRON_EMPATA</b> en <b>8</b> — y ésta es la celda que puede llegar a valer cero: si las de fuera convirtieran mejor, el padrón estaría sesgando contra la planta nueva</div>
+  </div>
+  <div class="estado">
+   <span class="veredicto">alcanza</span>
+   <div class="barra"><i style="width:100%"></i></div>
+   <div class="cuenta">55 de 20 cierres</div>
+  </div>
+ </div>
+
+</div>
+</div>
+
+<!-- LAZO 2 -->
+<div class="lazo">
+<header>
+  <div class="t">Lazo 2 · al motor 2</div>
+  <div class="p">¿Con qué datos se toca?</div>
+  <div class="dest">flujo/confianza.py · flujo/paquete.py</div>
+</header>
+<div class="celdas">
+
+ <div class="celda abre">
+  <div>
+   <div class="nom">desmentido[<span style="opacity:.6">cuenta</span>::correo::rebote]</div>
+   <div class="prop">Rebote, <b>12 veces</b>. El buzón está mal, sin importar cuántas fuentes lo dijeran.</div>
+   <div class="mov">baja a <b>DESMENTIDO</b>, y la ficha va a decir «NO LO USES» donde decía «correo probable»</div>
+  </div>
+  <div class="estado">
+   <span class="veredicto">alcanza</span>
+   <div class="barra"><i style="width:100%"></i></div>
+   <div class="cuenta">12 de 1 — abre con uno</div>
+  </div>
+ </div>
+
+ <div class="celda abre">
+  <div>
+   <div class="nom">patron_correo[<span style="opacity:.6">cuenta</span>]</div>
+   <div class="prop"><b>12 de 12</b> correos derivados del patrón rebotaron.</div>
+   <div class="mov">descartar el patrón de esta cuenta: deja de emitirse, y los contactos sin correo observado se piden por conmutador</div>
+  </div>
+  <div class="estado">
+   <span class="veredicto">alcanza</span>
+   <div class="barra"><i style="width:100%"></i></div>
+   <div class="cuenta">12 de 3 rebotes</div>
+  </div>
+ </div>
+
+ <div class="celda abre">
+  <div>
+   <div class="nom">reglas_de_canal</div>
+   <div class="prop">correo directo <b>7/55</b> (13%) · LinkedIn <b>1/22</b> (5%) · conmutador <b>0/3</b>.</div>
+   <div class="mov">LinkedIn como refuerzo y no como primer toque: la regla de <b>canal_de()</b> se sostiene con número</div>
+  </div>
+  <div class="estado">
+   <span class="veredicto">alcanza</span>
+   <div class="barra"><i style="width:100%"></i></div>
+   <div class="cuenta">77 de 20 toques</div>
+  </div>
+ </div>
+
+</div>
+<p class="nota" style="padding:0 20px 16px">Este lazo abre con <b>un</b> rebote y los otros dos piden veinte cierres. No es inconsistencia: un rebote es un <b>hecho</b> sobre un correo concreto, no una tasa. Esperar veinte sería seguir escribiéndole a diecinueve buzones que ya se sabe que rebotan.</p>
+</div>
+
+<!-- LAZO 3 -->
+<div class="lazo">
+<header>
+  <div class="t">Lazo 3 · al motor 3 mismo</div>
+  <div class="p">¿Cuándo y por qué canal se toca?</div>
+  <div class="dest">flujo/importacion_odoo.py</div>
+</header>
+<div class="celdas">
+
+ <div class="celda abre">
+  <div>
+   <div class="nom">dias[necesidad_declarada]</div>
+   <div class="prop"><b>12 de 21</b> respondieron. Mediana <b>7 días</b>, p90 <b>19 días</b>.</div>
+   <div class="mov">el plazo vigente de <b>90</b> días sobra: se puede cerrar antes y liberar la cartera</div>
+  </div>
+  <div class="estado">
+   <span class="veredicto">alcanza</span>
+   <div class="barra"><i style="width:100%"></i></div>
+   <div class="cuenta">12 de 10 respuestas</div>
+  </div>
+ </div>
+
+ <div class="celda esp">
+  <div>
+   <div class="nom">dias[obra_nueva]</div>
+   <div class="prop"><b>1 respuesta</b> de 22 cierres.</div>
+   <div class="mov">faltan <b>9</b>: con menos, la mediana la mueve un solo caso raro</div>
+  </div>
+  <div class="estado">
+   <span class="veredicto">prematuro</span>
+   <div class="barra"><i style="width:10%"></i></div>
+   <div class="cuenta">1 de 10 respuestas</div>
+  </div>
+ </div>
+
+ <div class="celda nada">
+  <div>
+   <div class="nom">dias[vacante_tecnica]</div>
+   <div class="prop"><b>12 cierres y ninguna respuesta.</b></div>
+   <div class="mov">si esto se sostiene, el plazo no es el problema: el tipo de señal no sirve, y ésa es lección del lazo 1, no de éste</div>
+  </div>
+  <div class="estado">
+   <span class="veredicto">sin datos</span>
+   <div class="barra"><i style="width:0%"></i></div>
+   <div class="cuenta">0 de 10 respuestas</div>
+  </div>
+ </div>
+
+ <div class="celda esp">
+  <div>
+   <div class="nom">toques_antes_de_caducar</div>
+   <div class="prop">De 8 cuentas que contestaron, la mediana contestó en el <b>toque 2</b>, y el máximo observado fue el <b>3</b>.</div>
+   <div class="mov">faltan <b>2</b> para poder decir que un cuarto toque nunca ha producido una respuesta</div>
+  </div>
+  <div class="estado">
+   <span class="veredicto">prematuro</span>
+   <div class="barra"><i style="width:80%"></i></div>
+   <div class="cuenta">8 de 10 respuestas</div>
+  </div>
+ </div>
+
+</div>
+</div>
+
+<!-- =================================================== por regenerar -->
+<div class="card" style="border-color:var(--warn);background:var(--warn-bg)">
+<h2 style="color:var(--warn)">3 cuentas no pueden enseñar nada todavía</h2>
+<p class="q" style="color:var(--ink)">Cerraron sin expediente de señal: no traen fuente, tipo ni puntaje, así que <b>no cuentan para los lazos 1 y 3</b>. El tablero dice «58 cierres» y sólo 55 enseñan — sin esta línea, el aprendizaje parecería avanzar más rápido de lo que avanza.</p>
+<div class="tabla-scroll">
+<table>
+<tr><th>Cuenta</th><th>Le falta</th><th>Arreglo</th><th class="c">Consultas</th></tr>
+<tr><td>Aceros del Norte · Apodaca</td><td>fuente, tipo, puntaje</td><td>declarar y reevaluar</td><td class="c">0</td></tr>
+<tr><td>Envases del Golfo · Veracruz</td><td>puntaje</td><td>reevaluar</td><td class="c">0</td></tr>
+<tr><td>Cables del Centro · Querétaro</td><td>todo, y sin texto de señal</td><td>volver a correr</td><td class="c">60</td></tr>
+</table>
+</div>
+<p class="nota" style="color:var(--ink)">Dos de tres se arreglan sin gastar una sola consulta. <code>./prospector regenera</code> las lista con el comando de cada una.</p>
+</div>
+
+<div class="foot">
+Prototipo del motor 3 · #325 · cuentas inventadas
+<br>Ninguna cifra de este tablero necesita leer <code>contacto</code> ni <code>toque_destinatario</code>.
+</div>
+
+</div>
+</body>
+</html>
