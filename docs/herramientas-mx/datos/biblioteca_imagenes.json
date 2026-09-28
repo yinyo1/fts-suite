@@ -1,0 +1,1685 @@
+{
+ "fecha": "2026-09-28",
+ "nota": "uso interno de evaluacion; las imagenes NO estan en el repo (es publico)",
+ "piezas": [
+  {
+   "modulo": "BASE",
+   "cajon": 1,
+   "pieza": "Llave de impacto M18 FUEL 3/8 2854-20 (sin bateria)",
+   "tipo": "foto",
+   "fuente": "IMP38",
+   "precision": "exacta",
+   "px_mm": 2.391,
+   "L_mm": 202,
+   "nivel": "D2",
+   "A_foto_mm": 107.5,
+   "A_catalogo_mm": 122,
+   "id": "FTS-BAS-01-C1-01",
+   "px": [
+    483,
+    257
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 1,
+   "pieza": "Rotomartillo M18 1/2 3602-20 (sin bateria)",
+   "tipo": "foto",
+   "fuente": "ROTO18",
+   "precision": "exacta",
+   "px_mm": 9.45,
+   "L_mm": 202,
+   "nivel": "D2",
+   "A_foto_mm": 139.6,
+   "A_catalogo_mm": 147,
+   "id": "FTS-BAS-01-C1-02",
+   "px": [
+    1909,
+    1319
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 1,
+   "pieza": "Nivel torpedo magnetico 9 in Husky",
+   "tipo": "foto",
+   "fuente": "TORPEDO",
+   "precision": "exacta",
+   "px_mm": 1.583,
+   "L_mm": 230,
+   "nivel": "D1",
+   "A_foto_mm": 46.8,
+   "A_catalogo_mm": 45,
+   "id": "FTS-BAS-01-C1-03",
+   "px": [
+    364,
+    74
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 1,
+   "pieza": "Bateria M18 CP2.0",
+   "tipo": "foto",
+   "fuente": "BAT",
+   "precision": "exacta",
+   "px_mm": 33.898,
+   "L_mm": 118,
+   "nivel": "D1",
+   "A_foto_mm": 60.8,
+   "A_catalogo_mm": 79,
+   "id": "FTS-BAS-01-C1-04",
+   "px": [
+    4000,
+    2062
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 1,
+   "pieza": "Bateria M18 CP2.0",
+   "tipo": "foto",
+   "fuente": "BAT",
+   "precision": "exacta",
+   "px_mm": 33.898,
+   "L_mm": 118,
+   "nivel": "D1",
+   "A_foto_mm": 60.8,
+   "A_catalogo_mm": 79,
+   "id": "FTS-BAS-01-C1-05",
+   "px": [
+    4000,
+    2062
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 1,
+   "pieza": "Mini pinza de corte al ras 48-22-6105",
+   "tipo": "foto",
+   "fuente": "MINIP",
+   "precision": "exacta",
+   "px_mm": 27.669,
+   "L_mm": 127,
+   "nivel": "D1",
+   "A_foto_mm": 83.4,
+   "A_catalogo_mm": 60,
+   "id": "FTS-BAS-01-C1-06",
+   "px": [
+    3514,
+    2307
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 2,
+   "pieza": "Atornillador de impacto M18 3650-20 (sin bateria)",
+   "tipo": "foto",
+   "fuente": "IMP14",
+   "precision": "exacta",
+   "px_mm": 9.765,
+   "L_mm": 196,
+   "nivel": "D2",
+   "A_foto_mm": 98.9,
+   "A_catalogo_mm": 112,
+   "id": "FTS-BAS-01-C2-01",
+   "px": [
+    1914,
+    966
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 2,
+   "pieza": "Pinza de corte diagonal aislada 160 (32933)",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 160,
+   "A_catalogo_mm": 55,
+   "nivel": "F",
+   "motivo": "Wiha 32933 no esta en milwaukeetool.com ni en homedepot.com.mx; en homedepot.com la imagen no se puede bajar (red)",
+   "id": "FTS-BAS-01-C2-02",
+   "px": [
+    644,
+    224
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 2,
+   "pieza": "Llave ajustable 12 in Husky 17018",
+   "tipo": "foto",
+   "fuente": "AJ12",
+   "precision": "exacta",
+   "px_mm": 1.197,
+   "L_mm": 305,
+   "nivel": "D1",
+   "A_foto_mm": 92.8,
+   "A_catalogo_mm": 78,
+   "id": "FTS-BAS-01-C2-03",
+   "px": [
+    365,
+    111
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 2,
+   "pieza": "Navaja retractil Anvil",
+   "tipo": "foto",
+   "fuente": "NAVAJA",
+   "precision": "exacta",
+   "px_mm": 1.638,
+   "L_mm": 224,
+   "nivel": "D1",
+   "A_foto_mm": 60.4,
+   "A_catalogo_mm": 88,
+   "id": "FTS-BAS-01-C2-04",
+   "px": [
+    367,
+    99
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 2,
+   "pieza": "Pinza combinada aislada 200 (32930)",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 203,
+   "A_catalogo_mm": 60,
+   "nivel": "F",
+   "motivo": "Wiha 32930: solo en homedepot.com, imagen bloqueada por la red",
+   "id": "FTS-BAS-01-C2-05",
+   "px": [
+    816,
+    244
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 3,
+   "pieza": "Vernier digital 6 in Truper CALDI-6MP",
+   "tipo": "foto",
+   "fuente": "VERN",
+   "precision": "representativa",
+   "px_mm": 1.536,
+   "L_mm": 237,
+   "nivel": "F",
+   "A_foto_mm": 72.9,
+   "A_catalogo_mm": 80,
+   "id": "FTS-BAS-01-C3-01",
+   "px": [
+    364,
+    112
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 3,
+   "pieza": "Broca HSS 1/16 in",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 150,
+   "nivel": "ver fuente",
+   "motivo": "broca suelta: truper.com bloqueado y sin ficha por broca en Home Depot",
+   "id": "FTS-BAS-01-C3-02-01",
+   "px": [
+    604,
+    11
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 3,
+   "pieza": "Broca HSS 3/32 in",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 150,
+   "nivel": "ver fuente",
+   "motivo": "broca suelta: truper.com bloqueado y sin ficha por broca en Home Depot",
+   "id": "FTS-BAS-01-C3-02-02",
+   "px": [
+    604,
+    14
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 3,
+   "pieza": "Broca HSS 1/8 in",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 150,
+   "nivel": "ver fuente",
+   "motivo": "broca suelta: truper.com bloqueado y sin ficha por broca en Home Depot",
+   "id": "FTS-BAS-01-C3-02-03",
+   "px": [
+    604,
+    17
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 3,
+   "pieza": "Broca HSS 5/32 in",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 150,
+   "nivel": "ver fuente",
+   "motivo": "broca suelta: truper.com bloqueado y sin ficha por broca en Home Depot",
+   "id": "FTS-BAS-01-C3-02-04",
+   "px": [
+    604,
+    20
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 3,
+   "pieza": "Broca HSS 3/16 in",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 150,
+   "nivel": "ver fuente",
+   "motivo": "broca suelta: truper.com bloqueado y sin ficha por broca en Home Depot",
+   "id": "FTS-BAS-01-C3-02-05",
+   "px": [
+    604,
+    24
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 3,
+   "pieza": "Broca HSS 7/32 in",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 150,
+   "nivel": "ver fuente",
+   "motivo": "broca suelta: truper.com bloqueado y sin ficha por broca en Home Depot",
+   "id": "FTS-BAS-01-C3-02-06",
+   "px": [
+    604,
+    27
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 3,
+   "pieza": "Broca HSS 1/4 in",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 150,
+   "nivel": "ver fuente",
+   "motivo": "broca suelta: truper.com bloqueado y sin ficha por broca en Home Depot",
+   "id": "FTS-BAS-01-C3-02-07",
+   "px": [
+    604,
+    30
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 3,
+   "pieza": "Broca HSS 9/32 in",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 150,
+   "nivel": "ver fuente",
+   "motivo": "broca suelta: truper.com bloqueado y sin ficha por broca en Home Depot",
+   "id": "FTS-BAS-01-C3-02-08",
+   "px": [
+    604,
+    33
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 3,
+   "pieza": "Broca HSS 5/16 in",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 150,
+   "nivel": "ver fuente",
+   "motivo": "broca suelta: truper.com bloqueado y sin ficha por broca en Home Depot",
+   "id": "FTS-BAS-01-C3-02-09",
+   "px": [
+    604,
+    36
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 3,
+   "pieza": "Broca HSS 11/32 in",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 150,
+   "nivel": "ver fuente",
+   "motivo": "broca suelta: truper.com bloqueado y sin ficha por broca en Home Depot",
+   "id": "FTS-BAS-01-C3-02-10",
+   "px": [
+    604,
+    39
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 3,
+   "pieza": "Broca HSS 3/8 in",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 150,
+   "nivel": "ver fuente",
+   "motivo": "broca suelta: truper.com bloqueado y sin ficha por broca en Home Depot",
+   "id": "FTS-BAS-01-C3-02-11",
+   "px": [
+    604,
+    42
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 3,
+   "pieza": "Broca HSS 13/32 in",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 150,
+   "nivel": "ver fuente",
+   "motivo": "broca suelta: truper.com bloqueado y sin ficha por broca en Home Depot",
+   "id": "FTS-BAS-01-C3-02-12",
+   "px": [
+    604,
+    46
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 3,
+   "pieza": "Broca HSS 7/16 in",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 150,
+   "nivel": "ver fuente",
+   "motivo": "broca suelta: truper.com bloqueado y sin ficha por broca en Home Depot",
+   "id": "FTS-BAS-01-C3-02-13",
+   "px": [
+    604,
+    49
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 3,
+   "pieza": "Broca HSS 15/32 in",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 150,
+   "nivel": "ver fuente",
+   "motivo": "broca suelta: truper.com bloqueado y sin ficha por broca en Home Depot",
+   "id": "FTS-BAS-01-C3-02-14",
+   "px": [
+    604,
+    52
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 3,
+   "pieza": "Broca HSS 1/2 in",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 150,
+   "nivel": "ver fuente",
+   "motivo": "broca suelta: truper.com bloqueado y sin ficha por broca en Home Depot",
+   "id": "FTS-BAS-01-C3-02-15",
+   "px": [
+    604,
+    55
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 3,
+   "pieza": "Pinza diagonal 7 in Husky 903465",
+   "tipo": "foto",
+   "fuente": "PDIAG",
+   "precision": "exacta",
+   "px_mm": 2.039,
+   "L_mm": 178,
+   "nivel": "D1",
+   "A_foto_mm": 54.4,
+   "A_catalogo_mm": 58,
+   "id": "FTS-BAS-01-C3-03",
+   "px": [
+    363,
+    111
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 3,
+   "pieza": "Llave ajustable 8 in Husky 17016",
+   "tipo": "foto",
+   "fuente": "AJ8",
+   "precision": "representativa",
+   "px_mm": 1.78,
+   "L_mm": 205,
+   "nivel": "D1",
+   "A_foto_mm": 53.4,
+   "A_catalogo_mm": 56,
+   "id": "FTS-BAS-01-C3-04",
+   "px": [
+    365,
+    95
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 3,
+   "pieza": "Pinza de chofer 8 in Truper 17301",
+   "tipo": "foto",
+   "fuente": "CHOF8",
+   "precision": "exacta",
+   "px_mm": 1.764,
+   "L_mm": 203,
+   "nivel": "D1",
+   "A_foto_mm": 64.1,
+   "A_catalogo_mm": 50,
+   "id": "FTS-BAS-01-C3-05",
+   "px": [
+    358,
+    113
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 3,
+   "pieza": "Pinza de electricista 9 in Husky 709195",
+   "tipo": "foto",
+   "fuente": "PELEC",
+   "precision": "exacta",
+   "px_mm": 2.16,
+   "L_mm": 250,
+   "nivel": "D1",
+   "A_foto_mm": 49.1,
+   "A_catalogo_mm": 50,
+   "id": "FTS-BAS-01-C3-06",
+   "px": [
+    540,
+    106
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Matraca rotativa 3/8 Husky H38ROTORATMX",
+   "tipo": "foto",
+   "fuente": "MATRACA",
+   "precision": "exacta",
+   "px_mm": 2.271,
+   "L_mm": 240,
+   "nivel": "D1",
+   "A_foto_mm": 46.2,
+   "A_catalogo_mm": 42,
+   "id": "FTS-BAS-01-C4-01",
+   "px": [
+    545,
+    105
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Juego 7 llaves combinadas matraca Husky (en su riel)",
+   "tipo": "foto",
+   "fuente": "COMB7",
+   "precision": "exacta",
+   "px_mm": 1.616,
+   "L_mm": 245,
+   "nivel": "D1",
+   "A_foto_mm": 198.0,
+   "A_catalogo_mm": 175,
+   "id": "FTS-BAS-01-C4-02",
+   "px": [
+    396,
+    320
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Desarmador aislado PH1 x 80 (32101)",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 190,
+   "A_catalogo_mm": 30,
+   "nivel": "F",
+   "motivo": "Wiha 32101 sin ficha en las tres tiendas",
+   "id": "FTS-BAS-01-C4-03",
+   "px": [
+    764,
+    124
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Dado 1 in 1/2 12 puntas",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 34,
+   "nivel": "D1",
+   "motivo": "dado parado: la vista de arriba es un circulo; la foto de Home Depot es lateral",
+   "id": "FTS-BAS-01-C4-04-01",
+   "px": [
+    138,
+    138
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Dado 15/16 in 1/2 12 puntas",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 29,
+   "nivel": "D1",
+   "motivo": "dado parado: la vista de arriba es un circulo; la foto de Home Depot es lateral",
+   "id": "FTS-BAS-01-C4-04-02",
+   "px": [
+    118,
+    118
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Dado 7/8 in 1/2 12 puntas",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 27,
+   "nivel": "D1",
+   "motivo": "dado parado: la vista de arriba es un circulo; la foto de Home Depot es lateral",
+   "id": "FTS-BAS-01-C4-04-03",
+   "px": [
+    110,
+    110
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Dado 13/16 in 1/2 12 puntas",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 25,
+   "nivel": "D1",
+   "motivo": "dado parado: la vista de arriba es un circulo; la foto de Home Depot es lateral",
+   "id": "FTS-BAS-01-C4-04-04",
+   "px": [
+    102,
+    102
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Dado 18 mm 3/8",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 24,
+   "nivel": "D1",
+   "motivo": "dado parado: la vista de arriba es un circulo; la foto de Home Depot es lateral",
+   "id": "FTS-BAS-01-C4-04-05",
+   "px": [
+    98,
+    98
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Dado 18 mm 3/8",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 24,
+   "nivel": "D1",
+   "motivo": "dado parado: la vista de arriba es un circulo; la foto de Home Depot es lateral",
+   "id": "FTS-BAS-01-C4-04-06",
+   "px": [
+    98,
+    98
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Dado 19 mm 3/8",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 23,
+   "nivel": "D1",
+   "motivo": "dado parado: la vista de arriba es un circulo; la foto de Home Depot es lateral",
+   "id": "FTS-BAS-01-C4-04-07",
+   "px": [
+    94,
+    94
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Dado 3/4 in 3/8",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 23,
+   "nivel": "D1",
+   "motivo": "dado parado: la vista de arriba es un circulo; la foto de Home Depot es lateral",
+   "id": "FTS-BAS-01-C4-04-08",
+   "px": [
+    94,
+    94
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Dado 3/4 in 3/8",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 23,
+   "nivel": "D1",
+   "motivo": "dado parado: la vista de arriba es un circulo; la foto de Home Depot es lateral",
+   "id": "FTS-BAS-01-C4-04-09",
+   "px": [
+    94,
+    94
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Dado 3/4 in 3/8",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 23,
+   "nivel": "D1",
+   "motivo": "dado parado: la vista de arriba es un circulo; la foto de Home Depot es lateral",
+   "id": "FTS-BAS-01-C4-04-10",
+   "px": [
+    94,
+    94
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Dado 11/16 in 3/8",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 22,
+   "nivel": "D1",
+   "motivo": "dado parado: la vista de arriba es un circulo; la foto de Home Depot es lateral",
+   "id": "FTS-BAS-01-C4-04-11",
+   "px": [
+    90,
+    90
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Dado 17 mm 3/8",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 21,
+   "nivel": "D1",
+   "motivo": "dado parado: la vista de arriba es un circulo; la foto de Home Depot es lateral",
+   "id": "FTS-BAS-01-C4-04-12",
+   "px": [
+    86,
+    86
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Dado 16 mm 1/2 12 puntas",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 20,
+   "nivel": "D1",
+   "motivo": "dado parado: la vista de arriba es un circulo; la foto de Home Depot es lateral",
+   "id": "FTS-BAS-01-C4-04-13",
+   "px": [
+    82,
+    82
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Dado 5/8 in 3/8",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 20,
+   "nivel": "D1",
+   "motivo": "dado parado: la vista de arriba es un circulo; la foto de Home Depot es lateral",
+   "id": "FTS-BAS-01-C4-04-14",
+   "px": [
+    82,
+    82
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Dado 11 mm 3/8 (SIN FICHA: se usa el del 10 mm)",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 19,
+   "nivel": "supuesto (sin ficha)",
+   "motivo": "dado parado: la vista de arriba es un circulo; la foto de Home Depot es lateral",
+   "id": "FTS-BAS-01-C4-04-15",
+   "px": [
+    78,
+    78
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Dado 10 mm 3/8",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 19,
+   "nivel": "D1",
+   "motivo": "dado parado: la vista de arriba es un circulo; la foto de Home Depot es lateral",
+   "id": "FTS-BAS-01-C4-04-16",
+   "px": [
+    78,
+    78
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Dado 15 mm 3/8",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 18,
+   "nivel": "D1",
+   "motivo": "dado parado: la vista de arriba es un circulo; la foto de Home Depot es lateral",
+   "id": "FTS-BAS-01-C4-04-17",
+   "px": [
+    74,
+    74
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Dado 15 mm 3/8",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 18,
+   "nivel": "D1",
+   "motivo": "dado parado: la vista de arriba es un circulo; la foto de Home Depot es lateral",
+   "id": "FTS-BAS-01-C4-04-18",
+   "px": [
+    74,
+    74
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Dado 14 mm 3/8",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 17,
+   "nivel": "D1",
+   "motivo": "dado parado: la vista de arriba es un circulo; la foto de Home Depot es lateral",
+   "id": "FTS-BAS-01-C4-04-19",
+   "px": [
+    70,
+    70
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Dado 9/16 in 3/8",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 17,
+   "nivel": "D1",
+   "motivo": "dado parado: la vista de arriba es un circulo; la foto de Home Depot es lateral",
+   "id": "FTS-BAS-01-C4-04-20",
+   "px": [
+    70,
+    70
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Dado 13 mm 3/8",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 16,
+   "nivel": "D1",
+   "motivo": "dado parado: la vista de arriba es un circulo; la foto de Home Depot es lateral",
+   "id": "FTS-BAS-01-C4-04-21",
+   "px": [
+    66,
+    66
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Dado 1/2 in 3/8",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 16,
+   "nivel": "D1",
+   "motivo": "dado parado: la vista de arriba es un circulo; la foto de Home Depot es lateral",
+   "id": "FTS-BAS-01-C4-04-22",
+   "px": [
+    66,
+    66
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Dado 1/2 in 3/8",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 16,
+   "nivel": "D1",
+   "motivo": "dado parado: la vista de arriba es un circulo; la foto de Home Depot es lateral",
+   "id": "FTS-BAS-01-C4-04-23",
+   "px": [
+    66,
+    66
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Dado 3/8 in 3/8",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 15,
+   "nivel": "D1",
+   "motivo": "dado parado: la vista de arriba es un circulo; la foto de Home Depot es lateral",
+   "id": "FTS-BAS-01-C4-04-24",
+   "px": [
+    62,
+    62
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Dado 12 mm 3/8",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 14,
+   "nivel": "D1",
+   "motivo": "dado parado: la vista de arriba es un circulo; la foto de Home Depot es lateral",
+   "id": "FTS-BAS-01-C4-04-25",
+   "px": [
+    58,
+    58
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Dado 5/16 in",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 14,
+   "nivel": "D1",
+   "motivo": "dado parado: la vista de arriba es un circulo; la foto de Home Depot es lateral",
+   "id": "FTS-BAS-01-C4-04-26",
+   "px": [
+    58,
+    58
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Dado 7/16 in 3/8",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 14,
+   "nivel": "D1",
+   "motivo": "dado parado: la vista de arriba es un circulo; la foto de Home Depot es lateral",
+   "id": "FTS-BAS-01-C4-04-27",
+   "px": [
+    58,
+    58
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Dado 7/16 in 3/8",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 14,
+   "nivel": "D1",
+   "motivo": "dado parado: la vista de arriba es un circulo; la foto de Home Depot es lateral",
+   "id": "FTS-BAS-01-C4-04-28",
+   "px": [
+    58,
+    58
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 4,
+   "pieza": "Dado 7/16 in 3/8",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 14,
+   "nivel": "D1",
+   "motivo": "dado parado: la vista de arriba es un circulo; la foto de Home Depot es lateral",
+   "id": "FTS-BAS-01-C4-04-29",
+   "px": [
+    58,
+    58
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 5,
+   "pieza": "Tazon magnetico Husky",
+   "tipo": "foto",
+   "fuente": "TAZON",
+   "precision": "exacta",
+   "px_mm": 2.38,
+   "L_mm": 150,
+   "nivel": "D1",
+   "A_foto_mm": 142.9,
+   "A_catalogo_mm": 150,
+   "id": "FTS-BAS-01-C5-01",
+   "px": [
+    357,
+    340
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 5,
+   "pieza": "Desarmador Husky P1",
+   "tipo": "foto",
+   "fuente": "HDS-P1",
+   "precision": "representativa",
+   "px_mm": 2.37,
+   "L_mm": 230,
+   "nivel": "F (envolvente del juego / n)",
+   "A_foto_mm": 38.0,
+   "A_catalogo_mm": 31.3,
+   "id": "FTS-BAS-01-C5-02-01",
+   "px": [
+    545,
+    90
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 5,
+   "pieza": "Desarmador Husky P1",
+   "tipo": "foto",
+   "fuente": "HDS-P1",
+   "precision": "representativa",
+   "px_mm": 2.37,
+   "L_mm": 230,
+   "nivel": "F (envolvente del juego / n)",
+   "A_foto_mm": 38.0,
+   "A_catalogo_mm": 31.3,
+   "id": "FTS-BAS-01-C5-02-02",
+   "px": [
+    545,
+    90
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 5,
+   "pieza": "Desarmador Husky P2",
+   "tipo": "foto",
+   "fuente": "HDS-P2",
+   "precision": "representativa",
+   "px_mm": 1.661,
+   "L_mm": 230,
+   "nivel": "F (envolvente del juego / n)",
+   "A_foto_mm": 33.7,
+   "A_catalogo_mm": 31.3,
+   "id": "FTS-BAS-01-C5-02-03",
+   "px": [
+    382,
+    56
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 5,
+   "pieza": "Desarmador aislado PH2 x 100 (32102)",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 215,
+   "A_catalogo_mm": 32,
+   "nivel": "F",
+   "motivo": "Wiha 32102 sin ficha en las tres tiendas",
+   "id": "FTS-BAS-01-C5-03",
+   "px": [
+    864,
+    132
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 5,
+   "pieza": "Pinza de presion C 6 in Torque Lock 48-22-3532",
+   "tipo": "foto",
+   "fuente": "PRES6C",
+   "precision": "exacta",
+   "px_mm": 24.362,
+   "L_mm": 152,
+   "nivel": "F",
+   "A_foto_mm": 73.3,
+   "A_catalogo_mm": 70,
+   "id": "FTS-BAS-01-C5-04",
+   "px": [
+    3703,
+    1785
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 5,
+   "pieza": "Flexometro 5 m Stanley 30-615",
+   "tipo": "foto",
+   "fuente": "FLEX",
+   "precision": "representativa",
+   "px_mm": 2.057,
+   "L_mm": 70,
+   "nivel": "D2",
+   "A_foto_mm": 67.1,
+   "A_catalogo_mm": 60,
+   "id": "FTS-BAS-01-C5-05",
+   "px": [
+    144,
+    138
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 5,
+   "pieza": "Juego 3 brocas escalonadas Truper",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 150,
+   "A_catalogo_mm": 90,
+   "nivel": "F",
+   "motivo": "juego Truper de 3 brocas escalonadas: truper.com bloqueado y sin ficha en Home Depot",
+   "id": "FTS-BAS-01-C5-06",
+   "px": [
+    604,
+    364
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 5,
+   "pieza": "Flexometro 5 m Stanley 30-615",
+   "tipo": "foto",
+   "fuente": "FLEX",
+   "precision": "representativa",
+   "px_mm": 2.057,
+   "L_mm": 70,
+   "nivel": "D2",
+   "A_foto_mm": 67.1,
+   "A_catalogo_mm": 60,
+   "id": "FTS-BAS-01-C5-07",
+   "px": [
+    144,
+    138
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 5,
+   "pieza": "Desarmador aislado plano 4.5 x 100 (32023)",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 215,
+   "A_catalogo_mm": 30,
+   "nivel": "F",
+   "motivo": "Wiha 32023 sin ficha en las tres tiendas",
+   "id": "FTS-BAS-01-C5-08",
+   "px": [
+    864,
+    124
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 6,
+   "pieza": "Desarmador Husky P2",
+   "tipo": "foto",
+   "fuente": "HDS-P2",
+   "precision": "representativa",
+   "px_mm": 1.661,
+   "L_mm": 230,
+   "nivel": "F (envolvente del juego / n)",
+   "A_foto_mm": 33.7,
+   "A_catalogo_mm": 31.3,
+   "id": "FTS-BAS-01-C6-01-01",
+   "px": [
+    382,
+    56
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 6,
+   "pieza": "Desarmador Husky P2",
+   "tipo": "foto",
+   "fuente": "HDS-P2",
+   "precision": "representativa",
+   "px_mm": 1.661,
+   "L_mm": 230,
+   "nivel": "F (envolvente del juego / n)",
+   "A_foto_mm": 33.7,
+   "A_catalogo_mm": 31.3,
+   "id": "FTS-BAS-01-C6-01-02",
+   "px": [
+    382,
+    56
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 6,
+   "pieza": "Desarmador Husky P2",
+   "tipo": "foto",
+   "fuente": "HDS-P2",
+   "precision": "representativa",
+   "px_mm": 1.661,
+   "L_mm": 230,
+   "nivel": "F (envolvente del juego / n)",
+   "A_foto_mm": 33.7,
+   "A_catalogo_mm": 31.3,
+   "id": "FTS-BAS-01-C6-01-03",
+   "px": [
+    382,
+    56
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 6,
+   "pieza": "Pinza de presion C 11 in Torque Lock 48-22-3531",
+   "tipo": "foto",
+   "fuente": "PRES11",
+   "precision": "exacta",
+   "px_mm": 1.742,
+   "L_mm": 279,
+   "nivel": "F",
+   "A_foto_mm": 128.6,
+   "A_catalogo_mm": 110,
+   "id": "FTS-BAS-01-C6-02",
+   "px": [
+    486,
+    224
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 6,
+   "pieza": "Extension 3/8 de 6 in",
+   "tipo": "foto",
+   "fuente": "EXT6",
+   "precision": "exacta",
+   "px_mm": 2.382,
+   "L_mm": 152.4,
+   "nivel": "ver fuente",
+   "A_foto_mm": 16.0,
+   "A_catalogo_mm": 24.7,
+   "id": "FTS-BAS-01-C6-03-01",
+   "px": [
+    363,
+    38
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 6,
+   "pieza": "Extension 3/8 de 10 in",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 254.0,
+   "nivel": "ver fuente",
+   "motivo": "extension de 10 in: sin ficha propia en homedepot.com.mx",
+   "id": "FTS-BAS-01-C6-03-02",
+   "px": [
+    1020,
+    103
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 6,
+   "pieza": "Maneral de fuerza 3/8",
+   "tipo": "foto",
+   "fuente": "PALANCA",
+   "precision": "exacta",
+   "px_mm": 2.37,
+   "L_mm": 230.0,
+   "nivel": "ver fuente",
+   "A_foto_mm": 22.8,
+   "A_catalogo_mm": 24.7,
+   "id": "FTS-BAS-01-C6-03-03",
+   "px": [
+    545,
+    54
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 7,
+   "pieza": "Martillo una curva 16 oz Truper MA-16F",
+   "tipo": "foto",
+   "fuente": "MART",
+   "precision": "exacta",
+   "px_mm": 1.621,
+   "L_mm": 340,
+   "nivel": "D1",
+   "A_foto_mm": 125.3,
+   "A_catalogo_mm": 130,
+   "id": "FTS-BAS-01-C7-01",
+   "px": [
+    551,
+    203
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 7,
+   "pieza": "Desarmador aislado plano 3.0 x 100 (32012)",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 205,
+   "A_catalogo_mm": 28,
+   "nivel": "F",
+   "motivo": "Wiha 32012 sin ficha en las tres tiendas",
+   "id": "FTS-BAS-01-C7-02",
+   "px": [
+    824,
+    116
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 7,
+   "pieza": "Pinza de presion 7 in mordaza recta Husky",
+   "tipo": "foto",
+   "fuente": "PRES7",
+   "precision": "exacta",
+   "px_mm": 2.995,
+   "L_mm": 182,
+   "nivel": "D1",
+   "A_foto_mm": 57.8,
+   "A_catalogo_mm": 62,
+   "id": "FTS-BAS-01-C7-03",
+   "px": [
+    545,
+    173
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 7,
+   "pieza": "Pinza de punta aislada 160 (32926)",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 160,
+   "A_catalogo_mm": 55,
+   "nivel": "F",
+   "motivo": "Wiha 32926: solo en homedepot.com, imagen bloqueada por la red",
+   "id": "FTS-BAS-01-C7-04",
+   "px": [
+    644,
+    224
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 7,
+   "pieza": "Pinza de presion 10 in mordaza curva Husky 709204",
+   "tipo": "foto",
+   "fuente": "PRES10",
+   "precision": "exacta",
+   "px_mm": 2.146,
+   "L_mm": 254,
+   "nivel": "D1",
+   "A_foto_mm": 75.0,
+   "A_catalogo_mm": 66,
+   "id": "FTS-BAS-01-C7-05",
+   "px": [
+    545,
+    161
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 8,
+   "pieza": "Mini esmeriladora 4-1/2 alambrica 6130-33 + cable",
+   "tipo": "foto",
+   "fuente": "ESM45",
+   "precision": "exacta",
+   "px_mm": 0.952,
+   "L_mm": 357,
+   "nivel": "D2",
+   "A_foto_mm": 161.7,
+   "A_catalogo_mm": 152,
+   "id": "FTS-BAS-01-C8-01",
+   "px": [
+    340,
+    154
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 9,
+   "pieza": "Cargador sencillo M18/M12 48-59-1812 (compra)",
+   "tipo": "foto",
+   "fuente": "CARG1",
+   "precision": "exacta",
+   "px_mm": 12.807,
+   "L_mm": 202,
+   "nivel": "D2",
+   "A_foto_mm": 146.8,
+   "A_catalogo_mm": 155,
+   "id": "FTS-BAS-01-C9-01",
+   "px": [
+    2587,
+    1880
+   ]
+  },
+  {
+   "modulo": "TUB",
+   "cajon": 1,
+   "pieza": "Cabezal 12R 3/4 NPT de repuesto",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 100,
+   "A_catalogo_mm": 100,
+   "nivel": "F",
+   "motivo": "cabezal Ridgid 12R 3/4 suelto: sin ficha en homedepot.com.mx; homedepot.com bloqueado",
+   "id": "FTS-TUB-01-C1-01",
+   "px": [
+    404,
+    404
+   ]
+  },
+  {
+   "modulo": "TUB",
+   "cajon": 1,
+   "pieza": "Nivel para tuberia 6.5 in Milwaukee 48-22-5110",
+   "tipo": "foto",
+   "fuente": "NIVTUB",
+   "precision": "exacta",
+   "px_mm": 12.302,
+   "L_mm": 159,
+   "nivel": "D1",
+   "A_foto_mm": 42.3,
+   "A_catalogo_mm": 51,
+   "id": "FTS-TUB-01-C1-02",
+   "px": [
+    1956,
+    520
+   ]
+  },
+  {
+   "modulo": "TUB",
+   "cajon": 1,
+   "pieza": "Llave de cadena caiman 6 in Urrea 797UR",
+   "tipo": "foto",
+   "fuente": "CAIMAN",
+   "precision": "exacta",
+   "px_mm": 0.978,
+   "L_mm": 400,
+   "nivel": "F",
+   "A_foto_mm": 111.5,
+   "A_catalogo_mm": 80,
+   "id": "FTS-TUB-01-C1-03",
+   "px": [
+    391,
+    109
+   ]
+  },
+  {
+   "modulo": "TUB",
+   "cajon": 1,
+   "pieza": "Llave stillson 14 in Husky 73126",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 356,
+   "A_catalogo_mm": 83,
+   "nivel": "D1",
+   "motivo": "stillson Husky 14 in 73126: sin ficha en homedepot.com.mx; homedepot.com bloqueado",
+   "id": "FTS-TUB-01-C1-04",
+   "px": [
+    1428,
+    336
+   ]
+  },
+  {
+   "modulo": "TUB",
+   "cajon": 2,
+   "pieza": "Llave stillson 14 in Husky 73126",
+   "tipo": "silueta",
+   "px_mm": 4.0,
+   "L_mm": 356,
+   "A_catalogo_mm": 83,
+   "nivel": "D1",
+   "motivo": "stillson Husky 14 in 73126: sin ficha en homedepot.com.mx; homedepot.com bloqueado",
+   "id": "FTS-TUB-01-C2-01",
+   "px": [
+    1428,
+    336
+   ]
+  },
+  {
+   "modulo": "TUB",
+   "cajon": 2,
+   "pieza": "Nivel para tuberia 6.5 in Milwaukee 48-22-5110",
+   "tipo": "foto",
+   "fuente": "NIVTUB",
+   "precision": "exacta",
+   "px_mm": 12.302,
+   "L_mm": 159,
+   "nivel": "D1",
+   "A_foto_mm": 42.3,
+   "A_catalogo_mm": 51,
+   "id": "FTS-TUB-01-C2-02",
+   "px": [
+    1956,
+    520
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 6,
+   "pieza": "Desarmador de precision 1 de 6",
+   "tipo": "foto",
+   "fuente": "PREC6",
+   "precision": "exacta (componente 1 de la foto del juego)",
+   "px_mm": 14.5,
+   "L_mm": 190.0,
+   "nivel": "escala de grupo: la pieza mas larga = 190 mm (F (envolvente del juego / n))",
+   "A_foto_mm": 19.5,
+   "A_catalogo_mm": 12.5,
+   "id": "FTS-BAS-01-C6-04-01",
+   "px": [
+    2755,
+    283
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 6,
+   "pieza": "Desarmador de precision 2 de 6",
+   "tipo": "foto",
+   "fuente": "PREC6",
+   "precision": "exacta (componente 2 de la foto del juego)",
+   "px_mm": 14.5,
+   "L_mm": 166.9,
+   "nivel": "escala de grupo: la pieza mas larga = 190 mm (F (envolvente del juego / n))",
+   "A_foto_mm": 16.8,
+   "A_catalogo_mm": 12.5,
+   "id": "FTS-BAS-01-C6-04-02",
+   "px": [
+    2420,
+    244
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 6,
+   "pieza": "Desarmador de precision 3 de 6",
+   "tipo": "foto",
+   "fuente": "PREC6",
+   "precision": "exacta (componente 3 de la foto del juego)",
+   "px_mm": 14.5,
+   "L_mm": 144.3,
+   "nivel": "escala de grupo: la pieza mas larga = 190 mm (F (envolvente del juego / n))",
+   "A_foto_mm": 17.0,
+   "A_catalogo_mm": 12.5,
+   "id": "FTS-BAS-01-C6-04-03",
+   "px": [
+    2092,
+    246
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 6,
+   "pieza": "Desarmador de precision 4 de 6",
+   "tipo": "foto",
+   "fuente": "PREC6",
+   "precision": "exacta (componente 4 de la foto del juego)",
+   "px_mm": 14.5,
+   "L_mm": 132.6,
+   "nivel": "escala de grupo: la pieza mas larga = 190 mm (F (envolvente del juego / n))",
+   "A_foto_mm": 16.5,
+   "A_catalogo_mm": 12.5,
+   "id": "FTS-BAS-01-C6-04-04",
+   "px": [
+    1923,
+    239
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 6,
+   "pieza": "Desarmador de precision 5 de 6",
+   "tipo": "foto",
+   "fuente": "PREC6",
+   "precision": "exacta (componente 5 de la foto del juego)",
+   "px_mm": 14.5,
+   "L_mm": 132.8,
+   "nivel": "escala de grupo: la pieza mas larga = 190 mm (F (envolvente del juego / n))",
+   "A_foto_mm": 16.7,
+   "A_catalogo_mm": 12.5,
+   "id": "FTS-BAS-01-C6-04-05",
+   "px": [
+    1926,
+    242
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 6,
+   "pieza": "Desarmador de precision 6 de 6",
+   "tipo": "foto",
+   "fuente": "PREC6",
+   "precision": "exacta (componente 6 de la foto del juego)",
+   "px_mm": 14.5,
+   "L_mm": 120.5,
+   "nivel": "escala de grupo: la pieza mas larga = 190 mm (F (envolvente del juego / n))",
+   "A_foto_mm": 17.0,
+   "A_catalogo_mm": 12.5,
+   "id": "FTS-BAS-01-C6-04-06",
+   "px": [
+    1747,
+    247
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 6,
+   "pieza": "Adaptador 1/4 a 3/8",
+   "tipo": "foto",
+   "fuente": "ADAP",
+   "precision": "exacta (componente 1 de la foto del juego)",
+   "px_mm": 9.526,
+   "L_mm": 34.1,
+   "nivel": "escala ajustada al hueco 70 x 19.0 (sin medida por pieza)",
+   "A_foto_mm": 19.0,
+   "A_catalogo_mm": 19.0,
+   "id": "FTS-BAS-01-C6-05-01",
+   "px": [
+    325,
+    181
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 6,
+   "pieza": "Adaptador 3/8 a 1/2",
+   "tipo": "foto",
+   "fuente": "ADAP",
+   "precision": "exacta (componente 2 de la foto del juego)",
+   "px_mm": 5.211,
+   "L_mm": 41.6,
+   "nivel": "escala ajustada al hueco 70 x 19.0 (sin medida por pieza)",
+   "A_foto_mm": 19.0,
+   "A_catalogo_mm": 19.0,
+   "id": "FTS-BAS-01-C6-05-02",
+   "px": [
+    217,
+    99
+   ]
+  },
+  {
+   "modulo": "BASE",
+   "cajon": 6,
+   "pieza": "Adaptador 1/2 a 3/8",
+   "tipo": "foto",
+   "fuente": "ADAP",
+   "precision": "exacta (componente 3 de la foto del juego)",
+   "px_mm": 6.842,
+   "L_mm": 33.0,
+   "nivel": "escala ajustada al hueco 70 x 19.0 (sin medida por pieza)",
+   "A_foto_mm": 19.0,
+   "A_catalogo_mm": 19.0,
+   "id": "FTS-BAS-01-C6-05-03",
+   "px": [
+    226,
+    130
+   ]
+  }
+ ]
+}
