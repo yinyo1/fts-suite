@@ -128,7 +128,8 @@ def _procesar(contenido: bytes, nombre: str, meta: dict, corrida_id):
     log.info("procesado %s → %s", enmascarar_texto(nombre), [(i["estado"], i["periodo"]) for i in out])
     subir = [i for i in out if i["accion"] in ("copiar", "otras") and i["carpeta_destino"] and i["nombre_destino"]]
     rechazar = [i for i in out if i["accion"] == "rechazados" and i["es_pieza_de_zip"]]
-    return json.loads(json.dumps({"ok": True, "sha256": sha256_bytes(contenido), "items": out, "subir": subir,
+    entrada = {**meta, "nombre": nombre, "bytes": len(contenido)}
+    return json.loads(json.dumps({"ok": True, "entrada": entrada, "sha256": sha256_bytes(contenido), "items": out, "subir": subir,
                                   "rechazar_piezas": rechazar,
                                   "mover_original_a": "Rechazados" if rechazo_total else "Procesados",
                                   "motivo_original": raiz["motivo"] if rechazo_total else None,

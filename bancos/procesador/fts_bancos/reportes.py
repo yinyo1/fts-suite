@@ -178,7 +178,8 @@ def leeme_md(con, generado: str) -> str:
          "2. El sistema identifica cada estado por el **número de cuenta o CLABE** impreso en el PDF y por el **periodo** de la pág. 1, nunca por el nombre del archivo.",
          "3. Nombre canónico: `Banco_Cuenta-Moneda_NumeroDeCuenta_AAAA-MM.pdf`.",
          "4. Un estado queda **validado** sólo si pasa tres pruebas al centavo: V1 (resumen del banco), V2 (saldo corrido contra cada saldo impreso) y V3 (el saldo final del mes anterior es el inicial de éste).",
-         "5. Nada se borra. Los originales del buzón pasan a `Procesados`; lo que no se pudo usar queda en `Rechazados` con un .txt del motivo.", "",
+         "5. Nada se borra. Los originales del buzón pasan a `Procesados`; lo que no se pudo usar queda en `Rechazados` con un .txt del motivo.",
+         "6. La versión escrita a mano de este archivo se conservó como `00 LEEME - Inventario y reglas (version manual original).md`.", "",
          "## Inventario por cuenta", ""]
     por_cuenta: dict = {}
     for a in archivos:
