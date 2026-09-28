@@ -410,16 +410,46 @@
    * repinta entero cuando cambia la estructura de la pantalla.
    */
 
+  /** La razón por la que el botón está trabado, en UN SOLO SITIO.
+   *
+   * ⚠️ Existe porque no existía, y eso costó una falla real: el trabón se
+   * calculaba en DOS lados —el render completo y este repintado parcial— y el
+   * parcial se quedó sin los candados de la confirmación. O sea que el botón
+   * nacía bloqueado y se DESBLOQUEABA al teclear en cualquier otro campo, que
+   * es un candado peor que ninguno: da la impresión de estar cuidando algo.
+   * La prueba de los cinco compromisos pasaba, y pasaba por la razón
+   * equivocada (CLAUDE.md §20 #18).
+   *
+   * Devuelve la lista de razones EN ORDEN de qué arreglar primero. Decirlas
+   * todas juntas manda a la persona a arreglar lo que no es (§20 #12b), así
+   * que el pie sólo pinta la primera. */
+  function razones(m, p) {
+    var CP = G.MachoteCompromisos, D = G.MachoteDocumento, CFM = G.Confirmacion;
+    var out = [];
+    if (!(p.cliente && p.cliente.odoo_partner_id))
+      out.push('Falta elegir el cliente del catálogo. ');
+    var conPrecio = (D && _st.doc) ? D.cuenta(_st.doc.bloques).linea : 0;
+    if (conPrecio === 0)
+      out.push('El documento no tiene ninguna línea con precio: una orden sin ' +
+               'importe no es una orden. ');
+    var fCp = CP ? CP.faltantes(m) : [];
+    if (fCp.length) out.push('Faltan ' + fCp.length + ' de los cinco compromisos. ');
+    var fCf = CFM ? CFM.duras(m, p._calc) : [];
+    if (fCf.length)
+      out.push((fCf.length === 1 ? 'Falta un dato' : 'Faltan ' + fCf.length + ' datos') +
+               ' de la confirmación: ' + fCf[0].que + '. ');
+    return { lista: out, compromisos: fCp, confirmacion: fCf };
+  }
+
   /** El botón de crear y la razón por la que está trabado. Es lo único que
-   *  depende de los compromisos y del documento a la vez. */
+   *  depende de los compromisos, del documento y de la confirmación a la vez. */
   function refrescarTrabado() {
     if (!_st) return;
     var m = _st.machote;
-    var CP = G.MachoteCompromisos, D = G.MachoteDocumento;
-    var faltaCliente = !(_st.pre.cliente && _st.pre.cliente.odoo_partner_id);
-    var falta = CP ? CP.faltantes(m) : [];
-    var conPrecio = (D && _st.doc) ? D.cuenta(_st.doc.bloques).linea : 0;
-    var trabado = faltaCliente || falta.length > 0 || conPrecio === 0;
+    var CP = G.MachoteCompromisos;
+    var rz = razones(m, _st.pre);
+    var falta = rz.compromisos;
+    var trabado = rz.lista.length > 0;
 
     var b = document.getElementById('or-crear');
     if (b) b.disabled = trabado;
@@ -437,11 +467,8 @@
     }
 
     var pie = document.querySelector('.or-trabado');
-    var texto = faltaCliente ? 'Falta elegir el cliente del catálogo. '
-      : conPrecio === 0 ? 'El documento no tiene ninguna línea con precio: una orden sin ' +
-                          'importe no es una orden. '
-      : falta.length ? 'Faltan ' + falta.length + ' de los cinco compromisos. ' : '';
-    if (pie) { pie.textContent = texto; pie.style.display = trabado ? '' : 'none'; }
+    if (pie) { pie.textContent = rz.lista[0] || '';
+               pie.style.display = trabado ? '' : 'none'; }
   }
 
   /** El bloque de compromisos, cuando cambió su ESTRUCTURA — se agregó o se
@@ -539,14 +566,12 @@
     var CP = G.MachoteCompromisos;
     var D = G.MachoteDocumento;
     var CFM = G.Confirmacion;
-    var faltaCompromiso = CP ? CP.faltantes(m) : [];
     /* V1.45 · los campos que la confirmación va a exigir. Se capturan AQUÍ, al
      * crear la orden, y no al confirmarla: el cliente, el contacto, la PO y el
      * anticipo son datos que ya se tienen cuando se manda la orden, y pedirlos
      * al final significa pedírselos a otra persona, otro día, sin el correo del
      * cliente delante. */
     var confirmables = CFM ? CFM.html(m, p._calc) : '';
-    var faltaConfirmar = CFM ? CFM.duras(m, p._calc) : [];
     var campos = CP ? CP.html(m)
       : '<p class="tiny nota">Los compromisos no están disponibles en esta pantalla.</p>';
 
@@ -561,10 +586,12 @@
              (_st.tipoTrabajo === t.id ? ' selected' : '') + '>' + esc(t.n) + '</option>';
     }).join('');
 
-    /* Tres cosas distintas impiden crear la orden, y decirlas juntas manda a
-     * la persona a arreglar lo que no es (CLAUDE.md §20 #12b). */
-    var trabado = faltaCliente || faltaCompromiso.length > 0 || conPrecio === 0 ||
-                  faltaConfirmar.length > 0;
+    /* CUATRO cosas distintas impiden crear la orden, y decirlas juntas manda a
+     * la persona a arreglar lo que no es (CLAUDE.md §20 #12b). La cuenta sale
+     * de `razones()`, que es la misma que usa el repintado parcial — tenerla
+     * dos veces es cómo se le cayó la confirmación a uno de los dos. */
+    var rz = razones(m, p);
+    var trabado = rz.lista.length > 0;
 
     cascaron(
       '<div class="or-cab">' +
@@ -653,12 +680,7 @@
           'Crear la orden en Odoo</button>' +
       '</div>' +
       (trabado
-        ? '<p class="tiny nota or-trabado">' +
-            (faltaCliente ? 'Falta elegir el cliente del catálogo. '
-             : conPrecio === 0 ? 'El documento no tiene ninguna línea con precio: una orden sin ' +
-                                'importe no es una orden. '
-             : 'Faltan ' + faltaCompromiso.length + ' de los cinco compromisos. ') +
-          '</p>'
+        ? '<p class="tiny nota or-trabado">' + esc(rz.lista[0] || '') + '</p>'
         : '') +
       '<div id="or-contrato-caja"></div>');
 

@@ -67,6 +67,54 @@ const CALC = (function () {
   return ctx.window.MachoteCalc;
 })();
 
+/* ── V1.45 · la CONFIRMACIÓN completa, en las fixturas ───────────────────
+ *
+ * Tercera vez que hace falta lo mismo, y por la misma razón que el `cliente_id`
+ * de V1.31 y los cinco compromisos de V1.33: desde V1.45 el botón de crear la
+ * orden nace bloqueado si faltan los datos que la confirmación va a exigir
+ * (contacto, decisión de IVA, PO con número y archivo, cuadre y anticipo). Las
+ * pruebas que miden OTRA cosa tienen que traerlos puestos, o se quedan
+ * esperando un botón que nunca se habilita y acaban midiendo un candado
+ * distinto del que dicen medir.
+ *
+ * ⚠️ El importe de la PO NO va a mano: sale de `CALC.calcular(m).precio`, el
+ * mismo motor que corre en la pantalla. Un número copiado cuadraría hoy y
+ * dejaría de cuadrar el día que alguien toque el motor o la fixtura — y la
+ * falla no diría «la fixtura envejeció», diría «el botón sigue bloqueado»,
+ * que manda a buscar al lugar equivocado. Puesto igual al SUBTOTAL, así que el
+ * veredicto del cuadre es SIN_IVA, que es como emite su PO la mayoría de los
+ * clientes de FTS.
+ *
+ * Y hay una prueba dedicada (`V1.45 · la fixtura de la confirmación está
+ * COMPLETA`) que exige cero candados duros sobre esta misma fixtura: sin ella,
+ * el día que se agregue un candado nuevo, cinco pruebas de otras versiones
+ * empezarían a fallar sin decir por qué. */
+const CONFIRMACION_OK = (m) => {
+  const c = CALC.calcular(m);
+  if (!c || !(c.precio > 0))
+    throw new Error('la fixtura de confirmación necesita un precio del motor y no lo hay: ' +
+                    m.id + ' → ' + JSON.stringify(c && c.precio));
+  return {
+    contacto: { partner_id: 991, nombre: 'ZZ Contacto de Prueba',
+                correo: 'zz.prueba@ejemplo.mx', tel: '81 8888 8888' },
+    iva: { decision: 'lleva', leyenda_id: null, leyenda_texto: '' },
+    po: { numero: 'ZZ-PO-0001', importe: c.precio,
+          archivo: { nombre: 'zz-po-0001.pdf', tipo: 'application/pdf',
+                     bytes: 4096, paginas: 1, con_texto: true,
+                     subido_at: '2026-09-28T00:00:00.000Z' },
+          veredicto: null, varias: null },
+    anticipo: { aplica: true, pct: 50 },
+    at: '2026-09-28T00:00:00.000Z', por: 'zz.prueba'
+  };
+};
+/** El mapa id → confirmación, que es lo que se puede meter a un initScript:
+ *  el motor vive en Node y dentro del navegador no está disponible. */
+const CONF_POR_ID = (function () {
+  const out = {};
+  MACHOTES_FIXTURE.forEach(function (m) { out[m.id] = CONFIRMACION_OK(m); });
+  return out;
+})();
+
 /* ── V1.27 · las pruebas SIEMBRAN sus datos ──────────────────────────────
  *
  * Hasta V1.26 la pantalla arrancaba con los cuatro ejemplos de `demo.js` y las
@@ -3502,6 +3550,11 @@ const CP = { pago: { dias: 30, termino_texto: 'Crédito 30 días',
             d.machotes.forEach(function (m) {
               if (!m.cliente_id) { m.cliente_id = 991; m.cliente = 'ZZ Cliente de prueba'; }
               if (!m.compromisos) m.compromisos = JSON.parse(JSON.stringify(CP));
+              /* V1.45 · y la confirmación, por la misma razón que las dos de
+               * arriba. Por id, porque el importe de la PO es el subtotal de
+               * ESE machote y cada uno tiene el suyo. */
+              if (!m.confirmacion && cfg.conf && cfg.conf[m.id])
+                m.confirmacion = JSON.parse(JSON.stringify(cfg.conf[m.id]));
             });
             localStorage.setItem('fts_machote_v1', JSON.stringify(d));
           }
@@ -3521,7 +3574,7 @@ const CP = { pago: { dias: 30, termino_texto: 'Crédito 30 días',
         if (s.indexOf('/comercial/') >= 0) return new Promise(function () {});
         return orig.apply(this, arguments);
       };
-    }, { r: respuestaOrden });
+    }, { r: respuestaOrden, conf: CONF_POR_ID });
     return q;
   };
 
@@ -6500,6 +6553,8 @@ await sembrarMachotes(q);
                             entrega: { texto: '8 a 10 semanas', fecha: '2026-12-15' },
                             vigencia: { dias: 30, hasta: '2026-10-15' },
                             at: new Date().toISOString(), por: 'zz.prueba' };
+          /* V1.45 · y la confirmación completa, por la misma razón. */
+          m.confirmacion = JSON.parse(JSON.stringify(cfg.conf));
           localStorage.setItem('fts_machote_v1', JSON.stringify({
             v: 1, guardado_at: new Date().toISOString(), machotes: [m], handoff: {} }));
         } catch (e) {}
@@ -6517,7 +6572,8 @@ await sembrarMachotes(q);
         if (s.indexOf('/comercial/') >= 0) return new Promise(function () {});
         return orig.apply(this, arguments);
       };
-    }, { uno: MACHOTES_FIXTURE[0], cat: CATALOGO });
+    }, { uno: MACHOTES_FIXTURE[0], cat: CATALOGO,
+         conf: CONF_POR_ID[MACHOTES_FIXTURE[0].id] });
     return q;
   };
 
@@ -10172,6 +10228,97 @@ await sembrarMachotes(q);
       if (t !== false) throw new Error('el botón sigue trabado con todo lleno');
       console.log('    destrabado');
     } finally { await q.close(); }
+  });
+
+  await paso('V1.45 · D · el candado NO se abre al teclear en OTRO campo', async () => {
+    /* La prueba que faltaba, y por eso hubo falla.
+     *
+     * El trabón se calculaba en DOS sitios —el render completo y el repintado
+     * parcial del botón— y el parcial se quedó SIN los candados de la
+     * confirmación. O sea que el botón nacía bloqueado, y bastaba tocar
+     * cualquier otro campo (los compromisos, un precio del documento) para que
+     * el repintado lo DESBLOQUEARA con la confirmación todavía incompleta.
+     *
+     * Lo peor no es que dejara pasar: es que la prueba de los cinco
+     * compromisos PASABA, porque llenarlos destrababa el botón — y pasaba por
+     * la razón equivocada (CLAUDE.md §20 #18: una ausencia se lee como una
+     * respuesta). Un candado que se abre al teclear al lado es peor que no
+     * tenerlo: da la impresión de estar cuidando algo.
+     *
+     * Así que esto mide el repintado PARCIAL, no el render: se toca un campo
+     * que dispara `refrescarTrabado()` y se exige que el botón siga trabado. */
+    const q = await conMachoteOrden(null, false);
+    try {
+      if ((await botonTrabado(q)) !== true)
+        throw new Error('no arrancó trabado, así que esta prueba no mide nada');
+
+      /* Un compromiso: es el camino exacto por el que se colaba. */
+      await q.selectOption('#cp-pago', '30');
+      await q.waitForTimeout(400);
+      if ((await botonTrabado(q)) !== true)
+        throw new Error('el botón se DESTRABÓ al tocar los compromisos, con la confirmación incompleta');
+
+      /* Y un renglón del documento, que es el otro repintado parcial. */
+      const hayLinea = await q.evaluate(() => {
+        const i = document.querySelector('#modalOrden input[type="number"]');
+        if (!i) return false;
+        i.value = String((Number(i.value) || 1) + 1);
+        i.dispatchEvent(new Event('input', { bubbles: true }));
+        i.dispatchEvent(new Event('change', { bubbles: true }));
+        return true;
+      });
+      await q.waitForTimeout(400);
+      if ((await botonTrabado(q)) !== true)
+        throw new Error('el botón se DESTRABÓ al tocar el documento, con la confirmación incompleta');
+
+      /* Y el pie tiene que decir QUÉ falta de verdad. Decir «faltan 0 de los
+       * cinco compromisos» cuando lo que falta es la PO manda a la persona a
+       * arreglar lo que no es (§20 #12b). */
+      const pie = ((await q.textContent('.or-trabado')) || '').replace(/\s+/g, ' ');
+      if (!/confirmaci[óo]n/i.test(pie))
+        throw new Error('el pie no nombra la confirmación: «' + pie + '»');
+      if (/Faltan 0 /.test(pie))
+        throw new Error('el pie dice que faltan 0 de algo: «' + pie + '»');
+      console.log('    trabado tras tocar compromisos' + (hayLinea ? ' y documento' : '') +
+                  ' · el pie dice: «' + pie.trim().slice(0, 70) + '»');
+    } finally { await q.close(); }
+  });
+
+  await paso('V1.45 · D · la fixtura de la confirmación está COMPLETA para las pruebas viejas', async () => {
+    /* La red que evita el próximo desconcierto.
+     *
+     * Cinco pruebas de V1.30, V1.31 y V1.33 miden otras cosas y necesitan un
+     * machote confirmable. Cuando se agregó el candado de la confirmación, esas
+     * cinco empezaron a fallar con «Timeout esperando el click» y «el botón
+     * siguió bloqueado» — mensajes que mandan a buscar al selector, no a la
+     * fixtura. Esta prueba falla PRIMERO y dice el nombre del candado, así que
+     * el día que se agregue el sexto, lo que se lee es qué le falta a la
+     * fixtura y no cinco pruebas rotas sin relación aparente.
+     *
+     * Corre en Node contra los módulos REALES, sin navegador: es una pregunta
+     * sobre los datos, no sobre la pantalla. */
+    const vm = require('vm');
+    const ctx = { window: {}, console: { log: function () {} } };
+    ctx.window.window = ctx.window;
+    vm.createContext(ctx);
+    ['calc.js', 'confirmacion.js'].forEach(function (f) {
+      vm.runInContext(require('fs').readFileSync(
+        path.resolve(__dirname, '..', 'js', f), 'utf8'), ctx);
+    });
+    const CF = ctx.window.Confirmacion;
+    if (!CF || !CF.duras) throw new Error('no cargó Confirmacion desde Node');
+
+    const malos = [];
+    MACHOTES_FIXTURE.forEach(function (base) {
+      const m = JSON.parse(JSON.stringify(base));
+      m.confirmacion = JSON.parse(JSON.stringify(CONF_POR_ID[m.id]));
+      const d = CF.duras(m, ctx.window.MachoteCalc.calcular(m));
+      if (d.length) malos.push(m.id + ' → ' + d.map(function (x) { return x.id; }).join(', '));
+    });
+    if (malos.length)
+      throw new Error('la fixtura de confirmación ya no alcanza: ' + malos.join(' | ') +
+                      ' — hay que completarla en CONFIRMACION_OK, no aflojar el candado');
+    console.log('    ' + MACHOTES_FIXTURE.length + ' machotes de fixtura, cero candados duros');
   });
 
   await paso('V1.45 · D · teclear el total de la PO deduce el IVA, y el repintado NO pierde el cableado', async () => {
