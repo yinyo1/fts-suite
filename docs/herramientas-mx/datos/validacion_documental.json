@@ -2,6 +2,7 @@
  "fecha": "2026-09-28",
  "niveles": {
   "V": "validado",
+  "M": "medida fisica (sin doble documental o difiere > 3 mm)",
   "D2": "documental doble",
   "D1": "documental simple",
   "F": "estimacion desde foto",

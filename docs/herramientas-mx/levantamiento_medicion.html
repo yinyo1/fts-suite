@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Medicion con vernier</title><style>
+:root{--bg:#f6f5f1;--card:#fff;--ink:#1d1d1b;--mut:#5f5e57;--line:#d9d6cc;--acc:#f2b705;--acc-ink:#1d1d1b;--ok:#2e7d32;--bad:#c62828;--warn:#b26a00;--chip:#efece3}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#171714;--card:#22221e;--ink:#f1efe8;--mut:#b3b0a6;--line:#3a3933;--chip:#2d2c27;--ok:#66bb6a;--bad:#ef5350;--warn:#ffb74d}}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--ink);color:var(--bg);padding:10px 16px}
+header h1{margin:0;font-size:17px}header p{margin:2px 0 0;font-size:12px;opacity:.8}
+main{max-width:860px;margin:0 auto;padding:12px 16px 90px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;margin:12px 0}
+.card h2{margin:0 0 6px;font-size:16px;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.card h2 small{font-weight:400;color:var(--mut);font-size:12px}
+label.f{display:block;font-size:12px;color:var(--mut);margin:6px 0 2px}
+input[type=text],input[type=number],select,textarea{width:100%;font:inherit;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+.row{border-top:1px solid var(--line);padding:8px 0}
+.row .t{font-weight:600;font-size:14px}.row .s{font-size:12px;color:var(--mut)}
+.seg{display:flex;gap:4px;margin:6px 0;flex-wrap:wrap}
+.seg button{flex:1 1 0;min-width:70px;padding:8px 4px;border:1px solid var(--line);border-radius:8px;background:var(--chip);color:var(--ink);font:inherit;font-size:13px}
+.seg button.on[data-v=existe]{background:var(--ok);color:#fff;border-color:var(--ok)}
+.seg button.on[data-v=no_existe]{background:var(--bad);color:#fff;border-color:var(--bad)}
+.seg button.on[data-v=danada]{background:var(--warn);color:#fff;border-color:var(--warn)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.chip{display:inline-block;background:var(--chip);border-radius:20px;padding:1px 8px;font-size:11px;margin-left:4px}
+.chip.w{background:var(--acc);color:var(--acc-ink)}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:8px 16px;display:flex;gap:8px;z-index:6}
+.bar button,.btn{flex:1;padding:10px;border-radius:8px;border:0;background:var(--acc);color:var(--acc-ink);font:inherit;font-weight:600}
+.bar button.sec{background:var(--chip);color:var(--ink)}
+.prog{font-size:12px;color:var(--mut)}
+.foto img{max-width:100%;border-radius:8px;margin-top:6px}
+nav.idx{display:flex;flex-wrap:wrap;gap:4px}nav.idx a{padding:4px 8px;border-radius:6px;background:var(--chip);color:var(--ink);text-decoration:none;font-size:13px}
+nav.idx a.done{background:var(--ok);color:#fff}
+svg{max-width:100%;height:auto}.croq{max-width:520px}@media (max-width:520px){.grid3.hdr{grid-template-columns:1fr}}.croq svg{width:100%}.ley{font-size:13px;margin:6px 0 10px;padding-left:22px}
+.note{font-size:12px;color:var(--mut)}
+@media print{header,.bar,nav.idx,.noprint{display:none!important}body{background:#fff;color:#000;font-size:11px}main{padding:0;max-width:none}
+.card{break-inside:avoid;border:1px solid #999;margin:6px 0}.seg{display:none}.pr{display:inline!important}input[type=text],input[type=number],textarea,select{border:0;border-bottom:1px solid #999;border-radius:0;padding:2px;background:#fff;color:#000}}
+.pr{display:none}
+</style></head>
+<body><header><h1>Medicion con vernier</h1><p>Proyecto Herramientas MX · cajones y carrito base · se guarda en este telefono</p></header><main>
+<div class="card"><h2>Antes de medir</h2>
+<div class="grid3 hdr"><div><label class="f">Fecha</label><input type="text" id="fecha"></div>
+<div><label class="f">Rol</label><select id="rol"><option>ingenieria</option><option>rol-taller</option><option>supervisor_sr</option><option>otro rol</option></select></div>
+<div><label class="f">Instrumento</label><select id="inst"><option>vernier digital 150 mm</option><option>vernier 300 mm</option><option>flexometro</option><option>bascula</option></select></div></div>
+<p class="note">Todo en milimetros, sin decimales; el peso en gramos. Primero los cajones de cada contenedor, luego las 40 piezas del carrito base, empezando por las de los cajones sensibles (marcadas). Si no puedes medir algo, deja el campo vacio y escribe por que en la nota.</p></div>
+<div class="card"><h2>1. Cajones <small>que medir</small></h2><div class="croq"><svg viewBox="0 0 360 170" role="img" aria-label="Que medir en un cajon">
+<style>.l{stroke:currentColor;fill:none;stroke-width:1.5}.d{stroke:#c62828;stroke-width:1.3;fill:none;marker-end:url(#a);marker-start:url(#a)}.t{font:12px system-ui;fill:currentColor}.n{fill:#c62828;font:bold 14px system-ui}</style>
+<defs><marker id="a" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#c62828"/></marker></defs>
+<text class="t" x="8" y="14">Arriba, cajon abierto</text>
+<rect class="l" x="8" y="24" width="140" height="100"/>
+<line class="d" x1="8" y1="136" x2="148" y2="136"/><text class="n" x="72" y="156">1</text>
+<line class="d" x1="160" y1="24" x2="160" y2="124"/><text class="n" x="166" y="79">2</text>
+<text class="t" x="196" y="14">De lado, dos cajones</text>
+<rect class="l" x="196" y="24" width="150" height="26"/><text class="t" x="214" y="42">cajon de arriba</text>
+<path class="l" d="M196 60 L196 130 L346 130 L346 60"/><path class="l" d="M196 60 L208 60 L208 70"/>
+<line class="d" x1="320" y1="130" x2="320" y2="60"/><text class="n" x="326" y="99">3</text>
+<line class="d" x1="290" y1="130" x2="290" y2="50"/><text class="n" x="274" y="99">5</text>
+<line class="d" x1="220" y1="60" x2="220" y2="70"/><text class="n" x="226" y="72">4</text>
+</svg><ol class="ley"><li><b>Ancho</b> interior, de pared a pared (de frente)</li><li><b>Fondo</b> interior, del frente a la pared de atras</li>
+<li><b>Alto</b> interior, del piso del cajon al borde</li><li><b>Labio</b>: lo que baja la pestana del frente</li>
+<li><b>Alto util</b>: del piso del cajon a la parte baja del cajon de arriba, con los dos cerrados. Es la medida que manda.</li></ol></div><div id="cont"></div></div>
+<div class="card"><h2>2. Piezas del carrito base <small>que medir</small></h2><div class="croq"><svg viewBox="0 0 360 150" role="img" aria-label="Que medir en una pieza">
+<style>.l{stroke:currentColor;fill:none;stroke-width:1.5}.d{stroke:#c62828;stroke-width:1.3;fill:none;marker-end:url(#b);marker-start:url(#b)}.t{font:12px system-ui;fill:currentColor}.n{fill:#c62828;font:bold 14px system-ui}</style>
+<defs><marker id="b" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#c62828"/></marker></defs>
+<text class="t" x="8" y="14">Acostada, de arriba</text>
+<path class="l" d="M12 40 h110 a14 14 0 0 1 0 28 h-110 z"/><circle class="l" cx="28" cy="54" r="8"/>
+<line class="d" x1="12" y1="84" x2="136" y2="84"/><text class="n" x="70" y="104">1</text>
+<line class="d" x1="148" y1="40" x2="148" y2="68"/><text class="n" x="154" y="59">2</text>
+<text class="t" x="196" y="14">Acostada, de lado</text><rect class="l" x="196" y="30" width="120" height="18"/>
+<line class="d" x1="326" y1="30" x2="326" y2="48"/><text class="n" x="334" y="44">3</text>
+<text class="t" x="196" y="80">Parada</text><rect class="l" x="230" y="90" width="20" height="50"/>
+<line class="d" x1="262" y1="90" x2="262" y2="140"/><text class="n" x="270" y="120">4</text>
+</svg><ol class="ley"><li><b>Largo</b>: lo mas largo, con mango y accesorio como se guarda</li><li><b>Ancho</b>: acostada, de lado a lado</li>
+<li><b>Alto acostada</b>: del piso al punto mas alto, como va en el cajon</li><li><b>Alto parada</b>: solo si se puede guardar parada</li></ol></div><div id="pz"></div></div>
+<div class="bar"><button class="sec" onclick="window.print()">Imprimir</button><button onclick="exportar()">Exportar CSV</button></div>
+</main>
+<script>const DATA={"contenedores": [{"modelo": "48-22-8444", "cajones": 4, "nota": "la del carrito base; si aparece la de Odoo P03220, medir esa", "ref": [414, 318, 58]}, {"modelo": "48-22-8447", "cajones": 3, "nota": "Odoo P05566", "ref": [414, 318, "63 / 63 / 127"]}, {"modelo": "48-22-8443", "cajones": 3, "nota": "si hay una en tienda o taller", "ref": [414, 318, 76]}, {"modelo": "48-22-8442", "cajones": 2, "nota": "si hay una en tienda o taller", "ref": [414, 318, 127]}, {"modelo": "48-22-8420", "cajones": 1, "nota": "cajon frontal; anotar si trae barra o argolla para candado", "ref": [432, 330, 406]}, {"modelo": "48-22-8450", "cajones": 1, "nota": "estuche actual: interior bajo la espuma", "ref": [480, 320, 114]}], "piezas": [{"id": "AJ8", "ref": "J4", "desc": "Llave ajustable 8 in Husky 17016", "cajon": "C3", "caja": "48-22-8443", "sensible": true, "doc": [205, 56, 15], "nivel": ["D2", "D1", "D1"], "peso_doc_kg": 0.302}, {"id": "BROCAS", "ref": "G2", "desc": "Juego 15 brocas HSS 1/16-1/2 Truper (estuche)", "cajon": "C3", "caja": "48-22-8443", "sensible": true, "doc": [150, 80, 20], "nivel": ["F", "F", "F"], "peso_doc_kg": 0.3}, {"id": "CHOF8", "ref": "J7", "desc": "Pinza de chofer 8 in Truper 17301", "cajon": "C3", "caja": "48-22-8443", "sensible": true, "doc": [203, 50, 15], "nivel": ["D2", "D1", "D1"], "peso_doc_kg": 0.292}, {"id": "PDIAG", "ref": "I3", "desc": "Pinza diagonal 7 in Husky 903465", "cajon": "C3", "caja": "48-22-8443", "sensible": true, "doc": [178, 58, 17], "nivel": ["D2", "D1", "D1"], "peso_doc_kg": 0.306}, {"id": "PELEC", "ref": "I1", "desc": "Pinza de electricista 9 in Husky 709195", "cajon": "C3", "caja": "48-22-8443", "sensible": true, "doc": [250, 50, 15], "nivel": ["D1", "D1", "D1"], "peso_doc_kg": 0.515}, {"id": "VERN", "ref": "E3", "desc": "Vernier digital 6 in Truper CALDI-6MP", "cajon": "C3", "caja": "48-22-8443", "sensible": true, "doc": [237, 80, 20], "nivel": ["D1", "F", "F"], "peso_doc_kg": 0.205}, {"id": "COMB7", "ref": "K1", "desc": "Juego 7 llaves combinadas matraca Husky (en su riel)", "cajon": "C4", "caja": "48-22-8444", "sensible": true, "doc": [245, 175, 45], "nivel": ["D1", "D1", "D1"], "peso_doc_kg": 1.0}, {"id": "MATR", "ref": "X-MATR", "desc": "Matraca 3/8 + dados (juego Husky P, 3/8)", "cajon": "C4", "caja": "48-22-8444", "sensible": true, "doc": [280, 200, 45], "nivel": ["F", "F", "F"], "peso_doc_kg": 1.6}, {"id": "WIHA-DS1", "ref": "A2", "desc": "Desarmador aislado PH1 x 80 (32101)", "cajon": "C4", "caja": "48-22-8444", "sensible": true, "doc": [190, 30, 30], "nivel": ["F", "F", "F"], "peso_doc_kg": 0.07}, {"id": "ESCAL", "ref": "G3", "desc": "Juego 3 brocas escalonadas Truper", "cajon": "C5", "caja": "48-22-8444", "sensible": true, "doc": [150, 90, 35], "nivel": ["F", "F", "F"], "peso_doc_kg": 0.35}, {"id": "FLEX1", "ref": "J11", "desc": "Flexometro 5 m Stanley 30-615", "cajon": "C5", "caja": "48-22-8444", "sensible": true, "doc": [70, 60, 40], "nivel": ["D2", "D2", "D2"], "peso_doc_kg": 0.25}, {"id": "FLEX2", "ref": "J12", "desc": "Flexometro 5 m Stanley 30-615", "cajon": "C5", "caja": "48-22-8444", "sensible": true, "doc": [70, 60, 40], "nivel": ["D2", "D2", "D2"], "peso_doc_kg": 0.25}, {"id": "HDS-A", "ref": "I5.1-I5.3", "desc": "3 desarmadores Husky (P1, P1, P2)", "cajon": "C5", "caja": "48-22-8444", "sensible": true, "doc": [230, 100, 32], "nivel": ["F", "F", "F"], "peso_doc_kg": 0.3}, {"id": "PRES6C", "ref": "L5", "desc": "Pinza de presion C 6 in Torque Lock 48-22-3532", "cajon": "C5", "caja": "48-22-8444", "sensible": true, "doc": [152, 70, 22], "nivel": ["D2", "F", "F"], "peso_doc_kg": 0.3}, {"id": "TAZON", "ref": "TPC13", "desc": "Tazon magnetico Husky", "cajon": "C5", "caja": "48-22-8444", "sensible": true, "doc": [150, 150, 40], "nivel": ["D1", "D1", "D1"], "peso_doc_kg": 0.323}, {"id": "WIHA-DS2", "ref": "A3", "desc": "Desarmador aislado PH2 x 100 (32102)", "cajon": "C5", "caja": "48-22-8444", "sensible": true, "doc": [215, 32, 32], "nivel": ["F", "F", "F"], "peso_doc_kg": 0.08}, {"id": "WIHA-DS4", "ref": "A12", "desc": "Desarmador aislado plano 4.5 x 100 (32023)", "cajon": "C5", "caja": "48-22-8444", "sensible": true, "doc": [215, 30, 30], "nivel": ["F", "F", "F"], "peso_doc_kg": 0.07}, {"id": "ADAP", "ref": "N2", "desc": "Juego 3 adaptadores 1/4-3/8-1/2", "cajon": "C6", "caja": "48-22-8444", "sensible": true, "doc": [70, 40, 25], "nivel": ["F", "F", "F"], "peso_doc_kg": 0.1}, {"id": "EXTS", "ref": "P36,P38,N1", "desc": "Extensiones 3/8 (6 in, 10 in, oscilantes) y palanca", "cajon": "C6", "caja": "48-22-8444", "sensible": true, "doc": [260, 80, 25], "nivel": ["F", "F", "F"], "peso_doc_kg": 0.6}, {"id": "HDS-B", "ref": "I5.4-I5.6", "desc": "3 desarmadores Husky (P2 x3)", "cajon": "C6", "caja": "48-22-8444", "sensible": true, "doc": [230, 100, 32], "nivel": ["F", "F", "F"], "peso_doc_kg": 0.3}, {"id": "PREC6", "ref": "A1", "desc": "Juego 6 desarmadores de precision 48-22-2606 (estuche)", "cajon": "C6", "caja": "48-22-8444", "sensible": true, "doc": [190, 90, 25], "nivel": ["F", "F", "F"], "peso_doc_kg": 0.2}, {"id": "PRES11", "ref": "L1", "desc": "Pinza de presion C 11 in Torque Lock 48-22-3531", "cajon": "C6", "caja": "48-22-8444", "sensible": true, "doc": [279, 110, 25], "nivel": ["D2", "F", "F"], "peso_doc_kg": 0.85}, {"id": "BAT1", "ref": "B4", "desc": "Bateria M18 CP2.0", "cajon": "C1", "caja": "48-22-8443", "sensible": false, "doc": [118, 79, 55], "nivel": ["D1", "D1", "D1"], "peso_doc_kg": 0.431}, {"id": "BAT2", "ref": "B5", "desc": "Bateria M18 CP2.0", "cajon": "C1", "caja": "48-22-8443", "sensible": false, "doc": [118, 79, 55], "nivel": ["D1", "D1", "D1"], "peso_doc_kg": 0.431}, {"id": "IMP38", "ref": "B2", "desc": "Llave de impacto M18 FUEL 3/8 2854-20 (sin bateria)", "cajon": "C1", "caja": "48-22-8443", "sensible": false, "doc": [202, 122, 65], "nivel": ["D2", "D2", "D2"], "peso_doc_kg": 1.089}, {"id": "MINIP", "ref": "A5", "desc": "Mini pinza de corte al ras 48-22-6105", "cajon": "C1", "caja": "48-22-8443", "sensible": false, "doc": [127, 60, 13], "nivel": ["D2", "D1", "D2"], "peso_doc_kg": 0.08}, {"id": "ROTO18", "ref": "B3", "desc": "Rotomartillo M18 1/2 3602-20 (sin bateria)", "cajon": "C1", "caja": "48-22-8443", "sensible": false, "doc": [202, 147, 56], "nivel": ["D2", "D2", "D2"], "peso_doc_kg": 1.043}, {"id": "TORPEDO", "ref": "E5", "desc": "Nivel torpedo magnetico 9 in Husky", "cajon": "C1", "caja": "48-22-8443", "sensible": false, "doc": [230, 45, 16], "nivel": ["D1", "D1", "D1"], "peso_doc_kg": 0.138}, {"id": "AJ12", "ref": "J1", "desc": "Llave ajustable 12 in Husky 17018", "cajon": "C2", "caja": "48-22-8443", "sensible": false, "doc": [305, 78, 20], "nivel": ["D2", "D1", "D1"], "peso_doc_kg": 0.777}, {"id": "IMP14", "ref": "B1", "desc": "Atornillador de impacto M18 3650-20 (sin bateria)", "cajon": "C2", "caja": "48-22-8443", "sensible": false, "doc": [196, 112, 53], "nivel": ["D2", "D2", "D2"], "peso_doc_kg": 0.771}, {"id": "NAVAJA", "ref": "Q1", "desc": "Navaja retractil Anvil", "cajon": "C2", "caja": "48-22-8443", "sensible": false, "doc": [224, 88, 20], "nivel": ["D1", "D1", "D1"], "peso_doc_kg": 0.11}, {"id": "WIHA-PC", "ref": "A8", "desc": "Pinza de corte diagonal aislada 160 (32933)", "cajon": "C2", "caja": "48-22-8443", "sensible": false, "doc": [160, 55, 20], "nivel": ["D1", "F", "F"], "peso_doc_kg": 0.18}, {"id": "WIHA-PE", "ref": "A9", "desc": "Pinza combinada aislada 200 (32930)", "cajon": "C2", "caja": "48-22-8443", "sensible": false, "doc": [203, 60, 22], "nivel": ["D2", "F", "F"], "peso_doc_kg": 0.28}, {"id": "MART", "ref": "H5", "desc": "Martillo una curva 16 oz Truper MA-16F", "cajon": "C7", "caja": "48-22-8444", "sensible": false, "doc": [340, 130, 30], "nivel": ["D1", "D1", "D1"], "peso_doc_kg": 0.707}, {"id": "PRES10", "ref": "L7", "desc": "Pinza de presion 10 in mordaza curva Husky 709204", "cajon": "C7", "caja": "48-22-8444", "sensible": false, "doc": [254, 66, 26], "nivel": ["D1", "D1", "D1"], "peso_doc_kg": 0.569}, {"id": "PRES7", "ref": "L3", "desc": "Pinza de presion 7 in mordaza recta Husky", "cajon": "C7", "caja": "48-22-8444", "sensible": false, "doc": [182, 62, 23], "nivel": ["D2", "D1", "D1"], "peso_doc_kg": 0.364}, {"id": "WIHA-DS3", "ref": "A11", "desc": "Desarmador aislado plano 3.0 x 100 (32012)", "cajon": "C7", "caja": "48-22-8444", "sensible": false, "doc": [205, 28, 28], "nivel": ["F", "F", "F"], "peso_doc_kg": 0.06}, {"id": "WIHA-PP", "ref": "A10", "desc": "Pinza de punta aislada 160 (32926)", "cajon": "C7", "caja": "48-22-8444", "sensible": false, "doc": [160, 55, 20], "nivel": ["D1", "F", "F"], "peso_doc_kg": 0.17}, {"id": "ESM45", "ref": "M1", "desc": "Mini esmeriladora 4-1/2 alambrica 6130-33 + cable", "cajon": "C8", "caja": "48-22-8420", "sensible": false, "doc": [357, 152, 90], "nivel": ["D2", "D2", "D2"], "peso_doc_kg": 1.588}, {"id": "CARG1", "ref": "nuevo", "desc": "Cargador sencillo M18/M12 48-59-1812 (compra)", "cajon": "C9", "caja": "48-22-8420", "sensible": false, "doc": [202, 155, 87], "nivel": ["D2", "D2", "D2"], "peso_doc_kg": 0.912}], "sensibles": ["BASE C3", "BASE C4", "BASE C5", "BASE C6", "CIV C3", "CIV C7", "ELE C1", "MED C1", "SOL C2", "TUB C1"], "generado": "2026-09-28"};
+function $(s,r){return (r||document).querySelector(s)}function $$(s,r){return Array.from((r||document).querySelectorAll(s))}
+function guardar(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+function leer(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function csvCampo(v){v=v==null?'':String(v);return /[",\n;]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
+function descargar(nombre,texto,tipo){const b=new Blob([texto],{type:tipo||'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=nombre;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+function hoy(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+// fotos: se reducen a 1280 px y se guardan en IndexedDB (no en el CSV); se descargan aparte
+const DBN='fts_levantamiento_fotos';
+function db(){return new Promise((ok,ko)=>{try{const r=indexedDB.open(DBN,1);r.onupgradeneeded=()=>r.result.createObjectStore('f');r.onsuccess=()=>ok(r.result);r.onerror=()=>ko(r.error)}catch(e){ko(e)}})}
+async function fotoGuardar(k,dataUrl){try{const d=await db();d.transaction('f','readwrite').objectStore('f').put(dataUrl,k)}catch(e){}}
+async function fotoLeer(k){try{const d=await db();return await new Promise(ok=>{const r=d.transaction('f').objectStore('f').get(k);r.onsuccess=()=>ok(r.result);r.onerror=()=>ok(null)})}catch(e){return null}}
+function reducir(file){return new Promise(ok=>{const im=new Image();im.onload=()=>{const s=Math.min(1,1280/Math.max(im.width,im.height));const c=document.createElement('canvas');c.width=im.width*s;c.height=im.height*s;c.getContext('2d').drawImage(im,0,0,c.width,c.height);ok(c.toDataURL('image/jpeg',.72))};im.src=URL.createObjectURL(file)})}
+
+const K='fts_medicion_v1';let S=leer(K,{fecha:hoy(),rol:'ingenieria',inst:'vernier digital 150 mm',c:{},p:{},extra:{}});
+function save(){guardar(K,S)}
+function num(k,obj,campo,ph){const v=((S[obj][k]||{})[campo])||'';return `<input type="number" inputmode="numeric" min="0" placeholder="${ph}" value="${esc(v)}" oninput="setv('${obj}','${esc(k)}','${campo}',this.value)">`}
+function txt(k,obj,campo,ph){const v=((S[obj][k]||{})[campo])||'';return `<input type="text" placeholder="${ph}" value="${esc(v)}" oninput="setv('${obj}','${esc(k)}','${campo}',this.value)">`}
+function setv(o,k,c,v){S[o][k]=S[o][k]||{};S[o][k][c]=v;save()}
+function contenedores(){return DATA.contenedores.map(c=>{const n=(S.extra[c.modelo]||1);let h=`<div class="row"><div class="t">${esc(c.modelo)} <span class="chip">${c.cajones} cajon(es)</span></div><div class="s">${esc(c.nota)} · referencia fabricante: ${c.ref.join(' x ')} mm</div>
+ <label class="f">Cuantas unidades de este modelo vas a medir</label><input type="number" min="0" max="5" value="${n}" onchange="S.extra['${c.modelo}']=+this.value;save();render()">`;
+ for(let u=1;u<=n;u++)for(let j=1;j<=c.cajones;j++){const k=c.modelo+'|'+u+'|'+j;h+=`<div style="margin-top:8px"><b>Unidad ${u} · cajon ${j}</b> <span class="note">(1 = el de arriba)</span>
+ <div class="grid3">${num(k,'c','ancho','1 ancho')}${num(k,'c','fondo','2 fondo')}${num(k,'c','alto','3 alto int.')}</div>
+ <div class="grid3" style="margin-top:6px">${num(k,'c','labio','4 labio')}${num(k,'c','util','5 alto util')}${txt(k,'c','nota','nota / candado')}</div></div>`}
+ return h+'</div>'}).join('')}
+function piezas(){return DATA.piezas.map(p=>{const k=p.id;return `<div class="row"><div class="t">${esc(p.id)} · ${esc(p.desc)} ${p.sensible?'<span class="chip w">cajon sensible '+esc(p.cajon)+'</span>':'<span class="chip">'+esc(p.cajon)+'</span>'}</div>
+ <div class="s">Ref. ${esc(p.ref)} · hoy en el diseno: ${p.doc.join(' x ')} mm (niveles ${p.nivel.join(' / ')}) · ${p.peso_doc_kg} kg</div>
+ <div class="grid2">${num(k,'p','largo','1 largo')}${num(k,'p','ancho','2 ancho')}</div>
+ <div class="grid3" style="margin-top:6px">${num(k,'p','alto','3 alto acostada')}${num(k,'p','parada','4 alto parada')}${num(k,'p','peso','peso g')}</div>
+ <div class="grid2" style="margin-top:6px">${txt(k,'p','parte','numero de parte leido')}${txt(k,'p','nota','nota')}</div></div>`}).join('')}
+function render(){$('#cont').innerHTML=contenedores();$('#pz').innerHTML=piezas()}
+function exportar(){const H=['tipo','id','modelo','unidad','cajon','largo_o_ancho_mm','ancho_o_fondo_mm','alto_mm','labio_mm','alto_util_mm','alto_parado_mm','peso_g','parte_leida','nota','fecha','rol','instrumento'];const L=[H.join(',')];
+ DATA.contenedores.forEach(c=>{const n=S.extra[c.modelo]||1;for(let u=1;u<=n;u++)for(let j=1;j<=c.cajones;j++){const k=c.modelo+'|'+u+'|'+j;const v=S.c[k]||{};if(!Object.values(v).some(x=>x))continue;
+  L.push(['cajon',c.modelo+'-u'+u+'-c'+j,c.modelo,u,j,v.ancho,v.fondo,v.alto,v.labio,v.util,'','','',v.nota,S.fecha,S.rol,S.inst].map(csvCampo).join(','))}});
+ DATA.piezas.forEach(p=>{const v=S.p[p.id]||{};if(!Object.values(v).some(x=>x))return;L.push(['pieza',p.id,'','','',v.largo,v.ancho,v.alto,'','',v.parada,v.peso,v.parte,v.nota,S.fecha,S.rol,S.inst].map(csvCampo).join(','))});
+ descargar('medicion_'+S.fecha+'.csv','﻿'+L.join('\n'))}
+$('#fecha').value=S.fecha;$('#rol').value=S.rol;$('#inst').value=S.inst;
+$('#fecha').oninput=e=>{S.fecha=e.target.value;save()};$('#rol').onchange=e=>{S.rol=e.target.value;save()};$('#inst').onchange=e=>{S.inst=e.target.value;save()};
+render();
+</script></body></html>

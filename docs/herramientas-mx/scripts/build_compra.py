@@ -129,6 +129,12 @@ def hoja(ws, headers, rows):
 # --- Dimensionamiento ---
 dim = [[m, UNIDADES[m], POR_QUE_UNIDADES[m], ' + '.join(f'{v} x {k}' for k, v in CONT[m].items())] for m in UNIDADES]
 # --- Herramienta ---
+# Conteo fisico (datos/conteo_fisico.json, lo escribe ingestar_levantamiento.py): si existe, la existencia por renglon
+# sale del conteo y ya no del listado 2025; las compras de Odoo posteriores dejan de sumarse aparte (el conteo ya las vio).
+try: CONTEO = json.load(open(os.path.join(D, 'conteo_fisico.json'), encoding='utf-8')).get('existencia_por_renglon_compra', {})
+except FileNotFoundError: CONTEO = {}
+if CONTEO:
+    S = {k: ((v[0], v[1], CONTEO[k], 0) + v[4:]) if k in CONTEO else v for k, v in S.items()}
 filas, tot_mod = [], defaultdict(float); sin_precio = []
 for sku, (desc, porm, ex, odoo_extra, precio, fuente, conf) in S.items():
     need = 1 if sku in COMPARTIDO else sum(q * UNIDADES[m] for m, q in porm.items())

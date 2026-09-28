@@ -34,6 +34,26 @@ CAJA_8441 = {'alto': 356, 'cap': 22.7, 'cajones': [(419, 330, 260, 22.7)]}
 # 406 mm en un solo nivel: bandeja 190 mm arriba, fondo 200 mm abajo (406 - 16 de bandeja).
 # Capacidad por nivel (15 y 25 kg) es SUPUESTO de diseno: Milwaukee solo publica 250 lb (113 kg) del conjunto.
 BASE_RODANTE = {'modelo': '48-22-8420', 'alto': 502, 'cap': 113.4, 'cajones': [(432, 330, 190, 15), (432, 330, 200, 25)]}
+def _aplicar_medicion_cajones():
+    """Si hay medicion con vernier (datos/medicion_fisica.json), reemplaza las cotas del fabricante por las medidas.
+    Se usa el ALTO UTIL medido (piso del cajon a la parte baja del de arriba) como alto del cajon: es lo que manda."""
+    try: M = json.load(open(os.path.join(D, 'medicion_fisica.json'), encoding='utf-8')).get('cajones', {})
+    except FileNotFoundError: return []
+    cambios = []
+    for mdl, cj in M.items():
+        spec = CAJAS.get(mdl) or (BASE_RODANTE if mdl == BASE_RODANTE['modelo'] else None)
+        if not spec: continue
+        nuevos = list(spec['cajones'])
+        for j, med in cj.items():
+            i = int(j) - 1
+            if i >= len(nuevos): continue
+            an, fo, al, cap = nuevos[i]
+            if mdl == BASE_RODANTE['modelo']: continue   # la 8420 lleva bandeja: se mide y se decide a mano
+            nuevos[i] = (int(med['ancho'] or an), int(med['fondo'] or fo), int(med['util'] or med['alto'] or al), cap)
+            if nuevos[i] != (an, fo, al, cap): cambios.append((mdl, j, (an, fo, al), nuevos[i][:3]))
+        spec['cajones'] = nuevos
+    return cambios
+CAMBIOS_MEDICION = _aplicar_medicion_cajones()
 MOD_CODE = {'BASE': 'BAS', 'ELE': 'ELE', 'SOL': 'SOL', 'TUB': 'TUB', 'CIV': 'CIV', 'MED': 'MED'}
 
 class MaxRects:

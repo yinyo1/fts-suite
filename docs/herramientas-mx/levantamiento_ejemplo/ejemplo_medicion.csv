@@ -1,0 +1,11 @@
+tipo,id,modelo,unidad,cajon,largo_o_ancho_mm,ancho_o_fondo_mm,alto_mm,labio_mm,alto_util_mm,alto_parado_mm,peso_g,parte_leida,nota,fecha,rol,instrumento
+cajon,48-22-8444-u1-c1,48-22-8444,1,1,412,316,58,4,55,,,,EJEMPLO,2026-09-29,ingenieria,vernier
+cajon,48-22-8444-u1-c2,48-22-8444,1,2,412,316,58,4,55,,,,EJEMPLO,2026-09-29,ingenieria,vernier
+cajon,48-22-8444-u1-c3,48-22-8444,1,3,412,316,58,4,55,,,,EJEMPLO,2026-09-29,ingenieria,vernier
+cajon,48-22-8444-u1-c4,48-22-8444,1,4,412,316,58,4,55,,,,EJEMPLO,2026-09-29,ingenieria,vernier
+cajon,48-22-8443-u1-c1,48-22-8443,1,1,412,316,76,4,72,,,,EJEMPLO,2026-09-29,ingenieria,vernier
+cajon,48-22-8443-u1-c2,48-22-8443,1,2,412,316,76,4,72,,,,EJEMPLO,2026-09-29,ingenieria,vernier
+cajon,48-22-8443-u1-c3,48-22-8443,1,3,412,316,76,4,72,,,,EJEMPLO,2026-09-29,ingenieria,vernier
+pieza,IMP14,,,,197,113,54,,,120,772,3650-20,EJEMPLO,2026-09-29,ingenieria,vernier
+pieza,ROTO18,,,,221,168,62,,,,1045,3602-20,EJEMPLO,2026-09-29,ingenieria,vernier
+pieza,AJ12,,,,306,79,21,,,,780,,EJEMPLO,2026-09-29,ingenieria,vernier

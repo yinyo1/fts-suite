@@ -170,24 +170,47 @@ pieza('ESCCOMB', (304, 'D1', 'HDMX 220IM: 30.4 cm'), (133, 'D1', 'HDMX 13.3 cm')
 pieza('ESCCAR', (304, 'D1', 'HDMX EC-12: 30.4 cm'), (166, 'D1', 'HDMX 16.6 cm'), (14, 'D1', 'HDMX 1.4 cm'), peso=(0.228, 'HDMX'))
 
 # ---------------------------------------------------------------- aplicar
+def fisica():
+    """Medicion con vernier (datos/medicion_fisica.json, lo escribe ingestar_levantamiento.py). Vacio si no hay."""
+    try: return json.load(open(os.path.join(D, 'medicion_fisica.json'), encoding='utf-8')).get('piezas', {})
+    except FileNotFoundError: return {}
+
 def aplicar():
     piezas = json.load(open(os.path.join(D, 'piezas_carrito.json'), encoding='utf-8'))
+    FIS = fisica()
+    # 'antes' = el commit base de la sesion (d8f4483), para que re-correr no borre la lista de cambios
+    import subprocess
+    try:
+        raw = subprocess.run(['git', 'show', 'd8f4483:docs/herramientas-mx/datos/piezas_carrito.json'], capture_output=True, cwd=BASE, check=True).stdout
+        ORIG = {q['id']: q for q in json.loads(raw)}
+    except Exception:
+        ORIG = {}
     cambios, val = [], []
     for p in piezas:
         e = P.get(p['id'])
         if not e:
             raise SystemExit(f'sin entrada de validacion: {p["id"]}')
-        antes = (p['L'], p['A'], p['H'], p['peso_kg'])
+        o = ORIG.get(p['id'], p)
+        antes = (o['L'], o['A'], o['H'], o['peso_kg'])
         niveles = {}
+        f = FIS.get(p['id'], {})
+        e = json.loads(json.dumps(e))   # copia: la medicion fisica no ensucia la tabla documental
         for k in ('L', 'A', 'H'):
             m = e[k]
             if m['v'] is not None:
                 p[k] = m['v']
+            if f.get(k):   # medida fisica: V si coincide +-3 mm con una documental doble; si no, M (fisica sola)
+                fv = round(f[k])
+                ok = m['nivel'] == 'D2' and m['v'] is not None and abs(fv - m['v']) <= 3
+                m['fuente'] = f"FISICA {fv} mm ({f.get('instrumento', '')}, {f.get('fecha', '')}); documental: {m['fuente']}"
+                m['nivel'] = 'V' if ok else 'M'; m['v'] = fv; p[k] = fv
             niveles[k] = m['nivel']
         if e['peso']:
             p['peso_kg'] = e['peso'][0]
+        if f.get('peso_kg'):
+            p['peso_kg'] = round(f['peso_kg'], 3); e['peso'] = (p['peso_kg'], 'FISICA bascula')
         p['nivel_dim'] = niveles
-        p['fuente_dim'] = max(niveles.values(), key=['V', 'D2', 'D1', 'F', 'X'].index)  # el nivel mas debil de sus 3 medidas
+        p['fuente_dim'] = max(niveles.values(), key=['V', 'M', 'D2', 'D1', 'F', 'X'].index)  # el nivel mas debil de sus 3 medidas
         p['validado'] = all(n == 'V' for n in niveles.values())
         despues = (p['L'], p['A'], p['H'], p['peso_kg'])
         if antes != despues:
@@ -197,7 +220,7 @@ def aplicar():
         val.append({'id': p['id'], 'ref': p['ref'], 'desc': p['desc'], 'modulo': p['modulo'], 'L': e['L'], 'A': e['A'], 'H': e['H'],
                     'peso': e['peso'], 'nota': e['nota'], 'empaque_descartado': e['empaque_descartado'], 'fecha': F})
     json.dump(piezas, open(os.path.join(D, 'piezas_carrito.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
-    json.dump({'fecha': F, 'niveles': {'V': 'validado', 'D2': 'documental doble', 'D1': 'documental simple', 'F': 'estimacion desde foto', 'X': 'faltante'},
+    json.dump({'fecha': F, 'niveles': {'V': 'validado', 'M': 'medida fisica (sin doble documental o difiere > 3 mm)', 'D2': 'documental doble', 'D1': 'documental simple', 'F': 'estimacion desde foto', 'X': 'faltante'},
                'piezas': val, 'cambios': cambios}, open(os.path.join(D, 'validacion_documental.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
     return piezas, val, cambios
 
@@ -208,7 +231,7 @@ def resumen(val, modulo=None):
         if modulo and v['modulo'] != modulo: continue
         for k in ('L', 'A', 'H'): c[v[k]['nivel']] += 1
     tot = sum(c.values())
-    return {n: (c[n], round(100 * c[n] / tot, 1)) for n in ('V', 'D2', 'D1', 'F', 'X')}, tot
+    return {n: (c[n], round(100 * c[n] / tot, 1)) for n in ('V', 'M', 'D2', 'D1', 'F', 'X')}, tot
 
 if __name__ == '__main__':
     piezas, val, cambios = aplicar()

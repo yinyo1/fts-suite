@@ -1,0 +1,50 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Instructivo de levantamiento</title>
+<style>
+:root{--ink:#1d1d1b;--mut:#5f5e57;--line:#d9d6cc;--acc:#f2b705;--bg:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--ink:#f1efe8;--mut:#b3b0a6;--line:#3a3933;--bg:#171714}}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 system-ui,sans-serif}main{max-width:780px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:0 0 4px}h2{font-size:15px;margin:14px 0 4px;border-bottom:2px solid var(--acc);padding-bottom:2px}
+p,li{margin:3px 0}ol,ul{padding-left:20px;margin:4px 0}.m{color:var(--mut);font-size:12px}
+table{border-collapse:collapse;width:100%;font-size:13px}td,th{border:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:top}
+td,th{overflow-wrap:anywhere}.k{word-break:break-all;display:inline-block;background:var(--acc);color:#1d1d1b;border-radius:4px;padding:0 6px;font-weight:600}
+@media (max-width:520px){td:first-child,th:first-child{display:none}}@media print{body{font-size:11px}main{padding:0}h2{margin-top:8px}}
+</style></head><body><main>
+<h1>Levantamiento físico en taller</h1>
+<p class="m">Proyecto Herramientas MX · issue #325 y #330 · una página</p>
+
+<h2>Para qué</h2>
+<p>El inventario que tenemos es de 2025 y ninguna medida está validada. Antes de comprar hay que saber <b>qué existe hoy</b> y <b>cuánto mide de verdad</b>. Con estos dos datos el acomodo y el costo se recalculan solos.</p>
+
+<h2>Quién hace qué, en este orden</h2>
+<table>
+<tr><th>#</th><th>Rol</th><th>Qué hace</th><th>Archivo</th></tr>
+<tr><td>1</td><td>rol-taller</td><td>Saca las cajas A a S, los estuches sueltos y las maletas personales a una mesa. Una caja a la vez.</td><td>–</td></tr>
+<tr><td>2</td><td>rol-taller + supervisor_sr</td><td>Cuenta caja por caja: existe, no existe o dañada. Lee el número de parte en la placa cuando se vea. Foto de cada caja abierta. Al final, la sección <b>Buscar también</b>.</td><td><span class="k">levantamiento_conteo.html</span></td></tr>
+<tr><td>3</td><td>ingenieria</td><td>Mide con vernier los cajones de cada contenedor (primero) y las 40 piezas del carrito base, empezando por las marcadas "cajón sensible".</td><td><span class="k">levantamiento_medicion.html</span></td></tr>
+<tr><td>4</td><td>ingenieria</td><td>Exporta los dos CSV y las fotos, y los sube a SharePoint <i>Proyecto Herramientas MX / 02 Catalogo maestro y compras</i>.</td><td>botones <b>Exportar CSV</b> y <b>Fotos</b></td></tr>
+<tr><td>5</td><td>CC (siguiente sesión)</td><td>Corre la ingesta, que recalcula catálogo, acomodo y compra.</td><td><span class="k">scripts/ingestar_levantamiento.py</span></td></tr>
+</table>
+
+<h2>Reglas</h2>
+<ul>
+<li><b>Sin nombres de personas</b>, ni en notas ni en fotos. El responsable se anota por rol. Las maletas se numeran (maleta 1, 2, 3).</li>
+<li>Medidas en <b>milímetros, sin decimales</b>; el peso en <b>gramos</b>. Se mide la pieza como se guarda: con mango lateral y accesorio puestos.</li>
+<li>Cajón: la medida que manda es el <b>alto útil</b>, del piso del cajón a la parte baja del cajón de arriba, con los dos cerrados.</li>
+<li>La 48-22-8420: anotar en la nota si tiene barra, argolla o pasador para candado, y si se puede cerrar con otra caja encima.</li>
+<li>Si algo no se puede medir, el campo se deja vacío y en la nota va el porqué. <b>Nunca se estima.</b></li>
+<li>Todo se guarda en el teléfono, aunque se cierre la página. Nada se envía solo: hay que exportar.</li>
+<li>Sin señal funciona igual. Para imprimir y llenar a mano, usar el botón <b>Imprimir</b>.</li>
+</ul>
+
+<h2>Buscar también (no están en una caja)</h2>
+<ul>
+<li>Caja de 4 cajones (Odoo P03220) y 48-22-8447 (P05566).</li>
+<li>Placa de la sierra de banda: ¿2729 o 2929?</li>
+<li>Estuches 48-22-8450: contarlos todos (listado 18, Odoo 11).</li>
+<li>Piezas repetidas de las compras de reposición: esmeriles, desarmadores de precisión, mini pinzas, pinzas de presión, juegos Wiha y cabezales 12R.</li>
+</ul>
+
+<h2>Cuánto tarda (estimado)</h2>
+<p>Conteo: unos 5 minutos por caja, o sea 2 horas las 19 cajas más los sueltos. Medición: 3 minutos por cajón y 2 por pieza, o sea unas 2 horas. <span class="m">Es estimación: se mide el primer día.</span></p>
+</main></body></html>

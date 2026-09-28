@@ -1,0 +1,211 @@
+seccion,caja,numero_interno,descripcion,numero_parte_catalogo,estado,parte_leida,nota,foto_caja,fecha,rol,lugar
+caja,A,A1,JUEGO DE DESTORNILLADORES DE PRECISIÓN ACERO MILWAUKEE 6 PIEZAS,48-22-2606,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,A,A10,PINZAS DE PUNTA WIHA (Z 05 0 09 160),32926,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,A,A11,"DESARMADOR WIHA PLANO 0,5 X 3,0 (1.0X4.5X100)",32012,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,A,A12,"DESARMADOR WIHA PLANO 1,0X4,5 (0.5X3.0X100)",32023,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,A,A2,DESARMADOR WIHA ESTRELLA PH1 (PH1X80),32101,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,A,A3,DESARMADOR WIHA ESTRELLA PH2(PH2X100321N),32102,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,A,A4,AMPERIMETRO FLUKE 302+,302+,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,A,A5,MINI PINZAS PARA CORTAR 12.7 X 6 X 1.27 MILWAUKEE,48-22-6105,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,A,A6,PINZAS PELACABLE COMERCIAL ELECTRIC,Ce100821,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,A,A7,CLIMPADORA,1445070000,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,A,A8,PINZAS DE CORTE WIHA (Z 12 0 09 160),32933,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,A,A9,PINZAS ELECTRICAS WIHA (Z 01 0 09 200),32930,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,B,B1,DESTORNILLADOR DE IMPACTO SIN ESCOBILLAS HEXAGONAL DE 1/4 PULGADA MILWAUKEE M18,3650-20,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,B,B2,PISTOLA DE IMPACTO DE 3/8,2854-20,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,B,B3,TALADRO ROTOMARTILLO DE 1/2 MILWAUKEE,3602-20,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,B,B4,BATERIA MILWAUKEE M18 CP2.0,48-11-1820,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,B,B5,BATERIA MILWAUKEE M18 CP2.1,48-11-1820,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,C,C1,TALADRO ALAMBRICO ROTOMARTILLO MILWAUKEE,5375-20,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,C,C2,ROTOMARTILLO SDS PLUS 1500 RPM 800 WATTS MILWAUKEE,5485-21,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,C,C3,MANGO LATERAL MILWAUKEE,516940 B2,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,D,D1,AMARRES TIPO MATRACA DE 360 X 2.5 CM,Fh0829,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,D,D2,AMARRES TIPO MATRACA DE 360 X 2.5 CM,Fh0829,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,D,D3,AMARRES TIPO MATRACA DE 360 X 2.5 CM,Fh0829,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,D,D4,AMARRES TIPO MATRACA DE 360 X 2.5 CM,Fh0829,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,D,D5,BANDA PARA MATRACA 2 MTS,,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,D,D6,BANDA PARA MATRACA 2 MTS,,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,D,D7,BANDA PARA MATRACA 2 MTS,,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,D,D8,BANDA PARA MATRACA 2 MTS,,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,D,D9,GRILLETE DE 5/8 MARCA CROSBY,1018473,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,D,D10,GRILLETE DE 5/8 MARCA CROSBY,1018473,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,D,D11,GRILLETE DE 5/8 MARCA CROSBY,1018473,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,E,E1,ESCUADRA DE ACERO CON VIAL DE ACRÍLICO DE 12 PULGADAS 30 CM EMPIRE,220im,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,E,E2,ESCUADRA PARA CARPINTERO 12 PULGADAS TRUPER,Ec-12,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,E,E-SN40,CINCEL DE CORTE FRÍO 25.1 X 2.3 X 2 CM ACERO TRUPER,C-7/8x10,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,E,E-SN41,CINCEL DE CORTE FRÍO 15.1 x 0.8 x 1.1 CM ACERO TRUPER 5/16 X 6,C-5/16x6,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,E,E3,Calibrador vernier digital milimétrico standar Truper CALDI-6MP,14388,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,E,E4,NIVELADOR FIJABLE PARA TUBERÍA MILWAUKEE DE 6.5 PULGADAS,48-22-5110,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,E,E5,NIVEL MAGNÉTICO PLÁSTICO HUSKI,10790,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,E,E6,NIVEL MAGNÉTICO PLÁSTICO HUSKI,10790,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,E,E7,NIVELADOR FIJABLE PARA TUBERÍA MILWAUKEE DE 6.5 PULGADAS,48-22-5110,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,E,E8,MICRO MAPPER MT-8200-49A FLUKE NETWORKS,MT-8200-49A,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,E,E9,DESARMADRO ESTRELLA DE 2 MM,,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,F,F1,KIT DE MACHUELOS MANERAL TRUPER,11442,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,F,F2,"SACABOCADOS DOGO TULS - 19MM 3/4""",DOGO LD1016,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,F,F4,"SACABOCADOS DOGO TULS - 13MM 1/2""",DOGO LD1007,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,F,F5,"SACABOCADOS DOGO TULS - 7MM 1/4""",DOGO LD 1004,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,F,F6,JUEGO DE EXTRACTORES TRUPER,EXT-5,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,G,G1,JUEGO DE BROCAS Y CINCELES SDS PLUS 65.3 X 24.2 X 103.2 CM ACERO DEWALT 15 PIEZAS,Dwa0870,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,G,G2,"JUEGO 15 BROCAS AAV USOGRAL 1 1/16""-1/2""",G5115,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,G,G3,KIT DE BROCAS ESCALONADAS TRUPER,101557,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,G,G4,FRESA DE CARBURO DE TUNGSTENO,SF-5 D/C CLAVE 120,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,H,H1,LIMA REDONDA PARA METAL 6 PULGADAS ACERO BELLOTA,6400406f1bl,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,H,H2,LIMA MEDIA CAÑA PARA METAL 6 PULGADAS ACERO BELLOTA,6400306b1bl,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,H,H3,LIMA TRIANGULAR 24.4 X 1 X 0.6 CM ACERO BELLOTA,64091081bl,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,H,H4,MAZO DE HULE 16 ONZAS TRUPER,Mh-16,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,H,H5,MARTILLO DE UÑA CURVA 16 ONZAS ACERO TRUPER,Ma-16f,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,H,H6,MARTILLO DE UÑA CURVA 16 ONZAS ACERO TRUPER,Ma-16f,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,H,H7,LLAVE PARA TUBO DE 14 PULGADAS ACERO HUSKY,73126,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,H,H8,LLAVE PARA TUBO DE 14 PULGADAS ACERO HUSKY,73126,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,H,H9,CINCEL DE 5/16X6,,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,H,H10,CINCEL DE 7/8 X 10,,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,I,I1,PINZAS DE ELECTRICISTA DE 22.9 CM EN ACERO HUSKY,709195,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,I,I2,PINZAS DE ELECTRICISTA DE 22.9 CM EN ACERO HUSKY,709195,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,I,I3,PINZAS EN DIAGONAL DE 17.8 CM ACERO HUSKY,903465,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,I,I4,PINZAS EN DIAGONAL DE 17.8 CM ACERO HUSKY,903465,danada,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,I,I5,JUEGO DE DESARMADORES 12 PIEZAS HUSKY,246340150,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,I,I5.1,DESARMADOR P1,246340150,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,I,I5.2,DESARMADOR P1,246340150,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,I,I5.3,DESARMADOR P2,246340150,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,I,I5.4,DESARMADOR P2,246340150,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,I,I5.5,DESARMADOR P2,246340150,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,I,I5.6,DESARMADOR P2,246340150,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,I,I5.7,DESARMADOR 1/4,246340150,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,I,I5.8,DESARMADOR 1/4,246340150,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,I,I5.9,DESARMADOR 1/4,246340150,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,I,I5.10,DESARMADOR 1/4,246340150,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,I,I5.11,DESARMADOR 3/16,246340150,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,I,I5.12,DESARMADOR 3/16,246340151,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,J,J1,"LLAVE AJUSTABLE DE 12""",17018,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,J,J2,"LLAVE AJUSTABLE DE 12""",17018,danada,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,J,J3,"LLAVE AJUSTABLE DE 12""",17018,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,J,J4,LLAVE AJUSTABLE DE 8 PULGADAS ACERO HUSKY,17016,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,J,J5,LLAVE AJUSTABLE DE 8 PULGADAS ACERO HUSKY,17016,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,J,J6,LLAVE AJUSTABLE DE 8 PULGADAS ACERO HUSKY,17016,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,J,J7,Pinza De Chofer De 8″,17301,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,J,J8,Pinza De Chofer De 8″,17301,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,J,J9,Pinza De Chofer De 6″,Pch-6,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,J,J10,Pinza De Chofer De 6″,Pch-6,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,J,J11,FLEXÓMETRO/CINTA MÉTRICA DE 5M STANLEY,30-615,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,J,J12,FLEXÓMETRO/CINTA MÉTRICA DE 5M STANLEY,30-615,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,J,J13,FLEXÓMETRO/CINTA MÉTRICA DE 5M STANLEY,30-615,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,K,K1,JUEGO DE LLAVES COMBINADAS DE TRINQUETE REVERSIBLE 17.5 X 24.5 X 4.5 CM DE ACERO HUSKY 7 PIEZAS,Hrrw7pcsaemx,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,K,K2,JUEGO DE LLAVES COMBINADAS HUSKY BITE 10 PIEZAS ESTÁNDAR,Hbcw10xls,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,L,L1,PINZA DE PRESIÓN TIPO C TORQUE LOCK DE 11 PULGADAS MILWAUKEE,48-22-3531,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,L,L2,PINZA DE PRESIÓN TIPO C TORQUE LOCK DE 11 PULGADAS MILWAUKEE,48-22-3531,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,L,L3,PINZA DE PRESIÓN DE 7 PULGADAS DE METAL HUSKY,,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,L,L4,PINZA DE PRESIÓN DE 7 PULGADAS DE METAL HUSKY,,no_existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,L,L5,PINZA DE PRESIÓN EN C TORQUE LOCK DE 6 PULGADAS ACERO MILWAUKEE,48-22-3532,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,L,L6,PINZA DE PRESIÓN EN C TORQUE LOCK DE 6 PULGADAS ACERO MILWAUKEE,48-22-3532,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,L,L7,PINZAS DE PRESIÓN DE MORDAZA CURVA HUSKY,709204,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,L,L8,PINZAS DE PRESIÓN DE MORDAZA CURVA HUSKY,709204,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,M,M1,"MINI-ESMERILADORA ANGULAR ALAMBRICA 4 1/2"" 7 AMP. MILWAUKEE",6130-33,no_existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,M,M2,"MINI-ESMERILADORA ANGULAR ALAMBRICA 4 1/2"" 7 AMP. MILWAUKEE",6130-33,no_existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,N,N1,JUEGO DE EXTENSIONES OSCILANTES 3 PIEZAS HUSKY,106545,no_existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,N,N2,JUEGO DE ADAPTADORES 1/4 1/2 Y 3/8 DE PULGADA 3 PIEZAS HUSKY,106475,no_existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,O,O1,"TARRAJA DE TUBO RIDGID 3/4""",36475,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,O,O2,"TARRAJA DE TUBO RIDGID 1/2""",36475,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,O,O3,"TARRAJA DE TUBO RIDGID 1"" - 2""",36475,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,O,O4,"TARRAJA DE TUBO RIDGID 1 1/4""",36475,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,O,O5,"TARRAJA DE TUBO RIDGID 1 1/2""",36475,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,O,O6,"TARRAJA DE TUBO RIDGID 2""",36475,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P1,JUEGO DE LLAVES TORX TIPO NAVAJA ESTÁNDAR/MM,Hfhk3pcsetmx,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P10,DADO 17 MM ACERO HUSKY,H3d6p17mmmx,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P11,DADO 16 MM ACERO HUSKY,106503,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P12,DADO15 MM ACERO HUSKY,H3d6p15mmmx,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P13,DADO15 MM ACERO HUSKY,H3d6p15mmmx,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P14,DADO DE 14 MM ACERO HUSKY,H3d6p14mmmx,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P15,DADO DE 13 MM ACERO HUSKY,H3d6p13mmmx,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P16,DADO PARA MATRACA 12 MM ACERO HUSKY,H3d6p12mmmx,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P17,DADO 11 MM ACERO HUSKY,,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P18,DADO DE 10 MM ACERO HUSKY,H3d6p10mmmx,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P19,DADO PARA AJUSTAR 5/16 DE PULGADA ACERO HUSKY,106513,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P2,JUEGO DE LLAVES TORX TIPO NAVAJA ESTÁNDAR/MM,Hfhk3pcsetmx,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P20,DADO 7/16 DE PULGADA ACERO HUSKY,106515,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P21,DADO 7/16 DE PULGADA ACERO HUSKY,106515,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P22,DADO 7/16 DE PULGADA ACERO HUSKY,106515,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P23,DADO PARA MATRACA DE 1/2 PULGADA ACERO HUSKY,106512,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P24,DADO PARA MATRACA DE 1/2 PULGADA ACERO HUSKY,106512,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P25,DADO 3/4 DE PULGADA ACERO HUSKY,106507,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P26,DADO 3/4 DE PULGADA ACERO HUSKY,106507,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P27,DADO 3/4 DE PULGADA ACERO HUSKY,106507,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P28,DADO 15/16 DE PULGADA ACERO HUSKY,106483,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P29,DADO 1 PULGADA ACERO HUSKY,106482,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P3,JUEGO DE LLAVES TORX TIPO NAVAJA ESTÁNDAR/MM,Hfhk3pcsetmx,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P30,DADO 3/8 DE PULGADA ACERO HUSKY,106514,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P31,DADO 9/16 DE PULGADA ACERO HUSKY,106511,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P32,DADO 5/8 DE PULGADA ACERO HUSKY,106510,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P33,DADO DE 11/16 DE PULGADA ACERO HUSKY,106509,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P34,DADO PARA HERRAMIENTAS DE CUADRO 13/16 DE PULGADA ACERO HUSKY,106485,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P35,DADO 7/8 DE PULGADA ACERO HUSKY,106484,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P36,"BARRA DE EXTENSIÓN 21.5 CM (6"") METAL HUSKY",H3dext6mx,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P37,"BARRA DE EXTENSIÓN 10"" METAL HUSKY",,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P38,PALANCA DE EXTENSIÓN 3/8 DE PULGADA ACERO HUSKY,H38bb10mx,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P39,ADAPTADOR 1/4,106475,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P4,JUEGO DE LLAVES TORX TIPO NAVAJA ESTÁNDAR/MM,Hfhk3pcsetmx,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P40,ADAPTADOR 1/2,106475,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P41,ADAPTADOR 3/8,106475,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P5,JUEGO DE LLAVES TORX TIPO NAVAJA ESTÁNDAR/MM,Hfhk3pcsetmx,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P6,JUEGO DE LLAVES TORX TIPO NAVAJA ESTÁNDAR/MM,Hfhk3pcsetmx,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P7,DADO 19 MM ACERO HUSKY,129326,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P8,DADO 18 MM ACERO HUSKY,H3d6p18mmmx,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,P,P9,DADO 18 MM ACERO HUSKY,H3d6p18mmmx,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,Q,Q1,NAVAJA RETRÁCTIL 22.4 X 8.8 X 2 CM ACERO ANVIL,99735a,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,Q,Q2,MICRO MAPPER MT-8200-49A FLUKE NETWORKS,MT-8200-49A,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,Q,Q3,"ESCUADRA MAGNÉTICA 4"" PARA SOLDAR, CAPACIDAD 22 KG, TRUPER",15407,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,Q,Q4,JUEGO DE EXTRACTOR QUIJADA RECTA 6TON 20 PIEZAS SIN CAJA URREA,4216 (verificar factura),existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,R,R1,NIVELADOR LÁSER VERDE BOSCH,Gll 12-22 g,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,R,R2,SIERRA CALADORA RYOBI 600-3000 CPM 580 W,Js481lg,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,R,R3,"M18 LIJADORA ORBITAL INALÁMBRICA DE 5"" DE 18V",2648-20,no_existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,COMPRAR,TPC1,ROSCADORA DE TUBOS INALAMBRICA,2874-22HD,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,COMPRAR,TPC10,"KIT HERRAMIENTA M18™ FORCELOGIC KNOCKOUT C 1/2"" - 4"" KIT MCA",2677-23,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,ALMACEN,TPC11,HOJAS DE SIERRA DE BANDA 3 UNIDADES MCA MILWAUKEE,49-39-0601,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,Acomodar,TPC12,Seguetta con arco,15- 555,no_existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,Acomodar,TPC13,Tazon magnetico HUSKY,129 291,no_existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,Acomodar,TPC14,"SIERRA SABLE 3/4"", 12 AMP.",6509-31,no_existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,Acomodar,TPC2,Nivel de regla largo.,17036,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,COMPRAR,TPC3,M18 FUEL PACKOUT 18-Volt Lithium-Ion Cordless 2.5 Gal. Wet/Dry Vacuum (Vacuum-Only),0970-20,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,Acomodar,TPC4,Cargador de baterias 6pack,48-59-1806,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,COMPRAR,TPC5,Pila M18 Sencilla,48-11-1820,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,Acomodar,TPC6,Aceitera flexible 32 OZ,2265,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,ALMACEN,TPC7,SPEAKER M12 PACKOUT,2955-20,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,COMPRAR,TPC8,SIERRA DE BANDA DE CORTE M18 FUEL™,2929-22 (verificar),existe,2929-20,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,Q,X-Q3b,ESCUADRA MAGNETICA PARA SOLDAR (adicional),15407,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,Q,X-Q3c,ESCUADRA MAGNETICA PARA SOLDAR (adicional),15407,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,Q,X-Q3d,ESCUADRA MAGNETICA PARA SOLDAR (adicional),15407,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,G,X-G5,PIEZA CON ETIQUETA G5 (no identificada),,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,G,X-G6,PORTABROCAS CON ETIQUETA G6 (juego de brocas),,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,G,X-G7,PORTABROCAS CON ETIQUETA G7 (juego de brocas),,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,C,X-C3b,MANGO LATERAL (segundo),,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,S/N,X-8424a,CAJA DE HERRAMIENTAS PACKOUT 22 in,48-22-8424,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,S/N,X-8424b,CAJA DE HERRAMIENTAS PACKOUT 22 in,48-22-8424,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,S/N,X-8427,CAJA DE HERRAMIENTA RODANTE PACKOUT,48-22-8427,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,S/N,X-8447,CAJA PACKOUT 3 CAJONES PROFUNDIDAD MULTIPLE,48-22-8447,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,S/N,X-4CAJ,CAJA PACKOUT 4 CAJONES,48-22-8444 (probable),existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,S/N,X-8480,KIT DE ESTANTERIA PACKOUT,48-22-8480,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,S/N,X-ENC,ENCIMERA PERSONALIZABLE PACKOUT (2),,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,S/N,X-GRN1,BAUL GREENLEE 2142,2142,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,S/N,X-GRN2,BAUL GREENLEE 2142,2142,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,S/N,X-JSB1,BAUL DE OBRA 48 in JSB48,JSB48,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,S/N,X-JSB2,BAUL DE OBRA 48 in JSB48,JSB48,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,S/N,X-RID460,PRENSA DE TUBO RIDGID 460-6 CON TRIPIE,36273,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,O,X-12R34,CABEZAL 12R 3/4 NPT (repuesto),37395,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,S/N,X-LASER2,NIVEL LASER BOSCH LINEAS VERDES (segundo),,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,S/N,X-CAIMAN,LLAVE DE CADENA TIPO CAIMAN 6 in 797UR,797UR,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,S/N,X-EXT7T,EXTRACTOR REVERSIBLE 2 O 3 QUIJADAS 7 TON,,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,S/N,X-PVC,KIT DE CORTADOR PARA PVC INALAMBRICO,,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,S/N,X-COMBO1,COMBO M18 (herramientas),,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,S/N,X-COMBO2,COMBO M18 ROTOMARTILLO 1/2 + ...,,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,S/N,X-ROTO8A,ROTOMARTILLO 1/2 8.0 A,,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,S/N,X-DW7,ESMERILADORA 7 in 2400 W,DWE4557-B3,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,S/N,X-DWRECT,RECTIFICADOR 1-1/2 in 450 W,DWE4887-B3,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,S/N,X-MOTO,MOTO TOOL PROFESIONAL,,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,S/N,X-EXTECH,AMPERIMETRO MA440 (2),MA440,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,S/N,X-PONCH,PINZA PONCHADORA,,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,S/N,X-DETV,DETECTOR DE VOLTAJE DUAL,,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,S/N,X-MATR,JUEGO DE LLAVES CON MATRACA (3),,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,S/N,X-CORTAP,CORTAPERNO 30 in 1/2,,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,S/N,X-WIHA3,JUEGO WIHA 32985 AISLADO 7 PZ (3 juegos),32985,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+caja,S/N,X-MILLER,SOLDADORA MILLERMATIC 252,,existe,,"EJEMPLO, no es conteo real",,2026-09-29,rol-taller,taller FTS
+buscar,BT-04,BT-04,placa sierra de banda,,encontrado,2929-20,EJEMPLO,,2026-09-29,rol-taller,taller FTS
