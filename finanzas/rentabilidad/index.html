@@ -129,6 +129,14 @@
       de un <i>techo SO</i> sin reparto por rubro: no son intercambiables. Y <b>Plan correcto</b>
       exhibe, sin corregir, los proyectos cuya cuenta analítica vive en un plan que no le toca
       a su empresa; el conteo no es una sola población, está desglosado en la tarjeta.
+      <br><br>
+      <b>Desde v1.02 la columna «Empresa» dice la empresa real.</b> Antes ponía «FTS MX» a todo lo
+      que no fuera la LLC, y eso era falso en 30 de 222 proyectos. Las cuentas nunca estuvieron mal
+      —todas esas empresas son MXN, así que la conversión y los totales ya eran correctos— pero la
+      etiqueta y el <i>agrupado</i> sí: agrupar por Empresa metía YIN dentro de FTS MX. Los que no
+      traen empresa en Odoo dicen <b>«sin empresa»</b>, que es lo que son; qué hacer con ellos es
+      una decisión pendiente, no un dato que falte. Y la bandera de <b>subsidio</b> ahora mira en
+      las dos direcciones, no sólo cuando paga la LLC.
     </div>
   </section>
 
@@ -159,7 +167,7 @@
 var P = Panel.montar({
   ruta: '/webhook/fin/rentabilidad',
   titulo: 'Rentabilidad por proyecto',
-  sub: 'FTS Suite · panel · contrato 1 · v1.01',
+  sub: 'FTS Suite · panel · contrato 1 · v1.02',
   volver: { href: '../index.html', txt: '← Finanzas' },
   login: '../../shared/login.html',
   /* Este panel NO guarda nada en el navegador. La lista vacía es la declaración,

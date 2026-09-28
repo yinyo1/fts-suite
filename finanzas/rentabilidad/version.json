@@ -1,10 +1,15 @@
 {
-  "version": "v1.01",
+  "version": "v1.02",
   "fecha": "2026-09-28",
   "modulo": "finanzas/rentabilidad",
   "esquema": "v<mayor>.<menor de dos digitos>. Un incremento de 0.01 por cada merge a main que toque este modulo. Serie propia: NO comparte numeracion con finanzas/version.json (que va en V1.09), porque el panel tiene dirección, motor y ciclo de despliegue propios.",
   "ambito": "finanzas/rentabilidad/ + shared/panel/ + los workflows fin/rentabilidad-*",
   "historial": [
+    {
+      "version": "v1.02",
+      "issue": 332,
+      "nota": "Dos arreglos de puntería, contrato 1.02 (aditivo: cero campos viejos movidos). (1) ETIQUETA DE EMPRESA: el panel decía «FTS MX» en 30 de 222 proyectos que no lo son (23 YIN, 5 de dos empresas personales, 2 sin empresa). Se corrige en Code - extender, NO en Code - armar respuesta, que sigue intacto. Se agrega `empresa_id` para que el rótulo sea auditable, y el gate exige que «FTS MX» aparezca si y sólo si el id es 1. La aritmética no cambió: las cinco empresas distintas de la 6 son todas MXN (verificado en res.company). (2) SUBSIDIO SIMÉTRICO: antes veía a la LLC pagando un proyecto mexicano pero no el caso inverso. Nodo nuevo `Odoo - getAll lineas empresa ajena` sobre las cuentas de los proyectos no-MX, deduplicado por id porque las dos lecturas se traslapan. Medido: el caso inverso NO ocurre hoy — las 40 líneas sobre cuentas no-mexicanas son todas de la empresa 6, cero de la 1, confirmado por dos caminos. El cero del subsidio ya no es ciego. Gates: contrato 160/160, panel 10/10 contra el golden y 21/21 contra el sobre extendido."
+    },
     {
       "version": "v1.01",
       "issue": 332,
